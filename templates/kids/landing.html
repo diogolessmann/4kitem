@@ -321,10 +321,89 @@
     .tag-gender-M { background: rgba(59,130,246,0.15); color: #60a5fa; }
     .tag-gender-F { background: rgba(236,72,153,0.15); color: #f472b6; }
     .tag-gender-A { background: rgba(34,197,94,0.12); color: #4ade80; }
+    .tag-gender-N { background: rgba(34,197,94,0.12); color: #4ade80; }
     .tag-cat { background: rgba(245,158,11,0.12); color: #fbbf24; }
     .tag-lang { background: rgba(255,255,255,0.07); color: var(--text2); }
     .tag-safe { background: rgba(34,197,94,0.12); color: #4ade80; }
     .tag-check { background: rgba(245,158,11,0.12); color: #fbbf24; }
+
+    /* VIDEO CARDS */
+    .vid-card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+      overflow: hidden; transition: border-color .2s, transform .2s; cursor: pointer;
+      position: relative;
+    }
+    .vid-card:hover { border-color: var(--border2); transform: translateY(-3px); }
+    .vid-thumb {
+      position: relative; width: 100%; aspect-ratio: 16/9;
+      background: var(--surface2); overflow: hidden;
+    }
+    .vid-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .vid-thumb-overlay {
+      position: absolute; inset: 0;
+      background: rgba(0,0,0,0); transition: background .2s;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .vid-card:hover .vid-thumb-overlay { background: rgba(0,0,0,0.35); }
+    .vid-play {
+      width: 48px; height: 48px; border-radius: 50%;
+      background: rgba(99,102,241,0.9); display: flex; align-items: center; justify-content: center;
+      font-size: 18px; opacity: 0; transform: scale(0.7); transition: opacity .2s, transform .2s;
+      box-shadow: 0 0 30px rgba(99,102,241,0.5);
+    }
+    .vid-card:hover .vid-play { opacity: 1; transform: scale(1); }
+    .vid-info { padding: 12px 14px; }
+    .vid-title { font-size: 13px; font-weight: 600; line-height: 1.4; margin-bottom: 8px;
+                 display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .vid-meta { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .vid-channel { font-size: 11px; color: var(--text2); flex: 1; min-width: 0;
+                   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .vid-badge {
+      font-size: 9px; font-weight: 700; padding: 2px 7px; border-radius: 100px;
+      flex-shrink: 0; text-transform: uppercase; letter-spacing: .3px;
+    }
+    .badge-M  { background: rgba(59,130,246,0.15); color: #60a5fa; }
+    .badge-F  { background: rgba(236,72,153,0.15); color: #f472b6; }
+    .badge-N  { background: rgba(34,197,94,0.12); color: #4ade80; }
+
+    /* Skeleton loader */
+    @keyframes shimmer {
+      0%   { background-position: -600px 0; }
+      100% { background-position:  600px 0; }
+    }
+    .skeleton {
+      background: linear-gradient(90deg, var(--surface) 25%, var(--surface2) 50%, var(--surface) 75%);
+      background-size: 600px 100%; animation: shimmer 1.4s infinite;
+      border-radius: 8px;
+    }
+    .vid-card.loading .vid-thumb { background: var(--surface2); }
+    .vid-card.loading .vid-title { height: 14px; margin-bottom: 8px; }
+    .vid-card.loading .vid-channel { height: 11px; width: 60%; }
+
+    /* Modal de vídeo */
+    .vid-modal {
+      position: fixed; inset: 0; z-index: 1000; display: none;
+      align-items: center; justify-content: center;
+      background: rgba(0,0,0,0.85); backdrop-filter: blur(8px);
+    }
+    .vid-modal.open { display: flex; }
+    .vid-modal-inner {
+      width: min(800px, 95vw); background: var(--surface);
+      border: 1px solid var(--border2); border-radius: 20px; overflow: hidden;
+    }
+    .vid-modal-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 18px; border-bottom: 1px solid var(--border);
+    }
+    .vid-modal-title { font-size: 14px; font-weight: 600; flex: 1; padding-right: 12px; }
+    .vid-modal-close {
+      width: 32px; height: 32px; border-radius: 8px; border: none;
+      background: var(--surface2); color: var(--text); cursor: pointer;
+      font-size: 16px; display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .vid-modal-player { aspect-ratio: 16/9; width: 100%; }
+    .vid-modal-player iframe { width: 100%; height: 100%; border: none; display: block; }
 
     @media (max-width: 768px) {
       .hero { grid-template-columns: 1fr; padding-top: 100px; gap: 40px; }
@@ -389,7 +468,7 @@
   <!-- SOCIAL PROOF -->
   <div class="social-proof">
     <div class="proof-item">
-      <div class="proof-num">30+</div>
+      <div class="proof-num">24+</div>
       <div class="proof-label">Canais infantis<br>curados</div>
     </div>
     <div class="proof-divider"></div>
@@ -615,49 +694,97 @@
     </div>
   </section>
 
-  <!-- CANAIS / FILTROS -->
-  <section style="position:relative;z-index:1;padding:100px 5%;background:var(--bg2);border-top:1px solid var(--border);border-bottom:1px solid var(--border);">
-    <div style="max-width:1100px;margin:0 auto;">
-      <div class="section-tag">✦ Canais curados</div>
-      <h2 class="section-title">30+ canais verificados.<br>Para cada criança.</h2>
-      <p class="section-sub" style="margin-bottom:40px;">Filtra por idade e género — a playlist certa para cada sala de espera.</p>
+  <!-- VÍDEOS DINÂMICOS / FILTROS -->
+  <section id="videos" style="position:relative;z-index:1;padding:100px 5%;background:var(--bg2);border-top:1px solid var(--border);border-bottom:1px solid var(--border);">
+    <div style="max-width:1200px;margin:0 auto;">
 
-      <!-- FILTROS -->
-      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:32px;align-items:center;">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:20px;flex-wrap:wrap;margin-bottom:32px;">
+        <div>
+          <div class="section-tag">✦ Vídeos curados</div>
+          <h2 class="section-title">Conteúdo novo, sempre.<br>Para cada criança.</h2>
+          <p class="section-sub">Filtra por idade e público — a playlist certa para cada sala.</p>
+        </div>
+        <!-- Contador ao vivo -->
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 24px;text-align:center;flex-shrink:0;">
+          <div id="vid-count" style="font-size:32px;font-weight:900;letter-spacing:-1px;color:var(--accent3);">–</div>
+          <div style="font-size:12px;color:var(--text2);margin-top:2px;">vídeos na biblioteca</div>
+        </div>
+      </div>
+
+      <!-- FILTROS ─────────────────────────────────────────────── -->
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:28px;align-items:center;">
 
         <!-- Idade -->
-        <div style="display:flex;gap:6px;flex-wrap:wrap;">
-          <span style="font-size:12px;font-weight:600;color:var(--text2);align-self:center;margin-right:4px;">IDADE</span>
-          <button class="filter-btn age-btn active" data-age="all" onclick="filterChannels()">Todas</button>
-          <button class="filter-btn age-btn" data-age="0" onclick="filterChannels()">👶 0–2</button>
-          <button class="filter-btn age-btn" data-age="3" onclick="filterChannels()">🧒 3–5</button>
-          <button class="filter-btn age-btn" data-age="6" onclick="filterChannels()">👦 6–8</button>
-          <button class="filter-btn age-btn" data-age="9" onclick="filterChannels()">🎒 9–12</button>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+          <span style="font-size:11px;font-weight:700;color:var(--text2);letter-spacing:.5px;">IDADE</span>
+          <button class="filter-btn age-btn active" data-age="">Todas</button>
+          <button class="filter-btn age-btn" data-age="1">👶 0–2</button>
+          <button class="filter-btn age-btn" data-age="4">🧒 3–5</button>
+          <button class="filter-btn age-btn" data-age="7">👦 6–8</button>
+          <button class="filter-btn age-btn" data-age="10">🎒 9–12</button>
         </div>
 
-        <div style="width:1px;height:32px;background:var(--border);margin:0 6px;"></div>
+        <div style="width:1px;height:30px;background:var(--border);margin:0 4px;"></div>
 
-        <!-- Género -->
-        <div style="display:flex;gap:6px;flex-wrap:wrap;">
-          <span style="font-size:12px;font-weight:600;color:var(--text2);align-self:center;margin-right:4px;">PÚBLICO</span>
-          <button class="filter-btn gender-btn active" data-gender="all" onclick="filterChannels()">Todos</button>
-          <button class="filter-btn gender-btn" data-gender="M" onclick="filterChannels()">👦 Menino</button>
-          <button class="filter-btn gender-btn" data-gender="F" onclick="filterChannels()">👧 Menina</button>
+        <!-- Público -->
+        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+          <span style="font-size:11px;font-weight:700;color:var(--text2);letter-spacing:.5px;">PÚBLICO</span>
+          <button class="filter-btn gender-btn active" data-gender="">Todos</button>
+          <button class="filter-btn gender-btn" data-gender="M">👦 Menino</button>
+          <button class="filter-btn gender-btn" data-gender="F">👧 Menina</button>
         </div>
 
+        <!-- Contador filtrado -->
+        <span id="filter-count" style="font-size:12px;color:var(--text2);margin-left:auto;"></span>
       </div>
 
-      <!-- GRID DE CANAIS -->
-      <div id="channels-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;">
+      <!-- GRID DE VÍDEOS ───────────────────────────────────────── -->
+      <div id="videos-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px;min-height:200px;">
+        <!-- Skeleton inicial -->
+        <div class="vid-card loading" style="opacity:.5">
+          <div class="vid-thumb skeleton" style="aspect-ratio:16/9;"></div>
+          <div class="vid-info"><div class="skeleton vid-title"></div><div class="skeleton vid-channel" style="margin-top:6px;"></div></div>
+        </div>
+        <div class="vid-card loading" style="opacity:.4">
+          <div class="vid-thumb skeleton" style="aspect-ratio:16/9;"></div>
+          <div class="vid-info"><div class="skeleton vid-title"></div><div class="skeleton vid-channel" style="margin-top:6px;"></div></div>
+        </div>
+        <div class="vid-card loading" style="opacity:.3">
+          <div class="vid-thumb skeleton" style="aspect-ratio:16/9;"></div>
+          <div class="vid-info"><div class="skeleton vid-title"></div><div class="skeleton vid-channel" style="margin-top:6px;"></div></div>
+        </div>
       </div>
 
-      <p id="no-results" style="display:none;text-align:center;color:var(--text2);font-size:14px;padding:40px 0;">
-        Nenhum canal encontrado para este filtro.
-      </p>
+      <!-- Estado sem vídeos -->
+      <div id="no-videos" style="display:none;text-align:center;padding:60px 20px;">
+        <div style="font-size:48px;margin-bottom:16px;">🔄</div>
+        <div style="font-size:16px;font-weight:600;margin-bottom:8px;">Biblioteca a ser carregada</div>
+        <div style="font-size:14px;color:var(--text2);">Os vídeos são buscados automaticamente ao iniciar o servidor.<br>Volta em alguns minutos.</div>
+      </div>
 
-      <p style="font-size:13px;color:var(--text2);margin-top:24px;text-align:center;">
-        ✅ Todos os canais são verificados manualmente · 🔄 Actualizados mensalmente
+      <!-- Botão "mais" -->
+      <div id="load-more-wrap" style="display:none;text-align:center;margin-top:32px;">
+        <button id="load-more-btn" onclick="loadMore()" class="btn-outline" style="padding:12px 32px;font-size:14px;">
+          Carregar mais vídeos
+        </button>
+      </div>
+
+      <p style="font-size:12px;color:var(--text2);margin-top:24px;text-align:center;">
+        ✅ Canais verificados manualmente · 🔄 Novos vídeos adicionados automaticamente · 🔒 Curadoria humana
       </p>
+    </div>
+  </section>
+
+  <!-- CANAIS VERIFICADOS (catálogo compacto) -->
+  <section style="position:relative;z-index:1;padding:60px 5%;">
+    <div style="max-width:1100px;margin:0 auto;">
+      <div style="text-align:center;margin-bottom:32px;">
+        <div class="section-tag">✦ Canais verificados</div>
+        <h2 class="section-title" style="font-size:clamp(22px,3vw,32px);">24 canais curados.<br>Crescendo toda semana.</h2>
+      </div>
+      <!-- GRID DE CANAIS (estático, bom para SEO) -->
+      <div id="channels-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px;">
+      </div>
     </div>
   </section>
 
@@ -726,127 +853,244 @@
     <a href="/">← Voltar à plataforma</a>
   </footer>
 
+  <!-- MODAL PLAYER -->
+  <div class="vid-modal" id="vid-modal" onclick="closeModal(event)">
+    <div class="vid-modal-inner" onclick="event.stopPropagation()">
+      <div class="vid-modal-header">
+        <div class="vid-modal-title" id="modal-title">—</div>
+        <button class="vid-modal-close" onclick="closeModal()">✕</button>
+      </div>
+      <div class="vid-modal-player">
+        <iframe id="modal-iframe" src="" allowfullscreen
+          allow="autoplay; encrypted-media"></iframe>
+      </div>
+    </div>
+  </div>
+
   <script>
-    // ── BASE DE CANAIS VERIFICADOS ─────────────────────────────
-    const CHANNELS = [
-      // 0-2 anos
-      { name:'Galinha Pintadinha', handle:'@galinhapintadinha', emoji:'🐔', age:[0,4], gender:'A', cat:'Musical', lang:'PT-BR', safe:true },
-      { name:'Mundo Bita',         handle:'@mundobita',         emoji:'🎵', age:[0,5], gender:'A', cat:'Musical', lang:'PT-BR', safe:true },
-      { name:'CoComelon PT-BR',    handle:'@CoComelon',         emoji:'🌽', age:[0,5], gender:'A', cat:'Musical', lang:'PT-BR', safe:true },
-      { name:'Super Simple Songs', handle:'@supersimplesongs', emoji:'🎶', age:[0,4], gender:'A', cat:'Musical', lang:'Sem fala', safe:true },
-      // 3-5 anos
-      { name:'Patati Patatá',      handle:'@PatatiPatataOficial', emoji:'🎪', age:[3,6], gender:'A', cat:'Humor',   lang:'PT-BR', safe:true },
-      { name:'Cocoricó',           handle:'@cocorico',          emoji:'🐓', age:[3,6], gender:'A', cat:'Educativo',lang:'PT-BR', safe:true },
-      { name:'Peppa Pig PT-BR',    handle:'@PeppaPigPortuguesOficial', emoji:'🐷', age:[2,6], gender:'A', cat:'Animação', lang:'PT-BR', safe:true },
-      { name:'Numberblocks PT-BR', handle:'@numberblocks_pt',   emoji:'🔢', age:[3,7], gender:'A', cat:'Educativo',lang:'PT-BR', safe:true },
-      { name:'Patrulha Canina',    handle:'@PAWPatrolPortuguesBrasil', emoji:'🐾', age:[3,7], gender:'A', cat:'Aventura', lang:'PT-BR', safe:true },
-      { name:'Bluey',              handle:'@BlueyOfficialChannel', emoji:'🐕', age:[3,8], gender:'A', cat:'Animação', lang:'EN', safe:true },
-      { name:'Larva TUBA PT-BR',   handle:'@larvatubaemportugues', emoji:'🐛', age:[3,7], gender:'A', cat:'Humor',   lang:'PT-BR', safe:true },
-      { name:'Oddbods',            handle:'@Oddbods',           emoji:'🫐', age:[3,7], gender:'A', cat:'Humor',   lang:'Sem fala', safe:true },
-      // 4-8 anos
-      { name:'Mônica Toy',         handle:'@monicatoy',         emoji:'🐰', age:[4,9], gender:'A', cat:'Animação', lang:'PT-BR', safe:true },
-      { name:'Turma da Mônica',    handle:'@TurmaDaMonica',     emoji:'🦷', age:[4,10], gender:'A', cat:'Animação', lang:'PT-BR', safe:true },
-      { name:'Hey Duggee PT',      handle:'@HeyDuggeeBR',       emoji:'🦮', age:[3,7], gender:'A', cat:'Educativo',lang:'PT-BR', safe:true },
-      { name:'Pocoyo PT-BR',       handle:'@PocoyoPortugues',   emoji:'👦', age:[2,6], gender:'A', cat:'Animação', lang:'PT-BR', safe:true },
-      { name:'Masha e o Urso',     handle:'@MashaandtheBear',   emoji:'🐻', age:[3,8], gender:'F', cat:'Animação', lang:'PT-BR', safe:true },
-      { name:'Peppa Pig Clips',    handle:'@PeppaPig',          emoji:'🎀', age:[3,6], gender:'F', cat:'Animação', lang:'EN',    safe:true },
-      // 6-10 anos
-      { name:'Luccas Neto',        handle:'@Luccasneto',        emoji:'🎭', age:[6,12], gender:'A', cat:'Humor',   lang:'PT-BR', safe:false },
-      { name:'Manual do Mundo Kids',handle:'@manualdomundokids9300', emoji:'🔬', age:[6,12], gender:'A', cat:'Educativo',lang:'PT-BR', safe:true },
-      { name:'Canal da Belinha',   handle:'@CanaldaBelinhaOficial', emoji:'💅', age:[6,10], gender:'F', cat:'Entretenimento', lang:'PT-BR', safe:true },
-      // 9-12 anos
-      { name:'Enaldinho',          handle:'@Enaldinho',         emoji:'😂', age:[9,14], gender:'A', cat:'Humor',   lang:'PT-BR', safe:false },
-      { name:'Authentic Games',    handle:'@Authenticgames',    emoji:'⛏️', age:[9,14], gender:'M', cat:'Minecraft',lang:'PT-BR', safe:true },
-      { name:'Julia MineGirl',     handle:'@juliaminegirl',     emoji:'💎', age:[9,14], gender:'F', cat:'Minecraft',lang:'PT-BR', safe:true },
-    ];
+  // ══════════════════════════════════════════════════════════════
+  //  CATÁLOGO DE CANAIS (estático — para a secção de catálogo)
+  // ══════════════════════════════════════════════════════════════
+  const CHANNELS = [
+    { name:'Galinha Pintadinha',  handle:'@galinhapintadinha',       emoji:'🐔', age:[0,4],  gender:'N', cat:'Musical',        safe:true  },
+    { name:'Mundo Bita',          handle:'@mundobita',               emoji:'🎵', age:[0,5],  gender:'N', cat:'Musical',        safe:true  },
+    { name:'CoComelon PT-BR',     handle:'@CoComelon',               emoji:'🌽', age:[0,5],  gender:'N', cat:'Musical',        safe:true  },
+    { name:'Super Simple Songs',  handle:'@supersimplesongs',        emoji:'🎶', age:[0,4],  gender:'N', cat:'Musical',        safe:true  },
+    { name:'Patati Patatá',       handle:'@PatatiPatataOficial',     emoji:'🎪', age:[3,6],  gender:'N', cat:'Humor',          safe:true  },
+    { name:'Cocoricó',            handle:'@cocorico',                emoji:'🐓', age:[3,6],  gender:'N', cat:'Educativo',      safe:true  },
+    { name:'Peppa Pig PT-BR',     handle:'@PeppaPigPortuguesOficial',emoji:'🐷', age:[2,6],  gender:'N', cat:'Animação',       safe:true  },
+    { name:'Numberblocks PT-BR',  handle:'@numberblocks_pt',         emoji:'🔢', age:[3,7],  gender:'N', cat:'Educativo',      safe:true  },
+    { name:'Patrulha Canina',     handle:'@PAWPatrolPortuguesBrasil',emoji:'🐾', age:[3,7],  gender:'N', cat:'Aventura',       safe:true  },
+    { name:'Bluey',               handle:'@BlueyOfficialChannel',    emoji:'🐕', age:[3,8],  gender:'N', cat:'Animação',       safe:true  },
+    { name:'Larva TUBA PT-BR',    handle:'@larvatubaemportugues',    emoji:'🐛', age:[3,7],  gender:'N', cat:'Humor',          safe:true  },
+    { name:'Oddbods',             handle:'@Oddbods',                 emoji:'🫐', age:[3,7],  gender:'N', cat:'Humor',          safe:true  },
+    { name:'Mônica Toy',          handle:'@monicatoy',               emoji:'🐰', age:[4,9],  gender:'N', cat:'Animação',       safe:true  },
+    { name:'Turma da Mônica',     handle:'@TurmaDaMonica',           emoji:'🦷', age:[4,10], gender:'N', cat:'Animação',       safe:true  },
+    { name:'Hey Duggee PT',       handle:'@HeyDuggeeBR',             emoji:'🦮', age:[3,7],  gender:'N', cat:'Educativo',      safe:true  },
+    { name:'Pocoyo PT-BR',        handle:'@PocoyoPortugues',         emoji:'👦', age:[2,6],  gender:'N', cat:'Animação',       safe:true  },
+    { name:'Masha e o Urso',      handle:'@MashaandtheBear',         emoji:'🐻', age:[3,8],  gender:'F', cat:'Animação',       safe:true  },
+    { name:'Peppa Pig Clips',     handle:'@PeppaPig',                emoji:'🎀', age:[3,6],  gender:'F', cat:'Animação',       safe:true  },
+    { name:'Luccas Neto',         handle:'@Luccasneto',              emoji:'🎭', age:[6,12], gender:'N', cat:'Humor',          safe:false },
+    { name:'Manual do Mundo Kids',handle:'@manualdomundokids9300',   emoji:'🔬', age:[6,12], gender:'N', cat:'Educativo',      safe:true  },
+    { name:'Canal da Belinha',    handle:'@CanaldaBelinhaOficial',   emoji:'💅', age:[6,10], gender:'F', cat:'Entretenimento', safe:true  },
+    { name:'Enaldinho',           handle:'@Enaldinho',               emoji:'😂', age:[9,14], gender:'N', cat:'Humor',          safe:false },
+    { name:'Authentic Games',     handle:'@Authenticgames',          emoji:'⛏️', age:[9,14], gender:'M', cat:'Minecraft',      safe:true  },
+    { name:'Julia MineGirl',      handle:'@juliaminegirl',           emoji:'💎', age:[9,14], gender:'F', cat:'Minecraft',      safe:true  },
+  ];
 
-    const AGE_LABELS = { 0:'0–2', 3:'3–5', 6:'6–8', 9:'9–12' };
-    const AGE_BG = { 0:'rgba(99,102,241,0.15)', 3:'rgba(16,185,129,0.15)', 6:'rgba(245,158,11,0.15)', 9:'rgba(236,72,153,0.15)' };
+  // ── Catálogo de canais (estático) ─────────────────────────────────────
+  const AGE_BG = {
+    0: 'rgba(99,102,241,0.15)',
+    3: 'rgba(16,185,129,0.15)',
+    6: 'rgba(245,158,11,0.15)',
+    9: 'rgba(236,72,153,0.15)',
+  };
+  function ageGroup(m) { return m<=2?0:m<=5?3:m<=8?6:9; }
 
-    function getAgeGroup(ageMin) {
-      if (ageMin <= 2) return 0;
-      if (ageMin <= 5) return 3;
-      if (ageMin <= 8) return 6;
-      return 9;
+  function renderChannels() {
+    const grid = document.getElementById('channels-grid');
+    if (!grid) return;
+    grid.innerHTML = CHANNELS.map(ch => {
+      const bg  = AGE_BG[ageGroup(ch.age[0])];
+      const gl  = ch.gender==='M'?'👦 Menino':ch.gender==='F'?'👧 Menina':'🧒 Ambos';
+      const gcl = ch.gender==='M'?'tag-gender-M':ch.gender==='F'?'tag-gender-F':'tag-gender-N';
+      const safe= ch.safe
+        ? `<span class="ch-tag tag-safe">✓ Verificado</span>`
+        : `<span class="ch-tag tag-check">⚠ Supervisão</span>`;
+      return `
+        <div class="ch-card">
+          <div class="ch-card-top">
+            <div class="ch-emoji" style="background:${bg}">${ch.emoji}</div>
+            <div>
+              <div class="ch-name">${ch.name}</div>
+              <div class="ch-handle">${ch.handle}</div>
+            </div>
+          </div>
+          <div class="ch-tags">
+            <span class="ch-tag tag-age">${ch.age[0]}–${ch.age[1]} anos</span>
+            <span class="ch-tag ${gcl}">${gl}</span>
+            <span class="ch-tag tag-cat">${ch.cat}</span>
+            ${safe}
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  //  VÍDEOS DINÂMICOS — busca via API
+  // ══════════════════════════════════════════════════════════════
+  let _age    = '';
+  let _gender = '';
+  let _offset = 0;
+  const LIMIT = 24;
+
+  async function fetchVideos(reset = true) {
+    if (reset) { _offset = 0; }
+
+    const params = new URLSearchParams({ limit: LIMIT, offset: _offset });
+    if (_age)    params.set('age',    _age);
+    if (_gender) params.set('gender', _gender);
+
+    const grid    = document.getElementById('videos-grid');
+    const noVids  = document.getElementById('no-videos');
+    const moreBtn = document.getElementById('load-more-wrap');
+
+    if (reset) {
+      grid.innerHTML = `
+        ${[1,2,3,4,5,6].map(i => `
+          <div class="vid-card loading" style="opacity:${1-i*0.12}">
+            <div class="vid-thumb skeleton" style="aspect-ratio:16/9;"></div>
+            <div class="vid-info">
+              <div class="skeleton vid-title" style="height:14px;margin-bottom:8px;border-radius:6px;"></div>
+              <div class="skeleton vid-channel" style="height:11px;width:55%;border-radius:6px;"></div>
+            </div>
+          </div>`).join('')}`;
     }
 
-    function filterChannels() {
-      const activeAge    = document.querySelector('.age-btn.active')?.dataset.age || 'all';
-      const activeGender = document.querySelector('.gender-btn.active')?.dataset.gender || 'all';
+    try {
+      const res  = await fetch(`/api/kids/videos?${params}`);
+      const data = await res.json();
 
-      const filtered = CHANNELS.filter(ch => {
-        const ageGroup = getAgeGroup(ch.age[0]);
-        const ageMatch = activeAge === 'all' || ageGroup === parseInt(activeAge);
-        const genderMatch = activeGender === 'all' || ch.gender === activeGender || ch.gender === 'A';
-        return ageMatch && genderMatch;
-      });
+      // Atualiza contador total
+      const countEl = document.getElementById('vid-count');
+      if (countEl) countEl.textContent = data.total.toLocaleString('pt-BR');
 
-      renderChannels(filtered);
-    }
+      const filterEl = document.getElementById('filter-count');
+      if (filterEl && (_age || _gender)) {
+        filterEl.textContent = `${data.total} vídeo${data.total!==1?'s':''} encontrado${data.total!==1?'s':''}`;
+      } else if (filterEl) {
+        filterEl.textContent = '';
+      }
 
-    function renderChannels(list) {
-      const grid = document.getElementById('channels-grid');
-      const noResults = document.getElementById('no-results');
+      if (reset) grid.innerHTML = '';
 
-      if (list.length === 0) {
-        grid.innerHTML = '';
-        noResults.style.display = 'block';
+      if (data.videos.length === 0 && reset) {
+        noVids.style.display  = 'block';
+        moreBtn.style.display = 'none';
         return;
       }
-      noResults.style.display = 'none';
+      noVids.style.display = 'none';
 
-      grid.innerHTML = list.map(ch => {
-        const ageGroup = getAgeGroup(ch.age[0]);
-        const genderLabel = ch.gender === 'M' ? '👦 Menino' : ch.gender === 'F' ? '👧 Menina' : '🧒 Ambos';
-        const genderClass = ch.gender === 'M' ? 'tag-gender-M' : ch.gender === 'F' ? 'tag-gender-F' : 'tag-gender-A';
-        const safeTag = ch.safe
-          ? `<span class="ch-tag tag-safe">✓ Verificado</span>`
-          : `<span class="ch-tag tag-check">⚠ Supervisão</span>`;
-
-        return `
-          <div class="ch-card">
-            <div class="ch-card-top">
-              <div class="ch-emoji" style="background:${AGE_BG[ageGroup]}">${ch.emoji}</div>
-              <div>
-                <div class="ch-name">${ch.name}</div>
-                <div class="ch-handle">${ch.handle}</div>
-              </div>
-            </div>
-            <div class="ch-tags">
-              <span class="ch-tag tag-age">${ch.age[0]}–${ch.age[1]} anos</span>
-              <span class="ch-tag ${genderClass}">${genderLabel}</span>
-              <span class="ch-tag tag-cat">${ch.cat}</span>
-              <span class="ch-tag tag-lang">${ch.lang}</span>
-              ${safeTag}
-            </div>
-          </div>`;
-      }).join('');
-    }
-
-    // Botões de filtro — toggle active
-    document.querySelectorAll('.age-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        document.querySelectorAll('.age-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        filterChannels();
+      data.videos.forEach(v => {
+        const card = buildVideoCard(v);
+        grid.appendChild(card);
       });
-    });
 
-    document.querySelectorAll('.gender-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        document.querySelectorAll('.gender-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        filterChannels();
-      });
-    });
+      _offset += data.videos.length;
+      moreBtn.style.display = data.has_more ? 'block' : 'none';
 
-    // Render inicial
-    renderChannels(CHANNELS);
-
-    function toggleFaq(btn) {
-      const item = btn.closest('.faq-item');
-      item.classList.toggle('open');
+    } catch (e) {
+      console.warn('API vídeos indisponível, usando catálogo de canais', e);
+      noVids.style.display  = 'block';
+      grid.innerHTML        = '';
+      moreBtn.style.display = 'none';
+      const countEl = document.getElementById('vid-count');
+      if (countEl) countEl.textContent = CHANNELS.length + '+';
     }
+  }
+
+  function buildVideoCard(v) {
+    const card = document.createElement('div');
+    card.className = 'vid-card';
+
+    const gLabel = v.gender==='M'?'👦 Menino':v.gender==='F'?'👧 Menina':'🧒 Neutro';
+    const gClass = v.gender==='M'?'badge-M':v.gender==='F'?'badge-F':'badge-N';
+    const thumb  = v.thumbnail || `https://i.ytimg.com/vi/${v.youtube_id}/hqdefault.jpg`;
+    const pubDate= v.published_at ? new Date(v.published_at).toLocaleDateString('pt-BR',{month:'short',year:'numeric'}) : '';
+
+    card.innerHTML = `
+      <div class="vid-thumb">
+        <img src="${thumb}" alt="${escHtml(v.title)}" loading="lazy"
+             onerror="this.src='https://i.ytimg.com/vi/${v.youtube_id}/mqdefault.jpg'">
+        <div class="vid-thumb-overlay">
+          <div class="vid-play">▶</div>
+        </div>
+      </div>
+      <div class="vid-info">
+        <div class="vid-title">${escHtml(v.title)}</div>
+        <div class="vid-meta">
+          <span class="vid-channel">${escHtml(v.channel_name)}</span>
+          <span class="vid-badge ${gClass}">${gLabel}</span>
+        </div>
+        ${pubDate ? `<div style="font-size:10px;color:var(--text2);margin-top:6px;">${pubDate} · ${v.age_min}–${v.age_max} anos</div>` : ''}
+      </div>`;
+
+    card.addEventListener('click', () => openVideo(v.youtube_id, v.title));
+    return card;
+  }
+
+  function escHtml(s) {
+    return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function loadMore() {
+    fetchVideos(false);
+  }
+
+  // ── Modal ──────────────────────────────────────────────────────────────
+  function openVideo(ytId, title) {
+    document.getElementById('modal-title').textContent = title || 'Vídeo';
+    document.getElementById('modal-iframe').src =
+      `https://www.youtube.com/embed/${ytId}?autoplay=1&rel=0&modestbranding=1`;
+    document.getElementById('vid-modal').classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeModal(e) {
+    if (e && e.target !== document.getElementById('vid-modal') && !e.target.classList.contains('vid-modal-close')) return;
+    document.getElementById('modal-iframe').src = '';
+    document.getElementById('vid-modal').classList.remove('open');
+    document.body.style.overflow = '';
+  }
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal({target: document.getElementById('vid-modal')}); });
+
+  // ── Filtros ────────────────────────────────────────────────────────────
+  document.querySelectorAll('.age-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.age-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      _age = btn.dataset.age || '';
+      fetchVideos(true);
+    });
+  });
+
+  document.querySelectorAll('.gender-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.gender-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      _gender = btn.dataset.gender || '';
+      fetchVideos(true);
+    });
+  });
+
+  // ── FAQ ────────────────────────────────────────────────────────────────
+  function toggleFaq(btn) {
+    btn.closest('.faq-item').classList.toggle('open');
+  }
+
+  // ── Init ───────────────────────────────────────────────────────────────
+  renderChannels();
+  fetchVideos(true);
   </script>
 </body>
 </html>
