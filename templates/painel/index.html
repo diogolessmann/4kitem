@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>Painel — {{ client.name }}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #08080f; --bg2: #0e0e1a; --surface: #13131f; --surface2: #1a1a2e;
+      --border: rgba(255,255,255,0.07); --border2: rgba(255,255,255,0.14);
+      --text: #f0f0ff; --text2: #8888aa;
+      --accent: #6366f1; --accent2: #8b5cf6; --accent3: #a78bfa;
+      --green: #22c55e; --red: #ef4444;
+    }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg); color: var(--text);
+      min-height: 100vh; padding-bottom: 40px;
+    }
+
+    /* ── Header ── */
+    .header {
+      padding: 20px 20px 0;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .header-logo {
+      font-size: 18px; font-weight: 900; letter-spacing: -0.5px;
+    }
+    .header-logo span {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .header-code {
+      font-size: 11px; color: var(--text2); font-weight: 600;
+      background: var(--surface); border: 1px solid var(--border2);
+      padding: 4px 10px; border-radius: 100px; letter-spacing: 1px;
+    }
+
+    /* ── Client card ── */
+    .client-card {
+      margin: 16px 16px 0;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 18px; padding: 20px;
+    }
+    .client-name {
+      font-size: 17px; font-weight: 800; letter-spacing: -0.5px;
+      margin-bottom: 4px;
+    }
+    .client-city { font-size: 12px; color: var(--text2); margin-bottom: 14px; }
+
+    .current-mode-pill {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: rgba(99,102,241,0.12); border: 1px solid rgba(99,102,241,0.3);
+      border-radius: 100px; padding: 8px 16px;
+    }
+    .live-dot {
+      width: 7px; height: 7px; border-radius: 50%; background: var(--green);
+      animation: pulse 2s ease infinite;
+    }
+    @keyframes pulse {
+      0%,100% { opacity: 1; box-shadow: 0 0 0 0 rgba(34,197,94,0.4); }
+      50% { opacity: .8; box-shadow: 0 0 0 6px rgba(34,197,94,0); }
+    }
+    .current-mode-label { font-size: 14px; font-weight: 700; color: var(--accent3); }
+
+    /* ── TV Link ── */
+    .tv-link {
+      display: flex; align-items: center; justify-content: space-between;
+      margin: 12px 0 0;
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 12px; padding: 12px 16px;
+      text-decoration: none; color: var(--text);
+      transition: border-color .2s;
+    }
+    .tv-link:hover { border-color: var(--border2); }
+    .tv-link-left { display: flex; align-items: center; gap: 10px; }
+    .tv-link-icon { font-size: 20px; }
+    .tv-link-url { font-size: 12px; color: var(--text2); margin-top: 2px; }
+    .tv-link-arrow { color: var(--text2); font-size: 16px; }
+
+    /* ── Section title ── */
+    .section-title {
+      font-size: 11px; font-weight: 700; letter-spacing: .8px;
+      text-transform: uppercase; color: var(--text2);
+      padding: 20px 16px 10px;
+    }
+
+    /* ── Modo grid ── */
+    .modes-grid {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 10px; padding: 0 16px;
+    }
+    .mode-btn {
+      display: flex; flex-direction: column; align-items: flex-start;
+      gap: 6px; padding: 16px;
+      background: var(--surface); border: 2px solid var(--border);
+      border-radius: 16px; cursor: pointer;
+      transition: all .2s; text-align: left;
+      font-family: 'Inter', sans-serif; color: var(--text);
+      position: relative; overflow: hidden;
+    }
+    .mode-btn:active { transform: scale(0.97); }
+    .mode-btn.active {
+      border-color: var(--accent);
+      background: linear-gradient(135deg, rgba(99,102,241,0.15), var(--surface));
+    }
+    .mode-btn.loading {
+      opacity: 0.6; pointer-events: none;
+    }
+    .mode-emoji { font-size: 28px; line-height: 1; }
+    .mode-name  { font-size: 14px; font-weight: 700; }
+    .mode-desc  { font-size: 11px; color: var(--text2); line-height: 1.4; }
+    .mode-active-badge {
+      position: absolute; top: 8px; right: 8px;
+      background: var(--accent); color: #fff;
+      font-size: 9px; font-weight: 800; padding: 2px 7px;
+      border-radius: 100px; letter-spacing: .3px; text-transform: uppercase;
+    }
+
+    /* ── Toast ── */
+    .toast {
+      position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(100px);
+      background: var(--surface); border: 1px solid var(--border2);
+      border-radius: 14px; padding: 12px 20px;
+      font-size: 14px; font-weight: 600;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+      transition: transform .3s cubic-bezier(.34,1.56,.64,1);
+      white-space: nowrap; z-index: 100;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .toast.show { transform: translateX(-50%) translateY(0); }
+    .toast.success { border-color: rgba(34,197,94,0.4); }
+    .toast.error   { border-color: rgba(239,68,68,0.4); }
+
+    /* ── Info cards ── */
+    .info-grid {
+      display: grid; grid-template-columns: 1fr 1fr 1fr;
+      gap: 8px; padding: 0 16px;
+    }
+    .info-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 14px; padding: 14px 12px; text-align: center;
+    }
+    .info-num { font-size: 22px; font-weight: 900; letter-spacing: -1px; color: var(--accent3); }
+    .info-lbl { font-size: 10px; color: var(--text2); margin-top: 3px; line-height: 1.3; }
+
+    /* ── Botão refresh ── */
+    .refresh-btn {
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      margin: 16px 16px 0;
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 14px; padding: 14px;
+      color: var(--text2); font-size: 13px; font-weight: 600;
+      cursor: pointer; font-family: 'Inter', sans-serif;
+      transition: .2s;
+    }
+    .refresh-btn:hover { border-color: var(--border2); color: var(--text); }
+    .refresh-btn:active { transform: scale(.98); }
+  </style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <div class="header-logo"><span>4K</span>ITEM Painel</div>
+  <div class="header-code">{{ client.code }}</div>
+</div>
+
+<!-- Card do cliente -->
+<div class="client-card">
+  <div class="client-name">{{ client.name }}</div>
+  <div class="client-city">📍 {{ client.city }}</div>
+
+  <div class="current-mode-pill">
+    <div class="live-dot"></div>
+    <span class="current-mode-label" id="current-mode-label">
+      {{ modes[client.mode]['label'] if client.mode in modes else client.mode }}
+    </span>
+  </div>
+
+  <a href="/tv/{{ client.code }}" target="_blank" class="tv-link">
+    <div class="tv-link-left">
+      <div class="tv-link-icon">📺</div>
+      <div>
+        <div style="font-size:13px;font-weight:600;">Abrir TV</div>
+        <div class="tv-link-url">4kitem.com.br/tv/{{ client.code }}</div>
+      </div>
+    </div>
+    <div class="tv-link-arrow">→</div>
+  </a>
+</div>
+
+<!-- Stats -->
+<div class="section-title">Biblioteca</div>
+<div class="info-grid">
+  <div class="info-card">
+    <div class="info-num" id="stat-videos">—</div>
+    <div class="info-lbl">Vídeos no modo atual</div>
+  </div>
+  <div class="info-card">
+    <div class="info-num" id="stat-channels">—</div>
+    <div class="info-lbl">Canais curados</div>
+  </div>
+  <div class="info-card">
+    <div class="info-num" id="stat-total">—</div>
+    <div class="info-lbl">Total na plataforma</div>
+  </div>
+</div>
+
+<!-- Modos -->
+<div class="section-title">Trocar modo de conteúdo</div>
+<div class="modes-grid" id="modes-grid">
+  {% for key, mode in modes.items() %}
+  <button class="mode-btn {% if client.mode == key %}active{% endif %}"
+          data-mode="{{ key }}"
+          onclick="setMode('{{ key }}', this)">
+    {% if client.mode == key %}
+      <div class="mode-active-badge">Ativo</div>
+    {% endif %}
+    <div class="mode-emoji">{{ mode.label.split()[0] }}</div>
+    <div class="mode-name">{{ mode.label.split(' ', 1)[1] if ' ' in mode.label else mode.label }}</div>
+    <div class="mode-desc">{{ mode.desc }}</div>
+  </button>
+  {% endfor %}
+</div>
+
+<!-- Refresh scraper -->
+<button class="refresh-btn" onclick="triggerRefresh()">
+  🔄 Buscar novos vídeos
+</button>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+const CLIENT_CODE = "{{ client.code }}";
+const BASE_URL    = window.location.origin + '/';
+let   currentMode = "{{ client.mode }}";
+
+// ── Carregar stats ─────────────────────────────────────────────────────
+async function loadStats() {
+  try {
+    const [statsRes, playlistRes] = await Promise.all([
+      fetch(`${BASE_URL}api/kids/stats`),
+      fetch(`${BASE_URL}api/tv/${CLIENT_CODE}/playlist?limit=1`),
+    ]);
+    const s = await statsRes.json();
+    const p = await playlistRes.json();
+
+    document.getElementById('stat-total').textContent    = s.videos?.toLocaleString('pt-BR') || '—';
+    document.getElementById('stat-channels').textContent = s.channels || '—';
+    document.getElementById('stat-videos').textContent   = p.videos ? p.videos.length + '+' : '0';
+  } catch(e) { console.warn(e); }
+}
+
+// ── Trocar modo ────────────────────────────────────────────────────────
+async function setMode(mode, btn) {
+  if (mode === currentMode) return;
+
+  // UI feedback imediato
+  document.querySelectorAll('.mode-btn').forEach(b => {
+    b.classList.remove('active', 'loading');
+    b.querySelectorAll('.mode-active-badge').forEach(el => el.remove());
+  });
+  btn.classList.add('active', 'loading');
+
+  try {
+    const res  = await fetch(`${BASE_URL}api/tv/${CLIENT_CODE}/mode`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ mode }),
+    });
+    const data = await res.json();
+
+    if (data.ok) {
+      currentMode = mode;
+      btn.classList.remove('loading');
+      // Badge "Ativo"
+      const badge = document.createElement('div');
+      badge.className = 'mode-active-badge';
+      badge.textContent = 'Ativo';
+      btn.prepend(badge);
+      // Atualiza label
+      document.getElementById('current-mode-label').textContent = data.mode_label;
+      showToast('✅ ' + data.mode_label + ' ativado!', 'success');
+      loadStats();
+    } else {
+      btn.classList.remove('loading');
+      showToast('❌ Erro ao trocar modo', 'error');
+    }
+  } catch(e) {
+    btn.classList.remove('loading');
+    showToast('❌ Falha de conexão', 'error');
+  }
+}
+
+// ── Refresh scraper ────────────────────────────────────────────────────
+async function triggerRefresh() {
+  showToast('🔄 Buscando novos vídeos...', '');
+  try {
+    await fetch(`${BASE_URL}kids/admin/refresh`, { method: 'POST' });
+    showToast('✅ Busca iniciada em background!', 'success');
+  } catch(e) {
+    showToast('❌ Falha ao iniciar busca', 'error');
+  }
+}
+
+// ── Toast ──────────────────────────────────────────────────────────────
+let toastTimer;
+function showToast(msg, type) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className   = 'toast ' + (type || '');
+  void el.offsetHeight; // force reflow
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+// ── Init ───────────────────────────────────────────────────────────────
+loadStats();
+</script>
+</body>
+</html>

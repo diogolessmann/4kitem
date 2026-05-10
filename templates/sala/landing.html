@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SalaTV — TV Profissional para Salas de Espera | 4KITEM</title>
+  <meta name="description" content="TV curada para clínicas adultas, cartórios, academias e eventos. 8 modos de ambiente, controle pelo celular, overlay de marca. Sem anúncios.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #08080f; --bg2: #0e0e1a; --surface: #13131f; --surface2: #1a1a2e;
+      --border: rgba(255,255,255,0.07); --border2: rgba(255,255,255,0.12);
+      --text: #f0f0ff; --text2: #8888aa;
+      --accent: #6366f1; --accent2: #8b5cf6; --accent3: #a78bfa;
+      --green: #22c55e;
+    }
+    html { scroll-behavior: smooth; }
+    body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); overflow-x: hidden; }
+
+    .orb { position: fixed; border-radius: 50%; filter: blur(120px); pointer-events: none; z-index: 0; }
+    .orb-1 { width: 500px; height: 500px; background: rgba(99,102,241,0.08); top: -150px; right: -100px; }
+    .orb-2 { width: 400px; height: 400px; background: rgba(139,92,246,0.06); bottom: 0; left: -100px; }
+
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      padding: 0 5%; height: 64px;
+      display: flex; align-items: center; justify-content: space-between;
+      background: rgba(8,8,15,0.85); backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-logo { font-size: 18px; font-weight: 900; text-decoration: none; color: var(--text); }
+    .nav-logo span { background: linear-gradient(135deg, var(--accent), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .nav-links { display: flex; align-items: center; gap: 20px; }
+    .nav-links a { font-size: 13px; color: var(--text2); text-decoration: none; transition: color .2s; }
+    .nav-links a:hover { color: var(--text); }
+    .nav-cta {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: #fff; padding: 8px 18px; border-radius: 10px;
+      font-size: 13px; font-weight: 700; text-decoration: none;
+    }
+
+    section { position: relative; z-index: 1; }
+
+    /* ── HERO ── */
+    .hero {
+      padding: 140px 5% 80px;
+      max-width: 1200px; margin: 0 auto;
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 60px; align-items: center;
+    }
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: rgba(99,102,241,0.12); border: 1px solid rgba(99,102,241,0.25);
+      color: var(--accent3); padding: 6px 16px; border-radius: 100px;
+      font-size: 12px; font-weight: 600; letter-spacing: .5px; text-transform: uppercase;
+      margin-bottom: 24px;
+    }
+    .hero h1 {
+      font-size: clamp(36px, 4.5vw, 58px); font-weight: 900;
+      letter-spacing: -2px; line-height: 1.05; margin-bottom: 20px;
+    }
+    .hero h1 .grad {
+      background: linear-gradient(135deg, var(--accent), var(--accent2), #06b6d4);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+    .hero p { font-size: 17px; color: var(--text2); line-height: 1.7; margin-bottom: 36px; max-width: 480px; }
+    .hero-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+    .btn-primary {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: #fff; padding: 14px 28px; border-radius: 12px;
+      font-weight: 700; font-size: 15px; text-decoration: none;
+      box-shadow: 0 0 40px rgba(99,102,241,0.3); transition: transform .2s;
+    }
+    .btn-primary:hover { transform: translateY(-2px); }
+    .btn-outline {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: transparent; color: var(--text); padding: 14px 28px;
+      border-radius: 12px; font-weight: 600; font-size: 15px;
+      text-decoration: none; border: 1px solid var(--border2); transition: background .2s;
+    }
+    .btn-outline:hover { background: var(--surface); }
+
+    /* ── TV mockup (direita do hero) ── */
+    .tv-demo {
+      background: var(--surface); border: 1px solid var(--border2);
+      border-radius: 20px; overflow: hidden;
+      box-shadow: 0 40px 80px rgba(0,0,0,0.5);
+    }
+    .tv-bar {
+      background: var(--surface2); height: 36px;
+      display: flex; align-items: center; padding: 0 14px; gap: 7px;
+      border-bottom: 1px solid var(--border);
+    }
+    .tv-dot { width: 10px; height: 10px; border-radius: 50%; }
+    .tv-screen {
+      aspect-ratio: 16/9;
+      background: #000;
+      display: grid;
+      grid-template-rows: 1fr 52px;
+      position: relative; overflow: hidden;
+    }
+    .tv-content {
+      background: linear-gradient(135deg, #0a0a1a, #0d0a1f);
+      display: flex; align-items: center; justify-content: center;
+      flex-direction: column; gap: 10px; padding: 16px;
+    }
+    .tv-playing-icon { font-size: 32px; }
+    .tv-playing-title { font-size: 12px; font-weight: 600; text-align: center; color: rgba(255,255,255,0.8); }
+    .tv-playing-ch { font-size: 10px; color: rgba(255,255,255,0.4); }
+    .tv-overlay-bar {
+      background: rgba(0,0,0,0.9);
+      display: flex; align-items: center; padding: 0 10px; gap: 8px;
+      border-top: 1px solid rgba(255,255,255,0.06);
+    }
+    .tv-brand-pill {
+      display: flex; align-items: center; gap: 6px; flex-shrink: 0;
+    }
+    .tv-brand-ico {
+      width: 22px; height: 22px; border-radius: 5px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 9px; font-weight: 900;
+    }
+    .tv-brand-name { font-size: 9px; font-weight: 700; }
+    .tv-ticker-text { flex: 1; font-size: 9px; color: rgba(255,255,255,0.45); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+    .tv-mode-badge { font-size: 8px; color: var(--accent3); font-weight: 700; flex-shrink: 0; }
+    .tv-qr { width: 28px; height: 28px; background: #fff; border-radius: 4px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 6px; color: #000; }
+
+    /* ── Modos ── */
+    .section-tag {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: rgba(99,102,241,0.1); border: 1px solid rgba(99,102,241,0.2);
+      color: var(--accent3); padding: 5px 14px; border-radius: 100px;
+      font-size: 12px; font-weight: 600; letter-spacing: .5px; text-transform: uppercase; margin-bottom: 16px;
+    }
+    .section-title { font-size: clamp(28px, 4vw, 44px); font-weight: 800; letter-spacing: -1.5px; line-height: 1.1; margin-bottom: 14px; }
+    .section-sub { font-size: 16px; color: var(--text2); line-height: 1.7; }
+
+    .modes-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 14px; margin-top: 40px;
+    }
+    .mode-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 18px; padding: 24px;
+      transition: border-color .2s, transform .2s;
+      cursor: pointer;
+    }
+    .mode-card:hover { border-color: var(--border2); transform: translateY(-3px); }
+    .mode-card-emoji { font-size: 32px; margin-bottom: 12px; }
+    .mode-card-name { font-size: 16px; font-weight: 700; margin-bottom: 6px; }
+    .mode-card-desc { font-size: 13px; color: var(--text2); line-height: 1.5; margin-bottom: 14px; }
+    .mode-card-tags { display: flex; flex-wrap: wrap; gap: 4px; }
+    .mode-tag { font-size: 10px; padding: 2px 8px; border-radius: 100px; font-weight: 600; background: rgba(99,102,241,0.12); color: var(--accent3); }
+
+    /* ── Como funciona ── */
+    .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 24px; margin-top: 48px; }
+    .step { text-align: center; }
+    .step-num {
+      width: 48px; height: 48px; border-radius: 14px; margin: 0 auto 16px;
+      background: linear-gradient(135deg, rgba(99,102,241,0.2), rgba(139,92,246,0.1));
+      border: 1px solid rgba(99,102,241,0.25);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px; font-weight: 900; color: var(--accent3);
+    }
+    .step h3 { font-size: 16px; font-weight: 700; margin-bottom: 8px; }
+    .step p  { font-size: 13px; color: var(--text2); line-height: 1.6; }
+
+    /* ── Planos ── */
+    .plans-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 18px; max-width: 900px; margin: 48px auto 0; }
+    .plan-card { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 30px; text-align: center; transition: transform .3s; position: relative; overflow: hidden; }
+    .plan-card:hover { transform: translateY(-4px); }
+    .plan-card.featured { border-color: rgba(99,102,241,0.4); background: linear-gradient(135deg, rgba(99,102,241,0.08), var(--surface)); }
+    .plan-tag { position: absolute; top: -1px; left: 50%; transform: translateX(-50%); background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #fff; font-size: 11px; font-weight: 700; padding: 4px 16px; border-radius: 0 0 10px 10px; letter-spacing: .5px; text-transform: uppercase; }
+    .plan-icon { font-size: 36px; margin-bottom: 10px; }
+    .plan-name { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+    .plan-desc { font-size: 12px; color: var(--text2); margin-bottom: 20px; }
+    .plan-price { font-size: 44px; font-weight: 900; letter-spacing: -2px; margin-bottom: 4px; }
+    .plan-price span { font-size: 18px; font-weight: 500; color: var(--text2); vertical-align: super; }
+    .plan-per { font-size: 12px; color: var(--text2); margin-bottom: 24px; }
+    .plan-features { list-style: none; text-align: left; margin-bottom: 24px; display: flex; flex-direction: column; gap: 8px; }
+    .plan-features li { font-size: 13px; display: flex; align-items: center; gap: 8px; }
+    .plan-features li::before { content: '✓'; width: 18px; height: 18px; border-radius: 50%; background: rgba(34,197,94,0.12); color: var(--green); display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 10px; font-weight: 700; }
+    .plan-btn { display: block; width: 100%; padding: 13px; border-radius: 12px; font-weight: 700; font-size: 14px; text-decoration: none; text-align: center; transition: .2s; }
+    .plan-btn-primary { background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #fff; }
+    .plan-btn-outline { background: var(--surface2); color: var(--text); border: 1px solid var(--border2); }
+    .plan-btn-outline:hover { background: var(--surface); }
+
+    /* ── CTA ── */
+    .cta-box { max-width: 620px; margin: 0 auto; background: linear-gradient(135deg, rgba(99,102,241,0.12), rgba(139,92,246,0.08)); border: 1px solid rgba(99,102,241,0.25); border-radius: 28px; padding: 56px 40px; text-align: center; }
+    .cta-box h2 { font-size: clamp(26px, 4vw, 40px); font-weight: 800; letter-spacing: -1.5px; margin-bottom: 14px; }
+    .cta-box p { color: var(--text2); font-size: 16px; margin-bottom: 32px; line-height: 1.7; }
+
+    footer { position: relative; z-index: 1; border-top: 1px solid var(--border); padding: 36px 5%; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; }
+    .footer-logo { font-size: 18px; font-weight: 900; }
+    footer p { font-size: 12px; color: var(--text2); }
+    footer a { color: var(--text2); text-decoration: none; font-size: 13px; transition: color .2s; }
+    footer a:hover { color: var(--text); }
+
+    @media (max-width: 768px) {
+      .hero { grid-template-columns: 1fr; padding-top: 110px; gap: 40px; }
+      .tv-demo { display: none; }
+      .nav-links a:not(.nav-cta) { display: none; }
+    }
+  </style>
+</head>
+<body>
+<div class="orb orb-1"></div>
+<div class="orb orb-2"></div>
+
+<nav>
+  <a href="/" class="nav-logo"><span>4K</span>ITEM</a>
+  <div class="nav-links">
+    <a href="/kids">KidsCurator</a>
+    <a href="/tv/DEMO" target="_blank">Demo ao vivo</a>
+    <a href="#planos" class="nav-cta">Começar grátis</a>
+  </div>
+</nav>
+
+<!-- ── HERO ── -->
+<section>
+  <div class="hero">
+    <div>
+      <div class="hero-badge">📺 SalaTV · 8 Modos de Ambiente</div>
+      <h1>A TV que<br>transforma<br><span class="grad">qualquer ambiente.</span></h1>
+      <p>Conteúdo curado para clínicas adultas, cartórios, academias, salões e eventos. Controla pelo celular. Zero anúncios. Zero algoritmo.</p>
+      <div class="hero-actions">
+        <a href="#planos" class="btn-primary">
+          Experimentar grátis
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </a>
+        <a href="/tv/DEMO" target="_blank" class="btn-outline">▶ Ver demo ao vivo</a>
+      </div>
+    </div>
+
+    <!-- Mockup de TV com overlay -->
+    <div class="tv-demo">
+      <div class="tv-bar">
+        <div class="tv-dot" style="background:#ff5f57"></div>
+        <div class="tv-dot" style="background:#ffbd2e"></div>
+        <div class="tv-dot" style="background:#28c840"></div>
+        <span style="font-size:11px;color:var(--text2);margin-left:8px;">SalaTV · Modo Saúde</span>
+      </div>
+      <div class="tv-screen">
+        <div class="tv-content">
+          <div class="tv-playing-icon">🎬</div>
+          <div class="tv-playing-title">Drauzio Varella — Como prevenir infarto</div>
+          <div class="tv-playing-ch">Canal Drauzio Varella · Saúde</div>
+        </div>
+        <div class="tv-overlay-bar">
+          <div class="tv-brand-pill">
+            <div class="tv-brand-ico">C</div>
+            <div class="tv-brand-name">Clínica Dr. Silva</div>
+          </div>
+          <div class="tv-ticker-text">✦ Bem-vindo! Retire sua senha no painel · Atendimento de segunda a sexta das 8h às 18h ✦</div>
+          <div class="tv-mode-badge">🏥 Saúde</div>
+          <div class="tv-qr">QR</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── 8 MODOS ── -->
+<section style="padding:80px 5%;background:var(--bg2);border-top:1px solid var(--border);">
+  <div style="max-width:1100px;margin:0 auto;text-align:center;">
+    <div class="section-tag">✦ Modos de ambiente</div>
+    <h2 class="section-title">8 perfis de conteúdo.<br>1 clique para trocar.</h2>
+    <p class="section-sub">Seleciona no teu celular — a TV muda em segundos.</p>
+    <div class="modes-grid">
+      <div class="mode-card"><div class="mode-card-emoji">🧒</div><div class="mode-card-name">Kids</div><div class="mode-card-desc">Conteúdo infantil verificado. Zero risco.</div><div class="mode-card-tags"><span class="mode-tag">Pediatria</span><span class="mode-tag">Berçário</span></div></div>
+      <div class="mode-card"><div class="mode-card-emoji">🏥</div><div class="mode-card-name">Saúde</div><div class="mode-card-desc">Saúde, natureza e bem-estar para adultos.</div><div class="mode-card-tags"><span class="mode-tag">Clínica adulto</span><span class="mode-tag">Dentista</span></div></div>
+      <div class="mode-card"><div class="mode-card-emoji">⚖️</div><div class="mode-card-name">Jurídico</div><div class="mode-card-desc">Notícias leves e informação de qualidade.</div><div class="mode-card-tags"><span class="mode-tag">Cartório</span><span class="mode-tag">Advocacia</span></div></div>
+      <div class="mode-card"><div class="mode-card-emoji">📚</div><div class="mode-card-name">Escola</div><div class="mode-card-desc">Ciência, história e conteúdo educativo.</div><div class="mode-card-tags"><span class="mode-tag">Escolas</span><span class="mode-tag">Faculdades</span></div></div>
+      <div class="mode-card"><div class="mode-card-emoji">💪</div><div class="mode-card-name">Fitness</div><div class="mode-card-desc">Motivação, esportes e alta performance.</div><div class="mode-card-tags"><span class="mode-tag">Academia</span><span class="mode-tag">Fisio</span></div></div>
+      <div class="mode-card"><div class="mode-card-emoji">💅</div><div class="mode-card-name">Beleza</div><div class="mode-card-desc">Lifestyle, culinária e conteúdo de estilo.</div><div class="mode-card-tags"><span class="mode-tag">Salão</span><span class="mode-tag">Estética</span></div></div>
+      <div class="mode-card"><div class="mode-card-emoji">🎵</div><div class="mode-card-name">Vibe</div><div class="mode-card-desc">Lofi, jazz e shows em ambiente moderno.</div><div class="mode-card-tags"><span class="mode-tag">Café</span><span class="mode-tag">Coworking</span></div></div>
+      <div class="mode-card"><div class="mode-card-emoji">🎪</div><div class="mode-card-name">Evento</div><div class="mode-card-desc">Shows ao vivo 4K e entretenimento.</div><div class="mode-card-tags"><span class="mode-tag">Eventos</span><span class="mode-tag">Feiras</span></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ── COMO FUNCIONA ── -->
+<section style="padding:100px 5%;">
+  <div style="max-width:900px;margin:0 auto;text-align:center;">
+    <div class="section-tag">✦ Como funciona</div>
+    <h2 class="section-title">Três passos.<br>TV profissional.</h2>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <h3>Assina e recebe o link</h3>
+        <p>Recebes um link único para a tua TV e outro para o teu painel de controle.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <h3>Abre na Smart TV</h3>
+        <p>Abre o link no navegador da TV ou usa o Chromecast do celular. Nenhum app para instalar.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <h3>Controla pelo celular</h3>
+        <p>Troca o modo, sobe o teu logo e personalizas as mensagens do rodapé — tudo em tempo real.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── PLANOS ── -->
+<section id="planos" style="padding:80px 5% 100px;background:var(--bg2);border-top:1px solid var(--border);">
+  <div style="max-width:900px;margin:0 auto;text-align:center;">
+    <div class="section-tag">✦ Planos</div>
+    <h2 class="section-title">Por tela. Sem surpresas.</h2>
+    <p class="section-sub">Cancelas quando quiseres. Sem fidelidade.</p>
+    <div class="plans-grid">
+      <div class="plan-card">
+        <div class="plan-icon">🏪</div>
+        <div class="plan-name">Solo</div>
+        <div class="plan-desc">1 TV · 1 ambiente</div>
+        <div class="plan-price"><span>R$</span>49</div>
+        <div class="plan-per">por mês · R$1,63/dia</div>
+        <ul class="plan-features">
+          <li>1 tela / 1 URL exclusiva</li>
+          <li>8 modos de ambiente</li>
+          <li>Overlay com teu logo</li>
+          <li>Ticker de mensagens</li>
+          <li>Painel mobile</li>
+        </ul>
+        <a href="#contato" class="plan-btn plan-btn-outline">Começar</a>
+      </div>
+      <div class="plan-card featured">
+        <div class="plan-tag">Mais popular</div>
+        <div class="plan-icon">🏥</div>
+        <div class="plan-name">Clínica</div>
+        <div class="plan-desc">Até 3 TVs</div>
+        <div class="plan-price"><span>R$</span>99</div>
+        <div class="plan-per">por mês · R$3,30/dia</div>
+        <ul class="plan-features">
+          <li>3 telas independentes</li>
+          <li>8 modos de ambiente</li>
+          <li>Overlay com teu logo</li>
+          <li>Ticker de mensagens</li>
+          <li>Painel mobile</li>
+          <li>Suporte WhatsApp prioritário</li>
+        </ul>
+        <a href="#contato" class="plan-btn plan-btn-primary">Começar</a>
+      </div>
+      <div class="plan-card">
+        <div class="plan-icon">🏢</div>
+        <div class="plan-name">Rede</div>
+        <div class="plan-desc">10+ TVs</div>
+        <div class="plan-price"><span>R$</span>249</div>
+        <div class="plan-per">por mês · R$8,30/dia</div>
+        <ul class="plan-features">
+          <li>10 telas independentes</li>
+          <li>Todos os modos</li>
+          <li>Upload de anúncios próprios</li>
+          <li>Notícias locais no ticker</li>
+          <li>Analytics básico</li>
+          <li>Suporte VIP</li>
+        </ul>
+        <a href="#contato" class="plan-btn plan-btn-outline">Falar com vendas</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── CTA ── -->
+<section id="contato" style="padding:80px 5% 100px;">
+  <div class="cta-box">
+    <h2>7 dias grátis. 🎬</h2>
+    <p>Sem cartão de crédito. Ligas hoje, a tua recepção transforma amanhã.</p>
+    <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+      <a href="https://wa.me/5547999999999?text=Quero%20testar%20o%20SalaTV" target="_blank" class="btn-primary">
+        💬 Começar pelo WhatsApp
+      </a>
+      <a href="/tv/DEMO" target="_blank" class="btn-outline">▶ Ver demo</a>
+    </div>
+    <p style="margin-top:16px;font-size:12px;color:var(--text2);">contato@4kitem.com.br</p>
+  </div>
+</section>
+
+<footer>
+  <div class="footer-logo"><span style="background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">4K</span>ITEM</div>
+  <p>© 2026 4KITEM · SalaTV · Norte de SC</p>
+  <div style="display:flex;gap:16px;">
+    <a href="/kids">KidsCurator</a>
+    <a href="/">Plataforma</a>
+  </div>
+</footer>
+</body>
+</html>

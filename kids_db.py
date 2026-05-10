@@ -1,57 +1,130 @@
 """
-kids_db.py — KidsCurator: banco de dados SQLite
-Tabelas: channels + videos
+kids_db.py — 4KITEM: banco de dados SQLite
+Tabelas: channels, videos, clients
 """
 import sqlite3
 import os
+import secrets
+import string
 
 # Suporte a DATA_DIR para Railway (volume persistente)
 _base = os.environ.get('DATA_DIR', os.path.dirname(__file__))
 DB_PATH = os.path.join(_base, 'kids.db')
 
-# ── Canais semente (23 canais verificados) ─────────────────────────────────
+# ── 8 Modos de ambiente ─────────────────────────────────────────────────────
+MODES = {
+    'kids': {
+        'label': '🧒 Kids',        'desc':  'Conteúdo infantil verificado',
+        'categories': ['Musical', 'Animação', 'Educativo', 'Humor',
+                       'Aventura', 'Entretenimento', 'Minecraft',
+                       'Brincadeiras', 'Bonecas', 'Brinquedos', 'Vlogs'],
+        'age_min': 0, 'age_max': 14,
+    },
+    'saude': {
+        'label': '🏥 Saúde',       'desc':  'Saúde, bem-estar e natureza',
+        'categories': ['Saúde', 'Natureza', 'Bem-estar', 'Educativo'],
+        'age_min': 16, 'age_max': 99,
+    },
+    'juridico': {
+        'label': '⚖️ Jurídico',    'desc':  'Notícias e informação',
+        'categories': ['Notícias', 'Finanças', 'Jornalismo'],
+        'age_min': 18, 'age_max': 99,
+    },
+    'escola': {
+        'label': '📚 Escola',      'desc':  'Educação e ciência',
+        'categories': ['Educativo', 'Ciência', 'História', 'Musical'],
+        'age_min': 5, 'age_max': 17,
+    },
+    'fitness': {
+        'label': '💪 Fitness',     'desc':  'Motivação e performance',
+        'categories': ['Esportes', 'Motivacional', 'Saúde', 'Fitness'],
+        'age_min': 16, 'age_max': 99,
+    },
+    'beleza': {
+        'label': '💅 Beleza',      'desc':  'Lifestyle e beleza',
+        'categories': ['Lifestyle', 'Culinária', 'Beleza'],
+        'age_min': 14, 'age_max': 99,
+    },
+    'vibe': {
+        'label': '🎵 Vibe',        'desc':  'Música ambiente e shows',
+        'categories': ['Lofi', 'Jazz', 'Shows', 'Música', 'Musical'],
+        'age_min': 0, 'age_max': 99,
+    },
+    'evento': {
+        'label': '🎪 Evento',      'desc':  'Shows e entretenimento',
+        'categories': ['Shows', 'Música', 'Entretenimento', 'Musical', 'Lofi'],
+        'age_min': 0, 'age_max': 99,
+    },
+}
+
+# ── Canais semente ─────────────────────────────────────────────────────────
 # (name, handle, age_min, age_max, gender, category, language, is_safe)
-# gender: M=menino  F=menina  N=neutro/ambos
 SEED_CHANNELS = [
-    # 0-4 anos
+    # ── KIDS 0-4 ──────────────────────────────────────────────────────────
     ('Galinha Pintadinha',   '@galinhapintadinha',          0,  4, 'N', 'Musical',        'PT-BR', 1),
     ('Mundo Bita',           '@mundobita',                  0,  5, 'N', 'Musical',        'PT-BR', 1),
-    ('Super Simple Songs',   '@SuperSimpleSongs',           0,  4, 'N', 'Musical',        'Sem fala', 1),
+    ('Super Simple Songs',   '@SuperSimpleSongs',           0,  4, 'N', 'Musical',        'Instrumental', 1),
     ('Pocoyo PT-BR',         '@Pocoyo',                     2,  6, 'N', 'Animação',       'PT-BR', 1),
     ('Peppa Pig PT-BR',      '@PeppaPigBrasil',             2,  6, 'N', 'Animação',       'PT-BR', 1),
-    # 3-7 anos
+    ('CoComelon PT-BR',      '@CoComelon',                  0,  5, 'N', 'Musical',        'PT-BR', 1),
+    # ── KIDS 3-8 ──────────────────────────────────────────────────────────
     ('Patati Patatá',        '@PatatiPatataOficial',        3,  6, 'N', 'Humor',          'PT-BR', 1),
     ('Cocoricó',             '@cocorico',                   3,  6, 'N', 'Educativo',      'PT-BR', 1),
     ('Numberblocks PT-BR',   '@numberblocks_pt',            3,  7, 'N', 'Educativo',      'PT-BR', 1),
     ('Patrulha Canina',      '@PAWPatrolPortuguesBrasil',   3,  7, 'N', 'Aventura',       'PT-BR', 1),
     ('Bluey',                '@BlueyOfficialChannel',       3,  8, 'N', 'Animação',       'EN',    1),
-    ('Larva TUBA',           '@LarvaOfficialChannel',       3,  7, 'N', 'Humor',          'Sem fala', 1),
-    ('Oddbods',              '@Oddbods',                    3,  7, 'N', 'Humor',          'Sem fala', 1),
+    ('Larva TUBA',           '@LarvaOfficialChannel',       3,  7, 'N', 'Humor',          'Instrumental', 1),
+    ('Oddbods',              '@Oddbods',                    3,  7, 'N', 'Humor',          'Instrumental', 1),
     ('Hey Duggee',           '@HeyDuggee',                  3,  7, 'N', 'Educativo',      'EN',    1),
     ('Masha e o Urso',       '@MashaandBear',               3,  8, 'F', 'Animação',       'PT-BR', 1),
     ('Peppa Pig',            '@PeppaPig',                   3,  6, 'F', 'Animação',       'EN',    1),
-    # 4-10 anos
     ('Mônica Toy',           '@monicatoy',                  4,  9, 'N', 'Animação',       'PT-BR', 1),
     ('Turma da Mônica',      '@TurmaDaMonica',              4, 10, 'N', 'Animação',       'PT-BR', 1),
-    ('CoComelon PT-BR',      '@CoComelon',                  0,  5, 'N', 'Musical',        'PT-BR', 1),
-    # 6-12 anos
+    # ── KIDS 6-14 ─────────────────────────────────────────────────────────
     ('Luccas Neto',          '@Luccasneto',                 6, 12, 'N', 'Humor',          'PT-BR', 0),
     ('Manual do Mundo Kids', '@manualdomundokids9300',      6, 12, 'N', 'Educativo',      'PT-BR', 1),
     ('Canal da Belinha',     '@CanaldaBelinhaOficial',      6, 10, 'F', 'Entretenimento', 'PT-BR', 1),
-    # 9-14 anos
     ('Enaldinho',            '@Enaldinho',                  9, 14, 'N', 'Humor',          'PT-BR', 0),
     ('Authentic Games',      '@Authenticgames',             9, 14, 'M', 'Minecraft',      'PT-BR', 1),
     ('Julia MineGirl',       '@juliaminegirl',              9, 14, 'F', 'Minecraft',      'PT-BR', 1),
+    # ── SAÚDE / ADULTO ────────────────────────────────────────────────────
+    ('Drauzio Varella',      '@drauziovarella',            18, 99, 'N', 'Saúde',          'PT-BR', 1),
+    ('Manual do Mundo',      '@manualdomundo',             14, 99, 'N', 'Educativo',      'PT-BR', 1),
+    ('Minha Vida',           '@minhavidaoficial',          18, 99, 'N', 'Saúde',          'PT-BR', 1),
+    # ── NOTÍCIAS / JORNALISMO ─────────────────────────────────────────────
+    ('G1',                   '@g1',                        18, 99, 'N', 'Jornalismo',     'PT-BR', 1),
+    ('CNN Brasil',           '@CNNBrasil',                 18, 99, 'N', 'Notícias',       'PT-BR', 1),
+    ('ND Mais',              '@ndmais',                    18, 99, 'N', 'Notícias',       'PT-BR', 1),
+    ('Jovem Pan News',       '@JovemPanNews',              18, 99, 'N', 'Notícias',       'PT-BR', 1),
+    # ── MÚSICA / LOFI / SHOWS ─────────────────────────────────────────────
+    ('Lofi Girl',            '@LofiGirl',                   0, 99, 'N', 'Lofi',           'Instrumental', 1),
+    ('Chillhop Music',       '@ChillhopMusic',              0, 99, 'N', 'Jazz',           'Instrumental', 1),
+    ('NPR Music',            '@NPRMusic',                  16, 99, 'N', 'Shows',          'EN',    1),
+    ('Cercle',               '@cerclemusic',               18, 99, 'N', 'Shows',          'EN',    1),
+    ('COLORS',               '@COLORSxSTUDIOS',            16, 99, 'N', 'Shows',          'EN',    1),
+    # ── FITNESS / MOTIVACIONAL ────────────────────────────────────────────
+    ('Paulo Muzy',           '@paulomuzy',                 16, 99, 'M', 'Fitness',        'PT-BR', 1),
+    ('CazéTV',               '@CazeTv',                   14, 99, 'N', 'Esportes',       'PT-BR', 1),
+    # ── CULINÁRIA / LIFESTYLE ─────────────────────────────────────────────
+    ('GNT Cozinha',          '@gnttv',                     18, 99, 'N', 'Culinária',      'PT-BR', 1),
+    ('Panelinha',            '@panelinha',                 18, 99, 'N', 'Culinária',      'PT-BR', 1),
 ]
 
 
 # ── Conexão ────────────────────────────────────────────────────────────────
 def get_conn():
-    os.makedirs(os.path.dirname(DB_PATH), exist_ok=True) if os.path.dirname(DB_PATH) else None
+    if os.path.dirname(DB_PATH):
+        os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA foreign_keys=ON")
     return conn
+
+
+def _gen_code(n=6):
+    chars = string.ascii_uppercase + string.digits
+    return ''.join(secrets.choice(chars) for _ in range(n))
 
 
 # ── Inicialização ──────────────────────────────────────────────────────────
@@ -86,57 +159,104 @@ def init_db():
             last_seen    TEXT    DEFAULT CURRENT_TIMESTAMP
         );
 
+        CREATE TABLE IF NOT EXISTS clients (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            code        TEXT    UNIQUE NOT NULL,
+            name        TEXT    NOT NULL,
+            logo_url    TEXT,
+            mode        TEXT    DEFAULT 'kids',
+            city        TEXT    DEFAULT 'Brasil',
+            whatsapp    TEXT,
+            ticker_msg  TEXT    DEFAULT '',
+            active      INTEGER DEFAULT 1,
+            created_at  TEXT    DEFAULT CURRENT_TIMESTAMP
+        );
+
         CREATE INDEX IF NOT EXISTS idx_vid_gender ON videos(gender);
         CREATE INDEX IF NOT EXISTS idx_vid_age    ON videos(age_min, age_max);
         CREATE INDEX IF NOT EXISTS idx_vid_pub    ON videos(published_at DESC);
+        CREATE INDEX IF NOT EXISTS idx_vid_ch     ON videos(channel_ref);
     """)
 
-    # Seed canais se banco vazio
-    n = conn.execute("SELECT COUNT(*) FROM channels").fetchone()[0]
-    if n == 0:
+    # Seed canais
+    n_ch = conn.execute("SELECT COUNT(*) FROM channels").fetchone()[0]
+    if n_ch == 0:
         conn.executemany("""
             INSERT OR IGNORE INTO channels
                 (name, handle, age_min, age_max, gender, category, language, is_safe)
             VALUES (?,?,?,?,?,?,?,?)
         """, SEED_CHANNELS)
 
+    # Adiciona canais novos que ainda não existem (para updates futuros)
+    else:
+        for ch in SEED_CHANNELS:
+            conn.execute("""
+                INSERT OR IGNORE INTO channels
+                    (name, handle, age_min, age_max, gender, category, language, is_safe)
+                VALUES (?,?,?,?,?,?,?,?)
+            """, ch)
+
+    # Demo client
+    conn.execute("""
+        INSERT OR IGNORE INTO clients (code, name, mode, city, ticker_msg)
+        VALUES ('DEMO', 'Clínica Demonstração — 4KITEM', 'kids',
+                'Schroeder - SC',
+                'Bem-vindo! · Informe à recepção sua chegada · Obrigado pela preferência')
+    """)
+
     conn.commit()
     conn.close()
 
 
-# ── Leitura ────────────────────────────────────────────────────────────────
+# ── Queries: vídeos por modo ───────────────────────────────────────────────
+def get_videos_for_mode(mode: str, limit: int = 30, shuffle: bool = True) -> list:
+    """Retorna vídeos filtrados pelo modo de ambiente."""
+    cfg = MODES.get(mode, MODES['kids'])
+    cats = cfg['categories']
+    placeholders = ','.join('?' * len(cats))
+
+    conn  = get_conn()
+    order = 'RANDOM()' if shuffle else 'v.published_at DESC'
+    rows  = conn.execute(f"""
+        SELECT
+            v.youtube_id, v.title, v.thumbnail, v.published_at,
+            v.age_min, v.age_max, v.gender,
+            c.name AS channel_name, c.category
+        FROM videos v
+        JOIN channels c ON c.id = v.channel_ref
+        WHERE c.active = 1
+          AND c.category IN ({placeholders})
+          AND v.age_min  <= ?
+          AND v.age_max  >= ?
+        ORDER BY {order}
+        LIMIT ?
+    """, (*cats, cfg['age_max'], cfg['age_min'], limit)).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+# ── Queries: vídeos genéricos (API pública) ───────────────────────────────
 def get_videos(age=None, gender=None, limit=24, offset=0):
-    """
-    Retorna lista de vídeos filtrados por idade e género.
-    age   = número inteiro (ex: 3) → filtra age_min <= age <= age_max
-    gender= 'M' | 'F' | 'N' | None  (N ou None = todos)
-    """
-    conn = get_conn()
+    conn   = get_conn()
     params = []
     where  = ["c.active = 1"]
 
     if age is not None:
         where.append("v.age_min <= ? AND v.age_max >= ?")
         params += [age, age]
-
     if gender and gender in ('M', 'F'):
         where.append("(v.gender = ? OR v.gender = 'N')")
         params.append(gender)
 
-    where_sql = " AND ".join(where)
     params += [limit, offset]
-
     rows = conn.execute(f"""
-        SELECT
-            v.youtube_id, v.title, v.thumbnail, v.published_at,
-            v.age_min, v.age_max, v.gender,
-            c.name      AS channel_name,
-            c.handle    AS channel_handle,
-            c.category,
-            c.is_safe
+        SELECT v.youtube_id, v.title, v.thumbnail, v.published_at,
+               v.age_min, v.age_max, v.gender,
+               c.name AS channel_name, c.handle AS channel_handle,
+               c.category, c.is_safe
         FROM videos v
         JOIN channels c ON c.id = v.channel_ref
-        WHERE {where_sql}
+        WHERE {' AND '.join(where)}
         ORDER BY v.published_at DESC
         LIMIT ? OFFSET ?
     """, params).fetchall()
@@ -144,33 +264,65 @@ def get_videos(age=None, gender=None, limit=24, offset=0):
     return [dict(r) for r in rows]
 
 
-def get_channels(active_only=True):
+# ── Queries: clientes ─────────────────────────────────────────────────────
+def get_client(code: str) -> dict | None:
     conn = get_conn()
-    q = "SELECT * FROM channels"
-    if active_only:
-        q += " WHERE active = 1"
-    q += " ORDER BY name"
-    rows = conn.execute(q).fetchall()
+    row  = conn.execute("SELECT * FROM clients WHERE code = ? AND active = 1",
+                        (code.upper(),)).fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+
+def set_client_mode(code: str, mode: str) -> bool:
+    if mode not in MODES:
+        return False
+    conn = get_conn()
+    conn.execute("UPDATE clients SET mode = ? WHERE code = ?", (mode, code.upper()))
+    conn.commit()
+    conn.close()
+    return True
+
+
+def create_client(name: str, city: str = 'Brasil', mode: str = 'kids') -> dict:
+    conn = get_conn()
+    while True:
+        code = _gen_code(6)
+        if not conn.execute("SELECT 1 FROM clients WHERE code=?", (code,)).fetchone():
+            break
+    conn.execute("""
+        INSERT INTO clients (code, name, city, mode, ticker_msg)
+        VALUES (?, ?, ?, ?,
+          'Bem-vindo! · Informe sua chegada à recepção · Obrigado pela preferência')
+    """, (code, name, city, mode))
+    conn.commit()
+    row = conn.execute("SELECT * FROM clients WHERE code=?", (code,)).fetchone()
+    conn.close()
+    return dict(row)
+
+
+# ── Queries: canais ───────────────────────────────────────────────────────
+def get_channels(active_only=True):
+    conn  = get_conn()
+    where = "WHERE active = 1" if active_only else ""
+    rows  = conn.execute(f"SELECT * FROM channels {where} ORDER BY name").fetchall()
     conn.close()
     return [dict(r) for r in rows]
 
 
 def total_videos(age=None, gender=None):
-    conn = get_conn()
+    conn   = get_conn()
     params = []
     where  = ["c.active = 1"]
-
     if age is not None:
         where.append("v.age_min <= ? AND v.age_max >= ?")
         params += [age, age]
     if gender and gender in ('M', 'F'):
         where.append("(v.gender = ? OR v.gender = 'N')")
         params.append(gender)
-
     n = conn.execute(f"""
         SELECT COUNT(*) FROM videos v
         JOIN channels c ON c.id = v.channel_ref
-        WHERE {" AND ".join(where)}
+        WHERE {' AND '.join(where)}
     """, params).fetchone()[0]
     conn.close()
     return n
@@ -179,12 +331,12 @@ def total_videos(age=None, gender=None):
 def update_channel_id(db_id: int, yt_channel_id: str):
     conn = get_conn()
     try:
-        # Limpa qualquer canal que já tenha esse channel_id (pode ter sido atribuído errado num teste)
         conn.execute(
             "UPDATE channels SET channel_id = NULL WHERE channel_id = ? AND id != ?",
             (yt_channel_id, db_id)
         )
-        conn.execute("UPDATE channels SET channel_id = ? WHERE id = ?", (yt_channel_id, db_id))
+        conn.execute("UPDATE channels SET channel_id = ? WHERE id = ?",
+                     (yt_channel_id, db_id))
         conn.commit()
     except Exception as e:
         conn.rollback()
@@ -193,7 +345,8 @@ def update_channel_id(db_id: int, yt_channel_id: str):
         conn.close()
 
 
-def add_channel(name, handle, age_min, age_max, gender, category, language='PT-BR', is_safe=1):
+def add_channel(name, handle, age_min, age_max, gender, category,
+                language='PT-BR', is_safe=1):
     conn = get_conn()
     conn.execute("""
         INSERT OR IGNORE INTO channels
@@ -207,9 +360,11 @@ def add_channel(name, handle, age_min, age_max, gender, category, language='PT-B
 def stats():
     conn = get_conn()
     r = {
-        'channels': conn.execute("SELECT COUNT(*) FROM channels WHERE active=1").fetchone()[0],
+        'channels':          conn.execute("SELECT COUNT(*) FROM channels WHERE active=1").fetchone()[0],
         'channels_resolved': conn.execute("SELECT COUNT(*) FROM channels WHERE channel_id IS NOT NULL AND active=1").fetchone()[0],
-        'videos': conn.execute("SELECT COUNT(*) FROM videos").fetchone()[0],
+        'videos':            conn.execute("SELECT COUNT(*) FROM videos").fetchone()[0],
+        'clients':           conn.execute("SELECT COUNT(*) FROM clients WHERE active=1").fetchone()[0],
+        'modes':             list(MODES.keys()),
     }
     conn.close()
     return r
