@@ -16,20 +16,20 @@ SEED_CHANNELS = [
     # 0-4 anos
     ('Galinha Pintadinha',   '@galinhapintadinha',          0,  4, 'N', 'Musical',        'PT-BR', 1),
     ('Mundo Bita',           '@mundobita',                  0,  5, 'N', 'Musical',        'PT-BR', 1),
-    ('Super Simple Songs',   '@supersimplesongs',           0,  4, 'N', 'Musical',        'Sem fala', 1),
-    ('Pocoyo PT-BR',         '@PocoyoPortugues',            2,  6, 'N', 'Animação',       'PT-BR', 1),
-    ('Peppa Pig PT-BR',      '@PeppaPigPortuguesOficial',   2,  6, 'N', 'Animação',       'PT-BR', 1),
+    ('Super Simple Songs',   '@SuperSimpleSongs',           0,  4, 'N', 'Musical',        'Sem fala', 1),
+    ('Pocoyo PT-BR',         '@Pocoyo',                     2,  6, 'N', 'Animação',       'PT-BR', 1),
+    ('Peppa Pig PT-BR',      '@PeppaPigBrasil',             2,  6, 'N', 'Animação',       'PT-BR', 1),
     # 3-7 anos
     ('Patati Patatá',        '@PatatiPatataOficial',        3,  6, 'N', 'Humor',          'PT-BR', 1),
     ('Cocoricó',             '@cocorico',                   3,  6, 'N', 'Educativo',      'PT-BR', 1),
     ('Numberblocks PT-BR',   '@numberblocks_pt',            3,  7, 'N', 'Educativo',      'PT-BR', 1),
     ('Patrulha Canina',      '@PAWPatrolPortuguesBrasil',   3,  7, 'N', 'Aventura',       'PT-BR', 1),
     ('Bluey',                '@BlueyOfficialChannel',       3,  8, 'N', 'Animação',       'EN',    1),
-    ('Larva TUBA PT-BR',     '@larvatubaemportugues',       3,  7, 'N', 'Humor',          'PT-BR', 1),
+    ('Larva TUBA',           '@LarvaOfficialChannel',       3,  7, 'N', 'Humor',          'Sem fala', 1),
     ('Oddbods',              '@Oddbods',                    3,  7, 'N', 'Humor',          'Sem fala', 1),
-    ('Hey Duggee PT',        '@HeyDuggeeBR',                3,  7, 'N', 'Educativo',      'PT-BR', 1),
-    ('Masha e o Urso',       '@MashaandtheBear',            3,  8, 'F', 'Animação',       'PT-BR', 1),
-    ('Peppa Pig Clips',      '@PeppaPig',                   3,  6, 'F', 'Animação',       'EN',    1),
+    ('Hey Duggee',           '@HeyDuggee',                  3,  7, 'N', 'Educativo',      'EN',    1),
+    ('Masha e o Urso',       '@MashaandBear',               3,  8, 'F', 'Animação',       'PT-BR', 1),
+    ('Peppa Pig',            '@PeppaPig',                   3,  6, 'F', 'Animação',       'EN',    1),
     # 4-10 anos
     ('Mônica Toy',           '@monicatoy',                  4,  9, 'N', 'Animação',       'PT-BR', 1),
     ('Turma da Mônica',      '@TurmaDaMonica',              4, 10, 'N', 'Animação',       'PT-BR', 1),
@@ -178,9 +178,19 @@ def total_videos(age=None, gender=None):
 
 def update_channel_id(db_id: int, yt_channel_id: str):
     conn = get_conn()
-    conn.execute("UPDATE channels SET channel_id = ? WHERE id = ?", (yt_channel_id, db_id))
-    conn.commit()
-    conn.close()
+    try:
+        # Limpa qualquer canal que já tenha esse channel_id (pode ter sido atribuído errado num teste)
+        conn.execute(
+            "UPDATE channels SET channel_id = NULL WHERE channel_id = ? AND id != ?",
+            (yt_channel_id, db_id)
+        )
+        conn.execute("UPDATE channels SET channel_id = ? WHERE id = ?", (yt_channel_id, db_id))
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        raise e
+    finally:
+        conn.close()
 
 
 def add_channel(name, handle, age_min, age_max, gender, category, language='PT-BR', is_safe=1):
