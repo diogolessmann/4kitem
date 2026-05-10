@@ -349,14 +349,14 @@ def update_channel_id(db_id: int, yt_channel_id: str):
         conn.close()
 
 
-def add_channel(name, handle, age_min, age_max, gender, category,
-                language='PT-BR', is_safe=1):
+def add_channel(name, handle, channel_id=None, age_min=0, age_max=14,
+                gender='N', category='Geral', language='PT-BR', is_safe=1):
     conn = get_conn()
     conn.execute("""
         INSERT OR IGNORE INTO channels
-            (name, handle, age_min, age_max, gender, category, language, is_safe)
-        VALUES (?,?,?,?,?,?,?,?)
-    """, (name, handle, age_min, age_max, gender, category, language, is_safe))
+            (name, handle, channel_id, age_min, age_max, gender, category, language, is_safe)
+        VALUES (?,?,?,?,?,?,?,?,?)
+    """, (name, handle, channel_id, age_min, age_max, gender, category, language, is_safe))
     conn.commit()
     conn.close()
 

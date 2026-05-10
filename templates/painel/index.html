@@ -246,14 +246,14 @@ async function loadStats() {
   try {
     const [statsRes, playlistRes] = await Promise.all([
       fetch(`${BASE_URL}api/kids/stats`),
-      fetch(`${BASE_URL}api/tv/${CLIENT_CODE}/playlist?limit=1`),
+      fetch(`${BASE_URL}api/tv/${CLIENT_CODE}/playlist?limit=50`),
     ]);
     const s = await statsRes.json();
     const p = await playlistRes.json();
 
     document.getElementById('stat-total').textContent    = s.videos?.toLocaleString('pt-BR') || '—';
-    document.getElementById('stat-channels').textContent = s.channels || '—';
-    document.getElementById('stat-videos').textContent   = p.videos ? p.videos.length + '+' : '0';
+    document.getElementById('stat-channels').textContent = s.channels_resolved || s.channels || '—';
+    document.getElementById('stat-videos').textContent   = p.videos?.length ? p.videos.length + (p.videos.length >= 50 ? '+' : '') : '0';
   } catch(e) { console.warn(e); }
 }
 
