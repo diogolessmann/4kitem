@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>KidsCurator — TV Infantil Segura para Consultórios | 4KITEM</title>
+  <meta name="description" content="TV Kids curada para salas de espera de clínicas, consultórios e escolas. Vídeos seguros, sem anúncios, sem algoritmo.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #08080f; --bg2: #0e0e1a; --surface: #13131f; --surface2: #1a1a2e;
+      --border: rgba(255,255,255,0.07); --border2: rgba(255,255,255,0.12);
+      --text: #f0f0ff; --text2: #8888aa;
+      --accent: #6366f1; --accent2: #8b5cf6; --accent3: #a78bfa;
+      --green: #22c55e; --orange: #f59e0b;
+    }
+    html { scroll-behavior: smooth; }
+    body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); overflow-x: hidden; }
+
+    .orb { position: fixed; border-radius: 50%; filter: blur(120px); pointer-events: none; z-index: 0; }
+    .orb-1 { width: 500px; height: 500px; background: rgba(99,102,241,0.1); top: -150px; right: -100px; }
+    .orb-2 { width: 400px; height: 400px; background: rgba(139,92,246,0.07); bottom: 0; left: -100px; }
+
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      padding: 0 5%; height: 64px;
+      display: flex; align-items: center; justify-content: space-between;
+      background: rgba(8,8,15,0.85); backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-logo { font-size: 18px; font-weight: 900; letter-spacing: -0.5px; text-decoration: none; color: var(--text); }
+    .nav-logo span { background: linear-gradient(135deg, var(--accent), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .nav-back { font-size: 13px; color: var(--text2); text-decoration: none; display: flex; align-items: center; gap: 6px; transition: color .2s; }
+    .nav-back:hover { color: var(--text); }
+
+    /* HERO */
+    .hero {
+      position: relative; z-index: 1;
+      padding: 120px 5% 80px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 60px;
+      max-width: 1200px;
+      margin: 0 auto;
+      align-items: center;
+    }
+
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: rgba(99,102,241,0.12); border: 1px solid rgba(99,102,241,0.25);
+      color: var(--accent3); padding: 6px 16px; border-radius: 100px;
+      font-size: 12px; font-weight: 600; letter-spacing: .5px; text-transform: uppercase;
+      margin-bottom: 24px;
+    }
+
+    .hero h1 {
+      font-size: clamp(36px, 5vw, 60px); font-weight: 900;
+      letter-spacing: -2px; line-height: 1.05; margin-bottom: 20px;
+    }
+
+    .hero h1 .gradient {
+      background: linear-gradient(135deg, var(--accent), var(--accent2), #ec4899);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+
+    .hero p { font-size: 17px; color: var(--text2); line-height: 1.7; margin-bottom: 36px; max-width: 480px; }
+
+    .hero-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+
+    .btn-primary {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: #fff; padding: 14px 28px; border-radius: 12px;
+      font-weight: 700; font-size: 15px; text-decoration: none;
+      box-shadow: 0 0 40px rgba(99,102,241,0.3);
+      transition: transform .2s, box-shadow .2s;
+    }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 0 60px rgba(99,102,241,0.4); }
+
+    .btn-outline {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: transparent; color: var(--text);
+      padding: 14px 28px; border-radius: 12px;
+      font-weight: 600; font-size: 15px; text-decoration: none;
+      border: 1px solid var(--border2); transition: background .2s;
+    }
+    .btn-outline:hover { background: var(--surface); }
+
+    /* TV MOCKUP */
+    .tv-mockup {
+      position: relative; z-index: 1;
+      background: #1a1a2e;
+      border-radius: 20px;
+      border: 2px solid var(--border2);
+      overflow: hidden;
+      aspect-ratio: 16/10;
+      box-shadow: 0 40px 80px rgba(0,0,0,0.5), 0 0 0 1px var(--border);
+    }
+
+    .tv-mockup-bar {
+      height: 36px; background: var(--surface);
+      display: flex; align-items: center; padding: 0 16px; gap: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .tv-dot { width: 10px; height: 10px; border-radius: 50%; }
+    .tv-screen {
+      background: linear-gradient(135deg, #0f0f1f, #1a0a2e);
+      height: calc(100% - 36px);
+      display: flex; align-items: center; justify-content: center;
+      flex-direction: column; gap: 12px; padding: 20px;
+      position: relative; overflow: hidden;
+    }
+
+    .tv-screen-glow {
+      position: absolute; width: 200px; height: 200px;
+      background: radial-gradient(circle, rgba(99,102,241,0.3), transparent 70%);
+      border-radius: 50%;
+    }
+
+    .tv-play-btn {
+      width: 64px; height: 64px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 24px; position: relative; z-index: 1;
+      box-shadow: 0 0 40px rgba(99,102,241,0.4);
+    }
+
+    .tv-label { font-size: 13px; color: var(--text2); position: relative; z-index: 1; text-align: center; }
+    .tv-title { font-size: 16px; font-weight: 700; position: relative; z-index: 1; }
+
+    .tv-channels {
+      position: absolute; bottom: 12px; left: 12px; right: 12px;
+      display: flex; gap: 8px; z-index: 1;
+    }
+
+    .tv-ch-pill {
+      flex: 1; background: rgba(255,255,255,0.06);
+      border: 1px solid var(--border); border-radius: 8px;
+      padding: 6px 10px; font-size: 11px; color: var(--text2); text-align: center;
+    }
+
+    .tv-ch-pill.active { background: rgba(99,102,241,0.2); border-color: rgba(99,102,241,0.4); color: var(--accent3); }
+
+    /* SOCIAL PROOF */
+    .social-proof {
+      position: relative; z-index: 1;
+      max-width: 1200px; margin: 0 auto;
+      padding: 0 5% 80px;
+      display: flex; align-items: center; gap: 32px; flex-wrap: wrap;
+    }
+
+    .proof-item { display: flex; align-items: center; gap: 10px; }
+    .proof-num { font-size: 28px; font-weight: 800; letter-spacing: -1px; color: var(--accent3); }
+    .proof-label { font-size: 13px; color: var(--text2); line-height: 1.4; }
+    .proof-divider { width: 1px; height: 40px; background: var(--border); }
+
+    /* PROBLEMA/SOLUÇÃO */
+    .split-section {
+      position: relative; z-index: 1;
+      background: var(--bg2); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
+      padding: 80px 5%;
+    }
+
+    .split-grid {
+      max-width: 1000px; margin: 0 auto;
+      display: grid; grid-template-columns: 1fr 1fr; gap: 40px;
+    }
+
+    .split-card {
+      border-radius: 20px; padding: 32px;
+      border: 1px solid var(--border);
+    }
+
+    .split-card.problem { background: rgba(239,68,68,0.05); border-color: rgba(239,68,68,0.15); }
+    .split-card.solution { background: rgba(34,197,94,0.05); border-color: rgba(34,197,94,0.15); }
+
+    .split-card h3 { font-size: 18px; font-weight: 700; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
+    .split-card ul { list-style: none; display: flex; flex-direction: column; gap: 12px; }
+    .split-card li { font-size: 14px; color: var(--text2); display: flex; align-items: flex-start; gap: 10px; line-height: 1.5; }
+    .split-card li span { flex-shrink: 0; }
+
+    /* PLANOS */
+    .plans-section { position: relative; z-index: 1; padding: 100px 5%; }
+    .plans-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 20px; max-width: 960px; margin: 48px auto 0;
+    }
+
+    .plan-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 20px; padding: 32px; text-align: center;
+      transition: transform .3s, border-color .3s;
+      position: relative; overflow: hidden;
+    }
+
+    .plan-card:hover { transform: translateY(-4px); border-color: var(--border2); }
+
+    .plan-card.featured {
+      border-color: rgba(99,102,241,0.4);
+      background: linear-gradient(135deg, rgba(99,102,241,0.08), var(--surface));
+    }
+
+    .plan-tag {
+      position: absolute; top: -1px; left: 50%; transform: translateX(-50%);
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: #fff; font-size: 11px; font-weight: 700; padding: 4px 16px;
+      border-radius: 0 0 10px 10px; letter-spacing: .5px; text-transform: uppercase;
+    }
+
+    .plan-icon { font-size: 36px; margin-bottom: 12px; }
+    .plan-name { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+    .plan-desc { font-size: 13px; color: var(--text2); margin-bottom: 24px; }
+    .plan-price { font-size: 44px; font-weight: 900; letter-spacing: -2px; margin-bottom: 4px; }
+    .plan-price span { font-size: 18px; font-weight: 500; color: var(--text2); vertical-align: super; }
+    .plan-period { font-size: 13px; color: var(--text2); margin-bottom: 28px; }
+
+    .plan-features { list-style: none; text-align: left; margin-bottom: 28px; display: flex; flex-direction: column; gap: 10px; }
+    .plan-features li { font-size: 13px; display: flex; align-items: center; gap: 8px; }
+    .plan-features li::before {
+      content: '✓'; width: 18px; height: 18px; border-radius: 50%;
+      background: rgba(34,197,94,0.15); color: var(--green);
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+      font-size: 11px; font-weight: 700;
+    }
+
+    .plan-btn {
+      display: block; width: 100%; padding: 13px;
+      border-radius: 12px; font-weight: 700; font-size: 14px;
+      text-decoration: none; text-align: center; transition: .2s;
+    }
+    .plan-btn-primary { background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #fff; }
+    .plan-btn-primary:hover { opacity: .9; }
+    .plan-btn-outline { background: var(--surface2); color: var(--text); border: 1px solid var(--border2); }
+    .plan-btn-outline:hover { background: var(--surface); }
+
+    /* FAQ */
+    .faq-section { position: relative; z-index: 1; padding: 80px 5%; background: var(--bg2); border-top: 1px solid var(--border); }
+    .faq-list { max-width: 700px; margin: 40px auto 0; display: flex; flex-direction: column; gap: 12px; }
+    .faq-item { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
+    .faq-q {
+      width: 100%; text-align: left; padding: 18px 24px;
+      background: none; border: none; color: var(--text); font-size: 15px; font-weight: 600;
+      cursor: pointer; display: flex; justify-content: space-between; align-items: center; gap: 12px;
+      font-family: 'Inter', sans-serif;
+    }
+    .faq-arrow { flex-shrink: 0; color: var(--text2); transition: transform .3s; font-size: 18px; }
+    .faq-item.open .faq-arrow { transform: rotate(45deg); }
+    .faq-a { padding: 0 24px; max-height: 0; overflow: hidden; transition: max-height .3s ease, padding .3s; }
+    .faq-item.open .faq-a { max-height: 200px; padding: 0 24px 18px; }
+    .faq-a p { font-size: 14px; color: var(--text2); line-height: 1.7; }
+
+    /* CTA FINAL */
+    .cta-section { position: relative; z-index: 1; padding: 80px 5% 100px; text-align: center; }
+    .cta-box {
+      max-width: 620px; margin: 0 auto;
+      background: linear-gradient(135deg, rgba(99,102,241,0.12), rgba(139,92,246,0.08));
+      border: 1px solid rgba(99,102,241,0.25); border-radius: 28px; padding: 56px 40px;
+    }
+    .cta-box h2 { font-size: clamp(26px, 4vw, 40px); font-weight: 800; letter-spacing: -1.5px; margin-bottom: 14px; }
+    .cta-box p { color: var(--text2); font-size: 16px; margin-bottom: 32px; line-height: 1.7; }
+    .cta-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+
+    footer {
+      position: relative; z-index: 1;
+      border-top: 1px solid var(--border); padding: 36px 5%;
+      display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;
+    }
+    .footer-logo { font-size: 18px; font-weight: 900; }
+    footer p { font-size: 12px; color: var(--text2); }
+    footer a { color: var(--text2); text-decoration: none; font-size: 13px; transition: color .2s; }
+    footer a:hover { color: var(--text); }
+
+    .section-tag {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: rgba(99,102,241,0.1); border: 1px solid rgba(99,102,241,0.2);
+      color: var(--accent3); padding: 5px 14px; border-radius: 100px;
+      font-size: 12px; font-weight: 600; letter-spacing: .5px; text-transform: uppercase; margin-bottom: 16px;
+    }
+
+    .section-title { font-size: clamp(28px, 4vw, 44px); font-weight: 800; letter-spacing: -1.5px; line-height: 1.1; margin-bottom: 14px; }
+    .section-sub { font-size: 16px; color: var(--text2); line-height: 1.7; }
+
+    @media (max-width: 768px) {
+      .hero { grid-template-columns: 1fr; padding-top: 100px; gap: 40px; }
+      .tv-mockup { display: none; }
+      .split-grid { grid-template-columns: 1fr; }
+      .social-proof { justify-content: center; }
+      .proof-divider { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+
+  <nav>
+    <a href="/" class="nav-logo"><span>4K</span>ITEM</a>
+    <a href="/" class="nav-back">← Voltar à plataforma</a>
+  </nav>
+
+  <!-- HERO -->
+  <div style="max-width:1200px; margin:0 auto;">
+    <div class="hero">
+      <div>
+        <div class="hero-badge">📺 KidsCurator · TV Infantil Segura</div>
+        <h1>A sala de espera<br>que as crianças<br><span class="gradient">vão adorar.</span></h1>
+        <p>Vídeos infantis curados, seguros e sem anúncios na Smart TV do teu consultório. Liga uma vez — funciona para sempre.</p>
+        <div class="hero-actions">
+          <a href="#planos" class="btn-primary">
+            Começar grátis
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </a>
+          <a href="https://wa.me/5547999999999?text=Quero%20saber%20mais%20sobre%20o%20KidsCurator" target="_blank" class="btn-outline">💬 Falar no WhatsApp</a>
+        </div>
+      </div>
+      <!-- TV MOCKUP -->
+      <div class="tv-mockup">
+        <div class="tv-mockup-bar">
+          <div class="tv-dot" style="background:#ff5f57"></div>
+          <div class="tv-dot" style="background:#ffbd2e"></div>
+          <div class="tv-dot" style="background:#28c840"></div>
+          <span style="font-size:12px;color:var(--text2);margin-left:8px;">KidsCurator TV</span>
+        </div>
+        <div class="tv-screen">
+          <div class="tv-screen-glow"></div>
+          <div class="tv-play-btn">▶</div>
+          <div class="tv-title">🐸 Larva TUBA — Episódio 12</div>
+          <div class="tv-label">Próximo em 3:42 · Playlist: Calmo & Divertido</div>
+          <div class="tv-channels">
+            <div class="tv-ch-pill active">😄 Humor</div>
+            <div class="tv-ch-pill">🎵 Musical</div>
+            <div class="tv-ch-pill">📚 Educativo</div>
+            <div class="tv-ch-pill">🌙 Calmo</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SOCIAL PROOF -->
+  <div class="social-proof">
+    <div class="proof-item">
+      <div class="proof-num">30+</div>
+      <div class="proof-label">Canais infantis<br>curados</div>
+    </div>
+    <div class="proof-divider"></div>
+    <div class="proof-item">
+      <div class="proof-num">0</div>
+      <div class="proof-label">Anúncios<br>exibidos</div>
+    </div>
+    <div class="proof-divider"></div>
+    <div class="proof-item">
+      <div class="proof-num">4K</div>
+      <div class="proof-label">Qualidade<br>de vídeo</div>
+    </div>
+    <div class="proof-divider"></div>
+    <div class="proof-item">
+      <div class="proof-num">5min</div>
+      <div class="proof-label">Para<br>configurar</div>
+    </div>
+  </div>
+
+  <!-- PROBLEMA VS SOLUÇÃO -->
+  <div class="split-section">
+    <div class="split-grid">
+      <div class="split-card problem">
+        <h3>😤 O problema de hoje</h3>
+        <ul>
+          <li><span>😱</span> YouTube abre vídeos inapropriados do nada</li>
+          <li><span>📢</span> Anúncios barulhentos irritam pacientes e pais</li>
+          <li><span>📺</span> TV aberta não tem conteúdo infantil 24h</li>
+          <li><span>🔁</span> Alguém precisa ficar trocando vídeo manualmente</li>
+          <li><span>😢</span> Criança chora — toda a sala fica tensa</li>
+        </ul>
+      </div>
+      <div class="split-card solution">
+        <h3>✅ Com o KidsCurator</h3>
+        <ul>
+          <li><span>🔒</span> Apenas canais verificados e seguros</li>
+          <li><span>🔇</span> Zero anúncios, zero interrupções</li>
+          <li><span>♾️</span> Roda 24h em loop automático</li>
+          <li><span>📱</span> Configura pelo celular, qualquer hora</li>
+          <li><span>😊</span> Criança entretida — sala de espera tranquila</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- PLANOS -->
+  <section id="planos" class="plans-section">
+    <div style="max-width:960px;margin:0 auto;text-align:center;">
+      <div class="section-tag">✦ Planos</div>
+      <h2 class="section-title">Simples e sem surpresas.</h2>
+      <p class="section-sub">Cancela quando quiser. Sem fidelidade. Sem taxa de setup.</p>
+      <div class="plans-grid">
+
+        <div class="plan-card">
+          <div class="plan-icon">🏥</div>
+          <div class="plan-name">Consultório</div>
+          <div class="plan-desc">1 sala de espera</div>
+          <div class="plan-price"><span>R$</span>79</div>
+          <div class="plan-period">por mês</div>
+          <ul class="plan-features">
+            <li>1 TV / 1 tela</li>
+            <li>URL exclusiva do teu consultório</li>
+            <li>4 playlists por humor</li>
+            <li>30+ canais curados</li>
+            <li>Sem anúncios</li>
+          </ul>
+          <a href="#contato" class="plan-btn plan-btn-outline">Começar grátis</a>
+        </div>
+
+        <div class="plan-card featured">
+          <div class="plan-tag">Mais popular</div>
+          <div class="plan-icon">🏨</div>
+          <div class="plan-name">Clínica</div>
+          <div class="plan-desc">Até 3 salas</div>
+          <div class="plan-price"><span>R$</span>149</div>
+          <div class="plan-period">por mês</div>
+          <ul class="plan-features">
+            <li>Até 3 TVs / 3 telas</li>
+            <li>URL exclusiva por sala</li>
+            <li>Todas as playlists</li>
+            <li>30+ canais curados</li>
+            <li>Sem anúncios</li>
+            <li>Suporte prioritário WhatsApp</li>
+          </ul>
+          <a href="#contato" class="plan-btn plan-btn-primary">Começar grátis</a>
+        </div>
+
+        <div class="plan-card">
+          <div class="plan-icon">🏫</div>
+          <div class="plan-name">Escola / Hospital</div>
+          <div class="plan-desc">TVs ilimitadas</div>
+          <div class="plan-price"><span>R$</span>299</div>
+          <div class="plan-period">por mês</div>
+          <ul class="plan-features">
+            <li>TVs ilimitadas</li>
+            <li>Playlists personalizadas</li>
+            <li>Painel de gestão completo</li>
+            <li>30+ canais curados</li>
+            <li>Sem anúncios</li>
+            <li>Suporte VIP</li>
+          </ul>
+          <a href="#contato" class="plan-btn plan-btn-outline">Falar com vendas</a>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section class="faq-section">
+    <div style="max-width:700px;margin:0 auto;text-align:center;">
+      <div class="section-tag">✦ Dúvidas</div>
+      <h2 class="section-title">Perguntas frequentes</h2>
+    </div>
+    <div class="faq-list">
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">
+          Precisa instalar algum app ou programa?
+          <span class="faq-arrow">+</span>
+        </button>
+        <div class="faq-a"><p>Não. Basta abrir o link do KidsCurator no navegador da tua Smart TV. Funciona em qualquer TV com acesso à internet — Samsung, LG, Sony, TCL, etc.</p></div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">
+          Os vídeos são realmente sem anúncios?
+          <span class="faq-arrow">+</span>
+        </button>
+        <div class="faq-a"><p>Sim. Utilizamos apenas canais verificados do YouTube que têm vídeos sem anúncios ou com anúncios desativados. A nossa curadoria garante que nenhuma publicidade apareça.</p></div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">
+          Posso trocar a playlist quando quiser?
+          <span class="faq-arrow">+</span>
+        </button>
+        <div class="faq-a"><p>Sim. Acedes ao painel pelo celular e alteras a playlist em segundos. A mudança reflete na TV imediatamente.</p></div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">
+          Funciona se a internet cair?
+          <span class="faq-arrow">+</span>
+        </button>
+        <div class="faq-a"><p>O KidsCurator precisa de internet para funcionar (assim como qualquer streaming). Recomendamos uma conexão de pelo menos 10 Mbps para qualidade 4K.</p></div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">
+          Posso cancelar a qualquer momento?
+          <span class="faq-arrow">+</span>
+        </button>
+        <div class="faq-a"><p>Sim, sem multa e sem burocracia. Cancelas pelo painel ou pelo WhatsApp. O acesso continua até o fim do período já pago.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA FINAL -->
+  <section id="contato" class="cta-section">
+    <div class="cta-box">
+      <h2>Experimenta grátis por 7 dias. 🎉</h2>
+      <p>Sem cartão de crédito. Configuras hoje, a tua sala de espera já muda amanhã.</p>
+      <div class="cta-actions">
+        <a href="https://wa.me/5547999999999?text=Quero%20testar%20o%20KidsCurator%20grátis" target="_blank" class="btn-primary">
+          💬 Começar pelo WhatsApp
+        </a>
+      </div>
+      <p style="margin-top:16px;font-size:12px;color:var(--text2);">Ou envia email para contato@4kitem.com.br</p>
+    </div>
+  </section>
+
+  <footer>
+    <div class="footer-logo"><span style="background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">4K</span>ITEM</div>
+    <p>© 2026 4KITEM · KidsCurator · Norte de SC</p>
+    <a href="/">← Voltar à plataforma</a>
+  </footer>
+
+  <script>
+    function toggleFaq(btn) {
+      const item = btn.closest('.faq-item');
+      item.classList.toggle('open');
+    }
+  </script>
+</body>
+</html>
