@@ -36,6 +36,18 @@
     .nav-back:hover { color: var(--text); }
 
     /* HERO */
+    .hero-wrapper {
+      position: relative; z-index: 1;
+      background-image: url('/static/img/kids-hero.png');
+      background-size: cover;
+      background-position: center;
+    }
+    .hero-wrapper::after {
+      content: '';
+      position: absolute; inset: 0;
+      background: linear-gradient(90deg, rgba(8,8,15,0.85) 50%, rgba(8,8,15,0.4) 100%);
+      z-index: 0;
+    }
     .hero {
       position: relative; z-index: 1;
       padding: 120px 5% 80px;
@@ -334,6 +346,7 @@
   </nav>
 
   <!-- HERO -->
+  <div class="hero-wrapper">
   <div style="max-width:1200px; margin:0 auto;">
     <div class="hero">
       <div>
@@ -371,6 +384,7 @@
       </div>
     </div>
   </div>
+  </div><!-- /hero-wrapper -->
 
   <!-- SOCIAL PROOF -->
   <div class="social-proof">
@@ -424,6 +438,14 @@
   <!-- POR QUE NÃO O YOUTUBE -->
   <section style="position:relative;z-index:1;padding:100px 5%;">
     <div style="max-width:960px;margin:0 auto;">
+      <!-- Imagem de contexto -->
+      <div style="border-radius:20px;overflow:hidden;margin-bottom:48px;border:1px solid var(--border);max-height:340px;">
+        <img src="/static/img/kids-problem.png" alt="Sala de espera com YouTube problemático" style="width:100%;height:340px;object-fit:cover;display:block;">
+        <div style="background:rgba(239,68,68,0.08);border-top:1px solid rgba(239,68,68,0.2);padding:12px 20px;display:flex;align-items:center;gap:10px;">
+          <span style="font-size:18px;">😬</span>
+          <span style="font-size:13px;color:#fca5a5;font-weight:500;">Esta é a realidade de quem usa YouTube gratuito na sala de espera.</span>
+        </div>
+      </div>
       <div class="section-tag">✦ A grande questão</div>
       <h2 class="section-title">"Mas o YouTube<br>é de graça..."</h2>
       <p class="section-sub" style="margin-bottom:48px;">Sim. E é exatamente esse o problema.</p>
