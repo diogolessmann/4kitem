@@ -39,11 +39,11 @@ def sala():
 
 @app.route('/agenda')
 def agenda():
-    return redirect('https://radioscsews.com.br/agenda', 301)
+    return render_template('agenda/landing.html')
 
 @app.route('/alerta')
 def alerta():
-    return redirect('https://radioscsews.com.br/alerta', 301)
+    return render_template('alerta/landing.html')
 
 
 # ══════════════════════════════════════════════════════════════════════════

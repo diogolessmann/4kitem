@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Agenda SC — Agendamento Online para seu Negócio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #08080f; --bg2: #0e0e1a; --surface: #13131f; --surface2: #1a1a2e;
+      --border: rgba(255,255,255,0.07); --border2: rgba(255,255,255,0.14);
+      --text: #f0f0ff; --text2: #8888aa;
+      --green: #22c55e; --green2: #16a34a;
+      --accent: #6366f1; --accent2: #8b5cf6;
+    }
+    html { scroll-behavior: smooth; }
+    body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); }
+    a { text-decoration: none; color: inherit; }
+
+    /* ── Nav ── */
+    nav {
+      position: sticky; top: 0; z-index: 50;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 16px 24px;
+      background: rgba(8,8,15,0.9); backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-logo { display: flex; align-items: center; gap: 10px; font-weight: 900; font-size: 18px; }
+    .nav-logo-icon {
+      width: 34px; height: 34px; border-radius: 8px;
+      background: linear-gradient(135deg, var(--green), var(--green2));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px;
+    }
+    .nav-logo span { color: var(--green); }
+    .nav-links { display: flex; align-items: center; gap: 12px; }
+    .btn-nav-outline {
+      padding: 8px 18px; border-radius: 100px;
+      border: 1px solid var(--border2); color: var(--text2);
+      font-size: 13px; font-weight: 600; cursor: pointer;
+      font-family: inherit; background: transparent;
+      transition: .2s;
+    }
+    .btn-nav-outline:hover { border-color: var(--green); color: var(--green); }
+    .btn-nav-primary {
+      padding: 8px 20px; border-radius: 100px;
+      background: var(--green); color: #fff;
+      font-size: 13px; font-weight: 700; cursor: pointer;
+      font-family: inherit; border: none;
+      transition: .2s;
+    }
+    .btn-nav-primary:hover { background: var(--green2); }
+
+    /* ── Hero ── */
+    .hero {
+      text-align: center; padding: 80px 24px 60px;
+      max-width: 700px; margin: 0 auto;
+    }
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.3);
+      border-radius: 100px; padding: 6px 16px;
+      font-size: 12px; font-weight: 700; color: var(--green);
+      margin-bottom: 28px;
+    }
+    .hero h1 {
+      font-size: clamp(32px, 6vw, 52px); font-weight: 900;
+      letter-spacing: -1.5px; line-height: 1.1; margin-bottom: 20px;
+    }
+    .hero h1 span { color: var(--green); }
+    .hero p {
+      font-size: 17px; color: var(--text2); line-height: 1.6;
+      margin-bottom: 36px; max-width: 520px; margin-left: auto; margin-right: auto;
+    }
+    .hero-ctas { display: flex; align-items: center; justify-content: center; gap: 12px; flex-wrap: wrap; }
+    .btn-primary {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 14px 28px; border-radius: 100px;
+      background: var(--green); color: #fff;
+      font-size: 15px; font-weight: 700; cursor: pointer;
+      transition: .2s; border: none; font-family: inherit;
+    }
+    .btn-primary:hover { background: var(--green2); transform: translateY(-1px); }
+    .btn-outline {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 14px 24px; border-radius: 100px;
+      border: 1px solid var(--border2); color: var(--text);
+      font-size: 15px; font-weight: 600; cursor: pointer;
+      transition: .2s; background: transparent; font-family: inherit;
+    }
+    .btn-outline:hover { border-color: var(--green); color: var(--green); }
+
+    /* ── Demo card ── */
+    .demo-wrap { max-width: 480px; margin: 48px auto 0; }
+    .demo-card {
+      background: var(--surface); border: 1px solid var(--border2);
+      border-radius: 20px; overflow: hidden;
+    }
+    .demo-header {
+      background: var(--surface2); padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      font-size: 11px; color: var(--text2); font-weight: 600;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .demo-body { padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+    .demo-msg {
+      background: rgba(34,197,94,0.08); border: 1px solid rgba(34,197,94,0.2);
+      border-radius: 12px; padding: 12px 14px;
+      font-size: 13px; line-height: 1.5;
+    }
+    .demo-msg strong { color: var(--green); }
+    .demo-msg-dark {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 12px; padding: 12px 14px;
+      font-size: 13px; color: var(--text2); line-height: 1.5;
+    }
+
+    /* ── Section ── */
+    section { padding: 72px 24px; }
+    .section-label {
+      text-align: center; font-size: 11px; font-weight: 700;
+      letter-spacing: 1px; text-transform: uppercase;
+      color: var(--green); margin-bottom: 12px;
+    }
+    .section-title {
+      text-align: center; font-size: clamp(24px, 4vw, 36px);
+      font-weight: 900; letter-spacing: -1px; margin-bottom: 8px;
+    }
+    .section-sub {
+      text-align: center; color: var(--text2); font-size: 15px;
+      margin-bottom: 48px;
+    }
+
+    /* ── Features grid ── */
+    .features-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 16px; max-width: 900px; margin: 0 auto;
+    }
+    .feature-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 18px; padding: 24px;
+      transition: border-color .2s;
+    }
+    .feature-card:hover { border-color: rgba(34,197,94,0.3); }
+    .feature-icon { font-size: 28px; margin-bottom: 12px; }
+    .feature-title { font-size: 15px; font-weight: 700; margin-bottom: 8px; }
+    .feature-desc { font-size: 13px; color: var(--text2); line-height: 1.5; }
+    .feature-ex { font-size: 11px; color: var(--green); margin-top: 6px; font-weight: 600; }
+
+    /* ── How it works ── */
+    .steps { display: flex; gap: 0; max-width: 860px; margin: 0 auto; flex-wrap: wrap; justify-content: center; }
+    .step {
+      flex: 1; min-width: 160px; max-width: 200px;
+      text-align: center; padding: 24px 16px;
+      position: relative;
+    }
+    .step:not(:last-child)::after {
+      content: '→'; position: absolute; right: -8px; top: 30px;
+      color: var(--text2); font-size: 18px;
+    }
+    .step-num {
+      width: 44px; height: 44px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--green), var(--green2));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; font-weight: 900; margin: 0 auto 12px;
+    }
+    .step-title { font-size: 14px; font-weight: 700; margin-bottom: 6px; }
+    .step-desc { font-size: 12px; color: var(--text2); line-height: 1.5; }
+
+    /* ── Pricing ── */
+    .pricing-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 20px; max-width: 700px; margin: 0 auto;
+    }
+    .plan-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 22px; padding: 28px 24px;
+    }
+    .plan-card.featured {
+      border-color: var(--green);
+      background: linear-gradient(135deg, rgba(34,197,94,0.08), var(--surface));
+    }
+    .plan-badge {
+      display: inline-block; background: var(--green); color: #fff;
+      font-size: 10px; font-weight: 800; padding: 3px 10px;
+      border-radius: 100px; letter-spacing: .5px; text-transform: uppercase;
+      margin-bottom: 16px;
+    }
+    .plan-name { font-size: 13px; color: var(--text2); font-weight: 600; margin-bottom: 6px; }
+    .plan-price { font-size: 36px; font-weight: 900; letter-spacing: -1px; margin-bottom: 4px; }
+    .plan-price span { font-size: 15px; color: var(--text2); font-weight: 500; }
+    .plan-note { font-size: 11px; color: var(--text2); margin-bottom: 20px; }
+    .plan-features { list-style: none; display: flex; flex-direction: column; gap: 8px; margin-bottom: 24px; }
+    .plan-features li { font-size: 13px; display: flex; gap: 8px; align-items: flex-start; }
+    .plan-features li::before { content: '✓'; color: var(--green); font-weight: 700; flex-shrink: 0; }
+
+    /* ── CTA final ── */
+    .cta-section {
+      background: linear-gradient(135deg, rgba(34,197,94,0.08), var(--bg2));
+      border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
+      padding: 72px 24px; text-align: center;
+    }
+    .cta-section h2 { font-size: clamp(24px, 4vw, 36px); font-weight: 900; letter-spacing: -1px; margin-bottom: 12px; }
+    .cta-section p { color: var(--text2); font-size: 15px; margin-bottom: 32px; }
+
+    /* ── Footer ── */
+    footer {
+      padding: 32px 24px; text-align: center;
+      font-size: 12px; color: var(--text2);
+      border-top: 1px solid var(--border);
+    }
+    footer a { color: var(--green); }
+
+    /* ── Problema section ── */
+    .problem-section {
+      background: rgba(34,197,94,0.04); border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      padding: 48px 24px; text-align: center;
+    }
+    .problem-section p {
+      font-size: clamp(15px, 2.5vw, 19px); line-height: 1.7;
+      max-width: 620px; margin: 0 auto; color: var(--text2);
+    }
+    .problem-section strong { color: var(--text); }
+  </style>
+</head>
+<body>
+
+<!-- Nav -->
+<nav>
+  <div class="nav-logo">
+    <div class="nav-logo-icon">📅</div>
+    <div><span>Agenda</span> SC</div>
+  </div>
+  <div class="nav-links">
+    <a href="/"><button class="btn-nav-outline">← 4KITEM</button></a>
+    <a href="https://radioscnews.com.br/agenda" target="_blank">
+      <button class="btn-nav-primary">🚀 Começar grátis</button>
+    </a>
+  </div>
+</nav>
+
+<!-- Hero -->
+<div class="hero">
+  <div class="hero-badge">✅ 30 dias grátis · Sem cartão</div>
+  <h1>Seu negócio com<br><span>agendamento online</span><br>em minutos</h1>
+  <p>Chega de WhatsApp travado com "que horas tem vaga?". Seus clientes agendam sozinhos, você recebe a notificação e foca no trabalho.</p>
+  <div class="hero-ctas">
+    <a href="https://radioscnews.com.br/agenda" target="_blank">
+      <button class="btn-primary">🚀 Criar minha agenda grátis</button>
+    </a>
+    <a href="#como-funciona">
+      <button class="btn-outline">Ver como funciona</button>
+    </a>
+  </div>
+</div>
+
+<!-- Demo -->
+<div class="demo-wrap">
+  <div class="demo-card">
+    <div class="demo-header">👁️ Veja o que seu cliente vê ao agendar</div>
+    <div class="demo-body">
+      <div class="demo-msg">
+        <strong>✅ Agendamento confirmado!</strong><br>
+        João Silva — Corte de cabelo<br>
+        📅 Amanhã, sexta-feira · 14h00<br>
+        📍 Barbearia Silva — Schroeder
+      </div>
+      <div class="demo-msg-dark">
+        <strong style="color:var(--text)">📲 Você recebe no WhatsApp:</strong><br>
+        "Novo agendamento! João Silva agendou Corte de cabelo para amanhã às 14h. WhatsApp: (47) 99101-1351"
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Problema -->
+<div class="problem-section">
+  <p>Você sabia que <strong>negócios sem agendamento online</strong> perdem até 40% dos clientes que desistem de esperar resposta no WhatsApp? A maioria só percebe quando o concorrente já está cheio.</p>
+</div>
+
+<!-- Features -->
+<section>
+  <div class="section-label">Tudo que você precisa</div>
+  <div class="section-title">Simples de usar. Poderoso na prática.</div>
+  <div class="section-sub">Tudo incluso no plano gratuito por 30 dias.</div>
+
+  <div class="features-grid">
+    <div class="feature-card">
+      <div class="feature-icon">🔗</div>
+      <div class="feature-title">Seu link personalizado</div>
+      <div class="feature-desc">Compartilhe no WhatsApp, Instagram e cartão de visita.</div>
+      <div class="feature-ex">agenda.radioscnews.com.br/seu-negocio</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">📅</div>
+      <div class="feature-title">Horários automáticos</div>
+      <div class="feature-desc">Você define os dias e horários. O sistema gera os slots disponíveis automaticamente — sem conflito, sem erro.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">💬</div>
+      <div class="feature-title">Notificação no WhatsApp</div>
+      <div class="feature-desc">A cada agendamento novo, você recebe o nome e WhatsApp do cliente. Confirme ou cancele direto do painel.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">📊</div>
+      <div class="feature-title">Painel de controle</div>
+      <div class="feature-desc">Veja todos os agendamentos do dia, da semana, confirme, cancele ou marque como concluído.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">📻</div>
+      <div class="feature-title">Destaque no Rádio SC News</div>
+      <div class="feature-desc">Seu negócio aparece no portal de notícias regional mais acessado do Norte de SC. Mais visibilidade, mais clientes.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">📱</div>
+      <div class="feature-title">Funciona no celular</div>
+      <div class="feature-desc">Seus clientes agendam do celular em menos de 1 minuto. Sem precisar baixar nenhum aplicativo.</div>
+    </div>
+  </div>
+</section>
+
+<!-- Como funciona -->
+<section id="como-funciona" style="background:var(--bg2); border-top:1px solid var(--border); border-bottom:1px solid var(--border);">
+  <div class="section-label">Passo a passo</div>
+  <div class="section-title">Em 5 minutos você está no ar</div>
+  <div class="section-sub">Sem técnico, sem complicação.</div>
+
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-title">Crie sua conta</div>
+      <div class="step-desc">Informe o nome do negócio, serviços e horários de funcionamento.</div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-title">Compartilhe o link</div>
+      <div class="step-desc">Poste no WhatsApp, Instagram, Google Meu Negócio e cartão de visita.</div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-title">Clientes agendam</div>
+      <div class="step-desc">Eles escolhem o serviço, dia e horário sozinhos — 24h por dia.</div>
+    </div>
+    <div class="step">
+      <div class="step-num">4</div>
+      <div class="step-title">Você é avisado</div>
+      <div class="step-desc">Recebe notificação no WhatsApp e confirma com um clique.</div>
+    </div>
+  </div>
+</section>
+
+<!-- Preços -->
+<section id="precos">
+  <div class="section-label">Planos</div>
+  <div class="section-title">Simples e transparente</div>
+  <div class="section-sub">Comece grátis, sem cartão de crédito.</div>
+
+  <div class="pricing-grid">
+    <div class="plan-card">
+      <div class="plan-name">GRATUITO</div>
+      <div class="plan-price">R$0 <span>/mês</span></div>
+      <div class="plan-note">30 dias grátis para testar tudo</div>
+      <ul class="plan-features">
+        <li>Link de agendamento personalizado</li>
+        <li>Até 30 agendamentos/mês</li>
+        <li>Notificação por WhatsApp</li>
+        <li>1 serviço cadastrado</li>
+      </ul>
+      <a href="https://radioscnews.com.br/agenda" target="_blank">
+        <button class="btn-outline" style="width:100%;justify-content:center;">Começar grátis</button>
+      </a>
+    </div>
+    <div class="plan-card featured">
+      <div class="plan-badge">⭐ Mais popular</div>
+      <div class="plan-name">PROFISSIONAL</div>
+      <div class="plan-price">R$29 <span>/mês</span></div>
+      <div class="plan-note">Cancele quando quiser</div>
+      <ul class="plan-features">
+        <li>Agendamentos ilimitados</li>
+        <li>Serviços ilimitados</li>
+        <li>Notificação WhatsApp + e-mail</li>
+        <li>Painel completo de gestão</li>
+        <li>Destaque no Rádio SC News</li>
+        <li>Suporte prioritário</li>
+      </ul>
+      <a href="https://radioscnews.com.br/agenda" target="_blank">
+        <button class="btn-primary" style="width:100%;justify-content:center;">🚀 Assinar agora</button>
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- CTA final -->
+<div class="cta-section">
+  <h2>Pronto para acabar com o<br>caos do WhatsApp?</h2>
+  <p>Mais de 200 negócios no Norte de SC já usam. Comece hoje, grátis.</p>
+  <a href="https://radioscnews.com.br/agenda" target="_blank">
+    <button class="btn-primary" style="font-size:17px;padding:16px 36px;">
+      🚀 Criar minha agenda grátis
+    </button>
+  </a>
+  <p style="margin-top:16px;font-size:12px;">✅ 30 dias grátis · Sem cartão · Cancele quando quiser</p>
+</div>
+
+<!-- Footer -->
+<footer>
+  <p>
+    <a href="/">4KITEM</a> ·
+    <a href="https://radioscnews.com.br" target="_blank">Rádio SC News</a> ·
+    <a href="https://wa.me/5547991011351" target="_blank">WhatsApp (47) 99101-1351</a>
+  </p>
+  <p style="margin-top:8px;">© 2026 Agenda SC · Todos os direitos reservados</p>
+</footer>
+
+</body>
+</html>

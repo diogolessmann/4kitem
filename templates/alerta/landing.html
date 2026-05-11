@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Alerta SC — Monitoramento de CNH e Veículo via WhatsApp</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #08080f; --bg2: #0e0e1a; --surface: #13131f; --surface2: #1a1a2e;
+      --border: rgba(255,255,255,0.07); --border2: rgba(255,255,255,0.14);
+      --text: #f0f0ff; --text2: #8888aa;
+      --orange: #f97316; --orange2: #ea580c; --red: #ef4444;
+      --green: #22c55e;
+    }
+    html { scroll-behavior: smooth; }
+    body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); }
+    a { text-decoration: none; color: inherit; }
+
+    /* ── Nav ── */
+    nav {
+      position: sticky; top: 0; z-index: 50;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 16px 24px;
+      background: rgba(8,8,15,0.9); backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-logo { display: flex; align-items: center; gap: 10px; font-weight: 900; font-size: 18px; }
+    .nav-logo-icon {
+      width: 34px; height: 34px; border-radius: 8px;
+      background: linear-gradient(135deg, var(--orange), var(--red));
+      display: flex; align-items: center; justify-content: center; font-size: 16px;
+    }
+    .nav-logo span { color: var(--orange); }
+    .nav-links { display: flex; align-items: center; gap: 12px; }
+    .btn-nav-outline {
+      padding: 8px 18px; border-radius: 100px;
+      border: 1px solid var(--border2); color: var(--text2);
+      font-size: 13px; font-weight: 600; cursor: pointer;
+      font-family: inherit; background: transparent; transition: .2s;
+    }
+    .btn-nav-outline:hover { border-color: var(--orange); color: var(--orange); }
+    .btn-nav-primary {
+      padding: 8px 20px; border-radius: 100px;
+      background: linear-gradient(135deg, var(--orange), var(--red));
+      color: #fff; font-size: 13px; font-weight: 700;
+      cursor: pointer; font-family: inherit; border: none; transition: .2s;
+    }
+    .btn-nav-primary:hover { opacity: .9; }
+
+    /* ── Hero ── */
+    .hero {
+      text-align: center; padding: 80px 24px 60px;
+      max-width: 700px; margin: 0 auto;
+    }
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: rgba(249,115,22,0.1); border: 1px solid rgba(249,115,22,0.3);
+      border-radius: 100px; padding: 6px 16px;
+      font-size: 12px; font-weight: 700; color: var(--orange);
+      margin-bottom: 28px;
+    }
+    .hero h1 {
+      font-size: clamp(32px, 6vw, 52px); font-weight: 900;
+      letter-spacing: -1.5px; line-height: 1.1; margin-bottom: 20px;
+    }
+    .hero h1 span { color: var(--orange); }
+    .hero p {
+      font-size: 17px; color: var(--text2); line-height: 1.6;
+      margin-bottom: 36px; max-width: 520px; margin-left: auto; margin-right: auto;
+    }
+    .hero strong { color: var(--text); }
+    .hero-ctas { display: flex; align-items: center; justify-content: center; gap: 12px; flex-wrap: wrap; }
+    .btn-primary {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 14px 28px; border-radius: 100px;
+      background: linear-gradient(135deg, var(--orange), var(--red));
+      color: #fff; font-size: 15px; font-weight: 700;
+      cursor: pointer; transition: .2s; border: none; font-family: inherit;
+    }
+    .btn-primary:hover { opacity: .9; transform: translateY(-1px); }
+    .btn-outline {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 14px 24px; border-radius: 100px;
+      border: 1px solid var(--border2); color: var(--text);
+      font-size: 15px; font-weight: 600; cursor: pointer;
+      transition: .2s; background: transparent; font-family: inherit;
+    }
+    .btn-outline:hover { border-color: var(--orange); color: var(--orange); }
+
+    /* ── Demo WhatsApp ── */
+    .demo-wrap { max-width: 420px; margin: 48px auto 0; }
+    .wpp-card {
+      background: #1a1a1a; border-radius: 16px; overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+    .wpp-header {
+      background: #075e54; padding: 14px 16px;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .wpp-avatar {
+      width: 38px; height: 38px; border-radius: 50%;
+      background: var(--orange); display: flex; align-items: center;
+      justify-content: center; font-size: 18px; flex-shrink: 0;
+    }
+    .wpp-name { font-size: 14px; font-weight: 700; }
+    .wpp-status { font-size: 11px; color: rgba(255,255,255,0.6); }
+    .wpp-body { padding: 16px; background: #0d1117; display: flex; flex-direction: column; gap: 8px; }
+    .wpp-msg {
+      background: #1e2d20; border-radius: 12px 12px 12px 0;
+      padding: 12px 14px; font-size: 13px; line-height: 1.6;
+      max-width: 90%; color: #e0ffe0;
+    }
+    .wpp-msg .badge {
+      display: inline-block; background: rgba(249,115,22,0.2);
+      color: var(--orange); font-size: 10px; font-weight: 700;
+      padding: 2px 8px; border-radius: 100px; margin-bottom: 6px;
+    }
+    .wpp-time { font-size: 10px; color: rgba(255,255,255,0.3); text-align: right; }
+
+    /* ── Problema ── */
+    .problem-section {
+      background: rgba(239,68,68,0.04); border-top: 1px solid rgba(239,68,68,0.1);
+      border-bottom: 1px solid rgba(239,68,68,0.1);
+      padding: 48px 24px; text-align: center;
+    }
+    .problem-section p {
+      font-size: clamp(15px, 2.5vw, 19px); line-height: 1.7;
+      max-width: 640px; margin: 0 auto; color: var(--text2);
+    }
+    .problem-section strong { color: var(--red); }
+
+    /* ── Section ── */
+    section { padding: 72px 24px; }
+    .section-label {
+      text-align: center; font-size: 11px; font-weight: 700;
+      letter-spacing: 1px; text-transform: uppercase;
+      color: var(--orange); margin-bottom: 12px;
+    }
+    .section-title {
+      text-align: center; font-size: clamp(24px, 4vw, 36px);
+      font-weight: 900; letter-spacing: -1px; margin-bottom: 8px;
+    }
+    .section-sub { text-align: center; color: var(--text2); font-size: 15px; margin-bottom: 48px; }
+
+    /* ── Steps ── */
+    .steps { display: flex; gap: 0; max-width: 900px; margin: 0 auto; flex-wrap: wrap; justify-content: center; }
+    .step { flex: 1; min-width: 160px; max-width: 210px; text-align: center; padding: 24px 16px; position: relative; }
+    .step:not(:last-child)::after { content: '→'; position: absolute; right: -8px; top: 30px; color: var(--text2); font-size: 18px; }
+    .step-num {
+      width: 44px; height: 44px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--orange), var(--red));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; font-weight: 900; margin: 0 auto 12px;
+    }
+    .step-title { font-size: 14px; font-weight: 700; margin-bottom: 6px; }
+    .step-desc { font-size: 12px; color: var(--text2); line-height: 1.5; }
+
+    /* ── Relatório ── */
+    .report-grid {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 16px; max-width: 760px; margin: 0 auto;
+    }
+    .report-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 18px; padding: 24px;
+    }
+    .report-card h4 { font-size: 15px; font-weight: 800; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+    .report-card ul { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+    .report-card li { font-size: 13px; color: var(--text2); display: flex; gap: 8px; }
+    .report-card li::before { content: '✓'; color: var(--green); font-weight: 700; flex-shrink: 0; }
+    .report-card li strong { color: var(--text); }
+
+    /* ── Preço ── */
+    .price-wrap { max-width: 480px; margin: 0 auto; }
+    .price-card {
+      background: var(--surface); border: 1px solid rgba(249,115,22,0.4);
+      border-radius: 24px; padding: 36px 32px; text-align: center;
+      background: linear-gradient(135deg, rgba(249,115,22,0.06), var(--surface));
+    }
+    .price-num { font-size: 56px; font-weight: 900; letter-spacing: -2px; }
+    .price-num span { font-size: 22px; color: var(--text2); font-weight: 500; }
+    .price-period { color: var(--text2); font-size: 13px; margin-bottom: 24px; }
+    .price-features { list-style: none; text-align: left; display: flex; flex-direction: column; gap: 10px; margin-bottom: 28px; }
+    .price-features li { font-size: 14px; display: flex; gap: 8px; }
+    .price-features li::before { content: '✅'; flex-shrink: 0; }
+
+    /* ── CTA ── */
+    .cta-section {
+      background: linear-gradient(135deg, rgba(249,115,22,0.08), var(--bg2));
+      border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
+      padding: 72px 24px; text-align: center;
+    }
+    .cta-section h2 { font-size: clamp(24px, 4vw, 36px); font-weight: 900; letter-spacing: -1px; margin-bottom: 12px; }
+    .cta-section p { color: var(--text2); font-size: 15px; margin-bottom: 32px; }
+
+    /* ── Footer ── */
+    footer { padding: 32px 24px; text-align: center; font-size: 12px; color: var(--text2); border-top: 1px solid var(--border); }
+    footer a { color: var(--orange); }
+
+    @media (max-width: 600px) {
+      .report-grid { grid-template-columns: 1fr; }
+      .step:not(:last-child)::after { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Nav -->
+<nav>
+  <div class="nav-logo">
+    <div class="nav-logo-icon">🚨</div>
+    <div><span>Alerta</span> SC</div>
+  </div>
+  <div class="nav-links">
+    <a href="/"><button class="btn-nav-outline">← 4KITEM</button></a>
+    <a href="/agenda"><button class="btn-nav-outline">📅 Agenda SC</button></a>
+    <a href="https://radioscnews.com.br/alerta" target="_blank">
+      <button class="btn-nav-primary">🚀 Assinar Agora</button>
+    </a>
+  </div>
+</nav>
+
+<!-- Hero -->
+<div class="hero">
+  <div class="hero-badge">🛡️ Serviço exclusivo para Santa Catarina</div>
+  <h1>Sua CNH e seu carro<br><span>sob monitoramento</span><br>constante</h1>
+  <p>Receba <strong>1x por mês</strong> um relatório completo sobre sua CNH — pontos, vencimento, categoria — e seu veículo — IPVA, licenciamento e multas em aberto. Diretamente no seu WhatsApp.</p>
+  <div class="hero-ctas">
+    <a href="https://radioscnews.com.br/alerta" target="_blank">
+      <button class="btn-primary">🚀 Começar por R$ 19,90/mês</button>
+    </a>
+    <a href="#como-funciona">
+      <button class="btn-outline">⬇ Como funciona</button>
+    </a>
+  </div>
+</div>
+
+<!-- Demo WhatsApp -->
+<div class="demo-wrap">
+  <div class="wpp-card">
+    <div class="wpp-header">
+      <div class="wpp-avatar">🚨</div>
+      <div>
+        <div class="wpp-name">Alerta SC</div>
+        <div class="wpp-status">Relatório mensal</div>
+      </div>
+    </div>
+    <div class="wpp-body">
+      <div class="wpp-msg">
+        <div class="badge">📋 RELATÓRIO MAIO/2026</div><br>
+        <strong>🪪 SUA CNH</strong><br>
+        ✅ Situação: Ativa<br>
+        ⚠️ Pontos: 8/20 — atenção<br>
+        📅 Vencimento: 15/03/2027<br>
+        🔖 Categoria: AB<br><br>
+        <strong>🚗 SEU VEÍCULO</strong><br>
+        ✅ IPVA 2026: Pago<br>
+        ✅ Licenciamento: Regular<br>
+        ✅ Multas em aberto: Nenhuma<br><br>
+        ✨ Tudo em ordem! Próximo relatório em junho.
+      </div>
+      <div class="wpp-time">10/05/2026 · 08:00 ✓✓</div>
+    </div>
+  </div>
+</div>
+
+<!-- Problema -->
+<div class="problem-section">
+  <p>Você sabia que multas não pagas acumulam juros e podem <strong>suspender sua CNH</strong>? E que o IPVA atrasado gera <strong>apreensão do veículo</strong>? A maioria das pessoas só descobre quando é tarde demais.</p>
+</div>
+
+<!-- Como funciona -->
+<section id="como-funciona" style="background:var(--bg2); border-top:1px solid var(--border); border-bottom:1px solid var(--border);">
+  <div class="section-label">Passo a passo</div>
+  <div class="section-title">Simples, sem burocracia</div>
+  <div class="section-sub">Você recebe tudo no WhatsApp.</div>
+
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-title">Cadastre-se</div>
+      <div class="step-desc">Informe nome, CPF, placa do veículo e WhatsApp. Escolha o plano ideal.</div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-title">Confirme o pagamento</div>
+      <div class="step-desc">Pague via Pix. Após confirmação, seu monitoramento fica ativo no mesmo dia.</div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-title">Consulta mensal</div>
+      <div class="step-desc">Nossa equipe consulta manualmente o DETRAN SC todo mês com seus dados.</div>
+    </div>
+    <div class="step">
+      <div class="step-num">4</div>
+      <div class="step-title">Receba o relatório</div>
+      <div class="step-desc">Todo mês você recebe no WhatsApp um relatório detalhado com todos os alertas.</div>
+    </div>
+  </div>
+</section>
+
+<!-- O que tem no relatório -->
+<section>
+  <div class="section-label">O relatório</div>
+  <div class="section-title">O que está incluído</div>
+  <div class="section-sub">Tudo que você precisa saber, resumido em uma mensagem clara.</div>
+
+  <div class="report-grid">
+    <div class="report-card">
+      <h4>🪪 Situação da CNH</h4>
+      <ul>
+        <li><strong>Validade</strong> — alertamos quando estiver próxima do vencimento</li>
+        <li><strong>Pontuação atual</strong> — saiba quantos pontos você tem na carteira</li>
+        <li><strong>Categoria</strong> — confirmação da categoria habilitada (A, B, AB, etc.)</li>
+        <li><strong>Status geral</strong> — ativa, suspensa, cassada ou vencida</li>
+      </ul>
+    </div>
+    <div class="report-card">
+      <h4>🚗 Situação do Veículo</h4>
+      <ul>
+        <li><strong>IPVA</strong> — valor, situação de pagamento e parcelamento</li>
+        <li><strong>Licenciamento</strong> — situação do CRLV e data de vencimento</li>
+        <li><strong>Multas em aberto</strong> — infração, valor e prazo para recurso</li>
+        <li><strong>Débitos</strong> — qualquer pendência que possa gerar restrição</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- Preço -->
+<section id="precos" style="background:var(--bg2); border-top:1px solid var(--border); border-bottom:1px solid var(--border);">
+  <div class="section-label">Planos</div>
+  <div class="section-title">Sem surpresas</div>
+  <div class="section-sub">Um valor justo pela tranquilidade de não ser pego de surpresa.</div>
+
+  <div class="price-wrap">
+    <div class="price-card">
+      <div class="price-num">R$19<span>,90/mês</span></div>
+      <div class="price-period">Cobrado mensalmente · Cancele quando quiser</div>
+      <ul class="price-features">
+        <li>Relatório mensal completo no WhatsApp</li>
+        <li>Monitoramento de CNH (pontos, vencimento, categoria)</li>
+        <li>Monitoramento do veículo (IPVA, licenciamento, multas)</li>
+        <li>Alertas de vencimentos próximos</li>
+        <li>1 CNH + 1 veículo por assinatura</li>
+        <li>Suporte via WhatsApp</li>
+      </ul>
+      <a href="https://radioscnews.com.br/alerta" target="_blank">
+        <button class="btn-primary" style="width:100%;justify-content:center;font-size:16px;padding:16px;">
+          🚀 Assinar por R$ 19,90/mês
+        </button>
+      </a>
+      <p style="font-size:11px;color:var(--text2);margin-top:12px;">✅ Ativação no mesmo dia · Cancele quando quiser</p>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<div class="cta-section">
+  <h2>Fique sempre um passo<br>à frente das multas</h2>
+  <p>Não espere a abordagem policial para descobrir um problema. Monitore agora.</p>
+  <a href="https://radioscnews.com.br/alerta" target="_blank">
+    <button class="btn-primary" style="font-size:17px;padding:16px 36px;">
+      🚀 Começar por R$ 19,90/mês
+    </button>
+  </a>
+  <p style="margin-top:16px;font-size:12px;color:var(--text2);">🛡️ Serviço exclusivo para Santa Catarina</p>
+</div>
+
+<!-- Footer -->
+<footer>
+  <p>
+    <a href="/">4KITEM</a> ·
+    <a href="/agenda">Agenda SC</a> ·
+    <a href="https://radioscnews.com.br" target="_blank">Rádio SC News</a> ·
+    <a href="https://wa.me/5547991011351" target="_blank">WhatsApp (47) 99101-1351</a>
+  </p>
+  <p style="margin-top:8px;">© 2026 Alerta SC · Todos os direitos reservados</p>
+</footer>
+
+</body>
+</html>
