@@ -330,6 +330,8 @@ let currentMode  = "{{ client.mode }}";
 let npHideTimer  = null;
 let videoTimer   = null;
 let loadingHidden = false;
+let skipTimer    = null;   // detecta vídeo que não inicia
+let videoStarted = false;
 
 // ── Ticker ───────────────────────────────────────────────────────────────
 function buildTicker(msgs) {
@@ -353,6 +355,7 @@ function buildTicker(msgs) {
 
 // ── Carregar vídeo (iframe direto — sem YT JS API) ────────────────────────
 function loadVideo(video) {
+  videoStarted = false;
   const iframe = document.getElementById('ytplayer');
   const origin = encodeURIComponent(window.location.origin);
   iframe.src =
@@ -363,7 +366,16 @@ function loadVideo(video) {
 
   updateNowPlaying(video);
 
-  // Fallback timer: avança em 15 min caso o vídeo não termine
+  // Fallback: se não começar em 6s → pula (embed desativado, vídeo deletado, etc.)
+  clearTimeout(skipTimer);
+  skipTimer = setTimeout(() => {
+    if (!videoStarted) {
+      console.warn('Vídeo não iniciou, pulando...');
+      nextVideo();
+    }
+  }, 6000);
+
+  // Fallback: avança em 15 min caso o vídeo não termine
   clearTimeout(videoTimer);
   videoTimer = setTimeout(nextVideo, 15 * 60 * 1000);
 }
@@ -381,7 +393,9 @@ window.addEventListener('message', (event) => {
     }
 
     if (data.event === 'onStateChange') {
-      if (data.info === 1) {                 // PLAYING
+      if (data.info === 1 || data.info === 3) {  // PLAYING ou BUFFERING
+        videoStarted = true;
+        clearTimeout(skipTimer);
         hideLoading();
         if (!isMuted) { ytCmd('unMute'); ytCmd('setVolume', [85]); }
       }
@@ -390,7 +404,8 @@ window.addEventListener('message', (event) => {
 
     if (data.event === 'onError') {
       console.warn('YT error', data.info);
-      setTimeout(nextVideo, 1500);
+      videoStarted = true; // evita duplo skip
+      setTimeout(nextVideo, 800);
     }
   } catch(e) {}
 });
