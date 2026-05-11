@@ -237,7 +237,13 @@
 
 <!-- Player YouTube -->
 <div id="yt-wrap">
-  <div id="ytplayer"></div>
+  <iframe id="ytplayer"
+    src="about:blank"
+    width="100%" height="100%"
+    style="border:none;display:block;pointer-events:none;"
+    allow="autoplay; encrypted-media; fullscreen"
+    allowfullscreen>
+  </iframe>
 </div>
 
 <!-- Bloqueadores de UI do YouTube -->
@@ -292,22 +298,22 @@
 </div>
 
 <script>
-// ── Configuração ────────────────────────────────────────────────────────
+// ── Config ───────────────────────────────────────────────────────────────
 const CLIENT_CODE = "{{ client.code }}";
 const BASE_URL    = "{{ request.url_root }}";
 const TICKER_MSGS = {{ (client.ticker_msg or '') | tojson }};
 
-let playlist       = [];
-let currentIndex   = 0;
-let currentMode    = "{{ client.mode }}";
-let player         = null;
-let npHideTimeout  = null;
+let playlist     = [];
+let currentIndex = 0;
+let currentMode  = "{{ client.mode }}";
+let npHideTimer  = null;
+let videoTimer   = null;
+let loadingHidden = false;
 
-// ── Ticker ──────────────────────────────────────────────────────────────
+// ── Ticker ───────────────────────────────────────────────────────────────
 function buildTicker(msgs) {
   const track = document.getElementById('ticker-track');
   if (!track) return;
-
   const parts  = (msgs || '').split('·').map(s => s.trim()).filter(Boolean);
   const extras = [
     '4KITEM — Plataforma de TV para ambientes profissionais',
@@ -315,192 +321,142 @@ function buildTicker(msgs) {
     new Date().toLocaleDateString('pt-BR', { weekday:'long', day:'numeric', month:'long', year:'numeric' }),
   ];
   const all = [...parts, ...extras];
-
-  // Duplica para loop contínuo
   let html = '';
   for (let i = 0; i < 2; i++) {
-    all.forEach((msg, idx) => {
-      html += `<span class="ticker-item">${msg}</span>`;
-      html += `<span class="ticker-sep">✦</span>`;
+    all.forEach(msg => {
+      html += `<span class="ticker-item">${msg}</span><span class="ticker-sep">✦</span>`;
     });
   }
   track.innerHTML = html;
 }
 
-// ── YouTube IFrame API ───────────────────────────────────────────────────
-function onYouTubeIframeAPIReady() {
-  if (playlist.length === 0) return;
-  loadPlayer(playlist[0]);
+// ── Carregar vídeo (iframe direto — sem YT JS API) ────────────────────────
+function loadVideo(video) {
+  const iframe = document.getElementById('ytplayer');
+  const origin = encodeURIComponent(window.location.origin);
+  iframe.src =
+    `https://www.youtube.com/embed/${video.youtube_id}` +
+    `?autoplay=1&controls=0&mute=1&rel=0&modestbranding=1` +
+    `&iv_load_policy=3&disablekb=1&fs=0&cc_load_policy=0` +
+    `&enablejsapi=1&widgetid=1&origin=${origin}`;
+
+  updateNowPlaying(video);
+
+  // Fallback timer: avança em 15 min caso o vídeo não termine
+  clearTimeout(videoTimer);
+  videoTimer = setTimeout(nextVideo, 15 * 60 * 1000);
 }
 
-let playerReady = false;
-let userInteracted = false;
+// ── postMessage: YouTube envia eventos pelo enablejsapi ──────────────────
+window.addEventListener('message', (event) => {
+  if (event.origin !== 'https://www.youtube.com') return;
+  try {
+    const data = JSON.parse(event.data);
 
-function userTap() {
-  userInteracted = true;
-  if (playerReady && player) {
-    player.unMute();
-    player.setVolume(70);
-    player.playVideo();
-    hideLoading();
-  } else if (playlist.length > 0) {
-    // Player ainda não inicializou — força criar agora
-    if (typeof YT !== 'undefined' && YT.Player) {
-      loadPlayer(playlist[0]);
-    } else {
-      // YouTube API não carregou — recarrega a página
-      location.reload();
+    if (data.event === 'onReady') {
+      // Player pronto: desmuta e toca
+      ytCmd('unMute');
+      ytCmd('setVolume', [80]);
+      ytCmd('playVideo');
+      hideLoading();
     }
-  }
+
+    if (data.event === 'onStateChange') {
+      if (data.info === 1) hideLoading();   // PLAYING
+      if (data.info === 0) nextVideo();      // ENDED
+    }
+
+    if (data.event === 'onError') {
+      console.warn('YT error', data.info);
+      setTimeout(nextVideo, 1500);
+    }
+  } catch(e) {}
+});
+
+// Envia comando para o iframe via postMessage
+function ytCmd(func, args) {
+  const iframe = document.getElementById('ytplayer');
+  if (!iframe || !iframe.contentWindow) return;
+  iframe.contentWindow.postMessage(
+    JSON.stringify({ event: 'command', func, args: args || [] }), '*'
+  );
 }
 
-function loadPlayer(video) {
-  const params = {
-    autoplay:       1,
-    controls:       0,
-    rel:            0,
-    modestbranding: 1,
-    iv_load_policy: 3,
-    disablekb:      1,
-    fs:             0,
-    cc_load_policy: 0,
-    mute:           1,   // mudo para autoplay funcionar no mobile
-    origin:         window.location.origin,
-  };
-
-  if (player) {
-    player.loadVideoById(video.youtube_id);
-    updateNowPlaying(video);
-  } else {
-    player = new YT.Player('ytplayer', {
-      videoId:     video.youtube_id,
-      playerVars:  params,
-      events: {
-        onReady:       onPlayerReady,
-        onStateChange: onPlayerStateChange,
-        onError:       onPlayerError,
-      },
-    });
-  }
-}
-
-function onPlayerReady(event) {
-  playerReady = true;
-  event.target.playVideo();
-  // Se TV (não mobile) ou usuário já tocou → unmuta e toca normal
-  const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
-  if (!isMobile) {
-    event.target.unMute();
-    event.target.setVolume(70);
-    hideLoading();
-  } else {
-    // Mobile: mostra botão "Toque para iniciar"
-    document.getElementById('tap-btn').style.display = 'block';
-  }
-  updateNowPlaying(playlist[currentIndex]);
-}
-
-function onPlayerStateChange(event) {
-  // ENDED (0) ou ERROR implícito → próximo vídeo
-  if (event.data === YT.PlayerState.ENDED) {
-    nextVideo();
-  }
-  // CUED (5) → forçar play
-  if (event.data === YT.PlayerState.CUED) {
-    event.target.playVideo();
-  }
-}
-
-function onPlayerError(event) {
-  console.warn('YT error', event.data, '→ próximo vídeo');
-  setTimeout(nextVideo, 1500);
-}
-
+// ── Próximo vídeo ─────────────────────────────────────────────────────────
 function nextVideo() {
-  currentIndex = (currentIndex + 1) % playlist.length;
   if (playlist.length === 0) return;
-  const v = playlist[currentIndex];
-  if (player) {
-    player.loadVideoById(v.youtube_id);
-    updateNowPlaying(v);
-  }
-  // Recarrega playlist a cada ciclo completo
-  if (currentIndex === 0) reloadPlaylist();
+  currentIndex = (currentIndex + 1) % playlist.length;
+  loadVideo(playlist[currentIndex]);
+  if (currentIndex === 0) fetchPlaylist();  // recarrega a cada ciclo
 }
 
-// ── Now Playing badge ────────────────────────────────────────────────────
+// ── Now Playing ───────────────────────────────────────────────────────────
 function updateNowPlaying(video) {
-  document.getElementById('np-title').textContent   = video.title   || 'Reproduzindo...';
+  document.getElementById('np-title').textContent   = video.title || 'Reproduzindo...';
   document.getElementById('np-channel').textContent = video.channel_name || '';
-
   const el = document.getElementById('now-playing');
   el.classList.remove('hidden');
-  clearTimeout(npHideTimeout);
-  npHideTimeout = setTimeout(() => el.classList.add('hidden'), 6000);
+  clearTimeout(npHideTimer);
+  npHideTimer = setTimeout(() => el.classList.add('hidden'), 6000);
 }
 
-// ── Loading screen ───────────────────────────────────────────────────────
+// ── Loading ───────────────────────────────────────────────────────────────
 function hideLoading() {
+  if (loadingHidden) return;
+  loadingHidden = true;
   const el = document.getElementById('loading-screen');
   if (el) { el.classList.add('hidden'); setTimeout(() => el.remove(), 1000); }
 }
 
+function userTap() {
+  if (playlist.length > 0) {
+    loadVideo(playlist[currentIndex]);
+    setTimeout(hideLoading, 2000);
+  } else {
+    location.reload();
+  }
+}
+
 // ── Carregar playlist ─────────────────────────────────────────────────────
-async function loadPlaylist() {
+async function fetchPlaylist() {
   try {
     const res  = await fetch(`${BASE_URL}api/tv/${CLIENT_CODE}/playlist?limit=30`);
     const data = await res.json();
-    if (!data.videos || data.videos.length === 0) {
-      document.getElementById('error-screen').classList.add('show');
-      hideLoading();
-      return false;
-    }
-    // Shuffle adicional no frontend
+    if (!data.videos || data.videos.length === 0) return false;
+
     playlist = data.videos.sort(() => Math.random() - 0.5);
 
-    // Atualiza ticker e modo se mudou
-    if (data.client && data.client.ticker_msg) {
-      buildTicker(data.client.ticker_msg);
-    }
-    if (data.mode !== currentMode) {
+    if (data.client?.ticker_msg) buildTicker(data.client.ticker_msg);
+    if (data.mode && data.mode !== currentMode) {
       currentMode = data.mode;
-      document.getElementById('mode-label').textContent =
-        data.mode_info?.label || currentMode;
+      const ml = document.getElementById('mode-label');
+      if (ml) ml.textContent = data.mode_info?.label || data.mode;
     }
     return true;
   } catch(e) {
-    console.error('Erro ao carregar playlist:', e);
+    console.error('Playlist error:', e);
     return false;
   }
 }
 
-async function reloadPlaylist() {
-  const ok = await loadPlaylist();
-  if (ok && playlist.length > 0 && player) {
-    currentIndex = 0;
-    player.loadVideoById(playlist[0].youtube_id);
-    updateNowPlaying(playlist[0]);
-  }
-}
-
-// ── Polling: detecta troca de modo a cada 30s ─────────────────────────────
-let lastMode = currentMode;
+// ── Polling modo (30s) ────────────────────────────────────────────────────
 setInterval(async () => {
   try {
     const res  = await fetch(`${BASE_URL}api/tv/${CLIENT_CODE}/status`);
     const data = await res.json();
-    if (data.mode && data.mode !== lastMode) {
-      lastMode = data.mode;
-      await reloadPlaylist();
+    if (data.mode && data.mode !== currentMode) {
+      currentMode = data.mode;
+      const ok = await fetchPlaylist();
+      if (ok && playlist.length > 0) { currentIndex = 0; loadVideo(playlist[0]); }
     }
-  } catch(e) { /* silencioso */ }
+  } catch(e) {}
 }, 30000);
 
-// ── Inicialização ─────────────────────────────────────────────────────────
+// ── Init ──────────────────────────────────────────────────────────────────
 (async () => {
   buildTicker(TICKER_MSGS);
 
-  const ok = await loadPlaylist();
+  const ok = await fetchPlaylist();
 
   if (!ok || playlist.length === 0) {
     hideLoading();
@@ -508,37 +464,20 @@ setInterval(async () => {
     return;
   }
 
-  // Injeta a YouTube IFrame API
-  const tag = document.createElement('script');
-  tag.src   = 'https://www.youtube.com/iframe_api';
-  document.head.appendChild(tag);
+  // Carrega primeiro vídeo
+  loadVideo(playlist[0]);
 
-  // Fallback: se em 6s o player não iniciou, mostra botão tap
+  // Fallback 1: mostra botão tap após 5s se ainda carregando
   setTimeout(() => {
-    const ls = document.getElementById('loading-screen');
-    if (ls && !ls.classList.contains('hidden')) {
+    if (!loadingHidden) {
       document.getElementById('tap-btn').style.display = 'block';
     }
-  }, 6000);
+  }, 5000);
 
-  // Fallback final: se em 20s ainda travado, mostra erro com retry
+  // Fallback 2: esconde loading após 12s de qualquer jeito
   setTimeout(() => {
-    const ls = document.getElementById('loading-screen');
-    if (ls && !ls.classList.contains('hidden')) {
-      hideLoading();
-      document.getElementById('error-screen').innerHTML = `
-        <div style="font-size:48px">📺</div>
-        <h2>Toque para iniciar</h2>
-        <p>O player precisa de interação para começar.</p>
-        <button onclick="location.reload()" style="
-          margin-top:16px; background:#6366f1; color:#fff;
-          border:none; border-radius:100px; padding:14px 32px;
-          font-size:16px; font-weight:700; cursor:pointer;">
-          ▶ Iniciar
-        </button>`;
-      document.getElementById('error-screen').classList.add('show');
-    }
-  }, 20000);
+    hideLoading();
+  }, 12000);
 })();
 </script>
 </body>
