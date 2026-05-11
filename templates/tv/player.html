@@ -4,6 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{{ client.name }} — 4KITEM TV</title>
+  <!-- YouTube IFrame Player API — carregada antes do body -->
+  <script src="https://www.youtube.com/iframe_api"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -20,6 +22,7 @@
       position: fixed; inset: 0; z-index: 1;
       background: #000;
     }
+    /* A API cria um iframe com id="ytplayer" dentro da div */
     #ytplayer {
       width: 100%; height: 100%;
       border: none; display: block;
@@ -217,10 +220,6 @@
       transition: opacity .3s;
     }
     #unmute-btn.hidden { opacity: 0; pointer-events: none; }
-    @keyframes pulse-btn {
-      0%,100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(99,102,241,0.4); }
-      50% { transform: scale(1.03); box-shadow: 0 0 0 8px rgba(99,102,241,0); }
-    }
 
     /* ── Erro / sem vídeos ── */
     #error-screen {
@@ -241,7 +240,7 @@
 <div id="loading-screen" onclick="userTap()">
   <div class="loading-logo"><span>4K</span>ITEM</div>
   <div class="loading-mode" id="loading-mode-label">{{ mode_info.label }}</div>
-  <div class="loading-bar"><div class="loading-fill" id="loading-fill"></div></div>
+  <div class="loading-bar"><div class="loading-fill"></div></div>
   <div class="loading-hint">{{ client.name }}</div>
   <button class="tap-to-start" id="tap-btn">▶ Toque para iniciar</button>
 </div>
@@ -256,15 +255,9 @@
   <p>A biblioteca está sendo preenchida. Tente outro modo ou aguarde alguns minutos.</p>
 </div>
 
-<!-- Player YouTube -->
+<!-- Player YouTube — div substituída pela API ao inicializar -->
 <div id="yt-wrap">
-  <iframe id="ytplayer"
-    src="about:blank"
-    width="100%" height="100%"
-    style="border:none;display:block;pointer-events:none;"
-    allow="autoplay; encrypted-media; fullscreen"
-    allowfullscreen>
-  </iframe>
+  <div id="ytplayer"></div>
 </div>
 
 <!-- Bloqueadores de UI do YouTube -->
@@ -297,9 +290,7 @@
 
   <!-- Ticker -->
   <div class="overlay-ticker">
-    <div class="ticker-track" id="ticker-track">
-      <!-- populado via JS -->
-    </div>
+    <div class="ticker-track" id="ticker-track"></div>
   </div>
 
   <!-- Modo atual -->
@@ -319,201 +310,262 @@
 </div>
 
 <script>
-// ── Config ───────────────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════
+//  4KITEM TV Player — YouTube IFrame Player API (oficial)
+//  Vantagens vs postMessage manual:
+//    - onStateChange é um callback JS direto, sem parseamento de mensagens
+//    - loadVideoById() troca de vídeo SEM recriar o iframe
+//    - Mute/volume persistem entre trocas de vídeo (mesmo iframe)
+//    - Mais robusto a mudanças no formato da API do YouTube
+// ══════════════════════════════════════════════════════════════════════════
+
 const CLIENT_CODE = "{{ client.code }}";
 const BASE_URL    = window.location.origin + '/';
 const TICKER_MSGS = {{ (client.ticker_msg or '') | tojson }};
 
-let playlist      = [];
-let currentIndex  = 0;
-let currentMode   = "{{ client.mode }}";
-let npHideTimer   = null;
-let videoTimer    = null;
-let loadingHidden = false;
-let skipTimer     = null;     // detecta vídeo que não inicia
-let videoStarted  = false;
-let videoStartTime = 0;       // quando o vídeo começou a tocar
-let currentVideoId = null;    // youtube_id em exibição
-let nextVideoLock  = false;   // anti-duplo-skip
-let consecutiveErrors = 0;    // conta erros seguidos (embed bloqueado)
+// ── Estado do player ──────────────────────────────────────────────────────
+let ytPlayer          = null;   // instância da YT.Player API
+let playerReady       = false;  // onReady já disparou
+let playlistReady     = false;  // fetchPlaylist() concluiu
 
-// ── Ticker ───────────────────────────────────────────────────────────────
-function buildTicker(msgs) {
-  const track = document.getElementById('ticker-track');
-  if (!track) return;
-  const parts  = (msgs || '').split('·').map(s => s.trim()).filter(Boolean);
-  const extras = [
-    '4KITEM — Plataforma de TV para ambientes profissionais',
-    'Conteúdo curado e verificado para a sua sala de espera',
-    new Date().toLocaleDateString('pt-BR', { weekday:'long', day:'numeric', month:'long', year:'numeric' }),
-  ];
-  const all = [...parts, ...extras];
-  let html = '';
-  for (let i = 0; i < 2; i++) {
-    all.forEach(msg => {
-      html += `<span class="ticker-item">${msg}</span><span class="ticker-sep">✦</span>`;
-    });
-  }
-  track.innerHTML = html;
+let playlist          = [];
+let currentIndex      = 0;
+let currentMode       = "{{ client.mode }}";
+
+let npHideTimer       = null;
+let videoTimer        = null;   // timeout de 25min (avanço forçado)
+let skipTimer         = null;   // timeout se o vídeo não iniciar
+let loadingHidden     = false;
+
+let videoStarted      = false;  // state=1 (playing) já foi recebido
+let videoStartTime    = 0;      // Date.now() quando state=1 chegou pela 1ª vez
+let currentVideoId    = null;
+
+let nextVideoLock     = false;  // impede skip duplo simultâneo
+let consecutiveErrors = 0;
+
+let endedDebounce     = null;   // debounce do state=0
+let videoRestarts     = 0;      // tentativas de restart no vídeo atual
+
+let isMuted           = true;   // estado de mute do usuário
+
+// ── YouTube IFrame API — callback global exigido pela API ─────────────────
+// Esta função é chamada automaticamente quando a API carrega
+function onYouTubeIframeAPIReady() {
+  ytPlayer = new YT.Player('ytplayer', {
+    width:  '100%',
+    height: '100%',
+    playerVars: {
+      autoplay:       1,
+      controls:       0,   // sem controles (TV mode)
+      mute:           1,   // começa mudo (autoplay policy)
+      rel:            0,
+      modestbranding: 1,
+      iv_load_policy: 3,
+      disablekb:      1,
+      fs:             0,
+      cc_load_policy: 0,
+      playsinline:    1,
+      origin:         window.location.origin,
+    },
+    events: {
+      onReady:       onPlayerReady,
+      onStateChange: onPlayerStateChange,
+      onError:       onPlayerError,
+    },
+  });
 }
 
-// ── Carregar vídeo (iframe direto — sem YT JS API) ────────────────────────
+// ── Callbacks da API ──────────────────────────────────────────────────────
+function onPlayerReady() {
+  playerReady = true;
+  hideLoading();
+  // Se a playlist já foi carregada, começa a tocar
+  if (playlistReady && playlist.length > 0) {
+    loadVideo(playlist[0]);
+  }
+  // Fallback: se API carregou mas playlist demorou > 20s
+  setTimeout(() => {
+    if (!videoStarted && playlist.length > 0) loadVideo(playlist[currentIndex]);
+  }, 20000);
+}
+
+function onPlayerStateChange(event) {
+  const state = event.data;
+  // -1=unstarted  0=ended  1=playing  2=paused  3=buffering  5=cued
+
+  // ── PLAYING ──────────────────────────────────────────────────────────
+  if (state === 1) {
+    clearTimeout(endedDebounce);   // cancela qualquer restart/skip pendente
+    clearTimeout(skipTimer);
+    if (!videoStarted) {
+      videoStartTime = Date.now(); // grava o instante real de início
+    }
+    videoStarted      = true;
+    consecutiveErrors = 0;
+    hideLoading();
+
+    if (!isMuted) {
+      ytPlayer.unMute();
+      ytPlayer.setVolume(85);
+    }
+  }
+
+  // ── BUFFERING ─────────────────────────────────────────────────────────
+  if (state === 3) {
+    if (!videoStarted) {
+      // Vídeo ainda não começou: dá 20s para sair do buffering
+      clearTimeout(skipTimer);
+      skipTimer = setTimeout(() => {
+        if (!videoStarted) {
+          console.warn('[4K] Buffering timeout (20s) — avançando');
+          safeNextVideo();
+        }
+      }, 20000);
+    }
+    hideLoading();
+  }
+
+  // ── ENDED ─────────────────────────────────────────────────────────────
+  if (state === 0) {
+    clearTimeout(endedDebounce);
+
+    if (!videoStarted) {
+      // Nunca entrou em playing → embed bloqueado
+      consecutiveErrors++;
+      safeNextVideo({ badVideo: currentVideoId });
+      return;
+    }
+
+    const playedSec = (Date.now() - videoStartTime) / 1000;
+
+    if (playedSec < 45 && videoRestarts < 2) {
+      // ── Terminou em menos de 45s ──────────────────────────────────────
+      // Pode ser: anúncio pré-roll, transição de chapter, Short em loop,
+      // restrição de conteúdo. Estratégia: debounce de 1.5s e reinicia.
+      // Se state=1 voltar nesse tempo (ex: ad → vídeo real), cancela.
+      videoRestarts++;
+      const restartId = currentVideoId;
+      console.warn(`[4K] ENDED cedo (${playedSec.toFixed(1)}s) → restart #${videoRestarts}`);
+      endedDebounce = setTimeout(() => {
+        if (currentVideoId !== restartId) return; // vídeo já trocou
+        ytPlayer.seekTo(0, true);
+        ytPlayer.playVideo();
+      }, 1500);
+
+    } else {
+      // ── Terminou após 45s ou esgotou restarts → avança normalmente ────
+      consecutiveErrors = 0;
+      safeNextVideo();
+    }
+  }
+
+  // ── PAUSED ────────────────────────────────────────────────────────────
+  if (state === 2) {
+    ytPlayer.playVideo(); // TV mode: sem pause
+  }
+}
+
+function onPlayerError(event) {
+  // Códigos: 2=param  5=HTML5  100=não encontrado  101/150=embed bloqueado
+  const code      = event.data;
+  const isBlocked = (code === 100 || code === 101 || code === 150);
+  console.warn(`[4K] YT error ${code}${isBlocked ? ' (embed bloqueado)' : ''}`);
+
+  consecutiveErrors++;
+  videoStarted = true;        // evita double-skip pelo skipTimer
+  clearTimeout(skipTimer);
+  clearTimeout(endedDebounce);
+
+  safeNextVideo(isBlocked ? { badVideo: currentVideoId } : {});
+}
+
+// ── Carregar vídeo ────────────────────────────────────────────────────────
+// Usa loadVideoById() — NÃO recria o iframe, mantém mute/volume inalterados
 function loadVideo(video) {
+  if (!ytPlayer || !playerReady) return;
+
   videoStarted   = false;
   videoStartTime = 0;
   nextVideoLock  = false;
   currentVideoId = video.youtube_id;
+  videoRestarts  = 0;
+  clearTimeout(endedDebounce);
+  clearTimeout(skipTimer);
 
-  const iframe = document.getElementById('ytplayer');
-  const origin = encodeURIComponent(window.location.origin);
-  iframe.src =
-    `https://www.youtube.com/embed/${video.youtube_id}` +
-    `?autoplay=1&controls=0&mute=1&rel=0&modestbranding=1` +
-    `&iv_load_policy=3&disablekb=1&fs=0&cc_load_policy=0` +
-    `&enablejsapi=1&widgetid=1&origin=${origin}`;
+  // Troca de vídeo sem recriar iframe — sons persistem!
+  ytPlayer.loadVideoById(video.youtube_id);
+
+  // Se o usuário já ligou o som, garante que continua ligado após a troca
+  if (!isMuted) {
+    // loadVideoById pode resetar o mute; reaplicamos após 300ms
+    setTimeout(() => {
+      if (!isMuted && ytPlayer) {
+        ytPlayer.unMute();
+        ytPlayer.setVolume(85);
+      }
+    }, 300);
+  }
 
   updateNowPlaying(video);
 
-  // Fallback: se player não responder em 14s → pula
-  clearTimeout(skipTimer);
+  // Fallback: 20s sem state=1 → pula
   skipTimer = setTimeout(() => {
     if (!videoStarted) {
-      console.warn('Player não respondeu em 14s, pulando...');
+      console.warn('[4K] Skip timer (20s): vídeo nunca iniciou');
       safeNextVideo();
     }
-  }, 14000);
+  }, 20000);
 
-  // Fallback: avança em 20 min caso o vídeo não termine sozinho
+  // Segurança: avança após 25 minutos independente do estado
   clearTimeout(videoTimer);
-  videoTimer = setTimeout(safeNextVideo, 20 * 60 * 1000);
+  videoTimer = setTimeout(safeNextVideo, 25 * 60 * 1000);
 }
 
 // ── Próximo vídeo com proteção anti-ciclo ────────────────────────────────
 function safeNextVideo(opts = {}) {
-  if (nextVideoLock) return;          // evita chamadas duplas simultâneas
+  if (nextVideoLock) return;
   nextVideoLock = true;
 
   const badId = opts.badVideo || null;
-
-  // Delay extra se muitos erros seguidos (todos bloqueados)
   const delay = consecutiveErrors >= 3 ? 3000 : 0;
 
   setTimeout(() => {
-    // Remove vídeo ruim da playlist local
     if (badId) {
       playlist = playlist.filter(v => v.youtube_id !== badId);
-      // Reporta para o servidor deletar do banco
       reportBadVideo(badId).catch(() => {});
     }
 
     if (playlist.length === 0) {
       fetchPlaylist().then(ok => {
         if (ok && playlist.length > 0) { currentIndex = 0; loadVideo(playlist[0]); }
-        else {
-          document.getElementById('error-screen').classList.add('show');
-        }
+        else { document.getElementById('error-screen').classList.add('show'); }
       });
       return;
     }
 
     currentIndex = (currentIndex + 1) % playlist.length;
     loadVideo(playlist[currentIndex]);
-    if (currentIndex === 0) fetchPlaylist();  // recarrega a cada ciclo
+    if (currentIndex === 0) fetchPlaylist(); // recarrega a cada ciclo
   }, delay);
 }
 
-// ── postMessage: YouTube envia eventos pelo enablejsapi ──────────────────
-window.addEventListener('message', (event) => {
-  if (event.origin !== 'https://www.youtube.com') return;
-  try {
-    const data = JSON.parse(event.data);
-
-    if (data.event === 'onReady') {
-      ytCmd('playVideo');
-      hideLoading();
-      if (!isMuted) { ytCmd('unMute'); ytCmd('setVolume', [85]); }
-      // Player respondeu: reseta timer — dá 10s para state change chegar
-      clearTimeout(skipTimer);
-      skipTimer = setTimeout(() => {
-        if (!videoStarted) {
-          console.warn('Player pronto mas sem state change em 10s, pulando...');
-          safeNextVideo();
-        }
-      }, 10000);
-    }
-
-    if (data.event === 'onStateChange') {
-      // -1=unstarted  0=ended  1=playing  2=paused  3=buffering  5=queued
-      if (data.info === 1 || data.info === 3) {      // PLAYING ou BUFFERING
-        videoStarted   = true;
-        videoStartTime = Date.now();
-        consecutiveErrors = 0;                        // reset: vídeo OK
-        clearTimeout(skipTimer);
-        hideLoading();
-        if (!isMuted) { ytCmd('unMute'); ytCmd('setVolume', [85]); }
-      }
-
-      if (data.info === 0) {                          // ENDED
-        const played = Date.now() - videoStartTime;
-        if (videoStarted && played > 8000) {
-          // Vídeo tocou pelo menos 8s → encerramento legítimo
-          consecutiveErrors = 0;
-          safeNextVideo();
-        } else if (videoStarted) {
-          // Encerrou muito rápido (<8s) — possível Shorts/blocked
-          console.warn(`Vídeo encerrou em ${played}ms, tratando como bloqueado`);
-          consecutiveErrors++;
-          safeNextVideo({ badVideo: currentVideoId });
-        } else {
-          // Nunca chegou a tocar — embed bloqueado
-          consecutiveErrors++;
-          safeNextVideo({ badVideo: currentVideoId });
-        }
-      }
-
-      if (data.info === 2) ytCmd('playVideo');        // PAUSED → força play
-    }
-
-    if (data.event === 'onError') {
-      // 2=param inválido  5=HTML5  100=não encontrado  101/150=embed bloqueado
-      const errCode = data.info;
-      const isBlocked = (errCode === 101 || errCode === 150 || errCode === 100);
-      console.warn(`YT onError ${errCode}${isBlocked ? ' (embed bloqueado)' : ''}`);
-
-      consecutiveErrors++;
-      videoStarted = true;                            // evita duplo skip pelo timer
-      clearTimeout(skipTimer);
-
-      // Vídeos com embed bloqueado vão para blacklist permanente
-      safeNextVideo(isBlocked ? { badVideo: currentVideoId } : {});
-    }
-  } catch(e) {}
-});
-
-// Envia comando para o iframe via postMessage
-function ytCmd(func, args) {
-  const iframe = document.getElementById('ytplayer');
-  if (!iframe || !iframe.contentWindow) return;
-  iframe.contentWindow.postMessage(
-    JSON.stringify({ event: 'command', func, args: args || [] }), '*'
-  );
-}
-
-let isMuted = true;
+// ── Som ───────────────────────────────────────────────────────────────────
 function unmutePlayer() {
   isMuted = false;
-  ytCmd('unMute');
-  ytCmd('setVolume', [85]);
-  const btn = document.getElementById('unmute-btn');
-  if (btn) btn.classList.add('hidden');
+  if (ytPlayer) {
+    ytPlayer.unMute();
+    ytPlayer.setVolume(85);
+  }
+  document.getElementById('unmute-btn').classList.add('hidden');
 }
 
-// ── Reporta vídeo ruim ao servidor (remove do banco) ─────────────────────
+// ── Reporta vídeo bloqueado ao servidor ──────────────────────────────────
 async function reportBadVideo(youtubeId) {
   try {
     await fetch(`${BASE_URL}api/tv/${CLIENT_CODE}/bad-video/${youtubeId}`,
       { method: 'POST' });
-    console.info(`Vídeo ${youtubeId} marcado como bloqueado no banco`);
+    console.info(`[4K] ${youtubeId} marcado como bloqueado`);
   } catch(e) {}
 }
 
@@ -536,12 +588,32 @@ function hideLoading() {
 }
 
 function userTap() {
-  if (playlist.length > 0) {
+  if (playerReady && playlist.length > 0) {
     loadVideo(playlist[currentIndex]);
-    setTimeout(hideLoading, 2000);
+    setTimeout(hideLoading, 1000);
   } else {
     location.reload();
   }
+}
+
+// ── Ticker ────────────────────────────────────────────────────────────────
+function buildTicker(msgs) {
+  const track = document.getElementById('ticker-track');
+  if (!track) return;
+  const parts  = (msgs || '').split('·').map(s => s.trim()).filter(Boolean);
+  const extras = [
+    '4KITEM — Plataforma de TV para ambientes profissionais',
+    'Conteúdo curado e verificado para a sua sala de espera',
+    new Date().toLocaleDateString('pt-BR', { weekday:'long', day:'numeric', month:'long', year:'numeric' }),
+  ];
+  const all = [...parts, ...extras];
+  let html = '';
+  for (let i = 0; i < 2; i++) {
+    all.forEach(msg => {
+      html += `<span class="ticker-item">${msg}</span><span class="ticker-sep">✦</span>`;
+    });
+  }
+  track.innerHTML = html;
 }
 
 // ── Carregar playlist ─────────────────────────────────────────────────────
@@ -561,12 +633,12 @@ async function fetchPlaylist() {
     }
     return true;
   } catch(e) {
-    console.error('Playlist error:', e);
+    console.error('[4K] Playlist error:', e);
     return false;
   }
 }
 
-// ── Polling modo (30s) ────────────────────────────────────────────────────
+// ── Polling de modo (30s) ─────────────────────────────────────────────────
 setInterval(async () => {
   try {
     const res  = await fetch(`${BASE_URL}api/tv/${CLIENT_CODE}/status`);
@@ -591,20 +663,23 @@ setInterval(async () => {
     return;
   }
 
-  // Carrega primeiro vídeo
-  loadVideo(playlist[0]);
+  playlistReady = true;
 
-  // Fallback 1: mostra botão tap após 5s se ainda carregando
+  // Se o player já estava pronto (API carregou primeiro), começa imediatamente
+  if (playerReady) {
+    loadVideo(playlist[0]);
+  }
+  // Senão, onPlayerReady() vai chamar loadVideo quando a API terminar de carregar
+
+  // Mostra botão "Toque para iniciar" após 5s (caso o autoplay seja bloqueado)
   setTimeout(() => {
     if (!loadingHidden) {
       document.getElementById('tap-btn').style.display = 'block';
     }
   }, 5000);
 
-  // Fallback 2: esconde loading após 12s de qualquer jeito
-  setTimeout(() => {
-    hideLoading();
-  }, 12000);
+  // Failsafe: esconde loading após 15s de qualquer jeito
+  setTimeout(hideLoading, 15000);
 })();
 </script>
 </body>
