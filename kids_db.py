@@ -19,41 +19,49 @@ MODES = {
                        'Aventura', 'Entretenimento', 'Minecraft',
                        'Brincadeiras', 'Bonecas', 'Brinquedos', 'Vlogs'],
         'age_min': 0, 'age_max': 14,
+        'languages': ['PT-BR', 'Instrumental'],
     },
     'saude': {
         'label': '🏥 Saúde',       'desc':  'Saúde, bem-estar e natureza',
         'categories': ['Saúde', 'Natureza', 'Bem-estar', 'Educativo'],
         'age_min': 16, 'age_max': 99,
+        'languages': ['PT-BR'],
     },
     'juridico': {
         'label': '⚖️ Jurídico',    'desc':  'Notícias e informação',
         'categories': ['Notícias', 'Finanças', 'Jornalismo'],
         'age_min': 18, 'age_max': 99,
+        'languages': ['PT-BR'],
     },
     'escola': {
         'label': '📚 Escola',      'desc':  'Educação e ciência',
         'categories': ['Educativo', 'Ciência', 'História', 'Musical'],
         'age_min': 5, 'age_max': 17,
+        'languages': ['PT-BR', 'Instrumental'],
     },
     'fitness': {
         'label': '💪 Fitness',     'desc':  'Motivação e performance',
         'categories': ['Esportes', 'Motivacional', 'Saúde', 'Fitness'],
         'age_min': 16, 'age_max': 99,
+        'languages': ['PT-BR'],
     },
     'beleza': {
         'label': '💅 Beleza',      'desc':  'Lifestyle e beleza',
         'categories': ['Lifestyle', 'Culinária', 'Beleza'],
         'age_min': 14, 'age_max': 99,
+        'languages': ['PT-BR'],
     },
     'vibe': {
         'label': '🎵 Vibe',        'desc':  'Música ambiente e shows',
         'categories': ['Lofi', 'Jazz', 'Shows', 'Música', 'Musical'],
         'age_min': 0, 'age_max': 99,
+        'languages': None,   # aceita qualquer idioma (música instrumental)
     },
     'evento': {
         'label': '🎪 Evento',      'desc':  'Shows e entretenimento',
         'categories': ['Shows', 'Música', 'Entretenimento', 'Musical', 'Lofi'],
         'age_min': 0, 'age_max': 99,
+        'languages': None,   # aceita qualquer idioma
     },
 }
 
@@ -72,12 +80,10 @@ SEED_CHANNELS = [
     ('Cocoricó',             '@cocorico',                'UCA6Roeo-qFVk3jvjAdag7Uw',  3,  6, 'N', 'Educativo',      'PT-BR', 1),
     ('Numberblocks PT-BR',   '@numberblocks_pt',         'UCkup3lAYe6aCRyIIHQbIZWg',  3,  7, 'N', 'Educativo',      'PT-BR', 1),
     ('Patrulha Canina',      '@PAWPatrolPortuguesBrasil','UCgukxHgi0zZXBHhuzksN54A',  3,  7, 'N', 'Aventura',       'PT-BR', 1),
-    ('Bluey',                '@BlueyOfficialChannel',    'UCVzLLZkDuFGAE2BGdBuBNBg',  3,  8, 'N', 'Animação',       'EN',    1),
+    ('Bluey PT-BR',          '@BlueyBrasil',             'UCGbO3KpKFBfHkFQVG49WKMA',  3,  8, 'N', 'Animação',       'PT-BR', 1),
     ('Larva TUBA',           '@LarvaOfficialChannel',    'UCph-WGR0oCbJDpaWmNHb5zg',  3,  7, 'N', 'Humor',          'Instrumental', 1),
     ('Oddbods',              '@Oddbods',                 'UCtlth0w7_mYqpHPViMhQ99Q',  3,  7, 'N', 'Humor',          'Instrumental', 1),
-    ('Hey Duggee',           '@HeyDuggee',               'UCj_mFUb-47d9QNiJ5556LjQ',  3,  7, 'N', 'Educativo',      'EN',    1),
     ('Masha e o Urso',       '@MashaandBear',            'UCu59yAFE8fM0sVNTipR4edw',  3,  8, 'F', 'Animação',       'PT-BR', 1),
-    ('Peppa Pig',            '@PeppaPig',                'UCAOtE1V7Ots4DjM8JLlrYgg',  3,  6, 'F', 'Animação',       'EN',    1),
     ('Mônica Toy',           '@monicatoy',               'UC54BNgZlPoWZg-Jg66Dt9SA',  4,  9, 'N', 'Animação',       'PT-BR', 1),
     ('Turma da Mônica',      '@TurmaDaMonica',           'UCV4XcEqBswMCryorV_gNENw',  4, 10, 'N', 'Animação',       'PT-BR', 1),
     # ── KIDS 6-14 ─────────────────────────────────────────────────────────
@@ -208,6 +214,15 @@ def init_db():
                 'Bem-vindo! · Informe à recepção sua chegada · Obrigado pela preferência')
     """)
 
+    # Desativa canais EN que não devem aparecer em modos PT-BR
+    canais_en_remover = [
+        '@BlueyOfficialChannel',  # substituído por PT-BR
+        '@HeyDuggee',             # sem versão PT-BR
+        '@PeppaPig',              # duplicata — já temos PT-BR
+    ]
+    for handle in canais_en_remover:
+        conn.execute("UPDATE channels SET active = 0 WHERE handle = ?", (handle,))
+
     conn.commit()
     conn.close()
 
@@ -215,9 +230,20 @@ def init_db():
 # ── Queries: vídeos por modo ───────────────────────────────────────────────
 def get_videos_for_mode(mode: str, limit: int = 30, shuffle: bool = True) -> list:
     """Retorna vídeos filtrados pelo modo de ambiente."""
-    cfg = MODES.get(mode, MODES['kids'])
+    cfg  = MODES.get(mode, MODES['kids'])
     cats = cfg['categories']
-    placeholders = ','.join('?' * len(cats))
+    langs = cfg.get('languages')  # None = sem filtro de idioma
+
+    cat_ph = ','.join('?' * len(cats))
+    params = list(cats)
+
+    lang_clause = ''
+    if langs:
+        lang_ph = ','.join('?' * len(langs))
+        lang_clause = f'AND c.language IN ({lang_ph})'
+        params += list(langs)
+
+    params += [cfg['age_max'], cfg['age_min'], limit]
 
     conn  = get_conn()
     order = 'RANDOM()' if shuffle else 'v.published_at DESC'
@@ -229,12 +255,13 @@ def get_videos_for_mode(mode: str, limit: int = 30, shuffle: bool = True) -> lis
         FROM videos v
         JOIN channels c ON c.id = v.channel_ref
         WHERE c.active = 1
-          AND c.category IN ({placeholders})
+          AND c.category IN ({cat_ph})
+          {lang_clause}
           AND v.age_min  <= ?
           AND v.age_max  >= ?
         ORDER BY {order}
         LIMIT ?
-    """, (*cats, cfg['age_max'], cfg['age_min'], limit)).fetchall()
+    """, params).fetchall()
     conn.close()
     return [dict(r) for r in rows]
 
