@@ -343,6 +343,14 @@ function userTap() {
     player.setVolume(70);
     player.playVideo();
     hideLoading();
+  } else if (playlist.length > 0) {
+    // Player ainda não inicializou — força criar agora
+    if (typeof YT !== 'undefined' && YT.Player) {
+      loadPlayer(playlist[0]);
+    } else {
+      // YouTube API não carregou — recarrega a página
+      location.reload();
+    }
   }
 }
 
@@ -491,13 +499,46 @@ setInterval(async () => {
 // ── Inicialização ─────────────────────────────────────────────────────────
 (async () => {
   buildTicker(TICKER_MSGS);
+
   const ok = await loadPlaylist();
-  if (!ok) return;
+
+  if (!ok || playlist.length === 0) {
+    hideLoading();
+    document.getElementById('error-screen').classList.add('show');
+    return;
+  }
 
   // Injeta a YouTube IFrame API
-  const tag    = document.createElement('script');
-  tag.src      = 'https://www.youtube.com/iframe_api';
+  const tag = document.createElement('script');
+  tag.src   = 'https://www.youtube.com/iframe_api';
   document.head.appendChild(tag);
+
+  // Fallback: se em 6s o player não iniciou, mostra botão tap
+  setTimeout(() => {
+    const ls = document.getElementById('loading-screen');
+    if (ls && !ls.classList.contains('hidden')) {
+      document.getElementById('tap-btn').style.display = 'block';
+    }
+  }, 6000);
+
+  // Fallback final: se em 20s ainda travado, mostra erro com retry
+  setTimeout(() => {
+    const ls = document.getElementById('loading-screen');
+    if (ls && !ls.classList.contains('hidden')) {
+      hideLoading();
+      document.getElementById('error-screen').innerHTML = `
+        <div style="font-size:48px">📺</div>
+        <h2>Toque para iniciar</h2>
+        <p>O player precisa de interação para começar.</p>
+        <button onclick="location.reload()" style="
+          margin-top:16px; background:#6366f1; color:#fff;
+          border:none; border-radius:100px; padding:14px 32px;
+          font-size:16px; font-weight:700; cursor:pointer;">
+          ▶ Iniciar
+        </button>`;
+      document.getElementById('error-screen').classList.add('show');
+    }
+  }, 20000);
 })();
 </script>
 </body>
