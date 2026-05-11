@@ -18,7 +18,7 @@ app = Flask(__name__)
 from kids_db import (
     init_db, get_videos, get_channels, total_videos, stats,
     get_videos_for_mode, get_client, set_client_mode,
-    create_client, MODES,
+    create_client, mark_video_blocked, MODES,
 )
 
 # ══════════════════════════════════════════════════════════════════════════
@@ -171,6 +171,18 @@ def api_kids_stats():
 @app.route('/api/modes')
 def api_modes():
     return jsonify(MODES)
+
+# ── Blacklist: vídeo com embed bloqueado reportado pelo player ────────────
+@app.route('/api/tv/<code>/bad-video/<youtube_id>', methods=['POST'])
+def api_bad_video(code, youtube_id):
+    """Player reporta vídeo com embed bloqueado → remove do banco."""
+    client = get_client(code)
+    if not client:
+        return jsonify({'error': 'client not found'}), 404
+    removed = mark_video_blocked(youtube_id)
+    log.info(f"Vídeo bloqueado reportado: {youtube_id} (removido={removed})")
+    return jsonify({'ok': True, 'removed': removed})
+
 
 # ── Admin: refresh scraper ────────────────────────────────────────────────
 @app.route('/kids/admin/refresh', methods=['POST'])

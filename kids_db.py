@@ -150,17 +150,22 @@ def init_db():
         );
 
         CREATE TABLE IF NOT EXISTS videos (
-            id           INTEGER PRIMARY KEY AUTOINCREMENT,
-            channel_ref  INTEGER REFERENCES channels(id) ON DELETE CASCADE,
-            youtube_id   TEXT    UNIQUE NOT NULL,
-            title        TEXT,
-            thumbnail    TEXT,
-            published_at TEXT,
-            age_min      INTEGER DEFAULT 0,
-            age_max      INTEGER DEFAULT 14,
-            gender       TEXT    DEFAULT 'N',
-            last_seen    TEXT    DEFAULT CURRENT_TIMESTAMP
+            id            INTEGER PRIMARY KEY AUTOINCREMENT,
+            channel_ref   INTEGER REFERENCES channels(id) ON DELETE CASCADE,
+            youtube_id    TEXT    UNIQUE NOT NULL,
+            title         TEXT,
+            thumbnail     TEXT,
+            published_at  TEXT,
+            age_min       INTEGER DEFAULT 0,
+            age_max       INTEGER DEFAULT 14,
+            gender        TEXT    DEFAULT 'N',
+            embedding_ok  INTEGER DEFAULT 1,
+            last_seen     TEXT    DEFAULT CURRENT_TIMESTAMP
         );
+
+        -- Adiciona coluna se já existir tabela sem ela (migração)
+        CREATE TABLE IF NOT EXISTS _migration_embedding_ok (done INTEGER);
+
 
         CREATE TABLE IF NOT EXISTS clients (
             id          INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -198,11 +203,16 @@ def init_db():
                     (name, handle, channel_id, age_min, age_max, gender, category, language, is_safe)
                 VALUES (?,?,?,?,?,?,?,?,?)
             """, ch)
-            # Atualiza is_safe e channel_id se necessário
+            # Atualiza channel_id se ainda estiver NULL
             conn.execute("""
-                UPDATE channels SET channel_id = ?, is_safe = ?
+                UPDATE channels SET channel_id = ?
+                WHERE handle = ? AND channel_id IS NULL
+            """, (ch[2], ch[1]))
+            # Atualiza is_safe sempre (pode ter mudado)
+            conn.execute("""
+                UPDATE channels SET is_safe = ?
                 WHERE handle = ?
-            """, (ch[2], ch[8], ch[1]))
+            """, (ch[8], ch[1]))
 
     # Demo client
     conn.execute("""
@@ -211,6 +221,13 @@ def init_db():
                 'Schroeder - SC',
                 'Bem-vindo! · Informe à recepção sua chegada · Obrigado pela preferência')
     """)
+
+    # Migração: adiciona coluna embedding_ok se não existir
+    try:
+        conn.execute("ALTER TABLE videos ADD COLUMN embedding_ok INTEGER DEFAULT 1")
+        conn.commit()
+    except Exception:
+        pass  # coluna já existe
 
     # Corrige clientes que tinham modo removido (juridico/evento) → vibe
     conn.execute("""
@@ -265,6 +282,7 @@ def get_videos_for_mode(mode: str, limit: int = 30, shuffle: bool = True) -> lis
           AND c.category IN ({cat_ph})
           {lang_clause}
           {safe_clause}
+          AND v.embedding_ok = 1
           AND v.age_min  <= ?
           AND v.age_max  >= ?
         ORDER BY {order}
@@ -384,6 +402,18 @@ def update_channel_id(db_id: int, yt_channel_id: str):
         conn.close()
 
 
+def mark_video_blocked(youtube_id: str) -> bool:
+    """Marca vídeo como embedding_ok=0 (embed bloqueado pelo canal).
+    Retorna True se o vídeo existia no banco."""
+    conn = get_conn()
+    cur  = conn.execute(
+        "UPDATE videos SET embedding_ok = 0 WHERE youtube_id = ?", (youtube_id,)
+    )
+    conn.commit()
+    conn.close()
+    return cur.rowcount > 0
+
+
 def add_channel(name, handle, channel_id=None, age_min=0, age_max=14,
                 gender='N', category='Geral', language='PT-BR', is_safe=1):
     conn = get_conn()
@@ -401,7 +431,8 @@ def stats():
     r = {
         'channels':          conn.execute("SELECT COUNT(*) FROM channels WHERE active=1").fetchone()[0],
         'channels_resolved': conn.execute("SELECT COUNT(*) FROM channels WHERE channel_id IS NOT NULL AND active=1").fetchone()[0],
-        'videos':            conn.execute("SELECT COUNT(*) FROM videos").fetchone()[0],
+        'videos':            conn.execute("SELECT COUNT(*) FROM videos WHERE embedding_ok=1").fetchone()[0],
+        'videos_blocked':    conn.execute("SELECT COUNT(*) FROM videos WHERE embedding_ok=0").fetchone()[0],
         'clients':           conn.execute("SELECT COUNT(*) FROM clients WHERE active=1").fetchone()[0],
         'modes':             list(MODES.keys()),
     }

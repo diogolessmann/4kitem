@@ -324,14 +324,18 @@ const CLIENT_CODE = "{{ client.code }}";
 const BASE_URL    = window.location.origin + '/';
 const TICKER_MSGS = {{ (client.ticker_msg or '') | tojson }};
 
-let playlist     = [];
-let currentIndex = 0;
-let currentMode  = "{{ client.mode }}";
-let npHideTimer  = null;
-let videoTimer   = null;
+let playlist      = [];
+let currentIndex  = 0;
+let currentMode   = "{{ client.mode }}";
+let npHideTimer   = null;
+let videoTimer    = null;
 let loadingHidden = false;
-let skipTimer    = null;   // detecta vídeo que não inicia
-let videoStarted = false;
+let skipTimer     = null;     // detecta vídeo que não inicia
+let videoStarted  = false;
+let videoStartTime = 0;       // quando o vídeo começou a tocar
+let currentVideoId = null;    // youtube_id em exibição
+let nextVideoLock  = false;   // anti-duplo-skip
+let consecutiveErrors = 0;    // conta erros seguidos (embed bloqueado)
 
 // ── Ticker ───────────────────────────────────────────────────────────────
 function buildTicker(msgs) {
@@ -355,7 +359,11 @@ function buildTicker(msgs) {
 
 // ── Carregar vídeo (iframe direto — sem YT JS API) ────────────────────────
 function loadVideo(video) {
-  videoStarted = false;
+  videoStarted   = false;
+  videoStartTime = 0;
+  nextVideoLock  = false;
+  currentVideoId = video.youtube_id;
+
   const iframe = document.getElementById('ytplayer');
   const origin = encodeURIComponent(window.location.origin);
   iframe.src =
@@ -367,18 +375,51 @@ function loadVideo(video) {
   updateNowPlaying(video);
 
   // Fallback: se player não responder em 14s → pula
-  // (embed desativado, vídeo deletado, timeout de rede)
   clearTimeout(skipTimer);
   skipTimer = setTimeout(() => {
     if (!videoStarted) {
       console.warn('Player não respondeu em 14s, pulando...');
-      nextVideo();
+      safeNextVideo();
     }
   }, 14000);
 
-  // Fallback: avança em 15 min caso o vídeo não termine
+  // Fallback: avança em 20 min caso o vídeo não termine sozinho
   clearTimeout(videoTimer);
-  videoTimer = setTimeout(nextVideo, 15 * 60 * 1000);
+  videoTimer = setTimeout(safeNextVideo, 20 * 60 * 1000);
+}
+
+// ── Próximo vídeo com proteção anti-ciclo ────────────────────────────────
+function safeNextVideo(opts = {}) {
+  if (nextVideoLock) return;          // evita chamadas duplas simultâneas
+  nextVideoLock = true;
+
+  const badId = opts.badVideo || null;
+
+  // Delay extra se muitos erros seguidos (todos bloqueados)
+  const delay = consecutiveErrors >= 3 ? 3000 : 0;
+
+  setTimeout(() => {
+    // Remove vídeo ruim da playlist local
+    if (badId) {
+      playlist = playlist.filter(v => v.youtube_id !== badId);
+      // Reporta para o servidor deletar do banco
+      reportBadVideo(badId).catch(() => {});
+    }
+
+    if (playlist.length === 0) {
+      fetchPlaylist().then(ok => {
+        if (ok && playlist.length > 0) { currentIndex = 0; loadVideo(playlist[0]); }
+        else {
+          document.getElementById('error-screen').classList.add('show');
+        }
+      });
+      return;
+    }
+
+    currentIndex = (currentIndex + 1) % playlist.length;
+    loadVideo(playlist[currentIndex]);
+    if (currentIndex === 0) fetchPlaylist();  // recarrega a cada ciclo
+  }, delay);
 }
 
 // ── postMessage: YouTube envia eventos pelo enablejsapi ──────────────────
@@ -391,37 +432,60 @@ window.addEventListener('message', (event) => {
       ytCmd('playVideo');
       hideLoading();
       if (!isMuted) { ytCmd('unMute'); ytCmd('setVolume', [85]); }
-      // Player respondeu: reseta timer para mais 10s para o vídeo iniciar
-      // (em TVs via cast, o state change pode demorar mais que o timeout inicial)
+      // Player respondeu: reseta timer — dá 10s para state change chegar
       clearTimeout(skipTimer);
       skipTimer = setTimeout(() => {
         if (!videoStarted) {
-          console.warn('Player pronto mas vídeo bloqueado, pulando...');
-          nextVideo();
+          console.warn('Player pronto mas sem state change em 10s, pulando...');
+          safeNextVideo();
         }
       }, 10000);
     }
 
     if (data.event === 'onStateChange') {
-      // -1=não iniciado 0=encerrado 1=tocando 2=pausado 3=buffering 5=enfileirado
-      if (data.info === 1 || data.info === 3) {  // PLAYING ou BUFFERING
-        videoStarted = true;
+      // -1=unstarted  0=ended  1=playing  2=paused  3=buffering  5=queued
+      if (data.info === 1 || data.info === 3) {      // PLAYING ou BUFFERING
+        videoStarted   = true;
+        videoStartTime = Date.now();
+        consecutiveErrors = 0;                        // reset: vídeo OK
         clearTimeout(skipTimer);
         hideLoading();
         if (!isMuted) { ytCmd('unMute'); ytCmd('setVolume', [85]); }
       }
-      if (data.info === 0) nextVideo();      // ENDED → próximo
-      if (data.info === 2) {                 // PAUSED (não deveria acontecer)
-        ytCmd('playVideo');
+
+      if (data.info === 0) {                          // ENDED
+        const played = Date.now() - videoStartTime;
+        if (videoStarted && played > 8000) {
+          // Vídeo tocou pelo menos 8s → encerramento legítimo
+          consecutiveErrors = 0;
+          safeNextVideo();
+        } else if (videoStarted) {
+          // Encerrou muito rápido (<8s) — possível Shorts/blocked
+          console.warn(`Vídeo encerrou em ${played}ms, tratando como bloqueado`);
+          consecutiveErrors++;
+          safeNextVideo({ badVideo: currentVideoId });
+        } else {
+          // Nunca chegou a tocar — embed bloqueado
+          consecutiveErrors++;
+          safeNextVideo({ badVideo: currentVideoId });
+        }
       }
+
+      if (data.info === 2) ytCmd('playVideo');        // PAUSED → força play
     }
 
     if (data.event === 'onError') {
-      // Códigos: 2=parâmetro inválido 5=HTML5 100=não encontrado 101/150=embed bloqueado
-      console.warn('YT error código:', data.info);
-      videoStarted = true; // marca para evitar duplo skip
+      // 2=param inválido  5=HTML5  100=não encontrado  101/150=embed bloqueado
+      const errCode = data.info;
+      const isBlocked = (errCode === 101 || errCode === 150 || errCode === 100);
+      console.warn(`YT onError ${errCode}${isBlocked ? ' (embed bloqueado)' : ''}`);
+
+      consecutiveErrors++;
+      videoStarted = true;                            // evita duplo skip pelo timer
       clearTimeout(skipTimer);
-      setTimeout(nextVideo, 500);
+
+      // Vídeos com embed bloqueado vão para blacklist permanente
+      safeNextVideo(isBlocked ? { badVideo: currentVideoId } : {});
     }
   } catch(e) {}
 });
@@ -444,12 +508,13 @@ function unmutePlayer() {
   if (btn) btn.classList.add('hidden');
 }
 
-// ── Próximo vídeo ─────────────────────────────────────────────────────────
-function nextVideo() {
-  if (playlist.length === 0) return;
-  currentIndex = (currentIndex + 1) % playlist.length;
-  loadVideo(playlist[currentIndex]);
-  if (currentIndex === 0) fetchPlaylist();  // recarrega a cada ciclo
+// ── Reporta vídeo ruim ao servidor (remove do banco) ─────────────────────
+async function reportBadVideo(youtubeId) {
+  try {
+    await fetch(`${BASE_URL}api/tv/${CLIENT_CODE}/bad-video/${youtubeId}`,
+      { method: 'POST' });
+    console.info(`Vídeo ${youtubeId} marcado como bloqueado no banco`);
+  } catch(e) {}
 }
 
 // ── Now Playing ───────────────────────────────────────────────────────────
