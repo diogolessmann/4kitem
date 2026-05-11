@@ -94,7 +94,7 @@ SEED_CHANNELS = [
     ('Julia MineGirl',       '@juliaminegirl',           'UCEOGSdXwcXcNfcuDGbjmgOw',  9, 14, 'F', 'Minecraft',      'PT-BR', 1),
     # ── SAÚDE / ADULTO ────────────────────────────────────────────────────
     ('Drauzio Varella',      '@drauziovarella',          'UC9zqTTVeClpqMQ5CLuJdWtw', 18, 99, 'N', 'Saúde',          'PT-BR', 1),
-    ('Manual do Mundo',      '@manualdomundo',           'UCKHhA5hN2UohhFDfNXB_cvQ', 14, 99, 'N', 'Educativo',      'PT-BR', 1),
+    ('Manual do Mundo',      '@manualdomundo',           'UCKHhA5hN2UohhFDfNXB_cvQ', 16, 99, 'N', 'Educativo',      'PT-BR', 1),
     ('Minha Vida',           '@minhavidaoficial',        'UCMYTIyqS1-7wT-3pBB8bR5A', 18, 99, 'N', 'Saúde',          'PT-BR', 1),
     # ── NOTÍCIAS / JORNALISMO ─────────────────────────────────────────────
     ('G1',                   '@g1',                      'UCaGmdJSSiR7fkh2A-c6emsA', 18, 99, 'N', 'Jornalismo',     'PT-BR', 1),

@@ -204,6 +204,24 @@
       50% { transform: scale(1.05); }
     }
 
+    /* ── Botão unmute ── */
+    #unmute-btn {
+      position: fixed; bottom: 80px; right: 20px; z-index: 15;
+      background: rgba(0,0,0,0.75); backdrop-filter: blur(8px);
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 100px; padding: 10px 18px;
+      color: #fff; font-size: 15px; font-weight: 700;
+      cursor: pointer; display: flex; align-items: center; gap: 8px;
+      font-family: inherit;
+      animation: pulse-btn 2s ease infinite;
+      transition: opacity .3s;
+    }
+    #unmute-btn.hidden { opacity: 0; pointer-events: none; }
+    @keyframes pulse-btn {
+      0%,100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(99,102,241,0.4); }
+      50% { transform: scale(1.03); box-shadow: 0 0 0 8px rgba(99,102,241,0); }
+    }
+
     /* ── Erro / sem vídeos ── */
     #error-screen {
       display: none;
@@ -227,6 +245,9 @@
   <div class="loading-hint">{{ client.name }}</div>
   <button class="tap-to-start" id="tap-btn">▶ Toque para iniciar</button>
 </div>
+
+<!-- Botão unmute -->
+<button id="unmute-btn" onclick="unmutePlayer()">🔇 Toque para ligar o som</button>
 
 <!-- Tela de erro -->
 <div id="error-screen">
@@ -354,15 +375,16 @@ window.addEventListener('message', (event) => {
     const data = JSON.parse(event.data);
 
     if (data.event === 'onReady') {
-      // Player pronto: desmuta e toca
-      ytCmd('unMute');
-      ytCmd('setVolume', [80]);
       ytCmd('playVideo');
       hideLoading();
+      if (!isMuted) { ytCmd('unMute'); ytCmd('setVolume', [85]); }
     }
 
     if (data.event === 'onStateChange') {
-      if (data.info === 1) hideLoading();   // PLAYING
+      if (data.info === 1) {                 // PLAYING
+        hideLoading();
+        if (!isMuted) { ytCmd('unMute'); ytCmd('setVolume', [85]); }
+      }
       if (data.info === 0) nextVideo();      // ENDED
     }
 
@@ -380,6 +402,15 @@ function ytCmd(func, args) {
   iframe.contentWindow.postMessage(
     JSON.stringify({ event: 'command', func, args: args || [] }), '*'
   );
+}
+
+let isMuted = true;
+function unmutePlayer() {
+  isMuted = false;
+  ytCmd('unMute');
+  ytCmd('setVolume', [85]);
+  const btn = document.getElementById('unmute-btn');
+  if (btn) btn.classList.add('hidden');
 }
 
 // ── Próximo vídeo ─────────────────────────────────────────────────────────
