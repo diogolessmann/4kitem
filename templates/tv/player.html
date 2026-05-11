@@ -366,14 +366,15 @@ function loadVideo(video) {
 
   updateNowPlaying(video);
 
-  // Fallback: se não começar em 6s → pula (embed desativado, vídeo deletado, etc.)
+  // Fallback: se player não responder em 14s → pula
+  // (embed desativado, vídeo deletado, timeout de rede)
   clearTimeout(skipTimer);
   skipTimer = setTimeout(() => {
     if (!videoStarted) {
-      console.warn('Vídeo não iniciou, pulando...');
+      console.warn('Player não respondeu em 14s, pulando...');
       nextVideo();
     }
-  }, 6000);
+  }, 14000);
 
   // Fallback: avança em 15 min caso o vídeo não termine
   clearTimeout(videoTimer);
@@ -390,22 +391,37 @@ window.addEventListener('message', (event) => {
       ytCmd('playVideo');
       hideLoading();
       if (!isMuted) { ytCmd('unMute'); ytCmd('setVolume', [85]); }
+      // Player respondeu: reseta timer para mais 10s para o vídeo iniciar
+      // (em TVs via cast, o state change pode demorar mais que o timeout inicial)
+      clearTimeout(skipTimer);
+      skipTimer = setTimeout(() => {
+        if (!videoStarted) {
+          console.warn('Player pronto mas vídeo bloqueado, pulando...');
+          nextVideo();
+        }
+      }, 10000);
     }
 
     if (data.event === 'onStateChange') {
+      // -1=não iniciado 0=encerrado 1=tocando 2=pausado 3=buffering 5=enfileirado
       if (data.info === 1 || data.info === 3) {  // PLAYING ou BUFFERING
         videoStarted = true;
         clearTimeout(skipTimer);
         hideLoading();
         if (!isMuted) { ytCmd('unMute'); ytCmd('setVolume', [85]); }
       }
-      if (data.info === 0) nextVideo();      // ENDED
+      if (data.info === 0) nextVideo();      // ENDED → próximo
+      if (data.info === 2) {                 // PAUSED (não deveria acontecer)
+        ytCmd('playVideo');
+      }
     }
 
     if (data.event === 'onError') {
-      console.warn('YT error', data.info);
-      videoStarted = true; // evita duplo skip
-      setTimeout(nextVideo, 800);
+      // Códigos: 2=parâmetro inválido 5=HTML5 100=não encontrado 101/150=embed bloqueado
+      console.warn('YT error código:', data.info);
+      videoStarted = true; // marca para evitar duplo skip
+      clearTimeout(skipTimer);
+      setTimeout(nextVideo, 500);
     }
   } catch(e) {}
 });

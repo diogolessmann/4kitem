@@ -11,108 +11,106 @@ import string
 _base = os.environ.get('DATA_DIR', os.path.dirname(__file__))
 DB_PATH = os.path.join(_base, 'kids.db')
 
-# ── 8 Modos de ambiente ─────────────────────────────────────────────────────
+# ── 6 Modos de ambiente ─────────────────────────────────────────────────────
 MODES = {
     'kids': {
-        'label': '🧒 Kids',        'desc':  'Conteúdo infantil verificado',
+        'label': '🧒 Kids',     'desc': 'Conteúdo infantil verificado — PT-BR',
         'categories': ['Musical', 'Animação', 'Educativo', 'Humor',
                        'Aventura', 'Entretenimento', 'Minecraft',
                        'Brincadeiras', 'Bonecas', 'Brinquedos', 'Vlogs'],
         'age_min': 0, 'age_max': 14,
         'languages': ['PT-BR', 'Instrumental'],
+        'safe_only': True,   # apenas canais is_safe=1
     },
     'saude': {
-        'label': '🏥 Saúde',       'desc':  'Saúde, bem-estar e natureza',
+        'label': '🏥 Saúde',   'desc': 'Saúde, bem-estar e natureza',
         'categories': ['Saúde', 'Natureza', 'Bem-estar', 'Educativo'],
         'age_min': 16, 'age_max': 99,
         'languages': ['PT-BR'],
-    },
-    'juridico': {
-        'label': '⚖️ Jurídico',    'desc':  'Notícias e informação',
-        'categories': ['Notícias', 'Finanças', 'Jornalismo'],
-        'age_min': 18, 'age_max': 99,
-        'languages': ['PT-BR'],
+        'safe_only': True,
     },
     'escola': {
-        'label': '📚 Escola',      'desc':  'Educação e ciência',
+        'label': '📚 Escola',  'desc': 'Educação e ciência para jovens',
         'categories': ['Educativo', 'Ciência', 'História', 'Musical'],
         'age_min': 5, 'age_max': 17,
         'languages': ['PT-BR', 'Instrumental'],
+        'safe_only': True,
     },
     'fitness': {
-        'label': '💪 Fitness',     'desc':  'Motivação e performance',
+        'label': '💪 Fitness', 'desc': 'Motivação, esportes e performance',
         'categories': ['Esportes', 'Motivacional', 'Saúde', 'Fitness'],
         'age_min': 16, 'age_max': 99,
         'languages': ['PT-BR'],
+        'safe_only': False,
     },
     'beleza': {
-        'label': '💅 Beleza',      'desc':  'Lifestyle e beleza',
+        'label': '💅 Beleza',  'desc': 'Lifestyle, culinária e beleza',
         'categories': ['Lifestyle', 'Culinária', 'Beleza'],
         'age_min': 14, 'age_max': 99,
         'languages': ['PT-BR'],
+        'safe_only': False,
     },
     'vibe': {
-        'label': '🎵 Vibe',        'desc':  'Música ambiente e shows',
-        'categories': ['Lofi', 'Jazz', 'Shows', 'Música', 'Musical'],
+        'label': '🎵 Vibe',    'desc': 'Música ambiente, lofi e shows',
+        'categories': ['Lofi', 'Jazz', 'Shows', 'Música', 'Musical',
+                       'Entretenimento'],
         'age_min': 0, 'age_max': 99,
-        'languages': None,   # aceita qualquer idioma (música instrumental)
-    },
-    'evento': {
-        'label': '🎪 Evento',      'desc':  'Shows e entretenimento',
-        'categories': ['Shows', 'Música', 'Entretenimento', 'Musical', 'Lofi'],
-        'age_min': 0, 'age_max': 99,
-        'languages': None,   # aceita qualquer idioma
+        'languages': None,   # qualquer idioma — música instrumental
+        'safe_only': False,
     },
 }
 
 # ── Canais semente ─────────────────────────────────────────────────────────
 # (name, handle, channel_id, age_min, age_max, gender, category, language, is_safe)
+# is_safe=1 → adequado para qualquer ambiente público (clínica, escola, salão)
+# is_safe=0 → pode ter linguagem informal/publi excessiva — filtrado em kids/escola/saude
 SEED_CHANNELS = [
     # ── KIDS 0-4 ──────────────────────────────────────────────────────────
-    ('Galinha Pintadinha',   '@galinhapintadinha',       'UCBAb_DK4GYZqZR9MFA7y2Xg',  0,  4, 'N', 'Musical',        'PT-BR', 1),
-    ('Mundo Bita',           '@mundobita',               'UC0cGVh96osM7yqMu0ENSKKQ',  0,  5, 'N', 'Musical',        'PT-BR', 1),
-    ('Super Simple Songs',   '@SuperSimpleSongs',        'UCLsooMJoIpl_7ux2jvdPB-Q',  0,  4, 'N', 'Musical',        'Instrumental', 1),
-    ('Pocoyo PT-BR',         '@Pocoyo',                  'UCEnXFTwKRy4zSafAGPkooNA',  2,  6, 'N', 'Animação',       'PT-BR', 1),
-    ('Peppa Pig PT-BR',      '@PeppaPigBrasil',          'UCvD9GB-E4q_TuMpwUtFBhLA',  2,  6, 'N', 'Animação',       'PT-BR', 1),
-    ('CoComelon PT-BR',      '@CoComelon',               'UCbCmjCuTUZos6Inko4u57BA',  0,  5, 'N', 'Musical',        'PT-BR', 1),
+    ('Galinha Pintadinha',   '@galinhapintadinha',        'UCBAb_DK4GYZqZR9MFA7y2Xg',  0,  4, 'N', 'Musical',        'PT-BR',        1),
+    ('Mundo Bita',           '@mundobita',                'UC0cGVh96osM7yqMu0ENSKKQ',  0,  5, 'N', 'Musical',        'PT-BR',        1),
+    ('Super Simple Songs',   '@SuperSimpleSongs',         'UCLsooMJoIpl_7ux2jvdPB-Q',  0,  4, 'N', 'Musical',        'Instrumental', 1),
+    ('Pocoyo PT-BR',         '@Pocoyo',                   'UCEnXFTwKRy4zSafAGPkooNA',  2,  6, 'N', 'Animação',       'PT-BR',        1),
+    ('Peppa Pig PT-BR',      '@PeppaPigBrasil',           'UCvD9GB-E4q_TuMpwUtFBhLA',  2,  6, 'N', 'Animação',       'PT-BR',        1),
+    ('CoComelon PT-BR',      '@CoComelon',                'UCbCmjCuTUZos6Inko4u57BA',  0,  5, 'N', 'Musical',        'PT-BR',        1),
     # ── KIDS 3-8 ──────────────────────────────────────────────────────────
-    ('Patati Patatá',        '@PatatiPatataOficial',     'UCe-BBpsnL89BMr6WbvBQ9dw',  3,  6, 'N', 'Humor',          'PT-BR', 1),
-    ('Cocoricó',             '@cocorico',                'UCA6Roeo-qFVk3jvjAdag7Uw',  3,  6, 'N', 'Educativo',      'PT-BR', 1),
-    ('Numberblocks PT-BR',   '@numberblocks_pt',         'UCkup3lAYe6aCRyIIHQbIZWg',  3,  7, 'N', 'Educativo',      'PT-BR', 1),
-    ('Patrulha Canina',      '@PAWPatrolPortuguesBrasil','UCgukxHgi0zZXBHhuzksN54A',  3,  7, 'N', 'Aventura',       'PT-BR', 1),
-    ('Bluey PT-BR',          '@BlueyBrasil',             'UCGbO3KpKFBfHkFQVG49WKMA',  3,  8, 'N', 'Animação',       'PT-BR', 1),
-    ('Larva TUBA',           '@LarvaOfficialChannel',    'UCph-WGR0oCbJDpaWmNHb5zg',  3,  7, 'N', 'Humor',          'Instrumental', 1),
-    ('Oddbods',              '@Oddbods',                 'UCtlth0w7_mYqpHPViMhQ99Q',  3,  7, 'N', 'Humor',          'Instrumental', 1),
-    ('Masha e o Urso',       '@MashaandBear',            'UCu59yAFE8fM0sVNTipR4edw',  3,  8, 'F', 'Animação',       'PT-BR', 1),
-    ('Mônica Toy',           '@monicatoy',               'UC54BNgZlPoWZg-Jg66Dt9SA',  4,  9, 'N', 'Animação',       'PT-BR', 1),
-    ('Turma da Mônica',      '@TurmaDaMonica',           'UCV4XcEqBswMCryorV_gNENw',  4, 10, 'N', 'Animação',       'PT-BR', 1),
+    ('Patati Patatá',        '@PatatiPatataOficial',      'UCe-BBpsnL89BMr6WbvBQ9dw',  3,  6, 'N', 'Humor',          'PT-BR',        1),
+    ('Cocoricó',             '@cocorico',                 'UCA6Roeo-qFVk3jvjAdag7Uw',  3,  6, 'N', 'Educativo',      'PT-BR',        1),
+    ('Numberblocks PT-BR',   '@numberblocks_pt',          'UCkup3lAYe6aCRyIIHQbIZWg',  3,  7, 'N', 'Educativo',      'PT-BR',        1),
+    ('Patrulha Canina',      '@PAWPatrolPortuguesBrasil', 'UCgukxHgi0zZXBHhuzksN54A',  3,  7, 'N', 'Aventura',       'PT-BR',        1),
+    ('Bluey PT-BR',          '@BlueyBrasil',              'UCGbO3KpKFBfHkFQVG49WKMA',  3,  8, 'N', 'Animação',       'PT-BR',        1),
+    ('Larva TUBA',           '@LarvaOfficialChannel',     'UCph-WGR0oCbJDpaWmNHb5zg',  3,  7, 'N', 'Humor',          'Instrumental', 1),
+    ('Oddbods',              '@Oddbods',                  'UCtlth0w7_mYqpHPViMhQ99Q',  3,  7, 'N', 'Humor',          'Instrumental', 1),
+    ('Masha e o Urso',       '@MashaandBear',             'UCu59yAFE8fM0sVNTipR4edw',  3,  8, 'F', 'Animação',       'PT-BR',        1),
+    ('Mônica Toy',           '@monicatoy',                'UC54BNgZlPoWZg-Jg66Dt9SA',  4,  9, 'N', 'Animação',       'PT-BR',        1),
+    ('Turma da Mônica',      '@TurmaDaMonica',            'UCV4XcEqBswMCryorV_gNENw',  4, 10, 'N', 'Animação',       'PT-BR',        1),
     # ── KIDS 6-14 ─────────────────────────────────────────────────────────
-    ('Luccas Neto',          '@Luccasneto',              'UC_gV70G_Y51LTa3qhu8KiEA',  6, 12, 'N', 'Humor',          'PT-BR', 0),
-    ('Canal da Belinha',     '@CanaldaBelinhaOficial',   'UCaxmitHJDRZn2PPe5RAmMkA',  6, 10, 'F', 'Entretenimento', 'PT-BR', 1),
-    ('Enaldinho',            '@Enaldinho',               'UC2bYhAHyaqfWlPXWBVk4BcA',  9, 14, 'N', 'Humor',          'PT-BR', 0),
-    ('Authentic Games',      '@Authenticgames',          'UCIPA6iWNaoetaa1T46RkzXw',  9, 14, 'M', 'Minecraft',      'PT-BR', 1),
-    ('Julia MineGirl',       '@juliaminegirl',           'UCEOGSdXwcXcNfcuDGbjmgOw',  9, 14, 'F', 'Minecraft',      'PT-BR', 1),
-    # ── SAÚDE / ADULTO ────────────────────────────────────────────────────
-    ('Drauzio Varella',      '@drauziovarella',          'UC9zqTTVeClpqMQ5CLuJdWtw', 18, 99, 'N', 'Saúde',          'PT-BR', 1),
-    ('Manual do Mundo',      '@manualdomundo',           'UCKHhA5hN2UohhFDfNXB_cvQ', 16, 99, 'N', 'Educativo',      'PT-BR', 1),
-    ('Minha Vida',           '@minhavidaoficial',        'UCMYTIyqS1-7wT-3pBB8bR5A', 18, 99, 'N', 'Saúde',          'PT-BR', 1),
-    # ── NOTÍCIAS / JORNALISMO ─────────────────────────────────────────────
-    ('G1',                   '@g1',                      'UCaGmdJSSiR7fkh2A-c6emsA', 18, 99, 'N', 'Jornalismo',     'PT-BR', 1),
-    ('CNN Brasil',           '@CNNBrasil',               'UCvdwhh_fDyWccR42-rReZLw', 18, 99, 'N', 'Notícias',       'PT-BR', 1),
-    ('ND Mais',              '@ndmais',                  'UCrPY4EcE9XxY2aa25aRiIMw', 18, 99, 'N', 'Notícias',       'PT-BR', 1),
-    ('Jovem Pan News',       '@JovemPanNews',            'UCP391YRAjSOdM_bwievgaZA', 18, 99, 'N', 'Notícias',       'PT-BR', 1),
-    # ── MÚSICA / LOFI / SHOWS ─────────────────────────────────────────────
-    ('Lofi Girl',            '@LofiGirl',                'UCSJ4gkVC6NrvII8umztf0Ow',  0, 99, 'N', 'Lofi',           'Instrumental', 1),
-    ('Chillhop Music',       '@ChillhopMusic',           'UCOxqgCwgOqC2lMqC5PYz_Dg',  0, 99, 'N', 'Jazz',           'Instrumental', 1),
-    ('NPR Music',            '@NPRMusic',                'UC4eYXhJI4-7wSWc8UNRwD4A', 16, 99, 'N', 'Shows',          'EN',    1),
-    ('Cercle',               '@cerclemusic',             'UCPKT_csvP72boVX0XrMtagQ', 18, 99, 'N', 'Shows',          'EN',    1),
-    ('COLORS',               '@COLORSxSTUDIOS',          'UC2Qw1dzXDBAZPwS7zm37g8g', 16, 99, 'N', 'Shows',          'EN',    1),
-    # ── FITNESS / MOTIVACIONAL ────────────────────────────────────────────
-    ('Paulo Muzy',           '@paulomuzy',               'UCUOsr03iLj627hJm55cmIPw', 16, 99, 'M', 'Fitness',        'PT-BR', 1),
-    ('CazéTV',               '@CazeTv',                  'UCZiYbVptd3PVPf4f6eR6UaQ', 14, 99, 'N', 'Esportes',       'PT-BR', 1),
-    # ── CULINÁRIA / LIFESTYLE ─────────────────────────────────────────────
-    ('GNT Cozinha',          '@gnttv',                   'UC0f866RMRdL5mSVnipiOHxg', 18, 99, 'N', 'Culinária',      'PT-BR', 1),
-    ('Panelinha',            '@panelinha',               'UCfSPnAlDUTiIOAvNOI-a4yQ', 18, 99, 'N', 'Culinária',      'PT-BR', 1),
+    ('Canal da Belinha',     '@CanaldaBelinhaOficial',    'UCaxmitHJDRZn2PPe5RAmMkA',  6, 10, 'F', 'Entretenimento', 'PT-BR',        1),
+    ('Authentic Games',      '@Authenticgames',           'UCIPA6iWNaoetaa1T46RkzXw',  9, 14, 'M', 'Minecraft',      'PT-BR',        1),
+    ('Julia MineGirl',       '@juliaminegirl',            'UCEOGSdXwcXcNfcuDGbjmgOw',  9, 14, 'F', 'Minecraft',      'PT-BR',        1),
+    # is_safe=0 → não aparecem em kids/escola/saude (publi excessiva / linguagem informal)
+    ('Luccas Neto',          '@Luccasneto',               'UC_gV70G_Y51LTa3qhu8KiEA',  6, 12, 'N', 'Humor',          'PT-BR',        0),
+    ('Enaldinho',            '@Enaldinho',                'UC2bYhAHyaqfWlPXWBVk4BcA',  9, 14, 'N', 'Humor',          'PT-BR',        0),
+    # ── SAÚDE / EDUCATIVO ADULTO ──────────────────────────────────────────
+    ('Drauzio Varella',      '@drauziovarella',           'UC9zqTTVeClpqMQ5CLuJdWtw', 18, 99, 'N', 'Saúde',          'PT-BR',        1),
+    ('Minha Vida',           '@minhavidaoficial',         'UCMYTIyqS1-7wT-3pBB8bR5A', 18, 99, 'N', 'Saúde',          'PT-BR',        1),
+    ('Manual do Mundo',      '@manualdomundo',            'UCKHhA5hN2UohhFDfNXB_cvQ', 16, 99, 'N', 'Educativo',      'PT-BR',        1),
+    # ── FITNESS / ESPORTES ────────────────────────────────────────────────
+    ('Paulo Muzy',           '@paulomuzy',                'UCUOsr03iLj627hJm55cmIPw', 16, 99, 'M', 'Fitness',        'PT-BR',        1),
+    ('CazéTV',               '@CazeTv',                   'UCZiYbVptd3PVPf4f6eR6UaQ', 14, 99, 'N', 'Esportes',       'PT-BR',        1),
+    ('Foca no Esporte',      '@focanosporte',              'UCm2eXKSQJovV8iiD6RGLJBw', 14, 99, 'N', 'Esportes',       'PT-BR',        1),
+    # ── CULINÁRIA / LIFESTYLE / BELEZA ────────────────────────────────────
+    ('GNT Cozinha',          '@gnttv',                    'UC0f866RMRdL5mSVnipiOHxg', 18, 99, 'N', 'Culinária',      'PT-BR',        1),
+    ('Panelinha',            '@panelinha',                'UCfSPnAlDUTiIOAvNOI-a4yQ', 18, 99, 'N', 'Culinária',      'PT-BR',        1),
+    ('Tastemade Brasil',     '@TastemadeBrasil',          'UCfGbJsLYpGJ1OxoCMIhCG2Q', 16, 99, 'N', 'Culinária',      'PT-BR',        1),
+    ('Kefera',               '@kefera',                   'UCk3JZr7eS8jXOOFhV0CUJRA', 16, 99, 'F', 'Lifestyle',      'PT-BR',        0),
+    # ── MÚSICA / LOFI / VIBE ─────────────────────────────────────────────
+    ('Lofi Girl',            '@LofiGirl',                 'UCSJ4gkVC6NrvII8umztf0Ow',  0, 99, 'N', 'Lofi',           'Instrumental', 1),
+    ('Chillhop Music',       '@ChillhopMusic',            'UCOxqgCwgOqC2lMqC5PYz_Dg',  0, 99, 'N', 'Jazz',           'Instrumental', 1),
+    ('The Jazz Hop Café',    '@TheJazzHopCafe',            'UCnc_1wG6PwBJoEUJqJO6YHA',  0, 99, 'N', 'Jazz',           'Instrumental', 1),
+    ('Cercle',               '@cerclemusic',              'UCPKT_csvP72boVX0XrMtagQ', 18, 99, 'N', 'Shows',          'EN',           1),
+    ('COLORS',               '@COLORSxSTUDIOS',           'UC2Qw1dzXDBAZPwS7zm37g8g', 16, 99, 'N', 'Shows',          'EN',           1),
+    ('NPR Music',            '@NPRMusic',                 'UC4eYXhJI4-7wSWc8UNRwD4A', 16, 99, 'N', 'Shows',          'EN',           1),
+    ('TV Cultura Música',    '@tvculturaoficial',          'UCb6ogGALMHaJTvXMm9QibXA', 16, 99, 'N', 'Musical',        'PT-BR',        1),
 ]
 
 
@@ -200,11 +198,11 @@ def init_db():
                     (name, handle, channel_id, age_min, age_max, gender, category, language, is_safe)
                 VALUES (?,?,?,?,?,?,?,?,?)
             """, ch)
-            # Atualiza channel_id se ainda estiver NULL
+            # Atualiza is_safe e channel_id se necessário
             conn.execute("""
-                UPDATE channels SET channel_id = ?
-                WHERE handle = ? AND channel_id IS NULL
-            """, (ch[2], ch[1]))
+                UPDATE channels SET channel_id = ?, is_safe = ?
+                WHERE handle = ?
+            """, (ch[2], ch[8], ch[1]))
 
     # Demo client
     conn.execute("""
@@ -214,13 +212,19 @@ def init_db():
                 'Bem-vindo! · Informe à recepção sua chegada · Obrigado pela preferência')
     """)
 
+    # Corrige clientes que tinham modo removido (juridico/evento) → vibe
+    conn.execute("""
+        UPDATE clients SET mode = 'vibe'
+        WHERE mode IN ('juridico', 'evento')
+    """)
+
     # Desativa canais EN que não devem aparecer em modos PT-BR
-    canais_en_remover = [
+    canais_desativar = [
         '@BlueyOfficialChannel',  # substituído por PT-BR
         '@HeyDuggee',             # sem versão PT-BR
         '@PeppaPig',              # duplicata — já temos PT-BR
     ]
-    for handle in canais_en_remover:
+    for handle in canais_desativar:
         conn.execute("UPDATE channels SET active = 0 WHERE handle = ?", (handle,))
 
     conn.commit()
@@ -230,9 +234,10 @@ def init_db():
 # ── Queries: vídeos por modo ───────────────────────────────────────────────
 def get_videos_for_mode(mode: str, limit: int = 30, shuffle: bool = True) -> list:
     """Retorna vídeos filtrados pelo modo de ambiente."""
-    cfg  = MODES.get(mode, MODES['kids'])
-    cats = cfg['categories']
-    langs = cfg.get('languages')  # None = sem filtro de idioma
+    cfg       = MODES.get(mode, MODES['kids'])
+    cats      = cfg['categories']
+    langs     = cfg.get('languages')       # None = sem filtro de idioma
+    safe_only = cfg.get('safe_only', False)
 
     cat_ph = ','.join('?' * len(cats))
     params = list(cats)
@@ -242,6 +247,8 @@ def get_videos_for_mode(mode: str, limit: int = 30, shuffle: bool = True) -> lis
         lang_ph = ','.join('?' * len(langs))
         lang_clause = f'AND c.language IN ({lang_ph})'
         params += list(langs)
+
+    safe_clause = 'AND c.is_safe = 1' if safe_only else ''
 
     params += [cfg['age_max'], cfg['age_min'], limit]
 
@@ -257,6 +264,7 @@ def get_videos_for_mode(mode: str, limit: int = 30, shuffle: bool = True) -> lis
         WHERE c.active = 1
           AND c.category IN ({cat_ph})
           {lang_clause}
+          {safe_clause}
           AND v.age_min  <= ?
           AND v.age_max  >= ?
         ORDER BY {order}
