@@ -159,6 +159,7 @@
       display: flex; flex-direction: column;
       align-items: center; justify-content: center; gap: 24px;
       transition: opacity 0.8s ease;
+      cursor: pointer;
     }
     #loading-screen.hidden { opacity: 0; pointer-events: none; }
     .loading-logo {
@@ -179,14 +180,28 @@
     .loading-fill {
       height: 100%; background: linear-gradient(90deg, #6366f1, #8b5cf6);
       border-radius: 100px;
-      animation: loading-grow 2s ease forwards;
+      animation: loading-grow 3s ease forwards;
     }
     @keyframes loading-grow {
       from { width: 0; }
-      to   { width: 100%; }
+      to   { width: 90%; }
     }
     .loading-hint {
       font-size: 12px; color: rgba(255,255,255,0.25);
+    }
+    .tap-to-start {
+      display: none;
+      margin-top: 8px;
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      color: #fff; font-size: 16px; font-weight: 700;
+      border: none; border-radius: 100px;
+      padding: 14px 32px; cursor: pointer;
+      font-family: inherit;
+      animation: pulse-btn 1.5s ease infinite;
+    }
+    @keyframes pulse-btn {
+      0%,100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
     }
 
     /* ── Erro / sem vídeos ── */
@@ -205,11 +220,12 @@
 <body>
 
 <!-- Tela de loading -->
-<div id="loading-screen">
+<div id="loading-screen" onclick="userTap()">
   <div class="loading-logo"><span>4K</span>ITEM</div>
   <div class="loading-mode" id="loading-mode-label">{{ mode_info.label }}</div>
-  <div class="loading-bar"><div class="loading-fill"></div></div>
+  <div class="loading-bar"><div class="loading-fill" id="loading-fill"></div></div>
   <div class="loading-hint">{{ client.name }}</div>
+  <button class="tap-to-start" id="tap-btn">▶ Toque para iniciar</button>
 </div>
 
 <!-- Tela de erro -->
@@ -317,6 +333,19 @@ function onYouTubeIframeAPIReady() {
   loadPlayer(playlist[0]);
 }
 
+let playerReady = false;
+let userInteracted = false;
+
+function userTap() {
+  userInteracted = true;
+  if (playerReady && player) {
+    player.unMute();
+    player.setVolume(70);
+    player.playVideo();
+    hideLoading();
+  }
+}
+
 function loadPlayer(video) {
   const params = {
     autoplay:       1,
@@ -327,6 +356,7 @@ function loadPlayer(video) {
     disablekb:      1,
     fs:             0,
     cc_load_policy: 0,
+    mute:           1,   // mudo para autoplay funcionar no mobile
     origin:         window.location.origin,
   };
 
@@ -347,9 +377,18 @@ function loadPlayer(video) {
 }
 
 function onPlayerReady(event) {
-  event.target.setVolume(70);
+  playerReady = true;
   event.target.playVideo();
-  hideLoading();
+  // Se TV (não mobile) ou usuário já tocou → unmuta e toca normal
+  const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+  if (!isMobile) {
+    event.target.unMute();
+    event.target.setVolume(70);
+    hideLoading();
+  } else {
+    // Mobile: mostra botão "Toque para iniciar"
+    document.getElementById('tap-btn').style.display = 'block';
+  }
   updateNowPlaying(playlist[currentIndex]);
 }
 
