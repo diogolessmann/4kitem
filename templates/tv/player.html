@@ -345,7 +345,7 @@ let nextVideoLock     = false;  // impede skip duplo simultâneo
 let consecutiveErrors = 0;
 
 let endedDebounce     = null;   // debounce do state=0
-let videoRestarts     = 0;      // tentativas de restart no vídeo atual
+let endedCount        = 0;      // quantas vezes ENDED disparou no vídeo atual
 
 let isMuted           = true;   // estado de mute do usuário
 
@@ -429,6 +429,7 @@ function onPlayerStateChange(event) {
   // ── ENDED ─────────────────────────────────────────────────────────────
   if (state === 0) {
     clearTimeout(endedDebounce);
+    endedCount++;
 
     if (!videoStarted) {
       // Nunca entrou em playing → embed bloqueado
@@ -437,24 +438,18 @@ function onPlayerStateChange(event) {
       return;
     }
 
-    const playedSec = (Date.now() - videoStartTime) / 1000;
-
-    if (playedSec < 45 && videoRestarts < 2) {
-      // ── Terminou em menos de 45s ──────────────────────────────────────
-      // Pode ser: anúncio pré-roll, transição de chapter, Short em loop,
-      // restrição de conteúdo. Estratégia: debounce de 1.5s e reinicia.
-      // Se state=1 voltar nesse tempo (ex: ad → vídeo real), cancela.
-      videoRestarts++;
-      const restartId = currentVideoId;
-      console.warn(`[4K] ENDED cedo (${playedSec.toFixed(1)}s) → restart #${videoRestarts}`);
+    if (endedCount === 1) {
+      // Primeiro ENDED: debounce de 2s.
+      // Se state=1 voltar nesse intervalo (ex: anúncio terminou e o vídeo
+      // real começa, ou Short faz loop), clearTimeout cancela e não pula.
+      // Se não voltar → vídeo realmente terminou → avança.
       endedDebounce = setTimeout(() => {
-        if (currentVideoId !== restartId) return; // vídeo já trocou
-        ytPlayer.seekTo(0, true);
-        ytPlayer.playVideo();
-      }, 1500);
-
+        consecutiveErrors = 0;
+        safeNextVideo();
+      }, 2000);
     } else {
-      // ── Terminou após 45s ou esgotou restarts → avança normalmente ────
+      // Segundo ENDED no mesmo vídeo (Short em loop, fim real após ad):
+      // avança imediatamente, sem esperar.
       consecutiveErrors = 0;
       safeNextVideo();
     }
@@ -489,7 +484,7 @@ function loadVideo(video) {
   videoStartTime = 0;
   nextVideoLock  = false;
   currentVideoId = video.youtube_id;
-  videoRestarts  = 0;
+  endedCount     = 0;           // reseta a cada vídeo novo
   clearTimeout(endedDebounce);
   clearTimeout(skipTimer);
 
