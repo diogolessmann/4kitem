@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agendar — {{ biz.name }}</title>
+<meta name="description" content="Agende seu horário em {{ biz.name }} de forma rápida e fácil.">
+<style>
+  :root{--bg:#0f0f13;--surface:#1a1a24;--surface2:#22222f;--green:#27ae60;--text:#e8e8f0;--text2:#9090a8;--border:rgba(255,255,255,0.08);--radius:16px}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh;padding-bottom:40px}
+
+  .biz-header{background:linear-gradient(135deg,rgba(39,174,96,.2),rgba(39,174,96,.05));border-bottom:1px solid rgba(39,174,96,.2);padding:28px 20px;text-align:center}
+  .biz-icon{font-size:48px;margin-bottom:10px}
+  .biz-name{font-size:24px;font-weight:900;margin-bottom:4px}
+  .biz-sub{font-size:13px;color:var(--text2)}
+  .powered{display:inline-block;margin-top:12px;font-size:11px;color:var(--text2);background:var(--surface);padding:3px 10px;border-radius:10px}
+  .powered a{color:var(--green)}
+
+  .steps-bar{display:flex;gap:0;margin:20px auto;max-width:480px;padding:0 16px}
+  .step-dot{flex:1;text-align:center;position:relative}
+  .step-dot:not(:last-child):after{content:'';position:absolute;top:14px;left:50%;width:100%;height:2px;background:var(--border);z-index:0}
+  .step-dot.done:not(:last-child):after{background:var(--green)}
+  .step-circle{width:28px;height:28px;border-radius:50%;background:var(--surface2);border:2px solid var(--border);margin:0 auto 4px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;position:relative;z-index:1;transition:.3s}
+  .step-dot.active .step-circle{background:var(--green);border-color:var(--green);color:#fff}
+  .step-dot.done .step-circle{background:var(--green);border-color:var(--green);color:#fff}
+  .step-label{font-size:11px;color:var(--text2)}
+  .step-dot.active .step-label{color:var(--green);font-weight:600}
+
+  .content{max-width:480px;margin:0 auto;padding:20px 16px}
+  .section-title{font-size:15px;font-weight:700;margin-bottom:14px}
+
+  .service-btn{width:100%;background:var(--surface);border:2px solid var(--border);border-radius:12px;padding:14px 16px;color:var(--text);cursor:pointer;text-align:left;margin-bottom:10px;transition:.2s;font-family:inherit}
+  .service-btn:hover{border-color:var(--green);background:rgba(39,174,96,.05)}
+  .service-btn.selected{border-color:var(--green);background:rgba(39,174,96,.1)}
+  .service-btn .svc-name{font-weight:700;font-size:15px;margin-bottom:4px}
+  .service-btn .svc-meta{font-size:12px;color:var(--text2)}
+
+  .calendar{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:16px}
+  .cal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+  .cal-title{font-size:15px;font-weight:700}
+  .cal-nav{background:none;border:1px solid var(--border);color:var(--text2);width:30px;height:30px;border-radius:8px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;transition:.2s}
+  .cal-nav:hover{border-color:var(--green);color:var(--green)}
+  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+  .cal-day-label{text-align:center;font-size:11px;color:var(--text2);padding:4px 0;font-weight:600}
+  .cal-day{text-align:center;padding:7px 4px;border-radius:8px;cursor:pointer;font-size:13px;transition:.2s;border:1px solid transparent}
+  .cal-day.empty{cursor:default}
+  .cal-day.past{color:var(--text2);opacity:.35;cursor:not-allowed}
+  .cal-day.today{border-color:var(--green);color:var(--green);font-weight:700}
+  .cal-day.selected{background:var(--green);color:#fff;font-weight:700}
+  .cal-day.available:hover:not(.past){background:rgba(39,174,96,.15);border-color:var(--green)}
+
+  .slots-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px}
+  .slot-btn{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 4px;color:var(--text);cursor:pointer;font-size:13px;font-weight:600;text-align:center;transition:.2s;font-family:inherit}
+  .slot-btn:hover{border-color:var(--green);background:rgba(39,174,96,.1)}
+  .slot-btn.selected{background:var(--green);border-color:var(--green);color:#fff}
+
+  .form-group{margin-bottom:14px}
+  .form-group label{display:block;font-size:13px;color:var(--text2);margin-bottom:5px;font-weight:500}
+  .form-group input,.form-group textarea{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);padding:11px 14px;font-size:14px;outline:none;transition:.2s;font-family:inherit}
+  .form-group input:focus,.form-group textarea:focus{border-color:var(--green);box-shadow:0 0 0 2px rgba(39,174,96,.12)}
+
+  .btn-next{width:100%;padding:14px;background:linear-gradient(135deg,#27ae60,#2ecc71);border:none;border-radius:12px;color:#fff;font-size:15px;font-weight:700;cursor:pointer;transition:.2s;font-family:inherit;margin-top:8px}
+  .btn-next:hover{opacity:.9;transform:translateY(-1px)}
+  .btn-next:disabled{opacity:.5;cursor:not-allowed;transform:none}
+  .btn-back{width:100%;padding:11px;background:none;border:1px solid var(--border);border-radius:12px;color:var(--text2);font-size:14px;cursor:pointer;transition:.2s;font-family:inherit;margin-top:8px}
+  .btn-back:hover{border-color:var(--green);color:var(--green)}
+
+  .step-view{display:none}
+  .step-view.active{display:block}
+
+  .loading{text-align:center;padding:24px;color:var(--text2);font-size:13px}
+  .spinner{width:28px;height:28px;border:3px solid rgba(39,174,96,.2);border-top-color:var(--green);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 10px}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  .summary-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:16px}
+  .summary-row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:14px}
+  .summary-row:last-child{border:none}
+  .summary-row .label{color:var(--text2)}
+  .summary-row .value{font-weight:600}
+
+  .success-view{text-align:center;padding:40px 20px}
+  .success-icon{font-size:64px;margin-bottom:16px}
+  .success-title{font-size:24px;font-weight:800;margin-bottom:8px;color:var(--green)}
+  .success-sub{color:var(--text2);font-size:14px;line-height:1.6;margin-bottom:28px}
+  .wa-confirm-btn{display:inline-flex;align-items:center;gap:8px;background:linear-gradient(135deg,#25D366,#128C7E);color:#fff;padding:13px 24px;border-radius:12px;font-weight:700;font-size:15px;text-decoration:none;transition:.2s}
+  .wa-confirm-btn:hover{opacity:.9;transform:translateY(-1px)}
+</style>
+</head>
+<body>
+
+<div class="biz-header">
+  <div class="biz-icon">
+    {% if biz.business_type == 'barbearia' %}💈
+    {% elif biz.business_type == 'salao' %}💇
+    {% elif biz.business_type == 'clinica' %}🏥
+    {% elif biz.business_type == 'dentista' %}🦷
+    {% elif biz.business_type == 'estetica' %}💅
+    {% elif biz.business_type == 'mecanica' %}🔧
+    {% elif biz.business_type == 'advocacia' %}⚖️
+    {% elif biz.business_type == 'pet' %}🐾
+    {% elif biz.business_type == 'academia' %}💪
+    {% else %}🏢{% endif %}
+  </div>
+  <div class="biz-name">{{ biz.name }}</div>
+  <div class="biz-sub">📅 Agendamento Online · Norte de SC</div>
+  <div class="powered">Powered by <a href="/agenda">Agenda SC</a> · <a href="/">4KITEM</a></div>
+</div>
+
+<div class="steps-bar" id="steps-bar">
+  <div class="step-dot active" id="sdot-1">
+    <div class="step-circle">1</div>
+    <div class="step-label">Serviço</div>
+  </div>
+  <div class="step-dot" id="sdot-2">
+    <div class="step-circle">2</div>
+    <div class="step-label">Data</div>
+  </div>
+  <div class="step-dot" id="sdot-3">
+    <div class="step-circle">3</div>
+    <div class="step-label">Horário</div>
+  </div>
+  <div class="step-dot" id="sdot-4">
+    <div class="step-circle">4</div>
+    <div class="step-label">Confirmar</div>
+  </div>
+</div>
+
+<div class="content">
+
+  <!-- STEP 1: SERVIÇO -->
+  <div class="step-view active" id="step-1">
+    <div class="section-title">✂️ Escolha o serviço</div>
+    {% if services %}
+      {% for s in services %}
+      <button class="service-btn" onclick="selectService({{ s.id }}, '{{ s.name | e }}', {{ s.duration_minutes }}, {{ s.price }})">
+        <div class="svc-name">{{ s.name }}</div>
+        <div class="svc-meta">
+          ⏱️ {{ s.duration_minutes }} min
+          {% if s.price > 0 %} · 💰 R$ {{ '%.2f'|format(s.price) }}{% endif %}
+        </div>
+      </button>
+      {% endfor %}
+    {% else %}
+      <div style="text-align:center;padding:40px;color:var(--text2)">
+        <div style="font-size:32px;margin-bottom:10px">📋</div>
+        <p>Nenhum serviço disponível no momento.</p>
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- STEP 2: DATA -->
+  <div class="step-view" id="step-2">
+    <div class="section-title">📅 Escolha a data</div>
+    <div class="calendar">
+      <div class="cal-header">
+        <button class="cal-nav" onclick="changeMonth(-1)">‹</button>
+        <span class="cal-title" id="cal-title">—</span>
+        <button class="cal-nav" onclick="changeMonth(1)">›</button>
+      </div>
+      <div class="cal-grid">
+        <div class="cal-day-label">Seg</div>
+        <div class="cal-day-label">Ter</div>
+        <div class="cal-day-label">Qua</div>
+        <div class="cal-day-label">Qui</div>
+        <div class="cal-day-label">Sex</div>
+        <div class="cal-day-label">Sáb</div>
+        <div class="cal-day-label">Dom</div>
+        <div id="cal-days"></div>
+      </div>
+    </div>
+    <button class="btn-back" onclick="goStep(1)">← Voltar</button>
+  </div>
+
+  <!-- STEP 3: HORÁRIO -->
+  <div class="step-view" id="step-3">
+    <div class="section-title" id="slots-title">🕐 Horários disponíveis</div>
+    <div id="slots-container">
+      <div class="loading"><div class="spinner"></div>Buscando horários...</div>
+    </div>
+    <button class="btn-back" onclick="goStep(2)">← Voltar</button>
+  </div>
+
+  <!-- STEP 4: CONFIRMAR -->
+  <div class="step-view" id="step-4">
+    <div class="section-title">👤 Seus dados</div>
+    <div class="form-group">
+      <label>Nome completo *</label>
+      <input type="text" id="cust-name" placeholder="Seu nome">
+    </div>
+    <div class="form-group">
+      <label>WhatsApp *</label>
+      <input type="tel" id="cust-phone" placeholder="(47) 99999-9999">
+    </div>
+    <div class="form-group">
+      <label>Observação (opcional)</label>
+      <textarea id="cust-notes" rows="2" placeholder="Alguma informação extra para o profissional?"></textarea>
+    </div>
+    <div class="summary-box">
+      <div class="summary-row"><span class="label">📋 Serviço</span><span class="value" id="sum-service">—</span></div>
+      <div class="summary-row"><span class="label">📅 Data</span><span class="value" id="sum-date">—</span></div>
+      <div class="summary-row"><span class="label">🕐 Horário</span><span class="value" id="sum-time">—</span></div>
+      <div class="summary-row"><span class="label">🏢 Local</span><span class="value">{{ biz.name }}</span></div>
+    </div>
+    <button class="btn-next" id="confirm-btn" onclick="confirmBooking()">✅ Confirmar agendamento</button>
+    <button class="btn-back" onclick="goStep(3)">← Voltar</button>
+  </div>
+
+  <!-- SUCESSO -->
+  <div class="step-view" id="step-success">
+    <div class="success-view">
+      <div class="success-icon">🎉</div>
+      <div class="success-title">Agendado com sucesso!</div>
+      <div class="success-sub" id="success-msg">Seu agendamento foi enviado.<br>Aguarde a confirmação pelo WhatsApp.</div>
+      <a id="wa-confirm-link" href="#" target="_blank" class="wa-confirm-btn">💬 Avisar pelo WhatsApp</a>
+      <div style="margin-top:20px">
+        <a href="/agenda" style="font-size:13px;color:var(--text2)">← Voltar ao Agenda SC</a>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const SLUG = '{{ biz.slug }}';
+const BIZ_PHONE = '{{ biz.phone }}'.replace(/\D/g, '');
+const BIZ_NAME  = '{{ biz.name }}';
+
+let selectedService = null, selectedDate = null, selectedTime = null;
+let currentYear, currentMonth;
+
+const MONTH_NAMES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+const WEEKDAY_BR  = ['domingo','segunda','terça','quarta','quinta','sexta','sábado'];
+
+function goStep(n) {
+  document.querySelectorAll('.step-view').forEach(v => v.classList.remove('active'));
+  document.getElementById('step-' + n)?.classList.add('active');
+  document.querySelectorAll('.step-dot').forEach((d, i) => {
+    d.classList.remove('active', 'done');
+    if (i + 1 < n) d.classList.add('done');
+    if (i + 1 === n) d.classList.add('active');
+  });
+  window.scrollTo(0, 0);
+}
+
+function selectService(id, name, duration, price) {
+  selectedService = { id, name, duration, price };
+  const now = new Date();
+  currentYear = now.getFullYear(); currentMonth = now.getMonth();
+  renderCalendar(); goStep(2);
+}
+
+function renderCalendar() {
+  document.getElementById('cal-title').textContent = `${MONTH_NAMES[currentMonth]} ${currentYear}`;
+  const firstDay = new Date(currentYear, currentMonth, 1).getDay();
+  const offset = (firstDay + 6) % 7;
+  const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+  const today = new Date(); today.setHours(0,0,0,0);
+  const container = document.getElementById('cal-days');
+  container.style.cssText = 'grid-column:1/-1;display:contents';
+  let html = '';
+  for (let i = 0; i < offset; i++) html += '<div class="cal-day empty"></div>';
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dt = new Date(currentYear, currentMonth, d); dt.setHours(0,0,0,0);
+    const isPast = dt < today, isToday = dt.getTime() === today.getTime();
+    const dateStr = `${currentYear}-${String(currentMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    let cls = 'cal-day available';
+    if (isPast) cls = 'cal-day past';
+    if (isToday) cls += ' today';
+    if (selectedDate === dateStr) cls += ' selected';
+    html += `<div class="${cls}" ${!isPast ? `onclick="selectDate('${dateStr}')"` : ''}>${d}</div>`;
+  }
+  container.innerHTML = html;
+}
+
+function changeMonth(dir) {
+  currentMonth += dir;
+  if (currentMonth < 0) { currentMonth = 11; currentYear--; }
+  if (currentMonth > 11) { currentMonth = 0; currentYear++; }
+  renderCalendar();
+}
+
+async function selectDate(dateStr) {
+  selectedDate = dateStr; renderCalendar(); goStep(3); await loadSlots();
+}
+
+async function loadSlots() {
+  const container = document.getElementById('slots-container');
+  container.innerHTML = '<div class="loading"><div class="spinner"></div>Buscando horários...</div>';
+  const dt = new Date(selectedDate + 'T00:00:00');
+  const dayName = WEEKDAY_BR[dt.getDay()];
+  const [y, m, d] = selectedDate.split('-');
+  document.getElementById('slots-title').textContent = `🕐 ${dayName}, ${d}/${m}`;
+  try {
+    const r = await fetch(`/api/agenda/slots/${SLUG}?date=${selectedDate}&service_id=${selectedService.id}`);
+    const data = await r.json();
+    const slots = data.slots || [];
+    if (!slots.length) {
+      container.innerHTML = '<div style="text-align:center;padding:32px;color:var(--text2)"><div style="font-size:32px;margin-bottom:10px">😔</div><p>Nenhum horário disponível neste dia.<br>Escolha outra data.</p></div>';
+      return;
+    }
+    let html = '<div class="slots-grid">';
+    slots.forEach(s => {
+      html += `<button class="slot-btn${s === selectedTime ? ' selected' : ''}" onclick="selectSlot('${s}')">${s}</button>`;
+    });
+    html += '</div>';
+    container.innerHTML = html;
+  } catch(e) {
+    container.innerHTML = '<div style="text-align:center;padding:32px;color:var(--text2)">⚠️ Erro ao carregar horários.</div>';
+  }
+}
+
+function selectSlot(time) {
+  selectedTime = time;
+  document.querySelectorAll('.slot-btn').forEach(b => b.classList.toggle('selected', b.textContent === time));
+  const [y, m, d] = selectedDate.split('-');
+  const dt = new Date(selectedDate + 'T00:00:00');
+  const dayName = WEEKDAY_BR[dt.getDay()];
+  document.getElementById('sum-service').textContent = selectedService.name;
+  document.getElementById('sum-date').textContent    = `${dayName.charAt(0).toUpperCase()+dayName.slice(1)}, ${d}/${m}/${y}`;
+  document.getElementById('sum-time').textContent    = time;
+  goStep(4);
+}
+
+async function confirmBooking() {
+  const name  = document.getElementById('cust-name').value.trim();
+  const phone = document.getElementById('cust-phone').value.trim();
+  const notes = document.getElementById('cust-notes').value.trim();
+  if (!name)  { alert('⚠️ Informe seu nome.'); return; }
+  if (!phone) { alert('⚠️ Informe seu WhatsApp.'); return; }
+
+  const btn = document.getElementById('confirm-btn');
+  btn.disabled = true; btn.textContent = '⏳ Confirmando...';
+
+  try {
+    const r = await fetch(`/api/agenda/book/${SLUG}`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ customer_name: name, customer_phone: phone, customer_notes: notes,
+                             service_id: selectedService.id, date: selectedDate, time: selectedTime })
+    });
+    const d = await r.json();
+    if (d.success) {
+      const [y, m, dy] = selectedDate.split('-');
+      const dt = new Date(selectedDate + 'T00:00:00');
+      const dayName = WEEKDAY_BR[dt.getDay()];
+      document.getElementById('success-msg').innerHTML =
+        `<strong>${name}</strong>, seu agendamento foi enviado!<br><br>` +
+        `📋 <strong>${selectedService.name}</strong><br>` +
+        `📅 ${dayName.charAt(0).toUpperCase()+dayName.slice(1)}, ${dy}/${m} às <strong>${selectedTime}</strong><br>` +
+        `🏢 ${BIZ_NAME}<br><br>Aguarde a confirmação. ✅`;
+      const waNum = BIZ_PHONE.startsWith('55') ? BIZ_PHONE : '55' + BIZ_PHONE;
+      const msg = `Olá! Acabei de agendar pelo site:\n👤 ${name}\n📋 ${selectedService.name}\n📅 ${dayName}, ${dy}/${m} às ${selectedTime}\n📱 ${phone}`;
+      document.getElementById('wa-confirm-link').href = `https://wa.me/${waNum}?text=${encodeURIComponent(msg)}`;
+      document.getElementById('steps-bar').style.display = 'none';
+      document.querySelectorAll('.step-view').forEach(v => v.classList.remove('active'));
+      document.getElementById('step-success').classList.add('active');
+      window.scrollTo(0, 0);
+    } else {
+      alert('❌ ' + (d.error || 'Erro ao agendar. Tente novamente.'));
+      btn.disabled = false; btn.textContent = '✅ Confirmar agendamento';
+    }
+  } catch(e) {
+    alert('❌ Erro de conexão. Verifique sua internet.');
+    btn.disabled = false; btn.textContent = '✅ Confirmar agendamento';
+  }
+}
+</script>
+</body>
+</html>

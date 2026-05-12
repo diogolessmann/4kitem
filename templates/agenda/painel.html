@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Painel — {{ biz.name }} · Agenda SC</title>
+<style>
+  :root{--bg:#0f0f13;--surface:#1a1a24;--surface2:#22222f;--accent:#e94560;--accent2:#f5a623;--green:#27ae60;--blue:#3498db;--text:#e8e8f0;--text2:#9090a8;--border:rgba(255,255,255,0.08);--radius:14px}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh}
+  a{color:inherit;text-decoration:none}
+
+  nav{background:var(--surface);border-bottom:1px solid var(--border);padding:0 20px;height:58px;display:flex;align-items:center;gap:14px;position:sticky;top:0;z-index:100}
+  .nav-logo{font-size:17px;font-weight:900;background:linear-gradient(135deg,#27ae60,#2ecc71);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;flex:1}
+  .nav-biz{font-size:13px;color:var(--text2);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .nav-link{font-size:12px;color:var(--green);background:rgba(39,174,96,.1);border:1px solid rgba(39,174,96,.3);padding:5px 12px;border-radius:8px;cursor:pointer;transition:.2s}
+  .nav-link:hover{background:rgba(39,174,96,.2)}
+  .nav-logout{font-size:12px;color:var(--text2);background:none;border:1px solid var(--border);padding:5px 12px;border-radius:8px;cursor:pointer;transition:.2s}
+  .nav-logout:hover{border-color:var(--accent);color:var(--accent)}
+
+  .tabs{display:flex;gap:4px;padding:16px 20px 0;border-bottom:1px solid var(--border);overflow-x:auto;scrollbar-width:none}
+  .tabs::-webkit-scrollbar{display:none}
+  .tab-btn{padding:9px 18px;background:none;border:none;color:var(--text2);cursor:pointer;font-size:14px;border-bottom:2px solid transparent;transition:.2s;white-space:nowrap;font-family:inherit}
+  .tab-btn.active{color:var(--green);border-bottom-color:var(--green);font-weight:700}
+
+  .container{max-width:900px;margin:0 auto;padding:24px 16px}
+
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:24px}
+  .stat{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;text-align:center}
+  .stat .n{font-size:32px;font-weight:800;margin-bottom:2px}
+  .stat .l{font-size:12px;color:var(--text2)}
+  .stat.green .n{color:var(--green)}
+  .stat.orange .n{color:var(--accent2)}
+  .stat.blue .n{color:var(--blue)}
+
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:16px}
+  .card-title{font-size:15px;font-weight:700;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between}
+
+  .appt-card{background:var(--surface2);border-radius:12px;padding:14px 16px;margin-bottom:10px;display:flex;gap:12px;align-items:flex-start}
+  .appt-service{font-size:15px;font-weight:700;margin-bottom:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .appt-customer{font-size:13px;color:var(--text2)}
+  .appt-actions{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
+  .appt-status{font-size:11px;padding:3px 9px;border-radius:20px;font-weight:700;display:inline-block}
+  .status-pending{background:rgba(245,166,35,.15);color:var(--accent2)}
+  .status-confirmed{background:rgba(39,174,96,.15);color:var(--green)}
+  .status-done{background:rgba(144,144,168,.15);color:var(--text2)}
+  .status-cancelled{background:rgba(233,69,96,.15);color:var(--accent)}
+
+  .service-item{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)}
+  .service-item:last-child{border:none}
+  .service-name{font-weight:600;font-size:14px}
+  .service-meta{font-size:12px;color:var(--text2);margin-top:2px}
+
+  .day-row{display:grid;grid-template-columns:100px 1fr 1fr auto;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)}
+  @media(max-width:600px){ .day-row{ grid-template-columns:auto 1fr 1fr; } }
+  .day-row:last-child{border:none}
+  .day-label{font-size:13px;font-weight:500}
+  .toggle-day{position:relative;width:44px;height:24px;flex-shrink:0}
+  .toggle-day input{opacity:0;width:0;height:0}
+  .slider{position:absolute;cursor:pointer;inset:0;background:var(--surface2);border-radius:20px;transition:.3s}
+  .slider:before{content:'';position:absolute;height:18px;width:18px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.3s}
+  input:checked+.slider{background:var(--green)}
+  input:checked+.slider:before{transform:translateX(20px)}
+  .time-input{background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:6px 10px;font-size:13px;outline:none;transition:.2s;width:90px}
+  .time-input:focus{border-color:var(--green)}
+
+  .link-box{background:var(--surface2);border:1px solid rgba(39,174,96,.25);border-radius:12px;padding:14px 16px;display:flex;align-items:center;gap:10px;margin-bottom:20px}
+  .link-url{flex:1;font-size:13px;color:var(--green);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .btn-copy{background:rgba(39,174,96,.15);border:1px solid rgba(39,174,96,.3);color:var(--green);padding:6px 14px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:700;white-space:nowrap;transition:.2s}
+  .btn-copy:hover{background:rgba(39,174,96,.25)}
+
+  .form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .form-group{margin-bottom:12px}
+  .form-group label{display:block;font-size:12px;color:var(--text2);margin-bottom:4px}
+  .form-group input,.form-group select{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:8px 12px;font-size:13px;outline:none;transition:.2s;font-family:inherit}
+  .form-group input:focus,.form-group select:focus{border-color:var(--green)}
+  .btn{padding:7px 16px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;border:none;transition:.2s;font-family:inherit}
+  .btn-green{background:var(--green);color:#fff}
+  .btn-green:hover{opacity:.85}
+  .btn-red{background:rgba(233,69,96,.15);color:var(--accent);border:1px solid rgba(233,69,96,.3)}
+  .btn-red:hover{background:rgba(233,69,96,.25)}
+  .btn-blue{background:rgba(52,152,219,.15);color:var(--blue);border:1px solid rgba(52,152,219,.3)}
+  .btn-blue:hover{background:rgba(52,152,219,.25)}
+  .btn-ghost{background:none;border:1px solid var(--border);color:var(--text2)}
+  .btn-ghost:hover{border-color:var(--green);color:var(--green)}
+  .btn-save{width:100%;padding:11px;background:linear-gradient(135deg,#27ae60,#2ecc71);border:none;border-radius:10px;color:#fff;font-weight:700;cursor:pointer;font-size:14px;margin-top:16px;font-family:inherit;transition:.2s}
+  .btn-save:hover{opacity:.9}
+
+  .empty{text-align:center;padding:32px;color:var(--text2);font-size:14px}
+  .tab-content{display:none}
+  .tab-content.active{display:block}
+
+  .wa-btn{display:inline-flex;align-items:center;gap:6px;background:rgba(39,174,96,.15);border:1px solid rgba(39,174,96,.3);color:var(--green);padding:5px 12px;border-radius:8px;font-size:12px;font-weight:700;text-decoration:none;transition:.2s}
+  .wa-btn:hover{background:rgba(39,174,96,.25)}
+</style>
+</head>
+<body>
+
+<nav>
+  <span class="nav-logo">📅 Agenda SC</span>
+  <span class="nav-biz">{{ biz.name }}</span>
+  <a href="/agendar/{{ biz.slug }}" target="_blank"><button class="nav-link">🔗 Ver página</button></a>
+  <a href="/agenda/sair"><button class="nav-logout">Sair</button></a>
+</nav>
+
+<div class="tabs">
+  <button class="tab-btn active" onclick="showTab('hoje',this)">📅 Hoje</button>
+  <button class="tab-btn" onclick="showTab('agendamentos',this)">📋 Agendamentos</button>
+  <button class="tab-btn" onclick="showTab('servicos',this)">✂️ Serviços</button>
+  <button class="tab-btn" onclick="showTab('horarios',this)">🕐 Horários</button>
+  <button class="tab-btn" onclick="showTab('minha-pagina',this)">🔗 Minha Página</button>
+</div>
+
+<div class="container">
+
+  <!-- TAB: HOJE -->
+  <div class="tab-content active" id="tab-hoje">
+    <div class="stats">
+      {% set hoje_appts = appointments | selectattr('appointment_date', 'equalto', today) | list %}
+      {% set pendentes  = hoje_appts | selectattr('status', 'equalto', 'pending') | list %}
+      {% set confirmados= hoje_appts | selectattr('status', 'equalto', 'confirmed') | list %}
+      <div class="stat orange">
+        <div class="n">{{ pendentes | length }}</div>
+        <div class="l">⏳ Pendentes hoje</div>
+      </div>
+      <div class="stat green">
+        <div class="n">{{ confirmados | length }}</div>
+        <div class="l">✅ Confirmados hoje</div>
+      </div>
+      <div class="stat blue">
+        <div class="n">{{ appointments | length }}</div>
+        <div class="l">📋 Total na fila</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">📅 Agendamentos de hoje</div>
+      {% set hoje_list = appointments | selectattr('appointment_date', 'equalto', today) | list %}
+      {% if hoje_list %}
+        {% for a in hoje_list | sort(attribute='appointment_time') %}
+        {% if a.status != 'cancelled' %}
+        <div class="appt-card" id="appt-{{ a.id }}">
+          <div style="text-align:center;background:var(--surface);border-radius:10px;padding:8px 10px;flex-shrink:0;min-width:52px">
+            <div style="font-size:18px;font-weight:800;line-height:1">{{ a.appointment_time }}</div>
+          </div>
+          <div style="flex:1;min-width:0">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px">
+              <span class="appt-status status-{{ a.status }}">
+                {% if a.status=='pending' %}⏳ Pendente
+                {% elif a.status=='confirmed' %}✅ Confirmado
+                {% elif a.status=='done' %}☑️ Concluído
+                {% else %}❌ Cancelado{% endif %}
+              </span>
+            </div>
+            <div class="appt-service">{{ a.service_name }}</div>
+            <div class="appt-customer">👤 {{ a.customer_name }} · 📱 {{ a.customer_phone }}</div>
+            {% if a.customer_notes %}<div style="font-size:12px;color:var(--text2);margin-top:3px">📝 {{ a.customer_notes }}</div>{% endif %}
+            <div class="appt-actions">
+              {% set wa_num = a.customer_phone | replace('(','') | replace(')','') | replace('-','') | replace(' ','') %}
+              <a class="wa-btn" href="https://wa.me/55{{ wa_num }}?text={{ ('Olá ' + a.customer_name + '! Confirmando seu agendamento de ' + a.service_name + ' hoje às ' + a.appointment_time + '.')|urlencode }}" target="_blank">💬 WhatsApp</a>
+              {% if a.status == 'pending' %}
+              <button class="btn btn-green" onclick="apptAction({{ a.id }}, 'confirmar')">✅ Confirmar</button>
+              {% endif %}
+              {% if a.status in ['pending','confirmed'] %}
+              <button class="btn btn-blue" onclick="apptAction({{ a.id }}, 'concluir')">☑️ Concluído</button>
+              <button class="btn btn-red" onclick="apptAction({{ a.id }}, 'cancelar')">❌ Cancelar</button>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+        {% endif %}
+        {% endfor %}
+      {% else %}
+        <div class="empty">🎉 Nenhum agendamento para hoje.</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- TAB: TODOS AGENDAMENTOS -->
+  <div class="tab-content" id="tab-agendamentos">
+    <div class="card">
+      <div class="card-title">📋 Próximos agendamentos</div>
+      {% if appointments %}
+        {% for a in appointments | sort(attribute='appointment_date') %}
+        {% if a.status != 'cancelled' %}
+        <div class="appt-card" id="appt2-{{ a.id }}">
+          <div style="text-align:center;background:var(--surface);border-radius:10px;padding:8px 10px;flex-shrink:0;min-width:56px">
+            {% set parts = a.appointment_date.split('-') %}
+            <div style="font-size:18px;font-weight:800;line-height:1">{{ parts[2] }}</div>
+            <div style="font-size:11px;color:var(--text2);margin-top:1px">
+              {% set months=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'] %}
+              {{ months[parts[1]|int - 1] }}
+            </div>
+          </div>
+          <div style="flex:1;min-width:0">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px">
+              <span style="font-size:12px;color:var(--green);font-weight:700">{{ a.appointment_time }}</span>
+              <span class="appt-status status-{{ a.status }}">
+                {% if a.status=='pending' %}⏳ Pendente
+                {% elif a.status=='confirmed' %}✅ Confirmado
+                {% elif a.status=='done' %}☑️ Concluído
+                {% else %}❌ Cancelado{% endif %}
+              </span>
+            </div>
+            <div class="appt-service">{{ a.service_name }}</div>
+            <div class="appt-customer">👤 {{ a.customer_name }} · 📱 {{ a.customer_phone }}</div>
+            <div class="appt-actions">
+              {% set wa_num = a.customer_phone | replace('(','') | replace(')','') | replace('-','') | replace(' ','') %}
+              <a class="wa-btn" href="https://wa.me/55{{ wa_num }}" target="_blank">💬 WhatsApp</a>
+              {% if a.status == 'pending' %}
+              <button class="btn btn-green" onclick="apptAction({{ a.id }}, 'confirmar', true)">✅ Confirmar</button>
+              {% endif %}
+              {% if a.status in ['pending','confirmed'] %}
+              <button class="btn btn-red" onclick="apptAction({{ a.id }}, 'cancelar', true)">❌ Cancelar</button>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+        {% endif %}
+        {% endfor %}
+      {% else %}
+        <div class="empty">📭 Nenhum agendamento futuro.</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- TAB: SERVIÇOS -->
+  <div class="tab-content" id="tab-servicos">
+    <div class="card">
+      <div class="card-title">✂️ Meus Serviços</div>
+
+      <div id="services-list">
+        {% if services %}
+          {% for s in services %}
+          <div class="service-item" id="svc-{{ s.id }}">
+            <div>
+              <div class="service-name">{{ s.name }}</div>
+              <div class="service-meta">⏱️ {{ s.duration_minutes }} min{% if s.price > 0 %} · 💰 R$ {{ '%.2f'|format(s.price) }}{% endif %}</div>
+            </div>
+            <button class="btn btn-red" onclick="deleteService({{ s.id }})">🗑️ Remover</button>
+          </div>
+          {% endfor %}
+        {% else %}
+          <div class="empty" id="no-services">Nenhum serviço cadastrado ainda.</div>
+        {% endif %}
+      </div>
+
+      <div style="border-top:1px solid var(--border);margin-top:16px;padding-top:16px">
+        <div style="font-size:13px;font-weight:700;margin-bottom:12px">➕ Adicionar serviço</div>
+        <div class="form-row">
+          <div class="form-group" style="margin:0">
+            <label>Nome do serviço *</label>
+            <input type="text" id="svc-name" placeholder="Ex: Corte de cabelo">
+          </div>
+          <div class="form-group" style="margin:0">
+            <label>Duração (minutos)</label>
+            <select id="svc-duration">
+              <option value="30">30 min</option>
+              <option value="45">45 min</option>
+              <option value="60" selected>60 min</option>
+              <option value="90">90 min</option>
+              <option value="120">120 min</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group" style="margin-top:10px">
+          <label>Preço (opcional)</label>
+          <input type="text" id="svc-price" placeholder="R$ 0,00 — deixe em branco se quiser">
+        </div>
+        <button class="btn btn-green" style="margin-top:8px" onclick="addService()">✅ Adicionar serviço</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB: HORÁRIOS -->
+  <div class="tab-content" id="tab-horarios">
+    <div class="card">
+      <div class="card-title">🕐 Dias e Horários de Atendimento</div>
+      <p style="font-size:13px;color:var(--text2);margin-bottom:20px">Ative os dias em que você atende e defina o horário de início e fim.</p>
+
+      {% set avail_map = {} %}
+      {% for a in availability %}
+        {% if avail_map.update({a.weekday: a}) %}{% endif %}
+      {% endfor %}
+
+      <div id="horarios-form">
+        {% for wd in range(7) %}
+        {% set day_avail = avail_map.get(wd) %}
+        <div class="day-row">
+          <label class="day-label" style="font-size:13px;font-weight:600">
+            {{ weekday_names[wd] }}
+          </label>
+          <label class="toggle-day">
+            <input type="checkbox" id="day-{{ wd }}" onchange="toggleDayRow({{ wd }})"
+              {% if day_avail %}checked{% endif %}>
+            <span class="slider"></span>
+          </label>
+          <input type="time" class="time-input" id="start-{{ wd }}"
+            value="{{ day_avail.start_time if day_avail else '08:00' }}"
+            {% if not day_avail %}disabled style="opacity:.4"{% endif %}>
+          <input type="time" class="time-input" id="end-{{ wd }}"
+            value="{{ day_avail.end_time if day_avail else '18:00' }}"
+            {% if not day_avail %}disabled style="opacity:.4"{% endif %}>
+        </div>
+        {% endfor %}
+      </div>
+
+      <button class="btn-save" onclick="saveHorarios()">💾 Salvar horários</button>
+    </div>
+  </div>
+
+  <!-- TAB: MINHA PÁGINA -->
+  <div class="tab-content" id="tab-minha-pagina">
+    <div class="card">
+      <div class="card-title">🔗 Seu link de agendamento</div>
+
+      <p style="font-size:13px;color:var(--text2);margin-bottom:16px">Compartilhe este link no seu WhatsApp, Instagram e cartão de visita. Seus clientes agendam sozinhos!</p>
+
+      <div class="link-box">
+        <span class="link-url" id="biz-link">{{ request.host_url }}agendar/{{ biz.slug }}</span>
+        <button class="btn-copy" onclick="copyLink()">📋 Copiar</button>
+      </div>
+
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <a href="/agendar/{{ biz.slug }}" target="_blank">
+          <button class="btn btn-green">👁️ Visualizar página</button>
+        </a>
+        <a href="https://wa.me/?text={{ ('Agende agora pelo link: ' + request.host_url + 'agendar/' + biz.slug)|urlencode }}" target="_blank">
+          <button class="btn btn-ghost">📤 Compartilhar no WhatsApp</button>
+        </a>
+      </div>
+
+      <div style="margin-top:24px;padding-top:24px;border-top:1px solid var(--border)">
+        <div style="font-size:14px;font-weight:700;margin-bottom:12px">📋 Informações do negócio</div>
+        <div style="font-size:13px;color:var(--text2);line-height:2">
+          <div>🏢 <strong style="color:var(--text)">{{ biz.name }}</strong></div>
+          <div>👤 {{ biz.owner_name }}</div>
+          <div>📱 {{ biz.phone }}</div>
+          {% if biz.email %}<div>📧 {{ biz.email }}</div>{% endif %}
+          {% if biz.trial_ends %}
+          <div style="margin-top:8px;color:var(--accent2)">⏳ Teste grátis até {{ biz.trial_ends[:10] }}</div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /container -->
+
+<script>
+function showTab(name, btn) {
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  if (btn) btn.classList.add('active');
+}
+
+function copyLink() {
+  const url = document.getElementById('biz-link').textContent;
+  navigator.clipboard.writeText(url).then(() => {
+    const btn = document.querySelector('.btn-copy');
+    btn.textContent = '✅ Copiado!';
+    setTimeout(() => btn.textContent = '📋 Copiar', 2000);
+  });
+}
+
+function toggleDayRow(wd) {
+  const checked = document.getElementById('day-' + wd).checked;
+  const s = document.getElementById('start-' + wd);
+  const e = document.getElementById('end-' + wd);
+  s.disabled = !checked; s.style.opacity = checked ? '1' : '.4';
+  e.disabled = !checked; e.style.opacity = checked ? '1' : '.4';
+}
+
+async function saveHorarios() {
+  const availability = [];
+  for (let wd = 0; wd < 7; wd++) {
+    if (document.getElementById('day-' + wd).checked) {
+      availability.push({
+        weekday:    wd,
+        start_time: document.getElementById('start-' + wd).value,
+        end_time:   document.getElementById('end-' + wd).value
+      });
+    }
+  }
+  const r = await fetch('/agenda/painel/horario/save', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ availability })
+  });
+  const d = await r.json();
+  if (d.success) showToast('✅ Horários salvos com sucesso!');
+  else showToast('❌ Erro ao salvar.', 'error');
+}
+
+async function addService() {
+  const name     = document.getElementById('svc-name').value.trim();
+  const duration = document.getElementById('svc-duration').value;
+  const price    = document.getElementById('svc-price').value.trim();
+  if (!name) { alert('⚠️ Informe o nome do serviço.'); return; }
+
+  const fd = new FormData();
+  fd.append('name', name);
+  fd.append('duration', duration);
+  fd.append('price', price || '0');
+
+  const r = await fetch('/agenda/painel/servico/add', { method: 'POST', body: fd });
+  const d = await r.json();
+  if (d.success) {
+    const list = document.getElementById('services-list');
+    const noSvc = document.getElementById('no-services');
+    if (noSvc) noSvc.remove();
+    const priceStr = d.price > 0 ? ` · 💰 R$ ${d.price.toFixed(2).replace('.',',')}` : '';
+    list.insertAdjacentHTML('beforeend', `
+      <div class="service-item" id="svc-${d.id}">
+        <div>
+          <div class="service-name">${d.name}</div>
+          <div class="service-meta">⏱️ ${d.duration} min${priceStr}</div>
+        </div>
+        <button class="btn btn-red" onclick="deleteService(${d.id})">🗑️ Remover</button>
+      </div>
+    `);
+    document.getElementById('svc-name').value = '';
+    document.getElementById('svc-price').value = '';
+    showToast('✅ Serviço adicionado!');
+  } else {
+    showToast('❌ ' + (d.error || 'Erro'), 'error');
+  }
+}
+
+async function deleteService(id) {
+  if (!confirm('Remover este serviço?')) return;
+  const r = await fetch(`/agenda/painel/servico/${id}/delete`, { method: 'POST' });
+  const d = await r.json();
+  if (d.success) {
+    document.getElementById('svc-' + id)?.remove();
+    showToast('🗑️ Serviço removido.');
+  }
+}
+
+async function apptAction(id, action, reload = false) {
+  if (action === 'cancelar' && !confirm('Cancelar este agendamento?')) return;
+  const r = await fetch(`/agenda/painel/agendamento/${id}/${action}`, { method: 'POST' });
+  const d = await r.json();
+  if (d.success) {
+    showToast(action === 'confirmar' ? '✅ Confirmado!' : action === 'concluir' ? '☑️ Concluído!' : '❌ Cancelado.');
+    setTimeout(() => location.reload(), 800);
+  }
+}
+
+function showToast(msg, type = 'success') {
+  let t = document.getElementById('toast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = 'toast';
+    t.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--surface);border:1px solid var(--border);color:var(--text);padding:12px 20px;border-radius:12px;font-size:14px;z-index:999;transition:.3s;opacity:0;pointer-events:none';
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  t.style.borderColor = type === 'error' ? 'var(--accent)' : 'var(--green)';
+  t.style.opacity = '1';
+  setTimeout(() => { t.style.opacity = '0'; }, 3000);
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SaaS Admin — 4KITEM</title>
+<style>
+  :root{--bg:#08080f;--surface:#13131f;--surface2:#1a1a2e;--border:rgba(255,255,255,0.07);--text:#f0f0ff;--text2:#8888aa;--accent:#6366f1;--green:#22c55e;--red:#ef4444;--orange:#f59e0b}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:'Segoe UI',sans-serif;min-height:100vh}
+  a{color:inherit;text-decoration:none}
+
+  nav{background:var(--surface);border-bottom:1px solid var(--border);padding:0 24px;height:56px;display:flex;align-items:center;gap:16px}
+  .nav-logo{font-size:17px;font-weight:900;color:var(--accent);flex:1}
+  .nav-link{font-size:12px;color:var(--text2);background:none;border:1px solid var(--border);padding:5px 12px;border-radius:8px;cursor:pointer;transition:.2s}
+  .nav-link:hover{border-color:var(--red);color:var(--red)}
+
+  .container{max-width:1100px;margin:0 auto;padding:28px 20px}
+  h2{font-size:18px;font-weight:800;margin-bottom:20px;color:var(--text2)}
+
+  .tabs{display:flex;gap:4px;margin-bottom:24px}
+  .tab-btn{padding:8px 20px;background:none;border:none;color:var(--text2);cursor:pointer;font-size:14px;border-bottom:2px solid transparent;transition:.2s;font-family:inherit}
+  .tab-btn.active{color:var(--accent);border-bottom-color:var(--accent);font-weight:700}
+  .tab-content{display:none}
+  .tab-content.active{display:block}
+
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{text-align:left;padding:10px 12px;font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border)}
+  td{padding:10px 12px;border-bottom:1px solid var(--border);vertical-align:top}
+  tr:hover td{background:var(--surface2)}
+  .badge{display:inline-block;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700}
+  .badge-pending{background:rgba(245,158,11,.15);color:var(--orange)}
+  .badge-active{background:rgba(34,197,94,.15);color:var(--green)}
+  .badge-suspended{background:rgba(239,68,68,.15);color:var(--red)}
+  .badge-paid{background:rgba(34,197,94,.15);color:var(--green)}
+  .btn-sm{padding:4px 10px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;border:none;transition:.2s;font-family:inherit}
+  .btn-green{background:rgba(34,197,94,.15);color:var(--green);border:1px solid rgba(34,197,94,.3)}
+  .btn-green:hover{background:rgba(34,197,94,.25)}
+  .btn-red{background:rgba(239,68,68,.15);color:var(--red);border:1px solid rgba(239,68,68,.3)}
+  .btn-red:hover{background:rgba(239,68,68,.25)}
+  .btn-orange{background:rgba(245,158,11,.15);color:var(--orange);border:1px solid rgba(245,158,11,.3)}
+  .btn-orange:hover{background:rgba(245,158,11,.25)}
+  .empty{text-align:center;padding:40px;color:var(--text2);font-size:14px}
+</style>
+</head>
+<body>
+
+<nav>
+  <span class="nav-logo">🔐 4KITEM SaaS Admin</span>
+  <a href="/saas-admin/logout"><button class="nav-link">Sair</button></a>
+</nav>
+
+<div class="container">
+
+  <div class="tabs">
+    <button class="tab-btn active" onclick="showTab('alerta',this)">🚨 Alerta SC ({{ subscribers|length }})</button>
+    <button class="tab-btn" onclick="showTab('agenda',this)">📅 Agenda SC ({{ businesses|length }})</button>
+  </div>
+
+  <!-- ALERTA -->
+  <div class="tab-content active" id="tab-alerta">
+    <h2>Assinantes do Alerta SC</h2>
+    {% if subscribers %}
+    <table>
+      <thead>
+        <tr>
+          <th>Nome</th>
+          <th>WhatsApp</th>
+          <th>Plano</th>
+          <th>Placas</th>
+          <th>Status</th>
+          <th>Pagamento</th>
+          <th>Cadastro</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in subscribers %}
+        <tr id="sub-{{ s.id }}">
+          <td><strong>{{ s.name }}</strong>{% if s.cpf %}<br><span style="font-size:11px;color:var(--text2)">{{ s.cpf }}</span>{% endif %}</td>
+          <td>
+            <a href="https://wa.me/55{{ s.phone|replace('(','') |replace(')','') |replace('-','') |replace(' ','') }}" target="_blank" style="color:var(--green)">{{ s.phone }}</a>
+          </td>
+          <td>{{ s.plano }}</td>
+          <td style="font-size:12px">
+            {% if s.plate_1 %}<div>{{ s.plate_1 }}{% if s.desc_1 %} — {{ s.desc_1 }}{% endif %}</div>{% endif %}
+            {% if s.plate_2 %}<div>{{ s.plate_2 }}{% if s.desc_2 %} — {{ s.desc_2 }}{% endif %}</div>{% endif %}
+            {% if s.plate_3 %}<div>{{ s.plate_3 }}{% if s.desc_3 %} — {{ s.desc_3 }}{% endif %}</div>{% endif %}
+          </td>
+          <td>
+            <span class="badge badge-{{ s.status }}">{{ s.status }}</span>
+          </td>
+          <td>
+            <span class="badge badge-{{ s.payment_status }}">{{ s.payment_status }}</span>
+          </td>
+          <td style="font-size:11px;color:var(--text2)">{{ s.created_at[:10] if s.created_at else '—' }}</td>
+          <td>
+            <div style="display:flex;flex-direction:column;gap:4px">
+              {% if s.payment_status != 'paid' %}
+              <button class="btn-sm btn-green" onclick="markPaid({{ s.id }})">💰 Pago</button>
+              {% endif %}
+              {% if s.status == 'active' %}
+              <button class="btn-sm btn-orange" onclick="setStatus({{ s.id }}, 'suspended')">⏸ Suspender</button>
+              {% else %}
+              <button class="btn-sm btn-green" onclick="setStatus({{ s.id }}, 'active')">▶ Ativar</button>
+              {% endif %}
+              <button class="btn-sm btn-red" onclick="deleteSub({{ s.id }})">🗑</button>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty">Nenhum assinante ainda.</div>
+    {% endif %}
+  </div>
+
+  <!-- AGENDA -->
+  <div class="tab-content" id="tab-agenda">
+    <h2>Negócios cadastrados no Agenda SC</h2>
+    {% if businesses %}
+    <table>
+      <thead>
+        <tr>
+          <th>Negócio</th>
+          <th>Proprietário</th>
+          <th>WhatsApp</th>
+          <th>Slug</th>
+          <th>Status</th>
+          <th>Trial</th>
+          <th>Cadastro</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for b in businesses %}
+        <tr>
+          <td><strong>{{ b.name }}</strong></td>
+          <td>{{ b.owner_name }}</td>
+          <td><a href="https://wa.me/55{{ b.phone|replace('(','') |replace(')','') |replace('-','') |replace(' ','') }}" target="_blank" style="color:var(--green)">{{ b.phone }}</a></td>
+          <td><a href="/agendar/{{ b.slug }}" target="_blank" style="color:var(--accent)">/{{ b.slug }}</a></td>
+          <td><span class="badge {% if b.active %}badge-active{% else %}badge-suspended{% endif %}">{{ 'ativo' if b.active else 'inativo' }}</span></td>
+          <td style="font-size:11px;color:var(--text2)">{{ b.trial_ends[:10] if b.trial_ends else '—' }}</td>
+          <td style="font-size:11px;color:var(--text2)">{{ b.created_at[:10] if b.created_at else '—' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty">Nenhum negócio cadastrado ainda.</div>
+    {% endif %}
+  </div>
+
+</div>
+
+<script>
+function showTab(name, btn) {
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  btn.classList.add('active');
+}
+
+async function markPaid(id) {
+  if (!confirm('Marcar pagamento como recebido?')) return;
+  const r = await fetch(`/admin/alerta/${id}/payment`, { method: 'POST' });
+  const d = await r.json();
+  if (d.success) location.reload();
+}
+
+async function setStatus(id, status) {
+  const r = await fetch(`/admin/alerta/${id}/status`, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ status })
+  });
+  const d = await r.json();
+  if (d.success) location.reload();
+}
+
+async function deleteSub(id) {
+  if (!confirm('Apagar assinante permanentemente?')) return;
+  const r = await fetch(`/admin/alerta/${id}/delete`, { method: 'POST' });
+  const d = await r.json();
+  if (d.success) document.getElementById('sub-' + id)?.remove();
+}
+</script>
+</body>
+</html>

@@ -3,8 +3,14 @@ app.py — 4KITEM Plataforma de Soluções Digitais
 """
 import logging
 import threading
+import re as _re
+import unicodedata
+import json as _json
+from datetime import datetime, timedelta
+from functools import wraps
 from flask import (Flask, render_template, redirect, jsonify,
-                   request, abort, url_for)
+                   request, abort, url_for, session)
+from werkzeug.security import generate_password_hash, check_password_hash
 
 logging.basicConfig(
     level=logging.INFO,
@@ -14,12 +20,125 @@ logging.basicConfig(
 log = logging.getLogger('4kitem')
 
 app = Flask(__name__)
+app.secret_key = os.environ.get('SECRET_KEY', '4kitem-secret-2024-xk91')
+
+# ── SaaS admin password ────────────────────────────────────────────────────────
+SAAS_ADMIN_PW = os.environ.get('SAAS_ADMIN_PASSWORD', 'admin4kitem2024')
+
+# ── AgendaSC constants ────────────────────────────────────────────────────────
+BUSINESS_TYPES = {
+    'barbearia':    '💈 Barbearia',
+    'salao':        '💇 Salão de Beleza',
+    'estetica':     '💅 Estética / Spa',
+    'clinica':      '🏥 Clínica Médica',
+    'dentista':     '🦷 Dentista / Ortodontia',
+    'psicologia':   '🧠 Psicologia / Terapia',
+    'nutricao':     '🥗 Nutricionista',
+    'fisioterapia': '🦵 Fisioterapia',
+    'pet':          '🐾 Pet Shop / Veterinário',
+    'academia':     '💪 Academia / Personal Trainer',
+    'mecanica':     '🔧 Mecânica / Oficina',
+    'advocacia':    '⚖️ Advocacia / Contabilidade',
+    'consultoria':  '📊 Consultoria / Coaching',
+    'fotografia':   '📷 Fotografia / Estúdio',
+    'tatuagem':     '🖊️ Tatuagem / Piercing',
+    'outros':       '🏢 Outro',
+}
+
+WEEKDAY_NAMES = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo']
+
+# ── AlertaSC constants ────────────────────────────────────────────────────────
+ALERTA_PLANS = {
+    'basico':  {'label': '🚗 Básico',    'price': 'R$ 19,90', 'vehicles': 1},
+    'familia': {'label': '👨‍👩‍👧 Família', 'price': 'R$ 34,90', 'vehicles': 3},
+    'frota':   {'label': '🚛 Frota',     'price': 'R$ 89,90', 'vehicles': 10},
+}
+
+
+# ── SaaS helpers ──────────────────────────────────────────────────────────────
+def _slugify(text):
+    text = unicodedata.normalize('NFD', text)
+    text = text.encode('ascii', 'ignore').decode('ascii')
+    text = text.lower().strip()
+    text = _re.sub(r'[^\w\s-]', '', text)
+    text = _re.sub(r'[\s_-]+', '-', text)
+    return text[:50]
+
+
+def _agenda_login_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not session.get('agenda_business_id'):
+            return redirect('/agenda/entrar')
+        return f(*args, **kwargs)
+    return decorated
+
+
+def _saas_admin_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not session.get('saas_admin'):
+            return redirect('/saas-admin/login')
+        return f(*args, **kwargs)
+    return decorated
+
+
+def _get_slots(business_id, date_str, service_duration):
+    """Gera horários disponíveis para uma data e duração de serviço."""
+    try:
+        dt = datetime.strptime(date_str, '%Y-%m-%d')
+        weekday = dt.weekday()
+    except Exception:
+        return []
+
+    conn = get_saas_db()
+    avail = conn.execute(
+        'SELECT start_time, end_time FROM agenda_availability WHERE business_id=? AND weekday=? AND active=1',
+        (business_id, weekday)
+    ).fetchone()
+    if not avail:
+        conn.close()
+        return []
+
+    booked = conn.execute('''
+        SELECT a.appointment_time, COALESCE(s.duration_minutes, 60) as duration_minutes
+        FROM agenda_appointments a
+        LEFT JOIN agenda_services s ON a.service_id = s.id
+        WHERE a.business_id=? AND a.appointment_date=? AND a.status != 'cancelled'
+    ''', (business_id, date_str)).fetchall()
+    conn.close()
+
+    slots = []
+    start   = datetime.strptime(avail['start_time'], '%H:%M')
+    end     = datetime.strptime(avail['end_time'],   '%H:%M')
+    now     = datetime.now()
+    current = start
+
+    while current + timedelta(minutes=service_duration) <= end:
+        slot_str = current.strftime('%H:%M')
+        if dt.date() == now.date() and current.replace(year=now.year, month=now.month, day=now.day) <= now:
+            current += timedelta(minutes=30)
+            continue
+        conflict = False
+        s_end = current + timedelta(minutes=service_duration)
+        for b in booked:
+            b_start = datetime.strptime(b['appointment_time'], '%H:%M')
+            b_end   = b_start + timedelta(minutes=b['duration_minutes'])
+            if not (s_end <= b_start or current >= b_end):
+                conflict = True
+                break
+        if not conflict:
+            slots.append(slot_str)
+        current += timedelta(minutes=30)
+
+    return slots
 
 from kids_db import (
     init_db, get_videos, get_channels, total_videos, stats,
     get_videos_for_mode, get_client, set_client_mode,
     create_client, mark_video_blocked, MODES,
 )
+from saas_db import init_saas_db, get_db as get_saas_db
 
 # ══════════════════════════════════════════════════════════════════════════
 #  LANDINGS
@@ -43,7 +162,445 @@ def agenda():
 
 @app.route('/alerta')
 def alerta():
-    return render_template('alerta/landing.html')
+    return render_template('alerta/landing.html', plans=ALERTA_PLANS)
+
+
+# ══════════════════════════════════════════════════════════════════════════
+#  AGENDA SC — SaaS de Agendamento Online
+# ══════════════════════════════════════════════════════════════════════════
+
+@app.route('/agenda/cadastro', methods=['GET', 'POST'])
+def agenda_cadastro():
+    error = None
+    if request.method == 'POST':
+        name          = request.form.get('name', '').strip()
+        owner_name    = request.form.get('owner_name', '').strip()
+        phone         = request.form.get('phone', '').strip()
+        email         = request.form.get('email', '').strip()
+        business_type = request.form.get('business_type', 'outros')
+        password      = request.form.get('password', '').strip()
+
+        if not all([name, owner_name, phone, password]):
+            error = 'Preencha todos os campos obrigatórios.'
+        elif len(password) < 6:
+            error = 'A senha precisa ter pelo menos 6 caracteres.'
+        else:
+            slug = _slugify(name) or 'negocio'
+            conn = get_saas_db()
+            base_slug, counter = slug, 1
+            while conn.execute('SELECT id FROM agenda_businesses WHERE slug=?', (slug,)).fetchone():
+                slug = f'{base_slug}-{counter}'; counter += 1
+            trial_ends = (datetime.now() + timedelta(days=30)).isoformat()
+            try:
+                conn.execute('''
+                    INSERT INTO agenda_businesses
+                    (name, slug, owner_name, phone, email, business_type, password_hash, active, created_at, trial_ends)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
+                ''', (name, slug, owner_name, phone, email, business_type,
+                      generate_password_hash(password), datetime.now().isoformat(), trial_ends))
+                conn.commit()
+                biz = conn.execute('SELECT * FROM agenda_businesses WHERE slug=?', (slug,)).fetchone()
+                conn.close()
+                session['agenda_business_id']   = biz['id']
+                session['agenda_business_slug'] = biz['slug']
+                session['agenda_business_name'] = biz['name']
+                return redirect('/agenda/painel')
+            except Exception as e:
+                conn.close()
+                log.error(f'Agenda cadastro error: {e}')
+                error = 'Erro ao cadastrar. Tente novamente.'
+
+    return render_template('agenda/cadastro.html', error=error, business_types=BUSINESS_TYPES)
+
+
+@app.route('/agenda/entrar', methods=['GET', 'POST'])
+def agenda_entrar():
+    error = None
+    if request.method == 'POST':
+        phone    = request.form.get('phone', '').strip()
+        password = request.form.get('password', '').strip()
+        conn = get_saas_db()
+        biz = conn.execute(
+            'SELECT * FROM agenda_businesses WHERE phone=? AND active=1', (phone,)
+        ).fetchone()
+        conn.close()
+        if biz and check_password_hash(biz['password_hash'], password):
+            session['agenda_business_id']   = biz['id']
+            session['agenda_business_slug'] = biz['slug']
+            session['agenda_business_name'] = biz['name']
+            return redirect('/agenda/painel')
+        error = 'Telefone ou senha incorretos.'
+    return render_template('agenda/entrar.html', error=error)
+
+
+@app.route('/agenda/sair')
+def agenda_sair():
+    for k in ('agenda_business_id', 'agenda_business_slug', 'agenda_business_name'):
+        session.pop(k, None)
+    return redirect('/agenda')
+
+
+@app.route('/agenda/painel')
+@_agenda_login_required
+def agenda_painel():
+    biz_id = session['agenda_business_id']
+    conn   = get_saas_db()
+    biz    = dict(conn.execute('SELECT * FROM agenda_businesses WHERE id=?', (biz_id,)).fetchone())
+    services = [dict(r) for r in conn.execute(
+        'SELECT * FROM agenda_services WHERE business_id=? AND active=1 ORDER BY name', (biz_id,)
+    ).fetchall()]
+    availability = [dict(r) for r in conn.execute(
+        'SELECT * FROM agenda_availability WHERE business_id=? ORDER BY weekday', (biz_id,)
+    ).fetchall()]
+    today = datetime.now().strftime('%Y-%m-%d')
+    appointments = [dict(r) for r in conn.execute('''
+        SELECT a.*, COALESCE(s.name, 'Serviço') as service_name,
+               COALESCE(s.duration_minutes, 60) as duration_minutes,
+               COALESCE(s.price, 0) as price
+        FROM agenda_appointments a
+        LEFT JOIN agenda_services s ON a.service_id = s.id
+        WHERE a.business_id=? AND a.appointment_date >= ?
+        ORDER BY a.appointment_date, a.appointment_time
+    ''', (biz_id, today)).fetchall()]
+    conn.close()
+    return render_template('agenda/painel.html',
+                           biz=biz, services=services,
+                           availability=availability,
+                           appointments=appointments,
+                           today=today,
+                           weekday_names=WEEKDAY_NAMES,
+                           business_types=BUSINESS_TYPES)
+
+
+@app.route('/agenda/painel/servico/add', methods=['POST'])
+@_agenda_login_required
+def agenda_add_service():
+    biz_id   = session['agenda_business_id']
+    name     = request.form.get('name', '').strip()
+    duration = request.form.get('duration', '60')
+    price    = request.form.get('price', '0').replace(',', '.')
+    if not name:
+        return jsonify({'success': False, 'error': 'Nome obrigatório'})
+    try:
+        conn = get_saas_db()
+        cur = conn.execute('''
+            INSERT INTO agenda_services (business_id, name, duration_minutes, price, active, created_at)
+            VALUES (?, ?, ?, ?, 1, ?)
+        ''', (biz_id, name, int(duration), float(price or 0), datetime.now().isoformat()))
+        conn.commit()
+        svc_id = cur.lastrowid
+        conn.close()
+        return jsonify({'success': True, 'id': svc_id, 'name': name,
+                        'duration': int(duration), 'price': float(price or 0)})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+
+@app.route('/agenda/painel/servico/<int:svc_id>/delete', methods=['POST'])
+@_agenda_login_required
+def agenda_delete_service(svc_id):
+    biz_id = session['agenda_business_id']
+    conn = get_saas_db()
+    conn.execute('UPDATE agenda_services SET active=0 WHERE id=? AND business_id=?', (svc_id, biz_id))
+    conn.commit()
+    conn.close()
+    return jsonify({'success': True})
+
+
+@app.route('/agenda/painel/horario/save', methods=['POST'])
+@_agenda_login_required
+def agenda_save_horario():
+    biz_id = session['agenda_business_id']
+    data   = request.get_json() or {}
+    conn   = get_saas_db()
+    conn.execute('DELETE FROM agenda_availability WHERE business_id=?', (biz_id,))
+    for item in data.get('availability', []):
+        wday = item.get('weekday')
+        s    = item.get('start_time', '')
+        e    = item.get('end_time', '')
+        if wday is not None and s and e:
+            conn.execute('''
+                INSERT INTO agenda_availability (business_id, weekday, start_time, end_time, active)
+                VALUES (?, ?, ?, ?, 1)
+            ''', (biz_id, wday, s, e))
+    conn.commit()
+    conn.close()
+    return jsonify({'success': True})
+
+
+@app.route('/agenda/painel/agendamento/<int:appt_id>/<action>', methods=['POST'])
+@_agenda_login_required
+def agenda_appt_action(appt_id, action):
+    biz_id = session['agenda_business_id']
+    status_map = {'confirmar': 'confirmed', 'cancelar': 'cancelled', 'concluir': 'done'}
+    new_status = status_map.get(action)
+    if not new_status:
+        return jsonify({'success': False, 'error': 'Ação inválida'})
+    conn = get_saas_db()
+    conn.execute('UPDATE agenda_appointments SET status=? WHERE id=? AND business_id=?',
+                 (new_status, appt_id, biz_id))
+    conn.commit()
+    conn.close()
+    return jsonify({'success': True, 'status': new_status})
+
+
+@app.route('/agendar/<slug>')
+def agenda_booking(slug):
+    conn = get_saas_db()
+    biz = conn.execute(
+        'SELECT * FROM agenda_businesses WHERE slug=? AND active=1', (slug,)
+    ).fetchone()
+    if not biz:
+        conn.close()
+        abort(404)
+    services = [dict(r) for r in conn.execute(
+        'SELECT * FROM agenda_services WHERE business_id=? AND active=1 ORDER BY name', (biz['id'],)
+    ).fetchall()]
+    conn.close()
+    return render_template('agenda/booking.html', biz=dict(biz), services=services)
+
+
+@app.route('/api/agenda/slots/<slug>')
+def api_agenda_slots(slug):
+    date_str   = request.args.get('date', '')
+    service_id = request.args.get('service_id', '')
+    conn = get_saas_db()
+    biz = conn.execute('SELECT id FROM agenda_businesses WHERE slug=? AND active=1', (slug,)).fetchone()
+    if not biz:
+        conn.close()
+        return jsonify({'slots': []})
+    duration = 60
+    if service_id:
+        svc = conn.execute(
+            'SELECT duration_minutes FROM agenda_services WHERE id=? AND business_id=? AND active=1',
+            (service_id, biz['id'])
+        ).fetchone()
+        if svc:
+            duration = svc['duration_minutes']
+    conn.close()
+    return jsonify({'slots': _get_slots(biz['id'], date_str, duration)})
+
+
+@app.route('/api/agenda/book/<slug>', methods=['POST'])
+def api_agenda_book(slug):
+    data           = request.get_json() or {}
+    customer_name  = data.get('customer_name', '').strip()
+    customer_phone = data.get('customer_phone', '').strip()
+    service_id     = data.get('service_id')
+    appt_date      = data.get('date', '').strip()
+    appt_time      = data.get('time', '').strip()
+    notes          = data.get('notes', '').strip()
+
+    if not all([customer_name, customer_phone, appt_date, appt_time]):
+        return jsonify({'success': False, 'error': 'Preencha todos os campos obrigatórios.'})
+
+    conn = get_saas_db()
+    biz = conn.execute('SELECT * FROM agenda_businesses WHERE slug=? AND active=1', (slug,)).fetchone()
+    if not biz:
+        conn.close()
+        return jsonify({'success': False, 'error': 'Negócio não encontrado.'})
+
+    duration = 60
+    if service_id:
+        svc = conn.execute(
+            'SELECT duration_minutes FROM agenda_services WHERE id=? AND business_id=? AND active=1',
+            (service_id, biz['id'])
+        ).fetchone()
+        if svc:
+            duration = svc['duration_minutes']
+
+    slots = _get_slots(biz['id'], appt_date, duration)
+    if appt_time not in slots:
+        conn.close()
+        return jsonify({'success': False, 'error': 'Horário não disponível. Por favor, escolha outro.'})
+
+    conn.execute('''
+        INSERT INTO agenda_appointments
+        (business_id, service_id, customer_name, customer_phone, customer_notes,
+         appointment_date, appointment_time, status, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?)
+    ''', (biz['id'], service_id or None, customer_name, customer_phone, notes,
+          appt_date, appt_time, datetime.now().isoformat()))
+    conn.commit()
+    conn.close()
+    return jsonify({'success': True, 'business_name': biz['name'], 'business_phone': biz['phone']})
+
+
+# ══════════════════════════════════════════════════════════════════════════
+#  ALERTA SC — SaaS de Monitoramento CNH & Veículo
+# ══════════════════════════════════════════════════════════════════════════
+
+@app.route('/alerta/cadastro', methods=['GET', 'POST'])
+def alerta_cadastro():
+    error   = None
+    success = False
+    phone   = ''
+    plano   = request.args.get('plano', request.form.get('plano', 'familia'))
+    if request.method == 'POST':
+        name  = request.form.get('name', '').strip()
+        cpf   = request.form.get('cpf', '').strip()
+        phone = request.form.get('phone', '').strip()
+        email = request.form.get('email', '').strip()
+        plano = request.form.get('plano', 'familia')
+
+        max_veh = {'basico': 1, 'familia': 3, 'frota': 10}.get(plano, 1)
+        plates = []
+        for i in range(1, max_veh + 1):
+            p = request.form.get(f'plate_{i}', '').strip().upper()
+            d = request.form.get(f'desc_{i}', '').strip()
+            if p:
+                plates.append({'plate': p, 'desc': d})
+
+        if not all([name, phone]):
+            error = 'Nome e WhatsApp são obrigatórios.'
+        elif not plates:
+            error = 'Informe ao menos uma placa de veículo.'
+        else:
+            conn = get_saas_db()
+            conn.execute('''
+                INSERT INTO alerta_subscribers
+                (name, cpf, plates_json, phone, email, plano, status, payment_status, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, 'pending', 'pending', ?)
+            ''', (name, cpf, _json.dumps(plates), phone, email, plano, datetime.now().isoformat()))
+            conn.commit()
+            conn.close()
+            success = True
+
+    return render_template('alerta/cadastro.html', error=error, success=success,
+                           plano=plano, phone=phone,
+                           req_name=request.form.get('name', ''),
+                           req_cpf=request.form.get('cpf', ''),
+                           req_phone=request.form.get('phone', ''),
+                           req_email=request.form.get('email', ''),
+                           req_plate_1=request.form.get('plate_1', ''),
+                           req_desc_1=request.form.get('desc_1', ''),
+                           req_plate_2=request.form.get('plate_2', ''),
+                           req_desc_2=request.form.get('desc_2', ''),
+                           req_plate_3=request.form.get('plate_3', ''),
+                           req_desc_3=request.form.get('desc_3', ''))
+
+
+# ── SaaS Admin ────────────────────────────────────────────────────────────────
+
+@app.route('/saas-admin/login', methods=['GET', 'POST'])
+def saas_admin_login():
+    error = None
+    if request.method == 'POST':
+        pw = request.form.get('password', '')
+        if pw == SAAS_ADMIN_PW:
+            session['saas_admin'] = True
+            return redirect('/saas-admin')
+        error = 'Senha incorreta.'
+    return render_template('saas_admin_login.html', error=error)
+
+
+@app.route('/saas-admin/logout')
+def saas_admin_logout():
+    session.pop('saas_admin', None)
+    return redirect('/saas-admin/login')
+
+
+@app.route('/saas-admin')
+@_saas_admin_required
+def saas_admin():
+    """Painel de admin do SaaS — lista assinantes do Alerta SC."""
+    conn = get_saas_db()
+    subscribers = [dict(r) for r in conn.execute('''
+        SELECT s.*, COUNT(r.id) as reports_count
+        FROM alerta_subscribers s
+        LEFT JOIN alerta_reports r ON r.subscriber_id = s.id
+        GROUP BY s.id
+        ORDER BY s.created_at DESC
+    ''').fetchall()]
+    for s in subscribers:
+        try:
+            plates = _json.loads(s.get('plates_json') or '[]')
+        except Exception:
+            plates = []
+        for i, pv in enumerate(plates, 1):
+            s[f'plate_{i}'] = pv.get('plate', '') if isinstance(pv, dict) else str(pv)
+            s[f'desc_{i}']  = pv.get('desc', '')  if isinstance(pv, dict) else ''
+    businesses = [dict(r) for r in conn.execute(
+        'SELECT id, name, slug, owner_name, phone, active, created_at, trial_ends FROM agenda_businesses ORDER BY created_at DESC'
+    ).fetchall()]
+    conn.close()
+    return render_template('saas_admin.html', subscribers=subscribers, businesses=businesses)
+
+
+@app.route('/admin/alerta/<int:sub_id>/status', methods=['POST'])
+@_saas_admin_required
+def saas_alerta_status(sub_id):
+    data = request.get_json() or {}
+    new_status = data.get('status', 'active')
+    conn = get_saas_db()
+    conn.execute('UPDATE alerta_subscribers SET status=? WHERE id=?', (new_status, sub_id))
+    conn.commit(); conn.close()
+    return jsonify({'success': True})
+
+
+@app.route('/admin/alerta/<int:sub_id>/payment', methods=['POST'])
+@_saas_admin_required
+def saas_alerta_payment(sub_id):
+    now = datetime.now().isoformat()
+    conn = get_saas_db()
+    conn.execute(
+        'UPDATE alerta_subscribers SET payment_status=?, status=?, paid_at=? WHERE id=?',
+        ('paid', 'active', now, sub_id)
+    )
+    conn.commit(); conn.close()
+    return jsonify({'success': True})
+
+
+@app.route('/admin/alerta/<int:sub_id>/notes', methods=['POST'])
+@_saas_admin_required
+def saas_alerta_notes(sub_id):
+    data  = request.get_json() or {}
+    notes = data.get('notes', '')
+    conn  = get_saas_db()
+    conn.execute('UPDATE alerta_subscribers SET notes=? WHERE id=?', (notes, sub_id))
+    conn.commit(); conn.close()
+    return jsonify({'success': True})
+
+
+@app.route('/admin/alerta/<int:sub_id>/report', methods=['POST'])
+@_saas_admin_required
+def saas_alerta_report(sub_id):
+    now     = datetime.now().isoformat()
+    data    = request.get_json() or {}
+    message = data.get('message', '')
+    conn    = get_saas_db()
+    sub = conn.execute('SELECT * FROM alerta_subscribers WHERE id=?', (sub_id,)).fetchone()
+    if not sub:
+        conn.close()
+        return jsonify({'success': False, 'error': 'Assinante não encontrado'}), 404
+    conn.execute(
+        'INSERT INTO alerta_reports (subscriber_id, message, sent_at, created_at) VALUES (?,?,?,?)',
+        (sub_id, message, now, now)
+    )
+    conn.execute('UPDATE alerta_subscribers SET last_report_at=? WHERE id=?', (now, sub_id))
+    conn.commit(); conn.close()
+    return jsonify({'success': True})
+
+
+@app.route('/admin/alerta/<int:sub_id>/reports')
+@_saas_admin_required
+def saas_alerta_reports(sub_id):
+    conn = get_saas_db()
+    reports = [dict(r) for r in conn.execute(
+        'SELECT * FROM alerta_reports WHERE subscriber_id=? ORDER BY created_at DESC', (sub_id,)
+    ).fetchall()]
+    conn.close()
+    return jsonify(reports)
+
+
+@app.route('/admin/alerta/<int:sub_id>/delete', methods=['POST'])
+@_saas_admin_required
+def saas_alerta_delete(sub_id):
+    conn = get_saas_db()
+    conn.execute('DELETE FROM alerta_reports WHERE subscriber_id=?', (sub_id,))
+    conn.execute('DELETE FROM alerta_subscribers WHERE id=?', (sub_id,))
+    conn.commit(); conn.close()
+    return jsonify({'success': True})
 
 
 # ══════════════════════════════════════════════════════════════════════════
@@ -214,6 +771,7 @@ def health():
 def _startup():
     try:
         init_db()
+        init_saas_db()
         s = stats()
         log.info(f"DB OK — {s['channels']} canais | {s['videos']} vídeos | "
                  f"{s['clients']} clientes")

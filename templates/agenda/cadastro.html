@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cadastro — Agenda SC</title>
+<style>
+  :root{--bg:#0f0f13;--surface:#1a1a24;--surface2:#22222f;--accent:#e94560;--green:#27ae60;--text:#e8e8f0;--text2:#9090a8;--border:rgba(255,255,255,0.08);--radius:16px}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px}
+  .box{background:var(--surface);border:1px solid var(--border);border-radius:24px;padding:36px 32px;width:100%;max-width:480px}
+  .logo{text-align:center;margin-bottom:8px;font-size:22px;font-weight:900;background:linear-gradient(135deg,#27ae60,#2ecc71);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+  .subtitle{text-align:center;color:var(--text2);font-size:13px;margin-bottom:28px}
+  .error{background:rgba(233,69,96,.12);border:1px solid rgba(233,69,96,.3);border-radius:10px;padding:12px 16px;color:#ff8099;font-size:13px;margin-bottom:20px}
+  .form-group{margin-bottom:16px}
+  label{display:block;font-size:13px;color:var(--text2);margin-bottom:6px;font-weight:500}
+  input,select,textarea{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);padding:10px 14px;font-size:14px;outline:none;transition:.2s;font-family:inherit}
+  input:focus,select:focus,textarea:focus{border-color:var(--green);box-shadow:0 0 0 2px rgba(39,174,96,.15)}
+  select option{background:var(--surface2)}
+  .form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .btn-submit{width:100%;padding:13px;background:linear-gradient(135deg,#27ae60,#2ecc71);border:none;border-radius:12px;color:#fff;font-size:15px;font-weight:700;cursor:pointer;margin-top:8px;transition:.2s}
+  .btn-submit:hover{opacity:.9;transform:translateY(-1px)}
+  .footer-link{text-align:center;margin-top:20px;font-size:13px;color:var(--text2)}
+  .footer-link a{color:var(--green)}
+  .badge{display:inline-block;background:rgba(39,174,96,.15);color:var(--green);border:1px solid rgba(39,174,96,.25);padding:4px 12px;border-radius:20px;font-size:12px;font-weight:700;margin-bottom:16px}
+</style>
+</head>
+<body>
+
+<div class="box">
+  <div class="logo">📅 Agenda SC</div>
+  <div class="subtitle">Crie sua página de agendamento em minutos</div>
+
+  {% if error %}
+  <div class="error">⚠️ {{ error }}</div>
+  {% endif %}
+
+  <div style="text-align:center;margin-bottom:20px">
+    <span class="badge">✅ 30 dias grátis · Sem cartão</span>
+  </div>
+
+  <form method="POST" action="/agenda/cadastro">
+    <div class="form-group">
+      <label>Nome do negócio *</label>
+      <input type="text" name="name" placeholder="Ex: Barbearia Silva" required maxlength="80">
+    </div>
+
+    <div class="form-group">
+      <label>Tipo de negócio *</label>
+      <select name="business_type">
+        {% for key, label in business_types.items() %}
+        <option value="{{ key }}">{{ label }}</option>
+        {% endfor %}
+      </select>
+      <div style="font-size:11px;color:var(--text2);margin-top:4px">💡 Funciona para qualquer negócio que atende com hora marcada</div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group" style="margin:0">
+        <label>Seu nome *</label>
+        <input type="text" name="owner_name" placeholder="João Silva" required maxlength="60">
+      </div>
+      <div class="form-group" style="margin:0">
+        <label>WhatsApp *</label>
+        <input type="tel" name="phone" placeholder="(47) 99999-9999" required maxlength="20">
+      </div>
+    </div>
+
+    <div class="form-group" style="margin-top:16px">
+      <label>E-mail (opcional)</label>
+      <input type="email" name="email" placeholder="contato@seunegocio.com.br" maxlength="100">
+    </div>
+
+    <div class="form-group">
+      <label>Senha *</label>
+      <input type="password" name="password" placeholder="Mínimo 6 caracteres" required minlength="6">
+    </div>
+
+    <button type="submit" class="btn-submit">🚀 Criar minha agenda grátis</button>
+  </form>
+
+  <div class="footer-link">
+    Já tem conta? <a href="/agenda/entrar">Entrar</a> &nbsp;·&nbsp; <a href="/agenda">Voltar</a>
+  </div>
+</div>
+
+</body>
+</html>
