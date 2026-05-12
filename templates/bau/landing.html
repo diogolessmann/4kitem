@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Baú — Seu cofre digital de credenciais</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#09090f;color:#f0f0ff;font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh}
+  a{text-decoration:none;color:inherit}
+
+  nav{display:flex;align-items:center;justify-content:space-between;padding:16px 24px;border-bottom:1px solid rgba(255,255,255,0.07);position:sticky;top:0;background:rgba(9,9,15,0.9);backdrop-filter:blur(16px);z-index:50}
+  .nav-logo{font-size:20px;font-weight:900;color:#a78bfa;display:flex;align-items:center;gap:8px}
+  .nav-links{display:flex;gap:10px}
+  .btn-outline{padding:8px 18px;border-radius:100px;border:1px solid rgba(255,255,255,0.14);color:#8888aa;font-size:13px;font-weight:600;cursor:pointer;background:transparent;font-family:inherit;transition:.2s}
+  .btn-outline:hover{border-color:#a78bfa;color:#a78bfa}
+  .btn-primary{padding:8px 20px;border-radius:100px;background:linear-gradient(135deg,#7c3aed,#a78bfa);color:#fff;font-size:13px;font-weight:700;cursor:pointer;border:none;font-family:inherit;transition:.2s}
+  .btn-primary:hover{opacity:.9}
+
+  .hero{text-align:center;padding:80px 24px 60px;max-width:680px;margin:0 auto}
+  .hero-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(167,139,250,0.1);border:1px solid rgba(167,139,250,0.3);border-radius:100px;padding:6px 16px;font-size:12px;font-weight:700;color:#a78bfa;margin-bottom:28px}
+  .hero h1{font-size:clamp(32px,6vw,52px);font-weight:900;letter-spacing:-1.5px;line-height:1.1;margin-bottom:20px}
+  .hero h1 span{color:#a78bfa}
+  .hero p{font-size:17px;color:#8888aa;line-height:1.6;margin-bottom:36px}
+  .hero p strong{color:#f0f0ff}
+  .hero-ctas{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap}
+  .cta-big{display:inline-flex;align-items:center;gap:8px;padding:14px 32px;border-radius:100px;background:linear-gradient(135deg,#7c3aed,#a78bfa);color:#fff;font-size:16px;font-weight:800;cursor:pointer;transition:.2s;border:none;font-family:inherit}
+  .cta-big:hover{opacity:.9;transform:translateY(-1px)}
+  .cta-sec{display:inline-flex;align-items:center;gap:8px;padding:14px 24px;border-radius:100px;border:1px solid rgba(255,255,255,0.14);color:#f0f0ff;font-size:15px;font-weight:600;cursor:pointer;transition:.2s;background:transparent;font-family:inherit}
+  .cta-sec:hover{border-color:#a78bfa;color:#a78bfa}
+
+  /* Mock do cofre */
+  .mock-wrap{max-width:520px;margin:48px auto 0;background:#13131f;border:1px solid rgba(167,139,250,.2);border-radius:20px;overflow:hidden}
+  .mock-nav{background:#1a1a2e;padding:12px 16px;display:flex;align-items:center;gap:10px;font-size:13px;font-weight:700;color:#a78bfa}
+  .mock-body{padding:16px;display:flex;flex-direction:column;gap:10px}
+  .mock-card{background:#09090f;border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:14px;display:flex;align-items:center;gap:12px}
+  .mock-icon{width:36px;height:36px;border-radius:10px;background:rgba(167,139,250,.1);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+  .mock-info .mock-title{font-size:13px;font-weight:700}
+  .mock-info .mock-user{font-size:11px;color:#8888aa;margin-top:2px}
+  .mock-hint{font-size:11px;color:#c4b5fd;margin-top:4px;background:rgba(167,139,250,.06);border-radius:6px;padding:4px 8px;display:inline-block}
+
+  /* Features */
+  section{padding:64px 24px}
+  .section-label{text-align:center;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#a78bfa;margin-bottom:12px}
+  .section-title{text-align:center;font-size:clamp(22px,4vw,34px);font-weight:900;letter-spacing:-1px;margin-bottom:8px}
+  .section-sub{text-align:center;color:#8888aa;font-size:15px;margin-bottom:48px}
+  .features{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;max-width:900px;margin:0 auto}
+  .feat{background:#13131f;border:1px solid rgba(255,255,255,0.07);border-radius:16px;padding:24px}
+  .feat-icon{font-size:28px;margin-bottom:12px}
+  .feat h3{font-size:15px;font-weight:800;margin-bottom:6px}
+  .feat p{font-size:13px;color:#8888aa;line-height:1.6}
+
+  /* Preço */
+  .price-section{background:#13131f;border-top:1px solid rgba(255,255,255,0.07);border-bottom:1px solid rgba(255,255,255,0.07);padding:64px 24px;text-align:center}
+  .price-box{max-width:400px;margin:0 auto;background:linear-gradient(135deg,rgba(167,139,250,.08),#13131f);border:1px solid rgba(167,139,250,.3);border-radius:24px;padding:36px 32px}
+  .price-free{font-size:48px;font-weight:900;letter-spacing:-2px;color:#a78bfa}
+  .price-desc{color:#8888aa;font-size:13px;margin-bottom:20px}
+  .price-feats{list-style:none;text-align:left;display:flex;flex-direction:column;gap:10px;margin-bottom:28px}
+  .price-feats li{font-size:14px;display:flex;gap:8px}
+  .price-feats li::before{content:'✅';flex-shrink:0}
+
+  /* Footer */
+  footer{padding:28px 24px;text-align:center;font-size:12px;color:#8888aa;border-top:1px solid rgba(255,255,255,0.07)}
+  footer a{color:#a78bfa}
+
+  @media(max-width:500px){.hero-ctas{flex-direction:column;align-items:stretch}.cta-big,.cta-sec{justify-content:center}}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-logo">🪙 Baú</div>
+  <div class="nav-links">
+    <a href="/"><button class="btn-outline">← 4KITEM</button></a>
+    <a href="/bau/entrar"><button class="btn-outline">Entrar</button></a>
+    <a href="/bau/cadastro"><button class="btn-primary">Criar grátis</button></a>
+  </div>
+</nav>
+
+<!-- Hero -->
+<div class="hero">
+  <div class="hero-badge">🔒 Seus acessos seguros na nuvem</div>
+  <h1>Chega de perder<br><span>senha e acesso</span></h1>
+  <p>Guarde seus sites, logins e <strong>dicas de senha</strong> em um lugar só. Acesse de qualquer dispositivo. Nunca mais perca acesso ao reformatar o PC.</p>
+  <div class="hero-ctas">
+    <a href="/bau/cadastro"><button class="cta-big">🪙 Criar meu Baú grátis</button></a>
+    <a href="/bau/entrar"><button class="cta-sec">🔓 Já tenho conta</button></a>
+  </div>
+</div>
+
+<!-- Mock -->
+<div class="mock-wrap">
+  <div class="mock-nav">🪙 Meu Baú &nbsp;·&nbsp; <span style="color:#8888aa;font-weight:400;font-size:12px">5 entradas</span></div>
+  <div class="mock-body">
+    <div class="mock-card">
+      <div class="mock-icon">🏦</div>
+      <div class="mock-info">
+        <div class="mock-title">Banco do Brasil</div>
+        <div class="mock-user">060.000.000-00 &nbsp;·&nbsp; bb.com.br</div>
+        <div class="mock-hint">💡 nome da rua + ano de nascimento</div>
+      </div>
+    </div>
+    <div class="mock-card">
+      <div class="mock-icon">🎮</div>
+      <div class="mock-info">
+        <div class="mock-title">Steam</div>
+        <div class="mock-user">jogador_sc &nbsp;·&nbsp; steampowered.com</div>
+        <div class="mock-hint">💡 anotei no caderno azul gaveta da mesa</div>
+      </div>
+    </div>
+    <div class="mock-card">
+      <div class="mock-icon">💼</div>
+      <div class="mock-info">
+        <div class="mock-title">Sistema da Empresa</div>
+        <div class="mock-user">diogo@empresa.com.br</div>
+        <div class="mock-hint">💡 mesmo padrão do e-mail pessoal</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Features -->
+<section>
+  <div class="section-label">Por que o Baú</div>
+  <div class="section-title">Tudo que você precisa</div>
+  <div class="section-sub">Simples, seguro e acessível de qualquer lugar.</div>
+  <div class="features">
+    <div class="feat">
+      <div class="feat-icon">☁️</div>
+      <h3>Na nuvem</h3>
+      <p>Formatou o PC? Trocou de celular? Seus dados continuam lá. Acesse de qualquer dispositivo com seu login.</p>
+    </div>
+    <div class="feat">
+      <div class="feat-icon">🔍</div>
+      <h3>Busca rápida</h3>
+      <p>Digite qualquer coisa — nome, usuário, site — e encontra na hora. Sem rolar uma lista infinita.</p>
+    </div>
+    <div class="feat">
+      <div class="feat-icon">🗂️</div>
+      <h3>Categorias</h3>
+      <p>Trabalho, Bancos, Jogos, Redes Sociais, Pessoal... Tudo organizado por categoria com filtro fácil.</p>
+    </div>
+    <div class="feat">
+      <div class="feat-icon">💡</div>
+      <h3>Dica, não senha</h3>
+      <p>Você guarda uma frase, uma pista, onde está anotada — o suficiente para lembrar. Sem guardar a senha em si.</p>
+    </div>
+    <div class="feat">
+      <div class="feat-icon">⚡</div>
+      <h3>Rápido de usar</h3>
+      <p>Adiciona em segundos. Interface limpa, sem complicação. Modal direto com os campos que importam.</p>
+    </div>
+    <div class="feat">
+      <div class="feat-icon">🔒</div>
+      <h3>Acesso protegido</h3>
+      <p>Seu Baú abre só com seu e-mail e senha mestra. Ninguém mais acessa suas entradas.</p>
+    </div>
+  </div>
+</section>
+
+<!-- Preço -->
+<div class="price-section">
+  <div class="section-label">Plano</div>
+  <div class="section-title">Grátis para começar</div>
+  <div class="section-sub" style="margin-bottom:36px">Sem cartão de crédito.</div>
+  <div class="price-box">
+    <div class="price-free">Grátis</div>
+    <div class="price-desc">30 dias completos · Depois planos a partir de R$9,90/mês</div>
+    <ul class="price-feats">
+      <li>Entradas ilimitadas</li>
+      <li>Todas as categorias</li>
+      <li>Busca e filtros</li>
+      <li>Acesso em qualquer dispositivo</li>
+      <li>Backup automático na nuvem</li>
+    </ul>
+    <a href="/bau/cadastro"><button class="cta-big" style="width:100%;justify-content:center">🪙 Criar meu Baú grátis</button></a>
+  </div>
+</div>
+
+<footer>
+  <p><a href="/">4KITEM</a> · <a href="/agenda">Agenda SC</a> · <a href="/alerta">Alerta SC</a></p>
+  <p style="margin-top:8px">© 2026 Baú · Todos os direitos reservados</p>
+</footer>
+
+</body>
+</html>

@@ -99,6 +99,30 @@ def init_saas_db():
 
         CREATE INDEX IF NOT EXISTS idx_alerta_sub_status ON alerta_subscribers(status);
         CREATE INDEX IF NOT EXISTS idx_alerta_rep_sub    ON alerta_reports(subscriber_id);
+
+        CREATE TABLE IF NOT EXISTS bau_users (
+            id            INTEGER PRIMARY KEY AUTOINCREMENT,
+            name          TEXT NOT NULL,
+            email         TEXT NOT NULL UNIQUE,
+            password_hash TEXT NOT NULL,
+            active        INTEGER DEFAULT 1,
+            created_at    TEXT,
+            trial_ends    TEXT
+        );
+
+        CREATE TABLE IF NOT EXISTS bau_entries (
+            id         INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id    INTEGER NOT NULL,
+            title      TEXT NOT NULL,
+            url        TEXT,
+            username   TEXT,
+            hint       TEXT,
+            category   TEXT DEFAULT 'outros',
+            created_at TEXT,
+            updated_at TEXT
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_bau_entries_user ON bau_entries(user_id);
     ''')
     conn.commit()
     conn.close()

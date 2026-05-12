@@ -84,6 +84,27 @@ def _saas_admin_required(f):
     return decorated
 
 
+def _bau_login_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not session.get('bau_user_id'):
+            return redirect('/bau/entrar')
+        return f(*args, **kwargs)
+    return decorated
+
+
+BAU_CATEGORIES = {
+    'trabalho': {'label': 'Trabalho',       'icon': '💼'},
+    'banco':    {'label': 'Bancos / Finance','icon': '🏦'},
+    'social':   {'label': 'Redes Sociais',  'icon': '📱'},
+    'pessoal':  {'label': 'Pessoal',        'icon': '👤'},
+    'jogos':    {'label': 'Jogos',          'icon': '🎮'},
+    'email':    {'label': 'E-mail',         'icon': '📧'},
+    'compras':  {'label': 'Compras',        'icon': '🛒'},
+    'outros':   {'label': 'Outros',         'icon': '🔧'},
+}
+
+
 def _get_slots(business_id, date_str, service_duration):
     """Gera horários disponíveis para uma data e duração de serviço."""
     try:
@@ -753,6 +774,154 @@ def kids_refresh():
             log.error(f"Scrape error: {e}")
     threading.Thread(target=_run, daemon=True).start()
     return jsonify({'status': 'started'})
+
+
+# ══════════════════════════════════════════════════════════════════════════
+#  BAÚ SC — Cofre digital de credenciais
+# ══════════════════════════════════════════════════════════════════════════
+
+@app.route('/bau')
+def bau():
+    return render_template('bau/landing.html')
+
+
+@app.route('/bau/cadastro', methods=['GET', 'POST'])
+def bau_cadastro():
+    error = None
+    if request.method == 'POST':
+        name     = request.form.get('name', '').strip()
+        email    = request.form.get('email', '').strip().lower()
+        password = request.form.get('password', '')
+        if not all([name, email, password]):
+            error = 'Preencha todos os campos.'
+        elif len(password) < 6:
+            error = 'A senha deve ter pelo menos 6 caracteres.'
+        else:
+            conn = get_saas_db()
+            exists = conn.execute('SELECT id FROM bau_users WHERE email=?', (email,)).fetchone()
+            if exists:
+                error = 'E-mail já cadastrado. Faça login.'
+                conn.close()
+            else:
+                from datetime import timedelta
+                now = datetime.now()
+                trial = (now + timedelta(days=30)).isoformat()
+                conn.execute(
+                    'INSERT INTO bau_users (name, email, password_hash, created_at, trial_ends) VALUES (?,?,?,?,?)',
+                    (name, email, generate_password_hash(password), now.isoformat(), trial)
+                )
+                conn.commit()
+                user = conn.execute('SELECT * FROM bau_users WHERE email=?', (email,)).fetchone()
+                conn.close()
+                session['bau_user_id']   = user['id']
+                session['bau_user_name'] = user['name']
+                return redirect('/bau/painel')
+    return render_template('bau/cadastro.html', error=error)
+
+
+@app.route('/bau/entrar', methods=['GET', 'POST'])
+def bau_entrar():
+    error = None
+    if request.method == 'POST':
+        email    = request.form.get('email', '').strip().lower()
+        password = request.form.get('password', '')
+        conn = get_saas_db()
+        user = conn.execute('SELECT * FROM bau_users WHERE email=? AND active=1', (email,)).fetchone()
+        conn.close()
+        if user and check_password_hash(user['password_hash'], password):
+            session['bau_user_id']   = user['id']
+            session['bau_user_name'] = user['name']
+            return redirect('/bau/painel')
+        error = 'E-mail ou senha incorretos.'
+    return render_template('bau/entrar.html', error=error)
+
+
+@app.route('/bau/sair')
+def bau_sair():
+    session.pop('bau_user_id', None)
+    session.pop('bau_user_name', None)
+    return redirect('/bau/entrar')
+
+
+@app.route('/bau/painel')
+@_bau_login_required
+def bau_painel():
+    user_id  = session['bau_user_id']
+    q        = request.args.get('q', '').strip()
+    cat      = request.args.get('cat', '')
+    conn     = get_saas_db()
+    query    = 'SELECT * FROM bau_entries WHERE user_id=?'
+    params   = [user_id]
+    if q:
+        query  += ' AND (title LIKE ? OR username LIKE ? OR url LIKE ? OR hint LIKE ?)'
+        params += [f'%{q}%', f'%{q}%', f'%{q}%', f'%{q}%']
+    if cat:
+        query  += ' AND category=?'
+        params += [cat]
+    query   += ' ORDER BY updated_at DESC'
+    entries  = [dict(r) for r in conn.execute(query, params).fetchall()]
+    conn.close()
+    for e in entries:
+        c = BAU_CATEGORIES.get(e['category'], BAU_CATEGORIES['outros'])
+        e['cat_label'] = c['label']
+        e['cat_icon']  = c['icon']
+    return render_template('bau/painel.html',
+                           entries=entries, categories=BAU_CATEGORIES,
+                           q=q, cat=cat,
+                           user_name=session.get('bau_user_name', ''))
+
+
+@app.route('/bau/entrada/add', methods=['POST'])
+@_bau_login_required
+def bau_add():
+    user_id  = session['bau_user_id']
+    title    = request.form.get('title', '').strip()
+    url      = request.form.get('url', '').strip()
+    username = request.form.get('username', '').strip()
+    hint     = request.form.get('hint', '').strip()
+    category = request.form.get('category', 'outros')
+    if not title:
+        return redirect('/bau/painel')
+    now = datetime.now().isoformat()
+    conn = get_saas_db()
+    conn.execute(
+        'INSERT INTO bau_entries (user_id, title, url, username, hint, category, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?)',
+        (user_id, title, url, username, hint, category, now, now)
+    )
+    conn.commit()
+    conn.close()
+    return redirect('/bau/painel')
+
+
+@app.route('/bau/entrada/<int:entry_id>/edit', methods=['POST'])
+@_bau_login_required
+def bau_edit(entry_id):
+    user_id  = session['bau_user_id']
+    title    = request.form.get('title', '').strip()
+    url      = request.form.get('url', '').strip()
+    username = request.form.get('username', '').strip()
+    hint     = request.form.get('hint', '').strip()
+    category = request.form.get('category', 'outros')
+    now      = datetime.now().isoformat()
+    conn     = get_saas_db()
+    conn.execute(
+        'UPDATE bau_entries SET title=?, url=?, username=?, hint=?, category=?, updated_at=? WHERE id=? AND user_id=?',
+        (title, url, username, hint, category, now, entry_id, user_id)
+    )
+    conn.commit()
+    conn.close()
+    return redirect('/bau/painel')
+
+
+@app.route('/bau/entrada/<int:entry_id>/delete', methods=['POST'])
+@_bau_login_required
+def bau_delete(entry_id):
+    user_id = session['bau_user_id']
+    conn    = get_saas_db()
+    conn.execute('DELETE FROM bau_entries WHERE id=? AND user_id=?', (entry_id, user_id))
+    conn.commit()
+    conn.close()
+    return redirect('/bau/painel')
 
 
 # ══════════════════════════════════════════════════════════════════════════
