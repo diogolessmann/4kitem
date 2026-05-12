@@ -1,6 +1,7 @@
 """
 app.py — 4KITEM Plataforma de Soluções Digitais
 """
+import os
 import logging
 import threading
 import re as _re
