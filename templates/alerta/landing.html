@@ -173,19 +173,44 @@
     .report-card li::before { content: '✓'; color: var(--green); font-weight: 700; flex-shrink: 0; }
     .report-card li strong { color: var(--text); }
 
-    /* ── Preço ── */
-    .price-wrap { max-width: 480px; margin: 0 auto; }
-    .price-card {
-      background: var(--surface); border: 1px solid rgba(249,115,22,0.4);
-      border-radius: 24px; padding: 36px 32px; text-align: center;
-      background: linear-gradient(135deg, rgba(249,115,22,0.06), var(--surface));
+    /* ── Planos grid ── */
+    .plans-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px; max-width: 960px; margin: 0 auto;
     }
-    .price-num { font-size: 56px; font-weight: 900; letter-spacing: -2px; }
-    .price-num span { font-size: 22px; color: var(--text2); font-weight: 500; }
-    .price-period { color: var(--text2); font-size: 13px; margin-bottom: 24px; }
-    .price-features { list-style: none; text-align: left; display: flex; flex-direction: column; gap: 10px; margin-bottom: 28px; }
-    .price-features li { font-size: 14px; display: flex; gap: 8px; }
-    .price-features li::before { content: '✅'; flex-shrink: 0; }
+    @media(max-width:768px){ .plans-grid{ grid-template-columns: repeat(2,1fr); } }
+    @media(max-width:480px){ .plans-grid{ grid-template-columns: 1fr; } }
+
+    .plan-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 20px; padding: 28px 24px; text-align: center;
+      display: flex; flex-direction: column; gap: 8px; position: relative;
+      transition: .2s;
+    }
+    .plan-card:hover { border-color: rgba(249,115,22,0.4); transform: translateY(-2px); }
+    .plan-card.featured {
+      border-color: rgba(249,115,22,0.5);
+      background: linear-gradient(135deg, rgba(249,115,22,0.07), var(--surface));
+    }
+    .plan-badge-top {
+      position: absolute; top: -12px; left: 50%; transform: translateX(-50%);
+      background: linear-gradient(135deg, var(--orange), var(--red));
+      color: #fff; font-size: 11px; font-weight: 800;
+      padding: 4px 14px; border-radius: 100px; white-space: nowrap;
+    }
+    .plan-icon { font-size: 28px; margin-bottom: 4px; }
+    .plan-name { font-size: 15px; font-weight: 800; }
+    .plan-items { font-size: 11px; color: var(--text2); font-weight: 600;
+      background: var(--surface2); border-radius: 100px; padding: 3px 10px;
+      display: inline-block; margin-bottom: 4px; }
+    .plan-price { font-size: 36px; font-weight: 900; letter-spacing: -1.5px; margin: 6px 0; }
+    .plan-price span { font-size: 14px; font-weight: 500; color: var(--text2); }
+    .plan-feats { list-style: none; text-align: left; display: flex; flex-direction: column;
+      gap: 6px; margin: 8px 0 16px; flex: 1; }
+    .plan-feats li { font-size: 12px; color: var(--text2); display: flex; gap: 6px; }
+    .plan-feats li::before { content: '✓'; color: var(--green); font-weight: 700; flex-shrink: 0; }
+    .plan-btn { width: 100%; justify-content: center; font-size: 13px; padding: 11px; }
 
     /* ── CTA ── */
     .cta-section {
@@ -334,28 +359,99 @@
 <section id="precos" style="background:var(--bg2); border-top:1px solid var(--border); border-bottom:1px solid var(--border);">
   <div class="section-label">Planos</div>
   <div class="section-title">Sem surpresas</div>
-  <div class="section-sub">Um valor justo pela tranquilidade de não ser pego de surpresa.</div>
+  <div class="section-sub">Escolha o plano ideal — para você, sua família ou sua frota.</div>
 
-  <div class="price-wrap">
-    <div class="price-card">
-      <div class="price-num">R$19<span>,90/mês</span></div>
-      <div class="price-period">Cobrado mensalmente · Cancele quando quiser</div>
-      <ul class="price-features">
-        <li>Relatório mensal completo no WhatsApp</li>
-        <li>Monitoramento de CNH (pontos, vencimento, categoria)</li>
-        <li>Monitoramento do veículo (IPVA, licenciamento, multas)</li>
-        <li>Alertas de vencimentos próximos</li>
-        <li>1 CNH + 1 veículo por assinatura</li>
-        <li>Suporte via WhatsApp</li>
+  <div class="plans-grid">
+
+    <!-- Individual -->
+    <div class="plan-card">
+      <div class="plan-icon">👤</div>
+      <div class="plan-name">Individual</div>
+      <div class="plan-items">1 CPF ou 1 placa</div>
+      <div class="plan-price">R$19<span>,90/mês</span></div>
+      <ul class="plan-feats">
+        <li>1 CNH ou 1 veículo</li>
+        <li>Relatório mensal no WhatsApp</li>
+        <li>IPVA, multas, pontos CNH</li>
       </ul>
-      <a href="/alerta" target="_blank">
-        <button class="btn-primary" style="width:100%;justify-content:center;font-size:16px;padding:16px;">
-          🚀 Assinar por R$ 19,90/mês
-        </button>
-      </a>
-      <p style="font-size:11px;color:var(--text2);margin-top:12px;">✅ Ativação no mesmo dia · Cancele quando quiser</p>
+      <a href="/alerta/cadastro"><button class="btn-primary plan-btn">🚀 Assinar</button></a>
     </div>
+
+    <!-- Família -->
+    <div class="plan-card featured">
+      <div class="plan-badge-top">⭐ Mais popular</div>
+      <div class="plan-icon">👨‍👩‍👧</div>
+      <div class="plan-name">Família</div>
+      <div class="plan-items">2 a 4 itens</div>
+      <div class="plan-price">R$39<span>/mês</span></div>
+      <ul class="plan-feats">
+        <li>Até 4 CNHs e/ou placas</li>
+        <li>Relatório mensal no WhatsApp</li>
+        <li>Ideal para família</li>
+      </ul>
+      <a href="/alerta/cadastro"><button class="btn-primary plan-btn">🚀 Assinar</button></a>
+    </div>
+
+    <!-- Pequena Frota -->
+    <div class="plan-card">
+      <div class="plan-icon">🚐</div>
+      <div class="plan-name">Pequena Frota</div>
+      <div class="plan-items">5 a 9 itens</div>
+      <div class="plan-price">R$99<span>/mês</span></div>
+      <ul class="plan-feats">
+        <li>Até 9 CNHs e/ou placas</li>
+        <li>Relatório mensal no WhatsApp</li>
+        <li>Ideal para microempresas</li>
+      </ul>
+      <a href="/alerta/cadastro"><button class="btn-primary plan-btn">🚀 Assinar</button></a>
+    </div>
+
+    <!-- Frota Média -->
+    <div class="plan-card">
+      <div class="plan-icon">🚛</div>
+      <div class="plan-name">Frota Média</div>
+      <div class="plan-items">10 a 20 itens</div>
+      <div class="plan-price">R$149<span>/mês</span></div>
+      <ul class="plan-feats">
+        <li>Até 20 CNHs e/ou placas</li>
+        <li>Relatório mensal no WhatsApp</li>
+        <li>Ideal para empresas</li>
+      </ul>
+      <a href="/alerta/cadastro"><button class="btn-primary plan-btn">🚀 Assinar</button></a>
+    </div>
+
+    <!-- Master -->
+    <div class="plan-card">
+      <div class="plan-icon">🏢</div>
+      <div class="plan-name">Master</div>
+      <div class="plan-items">21 a 50 itens</div>
+      <div class="plan-price">R$229<span>/mês</span></div>
+      <ul class="plan-feats">
+        <li>Até 50 CNHs e/ou placas</li>
+        <li>Relatório mensal no WhatsApp</li>
+        <li>Transportadoras e frotas</li>
+      </ul>
+      <a href="/alerta/cadastro"><button class="btn-primary plan-btn">🚀 Assinar</button></a>
+    </div>
+
+    <!-- Enterprise -->
+    <div class="plan-card">
+      <div class="plan-icon">🏭</div>
+      <div class="plan-name">Enterprise</div>
+      <div class="plan-items">51 a 100 itens</div>
+      <div class="plan-price">R$399<span>/mês</span></div>
+      <ul class="plan-feats">
+        <li>Até 100 CNHs e/ou placas</li>
+        <li>Relatório mensal no WhatsApp</li>
+        <li>Grandes frotas</li>
+      </ul>
+      <a href="/alerta/cadastro"><button class="btn-primary plan-btn">🚀 Assinar</button></a>
+    </div>
+
   </div>
+  <p style="text-align:center;color:var(--text2);font-size:12px;margin-top:28px;">
+    ✅ Ativação no mesmo dia &nbsp;·&nbsp; Pagamento via Pix &nbsp;·&nbsp; Cancele quando quiser
+  </p>
 </section>
 
 <!-- CTA -->
