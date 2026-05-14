@@ -84,6 +84,15 @@ def _saas_admin_required(f):
     return decorated
 
 
+def _mandazap_login_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not session.get('mz_user_id'):
+            return redirect('/mandazap/entrar')
+        return f(*args, **kwargs)
+    return decorated
+
+
 def _bau_login_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
@@ -92,6 +101,14 @@ def _bau_login_required(f):
         return f(*args, **kwargs)
     return decorated
 
+
+MANDAZAP_PLANS = {
+    'solo':      {'label': 'Solo',      'numbers': 1,  'daily_limit': 399,   'pdf_limit': 5,    'price': 79},
+    'duplo':     {'label': 'Duplo',     'numbers': 2,  'daily_limit': 799,   'pdf_limit': 15,   'price': 149},
+    'trio':      {'label': 'Trio',      'numbers': 3,  'daily_limit': 1199,  'pdf_limit': 30,   'price': 219},
+    'quadruplo': {'label': 'Quádruplo', 'numbers': 4,  'daily_limit': 1599,  'pdf_limit': 60,   'price': 289},
+    'agencia':   {'label': 'Agência',   'numbers': 10, 'daily_limit': 99999, 'pdf_limit': 9999, 'price': 499},
+}
 
 BAU_CATEGORIES = {
     'trabalho': {'label': 'Trabalho',       'icon': '💼'},
@@ -922,6 +939,341 @@ def bau_delete(entry_id):
     conn.commit()
     conn.close()
     return redirect('/bau/painel')
+
+
+# ══════════════════════════════════════════════════════════════════════════
+#  MANDAZAP — Plataforma de Marketing no WhatsApp
+# ══════════════════════════════════════════════════════════════════════════
+
+@app.route('/mandazap')
+def mandazap():
+    return render_template('mandazap/landing.html', plans=MANDAZAP_PLANS)
+
+
+@app.route('/mandazap/cadastro', methods=['GET', 'POST'])
+def mandazap_cadastro():
+    error = None
+    if request.method == 'POST':
+        name     = request.form.get('name', '').strip()
+        email    = request.form.get('email', '').strip().lower()
+        password = request.form.get('password', '')
+        if not all([name, email, password]):
+            error = 'Preencha todos os campos.'
+        elif len(password) < 6:
+            error = 'A senha deve ter pelo menos 6 caracteres.'
+        else:
+            conn = get_saas_db()
+            exists = conn.execute('SELECT id FROM mandazap_users WHERE email=?', (email,)).fetchone()
+            if exists:
+                error = 'E-mail já cadastrado. Faça login.'
+                conn.close()
+            else:
+                now   = datetime.now()
+                trial = (now + timedelta(days=2)).isoformat()
+                conn.execute(
+                    'INSERT INTO mandazap_users (name, email, password_hash, plan, created_at, trial_ends) VALUES (?,?,?,?,?,?)',
+                    (name, email, generate_password_hash(password), 'solo', now.isoformat(), trial)
+                )
+                conn.commit()
+                user = conn.execute('SELECT * FROM mandazap_users WHERE email=?', (email,)).fetchone()
+                conn.close()
+                session['mz_user_id']   = user['id']
+                session['mz_user_name'] = user['name']
+                session['mz_plan']      = user['plan']
+                return redirect('/mandazap/painel')
+    return render_template('mandazap/cadastro.html', error=error)
+
+
+@app.route('/mandazap/entrar', methods=['GET', 'POST'])
+def mandazap_entrar():
+    error = None
+    if request.method == 'POST':
+        email    = request.form.get('email', '').strip().lower()
+        password = request.form.get('password', '')
+        conn = get_saas_db()
+        user = conn.execute('SELECT * FROM mandazap_users WHERE email=? AND active=1', (email,)).fetchone()
+        conn.close()
+        if user and check_password_hash(user['password_hash'], password):
+            session['mz_user_id']   = user['id']
+            session['mz_user_name'] = user['name']
+            session['mz_plan']      = user['plan']
+            return redirect('/mandazap/painel')
+        error = 'E-mail ou senha incorretos.'
+    return render_template('mandazap/entrar.html', error=error)
+
+
+@app.route('/mandazap/sair')
+def mandazap_sair():
+    for k in ('mz_user_id', 'mz_user_name', 'mz_plan'):
+        session.pop(k, None)
+    return redirect('/mandazap/entrar')
+
+
+@app.route('/mandazap/painel')
+@_mandazap_login_required
+def mandazap_painel():
+    user_id  = session['mz_user_id']
+    plan_key = session.get('mz_plan', 'solo')
+    conn     = get_saas_db()
+
+    contacts  = [dict(r) for r in conn.execute(
+        'SELECT * FROM mandazap_contacts WHERE user_id=? ORDER BY name', (user_id,)
+    ).fetchall()]
+    lists     = [dict(r) for r in conn.execute('''
+        SELECT l.*, COUNT(lc.contact_id) as contact_count
+        FROM mandazap_lists l
+        LEFT JOIN mandazap_list_contacts lc ON l.id = lc.list_id
+        WHERE l.user_id=? GROUP BY l.id ORDER BY l.created_at DESC
+    ''', (user_id,)).fetchall()]
+    numbers   = [dict(r) for r in conn.execute(
+        'SELECT * FROM mandazap_numbers WHERE user_id=? ORDER BY created_at DESC', (user_id,)
+    ).fetchall()]
+    campaigns = [dict(r) for r in conn.execute('''
+        SELECT c.*, l.name as list_name, n.label as number_label
+        FROM mandazap_campaigns c
+        LEFT JOIN mandazap_lists l ON c.list_id = l.id
+        LEFT JOIN mandazap_numbers n ON c.number_id = n.id
+        WHERE c.user_id=? ORDER BY c.created_at DESC
+    ''', (user_id,)).fetchall()]
+    templates = [dict(r) for r in conn.execute(
+        'SELECT * FROM mandazap_templates WHERE user_id=? ORDER BY created_at DESC', (user_id,)
+    ).fetchall()]
+    conn.close()
+
+    today      = datetime.now().strftime('%Y-%m-%d')
+    today_sent = sum(c.get('sent', 0) for c in campaigns if (c.get('created_at') or '').startswith(today))
+    mz_stats   = {
+        'contacts':  len(contacts),
+        'lists':     len(lists),
+        'campaigns': len(campaigns),
+        'today_sent': today_sent,
+        'numbers':   len(numbers),
+        'numbers_connected': sum(1 for n in numbers if n.get('status') == 'connected'),
+    }
+
+    return render_template('mandazap/painel.html',
+                           contacts=contacts, lists=lists, numbers=numbers,
+                           campaigns=campaigns, templates=templates,
+                           mz_stats=mz_stats, plan=plan_key,
+                           plan_info=MANDAZAP_PLANS.get(plan_key, MANDAZAP_PLANS['solo']),
+                           plans=MANDAZAP_PLANS,
+                           user_name=session.get('mz_user_name', ''),
+                           section=request.args.get('section', 'dashboard'))
+
+
+# ── Contatos ──────────────────────────────────────────────────────────────────
+
+@app.route('/mandazap/contatos/add', methods=['POST'])
+@_mandazap_login_required
+def mz_contact_add():
+    user_id = session['mz_user_id']
+    name    = request.form.get('name', '').strip()
+    phone   = request.form.get('phone', '').strip()
+    email   = request.form.get('email', '').strip()
+    tag     = request.form.get('tag', '').strip()
+    notes   = request.form.get('notes', '').strip()
+    if name and phone:
+        phone = _re.sub(r'[^\d+]', '', phone)
+        conn = get_saas_db()
+        conn.execute(
+            'INSERT INTO mandazap_contacts (user_id, name, phone, email, tag, notes, created_at) VALUES (?,?,?,?,?,?,?)',
+            (user_id, name, phone, email, tag, notes, datetime.now().isoformat())
+        )
+        conn.commit()
+        conn.close()
+    return redirect('/mandazap/painel?section=contatos')
+
+
+@app.route('/mandazap/contatos/<int:cid>/delete', methods=['POST'])
+@_mandazap_login_required
+def mz_contact_delete(cid):
+    user_id = session['mz_user_id']
+    conn    = get_saas_db()
+    conn.execute('DELETE FROM mandazap_list_contacts WHERE contact_id=?', (cid,))
+    conn.execute('DELETE FROM mandazap_contacts WHERE id=? AND user_id=?', (cid, user_id))
+    conn.commit()
+    conn.close()
+    return redirect('/mandazap/painel?section=contatos')
+
+
+@app.route('/mandazap/contatos/import-csv', methods=['POST'])
+@_mandazap_login_required
+def mz_contact_import_csv():
+    import csv, io
+    user_id = session['mz_user_id']
+    f       = request.files.get('csv_file')
+    if not f:
+        return redirect('/mandazap/painel?section=contatos')
+    try:
+        content = f.read().decode('utf-8-sig', errors='ignore')
+        reader  = csv.DictReader(io.StringIO(content))
+        conn    = get_saas_db()
+        count   = 0
+        for row in reader:
+            name  = (row.get('nome') or row.get('name') or row.get('Nome') or '').strip()
+            phone = (row.get('telefone') or row.get('phone') or row.get('Telefone') or row.get('whatsapp') or '').strip()
+            if name and phone:
+                phone = _re.sub(r'[^\d+]', '', phone)
+                email = (row.get('email') or row.get('Email') or '').strip()
+                tag   = (row.get('tag') or row.get('Tag') or row.get('categoria') or '').strip()
+                conn.execute(
+                    'INSERT OR IGNORE INTO mandazap_contacts (user_id, name, phone, email, tag, created_at) VALUES (?,?,?,?,?,?)',
+                    (user_id, name, phone, email, tag, datetime.now().isoformat())
+                )
+                count += 1
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        log.error(f'CSV import error: {e}')
+    return redirect('/mandazap/painel?section=contatos')
+
+
+# ── Listas ────────────────────────────────────────────────────────────────────
+
+@app.route('/mandazap/listas/add', methods=['POST'])
+@_mandazap_login_required
+def mz_list_add():
+    user_id     = session['mz_user_id']
+    name        = request.form.get('name', '').strip()
+    description = request.form.get('description', '').strip()
+    contact_ids = request.form.getlist('contact_ids')
+    if name:
+        conn = get_saas_db()
+        cur  = conn.execute(
+            'INSERT INTO mandazap_lists (user_id, name, description, created_at) VALUES (?,?,?,?)',
+            (user_id, name, description, datetime.now().isoformat())
+        )
+        list_id = cur.lastrowid
+        for cid in contact_ids:
+            try:
+                conn.execute('INSERT OR IGNORE INTO mandazap_list_contacts (list_id, contact_id) VALUES (?,?)', (list_id, int(cid)))
+            except Exception:
+                pass
+        conn.commit()
+        conn.close()
+    return redirect('/mandazap/painel?section=listas')
+
+
+@app.route('/mandazap/listas/<int:lid>/delete', methods=['POST'])
+@_mandazap_login_required
+def mz_list_delete(lid):
+    user_id = session['mz_user_id']
+    conn    = get_saas_db()
+    conn.execute('DELETE FROM mandazap_list_contacts WHERE list_id=?', (lid,))
+    conn.execute('DELETE FROM mandazap_lists WHERE id=? AND user_id=?', (lid, user_id))
+    conn.commit()
+    conn.close()
+    return redirect('/mandazap/painel?section=listas')
+
+
+# ── Números ───────────────────────────────────────────────────────────────────
+
+@app.route('/mandazap/numeros/add', methods=['POST'])
+@_mandazap_login_required
+def mz_number_add():
+    user_id  = session['mz_user_id']
+    plan_key = session.get('mz_plan', 'solo')
+    label    = request.form.get('label', '').strip()
+    phone    = request.form.get('phone', '').strip()
+    if not label:
+        return redirect('/mandazap/painel?section=numeros')
+    conn     = get_saas_db()
+    count    = conn.execute('SELECT COUNT(*) FROM mandazap_numbers WHERE user_id=?', (user_id,)).fetchone()[0]
+    max_nums = MANDAZAP_PLANS.get(plan_key, MANDAZAP_PLANS['solo'])['numbers']
+    if count < max_nums:
+        conn.execute(
+            'INSERT INTO mandazap_numbers (user_id, label, phone, status, created_at) VALUES (?,?,?,?,?)',
+            (user_id, label, _re.sub(r'[^\d+]', '', phone), 'disconnected', datetime.now().isoformat())
+        )
+        conn.commit()
+    conn.close()
+    return redirect('/mandazap/painel?section=numeros')
+
+
+@app.route('/mandazap/numeros/<int:nid>/delete', methods=['POST'])
+@_mandazap_login_required
+def mz_number_delete(nid):
+    user_id = session['mz_user_id']
+    conn    = get_saas_db()
+    conn.execute('DELETE FROM mandazap_numbers WHERE id=? AND user_id=?', (nid, user_id))
+    conn.commit()
+    conn.close()
+    return redirect('/mandazap/painel?section=numeros')
+
+
+# ── Campanhas ─────────────────────────────────────────────────────────────────
+
+@app.route('/mandazap/campanhas/add', methods=['POST'])
+@_mandazap_login_required
+def mz_campaign_add():
+    user_id      = session['mz_user_id']
+    name         = request.form.get('name', '').strip()
+    message      = request.form.get('message', '').strip()
+    media_type   = request.form.get('media_type', 'text')
+    list_id      = request.form.get('list_id') or None
+    number_id    = request.form.get('number_id') or None
+    scheduled_at = request.form.get('scheduled_at', '').strip() or None
+    if name and message:
+        total = 0
+        if list_id:
+            conn  = get_saas_db()
+            total = conn.execute(
+                'SELECT COUNT(*) FROM mandazap_list_contacts WHERE list_id=?', (list_id,)
+            ).fetchone()[0]
+            conn.close()
+        conn = get_saas_db()
+        conn.execute('''
+            INSERT INTO mandazap_campaigns
+            (user_id, name, message, media_type, list_id, number_id, status, total, sent, scheduled_at, created_at)
+            VALUES (?,?,?,?,?,?,?,?,0,?,?)
+        ''', (user_id, name, message, media_type, list_id, number_id,
+              'agendada' if scheduled_at else 'rascunho', total,
+              scheduled_at, datetime.now().isoformat()))
+        conn.commit()
+        conn.close()
+    return redirect('/mandazap/painel?section=campanhas')
+
+
+@app.route('/mandazap/campanhas/<int:cid>/delete', methods=['POST'])
+@_mandazap_login_required
+def mz_campaign_delete(cid):
+    user_id = session['mz_user_id']
+    conn    = get_saas_db()
+    conn.execute('DELETE FROM mandazap_campaigns WHERE id=? AND user_id=?', (cid, user_id))
+    conn.commit()
+    conn.close()
+    return redirect('/mandazap/painel?section=campanhas')
+
+
+# ── Templates ─────────────────────────────────────────────────────────────────
+
+@app.route('/mandazap/templates/add', methods=['POST'])
+@_mandazap_login_required
+def mz_template_add():
+    user_id    = session['mz_user_id']
+    name       = request.form.get('name', '').strip()
+    message    = request.form.get('message', '').strip()
+    media_type = request.form.get('media_type', 'text')
+    if name and message:
+        conn = get_saas_db()
+        conn.execute(
+            'INSERT INTO mandazap_templates (user_id, name, message, media_type, created_at) VALUES (?,?,?,?,?)',
+            (user_id, name, message, media_type, datetime.now().isoformat())
+        )
+        conn.commit()
+        conn.close()
+    return redirect('/mandazap/painel?section=templates')
+
+
+@app.route('/mandazap/templates/<int:tid>/delete', methods=['POST'])
+@_mandazap_login_required
+def mz_template_delete(tid):
+    user_id = session['mz_user_id']
+    conn    = get_saas_db()
+    conn.execute('DELETE FROM mandazap_templates WHERE id=? AND user_id=?', (tid, user_id))
+    conn.commit()
+    conn.close()
+    return redirect('/mandazap/painel?section=templates')
 
 
 # ══════════════════════════════════════════════════════════════════════════

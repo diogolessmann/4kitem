@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Entrar — MandaZap</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#09090f;color:#f0fff4;font-family:'Segoe UI',sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+  body::before{content:'';position:fixed;top:0;left:50%;transform:translateX(-50%);width:600px;height:400px;background:radial-gradient(ellipse,rgba(34,197,94,.08) 0%,transparent 70%);pointer-events:none}
+  .box{background:#0e1a10;border:1px solid rgba(34,197,94,.15);border-radius:24px;padding:40px 36px;width:100%;max-width:400px}
+  .logo{text-align:center;margin-bottom:6px;font-size:34px}
+  .logo-text{text-align:center;font-size:22px;font-weight:900;color:#22c55e;margin-bottom:4px}
+  .sub{text-align:center;font-size:13px;color:#6b9e72;margin-bottom:28px}
+  .error{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:10px;padding:12px 16px;color:#fca5a5;font-size:13px;margin-bottom:20px}
+  .form-group{margin-bottom:16px}
+  label{display:block;font-size:12px;color:#6b9e72;margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+  input{width:100%;background:#0a130c;border:1px solid rgba(34,197,94,.1);border-radius:10px;color:#f0fff4;padding:11px 14px;font-size:14px;outline:none;transition:.2s}
+  input:focus{border-color:#22c55e;box-shadow:0 0 0 2px rgba(34,197,94,.1)}
+  .btn{width:100%;padding:13px;background:linear-gradient(135deg,#16a34a,#22c55e);border:none;border-radius:12px;color:#fff;font-size:15px;font-weight:700;cursor:pointer;margin-top:8px;transition:.2s;font-family:inherit;box-shadow:0 0 20px rgba(34,197,94,.2)}
+  .btn:hover{opacity:.9;transform:translateY(-1px)}
+  .footer{text-align:center;margin-top:20px;font-size:13px;color:#6b9e72}
+  .footer a{color:#22c55e}
+</style>
+</head>
+<body>
+<div class="box">
+  <div class="logo">📲</div>
+  <div class="logo-text">MandaZap</div>
+  <div class="sub">Acesse sua plataforma de WhatsApp</div>
+  {% if error %}<div class="error">⚠️ {{ error }}</div>{% endif %}
+  <form method="POST">
+    <div class="form-group">
+      <label>E-mail</label>
+      <input type="email" name="email" placeholder="joao@empresa.com" required autofocus>
+    </div>
+    <div class="form-group">
+      <label>Senha</label>
+      <input type="password" name="password" placeholder="••••••••" required>
+    </div>
+    <button type="submit" class="btn">🔓 Entrar no painel</button>
+  </form>
+  <div class="footer">Não tem conta? <a href="/mandazap/cadastro">Criar grátis</a> &nbsp;·&nbsp; <a href="/mandazap">← Voltar</a></div>
+</div>
+</body>
+</html>

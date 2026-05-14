@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MandaZap — Marketing no WhatsApp que funciona</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#09090f;color:#f0fff4;font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh;overflow-x:hidden}
+  a{text-decoration:none;color:inherit}
+
+  /* NAV */
+  nav{display:flex;align-items:center;justify-content:space-between;padding:16px 28px;border-bottom:1px solid rgba(34,197,94,0.1);position:sticky;top:0;background:rgba(9,9,15,0.92);backdrop-filter:blur(16px);z-index:50}
+  .nav-logo{font-size:20px;font-weight:900;color:#22c55e;display:flex;align-items:center;gap:8px}
+  .nav-links{display:flex;gap:10px}
+  .btn-outline{padding:8px 18px;border-radius:100px;border:1px solid rgba(34,197,94,0.25);color:#6b9e72;font-size:13px;font-weight:600;cursor:pointer;background:transparent;font-family:inherit;transition:.2s}
+  .btn-outline:hover{border-color:#22c55e;color:#22c55e}
+  .btn-primary{padding:8px 20px;border-radius:100px;background:linear-gradient(135deg,#16a34a,#22c55e);color:#fff;font-size:13px;font-weight:700;cursor:pointer;border:none;font-family:inherit;transition:.2s}
+  .btn-primary:hover{opacity:.9}
+
+  /* HERO */
+  .hero{text-align:center;padding:90px 24px 60px;position:relative}
+  .hero::before{content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);width:600px;height:400px;background:radial-gradient(ellipse,rgba(34,197,94,.12) 0%,transparent 70%);pointer-events:none}
+  .hero-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);border-radius:100px;padding:6px 16px;font-size:12px;font-weight:700;color:#22c55e;margin-bottom:28px}
+  .hero h1{font-size:clamp(34px,6vw,58px);font-weight:900;letter-spacing:-1.5px;line-height:1.1;margin-bottom:20px;max-width:760px;margin-left:auto;margin-right:auto}
+  .hero h1 span{color:#22c55e}
+  .hero p{font-size:17px;color:#8a9f8d;line-height:1.65;margin-bottom:36px;max-width:580px;margin-left:auto;margin-right:auto}
+  .hero p strong{color:#f0fff4}
+  .hero-ctas{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;margin-bottom:48px}
+  .cta-big{display:inline-flex;align-items:center;gap:8px;padding:15px 34px;border-radius:100px;background:linear-gradient(135deg,#16a34a,#22c55e);color:#fff;font-size:16px;font-weight:800;cursor:pointer;transition:.2s;border:none;font-family:inherit;box-shadow:0 0 30px rgba(34,197,94,.25)}
+  .cta-big:hover{opacity:.9;transform:translateY(-1px)}
+  .cta-sec{display:inline-flex;align-items:center;gap:8px;padding:15px 24px;border-radius:100px;border:1px solid rgba(34,197,94,.2);color:#f0fff4;font-size:15px;font-weight:600;cursor:pointer;transition:.2s;background:transparent;font-family:inherit}
+  .cta-sec:hover{border-color:#22c55e;color:#22c55e}
+
+  /* STATS ROW */
+  .stats-row{display:flex;align-items:center;justify-content:center;gap:32px;flex-wrap:wrap;margin-bottom:60px}
+  .stat-item{text-align:center}
+  .stat-item strong{font-size:22px;font-weight:900;color:#22c55e}
+  .stat-item span{display:block;font-size:12px;color:#6b9e72;margin-top:2px}
+
+  /* MOCK UI */
+  .mock-wrap{max-width:900px;margin:0 auto 80px;background:#0e1a10;border:1px solid rgba(34,197,94,.18);border-radius:20px;overflow:hidden;box-shadow:0 0 80px rgba(34,197,94,.1)}
+  .mock-topbar{background:#0a130c;padding:10px 16px;display:flex;align-items:center;gap:6px;border-bottom:1px solid rgba(34,197,94,.1)}
+  .mock-dot{width:10px;height:10px;border-radius:50%}
+  .mock-dot.r{background:#ef4444}
+  .mock-dot.y{background:#eab308}
+  .mock-dot.g{background:#22c55e}
+  .mock-title{flex:1;text-align:center;font-size:11px;color:#6b9e72;font-weight:600}
+  .mock-body{display:flex;height:320px}
+  .mock-sidebar{width:180px;background:#0a130c;border-right:1px solid rgba(34,197,94,.08);padding:16px 12px;display:flex;flex-direction:column;gap:4px;flex-shrink:0}
+  .mock-logo{font-size:14px;font-weight:900;color:#22c55e;padding:8px 10px;margin-bottom:8px}
+  .mock-nav-item{font-size:12px;padding:8px 10px;border-radius:8px;color:#6b9e72;display:flex;align-items:center;gap:6px}
+  .mock-nav-item.active{background:rgba(34,197,94,.12);color:#22c55e;font-weight:600}
+  .mock-content{flex:1;padding:20px;display:flex;flex-direction:column;gap:14px;overflow:hidden}
+  .mock-stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+  .mock-stat-card{background:#0a130c;border:1px solid rgba(34,197,94,.1);border-radius:10px;padding:12px;text-align:center}
+  .mock-stat-card strong{display:block;font-size:18px;font-weight:900;color:#22c55e}
+  .mock-stat-card small{font-size:10px;color:#6b9e72}
+  .mock-table{background:#0a130c;border:1px solid rgba(34,197,94,.08);border-radius:10px;overflow:hidden}
+  .mock-table-row{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid rgba(34,197,94,.06);font-size:12px}
+  .mock-table-row:last-child{border-bottom:none}
+  .mock-badge{padding:3px 8px;border-radius:100px;font-size:10px;font-weight:700}
+  .mock-badge.done{background:rgba(34,197,94,.15);color:#22c55e}
+  .mock-badge.send{background:rgba(234,179,8,.15);color:#eab308}
+  .mock-badge.draft{background:rgba(255,255,255,.07);color:#6b9e72}
+
+  /* FEATURES */
+  section{padding:72px 24px}
+  .section-label{text-align:center;font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#22c55e;margin-bottom:12px}
+  .section-title{text-align:center;font-size:clamp(24px,4vw,36px);font-weight:900;letter-spacing:-1px;margin-bottom:8px}
+  .section-sub{text-align:center;color:#8a9f8d;font-size:15px;margin-bottom:48px}
+  .features{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;max-width:960px;margin:0 auto}
+  .feat{background:#0e1a10;border:1px solid rgba(34,197,94,.08);border-radius:16px;padding:26px;transition:.2s}
+  .feat:hover{border-color:rgba(34,197,94,.25);transform:translateY(-2px)}
+  .feat-icon{font-size:30px;margin-bottom:14px}
+  .feat h3{font-size:15px;font-weight:800;margin-bottom:8px}
+  .feat p{font-size:13px;color:#8a9f8d;line-height:1.65}
+
+  /* HOW IT WORKS */
+  .how-section{background:#0e1a10;border-top:1px solid rgba(34,197,94,.08);border-bottom:1px solid rgba(34,197,94,.08);padding:72px 24px}
+  .steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:24px;max-width:900px;margin:0 auto}
+  .step{text-align:center;padding:24px}
+  .step-num{width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#16a34a,#22c55e);color:#fff;font-size:18px;font-weight:900;display:flex;align-items:center;justify-content:center;margin:0 auto 16px}
+  .step h3{font-size:15px;font-weight:800;margin-bottom:8px}
+  .step p{font-size:13px;color:#8a9f8d;line-height:1.6}
+
+  /* PRICING */
+  .price-section{padding:72px 24px;text-align:center}
+  .plans-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;max-width:1000px;margin:0 auto}
+  .plan-card{background:#0e1a10;border:1px solid rgba(34,197,94,.1);border-radius:18px;padding:24px 18px;position:relative;transition:.2s}
+  .plan-card:hover{border-color:rgba(34,197,94,.3);transform:translateY(-2px)}
+  .plan-card.featured{border-color:#22c55e;background:linear-gradient(135deg,rgba(22,163,74,.1),#0e1a10);box-shadow:0 0 30px rgba(34,197,94,.1)}
+  .plan-tag{display:inline-block;background:#22c55e;color:#000;font-size:10px;font-weight:800;padding:3px 10px;border-radius:100px;margin-bottom:12px}
+  .plan-name{font-size:14px;font-weight:800;margin-bottom:4px}
+  .plan-price{font-size:30px;font-weight:900;color:#22c55e;margin-bottom:2px}
+  .plan-price-sub{font-size:11px;color:#6b9e72;margin-bottom:16px}
+  .plan-feats{list-style:none;text-align:left;display:flex;flex-direction:column;gap:7px;margin-bottom:20px}
+  .plan-feats li{font-size:12px;color:#8a9f8d;display:flex;gap:6px}
+  .plan-feats li::before{content:'✓';color:#22c55e;font-weight:900;flex-shrink:0}
+  .plan-btn{width:100%;padding:10px;border-radius:10px;background:linear-gradient(135deg,#16a34a,#22c55e);border:none;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:.2s}
+  .plan-btn:hover{opacity:.9}
+  .plan-btn.outline{background:none;border:1px solid rgba(34,197,94,.25);color:#22c55e}
+  .plan-btn.outline:hover{border-color:#22c55e;background:rgba(34,197,94,.06)}
+
+  /* CTA FINAL */
+  .cta-section{text-align:center;padding:80px 24px;position:relative;overflow:hidden}
+  .cta-section::before{content:'';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:500px;height:300px;background:radial-gradient(ellipse,rgba(34,197,94,.1) 0%,transparent 70%);pointer-events:none}
+  .cta-section h2{font-size:clamp(26px,4vw,40px);font-weight:900;letter-spacing:-1px;margin-bottom:16px}
+  .cta-section p{color:#8a9f8d;font-size:16px;margin-bottom:36px}
+
+  /* FOOTER */
+  footer{padding:28px 24px;text-align:center;font-size:12px;color:#6b9e72;border-top:1px solid rgba(34,197,94,.08)}
+  footer a{color:#22c55e}
+
+  /* HERO IMAGE */
+  .hero-img-wrap{max-width:900px;margin:0 auto 60px;border-radius:20px;overflow:hidden;box-shadow:0 0 60px rgba(34,197,94,.15);border:1px solid rgba(34,197,94,.15)}
+  .hero-img-wrap img{width:100%;display:block}
+
+  /* FEATURE HIGHLIGHT */
+  .feat-highlight{max-width:960px;margin:0 auto 0;display:grid;grid-template-columns:1fr 1fr;gap:40px;align-items:center;padding:0 0 24px}
+  .feat-highlight-text h2{font-size:clamp(22px,3.5vw,32px);font-weight:900;letter-spacing:-0.8px;margin-bottom:14px;line-height:1.2}
+  .feat-highlight-text h2 span{color:#22c55e}
+  .feat-highlight-text p{font-size:14px;color:#8a9f8d;line-height:1.7;margin-bottom:20px}
+  .feat-highlight-text ul{list-style:none;display:flex;flex-direction:column;gap:8px}
+  .feat-highlight-text ul li{font-size:13px;color:#8a9f8d;display:flex;align-items:flex-start;gap:8px}
+  .feat-highlight-text ul li::before{content:'✓';color:#22c55e;font-weight:900;margin-top:1px;flex-shrink:0}
+  .feat-highlight-img{border-radius:16px;overflow:hidden;box-shadow:0 0 40px rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.12)}
+  .feat-highlight-img img{width:100%;display:block}
+
+  @media(max-width:700px){.feat-highlight{grid-template-columns:1fr}}
+  @media(max-width:600px){.hero-ctas{flex-direction:column;align-items:stretch}.cta-big,.cta-sec{justify-content:center}.mock-body{flex-direction:column;height:auto}.mock-sidebar{width:100%;height:48px;flex-direction:row;padding:8px 12px;overflow-x:auto}.mock-stats-grid{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-logo">📲 MandaZap</div>
+  <div class="nav-links">
+    <a href="/"><button class="btn-outline">← 4KITEM</button></a>
+    <a href="/mandazap/entrar"><button class="btn-outline">Entrar</button></a>
+    <a href="/mandazap/cadastro"><button class="btn-primary">Começar grátis</button></a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-badge">📲 A plataforma de WhatsApp marketing do Brasil</div>
+  <h1>Dispare mensagens e<br><span>venda mais no WhatsApp</span></h1>
+  <p>Importe listas, personalize mensagens com o nome do cliente e envie em massa. <strong>Anti-ban inteligente</strong> incluso. Funciona para qualquer negócio.</p>
+  <div class="hero-ctas">
+    <a href="/mandazap/cadastro"><button class="cta-big">📲 Começar grátis — 2 dias</button></a>
+    <a href="#planos"><button class="cta-sec">Ver planos</button></a>
+  </div>
+  <div class="stats-row">
+    <div class="stat-item"><strong>399+</strong><span>Envios/dia no plano básico</span></div>
+    <div class="stat-item"><strong>Anti-ban</strong><span>Intervalo randômico incluído</span></div>
+    <div class="stat-item"><strong>2 min</strong><span>Para conectar e enviar</span></div>
+    <div class="stat-item"><strong>100%</strong><span>Feito para o mercado BR</span></div>
+  </div>
+</div>
+
+<!-- HERO IMAGE -->
+<div style="padding:0 24px">
+  <div class="hero-img-wrap">
+    <img src="/static/img/mandazap/hero.png" alt="MandaZap — Dispare mensagens e venda mais no WhatsApp">
+  </div>
+</div>
+
+<!-- MOCK UI -->
+<div style="padding:0 24px">
+<div class="mock-wrap">
+  <div class="mock-topbar">
+    <div class="mock-dot r"></div><div class="mock-dot y"></div><div class="mock-dot g"></div>
+    <div class="mock-title">mandazap — Painel</div>
+  </div>
+  <div class="mock-body">
+    <div class="mock-sidebar">
+      <div class="mock-logo">📲 MandaZap</div>
+      <div class="mock-nav-item active">🏠 Dashboard</div>
+      <div class="mock-nav-item">📞 Números</div>
+      <div class="mock-nav-item">👥 Contatos</div>
+      <div class="mock-nav-item">📋 Listas</div>
+      <div class="mock-nav-item">📢 Campanhas</div>
+      <div class="mock-nav-item">📝 Templates</div>
+    </div>
+    <div class="mock-content">
+      <div class="mock-stats-grid">
+        <div class="mock-stat-card"><strong>1.240</strong><small>Contatos</small></div>
+        <div class="mock-stat-card"><strong>8</strong><small>Listas</small></div>
+        <div class="mock-stat-card"><strong>23</strong><small>Campanhas</small></div>
+        <div class="mock-stat-card"><strong>399</strong><small>Enviados hoje</small></div>
+      </div>
+      <div class="mock-table">
+        <div class="mock-table-row" style="font-size:10px;font-weight:700;color:#6b9e72;border-bottom:1px solid rgba(34,197,94,.1)">
+          <span style="flex:2">CAMPANHA</span><span style="flex:1">LISTA</span><span style="flex:1">ENVIADOS</span><span>STATUS</span>
+        </div>
+        <div class="mock-table-row">
+          <span style="flex:2;font-weight:600">Promoção Verão 🌞</span>
+          <span style="flex:1;color:#6b9e72">Clientes VIP</span>
+          <span style="flex:1;color:#22c55e;font-weight:700">399</span>
+          <span class="mock-badge done">Concluída</span>
+        </div>
+        <div class="mock-table-row">
+          <span style="flex:2;font-weight:600">Lembrete Vencimento</span>
+          <span style="flex:1;color:#6b9e72">Placa Final 2</span>
+          <span style="flex:1;color:#eab308;font-weight:700">241/399</span>
+          <span class="mock-badge send">Enviando...</span>
+        </div>
+        <div class="mock-table-row">
+          <span style="flex:2;font-weight:600">Oferta Flash ⚡</span>
+          <span style="flex:1;color:#6b9e72">Todos</span>
+          <span style="flex:1;color:#6b9e72">0</span>
+          <span class="mock-badge draft">Rascunho</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- FEATURES -->
+<section>
+  <div class="section-label">Por que o MandaZap</div>
+  <div class="section-title">Tudo que seu negócio precisa</div>
+  <div class="section-sub">Simples de usar, poderoso nos resultados.</div>
+  <div class="features">
+    <div class="feat">
+      <div class="feat-icon">📋</div>
+      <h3>Importe qualquer lista</h3>
+      <p>Upload de CSV, Excel ou PDF. O sistema identifica nome e telefone automaticamente. Sem digitar um por um.</p>
+    </div>
+    <div class="feat">
+      <div class="feat-icon">🤖</div>
+      <h3>AI extrai telefones do PDF</h3>
+      <p>Jogou uma lista em PDF bagunçada? A IA encontra todos os telefones e já cria os contatos pra você.</p>
+    </div>
+    <div class="feat">
+      <div class="feat-icon">🎯</div>
+      <h3>Mensagens personalizadas</h3>
+      <p>Use <strong style="color:#22c55e">{nome}</strong>, <strong style="color:#22c55e">{empresa}</strong>, <strong style="color:#22c55e">{data}</strong> na mensagem. Cada cliente recebe com seu nome.</p>
+    </div>
+    <div class="feat">
+      <div class="feat-icon">🛡️</div>
+      <h3>Anti-ban inteligente</h3>
+      <p>Intervalo randômico entre mensagens, limite diário e rodízio entre números. Seu WhatsApp fica seguro.</p>
+    </div>
+    <div class="feat">
+      <div class="feat-icon">📊</div>
+      <h3>Relatórios em tempo real</h3>
+      <p>Veja enviados, entregues e lidos de cada campanha. Saiba exatamente o que está funcionando.</p>
+    </div>
+    <div class="feat">
+      <div class="feat-icon">📱</div>
+      <h3>Multi-número</h3>
+      <p>Conecte vários WhatsApp Business e distribua os envios entre eles. Mais segurança, mais volume.</p>
+    </div>
+  </div>
+
+  <!-- FEATURE HIGHLIGHT: AI PDF -->
+  <div class="feat-highlight" style="margin-top:56px">
+    <div class="feat-highlight-text">
+      <h2>A IA extrai telefones<br><span>de qualquer PDF</span></h2>
+      <p>Recebeu uma lista bagunçada em PDF? Sem problema. Jogue no MandaZap e a inteligência artificial localiza todos os telefones e nomes automaticamente.</p>
+      <ul>
+        <li>Funciona com PDFs escaneados e digitados</li>
+        <li>Elimina duplicatas automaticamente</li>
+        <li>Contatos prontos para campanha em segundos</li>
+        <li>Sem planilha, sem digitação manual</li>
+      </ul>
+    </div>
+    <div class="feat-highlight-img">
+      <img src="/static/img/mandazap/feature.png" alt="AI extrai telefones de PDF automaticamente">
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<div class="how-section">
+  <div class="section-label">Como funciona</div>
+  <div class="section-title">Em 3 passos você está enviando</div>
+  <div class="section-sub" style="margin-bottom:48px">Setup em menos de 2 minutos.</div>
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <h3>Conecte seu WhatsApp</h3>
+      <p>Escaneie o QR Code com o WhatsApp Business. Seu número fica conectado ao painel em segundos.</p>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <h3>Importe seus contatos</h3>
+      <p>Adicione manualmente, importe CSV ou jogue uma lista PDF — a AI extrai os telefones sozinha.</p>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <h3>Crie e dispare</h3>
+      <p>Escreva a mensagem, escolha a lista e clique em enviar. Anti-ban automático, você só espera o resultado.</p>
+    </div>
+  </div>
+</div>
+
+<!-- PRICING -->
+<div class="price-section" id="planos">
+  <div class="section-label">Planos</div>
+  <div class="section-title">Simples e transparente</div>
+  <div class="section-sub" style="margin-bottom:36px">2 dias grátis em qualquer plano. Sem cartão de crédito.</div>
+  <div class="plans-grid">
+    {% for key, p in plans.items() %}
+    <div class="plan-card {% if key == 'duplo' %}featured{% endif %}">
+      {% if key == 'duplo' %}<div class="plan-tag">MAIS POPULAR</div>{% endif %}
+      <div class="plan-name">{{ p.label }}</div>
+      <div class="plan-price">R${{ p.price }}</div>
+      <div class="plan-price-sub">/mês</div>
+      <ul class="plan-feats">
+        <li>{{ p.numbers }} número{{ 's' if p.numbers > 1 else '' }}</li>
+        <li>{{ '{:,}'.format(p.daily_limit).replace(',','.') if p.daily_limit < 9999 else 'Ilimitado' }} envios/dia</li>
+        <li>{{ p.pdf_limit if p.pdf_limit < 9999 else 'Ilimitado' }} PDFs/mês (AI)</li>
+        <li>Todas as funcionalidades</li>
+        <li>Anti-ban incluído</li>
+      </ul>
+      <a href="/mandazap/cadastro"><button class="plan-btn {% if key != 'duplo' %}outline{% endif %}">Começar grátis</button></a>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- CTA FINAL -->
+<div class="cta-section">
+  <h2>Pronto para vender mais<br>pelo WhatsApp?</h2>
+  <p>2 dias grátis. Cancele quando quiser. Sem burocracia.</p>
+  <a href="/mandazap/cadastro"><button class="cta-big" style="font-size:17px;padding:17px 40px">📲 Criar conta — 2 dias grátis</button></a>
+</div>
+
+<footer>
+  <p><a href="/">4KITEM</a> · <a href="/agenda">Agenda SC</a> · <a href="/alerta">Alerta SC</a> · <a href="/bau">Baú</a></p>
+  <p style="margin-top:8px">© 2026 MandaZap · Todos os direitos reservados</p>
+</footer>
+
+</body>
+</html>

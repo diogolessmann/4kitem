@@ -123,6 +123,83 @@ def init_saas_db():
         );
 
         CREATE INDEX IF NOT EXISTS idx_bau_entries_user ON bau_entries(user_id);
+
+        -- ── MandaZap ─────────────────────────────────────────────────────────
+        CREATE TABLE IF NOT EXISTS mandazap_users (
+            id            INTEGER PRIMARY KEY AUTOINCREMENT,
+            name          TEXT NOT NULL,
+            email         TEXT NOT NULL UNIQUE,
+            password_hash TEXT NOT NULL,
+            plan          TEXT DEFAULT 'solo',
+            active        INTEGER DEFAULT 1,
+            created_at    TEXT,
+            trial_ends    TEXT
+        );
+
+        CREATE TABLE IF NOT EXISTS mandazap_numbers (
+            id         INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id    INTEGER NOT NULL,
+            label      TEXT NOT NULL,
+            phone      TEXT,
+            status     TEXT DEFAULT 'disconnected',
+            created_at TEXT
+        );
+
+        CREATE TABLE IF NOT EXISTS mandazap_contacts (
+            id         INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id    INTEGER NOT NULL,
+            name       TEXT NOT NULL,
+            phone      TEXT NOT NULL,
+            email      TEXT,
+            tag        TEXT,
+            notes      TEXT,
+            created_at TEXT
+        );
+
+        CREATE TABLE IF NOT EXISTS mandazap_lists (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id     INTEGER NOT NULL,
+            name        TEXT NOT NULL,
+            description TEXT,
+            created_at  TEXT
+        );
+
+        CREATE TABLE IF NOT EXISTS mandazap_list_contacts (
+            list_id    INTEGER NOT NULL,
+            contact_id INTEGER NOT NULL,
+            PRIMARY KEY (list_id, contact_id)
+        );
+
+        CREATE TABLE IF NOT EXISTS mandazap_campaigns (
+            id           INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id      INTEGER NOT NULL,
+            name         TEXT NOT NULL,
+            message      TEXT NOT NULL,
+            media_type   TEXT DEFAULT 'text',
+            list_id      INTEGER,
+            number_id    INTEGER,
+            status       TEXT DEFAULT 'draft',
+            total        INTEGER DEFAULT 0,
+            sent         INTEGER DEFAULT 0,
+            scheduled_at TEXT,
+            created_at   TEXT,
+            finished_at  TEXT
+        );
+
+        CREATE TABLE IF NOT EXISTS mandazap_templates (
+            id         INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id    INTEGER NOT NULL,
+            name       TEXT NOT NULL,
+            message    TEXT NOT NULL,
+            media_type TEXT DEFAULT 'text',
+            created_at TEXT
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_mz_users_email    ON mandazap_users(email);
+        CREATE INDEX IF NOT EXISTS idx_mz_contacts_user  ON mandazap_contacts(user_id);
+        CREATE INDEX IF NOT EXISTS idx_mz_campaigns_user ON mandazap_campaigns(user_id);
+        CREATE INDEX IF NOT EXISTS idx_mz_numbers_user   ON mandazap_numbers(user_id);
+        CREATE INDEX IF NOT EXISTS idx_mz_lists_user     ON mandazap_lists(user_id);
     ''')
     conn.commit()
     conn.close()

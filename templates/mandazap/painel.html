@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MandaZap — Painel</title>
+<style>
+:root{
+  --bg:#09090f;--surface:#0e1a10;--surface2:#0a130c;--surface3:#162019;
+  --border:rgba(34,197,94,0.1);--border2:rgba(34,197,94,0.2);
+  --text:#f0fff4;--text2:#7a9b7d;--text3:#4a6b4e;
+  --green:#22c55e;--green2:#16a34a;--red:#ef4444;--yellow:#eab308;--blue:#3b82f6;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',sans-serif;min-height:100vh;display:flex}
+a{color:inherit;text-decoration:none}
+
+/* SIDEBAR */
+.sidebar{width:220px;background:var(--surface2);border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;top:0;left:0;height:100vh;z-index:100;flex-shrink:0}
+.sb-logo{padding:20px 16px 16px;font-size:17px;font-weight:900;color:var(--green);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px}
+.sb-nav{flex:1;padding:12px 8px;display:flex;flex-direction:column;gap:2px;overflow-y:auto}
+.sb-link{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;font-size:13px;font-weight:600;color:var(--text2);cursor:pointer;transition:.15s;border:none;background:none;width:100%;text-align:left;font-family:inherit}
+.sb-link:hover{background:rgba(34,197,94,.06);color:var(--text)}
+.sb-link.active{background:rgba(34,197,94,.12);color:var(--green)}
+.sb-link .badge{margin-left:auto;background:rgba(34,197,94,.15);color:var(--green);font-size:10px;font-weight:700;padding:2px 7px;border-radius:100px}
+.sb-divider{height:1px;background:var(--border);margin:8px 4px}
+.sb-footer{padding:12px 16px;border-top:1px solid var(--border);font-size:12px;color:var(--text2)}
+.sb-user{font-weight:700;color:var(--text);margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sb-plan{display:inline-block;background:rgba(34,197,94,.1);border:1px solid var(--border2);border-radius:6px;padding:2px 8px;font-size:10px;font-weight:700;color:var(--green);margin-bottom:8px}
+.sb-signout{color:var(--text2);font-size:12px;cursor:pointer}
+.sb-signout:hover{color:var(--red)}
+
+/* MAIN */
+.main{margin-left:220px;flex:1;padding:28px 28px 60px;min-width:0}
+
+/* PAGE HEADER */
+.page-header{margin-bottom:24px}
+.page-title{font-size:22px;font-weight:900;letter-spacing:-.5px;margin-bottom:4px}
+.page-sub{font-size:13px;color:var(--text2)}
+
+/* SECTIONS */
+.section{display:none}
+.section.active{display:block}
+
+/* STATS GRID */
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:24px}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px}
+.stat-card .label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);margin-bottom:8px}
+.stat-card .value{font-size:28px;font-weight:900;color:var(--green);line-height:1}
+.stat-card .hint{font-size:11px;color:var(--text2);margin-top:4px}
+
+/* QUICK ACTIONS */
+.quick-actions{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:24px}
+.btn-quick{display:inline-flex;align-items:center;gap:7px;padding:9px 16px;border-radius:10px;background:rgba(34,197,94,.08);border:1px solid var(--border2);color:var(--green);font-size:13px;font-weight:700;cursor:pointer;transition:.15s;font-family:inherit}
+.btn-quick:hover{background:rgba(34,197,94,.15);border-color:var(--green)}
+
+/* TABLE */
+.card-box{background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden;margin-bottom:20px}
+.card-box-header{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.card-box-title{font-size:14px;font-weight:800}
+.table{width:100%;border-collapse:collapse;font-size:13px}
+.table th{padding:10px 14px;text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);border-bottom:1px solid var(--border);background:var(--surface2)}
+.table td{padding:12px 14px;border-bottom:1px solid rgba(34,197,94,.05);vertical-align:middle}
+.table tr:last-child td{border-bottom:none}
+.table tr:hover td{background:rgba(34,197,94,.03)}
+
+/* BADGES */
+.badge{display:inline-block;padding:3px 9px;border-radius:100px;font-size:11px;font-weight:700}
+.badge.done{background:rgba(34,197,94,.12);color:var(--green)}
+.badge.sending{background:rgba(234,179,8,.12);color:var(--yellow)}
+.badge.draft{background:rgba(255,255,255,.07);color:var(--text2)}
+.badge.scheduled{background:rgba(59,130,246,.12);color:var(--blue)}
+.badge.failed{background:rgba(239,68,68,.12);color:var(--red)}
+.badge.connected{background:rgba(34,197,94,.12);color:var(--green)}
+.badge.disconnected{background:rgba(239,68,68,.12);color:var(--red)}
+
+/* BUTTONS */
+.btn{padding:9px 18px;border-radius:10px;border:none;font-size:13px;font-weight:700;cursor:pointer;transition:.15s;font-family:inherit}
+.btn-green{background:linear-gradient(135deg,var(--green2),var(--green));color:#fff}
+.btn-green:hover{opacity:.9}
+.btn-outline{background:none;border:1px solid var(--border);color:var(--text2)}
+.btn-outline:hover{border-color:var(--green);color:var(--green)}
+.btn-red{background:none;border:1px solid rgba(239,68,68,.2);color:var(--red)}
+.btn-red:hover{background:rgba(239,68,68,.1)}
+.btn-sm{padding:5px 12px;font-size:12px;border-radius:7px}
+.btn-icon{width:30px;height:30px;border-radius:7px;border:1px solid var(--border);background:none;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;color:var(--text2);transition:.15s}
+.btn-icon:hover{border-color:var(--red);color:var(--red)}
+
+/* MODAL */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:300;align-items:center;justify-content:center;padding:20px}
+.modal-overlay.open{display:flex}
+.modal{background:var(--surface);border:1px solid var(--border2);border-radius:20px;padding:28px;width:100%;max-width:500px;max-height:90vh;overflow-y:auto}
+.modal h3{font-size:16px;font-weight:800;margin-bottom:20px;display:flex;align-items:center;gap:8px}
+.form-group{margin-bottom:14px}
+.form-group label{display:block;font-size:11px;color:var(--text2);margin-bottom:6px;font-weight:700;text-transform:uppercase;letter-spacing:.5px}
+.form-group input,.form-group select,.form-group textarea{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);padding:10px 13px;font-size:13px;outline:none;transition:.15s;font-family:inherit}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:var(--green)}
+.form-group textarea{min-height:100px;resize:vertical}
+select option{background:var(--surface2)}
+.modal-btns{display:flex;gap:10px;margin-top:20px}
+.contacts-check{max-height:180px;overflow-y:auto;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px}
+.contacts-check label{display:flex;align-items:center;gap:8px;padding:5px 4px;font-size:13px;cursor:pointer;border-radius:6px;transition:.1s}
+.contacts-check label:hover{background:rgba(34,197,94,.06)}
+.contacts-check input[type=checkbox]{accent-color:var(--green)}
+
+/* NUMBERS GRID */
+.numbers-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px}
+.number-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px;display:flex;flex-direction:column;gap:10px}
+.number-card-top{display:flex;align-items:flex-start;justify-content:space-between}
+.number-label{font-size:14px;font-weight:800}
+.number-phone{font-size:12px;color:var(--text2);margin-top:2px}
+.status-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:4px}
+.status-dot.connected{background:var(--green);box-shadow:0 0 6px var(--green)}
+.status-dot.disconnected{background:var(--red)}
+.qr-placeholder{background:var(--surface2);border:1px dashed var(--border2);border-radius:10px;padding:20px;text-align:center;font-size:12px;color:var(--text2)}
+.qr-placeholder .qr-icon{font-size:36px;margin-bottom:8px}
+
+/* CONTACT TABLE TAG */
+.tag-pill{display:inline-block;background:rgba(34,197,94,.08);border:1px solid var(--border);border-radius:100px;padding:2px 8px;font-size:11px;color:var(--green);font-weight:600}
+
+/* TEMPLATE CARDS */
+.templates-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
+.template-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px;position:relative;transition:.15s}
+.template-card:hover{border-color:var(--border2)}
+.template-name{font-size:14px;font-weight:800;margin-bottom:8px}
+.template-preview{font-size:12px;color:var(--text2);line-height:1.5;max-height:60px;overflow:hidden;position:relative}
+.template-preview::after{content:'';position:absolute;bottom:0;left:0;right:0;height:20px;background:linear-gradient(transparent,var(--surface))}
+.template-type{font-size:10px;font-weight:700;text-transform:uppercase;color:var(--text3);margin-bottom:4px}
+
+/* PLAN CARDS */
+.plan-upgrade-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;max-width:860px}
+.plan-up-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px;text-align:center;transition:.2s}
+.plan-up-card.current{border-color:var(--green);background:rgba(34,197,94,.04)}
+.plan-up-card:hover:not(.current){border-color:var(--border2);transform:translateY(-2px)}
+.plan-up-name{font-size:13px;font-weight:800;margin-bottom:4px}
+.plan-up-price{font-size:26px;font-weight:900;color:var(--green);margin-bottom:2px}
+.plan-up-sub{font-size:10px;color:var(--text2);margin-bottom:12px}
+.plan-up-feats{list-style:none;font-size:11px;color:var(--text2);text-align:left;display:flex;flex-direction:column;gap:5px;margin-bottom:14px}
+.plan-up-feats li::before{content:'✓ ';color:var(--green);font-weight:900}
+
+/* PROGRESS BAR */
+.prog-bar{background:var(--surface2);border-radius:100px;height:6px;overflow:hidden;margin-top:6px}
+.prog-fill{height:100%;background:linear-gradient(90deg,var(--green2),var(--green));border-radius:100px;transition:.3s}
+
+/* EMPTY STATE */
+.empty{text-align:center;padding:48px 20px;color:var(--text2)}
+.empty-icon{font-size:44px;margin-bottom:14px}
+.empty h4{font-size:16px;font-weight:700;color:var(--text);margin-bottom:6px}
+.empty p{font-size:13px;line-height:1.6}
+
+/* SEARCH */
+.search-row{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap}
+.search-input-wrap{flex:1;min-width:200px;position:relative}
+.search-input-wrap input{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--text);padding:9px 14px 9px 36px;font-size:13px;outline:none;transition:.15s}
+.search-input-wrap input:focus{border-color:var(--green)}
+.search-icon{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--text2);font-size:13px;pointer-events:none}
+
+/* IMPORT CSV */
+.import-box{background:var(--surface2);border:1px dashed var(--border2);border-radius:12px;padding:20px;text-align:center}
+.import-box label{cursor:pointer;font-size:13px;color:var(--text2)}
+.import-box input[type=file]{display:none}
+.import-box .imp-icon{font-size:28px;margin-bottom:8px}
+.import-box .imp-hint{font-size:11px;color:var(--text3);margin-top:6px}
+
+/* TOAST */
+.toast{position:fixed;bottom:24px;right:24px;background:var(--surface);border:1px solid var(--green);border-radius:12px;padding:14px 20px;font-size:13px;font-weight:600;color:var(--green);z-index:999;transform:translateY(80px);opacity:0;transition:.3s}
+.toast.show{transform:translateY(0);opacity:1}
+
+@media(max-width:700px){.sidebar{width:64px}.sb-logo span,.sb-link span,.sb-footer{display:none}.sb-link{justify-content:center;padding:12px}.main{margin-left:64px;padding:16px}}
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sb-logo">📲 <span>MandaZap</span></div>
+  <nav class="sb-nav">
+    <button class="sb-link active" onclick="showSection('dashboard')"><span>🏠</span> <span>Dashboard</span></button>
+    <button class="sb-link" onclick="showSection('numeros')"><span>📞</span> <span>Números</span> {% if mz_stats.numbers_connected > 0 %}<span class="badge">{{ mz_stats.numbers_connected }}</span>{% endif %}</button>
+    <button class="sb-link" onclick="showSection('contatos')"><span>👥</span> <span>Contatos</span> {% if mz_stats.contacts > 0 %}<span class="badge">{{ mz_stats.contacts }}</span>{% endif %}</button>
+    <button class="sb-link" onclick="showSection('listas')"><span>📋</span> <span>Listas</span></button>
+    <button class="sb-link" onclick="showSection('campanhas')"><span>📢</span> <span>Campanhas</span></button>
+    <button class="sb-link" onclick="showSection('templates')"><span>📝</span> <span>Templates</span></button>
+    <div class="sb-divider"></div>
+    <button class="sb-link" onclick="showSection('plano')"><span>⚙️</span> <span>Plano</span></button>
+  </nav>
+  <div class="sb-footer">
+    <div class="sb-user">{{ user_name }}</div>
+    <div class="sb-plan">{{ plan_info.label }}</div>
+    <div><a href="/mandazap/sair" class="sb-signout">Sair →</a></div>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<main class="main">
+
+  <!-- ═══════════════ DASHBOARD ═══════════════ -->
+  <div class="section active" id="sec-dashboard">
+    <div class="page-header">
+      <div class="page-title">🏠 Dashboard</div>
+      <div class="page-sub">Visão geral da sua conta MandaZap</div>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="label">👥 Contatos</div>
+        <div class="value">{{ mz_stats.contacts }}</div>
+        <div class="hint">na sua base</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">📋 Listas</div>
+        <div class="value">{{ mz_stats.lists }}</div>
+        <div class="hint">grupos criados</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">📢 Campanhas</div>
+        <div class="value">{{ mz_stats.campaigns }}</div>
+        <div class="hint">total de campanhas</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">✅ Enviados hoje</div>
+        <div class="value">{{ mz_stats.today_sent }}</div>
+        <div class="hint">de {{ plan_info.daily_limit if plan_info.daily_limit < 9999 else '∞' }} disponíveis</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">📞 Números</div>
+        <div class="value">{{ mz_stats.numbers_connected }}/{{ mz_stats.numbers }}</div>
+        <div class="hint">conectados/cadastrados</div>
+      </div>
+    </div>
+
+    <div class="quick-actions">
+      <button class="btn-quick" onclick="openModal('modal-campanha')">📢 Nova Campanha</button>
+      <button class="btn-quick" onclick="openModal('modal-contato')">👥 Adicionar Contato</button>
+      <button class="btn-quick" onclick="showSection('numeros')">📞 Conectar Número</button>
+      <button class="btn-quick" onclick="openModal('modal-template')">📝 Novo Template</button>
+    </div>
+
+    <!-- Últimas campanhas -->
+    <div class="card-box">
+      <div class="card-box-header">
+        <div class="card-box-title">📢 Últimas Campanhas</div>
+        <button class="btn btn-outline btn-sm" onclick="showSection('campanhas')">Ver todas</button>
+      </div>
+      {% if campaigns %}
+      <table class="table">
+        <thead><tr>
+          <th>Campanha</th><th>Lista</th><th>Número</th><th>Enviados</th><th>Status</th>
+        </tr></thead>
+        <tbody>
+        {% for c in campaigns[:5] %}
+        <tr>
+          <td style="font-weight:700">{{ c.name }}</td>
+          <td style="color:var(--text2)">{{ c.list_name or '—' }}</td>
+          <td style="color:var(--text2)">{{ c.number_label or '—' }}</td>
+          <td>
+            {% if c.total > 0 %}
+            <span style="color:var(--green);font-weight:700">{{ c.sent }}</span><span style="color:var(--text2)">/{{ c.total }}</span>
+            {% else %}—{% endif %}
+          </td>
+          <td>
+            <span class="badge {{ c.status if c.status in ['done','sending','draft','scheduled','failed'] else 'draft' }}">
+              {{ {'done':'✅ Concluída','sending':'⏳ Enviando','draft':'📝 Rascunho','agendada':'📅 Agendada','failed':'❌ Falhou'}.get(c.status, c.status) }}
+            </span>
+          </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="empty" style="padding:32px"><div class="empty-icon">📢</div><h4>Nenhuma campanha ainda</h4><p>Clique em "Nova Campanha" para começar.</p></div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- ═══════════════ NÚMEROS ═══════════════ -->
+  <div class="section" id="sec-numeros">
+    <div class="page-header">
+      <div class="page-title">📞 Números WhatsApp</div>
+      <div class="page-sub">Conecte seus números para envio. Plano {{ plan_info.label }}: até {{ plan_info.numbers }} número{{ 's' if plan_info.numbers > 1 else '' }}.</div>
+    </div>
+
+    <div class="quick-actions">
+      {% if mz_stats.numbers < plan_info.numbers %}
+      <button class="btn-quick" onclick="openModal('modal-numero')">➕ Adicionar Número</button>
+      {% else %}
+      <button class="btn-quick" onclick="showSection('plano')" style="opacity:.6">🔒 Limite atingido — Upgrade</button>
+      {% endif %}
+    </div>
+
+    {% if numbers %}
+    <div class="numbers-grid">
+      {% for n in numbers %}
+      <div class="number-card">
+        <div class="number-card-top">
+          <div>
+            <div class="number-label">{{ n.label }}</div>
+            <div class="number-phone">{{ n.phone or 'Sem número definido' }}</div>
+          </div>
+          <div class="status-dot {{ n.status }}"></div>
+        </div>
+        <div>
+          <span class="badge {{ n.status }}">{{ '🟢 Conectado' if n.status == 'connected' else '🔴 Desconectado' }}</span>
+        </div>
+        <div class="qr-placeholder">
+          <div class="qr-icon">📱</div>
+          <div>Para conectar, configure a Evolution API e escaneie o QR Code com seu WhatsApp Business.</div>
+        </div>
+        <form method="POST" action="/mandazap/numeros/{{ n.id }}/delete" onsubmit="return confirm('Remover {{ n.label }}?')">
+          <button type="submit" class="btn btn-red btn-sm" style="width:100%">🗑 Remover número</button>
+        </form>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty"><div class="empty-icon">📞</div><h4>Nenhum número cadastrado</h4><p>Adicione seu primeiro WhatsApp Business para começar a enviar mensagens.</p></div>
+    {% endif %}
+  </div>
+
+  <!-- ═══════════════ CONTATOS ═══════════════ -->
+  <div class="section" id="sec-contatos">
+    <div class="page-header">
+      <div class="page-title">👥 Contatos</div>
+      <div class="page-sub">{{ mz_stats.contacts }} contato{{ 's' if mz_stats.contacts != 1 else '' }} na sua base</div>
+    </div>
+
+    <div class="search-row">
+      <div class="search-input-wrap">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="contact-search" placeholder="Buscar por nome, telefone ou tag..." oninput="filterContacts(this.value)">
+      </div>
+      <button class="btn btn-green" onclick="openModal('modal-contato')">+ Adicionar</button>
+      <button class="btn btn-outline" onclick="openModal('modal-import-csv')">📁 Importar CSV</button>
+    </div>
+
+    {% if contacts %}
+    <div class="card-box">
+      <table class="table" id="contacts-table">
+        <thead><tr><th>Nome</th><th>WhatsApp</th><th>Tag</th><th>E-mail</th><th style="width:50px"></th></tr></thead>
+        <tbody>
+        {% for c in contacts %}
+        <tr data-search="{{ c.name|lower }} {{ c.phone }} {{ (c.tag or '')|lower }} {{ (c.email or '')|lower }}">
+          <td style="font-weight:700">{{ c.name }}</td>
+          <td style="font-family:monospace;color:var(--green)">{{ c.phone }}</td>
+          <td>{% if c.tag %}<span class="tag-pill">{{ c.tag }}</span>{% else %}<span style="color:var(--text3)">—</span>{% endif %}</td>
+          <td style="color:var(--text2);font-size:12px">{{ c.email or '—' }}</td>
+          <td>
+            <form method="POST" action="/mandazap/contatos/{{ c.id }}/delete" onsubmit="return confirm('Apagar {{ c.name }}?')">
+              <button type="submit" class="btn-icon">🗑</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty"><div class="empty-icon">👥</div><h4>Nenhum contato ainda</h4><p>Adicione contatos manualmente ou importe um arquivo CSV com nome e telefone.</p></div>
+    {% endif %}
+  </div>
+
+  <!-- ═══════════════ LISTAS ═══════════════ -->
+  <div class="section" id="sec-listas">
+    <div class="page-header">
+      <div class="page-title">📋 Listas</div>
+      <div class="page-sub">Organize seus contatos em grupos para disparos segmentados</div>
+    </div>
+
+    <div class="quick-actions">
+      <button class="btn-quick" onclick="openModal('modal-lista')">➕ Nova Lista</button>
+    </div>
+
+    {% if lists %}
+    <div class="card-box">
+      <table class="table">
+        <thead><tr><th>Nome da Lista</th><th>Descrição</th><th>Contatos</th><th>Criada em</th><th style="width:50px"></th></tr></thead>
+        <tbody>
+        {% for l in lists %}
+        <tr>
+          <td style="font-weight:700">{{ l.name }}</td>
+          <td style="color:var(--text2);font-size:12px">{{ l.description or '—' }}</td>
+          <td><span style="color:var(--green);font-weight:700">{{ l.contact_count }}</span></td>
+          <td style="color:var(--text2);font-size:12px">{{ l.created_at[:10] if l.created_at else '—' }}</td>
+          <td>
+            <form method="POST" action="/mandazap/listas/{{ l.id }}/delete" onsubmit="return confirm('Apagar lista {{ l.name }}?')">
+              <button type="submit" class="btn-icon">🗑</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty"><div class="empty-icon">📋</div><h4>Nenhuma lista criada</h4><p>Crie listas para organizar seus contatos e fazer disparos segmentados.</p></div>
+    {% endif %}
+  </div>
+
+  <!-- ═══════════════ CAMPANHAS ═══════════════ -->
+  <div class="section" id="sec-campanhas">
+    <div class="page-header">
+      <div class="page-title">📢 Campanhas</div>
+      <div class="page-sub">Crie e gerencie seus disparos de mensagens</div>
+    </div>
+
+    <div class="quick-actions">
+      <button class="btn-quick" onclick="openModal('modal-campanha')">📢 Nova Campanha</button>
+    </div>
+
+    {% if campaigns %}
+    <div class="card-box">
+      <table class="table">
+        <thead><tr><th>Campanha</th><th>Lista</th><th>Número</th><th>Total</th><th>Enviados</th><th>Status</th><th>Data</th><th style="width:40px"></th></tr></thead>
+        <tbody>
+        {% for c in campaigns %}
+        <tr>
+          <td>
+            <div style="font-weight:700">{{ c.name }}</div>
+            <div style="font-size:11px;color:var(--text2);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ c.message[:60] }}{% if c.message|length > 60 %}...{% endif %}</div>
+          </td>
+          <td style="color:var(--text2)">{{ c.list_name or '—' }}</td>
+          <td style="color:var(--text2)">{{ c.number_label or '—' }}</td>
+          <td style="color:var(--text2)">{{ c.total or '—' }}</td>
+          <td>{% if c.total > 0 %}
+            <span style="color:var(--green);font-weight:700">{{ c.sent }}</span>
+            <div class="prog-bar" style="width:60px"><div class="prog-fill" style="width:{{ (c.sent/c.total*100)|int if c.total > 0 else 0 }}%"></div></div>
+            {% else %}—{% endif %}
+          </td>
+          <td>
+            <span class="badge {{ 'done' if c.status=='done' else 'sending' if c.status=='sending' else 'scheduled' if c.status=='agendada' else 'failed' if c.status=='failed' else 'draft' }}">
+              {{ {'done':'✅ Concluída','sending':'⏳ Enviando','draft':'📝 Rascunho','agendada':'📅 Agendada','failed':'❌ Falhou'}.get(c.status, c.status) }}
+            </span>
+          </td>
+          <td style="color:var(--text2);font-size:11px">{{ c.created_at[:10] if c.created_at else '—' }}</td>
+          <td>
+            <form method="POST" action="/mandazap/campanhas/{{ c.id }}/delete" onsubmit="return confirm('Apagar campanha {{ c.name }}?')">
+              <button type="submit" class="btn-icon">🗑</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty"><div class="empty-icon">📢</div><h4>Nenhuma campanha ainda</h4><p>Crie sua primeira campanha e comece a enviar mensagens para sua lista de clientes.</p></div>
+    {% endif %}
+  </div>
+
+  <!-- ═══════════════ TEMPLATES ═══════════════ -->
+  <div class="section" id="sec-templates">
+    <div class="page-header">
+      <div class="page-title">📝 Templates de Mensagem</div>
+      <div class="page-sub">Mensagens prontas para reutilizar em campanhas</div>
+    </div>
+
+    <div class="quick-actions">
+      <button class="btn-quick" onclick="openModal('modal-template')">➕ Novo Template</button>
+    </div>
+
+    {% if templates %}
+    <div class="templates-grid">
+      {% for t in templates %}
+      <div class="template-card">
+        <div class="template-type">{{ {'text':'✉️ Texto','image':'🖼️ Imagem','video':'🎬 Vídeo'}.get(t.media_type,'✉️ Texto') }}</div>
+        <div class="template-name">{{ t.name }}</div>
+        <div class="template-preview">{{ t.message }}</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px">
+          <button class="btn btn-outline btn-sm" onclick="useTemplate('{{ t.message|replace("'","\\'") }}')">Usar em campanha</button>
+          <form method="POST" action="/mandazap/templates/{{ t.id }}/delete" onsubmit="return confirm('Apagar template {{ t.name }}?')">
+            <button type="submit" class="btn-icon">🗑</button>
+          </form>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty"><div class="empty-icon">📝</div><h4>Nenhum template salvo</h4><p>Crie templates para agilizar a criação de campanhas. Use {'{nome}'} para personalizar com o nome do contato.</p></div>
+    {% endif %}
+  </div>
+
+  <!-- ═══════════════ PLANO ═══════════════ -->
+  <div class="section" id="sec-plano">
+    <div class="page-header">
+      <div class="page-title">⚙️ Meu Plano</div>
+      <div class="page-sub">Gerencie sua assinatura MandaZap</div>
+    </div>
+
+    <!-- Plano atual -->
+    <div class="card-box" style="margin-bottom:24px">
+      <div class="card-box-header">
+        <div class="card-box-title">Plano atual: <span style="color:var(--green)">{{ plan_info.label }}</span></div>
+      </div>
+      <div style="padding:20px;display:flex;gap:32px;flex-wrap:wrap">
+        <div>
+          <div style="font-size:11px;color:var(--text2);font-weight:700;margin-bottom:6px">NÚMEROS</div>
+          <div style="font-size:22px;font-weight:900;color:var(--green)">{{ mz_stats.numbers }}/{{ plan_info.numbers }}</div>
+          <div class="prog-bar" style="width:120px;margin-top:6px"><div class="prog-fill" style="width:{{ (mz_stats.numbers/plan_info.numbers*100)|int }}%"></div></div>
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--text2);font-weight:700;margin-bottom:6px">ENVIOS HOJE</div>
+          <div style="font-size:22px;font-weight:900;color:var(--green)">{{ mz_stats.today_sent }}/{{ plan_info.daily_limit if plan_info.daily_limit < 9999 else '∞' }}</div>
+          <div class="prog-bar" style="width:120px;margin-top:6px">
+            {% if plan_info.daily_limit < 9999 %}
+            <div class="prog-fill" style="width:{{ (mz_stats.today_sent/plan_info.daily_limit*100)|int if plan_info.daily_limit > 0 else 0 }}%"></div>
+            {% else %}<div class="prog-fill" style="width:5%"></div>{% endif %}
+          </div>
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--text2);font-weight:700;margin-bottom:6px">PREÇO</div>
+          <div style="font-size:22px;font-weight:900;color:var(--green)">R${{ plan_info.price }}<span style="font-size:13px;color:var(--text2)">/mês</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Upgrade -->
+    <div class="page-title" style="font-size:16px;margin-bottom:16px">Mudar plano</div>
+    <div class="plan-upgrade-grid">
+      {% for key, p in plans.items() %}
+      <div class="plan-up-card {% if key == plan %}current{% endif %}">
+        {% if key == plan %}<div style="font-size:10px;font-weight:700;color:var(--green);margin-bottom:6px">✅ PLANO ATUAL</div>{% endif %}
+        <div class="plan-up-name">{{ p.label }}</div>
+        <div class="plan-up-price">R${{ p.price }}</div>
+        <div class="plan-up-sub">/mês</div>
+        <ul class="plan-up-feats">
+          <li>{{ p.numbers }} número{{ 's' if p.numbers > 1 else '' }}</li>
+          <li>{{ '{:,}'.format(p.daily_limit).replace(',','.') if p.daily_limit < 9999 else 'Ilimitado' }} envios/dia</li>
+          <li>{{ p.pdf_limit if p.pdf_limit < 9999 else 'Ilimitado' }} PDFs/mês</li>
+        </ul>
+        {% if key != plan %}
+        <a href="mailto:contato@4kitem.com.br?subject=Upgrade MandaZap {{ p.label }}">
+          <button class="btn btn-outline btn-sm" style="width:100%">Assinar {{ p.label }}</button>
+        </a>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+
+    <div style="margin-top:24px;padding:16px;background:var(--surface);border:1px solid var(--border);border-radius:12px;font-size:13px;color:var(--text2)">
+      📧 Para alterar seu plano, entre em contato: <strong style="color:var(--green)">contato@4kitem.com.br</strong>
+    </div>
+  </div>
+
+</main>
+
+<!-- ═══════ MODAIS ═══════ -->
+
+<!-- Modal: Adicionar Contato -->
+<div class="modal-overlay" id="modal-contato">
+  <div class="modal">
+    <h3>👥 Novo Contato</h3>
+    <form method="POST" action="/mandazap/contatos/add">
+      <div class="form-group"><label>Nome *</label><input type="text" name="name" placeholder="João Silva" required maxlength="100" autofocus></div>
+      <div class="form-group"><label>WhatsApp * (com DDD)</label><input type="text" name="phone" placeholder="47991234567" required></div>
+      <div class="form-group"><label>E-mail</label><input type="email" name="email" placeholder="joao@email.com"></div>
+      <div class="form-group"><label>Tag / Categoria</label><input type="text" name="tag" placeholder="cliente, vip, lead, petshop..."></div>
+      <div class="form-group"><label>Notas</label><textarea name="notes" placeholder="Observações sobre o contato..." style="min-height:60px"></textarea></div>
+      <div class="modal-btns">
+        <button type="button" class="btn btn-outline" onclick="closeModal('modal-contato')">Cancelar</button>
+        <button type="submit" class="btn btn-green" style="flex:1">💾 Salvar Contato</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal: Importar CSV -->
+<div class="modal-overlay" id="modal-import-csv">
+  <div class="modal">
+    <h3>📁 Importar Contatos — CSV</h3>
+    <div style="font-size:13px;color:var(--text2);margin-bottom:16px;line-height:1.6">
+      O arquivo CSV deve ter as colunas: <strong style="color:var(--green)">nome</strong> e <strong style="color:var(--green)">telefone</strong> (com DDD, sem formatação). Colunas opcionais: <em>email</em>, <em>tag</em>.
+    </div>
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:16px;font-family:monospace;font-size:12px;color:var(--text2)">
+      nome,telefone,email,tag<br>
+      João Silva,47991234567,joao@email.com,cliente<br>
+      Maria Santos,48998765432,,vip
+    </div>
+    <form method="POST" action="/mandazap/contatos/import-csv" enctype="multipart/form-data">
+      <div class="import-box">
+        <div class="imp-icon">📂</div>
+        <label for="csv-input">
+          <div>Clique para selecionar o arquivo CSV</div>
+          <div class="imp-hint" id="csv-filename">Nenhum arquivo selecionado</div>
+        </label>
+        <input type="file" name="csv_file" id="csv-input" accept=".csv,.txt" onchange="document.getElementById('csv-filename').textContent=this.files[0]?.name||'Nenhum arquivo'" required>
+      </div>
+      <div class="modal-btns" style="margin-top:16px">
+        <button type="button" class="btn btn-outline" onclick="closeModal('modal-import-csv')">Cancelar</button>
+        <button type="submit" class="btn btn-green" style="flex:1">📥 Importar Contatos</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal: Nova Lista -->
+<div class="modal-overlay" id="modal-lista">
+  <div class="modal">
+    <h3>📋 Nova Lista</h3>
+    <form method="POST" action="/mandazap/listas/add">
+      <div class="form-group"><label>Nome da Lista *</label><input type="text" name="name" placeholder="Ex: Clientes VIP, Placa Final 2, Pet Shop..." required maxlength="100"></div>
+      <div class="form-group"><label>Descrição</label><input type="text" name="description" placeholder="Para que serve essa lista..." maxlength="200"></div>
+      {% if contacts %}
+      <div class="form-group">
+        <label>Selecionar Contatos</label>
+        <div style="margin-bottom:6px;display:flex;gap:8px">
+          <button type="button" class="btn btn-outline btn-sm" onclick="toggleAllContacts(true)">Marcar todos</button>
+          <button type="button" class="btn btn-outline btn-sm" onclick="toggleAllContacts(false)">Desmarcar</button>
+        </div>
+        <div class="contacts-check" id="lista-contacts">
+          {% for c in contacts %}
+          <label>
+            <input type="checkbox" name="contact_ids" value="{{ c.id }}">
+            {{ c.name }} <span style="color:var(--text2);font-size:11px">{{ c.phone }}</span>
+            {% if c.tag %}<span class="tag-pill">{{ c.tag }}</span>{% endif %}
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+      <div class="modal-btns">
+        <button type="button" class="btn btn-outline" onclick="closeModal('modal-lista')">Cancelar</button>
+        <button type="submit" class="btn btn-green" style="flex:1">💾 Criar Lista</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal: Adicionar Número -->
+<div class="modal-overlay" id="modal-numero">
+  <div class="modal">
+    <h3>📞 Adicionar Número</h3>
+    <div style="font-size:13px;color:var(--text2);margin-bottom:16px;background:rgba(34,197,94,.06);border:1px solid var(--border2);border-radius:10px;padding:12px;line-height:1.6">
+      📱 Após cadastrar, você precisará conectar via QR Code escaneando com o WhatsApp Business.
+    </div>
+    <form method="POST" action="/mandazap/numeros/add">
+      <div class="form-group"><label>Identificação (apelido) *</label><input type="text" name="label" placeholder="Ex: Número principal, Vendas, Suporte..." required maxlength="60"></div>
+      <div class="form-group"><label>Número (com DDI+DDD)</label><input type="text" name="phone" placeholder="5547991234567"></div>
+      <div class="modal-btns">
+        <button type="button" class="btn btn-outline" onclick="closeModal('modal-numero')">Cancelar</button>
+        <button type="submit" class="btn btn-green" style="flex:1">📞 Cadastrar Número</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal: Nova Campanha -->
+<div class="modal-overlay" id="modal-campanha">
+  <div class="modal">
+    <h3>📢 Nova Campanha</h3>
+    <form method="POST" action="/mandazap/campanhas/add">
+      <div class="form-group"><label>Nome da Campanha *</label><input type="text" name="name" placeholder="Ex: Promoção Verão, Lembrete CRLV..." required maxlength="120"></div>
+      <div class="form-group">
+        <label>Lista de Contatos</label>
+        <select name="list_id">
+          <option value="">— Sem lista (envio manual) —</option>
+          {% for l in lists %}<option value="{{ l.id }}">{{ l.name }} ({{ l.contact_count }} contatos)</option>{% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Número de Envio</label>
+        <select name="number_id">
+          <option value="">— Selecionar número —</option>
+          {% for n in numbers %}<option value="{{ n.id }}">{{ n.label }} — {{ n.phone or 'sem número' }} {{ '🟢' if n.status=='connected' else '🔴' }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Tipo de Mensagem</label>
+        <select name="media_type">
+          <option value="text">✉️ Texto</option>
+          <option value="image">🖼️ Imagem</option>
+          <option value="video">🎬 Vídeo</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Mensagem * — use {'{nome}'} para personalizar</label>
+        <textarea name="message" id="campanha-message" placeholder="Olá {nome}! Temos uma oferta especial pra você... 🎁" required></textarea>
+        {% if templates %}
+        <div style="margin-top:6px;font-size:12px;color:var(--text2)">Templates salvos:
+          {% for t in templates %}
+          <button type="button" onclick="document.getElementById('campanha-message').value='{{ t.message|replace("'","\\'") }}'" style="margin:2px 3px;background:rgba(34,197,94,.08);border:1px solid var(--border2);border-radius:6px;padding:2px 8px;font-size:11px;color:var(--green);cursor:pointer">{{ t.name }}</button>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </div>
+      <div class="form-group">
+        <label>Agendar envio (opcional)</label>
+        <input type="datetime-local" name="scheduled_at">
+      </div>
+      <div class="modal-btns">
+        <button type="button" class="btn btn-outline" onclick="closeModal('modal-campanha')">Cancelar</button>
+        <button type="submit" class="btn btn-green" style="flex:1">🚀 Criar Campanha</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal: Novo Template -->
+<div class="modal-overlay" id="modal-template">
+  <div class="modal">
+    <h3>📝 Novo Template</h3>
+    <form method="POST" action="/mandazap/templates/add">
+      <div class="form-group"><label>Nome do Template *</label><input type="text" name="name" placeholder="Ex: Promoção padrão, Lembrete vencimento..." required maxlength="80"></div>
+      <div class="form-group">
+        <label>Tipo</label>
+        <select name="media_type">
+          <option value="text">✉️ Texto</option>
+          <option value="image">🖼️ Imagem</option>
+          <option value="video">🎬 Vídeo</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Mensagem — use {'{nome}'} para personalizar</label>
+        <textarea name="message" placeholder="Olá {nome}! Temos uma novidade especial para você..." required></textarea>
+      </div>
+      <div class="modal-btns">
+        <button type="button" class="btn btn-outline" onclick="closeModal('modal-template')">Cancelar</button>
+        <button type="submit" class="btn btn-green" style="flex:1">💾 Salvar Template</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ── Seções ──────────────────────────────────────────────────────────────────
+const SECTIONS = ['dashboard','numeros','contatos','listas','campanhas','templates','plano'];
+function showSection(name) {
+  SECTIONS.forEach(s => {
+    document.getElementById('sec-'+s)?.classList.remove('active');
+    document.querySelector(`.sb-link[onclick*="${s}"]`)?.classList.remove('active');
+  });
+  document.getElementById('sec-'+name)?.classList.add('active');
+  document.querySelector(`.sb-link[onclick*="${name}"]`)?.classList.add('active');
+  history.replaceState(null,'','/mandazap/painel?section='+name);
+}
+
+// ── Modais ───────────────────────────────────────────────────────────────────
+function openModal(id) { document.getElementById(id)?.classList.add('open'); }
+function closeModal(id) { document.getElementById(id)?.classList.remove('open'); }
+document.querySelectorAll('.modal-overlay').forEach(o => {
+  o.addEventListener('click', e => { if(e.target===o) o.classList.remove('open'); });
+});
+document.addEventListener('keydown', e => {
+  if(e.key==='Escape') document.querySelectorAll('.modal-overlay.open').forEach(o=>o.classList.remove('open'));
+});
+
+// ── Busca de contatos ────────────────────────────────────────────────────────
+function filterContacts(q) {
+  const lq = q.toLowerCase();
+  document.querySelectorAll('#contacts-table tbody tr').forEach(tr => {
+    tr.style.display = tr.dataset.search?.includes(lq) ? '' : 'none';
+  });
+}
+
+// ── Marcar todos na lista ────────────────────────────────────────────────────
+function toggleAllContacts(state) {
+  document.querySelectorAll('#lista-contacts input[type=checkbox]').forEach(cb => cb.checked=state);
+}
+
+// ── Usar template em campanha ────────────────────────────────────────────────
+function useTemplate(msg) {
+  document.getElementById('campanha-message').value = msg;
+  closeModal('modal-template');
+  openModal('modal-campanha');
+}
+
+// ── Toast ────────────────────────────────────────────────────────────────────
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 3000);
+}
+
+// ── Seção inicial ────────────────────────────────────────────────────────────
+const initSection = new URLSearchParams(location.search).get('section') || '{{ section }}';
+if(initSection && SECTIONS.includes(initSection)) showSection(initSection);
+</script>
+</body>
+</html>
