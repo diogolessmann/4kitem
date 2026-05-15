@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ajuda — MandaZap</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#0a0f0a;color:#e8f5e8;font-family:'Segoe UI',sans-serif;min-height:100vh}
+  a{color:#22c55e;text-decoration:none}
+
+  /* HEADER */
+  .header{background:#0d1a0d;border-bottom:1px solid rgba(34,197,94,.15);padding:16px 24px;display:flex;align-items:center;gap:16px}
+  .logo{font-size:20px;font-weight:900;color:#22c55e}
+  .back-btn{margin-left:auto;padding:8px 16px;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);border-radius:8px;color:#22c55e;font-size:13px;cursor:pointer;font-family:inherit}
+  .back-btn:hover{background:rgba(34,197,94,.2)}
+
+  /* LAYOUT */
+  .container{max-width:860px;margin:0 auto;padding:32px 20px}
+  .hero{text-align:center;margin-bottom:48px}
+  .hero h1{font-size:28px;font-weight:900;color:#22c55e;margin-bottom:8px}
+  .hero p{font-size:15px;color:#6b8f6b;line-height:1.6}
+
+  /* STEPS */
+  .section{margin-bottom:48px}
+  .section-title{font-size:18px;font-weight:800;color:#22c55e;margin-bottom:20px;display:flex;align-items:center;gap:10px;padding-bottom:10px;border-bottom:1px solid rgba(34,197,94,.15)}
+  .step{display:flex;gap:16px;margin-bottom:20px;background:#0d1a0d;border:1px solid rgba(34,197,94,.1);border-radius:14px;padding:20px}
+  .step-num{flex-shrink:0;width:36px;height:36px;background:#22c55e;color:#000;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:16px}
+  .step-body h3{font-size:14px;font-weight:800;margin-bottom:6px;color:#e8f5e8}
+  .step-body p{font-size:13px;color:#6b8f6b;line-height:1.6}
+  .step-body code{background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.2);padding:2px 8px;border-radius:6px;font-size:12px;color:#22c55e;font-family:monospace}
+
+  /* TABS */
+  .tab-row{display:flex;gap:8px;margin-bottom:20px}
+  .tab{padding:8px 18px;border-radius:8px;border:1px solid rgba(34,197,94,.2);background:none;color:#6b8f6b;cursor:pointer;font-size:13px;font-family:inherit;transition:.2s}
+  .tab.active{background:rgba(34,197,94,.15);border-color:rgba(34,197,94,.4);color:#22c55e;font-weight:700}
+  .tab-content{display:none}
+  .tab-content.active{display:block}
+
+  /* TIPS */
+  .tip{background:rgba(34,197,94,.05);border:1px solid rgba(34,197,94,.2);border-radius:10px;padding:14px 16px;font-size:13px;color:#6b8f6b;line-height:1.6;margin-top:12px}
+  .tip strong{color:#22c55e}
+
+  /* ALERT */
+  .alert{background:rgba(245,158,11,.05);border:1px solid rgba(245,158,11,.2);border-radius:10px;padding:14px 16px;font-size:13px;color:#92740a;line-height:1.6;margin-top:12px}
+  .alert strong{color:#f59e0b}
+
+  /* FAQ */
+  .faq{margin-bottom:12px;background:#0d1a0d;border:1px solid rgba(34,197,94,.1);border-radius:12px;overflow:hidden}
+  .faq-q{padding:16px 20px;font-size:14px;font-weight:700;cursor:pointer;display:flex;justify-content:space-between;align-items:center}
+  .faq-q:hover{background:rgba(34,197,94,.05)}
+  .faq-a{padding:0 20px 16px;font-size:13px;color:#6b8f6b;line-height:1.7;display:none}
+  .faq.open .faq-a{display:block}
+  .faq-icon{color:#22c55e;font-size:16px;transition:.2s}
+  .faq.open .faq-icon{transform:rotate(45deg)}
+
+  footer{text-align:center;padding:32px;font-size:12px;color:#2d4a2d}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">💬 MandaZap</div>
+  <span style="font-size:13px;color:#6b8f6b">Central de Ajuda</span>
+  <button class="back-btn" onclick="history.back()">← Voltar ao painel</button>
+</div>
+
+<div class="container">
+
+  <div class="hero">
+    <h1>📖 Como usar o MandaZap</h1>
+    <p>Guia completo em 4 passos simples.<br>Do zero até disparar sua primeira campanha!</p>
+  </div>
+
+  <!-- PASSO 1: CONECTAR WHATSAPP -->
+  <div class="section">
+    <div class="section-title">📱 Passo 1 — Conectar seu WhatsApp</div>
+
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-body">
+        <h3>Vá em "Números" no menu lateral</h3>
+        <p>Clique em <strong>Números</strong> → <strong>+ Adicionar Número</strong> → coloque um nome (ex: "Meu WhatsApp") e o número com DDD.</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-body">
+        <h3>Clique em "📷 Gerar QR Code"</h3>
+        <p>Um QR Code vai aparecer na tela. Fique com o celular em mãos!</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-body">
+        <h3>Escaneie com o WhatsApp do celular</h3>
+        <p>No celular: <strong>WhatsApp → ⋮ Menu → Aparelhos conectados → Conectar aparelho</strong><br>
+        Aponte a câmera para o QR Code na tela do computador.</p>
+        <div class="tip">💡 <strong>Dica:</strong> Use de preferência um número de WhatsApp Business, não o pessoal. O número fica conectado enquanto o celular tiver internet.</div>
+      </div>
+    </div>
+
+    <div class="alert">⚠️ <strong>Importante:</strong> Não desinstale o WhatsApp nem faça logout no celular, senão desconecta. O celular precisa ficar com internet ligada.</div>
+  </div>
+
+  <!-- PASSO 2: IMPORTAR CONTATOS -->
+  <div class="section">
+    <div class="section-title">👥 Passo 2 — Importar seus contatos</div>
+
+    <div class="tab-row">
+      <button class="tab active" onclick="showTab('android',this)">📱 Android</button>
+      <button class="tab" onclick="showTab('iphone',this)">🍎 iPhone</button>
+      <button class="tab" onclick="showTab('planilha',this)">📊 Planilha Excel</button>
+    </div>
+
+    <!-- ANDROID -->
+    <div class="tab-content active" id="tab-android">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <h3>Abra o app "Contatos" no Android</h3>
+          <p>Procure o app <strong>Contatos</strong> (ícone de pessoa) no celular.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <h3>Exporte para CSV/VCF</h3>
+          <p>Toque nos <strong>3 pontinhos ⋮</strong> → <strong>Gerenciar contatos</strong> → <strong>Exportar contatos</strong> → escolha <strong>CSV</strong> ou <strong>VCF</strong>.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <h3>Transfira o arquivo para o computador</h3>
+          <p>Envie o arquivo pelo WhatsApp, e-mail ou Google Drive para abrir no computador.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-body">
+          <h3>Importe no MandaZap</h3>
+          <p>No MandaZap: <strong>Contatos → 📁 Importar CSV</strong> → selecione o arquivo.<br>
+          O sistema lê automaticamente nome e telefone!</p>
+        </div>
+      </div>
+      <div class="tip">💡 <strong>Dica Samsung:</strong> No app Contatos Samsung, vá em <strong>Menu → Gerenciar contatos → Importar ou exportar contatos → Exportar para armazenamento</strong>.</div>
+    </div>
+
+    <!-- IPHONE -->
+    <div class="tab-content" id="tab-iphone">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <h3>Acesse o iCloud no computador</h3>
+          <p>No computador, abra <a href="https://icloud.com/contacts" target="_blank">icloud.com/contacts</a> e faça login com seu Apple ID.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <h3>Selecione todos os contatos</h3>
+          <p>Clique em qualquer contato → pressione <code>Ctrl+A</code> (Windows) ou <code>Cmd+A</code> (Mac) para selecionar todos.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <h3>Exporte em vCard</h3>
+          <p>Clique na engrenagem ⚙️ no canto → <strong>Exportar vCard</strong>. Salva um arquivo <code>.vcf</code>.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-body">
+          <h3>Importe no MandaZap</h3>
+          <p>No MandaZap: <strong>Contatos → 📁 Importar CSV</strong> → selecione o arquivo <code>.vcf</code>.<br>
+          O sistema converte automaticamente!</p>
+        </div>
+      </div>
+      <div class="tip">💡 <strong>Alternativa:</strong> Você também pode criar uma planilha Excel com colunas <strong>nome</strong> e <strong>telefone</strong> e importar direto.</div>
+    </div>
+
+    <!-- PLANILHA -->
+    <div class="tab-content" id="tab-planilha">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <h3>Crie uma planilha Excel ou Google Sheets</h3>
+          <p>Abra o Excel ou Google Sheets e crie duas colunas:</p>
+          <p style="margin-top:8px"><code>nome</code> &nbsp;|&nbsp; <code>telefone</code></p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <h3>Preencha os contatos</h3>
+          <p>Uma linha por contato. O telefone deve ter DDD e sem espaços ou traços.<br>
+          Exemplo: <code>João Silva</code> | <code>47991234567</code></p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <h3>Salve como CSV</h3>
+          <p>No Excel: <strong>Arquivo → Salvar como → CSV (separado por vírgulas)</strong>.<br>
+          No Google Sheets: <strong>Arquivo → Fazer download → CSV</strong>.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-body">
+          <h3>Importe no MandaZap</h3>
+          <p>No MandaZap: <strong>Contatos → 📁 Importar CSV</strong> → selecione o arquivo.<br>
+          Pronto! Todos os contatos aparecem na lista.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PASSO 3: CRIAR LISTA -->
+  <div class="section">
+    <div class="section-title">📋 Passo 3 — Organizar em Listas</div>
+
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-body">
+        <h3>Vá em "Listas" e clique em "+ Nova Lista"</h3>
+        <p>Crie listas por segmento. Exemplos: <strong>"Clientes VIP"</strong>, <strong>"Aniversariantes do mês"</strong>, <strong>"Interessados no produto X"</strong>.</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-body">
+        <h3>Adicione contatos à lista</h3>
+        <p>Na tela de Contatos, marque os que quer adicionar e escolha a lista. Ou crie a lista e adicione em massa.</p>
+      </div>
+    </div>
+
+    <div class="tip">💡 <strong>Por que usar listas?</strong> Assim você envia mensagens diferentes para grupos diferentes — promoção só para clientes VIP, lembrete só para quem ainda não comprou, etc.</div>
+  </div>
+
+  <!-- PASSO 4: DISPARAR CAMPANHA -->
+  <div class="section">
+    <div class="section-title">🚀 Passo 4 — Criar e Disparar Campanha</div>
+
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-body">
+        <h3>Clique em "Campanhas → Nova Campanha"</h3>
+        <p>Dê um nome para a campanha. Ex: <strong>"Promoção Maio"</strong>.</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-body">
+        <h3>Escolha a lista e o número</h3>
+        <p>Selecione <strong>qual lista</strong> vai receber a mensagem e <strong>qual número</strong> vai enviar.</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-body">
+        <h3>Escreva a mensagem</h3>
+        <p>Use <code>{nome}</code> para personalizar com o nome de cada contato.<br>
+        Exemplo: <em>"Olá {nome}! Temos uma promoção especial pra você 🎁"</em><br><br>
+        O sistema vai substituir <code>{nome}</code> pelo nome real de cada pessoa!</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">4</div>
+      <div class="step-body">
+        <h3>Agende ou dispare agora</h3>
+        <p>Deixe a data em branco para salvar como rascunho, ou escolha uma data/hora para agendar o envio automático.</p>
+      </div>
+    </div>
+
+    <div class="alert">⚠️ <strong>Atenção:</strong> Evite enviar mensagens idênticas para muitas pessoas de uma vez. O WhatsApp pode bloquear o número. Varie o texto e use o campo <code>{nome}</code> para personalizar.</div>
+  </div>
+
+  <!-- FAQ -->
+  <div class="section">
+    <div class="section-title">❓ Perguntas frequentes</div>
+
+    <div class="faq" onclick="toggleFaq(this)">
+      <div class="faq-q">Meu número pode ser bloqueado pelo WhatsApp? <span class="faq-icon">+</span></div>
+      <div class="faq-a">Sim, se enviar mensagens em massa muito rapidamente. O MandaZap envia com um intervalo entre cada mensagem para reduzir esse risco. Evite também usar número pessoal — prefira um número de WhatsApp Business dedicado para disparos.</div>
+    </div>
+
+    <div class="faq" onclick="toggleFaq(this)">
+      <div class="faq-q">Posso enviar imagens e vídeos? <span class="faq-icon">+</span></div>
+      <div class="faq-a">Sim! Na criação da campanha, selecione o tipo "Imagem" ou "Vídeo" e cole o link direto da mídia. Recomendamos hospedar a imagem no Google Drive (com link público) ou Imgur.</div>
+    </div>
+
+    <div class="faq" onclick="toggleFaq(this)">
+      <div class="faq-q">O celular precisa ficar ligado? <span class="faq-icon">+</span></div>
+      <div class="faq-a">Sim, o celular precisa ter internet ativa para o WhatsApp funcionar. Se o celular ficar sem internet ou o WhatsApp fechar, o número aparece como "Desconectado" e você precisa gerar o QR Code novamente.</div>
+    </div>
+
+    <div class="faq" onclick="toggleFaq(this)">
+      <div class="faq-q">Posso usar meu número pessoal? <span class="faq-icon">+</span></div>
+      <div class="faq-a">Tecnicamente sim, mas não recomendamos. Use um número exclusivo para disparos (um chip barato serve). Assim seu número pessoal fica seguro em caso de bloqueio.</div>
+    </div>
+
+    <div class="faq" onclick="toggleFaq(this)">
+      <div class="faq-q">Quantas mensagens posso enviar por dia? <span class="faq-icon">+</span></div>
+      <div class="faq-a">Depende do seu plano. O plano Solo permite até 399 mensagens por dia. O plano Agência é ilimitado. O limite existe para proteger seu número de bloqueio pelo WhatsApp.</div>
+    </div>
+
+    <div class="faq" onclick="toggleFaq(this)">
+      <div class="faq-q">O {nome} não está funcionando, o que faço? <span class="faq-icon">+</span></div>
+      <div class="faq-a">Verifique se os contatos têm nome cadastrado. Se o contato não tem nome, aparece o número no lugar. Você pode editar os contatos na tela de Contatos para adicionar o nome correto.</div>
+    </div>
+  </div>
+
+</div>
+
+<footer>💬 MandaZap · Dúvidas? Fale com o suporte pelo WhatsApp</footer>
+
+<script>
+function showTab(name, btn) {
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  btn.classList.add('active');
+}
+function toggleFaq(el) {
+  el.classList.toggle('open');
+}
+</script>
+</body>
+</html>

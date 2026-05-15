@@ -1078,6 +1078,15 @@ def mandazap_painel():
                            section=request.args.get('section', 'dashboard'))
 
 
+# ── Ajuda ─────────────────────────────────────────────────────────────────────
+
+@app.route('/mandazap/ajuda')
+def mz_ajuda():
+    if not session.get('mz_user_id'):
+        return redirect('/mandazap/entrar')
+    return render_template('mandazap/ajuda.html')
+
+
 # ── QR Code ───────────────────────────────────────────────────────────────────
 
 @app.route('/mandazap/numeros/<int:num_id>/qr')
