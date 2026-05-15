@@ -292,16 +292,17 @@ select option{background:var(--surface2)}
     {% if numbers %}
     <div class="numbers-grid">
       {% for n in numbers %}
-      <div class="number-card">
+      <div class="number-card" id="num-card-{{ n.id }}">
         <div class="number-card-top">
           <div>
             <div class="number-label">{{ n.label }}</div>
-            <div class="number-phone">{{ n.phone or 'Sem número definido' }}</div>
+            <div class="number-phone" id="num-phone-{{ n.id }}">{{ n.phone or 'Sem número definido' }}</div>
           </div>
-          <div class="status-dot {{ n.status }}"></div>
+          <div class="status-dot {{ n.status }}" id="num-dot-{{ n.id }}"></div>
         </div>
-        <div>
-          <span class="badge {{ n.status }}">{{ '🟢 Conectado' if n.status == 'connected' else '🔴 Desconectado' }}</span>
+        <div style="display:flex;gap:8px;align-items:center">
+          <span class="badge {{ n.status }}" id="num-badge-{{ n.id }}">{{ '🟢 Conectado' if n.status == 'connected' else '🔴 Desconectado' }}</span>
+          <button type="button" onclick="verificarConexao({{ n.id }}, this)" style="background:none;border:none;cursor:pointer;font-size:12px;color:var(--text2);padding:2px 4px" title="Verificar conexão">🔄</button>
         </div>
         <div class="qr-placeholder" id="qr-wrap-{{ n.id }}">
           {% if n.status == 'connected' %}
@@ -927,19 +928,7 @@ function _startQRStatusPoll(numberId) {
       if (d.status === 'connected') {
         clearInterval(_qrPollers[numberId]);
         delete _qrPollers[numberId];
-        // Atualiza o card inteiro para mostrar conectado
-        const qrWrap = document.getElementById('qr-wrap-' + numberId);
-        if (qrWrap) {
-          qrWrap.innerHTML = `<div class="qr-icon">✅</div><div style="color:#22c55e;font-weight:700">WhatsApp conectado!</div>`;
-        }
-        // Atualiza badge e ponto de status
-        const card = qrWrap ? qrWrap.closest('.number-card') : null;
-        if (card) {
-          const dot = card.querySelector('.status-dot');
-          if (dot) { dot.className = 'status-dot connected'; }
-          const badge = card.querySelector('.badge');
-          if (badge) { badge.className = 'badge connected'; badge.textContent = '🟢 Conectado'; }
-        }
+        _applyNumStatus(numberId, 'connected');
         showToast('✅ WhatsApp conectado com sucesso!');
       } else if (statusEl) {
         statusEl.textContent = '⏳ Aguardando leitura do QR Code…';
@@ -1044,12 +1033,50 @@ function _pollProgress(cid) {
   }, 3000); // atualiza a cada 3s
 }
 
+// ── Verificar conexão manualmente ────────────────────────────────────────────
+async function verificarConexao(numberId, btn) {
+  const orig = btn.textContent;
+  btn.textContent = '⏳';
+  btn.disabled = true;
+  try {
+    const r = await fetch(`/mandazap/numeros/${numberId}/check-status`);
+    const d = await r.json();
+    _applyNumStatus(numberId, d.status);
+    showToast(d.status === 'connected' ? '✅ Número conectado!' : '🔴 Número desconectado');
+  } catch(e) {
+    showToast('⚠️ Erro ao verificar status');
+  }
+  btn.textContent = orig;
+  btn.disabled = false;
+}
+
+function _applyNumStatus(numberId, status) {
+  const dot   = document.getElementById('num-dot-' + numberId);
+  const badge = document.getElementById('num-badge-' + numberId);
+  const qrWrap = document.getElementById('qr-wrap-' + numberId);
+  if (dot)   { dot.className = 'status-dot ' + status; }
+  if (badge) { badge.className = 'badge ' + status; badge.textContent = status === 'connected' ? '🟢 Conectado' : '🔴 Desconectado'; }
+  if (qrWrap && status === 'connected') {
+    qrWrap.innerHTML = `<div class="qr-icon">✅</div><div style="color:#22c55e;font-weight:700">WhatsApp conectado!</div>`;
+  }
+}
+
 // Auto-polling para campanhas em andamento ao carregar a página
 document.addEventListener('DOMContentLoaded', () => {
   {% for c in campaigns %}
   {% if c.status in ('enviando', 'sending') %}
   _pollProgress({{ c.id }});
   {% endif %}
+  {% endfor %}
+
+  // Verifica status real de todos os números ao carregar (atualiza banco se necessário)
+  {% for n in numbers %}
+  setTimeout(() => {
+    fetch('/mandazap/numeros/{{ n.id }}/check-status')
+      .then(r => r.json())
+      .then(d => _applyNumStatus({{ n.id }}, d.status))
+      .catch(() => {});
+  }, {{ loop.index0 * 800 }});  {# escalonado para não bater tudo junto #}
   {% endfor %}
 });
 
