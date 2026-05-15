@@ -43,6 +43,9 @@ BUSINESS_TYPES = {
     'consultoria':  '📊 Consultoria / Coaching',
     'fotografia':   '📷 Fotografia / Estúdio',
     'tatuagem':     '🖊️ Tatuagem / Piercing',
+    'lavacao':      '🚗 Lavação / Estética Automotiva',
+    'escola':       '🎓 Escola / Curso / Idiomas',
+    'imobiliaria':  '🏠 Imobiliária / Corretor',
     'outros':       '🏢 Outro',
 }
 
