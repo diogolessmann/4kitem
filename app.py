@@ -1340,9 +1340,16 @@ def mz_upload():
 
     import uuid, re as _re2
     ext = f.filename.rsplit('.', 1)[-1].lower() if '.' in f.filename else 'jpg'
-    allowed = {'jpg', 'jpeg', 'png', 'gif', 'webp', 'mp4'}
+    allowed = {'jpg', 'jpeg', 'png', 'gif', 'webp'}
     if ext not in allowed:
-        return jsonify({'erro': f'Tipo não permitido. Use: {", ".join(allowed)}'}), 400
+        return jsonify({'erro': 'Tipo não permitido. Use: JPG, PNG, GIF ou WEBP'}), 400
+
+    # Limite de 3 MB
+    f.seek(0, 2)
+    size = f.tell()
+    f.seek(0)
+    if size > 3 * 1024 * 1024:
+        return jsonify({'erro': f'Arquivo muito grande ({size//1024}KB). Limite: 3MB'}), 400
 
     upload_dir = os.path.join(os.path.dirname(__file__), 'static', 'mz_uploads')
     os.makedirs(upload_dir, exist_ok=True)

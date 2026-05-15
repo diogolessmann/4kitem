@@ -732,11 +732,11 @@ select option{background:var(--surface2)}
         <div style="display:flex;gap:8px;align-items:center">
           <label style="flex:1;cursor:pointer;background:var(--surface2);border:1px dashed var(--border2);border-radius:8px;padding:8px 12px;font-size:12px;color:var(--text2);text-align:center">
             📎 Ou clique para fazer upload da imagem
-            <input type="file" id="camp-upload-input" accept="image/*,video/mp4" style="display:none" onchange="uploadMidia('camp-upload-input','camp-media-url','camp-img-preview')">
+            <input type="file" id="camp-upload-input" accept="image/*" style="display:none" onchange="uploadMidia('camp-upload-input','camp-media-url','camp-img-preview')">
           </label>
         </div>
         <div id="camp-img-preview" style="display:none"></div>
-        <div style="font-size:11px;color:var(--text2);margin-top:4px">Cole uma URL pública <em>ou</em> faça upload direto (JPG, PNG, GIF, MP4)</div>
+        <div style="font-size:11px;color:var(--text2);margin-top:4px">Cole uma URL pública <em>ou</em> faça upload direto (JPG, PNG, GIF, WEBP — máx. 3MB)</div>
       </div>
       <div class="form-group">
         <label>Mensagem * — use {'{nome}'} para personalizar</label>
@@ -781,7 +781,7 @@ select option{background:var(--surface2)}
         <input type="url" name="media_url" id="tpl-media-url" placeholder="https://exemplo.com/imagem.jpg" style="margin-bottom:6px">
         <label style="display:block;cursor:pointer;background:var(--surface2);border:1px dashed var(--border2);border-radius:8px;padding:8px 12px;font-size:12px;color:var(--text2);text-align:center">
           📎 Ou clique para fazer upload da imagem
-          <input type="file" id="tpl-upload-input" accept="image/*,video/mp4" style="display:none" onchange="uploadMidia('tpl-upload-input','tpl-media-url','tpl-img-preview')">
+          <input type="file" id="tpl-upload-input" accept="image/*" style="display:none" onchange="uploadMidia('tpl-upload-input','tpl-media-url','tpl-img-preview')">
         </label>
         <div id="tpl-img-preview" style="display:none"></div>
       </div>
