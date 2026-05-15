@@ -1078,6 +1078,29 @@ def mandazap_painel():
                            section=request.args.get('section', 'dashboard'))
 
 
+# ── Admin rápido por URL ───────────────────────────────────────────────────────
+
+@app.route('/admin/mz-set-plan-email')
+def mz_set_plan_email():
+    token = request.args.get('token','')
+    email = request.args.get('email','')
+    plan  = request.args.get('plan','agencia')
+    if token != os.environ.get('DEV_TOKEN','diogo4kitem'):
+        return 'Acesso negado', 403
+    if plan not in MANDAZAP_PLANS:
+        return f'Plano inválido. Opções: {list(MANDAZAP_PLANS.keys())}', 400
+    conn = get_saas_db()
+    user = conn.execute('SELECT id, name, plan FROM mandazap_users WHERE email=?',(email,)).fetchone()
+    if not user:
+        users = [dict(r) for r in conn.execute('SELECT id, name, email, plan FROM mandazap_users').fetchall()]
+        conn.close()
+        return f'Usuário não encontrado. Usuários cadastrados: {users}', 404
+    conn.execute('UPDATE mandazap_users SET plan=?, active=1 WHERE email=?',(plan, email))
+    conn.commit()
+    conn.close()
+    return f'✅ Plano de {user["name"]} atualizado para {plan}!'
+
+
 # ── Ajuda ─────────────────────────────────────────────────────────────────────
 
 @app.route('/mandazap/ajuda')
