@@ -1289,34 +1289,24 @@ def health():
 #  DEV — Página privada de roadmap e anotações
 # ══════════════════════════════════════════════════════════════════════════
 
-DEV_PASSWORD = os.environ.get('DEV_PASSWORD', 'diogo2026')
+DEV_TOKEN = os.environ.get('DEV_TOKEN', 'diogo4kitem')
 
-@app.route('/dev', methods=['GET', 'POST'])
-def dev_page():
-    if request.method == 'POST':
-        if request.form.get('senha') == DEV_PASSWORD:
-            session['dev_ok'] = True
-            return redirect(url_for('dev_page'))
-        return render_template('dev_login.html', erro=True)
-    if not session.get('dev_ok'):
-        return render_template('dev_login.html', erro=False)
+@app.route('/dev/<token>')
+def dev_page(token):
+    if token != DEV_TOKEN:
+        abort(404)
     notas = listar_notas_dev()
-    return render_template('dev.html', notas=notas, now=datetime.now())
+    return render_template('dev.html', notas=notas, now=datetime.now(), token=token)
 
-@app.route('/dev/nota', methods=['POST'])
-def dev_nota():
-    if not session.get('dev_ok'):
-        return redirect(url_for('dev_page'))
+@app.route('/dev/<token>/nota', methods=['POST'])
+def dev_nota(token):
+    if token != DEV_TOKEN:
+        abort(404)
     titulo = request.form.get('titulo', '').strip() or 'Sem título'
     texto  = request.form.get('texto', '').strip()
     if texto:
         salvar_nota_dev(titulo, texto)
-    return redirect(url_for('dev_page'))
-
-@app.route('/dev/sair')
-def dev_sair():
-    session.pop('dev_ok', None)
-    return redirect(url_for('dev_page'))
+    return redirect(url_for('dev_page', token=token))
 
 
 # ══════════════════════════════════════════════════════════════════════════

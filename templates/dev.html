@@ -61,7 +61,7 @@
 <body>
 
 <h1>🔧 4KITEM — Dev & Roadmap</h1>
-<p class="sub">Página privada · Só você tem acesso · <a href="/">← Voltar ao site</a> · <a href="/dev/sair" style="color:#666">Sair</a></p>
+<p class="sub">Página privada · Só você tem acesso · <a href="/">← Voltar ao site</a></p>
 
 <!-- STATUS DOS PRODUTOS -->
 <div class="produtos">
@@ -161,7 +161,7 @@
     {% endfor %}
   {% endif %}
 
-  <form method="POST" action="/dev/nota" style="margin-top:16px">
+  <form method="POST" action="/dev/{{ token }}/nota" style="margin-top:16px">
     <input type="text" name="titulo" placeholder="Título rápido (ex: Bug no MandaZap, Ideia para Agenda...)">
     <textarea name="texto" placeholder="Escreve aqui tudo que precisa mudar, melhorar ou corrigir...&#10;&#10;Ex:&#10;- O botão X não funciona&#10;- Quero adicionar tal coisa no produto Y&#10;- Ideia nova: ..."></textarea>
     <button class="btn-salvar" type="submit">💾 Salvar anotação</button>
