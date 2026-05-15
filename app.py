@@ -1533,6 +1533,219 @@ def dev_nota(token):
 #  STARTUP
 # ══════════════════════════════════════════════════════════════════════════
 
+# ══════════════════════════════════════════════════════════════════════════
+#  CAMPAIGN DISPATCHER — envia mensagens via Evolution API
+# ══════════════════════════════════════════════════════════════════════════
+
+def _get_evo():
+    """Retorna (evo_url, evo_key) ou (None, None) se não configurado."""
+    return (
+        os.environ.get('EVOLUTION_API_URL', '').rstrip('/'),
+        os.environ.get('EVOLUTION_API_KEY', ''),
+    )
+
+
+def _send_text(evo_url, evo_key, instance, phone, text):
+    """Envia uma mensagem de texto. Retorna (ok, erro_str)."""
+    import requests as _req
+    try:
+        r = _req.post(
+            f"{evo_url}/message/sendText/{instance}",
+            headers={'apikey': evo_key, 'Content-Type': 'application/json'},
+            json={'number': phone, 'text': text},
+            timeout=15,
+        )
+        if r.status_code in (200, 201):
+            return True, ''
+        return False, f"HTTP {r.status_code}: {r.text[:120]}"
+    except Exception as e:
+        return False, str(e)[:120]
+
+
+def _send_image(evo_url, evo_key, instance, phone, image_url, caption=''):
+    """Envia imagem com legenda. Retorna (ok, erro_str)."""
+    import requests as _req
+    try:
+        r = _req.post(
+            f"{evo_url}/message/sendMedia/{instance}",
+            headers={'apikey': evo_key, 'Content-Type': 'application/json'},
+            json={
+                'number': phone,
+                'mediatype': 'image',
+                'media': image_url,
+                'caption': caption,
+            },
+            timeout=20,
+        )
+        if r.status_code in (200, 201):
+            return True, ''
+        return False, f"HTTP {r.status_code}: {r.text[:120]}"
+    except Exception as e:
+        return False, str(e)[:120]
+
+
+def _dispatch_campaign(cid: int, user_id: int, delay_s: int = 4):
+    """
+    Executa o disparo de uma campanha em background thread.
+    Atualiza status/sent em tempo real no banco.
+    """
+    import time, random
+    evo_url, evo_key = _get_evo()
+    if not evo_url or not evo_key:
+        log.error(f"Campanha {cid}: Evolution API não configurada")
+        return
+
+    conn = get_saas_db()
+
+    # Carrega campanha
+    camp = conn.execute('SELECT * FROM mandazap_campaigns WHERE id=? AND user_id=?',
+                        (cid, user_id)).fetchone()
+    if not camp:
+        conn.close(); return
+    camp = dict(camp)
+
+    # Instância WhatsApp
+    num_id   = camp.get('number_id')
+    instance = f"mz{user_id}n{num_id}" if num_id else None
+    if not instance:
+        conn.execute("UPDATE mandazap_campaigns SET status='erro' WHERE id=?", (cid,))
+        conn.commit(); conn.close()
+        log.error(f"Campanha {cid}: nenhum número selecionado")
+        return
+
+    # Carrega contatos da lista
+    list_id = camp.get('list_id')
+    if list_id:
+        rows = conn.execute('''
+            SELECT c.name, c.phone FROM mandazap_list_contacts lc
+            JOIN mandazap_contacts c ON c.id = lc.contact_id
+            WHERE lc.list_id = ? AND c.user_id = ?
+        ''', (list_id, user_id)).fetchall()
+    else:
+        rows = conn.execute(
+            'SELECT name, phone FROM mandazap_contacts WHERE user_id=?', (user_id,)
+        ).fetchall()
+
+    contacts = [dict(r) for r in rows]
+    total    = len(contacts)
+
+    if total == 0:
+        conn.execute("UPDATE mandazap_campaigns SET status='erro',total=0 WHERE id=?", (cid,))
+        conn.commit(); conn.close()
+        log.warning(f"Campanha {cid}: sem contatos")
+        return
+
+    # Marca como "enviando"
+    conn.execute(
+        "UPDATE mandazap_campaigns SET status='enviando', total=?, sent=0, finished_at=NULL WHERE id=?",
+        (total, cid)
+    )
+    conn.commit()
+
+    message   = camp.get('message', '')
+    media_url = camp.get('media_url', '') or ''   # campo futuro — tenta de qualquer jeito
+    is_image  = camp.get('media_type', 'text') == 'image'
+
+    sent_count = 0
+    for c in contacts:
+        phone = (c.get('phone') or '').replace(' ','').replace('-','').replace('+','')
+        if not phone:
+            continue
+        if not phone.startswith('55'):
+            phone = '55' + phone
+
+        nome_curto = (c.get('name') or 'Cliente').split()[0].title()
+        msg = message.replace('{nome}', nome_curto).replace('{name}', nome_curto)
+
+        if is_image and media_url:
+            ok, err = _send_image(evo_url, evo_key, instance, phone, media_url, msg)
+        else:
+            ok, err = _send_text(evo_url, evo_key, instance, phone, msg)
+
+        if ok:
+            sent_count += 1
+        else:
+            log.warning(f"Campanha {cid} → {phone}: {err}")
+
+        # Atualiza progresso a cada envio
+        conn2 = get_saas_db()
+        conn2.execute("UPDATE mandazap_campaigns SET sent=? WHERE id=?", (sent_count, cid))
+        conn2.commit(); conn2.close()
+
+        # Delay humano (± 30% de variação)
+        jitter = delay_s * random.uniform(0.7, 1.3)
+        time.sleep(jitter)
+
+    # Finaliza
+    conn.execute(
+        "UPDATE mandazap_campaigns SET status='concluida', sent=?, finished_at=? WHERE id=?",
+        (sent_count, datetime.now().isoformat(), cid)
+    )
+    conn.commit(); conn.close()
+    log.info(f"Campanha {cid} concluída: {sent_count}/{total} enviados")
+
+
+def _campaign_scheduler():
+    """
+    Loop em background que verifica campanhas agendadas a cada 30 s
+    e dispara aquelas cujo scheduled_at <= agora.
+    """
+    import time
+    while True:
+        try:
+            now  = datetime.now().isoformat()
+            conn = get_saas_db()
+            rows = conn.execute(
+                "SELECT id, user_id FROM mandazap_campaigns "
+                "WHERE status='agendada' AND scheduled_at IS NOT NULL AND scheduled_at <= ?",
+                (now,)
+            ).fetchall()
+            conn.close()
+            for row in rows:
+                cid, uid = row['id'], row['user_id']
+                log.info(f"Scheduler: disparando campanha {cid} (user {uid})")
+                threading.Thread(target=_dispatch_campaign, args=(cid, uid), daemon=True).start()
+        except Exception as e:
+            log.error(f"Campaign scheduler error: {e}")
+        time.sleep(30)
+
+
+@app.route('/mandazap/campanhas/<int:cid>/disparar', methods=['POST'])
+@_mandazap_login_required
+def mz_campaign_dispatch(cid):
+    """Dispara imediatamente uma campanha (rascunho ou agendada)."""
+    user_id = session['mz_user_id']
+    conn    = get_saas_db()
+    camp    = conn.execute(
+        'SELECT status FROM mandazap_campaigns WHERE id=? AND user_id=?', (cid, user_id)
+    ).fetchone()
+    conn.close()
+    if not camp:
+        return jsonify({'erro': 'Campanha não encontrada'}), 404
+    if camp['status'] in ('enviando', 'concluida'):
+        return jsonify({'erro': f'Campanha já está {camp["status"]}'}), 400
+    threading.Thread(target=_dispatch_campaign, args=(cid, user_id), daemon=True).start()
+    return jsonify({'ok': True, 'msg': 'Disparo iniciado!'})
+
+
+@app.route('/mandazap/campanhas/<int:cid>/status')
+@_mandazap_login_required
+def mz_campaign_status(cid):
+    """Polling de progresso da campanha."""
+    user_id = session['mz_user_id']
+    conn    = get_saas_db()
+    camp    = conn.execute(
+        'SELECT status, total, sent, finished_at FROM mandazap_campaigns WHERE id=? AND user_id=?',
+        (cid, user_id)
+    ).fetchone()
+    conn.close()
+    if not camp:
+        return jsonify({'erro': 'Não encontrada'}), 404
+    d = dict(camp)
+    d['pct'] = round(d['sent'] / d['total'] * 100) if d['total'] else 0
+    return jsonify(d)
+
+
 def _startup():
     try:
         init_db()
@@ -1549,6 +1762,9 @@ def _startup():
                 except Exception as e:
                     log.error(f"Scrape startup error: {e}")
             threading.Thread(target=_scrape, daemon=True).start()
+        # Inicia scheduler de campanhas
+        threading.Thread(target=_campaign_scheduler, daemon=True).start()
+        log.info("Campaign scheduler iniciado.")
     except Exception as e:
         log.error(f"Startup error: {e}")
 

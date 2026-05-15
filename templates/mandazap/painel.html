@@ -421,28 +421,49 @@ select option{background:var(--surface2)}
         <thead><tr><th>Campanha</th><th>Lista</th><th>Número</th><th>Total</th><th>Enviados</th><th>Status</th><th>Data</th><th style="width:40px"></th></tr></thead>
         <tbody>
         {% for c in campaigns %}
-        <tr>
+        {% set is_active = c.status in ('enviando', 'sending') %}
+        {% set can_send  = c.status in ('rascunho', 'draft', 'agendada', 'erro', 'failed') %}
+        <tr id="camp-row-{{ c.id }}">
           <td>
             <div style="font-weight:700">{{ c.name }}</div>
             <div style="font-size:11px;color:var(--text2);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ c.message[:60] }}{% if c.message|length > 60 %}...{% endif %}</div>
+            {% if c.scheduled_at %}
+            <div style="font-size:10px;color:var(--accent2)">📅 {{ c.scheduled_at[:16].replace('T',' ') }}</div>
+            {% endif %}
           </td>
           <td style="color:var(--text2)">{{ c.list_name or '—' }}</td>
           <td style="color:var(--text2)">{{ c.number_label or '—' }}</td>
-          <td style="color:var(--text2)">{{ c.total or '—' }}</td>
-          <td>{% if c.total > 0 %}
-            <span style="color:var(--green);font-weight:700">{{ c.sent }}</span>
-            <div class="prog-bar" style="width:60px"><div class="prog-fill" style="width:{{ (c.sent/c.total*100)|int if c.total > 0 else 0 }}%"></div></div>
+          <td style="color:var(--text2)" id="camp-total-{{ c.id }}">{{ c.total or '—' }}</td>
+          <td id="camp-sent-{{ c.id }}">
+            {% if c.total and c.total > 0 %}
+            <span style="color:var(--green);font-weight:700">{{ c.sent }}</span>/{{ c.total }}
+            <div class="prog-bar" style="width:70px;margin-top:3px">
+              <div class="prog-fill" id="camp-bar-{{ c.id }}" style="width:{{ (c.sent/c.total*100)|int if c.total > 0 else 0 }}%"></div>
+            </div>
             {% else %}—{% endif %}
           </td>
-          <td>
-            <span class="badge {{ 'done' if c.status=='done' else 'sending' if c.status=='sending' else 'scheduled' if c.status=='agendada' else 'failed' if c.status=='failed' else 'draft' }}">
-              {{ {'done':'✅ Concluída','sending':'⏳ Enviando','draft':'📝 Rascunho','agendada':'📅 Agendada','failed':'❌ Falhou'}.get(c.status, c.status) }}
+          <td id="camp-status-{{ c.id }}">
+            <span class="badge {{ 'done' if c.status in ('done','concluida') else 'sending' if is_active else 'scheduled' if c.status=='agendada' else 'failed' if c.status in ('failed','erro') else 'draft' }}">
+              {{ {'concluida':'✅ Concluída','done':'✅ Concluída','enviando':'⏳ Enviando','sending':'⏳ Enviando','draft':'📝 Rascunho','rascunho':'📝 Rascunho','agendada':'📅 Agendada','failed':'❌ Falhou','erro':'❌ Erro'}.get(c.status, c.status) }}
             </span>
           </td>
           <td style="color:var(--text2);font-size:11px">{{ c.created_at[:10] if c.created_at else '—' }}</td>
-          <td>
-            <form method="POST" action="/mandazap/campanhas/{{ c.id }}/delete" onsubmit="return confirm('Apagar campanha {{ c.name }}?')">
-              <button type="submit" class="btn-icon">🗑</button>
+          <td style="white-space:nowrap;display:flex;gap:4px;align-items:center;">
+            {% if can_send %}
+            <button class="btn btn-outline btn-sm" id="camp-btn-{{ c.id }}"
+                    onclick="dispararCampanha({{ c.id }}, '{{ c.name|replace("'","\\'")|replace('"','\\"') }}')"
+                    title="Disparar agora">
+              🚀 Disparar
+            </button>
+            {% elif is_active %}
+            <button class="btn btn-outline btn-sm" id="camp-btn-{{ c.id }}"
+                    style="opacity:.5;cursor:default" disabled>
+              ⏳ Enviando…
+            </button>
+            {% endif %}
+            <form method="POST" action="/mandazap/campanhas/{{ c.id }}/delete"
+                  onsubmit="return confirm('Apagar campanha {{ c.name }}?')" style="display:inline">
+              <button type="submit" class="btn-icon" title="Apagar">🗑</button>
             </form>
           </td>
         </tr>
@@ -853,6 +874,82 @@ async function gerarQR(numberId, btn) {
     btn.disabled = false;
   }
 }
+
+// ── Disparar campanha agora ───────────────────────────────────────────────────
+const _pollTimers = {};
+
+async function dispararCampanha(cid, nome) {
+  if (!confirm(`🚀 Disparar a campanha "${nome}" AGORA?\n\nAs mensagens serão enviadas imediatamente para todos os contatos da lista.`)) return;
+
+  const btn = document.getElementById('camp-btn-' + cid);
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Iniciando…'; }
+
+  try {
+    const r = await fetch(`/mandazap/campanhas/${cid}/disparar`, { method: 'POST' });
+    const d = await r.json();
+    if (d.ok) {
+      showToast('🚀 Disparo iniciado! Acompanhe o progresso abaixo.');
+      // Começa polling de progresso
+      _pollProgress(cid);
+    } else {
+      alert('❌ Erro: ' + (d.erro || 'Falha desconhecida'));
+      if (btn) { btn.disabled = false; btn.textContent = '🚀 Disparar'; }
+    }
+  } catch(e) {
+    alert('Erro de conexão: ' + e.message);
+    if (btn) { btn.disabled = false; btn.textContent = '🚀 Disparar'; }
+  }
+}
+
+function _pollProgress(cid) {
+  if (_pollTimers[cid]) clearInterval(_pollTimers[cid]);
+  _pollTimers[cid] = setInterval(async () => {
+    try {
+      const r = await fetch(`/mandazap/campanhas/${cid}/status`);
+      const d = await r.json();
+      if (!d.status) return;
+
+      // Atualiza células da linha
+      const sentCell   = document.getElementById('camp-sent-' + cid);
+      const statusCell = document.getElementById('camp-status-' + cid);
+      const bar        = document.getElementById('camp-bar-' + cid);
+      const totalCell  = document.getElementById('camp-total-' + cid);
+      const btn        = document.getElementById('camp-btn-' + cid);
+
+      if (totalCell && d.total) totalCell.textContent = d.total;
+      if (sentCell && d.total > 0) {
+        sentCell.innerHTML = `<span style="color:var(--green);font-weight:700">${d.sent}</span>/${d.total}
+          <div class="prog-bar" style="width:70px;margin-top:3px">
+            <div class="prog-fill" style="width:${d.pct}%"></div>
+          </div>`;
+      }
+      if (statusCell) {
+        const labels = {concluida:'✅ Concluída',done:'✅ Concluída',enviando:'⏳ Enviando',sending:'⏳ Enviando',agendada:'📅 Agendada',erro:'❌ Erro',failed:'❌ Falhou',rascunho:'📝 Rascunho',draft:'📝 Rascunho'};
+        const cls    = {concluida:'done',done:'done',enviando:'sending',sending:'sending',agendada:'scheduled',erro:'failed',failed:'failed'};
+        statusCell.innerHTML = `<span class="badge ${cls[d.status]||'draft'}">${labels[d.status]||d.status}</span>`;
+      }
+
+      // Campanha finalizada
+      if (['concluida','done','erro','failed'].includes(d.status)) {
+        clearInterval(_pollTimers[cid]);
+        delete _pollTimers[cid];
+        if (btn) btn.remove(); // remove botão após concluir
+        showToast(d.status === 'concluida' ? `✅ Campanha concluída! ${d.sent}/${d.total} enviados.` : '❌ Campanha encerrou com erros.');
+      } else if (btn) {
+        btn.textContent = `⏳ ${d.sent}/${d.total||'?'}`;
+      }
+    } catch(e) { /* ignora erros de polling */ }
+  }, 3000); // atualiza a cada 3s
+}
+
+// Auto-polling para campanhas em andamento ao carregar a página
+document.addEventListener('DOMContentLoaded', () => {
+  {% for c in campaigns %}
+  {% if c.status in ('enviando', 'sending') %}
+  _pollProgress({{ c.id }});
+  {% endif %}
+  {% endfor %}
+});
 
 // ── Seção inicial ────────────────────────────────────────────────────────────
 const initSection = new URLSearchParams(location.search).get('section') || '{{ section }}';
