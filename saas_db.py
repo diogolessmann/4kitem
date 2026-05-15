@@ -10,10 +10,11 @@ DB_PATH = os.path.join(_base, 'saas.db')
 
 
 def get_db():
-    if os.path.dirname(DB_PATH):
-        os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
+    os.makedirs(os.path.dirname(DB_PATH) or '.', exist_ok=True)
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
+    conn.execute('PRAGMA journal_mode=WAL')
+    conn.execute('PRAGMA foreign_keys=ON')
     return conn
 
 
@@ -153,7 +154,8 @@ def init_saas_db():
             email      TEXT,
             tag        TEXT,
             notes      TEXT,
-            created_at TEXT
+            created_at TEXT,
+            UNIQUE(user_id, phone)
         );
 
         CREATE TABLE IF NOT EXISTS mandazap_lists (

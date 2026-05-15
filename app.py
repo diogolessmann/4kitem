@@ -820,7 +820,6 @@ def bau_cadastro():
                 error = 'E-mail já cadastrado. Faça login.'
                 conn.close()
             else:
-                from datetime import timedelta
                 now = datetime.now()
                 trial = (now + timedelta(days=30)).isoformat()
                 conn.execute(
