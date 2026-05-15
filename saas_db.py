@@ -202,6 +202,34 @@ def init_saas_db():
         CREATE INDEX IF NOT EXISTS idx_mz_campaigns_user ON mandazap_campaigns(user_id);
         CREATE INDEX IF NOT EXISTS idx_mz_numbers_user   ON mandazap_numbers(user_id);
         CREATE INDEX IF NOT EXISTS idx_mz_lists_user     ON mandazap_lists(user_id);
+
+        -- ── Dev Notes ─────────────────────────────────────────────────────────
+        CREATE TABLE IF NOT EXISTS dev_notes (
+            id         INTEGER PRIMARY KEY AUTOINCREMENT,
+            titulo     TEXT NOT NULL DEFAULT '',
+            texto      TEXT NOT NULL,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
     ''')
     conn.commit()
     conn.close()
+
+
+def salvar_nota_dev(titulo: str, texto: str) -> int:
+    conn = get_db()
+    cur  = conn.execute(
+        'INSERT INTO dev_notes (titulo, texto) VALUES (?, ?)', (titulo, texto)
+    )
+    conn.commit()
+    id_  = cur.lastrowid
+    conn.close()
+    return id_
+
+
+def listar_notas_dev() -> list:
+    conn = get_db()
+    rows = conn.execute(
+        'SELECT * FROM dev_notes ORDER BY id DESC'
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]

@@ -177,7 +177,7 @@ from kids_db import (
     get_videos_for_mode, get_client, set_client_mode,
     create_client, mark_video_blocked, MODES,
 )
-from saas_db import init_saas_db, get_db as get_saas_db
+from saas_db import init_saas_db, get_db as get_saas_db, salvar_nota_dev, listar_notas_dev
 
 # ══════════════════════════════════════════════════════════════════════════
 #  LANDINGS
@@ -1283,6 +1283,40 @@ def mz_template_delete(tid):
 def health():
     s = stats()
     return {'status': 'ok', 'app': '4KITEM', **s}, 200
+
+
+# ══════════════════════════════════════════════════════════════════════════
+#  DEV — Página privada de roadmap e anotações
+# ══════════════════════════════════════════════════════════════════════════
+
+DEV_PASSWORD = os.environ.get('DEV_PASSWORD', 'diogo2026')
+
+@app.route('/dev', methods=['GET', 'POST'])
+def dev_page():
+    if request.method == 'POST':
+        if request.form.get('senha') == DEV_PASSWORD:
+            session['dev_ok'] = True
+            return redirect(url_for('dev_page'))
+        return render_template('dev_login.html', erro=True)
+    if not session.get('dev_ok'):
+        return render_template('dev_login.html', erro=False)
+    notas = listar_notas_dev()
+    return render_template('dev.html', notas=notas, now=datetime.now())
+
+@app.route('/dev/nota', methods=['POST'])
+def dev_nota():
+    if not session.get('dev_ok'):
+        return redirect(url_for('dev_page'))
+    titulo = request.form.get('titulo', '').strip() or 'Sem título'
+    texto  = request.form.get('texto', '').strip()
+    if texto:
+        salvar_nota_dev(titulo, texto)
+    return redirect(url_for('dev_page'))
+
+@app.route('/dev/sair')
+def dev_sair():
+    session.pop('dev_ok', None)
+    return redirect(url_for('dev_page'))
 
 
 # ══════════════════════════════════════════════════════════════════════════
