@@ -90,8 +90,34 @@ def _saas_admin_required(f):
 def _mandazap_login_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
-        if not session.get('mz_user_id'):
+        uid = session.get('mz_user_id')
+        if not uid:
             return redirect('/mandazap/entrar')
+        # Atualiza plano na sessão sempre (evita sessão com plano desatualizado)
+        conn = get_saas_db()
+        user = conn.execute(
+            'SELECT plan, active, trial_ends FROM mandazap_users WHERE id=?', (uid,)
+        ).fetchone()
+        conn.close()
+        if not user or not user['active']:
+            for k in ('mz_user_id', 'mz_user_name', 'mz_plan'):
+                session.pop(k, None)
+            return redirect('/mandazap/entrar?msg=conta_inativa')
+        # Verifica trial expirado (só bloqueia se plan == 'solo' sem pagamento)
+        trial_ends = user['trial_ends']
+        if trial_ends and trial_ends < datetime.now().isoformat() and user['plan'] == 'solo':
+            # Conta quantos já enviou — se zero, provavelmente trial real
+            conn2 = get_saas_db()
+            total_sent = conn2.execute(
+                'SELECT COALESCE(SUM(sent),0) FROM mandazap_campaigns WHERE user_id=?', (uid,)
+            ).fetchone()[0]
+            conn2.close()
+            if total_sent == 0:  # nunca usou de verdade
+                for k in ('mz_user_id', 'mz_user_name', 'mz_plan'):
+                    session.pop(k, None)
+                return redirect('/mandazap/entrar?msg=trial_expirado')
+        # Sincroniza plano na sessão
+        session['mz_plan'] = user['plan']
         return f(*args, **kwargs)
     return decorated
 
@@ -106,11 +132,11 @@ def _bau_login_required(f):
 
 
 MANDAZAP_PLANS = {
-    'solo':      {'label': 'Solo',      'numbers': 1,  'daily_limit': 399,   'pdf_limit': 5,    'price': 79},
-    'duplo':     {'label': 'Duplo',     'numbers': 2,  'daily_limit': 799,   'pdf_limit': 15,   'price': 149},
-    'trio':      {'label': 'Trio',      'numbers': 3,  'daily_limit': 1199,  'pdf_limit': 30,   'price': 219},
-    'quadruplo': {'label': 'Quádruplo', 'numbers': 4,  'daily_limit': 1599,  'pdf_limit': 60,   'price': 289},
-    'agencia':   {'label': 'Agência',   'numbers': 10, 'daily_limit': 99999, 'pdf_limit': 9999, 'price': 499},
+    'solo':      {'label': 'Solo',      'numbers': 1,  'daily_limit': 399,   'contacts_limit': 500,   'price': 79},
+    'duplo':     {'label': 'Duplo',     'numbers': 2,  'daily_limit': 799,   'contacts_limit': 2000,  'price': 149},
+    'trio':      {'label': 'Trio',      'numbers': 3,  'daily_limit': 1199,  'contacts_limit': 5000,  'price': 219},
+    'quadruplo': {'label': 'Quádruplo', 'numbers': 4,  'daily_limit': 1599,  'contacts_limit': 10000, 'price': 289},
+    'agencia':   {'label': 'Agência',   'numbers': 10, 'daily_limit': 99999, 'contacts_limit': 99999, 'price': 499},
 }
 
 BAU_CATEGORIES = {
@@ -1429,27 +1455,55 @@ def mz_campaign_add():
     name         = request.form.get('name', '').strip()
     message      = request.form.get('message', '').strip()
     media_type   = request.form.get('media_type', 'text')
+    media_url    = request.form.get('media_url', '').strip()
     list_id      = request.form.get('list_id') or None
     number_id    = request.form.get('number_id') or None
     scheduled_at = request.form.get('scheduled_at', '').strip() or None
-    if name and message:
-        total = 0
-        if list_id:
-            conn  = get_saas_db()
-            total = conn.execute(
-                'SELECT COUNT(*) FROM mandazap_list_contacts WHERE list_id=?', (list_id,)
-            ).fetchone()[0]
-            conn.close()
-        conn = get_saas_db()
+    if not name or not message:
+        return redirect('/mandazap/painel?section=campanhas')
+
+    conn  = get_saas_db()
+    total = 0
+    if list_id:
+        total = conn.execute(
+            'SELECT COUNT(*) FROM mandazap_list_contacts WHERE list_id=?', (list_id,)
+        ).fetchone()[0]
+    elif not list_id:
+        # sem lista = todos os contatos do usuário
+        total = conn.execute(
+            'SELECT COUNT(*) FROM mandazap_contacts WHERE user_id=?', (user_id,)
+        ).fetchone()[0]
+
+    status = 'agendada' if scheduled_at else 'rascunho'
+    conn.execute('''
+        INSERT INTO mandazap_campaigns
+        (user_id, name, message, media_type, media_url, list_id, number_id, status, total, sent, scheduled_at, created_at)
+        VALUES (?,?,?,?,?,?,?,?,?,0,?,?)
+    ''', (user_id, name, message, media_type, media_url, list_id, number_id,
+          status, total, scheduled_at, datetime.now().isoformat()))
+    conn.commit()
+    conn.close()
+    return redirect('/mandazap/painel?section=campanhas')
+
+
+@app.route('/mandazap/campanhas/<int:cid>/duplicar', methods=['POST'])
+@_mandazap_login_required
+def mz_campaign_duplicar(cid):
+    user_id = session['mz_user_id']
+    conn    = get_saas_db()
+    c = conn.execute(
+        'SELECT * FROM mandazap_campaigns WHERE id=? AND user_id=?', (cid, user_id)
+    ).fetchone()
+    if c:
         conn.execute('''
             INSERT INTO mandazap_campaigns
-            (user_id, name, message, media_type, list_id, number_id, status, total, sent, scheduled_at, created_at)
-            VALUES (?,?,?,?,?,?,?,?,0,?,?)
-        ''', (user_id, name, message, media_type, list_id, number_id,
-              'agendada' if scheduled_at else 'rascunho', total,
-              scheduled_at, datetime.now().isoformat()))
+            (user_id, name, message, media_type, media_url, list_id, number_id, status, total, sent, created_at)
+            VALUES (?,?,?,?,?,?,?,'rascunho',?,0,?)
+        ''', (user_id, f"Cópia — {c['name']}", c['message'],
+              c['media_type'], c['media_url'] or '', c['list_id'], c['number_id'],
+              c['total'], datetime.now().isoformat()))
         conn.commit()
-        conn.close()
+    conn.close()
     return redirect('/mandazap/painel?section=campanhas')
 
 
@@ -1473,11 +1527,12 @@ def mz_template_add():
     name       = request.form.get('name', '').strip()
     message    = request.form.get('message', '').strip()
     media_type = request.form.get('media_type', 'text')
+    media_url  = request.form.get('media_url', '').strip()
     if name and message:
         conn = get_saas_db()
         conn.execute(
-            'INSERT INTO mandazap_templates (user_id, name, message, media_type, created_at) VALUES (?,?,?,?,?)',
-            (user_id, name, message, media_type, datetime.now().isoformat())
+            'INSERT INTO mandazap_templates (user_id, name, message, media_type, media_url, created_at) VALUES (?,?,?,?,?,?)',
+            (user_id, name, message, media_type, media_url, datetime.now().isoformat())
         )
         conn.commit()
         conn.close()
@@ -1593,22 +1648,46 @@ def _dispatch_campaign(cid: int, user_id: int, delay_s: int = 4):
     evo_url, evo_key = _get_evo()
     if not evo_url or not evo_key:
         log.error(f"Campanha {cid}: Evolution API não configurada")
+        get_saas_db().execute(
+            "UPDATE mandazap_campaigns SET status='erro',error_log=? WHERE id=?",
+            ('Evolution API não configurada (EVOLUTION_API_URL / EVOLUTION_API_KEY)', cid)
+        ).connection.commit()
         return
 
     conn = get_saas_db()
 
-    # Carrega campanha
-    camp = conn.execute('SELECT * FROM mandazap_campaigns WHERE id=? AND user_id=?',
-                        (cid, user_id)).fetchone()
+    # Carrega campanha — checa race condition
+    camp = conn.execute(
+        'SELECT * FROM mandazap_campaigns WHERE id=? AND user_id=?', (cid, user_id)
+    ).fetchone()
     if not camp:
         conn.close(); return
     camp = dict(camp)
+
+    if camp['status'] == 'enviando':
+        conn.close()
+        log.warning(f"Campanha {cid}: já está sendo enviada (race condition evitada)")
+        return
+
+    # Verifica daily_limit do plano
+    plan_key   = conn.execute('SELECT plan FROM mandazap_users WHERE id=?', (user_id,)).fetchone()
+    plan_key   = (plan_key['plan'] if plan_key else 'solo')
+    plan_info  = MANDAZAP_PLANS.get(plan_key, MANDAZAP_PLANS['solo'])
+    daily_lim  = plan_info.get('daily_limit', 399)
+    today      = datetime.now().strftime('%Y-%m-%d')
+    today_sent = conn.execute(
+        "SELECT COALESCE(SUM(sent),0) FROM mandazap_campaigns WHERE user_id=? AND finished_at LIKE ?",
+        (user_id, f"{today}%")
+    ).fetchone()[0]
 
     # Instância WhatsApp
     num_id   = camp.get('number_id')
     instance = f"mz{user_id}n{num_id}" if num_id else None
     if not instance:
-        conn.execute("UPDATE mandazap_campaigns SET status='erro' WHERE id=?", (cid,))
+        conn.execute(
+            "UPDATE mandazap_campaigns SET status='erro',error_log=? WHERE id=?",
+            ('Nenhum número WhatsApp selecionado na campanha.', cid)
+        )
         conn.commit(); conn.close()
         log.error(f"Campanha {cid}: nenhum número selecionado")
         return
@@ -1630,23 +1709,43 @@ def _dispatch_campaign(cid: int, user_id: int, delay_s: int = 4):
     total    = len(contacts)
 
     if total == 0:
-        conn.execute("UPDATE mandazap_campaigns SET status='erro',total=0 WHERE id=?", (cid,))
+        conn.execute(
+            "UPDATE mandazap_campaigns SET status='erro',error_log=?,total=0 WHERE id=?",
+            ('Lista sem contatos.', cid)
+        )
         conn.commit(); conn.close()
         log.warning(f"Campanha {cid}: sem contatos")
         return
 
+    # Verifica limite diário
+    can_send = min(total, max(0, daily_lim - today_sent))
+    if can_send == 0:
+        conn.execute(
+            "UPDATE mandazap_campaigns SET status='erro',error_log=? WHERE id=?",
+            (f'Limite diário do plano {plan_key} atingido ({daily_lim} msgs/dia).', cid)
+        )
+        conn.commit(); conn.close()
+        log.warning(f"Campanha {cid}: limite diário atingido ({today_sent}/{daily_lim})")
+        return
+
+    if can_send < total:
+        log.info(f"Campanha {cid}: limite diário parcial — enviando {can_send}/{total}")
+        contacts = contacts[:can_send]
+
     # Marca como "enviando"
     conn.execute(
-        "UPDATE mandazap_campaigns SET status='enviando', total=?, sent=0, finished_at=NULL WHERE id=?",
+        "UPDATE mandazap_campaigns SET status='enviando', total=?, sent=0, finished_at=NULL, error_log='' WHERE id=?",
         (total, cid)
     )
     conn.commit()
 
-    message   = camp.get('message', '')
-    media_url = camp.get('media_url', '') or ''   # campo futuro — tenta de qualquer jeito
-    is_image  = camp.get('media_type', 'text') == 'image'
+    message    = camp.get('message', '')
+    media_url  = (camp.get('media_url') or '').strip()
+    media_type = camp.get('media_type', 'text')
+    is_image   = media_type == 'image' and bool(media_url)
 
-    sent_count = 0
+    sent_count  = 0
+    failed_nums = []
     for c in contacts:
         phone = (c.get('phone') or '').replace(' ','').replace('-','').replace('+','')
         if not phone:
@@ -1654,10 +1753,14 @@ def _dispatch_campaign(cid: int, user_id: int, delay_s: int = 4):
         if not phone.startswith('55'):
             phone = '55' + phone
 
-        nome_curto = (c.get('name') or 'Cliente').split()[0].title()
-        msg = message.replace('{nome}', nome_curto).replace('{name}', nome_curto)
+        nome_curto    = (c.get('name') or 'Cliente').split()[0].title()
+        nome_completo = (c.get('name') or 'Cliente').title()
+        msg = (message
+               .replace('{nome}', nome_curto)
+               .replace('{name}', nome_curto)
+               .replace('{nome_completo}', nome_completo))
 
-        if is_image and media_url:
+        if is_image:
             ok, err = _send_image(evo_url, evo_key, instance, phone, media_url, msg)
         else:
             ok, err = _send_text(evo_url, evo_key, instance, phone, msg)
@@ -1665,6 +1768,7 @@ def _dispatch_campaign(cid: int, user_id: int, delay_s: int = 4):
         if ok:
             sent_count += 1
         else:
+            failed_nums.append(phone)
             log.warning(f"Campanha {cid} → {phone}: {err}")
 
         # Atualiza progresso a cada envio
@@ -1672,14 +1776,15 @@ def _dispatch_campaign(cid: int, user_id: int, delay_s: int = 4):
         conn2.execute("UPDATE mandazap_campaigns SET sent=? WHERE id=?", (sent_count, cid))
         conn2.commit(); conn2.close()
 
-        # Delay humano (± 30% de variação)
+        # Delay humano com jitter ±30%
         jitter = delay_s * random.uniform(0.7, 1.3)
         time.sleep(jitter)
 
     # Finaliza
+    error_log = f"{len(failed_nums)} falhas" if failed_nums else ''
     conn.execute(
-        "UPDATE mandazap_campaigns SET status='concluida', sent=?, finished_at=? WHERE id=?",
-        (sent_count, datetime.now().isoformat(), cid)
+        "UPDATE mandazap_campaigns SET status='concluida', sent=?, finished_at=?, error_log=? WHERE id=?",
+        (sent_count, datetime.now().isoformat(), error_log, cid)
     )
     conn.commit(); conn.close()
     log.info(f"Campanha {cid} concluída: {sent_count}/{total} enviados")
@@ -1722,8 +1827,11 @@ def mz_campaign_dispatch(cid):
     conn.close()
     if not camp:
         return jsonify({'erro': 'Campanha não encontrada'}), 404
-    if camp['status'] in ('enviando', 'concluida'):
-        return jsonify({'erro': f'Campanha já está {camp["status"]}'}), 400
+    status = camp['status']
+    if status == 'enviando':
+        return jsonify({'erro': 'Campanha já está sendo enviada.'}), 400
+    if status == 'concluida':
+        return jsonify({'erro': 'Campanha já foi concluída. Duplique-a para reenviar.'}), 400
     threading.Thread(target=_dispatch_campaign, args=(cid, user_id), daemon=True).start()
     return jsonify({'ok': True, 'msg': 'Disparo iniciado!'})
 

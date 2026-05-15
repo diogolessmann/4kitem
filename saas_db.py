@@ -202,6 +202,10 @@ def init_saas_db():
         CREATE INDEX IF NOT EXISTS idx_mz_campaigns_user ON mandazap_campaigns(user_id);
         CREATE INDEX IF NOT EXISTS idx_mz_numbers_user   ON mandazap_numbers(user_id);
         CREATE INDEX IF NOT EXISTS idx_mz_lists_user     ON mandazap_lists(user_id);
+        CREATE INDEX IF NOT EXISTS idx_mz_templates_user ON mandazap_templates(user_id);
+
+        -- ── MandaZap migrations suaves ───────────────────────────────────────
+        -- (ignoradas se a coluna já existe — SQLite não tem IF NOT EXISTS em ALTER)
 
         -- ── Dev Notes ─────────────────────────────────────────────────────────
         CREATE TABLE IF NOT EXISTS dev_notes (
@@ -212,6 +216,20 @@ def init_saas_db():
         );
     ''')
     conn.commit()
+
+    # ── Migrations suaves (adicionadas após schema inicial) ─────────────────
+    _mz_migrations = [
+        "ALTER TABLE mandazap_campaigns ADD COLUMN media_url TEXT DEFAULT ''",
+        "ALTER TABLE mandazap_templates ADD COLUMN media_url TEXT DEFAULT ''",
+        "ALTER TABLE mandazap_campaigns ADD COLUMN error_log TEXT DEFAULT ''",
+    ]
+    for sql in _mz_migrations:
+        try:
+            conn.execute(sql)
+            conn.commit()
+        except Exception:
+            pass  # Coluna já existe — ok
+
     conn.close()
 
 

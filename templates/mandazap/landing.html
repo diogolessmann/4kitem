@@ -313,7 +313,7 @@
       <ul class="plan-feats">
         <li>{{ p.numbers }} número{{ 's' if p.numbers > 1 else '' }}</li>
         <li>{{ '{:,}'.format(p.daily_limit).replace(',','.') if p.daily_limit < 9999 else 'Ilimitado' }} envios/dia</li>
-        <li>{{ p.pdf_limit if p.pdf_limit < 9999 else 'Ilimitado' }} PDFs/mês (AI)</li>
+        <li>{{ '{:,}'.format(p.contacts_limit).replace(',','.') if p.contacts_limit < 9999 else 'Ilimitado' }} contatos</li>
         <li>Todas as funcionalidades</li>
         <li>Anti-ban incluído</li>
       </ul>
