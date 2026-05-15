@@ -726,9 +726,16 @@ select option{background:var(--surface2)}
         </select>
       </div>
       <div class="form-group" id="camp-media-url-wrap" style="display:none">
-        <label id="camp-media-label">🖼️ URL da Imagem *</label>
-        <input type="url" name="media_url" id="camp-media-url" placeholder="https://exemplo.com/imagem.jpg">
-        <div style="font-size:11px;color:var(--text2);margin-top:4px">Cole o link direto da imagem ou vídeo (Google Drive, Imgur, etc.)</div>
+        <label id="camp-media-label">🖼️ Imagem *</label>
+        <input type="url" name="media_url" id="camp-media-url" placeholder="https://exemplo.com/imagem.jpg" style="margin-bottom:6px">
+        <div style="display:flex;gap:8px;align-items:center">
+          <label style="flex:1;cursor:pointer;background:var(--surface2);border:1px dashed var(--border2);border-radius:8px;padding:8px 12px;font-size:12px;color:var(--text2);text-align:center">
+            📎 Ou clique para fazer upload da imagem
+            <input type="file" id="camp-upload-input" accept="image/*,video/mp4" style="display:none" onchange="uploadMidia('camp-upload-input','camp-media-url','camp-img-preview')">
+          </label>
+        </div>
+        <div id="camp-img-preview" style="display:none"></div>
+        <div style="font-size:11px;color:var(--text2);margin-top:4px">Cole uma URL pública <em>ou</em> faça upload direto (JPG, PNG, GIF, MP4)</div>
       </div>
       <div class="form-group">
         <label>Mensagem * — use {'{nome}'} para personalizar</label>
@@ -769,8 +776,13 @@ select option{background:var(--surface2)}
         </select>
       </div>
       <div class="form-group" id="tpl-media-url-wrap" style="display:none">
-        <label id="tpl-media-label">🖼️ URL da Imagem</label>
-        <input type="url" name="media_url" id="tpl-media-url" placeholder="https://exemplo.com/imagem.jpg">
+        <label id="tpl-media-label">🖼️ Imagem</label>
+        <input type="url" name="media_url" id="tpl-media-url" placeholder="https://exemplo.com/imagem.jpg" style="margin-bottom:6px">
+        <label style="display:block;cursor:pointer;background:var(--surface2);border:1px dashed var(--border2);border-radius:8px;padding:8px 12px;font-size:12px;color:var(--text2);text-align:center">
+          📎 Ou clique para fazer upload da imagem
+          <input type="file" id="tpl-upload-input" accept="image/*,video/mp4" style="display:none" onchange="uploadMidia('tpl-upload-input','tpl-media-url','tpl-img-preview')">
+        </label>
+        <div id="tpl-img-preview" style="display:none"></div>
       </div>
       <div class="form-group">
         <label>Mensagem — use {'{nome}'} para personalizar</label>
@@ -875,6 +887,8 @@ function showToast(msg) {
 }
 
 // ── Gerar QR Code para conectar WhatsApp ────────────────────────────────────
+const _qrPollers = {};
+
 async function gerarQR(numberId, btn) {
   btn.disabled = true;
   btn.textContent = '⏳ Aguarde...';
@@ -884,9 +898,13 @@ async function gerarQR(numberId, btn) {
     const r = await fetch('/mandazap/numeros/' + numberId + '/qr');
     const d = await r.json();
     if (d.qr) {
-      wrap.innerHTML = '<img src="' + d.qr + '" style="width:200px;height:200px;border-radius:8px;border:2px solid var(--border2)" alt="QR Code"><div style="font-size:11px;color:var(--text2);margin-top:6px">Abra o WhatsApp → Dispositivos conectados → Escanear QR Code</div>';
+      wrap.innerHTML = `<img src="${d.qr}" style="width:200px;height:200px;border-radius:8px;border:2px solid var(--border2)" alt="QR Code">
+        <div style="font-size:11px;color:var(--text2);margin-top:6px">Abra o WhatsApp → Dispositivos conectados → Escanear QR Code</div>
+        <div id="qr-status-${numberId}" style="margin-top:8px;font-size:12px;color:var(--text2)">⏳ Aguardando leitura…</div>`;
       btn.textContent = '🔄 Atualizar QR';
       btn.disabled = false;
+      // Começa polling de status
+      _startQRStatusPoll(numberId);
     } else if (d.erro) {
       wrap.innerHTML = '<div style="font-size:12px;color:var(--red)">⚠️ ' + d.erro + '</div>';
       btn.textContent = '📷 Tentar novamente';
@@ -896,6 +914,66 @@ async function gerarQR(numberId, btn) {
     wrap.innerHTML = '<div style="font-size:12px;color:var(--red)">⚠️ Evolution API não configurada ainda.<br>Entre em contato para ativar a conexão.</div>';
     btn.textContent = '📷 Gerar QR Code';
     btn.disabled = false;
+  }
+}
+
+function _startQRStatusPoll(numberId) {
+  if (_qrPollers[numberId]) clearInterval(_qrPollers[numberId]);
+  _qrPollers[numberId] = setInterval(async () => {
+    try {
+      const r = await fetch(`/mandazap/numeros/${numberId}/check-status`);
+      const d = await r.json();
+      const statusEl = document.getElementById('qr-status-' + numberId);
+      if (d.status === 'connected') {
+        clearInterval(_qrPollers[numberId]);
+        delete _qrPollers[numberId];
+        // Atualiza o card inteiro para mostrar conectado
+        const qrWrap = document.getElementById('qr-wrap-' + numberId);
+        if (qrWrap) {
+          qrWrap.innerHTML = `<div class="qr-icon">✅</div><div style="color:#22c55e;font-weight:700">WhatsApp conectado!</div>`;
+        }
+        // Atualiza badge e ponto de status
+        const card = qrWrap ? qrWrap.closest('.number-card') : null;
+        if (card) {
+          const dot = card.querySelector('.status-dot');
+          if (dot) { dot.className = 'status-dot connected'; }
+          const badge = card.querySelector('.badge');
+          if (badge) { badge.className = 'badge connected'; badge.textContent = '🟢 Conectado'; }
+        }
+        showToast('✅ WhatsApp conectado com sucesso!');
+      } else if (statusEl) {
+        statusEl.textContent = '⏳ Aguardando leitura do QR Code…';
+      }
+    } catch(e) { /* ignora erros de rede */ }
+  }, 6000);
+}
+
+// ── Upload de imagem ──────────────────────────────────────────────────────────
+async function uploadMidia(inputId, urlFieldId, previewId) {
+  const input = document.getElementById(inputId);
+  if (!input || !input.files.length) return;
+  const file  = input.files[0];
+  const form  = new FormData();
+  form.append('file', file);
+  const btn = input.nextElementSibling;
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Enviando…'; }
+  try {
+    const r = await fetch('/mandazap/upload', { method: 'POST', body: form });
+    const d = await r.json();
+    if (d.ok) {
+      document.getElementById(urlFieldId).value = d.url;
+      if (previewId) {
+        const p = document.getElementById(previewId);
+        if (p) { p.innerHTML = `<img src="${d.url}" style="max-width:100%;max-height:120px;border-radius:8px;margin-top:6px">`; p.style.display='block'; }
+      }
+      if (btn) { btn.disabled = false; btn.textContent = '📎 Trocar arquivo'; }
+    } else {
+      alert('Erro: ' + (d.erro || 'Upload falhou'));
+      if (btn) { btn.disabled = false; btn.textContent = '📎 Upload'; }
+    }
+  } catch(e) {
+    alert('Erro no upload: ' + e.message);
+    if (btn) { btn.disabled = false; btn.textContent = '📎 Upload'; }
   }
 }
 

@@ -1258,6 +1258,103 @@ def mz_qr(num_id):
         return jsonify({'erro': f'Erro ao conectar com a Evolution API: {str(e)}'})
 
 
+# ── Check status (polling após QR) ────────────────────────────────────────────
+
+@app.route('/mandazap/numeros/<int:num_id>/check-status')
+def mz_check_status(num_id):
+    user_id = session.get('mz_user_id')
+    if not user_id:
+        return jsonify({'erro': 'Não autenticado'}), 401
+    conn = get_saas_db()
+    num  = conn.execute(
+        'SELECT * FROM mandazap_numbers WHERE id=? AND user_id=?', (num_id, user_id)
+    ).fetchone()
+    if not num:
+        conn.close()
+        return jsonify({'erro': 'Número não encontrado'}), 404
+
+    evo_url = os.environ.get('EVOLUTION_API_URL', '')
+    evo_key = os.environ.get('EVOLUTION_API_KEY', '')
+    if not evo_url or not evo_key:
+        conn.close()
+        return jsonify({'status': 'disconnected', 'reason': 'evo_not_configured'})
+
+    try:
+        import requests as _req
+        instance = f"mz{user_id}n{num_id}"
+        headers  = {'apikey': evo_key}
+        r = _req.get(f"{evo_url}/instance/connectionState/{instance}", headers=headers, timeout=8)
+        data = r.json() if r.content else {}
+        # Evolution v2: {"instance": {"state": "open"}} or {"state": "open"}
+        state = ''
+        if isinstance(data, dict):
+            inner = data.get('instance', data)
+            if isinstance(inner, dict):
+                state = inner.get('state', inner.get('connectionStatus', ''))
+            if not state:
+                state = data.get('state', data.get('connectionStatus', ''))
+        is_connected = str(state).lower() in ('open', 'connected', 'online')
+        new_status   = 'connected' if is_connected else 'disconnected'
+
+        # Actualiza DB só quando muda
+        if num['status'] != new_status:
+            phone_info = ''
+            if is_connected:
+                # Tenta pegar o número de telefone da instância
+                try:
+                    ri = _req.get(f"{evo_url}/instance/fetchInstances", headers=headers, timeout=8)
+                    instances = ri.json() if ri.content else []
+                    if isinstance(instances, list):
+                        for inst in instances:
+                            if isinstance(inst, dict):
+                                iname = inst.get('instance', {}).get('instanceName', '') if isinstance(inst.get('instance'), dict) else inst.get('instanceName', '')
+                                if iname == instance:
+                                    phone_info = inst.get('instance', {}).get('owner', '') if isinstance(inst.get('instance'), dict) else inst.get('owner', '')
+                                    break
+                except Exception:
+                    pass
+            conn.execute(
+                'UPDATE mandazap_numbers SET status=?, phone=? WHERE id=?',
+                (new_status, phone_info or num['phone'], num_id)
+            )
+            conn.commit()
+
+        conn.close()
+        return jsonify({'status': new_status, 'state': state})
+    except Exception as e:
+        conn.close()
+        log.error(f"check-status error: {e}")
+        return jsonify({'status': 'disconnected', 'reason': str(e)})
+
+
+# ── Upload de mídia ────────────────────────────────────────────────────────────
+
+@app.route('/mandazap/upload', methods=['POST'])
+def mz_upload():
+    user_id = session.get('mz_user_id')
+    if not user_id:
+        return jsonify({'erro': 'Não autenticado'}), 401
+    f = request.files.get('file')
+    if not f or not f.filename:
+        return jsonify({'erro': 'Nenhum arquivo enviado'}), 400
+
+    import uuid, re as _re2
+    ext = f.filename.rsplit('.', 1)[-1].lower() if '.' in f.filename else 'jpg'
+    allowed = {'jpg', 'jpeg', 'png', 'gif', 'webp', 'mp4'}
+    if ext not in allowed:
+        return jsonify({'erro': f'Tipo não permitido. Use: {", ".join(allowed)}'}), 400
+
+    upload_dir = os.path.join(os.path.dirname(__file__), 'static', 'mz_uploads')
+    os.makedirs(upload_dir, exist_ok=True)
+    filename = f"u{user_id}_{uuid.uuid4().hex[:10]}.{ext}"
+    f.save(os.path.join(upload_dir, filename))
+
+    # URL pública
+    base = request.host_url.rstrip('/')
+    url  = f"{base}/static/mz_uploads/{filename}"
+    return jsonify({'ok': True, 'url': url})
+
+
 # ── Contatos ──────────────────────────────────────────────────────────────────
 
 @app.route('/mandazap/contatos/add', methods=['POST'])
