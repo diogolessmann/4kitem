@@ -565,9 +565,12 @@ def saas_admin():
     mz_users = [dict(r) for r in conn.execute(
         'SELECT id, name, email, plan, active, created_at, trial_ends FROM mandazap_users ORDER BY created_at DESC'
     ).fetchall()]
+    bau_users = [dict(r) for r in conn.execute(
+        'SELECT id, name, email, active, created_at, trial_ends FROM bau_users ORDER BY created_at DESC'
+    ).fetchall()]
     conn.close()
     return render_template('saas_admin.html', subscribers=subscribers, businesses=businesses,
-                           mz_users=mz_users, mz_plans=MANDAZAP_PLANS)
+                           mz_users=mz_users, mz_plans=MANDAZAP_PLANS, bau_users=bau_users)
 
 
 @app.route('/admin/alerta/<int:sub_id>/status', methods=['POST'])
@@ -616,6 +619,18 @@ def saas_mz_set_plan(user_id):
     conn.execute('UPDATE mandazap_users SET plan=?, active=1 WHERE id=?', (plan, user_id))
     conn.commit(); conn.close()
     return jsonify({'success': True, 'plan': plan})
+
+
+@app.route('/admin/bau/user/<int:user_id>/status', methods=['POST'])
+@_saas_admin_required
+def saas_bau_set_status(user_id):
+    data   = request.get_json() or {}
+    active = 1 if data.get('active', True) else 0
+    trial  = (datetime.now() + timedelta(days=3650)).isoformat()  # 10 anos
+    conn   = get_saas_db()
+    conn.execute('UPDATE bau_users SET active=?, trial_ends=? WHERE id=?', (active, trial, user_id))
+    conn.commit(); conn.close()
+    return jsonify({'success': True})
 
 
 @app.route('/admin/alerta/<int:sub_id>/report', methods=['POST'])

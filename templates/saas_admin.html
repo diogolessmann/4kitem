@@ -56,6 +56,7 @@
     <button class="tab-btn active" onclick="showTab('alerta',this)">🚨 Alerta SC ({{ subscribers|length }})</button>
     <button class="tab-btn" onclick="showTab('agenda',this)">📅 Agenda SC ({{ businesses|length }})</button>
     <button class="tab-btn" onclick="showTab('mandazap',this)">💬 MandaZap ({{ mz_users|length }})</button>
+    <button class="tab-btn" onclick="showTab('bau',this)">🗄️ Baú ({{ bau_users|length }})</button>
   </div>
 
   <!-- ALERTA -->
@@ -195,6 +196,44 @@
     {% endif %}
   </div>
 
+  <!-- BAÚ -->
+  <div class="tab-content" id="tab-bau">
+    <h2>Usuários do Baú</h2>
+    {% if bau_users %}
+    <table>
+      <thead>
+        <tr>
+          <th>Nome</th>
+          <th>Email</th>
+          <th>Status</th>
+          <th>Trial</th>
+          <th>Cadastro</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in bau_users %}
+        <tr id="bau-{{ u.id }}">
+          <td><strong>{{ u.name }}</strong></td>
+          <td style="font-size:12px;color:var(--text2)">{{ u.email }}</td>
+          <td><span class="badge {% if u.active %}badge-active{% else %}badge-suspended{% endif %}">{{ 'ativo' if u.active else 'inativo' }}</span></td>
+          <td style="font-size:11px;color:var(--text2)">{{ u.trial_ends[:10] if u.trial_ends else '—' }}</td>
+          <td style="font-size:11px;color:var(--text2)">{{ u.created_at[:10] if u.created_at else '—' }}</td>
+          <td>
+            <div style="display:flex;gap:4px">
+              <button class="btn-sm btn-green" onclick="setBauStatus({{ u.id }}, true)">✅ Liberar</button>
+              <button class="btn-sm btn-red" onclick="setBauStatus({{ u.id }}, false)">⏸ Suspender</button>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty">Nenhum usuário do Baú ainda.</div>
+    {% endif %}
+  </div>
+
 </div>
 
 <script>
@@ -234,6 +273,16 @@ async function setMzPlan(id, plan) {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({ plan })
+  });
+  const d = await r.json();
+  if (d.success) location.reload();
+}
+
+async function setBauStatus(id, active) {
+  const r = await fetch(`/admin/bau/user/${id}/status`, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ active })
   });
   const d = await r.json();
   if (d.success) location.reload();
