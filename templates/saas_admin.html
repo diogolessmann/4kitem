@@ -55,6 +55,7 @@
   <div class="tabs">
     <button class="tab-btn active" onclick="showTab('alerta',this)">🚨 Alerta SC ({{ subscribers|length }})</button>
     <button class="tab-btn" onclick="showTab('agenda',this)">📅 Agenda SC ({{ businesses|length }})</button>
+    <button class="tab-btn" onclick="showTab('mandazap',this)">💬 MandaZap ({{ mz_users|length }})</button>
   </div>
 
   <!-- ALERTA -->
@@ -151,6 +152,49 @@
     {% endif %}
   </div>
 
+  <!-- MANDAZAP -->
+  <div class="tab-content" id="tab-mandazap">
+    <h2>Usuários do MandaZap</h2>
+    {% if mz_users %}
+    <table>
+      <thead>
+        <tr>
+          <th>Nome</th>
+          <th>Email</th>
+          <th>Plano</th>
+          <th>Status</th>
+          <th>Trial</th>
+          <th>Cadastro</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in mz_users %}
+        <tr id="mz-{{ u.id }}">
+          <td><strong>{{ u.name }}</strong></td>
+          <td style="font-size:12px;color:var(--text2)">{{ u.email }}</td>
+          <td><span class="badge" style="background:rgba(99,102,241,.15);color:#818cf8;border:1px solid rgba(99,102,241,.3)">{{ mz_plans[u.plan].label if u.plan in mz_plans else u.plan }}</span></td>
+          <td><span class="badge {% if u.active %}badge-active{% else %}badge-suspended{% endif %}">{{ 'ativo' if u.active else 'inativo' }}</span></td>
+          <td style="font-size:11px;color:var(--text2)">{{ u.trial_ends[:10] if u.trial_ends else '—' }}</td>
+          <td style="font-size:11px;color:var(--text2)">{{ u.created_at[:10] if u.created_at else '—' }}</td>
+          <td>
+            <div style="display:flex;flex-direction:column;gap:4px">
+              {% for pk, pv in mz_plans.items() %}
+              {% if pk != u.plan %}
+              <button class="btn-sm btn-green" onclick="setMzPlan({{ u.id }}, '{{ pk }}')">{{ pv.label }}</button>
+              {% endif %}
+              {% endfor %}
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty">Nenhum usuário MandaZap ainda.</div>
+    {% endif %}
+  </div>
+
 </div>
 
 <script>
@@ -183,6 +227,16 @@ async function deleteSub(id) {
   const r = await fetch(`/admin/alerta/${id}/delete`, { method: 'POST' });
   const d = await r.json();
   if (d.success) document.getElementById('sub-' + id)?.remove();
+}
+
+async function setMzPlan(id, plan) {
+  const r = await fetch(`/admin/mandazap/user/${id}/plan`, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ plan })
+  });
+  const d = await r.json();
+  if (d.success) location.reload();
 }
 </script>
 </body>
