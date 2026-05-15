@@ -1074,7 +1074,47 @@ def mandazap_painel():
                            plan_info=MANDAZAP_PLANS.get(plan_key, MANDAZAP_PLANS['solo']),
                            plans=MANDAZAP_PLANS,
                            user_name=session.get('mz_user_name', ''),
+                           now=datetime.now(),
                            section=request.args.get('section', 'dashboard'))
+
+
+# ── QR Code ───────────────────────────────────────────────────────────────────
+
+@app.route('/mandazap/numeros/<int:num_id>/qr')
+def mz_qr(num_id):
+    user_id = session.get('mz_user_id')
+    if not user_id:
+        return jsonify({'erro': 'Não autenticado'}), 401
+    conn = get_saas_db()
+    num  = conn.execute(
+        'SELECT * FROM mandazap_numbers WHERE id=? AND user_id=?', (num_id, user_id)
+    ).fetchone()
+    conn.close()
+    if not num:
+        return jsonify({'erro': 'Número não encontrado'}), 404
+    # Tenta buscar QR da Evolution API
+    evo_url = os.environ.get('EVOLUTION_API_URL', '')
+    evo_key = os.environ.get('EVOLUTION_API_KEY', '')
+    if not evo_url or not evo_key:
+        return jsonify({'erro': 'Evolution API não configurada. Configure EVOLUTION_API_URL e EVOLUTION_API_KEY nas variáveis de ambiente do Railway.'})
+    try:
+        import requests as _req
+        instance = f"mz_{user_id}_{num_id}"
+        # Cria instância se não existir
+        _req.post(f"{evo_url}/instance/create", headers={'apikey': evo_key},
+                  json={'instanceName': instance, 'qrcode': True}, timeout=10)
+        # Pega QR
+        r = _req.get(f"{evo_url}/instance/connect/{instance}", headers={'apikey': evo_key}, timeout=10)
+        data = r.json()
+        qr = data.get('base64') or data.get('qrcode', {}).get('base64', '')
+        if qr:
+            if not qr.startswith('data:'):
+                qr = 'data:image/png;base64,' + qr
+            return jsonify({'qr': qr})
+        return jsonify({'erro': 'QR Code não disponível. Tente novamente em alguns segundos.'})
+    except Exception as e:
+        log.error(f"QR error: {e}")
+        return jsonify({'erro': 'Erro ao conectar com a Evolution API.'})
 
 
 # ── Contatos ──────────────────────────────────────────────────────────────────

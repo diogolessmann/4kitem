@@ -302,9 +302,16 @@ select option{background:var(--surface2)}
         <div>
           <span class="badge {{ n.status }}">{{ '🟢 Conectado' if n.status == 'connected' else '🔴 Desconectado' }}</span>
         </div>
-        <div class="qr-placeholder">
+        <div class="qr-placeholder" id="qr-wrap-{{ n.id }}">
+          {% if n.status == 'connected' %}
+          <div class="qr-icon">✅</div>
+          <div style="color:#22c55e;font-weight:700">WhatsApp conectado!</div>
+          {% else %}
           <div class="qr-icon">📱</div>
-          <div>Para conectar, configure a Evolution API e escaneie o QR Code com seu WhatsApp Business.</div>
+          <div style="margin-bottom:10px">Escaneie o QR Code com o WhatsApp Business para conectar.</div>
+          <button type="button" class="btn btn-green btn-sm" onclick="gerarQR({{ n.id }}, this)" style="width:100%">📷 Gerar QR Code</button>
+          <div id="qr-img-{{ n.id }}" style="margin-top:12px"></div>
+          {% endif %}
         </div>
         <form method="POST" action="/mandazap/numeros/{{ n.id }}/delete" onsubmit="return confirm('Remover {{ n.label }}?')">
           <button type="submit" class="btn btn-red btn-sm" style="width:100%">🗑 Remover número</button>
@@ -665,11 +672,16 @@ select option{background:var(--surface2)}
       </div>
       <div class="form-group">
         <label>Tipo de Mensagem</label>
-        <select name="media_type">
+        <select name="media_type" id="camp-media-type" onchange="toggleMediaField('camp')">
           <option value="text">✉️ Texto</option>
           <option value="image">🖼️ Imagem</option>
           <option value="video">🎬 Vídeo</option>
         </select>
+      </div>
+      <div class="form-group" id="camp-media-url-wrap" style="display:none">
+        <label id="camp-media-label">🖼️ URL da Imagem *</label>
+        <input type="url" name="media_url" id="camp-media-url" placeholder="https://exemplo.com/imagem.jpg">
+        <div style="font-size:11px;color:var(--text2);margin-top:4px">Cole o link direto da imagem ou vídeo (Google Drive, Imgur, etc.)</div>
       </div>
       <div class="form-group">
         <label>Mensagem * — use {'{nome}'} para personalizar</label>
@@ -677,14 +689,16 @@ select option{background:var(--surface2)}
         {% if templates %}
         <div style="margin-top:6px;font-size:12px;color:var(--text2)">Templates salvos:
           {% for t in templates %}
-          <button type="button" onclick="document.getElementById('campanha-message').value='{{ t.message|replace("'","\\'") }}'" style="margin:2px 3px;background:rgba(34,197,94,.08);border:1px solid var(--border2);border-radius:6px;padding:2px 8px;font-size:11px;color:var(--green);cursor:pointer">{{ t.name }}</button>
+          <button type="button" data-msg="{{ t.message|e }}" onclick="applyTemplate(this)" style="margin:2px 3px;background:rgba(34,197,94,.08);border:1px solid var(--border2);border-radius:6px;padding:2px 8px;font-size:11px;color:var(--green);cursor:pointer">{{ t.name }}</button>
           {% endfor %}
         </div>
         {% endif %}
       </div>
       <div class="form-group">
         <label>Agendar envio (opcional)</label>
-        <input type="datetime-local" name="scheduled_at">
+        <input type="datetime-local" name="scheduled_at" id="camp-scheduled"
+               min="{{ now.strftime('%Y-%m-%dT%H:%M') }}">
+        <div style="font-size:11px;color:var(--text2);margin-top:4px">Deixe vazio para salvar como rascunho.</div>
       </div>
       <div class="modal-btns">
         <button type="button" class="btn btn-outline" onclick="closeModal('modal-campanha')">Cancelar</button>
@@ -702,11 +716,15 @@ select option{background:var(--surface2)}
       <div class="form-group"><label>Nome do Template *</label><input type="text" name="name" placeholder="Ex: Promoção padrão, Lembrete vencimento..." required maxlength="80"></div>
       <div class="form-group">
         <label>Tipo</label>
-        <select name="media_type">
+        <select name="media_type" id="tpl-media-type" onchange="toggleMediaField('tpl')">
           <option value="text">✉️ Texto</option>
           <option value="image">🖼️ Imagem</option>
           <option value="video">🎬 Vídeo</option>
         </select>
+      </div>
+      <div class="form-group" id="tpl-media-url-wrap" style="display:none">
+        <label id="tpl-media-label">🖼️ URL da Imagem</label>
+        <input type="url" name="media_url" id="tpl-media-url" placeholder="https://exemplo.com/imagem.jpg">
       </div>
       <div class="form-group">
         <label>Mensagem — use {'{nome}'} para personalizar</label>
@@ -759,7 +777,31 @@ function toggleAllContacts(state) {
   document.querySelectorAll('#lista-contacts input[type=checkbox]').forEach(cb => cb.checked=state);
 }
 
-// ── Usar template em campanha ────────────────────────────────────────────────
+// ── Aplicar template na campanha ────────────────────────────────────────────
+function applyTemplate(btn) {
+  document.getElementById('campanha-message').value = btn.dataset.msg || '';
+  showToast('✅ Template aplicado!');
+}
+
+// ── Mostrar/ocultar campo de mídia conforme tipo ─────────────────────────────
+function toggleMediaField(prefix) {
+  const sel   = document.getElementById(prefix + '-media-type');
+  const wrap  = document.getElementById(prefix + '-media-url-wrap');
+  const label = document.getElementById(prefix + '-media-label');
+  if (!sel || !wrap) return;
+  const val = sel.value;
+  if (val === 'image') {
+    wrap.style.display = '';
+    if (label) label.textContent = '🖼️ URL da Imagem *';
+  } else if (val === 'video') {
+    wrap.style.display = '';
+    if (label) label.textContent = '🎬 URL do Vídeo *';
+  } else {
+    wrap.style.display = 'none';
+  }
+}
+
+// ── Usar template em campanha (legado) ──────────────────────────────────────
 function useTemplate(msg) {
   document.getElementById('campanha-message').value = msg;
   closeModal('modal-template');
@@ -772,6 +814,31 @@ function showToast(msg) {
   t.textContent = msg;
   t.classList.add('show');
   setTimeout(()=>t.classList.remove('show'), 3000);
+}
+
+// ── Gerar QR Code para conectar WhatsApp ────────────────────────────────────
+async function gerarQR(numberId, btn) {
+  btn.disabled = true;
+  btn.textContent = '⏳ Aguarde...';
+  const wrap = document.getElementById('qr-img-' + numberId);
+  wrap.innerHTML = '<div style="font-size:12px;color:var(--text2)">Gerando QR Code...</div>';
+  try {
+    const r = await fetch('/mandazap/numeros/' + numberId + '/qr');
+    const d = await r.json();
+    if (d.qr) {
+      wrap.innerHTML = '<img src="' + d.qr + '" style="width:200px;height:200px;border-radius:8px;border:2px solid var(--border2)" alt="QR Code"><div style="font-size:11px;color:var(--text2);margin-top:6px">Abra o WhatsApp → Dispositivos conectados → Escanear QR Code</div>';
+      btn.textContent = '🔄 Atualizar QR';
+      btn.disabled = false;
+    } else if (d.erro) {
+      wrap.innerHTML = '<div style="font-size:12px;color:var(--red)">⚠️ ' + d.erro + '</div>';
+      btn.textContent = '📷 Tentar novamente';
+      btn.disabled = false;
+    }
+  } catch(e) {
+    wrap.innerHTML = '<div style="font-size:12px;color:var(--red)">⚠️ Evolution API não configurada ainda.<br>Entre em contato para ativar a conexão.</div>';
+    btn.textContent = '📷 Gerar QR Code';
+    btn.disabled = false;
+  }
 }
 
 // ── Seção inicial ────────────────────────────────────────────────────────────
