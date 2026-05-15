@@ -1196,25 +1196,27 @@ def mz_qr(num_id):
                 return qr or ''
             return ''
 
-        # 1. Tenta criar instância (ignora erro se já existir)
-        cr = _req.post(f"{evo_url}/instance/create", headers=headers,
-                       json={'instanceName': instance, 'qrcode': True,
-                             'integration': 'WHATSAPP-BAILEYS'}, timeout=15)
+        # 1. Força delete da instância antiga (limpa estado preso)
+        for old_name in [instance, f"mz_{user_id}_{num_id}"]:
+            try:
+                _req.delete(f"{evo_url}/instance/{old_name}/delete", headers=headers, timeout=8)
+            except Exception:
+                pass
+
+        import time; time.sleep(1)
+
+        # 2. Cria instância nova limpa
+        cr     = _req.post(f"{evo_url}/instance/create", headers=headers,
+                           json={'instanceName': instance, 'qrcode': True,
+                                 'integration': 'WHATSAPP-BAILEYS'}, timeout=20)
         cr_data = cr.json() if cr.content else {}
         qr = _extract_qr(cr_data)
 
-        # 2. Se não veio no create, chama /connect
+        # 3. Se não veio no create, chama /connect
         if not qr:
-            r2   = _req.get(f"{evo_url}/instance/connect/{instance}", headers=headers, timeout=15)
-            qr   = _extract_qr(r2.json() if r2.content else {})
-
-        # 3. Último recurso: /instance/fetchInstances + connect
-        if not qr:
-            _req.delete(f"{evo_url}/instance/{instance}/delete", headers=headers, timeout=10)
-            cr2  = _req.post(f"{evo_url}/instance/create", headers=headers,
-                             json={'instanceName': instance, 'qrcode': True,
-                                   'integration': 'WHATSAPP-BAILEYS'}, timeout=15)
-            qr   = _extract_qr(cr2.json() if cr2.content else {})
+            time.sleep(2)
+            r2 = _req.get(f"{evo_url}/instance/connect/{instance}", headers=headers, timeout=15)
+            qr = _extract_qr(r2.json() if r2.content else {})
 
         if qr:
             if not qr.startswith('data:'):
