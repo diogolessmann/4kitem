@@ -1101,6 +1101,38 @@ def mz_set_plan_email():
     return f'✅ Plano de {user["name"]} atualizado para {plan}!'
 
 
+@app.route('/admin/mz-criar-conta')
+def mz_criar_conta_admin():
+    """Cria ou recria conta MandaZap via URL segura (token admin)."""
+    token    = request.args.get('token', '')
+    email    = request.args.get('email', '').strip().lower()
+    senha    = request.args.get('senha', '')
+    nome     = request.args.get('nome', 'Admin')
+    plan     = request.args.get('plan', 'agencia')
+    if token != os.environ.get('DEV_TOKEN', 'diogo4kitem'):
+        return 'Acesso negado', 403
+    if not email or not senha:
+        return 'Informe email e senha', 400
+    from werkzeug.security import generate_password_hash
+    now   = datetime.now().isoformat()
+    trial = (datetime.now() + timedelta(days=3650)).isoformat()  # 10 anos
+    conn  = get_saas_db()
+    existing = conn.execute('SELECT id FROM mandazap_users WHERE email=?', (email,)).fetchone()
+    if existing:
+        conn.execute(
+            'UPDATE mandazap_users SET name=?, password_hash=?, plan=?, active=1, trial_ends=? WHERE email=?',
+            (nome, generate_password_hash(senha), plan, trial, email)
+        )
+        conn.commit(); conn.close()
+        return f'✅ Conta <b>{email}</b> atualizada! Plano: <b>{plan}</b>. <a href="/mandazap/entrar">Entrar agora</a>'
+    conn.execute(
+        'INSERT INTO mandazap_users (name, email, password_hash, plan, active, created_at, trial_ends) VALUES (?,?,?,?,1,?,?)',
+        (nome, email, generate_password_hash(senha), plan, now, trial)
+    )
+    conn.commit(); conn.close()
+    return f'✅ Conta <b>{email}</b> criada com sucesso! Plano: <b>{plan}</b>. <a href="/mandazap/entrar">Entrar agora</a>'
+
+
 # ── Ajuda ─────────────────────────────────────────────────────────────────────
 
 @app.route('/mandazap/ajuda')
@@ -1131,22 +1163,53 @@ def mz_qr(num_id):
         return jsonify({'erro': 'Evolution API não configurada. Configure EVOLUTION_API_URL e EVOLUTION_API_KEY nas variáveis de ambiente do Railway.'})
     try:
         import requests as _req
-        instance = f"mz_{user_id}_{num_id}"
-        # Cria instância se não existir
-        _req.post(f"{evo_url}/instance/create", headers={'apikey': evo_key},
-                  json={'instanceName': instance, 'qrcode': True}, timeout=10)
-        # Pega QR
-        r = _req.get(f"{evo_url}/instance/connect/{instance}", headers={'apikey': evo_key}, timeout=10)
-        data = r.json()
-        qr = data.get('base64') or data.get('qrcode', {}).get('base64', '')
+        instance = f"mz{user_id}n{num_id}"
+        headers  = {'apikey': evo_key, 'Content-Type': 'application/json'}
+
+        def _extract_qr(data):
+            """Procura base64 em vários formatos da Evolution API v1/v2."""
+            if isinstance(data, dict):
+                # v2: {"base64": "data:image/png;base64,..."}
+                qr = data.get('base64') or data.get('qrcode', '')
+                if isinstance(qr, dict):
+                    qr = qr.get('base64', '')
+                if not qr:
+                    # aninha dentro de 'instance'
+                    inner = data.get('instance', data.get('qrcode', {}))
+                    if isinstance(inner, dict):
+                        qr = inner.get('base64', '')
+                return qr or ''
+            return ''
+
+        # 1. Tenta criar instância (ignora erro se já existir)
+        cr = _req.post(f"{evo_url}/instance/create", headers=headers,
+                       json={'instanceName': instance, 'qrcode': True,
+                             'integration': 'WHATSAPP-BAILEYS'}, timeout=15)
+        cr_data = cr.json() if cr.content else {}
+        qr = _extract_qr(cr_data)
+
+        # 2. Se não veio no create, chama /connect
+        if not qr:
+            r2   = _req.get(f"{evo_url}/instance/connect/{instance}", headers=headers, timeout=15)
+            qr   = _extract_qr(r2.json() if r2.content else {})
+
+        # 3. Último recurso: /instance/fetchInstances + connect
+        if not qr:
+            _req.delete(f"{evo_url}/instance/{instance}/delete", headers=headers, timeout=10)
+            cr2  = _req.post(f"{evo_url}/instance/create", headers=headers,
+                             json={'instanceName': instance, 'qrcode': True,
+                                   'integration': 'WHATSAPP-BAILEYS'}, timeout=15)
+            qr   = _extract_qr(cr2.json() if cr2.content else {})
+
         if qr:
             if not qr.startswith('data:'):
                 qr = 'data:image/png;base64,' + qr
             return jsonify({'qr': qr})
-        return jsonify({'erro': 'QR Code não disponível. Tente novamente em alguns segundos.'})
+
+        return jsonify({'erro': 'QR Code não disponível ainda. Aguarde 5 segundos e tente novamente.'})
     except Exception as e:
         log.error(f"QR error: {e}")
-        return jsonify({'erro': 'Erro ao conectar com a Evolution API.'})
+        return jsonify({'erro': f'Erro ao conectar com a Evolution API: {str(e)}'})
 
 
 # ── Contatos ──────────────────────────────────────────────────────────────────
@@ -1192,28 +1255,76 @@ def mz_contact_import_csv():
     f       = request.files.get('csv_file')
     if not f:
         return redirect('/mandazap/painel?section=contatos')
+    filename = f.filename.lower()
     try:
-        content = f.read().decode('utf-8-sig', errors='ignore')
-        reader  = csv.DictReader(io.StringIO(content))
-        conn    = get_saas_db()
-        count   = 0
-        for row in reader:
-            name  = (row.get('nome') or row.get('name') or row.get('Nome') or '').strip()
-            phone = (row.get('telefone') or row.get('phone') or row.get('Telefone') or row.get('whatsapp') or '').strip()
-            if name and phone:
-                phone = _re.sub(r'[^\d+]', '', phone)
+        raw = f.read()
+        # ── VCF / vCard ───────────────────────────────────────────────────────
+        if filename.endswith('.vcf') or filename.endswith('.vcard'):
+            content = raw.decode('utf-8', errors='ignore')
+            contacts = _parse_vcf(content)
+        else:
+            # ── CSV ───────────────────────────────────────────────────────────
+            content = raw.decode('utf-8-sig', errors='ignore')
+            reader  = csv.DictReader(io.StringIO(content))
+            contacts = []
+            for row in reader:
+                name  = (row.get('nome') or row.get('name') or row.get('Nome') or '').strip()
+                phone = (row.get('telefone') or row.get('phone') or row.get('Telefone') or row.get('whatsapp') or '').strip()
                 email = (row.get('email') or row.get('Email') or '').strip()
                 tag   = (row.get('tag') or row.get('Tag') or row.get('categoria') or '').strip()
-                conn.execute(
-                    'INSERT OR IGNORE INTO mandazap_contacts (user_id, name, phone, email, tag, created_at) VALUES (?,?,?,?,?,?)',
-                    (user_id, name, phone, email, tag, datetime.now().isoformat())
-                )
-                count += 1
+                if name and phone:
+                    contacts.append({'name': name, 'phone': phone, 'email': email, 'tag': tag})
+        conn  = get_saas_db()
+        count = 0
+        for c in contacts:
+            phone = _re.sub(r'[^\d+]', '', c.get('phone', ''))
+            if not phone:
+                continue
+            # garante DDI 55 para números brasileiros sem prefixo
+            if phone.startswith('0'):
+                phone = '55' + phone[1:]
+            elif len(phone) <= 11 and not phone.startswith('+'):
+                phone = '55' + phone
+            conn.execute(
+                'INSERT OR IGNORE INTO mandazap_contacts (user_id, name, phone, email, tag, created_at) VALUES (?,?,?,?,?,?)',
+                (user_id, c.get('name',''), phone, c.get('email',''), c.get('tag',''), datetime.now().isoformat())
+            )
+            count += 1
         conn.commit()
         conn.close()
+        log.info(f'Importados {count} contatos para user {user_id}')
     except Exception as e:
-        log.error(f'CSV import error: {e}')
+        log.error(f'import error: {e}')
     return redirect('/mandazap/painel?section=contatos')
+
+
+def _parse_vcf(content: str) -> list:
+    """Parse simples de arquivo VCF/vCard — extrai nome e telefone."""
+    contacts = []
+    for card in content.split('BEGIN:VCARD'):
+        if 'END:VCARD' not in card:
+            continue
+        card = card[:card.index('END:VCARD')]
+        name  = ''
+        phone = ''
+        email = ''
+        for line in card.splitlines():
+            line = line.strip()
+            # Nome: FN tem preferência sobre N
+            if line.startswith('FN:'):
+                name = line[3:].strip()
+            elif line.startswith('N:') and not name:
+                parts = line[2:].split(';')
+                name = ' '.join(p.strip() for p in reversed(parts) if p.strip())
+            # Telefone: qualquer linha TEL
+            elif line.upper().startswith('TEL') and ':' in line and not phone:
+                phone = line.split(':', 1)[1].strip()
+            # Email
+            elif line.upper().startswith('EMAIL') and ':' in line and not email:
+                email = line.split(':', 1)[1].strip()
+        if name and phone:
+            contacts.append({'name': name, 'phone': phone, 'email': email, 'tag': ''})
+    return contacts
 
 
 # ── Listas ────────────────────────────────────────────────────────────────────

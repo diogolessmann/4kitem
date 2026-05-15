@@ -338,7 +338,7 @@ select option{background:var(--surface2)}
         <input type="text" id="contact-search" placeholder="Buscar por nome, telefone ou tag..." oninput="filterContacts(this.value)">
       </div>
       <button class="btn btn-green" onclick="openModal('modal-contato')">+ Adicionar</button>
-      <button class="btn btn-outline" onclick="openModal('modal-import-csv')">📁 Importar CSV</button>
+      <button class="btn btn-outline" onclick="openModal('modal-import-csv')">📁 Importar CSV / VCF</button>
     </div>
 
     {% if contacts %}
@@ -574,9 +574,10 @@ select option{background:var(--surface2)}
 <!-- Modal: Importar CSV -->
 <div class="modal-overlay" id="modal-import-csv">
   <div class="modal">
-    <h3>📁 Importar Contatos — CSV</h3>
-    <div style="font-size:13px;color:var(--text2);margin-bottom:16px;line-height:1.6">
-      O arquivo CSV deve ter as colunas: <strong style="color:var(--green)">nome</strong> e <strong style="color:var(--green)">telefone</strong> (com DDD, sem formatação). Colunas opcionais: <em>email</em>, <em>tag</em>.
+    <h3>📁 Importar Contatos — CSV ou VCF</h3>
+    <div style="font-size:13px;color:var(--text2);margin-bottom:12px;line-height:1.6">
+      Aceita <strong style="color:var(--green)">.vcf</strong> (exportado do iPhone/Android/iCloud) ou <strong style="color:var(--green)">.csv</strong>.<br>
+      CSV deve ter colunas: <em>nome</em> e <em>telefone</em> (com DDD). Opcionais: <em>email</em>, <em>tag</em>.
     </div>
     <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:16px;font-family:monospace;font-size:12px;color:var(--text2)">
       nome,telefone,email,tag<br>
@@ -587,10 +588,10 @@ select option{background:var(--surface2)}
       <div class="import-box">
         <div class="imp-icon">📂</div>
         <label for="csv-input">
-          <div>Clique para selecionar o arquivo CSV</div>
+          <div>Clique para selecionar o arquivo CSV ou VCF</div>
           <div class="imp-hint" id="csv-filename">Nenhum arquivo selecionado</div>
         </label>
-        <input type="file" name="csv_file" id="csv-input" accept=".csv,.txt" onchange="document.getElementById('csv-filename').textContent=this.files[0]?.name||'Nenhum arquivo'" required>
+        <input type="file" name="csv_file" id="csv-input" accept=".csv,.txt,.vcf,.vcard" onchange="document.getElementById('csv-filename').textContent=this.files[0]?.name||'Nenhum arquivo'" required>
       </div>
       <div class="modal-btns" style="margin-top:16px">
         <button type="button" class="btn btn-outline" onclick="closeModal('modal-import-csv')">Cancelar</button>
