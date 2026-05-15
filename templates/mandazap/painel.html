@@ -698,8 +698,7 @@ select option{background:var(--surface2)}
       </div>
       <div class="form-group">
         <label>Agendar envio (opcional)</label>
-        <input type="datetime-local" name="scheduled_at" id="camp-scheduled"
-               min="{{ now.strftime('%Y-%m-%dT%H:%M') }}">
+        <input type="datetime-local" name="scheduled_at" id="camp-scheduled">
         <div style="font-size:11px;color:var(--text2);margin-top:4px">Deixe vazio para salvar como rascunho.</div>
       </div>
       <div class="modal-btns">
@@ -778,6 +777,18 @@ function filterContacts(q) {
 function toggleAllContacts(state) {
   document.querySelectorAll('#lista-contacts input[type=checkbox]').forEach(cb => cb.checked=state);
 }
+
+// ── Min do campo de data no horário local do navegador ──────────────────────
+(function() {
+  const el = document.getElementById('camp-scheduled');
+  if (el) {
+    const now = new Date();
+    now.setMinutes(now.getMinutes() + 5); // mínimo: 5 minutos à frente
+    const local = new Date(now.getTime() - now.getTimezoneOffset() * 60000)
+      .toISOString().slice(0, 16);
+    el.min = local;
+  }
+})();
 
 // ── Aplicar template na campanha ────────────────────────────────────────────
 function applyTemplate(btn) {
