@@ -720,26 +720,8 @@ select option{background:var(--surface2)}
           {% for n in numbers %}<option value="{{ n.id }}">{{ n.label }} — {{ n.phone or 'sem número' }} {{ '🟢' if n.status=='connected' else '🔴' }}</option>{% endfor %}
         </select>
       </div>
-      <div class="form-group">
-        <label>Tipo de Mensagem</label>
-        <select name="media_type" id="camp-media-type" onchange="toggleMediaField('camp')">
-          <option value="text">✉️ Texto</option>
-          <option value="image">🖼️ Imagem</option>
-          <option value="video">🎬 Vídeo</option>
-        </select>
-      </div>
-      <div class="form-group" id="camp-media-url-wrap" style="display:none">
-        <label id="camp-media-label">🖼️ Imagem *</label>
-        <input type="url" name="media_url" id="camp-media-url" placeholder="https://exemplo.com/imagem.jpg" style="margin-bottom:6px">
-        <div style="display:flex;gap:8px;align-items:center">
-          <label style="flex:1;cursor:pointer;background:var(--surface2);border:1px dashed var(--border2);border-radius:8px;padding:8px 12px;font-size:12px;color:var(--text2);text-align:center">
-            📎 Ou clique para fazer upload da imagem
-            <input type="file" id="camp-upload-input" accept="image/*" style="display:none" onchange="uploadMidia('camp-upload-input','camp-media-url','camp-img-preview')">
-          </label>
-        </div>
-        <div id="camp-img-preview" style="display:none"></div>
-        <div style="font-size:11px;color:var(--text2);margin-top:4px">Cole uma URL pública <em>ou</em> faça upload direto (JPG, PNG, GIF, WEBP — máx. 3MB)</div>
-      </div>
+      <input type="hidden" name="media_type" value="text">
+      <input type="hidden" name="media_url" value="">
       <div class="form-group">
         <label>Mensagem * — use {'{nome}'} para personalizar</label>
         <textarea name="message" id="campanha-message" placeholder="Olá {nome}! Temos uma oferta especial pra você... 🎁" required></textarea>
@@ -765,23 +747,8 @@ select option{background:var(--surface2)}
     <h3>📝 Novo Template</h3>
     <form method="POST" action="/mandazap/templates/add">
       <div class="form-group"><label>Nome do Template *</label><input type="text" name="name" placeholder="Ex: Promoção padrão, Lembrete vencimento..." required maxlength="80"></div>
-      <div class="form-group">
-        <label>Tipo</label>
-        <select name="media_type" id="tpl-media-type" onchange="toggleMediaField('tpl')">
-          <option value="text">✉️ Texto</option>
-          <option value="image">🖼️ Imagem</option>
-          <option value="video">🎬 Vídeo</option>
-        </select>
-      </div>
-      <div class="form-group" id="tpl-media-url-wrap" style="display:none">
-        <label id="tpl-media-label">🖼️ Imagem</label>
-        <input type="url" name="media_url" id="tpl-media-url" placeholder="https://exemplo.com/imagem.jpg" style="margin-bottom:6px">
-        <label style="display:block;cursor:pointer;background:var(--surface2);border:1px dashed var(--border2);border-radius:8px;padding:8px 12px;font-size:12px;color:var(--text2);text-align:center">
-          📎 Ou clique para fazer upload da imagem
-          <input type="file" id="tpl-upload-input" accept="image/*" style="display:none" onchange="uploadMidia('tpl-upload-input','tpl-media-url','tpl-img-preview')">
-        </label>
-        <div id="tpl-img-preview" style="display:none"></div>
-      </div>
+      <input type="hidden" name="media_type" value="text">
+      <input type="hidden" name="media_url" value="">
       <div class="form-group">
         <label>Mensagem — use {'{nome}'} para personalizar</label>
         <textarea name="message" placeholder="Olá {nome}! Temos uma novidade especial para você..." required></textarea>
