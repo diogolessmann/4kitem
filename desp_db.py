@@ -179,6 +179,10 @@ def get_conn():
     return conn
 
 # ── Init ─────────────────────────────────────────────────────────────────────
+def init_desp_db():
+    """Alias para compatibilidade com app.py"""
+    return init_db()
+
 def init_db():
     conn = get_conn()
     conn.executescript("""
