@@ -320,19 +320,24 @@ def agenda_cadastro():
 def agenda_entrar():
     error = None
     if request.method == 'POST':
-        phone    = request.form.get('phone', '').strip()
-        password = request.form.get('password', '').strip()
+        phone_raw = request.form.get('phone', '').strip()
+        password  = request.form.get('password', '').strip()
+        # Normaliza: só dígitos para comparação robusta
+        phone_digits = ''.join(c for c in phone_raw if c.isdigit())
         conn = get_saas_db()
-        biz = conn.execute(
-            'SELECT * FROM agenda_businesses WHERE phone=? AND active=1', (phone,)
-        ).fetchone()
+        # Busca normalizando o telefone armazenado também
+        biz = conn.execute('''
+            SELECT * FROM agenda_businesses
+            WHERE replace(replace(replace(replace(replace(phone,'(',''),')',''),'-',''),' ',''),'+','') = ?
+            AND active=1
+        ''', (phone_digits,)).fetchone()
         conn.close()
         if biz and check_password_hash(biz['password_hash'], password):
             session['agenda_business_id']   = biz['id']
             session['agenda_business_slug'] = biz['slug']
             session['agenda_business_name'] = biz['name']
             return redirect('/agenda/painel')
-        error = 'Telefone ou senha incorretos.'
+        error = 'Telefone ou senha incorretos. Verifique o número e a senha cadastrados.'
     return render_template('agenda/entrar.html', error=error)
 
 
