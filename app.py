@@ -2288,11 +2288,29 @@ def _send_image(evo_url, evo_key, instance, phone, image_url, caption=''):
         return False, str(e)[:120]
 
 
-def _dispatch_campaign(cid: int, user_id: int, delay_s: int = 4):
+def _dispatch_campaign(cid: int, user_id: int, delay_s: int = 3):
     """
     Executa o disparo de uma campanha em background thread.
     Atualiza status/sent em tempo real no banco.
     """
+    import time, random, traceback
+    try:
+        _dispatch_campaign_inner(cid, user_id, delay_s)
+    except Exception as e:
+        tb = traceback.format_exc()
+        log.error(f"Campanha {cid} CRASH: {e}\n{tb}")
+        try:
+            c = get_saas_db()
+            c.execute(
+                "UPDATE mandazap_campaigns SET status='erro', error_log=?, finished_at=? WHERE id=?",
+                (f'Erro interno: {str(e)[:200]}', datetime.now().isoformat(), cid)
+            )
+            c.commit(); c.close()
+        except Exception:
+            pass
+
+
+def _dispatch_campaign_inner(cid: int, user_id: int, delay_s: int = 3):
     import time, random
     evo_url, evo_key = _get_evo()
     if not evo_url or not evo_key:
@@ -2514,7 +2532,7 @@ def mz_campaign_status(cid):
     user_id = session['mz_user_id']
     conn    = get_saas_db()
     camp    = conn.execute(
-        'SELECT status, total, sent, finished_at FROM mandazap_campaigns WHERE id=? AND user_id=?',
+        'SELECT status, total, sent, finished_at, error_log FROM mandazap_campaigns WHERE id=? AND user_id=?',
         (cid, user_id)
     ).fetchone()
     conn.close()
