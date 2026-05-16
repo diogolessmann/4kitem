@@ -2353,10 +2353,27 @@ def _dispatch_campaign(cid: int, user_id: int, delay_s: int = 4):
     media_type = camp.get('media_type', 'text')
     is_image   = media_type == 'image' and bool(media_url)
 
-    sent_count  = 0
-    failed_nums = []
+    sent_count     = 0
+    failed_count   = 0
+    consec_fails   = 0
+    first_err      = ''
+    MAX_CONSEC     = 10   # para se 10 falhas seguidas (erro na API)
+
     for c in contacts:
-        phone = (c.get('phone') or '').replace(' ','').replace('-','').replace('+','')
+        # Verifica se campanha foi cancelada externamente
+        chk = get_saas_db()
+        st  = chk.execute('SELECT status FROM mandazap_campaigns WHERE id=?', (cid,)).fetchone()
+        chk.close()
+        if st and st['status'] == 'cancelada':
+            log.info(f"Campanha {cid} cancelada pelo usuário em {sent_count}/{total}")
+            conn.execute(
+                "UPDATE mandazap_campaigns SET status='cancelada', sent=?, finished_at=?, error_log=? WHERE id=?",
+                (sent_count, datetime.now().isoformat(), f'Cancelada pelo usuário. {sent_count} enviados.', cid)
+            )
+            conn.commit(); conn.close()
+            return
+
+        phone = (c.get('phone') or '').replace(' ','').replace('-','').replace('+','').replace('(','').replace(')','')
         if not phone:
             continue
         if not phone.startswith('55'):
@@ -2375,10 +2392,23 @@ def _dispatch_campaign(cid: int, user_id: int, delay_s: int = 4):
             ok, err = _send_text(evo_url, evo_key, instance, phone, msg)
 
         if ok:
-            sent_count += 1
+            sent_count   += 1
+            consec_fails  = 0
         else:
-            failed_nums.append(phone)
+            failed_count += 1
+            consec_fails += 1
+            if not first_err:
+                first_err = f"Primeiro erro → {phone}: {err}"
             log.warning(f"Campanha {cid} → {phone}: {err}")
+            # Para cedo se a API está rejeitando tudo
+            if consec_fails >= MAX_CONSEC:
+                log.error(f"Campanha {cid}: {MAX_CONSEC} falhas consecutivas — abortando. Último erro: {err}")
+                conn.execute(
+                    "UPDATE mandazap_campaigns SET status='erro', sent=?, finished_at=?, error_log=? WHERE id=?",
+                    (sent_count, datetime.now().isoformat(), f'Abortado após {MAX_CONSEC} falhas seguidas. {first_err}', cid)
+                )
+                conn.commit(); conn.close()
+                return
 
         # Atualiza progresso a cada envio
         conn2 = get_saas_db()
@@ -2390,7 +2420,7 @@ def _dispatch_campaign(cid: int, user_id: int, delay_s: int = 4):
         time.sleep(jitter)
 
     # Finaliza
-    error_log = f"{len(failed_nums)} falhas" if failed_nums else ''
+    error_log = f"{failed_count} falhas. {first_err}" if failed_count else ''
     conn.execute(
         "UPDATE mandazap_campaigns SET status='concluida', sent=?, finished_at=?, error_log=? WHERE id=?",
         (sent_count, datetime.now().isoformat(), error_log, cid)
@@ -2399,10 +2429,27 @@ def _dispatch_campaign(cid: int, user_id: int, delay_s: int = 4):
     log.info(f"Campanha {cid} concluída: {sent_count}/{total} enviados")
 
 
+@app.route('/mandazap/campanhas/<int:cid>/cancelar', methods=['POST'])
+@_mandazap_login_required
+def mz_campaign_cancel(cid):
+    """Cancela uma campanha em andamento ou rascunho."""
+    user_id = session['mz_user_id']
+    conn    = get_saas_db()
+    camp    = conn.execute('SELECT status FROM mandazap_campaigns WHERE id=? AND user_id=?', (cid, user_id)).fetchone()
+    if not camp:
+        conn.close(); return jsonify({'erro': 'Campanha não encontrada'}), 404
+    conn.execute(
+        "UPDATE mandazap_campaigns SET status='cancelada', finished_at=?, error_log='Cancelada pelo usuário.' WHERE id=?",
+        (datetime.now().isoformat(), cid)
+    )
+    conn.commit(); conn.close()
+    return jsonify({'ok': True})
+
+
 @app.route('/mandazap/campanhas/<int:cid>/disparar', methods=['POST'])
 @_mandazap_login_required
 def mz_campaign_dispatch(cid):
-    """Dispara imediatamente uma campanha (rascunho ou agendada)."""
+    """Dispara imediatamente uma campanha."""
     user_id = session['mz_user_id']
     conn    = get_saas_db()
     camp    = conn.execute(

@@ -435,8 +435,8 @@ select option{background:var(--surface2)}
             <div style="font-size:11px;color:var(--text2);max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
               {{ c.message[:70] }}{% if c.message|length > 70 %}…{% endif %}
             </div>
-            {% if is_err and c.error_log %}
-            <div style="font-size:10px;color:var(--red);margin-top:2px" title="{{ c.error_log }}">⚠️ {{ c.error_log[:50] }}</div>
+            {% if c.error_log %}
+            <div style="font-size:10px;color:var(--red);margin-top:2px;cursor:help" title="{{ c.error_log }}">⚠️ {{ c.error_log[:80] }}{% if c.error_log|length > 80 %}…{% endif %}</div>
             {% endif %}
             {% if is_done and c.finished_at %}
             <div style="font-size:10px;color:var(--text3);margin-top:2px">✅ {{ c.finished_at[:16].replace('T',' ') }}</div>
@@ -466,8 +466,10 @@ select option{background:var(--surface2)}
                       onclick="dispararCampanha({{ c.id }}, '{{ c.name|replace("'","\\'")|replace('"','\\"') }}')"
                       title="Disparar agora">🚀</button>
               {% elif is_active %}
-              <button class="btn btn-outline btn-sm" id="camp-btn-{{ c.id }}"
-                      style="opacity:.5;cursor:default" disabled>⏳</button>
+              <button class="btn btn-sm" id="camp-btn-{{ c.id }}"
+                      onclick="pararCampanha({{ c.id }}, '{{ c.name|replace("'","\\'")|replace('"','\\"') }}')"
+                      style="background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);color:#ef4444"
+                      title="Parar campanha">⏹ Parar</button>
               {% endif %}
               <form method="POST" action="/mandazap/campanhas/{{ c.id }}/duplicar" style="display:inline">
                 <button type="submit" class="btn btn-outline btn-sm" title="Duplicar campanha">📋</button>
@@ -949,6 +951,26 @@ async function uploadMidia(inputId, urlFieldId, previewId) {
 // ── Disparar campanha agora ───────────────────────────────────────────────────
 const _pollTimers = {};
 
+async function pararCampanha(cid, nome) {
+  if (!confirm(`Parar a campanha "${nome}"?\n\nEla vai parar assim que o servidor processar a solicitação.`)) return;
+  const btn = document.getElementById('camp-btn-' + cid);
+  if (btn) { btn.disabled = true; btn.textContent = '⏳'; }
+  try {
+    const r = await fetch(`/mandazap/campanhas/${cid}/cancelar`, { method: 'POST' });
+    const d = await r.json();
+    if (d.ok) {
+      showToast('⏹ Campanha cancelada!');
+      setTimeout(() => location.reload(), 1000);
+    } else {
+      showToast('❌ ' + (d.erro || 'Erro ao cancelar'), 'err');
+      if (btn) btn.disabled = false;
+    }
+  } catch(e) {
+    showToast('❌ Erro de conexão', 'err');
+    if (btn) btn.disabled = false;
+  }
+}
+
 async function dispararCampanha(cid, nome) {
   if (!confirm(`🚀 Disparar a campanha "${nome}" AGORA?\n\nAs mensagens serão enviadas imediatamente para todos os contatos da lista.`)) return;
 
@@ -995,13 +1017,13 @@ function _pollProgress(cid) {
           </div>`;
       }
       if (statusCell) {
-        const labels = {concluida:'✅ Concluída',done:'✅ Concluída',enviando:'⏳ Enviando',sending:'⏳ Enviando',erro:'❌ Erro',failed:'❌ Falhou',rascunho:'📝 Rascunho',draft:'📝 Rascunho'};
-        const cls    = {concluida:'done',done:'done',enviando:'sending',sending:'sending',erro:'failed',failed:'failed'};
+        const labels = {concluida:'✅ Concluída',done:'✅ Concluída',enviando:'⏳ Enviando',sending:'⏳ Enviando',erro:'❌ Erro',failed:'❌ Falhou',cancelada:'⏹ Cancelada',rascunho:'📝 Rascunho',draft:'📝 Rascunho'};
+        const cls    = {concluida:'done',done:'done',enviando:'sending',sending:'sending',erro:'failed',failed:'failed',cancelada:'failed'};
         statusCell.innerHTML = `<span class="badge ${cls[d.status]||'draft'}">${labels[d.status]||d.status}</span>`;
       }
 
       // Campanha finalizada
-      if (['concluida','done','erro','failed'].includes(d.status)) {
+      if (['concluida','done','erro','failed','cancelada'].includes(d.status)) {
         clearInterval(_pollTimers[cid]);
         delete _pollTimers[cid];
         if (btn) btn.remove(); // remove botão após concluir
