@@ -1150,12 +1150,18 @@ def saas_agenda_trial(biz_id):
 @_saas_admin_required
 def saas_agenda_delete(biz_id):
     conn = get_saas_db()
-    conn.execute('DELETE FROM agenda_appointments WHERE business_id=?', (biz_id,))
-    conn.execute('DELETE FROM agenda_services    WHERE business_id=?', (biz_id,))
-    conn.execute('DELETE FROM agenda_hours       WHERE business_id=?', (biz_id,))
-    conn.execute('DELETE FROM agenda_customers   WHERE business_id=?', (biz_id,))
-    conn.execute('DELETE FROM agenda_businesses  WHERE id=?',          (biz_id,))
-    conn.commit(); conn.close()
+    try:
+        conn.execute('DELETE FROM agenda_appointments WHERE business_id=?', (biz_id,))
+        conn.execute('DELETE FROM agenda_services     WHERE business_id=?', (biz_id,))
+        conn.execute('DELETE FROM agenda_availability WHERE business_id=?', (biz_id,))
+        conn.execute('DELETE FROM agenda_customers    WHERE business_id=?', (biz_id,))
+        conn.execute('DELETE FROM agenda_payments     WHERE business_id=?', (biz_id,))
+        conn.execute('DELETE FROM agenda_businesses   WHERE id=?',          (biz_id,))
+        conn.commit()
+    except Exception as e:
+        conn.close()
+        return jsonify({'success': False, 'error': str(e)})
+    conn.close()
     return jsonify({'success': True})
 
 
