@@ -248,6 +248,18 @@ def init_saas_db():
     ''')
     conn.commit()
 
+    # ── Tabela de log de envios por campanha (para "continuar de onde parou") ──
+    conn.executescript('''
+        CREATE TABLE IF NOT EXISTS mandazap_sent_log (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            campaign_id INTEGER NOT NULL,
+            phone       TEXT    NOT NULL,
+            sent_at     TEXT,
+            UNIQUE(campaign_id, phone)
+        );
+        CREATE INDEX IF NOT EXISTS idx_mz_sent_log_camp ON mandazap_sent_log(campaign_id);
+    ''')
+
     # ── Migrations suaves (adicionadas após schema inicial) ─────────────────
     _saas_migrations = [
         # MandaZap campaigns

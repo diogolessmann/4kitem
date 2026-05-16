@@ -2305,14 +2305,16 @@ def _send_image(evo_url, evo_key, instance, phone, image_url, caption=''):
         return False, str(e)[:120]
 
 
-def _dispatch_campaign(cid: int, user_id: int, delay_s: int = 3):
+def _dispatch_campaign(cid: int, user_id: int, delay_s: int = 3, continuar: bool = True):
     """
     Executa o disparo de uma campanha em background thread.
     Atualiza status/sent em tempo real no banco.
+    continuar=True  → pula contatos já enviados (retomada)
+    continuar=False → limpa log e começa do zero
     """
     import time, random, traceback
     try:
-        _dispatch_campaign_inner(cid, user_id, delay_s)
+        _dispatch_campaign_inner(cid, user_id, delay_s, continuar=continuar)
     except Exception as e:
         tb = traceback.format_exc()
         log.error(f"Campanha {cid} CRASH: {e}\n{tb}")
@@ -2327,7 +2329,7 @@ def _dispatch_campaign(cid: int, user_id: int, delay_s: int = 3):
             pass
 
 
-def _dispatch_campaign_inner(cid: int, user_id: int, delay_s: int = 3):
+def _dispatch_campaign_inner(cid: int, user_id: int, delay_s: int = 3, continuar: bool = True):
     import time, random
     evo_url, evo_key = _get_evo()
     if not evo_url or not evo_key:
@@ -2401,8 +2403,43 @@ def _dispatch_campaign_inner(cid: int, user_id: int, delay_s: int = 3):
         log.warning(f"Campanha {cid}: sem contatos")
         return
 
+    # ── Lógica de "continuar de onde parou" ─────────────────────────────────
+    if continuar:
+        # Carrega phones já enviados nesta campanha
+        already_sent = set(
+            r['phone'] for r in conn.execute(
+                'SELECT phone FROM mandazap_sent_log WHERE campaign_id=?', (cid,)
+            ).fetchall()
+        )
+        if already_sent:
+            # Normaliza e filtra os que já receberam
+            def _norm_phone(p):
+                p = (p or '').replace(' ','').replace('-','').replace('+','').replace('(','').replace(')','')
+                return ('55' + p) if not p.startswith('55') else p
+            contacts = [c for c in contacts if _norm_phone(c.get('phone','')) not in already_sent]
+            log.info(f"Campanha {cid}: retomando — {len(already_sent)} já enviados, {len(contacts)} restantes")
+    else:
+        # Reiniciar do zero — limpa log de envios anteriores
+        conn.execute('DELETE FROM mandazap_sent_log WHERE campaign_id=?', (cid,))
+        conn.commit()
+        already_sent = set()
+        log.info(f"Campanha {cid}: reiniciando do zero — log limpo")
+
+    # Total real = já enviados + restantes
+    prev_sent = len(already_sent) if continuar else 0
+    total_real = prev_sent + len(contacts)
+
+    if len(contacts) == 0:
+        conn.execute(
+            "UPDATE mandazap_campaigns SET status='concluida',sent=?,total=?,finished_at=?,error_log=? WHERE id=?",
+            (total_real, total_real, datetime.now().isoformat(), 'Todos os contatos já receberam esta campanha.', cid)
+        )
+        conn.commit(); conn.close()
+        log.info(f"Campanha {cid}: todos os {total_real} contatos já receberam. Concluída.")
+        return
+
     # Verifica limite diário
-    can_send = min(total, max(0, daily_lim - today_sent))
+    can_send = min(len(contacts), max(0, daily_lim - today_sent))
     if can_send == 0:
         conn.execute(
             "UPDATE mandazap_campaigns SET status='erro',error_log=? WHERE id=?",
@@ -2412,14 +2449,14 @@ def _dispatch_campaign_inner(cid: int, user_id: int, delay_s: int = 3):
         log.warning(f"Campanha {cid}: limite diário atingido ({today_sent}/{daily_lim})")
         return
 
-    if can_send < total:
-        log.info(f"Campanha {cid}: limite diário parcial — enviando {can_send}/{total}")
+    if can_send < len(contacts):
+        log.info(f"Campanha {cid}: limite diário parcial — enviando {can_send}/{len(contacts)} restantes")
         contacts = contacts[:can_send]
 
-    # Marca como "enviando"
+    # Marca como "enviando" — preserva sent anterior se estiver continuando
     conn.execute(
-        "UPDATE mandazap_campaigns SET status='enviando', total=?, sent=0, finished_at=NULL, error_log='' WHERE id=?",
-        (total, cid)
+        "UPDATE mandazap_campaigns SET status='enviando', total=?, sent=?, finished_at=NULL, error_log='' WHERE id=?",
+        (total_real, prev_sent, cid)
     )
     conn.commit()
 
@@ -2428,7 +2465,7 @@ def _dispatch_campaign_inner(cid: int, user_id: int, delay_s: int = 3):
     media_type = camp.get('media_type', 'text')
     is_image   = media_type == 'image' and bool(media_url)
 
-    sent_count     = 0
+    sent_count     = prev_sent   # começa do número já enviado anteriormente
     failed_count   = 0
     consec_fails   = 0
     first_err      = ''
@@ -2469,6 +2506,16 @@ def _dispatch_campaign_inner(cid: int, user_id: int, delay_s: int = 3):
         if ok:
             sent_count   += 1
             consec_fails  = 0
+            # Registra no log de enviados para poder continuar de onde parou
+            try:
+                _log = get_saas_db()
+                _log.execute(
+                    'INSERT OR IGNORE INTO mandazap_sent_log (campaign_id, phone, sent_at) VALUES (?,?,?)',
+                    (cid, phone, datetime.now().isoformat())
+                )
+                _log.commit(); _log.close()
+            except Exception as _le:
+                log.warning(f"sent_log insert error: {_le}")
         else:
             failed_count += 1
             consec_fails += 1
@@ -2551,8 +2598,12 @@ def mz_campaign_dispatch(cid):
         conn.commit()
     elif status == 'concluida':
         return jsonify({'erro': 'Campanha já foi concluída. Duplique-a para reenviar.'}), 400
-    threading.Thread(target=_dispatch_campaign, args=(cid, user_id), daemon=True).start()
-    return jsonify({'ok': True, 'msg': 'Disparo iniciado!'})
+    # continuar=true (padrão) → retoma de onde parou; continuar=false → recomeça do zero
+    data      = request.get_json(silent=True) or {}
+    continuar = str(data.get('continuar', request.args.get('continuar', 'true'))).lower() != 'false'
+    threading.Thread(target=_dispatch_campaign, args=(cid, user_id), kwargs={'continuar': continuar}, daemon=True).start()
+    msg = 'Retomando de onde parou!' if continuar else 'Reiniciando do zero!'
+    return jsonify({'ok': True, 'msg': msg, 'continuar': continuar})
 
 
 @app.route('/mandazap/campanhas/<int:cid>/status')

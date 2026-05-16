@@ -467,9 +467,20 @@ select option{background:var(--surface2)}
           <td style="white-space:nowrap">
             <div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap;">
               {% if can_send %}
+              {% if c.sent and c.sent > 0 and c.status in ('erro','cancelada','failed') %}
+              {# Campanha parou no meio — oferecer continuar ou reiniciar #}
               <button class="btn btn-green btn-sm" id="camp-btn-{{ c.id }}"
-                      onclick="dispararCampanha({{ c.id }}, '{{ c.name|replace("'","\\'")|replace('"','\\"') }}')"
-                      title="Disparar agora">🚀</button>
+                      onclick="dispararCampanha({{ c.id }}, '{{ c.name|replace("'","\\'")|replace('"','\\"') }}', true)"
+                      title="Continuar de onde parou ({{ c.sent }}/{{ c.total }} já enviados)">▶ Continuar</button>
+              <button class="btn btn-outline btn-sm"
+                      onclick="dispararCampanha({{ c.id }}, '{{ c.name|replace("'","\\'")|replace('"','\\"') }}', false)"
+                      title="Apagar histórico e enviar para todos do zero"
+                      style="font-size:10px">🔄 Zero</button>
+              {% else %}
+              <button class="btn btn-green btn-sm" id="camp-btn-{{ c.id }}"
+                      onclick="dispararCampanha({{ c.id }}, '{{ c.name|replace("'","\\'")|replace('"','\\"') }}', false)"
+                      title="Disparar agora">🚀 Disparar</button>
+              {% endif %}
               {% elif is_active %}
               <button class="btn btn-sm" id="camp-btn-{{ c.id }}"
                       onclick="pararCampanha({{ c.id }}, '{{ c.name|replace("'","\\'")|replace('"','\\"') }}')"
@@ -944,17 +955,24 @@ async function pararCampanha(cid, nome) {
   }
 }
 
-async function dispararCampanha(cid, nome) {
-  if (!confirm(`🚀 Disparar a campanha "${nome}" AGORA?\n\nAs mensagens serão enviadas imediatamente para todos os contatos da lista.`)) return;
+async function dispararCampanha(cid, nome, continuar = false) {
+  const continMsg = continuar
+    ? `▶ Continuar a campanha "${nome}" de onde parou?\n\nOs contatos que já receberam serão ignorados automaticamente.`
+    : `🚀 Disparar a campanha "${nome}" AGORA?\n\nAs mensagens serão enviadas para todos os contatos da lista.`;
+  if (!confirm(continMsg)) return;
 
   const btn = document.getElementById('camp-btn-' + cid);
-  if (btn) { btn.disabled = true; btn.textContent = '⏳ Iniciando…'; }
+  if (btn) { btn.disabled = true; btn.textContent = continuar ? '⏳ Retomando…' : '⏳ Iniciando…'; }
 
   try {
-    const r = await fetch(`/mandazap/campanhas/${cid}/disparar`, { method: 'POST' });
+    const r = await fetch(`/mandazap/campanhas/${cid}/disparar`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ continuar: continuar })
+    });
     const d = await r.json();
     if (d.ok) {
-      showToast('🚀 Disparo iniciado! Acompanhe o progresso abaixo.');
+      showToast(continuar ? '▶ Retomando de onde parou! Acompanhe o progresso.' : '🚀 Disparo iniciado! Acompanhe o progresso abaixo.');
       // Começa polling de progresso
       _pollProgress(cid);
     } else {
