@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ajuda — Baú</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#0a0c0f;color:#e8eaf0;font-family:'Segoe UI',sans-serif;min-height:100vh}
+  a{color:#6366f1;text-decoration:none}
+  .header{background:#10121a;border-bottom:1px solid rgba(99,102,241,.15);padding:16px 24px;display:flex;align-items:center;gap:16px}
+  .logo{font-size:20px;font-weight:900;color:#6366f1}
+  .back-btn{margin-left:auto;padding:8px 16px;background:rgba(99,102,241,.1);border:1px solid rgba(99,102,241,.3);border-radius:8px;color:#6366f1;font-size:13px;cursor:pointer;font-family:inherit}
+  .back-btn:hover{background:rgba(99,102,241,.2)}
+  .container{max-width:860px;margin:0 auto;padding:32px 20px}
+  .hero{text-align:center;margin-bottom:48px}
+  .hero h1{font-size:28px;font-weight:900;color:#6366f1;margin-bottom:8px}
+  .hero p{font-size:15px;color:#5a5a8a;line-height:1.6}
+  .section{margin-bottom:48px}
+  .section-title{font-size:18px;font-weight:800;color:#6366f1;margin-bottom:20px;display:flex;align-items:center;gap:10px;padding-bottom:10px;border-bottom:1px solid rgba(99,102,241,.15)}
+  .step{display:flex;gap:16px;margin-bottom:16px;background:#10121a;border:1px solid rgba(99,102,241,.1);border-radius:14px;padding:20px}
+  .step-num{flex-shrink:0;width:36px;height:36px;background:#6366f1;color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:16px}
+  .step-body h3{font-size:14px;font-weight:800;margin-bottom:6px;color:#e8eaf0}
+  .step-body p{font-size:13px;color:#5a5a8a;line-height:1.6}
+  .step-body code{background:rgba(99,102,241,.1);border:1px solid rgba(99,102,241,.2);padding:2px 8px;border-radius:6px;font-size:12px;color:#818cf8;font-family:monospace}
+  .tip{background:rgba(99,102,241,.05);border:1px solid rgba(99,102,241,.2);border-radius:10px;padding:14px 16px;font-size:13px;color:#5a5a8a;line-height:1.6;margin-top:12px}
+  .tip strong{color:#818cf8}
+  .alert{background:rgba(245,158,11,.05);border:1px solid rgba(245,158,11,.2);border-radius:10px;padding:14px 16px;font-size:13px;color:#92740a;line-height:1.6;margin-top:12px}
+  .alert strong{color:#f59e0b}
+  .faq{margin-bottom:12px;background:#10121a;border:1px solid rgba(99,102,241,.1);border-radius:12px;overflow:hidden}
+  .faq-q{padding:16px 20px;font-size:14px;font-weight:700;cursor:pointer;display:flex;justify-content:space-between;align-items:center}
+  .faq-q:hover{background:rgba(99,102,241,.05)}
+  .faq-a{padding:0 20px 16px;font-size:13px;color:#5a5a8a;line-height:1.7;display:none}
+  .faq.open .faq-a{display:block}
+  .faq-icon{color:#6366f1;font-size:16px;transition:.2s}
+  .faq.open .faq-icon{transform:rotate(45deg)}
+  .cat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;margin-top:12px}
+  .cat-chip{background:#10121a;border:1px solid rgba(99,102,241,.15);border-radius:10px;padding:10px;text-align:center;font-size:12px;color:#5a5a8a}
+  .cat-chip span{display:block;font-size:20px;margin-bottom:4px}
+  footer{text-align:center;padding:32px;font-size:12px;color:#2a2a4a}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">🗄️ Baú</div>
+  <span style="font-size:13px;color:#5a5a8a">Central de Ajuda</span>
+  <button class="back-btn" onclick="history.back()">← Voltar</button>
+</div>
+
+<div class="container">
+
+  <div class="hero">
+    <h1>📖 Como usar o Baú</h1>
+    <p>Seu cofre digital de senhas e acessos.<br>Guarde tudo em um lugar seguro, acesse de qualquer dispositivo!</p>
+  </div>
+
+  <!-- O QUE É -->
+  <div class="section">
+    <div class="section-title">🔐 O que é o Baú</div>
+    <div style="background:#10121a;border:1px solid rgba(99,102,241,.15);border-radius:14px;padding:20px;margin-bottom:16px">
+      <p style="font-size:14px;color:#5a5a8a;line-height:1.8">O <strong style="color:#818cf8">Baú</strong> é um gerenciador de senhas seguro, feito para guardar logins, senhas, chaves de API, documentos e qualquer informação sigilosa que você precisa acessar rápido. Tudo criptografado e acessível só por você.</p>
+    </div>
+
+    <div class="cat-grid">
+      <div class="cat-chip"><span>💼</span>Trabalho</div>
+      <div class="cat-chip"><span>🏦</span>Bancos</div>
+      <div class="cat-chip"><span>📱</span>Redes Sociais</div>
+      <div class="cat-chip"><span>👤</span>Pessoal</div>
+      <div class="cat-chip"><span>🎮</span>Jogos</div>
+      <div class="cat-chip"><span>📧</span>E-mail</div>
+      <div class="cat-chip"><span>🛒</span>Compras</div>
+      <div class="cat-chip"><span>🔧</span>Outros</div>
+    </div>
+  </div>
+
+  <!-- COMO USAR -->
+  <div class="section">
+    <div class="section-title">✅ Como começar</div>
+
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-body">
+        <h3>Crie sua conta</h3>
+        <p>Acesse <code>4kitem.com.br/bau/cadastro</code>, preencha seu nome, e-mail e senha mestra. <strong>Guarde bem essa senha</strong> — ela protege todos os seus dados.</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-body">
+        <h3>Faça login</h3>
+        <p>Em <code>4kitem.com.br/bau/entrar</code>, use seu e-mail e senha mestra. A sessão expira automaticamente por segurança.</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-body">
+        <h3>Adicione sua primeira entrada</h3>
+        <p>No painel, clique em <strong>"+ Nova entrada"</strong>. Preencha:<br>
+        • <strong>Título</strong> — ex: "Netflix", "Banco do Brasil"<br>
+        • <strong>Usuário/Login</strong> — o e-mail ou usuário<br>
+        • <strong>Senha</strong> — a senha daquele serviço<br>
+        • <strong>Categoria</strong> — para organizar<br>
+        • <strong>Notas</strong> — qualquer informação extra</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">4</div>
+      <div class="step-body">
+        <h3>Copie com um clique</h3>
+        <p>Na listagem, clique no ícone de <strong>copiar</strong> ao lado de qualquer senha ou usuário para copiar direto para a área de transferência — sem precisar abrir a entrada.</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">5</div>
+      <div class="step-body">
+        <h3>Busque rapidamente</h3>
+        <p>Use a barra de busca para encontrar qualquer entrada pelo título, usuário ou categoria. Filtre por categoria usando os botões no topo.</p>
+      </div>
+    </div>
+
+    <div class="alert">
+      <strong>⚠️ Dica de segurança:</strong> Nunca use a mesma senha para o Baú e para outros serviços. A senha mestra é a chave de tudo — use uma senha forte e única!
+    </div>
+  </div>
+
+  <!-- FAQ -->
+  <div class="section">
+    <div class="section-title">❓ Dúvidas frequentes</div>
+
+    <div class="faq" onclick="toggleFaq(this)">
+      <div class="faq-q">Minhas senhas ficam seguras? <span class="faq-icon">+</span></div>
+      <div class="faq-a">Sim. Os dados são armazenados com criptografia no servidor. Apenas você, com sua senha mestra, consegue acessar as entradas.</div>
+    </div>
+
+    <div class="faq" onclick="toggleFaq(this)">
+      <div class="faq-q">Posso acessar de outros dispositivos? <span class="faq-icon">+</span></div>
+      <div class="faq-a">Sim! O Baú é 100% online. Acesse de qualquer celular, tablet ou computador pelo navegador em <code>4kitem.com.br/bau</code>.</div>
+    </div>
+
+    <div class="faq" onclick="toggleFaq(this)">
+      <div class="faq-q">Esqueci minha senha mestra, o que faço? <span class="faq-icon">+</span></div>
+      <div class="faq-a">Entre em contato pelo WhatsApp do suporte. Por segurança, a recuperação requer verificação de identidade antes de redefinir o acesso.</div>
+    </div>
+
+    <div class="faq" onclick="toggleFaq(this)">
+      <div class="faq-q">Tem limite de entradas? <span class="faq-icon">+</span></div>
+      <div class="faq-a">No plano atual não há limite. Guarde quantas senhas e acessos precisar.</div>
+    </div>
+
+    <div class="faq" onclick="toggleFaq(this)">
+      <div class="faq-q">Posso compartilhar uma senha com alguém? <span class="faq-icon">+</span></div>
+      <div class="faq-a">Por enquanto o Baú é individual (1 conta por usuário). O compartilhamento de cofres entre usuários está no roadmap futuro.</div>
+    </div>
+  </div>
+
+  <div style="background:#10121a;border:1px solid rgba(99,102,241,.15);border-radius:14px;padding:24px;text-align:center">
+    <div style="font-size:24px;margin-bottom:8px">💬</div>
+    <div style="font-size:16px;font-weight:800;color:#6366f1;margin-bottom:4px">Precisa de ajuda?</div>
+    <div style="font-size:13px;color:#5a5a8a;margin-bottom:16px">Fala com a gente pelo WhatsApp!</div>
+    <a href="https://wa.me/5547997765798" target="_blank" style="display:inline-block;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;padding:10px 24px;border-radius:10px;font-weight:800;font-size:14px">📲 Chamar no WhatsApp</a>
+  </div>
+
+</div>
+
+<footer>© 2026 Baú · 4KITEM · Norte de Santa Catarina</footer>
+<script>function toggleFaq(el){el.classList.toggle('open')}</script>
+</body>
+</html>

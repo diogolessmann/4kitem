@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ajuda — Alerta SC</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#0f0a0c;color:#f0e8ea;font-family:'Segoe UI',sans-serif;min-height:100vh}
+  a{color:#e94560;text-decoration:none}
+  .header{background:#1a0e12;border-bottom:1px solid rgba(233,69,96,.15);padding:16px 24px;display:flex;align-items:center;gap:16px}
+  .logo{font-size:20px;font-weight:900;color:#e94560}
+  .back-btn{margin-left:auto;padding:8px 16px;background:rgba(233,69,96,.1);border:1px solid rgba(233,69,96,.3);border-radius:8px;color:#e94560;font-size:13px;cursor:pointer;font-family:inherit}
+  .back-btn:hover{background:rgba(233,69,96,.2)}
+  .container{max-width:860px;margin:0 auto;padding:32px 20px}
+  .hero{text-align:center;margin-bottom:48px}
+  .hero h1{font-size:28px;font-weight:900;color:#e94560;margin-bottom:8px}
+  .hero p{font-size:15px;color:#8a5a65;line-height:1.6}
+  .section{margin-bottom:48px}
+  .section-title{font-size:18px;font-weight:800;color:#e94560;margin-bottom:20px;display:flex;align-items:center;gap:10px;padding-bottom:10px;border-bottom:1px solid rgba(233,69,96,.15)}
+  .step{display:flex;gap:16px;margin-bottom:16px;background:#1a0e12;border:1px solid rgba(233,69,96,.1);border-radius:14px;padding:20px}
+  .step-num{flex-shrink:0;width:36px;height:36px;background:#e94560;color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:16px}
+  .step-body h3{font-size:14px;font-weight:800;margin-bottom:6px;color:#f0e8ea}
+  .step-body p{font-size:13px;color:#8a5a65;line-height:1.6}
+  .step-body code{background:rgba(233,69,96,.1);border:1px solid rgba(233,69,96,.2);padding:2px 8px;border-radius:6px;font-size:12px;color:#e94560;font-family:monospace}
+  .tip{background:rgba(233,69,96,.05);border:1px solid rgba(233,69,96,.2);border-radius:10px;padding:14px 16px;font-size:13px;color:#8a5a65;line-height:1.6;margin-top:12px}
+  .tip strong{color:#e94560}
+  .faq{margin-bottom:12px;background:#1a0e12;border:1px solid rgba(233,69,96,.1);border-radius:12px;overflow:hidden}
+  .faq-q{padding:16px 20px;font-size:14px;font-weight:700;cursor:pointer;display:flex;justify-content:space-between;align-items:center}
+  .faq-q:hover{background:rgba(233,69,96,.05)}
+  .faq-a{padding:0 20px 16px;font-size:13px;color:#8a5a65;line-height:1.7;display:none}
+  .faq.open .faq-a{display:block}
+  .faq-icon{color:#e94560;font-size:16px;transition:.2s}
+  .faq.open .faq-icon{transform:rotate(45deg)}
+  .plano-card{background:#1a0e12;border:1px solid rgba(233,69,96,.2);border-radius:12px;padding:16px 20px;margin-bottom:10px;display:flex;align-items:center;gap:16px}
+  .plano-price{font-size:20px;font-weight:900;color:#e94560;white-space:nowrap}
+  .plano-info h4{font-size:14px;font-weight:800;color:#f0e8ea;margin-bottom:3px}
+  .plano-info p{font-size:12px;color:#8a5a65}
+  footer{text-align:center;padding:32px;font-size:12px;color:#4a2030}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">🚨 Alerta SC</div>
+  <span style="font-size:13px;color:#8a5a65">Central de Ajuda</span>
+  <button class="back-btn" onclick="history.back()">← Voltar</button>
+</div>
+
+<div class="container">
+
+  <div class="hero">
+    <h1>📖 Como usar o Alerta SC</h1>
+    <p>Monitore sua CNH e veículos pelo WhatsApp.<br>Receba alertas mensais sem precisar acessar nenhum site!</p>
+  </div>
+
+  <!-- O QUE É -->
+  <div class="section">
+    <div class="section-title">🚗 O que o Alerta SC monitora</div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">
+      <div style="background:#1a0e12;border:1px solid rgba(233,69,96,.15);border-radius:12px;padding:16px;text-align:center">
+        <div style="font-size:28px;margin-bottom:8px">📋</div>
+        <div style="font-weight:800;color:#f0e8ea;margin-bottom:4px">CNH</div>
+        <div style="font-size:12px;color:#8a5a65">Pontuação atual · Validade · Categoria · Restrições</div>
+      </div>
+      <div style="background:#1a0e12;border:1px solid rgba(233,69,96,.15);border-radius:12px;padding:16px;text-align:center">
+        <div style="font-size:28px;margin-bottom:8px">🚗</div>
+        <div style="font-weight:800;color:#f0e8ea;margin-bottom:4px">Veículo</div>
+        <div style="font-size:12px;color:#8a5a65">IPVA · Licenciamento · Multas em aberto</div>
+      </div>
+    </div>
+
+    <div class="tip">
+      <strong>📱 Como funciona:</strong> 1x por mês você recebe um relatório completo direto no WhatsApp. Sem precisar entrar no DETRAN, sem senha, sem complicação.
+    </div>
+  </div>
+
+  <!-- COMO ASSINAR -->
+  <div class="section">
+    <div class="section-title">✅ Como assinar</div>
+
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-body">
+        <h3>Escolha seu plano</h3>
+        <p>Acesse <code>4kitem.com.br/alerta</code> e escolha o plano ideal. <strong>Básico</strong> para 1 veículo, <strong>Família</strong> para até 3 veículos.</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-body">
+        <h3>Preencha o cadastro</h3>
+        <p>Informe seu nome, CPF, WhatsApp e os dados dos veículos: <strong>placa</strong> e uma descrição (ex: "Carro da esposa"). Quanto mais informações, mais completo o relatório.</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-body">
+        <h3>Realize o pagamento</h3>
+        <p>Após o cadastro, entre em contato pelo WhatsApp para confirmar o pagamento via PIX. Assim que confirmado, você já entra na próxima rodada de relatórios.</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">4</div>
+      <div class="step-body">
+        <h3>Receba seu relatório</h3>
+        <p>Todo mês você recebe no WhatsApp um resumo completo com: pontos na CNH, validade, situação do IPVA, licenciamento e multas. Simples assim!</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- PLANOS -->
+  <div class="section">
+    <div class="section-title">💰 Planos disponíveis</div>
+
+    <div class="plano-card">
+      <div style="font-size:28px">🚗</div>
+      <div class="plano-info" style="flex:1">
+        <h4>Básico — 1 veículo</h4>
+        <p>Ideal para monitorar seu carro pessoal + CNH</p>
+      </div>
+      <div class="plano-price">R$ 19,90<span style="font-size:12px;font-weight:400">/mês</span></div>
+    </div>
+
+    <div class="plano-card">
+      <div style="font-size:28px">👨‍👩‍👧</div>
+      <div class="plano-info" style="flex:1">
+        <h4>Família — até 3 veículos</h4>
+        <p>Para famílias com mais de um carro ou moto</p>
+      </div>
+      <div class="plano-price">R$ 34,90<span style="font-size:12px;font-weight:400">/mês</span></div>
+    </div>
+
+    <div class="plano-card">
+      <div style="font-size:28px">🚛</div>
+      <div class="plano-info" style="flex:1">
+        <h4>Frota — até 10 veículos</h4>
+        <p>Para empresas com vários veículos para monitorar</p>
+      </div>
+      <div class="plano-price">R$ 89,90<span style="font-size:12px;font-weight:400">/mês</span></div>
+    </div>
+  </div>
+
+  <!-- FAQ -->
+  <div class="section">
+    <div class="section-title">❓ Dúvidas frequentes</div>
+
+    <div class="faq" onclick="toggleFaq(this)">
+      <div class="faq-q">Com que frequência recebo o relatório? <span class="faq-icon">+</span></div>
+      <div class="faq-a">1 vez por mês. O relatório é gerado e enviado automaticamente para o seu WhatsApp. Se algo urgente mudar (nova multa, pontos), também avisamos.</div>
+    </div>
+
+    <div class="faq" onclick="toggleFaq(this)">
+      <div class="faq-q">Precisa instalar algum app? <span class="faq-icon">+</span></div>
+      <div class="faq-a">Não! O relatório chega direto no seu WhatsApp normal. Não precisa baixar nada, criar login ou acessar nenhum sistema.</div>
+    </div>
+
+    <div class="faq" onclick="toggleFaq(this)">
+      <div class="faq-q">O serviço funciona para veículos de outros estados? <span class="faq-icon">+</span></div>
+      <div class="faq-a">Atualmente o serviço é focado em Santa Catarina via DETRAN-SC. Veículos emplacados em outros estados podem ter informações limitadas.</div>
+    </div>
+
+    <div class="faq" onclick="toggleFaq(this)">
+      <div class="faq-q">Como cancelo? <span class="faq-icon">+</span></div>
+      <div class="faq-a">Entre em contato pelo WhatsApp do suporte a qualquer momento. O cancelamento é imediato e sem multa.</div>
+    </div>
+
+    <div class="faq" onclick="toggleFaq(this)">
+      <div class="faq-q">Os dados da minha CNH são seguros? <span class="faq-icon">+</span></div>
+      <div class="faq-a">Sim. Consultamos apenas as informações públicas do DETRAN-SC com o CPF e placa. Não armazenamos senhas e seus dados são usados exclusivamente para gerar o relatório.</div>
+    </div>
+  </div>
+
+  <div style="background:#1a0e12;border:1px solid rgba(233,69,96,.15);border-radius:14px;padding:24px;text-align:center">
+    <div style="font-size:24px;margin-bottom:8px">💬</div>
+    <div style="font-size:16px;font-weight:800;color:#e94560;margin-bottom:4px">Dúvidas ou quer assinar?</div>
+    <div style="font-size:13px;color:#8a5a65;margin-bottom:16px">Fala direto com a gente pelo WhatsApp!</div>
+    <a href="https://wa.me/5547997765798" target="_blank" style="display:inline-block;background:linear-gradient(135deg,#e94560,#f5a623);color:#fff;padding:10px 24px;border-radius:10px;font-weight:800;font-size:14px">📲 Chamar no WhatsApp</a>
+  </div>
+
+</div>
+
+<footer>© 2026 Alerta SC · 4KITEM · Norte de Santa Catarina</footer>
+<script>function toggleFaq(el){el.classList.toggle('open')}</script>
+</body>
+</html>

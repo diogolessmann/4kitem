@@ -1676,6 +1676,23 @@ def mz_ajuda():
     return render_template('mandazap/ajuda.html')
 
 
+@app.route('/agenda/ajuda')
+@_agenda_login_required
+def agenda_ajuda():
+    return render_template('agenda/ajuda.html')
+
+
+@app.route('/alerta/ajuda')
+def alerta_ajuda():
+    return render_template('alerta/ajuda.html')
+
+
+@app.route('/bau/ajuda')
+@_bau_login_required
+def bau_ajuda():
+    return render_template('bau/ajuda.html')
+
+
 # ── QR Code ───────────────────────────────────────────────────────────────────
 
 @app.route('/mandazap/numeros/<int:num_id>/qr')

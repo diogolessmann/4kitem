@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ajuda — Agenda SC</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#090f0c;color:#e8f5e8;font-family:'Segoe UI',sans-serif;min-height:100vh}
+  a{color:#27ae60;text-decoration:none}
+
+  .header{background:#0d1a10;border-bottom:1px solid rgba(39,174,96,.15);padding:16px 24px;display:flex;align-items:center;gap:16px}
+  .logo{font-size:20px;font-weight:900;color:#27ae60}
+  .back-btn{margin-left:auto;padding:8px 16px;background:rgba(39,174,96,.1);border:1px solid rgba(39,174,96,.3);border-radius:8px;color:#27ae60;font-size:13px;cursor:pointer;font-family:inherit}
+  .back-btn:hover{background:rgba(39,174,96,.2)}
+
+  .container{max-width:860px;margin:0 auto;padding:32px 20px}
+  .hero{text-align:center;margin-bottom:48px}
+  .hero h1{font-size:28px;font-weight:900;color:#27ae60;margin-bottom:8px}
+  .hero p{font-size:15px;color:#5a8a6a;line-height:1.6}
+
+  .section{margin-bottom:48px}
+  .section-title{font-size:18px;font-weight:800;color:#27ae60;margin-bottom:20px;display:flex;align-items:center;gap:10px;padding-bottom:10px;border-bottom:1px solid rgba(39,174,96,.15)}
+
+  .step{display:flex;gap:16px;margin-bottom:16px;background:#0d1a10;border:1px solid rgba(39,174,96,.1);border-radius:14px;padding:20px}
+  .step-num{flex-shrink:0;width:36px;height:36px;background:#27ae60;color:#000;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:16px}
+  .step-body h3{font-size:14px;font-weight:800;margin-bottom:6px;color:#e8f5e8}
+  .step-body p{font-size:13px;color:#5a8a6a;line-height:1.6}
+  .step-body code{background:rgba(39,174,96,.1);border:1px solid rgba(39,174,96,.2);padding:2px 8px;border-radius:6px;font-size:12px;color:#27ae60;font-family:monospace}
+
+  .tip{background:rgba(39,174,96,.05);border:1px solid rgba(39,174,96,.2);border-radius:10px;padding:14px 16px;font-size:13px;color:#5a8a6a;line-height:1.6;margin-top:12px}
+  .tip strong{color:#27ae60}
+  .alert{background:rgba(245,158,11,.05);border:1px solid rgba(245,158,11,.2);border-radius:10px;padding:14px 16px;font-size:13px;color:#92740a;line-height:1.6;margin-top:12px}
+  .alert strong{color:#f59e0b}
+
+  .faq{margin-bottom:12px;background:#0d1a10;border:1px solid rgba(39,174,96,.1);border-radius:12px;overflow:hidden}
+  .faq-q{padding:16px 20px;font-size:14px;font-weight:700;cursor:pointer;display:flex;justify-content:space-between;align-items:center}
+  .faq-q:hover{background:rgba(39,174,96,.05)}
+  .faq-a{padding:0 20px 16px;font-size:13px;color:#5a8a6a;line-height:1.7;display:none}
+  .faq.open .faq-a{display:block}
+  .faq-icon{color:#27ae60;font-size:16px;transition:.2s}
+  .faq.open .faq-icon{transform:rotate(45deg)}
+
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media(max-width:600px){.grid2{grid-template-columns:1fr}}
+  .card{background:#0d1a10;border:1px solid rgba(39,174,96,.1);border-radius:12px;padding:16px}
+  .card h4{font-size:13px;font-weight:800;color:#27ae60;margin-bottom:6px}
+  .card p{font-size:12px;color:#5a8a6a;line-height:1.6}
+
+  footer{text-align:center;padding:32px;font-size:12px;color:#2d4a2d}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">📅 Agenda SC</div>
+  <span style="font-size:13px;color:#5a8a6a">Central de Ajuda</span>
+  <button class="back-btn" onclick="history.back()">← Voltar ao painel</button>
+</div>
+
+<div class="container">
+
+  <div class="hero">
+    <h1>📖 Como usar o Agenda SC</h1>
+    <p>Guia completo para configurar e usar o sistema de agendamento.<br>Do cadastro até o cliente agendar sozinho pelo celular!</p>
+  </div>
+
+  <!-- PASSO 1: PRIMEIROS PASSOS -->
+  <div class="section">
+    <div class="section-title">🚀 Passo 1 — Primeiros passos</div>
+
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-body">
+        <h3>Crie sua conta</h3>
+        <p>Acesse <code>4kitem.com.br/agenda/cadastro</code>, preencha o nome do negócio, seu nome, celular (com DDD) e senha. O trial de 30 dias começa automaticamente — sem cartão.</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-body">
+        <h3>Faça login</h3>
+        <p>Em <code>4kitem.com.br/agenda/entrar</code>, use o <strong>celular com DDD</strong> e a senha cadastrada. Pode digitar com ou sem parênteses/traço: <code>47999999999</code> ou <code>(47) 99999-9999</code> — ambos funcionam.</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-body">
+        <h3>Configure seus serviços</h3>
+        <p>No painel, clique na aba <strong>✂️ Serviços</strong>. Adicione cada serviço que você oferece com nome, duração (em minutos) e preço. Ex: "Corte de cabelo — 30 min — R$ 35,00".</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">4</div>
+      <div class="step-body">
+        <h3>Configure seus horários</h3>
+        <p>Na aba <strong>🕐 Horários</strong>, defina quais dias da semana você atende e o horário de início e fim. O sistema vai bloquear automaticamente os horários ocupados.</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">5</div>
+      <div class="step-body">
+        <h3>Compartilhe o link de agendamento</h3>
+        <p>Clique em <strong>"Minha página"</strong> no topo do painel ou acesse <code>4kitem.com.br/agendar/SEU-SLUG</code>. Esse é o link que você manda pro cliente agendar sozinho pelo celular, sem app.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- PASSO 2: GERENCIAR AGENDAMENTOS -->
+  <div class="section">
+    <div class="section-title">📋 Passo 2 — Gerenciar agendamentos</div>
+
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-body">
+        <h3>Aba "Hoje"</h3>
+        <p>Mostra todos os agendamentos do dia atual. Cada card tem o nome do cliente, serviço, horário e status (pendente / confirmado / concluído).</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-body">
+        <h3>Ações nos agendamentos</h3>
+        <p>Em cada agendamento você pode:<br>
+        ✅ <strong>Confirmar</strong> — avisa o cliente que está confirmado<br>
+        ✔️ <strong>Concluir</strong> — marca como feito e registra no histórico<br>
+        💰 <strong>Registrar pagamento</strong> — anota valor e forma (dinheiro, pix, crédito)<br>
+        ❌ <strong>Cancelar</strong> — avisa o cliente automaticamente (se WhatsApp ativo)</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-body">
+        <h3>Aba "Agenda" — visão semanal</h3>
+        <p>Veja todos os agendamentos futuros em formato de lista, filtrando por data. Útil para planejar a semana.</p>
+      </div>
+    </div>
+
+    <div class="tip">
+      <strong>💡 Dica:</strong> Depois de confirmar um agendamento e ele acontecer, sempre clique em <strong>Concluir</strong> — isso atualiza o histórico do cliente e o relatório financeiro automaticamente.
+    </div>
+  </div>
+
+  <!-- PASSO 3: WHATSAPP AUTOMÁTICO -->
+  <div class="section">
+    <div class="section-title">📲 Passo 3 — WhatsApp automático (MandaZap)</div>
+
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-body">
+        <h3>Crie sua conta no MandaZap</h3>
+        <p>Acesse <code>4kitem.com.br/mandazap/cadastro</code> e crie sua conta. O WhatsApp automático é um complemento do Agenda SC por <strong>R$ 39,90/mês</strong>.</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-body">
+        <h3>Crie uma instância e conecte o WhatsApp</h3>
+        <p>No painel do MandaZap, vá em <strong>Números</strong> → <strong>Novo número</strong>. Dê um nome (ex: <code>minha-barbearia</code>), clique em <strong>Conectar</strong> e escaneie o QR Code com o WhatsApp do negócio.</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-body">
+        <h3>Ative no Agenda SC</h3>
+        <p>No painel → aba <strong>⚙️ Config</strong> → seção MandaZap:<br>
+        1. Ative o toggle <strong>"WhatsApp automático"</strong><br>
+        2. Cole o nome da instância que você criou (ex: <code>minha-barbearia</code>)<br>
+        3. Clique em <strong>"📲 Testar envio agora"</strong> — se receber a mensagem, está 100%!</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">4</div>
+      <div class="step-body">
+        <h3>Personalize as mensagens</h3>
+        <p>Edite os templates de mensagem usando as variáveis:<br>
+        <code>{nome}</code> — nome do cliente<br>
+        <code>{servico}</code> — serviço agendado<br>
+        <code>{data}</code> — data do agendamento<br>
+        <code>{hora}</code> — horário<br>
+        <code>{negocio}</code> — nome do seu negócio</p>
+      </div>
+    </div>
+
+    <div class="alert">
+      <strong>⚠️ Importante:</strong> O WhatsApp conectado na instância precisa ficar com o celular ligado e com internet. Se desconectar, vá ao MandaZap e reconecte o QR Code.
+    </div>
+  </div>
+
+  <!-- PASSO 4: PIX E FINANCEIRO -->
+  <div class="section">
+    <div class="section-title">💰 Passo 4 — PIX e relatório financeiro</div>
+
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-body">
+        <h3>Configure sua chave PIX</h3>
+        <p>Em <strong>⚙️ Config → Pagamento via PIX</strong>, preencha sua chave PIX (CPF, CNPJ, e-mail ou chave aleatória) e o nome que aparece na transferência. O cliente vai ver essas informações automaticamente após agendar.</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-body">
+        <h3>Registre pagamentos</h3>
+        <p>Em cada agendamento, clique em <strong>💰 Registrar pagamento</strong>. Informe o valor e a forma (dinheiro / pix / débito / crédito / cortesia). Isso alimenta o relatório financeiro automaticamente.</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-body">
+        <h3>Veja o relatório financeiro</h3>
+        <p>Na aba <strong>💰 Financeiro</strong> você vê a receita dos últimos 6 meses em gráfico de barras, com detalhamento por mês. Ótimo pra ver a evolução do negócio.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- FAQ -->
+  <div class="section">
+    <div class="section-title">❓ Dúvidas frequentes</div>
+
+    <div class="faq" onclick="toggleFaq(this)">
+      <div class="faq-q">Esqueci minha senha, como recupero? <span class="faq-icon">+</span></div>
+      <div class="faq-a">Por enquanto não há recuperação automática. Entre em contato pelo WhatsApp do suporte 4KITEM e redefinimos manualmente para você.</div>
+    </div>
+
+    <div class="faq" onclick="toggleFaq(this)">
+      <div class="faq-q">O cliente pode cancelar o próprio agendamento? <span class="faq-icon">+</span></div>
+      <div class="faq-a">Não diretamente — o cancelamento é feito pelo painel do negócio. Quando você cancela, o cliente recebe aviso automático pelo WhatsApp (se MandaZap ativo).</div>
+    </div>
+
+    <div class="faq" onclick="toggleFaq(this)">
+      <div class="faq-q">Consigo ver o histórico de um cliente específico? <span class="faq-icon">+</span></div>
+      <div class="faq-a">Sim! Na aba <strong>👥 Clientes</strong>, busque pelo nome ou número. Você vê quantas vezes já veio, quando foi a última visita e o histórico completo de agendamentos.</div>
+    </div>
+
+    <div class="faq" onclick="toggleFaq(this)">
+      <div class="faq-q">Quantos serviços posso cadastrar? <span class="faq-icon">+</span></div>
+      <div class="faq-a">Ilimitados! Cadastre todos os serviços que oferece, cada um com duração e preço individuais. O sistema bloqueia os horários automaticamente baseado na duração.</div>
+    </div>
+
+    <div class="faq" onclick="toggleFaq(this)">
+      <div class="faq-q">O sistema funciona no celular? <span class="faq-icon">+</span></div>
+      <div class="faq-a">Sim! O painel é 100% responsivo. Você pode até instalar como app: no celular, ao acessar o painel, toque em "Adicionar à tela inicial" no menu do navegador.</div>
+    </div>
+
+    <div class="faq" onclick="toggleFaq(this)">
+      <div class="faq-q">O que acontece após o período de trial? <span class="faq-icon">+</span></div>
+      <div class="faq-a">Após os 30 dias de teste gratuito, o sistema fica suspenso até a ativação do plano. Entre em contato pelo suporte para ativar — nenhum dado é perdido.</div>
+    </div>
+
+    <div class="faq" onclick="toggleFaq(this)">
+      <div class="faq-q">Posso ter mais de um profissional? <span class="faq-icon">+</span></div>
+      <div class="faq-a">No plano atual, o sistema é por negócio (1 agenda). A funcionalidade multi-profissional está no roadmap e será lançada em breve.</div>
+    </div>
+  </div>
+
+  <!-- CONTATO -->
+  <div style="background:#0d1a10;border:1px solid rgba(39,174,96,.15);border-radius:14px;padding:24px;text-align:center">
+    <div style="font-size:24px;margin-bottom:8px">💬</div>
+    <div style="font-size:16px;font-weight:800;color:#27ae60;margin-bottom:4px">Ainda com dúvida?</div>
+    <div style="font-size:13px;color:#5a8a6a;margin-bottom:16px">Fala com a gente pelo WhatsApp — atendimento humano, sem robô.</div>
+    <a href="https://wa.me/5547997765798" target="_blank" style="display:inline-block;background:linear-gradient(135deg,#27ae60,#2ecc71);color:#fff;padding:10px 24px;border-radius:10px;font-weight:800;font-size:14px">📲 Chamar no WhatsApp</a>
+  </div>
+
+</div>
+
+<footer>© 2026 Agenda SC · 4KITEM · Norte de Santa Catarina</footer>
+
+<script>
+function toggleFaq(el) {
+  el.classList.toggle('open');
+}
+</script>
+</body>
+</html>
