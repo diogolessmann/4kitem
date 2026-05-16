@@ -361,12 +361,32 @@
       <div class="card-title">🤖 MandaZap — WhatsApp Automático</div>
 
       {% if not biz.mandazap_ativo %}
-      <div class="upgrade-banner">
-        <div class="upgrade-icon">🚀</div>
-        <div class="upgrade-text">
-          <h3>Reduza faltas em até 60%!</h3>
-          <p>Ative o MandaZap e envie confirmações, lembretes e avisos de cancelamento automaticamente pelo WhatsApp.</p>
+      <div class="upgrade-banner" style="flex-direction:column;align-items:flex-start;gap:12px">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div class="upgrade-icon">🚀</div>
+          <div class="upgrade-text">
+            <h3>Reduza faltas em até 60%!</h3>
+            <p>Ative o MandaZap e envie confirmações, lembretes e avisos de cancelamento automaticamente pelo WhatsApp.</p>
+          </div>
         </div>
+        <div style="background:rgba(0,0,0,.25);border-radius:10px;padding:12px 16px;width:100%">
+          <div style="font-size:12px;color:rgba(255,255,255,.7);margin-bottom:8px;font-weight:600;text-transform:uppercase;letter-spacing:.5px">📦 Como contratar</div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+            <div style="font-size:13px;color:#fff">
+              <strong style="font-size:16px;color:#2ecc71">R$ 39,90<span style="font-size:12px;font-weight:400">/mês</span></strong>
+              &nbsp;· WhatsApp automático add-on
+            </div>
+            <a href="/mandazap/cadastro" target="_blank" style="background:linear-gradient(135deg,#27ae60,#2ecc71);color:#fff;padding:7px 16px;border-radius:8px;font-size:12px;font-weight:800;white-space:nowrap">
+              Contratar MandaZap →
+            </a>
+            <span style="font-size:11px;color:rgba(255,255,255,.5)">Após criar, cole o nome da instância abaixo ↓</span>
+          </div>
+        </div>
+      </div>
+      {% else %}
+      <div style="background:rgba(39,174,96,.08);border:1px solid rgba(39,174,96,.2);border-radius:10px;padding:10px 14px;margin-bottom:16px;display:flex;align-items:center;gap:8px">
+        <span style="font-size:16px">✅</span>
+        <span style="font-size:13px;color:#27ae60;font-weight:600">MandaZap ativo — WhatsApp automático funcionando</span>
       </div>
       {% endif %}
 
@@ -383,6 +403,11 @@
           <input type="text" id="mz-instance" value="{{ biz.mandazap_instance or '' }}" placeholder="Ex: minha-barbearia" oninput="debounceConfig()">
           <div style="font-size:10px;color:var(--text2);margin-top:3px">Crie sua instância no <a href="/mandazap" target="_blank" style="color:var(--green)">MandaZap</a> e cole o nome aqui.</div>
         </div>
+        <!-- Botão Testar -->
+        <button onclick="testarWhatsapp()" id="btn-testar-wpp" style="margin-top:4px;width:100%;padding:10px;background:rgba(39,174,96,.12);border:1px solid rgba(39,174,96,.3);border-radius:10px;color:#27ae60;font-size:13px;font-weight:700;cursor:pointer;transition:.2s;font-family:inherit">
+          📲 Testar envio agora
+        </button>
+        <div id="testar-result" style="margin-top:8px;font-size:12px;display:none"></div>
       </div>
 
       <div class="config-section">
@@ -659,6 +684,34 @@ function debounceConfig() {
   clearTimeout(_configTimer);
   _configTimer = setTimeout(salvarConfig, 1500);
 }
+async function testarWhatsapp() {
+  const btn = document.getElementById('btn-testar-wpp');
+  const res = document.getElementById('testar-result');
+  btn.disabled = true;
+  btn.textContent = '⏳ Enviando...';
+  res.style.display = 'none';
+  try {
+    const r = await fetch('/agenda/painel/testar-whatsapp', { method: 'POST' });
+    const d = await r.json();
+    res.style.display = 'block';
+    if (d.success) {
+      res.style.color = '#27ae60';
+      res.textContent = '✅ ' + d.msg;
+      btn.textContent = '✅ Mensagem enviada!';
+    } else {
+      res.style.color = '#ef4444';
+      res.textContent = '❌ ' + d.error;
+      btn.textContent = '📲 Testar envio agora';
+    }
+  } catch(e) {
+    res.style.display = 'block';
+    res.style.color = '#ef4444';
+    res.textContent = '❌ Erro de conexão.';
+    btn.textContent = '📲 Testar envio agora';
+  }
+  btn.disabled = false;
+}
+
 async function salvarConfig() {
   clearTimeout(_configTimer);
   const payload = {

@@ -566,6 +566,35 @@ def agenda_configuracoes():
     return jsonify(biz)
 
 
+@app.route('/agenda/painel/testar-whatsapp', methods=['POST'])
+@_agenda_login_required
+def agenda_testar_whatsapp():
+    """Envia mensagem de teste para o próprio número do negócio."""
+    biz_id = session['agenda_business_id']
+    conn   = get_saas_db()
+    biz    = dict(conn.execute('SELECT * FROM agenda_businesses WHERE id=?', (biz_id,)).fetchone())
+    conn.close()
+    instance = biz.get('mandazap_instance', '').strip()
+    phone    = biz.get('phone', '').strip()
+    if not instance:
+        return jsonify({'success': False, 'error': 'Nome da instância não configurado.'})
+    if not phone:
+        return jsonify({'success': False, 'error': 'Telefone do negócio não encontrado.'})
+    evo_url = os.environ.get('EVOLUTION_API_URL', '').rstrip('/')
+    evo_key = os.environ.get('EVOLUTION_API_KEY', '')
+    if not evo_url or not evo_key:
+        return jsonify({'success': False, 'error': 'Evolution API não configurada no servidor. Contate o suporte.'})
+    msg = (f"✅ *Teste de integração — {biz['name']}*\n\n"
+           f"Sua conexão com o WhatsApp automático está funcionando!\n\n"
+           f"📲 *MandaZap + Agenda SC* ativado com sucesso.\n"
+           f"Seus clientes vão receber confirmações, lembretes e avisos automaticamente.")
+    ok = _agenda_send_whatsapp(phone, msg, instance)
+    if ok:
+        return jsonify({'success': True, 'msg': f'Mensagem enviada para {phone} ✅'})
+    else:
+        return jsonify({'success': False, 'error': 'Falha ao enviar. Verifique se a instância está conectada no MandaZap (QR code escaneado).'})
+
+
 @app.route('/agenda/painel/relatorios')
 @_agenda_login_required
 def agenda_relatorios():
