@@ -431,7 +431,7 @@ select option{background:var(--surface2)}
         {% set is_active = c.status in ('enviando', 'sending') %}
         {% set is_done   = c.status in ('concluida', 'done') %}
         {% set is_err    = c.status in ('erro', 'failed') %}
-        {% set can_send  = c.status in ('rascunho', 'draft', 'erro', 'failed') %}
+        {% set can_send  = c.status in ('rascunho', 'draft', 'erro', 'failed', 'cancelada') %}
         <tr id="camp-row-{{ c.id }}">
           <td>
             <div style="font-weight:700">{{ c.name }}</div>
@@ -439,7 +439,9 @@ select option{background:var(--surface2)}
               {{ c.message[:70] }}{% if c.message|length > 70 %}…{% endif %}
             </div>
             {% if c.error_log %}
-            <div style="font-size:10px;color:var(--red);margin-top:2px;cursor:help" title="{{ c.error_log }}">⚠️ {{ c.error_log[:80] }}{% if c.error_log|length > 80 %}…{% endif %}</div>
+            <div style="font-size:10px;color:#fca5a5;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2);border-radius:5px;padding:3px 7px;margin-top:4px;cursor:help;line-height:1.4" title="{{ c.error_log }}">
+              ⚠️ {{ c.error_log[:100] }}{% if c.error_log|length > 100 %}… <span style="color:var(--text3)">(hover para ver tudo)</span>{% endif %}
+            </div>
             {% endif %}
             {% if is_done and c.finished_at %}
             <div style="font-size:10px;color:var(--text3);margin-top:2px">✅ {{ c.finished_at[:16].replace('T',' ') }}</div>

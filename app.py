@@ -2535,8 +2535,21 @@ def mz_campaign_dispatch(cid):
         return jsonify({'erro': 'Campanha não encontrada'}), 404
     status = camp['status']
     if status == 'enviando':
-        return jsonify({'erro': 'Campanha já está sendo enviada.'}), 400
-    if status == 'concluida':
+        # Verifica se está realmente ativa ou presa (stale > 10 min sem update)
+        last_update = camp.get('updated_at') or camp.get('created_at') or ''
+        try:
+            from datetime import timezone
+            dt_upd = datetime.fromisoformat(last_update) if last_update else None
+            minutos_parada = (datetime.now() - dt_upd).total_seconds() / 60 if dt_upd else 999
+        except Exception:
+            minutos_parada = 999
+        if minutos_parada < 5:
+            return jsonify({'erro': 'Campanha já está sendo enviada (aguarde).'}), 400
+        # Presa há mais de 5 minutos — permite re-dispatch (thread morta)
+        log.warning(f"[dispatch] Campanha {cid} presa em 'enviando' há {minutos_parada:.0f}min — forçando re-dispatch")
+        conn.execute("UPDATE mandazap_campaigns SET status='rascunho' WHERE id=?", (cid,))
+        conn.commit()
+    elif status == 'concluida':
         return jsonify({'erro': 'Campanha já foi concluída. Duplique-a para reenviar.'}), 400
     threading.Thread(target=_dispatch_campaign, args=(cid, user_id), daemon=True).start()
     return jsonify({'ok': True, 'msg': 'Disparo iniciado!'})
@@ -3011,6 +3024,30 @@ def _startup():
                 except Exception as e:
                     log.error(f"Scrape startup error: {e}")
             threading.Thread(target=_scrape, daemon=True).start()
+
+        # ── Cleanup: marca campanhas presas em "enviando" como erro ──────────
+        # Acontece quando o Railway reinicia o container durante um disparo.
+        # O thread daemon morre sem chance de fazer cleanup no banco.
+        try:
+            _c = get_saas_db()
+            presas = _c.execute(
+                "SELECT id, sent, total FROM mandazap_campaigns WHERE status='enviando'"
+            ).fetchall()
+            if presas:
+                for p in presas:
+                    log.warning(f"[startup] Campanha {p['id']} presa em 'enviando' ({p['sent']}/{p['total']}) — marcando como erro")
+                    _c.execute(
+                        "UPDATE mandazap_campaigns SET status='erro', finished_at=?, error_log=? WHERE id=?",
+                        (datetime.now().isoformat(),
+                         f"Interrompida pelo servidor (reinicialização Railway). {p['sent']} de {p['total']} enviados. Clique em Disparar para continuar.",
+                         p['id'])
+                    )
+                _c.commit()
+                log.info(f"[startup] {len(presas)} campanha(s) corrigida(s)")
+            _c.close()
+        except Exception as e:
+            log.error(f"[startup] Cleanup campanhas erro: {e}")
+
     except Exception as e:
         log.error(f"Startup error: {e}")
 
