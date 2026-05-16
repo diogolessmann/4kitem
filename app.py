@@ -2057,6 +2057,46 @@ def mz_number_delete(nid):
     return redirect('/mandazap/painel?section=numeros')
 
 
+@app.route('/mandazap/numeros/<int:num_id>/testar', methods=['POST'])
+@_mandazap_login_required
+def mz_testar_envio(num_id):
+    """Envia uma mensagem de teste para o próprio número e retorna o resultado bruto da API."""
+    import requests as _req
+    user_id  = session['mz_user_id']
+    conn     = get_saas_db()
+    num      = conn.execute('SELECT * FROM mandazap_numbers WHERE id=? AND user_id=?', (num_id, user_id)).fetchone()
+    conn.close()
+    if not num:
+        return jsonify({'ok': False, 'erro': 'Número não encontrado'}), 404
+
+    evo_url = os.environ.get('EVOLUTION_API_URL', '').rstrip('/')
+    evo_key = os.environ.get('EVOLUTION_API_KEY', '')
+    if not evo_url or not evo_key:
+        return jsonify({'ok': False, 'erro': 'EVOLUTION_API_URL ou EVOLUTION_API_KEY não configurados no Railway'})
+
+    instance = f"mz{user_id}n{num_id}"
+    phone    = (num['phone'] or '').replace(' ','').replace('-','').replace('+','').replace('(','').replace(')','')
+    if not phone.startswith('55'):
+        phone = '55' + phone
+
+    payload = {'number': phone, 'text': '✅ Teste MandaZap — envio funcionando! (mensagem automática de diagnóstico)'}
+    try:
+        r = _req.post(
+            f"{evo_url}/message/sendText/{instance}",
+            headers={'apikey': evo_key, 'Content-Type': 'application/json'},
+            json=payload, timeout=15
+        )
+        return jsonify({
+            'ok':       r.status_code in (200, 201),
+            'status':   r.status_code,
+            'instance': instance,
+            'phone':    phone,
+            'resposta': r.text[:500],
+        })
+    except Exception as e:
+        return jsonify({'ok': False, 'erro': str(e), 'instance': instance, 'phone': phone})
+
+
 # ── Campanhas ─────────────────────────────────────────────────────────────────
 
 @app.route('/mandazap/campanhas/add', methods=['POST'])

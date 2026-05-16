@@ -314,6 +314,9 @@ select option{background:var(--surface2)}
           <div id="qr-img-{{ n.id }}" style="margin-top:12px"></div>
           {% endif %}
         </div>
+        <button class="btn btn-sm" style="width:100%;margin-bottom:8px;background:rgba(39,174,96,.1);border:1px solid rgba(39,174,96,.3);color:#27ae60"
+                onclick="testarEnvio({{ n.id }}, this)">📲 Testar Envio</button>
+        <div id="teste-result-{{ n.id }}" style="display:none;font-size:11px;background:#0d1117;border:1px solid var(--border2);border-radius:8px;padding:10px;margin-bottom:8px;word-break:break-all;white-space:pre-wrap;font-family:monospace;max-height:120px;overflow-y:auto"></div>
         <form method="POST" action="/mandazap/numeros/{{ n.id }}/delete" onsubmit="return confirm('Remover {{ n.label }}?')">
           <button type="submit" class="btn btn-red btn-sm" style="width:100%">🗑 Remover número</button>
         </form>
@@ -1041,6 +1044,34 @@ function _pollProgress(cid) {
 }
 
 // ── Verificar conexão manualmente ────────────────────────────────────────────
+async function testarEnvio(numId, btn) {
+  const orig = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = '⏳ Enviando...';
+  const res = document.getElementById('teste-result-' + numId);
+  res.style.display = 'none';
+  try {
+    const r = await fetch(`/mandazap/numeros/${numId}/testar`, { method: 'POST' });
+    const d = await r.json();
+    res.style.display = 'block';
+    if (d.ok) {
+      res.style.color = '#27ae60';
+      res.textContent = `✅ SUCESSO!\nInstância: ${d.instance}\nFone: ${d.phone}\n\n${d.resposta}`;
+      showToast('✅ Mensagem enviada! Verifique o WhatsApp.');
+    } else {
+      res.style.color = '#ef4444';
+      res.textContent = `❌ FALHOU\nInstância: ${d.instance||'?'}\nFone: ${d.phone||'?'}\nErro: ${d.erro||''}\n\nResposta API:\n${d.resposta||'(sem resposta)'}`;
+      showToast('❌ Falha no envio — veja o diagnóstico abaixo', 'err');
+    }
+  } catch(e) {
+    res.style.display = 'block';
+    res.style.color = '#ef4444';
+    res.textContent = '❌ Erro de conexão: ' + e.message;
+  }
+  btn.textContent = orig;
+  btn.disabled = false;
+}
+
 async function verificarConexao(numberId, btn) {
   const orig = btn.textContent;
   btn.textContent = '⏳';
