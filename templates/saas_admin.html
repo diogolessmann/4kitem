@@ -5,21 +5,21 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SaaS Admin — 4KITEM</title>
 <style>
-  :root{--bg:#08080f;--surface:#13131f;--surface2:#1a1a2e;--border:rgba(255,255,255,0.07);--text:#f0f0ff;--text2:#8888aa;--accent:#6366f1;--green:#22c55e;--red:#ef4444;--orange:#f59e0b}
+  :root{--bg:#08080f;--surface:#13131f;--surface2:#1a1a2e;--border:rgba(255,255,255,0.07);--text:#f0f0ff;--text2:#8888aa;--accent:#6366f1;--green:#22c55e;--red:#ef4444;--orange:#f59e0b;--purple:#a855f7;--blue:#3b82f6}
   *{box-sizing:border-box;margin:0;padding:0}
   body{background:var(--bg);color:var(--text);font-family:'Segoe UI',sans-serif;min-height:100vh}
   a{color:inherit;text-decoration:none}
 
   nav{background:var(--surface);border-bottom:1px solid var(--border);padding:0 24px;height:56px;display:flex;align-items:center;gap:16px}
   .nav-logo{font-size:17px;font-weight:900;color:var(--accent);flex:1}
-  .nav-link{font-size:12px;color:var(--text2);background:none;border:1px solid var(--border);padding:5px 12px;border-radius:8px;cursor:pointer;transition:.2s}
+  .nav-link{font-size:12px;color:var(--text2);background:none;border:1px solid var(--border);padding:5px 12px;border-radius:8px;cursor:pointer;transition:.2s;font-family:inherit}
   .nav-link:hover{border-color:var(--red);color:var(--red)}
 
-  .container{max-width:1100px;margin:0 auto;padding:28px 20px}
+  .container{max-width:1200px;margin:0 auto;padding:28px 20px}
   h2{font-size:18px;font-weight:800;margin-bottom:20px;color:var(--text2)}
 
-  .tabs{display:flex;gap:4px;margin-bottom:24px}
-  .tab-btn{padding:8px 20px;background:none;border:none;color:var(--text2);cursor:pointer;font-size:14px;border-bottom:2px solid transparent;transition:.2s;font-family:inherit}
+  .tabs{display:flex;gap:4px;margin-bottom:24px;flex-wrap:wrap}
+  .tab-btn{padding:8px 18px;background:none;border:none;color:var(--text2);cursor:pointer;font-size:13px;border-bottom:2px solid transparent;transition:.2s;font-family:inherit;white-space:nowrap}
   .tab-btn.active{color:var(--accent);border-bottom-color:var(--accent);font-weight:700}
   .tab-content{display:none}
   .tab-content.active{display:block}
@@ -33,14 +33,30 @@
   .badge-active{background:rgba(34,197,94,.15);color:var(--green)}
   .badge-suspended{background:rgba(239,68,68,.15);color:var(--red)}
   .badge-paid{background:rgba(34,197,94,.15);color:var(--green)}
-  .btn-sm{padding:4px 10px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;border:none;transition:.2s;font-family:inherit}
+
+  .btn-sm{padding:5px 10px;border-radius:6px;cursor:pointer;font-size:11px;font-weight:700;border:none;transition:.2s;font-family:inherit;white-space:nowrap}
   .btn-green{background:rgba(34,197,94,.15);color:var(--green);border:1px solid rgba(34,197,94,.3)}
   .btn-green:hover{background:rgba(34,197,94,.25)}
   .btn-red{background:rgba(239,68,68,.15);color:var(--red);border:1px solid rgba(239,68,68,.3)}
   .btn-red:hover{background:rgba(239,68,68,.25)}
   .btn-orange{background:rgba(245,158,11,.15);color:var(--orange);border:1px solid rgba(245,158,11,.3)}
   .btn-orange:hover{background:rgba(245,158,11,.25)}
+  .btn-purple{background:rgba(99,102,241,.15);color:#818cf8;border:1px solid rgba(99,102,241,.3)}
+  .btn-purple:hover{background:rgba(99,102,241,.25)}
+  .btn-blue{background:rgba(59,130,246,.15);color:#60a5fa;border:1px solid rgba(59,130,246,.3)}
+  .btn-blue:hover{background:rgba(59,130,246,.25)}
+
+  .actions{display:flex;flex-direction:column;gap:4px;min-width:105px}
   .empty{text-align:center;padding:40px;color:var(--text2);font-size:14px}
+
+  /* Modal */
+  .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:999;align-items:center;justify-content:center}
+  .modal-box{background:#13131f;border:1px solid rgba(99,102,241,.3);border-radius:16px;padding:28px;width:340px;box-shadow:0 20px 60px rgba(0,0,0,.6)}
+  .modal-title{font-size:16px;font-weight:800;margin-bottom:16px;color:#f0f0ff}
+  .modal-input{width:100%;background:#0a0a15;border:1px solid rgba(99,102,241,.3);border-radius:8px;color:#f0f0ff;padding:10px 12px;font-size:14px;outline:none;margin-bottom:12px;font-family:inherit}
+  .modal-input:focus{border-color:#6366f1}
+  .modal-btns{display:flex;gap:8px}
+  .modal-btns button{flex:1;padding:9px;font-size:13px}
 </style>
 </head>
 <body>
@@ -57,56 +73,46 @@
     <button class="tab-btn" onclick="showTab('agenda',this)">📅 Agenda SC ({{ businesses|length }})</button>
     <button class="tab-btn" onclick="showTab('mandazap',this)">💬 MandaZap ({{ mz_users|length }})</button>
     <button class="tab-btn" onclick="showTab('bau',this)">🗄️ Baú ({{ bau_users|length }})</button>
+    <button class="tab-btn" onclick="showTab('kids',this)">📺 KidsCurator ({{ kids_clients|length }})</button>
+    <button class="tab-btn" onclick="showTab('desp',this)">🚗 Despachante ({{ desp_clientes|length }})</button>
   </div>
 
-  <!-- ALERTA -->
+  <!-- ═══════════════ ALERTA SC ═══════════════ -->
   <div class="tab-content active" id="tab-alerta">
     <h2>Assinantes do Alerta SC</h2>
     {% if subscribers %}
     <table>
-      <thead>
-        <tr>
-          <th>Nome</th>
-          <th>WhatsApp</th>
-          <th>Plano</th>
-          <th>Placas</th>
-          <th>Status</th>
-          <th>Pagamento</th>
-          <th>Cadastro</th>
-          <th>Ações</th>
-        </tr>
-      </thead>
+      <thead><tr>
+        <th>Nome</th><th>WhatsApp</th><th>Plano</th><th>Placas</th>
+        <th>Status</th><th>Pagamento</th><th>Trial</th><th>Cadastro</th><th>Ações</th>
+      </tr></thead>
       <tbody>
         {% for s in subscribers %}
         <tr id="sub-{{ s.id }}">
           <td><strong>{{ s.name }}</strong>{% if s.cpf %}<br><span style="font-size:11px;color:var(--text2)">{{ s.cpf }}</span>{% endif %}</td>
-          <td>
-            <a href="https://wa.me/55{{ s.phone|replace('(','') |replace(')','') |replace('-','') |replace(' ','') }}" target="_blank" style="color:var(--green)">{{ s.phone }}</a>
-          </td>
+          <td><a href="https://wa.me/55{{ s.phone|replace('(','') |replace(')','') |replace('-','') |replace(' ','') }}" target="_blank" style="color:var(--green)">{{ s.phone }}</a></td>
           <td>{{ s.plano }}</td>
           <td style="font-size:12px">
             {% if s.plate_1 %}<div>{{ s.plate_1 }}{% if s.desc_1 %} — {{ s.desc_1 }}{% endif %}</div>{% endif %}
             {% if s.plate_2 %}<div>{{ s.plate_2 }}{% if s.desc_2 %} — {{ s.desc_2 }}{% endif %}</div>{% endif %}
             {% if s.plate_3 %}<div>{{ s.plate_3 }}{% if s.desc_3 %} — {{ s.desc_3 }}{% endif %}</div>{% endif %}
           </td>
-          <td>
-            <span class="badge badge-{{ s.status }}">{{ s.status }}</span>
-          </td>
-          <td>
-            <span class="badge badge-{{ s.payment_status }}">{{ s.payment_status }}</span>
-          </td>
+          <td><span class="badge badge-{{ s.status }}">{{ s.status }}</span></td>
+          <td><span class="badge badge-{{ s.payment_status }}">{{ s.payment_status }}</span></td>
+          <td style="font-size:11px;color:var(--text2)" id="trial-alerta-{{ s.id }}">{{ s.trial_ends[:10] if s.trial_ends else '—' }}</td>
           <td style="font-size:11px;color:var(--text2)">{{ s.created_at[:10] if s.created_at else '—' }}</td>
           <td>
-            <div style="display:flex;flex-direction:column;gap:4px">
+            <div class="actions">
               {% if s.payment_status != 'paid' %}
               <button class="btn-sm btn-green" onclick="markPaid({{ s.id }})">💰 Pago</button>
               {% endif %}
               {% if s.status == 'active' %}
-              <button class="btn-sm btn-orange" onclick="setStatus({{ s.id }}, 'suspended')">⏸ Suspender</button>
+              <button class="btn-sm btn-orange" onclick="setAlertaStatus({{ s.id }}, 'suspended')">⏸ Suspender</button>
               {% else %}
-              <button class="btn-sm btn-green" onclick="setStatus({{ s.id }}, 'active')">▶ Ativar</button>
+              <button class="btn-sm btn-green" onclick="setAlertaStatus({{ s.id }}, 'active')">▶ Ativar</button>
               {% endif %}
-              <button class="btn-sm btn-red" onclick="deleteSub({{ s.id }})">🗑</button>
+              <button class="btn-sm btn-purple" onclick="openTrial('alerta','{{ s.id }}','{{ s.trial_ends[:10] if s.trial_ends else '' }}')">📅 Trial</button>
+              <button class="btn-sm btn-red" onclick="deleteSub({{ s.id }})">🗑 Deletar</button>
             </div>
           </td>
         </tr>
@@ -118,23 +124,15 @@
     {% endif %}
   </div>
 
-  <!-- AGENDA -->
+  <!-- ═══════════════ AGENDA SC ═══════════════ -->
   <div class="tab-content" id="tab-agenda">
     <h2>Negócios cadastrados no Agenda SC</h2>
     {% if businesses %}
     <table>
-      <thead>
-        <tr>
-          <th>Negócio</th>
-          <th>Proprietário</th>
-          <th>WhatsApp</th>
-          <th>Slug</th>
-          <th>Status</th>
-          <th>Trial</th>
-          <th>Cadastro</th>
-          <th>Ações</th>
-        </tr>
-      </thead>
+      <thead><tr>
+        <th>Negócio</th><th>Proprietário</th><th>WhatsApp</th><th>Slug</th>
+        <th>Status</th><th>Trial</th><th>Cadastro</th><th>Ações</th>
+      </tr></thead>
       <tbody>
         {% for b in businesses %}
         <tr id="biz-{{ b.id }}">
@@ -143,16 +141,16 @@
           <td><a href="https://wa.me/55{{ b.phone|replace('(','') |replace(')','') |replace('-','') |replace(' ','') }}" target="_blank" style="color:var(--green)">{{ b.phone }}</a></td>
           <td><a href="/agendar/{{ b.slug }}" target="_blank" style="color:var(--accent)">/{{ b.slug }}</a></td>
           <td><span class="badge {% if b.active %}badge-active{% else %}badge-suspended{% endif %}">{{ 'ativo' if b.active else 'inativo' }}</span></td>
-          <td style="font-size:11px;color:var(--text2)" id="trial-{{ b.id }}">{{ b.trial_ends[:10] if b.trial_ends else '—' }}</td>
+          <td style="font-size:11px;color:var(--text2)" id="trial-agenda-{{ b.id }}">{{ b.trial_ends[:10] if b.trial_ends else '—' }}</td>
           <td style="font-size:11px;color:var(--text2)">{{ b.created_at[:10] if b.created_at else '—' }}</td>
           <td>
-            <div style="display:flex;flex-direction:column;gap:4px;min-width:110px">
+            <div class="actions">
               {% if b.active %}
               <button class="btn-sm btn-orange" onclick="setAgendaStatus({{ b.id }}, false)">⏸ Suspender</button>
               {% else %}
               <button class="btn-sm btn-green" onclick="setAgendaStatus({{ b.id }}, true)">▶ Ativar</button>
               {% endif %}
-              <button class="btn-sm btn-green" style="background:rgba(99,102,241,.15);color:#818cf8;border-color:rgba(99,102,241,.3)" onclick="openTrialModal({{ b.id }}, '{{ b.trial_ends[:10] if b.trial_ends else '' }}')">📅 Trial</button>
+              <button class="btn-sm btn-purple" onclick="openTrial('agenda','{{ b.id }}','{{ b.trial_ends[:10] if b.trial_ends else '' }}')">📅 Trial</button>
               <button class="btn-sm btn-red" onclick="deleteAgenda({{ b.id }})">🗑 Deletar</button>
             </div>
           </td>
@@ -165,50 +163,39 @@
     {% endif %}
   </div>
 
-  <!-- Modal Trial Agenda -->
-  <div id="trialModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:999;align-items:center;justify-content:center">
-    <div style="background:#13131f;border:1px solid rgba(99,102,241,.3);border-radius:16px;padding:28px;width:320px;box-shadow:0 20px 60px rgba(0,0,0,.5)">
-      <div style="font-size:16px;font-weight:800;margin-bottom:16px;color:#f0f0ff">📅 Mudar data do Trial</div>
-      <input id="trialDateInput" type="date" style="width:100%;background:#0a0a15;border:1px solid rgba(99,102,241,.3);border-radius:8px;color:#f0f0ff;padding:10px 12px;font-size:14px;outline:none;margin-bottom:12px">
-      <div style="display:flex;gap:8px">
-        <button class="btn-sm btn-green" style="flex:1;padding:9px" onclick="saveTrialDate()">✅ Salvar</button>
-        <button class="btn-sm btn-red" style="flex:1;padding:9px" onclick="document.getElementById('trialModal').style.display='none'">Cancelar</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- MANDAZAP -->
+  <!-- ═══════════════ MANDAZAP ═══════════════ -->
   <div class="tab-content" id="tab-mandazap">
     <h2>Usuários do MandaZap</h2>
     {% if mz_users %}
     <table>
-      <thead>
-        <tr>
-          <th>Nome</th>
-          <th>Email</th>
-          <th>Plano</th>
-          <th>Status</th>
-          <th>Trial</th>
-          <th>Cadastro</th>
-          <th>Ações</th>
-        </tr>
-      </thead>
+      <thead><tr>
+        <th>Nome</th><th>Email</th><th>Plano</th><th>Status</th><th>Trial</th><th>Cadastro</th><th>Ações</th>
+      </tr></thead>
       <tbody>
         {% for u in mz_users %}
         <tr id="mz-{{ u.id }}">
           <td><strong>{{ u.name }}</strong></td>
           <td style="font-size:12px;color:var(--text2)">{{ u.email }}</td>
-          <td><span class="badge" style="background:rgba(99,102,241,.15);color:#818cf8;border:1px solid rgba(99,102,241,.3)">{{ mz_plans[u.plan].label if u.plan in mz_plans else u.plan }}</span></td>
+          <td><span class="badge btn-purple" style="border-radius:20px">{{ mz_plans[u.plan].label if u.plan in mz_plans else u.plan }}</span></td>
           <td><span class="badge {% if u.active %}badge-active{% else %}badge-suspended{% endif %}">{{ 'ativo' if u.active else 'inativo' }}</span></td>
-          <td style="font-size:11px;color:var(--text2)">{{ u.trial_ends[:10] if u.trial_ends else '—' }}</td>
+          <td style="font-size:11px;color:var(--text2)" id="trial-mandazap-{{ u.id }}">{{ u.trial_ends[:10] if u.trial_ends else '—' }}</td>
           <td style="font-size:11px;color:var(--text2)">{{ u.created_at[:10] if u.created_at else '—' }}</td>
           <td>
-            <div style="display:flex;flex-direction:column;gap:4px">
+            <div class="actions">
+              {% if u.active %}
+              <button class="btn-sm btn-orange" onclick="setMzStatus({{ u.id }}, false)">⏸ Suspender</button>
+              {% else %}
+              <button class="btn-sm btn-green" onclick="setMzStatus({{ u.id }}, true)">▶ Ativar</button>
+              {% endif %}
+              <button class="btn-sm btn-purple" onclick="openTrial('mandazap','{{ u.id }}','{{ u.trial_ends[:10] if u.trial_ends else '' }}')">📅 Trial</button>
+              <div style="border-top:1px solid var(--border);margin:2px 0"></div>
               {% for pk, pv in mz_plans.items() %}
               {% if pk != u.plan %}
-              <button class="btn-sm btn-green" onclick="setMzPlan({{ u.id }}, '{{ pk }}')">{{ pv.label }}</button>
+              <button class="btn-sm btn-blue" onclick="setMzPlan({{ u.id }}, '{{ pk }}')">{{ pv.label }}</button>
               {% endif %}
               {% endfor %}
+              <div style="border-top:1px solid var(--border);margin:2px 0"></div>
+              <button class="btn-sm btn-red" onclick="deleteMz({{ u.id }})">🗑 Deletar</button>
             </div>
           </td>
         </tr>
@@ -220,33 +207,31 @@
     {% endif %}
   </div>
 
-  <!-- BAÚ -->
+  <!-- ═══════════════ BAÚ ═══════════════ -->
   <div class="tab-content" id="tab-bau">
     <h2>Usuários do Baú</h2>
     {% if bau_users %}
     <table>
-      <thead>
-        <tr>
-          <th>Nome</th>
-          <th>Email</th>
-          <th>Status</th>
-          <th>Trial</th>
-          <th>Cadastro</th>
-          <th>Ações</th>
-        </tr>
-      </thead>
+      <thead><tr>
+        <th>Nome</th><th>Email</th><th>Status</th><th>Trial</th><th>Cadastro</th><th>Ações</th>
+      </tr></thead>
       <tbody>
         {% for u in bau_users %}
         <tr id="bau-{{ u.id }}">
           <td><strong>{{ u.name }}</strong></td>
           <td style="font-size:12px;color:var(--text2)">{{ u.email }}</td>
           <td><span class="badge {% if u.active %}badge-active{% else %}badge-suspended{% endif %}">{{ 'ativo' if u.active else 'inativo' }}</span></td>
-          <td style="font-size:11px;color:var(--text2)">{{ u.trial_ends[:10] if u.trial_ends else '—' }}</td>
+          <td style="font-size:11px;color:var(--text2)" id="trial-bau-{{ u.id }}">{{ u.trial_ends[:10] if u.trial_ends else '—' }}</td>
           <td style="font-size:11px;color:var(--text2)">{{ u.created_at[:10] if u.created_at else '—' }}</td>
           <td>
-            <div style="display:flex;gap:4px">
-              <button class="btn-sm btn-green" onclick="setBauStatus({{ u.id }}, true)">✅ Liberar</button>
-              <button class="btn-sm btn-red" onclick="setBauStatus({{ u.id }}, false)">⏸ Suspender</button>
+            <div class="actions">
+              {% if u.active %}
+              <button class="btn-sm btn-orange" onclick="setBauStatus({{ u.id }}, false)">⏸ Suspender</button>
+              {% else %}
+              <button class="btn-sm btn-green" onclick="setBauStatus({{ u.id }}, true)">▶ Ativar</button>
+              {% endif %}
+              <button class="btn-sm btn-purple" onclick="openTrial('bau','{{ u.id }}','{{ u.trial_ends[:10] if u.trial_ends else '' }}')">📅 Trial</button>
+              <button class="btn-sm btn-red" onclick="deleteBau({{ u.id }})">🗑 Deletar</button>
             </div>
           </td>
         </tr>
@@ -258,9 +243,89 @@
     {% endif %}
   </div>
 
+  <!-- ═══════════════ KIDSCURATOR ═══════════════ -->
+  <div class="tab-content" id="tab-kids">
+    <h2>Clientes KidsCurator (TV)</h2>
+    {% if kids_clients %}
+    <table>
+      <thead><tr>
+        <th>Código</th><th>Nome</th><th>Cidade</th><th>Modo</th><th>Status</th><th>Cadastro</th><th>Ações</th>
+      </tr></thead>
+      <tbody>
+        {% for c in kids_clients %}
+        <tr id="kids-{{ c.id }}">
+          <td><strong style="color:var(--accent);font-family:monospace;letter-spacing:1px">{{ c.code }}</strong></td>
+          <td>{{ c.name }}</td>
+          <td style="font-size:12px;color:var(--text2)">{{ c.city or '—' }}</td>
+          <td><span class="badge" style="background:rgba(168,85,247,.15);color:#c084fc;border:1px solid rgba(168,85,247,.3)">{{ c.mode }}</span></td>
+          <td><span class="badge {% if c.active %}badge-active{% else %}badge-suspended{% endif %}">{{ 'ativo' if c.active else 'inativo' }}</span></td>
+          <td style="font-size:11px;color:var(--text2)">{{ c.created_at[:10] if c.created_at else '—' }}</td>
+          <td>
+            <div class="actions">
+              {% if c.active %}
+              <button class="btn-sm btn-orange" onclick="setKidsStatus({{ c.id }}, false)">⏸ Suspender</button>
+              {% else %}
+              <button class="btn-sm btn-green" onclick="setKidsStatus({{ c.id }}, true)">▶ Ativar</button>
+              {% endif %}
+              <button class="btn-sm btn-red" onclick="deleteKids({{ c.id }})">🗑 Deletar</button>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty">Nenhum cliente KidsCurator ainda.</div>
+    {% endif %}
+  </div>
+
+  <!-- ═══════════════ AMIGO DESPACHANTE ═══════════════ -->
+  <div class="tab-content" id="tab-desp">
+    <h2>Clientes — Amigo Despachante</h2>
+    {% if desp_clientes %}
+    <table>
+      <thead><tr>
+        <th>Nome</th><th>Tipo</th><th>CPF / CNPJ</th><th>Telefone</th><th>Cidade</th><th>Cadastro</th><th>Ações</th>
+      </tr></thead>
+      <tbody>
+        {% for c in desp_clientes %}
+        <tr id="desp-{{ c.id }}">
+          <td><strong>{{ c.nome }}</strong></td>
+          <td><span class="badge" style="background:rgba(245,158,11,.12);color:var(--orange);border:1px solid rgba(245,158,11,.25)">{{ c.tipo }}</span></td>
+          <td style="font-size:12px;color:var(--text2);font-family:monospace">{{ c.cpf or c.cnpj or '—' }}</td>
+          <td>{% if c.telefone %}<a href="https://wa.me/55{{ c.telefone|replace('(','') |replace(')','') |replace('-','') |replace(' ','') }}" target="_blank" style="color:var(--green)">{{ c.telefone }}</a>{% else %}—{% endif %}</td>
+          <td style="font-size:12px;color:var(--text2)">{{ c.cidade or '—' }}</td>
+          <td style="font-size:11px;color:var(--text2)">{{ c.criado_em[:10] if c.criado_em else '—' }}</td>
+          <td>
+            <div class="actions">
+              <button class="btn-sm btn-red" onclick="deleteDesp({{ c.id }})">🗑 Deletar</button>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty">Nenhum cliente cadastrado ainda.</div>
+    {% endif %}
+  </div>
+
+</div>
+
+<!-- ═══════════════ MODAL TRIAL (genérico) ═══════════════ -->
+<div class="modal-overlay" id="trialModal">
+  <div class="modal-box">
+    <div class="modal-title">📅 Mudar data do Trial</div>
+    <input id="trialDateInput" type="date" class="modal-input">
+    <div class="modal-btns">
+      <button class="btn-sm btn-green" onclick="saveTrialDate()">✅ Salvar</button>
+      <button class="btn-sm btn-red" onclick="closeTrialModal()">Cancelar</button>
+    </div>
+  </div>
 </div>
 
 <script>
+/* ── Tabs ── */
 function showTab(name, btn) {
   document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -268,91 +333,153 @@ function showTab(name, btn) {
   btn.classList.add('active');
 }
 
-async function markPaid(id) {
-  if (!confirm('Marcar pagamento como recebido?')) return;
-  const r = await fetch(`/admin/alerta/${id}/payment`, { method: 'POST' });
-  const d = await r.json();
-  if (d.success) location.reload();
-}
-
-async function setStatus(id, status) {
-  const r = await fetch(`/admin/alerta/${id}/status`, {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({ status })
-  });
-  const d = await r.json();
-  if (d.success) location.reload();
-}
-
-async function deleteSub(id) {
-  if (!confirm('Apagar assinante permanentemente?')) return;
-  const r = await fetch(`/admin/alerta/${id}/delete`, { method: 'POST' });
-  const d = await r.json();
-  if (d.success) document.getElementById('sub-' + id)?.remove();
-}
-
-async function setMzPlan(id, plan) {
-  const r = await fetch(`/admin/mandazap/user/${id}/plan`, {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({ plan })
-  });
-  const d = await r.json();
-  if (d.success) location.reload();
-}
-
-async function setBauStatus(id, active) {
-  const r = await fetch(`/admin/bau/user/${id}/status`, {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({ active })
-  });
-  const d = await r.json();
-  if (d.success) location.reload();
-}
-
-// ── Agenda SC ──
-async function setAgendaStatus(id, active) {
-  const label = active ? 'Ativar' : 'Suspender';
-  if (!confirm(`${label} este negócio?`)) return;
-  const r = await fetch(`/admin/agenda/${id}/status`, {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({ active })
-  });
-  const d = await r.json();
-  if (d.success) location.reload();
-  else alert(d.error || 'Erro');
-}
-
-async function deleteAgenda(id) {
-  if (!confirm('Deletar este negócio PERMANENTEMENTE? Todos os agendamentos serão removidos.')) return;
-  const r = await fetch(`/admin/agenda/${id}/delete`, { method: 'POST' });
-  const d = await r.json();
-  if (d.success) document.getElementById('biz-' + id)?.remove();
-  else alert(d.error || 'Erro');
-}
-
-let _trialBizId = null;
-function openTrialModal(id, current) {
-  _trialBizId = id;
+/* ── Trial modal (genérico) ── */
+let _trialProduct = null, _trialId = null;
+function openTrial(product, id, current) {
+  _trialProduct = product;
+  _trialId = id;
   document.getElementById('trialDateInput').value = current || '';
   document.getElementById('trialModal').style.display = 'flex';
 }
+function closeTrialModal() {
+  document.getElementById('trialModal').style.display = 'none';
+}
+const _trialUrls = {
+  alerta:   id => `/admin/alerta/${id}/trial`,
+  agenda:   id => `/admin/agenda/${id}/trial`,
+  mandazap: id => `/admin/mandazap/user/${id}/trial`,
+  bau:      id => `/admin/bau/user/${id}/trial`,
+};
 async function saveTrialDate() {
   const date = document.getElementById('trialDateInput').value;
   if (!date) return alert('Escolha uma data.');
-  const r = await fetch(`/admin/agenda/${_trialBizId}/trial`, {
+  const url = _trialUrls[_trialProduct]?.(_trialId);
+  if (!url) return alert('Produto inválido.');
+  const r = await fetch(url, {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({ trial_ends: date })
   });
   const d = await r.json();
   if (d.success) {
-    document.getElementById('trial-' + _trialBizId).textContent = date;
-    document.getElementById('trialModal').style.display = 'none';
-  } else alert(d.error || 'Erro');
+    const el = document.getElementById(`trial-${_trialProduct}-${_trialId}`);
+    if (el) el.textContent = date;
+    closeTrialModal();
+  } else alert(d.error || 'Erro ao salvar.');
+}
+
+/* ── Alerta SC ── */
+async function markPaid(id) {
+  if (!confirm('Marcar pagamento como recebido?')) return;
+  const r = await fetch(`/admin/alerta/${id}/payment`, { method: 'POST' });
+  const d = await r.json();
+  if (d.success) location.reload();
+}
+async function setAlertaStatus(id, status) {
+  const r = await fetch(`/admin/alerta/${id}/status`, {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ status })
+  });
+  const d = await r.json();
+  if (d.success) location.reload();
+}
+async function deleteSub(id) {
+  if (!confirm('Apagar assinante permanentemente?')) return;
+  const r = await fetch(`/admin/alerta/${id}/delete`, { method: 'POST' });
+  const d = await r.json();
+  if (d.success) document.getElementById('sub-' + id)?.remove();
+  else alert(d.error || 'Erro');
+}
+
+/* ── Agenda SC ── */
+async function setAgendaStatus(id, active) {
+  if (!confirm(active ? 'Ativar este negócio?' : 'Suspender este negócio?')) return;
+  const r = await fetch(`/admin/agenda/${id}/status`, {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ active })
+  });
+  const d = await r.json();
+  if (d.success) location.reload();
+  else alert(d.error || 'Erro');
+}
+async function deleteAgenda(id) {
+  if (!confirm('Deletar este negócio PERMANENTEMENTE?\nTodos os agendamentos serão removidos.')) return;
+  const r = await fetch(`/admin/agenda/${id}/delete`, { method: 'POST' });
+  const d = await r.json();
+  if (d.success) document.getElementById('biz-' + id)?.remove();
+  else alert(d.error || 'Erro');
+}
+
+/* ── MandaZap ── */
+async function setMzStatus(id, active) {
+  if (!confirm(active ? 'Ativar usuário?' : 'Suspender usuário?')) return;
+  const r = await fetch(`/admin/mandazap/user/${id}/status`, {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ active })
+  });
+  const d = await r.json();
+  if (d.success) location.reload();
+  else alert(d.error || 'Erro');
+}
+async function setMzPlan(id, plan) {
+  const r = await fetch(`/admin/mandazap/user/${id}/plan`, {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ plan })
+  });
+  const d = await r.json();
+  if (d.success) location.reload();
+}
+async function deleteMz(id) {
+  if (!confirm('Deletar usuário MandaZap e todos os dados?')) return;
+  const r = await fetch(`/admin/mandazap/user/${id}/delete`, { method: 'POST' });
+  const d = await r.json();
+  if (d.success) document.getElementById('mz-' + id)?.remove();
+  else alert(d.error || 'Erro');
+}
+
+/* ── Baú ── */
+async function setBauStatus(id, active) {
+  const r = await fetch(`/admin/bau/user/${id}/status`, {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ active })
+  });
+  const d = await r.json();
+  if (d.success) location.reload();
+}
+async function deleteBau(id) {
+  if (!confirm('Deletar usuário do Baú permanentemente?')) return;
+  const r = await fetch(`/admin/bau/user/${id}/delete`, { method: 'POST' });
+  const d = await r.json();
+  if (d.success) document.getElementById('bau-' + id)?.remove();
+  else alert(d.error || 'Erro');
+}
+
+/* ── KidsCurator ── */
+async function setKidsStatus(id, active) {
+  if (!confirm(active ? 'Ativar cliente?' : 'Suspender cliente?')) return;
+  const r = await fetch(`/admin/kids/client/${id}/status`, {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ active })
+  });
+  const d = await r.json();
+  if (d.success) location.reload();
+  else alert(d.error || 'Erro');
+}
+async function deleteKids(id) {
+  if (!confirm('Deletar cliente do KidsCurator?')) return;
+  const r = await fetch(`/admin/kids/client/${id}/delete`, { method: 'POST' });
+  const d = await r.json();
+  if (d.success) document.getElementById('kids-' + id)?.remove();
+  else alert(d.error || 'Erro');
+}
+
+/* ── Despachante ── */
+async function deleteDesp(id) {
+  if (!confirm('Deletar este cliente do Despachante?\nOrdens de serviço e veículos vinculados também serão removidos.')) return;
+  const r = await fetch(`/admin/despachante/cliente/${id}/delete`, { method: 'POST' });
+  const d = await r.json();
+  if (d.success) document.getElementById('desp-' + id)?.remove();
+  else alert(d.error || 'Erro');
 }
 </script>
 </body>

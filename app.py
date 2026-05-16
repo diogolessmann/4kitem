@@ -205,6 +205,7 @@ from kids_db import (
     init_db, get_videos, get_channels, total_videos, stats,
     get_videos_for_mode, get_client, set_client_mode,
     create_client, mark_video_blocked, MODES,
+    get_conn as get_kids_conn,
 )
 from saas_db import init_saas_db, get_db as get_saas_db, salvar_nota_dev, listar_notas_dev
 
@@ -864,8 +865,30 @@ def saas_admin():
         'SELECT id, name, email, active, created_at, trial_ends FROM bau_users ORDER BY created_at DESC'
     ).fetchall()]
     conn.close()
-    return render_template('saas_admin.html', subscribers=subscribers, businesses=businesses,
-                           mz_users=mz_users, mz_plans=MANDAZAP_PLANS, bau_users=bau_users)
+    # KidsCurator clients
+    try:
+        kconn = get_kids_conn()
+        kids_clients = [dict(r) for r in kconn.execute(
+            'SELECT id, code, name, city, mode, active, created_at FROM clients ORDER BY created_at DESC'
+        ).fetchall()]
+        kconn.close()
+    except Exception:
+        kids_clients = []
+    # Amigo Despachante clientes
+    try:
+        dconn = get_desp_conn()
+        desp_clientes = [dict(r) for r in dconn.execute(
+            'SELECT id, tipo, nome, cpf, cnpj, telefone, cidade, criado_em FROM clientes ORDER BY criado_em DESC LIMIT 200'
+        ).fetchall()]
+        dconn.close()
+    except Exception:
+        desp_clientes = []
+    return render_template('saas_admin.html',
+                           subscribers=subscribers, businesses=businesses,
+                           mz_users=mz_users, mz_plans=MANDAZAP_PLANS,
+                           bau_users=bau_users,
+                           kids_clients=kids_clients,
+                           desp_clientes=desp_clientes)
 
 
 @app.route('/admin/alerta/<int:sub_id>/status', methods=['POST'])
@@ -966,6 +989,134 @@ def saas_alerta_delete(sub_id):
     conn.execute('DELETE FROM alerta_reports WHERE subscriber_id=?', (sub_id,))
     conn.execute('DELETE FROM alerta_subscribers WHERE id=?', (sub_id,))
     conn.commit(); conn.close()
+    return jsonify({'success': True})
+
+
+# ── Admin Alerta SC — trial ───────────────────────────────────────────────────
+
+@app.route('/admin/alerta/<int:sub_id>/trial', methods=['POST'])
+@_saas_admin_required
+def saas_alerta_trial(sub_id):
+    data  = request.get_json() or {}
+    trial = data.get('trial_ends', '').strip()
+    if not trial:
+        return jsonify({'success': False, 'error': 'Data inválida'})
+    conn = get_saas_db()
+    try:
+        conn.execute('ALTER TABLE alerta_subscribers ADD COLUMN trial_ends TEXT')
+    except Exception:
+        pass
+    conn.execute('UPDATE alerta_subscribers SET trial_ends=? WHERE id=?', (trial, sub_id))
+    conn.commit(); conn.close()
+    return jsonify({'success': True})
+
+
+# ── Admin MandaZap — status / trial / delete ──────────────────────────────────
+
+@app.route('/admin/mandazap/user/<int:user_id>/status', methods=['POST'])
+@_saas_admin_required
+def saas_mz_set_status(user_id):
+    data   = request.get_json() or {}
+    active = 1 if data.get('active') else 0
+    conn   = get_saas_db()
+    conn.execute('UPDATE mandazap_users SET active=? WHERE id=?', (active, user_id))
+    conn.commit(); conn.close()
+    return jsonify({'success': True})
+
+
+@app.route('/admin/mandazap/user/<int:user_id>/trial', methods=['POST'])
+@_saas_admin_required
+def saas_mz_set_trial(user_id):
+    data  = request.get_json() or {}
+    trial = data.get('trial_ends', '').strip()
+    if not trial:
+        return jsonify({'success': False, 'error': 'Data inválida'})
+    conn = get_saas_db()
+    conn.execute('UPDATE mandazap_users SET trial_ends=? WHERE id=?', (trial, user_id))
+    conn.commit(); conn.close()
+    return jsonify({'success': True})
+
+
+@app.route('/admin/mandazap/user/<int:user_id>/delete', methods=['POST'])
+@_saas_admin_required
+def saas_mz_delete(user_id):
+    conn = get_saas_db()
+    conn.execute('DELETE FROM mandazap_numbers   WHERE user_id=?', (user_id,))
+    conn.execute('DELETE FROM mandazap_contacts  WHERE user_id=?', (user_id,))
+    conn.execute('DELETE FROM mandazap_lists     WHERE user_id=?', (user_id,))
+    conn.execute('DELETE FROM mandazap_campaigns WHERE user_id=?', (user_id,))
+    conn.execute('DELETE FROM mandazap_templates WHERE user_id=?', (user_id,))
+    conn.execute('DELETE FROM mandazap_users     WHERE id=?',      (user_id,))
+    conn.commit(); conn.close()
+    return jsonify({'success': True})
+
+
+# ── Admin Baú — trial / delete ────────────────────────────────────────────────
+
+@app.route('/admin/bau/user/<int:user_id>/trial', methods=['POST'])
+@_saas_admin_required
+def saas_bau_set_trial(user_id):
+    data  = request.get_json() or {}
+    trial = data.get('trial_ends', '').strip()
+    if not trial:
+        return jsonify({'success': False, 'error': 'Data inválida'})
+    conn = get_saas_db()
+    conn.execute('UPDATE bau_users SET trial_ends=? WHERE id=?', (trial, user_id))
+    conn.commit(); conn.close()
+    return jsonify({'success': True})
+
+
+@app.route('/admin/bau/user/<int:user_id>/delete', methods=['POST'])
+@_saas_admin_required
+def saas_bau_delete(user_id):
+    conn = get_saas_db()
+    try:
+        conn.execute('DELETE FROM bau_entries WHERE user_id=?', (user_id,))
+    except Exception:
+        pass
+    conn.execute('DELETE FROM bau_users WHERE id=?', (user_id,))
+    conn.commit(); conn.close()
+    return jsonify({'success': True})
+
+
+# ── Admin KidsCurator — status / delete ───────────────────────────────────────
+
+@app.route('/admin/kids/client/<int:client_id>/status', methods=['POST'])
+@_saas_admin_required
+def saas_kids_set_status(client_id):
+    data   = request.get_json() or {}
+    active = 1 if data.get('active') else 0
+    conn   = get_kids_conn()
+    conn.execute('UPDATE clients SET active=? WHERE id=?', (active, client_id))
+    conn.commit(); conn.close()
+    return jsonify({'success': True})
+
+
+@app.route('/admin/kids/client/<int:client_id>/delete', methods=['POST'])
+@_saas_admin_required
+def saas_kids_delete(client_id):
+    conn = get_kids_conn()
+    conn.execute('DELETE FROM clients WHERE id=?', (client_id,))
+    conn.commit(); conn.close()
+    return jsonify({'success': True})
+
+
+# ── Admin Amigo Despachante — delete cliente ──────────────────────────────────
+
+@app.route('/admin/despachante/cliente/<int:cliente_id>/delete', methods=['POST'])
+@_saas_admin_required
+def saas_desp_delete(cliente_id):
+    conn = get_desp_conn()
+    try:
+        conn.execute('DELETE FROM documentos      WHERE os_id IN (SELECT id FROM ordens_servico WHERE cliente_id=?)', (cliente_id,))
+        conn.execute('DELETE FROM ordens_servico  WHERE cliente_id=?', (cliente_id,))
+        conn.execute('DELETE FROM veiculos        WHERE proprietario_id=?', (cliente_id,))
+        conn.execute('DELETE FROM clientes        WHERE id=?', (cliente_id,))
+        conn.commit()
+    except Exception as e:
+        conn.close()
+        return jsonify({'success': False, 'error': str(e)})
+    conn.close()
     return jsonify({'success': True})
 
 
@@ -2284,6 +2435,7 @@ from desp_db import (
     lista_final_placa as desp_lista_final_placa,
     listar_exercicios as desp_listar_exercicios,
     atualizar_situacao_pag as desp_atualizar_situacao,
+    get_conn as get_desp_conn,
 )
 
 DESP_CONFIG = {
