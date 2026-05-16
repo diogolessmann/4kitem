@@ -20,9 +20,7 @@ SERVICOS_GRUPOS = OrderedDict([
             ("lic_debitos",            "Com Débitos ou Parcelado"),
             ("lic_outro_municipio",    "Outro Município"),
             ("lic_outro_estado",       "Outro Estado"),
-            ("boleto_divida_ativa",    "Boleto / Dívida Ativa"),
-            ("segunda_via_crv",        "2ª Via do CRV"),
-            ("pedido_etiquetas",       "Pedido de Etiquetas"),
+            ("lic_emissao",            "Emissão"),
         ])
     }),
 
@@ -35,11 +33,32 @@ SERVICOS_GRUPOS = OrderedDict([
             ("transferencia_gravame",      "Transferência com Gravame / Alienação"),
             ("transferencia_leilao",       "Veículo de Leilão Público"),
             ("transferencia_outro_estado", "Transferência Outro Estado"),
-            ("transferencia_inventario",   "Inventário / Herança"),
             ("atpv_comunicado",            "Comunicado de Venda (ATPV-e)"),
-            ("comunicado_retroativo",      "Comunicado Retroativo — Limpa CNH"),
-            ("baixa_circulacao",           "Baixa de Circulação (Sucata)"),
-            ("baixa_administrativa",       "Baixa Administrativa"),
+        ])
+    }),
+
+    ("especial", {
+        "label": "Especial",
+        "icon": "⭐",
+        "items": OrderedDict([
+            ("inventario",             "Inventário / Herança"),
+            ("recibo_inventario",      "Número de Recibo — Inventário"),
+            ("baixa_administrativa",   "Baixa Administrativa"),
+            ("baixa_circulacao",       "Baixa de Circulação (Sucata)"),
+            ("segunda_via_crv",        "2ª Via do CRV"),
+            ("comunicado_retroativo",  "Comunicado Retroativo — Limpa CNH"),
+        ])
+    }),
+
+    ("boletos", {
+        "label": "Boletos",
+        "icon": "🧾",
+        "items": OrderedDict([
+            ("boleto_multa",           "Boleto de Multa"),
+            ("boleto_licenciamento",   "Boleto de Licenciamento"),
+            ("boleto_ipva",            "Boleto de IPVA"),
+            ("boleto_divida_ativa",    "Boleto / Dívida Ativa"),
+            ("boletos",                "Boletos (Outros)"),
         ])
     }),
 
@@ -122,7 +141,10 @@ SERVICOS_GRUPOS = OrderedDict([
         "icon": "📄",
         "items": OrderedDict([
             ("procuracao",            "Procuração Veicular"),
+            ("pedido_etiquetas",      "Pedido de Etiquetas"),
             ("contrato_compra_venda", "Contrato de Compra e Venda"),
+            ("contrato_aluguel",      "Contrato de Aluguel"),
+            ("contrato_universal",    "Contrato Universal"),
             ("comodato",              "Contrato de Comodato"),
             ("distrato_comodato",     "Distrato de Comodato"),
             ("declaracao_residencia", "Declaração de Residência"),
