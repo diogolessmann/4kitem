@@ -2649,6 +2649,10 @@ from desp_db import (
     listar_exercicios as desp_listar_exercicios,
     atualizar_situacao_pag as desp_atualizar_situacao,
     get_conn as get_desp_conn,
+    listar_clientes as desp_listar_clientes,
+    contar_clientes as desp_contar_clientes,
+    get_cliente_detalhe as desp_get_cliente_detalhe,
+    importar_clientes_bulk as desp_importar_bulk,
 )
 
 DESP_CONFIG = {
@@ -2960,6 +2964,103 @@ def desp_print_requerimento(os_id):
         docs_needed=docs_needed, servicos=DESP_SERVICOS)
 
 
+# ── Clientes ─────────────────────────────────────────────────────────────────
+@app.route('/despachante/clientes')
+@_desp_login_required
+def desp_clientes():
+    busca  = request.args.get('q', '').strip()
+    page   = max(1, int(request.args.get('page', 1)))
+    limit  = 40
+    offset = (page - 1) * limit
+    clientes = desp_listar_clientes(busca or None, limit=limit, offset=offset)
+    total    = desp_contar_clientes(busca or None)
+    return desp_render('clientes/lista.html',
+                       clientes=clientes, busca=busca,
+                       page=page, limit=limit, total=total,
+                       servicos=DESP_SERVICOS)
+
+
+@app.route('/despachante/clientes/<int:id>')
+@_desp_login_required
+def desp_detalhe_cliente(id):
+    cliente = desp_get_cliente_detalhe(id)
+    if not cliente:
+        return "Cliente não encontrado", 404
+    return desp_render('clientes/detalhe.html',
+                       cliente=cliente, servicos=DESP_SERVICOS,
+                       status_labels=DESP_STATUS_LABELS)
+
+
+@app.route('/despachante/clientes/importar', methods=['GET'])
+@_desp_login_required
+def desp_importar_get():
+    return desp_render('clientes/importar.html')
+
+
+@app.route('/despachante/clientes/importar/ocr', methods=['POST'])
+@_desp_login_required
+def desp_importar_ocr():
+    """Recebe imagem/PDF do Bludata, extrai lista de clientes via IA."""
+    groq_key = os.environ.get('GROQ_API_KEY', '')
+    if not groq_key:
+        return jsonify({'erro': 'GROQ_API_KEY não configurada'}), 500
+
+    f = request.files.get('arquivo')
+    if not f:
+        return jsonify({'erro': 'Nenhum arquivo enviado'}), 400
+
+    import base64, mimetypes
+    dados_bytes = f.read()
+    mime = f.mimetype or mimetypes.guess_type(f.filename or '')[0] or 'image/jpeg'
+    img_b64 = base64.b64encode(dados_bytes).decode()
+
+    prompt = '''Analise esta imagem de relatório/listagem de sistema de despachante.
+Extraia TODOS os clientes/veículos que aparecerem e retorne um array JSON com objetos:
+{"nome":"","cpf":"","telefone":"","placa":"","email":"","cidade":""}
+Preencha apenas os campos visíveis. Deixe vazio ("") o que não aparecer.
+RETORNE SOMENTE O ARRAY JSON, sem texto adicional.'''
+
+    try:
+        resp = requests.post(
+            'https://api.groq.com/openai/v1/chat/completions',
+            headers={'Authorization': f'Bearer {groq_key}', 'Content-Type': 'application/json'},
+            json={
+                'model': 'meta-llama/llama-4-scout-17b-16e-instruct',
+                'messages': [{'role': 'user', 'content': [
+                    {'type': 'image_url', 'image_url': {'url': f'data:{mime};base64,{img_b64}'}},
+                    {'type': 'text', 'text': prompt},
+                ]}],
+                'max_tokens': 4096,
+                'temperature': 0.1,
+            },
+            timeout=60,
+        )
+        resp.raise_for_status()
+        texto = resp.json()['choices'][0]['message']['content'].strip()
+        import re as _re3, json as _json3
+        match = _re3.search(r'\[[\s\S]*\]', texto)
+        if not match:
+            return jsonify({'erro': 'IA não retornou JSON válido'}), 422
+        registros = _json3.loads(match.group())
+        registros = [r for r in registros if r.get('nome')]
+        return jsonify({'ok': True, 'registros': registros, 'total': len(registros)})
+    except Exception as e:
+        log.error(f'importar OCR error: {e}')
+        return jsonify({'erro': str(e)}), 500
+
+
+@app.route('/despachante/clientes/importar/salvar', methods=['POST'])
+@_desp_login_required
+def desp_importar_salvar():
+    """Recebe lista confirmada de registros e insere no banco."""
+    data = request.get_json(silent=True) or {}
+    registros = data.get('registros', [])
+    if not registros:
+        return jsonify({'erro': 'Nenhum registro'}), 400
+    resultado = desp_importar_bulk(registros)
+    return jsonify({'ok': True, **resultado})
+
+
 # ── API busca ─────────────────────────────────────────────────────────────────
 @app.route('/despachante/api/busca/placa/<placa>')
 @_desp_login_required
@@ -2999,17 +3100,22 @@ Retorne APENAS um objeto JSON válido com os campos (use null para não encontra
 "complemento":null,"bairro":null,"cidade":null,"uf":null}
 IMPORTANTE: Retorne SOMENTE o JSON, nada mais.'''
     try:
-        from groq import Groq
-        groq = Groq(api_key=groq_key)
-        resp = groq.chat.completions.create(
-            model='meta-llama/llama-4-scout-17b-16e-instruct',
-            messages=[{'role':'user','content':[
-                {'type':'image_url','image_url':{'url':f'data:{mime};base64,{img_b64}'}},
-                {'type':'text','text':prompt},
-            ]}],
-            max_tokens=1024, temperature=0.1,
+        resp = requests.post(
+            'https://api.groq.com/openai/v1/chat/completions',
+            headers={'Authorization': f'Bearer {groq_key}', 'Content-Type': 'application/json'},
+            json={
+                'model': 'meta-llama/llama-4-scout-17b-16e-instruct',
+                'messages': [{'role': 'user', 'content': [
+                    {'type': 'image_url', 'image_url': {'url': f'data:{mime};base64,{img_b64}'}},
+                    {'type': 'text', 'text': prompt},
+                ]}],
+                'max_tokens': 1024,
+                'temperature': 0.1,
+            },
+            timeout=30,
         )
-        texto = resp.choices[0].message.content.strip()
+        resp.raise_for_status()
+        texto = resp.json()['choices'][0]['message']['content'].strip()
         match = _re2.search(r'\{[\s\S]*\}', texto)
         if not match: return jsonify({'erro': 'IA não retornou JSON válido'}), 422
         dados = _json2.loads(match.group())
@@ -3043,15 +3149,19 @@ def desp_api_chat():
         "Nunca invente valores de taxas — oriente o cliente a consultar o site oficial."
     )
     try:
-        from groq import Groq as _Groq
-        client = _Groq(api_key=groq_key)
-        resp = client.chat.completions.create(
-            model='llama-3.3-70b-versatile',
-            messages=[{'role': 'system', 'content': system_prompt}] + msgs,
-            max_tokens=1024,
-            temperature=0.7,
+        resp = requests.post(
+            'https://api.groq.com/openai/v1/chat/completions',
+            headers={'Authorization': f'Bearer {groq_key}', 'Content-Type': 'application/json'},
+            json={
+                'model': 'llama-3.3-70b-versatile',
+                'messages': [{'role': 'system', 'content': system_prompt}] + msgs,
+                'max_tokens': 1024,
+                'temperature': 0.7,
+            },
+            timeout=30,
         )
-        reply = resp.choices[0].message.content.strip()
+        resp.raise_for_status()
+        reply = resp.json()['choices'][0]['message']['content'].strip()
         return jsonify({'ok': True, 'resposta': reply})
     except Exception as e:
         log.error(f'desp_chat error: {e}')

@@ -1,0 +1,319 @@
+{% extends "despachante/base.html" %}
+
+{% block title %}Importar Clientes · Lessmann{% endblock %}
+{% block topbar_title %}Importar Clientes do Bludata{% endblock %}
+{% block topbar_actions %}
+  <a href="{{ url_for('desp_clientes') }}" class="btn btn-ghost btn-sm">← Clientes</a>
+{% endblock %}
+
+{% block extra_style %}
+.import-box {
+  border:2px dashed var(--border2); border-radius:14px;
+  padding:40px 30px; text-align:center;
+  background:var(--surface2); cursor:pointer; transition:all .2s;
+  position:relative;
+}
+.import-box:hover, .import-box.drag { border-color:var(--accent); background:rgba(99,102,241,.06); }
+.import-box input[type=file] {
+  position:absolute; inset:0; opacity:0; cursor:pointer; width:100%; height:100%;
+}
+.import-icon { font-size:48px; margin-bottom:12px; }
+.step-row {
+  display:flex; align-items:flex-start; gap:14px; margin-bottom:16px;
+}
+.step-num {
+  width:28px; height:28px; border-radius:50%; background:var(--accent);
+  color:#fff; font-weight:700; font-size:13px; display:flex; align-items:center;
+  justify-content:center; flex-shrink:0; margin-top:2px;
+}
+.preview-table-wrap { max-height:380px; overflow:auto; border-radius:10px; border:1px solid var(--border2); }
+.preview-table { width:100%; border-collapse:collapse; font-size:13px; }
+.preview-table th {
+  background:var(--surface2); padding:8px 12px; text-align:left;
+  font-size:11px; text-transform:uppercase; letter-spacing:.5px;
+  color:var(--text3); border-bottom:1px solid var(--border2); position:sticky; top:0;
+}
+.preview-table td { padding:8px 12px; border-bottom:1px solid var(--border); }
+.preview-table tr:last-child td { border-bottom:none; }
+.preview-table tr:hover td { background:var(--surface2); }
+.badge-ok  { color:var(--green); font-weight:700; font-size:12px; }
+.badge-dup { color:var(--yellow); font-weight:700; font-size:12px; }
+#progress-bar-wrap { display:none; margin-top:16px; }
+#progress-bar {
+  height:8px; border-radius:4px; background:var(--accent);
+  width:0%; transition:width .3s;
+}
+{% endblock %}
+
+{% block content %}
+<div style="max-width:740px;margin:0 auto;">
+
+  <!-- Instruções -->
+  <div class="card" style="margin-bottom:20px;">
+    <div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:16px;">
+      📋 Como importar do Bludata
+    </div>
+    <div class="step-row">
+      <div class="step-num">1</div>
+      <div>
+        <div style="font-weight:600;margin-bottom:2px;">No Bludata, gere o relatório de clientes</div>
+        <div style="font-size:13px;color:var(--text3);">
+          Acesse Relatórios → Clientes → Todos. Inclua: nome, CPF, telefone, placa, cidade.
+          Pode ser PDF, print da tela ou foto.
+        </div>
+      </div>
+    </div>
+    <div class="step-row">
+      <div class="step-num">2</div>
+      <div>
+        <div style="font-weight:600;margin-bottom:2px;">Faça upload da imagem ou PDF</div>
+        <div style="font-size:13px;color:var(--text3);">
+          A IA vai ler o documento e extrair automaticamente todos os clientes e placas.
+        </div>
+      </div>
+    </div>
+    <div class="step-row">
+      <div class="step-num">3</div>
+      <div>
+        <div style="font-weight:600;margin-bottom:2px;">Revise e confirme</div>
+        <div style="font-size:13px;color:var(--text3);">
+          Você verá uma prévia dos dados extraídos antes de salvar. Confirme e pronto.
+        </div>
+      </div>
+    </div>
+    <div style="background:rgba(99,102,241,.08);border:1px solid rgba(99,102,241,.2);
+                border-radius:10px;padding:12px 16px;font-size:12px;color:var(--text2);">
+      💡 <strong>Dica:</strong> Se o relatório tiver muitas páginas, importe uma página por vez.
+      Clientes já cadastrados não serão duplicados.
+    </div>
+  </div>
+
+  <!-- Upload -->
+  <div class="card" id="upload-card" style="margin-bottom:20px;">
+    <div class="import-box" id="drop-zone">
+      <input type="file" id="arquivo" accept="image/*,.pdf" onchange="onFileChange(this)">
+      <div class="import-icon">📁</div>
+      <div style="font-size:16px;font-weight:600;color:var(--text);margin-bottom:8px;">
+        Clique ou arraste o arquivo aqui
+      </div>
+      <div style="font-size:13px;color:var(--text3);">
+        Imagem (JPG, PNG, WEBP) ou PDF · Máx. 10 MB
+      </div>
+    </div>
+
+    <div id="file-info" style="display:none;margin-top:16px;">
+      <div style="display:flex;align-items:center;gap:10px;padding:12px 14px;
+                  background:var(--surface2);border-radius:10px;border:1px solid var(--border2);">
+        <span style="font-size:24px;">📄</span>
+        <div style="flex:1;">
+          <div id="file-name" style="font-weight:600;font-size:13px;"></div>
+          <div id="file-size" style="font-size:11px;color:var(--text3);"></div>
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="limparArquivo()">✕</button>
+      </div>
+      <button class="btn btn-primary" style="width:100%;margin-top:12px;" onclick="processar()">
+        🤖 Processar com IA
+      </button>
+    </div>
+
+    <div id="loading" style="display:none;text-align:center;padding:30px;color:var(--text3);">
+      <div style="font-size:32px;margin-bottom:10px;">⚙️</div>
+      <div style="font-weight:600;margin-bottom:6px;">Processando com IA...</div>
+      <div style="font-size:12px;">Pode levar até 30 segundos dependendo do tamanho.</div>
+      <div id="progress-bar-wrap">
+        <div style="background:var(--surface3);border-radius:4px;height:8px;margin-top:14px;">
+          <div id="progress-bar"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Preview -->
+  <div class="card" id="preview-card" style="display:none;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px;">
+      <div>
+        <div style="font-size:15px;font-weight:700;">
+          👥 Prévia — <span id="preview-count">0</span> registros encontrados
+        </div>
+        <div style="font-size:12px;color:var(--text3);margin-top:2px;">
+          Revise os dados antes de confirmar a importação.
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-ghost btn-sm" onclick="limparTudo()">✕ Cancelar</button>
+        <button class="btn btn-primary btn-sm" onclick="confirmarImport()">
+          ✅ Importar Todos
+        </button>
+      </div>
+    </div>
+
+    <div class="preview-table-wrap">
+      <table class="preview-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Nome</th>
+            <th>CPF</th>
+            <th>Telefone</th>
+            <th>Placa</th>
+            <th>Cidade</th>
+          </tr>
+        </thead>
+        <tbody id="preview-body"></tbody>
+      </table>
+    </div>
+
+    <div id="import-result" style="display:none;margin-top:16px;padding:14px;
+         border-radius:10px;font-size:13px;"></div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let registros = [];
+let arquivo   = null;
+
+// Drag & drop
+const dz = document.getElementById('drop-zone');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('drag'));
+dz.addEventListener('drop', e => {
+  e.preventDefault(); dz.classList.remove('drag');
+  const file = e.dataTransfer.files[0];
+  if (file) setArquivo(file);
+});
+
+function onFileChange(input) {
+  if (input.files[0]) setArquivo(input.files[0]);
+}
+
+function setArquivo(file) {
+  arquivo = file;
+  document.getElementById('file-name').textContent = file.name;
+  document.getElementById('file-size').textContent =
+    (file.size / 1024).toFixed(0) + ' KB · ' + file.type;
+  document.getElementById('file-info').style.display = 'block';
+  document.getElementById('drop-zone').style.display = 'none';
+}
+
+function limparArquivo() {
+  arquivo = null;
+  document.getElementById('file-info').style.display = 'none';
+  document.getElementById('drop-zone').style.display = '';
+  document.getElementById('arquivo').value = '';
+}
+
+function limparTudo() {
+  limparArquivo();
+  document.getElementById('preview-card').style.display = 'none';
+  registros = [];
+}
+
+async function processar() {
+  if (!arquivo) return;
+  document.getElementById('file-info').style.display = 'none';
+  document.getElementById('loading').style.display = 'block';
+  document.getElementById('progress-bar-wrap').style.display = 'block';
+
+  // Anima a barra de progresso fake
+  let pct = 0;
+  const bar = document.getElementById('progress-bar');
+  const timer = setInterval(() => {
+    pct = Math.min(pct + (pct < 60 ? 3 : pct < 85 ? 1 : 0.3), 92);
+    bar.style.width = pct + '%';
+  }, 400);
+
+  try {
+    const fd = new FormData();
+    fd.append('arquivo', arquivo);
+    const r = await fetch('/despachante/clientes/importar/ocr', { method:'POST', body:fd });
+    const data = await r.json();
+    clearInterval(timer);
+    bar.style.width = '100%';
+    await new Promise(res => setTimeout(res, 300));
+
+    if (!r.ok || data.erro) {
+      alert('Erro: ' + (data.erro || 'Falha no processamento'));
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('file-info').style.display = 'block';
+      return;
+    }
+
+    registros = data.registros || [];
+    mostrarPreview();
+  } catch (err) {
+    clearInterval(timer);
+    alert('Erro de conexão: ' + err.message);
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('file-info').style.display = 'block';
+  }
+}
+
+function mostrarPreview() {
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('preview-card').style.display = '';
+  document.getElementById('preview-count').textContent = registros.length;
+
+  const tbody = document.getElementById('preview-body');
+  tbody.innerHTML = '';
+  registros.forEach((r, i) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td style="color:var(--text3);font-size:11px;">${i+1}</td>
+      <td style="font-weight:600;">${r.nome || '—'}</td>
+      <td style="font-size:12px;font-family:monospace;">${r.cpf || '—'}</td>
+      <td style="font-size:12px;">${r.telefone || '—'}</td>
+      <td style="font-family:monospace;font-size:12px;font-weight:700;
+                 color:var(--accent);">${r.placa || '—'}</td>
+      <td style="font-size:12px;color:var(--text3);">${r.cidade || '—'}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+async function confirmarImport() {
+  if (!registros.length) return;
+  const btn = event.target;
+  btn.disabled = true;
+  btn.textContent = '⏳ Importando...';
+
+  try {
+    const r = await fetch('/despachante/clientes/importar/salvar', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ registros }),
+    });
+    const data = await r.json();
+    const res = document.getElementById('import-result');
+    res.style.display = 'block';
+    if (data.ok) {
+      res.style.background = 'rgba(34,197,94,.1)';
+      res.style.border = '1px solid rgba(34,197,94,.3)';
+      res.innerHTML = `
+        ✅ <strong>Importação concluída!</strong><br>
+        <span style="color:var(--green);">✓ ${data.inseridos} novos clientes inseridos</span>
+        ${data.duplicados ? ` · <span style="color:var(--yellow);">⚠ ${data.duplicados} já existiam (ignorados)</span>` : ''}
+        ${data.erros ? ` · <span style="color:var(--red);">✕ ${data.erros} com erro</span>` : ''}
+        <br><br>
+        <a href="/despachante/clientes" class="btn btn-primary btn-sm" style="margin-top:4px;">
+          👥 Ver Clientes
+        </a>
+      `;
+      btn.style.display = 'none';
+    } else {
+      res.style.background = 'rgba(239,68,68,.1)';
+      res.style.border = '1px solid rgba(239,68,68,.3)';
+      res.textContent = '✕ Erro: ' + (data.erro || 'Falha ao salvar');
+      btn.disabled = false;
+      btn.textContent = '✅ Importar Todos';
+    }
+  } catch (err) {
+    alert('Erro: ' + err.message);
+    btn.disabled = false;
+    btn.textContent = '✅ Importar Todos';
+  }
+}
+</script>
+{% endblock %}

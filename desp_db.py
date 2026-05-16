@@ -701,3 +701,129 @@ def atualizar_situacao_pag(os_id: int, situacao_pag: str):
     )
     conn.commit()
     conn.close()
+
+
+# ── CRUD Clientes (listagem e detalhe) ───────────────────────────────────────
+def listar_clientes(busca: str = None, limit: int = 50, offset: int = 0) -> list:
+    conn = get_conn()
+    where, params = [], []
+    if busca:
+        where.append("(c.nome LIKE ? OR c.cpf LIKE ? OR c.telefone LIKE ? OR c.cidade LIKE ?)")
+        b = f"%{busca}%"
+        params += [b, b, b, b]
+    wclause = ("WHERE " + " AND ".join(where)) if where else ""
+    params += [limit, offset]
+    rows = conn.execute(f"""
+        SELECT c.id, c.tipo, c.nome, c.cpf, c.cnpj, c.telefone, c.cidade, c.uf, c.criado_em,
+               COUNT(DISTINCT v.id)  AS total_veiculos,
+               COUNT(DISTINCT os.id) AS total_os,
+               MAX(os.criado_em)     AS ultima_os
+        FROM clientes c
+        LEFT JOIN veiculos       v  ON v.proprietario_id = c.id
+        LEFT JOIN ordens_servico os ON os.cliente_id      = c.id
+        {wclause}
+        GROUP BY c.id
+        ORDER BY c.nome COLLATE NOCASE
+        LIMIT ? OFFSET ?
+    """, params).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def contar_clientes(busca: str = None) -> int:
+    conn = get_conn()
+    where, params = [], []
+    if busca:
+        where.append("(nome LIKE ? OR cpf LIKE ? OR telefone LIKE ? OR cidade LIKE ?)")
+        b = f"%{busca}%"
+        params += [b, b, b, b]
+    wclause = ("WHERE " + " AND ".join(where)) if where else ""
+    total = conn.execute(f"SELECT COUNT(*) FROM clientes {wclause}", params).fetchone()[0]
+    conn.close()
+    return total
+
+
+def get_cliente_detalhe(id_: int) -> dict | None:
+    """Retorna cliente + lista de veículos + histórico de OS."""
+    conn = get_conn()
+    row  = conn.execute("SELECT * FROM clientes WHERE id=?", (id_,)).fetchone()
+    if not row:
+        conn.close()
+        return None
+    cliente = dict(row)
+
+    veiculos = conn.execute("""
+        SELECT v.*, COUNT(os.id) AS total_os
+        FROM veiculos v
+        LEFT JOIN ordens_servico os ON os.veiculo_id = v.id
+        WHERE v.proprietario_id = ?
+        GROUP BY v.id
+        ORDER BY v.placa
+    """, (id_,)).fetchall()
+    cliente["veiculos"] = [dict(v) for v in veiculos]
+
+    historico = conn.execute("""
+        SELECT os.id, os.numero, os.servico, os.status, os.honorarios,
+               os.total, os.pago, os.criado_em, os.concluido_em,
+               v.placa, v.marca, v.modelo
+        FROM ordens_servico os
+        LEFT JOIN veiculos v ON v.id = os.veiculo_id
+        WHERE os.cliente_id = ?
+        ORDER BY os.id DESC
+        LIMIT 100
+    """, (id_,)).fetchall()
+    cliente["historico"] = [dict(h) for h in historico]
+
+    conn.close()
+    return cliente
+
+
+def importar_clientes_bulk(registros: list) -> dict:
+    """
+    Importa lista de dicts com chaves: nome, cpf, telefone, placa, [email, cidade].
+    Retorna {inseridos, duplicados, erros}.
+    """
+    conn    = get_conn()
+    inseridos = duplicados = erros = 0
+    for r in registros:
+        nome    = (r.get("nome") or "").strip()
+        cpf     = (r.get("cpf")  or "").strip()
+        telefone= (r.get("telefone") or "").strip()
+        placa   = (r.get("placa") or "").upper().replace("-","").strip()
+        if not nome:
+            erros += 1
+            continue
+        try:
+            # Upsert cliente
+            cur = conn.execute("""
+                INSERT INTO clientes (nome, cpf, telefone, email, cidade, criado_em)
+                VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+            """, (nome, cpf, telefone, r.get("email",""), r.get("cidade","")))
+            cliente_id = cur.lastrowid
+            inseridos += 1
+        except Exception:
+            # Provavelmente duplicado — tenta buscar
+            row = conn.execute(
+                "SELECT id FROM clientes WHERE nome=? OR (cpf != '' AND cpf=?)",
+                (nome, cpf)
+            ).fetchone()
+            if row:
+                cliente_id = row[0]
+                duplicados += 1
+            else:
+                erros += 1
+                continue
+
+        # Cadastra veículo se vier placa
+        if placa:
+            try:
+                conn.execute("""
+                    INSERT OR IGNORE INTO veiculos (placa, proprietario_id, criado_em)
+                    VALUES (?, ?, CURRENT_TIMESTAMP)
+                """, (placa, cliente_id))
+            except Exception:
+                pass
+
+    conn.commit()
+    conn.close()
+    return {"inseridos": inseridos, "duplicados": duplicados, "erros": erros}

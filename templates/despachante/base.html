@@ -257,6 +257,9 @@
         <a href="{{ url_for('desp_nova_os') }}" class="nav-link {% if request.endpoint == 'desp_nova_os' %}active{% endif %}">
           <span class="icon">➕</span> Nova O.S.
         </a>
+        <a href="{{ url_for('desp_clientes') }}" class="nav-link {% if request.endpoint in ('desp_clientes','desp_detalhe_cliente','desp_importar_get') %}active{% endif %}">
+          <span class="icon">👥</span> Clientes
+        </a>
       </div>
       <div class="nav-section">
         <div class="nav-label">Ferramentas</div>

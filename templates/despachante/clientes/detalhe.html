@@ -1,0 +1,201 @@
+{% extends "despachante/base.html" %}
+
+{% block title %}{{ cliente.nome }} · Clientes · Lessmann{% endblock %}
+{% block topbar_title %}{{ cliente.nome }}{% endblock %}
+{% block topbar_actions %}
+  <a href="{{ url_for('desp_clientes') }}" class="btn btn-ghost btn-sm">← Clientes</a>
+  <a href="{{ url_for('desp_nova_os') }}?cpf={{ cliente.cpf or '' }}" class="btn btn-primary btn-sm">➕ Nova O.S.</a>
+{% endblock %}
+
+{% block extra_style %}
+.info-grid {
+  display:grid; grid-template-columns:repeat(auto-fill, minmax(200px,1fr)); gap:12px;
+  margin-bottom:24px;
+}
+.info-item { display:flex; flex-direction:column; gap:3px; }
+.info-label { font-size:11px; color:var(--text3); text-transform:uppercase; letter-spacing:.5px; }
+.info-value { font-size:14px; color:var(--text); font-weight:500; }
+.placa-tag {
+  font-family:monospace; font-size:13px; font-weight:700;
+  background:var(--surface3); padding:3px 8px; border-radius:5px;
+  color:var(--accent); letter-spacing:.5px;
+}
+.veiculo-card {
+  border:1px solid var(--border2); border-radius:10px; padding:14px 16px;
+  background:var(--surface2); margin-bottom:10px;
+  display:flex; gap:14px; align-items:center; flex-wrap:wrap;
+}
+.section-title {
+  font-size:14px; font-weight:700; color:var(--text2);
+  text-transform:uppercase; letter-spacing:.5px;
+  margin:0 0 12px; padding-bottom:8px; border-bottom:1px solid var(--border);
+}
+{% endblock %}
+
+{% block content %}
+
+<!-- Dados pessoais -->
+<div class="card" style="margin-bottom:20px;">
+  <div class="section-title">👤 Dados Pessoais</div>
+  <div class="info-grid">
+    <div class="info-item">
+      <span class="info-label">Tipo</span>
+      <span class="info-value">{{ cliente.tipo or 'PF' }}</span>
+    </div>
+    <div class="info-item">
+      <span class="info-label">CPF</span>
+      <span class="info-value">{{ cliente.cpf or '—' }}</span>
+    </div>
+    {% if cliente.cnpj %}
+    <div class="info-item">
+      <span class="info-label">CNPJ</span>
+      <span class="info-value">{{ cliente.cnpj }}</span>
+    </div>
+    {% endif %}
+    <div class="info-item">
+      <span class="info-label">RG</span>
+      <span class="info-value">{{ cliente.rg or '—' }}</span>
+    </div>
+    <div class="info-item">
+      <span class="info-label">Nascimento</span>
+      <span class="info-value">{{ cliente.nascimento or '—' }}</span>
+    </div>
+    <div class="info-item">
+      <span class="info-label">Mãe</span>
+      <span class="info-value">{{ cliente.nome_mae or '—' }}</span>
+    </div>
+    <div class="info-item">
+      <span class="info-label">Telefone</span>
+      <span class="info-value">
+        {% if cliente.telefone %}
+          <a href="https://wa.me/55{{ cliente.telefone | replace('(','') | replace(')','') | replace(' ','') | replace('-','') }}"
+             target="_blank" style="color:var(--accent);">📱 {{ cliente.telefone }}</a>
+        {% else %}—{% endif %}
+      </span>
+    </div>
+    <div class="info-item">
+      <span class="info-label">E-mail</span>
+      <span class="info-value">{{ cliente.email or '—' }}</span>
+    </div>
+    <div class="info-item">
+      <span class="info-label">Endereço</span>
+      <span class="info-value" style="font-size:12px;">
+        {{ cliente.logradouro or '' }}{{ ', ' + cliente.numero if cliente.numero else '' }}
+        {{ cliente.complemento or '' }}<br>
+        {{ cliente.bairro or '' }}{{ ' — ' if cliente.bairro else '' }}{{ cliente.cidade or '' }}/{{ cliente.uf or 'SC' }}
+        {{ ' CEP ' + cliente.cep if cliente.cep else '' }}
+      </span>
+    </div>
+    <div class="info-item">
+      <span class="info-label">Cliente desde</span>
+      <span class="info-value">{{ cliente.criado_em[:10] if cliente.criado_em else '—' }}</span>
+    </div>
+  </div>
+</div>
+
+<!-- Veículos -->
+<div class="card" style="margin-bottom:20px;">
+  <div class="section-title">🚗 Veículos ({{ cliente.veiculos | length }})</div>
+  {% if cliente.veiculos %}
+    {% for v in cliente.veiculos %}
+    <div class="veiculo-card">
+      <span class="placa-tag">{{ v.placa }}</span>
+      <div style="flex:1;min-width:160px;">
+        <div style="font-weight:600;font-size:14px;">
+          {{ v.marca or '' }} {{ v.modelo or '' }}
+          {% if v.ano_fab %}({{ v.ano_fab }}{% if v.ano_mod and v.ano_mod != v.ano_fab %}/{{ v.ano_mod }}{% endif %}){% endif %}
+        </div>
+        <div style="font-size:12px;color:var(--text3);">
+          RENAVAM: {{ v.renavam or '—' }} · Chassi: {{ v.chassi or '—' }}
+          {% if v.cor %} · {{ v.cor }}{% endif %}
+          {% if v.combustivel %} · {{ v.combustivel }}{% endif %}
+        </div>
+      </div>
+      <div style="font-size:12px;color:var(--text3);">
+        {{ v.total_os }} O.S.
+      </div>
+      <a href="{{ url_for('desp_lista_os') }}?q={{ v.placa }}" class="btn btn-ghost btn-sm">OS →</a>
+    </div>
+    {% endfor %}
+  {% else %}
+    <div style="color:var(--text3);font-size:13px;">Nenhum veículo vinculado.</div>
+  {% endif %}
+</div>
+
+<!-- Histórico de O.S. -->
+<div class="card" style="padding:0;overflow:hidden;">
+  <div style="padding:16px 20px 0;">
+    <div class="section-title">📋 Histórico de O.S. ({{ cliente.historico | length }})</div>
+  </div>
+  {% if cliente.historico %}
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>N° O.S.</th>
+          <th>Serviço</th>
+          <th>Placa</th>
+          <th>Abertura</th>
+          <th>Total</th>
+          <th>Pago</th>
+          <th>Status</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for h in cliente.historico %}
+        {% set sl = status_labels.get(h.status, ('⚪','')) %}
+        <tr>
+          <td>
+            <a href="{{ url_for('desp_detalhe_os', id=h.id) }}"
+               style="font-family:monospace;font-weight:700;font-size:13px;">
+              {{ h.numero }}
+            </a>
+          </td>
+          <td style="max-width:180px;">
+            <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+              {{ servicos.get(h.servico, h.servico) }}
+            </div>
+          </td>
+          <td>
+            {% if h.placa %}
+              <span style="font-family:monospace;font-size:12px;font-weight:700;
+                           background:var(--surface3);padding:2px 6px;border-radius:4px;
+                           color:var(--accent);">{{ h.placa }}</span>
+            {% else %}—{% endif %}
+          </td>
+          <td style="font-size:12px;color:var(--text3);">{{ h.criado_em[:10] if h.criado_em else '—' }}</td>
+          <td>R$ {{ "%.2f"|format(h.total) }}</td>
+          <td>
+            {% set pendente = h.total - h.pago %}
+            {% if pendente <= 0 %}
+              <span style="color:var(--green);font-weight:700;">✓</span>
+            {% else %}
+              <span style="color:var(--yellow);">R$ {{ "%.2f"|format(h.pago) }}</span>
+            {% endif %}
+          </td>
+          <td>
+            <span class="badge
+              {% if h.status == 'aberta' %}badge-yellow
+              {% elif h.status == 'andamento' %}badge-blue
+              {% elif h.status == 'concluida' %}badge-green
+              {% elif h.status == 'cancelada' %}badge-red
+              {% else %}badge-gray{% endif %}">
+              {{ sl[0] }} {{ sl[1] }}
+            </span>
+          </td>
+          <td>
+            <a href="{{ url_for('desp_detalhe_os', id=h.id) }}" class="btn btn-ghost btn-sm">→</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+    <div style="padding:30px 20px;color:var(--text3);font-size:13px;">
+      Nenhuma O.S. registrada para este cliente.
+    </div>
+  {% endif %}
+</div>
+{% endblock %}
