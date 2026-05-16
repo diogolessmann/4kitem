@@ -1,0 +1,238 @@
+{% extends "despachante/base.html" %}
+
+{% block title %}Dashboard · Despachante Lessmann{% endblock %}
+{% block topbar_title %}Dashboard{% endblock %}
+{% block topbar_actions %}
+  <a href="{{ url_for('desp_nova_os') }}" class="btn btn-primary btn-sm">➕ Nova O.S.</a>
+{% endblock %}
+
+{% block extra_style %}
+.stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 24px; }
+.stat-card.accent { border-color: rgba(249,115,22,.25); }
+.stat-card.green  { border-color: rgba(34,197,94,.25); }
+.stat-card.blue   { border-color: rgba(59,130,246,.25); }
+.stat-value.orange { color: var(--accent); }
+.stat-value.green  { color: var(--green); }
+.stat-value.blue   { color: var(--blue); }
+
+.two-col { display: grid; grid-template-columns: 1fr 340px; gap: 16px; }
+
+/* Finais de placa calendar */
+.placa-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+.placa-card {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 10px; padding: 12px 8px; text-align: center;
+}
+.placa-card.hoje {
+  background: rgba(249,115,22,.12); border-color: rgba(249,115,22,.35);
+}
+.placa-digit { font-size: 22px; font-weight: 800; color: var(--text); }
+.placa-mes   { font-size: 10px; color: var(--text3); margin-top: 3px; text-transform: uppercase; letter-spacing: .5px; }
+.placa-card.hoje .placa-mes { color: var(--accent); }
+.placa-vence { font-size: 9px; color: var(--yellow); margin-top: 4px; font-weight: 600; }
+
+/* Quick actions */
+.quick-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.quick-btn {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 6px; padding: 16px 8px; border-radius: 10px; text-decoration: none;
+  background: var(--surface2); border: 1px solid var(--border);
+  color: var(--text2); font-size: 12px; font-weight: 600;
+  transition: all .15s; text-align: center;
+}
+.quick-btn:hover { background: var(--surface3); border-color: var(--border2); color: var(--text); }
+.quick-btn .qi { font-size: 22px; }
+
+/* Status badges inline */
+.os-num { font-size: 11px; font-family: monospace; color: var(--text3); }
+.os-status { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.dot-yellow { background: var(--yellow); }
+.dot-blue   { background: var(--blue); }
+.dot-green  { background: var(--green); }
+.dot-gray   { background: var(--text3); }
+
+/* Financial mini */
+.fin-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border); }
+.fin-row:last-child { border-bottom: none; }
+.fin-label { font-size: 12px; color: var(--text3); }
+.fin-value { font-size: 13px; font-weight: 700; }
+
+@media (max-width: 1100px) {
+  .stats-grid { grid-template-columns: repeat(2, 1fr); }
+  .two-col { grid-template-columns: 1fr; }
+}
+@media (max-width: 768px) {
+  .stats-grid { grid-template-columns: repeat(2, 1fr); }
+  .placa-grid { grid-template-columns: repeat(5, 1fr); }
+}
+{% endblock %}
+
+{% block content %}
+<!-- Stats -->
+<div class="stats-grid">
+  <div class="stat-card accent">
+    <div class="stat-label">⚠️ Abertas</div>
+    <div class="stat-value orange">{{ stats.os_abertas }}</div>
+    <div class="stat-sub">ordens em aberto</div>
+  </div>
+  <div class="stat-card blue">
+    <div class="stat-label">🔄 Em Andamento</div>
+    <div class="stat-value blue">{{ stats.os_andamento }}</div>
+    <div class="stat-sub">em processamento</div>
+  </div>
+  <div class="stat-card green">
+    <div class="stat-label">✅ Mês Atual</div>
+    <div class="stat-value green">{{ stats.os_mes }}</div>
+    <div class="stat-sub">concluídas em {{ meses[mes_atual] }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">💰 A Receber</div>
+    <div class="stat-value" style="font-size:22px;">R$ {{ "%.2f"|format(stats.a_receber) }}</div>
+    <div class="stat-sub">recebido este mês: R$ {{ "%.2f"|format(stats.recebido_mes) }}</div>
+  </div>
+</div>
+
+<div class="two-col">
+  <!-- LEFT: Recent OS -->
+  <div>
+    <div class="card" style="padding:0;overflow:hidden;">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);">
+        <div>
+          <div style="font-size:14px;font-weight:700;">Ordens Recentes</div>
+          <div style="font-size:11px;color:var(--text3);">{{ stats.os_total }} total</div>
+        </div>
+        <a href="{{ url_for('desp_lista_os') }}" class="btn btn-ghost btn-sm">Ver todas →</a>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>N°</th>
+              <th>Cliente</th>
+              <th>Serviço</th>
+              <th>Placa</th>
+              <th>Status</th>
+              <th>Valor</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for os in recentes %}
+            {% set sl = status_labels.get(os.status, ('⚪','')) %}
+            <tr>
+              <td>
+                <span class="os-num">{{ os.numero }}</span>
+              </td>
+              <td>
+                <a href="{{ url_for('desp_detalhe_os', id=os.id) }}">
+                  {{ os.cliente_nome or '—' }}
+                </a>
+              </td>
+              <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+                {{ servicos.get(os.servico, os.servico) | truncate(22, true) }}
+              </td>
+              <td>
+                {% if os.placa %}
+                  <code style="font-size:12px;color:var(--accent);">{{ os.placa }}</code>
+                {% else %}—{% endif %}
+              </td>
+              <td>
+                <span class="badge {% if os.status == 'aberta' %}badge-yellow{% elif os.status == 'andamento' %}badge-blue{% elif os.status == 'concluida' %}badge-green{% else %}badge-gray{% endif %}">
+                  {{ sl[0] }} {{ sl[1] }}
+                </span>
+              </td>
+              <td style="color:var(--text);font-weight:600;">
+                R$ {{ "%.0f"|format(os.honorarios + os.custos) }}
+              </td>
+              <td>
+                <a href="{{ url_for('desp_detalhe_os', id=os.id) }}" class="btn btn-ghost btn-sm">→</a>
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="7" style="text-align:center;padding:32px;color:var(--text3);">Nenhuma O.S. ainda</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT: Column -->
+  <div style="display:flex;flex-direction:column;gap:14px;">
+
+    <!-- Quick Actions -->
+    <div class="card card-sm">
+      <div class="card-title">Ações Rápidas</div>
+      <div class="quick-grid">
+        <a href="{{ url_for('desp_nova_os') }}" class="quick-btn">
+          <span class="qi">📋</span> Nova O.S.
+        </a>
+        <a href="{{ url_for('desp_lista_os') }}?status=aberta" class="quick-btn">
+          <span class="qi">⚠️</span> Abertas
+        </a>
+        <a href="{{ url_for('desp_chat') }}" class="quick-btn">
+          <span class="qi">🤖</span> IA Amigo
+        </a>
+        <a href="https://wa.me/{{ desp.whatsapp }}" target="_blank" class="quick-btn">
+          <span class="qi">💬</span> WhatsApp
+        </a>
+      </div>
+    </div>
+
+    <!-- Financeiro -->
+    <div class="card card-sm">
+      <div class="card-title">Financeiro — {{ meses[mes_atual] }}</div>
+      <div class="fin-row">
+        <span class="fin-label">Recebido no mês</span>
+        <span class="fin-value" style="color:var(--green);">R$ {{ "%.2f"|format(stats.recebido_mes) }}</span>
+      </div>
+      <div class="fin-row">
+        <span class="fin-label">A receber (todas)</span>
+        <span class="fin-value" style="color:var(--yellow);">R$ {{ "%.2f"|format(stats.a_receber) }}</span>
+      </div>
+      <div class="fin-row">
+        <span class="fin-label">Clientes cadastrados</span>
+        <span class="fin-value">{{ stats.clientes }}</span>
+      </div>
+      <div class="fin-row">
+        <span class="fin-label">Veículos cadastrados</span>
+        <span class="fin-value">{{ stats.veiculos }}</span>
+      </div>
+    </div>
+
+    <!-- Finais de Placa -->
+    <div class="card card-sm">
+      <div class="card-title">📅 Finais de Placa — {{ meses[mes_atual] }}</div>
+      <div class="placa-grid">
+        {% for f, m in finais_placa_nav %}
+        <div class="placa-card {% if m == mes_atual %}hoje{% endif %}">
+          <div class="placa-digit">{{ f }}</div>
+          <div class="placa-mes">{{ meses[m][:3] }}</div>
+          {% if m == mes_atual %}
+          <div class="placa-vence">VENCE!</div>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+      <div style="margin-top:10px;font-size:11px;color:var(--text3);">
+        🔔 Placas com final <strong>{% for f, m in finais_placa_nav if m == mes_atual %}{{ f }}{% endfor %}</strong>
+        vencem em {{ meses[mes_atual] }}.
+      </div>
+    </div>
+
+    <!-- Despachante -->
+    <div class="card card-sm">
+      <div class="card-title">Despachante</div>
+      <div style="font-size:13px;font-weight:700;margin-bottom:6px;">{{ desp.nome }}</div>
+      <div style="font-size:12px;color:var(--text3);line-height:1.8;">
+        Credencial: <span style="color:var(--text2);">{{ desp.credencial }}</span><br>
+        CNPJ: <span style="color:var(--text2);">{{ desp.cnpj }}</span><br>
+        CPF: <span style="color:var(--text2);">{{ desp.cpf }}</span><br>
+        CITRAN: <span style="color:var(--text2);">{{ desp.citran }}</span><br>
+        WhatsApp: <a href="https://wa.me/{{ desp.whatsapp }}" target="_blank" style="color:var(--green);">{{ desp.whatsapp_fmt }}</a>
+      </div>
+    </div>
+
+  </div><!-- /right col -->
+</div>
+{% endblock %}

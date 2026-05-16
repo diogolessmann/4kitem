@@ -1,0 +1,164 @@
+{% extends "despachante/base.html" %}
+
+{% block title %}Ordens de Serviço · Lessmann{% endblock %}
+{% block topbar_title %}Ordens de Serviço{% endblock %}
+{% block topbar_actions %}
+  <a href="{{ url_for('desp_nova_os') }}" class="btn btn-primary btn-sm">➕ Nova O.S.</a>
+{% endblock %}
+
+{% block extra_style %}
+.filter-bar {
+  display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+.filter-bar .input { max-width: 260px; }
+.status-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+.status-tab {
+  padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: 600;
+  text-decoration: none; border: 1px solid var(--border2); color: var(--text2);
+  background: var(--surface); transition: all .15s;
+}
+.status-tab:hover { border-color: var(--accent); color: var(--accent); }
+.status-tab.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.status-tab.t-aberta.active  { background: rgba(234,179,8,.9); border-color: var(--yellow); }
+.status-tab.t-andamento.active{ background: rgba(59,130,246,.9); border-color: var(--blue); }
+.status-tab.t-concluida.active{ background: rgba(34,197,94,.9); border-color: var(--green); }
+.status-tab.t-cancelada.active{ background: rgba(239,68,68,.9); border-color: var(--red); }
+
+.empty-state {
+  text-align: center; padding: 60px 20px; color: var(--text3);
+}
+.empty-state .em-icon { font-size: 48px; margin-bottom: 12px; }
+.pagination { display: flex; gap: 6px; margin-top: 16px; justify-content: center; }
+.pag-btn {
+  padding: 6px 12px; border-radius: 7px; font-size: 12px; font-weight: 600;
+  text-decoration: none; background: var(--surface2); border: 1px solid var(--border2);
+  color: var(--text2); transition: all .15s;
+}
+.pag-btn:hover { color: var(--text); border-color: var(--accent); }
+.pag-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+.placa-tag {
+  font-family: monospace; font-size: 12px; font-weight: 700;
+  background: var(--surface3); padding: 2px 7px; border-radius: 5px;
+  color: var(--accent); letter-spacing: .5px;
+}
+{% endblock %}
+
+{% block content %}
+<!-- Filtros -->
+<div class="filter-bar">
+  <form method="get" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+    <input type="hidden" name="status" value="{{ status_sel or '' }}">
+    <input name="q" class="input" style="max-width:240px;" placeholder="🔍  Buscar cliente, placa, número..." value="{{ busca }}">
+    <button class="btn btn-secondary btn-sm" type="submit">Buscar</button>
+    {% if busca %}<a href="{{ url_for('desp_lista_os') }}" class="btn btn-ghost btn-sm">✕ Limpar</a>{% endif %}
+  </form>
+  <div class="status-tabs">
+    <a href="{{ url_for('desp_lista_os') }}{% if busca %}?q={{ busca }}{% endif %}"
+       class="status-tab {% if not status_sel %}active{% endif %}">Todas</a>
+    <a href="{{ url_for('desp_lista_os') }}?status=aberta{% if busca %}&q={{ busca }}{% endif %}"
+       class="status-tab t-aberta {% if status_sel == 'aberta' %}active{% endif %}">🟡 Abertas</a>
+    <a href="{{ url_for('desp_lista_os') }}?status=andamento{% if busca %}&q={{ busca }}{% endif %}"
+       class="status-tab t-andamento {% if status_sel == 'andamento' %}active{% endif %}">🔵 Andamento</a>
+    <a href="{{ url_for('desp_lista_os') }}?status=concluida{% if busca %}&q={{ busca }}{% endif %}"
+       class="status-tab t-concluida {% if status_sel == 'concluida' %}active{% endif %}">🟢 Concluídas</a>
+    <a href="{{ url_for('desp_lista_os') }}?status=cancelada{% if busca %}&q={{ busca }}{% endif %}"
+       class="status-tab t-cancelada {% if status_sel == 'cancelada' %}active{% endif %}">🔴 Canceladas</a>
+  </div>
+</div>
+
+<div class="card" style="padding:0;overflow:hidden;">
+  {% if ordens %}
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>N° O.S.</th>
+          <th>Cliente</th>
+          <th>Serviço</th>
+          <th>Placa</th>
+          <th>Abertura</th>
+          <th>Honorários</th>
+          <th>Pago</th>
+          <th>Status</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for os in ordens %}
+        {% set sl = status_labels.get(os.status, ('⚪','')) %}
+        <tr>
+          <td>
+            <a href="{{ url_for('desp_detalhe_os', id=os.id) }}"
+               style="font-family:monospace;font-weight:700;font-size:13px;">
+              {{ os.numero }}
+            </a>
+          </td>
+          <td>
+            <div style="font-weight:600;color:var(--text);">{{ os.cliente_nome or '—' }}</div>
+            <div style="font-size:11px;color:var(--text3);">{{ os.cpf or os.telefone or '' }}</div>
+          </td>
+          <td style="max-width:160px;">
+            <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+              {{ servicos.get(os.servico, os.servico) }}
+            </div>
+          </td>
+          <td>
+            {% if os.placa %}
+              <span class="placa-tag">{{ os.placa }}</span>
+            {% else %}—{% endif %}
+          </td>
+          <td style="white-space:nowrap;">
+            {{ os.criado_em[:10] if os.criado_em else '—' }}
+          </td>
+          <td>R$ {{ "%.2f"|format(os.honorarios) }}</td>
+          <td>
+            {% set pendente = (os.honorarios + os.custos) - os.pago %}
+            {% if pendente <= 0 %}
+              <span style="color:var(--green);font-weight:700;">✓ Quitado</span>
+            {% else %}
+              <span style="color:var(--yellow);">R$ {{ "%.2f"|format(os.pago) }} / {{ "%.2f"|format(os.total) }}</span>
+            {% endif %}
+          </td>
+          <td>
+            <span class="badge {% if os.status == 'aberta' %}badge-yellow{% elif os.status == 'andamento' %}badge-blue{% elif os.status == 'concluida' %}badge-green{% elif os.status == 'cancelada' %}badge-red{% else %}badge-gray{% endif %}">
+              {{ sl[0] }} {{ sl[1] }}
+            </span>
+          </td>
+          <td>
+            <a href="{{ url_for('desp_detalhe_os', id=os.id) }}" class="btn btn-ghost btn-sm">Abrir →</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Paginação -->
+  {% if ordens | length == 20 or page > 1 %}
+  <div class="pagination" style="padding:14px;">
+    {% if page > 1 %}
+      <a href="{{ url_for('desp_lista_os') }}?page={{ page-1 }}{% if status_sel %}&status={{ status_sel }}{% endif %}{% if busca %}&q={{ busca }}{% endif %}"
+         class="pag-btn">← Anterior</a>
+    {% endif %}
+    <span class="pag-btn active">{{ page }}</span>
+    {% if ordens | length == 20 %}
+      <a href="{{ url_for('desp_lista_os') }}?page={{ page+1 }}{% if status_sel %}&status={{ status_sel }}{% endif %}{% if busca %}&q={{ busca }}{% endif %}"
+         class="pag-btn">Próxima →</a>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {% else %}
+  <div class="empty-state">
+    <div class="em-icon">📋</div>
+    <div style="font-size:16px;font-weight:600;color:var(--text2);margin-bottom:8px;">Nenhuma O.S. encontrada</div>
+    <div style="font-size:13px;margin-bottom:20px;">
+      {% if busca %}Nenhum resultado para "{{ busca }}"{% elif status_sel %}Nenhuma O.S. com status "{{ status_sel }}"{% else %}Nenhuma ordem de serviço cadastrada ainda{% endif %}
+    </div>
+    <a href="{{ url_for('desp_nova_os') }}" class="btn btn-primary">➕ Criar primeira O.S.</a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

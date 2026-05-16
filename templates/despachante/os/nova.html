@@ -1,0 +1,940 @@
+{% extends "despachante/base.html" %}
+
+{% block title %}Nova O.S. · Lessmann{% endblock %}
+{% block topbar_title %}Nova Ordem de Serviço{% endblock %}
+{% block topbar_actions %}
+  <button class="btn btn-secondary btn-sm" onclick="abrirOCR()" title="Cole ou arraste um print de tela para preencher automaticamente">
+    📸 Preencher com Print
+  </button>
+  <a href="{{ url_for('desp_lista_os') }}" class="btn btn-ghost btn-sm">← Voltar</a>
+{% endblock %}
+
+{% block extra_style %}
+.os-form { max-width: 900px; }
+.section-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 16px; }
+.section-card-header {
+  padding: 14px 20px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+}
+
+/* ── OCR ── */
+.ocr-hint {
+  position: fixed; bottom: 20px; right: 20px; z-index: 500;
+  background: var(--surface2); border: 1px solid var(--border2);
+  border-radius: 12px; padding: 10px 16px; font-size: 12px;
+  color: var(--text3); display: flex; align-items: center; gap: 8px;
+  animation: slideIn .3s ease;
+}
+@keyframes slideIn { from { transform:translateY(20px); opacity:0; } to { transform:none; opacity:1; } }
+
+.ocr-modal {
+  display: none; position: fixed; inset: 0; z-index: 600;
+  background: rgba(0,0,0,.8); align-items: center; justify-content: center;
+}
+.ocr-modal.open { display: flex; }
+.ocr-box {
+  background: var(--surface); border: 1px solid var(--border2);
+  border-radius: 16px; padding: 24px; width: 100%; max-width: 600px;
+  max-height: 90vh; overflow-y: auto;
+}
+.ocr-title { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
+.ocr-sub   { font-size: 12px; color: var(--text3); margin-bottom: 16px; }
+
+.ocr-preview {
+  width: 100%; max-height: 280px; object-fit: contain;
+  border-radius: 8px; border: 1px solid var(--border2); margin-bottom: 14px;
+  background: var(--surface2);
+}
+.ocr-result {
+  display: none; background: var(--surface2); border-radius: 8px;
+  padding: 12px; font-size: 12px; margin-bottom: 14px;
+  max-height: 200px; overflow-y: auto;
+}
+.ocr-field-row {
+  display: flex; justify-content: space-between;
+  padding: 3px 0; border-bottom: 1px solid var(--border);
+}
+.ocr-field-row:last-child { border: none; }
+.ocr-field-name { color: var(--text3); }
+.ocr-field-val  { color: var(--text); font-weight: 600; }
+
+.ocr-drop-area {
+  border: 2px dashed var(--border2); border-radius: 10px;
+  padding: 32px; text-align: center; color: var(--text3);
+  font-size: 13px; cursor: pointer; transition: all .2s;
+  margin-bottom: 14px;
+}
+.ocr-drop-area:hover, .ocr-drop-area.drag-over {
+  border-color: var(--accent); color: var(--accent); background: rgba(249,115,22,.05);
+}
+.ocr-drop-area .drop-icon { font-size: 36px; margin-bottom: 8px; }
+.ocr-progress {
+  display: none; text-align: center; padding: 20px;
+  color: var(--text2); font-size: 13px;
+}
+.ocr-progress .spin {
+  display: inline-block; font-size: 28px;
+  animation: spin .8s linear infinite; margin-bottom: 8px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Picker de serviço */
+.picker-grupo { user-select: none; }
+.picker-item:hover { background: var(--surface3) !important; color: var(--text) !important; }
+
+/* Tel required highlight */
+.input.required-highlight { border-color: var(--red) !important; }
+.tel-required-msg { font-size: 11px; color: var(--red); display: none; margin-top: 3px; }
+.tel-required-msg.show { display: block; }
+.section-card-header h3 { font-size: 14px; font-weight: 700; }
+.section-card-body { padding: 20px; }
+
+.plate-search {
+  display: flex; gap: 8px; align-items: flex-end; margin-bottom: 20px;
+}
+.plate-input {
+  font-family: monospace; font-size: 20px; font-weight: 800;
+  text-transform: uppercase; letter-spacing: 3px;
+  padding: 10px 16px; width: 200px;
+}
+.found-banner {
+  background: rgba(34,197,94,.1); border: 1px solid rgba(34,197,94,.25);
+  border-radius: 8px; padding: 10px 14px; font-size: 13px; color: #86efac;
+  margin-bottom: 16px; display: none;
+}
+.found-banner.show { display: block; }
+.not-found-banner {
+  background: rgba(234,179,8,.08); border: 1px solid rgba(234,179,8,.2);
+  border-radius: 8px; padding: 10px 14px; font-size: 13px; color: #fde68a;
+  margin-bottom: 16px; display: none;
+}
+.not-found-banner.show { display: block; }
+
+.tipo-toggle { display: flex; gap: 8px; margin-bottom: 14px; }
+.tipo-btn {
+  padding: 6px 16px; border-radius: 20px; border: 1px solid var(--border2);
+  background: var(--surface2); color: var(--text2); cursor: pointer;
+  font-size: 13px; font-weight: 600; transition: all .15s;
+}
+.tipo-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+.currency-input { position: relative; }
+.currency-input .prefix {
+  position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+  color: var(--text3); font-size: 13px; pointer-events: none;
+}
+.currency-input .input { padding-left: 30px; }
+
+#pf-fields, #pj-fields { }
+{% endblock %}
+
+{% block content %}
+<div class="os-form">
+<form method="POST" action="{{ url_for('desp_nova_os') }}" id="os-form">
+
+  <!-- ──── VEÍCULO ──── -->
+  <div class="section-card">
+    <div class="section-card-header">
+      <h3>🚗 Veículo</h3>
+      <div style="display:flex;gap:6px;align-items:center;">
+        <small style="color:var(--text3);">Digite a placa ou cole um print</small>
+        <button type="button" class="btn btn-secondary btn-sm"
+                onclick="abrirOCR('veiculo')" title="Ctrl+V também funciona!">
+          📸 Print do veículo
+        </button>
+      </div>
+    </div>
+    <div class="section-card-body">
+      {% if veiculo %}
+        <div class="found-banner show">✅ Veículo encontrado: {{ veiculo.marca }} {{ veiculo.modelo }} ({{ veiculo.placa }})</div>
+        <input type="hidden" name="veiculo_id" value="{{ veiculo.id }}">
+      {% endif %}
+
+      <div class="plate-search">
+        <div class="form-group" style="margin:0;">
+          <label class="form-label">Placa <span style="color:var(--text3);font-weight:400;">— digite e busque, ou preencha tudo manualmente abaixo</span></label>
+          <input id="placa-input" class="input plate-input" type="text"
+                 placeholder="ABC1234" maxlength="8"
+                 value="{{ veiculo.placa if veiculo else placa_pre }}"
+                 {% if not veiculo %}oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9]/g,'')"{% endif %}>
+        </div>
+        {% if not veiculo %}
+        <button type="button" class="btn btn-secondary" onclick="buscarPlaca()">🔍 Buscar cadastro</button>
+        <span style="font-size:11px;color:var(--text3);align-self:flex-end;padding-bottom:2px;">
+          ou pule e preencha ↓
+        </span>
+        {% endif %}
+      </div>
+      <div class="found-banner" id="found-banner"></div>
+      <div class="not-found-banner" id="not-found-banner">⚠️ Não cadastrado — preencha os dados abaixo</div>
+
+      <div id="veiculo-fields">
+        <input type="hidden" name="veiculo_id" id="veiculo-id-field" value="{{ veiculo.id if veiculo else '' }}">
+        <div class="form-row form-row-4">
+          <div class="form-group">
+            <label class="form-label">Placa *</label>
+            <input name="v_placa" class="input" type="text"
+                   value="{{ veiculo.placa if veiculo else placa_pre }}"
+                   placeholder="ABC1234" style="font-family:monospace;font-weight:700;text-transform:uppercase;">
+          </div>
+          <div class="form-group">
+            <label class="form-label">RENAVAM</label>
+            <input name="v_renavam" class="input" id="v_renavam"
+                   value="{{ veiculo.renavam if veiculo else '' }}" placeholder="00000000000">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Chassi</label>
+            <input name="v_chassi" class="input" id="v_chassi"
+                   value="{{ veiculo.chassi if veiculo else '' }}" placeholder="9BWZZZ377VT004251">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Nº CRV</label>
+            <input name="v_crv" class="input" id="v_crv"
+                   value="{{ veiculo.num_crv if veiculo else '' }}">
+          </div>
+        </div>
+        <div class="form-row form-row-4">
+          <div class="form-group">
+            <label class="form-label">Marca</label>
+            <input name="v_marca" class="input" id="v_marca"
+                   value="{{ veiculo.marca if veiculo else '' }}" placeholder="VOLKSWAGEN">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Modelo</label>
+            <input name="v_modelo" class="input" id="v_modelo"
+                   value="{{ veiculo.modelo if veiculo else '' }}" placeholder="GOL">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Ano Fab.</label>
+            <input name="v_anofab" class="input" id="v_anofab" type="number"
+                   value="{{ veiculo.ano_fab if veiculo else '' }}" placeholder="2020">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Ano Mod.</label>
+            <input name="v_anomod" class="input" id="v_anomod" type="number"
+                   value="{{ veiculo.ano_mod if veiculo else '' }}" placeholder="2021">
+          </div>
+        </div>
+        <div class="form-row form-row-4">
+          <div class="form-group">
+            <label class="form-label">Cor</label>
+            <input name="v_cor" class="input" id="v_cor"
+                   value="{{ veiculo.cor if veiculo else '' }}" placeholder="BRANCA">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Espécie</label>
+            <select name="v_especie" class="select" id="v_especie">
+              {% for esp in ['Automóvel','Motocicleta','Caminhão','Ônibus','Caminhonete','Camioneta','Microônibus','Reboque','Semi-Reboque','Trator','Ciclomotor','Motoneta','Utilitário','Especial'] %}
+              <option value="{{ esp }}" {% if veiculo and veiculo.especie == esp %}selected{% endif %}>{{ esp }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Categoria</label>
+            <select name="v_categoria" class="select" id="v_categoria">
+              {% for cat in ['Particular','Comercial','Oficial','Diplomático','Especial'] %}
+              <option value="{{ cat }}" {% if veiculo and veiculo.categoria == cat %}selected{% endif %}>{{ cat }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Combustível</label>
+            <select name="v_combustivel" class="select" id="v_combustivel">
+              {% for comb in ['','Gasolina','Álcool','Flex','Diesel','GNV','Elétrico','Híbrido'] %}
+              <option value="{{ comb }}" {% if veiculo and veiculo.combustivel == comb %}selected{% endif %}>{{ comb or '—' }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ──── CLIENTE ──── -->
+  <div class="section-card">
+    <div class="section-card-header">
+      <h3>👤 Cliente / Proprietário</h3>
+      <div style="display:flex;gap:6px;align-items:center;">
+        <input id="cpf-search" class="input" style="width:160px;" placeholder="Buscar por CPF..."
+               oninput="debounceCpf(this.value)">
+        <button type="button" class="btn btn-secondary btn-sm"
+                onclick="abrirOCR('cliente')" title="Cole print da CNH ou documento">
+          📸 Print do condutor
+        </button>
+      </div>
+    </div>
+    <div class="section-card-body">
+      <input type="hidden" name="cliente_id" id="cliente-id-field" value="{{ cliente.id if cliente else '' }}">
+
+      <div class="tipo-toggle">
+        <button type="button" class="tipo-btn active" id="btn-pf" onclick="setTipo('PF')">Pessoa Física</button>
+        <button type="button" class="tipo-btn" id="btn-pj" onclick="setTipo('PJ')">Pessoa Jurídica</button>
+        <input type="hidden" name="cli_tipo" id="cli_tipo" value="PF">
+      </div>
+
+      <div id="cpf-found-banner" class="found-banner"></div>
+
+      <div class="form-row form-row-2" style="margin-bottom:12px;">
+        <div class="form-group" style="margin:0;">
+          <label class="form-label">Nome completo *</label>
+          <input name="cli_nome" class="input" id="cli_nome"
+                 value="{{ cliente.nome if cliente else '' }}" placeholder="Nome do cliente">
+        </div>
+        <div class="form-group" style="margin:0;" id="pf-fields">
+          <label class="form-label">CPF</label>
+          <input name="cli_cpf" class="input" id="cli_cpf"
+                 value="{{ cliente.cpf if cliente else '' }}" placeholder="000.000.000-00"
+                 oninput="debounceCpf(this.value)">
+        </div>
+        <div class="form-group" style="margin:0;display:none;" id="pj-fields">
+          <label class="form-label">CNPJ</label>
+          <input name="cli_cnpj" class="input" id="cli_cnpj"
+                 value="{{ cliente.cnpj if cliente else '' }}" placeholder="00.000.000/0000-00">
+        </div>
+      </div>
+
+      <div class="form-row form-row-3" style="margin-bottom:12px;">
+        <div class="form-group" style="margin:0;">
+          <label class="form-label">📱 Celular <span style="color:var(--red);">*</span></label>
+          <input name="cli_tel" class="input" id="cli_tel" required
+                 value="{{ cliente.telefone if cliente else '' }}"
+                 placeholder="(47) 99999-9999"
+                 oninput="validarTel(this)">
+          <div class="tel-required-msg" id="tel-msg">Celular é obrigatório.</div>
+        </div>
+        <div class="form-group" style="margin:0;">
+          <label class="form-label">Cidade</label>
+          <input name="cli_cidade" class="input" id="cli_cidade"
+                 value="{{ cliente.cidade if cliente else '' }}" placeholder="Schroeder">
+        </div>
+        <div class="form-group" style="margin:0;">
+          <label class="form-label">UF</label>
+          <select name="cli_uf" class="select" id="cli_uf">
+            {% for uf in ['SC','RS','PR','SP','RJ','MG','ES','MS','MT','GO','DF','BA','SE','AL','PE','PB','RN','CE','PI','MA','PA','AP','AM','RR','AC','RO','TO'] %}
+            <option value="{{ uf }}" {% if (cliente and cliente.uf == uf) or (not cliente and uf == 'SC') %}selected{% endif %}>{{ uf }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <details id="dados-extras" {% if cliente and (cliente.rg or cliente.nascimento or cliente.nome_mae or cliente.logradouro) %}open{% endif %}
+               style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-bottom:4px;">
+        <summary style="cursor:pointer;font-size:12px;font-weight:700;color:var(--text3);user-select:none;list-style:none;display:flex;align-items:center;gap:6px;">
+          <span>▶</span> Dados para documentos <span style="font-weight:400">(RG, nascimento, mãe, endereço — necessários para procurações)</span>
+        </summary>
+        <div style="margin-top:12px;">
+          <div class="form-row form-row-3" style="margin-bottom:10px;">
+            <div class="form-group" style="margin:0;">
+              <label class="form-label">RG</label>
+              <input name="cli_rg" class="input" id="cli_rg" value="{{ cliente.rg if cliente else '' }}">
+            </div>
+            <div class="form-group" style="margin:0;">
+              <label class="form-label">Data de Nascimento</label>
+              <input name="cli_nasc" class="input" type="date" id="cli_nasc"
+                     value="{{ cliente.nascimento if cliente else '' }}">
+            </div>
+            <div class="form-group" style="margin:0;">
+              <label class="form-label">Nome da Mãe</label>
+              <input name="cli_mae" class="input" id="cli_mae"
+                     value="{{ cliente.nome_mae if cliente else '' }}">
+            </div>
+          </div>
+          <div class="form-row form-row-4">
+            <div class="form-group" style="margin:0;grid-column:span 2;">
+              <label class="form-label">Logradouro / Rua</label>
+              <input name="cli_rua" class="input" id="cli_rua"
+                     value="{{ cliente.logradouro if cliente else '' }}" placeholder="Rua das Flores">
+            </div>
+            <div class="form-group" style="margin:0;">
+              <label class="form-label">Número</label>
+              <input name="cli_num" class="input" id="cli_num" value="{{ cliente.numero if cliente else '' }}">
+            </div>
+            <div class="form-group" style="margin:0;">
+              <label class="form-label">Bairro</label>
+              <input name="cli_bairro" class="input" id="cli_bairro" value="{{ cliente.bairro if cliente else '' }}">
+            </div>
+          </div>
+          <input type="hidden" name="cli_cep"   id="cli_cep"   value="{{ cliente.cep if cliente else '' }}">
+          <input type="hidden" name="cli_comp"  id="cli_comp"  value="{{ cliente.complemento if cliente else '' }}">
+          <input type="hidden" name="cli_email" id="cli_email" value="{{ cliente.email if cliente else '' }}">
+        </div>
+      </details>
+    </div>
+  </div>
+
+  <!-- ──── SERVIÇO / FINANCEIRO ──── -->
+  <div class="section-card">
+    <div class="section-card-header">
+      <h3>📄 Serviço e Financeiro</h3>
+    </div>
+    <div class="section-card-body">
+
+      <div class="form-group" style="margin-bottom:0;">
+        <label class="form-label">Tipo de Serviço <span style="color:var(--red);">*</span></label>
+        <input type="hidden" name="servico" id="servico-val" required>
+        <div id="servico-display" onclick="abrirServicoPicker()"
+             style="padding:8px 12px;background:var(--surface2);border:1px solid var(--border2);
+                    border-radius:8px;cursor:pointer;font-size:13px;color:var(--text3);
+                    display:flex;align-items:center;justify-content:space-between;
+                    transition:border-color .15s;min-height:36px;"
+             onmouseenter="this.style.borderColor='var(--accent)'"
+             onmouseleave="this.style.borderColor='var(--border2)'">
+          <span id="servico-display-text">Clique para selecionar o serviço...</span>
+          <span style="font-size:10px;color:var(--text3);">▼</span>
+        </div>
+      </div>
+
+      <div id="servico-picker" style="display:none;margin-top:8px;
+           background:var(--surface2);border:1px solid var(--border2);border-radius:12px;
+           overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,.4);">
+        <div style="display:grid;grid-template-columns:200px 1fr;">
+          <div id="picker-grupos" style="border-right:1px solid var(--border);overflow-y:auto;max-height:380px;">
+            {% for gid, grupo in servicos_grupos.items() %}
+            <div class="picker-grupo" data-gid="{{ gid }}"
+                 onclick="selecionarGrupo('{{ gid }}')"
+                 style="padding:10px 14px;cursor:pointer;font-size:13px;font-weight:600;
+                        border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;
+                        transition:background .12s;color:var(--text2);">
+              <span>{{ grupo['icon'] }}</span>
+              <span>{{ grupo['label'] }}</span>
+            </div>
+            {% endfor %}
+          </div>
+          <div id="picker-itens" style="overflow-y:auto;max-height:380px;padding:8px;">
+            <div style="color:var(--text3);font-size:12px;padding:16px;text-align:center;">
+              ← Selecione uma categoria
+            </div>
+          </div>
+        </div>
+        <div style="padding:8px 12px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;">
+          <button type="button" class="btn btn-ghost btn-sm" onclick="fecharServicoPicker()">Cancelar</button>
+        </div>
+      </div>
+
+      <script id="grupos-data" type="application/json">
+      {{ servicos_grupos | tojson }}
+      </script>
+
+      <div class="form-row form-row-2" style="margin-top:12px;">
+        <div class="form-group" style="margin:0;">
+          <label class="form-label">Forma de Pagamento</label>
+          <select name="forma_pagamento" class="select">
+            {% for f in ['','Dinheiro','PIX','Cartão de Crédito','Cartão de Débito','Transferência','Cheque','A definir'] %}
+            <option value="{{ f }}">{{ f or '—' }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div></div>
+      </div>
+      <div class="form-row form-row-3">
+        <div class="form-group">
+          <label class="form-label">Honorários (R$)</label>
+          <div class="currency-input">
+            <span class="prefix">R$</span>
+            <input name="honorarios" class="input" type="number" step="0.01" min="0"
+                   placeholder="0.00" oninput="calcTotal()">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Custos / Taxas (R$)</label>
+          <div class="currency-input">
+            <span class="prefix">R$</span>
+            <input name="custos" class="input" type="number" step="0.01" min="0"
+                   placeholder="0.00" oninput="calcTotal()">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Valor Pago (R$)</label>
+          <div class="currency-input">
+            <span class="prefix">R$</span>
+            <input name="pago" class="input" type="number" step="0.01" min="0"
+                   placeholder="0.00" oninput="calcTotal()">
+          </div>
+        </div>
+      </div>
+      <div id="total-display" style="display:none;background:var(--surface2);border-radius:8px;padding:10px 14px;font-size:13px;margin-bottom:14px;color:var(--text2);">
+        Total: <strong id="total-val" style="color:var(--text);">R$ 0,00</strong> |
+        Pendente: <strong id="pendente-val" style="color:var(--yellow);">R$ 0,00</strong>
+      </div>
+      <div class="form-row form-row-2" style="margin-bottom:12px">
+        <div class="form-group" style="margin:0">
+          <label class="form-label">Exercício (ano do licenciamento)</label>
+          <input name="exercicio" class="input" type="number" min="2020" max="2099"
+                 value="{{ hoje.year }}" placeholder="{{ hoje.year }}">
+        </div>
+        <div class="form-group" style="margin:0">
+          <label class="form-label">Situação (opcional)</label>
+          <select name="situacao_pag" class="select">
+            <option value="">—</option>
+            <option value="AGUARDANDO PAGAMENTO">⏳ Aguardando Pagamento</option>
+            <option value="AGUARDANDO DOCUMENTOS">📄 Aguardando Documentos</option>
+            <option value="EM PROCESSAMENTO">🔄 Em Processamento</option>
+            <option value="CONCLUÍDO">✅ Concluído</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Observações</label>
+        <textarea name="observacoes" class="textarea" rows="3"
+                  placeholder="Documentos recebidos, observações do processo..."></textarea>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:10px;justify-content:flex-end;">
+    <a href="{{ url_for('desp_lista_os') }}" class="btn btn-ghost">Cancelar</a>
+    <button type="submit" class="btn btn-primary" onclick="return validarForm()">✅ Criar Ordem de Serviço</button>
+  </div>
+
+</form>
+</div>
+
+<!-- ── Dica OCR (canto inferior direito) ── -->
+<div class="ocr-hint" id="ocr-hint">
+  📸 <span>Ctrl+V para colar um print e preencher automaticamente</span>
+  <button onclick="document.getElementById('ocr-hint').remove()" style="background:none;border:none;cursor:pointer;color:inherit;">✕</button>
+</div>
+
+<!-- ── Modal OCR ── -->
+<div class="ocr-modal" id="ocr-modal">
+  <div class="ocr-box">
+    <div class="ocr-title">📸 Preencher com Print de Tela</div>
+    <div class="ocr-sub">Cole (Ctrl+V), arraste ou selecione uma imagem. A IA extrai os dados automaticamente.</div>
+
+    <div id="ocr-drop" class="ocr-drop-area"
+         onclick="document.getElementById('ocr-file').click()"
+         ondragover="event.preventDefault();this.classList.add('drag-over')"
+         ondragleave="this.classList.remove('drag-over')"
+         ondrop="handleDrop(event)">
+      <div class="drop-icon">🖼️</div>
+      <div>Clique aqui, arraste uma imagem ou use <strong>Ctrl+V</strong> para colar</div>
+      <div style="font-size:11px;margin-top:6px;">Suporta: PNG, JPG, screenshot de qualquer tela</div>
+    </div>
+    <input type="file" id="ocr-file" accept="image/*" style="display:none" onchange="handleFileInput(this)">
+
+    <img id="ocr-img" class="ocr-preview" style="display:none;" alt="Preview">
+
+    <div class="ocr-progress" id="ocr-progress">
+      <div class="spin">⚙️</div>
+      <div>Analisando imagem com IA...<br><small style="color:var(--text3);">Groq Llama 4 Vision</small></div>
+    </div>
+
+    <div class="ocr-result" id="ocr-result"></div>
+
+    <div id="ocr-target-row" style="display:none;background:var(--surface2);border-radius:8px;
+         padding:10px;margin-bottom:10px;font-size:12px;">
+      <div style="color:var(--text3);margin-bottom:6px;font-weight:600;">📋 Onde aplicar os dados?</div>
+      <div style="display:flex;gap:6px;">
+        <button class="btn btn-secondary btn-sm" onclick="ocrTarget='veiculo';aplicarDados()">🚗 Só Veículo</button>
+        <button class="btn btn-secondary btn-sm" onclick="ocrTarget='cliente';aplicarDados()">👤 Só Cliente</button>
+        <button class="btn btn-primary btn-sm"   onclick="ocrTarget='ambos';aplicarDados()">✅ Ambos</button>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:8px;justify-content:flex-end;">
+      <button class="btn btn-ghost" onclick="fecharOCR()">Cancelar</button>
+      <button class="btn btn-secondary" id="btn-ocr-process" onclick="processarOCR()" style="display:none;">
+        🔍 Extrair Dados
+      </button>
+      <button class="btn btn-primary" id="btn-ocr-fill" onclick="mostrarTargetRow()" style="display:none;">
+        ✅ Preencher →
+      </button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_script %}
+<script>
+let ocrImageB64 = null;
+let ocrMime     = 'image/png';
+let dadosOCR    = null;
+let ocrTarget   = 'ambos';
+
+function abrirOCR(target) {
+  ocrTarget = target || 'ambos';
+  const titulos = {
+    veiculo: '📸 Print do Veículo / Placa',
+    cliente: '📸 Print do Condutor / Documento',
+    ambos:   '📸 Preencher com Print de Tela',
+  };
+  const subs = {
+    veiculo: 'Cole o print da tela do DETRAN/Bludata com os dados do veículo. A IA extrai placa, RENAVAM, chassi, etc.',
+    cliente: 'Cole o print da CNH, RG ou sistema com os dados do proprietário. A IA extrai nome, CPF, endereço, etc.',
+    ambos:   'Cole ou arraste uma imagem. A IA extrai os dados automaticamente.',
+  };
+  document.querySelector('.ocr-title').textContent = titulos[ocrTarget] || titulos.ambos;
+  document.querySelector('.ocr-sub').textContent   = subs[ocrTarget]   || subs.ambos;
+  document.getElementById('ocr-modal').classList.add('open');
+}
+function fecharOCR() {
+  document.getElementById('ocr-modal').classList.remove('open');
+}
+
+document.addEventListener('paste', function(e) {
+  if (['INPUT','TEXTAREA'].includes(e.target.tagName)) return;
+  const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+  for (const item of items) {
+    if (item.type.startsWith('image/')) {
+      e.preventDefault();
+      const blob = item.getAsFile();
+      carregarImagem(blob);
+      abrirOCR('ambos');
+      return;
+    }
+  }
+});
+
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('ocr-drop').classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file && file.type.startsWith('image/')) carregarImagem(file);
+}
+function handleFileInput(input) {
+  if (input.files[0]) carregarImagem(input.files[0]);
+}
+
+function carregarImagem(blob) {
+  ocrMime = blob.type || 'image/png';
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const dataUrl = e.target.result;
+    ocrImageB64 = dataUrl.split(',')[1];
+    const img = document.getElementById('ocr-img');
+    img.src = dataUrl;
+    img.style.display = 'block';
+    document.getElementById('ocr-drop').style.display = 'none';
+    document.getElementById('btn-ocr-process').style.display = 'inline-flex';
+    document.getElementById('ocr-result').style.display = 'none';
+    document.getElementById('btn-ocr-fill').style.display = 'none';
+    dadosOCR = null;
+  };
+  reader.readAsDataURL(blob);
+}
+
+async function processarOCR() {
+  if (!ocrImageB64) return;
+  document.getElementById('ocr-progress').style.display = 'block';
+  document.getElementById('btn-ocr-process').disabled = true;
+  document.getElementById('ocr-result').style.display = 'none';
+
+  try {
+    const resp = await fetch('/despachante/api/ocr', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ imagem: ocrImageB64, mime: ocrMime }),
+    });
+    const data = await resp.json();
+    document.getElementById('ocr-progress').style.display = 'none';
+    document.getElementById('btn-ocr-process').disabled = false;
+
+    if (data.erro) {
+      document.getElementById('ocr-result').style.display = 'block';
+      document.getElementById('ocr-result').innerHTML =
+        `<div style="color:var(--red);">❌ ${data.erro}</div>`;
+      return;
+    }
+
+    dadosOCR = data.dados;
+    const campos = Object.keys(dadosOCR);
+    const nomes = {
+      placa:'Placa', renavam:'RENAVAM', chassi:'Chassi', marca:'Marca',
+      modelo:'Modelo', ano_fab:'Ano Fab.', ano_mod:'Ano Mod.', cor:'Cor',
+      especie:'Espécie', categoria:'Categoria', combustivel:'Combustível',
+      num_crv:'Nº CRV', nome:'Nome', cpf:'CPF', cnpj:'CNPJ', rg:'RG',
+      nascimento:'Nascimento', nome_mae:'Nome Mãe', telefone:'Telefone',
+      email:'E-mail', cep:'CEP', logradouro:'Logradouro', numero:'Número',
+      complemento:'Complemento', bairro:'Bairro', cidade:'Cidade', uf:'UF',
+    };
+
+    let html = `<div style="font-size:11px;color:var(--green);margin-bottom:6px;">✅ ${campos.length} campo(s) encontrado(s)</div>`;
+    campos.forEach(k => {
+      html += `<div class="ocr-field-row">
+        <span class="ocr-field-name">${nomes[k] || k}</span>
+        <span class="ocr-field-val">${dadosOCR[k]}</span>
+      </div>`;
+    });
+
+    document.getElementById('ocr-result').style.display = 'block';
+    document.getElementById('ocr-result').innerHTML = html;
+    const btnFill = document.getElementById('btn-ocr-fill');
+    if (ocrTarget === 'veiculo') btnFill.textContent = '🚗 Preencher Veículo →';
+    else if (ocrTarget === 'cliente') btnFill.textContent = '👤 Preencher Condutor →';
+    else btnFill.textContent = '✅ Preencher →';
+    btnFill.style.display = 'inline-flex';
+
+  } catch(err) {
+    document.getElementById('ocr-progress').style.display = 'none';
+    document.getElementById('btn-ocr-process').disabled = false;
+    document.getElementById('ocr-result').style.display = 'block';
+    document.getElementById('ocr-result').innerHTML =
+      `<div style="color:var(--red);">❌ Erro de conexão: ${err.message}</div>`;
+  }
+}
+
+function aplicarDados() {
+  if (!dadosOCR) return;
+  const d = dadosOCR;
+  const t = ocrTarget;
+  const fillVeiculo  = (t === 'veiculo' || t === 'ambos');
+  const fillCliente  = (t === 'cliente' || t === 'ambos');
+
+  if (fillVeiculo) {
+    if (d.placa) {
+      document.querySelector('[name="v_placa"]').value = d.placa.toUpperCase();
+      document.getElementById('placa-input').value = d.placa.toUpperCase();
+    }
+    setVal('v_renavam', d.renavam);
+    setVal('v_chassi',  d.chassi);
+    setVal('v_crv',     d.num_crv);
+    setVal('v_marca',   d.marca  ? d.marca.toUpperCase()  : null);
+    setVal('v_modelo',  d.modelo ? d.modelo.toUpperCase() : null);
+    setVal('v_anofab',  d.ano_fab);
+    setVal('v_anomod',  d.ano_mod);
+    setVal('v_cor',     d.cor    ? d.cor.toUpperCase()    : null);
+    if (d.especie)     setSelectVal('v_especie',    d.especie);
+    if (d.categoria)   setSelectVal('v_categoria',  d.categoria);
+    if (d.combustivel) setSelectVal('v_combustivel',d.combustivel);
+  }
+
+  if (fillCliente) {
+    setVal('cli_nome', d.nome);
+    setVal('cli_cpf',  d.cpf);
+    setVal('cli_cnpj', d.cnpj);
+    setVal('cli_rg',   d.rg);
+    if (d.nascimento) {
+      let nasc = d.nascimento;
+      if (/^\d{2}\/\d{2}\/\d{4}$/.test(nasc)) {
+        const p = nasc.split('/');
+        nasc = `${p[2]}-${p[1]}-${p[0]}`;
+      }
+      setVal('cli_nasc', nasc);
+    }
+    setVal('cli_mae',    d.nome_mae);
+    setVal('cli_tel',    d.telefone);
+    setVal('cli_email',  d.email);
+    setVal('cli_cep',    d.cep);
+    setVal('cli_rua',    d.logradouro);
+    setVal('cli_num',    d.numero);
+    setVal('cli_comp',   d.complemento);
+    setVal('cli_bairro', d.bairro);
+    setVal('cli_cidade', d.cidade);
+    if (d.uf) setSelectVal('cli_uf', d.uf);
+    if (d.cpf) document.getElementById('cpf-search').value = d.cpf;
+  }
+
+  fecharOCR();
+
+  document.querySelectorAll('.input, .select').forEach(el => {
+    if (el.value && el.value !== el.placeholder) {
+      el.style.borderColor = 'var(--green)';
+      setTimeout(() => el.style.borderColor = '', 2500);
+    }
+  });
+
+  setTimeout(() => {
+    document.getElementById('ocr-img').style.display = 'none';
+    document.getElementById('ocr-drop').style.display = 'block';
+    document.getElementById('btn-ocr-process').style.display = 'none';
+    document.getElementById('btn-ocr-fill').style.display = 'none';
+    document.getElementById('ocr-target-row').style.display = 'none';
+    document.getElementById('ocr-result').style.display = 'none';
+    ocrImageB64 = null; dadosOCR = null; ocrTarget = 'ambos';
+  }, 400);
+}
+
+function mostrarTargetRow() {
+  if (ocrTarget !== 'ambos') {
+    aplicarDados();
+    return;
+  }
+  document.getElementById('ocr-target-row').style.display = 'block';
+  document.getElementById('btn-ocr-fill').style.display = 'none';
+}
+
+function validarTel(el) {
+  const ok = el.value.trim().length >= 8;
+  el.classList.toggle('required-highlight', !ok);
+  document.getElementById('tel-msg').classList.toggle('show', !ok && el.value.length > 0);
+}
+
+function validarForm() {
+  const tel = document.getElementById('cli_tel');
+  if (!tel.value.trim()) {
+    tel.classList.add('required-highlight');
+    document.getElementById('tel-msg').classList.add('show');
+    tel.focus();
+    tel.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    return false;
+  }
+  return true;
+}
+
+const GRUPOS_DATA = JSON.parse(document.getElementById('grupos-data').textContent);
+let pickerAberto = false;
+
+function abrirServicoPicker() {
+  const picker = document.getElementById('servico-picker');
+  pickerAberto = !pickerAberto;
+  picker.style.display = pickerAberto ? 'block' : 'none';
+  if (pickerAberto && !document.querySelector('.picker-grupo.ativo')) {
+    const primeiro = document.querySelector('.picker-grupo');
+    if (primeiro) selecionarGrupo(primeiro.dataset.gid);
+  }
+}
+function fecharServicoPicker() {
+  pickerAberto = false;
+  document.getElementById('servico-picker').style.display = 'none';
+}
+
+document.addEventListener('click', e => {
+  if (pickerAberto && !e.target.closest('#servico-picker') && !e.target.closest('#servico-display')) {
+    fecharServicoPicker();
+  }
+});
+
+function selecionarGrupo(gid) {
+  document.querySelectorAll('.picker-grupo').forEach(el => {
+    const ativo = el.dataset.gid === gid;
+    el.style.background = ativo ? 'rgba(249,115,22,.12)' : '';
+    el.style.color = ativo ? 'var(--accent)' : 'var(--text2)';
+  });
+
+  const grupo = GRUPOS_DATA[gid];
+  if (!grupo) return;
+
+  const container = document.getElementById('picker-itens');
+  container.innerHTML = `
+    <div style="padding:8px 4px 4px;font-size:10px;font-weight:700;text-transform:uppercase;
+                letter-spacing:.5px;color:var(--text3);">${grupo.icon} ${grupo.label}</div>
+  `;
+
+  Object.entries(grupo.items).forEach(([key, label]) => {
+    const item = document.createElement('div');
+    item.className = 'picker-item';
+    item.dataset.key = key;
+    item.dataset.label = label;
+    item.dataset.grupo = grupo.label;
+    item.textContent = label;
+    item.style.cssText = `
+      padding:8px 12px; cursor:pointer; font-size:13px; border-radius:7px;
+      margin-bottom:2px; color:var(--text2); transition:all .12s;
+    `;
+    item.onmouseenter = () => { item.style.background = 'var(--surface3)'; item.style.color = 'var(--text)'; };
+    item.onmouseleave = () => { item.style.background = ''; item.style.color = 'var(--text2)'; };
+    item.onclick = () => selecionarServico(key, label, grupo.label, grupo.icon);
+    container.appendChild(item);
+  });
+}
+
+function selecionarServico(key, label, grupoLabel, grupoIcon) {
+  document.getElementById('servico-val').value = key;
+  document.getElementById('servico-display-text').textContent = `${grupoIcon} ${grupoLabel}  →  ${label}`;
+  document.getElementById('servico-display-text').style.color = 'var(--text)';
+  document.getElementById('servico-display').style.borderColor = 'var(--green)';
+  fecharServicoPicker();
+}
+
+let cpfDebounce = null;
+
+function buscarPlaca() {
+  const placa = document.getElementById('placa-input').value.trim().toUpperCase().replace(/[^A-Z0-9]/g,'');
+  if (placa.length < 7) { alert('Informe uma placa válida (7 caracteres)'); return; }
+  fetch('/despachante/api/busca/placa/' + placa)
+    .then(r => r.json())
+    .then(data => {
+      if (data.encontrado) {
+        preencherVeiculo(data.veiculo);
+        if (data.cliente) preencherCliente(data.cliente);
+        document.getElementById('found-banner').innerHTML = '✅ Veículo encontrado: ' + (data.veiculo.marca||'') + ' ' + (data.veiculo.modelo||'') + ' — ' + placa;
+        document.getElementById('found-banner').classList.add('show');
+        document.getElementById('not-found-banner').classList.remove('show');
+      } else {
+        document.querySelector('[name="v_placa"]').value = placa;
+        document.getElementById('not-found-banner').classList.add('show');
+        document.getElementById('found-banner').classList.remove('show');
+      }
+    });
+}
+
+function preencherVeiculo(v) {
+  document.getElementById('veiculo-id-field').value = v.id || '';
+  setVal('v_renavam', v.renavam); setVal('v_chassi', v.chassi);
+  setVal('v_crv', v.num_crv); setVal('v_marca', v.marca);
+  setVal('v_modelo', v.modelo); setVal('v_anofab', v.ano_fab);
+  setVal('v_anomod', v.ano_mod); setVal('v_cor', v.cor);
+  setSelectVal('v_especie', v.especie); setSelectVal('v_categoria', v.categoria);
+  setSelectVal('v_combustivel', v.combustivel);
+  document.querySelector('[name="v_placa"]').value = v.placa || '';
+}
+
+function preencherCliente(c) {
+  document.getElementById('cliente-id-field').value = c.id || '';
+  setVal('cli_nome', c.nome); setVal('cli_cpf', c.cpf);
+  setVal('cli_cnpj', c.cnpj); setVal('cli_rg', c.rg);
+  setVal('cli_nasc', c.nascimento); setVal('cli_mae', c.nome_mae);
+  setVal('cli_tel', c.telefone); setVal('cli_email', c.email);
+  setVal('cli_cep', c.cep); setVal('cli_rua', c.logradouro);
+  setVal('cli_num', c.numero); setVal('cli_comp', c.complemento);
+  setVal('cli_bairro', c.bairro); setVal('cli_cidade', c.cidade);
+  setSelectVal('cli_uf', c.uf);
+}
+
+function debounceCpf(val) {
+  clearTimeout(cpfDebounce);
+  const cpf = val.replace(/\D/g,'');
+  if (cpf.length < 11) return;
+  cpfDebounce = setTimeout(() => buscarCpf(cpf), 500);
+}
+
+function buscarCpf(cpf) {
+  fetch('/despachante/api/busca/cpf/' + cpf)
+    .then(r => r.json())
+    .then(data => {
+      if (data.encontrado) {
+        preencherCliente(data.cliente);
+        const b = document.getElementById('cpf-found-banner');
+        b.innerHTML = '✅ Cliente encontrado: ' + data.cliente.nome;
+        b.classList.add('show');
+      }
+    });
+}
+
+function setVal(id, val) {
+  const el = document.getElementById(id);
+  if (el && val != null) el.value = val;
+}
+function setSelectVal(id, val) {
+  const el = document.getElementById(id);
+  if (el && val) { for (let o of el.options) { if (o.value === val) { o.selected = true; break; } } }
+}
+
+function setTipo(t) {
+  document.getElementById('cli_tipo').value = t;
+  document.getElementById('btn-pf').classList.toggle('active', t === 'PF');
+  document.getElementById('btn-pj').classList.toggle('active', t === 'PJ');
+  document.getElementById('pf-fields').style.display = t === 'PF' ? '' : 'none';
+  document.getElementById('pj-fields').style.display = t === 'PJ' ? '' : 'none';
+}
+
+function calcTotal() {
+  const hon = parseFloat(document.querySelector('[name="honorarios"]').value) || 0;
+  const cus = parseFloat(document.querySelector('[name="custos"]').value) || 0;
+  const pago = parseFloat(document.querySelector('[name="pago"]').value) || 0;
+  const total = hon + cus;
+  const pendente = Math.max(0, total - pago);
+  if (total > 0) {
+    document.getElementById('total-display').style.display = 'block';
+    document.getElementById('total-val').textContent = 'R$ ' + total.toFixed(2).replace('.', ',');
+    document.getElementById('pendente-val').textContent = 'R$ ' + pendente.toFixed(2).replace('.', ',');
+  } else {
+    document.getElementById('total-display').style.display = 'none';
+  }
+}
+
+{% if placa_pre and not veiculo %}
+window.addEventListener('DOMContentLoaded', () => buscarPlaca());
+{% endif %}
+</script>
+{% endblock %}

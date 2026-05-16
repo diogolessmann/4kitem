@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Protocolo RENAVAM — O.S. {{ os.numero }}</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    @page { size: A4; margin: 10mm 12mm; }
+    body { font-family: Arial, sans-serif; font-size: 10pt; color: #000; background: #fff; }
+
+    .via {
+      border: 1.5px solid #000; border-radius: 3px;
+      padding: 8px 10px; margin-bottom: 4mm;
+      page-break-inside: avoid;
+      height: 88mm;
+      position: relative;
+    }
+    .via:last-child { margin-bottom: 0; }
+
+    .via-label {
+      position: absolute; top: 6px; right: 8px;
+      font-size: 7pt; font-weight: bold; color: #555;
+      text-transform: uppercase; letter-spacing: .5px;
+    }
+
+    .header { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 6px; border-bottom: 1px solid #000; padding-bottom: 5px; }
+    .header-logo { font-size: 22pt; line-height: 1; }
+    .header-info { flex: 1; }
+    .header-info .title { font-size: 12pt; font-weight: bold; }
+    .header-info .subtitle { font-size: 8pt; color: #333; }
+    .header-os { text-align: right; }
+    .header-os .os-num { font-size: 15pt; font-weight: bold; font-family: monospace; }
+    .header-os .os-label { font-size: 7pt; color: #555; }
+
+    .section-title {
+      font-size: 7pt; font-weight: bold; text-transform: uppercase;
+      letter-spacing: .5px; color: #333; margin: 5px 0 3px;
+      border-bottom: 1px dashed #ccc; padding-bottom: 1px;
+    }
+
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 12px; }
+    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4px 12px; }
+    .grid-4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 4px 12px; }
+
+    .field { display: flex; flex-direction: column; gap: 1px; }
+    .field-label { font-size: 6.5pt; color: #666; font-weight: bold; }
+    .field-value {
+      font-size: 9pt; border-bottom: 1px solid #999;
+      padding-bottom: 1px; min-height: 14px; font-weight: 500;
+    }
+    .field-value.mono { font-family: monospace; font-size: 8pt; }
+    .field-value.placa { font-family: monospace; font-size: 12pt; font-weight: 900; letter-spacing: 2px; }
+
+    .servico-box {
+      background: #f5f5f5; border: 1px solid #ccc; border-radius: 2px;
+      padding: 3px 8px; font-size: 9pt; font-weight: bold; text-align: center;
+      margin: 4px 0;
+    }
+
+    .docs-section { margin-top: 4px; }
+    .docs-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; }
+    .doc-check { display: flex; align-items: center; gap: 4px; font-size: 7.5pt; }
+    .doc-check .box {
+      width: 10px; height: 10px; border: 1px solid #000;
+      flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+      font-size: 8pt; font-weight: bold;
+    }
+
+    .footer {
+      display: flex; justify-content: space-between; align-items: flex-end;
+      margin-top: 5px; padding-top: 4px; border-top: 1px solid #ccc;
+      font-size: 7pt; color: #555;
+    }
+    .sign-line {
+      border-top: 1px solid #000; width: 140px;
+      text-align: center; padding-top: 2px; font-size: 7pt;
+    }
+    .fin-box {
+      border: 1px solid #000; padding: 3px 8px; text-align: right;
+      font-size: 8pt;
+    }
+    .fin-box .total { font-size: 11pt; font-weight: bold; }
+
+    @media print {
+      body { margin: 0; }
+      .no-print { display: none !important; }
+    }
+
+    .print-bar {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      background: #1a1a2e; color: #fff; padding: 10px 20px;
+      display: flex; align-items: center; gap: 12px; font-family: Arial, sans-serif;
+    }
+    .print-bar button {
+      padding: 6px 16px; border-radius: 6px; border: none; cursor: pointer;
+      font-size: 13px; font-weight: 600;
+    }
+    .print-bar .btn-print { background: #f97316; color: #fff; }
+    .print-bar .btn-close { background: rgba(255,255,255,.15); color: #fff; }
+    .print-bar .info { font-size: 12px; color: #aaa; }
+
+    body { padding-top: 50px; }
+    @media print { body { padding-top: 0; } .print-bar { display: none; } }
+  </style>
+</head>
+<body>
+
+<div class="print-bar no-print">
+  <button class="btn-print" onclick="window.print()">🖨️ Imprimir (3 vias)</button>
+  <button class="btn-close" onclick="history.back()">← Voltar</button>
+  <span class="info">O.S. {{ os.numero }} · {{ servicos.get(os.servico, os.servico) }} · {{ os.placa or 'Sem placa' }}</span>
+</div>
+
+{% set servico_label = servicos.get(os.servico, os.servico) %}
+{% set total = os.honorarios + os.custos %}
+{% set pendente = total - os.pago %}
+
+{% for via_num in [1, 2, 3] %}
+{% set via_nome = ['DESPACHANTE', 'CLIENTE', 'DETRAN'][via_num - 1] %}
+<div class="via">
+  <div class="via-label">{{ via_num }}ª VIA — {{ via_nome }}</div>
+
+  <div class="header">
+    <div class="header-logo">🚗</div>
+    <div class="header-info">
+      <div class="title">DESPACHANTE LESSMANN</div>
+      <div class="subtitle">
+        {{ desp.nome }} · Credencial DETRAN nº {{ desp.credencial }}<br>
+        CNPJ {{ desp.cnpj }} · CPF {{ desp.cpf }}<br>
+        {{ desp.cidade }}/SC · CITRAN {{ desp.citran }} · WhatsApp {{ desp.whatsapp_fmt }}
+      </div>
+    </div>
+    <div class="header-os">
+      <div class="os-label">PROTOCOLO / O.S.</div>
+      <div class="os-num">{{ os.numero }}</div>
+      <div class="os-label">{{ hoje.strftime('%d/%m/%Y') }}</div>
+    </div>
+  </div>
+
+  <div class="servico-box">{{ servico_label | upper }}</div>
+
+  {% if os.placa %}
+  <div class="section-title">Veículo</div>
+  <div class="grid-4" style="margin-bottom:4px;">
+    <div class="field">
+      <span class="field-label">Placa</span>
+      <span class="field-value placa">{{ os.placa }}</span>
+    </div>
+    <div class="field">
+      <span class="field-label">Marca / Modelo</span>
+      <span class="field-value">{{ os.marca or '' }} {{ os.modelo or '' }}</span>
+    </div>
+    <div class="field">
+      <span class="field-label">Ano Fab/Mod</span>
+      <span class="field-value">{{ os.ano_fab or '—' }}/{{ os.ano_mod or '—' }}</span>
+    </div>
+    <div class="field">
+      <span class="field-label">Cor</span>
+      <span class="field-value">{{ os.cor or '—' }}</span>
+    </div>
+    <div class="field">
+      <span class="field-label">RENAVAM</span>
+      <span class="field-value mono">{{ os.renavam or '___________' }}</span>
+    </div>
+    <div class="field" style="grid-column:span 2;">
+      <span class="field-label">Chassi</span>
+      <span class="field-value mono">{{ os.chassi or '___________________' }}</span>
+    </div>
+    <div class="field">
+      <span class="field-label">Nº CRV</span>
+      <span class="field-value mono">{{ os.num_crv or '___________' }}</span>
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="section-title">Proprietário / Cliente</div>
+  <div class="grid-3" style="margin-bottom:4px;">
+    <div class="field" style="grid-column:span 2;">
+      <span class="field-label">Nome Completo</span>
+      <span class="field-value">{{ os.cliente_nome or '_________________________________' }}</span>
+    </div>
+    <div class="field">
+      <span class="field-label">CPF / CNPJ</span>
+      <span class="field-value mono">{{ os.cpf or os.cnpj or '_______________' }}</span>
+    </div>
+    <div class="field">
+      <span class="field-label">RG</span>
+      <span class="field-value mono">{{ os.rg or '_____________' }}</span>
+    </div>
+    <div class="field">
+      <span class="field-label">Nascimento</span>
+      <span class="field-value">{{ os.nascimento or '___/___/______' }}</span>
+    </div>
+    <div class="field">
+      <span class="field-label">Telefone</span>
+      <span class="field-value">{{ os.telefone or '(  ) _____-____' }}</span>
+    </div>
+  </div>
+  <div class="grid-2">
+    <div class="field">
+      <span class="field-label">Endereço</span>
+      <span class="field-value" style="font-size:8pt;">
+        {{ os.logradouro or '' }}{% if os.endereco_num %}, {{ os.endereco_num }}{% endif %}
+        {% if os.bairro %} — {{ os.bairro }}{% endif %}
+      </span>
+    </div>
+    <div class="field">
+      <span class="field-label">Cidade / UF / CEP</span>
+      <span class="field-value" style="font-size:8pt;">
+        {{ os.cidade or '' }}/{{ os.uf or '' }} · {{ os.cep or '' }}
+      </span>
+    </div>
+  </div>
+
+  <div class="docs-section">
+    <div class="section-title">Documentos Recebidos pelo Despachante</div>
+    <div class="docs-grid">
+      {% set doc_lista = [
+        'CRV Original', 'CRLV', 'CNH Proprietário', 'RG Proprietário',
+        'CPF Proprietário', 'Comprovante Endereço', 'Procuração',
+        'Laudo Vistoria', 'Nota Fiscal', 'Boleto DETRAN', 'DUT',
+        'Certidão Débitos', 'Comprovante Pagamento', 'Requerimento',
+        'Autorização DENATRAN', 'Contrato Compra/Venda'
+      ] %}
+      {% for doc in doc_lista %}
+      <div class="doc-check">
+        <div class="box">{% if doc in docs_check %}✓{% endif %}</div>
+        <span>{{ doc }}</span>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="footer">
+    <div>
+      <div style="font-size:7.5pt;margin-bottom:2px;">Observações: {{ os.observacoes or '' }}</div>
+      <div class="sign-line">Assinatura do Cliente</div>
+    </div>
+    <div>
+      <div class="fin-box">
+        <div>Honorários: R$ {{ "%.2f"|format(os.honorarios) }}</div>
+        <div>Taxas/Custos: R$ {{ "%.2f"|format(os.custos) }}</div>
+        <div style="border-top:1px solid #000;margin-top:2px;padding-top:2px;">
+          <span>TOTAL</span>
+          <span class="total"> R$ {{ "%.2f"|format(total) }}</span>
+        </div>
+        {% if pendente > 0 %}
+        <div style="font-size:7pt;color:#cc0000;">Pendente: R$ {{ "%.2f"|format(pendente) }}</div>
+        {% else %}
+        <div style="font-size:7pt;color:green;">✓ Quitado</div>
+        {% endif %}
+        <div style="font-size:7pt;color:#555;">{{ os.forma_pagamento or '' }}</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endfor %}
+
+</body>
+</html>

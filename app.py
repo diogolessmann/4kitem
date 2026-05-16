@@ -1958,10 +1958,415 @@ def mz_campaign_status(cid):
     return jsonify(d)
 
 
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  DESPACHANTE LESSMANN — integrado ao 4kitem
+# ══════════════════════════════════════════════════════════════════════════════
+
+from desp_db import (
+    init_desp_db, stats_dashboard as desp_stats,
+    SERVICOS as DESP_SERVICOS, SERVICOS_GRUPOS as DESP_SERVICOS_GRUPOS,
+    FINAIS_PLACA as DESP_FINAIS_PLACA, MESES as DESP_MESES,
+    STATUS_LABELS as DESP_STATUS_LABELS,
+    criar_os as desp_criar_os, get_os as desp_get_os,
+    listar_os as desp_listar_os, atualizar_os as desp_atualizar_os,
+    atualizar_os_status as desp_atualizar_os_status,
+    criar_cliente as desp_criar_cliente, get_cliente as desp_get_cliente,
+    atualizar_cliente as desp_atualizar_cliente,
+    buscar_cliente_cpf as desp_buscar_cpf,
+    criar_veiculo as desp_criar_veiculo,
+    buscar_veiculo_placa as desp_buscar_placa,
+    get_documentos_os as desp_get_docs,
+    lista_final_placa as desp_lista_final_placa,
+    listar_exercicios as desp_listar_exercicios,
+    atualizar_situacao_pag as desp_atualizar_situacao,
+)
+
+DESP_CONFIG = {
+    "nome":         os.environ.get("DESP_NOME",       "DIOGO KAUE LESSMANN"),
+    "cpf":          os.environ.get("DESP_CPF",        "060.625.099-99"),
+    "cnpj":         os.environ.get("DESP_CNPJ",       "28.858.795/0001-92"),
+    "credencial":   os.environ.get("DESP_CREDENCIAL",  "2095"),
+    "cidade":       os.environ.get("DESP_CIDADE",     "SCHROEDER"),
+    "citran":       os.environ.get("DESP_CITRAN",     "Guaramirim"),
+    "whatsapp":     os.environ.get("DESP_WHATSAPP",   "47991011351"),
+    "whatsapp_fmt": "(47) 99101-1351",
+}
+DESP_PASSWORD = os.environ.get("DESP_PASSWORD", "lessmann2026")
+
+
+def _desp_login_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not session.get('desp_logged'):
+            return redirect('/despachante/login')
+        return f(*args, **kwargs)
+    return decorated
+
+
+def _desp_globals():
+    hoje = datetime.now()
+    return dict(
+        desp=DESP_CONFIG,
+        servicos=DESP_SERVICOS,
+        servicos_grupos=DESP_SERVICOS_GRUPOS,
+        status_labels=DESP_STATUS_LABELS,
+        hoje=hoje, mes_atual=hoje.month, meses=DESP_MESES,
+        finais_placa_nav=sorted(DESP_FINAIS_PLACA.items(), key=lambda x: x[1]),
+    )
+
+
+def desp_render(template, **ctx):
+    return render_template(f'despachante/{template}', **{**_desp_globals(), **ctx})
+
+
+# ── Login ─────────────────────────────────────────────────────────────────────
+@app.route('/despachante/login', methods=['GET', 'POST'])
+def desp_login():
+    erro = None
+    if request.method == 'POST':
+        if request.form.get('senha') == DESP_PASSWORD:
+            session['desp_logged'] = True
+            return redirect('/despachante/')
+        erro = 'Senha incorreta.'
+    return render_template('despachante/login.html', erro=erro)
+
+@app.route('/despachante/logout')
+def desp_logout():
+    session.pop('desp_logged', None)
+    return redirect('/despachante/login')
+
+
+# ── Dashboard ─────────────────────────────────────────────────────────────────
+@app.route('/despachante/')
+@app.route('/despachante')
+@_desp_login_required
+def desp_dashboard():
+    stats   = desp_stats()
+    recentes = desp_listar_os(limit=8)
+    return desp_render('dashboard.html', stats=stats, recentes=recentes)
+
+
+# ── Ordens de Serviço ─────────────────────────────────────────────────────────
+@app.route('/despachante/os')
+@_desp_login_required
+def desp_lista_os():
+    status = request.args.get('status')
+    busca  = request.args.get('q', '').strip()
+    page   = request.args.get('page', 1, type=int)
+    offset = (page - 1) * 20
+    ordens = desp_listar_os(status=status or None, busca=busca or None, limit=20, offset=offset)
+    return desp_render('os/lista.html', ordens=ordens, status_sel=status, busca=busca, page=page)
+
+
+@app.route('/despachante/os/nova', methods=['GET', 'POST'])
+@_desp_login_required
+def desp_nova_os():
+    if request.method == 'POST':
+        f = request.form
+        cliente_id = f.get('cliente_id') or None
+        if not cliente_id:
+            dados_cli = {
+                'tipo': f.get('cli_tipo', 'PF'), 'nome': f.get('cli_nome', '').strip(),
+                'cpf': f.get('cli_cpf', '').strip(), 'cnpj': f.get('cli_cnpj', '').strip(),
+                'rg': f.get('cli_rg', '').strip(), 'nascimento': f.get('cli_nasc', ''),
+                'nome_mae': f.get('cli_mae', ''), 'telefone': f.get('cli_tel', ''),
+                'email': f.get('cli_email', ''), 'cep': f.get('cli_cep', ''),
+                'logradouro': f.get('cli_rua', ''), 'numero': f.get('cli_num', ''),
+                'complemento': f.get('cli_comp', ''), 'bairro': f.get('cli_bairro', ''),
+                'cidade': f.get('cli_cidade', ''), 'uf': f.get('cli_uf', 'SC'),
+            }
+            if dados_cli['nome']:
+                existente = desp_buscar_cpf(dados_cli['cpf']) if dados_cli['cpf'] else None
+                if existente:
+                    cliente_id = existente['id']
+                    desp_atualizar_cliente(cliente_id, dados_cli)
+                else:
+                    cliente_id = desp_criar_cliente(dados_cli)
+        veiculo_id = f.get('veiculo_id') or None
+        if not veiculo_id and f.get('v_placa', '').strip():
+            dados_vei = {
+                'placa': f.get('v_placa', '').upper().replace('-', ''),
+                'renavam': f.get('v_renavam', ''), 'chassi': f.get('v_chassi', ''),
+                'marca': f.get('v_marca', ''), 'modelo': f.get('v_modelo', ''),
+                'ano_fab': f.get('v_anofab') or None, 'ano_mod': f.get('v_anomod') or None,
+                'cor': f.get('v_cor', ''), 'especie': f.get('v_especie', 'Automóvel'),
+                'tipo_veiculo': f.get('v_tipo', ''), 'categoria': f.get('v_categoria', 'Particular'),
+                'combustivel': f.get('v_combustivel', ''), 'num_crv': f.get('v_crv', ''),
+                'proprietario_id': cliente_id,
+            }
+            veiculo_id = desp_criar_veiculo(dados_vei)
+        dados_os = {
+            'cliente_id': cliente_id, 'veiculo_id': veiculo_id,
+            'servico': f.get('servico', 'outros'),
+            'honorarios': float(f.get('honorarios') or 0),
+            'custos': float(f.get('custos') or 0),
+            'pago': float(f.get('pago') or 0),
+            'forma_pagamento': f.get('forma_pagamento', ''),
+            'observacoes': f.get('observacoes', ''),
+            'exercicio': int(f.get('exercicio') or datetime.now().year),
+            'situacao_pag': f.get('situacao_pag', ''),
+        }
+        os_id = desp_criar_os(dados_os)
+        return redirect(url_for('desp_detalhe_os', id=os_id))
+    placa_pre = request.args.get('placa', '')
+    veiculo   = desp_buscar_placa(placa_pre) if placa_pre else None
+    cliente   = desp_get_cliente(veiculo['proprietario_id']) if veiculo and veiculo.get('proprietario_id') else None
+    return desp_render('os/nova.html', veiculo=veiculo, cliente=cliente, placa_pre=placa_pre)
+
+
+@app.route('/despachante/os/<int:id>')
+@_desp_login_required
+def desp_detalhe_os(id):
+    os_ = desp_get_os(id)
+    if not os_: abort(404)
+    docs = desp_get_docs(id)
+    return desp_render('os/detalhe.html', os=os_, docs=docs)
+
+
+@app.route('/despachante/os/<int:id>/status', methods=['POST'])
+@_desp_login_required
+def desp_atualizar_status(id):
+    status = request.form.get('status', 'aberta')
+    pago   = request.form.get('pago')
+    desp_atualizar_os_status(id, status, float(pago) if pago else None)
+    return redirect(url_for('desp_detalhe_os', id=id))
+
+
+@app.route('/despachante/os/<int:id>/editar', methods=['POST'])
+@_desp_login_required
+def desp_editar_os(id):
+    f = request.form
+    desp_atualizar_os(id, {
+        'servico': f.get('servico', 'outros'),
+        'honorarios': float(f.get('honorarios') or 0),
+        'custos': float(f.get('custos') or 0),
+        'pago': float(f.get('pago') or 0),
+        'forma_pagamento': f.get('forma_pagamento', ''),
+        'observacoes': f.get('observacoes', ''),
+        'exercicio': int(f.get('exercicio') or datetime.now().year),
+        'situacao_pag': f.get('situacao_pag', ''),
+    })
+    return redirect(url_for('desp_detalhe_os', id=id))
+
+
+# ── Lista final de placa ──────────────────────────────────────────────────────
+@app.route('/despachante/lista')
+@_desp_login_required
+def desp_lista_placa():
+    final     = request.args.get('final', '5')
+    exercicio = request.args.get('exercicio', datetime.now().year, type=int)
+    situacao  = request.args.get('situacao', '')
+    ordens    = desp_lista_final_placa(final, exercicio, situacao or None)
+    exercicios = desp_listar_exercicios()
+    if datetime.now().year not in exercicios:
+        exercicios.insert(0, datetime.now().year)
+    pendentes  = sum(1 for o in ordens if o['status'] not in ('concluida','cancelada'))
+    concluidos = sum(1 for o in ordens if o['status'] == 'concluida')
+    mes_placa  = DESP_MESES[DESP_FINAIS_PLACA.get(final, 0)]
+    return desp_render('lista_placa.html',
+        ordens=ordens, final=final, exercicio=exercicio,
+        situacao=situacao, exercicios=exercicios,
+        pendentes=pendentes, concluidos=concluidos,
+        mes_placa=mes_placa, total=len(ordens))
+
+
+@app.route('/despachante/lista/csv')
+@_desp_login_required
+def desp_lista_csv():
+    import csv, io
+    from flask import Response
+    final     = request.args.get('final', '5')
+    exercicio = request.args.get('exercicio', datetime.now().year, type=int)
+    situacao  = request.args.get('situacao', '')
+    ordens    = desp_lista_final_placa(final, exercicio, situacao or None)
+    buf = io.StringIO()
+    w   = csv.writer(buf)
+    w.writerow(['nome','cpf','renavam','placa','exercicio','telefone','situacao','os_id'])
+    for o in ordens:
+        tel = (o.get('telefone') or '').replace('(','').replace(')','').replace('-','').replace(' ','')
+        if tel and not tel.startswith('55'): tel = '55' + tel
+        sit = o.get('situacao_pag') or ('CONCLUÍDO' if o['status']=='concluida' else 'AGUARDANDO PAGAMENTO')
+        w.writerow([o.get('cliente',''), o.get('cpf',''), o.get('renavam',''),
+                    o.get('placa',''), o.get('exercicio',''), tel, sit, o.get('os_id','')])
+    buf.seek(0)
+    return Response(buf.getvalue(), mimetype='text/csv; charset=utf-8',
+        headers={'Content-Disposition': f'attachment; filename=final{final}_ex{exercicio}.csv'})
+
+
+@app.route('/despachante/lista/situacao/<int:os_id>', methods=['POST'])
+@_desp_login_required
+def desp_set_situacao(os_id):
+    data = request.get_json(silent=True) or {}
+    desp_atualizar_situacao(os_id, data.get('situacao_pag', ''))
+    return jsonify({'ok': True})
+
+
+@app.route('/despachante/lista/disparar', methods=['POST'])
+@_desp_login_required
+def desp_lista_disparar():
+    import time
+    try: import requests as _req
+    except ImportError: return jsonify({'erro': 'requests não instalado'}), 500
+    data         = request.get_json(silent=True) or {}
+    final        = data.get('final', '5')
+    exercicio    = data.get('exercicio', datetime.now().year)
+    situacao     = data.get('situacao', 'pendente')
+    mensagem_tpl = data.get('mensagem', '').strip()
+    delay_s      = max(1, min(30, int(data.get('delay', 4))))
+    if not mensagem_tpl: return jsonify({'erro': 'Mensagem não pode estar vazia'}), 400
+    evo_url = os.environ.get('EVO_URL','').rstrip('/')
+    evo_key = os.environ.get('EVO_KEY','')
+    evo_instance = os.environ.get('EVO_INSTANCE','')
+    if not evo_url or not evo_key or not evo_instance:
+        return jsonify({'erro': 'WhatsApp não configurado. Preencha EVO_URL, EVO_KEY e EVO_INSTANCE.'}), 400
+    ordens  = desp_lista_final_placa(final, int(exercicio), situacao or None)
+    mes_str = DESP_MESES[DESP_FINAIS_PLACA.get(final, 0)]
+    results = []
+    for o in ordens:
+        tel = (o.get('telefone') or '').replace('(','').replace(')','').replace('-','').replace(' ','').replace('+','')
+        if not tel: results.append({'nome': o.get('cliente','?'), 'status': 'sem_telefone'}); continue
+        if not tel.startswith('55'): tel = '55' + tel
+        nome_curto = (o.get('cliente') or 'Cliente').split()[0].title()
+        try:
+            msg = mensagem_tpl.format(
+                nome=nome_curto, nome_completo=(o.get('cliente') or '').title(),
+                placa=(o.get('placa') or '').upper(), exercicio=o.get('exercicio') or exercicio,
+                mes=mes_str, despachante=DESP_CONFIG['nome'].title(),
+                whatsapp=DESP_CONFIG['whatsapp_fmt'], cidade=DESP_CONFIG['cidade'],
+            )
+        except KeyError as e:
+            return jsonify({'erro': f'Variável inválida: {e}'}), 400
+        try:
+            resp = _req.post(f"{evo_url}/message/sendText/{evo_instance}",
+                headers={'apikey': evo_key, 'Content-Type': 'application/json'},
+                json={'number': tel, 'text': msg}, timeout=12)
+            ok = resp.status_code in (200, 201)
+            results.append({'nome': o.get('cliente',''), 'tel': tel,
+                            'status': 'ok' if ok else 'erro',
+                            'detalhe': '' if ok else resp.text[:120]})
+        except Exception as e:
+            results.append({'nome': o.get('cliente',''), 'tel': tel, 'status': 'erro', 'detalhe': str(e)[:120]})
+        time.sleep(delay_s)
+    sent = sum(1 for r in results if r['status'] == 'ok')
+    failed = len(results) - sent
+    return jsonify({'sent': sent, 'failed': failed, 'results': results})
+
+
+# ── Print protocolo ───────────────────────────────────────────────────────────
+@app.route('/despachante/print/<int:os_id>')
+@_desp_login_required
+def desp_print_protocolo(os_id):
+    os_ = desp_get_os(os_id)
+    if not os_: abort(404)
+    finalidade = DESP_SERVICOS.get(os_['servico'], os_['servico'])
+    return render_template('despachante/print/protocolo.html',
+        os=os_, finalidade=finalidade, hoje=datetime.now(), desp=DESP_CONFIG)
+
+
+# ── API busca ─────────────────────────────────────────────────────────────────
+@app.route('/despachante/api/busca/placa/<placa>')
+@_desp_login_required
+def desp_api_placa(placa):
+    v = desp_buscar_placa(placa)
+    if not v: return jsonify({'encontrado': False})
+    c = desp_get_cliente(v['proprietario_id']) if v.get('proprietario_id') else None
+    return jsonify({'encontrado': True, 'veiculo': v, 'cliente': c})
+
+
+@app.route('/despachante/api/busca/cpf/<cpf>')
+@_desp_login_required
+def desp_api_cpf(cpf):
+    c = desp_buscar_cpf(cpf)
+    if not c: return jsonify({'encontrado': False})
+    return jsonify({'encontrado': True, 'cliente': c})
+
+
+# ── API OCR (Ctrl+V → preenche formulário) ───────────────────────────────────
+@app.route('/despachante/api/ocr', methods=['POST'])
+@_desp_login_required
+def desp_api_ocr():
+    import re as _re2, json as _json2
+    data    = request.get_json(silent=True) or {}
+    img_b64 = (data.get('imagem') or '').strip()
+    mime    = data.get('mime', 'image/png')
+    if not img_b64: return jsonify({'erro': 'Nenhuma imagem recebida'}), 400
+    groq_key = os.environ.get('GROQ_API_KEY','')
+    if not groq_key: return jsonify({'erro': 'GROQ_API_KEY não configurada'}), 500
+    prompt = '''Analise esta imagem de documento ou tela de sistema de despachante/DETRAN.
+Extraia TODOS os dados visíveis de veículo e do proprietário/cliente.
+Retorne APENAS um objeto JSON válido com os campos (use null para não encontrados):
+{"placa":null,"renavam":null,"chassi":null,"marca":null,"modelo":null,"ano_fab":null,
+"ano_mod":null,"cor":null,"especie":null,"categoria":null,"combustivel":null,"num_crv":null,
+"nome":null,"cpf":null,"cnpj":null,"rg":null,"nascimento":null,"nome_mae":null,
+"telefone":null,"email":null,"cep":null,"logradouro":null,"numero":null,
+"complemento":null,"bairro":null,"cidade":null,"uf":null}
+IMPORTANTE: Retorne SOMENTE o JSON, nada mais.'''
+    try:
+        from groq import Groq
+        groq = Groq(api_key=groq_key)
+        resp = groq.chat.completions.create(
+            model='meta-llama/llama-4-scout-17b-16e-instruct',
+            messages=[{'role':'user','content':[
+                {'type':'image_url','image_url':{'url':f'data:{mime};base64,{img_b64}'}},
+                {'type':'text','text':prompt},
+            ]}],
+            max_tokens=1024, temperature=0.1,
+        )
+        texto = resp.choices[0].message.content.strip()
+        match = _re2.search(r'\{[\s\S]*\}', texto)
+        if not match: return jsonify({'erro': 'IA não retornou JSON válido'}), 422
+        dados = _json2.loads(match.group())
+        dados = {k: v for k, v in dados.items() if v is not None and v != ''}
+        return jsonify({'ok': True, 'dados': dados, 'campos': len(dados)})
+    except Exception as e:
+        log.error(f'OCR despachante error: {e}')
+        return jsonify({'erro': str(e)}), 500
+
+
+@app.route('/despachante/chat')
+@_desp_login_required
+def desp_chat():
+    return desp_render('chat.html')
+
+@app.route('/despachante/api/chat', methods=['POST'])
+@_desp_login_required
+def desp_api_chat():
+    data = request.get_json(silent=True) or {}
+    msgs = data.get('messages', [])
+    if not msgs:
+        return jsonify({'erro': 'Sem mensagem'}), 400
+    groq_key = os.environ.get('GROQ_API_KEY', '')
+    if not groq_key:
+        return jsonify({'erro': 'GROQ_API_KEY não configurada'}), 500
+    system_prompt = (
+        "Você é o Assistente IA do Despachante Lessmann, especializado em legislação de trânsito brasileira, "
+        "transferências de veículos, licenciamento, DETRAN-SC, IPVA, multas, recursos e serviços de despachante. "
+        "Responda sempre em português brasileiro, de forma clara, objetiva e profissional. "
+        "Quando não souber algo com certeza, diga que não tem essa informação e sugira consultar o DETRAN-SC. "
+        "Nunca invente valores de taxas — oriente o cliente a consultar o site oficial."
+    )
+    try:
+        from groq import Groq as _Groq
+        client = _Groq(api_key=groq_key)
+        resp = client.chat.completions.create(
+            model='llama-3.3-70b-versatile',
+            messages=[{'role': 'system', 'content': system_prompt}] + msgs,
+            max_tokens=1024,
+            temperature=0.7,
+        )
+        reply = resp.choices[0].message.content.strip()
+        return jsonify({'ok': True, 'resposta': reply})
+    except Exception as e:
+        log.error(f'desp_chat error: {e}')
+        return jsonify({'erro': str(e)}), 500
+
+
 def _startup():
     try:
         init_db()
         init_saas_db()
+        init_desp_db()
         s = stats()
         log.info(f"DB OK — {s['channels']} canais | {s['videos']} vídeos | "
                  f"{s['clients']} clientes")

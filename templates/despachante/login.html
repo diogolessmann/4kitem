@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Despachante Lessmann — Entrar</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #07070f; color: #eeeeff;
+      min-height: 100vh; display: flex;
+      align-items: center; justify-content: center;
+      padding: 20px;
+    }
+    .card {
+      background: #11111e; border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 16px; padding: 40px 36px;
+      width: 100%; max-width: 380px;
+    }
+    .logo {
+      display: flex; align-items: center; gap: 12px; margin-bottom: 32px;
+      justify-content: center;
+    }
+    .logo-icon {
+      width: 48px; height: 48px; border-radius: 12px;
+      background: linear-gradient(135deg, #f97316, #ea580c);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 24px;
+    }
+    .logo-text h1 { font-size: 18px; font-weight: 800; }
+    .logo-text p  { font-size: 12px; color: #6060a0; margin-top: 2px; }
+    .form-group { margin-bottom: 16px; }
+    label { display: block; font-size: 12px; font-weight: 600; color: #9090b8; margin-bottom: 6px; }
+    input[type=password] {
+      width: 100%; padding: 10px 14px;
+      background: #181828; border: 1px solid rgba(255,255,255,0.13);
+      border-radius: 8px; color: #eeeeff; font-size: 14px;
+      font-family: inherit; outline: none; transition: border-color .15s;
+    }
+    input[type=password]:focus { border-color: #f97316; }
+    input::placeholder { color: #6060a0; }
+    .btn {
+      width: 100%; padding: 11px; border-radius: 8px; border: none;
+      background: #f97316; color: #fff; font-size: 14px; font-weight: 700;
+      cursor: pointer; font-family: inherit; transition: background .15s; margin-top: 8px;
+    }
+    .btn:hover { background: #ea580c; }
+    .flash-err {
+      background: rgba(239,68,68,.1); border: 1px solid rgba(239,68,68,.25);
+      color: #fca5a5; padding: 10px 14px; border-radius: 8px;
+      font-size: 13px; margin-bottom: 16px; text-align: center;
+    }
+    .footer {
+      text-align: center; margin-top: 28px;
+      font-size: 11px; color: #6060a0;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">
+      <div class="logo-icon">🚗</div>
+      <div class="logo-text">
+        <h1>Lessmann</h1>
+        <p>Sistema de Despachante</p>
+      </div>
+    </div>
+
+    {% with msgs = get_flashed_messages(with_categories=true) %}
+      {% for cat, msg in msgs %}
+        <div class="flash-err">{{ msg }}</div>
+      {% endfor %}
+    {% endwith %}
+
+    <form method="POST">
+      <div class="form-group">
+        <label for="senha">Senha de Acesso</label>
+        <input type="password" id="senha" name="senha" placeholder="••••••••" autofocus required>
+      </div>
+      <button type="submit" class="btn">Entrar no Sistema</button>
+    </form>
+
+    <div class="footer">Acesso restrito — Credencial 2095 · Schroeder/SC</div>
+  </div>
+</body>
+</html>

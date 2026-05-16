@@ -1,0 +1,429 @@
+{% extends "despachante/base.html" %}
+{% set sl = status_labels.get(os.status, ('⚪','')) %}
+
+{% block title %}O.S. {{ os.numero }} · Lessmann{% endblock %}
+{% block topbar_title %}O.S. {{ os.numero }}
+  <span class="badge {% if os.status == 'aberta' %}badge-yellow{% elif os.status == 'andamento' %}badge-blue{% elif os.status == 'concluida' %}badge-green{% elif os.status == 'cancelada' %}badge-red{% else %}badge-gray{% endif %}" style="margin-left:10px;vertical-align:middle;">
+    {{ sl[0] }} {{ sl[1] }}
+  </span>
+{% endblock %}
+{% block topbar_actions %}
+  <a href="{{ url_for('desp_lista_os') }}" class="btn btn-ghost btn-sm">← Voltar</a>
+  <a href="{{ url_for('desp_print_protocolo', os_id=os.id) }}" target="_blank" class="btn btn-secondary btn-sm">🖨️ Protocolo</a>
+{% endblock %}
+
+{% block extra_style %}
+.os-layout { display: grid; grid-template-columns: 1fr 320px; gap: 16px; }
+.sec { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; }
+.sec-head {
+  padding: 14px 18px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 14px; font-weight: 700;
+}
+.sec-body { padding: 18px; }
+
+.info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 20px; }
+.info-row { display: flex; flex-direction: column; gap: 2px; }
+.info-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: var(--text3); }
+.info-value { font-size: 13px; color: var(--text); font-weight: 500; }
+.info-value.placa {
+  font-family: monospace; font-size: 16px; font-weight: 800;
+  color: var(--accent); letter-spacing: 1px;
+}
+
+.status-form { display: flex; flex-direction: column; gap: 10px; }
+.status-btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.s-btn {
+  padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border2);
+  background: var(--surface2); color: var(--text2); cursor: pointer;
+  font-size: 12px; font-weight: 600; font-family: inherit;
+  transition: all .15s; text-align: center;
+}
+.s-btn:hover { border-color: var(--accent); color: var(--text); }
+.s-btn[data-s="aberta"]    { border-color: rgba(234,179,8,.3); }
+.s-btn[data-s="andamento"] { border-color: rgba(59,130,246,.3); }
+.s-btn[data-s="concluida"] { border-color: rgba(34,197,94,.3); }
+.s-btn[data-s="cancelada"] { border-color: rgba(239,68,68,.3); }
+.s-btn.current[data-s="aberta"]    { background: rgba(234,179,8,.15); color: var(--yellow); }
+.s-btn.current[data-s="andamento"] { background: rgba(59,130,246,.15); color: var(--blue); }
+.s-btn.current[data-s="concluida"] { background: rgba(34,197,94,.15); color: var(--green); }
+.s-btn.current[data-s="cancelada"] { background: rgba(239,68,68,.15); color: var(--red); }
+
+.fin-total {
+  background: var(--surface2); border-radius: 8px; padding: 12px;
+  text-align: center; margin-top: 10px;
+}
+.fin-total-label { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: .5px; }
+.fin-total-val { font-size: 22px; font-weight: 800; }
+.fin-total-pen { font-size: 12px; }
+
+/* Edit modal overlay */
+.modal-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,.7); z-index: 200;
+  align-items: center; justify-content: center;
+}
+.modal-overlay.open { display: flex; }
+.modal-box {
+  background: var(--surface); border: 1px solid var(--border2);
+  border-radius: 14px; padding: 24px; width: 100%; max-width: 520px;
+  max-height: 90vh; overflow-y: auto;
+}
+.modal-title { font-size: 16px; font-weight: 700; margin-bottom: 16px; }
+
+/* Docs */
+.doc-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px;
+}
+.doc-item:last-child { border-bottom: none; }
+.doc-icon { font-size: 20px; flex-shrink: 0; }
+.doc-name { flex: 1; font-weight: 500; }
+.doc-date { font-size: 11px; color: var(--text3); }
+
+.whats-btn {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 14px; border-radius: 8px;
+  background: rgba(34,197,94,.12); border: 1px solid rgba(34,197,94,.25);
+  color: var(--green); font-size: 13px; font-weight: 600;
+  text-decoration: none; transition: all .15s;
+}
+.whats-btn:hover { background: rgba(34,197,94,.2); }
+
+@media (max-width: 900px) {
+  .os-layout { grid-template-columns: 1fr; }
+}
+{% endblock %}
+
+{% block content %}
+<div class="os-layout">
+
+  <!-- LEFT COLUMN -->
+  <div style="display:flex;flex-direction:column;gap:14px;">
+
+    <!-- Veículo -->
+    <div class="sec">
+      <div class="sec-head">🚗 Veículo</div>
+      <div class="sec-body">
+        {% if os.placa %}
+        <div class="info-grid">
+          <div class="info-row">
+            <span class="info-label">Placa</span>
+            <span class="info-value placa">{{ os.placa }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Veículo</span>
+            <span class="info-value">{{ os.marca or '' }} {{ os.modelo or '' }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Ano</span>
+            <span class="info-value">{{ os.ano_fab or '—' }}/{{ os.ano_mod or '—' }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Cor</span>
+            <span class="info-value">{{ os.cor or '—' }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">RENAVAM</span>
+            <span class="info-value" style="font-family:monospace;">{{ os.renavam or '—' }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Chassi</span>
+            <span class="info-value" style="font-family:monospace;font-size:11px;">{{ os.chassi or '—' }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Espécie</span>
+            <span class="info-value">{{ os.especie or '—' }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Categoria</span>
+            <span class="info-value">{{ os.categoria or '—' }}</span>
+          </div>
+        </div>
+        {% else %}
+        <div style="color:var(--text3);font-size:13px;">Sem veículo vinculado</div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Cliente -->
+    <div class="sec">
+      <div class="sec-head">
+        👤 Cliente
+        {% if os.cliente_id %}
+        <a href="https://wa.me/{{ desp.whatsapp }}?text={{ ('Olá, sou da Despachante Lessmann. Sobre sua O.S. ' ~ os.numero ~ ' — ' ~ servicos.get(os.servico, os.servico)) | urlencode }}"
+           target="_blank" class="whats-btn" style="font-size:12px;padding:5px 10px;">
+          💬 WhatsApp
+        </a>
+        {% endif %}
+      </div>
+      <div class="sec-body">
+        {% if os.cliente_nome %}
+        <div class="info-grid">
+          <div class="info-row">
+            <span class="info-label">Nome</span>
+            <span class="info-value" style="font-weight:700;font-size:14px;">{{ os.cliente_nome }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">CPF / CNPJ</span>
+            <span class="info-value" style="font-family:monospace;">{{ os.cpf or os.cnpj or '—' }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">RG</span>
+            <span class="info-value">{{ os.rg or '—' }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Nascimento</span>
+            <span class="info-value">{{ os.nascimento or '—' }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Telefone</span>
+            <span class="info-value">{{ os.telefone or '—' }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">E-mail</span>
+            <span class="info-value">{{ os.email or '—' }}</span>
+          </div>
+          <div class="info-row" style="grid-column:span 2;">
+            <span class="info-label">Endereço</span>
+            <span class="info-value">
+              {{ os.logradouro or '' }}{% if os.endereco_num %}, {{ os.endereco_num }}{% endif %}
+              {% if os.bairro %} — {{ os.bairro }}{% endif %}
+              {% if os.cidade %} · {{ os.cidade }}/{{ os.uf }}{% endif %}
+              {% if os.cep %} · CEP {{ os.cep }}{% endif %}
+            </span>
+          </div>
+          {% if os.nome_mae %}
+          <div class="info-row" style="grid-column:span 2;">
+            <span class="info-label">Filiação (mãe)</span>
+            <span class="info-value">{{ os.nome_mae }}</span>
+          </div>
+          {% endif %}
+        </div>
+        {% else %}
+        <div style="color:var(--text3);font-size:13px;">Sem cliente vinculado</div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Serviço -->
+    <div class="sec">
+      <div class="sec-head">
+        📄 Serviço
+        <button class="btn btn-secondary btn-sm" onclick="document.getElementById('modal-edit').classList.add('open')">✏️ Editar</button>
+      </div>
+      <div class="sec-body">
+        <div class="info-grid">
+          <div class="info-row" style="grid-column:span 2;">
+            <span class="info-label">Tipo de Serviço</span>
+            <span class="info-value" style="font-size:15px;font-weight:700;">{{ servicos.get(os.servico, os.servico) }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Honorários</span>
+            <span class="info-value" style="color:var(--text);font-size:15px;font-weight:700;">R$ {{ "%.2f"|format(os.honorarios) }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Custos / Taxas</span>
+            <span class="info-value">R$ {{ "%.2f"|format(os.custos) }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Pago</span>
+            <span class="info-value" style="color:var(--green);">R$ {{ "%.2f"|format(os.pago) }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Forma de Pagamento</span>
+            <span class="info-value">{{ os.forma_pagamento or '—' }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Exercício</span>
+            <span class="info-value">{{ os.exercicio or '—' }}</span>
+          </div>
+          {% if os.situacao_pag %}
+          <div class="info-row">
+            <span class="info-label">Situação</span>
+            <span class="info-value">{{ os.situacao_pag }}</span>
+          </div>
+          {% endif %}
+          {% if os.observacoes %}
+          <div class="info-row" style="grid-column:span 2;">
+            <span class="info-label">Observações</span>
+            <span class="info-value" style="white-space:pre-wrap;">{{ os.observacoes }}</span>
+          </div>
+          {% endif %}
+        </div>
+        <div class="fin-total" style="margin-top:14px;">
+          {% set total = os.honorarios + os.custos %}
+          {% set pendente = total - os.pago %}
+          <div class="fin-total-label">Total da O.S.</div>
+          <div class="fin-total-val" style="color:var(--text);">R$ {{ "%.2f"|format(total) }}</div>
+          {% if pendente > 0 %}
+          <div class="fin-total-pen" style="color:var(--yellow);">⚠️ Pendente: R$ {{ "%.2f"|format(pendente) }}</div>
+          {% else %}
+          <div class="fin-total-pen" style="color:var(--green);">✅ Totalmente quitado</div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Documentos -->
+    {% if docs %}
+    <div class="sec">
+      <div class="sec-head">📁 Documentos</div>
+      <div class="sec-body">
+        {% for doc in docs %}
+        <div class="doc-item">
+          <span class="doc-icon">📄</span>
+          <div>
+            <div class="doc-name">{{ doc.titulo or doc.tipo }}</div>
+            <div class="doc-date">{{ doc.criado_em[:10] if doc.criado_em else '' }}</div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Info -->
+    <div style="font-size:11px;color:var(--text3);padding:0 4px;">
+      Criada em {{ os.criado_em[:16] if os.criado_em else '—' }} ·
+      Atualizada em {{ os.atualizado_em[:16] if os.atualizado_em else '—' }}
+    </div>
+  </div>
+
+  <!-- RIGHT COLUMN -->
+  <div style="display:flex;flex-direction:column;gap:14px;">
+
+    <!-- Status -->
+    <div class="sec">
+      <div class="sec-head">⚙️ Status</div>
+      <div class="sec-body">
+        <form method="POST" action="{{ url_for('desp_atualizar_status', id=os.id) }}" class="status-form">
+          <div class="status-btn-grid">
+            {% for s_key, s_val in status_labels.items() %}
+            <button type="submit" name="status" value="{{ s_key }}"
+                    class="s-btn {% if os.status == s_key %}current{% endif %}" data-s="{{ s_key }}">
+              {{ s_val[0] }} {{ s_val[1] }}
+            </button>
+            {% endfor %}
+          </div>
+          <div class="form-group" style="margin:0;">
+            <label class="form-label">Atualizar valor pago (R$)</label>
+            <input name="pago" class="input" type="number" step="0.01" min="0"
+                   placeholder="{{ "%.2f"|format(os.pago) }}" value="{{ "%.2f"|format(os.pago) }}">
+          </div>
+          <button type="submit" name="status" value="{{ os.status }}" class="btn btn-primary" style="width:100%;">
+            💾 Salvar Status
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Protocolo / Impressão -->
+    <div class="sec">
+      <div class="sec-head">🖨️ Impressão</div>
+      <div class="sec-body" style="display:flex;flex-direction:column;gap:8px;">
+        <a href="{{ url_for('desp_print_protocolo', os_id=os.id) }}" target="_blank"
+           class="btn btn-secondary" style="width:100%;justify-content:center;">
+          📋 Protocolo RENAVAM (3 vias)
+        </a>
+        <div style="font-size:11px;color:var(--text3);text-align:center;">
+          Abre em nova aba — use Ctrl+P para imprimir
+        </div>
+      </div>
+    </div>
+
+    <!-- WhatsApp Rápido -->
+    {% if os.telefone %}
+    <div class="sec">
+      <div class="sec-head">💬 WhatsApp</div>
+      <div class="sec-body" style="display:flex;flex-direction:column;gap:6px;">
+        {% set nome_cli = (os.cliente_nome or 'cliente').split()[0] %}
+        {% set tel_limpo = os.telefone | replace('(','') | replace(')','') | replace(' ','') | replace('-','') %}
+        <a href="https://wa.me/55{{ tel_limpo }}?text={{ ('Olá ' ~ nome_cli ~ '! Tudo bem? Estou com sua O.S. ' ~ os.numero ~ ' pronta. Serviço: ' ~ servicos.get(os.servico, os.servico) ~ '. Qualquer dúvida me fale. Atenciosamente, Diogo — Despachante Lessmann') | urlencode }}"
+           target="_blank" class="whats-btn">
+          💬 Msg: O.S. Pronta
+        </a>
+        <a href="https://wa.me/55{{ tel_limpo }}?text={{ ('Olá ' ~ nome_cli ~ '! Informando que sua O.S. ' ~ os.numero ~ ' está em processamento junto ao DETRAN-SC. Qualquer novidade te aviso! — Despachante Lessmann') | urlencode }}"
+           target="_blank" class="whats-btn">
+          🔄 Msg: Em Andamento
+        </a>
+        <a href="https://wa.me/55{{ tel_limpo }}?text={{ ('Olá ' ~ nome_cli ~ '! Temos um valor pendente de R$ ' ~ '%s' % (os.total - os.pago) | round(2) ~ ' referente à sua O.S. ' ~ os.numero ~ '. Quando puder, pode fazer o pagamento via PIX. Obrigado! — Despachante Lessmann') | urlencode }}"
+           target="_blank" class="whats-btn">
+          💰 Msg: Cobrança
+        </a>
+      </div>
+    </div>
+    {% endif %}
+
+  </div><!-- /right -->
+</div>
+
+<!-- ── MODAL EDITAR ── -->
+<div class="modal-overlay" id="modal-edit" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modal-box">
+    <div class="modal-title">✏️ Editar O.S. {{ os.numero }}</div>
+    <form method="POST" action="{{ url_for('desp_editar_os', id=os.id) }}">
+      <div class="form-group">
+        <label class="form-label">Tipo de Serviço</label>
+        <select name="servico" class="select">
+          {% for gid, grupo in servicos_grupos.items() %}
+          <optgroup label="{{ grupo.icon }} {{ grupo.label }}">
+            {% for key, label in grupo['items'].items() %}
+            <option value="{{ key }}" {% if os.servico == key %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </optgroup>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-row form-row-3">
+        <div class="form-group">
+          <label class="form-label">Honorários (R$)</label>
+          <input name="honorarios" class="input" type="number" step="0.01"
+                 value="{{ "%.2f"|format(os.honorarios) }}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Custos (R$)</label>
+          <input name="custos" class="input" type="number" step="0.01"
+                 value="{{ "%.2f"|format(os.custos) }}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Pago (R$)</label>
+          <input name="pago" class="input" type="number" step="0.01"
+                 value="{{ "%.2f"|format(os.pago) }}">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Forma de Pagamento</label>
+        <select name="forma_pagamento" class="select">
+          {% for f in ['','Dinheiro','PIX','Cartão de Crédito','Cartão de Débito','Transferência','Cheque','A definir'] %}
+          <option value="{{ f }}" {% if os.forma_pagamento == f %}selected{% endif %}>{{ f or '—' }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-row form-row-2" style="margin-bottom:12px">
+        <div class="form-group" style="margin:0">
+          <label class="form-label">Exercício</label>
+          <input name="exercicio" class="input" type="number" min="2020" max="2099"
+                 value="{{ os.exercicio or hoje.year }}">
+        </div>
+        <div class="form-group" style="margin:0">
+          <label class="form-label">Situação</label>
+          <select name="situacao_pag" class="select">
+            {% for op in ['','AGUARDANDO PAGAMENTO','AGUARDANDO DOCUMENTOS','EM PROCESSAMENTO','CONCLUÍDO','CANCELADO'] %}
+            <option value="{{ op }}" {% if os.situacao_pag == op %}selected{% endif %}>{{ op or '—' }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Observações</label>
+        <textarea name="observacoes" class="textarea" rows="4">{{ os.observacoes or '' }}</textarea>
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px;">
+        <button type="button" class="btn btn-ghost" onclick="document.getElementById('modal-edit').classList.remove('open')">Cancelar</button>
+        <button type="submit" class="btn btn-primary">💾 Salvar</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

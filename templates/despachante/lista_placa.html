@@ -1,0 +1,384 @@
+{% extends 'despachante/base.html' %}
+
+{% block title %}Lista Final {{ final }} — Ex. {{ exercicio }}{% endblock %}
+
+{% block extra_style %}
+@media print {
+  .sidebar, .topbar, .filtros-wrap, .actions-bar, .btn-export { display: none !important; }
+  .content { padding: 0 !important; overflow: visible !important; }
+  .main { overflow: visible !important; }
+  .layout { display: block !important; }
+  body { font-size: 11px !important; }
+  th, td { padding: 5px 7px !important; font-size: 11px !important; }
+  .badge { border: 1px solid #999 !important; }
+  .print-header { display: block !important; }
+  table { page-break-inside: auto; }
+  tr { page-break-inside: avoid; }
+}
+.print-header { display: none; font-size: 12px; margin-bottom: 10px; color: #333; }
+
+.sit-pendente  { color: #f59e0b; font-weight: 700; font-size: 11px; }
+.sit-concluido { color: #22c55e; font-weight: 700; font-size: 11px; }
+
+.count-bar {
+  display: flex; align-items: center; gap: 16px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 10px; padding: 10px 16px; margin-bottom: 14px;
+  font-size: 13px;
+}
+.count-item { display: flex; align-items: center; gap: 6px; }
+.count-n { font-size: 20px; font-weight: 800; }
+.count-sep { color: var(--border2); }
+
+.filtros-wrap {
+  display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+.filtros-wrap .form-group { margin-bottom: 0; min-width: 120px; }
+
+.placa-badge {
+  font-family: monospace; font-size: 12px; font-weight: 700;
+  background: var(--surface2); border: 1px solid var(--border2);
+  border-radius: 5px; padding: 2px 7px; letter-spacing: 1px;
+  color: var(--text);
+}
+
+td.sit-cell { cursor: pointer; user-select: none; }
+{% endblock %}
+
+{% block topbar_title %}📋 Lista Final <strong>{{ final }}</strong> · {{ mes_placa }} · Exercício {{ exercicio }}{% endblock %}
+
+{% block topbar_actions %}
+<button onclick="abrirDisparador()" class="btn btn-success btn-sm" title="Disparar mensagem WhatsApp para todos os pendentes">
+  📱 Disparar WhatsApp
+</button>
+<a href="/despachante/lista/csv?final={{ final }}&exercicio={{ exercicio }}&situacao={{ situacao }}"
+   class="btn btn-secondary btn-sm btn-export" title="Exportar CSV">
+  ⬇️ CSV
+</a>
+<button onclick="window.print()" class="btn btn-secondary btn-sm" title="Imprimir lista">🖨️</button>
+<a href="{{ url_for('desp_nova_os') }}" class="btn btn-primary btn-sm">+ Nova O.S.</a>
+{% endblock %}
+
+{% block content %}
+
+<div class="print-header">
+  <strong>DESPACHANTE LESSMANN</strong> · Cred. {{ desp.credencial }} · {{ desp.cidade }}<br>
+  Lista Final de Placa <strong>{{ final }}</strong> — Exercício {{ exercicio }} — {{ mes_placa }}<br>
+  Gerado em: {{ hoje.strftime('%d/%m/%Y %H:%M') }} · Total: {{ total }} registros
+</div>
+
+<div class="count-bar">
+  <div class="count-item">
+    <span class="count-n">{{ total }}</span>
+    <span style="color:var(--text2)">registros</span>
+  </div>
+  <span class="count-sep">|</span>
+  <div class="count-item" style="color:#f59e0b">
+    <span class="count-n">{{ pendentes }}</span> pendentes
+  </div>
+  <span class="count-sep">|</span>
+  <div class="count-item" style="color:#22c55e">
+    <span class="count-n">{{ concluidos }}</span> concluídos
+  </div>
+  <span style="flex:1"></span>
+  <span style="color:var(--text3);font-size:12px">Mês: <strong style="color:var(--accent)">{{ mes_placa }}</strong></span>
+</div>
+
+<form method="GET" action="/despachante/lista" class="filtros-wrap">
+  <div class="form-group">
+    <label class="form-label">Final da Placa</label>
+    <select name="final" class="select" style="width:80px" onchange="this.form.submit()">
+      {% for d in ['0','1','2','3','4','5','6','7','8','9'] %}
+      <option value="{{ d }}" {% if d == final %}selected{% endif %}>{{ d }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="form-group">
+    <label class="form-label">Exercício</label>
+    <select name="exercicio" class="select" style="width:100px" onchange="this.form.submit()">
+      {% for ex in exercicios %}
+      <option value="{{ ex }}" {% if ex == exercicio %}selected{% endif %}>{{ ex }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="form-group">
+    <label class="form-label">Situação</label>
+    <select name="situacao" class="select" style="width:160px" onchange="this.form.submit()">
+      <option value="" {% if not situacao %}selected{% endif %}>Todas</option>
+      <option value="pendente"  {% if situacao == 'pendente'  %}selected{% endif %}>⏳ Pendentes</option>
+      <option value="concluido" {% if situacao == 'concluido' %}selected{% endif %}>✅ Concluídos</option>
+    </select>
+  </div>
+  <div class="form-group" style="justify-content:flex-end">
+    <div style="height:20px"></div>
+    <button type="submit" class="btn btn-secondary btn-sm">Filtrar</button>
+  </div>
+</form>
+
+{% if ordens %}
+<div class="table-wrap">
+  <table id="lista-table">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Cliente</th>
+        <th>CPF</th>
+        <th>RENAVAM</th>
+        <th>Placa</th>
+        <th>Exercício</th>
+        <th>Telefone</th>
+        <th>Situação</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for o in ordens %}
+      {% set sit_label = o.situacao_pag if o.situacao_pag else
+           ('CONCLUÍDO' if o.status == 'concluida' else
+            ('CANCELADO' if o.status == 'cancelada' else 'AGUARDANDO PAGAMENTO')) %}
+      <tr id="row-{{ o.os_id }}">
+        <td style="color:var(--text3);font-size:11px">{{ loop.index }}</td>
+        <td>
+          <a href="/despachante/os/{{ o.os_id }}" style="font-weight:600">{{ o.cliente or '—' }}</a>
+        </td>
+        <td style="font-size:12px;color:var(--text3)">{{ o.cpf or '—' }}</td>
+        <td style="font-size:12px;color:var(--text3);font-family:monospace">{{ o.renavam or '—' }}</td>
+        <td><span class="placa-badge">{{ o.placa or '—' }}</span></td>
+        <td style="font-size:12px">{{ o.exercicio or '—' }}</td>
+        <td style="font-size:12px">
+          {% if o.telefone %}
+          <a href="https://wa.me/55{{ o.telefone|replace('(','') |replace(')','') |replace('-','') |replace(' ','') }}"
+             target="_blank" style="color:#25d366" title="WhatsApp">
+            {{ o.telefone }}
+          </a>
+          {% else %}—{% endif %}
+        </td>
+        <td class="sit-cell" id="sit-{{ o.os_id }}"
+            onclick="editarSituacao({{ o.os_id }}, '{{ sit_label }}')"
+            title="Clique para alterar situação">
+          {% if sit_label == 'CONCLUÍDO' %}
+            <span class="sit-concluido">✅ CONCLUÍDO</span>
+          {% elif sit_label == 'CANCELADO' %}
+            <span style="color:var(--red);font-size:11px">❌ CANCELADO</span>
+          {% else %}
+            <span class="sit-pendente">⏳ {{ sit_label }}</span>
+          {% endif %}
+        </td>
+        <td style="white-space:nowrap">
+          <a href="/despachante/os/{{ o.os_id }}" class="btn btn-ghost btn-sm" title="Ver O.S.">🔍</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div style="text-align:center;padding:60px;color:var(--text3)">
+  <div style="font-size:40px;margin-bottom:12px">📭</div>
+  <div style="font-size:16px;font-weight:600;margin-bottom:6px">Nenhum registro encontrado</div>
+  <div style="font-size:13px">Final {{ final }} · Exercício {{ exercicio }}
+    {% if situacao %} · {{ 'Pendentes' if situacao == 'pendente' else 'Concluídos' }}{% endif %}
+  </div>
+  <div style="margin-top:20px">
+    <a href="{{ url_for('desp_nova_os') }}" class="btn btn-primary">+ Nova O.S.</a>
+  </div>
+</div>
+{% endif %}
+
+<!-- MODAL DISPARADOR WHATSAPP -->
+<div id="disp-modal" style="display:none;position:fixed;inset:0;z-index:200;
+     background:rgba(0,0,0,.75);align-items:center;justify-content:center;">
+  <div style="background:var(--surface);border:1px solid var(--border2);border-radius:16px;
+              padding:24px;width:100%;max-width:600px;max-height:90vh;overflow-y:auto;
+              margin:16px;">
+
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+      <div>
+        <div style="font-size:16px;font-weight:800;">📱 Disparar WhatsApp</div>
+        <div style="font-size:12px;color:var(--text3);">
+          Final <strong>{{ final }}</strong> · Exercício {{ exercicio }} · {{ mes_placa }}
+          · <strong>{{ pendentes }} pendentes</strong>
+        </div>
+      </div>
+      <button onclick="fecharDisparador()" style="background:none;border:none;color:var(--text3);font-size:20px;cursor:pointer;">✕</button>
+    </div>
+
+    <div class="form-row form-row-2" style="margin-bottom:14px;">
+      <div class="form-group" style="margin:0;">
+        <label class="form-label">Enviar para</label>
+        <select id="disp-sit" class="select">
+          <option value="pendente">⏳ Apenas pendentes ({{ pendentes }})</option>
+          <option value="">Todos ({{ total }})</option>
+          <option value="concluido">✅ Apenas concluídos ({{ concluidos }})</option>
+        </select>
+      </div>
+      <div class="form-group" style="margin:0;">
+        <label class="form-label">Intervalo entre mensagens</label>
+        <select id="disp-delay" class="select">
+          <option value="3">3 segundos (mais rápido)</option>
+          <option value="5" selected>5 segundos (recomendado)</option>
+          <option value="8">8 segundos (mais seguro)</option>
+          <option value="15">15 segundos (conservador)</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">
+        Mensagem
+        <span style="font-weight:400;color:var(--text3);">
+          — use: <code style="background:var(--surface3);padding:1px 5px;border-radius:4px;">{nome}</code>
+          <code style="background:var(--surface3);padding:1px 5px;border-radius:4px;">{placa}</code>
+          <code style="background:var(--surface3);padding:1px 5px;border-radius:4px;">{exercicio}</code>
+          <code style="background:var(--surface3);padding:1px 5px;border-radius:4px;">{mes}</code>
+        </span>
+      </label>
+      <textarea id="disp-msg" class="textarea" rows="8" oninput="atualizarPreview()"
+                placeholder="Digite a mensagem..."></textarea>
+    </div>
+
+    <div style="margin-bottom:14px;">
+      <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">
+        Preview (exemplo com "João", placa "ABC{{ final }}D23")
+      </div>
+      <div style="background:#075e54;border-radius:10px;padding:12px 14px;">
+        <pre id="disp-preview" style="font-family:inherit;font-size:13px;color:#fff;white-space:pre-wrap;margin:0;line-height:1.6;"></pre>
+      </div>
+    </div>
+
+    <div id="disp-resultado" style="display:none;margin-bottom:14px;"></div>
+
+    <div style="display:flex;gap:8px;justify-content:flex-end;">
+      <button onclick="fecharDisparador()" class="btn btn-ghost">Fechar</button>
+      <button id="disp-btn" onclick="disparar()" class="btn btn-success">🚀 Disparar</button>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_script %}
+<script>
+const FINAL     = "{{ final }}";
+const EXERCICIO = {{ exercicio }};
+const MES_PLACA = "{{ mes_placa }}";
+
+const MSG_PADRAO = `Olá {nome}! 👋
+
+Identificamos que o licenciamento do seu veículo de placa *{placa}* referente ao exercício *{exercicio}* está em aberto.
+
+Para regularizar com agilidade, entre em contato com a *Despachante Lessmann*:
+
+📱 {{ desp.whatsapp_fmt }}
+📍 {{ desp.cidade }}/SC
+
+Atendemos em horário comercial. 🚗`;
+
+function abrirDisparador() {
+  document.getElementById('disp-modal').style.display = 'flex';
+  if (!document.getElementById('disp-msg').value)
+    document.getElementById('disp-msg').value = MSG_PADRAO;
+  atualizarPreview();
+}
+function fecharDisparador() {
+  document.getElementById('disp-modal').style.display = 'none';
+  document.getElementById('disp-resultado').style.display = 'none';
+}
+
+function atualizarPreview() {
+  const tpl  = document.getElementById('disp-msg').value;
+  const prev = document.getElementById('disp-preview');
+  const sample = {
+    nome: 'João', nome_completo: 'João da Silva',
+    placa: 'ABC' + FINAL + 'D23', exercicio: EXERCICIO,
+    mes: MES_PLACA, whatsapp: '{{ desp.whatsapp_fmt }}',
+    cidade: '{{ desp.cidade }}',
+  };
+  let txt = tpl;
+  for (const [k, v] of Object.entries(sample))
+    txt = txt.replaceAll(`{${k}}`, v);
+  prev.textContent = txt;
+}
+
+async function disparar() {
+  const btn = document.getElementById('disp-btn');
+  const msg = document.getElementById('disp-msg').value.trim();
+  const delay = parseInt(document.getElementById('disp-delay').value);
+  const sit = document.getElementById('disp-sit').value;
+  if (!msg) { alert('Digite a mensagem!'); return; }
+
+  btn.disabled = true; btn.textContent = '⏳ Enviando…';
+  document.getElementById('disp-resultado').style.display = 'none';
+
+  try {
+    const r = await fetch('/despachante/lista/disparar', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ final: FINAL, exercicio: EXERCICIO, situacao: sit, mensagem: msg, delay }),
+    });
+    const d = await r.json();
+    if (!r.ok) { alert('❌ Erro: ' + (d.erro || 'Falha na requisição')); return; }
+
+    const res = document.getElementById('disp-resultado');
+    res.style.display = 'block';
+    res.innerHTML = `
+      <div style="display:flex;gap:16px;margin-bottom:12px;">
+        <div style="flex:1;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.25);border-radius:8px;padding:12px;text-align:center;">
+          <div style="font-size:28px;font-weight:900;color:#22c55e">${d.sent}</div>
+          <div style="font-size:11px;color:#86efac">Enviados ✅</div>
+        </div>
+        <div style="flex:1;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);border-radius:8px;padding:12px;text-align:center;">
+          <div style="font-size:28px;font-weight:900;color:#ef4444">${d.failed}</div>
+          <div style="font-size:11px;color:#fca5a5">Falhas ❌</div>
+        </div>
+      </div>
+      <div style="max-height:200px;overflow-y:auto;font-size:12px;">
+        ${(d.results||[]).map(r => `
+          <div style="padding:4px 0;border-bottom:1px solid rgba(255,255,255,.05);display:flex;gap:8px;align-items:center;">
+            <span style="color:${r.status==='ok'?'#22c55e':'#ef4444'}">${r.status==='ok'?'✅':'❌'}</span>
+            <span style="flex:1;color:#ccc">${r.nome}</span>
+            <span style="color:#666;font-family:monospace">${r.tel||'sem tel'}</span>
+            ${r.detalhe?`<span style="color:#f59e0b;font-size:10px">${r.detalhe}</span>`:''}
+          </div>
+        `).join('')}
+      </div>`;
+  } catch (e) {
+    alert('Erro de conexão: ' + e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = '🚀 Disparar';
+  }
+}
+
+const SITUACOES = [
+  "AGUARDANDO PAGAMENTO", "AGUARDANDO DOCUMENTOS",
+  "EM PROCESSAMENTO", "CONCLUÍDO", "CANCELADO",
+];
+
+async function editarSituacao(osId, atual) {
+  const nova = prompt(`Situação atual: "${atual}"\n\nOpções:\n${SITUACOES.map((s,i)=>`${i+1}. ${s}`).join('\n')}\n\nDigite o número ou o texto:`, atual);
+  if (nova === null) return;
+  let situacao = nova.trim();
+  const n = parseInt(situacao);
+  if (!isNaN(n) && n >= 1 && n <= SITUACOES.length) situacao = SITUACOES[n-1];
+
+  const r = await fetch(`/despachante/lista/situacao/${osId}`, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ situacao_pag: situacao }),
+  });
+  if (r.ok) {
+    const cell = document.getElementById('sit-' + osId);
+    if (cell) {
+      const isConcluido = situacao === 'CONCLUÍDO';
+      const isCancelado = situacao === 'CANCELADO';
+      cell.innerHTML = isConcluido
+        ? '<span class="sit-concluido">✅ CONCLUÍDO</span>'
+        : isCancelado
+        ? '<span style="color:var(--red);font-size:11px">❌ CANCELADO</span>'
+        : `<span class="sit-pendente">⏳ ${situacao}</span>`;
+    }
+  }
+}
+</script>
+{% endblock %}
