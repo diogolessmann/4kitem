@@ -2069,7 +2069,6 @@ def mz_campaign_add():
     media_url    = request.form.get('media_url', '').strip()
     list_id      = request.form.get('list_id') or None
     number_id    = request.form.get('number_id') or None
-    scheduled_at = request.form.get('scheduled_at', '').strip() or None
     if not name or not message:
         return redirect('/mandazap/painel?section=campanhas')
 
@@ -2085,13 +2084,12 @@ def mz_campaign_add():
             'SELECT COUNT(*) FROM mandazap_contacts WHERE user_id=?', (user_id,)
         ).fetchone()[0]
 
-    status = 'agendada' if scheduled_at else 'rascunho'
     conn.execute('''
         INSERT INTO mandazap_campaigns
         (user_id, name, message, media_type, media_url, list_id, number_id, status, total, sent, scheduled_at, created_at)
-        VALUES (?,?,?,?,?,?,?,?,?,0,?,?)
+        VALUES (?,?,?,?,?,?,?,?,?,0,NULL,?)
     ''', (user_id, name, message, media_type, media_url, list_id, number_id,
-          status, total, scheduled_at, datetime.now().isoformat()))
+          'rascunho', total, datetime.now().isoformat()))
     conn.commit()
     conn.close()
     return redirect('/mandazap/painel?section=campanhas')
@@ -2399,31 +2397,6 @@ def _dispatch_campaign(cid: int, user_id: int, delay_s: int = 4):
     )
     conn.commit(); conn.close()
     log.info(f"Campanha {cid} concluída: {sent_count}/{total} enviados")
-
-
-def _campaign_scheduler():
-    """
-    Loop em background que verifica campanhas agendadas a cada 30 s
-    e dispara aquelas cujo scheduled_at <= agora.
-    """
-    import time
-    while True:
-        try:
-            now  = datetime.now().isoformat()
-            conn = get_saas_db()
-            rows = conn.execute(
-                "SELECT id, user_id FROM mandazap_campaigns "
-                "WHERE status='agendada' AND scheduled_at IS NOT NULL AND scheduled_at <= ?",
-                (now,)
-            ).fetchall()
-            conn.close()
-            for row in rows:
-                cid, uid = row['id'], row['user_id']
-                log.info(f"Scheduler: disparando campanha {cid} (user {uid})")
-                threading.Thread(target=_dispatch_campaign, args=(cid, uid), daemon=True).start()
-        except Exception as e:
-            log.error(f"Campaign scheduler error: {e}")
-        time.sleep(30)
 
 
 @app.route('/mandazap/campanhas/<int:cid>/disparar', methods=['POST'])
@@ -2887,9 +2860,6 @@ def _startup():
                 except Exception as e:
                     log.error(f"Scrape startup error: {e}")
             threading.Thread(target=_scrape, daemon=True).start()
-        # Inicia scheduler de campanhas
-        threading.Thread(target=_campaign_scheduler, daemon=True).start()
-        log.info("Campaign scheduler iniciado.")
     except Exception as e:
         log.error(f"Startup error: {e}")
 
