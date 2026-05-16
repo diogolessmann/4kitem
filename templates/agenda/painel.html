@@ -151,9 +151,114 @@
   <a href="/agendar/{{ biz.slug }}" target="_blank">
     <button class="nav-btn nav-btn-green">🔗 Minha página</button>
   </a>
-  <a href="/agenda/ajuda"><button class="nav-btn nav-btn-ghost">❓ Ajuda</button></a>
+  <button class="nav-btn nav-btn-ghost" onclick="toggleGuia()">🗺️ Guia</button>
   <a href="/agenda/sair"><button class="nav-btn nav-btn-ghost">Sair</button></a>
 </nav>
+
+<!-- ═══ WIZARD GUIA RÁPIDO ═══ -->
+<div id="guia-overlay" onclick="toggleGuia()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200"></div>
+<div id="guia-drawer" style="position:fixed;top:0;right:-380px;width:360px;max-width:95vw;height:100vh;background:#111620;border-left:1px solid rgba(39,174,96,.2);z-index:201;display:flex;flex-direction:column;transition:right .3s cubic-bezier(.4,0,.2,1);box-shadow:-8px 0 40px rgba(0,0,0,.4)">
+
+  <!-- Header -->
+  <div style="padding:20px 20px 16px;border-bottom:1px solid rgba(39,174,96,.12);display:flex;align-items:center;gap:12px">
+    <div style="flex:1">
+      <div style="font-size:17px;font-weight:900;color:#27ae60">🗺️ Guia de configuração</div>
+      <div style="font-size:11px;color:#5a8a6a;margin-top:2px">Siga os passos para começar</div>
+    </div>
+    <button onclick="toggleGuia()" style="background:none;border:none;color:#5a8a6a;font-size:20px;cursor:pointer;line-height:1">×</button>
+  </div>
+
+  <!-- Progress bar -->
+  <div style="padding:12px 20px;border-bottom:1px solid rgba(39,174,96,.08)">
+    <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+      <span style="font-size:11px;color:#5a8a6a">Progresso</span>
+      <span style="font-size:11px;color:#27ae60;font-weight:700" id="guia-progress-txt">0 / 5 concluídos</span>
+    </div>
+    <div style="background:rgba(39,174,96,.1);border-radius:100px;height:6px">
+      <div id="guia-progress-bar" style="background:linear-gradient(90deg,#27ae60,#2ecc71);height:6px;border-radius:100px;width:0%;transition:width .4s ease"></div>
+    </div>
+  </div>
+
+  <!-- Steps -->
+  <div style="flex:1;overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;gap:10px">
+
+    <!-- Step 1 -->
+    <div class="guia-step" id="gs-1" onclick="toggleStep(1)">
+      <div class="gs-check" id="gsc-1">✓</div>
+      <div class="gs-body">
+        <div class="gs-title">Cadastre seus serviços</div>
+        <div class="gs-desc">Adicione o que você oferece com duração e preço. Ex: Corte 30min R$ 35.</div>
+        <button class="gs-btn" onclick="event.stopPropagation();irPara('servicos');toggleGuia()">Ir para Serviços →</button>
+      </div>
+    </div>
+
+    <!-- Step 2 -->
+    <div class="guia-step" id="gs-2" onclick="toggleStep(2)">
+      <div class="gs-check" id="gsc-2">✓</div>
+      <div class="gs-body">
+        <div class="gs-title">Defina seus horários</div>
+        <div class="gs-desc">Configure quais dias e horários você atende. O sistema bloqueia automático.</div>
+        <button class="gs-btn" onclick="event.stopPropagation();irPara('horarios');toggleGuia()">Ir para Horários →</button>
+      </div>
+    </div>
+
+    <!-- Step 3 -->
+    <div class="guia-step" id="gs-3" onclick="toggleStep(3)">
+      <div class="gs-check" id="gsc-3">✓</div>
+      <div class="gs-body">
+        <div class="gs-title">Compartilhe seu link</div>
+        <div class="gs-desc">Mande esse link pro cliente agendar sozinho pelo celular, sem instalar nada.</div>
+        <div style="background:rgba(39,174,96,.08);border:1px solid rgba(39,174,96,.2);border-radius:8px;padding:8px 10px;font-size:11px;color:#27ae60;font-family:monospace;margin-top:6px;word-break:break-all">4kitem.com.br/agendar/{{ biz.slug }}</div>
+        <button class="gs-btn" onclick="event.stopPropagation();copiarLink()">📋 Copiar link</button>
+      </div>
+    </div>
+
+    <!-- Step 4 -->
+    <div class="guia-step" id="gs-4" onclick="toggleStep(4)">
+      <div class="gs-check" id="gsc-4">✓</div>
+      <div class="gs-body">
+        <div class="gs-title">Ativar WhatsApp automático</div>
+        <div class="gs-desc">Conecte o MandaZap para enviar confirmações e lembretes automaticamente (R$ 39,90/mês).</div>
+        <button class="gs-btn" onclick="event.stopPropagation();irPara('config');toggleGuia()">Ir para Config →</button>
+      </div>
+    </div>
+
+    <!-- Step 5 -->
+    <div class="guia-step" id="gs-5" onclick="toggleStep(5)">
+      <div class="gs-check" id="gsc-5">✓</div>
+      <div class="gs-body">
+        <div class="gs-title">Configure o PIX</div>
+        <div class="gs-desc">Adicione sua chave PIX para o cliente ver após agendar e já poder pagar.</div>
+        <button class="gs-btn" onclick="event.stopPropagation();irPara('config');toggleGuia()">Ir para Config →</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Footer -->
+  <div style="padding:16px 20px;border-top:1px solid rgba(39,174,96,.12);display:flex;gap:8px">
+    <a href="/agenda/ajuda" style="flex:1;display:block">
+      <button style="width:100%;padding:9px;background:rgba(39,174,96,.08);border:1px solid rgba(39,174,96,.2);border-radius:8px;color:#27ae60;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">📖 Guia completo</button>
+    </a>
+    <a href="https://wa.me/5547997765798" target="_blank" style="flex:1;display:block">
+      <button style="width:100%;padding:9px;background:rgba(39,174,96,.08);border:1px solid rgba(39,174,96,.2);border-radius:8px;color:#27ae60;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">💬 Suporte</button>
+    </a>
+  </div>
+</div>
+
+<style>
+.guia-step{display:flex;gap:12px;background:#16202e;border:2px solid rgba(39,174,96,.1);border-radius:12px;padding:14px;cursor:pointer;transition:.2s;align-items:flex-start}
+.guia-step:hover{border-color:rgba(39,174,96,.3);background:#1a2535}
+.guia-step.done{border-color:rgba(39,174,96,.4);background:rgba(39,174,96,.06)}
+.gs-check{flex-shrink:0;width:28px;height:28px;border-radius:50%;border:2px solid rgba(39,174,96,.3);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900;color:transparent;transition:.3s;background:transparent}
+.guia-step.done .gs-check{background:#27ae60;border-color:#27ae60;color:#fff}
+.gs-body{flex:1;min-width:0}
+.gs-title{font-size:13px;font-weight:800;color:#e8f5e8;margin-bottom:3px}
+.guia-step.done .gs-title{color:#27ae60}
+.gs-desc{font-size:11px;color:#5a8a6a;line-height:1.5;margin-bottom:8px}
+.gs-btn{padding:5px 12px;background:rgba(39,174,96,.12);border:1px solid rgba(39,174,96,.25);border-radius:6px;color:#27ae60;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;transition:.2s}
+.gs-btn:hover{background:rgba(39,174,96,.22)}
+</style>
 
 <div class="tabs">
   <button class="tab-btn active" onclick="showTab('hoje',this)">📅 Hoje</button>
@@ -742,6 +847,102 @@ function copyLink() {
 document.getElementById('modal-pagamento').addEventListener('click', function(e) {
   if (e.target === this) fecharModal();
 });
+
+// ── GUIA / WIZARD ────────────────────────────────────────────────
+const GUIA_KEY = 'agendaSCGuia_{{ biz.slug }}';
+
+function _guiaLoad() {
+  try { return JSON.parse(localStorage.getItem(GUIA_KEY)) || {}; } catch(e) { return {}; }
+}
+function _guiaSave(state) {
+  localStorage.setItem(GUIA_KEY, JSON.stringify(state));
+}
+
+function toggleGuia() {
+  const drawer  = document.getElementById('guia-drawer');
+  const overlay = document.getElementById('guia-overlay');
+  const isOpen  = drawer.style.right === '0px';
+  if (isOpen) {
+    drawer.style.right  = '-380px';
+    overlay.style.display = 'none';
+  } else {
+    drawer.style.right  = '0px';
+    overlay.style.display = 'block';
+    _guiaRender();
+  }
+}
+
+function _guiaRender() {
+  const state = _guiaLoad();
+  let done = 0;
+  for (let i = 1; i <= 5; i++) {
+    const step = document.getElementById('gs-' + i);
+    if (state['step' + i]) {
+      step.classList.add('done');
+      done++;
+    } else {
+      step.classList.remove('done');
+    }
+  }
+  updateProgress(done);
+}
+
+function toggleStep(n) {
+  const state = _guiaLoad();
+  state['step' + n] = !state['step' + n];
+  _guiaSave(state);
+  _guiaRender();
+}
+
+function updateProgress(done) {
+  const total = 5;
+  const pct = Math.round((done / total) * 100);
+  document.getElementById('guia-progress-bar').style.width = pct + '%';
+  document.getElementById('guia-progress-txt').textContent = done + ' / ' + total + ' concluído' + (done !== 1 ? 's' : '');
+}
+
+function irPara(tabName) {
+  const tabMap = {
+    'servicos':   '✂️ Serviços',
+    'horarios':   '🕐 Horários',
+    'config':     '⚙️ Config',
+    'hoje':       '📅 Hoje',
+    'agendamentos': '📋 Agenda',
+  };
+  // Find the tab button matching that tab name
+  const btns = document.querySelectorAll('.tab-btn');
+  btns.forEach(b => {
+    if (b.getAttribute('onclick') && b.getAttribute('onclick').includes("'" + tabName + "'")) {
+      showTab(tabName, b);
+      b.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  });
+}
+
+function copiarLink() {
+  const link = '4kitem.com.br/agendar/{{ biz.slug }}';
+  const full  = 'https://' + link;
+  navigator.clipboard.writeText(full)
+    .then(() => {
+      showToast('📋 Link copiado!');
+      // Mark step 3 as done automatically
+      const state = _guiaLoad();
+      if (!state.step3) { state.step3 = true; _guiaSave(state); _guiaRender(); }
+    })
+    .catch(() => { showToast('❌ Não foi possível copiar', 'err'); });
+}
+
+// Inicializa o progresso ao carregar
+(function() {
+  const state = _guiaLoad();
+  let done = 0;
+  for (let i = 1; i <= 5; i++) { if (state['step' + i]) done++; }
+  updateProgress(done);
+  // Restore checkmarks visually (drawer is hidden, but update DOM)
+  for (let i = 1; i <= 5; i++) {
+    if (state['step' + i]) document.getElementById('gs-' + i)?.classList.add('done');
+  }
+})();
 </script>
 </body>
 </html>
