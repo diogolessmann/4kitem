@@ -132,18 +132,30 @@
           <th>Status</th>
           <th>Trial</th>
           <th>Cadastro</th>
+          <th>Ações</th>
         </tr>
       </thead>
       <tbody>
         {% for b in businesses %}
-        <tr>
+        <tr id="biz-{{ b.id }}">
           <td><strong>{{ b.name }}</strong></td>
           <td>{{ b.owner_name }}</td>
           <td><a href="https://wa.me/55{{ b.phone|replace('(','') |replace(')','') |replace('-','') |replace(' ','') }}" target="_blank" style="color:var(--green)">{{ b.phone }}</a></td>
           <td><a href="/agendar/{{ b.slug }}" target="_blank" style="color:var(--accent)">/{{ b.slug }}</a></td>
           <td><span class="badge {% if b.active %}badge-active{% else %}badge-suspended{% endif %}">{{ 'ativo' if b.active else 'inativo' }}</span></td>
-          <td style="font-size:11px;color:var(--text2)">{{ b.trial_ends[:10] if b.trial_ends else '—' }}</td>
+          <td style="font-size:11px;color:var(--text2)" id="trial-{{ b.id }}">{{ b.trial_ends[:10] if b.trial_ends else '—' }}</td>
           <td style="font-size:11px;color:var(--text2)">{{ b.created_at[:10] if b.created_at else '—' }}</td>
+          <td>
+            <div style="display:flex;flex-direction:column;gap:4px;min-width:110px">
+              {% if b.active %}
+              <button class="btn-sm btn-orange" onclick="setAgendaStatus({{ b.id }}, false)">⏸ Suspender</button>
+              {% else %}
+              <button class="btn-sm btn-green" onclick="setAgendaStatus({{ b.id }}, true)">▶ Ativar</button>
+              {% endif %}
+              <button class="btn-sm btn-green" style="background:rgba(99,102,241,.15);color:#818cf8;border-color:rgba(99,102,241,.3)" onclick="openTrialModal({{ b.id }}, '{{ b.trial_ends[:10] if b.trial_ends else '' }}')">📅 Trial</button>
+              <button class="btn-sm btn-red" onclick="deleteAgenda({{ b.id }})">🗑 Deletar</button>
+            </div>
+          </td>
         </tr>
         {% endfor %}
       </tbody>
@@ -151,6 +163,18 @@
     {% else %}
     <div class="empty">Nenhum negócio cadastrado ainda.</div>
     {% endif %}
+  </div>
+
+  <!-- Modal Trial Agenda -->
+  <div id="trialModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:999;align-items:center;justify-content:center">
+    <div style="background:#13131f;border:1px solid rgba(99,102,241,.3);border-radius:16px;padding:28px;width:320px;box-shadow:0 20px 60px rgba(0,0,0,.5)">
+      <div style="font-size:16px;font-weight:800;margin-bottom:16px;color:#f0f0ff">📅 Mudar data do Trial</div>
+      <input id="trialDateInput" type="date" style="width:100%;background:#0a0a15;border:1px solid rgba(99,102,241,.3);border-radius:8px;color:#f0f0ff;padding:10px 12px;font-size:14px;outline:none;margin-bottom:12px">
+      <div style="display:flex;gap:8px">
+        <button class="btn-sm btn-green" style="flex:1;padding:9px" onclick="saveTrialDate()">✅ Salvar</button>
+        <button class="btn-sm btn-red" style="flex:1;padding:9px" onclick="document.getElementById('trialModal').style.display='none'">Cancelar</button>
+      </div>
+    </div>
   </div>
 
   <!-- MANDAZAP -->
@@ -286,6 +310,49 @@ async function setBauStatus(id, active) {
   });
   const d = await r.json();
   if (d.success) location.reload();
+}
+
+// ── Agenda SC ──
+async function setAgendaStatus(id, active) {
+  const label = active ? 'Ativar' : 'Suspender';
+  if (!confirm(`${label} este negócio?`)) return;
+  const r = await fetch(`/admin/agenda/${id}/status`, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ active })
+  });
+  const d = await r.json();
+  if (d.success) location.reload();
+  else alert(d.error || 'Erro');
+}
+
+async function deleteAgenda(id) {
+  if (!confirm('Deletar este negócio PERMANENTEMENTE? Todos os agendamentos serão removidos.')) return;
+  const r = await fetch(`/admin/agenda/${id}/delete`, { method: 'POST' });
+  const d = await r.json();
+  if (d.success) document.getElementById('biz-' + id)?.remove();
+  else alert(d.error || 'Erro');
+}
+
+let _trialBizId = null;
+function openTrialModal(id, current) {
+  _trialBizId = id;
+  document.getElementById('trialDateInput').value = current || '';
+  document.getElementById('trialModal').style.display = 'flex';
+}
+async function saveTrialDate() {
+  const date = document.getElementById('trialDateInput').value;
+  if (!date) return alert('Escolha uma data.');
+  const r = await fetch(`/admin/agenda/${_trialBizId}/trial`, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ trial_ends: date })
+  });
+  const d = await r.json();
+  if (d.success) {
+    document.getElementById('trial-' + _trialBizId).textContent = date;
+    document.getElementById('trialModal').style.display = 'none';
+  } else alert(d.error || 'Erro');
 }
 </script>
 </body>

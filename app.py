@@ -969,6 +969,45 @@ def saas_alerta_delete(sub_id):
     return jsonify({'success': True})
 
 
+# ── Admin Agenda SC ───────────────────────────────────────────────────────────
+
+@app.route('/admin/agenda/<int:biz_id>/status', methods=['POST'])
+@_saas_admin_required
+def saas_agenda_status(biz_id):
+    data   = request.get_json() or {}
+    active = 1 if data.get('active') else 0
+    conn   = get_saas_db()
+    conn.execute('UPDATE agenda_businesses SET active=? WHERE id=?', (active, biz_id))
+    conn.commit(); conn.close()
+    return jsonify({'success': True})
+
+
+@app.route('/admin/agenda/<int:biz_id>/trial', methods=['POST'])
+@_saas_admin_required
+def saas_agenda_trial(biz_id):
+    data  = request.get_json() or {}
+    trial = data.get('trial_ends', '').strip()
+    if not trial:
+        return jsonify({'success': False, 'error': 'Data inválida'})
+    conn = get_saas_db()
+    conn.execute('UPDATE agenda_businesses SET trial_ends=? WHERE id=?', (trial, biz_id))
+    conn.commit(); conn.close()
+    return jsonify({'success': True})
+
+
+@app.route('/admin/agenda/<int:biz_id>/delete', methods=['POST'])
+@_saas_admin_required
+def saas_agenda_delete(biz_id):
+    conn = get_saas_db()
+    conn.execute('DELETE FROM agenda_appointments WHERE business_id=?', (biz_id,))
+    conn.execute('DELETE FROM agenda_services    WHERE business_id=?', (biz_id,))
+    conn.execute('DELETE FROM agenda_hours       WHERE business_id=?', (biz_id,))
+    conn.execute('DELETE FROM agenda_customers   WHERE business_id=?', (biz_id,))
+    conn.execute('DELETE FROM agenda_businesses  WHERE id=?',          (biz_id,))
+    conn.commit(); conn.close()
+    return jsonify({'success': True})
+
+
 # ══════════════════════════════════════════════════════════════════════════
 #  TV PLAYER  — /tv/<code>
 # ══════════════════════════════════════════════════════════════════════════
