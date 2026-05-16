@@ -151,6 +151,7 @@
               <button class="btn-sm btn-green" onclick="setAgendaStatus({{ b.id }}, true)">▶ Ativar</button>
               {% endif %}
               <button class="btn-sm btn-purple" onclick="openTrial('agenda','{{ b.id }}','{{ b.trial_ends[:10] if b.trial_ends else '' }}')">📅 Trial</button>
+              <button class="btn-sm" style="background:rgba(59,130,246,.15);color:#60a5fa;border:1px solid rgba(59,130,246,.3)" onclick="resetSenhaAgenda({{ b.id }}, '{{ b.name|replace("'","\\'") }}')">🔑 Senha</button>
               <button class="btn-sm btn-red" onclick="deleteAgenda({{ b.id }})">🗑 Deletar</button>
             </div>
           </td>
@@ -408,6 +409,17 @@ async function deleteAgenda(id) {
   const d = await r.json();
   if (d.success) document.getElementById('biz-' + id)?.remove();
   else alert(d.error || 'Erro');
+}
+async function resetSenhaAgenda(id, nome) {
+  const nova = prompt(`Nova senha para "${nome}":`);
+  if (!nova || nova.length < 4) return;
+  const r = await fetch(`/admin/agenda/${id}/reset-senha`, {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ senha: nova })
+  });
+  const d = await r.json();
+  if (d.success) alert(`✅ Senha alterada para "${nova}" com sucesso!`);
+  else alert('❌ ' + (d.error || 'Erro'));
 }
 
 /* ── MandaZap ── */

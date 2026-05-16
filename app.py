@@ -1194,6 +1194,23 @@ def saas_agenda_delete(biz_id):
     return jsonify({'success': True})
 
 
+@app.route('/admin/agenda/<int:biz_id>/reset-senha', methods=['POST'])
+@_saas_admin_required
+def saas_agenda_reset_senha(biz_id):
+    nova_senha = request.json.get('senha', '').strip()
+    if not nova_senha or len(nova_senha) < 4:
+        return jsonify({'success': False, 'error': 'Senha muito curta (mín. 4 caracteres)'})
+    conn = get_saas_db()
+    biz = conn.execute('SELECT id FROM agenda_businesses WHERE id=?', (biz_id,)).fetchone()
+    if not biz:
+        conn.close()
+        return jsonify({'success': False, 'error': 'Negócio não encontrado'})
+    conn.execute('UPDATE agenda_businesses SET password_hash=? WHERE id=?',
+                 (generate_password_hash(nova_senha), biz_id))
+    conn.commit(); conn.close()
+    return jsonify({'success': True})
+
+
 # ══════════════════════════════════════════════════════════════════════════
 #  TV PLAYER  — /tv/<code>
 # ══════════════════════════════════════════════════════════════════════════
