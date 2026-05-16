@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Requerimento — O.S. {{ os.numero }}</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    @page { size: A4; margin: 20mm 20mm 15mm 20mm; }
+    body { font-family: Arial, sans-serif; font-size: 11pt; color: #000; background: #fff; line-height: 1.65; }
+
+    .print-bar {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      background: #1a1a2e; color: #fff; padding: 10px 20px;
+      display: flex; align-items: center; gap: 12px; font-family: Arial, sans-serif;
+    }
+    .print-bar button { padding: 6px 16px; border-radius: 6px; border: none; cursor: pointer; font-size: 13px; font-weight: 600; }
+    .print-bar .btn-print { background: #f97316; color: #fff; }
+    .print-bar .btn-close { background: rgba(255,255,255,.15); color: #fff; }
+    .print-bar .info { font-size: 12px; color: #aaa; }
+    body { padding-top: 54px; }
+    @media print { body { padding-top: 0; } .print-bar { display: none; } }
+
+    .page { max-width: 170mm; margin: 0 auto; padding: 10mm 0; }
+
+    /* Timbre */
+    .timbre {
+      display: flex; align-items: flex-start; gap: 12px;
+      border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 10px;
+    }
+    .timbre-logo { font-size: 30pt; line-height: 1; }
+    .timbre-text { flex: 1; }
+    .timbre-text .nome { font-size: 11pt; font-weight: bold; text-transform: uppercase; }
+    .timbre-text .dados { font-size: 8pt; color: #444; line-height: 1.5; }
+    .timbre-os { text-align: right; }
+    .timbre-os .num { font-size: 14pt; font-weight: bold; font-family: monospace; }
+    .timbre-os .label { font-size: 7.5pt; color: #666; text-transform: uppercase; }
+
+    /* Título */
+    .req-title {
+      text-align: center; margin: 14px 0 10px;
+      font-size: 15pt; font-weight: bold; letter-spacing: 2px;
+      text-transform: uppercase;
+    }
+    .req-destino {
+      text-align: center; font-size: 9.5pt; color: #333;
+      margin-bottom: 14px;
+    }
+
+    /* Seções */
+    .section { margin-bottom: 10px; }
+    .section-label {
+      font-size: 8.5pt; font-weight: bold; text-transform: uppercase;
+      letter-spacing: 1px; color: #333;
+      border-bottom: 1px solid #ccc; padding-bottom: 1px; margin-bottom: 5px;
+    }
+
+    .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 3px 16px; }
+    .info-field { display: flex; flex-direction: column; }
+    .info-field-label { font-size: 7.5pt; color: #666; font-weight: bold; }
+    .info-field-val {
+      font-size: 10pt; border-bottom: 1px solid #aaa;
+      padding-bottom: 1px; min-height: 16px;
+    }
+    .info-field-val.placa {
+      font-family: monospace; font-size: 14pt; font-weight: 900; letter-spacing: 2px;
+    }
+
+    .objeto-box {
+      border: 1.5px solid #000; padding: 8px 12px; border-radius: 2px;
+      text-align: center; font-size: 11pt; font-weight: bold;
+      text-transform: uppercase; background: #f5f5f5; margin: 8px 0;
+    }
+
+    .corpo-texto {
+      font-size: 10pt; text-align: justify; line-height: 1.7;
+      margin: 12px 0;
+    }
+    .corpo-texto p { margin-bottom: 8px; }
+
+    /* Documentos */
+    .docs-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 10px; margin-top: 4px; }
+    .doc-item { display: flex; align-items: center; gap: 6px; font-size: 9pt; }
+    .doc-box { width: 10px; height: 10px; border: 1px solid #000; flex-shrink: 0; }
+
+    /* Declaração */
+    .declaracao {
+      background: #f9f9f9; border: 1px solid #ccc; border-radius: 2px;
+      padding: 8px 12px; font-size: 9pt; margin: 10px 0;
+      font-style: italic;
+    }
+
+    /* Deferimento */
+    .deferimento {
+      text-align: right; font-size: 10pt;
+      margin: 12px 0 8px;
+    }
+
+    /* Local e Data */
+    .local-data { text-align: center; font-size: 10pt; margin: 14px 0; }
+
+    /* Assinatura */
+    .assin-area { text-align: center; margin-top: 24px; }
+    .assin-line { border-top: 1px solid #000; width: 220px; margin: 0 auto; padding-top: 4px; font-size: 9pt; }
+
+    /* Rodapé */
+    .footer {
+      margin-top: 20px; padding-top: 6px; border-top: 1px dashed #ccc;
+      font-size: 7pt; color: #999; text-align: center;
+    }
+
+    .via-sep {
+      border-top: 2px dashed #555; margin: 20px 0 18px;
+      text-align: center; position: relative;
+    }
+    .via-sep span {
+      background: #fff; padding: 0 10px;
+      position: relative; top: -9px;
+      font-size: 8pt; color: #777; text-transform: uppercase; letter-spacing: 1px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="print-bar">
+  <button class="btn-print" onclick="window.print()">🖨️ Imprimir (2 vias)</button>
+  <button class="btn-close" onclick="history.back()">← Voltar</button>
+  <span class="info">Requerimento · O.S. {{ os.numero }} · {{ finalidade }}</span>
+</div>
+
+{% set meses_pt = ['','janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'] %}
+
+{% for via_num in [1, 2] %}
+{% set via_nome = ['REQUERENTE / CLIENTE', 'DESPACHANTE'][via_num - 1] %}
+
+<div class="page">
+
+  <!-- Timbre -->
+  <div class="timbre">
+    <div class="timbre-logo">🚗</div>
+    <div class="timbre-text">
+      <div class="nome">{{ desp.nome }}</div>
+      <div class="dados">
+        Credencial DETRAN-SC nº {{ desp.credencial }} &nbsp;·&nbsp;
+        CNPJ {{ desp.cnpj }} &nbsp;·&nbsp; CPF {{ desp.cpf }}<br>
+        {{ desp.cidade }}/SC &nbsp;·&nbsp; CITRAN {{ desp.citran }} &nbsp;·&nbsp; {{ desp.whatsapp_fmt }}
+      </div>
+    </div>
+    <div class="timbre-os">
+      <div class="label">Protocolo / O.S.</div>
+      <div class="num">{{ os.numero }}</div>
+      <div class="label">{{ hoje.strftime('%d/%m/%Y') }}</div>
+      <div class="label" style="margin-top:4px;font-size:7pt;">{{ via_num }}ª VIA — {{ via_nome }}</div>
+    </div>
+  </div>
+
+  <!-- Título -->
+  <div class="req-title">Requerimento</div>
+  <div class="req-destino">
+    À <strong>Coordenadoria Regional de Trânsito — CIRETRAN {{ desp.citran }}</strong><br>
+    <span style="font-size:8.5pt;">DETRAN-SC · Departamento Estadual de Trânsito de Santa Catarina</span>
+  </div>
+
+  <!-- Objeto -->
+  <div class="section">
+    <div class="section-label">Objeto do Requerimento</div>
+    <div class="objeto-box">{{ finalidade | upper }}</div>
+  </div>
+
+  <!-- Dados do Requerente -->
+  <div class="section">
+    <div class="section-label">Dados do Requerente / Proprietário</div>
+    <div class="info-grid">
+      <div class="info-field" style="grid-column:span 2;">
+        <span class="info-field-label">Nome Completo</span>
+        <span class="info-field-val">{{ os.cliente_nome or '' }}</span>
+      </div>
+      <div class="info-field">
+        <span class="info-field-label">CPF</span>
+        <span class="info-field-val">{{ os.cpf or '' }}</span>
+      </div>
+      <div class="info-field">
+        <span class="info-field-label">RG</span>
+        <span class="info-field-val">{{ os.rg or '' }}</span>
+      </div>
+      {% if os.nascimento %}
+      <div class="info-field">
+        <span class="info-field-label">Data de Nascimento</span>
+        <span class="info-field-val">{{ os.nascimento }}</span>
+      </div>
+      {% endif %}
+      <div class="info-field">
+        <span class="info-field-label">Telefone</span>
+        <span class="info-field-val">{{ os.telefone or '' }}</span>
+      </div>
+      {% if os.logradouro %}
+      <div class="info-field" style="grid-column:span 2;">
+        <span class="info-field-label">Endereço</span>
+        <span class="info-field-val">
+          {{ os.logradouro }}{% if os.endereco_num %}, {{ os.endereco_num }}{% endif %}
+          {% if os.bairro %} — {{ os.bairro }}{% endif %}
+          {% if os.cidade %} · {{ os.cidade }}/{{ os.uf or 'SC' }}{% endif %}
+          {% if os.cep %} · CEP {{ os.cep }}{% endif %}
+        </span>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  {% if os.placa %}
+  <!-- Dados do Veículo -->
+  <div class="section">
+    <div class="section-label">Dados do Veículo</div>
+    <div class="info-grid">
+      <div class="info-field">
+        <span class="info-field-label">Placa</span>
+        <span class="info-field-val placa">{{ os.placa }}</span>
+      </div>
+      <div class="info-field">
+        <span class="info-field-label">Marca / Modelo</span>
+        <span class="info-field-val">{{ os.marca or '' }} {{ os.modelo or '' }}</span>
+      </div>
+      <div class="info-field">
+        <span class="info-field-label">RENAVAM</span>
+        <span class="info-field-val" style="font-family:monospace;">{{ os.renavam or '' }}</span>
+      </div>
+      <div class="info-field">
+        <span class="info-field-label">Chassi</span>
+        <span class="info-field-val" style="font-family:monospace;font-size:9pt;">{{ os.chassi or '' }}</span>
+      </div>
+      <div class="info-field">
+        <span class="info-field-label">Ano Fab. / Mod.</span>
+        <span class="info-field-val">{{ os.ano_fab or '—' }} / {{ os.ano_mod or '—' }}</span>
+      </div>
+      <div class="info-field">
+        <span class="info-field-label">Cor</span>
+        <span class="info-field-val">{{ os.cor or '' }}</span>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Corpo do Requerimento -->
+  <div class="corpo-texto">
+    <p>
+      Eu, <strong>{{ os.cliente_nome or 'o(a) requerente' }}</strong>{% if os.cpf %}, portador(a) do CPF nº <strong>{{ os.cpf }}</strong>{% endif %},
+      {% if os.rg %}portador(a) do RG nº {{ os.rg }},{% endif %}
+      residente{% if os.cidade %} em {{ os.cidade }}/{{ os.uf or 'SC' }}{% endif %},
+      venho respeitosamente requerer a <strong>{{ finalidade | upper }}</strong>{% if os.placa %} referente ao veículo de placa <strong>{{ os.placa }}</strong>{% if os.renavam %} (RENAVAM {{ os.renavam }}){% endif %}{% endif %},
+      conforme documentação apresentada.
+    </p>
+    {% if os.observacoes %}
+    <p><strong>Observações:</strong> {{ os.observacoes }}</p>
+    {% endif %}
+  </div>
+
+  <!-- Documentos anexados -->
+  <div class="section">
+    <div class="section-label">Documentos Anexados</div>
+    <div class="docs-grid">
+      {% for doc in docs_needed %}
+      <div class="doc-item">
+        <div class="doc-box"></div>
+        <span>{{ doc }}</span>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Declaração LGPD -->
+  <div class="declaracao">
+    Declaro que as informações prestadas são verdadeiras e autorizo o uso dos meus dados pessoais
+    para fins de processamento deste requerimento junto ao DETRAN-SC, em conformidade com a
+    Lei Geral de Proteção de Dados (LGPD — Lei 13.709/2018), base legal Art. 7º, V (execução de contrato).
+  </div>
+
+  <!-- Deferimento -->
+  <div class="deferimento">Nestes termos, pede deferimento.</div>
+
+  <!-- Local e data -->
+  <div class="local-data">
+    {{ desp.cidade }}/SC, {{ hoje.strftime('%d') }} de {{ meses_pt[hoje.month] }} de {{ hoje.year }}.
+  </div>
+
+  <!-- Assinatura -->
+  <div class="assin-area">
+    <div class="assin-line">
+      {{ os.cliente_nome or '______________________________' }}<br>
+      {% if os.cpf %}CPF: {{ os.cpf }}{% else %}CPF: ___________________{% endif %}
+      {% if os.rg %} · RG: {{ os.rg }}{% endif %}
+    </div>
+  </div>
+
+  <div class="footer">
+    Amigo Despachante · {{ desp.nome }} · Credencial DETRAN-SC nº {{ desp.credencial }} · {{ hoje.strftime('%d/%m/%Y %H:%M') }} · O.S. {{ os.numero }}
+  </div>
+
+</div>
+
+{% if via_num == 1 %}
+<div class="via-sep"><span>✂ Recorte aqui — 2ª Via</span></div>
+{% endif %}
+
+{% endfor %}
+
+</body>
+</html>

@@ -88,6 +88,7 @@ SERVICOS_GRUPOS = OrderedDict([
         "items": OrderedDict([
             ("primeiro_emplacamento", "Primeiro Emplacamento"),
             ("registro_inicial",      "Registro Inicial (Importado)"),
+            ("placa_mercosul",        "Par de Placas Mercosul"),
             ("remarcacao_chassi",     "Remarcação de Chassi"),
             ("remarcacao_motor",      "Remarcação de Motor"),
             ("conversao_placa_piv",   "Conversão Placa PIV"),
@@ -175,6 +176,68 @@ SERVICOS = {
     for grupo in SERVICOS_GRUPOS.values()
     for k, v in grupo["items"].items()
 }
+
+# ── Documentos necessários por tipo de serviço ──────────────────────────────
+DOCS_POR_SERVICO = {
+    # Licenciamento
+    "licenciamento":          ["CRLV Anterior", "CNH / RG do Proprietário", "Comprovante de Endereço", "Boleto DETRAN Pago"],
+    "lic_debitos":            ["CRLV Anterior", "CNH / RG do Proprietário", "Comprovante de Endereço", "Comprovante de Parcelamento / Quitação"],
+    "lic_outro_municipio":    ["CRLV Anterior", "CNH / RG do Proprietário", "Comprovante Novo Endereço", "Boleto DETRAN Pago"],
+    "lic_outro_estado":       ["CRV Original", "CNH / RG do Proprietário", "Comprovante de Endereço SC", "Laudo de Vistoria"],
+    "lic_emissao":            ["CRLV Anterior", "CNH / RG do Proprietário", "Comprovante de Endereço"],
+
+    # Transferência
+    "transferencia":          ["CRV Original Assinado (AT)", "CNH Vendedor", "CNH / RG Comprador", "Comprovante Endereço Comprador", "Laudo de Vistoria (se exigido)"],
+    "transferencia_debito":   ["CRV Original Assinado (AT)", "CNH Vendedor", "CNH / RG Comprador", "Comprovante Quitação / Parcelamento Débitos", "Comprovante Endereço Comprador"],
+    "transferencia_gravame":  ["CRV Original Assinado (AT)", "CNH Vendedor", "CNH / RG Comprador", "Autorização da Financeira / Banco", "Comprovante Endereço Comprador"],
+    "transferencia_leilao":   ["Nota Fiscal do Leilão", "Auto / Edital do Leilão", "CNH Arrematante", "Comprovante Endereço Arrematante", "Laudo de Vistoria"],
+    "transferencia_outro_estado": ["CRV Original Assinado", "CNH Vendedor", "CNH / RG Comprador", "Laudo de Vistoria DETRAN-SC", "Comprovante Endereço SC"],
+    "atpv_comunicado":        ["ATPV-e ou CRV Original", "CNH Vendedor", "Dados do Comprador (nome, CPF)"],
+
+    # Especial
+    "inventario":             ["Formal de Partilha ou Alvará Judicial", "Certidão de Óbito", "CRV Original", "CNH / RG Herdeiro", "CPF Herdeiro"],
+    "recibo_inventario":      ["CRV Original", "Formal de Partilha", "CNH / RG Herdeiro"],
+    "baixa_administrativa":   ["CRV Original", "CNH / RG Proprietário", "Requerimento DETRAN Assinado"],
+    "baixa_circulacao":       ["CRV Original", "CNH / RG Proprietário", "Laudo de Vistoria / Sucata", "DUT (se aplicável)"],
+    "segunda_via_crv":        ["Boletim de Ocorrência (BO)", "CNH / RG Proprietário", "CPF Proprietário", "Comprovante de Endereço", "Taxa DETRAN Paga"],
+    "comunicado_retroativo":  ["CRLV ou CRV do Período", "CNH Vendedor", "Contrato de Compra e Venda", "Dados Completos do Comprador"],
+
+    # Boletos
+    "boleto_multa":           ["CNH / RG Proprietário", "CPF Proprietário", "Dados da Multa (AIT)"],
+    "boleto_licenciamento":   ["Placa / RENAVAM", "CPF Proprietário"],
+    "boleto_ipva":            ["Placa / RENAVAM", "CPF Proprietário"],
+    "boleto_divida_ativa":    ["CPF / CNPJ Proprietário", "Placa / RENAVAM", "Número da Dívida (se houver)"],
+    "boletos":                ["CPF / CNPJ Proprietário", "Placa / RENAVAM"],
+
+    # Alterações
+    "alt_cor":                ["CRV Original", "CNH Proprietário", "Nota Fiscal Tintura / Serviço", "Laudo Vistoria"],
+    "alt_motor":              ["CRV Original", "CNH Proprietário", "Nota Fiscal Motor", "Laudo Vistoria"],
+    "alt_combustivel":        ["CRV Original", "CNH Proprietário", "Nota Fiscal Conversão GNV/Flex", "Certificado INMETRO"],
+    "alt_gravame_inclusao":   ["CRV Original", "Contrato Financiamento", "CNH Proprietário"],
+    "alt_gravame_baixa":      ["CRV Original", "Carta Quitação do Banco", "CNH Proprietário"],
+    "mudanca_endereco":       ["CNH / RG Proprietário", "Comprovante Novo Endereço"],
+
+    # Registro
+    "primeiro_emplacamento":  ["Nota Fiscal Veículo 0km", "CNH / RG Comprador", "Comprovante de Endereço", "Laudo Vistoria"],
+    "registro_inicial":       ["NF Importação / DI", "CNH / RG Comprador", "Comprovante Endereço", "Laudo Vistoria"],
+    "placa_mercosul":         ["CRV Original", "CNH / RG Proprietário", "Taxa DETRAN Paga"],
+
+    # CNH
+    "renovacao_cnh_ab":       ["CNH Atual", "Comprovante de Endereço", "Exame Médico / Psicológico", "Taxa DETRAN Paga"],
+    "renovacao_cnh_cde":      ["CNH Atual", "Comprovante de Endereço", "Exame Médico / Psicológico", "Exame Toxicológico", "Taxa DETRAN Paga"],
+    "segunda_via_cnh":        ["Boletim de Ocorrência (BO)", "Comprovante de Endereço", "Taxa DETRAN Paga"],
+    "indicacao_condutor":     ["CNH Proprietário", "CPF Proprietário", "Dados do Condutor Infrator", "Auto de Infração (AIT)"],
+
+    # Documentos
+    "procuracao":             ["RG / CPF Outorgante", "Comprovante de Endereço", "Dados do Veículo (Placa, RENAVAM)"],
+    "contrato_compra_venda":  ["RG / CPF Vendedor", "RG / CPF Comprador", "Dados Completos do Veículo"],
+    "contrato_aluguel":       ["RG / CPF Locador", "RG / CPF Locatário", "Comprovante de Endereço"],
+    "contrato_universal":     ["RG / CPF das Partes", "Comprovante de Endereço"],
+    "autorizacao_viagem":     ["RG / CPF do Responsável", "RG / Certidão do Menor", "Dados do Destino / Período"],
+}
+
+# Padrão quando o serviço não tem mapeamento específico
+DOCS_PADRAO = ["CRV / CRLV Original", "CNH / RG do Proprietário", "CPF do Proprietário", "Comprovante de Endereço"]
 
 # Final de placa → mês de licenciamento (SC)
 FINAIS_PLACA = {

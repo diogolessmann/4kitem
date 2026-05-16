@@ -2570,6 +2570,8 @@ from desp_db import (
     SERVICOS as DESP_SERVICOS, SERVICOS_GRUPOS as DESP_SERVICOS_GRUPOS,
     FINAIS_PLACA as DESP_FINAIS_PLACA, MESES as DESP_MESES,
     STATUS_LABELS as DESP_STATUS_LABELS,
+    DOCS_POR_SERVICO as DESP_DOCS_POR_SERVICO,
+    DOCS_PADRAO as DESP_DOCS_PADRAO,
     criar_os as desp_criar_os, get_os as desp_get_os,
     listar_os as desp_listar_os, atualizar_os as desp_atualizar_os,
     atualizar_os_status as desp_atualizar_os_status,
@@ -2862,9 +2864,36 @@ def desp_lista_disparar():
 def desp_print_protocolo(os_id):
     os_ = desp_get_os(os_id)
     if not os_: abort(404)
-    finalidade = DESP_SERVICOS.get(os_['servico'], os_['servico'])
+    finalidade  = DESP_SERVICOS.get(os_['servico'], os_['servico'])
+    docs_needed = DESP_DOCS_POR_SERVICO.get(os_['servico'], DESP_DOCS_PADRAO)
     return render_template('despachante/print/protocolo.html',
-        os=os_, finalidade=finalidade, hoje=datetime.now(), desp=DESP_CONFIG)
+        os=os_, finalidade=finalidade, hoje=datetime.now(), desp=DESP_CONFIG,
+        docs_needed=docs_needed, servicos=DESP_SERVICOS)
+
+
+# ── Print procuração ──────────────────────────────────────────────────────────
+@app.route('/despachante/os/<int:os_id>/procuracao')
+@_desp_login_required
+def desp_print_procuracao(os_id):
+    os_ = desp_get_os(os_id)
+    if not os_: abort(404)
+    finalidade = DESP_SERVICOS.get(os_['servico'], os_['servico'])
+    return render_template('despachante/print/procuracao.html',
+        os=os_, finalidade=finalidade, hoje=datetime.now(), desp=DESP_CONFIG,
+        servicos=DESP_SERVICOS)
+
+
+# ── Print requerimento ────────────────────────────────────────────────────────
+@app.route('/despachante/os/<int:os_id>/requerimento')
+@_desp_login_required
+def desp_print_requerimento(os_id):
+    os_ = desp_get_os(os_id)
+    if not os_: abort(404)
+    finalidade  = DESP_SERVICOS.get(os_['servico'], os_['servico'])
+    docs_needed = DESP_DOCS_POR_SERVICO.get(os_['servico'], DESP_DOCS_PADRAO)
+    return render_template('despachante/print/requerimento.html',
+        os=os_, finalidade=finalidade, hoje=datetime.now(), desp=DESP_CONFIG,
+        docs_needed=docs_needed, servicos=DESP_SERVICOS)
 
 
 # ── API busca ─────────────────────────────────────────────────────────────────

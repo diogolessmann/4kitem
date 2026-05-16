@@ -213,21 +213,18 @@
   </div>
 
   <div class="docs-section">
-    <div class="section-title">Documentos Recebidos pelo Despachante</div>
+    <div class="section-title">Documentos Necessários — {{ servico_label }}</div>
     <div class="docs-grid">
-      {% set doc_lista = [
-        'CRV Original', 'CRLV', 'CNH Proprietário', 'RG Proprietário',
-        'CPF Proprietário', 'Comprovante Endereço', 'Procuração',
-        'Laudo Vistoria', 'Nota Fiscal', 'Boleto DETRAN', 'DUT',
-        'Certidão Débitos', 'Comprovante Pagamento', 'Requerimento',
-        'Autorização DENATRAN', 'Contrato Compra/Venda'
-      ] %}
-      {% for doc in doc_lista %}
+      {% for doc in docs_needed %}
       <div class="doc-check">
-        <div class="box">{% if doc in docs_check %}✓{% endif %}</div>
+        <div class="box"> </div>
         <span>{{ doc }}</span>
       </div>
       {% endfor %}
+      <div class="doc-check">
+        <div class="box"> </div>
+        <span>Outros: _______________</span>
+      </div>
     </div>
   </div>
 

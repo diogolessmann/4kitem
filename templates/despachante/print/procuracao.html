@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Procuração — O.S. {{ os.numero }}</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    @page { size: A4; margin: 20mm 20mm 15mm 20mm; }
+    body { font-family: Arial, sans-serif; font-size: 11pt; color: #000; background: #fff; line-height: 1.6; }
+
+    .print-bar {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      background: #1a1a2e; color: #fff; padding: 10px 20px;
+      display: flex; align-items: center; gap: 12px; font-family: Arial, sans-serif;
+    }
+    .print-bar button { padding: 6px 16px; border-radius: 6px; border: none; cursor: pointer; font-size: 13px; font-weight: 600; }
+    .print-bar .btn-print { background: #f97316; color: #fff; }
+    .print-bar .btn-close { background: rgba(255,255,255,.15); color: #fff; }
+    .print-bar .info { font-size: 12px; color: #aaa; }
+    body { padding-top: 54px; }
+    @media print { body { padding-top: 0; } .print-bar { display: none; } }
+
+    /* Página */
+    .page {
+      max-width: 170mm;
+      margin: 0 auto;
+      padding: 10mm 0;
+    }
+
+    /* Cabeçalho */
+    .header {
+      text-align: center;
+      border-bottom: 2px solid #000;
+      padding-bottom: 8px;
+      margin-bottom: 16px;
+    }
+    .header .logo-line { font-size: 10pt; color: #555; }
+    .header .doc-title {
+      font-size: 16pt; font-weight: bold; letter-spacing: 3px;
+      text-transform: uppercase; margin: 6px 0 4px;
+    }
+    .header .doc-sub { font-size: 8.5pt; color: #444; }
+
+    /* Corpo */
+    .section-title {
+      font-size: 8.5pt; font-weight: bold; text-transform: uppercase;
+      letter-spacing: 1px; color: #333; border-bottom: 1px solid #ccc;
+      padding-bottom: 2px; margin: 14px 0 6px;
+    }
+
+    .qual-box {
+      border: 1px solid #bbb; border-radius: 3px;
+      padding: 8px 12px; background: #fafafa; margin-bottom: 6px;
+    }
+    .qual-box .qual-name { font-size: 12pt; font-weight: bold; }
+    .qual-box .qual-detail { font-size: 9.5pt; color: #333; margin-top: 2px; line-height: 1.7; }
+
+    .poderes-box {
+      border: 1.5px solid #000; border-radius: 3px;
+      padding: 10px 14px; margin: 10px 0;
+      background: #f9f9f9;
+    }
+    .poderes-box .veiculo-line {
+      font-family: monospace; font-size: 10pt; font-weight: bold;
+      margin: 6px 0; letter-spacing: .5px;
+    }
+    .poderes-box .servico-line {
+      font-size: 10.5pt; font-weight: bold; text-align: center;
+      background: #eee; padding: 4px 8px; border-radius: 2px;
+      margin: 6px 0; text-transform: uppercase;
+    }
+    .poderes-text { font-size: 10pt; line-height: 1.65; text-align: justify; margin-top: 8px; }
+
+    .validade {
+      font-size: 9pt; color: #555; text-align: center;
+      margin: 8px 0;
+    }
+
+    /* Assinaturas */
+    .assinaturas {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 20px; margin-top: 28px;
+    }
+    .assin-block { text-align: center; }
+    .assin-line {
+      border-top: 1px solid #000; padding-top: 4px;
+      font-size: 9pt; line-height: 1.5;
+    }
+    .assin-title { font-size: 7.5pt; text-transform: uppercase; letter-spacing: .5px; color: #555; margin-bottom: 30px; }
+
+    .cidade-data {
+      text-align: center; font-size: 10pt; margin: 16px 0 8px;
+    }
+
+    /* Rodapé */
+    .footer {
+      margin-top: 20px; padding-top: 8px; border-top: 1px dashed #ccc;
+      font-size: 7.5pt; color: #888; text-align: center; line-height: 1.5;
+    }
+
+    /* Via separadora */
+    .via-sep {
+      border-top: 2px dashed #555; margin: 20px 0 18px;
+      text-align: center; position: relative;
+    }
+    .via-sep span {
+      background: #fff; padding: 0 10px;
+      position: relative; top: -9px;
+      font-size: 8pt; color: #777; text-transform: uppercase; letter-spacing: 1px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="print-bar no-print">
+  <button class="btn-print" onclick="window.print()">🖨️ Imprimir (2 vias)</button>
+  <button class="btn-close" onclick="history.back()">← Voltar</button>
+  <span class="info">Procuração · O.S. {{ os.numero }} · {{ os.cliente_nome or '' }}</span>
+</div>
+
+{% for via_num in [1, 2] %}
+{% set via_nome = ['OUTORGANTE / CLIENTE', 'DESPACHANTE'][via_num - 1] %}
+
+<div class="page">
+
+  <div class="header">
+    <div class="logo-line">{{ desp.nome }} · Credencial DETRAN-SC nº {{ desp.credencial }} · CNPJ {{ desp.cnpj }}</div>
+    <div class="doc-title">Procuração Particular</div>
+    <div class="doc-sub">{{ via_num }}ª VIA — {{ via_nome }} &nbsp;|&nbsp; O.S. {{ os.numero }} &nbsp;|&nbsp; {{ hoje.strftime('%d/%m/%Y') }}</div>
+  </div>
+
+  <div class="section-title">Outorgante (quem concede os poderes)</div>
+  <div class="qual-box">
+    <div class="qual-name">{{ os.cliente_nome or '________________________________' }}</div>
+    <div class="qual-detail">
+      {% if os.cpf %}CPF: <strong>{{ os.cpf }}</strong>{% endif %}
+      {% if os.rg %} &nbsp;·&nbsp; RG: <strong>{{ os.rg }}</strong>{% endif %}
+      {% if os.nascimento %} &nbsp;·&nbsp; Nasc.: {{ os.nascimento }}{% endif %}
+      {% if os.nome_mae %}<br>Filiação (mãe): {{ os.nome_mae }}{% endif %}
+      {% if os.logradouro %}
+      <br>Endereço: {{ os.logradouro }}{% if os.endereco_num %}, {{ os.endereco_num }}{% endif %}
+      {% if os.bairro %} — {{ os.bairro }}{% endif %}
+      {% if os.cidade %} · {{ os.cidade }}/{{ os.uf or 'SC' }}{% endif %}
+      {% if os.cep %} · CEP {{ os.cep }}{% endif %}
+      {% endif %}
+      {% if os.telefone %}<br>Telefone: {{ os.telefone }}{% endif %}
+    </div>
+  </div>
+
+  <div class="section-title">Outorgado (despachante)</div>
+  <div class="qual-box">
+    <div class="qual-name">{{ desp.nome }}</div>
+    <div class="qual-detail">
+      CPF: <strong>{{ desp.cpf }}</strong>
+      {% if desp.cnpj %} &nbsp;·&nbsp; CNPJ: <strong>{{ desp.cnpj }}</strong>{% endif %}
+      &nbsp;·&nbsp; Credencial DETRAN-SC nº <strong>{{ desp.credencial }}</strong>
+      <br>{{ desp.cidade }}/SC &nbsp;·&nbsp; CITRAN {{ desp.citran }} &nbsp;·&nbsp; WhatsApp {{ desp.whatsapp_fmt }}
+    </div>
+  </div>
+
+  <div class="section-title">Objeto e Poderes Outorgados</div>
+  <div class="poderes-box">
+    {% if os.placa %}
+    <div class="veiculo-line">
+      🚗 {{ os.placa }}
+      {% if os.renavam %} &nbsp;|&nbsp; RENAVAM: {{ os.renavam }}{% endif %}
+      {% if os.chassi %} &nbsp;|&nbsp; Chassi: {{ os.chassi }}{% endif %}
+      {% if os.marca or os.modelo %} &nbsp;|&nbsp; {{ os.marca or '' }} {{ os.modelo or '' }}{% endif %}
+      {% if os.ano_fab %} &nbsp;{{ os.ano_fab }}/{{ os.ano_mod or os.ano_fab }}{% endif %}
+      {% if os.cor %} &nbsp;·&nbsp; {{ os.cor }}{% endif %}
+    </div>
+    {% endif %}
+    <div class="servico-line">{{ finalidade }}</div>
+    <div class="poderes-text">
+      Por esta procuração, o <strong>Outorgante</strong> nomeia e constitui o <strong>Outorgado</strong>
+      seu bastante procurador para, em seu nome e representação, praticar todos os atos necessários junto
+      ao <strong>DETRAN-SC</strong>, SENATRAN, CIRETRAN de {{ desp.citran }} e demais órgãos competentes,
+      relativos ao veículo e serviço acima identificados, com poderes para:
+      receber e entregar documentos originais; assinar requerimentos, formulários e declarações;
+      pagar taxas, tarifas e emolumentos; receber o CRLV-e e demais documentos resultantes;
+      praticar todos os demais atos necessários para a plena conclusão do objeto desta procuração.
+      <br><br>
+      Esta procuração é outorgada <strong>sem poderes de substabelecimento</strong>, sendo válida
+      pelo prazo de <strong>90 (noventa) dias</strong> a contar da data abaixo.
+    </div>
+  </div>
+
+  <div class="cidade-data">
+    {{ desp.cidade }}/SC, {{ hoje.strftime('%d de') }}
+    {% set meses_pt = ['','janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'] %}
+    {{ meses_pt[hoje.month] }} de {{ hoje.year }}.
+  </div>
+
+  <div class="assinaturas">
+    <div class="assin-block">
+      <div class="assin-title">Outorgante</div>
+      <div class="assin-line">
+        {{ os.cliente_nome or '______________________________' }}<br>
+        {% if os.cpf %}CPF: {{ os.cpf }}{% else %}CPF: ___________________{% endif %}
+      </div>
+    </div>
+    <div class="assin-block">
+      <div class="assin-title">Outorgado (Despachante)</div>
+      <div class="assin-line">
+        {{ desp.nome }}<br>
+        CPF: {{ desp.cpf }} · Cred. {{ desp.credencial }}
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    Documento gerado pelo sistema Amigo Despachante · {{ hoje.strftime('%d/%m/%Y %H:%M') }} ·
+    Dados coletados com base legal LGPD Art. 7º, V (execução de contrato) ·
+    Esta procuração tem validade jurídica conforme CC Art. 654 e seguintes.
+  </div>
+
+</div>
+
+{% if via_num == 1 %}
+<div class="via-sep"><span>✂ Recorte aqui — 2ª Via</span></div>
+{% endif %}
+
+{% endfor %}
+
+</body>
+</html>

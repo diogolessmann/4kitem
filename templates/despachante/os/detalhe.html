@@ -320,11 +320,19 @@
 
     <!-- Protocolo / Impressão -->
     <div class="sec">
-      <div class="sec-head">🖨️ Impressão</div>
+      <div class="sec-head">🖨️ Documentos para Impressão</div>
       <div class="sec-body" style="display:flex;flex-direction:column;gap:8px;">
         <a href="{{ url_for('desp_print_protocolo', os_id=os.id) }}" target="_blank"
            class="btn btn-secondary" style="width:100%;justify-content:center;">
-          📋 Protocolo RENAVAM (3 vias)
+          📋 Protocolo (3 vias)
+        </a>
+        <a href="{{ url_for('desp_print_procuracao', os_id=os.id) }}" target="_blank"
+           class="btn btn-secondary" style="width:100%;justify-content:center;">
+          📝 Procuração Particular (2 vias)
+        </a>
+        <a href="{{ url_for('desp_print_requerimento', os_id=os.id) }}" target="_blank"
+           class="btn btn-secondary" style="width:100%;justify-content:center;">
+          📄 Requerimento DETRAN (2 vias)
         </a>
         <div style="font-size:11px;color:var(--text3);text-align:center;">
           Abre em nova aba — use Ctrl+P para imprimir
