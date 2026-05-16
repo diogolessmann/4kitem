@@ -470,6 +470,7 @@ select option{background:var(--surface2)}
                       onclick="pararCampanha({{ c.id }}, '{{ c.name|replace("'","\\'")|replace('"','\\"') }}')"
                       style="background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);color:#ef4444"
                       title="Parar campanha">⏹ Parar</button>
+              <span id="camp-prog-{{ c.id }}" style="font-size:10px;color:var(--text2)">{{ c.sent }}/{{ c.total }}</span>
               {% endif %}
               <form method="POST" action="/mandazap/campanhas/{{ c.id }}/duplicar" style="display:inline">
                 <button type="submit" class="btn btn-outline btn-sm" title="Duplicar campanha">📋</button>
@@ -1022,14 +1023,18 @@ function _pollProgress(cid) {
         statusCell.innerHTML = `<span class="badge ${cls[d.status]||'draft'}">${labels[d.status]||d.status}</span>`;
       }
 
+      // Atualiza progresso separado (não sobrescreve o botão Parar)
+      const prog = document.getElementById('camp-prog-' + cid);
+      if (prog) prog.textContent = `${d.sent}/${d.total||'?'}`;
+
       // Campanha finalizada
       if (['concluida','done','erro','failed','cancelada'].includes(d.status)) {
         clearInterval(_pollTimers[cid]);
         delete _pollTimers[cid];
-        if (btn) btn.remove(); // remove botão após concluir
-        showToast(d.status === 'concluida' ? `✅ Campanha concluída! ${d.sent}/${d.total} enviados.` : '❌ Campanha encerrou com erros.');
-      } else if (btn) {
-        btn.textContent = `⏳ ${d.sent}/${d.total||'?'}`;
+        if (btn) btn.remove();
+        if (prog) prog.remove();
+        showToast(d.status === 'concluida' ? `✅ Campanha concluída! ${d.sent}/${d.total} enviados.` : d.status === 'cancelada' ? '⏹ Campanha cancelada.' : '❌ Campanha encerrou com erros.');
+        setTimeout(() => location.reload(), 1500);
       }
     } catch(e) { /* ignora erros de polling */ }
   }, 3000); // atualiza a cada 3s
