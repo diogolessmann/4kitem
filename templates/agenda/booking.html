@@ -224,7 +224,7 @@
 
       <a id="wa-confirm-link" href="#" target="_blank" class="wa-confirm-btn">💬 Avisar pelo WhatsApp</a>
       <div style="margin-top:16px">
-        <a href="/agenda" style="font-size:12px;color:var(--text2)">← Voltar ao Agenda SC</a>
+        <a href="/agendar/{{ biz.slug }}" style="font-size:12px;color:var(--text2)">← Fazer outro agendamento</a>
       </div>
     </div>
   </div>
@@ -375,13 +375,6 @@ async function confirmBooking() {
       document.querySelectorAll('.step-view').forEach(v => v.classList.remove('active'));
       document.getElementById('step-success').classList.add('active');
       window.scrollTo(0, 0);
-    } else if (d.success) {
-      // mostrar PIX se configurado
-      if (d.pix_chave) {
-        document.getElementById('pix-chave-display').textContent = d.pix_chave;
-        document.getElementById('pix-nome-display').textContent  = d.pix_nome || '';
-        document.getElementById('pix-box').style.display = 'block';
-      }
     } else {
       alert('❌ ' + (d.error || 'Erro ao agendar. Tente novamente.'));
       btn.disabled = false; btn.textContent = '✅ Confirmar agendamento';

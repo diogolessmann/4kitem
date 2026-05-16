@@ -399,6 +399,10 @@
           <textarea id="msg-confirmacao" rows="3" oninput="debounceConfig()" placeholder="Olá {nome}! Seu agendamento de {servico} em {data} às {hora} foi recebido! 🎉">{{ biz.msg_confirmacao or '' }}</textarea>
         </div>
         <div class="form-group">
+          <label>⏰ Mensagem de lembrete (enviada manualmente)</label>
+          <textarea id="msg-lembrete" rows="3" oninput="debounceConfig()" placeholder="Olá {nome}! Lembrete: seu agendamento de {servico} é amanhã às {hora}. Te esperamos! 🗓️">{{ biz.msg_lembrete or '' }}</textarea>
+        </div>
+        <div class="form-group">
           <label>❌ Mensagem de cancelamento</label>
           <textarea id="msg-cancelamento" rows="3" oninput="debounceConfig()" placeholder="Olá {nome}, infelizmente seu agendamento foi cancelado. Entre em contato para reagendar.">{{ biz.msg_cancelamento or '' }}</textarea>
         </div>
@@ -663,6 +667,7 @@ async function salvarConfig() {
     pix_chave:         document.getElementById('pix-chave').value.trim(),
     pix_nome:          document.getElementById('pix-nome').value.trim(),
     msg_confirmacao:   document.getElementById('msg-confirmacao').value.trim(),
+    msg_lembrete:      document.getElementById('msg-lembrete').value.trim(),
     msg_cancelamento:  document.getElementById('msg-cancelamento').value.trim(),
   };
   const r = await fetch('/agenda/painel/configuracoes', {

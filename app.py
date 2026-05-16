@@ -594,13 +594,15 @@ def agenda_relatorios():
 
     # Faturamento últimos 6 meses
     meses_data = []
+    from datetime import date as _date
+    _hoje = _date.today()
     for i in range(5, -1, -1):
-        from datetime import date
-        d = date.today().replace(day=1)
-        # subtract i months
-        m_year  = d.year if d.month - i > 0 else d.year - 1
-        m_month = (d.month - i - 1) % 12 + 1
-        m_str   = f'{m_year}-{m_month:02d}'
+        _mo = _hoje.month - i
+        if _mo <= 0:
+            m_year, m_month = _hoje.year - 1, _mo + 12
+        else:
+            m_year, m_month = _hoje.year, _mo
+        m_str = f'{m_year}-{m_month:02d}'
         val = conn.execute('''
             SELECT COALESCE(SUM(s.price),0) FROM agenda_appointments a
             LEFT JOIN agenda_services s ON a.service_id=s.id
@@ -1325,7 +1327,7 @@ def mandazap_entrar():
 def mandazap_sair():
     for k in ('mz_user_id', 'mz_user_name', 'mz_plan'):
         session.pop(k, None)
-    return redirect('/mandazap/entrar')
+    return redirect('/mandazap')
 
 
 @app.route('/mandazap/painel')
@@ -1439,9 +1441,8 @@ def mz_criar_conta_admin():
 # ── Ajuda ─────────────────────────────────────────────────────────────────────
 
 @app.route('/mandazap/ajuda')
+@_mandazap_login_required
 def mz_ajuda():
-    if not session.get('mz_user_id'):
-        return redirect('/mandazap/entrar')
     return render_template('mandazap/ajuda.html')
 
 

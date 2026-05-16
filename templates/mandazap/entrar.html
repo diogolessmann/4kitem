@@ -29,7 +29,7 @@
   <div class="logo-text">MandaZap</div>
   <div class="sub">Acesse sua plataforma de WhatsApp</div>
   {% if error %}<div class="error">⚠️ {{ error }}</div>{% endif %}
-  <form method="POST">
+  <form method="POST" action="/mandazap/entrar">
     <div class="form-group">
       <label>E-mail</label>
       <input type="email" name="email" placeholder="joao@empresa.com" required autofocus>
