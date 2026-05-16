@@ -217,13 +217,57 @@ def init_saas_db():
     ''')
     conn.commit()
 
+    # ── Novas tabelas Agenda SC ────────────────────────────────────────────────
+    conn.executescript('''
+        CREATE TABLE IF NOT EXISTS agenda_customers (
+            id           INTEGER PRIMARY KEY AUTOINCREMENT,
+            business_id  INTEGER NOT NULL,
+            name         TEXT NOT NULL,
+            phone        TEXT NOT NULL,
+            total_visits INTEGER DEFAULT 0,
+            total_spent  REAL DEFAULT 0,
+            last_visit   TEXT,
+            created_at   TEXT,
+            UNIQUE(business_id, phone)
+        );
+
+        CREATE TABLE IF NOT EXISTS agenda_payments (
+            id             INTEGER PRIMARY KEY AUTOINCREMENT,
+            business_id    INTEGER NOT NULL,
+            appointment_id INTEGER,
+            customer_phone TEXT,
+            amount         REAL NOT NULL,
+            method         TEXT DEFAULT "dinheiro",
+            paid_at        TEXT,
+            notes          TEXT
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_agenda_cust_biz   ON agenda_customers(business_id);
+        CREATE INDEX IF NOT EXISTS idx_agenda_pay_biz    ON agenda_payments(business_id);
+        CREATE INDEX IF NOT EXISTS idx_agenda_pay_appt   ON agenda_payments(appointment_id);
+    ''')
+    conn.commit()
+
     # ── Migrations suaves (adicionadas após schema inicial) ─────────────────
-    _mz_migrations = [
+    _saas_migrations = [
+        # MandaZap campaigns
         "ALTER TABLE mandazap_campaigns ADD COLUMN media_url TEXT DEFAULT ''",
         "ALTER TABLE mandazap_templates ADD COLUMN media_url TEXT DEFAULT ''",
         "ALTER TABLE mandazap_campaigns ADD COLUMN error_log TEXT DEFAULT ''",
+        # Agenda SC — configurações por negócio
+        "ALTER TABLE agenda_businesses ADD COLUMN mandazap_ativo INTEGER DEFAULT 0",
+        "ALTER TABLE agenda_businesses ADD COLUMN mandazap_instance TEXT DEFAULT ''",
+        "ALTER TABLE agenda_businesses ADD COLUMN pix_chave TEXT DEFAULT ''",
+        "ALTER TABLE agenda_businesses ADD COLUMN pix_nome TEXT DEFAULT ''",
+        "ALTER TABLE agenda_businesses ADD COLUMN msg_confirmacao TEXT DEFAULT ''",
+        "ALTER TABLE agenda_businesses ADD COLUMN msg_lembrete TEXT DEFAULT ''",
+        "ALTER TABLE agenda_businesses ADD COLUMN msg_cancelamento TEXT DEFAULT ''",
+        # Agenda appointments — pagamento
+        "ALTER TABLE agenda_appointments ADD COLUMN paid INTEGER DEFAULT 0",
+        "ALTER TABLE agenda_appointments ADD COLUMN paid_amount REAL DEFAULT 0",
+        "ALTER TABLE agenda_appointments ADD COLUMN paid_method TEXT DEFAULT ''",
     ]
-    for sql in _mz_migrations:
+    for sql in _saas_migrations:
         try:
             conn.execute(sql)
             conn.commit()

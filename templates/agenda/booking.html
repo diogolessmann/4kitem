@@ -211,10 +211,20 @@
     <div class="success-view">
       <div class="success-icon">🎉</div>
       <div class="success-title">Agendado com sucesso!</div>
-      <div class="success-sub" id="success-msg">Seu agendamento foi enviado.<br>Aguarde a confirmação pelo WhatsApp.</div>
+      <div class="success-sub" id="success-msg">Seu agendamento foi enviado.<br>Aguarde a confirmação.</div>
+
+      <!-- PIX (aparece se negócio tiver chave configurada) -->
+      <div id="pix-box" style="display:none;background:#0f0f13;border:1px solid rgba(39,174,96,.3);border-radius:14px;padding:16px;margin:16px 0;text-align:center">
+        <div style="font-size:13px;font-weight:700;margin-bottom:8px;color:#27ae60">💸 Pague via PIX para confirmar</div>
+        <div style="font-size:12px;color:#9090a8;margin-bottom:8px">Chave PIX:</div>
+        <div id="pix-chave-display" style="font-size:16px;font-weight:800;color:#e8e8f0;word-break:break-all;background:#22222f;padding:10px;border-radius:8px;margin-bottom:8px"></div>
+        <div id="pix-nome-display" style="font-size:12px;color:#9090a8;margin-bottom:10px"></div>
+        <button onclick="copiarPix()" style="background:rgba(39,174,96,.15);border:1px solid rgba(39,174,96,.3);color:#27ae60;padding:7px 16px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:700">📋 Copiar chave PIX</button>
+      </div>
+
       <a id="wa-confirm-link" href="#" target="_blank" class="wa-confirm-btn">💬 Avisar pelo WhatsApp</a>
-      <div style="margin-top:20px">
-        <a href="/agenda" style="font-size:13px;color:var(--text2)">← Voltar ao Agenda SC</a>
+      <div style="margin-top:16px">
+        <a href="/agenda" style="font-size:12px;color:var(--text2)">← Voltar ao Agenda SC</a>
       </div>
     </div>
   </div>
@@ -222,6 +232,10 @@
 </div>
 
 <script>
+function copiarPix() {
+  const chave = document.getElementById('pix-chave-display').textContent;
+  navigator.clipboard.writeText(chave).then(() => { showToast && showToast('📋 Chave copiada!'); alert('✅ Chave PIX copiada!'); });
+}
 const SLUG = '{{ biz.slug }}';
 const BIZ_PHONE = '{{ biz.phone }}'.replace(/\D/g, '');
 const BIZ_NAME  = '{{ biz.name }}';
@@ -352,10 +366,22 @@ async function confirmBooking() {
       const waNum = BIZ_PHONE.startsWith('55') ? BIZ_PHONE : '55' + BIZ_PHONE;
       const msg = `Olá! Acabei de agendar pelo site:\n👤 ${name}\n📋 ${selectedService.name}\n📅 ${dayName}, ${dy}/${m} às ${selectedTime}\n📱 ${phone}`;
       document.getElementById('wa-confirm-link').href = `https://wa.me/${waNum}?text=${encodeURIComponent(msg)}`;
+      if (d.pix_chave) {
+        document.getElementById('pix-chave-display').textContent = d.pix_chave;
+        document.getElementById('pix-nome-display').textContent  = d.pix_nome || '';
+        document.getElementById('pix-box').style.display = 'block';
+      }
       document.getElementById('steps-bar').style.display = 'none';
       document.querySelectorAll('.step-view').forEach(v => v.classList.remove('active'));
       document.getElementById('step-success').classList.add('active');
       window.scrollTo(0, 0);
+    } else if (d.success) {
+      // mostrar PIX se configurado
+      if (d.pix_chave) {
+        document.getElementById('pix-chave-display').textContent = d.pix_chave;
+        document.getElementById('pix-nome-display').textContent  = d.pix_nome || '';
+        document.getElementById('pix-box').style.display = 'block';
+      }
     } else {
       alert('❌ ' + (d.error || 'Erro ao agendar. Tente novamente.'));
       btn.disabled = false; btn.textContent = '✅ Confirmar agendamento';

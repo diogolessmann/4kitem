@@ -237,6 +237,41 @@ def alerta():
 #  AGENDA SC — SaaS de Agendamento Online
 # ══════════════════════════════════════════════════════════════════════════
 
+def _agenda_send_whatsapp(phone: str, message: str, instance: str) -> bool:
+    """Envia mensagem WhatsApp via Evolution API para o Agenda SC."""
+    evo_url = os.environ.get('EVOLUTION_API_URL', '').rstrip('/')
+    evo_key = os.environ.get('EVOLUTION_API_KEY', '')
+    if not evo_url or not evo_key or not instance or not phone:
+        return False
+    digits = ''.join(c for c in phone if c.isdigit())
+    if not digits:
+        return False
+    if not digits.startswith('55'):
+        digits = '55' + digits
+    try:
+        import requests as _req
+        resp = _req.post(
+            f'{evo_url}/message/sendText/{instance}',
+            json={'number': digits + '@s.whatsapp.net', 'text': message},
+            headers={'apikey': evo_key},
+            timeout=10
+        )
+        return resp.status_code in (200, 201)
+    except Exception as e:
+        log.warning(f'agenda_whatsapp error: {e}')
+        return False
+
+
+def _agenda_upsert_customer(conn, business_id: int, name: str, phone: str):
+    """Cria ou atualiza cliente no histórico."""
+    from datetime import datetime as _dt
+    conn.execute('''
+        INSERT INTO agenda_customers (business_id, name, phone, total_visits, created_at)
+        VALUES (?, ?, ?, 0, ?)
+        ON CONFLICT(business_id, phone) DO UPDATE SET name=excluded.name
+    ''', (business_id, name, phone, _dt.now().isoformat()))
+    conn.commit()
+
 @app.route('/agenda/cadastro', methods=['GET', 'POST'])
 def agenda_cadastro():
     error = None
@@ -330,6 +365,20 @@ def agenda_painel():
         WHERE a.business_id=? AND a.appointment_date >= ?
         ORDER BY a.appointment_date, a.appointment_time
     ''', (biz_id, today)).fetchall()]
+    # Stats rápidas
+    hoje_count = conn.execute(
+        "SELECT COUNT(*) FROM agenda_appointments WHERE business_id=? AND appointment_date=? AND status!='cancelled'",
+        (biz_id, today)
+    ).fetchone()[0]
+    mes_str = datetime.now().strftime('%Y-%m')
+    receita_mes = conn.execute('''
+        SELECT COALESCE(SUM(s.price),0) FROM agenda_appointments a
+        LEFT JOIN agenda_services s ON a.service_id=s.id
+        WHERE a.business_id=? AND strftime('%Y-%m',a.appointment_date)=? AND a.status='done'
+    ''', (biz_id, mes_str)).fetchone()[0]
+    total_clientes = conn.execute(
+        'SELECT COUNT(*) FROM agenda_customers WHERE business_id=?', (biz_id,)
+    ).fetchone()[0]
     conn.close()
     return render_template('agenda/painel.html',
                            biz=biz, services=services,
@@ -337,7 +386,10 @@ def agenda_painel():
                            appointments=appointments,
                            today=today,
                            weekday_names=WEEKDAY_NAMES,
-                           business_types=BUSINESS_TYPES)
+                           business_types=BUSINESS_TYPES,
+                           hoje_count=hoje_count,
+                           receita_mes=round(receita_mes, 2),
+                           total_clientes=total_clientes)
 
 
 @app.route('/agenda/painel/servico/add', methods=['POST'])
@@ -405,11 +457,186 @@ def agenda_appt_action(appt_id, action):
     if not new_status:
         return jsonify({'success': False, 'error': 'Ação inválida'})
     conn = get_saas_db()
+    appt = conn.execute('''
+        SELECT a.*, COALESCE(s.name,'Serviço') as service_name, COALESCE(s.price,0) as price
+        FROM agenda_appointments a
+        LEFT JOIN agenda_services s ON a.service_id = s.id
+        WHERE a.id=? AND a.business_id=?
+    ''', (appt_id, biz_id)).fetchone()
+    if not appt:
+        conn.close()
+        return jsonify({'success': False, 'error': 'Não encontrado'})
     conn.execute('UPDATE agenda_appointments SET status=? WHERE id=? AND business_id=?',
                  (new_status, appt_id, biz_id))
+    if new_status == 'done':
+        conn.execute('''
+            UPDATE agenda_customers
+            SET total_visits = total_visits + 1,
+                total_spent  = total_spent + ?,
+                last_visit   = ?
+            WHERE business_id=? AND phone=?
+        ''', (appt['price'], datetime.now().date().isoformat(),
+              biz_id, appt['customer_phone']))
+    conn.commit()
+
+    # WhatsApp automático
+    biz = conn.execute('SELECT * FROM agenda_businesses WHERE id=?', (biz_id,)).fetchone()
+    conn.close()
+    if biz and biz['mandazap_ativo'] and biz['mandazap_instance']:
+        if new_status == 'confirmed':
+            tpl = biz['msg_confirmacao'] or (
+                f"Olá {{nome}}! ✅\n\nSeu agendamento de *{{servico}}* em *{{data}}* às *{{hora}}* foi *confirmado*!\n\n"
+                f"Te esperamos em 🏢 {{negocio}}."
+            )
+        elif new_status == 'cancelled':
+            tpl = biz['msg_cancelamento'] or (
+                f"Olá {{nome}}, infelizmente seu agendamento de *{{servico}}* foi *cancelado*. 😔\n\n"
+                f"Entre em contato para reagendar."
+            )
+        else:
+            tpl = None
+        if tpl:
+            msg = (tpl
+                   .replace('{nome}', appt['customer_name'].split()[0])
+                   .replace('{servico}', appt['service_name'])
+                   .replace('{data}', appt['appointment_date'])
+                   .replace('{hora}', appt['appointment_time'])
+                   .replace('{negocio}', biz['name']))
+            _agenda_send_whatsapp(appt['customer_phone'], msg, biz['mandazap_instance'])
+
+    return jsonify({'success': True, 'status': new_status})
+
+
+@app.route('/agenda/painel/agendamento/<int:appt_id>/pagar', methods=['POST'])
+@_agenda_login_required
+def agenda_registrar_pagamento(appt_id):
+    biz_id = session['agenda_business_id']
+    data   = request.get_json(silent=True) or {}
+    amount = float(data.get('amount', 0) or 0)
+    method = data.get('method', 'dinheiro')
+    conn   = get_saas_db()
+    appt   = conn.execute('SELECT * FROM agenda_appointments WHERE id=? AND business_id=?',
+                          (appt_id, biz_id)).fetchone()
+    if not appt:
+        conn.close()
+        return jsonify({'success': False, 'error': 'Não encontrado'})
+    conn.execute('''UPDATE agenda_appointments SET paid=1, paid_amount=?, paid_method=?
+                    WHERE id=? AND business_id=?''', (amount, method, appt_id, biz_id))
+    conn.execute('''INSERT INTO agenda_payments (business_id, appointment_id, customer_phone, amount, method, paid_at)
+                    VALUES (?, ?, ?, ?, ?, ?)''',
+                 (biz_id, appt_id, appt['customer_phone'], amount, method,
+                  datetime.now().isoformat()))
+    conn.execute('''UPDATE agenda_customers SET total_spent=total_spent+?
+                    WHERE business_id=? AND phone=?''',
+                 (amount, biz_id, appt['customer_phone']))
     conn.commit()
     conn.close()
-    return jsonify({'success': True, 'status': new_status})
+    return jsonify({'success': True})
+
+
+@app.route('/agenda/painel/configuracoes', methods=['GET', 'POST'])
+@_agenda_login_required
+def agenda_configuracoes():
+    biz_id = session['agenda_business_id']
+    conn   = get_saas_db()
+    if request.method == 'POST':
+        data = request.get_json(silent=True) or {}
+        fields = ['pix_chave','pix_nome','mandazap_instance',
+                  'msg_confirmacao','msg_lembrete','msg_cancelamento']
+        updates = {f: data.get(f,'') for f in fields}
+        updates['mandazap_ativo'] = 1 if data.get('mandazap_ativo') else 0
+        conn.execute('''UPDATE agenda_businesses SET
+            pix_chave=?, pix_nome=?, mandazap_instance=?, mandazap_ativo=?,
+            msg_confirmacao=?, msg_lembrete=?, msg_cancelamento=?
+            WHERE id=?''',
+            (updates['pix_chave'], updates['pix_nome'], updates['mandazap_instance'],
+             updates['mandazap_ativo'], updates['msg_confirmacao'],
+             updates['msg_lembrete'], updates['msg_cancelamento'], biz_id))
+        conn.commit()
+        conn.close()
+        return jsonify({'success': True})
+    biz = dict(conn.execute('SELECT * FROM agenda_businesses WHERE id=?', (biz_id,)).fetchone())
+    conn.close()
+    return jsonify(biz)
+
+
+@app.route('/agenda/painel/relatorios')
+@_agenda_login_required
+def agenda_relatorios():
+    biz_id = session['agenda_business_id']
+    conn   = get_saas_db()
+    hoje   = datetime.now().date().isoformat()
+    mes    = datetime.now().strftime('%Y-%m')
+
+    receita_hoje = conn.execute('''
+        SELECT COALESCE(SUM(s.price),0) FROM agenda_appointments a
+        LEFT JOIN agenda_services s ON a.service_id=s.id
+        WHERE a.business_id=? AND a.appointment_date=? AND a.status='done'
+    ''', (biz_id, hoje)).fetchone()[0]
+
+    receita_mes = conn.execute('''
+        SELECT COALESCE(SUM(s.price),0) FROM agenda_appointments a
+        LEFT JOIN agenda_services s ON a.service_id=s.id
+        WHERE a.business_id=? AND strftime('%Y-%m',a.appointment_date)=? AND a.status='done'
+    ''', (biz_id, mes)).fetchone()[0]
+
+    total_clientes = conn.execute(
+        'SELECT COUNT(*) FROM agenda_customers WHERE business_id=?', (biz_id,)
+    ).fetchone()[0]
+
+    top_servicos = [dict(r) for r in conn.execute('''
+        SELECT s.name, COUNT(*) as qtd, COALESCE(SUM(s.price),0) as total
+        FROM agenda_appointments a
+        JOIN agenda_services s ON a.service_id=s.id
+        WHERE a.business_id=? AND a.status='done'
+        GROUP BY s.id ORDER BY qtd DESC LIMIT 5
+    ''', (biz_id,)).fetchall()]
+
+    # Faturamento últimos 6 meses
+    meses_data = []
+    for i in range(5, -1, -1):
+        from datetime import date
+        d = date.today().replace(day=1)
+        # subtract i months
+        m_year  = d.year if d.month - i > 0 else d.year - 1
+        m_month = (d.month - i - 1) % 12 + 1
+        m_str   = f'{m_year}-{m_month:02d}'
+        val = conn.execute('''
+            SELECT COALESCE(SUM(s.price),0) FROM agenda_appointments a
+            LEFT JOIN agenda_services s ON a.service_id=s.id
+            WHERE a.business_id=? AND strftime('%Y-%m',a.appointment_date)=? AND a.status='done'
+        ''', (biz_id, m_str)).fetchone()[0]
+        meses_data.append({'mes': m_str, 'valor': round(val, 2)})
+
+    conn.close()
+    return jsonify({
+        'receita_hoje': round(receita_hoje, 2),
+        'receita_mes':  round(receita_mes, 2),
+        'total_clientes': total_clientes,
+        'top_servicos': top_servicos,
+        'historico_meses': meses_data,
+    })
+
+
+@app.route('/agenda/painel/clientes')
+@_agenda_login_required
+def agenda_lista_clientes():
+    biz_id = session['agenda_business_id']
+    busca  = request.args.get('q', '').strip()
+    conn   = get_saas_db()
+    if busca:
+        rows = conn.execute('''
+            SELECT * FROM agenda_customers
+            WHERE business_id=? AND (name LIKE ? OR phone LIKE ?)
+            ORDER BY total_visits DESC LIMIT 100
+        ''', (biz_id, f'%{busca}%', f'%{busca}%')).fetchall()
+    else:
+        rows = conn.execute('''
+            SELECT * FROM agenda_customers WHERE business_id=?
+            ORDER BY total_visits DESC LIMIT 100
+        ''', (biz_id,)).fetchall()
+    conn.close()
+    return jsonify([dict(r) for r in rows])
 
 
 @app.route('/agendar/<slug>')
@@ -490,8 +717,40 @@ def api_agenda_book(slug):
     ''', (biz['id'], service_id or None, customer_name, customer_phone, notes,
           appt_date, appt_time, datetime.now().isoformat()))
     conn.commit()
+
+    # Registra/atualiza cliente
+    _agenda_upsert_customer(conn, biz['id'], customer_name, customer_phone)
+
+    # WhatsApp automático (se MandaZap ativo)
+    biz_full = dict(conn.execute('SELECT * FROM agenda_businesses WHERE id=?', (biz['id'],)).fetchone())
     conn.close()
-    return jsonify({'success': True, 'business_name': biz['name'], 'business_phone': biz['phone']})
+
+    if biz_full.get('mandazap_ativo') and biz_full.get('mandazap_instance'):
+        svc_name = ''
+        if service_id:
+            conn2 = get_saas_db()
+            svc = conn2.execute('SELECT name FROM agenda_services WHERE id=?', (service_id,)).fetchone()
+            conn2.close()
+            svc_name = svc['name'] if svc else ''
+        tpl = biz_full.get('msg_confirmacao') or (
+            f"Olá {{nome}}! 👋\n\n"
+            f"Seu agendamento foi recebido com sucesso! ✅\n\n"
+            f"📋 Serviço: {{servico}}\n"
+            f"📅 Data: {{data}}\n"
+            f"🕐 Horário: {{hora}}\n"
+            f"🏢 Local: {{negocio}}\n\n"
+            f"Aguarde a confirmação. Em caso de dúvidas, entre em contato."
+        )
+        msg = (tpl
+               .replace('{nome}', customer_name.split()[0])
+               .replace('{servico}', svc_name)
+               .replace('{data}', appt_date)
+               .replace('{hora}', appt_time)
+               .replace('{negocio}', biz_full['name']))
+        _agenda_send_whatsapp(customer_phone, msg, biz_full['mandazap_instance'])
+
+    return jsonify({'success': True, 'business_name': biz['name'], 'business_phone': biz['phone'],
+                    'pix_chave': biz_full.get('pix_chave',''), 'pix_nome': biz_full.get('pix_nome','')})
 
 
 # ══════════════════════════════════════════════════════════════════════════
