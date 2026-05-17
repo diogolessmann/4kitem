@@ -2268,27 +2268,35 @@ def _get_evo():
 
 
 def _send_text(evo_url, evo_key, instance, phone, text):
-    """Envia uma mensagem de texto. Retorna (ok, erro_str)."""
-    import requests as _req
+    """Envia uma mensagem de texto. Retorna (ok, erro_str, invalido)."""
     try:
-        r = _req.post(
+        r = requests.post(
             f"{evo_url}/message/sendText/{instance}",
             headers={'apikey': evo_key, 'Content-Type': 'application/json'},
             json={'number': phone, 'text': text},
             timeout=15,
         )
         if r.status_code in (200, 201):
-            return True, ''
-        return False, f"HTTP {r.status_code}: {r.text[:120]}"
+            return True, '', False
+        # Detecta número inexistente no WhatsApp
+        body = r.text[:300]
+        invalido = ('"exists":false' in body or 'exists\\":false' in body
+                    or 'not exists' in body.lower() or 'invalid number' in body.lower())
+        return False, f"HTTP {r.status_code}: {body[:120]}", invalido
     except Exception as e:
-        return False, str(e)[:120]
+        return False, str(e)[:120], False
+
+
+def _send_text_compat(evo_url, evo_key, instance, phone, text):
+    """Wrapper que mantém assinatura (ok, err) para código legado."""
+    ok, err, _ = _send_text(evo_url, evo_key, instance, phone, text)
+    return ok, err
 
 
 def _send_image(evo_url, evo_key, instance, phone, image_url, caption=''):
-    """Envia imagem com legenda. Retorna (ok, erro_str)."""
-    import requests as _req
+    """Envia imagem com legenda. Retorna (ok, erro_str, invalido)."""
     try:
-        r = _req.post(
+        r = requests.post(
             f"{evo_url}/message/sendMedia/{instance}",
             headers={'apikey': evo_key, 'Content-Type': 'application/json'},
             json={
@@ -2300,10 +2308,42 @@ def _send_image(evo_url, evo_key, instance, phone, image_url, caption=''):
             timeout=20,
         )
         if r.status_code in (200, 201):
-            return True, ''
-        return False, f"HTTP {r.status_code}: {r.text[:120]}"
+            return True, '', False
+        body = r.text[:300]
+        invalido = ('"exists":false' in body or 'exists\\":false' in body
+                    or 'not exists' in body.lower() or 'invalid number' in body.lower())
+        return False, f"HTTP {r.status_code}: {body[:120]}", invalido
     except Exception as e:
-        return False, str(e)[:120]
+        return False, str(e)[:120], False
+
+
+def _antiban_delay(sent_count: int, import_random=None):
+    """
+    Delay humanizado anti-ban:
+    - Base: 15–45s aleatório
+    - A cada 50 enviados: pausa longa (60–180s) simula descanso
+    - A cada 200 enviados: pausa extra longa (3–8 min)
+    - Pequena variação extra ±20% pra não ser previsível
+    """
+    import random, time
+    r = random
+    base = r.uniform(15, 45)
+    # Pausa longa a cada 50 mensagens
+    if sent_count > 0 and sent_count % 50 == 0:
+        pausa = r.uniform(60, 180)
+        log.info(f"Anti-ban: pausa longa de {pausa:.0f}s após {sent_count} enviados")
+        time.sleep(pausa)
+        return
+    # Pausa extra longa a cada 200 mensagens
+    if sent_count > 0 and sent_count % 200 == 0:
+        pausa = r.uniform(180, 480)
+        log.info(f"Anti-ban: pausa extra longa de {pausa:.0f}s após {sent_count} enviados")
+        time.sleep(pausa)
+        return
+    # Jitter ±20%
+    jitter = base * r.uniform(0.8, 1.2)
+    log.debug(f"Anti-ban delay: {jitter:.1f}s")
+    time.sleep(jitter)
 
 
 def _dispatch_campaign(cid: int, user_id: int, delay_s: int = 3, continuar: bool = True):
@@ -2500,9 +2540,9 @@ def _dispatch_campaign_inner(cid: int, user_id: int, delay_s: int = 3, continuar
                .replace('{nome_completo}', nome_completo))
 
         if is_image:
-            ok, err = _send_image(evo_url, evo_key, instance, phone, media_url, msg)
+            ok, err, invalido = _send_image(evo_url, evo_key, instance, phone, media_url, msg)
         else:
-            ok, err = _send_text(evo_url, evo_key, instance, phone, msg)
+            ok, err, invalido = _send_text(evo_url, evo_key, instance, phone, msg)
 
         if ok:
             sent_count   += 1
@@ -2519,28 +2559,34 @@ def _dispatch_campaign_inner(cid: int, user_id: int, delay_s: int = 3, continuar
                 log.warning(f"sent_log insert error: {_le}")
         else:
             failed_count += 1
-            consec_fails += 1
             if not first_err:
                 first_err = f"Primeiro erro → {phone}: {err}"
             log.warning(f"Campanha {cid} → {phone}: {err}")
-            # Para cedo se a API está rejeitando tudo
-            if consec_fails >= MAX_CONSEC:
-                log.error(f"Campanha {cid}: {MAX_CONSEC} falhas consecutivas — abortando. Último erro: {err}")
-                conn.execute(
-                    "UPDATE mandazap_campaigns SET status='erro', sent=?, finished_at=?, error_log=? WHERE id=?",
-                    (sent_count, datetime.now().isoformat(), f'Abortado após {MAX_CONSEC} falhas seguidas. {first_err}', cid)
-                )
-                conn.commit(); conn.close()
-                return
+
+            if invalido:
+                # Número não existe no WhatsApp — pula sem contar como falha consecutiva
+                log.info(f"Campanha {cid} → {phone}: número inválido/sem WhatsApp — pulando")
+            else:
+                # Falha real (API down, ban, timeout) — conta consecutiva
+                consec_fails += 1
+                if consec_fails >= MAX_CONSEC:
+                    log.error(f"Campanha {cid}: {MAX_CONSEC} falhas reais consecutivas — abortando. Último erro: {err}")
+                    conn.execute(
+                        "UPDATE mandazap_campaigns SET status='erro', sent=?, finished_at=?, error_log=? WHERE id=?",
+                        (sent_count, datetime.now().isoformat(),
+                         f'Abortado após {MAX_CONSEC} falhas consecutivas (possível ban). {first_err}', cid)
+                    )
+                    conn.commit(); conn.close()
+                    return
 
         # Atualiza progresso a cada envio
         conn2 = get_saas_db()
         conn2.execute("UPDATE mandazap_campaigns SET sent=? WHERE id=?", (sent_count, cid))
         conn2.commit(); conn2.close()
 
-        # Delay humano com jitter ±30%
-        jitter = delay_s * random.uniform(0.7, 1.3)
-        time.sleep(jitter)
+        # Delay anti-ban humanizado (só após envio bem-sucedido)
+        if ok:
+            _antiban_delay(sent_count)
 
     # Finaliza
     error_log = f"{failed_count} falhas. {first_err}" if failed_count else ''
