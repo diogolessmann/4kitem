@@ -3113,19 +3113,105 @@ def desp_importar_get():
     return desp_render('clientes/importar.html')
 
 
+def _parse_bludata_pdf(texto: str) -> list:
+    """
+    Parser direto do formato de relatório Bludata (SGDW).
+    Cada veículo/cliente ocupa 4 linhas com campos separados por '......:' ou '..:'.
+
+    Exemplo:
+      Placa......: ABC1D23 Marca...: VW/GOL Exer.:2026 Lic.:
+      Ano Fab/Mod: 2020/2021 Prop. Atual..: FULANO DA SILVA CPF/CNPJ:12345678901
+      Fone Res......: 333-1111 Fone Com..: Celular: (47)99999-1234 Email:teste@x.com
+      Origem..........: CLIENTE Nasc.:01/01/1980 CNH:123 Venc. CNH:
+    """
+    import re as _re
+    registros = []
+    linhas = texto.splitlines()
+
+    i = 0
+    while i < len(linhas):
+        linha = linhas[i].strip()
+
+        # Detecta início de um registro: linha com "Placa......:"
+        if not _re.search(r'Placa\.+:', linha):
+            i += 1
+            continue
+
+        # Junta as próximas linhas para capturar o bloco completo
+        bloco = ' '.join(linhas[i:i+4])
+
+        # ── Placa ──────────────────────────────────────────────────────────
+        m_placa = _re.search(r'Placa\.+:\s*(\S+)', bloco)
+        placa = m_placa.group(1).strip() if m_placa else ''
+        # Ignora linha de cabeçalho/rodapé (placa vazia ou texto de header)
+        if not placa or placa.lower() in ('placa', 'n/a', ''):
+            i += 1
+            continue
+
+        # ── Nome (Prop. Atual.) ────────────────────────────────────────────
+        m_nome = _re.search(r'Prop\.\s*Atual\.+:\s*(.+?)\s+CPF/CNPJ', bloco)
+        nome = m_nome.group(1).strip() if m_nome else ''
+
+        # ── CPF/CNPJ — só aceita dígitos ──────────────────────────────────
+        m_cpf = _re.search(r'CPF/CNPJ\s*:\s*(\d[\d.\-/]*)', bloco)
+        cpf = _re.sub(r'[.\-/]', '', m_cpf.group(1)).strip() if m_cpf else ''
+        # Valida tamanho mínimo
+        if len(cpf) < 11:
+            cpf = ''
+
+        # ── Telefone: prioridade Celular > Fone Com > Fone Res ────────────
+        m_cel = _re.search(r'Celular\s*:\s*([\d\s\(\)\-\+]+?)(?:\s+Email|\s+Origem|$)', bloco)
+        m_com = _re.search(r'Fone\s+Com\.+:\s*([\d\s\(\)\-]+?)(?:\s+Celular|$)', bloco)
+        m_res = _re.search(r'Fone\s+Res\.+:\s*([\d\s\(\)\-]+?)(?:\s+Fone\s+Com|$)', bloco)
+
+        def _limpar_tel(m):
+            if not m: return ''
+            t = _re.sub(r'[^\d]', '', m.group(1))  # só dígitos
+            # Rejeita zeros, muito curto ou claramente inválido
+            if len(t) < 8 or t == '0' * len(t):
+                return ''
+            return m.group(1).strip()
+
+        telefone = _limpar_tel(m_cel) or _limpar_tel(m_com) or _limpar_tel(m_res)
+
+        # ── E-mail ─────────────────────────────────────────────────────────
+        m_email = _re.search(r'Email\s*:\s*(\S+@\S+)', bloco)
+        email = m_email.group(1).strip() if m_email else ''
+
+        # ── Marca do veículo ───────────────────────────────────────────────
+        m_marca = _re.search(r'Marca\.+:\s*(.*?)\s+Exer\.', bloco)
+        marca = m_marca.group(1).strip() if m_marca else ''
+        # Descarta se ficou vazio ou contém lixo
+        if not marca or 'Exer' in marca or 'Lic' in marca:
+            marca = ''
+
+        if nome:
+            registros.append({
+                'nome':     nome,
+                'cpf':      cpf,
+                'telefone': telefone,
+                'placa':    placa,
+                'email':    email,
+                'cidade':   '',
+                'marca':    marca,
+            })
+
+        i += 4  # avança o bloco inteiro
+
+    return registros
+
+
 @app.route('/despachante/clientes/importar/ocr', methods=['POST'])
 @_desp_login_required
 def desp_importar_ocr():
-    """Recebe imagem ou PDF do Bludata, extrai lista de clientes via IA.
+    """Recebe imagem ou PDF do Bludata, extrai lista de clientes.
 
-    PDFs: extrai texto com pdfplumber → manda ao modelo de texto (llama-3.3-70b).
-    Imagens: envia como base64 ao modelo de visão (llama-4-scout).
+    PDFs Bludata (SGDW): parser Python direto — sem IA, 100% confiável.
+    Imagens: envia ao modelo de visão (llama-4-scout) para OCR via IA.
     """
     import base64, mimetypes, io as _io, re as _re3, json as _json3
 
     groq_key = os.environ.get('GROQ_API_KEY', '')
-    if not groq_key:
-        return jsonify({'erro': 'GROQ_API_KEY não configurada'}), 500
 
     f = request.files.get('arquivo')
     if not f:
@@ -3136,17 +3222,9 @@ def desp_importar_ocr():
     mime        = f.mimetype or mimetypes.guess_type(f.filename or '')[0] or 'image/jpeg'
     is_pdf      = filename.endswith('.pdf') or 'pdf' in mime.lower()
 
-    PROMPT = (
-        'Analise este relatório/listagem de sistema de despachante (Bludata ou similar).\n'
-        'Extraia TODOS os clientes/veículos que aparecerem e retorne um array JSON:\n'
-        '[{"nome":"","cpf":"","telefone":"","placa":"","email":"","cidade":""}]\n'
-        'Preencha apenas os campos visíveis. Deixe "" o que não aparecer.\n'
-        'RETORNE SOMENTE O ARRAY JSON, sem texto adicional, sem markdown.'
-    )
-
     try:
         if is_pdf:
-            # ── PDF: extrai texto e usa modelo de linguagem ──────────────────
+            # ── PDF Bludata: parser Python direto ────────────────────────────
             try:
                 import pdfplumber
             except ImportError:
@@ -3157,7 +3235,7 @@ def desp_importar_ocr():
                 for page in pdf.pages:
                     t = page.extract_text() or ''
                     if t.strip():
-                        texto_pdf += t + '\n\n'
+                        texto_pdf += t + '\n'
 
             if not texto_pdf.strip():
                 return jsonify({
@@ -3165,44 +3243,54 @@ def desp_importar_ocr():
                             'Tente exportar como imagem (print da tela) e importar novamente.'
                 }), 422
 
-            # Limita a 14 000 chars para não exceder o contexto do modelo
-            texto_pdf = texto_pdf[:14000]
+            registros = _parse_bludata_pdf(texto_pdf)
 
-            payload = {
-                'model': 'llama-3.3-70b-versatile',
-                'messages': [{'role': 'user', 'content': f'{PROMPT}\n\nCONTEÚDO DO PDF:\n{texto_pdf}'}],
-                'max_tokens': 4096,
-                'temperature': 0.1,
-            }
+            if not registros:
+                return jsonify({
+                    'erro': 'Nenhum cliente encontrado no PDF. '
+                            'Verifique se é um relatório do Bludata (SGDW) com o campo "Placa" visível.'
+                }), 422
+
+            return jsonify({'ok': True, 'registros': registros, 'total': len(registros)})
+
         else:
-            # ── Imagem: envia ao modelo de visão ─────────────────────────────
+            # ── Imagem: OCR via IA (modelo de visão) ─────────────────────────
+            if not groq_key:
+                return jsonify({'erro': 'GROQ_API_KEY não configurada'}), 500
+
+            PROMPT = (
+                'Analise esta imagem de relatório/listagem de sistema de despachante (Bludata ou similar).\n'
+                'Extraia TODOS os clientes/veículos que aparecerem e retorne um array JSON:\n'
+                '[{"nome":"","cpf":"","telefone":"","placa":"","email":"","cidade":""}]\n'
+                'Preencha apenas os campos visíveis. Deixe "" o que não aparecer.\n'
+                'RETORNE SOMENTE O ARRAY JSON, sem texto adicional, sem markdown.'
+            )
+
             img_b64 = base64.b64encode(dados_bytes).decode()
-            payload = {
-                'model': 'meta-llama/llama-4-scout-17b-16e-instruct',
-                'messages': [{'role': 'user', 'content': [
-                    {'type': 'image_url', 'image_url': {'url': f'data:{mime};base64,{img_b64}'}},
-                    {'type': 'text', 'text': PROMPT},
-                ]}],
-                'max_tokens': 4096,
-                'temperature': 0.1,
-            }
+            resp = requests.post(
+                'https://api.groq.com/openai/v1/chat/completions',
+                headers={'Authorization': f'Bearer {groq_key}', 'Content-Type': 'application/json'},
+                json={
+                    'model': 'meta-llama/llama-4-scout-17b-16e-instruct',
+                    'messages': [{'role': 'user', 'content': [
+                        {'type': 'image_url', 'image_url': {'url': f'data:{mime};base64,{img_b64}'}},
+                        {'type': 'text', 'text': PROMPT},
+                    ]}],
+                    'max_tokens': 4096,
+                    'temperature': 0.1,
+                },
+                timeout=90,
+            )
+            resp.raise_for_status()
+            texto = resp.json()['choices'][0]['message']['content'].strip()
 
-        resp = requests.post(
-            'https://api.groq.com/openai/v1/chat/completions',
-            headers={'Authorization': f'Bearer {groq_key}', 'Content-Type': 'application/json'},
-            json=payload,
-            timeout=90,
-        )
-        resp.raise_for_status()
-        texto = resp.json()['choices'][0]['message']['content'].strip()
+            match = _re3.search(r'\[[\s\S]*\]', texto)
+            if not match:
+                return jsonify({'erro': 'IA não retornou JSON válido — tente novamente'}), 422
 
-        match = _re3.search(r'\[[\s\S]*\]', texto)
-        if not match:
-            return jsonify({'erro': 'IA não retornou JSON válido — tente novamente'}), 422
-
-        registros = _json3.loads(match.group())
-        registros = [r for r in registros if r.get('nome')]
-        return jsonify({'ok': True, 'registros': registros, 'total': len(registros)})
+            registros = _json3.loads(match.group())
+            registros = [r for r in registros if r.get('nome')]
+            return jsonify({'ok': True, 'registros': registros, 'total': len(registros)})
 
     except Exception as e:
         log.error(f'importar OCR error: {e}')
