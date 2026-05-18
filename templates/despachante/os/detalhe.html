@@ -283,85 +283,91 @@
     </div>
     {% endif %}
 
-    <!-- Débitos DETRAN -->
+    <!-- Itens da O.S. (Débitos DETRANET) -->
     <div class="sec" id="sec-debitos">
       <div class="sec-head">
-        🧾 Débitos DETRAN
+        📋 Itens da O.S.
         <div style="display:flex;gap:6px;align-items:center;">
           {% if total_debitos > 0 %}
           <span style="font-size:12px;color:var(--red);font-weight:700;">
-            R$ {{ "%.2f"|format(total_debitos) }} em aberto
+            Total: R$ {{ "%.2f"|format(total_debitos) }}
           </span>
           {% endif %}
           <button class="btn btn-secondary btn-sm" onclick="abrirModalDebitos()">
-            📷 Importar via DETRANET
+            🖥️ Importar do DETRANET
           </button>
         </div>
       </div>
-      <div class="sec-body">
+      <div class="sec-body" style="padding:0;">
         {% if debitos %}
+        <div style="overflow-x:auto;">
         <table style="width:100%;border-collapse:collapse;font-size:12px;">
           <thead>
-            <tr style="color:var(--text3);text-transform:uppercase;font-size:10px;letter-spacing:.5px;">
-              <th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);">Tipo</th>
-              <th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);">Descrição</th>
-              <th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);">Vencimento</th>
-              <th style="text-align:right;padding:6px 8px;border-bottom:1px solid var(--border);">Valor</th>
-              <th style="text-align:center;padding:6px 8px;border-bottom:1px solid var(--border);">Situação</th>
-              <th style="padding:6px 8px;border-bottom:1px solid var(--border);"></th>
+            <tr style="background:var(--surface2);">
+              <th style="text-align:left;padding:7px 10px;border-bottom:1px solid var(--border);font-size:10px;text-transform:uppercase;color:var(--text3);white-space:nowrap;">Classe / Descrição</th>
+              <th style="text-align:left;padding:7px 10px;border-bottom:1px solid var(--border);font-size:10px;text-transform:uppercase;color:var(--text3);white-space:nowrap;">Nº DetranNET</th>
+              <th style="text-align:center;padding:7px 10px;border-bottom:1px solid var(--border);font-size:10px;text-transform:uppercase;color:var(--text3);white-space:nowrap;">Vencimento</th>
+              <th style="text-align:right;padding:7px 10px;border-bottom:1px solid var(--border);font-size:10px;text-transform:uppercase;color:var(--text3);">Vlr. Nominal</th>
+              <th style="text-align:right;padding:7px 10px;border-bottom:1px solid var(--border);font-size:10px;text-transform:uppercase;color:var(--text3);">Multa</th>
+              <th style="text-align:right;padding:7px 10px;border-bottom:1px solid var(--border);font-size:10px;text-transform:uppercase;color:var(--text3);">Juros</th>
+              <th style="text-align:right;padding:7px 10px;border-bottom:1px solid var(--border);font-size:10px;text-transform:uppercase;color:var(--text3);font-weight:800;">Vlr. Atual</th>
+              <th style="padding:7px 6px;border-bottom:1px solid var(--border);"></th>
             </tr>
           </thead>
           <tbody>
             {% for d in debitos %}
-            <tr class="deb-row" data-id="{{ d.id }}">
-              <td style="padding:7px 8px;border-bottom:1px solid var(--border);">
-                <span style="font-weight:700;color:{% if d.tipo=='Multa' %}var(--red){% elif d.tipo=='IPVA' %}var(--yellow){% else %}var(--text2){% endif %};">
-                  {{ d.tipo }}
-                </span>
-              </td>
-              <td style="padding:7px 8px;border-bottom:1px solid var(--border);color:var(--text2);">
-                {{ d.descricao or '—' }}
-                {% if d.auto_infracao %}
-                <span style="font-size:10px;color:var(--text3);display:block;">Auto: {{ d.auto_infracao }}</span>
+            <tr style="border-bottom:1px solid var(--border);">
+              <td style="padding:8px 10px;">
+                <div style="font-weight:700;color:{% if d.tipo=='Multa' %}var(--red){% elif d.tipo=='IPVA' %}var(--yellow){% elif d.tipo=='Licenciamento' %}var(--blue){% else %}var(--text){% endif %};">
+                  {{ d.descricao or d.tipo }}
+                </div>
+                {% if d.auto_infracao and d.auto_infracao != d.descricao %}
+                <div style="font-size:10px;color:var(--text3);font-family:monospace;">{{ d.auto_infracao }}</div>
                 {% endif %}
               </td>
-              <td style="padding:7px 8px;border-bottom:1px solid var(--border);font-family:monospace;font-size:11px;">
+              <td style="padding:8px 10px;font-family:monospace;font-size:11px;color:var(--text3);">
+                {{ d.numero_detran or '—' }}
+              </td>
+              <td style="padding:8px 10px;text-align:center;font-size:12px;white-space:nowrap;">
                 {{ d.vencimento or '—' }}
               </td>
-              <td style="padding:7px 8px;border-bottom:1px solid var(--border);text-align:right;font-weight:700;
-                          color:{% if d.situacao=='pago' %}var(--green){% else %}var(--red){% endif %};">
+              <td style="padding:8px 10px;text-align:right;font-size:12px;color:var(--text2);">
+                {% if d.valor_nominal %}R$ {{ "%.2f"|format(d.valor_nominal) }}{% else %}—{% endif %}
+              </td>
+              <td style="padding:8px 10px;text-align:right;font-size:12px;color:{% if d.valor_multa and d.valor_multa > 0 %}var(--red){% else %}var(--text3){% endif %};">
+                {{ "R$ %.2f"|format(d.valor_multa) if d.valor_multa else '—' }}
+              </td>
+              <td style="padding:8px 10px;text-align:right;font-size:12px;color:{% if d.valor_juros and d.valor_juros > 0 %}var(--orange, #f97316){% else %}var(--text3){% endif %};">
+                {{ "R$ %.2f"|format(d.valor_juros) if d.valor_juros else '—' }}
+              </td>
+              <td style="padding:8px 10px;text-align:right;font-weight:800;font-size:13px;color:{% if d.situacao=='pago' %}var(--green){% else %}var(--red){% endif %};">
                 R$ {{ "%.2f"|format(d.valor) }}
               </td>
-              <td style="padding:7px 8px;border-bottom:1px solid var(--border);text-align:center;">
-                <span class="badge {% if d.situacao=='pago' %}badge-green{% elif d.situacao=='parcelado' %}badge-blue{% else %}badge-red{% endif %}"
-                      style="font-size:10px;">
-                  {{ d.situacao }}
-                </span>
-              </td>
-              <td style="padding:7px 8px;border-bottom:1px solid var(--border);text-align:center;">
+              <td style="padding:8px 6px;text-align:center;">
                 <button onclick="deletarDebito({{ d.id }})"
-                        style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:14px;"
+                        style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:13px;line-height:1;"
                         title="Remover">✕</button>
               </td>
             </tr>
             {% endfor %}
           </tbody>
           <tfoot>
-            <tr>
-              <td colspan="3" style="padding:8px;font-size:11px;color:var(--text3);">
-                Total em aberto
+            <tr style="background:var(--surface2);">
+              <td colspan="6" style="padding:8px 10px;font-size:11px;font-weight:700;color:var(--text3);text-align:right;">
+                Total dos Débitos
               </td>
-              <td style="padding:8px;text-align:right;font-weight:800;font-size:14px;color:var(--red);">
+              <td style="padding:8px 10px;text-align:right;font-weight:800;font-size:14px;color:var(--red);">
                 R$ {{ "%.2f"|format(total_debitos) }}
               </td>
-              <td colspan="2"></td>
+              <td></td>
             </tr>
           </tfoot>
         </table>
+        </div>
         {% else %}
-        <div style="color:var(--text3);font-size:13px;text-align:center;padding:16px 0;">
-          Nenhum débito registrado.
-          <br><span style="font-size:12px;">Clique em "📷 Importar via DETRANET" para consultar.</span>
+        <div style="color:var(--text3);font-size:13px;text-align:center;padding:24px 0;">
+          Nenhum item registrado.<br>
+          <span style="font-size:12px;">Clique em "🖥️ Importar do DETRANET" para puxar os débitos do veículo.</span>
         </div>
         {% endif %}
       </div>
@@ -490,17 +496,17 @@
     <!-- Step 2: preview -->
     <div id="deb-step2" style="display:none;">
       <div style="font-size:13px;font-weight:700;margin-bottom:12px;">
-        🧾 <span id="deb-preview-count">0</span> débitos encontrados — revise antes de salvar:
+        🧾 <span id="deb-preview-count">0</span> itens encontrados — revise antes de salvar:
       </div>
       <div style="overflow-x:auto;border-radius:8px;border:1px solid var(--border2);margin-bottom:14px;">
         <table style="width:100%;border-collapse:collapse;font-size:12px;">
           <thead>
             <tr style="background:var(--surface2);">
-              <th style="padding:7px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:var(--text3);">Tipo</th>
               <th style="padding:7px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:var(--text3);">Descrição</th>
-              <th style="padding:7px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:var(--text3);">Vencimento</th>
-              <th style="padding:7px 10px;text-align:right;font-size:10px;text-transform:uppercase;color:var(--text3);">Valor</th>
-              <th style="padding:7px 10px;text-align:center;font-size:10px;text-transform:uppercase;color:var(--text3);">Situação</th>
+              <th style="padding:7px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:var(--text3);">Nº DetranNET</th>
+              <th style="padding:7px 10px;text-align:center;font-size:10px;text-transform:uppercase;color:var(--text3);">Vencimento</th>
+              <th style="padding:7px 10px;text-align:right;font-size:10px;text-transform:uppercase;color:var(--text3);">Nominal</th>
+              <th style="padding:7px 10px;text-align:right;font-size:10px;text-transform:uppercase;color:var(--text3);">Vlr. Atual</th>
             </tr>
           </thead>
           <tbody id="deb-preview-body"></tbody>
@@ -664,13 +670,16 @@ function debMostrarPreview() {
   tbody.innerHTML = '';
   debPendentes.forEach(d => {
     const tr = document.createElement('tr');
-    const cor = d.situacao === 'pago' ? 'var(--green)' : d.situacao === 'parcelado' ? 'var(--blue)' : 'var(--red)';
+    const desc = d.descricao || d.tipo || '—';
+    const ndet = d.numero_detran || '—';
+    const nom  = d.valor_nominal ? `R$ ${parseFloat(d.valor_nominal).toFixed(2)}` : '—';
+    const vlr  = d.valor || d.valor_atual || '—';
     tr.innerHTML = `
-      <td style="padding:7px 10px;border-bottom:1px solid var(--border);font-weight:700;">${d.tipo||'—'}</td>
-      <td style="padding:7px 10px;border-bottom:1px solid var(--border);color:var(--text2);">${d.descricao||'—'}</td>
-      <td style="padding:7px 10px;border-bottom:1px solid var(--border);font-family:monospace;font-size:11px;">${d.vencimento||'—'}</td>
-      <td style="padding:7px 10px;border-bottom:1px solid var(--border);text-align:right;font-weight:700;color:var(--red);">${d.valor||'—'}</td>
-      <td style="padding:7px 10px;border-bottom:1px solid var(--border);text-align:center;color:${cor};font-size:11px;font-weight:700;">${d.situacao||'em aberto'}</td>
+      <td style="padding:7px 10px;border-bottom:1px solid var(--border);font-weight:600;">${desc}</td>
+      <td style="padding:7px 10px;border-bottom:1px solid var(--border);font-family:monospace;font-size:11px;color:var(--text3);">${ndet}</td>
+      <td style="padding:7px 10px;border-bottom:1px solid var(--border);text-align:center;font-size:11px;">${d.vencimento||'—'}</td>
+      <td style="padding:7px 10px;border-bottom:1px solid var(--border);text-align:right;color:var(--text2);">${nom}</td>
+      <td style="padding:7px 10px;border-bottom:1px solid var(--border);text-align:right;font-weight:700;color:var(--red);">${vlr}</td>
     `;
     tbody.appendChild(tr);
   });

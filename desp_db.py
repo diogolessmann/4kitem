@@ -380,6 +380,10 @@ def init_db():
             auto_infracao TEXT,
             criado_em TEXT DEFAULT CURRENT_TIMESTAMP
         )""",
+        "ALTER TABLE debitos_veiculo ADD COLUMN numero_detran TEXT",
+        "ALTER TABLE debitos_veiculo ADD COLUMN valor_nominal REAL DEFAULT 0",
+        "ALTER TABLE debitos_veiculo ADD COLUMN valor_multa REAL DEFAULT 0",
+        "ALTER TABLE debitos_veiculo ADD COLUMN valor_juros REAL DEFAULT 0",
     ]
     for sql in _migrations:
         try:
@@ -869,10 +873,23 @@ def listar_debitos(os_id: int) -> list:
     return [dict(r) for r in rows]
 
 
+def _parse_valor(v) -> float:
+    """Converte string de valor BR para float. Ex: 'R$ 1.420,85' → 1420.85"""
+    try:
+        s = str(v or "0").replace("R$","").replace(" ","").strip()
+        # formato BR: ponto=milhar, vírgula=decimal
+        if "," in s:
+            s = s.replace(".", "").replace(",", ".")
+        return float(s) if s else 0.0
+    except Exception:
+        return 0.0
+
+
 def salvar_debitos_bulk(os_id: int, veiculo_id: int | None, debitos: list) -> dict:
     """
     Substitui todos os débitos de uma O.S. pela nova lista.
-    debitos: lista de dicts com: tipo, descricao, valor, vencimento, situacao, auto_infracao
+    debitos: lista de dicts com: tipo, descricao, numero_detran, valor_nominal,
+             valor_multa, valor_juros, valor (=Valor Atual), vencimento, situacao, auto_infracao
     """
     conn = get_conn()
     conn.execute("DELETE FROM debitos_veiculo WHERE os_id = ?", (os_id,))
@@ -881,19 +898,29 @@ def salvar_debitos_bulk(os_id: int, veiculo_id: int | None, debitos: list) -> di
         tipo = (d.get("tipo") or "Outros").strip()
         if not tipo:
             continue
-        try:
-            valor = float(str(d.get("valor") or "0").replace("R$","").replace(".","").replace(",",".").strip() or 0)
-        except Exception:
-            valor = 0.0
+        valor_atual   = _parse_valor(d.get("valor") or d.get("valor_atual"))
+        valor_nominal = _parse_valor(d.get("valor_nominal"))
+        valor_multa   = _parse_valor(d.get("valor_multa") or d.get("multa"))
+        valor_juros   = _parse_valor(d.get("valor_juros") or d.get("juros"))
+        # Se não veio valor_atual mas veio nominal, usa nominal como total
+        if valor_atual == 0 and valor_nominal > 0:
+            valor_atual = valor_nominal + valor_multa + valor_juros
         conn.execute("""
-            INSERT INTO debitos_veiculo (os_id, veiculo_id, tipo, descricao, valor, vencimento, situacao, auto_infracao)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO debitos_veiculo
+                (os_id, veiculo_id, tipo, descricao, numero_detran,
+                 valor_nominal, valor_multa, valor_juros, valor,
+                 vencimento, situacao, auto_infracao)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
         """, (
             os_id,
             veiculo_id,
             tipo,
-            (d.get("descricao") or "").strip(),
-            valor,
+            (d.get("descricao") or d.get("classe") or "").strip(),
+            (d.get("numero_detran") or d.get("numero") or "").strip(),
+            valor_nominal,
+            valor_multa,
+            valor_juros,
+            valor_atual,
             (d.get("vencimento") or "").strip(),
             (d.get("situacao") or "em aberto").strip(),
             (d.get("auto_infracao") or "").strip(),

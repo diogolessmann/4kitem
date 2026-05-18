@@ -3274,17 +3274,22 @@ def desp_api_ocr_debitos():
     mime        = f.mimetype or mimetypes.guess_type(f.filename or '')[0] or 'image/jpeg'
 
     PROMPT_DEBITOS = (
-        'Analise esta imagem do sistema DETRANET (DETRAN-SC) mostrando débitos de um veículo.\n'
-        'Extraia TODOS os débitos listados e retorne um array JSON:\n'
-        '[{"tipo":"","descricao":"","valor":"","vencimento":"","situacao":"","auto_infracao":""}]\n'
-        'Campos:\n'
-        '- tipo: IPVA / Multa / Licenciamento / DPVAT / Taxa / Outros\n'
-        '- descricao: descrição do débito como aparece na tela\n'
-        '- valor: valor em reais (ex: "R$ 1.234,56" ou "1234.56")\n'
-        '- vencimento: data de vencimento (formato dd/mm/aaaa se visível)\n'
-        '- situacao: "em aberto" / "pago" / "parcelado"\n'
-        '- auto_infracao: número do auto se for multa, senão ""\n'
-        'RETORNE SOMENTE O ARRAY JSON, sem texto adicional.'
+        'Analise esta imagem do sistema DETRANET (DETRAN-SC) mostrando a Listagem de Débitos de um veículo.\n'
+        'Extraia TODOS os itens da tabela de débitos e retorne um array JSON:\n'
+        '[{"tipo":"","descricao":"","numero_detran":"","valor_nominal":"","valor_multa":"","valor_juros":"","valor":"","vencimento":"","situacao":"","auto_infracao":""}]\n'
+        'Instruções por campo:\n'
+        '- tipo: classifique como IPVA / Multa / Licenciamento / DPVAT / Taxa DETRAN / Outros\n'
+        '- descricao: texto da coluna "Classe" exatamente como aparece (ex: "Licenciamento Anual 2026", "IPVA (Cota Unica) 2026")\n'
+        '- numero_detran: número da coluna "Número DetranNET" (ex: "662.466.509")\n'
+        '- valor_nominal: valor da coluna "Valor Nominal(R$)"\n'
+        '- valor_multa: valor da coluna "Multa(R$)"\n'
+        '- valor_juros: valor da coluna "Juros(R$)"\n'
+        '- valor: valor da coluna "Valor Atual(R$)" — este é o valor a pagar\n'
+        '- vencimento: data de vencimento (formato dd/mm/aaaa)\n'
+        '- situacao: sempre "em aberto" a menos que claramente marcado como pago\n'
+        '- auto_infracao: se for multa, o código da coluna "Classe" (ex: "UF:DN-000300-S046548067-7455"); senão ""\n'
+        'Para multas: se a "Classe" contiver código de auto (ex: "UF:DN-...", "JARAGUA-..."), classifique tipo como "Multa".\n'
+        'RETORNE SOMENTE O ARRAY JSON, sem texto adicional, sem markdown.'
     )
 
     try:
