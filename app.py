@@ -3109,7 +3109,13 @@ def desp_importar_get():
 @app.route('/despachante/clientes/importar/ocr', methods=['POST'])
 @_desp_login_required
 def desp_importar_ocr():
-    """Recebe imagem/PDF do Bludata, extrai lista de clientes via IA."""
+    """Recebe imagem ou PDF do Bludata, extrai lista de clientes via IA.
+
+    PDFs: extrai texto com pdfplumber → manda ao modelo de texto (llama-3.3-70b).
+    Imagens: envia como base64 ao modelo de visão (llama-4-scout).
+    """
+    import base64, mimetypes, io as _io, re as _re3, json as _json3
+
     groq_key = os.environ.get('GROQ_API_KEY', '')
     if not groq_key:
         return jsonify({'erro': 'GROQ_API_KEY não configurada'}), 500
@@ -3118,41 +3124,79 @@ def desp_importar_ocr():
     if not f:
         return jsonify({'erro': 'Nenhum arquivo enviado'}), 400
 
-    import base64, mimetypes
     dados_bytes = f.read()
-    mime = f.mimetype or mimetypes.guess_type(f.filename or '')[0] or 'image/jpeg'
-    img_b64 = base64.b64encode(dados_bytes).decode()
+    filename    = (f.filename or '').lower()
+    mime        = f.mimetype or mimetypes.guess_type(f.filename or '')[0] or 'image/jpeg'
+    is_pdf      = filename.endswith('.pdf') or 'pdf' in mime.lower()
 
-    prompt = '''Analise esta imagem de relatório/listagem de sistema de despachante.
-Extraia TODOS os clientes/veículos que aparecerem e retorne um array JSON com objetos:
-{"nome":"","cpf":"","telefone":"","placa":"","email":"","cidade":""}
-Preencha apenas os campos visíveis. Deixe vazio ("") o que não aparecer.
-RETORNE SOMENTE O ARRAY JSON, sem texto adicional.'''
+    PROMPT = (
+        'Analise este relatório/listagem de sistema de despachante (Bludata ou similar).\n'
+        'Extraia TODOS os clientes/veículos que aparecerem e retorne um array JSON:\n'
+        '[{"nome":"","cpf":"","telefone":"","placa":"","email":"","cidade":""}]\n'
+        'Preencha apenas os campos visíveis. Deixe "" o que não aparecer.\n'
+        'RETORNE SOMENTE O ARRAY JSON, sem texto adicional, sem markdown.'
+    )
 
     try:
-        resp = requests.post(
-            'https://api.groq.com/openai/v1/chat/completions',
-            headers={'Authorization': f'Bearer {groq_key}', 'Content-Type': 'application/json'},
-            json={
+        if is_pdf:
+            # ── PDF: extrai texto e usa modelo de linguagem ──────────────────
+            try:
+                import pdfplumber
+            except ImportError:
+                return jsonify({'erro': 'pdfplumber não instalado — contate o suporte'}), 500
+
+            texto_pdf = ''
+            with pdfplumber.open(_io.BytesIO(dados_bytes)) as pdf:
+                for page in pdf.pages:
+                    t = page.extract_text() or ''
+                    if t.strip():
+                        texto_pdf += t + '\n\n'
+
+            if not texto_pdf.strip():
+                return jsonify({
+                    'erro': 'Não foi possível extrair texto do PDF. '
+                            'Tente exportar como imagem (print da tela) e importar novamente.'
+                }), 422
+
+            # Limita a 14 000 chars para não exceder o contexto do modelo
+            texto_pdf = texto_pdf[:14000]
+
+            payload = {
+                'model': 'llama-3.3-70b-versatile',
+                'messages': [{'role': 'user', 'content': f'{PROMPT}\n\nCONTEÚDO DO PDF:\n{texto_pdf}'}],
+                'max_tokens': 4096,
+                'temperature': 0.1,
+            }
+        else:
+            # ── Imagem: envia ao modelo de visão ─────────────────────────────
+            img_b64 = base64.b64encode(dados_bytes).decode()
+            payload = {
                 'model': 'meta-llama/llama-4-scout-17b-16e-instruct',
                 'messages': [{'role': 'user', 'content': [
                     {'type': 'image_url', 'image_url': {'url': f'data:{mime};base64,{img_b64}'}},
-                    {'type': 'text', 'text': prompt},
+                    {'type': 'text', 'text': PROMPT},
                 ]}],
                 'max_tokens': 4096,
                 'temperature': 0.1,
-            },
-            timeout=60,
+            }
+
+        resp = requests.post(
+            'https://api.groq.com/openai/v1/chat/completions',
+            headers={'Authorization': f'Bearer {groq_key}', 'Content-Type': 'application/json'},
+            json=payload,
+            timeout=90,
         )
         resp.raise_for_status()
         texto = resp.json()['choices'][0]['message']['content'].strip()
-        import re as _re3, json as _json3
+
         match = _re3.search(r'\[[\s\S]*\]', texto)
         if not match:
-            return jsonify({'erro': 'IA não retornou JSON válido'}), 422
+            return jsonify({'erro': 'IA não retornou JSON válido — tente novamente'}), 422
+
         registros = _json3.loads(match.group())
         registros = [r for r in registros if r.get('nome')]
         return jsonify({'ok': True, 'registros': registros, 'total': len(registros)})
+
     except Exception as e:
         log.error(f'importar OCR error: {e}')
         return jsonify({'erro': str(e)}), 500
