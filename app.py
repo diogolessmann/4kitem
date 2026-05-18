@@ -1,12 +1,17 @@
 """
 app.py — 4KITEM Plataforma de Soluções Digitais
 """
-import os
-import logging
-import threading
-import re as _re
-import unicodedata
+import csv
+import io
 import json as _json
+import logging
+import os
+import random
+import re as _re
+import threading
+import time
+import traceback
+import unicodedata
 import requests
 from datetime import datetime, timedelta
 from functools import wraps
@@ -1757,7 +1762,7 @@ def mz_qr(num_id):
             except Exception:
                 pass
 
-        import time; time.sleep(1)
+        time.sleep(1)
 
         # 2. Cria instância nova limpa
         cr     = _req.post(f"{evo_url}/instance/create", headers=headers,
@@ -1925,7 +1930,6 @@ def mz_contact_delete(cid):
 @app.route('/mandazap/contatos/import-csv', methods=['POST'])
 @_mandazap_login_required
 def mz_contact_import_csv():
-    import csv, io
     user_id = session['mz_user_id']
     f       = request.files.get('csv_file')
     if not f:
@@ -1940,8 +1944,8 @@ def mz_contact_import_csv():
 
         # ── Excel .xlsx / .xls (exportado do Android/Google Contacts) ─────────
         elif filename.endswith('.xlsx') or filename.endswith('.xls'):
-            import openpyxl, io as _io
-            wb = openpyxl.load_workbook(_io.BytesIO(raw), read_only=True, data_only=True)
+            import openpyxl
+            wb = openpyxl.load_workbook(io.BytesIO(raw), read_only=True, data_only=True)
             ws = wb.active
             contacts = []
             headers = []
@@ -2284,45 +2288,66 @@ def dev_nota(token):
 
 
 # ══════════════════════════════════════════════════════════════════════════
-#  STARTUP
-# ══════════════════════════════════════════════════════════════════════════
-
-# ══════════════════════════════════════════════════════════════════════════
 #  CAMPAIGN DISPATCHER — envia mensagens via Evolution API
 # ══════════════════════════════════════════════════════════════════════════
 
 def _get_evo():
-    """Retorna (evo_url, evo_key) ou (None, None) se não configurado."""
+    """Retorna (evo_url, evo_key) ou ('', '') se não configurado."""
     return (
         os.environ.get('EVOLUTION_API_URL', '').rstrip('/'),
         os.environ.get('EVOLUTION_API_KEY', ''),
     )
 
 
+def _typing_delay_ms(text: str) -> int:
+    """Calcula delay de typing proporcional ao tamanho da mensagem.
+    ~40ms/char, mínimo 800ms, máximo 3500ms — imita velocidade humana real.
+    """
+    base = min(max(len(text) * 40, 800), 3500)
+    return int(base * random.uniform(0.85, 1.15))
+
+
+def _is_invalid_number(body: str) -> bool:
+    """Detecta se a resposta da API indica número inexistente no WhatsApp."""
+    b = body.lower()
+    return ('"exists":false' in body or 'exists\\":false' in body
+            or 'not exists' in b or 'invalid number' in b
+            or 'phone not found' in b)
+
+
+def _apply_spintax(text: str) -> str:
+    """Processa variações {opção1|opção2|opção3} no template.
+    Só processa grupos com pelo menos um | (preserva {nome}, {name}, etc).
+    Cada mensagem sai diferente — quebra fingerprint de conteúdo repetido.
+    """
+    def pick(m):
+        return random.choice(m.group(1).split('|'))
+    return _re.sub(r'\{([^{}]*\|[^{}]*)\}', pick, text)
+
+
 def _send_text(evo_url, evo_key, instance, phone, text):
-    """Envia uma mensagem de texto. Retorna (ok, erro_str, invalido)."""
+    """Envia mensagem de texto com typing simulation.
+    Usa presence=composing + delay proporcional ao tamanho — imita humano.
+    Retorna (ok, erro_str, invalido).
+    """
     try:
+        delay_ms = _typing_delay_ms(text)
         r = requests.post(
             f"{evo_url}/message/sendText/{instance}",
             headers={'apikey': evo_key, 'Content-Type': 'application/json'},
-            json={'number': phone, 'text': text},
-            timeout=15,
+            json={
+                'number': phone,
+                'text': text,
+                'options': {'delay': delay_ms, 'presence': 'composing'},
+            },
+            timeout=20,
         )
         if r.status_code in (200, 201):
             return True, '', False
-        # Detecta número inexistente no WhatsApp
         body = r.text[:300]
-        invalido = ('"exists":false' in body or 'exists\\":false' in body
-                    or 'not exists' in body.lower() or 'invalid number' in body.lower())
-        return False, f"HTTP {r.status_code}: {body[:120]}", invalido
+        return False, f"HTTP {r.status_code}: {body[:120]}", _is_invalid_number(body)
     except Exception as e:
         return False, str(e)[:120], False
-
-
-def _send_text_compat(evo_url, evo_key, instance, phone, text):
-    """Wrapper que mantém assinatura (ok, err) para código legado."""
-    ok, err, _ = _send_text(evo_url, evo_key, instance, phone, text)
-    return ok, err
 
 
 def _send_image(evo_url, evo_key, instance, phone, image_url, caption=''):
@@ -2342,14 +2367,12 @@ def _send_image(evo_url, evo_key, instance, phone, image_url, caption=''):
         if r.status_code in (200, 201):
             return True, '', False
         body = r.text[:300]
-        invalido = ('"exists":false' in body or 'exists\\":false' in body
-                    or 'not exists' in body.lower() or 'invalid number' in body.lower())
-        return False, f"HTTP {r.status_code}: {body[:120]}", invalido
+        return False, f"HTTP {r.status_code}: {body[:120]}", _is_invalid_number(body)
     except Exception as e:
         return False, str(e)[:120], False
 
 
-def _antiban_delay(sent_count: int, import_random=None):
+def _antiban_delay(sent_count: int):
     """
     Delay humanizado anti-ban — imita comportamento humano:
     - Base: 15–45s aleatório com jitter ±20%
@@ -2357,25 +2380,23 @@ def _antiban_delay(sent_count: int, import_random=None):
     - A cada 50 enviados: pausa longa 1–3 min
     - Delays nunca são fixos (detectável pelo Meta)
     """
-    import random, time
-    r = random
-    base = r.uniform(15, 45)
+    base = random.uniform(15, 45)
 
     # IMPORTANTE: checar 200 ANTES do 50 — todo múltiplo de 200 também é de 50
     if sent_count > 0 and sent_count % 200 == 0:
-        pausa = r.uniform(180, 480)
+        pausa = random.uniform(180, 480)
         log.info(f"Anti-ban: pausa extra longa de {pausa:.0f}s após {sent_count} enviados")
         time.sleep(pausa)
         return
 
     if sent_count > 0 and sent_count % 50 == 0:
-        pausa = r.uniform(60, 180)
+        pausa = random.uniform(60, 180)
         log.info(f"Anti-ban: pausa longa de {pausa:.0f}s após {sent_count} enviados")
         time.sleep(pausa)
         return
 
     # Jitter ±20% para nunca ter intervalo previsível
-    jitter = base * r.uniform(0.8, 1.2)
+    jitter = base * random.uniform(0.8, 1.2)
     log.debug(f"Anti-ban delay: {jitter:.1f}s")
     time.sleep(jitter)
 
@@ -2387,7 +2408,6 @@ def _dispatch_campaign(cid: int, user_id: int, delay_s: int = 3, continuar: bool
     continuar=True  → pula contatos já enviados (retomada)
     continuar=False → limpa log e começa do zero
     """
-    import time, random, traceback
     try:
         _dispatch_campaign_inner(cid, user_id, delay_s, continuar=continuar)
     except Exception as e:
@@ -2405,7 +2425,6 @@ def _dispatch_campaign(cid: int, user_id: int, delay_s: int = 3, continuar: bool
 
 
 def _dispatch_campaign_inner(cid: int, user_id: int, delay_s: int = 3, continuar: bool = True):
-    import time, random
     evo_url, evo_key = _get_evo()
     if not evo_url or not evo_key:
         log.error(f"Campanha {cid}: Evolution API não configurada")
@@ -2528,6 +2547,9 @@ def _dispatch_campaign_inner(cid: int, user_id: int, delay_s: int = 3, continuar
         log.info(f"Campanha {cid}: limite diário parcial — enviando {can_send}/{len(contacts)} restantes")
         contacts = contacts[:can_send]
 
+    # Randomiza ordem dos contatos — evita padrão previsível e fingerprint de sequência
+    random.shuffle(contacts)
+
     # Marca como "enviando" — preserva sent anterior se estiver continuando
     conn.execute(
         "UPDATE mandazap_campaigns SET status='enviando', total=?, sent=?, finished_at=NULL, error_log='' WHERE id=?",
@@ -2540,11 +2562,11 @@ def _dispatch_campaign_inner(cid: int, user_id: int, delay_s: int = 3, continuar
     media_type = camp.get('media_type', 'text')
     is_image   = media_type == 'image' and bool(media_url)
 
-    sent_count     = prev_sent   # começa do número já enviado anteriormente
-    failed_count   = 0
-    consec_fails   = 0
-    first_err      = ''
-    MAX_CONSEC     = 10   # para se 10 falhas seguidas (erro na API)
+    sent_count   = prev_sent  # começa do número já enviado anteriormente
+    failed_count = 0
+    consec_fails = 0
+    first_err    = ''
+    MAX_CONSEC   = 10  # aborta se 10 falhas reais consecutivas
 
     for c in contacts:
         # Verifica se campanha foi cancelada externamente
@@ -2568,10 +2590,13 @@ def _dispatch_campaign_inner(cid: int, user_id: int, delay_s: int = 3, continuar
 
         nome_curto    = (c.get('name') or 'Cliente').split()[0].title()
         nome_completo = (c.get('name') or 'Cliente').title()
+        # 1. Substitui variáveis de contato
         msg = (message
                .replace('{nome}', nome_curto)
                .replace('{name}', nome_curto)
                .replace('{nome_completo}', nome_completo))
+        # 2. Aplica spintax {opção1|opção2} — cada mensagem sai diferente
+        msg = _apply_spintax(msg)
 
         if is_image:
             ok, err, invalido = _send_image(evo_url, evo_key, instance, phone, media_url, msg)
@@ -2601,7 +2626,6 @@ def _dispatch_campaign_inner(cid: int, user_id: int, delay_s: int = 3, continuar
                 # Número não existe no WhatsApp — pula sem contar como falha consecutiva
                 log.info(f"Campanha {cid} → {phone}: número inválido/sem WhatsApp — pulando")
                 # Delay pequeno mesmo em inválido para não bater na API em rajada
-                import time, random
                 time.sleep(random.uniform(3, 8))
             else:
                 # Falha real (API down, ban, timeout) — conta consecutiva
@@ -2616,7 +2640,6 @@ def _dispatch_campaign_inner(cid: int, user_id: int, delay_s: int = 3, continuar
                     conn.commit(); conn.close()
                     return
                 # Delay progressivo em falhas reais: quanto mais falhas, maior a espera
-                import time, random
                 pausa_erro = random.uniform(10, 30) * consec_fails
                 log.warning(f"Anti-ban: pausa de {pausa_erro:.0f}s após falha real ({consec_fails}/{MAX_CONSEC})")
                 time.sleep(pausa_erro)
@@ -2936,7 +2959,6 @@ def desp_lista_placa():
 @app.route('/despachante/lista/csv')
 @_desp_login_required
 def desp_lista_csv():
-    import csv, io
     from flask import Response
     final     = request.args.get('final', '5')
     exercicio = request.args.get('exercicio', datetime.now().year, type=int)
@@ -2967,9 +2989,7 @@ def desp_set_situacao(os_id):
 @app.route('/despachante/lista/disparar', methods=['POST'])
 @_desp_login_required
 def desp_lista_disparar():
-    import time
-    try: import requests as _req
-    except ImportError: return jsonify({'erro': 'requests não instalado'}), 500
+    _req = requests
     data         = request.get_json(silent=True) or {}
     final        = data.get('final', '5')
     exercicio    = data.get('exercicio', datetime.now().year)
