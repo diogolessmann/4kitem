@@ -1937,6 +1937,38 @@ def mz_contact_import_csv():
         if filename.endswith('.vcf') or filename.endswith('.vcard'):
             content = raw.decode('utf-8', errors='ignore')
             contacts = _parse_vcf(content)
+
+        # ── Excel .xlsx / .xls (exportado do Android/Google Contacts) ─────────
+        elif filename.endswith('.xlsx') or filename.endswith('.xls'):
+            import openpyxl, io as _io
+            wb = openpyxl.load_workbook(_io.BytesIO(raw), read_only=True, data_only=True)
+            ws = wb.active
+            contacts = []
+            headers = []
+            for row_idx, row in enumerate(ws.iter_rows(values_only=True)):
+                if row_idx == 0:
+                    # Primeira linha = cabeçalhos (normaliza)
+                    headers = [str(c).lower().strip() if c else '' for c in row]
+                    continue
+                if not any(row):
+                    continue
+                row_dict = {headers[i]: str(v).strip() if v is not None else '' for i, v in enumerate(row) if i < len(headers)}
+                name  = (row_dict.get('nome') or row_dict.get('name') or row_dict.get('contato') or
+                         row_dict.get('contact') or row_dict.get('display name') or '').strip()
+                phone = (row_dict.get('telefone') or row_dict.get('phone') or row_dict.get('whatsapp') or
+                         row_dict.get('celular') or row_dict.get('mobile') or row_dict.get('phone 1 - value') or
+                         row_dict.get('phone 1') or '').strip()
+                email = (row_dict.get('email') or row_dict.get('e-mail') or row_dict.get('email 1 - value') or '').strip()
+                tag   = (row_dict.get('tag') or row_dict.get('categoria') or row_dict.get('group') or row_dict.get('grupo') or '').strip()
+                # Fallback: se não achou por nome de coluna, pega primeira e segunda coluna
+                if not name and len(row) > 0 and row[0]:
+                    name = str(row[0]).strip()
+                if not phone and len(row) > 1 and row[1]:
+                    phone = str(row[1]).strip()
+                if name and phone:
+                    contacts.append({'name': name, 'phone': phone, 'email': email, 'tag': tag})
+            wb.close()
+
         else:
             # ── CSV ───────────────────────────────────────────────────────────
             content = raw.decode('utf-8-sig', errors='ignore')
@@ -2319,28 +2351,30 @@ def _send_image(evo_url, evo_key, instance, phone, image_url, caption=''):
 
 def _antiban_delay(sent_count: int, import_random=None):
     """
-    Delay humanizado anti-ban:
-    - Base: 15–45s aleatório
-    - A cada 50 enviados: pausa longa (60–180s) simula descanso
-    - A cada 200 enviados: pausa extra longa (3–8 min)
-    - Pequena variação extra ±20% pra não ser previsível
+    Delay humanizado anti-ban — imita comportamento humano:
+    - Base: 15–45s aleatório com jitter ±20%
+    - A cada 200 enviados: pausa extra longa 3–8 min (check ANTES do de 50)
+    - A cada 50 enviados: pausa longa 1–3 min
+    - Delays nunca são fixos (detectável pelo Meta)
     """
     import random, time
     r = random
     base = r.uniform(15, 45)
-    # Pausa longa a cada 50 mensagens
-    if sent_count > 0 and sent_count % 50 == 0:
-        pausa = r.uniform(60, 180)
-        log.info(f"Anti-ban: pausa longa de {pausa:.0f}s após {sent_count} enviados")
-        time.sleep(pausa)
-        return
-    # Pausa extra longa a cada 200 mensagens
+
+    # IMPORTANTE: checar 200 ANTES do 50 — todo múltiplo de 200 também é de 50
     if sent_count > 0 and sent_count % 200 == 0:
         pausa = r.uniform(180, 480)
         log.info(f"Anti-ban: pausa extra longa de {pausa:.0f}s após {sent_count} enviados")
         time.sleep(pausa)
         return
-    # Jitter ±20%
+
+    if sent_count > 0 and sent_count % 50 == 0:
+        pausa = r.uniform(60, 180)
+        log.info(f"Anti-ban: pausa longa de {pausa:.0f}s após {sent_count} enviados")
+        time.sleep(pausa)
+        return
+
+    # Jitter ±20% para nunca ter intervalo previsível
     jitter = base * r.uniform(0.8, 1.2)
     log.debug(f"Anti-ban delay: {jitter:.1f}s")
     time.sleep(jitter)
@@ -2566,6 +2600,9 @@ def _dispatch_campaign_inner(cid: int, user_id: int, delay_s: int = 3, continuar
             if invalido:
                 # Número não existe no WhatsApp — pula sem contar como falha consecutiva
                 log.info(f"Campanha {cid} → {phone}: número inválido/sem WhatsApp — pulando")
+                # Delay pequeno mesmo em inválido para não bater na API em rajada
+                import time, random
+                time.sleep(random.uniform(3, 8))
             else:
                 # Falha real (API down, ban, timeout) — conta consecutiva
                 consec_fails += 1
@@ -2578,13 +2615,18 @@ def _dispatch_campaign_inner(cid: int, user_id: int, delay_s: int = 3, continuar
                     )
                     conn.commit(); conn.close()
                     return
+                # Delay progressivo em falhas reais: quanto mais falhas, maior a espera
+                import time, random
+                pausa_erro = random.uniform(10, 30) * consec_fails
+                log.warning(f"Anti-ban: pausa de {pausa_erro:.0f}s após falha real ({consec_fails}/{MAX_CONSEC})")
+                time.sleep(pausa_erro)
 
         # Atualiza progresso a cada envio
         conn2 = get_saas_db()
         conn2.execute("UPDATE mandazap_campaigns SET sent=? WHERE id=?", (sent_count, cid))
         conn2.commit(); conn2.close()
 
-        # Delay anti-ban humanizado (só após envio bem-sucedido)
+        # Delay anti-ban humanizado após envio bem-sucedido
         if ok:
             _antiban_delay(sent_count)
 
