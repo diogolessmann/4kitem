@@ -2765,6 +2765,10 @@ from desp_db import (
     contar_clientes as desp_contar_clientes,
     get_cliente_detalhe as desp_get_cliente_detalhe,
     importar_clientes_bulk as desp_importar_bulk,
+    listar_debitos as desp_listar_debitos,
+    salvar_debitos_bulk as desp_salvar_debitos,
+    deletar_debito as desp_deletar_debito,
+    total_debitos as desp_total_debitos,
 )
 
 DESP_CONFIG = {
@@ -2905,8 +2909,11 @@ def desp_nova_os():
 def desp_detalhe_os(id):
     os_ = desp_get_os(id)
     if not os_: abort(404)
-    docs = desp_get_docs(id)
-    return desp_render('os/detalhe.html', os=os_, docs=docs)
+    docs    = desp_get_docs(id)
+    debitos = desp_listar_debitos(id)
+    total_deb = desp_total_debitos(id)
+    return desp_render('os/detalhe.html', os=os_, docs=docs,
+                       debitos=debitos, total_debitos=total_deb)
 
 
 @app.route('/despachante/os/<int:id>/status', methods=['POST'])
@@ -3212,6 +3219,104 @@ def desp_importar_salvar():
         return jsonify({'erro': 'Nenhum registro'}), 400
     resultado = desp_importar_bulk(registros)
     return jsonify({'ok': True, **resultado})
+
+
+# ── API Débitos DETRAN ────────────────────────────────────────────────────────
+
+@app.route('/despachante/api/os/<int:os_id>/debitos', methods=['GET'])
+@_desp_login_required
+def desp_api_debitos_get(os_id):
+    """Lista os débitos de uma O.S."""
+    debitos = desp_listar_debitos(os_id)
+    total   = desp_total_debitos(os_id)
+    return jsonify({'ok': True, 'debitos': debitos, 'total': total})
+
+
+@app.route('/despachante/api/os/<int:os_id>/debitos/salvar', methods=['POST'])
+@_desp_login_required
+def desp_api_debitos_salvar(os_id):
+    """Salva lista de débitos de uma O.S. (substitui os anteriores)."""
+    os_row = desp_get_os(os_id)
+    if not os_row:
+        return jsonify({'erro': 'O.S. não encontrada'}), 404
+    data    = request.get_json(silent=True) or {}
+    debitos = data.get('debitos', [])
+    resultado = desp_salvar_debitos(os_id, os_row.get('veiculo_id'), debitos)
+    return jsonify({'ok': True, **resultado})
+
+
+@app.route('/despachante/api/debitos/<int:debito_id>', methods=['DELETE'])
+@_desp_login_required
+def desp_api_debito_delete(debito_id):
+    """Remove um débito pelo ID."""
+    desp_deletar_debito(debito_id)
+    return jsonify({'ok': True})
+
+
+@app.route('/despachante/api/ocr/debitos', methods=['POST'])
+@_desp_login_required
+def desp_api_ocr_debitos():
+    """
+    Recebe print do DETRANET (imagem), extrai lista de débitos via IA.
+    Retorna JSON com array de débitos para preview antes de salvar.
+    """
+    import base64, mimetypes, re as _re4, json as _json4
+
+    groq_key = os.environ.get('GROQ_API_KEY', '')
+    if not groq_key:
+        return jsonify({'erro': 'GROQ_API_KEY não configurada'}), 500
+
+    f = request.files.get('arquivo')
+    if not f:
+        return jsonify({'erro': 'Nenhum arquivo enviado'}), 400
+
+    dados_bytes = f.read()
+    mime        = f.mimetype or mimetypes.guess_type(f.filename or '')[0] or 'image/jpeg'
+
+    PROMPT_DEBITOS = (
+        'Analise esta imagem do sistema DETRANET (DETRAN-SC) mostrando débitos de um veículo.\n'
+        'Extraia TODOS os débitos listados e retorne um array JSON:\n'
+        '[{"tipo":"","descricao":"","valor":"","vencimento":"","situacao":"","auto_infracao":""}]\n'
+        'Campos:\n'
+        '- tipo: IPVA / Multa / Licenciamento / DPVAT / Taxa / Outros\n'
+        '- descricao: descrição do débito como aparece na tela\n'
+        '- valor: valor em reais (ex: "R$ 1.234,56" ou "1234.56")\n'
+        '- vencimento: data de vencimento (formato dd/mm/aaaa se visível)\n'
+        '- situacao: "em aberto" / "pago" / "parcelado"\n'
+        '- auto_infracao: número do auto se for multa, senão ""\n'
+        'RETORNE SOMENTE O ARRAY JSON, sem texto adicional.'
+    )
+
+    try:
+        img_b64 = base64.b64encode(dados_bytes).decode()
+        resp = requests.post(
+            'https://api.groq.com/openai/v1/chat/completions',
+            headers={'Authorization': f'Bearer {groq_key}', 'Content-Type': 'application/json'},
+            json={
+                'model': 'meta-llama/llama-4-scout-17b-16e-instruct',
+                'messages': [{'role': 'user', 'content': [
+                    {'type': 'image_url', 'image_url': {'url': f'data:{mime};base64,{img_b64}'}},
+                    {'type': 'text', 'text': PROMPT_DEBITOS},
+                ]}],
+                'max_tokens': 2048,
+                'temperature': 0.1,
+            },
+            timeout=60,
+        )
+        resp.raise_for_status()
+        texto = resp.json()['choices'][0]['message']['content'].strip()
+
+        match = _re4.search(r'\[[\s\S]*\]', texto)
+        if not match:
+            return jsonify({'erro': 'IA não identificou débitos na imagem — verifique se é um print do DETRANET'}), 422
+
+        debitos = _json4.loads(match.group())
+        debitos = [d for d in debitos if d.get('tipo') or d.get('descricao')]
+        return jsonify({'ok': True, 'debitos': debitos, 'total': len(debitos)})
+
+    except Exception as e:
+        log.error(f'OCR débitos error: {e}')
+        return jsonify({'erro': str(e)}), 500
 
 
 # ── API busca ─────────────────────────────────────────────────────────────────

@@ -339,12 +339,27 @@ def init_db():
             criado_em TEXT    DEFAULT CURRENT_TIMESTAMP
         );
 
+        CREATE TABLE IF NOT EXISTS debitos_veiculo (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            os_id       INTEGER REFERENCES ordens_servico(id) ON DELETE CASCADE,
+            veiculo_id  INTEGER REFERENCES veiculos(id),
+            tipo        TEXT    NOT NULL,
+            descricao   TEXT,
+            valor       REAL    DEFAULT 0,
+            vencimento  TEXT,
+            situacao    TEXT    DEFAULT 'em aberto',
+            auto_infracao TEXT,
+            criado_em   TEXT    DEFAULT CURRENT_TIMESTAMP
+        );
+
         CREATE INDEX IF NOT EXISTS idx_desp_os_cliente  ON ordens_servico(cliente_id);
         CREATE INDEX IF NOT EXISTS idx_desp_os_veiculo  ON ordens_servico(veiculo_id);
         CREATE INDEX IF NOT EXISTS idx_desp_os_status   ON ordens_servico(status);
         CREATE INDEX IF NOT EXISTS idx_desp_os_criado   ON ordens_servico(criado_em DESC);
         CREATE INDEX IF NOT EXISTS idx_desp_veiculo_placa ON veiculos(placa);
         CREATE INDEX IF NOT EXISTS idx_desp_cliente_cpf   ON clientes(cpf);
+        CREATE INDEX IF NOT EXISTS idx_debitos_os        ON debitos_veiculo(os_id);
+        CREATE INDEX IF NOT EXISTS idx_debitos_veiculo   ON debitos_veiculo(veiculo_id);
     """)
     conn.commit()
 
@@ -353,6 +368,18 @@ def init_db():
         "ALTER TABLE ordens_servico ADD COLUMN exercicio INTEGER",
         "ALTER TABLE ordens_servico ADD COLUMN situacao_pag TEXT DEFAULT ''",
         "CREATE INDEX IF NOT EXISTS idx_desp_os_exercicio ON ordens_servico(exercicio)",
+        """CREATE TABLE IF NOT EXISTS debitos_veiculo (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            os_id INTEGER REFERENCES ordens_servico(id) ON DELETE CASCADE,
+            veiculo_id INTEGER REFERENCES veiculos(id),
+            tipo TEXT NOT NULL,
+            descricao TEXT,
+            valor REAL DEFAULT 0,
+            vencimento TEXT,
+            situacao TEXT DEFAULT 'em aberto',
+            auto_infracao TEXT,
+            criado_em TEXT DEFAULT CURRENT_TIMESTAMP
+        )""",
     ]
     for sql in _migrations:
         try:
@@ -827,3 +854,70 @@ def importar_clientes_bulk(registros: list) -> dict:
     conn.commit()
     conn.close()
     return {"inseridos": inseridos, "duplicados": duplicados, "erros": erros}
+
+
+# ── CRUD Débitos DETRAN ───────────────────────────────────────────────────────
+
+def listar_debitos(os_id: int) -> list:
+    """Retorna todos os débitos vinculados a uma O.S., ordenados por tipo."""
+    conn = get_conn()
+    rows = conn.execute(
+        "SELECT * FROM debitos_veiculo WHERE os_id = ? ORDER BY tipo, vencimento",
+        (os_id,)
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def salvar_debitos_bulk(os_id: int, veiculo_id: int | None, debitos: list) -> dict:
+    """
+    Substitui todos os débitos de uma O.S. pela nova lista.
+    debitos: lista de dicts com: tipo, descricao, valor, vencimento, situacao, auto_infracao
+    """
+    conn = get_conn()
+    conn.execute("DELETE FROM debitos_veiculo WHERE os_id = ?", (os_id,))
+    inseridos = 0
+    for d in debitos:
+        tipo = (d.get("tipo") or "Outros").strip()
+        if not tipo:
+            continue
+        try:
+            valor = float(str(d.get("valor") or "0").replace("R$","").replace(".","").replace(",",".").strip() or 0)
+        except Exception:
+            valor = 0.0
+        conn.execute("""
+            INSERT INTO debitos_veiculo (os_id, veiculo_id, tipo, descricao, valor, vencimento, situacao, auto_infracao)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            os_id,
+            veiculo_id,
+            tipo,
+            (d.get("descricao") or "").strip(),
+            valor,
+            (d.get("vencimento") or "").strip(),
+            (d.get("situacao") or "em aberto").strip(),
+            (d.get("auto_infracao") or "").strip(),
+        ))
+        inseridos += 1
+    conn.commit()
+    conn.close()
+    return {"inseridos": inseridos}
+
+
+def deletar_debito(debito_id: int):
+    """Remove um débito pelo ID."""
+    conn = get_conn()
+    conn.execute("DELETE FROM debitos_veiculo WHERE id = ?", (debito_id,))
+    conn.commit()
+    conn.close()
+
+
+def total_debitos(os_id: int) -> float:
+    """Soma dos débitos em aberto de uma O.S."""
+    conn = get_conn()
+    row = conn.execute(
+        "SELECT COALESCE(SUM(valor), 0) FROM debitos_veiculo WHERE os_id = ? AND situacao != 'pago'",
+        (os_id,)
+    ).fetchone()
+    conn.close()
+    return float(row[0])

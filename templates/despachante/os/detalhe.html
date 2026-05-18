@@ -283,6 +283,90 @@
     </div>
     {% endif %}
 
+    <!-- Débitos DETRAN -->
+    <div class="sec" id="sec-debitos">
+      <div class="sec-head">
+        🧾 Débitos DETRAN
+        <div style="display:flex;gap:6px;align-items:center;">
+          {% if total_debitos > 0 %}
+          <span style="font-size:12px;color:var(--red);font-weight:700;">
+            R$ {{ "%.2f"|format(total_debitos) }} em aberto
+          </span>
+          {% endif %}
+          <button class="btn btn-secondary btn-sm" onclick="abrirModalDebitos()">
+            📷 Importar via DETRANET
+          </button>
+        </div>
+      </div>
+      <div class="sec-body">
+        {% if debitos %}
+        <table style="width:100%;border-collapse:collapse;font-size:12px;">
+          <thead>
+            <tr style="color:var(--text3);text-transform:uppercase;font-size:10px;letter-spacing:.5px;">
+              <th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);">Tipo</th>
+              <th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);">Descrição</th>
+              <th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);">Vencimento</th>
+              <th style="text-align:right;padding:6px 8px;border-bottom:1px solid var(--border);">Valor</th>
+              <th style="text-align:center;padding:6px 8px;border-bottom:1px solid var(--border);">Situação</th>
+              <th style="padding:6px 8px;border-bottom:1px solid var(--border);"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for d in debitos %}
+            <tr class="deb-row" data-id="{{ d.id }}">
+              <td style="padding:7px 8px;border-bottom:1px solid var(--border);">
+                <span style="font-weight:700;color:{% if d.tipo=='Multa' %}var(--red){% elif d.tipo=='IPVA' %}var(--yellow){% else %}var(--text2){% endif %};">
+                  {{ d.tipo }}
+                </span>
+              </td>
+              <td style="padding:7px 8px;border-bottom:1px solid var(--border);color:var(--text2);">
+                {{ d.descricao or '—' }}
+                {% if d.auto_infracao %}
+                <span style="font-size:10px;color:var(--text3);display:block;">Auto: {{ d.auto_infracao }}</span>
+                {% endif %}
+              </td>
+              <td style="padding:7px 8px;border-bottom:1px solid var(--border);font-family:monospace;font-size:11px;">
+                {{ d.vencimento or '—' }}
+              </td>
+              <td style="padding:7px 8px;border-bottom:1px solid var(--border);text-align:right;font-weight:700;
+                          color:{% if d.situacao=='pago' %}var(--green){% else %}var(--red){% endif %};">
+                R$ {{ "%.2f"|format(d.valor) }}
+              </td>
+              <td style="padding:7px 8px;border-bottom:1px solid var(--border);text-align:center;">
+                <span class="badge {% if d.situacao=='pago' %}badge-green{% elif d.situacao=='parcelado' %}badge-blue{% else %}badge-red{% endif %}"
+                      style="font-size:10px;">
+                  {{ d.situacao }}
+                </span>
+              </td>
+              <td style="padding:7px 8px;border-bottom:1px solid var(--border);text-align:center;">
+                <button onclick="deletarDebito({{ d.id }})"
+                        style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:14px;"
+                        title="Remover">✕</button>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+          <tfoot>
+            <tr>
+              <td colspan="3" style="padding:8px;font-size:11px;color:var(--text3);">
+                Total em aberto
+              </td>
+              <td style="padding:8px;text-align:right;font-weight:800;font-size:14px;color:var(--red);">
+                R$ {{ "%.2f"|format(total_debitos) }}
+              </td>
+              <td colspan="2"></td>
+            </tr>
+          </tfoot>
+        </table>
+        {% else %}
+        <div style="color:var(--text3);font-size:13px;text-align:center;padding:16px 0;">
+          Nenhum débito registrado.
+          <br><span style="font-size:12px;">Clique em "📷 Importar via DETRANET" para consultar.</span>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
     <!-- Info -->
     <div style="font-size:11px;color:var(--text3);padding:0 4px;">
       Criada em {{ os.criado_em[:16] if os.criado_em else '—' }} ·
@@ -366,6 +450,71 @@
   </div><!-- /right -->
 </div>
 
+<!-- ── MODAL DÉBITOS DETRANET ── -->
+<div class="modal-overlay" id="modal-debitos" onclick="if(event.target===this)fecharModalDebitos()">
+  <div class="modal-box" style="max-width:620px;">
+    <div class="modal-title">📷 Importar Débitos do DETRANET</div>
+
+    <!-- Step 1: upload -->
+    <div id="deb-step1">
+      <p style="font-size:13px;color:var(--text2);margin-bottom:16px;">
+        Tire um <strong>print da tela</strong> do DETRANET com os débitos do veículo e envie abaixo.
+        A IA vai ler e extrair automaticamente.
+      </p>
+      <div class="import-box" id="deb-drop" style="padding:24px 20px;">
+        <input type="file" id="deb-arquivo" accept="image/*" onchange="debOnFile(this)">
+        <div style="font-size:32px;margin-bottom:8px;">🖥️</div>
+        <div style="font-weight:600;font-size:14px;margin-bottom:4px;">Clique ou arraste o print aqui</div>
+        <div style="font-size:12px;color:var(--text3);">JPG, PNG, WEBP · Máx. 10 MB</div>
+      </div>
+      <div id="deb-file-info" style="display:none;margin-top:12px;">
+        <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;
+                    background:var(--surface2);border-radius:10px;border:1px solid var(--border2);">
+          <span style="font-size:20px;">🖼️</span>
+          <div style="flex:1;">
+            <div id="deb-fname" style="font-weight:600;font-size:13px;"></div>
+          </div>
+          <button class="btn btn-ghost btn-sm" onclick="debLimpar()">✕</button>
+        </div>
+        <button class="btn btn-primary" style="width:100%;margin-top:10px;" onclick="debProcessar()">
+          🤖 Extrair Débitos com IA
+        </button>
+      </div>
+      <div id="deb-loading" style="display:none;text-align:center;padding:24px;color:var(--text3);">
+        <div style="font-size:28px;margin-bottom:8px;">⚙️</div>
+        <div style="font-weight:600;">Analisando imagem...</div>
+        <div style="font-size:12px;margin-top:4px;">Aguarde até 30 segundos.</div>
+      </div>
+    </div>
+
+    <!-- Step 2: preview -->
+    <div id="deb-step2" style="display:none;">
+      <div style="font-size:13px;font-weight:700;margin-bottom:12px;">
+        🧾 <span id="deb-preview-count">0</span> débitos encontrados — revise antes de salvar:
+      </div>
+      <div style="overflow-x:auto;border-radius:8px;border:1px solid var(--border2);margin-bottom:14px;">
+        <table style="width:100%;border-collapse:collapse;font-size:12px;">
+          <thead>
+            <tr style="background:var(--surface2);">
+              <th style="padding:7px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:var(--text3);">Tipo</th>
+              <th style="padding:7px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:var(--text3);">Descrição</th>
+              <th style="padding:7px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:var(--text3);">Vencimento</th>
+              <th style="padding:7px 10px;text-align:right;font-size:10px;text-transform:uppercase;color:var(--text3);">Valor</th>
+              <th style="padding:7px 10px;text-align:center;font-size:10px;text-transform:uppercase;color:var(--text3);">Situação</th>
+            </tr>
+          </thead>
+          <tbody id="deb-preview-body"></tbody>
+        </table>
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;">
+        <button class="btn btn-ghost btn-sm" onclick="debVoltarStep1()">← Refazer</button>
+        <button class="btn btn-primary" onclick="debSalvar()">✅ Salvar Débitos</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
 <!-- ── MODAL EDITAR ── -->
 <div class="modal-overlay" id="modal-edit" onclick="if(event.target===this)this.classList.remove('open')">
   <div class="modal-box">
@@ -434,4 +583,117 @@
     </form>
   </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// ── Débitos DETRANET ──────────────────────────────────────────────────────────
+const OS_ID = {{ os.id }};
+let debArquivo = null;
+let debPendentes = [];
+
+function abrirModalDebitos() {
+  document.getElementById('modal-debitos').classList.add('open');
+}
+function fecharModalDebitos() {
+  document.getElementById('modal-debitos').classList.remove('open');
+  debLimpar();
+  debVoltarStep1();
+}
+
+const debDz = document.getElementById('deb-drop');
+debDz.addEventListener('dragover', e => { e.preventDefault(); debDz.classList.add('drag'); });
+debDz.addEventListener('dragleave', () => debDz.classList.remove('drag'));
+debDz.addEventListener('drop', e => {
+  e.preventDefault(); debDz.classList.remove('drag');
+  if (e.dataTransfer.files[0]) debSetFile(e.dataTransfer.files[0]);
+});
+
+function debOnFile(input) { if (input.files[0]) debSetFile(input.files[0]); }
+function debSetFile(f) {
+  debArquivo = f;
+  document.getElementById('deb-fname').textContent = f.name;
+  document.getElementById('deb-file-info').style.display = 'block';
+  document.getElementById('deb-drop').style.display = 'none';
+}
+function debLimpar() {
+  debArquivo = null;
+  document.getElementById('deb-file-info').style.display = 'none';
+  document.getElementById('deb-drop').style.display = '';
+  const inp = document.getElementById('deb-arquivo');
+  if (inp) inp.value = '';
+  document.getElementById('deb-loading').style.display = 'none';
+}
+function debVoltarStep1() {
+  document.getElementById('deb-step2').style.display = 'none';
+  document.getElementById('deb-step1').style.display = '';
+  debLimpar();
+}
+
+async function debProcessar() {
+  if (!debArquivo) return;
+  document.getElementById('deb-file-info').style.display = 'none';
+  document.getElementById('deb-loading').style.display = 'block';
+  try {
+    const fd = new FormData();
+    fd.append('arquivo', debArquivo);
+    const r    = await fetch('/despachante/api/ocr/debitos', { method:'POST', body: fd });
+    const data = await r.json();
+    if (!r.ok || data.erro) {
+      alert('Erro: ' + (data.erro || 'Falha na análise'));
+      document.getElementById('deb-loading').style.display = 'none';
+      document.getElementById('deb-file-info').style.display = 'block';
+      return;
+    }
+    debPendentes = data.debitos || [];
+    debMostrarPreview();
+  } catch (err) {
+    alert('Erro: ' + err.message);
+    document.getElementById('deb-loading').style.display = 'none';
+    document.getElementById('deb-file-info').style.display = 'block';
+  }
+}
+
+function debMostrarPreview() {
+  document.getElementById('deb-loading').style.display = 'none';
+  document.getElementById('deb-step1').style.display = 'none';
+  document.getElementById('deb-step2').style.display = '';
+  document.getElementById('deb-preview-count').textContent = debPendentes.length;
+
+  const tbody = document.getElementById('deb-preview-body');
+  tbody.innerHTML = '';
+  debPendentes.forEach(d => {
+    const tr = document.createElement('tr');
+    const cor = d.situacao === 'pago' ? 'var(--green)' : d.situacao === 'parcelado' ? 'var(--blue)' : 'var(--red)';
+    tr.innerHTML = `
+      <td style="padding:7px 10px;border-bottom:1px solid var(--border);font-weight:700;">${d.tipo||'—'}</td>
+      <td style="padding:7px 10px;border-bottom:1px solid var(--border);color:var(--text2);">${d.descricao||'—'}</td>
+      <td style="padding:7px 10px;border-bottom:1px solid var(--border);font-family:monospace;font-size:11px;">${d.vencimento||'—'}</td>
+      <td style="padding:7px 10px;border-bottom:1px solid var(--border);text-align:right;font-weight:700;color:var(--red);">${d.valor||'—'}</td>
+      <td style="padding:7px 10px;border-bottom:1px solid var(--border);text-align:center;color:${cor};font-size:11px;font-weight:700;">${d.situacao||'em aberto'}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+async function debSalvar() {
+  if (!debPendentes.length) return;
+  try {
+    const r = await fetch(`/despachante/api/os/${OS_ID}/debitos/salvar`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ debitos: debPendentes }),
+    });
+    const data = await r.json();
+    if (data.ok) { fecharModalDebitos(); location.reload(); }
+    else alert('Erro ao salvar: ' + (data.erro || 'Tente novamente'));
+  } catch (err) { alert('Erro: ' + err.message); }
+}
+
+async function deletarDebito(id) {
+  if (!confirm('Remover este débito?')) return;
+  const r = await fetch(`/despachante/api/debitos/${id}`, { method: 'DELETE' });
+  if ((await r.json()).ok) location.reload();
+}
+</script>
 {% endblock %}
