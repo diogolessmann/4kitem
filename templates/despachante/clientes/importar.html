@@ -15,7 +15,7 @@
 }
 .import-box:hover, .import-box.drag { border-color:var(--accent); background:rgba(99,102,241,.06); }
 .import-box input[type=file] {
-  position:absolute; inset:0; opacity:0; cursor:pointer; width:100%; height:100%;
+  display: none;
 }
 .import-icon { font-size:48px; margin-bottom:12px; }
 .step-row {
@@ -90,7 +90,7 @@
 
   <!-- Upload -->
   <div class="card" id="upload-card" style="margin-bottom:20px;">
-    <div class="import-box" id="drop-zone">
+    <div class="import-box" id="drop-zone" onclick="document.getElementById('arquivo').click()" style="cursor:pointer;">
       <input type="file" id="arquivo" accept="image/*,.pdf" onchange="onFileChange(this)">
       <div class="import-icon">📁</div>
       <div style="font-size:16px;font-weight:600;color:var(--text);margin-bottom:8px;">
@@ -175,16 +175,23 @@
 let registros = [];
 let arquivo   = null;
 
-// Drag & drop
+// Drag & drop — o input fica display:none para não bloquear os eventos do div
 const dz = document.getElementById('drop-zone');
-dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag'); });
-dz.addEventListener('dragleave', () => dz.classList.remove('drag'));
+
+['dragenter','dragover'].forEach(ev => {
+  dz.addEventListener(ev, e => { e.preventDefault(); e.stopPropagation(); dz.classList.add('drag'); });
+});
+['dragleave','dragend'].forEach(ev => {
+  dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.remove('drag'); });
+});
 dz.addEventListener('drop', e => {
-  e.preventDefault(); dz.classList.remove('drag');
+  e.preventDefault(); e.stopPropagation();
+  dz.classList.remove('drag');
   const file = e.dataTransfer.files[0];
   if (file) setArquivo(file);
 });
 
+// Fallback: escuta change no input (abre via dialog)
 function onFileChange(input) {
   if (input.files[0]) setArquivo(input.files[0]);
 }
