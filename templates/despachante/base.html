@@ -266,6 +266,9 @@
         <a href="{{ url_for('desp_chat') }}" class="nav-link {% if request.endpoint == 'desp_chat' %}active{% endif %}">
           <span class="icon">🤖</span> IA Amigo
         </a>
+        <a href="{{ url_for('desp_rag_admin') }}" class="nav-link {% if request.endpoint == 'desp_rag_admin' %}active{% endif %}">
+          <span class="icon">📚</span> Base de Conhecimento
+        </a>
         <a href="https://wa.me/{{ desp.whatsapp }}" target="_blank" class="nav-link">
           <span class="icon">💬</span> WhatsApp
         </a>

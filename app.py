@@ -2770,6 +2770,11 @@ from desp_db import (
     deletar_debito as desp_deletar_debito,
     total_debitos as desp_total_debitos,
 )
+try:
+    import desp_rag
+    _rag_ok = True
+except ImportError:
+    _rag_ok = False
 
 DESP_CONFIG = {
     "nome":         os.environ.get("DESP_NOME",       "DIOGO KAUE LESSMANN"),
@@ -3480,7 +3485,8 @@ IMPORTANTE: Retorne SOMENTE o JSON, nada mais.'''
 @app.route('/despachante/chat')
 @_desp_login_required
 def desp_chat():
-    return desp_render('chat.html')
+    stats_rag = desp_rag.db_stats() if _rag_ok else {'chunks': 0, 'documentos': 0, 'arquivos': []}
+    return desp_render('chat.html', rag_stats=stats_rag, rag_ok=_rag_ok)
 
 @app.route('/despachante/api/chat', methods=['POST'])
 @_desp_login_required
@@ -3489,6 +3495,23 @@ def desp_api_chat():
     msgs = data.get('messages', [])
     if not msgs:
         return jsonify({'erro': 'Sem mensagem'}), 400
+
+    # Tenta usar RAG primeiro
+    if _rag_ok:
+        try:
+            pergunta = msgs[-1].get('content', '') if msgs else ''
+            historico = [{'role': m['role'], 'content': m['content']} for m in msgs[:-1]]
+            resultado = desp_rag.chat(pergunta, historico)
+            return jsonify({
+                'ok':      True,
+                'resposta': resultado['resposta'],
+                'fontes':   resultado.get('fontes', []),
+                'chunks':   resultado.get('chunks', 0),
+            })
+        except Exception as e:
+            log.warning(f'desp_rag.chat falhou, fallback direto: {e}')
+
+    # Fallback: Groq direto (sem RAG)
     groq_key = os.environ.get('GROQ_API_KEY', '')
     if not groq_key:
         return jsonify({'erro': 'GROQ_API_KEY não configurada'}), 500
@@ -3513,9 +3536,97 @@ def desp_api_chat():
         )
         resp.raise_for_status()
         reply = resp.json()['choices'][0]['message']['content'].strip()
-        return jsonify({'ok': True, 'resposta': reply})
+        return jsonify({'ok': True, 'resposta': reply, 'fontes': [], 'chunks': 0})
     except Exception as e:
         log.error(f'desp_chat error: {e}')
+        return jsonify({'erro': str(e)}), 500
+
+
+# ── RAG Admin: Base de Conhecimento ─────────────────────────────────────────
+
+@app.route('/despachante/rag')
+@_desp_login_required
+def desp_rag_admin():
+    if not _rag_ok:
+        return desp_render('rag_admin.html', rag_ok=False, stats={}, arquivos=[])
+    stats = desp_rag.db_stats()
+    return desp_render('rag_admin.html', rag_ok=True, stats=stats,
+                       arquivos=stats.get('arquivos', []))
+
+
+@app.route('/despachante/rag/upload', methods=['POST'])
+@_desp_login_required
+def desp_rag_upload():
+    if not _rag_ok:
+        return jsonify({'erro': 'RAG não disponível'}), 500
+    f = request.files.get('arquivo')
+    if not f or not f.filename:
+        return jsonify({'erro': 'Nenhum arquivo enviado'}), 400
+
+    ext = f.filename.rsplit('.', 1)[-1].lower() if '.' in f.filename else ''
+    if ext == 'pdf':
+        dest_dir = desp_rag.PDFS_DIR
+    elif ext in ('doc', 'docx'):
+        dest_dir = desp_rag.DOCS_DIR
+    else:
+        return jsonify({'erro': 'Formato não suportado. Use PDF, DOC ou DOCX'}), 400
+
+    os.makedirs(dest_dir, exist_ok=True)
+    safe_name = f.filename.replace('/', '_').replace('\\', '_')
+    dest_path = os.path.join(dest_dir, safe_name)
+    f.save(dest_path)
+
+    try:
+        if ext == 'pdf':
+            salvos = desp_rag.ingest_pdf(dest_path)
+        else:
+            salvos = desp_rag.ingest_doc(dest_path)
+        stats = desp_rag.db_stats()
+        return jsonify({'ok': True, 'arquivo': safe_name, 'chunks': salvos,
+                        'total_chunks': stats['chunks'], 'total_docs': stats['documentos']})
+    except Exception as e:
+        log.error(f'desp_rag_upload error: {e}')
+        return jsonify({'erro': str(e)}), 500
+
+
+@app.route('/despachante/rag/stats')
+@_desp_login_required
+def desp_rag_stats():
+    if not _rag_ok:
+        return jsonify({'chunks': 0, 'documentos': 0, 'arquivos': []})
+    return jsonify(desp_rag.db_stats())
+
+
+@app.route('/despachante/rag/delete', methods=['POST'])
+@_desp_login_required
+def desp_rag_delete():
+    """Remove um documento da base vetorial e do disco."""
+    if not _rag_ok:
+        return jsonify({'erro': 'RAG não disponível'}), 500
+    data = request.get_json(silent=True) or {}
+    nome = data.get('arquivo', '').strip()
+    if not nome:
+        return jsonify({'erro': 'Nome do arquivo não informado'}), 400
+
+    try:
+        col = desp_rag.get_collection()
+        if col:
+            # remove todos os chunks deste arquivo
+            results = col.get(where={'source': nome})
+            ids_to_del = results.get('ids', [])
+            if ids_to_del:
+                col.delete(ids=ids_to_del)
+
+        # remove arquivo físico
+        for pasta in (desp_rag.PDFS_DIR, desp_rag.DOCS_DIR):
+            caminho = os.path.join(pasta, nome)
+            if os.path.exists(caminho):
+                os.remove(caminho)
+                break
+
+        return jsonify({'ok': True, 'removidos': len(ids_to_del) if col else 0})
+    except Exception as e:
+        log.error(f'desp_rag_delete error: {e}')
         return jsonify({'erro': str(e)}), 500
 
 

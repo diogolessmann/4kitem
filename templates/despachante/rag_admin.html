@@ -1,0 +1,355 @@
+{% extends "despachante/base.html" %}
+
+{% block title %}Base de Conhecimento · Lessmann{% endblock %}
+{% block topbar_title %}📚 Base de Conhecimento (IA){% endblock %}
+{% block topbar_actions %}
+  <a href="{{ url_for('desp_chat') }}" class="btn btn-ghost btn-sm">← IA Amigo</a>
+{% endblock %}
+
+{% block extra_style %}
+.rag-grid { display: grid; grid-template-columns: 1fr 320px; gap: 16px; }
+@media (max-width: 860px) { .rag-grid { grid-template-columns: 1fr; } }
+
+.stat-card {
+  background: var(--surface2); border: 1px solid var(--border2);
+  border-radius: 10px; padding: 14px 18px;
+  display: flex; align-items: center; gap: 14px;
+}
+.stat-icon { font-size: 28px; }
+.stat-val  { font-size: 22px; font-weight: 800; line-height: 1; }
+.stat-lbl  { font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: .5px; margin-top: 2px; }
+
+.upload-box {
+  border: 2px dashed var(--border2); border-radius: 12px;
+  padding: 36px 24px; text-align: center;
+  background: var(--surface2); cursor: pointer; transition: all .2s;
+}
+.upload-box:hover, .upload-box.drag { border-color: var(--accent); background: rgba(99,102,241,.06); }
+.upload-box input[type=file] { display: none; }
+
+.doc-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 14px; border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+.doc-row:last-child { border-bottom: none; }
+.doc-row:hover { background: var(--surface2); }
+.doc-name { flex: 1; font-weight: 500; word-break: break-all; }
+.doc-ext {
+  font-size: 10px; font-weight: 700; padding: 2px 6px;
+  border-radius: 4px; text-transform: uppercase;
+}
+.doc-ext.pdf { background: rgba(239,68,68,.15); color: var(--red); }
+.doc-ext.doc { background: rgba(59,130,246,.15); color: var(--blue); }
+.doc-ext.docx { background: rgba(59,130,246,.15); color: var(--blue); }
+
+#upload-progress { display: none; margin-top: 14px; }
+#upload-bar {
+  height: 6px; border-radius: 3px; background: var(--accent);
+  width: 0; transition: width .3s;
+}
+{% endblock %}
+
+{% block content %}
+{% if not rag_ok %}
+<div class="card" style="text-align:center;padding:40px;">
+  <div style="font-size:48px;margin-bottom:14px;">⚠️</div>
+  <div style="font-size:16px;font-weight:700;margin-bottom:8px;">RAG não disponível</div>
+  <div style="font-size:13px;color:var(--text3);max-width:400px;margin:0 auto;">
+    Os pacotes <code>sentence-transformers</code>, <code>chromadb</code> e <code>groq</code>
+    precisam estar instalados. Execute:<br><br>
+    <code style="background:var(--surface2);padding:6px 12px;border-radius:6px;display:inline-block;">
+      pip install sentence-transformers chromadb groq python-docx
+    </code>
+  </div>
+</div>
+{% else %}
+
+<div class="rag-grid">
+
+  <!-- COLUNA ESQUERDA -->
+  <div style="display:flex;flex-direction:column;gap:14px;">
+
+    <!-- Estatísticas -->
+    <div class="card">
+      <div style="font-size:14px;font-weight:700;margin-bottom:14px;">📊 Estatísticas da Base</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div class="stat-card">
+          <div class="stat-icon">📄</div>
+          <div>
+            <div class="stat-val" id="stat-docs">{{ stats.documentos }}</div>
+            <div class="stat-lbl">Documentos</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">🧩</div>
+          <div>
+            <div class="stat-val" id="stat-chunks">{{ stats.chunks }}</div>
+            <div class="stat-lbl">Chunks indexados</div>
+          </div>
+        </div>
+      </div>
+      {% if stats.erro %}
+      <div style="margin-top:10px;padding:8px 12px;background:rgba(239,68,68,.1);
+                  border-radius:8px;font-size:12px;color:var(--red);">
+        ⚠️ {{ stats.erro }}
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Lista de documentos -->
+    <div class="card">
+      <div style="font-size:14px;font-weight:700;margin-bottom:14px;">📁 Documentos Indexados</div>
+      <div id="docs-list">
+        {% if arquivos %}
+        {% for arq in arquivos %}
+        {% set ext = arq.rsplit('.',1)[-1].lower() if '.' in arq else '' %}
+        <div class="doc-row" id="doc-{{ loop.index }}">
+          <span style="font-size:20px;">{{ '📄' if ext == 'pdf' else '📝' }}</span>
+          <span class="doc-name">{{ arq }}</span>
+          <span class="doc-ext {{ ext }}">{{ ext }}</span>
+          <button onclick="deletarDoc('{{ arq }}')"
+                  style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:13px;"
+                  title="Remover da base">✕</button>
+        </div>
+        {% endfor %}
+        {% else %}
+        <div id="empty-msg" style="text-align:center;padding:30px;color:var(--text3);font-size:13px;">
+          Nenhum documento na base ainda.<br>
+          <span style="font-size:12px;">Faça upload de PDFs ou Word à direita.</span>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Como funciona -->
+    <div class="card">
+      <div style="font-size:14px;font-weight:700;margin-bottom:12px;">💡 Como funciona</div>
+      <div style="font-size:13px;color:var(--text2);line-height:1.7;">
+        <p style="margin:0 0 8px;">
+          A <strong>Base de Conhecimento</strong> alimenta o assistente IA com documentos
+          específicos do escritório — tabelas de taxas, resolucões DETRAN-SC, manuais,
+          modelos de documentos, etc.
+        </p>
+        <p style="margin:0 0 8px;">
+          Quando você faz uma pergunta no chat, o sistema busca automaticamente os trechos
+          mais relevantes dos documentos e os usa como contexto para a resposta.
+        </p>
+        <p style="margin:0;">
+          Formatos suportados: <strong>PDF</strong>, <strong>DOC</strong> e <strong>DOCX</strong>.
+          Cada documento é dividido em blocos (chunks) e indexado com embeddings em PT-BR.
+        </p>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- COLUNA DIREITA -->
+  <div style="display:flex;flex-direction:column;gap:14px;">
+
+    <!-- Upload -->
+    <div class="card">
+      <div style="font-size:14px;font-weight:700;margin-bottom:14px;">⬆️ Adicionar Documento</div>
+
+      <div class="upload-box" id="drop-zone"
+           onclick="document.getElementById('arquivo-rag').click()">
+        <input type="file" id="arquivo-rag" accept=".pdf,.doc,.docx" onchange="onFileChange(this)">
+        <div style="font-size:36px;margin-bottom:10px;">📂</div>
+        <div style="font-weight:600;font-size:14px;margin-bottom:6px;">Clique ou arraste aqui</div>
+        <div style="font-size:12px;color:var(--text3);">PDF, DOC, DOCX · Máx. 20 MB</div>
+      </div>
+
+      <div id="file-info" style="display:none;margin-top:14px;">
+        <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;
+                    background:var(--surface2);border-radius:10px;border:1px solid var(--border2);">
+          <span style="font-size:22px;">📄</span>
+          <div style="flex:1;">
+            <div id="file-name" style="font-weight:600;font-size:13px;"></div>
+            <div id="file-size" style="font-size:11px;color:var(--text3);"></div>
+          </div>
+          <button class="btn btn-ghost btn-sm" onclick="limpar()">✕</button>
+        </div>
+        <button class="btn btn-primary" style="width:100%;margin-top:10px;" onclick="upload()">
+          🚀 Indexar Documento
+        </button>
+      </div>
+
+      <div id="upload-loading" style="display:none;text-align:center;padding:20px;color:var(--text3);">
+        <div style="font-size:28px;margin-bottom:8px;">⚙️</div>
+        <div style="font-weight:600;margin-bottom:4px;">Processando...</div>
+        <div style="font-size:12px;">Gerando embeddings. Pode levar alguns minutos.</div>
+        <div id="upload-progress" style="display:block;margin-top:12px;">
+          <div style="background:var(--surface3);border-radius:3px;height:6px;">
+            <div id="upload-bar"></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="upload-result" style="display:none;margin-top:12px;"></div>
+    </div>
+
+    <!-- Dicas -->
+    <div class="card">
+      <div style="font-size:13px;font-weight:700;margin-bottom:10px;">📋 Documentos recomendados</div>
+      <div style="font-size:12px;color:var(--text2);line-height:1.8;">
+        • Tabela de taxas DETRAN-SC (atual)<br>
+        • Resolucão de transferência de propriedade<br>
+        • Checklist de documentos por serviço<br>
+        • Tabela FIPE (referência)<br>
+        • Manual de serviços do despachante<br>
+        • Circulares e resoluções SENATRAN<br>
+        • Modelos de requerimentos e procurações
+      </div>
+    </div>
+
+  </div>
+</div>
+
+{% endif %}
+{% endblock %}
+
+{% block extra_script %}
+<script>
+let arquivo = null;
+
+// Drag & drop
+const dz = document.getElementById('drop-zone');
+if (dz) {
+  ['dragenter','dragover'].forEach(ev =>
+    dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.add('drag'); }));
+  ['dragleave','dragend'].forEach(ev =>
+    dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.remove('drag'); }));
+  dz.addEventListener('drop', e => {
+    e.preventDefault(); dz.classList.remove('drag');
+    if (e.dataTransfer.files[0]) setArquivo(e.dataTransfer.files[0]);
+  });
+}
+
+function onFileChange(input) { if (input.files[0]) setArquivo(input.files[0]); }
+
+function setArquivo(f) {
+  arquivo = f;
+  document.getElementById('file-name').textContent = f.name;
+  document.getElementById('file-size').textContent = (f.size / 1024).toFixed(0) + ' KB · ' + f.type;
+  document.getElementById('file-info').style.display = 'block';
+  document.getElementById('drop-zone').style.display = 'none';
+  document.getElementById('upload-result').style.display = 'none';
+}
+
+function limpar() {
+  arquivo = null;
+  document.getElementById('file-info').style.display = 'none';
+  document.getElementById('drop-zone').style.display = '';
+  document.getElementById('arquivo-rag').value = '';
+}
+
+async function upload() {
+  if (!arquivo) return;
+  document.getElementById('file-info').style.display = 'none';
+  document.getElementById('upload-loading').style.display = 'block';
+
+  // Barra de progresso fake (indexação é lenta)
+  let pct = 0;
+  const bar = document.getElementById('upload-bar');
+  const timer = setInterval(() => {
+    pct = Math.min(pct + (pct < 50 ? 2 : pct < 80 ? 0.8 : 0.2), 93);
+    bar.style.width = pct + '%';
+  }, 600);
+
+  try {
+    const fd = new FormData();
+    fd.append('arquivo', arquivo);
+    const r    = await fetch('/despachante/rag/upload', { method: 'POST', body: fd });
+    const data = await r.json();
+    clearInterval(timer);
+    bar.style.width = '100%';
+    await new Promise(res => setTimeout(res, 300));
+
+    document.getElementById('upload-loading').style.display = 'none';
+    const res = document.getElementById('upload-result');
+    res.style.display = 'block';
+
+    if (data.ok) {
+      res.style.background = 'rgba(34,197,94,.1)';
+      res.style.border = '1px solid rgba(34,197,94,.3)';
+      res.style.borderRadius = '8px';
+      res.style.padding = '10px 14px';
+      res.style.fontSize = '13px';
+      res.innerHTML = `✅ <strong>${data.arquivo}</strong> indexado com sucesso!<br>
+        <span style="color:var(--green);">${data.chunks} chunks novos adicionados</span> ·
+        Base total: ${data.total_chunks} chunks / ${data.total_docs} docs`;
+
+      // Atualiza stats
+      document.getElementById('stat-docs').textContent  = data.total_docs;
+      document.getElementById('stat-chunks').textContent = data.total_chunks;
+
+      // Adiciona à lista sem reload
+      const list = document.getElementById('docs-list');
+      const empty = document.getElementById('empty-msg');
+      if (empty) empty.remove();
+      const ext = data.arquivo.includes('.') ? data.arquivo.split('.').pop().toLowerCase() : '';
+      const icon = ext === 'pdf' ? '📄' : '📝';
+      const novo = document.createElement('div');
+      novo.className = 'doc-row';
+      novo.innerHTML = `
+        <span style="font-size:20px;">${icon}</span>
+        <span class="doc-name">${data.arquivo}</span>
+        <span class="doc-ext ${ext}">${ext}</span>
+        <button onclick="deletarDoc('${data.arquivo}')"
+                style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:13px;"
+                title="Remover da base">✕</button>
+      `;
+      list.appendChild(novo);
+      limpar();
+    } else {
+      res.style.background = 'rgba(239,68,68,.1)';
+      res.style.border = '1px solid rgba(239,68,68,.3)';
+      res.style.borderRadius = '8px';
+      res.style.padding = '10px 14px';
+      res.style.fontSize = '13px';
+      res.textContent = '✕ Erro: ' + (data.erro || 'Falha no processamento');
+      document.getElementById('file-info').style.display = 'block';
+    }
+  } catch (err) {
+    clearInterval(timer);
+    document.getElementById('upload-loading').style.display = 'none';
+    document.getElementById('file-info').style.display = 'block';
+    alert('Erro: ' + err.message);
+  }
+}
+
+async function deletarDoc(nome) {
+  if (!confirm(`Remover "${nome}" da base de conhecimento?`)) return;
+  try {
+    const r = await fetch('/despachante/rag/delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ arquivo: nome }),
+    });
+    const data = await r.json();
+    if (data.ok) {
+      // Remove visualmente e atualiza stats
+      document.querySelectorAll('.doc-row').forEach(row => {
+        if (row.querySelector('.doc-name')?.textContent === nome) row.remove();
+      });
+      // Atualiza stats via API
+      fetch('/despachante/rag/stats').then(r => r.json()).then(s => {
+        document.getElementById('stat-docs').textContent  = s.documentos;
+        document.getElementById('stat-chunks').textContent = s.chunks;
+        const list = document.getElementById('docs-list');
+        if (!list.querySelector('.doc-row')) {
+          list.innerHTML = `<div id="empty-msg" style="text-align:center;padding:30px;color:var(--text3);font-size:13px;">
+            Nenhum documento na base ainda.<br>
+            <span style="font-size:12px;">Faça upload de PDFs ou Word à direita.</span>
+          </div>`;
+        }
+      });
+    } else {
+      alert('Erro ao remover: ' + (data.erro || 'Tente novamente'));
+    }
+  } catch (err) {
+    alert('Erro: ' + err.message);
+  }
+}
+</script>
+{% endblock %}

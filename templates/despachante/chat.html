@@ -1,6 +1,17 @@
 {% extends 'despachante/base.html' %}
 {% block title %}IA Amigo — Despachante Lessmann{% endblock %}
 {% block topbar_title %}🤖 IA Amigo{% endblock %}
+{% block topbar_actions %}
+  {% if rag_ok and rag_stats.chunks > 0 %}
+  <a href="{{ url_for('desp_rag_admin') }}" class="btn btn-ghost btn-sm" title="{{ rag_stats.documentos }} docs · {{ rag_stats.chunks }} chunks">
+    📚 Base: {{ rag_stats.documentos }} doc{{ 's' if rag_stats.documentos != 1 }}
+  </a>
+  {% else %}
+  <a href="{{ url_for('desp_rag_admin') }}" class="btn btn-ghost btn-sm" title="Adicione documentos para turbinar a IA">
+    📚 Base vazia
+  </a>
+  {% endif %}
+{% endblock %}
 
 {% block extra_style %}
 .chat-wrap {
@@ -124,11 +135,16 @@ function useSuggestion(btn) {
   sendMsg();
 }
 
-function addMsg(role, text) {
+function addMsg(role, text, fontes) {
   const div = document.createElement('div');
   div.className = `msg ${role === 'user' ? 'user' : 'bot'}`;
   const avatar = role === 'user' ? '👤' : '🤖';
-  div.innerHTML = `<div class="msg-avatar">${avatar}</div><div class="msg-bubble">${escHtml(text)}</div>`;
+  let fontesHtml = '';
+  if (fontes && fontes.length) {
+    const lista = fontes.map(f => `<span style="background:rgba(99,102,241,.15);border-radius:4px;padding:1px 6px;margin-right:4px;font-size:11px;">📄 ${f}</span>`).join('');
+    fontesHtml = `<div style="margin-top:8px;padding-top:6px;border-top:1px solid rgba(255,255,255,.08);">${lista}</div>`;
+  }
+  div.innerHTML = `<div class="msg-avatar">${avatar}</div><div class="msg-bubble">${escHtml(text)}${fontesHtml}</div>`;
   messagesEl.appendChild(div);
   messagesEl.scrollTop = messagesEl.scrollHeight;
 }
@@ -159,7 +175,7 @@ async function sendMsg() {
     const d = await r.json();
     typingEl.classList.remove('show');
     if (d.ok) {
-      addMsg('bot', d.resposta);
+      addMsg('bot', d.resposta, d.fontes || []);
       history.push({ role: 'assistant', content: d.resposta });
       if (history.length > 40) history = history.slice(-40);
     } else {
