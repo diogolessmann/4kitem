@@ -150,12 +150,18 @@
     <div class="sec">
       <div class="sec-head">
         👤 Cliente
-        {% if os.cliente_id %}
-        <a href="https://wa.me/{{ desp.whatsapp }}?text={{ ('Olá, sou da Despachante Lessmann. Sobre sua O.S. ' ~ os.numero ~ ' — ' ~ servicos.get(os.servico, os.servico)) | urlencode }}"
-           target="_blank" class="whats-btn" style="font-size:12px;padding:5px 10px;">
-          💬 WhatsApp
-        </a>
-        {% endif %}
+        <div style="display:flex;gap:6px;">
+          {% if os.cliente_id %}
+            <a href="{{ url_for('desp_detalhe_cliente', id=os.cliente_id) }}"
+               class="btn btn-ghost btn-sm" style="font-size:11px;">Ver perfil →</a>
+          {% endif %}
+          {% if os.telefone %}
+          <a href="https://wa.me/55{{ os.telefone | replace('(','') | replace(')','') | replace(' ','') | replace('-','') }}?text={{ ('Olá ' ~ (os.cliente_nome or '') ~ ', passando da Despachante Lessmann sobre sua O.S. ' ~ os.numero ~ ' — ' ~ servicos.get(os.servico, os.servico) ~ '. Tudo certo?') | urlencode }}"
+             target="_blank" class="whats-btn" style="font-size:12px;padding:5px 10px;">
+            💬 WhatsApp
+          </a>
+          {% endif %}
+        </div>
       </div>
       <div class="sec-body">
         {% if os.cliente_nome %}

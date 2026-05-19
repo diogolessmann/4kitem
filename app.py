@@ -2916,9 +2916,16 @@ def desp_nova_os():
         os_id = desp_criar_os(dados_os)
         return redirect(url_for('desp_detalhe_os', id=os_id))
     placa_pre = request.args.get('placa', '')
+    cpf_pre   = request.args.get('cpf', '').strip()
     veiculo   = desp_buscar_placa(placa_pre) if placa_pre else None
-    cliente   = desp_get_cliente(veiculo['proprietario_id']) if veiculo and veiculo.get('proprietario_id') else None
-    return desp_render('os/nova.html', veiculo=veiculo, cliente=cliente, placa_pre=placa_pre)
+    if veiculo and veiculo.get('proprietario_id'):
+        cliente = desp_get_cliente(veiculo['proprietario_id'])
+    elif cpf_pre:
+        cliente = desp_buscar_cpf(cpf_pre)
+    else:
+        cliente = None
+    return desp_render('os/nova.html', veiculo=veiculo, cliente=cliente,
+                       placa_pre=placa_pre, cpf_pre=cpf_pre)
 
 
 @app.route('/despachante/os/<int:id>')
