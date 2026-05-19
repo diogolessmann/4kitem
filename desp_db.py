@@ -384,6 +384,31 @@ def init_db():
         "ALTER TABLE debitos_veiculo ADD COLUMN valor_nominal REAL DEFAULT 0",
         "ALTER TABLE debitos_veiculo ADD COLUMN valor_multa REAL DEFAULT 0",
         "ALTER TABLE debitos_veiculo ADD COLUMN valor_juros REAL DEFAULT 0",
+        # ── OS: campos extras ──
+        "ALTER TABLE ordens_servico ADD COLUMN total_parcelas INTEGER DEFAULT 1",
+        # ── Histórico / log de OS ──
+        """CREATE TABLE IF NOT EXISTS os_historico (
+            id         INTEGER PRIMARY KEY AUTOINCREMENT,
+            os_id      INTEGER NOT NULL REFERENCES ordens_servico(id) ON DELETE CASCADE,
+            status     TEXT,
+            nota       TEXT,
+            usuario    TEXT    DEFAULT 'Diogo',
+            criado_em  TEXT    DEFAULT CURRENT_TIMESTAMP
+        )""",
+        "CREATE INDEX IF NOT EXISTS idx_os_hist_os ON os_historico(os_id)",
+        # ── Parcelas de pagamento ──
+        """CREATE TABLE IF NOT EXISTS os_parcelas (
+            id             INTEGER PRIMARY KEY AUTOINCREMENT,
+            os_id          INTEGER NOT NULL REFERENCES ordens_servico(id) ON DELETE CASCADE,
+            numero         INTEGER NOT NULL,
+            valor          REAL    NOT NULL,
+            vencimento     TEXT,
+            pago_em        TEXT,
+            forma_pagamento TEXT,
+            observacao     TEXT,
+            criado_em      TEXT    DEFAULT CURRENT_TIMESTAMP
+        )""",
+        "CREATE INDEX IF NOT EXISTS idx_parcelas_os ON os_parcelas(os_id)",
     ]
     for sql in _migrations:
         try:
@@ -948,3 +973,213 @@ def total_debitos(os_id: int) -> float:
     ).fetchone()
     conn.close()
     return float(row[0])
+
+
+# ── Histórico da O.S. ────────────────────────────────────────────────────────
+
+def registrar_historico(os_id: int, status: str, nota: str = "", usuario: str = "Diogo"):
+    conn = get_conn()
+    conn.execute(
+        "INSERT INTO os_historico (os_id, status, nota, usuario) VALUES (?,?,?,?)",
+        (os_id, status, nota, usuario)
+    )
+    conn.commit()
+    conn.close()
+
+
+def get_historico_os(os_id: int) -> list:
+    conn = get_conn()
+    rows = conn.execute(
+        "SELECT id, status, nota, usuario, criado_em FROM os_historico WHERE os_id=? ORDER BY id ASC",
+        (os_id,)
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+# ── Parcelas de pagamento ────────────────────────────────────────────────────
+
+def criar_parcelas(os_id: int, total_parcelas: int, valor_total: float,
+                   vencimento_1: str = None, forma: str = "") -> list:
+    """Cria N parcelas iguais para uma O.S. Retorna lista das parcelas criadas."""
+    conn = get_conn()
+    # Remove parcelas antigas se existirem
+    conn.execute("DELETE FROM os_parcelas WHERE os_id=?", (os_id,))
+    valor_parc = round(valor_total / total_parcelas, 2)
+    # Ajuste de centavos na última parcela
+    resto = round(valor_total - valor_parc * total_parcelas, 2)
+    criadas = []
+    from datetime import date, timedelta
+    try:
+        base = date.fromisoformat(vencimento_1) if vencimento_1 else date.today()
+    except Exception:
+        base = date.today()
+    for i in range(1, total_parcelas + 1):
+        venc = (base + timedelta(days=30 * (i - 1))).isoformat()
+        val  = valor_parc + (resto if i == total_parcelas else 0)
+        cur = conn.execute("""
+            INSERT INTO os_parcelas (os_id, numero, valor, vencimento, forma_pagamento)
+            VALUES (?,?,?,?,?)
+        """, (os_id, i, val, venc, forma))
+        criadas.append({"id": cur.lastrowid, "numero": i, "valor": val,
+                        "vencimento": venc, "pago_em": None})
+    conn.execute("UPDATE ordens_servico SET total_parcelas=? WHERE id=?",
+                 (total_parcelas, os_id))
+    conn.commit()
+    conn.close()
+    return criadas
+
+
+def get_parcelas(os_id: int) -> list:
+    conn = get_conn()
+    rows = conn.execute(
+        "SELECT id, numero, valor, vencimento, pago_em, forma_pagamento, observacao "
+        "FROM os_parcelas WHERE os_id=? ORDER BY numero ASC",
+        (os_id,)
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def dar_baixa_parcela(parcela_id: int, forma: str, observacao: str = "") -> dict:
+    """Marca uma parcela como paga. Atualiza campo 'pago' da OS."""
+    conn = get_conn()
+    row = conn.execute(
+        "SELECT os_id, valor, pago_em FROM os_parcelas WHERE id=?", (parcela_id,)
+    ).fetchone()
+    if not row:
+        conn.close()
+        return {"erro": "Parcela não encontrada"}
+    if row["pago_em"]:
+        conn.close()
+        return {"erro": "Parcela já está paga"}
+
+    agora = datetime.now().isoformat()
+    conn.execute(
+        "UPDATE os_parcelas SET pago_em=?, forma_pagamento=?, observacao=? WHERE id=?",
+        (agora, forma, observacao, parcela_id)
+    )
+    # Recalcula total pago na OS
+    total_pago = conn.execute(
+        "SELECT COALESCE(SUM(valor),0) FROM os_parcelas WHERE os_id=? AND pago_em IS NOT NULL",
+        (row["os_id"],)
+    ).fetchone()[0]
+    conn.execute(
+        "UPDATE ordens_servico SET pago=?, atualizado_em=? WHERE id=?",
+        (round(total_pago, 2), agora, row["os_id"])
+    )
+    conn.commit()
+    conn.close()
+    return {"ok": True, "pago_em": agora, "total_pago": round(total_pago, 2)}
+
+
+def estornar_parcela(parcela_id: int) -> dict:
+    """Desfaz o pagamento de uma parcela."""
+    conn = get_conn()
+    row = conn.execute("SELECT os_id FROM os_parcelas WHERE id=?", (parcela_id,)).fetchone()
+    if not row:
+        conn.close()
+        return {"erro": "Parcela não encontrada"}
+    conn.execute(
+        "UPDATE os_parcelas SET pago_em=NULL, forma_pagamento=NULL, observacao=NULL WHERE id=?",
+        (parcela_id,)
+    )
+    total_pago = conn.execute(
+        "SELECT COALESCE(SUM(valor),0) FROM os_parcelas WHERE os_id=? AND pago_em IS NOT NULL",
+        (row["os_id"],)
+    ).fetchone()[0]
+    conn.execute("UPDATE ordens_servico SET pago=? WHERE id=?",
+                 (round(total_pago, 2), row["os_id"]))
+    conn.commit()
+    conn.close()
+    return {"ok": True}
+
+
+# ── Busca global ────────────────────────────────────────────────────────────
+
+def busca_global(q: str, limit: int = 10) -> dict:
+    """Busca clientes, veículos e OS por qualquer termo."""
+    conn = get_conn()
+    b = f"%{q}%"
+    clientes = conn.execute("""
+        SELECT id, nome, cpf, telefone, cidade
+        FROM clientes
+        WHERE nome LIKE ? OR cpf LIKE ? OR telefone LIKE ?
+        ORDER BY nome LIMIT ?
+    """, (b, b, b, limit)).fetchall()
+
+    veiculos = conn.execute("""
+        SELECT v.id, v.placa, v.marca, v.modelo, v.ano_fab,
+               c.nome AS proprietario, c.telefone
+        FROM veiculos v
+        LEFT JOIN clientes c ON c.id = v.proprietario_id
+        WHERE v.placa LIKE ? OR v.renavam LIKE ? OR v.chassi LIKE ?
+        ORDER BY v.placa LIMIT ?
+    """, (b, b, b, limit)).fetchall()
+
+    ordens = conn.execute("""
+        SELECT os.id, os.numero, os.servico, os.status, os.pago, os.total,
+               c.nome AS cliente_nome, c.telefone,
+               v.placa
+        FROM ordens_servico os
+        LEFT JOIN clientes c ON c.id = os.cliente_id
+        LEFT JOIN veiculos v ON v.id = os.veiculo_id
+        WHERE os.numero LIKE ? OR c.nome LIKE ? OR v.placa LIKE ? OR c.cpf LIKE ?
+        ORDER BY os.id DESC LIMIT ?
+    """, (b, b, b, b, limit)).fetchall()
+
+    conn.close()
+    return {
+        "clientes": [dict(r) for r in clientes],
+        "veiculos":  [dict(r) for r in veiculos],
+        "ordens":    [dict(r) for r in ordens],
+    }
+
+
+# ── Relatório de retenção ────────────────────────────────────────────────────
+
+def relatorio_retencao(ano: int, servico: str = None) -> list:
+    """
+    Retorna todos os clientes que fizeram serviço no ano informado,
+    agrupados com dados para campanha de retenção no próximo ano.
+    """
+    conn = get_conn()
+    where = ["strftime('%Y', os.criado_em) = ?"]
+    params = [str(ano)]
+    if servico:
+        where.append("os.servico = ?")
+        params.append(servico)
+    rows = conn.execute(f"""
+        SELECT
+          os.id       AS os_id,
+          os.numero,
+          os.servico,
+          os.status,
+          os.criado_em,
+          os.exercicio,
+          os.honorarios,
+          os.total,
+          os.pago,
+          c.id        AS cliente_id,
+          c.nome,
+          c.cpf,
+          c.telefone,
+          c.cidade,
+          v.placa,
+          v.marca,
+          v.modelo,
+          v.ano_fab,
+          CASE
+            WHEN v.placa GLOB '*[0-9]'   THEN SUBSTR(v.placa,-1,1)
+            WHEN v.placa GLOB '*[A-Z][0-9][0-9][0-9]' THEN SUBSTR(v.placa,-2,1)
+            ELSE ''
+          END AS final_placa
+        FROM ordens_servico os
+        LEFT JOIN clientes c ON c.id = os.cliente_id
+        LEFT JOIN veiculos v ON v.id = os.veiculo_id
+        WHERE {' AND '.join(where)}
+          AND os.status != 'cancelada'
+        ORDER BY os.criado_em DESC
+    """, params).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]

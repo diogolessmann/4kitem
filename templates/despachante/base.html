@@ -269,6 +269,9 @@
         <a href="{{ url_for('desp_rag_admin') }}" class="nav-link {% if request.endpoint == 'desp_rag_admin' %}active{% endif %}">
           <span class="icon">📚</span> Base de Conhecimento
         </a>
+        <a href="{{ url_for('desp_rel_retencao_view') }}" class="nav-link {% if request.endpoint == 'desp_rel_retencao_view' %}active{% endif %}">
+          <span class="icon">🔄</span> Retenção de Clientes
+        </a>
         <a href="https://wa.me/{{ desp.whatsapp }}" target="_blank" class="nav-link">
           <span class="icon">💬</span> WhatsApp
         </a>
@@ -306,6 +309,17 @@
     <div class="topbar">
       <button class="burger" onclick="toggleSidebar()">☰</button>
       <div class="topbar-title">{% block topbar_title %}{% endblock %}</div>
+      <!-- Busca Global -->
+      <div style="position:relative;flex:1;max-width:340px;">
+        <input id="gSearchInput" type="text" placeholder="🔍  Buscar cliente, placa, O.S.  (Ctrl+K)"
+               autocomplete="off"
+               style="width:100%;padding:7px 14px;background:var(--surface2);border:1px solid var(--border2);
+                      border-radius:8px;color:var(--text);font-size:13px;font-family:inherit;outline:none;">
+        <div id="gSearchDrop" style="display:none;position:absolute;top:calc(100% + 6px);left:0;right:0;
+             background:var(--surface);border:1px solid var(--border2);border-radius:10px;
+             z-index:500;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,.4);">
+        </div>
+      </div>
       <div class="topbar-actions">{% block topbar_actions %}{% endblock %}</div>
     </div>
     <div class="content">
@@ -331,6 +345,116 @@ function closeSidebar() {
   document.getElementById('sidebar').classList.remove('open');
   document.getElementById('overlay').classList.remove('show');
 }
+
+// ── Busca Global ──────────────────────────────────────────────────────────────
+(function(){
+  const inp  = document.getElementById('gSearchInput');
+  const drop = document.getElementById('gSearchDrop');
+  let timer  = null;
+
+  // Ctrl+K abre a busca
+  document.addEventListener('keydown', e => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+      e.preventDefault(); inp.focus(); inp.select();
+    }
+    if (e.key === 'Escape') { drop.style.display = 'none'; inp.blur(); }
+  });
+
+  inp.addEventListener('input', () => {
+    clearTimeout(timer);
+    const q = inp.value.trim();
+    if (q.length < 2) { drop.style.display = 'none'; return; }
+    timer = setTimeout(() => buscar(q), 220);
+  });
+
+  inp.addEventListener('focus', () => {
+    if (inp.value.trim().length >= 2) drop.style.display = 'block';
+  });
+
+  document.addEventListener('click', e => {
+    if (!inp.contains(e.target) && !drop.contains(e.target))
+      drop.style.display = 'none';
+  });
+
+  const statusIcon = { aberta:'🟡', andamento:'🔵', concluida:'✅', cancelada:'🔴', aguardando:'🟠' };
+
+  async function buscar(q) {
+    try {
+      const r    = await fetch('/despachante/api/busca?q=' + encodeURIComponent(q));
+      const data = await r.json();
+      renderDrop(data, q);
+    } catch {}
+  }
+
+  function renderDrop(data, q) {
+    const { clientes, veiculos, ordens } = data;
+    let html = '';
+
+    if (ordens.length) {
+      html += `<div style="padding:6px 12px 4px;font-size:10px;font-weight:700;
+                           text-transform:uppercase;letter-spacing:.5px;color:var(--text3);">
+                 Ordens de Serviço</div>`;
+      ordens.forEach(o => {
+        const ic = statusIcon[o.status] || '⚪';
+        const pend = (o.total - o.pago) > 0.01
+          ? `<span style="color:var(--yellow);font-size:11px;">R$ ${(o.total-o.pago).toFixed(2)} pend.</span>`
+          : `<span style="color:var(--green);font-size:11px;">✓ quitado</span>`;
+        html += `<a href="/despachante/os/${o.id}" style="display:flex;align-items:center;
+                   gap:10px;padding:8px 14px;text-decoration:none;border-top:1px solid var(--border);">
+                   <span style="font-size:16px;">${ic}</span>
+                   <div style="flex:1;min-width:0;">
+                     <div style="font-weight:600;font-size:13px;color:var(--text);">${o.numero} · ${o.cliente_nome||'—'}</div>
+                     <div style="font-size:11px;color:var(--text3);">${o.placa||'—'} · ${o.servico||''}</div>
+                   </div>
+                   ${pend}
+                 </a>`;
+      });
+    }
+
+    if (veiculos.length) {
+      html += `<div style="padding:6px 12px 4px;font-size:10px;font-weight:700;
+                           text-transform:uppercase;letter-spacing:.5px;color:var(--text3);
+                           border-top:1px solid var(--border);">
+                 Veículos</div>`;
+      veiculos.forEach(v => {
+        html += `<a href="/despachante/clientes" style="display:flex;align-items:center;
+                   gap:10px;padding:8px 14px;text-decoration:none;border-top:1px solid var(--border);">
+                   <span style="font-size:16px;">🚗</span>
+                   <div>
+                     <div style="font-weight:700;font-size:13px;color:var(--accent);font-family:monospace;">${v.placa}</div>
+                     <div style="font-size:11px;color:var(--text3);">${v.marca||''} ${v.modelo||''} · ${v.proprietario||'—'}</div>
+                   </div>
+                 </a>`;
+      });
+    }
+
+    if (clientes.length) {
+      html += `<div style="padding:6px 12px 4px;font-size:10px;font-weight:700;
+                           text-transform:uppercase;letter-spacing:.5px;color:var(--text3);
+                           border-top:1px solid var(--border);">
+                 Clientes</div>`;
+      clientes.forEach(c => {
+        html += `<a href="/despachante/clientes/${c.id}" style="display:flex;align-items:center;
+                   gap:10px;padding:8px 14px;text-decoration:none;border-top:1px solid var(--border);">
+                   <span style="font-size:16px;">👤</span>
+                   <div>
+                     <div style="font-weight:600;font-size:13px;color:var(--text);">${c.nome}</div>
+                     <div style="font-size:11px;color:var(--text3);">${c.cpf||''} · ${c.telefone||''}</div>
+                   </div>
+                 </a>`;
+      });
+    }
+
+    if (!html) {
+      html = `<div style="padding:16px;text-align:center;color:var(--text3);font-size:13px;">
+                Nenhum resultado para "<strong style="color:var(--text);">${q}</strong>"
+              </div>`;
+    }
+
+    drop.innerHTML = html;
+    drop.style.display = 'block';
+  }
+})();
 </script>
 {% block extra_script %}{% endblock %}
 </body>

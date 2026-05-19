@@ -2769,6 +2769,18 @@ from desp_db import (
     salvar_debitos_bulk as desp_salvar_debitos,
     deletar_debito as desp_deletar_debito,
     total_debitos as desp_total_debitos,
+    # Parcelas
+    criar_parcelas as desp_criar_parcelas,
+    get_parcelas as desp_get_parcelas,
+    dar_baixa_parcela as desp_baixa_parcela,
+    estornar_parcela as desp_estornar_parcela,
+    # Histórico
+    registrar_historico as desp_reg_hist,
+    get_historico_os as desp_get_historico,
+    # Busca global
+    busca_global as desp_busca_global,
+    # Retenção
+    relatorio_retencao as desp_rel_retencao,
 )
 try:
     import desp_rag
@@ -2914,20 +2926,150 @@ def desp_nova_os():
 def desp_detalhe_os(id):
     os_ = desp_get_os(id)
     if not os_: abort(404)
-    docs    = desp_get_docs(id)
-    debitos = desp_listar_debitos(id)
+    docs      = desp_get_docs(id)
+    debitos   = desp_listar_debitos(id)
     total_deb = desp_total_debitos(id)
+    parcelas  = desp_get_parcelas(id)
+    historico = desp_get_historico(id)
     return desp_render('os/detalhe.html', os=os_, docs=docs,
-                       debitos=debitos, total_debitos=total_deb)
+                       debitos=debitos, total_debitos=total_deb,
+                       parcelas=parcelas, historico=historico)
 
 
 @app.route('/despachante/os/<int:id>/status', methods=['POST'])
 @_desp_login_required
 def desp_atualizar_status(id):
     status = request.form.get('status', 'aberta')
+    nota   = request.form.get('nota', '')
     pago   = request.form.get('pago')
     desp_atualizar_os_status(id, status, float(pago) if pago else None)
+    desp_reg_hist(id, status, nota)
     return redirect(url_for('desp_detalhe_os', id=id))
+
+
+# ── Parcelas ─────────────────────────────────────────────────────────────────
+
+@app.route('/despachante/api/os/<int:os_id>/parcelas', methods=['POST'])
+@_desp_login_required
+def desp_api_criar_parcelas(os_id):
+    data = request.get_json(silent=True) or {}
+    n    = int(data.get('total_parcelas', 1))
+    os_  = desp_get_os(os_id)
+    if not os_:
+        return jsonify({'erro': 'OS não encontrada'}), 404
+    total = float(os_['honorarios']) + float(os_['custos'])
+    if total <= 0:
+        return jsonify({'erro': 'OS sem valor — defina honorários/custos primeiro'}), 400
+    parcelas = desp_criar_parcelas(
+        os_id, n, total,
+        vencimento_1=data.get('vencimento_1'),
+        forma=data.get('forma', '')
+    )
+    desp_reg_hist(os_id, os_['status'],
+                  f"Parcelamento em {n}x configurado (total R$ {total:.2f})")
+    return jsonify({'ok': True, 'parcelas': parcelas})
+
+
+@app.route('/despachante/api/parcela/<int:pid>/baixa', methods=['POST'])
+@_desp_login_required
+def desp_api_baixa_parcela(pid):
+    data = request.get_json(silent=True) or {}
+    forma = data.get('forma', 'Dinheiro')
+    obs   = data.get('observacao', '')
+    res   = desp_baixa_parcela(pid, forma, obs)
+    if 'erro' in res:
+        return jsonify(res), 400
+    # Registra histórico
+    from desp_db import get_conn as _gc
+    c = _gc()
+    row = c.execute("SELECT os_id, numero, valor FROM os_parcelas WHERE id=?", (pid,)).fetchone()
+    c.close()
+    if row:
+        desp_reg_hist(row['os_id'], None,
+                      f"Parcela {row['numero']} paga — R$ {row['valor']:.2f} ({forma})")
+    return jsonify(res)
+
+
+@app.route('/despachante/api/parcela/<int:pid>/estornar', methods=['POST'])
+@_desp_login_required
+def desp_api_estornar_parcela(pid):
+    res = desp_estornar_parcela(pid)
+    if 'erro' in res:
+        return jsonify(res), 400
+    return jsonify(res)
+
+
+@app.route('/despachante/print/recibo/<int:pid>')
+@_desp_login_required
+def desp_print_recibo(pid):
+    from desp_db import get_conn as _gc
+    c = _gc()
+    row = c.execute("""
+        SELECT p.*, os.numero AS os_numero, os.servico, os.total, os.pago,
+               os.total_parcelas,
+               c.nome, c.cpf, c.cnpj, c.telefone, c.cidade,
+               v.placa, v.marca, v.modelo
+        FROM os_parcelas p
+        JOIN ordens_servico os ON os.id = p.os_id
+        LEFT JOIN clientes c ON c.id = os.cliente_id
+        LEFT JOIN veiculos v ON v.id = os.veiculo_id
+        WHERE p.id=?
+    """, (pid,)).fetchone()
+    c.close()
+    if not row:
+        abort(404)
+    return desp_render('print/recibo.html', p=dict(row),
+                       servicos=DESP_SERVICOS, hoje=datetime.now())
+
+
+# ── Busca global ─────────────────────────────────────────────────────────────
+
+@app.route('/despachante/api/busca')
+@_desp_login_required
+def desp_api_busca():
+    q = request.args.get('q', '').strip()
+    if len(q) < 2:
+        return jsonify({'clientes': [], 'veiculos': [], 'ordens': []})
+    return jsonify(desp_busca_global(q, limit=8))
+
+
+# ── Relatório de Retenção ─────────────────────────────────────────────────────
+
+@app.route('/despachante/retencao')
+@_desp_login_required
+def desp_rel_retencao_view():
+    ano     = int(request.args.get('ano', datetime.now().year - 1))
+    servico = request.args.get('servico', '')
+    dados   = desp_rel_retencao(ano, servico or None)
+    anos    = list(range(datetime.now().year, 2022, -1))
+    return desp_render('relatorio/retencao.html',
+                       dados=dados, ano=ano, servico=servico,
+                       anos=anos, servicos=DESP_SERVICOS)
+
+
+@app.route('/despachante/retencao/csv')
+@_desp_login_required
+def desp_rel_retencao_csv():
+    import csv, io
+    ano     = int(request.args.get('ano', datetime.now().year - 1))
+    servico = request.args.get('servico', '')
+    dados   = desp_rel_retencao(ano, servico or None)
+    out = io.StringIO()
+    w = csv.writer(out)
+    w.writerow(['nome', 'cpf', 'telefone', 'placa', 'final_placa', 'servico',
+                'data', 'exercicio', 'honorarios', 'cidade', 'os_numero'])
+    for d in dados:
+        w.writerow([d.get('nome',''), d.get('cpf',''), d.get('telefone',''),
+                    d.get('placa',''), d.get('final_placa',''),
+                    DESP_SERVICOS.get(d.get('servico',''), d.get('servico','')),
+                    (d.get('criado_em','') or '')[:10],
+                    d.get('exercicio',''), d.get('honorarios',''),
+                    d.get('cidade',''), d.get('numero','')])
+    out.seek(0)
+    return out.getvalue(), 200, {
+        'Content-Type': 'text/csv; charset=utf-8',
+        'Content-Disposition': f'attachment; filename=retencao_{ano}.csv'
+    }
 
 
 @app.route('/despachante/os/<int:id>/editar', methods=['POST'])

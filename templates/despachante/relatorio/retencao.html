@@ -1,0 +1,190 @@
+{% extends "despachante/base.html" %}
+
+{% block title %}Retenção de Clientes · Lessmann{% endblock %}
+{% block topbar_title %}🔄 Retenção de Clientes{% endblock %}
+{% block topbar_actions %}
+  {% if dados %}
+  <a href="{{ url_for('desp_rel_retencao_csv', ano=ano, servico=servico) }}"
+     class="btn btn-secondary btn-sm">⬇️ Exportar CSV</a>
+  {% endif %}
+{% endblock %}
+
+{% block extra_style %}
+.filtros-bar { display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end; margin-bottom:20px; }
+.filtro-group { display:flex; flex-direction:column; gap:4px; }
+.filtro-label { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:var(--text3); }
+
+.stats-row { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:20px; }
+@media (max-width:700px) { .stats-row { grid-template-columns:1fr 1fr; } }
+
+.stat-box {
+  background:var(--surface); border:1px solid var(--border); border-radius:10px;
+  padding:14px 16px;
+}
+.stat-box .val { font-size:22px; font-weight:800; margin-bottom:2px; }
+.stat-box .lbl { font-size:11px; color:var(--text3); text-transform:uppercase; letter-spacing:.5px; }
+
+.retencao-table { width:100%; border-collapse:collapse; font-size:13px; }
+.retencao-table th {
+  background:var(--surface2); padding:9px 12px; text-align:left;
+  font-size:10px; text-transform:uppercase; letter-spacing:.5px;
+  color:var(--text3); border-bottom:1px solid var(--border2); position:sticky; top:0;
+}
+.retencao-table td { padding:9px 12px; border-bottom:1px solid var(--border); }
+.retencao-table tr:hover td { background:var(--surface2); }
+.retencao-table tr:last-child td { border-bottom:none; }
+
+.placa-badge {
+  font-family:monospace; font-size:13px; font-weight:800;
+  color:var(--accent); background:rgba(99,102,241,.1);
+  padding:2px 8px; border-radius:4px;
+}
+.final-badge {
+  font-family:monospace; font-size:12px; font-weight:800;
+  width:28px; height:28px; border-radius:50%;
+  display:inline-flex; align-items:center; justify-content:center;
+  background:var(--surface2); border:1px solid var(--border2);
+  color:var(--text2);
+}
+.zap-link {
+  display:inline-flex; align-items:center; gap:4px;
+  padding:4px 10px; border-radius:6px; font-size:11px; font-weight:600;
+  background:rgba(34,197,94,.12); color:var(--green);
+  text-decoration:none; border:1px solid rgba(34,197,94,.2);
+  transition:background .15s;
+}
+.zap-link:hover { background:rgba(34,197,94,.22); }
+
+.group-header {
+  background:var(--surface2); padding:8px 12px;
+  font-size:11px; font-weight:700; text-transform:uppercase;
+  letter-spacing:.5px; color:var(--text3); border-bottom:1px solid var(--border2);
+}
+{% endblock %}
+
+{% block content %}
+
+<!-- Filtros -->
+<form method="GET" class="filtros-bar">
+  <div class="filtro-group">
+    <span class="filtro-label">Ano do serviço</span>
+    <select name="ano" class="select" style="width:110px;" onchange="this.form.submit()">
+      {% for a in anos %}
+      <option value="{{ a }}" {% if a == ano %}selected{% endif %}>{{ a }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="filtro-group">
+    <span class="filtro-label">Tipo de serviço</span>
+    <select name="servico" class="select" style="width:240px;" onchange="this.form.submit()">
+      <option value="">Todos os serviços</option>
+      {% for k, v in servicos.items() %}
+      <option value="{{ k }}" {% if servico == k %}selected{% endif %}>{{ v }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <button type="submit" class="btn btn-primary btn-sm">🔍 Filtrar</button>
+</form>
+
+<!-- Estatísticas -->
+{% if dados %}
+{% set total_fat = dados | sum(attribute='honorarios') %}
+{% set com_tel   = dados | selectattr('telefone') | list | length %}
+{% set finais    = dados | map(attribute='final_placa') | select | list | unique | list %}
+<div class="stats-row">
+  <div class="stat-box">
+    <div class="val" style="color:var(--accent);">{{ dados|length }}</div>
+    <div class="lbl">Clientes em {{ ano }}</div>
+  </div>
+  <div class="stat-box">
+    <div class="val" style="color:var(--green);">{{ com_tel }}</div>
+    <div class="lbl">Com telefone</div>
+  </div>
+  <div class="stat-box">
+    <div class="val" style="color:var(--yellow);">R$ {{ "%.0f"|format(total_fat) }}</div>
+    <div class="lbl">Faturado (honorários)</div>
+  </div>
+  <div class="stat-box">
+    <div class="val" style="color:var(--blue);">{{ finais|length }}</div>
+    <div class="lbl">Finais de placa</div>
+  </div>
+</div>
+
+<!-- Aviso de campanha -->
+<div class="card" style="margin-bottom:16px;background:rgba(99,102,241,.06);border-color:rgba(99,102,241,.25);">
+  <div style="font-size:14px;font-weight:700;margin-bottom:8px;">
+    📣 Como usar este relatório para retenção
+  </div>
+  <div style="font-size:13px;color:var(--text2);line-height:1.7;">
+    Estes são seus clientes de <strong>{{ ano }}</strong>.
+    Use o botão <strong>⬇️ Exportar CSV</strong> para importar na campanha de WhatsApp
+    e avisar cada um quando o serviço dele vence no próximo ano ({{ ano + 1 }}).
+    Filtre por <em>Final de Placa</em> para disparar no mês certo.
+  </div>
+</div>
+
+<!-- Tabela agrupada por final de placa -->
+<div class="card" style="padding:0;overflow:hidden;">
+  <div style="overflow-x:auto;">
+    <table class="retencao-table">
+      <thead>
+        <tr>
+          <th>Final</th>
+          <th>Nome</th>
+          <th>CPF</th>
+          <th>Placa</th>
+          <th>Serviço</th>
+          <th>Data</th>
+          <th>Honorários</th>
+          <th>WhatsApp</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for d in dados | sort(attribute='final_placa') %}
+        <tr>
+          <td>
+            <span class="final-badge">{{ d.final_placa or '?' }}</span>
+          </td>
+          <td style="font-weight:600;">{{ d.nome or '—' }}</td>
+          <td style="font-family:monospace;font-size:11px;color:var(--text3);">{{ d.cpf or '—' }}</td>
+          <td>
+            {% if d.placa %}<span class="placa-badge">{{ d.placa }}</span>{% else %}—{% endif %}
+          </td>
+          <td style="font-size:12px;color:var(--text2);">{{ servicos.get(d.servico, d.servico) }}</td>
+          <td style="font-size:12px;color:var(--text3);">{{ (d.criado_em or '')[:10] }}</td>
+          <td style="font-weight:700;color:var(--green);">
+            R$ {{ "%.2f"|format(d.honorarios or 0) }}
+          </td>
+          <td>
+            {% if d.telefone %}
+            {% set tel = d.telefone | replace('(','') | replace(')','') | replace(' ','') | replace('-','') %}
+            {% set nome1 = (d.nome or 'cliente').split()[0] %}
+            {% set msg = 'Olá ' ~ nome1 ~ '! Sou o Diogo da Despachante Lessmann. Passando para lembrar que seu ' ~ servicos.get(d.servico, d.servico) ~ ' (' ~ (d.placa or '') ~ ') vence em ' ~ (ano + 1) ~ '. Podemos cuidar de tudo para você! (47) 99101-1351' %}
+            <a href="https://wa.me/55{{ tel }}?text={{ msg | urlencode }}"
+               target="_blank" class="zap-link">
+              💬 WhatsApp
+            </a>
+            {% else %}
+            <span style="font-size:11px;color:var(--text3);">Sem telefone</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% else %}
+<div class="card" style="text-align:center;padding:50px;">
+  <div style="font-size:48px;margin-bottom:14px;">📭</div>
+  <div style="font-size:16px;font-weight:700;margin-bottom:8px;">
+    Nenhum registro em {{ ano }}
+  </div>
+  <div style="font-size:13px;color:var(--text3);">
+    Tente um ano diferente ou verifique se há O.S. cadastradas para este período.
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}
