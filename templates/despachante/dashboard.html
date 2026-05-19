@@ -2,7 +2,7 @@
 
 {% block title %}Dashboard · Lessmann{% endblock %}
 {% block topbar_title %}
-  Bom dia, Diogo 👋
+  <span id="saudacao-txt">Olá, Diogo 👋</span>
 {% endblock %}
 {% block topbar_actions %}
   <a href="{{ url_for('desp_nova_os') }}" class="btn btn-primary btn-sm">
@@ -419,4 +419,17 @@
   </div><!-- /direita -->
 
 </div>
+{% endblock %}
+
+{% block extra_script %}
+<script>
+// Saudação dinâmica por horário
+(function(){
+  const h = new Date().getHours();
+  const s = h < 12 ? '☀️ Bom dia, Diogo!'
+           : h < 18 ? '🌤️ Boa tarde, Diogo!'
+           :           '🌙 Boa noite, Diogo!';
+  document.getElementById('saudacao-txt').textContent = s;
+})();
+</script>
 {% endblock %}

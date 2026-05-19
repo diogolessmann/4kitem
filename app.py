@@ -3728,6 +3728,26 @@ def desp_api_placa(placa):
     return jsonify({'encontrado': True, 'veiculo': v, 'cliente': c})
 
 
+@app.route('/despachante/api/busca/placa/<placa>/historico')
+@_desp_login_required
+def desp_api_placa_historico(placa):
+    """Retorna as últimas OS abertas/concluídas para uma placa — usado para alertar duplicata."""
+    conn = get_desp_conn()
+    ano  = datetime.now().strftime("%Y")
+    rows = conn.execute("""
+        SELECT os.id, os.numero, os.servico, os.status, os.criado_em,
+               os.honorarios, os.pago, os.exercicio,
+               c.nome AS cliente_nome
+        FROM veiculos v
+        JOIN ordens_servico os ON os.veiculo_id = v.id
+        LEFT JOIN clientes c ON c.id = os.cliente_id
+        WHERE replace(v.placa,'-','') = ? AND os.status != 'cancelada'
+        ORDER BY os.id DESC LIMIT 5
+    """, (placa.upper().replace('-',''),)).fetchall()
+    conn.close()
+    return jsonify({'historico': [dict(r) for r in rows]})
+
+
 @app.route('/despachante/api/busca/cpf/<cpf>')
 @_desp_login_required
 def desp_api_cpf(cpf):

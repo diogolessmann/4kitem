@@ -168,6 +168,10 @@
       <div class="found-banner" id="found-banner"></div>
       <div class="not-found-banner" id="not-found-banner">⚠️ Não cadastrado — preencha os dados abaixo</div>
 
+      <!-- Histórico de OS desta placa -->
+      <div id="historico-placa" style="display:none;background:var(--surface2);border:1px solid var(--border2);
+           border-radius:8px;padding:12px 14px;margin-bottom:14px;font-size:12px;"></div>
+
       <div id="veiculo-fields">
         <input type="hidden" name="veiculo_id" id="veiculo-id-field" value="{{ veiculo.id if veiculo else '' }}">
         <div class="form-row form-row-4">
@@ -841,19 +845,56 @@ let cpfDebounce = null;
 function buscarPlaca() {
   const placa = document.getElementById('placa-input').value.trim().toUpperCase().replace(/[^A-Z0-9]/g,'');
   if (placa.length < 7) { alert('Informe uma placa válida (7 caracteres)'); return; }
+
   fetch('/despachante/api/busca/placa/' + placa)
     .then(r => r.json())
     .then(data => {
       if (data.encontrado) {
         preencherVeiculo(data.veiculo);
         if (data.cliente) preencherCliente(data.cliente);
-        document.getElementById('found-banner').innerHTML = '✅ Veículo encontrado: ' + (data.veiculo.marca||'') + ' ' + (data.veiculo.modelo||'') + ' — ' + placa;
+        const vDesc = (data.veiculo.marca||'') + ' ' + (data.veiculo.modelo||'') + ' — ' + placa;
+        document.getElementById('found-banner').innerHTML = '✅ Veículo encontrado: ' + vDesc;
         document.getElementById('found-banner').classList.add('show');
         document.getElementById('not-found-banner').classList.remove('show');
+
+        // Verificar histórico de OS desta placa
+        fetch('/despachante/api/busca/placa/' + placa + '/historico')
+          .then(r => r.json())
+          .then(h => {
+            const el = document.getElementById('historico-placa');
+            if (!el) return;
+            if (!h.historico || h.historico.length === 0) { el.style.display='none'; return; }
+            const ano = new Date().getFullYear();
+            const anoAtual = h.historico.filter(o => (o.criado_em||'').startsWith(ano));
+            const statusIcon = {aberta:'🟡', andamento:'🔵', concluida:'✅', cancelada:'🔴'};
+
+            let html = `<div style="font-size:11px;font-weight:700;color:var(--text2);margin-bottom:6px;">
+              📋 Histórico desta placa (últimas ${h.historico.length} O.S.):</div>`;
+            if (anoAtual.length > 0) {
+              html = `<div style="font-size:12px;font-weight:700;color:var(--yellow);margin-bottom:6px;">
+                ⚠️ Esta placa já tem ${anoAtual.length} O.S. em ${ano}! Verifique antes de continuar.
+              </div>` + html;
+            }
+            html += h.historico.map(o => {
+              const ic = statusIcon[o.status] || '⚪';
+              const link = `/despachante/os/${o.id}`;
+              return `<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid var(--border);font-size:12px;">
+                <span>${ic}</span>
+                <a href="${link}" target="_blank" style="font-family:monospace;font-weight:700;color:var(--accent);text-decoration:none;">${o.numero}</a>
+                <span style="flex:1;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${o.servico}</span>
+                <span style="color:var(--text3);">${(o.criado_em||'').slice(0,10)}</span>
+                <span style="color:${o.status==='concluida'?'var(--green)':'var(--yellow)'};">${o.status}</span>
+              </div>`;
+            }).join('');
+            el.innerHTML = html;
+            el.style.display = 'block';
+          });
       } else {
         document.querySelector('[name="v_placa"]').value = placa;
         document.getElementById('not-found-banner').classList.add('show');
         document.getElementById('found-banner').classList.remove('show');
+        const el = document.getElementById('historico-placa');
+        if (el) el.style.display = 'none';
       }
     });
 }
