@@ -1,201 +1,386 @@
 {% extends "despachante/base.html" %}
 
 {% block title %}{{ cliente.nome }} · Clientes · Lessmann{% endblock %}
-{% block topbar_title %}{{ cliente.nome }}{% endblock %}
+{% block topbar_title %}
+  <span style="font-size:13px;color:var(--text3);font-weight:400;">
+    <a href="{{ url_for('desp_clientes') }}" style="color:var(--text3);text-decoration:none;">Clientes</a>
+    &rsaquo;
+  </span>
+  {{ cliente.nome }}
+{% endblock %}
 {% block topbar_actions %}
-  <a href="{{ url_for('desp_clientes') }}" class="btn btn-ghost btn-sm">← Clientes</a>
+  <button onclick="document.getElementById('modal-editar').style.display='flex'"
+          class="btn btn-secondary btn-sm">✏️ Editar</button>
   <a href="{{ url_for('desp_nova_os') }}?cpf={{ cliente.cpf or '' }}" class="btn btn-primary btn-sm">➕ Nova O.S.</a>
 {% endblock %}
 
 {% block extra_style %}
-.info-grid {
-  display:grid; grid-template-columns:repeat(auto-fill, minmax(200px,1fr)); gap:12px;
-  margin-bottom:24px;
+/* ── Layout ── */
+.cli-layout { display:grid; grid-template-columns:1fr 300px; gap:16px; }
+@media(max-width:900px){ .cli-layout { grid-template-columns:1fr; } }
+
+/* ── KPIs do cliente ── */
+.cli-kpi-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:16px; }
+@media(max-width:700px){ .cli-kpi-grid { grid-template-columns:1fr 1fr; } }
+.cli-kpi {
+  background:var(--surface); border:1px solid var(--border); border-radius:10px;
+  padding:12px 14px;
 }
-.info-item { display:flex; flex-direction:column; gap:3px; }
-.info-label { font-size:11px; color:var(--text3); text-transform:uppercase; letter-spacing:.5px; }
-.info-value { font-size:14px; color:var(--text); font-weight:500; }
-.placa-tag {
-  font-family:monospace; font-size:13px; font-weight:700;
-  background:var(--surface3); padding:3px 8px; border-radius:5px;
-  color:var(--accent); letter-spacing:.5px;
+.cli-kpi-val { font-size:20px; font-weight:800; color:var(--text); line-height:1; margin-bottom:3px; }
+.cli-kpi-lbl { font-size:11px; color:var(--text3); font-weight:500; }
+
+/* ── Info card ── */
+.sec { background:var(--surface); border:1px solid var(--border); border-radius:12px; margin-bottom:14px; }
+.sec-head {
+  padding:12px 18px; border-bottom:1px solid var(--border);
+  font-size:13px; font-weight:700; display:flex; align-items:center; justify-content:space-between;
 }
+.sec-body { padding:16px 18px; }
+
+/* ── Info grid ── */
+.info-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(180px,1fr)); gap:10px 20px; }
+.info-item { display:flex; flex-direction:column; gap:2px; }
+.info-label { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:var(--text3); }
+.info-value { font-size:13px; color:var(--text); font-weight:500; }
+
+/* ── Veículo card ── */
 .veiculo-card {
-  border:1px solid var(--border2); border-radius:10px; padding:14px 16px;
-  background:var(--surface2); margin-bottom:10px;
-  display:flex; gap:14px; align-items:center; flex-wrap:wrap;
+  border:1px solid var(--border2); border-radius:10px; padding:12px 14px;
+  background:var(--surface2); margin-bottom:8px;
+  display:flex; gap:12px; align-items:center; flex-wrap:wrap;
 }
-.section-title {
-  font-size:14px; font-weight:700; color:var(--text2);
-  text-transform:uppercase; letter-spacing:.5px;
-  margin:0 0 12px; padding-bottom:8px; border-bottom:1px solid var(--border);
+.placa-tag {
+  font-family:monospace; font-size:14px; font-weight:800;
+  background:var(--accent-soft); padding:4px 10px; border-radius:7px;
+  color:var(--accent); letter-spacing:1px; flex-shrink:0;
 }
+
+/* ── OS rows compactas ── */
+.os-row {
+  display:flex; align-items:center; gap:10px; padding:9px 0;
+  border-bottom:1px solid var(--border); text-decoration:none; color:inherit;
+  transition:background .1s;
+}
+.os-row:last-child { border-bottom:none; }
+.os-row:hover { background:var(--surface2); margin:0 -18px; padding-left:18px; padding-right:18px; }
+.os-dot-sm { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+.os-row-num { font-family:monospace; font-size:11px; font-weight:700; color:var(--accent); flex-shrink:0; }
+.os-row-svc { flex:1; font-size:12px; color:var(--text2); min-width:0;
+              white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.os-row-val { font-size:12px; font-weight:600; color:var(--text); flex-shrink:0; }
+.os-row-pend { font-size:11px; color:var(--orange); flex-shrink:0; }
+
+/* ── Modal editar ── */
+.modal-overlay {
+  display:none; position:fixed; inset:0; z-index:800;
+  background:rgba(0,0,0,.7); align-items:center; justify-content:center;
+}
+.modal-overlay.open { display:flex; }
+.modal-box {
+  background:var(--surface); border:1px solid var(--border2); border-radius:16px;
+  padding:24px; width:100%; max-width:680px; max-height:90vh; overflow-y:auto;
+}
+.modal-title { font-size:16px; font-weight:700; margin-bottom:16px; display:flex; justify-content:space-between; }
 {% endblock %}
 
 {% block content %}
 
-<!-- Dados pessoais -->
-<div class="card" style="margin-bottom:20px;">
-  <div class="section-title">👤 Dados Pessoais</div>
-  <div class="info-grid">
-    <div class="info-item">
-      <span class="info-label">Tipo</span>
-      <span class="info-value">{{ cliente.tipo or 'PF' }}</span>
+{# ── KPIs financeiros ── #}
+<div class="cli-kpi-grid">
+  <div class="cli-kpi">
+    <div class="cli-kpi-val">R$ {{ "%.0f"|format(fin.faturado or 0) }}</div>
+    <div class="cli-kpi-lbl">💰 Total faturado</div>
+  </div>
+  <div class="cli-kpi">
+    <div class="cli-kpi-val" style="color:var(--green);">R$ {{ "%.0f"|format(fin.recebido or 0) }}</div>
+    <div class="cli-kpi-lbl">✅ Recebido</div>
+  </div>
+  <div class="cli-kpi">
+    <div class="cli-kpi-val" style="color:{% if fin.pendente > 0 %}var(--orange){% else %}var(--green){% endif %};">
+      R$ {{ "%.0f"|format(fin.pendente or 0) }}
     </div>
-    <div class="info-item">
-      <span class="info-label">CPF</span>
-      <span class="info-value">{{ cliente.cpf or '—' }}</span>
-    </div>
-    {% if cliente.cnpj %}
-    <div class="info-item">
-      <span class="info-label">CNPJ</span>
-      <span class="info-value">{{ cliente.cnpj }}</span>
-    </div>
-    {% endif %}
-    <div class="info-item">
-      <span class="info-label">RG</span>
-      <span class="info-value">{{ cliente.rg or '—' }}</span>
-    </div>
-    <div class="info-item">
-      <span class="info-label">Nascimento</span>
-      <span class="info-value">{{ cliente.nascimento or '—' }}</span>
-    </div>
-    <div class="info-item">
-      <span class="info-label">Mãe</span>
-      <span class="info-value">{{ cliente.nome_mae or '—' }}</span>
-    </div>
-    <div class="info-item">
-      <span class="info-label">Telefone</span>
-      <span class="info-value">
-        {% if cliente.telefone %}
-          <a href="https://wa.me/55{{ cliente.telefone | replace('(','') | replace(')','') | replace(' ','') | replace('-','') }}"
-             target="_blank" style="color:var(--accent);">📱 {{ cliente.telefone }}</a>
-        {% else %}—{% endif %}
-      </span>
-    </div>
-    <div class="info-item">
-      <span class="info-label">E-mail</span>
-      <span class="info-value">{{ cliente.email or '—' }}</span>
-    </div>
-    <div class="info-item">
-      <span class="info-label">Endereço</span>
-      <span class="info-value" style="font-size:12px;">
-        {{ cliente.logradouro or '' }}{{ ', ' + cliente.numero if cliente.numero else '' }}
-        {{ cliente.complemento or '' }}<br>
-        {{ cliente.bairro or '' }}{{ ' — ' if cliente.bairro else '' }}{{ cliente.cidade or '' }}/{{ cliente.uf or 'SC' }}
-        {{ ' CEP ' + cliente.cep if cliente.cep else '' }}
-      </span>
-    </div>
-    <div class="info-item">
-      <span class="info-label">Cliente desde</span>
-      <span class="info-value">{{ cliente.criado_em[:10] if cliente.criado_em else '—' }}</span>
-    </div>
+    <div class="cli-kpi-lbl">⏳ Pendente</div>
+  </div>
+  <div class="cli-kpi">
+    <div class="cli-kpi-val">{{ fin.total_os or 0 }}</div>
+    <div class="cli-kpi-lbl">📋 Ordens de Serviço</div>
   </div>
 </div>
 
-<!-- Veículos -->
-<div class="card" style="margin-bottom:20px;">
-  <div class="section-title">🚗 Veículos ({{ cliente.veiculos | length }})</div>
-  {% if cliente.veiculos %}
-    {% for v in cliente.veiculos %}
-    <div class="veiculo-card">
-      <span class="placa-tag">{{ v.placa }}</span>
-      <div style="flex:1;min-width:160px;">
-        <div style="font-weight:600;font-size:14px;">
-          {{ v.marca or '' }} {{ v.modelo or '' }}
-          {% if v.ano_fab %}({{ v.ano_fab }}{% if v.ano_mod and v.ano_mod != v.ano_fab %}/{{ v.ano_mod }}{% endif %}){% endif %}
-        </div>
-        <div style="font-size:12px;color:var(--text3);">
-          RENAVAM: {{ v.renavam or '—' }} · Chassi: {{ v.chassi or '—' }}
-          {% if v.cor %} · {{ v.cor }}{% endif %}
-          {% if v.combustivel %} · {{ v.combustivel }}{% endif %}
-        </div>
-      </div>
-      <div style="font-size:12px;color:var(--text3);">
-        {{ v.total_os }} O.S.
-      </div>
-      <a href="{{ url_for('desp_lista_os') }}?q={{ v.placa }}" class="btn btn-ghost btn-sm">OS →</a>
-    </div>
-    {% endfor %}
-  {% else %}
-    <div style="color:var(--text3);font-size:13px;">Nenhum veículo vinculado.</div>
-  {% endif %}
-</div>
+<div class="cli-layout">
+  {# ── Coluna principal ── #}
+  <div>
 
-<!-- Histórico de O.S. -->
-<div class="card" style="padding:0;overflow:hidden;">
-  <div style="padding:16px 20px 0;">
-    <div class="section-title">📋 Histórico de O.S. ({{ cliente.historico | length }})</div>
-  </div>
-  {% if cliente.historico %}
-  <div class="table-wrap">
-    <table>
-      <thead>
-        <tr>
-          <th>N° O.S.</th>
-          <th>Serviço</th>
-          <th>Placa</th>
-          <th>Abertura</th>
-          <th>Total</th>
-          <th>Pago</th>
-          <th>Status</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for h in cliente.historico %}
-        {% set sl = status_labels.get(h.status, ('⚪','')) %}
-        <tr>
-          <td>
-            <a href="{{ url_for('desp_detalhe_os', id=h.id) }}"
-               style="font-family:monospace;font-weight:700;font-size:13px;">
-              {{ h.numero }}
-            </a>
-          </td>
-          <td style="max-width:180px;">
-            <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
-              {{ servicos.get(h.servico, h.servico) }}
-            </div>
-          </td>
-          <td>
-            {% if h.placa %}
-              <span style="font-family:monospace;font-size:12px;font-weight:700;
-                           background:var(--surface3);padding:2px 6px;border-radius:4px;
-                           color:var(--accent);">{{ h.placa }}</span>
-            {% else %}—{% endif %}
-          </td>
-          <td style="font-size:12px;color:var(--text3);">{{ h.criado_em[:10] if h.criado_em else '—' }}</td>
-          <td>R$ {{ "%.2f"|format(h.total) }}</td>
-          <td>
-            {% set pendente = h.total - h.pago %}
-            {% if pendente <= 0 %}
-              <span style="color:var(--green);font-weight:700;">✓</span>
-            {% else %}
-              <span style="color:var(--yellow);">R$ {{ "%.2f"|format(h.pago) }}</span>
-            {% endif %}
-          </td>
-          <td>
-            <span class="badge
-              {% if h.status == 'aberta' %}badge-yellow
-              {% elif h.status == 'andamento' %}badge-blue
-              {% elif h.status == 'concluida' %}badge-green
-              {% elif h.status == 'cancelada' %}badge-red
-              {% else %}badge-gray{% endif %}">
-              {{ sl[0] }} {{ sl[1] }}
+    {# ── Dados pessoais ── #}
+    <div class="sec">
+      <div class="sec-head">
+        👤 Dados Pessoais
+        <button onclick="document.getElementById('modal-editar').style.display='flex'"
+                class="btn btn-ghost btn-sm" style="font-size:11px;">✏️ Editar</button>
+      </div>
+      <div class="sec-body">
+        <div class="info-grid">
+          <div class="info-item">
+            <span class="info-label">Tipo</span>
+            <span class="info-value">{{ cliente.tipo or 'PF' }}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">CPF</span>
+            <span class="info-value" style="font-family:monospace;">{{ cliente.cpf or '—' }}</span>
+          </div>
+          {% if cliente.cnpj %}
+          <div class="info-item">
+            <span class="info-label">CNPJ</span>
+            <span class="info-value" style="font-family:monospace;">{{ cliente.cnpj }}</span>
+          </div>
+          {% endif %}
+          <div class="info-item">
+            <span class="info-label">RG</span>
+            <span class="info-value">{{ cliente.rg or '—' }}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Nascimento</span>
+            <span class="info-value">{{ cliente.nascimento or '—' }}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Nome da Mãe</span>
+            <span class="info-value">{{ cliente.nome_mae or '—' }}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Telefone</span>
+            <span class="info-value">
+              {% if cliente.telefone %}
+                <a href="https://wa.me/55{{ cliente.telefone | replace('(','') | replace(')','') | replace(' ','') | replace('-','') }}"
+                   target="_blank" style="color:var(--green);text-decoration:none;">
+                  💬 {{ cliente.telefone }}
+                </a>
+              {% else %}—{% endif %}
             </span>
-          </td>
-          <td>
-            <a href="{{ url_for('desp_detalhe_os', id=h.id) }}" class="btn btn-ghost btn-sm">→</a>
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-  {% else %}
-    <div style="padding:30px 20px;color:var(--text3);font-size:13px;">
-      Nenhuma O.S. registrada para este cliente.
+          </div>
+          <div class="info-item">
+            <span class="info-label">E-mail</span>
+            <span class="info-value">{{ cliente.email or '—' }}</span>
+          </div>
+          <div class="info-item" style="grid-column:1/-1;">
+            <span class="info-label">Endereço</span>
+            <span class="info-value" style="font-size:12px;">
+              {{ cliente.logradouro or '' }}{{ ', ' + cliente.numero if cliente.numero else '' }}
+              {{ cliente.complemento or '' }}
+              {% if cliente.bairro %} — {{ cliente.bairro }}{% endif %}
+              {% if cliente.cidade %} · {{ cliente.cidade }}/{{ cliente.uf or 'SC' }}{% endif %}
+              {% if cliente.cep %} · CEP {{ cliente.cep }}{% endif %}
+              {% if not (cliente.logradouro or cliente.cidade) %}—{% endif %}
+            </span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Cliente desde</span>
+            <span class="info-value">{{ cliente.criado_em[:10] if cliente.criado_em else '—' }}</span>
+          </div>
+        </div>
+      </div>
     </div>
-  {% endif %}
+
+    {# ── Histórico de OS ── #}
+    <div class="sec">
+      <div class="sec-head">
+        📋 Histórico de O.S.
+        <span style="font-size:11px;color:var(--text3);font-weight:400;">{{ cliente.historico | length }} registros</span>
+      </div>
+      <div class="sec-body" style="padding-top:4px;">
+        {% if cliente.historico %}
+          {% for h in cliente.historico %}
+          {% set pendente = h.total - h.pago %}
+          <a href="{{ url_for('desp_detalhe_os', id=h.id) }}" class="os-row">
+            <div class="os-dot-sm" style="background:
+              {% if h.status=='aberta' %}var(--yellow)
+              {% elif h.status=='andamento' %}var(--blue)
+              {% elif h.status=='concluida' %}var(--green)
+              {% elif h.status=='cancelada' %}var(--red)
+              {% else %}var(--text3){% endif %};"></div>
+            <span class="os-row-num">{{ h.numero }}</span>
+            <span class="os-row-svc">
+              {{ servicos.get(h.servico, h.servico) | truncate(32, true, '…') }}
+              {% if h.placa %}<span style="font-family:monospace;color:var(--accent);font-size:11px;"> · {{ h.placa }}</span>{% endif %}
+            </span>
+            <span class="os-row-val">R$ {{ "%.2f"|format(h.honorarios or 0) }}</span>
+            {% if pendente > 0.01 and h.status != 'cancelada' %}
+              <span class="os-row-pend">-R$ {{ "%.2f"|format(pendente) }}</span>
+            {% elif h.status != 'cancelada' %}
+              <span style="font-size:11px;color:var(--green);">✓</span>
+            {% endif %}
+            <span class="badge {% if h.status=='aberta' %}badge-yellow{% elif h.status=='andamento' %}badge-blue{% elif h.status=='concluida' %}badge-green{% elif h.status=='cancelada' %}badge-red{% else %}badge-gray{% endif %}"
+                  style="font-size:10px;flex-shrink:0;">{{ h.status }}</span>
+            <span style="font-size:11px;color:var(--text3);flex-shrink:0;">{{ h.criado_em[:10] if h.criado_em else '' }}</span>
+          </a>
+          {% endfor %}
+        {% else %}
+          <div style="color:var(--text3);font-size:13px;padding:20px 0;text-align:center;">
+            Nenhuma O.S. registrada para este cliente.
+          </div>
+        {% endif %}
+      </div>
+    </div>
+
+  </div>{# /coluna principal #}
+
+  {# ── Sidebar direita ── #}
+  <div>
+
+    {# ── Ações rápidas ── #}
+    <div class="sec" style="margin-bottom:14px;">
+      <div class="sec-head">⚡ Ações Rápidas</div>
+      <div class="sec-body" style="display:flex;flex-direction:column;gap:8px;">
+        <a href="{{ url_for('desp_nova_os') }}?cpf={{ cliente.cpf or '' }}"
+           class="btn btn-primary" style="justify-content:center;">➕ Nova O.S. para este cliente</a>
+        {% if cliente.telefone %}
+        <a href="https://wa.me/55{{ cliente.telefone | replace('(','') | replace(')','') | replace(' ','') | replace('-','') }}"
+           target="_blank" class="btn btn-success" style="justify-content:center;">
+          💬 WhatsApp
+        </a>
+        {% endif %}
+        <a href="{{ url_for('desp_lista_os') }}?q={{ cliente.nome | urlencode }}"
+           class="btn btn-secondary" style="justify-content:center;">
+          🔍 Ver todas as O.S.
+        </a>
+      </div>
+    </div>
+
+    {# ── Veículos ── #}
+    <div class="sec">
+      <div class="sec-head">
+        🚗 Veículos
+        <span style="font-size:11px;color:var(--text3);font-weight:400;">{{ cliente.veiculos | length }}</span>
+      </div>
+      <div class="sec-body">
+        {% if cliente.veiculos %}
+          {% for v in cliente.veiculos %}
+          <div class="veiculo-card">
+            <span class="placa-tag">{{ v.placa }}</span>
+            <div style="flex:1;min-width:0;">
+              <div style="font-weight:600;font-size:13px;">
+                {{ v.marca or '' }} {{ v.modelo or '' }}
+                {% if v.ano_fab %}({{ v.ano_fab }}{% if v.ano_mod and v.ano_mod != v.ano_fab %}/{{ v.ano_mod }}{% endif %}){% endif %}
+              </div>
+              <div style="font-size:11px;color:var(--text3);">
+                {% if v.renavam %}RENAVAM {{ v.renavam }}{% endif %}
+                {% if v.cor %} · {{ v.cor }}{% endif %}
+              </div>
+              <div style="font-size:11px;color:var(--text3);">{{ v.total_os }} O.S.</div>
+            </div>
+            <a href="{{ url_for('desp_lista_os') }}?q={{ v.placa }}"
+               class="btn btn-ghost btn-sm">OS →</a>
+          </div>
+          {% endfor %}
+        {% else %}
+          <div style="color:var(--text3);font-size:13px;text-align:center;padding:16px 0;">
+            Nenhum veículo vinculado.
+          </div>
+        {% endif %}
+      </div>
+    </div>
+
+  </div>{# /sidebar #}
 </div>
+
+{# ── Modal de Edição ── #}
+<div class="modal-overlay" id="modal-editar" onclick="if(event.target===this)this.style.display='none'">
+  <div class="modal-box">
+    <div class="modal-title">
+      ✏️ Editar Dados do Cliente
+      <button onclick="document.getElementById('modal-editar').style.display='none'"
+              style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:18px;">✕</button>
+    </div>
+    <form method="post" action="{{ url_for('desp_editar_cliente', id=cliente.id) }}">
+      <div class="form-row form-row-2">
+        <div class="form-group">
+          <label class="form-label">Nome *</label>
+          <input name="nome" class="input" value="{{ cliente.nome or '' }}" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Tipo</label>
+          <select name="tipo" class="select">
+            <option value="PF" {% if (cliente.tipo or 'PF') == 'PF' %}selected{% endif %}>Pessoa Física</option>
+            <option value="PJ" {% if cliente.tipo == 'PJ' %}selected{% endif %}>Pessoa Jurídica</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row form-row-3">
+        <div class="form-group">
+          <label class="form-label">CPF</label>
+          <input name="cpf" class="input" value="{{ cliente.cpf or '' }}" maxlength="14">
+        </div>
+        <div class="form-group">
+          <label class="form-label">RG</label>
+          <input name="rg" class="input" value="{{ cliente.rg or '' }}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Nascimento</label>
+          <input name="nascimento" class="input" type="date" value="{{ cliente.nascimento or '' }}">
+        </div>
+      </div>
+      <div class="form-row form-row-2">
+        <div class="form-group">
+          <label class="form-label">Telefone / WhatsApp</label>
+          <input name="telefone" class="input" value="{{ cliente.telefone or '' }}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">E-mail</label>
+          <input name="email" class="input" type="email" value="{{ cliente.email or '' }}">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Nome da Mãe</label>
+        <input name="nome_mae" class="input" value="{{ cliente.nome_mae or '' }}">
+      </div>
+      <div class="form-row form-row-3">
+        <div class="form-group">
+          <label class="form-label">CEP</label>
+          <input name="cep" class="input" value="{{ cliente.cep or '' }}" maxlength="9">
+        </div>
+        <div class="form-group" style="grid-column:span 2;">
+          <label class="form-label">Logradouro</label>
+          <input name="logradouro" class="input" value="{{ cliente.logradouro or '' }}">
+        </div>
+      </div>
+      <div class="form-row form-row-4">
+        <div class="form-group">
+          <label class="form-label">Número</label>
+          <input name="numero" class="input" value="{{ cliente.numero or '' }}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Complemento</label>
+          <input name="complemento" class="input" value="{{ cliente.complemento or '' }}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Bairro</label>
+          <input name="bairro" class="input" value="{{ cliente.bairro or '' }}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Cidade</label>
+          <input name="cidade" class="input" value="{{ cliente.cidade or '' }}">
+        </div>
+      </div>
+      <div class="form-row form-row-2">
+        <div class="form-group">
+          <label class="form-label">UF</label>
+          <select name="uf" class="select">
+            {% for uf in ['SC','RS','PR','SP','RJ','MG','BA','GO','DF','ES','MT','MS','PA','AM','CE','PE','RN','PB','AL','SE','PI','MA','TO','RO','AC','RR','AP'] %}
+            <option value="{{ uf }}" {% if (cliente.uf or 'SC') == uf %}selected{% endif %}>{{ uf }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">CNPJ</label>
+          <input name="cnpj" class="input" value="{{ cliente.cnpj or '' }}" maxlength="18">
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px;">
+        <button type="button" onclick="document.getElementById('modal-editar').style.display='none'"
+                class="btn btn-ghost">Cancelar</button>
+        <button type="submit" class="btn btn-primary">💾 Salvar alterações</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 {% endblock %}

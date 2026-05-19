@@ -3,124 +3,159 @@
 {% block title %}Clientes · Lessmann{% endblock %}
 {% block topbar_title %}Clientes{% endblock %}
 {% block topbar_actions %}
-  <a href="{{ url_for('desp_importar_get') }}" class="btn btn-secondary btn-sm">📥 Importar do Bludata</a>
+  <a href="{{ url_for('desp_importar_get') }}" class="btn btn-secondary btn-sm">📥 Bludata</a>
   <a href="{{ url_for('desp_nova_os') }}" class="btn btn-primary btn-sm">➕ Nova O.S.</a>
 {% endblock %}
 
 {% block extra_style %}
-.filter-bar { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:18px; }
-.placa-tag {
-  font-family:monospace; font-size:11px; font-weight:700;
-  background:var(--surface3); padding:2px 6px; border-radius:4px;
-  color:var(--accent); letter-spacing:.5px;
+/* ── Filtro ── */
+.filter-wrap { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:16px; }
+.filter-search { display:flex; gap:6px; align-items:center; flex:1; min-width:200px; max-width:360px; }
+.filter-search .input { flex:1; }
+
+/* ── Cards grid ── */
+.clientes-grid {
+  display:grid; grid-template-columns:repeat(auto-fill, minmax(290px,1fr)); gap:10px;
 }
-.stat-chip {
-  display:inline-flex; align-items:center; gap:4px; font-size:11px;
-  background:var(--surface2); border:1px solid var(--border2);
-  border-radius:20px; padding:2px 8px; color:var(--text3);
+
+/* ── Cliente card ── */
+.cli-card {
+  background:var(--surface); border:1px solid var(--border); border-radius:12px;
+  padding:14px 16px; text-decoration:none; color:inherit;
+  display:flex; flex-direction:column; gap:10px;
+  transition:border-color .15s, background .15s;
 }
-.pagination { display:flex; gap:6px; margin-top:16px; justify-content:center; }
-.pag-btn {
-  padding:6px 12px; border-radius:7px; font-size:12px; font-weight:600;
-  text-decoration:none; background:var(--surface2); border:1px solid var(--border2);
-  color:var(--text2); transition:all .15s;
+.cli-card:hover { border-color:var(--border2); background:var(--surface2); }
+.cli-card-top { display:flex; align-items:flex-start; justify-content:space-between; gap:8px; }
+.cli-avatar {
+  width:38px; height:38px; border-radius:10px; flex-shrink:0;
+  background:var(--accent-soft); display:flex; align-items:center; justify-content:center;
+  font-size:17px; font-weight:800; color:var(--accent);
 }
-.pag-btn:hover { color:var(--text); border-color:var(--accent); }
-.pag-btn.active { background:var(--accent); color:#fff; border-color:var(--accent); }
+.cli-info { flex:1; min-width:0; }
+.cli-name { font-weight:700; font-size:14px; color:var(--text); margin-bottom:2px;
+            white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.cli-cpf  { font-size:11px; color:var(--text3); font-family:monospace; }
+.cli-meta { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+.cli-chip {
+  display:inline-flex; align-items:center; gap:4px;
+  font-size:11px; color:var(--text3);
+  background:var(--surface2); border:1px solid var(--border);
+  border-radius:12px; padding:2px 8px;
+}
+.cli-footer {
+  display:flex; align-items:center; justify-content:space-between;
+  border-top:1px solid var(--border); padding-top:8px; margin-top:2px;
+}
+.cli-last { font-size:11px; color:var(--text3); }
+.cli-actions { display:flex; gap:6px; }
+
+/* ── Empty ── */
 .empty-state { text-align:center; padding:60px 20px; color:var(--text3); }
 .empty-state .em-icon { font-size:48px; margin-bottom:12px; }
+
+/* ── Paginação ── */
+.pagination { display:flex; gap:6px; margin-top:18px; justify-content:center; }
+.pag-btn {
+  padding:6px 14px; border-radius:8px; font-size:12px; font-weight:600;
+  text-decoration:none; background:var(--surface); border:1px solid var(--border2);
+  color:var(--text2); transition:all .15s;
+}
+.pag-btn:hover { border-color:var(--accent); color:var(--accent); }
+.pag-btn.active { background:var(--accent); color:#fff; border-color:var(--accent); }
 {% endblock %}
 
 {% block content %}
-<!-- Filtro -->
-<div class="filter-bar">
-  <form method="get" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-    <input name="q" class="input" style="max-width:280px;"
-           placeholder="🔍  Nome, CPF, telefone, cidade..." value="{{ busca }}">
+
+<div class="filter-wrap">
+  <form method="get" class="filter-search" id="cli-form">
+    <input name="q" class="input" placeholder="🔍  Nome, CPF, telefone, cidade..."
+           value="{{ busca }}" autocomplete="off" id="cli-q">
     <button class="btn btn-secondary btn-sm" type="submit">Buscar</button>
     {% if busca %}
-      <a href="{{ url_for('desp_clientes') }}" class="btn btn-ghost btn-sm">✕ Limpar</a>
+      <a href="{{ url_for('desp_clientes') }}" class="btn btn-ghost btn-sm" title="Limpar">✕</a>
     {% endif %}
   </form>
-  <span style="font-size:13px;color:var(--text3);margin-left:auto;">
+  <span style="font-size:12px;color:var(--text3);margin-left:auto;">
     {{ total }} cliente{{ 's' if total != 1 else '' }}
   </span>
 </div>
 
-<div class="card" style="padding:0;overflow:hidden;">
-  {% if clientes %}
-  <div class="table-wrap">
-    <table>
-      <thead>
-        <tr>
-          <th>Cliente</th>
-          <th>CPF / Telefone</th>
-          <th>Cidade</th>
-          <th>Veículos</th>
-          <th>O.S.</th>
-          <th>Última O.S.</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for c in clientes %}
-        <tr>
-          <td>
-            <div style="font-weight:600;color:var(--text);">
-              {{ c.nome }}
-            </div>
-            {% if c.email %}<div style="font-size:11px;color:var(--text3);">{{ c.email }}</div>{% endif %}
-          </td>
-          <td>
-            <div style="font-size:12px;">{{ c.cpf or c.cnpj or '—' }}</div>
-            <div style="font-size:11px;color:var(--text3);">{{ c.telefone or '' }}</div>
-          </td>
-          <td style="font-size:13px;">{{ c.cidade or '—' }}{% if c.uf %}/{{ c.uf }}{% endif %}</td>
-          <td style="text-align:center;">
-            <span class="stat-chip">🚗 {{ c.total_veiculos }}</span>
-          </td>
-          <td style="text-align:center;">
-            <span class="stat-chip">📋 {{ c.total_os }}</span>
-          </td>
-          <td style="font-size:12px;color:var(--text3);">
-            {{ c.ultima_os[:10] if c.ultima_os else '—' }}
-          </td>
-          <td>
-            <a href="{{ url_for('desp_detalhe_cliente', id=c.id) }}" class="btn btn-ghost btn-sm">Ver →</a>
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
+{% if clientes %}
+<div class="clientes-grid">
+  {% for c in clientes %}
+  {% set inicial = (c.nome or '?')[0] | upper %}
+  <a href="{{ url_for('desp_detalhe_cliente', id=c.id) }}" class="cli-card">
+    <div class="cli-card-top">
+      <div style="display:flex;gap:10px;align-items:flex-start;min-width:0;flex:1;">
+        <div class="cli-avatar">{{ inicial }}</div>
+        <div class="cli-info">
+          <div class="cli-name">{{ c.nome }}</div>
+          <div class="cli-cpf">{{ c.cpf or c.cnpj or 'sem CPF' }}</div>
+        </div>
+      </div>
+      {% if c.telefone %}
+      <a href="https://wa.me/55{{ c.telefone | replace('(','') | replace(')','') | replace(' ','') | replace('-','') }}"
+         target="_blank" onclick="event.stopPropagation()"
+         style="flex-shrink:0;font-size:18px;text-decoration:none;" title="WhatsApp">💬</a>
+      {% endif %}
+    </div>
 
-  <!-- Paginação -->
-  {% set pages = ((total - 1) // limit + 1) if total > 0 else 1 %}
-  {% if pages > 1 %}
-  <div class="pagination" style="padding:14px;">
-    {% if page > 1 %}
-      <a href="{{ url_for('desp_clientes') }}?page={{ page-1 }}{% if busca %}&q={{ busca }}{% endif %}"
-         class="pag-btn">← Anterior</a>
-    {% endif %}
-    <span class="pag-btn active">{{ page }} / {{ pages }}</span>
-    {% if page < pages %}
-      <a href="{{ url_for('desp_clientes') }}?page={{ page+1 }}{% if busca %}&q={{ busca }}{% endif %}"
-         class="pag-btn">Próxima →</a>
-    {% endif %}
-  </div>
+    <div class="cli-meta">
+      <span class="cli-chip">📋 {{ c.total_os }} O.S.</span>
+      <span class="cli-chip">🚗 {{ c.total_veiculos }} veíc.</span>
+      {% if c.cidade %}
+        <span class="cli-chip">📍 {{ c.cidade }}</span>
+      {% endif %}
+      {% if c.telefone %}
+        <span class="cli-chip" style="color:var(--text2);">{{ c.telefone }}</span>
+      {% endif %}
+    </div>
+
+    <div class="cli-footer">
+      <span class="cli-last">
+        Última O.S.: {{ c.ultima_os[:10] if c.ultima_os else '—' }}
+      </span>
+      <span style="font-size:11px;color:var(--accent);font-weight:600;">Ver →</span>
+    </div>
+  </a>
+  {% endfor %}
+</div>
+
+{% set pages = ((total - 1) // limit + 1) if total > 0 else 1 %}
+{% if pages > 1 %}
+<div class="pagination">
+  {% if page > 1 %}
+    <a href="{{ url_for('desp_clientes') }}?page={{ page-1 }}{% if busca %}&q={{ busca }}{% endif %}"
+       class="pag-btn">← Anterior</a>
   {% endif %}
-
-  {% else %}
-  <div class="empty-state">
-    <div class="em-icon">👥</div>
-    <div style="font-size:16px;font-weight:600;color:var(--text2);margin-bottom:8px;">
-      {% if busca %}Nenhum cliente encontrado para "{{ busca }}"{% else %}Nenhum cliente cadastrado{% endif %}
-    </div>
-    <div style="font-size:13px;margin-bottom:20px;">
-      Clientes são cadastrados automaticamente ao criar uma O.S., ou importe do Bludata.
-    </div>
-    <a href="{{ url_for('desp_importar_get') }}" class="btn btn-primary">📥 Importar do Bludata</a>
-  </div>
+  <span class="pag-btn active">{{ page }} / {{ pages }}</span>
+  {% if page < pages %}
+    <a href="{{ url_for('desp_clientes') }}?page={{ page+1 }}{% if busca %}&q={{ busca }}{% endif %}"
+       class="pag-btn">Próxima →</a>
   {% endif %}
 </div>
+{% endif %}
+
+{% else %}
+<div class="empty-state">
+  <div class="em-icon">👥</div>
+  <div style="font-size:16px;font-weight:600;color:var(--text2);margin-bottom:8px;">
+    {% if busca %}Nenhum cliente para "{{ busca }}"{% else %}Nenhum cliente cadastrado{% endif %}
+  </div>
+  <div style="font-size:13px;margin-bottom:20px;">
+    Clientes são criados automaticamente ao cadastrar uma O.S., ou importe do Bludata.
+  </div>
+  <a href="{{ url_for('desp_importar_get') }}" class="btn btn-primary">📥 Importar do Bludata</a>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_script %}
+<script>
+document.getElementById('cli-q').addEventListener('keydown', function(e){
+  if(e.key === 'Enter') document.getElementById('cli-form').submit();
+});
+</script>
 {% endblock %}

@@ -3367,9 +3367,50 @@ def desp_detalhe_cliente(id):
     cliente = desp_get_cliente_detalhe(id)
     if not cliente:
         return "Cliente não encontrado", 404
+    # Resumo financeiro do cliente
+    conn = get_desp_conn()
+    fin = dict(conn.execute("""
+        SELECT COALESCE(SUM(honorarios+custos),0) AS faturado,
+               COALESCE(SUM(pago),0) AS recebido,
+               COALESCE(SUM(CASE WHEN status!='cancelada' AND (honorarios+custos-pago)>0.01
+                              THEN honorarios+custos-pago ELSE 0 END),0) AS pendente,
+               COUNT(*) AS total_os,
+               COUNT(CASE WHEN status='concluida' THEN 1 END) AS concluidas
+        FROM ordens_servico WHERE cliente_id=? AND status!='cancelada'
+    """, (id,)).fetchone())
+    conn.close()
     return desp_render('clientes/detalhe.html',
-                       cliente=cliente, servicos=DESP_SERVICOS,
+                       cliente=cliente, fin=fin,
+                       servicos=DESP_SERVICOS,
                        status_labels=DESP_STATUS_LABELS)
+
+
+@app.route('/despachante/clientes/<int:id>/editar', methods=['POST'])
+@_desp_login_required
+def desp_editar_cliente(id):
+    f = request.form
+    dados = {
+        'nome':       f.get('nome', '').strip(),
+        'tipo':       f.get('tipo', 'PF'),
+        'cpf':        f.get('cpf', '').strip(),
+        'cnpj':       f.get('cnpj', '').strip(),
+        'rg':         f.get('rg', '').strip(),
+        'nascimento': f.get('nascimento', '').strip(),
+        'nome_mae':   f.get('nome_mae', '').strip(),
+        'telefone':   f.get('telefone', '').strip(),
+        'email':      f.get('email', '').strip(),
+        'cep':        f.get('cep', '').strip(),
+        'logradouro': f.get('logradouro', '').strip(),
+        'numero':     f.get('numero', '').strip(),
+        'complemento':f.get('complemento', '').strip(),
+        'bairro':     f.get('bairro', '').strip(),
+        'cidade':     f.get('cidade', '').strip(),
+        'uf':         f.get('uf', 'SC').strip(),
+    }
+    dados = {k: v for k, v in dados.items() if v}  # remove campos vazios
+    if dados.get('nome'):
+        desp_atualizar_cliente(id, dados)
+    return redirect(url_for('desp_detalhe_cliente', id=id))
 
 
 @app.route('/despachante/clientes/importar', methods=['GET'])

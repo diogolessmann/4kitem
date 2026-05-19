@@ -291,6 +291,9 @@
         <a href="{{ url_for('desp_rag_admin') }}" class="nav-link {% if request.endpoint == 'desp_rag_admin' %}active{% endif %}">
           <span class="icon">📚</span> Base de Conhecimento
         </a>
+        <a href="{{ url_for('desp_financeiro') }}" class="nav-link {% if request.endpoint == 'desp_financeiro' %}active{% endif %}">
+          <span class="icon">💰</span> Financeiro
+        </a>
         <a href="{{ url_for('desp_rel_retencao_view') }}" class="nav-link {% if request.endpoint == 'desp_rel_retencao_view' %}active{% endif %}">
           <span class="icon">🔄</span> Retenção de Clientes
         </a>
@@ -479,5 +482,12 @@ function closeSidebar() {
 })();
 </script>
 {% block extra_script %}{% endblock %}
+<script>
+// ── PWA Service Worker ─────────────────────────────────────────────────────
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/static/desp/sw.js', { scope: '/' })
+    .catch(() => {/* silencioso */});
+}
+</script>
 </body>
 </html>
