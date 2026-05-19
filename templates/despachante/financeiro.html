@@ -1,0 +1,337 @@
+{% extends "despachante/base.html" %}
+
+{% block title %}Financeiro · Lessmann{% endblock %}
+{% block topbar_title %}Financeiro {{ ano }}{% endblock %}
+{% block topbar_actions %}
+  <span style="font-size:12px;color:var(--text3);">Dados do ano {{ ano }}</span>
+{% endblock %}
+
+{% block extra_style %}
+/* ── KPIs ── */
+.fin-kpi-grid {
+  display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:22px;
+}
+@media(max-width:1000px){ .fin-kpi-grid { grid-template-columns:repeat(2,1fr); } }
+@media(max-width:540px) { .fin-kpi-grid { grid-template-columns:1fr 1fr; } }
+.fin-kpi {
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:12px; padding:16px 18px;
+}
+.fin-kpi-icon {
+  width:34px; height:34px; border-radius:9px; font-size:16px;
+  display:flex; align-items:center; justify-content:center;
+  margin-bottom:10px;
+}
+.fin-kpi-val { font-size:24px; font-weight:800; color:var(--text); line-height:1; margin-bottom:4px; }
+.fin-kpi-lbl { font-size:12px; color:var(--text3); font-weight:500; }
+
+/* ── Layout ── */
+.fin-main { display:grid; grid-template-columns:1fr 340px; gap:16px; }
+@media(max-width:980px){ .fin-main { grid-template-columns:1fr; } }
+
+/* ── Chart area ── */
+.chart-wrap { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:20px; }
+.chart-title { font-weight:700; font-size:14px; color:var(--text); margin-bottom:16px; display:flex; align-items:center; justify-content:space-between; }
+.chart-title span { font-size:12px; color:var(--text3); font-weight:400; }
+
+/* Bar chart */
+.bar-chart { display:flex; gap:6px; align-items:flex-end; height:160px; margin-bottom:8px; }
+.bar-col { flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; }
+.bar-duo { display:flex; gap:2px; align-items:flex-end; width:100%; height:140px; }
+.bar-fat { background:var(--accent); border-radius:4px 4px 0 0; width:50%; min-height:3px; transition:height .3s; }
+.bar-rec { background:rgba(34,197,94,.7); border-radius:4px 4px 0 0; width:50%; min-height:3px; transition:height .3s; }
+.bar-lbl { font-size:9px; color:var(--text3); white-space:nowrap; }
+.chart-legend { display:flex; gap:16px; margin-top:10px; }
+.leg-item { display:flex; align-items:center; gap:5px; font-size:11px; color:var(--text3); }
+.leg-dot { width:10px; height:10px; border-radius:3px; }
+
+/* ── Tabs ── */
+.fin-tabs { display:flex; gap:6px; margin-bottom:14px; border-bottom:1px solid var(--border); padding-bottom:10px; }
+.fin-tab {
+  padding:5px 14px; border-radius:20px; font-size:12px; font-weight:600;
+  cursor:pointer; border:1px solid var(--border2); color:var(--text2); background:none;
+  transition:all .15s;
+}
+.fin-tab:hover { border-color:var(--accent); color:var(--accent); }
+.fin-tab.active { background:var(--accent); color:#fff; border-color:var(--accent); }
+
+/* ── Pendentes table ── */
+.pend-item {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:10px 0; border-bottom:1px solid var(--border);
+}
+.pend-item:last-child { border-bottom:none; }
+.pend-name { font-weight:600; font-size:13px; color:var(--text); }
+.pend-sub  { font-size:11px; color:var(--text3); }
+.pend-val  { font-size:14px; font-weight:700; color:var(--orange); text-align:right; }
+.pend-mini { font-size:10px; color:var(--text3); text-align:right; }
+
+/* ── Forma pgto bars ── */
+.forma-row { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+.forma-lbl { font-size:12px; color:var(--text2); min-width:90px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.forma-bar-wrap { flex:1; height:8px; background:var(--surface3); border-radius:4px; overflow:hidden; }
+.forma-bar-fill { height:100%; background:var(--accent); border-radius:4px; transition:width .4s; }
+.forma-val { font-size:12px; font-weight:700; color:var(--text2); min-width:70px; text-align:right; }
+
+/* ── Servico badge ── */
+.svc-row { display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+.svc-name { font-size:12px; color:var(--text2); flex:1; }
+.svc-bar-wrap { width:100px; height:6px; background:var(--surface3); border-radius:3px; overflow:hidden; }
+.svc-bar-fill { height:100%; background:var(--accent); border-radius:3px; }
+.svc-val { font-size:12px; font-weight:700; color:var(--text); min-width:75px; text-align:right; }
+.svc-qtd { font-size:11px; color:var(--text3); min-width:28px; text-align:right; }
+
+/* ── Vencida ── */
+.venc-row {
+  display:flex; align-items:center; gap:10px; padding:9px 0;
+  border-bottom:1px solid var(--border);
+}
+.venc-row:last-child { border-bottom:none; }
+.venc-dias {
+  min-width:44px; height:44px; border-radius:10px; display:flex;
+  flex-direction:column; align-items:center; justify-content:center;
+  font-weight:800; font-size:14px;
+  background:rgba(239,68,68,.1); color:#ef4444;
+}
+.venc-dias small { font-size:8px; font-weight:500; }
+{% endblock %}
+
+{% block content %}
+
+{# ── KPIs do Ano ── #}
+<div class="fin-kpi-grid">
+  <div class="fin-kpi">
+    <div class="fin-kpi-icon" style="background:rgba(99,102,241,.12);">💰</div>
+    <div class="fin-kpi-val">R$ {{ "%.0f"|format(totais_ano.faturado or 0) }}</div>
+    <div class="fin-kpi-lbl">Faturado {{ ano }}</div>
+  </div>
+  <div class="fin-kpi">
+    <div class="fin-kpi-icon" style="background:rgba(34,197,94,.12);">✅</div>
+    <div class="fin-kpi-val">R$ {{ "%.0f"|format(totais_ano.recebido or 0) }}</div>
+    <div class="fin-kpi-lbl">Recebido {{ ano }}</div>
+  </div>
+  <div class="fin-kpi">
+    <div class="fin-kpi-icon" style="background:rgba(234,179,8,.12);">⏳</div>
+    <div class="fin-kpi-val">R$ {{ "%.0f"|format(totais_ano.a_receber or 0) }}</div>
+    <div class="fin-kpi-lbl">A Receber (em aberto)</div>
+  </div>
+  <div class="fin-kpi">
+    <div class="fin-kpi-icon" style="background:rgba(249,115,22,.12);">📋</div>
+    <div class="fin-kpi-val">{{ totais_ano.qtd_os or 0 }}</div>
+    <div class="fin-kpi-lbl">O.S. em {{ ano }}</div>
+  </div>
+</div>
+
+<div class="fin-main">
+  {# ── Coluna principal ── #}
+  <div style="display:flex;flex-direction:column;gap:16px;">
+
+    {# ── Gráfico 12 meses ── #}
+    <div class="chart-wrap">
+      <div class="chart-title">
+        Faturamento × Recebido — últimos 12 meses
+        <span>barra indigo = faturado · verde = recebido</span>
+      </div>
+      {% set max_val = fat_12 | map(attribute='faturado') | list | max %}
+      {% set max_val = [max_val, 1] | max %}
+      <div class="bar-chart">
+        {% for m in fat_12 %}
+        {% set h_fat = (m.faturado / max_val * 130) | round | int %}
+        {% set h_rec = (m.recebido / max_val * 130) | round | int %}
+        <div class="bar-col">
+          <div class="bar-duo">
+            <div class="bar-fat" style="height:{{ h_fat }}px;"
+                 title="Faturado: R$ {{ '%.2f'|format(m.faturado) }}"></div>
+            <div class="bar-rec" style="height:{{ h_rec }}px;"
+                 title="Recebido: R$ {{ '%.2f'|format(m.recebido) }}"></div>
+          </div>
+          <div class="bar-lbl">{{ m.mes[5:] }}/{{ m.mes[2:4] }}</div>
+        </div>
+        {% endfor %}
+      </div>
+      <div class="chart-legend">
+        <div class="leg-item"><div class="leg-dot" style="background:var(--accent);"></div> Faturado</div>
+        <div class="leg-item"><div class="leg-dot" style="background:rgba(34,197,94,.7);"></div> Recebido</div>
+      </div>
+    </div>
+
+    {# ── Tabs: Pendentes / Parcelas vencidas ── #}
+    <div class="chart-wrap" style="padding:20px;">
+      <div class="fin-tabs">
+        <button class="fin-tab active" onclick="showTab('pendentes',this)">
+          💳 A Receber ({{ os_pendentes | length }})
+        </button>
+        <button class="fin-tab" onclick="showTab('vencidas',this)">
+          🔴 Parcelas Vencidas ({{ parcelas_vencidas | length }})
+        </button>
+      </div>
+
+      {# Pendentes #}
+      <div id="tab-pendentes">
+        {% if os_pendentes %}
+          {% for os in os_pendentes %}
+          <div class="pend-item">
+            <div>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <a href="{{ url_for('desp_detalhe_os', id=os.id) }}"
+                   style="font-family:monospace;font-size:12px;color:var(--accent);font-weight:700;text-decoration:none;">
+                  {{ os.numero }}
+                </a>
+                <span class="badge {% if os.status=='aberta' %}badge-yellow{% elif os.status=='andamento' %}badge-blue{% elif os.status=='concluida' %}badge-green{% else %}badge-gray{% endif %}" style="font-size:10px;">
+                  {{ os.status }}
+                </span>
+              </div>
+              <div class="pend-name">{{ os.cliente_nome or '—' }}</div>
+              <div class="pend-sub">
+                {% if os.placa %}<span style="font-family:monospace;color:var(--accent);">{{ os.placa }}</span> · {% endif %}
+                Pago R$ {{ "%.2f"|format(os.pago) }} de R$ {{ "%.2f"|format((os.honorarios or 0)+(os.custos or 0)) }}
+                {% if os.telefone %} ·
+                  <a href="https://wa.me/55{{ os.telefone | replace(' ','') | replace('-','') | replace('(','') | replace(')','') }}"
+                     target="_blank" style="color:var(--green);font-size:11px;">WhatsApp</a>
+                {% endif %}
+              </div>
+            </div>
+            <div>
+              <div class="pend-val">R$ {{ "%.2f"|format(os.pendente) }}</div>
+              <div class="pend-mini">pendente</div>
+              <a href="{{ url_for('desp_detalhe_os', id=os.id) }}"
+                 class="btn btn-ghost btn-sm" style="margin-top:4px;">Abrir →</a>
+            </div>
+          </div>
+          {% endfor %}
+        {% else %}
+          <div style="text-align:center;padding:40px;color:var(--text3);">
+            <div style="font-size:32px;margin-bottom:8px;">✅</div>
+            Nenhum valor pendente — tudo recebido!
+          </div>
+        {% endif %}
+      </div>
+
+      {# Parcelas vencidas #}
+      <div id="tab-vencidas" style="display:none;">
+        {% if parcelas_vencidas %}
+          {% for p in parcelas_vencidas %}
+          <div class="venc-row">
+            <div class="venc-dias">
+              {{ p.dias_atraso }}<small>dias</small>
+            </div>
+            <div style="flex:1;">
+              <div style="font-weight:600;font-size:13px;">{{ p.cliente_nome or '—' }}</div>
+              <div style="font-size:11px;color:var(--text3);">
+                O.S. <a href="{{ url_for('desp_detalhe_os', id=p.os_id) }}"
+                        style="color:var(--accent);font-family:monospace;">{{ p.os_numero }}</a>
+                · Parcela {{ p.numero }}
+                · venc. {{ p.vencimento }}
+              </div>
+            </div>
+            <div style="text-align:right;">
+              <div style="font-size:14px;font-weight:700;color:#ef4444;">R$ {{ "%.2f"|format(p.valor) }}</div>
+              {% if p.telefone %}
+              <a href="https://wa.me/55{{ p.telefone | replace(' ','') | replace('-','') | replace('(','') | replace(')','') }}?text={{ ('Olá ' + (p.cliente_nome or '') + ', passando para lembrar que sua parcela ' + p.numero|string + ' no valor de R$ ' + '%.2f'|format(p.valor) + ' está em atraso. Pode entrar em contato?') | urlencode }}"
+                 target="_blank" style="font-size:11px;color:var(--green);">💬 WhatsApp</a>
+              {% endif %}
+            </div>
+          </div>
+          {% endfor %}
+        {% else %}
+          <div style="text-align:center;padding:40px;color:var(--text3);">
+            <div style="font-size:32px;margin-bottom:8px;">🎉</div>
+            Nenhuma parcela vencida — excelente!
+          </div>
+        {% endif %}
+      </div>
+    </div>
+
+  </div>{# fim coluna principal #}
+
+  {# ── Sidebar direita ── #}
+  <div style="display:flex;flex-direction:column;gap:16px;">
+
+    {# Serviços #}
+    <div class="chart-wrap">
+      <div class="chart-title">Por Serviço <span>{{ ano }}</span></div>
+      {% if fat_servico %}
+        {% set max_svc = fat_servico[0].honorarios %}
+        {% set max_svc = [max_svc, 1] | max %}
+        {% for s in fat_servico %}
+        <div class="svc-row">
+          <div class="svc-name" title="{{ servicos.get(s.servico, s.servico) }}">
+            {{ servicos.get(s.servico, s.servico) | truncate(22, true, '…') }}
+          </div>
+          <div class="svc-bar-wrap">
+            <div class="svc-bar-fill" style="width:{{ (s.honorarios / max_svc * 100) | round | int }}%;"></div>
+          </div>
+          <div class="svc-val">R$ {{ "%.0f"|format(s.honorarios) }}</div>
+          <div class="svc-qtd">{{ s.qtd }}x</div>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div style="color:var(--text3);font-size:13px;text-align:center;padding:20px;">Sem dados ainda</div>
+      {% endif %}
+    </div>
+
+    {# Forma de Pagamento #}
+    <div class="chart-wrap">
+      <div class="chart-title">Forma de Pagamento <span>{{ ano }}</span></div>
+      {% if fat_forma %}
+        {% set max_forma = fat_forma[0].total %}
+        {% set max_forma = [max_forma, 1] | max %}
+        {% for f in fat_forma %}
+        <div class="forma-row">
+          <div class="forma-lbl" title="{{ f.forma }}">{{ f.forma }}</div>
+          <div class="forma-bar-wrap">
+            <div class="forma-bar-fill" style="width:{{ (f.total / max_forma * 100) | round | int }}%;"></div>
+          </div>
+          <div class="forma-val">R$ {{ "%.0f"|format(f.total) }}</div>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div style="color:var(--text3);font-size:13px;text-align:center;padding:20px;">Sem dados de pagamento</div>
+      {% endif %}
+    </div>
+
+    {# Resumo mês a mês ── tabela compacta #}
+    <div class="chart-wrap">
+      <div class="chart-title">Mês a mês <span>últimos 12</span></div>
+      <div class="table-wrap" style="max-height:300px;overflow-y:auto;">
+        <table>
+          <thead>
+            <tr>
+              <th>Mês</th>
+              <th style="text-align:right;">Faturado</th>
+              <th style="text-align:right;">Recebido</th>
+              <th style="text-align:right;">O.S.</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for m in fat_12 | reverse %}
+            <tr {% if loop.first %}style="font-weight:700;"{% endif %}>
+              <td style="font-family:monospace;font-size:12px;">{{ m.mes }}</td>
+              <td style="text-align:right;color:var(--text);">{{ "%.2f"|format(m.faturado) }}</td>
+              <td style="text-align:right;color:{% if m.recebido >= m.faturado %}var(--green){% else %}var(--yellow){% endif %};">
+                {{ "%.2f"|format(m.recebido) }}
+              </td>
+              <td style="text-align:right;color:var(--text3);">{{ m.qtd }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>{# fim sidebar #}
+</div>
+
+{% endblock %}
+
+{% block extra_script %}
+<script>
+function showTab(name, btn) {
+  document.getElementById('tab-pendentes').style.display = 'none';
+  document.getElementById('tab-vencidas').style.display = 'none';
+  document.getElementById('tab-' + name).style.display = 'block';
+  document.querySelectorAll('.fin-tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+}
+</script>
+{% endblock %}

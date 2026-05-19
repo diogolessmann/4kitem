@@ -1,238 +1,422 @@
 {% extends "despachante/base.html" %}
 
-{% block title %}Dashboard · Despachante Lessmann{% endblock %}
-{% block topbar_title %}Dashboard{% endblock %}
+{% block title %}Dashboard · Lessmann{% endblock %}
+{% block topbar_title %}
+  Bom dia, Diogo 👋
+{% endblock %}
 {% block topbar_actions %}
-  <a href="{{ url_for('desp_nova_os') }}" class="btn btn-primary btn-sm">➕ Nova O.S.</a>
+  <a href="{{ url_for('desp_nova_os') }}" class="btn btn-primary btn-sm">
+    ＋ Nova O.S.
+  </a>
 {% endblock %}
 
 {% block extra_style %}
-.stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 24px; }
-.stat-card.accent { border-color: rgba(249,115,22,.25); }
-.stat-card.green  { border-color: rgba(34,197,94,.25); }
-.stat-card.blue   { border-color: rgba(59,130,246,.25); }
-.stat-value.orange { color: var(--accent); }
-.stat-value.green  { color: var(--green); }
-.stat-value.blue   { color: var(--blue); }
+/* ── KPI Cards ── */
+.kpi-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:20px; }
+@media (max-width:1100px) { .kpi-grid { grid-template-columns:repeat(2,1fr); } }
+@media (max-width:600px)  { .kpi-grid { grid-template-columns:1fr 1fr; } }
 
-.two-col { display: grid; grid-template-columns: 1fr 340px; gap: 16px; }
+.kpi {
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:12px; padding:16px 18px;
+  display:flex; flex-direction:column; gap:6px;
+  transition:border-color .2s;
+}
+.kpi:hover { border-color:var(--border2); }
+.kpi-top { display:flex; align-items:center; justify-content:space-between; }
+.kpi-icon {
+  width:36px; height:36px; border-radius:9px;
+  display:flex; align-items:center; justify-content:center; font-size:17px;
+}
+.kpi-val  { font-size:26px; font-weight:800; line-height:1; color:var(--text); }
+.kpi-lbl  { font-size:12px; color:var(--text3); font-weight:500; }
+.kpi-sub  { font-size:11px; color:var(--text3); }
 
-/* Finais de placa calendar */
-.placa-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+/* ── Alertas ── */
+.alertas-wrap { display:flex; flex-direction:column; gap:8px; margin-bottom:20px; }
+.alerta {
+  display:flex; align-items:center; gap:12px; padding:11px 16px;
+  border-radius:10px; font-size:13px; border:1px solid; cursor:pointer;
+  text-decoration:none; transition:opacity .15s;
+}
+.alerta:hover { opacity:.85; }
+.alerta.urgente { background:rgba(239,68,68,.07); border-color:rgba(239,68,68,.2); color:var(--text); }
+.alerta.aviso   { background:rgba(234,179,8,.07); border-color:rgba(234,179,8,.2); color:var(--text); }
+.alerta.info    { background:rgba(99,102,241,.07); border-color:rgba(99,102,241,.2); color:var(--text); }
+.alerta-icon { font-size:18px; flex-shrink:0; }
+.alerta-txt  { flex:1; }
+.alerta-badge {
+  font-size:11px; font-weight:700; padding:2px 8px; border-radius:10px;
+  background:rgba(255,255,255,.1); flex-shrink:0;
+}
+
+/* ── Layout ── */
+.dash-grid { display:grid; grid-template-columns:1fr 320px; gap:16px; }
+@media (max-width:900px) { .dash-grid { grid-template-columns:1fr; } }
+
+/* ── Lista OS recentes ── */
+.os-table { width:100%; border-collapse:collapse; }
+.os-table th {
+  font-size:10px; text-transform:uppercase; letter-spacing:.5px;
+  color:var(--text3); padding:9px 12px; text-align:left;
+  border-bottom:1px solid var(--border2); font-weight:700;
+  background:var(--surface2); position:sticky; top:0;
+}
+.os-table td { padding:10px 12px; border-bottom:1px solid var(--border); font-size:13px; }
+.os-table tr:last-child td { border-bottom:none; }
+.os-table tr:hover td { background:var(--surface2); }
+.os-table tr { transition:background .1s; }
+
+.status-dot {
+  width:8px; height:8px; border-radius:50%; flex-shrink:0; display:inline-block;
+}
+.dot-aberta   { background:var(--yellow); }
+.dot-andamento { background:var(--blue); }
+.dot-concluida { background:var(--green); }
+.dot-cancelada { background:var(--red); }
+.dot-aguardando{ background:var(--orange); }
+
+/* ── Gráfico de barras ── */
+.bar-chart { display:flex; align-items:flex-end; gap:6px; height:80px; margin-top:6px; }
+.bar-col { flex:1; display:flex; flex-direction:column; align-items:center; gap:4px; }
+.bar {
+  width:100%; border-radius:4px 4px 0 0;
+  background:linear-gradient(180deg,rgba(99,102,241,.8),rgba(99,102,241,.4));
+  min-height:4px; transition:height .3s;
+}
+.bar-col.atual .bar {
+  background:linear-gradient(180deg,#6366F1,#4F46E5);
+}
+.bar-lbl { font-size:9px; color:var(--text3); }
+.bar-val { font-size:9px; font-weight:700; color:var(--text2); }
+
+/* ── Quick actions ── */
+.quick-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.qa {
+  display:flex; align-items:center; gap:10px; padding:11px 14px;
+  border-radius:10px; background:var(--surface2); border:1px solid var(--border);
+  text-decoration:none; color:var(--text2); font-size:13px; font-weight:500;
+  transition:all .15s;
+}
+.qa:hover { background:var(--surface3); color:var(--text); border-color:var(--border2); }
+.qa-icon { font-size:20px; }
+
+/* ── Finais de placa ── */
+.placa-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:6px; }
 .placa-card {
-  background: var(--surface2); border: 1px solid var(--border);
-  border-radius: 10px; padding: 12px 8px; text-align: center;
+  border-radius:9px; padding:10px 6px; text-align:center;
+  background:var(--surface2); border:1px solid var(--border);
+  transition:all .15s;
 }
-.placa-card.hoje {
-  background: rgba(249,115,22,.12); border-color: rgba(249,115,22,.35);
+.placa-card.vence {
+  background:rgba(234,179,8,.10); border-color:rgba(234,179,8,.3);
 }
-.placa-digit { font-size: 22px; font-weight: 800; color: var(--text); }
-.placa-mes   { font-size: 10px; color: var(--text3); margin-top: 3px; text-transform: uppercase; letter-spacing: .5px; }
-.placa-card.hoje .placa-mes { color: var(--accent); }
-.placa-vence { font-size: 9px; color: var(--yellow); margin-top: 4px; font-weight: 600; }
+.placa-digit { font-size:20px; font-weight:800; color:var(--text); }
+.placa-mes   { font-size:9px; color:var(--text3); margin-top:2px; text-transform:uppercase; letter-spacing:.5px; }
+.placa-card.vence .placa-digit { color:var(--yellow); }
+.placa-card.vence .placa-mes   { color:rgba(234,179,8,.7); font-weight:700; }
 
-/* Quick actions */
-.quick-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.quick-btn {
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 6px; padding: 16px 8px; border-radius: 10px; text-decoration: none;
-  background: var(--surface2); border: 1px solid var(--border);
-  color: var(--text2); font-size: 12px; font-weight: 600;
-  transition: all .15s; text-align: center;
+/* ── Pendências de cobrança ── */
+.pend-row {
+  display:flex; align-items:center; gap:10px; padding:9px 0;
+  border-bottom:1px solid var(--border); font-size:12px;
 }
-.quick-btn:hover { background: var(--surface3); border-color: var(--border2); color: var(--text); }
-.quick-btn .qi { font-size: 22px; }
-
-/* Status badges inline */
-.os-num { font-size: 11px; font-family: monospace; color: var(--text3); }
-.os-status { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
-.dot-yellow { background: var(--yellow); }
-.dot-blue   { background: var(--blue); }
-.dot-green  { background: var(--green); }
-.dot-gray   { background: var(--text3); }
-
-/* Financial mini */
-.fin-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border); }
-.fin-row:last-child { border-bottom: none; }
-.fin-label { font-size: 12px; color: var(--text3); }
-.fin-value { font-size: 13px; font-weight: 700; }
-
-@media (max-width: 1100px) {
-  .stats-grid { grid-template-columns: repeat(2, 1fr); }
-  .two-col { grid-template-columns: 1fr; }
-}
-@media (max-width: 768px) {
-  .stats-grid { grid-template-columns: repeat(2, 1fr); }
-  .placa-grid { grid-template-columns: repeat(5, 1fr); }
-}
+.pend-row:last-child { border-bottom:none; }
 {% endblock %}
 
 {% block content %}
-<!-- Stats -->
-<div class="stats-grid">
-  <div class="stat-card accent">
-    <div class="stat-label">⚠️ Abertas</div>
-    <div class="stat-value orange">{{ stats.os_abertas }}</div>
-    <div class="stat-sub">ordens em aberto</div>
+
+{% set alertas_urgentes = stats.parcelas_vencidas | length %}
+{% set alertas_paradas  = stats.os_paradas | length %}
+
+<!-- ── ALERTAS ── -->
+{% if stats.parcelas_vencidas or stats.os_paradas %}
+<div class="alertas-wrap">
+  {% if stats.parcelas_vencidas %}
+  <a href="{{ url_for('desp_lista_os') }}" class="alerta urgente">
+    <span class="alerta-icon">🔴</span>
+    <div class="alerta-txt">
+      <strong>{{ stats.parcelas_vencidas|length }} parcela{{ 's' if stats.parcelas_vencidas|length != 1 }} vencida{{ 's' if stats.parcelas_vencidas|length != 1 }}</strong>
+      <span style="color:var(--text3);margin-left:8px;font-size:12px;">
+        {% for p in stats.parcelas_vencidas[:3] %}
+          {{ p.cliente_nome or '—' }} ({{ p.dias_atraso }}d){% if not loop.last %}, {% endif %}
+        {% endfor %}
+        {% if stats.parcelas_vencidas|length > 3 %}…{% endif %}
+      </span>
+    </div>
+    <span class="alerta-badge" style="background:rgba(239,68,68,.2);color:#F87171;">Ver →</span>
+  </a>
+  {% endif %}
+
+  {% if stats.os_paradas %}
+  <a href="{{ url_for('desp_lista_os') }}?status=andamento" class="alerta aviso">
+    <span class="alerta-icon">⚠️</span>
+    <div class="alerta-txt">
+      <strong>{{ stats.os_paradas|length }} O.S. parada{{ 's' if stats.os_paradas|length != 1 }} sem atualização</strong>
+      <span style="color:var(--text3);margin-left:8px;font-size:12px;">
+        {% for o in stats.os_paradas[:3] %}
+          {{ o.numero }}
+          ({{ o.dias_parada }}d){% if not loop.last %}, {% endif %}
+        {% endfor %}
+        {% if stats.os_paradas|length > 3 %}…{% endif %}
+      </span>
+    </div>
+    <span class="alerta-badge" style="background:rgba(234,179,8,.2);color:#D4AC0D;">Ver →</span>
+  </a>
+  {% endif %}
+</div>
+{% endif %}
+
+<!-- ── KPIs ── -->
+<div class="kpi-grid">
+
+  <div class="kpi">
+    <div class="kpi-top">
+      <div class="kpi-icon" style="background:rgba(234,179,8,.14);">📋</div>
+      <span style="font-size:10px;color:var(--text3);">{{ stats.os_hoje }} hoje</span>
+    </div>
+    <div class="kpi-val" style="color:var(--yellow);">{{ stats.os_abertas + stats.os_andamento }}</div>
+    <div class="kpi-lbl">Em Aberto</div>
+    <div class="kpi-sub">{{ stats.os_abertas }} abertas · {{ stats.os_andamento }} em andamento</div>
   </div>
-  <div class="stat-card blue">
-    <div class="stat-label">🔄 Em Andamento</div>
-    <div class="stat-value blue">{{ stats.os_andamento }}</div>
-    <div class="stat-sub">em processamento</div>
+
+  <div class="kpi">
+    <div class="kpi-top">
+      <div class="kpi-icon" style="background:rgba(34,197,94,.14);">✅</div>
+      <span style="font-size:10px;color:var(--text3);">{{ mes_atual | string | replace('1','Jan') }}</span>
+    </div>
+    <div class="kpi-val" style="color:var(--green);">{{ stats.os_mes }}</div>
+    <div class="kpi-lbl">Concluídas no Mês</div>
+    <div class="kpi-sub">{{ stats.os_total }} total histórico</div>
   </div>
-  <div class="stat-card green">
-    <div class="stat-label">✅ Mês Atual</div>
-    <div class="stat-value green">{{ stats.os_mes }}</div>
-    <div class="stat-sub">concluídas em {{ meses[mes_atual] }}</div>
+
+  <div class="kpi">
+    <div class="kpi-top">
+      <div class="kpi-icon" style="background:rgba(99,102,241,.14);">💰</div>
+    </div>
+    <div class="kpi-val" style="color:var(--accent);">R$ {{ "%.0f"|format(stats.faturado_mes) }}</div>
+    <div class="kpi-lbl">Faturado em {{ meses[mes_atual] }}</div>
+    <div class="kpi-sub">Ano: R$ {{ "%.0f"|format(stats.faturado_ano) }}</div>
   </div>
-  <div class="stat-card">
-    <div class="stat-label">💰 A Receber</div>
-    <div class="stat-value" style="font-size:22px;">R$ {{ "%.2f"|format(stats.a_receber) }}</div>
-    <div class="stat-sub">recebido este mês: R$ {{ "%.2f"|format(stats.recebido_mes) }}</div>
+
+  <div class="kpi" style="{% if stats.a_receber > 0 %}border-color:rgba(239,68,68,.25);{% endif %}">
+    <div class="kpi-top">
+      <div class="kpi-icon" style="background:rgba(239,68,68,.14);">⏳</div>
+    </div>
+    <div class="kpi-val" style="color:{% if stats.a_receber > 0 %}var(--red){% else %}var(--green){% endif %};">
+      R$ {{ "%.0f"|format(stats.a_receber) }}
+    </div>
+    <div class="kpi-lbl">A Receber</div>
+    <div class="kpi-sub">Recebido no mês: R$ {{ "%.0f"|format(stats.recebido_mes) }}</div>
   </div>
+
 </div>
 
-<div class="two-col">
-  <!-- LEFT: Recent OS -->
-  <div>
+<!-- ── CORPO ── -->
+<div class="dash-grid">
+
+  <!-- COLUNA ESQUERDA -->
+  <div style="display:flex;flex-direction:column;gap:14px;min-width:0;">
+
+    <!-- OS Recentes -->
     <div class="card" style="padding:0;overflow:hidden;">
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);">
+      <div style="display:flex;align-items:center;justify-content:space-between;
+                  padding:14px 18px;border-bottom:1px solid var(--border);">
         <div>
-          <div style="font-size:14px;font-weight:700;">Ordens Recentes</div>
-          <div style="font-size:11px;color:var(--text3);">{{ stats.os_total }} total</div>
+          <div style="font-size:14px;font-weight:700;">Ordens de Serviço Recentes</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:1px;">{{ stats.os_total }} total</div>
         </div>
         <a href="{{ url_for('desp_lista_os') }}" class="btn btn-ghost btn-sm">Ver todas →</a>
       </div>
-      <div class="table-wrap">
-        <table>
+      <div style="overflow-x:auto;max-height:340px;overflow-y:auto;">
+        <table class="os-table">
           <thead>
             <tr>
-              <th>N°</th>
+              <th style="width:36px;"></th>
+              <th>Número</th>
               <th>Cliente</th>
               <th>Serviço</th>
               <th>Placa</th>
-              <th>Status</th>
-              <th>Valor</th>
+              <th>Financeiro</th>
               <th></th>
             </tr>
           </thead>
           <tbody>
             {% for os in recentes %}
-            {% set sl = status_labels.get(os.status, ('⚪','')) %}
-            <tr>
-              <td>
-                <span class="os-num">{{ os.numero }}</span>
+            {% set total = os.honorarios + os.custos %}
+            {% set pendente = total - os.pago %}
+            <tr onclick="location.href='{{ url_for('desp_detalhe_os', id=os.id) }}'" style="cursor:pointer;">
+              <td style="text-align:center;">
+                <span class="status-dot dot-{{ os.status }}"></span>
               </td>
               <td>
-                <a href="{{ url_for('desp_detalhe_os', id=os.id) }}">
-                  {{ os.cliente_nome or '—' }}
-                </a>
+                <div style="font-family:monospace;font-size:11px;color:var(--text3);">{{ os.numero }}</div>
               </td>
-              <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
-                {{ servicos.get(os.servico, os.servico) | truncate(22, true) }}
+              <td>
+                <div style="font-weight:600;font-size:13px;">{{ (os.cliente_nome or '—') | truncate(20, true) }}</div>
+              </td>
+              <td>
+                <div style="font-size:12px;color:var(--text2);">{{ servicos.get(os.servico, os.servico) | truncate(22, true) }}</div>
               </td>
               <td>
                 {% if os.placa %}
-                  <code style="font-size:12px;color:var(--accent);">{{ os.placa }}</code>
-                {% else %}—{% endif %}
+                <span style="font-family:monospace;font-size:12px;font-weight:700;color:var(--accent);">{{ os.placa }}</span>
+                {% else %}<span style="color:var(--text3);">—</span>{% endif %}
               </td>
               <td>
-                <span class="badge {% if os.status == 'aberta' %}badge-yellow{% elif os.status == 'andamento' %}badge-blue{% elif os.status == 'concluida' %}badge-green{% else %}badge-gray{% endif %}">
-                  {{ sl[0] }} {{ sl[1] }}
+                {% if pendente > 0.01 %}
+                <span style="font-size:12px;color:var(--yellow);font-weight:600;">
+                  R$ {{ "%.0f"|format(pendente) }} pend.
                 </span>
-              </td>
-              <td style="color:var(--text);font-weight:600;">
-                R$ {{ "%.0f"|format(os.honorarios + os.custos) }}
+                {% elif total > 0 %}
+                <span style="font-size:11px;color:var(--green);">✓ quitado</span>
+                {% else %}
+                <span style="font-size:11px;color:var(--text3);">—</span>
+                {% endif %}
               </td>
               <td>
-                <a href="{{ url_for('desp_detalhe_os', id=os.id) }}" class="btn btn-ghost btn-sm">→</a>
+                <span style="font-size:18px;color:var(--text3);">›</span>
               </td>
             </tr>
             {% else %}
-            <tr><td colspan="7" style="text-align:center;padding:32px;color:var(--text3);">Nenhuma O.S. ainda</td></tr>
+            <tr>
+              <td colspan="7" style="text-align:center;padding:40px;color:var(--text3);">
+                Nenhuma O.S. ainda.<br>
+                <a href="{{ url_for('desp_nova_os') }}" class="btn btn-primary btn-sm" style="margin-top:12px;">
+                  ＋ Criar primeira O.S.
+                </a>
+              </td>
+            </tr>
             {% endfor %}
           </tbody>
         </table>
       </div>
     </div>
-  </div>
 
-  <!-- RIGHT: Column -->
-  <div style="display:flex;flex-direction:column;gap:14px;">
-
-    <!-- Quick Actions -->
-    <div class="card card-sm">
-      <div class="card-title">Ações Rápidas</div>
-      <div class="quick-grid">
-        <a href="{{ url_for('desp_nova_os') }}" class="quick-btn">
-          <span class="qi">📋</span> Nova O.S.
-        </a>
-        <a href="{{ url_for('desp_lista_os') }}?status=aberta" class="quick-btn">
-          <span class="qi">⚠️</span> Abertas
-        </a>
-        <a href="{{ url_for('desp_chat') }}" class="quick-btn">
-          <span class="qi">🤖</span> IA Amigo
-        </a>
-        <a href="https://wa.me/{{ desp.whatsapp }}" target="_blank" class="quick-btn">
-          <span class="qi">💬</span> WhatsApp
-        </a>
+    <!-- Gráfico de faturamento -->
+    {% if stats.fat_mensal %}
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px;">
+        <div style="font-size:14px;font-weight:700;">📈 Faturamento — últimos 6 meses</div>
+        <a href="{{ url_for('desp_financeiro') }}" class="btn btn-ghost btn-sm">Detalhe →</a>
       </div>
-    </div>
-
-    <!-- Financeiro -->
-    <div class="card card-sm">
-      <div class="card-title">Financeiro — {{ meses[mes_atual] }}</div>
-      <div class="fin-row">
-        <span class="fin-label">Recebido no mês</span>
-        <span class="fin-value" style="color:var(--green);">R$ {{ "%.2f"|format(stats.recebido_mes) }}</span>
-      </div>
-      <div class="fin-row">
-        <span class="fin-label">A receber (todas)</span>
-        <span class="fin-value" style="color:var(--yellow);">R$ {{ "%.2f"|format(stats.a_receber) }}</span>
-      </div>
-      <div class="fin-row">
-        <span class="fin-label">Clientes cadastrados</span>
-        <span class="fin-value">{{ stats.clientes }}</span>
-      </div>
-      <div class="fin-row">
-        <span class="fin-label">Veículos cadastrados</span>
-        <span class="fin-value">{{ stats.veiculos }}</span>
-      </div>
-    </div>
-
-    <!-- Finais de Placa -->
-    <div class="card card-sm">
-      <div class="card-title">📅 Finais de Placa — {{ meses[mes_atual] }}</div>
-      <div class="placa-grid">
-        {% for f, m in finais_placa_nav %}
-        <div class="placa-card {% if m == mes_atual %}hoje{% endif %}">
-          <div class="placa-digit">{{ f }}</div>
-          <div class="placa-mes">{{ meses[m][:3] }}</div>
-          {% if m == mes_atual %}
-          <div class="placa-vence">VENCE!</div>
-          {% endif %}
+      {% set max_val = stats.fat_mensal | map(attribute='valor') | max %}
+      <div class="bar-chart">
+        {% for m in stats.fat_mensal %}
+        {% set h = ((m.valor / max_val * 100) if max_val > 0 else 4) | int %}
+        {% set is_atual = loop.last %}
+        <div class="bar-col {% if is_atual %}atual{% endif %}">
+          <div class="bar-val">{% if m.valor > 0 %}R${{ "%.0f"|format(m.valor / 1000) }}k{% endif %}</div>
+          <div class="bar" style="height:{{ [h, 4] | max }}px;" title="{{ m.mes }}: R$ {{ '%.2f'|format(m.valor) }}"></div>
+          <div class="bar-lbl">{{ m.mes[5:7] }}/{{ m.mes[2:4] }}</div>
         </div>
         {% endfor %}
       </div>
-      <div style="margin-top:10px;font-size:11px;color:var(--text3);">
-        🔔 Placas com final <strong>{% for f, m in finais_placa_nav if m == mes_atual %}{{ f }}{% endfor %}</strong>
-        vencem em {{ meses[mes_atual] }}.
+      <!-- Top serviços -->
+      {% if stats.fat_servico %}
+      <div style="margin-top:14px;border-top:1px solid var(--border);padding-top:12px;">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;
+                    color:var(--text3);margin-bottom:8px;">Top serviços do ano</div>
+        {% for s in stats.fat_servico %}
+        <div style="display:flex;justify-content:space-between;align-items:center;
+                    padding:5px 0;border-bottom:1px solid var(--border);font-size:12px;">
+          <span style="color:var(--text2);">{{ servicos.get(s.servico, s.servico) | truncate(30, true) }}</span>
+          <span style="font-weight:700;color:var(--green);">R$ {{ "%.0f"|format(s.total) }}</span>
+        </div>
+        {% endfor %}
       </div>
+      {% endif %}
     </div>
+    {% endif %}
 
-    <!-- Despachante -->
+  </div><!-- /esquerda -->
+
+  <!-- COLUNA DIREITA -->
+  <div style="display:flex;flex-direction:column;gap:12px;">
+
+    <!-- Ações Rápidas -->
     <div class="card card-sm">
-      <div class="card-title">Despachante</div>
-      <div style="font-size:13px;font-weight:700;margin-bottom:6px;">{{ desp.nome }}</div>
-      <div style="font-size:12px;color:var(--text3);line-height:1.8;">
-        Credencial: <span style="color:var(--text2);">{{ desp.credencial }}</span><br>
-        CNPJ: <span style="color:var(--text2);">{{ desp.cnpj }}</span><br>
-        CPF: <span style="color:var(--text2);">{{ desp.cpf }}</span><br>
-        CITRAN: <span style="color:var(--text2);">{{ desp.citran }}</span><br>
-        WhatsApp: <a href="https://wa.me/{{ desp.whatsapp }}" target="_blank" style="color:var(--green);">{{ desp.whatsapp_fmt }}</a>
+      <div class="card-title" style="margin-bottom:10px;">⚡ Ações Rápidas</div>
+      <div class="quick-grid">
+        <a href="{{ url_for('desp_nova_os') }}" class="qa">
+          <span class="qa-icon">📋</span> Nova O.S.
+        </a>
+        <a href="{{ url_for('desp_lista_os') }}?status=aberta" class="qa">
+          <span class="qa-icon">🟡</span> Em Aberto
+        </a>
+        <a href="{{ url_for('desp_rel_retencao_view') }}" class="qa">
+          <span class="qa-icon">🔄</span> Retenção
+        </a>
+        <a href="{{ url_for('desp_financeiro') }}" class="qa">
+          <span class="qa-icon">💰</span> Financeiro
+        </a>
+        <a href="{{ url_for('desp_clientes') }}" class="qa">
+          <span class="qa-icon">👥</span> Clientes
+        </a>
+        <a href="{{ url_for('desp_chat') }}" class="qa">
+          <span class="qa-icon">🤖</span> IA Amigo
+        </a>
       </div>
     </div>
 
-  </div><!-- /right col -->
+    <!-- Parcelas vencidas -->
+    {% if stats.parcelas_vencidas %}
+    <div class="card card-sm" style="border-color:rgba(239,68,68,.2);">
+      <div class="card-title" style="color:var(--red);margin-bottom:8px;">🔴 Cobranças Vencidas</div>
+      {% for p in stats.parcelas_vencidas[:5] %}
+      <a href="/despachante/os/{{ p.os_id }}" class="pend-row" style="text-decoration:none;color:var(--text);">
+        <span style="font-size:16px;">💳</span>
+        <div style="flex:1;">
+          <div style="font-weight:600;font-size:12px;">{{ p.cliente_nome or '—' }}</div>
+          <div style="font-size:11px;color:var(--text3);">O.S. {{ p.os_numero }} · Parc. {{ p.numero }}</div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-weight:700;font-size:12px;color:var(--red);">R$ {{ "%.2f"|format(p.valor) }}</div>
+          <div style="font-size:10px;color:var(--text3);">{{ p.dias_atraso }}d atraso</div>
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Finais de Placa -->
+    <div class="card card-sm">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <div class="card-title" style="margin:0;">📅 Finais de Placa</div>
+        <span style="font-size:11px;color:var(--accent);font-weight:600;">{{ meses[mes_atual] }}</span>
+      </div>
+      <div class="placa-grid">
+        {% for f, m in finais_placa_nav %}
+        <a href="/despachante/lista?final={{ f }}" style="text-decoration:none;">
+          <div class="placa-card {% if m == mes_atual %}vence{% endif %}">
+            <div class="placa-digit">{{ f }}</div>
+            <div class="placa-mes">{{ meses[m][:3] }}</div>
+          </div>
+        </a>
+        {% endfor %}
+      </div>
+      <div style="margin-top:10px;font-size:11px;color:var(--text3);text-align:center;">
+        Clique num final para ver a lista
+      </div>
+    </div>
+
+    <!-- Escritório -->
+    <div class="card card-sm">
+      <div class="card-title" style="margin-bottom:8px;">🏢 Escritório</div>
+      <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:6px;">
+        {{ desp.nome | title }}
+      </div>
+      <div style="font-size:12px;color:var(--text2);line-height:2;">
+        Cred. <strong>{{ desp.credencial }}</strong> · CITRAN {{ desp.citran }}<br>
+        {{ desp.cnpj }}<br>
+        <a href="https://wa.me/{{ desp.whatsapp }}" target="_blank"
+           style="color:var(--green);text-decoration:none;">
+          💬 {{ desp.whatsapp_fmt }}
+        </a>
+      </div>
+    </div>
+
+  </div><!-- /direita -->
+
 </div>
 {% endblock %}

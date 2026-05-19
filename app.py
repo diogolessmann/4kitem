@@ -3072,6 +3072,124 @@ def desp_rel_retencao_csv():
     }
 
 
+@app.route('/despachante/financeiro')
+@_desp_login_required
+def desp_financeiro():
+    """Módulo financeiro completo — 12 meses, formas de pgto, recebíveis."""
+    conn = get_desp_conn()
+    ano  = datetime.now().strftime("%Y")
+    mes  = datetime.now().strftime("%Y-%m")
+
+    # Últimos 12 meses de faturamento
+    from datetime import date
+    fat_12 = []
+    for i in range(11, -1, -1):
+        d = date.today().replace(day=1)
+        m = d.month - i
+        y = d.year
+        while m <= 0:
+            m += 12; y -= 1
+        mes_str = f"{y}-{m:02d}"
+        row = conn.execute(
+            "SELECT COALESCE(SUM(honorarios+custos),0), COALESCE(SUM(pago),0), COUNT(*) "
+            "FROM ordens_servico WHERE strftime('%Y-%m',criado_em)=? AND status!='cancelada'",
+            (mes_str,)
+        ).fetchone()
+        fat_12.append({"mes": mes_str, "faturado": round(float(row[0]),2),
+                       "recebido": round(float(row[1]),2), "qtd": row[2]})
+
+    # Breakdown por serviço (ano corrente)
+    fat_servico = [dict(r) for r in conn.execute("""
+        SELECT servico, COUNT(*) as qtd,
+               COALESCE(SUM(honorarios),0) as honorarios,
+               COALESCE(SUM(custos),0) as custos,
+               COALESCE(SUM(pago),0) as pago
+        FROM ordens_servico
+        WHERE strftime('%Y',criado_em)=? AND status!='cancelada'
+        GROUP BY servico ORDER BY honorarios DESC
+    """, (ano,)).fetchall()]
+
+    # Breakdown por forma de pagamento (ano corrente)
+    fat_forma = [dict(r) for r in conn.execute("""
+        SELECT COALESCE(NULLIF(forma_pagamento,''),'Não informado') as forma,
+               COUNT(*) as qtd, COALESCE(SUM(pago),0) as total
+        FROM ordens_servico
+        WHERE strftime('%Y',criado_em)=? AND pago>0 AND status!='cancelada'
+        GROUP BY forma ORDER BY total DESC
+    """, (ano,)).fetchall()]
+
+    # OS com valores pendentes (a receber)
+    os_pendentes = [dict(r) for r in conn.execute("""
+        SELECT os.id, os.numero, os.status, os.criado_em,
+               os.honorarios, os.custos, os.pago,
+               (os.honorarios + os.custos - os.pago) AS pendente,
+               c.nome AS cliente_nome, c.telefone,
+               v.placa
+        FROM ordens_servico os
+        LEFT JOIN clientes c ON c.id = os.cliente_id
+        LEFT JOIN veiculos v ON v.id = os.veiculo_id
+        WHERE os.status NOT IN ('cancelada')
+          AND (os.honorarios + os.custos - os.pago) > 0.01
+        ORDER BY pendente DESC
+        LIMIT 50
+    """).fetchall()]
+
+    # Parcelas vencidas
+    parcelas_vencidas = [dict(r) for r in conn.execute("""
+        SELECT p.id, p.os_id, p.numero, p.valor, p.vencimento,
+               os.numero AS os_numero, os.status AS os_status,
+               c.nome AS cliente_nome, c.telefone,
+               CAST((julianday('now') - julianday(p.vencimento)) AS INTEGER) AS dias_atraso
+        FROM os_parcelas p
+        JOIN ordens_servico os ON os.id = p.os_id
+        LEFT JOIN clientes c ON c.id = os.cliente_id
+        WHERE p.pago_em IS NULL AND p.vencimento < date('now')
+        ORDER BY dias_atraso DESC
+    """).fetchall()]
+
+    # Totais consolidados do ano
+    totais_ano = dict(conn.execute("""
+        SELECT COALESCE(SUM(honorarios+custos),0) AS faturado,
+               COALESCE(SUM(pago),0) AS recebido,
+               COALESCE(SUM(CASE WHEN status!='concluida' AND (honorarios+custos-pago)>0.01
+                              THEN honorarios+custos-pago ELSE 0 END),0) AS a_receber,
+               COUNT(*) AS qtd_os
+        FROM ordens_servico WHERE strftime('%Y',criado_em)=? AND status!='cancelada'
+    """, (ano,)).fetchone())
+
+    conn.close()
+    return desp_render('financeiro.html',
+        fat_12=fat_12, fat_servico=fat_servico,
+        fat_forma=fat_forma, os_pendentes=os_pendentes,
+        parcelas_vencidas=parcelas_vencidas,
+        totais_ano=totais_ano, ano=ano,
+        servicos=DESP_SERVICOS)
+
+
+@app.route('/despachante/manifest.json')
+def desp_pwa_manifest():
+    """PWA manifest para instalação como app."""
+    manifest = {
+        "name": "Lessmann Despachante",
+        "short_name": "Lessmann",
+        "description": "Sistema de gestão de OS para despachante documentalista",
+        "start_url": "/despachante/dashboard",
+        "display": "standalone",
+        "background_color": "#111111",
+        "theme_color": "#6366F1",
+        "orientation": "portrait-primary",
+        "icons": [
+            {"src": "/static/desp/icon-192.png", "sizes": "192x192", "type": "image/png"},
+            {"src": "/static/desp/icon-512.png", "sizes": "512x512", "type": "image/png"}
+        ],
+        "categories": ["business", "productivity"],
+        "lang": "pt-BR"
+    }
+    from flask import Response
+    return Response(_json.dumps(manifest, ensure_ascii=False),
+                    mimetype='application/manifest+json')
+
+
 @app.route('/despachante/os/<int:id>/editar', methods=['POST'])
 @_desp_login_required
 def desp_editar_os(id):

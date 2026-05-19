@@ -7,53 +7,118 @@
 {% endblock %}
 
 {% block extra_style %}
-.filter-bar {
-  display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
-  margin-bottom: 18px;
+/* ── Barra de filtros ── */
+.filter-wrap {
+  display:flex; gap:10px; align-items:center; flex-wrap:wrap;
+  margin-bottom:16px;
 }
-.filter-bar .input { max-width: 260px; }
-.status-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+.filter-search {
+  display:flex; gap:6px; align-items:center; flex:1; min-width:200px; max-width:320px;
+}
+.filter-search .input { flex:1; }
+
+/* ── Status tabs ── */
+.status-tabs { display:flex; gap:5px; flex-wrap:wrap; }
 .status-tab {
-  padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: 600;
-  text-decoration: none; border: 1px solid var(--border2); color: var(--text2);
-  background: var(--surface); transition: all .15s;
+  padding:5px 13px; border-radius:20px; font-size:12px; font-weight:600;
+  text-decoration:none; border:1px solid var(--border2); color:var(--text2);
+  background:var(--surface); transition:all .15s; white-space:nowrap;
 }
-.status-tab:hover { border-color: var(--accent); color: var(--accent); }
-.status-tab.active { background: var(--accent); color: #fff; border-color: var(--accent); }
-.status-tab.t-aberta.active  { background: rgba(234,179,8,.9); border-color: var(--yellow); }
-.status-tab.t-andamento.active{ background: rgba(59,130,246,.9); border-color: var(--blue); }
-.status-tab.t-concluida.active{ background: rgba(34,197,94,.9); border-color: var(--green); }
-.status-tab.t-cancelada.active{ background: rgba(239,68,68,.9); border-color: var(--red); }
+.status-tab:hover  { border-color:var(--accent); color:var(--accent); }
+.status-tab.active { background:var(--accent); color:#fff; border-color:var(--accent); }
+.status-tab.t-aberta.active   { background:rgba(234,179,8,.85); border-color:var(--yellow); color:#111; }
+.status-tab.t-andamento.active{ background:rgba(59,130,246,.85); border-color:var(--blue); }
+.status-tab.t-concluida.active{ background:rgba(34,197,94,.85); border-color:var(--green); color:#111; }
+.status-tab.t-cancelada.active{ background:rgba(239,68,68,.85); border-color:var(--red); }
 
+/* ── OS Card rows ── */
+.os-list { display:flex; flex-direction:column; gap:6px; }
+.os-card {
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:11px; padding:13px 16px;
+  display:grid; grid-template-columns:auto 1fr auto auto;
+  gap:12px; align-items:center;
+  text-decoration:none; color:inherit;
+  transition:border-color .15s, background .15s;
+  position:relative;
+}
+.os-card:hover { border-color:var(--border2); background:var(--surface2); }
+.os-card.has-pendente { border-left:3px solid var(--orange); }
+.os-card.is-parada   { border-left:3px solid var(--yellow); }
+.os-card.is-concluida { opacity:.8; }
+
+/* status dot */
+.os-dot {
+  width:10px; height:10px; border-radius:50%; flex-shrink:0; margin-top:2px;
+}
+.dot-aberta    { background:var(--yellow); box-shadow:0 0 6px rgba(234,179,8,.5); }
+.dot-andamento { background:var(--blue);   box-shadow:0 0 6px rgba(59,130,246,.5); }
+.dot-concluida { background:var(--green);  box-shadow:0 0 6px rgba(34,197,94,.4); }
+.dot-cancelada { background:var(--red);    }
+.dot-default   { background:var(--text3);  }
+
+/* card body */
+.os-card-body { min-width:0; }
+.os-numero {
+  font-family:monospace; font-size:11px; font-weight:700;
+  color:var(--accent); background:var(--accent-soft);
+  padding:1px 7px; border-radius:5px; display:inline-block; margin-bottom:4px;
+}
+.os-cliente { font-weight:600; font-size:14px; color:var(--text); margin-bottom:2px;
+              white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.os-meta    { font-size:11px; color:var(--text3); display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+.placa-tag  {
+  font-family:monospace; font-size:11px; font-weight:700;
+  background:var(--surface3); padding:1px 6px; border-radius:4px;
+  color:var(--text2); border:1px solid var(--border2);
+}
+
+/* financy right */
+.os-fin { text-align:right; flex-shrink:0; }
+.os-fin-val { font-size:15px; font-weight:700; color:var(--text); line-height:1; }
+.os-fin-sub { font-size:10px; color:var(--text3); margin-top:2px; }
+.os-fin-pend { font-size:12px; font-weight:700; color:var(--orange); }
+
+/* action btn */
+.os-card-act { flex-shrink:0; }
+
+/* ── Empty state ── */
 .empty-state {
-  text-align: center; padding: 60px 20px; color: var(--text3);
+  text-align:center; padding:60px 20px; color:var(--text3);
 }
-.empty-state .em-icon { font-size: 48px; margin-bottom: 12px; }
-.pagination { display: flex; gap: 6px; margin-top: 16px; justify-content: center; }
-.pag-btn {
-  padding: 6px 12px; border-radius: 7px; font-size: 12px; font-weight: 600;
-  text-decoration: none; background: var(--surface2); border: 1px solid var(--border2);
-  color: var(--text2); transition: all .15s;
-}
-.pag-btn:hover { color: var(--text); border-color: var(--accent); }
-.pag-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.empty-state .em-icon { font-size:48px; margin-bottom:12px; }
 
-.placa-tag {
-  font-family: monospace; font-size: 12px; font-weight: 700;
-  background: var(--surface3); padding: 2px 7px; border-radius: 5px;
-  color: var(--accent); letter-spacing: .5px;
+/* ── Pagination ── */
+.pagination { display:flex; gap:6px; margin-top:18px; justify-content:center; }
+.pag-btn {
+  padding:6px 14px; border-radius:8px; font-size:12px; font-weight:600;
+  text-decoration:none; background:var(--surface); border:1px solid var(--border2);
+  color:var(--text2); transition:all .15s;
+}
+.pag-btn:hover { border-color:var(--accent); color:var(--accent); }
+.pag-btn.active { background:var(--accent); color:#fff; border-color:var(--accent); }
+
+/* ── Contagem ── */
+.os-count {
+  font-size:12px; color:var(--text3); margin-bottom:14px; margin-top:4px;
 }
 {% endblock %}
 
 {% block content %}
-<!-- Filtros -->
-<div class="filter-bar">
-  <form method="get" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+
+{# ── Filtros ── #}
+<div class="filter-wrap">
+  <form method="get" class="filter-search" id="search-form">
     <input type="hidden" name="status" value="{{ status_sel or '' }}">
-    <input name="q" class="input" style="max-width:240px;" placeholder="🔍  Buscar cliente, placa, número..." value="{{ busca }}">
+    <input name="q" class="input" placeholder="🔍  Cliente, placa, número..."
+           value="{{ busca }}" autocomplete="off" id="q-input">
     <button class="btn btn-secondary btn-sm" type="submit">Buscar</button>
-    {% if busca %}<a href="{{ url_for('desp_lista_os') }}" class="btn btn-ghost btn-sm">✕ Limpar</a>{% endif %}
+    {% if busca %}
+    <a href="{{ url_for('desp_lista_os') }}{% if status_sel %}?status={{ status_sel }}{% endif %}"
+       class="btn btn-ghost btn-sm" title="Limpar busca">✕</a>
+    {% endif %}
   </form>
+
   <div class="status-tabs">
     <a href="{{ url_for('desp_lista_os') }}{% if busca %}?q={{ busca }}{% endif %}"
        class="status-tab {% if not status_sel %}active{% endif %}">Todas</a>
@@ -68,97 +133,108 @@
   </div>
 </div>
 
-<div class="card" style="padding:0;overflow:hidden;">
-  {% if ordens %}
-  <div class="table-wrap">
-    <table>
-      <thead>
-        <tr>
-          <th>N° O.S.</th>
-          <th>Cliente</th>
-          <th>Serviço</th>
-          <th>Placa</th>
-          <th>Abertura</th>
-          <th>Honorários</th>
-          <th>Pago</th>
-          <th>Status</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for os in ordens %}
-        {% set sl = status_labels.get(os.status, ('⚪','')) %}
-        <tr>
-          <td>
-            <a href="{{ url_for('desp_detalhe_os', id=os.id) }}"
-               style="font-family:monospace;font-weight:700;font-size:13px;">
-              {{ os.numero }}
-            </a>
-          </td>
-          <td>
-            <div style="font-weight:600;color:var(--text);">{{ os.cliente_nome or '—' }}</div>
-            <div style="font-size:11px;color:var(--text3);">{{ os.cpf or os.telefone or '' }}</div>
-          </td>
-          <td style="max-width:160px;">
-            <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
-              {{ servicos.get(os.servico, os.servico) }}
-            </div>
-          </td>
-          <td>
-            {% if os.placa %}
-              <span class="placa-tag">{{ os.placa }}</span>
-            {% else %}—{% endif %}
-          </td>
-          <td style="white-space:nowrap;">
-            {{ os.criado_em[:10] if os.criado_em else '—' }}
-          </td>
-          <td>R$ {{ "%.2f"|format(os.honorarios) }}</td>
-          <td>
-            {% set pendente = (os.honorarios + os.custos) - os.pago %}
-            {% if pendente <= 0 %}
-              <span style="color:var(--green);font-weight:700;">✓ Quitado</span>
-            {% else %}
-              <span style="color:var(--yellow);">R$ {{ "%.2f"|format(os.pago) }} / {{ "%.2f"|format(os.total) }}</span>
-            {% endif %}
-          </td>
-          <td>
-            <span class="badge {% if os.status == 'aberta' %}badge-yellow{% elif os.status == 'andamento' %}badge-blue{% elif os.status == 'concluida' %}badge-green{% elif os.status == 'cancelada' %}badge-red{% else %}badge-gray{% endif %}">
-              {{ sl[0] }} {{ sl[1] }}
-            </span>
-          </td>
-          <td>
-            <a href="{{ url_for('desp_detalhe_os', id=os.id) }}" class="btn btn-ghost btn-sm">Abrir →</a>
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
+{# ── Lista de OS ── #}
+{% if ordens %}
+<div class="os-count">
+  Mostrando {{ ordens | length }} O.S.
+  {% if status_sel %} com status <strong>{{ status_sel }}</strong>{% endif %}
+  {% if busca %} para "<strong>{{ busca }}</strong>"{% endif %}
+</div>
+<div class="os-list">
+  {% for os in ordens %}
+  {% set pendente = (os.honorarios + os.custos) - os.pago %}
+  <a href="{{ url_for('desp_detalhe_os', id=os.id) }}"
+     class="os-card {% if pendente > 0.01 and os.status != 'cancelada' %}has-pendente{% endif %} {% if os.status == 'concluida' %}is-concluida{% endif %}">
 
-  <!-- Paginação -->
-  {% if ordens | length == 20 or page > 1 %}
-  <div class="pagination" style="padding:14px;">
-    {% if page > 1 %}
-      <a href="{{ url_for('desp_lista_os') }}?page={{ page-1 }}{% if status_sel %}&status={{ status_sel }}{% endif %}{% if busca %}&q={{ busca }}{% endif %}"
-         class="pag-btn">← Anterior</a>
-    {% endif %}
-    <span class="pag-btn active">{{ page }}</span>
-    {% if ordens | length == 20 %}
-      <a href="{{ url_for('desp_lista_os') }}?page={{ page+1 }}{% if status_sel %}&status={{ status_sel }}{% endif %}{% if busca %}&q={{ busca }}{% endif %}"
-         class="pag-btn">Próxima →</a>
-    {% endif %}
-  </div>
-  {% endif %}
-
-  {% else %}
-  <div class="empty-state">
-    <div class="em-icon">📋</div>
-    <div style="font-size:16px;font-weight:600;color:var(--text2);margin-bottom:8px;">Nenhuma O.S. encontrada</div>
-    <div style="font-size:13px;margin-bottom:20px;">
-      {% if busca %}Nenhum resultado para "{{ busca }}"{% elif status_sel %}Nenhuma O.S. com status "{{ status_sel }}"{% else %}Nenhuma ordem de serviço cadastrada ainda{% endif %}
+    {# Dot de status #}
+    <div class="os-dot
+      {% if os.status == 'aberta' %}dot-aberta
+      {% elif os.status == 'andamento' %}dot-andamento
+      {% elif os.status == 'concluida' %}dot-concluida
+      {% elif os.status == 'cancelada' %}dot-cancelada
+      {% else %}dot-default{% endif %}">
     </div>
-    <a href="{{ url_for('desp_nova_os') }}" class="btn btn-primary">➕ Criar primeira O.S.</a>
-  </div>
+
+    {# Info principal #}
+    <div class="os-card-body">
+      <div class="os-numero">{{ os.numero }}</div>
+      <div class="os-cliente">{{ os.cliente_nome or '— Cliente não informado —' }}</div>
+      <div class="os-meta">
+        {% if os.placa %}
+          <span class="placa-tag">{{ os.placa }}</span>
+        {% endif %}
+        <span>{{ servicos.get(os.servico, os.servico) | truncate(30, true, '…') }}</span>
+        <span style="opacity:.6;">{{ os.criado_em[:10] if os.criado_em else '' }}</span>
+        {% if os.exercicio %}
+          <span style="color:var(--accent);font-weight:600;">{{ os.exercicio }}</span>
+        {% endif %}
+      </div>
+    </div>
+
+    {# Financeiro #}
+    <div class="os-fin">
+      <div class="os-fin-val">R$ {{ "%.2f"|format(os.honorarios) }}</div>
+      <div class="os-fin-sub">honorários</div>
+      {% if pendente > 0.01 and os.status != 'cancelada' %}
+        <div class="os-fin-pend">R$ {{ "%.2f"|format(pendente) }} pendente</div>
+      {% elif os.status != 'cancelada' %}
+        <div style="font-size:11px;color:var(--green);font-weight:600;">✓ quitado</div>
+      {% endif %}
+    </div>
+
+    {# Badge status #}
+    <div class="os-card-act">
+      <span class="badge {% if os.status == 'aberta' %}badge-yellow{% elif os.status == 'andamento' %}badge-blue{% elif os.status == 'concluida' %}badge-green{% elif os.status == 'cancelada' %}badge-red{% else %}badge-gray{% endif %}"
+            style="font-size:11px;">
+        {{ os.status }}
+      </span>
+    </div>
+
+  </a>
+  {% endfor %}
+</div>
+
+{# ── Paginação ── #}
+{% if ordens | length == 20 or page > 1 %}
+<div class="pagination">
+  {% if page > 1 %}
+    <a href="{{ url_for('desp_lista_os') }}?page={{ page-1 }}{% if status_sel %}&status={{ status_sel }}{% endif %}{% if busca %}&q={{ busca }}{% endif %}"
+       class="pag-btn">← Anterior</a>
+  {% endif %}
+  <span class="pag-btn active">Pág. {{ page }}</span>
+  {% if ordens | length == 20 %}
+    <a href="{{ url_for('desp_lista_os') }}?page={{ page+1 }}{% if status_sel %}&status={{ status_sel }}{% endif %}{% if busca %}&q={{ busca }}{% endif %}"
+       class="pag-btn">Próxima →</a>
   {% endif %}
 </div>
+{% endif %}
+
+{% else %}
+<div class="empty-state">
+  <div class="em-icon">📋</div>
+  <div style="font-size:16px;font-weight:600;color:var(--text2);margin-bottom:8px;">
+    Nenhuma O.S. encontrada
+  </div>
+  <div style="font-size:13px;margin-bottom:20px;">
+    {% if busca %}
+      Nenhum resultado para "<strong>{{ busca }}</strong>"
+    {% elif status_sel %}
+      Nenhuma O.S. com status <strong>{{ status_sel }}</strong>
+    {% else %}
+      Nenhuma ordem de serviço cadastrada ainda
+    {% endif %}
+  </div>
+  <a href="{{ url_for('desp_nova_os') }}" class="btn btn-primary">➕ Criar primeira O.S.</a>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_script %}
+<script>
+// Enter no campo de busca já submete
+document.getElementById('q-input').addEventListener('keydown', function(e){
+  if(e.key === 'Enter') document.getElementById('search-form').submit();
+});
+</script>
 {% endblock %}

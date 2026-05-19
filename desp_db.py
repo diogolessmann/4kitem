@@ -628,18 +628,107 @@ def atualizar_os(id_: int, dados: dict):
 def stats_dashboard() -> dict:
     conn = get_conn()
     mes  = datetime.now().strftime("%Y-%m")
-    r = {
-        "os_abertas":     conn.execute("SELECT COUNT(*) FROM ordens_servico WHERE status='aberta'").fetchone()[0],
-        "os_andamento":   conn.execute("SELECT COUNT(*) FROM ordens_servico WHERE status='andamento'").fetchone()[0],
-        "os_mes":         conn.execute("SELECT COUNT(*) FROM ordens_servico WHERE strftime('%Y-%m',criado_em)=?", (mes,)).fetchone()[0],
-        "os_total":       conn.execute("SELECT COUNT(*) FROM ordens_servico").fetchone()[0],
-        "a_receber":      conn.execute("SELECT COALESCE(SUM(total-pago),0) FROM ordens_servico WHERE status IN ('aberta','andamento') AND total>pago").fetchone()[0],
-        "recebido_mes":   conn.execute("SELECT COALESCE(SUM(pago),0) FROM ordens_servico WHERE strftime('%Y-%m',atualizado_em)=? AND pago>0", (mes,)).fetchone()[0],
-        "clientes":       conn.execute("SELECT COUNT(*) FROM clientes").fetchone()[0],
-        "veiculos":       conn.execute("SELECT COUNT(*) FROM veiculos").fetchone()[0],
-    }
+    ano  = datetime.now().strftime("%Y")
+
+    # ── Básico
+    os_abertas   = conn.execute("SELECT COUNT(*) FROM ordens_servico WHERE status='aberta'").fetchone()[0]
+    os_andamento = conn.execute("SELECT COUNT(*) FROM ordens_servico WHERE status='andamento'").fetchone()[0]
+    os_mes       = conn.execute("SELECT COUNT(*) FROM ordens_servico WHERE strftime('%Y-%m',criado_em)=?", (mes,)).fetchone()[0]
+    os_total     = conn.execute("SELECT COUNT(*) FROM ordens_servico").fetchone()[0]
+    clientes     = conn.execute("SELECT COUNT(*) FROM clientes").fetchone()[0]
+    veiculos     = conn.execute("SELECT COUNT(*) FROM veiculos").fetchone()[0]
+
+    # ── Financeiro
+    a_receber    = conn.execute(
+        "SELECT COALESCE(SUM(total-pago),0) FROM ordens_servico WHERE status NOT IN ('cancelada','concluida') AND (total-pago)>0.01"
+    ).fetchone()[0]
+    recebido_mes = conn.execute(
+        "SELECT COALESCE(SUM(pago),0) FROM ordens_servico WHERE strftime('%Y-%m',atualizado_em)=? AND pago>0", (mes,)
+    ).fetchone()[0]
+    faturado_mes = conn.execute(
+        "SELECT COALESCE(SUM(honorarios+custos),0) FROM ordens_servico WHERE strftime('%Y-%m',criado_em)=? AND status!='cancelada'", (mes,)
+    ).fetchone()[0]
+    faturado_ano = conn.execute(
+        "SELECT COALESCE(SUM(honorarios+custos),0) FROM ordens_servico WHERE strftime('%Y',criado_em)=? AND status!='cancelada'", (ano,)
+    ).fetchone()[0]
+
+    # ── Faturamento por mês (últimos 6 meses)
+    fat_mensal = []
+    for i in range(5, -1, -1):
+        from datetime import date
+        d = date.today().replace(day=1)
+        # subtrai i meses
+        m = d.month - i
+        y = d.year
+        while m <= 0:
+            m += 12; y -= 1
+        mes_str = f"{y}-{m:02d}"
+        row = conn.execute(
+            "SELECT COALESCE(SUM(honorarios+custos),0), COUNT(*) FROM ordens_servico "
+            "WHERE strftime('%Y-%m',criado_em)=? AND status!='cancelada'", (mes_str,)
+        ).fetchone()
+        fat_mensal.append({"mes": mes_str, "valor": round(float(row[0]), 2), "qtd": row[1]})
+
+    # ── Faturamento por serviço (top 5 do ano)
+    fat_servico = conn.execute("""
+        SELECT servico, COUNT(*) as qtd, COALESCE(SUM(honorarios),0) as total
+        FROM ordens_servico
+        WHERE strftime('%Y',criado_em)=? AND status!='cancelada'
+        GROUP BY servico ORDER BY total DESC LIMIT 5
+    """, (ano,)).fetchall()
+
+    # ── ALERTAS: OS paradas há mais de 20 dias sem atualização
+    os_paradas = conn.execute("""
+        SELECT os.id, os.numero, os.status, os.atualizado_em,
+               c.nome AS cliente_nome, v.placa,
+               CAST((julianday('now') - julianday(os.atualizado_em)) AS INTEGER) AS dias_parada
+        FROM ordens_servico os
+        LEFT JOIN clientes c ON c.id = os.cliente_id
+        LEFT JOIN veiculos v ON v.id = os.veiculo_id
+        WHERE os.status IN ('aberta','andamento')
+          AND (julianday('now') - julianday(os.atualizado_em)) > 20
+        ORDER BY dias_parada DESC
+        LIMIT 10
+    """).fetchall()
+
+    # ── ALERTAS: parcelas vencidas (não pagas, vencimento < hoje)
+    parcelas_vencidas = conn.execute("""
+        SELECT p.id, p.os_id, p.numero, p.valor, p.vencimento,
+               os.numero AS os_numero,
+               c.nome AS cliente_nome, c.telefone,
+               CAST((julianday('now') - julianday(p.vencimento)) AS INTEGER) AS dias_atraso
+        FROM os_parcelas p
+        JOIN ordens_servico os ON os.id = p.os_id
+        LEFT JOIN clientes c ON c.id = os.cliente_id
+        WHERE p.pago_em IS NULL
+          AND p.vencimento < date('now')
+        ORDER BY dias_atraso DESC
+        LIMIT 10
+    """).fetchall()
+
+    # ── OS abertas hoje
+    os_hoje = conn.execute(
+        "SELECT COUNT(*) FROM ordens_servico WHERE date(criado_em)=date('now')"
+    ).fetchone()[0]
+
     conn.close()
-    return r
+    return {
+        "os_abertas":        os_abertas,
+        "os_andamento":      os_andamento,
+        "os_mes":            os_mes,
+        "os_total":          os_total,
+        "os_hoje":           os_hoje,
+        "clientes":          clientes,
+        "veiculos":          veiculos,
+        "a_receber":         round(float(a_receber), 2),
+        "recebido_mes":      round(float(recebido_mes), 2),
+        "faturado_mes":      round(float(faturado_mes), 2),
+        "faturado_ano":      round(float(faturado_ano), 2),
+        "fat_mensal":        fat_mensal,
+        "fat_servico":       [dict(r) for r in fat_servico],
+        "os_paradas":        [dict(r) for r in os_paradas],
+        "parcelas_vencidas": [dict(r) for r in parcelas_vencidas],
+    }
 
 # ── Finais de placa do mês ────────────────────────────────────────────────────
 def os_do_mes_placa(mes: int) -> list:
