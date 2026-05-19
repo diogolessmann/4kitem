@@ -1,0 +1,273 @@
+{% extends "despachante/base.html" %}
+
+{% block title %}Relatório de Produção · Lessmann{% endblock %}
+{% block topbar_title %}Relatório de Produção{% endblock %}
+{% block topbar_actions %}
+  <a href="{{ url_for('desp_relatorio_csv') }}?ini={{ data_ini }}&fim={{ data_fim }}{% if servico %}&servico={{ servico }}{% endif %}{% if status %}&status={{ status }}{% endif %}"
+     class="btn btn-secondary btn-sm">⬇️ CSV</a>
+{% endblock %}
+
+{% block extra_style %}
+/* ── Filtros ── */
+.filtros {
+  background:var(--surface); border:1px solid var(--border); border-radius:12px;
+  padding:16px 18px; margin-bottom:20px;
+  display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap;
+}
+.filtros .form-group { margin:0; min-width:140px; }
+.filtros .form-label { font-size:11px; margin-bottom:4px; }
+
+/* ── KPIs ── */
+.rel-kpi-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:10px; margin-bottom:20px; }
+@media(max-width:900px){ .rel-kpi-grid { grid-template-columns:repeat(3,1fr); } }
+@media(max-width:540px){ .rel-kpi-grid { grid-template-columns:1fr 1fr; } }
+.rel-kpi {
+  background:var(--surface); border:1px solid var(--border); border-radius:10px;
+  padding:12px 14px; text-align:center;
+}
+.rel-kpi-val { font-size:22px; font-weight:800; color:var(--text); margin-bottom:3px; line-height:1; }
+.rel-kpi-lbl { font-size:11px; color:var(--text3); }
+
+/* ── Layout ── */
+.rel-layout { display:grid; grid-template-columns:1fr 280px; gap:16px; }
+@media(max-width:900px){ .rel-layout { grid-template-columns:1fr; } }
+
+/* ── OS rows ── */
+.os-row {
+  display:grid;
+  grid-template-columns:90px 1fr 90px 70px 80px 80px 70px;
+  gap:8px; align-items:center;
+  padding:9px 14px; border-bottom:1px solid var(--border);
+  font-size:12px; text-decoration:none; color:inherit;
+  transition:background .1s;
+}
+.os-row:hover { background:var(--surface2); }
+.os-row.head {
+  font-size:10px; font-weight:700; text-transform:uppercase;
+  letter-spacing:.5px; color:var(--text3); background:var(--surface2);
+  border-radius:8px 8px 0 0; padding:8px 14px; cursor:default;
+}
+.os-row.head:hover { background:var(--surface2); }
+@media(max-width:700px){
+  .os-row { grid-template-columns:80px 1fr 70px 60px; }
+  .os-row .col-svc, .os-row .col-pgto, .os-row .col-forma { display:none; }
+}
+
+/* ── Serviço bar ── */
+.svc-bar-row { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+.svc-bar-nome { font-size:12px; color:var(--text2); flex:1; min-width:0;
+               white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.svc-bar-track { width:80px; height:6px; background:var(--surface3); border-radius:3px; overflow:hidden; }
+.svc-bar-fill  { height:100%; background:var(--accent); border-radius:3px; }
+.svc-bar-val   { font-size:12px; font-weight:700; color:var(--text); min-width:60px; text-align:right; }
+.svc-bar-qtd   { font-size:11px; color:var(--text3); min-width:24px; text-align:right; }
+{% endblock %}
+
+{% block content %}
+
+{# ── Filtros ── #}
+<form method="get" action="{{ url_for('desp_relatorio') }}" class="filtros">
+  <div class="form-group">
+    <label class="form-label">Data Inicial</label>
+    <input name="ini" class="input" type="date" value="{{ data_ini }}" style="width:140px;">
+  </div>
+  <div class="form-group">
+    <label class="form-label">Data Final</label>
+    <input name="fim" class="input" type="date" value="{{ data_fim }}" style="width:140px;">
+  </div>
+  <div class="form-group">
+    <label class="form-label">Serviço</label>
+    <select name="servico" class="select" style="width:200px;">
+      <option value="">— Todos —</option>
+      {% for gid, grupo in servicos_grupos.items() %}
+      <optgroup label="{{ grupo.icon }} {{ grupo.label }}">
+        {% for svc_key, svc_nome in grupo.items.items() %}
+        <option value="{{ svc_key }}" {% if servico == svc_key %}selected{% endif %}>{{ svc_nome }}</option>
+        {% endfor %}
+      </optgroup>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="form-group">
+    <label class="form-label">Status</label>
+    <select name="status" class="select" style="width:130px;">
+      <option value="">— Todos —</option>
+      <option value="aberta"    {% if status == 'aberta'    %}selected{% endif %}>🟡 Aberta</option>
+      <option value="andamento" {% if status == 'andamento' %}selected{% endif %}>🔵 Andamento</option>
+      <option value="concluida" {% if status == 'concluida' %}selected{% endif %}>✅ Concluída</option>
+      <option value="cancelada" {% if status == 'cancelada' %}selected{% endif %}>🔴 Cancelada</option>
+    </select>
+  </div>
+  <button type="submit" class="btn btn-primary">🔍 Filtrar</button>
+  <a href="{{ url_for('desp_relatorio') }}" class="btn btn-ghost">✕ Limpar</a>
+
+  <div style="margin-left:auto;font-size:12px;color:var(--text3);align-self:center;">
+    {{ data_ini }} → {{ data_fim }}
+  </div>
+</form>
+
+{# ── KPIs ── #}
+<div class="rel-kpi-grid">
+  <div class="rel-kpi">
+    <div class="rel-kpi-val">{{ dados.total_os }}</div>
+    <div class="rel-kpi-lbl">📋 O.S. no período</div>
+  </div>
+  <div class="rel-kpi">
+    <div class="rel-kpi-val">{{ dados.concluidas }}</div>
+    <div class="rel-kpi-lbl">✅ Concluídas</div>
+  </div>
+  <div class="rel-kpi">
+    <div class="rel-kpi-val" style="font-size:17px;">R$ {{ "%.0f"|format(dados.faturado) }}</div>
+    <div class="rel-kpi-lbl">💰 Faturado</div>
+  </div>
+  <div class="rel-kpi">
+    <div class="rel-kpi-val" style="font-size:17px;color:var(--green);">R$ {{ "%.0f"|format(dados.recebido) }}</div>
+    <div class="rel-kpi-lbl">✅ Recebido</div>
+  </div>
+  <div class="rel-kpi">
+    <div class="rel-kpi-val" style="font-size:17px;color:{% if dados.pendente > 0 %}var(--orange){% else %}var(--green){% endif %};">
+      R$ {{ "%.0f"|format(dados.pendente) }}
+    </div>
+    <div class="rel-kpi-lbl">⏳ Pendente</div>
+  </div>
+</div>
+
+<div class="rel-layout">
+
+  {# ── Tabela de OS ── #}
+  <div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;">
+
+      {% if dados.ordens %}
+      {# Cabeçalho #}
+      <div class="os-row head">
+        <span>N° O.S.</span>
+        <span>Cliente / Placa</span>
+        <span class="col-svc">Serviço</span>
+        <span>Status</span>
+        <span>Honor.</span>
+        <span class="col-pgto">Pago</span>
+        <span class="col-forma">Forma</span>
+      </div>
+
+      {% for o in dados.ordens %}
+      <a href="{{ url_for('desp_detalhe_os', id=o.id) }}" class="os-row">
+        <span style="font-family:monospace;font-weight:700;font-size:11px;color:var(--accent);">
+          {{ o.numero }}
+        </span>
+        <div style="min-width:0;">
+          <div style="font-weight:600;font-size:12px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+            {{ o.cliente_nome or '—' }}
+          </div>
+          <div style="font-size:10px;color:var(--text3);">
+            {% if o.placa %}<span style="font-family:monospace;color:var(--accent);">{{ o.placa }}</span> · {% endif %}
+            {{ (o.criado_em or '')[:10] }}
+          </div>
+        </div>
+        <span class="col-svc" style="font-size:11px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+          {{ servicos.get(o.servico, o.servico) | truncate(20,true,'…') }}
+        </span>
+        <span>
+          <span class="badge {% if o.status=='aberta' %}badge-yellow{% elif o.status=='andamento' %}badge-blue{% elif o.status=='concluida' %}badge-green{% elif o.status=='cancelada' %}badge-red{% else %}badge-gray{% endif %}"
+                style="font-size:10px;">{{ o.status }}</span>
+        </span>
+        <span style="font-weight:700;color:var(--text);">R$ {{ "%.2f"|format(o.honorarios) }}</span>
+        <span class="col-pgto" style="color:{% if o.pago >= o.total %}var(--green){% else %}var(--yellow){% endif %};">
+          R$ {{ "%.2f"|format(o.pago) }}
+        </span>
+        <span class="col-forma" style="font-size:10px;color:var(--text3);">
+          {{ o.forma_pagamento or '—' }}
+        </span>
+      </a>
+      {% endfor %}
+
+      {# Rodapé totais #}
+      <div style="display:flex;justify-content:space-between;align-items:center;
+                  padding:10px 14px;background:var(--surface2);border-top:1px solid var(--border);">
+        <span style="font-size:12px;color:var(--text3);">
+          {{ dados.ordens | length }} O.S. exibidas
+        </span>
+        <div style="display:flex;gap:20px;font-size:12px;font-weight:700;">
+          <span>Faturado: <span style="color:var(--text);">R$ {{ "%.2f"|format(dados.faturado) }}</span></span>
+          <span>Recebido: <span style="color:var(--green);">R$ {{ "%.2f"|format(dados.recebido) }}</span></span>
+          {% if dados.pendente > 0 %}
+          <span>Pendente: <span style="color:var(--orange);">R$ {{ "%.2f"|format(dados.pendente) }}</span></span>
+          {% endif %}
+        </div>
+      </div>
+
+      {% else %}
+      <div style="text-align:center;padding:60px;color:var(--text3);">
+        <div style="font-size:40px;margin-bottom:12px;">📋</div>
+        <div style="font-size:15px;font-weight:600;margin-bottom:6px;">Nenhuma O.S. encontrada</div>
+        <div style="font-size:13px;">Tente ajustar os filtros de período ou serviço.</div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  {# ── Sidebar ── #}
+  <div style="display:flex;flex-direction:column;gap:14px;">
+
+    {# Por serviço #}
+    {% if dados.por_servico %}
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 18px;">
+      <div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:12px;text-transform:uppercase;letter-spacing:.5px;">
+        Por Serviço
+      </div>
+      {% set max_honor = dados.por_servico[0][1].honorarios if dados.por_servico else 1 %}
+      {% set max_honor = [max_honor, 1] | max %}
+      {% for svc, info in dados.por_servico %}
+      <div class="svc-bar-row">
+        <div class="svc-bar-nome" title="{{ servicos.get(svc, svc) }}">
+          {{ servicos.get(svc, svc) | truncate(22, true, '…') }}
+        </div>
+        <div class="svc-bar-track">
+          <div class="svc-bar-fill" style="width:{{ (info.honorarios / max_honor * 100) | round | int }}%;"></div>
+        </div>
+        <div class="svc-bar-val">R$ {{ "%.0f"|format(info.honorarios) }}</div>
+        <div class="svc-bar-qtd">{{ info.qtd }}x</div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    {# Por forma de pagamento #}
+    {% if dados.por_forma %}
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 18px;">
+      <div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:12px;text-transform:uppercase;letter-spacing:.5px;">
+        Formas de Pagamento
+      </div>
+      {% set max_f = dados.por_forma[0][1] if dados.por_forma else 1 %}
+      {% set max_f = [max_f, 1] | max %}
+      {% for forma, total in dados.por_forma %}
+      <div class="svc-bar-row">
+        <div class="svc-bar-nome">{{ forma }}</div>
+        <div class="svc-bar-track">
+          <div class="svc-bar-fill" style="width:{{ (total / max_f * 100) | round | int }}%;background:rgba(34,197,94,.7);"></div>
+        </div>
+        <div class="svc-bar-val" style="color:var(--green);">R$ {{ "%.0f"|format(total) }}</div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    {# Ações #}
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 18px;">
+      <div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px;">
+        Exportar
+      </div>
+      <a href="{{ url_for('desp_relatorio_csv') }}?ini={{ data_ini }}&fim={{ data_fim }}{% if servico %}&servico={{ servico }}{% endif %}{% if status %}&status={{ status }}{% endif %}"
+         class="btn btn-secondary" style="width:100%;justify-content:center;margin-bottom:8px;">
+        📥 Baixar CSV
+      </a>
+      <a href="{{ url_for('desp_backup') }}"
+         class="btn btn-secondary" style="width:100%;justify-content:center;">
+        💾 Backup Completo (ZIP)
+      </a>
+    </div>
+
+  </div>
+</div>
+
+{% endblock %}

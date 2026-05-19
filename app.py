@@ -2781,6 +2781,12 @@ from desp_db import (
     busca_global as desp_busca_global,
     # Retenção
     relatorio_retencao as desp_rel_retencao,
+    # Config / Preços
+    get_tabela_precos as desp_get_precos,
+    set_tabela_precos as desp_set_precos,
+    get_preco_servico as desp_get_preco,
+    # Relatório de Produção
+    relatorio_producao as desp_rel_producao,
 )
 try:
     import desp_rag
@@ -3171,6 +3177,129 @@ def desp_financeiro():
         parcelas_vencidas=parcelas_vencidas,
         totais_ano=totais_ano, ano=ano,
         servicos=DESP_SERVICOS)
+
+
+@app.route('/despachante/precos', methods=['GET', 'POST'])
+@_desp_login_required
+def desp_precos():
+    """Tabela de preços por serviço — visualizar e editar."""
+    if request.method == 'POST':
+        tabela = {}
+        for svc in DESP_SERVICOS:
+            val = request.form.get(f'preco_{svc}', '').strip()
+            if val:
+                try:
+                    tabela[svc] = float(val.replace(',', '.'))
+                except ValueError:
+                    pass
+        desp_set_precos(tabela)
+        from flask import flash
+        flash('Tabela de preços salva com sucesso!', 'ok')
+        return redirect(url_for('desp_precos'))
+    precos = desp_get_precos()
+    return desp_render('precos.html', precos=precos, servicos=DESP_SERVICOS,
+                       servicos_grupos=DESP_SERVICOS_GRUPOS)
+
+
+@app.route('/despachante/api/preco/<servico>')
+@_desp_login_required
+def desp_api_preco(servico):
+    """Retorna o preço padrão de um serviço para auto-fill na nova OS."""
+    valor = desp_get_preco(servico)
+    return jsonify({'servico': servico, 'preco': valor})
+
+
+@app.route('/despachante/relatorio')
+@_desp_login_required
+def desp_relatorio():
+    """Relatório de produção por período."""
+    from datetime import date
+    hoje    = date.today()
+    ini_def = hoje.replace(day=1).strftime('%Y-%m-%d')
+    fim_def = hoje.strftime('%Y-%m-%d')
+    data_ini = request.args.get('ini', ini_def)
+    data_fim = request.args.get('fim', fim_def)
+    servico  = request.args.get('servico', '')
+    status   = request.args.get('status', '')
+    dados    = desp_rel_producao(data_ini, data_fim, servico or None, status or None)
+    return desp_render('relatorio/producao.html',
+                       dados=dados, data_ini=data_ini, data_fim=data_fim,
+                       servico=servico, status=status,
+                       servicos=DESP_SERVICOS, servicos_grupos=DESP_SERVICOS_GRUPOS)
+
+
+@app.route('/despachante/relatorio/csv')
+@_desp_login_required
+def desp_relatorio_csv():
+    """Export CSV do relatório de produção."""
+    from datetime import date
+    hoje    = date.today()
+    data_ini = request.args.get('ini', hoje.replace(day=1).strftime('%Y-%m-%d'))
+    data_fim = request.args.get('fim', hoje.strftime('%Y-%m-%d'))
+    servico  = request.args.get('servico', '')
+    status   = request.args.get('status', '')
+    dados    = desp_rel_producao(data_ini, data_fim, servico or None, status or None)
+    out = io.StringIO()
+    w   = csv.writer(out)
+    w.writerow(['numero', 'data', 'cliente', 'cpf', 'telefone', 'placa',
+                'servico', 'status', 'exercicio', 'honorarios', 'custos',
+                'total', 'pago', 'pendente', 'forma_pagamento'])
+    for o in dados['ordens']:
+        w.writerow([
+            o.get('numero',''), (o.get('criado_em','') or '')[:10],
+            o.get('cliente_nome',''), o.get('cpf',''), o.get('telefone',''),
+            o.get('placa',''),
+            DESP_SERVICOS.get(o.get('servico',''), o.get('servico','')),
+            o.get('status',''), o.get('exercicio',''),
+            o.get('honorarios',0), o.get('custos',0),
+            o.get('total',0), o.get('pago',0), o.get('pendente',0),
+            o.get('forma_pagamento',''),
+        ])
+    out.seek(0)
+    fname = f'relatorio_{data_ini}_{data_fim}.csv'
+    return out.getvalue(), 200, {
+        'Content-Type': 'text/csv; charset=utf-8',
+        'Content-Disposition': f'attachment; filename={fname}'
+    }
+
+
+@app.route('/despachante/backup')
+@_desp_login_required
+def desp_backup():
+    """Download ZIP com todas as tabelas em CSV."""
+    import zipfile
+    conn = get_desp_conn()
+    buf  = io.BytesIO()
+    tabelas = ['clientes', 'veiculos', 'ordens_servico', 'os_parcelas',
+               'os_historico', 'debitos_veiculo']
+    with zipfile.ZipFile(buf, 'w', zipfile.ZIP_DEFLATED) as zf:
+        for tbl in tabelas:
+            try:
+                rows = conn.execute(f'SELECT * FROM {tbl}').fetchall()
+                if not rows:
+                    continue
+                cols = rows[0].keys()
+                sb   = io.StringIO()
+                w    = csv.writer(sb)
+                w.writerow(list(cols))
+                for r in rows:
+                    w.writerow([r[c] for c in cols])
+                zf.writestr(f'{tbl}.csv', sb.getvalue())
+            except Exception:
+                pass
+        # Metadados
+        from datetime import date
+        meta = f'Backup Lessmann Despachante\nData: {date.today()}\n'
+        meta += f'OS: {conn.execute("SELECT COUNT(*) FROM ordens_servico").fetchone()[0]}\n'
+        meta += f'Clientes: {conn.execute("SELECT COUNT(*) FROM clientes").fetchone()[0]}\n'
+        zf.writestr('_info.txt', meta)
+    conn.close()
+    buf.seek(0)
+    from flask import send_file
+    from datetime import date
+    fname = f'lessmann_backup_{date.today()}.zip'
+    return send_file(buf, mimetype='application/zip',
+                     as_attachment=True, download_name=fname)
 
 
 @app.route('/despachante/manifest.json')

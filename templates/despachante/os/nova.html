@@ -838,6 +838,41 @@ function selecionarServico(key, label, grupoLabel, grupoIcon) {
   document.getElementById('servico-display-text').style.color = 'var(--text)';
   document.getElementById('servico-display').style.borderColor = 'var(--green)';
   fecharServicoPicker();
+
+  // Auto-fill honorários com preço padrão (só se campo estiver vazio)
+  const honorariosEl = document.querySelector('[name="honorarios"]');
+  if (honorariosEl && (!honorariosEl.value || parseFloat(honorariosEl.value) === 0)) {
+    fetch('/despachante/api/preco/' + key)
+      .then(r => r.json())
+      .then(data => {
+        if (data.preco && data.preco > 0) {
+          honorariosEl.value = data.preco.toFixed(2);
+          honorariosEl.style.borderColor = 'var(--accent)';
+          setTimeout(() => honorariosEl.style.borderColor = '', 2000);
+          calcTotal();
+
+          // Mostrar toast informativo
+          showPriceToast(label, data.preco);
+        }
+      })
+      .catch(() => {});
+  }
+}
+
+function showPriceToast(servico, preco) {
+  const toast = document.createElement('div');
+  toast.style.cssText = `
+    position:fixed; bottom:80px; right:20px; z-index:999;
+    background:var(--surface2); border:1px solid var(--accent);
+    border-radius:10px; padding:10px 16px; font-size:12px;
+    color:var(--text); box-shadow:0 4px 20px rgba(0,0,0,.4);
+    display:flex; align-items:center; gap:8px;
+    animation:slideIn .25s ease;
+  `;
+  toast.innerHTML = `<span style="color:var(--accent);font-size:16px;">💡</span>
+    Preço padrão de <strong>${servico}</strong>: R$ ${preco.toFixed(2)}`;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 3000);
 }
 
 let cpfDebounce = null;

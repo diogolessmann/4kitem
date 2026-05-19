@@ -409,6 +409,12 @@ def init_db():
             criado_em      TEXT    DEFAULT CURRENT_TIMESTAMP
         )""",
         "CREATE INDEX IF NOT EXISTS idx_parcelas_os ON os_parcelas(os_id)",
+        # ── Config geral (key/value) ──
+        """CREATE TABLE IF NOT EXISTS config (
+            chave TEXT PRIMARY KEY,
+            valor TEXT,
+            atualizado_em TEXT DEFAULT CURRENT_TIMESTAMP
+        )""",
     ]
     for sql in _migrations:
         try:
@@ -1272,3 +1278,177 @@ def relatorio_retencao(ano: int, servico: str = None) -> list:
     """, params).fetchall()
     conn.close()
     return [dict(r) for r in rows]
+
+
+# ── Config geral (key/value) ──────────────────────────────────────────────────
+
+def get_config(chave: str, default=None):
+    conn = get_conn()
+    row  = conn.execute("SELECT valor FROM config WHERE chave=?", (chave,)).fetchone()
+    conn.close()
+    return row["valor"] if row else default
+
+def set_config(chave: str, valor: str):
+    conn = get_conn()
+    conn.execute("""
+        INSERT INTO config (chave, valor, atualizado_em) VALUES (?,?,CURRENT_TIMESTAMP)
+        ON CONFLICT(chave) DO UPDATE SET valor=excluded.valor, atualizado_em=CURRENT_TIMESTAMP
+    """, (chave, valor))
+    conn.commit()
+    conn.close()
+
+
+# ── Tabela de preços por serviço ─────────────────────────────────────────────
+
+import json as _json_db
+
+PRECOS_PADRAO: dict = {
+    # Licenciamento
+    "licenciamento":              120.0,
+    "lic_debitos":                150.0,
+    "lic_outro_municipio":        140.0,
+    "lic_outro_estado":           220.0,
+    "lic_emissao":                 80.0,
+    # Transferência
+    "transferencia":              280.0,
+    "transferencia_debito":       350.0,
+    "transferencia_gravame":      320.0,
+    "transferencia_leilao":       420.0,
+    "transferencia_outro_estado": 380.0,
+    "atpv_comunicado":            120.0,
+    # Especial
+    "inventario":                 550.0,
+    "recibo_inventario":          300.0,
+    "baixa_administrativa":       250.0,
+    "baixa_circulacao":           200.0,
+    "segunda_via_crv":            180.0,
+    "comunicado_retroativo":      200.0,
+    # Boletos
+    "boleto_multa":                60.0,
+    "boleto_licenciamento":        40.0,
+    "boleto_ipva":                 40.0,
+    "boleto_divida_ativa":         60.0,
+    "boletos":                     50.0,
+    # Alterações
+    "alt_cor":                    220.0,
+    "alt_motor":                  280.0,
+    "alt_carroceria":             200.0,
+    "alt_categoria":              200.0,
+    "alt_municipio":              180.0,
+    "bloqueio":                   150.0,
+    "desbloqueio":                150.0,
+    "restricao":                  200.0,
+    # CNH
+    "cnh_primeira":               120.0,
+    "cnh_renovacao":              100.0,
+    "cnh_mudanca_categoria":      150.0,
+    "cnh_segunda_via":            150.0,
+    "cnh_acc":                    150.0,
+    "cnh_cassada":                200.0,
+    "pontuacao":                  100.0,
+    # PCD
+    "pcd_ipva":                   380.0,
+    "pcd_0km":                    420.0,
+    "vaga_especial":              200.0,
+    # Outros
+    "seguro_carta_verde":          80.0,
+    "abertura_mei":               150.0,
+    "protecao_veicular":           80.0,
+    "outros":                     100.0,
+}
+
+def get_tabela_precos() -> dict:
+    """Retorna dict {servico: preco} — merge padrão com personalizados."""
+    raw = get_config("tabela_precos")
+    if raw:
+        try:
+            salvos = _json_db.loads(raw)
+            merged = {**PRECOS_PADRAO, **salvos}
+            return merged
+        except Exception:
+            pass
+    return dict(PRECOS_PADRAO)
+
+def set_tabela_precos(precos: dict):
+    """Salva tabela de preços (apenas os personalizados sobre o padrão)."""
+    set_config("tabela_precos", _json_db.dumps(precos, ensure_ascii=False))
+
+def get_preco_servico(servico: str) -> float:
+    """Retorna o preço padrão de um serviço específico."""
+    tabela = get_tabela_precos()
+    return tabela.get(servico, 0.0)
+
+
+# ── Relatório de Produção ──────────────────────────────────────────────────────
+
+def relatorio_producao(data_ini: str, data_fim: str,
+                       servico: str = None, status: str = None) -> dict:
+    """
+    Retorna dict com lista de OS + totais para o período.
+    data_ini / data_fim no formato YYYY-MM-DD.
+    """
+    conn   = get_conn()
+    where  = ["date(os.criado_em) >= ?", "date(os.criado_em) <= ?"]
+    params = [data_ini, data_fim]
+
+    if servico:
+        where.append("os.servico = ?")
+        params.append(servico)
+    if status:
+        where.append("os.status = ?")
+        params.append(status)
+
+    rows = conn.execute(f"""
+        SELECT os.id, os.numero, os.servico, os.status,
+               os.honorarios, os.custos, os.pago,
+               (os.honorarios + os.custos) AS total,
+               (os.honorarios + os.custos - os.pago) AS pendente,
+               os.forma_pagamento, os.exercicio, os.criado_em, os.atualizado_em,
+               c.nome AS cliente_nome, c.cpf, c.telefone,
+               v.placa
+        FROM ordens_servico os
+        LEFT JOIN clientes c ON c.id = os.cliente_id
+        LEFT JOIN veiculos v ON v.id = os.veiculo_id
+        WHERE {' AND '.join(where)}
+        ORDER BY os.criado_em DESC
+    """, params).fetchall()
+
+    ordens = [dict(r) for r in rows]
+
+    # Totais
+    total_os       = len(ordens)
+    faturado       = sum(o["total"]    for o in ordens if o["status"] != "cancelada")
+    recebido       = sum(o["pago"]     for o in ordens if o["status"] != "cancelada")
+    pendente       = sum(o["pendente"] for o in ordens if o["status"] != "cancelada" and o["pendente"] > 0)
+    concluidas     = sum(1 for o in ordens if o["status"] == "concluida")
+    canceladas     = sum(1 for o in ordens if o["status"] == "cancelada")
+
+    # Por serviço
+    por_servico: dict = {}
+    for o in ordens:
+        if o["status"] == "cancelada": continue
+        svc = o["servico"]
+        if svc not in por_servico:
+            por_servico[svc] = {"qtd": 0, "honorarios": 0.0}
+        por_servico[svc]["qtd"]        += 1
+        por_servico[svc]["honorarios"] += o.get("honorarios", 0)
+
+    # Por forma de pagamento
+    por_forma: dict = {}
+    for o in ordens:
+        if o["status"] == "cancelada" or not o["pago"]: continue
+        forma = o.get("forma_pagamento") or "Não informado"
+        por_forma[forma] = por_forma.get(forma, 0) + o["pago"]
+
+    conn.close()
+    return {
+        "ordens": ordens,
+        "total_os": total_os,
+        "faturado": round(faturado, 2),
+        "recebido": round(recebido, 2),
+        "pendente": round(pendente, 2),
+        "concluidas": concluidas,
+        "canceladas": canceladas,
+        "por_servico": sorted(por_servico.items(), key=lambda x: x[1]["honorarios"], reverse=True),
+        "por_forma":   sorted(por_forma.items(),   key=lambda x: x[1], reverse=True),
+    }

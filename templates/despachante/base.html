@@ -294,8 +294,14 @@
         <a href="{{ url_for('desp_financeiro') }}" class="nav-link {% if request.endpoint == 'desp_financeiro' %}active{% endif %}">
           <span class="icon">💰</span> Financeiro
         </a>
+        <a href="{{ url_for('desp_relatorio') }}" class="nav-link {% if request.endpoint in ('desp_relatorio','desp_relatorio_csv') %}active{% endif %}">
+          <span class="icon">📊</span> Rel. Produção
+        </a>
         <a href="{{ url_for('desp_rel_retencao_view') }}" class="nav-link {% if request.endpoint == 'desp_rel_retencao_view' %}active{% endif %}">
           <span class="icon">🔄</span> Retenção de Clientes
+        </a>
+        <a href="{{ url_for('desp_precos') }}" class="nav-link {% if request.endpoint == 'desp_precos' %}active{% endif %}">
+          <span class="icon">💲</span> Tabela de Preços
         </a>
         <a href="https://wa.me/{{ desp.whatsapp }}" target="_blank" class="nav-link">
           <span class="icon">💬</span> WhatsApp
@@ -318,6 +324,9 @@
       </div>
       <div class="nav-section">
         <div class="nav-label">Sistema</div>
+        <a href="{{ url_for('desp_backup') }}" class="nav-link" title="Baixar backup ZIP completo">
+          <span class="icon">💾</span> Backup
+        </a>
         <a href="/despachante/logout" class="nav-link">
           <span class="icon">🚪</span> Sair
         </a>
