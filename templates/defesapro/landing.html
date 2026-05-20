@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DefesaPro — Gestão de Defesas de Trânsito</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#07070E;color:#EEEEF5;font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh}
+  a{text-decoration:none;color:inherit}
+
+  nav{display:flex;align-items:center;justify-content:space-between;padding:16px 24px;border-bottom:1px solid rgba(139,92,246,0.12);position:sticky;top:0;background:rgba(7,7,14,0.92);backdrop-filter:blur(16px);z-index:50}
+  .nav-logo{font-size:18px;font-weight:900;color:#8B5CF6;display:flex;align-items:center;gap:10px}
+  .nav-logo img{width:32px;height:32px;border-radius:8px;object-fit:cover}
+  .nav-back{padding:8px 18px;border-radius:100px;border:1px solid rgba(255,255,255,0.12);color:#9090B0;font-size:13px;font-weight:600;transition:.2s}
+  .nav-back:hover{border-color:#8B5CF6;color:#8B5CF6}
+  .btn-cta{padding:9px 22px;border-radius:100px;background:linear-gradient(135deg,#7C3AED,#8B5CF6);color:#fff;font-size:13px;font-weight:700;transition:.2s}
+  .btn-cta:hover{opacity:.9}
+
+  .hero{text-align:center;padding:90px 24px 70px;max-width:720px;margin:0 auto}
+  .hero-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(139,92,246,.1);border:1px solid rgba(139,92,246,.3);border-radius:100px;padding:6px 16px;font-size:12px;font-weight:700;color:#8B5CF6;margin-bottom:28px}
+  .hero h1{font-size:clamp(32px,6vw,54px);font-weight:900;letter-spacing:-1.5px;line-height:1.1;margin-bottom:20px}
+  .hero h1 span{background:linear-gradient(135deg,#8B5CF6,#A78BFA);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+  .hero p{font-size:17px;color:#9090B0;line-height:1.6;margin-bottom:40px}
+  .hero-ctas{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap}
+  .cta-big{display:inline-flex;align-items:center;gap:8px;padding:15px 36px;border-radius:100px;background:linear-gradient(135deg,#7C3AED,#8B5CF6);color:#fff;font-size:16px;font-weight:800;cursor:pointer;transition:.2s}
+  .cta-big:hover{opacity:.9;transform:translateY(-1px)}
+  .cta-sec{display:inline-flex;align-items:center;gap:8px;padding:14px 24px;border-radius:100px;border:1px solid rgba(255,255,255,0.12);color:#EEEEF5;font-size:14px;font-weight:600;transition:.2s}
+  .cta-sec:hover{border-color:#8B5CF6;color:#8B5CF6}
+
+  .logo-hero{width:96px;height:96px;border-radius:22px;object-fit:cover;margin:0 auto 32px;display:block;box-shadow:0 0 40px rgba(139,92,246,.4)}
+
+  /* Features */
+  .features{max-width:1100px;margin:0 auto;padding:0 24px 80px}
+  .section-tag{text-align:center;font-size:11px;font-weight:700;color:#8B5CF6;text-transform:uppercase;letter-spacing:2px;margin-bottom:14px}
+  .section-title{text-align:center;font-size:clamp(26px,4vw,38px);font-weight:900;letter-spacing:-1px;margin-bottom:12px}
+  .section-sub{text-align:center;color:#9090B0;font-size:15px;margin-bottom:50px}
+  .feat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:16px}
+  .feat-card{background:#0E0E1C;border:1px solid rgba(139,92,246,.12);border-radius:16px;padding:24px;transition:.2s}
+  .feat-card:hover{border-color:rgba(139,92,246,.3);transform:translateY(-2px)}
+  .feat-icon{font-size:28px;margin-bottom:14px}
+  .feat-title{font-size:16px;font-weight:700;margin-bottom:8px}
+  .feat-desc{font-size:13px;color:#9090B0;line-height:1.6}
+
+  /* Pricing */
+  .pricing{background:#0E0E1C;border-top:1px solid rgba(139,92,246,.1);border-bottom:1px solid rgba(139,92,246,.1);padding:70px 24px}
+  .pricing-inner{max-width:900px;margin:0 auto}
+  .plans-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px;margin-top:40px}
+  .plan{background:#07070E;border:1px solid rgba(139,92,246,.15);border-radius:16px;padding:28px;position:relative}
+  .plan.featured{border-color:#8B5CF6;box-shadow:0 0 40px rgba(139,92,246,.15)}
+  .plan-badge{position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#7C3AED,#8B5CF6);color:#fff;font-size:11px;font-weight:800;padding:4px 16px;border-radius:100px;white-space:nowrap}
+  .plan-name{font-size:14px;font-weight:700;color:#9090B0;text-transform:uppercase;letter-spacing:.5px;margin-bottom:16px}
+  .plan-price{font-size:40px;font-weight:900;letter-spacing:-1px;margin-bottom:4px}
+  .plan-price span{font-size:16px;font-weight:500;color:#9090B0}
+  .plan-desc{font-size:12px;color:#55557A;margin-bottom:20px}
+  .plan-features{list-style:none;display:flex;flex-direction:column;gap:8px;margin-bottom:24px}
+  .plan-features li{font-size:13px;color:#9090B0;display:flex;align-items:center;gap:8px}
+  .plan-features li::before{content:'✓';color:#8B5CF6;font-weight:700;flex-shrink:0}
+  .plan-btn{display:block;text-align:center;padding:12px;border-radius:10px;font-size:14px;font-weight:700;transition:.2s}
+  .plan-btn.primary{background:linear-gradient(135deg,#7C3AED,#8B5CF6);color:#fff}
+  .plan-btn.primary:hover{opacity:.9}
+  .plan-btn.secondary{border:1px solid rgba(139,92,246,.3);color:#8B5CF6}
+  .plan-btn.secondary:hover{background:rgba(139,92,246,.1)}
+
+  /* CTA Final */
+  .final-cta{text-align:center;padding:80px 24px;max-width:600px;margin:0 auto}
+  .final-cta h2{font-size:clamp(28px,5vw,42px);font-weight:900;letter-spacing:-1px;margin-bottom:16px}
+  .final-cta p{font-size:16px;color:#9090B0;margin-bottom:36px}
+
+  footer{text-align:center;padding:24px;border-top:1px solid rgba(139,92,246,.08);font-size:12px;color:#55557A}
+  footer a{color:#8B5CF6}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-logo">
+    <img src="/static/img/defesapro/logo.png" alt="DefesaPro" onerror="this.style.display='none'">
+    DefesaPro
+  </div>
+  <div style="display:flex;gap:10px;align-items:center;">
+    <a href="/" class="nav-back">← Voltar</a>
+    <a href="https://wa.me/5547991011351?text=Olá, quero saber mais sobre o DefesaPro" target="_blank" class="btn-cta">Falar com vendas</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <img src="/static/img/defesapro/logo.png" alt="DefesaPro" class="logo-hero" onerror="this.style.display='none'">
+  <div class="hero-badge">⚖️ Para escritórios de defesa de trânsito</div>
+  <h1>Gestão completa de<br><span>defesas de multas</span></h1>
+  <p>Do cadastro à petição, tudo em um sistema. Controle processos, prazos, honorários e gere petições completas com base no CTB e CONTRAN.</p>
+  <div class="hero-ctas">
+    <a href="https://wa.me/5547991011351?text=Olá, quero testar o DefesaPro" target="_blank" class="cta-big">
+      Quero uma demonstração
+    </a>
+    <a href="#planos" class="cta-sec">Ver planos →</a>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section class="features">
+  <div class="section-tag">✦ Funcionalidades</div>
+  <h2 class="section-title">Tudo que você precisa</h2>
+  <p class="section-sub">Desenvolvido especificamente para quem trabalha com defesas de multas de trânsito.</p>
+
+  <div class="feat-grid">
+    <div class="feat-card">
+      <div class="feat-icon">⚡</div>
+      <div class="feat-title">Motor de Petições</div>
+      <div class="feat-desc">Gera petições completas com base no CTB, CONTRAN e CF/88. Inclui efeito suspensivo, sustento familiar e desqualificação do equipamento automaticamente.</div>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">📷</div>
+      <div class="feat-title">OCR Automático</div>
+      <div class="feat-desc">Cole uma foto ou print da notificação e o sistema preenche todos os campos automaticamente. Suporte a imagens e PDFs.</div>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">⏰</div>
+      <div class="feat-title">Controle de Prazos</div>
+      <div class="feat-desc">Alertas automáticos para processos com prazo vencendo. Nunca mais perca um prazo de defesa prévia, JARI ou CETRAN.</div>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">🔐</div>
+      <div class="feat-title">Senhas GOV.br Seguras</div>
+      <div class="feat-desc">Armazena senhas de acesso ao GOV.br dos clientes com criptografia AES-256. Mais seguro que planilhas e anotações.</div>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">💰</div>
+      <div class="feat-title">Financeiro Integrado</div>
+      <div class="feat-desc">Controle de honorários, pagamentos recebidos e valores a receber. Saiba exatamente quanto você tem para receber.</div>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">📊</div>
+      <div class="feat-title">Dashboard Completo</div>
+      <div class="feat-desc">Visão geral dos processos, taxa de deferimento, urgentes com prazo curto e resumo financeiro em uma tela só.</div>
+    </div>
+  </div>
+</section>
+
+<!-- PRICING -->
+<section class="pricing" id="planos">
+  <div class="pricing-inner">
+    <div class="section-tag">✦ Planos</div>
+    <h2 class="section-title">Simples e sem surpresas</h2>
+    <p class="section-sub">Cancele quando quiser. Sem contrato de fidelidade.</p>
+
+    <div class="plans-grid">
+      <div class="plan">
+        <div class="plan-name">Starter</div>
+        <div class="plan-price">R$490<span>/mês</span></div>
+        <div class="plan-desc">Para quem está começando</div>
+        <ul class="plan-features">
+          <li>Processos ilimitados</li>
+          <li>Motor de petições</li>
+          <li>OCR automático</li>
+          <li>Controle de prazos</li>
+          <li>Financeiro básico</li>
+        </ul>
+        <a href="https://wa.me/5547991011351?text=Quero o DefesaPro Starter" target="_blank" class="plan-btn secondary">Falar com vendas</a>
+      </div>
+
+      <div class="plan featured">
+        <div class="plan-badge">⭐ Mais popular</div>
+        <div class="plan-name">Profissional</div>
+        <div class="plan-price">R$690<span>/mês</span></div>
+        <div class="plan-desc">Para escritórios em crescimento</div>
+        <ul class="plan-features">
+          <li>Tudo do Starter</li>
+          <li>Análise técnica do processo</li>
+          <li>Histórico completo de petições</li>
+          <li>Exportação de documentos .docx</li>
+          <li>Suporte prioritário</li>
+        </ul>
+        <a href="https://wa.me/5547991011351?text=Quero o DefesaPro Profissional" target="_blank" class="plan-btn primary">Falar com vendas</a>
+      </div>
+
+      <div class="plan">
+        <div class="plan-name">Premium</div>
+        <div class="plan-price">R$790<span>/mês</span></div>
+        <div class="plan-desc">Para alto volume de processos</div>
+        <ul class="plan-features">
+          <li>Tudo do Profissional</li>
+          <li>Multi-usuário (equipe)</li>
+          <li>Onboarding personalizado</li>
+          <li>Customização de templates</li>
+          <li>Suporte via WhatsApp direto</li>
+        </ul>
+        <a href="https://wa.me/5547991011351?text=Quero o DefesaPro Premium" target="_blank" class="plan-btn secondary">Falar com vendas</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FINAL CTA -->
+<div class="final-cta">
+  <h2>Pronto para modernizar seu escritório?</h2>
+  <p>Solicite uma demonstração gratuita. Veja o sistema funcionando com seus próprios dados antes de assinar.</p>
+  <a href="https://wa.me/5547991011351?text=Olá, quero uma demonstração do DefesaPro" target="_blank" class="cta-big">
+    📱 Solicitar demonstração grátis
+  </a>
+</div>
+
+<footer>
+  <p>DefesaPro é uma solução <a href="/">4KITEM</a> · © 2026 · Todos os direitos reservados</p>
+</footer>
+
+</body>
+</html>

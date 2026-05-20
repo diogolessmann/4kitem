@@ -223,6 +223,14 @@ from saas_db import init_saas_db, get_db as get_saas_db, salvar_nota_dev, listar
 def index():
     return render_template('index.html')
 
+@app.route('/defesapro')
+def defesapro_landing():
+    return render_template('defesapro/landing.html')
+
+@app.route('/despachante-info')
+def despachante_landing():
+    return render_template('despachante/landing_publica.html')
+
 @app.route('/kids')
 def kids():
     return render_template('kids/landing.html', stats=stats())
