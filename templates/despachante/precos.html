@@ -75,7 +75,7 @@
         </span>
       </div>
       <div class="grupo-body">
-        {% for svc_key, svc_nome in grupo.items.items() %}
+        {% for svc_key, svc_nome in grupo['items'].items() %}
         <div class="preco-row">
           <label class="preco-name" for="p_{{ svc_key }}">{{ svc_nome }}</label>
           <div class="preco-input-wrap">

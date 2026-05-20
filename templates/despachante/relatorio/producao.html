@@ -81,7 +81,7 @@
       <option value="">— Todos —</option>
       {% for gid, grupo in servicos_grupos.items() %}
       <optgroup label="{{ grupo.icon }} {{ grupo.label }}">
-        {% for svc_key, svc_nome in grupo.items.items() %}
+        {% for svc_key, svc_nome in grupo['items'].items() %}
         <option value="{{ svc_key }}" {% if servico == svc_key %}selected{% endif %}>{{ svc_nome }}</option>
         {% endfor %}
       </optgroup>
