@@ -75,6 +75,7 @@
     <button class="tab-btn" onclick="showTab('bau',this)">🗄️ Baú ({{ bau_users|length }})</button>
     <button class="tab-btn" onclick="showTab('kids',this)">📺 KidsCurator ({{ kids_clients|length }})</button>
     <button class="tab-btn" onclick="showTab('desp',this)">🚗 Despachante ({{ desp_users|length }})</button>
+    <button class="tab-btn" onclick="showTab('defesa',this)">⚖️ DefesaPro ({{ defesa_users|length }})</button>
   </div>
 
   <!-- ═══════════════ ALERTA SC ═══════════════ -->
@@ -325,6 +326,79 @@
     {% endif %}
   </div>
 
+  <!-- ═══ TAB DEFESAPRO ═══ -->
+  <div class="tab-content" id="tab-defesa">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+      <h2 style="margin:0;">Usuários — DefesaPro</h2>
+      <button class="btn-sm btn-green" onclick="openNovaDefesa()">➕ Novo usuário</button>
+    </div>
+    {% if defesa_users %}
+    <table>
+      <thead><tr>
+        <th>Nome</th><th>Escritório</th><th>Telefone</th><th>Cidade</th><th>Plano</th><th>Status</th><th>Trial</th><th>Cadastro</th><th>Ações</th>
+      </tr></thead>
+      <tbody>
+        {% for u in defesa_users %}
+        <tr id="defesa-{{ u.id }}">
+          <td>
+            <strong>{{ u.name }}</strong>
+            {% if u.email %}<div style="font-size:11px;color:var(--text3)">{{ u.email }}</div>{% endif %}
+          </td>
+          <td style="font-size:12px;color:var(--text2)">{{ u.escritorio or '—' }}</td>
+          <td>{% if u.phone %}<a href="https://wa.me/55{{ u.phone|replace('(','') |replace(')','') |replace('-','') |replace(' ','') }}" target="_blank" style="color:var(--green)">{{ u.phone }}</a>{% else %}—{% endif %}</td>
+          <td style="font-size:12px;color:var(--text2)">{{ u.cidade or '—' }}</td>
+          <td>
+            <span class="badge btn-purple" style="border-radius:20px">
+              {% if u.plan == 'starter' %}Starter R$490
+              {% elif u.plan == 'profissional' %}Profissional R$690
+              {% elif u.plan == 'premium' %}Premium R$790
+              {% else %}{{ u.plan }}{% endif %}
+            </span>
+          </td>
+          <td><span class="badge {% if u.active %}badge-active{% else %}badge-suspended{% endif %}">{{ 'ativo' if u.active else 'inativo' }}</span></td>
+          <td style="font-size:11px;color:var(--text2)" id="trial-defesa-{{ u.id }}">{{ u.trial_ends[:10] if u.trial_ends else '—' }}</td>
+          <td style="font-size:11px;color:var(--text2)">{{ u.created_at[:10] if u.created_at else '—' }}</td>
+          <td>
+            <div class="actions">
+              {% if u.active %}
+              <button class="btn-sm btn-orange" onclick="setDefesaStatus({{ u.id }}, false)">⏸ Suspender</button>
+              {% else %}
+              <button class="btn-sm btn-green"  onclick="setDefesaStatus({{ u.id }}, true)">▶ Ativar</button>
+              {% endif %}
+              <button class="btn-sm btn-purple"  onclick="openTrial('defesa','{{ u.id }}','{{ u.trial_ends[:10] if u.trial_ends else '' }}')">📅 Trial</button>
+              <button class="btn-sm btn-red"     onclick="deleteDefesa({{ u.id }})">🗑 Deletar</button>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty">Nenhum usuário do DefesaPro ainda.</div>
+    {% endif %}
+  </div>
+
+  <!-- Modal Novo Usuário DefesaPro -->
+  <div class="modal-overlay" id="novaDefesaModal" style="display:none;">
+    <div class="modal-box" style="max-width:440px;">
+      <div class="modal-title">⚖️ Novo Usuário — DefesaPro</div>
+      <input id="ndf-name"       type="text"  placeholder="Nome completo *"        class="modal-input" style="margin-bottom:8px;">
+      <input id="ndf-escritorio" type="text"  placeholder="Escritório / empresa"    class="modal-input" style="margin-bottom:8px;">
+      <input id="ndf-phone"      type="text"  placeholder="Telefone / WhatsApp *"   class="modal-input" style="margin-bottom:8px;">
+      <input id="ndf-email"      type="email" placeholder="E-mail"                  class="modal-input" style="margin-bottom:8px;">
+      <input id="ndf-cidade"     type="text"  placeholder="Cidade"                  class="modal-input" style="margin-bottom:8px;">
+      <select id="ndf-plan" class="modal-input" style="margin-bottom:12px;">
+        <option value="starter">Starter — R$490/mês</option>
+        <option value="profissional">Profissional — R$690/mês</option>
+        <option value="premium">Premium — R$790/mês</option>
+      </select>
+      <div class="modal-btns">
+        <button class="btn-sm btn-green" onclick="salvarNovaDefesa()">✅ Salvar</button>
+        <button class="btn-sm btn-red"   onclick="closeNovaDefesaModal()">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Modal Novo Usuário Despachante -->
   <div class="modal-overlay" id="novoDespModal" style="display:none;">
     <div class="modal-box" style="max-width:440px;">
@@ -386,6 +460,7 @@ const _trialUrls = {
   mandazap:    id => `/admin/mandazap/user/${id}/trial`,
   bau:         id => `/admin/bau/user/${id}/trial`,
   despachante: id => `/admin/despachante/user/${id}/trial`,
+  defesa:      id => `/admin/defesapro/user/${id}/trial`,
 };
 async function saveTrialDate() {
   const date = document.getElementById('trialDateInput').value;
@@ -560,6 +635,48 @@ async function salvarNovoDesp() {
   });
   const d = await r.json();
   if (d.success) { closeNovoDespModal(); location.reload(); }
+  else alert(d.error || 'Erro ao salvar');
+}
+
+/* ── DefesaPro ── */
+async function setDefesaStatus(id, active) {
+  if (!confirm(active ? 'Ativar usuário?' : 'Suspender usuário?')) return;
+  const r = await fetch(`/admin/defesapro/user/${id}/status`, {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ active })
+  });
+  const d = await r.json();
+  if (d.success) location.reload();
+  else alert(d.error || 'Erro');
+}
+async function deleteDefesa(id) {
+  if (!confirm('Deletar este usuário do DefesaPro permanentemente?')) return;
+  const r = await fetch(`/admin/defesapro/user/${id}/delete`, { method: 'POST' });
+  const d = await r.json();
+  if (d.success) document.getElementById('defesa-' + id)?.remove();
+  else alert(d.error || 'Erro');
+}
+function openNovaDefesa() {
+  document.getElementById('novaDefesaModal').style.display = 'flex';
+}
+function closeNovaDefesaModal() {
+  document.getElementById('novaDefesaModal').style.display = 'none';
+  ['ndf-name','ndf-escritorio','ndf-phone','ndf-email','ndf-cidade'].forEach(id => document.getElementById(id).value = '');
+}
+async function salvarNovaDefesa() {
+  const name       = document.getElementById('ndf-name').value.trim();
+  const phone      = document.getElementById('ndf-phone').value.trim();
+  const email      = document.getElementById('ndf-email').value.trim();
+  const escritorio = document.getElementById('ndf-escritorio').value.trim();
+  const cidade     = document.getElementById('ndf-cidade').value.trim();
+  const plan       = document.getElementById('ndf-plan').value;
+  if (!name || !phone) { alert('Nome e telefone são obrigatórios.'); return; }
+  const r = await fetch('/admin/defesapro/user/novo', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ name, phone, email, escritorio, cidade, plan })
+  });
+  const d = await r.json();
+  if (d.success) { closeNovaDefesaModal(); location.reload(); }
   else alert(d.error || 'Erro ao salvar');
 }
 </script>

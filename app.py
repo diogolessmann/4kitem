@@ -926,12 +926,22 @@ def saas_admin():
         conn2.close()
     except Exception:
         desp_users = []
+    # DefesaPro — usuários/assinantes
+    try:
+        conn3 = get_saas_db()
+        defesa_users = [dict(r) for r in conn3.execute(
+            'SELECT id, name, email, phone, escritorio, cidade, plan, active, created_at, trial_ends, notes FROM defesapro_users ORDER BY created_at DESC'
+        ).fetchall()]
+        conn3.close()
+    except Exception:
+        defesa_users = []
     return render_template('saas_admin.html',
                            subscribers=subscribers, businesses=businesses,
                            mz_users=mz_users, mz_plans=MANDAZAP_PLANS,
                            bau_users=bau_users,
                            kids_clients=kids_clients,
-                           desp_users=desp_users)
+                           desp_users=desp_users,
+                           defesa_users=defesa_users)
 
 
 @app.route('/admin/alerta/<int:sub_id>/status', methods=['POST'])
@@ -1202,6 +1212,72 @@ def saas_desp_novo_user():
         cur = conn.execute(
             'INSERT INTO despachante_users (name, email, phone, empresa, cidade, plan, active, created_at) VALUES (?,?,?,?,?,?,1,?)',
             (name, email, phone, empresa, cidade, plan, datetime.now().isoformat())
+        )
+        conn.commit()
+        new_id = cur.lastrowid
+    except Exception as e:
+        conn.close()
+        return jsonify({'success': False, 'error': str(e)})
+    conn.close()
+    return jsonify({'success': True, 'id': new_id})
+
+
+# ── Admin DefesaPro — gerenciar usuários ─────────────────────────────────────
+
+@app.route('/admin/defesapro/user/<int:user_id>/status', methods=['POST'])
+@_saas_admin_required
+def saas_defesa_set_status(user_id):
+    data   = request.get_json() or {}
+    active = 1 if data.get('active') else 0
+    conn   = get_saas_db()
+    conn.execute('UPDATE defesapro_users SET active=? WHERE id=?', (active, user_id))
+    conn.commit(); conn.close()
+    return jsonify({'success': True})
+
+
+@app.route('/admin/defesapro/user/<int:user_id>/trial', methods=['POST'])
+@_saas_admin_required
+def saas_defesa_set_trial(user_id):
+    data  = request.get_json() or {}
+    trial = data.get('trial_ends', '').strip()
+    conn  = get_saas_db()
+    conn.execute('UPDATE defesapro_users SET trial_ends=? WHERE id=?', (trial or None, user_id))
+    conn.commit(); conn.close()
+    return jsonify({'success': True, 'trial_ends': trial})
+
+
+@app.route('/admin/defesapro/user/<int:user_id>/delete', methods=['POST'])
+@_saas_admin_required
+def saas_defesa_delete(user_id):
+    conn = get_saas_db()
+    try:
+        conn.execute('DELETE FROM defesapro_users WHERE id=?', (user_id,))
+        conn.commit()
+    except Exception as e:
+        conn.close()
+        return jsonify({'success': False, 'error': str(e)})
+    conn.close()
+    return jsonify({'success': True})
+
+
+@app.route('/admin/defesapro/user/novo', methods=['POST'])
+@_saas_admin_required
+def saas_defesa_novo_user():
+    from datetime import datetime
+    data       = request.get_json() or {}
+    name       = data.get('name', '').strip()
+    phone      = data.get('phone', '').strip()
+    email      = data.get('email', '').strip()
+    escritorio = data.get('escritorio', '').strip()
+    cidade     = data.get('cidade', '').strip()
+    plan       = data.get('plan', 'starter')
+    if not name or not phone:
+        return jsonify({'success': False, 'error': 'Nome e telefone obrigatórios'})
+    conn = get_saas_db()
+    try:
+        cur = conn.execute(
+            'INSERT INTO defesapro_users (name, email, phone, escritorio, cidade, plan, active, created_at) VALUES (?,?,?,?,?,?,1,?)',
+            (name, email, phone, escritorio, cidade, plan, datetime.now().isoformat())
         )
         conn.commit()
         new_id = cur.lastrowid

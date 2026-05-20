@@ -276,6 +276,21 @@ def init_saas_db():
             notes         TEXT DEFAULT ''
         );
         CREATE INDEX IF NOT EXISTS idx_desp_users_active ON despachante_users(active);
+
+        CREATE TABLE IF NOT EXISTS defesapro_users (
+            id            INTEGER PRIMARY KEY AUTOINCREMENT,
+            name          TEXT NOT NULL,
+            email         TEXT,
+            phone         TEXT NOT NULL,
+            escritorio    TEXT,
+            cidade        TEXT,
+            plan          TEXT DEFAULT 'starter',
+            active        INTEGER DEFAULT 1,
+            created_at    TEXT,
+            trial_ends    TEXT,
+            notes         TEXT DEFAULT ''
+        );
+        CREATE INDEX IF NOT EXISTS idx_defesapro_users_active ON defesapro_users(active);
     ''')
     conn.commit()
 
