@@ -28,7 +28,7 @@
   .cta-sec{display:inline-flex;align-items:center;gap:8px;padding:14px 24px;border-radius:100px;border:1px solid rgba(255,255,255,0.12);color:#EEEEF5;font-size:14px;font-weight:600;transition:.2s}
   .cta-sec:hover{border-color:#f97316;color:#f97316}
 
-  .logo-hero{width:96px;height:96px;border-radius:22px;object-fit:cover;margin:0 auto 32px;display:block;box-shadow:0 0 40px rgba(249,115,22,.4);background:rgba(249,115,22,.1);display:flex;align-items:center;justify-content:center;font-size:48px}
+  .logo-hero{width:96px;height:96px;border-radius:22px;object-fit:cover;margin:0 auto 32px;display:block;box-shadow:0 0 40px rgba(249,115,22,.4)}
 
   /* Features */
   .features{max-width:1100px;margin:0 auto;padding:0 24px 80px}
@@ -83,7 +83,7 @@
 
 <nav>
   <div class="nav-logo">
-    <img src="/static/img/despachante/logo.png" alt="Amigo Despachante" onerror="this.style.display='none'">
+    <img src="/static/img/despachante/logo.png" alt="Amigo Despachante" onerror="this.style.display='none';this.nextSibling.textContent='🚗 Amigo Despachante'">
     Amigo Despachante
   </div>
   <div style="display:flex;gap:10px;align-items:center;">
@@ -94,7 +94,7 @@
 
 <!-- HERO -->
 <section class="hero">
-  <div class="logo-hero">🚗</div>
+  <img src="/static/img/despachante/logo.png" alt="Amigo Despachante" class="logo-hero" onerror="this.outerHTML='<div class=\'logo-hero\' style=\'background:rgba(249,115,22,.1);display:flex;align-items:center;justify-content:center;font-size:48px;\'>🚗</div>'">
   <div class="hero-badge">🏢 Para despachantes de trânsito</div>
   <h1>Gestão completa do seu<br><span>escritório de despachante</span></h1>
   <p>Do cadastro de clientes à geração de documentos, tudo em um sistema. Controle O.S., licenciamentos, financeiro e ainda conta com IA especializada em DETRAN-SC.</p>

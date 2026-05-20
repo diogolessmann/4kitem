@@ -68,10 +68,12 @@
     }
     .brand-icon {
       width: 36px; height: 36px; border-radius: 10px;
-      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      overflow: hidden; flex-shrink: 0;
+      background: rgba(249,115,22,0.1);
       display: flex; align-items: center; justify-content: center;
-      font-size: 18px; flex-shrink: 0;
+      font-size: 18px;
     }
+    .brand-icon img { width: 100%; height: 100%; object-fit: cover; display: block; }
     .brand-text { display: flex; flex-direction: column; min-width: 0; }
     .brand-name {
       font-size: 12px; font-weight: 700; color: var(--text);
@@ -261,7 +263,9 @@
   <!-- SIDEBAR -->
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-brand">
-      <div class="brand-icon">🚗</div>
+      <div class="brand-icon">
+        <img src="/static/img/despachante/logo.png" alt="Amigo Despachante" onerror="this.style.display='none';this.parentElement.innerHTML='🚗';">
+      </div>
       <div class="brand-text">
         <span class="brand-name">Lessmann</span>
         <span class="brand-sub">Despachante</span>
