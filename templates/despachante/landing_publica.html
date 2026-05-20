@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Amigo Despachante — Sistema para Despachantes de Trânsito</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#07070E;color:#EEEEF5;font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh}
+  a{text-decoration:none;color:inherit}
+
+  nav{display:flex;align-items:center;justify-content:space-between;padding:16px 24px;border-bottom:1px solid rgba(249,115,22,0.12);position:sticky;top:0;background:rgba(7,7,14,0.92);backdrop-filter:blur(16px);z-index:50}
+  .nav-logo{font-size:18px;font-weight:900;color:#f97316;display:flex;align-items:center;gap:10px}
+  .nav-logo img{width:32px;height:32px;border-radius:8px;object-fit:cover}
+  .nav-back{padding:8px 18px;border-radius:100px;border:1px solid rgba(255,255,255,0.12);color:#9090B0;font-size:13px;font-weight:600;transition:.2s}
+  .nav-back:hover{border-color:#f97316;color:#f97316}
+  .btn-cta{padding:9px 22px;border-radius:100px;background:linear-gradient(135deg,#ea580c,#f97316);color:#fff;font-size:13px;font-weight:700;transition:.2s}
+  .btn-cta:hover{opacity:.9}
+
+  .hero{text-align:center;padding:90px 24px 70px;max-width:720px;margin:0 auto}
+  .hero-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(249,115,22,.1);border:1px solid rgba(249,115,22,.3);border-radius:100px;padding:6px 16px;font-size:12px;font-weight:700;color:#f97316;margin-bottom:28px}
+  .hero h1{font-size:clamp(32px,6vw,54px);font-weight:900;letter-spacing:-1.5px;line-height:1.1;margin-bottom:20px}
+  .hero h1 span{background:linear-gradient(135deg,#f97316,#fb923c);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+  .hero p{font-size:17px;color:#9090B0;line-height:1.6;margin-bottom:40px}
+  .hero-ctas{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap}
+  .cta-big{display:inline-flex;align-items:center;gap:8px;padding:15px 36px;border-radius:100px;background:linear-gradient(135deg,#ea580c,#f97316);color:#fff;font-size:16px;font-weight:800;cursor:pointer;transition:.2s}
+  .cta-big:hover{opacity:.9;transform:translateY(-1px)}
+  .cta-sec{display:inline-flex;align-items:center;gap:8px;padding:14px 24px;border-radius:100px;border:1px solid rgba(255,255,255,0.12);color:#EEEEF5;font-size:14px;font-weight:600;transition:.2s}
+  .cta-sec:hover{border-color:#f97316;color:#f97316}
+
+  .logo-hero{width:96px;height:96px;border-radius:22px;object-fit:cover;margin:0 auto 32px;display:block;box-shadow:0 0 40px rgba(249,115,22,.4);background:rgba(249,115,22,.1);display:flex;align-items:center;justify-content:center;font-size:48px}
+
+  /* Features */
+  .features{max-width:1100px;margin:0 auto;padding:0 24px 80px}
+  .section-tag{text-align:center;font-size:11px;font-weight:700;color:#f97316;text-transform:uppercase;letter-spacing:2px;margin-bottom:14px}
+  .section-title{text-align:center;font-size:clamp(26px,4vw,38px);font-weight:900;letter-spacing:-1px;margin-bottom:12px}
+  .section-sub{text-align:center;color:#9090B0;font-size:15px;margin-bottom:50px}
+  .feat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:16px}
+  .feat-card{background:#0E0E1C;border:1px solid rgba(249,115,22,.12);border-radius:16px;padding:24px;transition:.2s}
+  .feat-card:hover{border-color:rgba(249,115,22,.3);transform:translateY(-2px)}
+  .feat-icon{font-size:28px;margin-bottom:14px}
+  .feat-title{font-size:16px;font-weight:700;margin-bottom:8px}
+  .feat-desc{font-size:13px;color:#9090B0;line-height:1.6}
+
+  /* Pricing */
+  .pricing{background:#0E0E1C;border-top:1px solid rgba(249,115,22,.1);border-bottom:1px solid rgba(249,115,22,.1);padding:70px 24px}
+  .pricing-inner{max-width:1000px;margin:0 auto}
+  .plans-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px;margin-top:40px}
+  .plan{background:#07070E;border:1px solid rgba(249,115,22,.15);border-radius:16px;padding:24px;position:relative;transition:.2s}
+  .plan:hover{border-color:rgba(249,115,22,.3);transform:translateY(-2px)}
+  .plan.featured{border-color:#f97316;box-shadow:0 0 40px rgba(249,115,22,.15)}
+  .plan-badge{position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#ea580c,#f97316);color:#fff;font-size:11px;font-weight:800;padding:4px 16px;border-radius:100px;white-space:nowrap}
+  .plan-users{font-size:13px;font-weight:700;color:#f97316;text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px;display:flex;align-items:center;gap:6px}
+  .plan-price{font-size:36px;font-weight:900;letter-spacing:-1px;margin-bottom:4px;line-height:1}
+  .plan-price span{font-size:14px;font-weight:500;color:#9090B0}
+  .plan-per{font-size:11px;color:#55557A;margin-bottom:16px}
+  .plan-features{list-style:none;display:flex;flex-direction:column;gap:7px;margin-bottom:20px}
+  .plan-features li{font-size:12px;color:#9090B0;display:flex;align-items:center;gap:7px}
+  .plan-features li::before{content:'✓';color:#f97316;font-weight:700;flex-shrink:0}
+  .plan-btn{display:block;text-align:center;padding:11px;border-radius:10px;font-size:13px;font-weight:700;transition:.2s}
+  .plan-btn.primary{background:linear-gradient(135deg,#ea580c,#f97316);color:#fff}
+  .plan-btn.primary:hover{opacity:.9}
+  .plan-btn.secondary{border:1px solid rgba(249,115,22,.3);color:#f97316}
+  .plan-btn.secondary:hover{background:rgba(249,115,22,.1)}
+
+  /* Todos os planos incluem */
+  .all-include{max-width:800px;margin:0 auto;margin-top:40px;background:rgba(249,115,22,.05);border:1px solid rgba(249,115,22,.15);border-radius:16px;padding:24px 32px}
+  .all-include h4{font-size:13px;font-weight:700;color:#f97316;text-transform:uppercase;letter-spacing:1px;margin-bottom:16px;text-align:center}
+  .all-include-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px}
+  .all-include-item{font-size:12px;color:#9090B0;display:flex;align-items:center;gap:7px}
+  .all-include-item::before{content:'✓';color:#f97316;font-weight:700;flex-shrink:0}
+
+  /* CTA Final */
+  .final-cta{text-align:center;padding:80px 24px;max-width:600px;margin:0 auto}
+  .final-cta h2{font-size:clamp(28px,5vw,42px);font-weight:900;letter-spacing:-1px;margin-bottom:16px}
+  .final-cta p{font-size:16px;color:#9090B0;margin-bottom:36px}
+
+  footer{text-align:center;padding:24px;border-top:1px solid rgba(249,115,22,.08);font-size:12px;color:#55557A}
+  footer a{color:#f97316}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-logo">
+    <img src="/static/img/despachante/logo.png" alt="Amigo Despachante" onerror="this.style.display='none'">
+    Amigo Despachante
+  </div>
+  <div style="display:flex;gap:10px;align-items:center;">
+    <a href="/" class="nav-back">← Voltar</a>
+    <a href="https://wa.me/5547991011351?text=Olá, quero saber mais sobre o Amigo Despachante" target="_blank" class="btn-cta">Falar com vendas</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="logo-hero">🚗</div>
+  <div class="hero-badge">🏢 Para despachantes de trânsito</div>
+  <h1>Gestão completa do seu<br><span>escritório de despachante</span></h1>
+  <p>Do cadastro de clientes à geração de documentos, tudo em um sistema. Controle O.S., licenciamentos, financeiro e ainda conta com IA especializada em DETRAN-SC.</p>
+  <div class="hero-ctas">
+    <a href="https://wa.me/5547991011351?text=Olá, quero testar o Amigo Despachante" target="_blank" class="cta-big">
+      Quero uma demonstração
+    </a>
+    <a href="#planos" class="cta-sec">Ver planos →</a>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section class="features">
+  <div class="section-tag">✦ Funcionalidades</div>
+  <h2 class="section-title">Tudo que você precisa</h2>
+  <p class="section-sub">Desenvolvido especificamente para quem trabalha com despachante de trânsito no DETRAN-SC.</p>
+
+  <div class="feat-grid">
+    <div class="feat-card">
+      <div class="feat-icon">📋</div>
+      <div class="feat-title">Ordens de Serviço</div>
+      <div class="feat-desc">Kanban visual por status, histórico completo, geração de recibos e protocolos. Tudo organizado em um lugar.</div>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">📷</div>
+      <div class="feat-title">OCR com IA</div>
+      <div class="feat-desc">Cole um print do DETRANET e o sistema preenche placa, RENAVAM, proprietário e débitos automaticamente.</div>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">🔔</div>
+      <div class="feat-title">Controle de Licenciamentos</div>
+      <div class="feat-desc">Alertas automáticos por final de placa. Nunca mais perca um cliente com licenciamento vencendo.</div>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">🤖</div>
+      <div class="feat-title">IA Amigo</div>
+      <div class="feat-desc">Assistente especializado em DETRAN-SC, transferências, inventário, multas e recursos. Responde dúvidas na hora.</div>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">💰</div>
+      <div class="feat-title">Financeiro Integrado</div>
+      <div class="feat-desc">Controle de honorários, custos, pagamentos e relatório de produção por período. Saiba exatamente o que entrou.</div>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">📊</div>
+      <div class="feat-title">Relatórios e Dashboard</div>
+      <div class="feat-desc">Dashboard com OS do dia, fez/não fez, retenção de clientes e relatório de produção detalhado.</div>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">📝</div>
+      <div class="feat-title">Documentos Automáticos</div>
+      <div class="feat-desc">Gera procuração, requerimento, protocolo e recibo com os dados do cliente preenchidos automaticamente.</div>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">📲</div>
+      <div class="feat-title">WhatsApp Integrado</div>
+      <div class="feat-desc">Envie mensagens e cobranças direto para o WhatsApp do cliente com templates personalizados.</div>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">☁️</div>
+      <div class="feat-title">Backup Automático</div>
+      <div class="feat-desc">Backup diário automático para o Google Drive. Seus dados sempre seguros, sem se preocupar com perda.</div>
+    </div>
+  </div>
+</section>
+
+<!-- PRICING -->
+<section class="pricing" id="planos">
+  <div class="pricing-inner">
+    <div class="section-tag">✦ Planos</div>
+    <h2 class="section-title">Preço por usuário, simples assim</h2>
+    <p class="section-sub">Pague apenas pelos usuários que usar. Cancele quando quiser. Sem fidelidade.</p>
+
+    <div class="plans-grid">
+      <div class="plan">
+        <div class="plan-users">👤 1 usuário</div>
+        <div class="plan-price">R$129<span>/mês</span></div>
+        <div class="plan-per">Para autônomos e MEI</div>
+        <ul class="plan-features">
+          <li>1 login simultâneo</li>
+          <li>Todos os módulos inclusos</li>
+          <li>Suporte via WhatsApp</li>
+        </ul>
+        <a href="https://wa.me/5547991011351?text=Quero o Amigo Despachante para 1 usuário" target="_blank" class="plan-btn secondary">Falar com vendas</a>
+      </div>
+
+      <div class="plan featured">
+        <div class="plan-badge">⭐ Mais popular</div>
+        <div class="plan-users">👥 2 usuários</div>
+        <div class="plan-price">R$149<span>/mês</span></div>
+        <div class="plan-per">Para escritórios pequenos</div>
+        <ul class="plan-features">
+          <li>2 logins simultâneos</li>
+          <li>Todos os módulos inclusos</li>
+          <li>Suporte prioritário</li>
+        </ul>
+        <a href="https://wa.me/5547991011351?text=Quero o Amigo Despachante para 2 usuários" target="_blank" class="plan-btn primary">Falar com vendas</a>
+      </div>
+
+      <div class="plan">
+        <div class="plan-users">👥 3 usuários</div>
+        <div class="plan-price">R$179<span>/mês</span></div>
+        <div class="plan-per">Para equipes em crescimento</div>
+        <ul class="plan-features">
+          <li>3 logins simultâneos</li>
+          <li>Todos os módulos inclusos</li>
+          <li>Suporte prioritário</li>
+        </ul>
+        <a href="https://wa.me/5547991011351?text=Quero o Amigo Despachante para 3 usuários" target="_blank" class="plan-btn secondary">Falar com vendas</a>
+      </div>
+
+      <div class="plan">
+        <div class="plan-users">👥 4 usuários</div>
+        <div class="plan-price">R$219<span>/mês</span></div>
+        <div class="plan-per">Para escritórios maiores</div>
+        <ul class="plan-features">
+          <li>4 logins simultâneos</li>
+          <li>Todos os módulos inclusos</li>
+          <li>Suporte direto no WhatsApp</li>
+        </ul>
+        <a href="https://wa.me/5547991011351?text=Quero o Amigo Despachante para 4 usuários" target="_blank" class="plan-btn secondary">Falar com vendas</a>
+      </div>
+    </div>
+
+    <!-- Todos incluem -->
+    <div class="all-include">
+      <h4>✦ Todos os planos incluem</h4>
+      <div class="all-include-grid">
+        <div class="all-include-item">Ordens de Serviço ilimitadas</div>
+        <div class="all-include-item">Clientes e veículos ilimitados</div>
+        <div class="all-include-item">OCR automático com IA</div>
+        <div class="all-include-item">IA Amigo especializada em DETRAN-SC</div>
+        <div class="all-include-item">Controle de licenciamentos</div>
+        <div class="all-include-item">Financeiro e relatórios</div>
+        <div class="all-include-item">Documentos automáticos</div>
+        <div class="all-include-item">Backup automático no Google Drive</div>
+        <div class="all-include-item">Atualizações gratuitas</div>
+        <div class="all-include-item">Sem contrato de fidelidade</div>
+      </div>
+    </div>
+
+    <p style="text-align:center;font-size:13px;color:#55557A;margin-top:20px;">
+      5 usuários ou mais? <a href="https://wa.me/5547991011351?text=Quero o Amigo Despachante para mais de 4 usuários" target="_blank" style="color:#f97316;font-weight:600;">Fale com a gente →</a>
+    </p>
+  </div>
+</section>
+
+<!-- FINAL CTA -->
+<div class="final-cta">
+  <h2>Modernize seu escritório hoje</h2>
+  <p>Solicite uma demonstração gratuita. Veja o sistema funcionando com seus dados antes de assinar.</p>
+  <a href="https://wa.me/5547991011351?text=Olá, quero uma demonstração do Amigo Despachante" target="_blank" class="cta-big">
+    📱 Solicitar demonstração grátis
+  </a>
+</div>
+
+<footer>
+  <p>Amigo Despachante é uma solução <a href="/">4KITEM</a> · © 2026 · Todos os direitos reservados</p>
+</footer>
+
+</body>
+</html>
