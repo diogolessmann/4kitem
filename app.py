@@ -4320,13 +4320,20 @@ def desp_api_ocr():
     groq_key = os.environ.get('GROQ_API_KEY','')
     if not groq_key: return jsonify({'erro': 'GROQ_API_KEY não configurada'}), 500
     prompt = '''Analise esta imagem de documento ou tela de sistema de despachante/DETRAN.
-Extraia TODOS os dados visíveis de veículo e do proprietário/cliente.
+Extraia TODOS os dados visíveis de veículo, do proprietário/cliente e de débitos/taxas.
 Retorne APENAS um objeto JSON válido com os campos (use null para não encontrados):
 {"placa":null,"renavam":null,"chassi":null,"marca":null,"modelo":null,"ano_fab":null,
 "ano_mod":null,"cor":null,"especie":null,"categoria":null,"combustivel":null,"num_crv":null,
 "nome":null,"cpf":null,"cnpj":null,"rg":null,"nascimento":null,"nome_mae":null,
 "telefone":null,"email":null,"cep":null,"logradouro":null,"numero":null,
-"complemento":null,"bairro":null,"cidade":null,"uf":null}
+"complemento":null,"bairro":null,"cidade":null,"uf":null,
+"total_debitos":null,"ipva":null,"licenciamento":null,"multas":null,"dpvat":null}
+Instruções para os campos de débitos (se houver uma "Listagem de Débitos" ou "Total dos Débitos" visível):
+- total_debitos: valor total a pagar (campo "Total dos Débitos" ou soma de todos os débitos), como número decimal
+- ipva: soma dos valores de IPVA, como número decimal
+- licenciamento: soma dos valores de Licenciamento/Taxa Detran, como número decimal
+- multas: soma dos valores de Multas, como número decimal
+- dpvat: valor do DPVAT, como número decimal
 IMPORTANTE: Retorne SOMENTE o JSON, nada mais.'''
     try:
         resp = requests.post(
@@ -4358,7 +4365,11 @@ IMPORTANTE: Retorne SOMENTE o JSON, nada mais.'''
 @app.route('/despachante/chat')
 @_desp_login_required
 def desp_chat():
-    stats_rag = desp_rag.db_stats() if _rag_ok else {'chunks': 0, 'documentos': 0, 'arquivos': []}
+    try:
+        stats_rag = desp_rag.db_stats() if _rag_ok else {'chunks': 0, 'documentos': 0, 'arquivos': []}
+    except Exception as e:
+        log.warning(f'desp_rag.db_stats falhou: {e}')
+        stats_rag = {'chunks': 0, 'documentos': 0, 'arquivos': []}
     return desp_render('chat.html', rag_stats=stats_rag, rag_ok=_rag_ok)
 
 @app.route('/despachante/api/chat', methods=['POST'])
