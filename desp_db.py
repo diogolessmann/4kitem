@@ -248,11 +248,20 @@ MESES = ["", "Janeiro","Fevereiro","Março","Abril","Maio","Junho",
          "Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"]
 
 STATUS_LABELS = {
-    "aberta":    ("🟡", "Aberta"),
+    "aberta":    ("🟡", "Aguardando Doc."),
     "andamento": ("🔵", "Em Andamento"),
+    "detran":    ("🏛️", "No DETRAN"),
     "concluida": ("🟢", "Concluída"),
     "cancelada": ("🔴", "Cancelada"),
 }
+
+# Colunas visíveis no Kanban (sem cancelada)
+KANBAN_COLUNAS = [
+    ("aberta",    "🟡", "Aguardando Doc.",  "rgba(234,179,8,.12)",   "var(--yellow)"),
+    ("andamento", "🔵", "Em Andamento",     "rgba(59,130,246,.12)",  "var(--blue)"),
+    ("detran",    "🏛️", "No DETRAN",        "rgba(168,85,247,.12)",  "var(--purple)"),
+    ("concluida", "🟢", "Concluída",        "rgba(34,197,94,.12)",   "var(--green)"),
+]
 
 # ── Conexão ─────────────────────────────────────────────────────────────────
 def get_conn():
@@ -415,6 +424,25 @@ def init_db():
             valor TEXT,
             atualizado_em TEXT DEFAULT CURRENT_TIMESTAMP
         )""",
+        # ── Requerimento customizável ──
+        "ALTER TABLE ordens_servico ADD COLUMN corpo_req TEXT",
+        # ── Lotes de protocolo RENAVAM ──
+        """CREATE TABLE IF NOT EXISTS protocolos_renavam (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            protocolo   TEXT    NOT NULL,
+            letra       TEXT,
+            lote        TEXT,
+            emitido_em  TEXT,
+            observacao  TEXT,
+            usado       INTEGER DEFAULT 0,
+            os_id       INTEGER REFERENCES ordens_servico(id),
+            criado_em   TEXT    DEFAULT CURRENT_TIMESTAMP
+        )""",
+        "CREATE INDEX IF NOT EXISTS idx_proto_protocolo ON protocolos_renavam(protocolo)",
+        "CREATE INDEX IF NOT EXISTS idx_proto_lote ON protocolos_renavam(lote)",
+        # ── Portal do cliente — token público ──
+        "ALTER TABLE ordens_servico ADD COLUMN token_publico TEXT",
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_os_token ON ordens_servico(token_publico)",
     ]
     for sql in _migrations:
         try:
@@ -549,7 +577,7 @@ def get_os(id_: int) -> dict | None:
         SELECT
           os.id, os.numero, os.cliente_id, os.veiculo_id, os.servico, os.status,
           os.honorarios, os.custos, os.total, os.pago, os.forma_pagamento,
-          os.observacoes, os.criado_em, os.atualizado_em, os.concluido_em,
+          os.observacoes, os.corpo_req, os.criado_em, os.atualizado_em, os.concluido_em,
           os.exercicio, os.situacao_pag,
           c.nome       AS cliente_nome,
           c.cpf,       c.cnpj,      c.rg,     c.nascimento,  c.nome_mae,
@@ -566,6 +594,45 @@ def get_os(id_: int) -> dict | None:
     """, (id_,)).fetchone()
     conn.close()
     return dict(row) if row else None
+
+def kanban_os() -> dict:
+    """
+    Retorna todas as OS ativas agrupadas por status para o Kanban.
+    Exclui canceladas. Inclui contagem de checklist pendente e valor devido.
+    """
+    conn = get_conn()
+    rows = conn.execute("""
+        SELECT os.id, os.numero, os.servico, os.status,
+               os.honorarios, os.custos,
+               (os.honorarios + os.custos)           AS total,
+               (os.honorarios + os.custos - os.pago) AS pendente,
+               os.criado_em, os.atualizado_em, os.exercicio,
+               c.nome AS cliente_nome, c.telefone,
+               v.placa, v.marca, v.modelo
+        FROM ordens_servico os
+        LEFT JOIN clientes c ON c.id = os.cliente_id
+        LEFT JOIN veiculos  v ON v.id  = os.veiculo_id
+        WHERE os.status != 'cancelada'
+        ORDER BY os.atualizado_em DESC
+    """).fetchall()
+    conn.close()
+
+    hoje_str = date.today().isoformat()
+
+    ordens = [dict(r) for r in rows]
+    colunas = {col[0]: [] for col in KANBAN_COLUNAS}
+    for o in ordens:
+        # Dias desde última atualização
+        ref = (o.get('atualizado_em') or o.get('criado_em') or hoje_str)[:10]
+        try:
+            delta = date.fromisoformat(hoje_str) - date.fromisoformat(ref)
+            o['dias'] = delta.days
+        except Exception:
+            o['dias'] = 0
+        col = o['status'] if o['status'] in colunas else 'aberta'
+        colunas[col].append(o)
+    return colunas
+
 
 def listar_os(status=None, busca=None, limit=50, offset=0) -> list:
     conn   = get_conn()
@@ -618,12 +685,14 @@ def atualizar_os(id_: int, dados: dict):
     dados["atualizado_em"] = datetime.now().isoformat()
     dados.setdefault("exercicio", datetime.now().year)
     dados.setdefault("situacao_pag", "")
+    dados.setdefault("corpo_req", "")
     conn = get_conn()
     conn.execute("""
         UPDATE ordens_servico
         SET servico=:servico, honorarios=:honorarios, custos=:custos,
             total=:total, pago=:pago, forma_pagamento=:forma_pagamento,
-            observacoes=:observacoes, atualizado_em=:atualizado_em,
+            observacoes=:observacoes, corpo_req=:corpo_req,
+            atualizado_em=:atualizado_em,
             exercicio=:exercicio, situacao_pag=:situacao_pag
         WHERE id=:id
     """, dados)
@@ -661,7 +730,6 @@ def stats_dashboard() -> dict:
     # ── Faturamento por mês (últimos 6 meses)
     fat_mensal = []
     for i in range(5, -1, -1):
-        from datetime import date
         d = date.today().replace(day=1)
         # subtrai i meses
         m = d.month - i
@@ -717,6 +785,28 @@ def stats_dashboard() -> dict:
         "SELECT COUNT(*) FROM ordens_servico WHERE date(criado_em)=date('now')"
     ).fetchone()[0]
 
+    # ── Pipeline: contagem por status (Kanban)
+    pipeline = {}
+    for row in conn.execute(
+        "SELECT status, COUNT(*) as n FROM ordens_servico WHERE status!='cancelada' GROUP BY status"
+    ).fetchall():
+        pipeline[row['status']] = row['n']
+
+    # ── Top devedores (OS com maior saldo pendente)
+    top_devedores = conn.execute("""
+        SELECT os.id, os.numero,
+               c.nome AS cliente_nome, c.telefone,
+               v.placa,
+               (os.honorarios + os.custos - os.pago) AS saldo
+        FROM ordens_servico os
+        LEFT JOIN clientes c ON c.id = os.cliente_id
+        LEFT JOIN veiculos  v ON v.id  = os.veiculo_id
+        WHERE os.status NOT IN ('cancelada', 'concluida')
+          AND (os.honorarios + os.custos - os.pago) > 0.01
+        ORDER BY saldo DESC
+        LIMIT 6
+    """).fetchall()
+
     conn.close()
     return {
         "os_abertas":        os_abertas,
@@ -734,6 +824,8 @@ def stats_dashboard() -> dict:
         "fat_servico":       [dict(r) for r in fat_servico],
         "os_paradas":        [dict(r) for r in os_paradas],
         "parcelas_vencidas": [dict(r) for r in parcelas_vencidas],
+        "pipeline":          pipeline,
+        "top_devedores":     [dict(r) for r in top_devedores],
     }
 
 # ── Finais de placa do mês ────────────────────────────────────────────────────
@@ -1298,9 +1390,65 @@ def set_config(chave: str, valor: str):
     conn.close()
 
 
-# ── Tabela de preços por serviço ─────────────────────────────────────────────
+# ── Templates de mensagem WhatsApp ───────────────────────────────────────────
 
 import json as _json_db
+
+TEMPLATES_PADRAO: dict = {
+    "os_aberta": {
+        "nome": "OS Aberta",
+        "texto": "Olá {nome}! 😊 Recebemos sua O.S. nº {numero} para *{servico}*. Em breve entraremos em contato com atualizações. Qualquer dúvida, é só chamar! — {despachante} 📲 {whatsapp}",
+    },
+    "os_concluida": {
+        "nome": "OS Concluída",
+        "texto": "Olá {nome}! ✅ Sua O.S. nº {numero} (*{servico}*) está *PRONTA*! Pode passar para retirar os documentos. — {despachante} 📲 {whatsapp}",
+    },
+    "cobranca": {
+        "nome": "Cobrança",
+        "texto": "Olá {nome}, passando para lembrar que há *R$ {pendente}* em aberto referente à O.S. {numero} ({servico}). PIX: {pix} — {despachante} 📲 {whatsapp}",
+    },
+    "licenciamento_vence": {
+        "nome": "Licenciamento Vencendo",
+        "texto": "Olá {nome}! 🚗 O licenciamento {exercicio} do seu veículo *{placa}* vence em *{mes}*. Podemos resolver tudo sem você precisar sair de casa! Entre em contato: {whatsapp} — {despachante}",
+    },
+    "licenciamento_vencido": {
+        "nome": "Licenciamento Vencido",
+        "texto": "Olá {nome}! ⚠️ O licenciamento {exercicio} do seu veículo *{placa}* está *ATRASADO* desde {mes}. Regularize antes de ter problemas com multa! Fale com a gente: {whatsapp} — {despachante}",
+    },
+    "aguardando_doc": {
+        "nome": "Aguardando Documento",
+        "texto": "Olá {nome}! 📋 Sua O.S. {numero} está aguardando um documento para prosseguir. Por favor, entre em contato o quanto antes: {whatsapp} — {despachante}",
+    },
+    "aniversario": {
+        "nome": "Aniversário do Cliente",
+        "texto": "Parabéns {nome}! 🎉🎂 Desejamos um ótimo aniversário! É um prazer contar com você como cliente. — {despachante}",
+    },
+}
+
+def get_templates_wpp() -> dict:
+    """Retorna dict {chave: {nome, texto}} — merge padrão + personalizados."""
+    raw = get_config("templates_wpp")
+    if raw:
+        try:
+            salvos = _json_db.loads(raw)
+            merged = {}
+            for k, v in TEMPLATES_PADRAO.items():
+                merged[k] = {**v, **(salvos.get(k, {}))}
+            return merged
+        except Exception:
+            pass
+    return {k: dict(v) for k, v in TEMPLATES_PADRAO.items()}
+
+def set_templates_wpp(templates: dict):
+    """Salva templates editados pelo usuário."""
+    set_config("templates_wpp", _json_db.dumps(templates, ensure_ascii=False))
+
+def get_template_wpp(chave: str) -> str:
+    """Retorna o texto de um template específico."""
+    return get_templates_wpp().get(chave, {}).get("texto", "")
+
+
+# ── Tabela de preços por serviço ─────────────────────────────────────────────
 
 PRECOS_PADRAO: dict = {
     # Licenciamento
@@ -1373,10 +1521,243 @@ def set_tabela_precos(precos: dict):
     """Salva tabela de preços (apenas os personalizados sobre o padrão)."""
     set_config("tabela_precos", _json_db.dumps(precos, ensure_ascii=False))
 
+# ── Protocolos RENAVAM ───────────────────────────────────────────────────────
+
+def listar_protocolos(lote: str = None, usado: bool = None, busca: str = None) -> list:
+    conn   = get_conn()
+    where, params = [], []
+    if lote:
+        where.append("lote = ?"); params.append(lote)
+    if usado is not None:
+        where.append("usado = ?"); params.append(1 if usado else 0)
+    if busca:
+        where.append("(protocolo LIKE ? OR lote LIKE ? OR observacao LIKE ?)")
+        b = f"%{busca}%"; params += [b, b, b]
+    wc = ("WHERE " + " AND ".join(where)) if where else ""
+    rows = conn.execute(f"""
+        SELECT p.*, os.numero AS os_numero
+        FROM protocolos_renavam p
+        LEFT JOIN ordens_servico os ON os.id = p.os_id
+        {wc}
+        ORDER BY p.id DESC
+    """, params).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+def criar_protocolo(dados: dict) -> int:
+    conn = get_conn()
+    cur  = conn.execute("""
+        INSERT INTO protocolos_renavam (protocolo, letra, lote, emitido_em, observacao)
+        VALUES (:protocolo, :letra, :lote, :emitido_em, :observacao)
+    """, dados)
+    conn.commit(); id_ = cur.lastrowid; conn.close()
+    return id_
+
+def criar_protocolos_lote(protocolos: list, letra: str, lote: str,
+                           emitido_em: str, observacao: str) -> int:
+    """Cria múltiplos protocolos de uma vez (importação em lote)."""
+    conn = get_conn()
+    inseridos = 0
+    for p in protocolos:
+        p = str(p).strip()
+        if not p: continue
+        try:
+            conn.execute("""
+                INSERT INTO protocolos_renavam (protocolo, letra, lote, emitido_em, observacao)
+                VALUES (?, ?, ?, ?, ?)
+            """, (p, letra, lote, emitido_em, observacao))
+            inseridos += 1
+        except Exception:
+            pass
+    conn.commit(); conn.close()
+    return inseridos
+
+def vincular_protocolo_os(protocolo_id: int, os_id: int):
+    conn = get_conn()
+    conn.execute("UPDATE protocolos_renavam SET usado=1, os_id=? WHERE id=?", (os_id, protocolo_id))
+    conn.commit(); conn.close()
+
+def deletar_protocolo(protocolo_id: int):
+    conn = get_conn()
+    conn.execute("DELETE FROM protocolos_renavam WHERE id=?", (protocolo_id,))
+    conn.commit(); conn.close()
+
+def stats_protocolos() -> dict:
+    conn   = get_conn()
+    total  = conn.execute("SELECT COUNT(*) FROM protocolos_renavam").fetchone()[0]
+    usados = conn.execute("SELECT COUNT(*) FROM protocolos_renavam WHERE usado=1").fetchone()[0]
+    lotes  = conn.execute("SELECT DISTINCT lote FROM protocolos_renavam WHERE lote IS NOT NULL ORDER BY lote DESC").fetchall()
+    conn.close()
+    return {"total": total, "usados": usados, "disponiveis": total - usados,
+            "lotes": [r[0] for r in lotes]}
+
+
 def get_preco_servico(servico: str) -> float:
     """Retorna o preço padrão de um serviço específico."""
     tabela = get_tabela_precos()
     return tabela.get(servico, 0.0)
+
+
+# ── Checklist de documentos por OS ───────────────────────────────────────────
+
+def get_checklist_os(os_id: int, servico: str = '') -> list:
+    """
+    Retorna a lista de itens do checklist de uma OS.
+    Se ainda não existe, inicializa com os docs padrão do serviço.
+    Retorna: [{item, feito}, ...]
+    """
+    raw = get_config(f"chk_{os_id}")
+    if raw:
+        try:
+            return _json_db.loads(raw)
+        except Exception:
+            pass
+    # Inicializa com docs padrão do serviço
+    docs = DOCS_POR_SERVICO.get(servico, DOCS_PADRAO) if servico else DOCS_PADRAO
+    return [{"item": d, "feito": False} for d in docs]
+
+def set_checklist_os(os_id: int, checklist: list):
+    """Salva o checklist de uma OS."""
+    set_config(f"chk_{os_id}", _json_db.dumps(checklist, ensure_ascii=False))
+
+def toggle_checklist_item(os_id: int, idx: int, feito: bool, servico: str = '') -> list:
+    """Marca/desmarca um item e salva. Retorna checklist atualizado."""
+    chk = get_checklist_os(os_id, servico)
+    if 0 <= idx < len(chk):
+        chk[idx]['feito'] = feito
+    set_checklist_os(os_id, chk)
+    return chk
+
+def add_checklist_item(os_id: int, item: str, servico: str = '') -> list:
+    """Adiciona item custom ao checklist."""
+    chk = get_checklist_os(os_id, servico)
+    chk.append({"item": item, "feito": False})
+    set_checklist_os(os_id, chk)
+    return chk
+
+def remove_checklist_item(os_id: int, idx: int, servico: str = '') -> list:
+    """Remove item do checklist."""
+    chk = get_checklist_os(os_id, servico)
+    if 0 <= idx < len(chk):
+        chk.pop(idx)
+    set_checklist_os(os_id, chk)
+    return chk
+
+
+# ── Não Licenciados ──────────────────────────────────────────────────────────
+
+_SERVICOS_LIC = ('licenciamento','lic_debitos','lic_outro_municipio',
+                 'lic_outro_estado','lic_emissao')
+
+def veiculos_nao_licenciados(exercicio: int = None, final_placa: str = None,
+                              mostrar: str = 'sem_os') -> list:
+    """
+    Retorna veículos de clientes cujo licenciamento está em atraso ou
+    vencendo no mês atual e sem OS de licenciamento concluída para o exercício.
+
+    mostrar: 'sem_os'      → sem nenhuma OS de licenciamento este ano
+             'em_andamento'→ com OS em aberto/andamento (já contatados)
+             'todos'       → todos sem OS concluída
+    """
+    from datetime import date
+    hoje  = date.today()
+    ano   = exercicio or hoje.year
+    phs   = ",".join("?" * len(_SERVICOS_LIC))
+
+    conn  = get_conn()
+    rows  = conn.execute(f"""
+        SELECT
+            v.id        AS veiculo_id,
+            v.placa,
+            v.renavam,
+            v.marca,
+            v.modelo,
+            v.ano_mod,
+            c.id        AS cliente_id,
+            c.nome      AS cliente,
+            c.telefone,
+            c.cpf,
+            (SELECT COUNT(*) FROM ordens_servico os
+             WHERE os.veiculo_id = v.id AND os.exercicio = ?
+               AND os.servico IN ({phs}) AND os.status = 'concluida'
+            ) AS lic_concluida,
+            (SELECT COUNT(*) FROM ordens_servico os
+             WHERE os.veiculo_id = v.id AND os.exercicio = ?
+               AND os.servico IN ({phs}) AND os.status NOT IN ('cancelada','concluida')
+            ) AS lic_em_andamento,
+            (SELECT os.id FROM ordens_servico os
+             WHERE os.veiculo_id = v.id AND os.exercicio = ?
+               AND os.servico IN ({phs}) AND os.status NOT IN ('cancelada')
+             ORDER BY os.id DESC LIMIT 1
+            ) AS os_id,
+            (SELECT os.numero FROM ordens_servico os
+             WHERE os.veiculo_id = v.id AND os.exercicio = ?
+               AND os.servico IN ({phs}) AND os.status NOT IN ('cancelada')
+             ORDER BY os.id DESC LIMIT 1
+            ) AS os_numero,
+            (SELECT os.status FROM ordens_servico os
+             WHERE os.veiculo_id = v.id AND os.exercicio = ?
+               AND os.servico IN ({phs}) AND os.status NOT IN ('cancelada')
+             ORDER BY os.id DESC LIMIT 1
+            ) AS os_status
+        FROM veiculos v
+        INNER JOIN clientes c ON c.id = v.proprietario_id
+        WHERE v.placa IS NOT NULL AND v.placa != ''
+        ORDER BY c.nome COLLATE NOCASE
+    """, (ano, *_SERVICOS_LIC,
+          ano, *_SERVICOS_LIC,
+          ano, *_SERVICOS_LIC,
+          ano, *_SERVICOS_LIC,
+          ano, *_SERVICOS_LIC)).fetchall()
+    conn.close()
+
+    mes_atual = hoje.month
+    result    = []
+    for r in rows:
+        row = dict(r)
+        placa  = (row['placa'] or '').replace('-', '').strip()
+        if not placa: continue
+        final  = placa[-1]
+        mes_v  = FINAIS_PLACA.get(final, 0)
+        if mes_v == 0: continue                        # placa sem mapeamento
+        if final_placa and final != final_placa: continue
+
+        row['final']        = final
+        row['mes_venc']     = mes_v
+        row['mes_venc_nome'] = MESES[mes_v]
+        row['atrasado']     = mes_v < mes_atual        # prazo já passou
+        row['vence_agora']  = mes_v == mes_atual       # vence este mês
+
+        if row['lic_concluida']:                       # já licenciado → pula
+            continue
+        if not (row['atrasado'] or row['vence_agora']): # prazo futuro → pula
+            continue
+
+        if mostrar == 'sem_os' and row['lic_em_andamento']:
+            continue
+        if mostrar == 'em_andamento' and not row['lic_em_andamento']:
+            continue
+
+        result.append(row)
+
+    return result
+
+
+def stats_nao_licenciados(exercicio: int = None) -> dict:
+    """Counts rápidos para o header da página."""
+    from datetime import date
+    hoje = date.today()
+    ano  = exercicio or hoje.year
+    todos       = veiculos_nao_licenciados(exercicio=ano, mostrar='todos')
+    sem_os      = [v for v in todos if not v['lic_em_andamento']]
+    em_andamento= [v for v in todos if v['lic_em_andamento']]
+    atrasados   = [v for v in todos if v['atrasado']]
+    return {
+        'total':        len(todos),
+        'sem_os':       len(sem_os),
+        'em_andamento': len(em_andamento),
+        'atrasados':    len(atrasados),
+    }
 
 
 # ── Relatório de Produção ──────────────────────────────────────────────────────
@@ -1452,3 +1833,113 @@ def relatorio_producao(data_ini: str, data_fim: str,
         "por_servico": sorted(por_servico.items(), key=lambda x: x[1]["honorarios"], reverse=True),
         "por_forma":   sorted(por_forma.items(),   key=lambda x: x[1], reverse=True),
     }
+
+
+# ── Relatório "Fez / Não Fez" ─────────────────────────────────────────────────
+
+def relatorio_fez_nao_fez(servico: str, data_ini: str, data_fim: str) -> dict:
+    """
+    Para um serviço e período, retorna:
+    - fizeram   → OS com status 'concluida'
+    - pendentes → OS com status 'aberta' ou 'andamento'
+    Útil para saber quem regularizou e quem ainda não fez.
+    """
+    conn = get_conn()
+    rows = conn.execute("""
+        SELECT os.id, os.numero, os.servico, os.status,
+               os.honorarios, os.custos, os.pago,
+               (os.honorarios + os.custos)           AS total,
+               (os.honorarios + os.custos - os.pago) AS pendente,
+               os.criado_em, os.concluido_em, os.exercicio,
+               c.id   AS cliente_id,
+               c.nome AS cliente_nome, c.telefone, c.cpf,
+               v.placa, v.marca, v.modelo
+        FROM ordens_servico os
+        LEFT JOIN clientes c ON c.id = os.cliente_id
+        LEFT JOIN veiculos  v ON v.id  = os.veiculo_id
+        WHERE os.servico = ?
+          AND date(os.criado_em) >= ?
+          AND date(os.criado_em) <= ?
+          AND os.status != 'cancelada'
+        ORDER BY
+            CASE os.status
+                WHEN 'aberta'    THEN 1
+                WHEN 'andamento' THEN 2
+                WHEN 'concluida' THEN 3
+                ELSE 4
+            END,
+            os.criado_em DESC
+    """, (servico, data_ini, data_fim)).fetchall()
+    conn.close()
+
+    ordens    = [dict(r) for r in rows]
+    fizeram   = [o for o in ordens if o['status'] == 'concluida']
+    pendentes = [o for o in ordens if o['status'] != 'concluida']
+    n_total   = len(ordens)
+
+    return {
+        'ordens':       ordens,
+        'fizeram':      fizeram,
+        'pendentes':    pendentes,
+        'n_total':      n_total,
+        'n_fizeram':    len(fizeram),
+        'n_pendentes':  len(pendentes),
+        'pct_fizeram':  round(len(fizeram) / n_total * 100) if n_total else 0,
+        'financeiro': {
+            'total_faturado': round(sum(o['total'] for o in ordens), 2),
+            'total_recebido': round(sum(o['pago']  for o in ordens), 2),
+            'total_pendente': round(sum(o['pendente'] for o in pendentes if o['pendente'] > 0), 2),
+        },
+    }
+
+
+# ── Portal do cliente (acesso público por token) ──────────────────────────────
+
+def gerar_token_os(os_id: int) -> str:
+    """Gera (ou retorna existente) token público para uma OS."""
+    import secrets as _secrets
+    conn = get_conn()
+    row = conn.execute(
+        "SELECT token_publico FROM ordens_servico WHERE id=?", (os_id,)
+    ).fetchone()
+    if row and row['token_publico']:
+        conn.close()
+        return row['token_publico']
+    token = _secrets.token_urlsafe(24)
+    conn.execute(
+        "UPDATE ordens_servico SET token_publico=? WHERE id=?", (token, os_id)
+    )
+    conn.commit()
+    conn.close()
+    return token
+
+
+def get_os_por_token(token: str) -> dict | None:
+    """Busca dados públicos de uma OS pelo token (sem login)."""
+    conn = get_conn()
+    row = conn.execute("""
+        SELECT os.id, os.numero, os.servico, os.status, os.token_publico,
+               os.honorarios, os.custos, os.pago,
+               (os.honorarios + os.custos)           AS total,
+               (os.honorarios + os.custos - os.pago) AS pendente,
+               os.criado_em, os.atualizado_em, os.concluido_em,
+               os.exercicio, os.situacao_pag,
+               c.nome AS cliente_nome, c.telefone AS cliente_tel,
+               v.placa, v.marca, v.modelo, v.ano_fab, v.ano_mod, v.cor
+        FROM ordens_servico os
+        LEFT JOIN clientes c ON c.id = os.cliente_id
+        LEFT JOIN veiculos  v ON v.id  = os.veiculo_id
+        WHERE os.token_publico = ?
+    """, (token,)).fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+
+def revogar_token_os(os_id: int):
+    """Revoga o token público (gera novo na próxima chamada)."""
+    conn = get_conn()
+    conn.execute(
+        "UPDATE ordens_servico SET token_publico=NULL WHERE id=?", (os_id,)
+    )
+    conn.commit()
+    conn.close()

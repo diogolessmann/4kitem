@@ -1,0 +1,212 @@
+{% extends "despachante/base.html" %}
+{% block title %}Protocolos RENAVAM · Lessmann{% endblock %}
+{% block topbar_title %}Protocolos RENAVAM{% endblock %}
+{% block topbar_actions %}
+  <button class="btn btn-primary btn-sm" onclick="abrirModal('modal-add')">➕ Cadastrar Lote</button>
+{% endblock %}
+
+{% block extra_style %}
+.stats-row { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:20px; }
+@media(max-width:600px){ .stats-row { grid-template-columns:1fr 1fr; } }
+
+.stat-mini {
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:10px; padding:14px 16px;
+  display:flex; flex-direction:column; gap:3px;
+}
+.stat-mini-val { font-size:22px; font-weight:800; }
+.stat-mini-lbl { font-size:11px; color:var(--text3); text-transform:uppercase; letter-spacing:.5px; }
+
+.filter-row { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px; align-items:center; }
+
+.proto-table th { font-size:10px; text-transform:uppercase; letter-spacing:.5px; color:var(--text3);
+                  padding:9px 12px; border-bottom:1px solid var(--border); font-weight:700; }
+.proto-table td { padding:10px 12px; border-bottom:1px solid var(--border); font-size:13px; }
+.proto-table tr:hover td { background:var(--surface2); }
+.proto-table tr:last-child td { border-bottom:none; }
+
+.tag-disp { background:rgba(34,197,94,.12); color:var(--green); border:1px solid rgba(34,197,94,.2);
+            border-radius:6px; padding:2px 8px; font-size:11px; font-weight:600; }
+.tag-usado { background:var(--surface2); color:var(--text3); border:1px solid var(--border2);
+             border-radius:6px; padding:2px 8px; font-size:11px; font-weight:600; }
+
+/* Modal */
+.modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.6);
+                 z-index:200; align-items:center; justify-content:center; }
+.modal-overlay.open { display:flex; }
+.modal-box { background:var(--surface); border:1px solid var(--border2); border-radius:14px;
+             padding:24px 26px; width:100%; max-width:520px; max-height:90vh; overflow-y:auto; }
+.modal-title { font-size:16px; font-weight:700; margin-bottom:18px; }
+{% endblock %}
+
+{% block content %}
+
+<!-- Stats -->
+<div class="stats-row">
+  <div class="stat-mini">
+    <div class="stat-mini-val" style="color:var(--text);">{{ stats.total }}</div>
+    <div class="stat-mini-lbl">Total cadastrado</div>
+  </div>
+  <div class="stat-mini">
+    <div class="stat-mini-val" style="color:var(--green);">{{ stats.disponiveis }}</div>
+    <div class="stat-mini-lbl">Disponíveis</div>
+  </div>
+  <div class="stat-mini">
+    <div class="stat-mini-val" style="color:var(--text3);">{{ stats.usados }}</div>
+    <div class="stat-mini-lbl">Utilizados</div>
+  </div>
+</div>
+
+<!-- Filtros -->
+<div class="filter-row">
+  <form method="GET" style="display:flex;gap:8px;flex-wrap:wrap;flex:1;">
+    <input name="busca" class="input" style="max-width:220px;" placeholder="🔍 Buscar protocolo…"
+           value="{{ busca or '' }}">
+    <select name="lote" class="select" style="max-width:160px;" onchange="this.form.submit()">
+      <option value="">Todos os lotes</option>
+      {% for l in stats.lotes %}
+      <option value="{{ l }}" {% if filtro_lote == l %}selected{% endif %}>{{ l }}</option>
+      {% endfor %}
+    </select>
+    <select name="usado" class="select" style="max-width:150px;" onchange="this.form.submit()">
+      <option value="">Todos</option>
+      <option value="0" {% if filtro_usado == '0' %}selected{% endif %}>Disponíveis</option>
+      <option value="1" {% if filtro_usado == '1' %}selected{% endif %}>Utilizados</option>
+    </select>
+    <button type="submit" class="btn btn-secondary btn-sm">Filtrar</button>
+    {% if busca or filtro_lote or filtro_usado %}
+    <a href="{{ url_for('desp_protocolos') }}" class="btn btn-ghost btn-sm">✕ Limpar</a>
+    {% endif %}
+  </form>
+  <span style="font-size:12px;color:var(--text3);">{{ protocolos|length }} resultado{{ 's' if protocolos|length != 1 }}</span>
+</div>
+
+<!-- Tabela -->
+<div class="card" style="padding:0;overflow:hidden;">
+  {% if protocolos %}
+  <div style="overflow-x:auto;">
+    <table class="proto-table" style="width:100%;border-collapse:collapse;">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Protocolo</th>
+          <th>Letra</th>
+          <th>Lote</th>
+          <th>Emitido</th>
+          <th>Status</th>
+          <th>O.S. Vinculada</th>
+          <th>Observação</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in protocolos %}
+        <tr>
+          <td style="color:var(--text3);font-size:11px;">{{ p.id }}</td>
+          <td>
+            <span style="font-family:monospace;font-size:13px;font-weight:700;color:var(--accent);">
+              {{ p.protocolo }}
+            </span>
+          </td>
+          <td style="font-family:monospace;font-weight:700;">{{ p.letra or '—' }}</td>
+          <td>
+            {% if p.lote %}
+            <span style="background:rgba(99,102,241,.1);color:var(--accent);border-radius:5px;
+                         padding:2px 8px;font-size:11px;font-weight:600;">{{ p.lote }}</span>
+            {% else %}—{% endif %}
+          </td>
+          <td style="font-size:12px;color:var(--text2);">{{ p.emitido_em or '—' }}</td>
+          <td>
+            {% if p.usado %}
+            <span class="tag-usado">✓ Usado</span>
+            {% else %}
+            <span class="tag-disp">● Disponível</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if p.os_numero %}
+            <a href="{{ url_for('desp_detalhe_os', id=p.os_id) }}"
+               style="color:var(--accent);font-family:monospace;font-weight:600;">
+              {{ p.os_numero }}
+            </a>
+            {% else %}—{% endif %}
+          </td>
+          <td style="font-size:12px;color:var(--text3);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+            {{ p.observacao or '' }}
+          </td>
+          <td>
+            <button onclick="confirmarDelete({{ p.id }}, '{{ p.protocolo }}')"
+                    class="btn btn-danger btn-sm" title="Remover">✕</button>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div style="text-align:center;padding:50px 20px;color:var(--text3);">
+    <div style="font-size:40px;margin-bottom:12px;">📋</div>
+    <div style="font-weight:600;">Nenhum protocolo cadastrado ainda</div>
+    <div style="font-size:12px;margin-top:6px;">Clique em "➕ Cadastrar Lote" para adicionar</div>
+  </div>
+  {% endif %}
+</div>
+
+<!-- ── MODAL CADASTRAR LOTE ── -->
+<div class="modal-overlay" id="modal-add" onclick="if(event.target===this)fecharModal('modal-add')">
+  <div class="modal-box">
+    <div class="modal-title">➕ Cadastrar Lote de Protocolos RENAVAM</div>
+    <form method="POST" action="{{ url_for('desp_protocolos_add') }}">
+
+      <div class="form-row form-row-2" style="margin-bottom:14px;">
+        <div class="form-group" style="margin:0;">
+          <label class="form-label">Letra</label>
+          <input name="letra" class="input" placeholder="Ex: A, B, C…" maxlength="5">
+        </div>
+        <div class="form-group" style="margin:0;">
+          <label class="form-label">Lote / Faixa</label>
+          <input name="lote" class="input" placeholder="Ex: 2026-01, Lote 15…">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Data de Emissão</label>
+        <input name="emitido_em" class="input" type="date" value="{{ hoje.strftime('%Y-%m-%d') }}">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">
+          Protocolos
+          <span style="font-size:10px;color:var(--text3);font-weight:400;">(um por linha, ou separados por vírgula/espaço)</span>
+        </label>
+        <textarea name="protocolos" class="textarea" rows="6"
+                  placeholder="662.466.509&#10;662.466.510&#10;662.466.511&#10;…" required></textarea>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Observação</label>
+        <input name="observacao" class="input" placeholder="Notas sobre este lote…">
+      </div>
+
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:6px;">
+        <button type="button" class="btn btn-ghost" onclick="fecharModal('modal-add')">Cancelar</button>
+        <button type="submit" class="btn btn-primary">💾 Cadastrar</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_script %}
+<script>
+function abrirModal(id) { document.getElementById(id).classList.add('open'); }
+function fecharModal(id) { document.getElementById(id).classList.remove('open'); }
+
+async function confirmarDelete(id, protocolo) {
+  if (!confirm(`Remover protocolo ${protocolo}?`)) return;
+  const r = await fetch(`/despachante/protocolos/${id}/delete`, { method: 'POST' });
+  if ((await r.json()).ok) location.reload();
+  else alert('Erro ao remover.');
+}
+</script>
+{% endblock %}

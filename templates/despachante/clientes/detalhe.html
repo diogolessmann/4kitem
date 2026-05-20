@@ -268,7 +268,9 @@
               <div style="font-size:11px;color:var(--text3);">{{ v.total_os }} O.S.</div>
             </div>
             <a href="{{ url_for('desp_lista_os') }}?q={{ v.placa }}"
-               class="btn btn-ghost btn-sm">OS →</a>
+               class="btn btn-ghost btn-sm" title="Ver O.S. desta placa">OS →</a>
+            <a href="{{ url_for('desp_nova_os') }}?placa={{ v.placa }}"
+               class="btn btn-primary btn-sm" title="Nova O.S. pré-preenchida">＋</a>
           </div>
           {% endfor %}
         {% else %}

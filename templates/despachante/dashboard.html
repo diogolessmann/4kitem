@@ -72,6 +72,7 @@
 }
 .dot-aberta   { background:var(--yellow); }
 .dot-andamento { background:var(--blue); }
+.dot-detran    { background:var(--purple); }
 .dot-concluida { background:var(--green); }
 .dot-cancelada { background:var(--red); }
 .dot-aguardando{ background:var(--orange); }
@@ -334,6 +335,34 @@
   <!-- COLUNA DIREITA -->
   <div style="display:flex;flex-direction:column;gap:12px;">
 
+    <!-- Pipeline de Status -->
+    {% set pipeline_total = (stats.pipeline.values() | sum) or 1 %}
+    <div class="card card-sm">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <div class="card-title" style="margin:0;">🗂️ Pipeline de OS</div>
+        <a href="{{ url_for('desp_kanban') }}" class="btn btn-ghost btn-sm" style="font-size:11px;">Kanban →</a>
+      </div>
+      {% set pipeline_cols = [
+        ('aberta',    '🟡', 'Aguardando Doc.', 'var(--yellow)'),
+        ('andamento', '🔵', 'Em Andamento',    'var(--blue)'),
+        ('detran',    '🏛️', 'No DETRAN',       'var(--purple)'),
+        ('concluida', '🟢', 'Concluída',       'var(--green)'),
+      ] %}
+      {% for st, icon, label, cor in pipeline_cols %}
+      {% set n = stats.pipeline.get(st, 0) %}
+      {% set pct = (n / pipeline_total * 100) | int %}
+      <div style="margin-bottom:8px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">
+          <span style="font-size:12px;color:var(--text2);">{{ icon }} {{ label }}</span>
+          <span style="font-size:12px;font-weight:700;color:{{ cor }};">{{ n }}</span>
+        </div>
+        <div style="background:var(--surface2);border-radius:99px;height:5px;overflow:hidden;">
+          <div style="height:100%;border-radius:99px;background:{{ cor }};width:{{ [pct,2]|max }}%;transition:width .5s;opacity:.8;"></div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
     <!-- Ações Rápidas -->
     <div class="card card-sm">
       <div class="card-title" style="margin-bottom:10px;">⚡ Ações Rápidas</div>
@@ -341,11 +370,11 @@
         <a href="{{ url_for('desp_nova_os') }}" class="qa">
           <span class="qa-icon">📋</span> Nova O.S.
         </a>
-        <a href="{{ url_for('desp_lista_os') }}?status=aberta" class="qa">
-          <span class="qa-icon">🟡</span> Em Aberto
+        <a href="{{ url_for('desp_kanban') }}" class="qa">
+          <span class="qa-icon">🗂️</span> Kanban
         </a>
-        <a href="{{ url_for('desp_rel_retencao_view') }}" class="qa">
-          <span class="qa-icon">🔄</span> Retenção
+        <a href="{{ url_for('desp_fez_nao_fez') }}" class="qa">
+          <span class="qa-icon">✅</span> Fez / Não Fez
         </a>
         <a href="{{ url_for('desp_financeiro') }}" class="qa">
           <span class="qa-icon">💰</span> Financeiro
@@ -355,6 +384,12 @@
         </a>
         <a href="{{ url_for('desp_chat') }}" class="qa">
           <span class="qa-icon">🤖</span> IA Amigo
+        </a>
+        <a href="{{ url_for('desp_rel_retencao_view') }}" class="qa">
+          <span class="qa-icon">🔄</span> Retenção
+        </a>
+        <a href="{{ url_for('desp_relatorio') }}" class="qa">
+          <span class="qa-icon">📊</span> Relatório
         </a>
       </div>
     </div>
@@ -375,6 +410,40 @@
           <div style="font-size:10px;color:var(--text3);">{{ p.dias_atraso }}d atraso</div>
         </div>
       </a>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Top Devedores -->
+    {% if stats.top_devedores %}
+    <div class="card card-sm">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <div class="card-title" style="margin:0;color:var(--yellow);">💰 Maiores Saldos</div>
+        <a href="{{ url_for('desp_financeiro') }}" class="btn btn-ghost btn-sm" style="font-size:11px;">Ver tudo →</a>
+      </div>
+      {% for d in stats.top_devedores %}
+      {% set tel = d.telefone | replace('(','') | replace(')','') | replace(' ','') | replace('-','') | replace('+','') if d.telefone else '' %}
+      {% set msg = ('Olá ' ~ (d.cliente_nome or '') ~ '! Passando para lembrar que a O.S. ' ~ d.numero ~ ' tem um saldo de R$ ' ~ '%.2f'|format(d.saldo) ~ ' em aberto. Podemos acertar?') %}
+      <div class="pend-row">
+        <div style="flex:1;min-width:0;">
+          <div style="font-weight:600;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+            {{ d.cliente_nome or '—' }}
+          </div>
+          <div style="font-size:10px;color:var(--text3);">
+            O.S. {{ d.numero }}{% if d.placa %} · {{ d.placa }}{% endif %}
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:5px;flex-shrink:0;">
+          <span style="font-weight:700;font-size:12px;color:var(--yellow);">R$ {{ "%.0f"|format(d.saldo) }}</span>
+          {% if tel %}
+          <a href="https://wa.me/55{{ tel }}?text={{ msg | urlencode }}" target="_blank"
+             style="font-size:14px;text-decoration:none;" title="WhatsApp">💬</a>
+          {% endif %}
+          <a href="{{ url_for('desp_detalhe_os', id=d.id) }}"
+             style="font-size:12px;color:var(--text3);text-decoration:none;
+                    padding:2px 5px;background:var(--surface2);border-radius:4px;">↗</a>
+        </div>
+      </div>
       {% endfor %}
     </div>
     {% endif %}

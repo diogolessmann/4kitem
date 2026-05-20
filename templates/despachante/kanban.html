@@ -1,0 +1,342 @@
+{% extends "despachante/base.html" %}
+
+{% block title %}Kanban · Lessmann{% endblock %}
+{% block topbar_title %}🗂️ Kanban de OS{% endblock %}
+{% block topbar_actions %}
+  <a href="{{ url_for('desp_nova_os') }}" class="btn btn-primary btn-sm">➕ Nova O.S.</a>
+  <a href="{{ url_for('desp_lista_os') }}" class="btn btn-ghost btn-sm">Lista →</a>
+{% endblock %}
+
+{% block extra_style %}
+/* ── Layout ── */
+.kanban-wrap {
+  display: flex; gap: 12px; align-items: flex-start;
+  overflow-x: auto; padding-bottom: 12px;
+  /* Ocupa toda a altura disponível */
+  min-height: calc(100vh - 120px);
+}
+
+/* ── Colunas ── */
+.k-col {
+  flex: 0 0 280px; display: flex; flex-direction: column;
+  border-radius: 12px; border: 1px solid var(--border);
+  background: var(--surface2); min-height: 200px;
+}
+.k-col-head {
+  padding: 11px 14px; border-radius: 12px 12px 0 0;
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 13px; font-weight: 700; border-bottom: 1px solid var(--border);
+}
+.k-col-count {
+  font-size: 11px; font-weight: 700;
+  background: rgba(255,255,255,.15); border-radius: 20px;
+  padding: 2px 8px; min-width: 22px; text-align: center;
+}
+
+/* ── Cards ── */
+.k-body {
+  flex: 1; padding: 8px; display: flex; flex-direction: column; gap: 7px;
+  min-height: 80px;
+}
+.k-body.drag-over {
+  background: rgba(99,102,241,.08);
+  border-radius: 0 0 12px 12px;
+  outline: 2px dashed var(--accent);
+  outline-offset: -4px;
+}
+
+.k-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 10px; padding: 11px 13px; cursor: grab;
+  transition: box-shadow .15s, transform .15s;
+  position: relative;
+}
+.k-card:active { cursor: grabbing; }
+.k-card.dragging {
+  opacity: .45; transform: scale(.97);
+  box-shadow: 0 8px 24px rgba(0,0,0,.25);
+}
+.k-card:hover { box-shadow: 0 2px 10px rgba(0,0,0,.12); }
+
+.k-card-num {
+  font-size: 10px; font-weight: 700; color: var(--text3);
+  text-transform: uppercase; letter-spacing: .5px; margin-bottom: 4px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.k-card-cliente {
+  font-size: 13px; font-weight: 700; color: var(--text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  margin-bottom: 3px;
+}
+.k-card-servico {
+  font-size: 11px; color: var(--text3);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.k-card-footer {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-top: 8px; gap: 6px;
+}
+.k-card-placa {
+  font-family: monospace; font-size: 12px; font-weight: 800;
+  color: var(--accent); letter-spacing: .5px;
+}
+.k-card-valor {
+  font-size: 11px; font-weight: 700;
+}
+.k-card-dias {
+  font-size: 10px; padding: 2px 6px; border-radius: 10px;
+  font-weight: 700;
+}
+
+/* Estado vazio */
+.k-empty {
+  text-align: center; padding: 24px 12px;
+  color: var(--text3); font-size: 12px;
+  border: 2px dashed var(--border); border-radius: 8px;
+  pointer-events: none;
+}
+
+/* Toast de feedback */
+#toast {
+  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+  background: var(--surface); border: 1px solid var(--border2);
+  border-radius: 10px; padding: 10px 20px;
+  font-size: 13px; font-weight: 600; box-shadow: 0 4px 20px rgba(0,0,0,.2);
+  display: none; z-index: 300; white-space: nowrap;
+}
+#toast.show { display: block; animation: fadeInUp .2s; }
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateX(-50%) translateY(10px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+/* Contagem de OS no cabeçalho */
+.k-totais {
+  display: flex; gap: 10px; margin-bottom: 12px;
+  font-size: 12px; color: var(--text3); flex-wrap: wrap; align-items: center;
+}
+.k-totais strong { color: var(--text); }
+{% endblock %}
+
+{% block content %}
+
+{% set total_ativas = colunas.values() | map('length') | sum %}
+<div class="k-totais">
+  <span>{{ total_ativas }} OS ativas · arraste para mudar o status</span>
+  {% for status, icon, label, bg, cor in kanban_cols %}
+  {% set n = colunas[status] | length %}
+  {% if n %}
+  <span style="color:{{ cor }};font-weight:700;">{{ icon }} {{ label }}: {{ n }}</span>
+  {% endif %}
+  {% endfor %}
+</div>
+
+<div class="kanban-wrap" id="kanban-board">
+  {% for status, icon, label, bg, cor in kanban_cols %}
+  {% set cards = colunas[status] %}
+  <div class="k-col" data-status="{{ status }}"
+       ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event, '{{ status }}')">
+
+    <div class="k-col-head" style="background:{{ bg }};color:{{ cor }};">
+      <span>{{ icon }} {{ label }}</span>
+      <span class="k-col-count">{{ cards | length }}</span>
+    </div>
+
+    <div class="k-body" id="col-{{ status }}" data-status="{{ status }}">
+      {% for o in cards %}
+      {% set dias = o.dias | default(0) %}
+      {% set pendente = o.pendente if o.pendente and o.pendente > 0.01 else 0 %}
+      <div class="k-card" draggable="true"
+           data-id="{{ o.id }}" data-status="{{ o.status }}"
+           ondragstart="onDragStart(event)"
+           ondragend="onDragEnd(event)">
+
+        <div class="k-card-num">
+          <span>O.S. {{ o.numero }}</span>
+          <span class="k-card-dias"
+                style="background:{% if dias > 7 %}rgba(239,68,68,.15);color:var(--red){% elif dias > 3 %}rgba(234,179,8,.15);color:var(--yellow){% else %}var(--surface2);color:var(--text3){% endif %};">
+            {{ dias }}d
+          </span>
+        </div>
+
+        <div class="k-card-cliente">{{ o.cliente_nome or '—' }}</div>
+        <div class="k-card-servico">{{ servicos.get(o.servico, o.servico) }}</div>
+
+        <div class="k-card-footer">
+          <span class="k-card-placa">{{ o.placa or '' }}</span>
+          {% if pendente %}
+          <span class="k-card-valor" style="color:var(--yellow);">
+            R$ {{ "%.0f"|format(pendente) }}
+          </span>
+          {% elif o.total %}
+          <span class="k-card-valor" style="color:var(--green);">✓ quitado</span>
+          {% endif %}
+          <a href="{{ url_for('desp_detalhe_os', id=o.id) }}"
+             onclick="event.stopPropagation()"
+             style="font-size:11px;color:var(--text3);text-decoration:none;padding:2px 6px;
+                    border-radius:5px;background:var(--surface2);flex-shrink:0;"
+             title="Abrir OS">↗</a>
+        </div>
+      </div>
+      {% else %}
+      <div class="k-empty">
+        Nenhuma OS<br>aqui
+      </div>
+      {% endfor %}
+    </div>
+
+  </div>
+  {% endfor %}
+</div>
+
+<div id="toast"></div>
+{% endblock %}
+
+{% block extra_script %}
+<script>
+let _dragging = null;
+let _fromStatus = null;
+
+function onDragStart(e) {
+  _dragging   = e.currentTarget;
+  _fromStatus = _dragging.dataset.status;
+  _dragging.classList.add('dragging');
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/plain', _dragging.dataset.id);
+}
+
+function onDragEnd(e) {
+  if (_dragging) _dragging.classList.remove('dragging');
+  document.querySelectorAll('.k-body').forEach(b => b.classList.remove('drag-over'));
+  _dragging = null;
+}
+
+function onDragOver(e) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  // Destacar coluna
+  const col = e.currentTarget.querySelector('.k-body');
+  if (col && !col.classList.contains('drag-over')) {
+    document.querySelectorAll('.k-body').forEach(b => b.classList.remove('drag-over'));
+    col.classList.add('drag-over');
+  }
+}
+
+function onDragLeave(e) {
+  // Só remove se saiu da coluna (não de um card filho)
+  if (!e.currentTarget.contains(e.relatedTarget)) {
+    const col = e.currentTarget.querySelector('.k-body');
+    if (col) col.classList.remove('drag-over');
+  }
+}
+
+async function onDrop(e, novoStatus) {
+  e.preventDefault();
+  const col = e.currentTarget.querySelector('.k-body');
+  if (col) col.classList.remove('drag-over');
+
+  if (!_dragging) return;
+  const osId      = _dragging.dataset.id;
+  const oldStatus = _fromStatus;
+  if (novoStatus === oldStatus) return;
+
+  // Move o card visualmente (otimista)
+  const colBody    = document.getElementById('col-' + novoStatus);
+  const oldColBody = document.getElementById('col-' + oldStatus);
+  if (!colBody) return;
+
+  // Remove .k-empty se existir
+  const emptyEl = colBody.querySelector('.k-empty');
+  if (emptyEl) emptyEl.remove();
+
+  // Move card
+  _dragging.dataset.status = novoStatus;
+  colBody.insertBefore(_dragging, colBody.firstChild);
+
+  // Atualiza contagens
+  atualizarContagens();
+
+  // Adiciona .k-empty na coluna de origem se ficou vazia
+  if (oldColBody && !oldColBody.querySelector('.k-card')) {
+    oldColBody.innerHTML = '<div class="k-empty">Nenhuma OS<br>aqui</div>';
+  }
+
+  // API call
+  try {
+    const r = await fetch(`/despachante/api/os/${osId}/mover`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ status: novoStatus }),
+    });
+    const d = await r.json();
+    if (d.ok) {
+      showToast(`✅ O.S. movida para "${novoStatus}"`);
+    } else {
+      // Reverte
+      _dragging.dataset.status = oldStatus;
+      oldColBody && oldColBody.insertBefore(_dragging, oldColBody.firstChild);
+      colBody.querySelector('.k-card') || (colBody.innerHTML = '<div class="k-empty">Nenhuma OS<br>aqui</div>');
+      atualizarContagens();
+      showToast('❌ Erro: ' + (d.erro || 'Falha'), true);
+    }
+  } catch (err) {
+    showToast('❌ Erro de conexão', true);
+  }
+}
+
+function atualizarContagens() {
+  document.querySelectorAll('.k-col').forEach(col => {
+    const status = col.dataset.status;
+    const n      = col.querySelectorAll('.k-card').length;
+    const badge  = col.querySelector('.k-col-count');
+    if (badge) badge.textContent = n;
+  });
+}
+
+let _toastTimer = null;
+function showToast(msg, erro = false) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.color = erro ? 'var(--red)' : 'var(--green)';
+  t.classList.add('show');
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// Touch support (mobile) — simula drag com toque
+// Implementação simples: toque longo (500ms) + arrastar
+let _touchCard = null;
+let _touchClone = null;
+let _touchTimer = null;
+
+document.querySelectorAll('.k-card').forEach(card => {
+  card.addEventListener('touchstart', e => {
+    _touchTimer = setTimeout(() => {
+      _touchCard = card;
+      // Cria clone visual
+      _touchClone = card.cloneNode(true);
+      _touchClone.style.cssText = `
+        position: fixed; z-index: 999; opacity: .85;
+        width: ${card.offsetWidth}px; pointer-events: none;
+        box-shadow: 0 8px 24px rgba(0,0,0,.3); border-radius: 10px;
+      `;
+      document.body.appendChild(_touchClone);
+      card.style.opacity = '.3';
+    }, 500);
+  }, { passive: true });
+
+  card.addEventListener('touchend', () => {
+    clearTimeout(_touchTimer);
+    if (_touchClone) { _touchClone.remove(); _touchClone = null; }
+    if (_touchCard)  { _touchCard.style.opacity = ''; _touchCard = null; }
+  }, { passive: true });
+
+  card.addEventListener('touchmove', e => {
+    if (!_touchClone) return;
+    const t = e.touches[0];
+    _touchClone.style.left = (t.clientX - _touchClone.offsetWidth / 2) + 'px';
+    _touchClone.style.top  = (t.clientY - 30) + 'px';
+  }, { passive: true });
+});
+</script>
+{% endblock %}

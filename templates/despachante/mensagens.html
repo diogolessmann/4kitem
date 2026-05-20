@@ -1,0 +1,212 @@
+{% extends "despachante/base.html" %}
+{% block title %}Templates de Mensagem · Lessmann{% endblock %}
+{% block topbar_title %}💬 Templates de Mensagem WhatsApp{% endblock %}
+
+{% block extra_style %}
+.tpl-grid { display:flex; flex-direction:column; gap:14px; }
+
+.tpl-card {
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:12px; overflow:hidden;
+  transition:border-color .15s;
+}
+.tpl-card:focus-within { border-color:var(--accent); }
+
+.tpl-head {
+  padding:13px 18px; border-bottom:1px solid var(--border);
+  display:flex; align-items:center; justify-content:space-between;
+  background:var(--surface2);
+}
+.tpl-nome { font-size:13px; font-weight:700; color:var(--text); }
+.tpl-chave {
+  font-family:monospace; font-size:10px; color:var(--text3);
+  background:var(--surface3); padding:2px 7px; border-radius:5px;
+}
+
+.tpl-body { padding:16px 18px; }
+
+.var-chips { display:flex; flex-wrap:wrap; gap:5px; margin-bottom:10px; }
+.var-chip {
+  display:inline-flex; align-items:center; gap:4px;
+  background:var(--surface2); border:1px solid var(--border2);
+  border-radius:5px; padding:2px 8px; font-size:11px;
+  font-family:monospace; cursor:pointer; color:var(--accent);
+  transition:all .15s;
+}
+.var-chip:hover { background:var(--surface3); border-color:var(--accent); }
+
+.tpl-textarea {
+  width:100%; min-height:90px; resize:vertical;
+  background:var(--surface2); border:1px solid var(--border2);
+  border-radius:8px; color:var(--text); font-size:13px;
+  font-family:inherit; outline:none; padding:10px 12px;
+  line-height:1.6; transition:border-color .15s;
+}
+.tpl-textarea:focus { border-color:var(--accent); }
+
+.preview-bubble {
+  margin-top:10px; background:rgba(37,211,102,.08);
+  border:1px solid rgba(37,211,102,.15);
+  border-radius:10px; padding:10px 14px;
+  font-size:12px; color:var(--text2); line-height:1.7;
+  white-space:pre-wrap; display:none;
+}
+.preview-bubble.show { display:block; }
+
+.var-ref {
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:12px; padding:18px 20px;
+}
+.var-ref h3 { font-size:13px; font-weight:700; margin-bottom:12px; color:var(--text2); }
+.var-table { width:100%; border-collapse:collapse; font-size:12px; }
+.var-table th {
+  text-align:left; font-size:10px; font-weight:700; text-transform:uppercase;
+  letter-spacing:.5px; color:var(--text3); padding:6px 8px;
+  border-bottom:1px solid var(--border);
+}
+.var-table td { padding:7px 8px; border-bottom:1px solid var(--border); color:var(--text2); }
+.var-table tr:last-child td { border-bottom:none; }
+.var-table code { font-family:monospace; color:var(--accent); font-size:11px; }
+{% endblock %}
+
+{% block content %}
+
+<div style="display:grid;grid-template-columns:1fr 280px;gap:18px;align-items:start;">
+
+  <!-- TEMPLATES -->
+  <div>
+    <form method="POST" id="form-tpls">
+      <div class="tpl-grid">
+        {% for chave, tpl in tpls.items() %}
+        <div class="tpl-card" id="card-{{ chave }}">
+          <div class="tpl-head">
+            <span class="tpl-nome">{{ tpl.nome }}</span>
+            <span class="tpl-chave">{{ '{' }}{{ chave }}{{ '}' }}</span>
+          </div>
+          <div class="tpl-body">
+            <!-- Variáveis disponíveis para este template -->
+            <div class="var-chips" data-target="tpl_{{ chave }}">
+              {% set vars_por_tpl = {
+                'os_aberta':            ['{nome}','{numero}','{servico}','{despachante}','{whatsapp}'],
+                'os_concluida':         ['{nome}','{numero}','{servico}','{despachante}','{whatsapp}'],
+                'cobranca':             ['{nome}','{numero}','{servico}','{pendente}','{pix}','{despachante}','{whatsapp}'],
+                'licenciamento_vence':  ['{nome}','{placa}','{mes}','{exercicio}','{whatsapp}','{despachante}'],
+                'licenciamento_vencido':['{nome}','{placa}','{mes}','{exercicio}','{whatsapp}','{despachante}'],
+                'aguardando_doc':       ['{nome}','{numero}','{whatsapp}','{despachante}'],
+                'aniversario':          ['{nome}','{despachante}'],
+              } %}
+              {% for v in vars_por_tpl.get(chave, ['{nome}','{despachante}','{whatsapp}']) %}
+              <span class="var-chip" onclick="inserirVar('tpl_{{ chave }}', '{{ v }}')">{{ v }}</span>
+              {% endfor %}
+            </div>
+            <textarea name="tpl_{{ chave }}" id="tpl_{{ chave }}" class="tpl-textarea"
+                      oninput="atualizarPreview('{{ chave }}')"
+                      >{{ tpl.texto }}</textarea>
+            <div class="preview-bubble" id="prev-{{ chave }}"></div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:18px;">
+        <button type="button" class="btn btn-ghost" onclick="resetarTodos()">↺ Restaurar padrões</button>
+        <button type="submit" class="btn btn-primary">💾 Salvar todos os templates</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- REFERÊNCIA DE VARIÁVEIS -->
+  <div style="position:sticky;top:20px;">
+    <div class="var-ref">
+      <h3>📖 Variáveis disponíveis</h3>
+      <table class="var-table">
+        <thead>
+          <tr><th>Variável</th><th>Substitui por</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>{nome}</code></td><td>Primeiro nome do cliente</td></tr>
+          <tr><td><code>{nome_completo}</code></td><td>Nome completo</td></tr>
+          <tr><td><code>{numero}</code></td><td>Número da O.S. (ex: OS-2026-047)</td></tr>
+          <tr><td><code>{servico}</code></td><td>Nome do serviço</td></tr>
+          <tr><td><code>{placa}</code></td><td>Placa do veículo</td></tr>
+          <tr><td><code>{mes}</code></td><td>Mês de vencimento (ex: Maio)</td></tr>
+          <tr><td><code>{exercicio}</code></td><td>Ano do exercício (ex: 2026)</td></tr>
+          <tr><td><code>{pendente}</code></td><td>Valor pendente em R$</td></tr>
+          <tr><td><code>{pix}</code></td><td>Chave PIX do escritório</td></tr>
+          <tr><td><code>{despachante}</code></td><td>Nome do escritório</td></tr>
+          <tr><td><code>{whatsapp}</code></td><td>WhatsApp formatado</td></tr>
+          <tr><td><code>{cidade}</code></td><td>Cidade do escritório</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div style="margin-top:12px;" class="var-ref">
+      <h3>💡 Dicas de formatação</h3>
+      <div style="font-size:12px;color:var(--text3);line-height:1.8;">
+        <div><code style="color:var(--accent);">*texto*</code> → <strong>negrito</strong></div>
+        <div><code style="color:var(--accent);">_texto_</code> → <em>itálico</em></div>
+        <div><code style="color:var(--accent);">~texto~</code> → <del>riscado</del></div>
+        <div><code style="color:var(--accent);">```texto```</code> → monoespaçado</div>
+        <div style="margin-top:8px;">Emojis aparecem normalmente no WhatsApp 🎉</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_script %}
+<script>
+// Inserir variável no cursor do textarea
+function inserirVar(id, v) {
+  const ta = document.getElementById(id);
+  if (!ta) return;
+  const s = ta.selectionStart, e = ta.selectionEnd;
+  ta.value = ta.value.slice(0, s) + v + ta.value.slice(e);
+  ta.selectionStart = ta.selectionEnd = s + v.length;
+  ta.focus();
+  atualizarPreview(id.replace('tpl_', ''));
+}
+
+// Preview com dados fake
+const FAKE = {
+  nome: 'João', nome_completo: 'João da Silva', numero: 'OS-2026-047',
+  servico: 'Licenciamento Anual', placa: 'ABC-1234', mes: 'Maio',
+  exercicio: 2026, pendente: '350,00', pix: '060.625.099-99',
+  despachante: '{{ desp.nome | title }}',
+  whatsapp: '{{ desp.whatsapp_fmt }}',
+  cidade: '{{ desp.cidade }}'
+};
+
+function atualizarPreview(chave) {
+  const ta   = document.getElementById('tpl_' + chave);
+  const prev = document.getElementById('prev-' + chave);
+  if (!ta || !prev) return;
+  let txt = ta.value;
+  for (const [k, v] of Object.entries(FAKE)) txt = txt.replaceAll('{' + k + '}', v);
+  prev.textContent = txt;
+  prev.classList.add('show');
+}
+
+// Inicializar todos os previews
+document.addEventListener('DOMContentLoaded', () => {
+  {% for chave in tpls %}
+  atualizarPreview('{{ chave }}');
+  {% endfor %}
+});
+
+// Restaurar padrões
+async function resetarTodos() {
+  if (!confirm('Restaurar todos os templates para o padrão? As suas edições serão perdidas.')) return;
+  const PADRAO = {
+    {% for chave, tpl in tpls.items() %}
+    '{{ chave }}': `{{ tpl.texto | replace('`', "'") }}`,
+    {% endfor %}
+  };
+  for (const [k, v] of Object.entries(PADRAO)) {
+    const ta = document.getElementById('tpl_' + k);
+    if (ta) { ta.value = v; atualizarPreview(k); }
+  }
+}
+</script>
+{% endblock %}

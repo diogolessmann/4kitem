@@ -53,6 +53,7 @@
 }
 .dot-aberta    { background:var(--yellow); box-shadow:0 0 6px rgba(234,179,8,.5); }
 .dot-andamento { background:var(--blue);   box-shadow:0 0 6px rgba(59,130,246,.5); }
+.dot-detran    { background:var(--purple); box-shadow:0 0 6px rgba(168,85,247,.4); }
 .dot-concluida { background:var(--green);  box-shadow:0 0 6px rgba(34,197,94,.4); }
 .dot-cancelada { background:var(--red);    }
 .dot-default   { background:var(--text3);  }
@@ -150,6 +151,7 @@
     <div class="os-dot
       {% if os.status == 'aberta' %}dot-aberta
       {% elif os.status == 'andamento' %}dot-andamento
+      {% elif os.status == 'detran' %}dot-detran
       {% elif os.status == 'concluida' %}dot-concluida
       {% elif os.status == 'cancelada' %}dot-cancelada
       {% else %}dot-default{% endif %}">

@@ -14,7 +14,7 @@
       display: flex; align-items: center; gap: 12px; font-family: Arial, sans-serif;
     }
     .print-bar button { padding: 6px 16px; border-radius: 6px; border: none; cursor: pointer; font-size: 13px; font-weight: 600; }
-    .print-bar .btn-print { background: #f97316; color: #fff; }
+    .print-bar .btn-print { background: #6366F1; color: #fff; }
     .print-bar .btn-close { background: rgba(255,255,255,.15); color: #fff; }
     .print-bar .info { font-size: 12px; color: #aaa; }
     body { padding-top: 54px; }
@@ -241,6 +241,14 @@
 
   <!-- Corpo do Requerimento -->
   <div class="corpo-texto">
+    {% if os.corpo_req %}
+    <p>
+      Eu, <strong>{{ os.cliente_nome or 'o(a) requerente' }}</strong>{% if os.cpf %}, portador(a) do CPF nº <strong>{{ os.cpf }}</strong>{% endif %}{% if os.rg %}, portador(a) do RG nº {{ os.rg }}{% endif %},
+      residente{% if os.cidade %} em {{ os.cidade }}/{{ os.uf or 'SC' }}{% endif %},
+      venho respeitosamente requerer:
+    </p>
+    <p style="margin-top:8px;font-style:normal;">{{ os.corpo_req }}</p>
+    {% else %}
     <p>
       Eu, <strong>{{ os.cliente_nome or 'o(a) requerente' }}</strong>{% if os.cpf %}, portador(a) do CPF nº <strong>{{ os.cpf }}</strong>{% endif %},
       {% if os.rg %}portador(a) do RG nº {{ os.rg }},{% endif %}
@@ -248,6 +256,7 @@
       venho respeitosamente requerer a <strong>{{ finalidade | upper }}</strong>{% if os.placa %} referente ao veículo de placa <strong>{{ os.placa }}</strong>{% if os.renavam %} (RENAVAM {{ os.renavam }}){% endif %}{% endif %},
       conforme documentação apresentada.
     </p>
+    {% endif %}
     {% if os.observacoes %}
     <p><strong>Observações:</strong> {{ os.observacoes }}</p>
     {% endif %}

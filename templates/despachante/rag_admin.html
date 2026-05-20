@@ -39,10 +39,16 @@
   font-size: 10px; font-weight: 700; padding: 2px 6px;
   border-radius: 4px; text-transform: uppercase;
 }
-.doc-ext.pdf { background: rgba(239,68,68,.15); color: var(--red); }
-.doc-ext.doc { background: rgba(59,130,246,.15); color: var(--blue); }
-.doc-ext.docx { background: rgba(59,130,246,.15); color: var(--blue); }
+.doc-ext.pdf  { background: rgba(239,68,68,.15);  color: var(--red); }
+.doc-ext.doc  { background: rgba(59,130,246,.15);  color: var(--blue); }
+.doc-ext.docx { background: rgba(59,130,246,.15);  color: var(--blue); }
+.doc-ext.int  { background: rgba(99,102,241,.15);  color: var(--accent); }
 
+.section-lbl {
+  font-size: 11px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .6px; color: var(--text3);
+  padding: 8px 14px 4px; border-bottom: 1px solid var(--border);
+}
 #upload-progress { display: none; margin-top: 14px; }
 #upload-bar {
   height: 6px; border-radius: 3px; background: var(--accent);
@@ -73,19 +79,26 @@
     <!-- Estatísticas -->
     <div class="card">
       <div style="font-size:14px;font-weight:700;margin-bottom:14px;">📊 Estatísticas da Base</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-        <div class="stat-card">
-          <div class="stat-icon">📄</div>
-          <div>
-            <div class="stat-val" id="stat-docs">{{ stats.documentos }}</div>
-            <div class="stat-lbl">Documentos</div>
-          </div>
-        </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">
         <div class="stat-card">
           <div class="stat-icon">🧩</div>
           <div>
             <div class="stat-val" id="stat-chunks">{{ stats.chunks }}</div>
-            <div class="stat-lbl">Chunks indexados</div>
+            <div class="stat-lbl">Total chunks</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">🤖</div>
+          <div>
+            <div class="stat-val" id="stat-internos">{{ internos|length }}</div>
+            <div class="stat-lbl">Base interna</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">📁</div>
+          <div>
+            <div class="stat-val" id="stat-externos">{{ externos|length }}</div>
+            <div class="stat-lbl">Seus docs</div>
           </div>
         </div>
       </div>
@@ -97,12 +110,53 @@
       {% endif %}
     </div>
 
-    <!-- Lista de documentos -->
+    <!-- Base Interna (DETRAN-SC / CTB) -->
     <div class="card">
-      <div style="font-size:14px;font-weight:700;margin-bottom:14px;">📁 Documentos Indexados</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+        <div style="font-size:14px;font-weight:700;">🤖 Base Interna — DETRAN-SC / CTB</div>
+        <button id="btn-seed" class="btn btn-ghost btn-sm" onclick="seedBase(false)">
+          ↺ Atualizar
+        </button>
+      </div>
+      <div style="font-size:12px;color:var(--text3);margin-bottom:12px;line-height:1.6;">
+        Conhecimento embutido no sistema: CTB, procedimentos DETRAN-SC, IPVA SC, ATPV-e,
+        transferências, licenciamento, honorários e legislação regional.
+        Atualizada automaticamente ao iniciar o sistema.
+      </div>
+
+      <div id="seed-result" style="display:none;margin-bottom:12px;"></div>
+
+      <div id="internos-list">
+        {% if internos %}
+        {% for nome in internos %}
+        <div class="doc-row">
+          <span style="font-size:18px;">🤖</span>
+          <span class="doc-name" style="font-size:12px;">{{ nome }}</span>
+          <span class="doc-ext int">interno</span>
+        </div>
+        {% endfor %}
+        {% else %}
+        <div id="seed-empty" style="text-align:center;padding:24px;color:var(--text3);font-size:13px;">
+          Base interna ainda não carregada.<br>
+          <span style="font-size:12px;">Clique em <strong>↺ Atualizar</strong> para carregar.</span>
+        </div>
+        {% endif %}
+      </div>
+
+      <div style="margin-top:12px;border-top:1px solid var(--border);padding-top:10px;">
+        <button class="btn btn-ghost btn-sm" onclick="seedBase(true)"
+                style="width:100%;color:var(--text3);">
+          🔄 Forçar re-indexação completa
+        </button>
+      </div>
+    </div>
+
+    <!-- Documentos do Usuário -->
+    <div class="card">
+      <div style="font-size:14px;font-weight:700;margin-bottom:14px;">📁 Seus Documentos Indexados</div>
       <div id="docs-list">
-        {% if arquivos %}
-        {% for arq in arquivos %}
+        {% if externos %}
+        {% for arq in externos %}
         {% set ext = arq.rsplit('.',1)[-1].lower() if '.' in arq else '' %}
         <div class="doc-row" id="doc-{{ loop.index }}">
           <span style="font-size:20px;">{{ '📄' if ext == 'pdf' else '📝' }}</span>
@@ -115,7 +169,7 @@
         {% endfor %}
         {% else %}
         <div id="empty-msg" style="text-align:center;padding:30px;color:var(--text3);font-size:13px;">
-          Nenhum documento na base ainda.<br>
+          Nenhum documento seu na base ainda.<br>
           <span style="font-size:12px;">Faça upload de PDFs ou Word à direita.</span>
         </div>
         {% endif %}
@@ -127,17 +181,16 @@
       <div style="font-size:14px;font-weight:700;margin-bottom:12px;">💡 Como funciona</div>
       <div style="font-size:13px;color:var(--text2);line-height:1.7;">
         <p style="margin:0 0 8px;">
-          A <strong>Base de Conhecimento</strong> alimenta o assistente IA com documentos
-          específicos do escritório — tabelas de taxas, resolucões DETRAN-SC, manuais,
-          modelos de documentos, etc.
+          A IA já vem <strong>pré-treinada</strong> com conhecimento de DETRAN-SC,
+          CTB, procedimentos de transferência, licenciamento, IPVA SC 2026 e mais.
         </p>
         <p style="margin:0 0 8px;">
-          Quando você faz uma pergunta no chat, o sistema busca automaticamente os trechos
-          mais relevantes dos documentos e os usa como contexto para a resposta.
+          Você pode complementar com seus próprios documentos — tabelas de taxas atualizadas,
+          resoluções específicas, modelos de requerimentos, etc.
         </p>
         <p style="margin:0;">
           Formatos suportados: <strong>PDF</strong>, <strong>DOC</strong> e <strong>DOCX</strong>.
-          Cada documento é dividido em blocos (chunks) e indexado com embeddings em PT-BR.
+          Cada documento é dividido em blocos e indexado com embeddings em PT-BR.
         </p>
       </div>
     </div>
@@ -193,12 +246,35 @@
       <div style="font-size:13px;font-weight:700;margin-bottom:10px;">📋 Documentos recomendados</div>
       <div style="font-size:12px;color:var(--text2);line-height:1.8;">
         • Tabela de taxas DETRAN-SC (atual)<br>
-        • Resolucão de transferência de propriedade<br>
-        • Checklist de documentos por serviço<br>
-        • Tabela FIPE (referência)<br>
-        • Manual de serviços do despachante<br>
+        • Resolução de transferência de propriedade<br>
+        • Tabela FIPE (referência regional)<br>
         • Circulares e resoluções SENATRAN<br>
-        • Modelos de requerimentos e procurações
+        • Modelos de requerimentos e procurações<br>
+        • Tabela de multas atualizada<br>
+        • Normas específicas do CITRAN Guaramirim
+      </div>
+    </div>
+
+    <!-- Status do modelo -->
+    <div class="card">
+      <div style="font-size:13px;font-weight:700;margin-bottom:10px;">⚙️ Configuração</div>
+      <div style="font-size:12px;color:var(--text2);line-height:1.9;">
+        <div style="display:flex;justify-content:space-between;border-bottom:1px solid var(--border);padding-bottom:6px;margin-bottom:6px;">
+          <span style="color:var(--text3);">Modelo de embeddings</span>
+          <span style="font-weight:600;">MiniLM-L12 (PT-BR)</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;border-bottom:1px solid var(--border);padding-bottom:6px;margin-bottom:6px;">
+          <span style="color:var(--text3);">LLM</span>
+          <span style="font-weight:600;">Llama 3.3 70B</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;border-bottom:1px solid var(--border);padding-bottom:6px;margin-bottom:6px;">
+          <span style="color:var(--text3);">Provedor</span>
+          <span style="font-weight:600;">Groq API</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;">
+          <span style="color:var(--text3);">Banco vetorial</span>
+          <span style="font-weight:600;">ChromaDB local</span>
+        </div>
       </div>
     </div>
 
@@ -270,18 +346,18 @@ async function upload() {
     res.style.display = 'block';
 
     if (data.ok) {
-      res.style.background = 'rgba(34,197,94,.1)';
-      res.style.border = '1px solid rgba(34,197,94,.3)';
-      res.style.borderRadius = '8px';
-      res.style.padding = '10px 14px';
-      res.style.fontSize = '13px';
+      res.style.cssText = 'background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);border-radius:8px;padding:10px 14px;font-size:13px;';
       res.innerHTML = `✅ <strong>${data.arquivo}</strong> indexado com sucesso!<br>
         <span style="color:var(--green);">${data.chunks} chunks novos adicionados</span> ·
         Base total: ${data.total_chunks} chunks / ${data.total_docs} docs`;
 
       // Atualiza stats
-      document.getElementById('stat-docs').textContent  = data.total_docs;
-      document.getElementById('stat-chunks').textContent = data.total_chunks;
+      document.getElementById('stat-chunks').textContent  = data.total_chunks;
+
+      // Atualiza stat de externos via fetch
+      fetch('/despachante/rag/stats').then(r => r.json()).then(s => {
+        document.getElementById('stat-externos').textContent = (s.externos||[]).length;
+      });
 
       // Adiciona à lista sem reload
       const list = document.getElementById('docs-list');
@@ -302,11 +378,7 @@ async function upload() {
       list.appendChild(novo);
       limpar();
     } else {
-      res.style.background = 'rgba(239,68,68,.1)';
-      res.style.border = '1px solid rgba(239,68,68,.3)';
-      res.style.borderRadius = '8px';
-      res.style.padding = '10px 14px';
-      res.style.fontSize = '13px';
+      res.style.cssText = 'background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:8px;padding:10px 14px;font-size:13px;';
       res.textContent = '✕ Erro: ' + (data.erro || 'Falha no processamento');
       document.getElementById('file-info').style.display = 'block';
     }
@@ -328,18 +400,16 @@ async function deletarDoc(nome) {
     });
     const data = await r.json();
     if (data.ok) {
-      // Remove visualmente e atualiza stats
       document.querySelectorAll('.doc-row').forEach(row => {
         if (row.querySelector('.doc-name')?.textContent === nome) row.remove();
       });
-      // Atualiza stats via API
       fetch('/despachante/rag/stats').then(r => r.json()).then(s => {
-        document.getElementById('stat-docs').textContent  = s.documentos;
-        document.getElementById('stat-chunks').textContent = s.chunks;
+        document.getElementById('stat-chunks').textContent   = s.chunks;
+        document.getElementById('stat-externos').textContent = (s.externos||[]).length;
         const list = document.getElementById('docs-list');
         if (!list.querySelector('.doc-row')) {
           list.innerHTML = `<div id="empty-msg" style="text-align:center;padding:30px;color:var(--text3);font-size:13px;">
-            Nenhum documento na base ainda.<br>
+            Nenhum documento seu na base ainda.<br>
             <span style="font-size:12px;">Faça upload de PDFs ou Word à direita.</span>
           </div>`;
         }
@@ -349,6 +419,51 @@ async function deletarDoc(nome) {
     }
   } catch (err) {
     alert('Erro: ' + err.message);
+  }
+}
+
+async function seedBase(forcar) {
+  const btn = document.getElementById('btn-seed');
+  const resultDiv = document.getElementById('seed-result');
+  if (forcar && !confirm('Isso vai apagar e re-indexar toda a base interna. Continuar?')) return;
+
+  btn.disabled = true;
+  btn.textContent = '⏳ Processando...';
+  resultDiv.style.display = 'none';
+
+  try {
+    const r = await fetch('/despachante/rag/seed', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ forcar }),
+    });
+    const data = await r.json();
+
+    resultDiv.style.display = 'block';
+    if (data.ok) {
+      resultDiv.style.cssText = 'padding:8px 12px;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);border-radius:8px;font-size:12px;margin-bottom:8px;';
+      resultDiv.innerHTML = `✅ Base interna atualizada! ${data.internos} tópicos · ${data.chunks} chunks totais`;
+
+      document.getElementById('stat-chunks').textContent   = data.chunks;
+      document.getElementById('stat-internos').textContent = data.internos;
+
+      // Recarrega lista de internos
+      const list = document.getElementById('internos-list');
+      const empty = document.getElementById('seed-empty');
+      if (empty) empty.remove();
+      // Faz reload suave para mostrar itens atualizados
+      setTimeout(() => location.reload(), 1500);
+    } else {
+      resultDiv.style.cssText = 'padding:8px 12px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:8px;font-size:12px;margin-bottom:8px;';
+      resultDiv.textContent = '✕ Erro: ' + (data.erro || 'Falha ao atualizar base');
+    }
+  } catch (err) {
+    resultDiv.style.display = 'block';
+    resultDiv.style.cssText = 'padding:8px 12px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:8px;font-size:12px;margin-bottom:8px;';
+    resultDiv.textContent = '✕ Erro de conexão: ' + err.message;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '↺ Atualizar';
   }
 }
 </script>

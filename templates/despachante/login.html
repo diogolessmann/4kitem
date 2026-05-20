@@ -9,15 +9,16 @@
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family: 'Inter', sans-serif;
-      background: #07070f; color: #eeeeff;
+      background: #111111; color: #F0EFE9;
       min-height: 100vh; display: flex;
       align-items: center; justify-content: center;
       padding: 20px;
     }
     .card {
-      background: #11111e; border: 1px solid rgba(255,255,255,0.07);
+      background: #1e1e1e; border: 1px solid rgba(255,255,255,0.06);
       border-radius: 16px; padding: 40px 36px;
       width: 100%; max-width: 380px;
+      box-shadow: 0 20px 60px rgba(0,0,0,.5);
     }
     .logo {
       display: flex; align-items: center; gap: 12px; margin-bottom: 32px;
@@ -25,28 +26,29 @@
     }
     .logo-icon {
       width: 48px; height: 48px; border-radius: 12px;
-      background: linear-gradient(135deg, #f97316, #ea580c);
+      background: linear-gradient(135deg, #6366F1, #4F46E5);
       display: flex; align-items: center; justify-content: center;
       font-size: 24px;
     }
-    .logo-text h1 { font-size: 18px; font-weight: 800; }
-    .logo-text p  { font-size: 12px; color: #6060a0; margin-top: 2px; }
+    .logo-text h1 { font-size: 18px; font-weight: 800; color: #F0EFE9; }
+    .logo-text p  { font-size: 12px; color: #5E5C56; margin-top: 2px; }
     .form-group { margin-bottom: 16px; }
-    label { display: block; font-size: 12px; font-weight: 600; color: #9090b8; margin-bottom: 6px; }
+    label { display: block; font-size: 12px; font-weight: 600; color: #9E9B93; margin-bottom: 6px; }
     input[type=password] {
       width: 100%; padding: 10px 14px;
-      background: #181828; border: 1px solid rgba(255,255,255,0.13);
-      border-radius: 8px; color: #eeeeff; font-size: 14px;
+      background: #252525; border: 1px solid rgba(255,255,255,0.11);
+      border-radius: 8px; color: #F0EFE9; font-size: 14px;
       font-family: inherit; outline: none; transition: border-color .15s;
     }
-    input[type=password]:focus { border-color: #f97316; }
-    input::placeholder { color: #6060a0; }
+    input[type=password]:focus { border-color: #6366F1; }
+    input::placeholder { color: #5E5C56; }
     .btn {
       width: 100%; padding: 11px; border-radius: 8px; border: none;
-      background: #f97316; color: #fff; font-size: 14px; font-weight: 700;
-      cursor: pointer; font-family: inherit; transition: background .15s; margin-top: 8px;
+      background: #6366F1; color: #fff; font-size: 14px; font-weight: 700;
+      cursor: pointer; font-family: inherit; transition: background .15s;
+      margin-top: 8px; letter-spacing: .3px;
     }
-    .btn:hover { background: #ea580c; }
+    .btn:hover { background: #4F46E5; }
     .flash-err {
       background: rgba(239,68,68,.1); border: 1px solid rgba(239,68,68,.25);
       color: #fca5a5; padding: 10px 14px; border-radius: 8px;
@@ -54,7 +56,7 @@
     }
     .footer {
       text-align: center; margin-top: 28px;
-      font-size: 11px; color: #6060a0;
+      font-size: 11px; color: #5E5C56;
     }
   </style>
 </head>
@@ -79,10 +81,10 @@
         <label for="senha">Senha de Acesso</label>
         <input type="password" id="senha" name="senha" placeholder="••••••••" autofocus required>
       </div>
-      <button type="submit" class="btn">Entrar no Sistema</button>
+      <button type="submit" class="btn">Entrar no Sistema →</button>
     </form>
 
-    <div class="footer">Acesso restrito — Credencial 2095 · Schroeder/SC</div>
+    <div class="footer">Acesso restrito · Credencial 2095 · Schroeder/SC</div>
   </div>
 </body>
 </html>

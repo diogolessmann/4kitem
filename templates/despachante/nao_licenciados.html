@@ -1,0 +1,317 @@
+{% extends "despachante/base.html" %}
+{% block title %}Não Licenciados · Lessmann{% endblock %}
+{% block topbar_title %}⚠️ Não Licenciados {{ exercicio }}{% endblock %}
+{% block topbar_actions %}
+  <button class="btn btn-primary btn-sm" onclick="abrirDisparar()" title="Enviar WhatsApp em massa">
+    📲 Disparar WhatsApp
+  </button>
+{% endblock %}
+
+{% block extra_style %}
+.stats-row { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:20px; }
+@media(max-width:700px){ .stats-row { grid-template-columns:1fr 1fr; } }
+
+.stat-mini {
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:10px; padding:14px 16px;
+  display:flex; flex-direction:column; gap:3px;
+}
+.stat-mini-val { font-size:22px; font-weight:800; }
+.stat-mini-lbl { font-size:11px; color:var(--text3); text-transform:uppercase; letter-spacing:.5px; }
+
+.filter-row { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px; align-items:center; }
+
+.nl-table th { font-size:10px; text-transform:uppercase; letter-spacing:.5px; color:var(--text3);
+               padding:9px 12px; border-bottom:1px solid var(--border); font-weight:700; }
+.nl-table td { padding:9px 12px; border-bottom:1px solid var(--border); font-size:13px; }
+.nl-table tr:hover td { background:var(--surface2); }
+.nl-table tr:last-child td { border-bottom:none; }
+
+.badge-atraso { background:rgba(239,68,68,.12); color:var(--red); border:1px solid rgba(239,68,68,.2);
+               border-radius:6px; padding:2px 8px; font-size:11px; font-weight:600; }
+.badge-mes    { background:rgba(234,179,8,.12); color:var(--yellow); border:1px solid rgba(234,179,8,.2);
+               border-radius:6px; padding:2px 8px; font-size:11px; font-weight:600; }
+.badge-os     { background:rgba(99,102,241,.12); color:var(--accent); border:1px solid rgba(99,102,241,.2);
+               border-radius:6px; padding:2px 8px; font-size:11px; font-weight:600; }
+
+/* Modal Disparar */
+.modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.6);
+                 z-index:200; align-items:center; justify-content:center; }
+.modal-overlay.open { display:flex; }
+.modal-box { background:var(--surface); border:1px solid var(--border2); border-radius:14px;
+             padding:24px 26px; width:100%; max-width:560px; max-height:92vh; overflow-y:auto; }
+.modal-title { font-size:16px; font-weight:700; margin-bottom:4px; }
+.modal-sub   { font-size:12px; color:var(--text3); margin-bottom:18px; }
+
+.var-chip { display:inline-block; background:var(--surface2); border:1px solid var(--border2);
+            border-radius:5px; padding:2px 7px; font-size:11px; font-family:monospace;
+            cursor:pointer; margin:2px; color:var(--accent); }
+.var-chip:hover { background:var(--surface3); }
+
+.result-item { display:flex; align-items:center; gap:8px; padding:6px 0;
+               border-bottom:1px solid var(--border); font-size:12px; }
+.result-item:last-child { border-bottom:none; }
+{% endblock %}
+
+{% block content %}
+
+<!-- Stats -->
+<div class="stats-row">
+  <div class="stat-mini">
+    <div class="stat-mini-val" style="color:var(--red);">{{ stats.total }}</div>
+    <div class="stat-mini-lbl">Total sem CRLV {{ exercicio }}</div>
+  </div>
+  <div class="stat-mini">
+    <div class="stat-mini-val" style="color:var(--orange);">{{ stats.sem_os }}</div>
+    <div class="stat-mini-lbl">Sem contato (sem OS)</div>
+  </div>
+  <div class="stat-mini">
+    <div class="stat-mini-val" style="color:var(--accent);">{{ stats.em_andamento }}</div>
+    <div class="stat-mini-lbl">Em andamento</div>
+  </div>
+  <div class="stat-mini">
+    <div class="stat-mini-val" style="color:var(--text3);">{{ stats.atrasados }}</div>
+    <div class="stat-mini-lbl">Meses anteriores</div>
+  </div>
+</div>
+
+<!-- Filtros -->
+<div class="filter-row">
+  <form method="GET" style="display:flex;gap:8px;flex-wrap:wrap;flex:1;align-items:center;">
+    <select name="exercicio" class="select" style="max-width:110px;" onchange="this.form.submit()">
+      {% for ano in exercicios %}
+      <option value="{{ ano }}" {% if exercicio == ano %}selected{% endif %}>{{ ano }}</option>
+      {% endfor %}
+    </select>
+
+    <select name="final" class="select" style="max-width:145px;" onchange="this.form.submit()">
+      <option value="">Todos os finais</option>
+      {% for f, m in finais %}
+      <option value="{{ f }}" {% if final == f %}selected{% endif %}>Final {{ f }} → {{ meses[m] }}</option>
+      {% endfor %}
+    </select>
+
+    <select name="mostrar" class="select" style="max-width:170px;" onchange="this.form.submit()">
+      <option value="sem_os"       {% if mostrar == 'sem_os' %}selected{% endif %}>Sem OS (sem contato)</option>
+      <option value="em_andamento" {% if mostrar == 'em_andamento' %}selected{% endif %}>Em Andamento</option>
+      <option value="todos"        {% if mostrar == 'todos' %}selected{% endif %}>Todos sem CRLV</option>
+    </select>
+
+    {% if final or mostrar != 'sem_os' %}
+    <a href="{{ url_for('desp_nao_licenciados', exercicio=exercicio) }}" class="btn btn-ghost btn-sm">✕ Limpar</a>
+    {% endif %}
+  </form>
+  <span style="font-size:12px;color:var(--text3);">
+    {{ veiculos|length }} registro{{ 's' if veiculos|length != 1 }}
+  </span>
+</div>
+
+<!-- Tabela -->
+<div class="card" style="padding:0;overflow:hidden;">
+  {% if veiculos %}
+  <div style="overflow-x:auto;">
+    <table class="nl-table" style="width:100%;border-collapse:collapse;">
+      <thead>
+        <tr>
+          <th>Cliente</th>
+          <th>Telefone</th>
+          <th>Placa</th>
+          <th>Veículo</th>
+          <th>Vencimento</th>
+          <th>Status</th>
+          <th>O.S.</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for v in veiculos %}
+        <tr>
+          <td>
+            <a href="{{ url_for('desp_detalhe_cliente', id=v.cliente_id) }}"
+               style="color:var(--text);font-weight:600;">{{ v.cliente }}</a>
+            {% if v.cpf %}<div style="font-size:11px;color:var(--text3);">{{ v.cpf }}</div>{% endif %}
+          </td>
+          <td style="font-size:12px;">{{ v.telefone or '—' }}</td>
+          <td>
+            <span style="font-family:monospace;font-size:13px;font-weight:800;color:var(--accent);">
+              {{ v.placa }}
+            </span>
+            <div style="font-size:10px;color:var(--text3);">Final {{ v.final }}</div>
+          </td>
+          <td style="font-size:12px;color:var(--text2);">
+            {{ v.marca or '' }} {{ v.modelo or '' }}
+            {% if v.ano_mod %}<div style="font-size:10px;color:var(--text3);">{{ v.ano_mod }}</div>{% endif %}
+          </td>
+          <td>
+            {% if v.atrasado %}
+            <span class="badge-atraso">🔴 {{ v.mes_venc_nome }}</span>
+            {% else %}
+            <span class="badge-mes">🟡 {{ v.mes_venc_nome }}</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if v.os_status == 'aberta' %}
+              <span class="badge badge-yellow">Aberta</span>
+            {% elif v.os_status == 'andamento' %}
+              <span class="badge badge-blue">Andamento</span>
+            {% elif v.os_status == 'aguardando' %}
+              <span class="badge badge-orange">Aguardando</span>
+            {% else %}
+              <span style="color:var(--text3);font-size:12px;">—</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if v.os_id %}
+            <a href="{{ url_for('desp_detalhe_os', id=v.os_id) }}"
+               style="color:var(--accent);font-family:monospace;font-weight:600;font-size:12px;">
+              {{ v.os_numero }}
+            </a>
+            {% else %}
+            <a href="{{ url_for('desp_nova_os') }}?placa={{ v.placa }}&servico=licenciamento&exercicio={{ exercicio }}"
+               class="btn btn-success btn-sm" style="white-space:nowrap;">+ O.S.</a>
+            {% endif %}
+          </td>
+          <td>
+            {% if v.telefone %}
+            <a href="https://wa.me/55{{ v.telefone | replace('(','') | replace(')','') | replace('-','') | replace(' ','') }}"
+               target="_blank" class="btn btn-ghost btn-sm" title="WhatsApp">💬</a>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div style="text-align:center;padding:50px 20px;color:var(--text3);">
+    <div style="font-size:40px;margin-bottom:12px;">✅</div>
+    <div style="font-weight:600;">Nenhum veículo encontrado com esses filtros</div>
+    <div style="font-size:12px;margin-top:6px;">Tente mudar os filtros acima</div>
+  </div>
+  {% endif %}
+</div>
+
+<!-- ── MODAL DISPARAR WHATSAPP ── -->
+<div class="modal-overlay" id="modal-disparar" onclick="if(event.target===this)fecharModal('modal-disparar')">
+  <div class="modal-box">
+    <div class="modal-title">📲 Disparar WhatsApp em Massa</div>
+    <div class="modal-sub">
+      Enviará para <strong id="disp-count">{{ veiculos|length }}</strong> contatos com telefone cadastrado
+      · filtros atuais aplicados
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">
+        Mensagem
+        <span style="font-size:10px;font-weight:400;color:var(--text3);">(use as variáveis abaixo)</span>
+      </label>
+      <div style="margin-bottom:6px;line-height:2;">
+        {% for v in ['{nome}','{placa}','{mes}','{exercicio}','{marca}','{modelo}','{despachante}','{whatsapp}'] %}
+        <span class="var-chip" onclick="inserirVar('{{ v }}')">{{ v }}</span>
+        {% endfor %}
+      </div>
+      <textarea id="disp-msg" class="textarea" rows="7"
+        placeholder="Olá {nome}, o licenciamento {exercicio} do seu veículo placa {placa} vence em {mes} e ainda não foi regularizado. Fale com {despachante}: {whatsapp} 🚗"></textarea>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Intervalo entre envios (segundos)</label>
+      <input id="disp-delay" type="number" class="input" min="1" max="30" value="5"
+             style="max-width:120px;">
+      <span style="font-size:11px;color:var(--text3);">Recomendado: 4–8s para evitar bloqueio</span>
+    </div>
+
+    <div id="disp-progress" style="display:none;margin-bottom:14px;">
+      <div style="font-size:12px;color:var(--text3);margin-bottom:6px;">Enviando…</div>
+      <div style="background:var(--surface2);border-radius:6px;overflow:hidden;height:6px;">
+        <div id="disp-bar" style="background:var(--accent);height:100%;width:0%;transition:width .3s;"></div>
+      </div>
+      <div id="disp-log" style="margin-top:10px;max-height:180px;overflow-y:auto;font-size:11px;"></div>
+    </div>
+
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:6px;">
+      <button type="button" class="btn btn-ghost" onclick="fecharModal('modal-disparar')">Cancelar</button>
+      <button id="btn-disparar" type="button" class="btn btn-primary" onclick="confirmarDisparar()">
+        📲 Disparar {{ veiculos|length }} mensagens
+      </button>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_script %}
+<script>
+function abrirModal(id)  { document.getElementById(id).classList.add('open'); }
+function fecharModal(id) { document.getElementById(id).classList.remove('open'); }
+
+function abrirDisparar() {
+  abrirModal('modal-disparar');
+}
+
+// Inserir variável no cursor
+function inserirVar(v) {
+  const ta = document.getElementById('disp-msg');
+  const s  = ta.selectionStart;
+  const e  = ta.selectionEnd;
+  ta.value = ta.value.slice(0, s) + v + ta.value.slice(e);
+  ta.selectionStart = ta.selectionEnd = s + v.length;
+  ta.focus();
+}
+
+async function confirmarDisparar() {
+  const msg   = document.getElementById('disp-msg').value.trim();
+  const delay = parseInt(document.getElementById('disp-delay').value) || 5;
+  if (!msg) { alert('Digite uma mensagem primeiro.'); return; }
+
+  const total = {{ veiculos|length }};
+  if (total === 0) { alert('Nenhum contato na lista atual.'); return; }
+  if (!confirm(`Enviar mensagem para ${total} contatos? (intervalo de ${delay}s entre envios)`)) return;
+
+  const btn  = document.getElementById('btn-disparar');
+  const prog = document.getElementById('disp-progress');
+  const log  = document.getElementById('disp-log');
+  const bar  = document.getElementById('disp-bar');
+
+  btn.disabled  = true;
+  btn.textContent = '⏳ Enviando…';
+  prog.style.display = 'block';
+  log.innerHTML = '';
+
+  try {
+    const r = await fetch('/despachante/nao-licenciados/disparar', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        exercicio: {{ exercicio }},
+        final: '{{ final }}',
+        mostrar: '{{ mostrar }}',
+        mensagem: msg,
+        delay: delay
+      })
+    });
+    const d = await r.json();
+    if (d.erro) { alert('Erro: ' + d.erro); return; }
+
+    bar.style.width = '100%';
+    d.results.forEach(res => {
+      const icon = res.status === 'ok' ? '✅' : (res.status === 'sem_telefone' ? '📵' : '❌');
+      log.innerHTML += `<div class="result-item">
+        <span>${icon}</span>
+        <span style="flex:1">${res.nome}</span>
+        <span style="color:var(--text3)">${res.tel || '—'}</span>
+        ${res.detalhe ? `<span style="color:var(--red);font-size:10px">${res.detalhe}</span>` : ''}
+      </div>`;
+    });
+    log.innerHTML += `<div style="margin-top:10px;padding:8px;background:var(--surface2);border-radius:6px;font-size:12px;">
+      ✅ <strong>${d.sent}</strong> enviados · ❌ <strong>${d.failed}</strong> falhas
+    </div>`;
+    btn.textContent = `✅ Concluído (${d.sent}/${d.sent + d.failed})`;
+  } catch (e) {
+    alert('Erro na conexão: ' + e.message);
+    btn.disabled = false;
+    btn.textContent = '📲 Disparar';
+  }
+}
+</script>
+{% endblock %}

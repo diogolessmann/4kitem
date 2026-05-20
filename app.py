@@ -13,7 +13,7 @@ import time
 import traceback
 import unicodedata
 import requests
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from functools import wraps
 from flask import (Flask, render_template, redirect, jsonify,
                    request, abort, url_for, session)
@@ -2746,6 +2746,8 @@ from desp_db import (
     SERVICOS as DESP_SERVICOS, SERVICOS_GRUPOS as DESP_SERVICOS_GRUPOS,
     FINAIS_PLACA as DESP_FINAIS_PLACA, MESES as DESP_MESES,
     STATUS_LABELS as DESP_STATUS_LABELS,
+    KANBAN_COLUNAS as DESP_KANBAN_COLUNAS,
+    kanban_os as desp_kanban_os,
     DOCS_POR_SERVICO as DESP_DOCS_POR_SERVICO,
     DOCS_PADRAO as DESP_DOCS_PADRAO,
     criar_os as desp_criar_os, get_os as desp_get_os,
@@ -2787,10 +2789,36 @@ from desp_db import (
     get_preco_servico as desp_get_preco,
     # Relatório de Produção
     relatorio_producao as desp_rel_producao,
+    # Relatório Fez / Não Fez
+    relatorio_fez_nao_fez as desp_rel_fez_nao_fez,
+    # Portal do cliente
+    gerar_token_os as desp_gerar_token,
+    get_os_por_token as desp_os_por_token,
+    revogar_token_os as desp_revogar_token,
+    # Protocolos RENAVAM
+    listar_protocolos as desp_listar_protocolos,
+    criar_protocolos_lote as desp_criar_lote_protocolos,
+    deletar_protocolo as desp_deletar_protocolo,
+    stats_protocolos as desp_stats_protocolos,
+    # Não Licenciados
+    veiculos_nao_licenciados as desp_nao_lic,
+    stats_nao_licenciados as desp_stats_nao_lic,
+    # Templates WhatsApp
+    get_templates_wpp as desp_get_tpls,
+    set_templates_wpp as desp_set_tpls,
+    get_template_wpp as desp_get_tpl,
+    TEMPLATES_PADRAO as DESP_TEMPLATES_PADRAO,
+    # Checklist de documentos
+    get_checklist_os as desp_get_checklist,
+    toggle_checklist_item as desp_toggle_chk,
+    add_checklist_item as desp_add_chk,
+    remove_checklist_item as desp_remove_chk,
 )
 try:
     import desp_rag
     _rag_ok = True
+    # Alimenta base interna de conhecimento em background (idempotente)
+    threading.Thread(target=desp_rag.seed_conhecimento_base, daemon=True).start()
 except ImportError:
     _rag_ok = False
 
@@ -2818,6 +2846,12 @@ def _desp_login_required(f):
 
 def _desp_globals():
     hoje = datetime.now()
+    # Badge de alertas globais na sidebar — calculado 1x por request
+    try:
+        _st = desp_stats()
+        _n_alertas = len(_st.get('parcelas_vencidas', [])) + len(_st.get('os_paradas', []))
+    except Exception:
+        _n_alertas = 0
     return dict(
         desp=DESP_CONFIG,
         servicos=DESP_SERVICOS,
@@ -2825,6 +2859,7 @@ def _desp_globals():
         status_labels=DESP_STATUS_LABELS,
         hoje=hoje, mes_atual=hoje.month, meses=DESP_MESES,
         finais_placa_nav=sorted(DESP_FINAIS_PLACA.items(), key=lambda x: x[1]),
+        n_alertas=_n_alertas,
     )
 
 
@@ -2944,9 +2979,33 @@ def desp_detalhe_os(id):
     total_deb = desp_total_debitos(id)
     parcelas  = desp_get_parcelas(id)
     historico = desp_get_historico(id)
+    checklist = desp_get_checklist(id, os_.get('servico', ''))
+    # Renderizar templates WhatsApp com dados da OS
+    tpls      = desp_get_tpls()
+    os_total  = float(os_.get('honorarios', 0)) + float(os_.get('custos', 0))
+    os_pend   = max(os_total - float(os_.get('pago', 0)), 0)
+    _vars     = dict(
+        nome          = (os_.get('cliente_nome') or 'cliente').split()[0].title(),
+        nome_completo = (os_.get('cliente_nome') or '').title(),
+        numero        = os_.get('numero', ''),
+        servico       = DESP_SERVICOS.get(os_.get('servico', ''), os_.get('servico', '')),
+        placa         = (os_.get('placa') or '').upper(),
+        mes           = '', exercicio = datetime.now().year,
+        pendente      = f'{os_pend:.2f}'.replace('.', ','),
+        pix           = DESP_CONFIG.get('cpf', ''),
+        despachante   = DESP_CONFIG['nome'].title(),
+        whatsapp      = DESP_CONFIG['whatsapp_fmt'],
+        cidade        = DESP_CONFIG['cidade'],
+    )
+    def _render_tpl(chave):
+        try: return tpls[chave]['texto'].format(**_vars)
+        except Exception: return tpls.get(chave, {}).get('texto', '')
+    wpp_msgs = {k: _render_tpl(k) for k in tpls}
     return desp_render('os/detalhe.html', os=os_, docs=docs,
                        debitos=debitos, total_debitos=total_deb,
-                       parcelas=parcelas, historico=historico)
+                       parcelas=parcelas, historico=historico,
+                       checklist=checklist, wpp_msgs=wpp_msgs,
+                       os_pendente=os_pend)
 
 
 @app.route('/despachante/os/<int:id>/status', methods=['POST'])
@@ -2993,8 +3052,7 @@ def desp_api_baixa_parcela(pid):
     if 'erro' in res:
         return jsonify(res), 400
     # Registra histórico
-    from desp_db import get_conn as _gc
-    c = _gc()
+    c = get_desp_conn()
     row = c.execute("SELECT os_id, numero, valor FROM os_parcelas WHERE id=?", (pid,)).fetchone()
     c.close()
     if row:
@@ -3033,6 +3091,51 @@ def desp_print_recibo(pid):
         abort(404)
     return desp_render('print/recibo.html', p=dict(row),
                        servicos=DESP_SERVICOS, hoje=datetime.now())
+
+
+# ── Checklist de documentos ──────────────────────────────────────────────────
+
+@app.route('/despachante/api/os/<int:os_id>/checklist', methods=['GET'])
+@_desp_login_required
+def desp_api_checklist_get(os_id):
+    os_ = desp_get_os(os_id)
+    if not os_: return jsonify({'erro': 'OS não encontrada'}), 404
+    chk = desp_get_checklist(os_id, os_.get('servico', ''))
+    feitos = sum(1 for c in chk if c['feito'])
+    return jsonify({'checklist': chk, 'feitos': feitos, 'total': len(chk)})
+
+@app.route('/despachante/api/os/<int:os_id>/checklist/toggle', methods=['POST'])
+@_desp_login_required
+def desp_api_checklist_toggle(os_id):
+    os_ = desp_get_os(os_id)
+    if not os_: return jsonify({'erro': 'OS não encontrada'}), 404
+    data  = request.get_json(silent=True) or {}
+    idx   = int(data.get('idx', -1))
+    feito = bool(data.get('feito', False))
+    chk   = desp_toggle_chk(os_id, idx, feito, os_.get('servico', ''))
+    feitos = sum(1 for c in chk if c['feito'])
+    return jsonify({'ok': True, 'checklist': chk, 'feitos': feitos, 'total': len(chk)})
+
+@app.route('/despachante/api/os/<int:os_id>/checklist/add', methods=['POST'])
+@_desp_login_required
+def desp_api_checklist_add(os_id):
+    os_ = desp_get_os(os_id)
+    if not os_: return jsonify({'erro': 'OS não encontrada'}), 404
+    data = request.get_json(silent=True) or {}
+    item = data.get('item', '').strip()
+    if not item: return jsonify({'erro': 'Item vazio'}), 400
+    chk = desp_add_chk(os_id, item, os_.get('servico', ''))
+    return jsonify({'ok': True, 'checklist': chk})
+
+@app.route('/despachante/api/os/<int:os_id>/checklist/remove', methods=['POST'])
+@_desp_login_required
+def desp_api_checklist_remove(os_id):
+    os_ = desp_get_os(os_id)
+    if not os_: return jsonify({'erro': 'OS não encontrada'}), 404
+    data = request.get_json(silent=True) or {}
+    idx  = int(data.get('idx', -1))
+    chk  = desp_remove_chk(os_id, idx, os_.get('servico', ''))
+    return jsonify({'ok': True, 'checklist': chk})
 
 
 # ── Busca global ─────────────────────────────────────────────────────────────
@@ -3085,6 +3188,107 @@ def desp_rel_retencao_csv():
     }
 
 
+# ── Relatório Fez / Não Fez ───────────────────────────────────────────────────
+
+@app.route('/despachante/fez-nao-fez')
+@_desp_login_required
+def desp_fez_nao_fez():
+    hoje     = datetime.now()
+    servico  = request.args.get('servico', 'licenciamento')
+    # Padrão: ano corrente
+    ano      = int(request.args.get('ano', hoje.year))
+    data_ini = request.args.get('data_ini', f'{ano}-01-01')
+    data_fim = request.args.get('data_fim', f'{ano}-12-31')
+
+    dados = desp_rel_fez_nao_fez(servico, data_ini, data_fim)
+    anos  = list(range(hoje.year, 2022, -1))
+
+    return desp_render('relatorio/fez_nao_fez.html',
+                       dados=dados, servico=servico,
+                       data_ini=data_ini, data_fim=data_fim, ano=ano,
+                       anos=anos,
+                       servicos=DESP_SERVICOS,
+                       servicos_grupos=DESP_SERVICOS_GRUPOS)
+
+
+# ── Kanban de OS ──────────────────────────────────────────────────────────────
+
+@app.route('/despachante/kanban')
+@_desp_login_required
+def desp_kanban():
+    colunas = desp_kanban_os()
+    return desp_render('kanban.html',
+                       colunas=colunas,
+                       kanban_cols=DESP_KANBAN_COLUNAS,
+                       servicos=DESP_SERVICOS)
+
+
+@app.route('/despachante/api/os/<int:os_id>/mover', methods=['POST'])
+@_desp_login_required
+def desp_api_mover_os(os_id):
+    """Move uma OS para outro status (usado pelo drag-and-drop do Kanban)."""
+    data       = request.get_json(silent=True) or {}
+    novo_status = data.get('status', '')
+    status_validos = [c[0] for c in DESP_KANBAN_COLUNAS] + ['cancelada']
+    if novo_status not in status_validos:
+        return jsonify({'erro': 'Status inválido'}), 400
+    try:
+        desp_atualizar_os_status(os_id, novo_status)
+        desp_reg_hist(os_id, novo_status,
+                      f"Status alterado via Kanban → {DESP_STATUS_LABELS.get(novo_status, ('',''))[1]}")
+        return jsonify({'ok': True})
+    except Exception as e:
+        log.error(f'desp_api_mover_os error: {e}')
+        return jsonify({'erro': str(e)}), 500
+
+
+# ── Portal do cliente ─────────────────────────────────────────────────────────
+
+@app.route('/despachante/api/os/<int:os_id>/gerar-link', methods=['POST'])
+@_desp_login_required
+def desp_api_gerar_link(os_id):
+    """Gera (ou retorna) o token público para o portal do cliente."""
+    try:
+        token = desp_gerar_token(os_id)
+        url   = request.host_url.rstrip('/') + f'/cliente/{token}'
+        return jsonify({'ok': True, 'token': token, 'url': url})
+    except Exception as e:
+        return jsonify({'erro': str(e)}), 500
+
+
+@app.route('/despachante/api/os/<int:os_id>/revogar-link', methods=['POST'])
+@_desp_login_required
+def desp_api_revogar_link(os_id):
+    """Revoga o token público da OS."""
+    try:
+        desp_revogar_token(os_id)
+        return jsonify({'ok': True})
+    except Exception as e:
+        return jsonify({'erro': str(e)}), 500
+
+
+@app.route('/cliente/<token>')
+def portal_cliente(token):
+    """Portal público do cliente — sem login, acesso por token."""
+    os_ = desp_os_por_token(token)
+    if not os_:
+        return render_template('cliente/404.html'), 404
+
+    checklist = desp_get_checklist(os_['id'], os_.get('servico', ''))
+    parcelas  = desp_get_parcelas(os_['id'])
+    feitos    = sum(1 for c in checklist if c['feito'])
+
+    return render_template('cliente/portal.html',
+                           os=os_,
+                           checklist=checklist,
+                           parcelas=parcelas,
+                           feitos=feitos,
+                           servicos=DESP_SERVICOS,
+                           status_labels=DESP_STATUS_LABELS,
+                           desp=DESP_CONFIG,
+                           hoje=datetime.now())
+
+
 @app.route('/despachante/financeiro')
 @_desp_login_required
 def desp_financeiro():
@@ -3094,7 +3298,6 @@ def desp_financeiro():
     mes  = datetime.now().strftime("%Y-%m")
 
     # Últimos 12 meses de faturamento
-    from datetime import date
     fat_12 = []
     for i in range(11, -1, -1):
         d = date.today().replace(day=1)
@@ -3213,7 +3416,6 @@ def desp_api_preco(servico):
 @_desp_login_required
 def desp_relatorio():
     """Relatório de produção por período."""
-    from datetime import date
     hoje    = date.today()
     ini_def = hoje.replace(day=1).strftime('%Y-%m-%d')
     fim_def = hoje.strftime('%Y-%m-%d')
@@ -3232,7 +3434,6 @@ def desp_relatorio():
 @_desp_login_required
 def desp_relatorio_csv():
     """Export CSV do relatório de produção."""
-    from datetime import date
     hoje    = date.today()
     data_ini = request.args.get('ini', hoje.replace(day=1).strftime('%Y-%m-%d'))
     data_fim = request.args.get('fim', hoje.strftime('%Y-%m-%d'))
@@ -3263,6 +3464,165 @@ def desp_relatorio_csv():
     }
 
 
+# ── Protocolos RENAVAM ────────────────────────────────────────────────────────
+
+@app.route('/despachante/protocolos')
+@_desp_login_required
+def desp_protocolos():
+    busca       = request.args.get('busca', '').strip()
+    filtro_lote = request.args.get('lote', '')
+    filtro_usado= request.args.get('usado', '')
+    usado_bool  = None
+    if filtro_usado == '0': usado_bool = False
+    elif filtro_usado == '1': usado_bool = True
+    protocolos = desp_listar_protocolos(
+        lote=filtro_lote or None,
+        usado=usado_bool,
+        busca=busca or None,
+    )
+    return desp_render('protocolos.html',
+        protocolos=protocolos,
+        stats=desp_stats_protocolos(),
+        busca=busca,
+        filtro_lote=filtro_lote,
+        filtro_usado=filtro_usado,
+        hoje=datetime.now(),
+    )
+
+
+@app.route('/despachante/protocolos/add', methods=['POST'])
+@_desp_login_required
+def desp_protocolos_add():
+    f = request.form
+    raw = f.get('protocolos', '')
+    # Separa por linha, vírgula ou espaço
+    tokens = [t.strip() for t in _re.split(r'[\n,\s]+', raw) if t.strip()]
+    inseridos = desp_criar_lote_protocolos(
+        protocolos=tokens,
+        letra=f.get('letra', '').strip(),
+        lote=f.get('lote', '').strip(),
+        emitido_em=f.get('emitido_em', ''),
+        observacao=f.get('observacao', '').strip(),
+    )
+    flash(f'✅ {inseridos} protocolo(s) cadastrado(s) com sucesso!', 'ok')
+    return redirect(url_for('desp_protocolos'))
+
+
+@app.route('/despachante/protocolos/<int:id>/delete', methods=['POST'])
+@_desp_login_required
+def desp_protocolo_delete(id):
+    desp_deletar_protocolo(id)
+    return jsonify({'ok': True})
+
+
+@app.route('/despachante/nao-licenciados')
+@_desp_login_required
+def desp_nao_licenciados():
+    exercicio = request.args.get('exercicio', datetime.now().year, type=int)
+    final     = request.args.get('final', '').strip()
+    mostrar   = request.args.get('mostrar', 'sem_os')
+    veiculos  = desp_nao_lic(exercicio=exercicio,
+                              final_placa=final or None,
+                              mostrar=mostrar)
+    stats     = desp_stats_nao_lic(exercicio=exercicio)
+    exercicios = desp_listar_exercicios()
+    if datetime.now().year not in exercicios:
+        exercicios.insert(0, datetime.now().year)
+    return desp_render('nao_licenciados.html',
+        veiculos=veiculos, stats=stats,
+        exercicio=exercicio, exercicios=exercicios,
+        final=final, mostrar=mostrar,
+        finais=sorted(DESP_FINAIS_PLACA.items(), key=lambda x: x[1]))
+
+
+@app.route('/despachante/nao-licenciados/disparar', methods=['POST'])
+@_desp_login_required
+def desp_nao_lic_disparar():
+    """Dispara WhatsApp para veículos sem licenciamento via Evolution API."""
+    _req          = requests
+    data          = request.get_json(silent=True) or {}
+    exercicio     = int(data.get('exercicio', datetime.now().year))
+    final         = data.get('final', '')
+    mostrar       = data.get('mostrar', 'sem_os')
+    mensagem_tpl  = data.get('mensagem', '').strip()
+    delay_s       = max(1, min(30, int(data.get('delay', 4))))
+    if not mensagem_tpl:
+        return jsonify({'erro': 'Mensagem não pode estar vazia'}), 400
+    evo_url      = os.environ.get('EVO_URL', '').rstrip('/')
+    evo_key      = os.environ.get('EVO_KEY', '')
+    evo_instance = os.environ.get('EVO_INSTANCE', '')
+    if not evo_url or not evo_key or not evo_instance:
+        return jsonify({'erro': 'WhatsApp não configurado (EVO_URL / EVO_KEY / EVO_INSTANCE).'}), 400
+    veiculos = desp_nao_lic(exercicio=exercicio,
+                             final_placa=final or None,
+                             mostrar=mostrar)
+    results = []
+    for v in veiculos:
+        tel = (v.get('telefone') or '').replace('(','').replace(')','').replace('-','').replace(' ','').replace('+','')
+        if not tel:
+            results.append({'nome': v.get('cliente','?'), 'status': 'sem_telefone'})
+            continue
+        if not tel.startswith('55'): tel = '55' + tel
+        nome_curto = (v.get('cliente') or 'Cliente').split()[0].title()
+        try:
+            msg = mensagem_tpl.format(
+                nome=nome_curto,
+                nome_completo=(v.get('cliente') or '').title(),
+                placa=(v.get('placa') or '').upper(),
+                exercicio=exercicio,
+                mes=v.get('mes_venc_nome', ''),
+                marca=v.get('marca') or '',
+                modelo=v.get('modelo') or '',
+                despachante=DESP_CONFIG['nome'].title(),
+                whatsapp=DESP_CONFIG['whatsapp_fmt'],
+                cidade=DESP_CONFIG['cidade'],
+            )
+        except KeyError as e:
+            return jsonify({'erro': f'Variável inválida na mensagem: {e}'}), 400
+        try:
+            resp = _req.post(
+                f"{evo_url}/message/sendText/{evo_instance}",
+                headers={'apikey': evo_key, 'Content-Type': 'application/json'},
+                json={'number': tel, 'text': msg}, timeout=12
+            )
+            ok = resp.status_code in (200, 201)
+            results.append({'nome': v.get('cliente',''), 'tel': tel,
+                            'status': 'ok' if ok else 'erro',
+                            'detalhe': '' if ok else resp.text[:120]})
+        except Exception as e:
+            results.append({'nome': v.get('cliente',''), 'tel': tel,
+                            'status': 'erro', 'detalhe': str(e)[:120]})
+        time.sleep(delay_s)
+    sent   = sum(1 for r in results if r['status'] == 'ok')
+    failed = len(results) - sent
+    return jsonify({'sent': sent, 'failed': failed, 'results': results})
+
+
+@app.route('/despachante/mensagens', methods=['GET', 'POST'])
+@_desp_login_required
+def desp_mensagens():
+    """Templates de mensagem WhatsApp — visualizar e editar."""
+    if request.method == 'POST':
+        tpls = desp_get_tpls()
+        for chave in tpls:
+            novo_texto = request.form.get(f'tpl_{chave}', '').strip()
+            if novo_texto:
+                tpls[chave]['texto'] = novo_texto
+        desp_set_tpls(tpls)
+        from flask import flash
+        flash('Templates salvos com sucesso! 💬', 'ok')
+        return redirect(url_for('desp_mensagens'))
+    tpls = desp_get_tpls()
+    return desp_render('mensagens.html', tpls=tpls)
+
+
+@app.route('/despachante/api/mensagem/<chave>')
+@_desp_login_required
+def desp_api_mensagem(chave):
+    """Retorna o texto de um template para uso inline (ex: botão WhatsApp na OS)."""
+    return jsonify({'chave': chave, 'texto': desp_get_tpl(chave)})
+
+
 @app.route('/despachante/backup')
 @_desp_login_required
 def desp_backup():
@@ -3288,7 +3648,6 @@ def desp_backup():
             except Exception:
                 pass
         # Metadados
-        from datetime import date
         meta = f'Backup Lessmann Despachante\nData: {date.today()}\n'
         meta += f'OS: {conn.execute("SELECT COUNT(*) FROM ordens_servico").fetchone()[0]}\n'
         meta += f'Clientes: {conn.execute("SELECT COUNT(*) FROM clientes").fetchone()[0]}\n'
@@ -3296,7 +3655,6 @@ def desp_backup():
     conn.close()
     buf.seek(0)
     from flask import send_file
-    from datetime import date
     fname = f'lessmann_backup_{date.today()}.zip'
     return send_file(buf, mimetype='application/zip',
                      as_attachment=True, download_name=fname)
@@ -3337,6 +3695,7 @@ def desp_editar_os(id):
         'pago': float(f.get('pago') or 0),
         'forma_pagamento': f.get('forma_pagamento', ''),
         'observacoes': f.get('observacoes', ''),
+        'corpo_req': f.get('corpo_req', ''),
         'exercicio': int(f.get('exercicio') or datetime.now().year),
         'situacao_pag': f.get('situacao_pag', ''),
     })
@@ -4005,10 +4364,13 @@ def desp_api_chat():
 @_desp_login_required
 def desp_rag_admin():
     if not _rag_ok:
-        return desp_render('rag_admin.html', rag_ok=False, stats={}, arquivos=[])
+        return desp_render('rag_admin.html', rag_ok=False, stats={}, arquivos=[],
+                           internos=[], externos=[])
     stats = desp_rag.db_stats()
     return desp_render('rag_admin.html', rag_ok=True, stats=stats,
-                       arquivos=stats.get('arquivos', []))
+                       arquivos=stats.get('arquivos', []),
+                       internos=stats.get('internos', []),
+                       externos=stats.get('externos', []))
 
 
 @app.route('/despachante/rag/upload', methods=['POST'])
@@ -4084,6 +4446,24 @@ def desp_rag_delete():
         return jsonify({'ok': True, 'removidos': len(ids_to_del) if col else 0})
     except Exception as e:
         log.error(f'desp_rag_delete error: {e}')
+        return jsonify({'erro': str(e)}), 500
+
+
+@app.route('/despachante/rag/seed', methods=['POST'])
+@_desp_login_required
+def desp_rag_seed():
+    """(Re)alimenta a base de conhecimento interna sobre DETRAN-SC / CTB."""
+    if not _rag_ok:
+        return jsonify({'erro': 'RAG não disponível'}), 500
+    forcar = request.json.get('forcar', False) if request.is_json else False
+    try:
+        desp_rag.seed_conhecimento_base(forcar=bool(forcar))
+        stats = desp_rag.db_stats()
+        return jsonify({'ok': True, 'chunks': stats.get('chunks', 0),
+                        'internos': len(stats.get('internos', [])),
+                        'externos': len(stats.get('externos', []))})
+    except Exception as e:
+        log.error(f'desp_rag_seed error: {e}')
         return jsonify({'erro': str(e)}), 500
 
 

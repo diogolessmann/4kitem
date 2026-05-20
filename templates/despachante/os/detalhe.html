@@ -343,7 +343,7 @@
               <td style="padding:8px 10px;text-align:right;font-size:12px;color:{% if d.valor_multa and d.valor_multa > 0 %}var(--red){% else %}var(--text3){% endif %};">
                 {{ "R$ %.2f"|format(d.valor_multa) if d.valor_multa else '—' }}
               </td>
-              <td style="padding:8px 10px;text-align:right;font-size:12px;color:{% if d.valor_juros and d.valor_juros > 0 %}var(--orange, #f97316){% else %}var(--text3){% endif %};">
+              <td style="padding:8px 10px;text-align:right;font-size:12px;color:{% if d.valor_juros and d.valor_juros > 0 %}var(--orange){% else %}var(--text3){% endif %};">
                 {{ "R$ %.2f"|format(d.valor_juros) if d.valor_juros else '—' }}
               </td>
               <td style="padding:8px 10px;text-align:right;font-weight:800;font-size:13px;color:{% if d.situacao=='pago' %}var(--green){% else %}var(--red){% endif %};">
@@ -447,6 +447,47 @@
     </div>
     {% endif %}
 
+    <!-- ── Checklist de Documentos ── -->
+    <div class="sec" id="sec-checklist">
+      <div class="sec-head">
+        📋 Documentos Pendentes
+        <span id="chk-progresso" style="font-size:11px;font-weight:400;color:var(--text3);">
+          {% set feitos = checklist | selectattr('feito') | list | length %}
+          {{ feitos }}/{{ checklist | length }}
+        </span>
+      </div>
+      <div class="sec-body" style="padding:8px 0;">
+        <div id="chk-lista">
+          {% for item in checklist %}
+          <div class="chk-item" id="chki-{{ loop.index0 }}" data-idx="{{ loop.index0 }}"
+               style="display:flex;align-items:center;gap:10px;padding:8px 16px;
+                      border-bottom:1px solid var(--border);
+                      {% if loop.last %}border-bottom:none;{% endif %}">
+            <input type="checkbox" id="chk{{ loop.index0 }}"
+                   {% if item.feito %}checked{% endif %}
+                   onchange="toggleChk({{ loop.index0 }}, this.checked)"
+                   style="width:16px;height:16px;cursor:pointer;accent-color:var(--accent);">
+            <label for="chk{{ loop.index0 }}"
+                   style="flex:1;font-size:12px;cursor:pointer;
+                          {% if item.feito %}color:var(--text3);text-decoration:line-through;{% else %}color:var(--text2);{% endif %}">
+              {{ item.item }}
+            </label>
+            <button onclick="removerChk({{ loop.index0 }})"
+                    style="background:none;border:none;cursor:pointer;color:var(--text3);
+                           font-size:14px;padding:0 4px;opacity:.5;"
+                    title="Remover">✕</button>
+          </div>
+          {% endfor %}
+        </div>
+        <!-- Adicionar item custom -->
+        <div style="padding:8px 16px;display:flex;gap:6px;border-top:1px solid var(--border);">
+          <input id="chk-novo" class="input" style="flex:1;font-size:12px;"
+                 placeholder="+ Adicionar documento..." onkeydown="if(event.key==='Enter')adicionarChk()">
+          <button onclick="adicionarChk()" class="btn btn-ghost btn-sm" style="flex-shrink:0;">+</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Parcelas -->
     <div class="sec" id="sec-parcelas">
       <div class="sec-head">
@@ -525,6 +566,55 @@
       </div>
     </div>
 
+    <!-- Portal do cliente -->
+    <div class="sec" id="sec-portal">
+      <div class="sec-head">
+        📱 Portal do Cliente
+        {% if os.token_publico %}
+        <button onclick="revogarLink()" class="btn btn-ghost btn-sm"
+                style="font-size:10px;color:var(--text3);" title="Revogar link">🔒 Revogar</button>
+        {% endif %}
+      </div>
+      <div class="sec-body">
+        {% if os.token_publico %}
+        <!-- Link já gerado -->
+        <div style="font-size:12px;color:var(--text3);margin-bottom:8px;">
+          Link ativo — o cliente pode ver status, documentos e saldo:
+        </div>
+        <div style="display:flex;gap:6px;align-items:center;">
+          <input id="portal-url" class="input" style="font-size:11px;font-family:monospace;flex:1;"
+                 value="{{ request.host_url.rstrip('/') }}/cliente/{{ os.token_publico }}" readonly>
+          <button onclick="copiarLink()" class="btn btn-ghost btn-sm" title="Copiar">📋</button>
+        </div>
+        <div style="display:flex;gap:6px;margin-top:8px;">
+          <a href="/cliente/{{ os.token_publico }}" target="_blank"
+             class="btn btn-ghost btn-sm" style="flex:1;justify-content:center;font-size:12px;">
+            👁️ Visualizar
+          </a>
+          {% if os.telefone %}
+          {% set tel_limpo = os.telefone | replace('(','') | replace(')','') | replace(' ','') | replace('-','') | replace('+','') %}
+          {% set msg_portal = 'Olá ' ~ (os.cliente_nome or '') ~ '! Aqui está o link para acompanhar sua O.S. ' ~ os.numero ~ ': ' ~ request.host_url.rstrip('/') ~ '/cliente/' ~ os.token_publico %}
+          <a href="https://wa.me/55{{ tel_limpo }}?text={{ msg_portal | urlencode }}"
+             target="_blank" class="whats-btn" style="flex:1;justify-content:center;font-size:12px;">
+            💬 Enviar link
+          </a>
+          {% endif %}
+        </div>
+        {% else %}
+        <!-- Sem link -->
+        <div style="text-align:center;padding:16px 0;">
+          <div style="font-size:32px;margin-bottom:8px;">📱</div>
+          <div style="font-size:13px;color:var(--text2);margin-bottom:12px;">
+            Gere um link para o cliente acompanhar<br>a OS pelo celular — sem precisar de login.
+          </div>
+          <button onclick="gerarLink()" class="btn btn-primary" style="width:100%;" id="btn-gerar-link">
+            🔗 Gerar link do cliente
+          </button>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
     <!-- Protocolo / Impressão -->
     <div class="sec">
       <div class="sec-head">🖨️ Documentos para Impressão</div>
@@ -541,31 +631,50 @@
            class="btn btn-secondary" style="width:100%;justify-content:center;">
           📄 Requerimento DETRAN (2 vias)
         </a>
+        {% if parcelas %}
+        {% set pagas = parcelas | selectattr('pago_em') | list %}
+        {% if pagas %}
+        <div style="border-top:1px solid var(--border);padding-top:8px;display:flex;flex-direction:column;gap:6px;">
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);">
+            Recibos de Pagamento
+          </div>
+          {% for p in pagas %}
+          <a href="{{ url_for('desp_print_recibo', pid=p.id) }}" target="_blank"
+             class="btn btn-ghost" style="width:100%;justify-content:center;font-size:12px;">
+            🧾 Recibo — Parcela {{ p.numero }}/{{ parcelas|length }}
+            <span style="color:var(--green);margin-left:4px;">R$ {{ "%.2f"|format(p.valor) }}</span>
+          </a>
+          {% endfor %}
+        </div>
+        {% endif %}
+        {% endif %}
         <div style="font-size:11px;color:var(--text3);text-align:center;">
           Abre em nova aba — use Ctrl+P para imprimir
         </div>
       </div>
     </div>
 
-    <!-- WhatsApp Rápido -->
+    <!-- WhatsApp com Templates -->
     {% if os.telefone %}
+    {% set tel_limpo = os.telefone | replace('(','') | replace(')','') | replace(' ','') | replace('-','') | replace('+','') %}
     <div class="sec">
-      <div class="sec-head">💬 WhatsApp</div>
+      <div class="sec-head">
+        💬 WhatsApp
+        <a href="{{ url_for('desp_mensagens') }}" class="btn btn-ghost btn-sm" style="font-size:10px;" title="Editar templates">⚙️</a>
+      </div>
       <div class="sec-body" style="display:flex;flex-direction:column;gap:6px;">
-        {% set nome_cli = (os.cliente_nome or 'cliente').split()[0] %}
-        {% set tel_limpo = os.telefone | replace('(','') | replace(')','') | replace(' ','') | replace('-','') %}
-        <a href="https://wa.me/55{{ tel_limpo }}?text={{ ('Olá ' ~ nome_cli ~ '! Tudo bem? Estou com sua O.S. ' ~ os.numero ~ ' pronta. Serviço: ' ~ servicos.get(os.servico, os.servico) ~ '. Qualquer dúvida me fale. Atenciosamente, Diogo — Despachante Lessmann') | urlencode }}"
-           target="_blank" class="whats-btn">
-          💬 Msg: O.S. Pronta
+        <a href="https://wa.me/55{{ tel_limpo }}?text={{ wpp_msgs.get('os_concluida', '') | urlencode }}"
+           target="_blank" class="whats-btn">✅ OS Pronta</a>
+        <a href="https://wa.me/55{{ tel_limpo }}?text={{ wpp_msgs.get('os_aberta', '') | urlencode }}"
+           target="_blank" class="whats-btn">📋 OS Aberta</a>
+        <a href="https://wa.me/55{{ tel_limpo }}?text={{ wpp_msgs.get('aguardando_doc', '') | urlencode }}"
+           target="_blank" class="whats-btn">⏳ Aguardando Doc.</a>
+        {% if os_pendente > 0 %}
+        <a href="https://wa.me/55{{ tel_limpo }}?text={{ wpp_msgs.get('cobranca', '') | urlencode }}"
+           target="_blank" class="whats-btn" style="border-color:rgba(234,179,8,.3);">
+          💰 Cobrança (R$ {{ "%.2f"|format(os_pendente) }})
         </a>
-        <a href="https://wa.me/55{{ tel_limpo }}?text={{ ('Olá ' ~ nome_cli ~ '! Informando que sua O.S. ' ~ os.numero ~ ' está em processamento junto ao DETRAN-SC. Qualquer novidade te aviso! — Despachante Lessmann') | urlencode }}"
-           target="_blank" class="whats-btn">
-          🔄 Msg: Em Andamento
-        </a>
-        <a href="https://wa.me/55{{ tel_limpo }}?text={{ ('Olá ' ~ nome_cli ~ '! Temos um valor pendente de R$ ' ~ '%s' % (os.total - os.pago) | round(2) ~ ' referente à sua O.S. ' ~ os.numero ~ '. Quando puder, pode fazer o pagamento via PIX. Obrigado! — Despachante Lessmann') | urlencode }}"
-           target="_blank" class="whats-btn">
-          💰 Msg: Cobrança
-        </a>
+        {% endif %}
       </div>
     </div>
     {% endif %}
@@ -620,10 +729,10 @@
 
 <!-- ── MODAL BAIXA DE PARCELA ── -->
 <div class="modal-overlay" id="modal-baixa" onclick="if(event.target===this)this.classList.remove('open')">
-  <div class="modal-box" style="max-width:380px;">
+  <div class="modal-box" style="max-width:400px;">
     <div class="modal-title" id="baixa-titulo">✅ Registrar Pagamento</div>
     <div style="margin-bottom:16px;">
-      <div style="font-size:24px;font-weight:800;color:var(--green);text-align:center;margin-bottom:4px;" id="baixa-valor"></div>
+      <div style="font-size:28px;font-weight:800;color:var(--green);text-align:center;margin-bottom:4px;" id="baixa-valor"></div>
       <div style="font-size:12px;color:var(--text3);text-align:center;" id="baixa-desc"></div>
     </div>
     <div class="form-group">
@@ -638,9 +747,21 @@
       <label class="form-label">Observação (opcional)</label>
       <input id="baixa-obs" class="input" type="text" placeholder="Ex: pago via PIX Bradesco">
     </div>
-    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px;">
+    <!-- Opção de imprimir recibo -->
+    <div style="display:flex;align-items:center;gap:8px;padding:10px 14px;
+                background:var(--surface2);border-radius:8px;border:1px solid var(--border2);
+                margin-bottom:4px;">
+      <input type="checkbox" id="baixa-imprimir" checked
+             style="width:15px;height:15px;cursor:pointer;accent-color:var(--accent);">
+      <label for="baixa-imprimir" style="font-size:12px;color:var(--text2);cursor:pointer;flex:1;">
+        🖨️ Abrir recibo para impressão após confirmar
+      </label>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px;">
       <button class="btn btn-ghost" onclick="document.getElementById('modal-baixa').classList.remove('open')">Cancelar</button>
-      <button class="btn btn-primary" id="baixa-confirmar" onclick="confirmarBaixa()">✅ Confirmar Pagamento</button>
+      <button class="btn btn-primary" id="baixa-confirmar" onclick="confirmarBaixa()" style="flex:1;">
+        ✅ Confirmar Pagamento
+      </button>
     </div>
   </div>
 </div>
@@ -768,8 +889,17 @@
         </div>
       </div>
       <div class="form-group">
-        <label class="form-label">Observações</label>
-        <textarea name="observacoes" class="textarea" rows="4">{{ os.observacoes or '' }}</textarea>
+        <label class="form-label">Observações internas</label>
+        <textarea name="observacoes" class="textarea" rows="3" placeholder="Notas internas, anotações de processo…">{{ os.observacoes or '' }}</textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label" style="display:flex;align-items:center;gap:6px;">
+          📄 Texto do Requerimento
+          <span style="font-size:10px;color:var(--text3);font-weight:400;">(substitui o texto automático — deixe vazio para padrão)</span>
+        </label>
+        <textarea name="corpo_req" class="textarea" rows="5"
+                  placeholder="Ex: Venho requerer a baixa administrativa do veículo acima identificado em virtude de sinistro com perda total, conforme Boletim de Ocorrência e laudo técnico anexo."
+                  >{{ os.corpo_req or '' }}</textarea>
       </div>
       <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px;">
         <button type="button" class="btn btn-ghost" onclick="document.getElementById('modal-edit').classList.remove('open')">Cancelar</button>
@@ -847,7 +977,8 @@ function darBaixa(id, num, valor) {
 async function confirmarBaixa() {
   if (!_parcBaixaId) return;
   const btn = document.getElementById('baixa-confirmar');
-  btn.disabled = true; btn.textContent = '⏳...';
+  const imprimir = document.getElementById('baixa-imprimir').checked;
+  btn.disabled = true; btn.textContent = '⏳ Registrando...';
   try {
     const r = await fetch(`/despachante/api/parcela/${_parcBaixaId}/baixa`, {
       method: 'POST',
@@ -858,10 +989,21 @@ async function confirmarBaixa() {
       })
     });
     const d = await r.json();
-    if (d.ok) location.reload();
-    else { alert('Erro: ' + (d.erro||'Falha')); btn.disabled = false; btn.textContent = '✅ Confirmar'; }
+    if (d.ok) {
+      document.getElementById('modal-baixa').classList.remove('open');
+      // Abre recibo em nova aba se marcado
+      if (imprimir) {
+        window.open(`/despachante/print/recibo/${_parcBaixaId}`, '_blank');
+      }
+      // Pequena pausa para não conflitar com a abertura da aba
+      setTimeout(() => location.reload(), 300);
+    } else {
+      alert('Erro: ' + (d.erro||'Falha'));
+      btn.disabled = false; btn.textContent = '✅ Confirmar Pagamento';
+    }
   } catch(e) {
-    alert('Erro: ' + e.message); btn.disabled = false; btn.textContent = '✅ Confirmar';
+    alert('Erro: ' + e.message);
+    btn.disabled = false; btn.textContent = '✅ Confirmar Pagamento';
   }
 }
 
@@ -982,6 +1124,98 @@ async function deletarDebito(id) {
   if (!confirm('Remover este débito?')) return;
   const r = await fetch(`/despachante/api/debitos/${id}`, { method: 'DELETE' });
   if ((await r.json()).ok) location.reload();
+}
+
+// ── Checklist de documentos ───────────────────────────────────────────────────
+function _atualizarProgressoChk(chk) {
+  const feitos = chk.filter(c => c.feito).length;
+  const total  = chk.length;
+  document.getElementById('chk-progresso').textContent = `${feitos}/${total}`;
+}
+
+function _renderChecklist(chk) {
+  const lista = document.getElementById('chk-lista');
+  lista.innerHTML = chk.map((item, idx) => `
+    <div class="chk-item" id="chki-${idx}" data-idx="${idx}"
+         style="display:flex;align-items:center;gap:10px;padding:8px 16px;
+                border-bottom:${idx < chk.length-1 ? '1px solid var(--border)' : 'none'};">
+      <input type="checkbox" id="chk${idx}" ${item.feito ? 'checked' : ''}
+             onchange="toggleChk(${idx}, this.checked)"
+             style="width:16px;height:16px;cursor:pointer;accent-color:var(--accent);">
+      <label for="chk${idx}"
+             style="flex:1;font-size:12px;cursor:pointer;
+                    ${item.feito ? 'color:var(--text3);text-decoration:line-through;' : 'color:var(--text2);'}">
+        ${item.item}
+      </label>
+      <button onclick="removerChk(${idx})"
+              style="background:none;border:none;cursor:pointer;color:var(--text3);
+                     font-size:14px;padding:0 4px;opacity:.5;"
+              title="Remover">✕</button>
+    </div>
+  `).join('');
+  _atualizarProgressoChk(chk);
+}
+
+async function toggleChk(idx, feito) {
+  const r = await fetch(`/despachante/api/os/${OS_ID}/checklist/toggle`, {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({idx, feito})
+  });
+  const d = await r.json();
+  if (d.ok) _renderChecklist(d.checklist);
+}
+
+async function adicionarChk() {
+  const inp  = document.getElementById('chk-novo');
+  const item = inp.value.trim();
+  if (!item) return;
+  const r = await fetch(`/despachante/api/os/${OS_ID}/checklist/add`, {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({item})
+  });
+  const d = await r.json();
+  if (d.ok) { _renderChecklist(d.checklist); inp.value = ''; }
+}
+
+async function removerChk(idx) {
+  const r = await fetch(`/despachante/api/os/${OS_ID}/checklist/remove`, {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({idx})
+  });
+  const d = await r.json();
+  if (d.ok) _renderChecklist(d.checklist);
+}
+
+// ── Portal do cliente ─────────────────────────────────────────────────────────
+async function gerarLink() {
+  const btn = document.getElementById('btn-gerar-link');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Gerando...'; }
+  try {
+    const r = await fetch(`/despachante/api/os/${OS_ID}/gerar-link`, { method: 'POST' });
+    const d = await r.json();
+    if (d.ok) location.reload();
+    else alert('Erro: ' + (d.erro || 'Falha'));
+  } catch (e) { alert('Erro: ' + e.message); }
+  finally { if (btn) { btn.disabled = false; btn.textContent = '🔗 Gerar link do cliente'; } }
+}
+
+function copiarLink() {
+  const inp = document.getElementById('portal-url');
+  if (!inp) return;
+  navigator.clipboard.writeText(inp.value).then(() => {
+    const orig = inp.value;
+    // Flash visual
+    inp.style.background = 'rgba(34,197,94,.15)';
+    setTimeout(() => inp.style.background = '', 1200);
+  }).catch(() => { inp.select(); document.execCommand('copy'); });
+}
+
+async function revogarLink() {
+  if (!confirm('Revogar o link do cliente? O link atual deixará de funcionar.')) return;
+  const r = await fetch(`/despachante/api/os/${OS_ID}/revogar-link`, { method: 'POST' });
+  const d = await r.json();
+  if (d.ok) location.reload();
+  else alert('Erro: ' + (d.erro || 'Falha'));
 }
 </script>
 {% endblock %}

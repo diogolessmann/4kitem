@@ -270,11 +270,23 @@
     <nav class="sidebar-nav">
       <div class="nav-section">
         <div class="nav-label">Principal</div>
-        <a href="{{ url_for('desp_dashboard') }}" class="nav-link {% if request.endpoint == 'desp_dashboard' %}active{% endif %}">
-          <span class="icon">📊</span> Dashboard
+        <a href="{{ url_for('desp_dashboard') }}" class="nav-link {% if request.endpoint == 'desp_dashboard' %}active{% endif %}"
+           style="justify-content:space-between;">
+          <span style="display:flex;align-items:center;gap:9px;">
+            <span class="icon">📊</span> Dashboard
+          </span>
+          {% if n_alertas > 0 %}
+          <span style="background:var(--red);color:#fff;border-radius:10px;
+                       padding:1px 7px;font-size:10px;font-weight:700;line-height:1.6;">
+            {{ n_alertas }}
+          </span>
+          {% endif %}
         </a>
         <a href="{{ url_for('desp_lista_os') }}" class="nav-link {% if request.endpoint in ('desp_lista_os','desp_detalhe_os') %}active{% endif %}">
           <span class="icon">📋</span> Ordens de Serviço
+        </a>
+        <a href="{{ url_for('desp_kanban') }}" class="nav-link {% if request.endpoint == 'desp_kanban' %}active{% endif %}">
+          <span class="icon">🗂️</span> Kanban
         </a>
         <a href="{{ url_for('desp_nova_os') }}" class="nav-link {% if request.endpoint == 'desp_nova_os' %}active{% endif %}">
           <span class="icon">➕</span> Nova O.S.
@@ -300,14 +312,29 @@
         <a href="{{ url_for('desp_rel_retencao_view') }}" class="nav-link {% if request.endpoint == 'desp_rel_retencao_view' %}active{% endif %}">
           <span class="icon">🔄</span> Retenção de Clientes
         </a>
+        <a href="{{ url_for('desp_fez_nao_fez') }}" class="nav-link {% if request.endpoint == 'desp_fez_nao_fez' %}active{% endif %}">
+          <span class="icon">✅</span> Fez / Não Fez
+        </a>
         <a href="{{ url_for('desp_precos') }}" class="nav-link {% if request.endpoint == 'desp_precos' %}active{% endif %}">
           <span class="icon">💲</span> Tabela de Preços
+        </a>
+        <a href="{{ url_for('desp_mensagens') }}" class="nav-link {% if request.endpoint == 'desp_mensagens' %}active{% endif %}">
+          <span class="icon">💬</span> Templates WhatsApp
         </a>
         <a href="https://wa.me/{{ desp.whatsapp }}" target="_blank" class="nav-link">
           <span class="icon">💬</span> WhatsApp
         </a>
         <a href="https://www.detran.sc.gov.br/" target="_blank" class="nav-link">
           <span class="icon">🏛️</span> DETRAN-SC
+        </a>
+      </div>
+      <div class="nav-section">
+        <div class="nav-label">Gestão</div>
+        <a href="{{ url_for('desp_protocolos') }}" class="nav-link {% if request.endpoint == 'desp_protocolos' %}active{% endif %}">
+          <span class="icon">🔑</span> Protocolos RENAVAM
+        </a>
+        <a href="{{ url_for('desp_nao_licenciados') }}" class="nav-link {% if request.endpoint == 'desp_nao_licenciados' %}active{% endif %}">
+          <span class="icon">⚠️</span> Não Licenciados
         </a>
       </div>
       <div class="nav-section">

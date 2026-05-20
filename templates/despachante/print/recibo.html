@@ -61,20 +61,50 @@
       @page { margin: 12mm 10mm; }
       body { font-size: 12px; }
       .divisor { break-after: avoid; }
+      .no-print { display: none !important; }
     }
+
+    /* Barra de ação (não imprime) */
+    .toolbar {
+      position: fixed; top: 0; left: 0; right: 0;
+      background: #1a1a2e; color: #fff;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 20px; z-index: 100; font-size: 13px;
+    }
+    .toolbar-btn {
+      padding: 6px 16px; border-radius: 6px; border: none; cursor: pointer;
+      font-size: 13px; font-weight: 600; font-family: inherit;
+    }
+    .btn-print { background: #4f46e5; color: #fff; }
+    .btn-close { background: rgba(255,255,255,.1); color: #fff; }
+    body { padding-top: 52px; }
   </style>
 </head>
 <body>
+
+<!-- Toolbar (somente tela) -->
+<div class="toolbar no-print">
+  <div>🧾 Recibo Nº {{ '%04d' % p.id }} — O.S. {{ p.os_numero }}</div>
+  <div style="display:flex;gap:8px;">
+    <button class="toolbar-btn btn-close" onclick="window.close()">✕ Fechar</button>
+    <button class="toolbar-btn btn-print" onclick="window.print()">🖨️ Imprimir</button>
+  </div>
+</div>
+
 <div class="page">
 
 {% set servico_label = servicos.get(p.servico, p.servico) %}
 {% set pago_em_fmt   = p.pago_em[:10] if p.pago_em else hoje.strftime('%d/%m/%Y') %}
 {% set pago_em_full  = p.pago_em[:16] | replace('T',' ') if p.pago_em else hoje.strftime('%d/%m/%Y %H:%M') %}
+{% set restante = p.total - p.pago %}
 
 {% for via in [1, 2] %}
 {% if via == 2 %}<hr class="divisor">{% endif %}
 <div class="via">
-  <div class="tag-via">{{ '1ª Via — Escritório' if via == 1 else '2ª Via — Cliente' }}</div>
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+    <span class="tag-via">{{ '1ª Via — Escritório' if via == 1 else '2ª Via — Cliente' }}</span>
+    <span style="font-size:10px;color:#777;font-family:monospace;">Recibo Nº {{ '%04d'|format(p.id) }}</span>
+  </div>
 
   <div class="header">
     <div>
@@ -112,13 +142,13 @@
     <span class="val" style="font-weight:700;">{{ servico_label }}</span>
   </div>
   <div class="linha">
-    <span class="lbl">Parcela</span>
+    <span class="lbl">Pagamento</span>
     <span class="val">
       <span class="parcela-badge">
-        {{ p.numero }}ª / {{ p.total_parcelas }}ª{{ 's' if p.total_parcelas != 1 else '' }}
+        Parcela {{ p.numero }}/{{ p.total_parcelas }}
       </span>
       {% if p.forma_pagamento %}
-        <span style="font-size:11px;color:#555;margin-left:8px;">{{ p.forma_pagamento }}</span>
+        <span style="font-size:11px;color:#555;margin-left:8px;">via {{ p.forma_pagamento }}</span>
       {% endif %}
     </span>
   </div>
@@ -128,18 +158,21 @@
     <span class="val" style="font-size:12px;color:#555;">{{ p.observacao }}</span>
   </div>
   {% endif %}
+
+  <!-- Valor em destaque -->
   <div class="linha" style="background:#f0fdf4;border-radius:4px;padding:10px 0;border:none;margin-top:4px;">
-    <span class="lbl" style="color:#16a34a;font-size:12px;">Valor Pago</span>
+    <span class="lbl" style="color:#16a34a;font-size:12px;">Valor Recebido</span>
     <span class="val big">R$ {{ "%.2f"|format(p.valor) }}</span>
   </div>
 
-  <div style="margin-top:10px;display:flex;justify-content:space-between;align-items:center;font-size:11px;color:#777;">
+  <!-- Resumo financeiro -->
+  <div style="margin-top:10px;display:flex;justify-content:space-between;align-items:center;
+              font-size:11px;color:#777;padding:6px 0;border-top:1px solid #e5e5e5;">
     <div>
       Total O.S.: R$ {{ "%.2f"|format(p.total) }} ·
-      Pago até agora: R$ {{ "%.2f"|format(p.pago) }} ·
-      {% set restante = p.total - p.pago %}
+      Pago: R$ {{ "%.2f"|format(p.pago) }} ·
       {% if restante > 0.01 %}
-        <span style="color:#d97706;font-weight:700;">Saldo: R$ {{ "%.2f"|format(restante) }}</span>
+        <span style="color:#d97706;font-weight:700;">Saldo devedor: R$ {{ "%.2f"|format(restante) }}</span>
       {% else %}
         <span style="color:#16a34a;font-weight:700;">✓ Quitado</span>
       {% endif %}
@@ -152,16 +185,20 @@
       <div class="assinatura-linha"></div>
       <div class="assinatura-nome">Assinatura do Cliente</div>
     </div>
-    <div class="carimbo">
-      LESSMANN DESPACHANTE<br>
-      Schroeder / SC<br>
-      {{ pago_em_fmt }}
+    <div style="text-align:center;">
+      <div class="assinatura-linha"></div>
+      <div class="assinatura-nome">DIOGO KAUE LESSMANN<br>
+        <span style="font-size:9px;color:#777;">Desp. Documentalista · Cred. 2095</span>
+      </div>
     </div>
   </div>
 </div>
 {% endfor %}
 
 </div>
-<script>window.print();</script>
+<script>
+  // Abre diálogo de impressão automaticamente
+  window.addEventListener('load', () => setTimeout(() => window.print(), 400));
+</script>
 </body>
 </html>

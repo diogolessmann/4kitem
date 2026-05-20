@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>O.S. {{ os.numero }} · Lessmann Despachante</title>
+  <meta name="robots" content="noindex,nofollow">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:      #0f1117;
+      --surface: #1a1d27;
+      --card:    #22263a;
+      --border:  rgba(255,255,255,.08);
+      --text:    #f0f0f5;
+      --text2:   #9ca3af;
+      --text3:   #6b7280;
+      --green:   #22c55e;
+      --yellow:  #eab308;
+      --blue:    #3b82f6;
+      --purple:  #a855f7;
+      --red:     #ef4444;
+      --accent:  #6366f1;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg); color: var(--text);
+      min-height: 100vh; padding-bottom: 80px;
+    }
+
+    /* ── Header ── */
+    .header {
+      background: var(--surface); border-bottom: 1px solid var(--border);
+      padding: 16px 20px;
+      display: flex; align-items: center; gap: 12px;
+    }
+    .header-logo {
+      width: 42px; height: 42px; border-radius: 10px;
+      background: var(--accent); display: flex; align-items: center;
+      justify-content: center; font-size: 22px; flex-shrink: 0;
+    }
+    .header-info { flex: 1; min-width: 0; }
+    .header-nome { font-size: 13px; font-weight: 700; color: var(--text); }
+    .header-sub  { font-size: 11px; color: var(--text3); }
+    .header-os   { font-size: 13px; font-weight: 800; color: var(--accent); text-align: right; flex-shrink: 0; }
+
+    /* ── Container ── */
+    .container { max-width: 480px; margin: 0 auto; padding: 16px; }
+
+    /* ── Status Hero ── */
+    .status-hero {
+      border-radius: 16px; padding: 24px 20px; text-align: center;
+      margin-bottom: 16px; border: 1px solid var(--border);
+    }
+    .status-icon { font-size: 52px; margin-bottom: 10px; }
+    .status-label { font-size: 22px; font-weight: 800; margin-bottom: 6px; }
+    .status-desc { font-size: 13px; color: var(--text2); line-height: 1.6; }
+
+    /* ── Cards ── */
+    .card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 14px; margin-bottom: 12px; overflow: hidden;
+    }
+    .card-head {
+      padding: 12px 16px; border-bottom: 1px solid var(--border);
+      font-size: 12px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .6px; color: var(--text3);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .card-body { padding: 16px; }
+
+    /* ── Info rows ── */
+    .info-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px;
+    }
+    .info-row:last-child { border-bottom: none; }
+    .info-row-label { color: var(--text3); }
+    .info-row-val   { font-weight: 600; text-align: right; }
+
+    /* ── Financeiro ── */
+    .fin-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 14px;
+    }
+    .fin-row:last-child { border-bottom: none; }
+    .fin-total-row {
+      background: var(--surface); border-radius: 10px;
+      padding: 14px 16px; margin-top: 10px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+
+    /* ── Checklist ── */
+    .chk-item {
+      display: flex; align-items: center; gap: 12px;
+      padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 13px;
+    }
+    .chk-item:last-child { border-bottom: none; }
+    .chk-icon { font-size: 18px; flex-shrink: 0; }
+    .chk-done { color: var(--text3); text-decoration: line-through; }
+
+    /* ── Progresso ── */
+    .progress-wrap {
+      background: rgba(255,255,255,.07); border-radius: 99px;
+      height: 8px; overflow: hidden; margin: 6px 0;
+    }
+    .progress-fill { height: 100%; border-radius: 99px; background: var(--green); transition: width .5s; }
+
+    /* ── Parcelas ── */
+    .parcela-row {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 13px;
+    }
+    .parcela-row:last-child { border-bottom: none; }
+    .parcela-num {
+      width: 28px; height: 28px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 800; flex-shrink: 0;
+    }
+
+    /* ── Placa ── */
+    .placa {
+      font-family: monospace; font-weight: 800; font-size: 18px;
+      color: var(--accent); letter-spacing: 1px;
+    }
+
+    /* ── WhatsApp CTA ── */
+    .wpp-btn {
+      display: flex; align-items: center; justify-content: center; gap: 10px;
+      background: #25D366; color: #fff; border-radius: 14px;
+      padding: 16px; text-decoration: none; font-size: 15px; font-weight: 700;
+      margin-bottom: 12px; transition: opacity .15s;
+    }
+    .wpp-btn:hover { opacity: .9; }
+    .wpp-icon { font-size: 22px; }
+
+    /* ── Footer ── */
+    .footer {
+      text-align: center; padding: 24px 20px 0;
+      font-size: 11px; color: var(--text3); line-height: 1.8;
+    }
+    .footer a { color: var(--text3); }
+
+    /* ── Badge ── */
+    .badge {
+      display: inline-block; padding: 3px 10px; border-radius: 20px;
+      font-size: 11px; font-weight: 700;
+    }
+  </style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <div class="header-logo">🚗</div>
+  <div class="header-info">
+    <div class="header-nome">{{ desp.nome | title }}</div>
+    <div class="header-sub">Despachante Documentalista · Cred. {{ desp.credencial }}</div>
+  </div>
+  <div class="header-os">O.S.<br>{{ os.numero }}</div>
+</div>
+
+<div class="container">
+
+  <!-- Status Hero -->
+  {% set sl = status_labels.get(os.status, ('⚪','Aguardando')) %}
+  {% if os.status == 'concluida' %}
+    {% set hero_bg = 'rgba(34,197,94,.10)' %}
+    {% set hero_cor = 'var(--green)' %}
+    {% set hero_icon = '✅' %}
+    {% set hero_desc = 'Seu serviço foi concluído! Entre em contato com o despachante para retirar seus documentos.' %}
+  {% elif os.status == 'detran' %}
+    {% set hero_bg = 'rgba(168,85,247,.10)' %}
+    {% set hero_cor = 'var(--purple)' %}
+    {% set hero_icon = '🏛️' %}
+    {% set hero_desc = 'Seu processo já foi protocolado no DETRAN-SC e está aguardando processamento.' %}
+  {% elif os.status == 'andamento' %}
+    {% set hero_bg = 'rgba(59,130,246,.10)' %}
+    {% set hero_cor = 'var(--blue)' %}
+    {% set hero_icon = '🔵' %}
+    {% set hero_desc = 'Seu processo está em andamento. O despachante está trabalhando nisso.' %}
+  {% elif os.status == 'cancelada' %}
+    {% set hero_bg = 'rgba(239,68,68,.10)' %}
+    {% set hero_cor = 'var(--red)' %}
+    {% set hero_icon = '❌' %}
+    {% set hero_desc = 'Esta O.S. foi cancelada. Entre em contato para mais informações.' %}
+  {% else %}
+    {% set hero_bg = 'rgba(234,179,8,.10)' %}
+    {% set hero_cor = 'var(--yellow)' %}
+    {% set hero_icon = '📋' %}
+    {% set hero_desc = 'Seu processo foi aberto. Por favor, envie os documentos solicitados.' %}
+  {% endif %}
+
+  <div class="status-hero" style="background:{{ hero_bg }};border-color:{{ hero_cor }}33;">
+    <div class="status-icon">{{ hero_icon }}</div>
+    <div class="status-label" style="color:{{ hero_cor }};">{{ sl[1] }}</div>
+    <div class="status-desc">{{ hero_desc }}</div>
+    {% if os.situacao_pag %}
+    <div style="margin-top:10px;">
+      <span class="badge" style="background:{{ hero_bg }};color:{{ hero_cor }};border:1px solid {{ hero_cor }}44;">
+        {{ os.situacao_pag }}
+      </span>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Serviço -->
+  <div class="card">
+    <div class="card-head">📄 Serviço</div>
+    <div class="card-body">
+      <div class="info-row">
+        <span class="info-row-label">Tipo</span>
+        <span class="info-row-val" style="font-size:14px;color:var(--text);">
+          {{ servicos.get(os.servico, os.servico) }}
+        </span>
+      </div>
+      {% if os.exercicio %}
+      <div class="info-row">
+        <span class="info-row-label">Exercício</span>
+        <span class="info-row-val">{{ os.exercicio }}</span>
+      </div>
+      {% endif %}
+      <div class="info-row">
+        <span class="info-row-label">Abertura</span>
+        <span class="info-row-val">{{ (os.criado_em or '')[:10] }}</span>
+      </div>
+      {% if os.concluido_em %}
+      <div class="info-row">
+        <span class="info-row-label">Conclusão</span>
+        <span class="info-row-val" style="color:var(--green);">{{ os.concluido_em[:10] }}</span>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Veículo -->
+  {% if os.placa %}
+  <div class="card">
+    <div class="card-head">🚗 Veículo</div>
+    <div class="card-body">
+      <div class="info-row">
+        <span class="info-row-label">Placa</span>
+        <span class="placa">{{ os.placa }}</span>
+      </div>
+      {% if os.marca or os.modelo %}
+      <div class="info-row">
+        <span class="info-row-label">Veículo</span>
+        <span class="info-row-val">{{ os.marca or '' }} {{ os.modelo or '' }}</span>
+      </div>
+      {% endif %}
+      {% if os.ano_fab %}
+      <div class="info-row">
+        <span class="info-row-label">Ano</span>
+        <span class="info-row-val">{{ os.ano_fab }}/{{ os.ano_mod or os.ano_fab }}</span>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Checklist de documentos -->
+  {% if checklist %}
+  <div class="card">
+    <div class="card-head">
+      <span>📋 Documentos</span>
+      <span style="color:{% if feitos == checklist|length %}var(--green){% else %}var(--yellow){% endif %};">
+        {{ feitos }}/{{ checklist|length }}
+      </span>
+    </div>
+    <div class="card-body" style="padding-bottom:8px;">
+      <div class="progress-wrap">
+        <div class="progress-fill"
+             style="width:{% if checklist|length %}{{ (feitos / checklist|length * 100)|int }}{% else %}0{% endif %}%;"></div>
+      </div>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:12px;margin-top:4px;">
+        {% if feitos == checklist|length %}
+          ✅ Todos os documentos recebidos
+        {% else %}
+          {{ checklist|length - feitos }} documento{{ 's' if checklist|length - feitos != 1 }} pendente{{ 's' if checklist|length - feitos != 1 }}
+        {% endif %}
+      </div>
+      {% for item in checklist %}
+      <div class="chk-item">
+        <span class="chk-icon">{{ '✅' if item.feito else '⬜' }}</span>
+        <span class="{% if item.feito %}chk-done{% endif %}">{{ item.item }}</span>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Financeiro / Parcelas -->
+  {% if parcelas %}
+  <div class="card">
+    <div class="card-head">💳 Pagamento</div>
+    <div class="card-body">
+      {% for p in parcelas %}
+      <div class="parcela-row">
+        <div class="parcela-num"
+             style="background:{% if p.pago_em %}rgba(34,197,94,.2);color:var(--green){% else %}rgba(255,255,255,.07);color:var(--text3){% endif %};">
+          {{ p.numero }}
+        </div>
+        <div style="flex:1;">
+          <div style="font-weight:600;">R$ {{ "%.2f"|format(p.valor) }}</div>
+          <div style="font-size:11px;color:var(--text3);">
+            {% if p.pago_em %}
+              ✅ Pago em {{ p.pago_em[:10] }}{% if p.forma_pagamento %} · {{ p.forma_pagamento }}{% endif %}
+            {% else %}
+              Vence {{ p.vencimento or '—' }}
+            {% endif %}
+          </div>
+        </div>
+        {% if p.pago_em %}
+        <span style="color:var(--green);font-size:18px;">✓</span>
+        {% else %}
+        <span style="color:var(--text3);font-size:12px;">pendente</span>
+        {% endif %}
+      </div>
+      {% endfor %}
+
+      <!-- Resumo -->
+      {% set total_os = os.total %}
+      {% set pendente = os.pendente %}
+      <div class="fin-total-row">
+        <div>
+          <div style="font-size:11px;color:var(--text3);">
+            {% if pendente and pendente > 0.01 %}Saldo devedor{% else %}Total{% endif %}
+          </div>
+          <div style="font-size:22px;font-weight:900;
+                      color:{% if pendente and pendente > 0.01 %}var(--yellow){% else %}var(--green){% endif %};">
+            {% if pendente and pendente > 0.01 %}
+              R$ {{ "%.2f"|format(pendente) }}
+            {% else %}
+              ✅ Quitado
+            {% endif %}
+          </div>
+        </div>
+        <div style="text-align:right;font-size:12px;color:var(--text3);">
+          Total O.S.:<br>
+          <strong style="color:var(--text);">R$ {{ "%.2f"|format(total_os) }}</strong>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% else %}
+  <!-- Sem parcelas — mostra resumo simples -->
+  {% if os.total %}
+  <div class="card">
+    <div class="card-head">💳 Pagamento</div>
+    <div class="card-body">
+      <div class="fin-total-row">
+        <div>
+          <div style="font-size:11px;color:var(--text3);">
+            {% if os.pendente and os.pendente > 0.01 %}Saldo devedor{% else %}Situação{% endif %}
+          </div>
+          <div style="font-size:22px;font-weight:900;
+                      color:{% if os.pendente and os.pendente > 0.01 %}var(--yellow){% else %}var(--green){% endif %};">
+            {% if os.pendente and os.pendente > 0.01 %}
+              R$ {{ "%.2f"|format(os.pendente) }}
+            {% else %}
+              ✅ Quitado
+            {% endif %}
+          </div>
+        </div>
+        <div style="text-align:right;font-size:12px;color:var(--text3);">
+          Total O.S.:<br>
+          <strong style="color:var(--text);">R$ {{ "%.2f"|format(os.total) }}</strong>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+  {% endif %}
+
+  <!-- WhatsApp CTA -->
+  <a href="https://wa.me/55{{ desp.whatsapp }}?text={{ ('Olá! Estou consultando a O.S. ' ~ os.numero ~ ' referente ao serviço de ' ~ servicos.get(os.servico, os.servico) ~ '. Pode me ajudar?') | urlencode }}"
+     target="_blank" class="wpp-btn">
+    <span class="wpp-icon">💬</span>
+    Falar com o Despachante
+  </a>
+
+  <!-- Footer -->
+  <div class="footer">
+    <strong style="color:var(--text2);">{{ desp.nome | title }}</strong><br>
+    Despachante Documentalista · Cred. DETRAN-SC {{ desp.credencial }}<br>
+    {{ desp.cidade }} · CITRAN {{ desp.citran }}<br>
+    <a href="tel:+55{{ desp.whatsapp }}">(47) {{ desp.whatsapp[2:7] }}-{{ desp.whatsapp[7:] }}</a><br>
+    <br>
+    <span style="font-size:10px;">
+      Este link é exclusivo para esta O.S. · Atualizado em {{ hoje.strftime('%d/%m/%Y') }}
+    </span>
+  </div>
+
+</div>
+</body>
+</html>

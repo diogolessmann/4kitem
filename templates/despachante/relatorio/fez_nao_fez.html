@@ -1,0 +1,323 @@
+{% extends "despachante/base.html" %}
+
+{% block title %}Fez / Não Fez · Lessmann{% endblock %}
+{% block topbar_title %}✅ Fez / Não Fez{% endblock %}
+{% block topbar_actions %}
+  <button onclick="copiarNumeros()" class="btn btn-ghost btn-sm" id="btn-copiar" style="display:none;">
+    📋 Copiar números pendentes
+  </button>
+{% endblock %}
+
+{% block extra_style %}
+.filtros-bar {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+  padding: 16px 20px; display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+.filtros-bar .form-group { margin: 0; min-width: 160px; }
+
+.stats-row {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px;
+}
+@media (max-width: 700px) { .stats-row { grid-template-columns: 1fr 1fr; } }
+
+.stat-box {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+  padding: 14px 18px; text-align: center;
+}
+.stat-num { font-size: 28px; font-weight: 900; line-height: 1; }
+.stat-lbl { font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: .5px; margin-top: 4px; }
+
+.progress-bar-wrap {
+  background: var(--surface2); border-radius: 99px; height: 10px; overflow: hidden;
+  margin: 6px 0 2px;
+}
+.progress-bar-fill {
+  height: 100%; border-radius: 99px; background: var(--green);
+  transition: width .5s;
+}
+
+.secao { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 14px; }
+.secao-head {
+  padding: 12px 18px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 14px; font-weight: 700;
+}
+.secao-body { padding: 0; }
+
+.cliente-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 16px; border-bottom: 1px solid var(--border);
+  font-size: 13px; transition: background .1s;
+}
+.cliente-row:last-child { border-bottom: none; }
+.cliente-row:hover { background: var(--surface2); }
+
+.status-dot {
+  width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+}
+.dot-aberta    { background: var(--yellow); }
+.dot-andamento { background: var(--blue); }
+.dot-detran    { background: var(--purple); }
+.dot-concluida { background: var(--green); }
+.dot-cancelada { background: var(--red); }
+
+.placa-tag {
+  font-family: monospace; font-weight: 800; font-size: 13px;
+  color: var(--accent); letter-spacing: .5px; flex-shrink: 0;
+}
+
+.wpp-link {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 5px 10px; border-radius: 6px; font-size: 12px; font-weight: 600;
+  background: rgba(34,197,94,.12); border: 1px solid rgba(34,197,94,.25);
+  color: var(--green); text-decoration: none; transition: all .15s; flex-shrink: 0;
+}
+.wpp-link:hover { background: rgba(34,197,94,.22); }
+
+.empty-state { text-align: center; padding: 36px 20px; color: var(--text3); font-size: 13px; }
+
+.num-copy-area {
+  background: var(--surface2); border: 1px solid var(--border2);
+  border-radius: 8px; padding: 12px; font-size: 12px; font-family: monospace;
+  color: var(--text2); white-space: pre-wrap; word-break: break-all;
+  display: none; margin-top: 10px;
+}
+{% endblock %}
+
+{% block content %}
+
+<!-- Filtros -->
+<form method="get" class="filtros-bar">
+  <div class="form-group">
+    <label class="form-label">Serviço</label>
+    <select name="servico" class="select" onchange="this.form.submit()">
+      {% for gid, grupo in servicos_grupos.items() %}
+      <optgroup label="{{ grupo.icon }} {{ grupo.label }}">
+        {% for key, label in grupo['items'].items() %}
+        <option value="{{ key }}" {% if servico == key %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </optgroup>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div class="form-group">
+    <label class="form-label">De</label>
+    <input name="data_ini" class="input" type="date" value="{{ data_ini }}">
+  </div>
+
+  <div class="form-group">
+    <label class="form-label">Até</label>
+    <input name="data_fim" class="input" type="date" value="{{ data_fim }}">
+  </div>
+
+  <div style="display:flex;gap:6px;flex-wrap:wrap;">
+    {% for a in anos %}
+    <a href="?servico={{ servico }}&data_ini={{ a }}-01-01&data_fim={{ a }}-12-31"
+       class="btn btn-ghost btn-sm {% if ano == a %}active{% endif %}"
+       style="{% if ano == a %}background:var(--accent);color:#fff;{% endif %}">
+      {{ a }}
+    </a>
+    {% endfor %}
+    <button type="submit" class="btn btn-primary btn-sm">🔍 Buscar</button>
+  </div>
+</form>
+
+<!-- Stats -->
+<div class="stats-row">
+  <div class="stat-box">
+    <div class="stat-num">{{ dados.n_total }}</div>
+    <div class="stat-lbl">Total de OS</div>
+  </div>
+  <div class="stat-box" style="border-color:rgba(34,197,94,.3);">
+    <div class="stat-num" style="color:var(--green);">{{ dados.n_fizeram }}</div>
+    <div class="stat-lbl">✅ Fizeram</div>
+    <div class="progress-bar-wrap">
+      <div class="progress-bar-fill" style="width:{{ dados.pct_fizeram }}%;"></div>
+    </div>
+    <div style="font-size:11px;color:var(--green);font-weight:700;">{{ dados.pct_fizeram }}%</div>
+  </div>
+  <div class="stat-box" style="border-color:rgba(234,179,8,.3);">
+    <div class="stat-num" style="color:var(--yellow);">{{ dados.n_pendentes }}</div>
+    <div class="stat-lbl">⏳ Pendentes</div>
+  </div>
+  <div class="stat-box">
+    <div class="stat-num" style="font-size:20px;color:var(--red);">
+      R$ {{ "%.0f"|format(dados.financeiro.total_pendente) }}
+    </div>
+    <div class="stat-lbl">💰 Saldo a receber</div>
+    <div style="font-size:10px;color:var(--text3);margin-top:2px;">
+      Recebido: R$ {{ "%.0f"|format(dados.financeiro.total_recebido) }}
+    </div>
+  </div>
+</div>
+
+{% if dados.n_total == 0 %}
+<div class="secao">
+  <div class="empty-state">
+    <div style="font-size:48px;margin-bottom:12px;">🔍</div>
+    <div style="font-weight:700;margin-bottom:6px;">Nenhuma OS encontrada</div>
+    <div>Nenhuma O.S. de <strong>{{ servicos.get(servico, servico) }}</strong>
+      registrada no período selecionado.</div>
+  </div>
+</div>
+
+{% else %}
+
+<!-- Pendentes -->
+{% if dados.pendentes %}
+<div class="secao">
+  <div class="secao-head">
+    <span>⏳ Pendentes — {{ dados.n_pendentes }}</span>
+    <div style="display:flex;gap:6px;align-items:center;">
+      <button onclick="toggleNumerosArea()" class="btn btn-ghost btn-sm" style="font-size:11px;">
+        📋 Ver números
+      </button>
+    </div>
+  </div>
+
+  <!-- Área de números para copiar -->
+  <div id="numeros-area" class="num-copy-area" style="margin:12px 16px;display:none;">
+    <div style="font-size:10px;font-weight:700;color:var(--text3);margin-bottom:6px;font-family:sans-serif;">
+      NÚMEROS DOS PENDENTES (copie para contato):
+    </div>
+    {% for o in dados.pendentes %}{% if o.telefone %}{{ o.cliente_nome }} — {{ o.telefone }}
+{% endif %}{% endfor %}
+  </div>
+
+  <div class="secao-body">
+    {% for o in dados.pendentes %}
+    {% set tel_limpo = o.telefone | replace('(','') | replace(')','') | replace(' ','') | replace('-','') | replace('+','') if o.telefone else '' %}
+    {% set msg_wpp = 'Olá ' ~ (o.cliente_nome or '') ~ '! Passando para lembrar que o serviço *' ~ servicos.get(o.servico, o.servico) ~ '* da O.S. ' ~ o.numero ~ ' ainda está em aberto. Podemos dar andamento? 😊' %}
+    <div class="cliente-row">
+      <div class="status-dot dot-{{ o.status }}"></div>
+
+      <div style="flex:1;min-width:0;">
+        <div style="font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+          {{ o.cliente_nome or '—' }}
+        </div>
+        <div style="font-size:11px;color:var(--text3);">
+          O.S. {{ o.numero }}
+          · {% if o.status == 'aberta' %}🟡 Aberta{% elif o.status == 'andamento' %}🔵 Em andamento{% endif %}
+          · {{ (o.criado_em or '')[:10] }}
+        </div>
+      </div>
+
+      {% if o.placa %}
+      <span class="placa-tag">{{ o.placa }}</span>
+      {% endif %}
+
+      {% if o.pendente and o.pendente > 0.01 %}
+      <span style="font-size:12px;color:var(--yellow);font-weight:700;flex-shrink:0;">
+        R$ {{ "%.2f"|format(o.pendente) }}
+      </span>
+      {% endif %}
+
+      <div style="display:flex;gap:4px;flex-shrink:0;">
+        <a href="{{ url_for('desp_detalhe_os', id=o.id) }}"
+           class="btn btn-ghost btn-sm" style="font-size:11px;" title="Ver OS">📋</a>
+        {% if tel_limpo %}
+        <a href="https://wa.me/55{{ tel_limpo }}?text={{ msg_wpp | urlencode }}"
+           target="_blank" class="wpp-link" title="Enviar WhatsApp">
+          💬 WhatsApp
+        </a>
+        {% else %}
+        <span style="font-size:11px;color:var(--text3);padding:5px 8px;">sem tel.</span>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<!-- Fizeram -->
+{% if dados.fizeram %}
+<div class="secao">
+  <div class="secao-head">
+    <span style="color:var(--green);">✅ Fizeram — {{ dados.n_fizeram }}</span>
+    <span style="font-size:12px;font-weight:400;color:var(--text3);">
+      Recebido: R$ {{ "%.2f"|format(dados.financeiro.total_recebido) }}
+    </span>
+  </div>
+  <div class="secao-body">
+    {% for o in dados.fizeram %}
+    {% set tel_limpo = o.telefone | replace('(','') | replace(')','') | replace(' ','') | replace('-','') | replace('+','') if o.telefone else '' %}
+    <div class="cliente-row">
+      <div class="status-dot dot-concluida"></div>
+
+      <div style="flex:1;min-width:0;">
+        <div style="font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+          {{ o.cliente_nome or '—' }}
+        </div>
+        <div style="font-size:11px;color:var(--text3);">
+          O.S. {{ o.numero }}
+          · Concluída em {{ (o.concluido_em or o.criado_em or '')[:10] }}
+        </div>
+      </div>
+
+      {% if o.placa %}
+      <span class="placa-tag">{{ o.placa }}</span>
+      {% endif %}
+
+      <span style="font-size:12px;color:var(--green);font-weight:700;flex-shrink:0;">
+        R$ {{ "%.2f"|format(o.total) }}
+      </span>
+
+      <div style="display:flex;gap:4px;flex-shrink:0;">
+        <a href="{{ url_for('desp_detalhe_os', id=o.id) }}"
+           class="btn btn-ghost btn-sm" style="font-size:11px;" title="Ver OS">📋</a>
+        {% if tel_limpo %}
+        <a href="https://wa.me/55{{ tel_limpo }}" target="_blank"
+           class="btn btn-ghost btn-sm" style="font-size:11px;" title="WhatsApp">💬</a>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+{% endif %} {# n_total > 0 #}
+
+{% endblock %}
+
+{% block extra_script %}
+<script>
+function toggleNumerosArea() {
+  const area = document.getElementById('numeros-area');
+  if (area.style.display === 'none' || !area.style.display) {
+    area.style.display = 'block';
+    document.getElementById('btn-copiar').style.display = '';
+  } else {
+    area.style.display = 'none';
+  }
+}
+
+function copiarNumeros() {
+  const area = document.getElementById('numeros-area');
+  const texto = area.innerText.replace('NÚMEROS DOS PENDENTES (copie para contato):\n', '').trim();
+  navigator.clipboard.writeText(texto).then(() => {
+    const btn = document.getElementById('btn-copiar');
+    const orig = btn.textContent;
+    btn.textContent = '✅ Copiado!';
+    setTimeout(() => btn.textContent = orig, 2000);
+  }).catch(() => {
+    // Fallback para navegadores sem clipboard API
+    const ta = document.createElement('textarea');
+    ta.value = texto;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+  });
+}
+
+// Mostra botão copiar se há pendentes com telefone
+const hasPendentes = {{ 'true' if dados.pendentes else 'false' }};
+if (hasPendentes) {
+  document.getElementById('btn-copiar').style.display = '';
+}
+</script>
+{% endblock %}

@@ -259,8 +259,13 @@
     <div class="section-card-header">
       <h3>👤 Cliente / Proprietário</h3>
       <div style="display:flex;gap:6px;align-items:center;">
-        <input id="cpf-search" class="input" style="width:160px;" placeholder="Buscar por CPF..."
-               oninput="debounceCpf(this.value)">
+        <div style="position:relative;">
+          <input id="cpf-search" class="input" style="width:200px;" placeholder="🔍 Nome ou CPF..."
+                 oninput="debounceCliSearch(this.value)" autocomplete="off">
+          <div id="cli-drop" style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;min-width:260px;
+               background:var(--surface);border:1px solid var(--border2);border-radius:8px;
+               z-index:400;overflow:hidden;box-shadow:0 6px 24px rgba(0,0,0,.4);"></div>
+        </div>
         <button type="button" class="btn btn-secondary btn-sm"
                 onclick="abrirOCR('cliente')" title="Cole print da CNH ou documento">
           📸 Print do condutor
@@ -343,7 +348,16 @@
                      value="{{ cliente.nome_mae if cliente else '' }}">
             </div>
           </div>
-          <div class="form-row form-row-4">
+          <div class="form-row form-row-4" style="margin-bottom:10px;">
+            <div class="form-group" style="margin:0;">
+              <label class="form-label">CEP
+                <span id="cep-loading" style="display:none;font-size:10px;color:var(--accent);font-weight:400;">buscando…</span>
+              </label>
+              <input name="cli_cep" class="input" id="cli_cep"
+                     value="{{ cliente.cep if cliente else '' }}"
+                     placeholder="00000-000" maxlength="9"
+                     oninput="mascaraCep(this)" onblur="buscarCep(this.value)">
+            </div>
             <div class="form-group" style="margin:0;grid-column:span 2;">
               <label class="form-label">Logradouro / Rua</label>
               <input name="cli_rua" class="input" id="cli_rua"
@@ -353,14 +367,21 @@
               <label class="form-label">Número</label>
               <input name="cli_num" class="input" id="cli_num" value="{{ cliente.numero if cliente else '' }}">
             </div>
+          </div>
+          <div class="form-row form-row-3">
             <div class="form-group" style="margin:0;">
               <label class="form-label">Bairro</label>
               <input name="cli_bairro" class="input" id="cli_bairro" value="{{ cliente.bairro if cliente else '' }}">
             </div>
+            <div class="form-group" style="margin:0;">
+              <label class="form-label">Complemento</label>
+              <input name="cli_comp" class="input" id="cli_comp" value="{{ cliente.complemento if cliente else '' }}" placeholder="Apto 12">
+            </div>
+            <div class="form-group" style="margin:0;">
+              <label class="form-label">E-mail</label>
+              <input name="cli_email" class="input" id="cli_email" value="{{ cliente.email if cliente else '' }}" placeholder="email@exemplo.com" type="email">
+            </div>
           </div>
-          <input type="hidden" name="cli_cep"   id="cli_cep"   value="{{ cliente.cep if cliente else '' }}">
-          <input type="hidden" name="cli_comp"  id="cli_comp"  value="{{ cliente.complemento if cliente else '' }}">
-          <input type="hidden" name="cli_email" id="cli_email" value="{{ cliente.email if cliente else '' }}">
         </div>
       </details>
     </div>
@@ -757,6 +778,33 @@ function mostrarTargetRow() {
   document.getElementById('btn-ocr-fill').style.display = 'none';
 }
 
+// ── CEP autocomplete via ViaCEP ───────────────────────────────────────────────
+function mascaraCep(el) {
+  let v = el.value.replace(/\D/g,'').slice(0,8);
+  if (v.length > 5) v = v.slice(0,5) + '-' + v.slice(5);
+  el.value = v;
+}
+
+async function buscarCep(cep) {
+  const c = cep.replace(/\D/g,'');
+  if (c.length !== 8) return;
+  const loading = document.getElementById('cep-loading');
+  if (loading) loading.style.display = 'inline';
+  try {
+    const r = await fetch(`https://viacep.com.br/ws/${c}/json/`);
+    const d = await r.json();
+    if (d.erro) return;
+    setVal('cli_rua',    d.logradouro);
+    setVal('cli_bairro', d.bairro);
+    setVal('cli_cidade', d.localidade);
+    setSelectVal('cli_uf', d.uf);
+    // Foca no campo número após preencher
+    const numEl = document.getElementById('cli_num');
+    if (numEl && !numEl.value) numEl.focus();
+  } catch(e) { /* ViaCEP indisponível — sem problema */ }
+  finally { if (loading) loading.style.display = 'none'; }
+}
+
 function validarTel(el) {
   const ok = el.value.trim().length >= 8;
   el.classList.toggle('required-highlight', !ok);
@@ -957,11 +1005,98 @@ function preencherCliente(c) {
   setSelectVal('cli_uf', c.uf);
 }
 
+let cliSearchTimer = null;
+const cliDrop = document.getElementById('cli-drop');
+let _cliResultados = [];  // cache dos últimos resultados
+
+function debounceCliSearch(val) {
+  clearTimeout(cliSearchTimer);
+  const v = val.trim();
+  if (!v || v.length < 2) { cliDrop.style.display = 'none'; return; }
+  cliSearchTimer = setTimeout(() => buscarClienteAuto(v), 280);
+}
+
+async function buscarClienteAuto(q) {
+  // CPF completo → endpoint específico (mais completo)
+  const cpfOnly = q.replace(/\D/g,'');
+  if (cpfOnly.length === 11) {
+    const data = await fetch('/despachante/api/busca/cpf/' + cpfOnly).then(r=>r.json()).catch(()=>null);
+    if (data && data.encontrado) { selecionarClienteIdx(data.cliente); return; }
+  }
+  // Busca por nome/CPF parcial via busca global
+  const data = await fetch('/despachante/api/busca?q=' + encodeURIComponent(q))
+    .then(r=>r.json()).catch(()=>null);
+  if (!data) return;
+  const clientes = (data.clientes || []).slice(0, 6);
+  _cliResultados = clientes;
+  if (!clientes.length) { cliDrop.style.display = 'none'; return; }
+
+  cliDrop.innerHTML = clientes.map((c, i) => `
+    <div data-cli-idx="${i}"
+         style="padding:9px 14px;cursor:pointer;border-bottom:1px solid var(--border);
+                display:flex;gap:10px;align-items:center;transition:background .1s;">
+      <div style="width:30px;height:30px;border-radius:8px;background:rgba(99,102,241,.15);
+                  display:flex;align-items:center;justify-content:center;
+                  font-size:13px;font-weight:800;color:var(--accent);flex-shrink:0;">
+        ${esc(c.nome)[0]||'?'}
+      </div>
+      <div style="min-width:0;flex:1;">
+        <div style="font-weight:600;font-size:13px;color:var(--text);
+                    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(c.nome)}</div>
+        <div style="font-size:11px;color:var(--text3);">
+          ${c.cpf ? esc(c.cpf) : ''}${c.cpf && c.telefone ? ' · ' : ''}${c.telefone ? esc(c.telefone) : ''}
+        </div>
+      </div>
+    </div>`).join('');
+
+  // Eventos via delegação (sem onclick inline)
+  cliDrop.querySelectorAll('[data-cli-idx]').forEach(el => {
+    el.addEventListener('mouseenter', () => el.style.background = 'var(--surface2)');
+    el.addEventListener('mouseleave', () => el.style.background = '');
+    el.addEventListener('click', () => {
+      const c = _cliResultados[+el.dataset.cliIdx];
+      if (c) selecionarClienteIdx(c);
+    });
+  });
+  cliDrop.style.display = 'block';
+}
+
+function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+async function selecionarClienteIdx(c) {
+  cliDrop.style.display = 'none';
+  document.getElementById('cpf-search').value = c.nome || '';
+
+  // Tenta buscar dados completos pelo CPF
+  const cpf = (c.cpf||'').replace(/\D/g,'');
+  if (cpf.length === 11) {
+    const data = await fetch('/despachante/api/busca/cpf/' + cpf).then(r=>r.json()).catch(()=>null);
+    if (data && data.encontrado) {
+      preencherCliente(data.cliente);
+      const b = document.getElementById('cpf-found-banner');
+      b.innerHTML = '✅ Cliente encontrado: <strong>' + esc(data.cliente.nome) + '</strong>';
+      b.classList.add('show');
+      return;
+    }
+  }
+  // Fallback: preenche com o que temos
+  setVal('cli_nome', c.nome); setVal('cli_cpf', c.cpf);
+  setVal('cli_tel', c.telefone); setVal('cli_cidade', c.cidade);
+  if (c.id) document.getElementById('cliente-id-field').value = c.id;
+  const b = document.getElementById('cpf-found-banner');
+  b.innerHTML = '✅ Cliente selecionado: <strong>' + esc(c.nome) + '</strong>';
+  b.classList.add('show');
+}
+
+// Fecha o dropdown ao clicar fora
+document.addEventListener('click', e => {
+  if (!cliDrop.contains(e.target) && e.target.id !== 'cpf-search')
+    cliDrop.style.display = 'none';
+});
+
 function debounceCpf(val) {
-  clearTimeout(cpfDebounce);
-  const cpf = val.replace(/\D/g,'');
-  if (cpf.length < 11) return;
-  cpfDebounce = setTimeout(() => buscarCpf(cpf), 500);
+  // Compatibilidade — o OCR ainda define 'cpf-search' via setVal
+  debounceCliSearch(val);
 }
 
 function buscarCpf(cpf) {
@@ -971,7 +1106,7 @@ function buscarCpf(cpf) {
       if (data.encontrado) {
         preencherCliente(data.cliente);
         const b = document.getElementById('cpf-found-banner');
-        b.innerHTML = '✅ Cliente encontrado: ' + data.cliente.nome;
+        b.innerHTML = '✅ Cliente encontrado: ' + esc(data.cliente.nome);
         b.classList.add('show');
       }
     });
