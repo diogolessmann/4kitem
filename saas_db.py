@@ -260,6 +260,25 @@ def init_saas_db():
         CREATE INDEX IF NOT EXISTS idx_mz_sent_log_camp ON mandazap_sent_log(campaign_id);
     ''')
 
+    # ── Amigo Despachante users (assinantes do produto) ───────────────────────
+    conn.executescript('''
+        CREATE TABLE IF NOT EXISTS despachante_users (
+            id            INTEGER PRIMARY KEY AUTOINCREMENT,
+            name          TEXT NOT NULL,
+            email         TEXT,
+            phone         TEXT NOT NULL,
+            empresa       TEXT,
+            cidade        TEXT,
+            plan          TEXT DEFAULT 'basico',
+            active        INTEGER DEFAULT 1,
+            created_at    TEXT,
+            trial_ends    TEXT,
+            notes         TEXT DEFAULT ''
+        );
+        CREATE INDEX IF NOT EXISTS idx_desp_users_active ON despachante_users(active);
+    ''')
+    conn.commit()
+
     # ── Migrations suaves (adicionadas após schema inicial) ─────────────────
     _saas_migrations = [
         # MandaZap campaigns

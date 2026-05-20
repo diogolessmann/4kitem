@@ -74,7 +74,7 @@
     <button class="tab-btn" onclick="showTab('mandazap',this)">💬 MandaZap ({{ mz_users|length }})</button>
     <button class="tab-btn" onclick="showTab('bau',this)">🗄️ Baú ({{ bau_users|length }})</button>
     <button class="tab-btn" onclick="showTab('kids',this)">📺 KidsCurator ({{ kids_clients|length }})</button>
-    <button class="tab-btn" onclick="showTab('desp',this)">🚗 Despachante ({{ desp_clientes|length }})</button>
+    <button class="tab-btn" onclick="showTab('desp',this)">🚗 Despachante ({{ desp_users|length }})</button>
   </div>
 
   <!-- ═══════════════ ALERTA SC ═══════════════ -->
@@ -282,24 +282,38 @@
 
   <!-- ═══════════════ AMIGO DESPACHANTE ═══════════════ -->
   <div class="tab-content" id="tab-desp">
-    <h2>Clientes — Amigo Despachante</h2>
-    {% if desp_clientes %}
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+      <h2 style="margin:0;">Usuários — Amigo Despachante</h2>
+      <button class="btn-sm btn-green" onclick="openNovoDesp()">➕ Novo usuário</button>
+    </div>
+    {% if desp_users %}
     <table>
       <thead><tr>
-        <th>Nome</th><th>Tipo</th><th>CPF / CNPJ</th><th>Telefone</th><th>Cidade</th><th>Cadastro</th><th>Ações</th>
+        <th>Nome</th><th>Empresa</th><th>Telefone</th><th>Cidade</th><th>Plano</th><th>Status</th><th>Trial</th><th>Cadastro</th><th>Ações</th>
       </tr></thead>
       <tbody>
-        {% for c in desp_clientes %}
-        <tr id="desp-{{ c.id }}">
-          <td><strong>{{ c.nome }}</strong></td>
-          <td><span class="badge" style="background:rgba(245,158,11,.12);color:var(--orange);border:1px solid rgba(245,158,11,.25)">{{ c.tipo }}</span></td>
-          <td style="font-size:12px;color:var(--text2);font-family:monospace">{{ c.cpf or c.cnpj or '—' }}</td>
-          <td>{% if c.telefone %}<a href="https://wa.me/55{{ c.telefone|replace('(','') |replace(')','') |replace('-','') |replace(' ','') }}" target="_blank" style="color:var(--green)">{{ c.telefone }}</a>{% else %}—{% endif %}</td>
-          <td style="font-size:12px;color:var(--text2)">{{ c.cidade or '—' }}</td>
-          <td style="font-size:11px;color:var(--text2)">{{ c.criado_em[:10] if c.criado_em else '—' }}</td>
+        {% for u in desp_users %}
+        <tr id="desp-{{ u.id }}">
+          <td>
+            <strong>{{ u.name }}</strong>
+            {% if u.email %}<div style="font-size:11px;color:var(--text3)">{{ u.email }}</div>{% endif %}
+          </td>
+          <td style="font-size:12px;color:var(--text2)">{{ u.empresa or '—' }}</td>
+          <td>{% if u.phone %}<a href="https://wa.me/55{{ u.phone|replace('(','') |replace(')','') |replace('-','') |replace(' ','') }}" target="_blank" style="color:var(--green)">{{ u.phone }}</a>{% else %}—{% endif %}</td>
+          <td style="font-size:12px;color:var(--text2)">{{ u.cidade or '—' }}</td>
+          <td><span class="badge btn-purple" style="border-radius:20px">{{ u.plan }}</span></td>
+          <td><span class="badge {% if u.active %}badge-active{% else %}badge-suspended{% endif %}">{{ 'ativo' if u.active else 'inativo' }}</span></td>
+          <td style="font-size:11px;color:var(--text2)" id="trial-despachante-{{ u.id }}">{{ u.trial_ends[:10] if u.trial_ends else '—' }}</td>
+          <td style="font-size:11px;color:var(--text2)">{{ u.created_at[:10] if u.created_at else '—' }}</td>
           <td>
             <div class="actions">
-              <button class="btn-sm btn-red" onclick="deleteDesp({{ c.id }})">🗑 Deletar</button>
+              {% if u.active %}
+              <button class="btn-sm btn-orange" onclick="setDespStatus({{ u.id }}, false)">⏸ Suspender</button>
+              {% else %}
+              <button class="btn-sm btn-green" onclick="setDespStatus({{ u.id }}, true)">▶ Ativar</button>
+              {% endif %}
+              <button class="btn-sm btn-purple" onclick="openTrial('despachante','{{ u.id }}','{{ u.trial_ends[:10] if u.trial_ends else '' }}')">📅 Trial</button>
+              <button class="btn-sm btn-red" onclick="deleteDesp({{ u.id }})">🗑 Deletar</button>
             </div>
           </td>
         </tr>
@@ -307,8 +321,29 @@
       </tbody>
     </table>
     {% else %}
-    <div class="empty">Nenhum cliente cadastrado ainda.</div>
+    <div class="empty">Nenhum usuário do Amigo Despachante ainda.</div>
     {% endif %}
+  </div>
+
+  <!-- Modal Novo Usuário Despachante -->
+  <div class="modal-overlay" id="novoDespModal" style="display:none;">
+    <div class="modal-box" style="max-width:440px;">
+      <div class="modal-title">🚗 Novo Usuário — Amigo Despachante</div>
+      <input id="nd-name"    type="text"   placeholder="Nome completo *" class="modal-input" style="margin-bottom:8px;">
+      <input id="nd-empresa" type="text"   placeholder="Empresa / despachante" class="modal-input" style="margin-bottom:8px;">
+      <input id="nd-phone"   type="text"   placeholder="Telefone / WhatsApp *" class="modal-input" style="margin-bottom:8px;">
+      <input id="nd-email"   type="email"  placeholder="E-mail" class="modal-input" style="margin-bottom:8px;">
+      <input id="nd-cidade"  type="text"   placeholder="Cidade" class="modal-input" style="margin-bottom:8px;">
+      <select id="nd-plan" class="modal-input" style="margin-bottom:12px;">
+        <option value="basico">Básico</option>
+        <option value="profissional">Profissional</option>
+        <option value="premium">Premium</option>
+      </select>
+      <div class="modal-btns">
+        <button class="btn-sm btn-green" onclick="salvarNovoDesp()">✅ Salvar</button>
+        <button class="btn-sm btn-red" onclick="closeNovoDespModal()">Cancelar</button>
+      </div>
+    </div>
   </div>
 
 </div>
@@ -348,8 +383,9 @@ function closeTrialModal() {
 const _trialUrls = {
   alerta:   id => `/admin/alerta/${id}/trial`,
   agenda:   id => `/admin/agenda/${id}/trial`,
-  mandazap: id => `/admin/mandazap/user/${id}/trial`,
-  bau:      id => `/admin/bau/user/${id}/trial`,
+  mandazap:    id => `/admin/mandazap/user/${id}/trial`,
+  bau:         id => `/admin/bau/user/${id}/trial`,
+  despachante: id => `/admin/despachante/user/${id}/trial`,
 };
 async function saveTrialDate() {
   const date = document.getElementById('trialDateInput').value;
@@ -485,13 +521,46 @@ async function deleteKids(id) {
   else alert(d.error || 'Erro');
 }
 
-/* ── Despachante ── */
+/* ── Amigo Despachante ── */
+async function setDespStatus(id, active) {
+  if (!confirm(active ? 'Ativar usuário?' : 'Suspender usuário?')) return;
+  const r = await fetch(`/admin/despachante/user/${id}/status`, {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ active })
+  });
+  const d = await r.json();
+  if (d.success) location.reload();
+  else alert(d.error || 'Erro');
+}
 async function deleteDesp(id) {
-  if (!confirm('Deletar este cliente do Despachante?\nOrdens de serviço e veículos vinculados também serão removidos.')) return;
-  const r = await fetch(`/admin/despachante/cliente/${id}/delete`, { method: 'POST' });
+  if (!confirm('Deletar este usuário do Amigo Despachante?')) return;
+  const r = await fetch(`/admin/despachante/user/${id}/delete`, { method: 'POST' });
   const d = await r.json();
   if (d.success) document.getElementById('desp-' + id)?.remove();
   else alert(d.error || 'Erro');
+}
+function openNovoDesp() {
+  document.getElementById('novoDespModal').style.display = 'flex';
+}
+function closeNovoDespModal() {
+  document.getElementById('novoDespModal').style.display = 'none';
+  ['nd-name','nd-empresa','nd-phone','nd-email','nd-cidade'].forEach(id => document.getElementById(id).value = '');
+}
+async function salvarNovoDesp() {
+  const name    = document.getElementById('nd-name').value.trim();
+  const phone   = document.getElementById('nd-phone').value.trim();
+  const email   = document.getElementById('nd-email').value.trim();
+  const empresa = document.getElementById('nd-empresa').value.trim();
+  const cidade  = document.getElementById('nd-cidade').value.trim();
+  const plan    = document.getElementById('nd-plan').value;
+  if (!name || !phone) { alert('Nome e telefone são obrigatórios.'); return; }
+  const r = await fetch('/admin/despachante/user/novo', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ name, phone, email, empresa, cidade, plan })
+  });
+  const d = await r.json();
+  if (d.success) { closeNovoDespModal(); location.reload(); }
+  else alert(d.error || 'Erro ao salvar');
 }
 </script>
 </body>

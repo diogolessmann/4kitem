@@ -909,21 +909,21 @@ def saas_admin():
         kconn.close()
     except Exception:
         kids_clients = []
-    # Amigo Despachante clientes
+    # Amigo Despachante — usuários/assinantes do produto
     try:
-        dconn = get_desp_conn()
-        desp_clientes = [dict(r) for r in dconn.execute(
-            'SELECT id, tipo, nome, cpf, cnpj, telefone, cidade, criado_em FROM clientes ORDER BY criado_em DESC LIMIT 200'
+        conn2 = get_saas_db()
+        desp_users = [dict(r) for r in conn2.execute(
+            'SELECT id, name, email, phone, empresa, cidade, plan, active, created_at, trial_ends, notes FROM despachante_users ORDER BY created_at DESC'
         ).fetchall()]
-        dconn.close()
+        conn2.close()
     except Exception:
-        desp_clientes = []
+        desp_users = []
     return render_template('saas_admin.html',
                            subscribers=subscribers, businesses=businesses,
                            mz_users=mz_users, mz_plans=MANDAZAP_PLANS,
                            bau_users=bau_users,
                            kids_clients=kids_clients,
-                           desp_clientes=desp_clientes)
+                           desp_users=desp_users)
 
 
 @app.route('/admin/alerta/<int:sub_id>/status', methods=['POST'])
@@ -1136,23 +1136,72 @@ def saas_kids_delete(client_id):
     return jsonify({'success': True})
 
 
-# ── Admin Amigo Despachante — delete cliente ──────────────────────────────────
+# ── Admin Amigo Despachante — gerenciar usuários ──────────────────────────────
 
-@app.route('/admin/despachante/cliente/<int:cliente_id>/delete', methods=['POST'])
+@app.route('/admin/despachante/user/<int:user_id>/status', methods=['POST'])
 @_saas_admin_required
-def saas_desp_delete(cliente_id):
-    conn = get_desp_conn()
+def saas_desp_set_status(user_id):
+    data   = request.get_json() or {}
+    active = 1 if data.get('active') else 0
+    conn   = get_saas_db()
+    conn.execute('UPDATE despachante_users SET active=? WHERE id=?', (active, user_id))
+    conn.commit()
+    conn.close()
+    return jsonify({'success': True})
+
+
+@app.route('/admin/despachante/user/<int:user_id>/trial', methods=['POST'])
+@_saas_admin_required
+def saas_desp_set_trial(user_id):
+    data  = request.get_json() or {}
+    trial = data.get('trial_ends', '').strip()
+    conn  = get_saas_db()
+    conn.execute('UPDATE despachante_users SET trial_ends=? WHERE id=?', (trial or None, user_id))
+    conn.commit()
+    conn.close()
+    return jsonify({'success': True, 'trial_ends': trial})
+
+
+@app.route('/admin/despachante/user/<int:user_id>/delete', methods=['POST'])
+@_saas_admin_required
+def saas_desp_delete(user_id):
+    conn = get_saas_db()
     try:
-        conn.execute('DELETE FROM documentos      WHERE os_id IN (SELECT id FROM ordens_servico WHERE cliente_id=?)', (cliente_id,))
-        conn.execute('DELETE FROM ordens_servico  WHERE cliente_id=?', (cliente_id,))
-        conn.execute('DELETE FROM veiculos        WHERE proprietario_id=?', (cliente_id,))
-        conn.execute('DELETE FROM clientes        WHERE id=?', (cliente_id,))
+        conn.execute('DELETE FROM despachante_users WHERE id=?', (user_id,))
         conn.commit()
     except Exception as e:
         conn.close()
         return jsonify({'success': False, 'error': str(e)})
     conn.close()
     return jsonify({'success': True})
+
+
+@app.route('/admin/despachante/user/novo', methods=['POST'])
+@_saas_admin_required
+def saas_desp_novo_user():
+    from datetime import datetime
+    data = request.get_json() or {}
+    name    = data.get('name', '').strip()
+    phone   = data.get('phone', '').strip()
+    email   = data.get('email', '').strip()
+    empresa = data.get('empresa', '').strip()
+    cidade  = data.get('cidade', '').strip()
+    plan    = data.get('plan', 'basico')
+    if not name or not phone:
+        return jsonify({'success': False, 'error': 'Nome e telefone obrigatórios'})
+    conn = get_saas_db()
+    try:
+        cur = conn.execute(
+            'INSERT INTO despachante_users (name, email, phone, empresa, cidade, plan, active, created_at) VALUES (?,?,?,?,?,?,1,?)',
+            (name, email, phone, empresa, cidade, plan, datetime.now().isoformat())
+        )
+        conn.commit()
+        new_id = cur.lastrowid
+    except Exception as e:
+        conn.close()
+        return jsonify({'success': False, 'error': str(e)})
+    conn.close()
+    return jsonify({'success': True, 'id': new_id})
 
 
 # ── Admin Agenda SC ───────────────────────────────────────────────────────────
