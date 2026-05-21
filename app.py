@@ -59,9 +59,12 @@ WEEKDAY_NAMES = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'D
 
 # ── AlertaSC constants ────────────────────────────────────────────────────────
 ALERTA_PLANS = {
-    'basico':  {'label': '🚗 Básico',    'price': 'R$ 19,90', 'vehicles': 1},
-    'familia': {'label': '👨‍👩‍👧 Família', 'price': 'R$ 34,90', 'vehicles': 3},
-    'frota':   {'label': '🚛 Frota',     'price': 'R$ 89,90', 'vehicles': 10},
+    'basico':        {'label': '👤 Individual',     'price': 'R$ 19,90', 'vehicles': 1},
+    'familia':       {'label': '👨‍👩‍👧 Família',      'price': 'R$ 39,00', 'vehicles': 4},
+    'pequena_frota': {'label': '🚐 Pequena Frota',  'price': 'R$ 99,00', 'vehicles': 9},
+    'frota_media':   {'label': '🚛 Frota Média',    'price': 'R$149,00', 'vehicles': 20},
+    'master':        {'label': '🏢 Master',         'price': 'R$229,00', 'vehicles': 50},
+    'enterprise':    {'label': '🏭 Enterprise',     'price': 'R$399,00', 'vehicles': 100},
 }
 
 
@@ -821,7 +824,7 @@ def alerta_cadastro():
         email = request.form.get('email', '').strip()
         plano = request.form.get('plano', 'familia')
 
-        max_veh = {'basico': 1, 'familia': 3, 'frota': 10}.get(plano, 1)
+        max_veh = {k: v['vehicles'] for k, v in ALERTA_PLANS.items()}.get(plano, 1)
         plates = []
         for i in range(1, max_veh + 1):
             p = request.form.get(f'plate_{i}', '').strip().upper()
@@ -2947,10 +2950,12 @@ from desp_db import (
     add_checklist_item as desp_add_chk,
     remove_checklist_item as desp_remove_chk,
 )
-_rag_disabled = os.environ.get('DESP_RAG_DISABLED', '0') == '1'
+# ChromaDB desabilitado por padrão (evita OOM no Railway free tier)
+# Para habilitar: setar DESP_RAG_ENABLED=1 no ambiente
+_rag_disabled = os.environ.get('DESP_RAG_ENABLED', '0') != '1'
 try:
     if _rag_disabled:
-        raise ImportError("RAG desabilitado via DESP_RAG_DISABLED=1")
+        raise ImportError("RAG desabilitado (defina DESP_RAG_ENABLED=1 para ativar)")
     import desp_rag
     _rag_ok = True
     # NÃO roda seed na inicialização — ChromaDB usa muita memória no Railway
