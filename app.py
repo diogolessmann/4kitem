@@ -2951,8 +2951,13 @@ try:
     import desp_rag
     _rag_ok = True
     # Alimenta base interna de conhecimento em background (idempotente)
-    threading.Thread(target=desp_rag.seed_conhecimento_base, daemon=True).start()
-except ImportError:
+    def _safe_seed():
+        try:
+            desp_rag.seed_conhecimento_base()
+        except Exception as _e:
+            log.warning(f'desp_rag.seed_conhecimento_base falhou: {_e}')
+    threading.Thread(target=_safe_seed, daemon=True).start()
+except Exception:
     _rag_ok = False
 
 DESP_CONFIG = {
@@ -4510,7 +4515,11 @@ def desp_rag_admin():
     if not _rag_ok:
         return desp_render('rag_admin.html', rag_ok=False, stats={}, arquivos=[],
                            internos=[], externos=[])
-    stats = desp_rag.db_stats()
+    try:
+        stats = desp_rag.db_stats()
+    except Exception as _e:
+        log.warning(f'desp_rag_admin db_stats falhou: {_e}')
+        stats = {'chunks': 0, 'documentos': 0, 'arquivos': [], 'internos': [], 'externos': []}
     return desp_render('rag_admin.html', rag_ok=True, stats=stats,
                        arquivos=stats.get('arquivos', []),
                        internos=stats.get('internos', []),

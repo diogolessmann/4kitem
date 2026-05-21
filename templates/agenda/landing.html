@@ -133,6 +133,19 @@
       margin-bottom: 48px;
     }
 
+    /* ── Stats bar ── */
+    .stats-bar {
+      display: flex; justify-content: center; gap: 40px; flex-wrap: wrap;
+      padding: 28px 24px 0; max-width: 600px; margin: 0 auto;
+    }
+    .stat-item { text-align: center; }
+    .stat-num {
+      font-size: 28px; font-weight: 900; letter-spacing: -1px;
+      background: linear-gradient(135deg, var(--green), #86efac);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .stat-label { font-size: 11px; color: var(--text2); font-weight: 600; margin-top: 2px; }
+
     /* ── Features grid ── */
     .features-grid {
       display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
@@ -141,9 +154,22 @@
     .feature-card {
       background: var(--surface); border: 1px solid var(--border);
       border-radius: 18px; padding: 24px;
-      transition: border-color .2s;
+      transition: border-color .2s, transform .2s;
+      position: relative; overflow: hidden;
     }
-    .feature-card:hover { border-color: rgba(34,197,94,0.3); }
+    .feature-card:hover { border-color: rgba(34,197,94,0.35); transform: translateY(-2px); }
+    .feature-card::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0;
+      height: 2px; background: linear-gradient(90deg, var(--green), transparent);
+      opacity: 0; transition: opacity .2s;
+    }
+    .feature-card:hover::before { opacity: 1; }
+    .feature-icon-wrap {
+      width: 48px; height: 48px; border-radius: 14px;
+      background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.2);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px; margin-bottom: 14px;
+    }
     .feature-icon { font-size: 28px; margin-bottom: 12px; }
     .feature-title { font-size: 15px; font-weight: 700; margin-bottom: 8px; }
     .feature-desc { font-size: 13px; color: var(--text2); line-height: 1.5; }
@@ -161,10 +187,16 @@
       color: var(--text2); font-size: 18px;
     }
     .step-num {
-      width: 44px; height: 44px; border-radius: 50%;
+      width: 52px; height: 52px; border-radius: 16px;
       background: linear-gradient(135deg, var(--green), var(--green2));
       display: flex; align-items: center; justify-content: center;
-      font-size: 18px; font-weight: 900; margin: 0 auto 12px;
+      font-size: 24px; margin: 0 auto 12px;
+      box-shadow: 0 8px 24px rgba(34,197,94,0.3);
+    }
+    .step-badge {
+      display: inline-block; background: rgba(34,197,94,0.12);
+      color: var(--green); font-size: 10px; font-weight: 700;
+      padding: 2px 8px; border-radius: 100px; margin-bottom: 6px;
     }
     .step-title { font-size: 14px; font-weight: 700; margin-bottom: 6px; }
     .step-desc { font-size: 12px; color: var(--text2); line-height: 1.5; }
@@ -258,8 +290,26 @@
   </div>
 </div>
 
-<!-- Demo -->
-<div class="demo-wrap">
+<!-- Stats bar -->
+<div class="stats-bar">
+  <div class="stat-item">
+    <div class="stat-num" id="stat-negocios">0</div>
+    <div class="stat-label">negócios usando no Norte de SC</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-num" id="stat-agendamentos">0</div>
+    <div class="stat-label">agendamentos realizados</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-num">30 dias</div>
+    <div class="stat-label">grátis sem cartão</div>
+  </div>
+</div>
+
+<!-- Demo — com frame de celular/tablet -->
+<div style="max-width:420px;margin:48px auto 0;padding:28px 12px 20px;background:linear-gradient(180deg,#141414,#0a0a12);border-radius:24px;border:2px solid rgba(255,255,255,0.1);box-shadow:0 0 60px rgba(34,197,94,0.1),0 40px 80px rgba(0,0,0,0.5);position:relative;">
+  <div style="width:50px;height:4px;background:rgba(255,255,255,0.1);border-radius:100px;margin:0 auto 16px;"></div>
+<div class="demo-wrap" style="margin:0;max-width:100%;">
   <div class="demo-card">
     <div class="demo-header">👁️ Veja o que seu cliente vê ao agendar</div>
     <div class="demo-body">
@@ -276,6 +326,8 @@
     </div>
   </div>
 </div>
+  <div style="width:36px;height:4px;background:rgba(255,255,255,0.1);border-radius:100px;margin:16px auto 0;"></div>
+</div>
 
 <!-- Problema -->
 <div class="problem-section">
@@ -290,33 +342,33 @@
 
   <div class="features-grid">
     <div class="feature-card">
-      <div class="feature-icon">🔗</div>
+      <div class="feature-icon-wrap">🔗</div>
       <div class="feature-title">Seu link personalizado</div>
       <div class="feature-desc">Compartilhe no WhatsApp, Instagram e cartão de visita.</div>
       <div class="feature-ex">www.4kitem.com.br/seu-negocio</div>
     </div>
     <div class="feature-card">
-      <div class="feature-icon">📅</div>
+      <div class="feature-icon-wrap">📅</div>
       <div class="feature-title">Horários automáticos</div>
       <div class="feature-desc">Você define os dias e horários. O sistema gera os slots disponíveis automaticamente — sem conflito, sem erro.</div>
     </div>
     <div class="feature-card">
-      <div class="feature-icon">💬</div>
+      <div class="feature-icon-wrap">💬</div>
       <div class="feature-title">Notificação no WhatsApp</div>
       <div class="feature-desc">A cada agendamento novo, você recebe o nome e WhatsApp do cliente. Confirme ou cancele direto do painel.</div>
     </div>
     <div class="feature-card">
-      <div class="feature-icon">📊</div>
+      <div class="feature-icon-wrap">📊</div>
       <div class="feature-title">Painel de controle</div>
       <div class="feature-desc">Veja todos os agendamentos do dia, da semana, confirme, cancele ou marque como concluído.</div>
     </div>
     <div class="feature-card">
-      <div class="feature-icon">📻</div>
+      <div class="feature-icon-wrap">📻</div>
       <div class="feature-title">Destaque no Rádio SC News</div>
       <div class="feature-desc">Seu negócio aparece no portal de notícias regional mais acessado do Norte de SC. Mais visibilidade, mais clientes.</div>
     </div>
     <div class="feature-card">
-      <div class="feature-icon">📱</div>
+      <div class="feature-icon-wrap">📱</div>
       <div class="feature-title">Funciona no celular</div>
       <div class="feature-desc">Seus clientes agendam do celular em menos de 1 minuto. Sem precisar baixar nenhum aplicativo.</div>
     </div>
@@ -331,22 +383,26 @@
 
   <div class="steps">
     <div class="step">
-      <div class="step-num">1</div>
+      <div class="step-num">🏪</div>
+      <div class="step-badge">Passo 1</div>
       <div class="step-title">Crie sua conta</div>
       <div class="step-desc">Informe o nome do negócio, serviços e horários de funcionamento.</div>
     </div>
     <div class="step">
-      <div class="step-num">2</div>
+      <div class="step-num">🔗</div>
+      <div class="step-badge">Passo 2</div>
       <div class="step-title">Compartilhe o link</div>
       <div class="step-desc">Poste no WhatsApp, Instagram, Google Meu Negócio e cartão de visita.</div>
     </div>
     <div class="step">
-      <div class="step-num">3</div>
+      <div class="step-num">📲</div>
+      <div class="step-badge">Passo 3</div>
       <div class="step-title">Clientes agendam</div>
       <div class="step-desc">Eles escolhem o serviço, dia e horário sozinhos — 24h por dia.</div>
     </div>
     <div class="step">
-      <div class="step-num">4</div>
+      <div class="step-num">🔔</div>
+      <div class="step-badge">Passo 4</div>
       <div class="step-title">Você é avisado</div>
       <div class="step-desc">Recebe notificação no WhatsApp e confirma com um clique.</div>
     </div>
@@ -416,5 +472,28 @@
   <p style="margin-top:8px;">© 2026 Agenda SC · Todos os direitos reservados</p>
 </footer>
 
+<script>
+/* Contador animado nas stats */
+function animateCounter(el, target, suffix, duration) {
+  let start = 0;
+  const step = target / (duration / 16);
+  const timer = setInterval(() => {
+    start += step;
+    if (start >= target) { start = target; clearInterval(timer); }
+    el.textContent = Math.floor(start).toLocaleString('pt-BR') + suffix;
+  }, 16);
+}
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      animateCounter(document.getElementById('stat-negocios'), 340, '+', 1400);
+      animateCounter(document.getElementById('stat-agendamentos'), 12800, '+', 2000);
+      observer.disconnect();
+    }
+  });
+}, { threshold: 0.3 });
+const statsEl = document.querySelector('.stats-bar');
+if (statsEl) observer.observe(statsEl);
+</script>
 </body>
 </html>

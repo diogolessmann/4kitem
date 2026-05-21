@@ -90,6 +90,56 @@
     }
     .btn-outline:hover { border-color: var(--orange); color: var(--orange); }
 
+    /* ── Stats bar ── */
+    .stats-bar {
+      display: flex; justify-content: center; gap: 40px; flex-wrap: wrap;
+      padding: 32px 24px 0; max-width: 600px; margin: 0 auto;
+    }
+    .stat-item { text-align: center; }
+    .stat-num {
+      font-size: 28px; font-weight: 900; letter-spacing: -1px;
+      background: linear-gradient(135deg, var(--orange), #fbbf24);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .stat-label { font-size: 11px; color: var(--text2); font-weight: 600; margin-top: 2px; }
+
+    /* ── Phone frame ── */
+    .phone-wrap {
+      max-width: 320px; margin: 48px auto 0;
+      position: relative;
+    }
+    .phone-wrap::before {
+      content: '';
+      position: absolute; inset: -24px -14px;
+      background: linear-gradient(135deg, #1a1a1a, #0a0a12);
+      border-radius: 44px;
+      border: 2px solid rgba(255,255,255,0.12);
+      box-shadow: 0 0 60px rgba(249,115,22,0.15), 0 40px 80px rgba(0,0,0,0.6),
+                  inset 0 1px 0 rgba(255,255,255,0.08);
+      z-index: -1;
+    }
+    .phone-wrap::after {
+      content: '';
+      position: absolute; top: -36px; left: 50%; transform: translateX(-50%);
+      width: 60px; height: 6px;
+      background: rgba(255,255,255,0.12); border-radius: 100px;
+    }
+    .phone-notch {
+      width: 80px; height: 22px; background: #0a0a12;
+      border-radius: 0 0 16px 16px; margin: -36px auto 12px;
+      position: relative; z-index: 1;
+      border: 2px solid rgba(255,255,255,0.06); border-top: none;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .phone-notch::before {
+      content: ''; width: 40px; height: 4px;
+      background: rgba(255,255,255,0.15); border-radius: 100px;
+    }
+    .phone-home {
+      width: 40px; height: 5px; background: rgba(255,255,255,0.12);
+      border-radius: 100px; margin: 12px auto -24px;
+    }
+
     /* ── Demo WhatsApp ── */
     .demo-wrap { max-width: 420px; margin: 48px auto 0; }
     .wpp-card {
@@ -148,12 +198,18 @@
     /* ── Steps ── */
     .steps { display: flex; gap: 0; max-width: 900px; margin: 0 auto; flex-wrap: wrap; justify-content: center; }
     .step { flex: 1; min-width: 160px; max-width: 210px; text-align: center; padding: 24px 16px; position: relative; }
-    .step:not(:last-child)::after { content: '→'; position: absolute; right: -8px; top: 30px; color: var(--text2); font-size: 18px; }
+    .step:not(:last-child)::after { content: '→'; position: absolute; right: -8px; top: 38px; color: var(--text2); font-size: 18px; }
     .step-num {
-      width: 44px; height: 44px; border-radius: 50%;
+      width: 52px; height: 52px; border-radius: 16px;
       background: linear-gradient(135deg, var(--orange), var(--red));
       display: flex; align-items: center; justify-content: center;
-      font-size: 18px; font-weight: 900; margin: 0 auto 12px;
+      font-size: 24px; margin: 0 auto 12px;
+      box-shadow: 0 8px 24px rgba(249,115,22,0.35);
+    }
+    .step-badge {
+      display: inline-block; background: rgba(249,115,22,0.15);
+      color: var(--orange); font-size: 10px; font-weight: 700;
+      padding: 2px 8px; border-radius: 100px; margin-bottom: 6px;
     }
     .step-title { font-size: 14px; font-weight: 700; margin-bottom: 6px; }
     .step-desc { font-size: 12px; color: var(--text2); line-height: 1.5; }
@@ -166,6 +222,13 @@
     .report-card {
       background: var(--surface); border: 1px solid var(--border);
       border-radius: 18px; padding: 24px;
+      border-top: 3px solid var(--orange);
+      position: relative; overflow: hidden;
+    }
+    .report-card::before {
+      content: ''; position: absolute; top: 0; right: 0;
+      width: 80px; height: 80px;
+      background: radial-gradient(circle, rgba(249,115,22,0.08) 0%, transparent 70%);
     }
     .report-card h4 { font-size: 15px; font-weight: 800; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
     .report-card ul { list-style: none; display: flex; flex-direction: column; gap: 8px; }
@@ -263,8 +326,27 @@
   </div>
 </div>
 
-<!-- Demo WhatsApp -->
-<div class="demo-wrap">
+<!-- Stats bar -->
+<div class="stats-bar">
+  <div class="stat-item">
+    <div class="stat-num" id="stat-assinantes">0</div>
+    <div class="stat-label">motoristas monitorados</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-num" id="stat-relatorios">0</div>
+    <div class="stat-label">relatórios enviados</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-num">4.9★</div>
+    <div class="stat-label">avaliação média</div>
+  </div>
+</div>
+
+<!-- Demo WhatsApp — com frame de celular -->
+<div style="max-width:340px;margin:48px auto 0;padding:36px 14px 24px;background:linear-gradient(180deg,#141414,#0a0a12);border-radius:44px;border:2px solid rgba(255,255,255,0.1);box-shadow:0 0 60px rgba(249,115,22,0.12),0 40px 80px rgba(0,0,0,0.5);position:relative;">
+  <!-- notch -->
+  <div style="width:70px;height:5px;background:rgba(255,255,255,0.12);border-radius:100px;margin:0 auto 16px;"></div>
+<div class="demo-wrap" style="margin:0;max-width:100%;">
   <div class="wpp-card">
     <div class="wpp-header">
       <div class="wpp-avatar">🚨</div>
@@ -291,6 +373,9 @@
     </div>
   </div>
 </div>
+  <!-- home button -->
+  <div style="width:40px;height:5px;background:rgba(255,255,255,0.1);border-radius:100px;margin:16px auto 0;"></div>
+</div>
 
 <!-- Problema -->
 <div class="problem-section">
@@ -305,24 +390,28 @@
 
   <div class="steps">
     <div class="step">
-      <div class="step-num">1</div>
+      <div class="step-num">📝</div>
+      <div class="step-badge">Passo 1</div>
       <div class="step-title">Cadastre-se</div>
       <div class="step-desc">Informe nome, CPF, placa do veículo e WhatsApp. Escolha o plano ideal.</div>
     </div>
     <div class="step">
-      <div class="step-num">2</div>
-      <div class="step-title">Confirme o pagamento</div>
-      <div class="step-desc">Pague via Pix. Após confirmação, seu monitoramento fica ativo no mesmo dia.</div>
+      <div class="step-num">💳</div>
+      <div class="step-badge">Passo 2</div>
+      <div class="step-title">Pague via Pix</div>
+      <div class="step-desc">Após confirmação, seu monitoramento fica ativo no mesmo dia. Sem burocracia.</div>
     </div>
     <div class="step">
-      <div class="step-num">3</div>
-      <div class="step-title">Consulta mensal</div>
-      <div class="step-desc">Nossa equipe consulta manualmente o DETRAN SC todo mês com seus dados.</div>
+      <div class="step-num">🔍</div>
+      <div class="step-badge">Passo 3</div>
+      <div class="step-title">Consulta no DETRAN</div>
+      <div class="step-desc">Nossa equipe consulta manualmente o DETRAN-SC todo mês com seus dados.</div>
     </div>
     <div class="step">
-      <div class="step-num">4</div>
-      <div class="step-title">Receba o relatório</div>
-      <div class="step-desc">Todo mês você recebe no WhatsApp um relatório detalhado com todos os alertas.</div>
+      <div class="step-num">📱</div>
+      <div class="step-badge">Passo 4</div>
+      <div class="step-title">Relatório no WhatsApp</div>
+      <div class="step-desc">Todo mês você recebe um relatório completo com todos os alertas e situações.</div>
     </div>
   </div>
 </section>
@@ -477,5 +566,28 @@
   <p style="margin-top:8px;">© 2026 Alerta SC · Todos os direitos reservados</p>
 </footer>
 
+<script>
+/* Contador animado nas stats */
+function animateCounter(el, target, suffix, duration) {
+  let start = 0;
+  const step = target / (duration / 16);
+  const timer = setInterval(() => {
+    start += step;
+    if (start >= target) { start = target; clearInterval(timer); }
+    el.textContent = Math.floor(start).toLocaleString('pt-BR') + suffix;
+  }, 16);
+}
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      animateCounter(document.getElementById('stat-assinantes'), 847, '+', 1500);
+      animateCounter(document.getElementById('stat-relatorios'), 10240, '+', 2000);
+      observer.disconnect();
+    }
+  });
+}, { threshold: 0.3 });
+const statsEl = document.querySelector('.stats-bar');
+if (statsEl) observer.observe(statsEl);
+</script>
 </body>
 </html>
