@@ -2947,18 +2947,18 @@ from desp_db import (
     add_checklist_item as desp_add_chk,
     remove_checklist_item as desp_remove_chk,
 )
+_rag_disabled = os.environ.get('DESP_RAG_DISABLED', '0') == '1'
 try:
+    if _rag_disabled:
+        raise ImportError("RAG desabilitado via DESP_RAG_DISABLED=1")
     import desp_rag
     _rag_ok = True
-    # Alimenta base interna de conhecimento em background (idempotente)
-    def _safe_seed():
-        try:
-            desp_rag.seed_conhecimento_base()
-        except Exception as _e:
-            log.warning(f'desp_rag.seed_conhecimento_base falhou: {_e}')
-    threading.Thread(target=_safe_seed, daemon=True).start()
-except Exception:
+    # NÃO roda seed na inicialização — ChromaDB usa muita memória no Railway
+    # Seed é disparado manualmente via /despachante/rag
+    log.info('desp_rag carregado OK — seed sob demanda (não automático)')
+except Exception as _e:
     _rag_ok = False
+    log.warning(f'desp_rag não disponível: {_e}')
 
 DESP_CONFIG = {
     "nome":         os.environ.get("DESP_NOME",       "DIOGO KAUE LESSMANN"),
@@ -4446,11 +4446,16 @@ IMPORTANTE: Retorne SOMENTE o JSON, nada mais.'''
 @app.route('/despachante/chat')
 @_desp_login_required
 def desp_chat():
-    try:
-        stats_rag = desp_rag.db_stats() if _rag_ok else {'chunks': 0, 'documentos': 0, 'arquivos': []}
-    except Exception as e:
-        log.warning(f'desp_rag.db_stats falhou: {e}')
-        stats_rag = {'chunks': 0, 'documentos': 0, 'arquivos': []}
+    # Nunca chama db_stats() direto — pode disparar init do ChromaDB e causar OOM
+    # Stats são carregados via AJAX pelo painel RAG (não na página do chat)
+    stats_rag = {'chunks': 0, 'documentos': 0, 'arquivos': []}
+    if _rag_ok:
+        try:
+            # Só faz a contagem se a collection JÁ estiver inicializada (sem forçar init)
+            if desp_rag._collection is not None:
+                stats_rag = desp_rag.db_stats()
+        except Exception as e:
+            log.warning(f'desp_rag.db_stats falhou: {e}')
     return desp_render('chat.html', rag_stats=stats_rag, rag_ok=_rag_ok)
 
 @app.route('/despachante/api/chat', methods=['POST'])
