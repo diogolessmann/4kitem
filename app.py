@@ -3058,7 +3058,7 @@ DESP_CONFIG = {
     "whatsapp_fmt": "(47) 99101-1351",
 }
 DESP_PASSWORD       = os.environ.get("DESP_PASSWORD",       "lessmann2026")
-DESP_ADMIN_PASSWORD = os.environ.get("DESP_ADMIN_PASSWORD", "admin.lessmann2026")
+DESP_ADMIN_PASSWORD = os.environ.get("DESP_ADMIN_PASSWORD", "lessmann@admin2026")
 
 
 def _desp_login_required(f):
