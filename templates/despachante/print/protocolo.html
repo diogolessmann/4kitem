@@ -107,8 +107,13 @@
 
 <div class="print-bar no-print">
   <button class="btn-print" onclick="window.print()">🖨️ Imprimir (3 vias)</button>
-  <button class="btn-close" onclick="history.back()">← Voltar</button>
-  <span class="info">O.S. {{ os.numero }} · {{ servicos.get(os.servico, os.servico) }} · {{ os.placa or 'Sem placa' }}</span>
+  <a href="/despachante/os/{{ os.id }}"
+     style="padding:6px 16px;border-radius:6px;background:rgba(255,255,255,.15);color:#fff;
+            text-decoration:none;font-size:13px;font-weight:600;">
+    📋 Ver O.S. {{ os.numero }}
+  </a>
+  <button class="btn-close" onclick="window.location='/despachante/os'">← Lista de O.S.</button>
+  <span class="info">{{ servicos.get(os.servico, os.servico) }} · {{ os.placa or 'Sem placa' }}</span>
 </div>
 
 {% set servico_label = servicos.get(os.servico, os.servico) %}
@@ -254,5 +259,17 @@
 </div>
 {% endfor %}
 
+<script>
+// Auto-impressão quando veio de uma nova OS
+(function(){
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('auto') === '1') {
+    // Pequeno delay para garantir que a página renderizou
+    setTimeout(function() {
+      window.print();
+    }, 800);
+  }
+})();
+</script>
 </body>
 </html>

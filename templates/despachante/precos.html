@@ -1,7 +1,7 @@
 {% extends "despachante/base.html" %}
 
 {% block title %}Tabela de Preços · Lessmann{% endblock %}
-{% block topbar_title %}Tabela de Preços{% endblock %}
+{% block topbar_title %}Tabela de Preços 🔒{% endblock %}
 {% block topbar_actions %}
   <button form="form-precos" type="submit" class="btn btn-primary btn-sm">💾 Salvar</button>
 {% endblock %}
@@ -17,12 +17,18 @@
   display:flex; align-items:center; gap:10px;
   font-weight:700; font-size:13px; color:var(--text2);
 }
+.grupo-head-cols {
+  margin-left:auto; display:flex; gap:10px; font-size:10px; font-weight:700;
+  text-transform:uppercase; letter-spacing:.5px; color:var(--text3); padding-right:4px;
+  align-items:center;
+}
+.grupo-head-col { width:140px; text-align:right; }
 .grupo-icon { font-size:18px; }
 .grupo-body { padding:0; }
 
 .preco-row {
-  display:grid; grid-template-columns:1fr 160px;
-  align-items:center; gap:12px; padding:10px 18px;
+  display:grid; grid-template-columns:1fr 140px 140px 110px;
+  align-items:center; gap:10px; padding:8px 18px;
   border-bottom:1px solid var(--border);
 }
 .preco-row:last-child { border-bottom:none; }
@@ -31,17 +37,28 @@
 
 .preco-input-wrap { position:relative; }
 .preco-prefix {
-  position:absolute; left:10px; top:50%; transform:translateY(-50%);
-  font-size:13px; color:var(--text3); pointer-events:none; font-weight:600;
+  position:absolute; left:8px; top:50%; transform:translateY(-50%);
+  font-size:11px; color:var(--text3); pointer-events:none; font-weight:600;
 }
 .preco-input {
-  width:100%; padding:7px 10px 7px 30px;
+  width:100%; padding:6px 8px 6px 26px;
   background:var(--surface2); border:1px solid var(--border2);
   border-radius:8px; color:var(--text); font-size:13px; font-family:inherit;
   outline:none; transition:border-color .15s;
   text-align:right; font-weight:700;
 }
+.preco-input.custo-input { color:var(--orange); }
 .preco-input:focus { border-color:var(--accent); }
+
+/* Coluna margem */
+.margem-box {
+  text-align:right; padding:4px 8px; border-radius:7px;
+  font-size:13px; font-weight:800; transition:all .2s;
+  border:1px solid transparent;
+}
+.margem-pos { color:var(--green);  background:rgba(34,197,94,.08);  border-color:rgba(34,197,94,.15); }
+.margem-neg { color:var(--red);    background:rgba(239,68,68,.08);   border-color:rgba(239,68,68,.15); }
+.margem-zer { color:var(--text3);  background:var(--surface2);       border-color:var(--border); }
 
 .info-banner {
   background:rgba(99,102,241,.07); border:1px solid rgba(99,102,241,.15);
@@ -49,17 +66,26 @@
   margin-bottom:20px; display:flex; align-items:flex-start; gap:10px;
 }
 .info-banner .icon { font-size:18px; flex-shrink:0; margin-top:1px; }
+.admin-badge {
+  display:inline-flex; align-items:center; gap:6px;
+  background:rgba(239,68,68,.1); border:1px solid rgba(239,68,68,.2);
+  border-radius:8px; padding:6px 14px; font-size:12px; color:var(--red);
+  font-weight:600; margin-bottom:16px;
+}
 {% endblock %}
 
 {% block content %}
 
+<div class="admin-badge">
+  🔒 Área Restrita — Administrador · <a href="/despachante/logout" style="color:var(--text3);text-decoration:none;font-size:11px;margin-left:4px;">Sair</a>
+</div>
+
 <div class="info-banner">
   <span class="icon">💡</span>
   <div>
-    <strong>Como funciona:</strong> estes são seus preços padrão de honorários por serviço.
-    Ao criar uma nova O.S. e selecionar o tipo de serviço, o campo "Honorários" é preenchido
-    automaticamente com o valor cadastrado aqui. Você pode ajustar na hora se precisar.
-    Os preços não afetam O.S. já criadas.
+    <strong>Como funciona:</strong>
+    <strong style="color:var(--text);">Honorários</strong> = o que o cliente paga ao despachante por aquele serviço. É preenchido automaticamente ao criar uma O.S.<br>
+    <strong style="color:var(--orange);">Custo/Taxa</strong> = o que você paga para realizar o serviço (taxas DETRAN, cartório, etc). Preenchido automaticamente no campo "Custos/Taxas" da O.S.
   </div>
 </div>
 
@@ -73,24 +99,53 @@
         <span style="font-size:11px;color:var(--text3);font-weight:400;margin-left:4px;">
           ({{ grupo['items'] | length }} serviços)
         </span>
+        <div class="grupo-head-cols">
+          <span class="grupo-head-col">Honorários</span>
+          <span class="grupo-head-col" style="color:var(--orange);">Custo/Taxa</span>
+          <span class="grupo-head-col" style="color:var(--green);width:110px;">Margem</span>
+        </div>
       </div>
       <div class="grupo-body">
         {% for svc_key, svc_nome in grupo['items'].items() %}
-        <div class="preco-row">
+        {% set hon = precos.get(svc_key, 0) or 0 %}
+        {% set cus = custos.get(svc_key, 0) or 0 %}
+        {% set mg  = hon - cus %}
+        <div class="preco-row" data-key="{{ svc_key }}">
           <label class="preco-name" for="p_{{ svc_key }}">{{ svc_nome }}</label>
+          <!-- Honorários -->
           <div class="preco-input-wrap">
             <span class="preco-prefix">R$</span>
             <input
               id="p_{{ svc_key }}"
               name="preco_{{ svc_key }}"
-              class="preco-input"
-              type="number"
-              step="0.01"
-              min="0"
-              max="99999"
-              value="{{ '%.2f'|format(precos.get(svc_key, 0)) if precos.get(svc_key) else '' }}"
+              class="preco-input hon-input"
+              data-key="{{ svc_key }}"
+              type="number" step="0.01" min="0" max="99999"
+              value="{{ '%.2f'|format(hon) if hon else '' }}"
               placeholder="0.00"
             >
+          </div>
+          <!-- Custo de Produção -->
+          <div class="preco-input-wrap">
+            <span class="preco-prefix" style="color:var(--orange);">R$</span>
+            <input
+              id="c_{{ svc_key }}"
+              name="custo_{{ svc_key }}"
+              class="preco-input custo-input cus-input"
+              data-key="{{ svc_key }}"
+              type="number" step="0.01" min="0" max="99999"
+              value="{{ '%.2f'|format(cus) if cus else '' }}"
+              placeholder="0.00"
+            >
+          </div>
+          <!-- Margem líquida -->
+          <div class="margem-box {% if mg > 0 %}margem-pos{% elif mg < 0 %}margem-neg{% else %}margem-zer{% endif %}"
+               id="mg_{{ svc_key }}">
+            {% if hon or cus %}
+              R$ {{ '%.0f'|format(mg) }}
+            {% else %}
+              —
+            {% endif %}
           </div>
         </div>
         {% endfor %}
@@ -111,20 +166,38 @@
 
 {% block extra_script %}
 <script>
-// Preços padrão do sistema (fallback)
-const PRECOS_PADRAO = {{ precos | tojson }};
-
 function resetarPrecos() {
-  if (!confirm('Restaurar todos os preços para os valores padrão do sistema?')) return;
-  // Zera todos os campos — o servidor vai usar os padrões
+  if (!confirm('Restaurar todos os preços e custos para os valores padrão?')) return;
   document.querySelectorAll('.preco-input').forEach(el => el.value = '');
   document.getElementById('form-precos').submit();
 }
 
-// Highlight campos alterados
-document.querySelectorAll('.preco-input').forEach(el => {
+function calcMargem(key) {
+  const hon = parseFloat(document.getElementById('p_' + key)?.value) || 0;
+  const cus = parseFloat(document.getElementById('c_' + key)?.value) || 0;
+  const mg  = hon - cus;
+  const box = document.getElementById('mg_' + key);
+  if (!box) return;
+
+  if (!hon && !cus) {
+    box.textContent = '—';
+    box.className = 'margem-box margem-zer';
+    return;
+  }
+
+  box.textContent = 'R$ ' + mg.toLocaleString('pt-BR', {minimumFractionDigits:0, maximumFractionDigits:0});
+
+  if (mg > 0)      box.className = 'margem-box margem-pos';
+  else if (mg < 0) box.className = 'margem-box margem-neg';
+  else             box.className = 'margem-box margem-zer';
+}
+
+// Listeners em todos os campos
+document.querySelectorAll('.hon-input, .cus-input').forEach(el => {
+  const key = el.dataset.key;
   el.addEventListener('input', function() {
     this.style.borderColor = 'var(--accent)';
+    calcMargem(key);
   });
 });
 </script>

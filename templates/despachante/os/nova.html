@@ -932,8 +932,9 @@ function selecionarServico(key, label, grupoLabel, grupoIcon) {
   document.getElementById('servico-display').style.borderColor = 'var(--green)';
   fecharServicoPicker();
 
-  // Auto-fill honorários com preço padrão (só se campo estiver vazio)
+  // Auto-fill honorários e custos com preço padrão (só se campos estiverem vazios)
   const honorariosEl = document.querySelector('[name="honorarios"]');
+  const custosEl     = document.querySelector('[name="custos"]');
   if (honorariosEl && (!honorariosEl.value || parseFloat(honorariosEl.value) === 0)) {
     fetch('/despachante/api/preco/' + key)
       .then(r => r.json())
@@ -942,6 +943,13 @@ function selecionarServico(key, label, grupoLabel, grupoIcon) {
           honorariosEl.value = data.preco.toFixed(2);
           honorariosEl.style.borderColor = 'var(--accent)';
           setTimeout(() => honorariosEl.style.borderColor = '', 2000);
+        }
+        if (custosEl && data.custo && data.custo > 0) {
+          custosEl.value = data.custo.toFixed(2);
+          custosEl.style.borderColor = 'var(--orange)';
+          setTimeout(() => custosEl.style.borderColor = '', 2000);
+        }
+        if (data.preco && data.preco > 0) {
           calcTotal();
 
           // Mostrar toast informativo

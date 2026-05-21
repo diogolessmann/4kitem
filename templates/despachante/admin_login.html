@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Área Admin · Lessmann</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #111; color: #F0EFE9; font-family: 'Inter', sans-serif;
+      min-height: 100vh; display: flex; align-items: center; justify-content: center;
+    }
+    .box {
+      background: #1e1e1e; border: 1px solid rgba(255,255,255,.08);
+      border-radius: 16px; padding: 36px 32px; width: 100%; max-width: 380px;
+      box-shadow: 0 20px 60px rgba(0,0,0,.4);
+    }
+    .lock { font-size: 40px; text-align: center; margin-bottom: 16px; }
+    h1 { font-size: 20px; font-weight: 800; text-align: center; margin-bottom: 6px; }
+    .sub {
+      font-size: 12px; color: #9E9B93; text-align: center; margin-bottom: 28px;
+      line-height: 1.6;
+    }
+    label { display: block; font-size: 12px; font-weight: 600; color: #9E9B93; margin-bottom: 6px; }
+    input[type=password] {
+      width: 100%; padding: 10px 14px;
+      background: #252525; border: 1px solid rgba(255,255,255,.11);
+      border-radius: 8px; color: #F0EFE9; font-size: 15px;
+      font-family: inherit; outline: none; transition: border-color .15s;
+      letter-spacing: 3px;
+    }
+    input[type=password]:focus { border-color: #6366F1; }
+    .btn {
+      width: 100%; padding: 11px; border-radius: 8px; border: none;
+      background: #6366F1; color: #fff; font-size: 14px; font-weight: 700;
+      cursor: pointer; margin-top: 16px; font-family: inherit; transition: opacity .15s;
+    }
+    .btn:hover { opacity: .9; }
+    .erro {
+      background: rgba(239,68,68,.1); border: 1px solid rgba(239,68,68,.25);
+      border-radius: 8px; padding: 10px 14px; font-size: 13px; color: #fca5a5;
+      margin-bottom: 16px; text-align: center;
+    }
+    .back {
+      display: block; text-align: center; margin-top: 16px;
+      font-size: 12px; color: #5E5C56; text-decoration: none;
+    }
+    .back:hover { color: #9E9B93; }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <div class="lock">🔒</div>
+    <h1>Área Restrita</h1>
+    <p class="sub">Esta seção requer a senha de administrador.<br>Somente o responsável pelo escritório tem acesso.</p>
+
+    {% if erro %}
+    <div class="erro">{{ erro }}</div>
+    {% endif %}
+
+    <form method="post" action="{{ url_for('desp_admin_login') }}?next={{ next | urlencode }}">
+      <input type="hidden" name="next" value="{{ next }}">
+      <label for="senha">Senha de Administrador</label>
+      <input type="password" id="senha" name="senha" autofocus placeholder="••••••••••••">
+      <button type="submit" class="btn">🔓 Entrar na Área Admin</button>
+    </form>
+    <a href="/despachante/" class="back">← Voltar ao sistema</a>
+  </div>
+</body>
+</html>

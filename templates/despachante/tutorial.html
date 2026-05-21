@@ -1,0 +1,407 @@
+{% extends "despachante/base.html" %}
+{% block title %}Tutorial · Lessmann{% endblock %}
+{% block topbar_title %}📖 Tutorial do Sistema{% endblock %}
+{% block topbar_actions %}
+  <a href="{{ url_for('desp_dashboard') }}" class="btn btn-ghost btn-sm">← Dashboard</a>
+{% endblock %}
+
+{% block extra_style %}
+.tutorial-wrap { max-width: 860px; }
+.step-section {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 14px; margin-bottom: 20px; overflow: hidden;
+}
+.step-header {
+  padding: 14px 20px; background: var(--surface2); border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 14px;
+}
+.step-num {
+  width: 32px; height: 32px; border-radius: 50%;
+  background: var(--accent); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 800; font-size: 14px; flex-shrink: 0;
+}
+.step-title { font-size: 15px; font-weight: 700; }
+.step-sub { font-size: 12px; color: var(--text3); margin-top: 2px; }
+.step-body { padding: 20px; }
+.step-body p { font-size: 13px; color: var(--text2); line-height: 1.7; margin-bottom: 10px; }
+.step-body p:last-child { margin-bottom: 0; }
+.tip {
+  background: rgba(99,102,241,.07); border: 1px solid rgba(99,102,241,.15);
+  border-radius: 8px; padding: 10px 14px; font-size: 12px; color: var(--text2);
+  margin-top: 10px; display: flex; gap: 8px; align-items: flex-start;
+}
+.tip-icon { flex-shrink: 0; font-size: 14px; }
+.warn-tip {
+  background: rgba(234,179,8,.07); border: 1px solid rgba(234,179,8,.2);
+  border-radius: 8px; padding: 10px 14px; font-size: 12px; color: #fde68a;
+  margin-top: 10px; display: flex; gap: 8px;
+}
+ol.steps { padding-left: 18px; }
+ol.steps li {
+  font-size: 13px; color: var(--text2); line-height: 1.7; margin-bottom: 6px;
+}
+ol.steps li strong { color: var(--text); }
+.feature-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px;
+  margin-top: 10px;
+}
+.feature-card {
+  background: var(--surface2); border: 1px solid var(--border2);
+  border-radius: 10px; padding: 12px 14px;
+}
+.feature-card .fc-icon { font-size: 20px; margin-bottom: 6px; }
+.feature-card .fc-title { font-size: 12px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+.feature-card .fc-desc { font-size: 11px; color: var(--text3); line-height: 1.5; }
+kbd {
+  background: var(--surface3); border: 1px solid var(--border2);
+  border-radius: 4px; padding: 1px 6px; font-size: 11px; font-family: monospace;
+  color: var(--text2);
+}
+.quick-links {
+  display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px;
+}
+.ql {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 7px 14px; border-radius: 8px; font-size: 12px; font-weight: 600;
+  background: var(--surface2); border: 1px solid var(--border2); color: var(--text2);
+  text-decoration: none; transition: all .15s;
+}
+.ql:hover { border-color: var(--accent); color: var(--accent); }
+{% endblock %}
+
+{% block content %}
+<div class="tutorial-wrap">
+
+  <!-- Intro -->
+  <div style="margin-bottom:24px;">
+    <h2 style="font-size:22px;font-weight:800;margin-bottom:8px;">Bem-vindo ao Amigo Despachante 🚗</h2>
+    <p style="font-size:14px;color:var(--text2);line-height:1.6;">
+      Este tutorial cobre 100% do sistema — do primeiro acesso à geração de relatórios.
+      Leia uma vez e tenha o sistema no sangue!
+    </p>
+    <div class="quick-links">
+      <a href="#passo-1"  class="ql">1. Primeira OS</a>
+      <a href="#passo-2"  class="ql">2. Clientes</a>
+      <a href="#passo-3"  class="ql">3. Pagamento</a>
+      <a href="#passo-4"  class="ql">4. Impressão</a>
+      <a href="#passo-5"  class="ql">5. Kanban</a>
+      <a href="#passo-6"  class="ql">6. Financeiro</a>
+      <a href="#passo-7"  class="ql">7. WhatsApp</a>
+      <a href="#passo-8"  class="ql">8. IA / Chat</a>
+      <a href="#passo-9"  class="ql">9. Relatórios</a>
+      <a href="#passo-10" class="ql">10. Backup</a>
+    </div>
+  </div>
+
+  <!-- Passo 1 -->
+  <div class="step-section" id="passo-1">
+    <div class="step-header">
+      <div class="step-num">1</div>
+      <div>
+        <div class="step-title">Criando sua primeira Ordem de Serviço (O.S.)</div>
+        <div class="step-sub">O coração do sistema — tudo começa aqui</div>
+      </div>
+    </div>
+    <div class="step-body">
+      <ol class="steps">
+        <li>No menu lateral, clique em <strong>➕ Nova O.S.</strong></li>
+        <li><strong>Preencher com Print (OCR):</strong> se você tem um print da notificação DETRAN ou do sistema do cliente, clique em "📸 Preencher com Print". O sistema usa IA para extrair automaticamente placa, RENAVAM, nome do cliente e mais. <em>Economiza 2 minutos por OS.</em></li>
+        <li><strong>Buscar cliente existente:</strong> se o cliente já está cadastrado, use o campo de busca por CPF ou nome. Os dados são preenchidos automaticamente.</li>
+        <li>Selecione o <strong>Tipo de Serviço</strong> (licenciamento, transferência, etc.). O campo de Honorários é preenchido automaticamente com base na sua Tabela de Preços.</li>
+        <li>Informe o <strong>valor Pago</strong> caso o cliente já pagou na hora. Se não pagou, deixe em 0.</li>
+        <li>Clique em <strong>💾 Criar O.S.</strong> — o sistema abre automaticamente o protocolo para impressão (3 vias).</li>
+      </ol>
+      <div class="tip">
+        <span class="tip-icon">💡</span>
+        <span>Use <kbd>Ctrl + K</kbd> em qualquer tela para abrir a busca global — encontre clientes, placas e OS em segundos.</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Passo 2 -->
+  <div class="step-section" id="passo-2">
+    <div class="step-header">
+      <div class="step-num">2</div>
+      <div>
+        <div class="step-title">Gerenciando Clientes</div>
+        <div class="step-sub">Histórico completo por CPF/CNPJ</div>
+      </div>
+    </div>
+    <div class="step-body">
+      <ol class="steps">
+        <li>Acesse <strong>👥 Clientes</strong> no menu. Veja todos os clientes cadastrados com nome, CPF e última OS.</li>
+        <li>Clique no nome do cliente para ver o <strong>perfil completo</strong>: todas as OS, veículos, total pago e pendências.</li>
+        <li><strong>Importação em massa:</strong> se você tem uma planilha do sistema antigo, clique em "📥 Importar CSV". O sistema aceita Nome, CPF, Telefone, E-mail, Endereço.</li>
+        <li>Cada cliente tem um botão direto de <strong>WhatsApp</strong> para contato rápido.</li>
+      </ol>
+      <div class="tip">
+        <span class="tip-icon">💡</span>
+        <span>Ao criar uma OS, o sistema detecta automaticamente se o CPF já está cadastrado e preenche todos os dados do cliente — nunca precisa digitar duas vezes.</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Passo 3 -->
+  <div class="step-section" id="passo-3">
+    <div class="step-header">
+      <div class="step-num">3</div>
+      <div>
+        <div class="step-title">Pagamento e Parcelamento</div>
+        <div class="step-sub">Controle financeiro por OS</div>
+      </div>
+    </div>
+    <div class="step-body">
+      <ol class="steps">
+        <li>Dentro de uma OS, vá até o bloco <strong>💳 Pagamento</strong> (coluna direita).</li>
+        <li>Clique em <strong>⚙️ Configurar</strong> e escolha o número de parcelas (1x, 2x, 3x… até 12x).</li>
+        <li>Defina o vencimento da 1ª parcela — as demais são geradas automaticamente (mensal).</li>
+        <li>Quando o cliente pagar, clique em <strong>✓ Dar Baixa</strong> na parcela correspondente. Informe a forma de pagamento (PIX, Dinheiro, Cartão…).</li>
+        <li>O sistema abre automaticamente o <strong>🧾 Recibo</strong> para impressão ao dar baixa.</li>
+        <li>Para estornar um pagamento errado, clique no botão <strong>↩</strong> ao lado do recibo.</li>
+      </ol>
+      <div class="warn-tip">
+        <span>⚠️</span>
+        <span>O campo <strong>Pago</strong> na criação da OS é para pagamento imediato à vista. Para parcelamento, configure depois pelo botão "⚙️ Configurar".</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Passo 4 -->
+  <div class="step-section" id="passo-4">
+    <div class="step-header">
+      <div class="step-num">4</div>
+      <div>
+        <div class="step-title">Impressão de Documentos</div>
+        <div class="step-sub">Protocolo, Procuração e Requerimento em um clique</div>
+      </div>
+    </div>
+    <div class="step-body">
+      <p>Dentro de qualquer OS, no bloco <strong>🖨️ Documentos para Impressão</strong>:</p>
+      <div class="feature-grid">
+        <div class="feature-card">
+          <div class="fc-icon">📋</div>
+          <div class="fc-title">Protocolo (3 vias)</div>
+          <div class="fc-desc">Via do Despachante · Via do Cliente · Via do DETRAN. Impressão automática ao criar a OS.</div>
+        </div>
+        <div class="feature-card">
+          <div class="fc-icon">📝</div>
+          <div class="fc-title">Procuração Particular</div>
+          <div class="fc-desc">2 vias assinadas pelo cliente autorizando o despachante a representá-lo.</div>
+        </div>
+        <div class="feature-card">
+          <div class="fc-icon">📄</div>
+          <div class="fc-title">Requerimento DETRAN</div>
+          <div class="fc-desc">Formulário oficial pré-preenchido. Pode personalizar o texto na edição da OS.</div>
+        </div>
+        <div class="feature-card">
+          <div class="fc-icon">🧾</div>
+          <div class="fc-title">Recibo de Pagamento</div>
+          <div class="fc-desc">Gerado automaticamente ao dar baixa em uma parcela.</div>
+        </div>
+      </div>
+      <div class="tip" style="margin-top:14px;">
+        <span class="tip-icon">🖨️</span>
+        <span>Todos os documentos abrem em nova aba prontos para imprimir. Use <kbd>Ctrl + P</kbd> ou clique no botão de impressão. Guarde a via do DETRAN por 5 anos.</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Passo 5 -->
+  <div class="step-section" id="passo-5">
+    <div class="step-header">
+      <div class="step-num">5</div>
+      <div>
+        <div class="step-title">Kanban — Visão Geral das OS</div>
+        <div class="step-sub">Arraste e solte para mudar status</div>
+      </div>
+    </div>
+    <div class="step-body">
+      <ol class="steps">
+        <li>Acesse <strong>🗂️ Kanban</strong> no menu. Veja todas as OS organizadas por coluna: <em>Abertas → Em Andamento → Concluídas → Canceladas</em>.</li>
+        <li><strong>Arraste um card</strong> de uma coluna para outra para mudar o status diretamente — sem abrir a OS.</li>
+        <li>Cada card mostra: placa, cliente, tipo de serviço e situação financeira (quitado ou pendente com valor).</li>
+        <li>Use o Kanban como painel de operação diária — o que está para fazer hoje está em "Abertas".</li>
+      </ol>
+      <div class="tip">
+        <span class="tip-icon">💡</span>
+        <span>O número vermelho no dashboard indica OS paradas há mais de 7 dias + parcelas vencidas. Confira diariamente!</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Passo 6 -->
+  <div class="step-section" id="passo-6">
+    <div class="step-header">
+      <div class="step-num">6</div>
+      <div>
+        <div class="step-title">Financeiro</div>
+        <div class="step-sub">Faturamento, recebíveis e gráficos</div>
+      </div>
+    </div>
+    <div class="step-body">
+      <ol class="steps">
+        <li>Acesse <strong>💰 Financeiro</strong> no menu para uma visão geral do escritório.</li>
+        <li><strong>Faturamento por mês:</strong> gráfico de barras dos últimos 12 meses.</li>
+        <li><strong>Por tipo de serviço:</strong> quais serviços mais faturam no escritório.</li>
+        <li><strong>Por forma de pagamento:</strong> quanto entrou de PIX, dinheiro, cartão etc.</li>
+        <li><strong>OS pendentes:</strong> lista de ordens com saldo em aberto — para cobrar.</li>
+        <li><strong>Parcelas vencidas:</strong> parcelas que passaram do vencimento sem pagamento.</li>
+      </ol>
+    </div>
+  </div>
+
+  <!-- Passo 7 -->
+  <div class="step-section" id="passo-7">
+    <div class="step-header">
+      <div class="step-num">7</div>
+      <div>
+        <div class="step-title">WhatsApp e Portal do Cliente</div>
+        <div class="step-sub">Comunicação profissional com um clique</div>
+      </div>
+    </div>
+    <div class="step-body">
+      <ol class="steps">
+        <li>Dentro de qualquer OS com telefone cadastrado, o bloco <strong>💬 WhatsApp</strong> aparece na coluna direita.</li>
+        <li>Clique em <strong>✅ OS Pronta</strong> para abrir o WhatsApp Web já com a mensagem preenchida avisando o cliente.</li>
+        <li>Mensagens disponíveis: <em>OS Pronta · OS Aberta · Aguardando Documentos · Cobrança</em>.</li>
+        <li>Edite os templates em <strong>💬 Templates WhatsApp</strong> no menu — personalize com o nome do escritório.</li>
+        <li><strong>Portal do Cliente:</strong> clique em "🔗 Gerar link do cliente" para criar um link exclusivo que o cliente acessa pelo celular e vê o status da OS, documentos pendentes e saldo — sem precisar de login.</li>
+        <li>Envie o link pelo WhatsApp com um clique.</li>
+      </ol>
+    </div>
+  </div>
+
+  <!-- Passo 8 -->
+  <div class="step-section" id="passo-8">
+    <div class="step-header">
+      <div class="step-num">8</div>
+      <div>
+        <div class="step-title">IA Amigo — Assistente Virtual</div>
+        <div class="step-sub">Tire dúvidas do DETRAN-SC com IA</div>
+      </div>
+    </div>
+    <div class="step-body">
+      <ol class="steps">
+        <li>Acesse <strong>🤖 IA Amigo</strong> no menu.</li>
+        <li>Faça perguntas sobre <em>documentos necessários, prazos, procedimentos do DETRAN-SC, CNH, transferência, inventário</em> etc.</li>
+        <li>A IA usa uma base de conhecimento específica para despachantes de SC — respostas focadas no seu dia a dia.</li>
+        <li>Alimente a <strong>📚 Base de Conhecimento</strong> com circulares, portarias e resoluções do DETRAN-SC para que a IA fique cada vez mais precisa.</li>
+      </ol>
+      <div class="warn-tip">
+        <span>⚠️</span>
+        <span>A IA é um assistente de consulta — sempre verifique informações críticas no site do DETRAN-SC antes de orientar o cliente.</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Passo 9 -->
+  <div class="step-section" id="passo-9">
+    <div class="step-header">
+      <div class="step-num">9</div>
+      <div>
+        <div class="step-title">Relatórios</div>
+        <div class="step-sub">Produção, retenção e finais de placa</div>
+      </div>
+    </div>
+    <div class="step-body">
+      <div class="feature-grid">
+        <div class="feature-card">
+          <div class="fc-icon">📊</div>
+          <div class="fc-title">Relatório de Produção</div>
+          <div class="fc-desc">OS criadas por período, por tipo de serviço e por status. Exporta CSV para Excel.</div>
+        </div>
+        <div class="feature-card">
+          <div class="fc-icon">🔄</div>
+          <div class="fc-title">Retenção de Clientes</div>
+          <div class="fc-desc">Clientes que voltaram vs clientes que usaram apenas uma vez — mede a fidelização.</div>
+        </div>
+        <div class="feature-card">
+          <div class="fc-icon">✅</div>
+          <div class="fc-title">Fez / Não Fez</div>
+          <div class="fc-desc">Veículos que licenciaram com você vs os que não renovaram — identifique quem chamar de volta.</div>
+        </div>
+        <div class="feature-card">
+          <div class="fc-icon">📋</div>
+          <div class="fc-title">Finais de Placa</div>
+          <div class="fc-desc">Veja quantos clientes vencem em cada mês por final de placa — planejamento de demanda.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Passo 10 -->
+  <div class="step-section" id="passo-10">
+    <div class="step-header">
+      <div class="step-num">10</div>
+      <div>
+        <div class="step-title">Backup e Segurança</div>
+        <div class="step-sub">Nunca perca seus dados</div>
+      </div>
+    </div>
+    <div class="step-body">
+      <ol class="steps">
+        <li>Acesse <strong>💾 Backup</strong> no rodapé do menu lateral.</li>
+        <li>Clique para baixar um arquivo ZIP com todo o banco de dados do sistema.</li>
+        <li>Guarde o backup no computador, pen drive ou Google Drive.</li>
+        <li><strong>Frequência recomendada:</strong> semanal ou após criar muitas OS.</li>
+        <li>O banco de dados fica salvo no servidor Railway com volume persistente — os dados não são apagados em deploys ou reinicializações.</li>
+      </ol>
+      <div class="tip">
+        <span class="tip-icon">🔒</span>
+        <span>A senha geral de acesso ao sistema (<em>DESP_PASSWORD</em>) é configurada no painel do Railway. A senha de admin (para a Tabela de Preços) é configurada via <em>DESP_ADMIN_PASSWORD</em>.</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Atalhos rápidos -->
+  <div class="step-section">
+    <div class="step-header">
+      <div class="step-num">⚡</div>
+      <div>
+        <div class="step-title">Atalhos e Dicas Rápidas</div>
+        <div class="step-sub">Para usar o sistema no modo avançado</div>
+      </div>
+    </div>
+    <div class="step-body">
+      <div class="feature-grid">
+        <div class="feature-card">
+          <div class="fc-icon">🔍</div>
+          <div class="fc-title"><kbd>Ctrl + K</kbd> — Busca Global</div>
+          <div class="fc-desc">Encontre qualquer cliente, placa ou número de OS de qualquer tela.</div>
+        </div>
+        <div class="feature-card">
+          <div class="fc-icon">📸</div>
+          <div class="fc-title">OCR — Preencher com Print</div>
+          <div class="fc-desc">Cole ou envie um print de tela. A IA extrai placa, RENAVAM, nome e mais.</div>
+        </div>
+        <div class="feature-card">
+          <div class="fc-icon">🖥️</div>
+          <div class="fc-title">Importar Débitos do DETRANET</div>
+          <div class="fc-desc">Print da tela do DETRANET → IA extrai todos os débitos automaticamente.</div>
+        </div>
+        <div class="feature-card">
+          <div class="fc-icon">📱</div>
+          <div class="fc-title">Instalar no Celular (PWA)</div>
+          <div class="fc-desc">No celular, abra o sistema no Chrome e toque em "Adicionar à tela inicial" — funciona como app.</div>
+        </div>
+        <div class="feature-card">
+          <div class="fc-icon">🔑</div>
+          <div class="fc-title">Protocolos RENAVAM</div>
+          <div class="fc-desc">Cadastre os números de protocolo em lote e vincule a cada OS conforme uso.</div>
+        </div>
+        <div class="feature-card">
+          <div class="fc-icon">⚠️</div>
+          <div class="fc-title">Não Licenciados</div>
+          <div class="fc-desc">Lista automática de veículos que não renovaram o licenciamento — base para ação proativa.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="text-align:center;padding:20px;color:var(--text3);font-size:12px;">
+    Sistema Amigo Despachante · Desenvolvido por <a href="/" style="color:var(--accent);text-decoration:none;">4KITEM</a>
+  </div>
+
+</div>
+{% endblock %}

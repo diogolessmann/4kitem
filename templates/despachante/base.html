@@ -355,6 +355,9 @@
       </div>
       <div class="nav-section">
         <div class="nav-label">Sistema</div>
+        <a href="{{ url_for('desp_tutorial') }}" class="nav-link {% if request.endpoint == 'desp_tutorial' %}active{% endif %}">
+          <span class="icon">📖</span> Tutorial
+        </a>
         <a href="{{ url_for('desp_backup') }}" class="nav-link" title="Baixar backup ZIP completo">
           <span class="icon">💾</span> Backup
         </a>

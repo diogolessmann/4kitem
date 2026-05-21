@@ -1521,6 +1521,30 @@ def set_tabela_precos(precos: dict):
     """Salva tabela de preços (apenas os personalizados sobre o padrão)."""
     set_config("tabela_precos", _json_db.dumps(precos, ensure_ascii=False))
 
+# ── Custo de Produção / Taxas por serviço ───────────────────────────────────
+# Valores padrão de custo/taxa para cada serviço (o que o despachante paga)
+CUSTOS_PADRAO: dict = {k: 0.0 for k in PRECOS_PADRAO}
+
+def get_tabela_custos() -> dict:
+    """Retorna dict {servico: custo} — custo de produção/taxa por serviço."""
+    raw = get_config("tabela_custos")
+    if raw:
+        try:
+            salvos = _json_db.loads(raw)
+            merged = {**CUSTOS_PADRAO, **salvos}
+            return merged
+        except Exception:
+            pass
+    return dict(CUSTOS_PADRAO)
+
+def set_tabela_custos(custos: dict):
+    """Salva tabela de custos de produção."""
+    set_config("tabela_custos", _json_db.dumps(custos, ensure_ascii=False))
+
+def get_custo_servico(servico: str) -> float:
+    """Retorna o custo de produção de um serviço específico."""
+    return get_tabela_custos().get(servico, 0.0)
+
 # ── Protocolos RENAVAM ───────────────────────────────────────────────────────
 
 def listar_protocolos(lote: str = None, usado: bool = None, busca: str = None) -> list:

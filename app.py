@@ -3002,6 +3002,9 @@ from desp_db import (
     get_tabela_precos as desp_get_precos,
     set_tabela_precos as desp_set_precos,
     get_preco_servico as desp_get_preco,
+    get_tabela_custos as desp_get_custos,
+    set_tabela_custos as desp_set_custos,
+    get_custo_servico as desp_get_custo,
     # Relatório de Produção
     relatorio_producao as desp_rel_producao,
     # Relatório Fez / Não Fez
@@ -3054,7 +3057,8 @@ DESP_CONFIG = {
     "whatsapp":     os.environ.get("DESP_WHATSAPP",   "47991011351"),
     "whatsapp_fmt": "(47) 99101-1351",
 }
-DESP_PASSWORD = os.environ.get("DESP_PASSWORD", "lessmann2026")
+DESP_PASSWORD       = os.environ.get("DESP_PASSWORD",       "lessmann2026")
+DESP_ADMIN_PASSWORD = os.environ.get("DESP_ADMIN_PASSWORD", "admin.lessmann2026")
 
 
 def _desp_login_required(f):
@@ -3062,6 +3066,18 @@ def _desp_login_required(f):
     def decorated(*args, **kwargs):
         if not session.get('desp_logged'):
             return redirect('/despachante/login')
+        return f(*args, **kwargs)
+    return decorated
+
+
+def _desp_admin_required(f):
+    """Requer senha de administrador (separada da senha de acesso geral)."""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not session.get('desp_logged'):
+            return redirect('/despachante/login')
+        if not session.get('desp_is_admin'):
+            return redirect(url_for('desp_admin_login', next=request.path))
         return f(*args, **kwargs)
     return decorated
 
@@ -3103,7 +3119,29 @@ def desp_login():
 @app.route('/despachante/logout')
 def desp_logout():
     session.pop('desp_logged', None)
+    session.pop('desp_is_admin', None)
     return redirect('/despachante/login')
+
+
+# ── Admin Login (para áreas restritas como Tabela de Preços) ──────────────────
+@app.route('/despachante/admin-login', methods=['GET', 'POST'])
+@_desp_login_required
+def desp_admin_login():
+    erro = None
+    next_url = request.args.get('next') or request.form.get('next') or '/despachante/precos'
+    if request.method == 'POST':
+        if request.form.get('senha') == DESP_ADMIN_PASSWORD:
+            session['desp_is_admin'] = True
+            return redirect(next_url)
+        erro = 'Senha de administrador incorreta.'
+    return render_template('despachante/admin_login.html', erro=erro, next=next_url)
+
+
+# ── Tutorial ──────────────────────────────────────────────────────────────────
+@app.route('/despachante/tutorial')
+@_desp_login_required
+def desp_tutorial():
+    return desp_render('tutorial.html')
 
 
 # ── Dashboard ─────────────────────────────────────────────────────────────────
@@ -3177,7 +3215,8 @@ def desp_nova_os():
             'situacao_pag': f.get('situacao_pag', ''),
         }
         os_id = desp_criar_os(dados_os)
-        return redirect(url_for('desp_detalhe_os', id=os_id))
+        # Redireciona direto para o protocolo de impressão (3 vias)
+        return redirect(url_for('desp_print_protocolo', os_id=os_id, auto='1'))
     placa_pre = request.args.get('placa', '')
     cpf_pre   = request.args.get('cpf', '').strip()
     veiculo   = desp_buscar_placa(placa_pre) if placa_pre else None
@@ -3605,25 +3644,34 @@ def desp_financeiro():
 
 
 @app.route('/despachante/precos', methods=['GET', 'POST'])
-@_desp_login_required
+@_desp_admin_required
 def desp_precos():
-    """Tabela de preços por serviço — visualizar e editar."""
+    """Tabela de preços por serviço — restrita ao admin. Salva honorários + custo."""
     if request.method == 'POST':
-        tabela = {}
+        tabela_precos = {}
+        tabela_custos = {}
         for svc in DESP_SERVICOS:
-            val = request.form.get(f'preco_{svc}', '').strip()
-            if val:
+            val_p = request.form.get(f'preco_{svc}', '').strip()
+            val_c = request.form.get(f'custo_{svc}', '').strip()
+            if val_p:
                 try:
-                    tabela[svc] = float(val.replace(',', '.'))
+                    tabela_precos[svc] = float(val_p.replace(',', '.'))
                 except ValueError:
                     pass
-        desp_set_precos(tabela)
+            if val_c:
+                try:
+                    tabela_custos[svc] = float(val_c.replace(',', '.'))
+                except ValueError:
+                    pass
+        desp_set_precos(tabela_precos)
+        desp_set_custos(tabela_custos)
         from flask import flash
         flash('Tabela de preços salva com sucesso!', 'ok')
         return redirect(url_for('desp_precos'))
     precos = desp_get_precos()
-    return desp_render('precos.html', precos=precos, servicos=DESP_SERVICOS,
-                       servicos_grupos=DESP_SERVICOS_GRUPOS)
+    custos = desp_get_custos()
+    return desp_render('precos.html', precos=precos, custos=custos,
+                       servicos=DESP_SERVICOS, servicos_grupos=DESP_SERVICOS_GRUPOS)
 
 
 @app.route('/despachante/api/preco/<servico>')
@@ -3631,7 +3679,8 @@ def desp_precos():
 def desp_api_preco(servico):
     """Retorna o preço padrão de um serviço para auto-fill na nova OS."""
     valor = desp_get_preco(servico)
-    return jsonify({'servico': servico, 'preco': valor})
+    custo = desp_get_custo(servico)
+    return jsonify({'servico': servico, 'preco': valor, 'custo': custo})
 
 
 @app.route('/despachante/relatorio')
