@@ -30,10 +30,15 @@
       background: rgba(8,8,15,0.85); backdrop-filter: blur(20px);
       border-bottom: 1px solid var(--border);
     }
-    .nav-logo { font-size: 18px; font-weight: 900; letter-spacing: -0.5px; text-decoration: none; color: var(--text); }
-    .nav-logo span { background: linear-gradient(135deg, var(--accent), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
-    .nav-back { font-size: 13px; color: var(--text2); text-decoration: none; display: flex; align-items: center; gap: 6px; transition: color .2s; }
-    .nav-back:hover { color: var(--text); }
+    .nav-logo { font-size: 18px; font-weight: 900; letter-spacing: -0.5px; text-decoration: none; color: var(--text); display: flex; align-items: center; gap: 10px; }
+    .nav-logo-icon { width: 34px; height: 34px; border-radius: 8px; overflow: hidden; flex-shrink: 0; }
+    .nav-logo-icon img { width: 100%; height: 100%; object-fit: cover; border-radius: 8px; }
+    .nav-logo span { color: var(--accent3); }
+    .nav-back { font-size: 13px; color: var(--text2); text-decoration: none; display: flex; align-items: center; gap: 6px; transition: color .2s; padding: 8px 18px; border-radius: 100px; border: 1px solid rgba(255,255,255,0.12); }
+    .nav-back:hover { color: var(--text); border-color: var(--accent); }
+    .btn-nav-cta { padding: 8px 20px; border-radius: 100px; background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #fff; font-size: 13px; font-weight: 700; text-decoration: none; transition: .2s; }
+    .btn-nav-cta:hover { opacity: .9; }
+    .nav-links { display: flex; align-items: center; gap: 10px; }
 
     /* HERO */
     .hero-wrapper {
@@ -420,8 +425,17 @@
   <div class="orb orb-2"></div>
 
   <nav>
-    <a href="/" class="nav-logo"><span>4K</span>ITEM</a>
-    <a href="/" class="nav-back">← Voltar à plataforma</a>
+    <a href="/kids" class="nav-logo">
+      <div class="nav-logo-icon">
+        <img src="/static/img/kidscurator/logo.png" alt="KidsCurator"
+             onerror="this.parentElement.style.background='linear-gradient(135deg,#6366f1,#8b5cf6)';this.style.display='none';this.parentElement.insertAdjacentText('beforeend','📺');">
+      </div>
+      <span>Kids</span>Curator
+    </a>
+    <div class="nav-links">
+      <a href="/" class="nav-back">← 4KITEM</a>
+      <a href="/kids/cadastro" class="btn-nav-cta">🚀 Começar grátis</a>
+    </div>
   </nav>
 
   <!-- HERO -->
