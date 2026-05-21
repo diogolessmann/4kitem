@@ -1876,6 +1876,40 @@ def bau_ajuda():
 
 # ── QR Code ───────────────────────────────────────────────────────────────────
 
+def _evo_delete_instance(evo_url, instance, headers):
+    """Deleta instância da Evolution API tentando ambos os formatos de URL (v1/v2)."""
+    import requests as _req
+    for url in [
+        f"{evo_url}/instance/delete/{instance}",   # formato v1
+        f"{evo_url}/instance/{instance}/delete",    # formato v2
+    ]:
+        try:
+            _req.delete(url, headers=headers, timeout=8)
+        except Exception:
+            pass
+
+
+def _evo_extract_qr(data):
+    """Procura QR base64 em vários formatos de resposta da Evolution API v1/v2."""
+    if not isinstance(data, dict):
+        return ''
+    # Nível raiz: {"base64": "..."} ou {"qrcode": "..."}
+    qr = data.get('base64') or data.get('qrcode', '')
+    if isinstance(qr, dict):
+        qr = qr.get('base64', '') or qr.get('code', '')
+    if not qr:
+        # Aninhado em 'instance' ou 'qrcode': {"instance": {"base64": ...}}
+        for key in ('instance', 'qrcode'):
+            inner = data.get(key, {})
+            if isinstance(inner, dict):
+                qr = inner.get('base64', '') or inner.get('qrcode', '')
+                if isinstance(qr, dict):
+                    qr = qr.get('base64', '')
+                if qr:
+                    break
+    return qr or ''
+
+
 @app.route('/mandazap/numeros/<int:num_id>/qr')
 def mz_qr(num_id):
     user_id = session.get('mz_user_id')
@@ -1888,61 +1922,62 @@ def mz_qr(num_id):
     conn.close()
     if not num:
         return jsonify({'erro': 'Número não encontrado'}), 404
-    # Tenta buscar QR da Evolution API
-    evo_url = os.environ.get('EVOLUTION_API_URL', '')
+
+    evo_url = os.environ.get('EVOLUTION_API_URL', '').rstrip('/')
     evo_key = os.environ.get('EVOLUTION_API_KEY', '')
     if not evo_url or not evo_key:
         return jsonify({'erro': 'Evolution API não configurada. Configure EVOLUTION_API_URL e EVOLUTION_API_KEY nas variáveis de ambiente do Railway.'})
+
     try:
         import requests as _req
         instance = f"mz{user_id}n{num_id}"
         headers  = {'apikey': evo_key, 'Content-Type': 'application/json'}
 
-        def _extract_qr(data):
-            """Procura base64 em vários formatos da Evolution API v1/v2."""
-            if isinstance(data, dict):
-                # v2: {"base64": "data:image/png;base64,..."}
-                qr = data.get('base64') or data.get('qrcode', '')
-                if isinstance(qr, dict):
-                    qr = qr.get('base64', '')
-                if not qr:
-                    # aninha dentro de 'instance'
-                    inner = data.get('instance', data.get('qrcode', {}))
-                    if isinstance(inner, dict):
-                        qr = inner.get('base64', '')
-                return qr or ''
-            return ''
-
-        # 1. Força delete da instância antiga (limpa estado preso)
-        for old_name in [instance, f"mz_{user_id}_{num_id}"]:
-            try:
-                _req.delete(f"{evo_url}/instance/{old_name}/delete", headers=headers, timeout=8)
-            except Exception:
-                pass
-
-        time.sleep(1)
-
-        # 2. Cria instância nova limpa
-        cr     = _req.post(f"{evo_url}/instance/create", headers=headers,
-                           json={'instanceName': instance, 'qrcode': True,
-                                 'integration': 'WHATSAPP-BAILEYS'}, timeout=20)
-        cr_data = cr.json() if cr.content else {}
-        qr = _extract_qr(cr_data)
-
-        # 3. Se não veio no create, chama /connect
-        if not qr:
-            time.sleep(2)
-            r2 = _req.get(f"{evo_url}/instance/connect/{instance}", headers=headers, timeout=15)
-            qr = _extract_qr(r2.json() if r2.content else {})
-
-        if qr:
+        def _return_qr(qr):
             if not qr.startswith('data:'):
                 qr = 'data:image/png;base64,' + qr
             return jsonify({'qr': qr})
 
+        # ── Passo 1: tenta QR na instância existente (rápido, sem delete) ─────
+        try:
+            r_conn = _req.get(f"{evo_url}/instance/connect/{instance}",
+                              headers=headers, timeout=12)
+            qr = _evo_extract_qr(r_conn.json() if r_conn.content else {})
+            if qr:
+                return _return_qr(qr)
+        except Exception:
+            pass
+
+        # ── Passo 2: instância não existe ou está travada — reset completo ────
+        # Deleta via ambos os formatos de URL (v1 e v2 da Evolution API)
+        _evo_delete_instance(evo_url, instance, headers)
+        # Também limpa nome legado se existir
+        _evo_delete_instance(evo_url, f"mz_{user_id}_{num_id}", headers)
+        time.sleep(1.5)
+
+        # Cria instância limpa
+        cr      = _req.post(f"{evo_url}/instance/create", headers=headers,
+                            json={'instanceName': instance, 'qrcode': True,
+                                  'integration': 'WHATSAPP-BAILEYS'}, timeout=20)
+        cr_data = cr.json() if cr.content else {}
+        log.info(f"Evo create [{instance}] → HTTP {cr.status_code}: {str(cr_data)[:200]}")
+        qr = _evo_extract_qr(cr_data)
+        if qr:
+            return _return_qr(qr)
+
+        # ── Passo 3: QR ainda não pronto — polling /connect (até 3 tentativas) ─
+        for attempt in range(3):
+            time.sleep(2.5)
+            r2  = _req.get(f"{evo_url}/instance/connect/{instance}",
+                           headers=headers, timeout=15)
+            qr  = _evo_extract_qr(r2.json() if r2.content else {})
+            log.info(f"Evo connect [{instance}] attempt {attempt+1} → {str(r2.status_code)}: {str(r2.text[:150])}")
+            if qr:
+                return _return_qr(qr)
+
         return jsonify({'erro': 'QR Code não disponível ainda. Aguarde 5 segundos e tente novamente.'})
     except Exception as e:
-        log.error(f"QR error: {e}")
+        log.error(f"mz_qr error [{num_id}]: {e}")
         return jsonify({'erro': f'Erro ao conectar com a Evolution API: {str(e)}'})
 
 
@@ -2266,6 +2301,12 @@ def mz_number_delete(nid):
     conn.execute('DELETE FROM mandazap_numbers WHERE id=? AND user_id=?', (nid, user_id))
     conn.commit()
     conn.close()
+    # Limpa instância da Evolution API (não bloqueia se falhar)
+    evo_url = os.environ.get('EVOLUTION_API_URL', '').rstrip('/')
+    evo_key = os.environ.get('EVOLUTION_API_KEY', '')
+    if evo_url and evo_key:
+        headers = {'apikey': evo_key, 'Content-Type': 'application/json'}
+        _evo_delete_instance(evo_url, f"mz{user_id}n{nid}", headers)
     return redirect('/mandazap/painel?section=numeros')
 
 
