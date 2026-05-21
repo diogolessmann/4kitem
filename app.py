@@ -1960,25 +1960,41 @@ def mz_qr(num_id):
                             json={'instanceName': instance, 'qrcode': True,
                                   'integration': 'WHATSAPP-BAILEYS'}, timeout=20)
         cr_data = cr.json() if cr.content else {}
-        log.info(f"Evo create [{instance}] → HTTP {cr.status_code}: {str(cr_data)[:200]}")
+        log.info(f"Evo create [{instance}] HTTP {cr.status_code}: {str(cr_data)[:300]}")
         qr = _evo_extract_qr(cr_data)
         if qr:
             return _return_qr(qr)
 
         # ── Passo 3: QR ainda não pronto — polling /connect (até 3 tentativas) ─
+        last_r2_data = {}
+        last_r2_status = 0
         for attempt in range(3):
             time.sleep(2.5)
             r2  = _req.get(f"{evo_url}/instance/connect/{instance}",
                            headers=headers, timeout=15)
-            qr  = _evo_extract_qr(r2.json() if r2.content else {})
-            log.info(f"Evo connect [{instance}] attempt {attempt+1} → {str(r2.status_code)}: {str(r2.text[:150])}")
+            last_r2_data   = r2.json() if r2.content else {}
+            last_r2_status = r2.status_code
+            qr  = _evo_extract_qr(last_r2_data)
+            log.info(f"Evo connect [{instance}] #{attempt+1} HTTP {r2.status_code}: {str(r2.text[:200])}")
             if qr:
                 return _return_qr(qr)
 
-        return jsonify({'erro': 'QR Code não disponível ainda. Aguarde 5 segundos e tente novamente.'})
+        # Devolve diagnóstico completo na resposta para facilitar debug
+        return jsonify({
+            'erro': 'QR Code não disponível ainda. Aguarde 5 segundos e tente novamente.',
+            'diag': {
+                'instance':     instance,
+                'create_http':  cr.status_code,
+                'create_resp':  str(cr_data)[:400],
+                'connect_http': last_r2_status,
+                'connect_resp': str(last_r2_data)[:400],
+                'evo_url':      (evo_url[:50] + '...') if len(evo_url) > 50 else evo_url,
+            }
+        })
     except Exception as e:
         log.error(f"mz_qr error [{num_id}]: {e}")
-        return jsonify({'erro': f'Erro ao conectar com a Evolution API: {str(e)}'})
+        return jsonify({'erro': f'Erro ao conectar com a Evolution API: {str(e)}',
+                        'diag': {'exception': str(e)}})
 
 
 # ── Check status (polling após QR) ────────────────────────────────────────────

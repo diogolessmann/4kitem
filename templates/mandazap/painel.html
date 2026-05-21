@@ -873,7 +873,14 @@ async function gerarQR(numberId, btn) {
       // Começa polling de status
       _startQRStatusPoll(numberId);
     } else if (d.erro) {
-      wrap.innerHTML = '<div style="font-size:12px;color:var(--red)">⚠️ ' + d.erro + '</div>';
+      let diagHtml = '';
+      if (d.diag) {
+        diagHtml = `<details style="margin-top:8px;font-size:10px;color:var(--text2);text-align:left">
+          <summary style="cursor:pointer;color:var(--text2)">🔍 Detalhes do erro (clique)</summary>
+          <pre style="white-space:pre-wrap;word-break:break-all;background:rgba(0,0,0,.3);padding:8px;border-radius:6px;margin-top:4px;font-size:10px">${JSON.stringify(d.diag, null, 2)}</pre>
+        </details>`;
+      }
+      wrap.innerHTML = '<div style="font-size:12px;color:var(--red)">⚠️ ' + d.erro + '</div>' + diagHtml;
       btn.textContent = '📷 Tentar novamente';
       btn.disabled = false;
     }
