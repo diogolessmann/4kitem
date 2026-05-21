@@ -9,35 +9,47 @@
   *{box-sizing:border-box;margin:0;padding:0}
   body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px}
 
-  .box{background:var(--surface);border:1px solid var(--border);border-radius:24px;padding:36px 32px;width:100%;max-width:520px}
-  .logo{text-align:center;margin-bottom:8px;font-size:24px;font-weight:900;background:linear-gradient(135deg,#e94560,#f5a623);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+  .box{background:var(--surface);border:1px solid var(--border);border-radius:24px;padding:36px 32px;width:100%;max-width:600px}
+
+  /* ── Logo / header ── */
+  .logo-wrap{display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:8px}
+  .logo-img{width:44px;height:44px;border-radius:10px;object-fit:cover}
+  .logo-text{font-size:24px;font-weight:900;background:linear-gradient(135deg,#e94560,#f5a623);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
   .subtitle{text-align:center;color:var(--text2);font-size:13px;margin-bottom:24px}
   .error{background:rgba(233,69,96,.12);border:1px solid rgba(233,69,96,.3);border-radius:10px;padding:12px 16px;color:#ff8099;font-size:13px;margin-bottom:20px}
 
+  /* ── Plan grid: 3 per row ── */
   .plan-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:20px}
+  @media(max-width:480px){.plan-row{grid-template-columns:repeat(2,1fr)}}
   .plan-opt{border:2px solid var(--border);border-radius:12px;padding:12px 8px;text-align:center;cursor:pointer;transition:.2s;background:var(--surface2)}
   .plan-opt:hover{border-color:var(--orange)}
   .plan-opt.selected{border-color:var(--accent);background:rgba(233,69,96,.08)}
   .plan-opt input{display:none}
-  .plan-opt .p-emoji{font-size:20px;margin-bottom:4px}
-  .plan-opt .p-name{font-size:12px;font-weight:700;color:var(--text);margin-bottom:2px}
-  .plan-opt .p-price{font-size:11px;color:var(--text2)}
+  .plan-opt .p-label{font-size:12px;font-weight:700;color:var(--text);margin-bottom:3px;line-height:1.3}
+  .plan-opt .p-price{font-size:11px;color:var(--orange);font-weight:700}
   .plan-opt .p-veh{font-size:10px;color:var(--text2);margin-top:2px}
 
+  /* ── Form sections ── */
   .section-label{font-size:12px;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;font-weight:700;margin:20px 0 12px;display:flex;align-items:center;gap:8px}
   .section-label::before,.section-label::after{content:'';flex:1;height:1px;background:var(--border)}
 
   .form-group{margin-bottom:14px}
   label{display:block;font-size:13px;color:var(--text2);margin-bottom:6px;font-weight:500}
   input,select,textarea{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);padding:10px 14px;font-size:14px;outline:none;transition:.2s;font-family:inherit}
-  input:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(233,69,96,.12)}
+  input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(233,69,96,.12)}
   select option{background:var(--surface2)}
+  textarea{resize:vertical;min-height:100px;line-height:1.5}
   .form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-  @media(max-width:480px){ .form-row{ grid-template-columns:1fr; } }
+  @media(max-width:480px){.form-row{grid-template-columns:1fr}}
 
+  /* ── Vehicle blocks ── */
   .vehicle-block{background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:10px}
   .vehicle-block .v-title{font-size:13px;font-weight:700;color:var(--text2);margin-bottom:10px}
 
+  .plates-hint{font-size:12px;color:var(--text2);margin-bottom:8px;line-height:1.5}
+  .plates-hint code{background:rgba(255,255,255,.06);border-radius:4px;padding:1px 5px;font-family:monospace;font-size:12px;color:var(--text)}
+
+  /* ── Info / Pix notice ── */
   .pix-notice{background:rgba(245,166,35,.08);border:1px solid rgba(245,166,35,.25);border-radius:12px;padding:16px;margin-top:16px;font-size:13px;color:var(--text2);line-height:1.6}
   .pix-notice strong{color:var(--orange)}
 
@@ -47,6 +59,7 @@
   .footer-link{text-align:center;margin-top:20px;font-size:13px;color:var(--text2)}
   .footer-link a{color:var(--accent)}
 
+  /* ── Success state ── */
   .success-box{text-align:center;padding:24px 0}
   .success-icon{font-size:64px;margin-bottom:16px}
   .success-box h2{font-size:24px;font-weight:800;margin-bottom:10px}
@@ -56,7 +69,12 @@
 <body>
 
 <div class="box">
-  <div class="logo">🚨 Alerta SC</div>
+
+  <div class="logo-wrap">
+    <img src="/static/img/alerta/logo.png" alt="Alerta SC" class="logo-img"
+         onerror="this.style.display='none'">
+    <div class="logo-text">Alerta SC</div>
+  </div>
   <div class="subtitle">Monitoramento mensal de CNH e veículo · via WhatsApp</div>
 
   {% if success %}
@@ -80,31 +98,22 @@
 
   <form method="POST" action="/alerta/cadastro" id="alertaForm">
 
+    <!-- ── Plan selector ── -->
     <div class="section-label">Escolha seu plano</div>
     <div class="plan-row">
-      <label class="plan-opt {% if plano == 'basico' %}selected{% endif %}" onclick="selectPlan('basico',this)">
-        <input type="radio" name="plano" value="basico" {% if plano == 'basico' %}checked{% endif %}>
-        <div class="p-emoji">🚗</div>
-        <div class="p-name">Básico</div>
-        <div class="p-price">R$ 19,90/mês</div>
-        <div class="p-veh">1 veículo</div>
+      {% for key, info in plans.items() %}
+      <label class="plan-opt {% if plano == key %}selected{% endif %}" onclick="selectPlan('{{ key }}',this)">
+        <input type="radio" name="plano" value="{{ key }}" {% if plano == key %}checked{% endif %}>
+        <div class="p-label">{{ info.label }}</div>
+        <div class="p-price">{{ info.price }}/mês</div>
+        <div class="p-veh">
+          {% if info.vehicles == 1 %}1 veículo{% else %}até {{ info.vehicles }} veículos{% endif %}
+        </div>
       </label>
-      <label class="plan-opt {% if plano == 'familia' or not plano %}selected{% endif %}" onclick="selectPlan('familia',this)">
-        <input type="radio" name="plano" value="familia" {% if plano == 'familia' or not plano %}checked{% endif %}>
-        <div class="p-emoji">👨‍👩‍👧</div>
-        <div class="p-name">Família</div>
-        <div class="p-price">R$ 34,90/mês</div>
-        <div class="p-veh">até 3 veículos</div>
-      </label>
-      <label class="plan-opt {% if plano == 'frota' %}selected{% endif %}" onclick="selectPlan('frota',this)">
-        <input type="radio" name="plano" value="frota" {% if plano == 'frota' %}checked{% endif %}>
-        <div class="p-emoji">🚛</div>
-        <div class="p-name">Frota</div>
-        <div class="p-price">R$ 89,90/mês</div>
-        <div class="p-veh">até 10 veículos</div>
-      </label>
+      {% endfor %}
     </div>
 
+    <!-- ── Personal data ── -->
     <div class="section-label">Dados pessoais</div>
     <div class="form-row">
       <div class="form-group" style="margin:0">
@@ -125,33 +134,54 @@
       <input type="email" name="email" placeholder="seu@email.com" maxlength="100" value="{{ req_email or '' }}">
     </div>
 
+    <!-- ── Vehicles ── -->
     <div class="section-label">Veículos para monitorar</div>
 
-    <div class="vehicle-block">
-      <div class="v-title">🚗 Veículo 1</div>
-      <div class="form-row" style="margin:0">
-        <div class="form-group" style="margin:0">
-          <label>Placa *</label>
-          <input type="text" name="plate_1" placeholder="ABC-1234" required maxlength="8" style="text-transform:uppercase" value="{{ req_plate_1 or '' }}">
-        </div>
-        <div class="form-group" style="margin:0">
-          <label>Descrição (opcional)</label>
-          <input type="text" name="desc_1" placeholder="Ex: Gol Prata" maxlength="60" value="{{ req_desc_1 or '' }}">
+    <!-- Plano Básico: 1 veículo com campo individual -->
+    <div id="vehicles-individual">
+      <div class="vehicle-block">
+        <div class="v-title">🚗 Veículo 1</div>
+        <div class="form-row" style="margin:0">
+          <div class="form-group" style="margin:0">
+            <label>Placa *</label>
+            <input type="text" name="plate_1" id="plate_1" placeholder="ABC-1234" maxlength="8"
+                   style="text-transform:uppercase" value="{{ req_plate_1 or '' }}">
+          </div>
+          <div class="form-group" style="margin:0">
+            <label>Descrição (opcional)</label>
+            <input type="text" name="desc_1" placeholder="Ex: Gol Prata" maxlength="60" value="{{ req_desc_1 or '' }}">
+          </div>
         </div>
       </div>
     </div>
 
-    <div id="extra-vehicles-familia" style="display:none">
+    <!-- Plano Família: até 4 veículos individuais -->
+    <div id="vehicles-familia" style="display:none">
+      <div class="vehicle-block">
+        <div class="v-title">🚗 Veículo 1</div>
+        <div class="form-row" style="margin:0">
+          <div class="form-group" style="margin:0">
+            <label>Placa *</label>
+            <input type="text" name="plate_f1" placeholder="ABC-1234" maxlength="8"
+                   style="text-transform:uppercase" value="{{ req_plate_1 or '' }}">
+          </div>
+          <div class="form-group" style="margin:0">
+            <label>Descrição (opcional)</label>
+            <input type="text" name="desc_f1" placeholder="Ex: Gol Prata" maxlength="60" value="{{ req_desc_1 or '' }}">
+          </div>
+        </div>
+      </div>
       <div class="vehicle-block">
         <div class="v-title">🚙 Veículo 2 <span style="font-size:11px;color:var(--text2)">(opcional)</span></div>
         <div class="form-row" style="margin:0">
           <div class="form-group" style="margin:0">
             <label>Placa</label>
-            <input type="text" name="plate_2" placeholder="ABC-1234" maxlength="8" style="text-transform:uppercase" value="{{ req_plate_2 or '' }}">
+            <input type="text" name="plate_f2" placeholder="ABC-1234" maxlength="8"
+                   style="text-transform:uppercase" value="{{ req_plate_2 or '' }}">
           </div>
           <div class="form-group" style="margin:0">
             <label>Descrição</label>
-            <input type="text" name="desc_2" placeholder="Ex: HB20 Branco" maxlength="60" value="{{ req_desc_2 or '' }}">
+            <input type="text" name="desc_f2" placeholder="Ex: HB20 Branco" maxlength="60" value="{{ req_desc_2 or '' }}">
           </div>
         </div>
       </div>
@@ -160,32 +190,44 @@
         <div class="form-row" style="margin:0">
           <div class="form-group" style="margin:0">
             <label>Placa</label>
-            <input type="text" name="plate_3" placeholder="ABC-1234" maxlength="8" style="text-transform:uppercase" value="{{ req_plate_3 or '' }}">
+            <input type="text" name="plate_f3" placeholder="ABC-1234" maxlength="8"
+                   style="text-transform:uppercase" value="{{ req_plate_3 or '' }}">
           </div>
           <div class="form-group" style="margin:0">
             <label>Descrição</label>
-            <input type="text" name="desc_3" placeholder="Ex: Saveiro Vermelha" maxlength="60" value="{{ req_desc_3 or '' }}">
+            <input type="text" name="desc_f3" placeholder="Ex: Saveiro Vermelha" maxlength="60" value="{{ req_desc_3 or '' }}">
+          </div>
+        </div>
+      </div>
+      <div class="vehicle-block">
+        <div class="v-title">🚌 Veículo 4 <span style="font-size:11px;color:var(--text2)">(opcional)</span></div>
+        <div class="form-row" style="margin:0">
+          <div class="form-group" style="margin:0">
+            <label>Placa</label>
+            <input type="text" name="plate_f4" placeholder="ABC-1234" maxlength="8"
+                   style="text-transform:uppercase">
+          </div>
+          <div class="form-group" style="margin:0">
+            <label>Descrição</label>
+            <input type="text" name="desc_f4" placeholder="Ex: Uno Preto" maxlength="60">
           </div>
         </div>
       </div>
     </div>
 
-    <div id="extra-vehicles-frota" style="display:none">
-      {% for i in range(4, 11) %}
+    <!-- Planos Frota: textarea com uma placa por linha -->
+    <div id="vehicles-frota" style="display:none">
       <div class="vehicle-block">
-        <div class="v-title">🚌 Veículo {{ i }} <span style="font-size:11px;color:var(--text2)">(opcional)</span></div>
-        <div class="form-row" style="margin:0">
-          <div class="form-group" style="margin:0">
-            <label>Placa</label>
-            <input type="text" name="plate_{{ i }}" placeholder="ABC-1234" maxlength="8" style="text-transform:uppercase">
-          </div>
-          <div class="form-group" style="margin:0">
-            <label>Descrição</label>
-            <input type="text" name="desc_{{ i }}" placeholder="Ex: Caminhão" maxlength="60">
-          </div>
+        <div class="v-title">📋 Lista de placas</div>
+        <div class="plates-hint">
+          Cole as placas dos veículos, <strong>uma por linha</strong>. Você pode incluir uma descrição após a placa separada por vírgula.<br>
+          Exemplo: <code>ABC-1234, Caminhão Baú</code>
+        </div>
+        <div class="form-group" style="margin:0">
+          <label>Placas (uma por linha) *</label>
+          <textarea name="plates_text" id="plates_text" placeholder="ABC-1234&#10;DEF-5678, Caminhão&#10;GHI-9012, Van Branca" rows="6">{{ req_plates or '' }}</textarea>
         </div>
       </div>
-      {% endfor %}
     </div>
 
     <div class="pix-notice">
@@ -205,6 +247,9 @@
 </div>
 
 <script>
+// Plans that use textarea (frota plans)
+const FROTA_PLANS = ['pequena_frota','frota_media','master','enterprise'];
+
 function selectPlan(val, el) {
   document.querySelectorAll('.plan-opt').forEach(o => o.classList.remove('selected'));
   el.classList.add('selected');
@@ -213,31 +258,55 @@ function selectPlan(val, el) {
 }
 
 function updateVehicleFields(plan) {
-  const familia = document.getElementById('extra-vehicles-familia');
-  const frota   = document.getElementById('extra-vehicles-frota');
-  if (!familia || !frota) return;
+  const divIndividual = document.getElementById('vehicles-individual');
+  const divFamilia    = document.getElementById('vehicles-familia');
+  const divFrota      = document.getElementById('vehicles-frota');
+  const plate1        = document.getElementById('plate_1');
+  const platesText    = document.getElementById('plates_text');
+
+  // Hide all first
+  divIndividual.style.display = 'none';
+  divFamilia.style.display    = 'none';
+  divFrota.style.display      = 'none';
+
+  // Remove required from all vehicle inputs
+  if (plate1)     plate1.removeAttribute('required');
+  if (platesText) platesText.removeAttribute('required');
+
   if (plan === 'basico') {
-    familia.style.display = 'none'; frota.style.display = 'none';
+    divIndividual.style.display = 'block';
+    if (plate1) plate1.setAttribute('required', '');
   } else if (plan === 'familia') {
-    familia.style.display = 'block'; frota.style.display = 'none';
-  } else {
-    familia.style.display = 'block'; frota.style.display = 'block';
+    divFamilia.style.display = 'block';
+    // plate_f1 required
+    const pf1 = document.querySelector('input[name="plate_f1"]');
+    if (pf1) pf1.setAttribute('required', '');
+  } else if (FROTA_PLANS.includes(plan)) {
+    divFrota.style.display = 'block';
+    if (platesText) platesText.setAttribute('required', '');
   }
 }
 
+// Init on page load
 const checked = document.querySelector('input[name="plano"]:checked');
 if (checked) updateVehicleFields(checked.value);
 
+// CPF mask
 const cpfInput = document.querySelector('input[name="cpf"]');
 if (cpfInput) {
   cpfInput.addEventListener('input', function() {
     let v = this.value.replace(/\D/g,'').substring(0,11);
-    if (v.length > 9) v = v.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/,'$1.$2.$3-$4');
+    if (v.length > 9)      v = v.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/,'$1.$2.$3-$4');
     else if (v.length > 6) v = v.replace(/(\d{3})(\d{3})(\d{0,3})/,'$1.$2.$3');
     else if (v.length > 3) v = v.replace(/(\d{3})(\d{0,3})/,'$1.$2');
     this.value = v;
   });
 }
+
+// Uppercase plate inputs
+document.querySelectorAll('input[name^="plate"]').forEach(inp => {
+  inp.addEventListener('input', function(){ this.value = this.value.toUpperCase(); });
+});
 </script>
 </body>
 </html>

@@ -824,13 +824,31 @@ def alerta_cadastro():
         email = request.form.get('email', '').strip()
         plano = request.form.get('plano', 'familia')
 
-        max_veh = {k: v['vehicles'] for k, v in ALERTA_PLANS.items()}.get(plano, 1)
+        _FROTA_PLANS = {'pequena_frota', 'frota_media', 'master', 'enterprise'}
         plates = []
-        for i in range(1, max_veh + 1):
-            p = request.form.get(f'plate_{i}', '').strip().upper()
-            d = request.form.get(f'desc_{i}', '').strip()
+        if plano == 'basico':
+            p = request.form.get('plate_1', '').strip().upper()
+            d = request.form.get('desc_1', '').strip()
             if p:
                 plates.append({'plate': p, 'desc': d})
+        elif plano == 'familia':
+            for i in range(1, 5):
+                p = request.form.get(f'plate_f{i}', '').strip().upper()
+                d = request.form.get(f'desc_f{i}', '').strip()
+                if p:
+                    plates.append({'plate': p, 'desc': d})
+        elif plano in _FROTA_PLANS:
+            for line in request.form.get('plates_text', '').strip().splitlines():
+                line = line.strip()
+                if not line:
+                    continue
+                if ',' in line:
+                    parts = line.split(',', 1)
+                    p, d = parts[0].strip().upper(), parts[1].strip()
+                else:
+                    p, d = line.strip().upper(), ''
+                if p:
+                    plates.append({'plate': p, 'desc': d})
 
         if not all([name, phone]):
             error = 'Nome e WhatsApp são obrigatórios.'
@@ -848,17 +866,21 @@ def alerta_cadastro():
             success = True
 
     return render_template('alerta/cadastro.html', error=error, success=success,
-                           plano=plano, phone=phone,
+                           plano=plano, phone=phone, plans=ALERTA_PLANS,
                            req_name=request.form.get('name', ''),
                            req_cpf=request.form.get('cpf', ''),
                            req_phone=request.form.get('phone', ''),
                            req_email=request.form.get('email', ''),
+                           # basico pre-fill
                            req_plate_1=request.form.get('plate_1', ''),
                            req_desc_1=request.form.get('desc_1', ''),
-                           req_plate_2=request.form.get('plate_2', ''),
-                           req_desc_2=request.form.get('desc_2', ''),
-                           req_plate_3=request.form.get('plate_3', ''),
-                           req_desc_3=request.form.get('desc_3', ''))
+                           # familia pre-fill
+                           req_plate_2=request.form.get('plate_f2', ''),
+                           req_desc_2=request.form.get('desc_f2', ''),
+                           req_plate_3=request.form.get('plate_f3', ''),
+                           req_desc_3=request.form.get('desc_f3', ''),
+                           # frota pre-fill (textarea)
+                           req_plates=request.form.get('plates_text', ''))
 
 
 # ── SaaS Admin ────────────────────────────────────────────────────────────────
