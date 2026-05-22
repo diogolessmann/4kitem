@@ -312,6 +312,9 @@ def init_saas_db():
         "ALTER TABLE agenda_appointments ADD COLUMN paid INTEGER DEFAULT 0",
         "ALTER TABLE agenda_appointments ADD COLUMN paid_amount REAL DEFAULT 0",
         "ALTER TABLE agenda_appointments ADD COLUMN paid_method TEXT DEFAULT ''",
+        # DefesaPro — autenticação
+        "ALTER TABLE defesapro_users ADD COLUMN password_hash TEXT DEFAULT ''",
+        "ALTER TABLE defesapro_users ADD COLUMN last_login TEXT DEFAULT ''",
     ]
     for sql in _saas_migrations:
         try:

@@ -366,6 +366,7 @@
               <button class="btn-sm btn-green"  onclick="setDefesaStatus({{ u.id }}, true)">▶ Ativar</button>
               {% endif %}
               <button class="btn-sm btn-purple"  onclick="openTrial('defesa','{{ u.id }}','{{ u.trial_ends[:10] if u.trial_ends else '' }}')">📅 Trial</button>
+              <button class="btn-sm" style="background:rgba(99,102,241,.15);color:#818cf8;border:1px solid rgba(99,102,241,.3);" onclick="setDefesaSenha({{ u.id }}, '{{ u.name }}')">🔑 Senha</button>
               <button class="btn-sm btn-red"     onclick="deleteDefesa({{ u.id }})">🗑 Deletar</button>
             </div>
           </td>
@@ -655,6 +656,18 @@ async function deleteDefesa(id) {
   const d = await r.json();
   if (d.success) document.getElementById('defesa-' + id)?.remove();
   else alert(d.error || 'Erro');
+}
+async function setDefesaSenha(id, nome) {
+  const senha = prompt(`Definir senha para ${nome}:\n(mínimo 6 caracteres)`);
+  if (!senha) return;
+  if (senha.length < 6) { alert('Senha deve ter pelo menos 6 caracteres.'); return; }
+  const r = await fetch(`/admin/defesapro/user/${id}/set-senha`, {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ senha })
+  });
+  const d = await r.json();
+  if (d.success) alert(`✅ Senha definida para ${nome}!`);
+  else alert(d.error || 'Erro ao definir senha');
 }
 function openNovaDefesa() {
   document.getElementById('novaDefesaModal').style.display = 'flex';

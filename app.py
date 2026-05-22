@@ -230,6 +230,86 @@ def index():
 def defesapro_landing():
     return render_template('defesapro/landing.html')
 
+
+# ── DefesaPro — Auth helpers ───────────────────────────────────────────────────
+def _defesa_login_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not session.get('defesa_user_id'):
+            return redirect(url_for('defesa_login', next=request.path))
+        return f(*args, **kwargs)
+    return decorated
+
+
+# ── DefesaPro — Login / Logout ─────────────────────────────────────────────────
+@app.route('/defesapro/login', methods=['GET', 'POST'])
+def defesa_login():
+    erro = None
+    next_url = request.args.get('next') or request.form.get('next') or '/defesapro/app'
+    if request.method == 'POST':
+        email = (request.form.get('email') or '').strip().lower()
+        senha = request.form.get('senha') or ''
+        conn  = get_saas_db()
+        u = conn.execute(
+            'SELECT * FROM defesapro_users WHERE LOWER(email)=? AND active=1', (email,)
+        ).fetchone()
+        conn.close()
+        if u and u['password_hash'] and check_password_hash(u['password_hash'], senha):
+            session['defesa_user_id']  = u['id']
+            session['defesa_user_name'] = u['name']
+            session['defesa_escritorio'] = u['escritorio'] or u['name']
+            session['defesa_plan']      = u['plan'] or 'basico'
+            # Atualiza last_login
+            c2 = get_saas_db()
+            c2.execute('UPDATE defesapro_users SET last_login=? WHERE id=?',
+                       (datetime.now().isoformat(), u['id']))
+            c2.commit(); c2.close()
+            return redirect(next_url)
+        elif u and not u['password_hash']:
+            erro = 'Sua conta ainda não tem senha configurada. Entre em contato com o suporte.'
+        else:
+            erro = 'E-mail ou senha incorretos.'
+    return render_template('defesapro/login.html', erro=erro, next=next_url)
+
+
+@app.route('/defesapro/logout')
+def defesa_logout():
+    session.pop('defesa_user_id', None)
+    session.pop('defesa_user_name', None)
+    session.pop('defesa_escritorio', None)
+    session.pop('defesa_plan', None)
+    return redirect('/defesapro/login')
+
+
+# ── DefesaPro — App principal ──────────────────────────────────────────────────
+@app.route('/defesapro/app')
+@_defesa_login_required
+def defesa_app():
+    user_id = session['defesa_user_id']
+    conn = get_saas_db()
+    u = conn.execute('SELECT * FROM defesapro_users WHERE id=?', (user_id,)).fetchone()
+    conn.close()
+    if not u or not u['active']:
+        session.clear()
+        return redirect('/defesapro/login')
+    return render_template('defesapro/app.html', user=dict(u))
+
+
+# ── DefesaPro — Admin: definir senha do usuário ────────────────────────────────
+@app.route('/admin/defesapro/user/<int:user_id>/set-senha', methods=['POST'])
+@_saas_admin_required
+def saas_defesa_set_senha(user_id):
+    data  = request.get_json() or {}
+    senha = (data.get('senha') or '').strip()
+    if len(senha) < 6:
+        return jsonify({'success': False, 'error': 'Senha deve ter pelo menos 6 caracteres'})
+    h = generate_password_hash(senha)
+    conn = get_saas_db()
+    conn.execute('UPDATE defesapro_users SET password_hash=? WHERE id=?', (h, user_id))
+    conn.commit(); conn.close()
+    return jsonify({'success': True})
+
+
 @app.route('/despachante-info')
 def despachante_landing():
     return render_template('despachante/landing_publica.html')
@@ -2525,9 +2605,12 @@ def _typing_delay_ms(text: str) -> int:
 def _is_invalid_number(body: str) -> bool:
     """Detecta se a resposta da API indica número inexistente no WhatsApp."""
     b = body.lower()
-    return ('"exists":false' in body or 'exists\\":false' in body
+    return ('"exists":false' in body or '"exists": false' in body
+            or 'exists\\":false' in body or 'exists\\": false' in body
+            or '"exists":0' in body
             or 'not exists' in b or 'invalid number' in b
-            or 'phone not found' in b)
+            or 'phone not found' in b or 'number not found' in b
+            or 'not in whatsapp' in b or 'does not exist' in b)
 
 
 def _apply_spintax(text: str) -> str:
