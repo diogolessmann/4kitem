@@ -76,6 +76,7 @@
     <button class="tab-btn" onclick="showTab('kids',this)">📺 KidsCurator ({{ kids_clients|length }})</button>
     <button class="tab-btn" onclick="showTab('desp',this)">🚗 Despachante ({{ desp_users|length }})</button>
     <button class="tab-btn" onclick="showTab('defesa',this)">⚖️ DefesaPro ({{ defesa_users|length }})</button>
+    <button class="tab-btn" onclick="showTab('mandaja',this)">🛵 MandaJá ({{ mandaja_stores|length }})</button>
   </div>
 
   <!-- ═══════════════ ALERTA SC ═══════════════ -->
@@ -376,6 +377,41 @@
     </table>
     {% else %}
     <div class="empty">Nenhum usuário do DefesaPro ainda.</div>
+    {% endif %}
+  </div>
+
+  <!-- ═══ TAB MANDAJÁ ═══ -->
+  <div class="tab-content" id="tab-mandaja" style="display:none">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+      <h2 style="margin:0;">🛵 Lojas — MandaJá</h2>
+    </div>
+    {% if mandaja_stores %}
+    <table class="data-table">
+      <thead><tr>
+        <th>ID</th><th>Loja</th><th>Dono</th><th>Plano</th><th>Cidade</th><th>Criado</th><th>Ações</th>
+      </tr></thead>
+      <tbody>
+      {% for s in mandaja_stores %}
+      <tr>
+        <td>{{ s.id }}</td>
+        <td><strong>{{ s.name }}</strong><br><span style="font-size:11px;color:#555">{{ s.slug }}</span></td>
+        <td>{{ s.owner_name }}<br><span style="font-size:11px;color:#555">{{ s.phone }}</span></td>
+        <td><span class="badge badge-blue">{{ s.plan }}</span></td>
+        <td>{{ s.city or '—' }}</td>
+        <td>{{ s.created_at[:10] if s.created_at else '—' }}</td>
+        <td>
+          <a href="/loja/{{ s.slug }}" target="_blank" class="btn-sm">🔗 Ver loja</a>
+          <button class="btn-sm" style="background:rgba(239,68,68,.15);color:#dc2626;border:1px solid rgba(239,68,68,.3);"
+                  onclick="toggleMandajaStore({{ s.id }}, {{ s.active }})">
+            {% if s.active %}🔴 Desativar{% else %}🟢 Ativar{% endif %}
+          </button>
+        </td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty">Nenhuma loja MandaJá ainda.</div>
     {% endif %}
   </div>
 
@@ -691,6 +727,16 @@ async function salvarNovaDefesa() {
   const d = await r.json();
   if (d.success) { closeNovaDefesaModal(); location.reload(); }
   else alert(d.error || 'Erro ao salvar');
+}
+
+// ── MandaJá ──────────────────────────────────────────────────────────────────
+async function toggleMandajaStore(id, currentActive) {
+  const action = currentActive ? 'desativar' : 'ativar';
+  if (!confirm(`${action.charAt(0).toUpperCase() + action.slice(1)} esta loja?`)) return;
+  const r = await fetch(`/admin/mandaja/store/${id}/toggle`, {method:'POST'});
+  const d = await r.json();
+  if (d.success) location.reload();
+  else alert('Erro ao atualizar loja');
 }
 </script>
 </body>

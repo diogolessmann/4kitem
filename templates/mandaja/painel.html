@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Painel — MandaJá</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#07070E;color:#EEEEF5;font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh}
+  a{text-decoration:none;color:inherit}
+
+  /* Topbar */
+  .topbar{display:flex;align-items:center;justify-content:space-between;padding:0 24px;height:56px;background:#0E0E1C;border-bottom:1px solid rgba(249,115,22,.1);position:sticky;top:0;z-index:50}
+  .topbar-logo{font-size:18px;font-weight:900;color:#F97316;display:flex;align-items:center;gap:8px}
+  .topbar-right{display:flex;align-items:center;gap:12px}
+  .store-name{font-size:13px;color:#9090B0;font-weight:600}
+  .topbar-btn{padding:7px 16px;border-radius:100px;font-size:12px;font-weight:700;transition:.2s}
+  .btn-outline{border:1px solid rgba(249,115,22,.3);color:#F97316}
+  .btn-outline:hover{background:rgba(249,115,22,.08)}
+  .btn-primary{background:linear-gradient(135deg,#EA580C,#F97316);color:#fff}
+  .btn-primary:hover{opacity:.9}
+  .btn-danger{border:1px solid rgba(239,68,68,.3);color:#F87171;font-size:12px;padding:6px 14px;border-radius:100px;font-weight:600}
+
+  /* Sidebar + Content */
+  .layout{display:flex;min-height:calc(100vh - 56px)}
+  .sidebar{width:220px;background:#0A0A18;border-right:1px solid rgba(249,115,22,.08);padding:20px 12px;flex-shrink:0}
+  .nav-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;font-size:13px;font-weight:600;color:#9090B0;margin-bottom:4px;transition:.2s;cursor:pointer}
+  .nav-item:hover,.nav-item.active{background:rgba(249,115,22,.1);color:#F97316}
+  .nav-item .ic{font-size:16px}
+  .nav-sep{font-size:10px;font-weight:700;color:#55557A;text-transform:uppercase;letter-spacing:1.5px;padding:12px 12px 6px;margin-top:8px}
+
+  .content{flex:1;padding:24px;max-width:100%}
+
+  /* Cards stats */
+  .stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:24px}
+  .stat-card{background:#0E0E1C;border:1px solid rgba(249,115,22,.1);border-radius:14px;padding:20px}
+  .stat-card .val{font-size:30px;font-weight:900;margin-bottom:4px}
+  .stat-card .lbl{font-size:12px;color:#9090B0;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+  .stat-card .ico{font-size:20px;margin-bottom:10px}
+
+  /* Section header */
+  .sec-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+  .sec-hdr h2{font-size:16px;font-weight:700}
+
+  /* Table */
+  .table-wrap{background:#0E0E1C;border:1px solid rgba(249,115,22,.08);border-radius:14px;overflow:hidden}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{padding:12px 16px;text-align:left;font-size:11px;font-weight:700;color:#55557A;text-transform:uppercase;letter-spacing:.5px;background:#0A0A18}
+  td{padding:12px 16px;border-top:1px solid rgba(255,255,255,.04);color:#9090B0}
+  td.bold{color:#EEEEF5;font-weight:600}
+
+  /* Status badge */
+  .badge{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:100px;font-size:11px;font-weight:700}
+  .badge-new{background:rgba(249,115,22,.15);color:#F97316}
+  .badge-confirmed{background:rgba(59,130,246,.15);color:#60A5FA}
+  .badge-preparing{background:rgba(234,179,8,.15);color:#FCD34D}
+  .badge-ready{background:rgba(168,85,247,.15);color:#C084FC}
+  .badge-delivered{background:rgba(74,222,128,.15);color:#4ADE80}
+  .badge-cancelled{background:rgba(239,68,68,.15);color:#F87171}
+
+  /* Welcome banner */
+  .welcome{background:linear-gradient(135deg,rgba(234,88,12,.12),rgba(249,115,22,.06));border:1px solid rgba(249,115,22,.2);border-radius:16px;padding:24px 28px;margin-bottom:24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+  .welcome h1{font-size:20px;font-weight:900;margin-bottom:4px}
+  .welcome p{font-size:13px;color:#9090B0}
+
+  /* Link da loja */
+  .store-link-box{background:#07070E;border:1px solid rgba(249,115,22,.2);border-radius:10px;padding:12px 16px;display:flex;align-items:center;gap:10px;margin-top:8px;flex-wrap:wrap}
+  .store-link-url{font-size:13px;color:#F97316;font-family:monospace}
+
+  /* Empty state */
+  .empty{text-align:center;padding:48px 24px;color:#55557A}
+  .empty .big{font-size:40px;margin-bottom:12px}
+
+  @media(max-width:640px){
+    .sidebar{display:none}
+    .content{padding:16px}
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-logo">🛵 MandaJá</div>
+  <div class="topbar-right">
+    <span class="store-name">{{ store.name }}</span>
+    <a href="/loja/{{ store.slug }}" target="_blank" class="topbar-btn btn-outline">🔗 Ver loja</a>
+    <a href="/mandaja/logout" class="btn-danger">Sair</a>
+  </div>
+</div>
+
+<div class="layout">
+  <!-- Sidebar -->
+  <nav class="sidebar">
+    <a href="/mandaja/painel" class="nav-item active"><span class="ic">📊</span> Dashboard</a>
+    <a href="/mandaja/pedidos" class="nav-item"><span class="ic">🛍️</span> Pedidos</a>
+    <a href="/mandaja/produtos" class="nav-item"><span class="ic">📦</span> Produtos</a>
+    <a href="/mandaja/horarios" class="nav-item"><span class="ic">🕐</span> Horários</a>
+    <a href="/mandaja/financeiro" class="nav-item"><span class="ic">💰</span> Financeiro</a>
+    <div class="nav-sep">Loja</div>
+    <a href="/mandaja/configuracoes" class="nav-item"><span class="ic">⚙️</span> Configurações</a>
+    <a href="/loja/{{ store.slug }}" target="_blank" class="nav-item"><span class="ic">🔗</span> Ver loja</a>
+    <div class="nav-sep">Conta</div>
+    <a href="/mandaja/logout" class="nav-item" style="color:#F87171"><span class="ic">🚪</span> Sair</a>
+  </nav>
+
+  <!-- Content -->
+  <main class="content">
+    <!-- Welcome -->
+    <div class="welcome">
+      <div>
+        <h1>👋 Olá, {{ store.owner_name.split()[0] }}!</h1>
+        <p>Aqui está o resumo de hoje — {{ plans[store.plan].emoji }} Plano {{ plans[store.plan].label }}</p>
+        <div class="store-link-box">
+          <span>🔗</span>
+          <span class="store-link-url">{{ request.host }}/loja/{{ store.slug }}</span>
+          <button onclick="copyLink()" style="margin-left:auto;padding:6px 14px;border-radius:8px;background:rgba(249,115,22,.15);color:#F97316;border:1px solid rgba(249,115,22,.3);font-size:12px;font-weight:700;cursor:pointer">Copiar</button>
+        </div>
+      </div>
+      <a href="/mandaja/pedidos?status=new" class="topbar-btn btn-primary" style="padding:12px 24px;font-size:14px">
+        🛍️ Ver pedidos abertos
+        {% if stats.pedidos_abertos > 0 %}
+        <span style="background:#fff;color:#EA580C;border-radius:100px;padding:1px 8px;margin-left:4px;font-size:12px">{{ stats.pedidos_abertos }}</span>
+        {% endif %}
+      </a>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="ico">🛍️</div>
+        <div class="val">{{ stats.pedidos_hoje }}</div>
+        <div class="lbl">Pedidos hoje</div>
+      </div>
+      <div class="stat-card">
+        <div class="ico">💰</div>
+        <div class="val" style="color:#4ADE80">R${{ '%.2f'|format(stats.receita_hoje) }}</div>
+        <div class="lbl">Receita hoje</div>
+      </div>
+      <div class="stat-card">
+        <div class="ico">⏳</div>
+        <div class="val" style="color:{% if stats.pedidos_abertos > 0 %}#F97316{% else %}#4ADE80{% endif %}">{{ stats.pedidos_abertos }}</div>
+        <div class="lbl">Em aberto</div>
+      </div>
+      <div class="stat-card">
+        <div class="ico">📦</div>
+        <div class="val">{{ stats.total_produtos }}/{{ plans[store.plan].products }}</div>
+        <div class="lbl">Produtos ativos</div>
+      </div>
+    </div>
+
+    <!-- Pedidos recentes -->
+    <div class="sec-hdr">
+      <h2>Pedidos Recentes</h2>
+      <a href="/mandaja/pedidos" class="topbar-btn btn-outline" style="font-size:12px">Ver todos →</a>
+    </div>
+
+    {% if pedidos_recentes %}
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Pedido</th>
+            <th>Cliente</th>
+            <th>Total</th>
+            <th>Pagamento</th>
+            <th>Status</th>
+            <th>Horário</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in pedidos_recentes %}
+          <tr onclick="window.location='/mandaja/pedidos/{{ p.id }}'" style="cursor:pointer">
+            <td class="bold">{{ p.order_number }}</td>
+            <td>{{ p.customer_name }}</td>
+            <td class="bold" style="color:#4ADE80">R${{ '%.2f'|format(p.total) }}</td>
+            <td>{{ {'pix':'💳 PIX','dinheiro':'💵 Dinheiro','cartao':'💳 Cartão'}.get(p.payment_method, p.payment_method) }}</td>
+            <td>
+              {% set sc = {'new':'badge-new','confirmed':'badge-confirmed','preparing':'badge-preparing','ready':'badge-ready','delivered':'badge-delivered','cancelled':'badge-cancelled'} %}
+              {% set sl = {'new':'🆕 Novo','confirmed':'✅ Confirmado','preparing':'👨‍🍳 Preparando','ready':'📦 Pronto','delivered':'🚚 Entregue','cancelled':'❌ Cancelado'} %}
+              <span class="badge {{ sc.get(p.status,'badge-new') }}">{{ sl.get(p.status, p.status) }}</span>
+            </td>
+            <td>{{ p.created_at[11:16] if p.created_at else '—' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty">
+      <div class="big">🛍️</div>
+      <p>Nenhum pedido ainda. Compartilhe o link da sua loja!</p>
+      <div style="margin-top:16px">
+        <a href="/loja/{{ store.slug }}" target="_blank" class="topbar-btn btn-primary" style="padding:10px 24px">Ver minha loja →</a>
+      </div>
+    </div>
+    {% endif %}
+  </main>
+</div>
+
+<script>
+function copyLink(){
+  navigator.clipboard.writeText(window.location.protocol + '//' + window.location.host + '/loja/{{ store.slug }}');
+  alert('Link copiado!');
+}
+</script>
+</body>
+</html>

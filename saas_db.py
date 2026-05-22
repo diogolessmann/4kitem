@@ -323,6 +323,129 @@ def init_saas_db():
         except Exception:
             pass  # Coluna já existe — ok
 
+    # ── MandaJá — Delivery App ───────────────────────────────────────────────
+    conn.executescript('''
+        CREATE TABLE IF NOT EXISTS mandaja_stores (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            name            TEXT NOT NULL,
+            slug            TEXT NOT NULL UNIQUE,
+            owner_name      TEXT NOT NULL,
+            phone           TEXT NOT NULL,
+            email           TEXT DEFAULT '',
+            password_hash   TEXT NOT NULL DEFAULT '',
+            logo_url        TEXT DEFAULT '',
+            description     TEXT DEFAULT '',
+            category        TEXT DEFAULT 'restaurante',
+            address         TEXT DEFAULT '',
+            neighborhood    TEXT DEFAULT '',
+            city            TEXT DEFAULT '',
+            state           TEXT DEFAULT 'SC',
+            cep             TEXT DEFAULT '',
+            pix_chave       TEXT DEFAULT '',
+            pix_nome        TEXT DEFAULT '',
+            delivery_fee    REAL DEFAULT 0,
+            min_order       REAL DEFAULT 0,
+            delivery_time   INTEGER DEFAULT 45,
+            delivery_radius INTEGER DEFAULT 5,
+            whatsapp        TEXT DEFAULT '',
+            active          INTEGER DEFAULT 1,
+            plan            TEXT DEFAULT 'micro',
+            created_at      TEXT DEFAULT '',
+            trial_ends      TEXT DEFAULT '',
+            notes           TEXT DEFAULT ''
+        );
+
+        CREATE TABLE IF NOT EXISTS mandaja_categories (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            store_id    INTEGER NOT NULL,
+            name        TEXT NOT NULL,
+            sort_order  INTEGER DEFAULT 0,
+            active      INTEGER DEFAULT 1
+        );
+
+        CREATE TABLE IF NOT EXISTS mandaja_products (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            store_id    INTEGER NOT NULL,
+            category_id INTEGER DEFAULT NULL,
+            name        TEXT NOT NULL,
+            description TEXT DEFAULT '',
+            price       REAL NOT NULL DEFAULT 0,
+            cost        REAL DEFAULT 0,
+            photo_url   TEXT DEFAULT '',
+            stock       INTEGER DEFAULT -1,
+            active      INTEGER DEFAULT 1,
+            sort_order  INTEGER DEFAULT 0,
+            created_at  TEXT DEFAULT ''
+        );
+
+        CREATE TABLE IF NOT EXISTS mandaja_hours (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            store_id    INTEGER NOT NULL,
+            weekday     INTEGER NOT NULL,
+            open_time   TEXT NOT NULL DEFAULT '08:00',
+            close_time  TEXT NOT NULL DEFAULT '22:00',
+            active      INTEGER DEFAULT 1
+        );
+
+        CREATE TABLE IF NOT EXISTS mandaja_orders (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            store_id        INTEGER NOT NULL,
+            order_number    TEXT NOT NULL DEFAULT '',
+            customer_name   TEXT NOT NULL DEFAULT '',
+            customer_phone  TEXT NOT NULL DEFAULT '',
+            customer_notes  TEXT DEFAULT '',
+            delivery_type   TEXT DEFAULT 'delivery',
+            address         TEXT DEFAULT '',
+            neighborhood    TEXT DEFAULT '',
+            city            TEXT DEFAULT '',
+            cep             TEXT DEFAULT '',
+            payment_method  TEXT DEFAULT 'pix',
+            payment_status  TEXT DEFAULT 'pending',
+            subtotal        REAL DEFAULT 0,
+            delivery_fee    REAL DEFAULT 0,
+            total           REAL DEFAULT 0,
+            status          TEXT DEFAULT 'new',
+            items_json      TEXT DEFAULT '[]',
+            created_at      TEXT DEFAULT '',
+            updated_at      TEXT DEFAULT ''
+        );
+
+        CREATE TABLE IF NOT EXISTS mandaja_financial (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            store_id    INTEGER NOT NULL,
+            order_id    INTEGER DEFAULT NULL,
+            type        TEXT DEFAULT 'receita',
+            description TEXT DEFAULT '',
+            amount      REAL NOT NULL DEFAULT 0,
+            date        TEXT DEFAULT '',
+            created_at  TEXT DEFAULT ''
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_mja_stores_slug     ON mandaja_stores(slug);
+        CREATE INDEX IF NOT EXISTS idx_mja_products_store  ON mandaja_products(store_id);
+        CREATE INDEX IF NOT EXISTS idx_mja_orders_store    ON mandaja_orders(store_id);
+        CREATE INDEX IF NOT EXISTS idx_mja_orders_status   ON mandaja_orders(status);
+        CREATE INDEX IF NOT EXISTS idx_mja_financial_store ON mandaja_financial(store_id);
+        CREATE INDEX IF NOT EXISTS idx_mja_hours_store     ON mandaja_hours(store_id);
+        CREATE INDEX IF NOT EXISTS idx_mja_categories_store ON mandaja_categories(store_id);
+    ''')
+    conn.commit()
+
+    # ── MandaJá migrations suaves ────────────────────────────────────────────
+    _mandaja_migrations = [
+        "ALTER TABLE mandaja_stores ADD COLUMN banner_url TEXT DEFAULT ''",
+        "ALTER TABLE mandaja_stores ADD COLUMN accepts_card INTEGER DEFAULT 1",
+        "ALTER TABLE mandaja_stores ADD COLUMN accepts_cash INTEGER DEFAULT 1",
+        "ALTER TABLE mandaja_products ADD COLUMN options_json TEXT DEFAULT '[]'",
+        "ALTER TABLE mandaja_orders ADD COLUMN change_for REAL DEFAULT 0",
+    ]
+    for sql in _mandaja_migrations:
+        try:
+            conn.execute(sql)
+            conn.commit()
+        except Exception:
+            pass
+
     conn.close()
 
 

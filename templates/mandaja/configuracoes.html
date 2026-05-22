@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Configurações — MandaJá</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#07070E;color:#EEEEF5;font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh}
+  a{text-decoration:none;color:inherit}
+  .topbar{display:flex;align-items:center;justify-content:space-between;padding:0 24px;height:56px;background:#0E0E1C;border-bottom:1px solid rgba(249,115,22,.1);position:sticky;top:0;z-index:50}
+  .topbar-logo{font-size:18px;font-weight:900;color:#F97316}
+  .btn-danger{border:1px solid rgba(239,68,68,.3);color:#F87171;font-size:12px;padding:6px 14px;border-radius:100px;font-weight:600;background:transparent;cursor:pointer}
+  .layout{display:flex;min-height:calc(100vh - 56px)}
+  .sidebar{width:220px;background:#0A0A18;border-right:1px solid rgba(249,115,22,.08);padding:20px 12px;flex-shrink:0}
+  .nav-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;font-size:13px;font-weight:600;color:#9090B0;margin-bottom:4px;transition:.2s}
+  .nav-item:hover,.nav-item.active{background:rgba(249,115,22,.1);color:#F97316}
+  .nav-item .ic{font-size:16px}
+  .nav-sep{font-size:10px;font-weight:700;color:#55557A;text-transform:uppercase;letter-spacing:1.5px;padding:12px 12px 6px;margin-top:8px}
+  .content{flex:1;padding:24px;max-width:780px}
+  h1{font-size:20px;font-weight:900;margin-bottom:20px}
+
+  .card{background:#0E0E1C;border:1px solid rgba(249,115,22,.1);border-radius:16px;padding:24px;margin-bottom:16px}
+  .card h2{font-size:14px;font-weight:700;color:#F97316;margin-bottom:18px;text-transform:uppercase;letter-spacing:.5px}
+  .field{margin-bottom:16px}
+  label{display:block;font-size:13px;font-weight:600;color:#9090B0;margin-bottom:6px}
+  input,select,textarea{width:100%;background:#07070E;border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:11px 14px;color:#EEEEF5;font-size:14px;outline:none;transition:.2s;font-family:inherit}
+  input:focus,select:focus,textarea:focus{border-color:#F97316}
+  select option{background:#07070E}
+  textarea{min-height:72px;resize:vertical}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+  .hint{font-size:11px;color:#55557A;margin-top:5px}
+  .btn-save{padding:12px 28px;border-radius:100px;background:linear-gradient(135deg,#EA580C,#F97316);color:#fff;font-size:14px;font-weight:700;border:none;cursor:pointer;transition:.2s}
+  .btn-save:hover{opacity:.9}
+  .alert-ok{background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.3);color:#86EFAC;border-radius:10px;padding:12px 16px;font-size:13px;margin-bottom:16px}
+  .error{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);color:#FCA5A5;border-radius:10px;padding:12px 16px;font-size:13px;margin-bottom:16px}
+
+  .toggle{position:relative;width:44px;height:24px}
+  .toggle input{opacity:0;width:0;height:0}
+  .slider{position:absolute;inset:0;background:#1A1A2E;border-radius:100px;cursor:pointer;transition:.2s}
+  .slider:before{content:'';position:absolute;width:18px;height:18px;left:3px;bottom:3px;background:#55557A;border-radius:50%;transition:.2s}
+  input:checked+.slider{background:linear-gradient(135deg,#EA580C,#F97316)}
+  input:checked+.slider:before{transform:translateX(20px);background:#fff}
+  .toggle-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.04)}
+  .toggle-row:last-child{border-bottom:none}
+
+  @media(max-width:640px){.sidebar{display:none}.content{padding:16px}.grid2,.grid3{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-logo">🛵 MandaJá</div>
+  <a href="/mandaja/logout" class="btn-danger">Sair</a>
+</div>
+
+<div class="layout">
+  <nav class="sidebar">
+    <a href="/mandaja/painel" class="nav-item"><span class="ic">📊</span> Dashboard</a>
+    <a href="/mandaja/pedidos" class="nav-item"><span class="ic">🛍️</span> Pedidos</a>
+    <a href="/mandaja/produtos" class="nav-item"><span class="ic">📦</span> Produtos</a>
+    <a href="/mandaja/horarios" class="nav-item"><span class="ic">🕐</span> Horários</a>
+    <a href="/mandaja/financeiro" class="nav-item"><span class="ic">💰</span> Financeiro</a>
+    <div class="nav-sep">Loja</div>
+    <a href="/mandaja/configuracoes" class="nav-item active"><span class="ic">⚙️</span> Configurações</a>
+    <a href="/loja/{{ store.slug }}" target="_blank" class="nav-item"><span class="ic">🔗</span> Ver loja</a>
+    <div class="nav-sep">Conta</div>
+    <a href="/mandaja/logout" class="nav-item" style="color:#F87171"><span class="ic">🚪</span> Sair</a>
+  </nav>
+
+  <main class="content">
+    <h1>⚙️ Configurações</h1>
+
+    {% set ok = request.args.get('ok') %}
+    {% if ok == '1' %}<div class="alert-ok">✅ Configurações salvas!</div>{% endif %}
+    {% if ok == 'senha' %}<div class="alert-ok">✅ Senha alterada com sucesso!</div>{% endif %}
+    {% if error_pass %}<div class="error">{{ error_pass }}</div>{% endif %}
+
+    <form method="POST">
+      <input type="hidden" name="action" value="save">
+
+      <!-- Dados da loja -->
+      <div class="card">
+        <h2>🏪 Dados da Loja</h2>
+        <div class="grid2">
+          <div class="field">
+            <label>Nome da loja</label>
+            <input type="text" name="name" value="{{ store.name }}" required>
+          </div>
+          <div class="field">
+            <label>Tipo</label>
+            <select name="category">
+              {% for k, v in cats.items() %}
+              <option value="{{ k }}" {% if store.category == k %}selected{% endif %}>{{ v }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+        <div class="field">
+          <label>Descrição da loja</label>
+          <textarea name="description">{{ store.description }}</textarea>
+        </div>
+        <div class="grid2">
+          <div class="field">
+            <label>Logo (URL)</label>
+            <input type="url" name="logo_url" value="{{ store.logo_url }}" placeholder="https://...">
+          </div>
+          <div class="field">
+            <label>Banner (URL)</label>
+            <input type="url" name="banner_url" value="{{ store.get('banner_url','') }}" placeholder="https://...">
+          </div>
+        </div>
+      </div>
+
+      <!-- Contato -->
+      <div class="card">
+        <h2>📞 Contato e Localização</h2>
+        <div class="grid2">
+          <div class="field">
+            <label>Seu nome</label>
+            <input type="text" name="owner_name" value="{{ store.owner_name }}">
+          </div>
+          <div class="field">
+            <label>Telefone / WhatsApp do proprietário</label>
+            <input type="tel" name="phone" value="{{ store.phone }}">
+          </div>
+        </div>
+        <div class="field">
+          <label>E-mail</label>
+          <input type="email" name="email" value="{{ store.email }}">
+        </div>
+        <div class="field">
+          <label>📱 WhatsApp para receber pedidos</label>
+          <input type="tel" name="whatsapp" value="{{ store.whatsapp }}" placeholder="47 99999-9999">
+          <div class="hint">Número que receberá as notificações de novos pedidos</div>
+        </div>
+        <div class="grid2">
+          <div class="field">
+            <label>Endereço</label>
+            <input type="text" name="address" value="{{ store.address }}">
+          </div>
+          <div class="field">
+            <label>Bairro</label>
+            <input type="text" name="neighborhood" value="{{ store.neighborhood }}">
+          </div>
+        </div>
+        <div class="grid3">
+          <div class="field">
+            <label>Cidade</label>
+            <input type="text" name="city" value="{{ store.city }}">
+          </div>
+          <div class="field">
+            <label>Estado</label>
+            <input type="text" name="state" value="{{ store.state }}" maxlength="2" style="text-transform:uppercase">
+          </div>
+          <div class="field">
+            <label>CEP</label>
+            <input type="text" name="cep" value="{{ store.cep }}">
+          </div>
+        </div>
+      </div>
+
+      <!-- Pagamentos -->
+      <div class="card">
+        <h2>💳 Pagamentos e PIX</h2>
+        <div class="grid2">
+          <div class="field">
+            <label>Chave PIX</label>
+            <input type="text" name="pix_chave" value="{{ store.pix_chave }}" placeholder="CPF, CNPJ, e-mail, telefone ou chave aleatória">
+          </div>
+          <div class="field">
+            <label>Nome do beneficiário PIX</label>
+            <input type="text" name="pix_nome" value="{{ store.pix_nome }}" placeholder="Nome que aparece no PIX">
+          </div>
+        </div>
+        <div class="toggle-row">
+          <div>
+            <div style="font-size:14px;font-weight:600">Aceita PIX</div>
+            <div style="font-size:12px;color:#55557A">Pagamento via PIX (chave acima)</div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" name="accepts_pix" value="1" checked disabled>
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div class="toggle-row">
+          <div>
+            <div style="font-size:14px;font-weight:600">Aceita Cartão</div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" name="accepts_card" value="1" {% if store.get('accepts_card',1) %}checked{% endif %}>
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div class="toggle-row">
+          <div>
+            <div style="font-size:14px;font-weight:600">Aceita Dinheiro</div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" name="accepts_cash" value="1" {% if store.get('accepts_cash',1) %}checked{% endif %}>
+            <span class="slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Entrega -->
+      <div class="card">
+        <h2>🚚 Entrega</h2>
+        <div class="grid3">
+          <div class="field">
+            <label>Taxa de entrega (R$)</label>
+            <input type="number" name="delivery_fee" step="0.50" min="0" value="{{ '%.2f'|format(store.delivery_fee) }}">
+          </div>
+          <div class="field">
+            <label>Pedido mínimo (R$)</label>
+            <input type="number" name="min_order" step="0.50" min="0" value="{{ '%.2f'|format(store.min_order) }}">
+          </div>
+          <div class="field">
+            <label>Tempo estimado (min)</label>
+            <input type="number" name="delivery_time" min="1" value="{{ store.delivery_time }}">
+          </div>
+        </div>
+      </div>
+
+      <button type="submit" class="btn-save">💾 Salvar configurações</button>
+    </form>
+
+    <!-- Alterar senha separado -->
+    <div class="card" style="margin-top:20px">
+      <h2>🔐 Alterar Senha</h2>
+      <form method="POST">
+        <input type="hidden" name="action" value="change_pass">
+        <div class="grid3">
+          <div class="field">
+            <label>Senha atual</label>
+            <input type="password" name="senha_atual" required>
+          </div>
+          <div class="field">
+            <label>Nova senha</label>
+            <input type="password" name="senha_nova" required minlength="6">
+          </div>
+          <div class="field" style="display:flex;align-items:flex-end">
+            <button type="submit" class="btn-save" style="width:100%">Alterar</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </main>
+</div>
+</body>
+</html>

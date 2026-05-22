@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pedidos — MandaJá</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#07070E;color:#EEEEF5;font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh}
+  a{text-decoration:none;color:inherit}
+  .topbar{display:flex;align-items:center;justify-content:space-between;padding:0 24px;height:56px;background:#0E0E1C;border-bottom:1px solid rgba(249,115,22,.1);position:sticky;top:0;z-index:50}
+  .topbar-logo{font-size:18px;font-weight:900;color:#F97316}
+  .topbar-right{display:flex;align-items:center;gap:10px}
+  .store-name{font-size:13px;color:#9090B0;font-weight:600}
+  .btn-danger{border:1px solid rgba(239,68,68,.3);color:#F87171;font-size:12px;padding:6px 14px;border-radius:100px;font-weight:600;background:transparent;cursor:pointer}
+
+  .layout{display:flex;min-height:calc(100vh - 56px)}
+  .sidebar{width:220px;background:#0A0A18;border-right:1px solid rgba(249,115,22,.08);padding:20px 12px;flex-shrink:0}
+  .nav-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;font-size:13px;font-weight:600;color:#9090B0;margin-bottom:4px;transition:.2s}
+  .nav-item:hover,.nav-item.active{background:rgba(249,115,22,.1);color:#F97316}
+  .nav-item .ic{font-size:16px}
+  .nav-sep{font-size:10px;font-weight:700;color:#55557A;text-transform:uppercase;letter-spacing:1.5px;padding:12px 12px 6px;margin-top:8px}
+  .content{flex:1;padding:24px}
+  h1{font-size:20px;font-weight:900;margin-bottom:20px}
+
+  /* Filtros */
+  .filter-bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px}
+  .filter-pill{padding:7px 16px;border-radius:100px;font-size:12px;font-weight:700;border:1px solid rgba(255,255,255,.1);color:#9090B0;cursor:pointer;transition:.2s}
+  .filter-pill:hover,.filter-pill.active{border-color:#F97316;color:#F97316;background:rgba(249,115,22,.08)}
+
+  /* Table */
+  .table-wrap{background:#0E0E1C;border:1px solid rgba(249,115,22,.08);border-radius:14px;overflow:hidden}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{padding:12px 16px;text-align:left;font-size:11px;font-weight:700;color:#55557A;text-transform:uppercase;letter-spacing:.5px;background:#0A0A18}
+  td{padding:12px 16px;border-top:1px solid rgba(255,255,255,.04);color:#9090B0}
+  td.bold{color:#EEEEF5;font-weight:600}
+  tr:hover td{background:rgba(249,115,22,.03);cursor:pointer}
+
+  .badge{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:100px;font-size:11px;font-weight:700}
+  .badge-new{background:rgba(249,115,22,.15);color:#F97316}
+  .badge-confirmed{background:rgba(59,130,246,.15);color:#60A5FA}
+  .badge-preparing{background:rgba(234,179,8,.15);color:#FCD34D}
+  .badge-ready{background:rgba(168,85,247,.15);color:#C084FC}
+  .badge-delivered{background:rgba(74,222,128,.15);color:#4ADE80}
+  .badge-cancelled{background:rgba(239,68,68,.15);color:#F87171}
+
+  .empty{text-align:center;padding:60px 24px;color:#55557A}
+  .empty .big{font-size:48px;margin-bottom:12px}
+
+  @media(max-width:640px){
+    .sidebar{display:none}.content{padding:16px}
+    .hide-mobile{display:none}
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-logo">🛵 MandaJá</div>
+  <div class="topbar-right">
+    <span class="store-name">{{ store.name }}</span>
+    <a href="/mandaja/logout" class="btn-danger">Sair</a>
+  </div>
+</div>
+
+<div class="layout">
+  <nav class="sidebar">
+    <a href="/mandaja/painel" class="nav-item"><span class="ic">📊</span> Dashboard</a>
+    <a href="/mandaja/pedidos" class="nav-item active"><span class="ic">🛍️</span> Pedidos</a>
+    <a href="/mandaja/produtos" class="nav-item"><span class="ic">📦</span> Produtos</a>
+    <a href="/mandaja/horarios" class="nav-item"><span class="ic">🕐</span> Horários</a>
+    <a href="/mandaja/financeiro" class="nav-item"><span class="ic">💰</span> Financeiro</a>
+    <div class="nav-sep">Loja</div>
+    <a href="/mandaja/configuracoes" class="nav-item"><span class="ic">⚙️</span> Configurações</a>
+    <a href="/loja/{{ store.slug }}" target="_blank" class="nav-item"><span class="ic">🔗</span> Ver loja</a>
+    <div class="nav-sep">Conta</div>
+    <a href="/mandaja/logout" class="nav-item" style="color:#F87171"><span class="ic">🚪</span> Sair</a>
+  </nav>
+
+  <main class="content">
+    <h1>🛍️ Pedidos</h1>
+
+    <!-- Filtros -->
+    <div class="filter-bar">
+      <a href="/mandaja/pedidos" class="filter-pill {% if not status_filter %}active{% endif %}">Todos</a>
+      <a href="/mandaja/pedidos?status=new" class="filter-pill {% if status_filter=='new' %}active{% endif %}">🆕 Novos</a>
+      <a href="/mandaja/pedidos?status=confirmed" class="filter-pill {% if status_filter=='confirmed' %}active{% endif %}">✅ Confirmados</a>
+      <a href="/mandaja/pedidos?status=preparing" class="filter-pill {% if status_filter=='preparing' %}active{% endif %}">👨‍🍳 Preparando</a>
+      <a href="/mandaja/pedidos?status=ready" class="filter-pill {% if status_filter=='ready' %}active{% endif %}">📦 Prontos</a>
+      <a href="/mandaja/pedidos?status=delivered" class="filter-pill {% if status_filter=='delivered' %}active{% endif %}">🚚 Entregues</a>
+      <a href="/mandaja/pedidos?status=cancelled" class="filter-pill {% if status_filter=='cancelled' %}active{% endif %}">❌ Cancelados</a>
+    </div>
+
+    {% if pedidos %}
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Pedido</th>
+            <th>Cliente</th>
+            <th class="hide-mobile">Tipo</th>
+            <th>Total</th>
+            <th class="hide-mobile">Pagamento</th>
+            <th>Status</th>
+            <th class="hide-mobile">Horário</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in pedidos %}
+          <tr onclick="window.location='/mandaja/pedidos/{{ p.id }}'">
+            <td class="bold">{{ p.order_number }}</td>
+            <td class="bold">{{ p.customer_name }}<br><span style="font-size:11px;color:#55557A">{{ p.customer_phone }}</span></td>
+            <td class="hide-mobile">{{ '🚚 Entrega' if p.delivery_type=='delivery' else '🏠 Retirada' }}</td>
+            <td class="bold" style="color:#4ADE80">R${{ '%.2f'|format(p.total) }}</td>
+            <td class="hide-mobile">{{ {'pix':'💳 PIX','dinheiro':'💵 Dinheiro','cartao':'💳 Cartão'}.get(p.payment_method, p.payment_method) }}</td>
+            <td>
+              {% set sc = {'new':'badge-new','confirmed':'badge-confirmed','preparing':'badge-preparing','ready':'badge-ready','delivered':'badge-delivered','cancelled':'badge-cancelled'} %}
+              {% set sl = {'new':'🆕 Novo','confirmed':'✅ Confirmado','preparing':'👨‍🍳 Preparando','ready':'📦 Pronto','delivered':'🚚 Entregue','cancelled':'❌ Cancelado'} %}
+              <span class="badge {{ sc.get(p.status,'badge-new') }}">{{ sl.get(p.status, p.status) }}</span>
+            </td>
+            <td class="hide-mobile">{{ p.created_at[:16].replace('T',' ') if p.created_at else '—' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty">
+      <div class="big">🛍️</div>
+      <p>Nenhum pedido {% if status_filter %}com este status{% endif %} ainda.</p>
+    </div>
+    {% endif %}
+  </main>
+</div>
+</body>
+</html>

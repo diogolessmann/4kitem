@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{ 'Editar' if prod else 'Novo' }} Produto — MandaJá</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#07070E;color:#EEEEF5;font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh}
+  a{text-decoration:none;color:inherit}
+  .topbar{display:flex;align-items:center;justify-content:space-between;padding:0 24px;height:56px;background:#0E0E1C;border-bottom:1px solid rgba(249,115,22,.1)}
+  .topbar-logo{font-size:18px;font-weight:900;color:#F97316}
+  .btn{padding:8px 20px;border-radius:100px;font-size:13px;font-weight:700;transition:.2s;cursor:pointer;border:none;display:inline-flex;align-items:center;gap:6px}
+  .btn-outline{border:1px solid rgba(249,115,22,.3);color:#F97316;background:transparent}
+  .btn-outline:hover{background:rgba(249,115,22,.08)}
+  .btn-primary{background:linear-gradient(135deg,#EA580C,#F97316);color:#fff}
+  .btn-primary:hover{opacity:.9}
+  .btn-danger{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);color:#F87171}
+  .btn-danger:hover{background:rgba(239,68,68,.2)}
+
+  .container{max-width:680px;margin:32px auto;padding:0 20px}
+  .card{background:#0E0E1C;border:1px solid rgba(249,115,22,.12);border-radius:16px;padding:32px}
+  h1{font-size:20px;font-weight:900;margin-bottom:24px}
+
+  .field{margin-bottom:18px}
+  label{display:block;font-size:13px;font-weight:600;color:#9090B0;margin-bottom:6px}
+  input,select,textarea{width:100%;background:#07070E;border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:12px 14px;color:#EEEEF5;font-size:14px;outline:none;transition:.2s;font-family:inherit}
+  input:focus,select:focus,textarea:focus{border-color:#F97316}
+  select option{background:#07070E}
+  textarea{resize:vertical;min-height:80px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .hint{font-size:11px;color:#55557A;margin-top:5px}
+
+  /* Preview image */
+  .img-preview{width:100%;height:180px;background:#07070E;border:1px solid rgba(255,255,255,.08);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:48px;margin-bottom:8px;overflow:hidden}
+  .img-preview img{width:100%;height:100%;object-fit:cover}
+
+  .switch-row{display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-bottom:1px solid rgba(255,255,255,.04)}
+  .switch-row:last-child{border-bottom:none}
+  .switch-label{font-size:14px;font-weight:600}
+  .switch-desc{font-size:12px;color:#55557A;margin-top:3px}
+  .toggle{position:relative;width:44px;height:24px;flex-shrink:0}
+  .toggle input{opacity:0;width:0;height:0}
+  .slider{position:absolute;inset:0;background:#1A1A2E;border-radius:100px;cursor:pointer;transition:.2s}
+  .slider:before{content:'';position:absolute;width:18px;height:18px;left:3px;bottom:3px;background:#55557A;border-radius:50%;transition:.2s}
+  input:checked+.slider{background:linear-gradient(135deg,#EA580C,#F97316)}
+  input:checked+.slider:before{transform:translateX(20px);background:#fff}
+
+  .error{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:10px;padding:12px 14px;font-size:13px;color:#FCA5A5;margin-bottom:18px}
+  .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:24px}
+
+  .stock-row{display:flex;align-items:center;gap:10px}
+  .stock-row input{flex:1}
+  .stock-hint{font-size:12px;color:#55557A}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-logo">🛵 MandaJá</div>
+  <a href="/mandaja/produtos" class="btn btn-outline">← Voltar</a>
+</div>
+
+<div class="container">
+  <div class="card">
+    <h1>{{ '✏️ Editar Produto' if prod else '+ Novo Produto' }}</h1>
+
+    {% if error %}<div class="error">{{ error }}</div>{% endif %}
+
+    <form method="POST" id="prodForm">
+
+      <!-- Preview -->
+      <div class="field">
+        <label>Foto do produto (URL)</label>
+        <div class="img-preview" id="imgPreview">
+          {% if prod and prod.photo_url %}
+          <img src="{{ prod.photo_url }}" id="previewImg" onerror="this.parentNode.innerHTML='📦'">
+          {% else %}
+          <span id="previewEmoji">📦</span>
+          {% endif %}
+        </div>
+        <input type="url" name="photo_url" id="photoUrl"
+               placeholder="https://... (link de imagem do produto)"
+               value="{{ prod.photo_url if prod else '' }}"
+               oninput="updatePreview(this.value)">
+        <div class="hint">Cole o link de uma imagem (ex: do Google Fotos, Imgur, etc.)</div>
+      </div>
+
+      <!-- Nome e categoria -->
+      <div class="grid2">
+        <div class="field">
+          <label>Nome do produto *</label>
+          <input type="text" name="name" placeholder="Ex: X-Burguer, Pizza Margherita..."
+                 value="{{ prod.name if prod else '' }}" required>
+        </div>
+        <div class="field">
+          <label>Categoria</label>
+          <select name="category_id">
+            <option value="">— Sem categoria —</option>
+            {% for c in cats %}
+            <option value="{{ c.id }}" {% if prod and prod.category_id == c.id %}selected{% endif %}>{{ c.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <!-- Descrição -->
+      <div class="field">
+        <label>Descrição</label>
+        <textarea name="description" placeholder="Ingredientes, tamanho, informações adicionais...">{{ prod.description if prod else '' }}</textarea>
+      </div>
+
+      <!-- Preço e custo -->
+      <div class="grid2">
+        <div class="field">
+          <label>Preço de venda (R$) *</label>
+          <input type="number" name="price" step="0.01" min="0" placeholder="0,00"
+                 value="{{ '%.2f'|format(prod.price) if prod else '' }}" required>
+        </div>
+        <div class="field">
+          <label>Custo / preço de compra (R$)</label>
+          <input type="number" name="cost" step="0.01" min="0" placeholder="0,00 (opcional)"
+                 value="{{ '%.2f'|format(prod.cost) if prod else '' }}">
+          <div class="hint">Usado no controle financeiro — não aparece na loja</div>
+        </div>
+      </div>
+
+      <!-- Estoque -->
+      <div class="field">
+        <label>Estoque</label>
+        <div class="stock-row">
+          <input type="number" name="stock" min="-1" placeholder="-1"
+                 value="{{ prod.stock if prod else -1 }}">
+          <span class="stock-hint">-1 = ilimitado</span>
+        </div>
+        <div class="hint">Quando chegar a 0, o produto fica indisponível automaticamente</div>
+      </div>
+
+      {% if prod %}
+      <!-- Status ativo/inativo -->
+      <div class="switch-row" style="margin-bottom:16px">
+        <div>
+          <div class="switch-label">Produto ativo</div>
+          <div class="switch-desc">Desativado não aparece na loja</div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" name="active" value="1" {% if prod.active %}checked{% endif %}>
+          <span class="slider"></span>
+        </label>
+      </div>
+      {% endif %}
+
+      <div class="actions">
+        <button type="submit" class="btn btn-primary">
+          {{ '💾 Salvar alterações' if prod else '✅ Criar produto' }}
+        </button>
+        <a href="/mandaja/produtos" class="btn btn-outline">Cancelar</a>
+        {% if prod %}
+        <button type="submit" name="action" value="delete" class="btn btn-danger"
+                onclick="return confirm('Remover este produto do cardápio?')">
+          🗑️ Remover produto
+        </button>
+        {% endif %}
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function updatePreview(url) {
+  const box = document.getElementById('imgPreview');
+  if(url && url.startsWith('http')) {
+    box.innerHTML = `<img src="${url}" style="width:100%;height:100%;object-fit:cover" onerror="this.parentNode.innerHTML='📦'">`;
+  } else {
+    box.innerHTML = '📦';
+  }
+}
+</script>
+</body>
+</html>

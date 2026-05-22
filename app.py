@@ -148,6 +148,63 @@ MANDAZAP_PLANS = {
     'agencia':   {'label': 'Agência',   'numbers': 10, 'daily_limit': 99999, 'contacts_limit': 99999, 'price': 499},
 }
 
+# ── MandaJá — Planos ─────────────────────────────────────────────────────────
+MANDAJA_PLANS = {
+    'micro':    {'label': 'Micro',    'products': 5,   'price': 59,  'emoji': '🌱'},
+    'light':    {'label': 'Light',    'products': 10,  'price': 99,  'emoji': '⚡'},
+    'plus':     {'label': 'Plus',     'products': 20,  'price': 159, 'emoji': '🚀'},
+    'pro':      {'label': 'Pro',      'products': 40,  'price': 249, 'emoji': '💎'},
+    'king':     {'label': 'King',     'products': 100, 'price': 349, 'emoji': '👑'},
+    'ultra':    {'label': 'Ultra',    'products': 200, 'price': 499, 'emoji': '🔥'},
+}
+
+MANDAJA_STORE_CATEGORIES = {
+    'restaurante':  '🍽️ Restaurante',
+    'lanchonete':   '🍔 Lanchonete / Hambúrguer',
+    'pizza':        '🍕 Pizzaria',
+    'sushi':        '🍣 Japonês / Sushi',
+    'acai':         '🍇 Açaí / Sorvete',
+    'pastelaria':   '🥟 Pastelaria',
+    'mercado':      '🛒 Mercado / Mercearia',
+    'farmacia':     '💊 Farmácia',
+    'padaria':      '🥖 Padaria / Confeitaria',
+    'bebidas':      '🍺 Bebidas / Adega',
+    'pet':          '🐾 Pet Shop',
+    'flores':       '💐 Flores / Presentes',
+    'roupas':       '👕 Roupas / Acessórios',
+    'eletronicos':  '📱 Eletrônicos',
+    'outros':       '📦 Outros',
+}
+
+MANDAJA_WEEKDAYS = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo']
+
+
+def _mandaja_login_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not session.get('mja_store_id'):
+            return redirect('/mandaja/entrar')
+        return f(*args, **kwargs)
+    return decorated
+
+
+def _mandaja_get_store():
+    """Retorna a loja logada."""
+    conn = get_saas_db()
+    s = conn.execute('SELECT * FROM mandaja_stores WHERE id=?',
+                     (session.get('mja_store_id'),)).fetchone()
+    conn.close()
+    return dict(s) if s else None
+
+
+def _mandaja_next_order_number(store_id):
+    conn = get_saas_db()
+    count = conn.execute(
+        'SELECT COUNT(*) FROM mandaja_orders WHERE store_id=?', (store_id,)
+    ).fetchone()[0]
+    conn.close()
+    return f"#{count + 1:04d}"
+
 BAU_CATEGORIES = {
     'trabalho': {'label': 'Trabalho',       'icon': '💼'},
     'banco':    {'label': 'Bancos / Finance','icon': '🏦'},
@@ -1040,13 +1097,23 @@ def saas_admin():
         conn3.close()
     except Exception:
         defesa_users = []
+    # MandaJá — lojas
+    try:
+        conn4 = get_saas_db()
+        mandaja_stores = [dict(r) for r in conn4.execute(
+            'SELECT id, name, slug, owner_name, phone, email, city, plan, active, created_at FROM mandaja_stores ORDER BY id DESC'
+        ).fetchall()]
+        conn4.close()
+    except Exception:
+        mandaja_stores = []
     return render_template('saas_admin.html',
                            subscribers=subscribers, businesses=businesses,
                            mz_users=mz_users, mz_plans=MANDAZAP_PLANS,
                            bau_users=bau_users,
                            kids_clients=kids_clients,
                            desp_users=desp_users,
-                           defesa_users=defesa_users)
+                           defesa_users=defesa_users,
+                           mandaja_stores=mandaja_stores)
 
 
 @app.route('/admin/alerta/<int:sub_id>/status', methods=['POST'])
@@ -1391,6 +1458,21 @@ def saas_defesa_novo_user():
         return jsonify({'success': False, 'error': str(e)})
     conn.close()
     return jsonify({'success': True, 'id': new_id})
+
+
+# ── Admin MandaJá ─────────────────────────────────────────────────────────────
+@app.route('/admin/mandaja/store/<int:store_id>/toggle', methods=['POST'])
+@_saas_admin_required
+def saas_mandaja_toggle(store_id):
+    conn = get_saas_db()
+    row  = conn.execute('SELECT active FROM mandaja_stores WHERE id=?', (store_id,)).fetchone()
+    if not row:
+        conn.close()
+        return jsonify({'success': False, 'error': 'Loja não encontrada'})
+    new_active = 0 if row['active'] else 1
+    conn.execute('UPDATE mandaja_stores SET active=? WHERE id=?', (new_active, store_id))
+    conn.commit(); conn.close()
+    return jsonify({'success': True, 'active': new_active})
 
 
 # ── Admin Agenda SC ───────────────────────────────────────────────────────────
@@ -4884,6 +4966,585 @@ def _startup():
 
     except Exception as e:
         log.error(f"Startup error: {e}")
+
+# ══════════════════════════════════════════════════════════════════════════════
+# MandaJá — Delivery App
+# ══════════════════════════════════════════════════════════════════════════════
+
+@app.route('/mandaja')
+def mandaja_landing():
+    return render_template('mandaja/landing.html')
+
+
+@app.route('/mandaja/entrar', methods=['GET', 'POST'])
+def mandaja_entrar():
+    msg = request.args.get('msg', '')
+    if request.method == 'POST':
+        email = request.form.get('email', '').strip().lower()
+        senha = request.form.get('senha', '')
+        conn  = get_saas_db()
+        store = conn.execute(
+            'SELECT * FROM mandaja_stores WHERE LOWER(email)=? AND active=1', (email,)
+        ).fetchone()
+        conn.close()
+        if store and check_password_hash(store['password_hash'], senha):
+            session['mja_store_id']   = store['id']
+            session['mja_store_name'] = store['name']
+            session['mja_store_slug'] = store['slug']
+            session['mja_plan']       = store['plan']
+            return redirect('/mandaja/painel')
+        return render_template('mandaja/entrar.html', error='E-mail ou senha incorretos.')
+    return render_template('mandaja/entrar.html', msg=msg)
+
+
+@app.route('/mandaja/cadastro', methods=['GET', 'POST'])
+def mandaja_cadastro():
+    if request.method == 'POST':
+        name       = request.form.get('name', '').strip()
+        owner_name = request.form.get('owner_name', '').strip()
+        email      = request.form.get('email', '').strip().lower()
+        phone      = request.form.get('phone', '').strip()
+        category   = request.form.get('category', 'restaurante')
+        senha      = request.form.get('senha', '')
+        city       = request.form.get('city', '').strip()
+        if not all([name, owner_name, email, phone, senha]):
+            return render_template('mandaja/cadastro.html',
+                                   error='Preencha todos os campos obrigatórios.',
+                                   cats=MANDAJA_STORE_CATEGORIES)
+        if len(senha) < 6:
+            return render_template('mandaja/cadastro.html',
+                                   error='Senha deve ter pelo menos 6 caracteres.',
+                                   cats=MANDAJA_STORE_CATEGORIES)
+        slug = _slugify(name)
+        conn = get_saas_db()
+        # Garante slug único
+        base_slug = slug
+        i = 1
+        while conn.execute('SELECT id FROM mandaja_stores WHERE slug=?', (slug,)).fetchone():
+            slug = f"{base_slug}-{i}"; i += 1
+        # Verifica e-mail único
+        if conn.execute('SELECT id FROM mandaja_stores WHERE LOWER(email)=?', (email,)).fetchone():
+            conn.close()
+            return render_template('mandaja/cadastro.html',
+                                   error='Este e-mail já está cadastrado.',
+                                   cats=MANDAJA_STORE_CATEGORIES)
+        trial_ends = (datetime.now() + timedelta(days=14)).isoformat()
+        conn.execute('''
+            INSERT INTO mandaja_stores
+            (name, slug, owner_name, phone, email, password_hash, category, city, plan, created_at, trial_ends)
+            VALUES (?,?,?,?,?,?,?,?,'micro',?,?)
+        ''', (name, slug, owner_name, phone, email,
+              generate_password_hash(senha), category, city,
+              datetime.now().isoformat(), trial_ends))
+        conn.commit()
+        store = conn.execute('SELECT * FROM mandaja_stores WHERE email=?', (email,)).fetchone()
+        # Cria horários padrão (Seg-Sex 08-22, Sab 08-20)
+        for wd in range(7):
+            ct = '20:00' if wd == 5 else '22:00'
+            active = 0 if wd == 6 else 1
+            conn.execute('''INSERT INTO mandaja_hours (store_id, weekday, open_time, close_time, active)
+                            VALUES (?,?,?,?,?)''', (store['id'], wd, '08:00', ct, active))
+        conn.commit()
+        conn.close()
+        session['mja_store_id']   = store['id']
+        session['mja_store_name'] = store['name']
+        session['mja_store_slug'] = store['slug']
+        session['mja_plan']       = 'micro'
+        return redirect('/mandaja/painel?novo=1')
+    return render_template('mandaja/cadastro.html', cats=MANDAJA_STORE_CATEGORIES)
+
+
+@app.route('/mandaja/logout')
+def mandaja_logout():
+    for k in ('mja_store_id', 'mja_store_name', 'mja_store_slug', 'mja_plan'):
+        session.pop(k, None)
+    return redirect('/mandaja')
+
+
+# ── Dashboard ─────────────────────────────────────────────────────────────────
+@app.route('/mandaja/painel')
+@_mandaja_login_required
+def mandaja_painel():
+    store = _mandaja_get_store()
+    if not store:
+        return redirect('/mandaja/logout')
+    conn = get_saas_db()
+    store_id = store['id']
+    # Stats
+    today = datetime.now().strftime('%Y-%m-%d')
+    stats = {
+        'pedidos_hoje': conn.execute(
+            "SELECT COUNT(*) FROM mandaja_orders WHERE store_id=? AND DATE(created_at)=?",
+            (store_id, today)).fetchone()[0],
+        'receita_hoje': conn.execute(
+            "SELECT COALESCE(SUM(total),0) FROM mandaja_orders WHERE store_id=? AND DATE(created_at)=? AND status NOT IN ('cancelled')",
+            (store_id, today)).fetchone()[0],
+        'pedidos_abertos': conn.execute(
+            "SELECT COUNT(*) FROM mandaja_orders WHERE store_id=? AND status IN ('new','confirmed','preparing','ready')",
+            (store_id,)).fetchone()[0],
+        'total_produtos': conn.execute(
+            "SELECT COUNT(*) FROM mandaja_products WHERE store_id=? AND active=1",
+            (store_id,)).fetchone()[0],
+    }
+    pedidos_recentes = conn.execute(
+        "SELECT * FROM mandaja_orders WHERE store_id=? ORDER BY id DESC LIMIT 10",
+        (store_id,)).fetchall()
+    pedidos_recentes = [dict(p) for p in pedidos_recentes]
+    conn.close()
+    plan_info = MANDAJA_PLANS.get(store['plan'], MANDAJA_PLANS['micro'])
+    return render_template('mandaja/painel.html',
+                           store=store, stats=stats,
+                           pedidos_recentes=pedidos_recentes,
+                           plan=plan_info, plans=MANDAJA_PLANS)
+
+
+# ── Produtos ──────────────────────────────────────────────────────────────────
+@app.route('/mandaja/produtos')
+@_mandaja_login_required
+def mandaja_produtos():
+    store    = _mandaja_get_store()
+    if not store:
+        return redirect('/mandaja/logout')
+    store_id = store['id']
+    conn     = get_saas_db()
+    cats     = conn.execute('SELECT * FROM mandaja_categories WHERE store_id=? ORDER BY sort_order,name', (store_id,)).fetchall()
+    prods    = conn.execute('''
+        SELECT p.*, c.name as cat_name
+        FROM mandaja_products p
+        LEFT JOIN mandaja_categories c ON p.category_id = c.id
+        WHERE p.store_id=? ORDER BY p.active DESC, p.sort_order, p.name
+    ''', (store_id,)).fetchall()
+    conn.close()
+    plan_info = MANDAJA_PLANS.get(store['plan'], MANDAJA_PLANS['micro'])
+    return render_template('mandaja/produtos.html',
+                           store=store, cats=[dict(c) for c in cats],
+                           prods=[dict(p) for p in prods],
+                           plan=plan_info)
+
+
+@app.route('/mandaja/produtos/novo', methods=['GET', 'POST'])
+@_mandaja_login_required
+def mandaja_produto_novo():
+    store    = _mandaja_get_store()
+    if not store:
+        return redirect('/mandaja/logout')
+    store_id = store['id']
+    conn     = get_saas_db()
+    plan_info = MANDAJA_PLANS.get(store['plan'], MANDAJA_PLANS['micro'])
+    # Verifica limite do plano
+    count = conn.execute(
+        'SELECT COUNT(*) FROM mandaja_products WHERE store_id=? AND active=1', (store_id,)
+    ).fetchone()[0]
+    if count >= plan_info['products']:
+        conn.close()
+        return redirect(f'/mandaja/produtos?erro=limite_plano')
+    cats = conn.execute('SELECT * FROM mandaja_categories WHERE store_id=? ORDER BY name', (store_id,)).fetchall()
+    if request.method == 'POST':
+        name        = request.form.get('name', '').strip()
+        description = request.form.get('description', '').strip()
+        try:
+            price = float(request.form.get('price', 0) or 0)
+            cost  = float(request.form.get('cost', 0) or 0)
+            stock = int(request.form.get('stock', -1) or -1)
+        except (ValueError, TypeError):
+            price, cost, stock = 0.0, 0.0, -1
+        category_id = request.form.get('category_id') or None
+        photo_url   = request.form.get('photo_url', '').strip()
+        if not name:
+            conn.close()
+            return render_template('mandaja/produto_form.html',
+                                   store=store, cats=[dict(c) for c in cats],
+                                   error='Nome é obrigatório.', prod=None)
+        conn.execute('''
+            INSERT INTO mandaja_products (store_id, category_id, name, description, price, cost, photo_url, stock, created_at)
+            VALUES (?,?,?,?,?,?,?,?,?)
+        ''', (store_id, category_id, name, description, price, cost, photo_url, stock, datetime.now().isoformat()))
+        conn.commit()
+        conn.close()
+        return redirect('/mandaja/produtos?ok=criado')
+    conn.close()
+    return render_template('mandaja/produto_form.html',
+                           store=store, cats=[dict(c) for c in cats], prod=None, error=None)
+
+
+@app.route('/mandaja/produtos/<int:prod_id>/editar', methods=['GET', 'POST'])
+@_mandaja_login_required
+def mandaja_produto_editar(prod_id):
+    store    = _mandaja_get_store()
+    if not store:
+        return redirect('/mandaja/logout')
+    store_id = store['id']
+    conn     = get_saas_db()
+    prod     = conn.execute('SELECT * FROM mandaja_products WHERE id=? AND store_id=?', (prod_id, store_id)).fetchone()
+    if not prod:
+        conn.close()
+        return redirect('/mandaja/produtos')
+    cats = conn.execute('SELECT * FROM mandaja_categories WHERE store_id=? ORDER BY name', (store_id,)).fetchall()
+    if request.method == 'POST':
+        action = request.form.get('action', 'save')
+        if action == 'delete':
+            conn.execute('UPDATE mandaja_products SET active=0 WHERE id=?', (prod_id,))
+            conn.commit()
+            conn.close()
+            return redirect('/mandaja/produtos?ok=removido')
+        name        = request.form.get('name', '').strip()
+        description = request.form.get('description', '').strip()
+        try:
+            price = float(request.form.get('price', 0) or 0)
+            cost  = float(request.form.get('cost', 0) or 0)
+            stock = int(request.form.get('stock', -1) or -1)
+        except (ValueError, TypeError):
+            price, cost, stock = 0.0, 0.0, -1
+        category_id = request.form.get('category_id') or None
+        photo_url   = request.form.get('photo_url', '').strip()
+        active      = 1 if request.form.get('active') else 0
+        conn.execute('''
+            UPDATE mandaja_products SET name=?, description=?, price=?, cost=?,
+            category_id=?, photo_url=?, stock=?, active=? WHERE id=?
+        ''', (name, description, price, cost, category_id, photo_url, stock, active, prod_id))
+        conn.commit()
+        conn.close()
+        return redirect('/mandaja/produtos?ok=atualizado')
+    conn.close()
+    return render_template('mandaja/produto_form.html',
+                           store=store, cats=[dict(c) for c in cats],
+                           prod=dict(prod), error=None)
+
+
+# ── Categorias (AJAX) ─────────────────────────────────────────────────────────
+@app.route('/mandaja/categorias', methods=['POST'])
+@_mandaja_login_required
+def mandaja_categoria_nova():
+    store_id = session['mja_store_id']
+    name     = request.json.get('name', '').strip()
+    if not name:
+        return jsonify({'error': 'Nome obrigatório'}), 400
+    conn = get_saas_db()
+    cur  = conn.execute('INSERT INTO mandaja_categories (store_id, name) VALUES (?,?)', (store_id, name))
+    conn.commit()
+    cat_id = cur.lastrowid
+    conn.close()
+    return jsonify({'id': cat_id, 'name': name})
+
+
+@app.route('/mandaja/categorias/<int:cat_id>', methods=['DELETE'])
+@_mandaja_login_required
+def mandaja_categoria_del(cat_id):
+    store_id = session['mja_store_id']
+    conn     = get_saas_db()
+    conn.execute('DELETE FROM mandaja_categories WHERE id=? AND store_id=?', (cat_id, store_id))
+    conn.execute('UPDATE mandaja_products SET category_id=NULL WHERE category_id=? AND store_id=?', (cat_id, store_id))
+    conn.commit()
+    conn.close()
+    return jsonify({'ok': True})
+
+
+# ── Horários ──────────────────────────────────────────────────────────────────
+@app.route('/mandaja/horarios', methods=['GET', 'POST'])
+@_mandaja_login_required
+def mandaja_horarios():
+    store    = _mandaja_get_store()
+    if not store:
+        return redirect('/mandaja/logout')
+    store_id = store['id']
+    conn     = get_saas_db()
+    if request.method == 'POST':
+        for wd in range(7):
+            active     = 1 if request.form.get(f'active_{wd}') else 0
+            open_time  = request.form.get(f'open_{wd}', '08:00')
+            close_time = request.form.get(f'close_{wd}', '22:00')
+            existing   = conn.execute('SELECT id FROM mandaja_hours WHERE store_id=? AND weekday=?', (store_id, wd)).fetchone()
+            if existing:
+                conn.execute('UPDATE mandaja_hours SET active=?, open_time=?, close_time=? WHERE id=?',
+                             (active, open_time, close_time, existing['id']))
+            else:
+                conn.execute('INSERT INTO mandaja_hours (store_id, weekday, open_time, close_time, active) VALUES (?,?,?,?,?)',
+                             (store_id, wd, open_time, close_time, active))
+        conn.commit()
+        conn.close()
+        return redirect('/mandaja/horarios?ok=1')
+    hours = {h['weekday']: dict(h) for h in conn.execute(
+        'SELECT * FROM mandaja_hours WHERE store_id=?', (store_id,)).fetchall()}
+    conn.close()
+    return render_template('mandaja/horarios.html',
+                           store=store, hours=hours, weekdays=MANDAJA_WEEKDAYS)
+
+
+# ── Pedidos ───────────────────────────────────────────────────────────────────
+@app.route('/mandaja/pedidos')
+@_mandaja_login_required
+def mandaja_pedidos():
+    store    = _mandaja_get_store()
+    if not store:
+        return redirect('/mandaja/logout')
+    store_id = store['id']
+    status   = request.args.get('status', '')
+    conn     = get_saas_db()
+    if status:
+        pedidos = conn.execute(
+            'SELECT * FROM mandaja_orders WHERE store_id=? AND status=? ORDER BY id DESC LIMIT 100',
+            (store_id, status)).fetchall()
+    else:
+        pedidos = conn.execute(
+            'SELECT * FROM mandaja_orders WHERE store_id=? ORDER BY id DESC LIMIT 100',
+            (store_id,)).fetchall()
+    conn.close()
+    return render_template('mandaja/pedidos.html',
+                           store=store, pedidos=[dict(p) for p in pedidos],
+                           status_filter=status)
+
+
+@app.route('/mandaja/pedidos/<int:order_id>')
+@_mandaja_login_required
+def mandaja_pedido_detalhe(order_id):
+    store    = _mandaja_get_store()
+    if not store:
+        return redirect('/mandaja/logout')
+    store_id = store['id']
+    conn     = get_saas_db()
+    pedido   = conn.execute('SELECT * FROM mandaja_orders WHERE id=? AND store_id=?', (order_id, store_id)).fetchone()
+    conn.close()
+    if not pedido:
+        return redirect('/mandaja/pedidos')
+    pedido = dict(pedido)
+    pedido['items'] = _json.loads(pedido.get('items_json') or '[]')
+    return render_template('mandaja/pedido_detalhe.html', store=store, pedido=pedido)
+
+
+@app.route('/mandaja/pedidos/<int:order_id>/status', methods=['POST'])
+@_mandaja_login_required
+def mandaja_pedido_status(order_id):
+    store_id   = session['mja_store_id']
+    new_status = request.json.get('status')
+    valid      = ('new', 'confirmed', 'preparing', 'ready', 'delivered', 'cancelled')
+    if new_status not in valid:
+        return jsonify({'error': 'Status inválido'}), 400
+    conn = get_saas_db()
+    conn.execute('UPDATE mandaja_orders SET status=?, updated_at=? WHERE id=? AND store_id=?',
+                 (new_status, datetime.now().isoformat(), order_id, store_id))
+    conn.commit()
+    conn.close()
+    return jsonify({'ok': True, 'status': new_status})
+
+
+# ── Configurações ─────────────────────────────────────────────────────────────
+@app.route('/mandaja/configuracoes', methods=['GET', 'POST'])
+@_mandaja_login_required
+def mandaja_config():
+    store    = _mandaja_get_store()
+    if not store:
+        return redirect('/mandaja/logout')
+    store_id = store['id']
+    conn     = get_saas_db()
+    if request.method == 'POST':
+        action = request.form.get('action', 'save')
+        if action == 'change_pass':
+            senha_atual = request.form.get('senha_atual', '')
+            senha_nova  = request.form.get('senha_nova', '')
+            if not check_password_hash(store['password_hash'], senha_atual):
+                conn.close()
+                return render_template('mandaja/configuracoes.html',
+                                       store=store, cats=MANDAJA_STORE_CATEGORIES,
+                                       error_pass='Senha atual incorreta.')
+            if len(senha_nova) < 6:
+                conn.close()
+                return render_template('mandaja/configuracoes.html',
+                                       store=store, cats=MANDAJA_STORE_CATEGORIES,
+                                       error_pass='Nova senha deve ter pelo menos 6 caracteres.')
+            conn.execute('UPDATE mandaja_stores SET password_hash=? WHERE id=?',
+                         (generate_password_hash(senha_nova), store_id))
+            conn.commit()
+            conn.close()
+            return redirect('/mandaja/configuracoes?ok=senha')
+        # Salvar dados da loja
+        fields = ['name', 'owner_name', 'phone', 'email', 'description', 'category',
+                  'address', 'neighborhood', 'city', 'state', 'cep',
+                  'pix_chave', 'pix_nome', 'whatsapp', 'logo_url', 'banner_url']
+        updates = {f: request.form.get(f, '').strip() for f in fields}
+        updates['delivery_fee']    = float(request.form.get('delivery_fee', 0) or 0)
+        updates['min_order']       = float(request.form.get('min_order', 0) or 0)
+        updates['delivery_time']   = int(request.form.get('delivery_time', 45) or 45)
+        updates['delivery_radius'] = int(request.form.get('delivery_radius', 5) or 5)
+        updates['accepts_card']    = 1 if request.form.get('accepts_card') else 0
+        updates['accepts_cash']    = 1 if request.form.get('accepts_cash') else 0
+        set_clause = ', '.join(f'{k}=?' for k in updates)
+        conn.execute(f'UPDATE mandaja_stores SET {set_clause} WHERE id=?',
+                     (*updates.values(), store_id))
+        conn.commit()
+        conn.close()
+        session['mja_store_name'] = updates['name']
+        return redirect('/mandaja/configuracoes?ok=1')
+    conn.close()
+    return render_template('mandaja/configuracoes.html',
+                           store=store, cats=MANDAJA_STORE_CATEGORIES)
+
+
+# ── Financeiro ────────────────────────────────────────────────────────────────
+@app.route('/mandaja/financeiro')
+@_mandaja_login_required
+def mandaja_financeiro():
+    store    = _mandaja_get_store()
+    if not store:
+        return redirect('/mandaja/logout')
+    store_id = store['id']
+    conn     = get_saas_db()
+    mes      = request.args.get('mes', datetime.now().strftime('%Y-%m'))
+    receita  = conn.execute(
+        "SELECT COALESCE(SUM(total),0) FROM mandaja_orders WHERE store_id=? AND status='delivered' AND strftime('%Y-%m', created_at)=?",
+        (store_id, mes)).fetchone()[0]
+    pedidos_mes = conn.execute(
+        "SELECT COUNT(*) FROM mandaja_orders WHERE store_id=? AND strftime('%Y-%m', created_at)=?",
+        (store_id, mes)).fetchone()[0]
+    pedidos_entregues = conn.execute(
+        "SELECT COUNT(*) FROM mandaja_orders WHERE store_id=? AND status='delivered' AND strftime('%Y-%m', created_at)=?",
+        (store_id, mes)).fetchone()[0]
+    pedidos_list = conn.execute(
+        "SELECT * FROM mandaja_orders WHERE store_id=? AND strftime('%Y-%m', created_at)=? ORDER BY id DESC",
+        (store_id, mes)).fetchall()
+    conn.close()
+    return render_template('mandaja/financeiro.html',
+                           store=store, mes=mes, receita=receita,
+                           pedidos_mes=pedidos_mes,
+                           pedidos_entregues=pedidos_entregues,
+                           pedidos=[dict(p) for p in pedidos_list])
+
+
+# ── Loja pública (vitrine do cliente) ─────────────────────────────────────────
+@app.route('/loja/<slug>')
+def mandaja_loja(slug):
+    conn  = get_saas_db()
+    store = conn.execute('SELECT * FROM mandaja_stores WHERE slug=? AND active=1', (slug,)).fetchone()
+    if not store:
+        conn.close()
+        return render_template('mandaja/loja_404.html'), 404
+    store = dict(store)
+    # Verifica se está aberto agora
+    now = datetime.now()
+    wd  = now.weekday()
+    hour_row = conn.execute(
+        'SELECT * FROM mandaja_hours WHERE store_id=? AND weekday=? AND active=1', (store['id'], wd)
+    ).fetchone()
+    is_open = False
+    if hour_row:
+        try:
+            open_dt  = datetime.strptime(hour_row['open_time'],  '%H:%M').replace(year=now.year, month=now.month, day=now.day)
+            close_dt = datetime.strptime(hour_row['close_time'], '%H:%M').replace(year=now.year, month=now.month, day=now.day)
+            is_open  = open_dt <= now <= close_dt
+        except Exception:
+            pass
+    cats  = conn.execute(
+        'SELECT * FROM mandaja_categories WHERE store_id=? AND active=1 ORDER BY sort_order, name', (store['id'],)
+    ).fetchall()
+    prods = conn.execute(
+        'SELECT * FROM mandaja_products WHERE store_id=? AND active=1 ORDER BY sort_order, name', (store['id'],)
+    ).fetchall()
+    hours = conn.execute(
+        'SELECT * FROM mandaja_hours WHERE store_id=? ORDER BY weekday', (store['id'],)
+    ).fetchall()
+    conn.close()
+    cats_dict  = {c['id']: dict(c) for c in cats}
+    prods_list = [dict(p) for p in prods]
+    hours_list = [dict(h) for h in hours]
+    return render_template('mandaja/loja.html',
+                           store=store, cats=list(cats_dict.values()),
+                           prods=prods_list, hours=hours_list,
+                           weekdays=MANDAJA_WEEKDAYS, is_open=is_open)
+
+
+# ── Fazer pedido (POST da loja pública) ───────────────────────────────────────
+@app.route('/loja/<slug>/pedido', methods=['POST'])
+def mandaja_fazer_pedido(slug):
+    conn  = get_saas_db()
+    store = conn.execute('SELECT * FROM mandaja_stores WHERE slug=? AND active=1', (slug,)).fetchone()
+    if not store:
+        conn.close()
+        return jsonify({'error': 'Loja não encontrada'}), 404
+    store = dict(store)
+    data  = request.json or {}
+    customer_name   = data.get('customer_name', '').strip()
+    customer_phone  = data.get('customer_phone', '').strip()
+    customer_notes  = data.get('customer_notes', '').strip()
+    delivery_type   = data.get('delivery_type', 'delivery')
+    address         = data.get('address', '').strip()
+    neighborhood    = data.get('neighborhood', '').strip()
+    city            = data.get('city', '').strip()
+    cep             = data.get('cep', '').strip()
+    payment_method  = data.get('payment_method', 'pix')
+    change_for      = float(data.get('change_for', 0) or 0)
+    items           = data.get('items', [])
+    if not customer_name or not customer_phone or not items:
+        conn.close()
+        return jsonify({'error': 'Dados incompletos'}), 400
+    try:
+        subtotal = sum(float(i.get('price', 0)) * int(i.get('qty', 1)) for i in items)
+    except (ValueError, TypeError):
+        conn.close()
+        return jsonify({'error': 'Itens com valores inválidos'}), 400
+    delivery_fee = float(store['delivery_fee'] or 0) if delivery_type == 'delivery' else 0
+    total        = subtotal + delivery_fee
+    order_number = _mandaja_next_order_number(store['id'])
+    cur = conn.execute('''
+        INSERT INTO mandaja_orders
+        (store_id, order_number, customer_name, customer_phone, customer_notes,
+         delivery_type, address, neighborhood, city, cep,
+         payment_method, subtotal, delivery_fee, total, change_for,
+         status, items_json, created_at, updated_at)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'new',?,?,?)
+    ''', (store['id'], order_number, customer_name, customer_phone, customer_notes,
+          delivery_type, address, neighborhood, city, cep,
+          payment_method, subtotal, delivery_fee, total, change_for,
+          _json.dumps(items, ensure_ascii=False),
+          datetime.now().isoformat(), datetime.now().isoformat()))
+    conn.commit()
+    order_id = cur.lastrowid
+    conn.close()
+    # Notificação WhatsApp (se loja tiver número configurado)
+    if store.get('whatsapp'):
+        _notify_new_order_whatsapp(store, order_id, order_number, customer_name,
+                                   customer_phone, items, total, delivery_type,
+                                   address, neighborhood, payment_method)
+    return jsonify({'ok': True, 'order_id': order_id, 'order_number': order_number,
+                    'total': total, 'pix_chave': store.get('pix_chave', ''),
+                    'pix_nome': store.get('pix_nome', '')})
+
+
+def _notify_new_order_whatsapp(store, order_id, order_number, customer_name,
+                                customer_phone, items, total, delivery_type,
+                                address, neighborhood, payment_method):
+    """Envia mensagem WhatsApp para o lojista via Evolution API."""
+    try:
+        EVO_URL = os.environ.get('EVOLUTION_API_URL', '')
+        EVO_KEY = os.environ.get('EVOLUTION_API_KEY', '')
+        INSTANCE = os.environ.get('MANDAJA_EVO_INSTANCE', '')
+        if not (EVO_URL and EVO_KEY and INSTANCE):
+            return
+        items_text = '\n'.join(
+            f"  • {i.get('qty','1')}x {i.get('name','?')} — R${float(i.get('price',0)):.2f}"
+            for i in items
+        )
+        delivery_text = f"🚚 Entrega: {address}, {neighborhood}" if delivery_type == 'delivery' else "🏠 Retirada no local"
+        pay_map = {'pix': '💳 PIX', 'dinheiro': '💵 Dinheiro', 'cartao': '💳 Cartão'}
+        msg = (f"🛍️ *NOVO PEDIDO {order_number}*\n\n"
+               f"👤 {customer_name} — {customer_phone}\n\n"
+               f"🛒 Itens:\n{items_text}\n\n"
+               f"💰 Total: R${total:.2f}\n"
+               f"💳 Pagamento: {pay_map.get(payment_method, payment_method)}\n"
+               f"{delivery_text}\n\n"
+               f"🔗 Ver pedido: {request.host_url}mandaja/pedidos/{order_id}")
+        phone_clean = _re.sub(r'\D', '', store['whatsapp'])
+        requests.post(
+            f"{EVO_URL}/message/sendText/{INSTANCE}",
+            headers={'apikey': EVO_KEY, 'Content-Type': 'application/json'},
+            json={'number': phone_clean, 'text': msg},
+            timeout=8
+        )
+    except Exception as e:
+        log.warning(f"[MandaJá] WhatsApp notify error: {e}")
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Fim MandaJá
+# ══════════════════════════════════════════════════════════════════════════════
 
 with app.app_context():
     _startup()

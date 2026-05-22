@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pedido {{ pedido.order_number }} — MandaJá</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#07070E;color:#EEEEF5;font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh}
+  a{text-decoration:none;color:inherit}
+  .topbar{display:flex;align-items:center;justify-content:space-between;padding:0 24px;height:56px;background:#0E0E1C;border-bottom:1px solid rgba(249,115,22,.1)}
+  .topbar-logo{font-size:18px;font-weight:900;color:#F97316}
+  .btn{padding:8px 18px;border-radius:100px;font-size:13px;font-weight:700;transition:.2s;cursor:pointer;border:none}
+  .btn-outline{border:1px solid rgba(249,115,22,.3);color:#F97316;background:transparent}
+  .btn-outline:hover{background:rgba(249,115,22,.08)}
+  .btn-danger{border:1px solid rgba(239,68,68,.3);color:#F87171;font-size:12px;padding:6px 14px;border-radius:100px;font-weight:600;background:transparent;cursor:pointer}
+
+  .container{max-width:680px;margin:24px auto;padding:0 20px}
+  .card{background:#0E0E1C;border:1px solid rgba(249,115,22,.12);border-radius:16px;padding:24px;margin-bottom:16px}
+  h2{font-size:16px;font-weight:700;margin-bottom:16px;display:flex;align-items:center;gap:8px}
+
+  .badge{display:inline-flex;align-items:center;gap:4px;padding:5px 14px;border-radius:100px;font-size:13px;font-weight:700}
+  .badge-new{background:rgba(249,115,22,.15);color:#F97316}
+  .badge-confirmed{background:rgba(59,130,246,.15);color:#60A5FA}
+  .badge-preparing{background:rgba(234,179,8,.15);color:#FCD34D}
+  .badge-ready{background:rgba(168,85,247,.15);color:#C084FC}
+  .badge-delivered{background:rgba(74,222,128,.15);color:#4ADE80}
+  .badge-cancelled{background:rgba(239,68,68,.15);color:#F87171}
+
+  .info-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .info-item .lbl{font-size:11px;font-weight:700;color:#55557A;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+  .info-item .val{font-size:14px;font-weight:600}
+
+  .item-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.04)}
+  .item-row:last-child{border-bottom:none}
+  .item-qty{background:rgba(249,115,22,.15);color:#F97316;border-radius:6px;padding:2px 8px;font-size:13px;font-weight:700;margin-right:8px}
+  .item-name{font-size:14px;font-weight:600}
+  .item-note{font-size:11px;color:#55557A;margin-top:2px}
+  .item-price{font-size:14px;font-weight:700;color:#4ADE80}
+
+  .total-row{display:flex;justify-content:space-between;padding:8px 0;font-size:13px;color:#9090B0}
+  .total-row.total{font-size:18px;font-weight:900;color:#EEEEF5;border-top:1px solid rgba(255,255,255,.08);padding-top:12px;margin-top:4px}
+
+  /* Status buttons */
+  .status-btns{display:flex;gap:8px;flex-wrap:wrap}
+  .status-btn{padding:10px 18px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;border:1px solid rgba(255,255,255,.1);background:transparent;color:#9090B0;transition:.2s}
+  .status-btn:hover{border-color:#F97316;color:#F97316}
+  .status-btn.active-status{background:rgba(249,115,22,.15);border-color:#F97316;color:#F97316}
+  .status-btn.cancel-btn{border-color:rgba(239,68,68,.3);color:#F87171}
+  .status-btn.cancel-btn:hover{background:rgba(239,68,68,.1)}
+  .status-btn.confirm-btn{border-color:rgba(74,222,128,.3);color:#4ADE80}
+  .status-btn.confirm-btn:hover{background:rgba(74,222,128,.1)}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-logo">🛵 MandaJá</div>
+  <div style="display:flex;gap:10px">
+    <a href="/mandaja/pedidos" class="btn btn-outline">← Pedidos</a>
+    <a href="/mandaja/logout" class="btn-danger">Sair</a>
+  </div>
+</div>
+
+<div class="container">
+  <!-- Header -->
+  <div class="card">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:16px">
+      <div>
+        <h1 style="font-size:24px;font-weight:900;margin-bottom:4px">Pedido {{ pedido.order_number }}</h1>
+        <p style="font-size:13px;color:#9090B0">{{ pedido.created_at[:16].replace('T',' ') if pedido.created_at else '' }}</p>
+      </div>
+      {% set sc = {'new':'badge-new','confirmed':'badge-confirmed','preparing':'badge-preparing','ready':'badge-ready','delivered':'badge-delivered','cancelled':'badge-cancelled'} %}
+      {% set sl = {'new':'🆕 Novo','confirmed':'✅ Confirmado','preparing':'👨‍🍳 Preparando','ready':'📦 Pronto','delivered':'🚚 Entregue','cancelled':'❌ Cancelado'} %}
+      <span class="badge {{ sc.get(pedido.status,'badge-new') }}" id="statusBadge">{{ sl.get(pedido.status, pedido.status) }}</span>
+    </div>
+
+    <!-- Status actions -->
+    <h2>📋 Atualizar status</h2>
+    <div class="status-btns">
+      <button class="status-btn confirm-btn" onclick="setStatus('confirmed')">✅ Confirmar</button>
+      <button class="status-btn" onclick="setStatus('preparing')">👨‍🍳 Preparando</button>
+      <button class="status-btn" onclick="setStatus('ready')">📦 Pronto p/ entrega</button>
+      <button class="status-btn" onclick="setStatus('delivered')">🚚 Entregue</button>
+      <button class="status-btn cancel-btn" onclick="setStatus('cancelled')">❌ Cancelar</button>
+    </div>
+  </div>
+
+  <!-- Cliente -->
+  <div class="card">
+    <h2>👤 Cliente</h2>
+    <div class="info-grid">
+      <div class="info-item">
+        <div class="lbl">Nome</div>
+        <div class="val">{{ pedido.customer_name }}</div>
+      </div>
+      <div class="info-item">
+        <div class="lbl">Telefone</div>
+        <div class="val"><a href="https://wa.me/55{{ pedido.customer_phone|replace(' ','')|replace('-','')|replace('(','')|replace(')','') }}" target="_blank" style="color:#4ADE80">{{ pedido.customer_phone }} 💬</a></div>
+      </div>
+      <div class="info-item">
+        <div class="lbl">Tipo</div>
+        <div class="val">{{ '🚚 Entrega' if pedido.delivery_type=='delivery' else '🏠 Retirada no local' }}</div>
+      </div>
+      <div class="info-item">
+        <div class="lbl">Pagamento</div>
+        <div class="val">{{ {'pix':'💳 PIX','dinheiro':'💵 Dinheiro','cartao':'💳 Cartão'}.get(pedido.payment_method, pedido.payment_method) }}</div>
+      </div>
+    </div>
+    {% if pedido.delivery_type == 'delivery' and pedido.address %}
+    <div style="margin-top:14px;padding:12px;background:#07070E;border-radius:10px;font-size:13px;color:#9090B0">
+      📍 {{ pedido.address }}{% if pedido.neighborhood %}, {{ pedido.neighborhood }}{% endif %}{% if pedido.city %} — {{ pedido.city }}{% endif %}{% if pedido.cep %} / {{ pedido.cep }}{% endif %}
+    </div>
+    {% endif %}
+    {% if pedido.customer_notes %}
+    <div style="margin-top:10px;padding:12px;background:#07070E;border-radius:10px;font-size:13px;color:#FCD34D">
+      ⚠️ {{ pedido.customer_notes }}
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Itens -->
+  <div class="card">
+    <h2>🛒 Itens do pedido</h2>
+    {% for item in pedido.items %}
+    <div class="item-row">
+      <div>
+        <span class="item-qty">{{ item.qty }}x</span>
+        <span class="item-name">{{ item.name }}</span>
+        {% if item.get('notes') %}<div class="item-note" style="margin-left:32px">ℹ️ {{ item.notes }}</div>{% endif %}
+      </div>
+      <div class="item-price">R${{ '%.2f'|format(float(item.price) * int(item.qty)) }}</div>
+    </div>
+    {% endfor %}
+
+    <!-- Totais -->
+    <div style="margin-top:12px">
+      <div class="total-row">
+        <span>Subtotal</span>
+        <span>R${{ '%.2f'|format(pedido.subtotal) }}</span>
+      </div>
+      {% if pedido.delivery_type == 'delivery' %}
+      <div class="total-row">
+        <span>Taxa de entrega</span>
+        <span>R${{ '%.2f'|format(pedido.delivery_fee) }}</span>
+      </div>
+      {% endif %}
+      <div class="total-row total">
+        <span>Total</span>
+        <span style="color:#4ADE80">R${{ '%.2f'|format(pedido.total) }}</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+async function setStatus(status) {
+  const labels = {
+    'confirmed': '✅ Confirmado',
+    'preparing': '👨‍🍳 Preparando',
+    'ready': '📦 Pronto',
+    'delivered': '🚚 Entregue',
+    'cancelled': '❌ Cancelado'
+  };
+  const classes = {
+    'confirmed': 'badge-confirmed',
+    'preparing': 'badge-preparing',
+    'ready': 'badge-ready',
+    'delivered': 'badge-delivered',
+    'cancelled': 'badge-cancelled'
+  };
+  const r = await fetch('/mandaja/pedidos/{{ pedido.id }}/status', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({status})
+  });
+  if(r.ok) {
+    const badge = document.getElementById('statusBadge');
+    badge.className = 'badge ' + (classes[status] || 'badge-new');
+    badge.textContent = labels[status] || status;
+    // Show toast
+    const t = document.createElement('div');
+    t.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#0E0E1C;border:1px solid rgba(74,222,128,.3);color:#4ADE80;padding:12px 20px;border-radius:10px;font-size:13px;font-weight:700;z-index:1000';
+    t.textContent = 'Status atualizado!';
+    document.body.appendChild(t);
+    setTimeout(() => t.remove(), 2500);
+  }
+}
+</script>
+</body>
+</html>

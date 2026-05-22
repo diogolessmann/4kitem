@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{ store.name }} — Delivery</title>
+<meta name="description" content="{{ store.description or store.name + ' — peça agora pelo delivery' }}">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#f5f5f5;color:#111;font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh;padding-bottom:120px}
+  a{text-decoration:none;color:inherit}
+
+  /* Header da loja */
+  .store-header{background:#fff;box-shadow:0 1px 8px rgba(0,0,0,.08)}
+  .store-banner{height:180px;background:linear-gradient(135deg,#EA580C,#F97316);overflow:hidden;position:relative}
+  .store-banner img{width:100%;height:100%;object-fit:cover}
+  .store-banner-overlay{position:absolute;inset:0;background:linear-gradient(to bottom,transparent 40%,rgba(0,0,0,.5))}
+  .store-info{padding:16px 20px;display:flex;align-items:flex-start;gap:16px}
+  .store-logo{width:72px;height:72px;border-radius:14px;background:#F97316;display:flex;align-items:center;justify-content:center;font-size:32px;flex-shrink:0;overflow:hidden;margin-top:-36px;box-shadow:0 4px 12px rgba(0,0,0,.15);border:3px solid #fff}
+  .store-logo img{width:100%;height:100%;object-fit:cover}
+  .store-meta{flex:1;margin-top:4px}
+  .store-name{font-size:20px;font-weight:900;margin-bottom:4px}
+  .store-desc{font-size:13px;color:#666;line-height:1.4;margin-bottom:8px}
+  .store-tags{display:flex;gap:8px;flex-wrap:wrap}
+  .store-tag{display:inline-flex;align-items:center;gap:4px;font-size:11px;color:#777;background:#f0f0f0;padding:3px 10px;border-radius:100px}
+  .open-badge{background:#dcfce7;color:#16a34a;font-weight:700}
+  .closed-badge{background:#fee2e2;color:#dc2626;font-weight:700}
+
+  /* Navbar categorias */
+  .cat-nav{background:#fff;border-bottom:1px solid #e5e5e5;position:sticky;top:0;z-index:40;padding:0 16px;overflow-x:auto;white-space:nowrap}
+  .cat-nav::-webkit-scrollbar{display:none}
+  .cat-nav-inner{display:inline-flex;gap:4px;padding:10px 0}
+  .cat-btn{padding:7px 16px;border-radius:100px;font-size:13px;font-weight:600;cursor:pointer;border:none;background:transparent;color:#555;transition:.2s;white-space:nowrap}
+  .cat-btn:hover,.cat-btn.active{background:#EA580C;color:#fff}
+
+  /* Produtos */
+  .section-title{font-size:14px;font-weight:800;color:#111;padding:20px 16px 12px;text-transform:uppercase;letter-spacing:.5px}
+  .prod-list{padding:0 12px;display:flex;flex-direction:column;gap:10px}
+  .prod-card{background:#fff;border-radius:14px;display:flex;align-items:center;gap:14px;padding:14px;box-shadow:0 1px 4px rgba(0,0,0,.06);cursor:pointer;transition:.15s;border:2px solid transparent}
+  .prod-card:hover{border-color:#F97316;box-shadow:0 4px 12px rgba(249,115,22,.15)}
+  .prod-card.unavailable{opacity:.5;cursor:not-allowed}
+  .prod-img{width:88px;height:88px;border-radius:10px;background:#f5f5f5;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:32px;overflow:hidden}
+  .prod-img img{width:100%;height:100%;object-fit:cover}
+  .prod-body{flex:1;min-width:0}
+  .prod-name{font-size:15px;font-weight:700;margin-bottom:4px}
+  .prod-desc{font-size:12px;color:#888;line-height:1.4;margin-bottom:8px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .prod-price{font-size:16px;font-weight:900;color:#EA580C}
+  .prod-stock{font-size:11px;color:#dc2626;font-weight:600;margin-top:2px}
+  .add-btn{width:32px;height:32px;border-radius:50%;background:#EA580C;color:#fff;border:none;font-size:20px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:.15s}
+  .add-btn:hover{background:#C2410C;transform:scale(1.1)}
+
+  /* Carrinho flutuante */
+  .cart-bar{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);width:calc(100% - 32px);max-width:480px;background:linear-gradient(135deg,#EA580C,#F97316);color:#fff;border-radius:16px;padding:15px 20px;align-items:center;justify-content:space-between;box-shadow:0 8px 24px rgba(249,115,22,.4);cursor:pointer;z-index:100;transition:.2s;display:none}
+  .cart-bar:hover{transform:translateX(-50%) translateY(-2px);box-shadow:0 12px 32px rgba(249,115,22,.5)}
+  .cart-bar .cart-count{background:rgba(255,255,255,.25);padding:3px 10px;border-radius:100px;font-size:13px;font-weight:700}
+  .cart-bar .cart-total{font-size:16px;font-weight:900}
+  .cart-bar .cart-label{font-size:14px;font-weight:700}
+
+  /* Modal carrinho */
+  .modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:flex-end;justify-content:center}
+  .modal-bg.show{display:flex}
+  .modal{background:#fff;border-radius:24px 24px 0 0;width:100%;max-width:520px;max-height:90vh;overflow-y:auto;padding:24px 20px 40px}
+  .modal h2{font-size:18px;font-weight:900;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between}
+  .modal-close{font-size:20px;cursor:pointer;color:#999;background:none;border:none}
+
+  /* Carrinho items */
+  .cart-item{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid #f0f0f0}
+  .cart-item-name{flex:1;font-size:14px;font-weight:600}
+  .cart-item-price{font-size:13px;color:#EA580C;font-weight:700;white-space:nowrap}
+  .qty-ctrl{display:flex;align-items:center;gap:8px}
+  .qty-btn{width:28px;height:28px;border-radius:50%;border:1.5px solid #EA580C;background:transparent;color:#EA580C;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:700}
+  .qty-val{font-size:14px;font-weight:700;min-width:20px;text-align:center}
+  .item-note-input{width:100%;margin-top:6px;padding:8px 10px;border:1px solid #e5e5e5;border-radius:8px;font-size:12px;color:#555;outline:none;font-family:inherit}
+  .item-note-input:focus{border-color:#F97316}
+
+  /* Checkout form */
+  .checkout-section{margin-top:20px;padding-top:20px;border-top:2px solid #f0f0f0}
+  .checkout-section h3{font-size:15px;font-weight:700;margin-bottom:14px;color:#333}
+  .cf label{font-size:12px;font-weight:600;color:#666;margin-bottom:4px;display:block}
+  .cf input,.cf select,.cf textarea{width:100%;padding:10px 12px;border:1.5px solid #e5e5e5;border-radius:10px;font-size:14px;outline:none;font-family:inherit;transition:.2s;background:#fff}
+  .cf input:focus,.cf select:focus,.cf textarea:focus{border-color:#F97316}
+  .cf .field{margin-bottom:12px}
+  .cf .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .delivery-tabs{display:flex;gap:8px;margin-bottom:14px}
+  .delivery-tab{flex:1;padding:10px;border:1.5px solid #e5e5e5;border-radius:10px;text-align:center;font-size:13px;font-weight:600;cursor:pointer;transition:.2s;background:transparent;color:#555}
+  .delivery-tab.active{border-color:#EA580C;background:rgba(234,88,12,.06);color:#EA580C}
+  .pay-opts{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+  .pay-opt{padding:9px 16px;border:1.5px solid #e5e5e5;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;transition:.2s;background:transparent;color:#555}
+  .pay-opt.active{border-color:#EA580C;background:rgba(234,88,12,.06);color:#EA580C}
+
+  /* Totais no modal */
+  .summary-row{display:flex;justify-content:space-between;font-size:13px;color:#777;padding:4px 0}
+  .summary-row.total{font-size:17px;font-weight:900;color:#111;padding-top:10px;border-top:1.5px solid #e5e5e5;margin-top:6px}
+
+  .submit-btn{width:100%;padding:15px;background:linear-gradient(135deg,#EA580C,#F97316);color:#fff;border:none;border-radius:12px;font-size:16px;font-weight:800;cursor:pointer;margin-top:16px;transition:.2s}
+  .submit-btn:hover{opacity:.92}
+  .submit-btn:disabled{opacity:.5;cursor:not-allowed}
+
+  /* Sucesso */
+  .success-modal{text-align:center;padding:20px}
+  .success-modal .big{font-size:56px;margin-bottom:16px}
+  .success-modal h2{font-size:22px;font-weight:900;margin-bottom:8px;color:#16a34a}
+  .success-modal p{font-size:14px;color:#555;margin-bottom:8px;line-height:1.5}
+  .pix-box{background:#f0fdf4;border:1.5px solid #86efac;border-radius:12px;padding:16px;margin:16px 0;text-align:left}
+  .pix-key{font-size:16px;font-weight:700;color:#16a34a;font-family:monospace;word-break:break-all}
+</style>
+</head>
+<body>
+
+<!-- Store Header -->
+<div class="store-header">
+  <div class="store-banner">
+    {% if store.get('banner_url') %}
+    <img src="{{ store.banner_url }}" alt="Banner {{ store.name }}">
+    {% endif %}
+    <div class="store-banner-overlay"></div>
+  </div>
+  <div class="store-info">
+    <div class="store-logo">
+      {% if store.logo_url %}
+      <img src="{{ store.logo_url }}" alt="{{ store.name }}" onerror="this.parentNode.innerHTML='🛵'">
+      {% else %}🛵{% endif %}
+    </div>
+    <div class="store-meta">
+      <div class="store-name">{{ store.name }}</div>
+      {% if store.description %}<div class="store-desc">{{ store.description }}</div>{% endif %}
+      <div class="store-tags">
+        {% if is_open %}
+        <span class="store-tag open-badge">🟢 Aberto agora</span>
+        {% else %}
+        <span class="store-tag closed-badge">🔴 Fechado agora</span>
+        {% endif %}
+        {% if store.delivery_time %}
+        <span class="store-tag">⏱️ ~{{ store.delivery_time }} min</span>
+        {% endif %}
+        {% if store.delivery_fee == 0 %}
+        <span class="store-tag" style="background:#fef3c7;color:#d97706">🚚 Entrega grátis</span>
+        {% else %}
+        <span class="store-tag">🚚 R${{ '%.2f'|format(store.delivery_fee) }} entrega</span>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Category Nav -->
+{% if cats %}
+<div class="cat-nav">
+  <div class="cat-nav-inner">
+    <button class="cat-btn active" onclick="filterCat(0, this)">Todos</button>
+    {% for c in cats %}
+    <button class="cat-btn" onclick="filterCat({{ c.id }}, this)">{{ c.name }}</button>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<!-- Products -->
+{% if cats %}
+  {% for cat in cats %}
+  {% set cat_prods = prods|selectattr('category_id','equalto',cat.id)|list %}
+  {% if cat_prods %}
+  <div class="cat-section" data-cat="{{ cat.id }}">
+    <div class="section-title">{{ cat.name }}</div>
+    <div class="prod-list">
+      {% for p in cat_prods %}
+      {% set unavailable = p.stock == 0 %}
+      <div class="prod-card {% if unavailable %}unavailable{% endif %}"
+           {% if not unavailable %}onclick="addToCart({{ p.id }}, '{{ p.name|replace("'","\\'")|replace('"','\\"') }}', {{ p.price }}, '{{ p.photo_url }}')"{% endif %}>
+        <div class="prod-img">
+          {% if p.photo_url %}
+          <img src="{{ p.photo_url }}" alt="{{ p.name }}" onerror="this.parentNode.innerHTML='📦'">
+          {% else %}📦{% endif %}
+        </div>
+        <div class="prod-body">
+          <div class="prod-name">{{ p.name }}</div>
+          {% if p.description %}<div class="prod-desc">{{ p.description }}</div>{% endif %}
+          <div class="prod-price">R${{ '%.2f'|format(p.price) }}</div>
+          {% if unavailable %}<div class="prod-stock">Indisponível</div>{% endif %}
+        </div>
+        {% if not unavailable %}
+        <button class="add-btn" onclick="event.stopPropagation();addToCart({{ p.id }}, '{{ p.name|replace("'","\\'")|replace('"','\\"') }}', {{ p.price }}, '{{ p.photo_url }}')">+</button>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+  {% endfor %}
+  <!-- Sem categoria -->
+  {% set uncategorized = prods|selectattr('category_id','equalto',none)|list %}
+  {% if uncategorized %}
+  <div class="cat-section" data-cat="0">
+    <div class="section-title">Outros</div>
+    <div class="prod-list">
+      {% for p in uncategorized %}
+      {% set unavailable = p.stock == 0 %}
+      <div class="prod-card {% if unavailable %}unavailable{% endif %}"
+           {% if not unavailable %}onclick="addToCart({{ p.id }}, '{{ p.name|replace("'","\\'")|replace('"','\\"') }}', {{ p.price }}, '{{ p.photo_url }}')"{% endif %}>
+        <div class="prod-img">{% if p.photo_url %}<img src="{{ p.photo_url }}" alt="{{ p.name }}" onerror="this.parentNode.innerHTML='📦'">{% else %}📦{% endif %}</div>
+        <div class="prod-body">
+          <div class="prod-name">{{ p.name }}</div>
+          {% if p.description %}<div class="prod-desc">{{ p.description }}</div>{% endif %}
+          <div class="prod-price">R${{ '%.2f'|format(p.price) }}</div>
+        </div>
+        {% if not unavailable %}<button class="add-btn" onclick="event.stopPropagation();addToCart({{ p.id }}, '{{ p.name|replace("'","\\'")|replace('"','\\"') }}', {{ p.price }}, '{{ p.photo_url }}')">+</button>{% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+{% else %}
+  <!-- Sem categorias — exibe todos -->
+  <div class="prod-list" style="padding:16px 12px">
+    {% for p in prods %}
+    {% set unavailable = p.stock == 0 %}
+    <div class="prod-card {% if unavailable %}unavailable{% endif %}"
+         {% if not unavailable %}onclick="addToCart({{ p.id }}, '{{ p.name|replace("'","\\'")|replace('"','\\"') }}', {{ p.price }}, '{{ p.photo_url }}')"{% endif %}>
+      <div class="prod-img">{% if p.photo_url %}<img src="{{ p.photo_url }}" alt="{{ p.name }}" onerror="this.parentNode.innerHTML='📦'">{% else %}📦{% endif %}</div>
+      <div class="prod-body">
+        <div class="prod-name">{{ p.name }}</div>
+        {% if p.description %}<div class="prod-desc">{{ p.description }}</div>{% endif %}
+        <div class="prod-price">R${{ '%.2f'|format(p.price) }}</div>
+        {% if unavailable %}<div class="prod-stock">Indisponível</div>{% endif %}
+      </div>
+      {% if not unavailable %}<button class="add-btn" onclick="event.stopPropagation();addToCart({{ p.id }}, '{{ p.name|replace("'","\\'")|replace('"','\\"') }}', {{ p.price }}, '{{ p.photo_url }}')">+</button>{% endif %}
+    </div>
+    {% endfor %}
+  </div>
+{% endif %}
+
+{% if not prods %}
+<div style="text-align:center;padding:60px 24px;color:#999">
+  <div style="font-size:48px;margin-bottom:12px">📦</div>
+  <p>Nenhum produto disponível no momento.</p>
+</div>
+{% endif %}
+
+<!-- Cart bar -->
+<div class="cart-bar" id="cartBar" onclick="openCart()">
+  <div style="display:flex;align-items:center;gap:10px">
+    <span class="cart-count" id="cartCount">0</span>
+    <span class="cart-label">Ver carrinho</span>
+  </div>
+  <span class="cart-total" id="cartTotal">R$0,00</span>
+</div>
+
+<!-- Cart Modal -->
+<div class="modal-bg" id="cartModal">
+  <div class="modal" id="cartContent">
+    <h2>🛒 Seu pedido <button class="modal-close" onclick="closeCart()">✕</button></h2>
+    <div id="cartItems"></div>
+
+    <!-- Checkout -->
+    <div class="checkout-section cf">
+      <h3>📋 Seus dados</h3>
+      <div class="field">
+        <label>Seu nome *</label>
+        <input type="text" id="custName" placeholder="Nome completo">
+      </div>
+      <div class="field">
+        <label>WhatsApp *</label>
+        <input type="tel" id="custPhone" placeholder="(47) 99999-9999">
+      </div>
+      <div class="field">
+        <label>Observação geral</label>
+        <input type="text" id="custNotes" placeholder="Alguma observação para o pedido?">
+      </div>
+
+      <h3 style="margin-top:16px">🚚 Tipo de entrega</h3>
+      <div class="delivery-tabs">
+        <button class="delivery-tab active" onclick="setDelivery('delivery', this)">🚚 Entrega</button>
+        <button class="delivery-tab" onclick="setDelivery('retirada', this)">🏠 Retirada</button>
+      </div>
+      <div id="addressFields">
+        <div class="field">
+          <label>CEP</label>
+          <input type="text" id="custCep" placeholder="00000-000" oninput="fetchCep(this.value)">
+        </div>
+        <div class="field">
+          <label>Endereço *</label>
+          <input type="text" id="custAddress" placeholder="Rua, número">
+        </div>
+        <div class="grid2">
+          <div class="field">
+            <label>Bairro</label>
+            <input type="text" id="custNeighborhood" placeholder="Bairro">
+          </div>
+          <div class="field">
+            <label>Cidade</label>
+            <input type="text" id="custCity" placeholder="Cidade">
+          </div>
+        </div>
+      </div>
+
+      <h3 style="margin-top:16px">💳 Pagamento</h3>
+      <div class="pay-opts">
+        <button class="pay-opt active" onclick="setPayment('pix', this)">💳 PIX</button>
+        {% if store.get('accepts_card', 1) %}<button class="pay-opt" onclick="setPayment('cartao', this)">💳 Cartão</button>{% endif %}
+        {% if store.get('accepts_cash', 1) %}<button class="pay-opt" onclick="setPayment('dinheiro', this)">💵 Dinheiro</button>{% endif %}
+      </div>
+      <div id="changeField" style="display:none" class="field">
+        <label>Troco para (R$)</label>
+        <input type="number" id="changeFor" step="0.50" min="0" placeholder="0,00">
+      </div>
+
+      <!-- Resumo -->
+      <div class="checkout-section" style="border-top:2px solid #f0f0f0;margin-top:20px;padding-top:16px">
+        <div class="summary-row"><span>Subtotal</span><span id="sumSubtotal">R$0,00</span></div>
+        <div class="summary-row" id="deliveryRow"><span>Entrega</span><span>R${{ '%.2f'|format(store.delivery_fee) }}</span></div>
+        <div class="summary-row total"><span>Total</span><span id="sumTotal" style="color:#EA580C">R$0,00</span></div>
+      </div>
+
+      <button class="submit-btn" onclick="submitOrder()" id="submitBtn">Fazer pedido →</button>
+    </div>
+  </div>
+</div>
+
+<!-- Success Modal -->
+<div class="modal-bg" id="successModal">
+  <div class="modal">
+    <div class="success-modal" id="successContent">
+      <div class="big">🎉</div>
+      <h2>Pedido feito!</h2>
+      <p>Seu pedido foi recebido com sucesso.<br>O estabelecimento vai preparar assim que confirmar.</p>
+      <div id="pixInfo" style="display:none">
+        <div class="pix-box">
+          <div style="font-size:13px;color:#555;margin-bottom:8px">💳 Chave PIX para pagamento:</div>
+          <div class="pix-key" id="pixKey"></div>
+          <div style="font-size:12px;color:#777;margin-top:6px">Favorecido: <strong id="pixName"></strong></div>
+        </div>
+        <p style="font-size:13px;color:#777">Após o pagamento, guarde o comprovante.</p>
+      </div>
+      <button class="submit-btn" onclick="closeSuccess()" style="margin-top:16px">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const STORE_SLUG = '{{ store.slug }}';
+const DELIVERY_FEE = {{ store.delivery_fee }};
+const MIN_ORDER = {{ store.min_order }};
+
+let cart = [];
+let deliveryType = 'delivery';
+let paymentMethod = 'pix';
+
+function addToCart(id, name, price, photo) {
+  const existing = cart.find(i => i.id === id);
+  if (existing) {
+    existing.qty++;
+  } else {
+    cart.push({ id, name, price: parseFloat(price), qty: 1, notes: '', photo });
+  }
+  updateCartBar();
+  // Animate
+  const bar = document.getElementById('cartBar');
+  bar.style.transform = 'translateX(-50%) scale(1.04)';
+  setTimeout(() => bar.style.transform = 'translateX(-50%)', 150);
+}
+
+function updateCartBar() {
+  const total = cart.reduce((s, i) => s + i.price * i.qty, 0);
+  const count = cart.reduce((s, i) => s + i.qty, 0);
+  document.getElementById('cartCount').textContent = count;
+  document.getElementById('cartTotal').textContent = 'R$' + total.toFixed(2).replace('.', ',');
+  document.getElementById('cartBar').style.display = cart.length > 0 ? 'flex' : 'none';
+}
+
+function openCart() {
+  renderCartItems();
+  updateSummary();
+  document.getElementById('cartModal').classList.add('show');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeCart() {
+  document.getElementById('cartModal').classList.remove('show');
+  document.body.style.overflow = '';
+}
+
+function renderCartItems() {
+  const container = document.getElementById('cartItems');
+  if (cart.length === 0) {
+    container.innerHTML = '<div style="text-align:center;padding:24px;color:#999">Carrinho vazio</div>';
+    return;
+  }
+  container.innerHTML = cart.map((item, idx) => `
+    <div class="cart-item">
+      <div class="qty-ctrl">
+        <button class="qty-btn" onclick="changeQty(${idx}, -1)">−</button>
+        <span class="qty-val">${item.qty}</span>
+        <button class="qty-btn" onclick="changeQty(${idx}, 1)">+</button>
+      </div>
+      <div style="flex:1;min-width:0">
+        <div class="cart-item-name">${item.name}</div>
+        <input class="item-note-input" placeholder="Observação (opcional)"
+               value="${item.notes}"
+               oninput="cart[${idx}].notes = this.value">
+      </div>
+      <div class="cart-item-price">R$${(item.price * item.qty).toFixed(2).replace('.', ',')}</div>
+    </div>
+  `).join('');
+}
+
+function changeQty(idx, delta) {
+  cart[idx].qty += delta;
+  if (cart[idx].qty <= 0) cart.splice(idx, 1);
+  renderCartItems();
+  updateCartBar();
+  updateSummary();
+}
+
+function updateSummary() {
+  const sub = cart.reduce((s, i) => s + i.price * i.qty, 0);
+  const fee = deliveryType === 'delivery' ? DELIVERY_FEE : 0;
+  const total = sub + fee;
+  document.getElementById('sumSubtotal').textContent = 'R$' + sub.toFixed(2).replace('.',',');
+  document.getElementById('sumTotal').textContent = 'R$' + total.toFixed(2).replace('.',',');
+  document.getElementById('cartTotal').textContent = 'R$' + total.toFixed(2).replace('.',',');
+  document.getElementById('deliveryRow').style.display = deliveryType === 'delivery' ? '' : 'none';
+}
+
+function setDelivery(type, btn) {
+  deliveryType = type;
+  document.querySelectorAll('.delivery-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('addressFields').style.display = type === 'delivery' ? '' : 'none';
+  updateSummary();
+}
+
+function setPayment(method, btn) {
+  paymentMethod = method;
+  document.querySelectorAll('.pay-opt').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('changeField').style.display = method === 'dinheiro' ? '' : 'none';
+}
+
+function filterCat(catId, btn) {
+  document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.cat-section').forEach(s => {
+    s.style.display = catId === 0 || s.dataset.cat === String(catId) ? '' : 'none';
+  });
+}
+
+async function fetchCep(cep) {
+  cep = cep.replace(/\D/g, '');
+  if (cep.length !== 8) return;
+  try {
+    const r = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+    const d = await r.json();
+    if (!d.erro) {
+      document.getElementById('custAddress').value = d.logradouro || '';
+      document.getElementById('custNeighborhood').value = d.bairro || '';
+      document.getElementById('custCity').value = d.localidade || '';
+    }
+  } catch(e) {}
+}
+
+async function submitOrder() {
+  const name = document.getElementById('custName').value.trim();
+  const phone = document.getElementById('custPhone').value.trim();
+  if (!name || !phone) { alert('Preencha nome e WhatsApp!'); return; }
+  if (cart.length === 0) { alert('Carrinho vazio!'); return; }
+  if (deliveryType === 'delivery' && !document.getElementById('custAddress').value.trim()) {
+    alert('Preencha o endereço de entrega!'); return;
+  }
+  const sub = cart.reduce((s, i) => s + i.price * i.qty, 0);
+  if (MIN_ORDER > 0 && sub < MIN_ORDER) {
+    alert(`Pedido mínimo: R$${MIN_ORDER.toFixed(2).replace('.', ',')}`);
+    return;
+  }
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true; btn.textContent = 'Enviando...';
+  try {
+    const payload = {
+      customer_name: name,
+      customer_phone: phone,
+      customer_notes: document.getElementById('custNotes').value.trim(),
+      delivery_type: deliveryType,
+      address: document.getElementById('custAddress')?.value.trim() || '',
+      neighborhood: document.getElementById('custNeighborhood')?.value.trim() || '',
+      city: document.getElementById('custCity')?.value.trim() || '',
+      cep: document.getElementById('custCep')?.value.trim() || '',
+      payment_method: paymentMethod,
+      change_for: parseFloat(document.getElementById('changeFor')?.value || 0),
+      items: cart.map(i => ({id: i.id, name: i.name, price: i.price, qty: i.qty, notes: i.notes}))
+    };
+    const r = await fetch('/loja/' + STORE_SLUG + '/pedido', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload)
+    });
+    const d = await r.json();
+    if (d.ok) {
+      closeCart();
+      showSuccess(d);
+      cart = [];
+      updateCartBar();
+    } else {
+      alert(d.error || 'Erro ao fazer pedido. Tente novamente.');
+    }
+  } catch(e) {
+    alert('Erro de conexão. Tente novamente.');
+  }
+  btn.disabled = false; btn.textContent = 'Fazer pedido →';
+}
+
+function showSuccess(data) {
+  if (paymentMethod === 'pix' && data.pix_chave) {
+    document.getElementById('pixInfo').style.display = '';
+    document.getElementById('pixKey').textContent = data.pix_chave;
+    document.getElementById('pixName').textContent = data.pix_nome || '';
+  }
+  document.getElementById('successModal').classList.add('show');
+}
+
+function closeSuccess() {
+  document.getElementById('successModal').classList.remove('show');
+  document.body.style.overflow = '';
+}
+
+// Close on bg click
+document.getElementById('cartModal').addEventListener('click', function(e) {
+  if(e.target === this) closeCart();
+});
+document.getElementById('successModal').addEventListener('click', function(e) {
+  if(e.target === this) closeSuccess();
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-0JQBJ01C0Z"></script>
+<script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-0JQBJ01C0Z');</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MandaJá — Seu Delivery Digital</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#070710;color:#EEEEF5;font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh}
+  a{text-decoration:none;color:inherit}
+
+  nav{display:flex;align-items:center;justify-content:space-between;padding:16px 24px;border-bottom:1px solid rgba(249,115,22,.1);position:sticky;top:0;background:rgba(7,7,16,.92);backdrop-filter:blur(16px);z-index:50}
+  .nav-logo{font-size:20px;font-weight:900;color:#F97316;display:flex;align-items:center;gap:8px}
+  .nav-logo .emoji{font-size:24px}
+  .nav-links{display:flex;gap:10px;align-items:center}
+  .nav-btn{padding:8px 18px;border-radius:100px;font-size:13px;font-weight:600;transition:.2s}
+  .nav-outline{border:1px solid rgba(255,255,255,.12);color:#9090B0}
+  .nav-outline:hover{border-color:#F97316;color:#F97316}
+  .nav-primary{background:linear-gradient(135deg,#EA580C,#F97316);color:#fff}
+  .nav-primary:hover{opacity:.9}
+
+  .hero{text-align:center;padding:90px 24px 70px;max-width:760px;margin:0 auto}
+  .hero-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(249,115,22,.1);border:1px solid rgba(249,115,22,.3);border-radius:100px;padding:6px 16px;font-size:12px;font-weight:700;color:#F97316;margin-bottom:28px}
+  .hero h1{font-size:clamp(34px,6vw,58px);font-weight:900;letter-spacing:-2px;line-height:1.05;margin-bottom:20px}
+  .hero h1 span{background:linear-gradient(135deg,#F97316,#FBBF24);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+  .hero p{font-size:18px;color:#9090B0;line-height:1.6;margin-bottom:40px}
+  .hero-ctas{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap}
+  .cta-big{display:inline-flex;align-items:center;gap:8px;padding:16px 40px;border-radius:100px;background:linear-gradient(135deg,#EA580C,#F97316);color:#fff;font-size:16px;font-weight:800;cursor:pointer;transition:.2s}
+  .cta-big:hover{opacity:.9;transform:translateY(-2px)}
+  .cta-sec{display:inline-flex;align-items:center;gap:8px;padding:15px 24px;border-radius:100px;border:1px solid rgba(255,255,255,.12);color:#EEEEF5;font-size:14px;font-weight:600;transition:.2s}
+  .cta-sec:hover{border-color:#F97316;color:#F97316}
+
+  /* Stats bar */
+  .stats-bar{background:rgba(249,115,22,.06);border-top:1px solid rgba(249,115,22,.1);border-bottom:1px solid rgba(249,115,22,.1);padding:28px 24px;display:flex;justify-content:center;gap:60px;flex-wrap:wrap}
+  .stat{text-align:center}
+  .stat-n{font-size:32px;font-weight:900;color:#F97316}
+  .stat-l{font-size:12px;color:#9090B0;margin-top:4px;font-weight:600;text-transform:uppercase;letter-spacing:1px}
+
+  /* How it works */
+  .section{max-width:1100px;margin:0 auto;padding:80px 24px}
+  .section-tag{text-align:center;font-size:11px;font-weight:700;color:#F97316;text-transform:uppercase;letter-spacing:2px;margin-bottom:14px}
+  .section-title{text-align:center;font-size:clamp(26px,4vw,38px);font-weight:900;letter-spacing:-1px;margin-bottom:12px}
+  .section-sub{text-align:center;color:#9090B0;font-size:15px;margin-bottom:50px}
+
+  .steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:24px}
+  .step{text-align:center;padding:32px 20px}
+  .step-num{width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,#EA580C,#F97316);color:#fff;font-size:22px;font-weight:900;display:flex;align-items:center;justify-content:center;margin:0 auto 20px}
+  .step-title{font-size:16px;font-weight:700;margin-bottom:8px}
+  .step-desc{font-size:13px;color:#9090B0;line-height:1.6}
+
+  /* Features */
+  .feat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}
+  .feat-card{background:#0E0E1C;border:1px solid rgba(249,115,22,.12);border-radius:16px;padding:28px;transition:.2s}
+  .feat-card:hover{border-color:rgba(249,115,22,.35);transform:translateY(-2px)}
+  .feat-icon{font-size:30px;margin-bottom:16px}
+  .feat-title{font-size:16px;font-weight:700;margin-bottom:8px}
+  .feat-desc{font-size:13px;color:#9090B0;line-height:1.6}
+
+  /* Pricing */
+  .pricing{background:#0E0E1C;border-top:1px solid rgba(249,115,22,.1);border-bottom:1px solid rgba(249,115,22,.1);padding:80px 24px}
+  .pricing-inner{max-width:1060px;margin:0 auto}
+  .plans-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:12px;margin-top:40px}
+  .plan{background:#07070E;border:1px solid rgba(249,115,22,.15);border-radius:14px;padding:24px 18px;text-align:center;position:relative;transition:.2s}
+  .plan:hover{border-color:rgba(249,115,22,.4);transform:translateY(-2px)}
+  .plan.featured{border-color:#F97316;box-shadow:0 0 30px rgba(249,115,22,.15)}
+  .plan-badge{position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#EA580C,#F97316);color:#fff;font-size:11px;font-weight:800;padding:4px 14px;border-radius:100px;white-space:nowrap}
+  .plan-emoji{font-size:28px;margin-bottom:10px}
+  .plan-name{font-size:13px;font-weight:700;color:#9090B0;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+  .plan-prods{font-size:28px;font-weight:900;color:#F97316;margin-bottom:2px}
+  .plan-prods-label{font-size:11px;color:#55557A;margin-bottom:14px}
+  .plan-price{font-size:22px;font-weight:900;margin-bottom:4px}
+  .plan-price span{font-size:12px;font-weight:500;color:#9090B0}
+  .plan-btn{display:block;margin-top:16px;padding:10px;border-radius:10px;font-size:13px;font-weight:700;transition:.2s;border:1px solid rgba(249,115,22,.3);color:#F97316}
+  .plan-btn:hover{background:rgba(249,115,22,.1)}
+  .plan.featured .plan-btn{background:linear-gradient(135deg,#EA580C,#F97316);color:#fff;border:none}
+
+  /* Demo */
+  .demo{background:linear-gradient(135deg,rgba(234,88,12,.08),rgba(249,115,22,.04));border:1px solid rgba(249,115,22,.15);border-radius:20px;padding:48px 32px;text-align:center;max-width:700px;margin:0 auto}
+
+  /* CTA Final */
+  .final-cta{text-align:center;padding:80px 24px;max-width:600px;margin:0 auto}
+  .final-cta h2{font-size:clamp(28px,5vw,44px);font-weight:900;letter-spacing:-1px;margin-bottom:16px}
+  .final-cta p{font-size:16px;color:#9090B0;margin-bottom:36px}
+
+  footer{text-align:center;padding:24px;border-top:1px solid rgba(249,115,22,.08);font-size:12px;color:#55557A}
+  footer a{color:#F97316}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-logo"><span class="emoji">🛵</span> MandaJá</div>
+  <div class="nav-links">
+    <a href="/" class="nav-btn nav-outline">← 4KITEM</a>
+    <a href="/mandaja/entrar" class="nav-btn nav-outline">🔐 Entrar</a>
+    <a href="/mandaja/cadastro" class="nav-btn nav-primary">Criar loja grátis →</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-badge">🛵 Delivery digital sem comissão</div>
+  <h1>Seu delivery,<br><span>do seu jeito</span></h1>
+  <p>Monte sua loja online em minutos. Receba pedidos pelo WhatsApp, aceite PIX e gerencie tudo no painel — sem pagar comissão por pedido.</p>
+  <div class="hero-ctas">
+    <a href="/mandaja/cadastro" class="cta-big">🚀 Criar minha loja grátis</a>
+    <a href="#planos" class="cta-sec">Ver planos →</a>
+  </div>
+</section>
+
+<!-- STATS -->
+<div class="stats-bar">
+  <div class="stat"><div class="stat-n">0%</div><div class="stat-l">Comissão por pedido</div></div>
+  <div class="stat"><div class="stat-n">5min</div><div class="stat-l">Para montar a loja</div></div>
+  <div class="stat"><div class="stat-n">PIX</div><div class="stat-l">Pagamento direto</div></div>
+  <div class="stat"><div class="stat-n">14d</div><div class="stat-l">Grátis para testar</div></div>
+</div>
+
+<!-- COMO FUNCIONA -->
+<section class="section">
+  <div class="section-tag">✦ Como funciona</div>
+  <h2 class="section-title">Tão fácil que assusta</h2>
+  <p class="section-sub">Três passos e sua loja está online, recebendo pedidos.</p>
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-title">Crie sua loja</div>
+      <div class="step-desc">Cadastre nome, logo, endereço e horários de funcionamento em minutos.</div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-title">Adicione produtos</div>
+      <div class="step-desc">Foto, nome, descrição e preço. Organize por categorias como quiser.</div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-title">Compartilhe o link</div>
+      <div class="step-desc">Envie o link da sua loja pelo WhatsApp, Instagram e receba pedidos na hora.</div>
+    </div>
+    <div class="step">
+      <div class="step-num">4</div>
+      <div class="step-title">Gerencie no painel</div>
+      <div class="step-desc">Confirme pedidos, atualize status e acompanhe o financeiro em tempo real.</div>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section style="background:#0A0A18;border-top:1px solid rgba(249,115,22,.07);border-bottom:1px solid rgba(249,115,22,.07);padding:80px 0">
+<div class="section" style="padding-top:0;padding-bottom:0">
+  <div class="section-tag">✦ Funcionalidades</div>
+  <h2 class="section-title">Tudo que seu delivery precisa</h2>
+  <p class="section-sub">Desenvolvido para restaurantes, lanchonetes e qualquer negócio com entrega.</p>
+  <div class="feat-grid">
+    <div class="feat-card">
+      <div class="feat-icon">🛒</div>
+      <div class="feat-title">Carrinho inteligente</div>
+      <div class="feat-desc">Cliente monta o pedido, adiciona observações por item e escolhe entrega ou retirada.</div>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">💳 PIX</div>
+      <div class="feat-title">Pagamento por PIX</div>
+      <div class="feat-desc">Chave PIX exibida na hora do pedido. O dinheiro cai direto na sua conta, sem intermediário.</div>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">📱</div>
+      <div class="feat-title">Alerta no WhatsApp</div>
+      <div class="feat-desc">Novo pedido? Você recebe uma mensagem automática com todos os detalhes no WhatsApp.</div>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">📊</div>
+      <div class="feat-title">Dashboard em tempo real</div>
+      <div class="feat-desc">Pedidos do dia, receita, pedidos em aberto e histórico completo na palma da mão.</div>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">🕐</div>
+      <div class="feat-title">Horários de funcionamento</div>
+      <div class="feat-desc">Configure cada dia da semana. A loja mostra automaticamente se está aberta ou fechada.</div>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">📦</div>
+      <div class="feat-title">Controle de estoque</div>
+      <div class="feat-desc">Defina estoque por produto. Quando acabar, some automaticamente do cardápio.</div>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">🗂️</div>
+      <div class="feat-title">Categorias de produtos</div>
+      <div class="feat-desc">Organize seu cardápio em categorias. Entrada, pratos, bebidas, sobremesas — como quiser.</div>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">💰</div>
+      <div class="feat-title">Controle financeiro</div>
+      <div class="feat-desc">Receita por mês, pedidos entregues vs. cancelados. Saiba exatamente quanto está faturando.</div>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">🔗</div>
+      <div class="feat-title">Link próprio da loja</div>
+      <div class="feat-desc">Sua loja tem URL própria: <em>4kitem.com.br/loja/seu-nome</em>. Compartilhe em qualquer lugar.</div>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- PRICING -->
+<section class="pricing" id="planos">
+  <div class="pricing-inner">
+    <div class="section-tag">✦ Planos</div>
+    <h2 class="section-title">Pague pelo que usar</h2>
+    <p class="section-sub">Sem taxa por pedido. Sem contrato. Cancele quando quiser. 14 dias grátis.</p>
+    <div class="plans-grid">
+      <div class="plan">
+        <div class="plan-emoji">🌱</div>
+        <div class="plan-name">Micro</div>
+        <div class="plan-prods">5</div>
+        <div class="plan-prods-label">produtos</div>
+        <div class="plan-price">R$59<span>/mês</span></div>
+        <a href="/mandaja/cadastro" class="plan-btn">Começar</a>
+      </div>
+      <div class="plan">
+        <div class="plan-emoji">⚡</div>
+        <div class="plan-name">Light</div>
+        <div class="plan-prods">10</div>
+        <div class="plan-prods-label">produtos</div>
+        <div class="plan-price">R$99<span>/mês</span></div>
+        <a href="/mandaja/cadastro" class="plan-btn">Começar</a>
+      </div>
+      <div class="plan featured">
+        <div class="plan-badge">⭐ Popular</div>
+        <div class="plan-emoji">🚀</div>
+        <div class="plan-name">Plus</div>
+        <div class="plan-prods">20</div>
+        <div class="plan-prods-label">produtos</div>
+        <div class="plan-price">R$159<span>/mês</span></div>
+        <a href="/mandaja/cadastro" class="plan-btn">Começar</a>
+      </div>
+      <div class="plan">
+        <div class="plan-emoji">💎</div>
+        <div class="plan-name">Pro</div>
+        <div class="plan-prods">40</div>
+        <div class="plan-prods-label">produtos</div>
+        <div class="plan-price">R$249<span>/mês</span></div>
+        <a href="/mandaja/cadastro" class="plan-btn">Começar</a>
+      </div>
+      <div class="plan">
+        <div class="plan-emoji">👑</div>
+        <div class="plan-name">King</div>
+        <div class="plan-prods">100</div>
+        <div class="plan-prods-label">produtos</div>
+        <div class="plan-price">R$349<span>/mês</span></div>
+        <a href="/mandaja/cadastro" class="plan-btn">Começar</a>
+      </div>
+      <div class="plan">
+        <div class="plan-emoji">🔥</div>
+        <div class="plan-name">Ultra</div>
+        <div class="plan-prods">200</div>
+        <div class="plan-prods-label">produtos</div>
+        <div class="plan-price">R$499<span>/mês</span></div>
+        <a href="/mandaja/cadastro" class="plan-btn">Começar</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- VS iFood -->
+<section class="section">
+  <div class="section-tag">✦ Comparativo</div>
+  <h2 class="section-title">MandaJá vs. iFood</h2>
+  <p class="section-sub">Descubra quanto você está perdendo pagando comissão.</p>
+  <div style="max-width:700px;margin:0 auto;background:#0E0E1C;border:1px solid rgba(249,115,22,.15);border-radius:16px;overflow:hidden">
+    <table style="width:100%;border-collapse:collapse;font-size:14px">
+      <thead>
+        <tr style="background:rgba(249,115,22,.1)">
+          <th style="padding:14px 20px;text-align:left;font-weight:700">Critério</th>
+          <th style="padding:14px;text-align:center;color:#F97316;font-weight:700">🛵 MandaJá</th>
+          <th style="padding:14px;text-align:center;color:#FF3E3E;font-weight:700">iFood</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr style="border-top:1px solid rgba(255,255,255,.05)">
+          <td style="padding:12px 20px;color:#9090B0">Comissão por pedido</td>
+          <td style="padding:12px;text-align:center;color:#4ADE80;font-weight:700">0%</td>
+          <td style="padding:12px;text-align:center;color:#FF3E3E">12–27%</td>
+        </tr>
+        <tr style="border-top:1px solid rgba(255,255,255,.05)">
+          <td style="padding:12px 20px;color:#9090B0">Taxa de registro</td>
+          <td style="padding:12px;text-align:center;color:#4ADE80;font-weight:700">Grátis</td>
+          <td style="padding:12px;text-align:center;color:#FF3E3E">R$150+</td>
+        </tr>
+        <tr style="border-top:1px solid rgba(255,255,255,.05)">
+          <td style="padding:12px 20px;color:#9090B0">Recebe o dinheiro</td>
+          <td style="padding:12px;text-align:center;color:#4ADE80;font-weight:700">Na hora (PIX)</td>
+          <td style="padding:12px;text-align:center;color:#FF3E3E">D+30</td>
+        </tr>
+        <tr style="border-top:1px solid rgba(255,255,255,.05)">
+          <td style="padding:12px 20px;color:#9090B0">Dados dos clientes</td>
+          <td style="padding:12px;text-align:center;color:#4ADE80;font-weight:700">Seus 100%</td>
+          <td style="padding:12px;text-align:center;color:#FF3E3E">Do iFood</td>
+        </tr>
+        <tr style="border-top:1px solid rgba(255,255,255,.05)">
+          <td style="padding:12px 20px;color:#9090B0">Mensalidade</td>
+          <td style="padding:12px;text-align:center;color:#F97316;font-weight:700">A partir de R$59</td>
+          <td style="padding:12px;text-align:center;color:#FF3E3E">R$130+ mensalidade + comissão</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- FINAL CTA -->
+<div class="final-cta">
+  <h2>Pronto para<br><span style="color:#F97316">vender mais?</span></h2>
+  <p>14 dias grátis, sem cartão. Sua loja online em 5 minutos.</p>
+  <a href="/mandaja/cadastro" class="cta-big" style="margin:0 auto">🚀 Criar loja grátis agora</a>
+  <p style="margin-top:20px;font-size:12px;color:#55557A">Dúvidas? <a href="https://wa.me/5547991011351?text=Olá, quero saber mais sobre o MandaJá" target="_blank" style="color:#F97316">Fale pelo WhatsApp</a></p>
+</div>
+
+<footer>
+  <p>MandaJá é uma solução <a href="/">4KITEM</a> · © 2026 · Todos os direitos reservados</p>
+</footer>
+
+</body>
+</html>

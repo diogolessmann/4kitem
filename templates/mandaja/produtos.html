@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Produtos — MandaJá</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#07070E;color:#EEEEF5;font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh}
+  a{text-decoration:none;color:inherit}
+  .topbar{display:flex;align-items:center;justify-content:space-between;padding:0 24px;height:56px;background:#0E0E1C;border-bottom:1px solid rgba(249,115,22,.1);position:sticky;top:0;z-index:50}
+  .topbar-logo{font-size:18px;font-weight:900;color:#F97316;display:flex;align-items:center;gap:8px}
+  .topbar-right{display:flex;align-items:center;gap:10px}
+  .store-name{font-size:13px;color:#9090B0;font-weight:600}
+  .btn{padding:8px 18px;border-radius:100px;font-size:13px;font-weight:700;transition:.2s;display:inline-flex;align-items:center;gap:6px;cursor:pointer;border:none}
+  .btn-outline{border:1px solid rgba(249,115,22,.3);color:#F97316;background:transparent}
+  .btn-outline:hover{background:rgba(249,115,22,.08)}
+  .btn-primary{background:linear-gradient(135deg,#EA580C,#F97316);color:#fff}
+  .btn-primary:hover{opacity:.9}
+  .btn-danger{border:1px solid rgba(239,68,68,.3);color:#F87171;font-size:12px;padding:6px 14px;border-radius:100px;font-weight:600;background:transparent}
+
+  .layout{display:flex;min-height:calc(100vh - 56px)}
+  .sidebar{width:220px;background:#0A0A18;border-right:1px solid rgba(249,115,22,.08);padding:20px 12px;flex-shrink:0}
+  .nav-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;font-size:13px;font-weight:600;color:#9090B0;margin-bottom:4px;transition:.2s}
+  .nav-item:hover,.nav-item.active{background:rgba(249,115,22,.1);color:#F97316}
+  .nav-item .ic{font-size:16px}
+  .nav-sep{font-size:10px;font-weight:700;color:#55557A;text-transform:uppercase;letter-spacing:1.5px;padding:12px 12px 6px;margin-top:8px}
+  .content{flex:1;padding:24px}
+
+  .page-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+  .page-hdr h1{font-size:20px;font-weight:900}
+  .page-hdr p{font-size:13px;color:#9090B0;margin-top:4px}
+
+  /* Alert */
+  .alert{border-radius:10px;padding:12px 16px;font-size:13px;margin-bottom:16px;display:flex;align-items:center;gap:8px}
+  .alert-warn{background:rgba(234,179,8,.1);border:1px solid rgba(234,179,8,.3);color:#FCD34D}
+  .alert-ok{background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.3);color:#86EFAC}
+
+  /* Plan info */
+  .plan-bar{background:#0E0E1C;border:1px solid rgba(249,115,22,.12);border-radius:12px;padding:14px 18px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
+  .plan-bar .info{font-size:13px;color:#9090B0}
+  .plan-bar .count{font-size:22px;font-weight:900;color:#F97316}
+  .prog-bar{height:6px;background:rgba(255,255,255,.06);border-radius:100px;overflow:hidden;flex:1;min-width:100px}
+  .prog-fill{height:100%;border-radius:100px;background:linear-gradient(90deg,#EA580C,#F97316);transition:.3s}
+
+  /* Category pills */
+  .cats-bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px}
+  .cat-pill{padding:6px 14px;border-radius:100px;font-size:12px;font-weight:600;border:1px solid rgba(249,115,22,.2);color:#9090B0;cursor:pointer;background:transparent;transition:.2s;display:flex;align-items:center;gap:6px}
+  .cat-pill:hover{border-color:#F97316;color:#F97316}
+  .cat-pill.add{border-color:rgba(74,222,128,.3);color:#4ADE80}
+  .cat-pill.add:hover{background:rgba(74,222,128,.08)}
+  .cat-pill .del-cat{font-size:10px;color:#55557A;margin-left:2px}
+  .cat-pill .del-cat:hover{color:#F87171}
+
+  /* Product grid */
+  .prod-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px}
+  .prod-card{background:#0E0E1C;border:1px solid rgba(249,115,22,.1);border-radius:14px;overflow:hidden;transition:.2s;cursor:pointer}
+  .prod-card:hover{border-color:rgba(249,115,22,.3);transform:translateY(-2px)}
+  .prod-card.inactive{opacity:.5}
+  .prod-img{height:140px;background:#0A0A18;display:flex;align-items:center;justify-content:center;font-size:40px;overflow:hidden}
+  .prod-img img{width:100%;height:100%;object-fit:cover}
+  .prod-body{padding:14px}
+  .prod-cat{font-size:10px;font-weight:700;color:#F97316;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+  .prod-name{font-size:14px;font-weight:700;margin-bottom:6px}
+  .prod-desc{font-size:12px;color:#55557A;margin-bottom:10px;line-height:1.4;height:34px;overflow:hidden}
+  .prod-footer{display:flex;align-items:center;justify-content:space-between}
+  .prod-price{font-size:16px;font-weight:900;color:#4ADE80}
+  .prod-cost{font-size:11px;color:#55557A}
+  .prod-badge{font-size:10px;font-weight:700;padding:3px 8px;border-radius:100px}
+  .prod-badge.ok{background:rgba(74,222,128,.1);color:#4ADE80}
+  .prod-badge.off{background:rgba(239,68,68,.1);color:#F87171}
+
+  /* Add button empty state */
+  .prod-add-card{background:rgba(249,115,22,.04);border:1px dashed rgba(249,115,22,.2);border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:220px;cursor:pointer;transition:.2s;gap:10px;color:#9090B0;font-size:13px;font-weight:600}
+  .prod-add-card:hover{background:rgba(249,115,22,.08);border-color:rgba(249,115,22,.4);color:#F97316}
+  .prod-add-card .big{font-size:32px}
+
+  /* Cat modal */
+  .modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;align-items:center;justify-content:center}
+  .modal-bg.show{display:flex}
+  .modal{background:#0E0E1C;border:1px solid rgba(249,115,22,.2);border-radius:16px;padding:28px;width:360px}
+  .modal h3{font-size:16px;font-weight:700;margin-bottom:16px}
+  .modal input{width:100%;background:#07070E;border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:11px 14px;color:#EEEEF5;font-size:14px;outline:none;margin-bottom:14px}
+  .modal input:focus{border-color:#F97316}
+  .modal-btns{display:flex;gap:8px}
+
+  @media(max-width:640px){.sidebar{display:none}.content{padding:16px}}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-logo">🛵 MandaJá</div>
+  <div class="topbar-right">
+    <span class="store-name">{{ store.name }}</span>
+    <a href="/mandaja/produtos/novo" class="btn btn-primary">+ Novo produto</a>
+    <a href="/mandaja/logout" class="btn-danger">Sair</a>
+  </div>
+</div>
+
+<div class="layout">
+  <nav class="sidebar">
+    <a href="/mandaja/painel" class="nav-item"><span class="ic">📊</span> Dashboard</a>
+    <a href="/mandaja/pedidos" class="nav-item"><span class="ic">🛍️</span> Pedidos</a>
+    <a href="/mandaja/produtos" class="nav-item active"><span class="ic">📦</span> Produtos</a>
+    <a href="/mandaja/horarios" class="nav-item"><span class="ic">🕐</span> Horários</a>
+    <a href="/mandaja/financeiro" class="nav-item"><span class="ic">💰</span> Financeiro</a>
+    <div class="nav-sep">Loja</div>
+    <a href="/mandaja/configuracoes" class="nav-item"><span class="ic">⚙️</span> Configurações</a>
+    <a href="/loja/{{ store.slug }}" target="_blank" class="nav-item"><span class="ic">🔗</span> Ver loja</a>
+    <div class="nav-sep">Conta</div>
+    <a href="/mandaja/logout" class="nav-item" style="color:#F87171"><span class="ic">🚪</span> Sair</a>
+  </nav>
+
+  <main class="content">
+    <div class="page-hdr">
+      <div>
+        <h1>📦 Produtos</h1>
+        <p>Gerencie seu cardápio e categorias</p>
+      </div>
+      <a href="/mandaja/produtos/novo" class="btn btn-primary">+ Novo produto</a>
+    </div>
+
+    {% set ok = request.args.get('ok') %}
+    {% set erro = request.args.get('erro') %}
+    {% if ok == 'criado' %}<div class="alert alert-ok">✅ Produto criado com sucesso!</div>{% endif %}
+    {% if ok == 'atualizado' %}<div class="alert alert-ok">✅ Produto atualizado!</div>{% endif %}
+    {% if ok == 'removido' %}<div class="alert alert-ok">✅ Produto removido do cardápio.</div>{% endif %}
+    {% if erro == 'limite_plano' %}<div class="alert alert-warn">⚠️ Limite do plano atingido ({{ plan.products }} produtos). <a href="https://wa.me/5547991011351" target="_blank" style="color:#F97316">Fazer upgrade</a></div>{% endif %}
+
+    <!-- Plan bar -->
+    <div class="plan-bar">
+      <div>
+        <div class="count">{{ prods|selectattr('active','equalto',1)|list|length }}/{{ plan.products }}</div>
+        <div class="info">produtos ativos (plano {{ plan.label }})</div>
+      </div>
+      <div style="flex:1;min-width:100px">
+        <div class="prog-bar"><div class="prog-fill" style="width:{{ [((prods|selectattr('active','equalto',1)|list|length / plan.products)*100)|round,100]|min }}%"></div></div>
+      </div>
+      <a href="https://wa.me/5547991011351?text=Quero upgrade no MandaJá" target="_blank" class="btn btn-outline" style="font-size:12px">⬆️ Upgrade</a>
+    </div>
+
+    <!-- Categorias -->
+    <div class="cats-bar">
+      <span style="font-size:12px;font-weight:600;color:#55557A;align-self:center">Categorias:</span>
+      {% for c in cats %}
+      <span class="cat-pill">
+        {{ c.name }}
+        <span class="del-cat" onclick="delCat({{ c.id }},'{{ c.name }}')" title="Remover categoria">✕</span>
+      </span>
+      {% endfor %}
+      <button class="cat-pill add" onclick="openCatModal()">+ Categoria</button>
+    </div>
+
+    <!-- Products grid -->
+    <div class="prod-grid">
+      {% for p in prods %}
+      <div class="prod-card {% if not p.active %}inactive{% endif %}" onclick="window.location='/mandaja/produtos/{{ p.id }}/editar'">
+        <div class="prod-img">
+          {% if p.photo_url %}
+          <img src="{{ p.photo_url }}" alt="{{ p.name }}" onerror="this.parentNode.innerHTML='📦'">
+          {% else %}
+          📦
+          {% endif %}
+        </div>
+        <div class="prod-body">
+          {% if p.cat_name %}<div class="prod-cat">{{ p.cat_name }}</div>{% endif %}
+          <div class="prod-name">{{ p.name }}</div>
+          <div class="prod-desc">{{ p.description or 'Sem descrição' }}</div>
+          <div class="prod-footer">
+            <div>
+              <div class="prod-price">R${{ '%.2f'|format(p.price) }}</div>
+              {% if p.cost %}<div class="prod-cost">Custo: R${{ '%.2f'|format(p.cost) }}</div>{% endif %}
+            </div>
+            {% if p.active %}
+            <span class="prod-badge ok">● Ativo</span>
+            {% else %}
+            <span class="prod-badge off">● Inativo</span>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+      <!-- Add card -->
+      {% if prods|selectattr('active','equalto',1)|list|length < plan.products %}
+      <a href="/mandaja/produtos/novo" class="prod-add-card">
+        <span class="big">+</span>
+        Novo produto
+      </a>
+      {% endif %}
+    </div>
+  </main>
+</div>
+
+<!-- Modal nova categoria -->
+<div class="modal-bg" id="catModal">
+  <div class="modal">
+    <h3>Nova Categoria</h3>
+    <input type="text" id="catName" placeholder="Ex: Bebidas, Pratos Principais, Sobremesas...">
+    <div class="modal-btns">
+      <button class="btn btn-primary" onclick="saveCat()" style="flex:1">Criar</button>
+      <button class="btn btn-outline" onclick="closeCatModal()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+function openCatModal(){ document.getElementById('catModal').classList.add('show'); document.getElementById('catName').focus(); }
+function closeCatModal(){ document.getElementById('catModal').classList.remove('show'); document.getElementById('catName').value=''; }
+async function saveCat(){
+  const name = document.getElementById('catName').value.trim();
+  if(!name) return;
+  const r = await fetch('/mandaja/categorias', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name})});
+  if(r.ok){ location.reload(); } else { alert('Erro ao criar categoria'); }
+}
+async function delCat(id, name){
+  if(!confirm(`Remover categoria "${name}"? Os produtos continuam, mas perdem a categoria.`)) return;
+  const r = await fetch('/mandaja/categorias/'+id, {method:'DELETE'});
+  if(r.ok){ location.reload(); }
+}
+document.addEventListener('keydown', e => { if(e.key==='Escape') closeCatModal(); });
+</script>
+</body>
+</html>

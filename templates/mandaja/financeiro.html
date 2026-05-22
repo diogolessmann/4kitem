@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Financeiro — MandaJá</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#07070E;color:#EEEEF5;font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh}
+  a{text-decoration:none;color:inherit}
+  .topbar{display:flex;align-items:center;justify-content:space-between;padding:0 24px;height:56px;background:#0E0E1C;border-bottom:1px solid rgba(249,115,22,.1);position:sticky;top:0;z-index:50}
+  .topbar-logo{font-size:18px;font-weight:900;color:#F97316}
+  .btn-danger{border:1px solid rgba(239,68,68,.3);color:#F87171;font-size:12px;padding:6px 14px;border-radius:100px;font-weight:600;background:transparent;cursor:pointer}
+  .layout{display:flex;min-height:calc(100vh - 56px)}
+  .sidebar{width:220px;background:#0A0A18;border-right:1px solid rgba(249,115,22,.08);padding:20px 12px;flex-shrink:0}
+  .nav-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;font-size:13px;font-weight:600;color:#9090B0;margin-bottom:4px;transition:.2s}
+  .nav-item:hover,.nav-item.active{background:rgba(249,115,22,.1);color:#F97316}
+  .nav-item .ic{font-size:16px}
+  .nav-sep{font-size:10px;font-weight:700;color:#55557A;text-transform:uppercase;letter-spacing:1.5px;padding:12px 12px 6px;margin-top:8px}
+  .content{flex:1;padding:24px}
+  h1{font-size:20px;font-weight:900;margin-bottom:20px}
+
+  .month-nav{display:flex;align-items:center;gap:12px;margin-bottom:24px;flex-wrap:wrap}
+  .month-nav input[type="month"]{background:#0E0E1C;border:1px solid rgba(249,115,22,.2);border-radius:10px;padding:8px 14px;color:#EEEEF5;font-size:13px;outline:none}
+  .month-nav button{padding:8px 18px;border-radius:100px;background:linear-gradient(135deg,#EA580C,#F97316);color:#fff;font-size:13px;font-weight:700;border:none;cursor:pointer}
+
+  .stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:24px}
+  .stat-card{background:#0E0E1C;border:1px solid rgba(249,115,22,.1);border-radius:14px;padding:20px}
+  .stat-card .ico{font-size:20px;margin-bottom:10px}
+  .stat-card .val{font-size:28px;font-weight:900;margin-bottom:4px}
+  .stat-card .lbl{font-size:12px;color:#9090B0;font-weight:600}
+
+  .table-wrap{background:#0E0E1C;border:1px solid rgba(249,115,22,.08);border-radius:14px;overflow:hidden}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{padding:12px 16px;text-align:left;font-size:11px;font-weight:700;color:#55557A;text-transform:uppercase;letter-spacing:.5px;background:#0A0A18}
+  td{padding:11px 16px;border-top:1px solid rgba(255,255,255,.04);color:#9090B0}
+  td.bold{color:#EEEEF5;font-weight:600}
+  tr:hover td{background:rgba(249,115,22,.03)}
+
+  .badge{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:100px;font-size:11px;font-weight:700}
+  .badge-new{background:rgba(249,115,22,.15);color:#F97316}
+  .badge-delivered{background:rgba(74,222,128,.15);color:#4ADE80}
+  .badge-cancelled{background:rgba(239,68,68,.15);color:#F87171}
+
+  .empty{text-align:center;padding:48px 24px;color:#55557A}
+  .empty .big{font-size:40px;margin-bottom:12px}
+
+  @media(max-width:640px){.sidebar{display:none}.content{padding:16px}}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-logo">🛵 MandaJá</div>
+  <a href="/mandaja/logout" class="btn-danger">Sair</a>
+</div>
+
+<div class="layout">
+  <nav class="sidebar">
+    <a href="/mandaja/painel" class="nav-item"><span class="ic">📊</span> Dashboard</a>
+    <a href="/mandaja/pedidos" class="nav-item"><span class="ic">🛍️</span> Pedidos</a>
+    <a href="/mandaja/produtos" class="nav-item"><span class="ic">📦</span> Produtos</a>
+    <a href="/mandaja/horarios" class="nav-item"><span class="ic">🕐</span> Horários</a>
+    <a href="/mandaja/financeiro" class="nav-item active"><span class="ic">💰</span> Financeiro</a>
+    <div class="nav-sep">Loja</div>
+    <a href="/mandaja/configuracoes" class="nav-item"><span class="ic">⚙️</span> Configurações</a>
+    <a href="/loja/{{ store.slug }}" target="_blank" class="nav-item"><span class="ic">🔗</span> Ver loja</a>
+    <div class="nav-sep">Conta</div>
+    <a href="/mandaja/logout" class="nav-item" style="color:#F87171"><span class="ic">🚪</span> Sair</a>
+  </nav>
+
+  <main class="content">
+    <h1>💰 Financeiro</h1>
+
+    <!-- Navegação mês -->
+    <form method="GET" class="month-nav">
+      <input type="month" name="mes" value="{{ mes }}">
+      <button type="submit">Ver mês</button>
+    </form>
+
+    <!-- Stats -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="ico">💰</div>
+        <div class="val" style="color:#4ADE80">R${{ '%.2f'|format(receita) }}</div>
+        <div class="lbl">Receita (entregues)</div>
+      </div>
+      <div class="stat-card">
+        <div class="ico">🛍️</div>
+        <div class="val">{{ pedidos_mes }}</div>
+        <div class="lbl">Total de pedidos</div>
+      </div>
+      <div class="stat-card">
+        <div class="ico">✅</div>
+        <div class="val" style="color:#4ADE80">{{ pedidos_entregues }}</div>
+        <div class="lbl">Entregues</div>
+      </div>
+      <div class="stat-card">
+        <div class="ico">📊</div>
+        <div class="val" style="color:#F97316">
+          {% if pedidos_mes > 0 %}{{ '%.0f'|format((pedidos_entregues/pedidos_mes)*100) }}%{% else %}—{% endif %}
+        </div>
+        <div class="lbl">Taxa de conclusão</div>
+      </div>
+    </div>
+
+    <!-- Tabela de pedidos -->
+    {% if pedidos %}
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Pedido</th>
+            <th>Cliente</th>
+            <th>Data</th>
+            <th>Pagamento</th>
+            <th>Total</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in pedidos %}
+          <tr onclick="window.location='/mandaja/pedidos/{{ p.id }}'" style="cursor:pointer">
+            <td class="bold">{{ p.order_number }}</td>
+            <td>{{ p.customer_name }}</td>
+            <td>{{ p.created_at[:10] if p.created_at else '—' }}</td>
+            <td>{{ {'pix':'PIX','dinheiro':'Dinheiro','cartao':'Cartão'}.get(p.payment_method, p.payment_method) }}</td>
+            <td class="bold" style="color:{% if p.status=='delivered' %}#4ADE80{% elif p.status=='cancelled' %}#F87171{% else %}#9090B0{% endif %}">
+              R${{ '%.2f'|format(p.total) }}
+            </td>
+            <td>
+              {% set sc = {'new':'badge-new','delivered':'badge-delivered','cancelled':'badge-cancelled'} %}
+              {% set sl = {'new':'Em andamento','delivered':'✅ Entregue','cancelled':'❌ Cancelado'} %}
+              <span class="badge {{ sc.get(p.status,'badge-new') }}">{{ sl.get(p.status, p.status) }}</span>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty">
+      <div class="big">💰</div>
+      <p>Nenhum pedido em {{ mes }}.</p>
+    </div>
+    {% endif %}
+  </main>
+</div>
+</body>
+</html>

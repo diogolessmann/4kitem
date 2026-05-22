@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Entrar — MandaJá</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#070710;color:#EEEEF5;font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center}
+  .card{background:#0E0E1C;border:1px solid rgba(249,115,22,.2);border-radius:20px;padding:40px 36px;width:100%;max-width:400px;margin:24px}
+  .logo{text-align:center;margin-bottom:28px}
+  .logo-icon{font-size:42px;display:block;margin-bottom:8px}
+  .logo-name{font-size:22px;font-weight:900;color:#F97316}
+  .logo-sub{font-size:13px;color:#9090B0;margin-top:4px}
+  label{display:block;font-size:13px;font-weight:600;color:#9090B0;margin-bottom:6px}
+  input{width:100%;background:#07070E;border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:12px 14px;color:#EEEEF5;font-size:14px;outline:none;transition:.2s}
+  input:focus{border-color:#F97316}
+  .field{margin-bottom:18px}
+  .btn{width:100%;padding:13px;border-radius:10px;background:linear-gradient(135deg,#EA580C,#F97316);color:#fff;font-size:15px;font-weight:700;border:none;cursor:pointer;transition:.2s;margin-top:6px}
+  .btn:hover{opacity:.9}
+  .error{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:10px;padding:12px 14px;font-size:13px;color:#FCA5A5;margin-bottom:18px}
+  .success{background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.3);border-radius:10px;padding:12px 14px;font-size:13px;color:#86EFAC;margin-bottom:18px}
+  .links{text-align:center;margin-top:20px;font-size:13px;color:#55557A}
+  .links a{color:#F97316}
+  .divider{border:none;border-top:1px solid rgba(255,255,255,.06);margin:20px 0}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">
+    <span class="logo-icon">🛵</span>
+    <div class="logo-name">MandaJá</div>
+    <div class="logo-sub">Painel do Lojista</div>
+  </div>
+
+  {% if error %}
+  <div class="error">{{ error }}</div>
+  {% endif %}
+
+  {% if msg == 'conta_inativa' %}
+  <div class="error">Conta inativa. Entre em contato com o suporte.</div>
+  {% elif msg == 'trial_expirado' %}
+  <div class="error">Período de teste encerrado. <a href="https://wa.me/5547991011351" target="_blank" style="color:#F97316">Fale conosco</a></div>
+  {% endif %}
+
+  <form method="POST">
+    <div class="field">
+      <label>E-mail</label>
+      <input type="email" name="email" placeholder="seu@email.com" required autofocus>
+    </div>
+    <div class="field">
+      <label>Senha</label>
+      <input type="password" name="senha" placeholder="••••••••" required>
+    </div>
+    <button type="submit" class="btn">Entrar no painel →</button>
+  </form>
+
+  <hr class="divider">
+  <div class="links">
+    Não tem conta? <a href="/mandaja/cadastro">Criar loja grátis</a><br>
+    <br><a href="/mandaja">← Voltar para a página inicial</a>
+  </div>
+</div>
+</body>
+</html>
