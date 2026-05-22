@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Minha Conta — Alerta SC</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#07070f;color:#f0f0ff;font-family:'Segoe UI',sans-serif;min-height:100vh;padding:24px}
+  body::before{content:'';position:fixed;top:0;left:50%;transform:translateX(-50%);width:700px;height:350px;background:radial-gradient(ellipse,rgba(245,158,11,.07) 0%,transparent 70%);pointer-events:none}
+  nav{max-width:600px;margin:0 auto 24px;display:flex;align-items:center;justify-content:space-between}
+  .nav-logo{font-size:17px;font-weight:900;color:#f59e0b}
+  .btn-sm{padding:6px 14px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:700;border:1px solid rgba(245,158,11,.3);background:rgba(245,158,11,.08);color:#f59e0b;font-family:inherit}
+  .container{max-width:600px;margin:0 auto}
+  .card{background:#0e0d08;border:1px solid rgba(245,158,11,.12);border-radius:20px;padding:28px;margin-bottom:16px}
+  .card-title{font-size:13px;font-weight:700;color:#78620a;text-transform:uppercase;letter-spacing:.5px;margin-bottom:16px}
+  .user-name{font-size:22px;font-weight:900;margin-bottom:4px}
+  .user-phone{font-size:14px;color:#78620a}
+  .plan-badge{display:inline-block;background:rgba(245,158,11,.15);border:1px solid rgba(245,158,11,.3);color:#f59e0b;padding:6px 16px;border-radius:20px;font-size:13px;font-weight:700;margin:12px 0}
+  .status-badge{display:inline-block;padding:4px 12px;border-radius:16px;font-size:12px;font-weight:700}
+  .status-active{background:rgba(34,197,94,.15);color:#22c55e;border:1px solid rgba(34,197,94,.3)}
+  .status-pending{background:rgba(245,158,11,.15);color:#f59e0b;border:1px solid rgba(245,158,11,.3)}
+  .status-suspended{background:rgba(239,68,68,.15);color:#ef4444;border:1px solid rgba(239,68,68,.3)}
+  .row{display:flex;justify-content:space-between;align-items:flex-start;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.05)}
+  .row:last-child{border-bottom:none}
+  .row-label{font-size:12px;color:#556}
+  .row-value{font-size:13px;font-weight:600;text-align:right}
+  .plates-list{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+  .plate-tag{background:#090900;border:1px solid rgba(245,158,11,.2);border-radius:8px;padding:6px 12px;font-size:13px;font-family:'Courier New',monospace;font-weight:700;color:#f59e0b;letter-spacing:2px}
+  .plate-desc{font-size:10px;color:#78620a;font-family:inherit;letter-spacing:0;font-weight:400;display:block;margin-top:1px}
+  .info-box{background:rgba(34,197,94,.07);border:1px solid rgba(34,197,94,.12);border-radius:12px;padding:16px;font-size:13px;color:#22c55e;text-align:center;line-height:1.7}
+  .pending-box{background:rgba(245,158,11,.07);border:1px solid rgba(245,158,11,.12);border-radius:12px;padding:16px;font-size:13px;color:#f59e0b;text-align:center;line-height:1.7}
+</style>
+</head>
+<body>
+<nav>
+  <span class="nav-logo">🚨 Alerta SC</span>
+  <a href="/alerta/sair"><button class="btn-sm">Sair</button></a>
+</nav>
+
+<div class="container">
+
+  <div class="card">
+    <div class="card-title">Minha Conta</div>
+    <div class="user-name">{{ sub.name }}</div>
+    <div class="user-phone">📱 {{ sub.phone }}</div>
+    <div>
+      <div class="plan-badge">{{ plan_info.get('label', sub.plano) }} — {{ plan_info.get('price', '') }}</div>
+    </div>
+    <div style="margin-top:8px">
+      <span class="status-badge status-{{ sub.status }}">
+        {% if sub.status == 'active' %}✅ Ativo
+        {% elif sub.status == 'pending' %}⏳ Aguardando pagamento
+        {% elif sub.status == 'suspended' %}🚫 Suspenso
+        {% else %}{{ sub.status }}{% endif %}
+      </span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Detalhes da assinatura</div>
+    <div class="row">
+      <span class="row-label">Plano</span>
+      <span class="row-value">{{ plan_info.get('label', sub.plano) }}</span>
+    </div>
+    <div class="row">
+      <span class="row-label">Valor</span>
+      <span class="row-value">{{ plan_info.get('price', '—') }}</span>
+    </div>
+    <div class="row">
+      <span class="row-label">Veículos incluídos</span>
+      <span class="row-value">{{ plan_info.get('vehicles', '—') }}</span>
+    </div>
+    <div class="row">
+      <span class="row-label">Pagamento</span>
+      <span class="row-value">{% if sub.payment_status == 'paid' %}✅ Pago{% else %}⏳ Pendente{% endif %}</span>
+    </div>
+    {% if sub.paid_at %}
+    <div class="row">
+      <span class="row-label">Último pagamento</span>
+      <span class="row-value">{{ sub.paid_at[:10] }}</span>
+    </div>
+    {% endif %}
+    <div class="row">
+      <span class="row-label">Cadastrado em</span>
+      <span class="row-value">{{ sub.created_at[:10] if sub.created_at else '—' }}</span>
+    </div>
+  </div>
+
+  {% if sub.plates %}
+  <div class="card">
+    <div class="card-title">Veículos monitorados</div>
+    <div class="plates-list">
+      {% for p in sub.plates %}
+      <div class="plate-tag">
+        {{ p.plate if p is mapping else p }}
+        {% if p is mapping and p.desc %}
+        <span class="plate-desc">{{ p.desc }}</span>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  {% if sub.status == 'active' %}
+  <div class="info-box">
+    ✅ Sua assinatura está ativa! Você receberá alertas pelo WhatsApp automaticamente.<br>
+    <strong>Dúvidas ou alterações?</strong> Fale com a equipe Alerta SC.
+  </div>
+  {% else %}
+  <div class="pending-box">
+    ⏳ Sua assinatura está pendente de pagamento.<br>
+    Entre em contato com a equipe para ativar seu plano.
+  </div>
+  {% endif %}
+
+</div>
+</body>
+</html>

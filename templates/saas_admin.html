@@ -114,6 +114,13 @@
               <button class="btn-sm btn-green" onclick="setAlertaStatus({{ s.id }}, 'active')">▶ Ativar</button>
               {% endif %}
               <button class="btn-sm btn-purple" onclick="openTrial('alerta','{{ s.id }}','{{ s.trial_ends[:10] if s.trial_ends else '' }}')">📅 Trial</button>
+              <div style="border-top:1px solid var(--border);margin:2px 0;font-size:10px;color:var(--text2);padding-top:2px">Plano:</div>
+              {% for pk, pv in alerta_plans.items() %}
+              {% if pk != s.plano %}
+              <button class="btn-sm btn-blue" onclick="setAlertaPlano({{ s.id }}, '{{ pk }}')">{{ pv.label }}</button>
+              {% endif %}
+              {% endfor %}
+              <div style="border-top:1px solid var(--border);margin:2px 0"></div>
               <button class="btn-sm btn-red" onclick="deleteSub({{ s.id }})">🗑 Deletar</button>
             </div>
           </td>
@@ -270,6 +277,13 @@
               {% else %}
               <button class="btn-sm btn-green" onclick="setKidsStatus({{ c.id }}, true)">▶ Ativar</button>
               {% endif %}
+              <div style="border-top:1px solid var(--border);margin:2px 0;font-size:10px;color:var(--text2);padding-top:2px">Modo:</div>
+              {% for mk, mv in kids_modes.items() %}
+              {% if mk != c.mode %}
+              <button class="btn-sm btn-blue" onclick="setKidsMode({{ c.id }}, '{{ mk }}')">{{ mv.label }}</button>
+              {% endif %}
+              {% endfor %}
+              <div style="border-top:1px solid var(--border);margin:2px 0"></div>
               <button class="btn-sm btn-red" onclick="deleteKids({{ c.id }})">🗑 Deletar</button>
             </div>
           </td>
@@ -315,6 +329,14 @@
               <button class="btn-sm btn-green" onclick="setDespStatus({{ u.id }}, true)">▶ Ativar</button>
               {% endif %}
               <button class="btn-sm btn-purple" onclick="openTrial('despachante','{{ u.id }}','{{ u.trial_ends[:10] if u.trial_ends else '' }}')">📅 Trial</button>
+              <button class="btn-sm" style="background:rgba(59,130,246,.15);color:#60a5fa;border:1px solid rgba(59,130,246,.3)" onclick="setDespSenha({{ u.id }}, '{{ u.name|replace("'","\\'") }}')">🔑 Senha</button>
+              <div style="border-top:1px solid var(--border);margin:2px 0;font-size:10px;color:var(--text2);padding-top:2px">Plano:</div>
+              {% for pk, pv in desp_plans.items() %}
+              {% if pk != u.plan %}
+              <button class="btn-sm btn-blue" onclick="setDespPlan({{ u.id }}, '{{ pk }}')">{{ pv.label }}</button>
+              {% endif %}
+              {% endfor %}
+              <div style="border-top:1px solid var(--border);margin:2px 0"></div>
               <button class="btn-sm btn-red" onclick="deleteDesp({{ u.id }})">🗑 Deletar</button>
             </div>
           </td>
@@ -368,6 +390,11 @@
               {% endif %}
               <button class="btn-sm btn-purple"  onclick="openTrial('defesa','{{ u.id }}','{{ u.trial_ends[:10] if u.trial_ends else '' }}')">📅 Trial</button>
               <button class="btn-sm" style="background:rgba(99,102,241,.15);color:#818cf8;border:1px solid rgba(99,102,241,.3);" onclick="setDefesaSenha({{ u.id }}, '{{ u.name }}')">🔑 Senha</button>
+              <div style="border-top:1px solid var(--border);margin:2px 0;font-size:10px;color:var(--text2);padding-top:2px">Plano:</div>
+              {% if u.plan != 'starter' %}<button class="btn-sm btn-blue" onclick="setDefesaPlan({{ u.id }},'starter')">Starter</button>{% endif %}
+              {% if u.plan != 'profissional' %}<button class="btn-sm btn-blue" onclick="setDefesaPlan({{ u.id }},'profissional')">Profissional</button>{% endif %}
+              {% if u.plan != 'premium' %}<button class="btn-sm btn-blue" onclick="setDefesaPlan({{ u.id }},'premium')">Premium</button>{% endif %}
+              <div style="border-top:1px solid var(--border);margin:2px 0"></div>
               <button class="btn-sm btn-red"     onclick="deleteDefesa({{ u.id }})">🗑 Deletar</button>
             </div>
           </td>
@@ -400,11 +427,19 @@
         <td>{{ s.city or '—' }}</td>
         <td>{{ s.created_at[:10] if s.created_at else '—' }}</td>
         <td>
-          <a href="/loja/{{ s.slug }}" target="_blank" class="btn-sm">🔗 Ver loja</a>
-          <button class="btn-sm" style="background:rgba(239,68,68,.15);color:#dc2626;border:1px solid rgba(239,68,68,.3);"
-                  onclick="toggleMandajaStore({{ s.id }}, {{ s.active }})">
-            {% if s.active %}🔴 Desativar{% else %}🟢 Ativar{% endif %}
-          </button>
+          <div class="actions" style="min-width:120px">
+            <a href="/loja/{{ s.slug }}" target="_blank" class="btn-sm btn-blue">🔗 Ver loja</a>
+            <button class="btn-sm {% if s.active %}btn-orange{% else %}btn-green{% endif %}"
+                    onclick="toggleMandajaStore({{ s.id }}, {{ s.active }})">
+              {% if s.active %}🔴 Desativar{% else %}🟢 Ativar{% endif %}
+            </button>
+            <div style="border-top:1px solid var(--border);margin:2px 0;font-size:10px;color:var(--text2);padding-top:2px">Plano:</div>
+            {% for pk, pv in mandaja_plans.items() %}
+            {% if pk != s.plan %}
+            <button class="btn-sm btn-purple" onclick="setMandajaPlan({{ s.id }}, '{{ pk }}')">{{ pv.emoji }} {{ pv.label }}</button>
+            {% endif %}
+            {% endfor %}
+          </div>
         </td>
       </tr>
       {% endfor %}
@@ -729,7 +764,72 @@ async function salvarNovaDefesa() {
   else alert(d.error || 'Erro ao salvar');
 }
 
+/* ── Alerta SC — mudar plano ── */
+async function setAlertaPlano(id, plano) {
+  const r = await fetch(`/admin/alerta/${id}/plano`, {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ plano })
+  });
+  const d = await r.json();
+  if (d.success) location.reload();
+  else alert(d.error || 'Erro');
+}
+
+/* ── KidsCurator — mudar modo ── */
+async function setKidsMode(id, mode) {
+  const r = await fetch(`/admin/kids/client/${id}/mode`, {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ mode })
+  });
+  const d = await r.json();
+  if (d.success) location.reload();
+  else alert(d.error || 'Erro');
+}
+
+/* ── Despachante — mudar plano + senha ── */
+async function setDespPlan(id, plan) {
+  const r = await fetch(`/admin/despachante/user/${id}/plan`, {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ plan })
+  });
+  const d = await r.json();
+  if (d.success) location.reload();
+  else alert(d.error || 'Erro');
+}
+async function setDespSenha(id, nome) {
+  const senha = prompt(`Definir senha para ${nome}:\n(mínimo 4 caracteres)`);
+  if (!senha) return;
+  if (senha.length < 4) { alert('Senha deve ter pelo menos 4 caracteres.'); return; }
+  const r = await fetch(`/admin/despachante/user/${id}/senha`, {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ senha })
+  });
+  const d = await r.json();
+  if (d.success) alert(`✅ Senha definida para ${nome}!`);
+  else alert(d.error || 'Erro ao definir senha');
+}
+
+/* ── DefesaPro — mudar plano ── */
+async function setDefesaPlan(id, plan) {
+  const r = await fetch(`/admin/defesapro/user/${id}/plan`, {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ plan })
+  });
+  const d = await r.json();
+  if (d.success) location.reload();
+  else alert(d.error || 'Erro');
+}
+
 // ── MandaJá ──────────────────────────────────────────────────────────────────
+async function setMandajaPlan(id, plan) {
+  const r = await fetch(`/admin/mandaja/store/${id}/plan`, {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ plan })
+  });
+  const d = await r.json();
+  if (d.success) location.reload();
+  else alert(d.error || 'Erro');
+}
 async function toggleMandajaStore(id, currentActive) {
   const action = currentActive ? 'desativar' : 'ativar';
   if (!confirm(`${action.charAt(0).toUpperCase() + action.slice(1)} esta loja?`)) return;

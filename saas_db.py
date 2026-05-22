@@ -300,6 +300,10 @@ def init_saas_db():
         "ALTER TABLE mandazap_campaigns ADD COLUMN media_url TEXT DEFAULT ''",
         "ALTER TABLE mandazap_templates ADD COLUMN media_url TEXT DEFAULT ''",
         "ALTER TABLE mandazap_campaigns ADD COLUMN error_log TEXT DEFAULT ''",
+        "ALTER TABLE mandazap_campaigns ADD COLUMN updated_at TEXT DEFAULT ''",
+        # Amigo Despachante — autenticação
+        "ALTER TABLE despachante_users ADD COLUMN password_hash TEXT DEFAULT ''",
+        "ALTER TABLE despachante_users ADD COLUMN last_login TEXT DEFAULT ''",
         # Agenda SC — configurações por negócio
         "ALTER TABLE agenda_businesses ADD COLUMN mandazap_ativo INTEGER DEFAULT 0",
         "ALTER TABLE agenda_businesses ADD COLUMN mandazap_instance TEXT DEFAULT ''",

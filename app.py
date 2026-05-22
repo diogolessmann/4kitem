@@ -283,6 +283,162 @@ from saas_db import init_saas_db, get_db as get_saas_db, salvar_nota_dev, listar
 def index():
     return render_template('index.html')
 
+
+# ══════════════════════════════════════════════════════════════════════════
+#  KIDSCURATOR — Login por código
+# ══════════════════════════════════════════════════════════════════════════
+
+@app.route('/kids/entrar', methods=['GET', 'POST'])
+def kids_entrar():
+    erro = None
+    if request.method == 'POST':
+        code = (request.form.get('code') or '').strip().upper()
+        client = get_client(code) if code else None
+        if not client:
+            erro = 'Código não encontrado ou inativo. Verifique o código enviado pelo suporte.'
+        else:
+            session['kids_code'] = code
+            return redirect(f'/tv/{code}')
+    return render_template('kids/entrar.html', erro=erro)
+
+
+@app.route('/kids/sair')
+def kids_sair():
+    session.pop('kids_code', None)
+    return redirect('/kids/entrar')
+
+
+# ══════════════════════════════════════════════════════════════════════════
+#  ALERTA SC — Login do assinante
+# ══════════════════════════════════════════════════════════════════════════
+
+def _alerta_login_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not session.get('alerta_sub_id'):
+            return redirect('/alerta/entrar')
+        return f(*args, **kwargs)
+    return decorated
+
+
+@app.route('/alerta/entrar', methods=['GET', 'POST'])
+def alerta_entrar():
+    erro = None
+    if request.method == 'POST':
+        phone = (request.form.get('phone') or '').strip()
+        phone_clean = phone.replace(' ','').replace('-','').replace('(','').replace(')','').replace('+','')
+        conn = get_saas_db()
+        sub = conn.execute(
+            "SELECT * FROM alerta_subscribers WHERE REPLACE(REPLACE(REPLACE(REPLACE(phone,' ',''),'-',''),'(',''),')','') LIKE ? AND status != 'suspended'",
+            (f'%{phone_clean[-8:]}',)
+        ).fetchone()
+        conn.close()
+        if not sub:
+            erro = 'Número não encontrado ou assinatura suspensa. Use o número que você cadastrou.'
+        else:
+            session['alerta_sub_id'] = sub['id']
+            return redirect('/alerta/minha-conta')
+    return render_template('alerta/entrar.html', erro=erro)
+
+
+@app.route('/alerta/minha-conta')
+@_alerta_login_required
+def alerta_minha_conta():
+    conn  = get_saas_db()
+    sub   = conn.execute('SELECT * FROM alerta_subscribers WHERE id=?', (session['alerta_sub_id'],)).fetchone()
+    conn.close()
+    if not sub:
+        session.pop('alerta_sub_id', None)
+        return redirect('/alerta/entrar')
+    sub   = dict(sub)
+    try:
+        sub['plates'] = _json.loads(sub.get('plates_json') or '[]')
+    except Exception:
+        sub['plates'] = []
+    plan_info = ALERTA_PLANS.get(sub.get('plano', 'basico'), {})
+    return render_template('alerta/minha_conta.html', sub=sub, plan_info=plan_info)
+
+
+@app.route('/alerta/sair')
+def alerta_sair():
+    session.pop('alerta_sub_id', None)
+    return redirect('/alerta/entrar')
+
+
+# ══════════════════════════════════════════════════════════════════════════
+#  AMIGO DESPACHANTE — Login do assinante
+# ══════════════════════════════════════════════════════════════════════════
+
+DESP_PLANS = {
+    'basico':        {'label': '🥉 Básico',        'price': 'R$ 79,90/mês'},
+    'profissional':  {'label': '🥈 Profissional',   'price': 'R$149,90/mês'},
+    'premium':       {'label': '🥇 Premium',        'price': 'R$249,90/mês'},
+}
+
+
+def _desp_saas_login_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not session.get('desp_saas_user_id'):
+            return redirect('/amigo-despachante/entrar')
+        return f(*args, **kwargs)
+    return decorated
+
+
+@app.route('/amigo-despachante')
+def amigo_desp_landing():
+    return render_template('amigo_despachante/landing.html', plans=DESP_PLANS)
+
+
+@app.route('/amigo-despachante/entrar', methods=['GET', 'POST'])
+def amigo_desp_entrar():
+    erro = None
+    if request.method == 'POST':
+        phone = (request.form.get('phone') or '').strip()
+        senha = request.form.get('senha') or ''
+        phone_clean = phone.replace(' ','').replace('-','').replace('(','').replace(')','').replace('+','')
+        conn = get_saas_db()
+        u = conn.execute(
+            "SELECT * FROM despachante_users WHERE REPLACE(REPLACE(REPLACE(REPLACE(phone,' ',''),'-',''),'(',''),')','') LIKE ? AND active=1",
+            (f'%{phone_clean[-8:]}',)
+        ).fetchone()
+        conn.close()
+        if not u:
+            erro = 'Telefone não encontrado ou conta inativa.'
+        elif not u['password_hash']:
+            erro = 'Senha ainda não definida. Entre em contato com o suporte para ativá-la.'
+        elif not check_password_hash(u['password_hash'], senha):
+            erro = 'Senha incorreta.'
+        else:
+            session['desp_saas_user_id'] = u['id']
+            session['desp_saas_name']    = u['name']
+            conn2 = get_saas_db()
+            conn2.execute('UPDATE despachante_users SET last_login=? WHERE id=?',
+                         (datetime.now().isoformat(), u['id']))
+            conn2.commit(); conn2.close()
+            return redirect('/amigo-despachante/app')
+    return render_template('amigo_despachante/entrar.html', erro=erro)
+
+
+@app.route('/amigo-despachante/app')
+@_desp_saas_login_required
+def amigo_desp_app():
+    conn = get_saas_db()
+    u    = conn.execute('SELECT * FROM despachante_users WHERE id=?', (session['desp_saas_user_id'],)).fetchone()
+    conn.close()
+    if not u:
+        session.pop('desp_saas_user_id', None)
+        return redirect('/amigo-despachante/entrar')
+    plan_info = DESP_PLANS.get(u['plan'], DESP_PLANS['basico'])
+    return render_template('amigo_despachante/app.html', user=dict(u), plan_info=plan_info)
+
+
+@app.route('/amigo-despachante/sair')
+def amigo_desp_sair():
+    session.pop('desp_saas_user_id', None)
+    session.pop('desp_saas_name', None)
+    return redirect('/amigo-despachante/entrar')
+
 @app.route('/defesapro')
 def defesapro_landing():
     return render_template('defesapro/landing.html')
@@ -1110,10 +1266,11 @@ def saas_admin():
                            subscribers=subscribers, businesses=businesses,
                            mz_users=mz_users, mz_plans=MANDAZAP_PLANS,
                            bau_users=bau_users,
-                           kids_clients=kids_clients,
-                           desp_users=desp_users,
+                           kids_clients=kids_clients, kids_modes=MODES,
+                           desp_users=desp_users, desp_plans=DESP_PLANS,
                            defesa_users=defesa_users,
-                           mandaja_stores=mandaja_stores)
+                           mandaja_stores=mandaja_stores, mandaja_plans=MANDAJA_PLANS,
+                           alerta_plans=ALERTA_PLANS)
 
 
 @app.route('/admin/alerta/<int:sub_id>/status', methods=['POST'])
@@ -1304,7 +1461,35 @@ def saas_bau_delete(user_id):
     return jsonify({'success': True})
 
 
+# ── Admin Alerta SC — mudar plano ────────────────────────────────────────────
+
+@app.route('/admin/alerta/<int:sub_id>/plano', methods=['POST'])
+@_saas_admin_required
+def saas_alerta_plano(sub_id):
+    data  = request.get_json() or {}
+    plano = data.get('plano', 'basico')
+    if plano not in ALERTA_PLANS:
+        return jsonify({'success': False, 'error': 'Plano inválido'}), 400
+    conn = get_saas_db()
+    conn.execute('UPDATE alerta_subscribers SET plano=? WHERE id=?', (plano, sub_id))
+    conn.commit(); conn.close()
+    return jsonify({'success': True, 'plano': plano, 'label': ALERTA_PLANS[plano]['label']})
+
+
 # ── Admin KidsCurator — status / delete ───────────────────────────────────────
+
+@app.route('/admin/kids/client/<int:client_id>/mode', methods=['POST'])
+@_saas_admin_required
+def saas_kids_set_mode(client_id):
+    data = request.get_json() or {}
+    mode = data.get('mode', 'kids')
+    if mode not in MODES:
+        return jsonify({'success': False, 'error': 'Modo inválido'}), 400
+    conn = get_kids_conn()
+    conn.execute('UPDATE clients SET mode=? WHERE id=?', (mode, client_id))
+    conn.commit(); conn.close()
+    return jsonify({'success': True, 'mode': mode, 'label': MODES[mode]['label']})
+
 
 @app.route('/admin/kids/client/<int:client_id>/status', methods=['POST'])
 @_saas_admin_required
@@ -1327,6 +1512,36 @@ def saas_kids_delete(client_id):
 
 
 # ── Admin Amigo Despachante — gerenciar usuários ──────────────────────────────
+
+@app.route('/admin/despachante/user/<int:user_id>/plan', methods=['POST'])
+@_saas_admin_required
+def saas_desp_set_plan(user_id):
+    data = request.get_json() or {}
+    plan = data.get('plan', 'basico')
+    if plan not in DESP_PLANS:
+        return jsonify({'success': False, 'error': 'Plano inválido'}), 400
+    conn = get_saas_db()
+    conn.execute('UPDATE despachante_users SET plan=? WHERE id=?', (plan, user_id))
+    conn.commit(); conn.close()
+    return jsonify({'success': True, 'plan': plan, 'label': DESP_PLANS[plan]['label']})
+
+
+@app.route('/admin/despachante/user/<int:user_id>/senha', methods=['POST'])
+@_saas_admin_required
+def saas_desp_set_senha(user_id):
+    nova = (request.get_json() or {}).get('senha', '').strip()
+    if not nova or len(nova) < 4:
+        return jsonify({'success': False, 'error': 'Senha muito curta (mín. 4 caracteres)'})
+    conn = get_saas_db()
+    u = conn.execute('SELECT id FROM despachante_users WHERE id=?', (user_id,)).fetchone()
+    if not u:
+        conn.close()
+        return jsonify({'success': False, 'error': 'Usuário não encontrado'})
+    conn.execute('UPDATE despachante_users SET password_hash=? WHERE id=?',
+                 (generate_password_hash(nova), user_id))
+    conn.commit(); conn.close()
+    return jsonify({'success': True})
+
 
 @app.route('/admin/despachante/user/<int:user_id>/status', methods=['POST'])
 @_saas_admin_required
@@ -1396,6 +1611,20 @@ def saas_desp_novo_user():
 
 # ── Admin DefesaPro — gerenciar usuários ─────────────────────────────────────
 
+@app.route('/admin/defesapro/user/<int:user_id>/plan', methods=['POST'])
+@_saas_admin_required
+def saas_defesa_set_plan(user_id):
+    data  = request.get_json() or {}
+    plan  = data.get('plan', 'starter')
+    valid = {'starter', 'profissional', 'premium'}
+    if plan not in valid:
+        return jsonify({'success': False, 'error': 'Plano inválido'}), 400
+    conn = get_saas_db()
+    conn.execute('UPDATE defesapro_users SET plan=? WHERE id=?', (plan, user_id))
+    conn.commit(); conn.close()
+    return jsonify({'success': True, 'plan': plan})
+
+
 @app.route('/admin/defesapro/user/<int:user_id>/status', methods=['POST'])
 @_saas_admin_required
 def saas_defesa_set_status(user_id):
@@ -1461,6 +1690,20 @@ def saas_defesa_novo_user():
 
 
 # ── Admin MandaJá ─────────────────────────────────────────────────────────────
+
+@app.route('/admin/mandaja/store/<int:store_id>/plan', methods=['POST'])
+@_saas_admin_required
+def saas_mandaja_set_plan(store_id):
+    data = request.get_json() or {}
+    plan = data.get('plan', 'micro')
+    if plan not in MANDAJA_PLANS:
+        return jsonify({'success': False, 'error': 'Plano inválido'}), 400
+    conn = get_saas_db()
+    conn.execute('UPDATE mandaja_stores SET plan=? WHERE id=?', (plan, store_id))
+    conn.commit(); conn.close()
+    return jsonify({'success': True, 'plan': plan, 'label': MANDAJA_PLANS[plan]['label']})
+
+
 @app.route('/admin/mandaja/store/<int:store_id>/toggle', methods=['POST'])
 @_saas_admin_required
 def saas_mandaja_toggle(store_id):
@@ -3026,7 +3269,8 @@ def _dispatch_campaign_inner(cid: int, user_id: int, delay_s: int = 3, continuar
 
         # Atualiza progresso a cada envio
         conn2 = get_saas_db()
-        conn2.execute("UPDATE mandazap_campaigns SET sent=? WHERE id=?", (sent_count, cid))
+        conn2.execute("UPDATE mandazap_campaigns SET sent=?, updated_at=? WHERE id=?",
+                      (sent_count, datetime.now().isoformat(), cid))
         conn2.commit(); conn2.close()
 
         # Delay anti-ban humanizado após envio bem-sucedido
@@ -3067,17 +3311,16 @@ def mz_campaign_dispatch(cid):
     user_id = session['mz_user_id']
     conn    = get_saas_db()
     camp    = conn.execute(
-        'SELECT status FROM mandazap_campaigns WHERE id=? AND user_id=?', (cid, user_id)
+        'SELECT status, updated_at, created_at FROM mandazap_campaigns WHERE id=? AND user_id=?', (cid, user_id)
     ).fetchone()
     conn.close()
     if not camp:
         return jsonify({'erro': 'Campanha não encontrada'}), 404
     status = camp['status']
     if status == 'enviando':
-        # Verifica se está realmente ativa ou presa (stale > 10 min sem update)
-        last_update = camp.get('updated_at') or camp.get('created_at') or ''
+        # Verifica se está realmente ativa ou presa (stale > 5 min sem update)
+        last_update = camp['updated_at'] or camp['created_at'] or ''
         try:
-            from datetime import timezone
             dt_upd = datetime.fromisoformat(last_update) if last_update else None
             minutos_parada = (datetime.now() - dt_upd).total_seconds() / 60 if dt_upd else 999
         except Exception:
@@ -3086,8 +3329,9 @@ def mz_campaign_dispatch(cid):
             return jsonify({'erro': 'Campanha já está sendo enviada (aguarde).'}), 400
         # Presa há mais de 5 minutos — permite re-dispatch (thread morta)
         log.warning(f"[dispatch] Campanha {cid} presa em 'enviando' há {minutos_parada:.0f}min — forçando re-dispatch")
-        conn.execute("UPDATE mandazap_campaigns SET status='rascunho' WHERE id=?", (cid,))
-        conn.commit()
+        conn2 = get_saas_db()
+        conn2.execute("UPDATE mandazap_campaigns SET status='rascunho' WHERE id=?", (cid,))
+        conn2.commit(); conn2.close()
     elif status == 'concluida':
         return jsonify({'erro': 'Campanha já foi concluída. Duplique-a para reenviar.'}), 400
     # continuar=true (padrão) → retoma de onde parou; continuar=false → recomeça do zero

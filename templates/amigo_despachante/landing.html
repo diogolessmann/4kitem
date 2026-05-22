@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Amigo Despachante — Plataforma para Despachantes</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#07070f;color:#f0f0ff;font-family:'Segoe UI',sans-serif;min-height:100vh}
+  nav{background:rgba(8,14,24,.95);border-bottom:1px solid rgba(59,130,246,.12);padding:0 24px;height:60px;display:flex;align-items:center;justify-content:space-between;backdrop-filter:blur(10px)}
+  .nav-logo{font-size:18px;font-weight:900;color:#60a5fa}
+  .nav-btn{padding:8px 20px;border-radius:10px;background:rgba(59,130,246,.15);border:1px solid rgba(59,130,246,.3);color:#60a5fa;font-size:13px;font-weight:700;cursor:pointer;text-decoration:none;font-family:inherit}
+  .hero{text-align:center;padding:80px 24px 60px;max-width:700px;margin:0 auto}
+  .hero-icon{font-size:64px;margin-bottom:20px}
+  .hero h1{font-size:38px;font-weight:900;line-height:1.2;margin-bottom:16px}
+  .hero h1 span{color:#60a5fa}
+  .hero p{font-size:16px;color:#4060a0;line-height:1.7;margin-bottom:32px}
+  .hero-btns{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+  .btn-primary{padding:14px 32px;background:linear-gradient(135deg,#1d4ed8,#3b82f6);border:none;border-radius:14px;color:#fff;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;text-decoration:none}
+  .btn-sec{padding:14px 32px;background:transparent;border:1px solid rgba(59,130,246,.3);border-radius:14px;color:#60a5fa;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;text-decoration:none}
+  .plans{max-width:900px;margin:0 auto;padding:48px 24px}
+  .plans h2{text-align:center;font-size:26px;font-weight:900;margin-bottom:32px}
+  .plans-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px}
+  .plan-card{background:#080e18;border:1px solid rgba(59,130,246,.12);border-radius:20px;padding:24px;text-align:center}
+  .plan-icon{font-size:28px;margin-bottom:10px}
+  .plan-name{font-size:16px;font-weight:800;color:#60a5fa;margin-bottom:4px}
+  .plan-price{font-size:13px;color:#4060a0;margin-bottom:12px}
+  .plan-features{font-size:12px;color:#4060a0;line-height:1.7}
+</style>
+</head>
+<body>
+<nav>
+  <span class="nav-logo">🚗 Amigo Despachante</span>
+  <a href="/amigo-despachante/entrar" class="nav-btn">🔓 Entrar</a>
+</nav>
+
+<div class="hero">
+  <div class="hero-icon">🚗</div>
+  <h1>A plataforma que o <span>despachante moderno</span> precisa</h1>
+  <p>Gerencie seus clientes, consultas, documentos e financeiro em um único lugar. Feito especialmente para despachantes de trânsito.</p>
+  <div class="hero-btns">
+    <a href="/amigo-despachante/entrar" class="btn-primary">🔓 Acessar minha conta</a>
+    <a href="https://wa.me/5547999999999" class="btn-sec">💬 Falar com vendas</a>
+  </div>
+</div>
+
+<div class="plans">
+  <h2>Planos</h2>
+  <div class="plans-grid">
+    {% for key, p in plans.items() %}
+    <div class="plan-card">
+      <div class="plan-icon">{{ '🥉' if key=='basico' else '🥈' if key=='profissional' else '🥇' }}</div>
+      <div class="plan-name">{{ p.label }}</div>
+      <div class="plan-price">{{ p.price }}</div>
+      <div class="plan-features">Acesso completo à plataforma<br>Suporte via WhatsApp<br>Atualizações automáticas</div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+</body>
+</html>
