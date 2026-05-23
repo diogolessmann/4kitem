@@ -599,30 +599,40 @@ def agenda_cadastro():
         elif len(password) < 6:
             error = 'A senha precisa ter pelo menos 6 caracteres.'
         else:
-            slug = _slugify(name) or 'negocio'
+            # Normaliza telefone para checar duplicata
+            phone_digits = ''.join(c for c in phone if c.isdigit())
             conn = get_saas_db()
-            base_slug, counter = slug, 1
-            while conn.execute('SELECT id FROM agenda_businesses WHERE slug=?', (slug,)).fetchone():
-                slug = f'{base_slug}-{counter}'; counter += 1
-            trial_ends = (datetime.now() + timedelta(days=30)).isoformat()
-            try:
-                conn.execute('''
-                    INSERT INTO agenda_businesses
-                    (name, slug, owner_name, phone, email, business_type, password_hash, active, created_at, trial_ends)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
-                ''', (name, slug, owner_name, phone, email, business_type,
-                      generate_password_hash(password), datetime.now().isoformat(), trial_ends))
-                conn.commit()
-                biz = conn.execute('SELECT * FROM agenda_businesses WHERE slug=?', (slug,)).fetchone()
+            existing_phone = conn.execute(
+                "SELECT id FROM agenda_businesses WHERE replace(replace(replace(replace(replace(phone,'(',''),')',''),'-',''),' ',''),'+','') = ?",
+                (phone_digits,)
+            ).fetchone()
+            if existing_phone:
                 conn.close()
-                session['agenda_business_id']   = biz['id']
-                session['agenda_business_slug'] = biz['slug']
-                session['agenda_business_name'] = biz['name']
-                return redirect('/agenda/painel')
-            except Exception as e:
-                conn.close()
-                log.error(f'Agenda cadastro error: {e}')
-                error = 'Erro ao cadastrar. Tente novamente.'
+                error = 'Este número de WhatsApp já possui uma conta cadastrada. Faça login para acessar sua agenda.'
+            else:
+                slug = _slugify(name) or 'negocio'
+                base_slug, counter = slug, 1
+                while conn.execute('SELECT id FROM agenda_businesses WHERE slug=?', (slug,)).fetchone():
+                    slug = f'{base_slug}-{counter}'; counter += 1
+                trial_ends = (datetime.now() + timedelta(days=7)).isoformat()
+                try:
+                    conn.execute('''
+                        INSERT INTO agenda_businesses
+                        (name, slug, owner_name, phone, email, business_type, password_hash, active, created_at, trial_ends)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
+                    ''', (name, slug, owner_name, phone, email, business_type,
+                          generate_password_hash(password), datetime.now().isoformat(), trial_ends))
+                    conn.commit()
+                    biz = conn.execute('SELECT * FROM agenda_businesses WHERE slug=?', (slug,)).fetchone()
+                    conn.close()
+                    session['agenda_business_id']   = biz['id']
+                    session['agenda_business_slug'] = biz['slug']
+                    session['agenda_business_name'] = biz['name']
+                    return redirect('/agenda/painel')
+                except Exception as e:
+                    conn.close()
+                    log.error(f'Agenda cadastro error: {e}')
+                    error = 'Erro ao cadastrar. Tente novamente.'
 
     return render_template('agenda/cadastro.html', error=error, business_types=BUSINESS_TYPES)
 
@@ -696,6 +706,9 @@ def agenda_painel():
         'SELECT COUNT(*) FROM agenda_customers WHERE business_id=?', (biz_id,)
     ).fetchone()[0]
     conn.close()
+    # Verifica trial
+    trial_ends_str = biz.get('trial_ends', '')
+    trial_expired  = bool(trial_ends_str and trial_ends_str < datetime.now().isoformat())
     return render_template('agenda/painel.html',
                            biz=biz, services=services,
                            availability=availability,
@@ -705,7 +718,9 @@ def agenda_painel():
                            business_types=BUSINESS_TYPES,
                            hoje_count=hoje_count,
                            receita_mes=round(receita_mes, 2),
-                           total_clientes=total_clientes)
+                           total_clientes=total_clientes,
+                           trial_expired=trial_expired,
+                           trial_ends=trial_ends_str)
 
 
 @app.route('/agenda/painel/servico/add', methods=['POST'])
@@ -992,6 +1007,11 @@ def agenda_booking(slug):
     biz = conn.execute(
         'SELECT * FROM agenda_businesses WHERE slug=? AND active=1', (slug,)
     ).fetchone()
+    if biz:
+        trial_ends = biz['trial_ends'] or ''
+        if trial_ends and trial_ends < datetime.now().isoformat():
+            conn.close()
+            return render_template('agenda/booking_paused.html', biz=dict(biz))
     if not biz:
         conn.close()
         abort(404)
@@ -1007,8 +1027,12 @@ def api_agenda_slots(slug):
     date_str   = request.args.get('date', '')
     service_id = request.args.get('service_id', '')
     conn = get_saas_db()
-    biz = conn.execute('SELECT id FROM agenda_businesses WHERE slug=? AND active=1', (slug,)).fetchone()
+    biz = conn.execute('SELECT id, trial_ends FROM agenda_businesses WHERE slug=? AND active=1', (slug,)).fetchone()
     if not biz:
+        conn.close()
+        return jsonify({'slots': []})
+    trial_ends = biz['trial_ends'] or ''
+    if trial_ends and trial_ends < datetime.now().isoformat():
         conn.close()
         return jsonify({'slots': []})
     duration = 60
@@ -1041,6 +1065,10 @@ def api_agenda_book(slug):
     if not biz:
         conn.close()
         return jsonify({'success': False, 'error': 'Negócio não encontrado.'})
+    trial_ends = biz['trial_ends'] or ''
+    if trial_ends and trial_ends < datetime.now().isoformat():
+        conn.close()
+        return jsonify({'success': False, 'error': 'Este negócio está com o período de teste encerrado. Entre em contato diretamente.'})
 
     duration = 60
     if service_id:
@@ -2970,6 +2998,49 @@ def _check_instance_connected(evo_url: str, evo_key: str, instance: str) -> bool
         return True  # Em caso de dúvida, tenta enviar e vê o que acontece
 
 
+def _validate_numbers_batch(evo_url: str, evo_key: str, instance: str,
+                            phones: list, batch_size: int = 50) -> set:
+    """Verifica em lote quais números têm WhatsApp ativo via Evolution API.
+    Retorna um set() com os phones VÁLIDOS (que existem no WhatsApp).
+    Phones que a API não conseguiu verificar ficam no set (safe default = tenta enviar).
+    """
+    valid = set()
+    for i in range(0, len(phones), batch_size):
+        chunk = phones[i:i + batch_size]
+        try:
+            r = requests.post(
+                f"{evo_url}/chat/whatsappNumbers/{instance}",
+                headers={'apikey': evo_key, 'Content-Type': 'application/json'},
+                json={'numbers': chunk},
+                timeout=30,
+            )
+            if r.status_code in (200, 201):
+                data = r.json()
+                # Resposta: lista de {exists:bool, number/jid/...}
+                if isinstance(data, list):
+                    for item in data:
+                        if item.get('exists') or item.get('numberExists'):
+                            jid = item.get('jid') or item.get('number') or ''
+                            # Extrai só os dígitos do jid  "5547...@s.whatsapp.net"
+                            num = jid.split('@')[0] if '@' in jid else jid
+                            if num:
+                                valid.add(num)
+                else:
+                    # Se a API falhou ou retornou formato inesperado, inclui todos (fail-open)
+                    valid.update(chunk)
+            else:
+                # Endpoint não disponível ou erro — inclui todos (fail-open)
+                log.warning(f"whatsappNumbers batch error HTTP {r.status_code} — fail-open para {len(chunk)} phones")
+                valid.update(chunk)
+        except Exception as e:
+            log.warning(f"whatsappNumbers batch exception: {e} — fail-open para {len(chunk)} phones")
+            valid.update(chunk)
+        # Pequena pausa entre batches para não sobrecarregar
+        if i + batch_size < len(phones):
+            time.sleep(random.uniform(1.5, 3.0))
+    return valid
+
+
 def _apply_spintax(text: str) -> str:
     """Processa variações {opção1|opção2|opção3} no template.
     Só processa grupos com pelo menos um | (preserva {nome}, {name}, etc).
@@ -3251,7 +3322,7 @@ def _dispatch_campaign_inner(cid: int, user_id: int, delay_s: int = 3, continuar
     failed_count = 0
     consec_fails = 0
     first_err    = ''
-    MAX_CONSEC   = 5   # aborta se 5 falhas reais consecutivas (ban detecta-se rapido)
+    MAX_CONSEC   = 3   # aborta após 3 falhas REAIS consecutivas (ban detecta-se rápido)
 
     # Verifica conexão da instância ANTES de iniciar o disparo
     if not _check_instance_connected(evo_url, evo_key, instance):
@@ -3261,6 +3332,45 @@ def _dispatch_campaign_inner(cid: int, user_id: int, delay_s: int = 3, continuar
             ('Número WhatsApp desconectado. Reconecte o número no painel Números antes de disparar.', cid)
         )
         conn.commit(); conn.close()
+        return
+
+    # ── Pré-validação de números ─────────────────────────────────────────────
+    # Verifica em lote quais phones existem no WhatsApp ANTES de enviar.
+    # Elimina os inválidos da fila — evita HTTP 400 "exists:false" confundidos
+    # com ban e reduz API calls desnecessários.
+    def _norm(p):
+        p = (p or '').replace(' ','').replace('-','').replace('+','').replace('(','').replace(')','')
+        return ('55' + p) if p and not p.startswith('55') else p
+
+    raw_phones = [_norm(c.get('phone','')) for c in contacts if c.get('phone')]
+    raw_phones = [p for p in raw_phones if p]
+
+    log.info(f"Campanha {cid}: pré-validando {len(raw_phones)} números no WhatsApp...")
+    conn.execute("UPDATE mandazap_campaigns SET error_log=? WHERE id=?",
+                 (f'Validando {len(raw_phones)} números... aguarde.', cid))
+    conn.commit()
+
+    valid_phones = _validate_numbers_batch(evo_url, evo_key, instance, raw_phones)
+    invalid_count = len(raw_phones) - len(valid_phones)
+    log.info(f"Campanha {cid}: {len(valid_phones)} válidos, {invalid_count} sem WhatsApp — removidos da fila")
+
+    # Filtra contacts mantendo só os válidos
+    contacts = [c for c in contacts if _norm(c.get('phone','')) in valid_phones]
+    total_real = prev_sent + len(contacts)
+    conn.execute("UPDATE mandazap_campaigns SET total=?, error_log=? WHERE id=?",
+                 (total_real,
+                  f'{invalid_count} números sem WhatsApp removidos da fila.' if invalid_count else '',
+                  cid))
+    conn.commit()
+
+    if not contacts:
+        conn.execute(
+            "UPDATE mandazap_campaigns SET status='concluida', sent=?, finished_at=?, error_log=? WHERE id=?",
+            (prev_sent, datetime.now().isoformat(),
+             f'Nenhum contato válido no WhatsApp. {invalid_count} números sem WhatsApp na lista.', cid)
+        )
+        conn.commit(); conn.close()
+        log.warning(f"Campanha {cid}: zero contatos válidos após pré-validação")
         return
 
     for c in contacts:
@@ -3338,16 +3448,21 @@ def _dispatch_campaign_inner(cid: int, user_id: int, delay_s: int = 3, continuar
                 # Falha real (API down, timeout, erro temporario) — conta consecutiva
                 consec_fails += 1
                 if consec_fails >= MAX_CONSEC:
-                    log.error(f"Campanha {cid}: {MAX_CONSEC} falhas consecutivas — abortando. Erro: {err}")
+                    # Verifica se é ban ou problema de API
+                    is_ban = not _check_instance_connected(evo_url, evo_key, instance)
+                    motivo = ('Numero possivelmente banido — instancia desconectada. Reconecte o numero.'
+                              if is_ban else
+                              f'API retornou {MAX_CONSEC} erros consecutivos. Verifique a conexao e tente novamente.')
+                    log.error(f"Campanha {cid}: {MAX_CONSEC} falhas consecutivas ({'ban?' if is_ban else 'API error'}) — {err}")
                     conn.execute(
                         "UPDATE mandazap_campaigns SET status='erro', sent=?, finished_at=?, error_log=? WHERE id=?",
                         (sent_count, datetime.now().isoformat(),
-                         f'Abortado apos {MAX_CONSEC} falhas consecutivas. {first_err}', cid)
+                         f'{motivo} | {first_err}', cid)
                     )
                     conn.commit(); conn.close()
                     return
                 # Delay progressivo: quanto mais falhas, maior a espera
-                pausa_erro = random.uniform(15, 45) * consec_fails
+                pausa_erro = random.uniform(20, 60) * consec_fails
                 log.warning(f"Anti-ban: pausa {pausa_erro:.0f}s apos falha {consec_fails}/{MAX_CONSEC}")
                 time.sleep(pausa_erro)
 
@@ -3357,14 +3472,14 @@ def _dispatch_campaign_inner(cid: int, user_id: int, delay_s: int = 3, continuar
                       (sent_count, datetime.now().isoformat(), cid))
         conn2.commit(); conn2.close()
 
-        # A cada 50 enviados verifica se a instância ainda está conectada
-        if ok and sent_count > 0 and sent_count % 50 == 0:
+        # A cada 25 enviados verifica se a instância ainda está conectada
+        if ok and sent_count > 0 and sent_count % 25 == 0:
             if not _check_instance_connected(evo_url, evo_key, instance):
-                log.error(f"Campanha {cid}: instancia desconectou apos {sent_count} enviados")
+                log.error(f"Campanha {cid}: instancia desconectou apos {sent_count} enviados — possivel ban")
                 conn.execute(
                     "UPDATE mandazap_campaigns SET status='erro', sent=?, finished_at=?, error_log=? WHERE id=?",
                     (sent_count, datetime.now().isoformat(),
-                     f'Numero desconectou durante o disparo apos {sent_count} enviados. Reconecte.', cid)
+                     f'Numero desconectou/banido apos {sent_count} enviados. Reconecte o numero e aguarde 24h antes de tentar novamente.', cid)
                 )
                 conn.commit(); conn.close()
                 return

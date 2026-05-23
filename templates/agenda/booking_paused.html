@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ biz.name }} — Agendamento pausado</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #08080f; color: #f0f0ff;
+      min-height: 100vh; display: flex; align-items: center; justify-content: center;
+      padding: 24px;
+    }
+    .card {
+      background: #13131f; border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 24px; padding: 48px 40px; text-align: center;
+      max-width: 440px; width: 100%;
+      box-shadow: 0 40px 80px rgba(0,0,0,0.5);
+    }
+    .icon { font-size: 52px; margin-bottom: 20px; }
+    h1 { font-size: 22px; font-weight: 900; margin-bottom: 12px; }
+    p { font-size: 15px; color: #8888aa; line-height: 1.6; margin-bottom: 8px; }
+    .biz-name { color: #22c55e; font-weight: 700; }
+    .divider { border: none; border-top: 1px solid rgba(255,255,255,0.08); margin: 24px 0; }
+    .tip { font-size: 13px; color: #666688; }
+    .tip a { color: #22c55e; text-decoration: none; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="icon">📅</div>
+    <h1>Agendamento temporariamente pausado</h1>
+    <p><span class="biz-name">{{ biz.name }}</span> está momentaneamente fora do ar para novos agendamentos online.</p>
+    <p>Entre em contato diretamente com o negócio para marcar seu horário.</p>
+    <hr class="divider">
+    <p class="tip">
+      {% if biz.phone %}
+        📞 <a href="https://wa.me/55{{ biz.phone | replace(' ','') | replace('-','') | replace('(','') | replace(')','') | replace('+','') }}">Falar pelo WhatsApp</a>
+      {% endif %}
+    </p>
+  </div>
+</body>
+</html>

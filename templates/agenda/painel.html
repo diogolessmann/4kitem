@@ -272,6 +272,30 @@
 
 <div class="container">
 
+  {% if trial_expired %}
+  <!-- Banner trial expirado -->
+  <div style="background:linear-gradient(135deg,rgba(239,68,68,.15),rgba(239,68,68,.05));border:1px solid rgba(239,68,68,.4);border-radius:14px;padding:16px 20px;margin-bottom:20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+    <div style="font-size:28px;flex-shrink:0">⏰</div>
+    <div style="flex:1;min-width:200px">
+      <div style="font-size:14px;font-weight:800;color:#f87171;margin-bottom:3px">Seu período de teste encerrou</div>
+      <div style="font-size:12px;color:var(--text2);line-height:1.5">Sua agenda está pausada — clientes não conseguem agendar. Assine para reativar e não perder agendamentos.</div>
+    </div>
+    <a href="https://wa.me/5547991011351?text=Quero+assinar+o+Agenda+SC" target="_blank">
+      <button style="background:#22c55e;color:#fff;border:none;border-radius:100px;padding:10px 20px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;">🚀 Assinar agora</button>
+    </a>
+  </div>
+  {% elif trial_ends %}
+  <!-- Banner trial ativo com dias restantes -->
+  {% set dias_restantes = ((trial_ends[:10]|string) ) %}
+  <div style="background:rgba(34,197,94,.07);border:1px solid rgba(34,197,94,.2);border-radius:14px;padding:12px 20px;margin-bottom:16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+    <div style="font-size:16px">⏳</div>
+    <div style="flex:1;font-size:12px;color:var(--text2)">Período de teste gratuito até <strong style="color:var(--green)">{{ trial_ends[:10] }}</strong>. Após essa data sua agenda será pausada.</div>
+    <a href="https://wa.me/5547991011351?text=Quero+assinar+o+Agenda+SC" target="_blank">
+      <button style="background:transparent;color:var(--green);border:1px solid rgba(34,197,94,.4);border-radius:100px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;">Assinar</button>
+    </a>
+  </div>
+  {% endif %}
+
   <!-- ── TAB HOJE ───────────────────────────────────────────────── -->
   <div class="tab-content active" id="tab-hoje">
     <div class="stats">

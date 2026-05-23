@@ -24,14 +24,13 @@
       position: sticky; top: 0; z-index: 50;
       display: flex; align-items: center; justify-content: space-between;
       padding: 16px 24px;
-      background: rgba(8,8,15,0.9); backdrop-filter: blur(16px);
+      background: rgba(8,8,15,0.92); backdrop-filter: blur(16px);
       border-bottom: 1px solid var(--border);
     }
     .nav-logo { display: flex; align-items: center; gap: 10px; font-weight: 900; font-size: 18px; }
     .nav-logo-icon {
       width: 34px; height: 34px; border-radius: 8px;
-      overflow: hidden;
-      display: flex; align-items: center; justify-content: center;
+      overflow: hidden; display: flex; align-items: center; justify-content: center;
     }
     .nav-logo-icon img { width: 100%; height: 100%; object-fit: cover; border-radius: 8px; }
     .nav-logo span { color: var(--green); }
@@ -40,41 +39,18 @@
       padding: 8px 18px; border-radius: 100px;
       border: 1px solid var(--border2); color: var(--text2);
       font-size: 13px; font-weight: 600; cursor: pointer;
-      font-family: inherit; background: transparent;
-      transition: .2s;
+      font-family: inherit; background: transparent; transition: .2s;
     }
     .btn-nav-outline:hover { border-color: var(--green); color: var(--green); }
     .btn-nav-primary {
       padding: 8px 20px; border-radius: 100px;
       background: var(--green); color: #fff;
       font-size: 13px; font-weight: 700; cursor: pointer;
-      font-family: inherit; border: none;
-      transition: .2s;
+      font-family: inherit; border: none; transition: .2s;
     }
     .btn-nav-primary:hover { background: var(--green2); }
 
-    /* ── Hero ── */
-    .hero {
-      text-align: center; padding: 80px 24px 60px;
-      max-width: 700px; margin: 0 auto;
-    }
-    .hero-badge {
-      display: inline-flex; align-items: center; gap: 6px;
-      background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.3);
-      border-radius: 100px; padding: 6px 16px;
-      font-size: 12px; font-weight: 700; color: var(--green);
-      margin-bottom: 28px;
-    }
-    .hero h1 {
-      font-size: clamp(32px, 6vw, 52px); font-weight: 900;
-      letter-spacing: -1.5px; line-height: 1.1; margin-bottom: 20px;
-    }
-    .hero h1 span { color: var(--green); }
-    .hero p {
-      font-size: 17px; color: var(--text2); line-height: 1.6;
-      margin-bottom: 36px; max-width: 520px; margin-left: auto; margin-right: auto;
-    }
-    .hero-ctas { display: flex; align-items: center; justify-content: center; gap: 12px; flex-wrap: wrap; }
+    /* ── Buttons ── */
     .btn-primary {
       display: inline-flex; align-items: center; gap: 8px;
       padding: 14px 28px; border-radius: 100px;
@@ -82,7 +58,7 @@
       font-size: 15px; font-weight: 700; cursor: pointer;
       transition: .2s; border: none; font-family: inherit;
     }
-    .btn-primary:hover { background: var(--green2); transform: translateY(-1px); }
+    .btn-primary:hover { background: var(--green2); transform: translateY(-1px); box-shadow: 0 8px 24px rgba(34,197,94,0.35); }
     .btn-outline {
       display: inline-flex; align-items: center; gap: 8px;
       padding: 14px 24px; border-radius: 100px;
@@ -92,12 +68,108 @@
     }
     .btn-outline:hover { border-color: var(--green); color: var(--green); }
 
-    /* ── Demo card ── */
-    .demo-wrap { max-width: 480px; margin: 48px auto 0; }
-    .demo-card {
+    /* ── HERO SPLIT ── */
+    .hero-wrap {
+      max-width: 1100px; margin: 0 auto;
+      padding: 80px 32px 40px;
+      display: grid; grid-template-columns: 1fr 1fr; gap: 56px; align-items: center;
+    }
+    .hero-text { }
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.3);
+      border-radius: 100px; padding: 6px 16px;
+      font-size: 12px; font-weight: 700; color: var(--green);
+      margin-bottom: 28px;
+    }
+    .hero-text h1 {
+      font-size: clamp(34px, 4.5vw, 54px); font-weight: 900;
+      letter-spacing: -2px; line-height: 1.08; margin-bottom: 20px;
+    }
+    .hero-text h1 span { color: var(--green); }
+    .hero-text p {
+      font-size: 17px; color: var(--text2); line-height: 1.65;
+      margin-bottom: 36px; max-width: 440px;
+    }
+    .hero-ctas { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 36px; }
+    .hero-trust { display: flex; align-items: center; gap: 10px; }
+    .hero-trust-avatars { display: flex; }
+    .hero-trust-avatars span {
+      width: 28px; height: 28px; border-radius: 50%;
+      border: 2px solid var(--bg); background: linear-gradient(135deg,#22c55e,#16a34a);
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 800; color: #fff;
+      margin-left: -8px;
+    }
+    .hero-trust-avatars span:first-child { margin-left: 0; }
+    .hero-trust-text { font-size: 12px; color: var(--text2); line-height: 1.4; }
+    .hero-trust-text strong { color: var(--text); }
+
+    .hero-img-wrap {
+      border-radius: 24px; overflow: hidden;
+      box-shadow: 0 0 80px rgba(34,197,94,0.18), 0 40px 80px rgba(0,0,0,0.6);
+      border: 1px solid rgba(34,197,94,0.15);
+      position: relative;
+    }
+    .hero-img-wrap img { width: 100%; display: block; }
+    .hero-img-badge {
+      position: absolute; bottom: 20px; left: 20px;
+      background: rgba(8,8,15,0.88); backdrop-filter: blur(12px);
+      border: 1px solid rgba(34,197,94,0.3); border-radius: 14px;
+      padding: 10px 14px; display: flex; align-items: center; gap: 10px;
+    }
+    .hero-img-badge-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); box-shadow: 0 0 8px var(--green); }
+    .hero-img-badge-text { font-size: 12px; font-weight: 700; }
+    .hero-img-badge-sub { font-size: 10px; color: var(--text2); }
+
+    /* Mobile hero */
+    @media (max-width: 768px) {
+      .hero-wrap { grid-template-columns: 1fr; gap: 32px; padding: 52px 20px 32px; }
+      .hero-text { text-align: center; }
+      .hero-text p { margin-left: auto; margin-right: auto; }
+      .hero-ctas { justify-content: center; }
+      .hero-trust { justify-content: center; }
+      .hero-img-desktop { display: none; }
+      .hero-img-mobile { display: block !important; }
+    }
+    .hero-img-mobile { display: none; }
+
+    /* ── Stats bar ── */
+    .stats-bar {
+      display: flex; justify-content: center; gap: 0; flex-wrap: wrap;
+      max-width: 700px; margin: 32px auto 0;
       background: var(--surface); border: 1px solid var(--border2);
       border-radius: 20px; overflow: hidden;
     }
+    .stat-item {
+      flex: 1; min-width: 160px; text-align: center;
+      padding: 24px 20px; border-right: 1px solid var(--border);
+    }
+    .stat-item:last-child { border-right: none; }
+    .stat-num {
+      font-size: 30px; font-weight: 900; letter-spacing: -1px;
+      background: linear-gradient(135deg, var(--green), #86efac);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .stat-label { font-size: 11px; color: var(--text2); font-weight: 600; margin-top: 4px; }
+
+    /* ── Demo WhatsApp ── */
+    .demo-section {
+      max-width: 860px; margin: 60px auto 0; padding: 0 24px;
+      display: grid; grid-template-columns: 1fr 1fr; gap: 32px; align-items: center;
+    }
+    .demo-label-col { }
+    .demo-label-col h2 { font-size: clamp(22px,3.5vw,32px); font-weight: 900; letter-spacing: -1px; margin-bottom: 12px; }
+    .demo-label-col h2 span { color: var(--green); }
+    .demo-label-col p { font-size: 15px; color: var(--text2); line-height: 1.6; }
+    .demo-phone-wrap {
+      background: linear-gradient(180deg,#141414,#0a0a12);
+      border-radius: 28px; border: 2px solid rgba(255,255,255,0.1);
+      box-shadow: 0 0 60px rgba(34,197,94,0.1), 0 40px 80px rgba(0,0,0,0.5);
+      padding: 28px 16px 24px;
+    }
+    .demo-bar { width: 50px; height: 4px; background: rgba(255,255,255,0.1); border-radius: 100px; margin: 0 auto 18px; }
+    .demo-card { background: var(--surface); border: 1px solid var(--border2); border-radius: 18px; overflow: hidden; }
     .demo-header {
       background: var(--surface2); padding: 12px 16px;
       border-bottom: 1px solid var(--border);
@@ -107,8 +179,7 @@
     .demo-body { padding: 16px; display: flex; flex-direction: column; gap: 10px; }
     .demo-msg {
       background: rgba(34,197,94,0.08); border: 1px solid rgba(34,197,94,0.2);
-      border-radius: 12px; padding: 12px 14px;
-      font-size: 13px; line-height: 1.5;
+      border-radius: 12px; padding: 12px 14px; font-size: 13px; line-height: 1.5;
     }
     .demo-msg strong { color: var(--green); }
     .demo-msg-dark {
@@ -116,82 +187,116 @@
       border-radius: 12px; padding: 12px 14px;
       font-size: 13px; color: var(--text2); line-height: 1.5;
     }
+    @media (max-width: 640px) {
+      .demo-section { grid-template-columns: 1fr; }
+    }
 
-    /* ── Section ── */
-    section { padding: 72px 24px; }
+    /* ── Problem bar ── */
+    .problem-section {
+      background: rgba(34,197,94,0.04);
+      border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
+      padding: 48px 24px; text-align: center; margin-top: 60px;
+    }
+    .problem-section p {
+      font-size: clamp(15px,2.5vw,19px); line-height: 1.7;
+      max-width: 620px; margin: 0 auto; color: var(--text2);
+    }
+    .problem-section strong { color: var(--text); }
+
+    /* ── Section headers ── */
+    section { padding: 80px 24px; }
     .section-label {
       text-align: center; font-size: 11px; font-weight: 700;
-      letter-spacing: 1px; text-transform: uppercase;
+      letter-spacing: 1.5px; text-transform: uppercase;
       color: var(--green); margin-bottom: 12px;
     }
     .section-title {
-      text-align: center; font-size: clamp(24px, 4vw, 36px);
-      font-weight: 900; letter-spacing: -1px; margin-bottom: 8px;
+      text-align: center; font-size: clamp(26px, 4vw, 38px);
+      font-weight: 900; letter-spacing: -1px; margin-bottom: 10px;
     }
-    .section-sub {
-      text-align: center; color: var(--text2); font-size: 15px;
-      margin-bottom: 48px;
-    }
-
-    /* ── Stats bar ── */
-    .stats-bar {
-      display: flex; justify-content: center; gap: 40px; flex-wrap: wrap;
-      padding: 28px 24px 0; max-width: 600px; margin: 0 auto;
-    }
-    .stat-item { text-align: center; }
-    .stat-num {
-      font-size: 28px; font-weight: 900; letter-spacing: -1px;
-      background: linear-gradient(135deg, var(--green), #86efac);
-      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-    }
-    .stat-label { font-size: 11px; color: var(--text2); font-weight: 600; margin-top: 2px; }
+    .section-sub { text-align: center; color: var(--text2); font-size: 15px; margin-bottom: 56px; }
 
     /* ── Features grid ── */
     .features-grid {
-      display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-      gap: 16px; max-width: 900px; margin: 0 auto;
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      gap: 20px; max-width: 1000px; margin: 0 auto;
     }
+    @media (max-width: 900px) { .features-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 580px) { .features-grid { grid-template-columns: 1fr; } }
+
     .feature-card {
       background: var(--surface); border: 1px solid var(--border);
-      border-radius: 18px; padding: 24px;
-      transition: border-color .2s, transform .2s;
-      position: relative; overflow: hidden;
+      border-radius: 20px; overflow: hidden;
+      transition: border-color .25s, transform .25s, box-shadow .25s;
+      position: relative;
     }
-    .feature-card:hover { border-color: rgba(34,197,94,0.35); transform: translateY(-2px); }
-    .feature-card::before {
-      content: ''; position: absolute; top: 0; left: 0; right: 0;
-      height: 2px; background: linear-gradient(90deg, var(--green), transparent);
-      opacity: 0; transition: opacity .2s;
+    .feature-card:hover {
+      border-color: rgba(34,197,94,0.4); transform: translateY(-4px);
+      box-shadow: 0 20px 48px rgba(0,0,0,0.4), 0 0 0 1px rgba(34,197,94,0.1);
     }
-    .feature-card:hover::before { opacity: 1; }
+    .feature-card-img {
+      width: 100%; height: 170px; object-fit: cover; display: block;
+    }
+    .feature-card-body { padding: 20px 22px 24px; }
     .feature-icon-wrap {
-      width: 48px; height: 48px; border-radius: 14px;
+      width: 44px; height: 44px; border-radius: 12px;
       background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.2);
       display: flex; align-items: center; justify-content: center;
-      font-size: 22px; margin-bottom: 14px;
+      font-size: 20px; margin-bottom: 12px;
     }
-    .feature-icon { font-size: 28px; margin-bottom: 12px; }
-    .feature-title { font-size: 15px; font-weight: 700; margin-bottom: 8px; }
-    .feature-desc { font-size: 13px; color: var(--text2); line-height: 1.5; }
-    .feature-ex { font-size: 11px; color: var(--green); margin-top: 6px; font-weight: 600; }
+    .feature-title { font-size: 15px; font-weight: 800; margin-bottom: 8px; }
+    .feature-desc { font-size: 13px; color: var(--text2); line-height: 1.55; }
+    .feature-ex { font-size: 11px; color: var(--green); margin-top: 8px; font-weight: 600; }
 
-    /* ── How it works ── */
-    .steps { display: flex; gap: 0; max-width: 860px; margin: 0 auto; flex-wrap: wrap; justify-content: center; }
+    /* ── Testimonials ── */
+    .testimonials-section { background: var(--bg2); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+    .testi-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      gap: 24px; max-width: 1000px; margin: 0 auto;
+    }
+    @media (max-width: 860px) { .testi-grid { grid-template-columns: 1fr; max-width: 420px; } }
+    .testi-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 22px; overflow: hidden;
+      transition: transform .2s, box-shadow .2s;
+    }
+    .testi-card:hover { transform: translateY(-4px); box-shadow: 0 20px 48px rgba(0,0,0,0.4); }
+    .testi-img { width: 100%; height: 220px; object-fit: cover; object-position: center top; display: block; }
+    .testi-body { padding: 20px; }
+    .testi-stars { color: #f59e0b; font-size: 14px; letter-spacing: 2px; margin-bottom: 10px; }
+    .testi-quote {
+      font-size: 13px; line-height: 1.6; color: var(--text2);
+      margin-bottom: 16px; font-style: italic;
+    }
+    .testi-quote::before { content: '"'; color: var(--green); font-size: 20px; font-style: normal; }
+    .testi-name { font-size: 13px; font-weight: 800; }
+    .testi-role { font-size: 11px; color: var(--text2); margin-top: 2px; }
+    .testi-badge {
+      display: inline-block; background: rgba(34,197,94,0.1);
+      border: 1px solid rgba(34,197,94,0.25); border-radius: 100px;
+      font-size: 10px; font-weight: 700; color: var(--green);
+      padding: 3px 10px; margin-top: 8px;
+    }
+
+    /* ── Steps ── */
+    .steps {
+      display: flex; gap: 0; max-width: 860px; margin: 0 auto;
+      flex-wrap: wrap; justify-content: center;
+    }
     .step {
       flex: 1; min-width: 160px; max-width: 200px;
-      text-align: center; padding: 24px 16px;
-      position: relative;
+      text-align: center; padding: 24px 16px; position: relative;
     }
     .step:not(:last-child)::after {
       content: '→'; position: absolute; right: -8px; top: 30px;
       color: var(--text2); font-size: 18px;
     }
     .step-num {
-      width: 52px; height: 52px; border-radius: 16px;
+      width: 56px; height: 56px; border-radius: 18px;
       background: linear-gradient(135deg, var(--green), var(--green2));
       display: flex; align-items: center; justify-content: center;
-      font-size: 24px; margin: 0 auto 12px;
-      box-shadow: 0 8px 24px rgba(34,197,94,0.3);
+      font-size: 26px; margin: 0 auto 12px;
+      box-shadow: 0 8px 28px rgba(34,197,94,0.3);
     }
     .step-badge {
       display: inline-block; background: rgba(34,197,94,0.12);
@@ -208,11 +313,12 @@
     }
     .plan-card {
       background: var(--surface); border: 1px solid var(--border);
-      border-radius: 22px; padding: 28px 24px;
+      border-radius: 24px; padding: 28px 24px;
     }
     .plan-card.featured {
       border-color: var(--green);
       background: linear-gradient(135deg, rgba(34,197,94,0.08), var(--surface));
+      box-shadow: 0 0 48px rgba(34,197,94,0.1);
     }
     .plan-badge {
       display: inline-block; background: var(--green); color: #fff;
@@ -221,21 +327,27 @@
       margin-bottom: 16px;
     }
     .plan-name { font-size: 13px; color: var(--text2); font-weight: 600; margin-bottom: 6px; }
-    .plan-price { font-size: 36px; font-weight: 900; letter-spacing: -1px; margin-bottom: 4px; }
+    .plan-price { font-size: 38px; font-weight: 900; letter-spacing: -1.5px; margin-bottom: 4px; }
     .plan-price span { font-size: 15px; color: var(--text2); font-weight: 500; }
-    .plan-note { font-size: 11px; color: var(--text2); margin-bottom: 20px; }
-    .plan-features { list-style: none; display: flex; flex-direction: column; gap: 8px; margin-bottom: 24px; }
+    .plan-note { font-size: 11px; color: var(--text2); margin-bottom: 22px; }
+    .plan-features { list-style: none; display: flex; flex-direction: column; gap: 9px; margin-bottom: 26px; }
     .plan-features li { font-size: 13px; display: flex; gap: 8px; align-items: flex-start; }
     .plan-features li::before { content: '✓'; color: var(--green); font-weight: 700; flex-shrink: 0; }
 
     /* ── CTA final ── */
     .cta-section {
-      background: linear-gradient(135deg, rgba(34,197,94,0.08), var(--bg2));
-      border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
-      padding: 72px 24px; text-align: center;
+      background: linear-gradient(135deg, rgba(34,197,94,0.1), var(--bg2));
+      border-top: 1px solid rgba(34,197,94,0.2);
+      padding: 80px 24px; text-align: center;
+      position: relative; overflow: hidden;
     }
-    .cta-section h2 { font-size: clamp(24px, 4vw, 36px); font-weight: 900; letter-spacing: -1px; margin-bottom: 12px; }
-    .cta-section p { color: var(--text2); font-size: 15px; margin-bottom: 32px; }
+    .cta-section::before {
+      content: ''; position: absolute; inset: 0;
+      background: radial-gradient(ellipse at 50% 0%, rgba(34,197,94,0.12), transparent 70%);
+      pointer-events: none;
+    }
+    .cta-section h2 { font-size: clamp(26px,4vw,40px); font-weight: 900; letter-spacing: -1px; margin-bottom: 14px; position: relative; }
+    .cta-section p { color: var(--text2); font-size: 16px; margin-bottom: 36px; position: relative; }
 
     /* ── Footer ── */
     footer {
@@ -245,17 +357,15 @@
     }
     footer a { color: var(--green); }
 
-    /* ── Problema section ── */
-    .problem-section {
-      background: rgba(34,197,94,0.04); border-top: 1px solid var(--border);
-      border-bottom: 1px solid var(--border);
-      padding: 48px 24px; text-align: center;
+    /* ── Mobile CTA fixo ── */
+    .mobile-cta-bar {
+      display: none;
+      position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
+      padding: 12px 16px; background: rgba(8,8,15,0.96);
+      backdrop-filter: blur(16px); border-top: 1px solid rgba(34,197,94,0.2);
     }
-    .problem-section p {
-      font-size: clamp(15px, 2.5vw, 19px); line-height: 1.7;
-      max-width: 620px; margin: 0 auto; color: var(--text2);
-    }
-    .problem-section strong { color: var(--text); }
+    .mobile-cta-bar .btn-primary { width: 100%; justify-content: center; font-size: 16px; padding: 14px; }
+    @media (max-width: 600px) { .mobile-cta-bar { display: block; } body { padding-bottom: 80px; } }
   </style>
 </head>
 <body>
@@ -272,127 +382,234 @@
   <div class="nav-links">
     <a href="/"><button class="btn-nav-outline">← 4KITEM</button></a>
     <a href="/agenda/entrar"><button class="btn-nav-outline">Fazer login</button></a>
-    <a href="/agenda/cadastro">
-      <button class="btn-nav-primary">🚀 Começar grátis</button>
-    </a>
+    <a href="/agenda/cadastro"><button class="btn-nav-primary">🚀 Começar grátis</button></a>
   </div>
 </nav>
 
-<!-- Hero -->
-<div class="hero">
-  <div class="hero-badge">✅ 30 dias grátis · Sem cartão</div>
-  <h1>Seu negócio com<br><span>agendamento online</span><br>em minutos</h1>
-  <p>Chega de WhatsApp travado com "que horas tem vaga?". Seus clientes agendam sozinhos, você recebe a notificação e foca no trabalho.</p>
-  <div class="hero-ctas">
-    <a href="/agenda/cadastro">
-      <button class="btn-primary">🚀 Criar minha agenda grátis</button>
-    </a>
-    <a href="#como-funciona">
-      <button class="btn-outline">Ver como funciona</button>
-    </a>
+<!-- ── HERO SPLIT ── -->
+<div class="hero-wrap">
+  <!-- Texto -->
+  <div class="hero-text">
+    <div class="hero-badge">✅ 7 dias grátis · Sem cartão de crédito</div>
+    <h1>Seu negócio com<br><span>agendamento online</span><br>em minutos</h1>
+    <p>Chega de WhatsApp travado com "que horas tem vaga?". Seus clientes agendam sozinhos, você recebe a notificação e foca no que importa.</p>
+    <div class="hero-ctas">
+      <a href="/agenda/cadastro">
+        <button class="btn-primary">🚀 Criar minha agenda grátis</button>
+      </a>
+      <a href="#como-funciona">
+        <button class="btn-outline">Ver como funciona</button>
+      </a>
+    </div>
+    <div class="hero-trust">
+      <div class="hero-trust-avatars">
+        <span>B</span><span>M</span><span>R</span><span>+</span>
+      </div>
+      <div class="hero-trust-text">
+        <strong>340+ negócios</strong> no Norte de SC<br>já usam o Agenda SC
+      </div>
+    </div>
+  </div>
+  <!-- Imagem desktop -->
+  <div class="hero-img-wrap hero-img-desktop">
+    <img src="/static/img/agenda/agenda-hero.jpg" alt="Profissional usando Agenda SC"
+         onerror="this.style.background='linear-gradient(135deg,#13131f,#1a1a2e)';this.alt='Agenda SC'">
+    <div class="hero-img-badge">
+      <div class="hero-img-badge-dot"></div>
+      <div>
+        <div class="hero-img-badge-text">Novo agendamento!</div>
+        <div class="hero-img-badge-sub">João Silva · Corte · 14h00</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Imagem mobile — abaixo do texto -->
+<div class="hero-img-mobile" style="padding:0 20px 32px;max-width:500px;margin:0 auto;">
+  <div class="hero-img-wrap">
+    <img src="/static/img/agenda/agenda-hero-mobile.jpg" alt="Agenda SC no celular"
+         style="width:100%;display:block;" onerror="this.style.display='none'">
+    <div class="hero-img-badge">
+      <div class="hero-img-badge-dot"></div>
+      <div>
+        <div class="hero-img-badge-text">Novo agendamento!</div>
+        <div class="hero-img-badge-sub">João Silva · Corte · 14h00</div>
+      </div>
+    </div>
   </div>
 </div>
 
 <!-- Stats bar -->
-<div class="stats-bar">
-  <div class="stat-item">
-    <div class="stat-num" id="stat-negocios">0</div>
-    <div class="stat-label">negócios usando no Norte de SC</div>
-  </div>
-  <div class="stat-item">
-    <div class="stat-num" id="stat-agendamentos">0</div>
-    <div class="stat-label">agendamentos realizados</div>
-  </div>
-  <div class="stat-item">
-    <div class="stat-num">30 dias</div>
-    <div class="stat-label">grátis sem cartão</div>
-  </div>
-</div>
-
-<!-- Hero Image -->
-<div style="max-width:860px;margin:40px auto 0;padding:0 20px;">
-  <img src="/static/img/agenda/hero.png" alt="Agenda SC — Barbeiro com celular"
-       style="width:100%;border-radius:20px;display:block;box-shadow:0 0 60px rgba(34,197,94,0.15),0 30px 60px rgba(0,0,0,0.5);"
-       onerror="this.style.display='none'">
-</div>
-
-<!-- Demo — com frame de celular/tablet -->
-<div style="max-width:420px;margin:48px auto 0;padding:28px 12px 20px;background:linear-gradient(180deg,#141414,#0a0a12);border-radius:24px;border:2px solid rgba(255,255,255,0.1);box-shadow:0 0 60px rgba(34,197,94,0.1),0 40px 80px rgba(0,0,0,0.5);position:relative;">
-  <div style="width:50px;height:4px;background:rgba(255,255,255,0.1);border-radius:100px;margin:0 auto 16px;"></div>
-<div class="demo-wrap" style="margin:0;max-width:100%;">
-  <div class="demo-card">
-    <div class="demo-header">👁️ Veja o que seu cliente vê ao agendar</div>
-    <div class="demo-body">
-      <div class="demo-msg">
-        <strong>✅ Agendamento confirmado!</strong><br>
-        João Silva — Corte de cabelo<br>
-        📅 Amanhã, sexta-feira · 14h00<br>
-        📍 Barbearia Silva — Schroeder
-      </div>
-      <div class="demo-msg-dark">
-        <strong style="color:var(--text)">📲 Você recebe no WhatsApp:</strong><br>
-        "Novo agendamento! João Silva agendou Corte de cabelo para amanhã às 14h. WhatsApp: (47) 99101-1351"
-      </div>
+<div style="padding:0 24px;">
+  <div class="stats-bar">
+    <div class="stat-item">
+      <div class="stat-num" id="stat-negocios">0</div>
+      <div class="stat-label">negócios no Norte de SC</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-num" id="stat-agendamentos">0</div>
+      <div class="stat-label">agendamentos realizados</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-num">7 dias</div>
+      <div class="stat-label">grátis sem cartão</div>
     </div>
   </div>
 </div>
-  <div style="width:36px;height:4px;background:rgba(255,255,255,0.1);border-radius:100px;margin:16px auto 0;"></div>
+
+<!-- ── DEMO WhatsApp ── -->
+<div class="demo-section">
+  <div class="demo-label-col">
+    <div class="section-label" style="text-align:left;">Como funciona na prática</div>
+    <h2>Seu cliente agenda.<br><span>Você recebe no WhatsApp.</span></h2>
+    <p style="margin-top:16px;">Sem telefonema, sem mensagem, sem "vou verificar e te respondo". Tudo automático, 24h por dia.</p>
+    <ul style="list-style:none;margin-top:28px;display:flex;flex-direction:column;gap:12px;">
+      <li style="display:flex;align-items:center;gap:10px;font-size:14px;color:var(--text2);">
+        <span style="color:var(--green);font-size:18px;">✅</span> Cliente escolhe serviço, data e horário
+      </li>
+      <li style="display:flex;align-items:center;gap:10px;font-size:14px;color:var(--text2);">
+        <span style="color:var(--green);font-size:18px;">✅</span> Você recebe notificação no WhatsApp
+      </li>
+      <li style="display:flex;align-items:center;gap:10px;font-size:14px;color:var(--text2);">
+        <span style="color:var(--green);font-size:18px;">✅</span> Confirma com 1 clique no painel
+      </li>
+    </ul>
+  </div>
+  <div class="demo-phone-wrap">
+    <div class="demo-bar"></div>
+    <div class="demo-card">
+      <div class="demo-header">👁️ O que seu cliente vê ao agendar</div>
+      <div class="demo-body">
+        <div class="demo-msg">
+          <strong>✅ Agendamento confirmado!</strong><br>
+          João Silva — Corte de cabelo<br>
+          📅 Amanhã, sexta-feira · 14h00<br>
+          📍 Barbearia Silva — Schroeder
+        </div>
+        <div class="demo-msg-dark">
+          <strong style="color:var(--text)">📲 Você recebe no WhatsApp:</strong><br>
+          "Novo agendamento! João Silva agendou Corte de cabelo para amanhã às 14h. WhatsApp: (47) 99101-1351"
+        </div>
+      </div>
+    </div>
+    <div class="demo-bar" style="margin-top:16px;"></div>
+  </div>
 </div>
 
 <!-- Problema -->
 <div class="problem-section">
-  <p>Você sabia que <strong>negócios sem agendamento online</strong> perdem até 40% dos clientes que desistem de esperar resposta no WhatsApp? A maioria só percebe quando o concorrente já está cheio.</p>
+  <p>Você sabia que <strong>negócios sem agendamento online</strong> perdem até <strong>40% dos clientes</strong> que desistem de esperar resposta no WhatsApp?<br>A maioria só percebe quando o concorrente já está cheio.</p>
 </div>
 
-<!-- Features -->
+<!-- ── FEATURES ── -->
 <section>
   <div class="section-label">Tudo que você precisa</div>
   <div class="section-title">Simples de usar. Poderoso na prática.</div>
-  <div class="section-sub">Tudo incluso no plano gratuito por 30 dias.</div>
+  <div class="section-sub">Tudo incluso nos primeiros 7 dias, sem cartão.</div>
 
   <div class="features-grid">
+
+    <!-- Card 1 — Link personalizado -->
     <div class="feature-card">
-      <div class="feature-icon-wrap">🔗</div>
-      <div class="feature-title">Seu link personalizado</div>
-      <div class="feature-desc">Compartilhe no WhatsApp, Instagram e cartão de visita.</div>
-      <div class="feature-ex">www.4kitem.com.br/seu-negocio</div>
+      <img src="/static/img/agenda/agenda-card-link.jpg" alt="Link personalizado" class="feature-card-img" onerror="this.style.display='none'">
+      <div class="feature-card-body">
+        <div class="feature-icon-wrap">🔗</div>
+        <div class="feature-title">Seu link personalizado</div>
+        <div class="feature-desc">Compartilhe no WhatsApp, Instagram e cartão de visita. Em 1 clique o cliente já está agendando.</div>
+        <div class="feature-ex">www.4kitem.com.br/seu-negocio</div>
+      </div>
     </div>
+
+    <!-- Card 2 — Horários automáticos -->
     <div class="feature-card">
-      <div class="feature-icon-wrap">📅</div>
-      <div class="feature-title">Horários automáticos</div>
-      <div class="feature-desc">Você define os dias e horários. O sistema gera os slots disponíveis automaticamente — sem conflito, sem erro.</div>
+      <img src="/static/img/agenda/agenda-card-horarios.jpg" alt="Horários automáticos" class="feature-card-img" onerror="this.style.display='none'">
+      <div class="feature-card-body">
+        <div class="feature-icon-wrap">📅</div>
+        <div class="feature-title">Horários automáticos</div>
+        <div class="feature-desc">Você define os dias e horários. O sistema gera os slots disponíveis — sem conflito, sem erro, sem trabalho extra.</div>
+      </div>
     </div>
+
+    <!-- Card 3 — Notificação WhatsApp -->
     <div class="feature-card">
-      <img src="/static/img/agenda/feature-whatsapp.png" alt="Notificação WhatsApp"
-           style="width:100%;height:160px;object-fit:cover;border-radius:12px;margin-bottom:16px;display:block;"
-           onerror="this.style.display='none'">
-      <div class="feature-icon-wrap">💬</div>
-      <div class="feature-title">Notificação no WhatsApp</div>
-      <div class="feature-desc">A cada agendamento novo, você recebe o nome e WhatsApp do cliente. Confirme ou cancele direto do painel.</div>
+      <img src="/static/img/agenda/feature-whatsapp.png" alt="Notificação WhatsApp" class="feature-card-img"
+           onerror="this.style.background='linear-gradient(135deg,#052e16,#0f3d22)';this.style.height='90px';this.style.display='flex';this.onerror=null">
+      <div class="feature-card-body">
+        <div class="feature-icon-wrap">💬</div>
+        <div class="feature-title">Notificação no WhatsApp</div>
+        <div class="feature-desc">A cada agendamento novo, você recebe o nome e WhatsApp do cliente. Confirme ou cancele direto do painel.</div>
+      </div>
     </div>
+
+    <!-- Card 4 — Painel de controle -->
     <div class="feature-card">
-      <div class="feature-icon-wrap">📊</div>
-      <div class="feature-title">Painel de controle</div>
-      <div class="feature-desc">Veja todos os agendamentos do dia, da semana, confirme, cancele ou marque como concluído.</div>
+      <img src="/static/img/agenda/agenda-card-painel.jpg" alt="Painel de controle" class="feature-card-img" onerror="this.style.display='none'">
+      <div class="feature-card-body">
+        <div class="feature-icon-wrap">📊</div>
+        <div class="feature-title">Painel de controle</div>
+        <div class="feature-desc">Veja todos os agendamentos do dia, da semana. Confirme, cancele ou marque como concluído.</div>
+      </div>
     </div>
+
+    <!-- Card 6 — Funciona no celular -->
     <div class="feature-card">
-      <div class="feature-icon-wrap">📻</div>
-      <div class="feature-title">Destaque no Rádio SC News</div>
-      <div class="feature-desc">Seu negócio aparece no portal de notícias regional mais acessado do Norte de SC. Mais visibilidade, mais clientes.</div>
+      <img src="/static/img/agenda/feature-cliente.png" alt="Funciona no celular" class="feature-card-img" onerror="this.style.display='none'">
+      <div class="feature-card-body">
+        <div class="feature-icon-wrap">📱</div>
+        <div class="feature-title">Funciona no celular</div>
+        <div class="feature-desc">Seus clientes agendam do celular em menos de 1 minuto. Sem precisar baixar nenhum aplicativo.</div>
+      </div>
     </div>
-    <div class="feature-card">
-      <img src="/static/img/agenda/feature-cliente.png" alt="Cliente agendando pelo celular"
-           style="width:100%;height:160px;object-fit:cover;border-radius:12px;margin-bottom:16px;display:block;"
-           onerror="this.style.display='none'">
-      <div class="feature-icon-wrap">📱</div>
-      <div class="feature-title">Funciona no celular</div>
-      <div class="feature-desc">Seus clientes agendam do celular em menos de 1 minuto. Sem precisar baixar nenhum aplicativo.</div>
-    </div>
+
   </div>
 </section>
 
-<!-- Como funciona -->
-<section id="como-funciona" style="background:var(--bg2);background-image:url('/static/img/agenda/bg-steps.png');background-size:cover;background-position:center;background-blend-mode:overlay;border-top:1px solid var(--border);border-bottom:1px solid var(--border);">
+<!-- ── DEPOIMENTOS ── -->
+<section class="testimonials-section">
+  <div class="section-label">O que dizem nossos clientes</div>
+  <div class="section-title">Eles já transformaram<br>o negócio com a agenda</div>
+  <div class="section-sub">Resultados reais de empreendedores do Norte de SC.</div>
+
+  <div class="testi-grid">
+
+    <div class="testi-card">
+      <img src="/static/img/agenda/agenda-depo-1.jpg" alt="Ana Paula — Salão de Beleza" class="testi-img" onerror="this.style.display='none'">
+      <div class="testi-body">
+        <div class="testi-stars">★★★★★</div>
+        <div class="testi-quote">Antes eu ficava respondendo WhatsApp até meia-noite. Agora meus clientes agendam sozinhos e eu acordo com a agenda cheia.</div>
+        <div class="testi-name">Ana Paula</div>
+        <div class="testi-role">Proprietária · Salão de Beleza · Schroeder SC</div>
+        <div class="testi-badge">✅ Cliente verificada</div>
+      </div>
+    </div>
+
+    <div class="testi-card">
+      <img src="/static/img/agenda/agenda-depo-2.jpg" alt="Rodrigo — Barbearia" class="testi-img" onerror="this.style.display='none'">
+      <div class="testi-body">
+        <div class="testi-stars">★★★★★</div>
+        <div class="testi-quote">Em 10 minutos criei minha agenda e compartilhei no WhatsApp. No mesmo dia já vieram 5 agendamentos novos. Simples e eficiente.</div>
+        <div class="testi-name">Rodrigo</div>
+        <div class="testi-role">Barbeiro · Barbearia RJ · Jaraguá do Sul SC</div>
+        <div class="testi-badge">✅ Cliente verificado</div>
+      </div>
+    </div>
+
+    <div class="testi-card">
+      <img src="/static/img/agenda/agenda-depo-3.jpg" alt="Dra. Fernanda — Clínica" class="testi-img" onerror="this.style.display='none'">
+      <div class="testi-body">
+        <div class="testi-stars">★★★★★</div>
+        <div class="testi-quote">Meus pacientes adoraram. Profissional, fácil de usar e o preço não tem concorrente. Recomendo para qualquer clínica.</div>
+        <div class="testi-name">Dra. Fernanda</div>
+        <div class="testi-role">Nutricionista · Clínica NutriVida · Joinville SC</div>
+        <div class="testi-badge">✅ Cliente verificada</div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ── COMO FUNCIONA ── -->
+<section id="como-funciona" style="background:var(--bg2);border-top:1px solid var(--border);border-bottom:1px solid var(--border);">
   <div class="section-label">Passo a passo</div>
   <div class="section-title">Em 5 minutos você está no ar</div>
   <div class="section-sub">Sem técnico, sem complicação.</div>
@@ -425,7 +642,7 @@
   </div>
 </section>
 
-<!-- Preços -->
+<!-- ── PREÇOS ── -->
 <section id="precos">
   <div class="section-label">Planos</div>
   <div class="section-title">Simples e transparente</div>
@@ -435,7 +652,7 @@
     <div class="plan-card">
       <div class="plan-name">GRATUITO</div>
       <div class="plan-price">R$0 <span>/mês</span></div>
-      <div class="plan-note">30 dias grátis para testar tudo</div>
+      <div class="plan-note">7 dias grátis para testar tudo</div>
       <ul class="plan-features">
         <li>Link de agendamento personalizado</li>
         <li>Até 30 agendamentos/mês</li>
@@ -466,27 +683,34 @@
   </div>
 </section>
 
-<!-- CTA final -->
+<!-- ── CTA FINAL ── -->
 <div class="cta-section">
   <h2>Pronto para acabar com o<br>caos do WhatsApp?</h2>
-  <p>Mais de 200 negócios no Norte de SC já usam. Comece hoje, grátis.</p>
+  <p>Mais de 340 negócios no Norte de SC já usam. Comece hoje, grátis.</p>
   <a href="/agenda/cadastro">
-    <button class="btn-primary" style="font-size:17px;padding:16px 36px;">
+    <button class="btn-primary" style="font-size:17px;padding:18px 40px;">
       🚀 Criar minha agenda grátis
     </button>
   </a>
-  <p style="margin-top:16px;font-size:12px;">✅ 30 dias grátis · Sem cartão · Cancele quando quiser</p>
+  <p style="margin-top:16px;font-size:12px;position:relative;">✅ 7 dias grátis · Sem cartão · Cancele quando quiser</p>
 </div>
 
 <!-- Footer -->
 <footer>
   <p>
     <a href="/">4KITEM</a> ·
-    <a href="/" target="_blank">Rádio SC News</a> ·
+    <a href="https://radioscnews.com.br" target="_blank">Rádio SC News</a> ·
     <a href="https://wa.me/5547991011351" target="_blank">WhatsApp (47) 99101-1351</a>
   </p>
   <p style="margin-top:8px;">© 2026 Agenda SC · Todos os direitos reservados</p>
 </footer>
+
+<!-- CTA fixo mobile -->
+<div class="mobile-cta-bar">
+  <a href="/agenda/cadastro">
+    <button class="btn-primary">🚀 Criar minha agenda grátis — 7 dias grátis</button>
+  </a>
+</div>
 
 <script>
 /* Contador animado nas stats */
