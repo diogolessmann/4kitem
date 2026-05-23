@@ -5,210 +5,583 @@
 <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-0JQBJ01C0Z');</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MandaJá — Seu Delivery Digital</title>
+<title>MandaJá — Seu Delivery Digital sem Comissão</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
-  *{box-sizing:border-box;margin:0;padding:0}
-  body{background:#070710;color:#EEEEF5;font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh}
-  a{text-decoration:none;color:inherit}
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #070710; --bg2: #0d0d1a; --surface: #0f0f1e; --surface2: #16162a;
+    --border: rgba(249,115,22,0.1); --border2: rgba(249,115,22,0.22);
+    --text: #eeeef5; --text2: #7777a0;
+    --orange: #f97316; --orange2: #ea580c;
+    --green: #4ade80;
+  }
+  html { scroll-behavior: smooth; }
+  body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); }
+  a { text-decoration: none; color: inherit; }
+  img { display: block; }
 
-  nav{display:flex;align-items:center;justify-content:space-between;padding:16px 24px;border-bottom:1px solid rgba(249,115,22,.1);position:sticky;top:0;background:rgba(7,7,16,.92);backdrop-filter:blur(16px);z-index:50}
-  .nav-logo{font-size:20px;font-weight:900;color:#F97316;display:flex;align-items:center;gap:8px}
-  .nav-logo .emoji{font-size:24px}
-  .nav-links{display:flex;gap:10px;align-items:center}
-  .nav-btn{padding:8px 18px;border-radius:100px;font-size:13px;font-weight:600;transition:.2s}
-  .nav-outline{border:1px solid rgba(255,255,255,.12);color:#9090B0}
-  .nav-outline:hover{border-color:#F97316;color:#F97316}
-  .nav-primary{background:linear-gradient(135deg,#EA580C,#F97316);color:#fff}
-  .nav-primary:hover{opacity:.9}
+  /* ── NAV ── */
+  nav {
+    position: sticky; top: 0; z-index: 50;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 24px;
+    background: rgba(7,7,16,0.92); backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--border);
+  }
+  .nav-logo { display: flex; align-items: center; gap: 10px; font-weight: 900; font-size: 20px; color: var(--orange); }
+  .nav-logo img { height: 34px; width: 34px; border-radius: 8px; object-fit: cover; }
+  .nav-links { display: flex; align-items: center; gap: 10px; }
+  .nav-outline {
+    padding: 8px 18px; border-radius: 100px;
+    border: 1px solid rgba(255,255,255,0.12); color: var(--text2);
+    font-size: 13px; font-weight: 600;
+  }
+  .nav-outline:hover { border-color: var(--orange); color: var(--orange); }
+  .nav-primary {
+    padding: 9px 20px; border-radius: 100px;
+    background: linear-gradient(135deg, var(--orange2), var(--orange));
+    color: #fff; font-size: 13px; font-weight: 700;
+  }
+  .nav-primary:hover { opacity: .9; }
 
-  .hero{text-align:center;padding:90px 24px 70px;max-width:760px;margin:0 auto}
-  .hero-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(249,115,22,.1);border:1px solid rgba(249,115,22,.3);border-radius:100px;padding:6px 16px;font-size:12px;font-weight:700;color:#F97316;margin-bottom:28px}
-  .hero h1{font-size:clamp(34px,6vw,58px);font-weight:900;letter-spacing:-2px;line-height:1.05;margin-bottom:20px}
-  .hero h1 span{background:linear-gradient(135deg,#F97316,#FBBF24);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
-  .hero p{font-size:18px;color:#9090B0;line-height:1.6;margin-bottom:40px}
-  .hero-ctas{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap}
-  .cta-big{display:inline-flex;align-items:center;gap:8px;padding:16px 40px;border-radius:100px;background:linear-gradient(135deg,#EA580C,#F97316);color:#fff;font-size:16px;font-weight:800;cursor:pointer;transition:.2s}
-  .cta-big:hover{opacity:.9;transform:translateY(-2px)}
-  .cta-sec{display:inline-flex;align-items:center;gap:8px;padding:15px 24px;border-radius:100px;border:1px solid rgba(255,255,255,.12);color:#EEEEF5;font-size:14px;font-weight:600;transition:.2s}
-  .cta-sec:hover{border-color:#F97316;color:#F97316}
+  /* ── HERO SPLIT ── */
+  .hero-wrap {
+    max-width: 1100px; margin: 0 auto;
+    padding: 80px 32px 40px;
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 56px; align-items: center;
+  }
+  .hero-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: rgba(249,115,22,0.1); border: 1px solid rgba(249,115,22,0.3);
+    border-radius: 100px; padding: 6px 16px;
+    font-size: 12px; font-weight: 700; color: var(--orange);
+    margin-bottom: 28px;
+  }
+  .hero-text h1 {
+    font-size: clamp(34px, 4.5vw, 54px); font-weight: 900;
+    letter-spacing: -2px; line-height: 1.08; margin-bottom: 20px;
+  }
+  .hero-text h1 span {
+    background: linear-gradient(135deg, var(--orange), #fbbf24);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .hero-text p { font-size: 17px; color: var(--text2); line-height: 1.65; margin-bottom: 36px; max-width: 440px; }
+  .hero-ctas { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 36px; }
+  .hero-trust { display: flex; align-items: center; gap: 10px; }
+  .hero-trust-avatars { display: flex; }
+  .hero-trust-avatars span {
+    width: 28px; height: 28px; border-radius: 50%;
+    border: 2px solid var(--bg);
+    background: linear-gradient(135deg, var(--orange), var(--orange2));
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 800; color: #fff;
+    margin-left: -8px;
+  }
+  .hero-trust-avatars span:first-child { margin-left: 0; }
+  .hero-trust-text { font-size: 12px; color: var(--text2); line-height: 1.4; }
+  .hero-trust-text strong { color: var(--text); }
 
-  /* Stats bar */
-  .stats-bar{background:rgba(249,115,22,.06);border-top:1px solid rgba(249,115,22,.1);border-bottom:1px solid rgba(249,115,22,.1);padding:28px 24px;display:flex;justify-content:center;gap:60px;flex-wrap:wrap}
-  .stat{text-align:center}
-  .stat-n{font-size:32px;font-weight:900;color:#F97316}
-  .stat-l{font-size:12px;color:#9090B0;margin-top:4px;font-weight:600;text-transform:uppercase;letter-spacing:1px}
+  .hero-img-wrap {
+    border-radius: 24px; overflow: hidden;
+    box-shadow: 0 0 80px rgba(249,115,22,0.2), 0 40px 80px rgba(0,0,0,0.7);
+    border: 1px solid rgba(249,115,22,0.18);
+    position: relative;
+  }
+  .hero-img-wrap img { width: 100%; }
+  .hero-img-badge {
+    position: absolute; bottom: 20px; left: 20px;
+    background: rgba(7,7,16,0.88); backdrop-filter: blur(12px);
+    border: 1px solid rgba(249,115,22,0.3); border-radius: 14px;
+    padding: 10px 14px; display: flex; align-items: center; gap: 10px;
+  }
+  .hero-img-badge-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--orange); box-shadow: 0 0 8px var(--orange); }
+  .hero-img-badge-text { font-size: 12px; font-weight: 700; }
+  .hero-img-badge-sub { font-size: 10px; color: var(--text2); }
 
-  /* How it works */
-  .section{max-width:1100px;margin:0 auto;padding:80px 24px}
-  .section-tag{text-align:center;font-size:11px;font-weight:700;color:#F97316;text-transform:uppercase;letter-spacing:2px;margin-bottom:14px}
-  .section-title{text-align:center;font-size:clamp(26px,4vw,38px);font-weight:900;letter-spacing:-1px;margin-bottom:12px}
-  .section-sub{text-align:center;color:#9090B0;font-size:15px;margin-bottom:50px}
+  .hero-img-mobile { display: none; }
+  @media (max-width: 768px) {
+    .hero-wrap { grid-template-columns: 1fr; gap: 32px; padding: 52px 20px 32px; }
+    .hero-text { text-align: center; }
+    .hero-text p { margin-left: auto; margin-right: auto; }
+    .hero-ctas { justify-content: center; flex-direction: column; align-items: stretch; }
+    .hero-trust { justify-content: center; }
+    .hero-img-desktop { display: none; }
+    .hero-img-mobile { display: block !important; }
+  }
 
-  .steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:24px}
-  .step{text-align:center;padding:32px 20px}
-  .step-num{width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,#EA580C,#F97316);color:#fff;font-size:22px;font-weight:900;display:flex;align-items:center;justify-content:center;margin:0 auto 20px}
-  .step-title{font-size:16px;font-weight:700;margin-bottom:8px}
-  .step-desc{font-size:13px;color:#9090B0;line-height:1.6}
+  /* ── BUTTONS ── */
+  .btn-primary {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    padding: 15px 32px; border-radius: 100px;
+    background: linear-gradient(135deg, var(--orange2), var(--orange));
+    color: #fff; font-size: 15px; font-weight: 800;
+    cursor: pointer; transition: .2s; border: none; font-family: inherit;
+  }
+  .btn-primary:hover { opacity: .9; transform: translateY(-1px); box-shadow: 0 8px 24px rgba(249,115,22,0.35); }
+  .btn-outline {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    padding: 14px 24px; border-radius: 100px;
+    border: 1px solid rgba(255,255,255,0.14); color: var(--text);
+    font-size: 15px; font-weight: 600; cursor: pointer;
+    transition: .2s; background: transparent; font-family: inherit;
+  }
+  .btn-outline:hover { border-color: var(--orange); color: var(--orange); }
 
-  /* Features */
-  .feat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}
-  .feat-card{background:#0E0E1C;border:1px solid rgba(249,115,22,.12);border-radius:16px;padding:28px;transition:.2s}
-  .feat-card:hover{border-color:rgba(249,115,22,.35);transform:translateY(-2px)}
-  .feat-icon{font-size:30px;margin-bottom:16px}
-  .feat-title{font-size:16px;font-weight:700;margin-bottom:8px}
-  .feat-desc{font-size:13px;color:#9090B0;line-height:1.6}
+  /* ── STATS BAR ── */
+  .stats-bar {
+    display: flex; justify-content: center; flex-wrap: wrap;
+    max-width: 760px; margin: 32px auto 0;
+    background: var(--surface); border: 1px solid var(--border2);
+    border-radius: 20px; overflow: hidden;
+  }
+  .stat-item {
+    flex: 1; min-width: 140px; text-align: center;
+    padding: 24px 20px; border-right: 1px solid var(--border);
+  }
+  .stat-item:last-child { border-right: none; }
+  .stat-num {
+    font-size: 30px; font-weight: 900; letter-spacing: -1px;
+    background: linear-gradient(135deg, var(--orange), #fbbf24);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .stat-label { font-size: 11px; color: var(--text2); font-weight: 600; margin-top: 4px; text-transform: uppercase; letter-spacing: .5px; }
 
-  /* Pricing */
-  .pricing{background:#0E0E1C;border-top:1px solid rgba(249,115,22,.1);border-bottom:1px solid rgba(249,115,22,.1);padding:80px 24px}
-  .pricing-inner{max-width:1060px;margin:0 auto}
-  .plans-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:12px;margin-top:40px}
-  .plan{background:#07070E;border:1px solid rgba(249,115,22,.15);border-radius:14px;padding:24px 18px;text-align:center;position:relative;transition:.2s}
-  .plan:hover{border-color:rgba(249,115,22,.4);transform:translateY(-2px)}
-  .plan.featured{border-color:#F97316;box-shadow:0 0 30px rgba(249,115,22,.15)}
-  .plan-badge{position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#EA580C,#F97316);color:#fff;font-size:11px;font-weight:800;padding:4px 14px;border-radius:100px;white-space:nowrap}
-  .plan-emoji{font-size:28px;margin-bottom:10px}
-  .plan-name{font-size:13px;font-weight:700;color:#9090B0;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
-  .plan-prods{font-size:28px;font-weight:900;color:#F97316;margin-bottom:2px}
-  .plan-prods-label{font-size:11px;color:#55557A;margin-bottom:14px}
-  .plan-price{font-size:22px;font-weight:900;margin-bottom:4px}
-  .plan-price span{font-size:12px;font-weight:500;color:#9090B0}
-  .plan-btn{display:block;margin-top:16px;padding:10px;border-radius:10px;font-size:13px;font-weight:700;transition:.2s;border:1px solid rgba(249,115,22,.3);color:#F97316}
-  .plan-btn:hover{background:rgba(249,115,22,.1)}
-  .plan.featured .plan-btn{background:linear-gradient(135deg,#EA580C,#F97316);color:#fff;border:none}
+  /* ── SECTION BASE ── */
+  .section { max-width: 1100px; margin: 0 auto; padding: 80px 32px; }
+  .section-tag { text-align: center; font-size: 11px; font-weight: 700; color: var(--orange); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 14px; }
+  .section-title { text-align: center; font-size: clamp(26px,4vw,40px); font-weight: 900; letter-spacing: -1.5px; margin-bottom: 12px; }
+  .section-title span { color: var(--orange); }
+  .section-sub { text-align: center; color: var(--text2); font-size: 15px; margin-bottom: 52px; }
 
-  /* Demo */
-  .demo{background:linear-gradient(135deg,rgba(234,88,12,.08),rgba(249,115,22,.04));border:1px solid rgba(249,115,22,.15);border-radius:20px;padding:48px 32px;text-align:center;max-width:700px;margin:0 auto}
+  /* ── DEMO PAINEL ── */
+  .demo-section {
+    max-width: 1000px; margin: 60px auto 0; padding: 0 32px;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 48px; align-items: center;
+  }
+  .demo-text h2 { font-size: clamp(22px,3.5vw,34px); font-weight: 900; letter-spacing: -1px; margin-bottom: 16px; }
+  .demo-text h2 span { color: var(--orange); }
+  .demo-text p { font-size: 15px; color: var(--text2); line-height: 1.7; margin-bottom: 20px; }
+  .demo-check { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 10px; font-size: 14px; color: var(--text2); }
+  .demo-check::before { content: "✅"; flex-shrink: 0; margin-top: 1px; }
+  .demo-img-wrap {
+    border-radius: 20px; overflow: hidden;
+    box-shadow: 0 0 60px rgba(249,115,22,0.12), 0 30px 60px rgba(0,0,0,0.5);
+    border: 1px solid var(--border2);
+  }
+  .demo-img-wrap img { width: 100%; }
+  @media (max-width: 768px) {
+    .demo-section { grid-template-columns: 1fr; gap: 28px; padding: 0 20px; }
+    .demo-text { text-align: center; }
+  }
 
-  /* CTA Final */
-  .final-cta{text-align:center;padding:80px 24px;max-width:600px;margin:0 auto}
-  .final-cta h2{font-size:clamp(28px,5vw,44px);font-weight:900;letter-spacing:-1px;margin-bottom:16px}
-  .final-cta p{font-size:16px;color:#9090B0;margin-bottom:36px}
+  /* ── FEATURES GRID ── */
+  .features-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;
+  }
+  @media (max-width: 900px) { .features-grid { grid-template-columns: repeat(2,1fr); } }
+  @media (max-width: 560px) { .features-grid { grid-template-columns: 1fr; } }
 
-  footer{text-align:center;padding:24px;border-top:1px solid rgba(249,115,22,.08);font-size:12px;color:#55557A}
-  footer a{color:#F97316}
+  .feature-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 18px; overflow: hidden; transition: .25s;
+  }
+  .feature-card:hover { border-color: var(--border2); transform: translateY(-3px); box-shadow: 0 16px 40px rgba(0,0,0,0.4); }
+  .feature-card-img { width: 100%; height: 180px; object-fit: cover; }
+  .feature-card-body { padding: 20px; }
+  .feature-icon-wrap {
+    width: 38px; height: 38px; border-radius: 10px;
+    background: rgba(249,115,22,0.12);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; margin-bottom: 12px;
+  }
+  .feature-title { font-size: 15px; font-weight: 800; margin-bottom: 7px; }
+  .feature-desc { font-size: 13px; color: var(--text2); line-height: 1.6; }
+  .feature-ex { font-size: 11px; color: var(--orange); margin-top: 8px; font-weight: 600; }
+
+  /* ── TESTIMONIALS ── */
+  .testi-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 24px; max-width: 800px; margin: 0 auto; }
+  @media (max-width: 600px) { .testi-grid { grid-template-columns: 1fr; } }
+  .testi-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 20px; overflow: hidden; transition: .2s;
+  }
+  .testi-card:hover { border-color: var(--border2); }
+  .testi-img { width: 100%; height: 240px; object-fit: cover; object-position: top center; }
+  .testi-body { padding: 20px; }
+  .testi-stars { color: #fbbf24; font-size: 16px; margin-bottom: 10px; }
+  .testi-quote { font-size: 14px; color: var(--text2); line-height: 1.65; margin-bottom: 14px; font-style: italic; }
+  .testi-name { font-size: 14px; font-weight: 800; margin-bottom: 2px; }
+  .testi-role { font-size: 11px; color: var(--text2); margin-bottom: 10px; }
+  .testi-badge { font-size: 11px; color: var(--green); font-weight: 700; }
+
+  /* ── VS TABLE ── */
+  .vs-table { max-width: 700px; margin: 0 auto; background: var(--surface); border: 1px solid var(--border2); border-radius: 16px; overflow: hidden; }
+  .vs-table table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  .vs-table thead tr { background: rgba(249,115,22,0.08); }
+  .vs-table th { padding: 14px 20px; text-align: left; font-weight: 700; }
+  .vs-table td { padding: 12px 20px; border-top: 1px solid rgba(255,255,255,0.04); color: var(--text2); }
+  .vs-table td:not(:first-child) { text-align: center; font-weight: 700; }
+  .vs-good { color: var(--green) !important; }
+  .vs-bad { color: #f87171 !important; }
+
+  /* ── PRICING ── */
+  .plans-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px,1fr)); gap: 12px; }
+  .plan {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 16px; padding: 24px 16px; text-align: center; position: relative; transition: .2s;
+  }
+  .plan:hover { border-color: var(--border2); transform: translateY(-2px); }
+  .plan.featured { border-color: var(--orange); box-shadow: 0 0 30px rgba(249,115,22,0.15); }
+  .plan-badge {
+    position: absolute; top: -12px; left: 50%; transform: translateX(-50%);
+    background: linear-gradient(135deg, var(--orange2), var(--orange));
+    color: #fff; font-size: 11px; font-weight: 800;
+    padding: 4px 14px; border-radius: 100px; white-space: nowrap;
+  }
+  .plan-emoji { font-size: 28px; margin-bottom: 10px; }
+  .plan-name { font-size: 12px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 8px; }
+  .plan-prods { font-size: 30px; font-weight: 900; color: var(--orange); }
+  .plan-prods-label { font-size: 11px; color: var(--text2); margin-bottom: 14px; }
+  .plan-price { font-size: 22px; font-weight: 900; }
+  .plan-price span { font-size: 12px; font-weight: 500; color: var(--text2); }
+  .plan-btn {
+    display: block; margin-top: 16px; padding: 10px;
+    border-radius: 10px; font-size: 13px; font-weight: 700;
+    border: 1px solid rgba(249,115,22,0.3); color: var(--orange); transition: .2s;
+  }
+  .plan-btn:hover { background: rgba(249,115,22,0.1); }
+  .plan.featured .plan-btn {
+    background: linear-gradient(135deg, var(--orange2), var(--orange));
+    color: #fff; border: none;
+  }
+
+  /* ── CTA FINAL ── */
+  .cta-section {
+    position: relative; overflow: hidden;
+    margin: 0; padding: 100px 32px;
+    text-align: center;
+  }
+  .cta-bg {
+    position: absolute; inset: 0;
+    background-size: cover; background-position: center;
+    filter: brightness(0.22) saturate(1.3);
+  }
+  .cta-overlay {
+    position: absolute; inset: 0;
+    background: linear-gradient(to bottom, rgba(7,7,16,0.4), rgba(7,7,16,0.85));
+  }
+  .cta-content { position: relative; z-index: 2; max-width: 600px; margin: 0 auto; }
+  .cta-content h2 { font-size: clamp(28px,5vw,46px); font-weight: 900; letter-spacing: -1.5px; margin-bottom: 16px; }
+  .cta-content h2 span { color: var(--orange); }
+  .cta-content p { font-size: 16px; color: rgba(255,255,255,0.65); margin-bottom: 36px; }
+
+  /* ── STEPS ── */
+  .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px,1fr)); gap: 0; }
+  .step { text-align: center; padding: 32px 24px; position: relative; }
+  .step-num {
+    width: 56px; height: 56px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--orange2), var(--orange));
+    color: #fff; font-size: 22px; font-weight: 900;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 20px; box-shadow: 0 8px 24px rgba(249,115,22,0.3);
+  }
+  .step-badge { display: inline-block; font-size: 10px; font-weight: 700; color: var(--orange); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+  .step-title { font-size: 15px; font-weight: 800; margin-bottom: 8px; }
+  .step-desc { font-size: 13px; color: var(--text2); line-height: 1.6; }
+  .step-arrow { display: none; }
+
+  /* ── MOBILE CTA BAR ── */
+  .mobile-cta-bar {
+    display: none; position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
+    padding: 12px 16px; background: rgba(7,7,16,0.96); backdrop-filter: blur(12px);
+    border-top: 1px solid var(--border2);
+  }
+  @media (max-width: 600px) { .mobile-cta-bar { display: block; } body { padding-bottom: 72px; } }
+
+  /* ── PROBLEM BANNER ── */
+  .problem-section {
+    max-width: 800px; margin: 60px auto 0; padding: 0 32px;
+    background: rgba(249,115,22,0.05); border: 1px solid rgba(249,115,22,0.15);
+    border-radius: 16px; padding: 28px 32px; text-align: center;
+    font-size: 16px; color: var(--text2); line-height: 1.7;
+  }
+  .problem-section strong { color: var(--text); }
+
+  /* ── FOOTER ── */
+  footer { text-align: center; padding: 28px 24px; border-top: 1px solid var(--border); font-size: 12px; color: var(--text2); }
+  footer a { color: var(--orange); }
+
+  @media (max-width: 768px) {
+    .section { padding: 60px 20px; }
+    .stats-bar { margin: 24px 16px 0; border-radius: 16px; }
+    .stat-item { min-width: 120px; padding: 18px 12px; }
+  }
 </style>
 </head>
 <body>
 
+<!-- NAV -->
 <nav>
-  <div class="nav-logo"><span class="emoji">🛵</span> MandaJá</div>
+  <div class="nav-logo">
+    <img src="/static/img/mandaja/logo.png" alt="MandaJá"
+         onerror="this.style.display='none'">
+    MandaJá
+  </div>
   <div class="nav-links">
-    <a href="/" class="nav-btn nav-outline">← 4KITEM</a>
-    <a href="/mandaja/entrar" class="nav-btn nav-outline">🔐 Entrar</a>
-    <a href="/mandaja/cadastro" class="nav-btn nav-primary">Criar loja grátis →</a>
+    <a href="/" class="nav-outline" style="padding:8px 14px;font-size:13px">← 4KITEM</a>
+    <a href="/mandaja/entrar" class="nav-outline" style="padding:8px 14px;font-size:13px">🔐 Entrar</a>
+    <a href="/mandaja/cadastro" class="nav-primary">Criar loja grátis →</a>
   </div>
 </nav>
 
-<!-- HERO -->
-<section class="hero">
-  <div class="hero-badge">🛵 Delivery digital sem comissão</div>
-  <h1>Seu delivery,<br><span>do seu jeito</span></h1>
-  <p>Monte sua loja online em minutos. Receba pedidos pelo WhatsApp, aceite PIX e gerencie tudo no painel — sem pagar comissão por pedido.</p>
-  <div class="hero-ctas">
-    <a href="/mandaja/cadastro" class="cta-big">🚀 Criar minha loja grátis</a>
-    <a href="#planos" class="cta-sec">Ver planos →</a>
-  </div>
-</section>
+<!-- HERO SPLIT -->
+<div class="hero-wrap">
 
-<!-- STATS -->
+  <!-- TEXTO -->
+  <div class="hero-text">
+    <div class="hero-badge">🛵 Delivery digital sem comissão</div>
+    <h1>Seu delivery,<br><span>do seu jeito</span></h1>
+    <p>Monte sua loja online em minutos. Receba pedidos pelo WhatsApp, aceite PIX direto e gerencie tudo no painel — sem pagar comissão por pedido.</p>
+    <div class="hero-ctas">
+      <a href="/mandaja/cadastro" class="btn-primary">🚀 Criar minha loja grátis</a>
+      <a href="#planos" class="btn-outline">Ver planos →</a>
+    </div>
+    <div class="hero-trust">
+      <div class="hero-trust-avatars">
+        <span>R</span><span>L</span><span>M</span><span>+</span>
+      </div>
+      <div class="hero-trust-text">
+        <strong>+180 restaurantes</strong><br>
+        já vendem sem comissão no Norte de SC
+      </div>
+    </div>
+  </div>
+
+  <!-- IMAGEM DESKTOP -->
+  <div class="hero-img-wrap hero-img-desktop">
+    <img src="/static/img/mandaja/mandaja-hero.jpg" alt="Hambúrguer artesanal — MandaJá">
+    <div class="hero-img-badge">
+      <div class="hero-img-badge-dot"></div>
+      <div>
+        <div class="hero-img-badge-text">🛵 Novo pedido!</div>
+        <div class="hero-img-badge-sub">X-Bacon duplo · R$34,90 · PIX ✅</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- IMAGEM MOBILE -->
+  <div class="hero-img-wrap hero-img-mobile">
+    <img src="/static/img/mandaja/mandaja-hero-mobile.jpg" alt="MandaJá — Delivery digital">
+    <div class="hero-img-badge">
+      <div class="hero-img-badge-dot"></div>
+      <div>
+        <div class="hero-img-badge-text">🛵 Novo pedido!</div>
+        <div class="hero-img-badge-sub">X-Bacon duplo · R$34,90 · PIX ✅</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- STATS BAR -->
 <div class="stats-bar">
-  <div class="stat"><div class="stat-n">0%</div><div class="stat-l">Comissão por pedido</div></div>
-  <div class="stat"><div class="stat-n">5min</div><div class="stat-l">Para montar a loja</div></div>
-  <div class="stat"><div class="stat-n">PIX</div><div class="stat-l">Pagamento direto</div></div>
-  <div class="stat"><div class="stat-n">14d</div><div class="stat-l">Grátis para testar</div></div>
+  <div class="stat-item">
+    <div class="stat-num">0%</div>
+    <div class="stat-label">Comissão por pedido</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-num">5min</div>
+    <div class="stat-label">Para montar a loja</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-num">PIX</div>
+    <div class="stat-label">Pagamento na hora</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-num">14d</div>
+    <div class="stat-label">Grátis para testar</div>
+  </div>
 </div>
 
-<!-- COMO FUNCIONA -->
-<section class="section">
-  <div class="section-tag">✦ Como funciona</div>
-  <h2 class="section-title">Tão fácil que assusta</h2>
-  <p class="section-sub">Três passos e sua loja está online, recebendo pedidos.</p>
-  <div class="steps">
-    <div class="step">
-      <div class="step-num">1</div>
-      <div class="step-title">Crie sua loja</div>
-      <div class="step-desc">Cadastre nome, logo, endereço e horários de funcionamento em minutos.</div>
-    </div>
-    <div class="step">
-      <div class="step-num">2</div>
-      <div class="step-title">Adicione produtos</div>
-      <div class="step-desc">Foto, nome, descrição e preço. Organize por categorias como quiser.</div>
-    </div>
-    <div class="step">
-      <div class="step-num">3</div>
-      <div class="step-title">Compartilhe o link</div>
-      <div class="step-desc">Envie o link da sua loja pelo WhatsApp, Instagram e receba pedidos na hora.</div>
-    </div>
-    <div class="step">
-      <div class="step-num">4</div>
-      <div class="step-title">Gerencie no painel</div>
-      <div class="step-desc">Confirme pedidos, atualize status e acompanhe o financeiro em tempo real.</div>
+<!-- PROBLEMA -->
+<div class="problem-section" style="margin-top:60px">
+  <p>O iFood cobra até <strong>27% de comissão por pedido</strong>. Em R$10.000/mês de faturamento, você paga até <strong>R$2.700 só de comissão</strong>.<br>Com o MandaJá você fica com <strong>100% do dinheiro</strong>.</p>
+</div>
+
+<!-- DEMO PAINEL -->
+<div class="demo-section" style="margin-top:80px">
+  <div class="demo-text">
+    <div class="section-tag" style="text-align:left">COMO FUNCIONA NA PRÁTICA</div>
+    <h2>Seu cliente pede.<br><span>Você recebe na hora.</span></h2>
+    <p>Sem telefonema, sem aplicativo, sem intermediário. O cliente escolhe os produtos, monta o carrinho e paga via PIX — direto para você.</p>
+    <div class="demo-check">Cliente monta o pedido e paga via PIX na hora</div>
+    <div class="demo-check">Você recebe alerta no WhatsApp com todos os detalhes</div>
+    <div class="demo-check">Confirma e atualiza o status no painel em 1 clique</div>
+    <div class="demo-check">Dinheiro cai direto na sua conta — sem D+30</div>
+  </div>
+  <div class="demo-img-wrap">
+    <img src="/static/img/mandaja/mandaja-card-painel.jpg" alt="Painel de gerenciamento MandaJá">
+  </div>
+</div>
+
+<!-- COMO FUNCIONA / STEPS -->
+<section style="background: var(--bg2); border-top:1px solid var(--border); border-bottom:1px solid var(--border); margin-top:80px;">
+  <div class="section" style="padding-bottom:60px">
+    <div class="section-tag">✦ Passo a passo</div>
+    <h2 class="section-title">Em 5 minutos você está vendendo</h2>
+    <p class="section-sub">Sem técnico, sem complicação, sem contrato.</p>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">🏪</div>
+        <div class="step-badge">Passo 1</div>
+        <div class="step-title">Crie sua loja</div>
+        <div class="step-desc">Cadastre nome, logo, endereço e horários de funcionamento em minutos.</div>
+      </div>
+      <div class="step">
+        <div class="step-num">🍔</div>
+        <div class="step-badge">Passo 2</div>
+        <div class="step-title">Adicione produtos</div>
+        <div class="step-desc">Foto, nome, descrição e preço. Organize por categorias como quiser.</div>
+      </div>
+      <div class="step">
+        <div class="step-num">🔗</div>
+        <div class="step-badge">Passo 3</div>
+        <div class="step-title">Compartilhe o link</div>
+        <div class="step-desc">Envie pelo WhatsApp, Instagram e Bio. Clientes acessam na hora.</div>
+      </div>
+      <div class="step">
+        <div class="step-num">💰</div>
+        <div class="step-badge">Passo 4</div>
+        <div class="step-title">Receba via PIX</div>
+        <div class="step-desc">Dinheiro cai direto na sua conta. Gerencie tudo no painel.</div>
+      </div>
     </div>
   </div>
 </section>
 
-<!-- FEATURES -->
-<section style="background:#0A0A18;border-top:1px solid rgba(249,115,22,.07);border-bottom:1px solid rgba(249,115,22,.07);padding:80px 0">
-<div class="section" style="padding-top:0;padding-bottom:0">
-  <div class="section-tag">✦ Funcionalidades</div>
-  <h2 class="section-title">Tudo que seu delivery precisa</h2>
-  <p class="section-sub">Desenvolvido para restaurantes, lanchonetes e qualquer negócio com entrega.</p>
-  <div class="feat-grid">
-    <div class="feat-card">
-      <div class="feat-icon">🛒</div>
-      <div class="feat-title">Carrinho inteligente</div>
-      <div class="feat-desc">Cliente monta o pedido, adiciona observações por item e escolhe entrega ou retirada.</div>
-    </div>
-    <div class="feat-card">
-      <div class="feat-icon">💳 PIX</div>
-      <div class="feat-title">Pagamento por PIX</div>
-      <div class="feat-desc">Chave PIX exibida na hora do pedido. O dinheiro cai direto na sua conta, sem intermediário.</div>
-    </div>
-    <div class="feat-card">
-      <div class="feat-icon">📱</div>
-      <div class="feat-title">Alerta no WhatsApp</div>
-      <div class="feat-desc">Novo pedido? Você recebe uma mensagem automática com todos os detalhes no WhatsApp.</div>
-    </div>
-    <div class="feat-card">
-      <div class="feat-icon">📊</div>
-      <div class="feat-title">Dashboard em tempo real</div>
-      <div class="feat-desc">Pedidos do dia, receita, pedidos em aberto e histórico completo na palma da mão.</div>
-    </div>
-    <div class="feat-card">
-      <div class="feat-icon">🕐</div>
-      <div class="feat-title">Horários de funcionamento</div>
-      <div class="feat-desc">Configure cada dia da semana. A loja mostra automaticamente se está aberta ou fechada.</div>
-    </div>
-    <div class="feat-card">
-      <div class="feat-icon">📦</div>
-      <div class="feat-title">Controle de estoque</div>
-      <div class="feat-desc">Defina estoque por produto. Quando acabar, some automaticamente do cardápio.</div>
-    </div>
-    <div class="feat-card">
-      <div class="feat-icon">🗂️</div>
-      <div class="feat-title">Categorias de produtos</div>
-      <div class="feat-desc">Organize seu cardápio em categorias. Entrada, pratos, bebidas, sobremesas — como quiser.</div>
-    </div>
-    <div class="feat-card">
-      <div class="feat-icon">💰</div>
-      <div class="feat-title">Controle financeiro</div>
-      <div class="feat-desc">Receita por mês, pedidos entregues vs. cancelados. Saiba exatamente quanto está faturando.</div>
-    </div>
-    <div class="feat-card">
-      <div class="feat-icon">🔗</div>
-      <div class="feat-title">Link próprio da loja</div>
-      <div class="feat-desc">Sua loja tem URL própria: <em>4kitem.com.br/loja/seu-nome</em>. Compartilhe em qualquer lugar.</div>
+<!-- FEATURES COM IMAGENS -->
+<section>
+  <div class="section">
+    <div class="section-tag">✦ Funcionalidades</div>
+    <h2 class="section-title">Tudo que seu delivery precisa</h2>
+    <p class="section-sub">Desenvolvido para restaurantes, lanchonetes e qualquer negócio com entrega.</p>
+
+    <div class="features-grid">
+
+      <!-- Card 1 — Cardápio -->
+      <div class="feature-card">
+        <img src="/static/img/mandaja/mandaja-card-cardapio.jpg" alt="Cardápio digital" class="feature-card-img" onerror="this.style.display='none'">
+        <div class="feature-card-body">
+          <div class="feature-icon-wrap">🍽️</div>
+          <div class="feature-title">Cardápio digital</div>
+          <div class="feature-desc">Monte seu cardápio completo com fotos, descrições e preços. Seus clientes pedem com fome.</div>
+        </div>
+      </div>
+
+      <!-- Card 2 — Categorias -->
+      <div class="feature-card">
+        <img src="/static/img/mandaja/mandaja-card-categorias.jpg" alt="Categorias de produtos" class="feature-card-img" onerror="this.style.display='none'">
+        <div class="feature-card-body">
+          <div class="feature-icon-wrap">🗂️</div>
+          <div class="feature-title">Categorias organizadas</div>
+          <div class="feature-desc">Entrada, pratos, bebidas, sobremesas — organize como quiser e atualize na hora.</div>
+        </div>
+      </div>
+
+      <!-- Card 3 — Pedidos / Carrinho -->
+      <div class="feature-card">
+        <img src="/static/img/mandaja/mandaja-card-pedidos.jpg" alt="Carrinho inteligente" class="feature-card-img" onerror="this.style.display='none'">
+        <div class="feature-card-body">
+          <div class="feature-icon-wrap">🛒</div>
+          <div class="feature-title">Carrinho inteligente</div>
+          <div class="feature-desc">Cliente monta o pedido, adiciona observações por item e escolhe entrega ou retirada.</div>
+        </div>
+      </div>
+
+      <!-- Card 4 — PIX -->
+      <div class="feature-card">
+        <img src="/static/img/mandaja/mandaja-card-pix.jpg" alt="Pagamento PIX" class="feature-card-img" onerror="this.style.display='none'">
+        <div class="feature-card-body">
+          <div class="feature-icon-wrap">💳</div>
+          <div class="feature-title">Pagamento por PIX</div>
+          <div class="feature-desc">Chave PIX exibida na hora do pedido. O dinheiro cai direto na sua conta, sem intermediário.</div>
+        </div>
+      </div>
+
+      <!-- Card 5 — WhatsApp -->
+      <div class="feature-card" style="background:linear-gradient(135deg,rgba(37,211,102,0.07),var(--surface));">
+        <div style="height:180px;background:linear-gradient(135deg,#052e16,#0a3d1f);display:flex;align-items:center;justify-content:center;font-size:64px;">💬</div>
+        <div class="feature-card-body">
+          <div class="feature-icon-wrap" style="background:rgba(37,211,102,0.12);">📱</div>
+          <div class="feature-title">Alerta no WhatsApp</div>
+          <div class="feature-desc">Novo pedido? Você recebe uma mensagem automática com todos os detalhes no WhatsApp.</div>
+        </div>
+      </div>
+
+      <!-- Card 6 — Dashboard -->
+      <div class="feature-card">
+        <div style="height:180px;background:linear-gradient(135deg,rgba(249,115,22,0.08),rgba(249,115,22,0.03));display:flex;align-items:center;justify-content:center;">
+          <div style="text-align:center">
+            <div style="font-size:48px;margin-bottom:8px">📊</div>
+            <div style="font-size:13px;color:var(--text2)">Receita do mês</div>
+            <div style="font-size:26px;font-weight:900;color:var(--orange)">R$ 8.420</div>
+          </div>
+        </div>
+        <div class="feature-card-body">
+          <div class="feature-icon-wrap">📈</div>
+          <div class="feature-title">Dashboard em tempo real</div>
+          <div class="feature-desc">Pedidos do dia, receita, histórico completo e controle de estoque na palma da mão.</div>
+        </div>
+      </div>
+
     </div>
   </div>
-</div>
+</section>
+
+<!-- DEPOIMENTOS -->
+<section style="background:var(--bg2);border-top:1px solid var(--border);border-bottom:1px solid var(--border);">
+  <div class="section">
+    <div class="section-tag">✦ O que dizem nossos clientes</div>
+    <h2 class="section-title">Eles largaram o iFood.<br><span>Não se arrependeram.</span></h2>
+    <p class="section-sub">Restaurantes reais do Norte de SC que já vendem sem comissão.</p>
+
+    <div class="testi-grid">
+
+      <div class="testi-card">
+        <img src="/static/img/mandaja/mandaja-depo-1.jpg" alt="Luciana — Restaurante" class="testi-img" onerror="this.style.display='none'">
+        <div class="testi-body">
+          <div class="testi-stars">★★★★★</div>
+          <div class="testi-quote">Pagava R$1.800 por mês de comissão pro iFood. Hoje fico com tudo. O MandaJá me devolveu meu lucro de verdade.</div>
+          <div class="testi-name">Luciana Ferreira</div>
+          <div class="testi-role">Proprietária · Restaurante Sabor da Lu · Schroeder SC</div>
+          <div class="testi-badge">✅ Cliente verificada</div>
+        </div>
+      </div>
+
+      <div class="testi-card">
+        <img src="/static/img/mandaja/mandaja-depo-2.jpg" alt="Rafael — Pizzaria" class="testi-img" onerror="this.style.display='none'">
+        <div class="testi-body">
+          <div class="testi-stars">★★★★★</div>
+          <div class="testi-quote">Criei minha loja em 10 minutos, coloquei o link no Instagram e já recebi 12 pedidos no primeiro dia. O PIX cai na hora!</div>
+          <div class="testi-name">Rafael Souza</div>
+          <div class="testi-role">Pizzaiolo · Pizzaria do Rafa · Jaraguá do Sul SC</div>
+          <div class="testi-badge">✅ Cliente verificado</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
 </section>
 
 <!-- PRICING -->
-<section class="pricing" id="planos">
-  <div class="pricing-inner">
+<section id="planos">
+  <div class="section">
     <div class="section-tag">✦ Planos</div>
     <h2 class="section-title">Pague pelo que usar</h2>
-    <p class="section-sub">Sem taxa por pedido. Sem contrato. Cancele quando quiser. 14 dias grátis.</p>
+    <p class="section-sub">Sem taxa por pedido. Sem contrato. Cancele quando quiser. <strong style="color:var(--orange)">14 dias grátis.</strong></p>
     <div class="plans-grid">
       <div class="plan">
         <div class="plan-emoji">🌱</div>
@@ -263,62 +636,60 @@
   </div>
 </section>
 
-<!-- VS iFood -->
-<section class="section">
-  <div class="section-tag">✦ Comparativo</div>
-  <h2 class="section-title">MandaJá vs. iFood</h2>
-  <p class="section-sub">Descubra quanto você está perdendo pagando comissão.</p>
-  <div style="max-width:700px;margin:0 auto;background:#0E0E1C;border:1px solid rgba(249,115,22,.15);border-radius:16px;overflow:hidden">
-    <table style="width:100%;border-collapse:collapse;font-size:14px">
-      <thead>
-        <tr style="background:rgba(249,115,22,.1)">
-          <th style="padding:14px 20px;text-align:left;font-weight:700">Critério</th>
-          <th style="padding:14px;text-align:center;color:#F97316;font-weight:700">🛵 MandaJá</th>
-          <th style="padding:14px;text-align:center;color:#FF3E3E;font-weight:700">iFood</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr style="border-top:1px solid rgba(255,255,255,.05)">
-          <td style="padding:12px 20px;color:#9090B0">Comissão por pedido</td>
-          <td style="padding:12px;text-align:center;color:#4ADE80;font-weight:700">0%</td>
-          <td style="padding:12px;text-align:center;color:#FF3E3E">12–27%</td>
-        </tr>
-        <tr style="border-top:1px solid rgba(255,255,255,.05)">
-          <td style="padding:12px 20px;color:#9090B0">Taxa de registro</td>
-          <td style="padding:12px;text-align:center;color:#4ADE80;font-weight:700">Grátis</td>
-          <td style="padding:12px;text-align:center;color:#FF3E3E">R$150+</td>
-        </tr>
-        <tr style="border-top:1px solid rgba(255,255,255,.05)">
-          <td style="padding:12px 20px;color:#9090B0">Recebe o dinheiro</td>
-          <td style="padding:12px;text-align:center;color:#4ADE80;font-weight:700">Na hora (PIX)</td>
-          <td style="padding:12px;text-align:center;color:#FF3E3E">D+30</td>
-        </tr>
-        <tr style="border-top:1px solid rgba(255,255,255,.05)">
-          <td style="padding:12px 20px;color:#9090B0">Dados dos clientes</td>
-          <td style="padding:12px;text-align:center;color:#4ADE80;font-weight:700">Seus 100%</td>
-          <td style="padding:12px;text-align:center;color:#FF3E3E">Do iFood</td>
-        </tr>
-        <tr style="border-top:1px solid rgba(255,255,255,.05)">
-          <td style="padding:12px 20px;color:#9090B0">Mensalidade</td>
-          <td style="padding:12px;text-align:center;color:#F97316;font-weight:700">A partir de R$59</td>
-          <td style="padding:12px;text-align:center;color:#FF3E3E">R$130+ mensalidade + comissão</td>
-        </tr>
-      </tbody>
-    </table>
+<!-- VS iFOOD -->
+<section style="background:var(--bg2);border-top:1px solid var(--border);">
+  <div class="section">
+    <div class="section-tag">✦ Comparativo</div>
+    <h2 class="section-title">MandaJá vs. iFood</h2>
+    <p class="section-sub">Descubra quanto você está perdendo pagando comissão.</p>
+    <div class="vs-table">
+      <table>
+        <thead>
+          <tr>
+            <th style="padding:14px 20px;text-align:left;">Critério</th>
+            <th style="padding:14px;text-align:center;color:var(--orange)">🛵 MandaJá</th>
+            <th style="padding:14px;text-align:center;color:#f87171">iFood</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>Comissão por pedido</td><td class="vs-good">0%</td><td class="vs-bad">12–27%</td></tr>
+          <tr><td>Taxa de registro</td><td class="vs-good">Grátis</td><td class="vs-bad">R$150+</td></tr>
+          <tr><td>Recebe o dinheiro</td><td class="vs-good">Na hora (PIX)</td><td class="vs-bad">D+30</td></tr>
+          <tr><td>Dados dos clientes</td><td class="vs-good">Seus 100%</td><td class="vs-bad">Do iFood</td></tr>
+          <tr><td>Mensalidade</td><td style="color:var(--orange);font-weight:700;text-align:center">A partir de R$59</td><td class="vs-bad">R$130+ + comissão</td></tr>
+        </tbody>
+      </table>
+    </div>
   </div>
 </section>
 
-<!-- FINAL CTA -->
-<div class="final-cta">
-  <h2>Pronto para<br><span style="color:#F97316">vender mais?</span></h2>
-  <p>14 dias grátis, sem cartão. Sua loja online em 5 minutos.</p>
-  <a href="/mandaja/cadastro" class="cta-big" style="margin:0 auto">🚀 Criar loja grátis agora</a>
-  <p style="margin-top:20px;font-size:12px;color:#55557A">Dúvidas? <a href="https://wa.me/5547991011351?text=Olá, quero saber mais sobre o MandaJá" target="_blank" style="color:#F97316">Fale pelo WhatsApp</a></p>
+<!-- CTA FINAL com imagem de fundo -->
+<div class="cta-section">
+  <div class="cta-bg" style="background-image:url('/static/img/mandaja/mandaja-cta.jpg')"></div>
+  <div class="cta-overlay"></div>
+  <div class="cta-content">
+    <h2>Pronto para<br><span>vender mais?</span></h2>
+    <p>14 dias grátis, sem cartão. Sua loja online em 5 minutos.<br>Sem comissão. Sem contrato. Sem iFood.</p>
+    <a href="/mandaja/cadastro" class="btn-primary" style="font-size:17px;padding:18px 44px;margin:0 auto;">
+      🚀 Criar minha loja grátis agora
+    </a>
+    <p style="margin-top:20px;font-size:12px;color:rgba(255,255,255,0.4)">
+      Dúvidas? <a href="https://wa.me/5547991011351?text=Olá, quero saber mais sobre o MandaJá" target="_blank" style="color:var(--orange)">Fale pelo WhatsApp</a>
+    </p>
+  </div>
 </div>
 
+<!-- FOOTER -->
 <footer>
-  <p>MandaJá é uma solução <a href="/">4KITEM</a> · © 2026 · Todos os direitos reservados</p>
+  <p>MandaJá é uma solução <a href="/">4KITEM</a> · <a href="https://radioscnews.com.br" target="_blank">Rádio SC News</a> · © 2026 · Todos os direitos reservados</p>
 </footer>
+
+<!-- CTA FIXO MOBILE -->
+<div class="mobile-cta-bar">
+  <a href="/mandaja/cadastro" class="btn-primary" style="width:100%;font-size:14px;padding:14px;">
+    🚀 Criar loja grátis — 14 dias grátis
+  </a>
+</div>
 
 </body>
 </html>
