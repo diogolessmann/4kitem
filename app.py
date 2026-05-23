@@ -2938,6 +2938,38 @@ def _is_invalid_number(body: str) -> bool:
             or 'not in whatsapp' in b or 'does not exist' in b)
 
 
+def _is_disconnected(body: str) -> bool:
+    """Detecta se o WhatsApp foi desconectado/banido na instância.
+    'Connection Closed' = instância desconectou — ban ou sessão expirada.
+    """
+    b = body.lower()
+    return ('connection closed' in b
+            or 'error: connection closed' in b
+            or 'disconnected' in b
+            or 'not connected' in b
+            or 'instance not connected' in b
+            or 'session not found' in b
+            or 'qrcode' in b)
+
+
+def _check_instance_connected(evo_url: str, evo_key: str, instance: str) -> bool:
+    """Verifica se a instância WhatsApp está com sessão ativa (state=open)."""
+    try:
+        r = requests.get(
+            f"{evo_url}/instance/connectionState/{instance}",
+            headers={'apikey': evo_key},
+            timeout=8,
+        )
+        if r.status_code == 200:
+            data = r.json()
+            state = (data.get('instance', {}).get('state') or
+                     data.get('state') or '').lower()
+            return state == 'open'
+        return False
+    except Exception:
+        return True  # Em caso de dúvida, tenta enviar e vê o que acontece
+
+
 def _apply_spintax(text: str) -> str:
     """Processa variações {opção1|opção2|opção3} no template.
     Só processa grupos com pelo menos um | (preserva {nome}, {name}, etc).
@@ -2968,9 +3000,12 @@ def _send_text(evo_url, evo_key, instance, phone, text):
         if r.status_code in (200, 201):
             return True, '', False
         body = r.text[:300]
-        return False, f"HTTP {r.status_code}: {body[:120]}", _is_invalid_number(body)
+        err_str = f"HTTP {r.status_code}: {body[:150]}"
+        return False, err_str, _is_invalid_number(body)
+    except requests.exceptions.Timeout:
+        return False, 'Timeout: API demorou mais de 20s', False
     except Exception as e:
-        return False, str(e)[:120], False
+        return False, str(e)[:150], False
 
 
 def _send_image(evo_url, evo_key, instance, phone, image_url, caption=''):
@@ -2985,42 +3020,69 @@ def _send_image(evo_url, evo_key, instance, phone, image_url, caption=''):
                 'media': image_url,
                 'caption': caption,
             },
-            timeout=20,
+            timeout=25,
         )
         if r.status_code in (200, 201):
             return True, '', False
         body = r.text[:300]
-        return False, f"HTTP {r.status_code}: {body[:120]}", _is_invalid_number(body)
+        err_str = f"HTTP {r.status_code}: {body[:150]}"
+        return False, err_str, _is_invalid_number(body)
+    except requests.exceptions.Timeout:
+        return False, 'Timeout: API demorou mais de 25s', False
     except Exception as e:
-        return False, str(e)[:120], False
+        return False, str(e)[:150], False
 
 
 def _antiban_delay(sent_count: int):
     """
-    Delay humanizado anti-ban — imita comportamento humano:
-    - Base: 15–45s aleatório com jitter ±20%
-    - A cada 200 enviados: pausa extra longa 3–8 min (check ANTES do de 50)
-    - A cada 50 enviados: pausa longa 1–3 min
-    - Delays nunca são fixos (detectável pelo Meta)
+    Delay humanizado anti-ban v2 — estratégia em 3 fases:
+
+    FASE 1 — Warm-up (primeiras 20 msgs):
+      Base 40–90s para não disparar alerta de novo número.
+
+    FASE 2 — Ritmo normal (20–150):
+      Base 20–55s com jitter ±25%.
+
+    FASE 3 — Volume (150+):
+      Base 15–40s (número já aquecido).
+
+    Pausas longas obrigatórias:
+      A cada 25 msgs: 2–5 min  (simula pausa para ler resposta)
+      A cada 75 msgs: 5–12 min (simula saída do celular)
+      A cada 150 msgs: 10–20 min (pausa refeição/reunião)
+
+    Delays NUNCA são fixos — o Meta detecta padrões matemáticos.
     """
-    base = random.uniform(15, 45)
-
-    # IMPORTANTE: checar 200 ANTES do 50 — todo múltiplo de 200 também é de 50
-    if sent_count > 0 and sent_count % 200 == 0:
-        pausa = random.uniform(180, 480)
-        log.info(f"Anti-ban: pausa extra longa de {pausa:.0f}s após {sent_count} enviados")
+    # Pausas longas — checar do mais raro ao mais frequente
+    if sent_count > 0 and sent_count % 150 == 0:
+        pausa = random.uniform(600, 1200)
+        log.info(f"Anti-ban: pausa longa {pausa:.0f}s apos {sent_count} enviados")
         time.sleep(pausa)
         return
 
-    if sent_count > 0 and sent_count % 50 == 0:
-        pausa = random.uniform(60, 180)
-        log.info(f"Anti-ban: pausa longa de {pausa:.0f}s após {sent_count} enviados")
+    if sent_count > 0 and sent_count % 75 == 0:
+        pausa = random.uniform(300, 720)
+        log.info(f"Anti-ban: pausa media {pausa:.0f}s apos {sent_count} enviados")
         time.sleep(pausa)
         return
 
-    # Jitter ±20% para nunca ter intervalo previsível
-    jitter = base * random.uniform(0.8, 1.2)
-    log.debug(f"Anti-ban delay: {jitter:.1f}s")
+    if sent_count > 0 and sent_count % 25 == 0:
+        pausa = random.uniform(120, 300)
+        log.info(f"Anti-ban: pausa curta {pausa:.0f}s apos {sent_count} enviados")
+        time.sleep(pausa)
+        return
+
+    # Fase de envio baseada no aquecimento
+    if sent_count < 20:
+        base = random.uniform(40, 90)   # warm-up: mais devagar
+    elif sent_count < 150:
+        base = random.uniform(20, 55)   # ritmo normal
+    else:
+        base = random.uniform(15, 40)   # aquecido
+
+    # Jitter assimétrico — evita padrão de intervalo regular
+    jitter = base * random.uniform(0.75, 1.35)
+    log.debug(f"Anti-ban delay: {jitter:.1f}s (sent={sent_count})")
     time.sleep(jitter)
 
 
@@ -3189,7 +3251,17 @@ def _dispatch_campaign_inner(cid: int, user_id: int, delay_s: int = 3, continuar
     failed_count = 0
     consec_fails = 0
     first_err    = ''
-    MAX_CONSEC   = 10  # aborta se 10 falhas reais consecutivas
+    MAX_CONSEC   = 5   # aborta se 5 falhas reais consecutivas (ban detecta-se rapido)
+
+    # Verifica conexão da instância ANTES de iniciar o disparo
+    if not _check_instance_connected(evo_url, evo_key, instance):
+        log.error(f"Campanha {cid}: instância {instance} não está conectada — abortando")
+        conn.execute(
+            "UPDATE mandazap_campaigns SET status='erro', error_log=? WHERE id=?",
+            ('Número WhatsApp desconectado. Reconecte o número no painel Números antes de disparar.', cid)
+        )
+        conn.commit(); conn.close()
+        return
 
     for c in contacts:
         # Verifica se campanha foi cancelada externamente
@@ -3247,24 +3319,36 @@ def _dispatch_campaign_inner(cid: int, user_id: int, delay_s: int = 3, continuar
 
             if invalido:
                 # Número não existe no WhatsApp — pula sem contar como falha consecutiva
-                log.info(f"Campanha {cid} → {phone}: número inválido/sem WhatsApp — pulando")
-                # Delay pequeno mesmo em inválido para não bater na API em rajada
-                time.sleep(random.uniform(3, 8))
+                log.info(f"Campanha {cid} -> {phone}: numero invalido/sem WhatsApp — pulando")
+                time.sleep(random.uniform(4, 10))
+
+            elif _is_disconnected(err):
+                # Instância desconectou (ban ou sessão expirada) — aborta imediatamente
+                log.error(f"Campanha {cid}: instancia desconectou durante envio — {err}")
+                conn.execute(
+                    "UPDATE mandazap_campaigns SET status='erro', sent=?, finished_at=?, error_log=? WHERE id=?",
+                    (sent_count, datetime.now().isoformat(),
+                     f'Numero WhatsApp desconectado durante o disparo (possivel ban). '
+                     f'{sent_count} enviados antes da desconexao. Reconecte o numero.', cid)
+                )
+                conn.commit(); conn.close()
+                return
+
             else:
-                # Falha real (API down, ban, timeout) — conta consecutiva
+                # Falha real (API down, timeout, erro temporario) — conta consecutiva
                 consec_fails += 1
                 if consec_fails >= MAX_CONSEC:
-                    log.error(f"Campanha {cid}: {MAX_CONSEC} falhas reais consecutivas — abortando. Último erro: {err}")
+                    log.error(f"Campanha {cid}: {MAX_CONSEC} falhas consecutivas — abortando. Erro: {err}")
                     conn.execute(
                         "UPDATE mandazap_campaigns SET status='erro', sent=?, finished_at=?, error_log=? WHERE id=?",
                         (sent_count, datetime.now().isoformat(),
-                         f'Abortado após {MAX_CONSEC} falhas consecutivas (possível ban). {first_err}', cid)
+                         f'Abortado apos {MAX_CONSEC} falhas consecutivas. {first_err}', cid)
                     )
                     conn.commit(); conn.close()
                     return
-                # Delay progressivo em falhas reais: quanto mais falhas, maior a espera
-                pausa_erro = random.uniform(10, 30) * consec_fails
-                log.warning(f"Anti-ban: pausa de {pausa_erro:.0f}s após falha real ({consec_fails}/{MAX_CONSEC})")
+                # Delay progressivo: quanto mais falhas, maior a espera
+                pausa_erro = random.uniform(15, 45) * consec_fails
+                log.warning(f"Anti-ban: pausa {pausa_erro:.0f}s apos falha {consec_fails}/{MAX_CONSEC}")
                 time.sleep(pausa_erro)
 
         # Atualiza progresso a cada envio
@@ -3272,6 +3356,18 @@ def _dispatch_campaign_inner(cid: int, user_id: int, delay_s: int = 3, continuar
         conn2.execute("UPDATE mandazap_campaigns SET sent=?, updated_at=? WHERE id=?",
                       (sent_count, datetime.now().isoformat(), cid))
         conn2.commit(); conn2.close()
+
+        # A cada 50 enviados verifica se a instância ainda está conectada
+        if ok and sent_count > 0 and sent_count % 50 == 0:
+            if not _check_instance_connected(evo_url, evo_key, instance):
+                log.error(f"Campanha {cid}: instancia desconectou apos {sent_count} enviados")
+                conn.execute(
+                    "UPDATE mandazap_campaigns SET status='erro', sent=?, finished_at=?, error_log=? WHERE id=?",
+                    (sent_count, datetime.now().isoformat(),
+                     f'Numero desconectou durante o disparo apos {sent_count} enviados. Reconecte.', cid)
+                )
+                conn.commit(); conn.close()
+                return
 
         # Delay anti-ban humanizado após envio bem-sucedido
         if ok:
