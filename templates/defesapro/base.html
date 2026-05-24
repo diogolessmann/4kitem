@@ -34,6 +34,14 @@
     .btn-logout { font-size: 12px; color: var(--text3); text-decoration: none;
                   padding: 5px 10px; border-radius: 7px; border: 1px solid var(--border); transition: .15s; }
     .btn-logout:hover { color: var(--text2); border-color: var(--border2); }
+    .bell-btn { position: relative; display: flex; align-items: center; justify-content: center;
+                width: 34px; height: 34px; border-radius: 8px; border: 1px solid var(--border);
+                background: var(--surface2); color: var(--text2); text-decoration: none;
+                font-size: 16px; transition: .15s; flex-shrink: 0; }
+    .bell-btn:hover { border-color: var(--purple); color: var(--purple3); }
+    .bell-badge { position: absolute; top: -4px; right: -4px; background: var(--red); color: #fff;
+                  border-radius: 100px; padding: 1px 5px; font-size: 9px; font-weight: 800;
+                  min-width: 16px; text-align: center; line-height: 14px; display: none; }
 
     /* ── Shell ── */
     .shell { display: flex; flex: 1; min-height: 0; }
@@ -161,6 +169,10 @@
       Defesa<span>Pro</span>
     </a>
     <div class="topbar-right">
+      <a href="/defesapro/notificacoes" class="bell-btn" id="bell-link" title="Notificações">
+        🔔
+        <span class="bell-badge" id="bell-badge"></span>
+      </a>
       <div class="topbar-user">👤 {{ session.get('defesa_escritorio') or session.get('defesa_user_name','') }}</div>
       <a href="/defesapro/logout" class="btn-logout">Sair →</a>
     </div>
@@ -175,6 +187,11 @@
       <a href="/defesapro/peticoes"   class="nav-item {% if active=='peticoes'   %}active{% endif %}"><span class="icon">📄</span> Petições</a>
       <a href="/defesapro/prazos"     class="nav-item {% if active=='prazos'     %}active{% endif %}"><span class="icon">⏰</span> Prazos</a>
       <a href="/defesapro/financeiro" class="nav-item {% if active=='financeiro' %}active{% endif %}"><span class="icon">💰</span> Financeiro</a>
+      {% if session.get('defesa_plan') == 'premium' %}
+      <a href="/defesapro/email-config" class="nav-item {% if active=='email_monitor' %}active{% endif %}"><span class="icon">📧</span> Monitor E-mail <span class="nav-badge green" id="nav-notif-badge" style="display:none"></span></a>
+      {% else %}
+      <a href="/defesapro/email-config" class="nav-item" style="opacity:.5" title="Apenas Premium"><span class="icon">📧</span> Monitor E-mail <span style="font-size:10px;margin-left:auto">💎</span></a>
+      {% endif %}
       <div class="sidebar-section" style="margin-top:auto">Conta</div>
       <a href="/defesapro/perfil"         class="nav-item {% if active=='perfil'     %}active{% endif %}"><span class="icon">⚙️</span> Meu perfil</a>
       <a href="https://wa.me/5547991011351" target="_blank" class="nav-item"><span class="icon">💬</span> Suporte</a>
@@ -184,5 +201,36 @@
       {% block content %}{% endblock %}
     </div>
   </div>
+  <script>
+  // Notification bell badge
+  (function(){
+    function updateBell(){
+      fetch('/defesapro/notificacoes/contagem')
+        .then(r=>r.json())
+        .then(d=>{
+          const badge = document.getElementById('bell-badge');
+          const navBadge = document.getElementById('nav-notif-badge');
+          if(badge){
+            if(d.nao_lidas > 0){
+              badge.textContent = d.nao_lidas > 99 ? '99+' : d.nao_lidas;
+              badge.style.display = 'block';
+            } else {
+              badge.style.display = 'none';
+            }
+          }
+          if(navBadge){
+            if(d.nao_lidas > 0){
+              navBadge.textContent = d.nao_lidas;
+              navBadge.style.display = 'inline-block';
+            } else {
+              navBadge.style.display = 'none';
+            }
+          }
+        }).catch(()=>{});
+    }
+    updateBell();
+    setInterval(updateBell, 60000); // refresh every 60s
+  })();
+  </script>
 </body>
 </html>

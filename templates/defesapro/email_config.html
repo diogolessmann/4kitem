@@ -1,0 +1,177 @@
+{% extends 'defesapro/base.html' %}
+{% set active = 'email_monitor' %}
+{% block title %}Monitor de E-mail — DefesaPro{% endblock %}
+{% block extra_head %}
+<style>
+  .status-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px}
+  .status-ok{background:var(--green)}
+  .status-off{background:var(--text3)}
+  .status-err{background:var(--red)}
+  .info-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);font-size:13px}
+  .info-row:last-child{border-bottom:none}
+  .info-label{color:var(--text3);font-size:12px}
+</style>
+{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-title">📧 Monitor de E-mail</div>
+    <div class="page-sub">Receba notificações automáticas do DETRAN e órgãos de trânsito</div>
+  </div>
+  <a href="/defesapro/notificacoes" class="btn btn-outline">🔔 Ver notificações</a>
+</div>
+
+{% if msg %}
+<div class="alert alert-{% if erro %}error{% else %}success{% endif %}" style="margin-bottom:18px">
+  {{ msg }}
+</div>
+{% endif %}
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+
+  <!-- Config form -->
+  <div>
+    <div class="form-card">
+      <h3>⚙️ Configuração da conta de e-mail</h3>
+      <form method="POST">
+        <input type="hidden" name="acao" value="salvar">
+        <div class="form-group" style="margin-bottom:14px">
+          <label>Servidor IMAP</label>
+          <select class="form-control" name="imap_host" id="sel-host" onchange="autoPort(this.value)">
+            <option value="imap.gmail.com" {% if config.imap_host=='imap.gmail.com' %}selected{% endif %}>Gmail (imap.gmail.com)</option>
+            <option value="imap.outlook.com" {% if config.imap_host=='imap.outlook.com' %}selected{% endif %}>Outlook / Hotmail (imap.outlook.com)</option>
+            <option value="imap.uol.com.br" {% if config.imap_host=='imap.uol.com.br' %}selected{% endif %}>UOL (imap.uol.com.br)</option>
+            <option value="imap.terra.com.br" {% if config.imap_host=='imap.terra.com.br' %}selected{% endif %}>Terra (imap.terra.com.br)</option>
+            <option value="outro" {% if config.imap_host not in ['imap.gmail.com','imap.outlook.com','imap.uol.com.br','imap.terra.com.br'] %}selected{% endif %}>Outro...</option>
+          </select>
+        </div>
+        <div id="imap-custom" style="display:{% if config.imap_host not in ['imap.gmail.com','imap.outlook.com','imap.uol.com.br','imap.terra.com.br'] %}block{% else %}none{% endif %};margin-bottom:14px">
+          <div class="form-group">
+            <label>Host personalizado</label>
+            <input class="form-control" name="imap_host_custom" placeholder="mail.seudominio.com.br" value="{{ config.imap_host if config.imap_host not in ['imap.gmail.com','imap.outlook.com','imap.uol.com.br','imap.terra.com.br'] else '' }}">
+          </div>
+        </div>
+        <div class="form-grid form-grid-2" style="margin-bottom:14px">
+          <div class="form-group">
+            <label>Porta</label>
+            <input class="form-control" name="imap_port" type="number" value="{{ config.imap_port or 993 }}" id="imap-port">
+          </div>
+          <div class="form-group">
+            <label>Monitoramento</label>
+            <select class="form-control" name="ativo">
+              <option value="1" {% if config.ativo != 0 %}selected{% endif %}>✅ Ativo</option>
+              <option value="0" {% if config.ativo == 0 %}selected{% endif %}>⏸️ Pausado</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group" style="margin-bottom:14px">
+          <label>E-mail</label>
+          <input class="form-control" name="email_addr" type="email" placeholder="seuemail@gmail.com" value="{{ config.email_addr or '' }}" required>
+        </div>
+        <div class="form-group" style="margin-bottom:6px">
+          <label>Senha / Senha de app</label>
+          <input class="form-control" name="senha" type="password" placeholder="{% if config.email_addr %}••••••••• (deixe em branco para não alterar){% else %}Senha IMAP ou senha de app{% endif %}">
+        </div>
+        <div class="form-hint" style="margin-bottom:18px">
+          💡 <strong>Gmail:</strong> Use uma <a href="https://myaccount.google.com/apppasswords" target="_blank" style="color:var(--purple3)">Senha de App</a> (requer verificação em 2 etapas ativada).
+          <strong>Outlook:</strong> Ative IMAP nas configurações.
+        </div>
+        <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;padding:12px">💾 Salvar configuração</button>
+      </form>
+    </div>
+
+    {% if config.email_addr %}
+    <div class="form-card" style="margin-bottom:0">
+      <h3>🔍 Testar conexão</h3>
+      <p style="font-size:13px;color:var(--text2);margin-bottom:14px">
+        Dispara uma verificação manual agora e mostra as notificações encontradas.
+      </p>
+      <form method="POST">
+        <input type="hidden" name="acao" value="verificar">
+        <button type="submit" class="btn btn-outline" style="width:100%;justify-content:center;padding:12px">
+          🔄 Verificar caixa agora
+        </button>
+      </form>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Status / info -->
+  <div>
+    <div class="form-card">
+      <h3>📊 Status do monitoramento</h3>
+      {% if config.email_addr %}
+      <div class="info-row">
+        <span class="info-label">Conta monitorada</span>
+        <strong>{{ config.email_addr }}</strong>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Estado</span>
+        {% if config.ativo != 0 %}
+        <span><span class="status-dot status-ok"></span><span style="color:var(--green);font-weight:700">Ativo</span></span>
+        {% else %}
+        <span><span class="status-dot status-off"></span><span style="color:var(--text3)">Pausado</span></span>
+        {% endif %}
+      </div>
+      <div class="info-row">
+        <span class="info-label">Última verificação</span>
+        <span style="color:var(--text2)">{{ config.ultimo_check or 'Nunca' }}</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">E-mails processados</span>
+        <span style="font-weight:700;color:var(--purple3)">{{ config.total_lidos or 0 }}</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Frequência</span>
+        <span style="color:var(--text2)">1× por dia (automático)</span>
+      </div>
+      {% else %}
+      <div style="text-align:center;padding:32px 0;color:var(--text3)">
+        <div style="font-size:36px;margin-bottom:12px">📭</div>
+        <div style="font-size:13px">Nenhuma conta configurada ainda.<br>Preencha o formulário ao lado para começar.</div>
+      </div>
+      {% endif %}
+    </div>
+
+    <div class="form-card">
+      <h3>💡 Como funciona</h3>
+      <div style="display:flex;flex-direction:column;gap:12px;font-size:13px;color:var(--text2);line-height:1.6">
+        <div style="display:flex;gap:10px">
+          <span style="font-size:18px;flex-shrink:0">1️⃣</span>
+          <span>Configure sua conta de e-mail que recebe notificações do DETRAN, JARI e demais órgãos.</span>
+        </div>
+        <div style="display:flex;gap:10px">
+          <span style="font-size:18px;flex-shrink:0">2️⃣</span>
+          <span>O sistema verifica automaticamente a caixa de entrada <strong style="color:var(--text)">1 vez por dia</strong>.</span>
+        </div>
+        <div style="display:flex;gap:10px">
+          <span style="font-size:18px;flex-shrink:0">3️⃣</span>
+          <span>E-mails relacionados a processos são identificados e transformados em <strong style="color:var(--text)">notificações</strong> no painel.</span>
+        </div>
+        <div style="display:flex;gap:10px">
+          <span style="font-size:18px;flex-shrink:0">4️⃣</span>
+          <span>Você é alertado sobre deferimentos, indeferimentos, prazos, audiências e mais.</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-card" style="margin-bottom:0">
+      <h3>🔐 Segurança</h3>
+      <div style="font-size:13px;color:var(--text2);line-height:1.7">
+        Sua senha é armazenada de forma protegida e usada exclusivamente para leitura da caixa de entrada.
+        O sistema nunca envia e-mails pela sua conta. Recomendamos usar <strong style="color:var(--text)">senha de app</strong>
+        (Google/Outlook) ao invés da senha principal.
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function autoPort(host){
+  const port = document.getElementById('imap-port');
+  const custom = document.getElementById('imap-custom');
+  if(host==='outro'){ custom.style.display='block'; }
+  else { custom.style.display='none'; port.value=993; }
+}
+</script>
+{% endblock %}

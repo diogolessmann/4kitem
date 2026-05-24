@@ -328,6 +328,32 @@ def init_saas_db():
         "ALTER TABLE mandazap_users ADD COLUMN cpf_cnpj TEXT DEFAULT ''",
         # Agenda SC — CPF do responsável
         "ALTER TABLE agenda_businesses ADD COLUMN cpf_cnpj TEXT DEFAULT ''",
+        # DefesaPro Premium — monitor de e-mail e notificações
+        '''CREATE TABLE IF NOT EXISTS defesapro_email_config (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id     INTEGER UNIQUE NOT NULL,
+            imap_host   TEXT DEFAULT 'imap.gmail.com',
+            imap_port   INTEGER DEFAULT 993,
+            email_addr  TEXT NOT NULL DEFAULT '',
+            senha_b64   TEXT NOT NULL DEFAULT '',
+            ativo       INTEGER DEFAULT 1,
+            ultimo_check TEXT DEFAULT '',
+            total_lidos  INTEGER DEFAULT 0,
+            created_at  TEXT DEFAULT ''
+        )''',
+        '''CREATE TABLE IF NOT EXISTS defesapro_notificacoes (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id     INTEGER NOT NULL,
+            tipo        TEXT DEFAULT 'email',
+            titulo      TEXT NOT NULL DEFAULT '',
+            corpo       TEXT DEFAULT '',
+            processo_id INTEGER,
+            lida        INTEGER DEFAULT 0,
+            email_de    TEXT DEFAULT '',
+            email_assunto TEXT DEFAULT '',
+            created_at  TEXT DEFAULT ''
+        )''',
+        "CREATE INDEX IF NOT EXISTS idx_defesa_notif_user ON defesapro_notificacoes(user_id, lida)",
     ]
     for sql in _saas_migrations:
         try:

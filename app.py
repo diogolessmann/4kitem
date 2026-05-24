@@ -1451,6 +1451,321 @@ def defesa_perfil():
     return render_template('defesapro/perfil.html', u=dict(u), erro=erro, sucesso=sucesso)
 
 
+# ── DefesaPro — Monitor de E-mail (Premium) ──────────────────────────────────
+
+def _defesa_premium_required(f):
+    """Decorator: só plano premium acessa."""
+    from functools import wraps
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not session.get('defesa_user_id'):
+            return redirect(url_for('defesa_login', next=request.path))
+        if session.get('defesa_plan') != 'premium':
+            return render_template('defesapro/premium_gate.html')
+        return f(*args, **kwargs)
+    return decorated
+
+
+def _defesa_verificar_email(user_id):
+    """
+    Lê e-mails novos (últimas 24h) via IMAP, usa Groq para classificar
+    se são relacionados a processos de trânsito e cria notificações.
+    Retorna (total_novos, erros).
+    """
+    import imaplib, email as _email_lib, base64 as _b64, re as _re_em
+    import json as _json_em
+    from email.header import decode_header as _dh
+    from datetime import datetime as _dt, timedelta as _td
+
+    groq_key = os.environ.get('GROQ_API_KEY', '')
+    conn = get_saas_db()
+
+    cfg = conn.execute(
+        'SELECT * FROM defesapro_email_config WHERE user_id=? AND ativo=1', (user_id,)
+    ).fetchone()
+    if not cfg:
+        conn.close()
+        return 0, 'Configuração de e-mail não encontrada'
+
+    try:
+        senha = _b64.b64decode(cfg['senha_b64']).decode()
+    except Exception:
+        conn.close()
+        return 0, 'Erro ao decodificar senha'
+
+    # Conecta IMAP SSL
+    try:
+        mail = imaplib.IMAP4_SSL(cfg['imap_host'], cfg['imap_port'])
+        mail.login(cfg['email_addr'], senha)
+        mail.select('INBOX')
+    except Exception as e:
+        conn.close()
+        return 0, f'Erro ao conectar: {e}'
+
+    # Busca e-mails das últimas 24h
+    since_date = (_dt.now() - _td(days=1)).strftime('%d-%b-%Y')
+    try:
+        _, msg_ids = mail.search(None, f'(SINCE {since_date} UNSEEN)')
+    except Exception:
+        _, msg_ids = mail.search(None, f'SINCE {since_date}')
+
+    ids = msg_ids[0].split() if msg_ids and msg_ids[0] else []
+    novos = 0
+
+    # Processos do usuário para tentar vincular
+    processos = [dict(r) for r in conn.execute(
+        'SELECT id, placa, numero_auto FROM defesapro_processos WHERE user_id=?', (user_id,)
+    ).fetchall()]
+
+    for eid in ids[-20:]:  # máx 20 por vez
+        try:
+            _, data = mail.fetch(eid, '(RFC822)')
+            raw = data[0][1]
+            msg = _email_lib.message_from_bytes(raw)
+
+            # Extrai assunto
+            subj_raw = msg.get('Subject', '')
+            subj_parts = _dh(subj_raw)
+            subject = ''
+            for part, enc in subj_parts:
+                if isinstance(part, bytes):
+                    subject += part.decode(enc or 'utf-8', errors='replace')
+                else:
+                    subject += str(part)
+
+            from_addr = msg.get('From', '')
+
+            # Extrai corpo texto
+            body = ''
+            if msg.is_multipart():
+                for part in msg.walk():
+                    ct = part.get_content_type()
+                    if ct == 'text/plain':
+                        try:
+                            body += part.get_payload(decode=True).decode('utf-8', errors='replace')
+                        except Exception:
+                            pass
+                        if len(body) > 3000:
+                            break
+            else:
+                try:
+                    body = msg.get_payload(decode=True).decode('utf-8', errors='replace')
+                except Exception:
+                    body = ''
+
+            if not body.strip() and not subject.strip():
+                continue
+
+            # Groq classifica
+            if groq_key:
+                prompt = (
+                    'Analise este e-mail e determine se é relacionado a um auto de infração, '
+                    'defesa de multa, recurso, JARI, CETRAN ou processo de trânsito.\n\n'
+                    f'De: {from_addr}\nAssunto: {subject}\nConteúdo:\n{body[:2000]}\n\n'
+                    'Retorne SOMENTE este JSON (sem markdown):\n'
+                    '{"relacionado":true,"tipo":"deferido|indeferido|solicitacao_documento|julgamento|audiencia|recurso|outro","placa":"ou null","numero_auto":"ou null","orgao":"nome do orgao ou null","resumo":"1 frase resumindo o que o email diz"}'
+                )
+                try:
+                    resp = requests.post(
+                        'https://api.groq.com/openai/v1/chat/completions',
+                        headers={'Authorization': f'Bearer {groq_key}', 'Content-Type': 'application/json'},
+                        json={
+                            'model': 'llama-3.3-70b-versatile',
+                            'messages': [{'role': 'user', 'content': prompt}],
+                            'max_tokens': 256, 'temperature': 0.1,
+                        },
+                        timeout=30,
+                    )
+                    txt = resp.json()['choices'][0]['message']['content'].strip()
+                    m = _re_em.search(r'\{[\s\S]*\}', txt)
+                    info = _json_em.loads(m.group()) if m else {}
+                except Exception:
+                    info = {}
+            else:
+                # Sem Groq: heurística por palavras-chave
+                kw = ['auto de infração', 'multa', 'jari', 'cetran', 'detran', 'defesa', 'recurso',
+                      'autuação', 'penalidade', 'deferido', 'indeferido', 'notificação']
+                relacionado = any(k in (subject + body).lower() for k in kw)
+                info = {'relacionado': relacionado, 'tipo': 'outro',
+                        'placa': None, 'numero_auto': None, 'orgao': None,
+                        'resumo': subject[:120]}
+
+            if not info.get('relacionado'):
+                continue
+
+            # Tenta vincular a um processo existente
+            processo_id = None
+            placa_ext = (info.get('placa') or '').upper().replace('-', '').replace(' ', '')
+            auto_ext   = (info.get('numero_auto') or '').strip()
+            for p in processos:
+                p_placa = (p['placa'] or '').upper().replace('-', '').replace(' ', '')
+                p_auto  = (p['numero_auto'] or '').strip()
+                if placa_ext and p_placa and placa_ext in p_placa:
+                    processo_id = p['id']; break
+                if auto_ext and p_auto and auto_ext in p_auto:
+                    processo_id = p['id']; break
+
+            # Emojis por tipo
+            emoji_map = {
+                'deferido': '✅', 'indeferido': '❌', 'solicitacao_documento': '📎',
+                'julgamento': '⚖️', 'audiencia': '📅', 'recurso': '📋', 'outro': '📧',
+            }
+            tipo = info.get('tipo', 'outro')
+            emoji = emoji_map.get(tipo, '📧')
+            titulo = f'{emoji} {subject[:80]}' if subject else f'{emoji} Novo e-mail de processo'
+
+            now = datetime.now().isoformat()
+            conn.execute(
+                '''INSERT INTO defesapro_notificacoes
+                   (user_id,tipo,titulo,corpo,processo_id,lida,email_de,email_assunto,created_at)
+                   VALUES (?,?,?,?,?,0,?,?,?)''',
+                (user_id, tipo, titulo, info.get('resumo', body[:300]),
+                 processo_id, from_addr, subject, now)
+            )
+            conn.commit()
+            novos += 1
+
+        except Exception as e:
+            log.error(f'DefesaPro email parse error: {e}')
+            continue
+
+    try:
+        mail.logout()
+    except Exception:
+        pass
+
+    # Atualiza último check
+    conn.execute(
+        'UPDATE defesapro_email_config SET ultimo_check=?, total_lidos=total_lidos+? WHERE user_id=?',
+        (datetime.now().isoformat(), novos, user_id)
+    )
+    conn.commit()
+    conn.close()
+    return novos, None
+
+
+@app.route('/defesapro/email-config', methods=['GET', 'POST'])
+@_defesa_premium_required
+def defesa_email_config():
+    import base64 as _b64c
+    user_id = session['defesa_user_id']
+    conn = get_saas_db()
+    cfg = conn.execute('SELECT * FROM defesapro_email_config WHERE user_id=?', (user_id,)).fetchone()
+    erro = sucesso = None
+
+    if request.method == 'POST':
+        acao = request.form.get('acao', 'salvar')
+        if acao == 'verificar':
+            conn.close()
+            novos, err = _defesa_verificar_email(user_id)
+            if err:
+                erro = f'Erro: {err}'
+            else:
+                sucesso = f'Verificação concluída. {novos} novo(s) e-mail(s) de processo encontrado(s).'
+            conn = get_saas_db()
+            cfg = conn.execute('SELECT * FROM defesapro_email_config WHERE user_id=?', (user_id,)).fetchone()
+        else:
+            host   = request.form.get('imap_host', 'imap.gmail.com').strip()
+            port   = int(request.form.get('imap_port', 993) or 993)
+            email_addr = request.form.get('email_addr', '').strip()
+            senha  = request.form.get('senha', '').strip()
+            ativo  = 1 if request.form.get('ativo') else 0
+
+            if not email_addr:
+                erro = 'E-mail é obrigatório.'
+            else:
+                senha_b64 = _b64c.b64encode(senha.encode()).decode() if senha else (cfg['senha_b64'] if cfg else '')
+                now = datetime.now().isoformat()
+                if cfg:
+                    conn.execute(
+                        'UPDATE defesapro_email_config SET imap_host=?,imap_port=?,email_addr=?,senha_b64=?,ativo=? WHERE user_id=?',
+                        (host, port, email_addr, senha_b64, ativo, user_id)
+                    )
+                else:
+                    conn.execute(
+                        '''INSERT INTO defesapro_email_config
+                           (user_id,imap_host,imap_port,email_addr,senha_b64,ativo,created_at)
+                           VALUES (?,?,?,?,?,?,?)''',
+                        (user_id, host, port, email_addr, senha_b64, ativo, now)
+                    )
+                conn.commit()
+                sucesso = 'Configuração salva com sucesso.'
+                cfg = conn.execute('SELECT * FROM defesapro_email_config WHERE user_id=?', (user_id,)).fetchone()
+
+    conn.close()
+    default_cfg = {'imap_host': 'imap.gmail.com', 'imap_port': 993, 'email_addr': '',
+                   'ativo': 1, 'ultimo_check': '', 'total_lidos': 0}
+    config = dict(cfg) if cfg else default_cfg
+    return render_template('defesapro/email_config.html',
+                           config=config, msg=sucesso or erro,
+                           erro=bool(erro))
+
+
+@app.route('/defesapro/notificacoes')
+@_defesa_login_required
+def defesa_notificacoes():
+    user_id = session['defesa_user_id']
+    conn = get_saas_db()
+    notificacoes = [dict(r) for r in conn.execute(
+        'SELECT * FROM defesapro_notificacoes WHERE user_id=? ORDER BY created_at DESC LIMIT 100',
+        (user_id,)
+    ).fetchall()]
+    nao_lidas = sum(1 for n in notificacoes if not n['lida'])
+    conn.close()
+    return render_template('defesapro/notificacoes.html', notificacoes=notificacoes, nao_lidas=nao_lidas)
+
+
+@app.route('/defesapro/notificacoes/marcar-todas-lidas', methods=['POST'])
+@_defesa_login_required
+def defesa_notificacoes_marcar_lidas():
+    user_id = session['defesa_user_id']
+    conn = get_saas_db()
+    conn.execute('UPDATE defesapro_notificacoes SET lida=1 WHERE user_id=? AND lida=0', (user_id,))
+    conn.commit(); conn.close()
+    return redirect('/defesapro/notificacoes')
+
+
+@app.route('/defesapro/notificacoes/contagem')
+@_defesa_login_required
+def defesa_notificacoes_contagem():
+    user_id = session['defesa_user_id']
+    conn = get_saas_db()
+    n = conn.execute(
+        'SELECT COUNT(*) FROM defesapro_notificacoes WHERE user_id=? AND lida=0', (user_id,)
+    ).fetchone()[0]
+    conn.close()
+    return jsonify({'nao_lidas': n})
+
+
+@app.route('/defesapro/notificacoes/<int:nid>/deletar', methods=['POST'])
+@_defesa_login_required
+def defesa_notificacao_deletar(nid):
+    user_id = session['defesa_user_id']
+    conn = get_saas_db()
+    conn.execute('DELETE FROM defesapro_notificacoes WHERE id=? AND user_id=?', (nid, user_id))
+    conn.commit(); conn.close()
+    return redirect('/defesapro/notificacoes')
+
+
+# ── DefesaPro — Check diário de e-mail (chamado pelo admin/cron) ──────────────
+@app.route('/admin/defesapro/email-check-diario', methods=['POST'])
+@_saas_admin_required
+def saas_defesa_email_check_diario():
+    """Dispara verificação de e-mail para todos os usuários Premium ativos."""
+    conn = get_saas_db()
+    premiums = [r['user_id'] for r in conn.execute(
+        '''SELECT ec.user_id FROM defesapro_email_config ec
+           JOIN defesapro_users u ON u.id=ec.user_id
+           WHERE ec.ativo=1 AND u.active=1 AND u.plan='premium' '''
+    ).fetchall()]
+    conn.close()
+    resultados = []
+    for uid in premiums:
+        novos, err = _defesa_verificar_email(uid)
+        resultados.append({'user_id': uid, 'novos': novos, 'erro': err})
+    return jsonify({'ok': True, 'processados': len(premiums), 'resultados': resultados})
+
+
 # ── DefesaPro — Prazos ────────────────────────────────────────────────────────
 @app.route('/defesapro/prazos')
 @_defesa_login_required
