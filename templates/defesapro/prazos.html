@@ -1,37 +1,64 @@
 {% extends 'defesapro/base.html' %}
 {% set active = 'prazos' %}
 {% block title %}Prazos — DefesaPro{% endblock %}
+{% block extra_head %}
+<style>
+  .prazo-section { margin-bottom: 28px; }
+  .prazo-header { display:flex;align-items:center;gap:8px;margin-bottom:12px; }
+  .prazo-label { font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.5px; }
+  .btn-wa { display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:7px;
+            background:rgba(34,197,94,.15);border:1px solid rgba(34,197,94,.3);color:#86efac;
+            font-size:11px;font-weight:700;text-decoration:none;transition:.15s;white-space:nowrap; }
+  .btn-wa:hover { background:rgba(34,197,94,.25); }
+</style>
+{% endblock %}
 {% block content %}
 <div class="page-header">
   <div>
     <div class="page-title">⏰ Controle de Prazos</div>
     <div class="page-sub">Hoje: {{ hoje }}</div>
   </div>
-  <a href="/defesapro/processos" class="btn btn-outline">+ Novo processo</a>
+  <a href="/defesapro/processos" class="btn btn-primary">+ Novo processo</a>
 </div>
 
+{% macro wa_link(p, urgencia) %}
+  {% set nome = p.cliente_nome or p.proprietario or 'Cliente' %}
+  {% set placa = p.placa or ('Auto ' + p.numero_auto) %}
+  {% set telefone = (p.cliente_phone or '') | replace('(','') | replace(')','') | replace('-','') | replace(' ','') %}
+  {% if telefone %}
+    {% if urgencia == 'vencido' %}
+      {% set msg = 'Olá ' + nome + ', o prazo de defesa do veículo ' + placa + ' já está VENCIDO (era ' + p.prazo_defesa + '). Entre em contato com urgência para avaliarmos as opções disponíveis.' %}
+    {% else %}
+      {% set msg = 'Olá ' + nome + ', lembrete importante: o prazo de defesa do veículo ' + placa + ' vence em ' + p.prazo_defesa + '. Precisamos agir rapidamente — entre em contato!' %}
+    {% endif %}
+    <a href="https://wa.me/55{{ telefone }}?text={{ msg | urlencode }}" target="_blank" class="btn-wa">📱 WhatsApp</a>
+  {% endif %}
+{% endmacro %}
+
+<!-- VENCIDOS -->
 {% if vencidos %}
-<div style="margin-bottom:24px">
-  <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
-    <span style="font-size:13px;font-weight:700;color:var(--red);text-transform:uppercase;letter-spacing:.5px">🚨 Prazos vencidos</span>
+<div class="prazo-section">
+  <div class="prazo-header">
+    <span class="prazo-label" style="color:var(--red)">🚨 Prazos vencidos</span>
     <span class="badge badge-red">{{ vencidos|length }}</span>
   </div>
   <div class="table-wrap">
     <table>
-      <thead><tr><th>Placa/Auto</th><th>Artigo</th><th>Cliente</th><th>Prazo</th><th>Dias em atraso</th><th>Ação</th></tr></thead>
+      <thead><tr><th>Placa/Auto</th><th>Artigo</th><th>Cliente</th><th>Prazo</th><th>Fase</th><th>Ações</th></tr></thead>
       <tbody>
       {% for p in vencidos %}
       <tr>
-        <td><a href="/defesapro/processos/{{ p.id }}" class="td-link">{{ p.placa or 'Auto '+p.numero_auto }}</a></td>
-        <td style="font-size:12px;max-width:160px">{{ (p.descricao or p.artigo_ctb)[:50] }}</td>
-        <td class="td-muted">{{ p.cliente_nome or p.proprietario or '—' }}</td>
-        <td><strong style="color:var(--red)">{{ p.prazo_defesa }}</strong></td>
-        <td style="color:var(--red);font-weight:700">
-          {% set dias = (hoje|replace('-','')|int - p.prazo_defesa|replace('-','')|int) %}
-          VENCIDO
-        </td>
+        <td><a href="/defesapro/processos/{{ p.id }}" class="td-link"><strong>{{ p.placa or 'Auto '+p.numero_auto }}</strong></a></td>
+        <td style="font-size:11px;max-width:140px;color:var(--text2)">{{ (p.descricao or p.artigo_ctb or '—')[:45] }}</td>
+        <td class="td-muted" style="font-size:12px">{{ p.cliente_nome or p.proprietario or '—' }}</td>
+        <td><strong style="color:var(--red)">{{ p.prazo_defesa }}</strong><br><span style="font-size:10px;color:var(--red)">VENCIDO</span></td>
+        <td style="font-size:11px;color:var(--text3)">{{ ctb_fases.get(p.fase, p.fase or '—') }}</td>
         <td>
-          <a href="/defesapro/processos/{{ p.id }}" class="btn btn-danger btn-sm">⚠️ Ver</a>
+          <div style="display:flex;gap:5px;flex-wrap:wrap">
+            <a href="/defesapro/processos/{{ p.id }}" class="btn btn-danger btn-sm">⚠️ Ver</a>
+            <a href="/defesapro/peticoes/gerar?processo_id={{ p.id }}" class="btn btn-primary btn-sm">📄 Petição</a>
+            {{ wa_link(p, 'vencido') }}
+          </div>
         </td>
       </tr>
       {% endfor %}
@@ -41,26 +68,30 @@
 </div>
 {% endif %}
 
+<!-- URGENTES -->
 {% if urgentes %}
-<div style="margin-bottom:24px">
-  <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
-    <span style="font-size:13px;font-weight:700;color:var(--orange);text-transform:uppercase;letter-spacing:.5px">⚡ Urgente — até 7 dias</span>
+<div class="prazo-section">
+  <div class="prazo-header">
+    <span class="prazo-label" style="color:var(--orange)">⚡ Urgente — até 7 dias</span>
     <span class="badge" style="background:rgba(249,115,22,.15);color:#fdba74;border:1px solid rgba(249,115,22,.2)">{{ urgentes|length }}</span>
   </div>
   <div class="table-wrap">
     <table>
-      <thead><tr><th>Placa/Auto</th><th>Artigo</th><th>Cliente</th><th>Prazo</th><th>Fase</th><th>Ação</th></tr></thead>
+      <thead><tr><th>Placa/Auto</th><th>Artigo</th><th>Cliente</th><th>Prazo</th><th>Fase</th><th>Ações</th></tr></thead>
       <tbody>
       {% for p in urgentes %}
       <tr>
-        <td><a href="/defesapro/processos/{{ p.id }}" class="td-link">{{ p.placa or 'Auto '+p.numero_auto }}</a></td>
-        <td style="font-size:12px;max-width:160px">{{ (p.descricao or p.artigo_ctb)[:50] }}</td>
-        <td class="td-muted">{{ p.cliente_nome or p.proprietario or '—' }}</td>
+        <td><a href="/defesapro/processos/{{ p.id }}" class="td-link"><strong>{{ p.placa or 'Auto '+p.numero_auto }}</strong></a></td>
+        <td style="font-size:11px;max-width:140px;color:var(--text2)">{{ (p.descricao or p.artigo_ctb or '—')[:45] }}</td>
+        <td class="td-muted" style="font-size:12px">{{ p.cliente_nome or p.proprietario or '—' }}</td>
         <td><strong style="color:var(--orange)">📅 {{ p.prazo_defesa }}</strong></td>
-        <td style="font-size:11px;color:var(--text3)">{{ ctb_fases.get(p.fase, p.fase) }}</td>
+        <td style="font-size:11px;color:var(--text3)">{{ ctb_fases.get(p.fase, p.fase or '—') }}</td>
         <td>
-          <a href="/defesapro/processos/{{ p.id }}" class="btn btn-outline btn-sm">👁️ Ver</a>
-          <a href="/defesapro/peticoes/gerar?processo_id={{ p.id }}" class="btn btn-primary btn-sm">📄 Petição</a>
+          <div style="display:flex;gap:5px;flex-wrap:wrap">
+            <a href="/defesapro/processos/{{ p.id }}" class="btn btn-outline btn-sm">👁️ Ver</a>
+            <a href="/defesapro/peticoes/gerar?processo_id={{ p.id }}" class="btn btn-primary btn-sm">📄 Petição</a>
+            {{ wa_link(p, 'urgente') }}
+          </div>
         </td>
       </tr>
       {% endfor %}
@@ -70,24 +101,31 @@
 </div>
 {% endif %}
 
+<!-- PRÓXIMOS 30 DIAS -->
 {% if proximos %}
-<div style="margin-bottom:24px">
-  <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
-    <span style="font-size:13px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.5px">📅 Próximos 30 dias</span>
+<div class="prazo-section">
+  <div class="prazo-header">
+    <span class="prazo-label" style="color:var(--blue)">📅 Próximos 30 dias</span>
     <span class="badge badge-blue">{{ proximos|length }}</span>
   </div>
   <div class="table-wrap">
     <table>
-      <thead><tr><th>Placa/Auto</th><th>Artigo</th><th>Cliente</th><th>Prazo</th><th>Fase</th><th>Ação</th></tr></thead>
+      <thead><tr><th>Placa/Auto</th><th>Artigo</th><th>Cliente</th><th>Prazo</th><th>Fase</th><th>Ações</th></tr></thead>
       <tbody>
       {% for p in proximos %}
       <tr>
         <td><a href="/defesapro/processos/{{ p.id }}" class="td-link">{{ p.placa or 'Auto '+p.numero_auto }}</a></td>
-        <td style="font-size:12px;max-width:160px">{{ (p.descricao or p.artigo_ctb)[:50] }}</td>
-        <td class="td-muted">{{ p.cliente_nome or p.proprietario or '—' }}</td>
+        <td style="font-size:11px;max-width:140px;color:var(--text2)">{{ (p.descricao or p.artigo_ctb or '—')[:45] }}</td>
+        <td class="td-muted" style="font-size:12px">{{ p.cliente_nome or p.proprietario or '—' }}</td>
         <td>📅 {{ p.prazo_defesa }}</td>
-        <td style="font-size:11px;color:var(--text3)">{{ ctb_fases.get(p.fase, p.fase) }}</td>
-        <td><a href="/defesapro/processos/{{ p.id }}" class="btn btn-outline btn-sm">👁️ Ver</a></td>
+        <td style="font-size:11px;color:var(--text3)">{{ ctb_fases.get(p.fase, p.fase or '—') }}</td>
+        <td>
+          <div style="display:flex;gap:5px;flex-wrap:wrap">
+            <a href="/defesapro/processos/{{ p.id }}" class="btn btn-outline btn-sm">👁️ Ver</a>
+            <a href="/defesapro/peticoes/gerar?processo_id={{ p.id }}" class="btn btn-outline btn-sm">📄 Petição</a>
+            {{ wa_link(p, 'lembrete') }}
+          </div>
+        </td>
       </tr>
       {% endfor %}
       </tbody>
@@ -96,10 +134,11 @@
 </div>
 {% endif %}
 
+<!-- SEM PRAZO -->
 {% if sem_prazo %}
-<div style="margin-bottom:24px">
-  <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
-    <span style="font-size:13px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">❓ Sem prazo definido</span>
+<div class="prazo-section">
+  <div class="prazo-header">
+    <span class="prazo-label" style="color:var(--text3)">❓ Sem prazo definido</span>
     <span class="badge badge-gray">{{ sem_prazo|length }}</span>
   </div>
   <div class="table-wrap">
@@ -110,8 +149,8 @@
       {% set st = ctb_status.get(p.status, ctb_status['aberto']) %}
       <tr>
         <td><a href="/defesapro/processos/{{ p.id }}" class="td-link">{{ p.placa or 'Auto '+p.numero_auto }}</a></td>
-        <td style="font-size:12px;max-width:160px">{{ (p.descricao or p.artigo_ctb)[:50] }}</td>
-        <td class="td-muted">{{ p.cliente_nome or p.proprietario or '—' }}</td>
+        <td style="font-size:11px;max-width:140px;color:var(--text2)">{{ (p.descricao or p.artigo_ctb or '—')[:45] }}</td>
+        <td class="td-muted" style="font-size:12px">{{ p.cliente_nome or p.proprietario or '—' }}</td>
         <td><span class="badge badge-blue">{{ st.emoji }} {{ st.label }}</span></td>
         <td><a href="/defesapro/processos/{{ p.id }}/editar" class="btn btn-outline btn-sm">✏️ Definir prazo</a></td>
       </tr>
@@ -124,9 +163,9 @@
 
 {% if not vencidos and not urgentes and not proximos and not sem_prazo %}
 <div class="empty">
-  <div class="icon">⏰</div>
-  <p>Nenhum processo ativo com prazos.<br>Cadastre processos para monitorar os prazos aqui.</p>
-  <a href="/defesapro/processos" class="btn btn-primary">+ Novo processo</a>
+  <div class="icon">✅</div>
+  <p>Nenhum prazo pendente.<br>Todos os processos estão em dia!</p>
+  <a href="/defesapro/processos" class="btn btn-primary">Ver processos</a>
 </div>
 {% endif %}
 {% endblock %}

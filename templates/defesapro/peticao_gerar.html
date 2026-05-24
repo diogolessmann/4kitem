@@ -98,13 +98,17 @@
     <div class="form-card" style="margin:0;position:sticky;top:72px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
         <h3 style="margin:0">✅ Petição gerada</h3>
-        <div style="display:flex;gap:8px">
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
           <button onclick="copyPet()" class="btn btn-primary btn-sm">📋 Copiar</button>
+          {% if pet_id_gerado %}
+          <a href="/defesapro/peticoes/{{ pet_id_gerado }}/imprimir" target="_blank" class="btn btn-outline btn-sm">🖨️ Imprimir PDF</a>
+          {% else %}
           <button onclick="printPet()" class="btn btn-outline btn-sm">🖨️ Imprimir</button>
+          {% endif %}
         </div>
       </div>
       <textarea id="pet-text" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);padding:16px;font-family:monospace;font-size:11px;line-height:1.7;width:100%;min-height:520px;resize:vertical">{{ peticao_gerada }}</textarea>
-      <div style="margin-top:10px;font-size:12px;color:var(--text3)">💡 A petição foi salva automaticamente em <a href="/defesapro/peticoes" style="color:var(--purple3)">Petições</a>. Revise e edite conforme necessário antes de protocolar.</div>
+      <div style="margin-top:10px;font-size:12px;color:var(--text3)">💡 Salva automaticamente em <a href="/defesapro/peticoes" style="color:var(--purple3)">Petições</a>. Revise antes de protocolar.</div>
     </div>
     {% else %}
     <div id="painel-vazio" style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:48px 24px;text-align:center;color:var(--text3)">
@@ -139,15 +143,15 @@
             <div class="ia-badge">⚡ Defesa Completa</div>
             <h3 style="margin:0;font-size:16px">Petição gerada</h3>
           </div>
-          <div style="display:flex;gap:8px">
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
             <button onclick="copyPet()" class="btn btn-primary btn-sm">📋 Copiar</button>
-            <button onclick="printPet()" class="btn btn-outline btn-sm">🖨️ Imprimir</button>
+            <a id="btn-imprimir-ia" href="#" target="_blank" class="btn btn-outline btn-sm" style="display:none">🖨️ Imprimir PDF</a>
+            <button id="btn-imprimir-ia-fallback" onclick="printPet()" class="btn btn-outline btn-sm">🖨️ Imprimir</button>
           </div>
         </div>
         <textarea id="pet-text" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);padding:16px;font-family:monospace;font-size:11px;line-height:1.7;width:100%;min-height:560px;resize:vertical"></textarea>
         <div style="margin-top:10px;font-size:12px;color:var(--text3)">
-          ⚠️ Revise o conteúdo antes de protocolar. A petição foi salva em
-          <a href="/defesapro/peticoes" style="color:var(--purple3)">Petições</a>.
+          ⚠️ Revise antes de protocolar. Salva em <a href="/defesapro/peticoes" style="color:var(--purple3)">Petições</a>.
         </div>
       </div>
     </div>
@@ -219,6 +223,13 @@ function gerarComIA(){
       resultado.style.display='block';
       const ta = document.getElementById('pet-text');
       if(ta) ta.value = res.peticao;
+      // Botão imprimir com link real
+      if(res.pet_id){
+        const btnLink = document.getElementById('btn-imprimir-ia');
+        const btnFallback = document.getElementById('btn-imprimir-ia-fallback');
+        if(btnLink){ btnLink.href='/defesapro/peticoes/'+res.pet_id+'/imprimir'; btnLink.style.display='inline-flex'; }
+        if(btnFallback) btnFallback.style.display='none';
+      }
       resultado.scrollIntoView({behavior:'smooth', block:'start'});
     }
   })

@@ -699,9 +699,34 @@ def defesa_app():
         "SELECT COALESCE(SUM(valor),0) FROM defesapro_financeiro WHERE user_id=? AND pago=1 AND strftime('%Y-%m',data)=strftime('%Y-%m','now')",
         (user_id,)
     ).fetchone()[0]
+    pendente_fin = conn2.execute(
+        "SELECT COALESCE(SUM(valor),0) FROM defesapro_financeiro WHERE user_id=? AND pago=0",
+        (user_id,)
+    ).fetchone()[0]
+    # Últimos 5 processos
+    recentes = [dict(r) for r in conn2.execute(
+        '''SELECT p.id, p.placa, p.numero_auto, p.artigo_ctb, p.status, p.prazo_defesa,
+                  p.created_at, c.name AS cliente_nome
+           FROM defesapro_processos p
+           LEFT JOIN defesapro_clientes c ON c.id=p.cliente_id
+           WHERE p.user_id=? ORDER BY p.created_at DESC LIMIT 5''',
+        (user_id,)
+    ).fetchall()]
+    # Próximos prazos urgentes
+    prazos_urgentes = [dict(r) for r in conn2.execute(
+        '''SELECT p.id, p.placa, p.numero_auto, p.prazo_defesa, c.name AS cliente_nome
+           FROM defesapro_processos p
+           LEFT JOIN defesapro_clientes c ON c.id=p.cliente_id
+           WHERE p.user_id=? AND p.prazo_defesa!='' AND p.prazo_defesa BETWEEN date('now') AND date('now','+7 days') AND p.status='aberto'
+           ORDER BY p.prazo_defesa ASC LIMIT 5''',
+        (user_id,)
+    ).fetchall()]
     conn2.close()
-    stats = {'ativos': ativos, 'prazos7': prazos7, 'deferidos': deferidos, 'hon_mes': hon_mes}
-    return render_template('defesapro/app.html', user=dict(u), stats=stats)
+    stats = {'ativos': ativos, 'prazos7': prazos7, 'deferidos': deferidos,
+             'hon_mes': hon_mes, 'pendente_fin': pendente_fin}
+    return render_template('defesapro/app.html', user=dict(u), stats=stats,
+                           recentes=recentes, prazos_urgentes=prazos_urgentes,
+                           ctb_status=CTB_STATUS, hoje=date.today().isoformat())
 
 
 # ── DefesaPro — Clientes ──────────────────────────────────────────────────────
@@ -1147,15 +1172,16 @@ Termos em que pede deferimento.
 CPF: {cpf_req}
 """
             # Salva a petição
-            conn.execute(
+            pet_id = conn.execute(
                 'INSERT INTO defesapro_peticoes (user_id,processo_id,tipo,conteudo,teses_json,created_at) VALUES (?,?,?,?,?,?)',
                 (user_id, p['id'], tipo, peticao_gerada, _json.dumps(teses_sel), datetime.now().isoformat())
-            )
+            ).lastrowid
             conn.commit()
     conn.close()
     return render_template('defesapro/peticao_gerar.html',
                            processos=processos, teses=TESES_DEFESA,
-                           peticao_gerada=peticao_gerada, pid_sel=pid_sel)
+                           peticao_gerada=peticao_gerada, pid_sel=pid_sel,
+                           pet_id_gerado=pet_id if peticao_gerada else None)
 
 
 @app.route('/defesapro/peticoes/gerar-ia', methods=['POST'])
@@ -1333,13 +1359,13 @@ Redija a petição completa agora, seguindo rigorosamente a estrutura acima."""
         return jsonify({'erro': f'Erro ao gerar petição: {e}'}), 500
 
     # Salva no banco
-    conn.execute(
+    pet_id = conn.execute(
         'INSERT INTO defesapro_peticoes (user_id,processo_id,tipo,conteudo,teses_json,created_at) VALUES (?,?,?,?,?,?)',
         (user_id, p['id'], tipo + '_ia', peticao_txt, _json_ia.dumps(teses_sel), datetime.now().isoformat())
-    )
+    ).lastrowid
     conn.commit(); conn.close()
 
-    return jsonify({'ok': True, 'peticao': peticao_txt})
+    return jsonify({'ok': True, 'peticao': peticao_txt, 'pet_id': pet_id})
 
 
 @app.route('/defesapro/peticoes/<int:tid>/deletar', methods=['POST'])
@@ -1434,35 +1460,31 @@ def defesa_prazos():
     hoje   = date.today().isoformat()
     em7    = (date.today() + timedelta(days=7)).isoformat()
     em30   = (date.today() + timedelta(days=30)).isoformat()
-    vencidos = [dict(r) for r in conn.execute(
-        '''SELECT p.*, c.name AS cliente_nome FROM defesapro_processos p
+    _prazos_sql = '''SELECT p.*, c.name AS cliente_nome, c.phone AS cliente_phone
+           FROM defesapro_processos p
            LEFT JOIN defesapro_clientes c ON c.id=p.cliente_id
-           WHERE p.user_id=? AND p.prazo_defesa!='' AND p.prazo_defesa<? AND p.status='aberto'
-           ORDER BY p.prazo_defesa ASC''', (user_id, hoje)
+           WHERE p.user_id=?'''
+    vencidos = [dict(r) for r in conn.execute(
+        _prazos_sql + " AND p.prazo_defesa!='' AND p.prazo_defesa<? AND p.status='aberto' ORDER BY p.prazo_defesa ASC",
+        (user_id, hoje)
     ).fetchall()]
     urgentes = [dict(r) for r in conn.execute(
-        '''SELECT p.*, c.name AS cliente_nome FROM defesapro_processos p
-           LEFT JOIN defesapro_clientes c ON c.id=p.cliente_id
-           WHERE p.user_id=? AND p.prazo_defesa BETWEEN ? AND ? AND p.status='aberto'
-           ORDER BY p.prazo_defesa ASC''', (user_id, hoje, em7)
+        _prazos_sql + " AND p.prazo_defesa BETWEEN ? AND ? AND p.status='aberto' ORDER BY p.prazo_defesa ASC",
+        (user_id, hoje, em7)
     ).fetchall()]
     proximos = [dict(r) for r in conn.execute(
-        '''SELECT p.*, c.name AS cliente_nome FROM defesapro_processos p
-           LEFT JOIN defesapro_clientes c ON c.id=p.cliente_id
-           WHERE p.user_id=? AND p.prazo_defesa > ? AND p.prazo_defesa <= ? AND p.status='aberto'
-           ORDER BY p.prazo_defesa ASC''', (user_id, em7, em30)
+        _prazos_sql + " AND p.prazo_defesa > ? AND p.prazo_defesa <= ? AND p.status='aberto' ORDER BY p.prazo_defesa ASC",
+        (user_id, em7, em30)
     ).fetchall()]
     sem_prazo = [dict(r) for r in conn.execute(
-        '''SELECT p.*, c.name AS cliente_nome FROM defesapro_processos p
-           LEFT JOIN defesapro_clientes c ON c.id=p.cliente_id
-           WHERE p.user_id=? AND (p.prazo_defesa='' OR p.prazo_defesa IS NULL) AND p.status='aberto'
-           ORDER BY p.created_at DESC''', (user_id,)
+        _prazos_sql + " AND (p.prazo_defesa='' OR p.prazo_defesa IS NULL) AND p.status='aberto' ORDER BY p.created_at DESC",
+        (user_id,)
     ).fetchall()]
     conn.close()
     return render_template('defesapro/prazos.html',
                            vencidos=vencidos, urgentes=urgentes,
                            proximos=proximos, sem_prazo=sem_prazo,
-                           ctb_status=CTB_STATUS, hoje=hoje)
+                           ctb_status=CTB_STATUS, ctb_fases=CTB_FASES, hoje=hoje)
 
 
 # ── DefesaPro — Financeiro ────────────────────────────────────────────────────
@@ -1522,37 +1544,6 @@ def defesa_financeiro():
 
 
 # ── DefesaPro — Admin: definir senha do usuário ────────────────────────────────
-@app.route('/admin/defesapro/user/<int:user_id>/toggle-active', methods=['POST'])
-@app.route('/admin/defesapro/user/<int:user_id>/status', methods=['POST'])
-@_saas_admin_required
-def saas_defesa_toggle_active(user_id):
-    data   = request.get_json(silent=True) or {}
-    conn   = get_saas_db()
-    u      = conn.execute('SELECT active FROM defesapro_users WHERE id=?', (user_id,)).fetchone()
-    if not u:
-        conn.close(); return jsonify({'success': False, 'error': 'Usuário não encontrado'})
-    # Aceita tanto toggle quanto active=True/False explícito
-    if 'active' in data:
-        novo = 1 if data['active'] else 0
-    else:
-        novo = 0 if u['active'] else 1
-    conn.execute('UPDATE defesapro_users SET active=? WHERE id=?', (novo, user_id))
-    conn.commit(); conn.close()
-    return jsonify({'success': True, 'active': novo})
-
-
-@app.route('/admin/defesapro/user/<int:user_id>/set-plano', methods=['POST'])
-@_saas_admin_required
-def saas_defesa_set_plano(user_id):
-    data  = request.get_json() or {}
-    plano = (data.get('plano') or '').strip()
-    if plano not in ('starter', 'profissional', 'premium'):
-        return jsonify({'success': False, 'error': 'Plano inválido'})
-    conn = get_saas_db()
-    conn.execute('UPDATE defesapro_users SET plan=? WHERE id=?', (plano, user_id))
-    conn.commit(); conn.close()
-    return jsonify({'success': True})
-
 
 @app.route('/admin/defesapro/user/<int:user_id>/set-senha', methods=['POST'])
 @_saas_admin_required

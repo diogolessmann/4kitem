@@ -1,30 +1,51 @@
 {% extends 'defesapro/base.html' %}
+{% set active = 'dashboard' %}
 {% block title %}Dashboard — DefesaPro{% endblock %}
+{% block extra_head %}
+<style>
+  .stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+  .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px 20px}
+  .stat-icon{font-size:22px;margin-bottom:6px}
+  .stat-label{font-size:11px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+  .stat-value{font-size:26px;font-weight:900;line-height:1;margin-bottom:4px}
+  .stat-sub{font-size:11px;color:var(--text3)}
+  @media(max-width:768px){.stats-grid{grid-template-columns:1fr 1fr}}
+</style>
+{% endblock %}
 {% block content %}
 <div class="page-header">
   <div>
     <div class="page-title">Olá, {{ user.name.split()[0] }}! ⚖️</div>
     <div class="page-sub">{{ user.escritorio or 'Seu escritório' }}{% if user.cidade %} · {{ user.cidade }}{% endif %}</div>
   </div>
-  <span class="badge badge-purple">Plano {{ (user.plan or 'Básico') | capitalize }}</span>
+  <span class="badge badge-purple" style="padding:6px 14px;font-size:12px">
+    {% if user.plan=='starter' %}⚡ Starter
+    {% elif user.plan=='profissional' %}🚀 Profissional
+    {% elif user.plan=='premium' %}💎 Premium
+    {% else %}{{ (user.plan or 'Básico') | capitalize }}{% endif %}
+  </span>
 </div>
 
 {% if stats.prazos7 > 0 %}
-<div class="alert alert-error">⚠️ Você tem <strong>{{ stats.prazos7 }} processo(s)</strong> com prazo vencendo nos próximos 7 dias. <a href="/defesapro/prazos" style="color:inherit;font-weight:700;">Ver prazos →</a></div>
+<div class="alert alert-error" style="margin-bottom:18px">
+  ⚠️ Você tem <strong>{{ stats.prazos7 }} processo(s)</strong> com prazo vencendo nos próximos 7 dias.
+  <a href="/defesapro/prazos" style="color:inherit;font-weight:700;margin-left:8px">Ver prazos →</a>
+</div>
 {% endif %}
 
+<!-- KPIs -->
 <div class="stats-grid">
   <div class="stat-card">
     <div class="stat-icon">📁</div>
     <div class="stat-label">Processos ativos</div>
     <div class="stat-value">{{ stats.ativos }}</div>
-    <div class="stat-sub">Em andamento</div>
+    <div class="stat-sub"><a href="/defesapro/processos" style="color:var(--purple3)">Ver todos →</a></div>
   </div>
   <div class="stat-card">
     <div class="stat-icon">⏰</div>
     <div class="stat-label">Prazos em 7 dias</div>
     <div class="stat-value" style="color:{% if stats.prazos7>0 %}var(--red){% else %}var(--green){% endif %}">{{ stats.prazos7 }}</div>
-    <div class="stat-sub">Requerem atenção</div>
+    <div class="stat-sub"><a href="/defesapro/prazos" style="color:var(--purple3)">Ver prazos →</a></div>
   </div>
   <div class="stat-card">
     <div class="stat-icon">✅</div>
@@ -35,31 +56,75 @@
   <div class="stat-card">
     <div class="stat-icon">💰</div>
     <div class="stat-label">Honorários no mês</div>
-    <div class="stat-value" style="font-size:20px">R$ {{ '%.2f'|format(stats.hon_mes) }}</div>
-    <div class="stat-sub">Recebidos</div>
+    <div class="stat-value" style="font-size:20px;color:var(--green)">R$&nbsp;{{ '%.0f'|format(stats.hon_mes) }}</div>
+    <div class="stat-sub">{% if stats.pendente_fin > 0 %}R$ {{ '%.0f'|format(stats.pendente_fin) }} a receber{% else %}Em dia{% endif %}</div>
   </div>
 </div>
 
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px">
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
+
+  <!-- Acesso rápido -->
   <div class="form-card" style="margin:0">
-    <h3>🚀 Acesso rápido</h3>
-    <div style="display:flex;flex-direction:column;gap:8px">
-      <a href="/defesapro/processos" class="btn btn-primary" style="justify-content:center">📋 Novo processo</a>
-      <a href="/defesapro/peticoes/gerar" class="btn btn-outline" style="justify-content:center">📄 Gerar petição</a>
-      <a href="/defesapro/clientes" class="btn btn-outline" style="justify-content:center">👥 Novo cliente</a>
-      <a href="/defesapro/financeiro" class="btn btn-outline" style="justify-content:center">💰 Lançar honorário</a>
+    <h3>🚀 Ações rápidas</h3>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <a href="/defesapro/processos" onclick="document.getElementById('modal-add')?.classList.add('open')" class="btn btn-primary" style="justify-content:center">📷 OCR / Novo processo</a>
+      <a href="/defesapro/peticoes/gerar" class="btn btn-primary" style="justify-content:center;background:linear-gradient(135deg,#0ea5e9,#6366f1)">⚡ Gerar defesa</a>
+      <a href="/defesapro/clientes" class="btn btn-outline" style="justify-content:center">👥 Clientes</a>
+      <a href="/defesapro/prazos" class="btn btn-outline" style="justify-content:center">⏰ Prazos</a>
+      <a href="/defesapro/financeiro" class="btn btn-outline" style="justify-content:center">💰 Financeiro</a>
+      <a href="/defesapro/peticoes" class="btn btn-outline" style="justify-content:center">📄 Petições</a>
     </div>
   </div>
+
+  <!-- Prazos urgentes -->
   <div class="form-card" style="margin:0">
-    <h3>📋 Dados da conta</h3>
-    <div style="display:flex;flex-direction:column;gap:8px;font-size:13px">
-      <div style="display:flex;justify-content:space-between"><span style="color:var(--text3)">Nome</span><span>{{ user.name }}</span></div>
-      <div style="display:flex;justify-content:space-between"><span style="color:var(--text3)">E-mail</span><span>{{ user.email or '—' }}</span></div>
-      <div style="display:flex;justify-content:space-between"><span style="color:var(--text3)">Telefone</span><span>{{ user.phone or '—' }}</span></div>
-      <div style="display:flex;justify-content:space-between"><span style="color:var(--text3)">Plano</span><span style="color:var(--purple3);font-weight:700">{{ (user.plan or 'Básico') | capitalize }}</span></div>
-      <div style="display:flex;justify-content:space-between"><span style="color:var(--text3)">Trial até</span><span>{{ (user.trial_ends or '—')[:10] }}</span></div>
-      <div style="margin-top:4px"><a href="https://wa.me/5547991011351?text=Olá%2C%20sou%20assinante%20DefesaPro%20e%20preciso%20de%20suporte" target="_blank" class="btn btn-outline btn-sm" style="width:100%;justify-content:center">💬 Falar com suporte</a></div>
+    <h3>⚡ Prazos urgentes <span style="font-size:11px;font-weight:400;color:var(--text3)">(próximos 7 dias)</span></h3>
+    {% if prazos_urgentes %}
+    <div style="display:flex;flex-direction:column;gap:8px">
+      {% for p in prazos_urgentes %}
+      <a href="/defesapro/processos/{{ p.id }}" style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);border-radius:8px;text-decoration:none;transition:.15s" onmouseover="this.style.background='rgba(239,68,68,.15)'" onmouseout="this.style.background='rgba(239,68,68,.08)'">
+        <span style="font-size:13px;font-weight:600;color:var(--text)">{{ p.placa or 'Auto '+p.numero_auto }}</span>
+        <span style="font-size:12px;color:var(--red);font-weight:700">📅 {{ p.prazo_defesa }}</span>
+      </a>
+      {% endfor %}
     </div>
+    <a href="/defesapro/prazos" style="display:block;text-align:center;font-size:12px;color:var(--purple3);margin-top:10px">Ver todos os prazos →</a>
+    {% else %}
+    <div style="text-align:center;padding:20px 0;color:var(--text3);font-size:13px">✅ Nenhum prazo urgente no momento</div>
+    {% endif %}
   </div>
 </div>
+
+<!-- Processos recentes -->
+{% if recentes %}
+<div class="form-card" style="margin:0">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+    <h3 style="margin:0">📋 Processos recentes</h3>
+    <a href="/defesapro/processos" style="font-size:12px;color:var(--purple3)">Ver todos →</a>
+  </div>
+  <div class="table-wrap" style="margin:0">
+    <table>
+      <thead><tr><th>Placa/Auto</th><th>Artigo</th><th>Cliente</th><th>Prazo</th><th>Status</th><th></th></tr></thead>
+      <tbody>
+      {% for p in recentes %}
+      {% set st = ctb_status.get(p.status, ctb_status['aberto']) %}
+      <tr>
+        <td><a href="/defesapro/processos/{{ p.id }}" class="td-link"><strong>{{ p.placa or 'Auto '+p.numero_auto }}</strong></a></td>
+        <td style="font-size:11px;color:var(--text2);max-width:140px">{{ p.artigo_ctb or '—' }}</td>
+        <td class="td-muted" style="font-size:12px">{{ p.cliente_nome or '—' }}</td>
+        <td style="font-size:12px">
+          {% if p.prazo_defesa %}
+            <span style="{% if p.prazo_defesa < hoje %}color:var(--red);font-weight:700{% endif %}">📅 {{ p.prazo_defesa }}</span>
+          {% else %}<span class="td-muted">—</span>{% endif %}
+        </td>
+        <td><span class="badge badge-{% if p.status=='aberto' %}blue{% elif p.status=='em_recurso' %}yellow{% elif p.status=='deferido' %}green{% elif p.status=='indeferido' %}red{% else %}gray{% endif %}">{{ st.emoji }} {{ st.label }}</span></td>
+        <td><a href="/defesapro/processos/{{ p.id }}" class="btn btn-outline btn-sm">👁️</a></td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
 {% endblock %}
