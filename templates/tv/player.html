@@ -4,8 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{{ client.name }} — 4KITEM TV</title>
-  <!-- YouTube IFrame Player API — carregada antes do body -->
-  <script src="https://www.youtube.com/iframe_api"></script>
+  <!-- YouTube IFrame Player API — async para não bloquear o parser -->
+  <script async src="https://www.youtube.com/iframe_api"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
