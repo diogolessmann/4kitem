@@ -593,11 +593,15 @@ def agenda_cadastro():
         email         = request.form.get('email', '').strip()
         business_type = request.form.get('business_type', 'outros')
         password      = request.form.get('password', '').strip()
+        cpf_cnpj      = request.form.get('cpf_cnpj', '').strip()
+        cpf_digits    = ''.join(c for c in cpf_cnpj if c.isdigit())
 
-        if not all([name, owner_name, phone, password]):
+        if not all([name, owner_name, phone, password, cpf_cnpj]):
             error = 'Preencha todos os campos obrigatórios.'
         elif len(password) < 6:
             error = 'A senha precisa ter pelo menos 6 caracteres.'
+        elif len(cpf_digits) not in (11, 14):
+            error = 'CPF deve ter 11 dígitos ou CNPJ 14 dígitos.'
         else:
             # Normaliza telefone para checar duplicata
             phone_digits = ''.join(c for c in phone if c.isdigit())
@@ -606,9 +610,16 @@ def agenda_cadastro():
                 "SELECT id FROM agenda_businesses WHERE replace(replace(replace(replace(replace(phone,'(',''),')',''),'-',''),' ',''),'+','') = ?",
                 (phone_digits,)
             ).fetchone()
+            existing_cpf = conn.execute(
+                "SELECT id FROM agenda_businesses WHERE replace(replace(replace(cpf_cnpj,'.',''),'-',''),'/','') = ?",
+                (cpf_digits,)
+            ).fetchone()
             if existing_phone:
                 conn.close()
-                error = 'Este número de WhatsApp já possui uma conta cadastrada. Faça login para acessar sua agenda.'
+                error = 'Este WhatsApp já possui uma conta. Faça login para acessar sua agenda.'
+            elif existing_cpf:
+                conn.close()
+                error = 'CPF/CNPJ já possui uma conta cadastrada. Faça login ou entre em contato.'
             else:
                 slug = _slugify(name) or 'negocio'
                 base_slug, counter = slug, 1
@@ -618,10 +629,10 @@ def agenda_cadastro():
                 try:
                     conn.execute('''
                         INSERT INTO agenda_businesses
-                        (name, slug, owner_name, phone, email, business_type, password_hash, active, created_at, trial_ends)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
+                        (name, slug, owner_name, phone, email, business_type, password_hash, cpf_cnpj, active, created_at, trial_ends)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
                     ''', (name, slug, owner_name, phone, email, business_type,
-                          generate_password_hash(password), datetime.now().isoformat(), trial_ends))
+                          generate_password_hash(password), cpf_cnpj, datetime.now().isoformat(), trial_ends))
                     conn.commit()
                     biz = conn.execute('SELECT * FROM agenda_businesses WHERE slug=?', (slug,)).fetchone()
                     conn.close()
@@ -1972,25 +1983,45 @@ def bau():
 def bau_cadastro():
     error = None
     if request.method == 'POST':
-        name     = request.form.get('name', '').strip()
-        email    = request.form.get('email', '').strip().lower()
-        password = request.form.get('password', '')
-        if not all([name, email, password]):
-            error = 'Preencha todos os campos.'
+        name      = request.form.get('name', '').strip()
+        email     = request.form.get('email', '').strip().lower()
+        password  = request.form.get('password', '')
+        phone     = request.form.get('phone', '').strip()
+        cpf_cnpj  = request.form.get('cpf_cnpj', '').strip()
+        cpf_digits = ''.join(c for c in cpf_cnpj if c.isdigit())
+        phone_digits = ''.join(c for c in phone if c.isdigit())
+        if not all([name, email, password, phone, cpf_cnpj]):
+            error = 'Preencha todos os campos obrigatórios.'
         elif len(password) < 6:
             error = 'A senha deve ter pelo menos 6 caracteres.'
+        elif len(cpf_digits) not in (11, 14):
+            error = 'CPF deve ter 11 dígitos ou CNPJ 14 dígitos.'
         else:
             conn = get_saas_db()
-            exists = conn.execute('SELECT id FROM bau_users WHERE email=?', (email,)).fetchone()
-            if exists:
+            # Anti-golpe: e-mail único
+            if conn.execute('SELECT id FROM bau_users WHERE email=?', (email,)).fetchone():
                 error = 'E-mail já cadastrado. Faça login.'
                 conn.close()
+            # Anti-golpe: CPF/CNPJ único
+            elif conn.execute(
+                "SELECT id FROM bau_users WHERE replace(replace(replace(cpf_cnpj,'.',''),'-',''),'/','') = ?",
+                (cpf_digits,)
+            ).fetchone():
+                error = 'CPF/CNPJ já possui uma conta. Faça login ou entre em contato.'
+                conn.close()
+            # Anti-golpe: telefone único
+            elif conn.execute(
+                "SELECT id FROM bau_users WHERE replace(replace(replace(replace(phone,'(',''),')',''),'-',''),' ','') = ?",
+                (phone_digits,)
+            ).fetchone():
+                error = 'Este WhatsApp já possui uma conta. Faça login ou entre em contato.'
+                conn.close()
             else:
-                now = datetime.now()
-                trial = (now + timedelta(days=30)).isoformat()
+                now   = datetime.now()
+                trial = (now + timedelta(days=7)).isoformat()
                 conn.execute(
-                    'INSERT INTO bau_users (name, email, password_hash, created_at, trial_ends) VALUES (?,?,?,?,?)',
-                    (name, email, generate_password_hash(password), now.isoformat(), trial)
+                    'INSERT INTO bau_users (name, email, password_hash, phone, cpf_cnpj, created_at, trial_ends) VALUES (?,?,?,?,?,?,?)',
+                    (name, email, generate_password_hash(password), phone, cpf_cnpj, now.isoformat(), trial)
                 )
                 conn.commit()
                 user = conn.execute('SELECT * FROM bau_users WHERE email=?', (email,)).fetchone()
@@ -2119,25 +2150,42 @@ def mandazap():
 def mandazap_cadastro():
     error = None
     if request.method == 'POST':
-        name     = request.form.get('name', '').strip()
-        email    = request.form.get('email', '').strip().lower()
-        password = request.form.get('password', '')
-        if not all([name, email, password]):
-            error = 'Preencha todos os campos.'
+        name      = request.form.get('name', '').strip()
+        email     = request.form.get('email', '').strip().lower()
+        password  = request.form.get('password', '')
+        phone     = request.form.get('phone', '').strip()
+        cpf_cnpj  = request.form.get('cpf_cnpj', '').strip()
+        cpf_digits   = ''.join(c for c in cpf_cnpj if c.isdigit())
+        phone_digits = ''.join(c for c in phone if c.isdigit())
+        if not all([name, email, password, phone, cpf_cnpj]):
+            error = 'Preencha todos os campos obrigatórios.'
         elif len(password) < 6:
             error = 'A senha deve ter pelo menos 6 caracteres.'
+        elif len(cpf_digits) not in (11, 14):
+            error = 'CPF deve ter 11 dígitos ou CNPJ 14 dígitos.'
         else:
             conn = get_saas_db()
-            exists = conn.execute('SELECT id FROM mandazap_users WHERE email=?', (email,)).fetchone()
-            if exists:
+            if conn.execute('SELECT id FROM mandazap_users WHERE email=?', (email,)).fetchone():
                 error = 'E-mail já cadastrado. Faça login.'
+                conn.close()
+            elif conn.execute(
+                "SELECT id FROM mandazap_users WHERE replace(replace(replace(cpf_cnpj,'.',''),'-',''),'/','') = ?",
+                (cpf_digits,)
+            ).fetchone():
+                error = 'CPF/CNPJ já possui uma conta. Faça login ou entre em contato.'
+                conn.close()
+            elif conn.execute(
+                "SELECT id FROM mandazap_users WHERE replace(replace(replace(replace(phone,'(',''),')',''),'-',''),' ','') = ?",
+                (phone_digits,)
+            ).fetchone():
+                error = 'Este WhatsApp já possui uma conta. Faça login ou entre em contato.'
                 conn.close()
             else:
                 now   = datetime.now()
-                trial = (now + timedelta(days=2)).isoformat()
+                trial = (now + timedelta(days=7)).isoformat()
                 conn.execute(
-                    'INSERT INTO mandazap_users (name, email, password_hash, plan, created_at, trial_ends) VALUES (?,?,?,?,?,?)',
-                    (name, email, generate_password_hash(password), 'solo', now.isoformat(), trial)
+                    'INSERT INTO mandazap_users (name, email, password_hash, phone, cpf_cnpj, plan, created_at, trial_ends) VALUES (?,?,?,?,?,?,?,?)',
+                    (name, email, generate_password_hash(password), phone, cpf_cnpj, 'solo', now.isoformat(), trial)
                 )
                 conn.commit()
                 user = conn.execute('SELECT * FROM mandazap_users WHERE email=?', (email,)).fetchone()

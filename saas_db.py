@@ -319,6 +319,14 @@ def init_saas_db():
         # DefesaPro — autenticação
         "ALTER TABLE defesapro_users ADD COLUMN password_hash TEXT DEFAULT ''",
         "ALTER TABLE defesapro_users ADD COLUMN last_login TEXT DEFAULT ''",
+        # Baú — anti-golpe (telefone + CPF/CNPJ únicos)
+        "ALTER TABLE bau_users ADD COLUMN phone TEXT DEFAULT ''",
+        "ALTER TABLE bau_users ADD COLUMN cpf_cnpj TEXT DEFAULT ''",
+        # MandaZap — anti-golpe
+        "ALTER TABLE mandazap_users ADD COLUMN phone TEXT DEFAULT ''",
+        "ALTER TABLE mandazap_users ADD COLUMN cpf_cnpj TEXT DEFAULT ''",
+        # Agenda SC — CPF do responsável
+        "ALTER TABLE agenda_businesses ADD COLUMN cpf_cnpj TEXT DEFAULT ''",
     ]
     for sql in _saas_migrations:
         try:
