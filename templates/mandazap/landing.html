@@ -1,145 +1,313 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<!-- Google Analytics -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-0JQBJ01C0Z"></script>
 <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-0JQBJ01C0Z');</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>MandaZap — Marketing no WhatsApp que funciona</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
-  *{box-sizing:border-box;margin:0;padding:0}
-  body{background:#09090f;color:#f0fff4;font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh;overflow-x:hidden}
-  a{text-decoration:none;color:inherit}
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #09090f; --bg2: #0e1a10; --surface: #0e1a10; --surface2: #0a130c;
+    --border: rgba(34,197,94,0.09); --border2: rgba(34,197,94,0.22);
+    --text: #f0fff4; --text2: #8a9f8d;
+    --green: #22c55e; --green2: #16a34a; --green-glow: rgba(34,197,94,0.15);
+  }
+  html { scroll-behavior: smooth; }
+  body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); overflow-x: hidden; }
+  a { text-decoration: none; color: inherit; }
+  img { display: block; }
 
-  /* NAV */
-  nav{display:flex;align-items:center;justify-content:space-between;padding:16px 28px;border-bottom:1px solid rgba(34,197,94,0.1);position:sticky;top:0;background:rgba(9,9,15,0.92);backdrop-filter:blur(16px);z-index:50}
-  .nav-logo{font-size:20px;font-weight:900;color:#22c55e;display:flex;align-items:center;gap:8px}
-  .nav-links{display:flex;gap:10px}
-  .btn-outline{padding:8px 18px;border-radius:100px;border:1px solid rgba(34,197,94,0.25);color:#6b9e72;font-size:13px;font-weight:600;cursor:pointer;background:transparent;font-family:inherit;transition:.2s}
-  .btn-outline:hover{border-color:#22c55e;color:#22c55e}
-  .btn-primary{padding:8px 20px;border-radius:100px;background:linear-gradient(135deg,#16a34a,#22c55e);color:#fff;font-size:13px;font-weight:700;cursor:pointer;border:none;font-family:inherit;transition:.2s}
-  .btn-primary:hover{opacity:.9}
+  /* ── NAV ── */
+  nav {
+    position: sticky; top: 0; z-index: 50;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 28px;
+    background: rgba(9,9,15,0.93); backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--border);
+  }
+  .nav-logo { font-size: 20px; font-weight: 900; color: var(--green); display: flex; align-items: center; gap: 8px; }
+  .nav-logo img { height: 32px; width: 32px; border-radius: 8px; object-fit: cover; }
+  .nav-links { display: flex; gap: 10px; align-items: center; }
+  .btn-outline {
+    padding: 8px 18px; border-radius: 100px;
+    border: 1px solid rgba(34,197,94,0.25); color: var(--text2);
+    font-size: 13px; font-weight: 600; cursor: pointer;
+    background: transparent; font-family: inherit; transition: .2s;
+  }
+  .btn-outline:hover { border-color: var(--green); color: var(--green); }
+  .btn-primary {
+    padding: 9px 22px; border-radius: 100px;
+    background: linear-gradient(135deg, var(--green2), var(--green));
+    color: #fff; font-size: 13px; font-weight: 700;
+    cursor: pointer; border: none; font-family: inherit; transition: .2s;
+  }
+  .btn-primary:hover { opacity: .9; }
 
-  /* HERO */
-  .hero{text-align:center;padding:90px 24px 60px;position:relative}
-  .hero::before{content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);width:600px;height:400px;background:radial-gradient(ellipse,rgba(34,197,94,.12) 0%,transparent 70%);pointer-events:none}
-  .hero-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);border-radius:100px;padding:6px 16px;font-size:12px;font-weight:700;color:#22c55e;margin-bottom:28px}
-  .hero h1{font-size:clamp(34px,6vw,58px);font-weight:900;letter-spacing:-1.5px;line-height:1.1;margin-bottom:20px;max-width:760px;margin-left:auto;margin-right:auto}
-  .hero h1 span{color:#22c55e}
-  .hero p{font-size:17px;color:#8a9f8d;line-height:1.65;margin-bottom:36px;max-width:580px;margin-left:auto;margin-right:auto}
-  .hero p strong{color:#f0fff4}
-  .hero-ctas{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;margin-bottom:48px}
-  .cta-big{display:inline-flex;align-items:center;gap:8px;padding:15px 34px;border-radius:100px;background:linear-gradient(135deg,#16a34a,#22c55e);color:#fff;font-size:16px;font-weight:800;cursor:pointer;transition:.2s;border:none;font-family:inherit;box-shadow:0 0 30px rgba(34,197,94,.25)}
-  .cta-big:hover{opacity:.9;transform:translateY(-1px)}
-  .cta-sec{display:inline-flex;align-items:center;gap:8px;padding:15px 24px;border-radius:100px;border:1px solid rgba(34,197,94,.2);color:#f0fff4;font-size:15px;font-weight:600;cursor:pointer;transition:.2s;background:transparent;font-family:inherit}
-  .cta-sec:hover{border-color:#22c55e;color:#22c55e}
+  /* ── HERO SPLIT ── */
+  .hero-wrap {
+    max-width: 1160px; margin: 0 auto;
+    display: grid; grid-template-columns: 1fr 1fr;
+    align-items: center; gap: 48px;
+    padding: 72px 32px 64px;
+  }
+  .hero-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.3);
+    border-radius: 100px; padding: 6px 16px;
+    font-size: 12px; font-weight: 700; color: var(--green); margin-bottom: 24px;
+  }
+  .hero-text h1 {
+    font-size: clamp(30px, 4vw, 50px); font-weight: 900;
+    letter-spacing: -1.5px; line-height: 1.1; margin-bottom: 20px;
+  }
+  .hero-text h1 span { color: var(--green); }
+  .hero-text p {
+    font-size: 16px; color: var(--text2); line-height: 1.65;
+    margin-bottom: 32px; max-width: 480px;
+  }
+  .hero-text p strong { color: var(--text); }
+  .hero-ctas { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 28px; }
+  .cta-big {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 14px 30px; border-radius: 100px;
+    background: linear-gradient(135deg, var(--green2), var(--green));
+    color: #fff; font-size: 15px; font-weight: 800;
+    cursor: pointer; transition: .2s; border: none; font-family: inherit;
+    box-shadow: 0 0 30px rgba(34,197,94,.25);
+  }
+  .cta-big:hover { opacity:.9; transform: translateY(-1px); }
+  .cta-sec {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 14px 24px; border-radius: 100px;
+    border: 1px solid rgba(34,197,94,.22); color: var(--text);
+    font-size: 15px; font-weight: 600; cursor: pointer;
+    transition: .2s; background: transparent; font-family: inherit;
+  }
+  .cta-sec:hover { border-color: var(--green); color: var(--green); }
+  .hero-trust { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--text2); }
+  .hero-trust-avatars { display: flex; }
+  .hero-trust-avatars span {
+    width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--bg);
+    background: linear-gradient(135deg, var(--green2), var(--green));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; margin-left: -8px;
+  }
+  .hero-trust-avatars span:first-child { margin-left: 0; }
 
-  /* STATS ROW */
-  .stats-row{display:flex;align-items:center;justify-content:center;gap:32px;flex-wrap:wrap;margin-bottom:60px}
-  .stat-item{text-align:center}
-  .stat-item strong{font-size:22px;font-weight:900;color:#22c55e}
-  .stat-item span{display:block;font-size:12px;color:#6b9e72;margin-top:2px}
+  /* Hero imagem */
+  .hero-img-wrap { position: relative; border-radius: 20px; overflow: hidden; }
+  .hero-img-wrap img {
+    width: 100%; height: 420px; object-fit: cover; border-radius: 20px;
+  }
+  .hero-img-badge {
+    position: absolute; bottom: 20px; left: 20px; right: 20px;
+    background: rgba(9,9,15,0.88); backdrop-filter: blur(16px);
+    border: 1px solid rgba(34,197,94,0.3); border-radius: 14px;
+    padding: 12px 16px; display: flex; align-items: center; gap: 10px;
+  }
+  .hero-img-badge-icon {
+    width: 38px; height: 38px; border-radius: 10px; flex-shrink: 0;
+    background: linear-gradient(135deg,var(--green2),var(--green));
+    display: flex; align-items: center; justify-content: center; font-size: 18px;
+  }
+  .hero-img-badge-title { font-size: 13px; font-weight: 700; }
+  .hero-img-badge-sub { font-size: 11px; color: var(--text2); }
+  .hero-img-badge-dot {
+    margin-left: auto; width: 8px; height: 8px;
+    border-radius: 50%; background: var(--green);
+    box-shadow: 0 0 8px var(--green); flex-shrink: 0; animation: pulse 2s infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
 
-  /* MOCK UI */
-  .mock-wrap{max-width:900px;margin:0 auto 80px;background:#0e1a10;border:1px solid rgba(34,197,94,.18);border-radius:20px;overflow:hidden;box-shadow:0 0 80px rgba(34,197,94,.1)}
-  .mock-topbar{background:#0a130c;padding:10px 16px;display:flex;align-items:center;gap:6px;border-bottom:1px solid rgba(34,197,94,.1)}
-  .mock-dot{width:10px;height:10px;border-radius:50%}
-  .mock-dot.r{background:#ef4444}
-  .mock-dot.y{background:#eab308}
-  .mock-dot.g{background:#22c55e}
-  .mock-title{flex:1;text-align:center;font-size:11px;color:#6b9e72;font-weight:600}
-  .mock-body{display:flex;height:320px}
-  .mock-sidebar{width:180px;background:#0a130c;border-right:1px solid rgba(34,197,94,.08);padding:16px 12px;display:flex;flex-direction:column;gap:4px;flex-shrink:0}
-  .mock-logo{font-size:14px;font-weight:900;color:#22c55e;padding:8px 10px;margin-bottom:8px}
-  .mock-nav-item{font-size:12px;padding:8px 10px;border-radius:8px;color:#6b9e72;display:flex;align-items:center;gap:6px}
-  .mock-nav-item.active{background:rgba(34,197,94,.12);color:#22c55e;font-weight:600}
-  .mock-content{flex:1;padding:20px;display:flex;flex-direction:column;gap:14px;overflow:hidden}
-  .mock-stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
-  .mock-stat-card{background:#0a130c;border:1px solid rgba(34,197,94,.1);border-radius:10px;padding:12px;text-align:center}
-  .mock-stat-card strong{display:block;font-size:18px;font-weight:900;color:#22c55e}
-  .mock-stat-card small{font-size:10px;color:#6b9e72}
-  .mock-table{background:#0a130c;border:1px solid rgba(34,197,94,.08);border-radius:10px;overflow:hidden}
-  .mock-table-row{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid rgba(34,197,94,.06);font-size:12px}
-  .mock-table-row:last-child{border-bottom:none}
-  .mock-badge{padding:3px 8px;border-radius:100px;font-size:10px;font-weight:700}
-  .mock-badge.done{background:rgba(34,197,94,.15);color:#22c55e}
-  .mock-badge.send{background:rgba(234,179,8,.15);color:#eab308}
-  .mock-badge.draft{background:rgba(255,255,255,.07);color:#6b9e72}
+  /* ── STATS BAR ── */
+  .stats-bar {
+    display: flex; justify-content: center; gap: 12px; flex-wrap: wrap;
+    padding: 0 24px 56px; max-width: 860px; margin: 0 auto;
+  }
+  .stat-pill {
+    background: var(--surface); border: 1px solid var(--border2);
+    border-radius: 100px; padding: 10px 24px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .stat-num {
+    font-size: 22px; font-weight: 900; letter-spacing: -0.5px; color: var(--green);
+  }
+  .stat-label { font-size: 11px; color: var(--text2); font-weight: 600; line-height: 1.3; }
 
-  /* FEATURES */
-  section{padding:72px 24px}
-  .section-label{text-align:center;font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#22c55e;margin-bottom:12px}
-  .section-title{text-align:center;font-size:clamp(24px,4vw,36px);font-weight:900;letter-spacing:-1px;margin-bottom:8px}
-  .section-sub{text-align:center;color:#8a9f8d;font-size:15px;margin-bottom:48px}
-  .features{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;max-width:960px;margin:0 auto}
-  .feat{background:#0e1a10;border:1px solid rgba(34,197,94,.08);border-radius:16px;padding:26px;transition:.2s}
-  .feat:hover{border-color:rgba(34,197,94,.25);transform:translateY(-2px)}
-  .feat-icon{font-size:30px;margin-bottom:14px}
-  .feat h3{font-size:15px;font-weight:800;margin-bottom:8px}
-  .feat p{font-size:13px;color:#8a9f8d;line-height:1.65}
+  /* ── MOCK UI ── */
+  .mock-wrap {
+    max-width: 900px; margin: 0 auto 0;
+    background: var(--surface2); border: 1px solid rgba(34,197,94,.18);
+    border-radius: 20px; overflow: hidden;
+    box-shadow: 0 0 80px rgba(34,197,94,.1);
+  }
+  .mock-topbar { background: #070c08; padding: 10px 16px; display: flex; align-items: center; gap: 6px; border-bottom: 1px solid rgba(34,197,94,.1); }
+  .mock-dot { width: 10px; height: 10px; border-radius: 50%; }
+  .mock-dot.r { background: #ef4444; }
+  .mock-dot.y { background: #eab308; }
+  .mock-dot.g { background: #22c55e; }
+  .mock-title { flex: 1; text-align: center; font-size: 11px; color: var(--text2); font-weight: 600; }
+  .mock-body { display: flex; height: 300px; }
+  .mock-sidebar { width: 180px; background: #070c08; border-right: 1px solid rgba(34,197,94,.08); padding: 16px 12px; display: flex; flex-direction: column; gap: 4px; flex-shrink: 0; }
+  .mock-logo { font-size: 14px; font-weight: 900; color: var(--green); padding: 8px 10px; margin-bottom: 8px; }
+  .mock-nav-item { font-size: 12px; padding: 8px 10px; border-radius: 8px; color: var(--text2); display: flex; align-items: center; gap: 6px; }
+  .mock-nav-item.active { background: rgba(34,197,94,.12); color: var(--green); font-weight: 600; }
+  .mock-content { flex: 1; padding: 20px; display: flex; flex-direction: column; gap: 14px; overflow: hidden; }
+  .mock-stats-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; }
+  .mock-stat-card { background: #070c08; border: 1px solid rgba(34,197,94,.1); border-radius: 10px; padding: 12px; text-align: center; }
+  .mock-stat-card strong { display: block; font-size: 18px; font-weight: 900; color: var(--green); }
+  .mock-stat-card small { font-size: 10px; color: var(--text2); }
+  .mock-table { background: #070c08; border: 1px solid rgba(34,197,94,.08); border-radius: 10px; overflow: hidden; }
+  .mock-table-row { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid rgba(34,197,94,.06); font-size: 12px; }
+  .mock-table-row:last-child { border-bottom: none; }
+  .mock-badge { padding: 3px 8px; border-radius: 100px; font-size: 10px; font-weight: 700; }
+  .mock-badge.done { background: rgba(34,197,94,.15); color: var(--green); }
+  .mock-badge.send { background: rgba(234,179,8,.15); color: #eab308; }
+  .mock-badge.draft { background: rgba(255,255,255,.07); color: var(--text2); }
 
-  /* HOW IT WORKS */
-  .how-section{background:#0e1a10;border-top:1px solid rgba(34,197,94,.08);border-bottom:1px solid rgba(34,197,94,.08);padding:72px 24px}
-  .steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:24px;max-width:900px;margin:0 auto}
-  .step{text-align:center;padding:24px}
-  .step-num{width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#16a34a,#22c55e);color:#fff;font-size:18px;font-weight:900;display:flex;align-items:center;justify-content:center;margin:0 auto 16px}
-  .step h3{font-size:15px;font-weight:800;margin-bottom:8px}
-  .step p{font-size:13px;color:#8a9f8d;line-height:1.6}
+  /* ── RESULTADO / PROBLEMA ── */
+  .split-wrap {
+    max-width: 1160px; margin: 0 auto;
+    display: grid; grid-template-columns: 1fr 1fr;
+    align-items: center; gap: 56px; padding: 72px 32px;
+  }
+  .split-img { border-radius: 20px; overflow: hidden; }
+  .split-img img { width: 100%; height: 380px; object-fit: cover; border-radius: 20px; }
+  .split-label { font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--green); margin-bottom: 12px; }
+  .split-text h2 { font-size: clamp(22px,3.5vw,34px); font-weight: 900; letter-spacing: -1px; line-height: 1.2; margin-bottom: 18px; }
+  .split-text h2 span { color: var(--green); }
+  .split-text p { font-size: 15px; color: var(--text2); line-height: 1.7; margin-bottom: 14px; }
+  .split-checks { display: flex; flex-direction: column; gap: 10px; margin-top: 20px; }
+  .split-check { display: flex; align-items: flex-start; gap: 10px; font-size: 14px; color: var(--text2); }
+  .split-check-icon {
+    width: 20px; height: 20px; border-radius: 6px; flex-shrink: 0;
+    background: rgba(34,197,94,0.15); border: 1px solid rgba(34,197,94,0.3);
+    display: flex; align-items: center; justify-content: center; font-size: 11px; margin-top: 1px;
+  }
+  .split-check strong { color: var(--text); }
+  .result-box {
+    background: rgba(34,197,94,0.06); border: 1px solid rgba(34,197,94,0.2);
+    border-radius: 14px; padding: 16px 20px; margin-top: 20px;
+    display: flex; gap: 20px;
+  }
+  .result-stat-num { font-size: 30px; font-weight: 900; color: var(--green); }
+  .result-stat-label { font-size: 12px; color: var(--text2); margin-top: 2px; }
 
-  /* PRICING */
-  .price-section{padding:72px 24px;text-align:center}
-  .plans-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;max-width:1000px;margin:0 auto}
-  .plan-card{background:#0e1a10;border:1px solid rgba(34,197,94,.1);border-radius:18px;padding:24px 18px;position:relative;transition:.2s}
-  .plan-card:hover{border-color:rgba(34,197,94,.3);transform:translateY(-2px)}
-  .plan-card.featured{border-color:#22c55e;background:linear-gradient(135deg,rgba(22,163,74,.1),#0e1a10);box-shadow:0 0 30px rgba(34,197,94,.1)}
-  .plan-tag{display:inline-block;background:#22c55e;color:#000;font-size:10px;font-weight:800;padding:3px 10px;border-radius:100px;margin-bottom:12px}
-  .plan-name{font-size:14px;font-weight:800;margin-bottom:4px}
-  .plan-price{font-size:30px;font-weight:900;color:#22c55e;margin-bottom:2px}
-  .plan-price-sub{font-size:11px;color:#6b9e72;margin-bottom:16px}
-  .plan-feats{list-style:none;text-align:left;display:flex;flex-direction:column;gap:7px;margin-bottom:20px}
-  .plan-feats li{font-size:12px;color:#8a9f8d;display:flex;gap:6px}
-  .plan-feats li::before{content:'✓';color:#22c55e;font-weight:900;flex-shrink:0}
-  .plan-btn{width:100%;padding:10px;border-radius:10px;background:linear-gradient(135deg,#16a34a,#22c55e);border:none;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:.2s}
-  .plan-btn:hover{opacity:.9}
-  .plan-btn.outline{background:none;border:1px solid rgba(34,197,94,.25);color:#22c55e}
-  .plan-btn.outline:hover{border-color:#22c55e;background:rgba(34,197,94,.06)}
+  /* ── FEATURES ── */
+  .features-section { padding: 72px 32px; background: var(--bg2); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+  .section-tag { text-align:center;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--green);margin-bottom:12px; }
+  .section-title { text-align:center;font-size:clamp(24px,4vw,38px);font-weight:900;letter-spacing:-1px;margin-bottom:10px; }
+  .section-sub { text-align:center;color:var(--text2);font-size:15px;margin-bottom:48px; }
+  .features-grid { display:grid;grid-template-columns:repeat(3,1fr);gap:16px;max-width:960px;margin:0 auto; }
+  .feat { background:#07100a; border:1px solid var(--border); border-radius:16px; padding:26px; transition:.2s; }
+  .feat:hover { border-color:rgba(34,197,94,.28); transform:translateY(-2px); }
+  .feat-icon { font-size:30px; margin-bottom:14px; }
+  .feat h3 { font-size:15px; font-weight:800; margin-bottom:8px; }
+  .feat p { font-size:13px; color:var(--text2); line-height:1.65; }
 
-  /* CTA FINAL */
-  .cta-section{text-align:center;padding:80px 24px;position:relative;overflow:hidden}
-  .cta-section::before{content:'';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:500px;height:300px;background:radial-gradient(ellipse,rgba(34,197,94,.1) 0%,transparent 70%);pointer-events:none}
-  .cta-section h2{font-size:clamp(26px,4vw,40px);font-weight:900;letter-spacing:-1px;margin-bottom:16px}
-  .cta-section p{color:#8a9f8d;font-size:16px;margin-bottom:36px}
+  /* ── STEPS ── */
+  .steps-section { padding: 72px 32px; }
+  .steps { display:flex; gap:0; max-width:800px; margin:0 auto; flex-wrap:wrap; justify-content:center; }
+  .step { flex:1; min-width:180px; max-width:260px; text-align:center; padding:24px 16px; position:relative; }
+  .step:not(:last-child)::after { content:'→'; position:absolute; right:-8px; top:28px; color:var(--text2); font-size:20px; }
+  .step-num { width:52px; height:52px; border-radius:50%; background:linear-gradient(135deg,var(--green2),var(--green)); color:#fff; font-size:20px; font-weight:900; display:flex; align-items:center; justify-content:center; margin:0 auto 16px; box-shadow:0 8px 24px rgba(34,197,94,.3); }
+  .step h3 { font-size:15px; font-weight:800; margin-bottom:8px; }
+  .step p { font-size:13px; color:var(--text2); line-height:1.6; }
 
-  /* FOOTER */
-  footer{padding:28px 24px;text-align:center;font-size:12px;color:#6b9e72;border-top:1px solid rgba(34,197,94,.08)}
-  footer a{color:#22c55e}
+  /* ── TESTIMONIALS ── */
+  .testi-section { padding: 72px 32px; background: var(--bg2); border-top: 1px solid var(--border); }
+  .testi-grid { display:flex; flex-direction:column; gap:20px; max-width:860px; margin:0 auto; }
+  .testi-card {
+    background: #07100a; border: 1px solid var(--border);
+    border-radius: 20px; overflow: hidden;
+    display: grid; grid-template-columns: 220px 1fr;
+    transition: .2s;
+  }
+  .testi-card:hover { border-color: var(--border2); }
+  .testi-img { width: 100%; height: 100%; min-height: 280px; object-fit: cover; object-position: center top; }
+  .testi-body { padding: 28px 26px; display: flex; flex-direction: column; justify-content: center; }
+  .testi-stars { color: #22c55e; font-size: 18px; margin-bottom: 12px; }
+  .testi-quote { font-size: 15px; color: var(--text2); line-height: 1.7; font-style: italic; margin-bottom: 16px; }
+  .testi-name { font-size: 15px; font-weight: 800; }
+  .testi-role { font-size: 12px; color: var(--text2); margin-top: 2px; }
+  .testi-badge { display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--green);margin-top:10px;font-weight:600; }
 
-  /* HERO IMAGE */
-  .hero-img-wrap{max-width:900px;margin:0 auto 60px;border-radius:20px;overflow:hidden;box-shadow:0 0 60px rgba(34,197,94,.15);border:1px solid rgba(34,197,94,.15)}
-  .hero-img-wrap img{width:100%;display:block}
+  /* ── PRICING ── */
+  .price-section { padding: 72px 32px; }
+  .plans-grid { display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;max-width:1000px;margin:0 auto; }
+  .plan-card { background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:24px 18px;position:relative;transition:.2s; }
+  .plan-card:hover { border-color:rgba(34,197,94,.3);transform:translateY(-2px); }
+  .plan-card.featured { border-color:var(--green);background:linear-gradient(135deg,rgba(22,163,74,.1),var(--surface));box-shadow:0 0 30px rgba(34,197,94,.1); }
+  .plan-tag { display:inline-block;background:var(--green);color:#000;font-size:10px;font-weight:800;padding:3px 10px;border-radius:100px;margin-bottom:12px; }
+  .plan-name { font-size:14px;font-weight:800;margin-bottom:4px; }
+  .plan-price { font-size:30px;font-weight:900;color:var(--green);margin-bottom:2px; }
+  .plan-price-sub { font-size:11px;color:var(--text2);margin-bottom:16px; }
+  .plan-feats { list-style:none;text-align:left;display:flex;flex-direction:column;gap:7px;margin-bottom:20px; }
+  .plan-feats li { font-size:12px;color:var(--text2);display:flex;gap:6px; }
+  .plan-feats li::before { content:'✓';color:var(--green);font-weight:900;flex-shrink:0; }
+  .plan-btn { width:100%;padding:10px;border-radius:10px;background:linear-gradient(135deg,var(--green2),var(--green));border:none;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:.2s; }
+  .plan-btn:hover { opacity:.9; }
+  .plan-btn.outline { background:none;border:1px solid rgba(34,197,94,.25);color:var(--green); }
+  .plan-btn.outline:hover { border-color:var(--green);background:rgba(34,197,94,.06); }
 
-  /* FEATURE HIGHLIGHT */
-  .feat-highlight{max-width:960px;margin:0 auto 0;display:grid;grid-template-columns:1fr 1fr;gap:40px;align-items:center;padding:0 0 24px}
-  .feat-highlight-text h2{font-size:clamp(22px,3.5vw,32px);font-weight:900;letter-spacing:-0.8px;margin-bottom:14px;line-height:1.2}
-  .feat-highlight-text h2 span{color:#22c55e}
-  .feat-highlight-text p{font-size:14px;color:#8a9f8d;line-height:1.7;margin-bottom:20px}
-  .feat-highlight-text ul{list-style:none;display:flex;flex-direction:column;gap:8px}
-  .feat-highlight-text ul li{font-size:13px;color:#8a9f8d;display:flex;align-items:flex-start;gap:8px}
-  .feat-highlight-text ul li::before{content:'✓';color:#22c55e;font-weight:900;margin-top:1px;flex-shrink:0}
-  .feat-highlight-img{border-radius:16px;overflow:hidden;box-shadow:0 0 40px rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.12)}
-  .feat-highlight-img img{width:100%;display:block}
+  /* ── CTA FINAL ── */
+  .cta-section { position:relative; padding:96px 32px; text-align:center; overflow:hidden; }
+  .cta-bg { position:absolute;inset:0;background-image:url('/static/img/mandazap/mandazap-cta.jpg');background-size:cover;background-position:center;filter:brightness(0.3); }
+  .cta-overlay { position:absolute;inset:0;background:radial-gradient(ellipse at center,rgba(34,197,94,0.15) 0%,rgba(9,9,15,0.5) 100%); }
+  .cta-content { position:relative;z-index:1;max-width:600px;margin:0 auto; }
+  .cta-content h2 { font-size:clamp(26px,4vw,42px);font-weight:900;letter-spacing:-1.5px;margin-bottom:16px;line-height:1.1; }
+  .cta-content h2 span { color:var(--green); }
+  .cta-content p { color:var(--text2);font-size:16px;margin-bottom:36px;line-height:1.6; }
 
-  @media(max-width:700px){.feat-highlight{grid-template-columns:1fr}}
-  @media(max-width:600px){.hero-ctas{flex-direction:column;align-items:stretch}.cta-big,.cta-sec{justify-content:center}.mock-body{flex-direction:column;height:auto}.mock-sidebar{width:100%;height:48px;flex-direction:row;padding:8px 12px;overflow-x:auto}.mock-stats-grid{grid-template-columns:repeat(2,1fr)}}
+  /* ── FOOTER ── */
+  footer { padding:28px 24px;text-align:center;font-size:12px;color:var(--text2);border-top:1px solid var(--border); }
+  footer a { color:var(--green); }
+
+  /* ── MOBILE CTA ── */
+  .mobile-cta-bar {
+    display:none; position:fixed; bottom:0; left:0; right:0;
+    background:rgba(9,9,15,0.95); backdrop-filter:blur(16px);
+    border-top:1px solid var(--border2); padding:12px 16px; z-index:100;
+  }
+  .mobile-cta-bar a { display:block; }
+  .mobile-cta-bar .cta-big { width:100%; justify-content:center; font-size:14px; padding:13px; }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 900px) {
+    .hero-wrap { grid-template-columns: 1fr; padding: 48px 20px 40px; gap: 32px; }
+    .hero-img-wrap img { height: 300px; }
+    .split-wrap { grid-template-columns: 1fr; padding: 48px 20px; gap: 32px; }
+    .features-grid { grid-template-columns: repeat(2,1fr); }
+    .testi-card { grid-template-columns: 180px 1fr; }
+  }
+  @media (max-width: 700px) {
+    .testi-card { grid-template-columns: 1fr; }
+    .testi-img { min-height: 260px; max-height: 300px; }
+    .step:not(:last-child)::after { display: none; }
+    .features-grid { grid-template-columns: 1fr; }
+    .mock-body { flex-direction: column; height: auto; }
+    .mock-sidebar { width: 100%; height: 48px; flex-direction: row; padding: 8px 12px; overflow-x: auto; }
+    .mock-stats-grid { grid-template-columns: repeat(2,1fr); }
+  }
+  @media (max-width: 600px) {
+    .nav-links .btn-outline:first-child { display: none; }
+    .mobile-cta-bar { display: block; }
+    body { padding-bottom: 72px; }
+    .stats-bar { gap: 8px; }
+    .stat-pill { padding: 8px 14px; }
+  }
 </style>
 </head>
 <body>
 
+<!-- NAV -->
 <nav>
   <div class="nav-logo">
     <img src="/static/img/mandazap/logo.png" alt="MandaZap"
-         style="height:32px;width:32px;border-radius:8px;object-fit:cover"
          onerror="this.style.display='none';">
     MandaZap
   </div>
@@ -150,88 +318,186 @@
   </div>
 </nav>
 
-<!-- HERO -->
-<div class="hero">
-  <div class="hero-badge">📲 A plataforma de WhatsApp marketing do Brasil</div>
-  <h1>Dispare mensagens e<br><span>venda mais no WhatsApp</span></h1>
-  <p>Importe listas, personalize mensagens com o nome do cliente e envie em massa. <strong>Anti-ban inteligente</strong> incluso. Funciona para qualquer negócio.</p>
-  <div class="hero-ctas">
-    <a href="/mandazap/cadastro"><button class="cta-big">📲 Começar grátis — 2 dias</button></a>
-    <a href="#planos"><button class="cta-sec">Ver planos</button></a>
+<!-- HERO SPLIT -->
+<div class="hero-wrap">
+  <div class="hero-text">
+    <div class="hero-badge">📲 A plataforma de WhatsApp marketing do Brasil</div>
+    <h1>Dispare mensagens e<br><span>venda mais no WhatsApp</span></h1>
+    <p>Importe listas, personalize com o nome de cada cliente e envie em massa. <strong>Anti-ban inteligente</strong> incluso. Funciona para qualquer negócio, de qualquer tamanho.</p>
+    <div class="hero-ctas">
+      <a href="/mandazap/cadastro"><button class="cta-big">📲 Começar grátis — 2 dias</button></a>
+      <a href="#planos"><button class="cta-sec">Ver planos</button></a>
+    </div>
+    <div class="hero-trust">
+      <div class="hero-trust-avatars">
+        <span>👩</span><span>👨</span><span>👩</span><span>👨</span>
+      </div>
+      <span>Negócios de todo o Brasil já disparam com o MandaZap</span>
+    </div>
   </div>
-  <div class="stats-row">
-    <div class="stat-item"><strong>399+</strong><span>Envios/dia no plano básico</span></div>
-    <div class="stat-item"><strong>Anti-ban</strong><span>Intervalo randômico incluído</span></div>
-    <div class="stat-item"><strong>2 min</strong><span>Para conectar e enviar</span></div>
-    <div class="stat-item"><strong>100%</strong><span>Feito para o mercado BR</span></div>
-  </div>
-</div>
 
-<!-- HERO IMAGE -->
-<div style="padding:0 24px">
   <div class="hero-img-wrap">
-    <img src="/static/img/mandazap/hero.png" alt="MandaZap — Dispare mensagens e venda mais no WhatsApp">
+    <picture>
+      <source media="(max-width:599px)" srcset="/static/img/mandazap/mandazap-hero-mobile.jpg">
+      <img src="/static/img/mandazap/mandazap-hero.jpg" alt="Empresário vendo resultados do MandaZap" loading="eager">
+    </picture>
+    <div class="hero-img-badge">
+      <div class="hero-img-badge-icon">📲</div>
+      <div>
+        <div class="hero-img-badge-title">Campanha "Promoção Verão" concluída</div>
+        <div class="hero-img-badge-sub">1.247 mensagens entregues ✓✓ · Taxa de abertura 97%</div>
+      </div>
+      <div class="hero-img-badge-dot"></div>
+    </div>
   </div>
 </div>
 
-<!-- MOCK UI -->
-<div style="padding:0 24px">
-<div class="mock-wrap">
-  <div class="mock-topbar">
-    <div class="mock-dot r"></div><div class="mock-dot y"></div><div class="mock-dot g"></div>
-    <div class="mock-title">mandazap — Painel</div>
+<!-- STATS BAR -->
+<div class="stats-bar">
+  <div class="stat-pill">
+    <div><div class="stat-num">399+</div><div class="stat-label">envios/dia no plano básico</div></div>
   </div>
-  <div class="mock-body">
-    <div class="mock-sidebar">
-      <div class="mock-logo">📲 MandaZap</div>
-      <div class="mock-nav-item active">🏠 Dashboard</div>
-      <div class="mock-nav-item">📞 Números</div>
-      <div class="mock-nav-item">👥 Contatos</div>
-      <div class="mock-nav-item">📋 Listas</div>
-      <div class="mock-nav-item">📢 Campanhas</div>
-      <div class="mock-nav-item">📝 Templates</div>
+  <div class="stat-pill">
+    <div><div class="stat-num">Anti-ban</div><div class="stat-label">intervalo randômico incluso</div></div>
+  </div>
+  <div class="stat-pill">
+    <div><div class="stat-num">2 min</div><div class="stat-label">para conectar e disparar</div></div>
+  </div>
+  <div class="stat-pill">
+    <div><div class="stat-num">97%</div><div class="stat-label">taxa de abertura média</div></div>
+  </div>
+</div>
+
+<!-- MOCK UI PAINEL -->
+<div style="padding:0 24px 72px;">
+  <div class="mock-wrap">
+    <div class="mock-topbar">
+      <div class="mock-dot r"></div><div class="mock-dot y"></div><div class="mock-dot g"></div>
+      <div class="mock-title">mandazap — Painel</div>
     </div>
-    <div class="mock-content">
-      <div class="mock-stats-grid">
-        <div class="mock-stat-card"><strong>1.240</strong><small>Contatos</small></div>
-        <div class="mock-stat-card"><strong>8</strong><small>Listas</small></div>
-        <div class="mock-stat-card"><strong>23</strong><small>Campanhas</small></div>
-        <div class="mock-stat-card"><strong>399</strong><small>Enviados hoje</small></div>
+    <div class="mock-body">
+      <div class="mock-sidebar">
+        <div class="mock-logo">📲 MandaZap</div>
+        <div class="mock-nav-item active">🏠 Dashboard</div>
+        <div class="mock-nav-item">📞 Números</div>
+        <div class="mock-nav-item">👥 Contatos</div>
+        <div class="mock-nav-item">📋 Listas</div>
+        <div class="mock-nav-item">📢 Campanhas</div>
+        <div class="mock-nav-item">📝 Templates</div>
       </div>
-      <div class="mock-table">
-        <div class="mock-table-row" style="font-size:10px;font-weight:700;color:#6b9e72;border-bottom:1px solid rgba(34,197,94,.1)">
-          <span style="flex:2">CAMPANHA</span><span style="flex:1">LISTA</span><span style="flex:1">ENVIADOS</span><span>STATUS</span>
+      <div class="mock-content">
+        <div class="mock-stats-grid">
+          <div class="mock-stat-card"><strong>1.240</strong><small>Contatos</small></div>
+          <div class="mock-stat-card"><strong>8</strong><small>Listas</small></div>
+          <div class="mock-stat-card"><strong>23</strong><small>Campanhas</small></div>
+          <div class="mock-stat-card"><strong>399</strong><small>Enviados hoje</small></div>
         </div>
-        <div class="mock-table-row">
-          <span style="flex:2;font-weight:600">Promoção Verão 🌞</span>
-          <span style="flex:1;color:#6b9e72">Clientes VIP</span>
-          <span style="flex:1;color:#22c55e;font-weight:700">399</span>
-          <span class="mock-badge done">Concluída</span>
-        </div>
-        <div class="mock-table-row">
-          <span style="flex:2;font-weight:600">Lembrete Vencimento</span>
-          <span style="flex:1;color:#6b9e72">Placa Final 2</span>
-          <span style="flex:1;color:#eab308;font-weight:700">241/399</span>
-          <span class="mock-badge send">Enviando...</span>
-        </div>
-        <div class="mock-table-row">
-          <span style="flex:2;font-weight:600">Oferta Flash ⚡</span>
-          <span style="flex:1;color:#6b9e72">Todos</span>
-          <span style="flex:1;color:#6b9e72">0</span>
-          <span class="mock-badge draft">Rascunho</span>
+        <div class="mock-table">
+          <div class="mock-table-row" style="font-size:10px;font-weight:700;color:#6b9e72;border-bottom:1px solid rgba(34,197,94,.1)">
+            <span style="flex:2">CAMPANHA</span><span style="flex:1">LISTA</span><span style="flex:1">ENVIADOS</span><span>STATUS</span>
+          </div>
+          <div class="mock-table-row">
+            <span style="flex:2;font-weight:600">Promoção Verão 🌞</span>
+            <span style="flex:1;color:#6b9e72">Clientes VIP</span>
+            <span style="flex:1;color:#22c55e;font-weight:700">399</span>
+            <span class="mock-badge done">Concluída</span>
+          </div>
+          <div class="mock-table-row">
+            <span style="flex:2;font-weight:600">Lembrete Vencimento</span>
+            <span style="flex:1;color:#6b9e72">Placa Final 2</span>
+            <span style="flex:1;color:#eab308;font-weight:700">241/399</span>
+            <span class="mock-badge send">Enviando...</span>
+          </div>
+          <div class="mock-table-row">
+            <span style="flex:2;font-weight:600">Oferta Flash ⚡</span>
+            <span style="flex:1;color:#6b9e72">Todos</span>
+            <span style="flex:1;color:#6b9e72">0</span>
+            <span class="mock-badge draft">Rascunho</span>
+          </div>
         </div>
       </div>
     </div>
   </div>
 </div>
-</div>
+
+<!-- RESULTADOS REAIS -->
+<section style="background:var(--bg2);border-top:1px solid var(--border);border-bottom:1px solid var(--border);padding:0;">
+  <div class="split-wrap">
+    <div class="split-text">
+      <div class="split-label">📈 Resultados reais</div>
+      <h2>Enquanto você dorme,<br><span>suas vendas chegam.</span></h2>
+      <p>Agende a campanha uma vez e o MandaZap dispara para toda a sua lista automaticamente — com anti-ban, personalização e entrega garantida.</p>
+      <div class="split-checks">
+        <div class="split-check">
+          <div class="split-check-icon">✓</div>
+          <div><strong>Mensagem personalizada</strong> com o nome de cada cliente</div>
+        </div>
+        <div class="split-check">
+          <div class="split-check-icon">✓</div>
+          <div><strong>Anti-ban inteligente</strong> — intervalo automático entre envios</div>
+        </div>
+        <div class="split-check">
+          <div class="split-check-icon">✓</div>
+          <div><strong>Relatório em tempo real</strong> — enviados, entregues e lidos</div>
+        </div>
+        <div class="split-check">
+          <div class="split-check-icon">✓</div>
+          <div><strong>Multi-número</strong> — distribui entre vários WhatsApp</div>
+        </div>
+      </div>
+      <div class="result-box" style="margin-top:24px;">
+        <div><div class="result-stat-num">97%</div><div class="result-stat-label">taxa média de abertura no WhatsApp</div></div>
+        <div style="width:1px;background:rgba(34,197,94,0.15);"></div>
+        <div><div class="result-stat-num">6×</div><div class="result-stat-label">mais que e-mail marketing</div></div>
+      </div>
+    </div>
+    <div class="split-img">
+      <img src="/static/img/mandazap/mandazap-card-resultado.jpg" alt="Resultados de campanha WhatsApp">
+    </div>
+  </div>
+</section>
+
+<!-- PARA QUEM É -->
+<section style="padding:0;">
+  <div class="split-wrap" style="direction:ltr;">
+    <div class="split-img">
+      <img src="/static/img/mandazap/mandazap-card-loja.jpg" alt="Loja usando MandaZap">
+    </div>
+    <div class="split-text">
+      <div class="split-label">🏪 Para qualquer negócio</div>
+      <h2>Seu negócio envia.<br><span>O cliente compra.</span></h2>
+      <p>Loja, restaurante, clínica, imobiliária, escola — qualquer negócio que tenha clientes no WhatsApp pode usar o MandaZap para vender mais.</p>
+      <div class="split-checks">
+        <div class="split-check">
+          <div class="split-check-icon">✓</div>
+          <div><strong>Promoções e ofertas</strong> — avise sua lista toda com 1 clique</div>
+        </div>
+        <div class="split-check">
+          <div class="split-check-icon">✓</div>
+          <div><strong>Lembretes de cobrança</strong> — automatize avisos de vencimento</div>
+        </div>
+        <div class="split-check">
+          <div class="split-check-icon">✓</div>
+          <div><strong>Reativação de clientes</strong> — reconquiste quem sumiu</div>
+        </div>
+        <div class="split-check">
+          <div class="split-check-icon">✓</div>
+          <div><strong>Lançamentos</strong> — avise todo mundo ao mesmo tempo</div>
+        </div>
+      </div>
+      <div style="margin-top:24px;">
+        <a href="/mandazap/cadastro"><button class="cta-big" style="font-size:14px;padding:13px 26px;">📲 Criar conta grátis</button></a>
+      </div>
+    </div>
+  </div>
+</section>
 
 <!-- FEATURES -->
-<section>
-  <div class="section-label">Por que o MandaZap</div>
+<div class="features-section">
+  <div class="section-tag">✦ Por que o MandaZap</div>
   <div class="section-title">Tudo que seu negócio precisa</div>
   <div class="section-sub">Simples de usar, poderoso nos resultados.</div>
-  <div class="features">
+  <div class="features-grid">
     <div class="feat">
       <div class="feat-icon">📋</div>
       <h3>Importe qualquer lista</h3>
@@ -245,7 +511,7 @@
     <div class="feat">
       <div class="feat-icon">🎯</div>
       <h3>Mensagens personalizadas</h3>
-      <p>Use <strong style="color:#22c55e">{nome}</strong>, <strong style="color:#22c55e">{empresa}</strong>, <strong style="color:#22c55e">{data}</strong> na mensagem. Cada cliente recebe com seu nome.</p>
+      <p>Use <strong style="color:var(--green)">{nome}</strong>, <strong style="color:var(--green)">{empresa}</strong>, <strong style="color:var(--green)">{data}</strong> na mensagem. Cada cliente recebe com seu nome.</p>
     </div>
     <div class="feat">
       <div class="feat-icon">🛡️</div>
@@ -263,28 +529,11 @@
       <p>Conecte vários WhatsApp Business e distribua os envios entre eles. Mais segurança, mais volume.</p>
     </div>
   </div>
+</div>
 
-  <!-- FEATURE HIGHLIGHT: AI PDF -->
-  <div class="feat-highlight" style="margin-top:56px">
-    <div class="feat-highlight-text">
-      <h2>A IA extrai telefones<br><span>de qualquer PDF</span></h2>
-      <p>Recebeu uma lista bagunçada em PDF? Sem problema. Jogue no MandaZap e a inteligência artificial localiza todos os telefones e nomes automaticamente.</p>
-      <ul>
-        <li>Funciona com PDFs escaneados e digitados</li>
-        <li>Elimina duplicatas automaticamente</li>
-        <li>Contatos prontos para campanha em segundos</li>
-        <li>Sem planilha, sem digitação manual</li>
-      </ul>
-    </div>
-    <div class="feat-highlight-img">
-      <img src="/static/img/mandazap/feature.png" alt="AI extrai telefones de PDF automaticamente">
-    </div>
-  </div>
-</section>
-
-<!-- HOW IT WORKS -->
-<div class="how-section">
-  <div class="section-label">Como funciona</div>
+<!-- STEPS -->
+<div class="steps-section">
+  <div class="section-tag">✦ Como funciona</div>
   <div class="section-title">Em 3 passos você está enviando</div>
   <div class="section-sub" style="margin-bottom:48px">Setup em menos de 2 minutos.</div>
   <div class="steps">
@@ -306,9 +555,38 @@
   </div>
 </div>
 
+<!-- TESTIMONIALS -->
+<div class="testi-section">
+  <div class="section-tag">✦ O que dizem nossos clientes</div>
+  <div class="section-title">Negócios reais.<br><span style="color:var(--green)">Resultados reais.</span></div>
+  <div class="section-sub" style="margin-bottom:40px">Quem já usa o MandaZap para vender mais todo dia.</div>
+  <div class="testi-grid">
+    <div class="testi-card">
+      <img src="/static/img/mandazap/mandazap-depo-1.jpg" alt="Cliente MandaZap" class="testi-img">
+      <div class="testi-body">
+        <div class="testi-stars">★★★★★</div>
+        <div class="testi-quote">"Mando promoção toda segunda-feira para 800 clientes. Em menos de 1 hora já tenho pedidos chegando no WhatsApp. O MandaZap pagou o plano inteiro na primeira campanha."</div>
+        <div class="testi-name">Fernanda Oliveira</div>
+        <div class="testi-role">Proprietária · Açaí da Fê · Joinville SC</div>
+        <div class="testi-badge">✅ Cliente verificada</div>
+      </div>
+    </div>
+    <div class="testi-card">
+      <img src="/static/img/mandazap/mandazap-depo-2.jpg" alt="Cliente MandaZap" class="testi-img">
+      <div class="testi-body">
+        <div class="testi-stars">★★★★★</div>
+        <div class="testi-quote">"Usava uma ferramenta americana que ficava dando ban. Com o MandaZap nunca perdi um número. O anti-ban funciona de verdade e o suporte responde na hora."</div>
+        <div class="testi-name">Ricardo Matos</div>
+        <div class="testi-role">Consultor imobiliário · Florianópolis SC</div>
+        <div class="testi-badge">✅ Cliente verificado</div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- PRICING -->
 <div class="price-section" id="planos">
-  <div class="section-label">Planos</div>
+  <div class="section-tag">✦ Planos</div>
   <div class="section-title">Simples e transparente</div>
   <div class="section-sub" style="margin-bottom:36px">2 dias grátis em qualquer plano. Sem cartão de crédito.</div>
   <div class="plans-grid">
@@ -329,19 +607,35 @@
     </div>
     {% endfor %}
   </div>
+  <p style="text-align:center;color:var(--text2);font-size:12px;margin-top:24px;">✅ 2 dias grátis · Sem cartão de crédito · Cancele quando quiser</p>
 </div>
 
 <!-- CTA FINAL -->
 <div class="cta-section">
-  <h2>Pronto para vender mais<br>pelo WhatsApp?</h2>
-  <p>2 dias grátis. Cancele quando quiser. Sem burocracia.</p>
-  <a href="/mandazap/cadastro"><button class="cta-big" style="font-size:17px;padding:17px 40px">📲 Criar conta — 2 dias grátis</button></a>
+  <div class="cta-bg"></div>
+  <div class="cta-overlay"></div>
+  <div class="cta-content">
+    <h2>Pronto para vender mais<br><span>pelo WhatsApp?</span></h2>
+    <p>Conecte em 2 minutos, importe sua lista e dispare sua primeira campanha ainda hoje. 2 dias grátis, sem burocracia.</p>
+    <a href="/mandazap/cadastro">
+      <button class="cta-big" style="font-size:17px;padding:17px 40px;margin-bottom:16px;">📲 Criar conta — 2 dias grátis</button>
+    </a>
+    <div style="font-size:12px;color:var(--text2);">Sem cartão de crédito · Anti-ban incluso · Suporte em português</div>
+  </div>
 </div>
 
+<!-- FOOTER -->
 <footer>
-  <p><a href="/">4KITEM</a> · <a href="/agenda">Agenda SC</a> · <a href="/alerta">Alerta SC</a> · <a href="/bau">Baú</a></p>
+  <p><a href="/">4KITEM</a> · <a href="/agenda">Agenda SC</a> · <a href="/alerta">Alerta SC</a> · <a href="/mandaja">MandaJá</a></p>
   <p style="margin-top:8px">© 2026 MandaZap · Todos os direitos reservados</p>
 </footer>
+
+<!-- MOBILE CTA -->
+<div class="mobile-cta-bar">
+  <a href="/mandazap/cadastro">
+    <button class="cta-big">📲 Começar grátis — 2 dias</button>
+  </a>
+</div>
 
 </body>
 </html>
