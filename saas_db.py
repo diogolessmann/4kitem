@@ -442,6 +442,7 @@ def init_saas_db():
         "ALTER TABLE mandaja_stores ADD COLUMN accepts_cash INTEGER DEFAULT 1",
         "ALTER TABLE mandaja_products ADD COLUMN options_json TEXT DEFAULT '[]'",
         "ALTER TABLE mandaja_orders ADD COLUMN change_for REAL DEFAULT 0",
+        "ALTER TABLE mandaja_stores ADD COLUMN cpf_cnpj TEXT DEFAULT ''",
     ]
     for sql in _mandaja_migrations:
         try:

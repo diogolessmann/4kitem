@@ -5459,10 +5459,11 @@ def mandaja_cadastro():
         owner_name = request.form.get('owner_name', '').strip()
         email      = request.form.get('email', '').strip().lower()
         phone      = request.form.get('phone', '').strip()
+        cpf_cnpj   = request.form.get('cpf_cnpj', '').strip()
         category   = request.form.get('category', 'restaurante')
         senha      = request.form.get('senha', '')
         city       = request.form.get('city', '').strip()
-        if not all([name, owner_name, email, phone, senha]):
+        if not all([name, owner_name, email, phone, cpf_cnpj, senha]):
             return render_template('mandaja/cadastro.html',
                                    error='Preencha todos os campos obrigatórios.',
                                    cats=MANDAJA_STORE_CATEGORIES)
@@ -5470,6 +5471,14 @@ def mandaja_cadastro():
             return render_template('mandaja/cadastro.html',
                                    error='Senha deve ter pelo menos 6 caracteres.',
                                    cats=MANDAJA_STORE_CATEGORIES)
+        # Normaliza CPF/CNPJ — só dígitos
+        cpf_cnpj_digits = ''.join(c for c in cpf_cnpj if c.isdigit())
+        if len(cpf_cnpj_digits) not in (11, 14):
+            return render_template('mandaja/cadastro.html',
+                                   error='CPF deve ter 11 dígitos ou CNPJ 14 dígitos. Verifique e tente novamente.',
+                                   cats=MANDAJA_STORE_CATEGORIES)
+        # Normaliza phone — só dígitos
+        phone_digits = ''.join(c for c in phone if c.isdigit())
         slug = _slugify(name)
         conn = get_saas_db()
         # Garante slug único
@@ -5481,16 +5490,36 @@ def mandaja_cadastro():
         if conn.execute('SELECT id FROM mandaja_stores WHERE LOWER(email)=?', (email,)).fetchone():
             conn.close()
             return render_template('mandaja/cadastro.html',
-                                   error='Este e-mail já está cadastrado.',
+                                   error='Este e-mail já está cadastrado. Faça login para acessar sua loja.',
                                    cats=MANDAJA_STORE_CATEGORIES)
-        trial_ends = (datetime.now() + timedelta(days=14)).isoformat()
+        # Verifica CPF/CNPJ único — anti-trial-abuse
+        existing_doc = conn.execute(
+            "SELECT id FROM mandaja_stores WHERE replace(replace(replace(replace(replace(cpf_cnpj,'.',''),'-',''),'/',''),' ',''),'','') = ?",
+            (cpf_cnpj_digits,)
+        ).fetchone()
+        if existing_doc:
+            conn.close()
+            return render_template('mandaja/cadastro.html',
+                                   error='Este CPF/CNPJ já possui uma loja cadastrada. Faça login ou entre em contato pelo WhatsApp (47) 99101-1351.',
+                                   cats=MANDAJA_STORE_CATEGORIES)
+        # Verifica WhatsApp único — anti-trial-abuse
+        existing_phone = conn.execute(
+            "SELECT id FROM mandaja_stores WHERE replace(replace(replace(replace(replace(phone,'(',''),')',''),'-',''),' ',''),'+','') = ?",
+            (phone_digits,)
+        ).fetchone()
+        if existing_phone:
+            conn.close()
+            return render_template('mandaja/cadastro.html',
+                                   error='Este WhatsApp já está vinculado a uma loja. Faça login ou entre em contato pelo WhatsApp (47) 99101-1351.',
+                                   cats=MANDAJA_STORE_CATEGORIES)
+        trial_ends = (datetime.now() + timedelta(days=7)).isoformat()
         conn.execute('''
             INSERT INTO mandaja_stores
-            (name, slug, owner_name, phone, email, password_hash, category, city, plan, created_at, trial_ends)
-            VALUES (?,?,?,?,?,?,?,?,'micro',?,?)
+            (name, slug, owner_name, phone, email, password_hash, category, city, plan, created_at, trial_ends, cpf_cnpj)
+            VALUES (?,?,?,?,?,?,?,?,'micro',?,?,?)
         ''', (name, slug, owner_name, phone, email,
               generate_password_hash(senha), category, city,
-              datetime.now().isoformat(), trial_ends))
+              datetime.now().isoformat(), trial_ends, cpf_cnpj_digits))
         conn.commit()
         store = conn.execute('SELECT * FROM mandaja_stores WHERE email=?', (email,)).fetchone()
         # Cria horários padrão (Seg-Sex 08-22, Sab 08-20)

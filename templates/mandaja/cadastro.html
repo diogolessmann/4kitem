@@ -35,7 +35,7 @@
     <div class="logo-sub">Criar minha loja delivery</div>
   </div>
 
-  <div class="trial-badge">🎉 14 dias grátis — sem cartão de crédito!</div>
+  <div class="trial-badge">🎉 7 dias grátis — sem cartão de crédito!</div>
 
   {% if error %}
   <div class="error">{{ error }}</div>
@@ -68,6 +68,12 @@
     <div class="field">
       <label>Seu nome *</label>
       <input type="text" name="owner_name" placeholder="Nome completo" required>
+    </div>
+
+    <div class="field">
+      <label>CPF ou CNPJ *</label>
+      <input type="text" name="cpf_cnpj" placeholder="000.000.000-00 ou 00.000.000/0001-00" required
+             maxlength="18" inputmode="numeric">
     </div>
 
     <div class="grid2">
