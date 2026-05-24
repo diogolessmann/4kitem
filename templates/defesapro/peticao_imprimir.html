@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Petição — {{ pet.placa or pet.numero_auto }} — DefesaPro</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Times New Roman', Times, serif;
+      font-size: 13pt;
+      line-height: 1.8;
+      color: #000;
+      background: #fff;
+      padding: 0;
+    }
+
+    /* Barra de controle — só aparece na tela, some ao imprimir */
+    .print-bar {
+      position: fixed; top: 0; left: 0; right: 0;
+      background: #1a1a2e; color: #fff;
+      padding: 10px 24px;
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; z-index: 100;
+      font-family: 'Inter', Arial, sans-serif;
+      font-size: 13px;
+    }
+    .print-bar .info { font-weight: 600; }
+    .print-bar .info span { color: #a855f7; }
+    .print-bar .actions { display: flex; gap: 10px; }
+    .btn-print {
+      padding: 7px 20px; border-radius: 8px; border: none; cursor: pointer;
+      font-size: 13px; font-weight: 700; font-family: inherit;
+    }
+    .btn-print.primary { background: #7c3aed; color: #fff; }
+    .btn-print.secondary {
+      background: transparent; color: #ccc;
+      border: 1px solid rgba(255,255,255,.2);
+    }
+    .btn-print.secondary:hover { background: rgba(255,255,255,.08); }
+
+    /* Documento */
+    .documento {
+      max-width: 210mm;
+      margin: 68px auto 40px;
+      padding: 25mm 25mm 25mm 30mm;
+      background: #fff;
+      min-height: 297mm;
+    }
+
+    .doc-header {
+      text-align: center;
+      border-bottom: 2px solid #000;
+      padding-bottom: 14px;
+      margin-bottom: 28px;
+    }
+    .doc-header .escritorio-nome {
+      font-size: 15pt; font-weight: bold; text-transform: uppercase; letter-spacing: 1px;
+    }
+    .doc-header .doc-meta {
+      font-size: 10pt; color: #444; margin-top: 4px;
+    }
+
+    .peticao-corpo {
+      white-space: pre-wrap;
+      font-size: 12pt;
+      line-height: 1.9;
+      text-align: justify;
+      word-wrap: break-word;
+    }
+
+    .doc-footer {
+      margin-top: 40px;
+      border-top: 1px solid #ccc;
+      padding-top: 10px;
+      font-size: 9pt;
+      color: #666;
+      text-align: center;
+    }
+
+    /* ── PRINT ── */
+    @media print {
+      .print-bar { display: none !important; }
+      .documento { margin: 0; padding: 25mm 25mm 25mm 30mm; box-shadow: none; }
+      body { background: #fff; }
+      @page {
+        size: A4;
+        margin: 0;
+      }
+    }
+
+    @media screen {
+      body { background: #0a0a12; }
+      .documento {
+        box-shadow: 0 8px 40px rgba(0,0,0,.5);
+        border-radius: 4px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Barra de controle (tela only) -->
+<div class="print-bar">
+  <div class="info">
+    DefesaPro &nbsp;·&nbsp; <span>{{ pet.placa or ('Auto '+pet.numero_auto) }}</span>
+    &nbsp;·&nbsp; {{ {'defesa_previa':'Defesa Prévia','defesa_previa_ia':'Defesa Prévia','recurso_jari':'Recurso JARI','recurso_jari_ia':'Recurso JARI','cetran':'CETRAN','cetran_ia':'CETRAN'}.get(pet.tipo, pet.tipo) }}
+  </div>
+  <div class="actions">
+    <button class="btn-print secondary" onclick="window.close()">✕ Fechar</button>
+    <button class="btn-print secondary" onclick="window.history.back()">← Voltar</button>
+    <button class="btn-print primary" onclick="window.print()">🖨️ Imprimir / Salvar PDF</button>
+  </div>
+</div>
+
+<!-- Documento A4 -->
+<div class="documento">
+
+  <div class="doc-header">
+    {% if escritorio %}
+    <div class="escritorio-nome">{{ escritorio }}</div>
+    {% endif %}
+    <div class="doc-meta">
+      {% if pet.placa %}Veículo: <strong>{{ pet.placa }}</strong> &nbsp;·&nbsp; {% endif %}
+      {% if pet.numero_auto %}Auto nº <strong>{{ pet.numero_auto }}</strong> &nbsp;·&nbsp; {% endif %}
+      Gerado em {{ hoje }} via DefesaPro
+    </div>
+  </div>
+
+  <div class="peticao-corpo">{{ pet.conteudo }}</div>
+
+  <div class="doc-footer">
+    Documento gerado pelo sistema DefesaPro &nbsp;·&nbsp; {{ hoje }}
+  </div>
+
+</div>
+
+<script>
+  // Auto-print se vier da URL com ?auto=1
+  if(new URLSearchParams(window.location.search).get('auto') === '1') {
+    setTimeout(()=> window.print(), 600);
+  }
+</script>
+</body>
+</html>

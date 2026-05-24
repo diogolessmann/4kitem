@@ -1,0 +1,111 @@
+{% extends 'defesapro/base.html' %}
+{% set active = 'perfil' %}
+{% block title %}Meu Perfil — DefesaPro{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-title">👤 Meu Perfil</div>
+    <div class="page-sub">Dados da conta e segurança</div>
+  </div>
+</div>
+
+{% if erro %}<div class="alert alert-error">⚠️ {{ erro }}</div>{% endif %}
+{% if sucesso %}<div class="alert alert-success">✅ {{ sucesso }}</div>{% endif %}
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;max-width:900px">
+
+  <!-- Dados pessoais -->
+  <div class="form-card">
+    <h3 style="margin-bottom:18px;font-size:15px;font-weight:700">📋 Dados do escritório</h3>
+    <form method="POST">
+      <input type="hidden" name="acao" value="dados">
+      <div class="form-grid" style="gap:13px">
+        <div class="form-group">
+          <label>Nome completo *</label>
+          <input class="form-control" name="name" value="{{ u.name }}" required maxlength="80">
+        </div>
+        <div class="form-group">
+          <label>E-mail</label>
+          <input class="form-control" value="{{ u.email }}" disabled style="opacity:.5;cursor:not-allowed" title="O e-mail não pode ser alterado">
+          <div class="hint" style="font-size:11px;color:var(--text3);margin-top:4px">Para alterar o e-mail, fale com o suporte.</div>
+        </div>
+        <div class="form-group">
+          <label>WhatsApp</label>
+          <input class="form-control" name="phone" value="{{ u.phone or '' }}" placeholder="(47) 99999-9999">
+        </div>
+        <div class="form-group">
+          <label>Nome do escritório</label>
+          <input class="form-control" name="escritorio" value="{{ u.escritorio or '' }}" placeholder="Escritório Silva Advogados">
+        </div>
+        <div class="form-group">
+          <label>Cidade/UF</label>
+          <input class="form-control" name="cidade" value="{{ u.cidade or '' }}" placeholder="Joinville, SC">
+        </div>
+      </div>
+      <button type="submit" class="btn btn-primary" style="margin-top:18px;width:100%">💾 Salvar dados</button>
+    </form>
+  </div>
+
+  <!-- Alterar senha + info do plano -->
+  <div style="display:flex;flex-direction:column;gap:16px">
+
+    <!-- Trocar senha -->
+    <div class="form-card">
+      <h3 style="margin-bottom:18px;font-size:15px;font-weight:700">🔐 Alterar senha</h3>
+      <form method="POST">
+        <input type="hidden" name="acao" value="senha">
+        <div class="form-grid" style="gap:13px">
+          <div class="form-group">
+            <label>Senha atual *</label>
+            <input class="form-control" type="password" name="senha_atual" placeholder="••••••••" required>
+          </div>
+          <div class="form-group">
+            <label>Nova senha *</label>
+            <input class="form-control" type="password" name="nova_senha" placeholder="Mínimo 6 caracteres" required minlength="6">
+          </div>
+          <div class="form-group">
+            <label>Confirmar nova senha *</label>
+            <input class="form-control" type="password" name="confirmar_senha" placeholder="Repita a senha" required minlength="6">
+          </div>
+        </div>
+        <button type="submit" class="btn btn-outline" style="margin-top:18px;width:100%">🔑 Alterar senha</button>
+      </form>
+    </div>
+
+    <!-- Info do plano -->
+    <div class="form-card" style="background:rgba(124,58,237,.06);border-color:rgba(124,58,237,.2)">
+      <h3 style="margin-bottom:14px;font-size:15px;font-weight:700">⚡ Meu plano</h3>
+      <div style="display:flex;flex-direction:column;gap:10px;font-size:13px">
+        <div style="display:flex;justify-content:space-between">
+          <span style="color:var(--text3)">Plano atual</span>
+          <span style="font-weight:700;color:var(--purple3);text-transform:capitalize">
+            {% if u.plan == 'starter' %}⚡ Starter — R$ 390/mês
+            {% elif u.plan == 'profissional' %}🚀 Profissional — R$ 590/mês
+            {% elif u.plan == 'premium' %}💎 Premium — R$ 990/mês
+            {% else %}{{ u.plan or '—' }}{% endif %}
+          </span>
+        </div>
+        <div style="display:flex;justify-content:space-between">
+          <span style="color:var(--text3)">Status</span>
+          <span>{% if u.active %}<span style="color:#22c55e;font-weight:700">✅ Ativo</span>{% else %}<span style="color:#f59e0b;font-weight:700">⏳ Aguardando ativação</span>{% endif %}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between">
+          <span style="color:var(--text3)">Membro desde</span>
+          <span>{{ (u.created_at or '')[:10] }}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between">
+          <span style="color:var(--text3)">CPF/CNPJ</span>
+          <span>{{ u.cpf_cnpj or '—' }}</span>
+        </div>
+      </div>
+      <a href="https://wa.me/5547991011351?text=Olá%2C%20quero%20alterar%20meu%20plano%20no%20DefesaPro"
+         target="_blank"
+         class="btn btn-outline"
+         style="width:100%;justify-content:center;margin-top:16px;font-size:13px">
+        💬 Alterar plano via WhatsApp
+      </a>
+    </div>
+
+  </div>
+</div>
+{% endblock %}

@@ -1352,6 +1352,79 @@ def defesa_peticao_deletar(tid):
     return redirect('/defesapro/peticoes')
 
 
+@app.route('/defesapro/peticoes/<int:tid>/imprimir')
+@_defesa_login_required
+def defesa_peticao_imprimir(tid):
+    user_id = session['defesa_user_id']
+    conn = get_saas_db()
+    pet = conn.execute(
+        'SELECT t.*, p.placa, p.numero_auto, p.proprietario, p.artigo_ctb, p.descricao,'
+        '       c.name AS cliente_nome'
+        ' FROM defesapro_peticoes t'
+        ' LEFT JOIN defesapro_processos p ON p.id=t.processo_id'
+        ' LEFT JOIN defesapro_clientes  c ON c.id=p.cliente_id'
+        ' WHERE t.id=? AND t.user_id=?',
+        (tid, user_id)
+    ).fetchone()
+    conn.close()
+    if not pet:
+        return redirect('/defesapro/peticoes')
+    escritorio = session.get('defesa_escritorio', '')
+    return render_template('defesapro/peticao_imprimir.html',
+                           pet=dict(pet), escritorio=escritorio,
+                           hoje=datetime.now().strftime('%d/%m/%Y'))
+
+
+# ── DefesaPro — Perfil ────────────────────────────────────────────────────────
+@app.route('/defesapro/perfil', methods=['GET', 'POST'])
+@_defesa_login_required
+def defesa_perfil():
+    user_id = session['defesa_user_id']
+    conn = get_saas_db()
+    u = conn.execute('SELECT * FROM defesapro_users WHERE id=?', (user_id,)).fetchone()
+    if not u:
+        conn.close(); return redirect('/defesapro/login')
+    erro = sucesso = None
+    if request.method == 'POST':
+        acao = request.form.get('acao', 'dados')
+        if acao == 'dados':
+            name       = request.form.get('name', '').strip()
+            phone      = request.form.get('phone', '').strip()
+            escritorio = request.form.get('escritorio', '').strip()
+            cidade     = request.form.get('cidade', '').strip()
+            if not name:
+                erro = 'Nome é obrigatório.'
+            else:
+                conn.execute(
+                    'UPDATE defesapro_users SET name=?,phone=?,escritorio=?,cidade=? WHERE id=?',
+                    (name, phone, escritorio, cidade, user_id)
+                )
+                conn.commit()
+                session['defesa_user_name']  = name
+                session['defesa_escritorio'] = escritorio or name
+                sucesso = 'Dados atualizados com sucesso.'
+                u = conn.execute('SELECT * FROM defesapro_users WHERE id=?', (user_id,)).fetchone()
+        elif acao == 'senha':
+            senha_atual = request.form.get('senha_atual', '')
+            nova_senha  = request.form.get('nova_senha', '').strip()
+            confirmar   = request.form.get('confirmar_senha', '').strip()
+            if not u['password_hash'] or not check_password_hash(u['password_hash'], senha_atual):
+                erro = 'Senha atual incorreta.'
+            elif len(nova_senha) < 6:
+                erro = 'A nova senha deve ter pelo menos 6 caracteres.'
+            elif nova_senha != confirmar:
+                erro = 'As senhas não coincidem.'
+            else:
+                conn.execute(
+                    'UPDATE defesapro_users SET password_hash=? WHERE id=?',
+                    (generate_password_hash(nova_senha), user_id)
+                )
+                conn.commit()
+                sucesso = 'Senha alterada com sucesso.'
+    conn.close()
+    return render_template('defesapro/perfil.html', u=dict(u), erro=erro, sucesso=sucesso)
+
+
 # ── DefesaPro — Prazos ────────────────────────────────────────────────────────
 @app.route('/defesapro/prazos')
 @_defesa_login_required
@@ -1449,6 +1522,38 @@ def defesa_financeiro():
 
 
 # ── DefesaPro — Admin: definir senha do usuário ────────────────────────────────
+@app.route('/admin/defesapro/user/<int:user_id>/toggle-active', methods=['POST'])
+@app.route('/admin/defesapro/user/<int:user_id>/status', methods=['POST'])
+@_saas_admin_required
+def saas_defesa_toggle_active(user_id):
+    data   = request.get_json(silent=True) or {}
+    conn   = get_saas_db()
+    u      = conn.execute('SELECT active FROM defesapro_users WHERE id=?', (user_id,)).fetchone()
+    if not u:
+        conn.close(); return jsonify({'success': False, 'error': 'Usuário não encontrado'})
+    # Aceita tanto toggle quanto active=True/False explícito
+    if 'active' in data:
+        novo = 1 if data['active'] else 0
+    else:
+        novo = 0 if u['active'] else 1
+    conn.execute('UPDATE defesapro_users SET active=? WHERE id=?', (novo, user_id))
+    conn.commit(); conn.close()
+    return jsonify({'success': True, 'active': novo})
+
+
+@app.route('/admin/defesapro/user/<int:user_id>/set-plano', methods=['POST'])
+@_saas_admin_required
+def saas_defesa_set_plano(user_id):
+    data  = request.get_json() or {}
+    plano = (data.get('plano') or '').strip()
+    if plano not in ('starter', 'profissional', 'premium'):
+        return jsonify({'success': False, 'error': 'Plano inválido'})
+    conn = get_saas_db()
+    conn.execute('UPDATE defesapro_users SET plan=? WHERE id=?', (plano, user_id))
+    conn.commit(); conn.close()
+    return jsonify({'success': True})
+
+
 @app.route('/admin/defesapro/user/<int:user_id>/set-senha', methods=['POST'])
 @_saas_admin_required
 def saas_defesa_set_senha(user_id):

@@ -32,6 +32,7 @@
       <td>
         <button class="btn btn-outline btn-sm" onclick="showPet({{ pet.id }})">👁️ Ver</button>
         <button class="btn btn-outline btn-sm" onclick="copyPetById({{ pet.id }})">📋 Copiar</button>
+        <a href="/defesapro/peticoes/{{ pet.id }}/imprimir" target="_blank" class="btn btn-outline btn-sm">🖨️ PDF</a>
         <form method="POST" action="/defesapro/peticoes/{{ pet.id }}/deletar" style="display:inline" onsubmit="return confirm('Excluir petição?')">
           <button class="btn btn-danger btn-sm">🗑️</button>
         </form>
