@@ -288,16 +288,20 @@
 
   /* ── TESTIMONIALS ── */
   .testi-section { padding: 72px 32px; background: var(--bg2); border-top: 1px solid var(--border); }
-  .testi-grid { display:grid; grid-template-columns:1fr 1fr; gap:20px; max-width:900px; margin:0 auto; }
-  .testi-card { background:var(--surface); border:1px solid var(--border); border-radius:20px; overflow:hidden; }
-  .testi-photo { height: 260px; overflow:hidden; }
+  .testi-grid { display:flex; flex-direction:column; gap:20px; max-width:860px; margin:0 auto; }
+  .testi-card {
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:20px; overflow:hidden;
+    display:grid; grid-template-columns:220px 1fr;
+  }
+  .testi-photo { overflow:hidden; min-height:280px; }
   .testi-photo img { width:100%; height:100%; object-fit:cover; object-position:center top; }
-  .testi-body { padding:24px; }
-  .testi-stars { color:var(--orange); font-size:16px; margin-bottom:10px; }
-  .testi-quote { font-size:14px; color:var(--text2); line-height:1.65; font-style:italic; margin-bottom:14px; }
-  .testi-name { font-size:14px; font-weight:800; }
+  .testi-body { padding:32px 28px; display:flex; flex-direction:column; justify-content:center; }
+  .testi-stars { color:var(--orange); font-size:18px; margin-bottom:12px; }
+  .testi-quote { font-size:15px; color:var(--text2); line-height:1.7; font-style:italic; margin-bottom:16px; }
+  .testi-name { font-size:15px; font-weight:800; }
   .testi-role { font-size:12px; color:var(--text2); margin-top:2px; }
-  .testi-verified { display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--green);margin-top:8px;font-weight:600; }
+  .testi-verified { display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--green);margin-top:10px;font-weight:600; }
 
   /* ── PLANOS ── */
   .plans-section { padding: 72px 32px; }
@@ -378,10 +382,14 @@
     .problem-wrap { grid-template-columns: 1fr; padding: 48px 20px; }
     .demo-wrap { grid-template-columns: 1fr; padding: 48px 20px; }
     .audience-grid { grid-template-columns: 1fr; max-width: 440px; }
-    .testi-grid { grid-template-columns: 1fr; max-width: 440px; }
+    .testi-card { grid-template-columns: 180px 1fr; }
     .plans-grid { grid-template-columns: repeat(2,1fr); }
     .report-grid { grid-template-columns: 1fr; }
     .step:not(:last-child)::after { display: none; }
+  }
+  @media (max-width: 600px) {
+    .testi-card { grid-template-columns: 1fr; }
+    .testi-photo { min-height: 260px; max-height: 300px; }
   }
   @media (max-width: 600px) {
     .nav-links .nav-outline { display: none; }
