@@ -864,13 +864,13 @@ def _map_artigo_ctb(texto):
     """Mapeia texto livre do artigo CTB extraído por OCR para chave do CTB_ARTIGOS."""
     import re as _re_m
     t = texto.lower()
-    t = re.sub(r'art[igo.]*\s*', '', t)          # remove "art.", "artigo"
+    t = _re_m.sub(r'art[igo.]*\s*', '', t)          # remove "art.", "artigo"
     t = t.replace(',', ' ').replace(';', ' ')
     # normaliza incisos romanos para _x
-    t = re.sub(r'\s+iv\b', '_iv', t)
-    t = re.sub(r'\s+iii\b', '_iii', t)
-    t = re.sub(r'\s+ii\b', '_ii', t)
-    t = re.sub(r'\s+i\b', '_i', t)
+    t = _re_m.sub(r'\s+iv\b', '_iv', t)
+    t = _re_m.sub(r'\s+iii\b', '_iii', t)
+    t = _re_m.sub(r'\s+ii\b', '_ii', t)
+    t = _re_m.sub(r'\s+i\b', '_i', t)
     t = t.strip()
     MAPA = {
         '162_i': '162_i', '162': '162_i',
@@ -950,12 +950,12 @@ def defesa_processo_ocr():
 
     match = _re_ocr.search(r'\{[\s\S]*\}', texto)
     if not match:
-        return jsonify({'erro': 'A IA não conseguiu extrair dados — tente com uma foto mais nítida'}), 422
+        return jsonify({'erro': 'Não foi possível extrair dados — tente com uma foto mais nítida e legível'}), 422
 
     try:
         data = _json_ocr.loads(match.group())
     except Exception:
-        return jsonify({'erro': 'Erro ao interpretar resposta da IA — tente novamente'}), 422
+        return jsonify({'erro': 'Erro ao interpretar resposta — tente novamente'}), 422
 
     # Mapeia artigo para chave do CTB_ARTIGOS
     artigo_raw = str(data.get('artigo_ctb') or '')
@@ -965,14 +965,14 @@ def defesa_processo_ocr():
     try:
         vm = data.get('valor_multa')
         if isinstance(vm, str):
-            vm = re.sub(r'[^\d,.]', '', vm).replace(',', '.')
+            vm = _re_ocr.sub(r'[^\d,.]', '', vm).replace(',', '.')
         data['valor_multa'] = round(float(vm or 0), 2)
     except Exception:
         data['valor_multa'] = 0.0
 
     # Normaliza placa: remove espaços, traços extras
     placa = str(data.get('placa') or '').upper().strip()
-    placa = re.sub(r'[^A-Z0-9]', '', placa)
+    placa = _re_ocr.sub(r'[^A-Z0-9]', '', placa)
     if len(placa) >= 7:
         data['placa'] = placa[:3] + '-' + placa[3:]
     else:
