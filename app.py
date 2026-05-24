@@ -7429,8 +7429,27 @@ def _notify_new_order_whatsapp(store, order_id, order_number, customer_name,
 # Fim MandaJá
 # ══════════════════════════════════════════════════════════════════════════════
 
+# ══════════════════════════════════════════════════════════════════════════════
+# PETmed — Triagem Veterinária Inteligente 24h
+# ══════════════════════════════════════════════════════════════════════════════
+try:
+    from petmed import petmed_bp
+    from petmed_db import init_petmed_db
+    app.register_blueprint(petmed_bp)
+    log.info('[PETmed] Blueprint registrado em /petmed')
+except Exception as _pm_err:
+    log.warning(f'[PETmed] Erro ao carregar blueprint: {_pm_err}')
+
+# ══════════════════════════════════════════════════════════════════════════════
+
 with app.app_context():
     _startup()
+    # Inicializa banco PETmed
+    try:
+        init_petmed_db()
+        log.info('[PETmed] Banco inicializado')
+    except Exception as _e:
+        log.warning(f'[PETmed] Erro ao inicializar banco: {_e}')
 
 if __name__ == '__main__':
     app.run(debug=True, port=5001)

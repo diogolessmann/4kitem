@@ -1,0 +1,68 @@
+{% extends 'petmed/base.html' %}
+{% set active = 'historico' %}
+{% block title %}Triagem #{{ t.id }} — PETmed{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <div class="page-title">🩺 Triagem #{{ t.id }}</div>
+    <div class="page-sub">{{ t.pet_nome }} · {{ t.created_at[:16] if t.created_at else '' }}</div>
+  </div>
+  <a href="/petmed/historico" class="btn btn-outline">← Histórico</a>
+</div>
+
+<!-- Resultado -->
+<div class="card urgencia-{{ t.resultado }}" style="margin-bottom:20px">
+  <div style="display:flex;align-items:center;gap:14px">
+    <div style="font-size:40px">{{ '🔴' if t.resultado=='urgente' else '🟡' if t.resultado=='atencao' else '🟢' }}</div>
+    <div>
+      <div style="font-size:18px;font-weight:800">
+        {{ 'URGENTE' if t.resultado=='urgente' else 'ATENÇÃO' if t.resultado=='atencao' else 'ESTÁVEL' }}
+      </div>
+      <div style="font-size:13px;color:var(--text2);margin-top:4px">
+        {{ categorias.get(t.categoria, {}).get('emoji','') }}
+        {{ categorias.get(t.categoria, {}).get('label', t.categoria) }}
+      </div>
+    </div>
+  </div>
+  {% if t.orientacoes %}
+  <div style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(0,0,0,.08);font-size:14px;line-height:1.7">
+    <strong>Orientações:</strong><br>{{ t.orientacoes }}
+  </div>
+  {% endif %}
+</div>
+
+<!-- Info do pet -->
+<div class="card" style="margin-bottom:20px">
+  <div class="card-title">🐾 Pet avaliado</div>
+  <div class="grid-4">
+    <div><div style="font-size:11px;color:var(--text3)">Nome</div><div style="font-weight:700">{{ t.pet_nome }}</div></div>
+    <div><div style="font-size:11px;color:var(--text3)">Espécie</div><div style="font-weight:700">{{ 'Gato' if t.pet_especie=='gato' else 'Cão' }}</div></div>
+    <div><div style="font-size:11px;color:var(--text3)">Raça</div><div style="font-weight:700">{{ t.pet_raca or 'SRD' }}</div></div>
+    <div><div style="font-size:11px;color:var(--text3)">Data</div><div style="font-weight:700">{{ t.created_at[:10] if t.created_at else '' }}</div></div>
+  </div>
+</div>
+
+<!-- Conversa -->
+{% if historico %}
+<div class="card">
+  <div class="card-title">💬 Conversa da triagem</div>
+  <div style="display:flex;flex-direction:column;gap:8px">
+    {% for msg in historico %}
+    <div style="display:flex;{% if msg.role=='user' %}justify-content:flex-end{% endif %}">
+      <div style="max-width:80%;padding:10px 14px;border-radius:12px;font-size:13px;line-height:1.5;
+        {% if msg.role=='assistant' %}background:#f0f9ff;border:1px solid var(--border);border-radius:4px 12px 12px 12px{% else %}background:var(--teal);color:#fff;border-radius:12px 12px 4px 12px{% endif %}">
+        {{ msg.content }}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<div style="margin-top:16px;display:flex;gap:10px">
+  <a href="/petmed/triagem" class="btn btn-primary">🩺 Nova triagem</a>
+  <a href="/petmed/historico" class="btn btn-outline">← Histórico</a>
+</div>
+
+{% endblock %}

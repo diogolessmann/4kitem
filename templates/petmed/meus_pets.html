@@ -1,0 +1,87 @@
+{% extends 'petmed/base.html' %}
+{% set active = 'pets' %}
+{% block title %}Meus Pets — PETmed{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <div class="page-title">🐾 Meus Pets</div>
+    <div class="page-sub">{{ total_pets }} de {{ limite_pets }} pet(s) cadastrado(s)</div>
+  </div>
+  {% if pode_add %}
+  <a href="/petmed/pets/adicionar" class="btn btn-primary">+ Adicionar Pet</a>
+  {% else %}
+  <a href="/petmed/planos" class="btn btn-outline">⬆️ Upgrade para mais pets</a>
+  {% endif %}
+</div>
+
+{% if msg == 'pet_adicionado' %}<div class="alert alert-success">🐾 Pet adicionado com sucesso!</div>{% endif %}
+{% if msg == 'pet_editado' %}<div class="alert alert-success">✅ Pet atualizado!</div>{% endif %}
+{% if msg == 'pet_removido' %}<div class="alert alert-warning">🗑️ Pet removido.</div>{% endif %}
+
+{% if pets %}
+<div class="grid-2">
+  {% for pet in pets %}
+  <div class="card" style="position:relative">
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:14px">
+      <div style="width:56px;height:56px;border-radius:50%;background:var(--bg);border:2px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:30px;flex-shrink:0">
+        {{ '🐱' if pet.especie == 'gato' else '🐶' }}
+      </div>
+      <div>
+        <div style="font-size:17px;font-weight:800">{{ pet.nome }}</div>
+        <div style="font-size:13px;color:var(--text3)">
+          {{ 'Gato' if pet.especie == 'gato' else 'Cão' }} · {{ pet.raca or 'SRD' }}
+        </div>
+      </div>
+    </div>
+
+    <div class="grid-2" style="gap:8px;margin-bottom:14px">
+      {% if pet.idade_anos is not none %}
+      <div style="background:var(--bg);border-radius:8px;padding:8px 10px">
+        <div style="font-size:11px;color:var(--text3)">Idade</div>
+        <div style="font-size:13px;font-weight:700">{{ pet.idade_anos }}a {% if pet.idade_meses %}{{ pet.idade_meses }}m{% endif %}</div>
+      </div>
+      {% endif %}
+      {% if pet.peso_kg %}
+      <div style="background:var(--bg);border-radius:8px;padding:8px 10px">
+        <div style="font-size:11px;color:var(--text3)">Peso</div>
+        <div style="font-size:13px;font-weight:700">{{ pet.peso_kg }} kg</div>
+      </div>
+      {% endif %}
+      <div style="background:var(--bg);border-radius:8px;padding:8px 10px">
+        <div style="font-size:11px;color:var(--text3)">Sexo</div>
+        <div style="font-size:13px;font-weight:700">
+          {% if pet.sexo == 'macho' %}Macho{% elif pet.sexo == 'femea' %}Fêmea{% else %}—{% endif %}
+          {% if pet.castrado %}<span style="font-size:10px;color:var(--green2)"> ✂️ castrado</span>{% endif %}
+        </div>
+      </div>
+      <div style="background:var(--bg);border-radius:8px;padding:8px 10px">
+        <div style="font-size:11px;color:var(--text3)">Raça</div>
+        <div style="font-size:13px;font-weight:700">{{ pet.raca or 'SRD' }}</div>
+      </div>
+    </div>
+
+    {% if pet.observacoes %}
+    <div style="font-size:12px;color:var(--text3);margin-bottom:12px;font-style:italic">📝 {{ pet.observacoes }}</div>
+    {% endif %}
+
+    <div style="display:flex;gap:8px">
+      <a href="/petmed/triagem?pet_id={{ pet.id }}" class="btn btn-primary btn-sm">🩺 Triar agora</a>
+      <a href="/petmed/pets/{{ pet.id }}/editar" class="btn btn-outline btn-sm">✏️ Editar</a>
+      <form method="POST" action="/petmed/pets/{{ pet.id }}/excluir" style="display:inline" onsubmit="return confirm('Remover {{ pet.nome }}?')">
+        <button type="submit" class="btn btn-outline btn-sm" style="color:var(--red)">🗑️</button>
+      </form>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+{% else %}
+<div class="empty">
+  <div class="icon">🐾</div>
+  <p>Nenhum pet cadastrado ainda.<br>Adicione seu primeiro pet para começar!</p>
+  <a href="/petmed/pets/adicionar" class="btn btn-primary">+ Adicionar meu primeiro pet</a>
+</div>
+{% endif %}
+
+{% endblock %}

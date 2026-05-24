@@ -1,0 +1,63 @@
+{% extends 'petmed/base.html' %}
+{% set active = 'pets' %}
+{% block title %}Editar Pet — PETmed{% endblock %}
+{% block content %}
+<div style="max-width:560px">
+<div class="page-header">
+  <div><div class="page-title">✏️ Editar {{ pet.nome }}</div></div>
+  <a href="/petmed/meus-pets" class="btn btn-outline">← Voltar</a>
+</div>
+{% if erro %}<div class="alert alert-error">{{ erro }}</div>{% endif %}
+<div class="card">
+<form method="POST" action="/petmed/pets/{{ pet.id }}/editar">
+  <div class="grid-2">
+    <div class="form-group">
+      <label class="form-label">Nome *</label>
+      <input type="text" name="nome" class="form-control" value="{{ pet.nome }}" required>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Raça</label>
+      <input type="text" name="raca" class="form-control" value="{{ pet.raca or '' }}">
+    </div>
+  </div>
+  <div class="grid-2">
+    <div class="form-group">
+      <label class="form-label">Idade (anos)</label>
+      <input type="number" name="idade_anos" class="form-control" value="{{ pet.idade_anos or 0 }}" min="0" max="30">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Meses</label>
+      <input type="number" name="idade_meses" class="form-control" value="{{ pet.idade_meses or 0 }}" min="0" max="11">
+    </div>
+  </div>
+  <div class="grid-2">
+    <div class="form-group">
+      <label class="form-label">Peso (kg)</label>
+      <input type="number" name="peso_kg" class="form-control" step="0.1" value="{{ pet.peso_kg or '' }}">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Sexo</label>
+      <select name="sexo" class="form-control">
+        <option value="nao_informado" {% if pet.sexo=='nao_informado' %}selected{% endif %}>Não informado</option>
+        <option value="macho" {% if pet.sexo=='macho' %}selected{% endif %}>Macho</option>
+        <option value="femea" {% if pet.sexo=='femea' %}selected{% endif %}>Fêmea</option>
+      </select>
+    </div>
+  </div>
+  <div class="form-group">
+    <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;font-weight:600;color:var(--text2)">
+      <input type="checkbox" name="castrado" {% if pet.castrado %}checked{% endif %}> Castrado(a)
+    </label>
+  </div>
+  <div class="form-group">
+    <label class="form-label">Observações</label>
+    <textarea name="observacoes" class="form-control">{{ pet.observacoes or '' }}</textarea>
+  </div>
+  <div style="display:flex;gap:10px">
+    <button type="submit" class="btn btn-primary" style="flex:1;justify-content:center">💾 Salvar alterações</button>
+    <a href="/petmed/meus-pets" class="btn btn-outline">Cancelar</a>
+  </div>
+</form>
+</div>
+</div>
+{% endblock %}

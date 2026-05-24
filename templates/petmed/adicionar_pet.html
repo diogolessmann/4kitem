@@ -1,0 +1,170 @@
+{% extends 'petmed/base.html' %}
+{% set active = 'pets' %}
+{% block title %}Adicionar Pet — PETmed{% endblock %}
+{% block extra_style %}
+.foto-area {
+  border:2px dashed var(--border2);border-radius:12px;
+  padding:24px;text-align:center;cursor:pointer;
+  transition:.15s;position:relative;
+}
+.foto-area:hover { border-color:var(--teal);background:var(--bg); }
+.foto-preview { max-width:120px;max-height:120px;border-radius:50%;object-fit:cover; }
+{% endblock %}
+{% block content %}
+
+<div style="max-width:560px">
+<div class="page-header">
+  <div>
+    <div class="page-title">➕ Adicionar Pet</div>
+    <div class="page-sub">Limite: {{ limite_pets }} pet(s) no seu plano</div>
+  </div>
+  <a href="/petmed/meus-pets" class="btn btn-outline">← Voltar</a>
+</div>
+
+{% if erro %}<div class="alert alert-error">{{ erro }}</div>{% endif %}
+
+<div class="card">
+<form method="POST" action="/petmed/pets/adicionar" id="form-pet">
+  <input type="hidden" name="foto_base64" id="foto-b64">
+
+  <!-- Foto + identificação de raça -->
+  <div class="form-group">
+    <label class="form-label">📸 Foto do pet (opcional — identifica a raça automaticamente)</label>
+    <div class="foto-area" id="foto-area" onclick="document.getElementById('foto-input').click()">
+      <img id="foto-preview" style="display:none" class="foto-preview">
+      <div id="foto-placeholder">
+        <div style="font-size:32px">📷</div>
+        <div style="font-size:13px;color:var(--text3);margin-top:4px">Clique para adicionar foto</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:2px">A raça será identificada automaticamente</div>
+      </div>
+    </div>
+    <input type="file" id="foto-input" accept="image/*" style="display:none" onchange="processarFoto(this)">
+    <div id="raca-detectada" style="display:none;margin-top:8px" class="alert alert-success"></div>
+  </div>
+
+  <div class="grid-2">
+    <div class="form-group">
+      <label class="form-label">Nome do pet *</label>
+      <input type="text" name="nome" class="form-control" placeholder="Ex: Max, Luna, Mel..." required autofocus>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Espécie *</label>
+      <select name="especie" class="form-control" id="especie-sel" onchange="atualizarEspecie()">
+        <option value="cao">🐶 Cão</option>
+        <option value="gato">🐱 Gato</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label class="form-label">Raça</label>
+    <input type="text" name="raca" class="form-control" id="raca-input" placeholder="Ex: Golden Retriever, SRD...">
+    <div style="font-size:11px;color:var(--text3);margin-top:4px">Deixe em branco para identificar pela foto</div>
+  </div>
+
+  <div class="grid-2">
+    <div class="form-group">
+      <label class="form-label">Idade (anos)</label>
+      <input type="number" name="idade_anos" class="form-control" min="0" max="30" placeholder="0">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Meses adicionais</label>
+      <input type="number" name="idade_meses" class="form-control" min="0" max="11" placeholder="0">
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="form-group">
+      <label class="form-label">Peso (kg)</label>
+      <input type="number" name="peso_kg" class="form-control" step="0.1" min="0" placeholder="Ex: 8.5">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Sexo</label>
+      <select name="sexo" class="form-control">
+        <option value="nao_informado">Não informado</option>
+        <option value="macho">Macho</option>
+        <option value="femea">Fêmea</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;font-weight:600;color:var(--text2)">
+      <input type="checkbox" name="castrado"> Castrado(a)
+    </label>
+  </div>
+
+  <div class="form-group">
+    <label class="form-label">Observações de saúde</label>
+    <textarea name="observacoes" class="form-control" placeholder="Alergias, medicamentos contínuos, condições especiais..."></textarea>
+  </div>
+
+  <div style="display:flex;gap:10px">
+    <button type="submit" class="btn btn-primary btn-lg" style="flex:1;justify-content:center">
+      🐾 Salvar pet
+    </button>
+    <a href="/petmed/meus-pets" class="btn btn-outline btn-lg">Cancelar</a>
+  </div>
+</form>
+</div>
+</div>
+
+{% endblock %}
+{% block extra_scripts %}
+<script>
+let especieSel = 'cao';
+
+function atualizarEspecie() {
+  especieSel = document.getElementById('especie-sel').value;
+}
+
+function processarFoto(input) {
+  const file = input.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const b64full = e.target.result;
+    const b64 = b64full.split(',')[1];
+    document.getElementById('foto-b64').value = b64;
+
+    // Preview
+    const preview = document.getElementById('foto-preview');
+    preview.src = b64full;
+    preview.style.display = 'block';
+    document.getElementById('foto-placeholder').style.display = 'none';
+
+    // Identifica raça se campo estiver vazio
+    const racaInput = document.getElementById('raca-input');
+    if (!racaInput.value.trim()) {
+      identificarRaca(b64);
+    }
+  };
+  reader.readAsDataURL(file);
+}
+
+async function identificarRaca(b64) {
+  const div = document.getElementById('raca-detectada');
+  div.style.display = 'block';
+  div.textContent = '🔍 Identificando raça...';
+
+  try {
+    const r = await fetch('/petmed/identificar-raca', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ foto: b64, especie: especieSel })
+    });
+    const data = await r.json();
+    if (data.raca && data.raca !== 'Não identificada') {
+      document.getElementById('raca-input').value = data.raca;
+      div.textContent = '✅ Raça identificada: ' + data.raca;
+    } else {
+      div.textContent = '🔍 Não foi possível identificar a raça. Preencha manualmente.';
+      div.className = 'alert alert-warning';
+    }
+  } catch(e) {
+    div.style.display = 'none';
+  }
+}
+</script>
+{% endblock %}

@@ -1,0 +1,135 @@
+{% extends 'petmed/base.html' %}
+{% set active = 'triagem' %}
+{% block title %}Nova Triagem — PETmed{% endblock %}
+{% block extra_style %}
+.cat-btn {
+  display:flex;align-items:center;gap:12px;
+  padding:14px 16px;border-radius:10px;
+  border:2px solid var(--border2);background:#fff;
+  cursor:pointer;font-family:inherit;width:100%;
+  text-align:left;transition:.15s;font-size:14px;
+}
+.cat-btn:hover { border-color:var(--teal);background:var(--bg); }
+.cat-btn.selected { border-color:var(--teal);background:#e0f2fe; }
+.cat-emoji { font-size:22px;flex-shrink:0; }
+.pet-btn {
+  display:flex;align-items:center;gap:10px;
+  padding:12px 14px;border-radius:10px;
+  border:2px solid var(--border2);background:#fff;
+  cursor:pointer;font-family:inherit;width:100%;
+  text-align:left;transition:.15s;
+}
+.pet-btn:hover,.pet-btn.selected { border-color:var(--teal);background:#e0f2fe; }
+{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <div class="page-title">🩺 Nova Triagem</div>
+    <div class="page-sub">Selecione o pet e o tipo de sintoma para começar</div>
+  </div>
+</div>
+
+<div style="max-width:680px">
+
+  <!-- Passo 1: Selecionar pet -->
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-title">1️⃣ Qual pet precisa de triagem?</div>
+
+    {% if pets %}
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px" id="pets-grid">
+      {% for pet in pets %}
+      <button class="pet-btn" onclick="selecionarPet({{ pet.id }}, this)" data-pet-id="{{ pet.id }}">
+        <span style="font-size:24px">{{ '🐱' if pet.especie == 'gato' else '🐶' }}</span>
+        <div>
+          <div style="font-weight:700;font-size:14px">{{ pet.nome }}</div>
+          <div style="font-size:11px;color:var(--text3)">{{ pet.raca or 'SRD' }}</div>
+        </div>
+      </button>
+      {% endfor %}
+      <button class="pet-btn" onclick="selecionarPet(0, this)" data-pet-id="0" style="border-style:dashed">
+        <span style="font-size:24px">➕</span>
+        <div>
+          <div style="font-weight:600;font-size:13px;color:var(--text3)">Sem cadastro</div>
+          <div style="font-size:11px;color:var(--text3)">Triagem rápida</div>
+        </div>
+      </button>
+    </div>
+    {% else %}
+    <div class="alert alert-info">
+      Você ainda não tem pets cadastrados.
+      <a href="/petmed/pets/adicionar" style="font-weight:700;color:var(--teal2)">Cadastrar pet →</a>
+      ou faça uma triagem rápida abaixo.
+    </div>
+    <button class="pet-btn" onclick="selecionarPet(0, this)" style="max-width:240px">
+      <span style="font-size:24px">🐾</span>
+      <div>
+        <div style="font-weight:700">Triagem rápida</div>
+        <div style="font-size:12px;color:var(--text3)">Sem cadastro prévio</div>
+      </div>
+    </button>
+    {% endif %}
+  </div>
+
+  <!-- Passo 2: Categoria do sintoma -->
+  <div class="card" id="passo-categoria" style="margin-bottom:16px;opacity:.4;pointer-events:none">
+    <div class="card-title">2️⃣ Qual o tipo de sintoma?</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px" id="categorias-grid">
+      {% for key, cat in categorias.items() %}
+      <button class="cat-btn" onclick="selecionarCategoria('{{ key }}', this)" data-cat="{{ key }}">
+        <span class="cat-emoji">{{ cat.emoji }}</span>
+        <span>{{ cat.label }}</span>
+      </button>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Botão iniciar -->
+  <div id="btn-iniciar-wrap" style="display:none">
+    <a href="#" id="btn-iniciar" class="btn btn-green btn-lg" style="width:100%;justify-content:center" onclick="iniciarTriagem(event)">
+      🩺 Iniciar Triagem Agora
+    </a>
+  </div>
+
+</div>
+
+<form id="form-triagem" method="GET" action="/petmed/triagem/chat" style="display:none">
+  <input type="hidden" name="pet_id" id="input-pet-id">
+  <input type="hidden" name="categoria" id="input-categoria">
+</form>
+
+{% endblock %}
+{% block extra_scripts %}
+<script>
+let petSel = null, catSel = null;
+
+function selecionarPet(id, btn) {
+  document.querySelectorAll('.pet-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  petSel = id;
+  document.getElementById('input-pet-id').value = id;
+
+  // Ativa passo 2
+  const passo = document.getElementById('passo-categoria');
+  passo.style.opacity = '1';
+  passo.style.pointerEvents = 'auto';
+  passo.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function selecionarCategoria(cat, btn) {
+  document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  catSel = cat;
+  document.getElementById('input-categoria').value = cat;
+
+  document.getElementById('btn-iniciar-wrap').style.display = 'block';
+  document.getElementById('btn-iniciar-wrap').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function iniciarTriagem(e) {
+  e.preventDefault();
+  if (!catSel) { alert('Selecione o tipo de sintoma.'); return; }
+  document.getElementById('form-triagem').submit();
+}
+</script>
+{% endblock %}

@@ -1,0 +1,70 @@
+{% extends 'petmed/base.html' %}
+{% block title %}Criar Conta — PETmed{% endblock %}
+{% block content %}
+<div style="max-width:480px;margin:32px auto">
+  <div style="text-align:center;margin-bottom:24px">
+    <div style="font-size:40px">🐾</div>
+    <h1 style="font-size:22px;font-weight:800;margin-top:8px">Criar conta no PETmed</h1>
+    <p style="font-size:13px;color:var(--text3);margin-top:4px">7 dias grátis — sem cartão de crédito</p>
+  </div>
+
+  {% if erro %}
+  <div class="alert alert-error">{{ erro }}</div>
+  {% endif %}
+
+  <div class="card">
+    <form method="POST" action="/petmed/cadastrar">
+      <input type="hidden" name="plano" value="{{ plano_sel }}">
+
+      <div class="form-group">
+        <label class="form-label">Nome completo *</label>
+        <input type="text" name="nome" class="form-control" placeholder="Seu nome" required autofocus>
+      </div>
+      <div class="form-group">
+        <label class="form-label">E-mail *</label>
+        <input type="email" name="email" class="form-control" placeholder="seu@email.com" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">WhatsApp</label>
+        <input type="tel" name="telefone" class="form-control" placeholder="(47) 99999-9999">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Senha *</label>
+        <input type="password" name="senha" class="form-control" placeholder="Mínimo 6 caracteres" required>
+      </div>
+
+      <!-- Plano selecionado -->
+      <div style="background:var(--bg);border:1px solid var(--border2);border-radius:9px;padding:12px 14px;margin-bottom:16px">
+        <div style="font-size:12px;color:var(--text3);margin-bottom:4px">Plano selecionado</div>
+        {% if plano_sel == 'premium' %}
+          <strong style="color:var(--purple)">👑 PET Premium — R$ 99,90/mês</strong>
+        {% elif plano_sel == 'familia' %}
+          <strong style="color:var(--orange)">🐾🐾 PET Família — R$ 59,90/mês</strong>
+        {% else %}
+          <strong style="color:var(--teal2)">🐾 PET Start — R$ 34,90/mês</strong>
+        {% endif %}
+        <span style="font-size:11px;color:var(--green2);margin-left:8px">✅ 7 dias grátis</span>
+        <a href="/petmed/planos" style="display:block;font-size:11px;color:var(--text3);margin-top:4px">Trocar plano</a>
+      </div>
+
+      <!-- Termo de aceite -->
+      <div style="background:#fef3c7;border:1px solid #fde68a;border-radius:9px;padding:12px 14px;margin-bottom:16px;font-size:12px;color:#92400e;line-height:1.5">
+        <strong>⚠️ Importante:</strong> O PETmed oferece triagem e orientação geral — não substitui consulta veterinária presencial. Não realizamos diagnósticos nem prescrevemos medicamentos. Em emergências, procure uma clínica imediatamente.
+      </div>
+
+      <div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:16px;font-size:13px;color:var(--text2)">
+        <input type="checkbox" name="aceito" required style="margin-top:2px;flex-shrink:0">
+        <span>Li e aceito os termos de uso. Entendo que este serviço é de orientação e não substitui o veterinário.</span>
+      </div>
+
+      <button type="submit" class="btn btn-primary btn-lg" style="width:100%;justify-content:center">
+        Criar conta grátis →
+      </button>
+    </form>
+  </div>
+
+  <p style="text-align:center;font-size:13px;margin-top:16px;color:var(--text3)">
+    Já tem conta? <a href="/petmed/entrar" style="color:var(--teal2);font-weight:700">Entrar</a>
+  </p>
+</div>
+{% endblock %}

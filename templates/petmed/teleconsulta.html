@@ -1,0 +1,79 @@
+{% extends 'petmed/base.html' %}
+{% set active = 'teleconsulta' %}
+{% block title %}Teleconsulta — PETmed{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <div><div class="page-title">👨‍⚕️ Teleconsulta</div>
+  <div class="page-sub">Consulte um veterinário agora, de onde estiver</div></div>
+</div>
+
+<!-- Preço avulso -->
+<div class="alert alert-info" style="margin-bottom:20px">
+  👑 <strong>Plano Premium:</strong> 1 teleconsulta por mês incluída. Consultas adicionais: <strong>R$ 39,90</strong>
+</div>
+
+<div class="grid-2" style="gap:20px">
+  <!-- Vets disponíveis -->
+  <div>
+    <div style="font-size:15px;font-weight:800;margin-bottom:14px">🟢 Veterinários disponíveis agora</div>
+    {% if vets %}
+    {% for v in vets %}
+    <div class="card" style="margin-bottom:12px">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+        <div style="width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#0ea5e9,#8b5cf6);display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0">👨‍⚕️</div>
+        <div>
+          <div style="font-weight:700;font-size:14px">Dr(a). {{ v.nome }}</div>
+          <div style="font-size:12px;color:var(--text3)">{{ v.especialidade or 'Clínica Geral' }} · CRMV-{{ v.estado_crmv }} {{ v.crmv }}</div>
+          <div style="font-size:12px">⭐ {{ "%.1f"|format(v.avaliacao) }} · {{ v.total_consultas }} consultas</div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <span class="badge badge-green">🟢 Online</span>
+        <button class="btn btn-primary btn-sm" onclick="solicitarConsulta({{ v.id }}, '{{ v.nome }}')">
+          📹 Consultar agora
+        </button>
+      </div>
+    </div>
+    {% endfor %}
+    {% else %}
+    <div class="empty" style="padding:32px">
+      <div class="icon">👨‍⚕️</div>
+      <p>Nenhum veterinário online no momento.<br>Novos parceiros em breve!</p>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Minhas consultas -->
+  <div>
+    <div style="font-size:15px;font-weight:800;margin-bottom:14px">📋 Minhas teleconsultas</div>
+    {% if minhas %}
+    {% for c in minhas %}
+    <div class="card" style="margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <div style="font-weight:700;font-size:13px">{{ c.pet_nome or 'Pet' }}</div>
+          <div style="font-size:12px;color:var(--text3)">Dr(a). {{ c.vet_nome or 'Aguardando' }} · {{ c.created_at[:10] if c.created_at else '' }}</div>
+        </div>
+        {% if c.status == 'finalizada' %}<span class="badge badge-green">✅ Finalizada</span>
+        {% elif c.status == 'aguardando' %}<span class="badge badge-yellow">⏳ Aguardando</span>
+        {% else %}<span class="badge badge-blue">{{ c.status }}</span>{% endif %}
+      </div>
+    </div>
+    {% endfor %}
+    {% else %}
+    <div class="empty" style="padding:24px">
+      <p>Nenhuma teleconsulta ainda.</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+{% endblock %}
+{% block extra_scripts %}
+<script>
+function solicitarConsulta(vetId, vetNome) {
+  alert('Funcionalidade em breve! Dr(a). ' + vetNome + ' será notificado(a) assim que o sistema de videochamada for ativado.');
+}
+</script>
+{% endblock %}
