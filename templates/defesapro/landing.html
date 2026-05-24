@@ -6,107 +6,306 @@
 <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-0JQBJ01C0Z');</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>DefesaPro — Gestão de Defesas de Trânsito</title>
+<title>DefesaPro — Gestão de Defesas de Multas de Trânsito</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
-  body{background:#07070E;color:#EEEEF5;font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh}
+  body{background:#07070E;color:#EEEEF5;font-family:'Inter',system-ui,sans-serif;min-height:100vh}
   a{text-decoration:none;color:inherit}
+  :root{--purple:#8B5CF6;--purple2:#7C3AED;--purple3:#A78BFA;--dark:#07070E;--card:#0E0E1C}
 
-  nav{display:flex;align-items:center;justify-content:space-between;padding:16px 24px;border-bottom:1px solid rgba(139,92,246,0.12);position:sticky;top:0;background:rgba(7,7,14,0.92);backdrop-filter:blur(16px);z-index:50}
-  .nav-logo{font-size:18px;font-weight:900;color:#8B5CF6;display:flex;align-items:center;gap:10px}
-  .nav-logo img{width:32px;height:32px;border-radius:8px;object-fit:cover}
-  .nav-back{padding:8px 18px;border-radius:100px;border:1px solid rgba(255,255,255,0.12);color:#9090B0;font-size:13px;font-weight:600;transition:.2s}
-  .nav-back:hover{border-color:#8B5CF6;color:#8B5CF6}
-  .btn-cta{padding:9px 22px;border-radius:100px;background:linear-gradient(135deg,#7C3AED,#8B5CF6);color:#fff;font-size:13px;font-weight:700;transition:.2s}
-  .btn-cta:hover{opacity:.9}
+  /* ── NAV ── */
+  nav{display:flex;align-items:center;justify-content:space-between;padding:16px 32px;border-bottom:1px solid rgba(139,92,246,.12);position:sticky;top:0;background:rgba(7,7,14,.95);backdrop-filter:blur(20px);z-index:100}
+  .nav-logo{font-size:18px;font-weight:900;color:var(--purple);display:flex;align-items:center;gap:10px}
+  .nav-logo-icon{width:34px;height:34px;background:linear-gradient(135deg,var(--purple2),var(--purple));border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:18px}
+  .nav-links{display:flex;gap:10px;align-items:center}
+  .nav-back{padding:8px 18px;border-radius:100px;border:1px solid rgba(255,255,255,.1);color:#9090B0;font-size:13px;font-weight:600;transition:.2s}
+  .nav-back:hover{border-color:var(--purple);color:var(--purple)}
+  .nav-login{padding:8px 18px;border-radius:100px;border:1px solid rgba(139,92,246,.35);color:var(--purple3);font-size:13px;font-weight:600;transition:.2s}
+  .nav-login:hover{background:rgba(139,92,246,.1)}
+  .btn-cta-nav{padding:9px 22px;border-radius:100px;background:linear-gradient(135deg,var(--purple2),var(--purple));color:#fff;font-size:13px;font-weight:700;transition:.2s;white-space:nowrap}
+  .btn-cta-nav:hover{opacity:.9}
 
-  .hero{text-align:center;padding:90px 24px 70px;max-width:720px;margin:0 auto}
-  .hero-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(139,92,246,.1);border:1px solid rgba(139,92,246,.3);border-radius:100px;padding:6px 16px;font-size:12px;font-weight:700;color:#8B5CF6;margin-bottom:28px}
-  .hero h1{font-size:clamp(32px,6vw,54px);font-weight:900;letter-spacing:-1.5px;line-height:1.1;margin-bottom:20px}
-  .hero h1 span{background:linear-gradient(135deg,#8B5CF6,#A78BFA);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
-  .hero p{font-size:17px;color:#9090B0;line-height:1.6;margin-bottom:40px}
-  .hero-ctas{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap}
-  .cta-big{display:inline-flex;align-items:center;gap:8px;padding:15px 36px;border-radius:100px;background:linear-gradient(135deg,#7C3AED,#8B5CF6);color:#fff;font-size:16px;font-weight:800;cursor:pointer;transition:.2s}
+  /* ── HERO ── */
+  .hero{display:grid;grid-template-columns:1fr 1fr;min-height:88vh;max-width:1280px;margin:0 auto;padding:0 32px;gap:48px;align-items:center}
+  .hero-text{}
+  .hero-badge{display:inline-flex;align-items:center;gap:8px;background:rgba(139,92,246,.1);border:1px solid rgba(139,92,246,.25);border-radius:100px;padding:7px 18px;font-size:12px;font-weight:700;color:var(--purple3);margin-bottom:28px}
+  .hero-badge-dot{width:7px;height:7px;border-radius:50%;background:var(--purple);box-shadow:0 0 8px var(--purple);animation:pulse 2s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+  .hero h1{font-size:clamp(34px,4.5vw,58px);font-weight:900;letter-spacing:-2px;line-height:1.05;margin-bottom:22px}
+  .hero h1 em{font-style:normal;background:linear-gradient(135deg,var(--purple),var(--purple3));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+  .hero-sub{font-size:17px;color:#9090B0;line-height:1.65;margin-bottom:38px;max-width:480px}
+  .hero-ctas{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:40px}
+  .cta-big{display:inline-flex;align-items:center;gap:8px;padding:15px 34px;border-radius:100px;background:linear-gradient(135deg,var(--purple2),var(--purple));color:#fff;font-size:15px;font-weight:800;transition:.2s}
   .cta-big:hover{opacity:.9;transform:translateY(-1px)}
-  .cta-sec{display:inline-flex;align-items:center;gap:8px;padding:14px 24px;border-radius:100px;border:1px solid rgba(255,255,255,0.12);color:#EEEEF5;font-size:14px;font-weight:600;transition:.2s}
-  .cta-sec:hover{border-color:#8B5CF6;color:#8B5CF6}
+  .cta-sec{display:inline-flex;align-items:center;gap:8px;padding:14px 24px;border-radius:100px;border:1px solid rgba(255,255,255,.12);color:#EEEEF5;font-size:14px;font-weight:600;transition:.2s}
+  .cta-sec:hover{border-color:var(--purple);color:var(--purple)}
+  .hero-stats{display:flex;gap:24px;flex-wrap:wrap}
+  .hero-stat{display:flex;flex-direction:column;gap:2px}
+  .hero-stat-num{font-size:22px;font-weight:900;color:#EEEEF5}
+  .hero-stat-label{font-size:11px;color:#55557A;font-weight:500}
 
-  .logo-hero{width:96px;height:96px;border-radius:22px;object-fit:cover;margin:0 auto 32px;display:block;box-shadow:0 0 40px rgba(139,92,246,.4)}
+  .hero-img-wrap{position:relative;border-radius:20px;overflow:hidden;height:580px}
+  .hero-img-wrap img{width:100%;height:100%;object-fit:cover;object-position:center top}
+  .hero-badge-float{position:absolute;bottom:28px;left:50%;transform:translateX(-50%);background:rgba(7,7,14,.88);border:1px solid rgba(139,92,246,.35);backdrop-filter:blur(16px);border-radius:100px;padding:10px 22px;white-space:nowrap;font-size:13px;font-weight:700;color:#EEEEF5;display:flex;align-items:center;gap:8px}
+  .badge-dot-green{width:8px;height:8px;border-radius:50%;background:#22c55e;box-shadow:0 0 8px #22c55e;animation:pulse 2s infinite}
 
-  /* Features */
-  .features{max-width:1100px;margin:0 auto;padding:0 24px 80px}
-  .section-tag{text-align:center;font-size:11px;font-weight:700;color:#8B5CF6;text-transform:uppercase;letter-spacing:2px;margin-bottom:14px}
-  .section-title{text-align:center;font-size:clamp(26px,4vw,38px);font-weight:900;letter-spacing:-1px;margin-bottom:12px}
-  .section-sub{text-align:center;color:#9090B0;font-size:15px;margin-bottom:50px}
-  .feat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:16px}
-  .feat-card{background:#0E0E1C;border:1px solid rgba(139,92,246,.12);border-radius:16px;padding:24px;transition:.2s}
+  /* ── STATS BAR ── */
+  .stats-bar{background:var(--card);border-top:1px solid rgba(139,92,246,.08);border-bottom:1px solid rgba(139,92,246,.08);padding:20px 32px}
+  .stats-inner{max-width:1100px;margin:0 auto;display:flex;justify-content:center;gap:48px;flex-wrap:wrap}
+  .stat-pill{display:flex;flex-direction:column;align-items:center;gap:2px}
+  .stat-num{font-size:20px;font-weight:900;color:var(--purple3)}
+  .stat-lbl{font-size:11px;color:#55557A;font-weight:500;text-align:center}
+
+  /* ── SECTION ── */
+  .section-wrap{max-width:1200px;margin:0 auto;padding:80px 32px}
+  .section-tag{font-size:11px;font-weight:700;color:var(--purple);text-transform:uppercase;letter-spacing:2px;margin-bottom:12px}
+  .section-title{font-size:clamp(26px,3.5vw,40px);font-weight:900;letter-spacing:-1px;margin-bottom:12px}
+  .section-sub{color:#9090B0;font-size:15px;line-height:1.6;margin-bottom:48px}
+
+  /* ── SPLIT SECTIONS ── */
+  .split{display:grid;grid-template-columns:1fr 1fr;gap:56px;align-items:center}
+  .split.reverse{direction:rtl}
+  .split.reverse>*{direction:ltr}
+  .split-img{border-radius:18px;overflow:hidden;aspect-ratio:3/2}
+  .split-img img{width:100%;height:100%;object-fit:cover;object-position:center}
+  .split-text .section-tag{margin-bottom:10px}
+  .split-text h2{font-size:clamp(24px,3vw,36px);font-weight:900;letter-spacing:-1px;line-height:1.1;margin-bottom:16px}
+  .split-text h2 em{font-style:normal;color:var(--purple3)}
+  .split-text p{font-size:15px;color:#9090B0;line-height:1.7;margin-bottom:28px}
+  .check-list{display:flex;flex-direction:column;gap:12px;margin-bottom:28px}
+  .check-item{display:flex;align-items:flex-start;gap:10px;font-size:14px;color:#EEEEF5}
+  .check-item::before{content:'✓';color:var(--purple);font-weight:900;flex-shrink:0;margin-top:1px}
+  .highlight-box{display:inline-flex;gap:16px;flex-wrap:wrap;margin-top:4px}
+  .hbox{background:rgba(139,92,246,.08);border:1px solid rgba(139,92,246,.2);border-radius:10px;padding:10px 18px;font-size:13px;font-weight:700;color:var(--purple3)}
+
+  /* ── FEATURES GRID ── */
+  .feat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}
+  .feat-card{background:var(--card);border:1px solid rgba(139,92,246,.1);border-radius:16px;padding:26px;transition:.2s}
   .feat-card:hover{border-color:rgba(139,92,246,.3);transform:translateY(-2px)}
-  .feat-icon{font-size:28px;margin-bottom:14px}
-  .feat-title{font-size:16px;font-weight:700;margin-bottom:8px}
+  .feat-icon{font-size:30px;margin-bottom:14px}
+  .feat-title{font-size:16px;font-weight:700;margin-bottom:8px;color:#EEEEF5}
   .feat-desc{font-size:13px;color:#9090B0;line-height:1.6}
 
-  /* Pricing */
-  .pricing{background:#0E0E1C;border-top:1px solid rgba(139,92,246,.1);border-bottom:1px solid rgba(139,92,246,.1);padding:70px 24px}
-  .pricing-inner{max-width:900px;margin:0 auto}
-  .plans-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px;margin-top:40px}
-  .plan{background:#07070E;border:1px solid rgba(139,92,246,.15);border-radius:16px;padding:28px;position:relative}
-  .plan.featured{border-color:#8B5CF6;box-shadow:0 0 40px rgba(139,92,246,.15)}
-  .plan-badge{position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#7C3AED,#8B5CF6);color:#fff;font-size:11px;font-weight:800;padding:4px 16px;border-radius:100px;white-space:nowrap}
-  .plan-name{font-size:14px;font-weight:700;color:#9090B0;text-transform:uppercase;letter-spacing:.5px;margin-bottom:16px}
-  .plan-price{font-size:40px;font-weight:900;letter-spacing:-1px;margin-bottom:4px}
-  .plan-price span{font-size:16px;font-weight:500;color:#9090B0}
-  .plan-desc{font-size:12px;color:#55557A;margin-bottom:20px}
-  .plan-features{list-style:none;display:flex;flex-direction:column;gap:8px;margin-bottom:24px}
-  .plan-features li{font-size:13px;color:#9090B0;display:flex;align-items:center;gap:8px}
-  .plan-features li::before{content:'✓';color:#8B5CF6;font-weight:700;flex-shrink:0}
-  .plan-btn{display:block;text-align:center;padding:12px;border-radius:10px;font-size:14px;font-weight:700;transition:.2s}
-  .plan-btn.primary{background:linear-gradient(135deg,#7C3AED,#8B5CF6);color:#fff}
+  /* ── STEPS ── */
+  .steps-bg{background:var(--card);border-top:1px solid rgba(139,92,246,.08);border-bottom:1px solid rgba(139,92,246,.08);padding:80px 32px}
+  .steps-inner{max-width:900px;margin:0 auto}
+  .steps-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:24px;margin-top:48px}
+  .step-card{display:flex;flex-direction:column;align-items:flex-start;gap:14px}
+  .step-num{width:42px;height:42px;border-radius:12px;background:linear-gradient(135deg,var(--purple2),var(--purple));display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:900;color:#fff;flex-shrink:0}
+  .step-title{font-size:15px;font-weight:700}
+  .step-desc{font-size:13px;color:#9090B0;line-height:1.6}
+
+  /* ── TESTIMONIALS ── */
+  .testi-section{max-width:1100px;margin:0 auto;padding:80px 32px}
+  .testi-grid{display:flex;flex-direction:column;gap:24px;margin-top:48px}
+  .testi-card{display:grid;grid-template-columns:220px 1fr;border-radius:18px;overflow:hidden;background:var(--card);border:1px solid rgba(139,92,246,.1)}
+  .testi-photo{overflow:hidden;min-height:280px}
+  .testi-photo img{width:100%;height:100%;object-fit:cover;object-position:center top}
+  .testi-body{padding:32px 36px;display:flex;flex-direction:column;justify-content:center}
+  .testi-stars{color:var(--purple3);font-size:18px;margin-bottom:16px;letter-spacing:2px}
+  .testi-quote{font-size:16px;line-height:1.7;color:#EEEEF5;margin-bottom:20px;font-style:italic}
+  .testi-quote::before{content:'"';font-size:48px;color:var(--purple);line-height:0;vertical-align:-20px;margin-right:4px;font-style:normal}
+  .testi-name{font-size:14px;font-weight:700;color:#EEEEF5}
+  .testi-role{font-size:12px;color:#55557A;margin-top:2px}
+  .testi-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(139,92,246,.1);border:1px solid rgba(139,92,246,.2);border-radius:100px;padding:4px 12px;font-size:11px;font-weight:700;color:var(--purple3);margin-top:10px}
+
+  /* ── PRICING ── */
+  .pricing{background:var(--card);border-top:1px solid rgba(139,92,246,.1);border-bottom:1px solid rgba(139,92,246,.1);padding:80px 32px}
+  .pricing-inner{max-width:960px;margin:0 auto}
+  .plans-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;margin-top:44px}
+  .plan{background:var(--dark);border:1px solid rgba(139,92,246,.15);border-radius:18px;padding:30px;position:relative}
+  .plan.featured{border-color:var(--purple);box-shadow:0 0 48px rgba(139,92,246,.18)}
+  .plan-badge{position:absolute;top:-13px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,var(--purple2),var(--purple));color:#fff;font-size:11px;font-weight:800;padding:5px 18px;border-radius:100px;white-space:nowrap}
+  .plan-name{font-size:12px;font-weight:700;color:#55557A;text-transform:uppercase;letter-spacing:1px;margin-bottom:18px}
+  .plan-price{font-size:42px;font-weight:900;letter-spacing:-1.5px;margin-bottom:4px}
+  .plan-price span{font-size:15px;font-weight:500;color:#9090B0}
+  .plan-desc{font-size:12px;color:#55557A;margin-bottom:22px}
+  .plan-features{list-style:none;display:flex;flex-direction:column;gap:9px;margin-bottom:26px}
+  .plan-features li{font-size:13px;color:#9090B0;display:flex;align-items:flex-start;gap:8px}
+  .plan-features li::before{content:'✓';color:var(--purple);font-weight:700;flex-shrink:0;margin-top:1px}
+  .plan-btn{display:block;text-align:center;padding:13px;border-radius:12px;font-size:14px;font-weight:700;transition:.2s}
+  .plan-btn.primary{background:linear-gradient(135deg,var(--purple2),var(--purple));color:#fff}
   .plan-btn.primary:hover{opacity:.9}
-  .plan-btn.secondary{border:1px solid rgba(139,92,246,.3);color:#8B5CF6}
-  .plan-btn.secondary:hover{background:rgba(139,92,246,.1)}
+  .plan-btn.secondary{border:1px solid rgba(139,92,246,.3);color:var(--purple)}
+  .plan-btn.secondary:hover{background:rgba(139,92,246,.08)}
 
-  /* CTA Final */
-  .final-cta{text-align:center;padding:80px 24px;max-width:600px;margin:0 auto}
-  .final-cta h2{font-size:clamp(28px,5vw,42px);font-weight:900;letter-spacing:-1px;margin-bottom:16px}
-  .final-cta p{font-size:16px;color:#9090B0;margin-bottom:36px}
+  /* ── INCLUDES BOX ── */
+  .includes-box{background:rgba(139,92,246,.06);border:1px solid rgba(139,92,246,.15);border-radius:16px;padding:28px 32px;margin-top:40px;max-width:960px;margin-left:auto;margin-right:auto}
+  .includes-title{font-size:13px;font-weight:700;color:var(--purple3);margin-bottom:16px;text-align:center}
+  .includes-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px}
+  .inc-item{font-size:13px;color:#9090B0;display:flex;align-items:center;gap:8px}
+  .inc-item::before{content:'✦';color:var(--purple);font-size:9px;flex-shrink:0}
 
-  footer{text-align:center;padding:24px;border-top:1px solid rgba(139,92,246,.08);font-size:12px;color:#55557A}
-  footer a{color:#8B5CF6}
+  /* ── CTA FINAL ── */
+  .cta-section{position:relative;padding:100px 32px;overflow:hidden}
+  .cta-bg{position:absolute;inset:0;background-image:url('/static/img/defesapro/defesa-cta.jpg');background-size:cover;background-position:center}
+  .cta-overlay{position:absolute;inset:0;background:linear-gradient(135deg,rgba(7,7,14,.92),rgba(60,10,100,.75))}
+  .cta-content{position:relative;z-index:2;max-width:600px;margin:0 auto;text-align:center}
+  .cta-content h2{font-size:clamp(28px,4vw,44px);font-weight:900;letter-spacing:-1.5px;line-height:1.1;margin-bottom:16px}
+  .cta-content p{font-size:16px;color:rgba(238,238,245,.75);line-height:1.6;margin-bottom:36px}
+
+  /* ── MOBILE CTA BAR ── */
+  .mobile-cta{display:none;position:fixed;bottom:0;left:0;right:0;padding:14px 20px;background:rgba(7,7,14,.96);backdrop-filter:blur(16px);border-top:1px solid rgba(139,92,246,.2);z-index:200}
+  .mobile-cta a{display:block;text-align:center;padding:14px;border-radius:12px;background:linear-gradient(135deg,var(--purple2),var(--purple));color:#fff;font-size:15px;font-weight:800}
+
+  /* ── FOOTER ── */
+  footer{text-align:center;padding:28px;border-top:1px solid rgba(139,92,246,.08);font-size:12px;color:#55557A}
+  footer a{color:var(--purple)}
+
+  /* ── RESPONSIVE ── */
+  @media(max-width:900px){
+    nav{padding:14px 20px}
+    .hero{grid-template-columns:1fr;padding:40px 20px 20px;gap:32px;min-height:auto}
+    .hero-img-wrap{height:320px}
+    .split,.split.reverse{grid-template-columns:1fr;direction:ltr}
+    .split.reverse>*{direction:ltr}
+    .testi-card{grid-template-columns:1fr}
+    .testi-photo{min-height:260px}
+    .mobile-cta{display:block}
+    body{padding-bottom:70px}
+    .plans-grid{grid-template-columns:1fr}
+    .section-wrap{padding:60px 20px}
+    .testi-section{padding:60px 20px}
+  }
+  @media(max-width:600px){
+    .hero-stats{gap:16px}
+    .stats-inner{gap:24px}
+    .steps-grid{grid-template-columns:1fr 1fr}
+    .hero h1{letter-spacing:-1.5px}
+  }
 </style>
 </head>
 <body>
 
+<!-- NAV -->
 <nav>
   <div class="nav-logo">
-    <img src="/static/img/defesapro/logo.png" alt="DefesaPro" onerror="this.style.display='none'">
+    <div class="nav-logo-icon">⚖️</div>
     DefesaPro
   </div>
-  <div style="display:flex;gap:10px;align-items:center;">
+  <div class="nav-links">
     <a href="/" class="nav-back">← Voltar</a>
-    <a href="/defesapro/login" class="nav-back" style="border-color:rgba(139,92,246,.4);color:#A78BFA;">🔐 Entrar</a>
-    <a href="https://wa.me/5547991011351?text=Olá, quero saber mais sobre o DefesaPro" target="_blank" class="btn-cta">Falar com vendas</a>
+    <a href="/defesapro/login" class="nav-login">🔐 Entrar</a>
+    <a href="https://wa.me/5547991011351?text=Olá%2C%20quero%20saber%20mais%20sobre%20o%20DefesaPro" target="_blank" class="btn-cta-nav">Falar com vendas</a>
   </div>
 </nav>
 
 <!-- HERO -->
-<section class="hero">
-  <img src="/static/img/defesapro/logo.png" alt="DefesaPro" class="logo-hero" onerror="this.style.display='none'">
-  <div class="hero-badge">⚖️ Para escritórios de defesa de trânsito</div>
-  <h1>Gestão completa de<br><span>defesas de multas</span></h1>
-  <p>Do cadastro à petição, tudo em um sistema. Controle processos, prazos, honorários e gere petições completas com base no CTB e CONTRAN.</p>
-  <div class="hero-ctas">
-    <a href="https://wa.me/5547991011351?text=Olá, quero testar o DefesaPro" target="_blank" class="cta-big">
-      Quero uma demonstração
-    </a>
-    <a href="#planos" class="cta-sec">Ver planos →</a>
+<section style="max-width:1280px;margin:0 auto;padding:0 32px">
+  <div class="hero">
+    <div class="hero-text">
+      <div class="hero-badge">
+        <span class="hero-badge-dot"></span>
+        Para escritórios de defesa de trânsito
+      </div>
+      <h1>Gestão completa de<br><em>defesas de multas</em></h1>
+      <p class="hero-sub">Do cadastro à petição, tudo em um sistema. Controle processos, prazos, honorários e gere petições completas com base no CTB e CONTRAN — em minutos.</p>
+      <div class="hero-ctas">
+        <a href="https://wa.me/5547991011351?text=Olá%2C%20quero%20uma%20demonstração%20do%20DefesaPro" target="_blank" class="cta-big">📱 Quero uma demonstração</a>
+        <a href="#planos" class="cta-sec">Ver planos →</a>
+      </div>
+      <div class="hero-stats">
+        <div class="hero-stat">
+          <span class="hero-stat-num">6 módulos</span>
+          <span class="hero-stat-label">integrados</span>
+        </div>
+        <div class="hero-stat">
+          <span class="hero-stat-num">OCR + IA</span>
+          <span class="hero-stat-label">extração automática</span>
+        </div>
+        <div class="hero-stat">
+          <span class="hero-stat-num">0 prazos</span>
+          <span class="hero-stat-label">perdidos</span>
+        </div>
+        <div class="hero-stat">
+          <span class="hero-stat-num">R$390</span>
+          <span class="hero-stat-label">plano inicial</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="hero-img-wrap">
+      <picture>
+        <source media="(max-width:900px)" srcset="/static/img/defesapro/defesa-hero-mobile.jpg">
+        <img src="/static/img/defesapro/defesa-hero.jpg" alt="Advogada especialista em defesa de multas de trânsito usando o DefesaPro" loading="eager">
+      </picture>
+      <div class="hero-badge-float">
+        <span class="badge-dot-green"></span>
+        Petição #312 — JARI Joinville · Deferida ✅
+      </div>
+    </div>
   </div>
 </section>
 
-<!-- FEATURES -->
-<section class="features">
+<!-- STATS BAR -->
+<div class="stats-bar">
+  <div class="stats-inner">
+    <div class="stat-pill"><span class="stat-num">6 módulos</span><span class="stat-lbl">Motor · OCR · Prazos<br>Gov.br · Financeiro · Dashboard</span></div>
+    <div class="stat-pill"><span class="stat-num">IA + OCR</span><span class="stat-lbl">lê a auto de infração<br>e preenche tudo</span></div>
+    <div class="stat-pill"><span class="stat-num">CTB / CONTRAN</span><span class="stat-lbl">petições com base<br>na legislação vigente</span></div>
+    <div class="stat-pill"><span class="stat-num">AES-256</span><span class="stat-lbl">senhas GOV.br<br>criptografadas</span></div>
+    <div class="stat-pill"><span class="stat-num">R$390/mês</span><span class="stat-lbl">plano inicial completo<br>sem taxa de adesão</span></div>
+  </div>
+</div>
+
+<!-- SPLIT 1 — OCR -->
+<div class="section-wrap">
+  <div class="split">
+    <div class="split-img">
+      <img src="/static/img/defesapro/defesa-card-ocr.jpg" alt="OCR automático lendo auto de infração de trânsito">
+    </div>
+    <div class="split-text">
+      <div class="section-tag">✦ OCR Automático</div>
+      <h2>Foto da multa →<br><em>processo criado</em></h2>
+      <p>Cole uma imagem ou PDF da notificação de infração e o sistema lê automaticamente todos os campos: placa, infração, pontos, órgão autuador, prazo para defesa e dados do condutor.</p>
+      <div class="check-list">
+        <div class="check-item">Suporte a fotos, prints de tela e PDFs escaneados</div>
+        <div class="check-item">Identifica artigo do CTB e enquadramento automático</div>
+        <div class="check-item">Calcula prazo de defesa prévia, JARI e CETRAN</div>
+        <div class="check-item">Revisão manual em 1 clique se necessário</div>
+      </div>
+      <div class="highlight-box">
+        <div class="hbox">⏱️ Cadastro em &lt;2 minutos</div>
+        <div class="hbox">📄 PDF e imagem</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SPLIT 2 — PETIÇÕES -->
+<div style="background:var(--card);border-top:1px solid rgba(139,92,246,.06);border-bottom:1px solid rgba(139,92,246,.06)">
+<div class="section-wrap">
+  <div class="split reverse">
+    <div class="split-img">
+      <img src="/static/img/defesapro/defesa-card-peticao.jpg" alt="Motor de petições gerando defesa de multa automaticamente">
+    </div>
+    <div class="split-text">
+      <div class="section-tag">✦ Motor de Petições</div>
+      <h2>Petição completa<br>gerada em <em>segundos</em></h2>
+      <p>O sistema gera a petição com base no CTB, CONTRAN e CF/88, selecionando automaticamente os argumentos mais adequados para cada tipo de infração. Exporta em .docx editável para personalização final.</p>
+      <div class="check-list">
+        <div class="check-item">Efeito suspensivo e sustento familiar incluídos</div>
+        <div class="check-item">Desqualificação do equipamento autuador</div>
+        <div class="check-item">Histórico completo de petições por cliente</div>
+        <div class="check-item">Exportação .docx compatível com Word e LibreOffice</div>
+      </div>
+      <div class="highlight-box">
+        <div class="hbox">⚡ 80% menos tempo</div>
+        <div class="hbox">📝 .docx editável</div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- FEATURES GRID -->
+<div class="section-wrap">
   <div class="section-tag">✦ Funcionalidades</div>
   <h2 class="section-title">Tudo que você precisa</h2>
-  <p class="section-sub">Desenvolvido especificamente para quem trabalha com defesas de multas de trânsito.</p>
+  <p class="section-sub">Desenvolvido especificamente para quem trabalha com defesas de multas de trânsito em Santa Catarina e todo o Brasil.</p>
 
   <div class="feat-grid">
     <div class="feat-card">
@@ -117,37 +316,129 @@
     <div class="feat-card">
       <div class="feat-icon">📷</div>
       <div class="feat-title">OCR Automático</div>
-      <div class="feat-desc">Cole uma foto ou print da notificação e o sistema preenche todos os campos automaticamente. Suporte a imagens e PDFs.</div>
+      <div class="feat-desc">Cole uma foto ou print da notificação e o sistema preenche todos os campos automaticamente. Suporte completo a imagens e PDFs escaneados.</div>
     </div>
     <div class="feat-card">
       <div class="feat-icon">⏰</div>
       <div class="feat-title">Controle de Prazos</div>
-      <div class="feat-desc">Alertas automáticos para processos com prazo vencendo. Nunca mais perca um prazo de defesa prévia, JARI ou CETRAN.</div>
+      <div class="feat-desc">Alertas automáticos para processos com prazo vencendo. Nunca mais perca um prazo de defesa prévia, JARI ou CETRAN. Painel de urgentes em destaque.</div>
     </div>
     <div class="feat-card">
       <div class="feat-icon">🔐</div>
       <div class="feat-title">Senhas GOV.br Seguras</div>
-      <div class="feat-desc">Armazena senhas de acesso ao GOV.br dos clientes com criptografia AES-256. Mais seguro que planilhas e anotações.</div>
+      <div class="feat-desc">Armazena senhas de acesso ao GOV.br dos clientes com criptografia AES-256. Muito mais seguro que planilhas, post-its e anotações no caderno.</div>
     </div>
     <div class="feat-card">
       <div class="feat-icon">💰</div>
       <div class="feat-title">Financeiro Integrado</div>
-      <div class="feat-desc">Controle de honorários, pagamentos recebidos e valores a receber. Saiba exatamente quanto você tem para receber.</div>
+      <div class="feat-desc">Controle de honorários, pagamentos recebidos e valores a receber. Saiba exatamente quanto você tem para receber em tempo real.</div>
     </div>
     <div class="feat-card">
       <div class="feat-icon">📊</div>
       <div class="feat-title">Dashboard Completo</div>
-      <div class="feat-desc">Visão geral dos processos, taxa de deferimento, urgentes com prazo curto e resumo financeiro em uma tela só.</div>
+      <div class="feat-desc">Visão geral dos processos, taxa de deferimento, urgentes com prazo curto e resumo financeiro em uma tela só. Gestão total do escritório.</div>
     </div>
   </div>
-</section>
+</div>
+
+<!-- SPLIT 3 — DASHBOARD -->
+<div style="background:var(--card);border-top:1px solid rgba(139,92,246,.06);border-bottom:1px solid rgba(139,92,246,.06)">
+<div class="section-wrap">
+  <div class="split">
+    <div class="split-img">
+      <img src="/static/img/defesapro/defesa-card-dashboard.jpg" alt="Dashboard DefesaPro com métricas de processos e financeiro">
+    </div>
+    <div class="split-text">
+      <div class="section-tag">✦ Dashboard & Financeiro</div>
+      <h2>Escritório<br><em>organizado e rentável</em></h2>
+      <p>Veja em tempo real quantos processos estão ativos, quais têm prazo urgente, sua taxa de deferimento e quanto você tem a receber. Tudo em uma tela só — sem planilhas, sem caos.</p>
+      <div class="check-list">
+        <div class="check-item">Processos ativos, deferidos e negados por período</div>
+        <div class="check-item">Taxa de deferimento por tipo de infração</div>
+        <div class="check-item">Honorários recebidos, pendentes e a vencer</div>
+        <div class="check-item">Relatórios exportáveis por cliente ou período</div>
+      </div>
+      <div class="highlight-box">
+        <div class="hbox">📈 Taxa de deferimento</div>
+        <div class="hbox">💵 Controle financeiro</div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- STEPS -->
+<div class="steps-bg">
+  <div class="steps-inner">
+    <div class="section-tag" style="text-align:center">✦ Como funciona</div>
+    <h2 class="section-title" style="text-align:center">Comece em 4 passos</h2>
+    <p class="section-sub" style="text-align:center;max-width:520px;margin-left:auto;margin-right:auto">Do primeiro acesso ao primeiro processo em menos de 10 minutos.</p>
+    <div class="steps-grid">
+      <div class="step-card">
+        <div class="step-num">1</div>
+        <div class="step-title">Solicite acesso</div>
+        <div class="step-desc">Fale com nossa equipe via WhatsApp. Configuramos seu escritório em minutos.</div>
+      </div>
+      <div class="step-card">
+        <div class="step-num">2</div>
+        <div class="step-title">Cadastre o cliente</div>
+        <div class="step-desc">Nome, CPF, placa e foto da multa. O OCR preenche o restante automaticamente.</div>
+      </div>
+      <div class="step-card">
+        <div class="step-num">3</div>
+        <div class="step-title">Gere a petição</div>
+        <div class="step-desc">1 clique — petição completa com base no CTB, CONTRAN e CF/88 pronta para assinar.</div>
+      </div>
+      <div class="step-card">
+        <div class="step-num">4</div>
+        <div class="step-title">Acompanhe os prazos</div>
+        <div class="step-desc">Alertas automáticos. Dashboard atualizado. Nunca mais perca um prazo de JARI ou CETRAN.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TESTIMONIALS -->
+<div class="testi-section">
+  <div class="section-tag">✦ Depoimentos</div>
+  <h2 class="section-title">Escritórios que confiam</h2>
+  <p class="section-sub">Profissionais de defesa de trânsito em Santa Catarina que transformaram seu escritório com o DefesaPro.</p>
+
+  <div class="testi-grid">
+    <div class="testi-card">
+      <div class="testi-photo">
+        <img src="/static/img/defesapro/defesa-depo-1.jpg" alt="Andréia Hoffmann — Advogada de Defesa de Trânsito Joinville">
+      </div>
+      <div class="testi-body">
+        <div class="testi-stars">★★★★★</div>
+        <p class="testi-quote">Antes eu levava 1 hora para montar uma petição — revisando artigo por artigo no CTB. Hoje o sistema gera em 40 segundos e ainda sugere os argumentos mais fortes. Minha produtividade triplicou e parei de perder prazos de JARI.</p>
+        <div class="testi-name">Andréia Hoffmann</div>
+        <div class="testi-role">Advogada especialista em defesa de trânsito — Joinville, SC</div>
+        <div class="testi-badge">⚖️ Plano Profissional · 8 meses de uso</div>
+      </div>
+    </div>
+
+    <div class="testi-card">
+      <div class="testi-photo">
+        <img src="/static/img/defesapro/defesa-depo-2.jpg" alt="Klaus Bergmann — Escritório de Defesa de Multas Blumenau">
+      </div>
+      <div class="testi-body">
+        <div class="testi-stars">★★★★★</div>
+        <p class="testi-quote">O OCR mudou tudo. Meu cliente manda foto da multa pelo WhatsApp, eu jogo no sistema e em 2 minutos já tenho o processo aberto, prazo calculado e a petição gerada. O controle financeiro me mostrou que eu estava deixando R$4 mil na mesa todo mês em honorários não cobrados.</p>
+        <div class="testi-name">Klaus Bergmann</div>
+        <div class="testi-role">Escritório de Defesa de Multas — Blumenau, SC</div>
+        <div class="testi-badge">⚖️ Plano Premium · 14 meses de uso</div>
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- PRICING -->
 <section class="pricing" id="planos">
   <div class="pricing-inner">
-    <div class="section-tag">✦ Planos</div>
-    <h2 class="section-title">Simples e sem surpresas</h2>
-    <p class="section-sub">Cancele quando quiser. Sem contrato de fidelidade.</p>
+    <div class="section-tag" style="text-align:center">✦ Planos</div>
+    <h2 class="section-title" style="text-align:center">Simples e sem surpresas</h2>
+    <p class="section-sub" style="text-align:center">Cancele quando quiser. Sem contrato de fidelidade. Sem taxa de adesão.</p>
 
     <div class="plans-grid">
       <div class="plan">
@@ -156,12 +447,13 @@
         <div class="plan-desc">Para quem está começando</div>
         <ul class="plan-features">
           <li>Processos ilimitados</li>
-          <li>Motor de petições</li>
-          <li>OCR automático</li>
-          <li>Controle de prazos</li>
+          <li>Motor de petições (CTB + CONTRAN)</li>
+          <li>OCR automático (foto e PDF)</li>
+          <li>Controle de prazos + alertas</li>
           <li>Financeiro básico</li>
+          <li>Senhas GOV.br criptografadas</li>
         </ul>
-        <a href="https://wa.me/5547991011351?text=Quero o DefesaPro Starter" target="_blank" class="plan-btn secondary">Falar com vendas</a>
+        <a href="https://wa.me/5547991011351?text=Quero%20o%20DefesaPro%20Starter" target="_blank" class="plan-btn secondary">Falar com vendas</a>
       </div>
 
       <div class="plan featured">
@@ -171,12 +463,13 @@
         <div class="plan-desc">Para escritórios em crescimento</div>
         <ul class="plan-features">
           <li>Tudo do Starter</li>
-          <li>Análise técnica do processo</li>
+          <li>Análise técnica automática do processo</li>
           <li>Histórico completo de petições</li>
           <li>Exportação de documentos .docx</li>
+          <li>Dashboard com taxa de deferimento</li>
           <li>Suporte prioritário</li>
         </ul>
-        <a href="https://wa.me/5547991011351?text=Quero o DefesaPro Profissional" target="_blank" class="plan-btn primary">Falar com vendas</a>
+        <a href="https://wa.me/5547991011351?text=Quero%20o%20DefesaPro%20Profissional" target="_blank" class="plan-btn primary">Falar com vendas</a>
       </div>
 
       <div class="plan">
@@ -185,29 +478,55 @@
         <div class="plan-desc">Para alto volume de processos</div>
         <ul class="plan-features">
           <li>Tudo do Profissional</li>
-          <li>Multi-usuário (equipe)</li>
-          <li>Onboarding personalizado</li>
+          <li>Multi-usuário (equipe ilimitada)</li>
+          <li>Onboarding personalizado 1:1</li>
           <li>Customização de templates</li>
+          <li>Relatórios avançados por período</li>
           <li>Suporte via WhatsApp direto</li>
         </ul>
-        <a href="https://wa.me/5547991011351?text=Quero o DefesaPro Premium" target="_blank" class="plan-btn secondary">Falar com vendas</a>
+        <a href="https://wa.me/5547991011351?text=Quero%20o%20DefesaPro%20Premium" target="_blank" class="plan-btn secondary">Falar com vendas</a>
+      </div>
+    </div>
+
+    <div class="includes-box">
+      <div class="includes-title">✦ Todos os planos incluem</div>
+      <div class="includes-grid">
+        <div class="inc-item">Acesso web + mobile</div>
+        <div class="inc-item">Backups diários automáticos</div>
+        <div class="inc-item">SSL e criptografia AES-256</div>
+        <div class="inc-item">Atualizações incluídas</div>
+        <div class="inc-item">Onboarding de implantação</div>
+        <div class="inc-item">Suporte por e-mail</div>
+        <div class="inc-item">Sem taxa de adesão</div>
+        <div class="inc-item">Cancele quando quiser</div>
       </div>
     </div>
   </div>
 </section>
 
-<!-- FINAL CTA -->
-<div class="final-cta">
-  <h2>Pronto para modernizar seu escritório?</h2>
-  <p>Solicite uma demonstração gratuita. Veja o sistema funcionando com seus próprios dados antes de assinar.</p>
-  <a href="https://wa.me/5547991011351?text=Olá, quero uma demonstração do DefesaPro" target="_blank" class="cta-big">
-    📱 Solicitar demonstração grátis
-  </a>
+<!-- CTA FINAL -->
+<div class="cta-section">
+  <div class="cta-bg"></div>
+  <div class="cta-overlay"></div>
+  <div class="cta-content">
+    <h2>Pronto para modernizar seu escritório?</h2>
+    <p>Solicite uma demonstração gratuita. Veja o sistema funcionando com seus próprios dados antes de assinar.</p>
+    <a href="https://wa.me/5547991011351?text=Olá%2C%20quero%20uma%20demonstração%20do%20DefesaPro" target="_blank" class="cta-big">
+      📱 Solicitar demonstração grátis
+    </a>
+  </div>
 </div>
 
 <footer>
   <p>DefesaPro é uma solução <a href="/">4KITEM</a> · © 2026 · Todos os direitos reservados</p>
 </footer>
+
+<!-- MOBILE CTA BAR -->
+<div class="mobile-cta">
+  <a href="https://wa.me/5547991011351?text=Olá%2C%20quero%20saber%20mais%20sobre%20o%20DefesaPro" target="_blank">
+    ⚖️ Falar com vendas agora
+  </a>
+</div>
 
 </body>
 </html>
