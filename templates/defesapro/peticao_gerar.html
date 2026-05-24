@@ -10,7 +10,7 @@
   .tese-title{font-size:13px;font-weight:700;margin-bottom:3px}
   .tese-desc{font-size:12px;color:var(--text3);line-height:1.5}
 
-  /* IA */
+  /* Gerador completo */
   .btn-ia{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:13px;border:none;border-radius:12px;background:linear-gradient(135deg,#0ea5e9,#6366f1);color:#fff;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;transition:.2s;margin-top:10px}
   .btn-ia:hover{opacity:.9;transform:translateY(-1px)}
   .btn-ia:disabled{opacity:.5;cursor:wait;transform:none}
@@ -84,11 +84,11 @@
         <div style="margin-top:12px;font-size:12px;color:var(--text3)">💡 Selecione as teses mais adequadas ao caso. A petição será montada com todas as selecionadas.</div>
       </div>
 
-      <button type="submit" class="btn btn-outline" style="width:100%;justify-content:center;padding:12px;font-size:14px">📄 Gerar com template</button>
+      <button type="submit" class="btn btn-outline" style="width:100%;justify-content:center;padding:12px;font-size:14px">📄 Gerar petição simples</button>
       <button type="button" class="btn-ia" id="btn-ia" onclick="gerarComIA()">
-        ✨ Gerar com IA — Defesa Completa
+        ⚡ Gerar Defesa Completa
       </button>
-      <div style="font-size:11px;color:var(--text3);text-align:center;margin-top:6px">A IA usa efeito suspensivo + CNH + máximo de citações CTB</div>
+      <div style="font-size:11px;color:var(--text3);text-align:center;margin-top:6px">Inclui efeito suspensivo + necessidade da CNH + máximo de citações CTB</div>
     </form>
   </div>
 
@@ -112,32 +112,32 @@
       <div style="font-size:15px;margin-bottom:8px;color:var(--text2)">A petição aparecerá aqui</div>
       <div style="font-size:13px">Preencha o formulário ao lado e escolha o modo de geração.</div>
       <div style="margin-top:20px;padding:16px;background:var(--surface2);border-radius:10px;text-align:left;font-size:12px;color:var(--text2)">
-        <strong>✨ IA vs 📄 Template:</strong><br><br>
-        <strong style="color:#6ee7b7">✨ Gerar com IA</strong> — Groq LLM gera uma defesa completa e personalizada com efeito suspensivo, argumentos sobre necessidade da CNH, nulidades, máximo de citações CTB e jurisprudência.<br><br>
-        <strong style="color:var(--purple3)">📄 Template</strong> — Petição estruturada com base nas teses selecionadas, 100% determinística e instantânea.
+        <strong>⚡ Completa vs 📄 Simples:</strong><br><br>
+        <strong style="color:#6ee7b7">⚡ Defesa Completa</strong> — Gera uma petição personalizada com efeito suspensivo, necessidade da CNH para sustento, nulidades do auto, máximo de citações CTB/CF/88 e jurisprudência. Leva ~20 segundos.<br><br>
+        <strong style="color:var(--purple3)">📄 Simples</strong> — Petição estruturada com base nas teses selecionadas. Instantânea.
       </div>
     </div>
 
-    <!-- Painel loading IA -->
+    <!-- Painel loading -->
     <div id="painel-ia-loading" style="display:none">
       <div class="ia-loading-panel">
         <div class="ia-loading-spin"></div>
-        <div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:8px">Gerando defesa com IA…</div>
+        <div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:8px">Elaborando petição…</div>
         <div style="font-size:13px;color:var(--text3);line-height:1.6">
-          O Groq está elaborando a petição completa:<br>
+          Gerando defesa completa com todas as fundamentações:<br>
           efeito suspensivo · CNH para sustento · nulidades · jurisprudência
         </div>
         <div style="margin-top:20px;font-size:11px;color:var(--text3)">Aguarde até 30 segundos…</div>
       </div>
     </div>
 
-    <!-- Painel resultado IA (injetado via JS) -->
+    <!-- Painel resultado -->
     <div id="painel-ia-resultado" style="display:none">
       <div class="form-card" style="margin:0;position:sticky;top:72px">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
           <div>
-            <div class="ia-badge">✨ Gerado por IA</div>
-            <h3 style="margin:0;font-size:16px">Petição completa</h3>
+            <div class="ia-badge">⚡ Defesa Completa</div>
+            <h3 style="margin:0;font-size:16px">Petição gerada</h3>
           </div>
           <div style="display:flex;gap:8px">
             <button onclick="copyPet()" class="btn btn-primary btn-sm">📋 Copiar</button>
@@ -192,7 +192,7 @@ function gerarComIA(){
   // UI: show loading
   const btn = document.getElementById('btn-ia');
   btn.disabled = true;
-  btn.innerHTML = '<span class="ia-spin"></span> Gerando com IA…';
+  btn.innerHTML = '<span class="ia-spin"></span> Elaborando petição…';
   const vazio = document.getElementById('painel-vazio');
   const loading = document.getElementById('painel-ia-loading');
   const resultado = document.getElementById('painel-ia-resultado');
@@ -208,7 +208,7 @@ function gerarComIA(){
   .then(r=>r.json())
   .then(res=>{
     btn.disabled=false;
-    btn.innerHTML='✨ Gerar com IA — Defesa Completa';
+    btn.innerHTML='⚡ Gerar Defesa Completa';
     if(loading) loading.style.display='none';
     if(res.erro){
       if(vazio) vazio.style.display='block';
@@ -224,7 +224,7 @@ function gerarComIA(){
   })
   .catch(e=>{
     btn.disabled=false;
-    btn.innerHTML='✨ Gerar com IA — Defesa Completa';
+    btn.innerHTML='⚡ Gerar Defesa Completa';
     if(loading) loading.style.display='none';
     if(vazio) vazio.style.display='block';
     alert('❌ Erro de rede: '+e);
