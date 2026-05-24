@@ -57,7 +57,7 @@
         <td style="font-size:12px;max-width:160px">{{ (p.descricao or p.artigo_ctb)[:50] }}</td>
         <td class="td-muted">{{ p.cliente_nome or p.proprietario or '—' }}</td>
         <td><strong style="color:var(--orange)">📅 {{ p.prazo_defesa }}</strong></td>
-        <td style="font-size:11px;color:var(--text3)">{{ ctb_status.get(p.fase, {}).get('label','') or p.fase }}</td>
+        <td style="font-size:11px;color:var(--text3)">{{ ctb_fases.get(p.fase, p.fase) }}</td>
         <td>
           <a href="/defesapro/processos/{{ p.id }}" class="btn btn-outline btn-sm">👁️ Ver</a>
           <a href="/defesapro/peticoes/gerar?processo_id={{ p.id }}" class="btn btn-primary btn-sm">📄 Petição</a>
@@ -86,7 +86,7 @@
         <td style="font-size:12px;max-width:160px">{{ (p.descricao or p.artigo_ctb)[:50] }}</td>
         <td class="td-muted">{{ p.cliente_nome or p.proprietario or '—' }}</td>
         <td>📅 {{ p.prazo_defesa }}</td>
-        <td style="font-size:11px;color:var(--text3)">{{ ctb_status.get(p.fase, {}).get('label','') or p.fase }}</td>
+        <td style="font-size:11px;color:var(--text3)">{{ ctb_fases.get(p.fase, p.fase) }}</td>
         <td><a href="/defesapro/processos/{{ p.id }}" class="btn btn-outline btn-sm">👁️ Ver</a></td>
       </tr>
       {% endfor %}
