@@ -1,398 +1,613 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Alerta SC — Monitoramento de CNH e Veículo via WhatsApp</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    :root {
-      --bg: #08080f; --bg2: #0e0e1a; --surface: #13131f; --surface2: #1a1a2e;
-      --border: rgba(255,255,255,0.07); --border2: rgba(255,255,255,0.14);
-      --text: #f0f0ff; --text2: #8888aa;
-      --orange: #f97316; --orange2: #ea580c; --red: #ef4444;
-      --green: #22c55e;
-    }
-    html { scroll-behavior: smooth; }
-    body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); }
-    a { text-decoration: none; color: inherit; }
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-0JQBJ01C0Z"></script>
+<script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-0JQBJ01C0Z');</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Alerta SC — Monitoramento de CNH e Veículo via WhatsApp</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #08080f; --bg2: #0e0e1a; --surface: #13131f; --surface2: #1a1a2e;
+    --border: rgba(255,255,255,0.07); --border2: rgba(255,255,255,0.14);
+    --text: #f0f0ff; --text2: #8888aa;
+    --orange: #f97316; --orange2: #ea580c; --red: #ef4444; --green: #22c55e;
+  }
+  html { scroll-behavior: smooth; }
+  body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); }
+  a { text-decoration: none; color: inherit; }
+  img { display: block; }
 
-    /* ── Nav ── */
-    nav {
-      position: sticky; top: 0; z-index: 50;
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 16px 24px;
-      background: rgba(8,8,15,0.9); backdrop-filter: blur(16px);
-      border-bottom: 1px solid var(--border);
-    }
-    .nav-logo { display: flex; align-items: center; gap: 10px; font-weight: 900; font-size: 18px; }
-    .nav-logo-icon {
-      width: 34px; height: 34px; border-radius: 8px;
-      overflow: hidden;
-      display: flex; align-items: center; justify-content: center;
-    }
-    .nav-logo-icon img { width: 100%; height: 100%; object-fit: cover; border-radius: 8px; }
-    .nav-logo span { color: var(--orange); }
-    .nav-links { display: flex; align-items: center; gap: 12px; }
-    .btn-nav-outline {
-      padding: 8px 18px; border-radius: 100px;
-      border: 1px solid var(--border2); color: var(--text2);
-      font-size: 13px; font-weight: 600; cursor: pointer;
-      font-family: inherit; background: transparent; transition: .2s;
-    }
-    .btn-nav-outline:hover { border-color: var(--orange); color: var(--orange); }
-    .btn-nav-primary {
-      padding: 8px 20px; border-radius: 100px;
-      background: linear-gradient(135deg, var(--orange), var(--red));
-      color: #fff; font-size: 13px; font-weight: 700;
-      cursor: pointer; font-family: inherit; border: none; transition: .2s;
-    }
-    .btn-nav-primary:hover { opacity: .9; }
+  /* ── NAV ── */
+  nav {
+    position: sticky; top: 0; z-index: 50;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 24px;
+    background: rgba(8,8,15,0.92); backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--border);
+  }
+  .nav-logo { display: flex; align-items: center; gap: 10px; font-weight: 900; font-size: 19px; }
+  .nav-logo-icon {
+    width: 34px; height: 34px; border-radius: 8px; overflow: hidden;
+    background: linear-gradient(135deg,var(--orange2),var(--red));
+    display: flex; align-items: center; justify-content: center; font-size: 18px;
+  }
+  .nav-logo-icon img { width:100%; height:100%; object-fit:cover; border-radius:8px; }
+  .nav-logo span { color: var(--orange); }
+  .nav-links { display: flex; align-items: center; gap: 10px; }
+  .nav-outline {
+    padding: 8px 18px; border-radius: 100px;
+    border: 1px solid var(--border2); color: var(--text2);
+    font-size: 13px; font-weight: 600; background: transparent; cursor: pointer; font-family: inherit;
+  }
+  .nav-outline:hover { border-color: var(--orange); color: var(--orange); }
+  .nav-primary {
+    padding: 9px 20px; border-radius: 100px;
+    background: linear-gradient(135deg, var(--orange2), var(--orange));
+    color: #fff; font-size: 13px; font-weight: 700; border: none; cursor: pointer; font-family: inherit;
+  }
+  .nav-primary:hover { opacity:.9; }
 
-    /* ── Hero ── */
-    .hero {
-      text-align: center; padding: 80px 24px 60px;
-      max-width: 700px; margin: 0 auto;
-    }
-    .hero-badge {
-      display: inline-flex; align-items: center; gap: 6px;
-      background: rgba(249,115,22,0.1); border: 1px solid rgba(249,115,22,0.3);
-      border-radius: 100px; padding: 6px 16px;
-      font-size: 12px; font-weight: 700; color: var(--orange);
-      margin-bottom: 28px;
-    }
-    .hero h1 {
-      font-size: clamp(32px, 6vw, 52px); font-weight: 900;
-      letter-spacing: -1.5px; line-height: 1.1; margin-bottom: 20px;
-    }
-    .hero h1 span { color: var(--orange); }
-    .hero p {
-      font-size: 17px; color: var(--text2); line-height: 1.6;
-      margin-bottom: 36px; max-width: 520px; margin-left: auto; margin-right: auto;
-    }
-    .hero strong { color: var(--text); }
-    .hero-ctas { display: flex; align-items: center; justify-content: center; gap: 12px; flex-wrap: wrap; }
-    .btn-primary {
-      display: inline-flex; align-items: center; gap: 8px;
-      padding: 14px 28px; border-radius: 100px;
-      background: linear-gradient(135deg, var(--orange), var(--red));
-      color: #fff; font-size: 15px; font-weight: 700;
-      cursor: pointer; transition: .2s; border: none; font-family: inherit;
-    }
-    .btn-primary:hover { opacity: .9; transform: translateY(-1px); }
-    .btn-outline {
-      display: inline-flex; align-items: center; gap: 8px;
-      padding: 14px 24px; border-radius: 100px;
-      border: 1px solid var(--border2); color: var(--text);
-      font-size: 15px; font-weight: 600; cursor: pointer;
-      transition: .2s; background: transparent; font-family: inherit;
-    }
-    .btn-outline:hover { border-color: var(--orange); color: var(--orange); }
+  /* ── HERO SPLIT ── */
+  .hero-wrap {
+    max-width: 1160px; margin: 0 auto;
+    display: grid; grid-template-columns: 1fr 1fr;
+    align-items: center; gap: 48px;
+    padding: 72px 32px 64px;
+  }
+  .hero-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: rgba(249,115,22,0.1); border: 1px solid rgba(249,115,22,0.3);
+    border-radius: 100px; padding: 6px 16px;
+    font-size: 12px; font-weight: 700; color: var(--orange); margin-bottom: 24px;
+  }
+  .hero-text h1 {
+    font-size: clamp(30px, 4vw, 50px); font-weight: 900;
+    letter-spacing: -1.5px; line-height: 1.1; margin-bottom: 20px;
+  }
+  .hero-text h1 span { color: var(--orange); }
+  .hero-text p {
+    font-size: 16px; color: var(--text2); line-height: 1.65;
+    margin-bottom: 32px; max-width: 480px;
+  }
+  .hero-text p strong { color: var(--text); }
+  .hero-ctas { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 28px; }
+  .btn-primary {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 14px 28px; border-radius: 100px;
+    background: linear-gradient(135deg, var(--orange2), var(--orange));
+    color: #fff; font-size: 15px; font-weight: 700;
+    border: none; cursor: pointer; transition: .2s; font-family: inherit;
+  }
+  .btn-primary:hover { opacity:.9; transform: translateY(-1px); }
+  .btn-outline {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 14px 24px; border-radius: 100px;
+    border: 1px solid var(--border2); color: var(--text);
+    font-size: 15px; font-weight: 600; cursor: pointer;
+    transition: .2s; background: transparent; font-family: inherit;
+  }
+  .btn-outline:hover { border-color: var(--orange); color: var(--orange); }
+  .hero-trust { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--text2); }
+  .hero-trust-avatars { display: flex; }
+  .hero-trust-avatars span {
+    width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--bg);
+    background: linear-gradient(135deg, var(--orange2), var(--orange));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; margin-left: -8px;
+  }
+  .hero-trust-avatars span:first-child { margin-left: 0; }
 
-    /* ── Stats bar ── */
-    .stats-bar {
-      display: flex; justify-content: center; gap: 40px; flex-wrap: wrap;
-      padding: 32px 24px 0; max-width: 600px; margin: 0 auto;
-    }
-    .stat-item { text-align: center; }
-    .stat-num {
-      font-size: 28px; font-weight: 900; letter-spacing: -1px;
-      background: linear-gradient(135deg, var(--orange), #fbbf24);
-      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-    }
-    .stat-label { font-size: 11px; color: var(--text2); font-weight: 600; margin-top: 2px; }
+  /* Hero imagem */
+  .hero-img-wrap { position: relative; border-radius: 20px; overflow: hidden; }
+  .hero-img-wrap img {
+    width: 100%; height: 420px; object-fit: cover;
+    border-radius: 20px; display: block;
+  }
+  .hero-img-badge {
+    position: absolute; bottom: 20px; left: 20px; right: 20px;
+    background: rgba(10,10,20,0.88); backdrop-filter: blur(16px);
+    border: 1px solid rgba(249,115,22,0.3); border-radius: 14px;
+    padding: 12px 16px; display: flex; align-items: center; gap: 10px;
+  }
+  .hero-img-badge-icon {
+    width: 38px; height: 38px; border-radius: 10px; flex-shrink: 0;
+    background: linear-gradient(135deg,var(--orange2),var(--red));
+    display: flex; align-items: center; justify-content: center; font-size: 18px;
+  }
+  .hero-img-badge-title { font-size: 13px; font-weight: 700; }
+  .hero-img-badge-sub { font-size: 11px; color: var(--text2); }
+  .hero-img-badge-dot {
+    margin-left: auto; width: 8px; height: 8px;
+    border-radius: 50%; background: var(--green);
+    box-shadow: 0 0 8px var(--green); flex-shrink: 0;
+  }
 
-    /* ── Phone frame ── */
-    .phone-wrap {
-      max-width: 320px; margin: 48px auto 0;
-      position: relative;
-    }
-    .phone-wrap::before {
-      content: '';
-      position: absolute; inset: -24px -14px;
-      background: linear-gradient(135deg, #1a1a1a, #0a0a12);
-      border-radius: 44px;
-      border: 2px solid rgba(255,255,255,0.12);
-      box-shadow: 0 0 60px rgba(249,115,22,0.15), 0 40px 80px rgba(0,0,0,0.6),
-                  inset 0 1px 0 rgba(255,255,255,0.08);
-      z-index: -1;
-    }
-    .phone-wrap::after {
-      content: '';
-      position: absolute; top: -36px; left: 50%; transform: translateX(-50%);
-      width: 60px; height: 6px;
-      background: rgba(255,255,255,0.12); border-radius: 100px;
-    }
-    .phone-notch {
-      width: 80px; height: 22px; background: #0a0a12;
-      border-radius: 0 0 16px 16px; margin: -36px auto 12px;
-      position: relative; z-index: 1;
-      border: 2px solid rgba(255,255,255,0.06); border-top: none;
-      display: flex; align-items: center; justify-content: center;
-    }
-    .phone-notch::before {
-      content: ''; width: 40px; height: 4px;
-      background: rgba(255,255,255,0.15); border-radius: 100px;
-    }
-    .phone-home {
-      width: 40px; height: 5px; background: rgba(255,255,255,0.12);
-      border-radius: 100px; margin: 12px auto -24px;
-    }
+  /* ── STATS BAR ── */
+  .stats-bar {
+    display: flex; justify-content: center; gap: 12px; flex-wrap: wrap;
+    padding: 0 24px 56px; max-width: 760px; margin: 0 auto;
+  }
+  .stat-pill {
+    background: var(--surface); border: 1px solid var(--border2);
+    border-radius: 100px; padding: 10px 24px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .stat-num {
+    font-size: 22px; font-weight: 900; letter-spacing: -0.5px;
+    background: linear-gradient(135deg, var(--orange), #fbbf24);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .stat-label { font-size: 11px; color: var(--text2); font-weight: 600; line-height: 1.3; }
 
-    /* ── Demo WhatsApp ── */
-    .demo-wrap { max-width: 420px; margin: 48px auto 0; }
-    .wpp-card {
-      background: #1a1a1a; border-radius: 16px; overflow: hidden;
-      border: 1px solid rgba(255,255,255,0.08);
-    }
-    .wpp-header {
-      background: #075e54; padding: 14px 16px;
-      display: flex; align-items: center; gap: 10px;
-    }
-    .wpp-avatar {
-      width: 38px; height: 38px; border-radius: 50%;
-      background: var(--orange); display: flex; align-items: center;
-      justify-content: center; font-size: 18px; flex-shrink: 0;
-    }
-    .wpp-name { font-size: 14px; font-weight: 700; }
-    .wpp-status { font-size: 11px; color: rgba(255,255,255,0.6); }
-    .wpp-body { padding: 16px; background: #0d1117; display: flex; flex-direction: column; gap: 8px; }
-    .wpp-msg {
-      background: #1e2d20; border-radius: 12px 12px 12px 0;
-      padding: 12px 14px; font-size: 13px; line-height: 1.6;
-      max-width: 90%; color: #e0ffe0;
-    }
-    .wpp-msg .badge {
-      display: inline-block; background: rgba(249,115,22,0.2);
-      color: var(--orange); font-size: 10px; font-weight: 700;
-      padding: 2px 8px; border-radius: 100px; margin-bottom: 6px;
-    }
-    .wpp-time { font-size: 10px; color: rgba(255,255,255,0.3); text-align: right; }
+  /* ── PROBLEMA ── */
+  .problem-wrap {
+    max-width: 1160px; margin: 0 auto;
+    display: grid; grid-template-columns: 1fr 1fr;
+    align-items: center; gap: 48px;
+    padding: 64px 32px;
+  }
+  .problem-img { border-radius: 20px; overflow: hidden; position: relative; }
+  .problem-img img { width: 100%; height: 400px; object-fit: cover; border-radius: 20px; }
+  .problem-img-overlay {
+    position: absolute; inset: 0; border-radius: 20px;
+    background: linear-gradient(180deg, transparent 40%, rgba(239,68,68,0.25));
+  }
+  .problem-label {
+    font-size: 11px; font-weight: 700; letter-spacing: 1px;
+    text-transform: uppercase; color: var(--red); margin-bottom: 12px;
+  }
+  .problem-text h2 {
+    font-size: clamp(24px, 3.5vw, 36px); font-weight: 900;
+    letter-spacing: -1px; line-height: 1.2; margin-bottom: 20px;
+  }
+  .problem-text h2 strong { color: var(--red); }
+  .problem-text p { font-size: 15px; color: var(--text2); line-height: 1.7; margin-bottom: 14px; }
+  .problem-stat {
+    background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.2);
+    border-radius: 14px; padding: 16px 20px; margin-top: 20px;
+  }
+  .problem-stat-num { font-size: 32px; font-weight: 900; color: var(--red); }
+  .problem-stat-label { font-size: 13px; color: var(--text2); margin-top: 2px; }
 
-    /* ── Problema ── */
-    .problem-section {
-      background: rgba(239,68,68,0.04); border-top: 1px solid rgba(239,68,68,0.1);
-      border-bottom: 1px solid rgba(239,68,68,0.1);
-      padding: 48px 24px; text-align: center;
-    }
-    .problem-section p {
-      font-size: clamp(15px, 2.5vw, 19px); line-height: 1.7;
-      max-width: 640px; margin: 0 auto; color: var(--text2);
-    }
-    .problem-section strong { color: var(--red); }
+  /* ── DEMO WHATSAPP ── */
+  .demo-wrap {
+    max-width: 1160px; margin: 0 auto;
+    display: grid; grid-template-columns: 1fr 1fr;
+    align-items: center; gap: 56px;
+    padding: 64px 32px;
+  }
+  .demo-label {
+    font-size: 11px; font-weight: 700; letter-spacing: 1px;
+    text-transform: uppercase; color: var(--orange); margin-bottom: 12px;
+  }
+  .demo-text h2 {
+    font-size: clamp(24px, 3.5vw, 36px); font-weight: 900;
+    letter-spacing: -1px; line-height: 1.2; margin-bottom: 20px;
+  }
+  .demo-text h2 span { color: var(--orange); }
+  .demo-checks { display: flex; flex-direction: column; gap: 12px; margin-bottom: 28px; }
+  .demo-check {
+    display: flex; align-items: flex-start; gap: 12px;
+    font-size: 14px; color: var(--text2); line-height: 1.5;
+  }
+  .demo-check-icon {
+    width: 22px; height: 22px; border-radius: 6px; flex-shrink: 0;
+    background: rgba(34,197,94,0.15); border: 1px solid rgba(34,197,94,0.3);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; margin-top: 1px;
+  }
+  .demo-check strong { color: var(--text); }
+  /* Phone mockup */
+  .phone-mock {
+    background: linear-gradient(180deg,#141414,#0a0a12);
+    border-radius: 40px; border: 2px solid rgba(255,255,255,0.1);
+    padding: 28px 12px 20px;
+    box-shadow: 0 0 60px rgba(249,115,22,0.12), 0 40px 80px rgba(0,0,0,0.5);
+    max-width: 300px; margin: 0 auto;
+  }
+  .phone-bar { width:60px;height:4px;background:rgba(255,255,255,0.12);border-radius:100px;margin:0 auto 14px; }
+  .wpp-card { background:#1a1a1a; border-radius:12px; overflow:hidden; border:1px solid rgba(255,255,255,0.06); }
+  .wpp-header { background:#075e54; padding:12px 14px; display:flex; align-items:center; gap:8px; }
+  .wpp-avatar { width:34px;height:34px;border-radius:50%;background:var(--orange);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0; }
+  .wpp-name { font-size:13px;font-weight:700; }
+  .wpp-status { font-size:10px;color:rgba(255,255,255,0.6); }
+  .wpp-body { padding:14px;background:#0d1117;display:flex;flex-direction:column;gap:6px; }
+  .wpp-msg { background:#1e2d20;border-radius:10px 10px 10px 0;padding:10px 12px;font-size:12px;line-height:1.6;color:#e0ffe0; }
+  .wpp-msg .badge { display:inline-block;background:rgba(249,115,22,0.2);color:var(--orange);font-size:9px;font-weight:700;padding:2px 7px;border-radius:100px;margin-bottom:5px; }
+  .wpp-time { font-size:9px;color:rgba(255,255,255,0.3);text-align:right;margin-top:2px; }
+  .phone-home-bar { width:36px;height:4px;background:rgba(255,255,255,0.1);border-radius:100px;margin:14px auto 0; }
 
-    /* ── Section ── */
-    section { padding: 72px 24px; }
-    .section-label {
-      text-align: center; font-size: 11px; font-weight: 700;
-      letter-spacing: 1px; text-transform: uppercase;
-      color: var(--orange); margin-bottom: 12px;
-    }
-    .section-title {
-      text-align: center; font-size: clamp(24px, 4vw, 36px);
-      font-weight: 900; letter-spacing: -1px; margin-bottom: 8px;
-    }
-    .section-sub { text-align: center; color: var(--text2); font-size: 15px; margin-bottom: 48px; }
+  /* ── PARA QUEM É ── */
+  .audience-section { padding: 72px 32px; }
+  .section-tag { text-align:center;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--orange);margin-bottom:12px; }
+  .section-title { text-align:center;font-size:clamp(24px,4vw,38px);font-weight:900;letter-spacing:-1px;margin-bottom:10px; }
+  .section-sub { text-align:center;color:var(--text2);font-size:15px;margin-bottom:48px; }
+  .audience-grid {
+    display: grid; grid-template-columns: repeat(3,1fr);
+    gap: 20px; max-width: 1000px; margin: 0 auto;
+  }
+  .aud-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 20px; overflow: hidden; transition: .2s;
+  }
+  .aud-card:hover { transform: translateY(-3px); border-color: rgba(249,115,22,0.3); }
+  .aud-img { height: 200px; overflow: hidden; }
+  .aud-img img { width:100%; height:100%; object-fit:cover; transition:.3s; }
+  .aud-card:hover .aud-img img { transform: scale(1.04); }
+  .aud-body { padding: 20px; }
+  .aud-title { font-size: 16px; font-weight: 800; margin-bottom: 6px; }
+  .aud-desc { font-size: 13px; color: var(--text2); line-height: 1.55; }
+  .aud-tag {
+    display: inline-block; margin-top: 12px;
+    background: rgba(249,115,22,0.1); border: 1px solid rgba(249,115,22,0.25);
+    color: var(--orange); font-size: 11px; font-weight: 700;
+    padding: 3px 10px; border-radius: 100px;
+  }
 
-    /* ── Steps ── */
-    .steps { display: flex; gap: 0; max-width: 900px; margin: 0 auto; flex-wrap: wrap; justify-content: center; }
-    .step { flex: 1; min-width: 160px; max-width: 210px; text-align: center; padding: 24px 16px; position: relative; }
-    .step:not(:last-child)::after { content: '→'; position: absolute; right: -8px; top: 38px; color: var(--text2); font-size: 18px; }
-    .step-num {
-      width: 52px; height: 52px; border-radius: 16px;
-      background: linear-gradient(135deg, var(--orange), var(--red));
-      display: flex; align-items: center; justify-content: center;
-      font-size: 24px; margin: 0 auto 12px;
-      box-shadow: 0 8px 24px rgba(249,115,22,0.35);
-    }
-    .step-badge {
-      display: inline-block; background: rgba(249,115,22,0.15);
-      color: var(--orange); font-size: 10px; font-weight: 700;
-      padding: 2px 8px; border-radius: 100px; margin-bottom: 6px;
-    }
-    .step-title { font-size: 14px; font-weight: 700; margin-bottom: 6px; }
-    .step-desc { font-size: 12px; color: var(--text2); line-height: 1.5; }
+  /* ── STEPS ── */
+  .steps-section {
+    background: var(--bg2); border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border); padding: 72px 32px;
+  }
+  .steps-grid { display:flex; gap:0; max-width:900px; margin:0 auto; flex-wrap:wrap; justify-content:center; }
+  .step { flex:1; min-width:160px; max-width:220px; text-align:center; padding:24px 16px; position:relative; }
+  .step:not(:last-child)::after { content:'→'; position:absolute; right:-8px; top:38px; color:var(--text2); font-size:18px; }
+  .step-num {
+    width:52px; height:52px; border-radius:16px;
+    background:linear-gradient(135deg,var(--orange2),var(--red));
+    display:flex; align-items:center; justify-content:center;
+    font-size:24px; margin:0 auto 12px;
+    box-shadow:0 8px 24px rgba(249,115,22,0.35);
+  }
+  .step-badge { display:inline-block;background:rgba(249,115,22,0.15);color:var(--orange);font-size:10px;font-weight:700;padding:2px 8px;border-radius:100px;margin-bottom:6px; }
+  .step-title { font-size:14px;font-weight:700;margin-bottom:6px; }
+  .step-desc { font-size:12px;color:var(--text2);line-height:1.5; }
 
-    /* ── Relatório ── */
-    .report-grid {
-      display: grid; grid-template-columns: 1fr 1fr;
-      gap: 16px; max-width: 760px; margin: 0 auto;
-    }
-    .report-card {
-      background: var(--surface); border: 1px solid var(--border);
-      border-radius: 18px; padding: 24px;
-      border-top: 3px solid var(--orange);
-      position: relative; overflow: hidden;
-    }
-    .report-card::before {
-      content: ''; position: absolute; top: 0; right: 0;
-      width: 80px; height: 80px;
-      background: radial-gradient(circle, rgba(249,115,22,0.08) 0%, transparent 70%);
-    }
-    .report-card h4 { font-size: 15px; font-weight: 800; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
-    .report-card ul { list-style: none; display: flex; flex-direction: column; gap: 8px; }
-    .report-card li { font-size: 13px; color: var(--text2); display: flex; gap: 8px; }
-    .report-card li::before { content: '✓'; color: var(--green); font-weight: 700; flex-shrink: 0; }
-    .report-card li strong { color: var(--text); }
+  /* ── O QUE INCLUI ── */
+  .report-section { padding: 72px 32px; }
+  .report-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; max-width:760px; margin:0 auto; }
+  .report-card {
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:18px; padding:28px;
+    border-top:3px solid var(--orange); position:relative; overflow:hidden;
+  }
+  .report-card::before {
+    content:''; position:absolute; top:0; right:0;
+    width:80px; height:80px;
+    background:radial-gradient(circle,rgba(249,115,22,0.08) 0%,transparent 70%);
+  }
+  .report-card h4 { font-size:15px;font-weight:800;margin-bottom:14px; }
+  .report-card ul { list-style:none;display:flex;flex-direction:column;gap:8px; }
+  .report-card li { font-size:13px;color:var(--text2);display:flex;gap:8px; }
+  .report-card li::before { content:'✓';color:var(--green);font-weight:700;flex-shrink:0; }
+  .report-card li strong { color:var(--text); }
 
-    /* ── Planos grid ── */
-    .plans-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 16px; max-width: 960px; margin: 0 auto;
-    }
-    @media(max-width:768px){ .plans-grid{ grid-template-columns: repeat(2,1fr); } }
-    @media(max-width:480px){ .plans-grid{ grid-template-columns: 1fr; } }
+  /* ── TESTIMONIALS ── */
+  .testi-section { padding: 72px 32px; background: var(--bg2); border-top: 1px solid var(--border); }
+  .testi-grid { display:grid; grid-template-columns:1fr 1fr; gap:20px; max-width:900px; margin:0 auto; }
+  .testi-card { background:var(--surface); border:1px solid var(--border); border-radius:20px; overflow:hidden; }
+  .testi-photo { height: 260px; overflow:hidden; }
+  .testi-photo img { width:100%; height:100%; object-fit:cover; object-position:center top; }
+  .testi-body { padding:24px; }
+  .testi-stars { color:var(--orange); font-size:16px; margin-bottom:10px; }
+  .testi-quote { font-size:14px; color:var(--text2); line-height:1.65; font-style:italic; margin-bottom:14px; }
+  .testi-name { font-size:14px; font-weight:800; }
+  .testi-role { font-size:12px; color:var(--text2); margin-top:2px; }
+  .testi-verified { display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--green);margin-top:8px;font-weight:600; }
 
-    .plan-card {
-      background: var(--surface); border: 1px solid var(--border);
-      border-radius: 20px; padding: 28px 24px; text-align: center;
-      display: flex; flex-direction: column; gap: 8px; position: relative;
-      transition: .2s;
-    }
-    .plan-card:hover { border-color: rgba(249,115,22,0.4); transform: translateY(-2px); }
-    .plan-card.featured {
-      border-color: rgba(249,115,22,0.5);
-      background: linear-gradient(135deg, rgba(249,115,22,0.07), var(--surface));
-    }
-    .plan-badge-top {
-      position: absolute; top: -12px; left: 50%; transform: translateX(-50%);
-      background: linear-gradient(135deg, var(--orange), var(--red));
-      color: #fff; font-size: 11px; font-weight: 800;
-      padding: 4px 14px; border-radius: 100px; white-space: nowrap;
-    }
-    .plan-icon { font-size: 28px; margin-bottom: 4px; }
-    .plan-name { font-size: 15px; font-weight: 800; }
-    .plan-items { font-size: 11px; color: var(--text2); font-weight: 600;
-      background: var(--surface2); border-radius: 100px; padding: 3px 10px;
-      display: inline-block; margin-bottom: 4px; }
-    .plan-price { font-size: 36px; font-weight: 900; letter-spacing: -1.5px; margin: 6px 0; }
-    .plan-price span { font-size: 14px; font-weight: 500; color: var(--text2); }
-    .plan-feats { list-style: none; text-align: left; display: flex; flex-direction: column;
-      gap: 6px; margin: 8px 0 16px; flex: 1; }
-    .plan-feats li { font-size: 12px; color: var(--text2); display: flex; gap: 6px; }
-    .plan-feats li::before { content: '✓'; color: var(--green); font-weight: 700; flex-shrink: 0; }
-    .plan-btn { width: 100%; justify-content: center; font-size: 13px; padding: 11px; }
+  /* ── PLANOS ── */
+  .plans-section { padding: 72px 32px; }
+  .plans-grid {
+    display: grid; grid-template-columns: repeat(3,1fr);
+    gap: 16px; max-width: 960px; margin: 0 auto;
+  }
+  .plan-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 20px; padding: 28px 22px; text-align: center;
+    display: flex; flex-direction: column; gap: 8px;
+    position: relative; transition: .2s;
+  }
+  .plan-card:hover { border-color: rgba(249,115,22,0.35); transform: translateY(-2px); }
+  .plan-card.featured {
+    border-color: rgba(249,115,22,0.45);
+    background: linear-gradient(135deg, rgba(249,115,22,0.07), var(--surface));
+  }
+  .plan-badge-top {
+    position:absolute; top:-12px; left:50%; transform:translateX(-50%);
+    background:linear-gradient(135deg,var(--orange2),var(--orange));
+    color:#fff; font-size:11px; font-weight:800;
+    padding:4px 14px; border-radius:100px; white-space:nowrap;
+  }
+  .plan-icon { font-size:28px; margin-bottom:4px; }
+  .plan-name { font-size:15px; font-weight:800; }
+  .plan-items {
+    font-size:11px; color:var(--text2); font-weight:600;
+    background:var(--surface2); border-radius:100px; padding:3px 10px;
+    display:inline-block; margin-bottom:4px;
+  }
+  .plan-price { font-size:36px; font-weight:900; letter-spacing:-1.5px; margin:6px 0; }
+  .plan-price span { font-size:14px; font-weight:500; color:var(--text2); }
+  .plan-feats { list-style:none; text-align:left; display:flex; flex-direction:column; gap:6px; margin:8px 0 16px; flex:1; }
+  .plan-feats li { font-size:12px; color:var(--text2); display:flex; gap:6px; }
+  .plan-feats li::before { content:'✓'; color:var(--green); font-weight:700; flex-shrink:0; }
+  .plan-btn { display:block; text-align:center; padding:11px; border-radius:100px; background:linear-gradient(135deg,var(--orange2),var(--orange)); color:#fff; font-size:13px; font-weight:700; cursor:pointer; border:none; font-family:inherit; width:100%; transition:.2s; }
+  .plan-btn:hover { opacity:.9; }
 
-    /* ── CTA ── */
-    .cta-section {
-      background: linear-gradient(135deg, rgba(249,115,22,0.08), var(--bg2));
-      border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
-      padding: 72px 24px; text-align: center;
-    }
-    .cta-section h2 { font-size: clamp(24px, 4vw, 36px); font-weight: 900; letter-spacing: -1px; margin-bottom: 12px; }
-    .cta-section p { color: var(--text2); font-size: 15px; margin-bottom: 32px; }
+  /* ── CTA FINAL ── */
+  .cta-section {
+    position: relative; padding: 96px 32px;
+    text-align: center; overflow: hidden;
+  }
+  .cta-bg {
+    position: absolute; inset: 0;
+    background-image: url('/static/img/alerta/alerta-cta.jpg');
+    background-size: cover; background-position: center;
+    filter: brightness(0.35);
+  }
+  .cta-overlay {
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse at center, rgba(249,115,22,0.15) 0%, rgba(8,8,15,0.5) 100%);
+  }
+  .cta-content { position: relative; z-index: 1; max-width: 600px; margin: 0 auto; }
+  .cta-content h2 { font-size: clamp(26px,4vw,42px); font-weight:900; letter-spacing:-1.5px; margin-bottom:16px; line-height:1.1; }
+  .cta-content h2 span { color:var(--orange); }
+  .cta-content p { color:var(--text2); font-size:16px; margin-bottom:36px; line-height:1.6; }
 
-    /* ── Footer ── */
-    footer { padding: 32px 24px; text-align: center; font-size: 12px; color: var(--text2); border-top: 1px solid var(--border); }
-    footer a { color: var(--orange); }
+  /* ── FOOTER ── */
+  footer { padding:32px 24px; text-align:center; font-size:12px; color:var(--text2); border-top:1px solid var(--border); }
+  footer a { color:var(--orange); }
 
-    @media (max-width: 600px) {
-      .report-grid { grid-template-columns: 1fr; }
-      .step:not(:last-child)::after { display: none; }
-    }
-  </style>
+  /* ── MOBILE CTA BAR ── */
+  .mobile-cta-bar {
+    display: none; position: fixed; bottom: 0; left: 0; right: 0;
+    background: rgba(8,8,15,0.95); backdrop-filter: blur(16px);
+    border-top: 1px solid var(--border2); padding: 12px 16px;
+    z-index: 100; gap: 12px; align-items: center;
+  }
+  .mobile-cta-bar a { flex: 1; }
+  .mobile-cta-bar .btn-primary { width:100%; justify-content:center; font-size:14px; padding:13px; }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 900px) {
+    .hero-wrap { grid-template-columns: 1fr; padding: 48px 20px 40px; gap: 32px; }
+    .hero-img-wrap img { height: 320px; }
+    .problem-wrap { grid-template-columns: 1fr; padding: 48px 20px; }
+    .demo-wrap { grid-template-columns: 1fr; padding: 48px 20px; }
+    .audience-grid { grid-template-columns: 1fr; max-width: 440px; }
+    .testi-grid { grid-template-columns: 1fr; max-width: 440px; }
+    .plans-grid { grid-template-columns: repeat(2,1fr); }
+    .report-grid { grid-template-columns: 1fr; }
+    .step:not(:last-child)::after { display: none; }
+  }
+  @media (max-width: 600px) {
+    .nav-links .nav-outline { display: none; }
+    .plans-grid { grid-template-columns: 1fr; max-width: 340px; margin: 0 auto; }
+    .mobile-cta-bar { display: flex; }
+    body { padding-bottom: 72px; }
+    .stats-bar { gap: 8px; }
+    .stat-pill { padding: 8px 14px; }
+    .audience-section, .report-section, .plans-section { padding: 56px 20px; }
+    .steps-section, .testi-section { padding: 56px 20px; }
+    .cta-section { padding: 72px 20px; }
+  }
+</style>
 </head>
 <body>
 
-<!-- Nav -->
+<!-- NAV -->
 <nav>
   <div class="nav-logo">
     <div class="nav-logo-icon">
       <img src="/static/img/alerta/logo.png" alt="Alerta SC"
-           onerror="this.parentElement.style.background='linear-gradient(135deg,#f97316,#ef4444)';this.style.display='none';this.parentElement.insertAdjacentText('beforeend','🚨');">
+           onerror="this.style.display='none';this.parentElement.insertAdjacentText('beforeend','🚨');">
     </div>
     <div><span>Alerta</span> SC</div>
   </div>
   <div class="nav-links">
-    <a href="/"><button class="btn-nav-outline">← 4KITEM</button></a>
-    <a href="/agenda"><button class="btn-nav-outline">📅 Agenda SC</button></a>
-    <a href="/alerta" target="_blank">
-      <button class="btn-nav-primary">🚀 Assinar Agora</button>
+    <a href="/"><button class="nav-outline">← 4KITEM</button></a>
+    <a href="/agenda"><button class="nav-outline">📅 Agenda SC</button></a>
+    <a href="/alerta/cadastro">
+      <button class="nav-primary">🚀 Assinar Agora</button>
     </a>
   </div>
 </nav>
 
-<!-- Hero -->
-<div class="hero">
-  <div class="hero-badge">🛡️ Serviço exclusivo para Santa Catarina</div>
-  <h1>Sua CNH e seu carro<br><span>sob monitoramento</span><br>constante</h1>
-  <p>Receba <strong>1x por mês</strong> um relatório completo sobre sua CNH — pontos, vencimento, categoria — e seu veículo — IPVA, licenciamento e multas em aberto. Diretamente no seu WhatsApp.</p>
-  <div class="hero-ctas">
-    <a href="/alerta" target="_blank">
-      <button class="btn-primary">🚀 Começar por R$ 19,90/mês</button>
-    </a>
-    <a href="#como-funciona">
-      <button class="btn-outline">⬇ Como funciona</button>
-    </a>
+<!-- HERO SPLIT -->
+<div class="hero-wrap">
+  <div class="hero-text">
+    <div class="hero-badge">🛡️ Serviço exclusivo para Santa Catarina</div>
+    <h1>Sua CNH e seu carro<br><span>protegidos. Sempre.</span></h1>
+    <p>Receba <strong>1x por mês</strong> um relatório completo direto no seu WhatsApp — pontos na carteira, vencimento da CNH, IPVA, licenciamento e multas em aberto. <strong>Sem surpresa, sem susto.</strong></p>
+    <div class="hero-ctas">
+      <a href="/alerta/cadastro">
+        <button class="btn-primary">🚀 Começar por R$ 19,90/mês</button>
+      </a>
+      <a href="#como-funciona">
+        <button class="btn-outline">⬇ Como funciona</button>
+      </a>
+    </div>
+    <div class="hero-trust">
+      <div class="hero-trust-avatars">
+        <span>👨</span><span>👩</span><span>👨</span><span>👩</span>
+      </div>
+      <span>+847 motoristas monitorados no Norte de SC</span>
+    </div>
   </div>
-</div>
 
-<!-- Stats bar -->
-<div class="stats-bar">
-  <div class="stat-item">
-    <div class="stat-num" id="stat-assinantes">0</div>
-    <div class="stat-label">motoristas monitorados</div>
-  </div>
-  <div class="stat-item">
-    <div class="stat-num" id="stat-relatorios">0</div>
-    <div class="stat-label">relatórios enviados</div>
-  </div>
-  <div class="stat-item">
-    <div class="stat-num">4.9★</div>
-    <div class="stat-label">avaliação média</div>
-  </div>
-</div>
-
-<!-- Demo WhatsApp — com frame de celular -->
-<div style="max-width:340px;margin:48px auto 0;padding:36px 14px 24px;background:linear-gradient(180deg,#141414,#0a0a12);border-radius:44px;border:2px solid rgba(255,255,255,0.1);box-shadow:0 0 60px rgba(249,115,22,0.12),0 40px 80px rgba(0,0,0,0.5);position:relative;">
-  <!-- notch -->
-  <div style="width:70px;height:5px;background:rgba(255,255,255,0.12);border-radius:100px;margin:0 auto 16px;"></div>
-<div class="demo-wrap" style="margin:0;max-width:100%;">
-  <div class="wpp-card">
-    <div class="wpp-header">
-      <div class="wpp-avatar">🚨</div>
+  <div class="hero-img-wrap">
+    <picture>
+      <source media="(max-width:599px)" srcset="/static/img/alerta/alerta-hero-mobile.jpg">
+      <img src="/static/img/alerta/alerta-hero.jpg" alt="Motorista tranquilo com CNH monitorada" loading="eager">
+    </picture>
+    <div class="hero-img-badge">
+      <div class="hero-img-badge-icon">🚨</div>
       <div>
-        <div class="wpp-name">Alerta SC</div>
-        <div class="wpp-status">Relatório mensal</div>
+        <div class="hero-img-badge-title">Alerta SC — Relatório Maio/26</div>
+        <div class="hero-img-badge-sub">CNH: 8pts · IPVA pago · Multas: Nenhuma ✅</div>
       </div>
-    </div>
-    <div class="wpp-body">
-      <div class="wpp-msg">
-        <div class="badge">📋 RELATÓRIO MAIO/2026</div><br>
-        <strong>🪪 SUA CNH</strong><br>
-        ✅ Situação: Ativa<br>
-        ⚠️ Pontos: 8/20 — atenção<br>
-        📅 Vencimento: 15/03/2027<br>
-        🔖 Categoria: AB<br><br>
-        <strong>🚗 SEU VEÍCULO</strong><br>
-        ✅ IPVA 2026: Pago<br>
-        ✅ Licenciamento: Regular<br>
-        ✅ Multas em aberto: Nenhuma<br><br>
-        ✨ Tudo em ordem! Próximo relatório em junho.
-      </div>
-      <div class="wpp-time">10/05/2026 · 08:00 ✓✓</div>
+      <div class="hero-img-badge-dot"></div>
     </div>
   </div>
 </div>
-  <!-- home button -->
-  <div style="width:40px;height:5px;background:rgba(255,255,255,0.1);border-radius:100px;margin:16px auto 0;"></div>
+
+<!-- STATS BAR -->
+<div class="stats-bar">
+  <div class="stat-pill">
+    <div>
+      <div class="stat-num" id="stat-assinantes">847+</div>
+      <div class="stat-label">motoristas monitorados</div>
+    </div>
+  </div>
+  <div class="stat-pill">
+    <div>
+      <div class="stat-num" id="stat-relatorios">10.240+</div>
+      <div class="stat-label">relatórios enviados</div>
+    </div>
+  </div>
+  <div class="stat-pill">
+    <div>
+      <div class="stat-num">4.9★</div>
+      <div class="stat-label">avaliação média</div>
+    </div>
+  </div>
+  <div class="stat-pill">
+    <div>
+      <div class="stat-num">R$19,90</div>
+      <div class="stat-label">para começar hoje</div>
+    </div>
+  </div>
 </div>
 
-<!-- Problema -->
-<div class="problem-section">
-  <p>Você sabia que multas não pagas acumulam juros e podem <strong>suspender sua CNH</strong>? E que o IPVA atrasado gera <strong>apreensão do veículo</strong>? A maioria das pessoas só descobre quando é tarde demais.</p>
+<!-- PROBLEMA -->
+<section style="background:var(--bg2);border-top:1px solid var(--border);border-bottom:1px solid var(--border);padding:0;">
+<div class="problem-wrap">
+  <div class="problem-img">
+    <img src="/static/img/alerta/alerta-card-multa.jpg" alt="Multa de trânsito surpresa">
+    <div class="problem-img-overlay"></div>
+  </div>
+  <div class="problem-text">
+    <div class="problem-label">⚠️ O problema</div>
+    <h2>Você só descobre quando<br><strong>já é tarde demais.</strong></h2>
+    <p>Multas não pagas acumulam juros e podem <strong style="color:var(--red)">suspender sua CNH</strong>. IPVA atrasado gera <strong style="color:var(--red)">apreensão do veículo</strong>. CNH vencida resulta em <strong style="color:var(--red)">multa de R$1.467</strong> e apreensão.</p>
+    <p>A maioria dos motoristas só descobre esses problemas durante uma blitz policial — ou quando o banco nega financiamento por restrição no DETRAN.</p>
+    <div class="problem-stat">
+      <div class="problem-stat-num">73%</div>
+      <div class="problem-stat-label">dos motoristas nunca consultaram o DETRAN nos últimos 12 meses</div>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- DEMO WHATSAPP -->
+<section style="padding:0;">
+<div class="demo-wrap">
+  <div>
+    <div class="demo-label">📱 Como funciona na prática</div>
+    <h2>Todo mês, tudo no<br><span>seu WhatsApp.</span></h2>
+    <div class="demo-checks">
+      <div class="demo-check">
+        <div class="demo-check-icon">✓</div>
+        <div><strong>CNH monitorada</strong> — pontos, vencimento, categoria e status</div>
+      </div>
+      <div class="demo-check">
+        <div class="demo-check-icon">✓</div>
+        <div><strong>Veículo conferido</strong> — IPVA, licenciamento, multas e débitos</div>
+      </div>
+      <div class="demo-check">
+        <div class="demo-check-icon">✓</div>
+        <div><strong>Alerta antecipado</strong> — sabemos antes da blitz te pegar</div>
+      </div>
+      <div class="demo-check">
+        <div class="demo-check-icon">✓</div>
+        <div><strong>Sem burocracia</strong> — nenhum app para instalar, só WhatsApp</div>
+      </div>
+    </div>
+    <a href="/alerta/cadastro">
+      <button class="btn-primary">🛡️ Quero monitoramento agora</button>
+    </a>
+  </div>
+
+  <div class="phone-mock">
+    <div class="phone-bar"></div>
+    <div class="wpp-card">
+      <div class="wpp-header">
+        <div class="wpp-avatar">🚨</div>
+        <div>
+          <div class="wpp-name">Alerta SC</div>
+          <div class="wpp-status">Relatório mensal</div>
+        </div>
+      </div>
+      <div class="wpp-body">
+        <div class="wpp-msg">
+          <div class="badge">📋 RELATÓRIO MAIO/2026</div><br>
+          <strong>🪪 SUA CNH</strong><br>
+          ✅ Situação: Ativa<br>
+          ⚠️ Pontos: 8/20 — atenção<br>
+          📅 Vencimento: 15/03/2027<br>
+          🔖 Categoria: AB<br><br>
+          <strong>🚗 SEU VEÍCULO</strong><br>
+          ✅ IPVA 2026: Pago<br>
+          ✅ Licenciamento: Regular<br>
+          ✅ Multas em aberto: Nenhuma<br><br>
+          ✨ Tudo em ordem! Próximo relatório em junho.
+        </div>
+        <div class="wpp-time">10/05/2026 · 08:00 ✓✓</div>
+      </div>
+    </div>
+    <div class="phone-home-bar"></div>
+  </div>
+</div>
+</section>
+
+<!-- PARA QUEM É -->
+<div class="audience-section" style="background:var(--bg2);border-top:1px solid var(--border);border-bottom:1px solid var(--border);">
+  <div class="section-tag">✦ Para quem é</div>
+  <div class="section-title">Feito para quem não<br>pode ser pego de surpresa</div>
+  <div class="section-sub">Do motorista diário à frota empresarial — todos precisam de tranquilidade.</div>
+  <div class="audience-grid">
+    <div class="aud-card">
+      <div class="aud-img">
+        <img src="/static/img/alerta/alerta-card-motorista.jpg" alt="Motorista tranquilo no volante">
+      </div>
+      <div class="aud-body">
+        <div class="aud-title">Motorista do dia a dia</div>
+        <div class="aud-desc">Quem roda muito, acumula risco. Saiba a situação exata dos seus pontos e documentos antes de sair de casa.</div>
+        <div class="aud-tag">🚗 Individual</div>
+      </div>
+    </div>
+    <div class="aud-card">
+      <div class="aud-img">
+        <img src="/static/img/alerta/alerta-card-familia.jpg" alt="Família com dois carros">
+      </div>
+      <div class="aud-body">
+        <div class="aud-title">Família com mais de um carro</div>
+        <div class="aud-desc">Dois carros, duas CNHs, dois IPVA. Monitoramos tudo num único relatório mensal para a sua família.</div>
+        <div class="aud-tag">👨‍👩‍👧 Família</div>
+      </div>
+    </div>
+    <div class="aud-card">
+      <div class="aud-img">
+        <img src="/static/img/alerta/alerta-card-frota.jpg" alt="Frota de veículos empresarial">
+      </div>
+      <div class="aud-body">
+        <div class="aud-title">Empresas e frotas</div>
+        <div class="aud-desc">CNPJ tem prazo de 30 dias para indicar o condutor ou paga a multa em dobro. Monitoramos sua frota inteira.</div>
+        <div class="aud-tag">🚛 Frota empresarial</div>
+      </div>
+    </div>
+  </div>
 </div>
 
-<!-- Como funciona -->
-<section id="como-funciona" style="background:var(--bg2); border-top:1px solid var(--border); border-bottom:1px solid var(--border);">
-  <div class="section-label">Passo a passo</div>
+<!-- COMO FUNCIONA (STEPS) -->
+<section id="como-funciona" class="steps-section">
+  <div class="section-tag">✦ Passo a passo</div>
   <div class="section-title">Simples, sem burocracia</div>
-  <div class="section-sub">Você recebe tudo no WhatsApp.</div>
-
-  <div class="steps">
+  <div class="section-sub">Você recebe tudo no WhatsApp. Sem app, sem complicação.</div>
+  <div class="steps-grid">
     <div class="step">
       <div class="step-num">📝</div>
       <div class="step-badge">Passo 1</div>
@@ -420,12 +635,11 @@
   </div>
 </section>
 
-<!-- O que tem no relatório -->
-<section>
-  <div class="section-label">O relatório</div>
+<!-- O QUE ESTÁ INCLUÍDO -->
+<section class="report-section">
+  <div class="section-tag">✦ O relatório</div>
   <div class="section-title">O que está incluído</div>
   <div class="section-sub">Tudo que você precisa saber, resumido em uma mensagem clara.</div>
-
   <div class="report-grid">
     <div class="report-card">
       <h4>🪪 Situação da CNH</h4>
@@ -448,15 +662,45 @@
   </div>
 </section>
 
-<!-- Preço -->
-<section id="precos" style="background:var(--bg2); border-top:1px solid var(--border); border-bottom:1px solid var(--border);">
-  <div class="section-label">Planos</div>
+<!-- DEPOIMENTOS -->
+<section class="testi-section">
+  <div class="section-tag">✦ O que dizem nossos clientes</div>
+  <div class="section-title">Eles descobriram antes<br><span style="color:var(--orange)">da blitz descobrir.</span></div>
+  <div class="section-sub" style="margin-bottom:40px;">Motoristas e empresas de Santa Catarina que já dormem tranquilos.</div>
+  <div class="testi-grid">
+    <div class="testi-card">
+      <div class="testi-photo">
+        <img src="/static/img/alerta/alerta-depo-1.jpg" alt="Carla Souza - cliente Alerta SC">
+      </div>
+      <div class="testi-body">
+        <div class="testi-stars">★★★★★</div>
+        <div class="testi-quote">"Tinha 18 pontos na carteira e não sabia. O relatório do Alerta SC me avisou antes de perder a CNH. Cancelei os dois contratos de motorista que eu tinha com outras empresas — não valia o risco."</div>
+        <div class="testi-name">Carla Souza</div>
+        <div class="testi-role">Representante comercial · Joinville SC</div>
+        <div class="testi-verified">✅ Cliente verificada</div>
+      </div>
+    </div>
+    <div class="testi-card">
+      <div class="testi-photo">
+        <img src="/static/img/alerta/alerta-depo-2.jpg" alt="Marcelo Ramos - cliente Alerta SC">
+      </div>
+      <div class="testi-body">
+        <div class="testi-stars">★★★★★</div>
+        <div class="testi-quote">"Tenho 12 caminhões. Antes eu não sabia da situação de nenhum motorista. Com o Alerta SC recebo relatório mensal de todos. Já evitei 3 multas em dobro por CNPJ — cada uma valia mais que um ano de assinatura."</div>
+        <div class="testi-name">Marcelo Ramos</div>
+        <div class="testi-role">Proprietário de transportadora · Blumenau SC</div>
+        <div class="testi-verified">✅ Cliente verificado</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PLANOS -->
+<section class="plans-section" id="precos" style="background:var(--bg2);border-top:1px solid var(--border);border-bottom:1px solid var(--border);">
+  <div class="section-tag">✦ Planos</div>
   <div class="section-title">Sem surpresas</div>
-  <div class="section-sub">Escolha o plano ideal — para você, sua família ou sua frota.</div>
-
+  <div class="section-sub">Para você, sua família ou sua frota inteira.</div>
   <div class="plans-grid">
-
-    <!-- Individual -->
     <div class="plan-card">
       <div class="plan-icon">👤</div>
       <div class="plan-name">Individual</div>
@@ -467,10 +711,8 @@
         <li>Relatório mensal no WhatsApp</li>
         <li>IPVA, multas, pontos CNH</li>
       </ul>
-      <a href="/alerta/cadastro?plano=basico"><button class="btn-primary plan-btn">🚀 Assinar</button></a>
+      <a href="/alerta/cadastro?plano=basico"><button class="plan-btn">🚀 Assinar</button></a>
     </div>
-
-    <!-- Família -->
     <div class="plan-card featured">
       <div class="plan-badge-top">⭐ Mais popular</div>
       <div class="plan-icon">👨‍👩‍👧</div>
@@ -482,10 +724,8 @@
         <li>Relatório mensal no WhatsApp</li>
         <li>Ideal para família</li>
       </ul>
-      <a href="/alerta/cadastro?plano=familia"><button class="btn-primary plan-btn">🚀 Assinar</button></a>
+      <a href="/alerta/cadastro?plano=familia"><button class="plan-btn">🚀 Assinar</button></a>
     </div>
-
-    <!-- Pequena Frota -->
     <div class="plan-card">
       <div class="plan-icon">🚐</div>
       <div class="plan-name">Pequena Frota</div>
@@ -496,10 +736,8 @@
         <li>Relatório mensal no WhatsApp</li>
         <li>Ideal para microempresas</li>
       </ul>
-      <a href="/alerta/cadastro?plano=pequena_frota"><button class="btn-primary plan-btn">🚀 Assinar</button></a>
+      <a href="/alerta/cadastro?plano=pequena_frota"><button class="plan-btn">🚀 Assinar</button></a>
     </div>
-
-    <!-- Frota Média -->
     <div class="plan-card">
       <div class="plan-icon">🚛</div>
       <div class="plan-name">Frota Média</div>
@@ -510,10 +748,8 @@
         <li>Relatório mensal no WhatsApp</li>
         <li>Ideal para empresas</li>
       </ul>
-      <a href="/alerta/cadastro?plano=frota_media"><button class="btn-primary plan-btn">🚀 Assinar</button></a>
+      <a href="/alerta/cadastro?plano=frota_media"><button class="plan-btn">🚀 Assinar</button></a>
     </div>
-
-    <!-- Master -->
     <div class="plan-card">
       <div class="plan-icon">🏢</div>
       <div class="plan-name">Master</div>
@@ -524,10 +760,8 @@
         <li>Relatório mensal no WhatsApp</li>
         <li>Transportadoras e frotas</li>
       </ul>
-      <a href="/alerta/cadastro?plano=master"><button class="btn-primary plan-btn">🚀 Assinar</button></a>
+      <a href="/alerta/cadastro?plano=master"><button class="plan-btn">🚀 Assinar</button></a>
     </div>
-
-    <!-- Enterprise -->
     <div class="plan-card">
       <div class="plan-icon">🏭</div>
       <div class="plan-name">Enterprise</div>
@@ -538,40 +772,49 @@
         <li>Relatório mensal no WhatsApp</li>
         <li>Grandes frotas</li>
       </ul>
-      <a href="/alerta/cadastro?plano=enterprise"><button class="btn-primary plan-btn">🚀 Assinar</button></a>
+      <a href="/alerta/cadastro?plano=enterprise"><button class="plan-btn">🚀 Assinar</button></a>
     </div>
-
   </div>
   <p style="text-align:center;color:var(--text2);font-size:12px;margin-top:28px;">
-    ✅ Ativação no mesmo dia &nbsp;·&nbsp; Pagamento via Pix &nbsp;·&nbsp; Cancele quando quiser
+    ✅ Ativação no mesmo dia &nbsp;·&nbsp; Pagamento via Pix &nbsp;·&nbsp; Cancele quando quiser &nbsp;·&nbsp; 🛡️ Serviço exclusivo SC
   </p>
 </section>
 
-<!-- CTA -->
+<!-- CTA FINAL -->
 <div class="cta-section">
-  <h2>Fique sempre um passo<br>à frente das multas</h2>
-  <p>Não espere a abordagem policial para descobrir um problema. Monitore agora.</p>
-  <a href="/alerta" target="_blank">
-    <button class="btn-primary" style="font-size:17px;padding:16px 36px;">
-      🚀 Começar por R$ 19,90/mês
-    </button>
-  </a>
-  <p style="margin-top:16px;font-size:12px;color:var(--text2);">🛡️ Serviço exclusivo para Santa Catarina</p>
+  <div class="cta-bg"></div>
+  <div class="cta-overlay"></div>
+  <div class="cta-content">
+    <h2>Fique sempre um passo<br><span>à frente das multas.</span></h2>
+    <p>Não espere a blitz para descobrir um problema. Com R$19,90 por mês você tem tranquilidade total — CNH e veículo monitorados, todo mês, no seu WhatsApp.</p>
+    <a href="/alerta/cadastro">
+      <button class="btn-primary" style="font-size:17px;padding:16px 40px;margin-bottom:16px;">
+        🚀 Começar por R$ 19,90/mês
+      </button>
+    </a>
+    <div style="font-size:12px;color:var(--text2);">🛡️ Serviço exclusivo para Santa Catarina · Ativação no mesmo dia</div>
+  </div>
 </div>
 
-<!-- Footer -->
+<!-- FOOTER -->
 <footer>
   <p>
     <a href="/">4KITEM</a> ·
     <a href="/agenda">Agenda SC</a> ·
-    <a href="/" target="_blank">Rádio SC News</a> ·
+    <a href="/mandaja">MandaJá</a> ·
     <a href="https://wa.me/5547991011351" target="_blank">WhatsApp (47) 99101-1351</a>
   </p>
   <p style="margin-top:8px;">© 2026 Alerta SC · Todos os direitos reservados</p>
 </footer>
 
+<!-- MOBILE CTA BAR -->
+<div class="mobile-cta-bar">
+  <a href="/alerta/cadastro">
+    <button class="btn-primary">🚀 Monitorar por R$ 19,90/mês</button>
+  </a>
+</div>
+
 <script>
-/* Contador animado nas stats */
 function animateCounter(el, target, suffix, duration) {
   let start = 0;
   const step = target / (duration / 16);
