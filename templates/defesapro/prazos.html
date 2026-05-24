@@ -1,0 +1,132 @@
+{% extends 'defesapro/base.html' %}
+{% set active = 'prazos' %}
+{% block title %}Prazos — DefesaPro{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-title">⏰ Controle de Prazos</div>
+    <div class="page-sub">Hoje: {{ hoje }}</div>
+  </div>
+  <a href="/defesapro/processos" class="btn btn-outline">+ Novo processo</a>
+</div>
+
+{% if vencidos %}
+<div style="margin-bottom:24px">
+  <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+    <span style="font-size:13px;font-weight:700;color:var(--red);text-transform:uppercase;letter-spacing:.5px">🚨 Prazos vencidos</span>
+    <span class="badge badge-red">{{ vencidos|length }}</span>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Placa/Auto</th><th>Artigo</th><th>Cliente</th><th>Prazo</th><th>Dias em atraso</th><th>Ação</th></tr></thead>
+      <tbody>
+      {% for p in vencidos %}
+      <tr>
+        <td><a href="/defesapro/processos/{{ p.id }}" class="td-link">{{ p.placa or 'Auto '+p.numero_auto }}</a></td>
+        <td style="font-size:12px;max-width:160px">{{ (p.descricao or p.artigo_ctb)[:50] }}</td>
+        <td class="td-muted">{{ p.cliente_nome or p.proprietario or '—' }}</td>
+        <td><strong style="color:var(--red)">{{ p.prazo_defesa }}</strong></td>
+        <td style="color:var(--red);font-weight:700">
+          {% set dias = (hoje|replace('-','')|int - p.prazo_defesa|replace('-','')|int) %}
+          VENCIDO
+        </td>
+        <td>
+          <a href="/defesapro/processos/{{ p.id }}" class="btn btn-danger btn-sm">⚠️ Ver</a>
+        </td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+{% if urgentes %}
+<div style="margin-bottom:24px">
+  <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+    <span style="font-size:13px;font-weight:700;color:var(--orange);text-transform:uppercase;letter-spacing:.5px">⚡ Urgente — até 7 dias</span>
+    <span class="badge" style="background:rgba(249,115,22,.15);color:#fdba74;border:1px solid rgba(249,115,22,.2)">{{ urgentes|length }}</span>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Placa/Auto</th><th>Artigo</th><th>Cliente</th><th>Prazo</th><th>Fase</th><th>Ação</th></tr></thead>
+      <tbody>
+      {% for p in urgentes %}
+      <tr>
+        <td><a href="/defesapro/processos/{{ p.id }}" class="td-link">{{ p.placa or 'Auto '+p.numero_auto }}</a></td>
+        <td style="font-size:12px;max-width:160px">{{ (p.descricao or p.artigo_ctb)[:50] }}</td>
+        <td class="td-muted">{{ p.cliente_nome or p.proprietario or '—' }}</td>
+        <td><strong style="color:var(--orange)">📅 {{ p.prazo_defesa }}</strong></td>
+        <td style="font-size:11px;color:var(--text3)">{{ ctb_status.get(p.fase, {}).get('label','') or p.fase }}</td>
+        <td>
+          <a href="/defesapro/processos/{{ p.id }}" class="btn btn-outline btn-sm">👁️ Ver</a>
+          <a href="/defesapro/peticoes/gerar?processo_id={{ p.id }}" class="btn btn-primary btn-sm">📄 Petição</a>
+        </td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+{% if proximos %}
+<div style="margin-bottom:24px">
+  <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+    <span style="font-size:13px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.5px">📅 Próximos 30 dias</span>
+    <span class="badge badge-blue">{{ proximos|length }}</span>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Placa/Auto</th><th>Artigo</th><th>Cliente</th><th>Prazo</th><th>Fase</th><th>Ação</th></tr></thead>
+      <tbody>
+      {% for p in proximos %}
+      <tr>
+        <td><a href="/defesapro/processos/{{ p.id }}" class="td-link">{{ p.placa or 'Auto '+p.numero_auto }}</a></td>
+        <td style="font-size:12px;max-width:160px">{{ (p.descricao or p.artigo_ctb)[:50] }}</td>
+        <td class="td-muted">{{ p.cliente_nome or p.proprietario or '—' }}</td>
+        <td>📅 {{ p.prazo_defesa }}</td>
+        <td style="font-size:11px;color:var(--text3)">{{ ctb_status.get(p.fase, {}).get('label','') or p.fase }}</td>
+        <td><a href="/defesapro/processos/{{ p.id }}" class="btn btn-outline btn-sm">👁️ Ver</a></td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+{% if sem_prazo %}
+<div style="margin-bottom:24px">
+  <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+    <span style="font-size:13px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">❓ Sem prazo definido</span>
+    <span class="badge badge-gray">{{ sem_prazo|length }}</span>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Placa/Auto</th><th>Artigo</th><th>Cliente</th><th>Status</th><th>Ação</th></tr></thead>
+      <tbody>
+      {% for p in sem_prazo %}
+      {% set st = ctb_status.get(p.status, ctb_status['aberto']) %}
+      <tr>
+        <td><a href="/defesapro/processos/{{ p.id }}" class="td-link">{{ p.placa or 'Auto '+p.numero_auto }}</a></td>
+        <td style="font-size:12px;max-width:160px">{{ (p.descricao or p.artigo_ctb)[:50] }}</td>
+        <td class="td-muted">{{ p.cliente_nome or p.proprietario or '—' }}</td>
+        <td><span class="badge badge-blue">{{ st.emoji }} {{ st.label }}</span></td>
+        <td><a href="/defesapro/processos/{{ p.id }}/editar" class="btn btn-outline btn-sm">✏️ Definir prazo</a></td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+{% if not vencidos and not urgentes and not proximos and not sem_prazo %}
+<div class="empty">
+  <div class="icon">⏰</div>
+  <p>Nenhum processo ativo com prazos.<br>Cadastre processos para monitorar os prazos aqui.</p>
+  <a href="/defesapro/processos" class="btn btn-primary">+ Novo processo</a>
+</div>
+{% endif %}
+{% endblock %}

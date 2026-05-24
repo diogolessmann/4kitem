@@ -1,0 +1,132 @@
+{% extends 'defesapro/base.html' %}
+{% set active = 'peticoes' %}
+{% block title %}Gerar Petição — DefesaPro{% endblock %}
+{% block extra_head %}
+<style>
+  .tese-card{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;cursor:pointer;transition:.15s;display:flex;gap:12px;align-items:flex-start}
+  .tese-card:hover{border-color:var(--purple)}
+  .tese-card input[type=checkbox]{margin-top:2px;accent-color:var(--purple);width:16px;height:16px;flex-shrink:0;cursor:pointer}
+  .tese-card.checked{border-color:var(--purple);background:rgba(124,58,237,.08)}
+  .tese-title{font-size:13px;font-weight:700;margin-bottom:3px}
+  .tese-desc{font-size:12px;color:var(--text3);line-height:1.5}
+</style>
+{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-title">📄 Gerar Petição</div>
+    <div class="page-sub">Motor de petições CTB / CONTRAN</div>
+  </div>
+  <a href="/defesapro/peticoes" class="btn btn-outline">← Petições</a>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+  <!-- Formulário -->
+  <div>
+    <form method="POST" id="form-peticao">
+      <div class="form-card" style="margin-bottom:16px">
+        <h3>1. Selecione o processo</h3>
+        <div class="form-group">
+          <label>Processo *</label>
+          <select class="form-control" name="processo_id" required id="sel-processo">
+            <option value="">— Selecione —</option>
+            {% for p in processos %}
+            <option value="{{ p.id }}" {% if pid_sel|string==p.id|string %}selected{% endif %}>
+              {{ p.placa or 'Auto '+p.numero_auto or '#'+p.id|string }} — {{ (p.descricao or p.artigo_ctb or '')[:50] }}
+              {% if p.cliente_nome %} ({{ p.cliente_nome }}){% endif %}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group" style="margin-top:12px">
+          <label>Tipo de petição *</label>
+          <select class="form-control" name="tipo">
+            <option value="defesa_previa">1ª Fase — Defesa Prévia (art. 285 CTB)</option>
+            <option value="recurso_jari">2ª Fase — Recurso JARI</option>
+            <option value="cetran">3ª Fase — CETRAN</option>
+          </select>
+        </div>
+        <div class="form-grid form-grid-2" style="margin-top:12px">
+          <div class="form-group">
+            <label>Órgão destinatário</label>
+            <input class="form-control" name="orgao_dest" placeholder="Ex: JARI Joinville">
+          </div>
+          <div class="form-group">
+            <label>Cidade/UF</label>
+            <input class="form-control" name="cidade" placeholder="Ex: Joinville/SC">
+          </div>
+        </div>
+      </div>
+
+      <div class="form-card" style="margin-bottom:16px">
+        <h3>2. Escolha as teses de defesa</h3>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          {% for k,t in teses.items() %}
+          <label class="tese-card" id="tese-card-{{ k }}" onclick="toggleTese('{{ k }}')">
+            <input type="checkbox" name="teses" value="{{ k }}" id="tese-{{ k }}" onclick="event.stopPropagation()">
+            <div>
+              <div class="tese-title">{{ t.titulo }}</div>
+              <div class="tese-desc">{{ t.texto[:100] }}...</div>
+            </div>
+          </label>
+          {% endfor %}
+        </div>
+        <div style="margin-top:12px;font-size:12px;color:var(--text3)">💡 Selecione as teses mais adequadas ao caso. A petição será montada com todas as selecionadas.</div>
+      </div>
+
+      <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;padding:13px;font-size:15px">⚖️ Gerar petição agora</button>
+    </form>
+  </div>
+
+  <!-- Preview / resultado -->
+  <div>
+    {% if peticao_gerada %}
+    <div class="form-card" style="margin:0;position:sticky;top:72px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+        <h3 style="margin:0">✅ Petição gerada</h3>
+        <div style="display:flex;gap:8px">
+          <button onclick="copyPet()" class="btn btn-primary btn-sm">📋 Copiar</button>
+          <button onclick="printPet()" class="btn btn-outline btn-sm">🖨️ Imprimir</button>
+        </div>
+      </div>
+      <textarea id="pet-text" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);padding:16px;font-family:monospace;font-size:11px;line-height:1.7;width:100%;min-height:520px;resize:vertical">{{ peticao_gerada }}</textarea>
+      <div style="margin-top:10px;font-size:12px;color:var(--text3)">💡 A petição foi salva automaticamente em <a href="/defesapro/peticoes" style="color:var(--purple3)">Petições</a>. Revise e edite conforme necessário antes de protocolar.</div>
+    </div>
+    {% else %}
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:48px 24px;text-align:center;color:var(--text3)">
+      <div style="font-size:48px;margin-bottom:16px">📄</div>
+      <div style="font-size:15px;margin-bottom:8px;color:var(--text2)">A petição aparecerá aqui</div>
+      <div style="font-size:13px">Preencha o formulário ao lado e clique em "Gerar petição".</div>
+      <div style="margin-top:20px;padding:16px;background:var(--surface2);border-radius:10px;text-align:left;font-size:12px;color:var(--text2)">
+        <strong>📚 Como funciona:</strong><br>
+        1. Selecione o processo cadastrado<br>
+        2. Escolha o tipo (Defesa Prévia / Recurso)<br>
+        3. Marque as teses de defesa aplicáveis<br>
+        4. A petição é gerada com linguagem jurídica e citações do CTB/CONTRAN
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<script>
+function toggleTese(k){
+  const cb = document.getElementById('tese-'+k);
+  const card = document.getElementById('tese-card-'+k);
+  cb.checked = !cb.checked;
+  card.classList.toggle('checked', cb.checked);
+}
+function copyPet(){
+  const t = document.getElementById('pet-text'); t.select(); document.execCommand('copy'); alert('Texto copiado!');
+}
+function printPet(){
+  const w = window.open('','_blank');
+  w.document.write('<pre style="font-family:Arial;font-size:14px;line-height:1.8;padding:40px;white-space:pre-wrap">'+document.getElementById('pet-text').value+'</pre>');
+  w.print();
+}
+// Pre-select processo from URL
+const urlParams = new URLSearchParams(window.location.search);
+const pidSel = urlParams.get('processo_id');
+if(pidSel) document.getElementById('sel-processo').value = pidSel;
+</script>
+{% endblock %}

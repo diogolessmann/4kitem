@@ -375,6 +375,119 @@ DESP_PLANS = {
     'premium':       {'label': '🥇 Premium',        'price': 'R$249,90/mês'},
 }
 
+# ── DefesaPro — CTB constants ─────────────────────────────────────────────────
+CTB_ARTIGOS = {
+    '162_i':   {'label': 'Art. 162, I — Conduzir sem CNH',              'pontos': 7, 'valor': 880.41},
+    '165':     {'label': 'Art. 165 — Dirigir sob influência de álcool', 'pontos': 7, 'valor': 2934.70},
+    '218_i':   {'label': 'Art. 218, I — Velocidade até 20% acima',     'pontos': 4, 'valor': 130.16},
+    '218_ii':  {'label': 'Art. 218, II — Velocidade 20% a 50%',        'pontos': 5, 'valor': 195.23},
+    '218_iii': {'label': 'Art. 218, III — Velocidade 50% a 100%',      'pontos': 6, 'valor': 293.47},
+    '218_iv':  {'label': 'Art. 218, IV — Velocidade acima de 100%',    'pontos': 7, 'valor': 880.41},
+    '230_i':   {'label': 'Art. 230, I — Sem documentação do veículo',  'pontos': 5, 'valor': 195.23},
+    '244_i':   {'label': 'Art. 244, I — Motociclista sem capacete',    'pontos': 7, 'valor': 195.23},
+    '167':     {'label': 'Art. 167 — Sem cinto de segurança',          'pontos': 5, 'valor': 293.47},
+    '208':     {'label': 'Art. 208 — Avançar sinal vermelho',          'pontos': 7, 'valor': 293.47},
+    '175':     {'label': 'Art. 175 — Disputar corrida (racha)',        'pontos': 7, 'valor': 880.41},
+    '219':     {'label': 'Art. 219 — Transitar em calçada',            'pontos': 5, 'valor': 130.16},
+    '228':     {'label': 'Art. 228 — Não dar passagem a pedestre',     'pontos': 5, 'valor': 130.16},
+    '253':     {'label': 'Art. 253 — Parar em local proibido',         'pontos': 5, 'valor': 195.23},
+    'outro':   {'label': 'Outro artigo (descrever nas obs.)',           'pontos': 0, 'valor': 0},
+}
+CTB_STATUS = {
+    'aberto':     {'label': 'Aberto',       'color': '#3b82f6', 'emoji': '🔵'},
+    'em_recurso': {'label': 'Em recurso',   'color': '#f59e0b', 'emoji': '🟡'},
+    'deferido':   {'label': 'Deferido',     'color': '#22c55e', 'emoji': '✅'},
+    'indeferido': {'label': 'Indeferido',   'color': '#ef4444', 'emoji': '❌'},
+    'cancelado':  {'label': 'Cancelado',    'color': '#6b7280', 'emoji': '⚫'},
+}
+CTB_FASES = {
+    'defesa_previa': '1ª Fase — Defesa Prévia',
+    'recurso_jari':  '2ª Fase — Recurso JARI',
+    'cetran':        '3ª Fase — CETRAN',
+    'encerrado':     'Encerrado',
+}
+TESES_DEFESA = {
+    'nulidade_notificacao': {
+        'titulo': 'Nulidade — Falta de notificação válida',
+        'texto': (
+            'A autuação padece de nulidade, pois o autuado não foi devidamente notificado no '
+            'prazo de 30 dias contados da data da infração, conforme exige o art. 281, §1º do CTB. '
+            'A notificação é pressuposto de validade do auto de infração, e sua ausência ou '
+            'intempestividade acarreta a caducidade do processo administrativo, nos termos da '
+            'jurisprudência consolidada do Superior Tribunal de Justiça (REsp 1.115.932/RS).'
+        ),
+    },
+    'ilegitimidade_passiva': {
+        'titulo': 'Ilegitimidade passiva — Proprietário não era o condutor',
+        'texto': (
+            'A notificação foi dirigida ao proprietário do veículo, porém este não era o condutor '
+            'no momento da infração, conforme faculta o art. 257, §7º do CTB. O proprietário tem '
+            'o direito de indicar o condutor infrator, transferindo a responsabilidade pela penalidade. '
+            'A não identificação do condutor pelo órgão autuador impede a imputação automática '
+            'ao proprietário do veículo.'
+        ),
+    },
+    'equipamento_nao_homologado': {
+        'titulo': 'Nulidade — Equipamento sem homologação ou calibração válida',
+        'texto': (
+            'O auto de infração deve ser declarado nulo pela ausência de comprovação da homologação '
+            'e da aferição periódica do equipamento utilizado, exigidas pelo art. 280, §2º do CTB '
+            'c/c Resolução CONTRAN nº 396/2011 e normas INMETRO. A fé pública do auto não dispensa '
+            'a apresentação dos certificados de calibração; o ônus da prova é do órgão autuador.'
+        ),
+    },
+    'margem_erro': {
+        'titulo': 'Velocidade efetiva dentro da margem de erro do equipamento',
+        'texto': (
+            'A velocidade registrada deve ser reduzida pela margem de erro do equipamento, nos '
+            'termos da Portaria DENATRAN nº 12/2014 e normas INMETRO. Descontada a margem de erro '
+            'legal, a velocidade efetiva do veículo fica dentro do limite permitido, tornando '
+            'insubsistente a autuação. O princípio in dubio pro reo, aplicável ao processo '
+            'administrativo sancionador, impõe o arquivamento do feito.'
+        ),
+    },
+    'ausencia_sinalizacao': {
+        'titulo': 'Ausência ou deficiência de sinalização na via',
+        'texto': (
+            'A sinalização no local da infração era inexistente ou não atendia aos requisitos '
+            'mínimos de visibilidade previstos no Manual Brasileiro de Sinalização de Trânsito. '
+            'Compete ao órgão gestor da via a correta sinalização (arts. 21, IV e 88 do CTB). '
+            'A imposição de multa sem sinalização adequada e visível viola os princípios da '
+            'legalidade e da segurança jurídica, devendo a autuação ser anulada.'
+        ),
+    },
+    'cerceamento_defesa': {
+        'titulo': 'Cerceamento de defesa — Ausência de prova fotográfica/imagem',
+        'texto': (
+            'O auto de infração não foi instruído com imagens ou provas suficientes para comprovar '
+            'a materialidade da infração, em violação ao princípio constitucional da ampla defesa '
+            '(art. 5º, LV da CF/88). A mera lavratura do auto não supre a exigência de prova '
+            'concreta da conduta infracional. Na dúvida, impõe-se o princípio in dubio pro reo, '
+            'também aplicável ao processo administrativo sancionatório.'
+        ),
+    },
+    'nulidade_formal': {
+        'titulo': 'Nulidade formal do auto de infração',
+        'texto': (
+            'O auto de infração não preenche os requisitos formais obrigatórios do art. 280 do CTB: '
+            'identificação precisa do local, data, hora e circunstâncias; identificação do veículo e '
+            'do condutor; tipificação correta do ato infracional e indicação da penalidade aplicável. '
+            'A ausência ou incorreção de qualquer desses elementos gera nulidade absoluta, insanável '
+            'por vício de forma, nos termos da doutrina e jurisprudência administrativas.'
+        ),
+    },
+    'bons_antecedentes': {
+        'titulo': 'Bons antecedentes — Histórico favorável do condutor',
+        'texto': (
+            'O requerente é portador de Carteira Nacional de Habilitação com histórico ilibado, '
+            'condutor responsável e sem infrações anteriores relevantes, demonstrando compromisso '
+            'com as normas de trânsito. Este comportamento exemplar deve ser considerado como '
+            'atenuante nos termos do art. 261, §2º do CTB e do princípio da proporcionalidade das '
+            'sanções administrativas.'
+        ),
+    },
+}
+
 
 def _desp_saas_login_required(f):
     @wraps(f)
@@ -505,7 +618,459 @@ def defesa_app():
     if not u or not u['active']:
         session.clear()
         return redirect('/defesapro/login')
-    return render_template('defesapro/app.html', user=dict(u))
+    conn2 = get_saas_db()
+    ativos    = conn2.execute('SELECT COUNT(*) FROM defesapro_processos WHERE user_id=? AND status NOT IN ("cancelado","encerrado")', (user_id,)).fetchone()[0]
+    prazos7   = conn2.execute(
+        "SELECT COUNT(*) FROM defesapro_processos WHERE user_id=? AND prazo_defesa!='' AND prazo_defesa BETWEEN date('now') AND date('now','+7 days') AND status='aberto'",
+        (user_id,)
+    ).fetchone()[0]
+    deferidos = conn2.execute('SELECT COUNT(*) FROM defesapro_processos WHERE user_id=? AND status="deferido"', (user_id,)).fetchone()[0]
+    hon_mes   = conn2.execute(
+        "SELECT COALESCE(SUM(valor),0) FROM defesapro_financeiro WHERE user_id=? AND pago=1 AND strftime('%Y-%m',data)=strftime('%Y-%m','now')",
+        (user_id,)
+    ).fetchone()[0]
+    conn2.close()
+    stats = {'ativos': ativos, 'prazos7': prazos7, 'deferidos': deferidos, 'hon_mes': hon_mes}
+    return render_template('defesapro/app.html', user=dict(u), stats=stats)
+
+
+# ── DefesaPro — Clientes ──────────────────────────────────────────────────────
+@app.route('/defesapro/clientes', methods=['GET', 'POST'])
+@_defesa_login_required
+def defesa_clientes():
+    user_id = session['defesa_user_id']
+    conn = get_saas_db()
+    erro = sucesso = None
+    if request.method == 'POST':
+        name    = request.form.get('name', '').strip()
+        cpf     = request.form.get('cpf', '').strip()
+        phone   = request.form.get('phone', '').strip()
+        email   = request.form.get('email', '').strip()
+        cnh     = request.form.get('cnh', '').strip()
+        address = request.form.get('address', '').strip()
+        notes   = request.form.get('notes', '').strip()
+        if not name:
+            erro = 'Nome é obrigatório.'
+        else:
+            conn.execute(
+                'INSERT INTO defesapro_clientes (user_id,name,cpf,phone,email,cnh,address,notes,created_at) VALUES (?,?,?,?,?,?,?,?,?)',
+                (user_id, name, cpf, phone, email, cnh, address, notes, datetime.now().isoformat())
+            )
+            conn.commit()
+            sucesso = f'Cliente "{name}" cadastrado com sucesso.'
+    clientes = conn.execute(
+        'SELECT * FROM defesapro_clientes WHERE user_id=? ORDER BY name ASC', (user_id,)
+    ).fetchall()
+    conn.close()
+    return render_template('defesapro/clientes.html',
+                           clientes=[dict(c) for c in clientes],
+                           erro=erro, sucesso=sucesso)
+
+
+@app.route('/defesapro/clientes/<int:cid>/editar', methods=['GET', 'POST'])
+@_defesa_login_required
+def defesa_cliente_editar(cid):
+    user_id = session['defesa_user_id']
+    conn = get_saas_db()
+    cli = conn.execute('SELECT * FROM defesapro_clientes WHERE id=? AND user_id=?', (cid, user_id)).fetchone()
+    if not cli:
+        conn.close(); return redirect('/defesapro/clientes')
+    erro = None
+    if request.method == 'POST':
+        name    = request.form.get('name', '').strip()
+        cpf     = request.form.get('cpf', '').strip()
+        phone   = request.form.get('phone', '').strip()
+        email   = request.form.get('email', '').strip()
+        cnh     = request.form.get('cnh', '').strip()
+        address = request.form.get('address', '').strip()
+        notes   = request.form.get('notes', '').strip()
+        if not name:
+            erro = 'Nome é obrigatório.'
+        else:
+            conn.execute(
+                'UPDATE defesapro_clientes SET name=?,cpf=?,phone=?,email=?,cnh=?,address=?,notes=? WHERE id=? AND user_id=?',
+                (name, cpf, phone, email, cnh, address, notes, cid, user_id)
+            )
+            conn.commit(); conn.close()
+            return redirect('/defesapro/clientes')
+    conn.close()
+    return render_template('defesapro/cliente_form.html', cliente=dict(cli), erro=erro)
+
+
+@app.route('/defesapro/clientes/<int:cid>/deletar', methods=['POST'])
+@_defesa_login_required
+def defesa_cliente_deletar(cid):
+    user_id = session['defesa_user_id']
+    conn = get_saas_db()
+    conn.execute('DELETE FROM defesapro_clientes WHERE id=? AND user_id=?', (cid, user_id))
+    conn.commit(); conn.close()
+    return redirect('/defesapro/clientes')
+
+
+# ── DefesaPro — Processos ─────────────────────────────────────────────────────
+@app.route('/defesapro/processos', methods=['GET', 'POST'])
+@_defesa_login_required
+def defesa_processos():
+    user_id = session['defesa_user_id']
+    conn = get_saas_db()
+    erro = sucesso = None
+    if request.method == 'POST':
+        artigo       = request.form.get('artigo_ctb', '').strip()
+        numero_auto  = request.form.get('numero_auto', '').strip()
+        placa        = request.form.get('placa', '').strip().upper()
+        proprietario = request.form.get('proprietario', '').strip()
+        data_inf     = request.form.get('data_infracao', '').strip()
+        hora_inf     = request.form.get('hora_infracao', '').strip()
+        local_inf    = request.form.get('local_infracao', '').strip()
+        orgao        = request.form.get('orgao_autuador', '').strip()
+        prazo        = request.form.get('prazo_defesa', '').strip()
+        honorarios   = float(request.form.get('honorarios', 0) or 0)
+        obs          = request.form.get('observacoes', '').strip()
+        cliente_id   = request.form.get('cliente_id') or None
+        artigo_info  = CTB_ARTIGOS.get(artigo, CTB_ARTIGOS['outro'])
+        if not placa and not numero_auto:
+            erro = 'Informe a placa ou o número do auto.'
+        else:
+            now = datetime.now().isoformat()
+            pid = conn.execute(
+                '''INSERT INTO defesapro_processos
+                   (user_id,cliente_id,numero_auto,placa,proprietario,data_infracao,
+                    hora_infracao,local_infracao,orgao_autuador,artigo_ctb,descricao,
+                    pontos,valor_multa,prazo_defesa,honorarios,observacoes,created_at,updated_at)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)''',
+                (user_id, cliente_id, numero_auto, placa, proprietario, data_inf,
+                 hora_inf, local_inf, orgao, artigo, artigo_info['label'],
+                 artigo_info['pontos'], artigo_info['valor'], prazo, honorarios, obs, now, now)
+            ).lastrowid
+            if honorarios > 0:
+                conn.execute(
+                    'INSERT INTO defesapro_financeiro (user_id,processo_id,cliente_id,tipo,descricao,valor,data,created_at) VALUES (?,?,?,?,?,?,?,?)',
+                    (user_id, pid, cliente_id, 'honorario', f'Honorários — {placa or numero_auto}', honorarios, data_inf or now[:10], now)
+                )
+            conn.commit()
+            sucesso = f'Processo {"placa "+placa if placa else "auto "+numero_auto} criado.'
+    filtro_status = request.args.get('status', '')
+    q = 'SELECT p.*, c.name AS cliente_nome FROM defesapro_processos p LEFT JOIN defesapro_clientes c ON c.id=p.cliente_id WHERE p.user_id=?'
+    params = [user_id]
+    if filtro_status:
+        q += ' AND p.status=?'; params.append(filtro_status)
+    q += ' ORDER BY p.created_at DESC'
+    processos = [dict(r) for r in conn.execute(q, params).fetchall()]
+    clientes  = [dict(r) for r in conn.execute('SELECT id,name FROM defesapro_clientes WHERE user_id=? ORDER BY name', (user_id,)).fetchall()]
+    conn.close()
+    return render_template('defesapro/processos.html',
+                           processos=processos, clientes=clientes,
+                           ctb_artigos=CTB_ARTIGOS, ctb_status=CTB_STATUS, ctb_fases=CTB_FASES,
+                           filtro_status=filtro_status, erro=erro, sucesso=sucesso,
+                           hoje=date.today().isoformat())
+
+
+@app.route('/defesapro/processos/<int:pid>')
+@_defesa_login_required
+def defesa_processo_detalhe(pid):
+    user_id = session['defesa_user_id']
+    conn = get_saas_db()
+    p = conn.execute(
+        'SELECT p.*, c.name AS cliente_nome, c.phone AS cliente_phone FROM defesapro_processos p LEFT JOIN defesapro_clientes c ON c.id=p.cliente_id WHERE p.id=? AND p.user_id=?',
+        (pid, user_id)
+    ).fetchone()
+    if not p:
+        conn.close(); return redirect('/defesapro/processos')
+    peticoes = [dict(r) for r in conn.execute(
+        'SELECT * FROM defesapro_peticoes WHERE processo_id=? AND user_id=? ORDER BY created_at DESC',
+        (pid, user_id)
+    ).fetchall()]
+    pagamentos = [dict(r) for r in conn.execute(
+        'SELECT * FROM defesapro_financeiro WHERE processo_id=? AND user_id=? ORDER BY data DESC',
+        (pid, user_id)
+    ).fetchall()]
+    conn.close()
+    return render_template('defesapro/processo_detalhe.html',
+                           p=dict(p), peticoes=peticoes, pagamentos=pagamentos,
+                           ctb_status=CTB_STATUS, ctb_fases=CTB_FASES)
+
+
+@app.route('/defesapro/processos/<int:pid>/status', methods=['POST'])
+@_defesa_login_required
+def defesa_processo_status(pid):
+    user_id = session['defesa_user_id']
+    novo_status = request.form.get('status', '')
+    nova_fase   = request.form.get('fase', '')
+    if novo_status not in CTB_STATUS:
+        return redirect(f'/defesapro/processos/{pid}')
+    conn = get_saas_db()
+    conn.execute(
+        'UPDATE defesapro_processos SET status=?,fase=?,updated_at=? WHERE id=? AND user_id=?',
+        (novo_status, nova_fase or CTB_FASES.get(novo_status, 'encerrado'), datetime.now().isoformat(), pid, user_id)
+    )
+    conn.commit(); conn.close()
+    return redirect(f'/defesapro/processos/{pid}')
+
+
+@app.route('/defesapro/processos/<int:pid>/editar', methods=['GET', 'POST'])
+@_defesa_login_required
+def defesa_processo_editar(pid):
+    user_id = session['defesa_user_id']
+    conn = get_saas_db()
+    p = conn.execute('SELECT * FROM defesapro_processos WHERE id=? AND user_id=?', (pid, user_id)).fetchone()
+    if not p:
+        conn.close(); return redirect('/defesapro/processos')
+    erro = None
+    if request.method == 'POST':
+        artigo       = request.form.get('artigo_ctb', '').strip()
+        numero_auto  = request.form.get('numero_auto', '').strip()
+        placa        = request.form.get('placa', '').strip().upper()
+        proprietario = request.form.get('proprietario', '').strip()
+        data_inf     = request.form.get('data_infracao', '').strip()
+        hora_inf     = request.form.get('hora_infracao', '').strip()
+        local_inf    = request.form.get('local_infracao', '').strip()
+        orgao        = request.form.get('orgao_autuador', '').strip()
+        prazo        = request.form.get('prazo_defesa', '').strip()
+        honorarios   = float(request.form.get('honorarios', 0) or 0)
+        obs          = request.form.get('observacoes', '').strip()
+        cliente_id   = request.form.get('cliente_id') or None
+        artigo_info  = CTB_ARTIGOS.get(artigo, CTB_ARTIGOS['outro'])
+        conn.execute(
+            '''UPDATE defesapro_processos SET cliente_id=?,numero_auto=?,placa=?,proprietario=?,
+               data_infracao=?,hora_infracao=?,local_infracao=?,orgao_autuador=?,artigo_ctb=?,
+               descricao=?,pontos=?,valor_multa=?,prazo_defesa=?,honorarios=?,observacoes=?,updated_at=?
+               WHERE id=? AND user_id=?''',
+            (cliente_id, numero_auto, placa, proprietario, data_inf, hora_inf, local_inf, orgao,
+             artigo, artigo_info['label'], artigo_info['pontos'], artigo_info['valor'],
+             prazo, honorarios, obs, datetime.now().isoformat(), pid, user_id)
+        )
+        conn.commit(); conn.close()
+        return redirect(f'/defesapro/processos/{pid}')
+    clientes = [dict(r) for r in conn.execute('SELECT id,name FROM defesapro_clientes WHERE user_id=? ORDER BY name', (user_id,)).fetchall()]
+    conn.close()
+    return render_template('defesapro/processo_form.html',
+                           p=dict(p), clientes=clientes,
+                           ctb_artigos=CTB_ARTIGOS, editando=True, erro=erro)
+
+
+@app.route('/defesapro/processos/<int:pid>/deletar', methods=['POST'])
+@_defesa_login_required
+def defesa_processo_deletar(pid):
+    user_id = session['defesa_user_id']
+    conn = get_saas_db()
+    conn.execute('DELETE FROM defesapro_processos WHERE id=? AND user_id=?', (pid, user_id))
+    conn.commit(); conn.close()
+    return redirect('/defesapro/processos')
+
+
+# ── DefesaPro — Petições ──────────────────────────────────────────────────────
+@app.route('/defesapro/peticoes')
+@_defesa_login_required
+def defesa_peticoes():
+    user_id = session['defesa_user_id']
+    conn = get_saas_db()
+    peticoes = [dict(r) for r in conn.execute(
+        '''SELECT t.*, p.placa, p.numero_auto, c.name AS cliente_nome
+           FROM defesapro_peticoes t
+           LEFT JOIN defesapro_processos p ON p.id=t.processo_id
+           LEFT JOIN defesapro_clientes  c ON c.id=p.cliente_id
+           WHERE t.user_id=? ORDER BY t.created_at DESC''',
+        (user_id,)
+    ).fetchall()]
+    processos = [dict(r) for r in conn.execute(
+        'SELECT id, placa, numero_auto, artigo_ctb FROM defesapro_processos WHERE user_id=? AND status="aberto" ORDER BY created_at DESC',
+        (user_id,)
+    ).fetchall()]
+    conn.close()
+    return render_template('defesapro/peticoes.html',
+                           peticoes=peticoes, processos=processos, teses=TESES_DEFESA)
+
+
+@app.route('/defesapro/peticoes/gerar', methods=['GET', 'POST'])
+@_defesa_login_required
+def defesa_peticao_gerar():
+    user_id = session['defesa_user_id']
+    conn = get_saas_db()
+    processos = [dict(r) for r in conn.execute(
+        '''SELECT p.*, c.name AS cliente_nome, c.cpf AS cliente_cpf, c.cnh AS cliente_cnh
+           FROM defesapro_processos p
+           LEFT JOIN defesapro_clientes c ON c.id=p.cliente_id
+           WHERE p.user_id=? ORDER BY p.created_at DESC''',
+        (user_id,)
+    ).fetchall()]
+    peticao_gerada = None
+    pid_sel = None
+    if request.method == 'POST':
+        pid_sel   = request.form.get('processo_id')
+        tipo      = request.form.get('tipo', 'defesa_previa')
+        teses_sel = request.form.getlist('teses')
+        orgao_dest = request.form.get('orgao_dest', '').strip() or 'JARI Competente'
+        cidade     = request.form.get('cidade', '').strip() or 'Florianópolis/SC'
+        p = next((x for x in processos if str(x['id']) == str(pid_sel)), None)
+        if p:
+            tipo_labels = {'defesa_previa': 'DEFESA PRÉVIA', 'recurso_jari': 'RECURSO ADMINISTRATIVO — JARI', 'cetran': 'RECURSO ADMINISTRATIVO — CETRAN'}
+            tipo_label  = tipo_labels.get(tipo, 'DEFESA PRÉVIA')
+            nome_req    = p['cliente_nome'] or p['proprietario'] or '[NOME DO REQUERENTE]'
+            cpf_req     = p['cliente_cpf'] or '[CPF]'
+            cnh_req     = p['cliente_cnh'] or '[CNH]'
+            placa       = p['placa'] or '[PLACA]'
+            auto_num    = p['numero_auto'] or '[NÚMERO DO AUTO]'
+            data_inf    = p['data_infracao'] or '[DATA]'
+            hora_inf    = p['hora_infracao'] or '[HORA]'
+            local_inf   = p['local_infracao'] or '[LOCAL]'
+            artigo_desc = p['descricao'] or p['artigo_ctb'] or '[ARTIGO]'
+            orgao_aut   = p['orgao_autuador'] or '[ÓRGÃO AUTUADOR]'
+            hoje        = datetime.now().strftime('%d de %B de %Y')
+            # Monta teses selecionadas
+            teses_texto = ''
+            for i, tk in enumerate(teses_sel, 1):
+                t = TESES_DEFESA.get(tk)
+                if t:
+                    teses_texto += f'\n{i}. {t["titulo"].upper()}\n\n{t["texto"]}\n'
+            if not teses_texto:
+                teses_texto = '\n[Descreva aqui os argumentos de defesa]\n'
+            peticao_gerada = f"""EXCELENTÍSSIMO(A) SENHOR(A) {orgao_dest.upper()}
+
+{tipo_label}
+
+{nome_req}, portador(a) da CNH nº {cnh_req} e CPF nº {cpf_req}, proprietário(a)/condutor(a) do veículo de placa {placa}, vem, respeitosamente, apresentar
+
+{tipo_label} (art. 285 do Código de Trânsito Brasileiro)
+
+em face do Auto de Infração nº {auto_num}, lavrado em {data_inf} às {hora_inf}, em {local_inf}, por {orgao_aut}, em razão de suposta infração ao {artigo_desc}, pelos motivos de fato e de direito a seguir expostos.
+
+I – DOS FATOS
+
+Em {data_inf}, o veículo de placa {placa} foi autuado por suposta infração ao {artigo_desc}, conforme Auto de Infração nº {auto_num}. O requerente, não concordando com a autuação, vem exercer seu direito constitucional à ampla defesa e ao contraditório, nos termos do art. 5º, LV da Constituição Federal e do art. 285 do CTB.
+
+II – DO DIREITO
+{teses_texto}
+III – DOS PEDIDOS
+
+Ante o exposto, requer:
+a) O recebimento e conhecimento da presente {tipo_label.lower()};
+b) O arquivamento do Auto de Infração nº {auto_num} e o cancelamento de qualquer penalidade dele decorrente;
+c) Caso não seja acolhido o pedido principal, que seja aplicada a penalidade mínima prevista em lei, considerados os bons antecedentes do requerente;
+d) A expedição de notificação sobre o resultado do julgamento no endereço do requerente.
+
+Termos em que pede deferimento.
+
+{cidade}, {hoje}.
+
+{nome_req}
+CPF: {cpf_req}
+"""
+            # Salva a petição
+            conn.execute(
+                'INSERT INTO defesapro_peticoes (user_id,processo_id,tipo,conteudo,teses_json,created_at) VALUES (?,?,?,?,?,?)',
+                (user_id, p['id'], tipo, peticao_gerada, _json.dumps(teses_sel), datetime.now().isoformat())
+            )
+            conn.commit()
+    conn.close()
+    return render_template('defesapro/peticao_gerar.html',
+                           processos=processos, teses=TESES_DEFESA,
+                           peticao_gerada=peticao_gerada, pid_sel=pid_sel)
+
+
+@app.route('/defesapro/peticoes/<int:tid>/deletar', methods=['POST'])
+@_defesa_login_required
+def defesa_peticao_deletar(tid):
+    user_id = session['defesa_user_id']
+    conn = get_saas_db()
+    conn.execute('DELETE FROM defesapro_peticoes WHERE id=? AND user_id=?', (tid, user_id))
+    conn.commit(); conn.close()
+    return redirect('/defesapro/peticoes')
+
+
+# ── DefesaPro — Prazos ────────────────────────────────────────────────────────
+@app.route('/defesapro/prazos')
+@_defesa_login_required
+def defesa_prazos():
+    user_id = session['defesa_user_id']
+    conn = get_saas_db()
+    hoje   = date.today().isoformat()
+    em7    = (date.today() + timedelta(days=7)).isoformat()
+    em30   = (date.today() + timedelta(days=30)).isoformat()
+    vencidos = [dict(r) for r in conn.execute(
+        '''SELECT p.*, c.name AS cliente_nome FROM defesapro_processos p
+           LEFT JOIN defesapro_clientes c ON c.id=p.cliente_id
+           WHERE p.user_id=? AND p.prazo_defesa!='' AND p.prazo_defesa<? AND p.status='aberto'
+           ORDER BY p.prazo_defesa ASC''', (user_id, hoje)
+    ).fetchall()]
+    urgentes = [dict(r) for r in conn.execute(
+        '''SELECT p.*, c.name AS cliente_nome FROM defesapro_processos p
+           LEFT JOIN defesapro_clientes c ON c.id=p.cliente_id
+           WHERE p.user_id=? AND p.prazo_defesa BETWEEN ? AND ? AND p.status='aberto'
+           ORDER BY p.prazo_defesa ASC''', (user_id, hoje, em7)
+    ).fetchall()]
+    proximos = [dict(r) for r in conn.execute(
+        '''SELECT p.*, c.name AS cliente_nome FROM defesapro_processos p
+           LEFT JOIN defesapro_clientes c ON c.id=p.cliente_id
+           WHERE p.user_id=? AND p.prazo_defesa > ? AND p.prazo_defesa <= ? AND p.status='aberto'
+           ORDER BY p.prazo_defesa ASC''', (user_id, em7, em30)
+    ).fetchall()]
+    sem_prazo = [dict(r) for r in conn.execute(
+        '''SELECT p.*, c.name AS cliente_nome FROM defesapro_processos p
+           LEFT JOIN defesapro_clientes c ON c.id=p.cliente_id
+           WHERE p.user_id=? AND (p.prazo_defesa='' OR p.prazo_defesa IS NULL) AND p.status='aberto'
+           ORDER BY p.created_at DESC''', (user_id,)
+    ).fetchall()]
+    conn.close()
+    return render_template('defesapro/prazos.html',
+                           vencidos=vencidos, urgentes=urgentes,
+                           proximos=proximos, sem_prazo=sem_prazo,
+                           ctb_status=CTB_STATUS, hoje=hoje)
+
+
+# ── DefesaPro — Financeiro ────────────────────────────────────────────────────
+@app.route('/defesapro/financeiro', methods=['GET', 'POST'])
+@_defesa_login_required
+def defesa_financeiro():
+    user_id = session['defesa_user_id']
+    conn = get_saas_db()
+    erro = sucesso = None
+    if request.method == 'POST':
+        acao = request.form.get('acao', '')
+        if acao == 'add':
+            desc       = request.form.get('descricao', '').strip()
+            valor      = float(request.form.get('valor', 0) or 0)
+            tipo       = request.form.get('tipo', 'honorario')
+            data_pg    = request.form.get('data', datetime.now().strftime('%Y-%m-%d'))
+            processo_id = request.form.get('processo_id') or None
+            pago       = 1 if request.form.get('pago') else 0
+            if valor <= 0:
+                erro = 'Informe um valor maior que zero.'
+            else:
+                conn.execute(
+                    'INSERT INTO defesapro_financeiro (user_id,processo_id,tipo,descricao,valor,pago,data,created_at) VALUES (?,?,?,?,?,?,?,?)',
+                    (user_id, processo_id, tipo, desc, valor, pago, data_pg, datetime.now().isoformat())
+                )
+                conn.commit()
+                sucesso = 'Lançamento registrado.'
+        elif acao == 'pagar':
+            fid = int(request.form.get('fid', 0))
+            conn.execute('UPDATE defesapro_financeiro SET pago=1 WHERE id=? AND user_id=?', (fid, user_id))
+            conn.commit()
+            sucesso = 'Marcado como pago.'
+        elif acao == 'deletar':
+            fid = int(request.form.get('fid', 0))
+            conn.execute('DELETE FROM defesapro_financeiro WHERE id=? AND user_id=?', (fid, user_id))
+            conn.commit()
+            sucesso = 'Lançamento removido.'
+    mes_atual = datetime.now().strftime('%Y-%m')
+    total_mes   = conn.execute("SELECT COALESCE(SUM(valor),0) FROM defesapro_financeiro WHERE user_id=? AND pago=1 AND strftime('%Y-%m',data)=?", (user_id, mes_atual)).fetchone()[0]
+    pendente    = conn.execute("SELECT COALESCE(SUM(valor),0) FROM defesapro_financeiro WHERE user_id=? AND pago=0", (user_id,)).fetchone()[0]
+    total_geral = conn.execute("SELECT COALESCE(SUM(valor),0) FROM defesapro_financeiro WHERE user_id=? AND pago=1", (user_id,)).fetchone()[0]
+    lancamentos = [dict(r) for r in conn.execute(
+        '''SELECT f.*, p.placa, p.numero_auto FROM defesapro_financeiro f
+           LEFT JOIN defesapro_processos p ON p.id=f.processo_id
+           WHERE f.user_id=? ORDER BY f.data DESC, f.id DESC LIMIT 100''',
+        (user_id,)
+    ).fetchall()]
+    processos = [dict(r) for r in conn.execute(
+        'SELECT id, placa, numero_auto FROM defesapro_processos WHERE user_id=? ORDER BY created_at DESC',
+        (user_id,)
+    ).fetchall()]
+    conn.close()
+    return render_template('defesapro/financeiro.html',
+                           lancamentos=lancamentos, processos=processos,
+                           total_mes=total_mes, pendente=pendente, total_geral=total_geral,
+                           erro=erro, sucesso=sucesso)
 
 
 # ── DefesaPro — Admin: definir senha do usuário ────────────────────────────────

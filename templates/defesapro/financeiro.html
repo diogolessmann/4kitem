@@ -1,0 +1,149 @@
+{% extends 'defesapro/base.html' %}
+{% set active = 'financeiro' %}
+{% block title %}Financeiro — DefesaPro{% endblock %}
+{% block extra_head %}
+<style>
+  .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;align-items:center;justify-content:center}
+  .modal-overlay.open{display:flex}
+  .modal{background:var(--surface);border:1px solid var(--border2);border-radius:16px;padding:28px;width:100%;max-width:480px}
+</style>
+{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-title">💰 Financeiro</div>
+    <div class="page-sub">Honorários e receitas do escritório</div>
+  </div>
+  <button class="btn btn-primary" onclick="document.getElementById('modal-add').classList.add('open')">+ Novo lançamento</button>
+</div>
+
+{% if erro %}<div class="alert alert-error">⚠️ {{ erro }}</div>{% endif %}
+{% if sucesso %}<div class="alert alert-success">✅ {{ sucesso }}</div>{% endif %}
+
+<div class="stats-grid">
+  <div class="stat-card">
+    <div class="stat-icon">💰</div>
+    <div class="stat-label">Recebido este mês</div>
+    <div class="stat-value" style="font-size:20px;color:var(--green)">R$ {{ '%.2f'|format(total_mes) }}</div>
+    <div class="stat-sub">Honorários pagos</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon">⏳</div>
+    <div class="stat-label">A receber</div>
+    <div class="stat-value" style="font-size:20px;color:var(--orange)">R$ {{ '%.2f'|format(pendente) }}</div>
+    <div class="stat-sub">Total pendente</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon">📊</div>
+    <div class="stat-label">Total histórico</div>
+    <div class="stat-value" style="font-size:20px">R$ {{ '%.2f'|format(total_geral) }}</div>
+    <div class="stat-sub">Acumulado pago</div>
+  </div>
+</div>
+
+{% if lancamentos %}
+<div class="table-wrap">
+  <table>
+    <thead><tr>
+      <th>Descrição</th><th>Processo</th><th>Tipo</th><th>Data</th><th>Valor</th><th>Status</th><th>Ações</th>
+    </tr></thead>
+    <tbody>
+    {% for f in lancamentos %}
+    <tr>
+      <td>{{ f.descricao or '—' }}</td>
+      <td class="td-muted">
+        {% if f.processo_id %}
+        <a href="/defesapro/processos/{{ f.processo_id }}" class="td-link">
+          {{ f.placa or 'Auto '+f.numero_auto if (f.placa or f.numero_auto) else '#'+f.processo_id|string }}
+        </a>
+        {% else %}—{% endif %}
+      </td>
+      <td><span class="badge badge-{% if f.tipo=='honorario' %}purple{% else %}gray{% endif %}">{{ f.tipo | capitalize }}</span></td>
+      <td class="td-muted">{{ f.data or '—' }}</td>
+      <td><strong>R$ {{ '%.2f'|format(f.valor) }}</strong></td>
+      <td>
+        {% if f.pago %}
+          <span class="badge badge-green">✅ Pago</span>
+        {% else %}
+          <span class="badge badge-yellow">⏳ Pendente</span>
+        {% endif %}
+      </td>
+      <td>
+        {% if not f.pago %}
+        <form method="POST" style="display:inline">
+          <input type="hidden" name="acao" value="pagar">
+          <input type="hidden" name="fid" value="{{ f.id }}">
+          <button class="btn btn-green btn-sm" type="submit">✅ Marcar pago</button>
+        </form>
+        {% endif %}
+        <form method="POST" style="display:inline" onsubmit="return confirm('Excluir lançamento?')">
+          <input type="hidden" name="acao" value="deletar">
+          <input type="hidden" name="fid" value="{{ f.id }}">
+          <button class="btn btn-danger btn-sm" type="submit">🗑️</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="empty">
+  <div class="icon">💰</div>
+  <p>Nenhum lançamento financeiro ainda.</p>
+  <button class="btn btn-primary" onclick="document.getElementById('modal-add').classList.add('open')">+ Primeiro lançamento</button>
+</div>
+{% endif %}
+
+<!-- Modal novo lançamento -->
+<div class="modal-overlay" id="modal-add">
+  <div class="modal">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+      <h2 style="font-size:17px;font-weight:800">💰 Novo Lançamento</h2>
+      <button onclick="document.getElementById('modal-add').classList.remove('open')" style="background:none;border:none;color:var(--text3);font-size:20px;cursor:pointer">✕</button>
+    </div>
+    <form method="POST">
+      <input type="hidden" name="acao" value="add">
+      <div class="form-grid" style="gap:14px;margin-bottom:16px">
+        <div class="form-group">
+          <label>Descrição</label>
+          <input class="form-control" name="descricao" placeholder="Ex: Honorários defesa — ABC-1234">
+        </div>
+        <div class="form-group">
+          <label>Tipo</label>
+          <select class="form-control" name="tipo">
+            <option value="honorario">💼 Honorário</option>
+            <option value="despesa">📤 Despesa</option>
+            <option value="outro">📦 Outro</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Valor (R$) *</label>
+          <input class="form-control" name="valor" type="number" step="0.01" min="0.01" placeholder="0,00" required>
+        </div>
+        <div class="form-group">
+          <label>Data</label>
+          <input class="form-control" name="data" type="date" value="{{ '' }}">
+        </div>
+        <div class="form-group">
+          <label>Processo vinculado</label>
+          <select class="form-control" name="processo_id">
+            <option value="">— Sem vínculo —</option>
+            {% for p in processos %}
+            <option value="{{ p.id }}">{{ p.placa or 'Auto '+p.numero_auto or '#'+p.id|string }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group" style="flex-direction:row;align-items:center;gap:10px">
+          <input type="checkbox" name="pago" id="chk-pago" style="accent-color:var(--purple);width:16px;height:16px">
+          <label for="chk-pago" style="cursor:pointer;margin:0;font-size:13px">Já pago / recebido</label>
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button type="button" onclick="document.getElementById('modal-add').classList.remove('open')" class="btn btn-outline">Cancelar</button>
+        <button type="submit" class="btn btn-primary">💾 Salvar</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

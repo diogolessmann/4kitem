@@ -1,0 +1,101 @@
+{% extends 'defesapro/base.html' %}
+{% set active = 'clientes' %}
+{% block title %}Clientes — DefesaPro{% endblock %}
+{% block extra_head %}
+<style>
+  .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;align-items:center;justify-content:center}
+  .modal-overlay.open{display:flex}
+  .modal{background:var(--surface);border:1px solid var(--border2);border-radius:16px;padding:28px;width:100%;max-width:540px;max-height:90vh;overflow-y:auto}
+  .modal h2{font-size:17px;font-weight:800;margin-bottom:20px}
+</style>
+{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-title">👥 Clientes</div>
+    <div class="page-sub">{{ clientes|length }} cliente(s) cadastrado(s)</div>
+  </div>
+  <button class="btn btn-primary" onclick="document.getElementById('modal-add').classList.add('open')">+ Novo cliente</button>
+</div>
+
+{% if erro %}<div class="alert alert-error">⚠️ {{ erro }}</div>{% endif %}
+{% if sucesso %}<div class="alert alert-success">✅ {{ sucesso }}</div>{% endif %}
+
+{% if clientes %}
+<div class="table-wrap">
+  <table>
+    <thead><tr>
+      <th>Nome</th><th>CPF</th><th>Telefone</th><th>CNH</th><th>Ações</th>
+    </tr></thead>
+    <tbody>
+    {% for c in clientes %}
+    <tr>
+      <td><strong>{{ c.name }}</strong>{% if c.email %}<br><span class="td-muted">{{ c.email }}</span>{% endif %}</td>
+      <td class="td-muted">{{ c.cpf or '—' }}</td>
+      <td>{{ c.phone or '—' }}</td>
+      <td class="td-muted">{{ c.cnh or '—' }}</td>
+      <td>
+        <a href="/defesapro/clientes/{{ c.id }}/editar" class="btn btn-outline btn-sm">✏️ Editar</a>
+        <form method="POST" action="/defesapro/clientes/{{ c.id }}/deletar" style="display:inline" onsubmit="return confirm('Excluir {{ c.name }}?')">
+          <button class="btn btn-danger btn-sm" type="submit">🗑️</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="empty">
+  <div class="icon">👥</div>
+  <p>Nenhum cliente cadastrado ainda.</p>
+  <button class="btn btn-primary" onclick="document.getElementById('modal-add').classList.add('open')">+ Cadastrar primeiro cliente</button>
+</div>
+{% endif %}
+
+<!-- Modal novo cliente -->
+<div class="modal-overlay" id="modal-add">
+  <div class="modal">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+      <h2>➕ Novo Cliente</h2>
+      <button onclick="document.getElementById('modal-add').classList.remove('open')" style="background:none;border:none;color:var(--text3);font-size:20px;cursor:pointer">✕</button>
+    </div>
+    <form method="POST">
+      <div class="form-grid form-grid-2" style="margin-bottom:14px">
+        <div class="form-group" style="grid-column:span 2">
+          <label>Nome completo *</label>
+          <input class="form-control" name="name" placeholder="João da Silva" required>
+        </div>
+        <div class="form-group">
+          <label>CPF</label>
+          <input class="form-control" name="cpf" placeholder="000.000.000-00" inputmode="numeric">
+        </div>
+        <div class="form-group">
+          <label>Nº CNH</label>
+          <input class="form-control" name="cnh" placeholder="00000000000">
+        </div>
+        <div class="form-group">
+          <label>Telefone/WhatsApp</label>
+          <input class="form-control" name="phone" placeholder="(47) 99999-9999" type="tel">
+        </div>
+        <div class="form-group">
+          <label>E-mail</label>
+          <input class="form-control" name="email" placeholder="joao@email.com" type="email">
+        </div>
+        <div class="form-group" style="grid-column:span 2">
+          <label>Endereço</label>
+          <input class="form-control" name="address" placeholder="Rua, número, bairro, cidade">
+        </div>
+        <div class="form-group" style="grid-column:span 2">
+          <label>Observações</label>
+          <textarea class="form-control" name="notes" placeholder="Anotações internas..."></textarea>
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button type="button" onclick="document.getElementById('modal-add').classList.remove('open')" class="btn btn-outline">Cancelar</button>
+        <button type="submit" class="btn btn-primary">💾 Salvar cliente</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

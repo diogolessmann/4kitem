@@ -1,0 +1,81 @@
+{% extends 'defesapro/base.html' %}
+{% set active = 'processos' %}
+{% block title %}Editar Processo — DefesaPro{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-title">✏️ Editar Processo</div>
+    <div class="page-sub">{{ p.placa or ('Auto '+p.numero_auto) }}</div>
+  </div>
+  <a href="/defesapro/processos/{{ p.id }}" class="btn btn-outline">← Voltar</a>
+</div>
+{% if erro %}<div class="alert alert-error">⚠️ {{ erro }}</div>{% endif %}
+<div class="form-card">
+  <form method="POST">
+    <div class="form-grid form-grid-2" style="margin-bottom:16px">
+      <div class="form-group">
+        <label>Placa do veículo</label>
+        <input class="form-control" name="placa" value="{{ p.placa }}" placeholder="ABC-1234" style="text-transform:uppercase">
+      </div>
+      <div class="form-group">
+        <label>Nº do Auto de Infração</label>
+        <input class="form-control" name="numero_auto" value="{{ p.numero_auto }}" placeholder="Ex: 12345678">
+      </div>
+      <div class="form-group" style="grid-column:span 2">
+        <label>Artigo CTB *</label>
+        <select class="form-control" name="artigo_ctb" required>
+          <option value="">— Selecione o artigo —</option>
+          {% for k,v in ctb_artigos.items() %}
+          <option value="{{ k }}" {% if p.artigo_ctb==k %}selected{% endif %}>{{ v.label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Proprietário/Condutor</label>
+        <input class="form-control" name="proprietario" value="{{ p.proprietario }}">
+      </div>
+      <div class="form-group">
+        <label>Cliente cadastrado</label>
+        <select class="form-control" name="cliente_id">
+          <option value="">— Sem vínculo —</option>
+          {% for c in clientes %}
+          <option value="{{ c.id }}" {% if p.cliente_id==c.id %}selected{% endif %}>{{ c.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Data da infração</label>
+        <input class="form-control" name="data_infracao" type="date" value="{{ p.data_infracao }}">
+      </div>
+      <div class="form-group">
+        <label>Hora da infração</label>
+        <input class="form-control" name="hora_infracao" type="time" value="{{ p.hora_infracao }}">
+      </div>
+      <div class="form-group" style="grid-column:span 2">
+        <label>Local da infração</label>
+        <input class="form-control" name="local_infracao" value="{{ p.local_infracao }}">
+      </div>
+      <div class="form-group">
+        <label>Órgão autuador</label>
+        <input class="form-control" name="orgao_autuador" value="{{ p.orgao_autuador }}">
+      </div>
+      <div class="form-group">
+        <label>Prazo da defesa prévia</label>
+        <input class="form-control" name="prazo_defesa" type="date" value="{{ p.prazo_defesa }}">
+      </div>
+      <div class="form-group">
+        <label>Honorários (R$)</label>
+        <input class="form-control" name="honorarios" type="number" step="0.01" min="0" value="{{ p.honorarios }}">
+      </div>
+      <div class="form-group" style="grid-column:span 2">
+        <label>Observações</label>
+        <textarea class="form-control" name="observacoes">{{ p.observacoes }}</textarea>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <a href="/defesapro/processos/{{ p.id }}" class="btn btn-outline">Cancelar</a>
+      <button type="submit" class="btn btn-primary">💾 Salvar alterações</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

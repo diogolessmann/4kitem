@@ -1,0 +1,53 @@
+{% extends 'defesapro/base.html' %}
+{% set active = 'clientes' %}
+{% block title %}Editar Cliente — DefesaPro{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-title">✏️ Editar Cliente</div>
+    <div class="page-sub">{{ cliente.name }}</div>
+  </div>
+  <a href="/defesapro/clientes" class="btn btn-outline">← Voltar</a>
+</div>
+
+{% if erro %}<div class="alert alert-error">⚠️ {{ erro }}</div>{% endif %}
+
+<div class="form-card">
+  <form method="POST">
+    <div class="form-grid form-grid-2" style="margin-bottom:16px">
+      <div class="form-group" style="grid-column:span 2">
+        <label>Nome completo *</label>
+        <input class="form-control" name="name" value="{{ cliente.name }}" required>
+      </div>
+      <div class="form-group">
+        <label>CPF</label>
+        <input class="form-control" name="cpf" value="{{ cliente.cpf }}" placeholder="000.000.000-00">
+      </div>
+      <div class="form-group">
+        <label>Nº CNH</label>
+        <input class="form-control" name="cnh" value="{{ cliente.cnh }}" placeholder="00000000000">
+      </div>
+      <div class="form-group">
+        <label>Telefone/WhatsApp</label>
+        <input class="form-control" name="phone" value="{{ cliente.phone }}" type="tel">
+      </div>
+      <div class="form-group">
+        <label>E-mail</label>
+        <input class="form-control" name="email" value="{{ cliente.email }}" type="email">
+      </div>
+      <div class="form-group" style="grid-column:span 2">
+        <label>Endereço</label>
+        <input class="form-control" name="address" value="{{ cliente.address }}">
+      </div>
+      <div class="form-group" style="grid-column:span 2">
+        <label>Observações</label>
+        <textarea class="form-control" name="notes">{{ cliente.notes }}</textarea>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <a href="/defesapro/clientes" class="btn btn-outline">Cancelar</a>
+      <button type="submit" class="btn btn-primary">💾 Salvar alterações</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

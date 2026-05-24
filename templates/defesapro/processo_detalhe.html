@@ -1,0 +1,180 @@
+{% extends 'defesapro/base.html' %}
+{% set active = 'processos' %}
+{% block title %}Processo {{ p.placa or p.numero_auto }} — DefesaPro{% endblock %}
+{% block content %}
+{% set st = ctb_status.get(p.status, ctb_status['aberto']) %}
+
+<div class="page-header">
+  <div>
+    <div class="page-title">📋 {{ p.placa or ('Auto '+p.numero_auto) }}</div>
+    <div class="page-sub">{{ p.descricao or p.artigo_ctb or '—' }}</div>
+  </div>
+  <div style="display:flex;gap:8px">
+    <a href="/defesapro/processos/{{ p.id }}/editar" class="btn btn-outline">✏️ Editar</a>
+    <a href="/defesapro/processos" class="btn btn-outline">← Processos</a>
+  </div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px">
+  <!-- Dados do processo -->
+  <div class="form-card" style="margin:0">
+    <h3>📋 Dados do processo</h3>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px">
+      <div style="color:var(--text3)">Placa</div><div><strong>{{ p.placa or '—' }}</strong></div>
+      <div style="color:var(--text3)">Auto de infração</div><div>{{ p.numero_auto or '—' }}</div>
+      <div style="color:var(--text3)">Proprietário</div><div>{{ p.proprietario or '—' }}</div>
+      <div style="color:var(--text3)">Cliente</div><div>{{ p.cliente_nome or '—' }}</div>
+      <div style="color:var(--text3)">Data infração</div><div>{{ p.data_infracao or '—' }}{% if p.hora_infracao %} às {{ p.hora_infracao }}{% endif %}</div>
+      <div style="color:var(--text3)">Local</div><div>{{ p.local_infracao or '—' }}</div>
+      <div style="color:var(--text3)">Órgão autuador</div><div>{{ p.orgao_autuador or '—' }}</div>
+      <div style="color:var(--text3)">Artigo CTB</div><div>{{ p.artigo_ctb or '—' }}</div>
+      <div style="color:var(--text3)">Pontos na CNH</div><div>{% if p.pontos %}<span style="color:var(--red);font-weight:700">{{ p.pontos }} pts</span>{% else %}—{% endif %}</div>
+      <div style="color:var(--text3)">Valor da multa</div><div>{% if p.valor_multa %}R$ {{ '%.2f'|format(p.valor_multa) }}{% else %}—{% endif %}</div>
+      <div style="color:var(--text3)">Prazo defesa</div>
+      <div>{% if p.prazo_defesa %}<strong style="color:var(--orange)">📅 {{ p.prazo_defesa }}</strong>{% else %}<span style="color:var(--text3)">Não definido</span>{% endif %}</div>
+      <div style="color:var(--text3)">Honorários</div><div>{% if p.honorarios %}R$ {{ '%.2f'|format(p.honorarios) }}{% else %}—{% endif %}</div>
+    </div>
+    {% if p.observacoes %}
+    <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);font-size:13px;color:var(--text2)">
+      <strong>Observações:</strong> {{ p.observacoes }}
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Status e ações -->
+  <div style="display:flex;flex-direction:column;gap:16px">
+    <div class="form-card" style="margin:0">
+      <h3>📊 Status atual</h3>
+      <div style="margin-bottom:16px">
+        <span class="badge badge-{% if p.status=='aberto' %}blue{% elif p.status=='em_recurso' %}yellow{% elif p.status=='deferido' %}green{% elif p.status=='indeferido' %}red{% else %}gray{% endif %}" style="font-size:14px;padding:6px 14px">
+          {{ st.emoji }} {{ st.label }}
+        </span>
+        <div style="margin-top:8px;font-size:12px;color:var(--text3)">Fase: {{ ctb_fases.get(p.fase, p.fase) }}</div>
+      </div>
+      <form method="POST" action="/defesapro/processos/{{ p.id }}/status">
+        <div class="form-grid" style="gap:10px">
+          <div class="form-group">
+            <label>Atualizar status</label>
+            <select class="form-control" name="status">
+              {% for k,v in ctb_status.items() %}
+              <option value="{{ k }}" {% if p.status==k %}selected{% endif %}>{{ v.emoji }} {{ v.label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Fase processual</label>
+            <select class="form-control" name="fase">
+              {% for k,v in ctb_fases.items() %}
+              <option value="{{ k }}" {% if p.fase==k %}selected{% endif %}>{{ v }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <button type="submit" class="btn btn-primary">💾 Atualizar status</button>
+        </div>
+      </form>
+    </div>
+    <div class="form-card" style="margin:0">
+      <h3>⚡ Ações rápidas</h3>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <a href="/defesapro/peticoes/gerar?processo_id={{ p.id }}" class="btn btn-primary">📄 Gerar petição</a>
+        <a href="/defesapro/processos/{{ p.id }}/editar" class="btn btn-outline">✏️ Editar dados</a>
+        <form method="POST" action="/defesapro/processos/{{ p.id }}/deletar" onsubmit="return confirm('Excluir este processo? Dados de petições e financeiro vinculados serão mantidos.')">
+          <button class="btn btn-danger" style="width:100%">🗑️ Excluir processo</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Petições geradas -->
+<div style="margin-bottom:24px">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+    <div style="font-size:13px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px">📄 Petições geradas</div>
+    <a href="/defesapro/peticoes/gerar?processo_id={{ p.id }}" class="btn btn-outline btn-sm">+ Nova petição</a>
+  </div>
+  {% if peticoes %}
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Tipo</th><th>Data</th><th>Teses</th><th>Ações</th></tr></thead>
+      <tbody>
+      {% for pet in peticoes %}
+      <tr>
+        <td><span class="badge badge-purple">{{ {'defesa_previa':'Defesa Prévia','recurso_jari':'Recurso JARI','cetran':'CETRAN'}.get(pet.tipo, pet.tipo) }}</span></td>
+        <td class="td-muted">{{ pet.created_at[:10] }}</td>
+        <td style="font-size:11px;color:var(--text3)">{{ (pet.teses_json or '[]') | replace('["','') | replace('"]','') | replace('","',', ') }}</td>
+        <td>
+          <button class="btn btn-outline btn-sm" onclick="showPet('{{ pet.id }}')">👁️ Ver texto</button>
+          <form method="POST" action="/defesapro/peticoes/{{ pet.id }}/deletar" style="display:inline" onsubmit="return confirm('Excluir petição?')">
+            <button class="btn btn-danger btn-sm">🗑️</button>
+          </form>
+          <textarea id="pet-{{ pet.id }}" style="display:none">{{ pet.conteudo }}</textarea>
+        </td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div style="text-align:center;padding:28px;color:var(--text3);background:var(--surface);border:1px solid var(--border);border-radius:12px">
+    Nenhuma petição gerada. <a href="/defesapro/peticoes/gerar?processo_id={{ p.id }}" style="color:var(--purple3)">Gerar primeira →</a>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Financeiro do processo -->
+<div>
+  <div style="font-size:13px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:14px">💰 Financeiro do processo</div>
+  {% if pagamentos %}
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Descrição</th><th>Valor</th><th>Data</th><th>Status</th></tr></thead>
+      <tbody>
+      {% for f in pagamentos %}
+      <tr>
+        <td>{{ f.descricao or '—' }}</td>
+        <td><strong>R$ {{ '%.2f'|format(f.valor) }}</strong></td>
+        <td class="td-muted">{{ f.data or '—' }}</td>
+        <td>{% if f.pago %}<span class="badge badge-green">✅ Pago</span>{% else %}<span class="badge badge-yellow">⏳ Pendente</span>{% endif %}</td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div style="text-align:center;padding:24px;color:var(--text3);background:var(--surface);border:1px solid var(--border);border-radius:12px">
+    Nenhum lançamento financeiro. <a href="/defesapro/financeiro" style="color:var(--purple3)">Ir ao financeiro →</a>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Modal petição -->
+<div class="modal-overlay" id="modal-pet" style="display:none">
+  <div style="background:var(--surface);border:1px solid var(--border2);border-radius:16px;padding:28px;width:100%;max-width:700px;max-height:90vh;display:flex;flex-direction:column;gap:14px">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <strong>📄 Texto da Petição</strong>
+      <button onclick="document.getElementById('modal-pet').style.display='none'" style="background:none;border:none;color:var(--text3);font-size:20px;cursor:pointer">✕</button>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button onclick="copyPet()" class="btn btn-primary btn-sm">📋 Copiar texto</button>
+      <button onclick="printPet()" class="btn btn-outline btn-sm">🖨️ Imprimir</button>
+    </div>
+    <textarea id="modal-pet-text" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);padding:16px;font-family:monospace;font-size:12px;line-height:1.6;flex:1;min-height:400px;resize:none;width:100%"></textarea>
+  </div>
+</div>
+<script>
+function showPet(id){
+  document.getElementById('modal-pet-text').value = document.getElementById('pet-'+id).value;
+  document.getElementById('modal-pet').style.display='flex';
+}
+function copyPet(){
+  const t = document.getElementById('modal-pet-text');
+  t.select(); document.execCommand('copy');
+  alert('Texto copiado!');
+}
+function printPet(){
+  const w = window.open('','_blank');
+  w.document.write('<pre style="font-family:Arial,sans-serif;font-size:14px;line-height:1.8;padding:40px;white-space:pre-wrap">'+document.getElementById('modal-pet-text').value+'</pre>');
+  w.print();
+}
+</script>
+{% endblock %}

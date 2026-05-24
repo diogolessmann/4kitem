@@ -1,0 +1,157 @@
+{% extends 'defesapro/base.html' %}
+{% set active = 'processos' %}
+{% block title %}Processos — DefesaPro{% endblock %}
+{% block extra_head %}
+<style>
+  .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;align-items:center;justify-content:center}
+  .modal-overlay.open{display:flex}
+  .modal{background:var(--surface);border:1px solid var(--border2);border-radius:16px;padding:28px;width:100%;max-width:620px;max-height:92vh;overflow-y:auto}
+  .filter-tabs{display:flex;gap:6px;margin-bottom:20px;flex-wrap:wrap}
+  .filter-tab{padding:6px 14px;border-radius:100px;font-size:12px;font-weight:600;text-decoration:none;border:1px solid var(--border);color:var(--text2);transition:.15s}
+  .filter-tab:hover,.filter-tab.active{border-color:var(--purple);color:var(--purple3);background:rgba(124,58,237,.1)}
+</style>
+{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-title">📋 Processos</div>
+    <div class="page-sub">{{ processos|length }} processo(s) encontrado(s)</div>
+  </div>
+  <button class="btn btn-primary" onclick="document.getElementById('modal-add').classList.add('open')">+ Novo processo</button>
+</div>
+
+{% if erro %}<div class="alert alert-error">⚠️ {{ erro }}</div>{% endif %}
+{% if sucesso %}<div class="alert alert-success">✅ {{ sucesso }}</div>{% endif %}
+
+<div class="filter-tabs">
+  <a href="/defesapro/processos" class="filter-tab {% if not filtro_status %}active{% endif %}">Todos</a>
+  {% for k,v in ctb_status.items() %}
+  <a href="/defesapro/processos?status={{ k }}" class="filter-tab {% if filtro_status==k %}active{% endif %}">{{ v.emoji }} {{ v.label }}</a>
+  {% endfor %}
+</div>
+
+{% if processos %}
+<div class="table-wrap">
+  <table>
+    <thead><tr>
+      <th>Placa / Auto</th><th>Artigo</th><th>Prazo</th><th>Status</th><th>Fase</th><th>Ações</th>
+    </tr></thead>
+    <tbody>
+    {% for p in processos %}
+    {% set st = ctb_status.get(p.status, ctb_status['aberto']) %}
+    <tr>
+      <td>
+        <a href="/defesapro/processos/{{ p.id }}" class="td-link">
+          {% if p.placa %}<strong>{{ p.placa }}</strong>{% endif %}
+          {% if p.numero_auto %}<br><span class="td-muted" style="font-size:11px">Auto: {{ p.numero_auto }}</span>{% endif %}
+        </a>
+        {% if p.cliente_nome %}<br><span class="td-muted" style="font-size:11px">👤 {{ p.cliente_nome }}</span>{% endif %}
+      </td>
+      <td style="max-width:200px;font-size:12px">{{ (p.descricao or p.artigo_ctb or '—')[:60] }}</td>
+      <td>
+        {% if p.prazo_defesa %}
+          <span style="font-size:12px;{% if p.prazo_defesa < hoje %}color:var(--red);font-weight:700{% endif %}">
+            📅 {{ p.prazo_defesa }}
+          </span>
+        {% else %}
+          <span class="td-muted">—</span>
+        {% endif %}
+      </td>
+      <td><span class="badge badge-{% if p.status=='aberto' %}blue{% elif p.status=='em_recurso' %}yellow{% elif p.status=='deferido' %}green{% elif p.status=='indeferido' %}red{% else %}gray{% endif %}">{{ st.emoji }} {{ st.label }}</span></td>
+      <td style="font-size:11px;color:var(--text3)">{{ ctb_fases.get(p.fase, p.fase) }}</td>
+      <td>
+        <a href="/defesapro/processos/{{ p.id }}" class="btn btn-outline btn-sm">👁️ Ver</a>
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="empty">
+  <div class="icon">📋</div>
+  <p>Nenhum processo encontrado.<br>Cadastre o primeiro para começar.</p>
+  <button class="btn btn-primary" onclick="document.getElementById('modal-add').classList.add('open')">+ Novo processo</button>
+</div>
+{% endif %}
+
+<!-- Modal novo processo -->
+<div class="modal-overlay" id="modal-add">
+  <div class="modal">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+      <h2 style="font-size:17px;font-weight:800">📋 Novo Processo</h2>
+      <button onclick="document.getElementById('modal-add').classList.remove('open')" style="background:none;border:none;color:var(--text3);font-size:20px;cursor:pointer">✕</button>
+    </div>
+    <form method="POST">
+      <div class="form-grid form-grid-2" style="margin-bottom:14px">
+        <div class="form-group">
+          <label>Placa do veículo</label>
+          <input class="form-control" name="placa" placeholder="ABC-1234" style="text-transform:uppercase">
+        </div>
+        <div class="form-group">
+          <label>Nº do Auto de Infração</label>
+          <input class="form-control" name="numero_auto" placeholder="Ex: 12345678">
+        </div>
+        <div class="form-group" style="grid-column:span 2">
+          <label>Artigo CTB *</label>
+          <select class="form-control" name="artigo_ctb" required>
+            <option value="">— Selecione o artigo —</option>
+            {% for k,v in ctb_artigos.items() %}
+            <option value="{{ k }}">{{ v.label }} {% if v.valor %}(R$ {{ '%.2f'|format(v.valor) }}){% endif %}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Proprietário/Condutor</label>
+          <input class="form-control" name="proprietario" placeholder="Nome do proprietário">
+        </div>
+        <div class="form-group">
+          <label>Cliente cadastrado</label>
+          <select class="form-control" name="cliente_id">
+            <option value="">— Sem vínculo —</option>
+            {% for c in clientes %}
+            <option value="{{ c.id }}">{{ c.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Data da infração</label>
+          <input class="form-control" name="data_infracao" type="date">
+        </div>
+        <div class="form-group">
+          <label>Hora da infração</label>
+          <input class="form-control" name="hora_infracao" type="time">
+        </div>
+        <div class="form-group" style="grid-column:span 2">
+          <label>Local da infração</label>
+          <input class="form-control" name="local_infracao" placeholder="Ex: Av. Beira-Mar Norte, Florianópolis">
+        </div>
+        <div class="form-group">
+          <label>Órgão autuador</label>
+          <input class="form-control" name="orgao_autuador" placeholder="Ex: DETRAN-SC / PM / DEINFRA">
+        </div>
+        <div class="form-group">
+          <label>Prazo da defesa prévia</label>
+          <input class="form-control" name="prazo_defesa" type="date">
+        </div>
+        <div class="form-group">
+          <label>Honorários (R$)</label>
+          <input class="form-control" name="honorarios" type="number" step="0.01" min="0" placeholder="0.00">
+        </div>
+        <div class="form-group">
+          <label>&nbsp;</label>
+          <div style="font-size:12px;color:var(--text3);padding-top:8px">💡 Honorários serão lançados no financeiro automaticamente.</div>
+        </div>
+        <div class="form-group" style="grid-column:span 2">
+          <label>Observações</label>
+          <textarea class="form-control" name="observacoes" placeholder="Detalhes adicionais, contexto do caso..."></textarea>
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button type="button" onclick="document.getElementById('modal-add').classList.remove('open')" class="btn btn-outline">Cancelar</button>
+        <button type="submit" class="btn btn-primary">💾 Criar processo</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

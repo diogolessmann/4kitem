@@ -1,295 +1,65 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>DefesaPro · {{ user.escritorio or user.name }}</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    :root {
-      --bg: #0f0f0f; --surface: #1a1a1a; --surface2: #222;
-      --border: rgba(255,255,255,.08); --border2: rgba(255,255,255,.13);
-      --text: #F0EFE9; --text2: #bbb; --text3: #777;
-      --accent: #7c3aed; --accent2: #a855f7;
-      --green: #22c55e; --red: #ef4444; --orange: #f97316;
-    }
-    body {
-      background: var(--bg); color: var(--text);
-      font-family: 'Inter', sans-serif; font-size: 14px;
-      min-height: 100vh;
-    }
+{% extends 'defesapro/base.html' %}
+{% block title %}Dashboard — DefesaPro{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-title">Olá, {{ user.name.split()[0] }}! ⚖️</div>
+    <div class="page-sub">{{ user.escritorio or 'Seu escritório' }}{% if user.cidade %} · {{ user.cidade }}{% endif %}</div>
+  </div>
+  <span class="badge badge-purple">Plano {{ (user.plan or 'Básico') | capitalize }}</span>
+</div>
 
-    /* ── Topbar ── */
-    .topbar {
-      height: 56px; background: var(--surface);
-      border-bottom: 1px solid var(--border);
-      display: flex; align-items: center; padding: 0 20px; gap: 14px;
-      position: sticky; top: 0; z-index: 100;
-    }
-    .topbar-logo {
-      display: flex; align-items: center; gap: 8px;
-      font-weight: 800; font-size: 16px;
-    }
-    .topbar-logo .icon {
-      width: 32px; height: 32px; border-radius: 8px;
-      background: linear-gradient(135deg, var(--accent), var(--accent2));
-      display: flex; align-items: center; justify-content: center; font-size: 16px;
-    }
-    .topbar-logo span { color: var(--accent2); }
-    .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
-    .topbar-user {
-      font-size: 12px; color: var(--text2);
-      background: var(--surface2); border: 1px solid var(--border2);
-      border-radius: 8px; padding: 6px 12px;
-    }
-    .btn-logout {
-      font-size: 12px; color: var(--text3); text-decoration: none;
-      padding: 6px 10px; border-radius: 8px; border: 1px solid var(--border);
-      transition: all .15s;
-    }
-    .btn-logout:hover { color: var(--text2); border-color: var(--border2); }
+{% if stats.prazos7 > 0 %}
+<div class="alert alert-error">⚠️ Você tem <strong>{{ stats.prazos7 }} processo(s)</strong> com prazo vencendo nos próximos 7 dias. <a href="/defesapro/prazos" style="color:inherit;font-weight:700;">Ver prazos →</a></div>
+{% endif %}
 
-    /* ── Layout ── */
-    .main { max-width: 1100px; margin: 0 auto; padding: 28px 20px; }
+<div class="stats-grid">
+  <div class="stat-card">
+    <div class="stat-icon">📁</div>
+    <div class="stat-label">Processos ativos</div>
+    <div class="stat-value">{{ stats.ativos }}</div>
+    <div class="stat-sub">Em andamento</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon">⏰</div>
+    <div class="stat-label">Prazos em 7 dias</div>
+    <div class="stat-value" style="color:{% if stats.prazos7>0 %}var(--red){% else %}var(--green){% endif %}">{{ stats.prazos7 }}</div>
+    <div class="stat-sub">Requerem atenção</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon">✅</div>
+    <div class="stat-label">Defesas deferidas</div>
+    <div class="stat-value" style="color:var(--green)">{{ stats.deferidos }}</div>
+    <div class="stat-sub">Total histórico</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon">💰</div>
+    <div class="stat-label">Honorários no mês</div>
+    <div class="stat-value" style="font-size:20px">R$ {{ '%.2f'|format(stats.hon_mes) }}</div>
+    <div class="stat-sub">Recebidos</div>
+  </div>
+</div>
 
-    /* ── Welcome banner ── */
-    .welcome {
-      background: linear-gradient(135deg, rgba(124,58,237,.15), rgba(168,85,247,.08));
-      border: 1px solid rgba(124,58,237,.25);
-      border-radius: 16px; padding: 24px 28px; margin-bottom: 28px;
-      display: flex; align-items: center; gap: 20px;
-    }
-    .welcome-icon { font-size: 40px; flex-shrink: 0; }
-    .welcome h1 { font-size: 20px; font-weight: 800; margin-bottom: 4px; }
-    .welcome p { font-size: 13px; color: var(--text2); line-height: 1.5; }
-    .plan-badge {
-      margin-left: auto; flex-shrink: 0;
-      background: rgba(124,58,237,.15); border: 1px solid rgba(124,58,237,.3);
-      border-radius: 10px; padding: 10px 16px; text-align: center;
-    }
-    .plan-badge .plan-label { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: .5px; }
-    .plan-badge .plan-name { font-size: 15px; font-weight: 800; color: var(--accent2); margin-top: 2px; }
-
-    /* ── Cards grid ── */
-    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 28px; }
-    .card {
-      background: var(--surface); border: 1px solid var(--border);
-      border-radius: 14px; padding: 20px;
-      display: flex; flex-direction: column; gap: 8px;
-    }
-    .card-icon { font-size: 26px; }
-    .card-label { font-size: 12px; color: var(--text3); font-weight: 600; text-transform: uppercase; letter-spacing: .4px; }
-    .card-value { font-size: 28px; font-weight: 800; }
-    .card-sub { font-size: 12px; color: var(--text3); }
-
-    /* ── Módulos ── */
-    .section-title {
-      font-size: 13px; font-weight: 700; color: var(--text2);
-      text-transform: uppercase; letter-spacing: .5px; margin-bottom: 14px;
-    }
-    .modulos { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin-bottom: 28px; }
-    .modulo {
-      background: var(--surface); border: 1px solid var(--border);
-      border-radius: 14px; padding: 20px;
-      display: flex; flex-direction: column; gap: 6px;
-      transition: border-color .2s, background .2s;
-      cursor: pointer; text-decoration: none; color: inherit;
-      position: relative; overflow: hidden;
-    }
-    .modulo:hover { border-color: var(--accent); background: rgba(124,58,237,.06); }
-    .modulo-icon { font-size: 28px; margin-bottom: 4px; }
-    .modulo-title { font-size: 14px; font-weight: 700; }
-    .modulo-desc { font-size: 12px; color: var(--text3); line-height: 1.5; }
-    .modulo-badge {
-      position: absolute; top: 14px; right: 14px;
-      background: rgba(124,58,237,.15); border: 1px solid rgba(124,58,237,.3);
-      border-radius: 6px; padding: 2px 8px; font-size: 10px;
-      color: var(--accent2); font-weight: 700;
-    }
-    .modulo-em-breve { opacity: .5; cursor: not-allowed; }
-    .modulo-em-breve:hover { border-color: var(--border); background: var(--surface); }
-
-    /* ── Info boxes ── */
-    .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 28px; }
-    @media (max-width: 640px) { .info-grid { grid-template-columns: 1fr; } }
-    .info-box {
-      background: var(--surface); border: 1px solid var(--border);
-      border-radius: 14px; padding: 20px;
-    }
-    .info-box h3 { font-size: 13px; font-weight: 700; margin-bottom: 12px; color: var(--text2); }
-    .info-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
-    .info-row:last-child { border-bottom: none; }
-    .info-row .label { color: var(--text3); }
-    .info-row .value { font-weight: 600; }
-
-    /* ── Em breve banner ── */
-    .em-breve-banner {
-      background: rgba(249,115,22,.07); border: 1px solid rgba(249,115,22,.2);
-      border-radius: 12px; padding: 16px 20px; margin-bottom: 28px;
-      display: flex; align-items: center; gap: 12px; font-size: 13px; color: var(--text2);
-    }
-    .em-breve-banner .icon { font-size: 20px; flex-shrink: 0; }
-  </style>
-</head>
-<body>
-  <div class="topbar">
-    <div class="topbar-logo">
-      <div class="icon">⚖️</div>
-      Defesa<span>Pro</span>
-    </div>
-    <div class="topbar-right">
-      <div class="topbar-user">👤 {{ user.escritorio or user.name }}</div>
-      <a href="/defesapro/logout" class="btn-logout">Sair →</a>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px">
+  <div class="form-card" style="margin:0">
+    <h3>🚀 Acesso rápido</h3>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <a href="/defesapro/processos" class="btn btn-primary" style="justify-content:center">📋 Novo processo</a>
+      <a href="/defesapro/peticoes/gerar" class="btn btn-outline" style="justify-content:center">📄 Gerar petição</a>
+      <a href="/defesapro/clientes" class="btn btn-outline" style="justify-content:center">👥 Novo cliente</a>
+      <a href="/defesapro/financeiro" class="btn btn-outline" style="justify-content:center">💰 Lançar honorário</a>
     </div>
   </div>
-
-  <div class="main">
-
-    <!-- Boas-vindas -->
-    <div class="welcome">
-      <div class="welcome-icon">⚖️</div>
-      <div>
-        <h1>Bem-vindo, {{ user.name.split()[0] }}!</h1>
-        <p>
-          Escritório: <strong>{{ user.escritorio or '—' }}</strong>
-          {% if user.cidade %} · {{ user.cidade }}{% endif %}
-        </p>
-      </div>
-      <div class="plan-badge">
-        <div class="plan-label">Plano</div>
-        <div class="plan-name">{{ user.plan or 'Básico' }}</div>
-      </div>
+  <div class="form-card" style="margin:0">
+    <h3>📋 Dados da conta</h3>
+    <div style="display:flex;flex-direction:column;gap:8px;font-size:13px">
+      <div style="display:flex;justify-content:space-between"><span style="color:var(--text3)">Nome</span><span>{{ user.name }}</span></div>
+      <div style="display:flex;justify-content:space-between"><span style="color:var(--text3)">E-mail</span><span>{{ user.email or '—' }}</span></div>
+      <div style="display:flex;justify-content:space-between"><span style="color:var(--text3)">Telefone</span><span>{{ user.phone or '—' }}</span></div>
+      <div style="display:flex;justify-content:space-between"><span style="color:var(--text3)">Plano</span><span style="color:var(--purple3);font-weight:700">{{ (user.plan or 'Básico') | capitalize }}</span></div>
+      <div style="display:flex;justify-content:space-between"><span style="color:var(--text3)">Trial até</span><span>{{ (user.trial_ends or '—')[:10] }}</span></div>
+      <div style="margin-top:4px"><a href="https://wa.me/5547991011351?text=Olá%2C%20sou%20assinante%20DefesaPro%20e%20preciso%20de%20suporte" target="_blank" class="btn btn-outline btn-sm" style="width:100%;justify-content:center">💬 Falar com suporte</a></div>
     </div>
-
-    <!-- Stats rápidas -->
-    <div class="cards">
-      <div class="card">
-        <div class="card-icon">📁</div>
-        <div class="card-label">Processos ativos</div>
-        <div class="card-value">—</div>
-        <div class="card-sub">Em desenvolvimento</div>
-      </div>
-      <div class="card">
-        <div class="card-icon">⏰</div>
-        <div class="card-label">Prazos próximos</div>
-        <div class="card-value">—</div>
-        <div class="card-sub">Em desenvolvimento</div>
-      </div>
-      <div class="card">
-        <div class="card-icon">✅</div>
-        <div class="card-label">Defesas concluídas</div>
-        <div class="card-value">—</div>
-        <div class="card-sub">Em desenvolvimento</div>
-      </div>
-      <div class="card">
-        <div class="card-icon">💰</div>
-        <div class="card-label">Honorários do mês</div>
-        <div class="card-value">—</div>
-        <div class="card-sub">Em desenvolvimento</div>
-      </div>
-    </div>
-
-    <!-- Banner em breve -->
-    <div class="em-breve-banner">
-      <span class="icon">🚧</span>
-      <span>
-        O DefesaPro está em desenvolvimento ativo. Os módulos abaixo estarão disponíveis em breve.
-        Você será notificado por WhatsApp quando cada módulo for liberado para seu plano.
-      </span>
-    </div>
-
-    <!-- Módulos -->
-    <div class="section-title">Módulos do sistema</div>
-    <div class="modulos">
-      <div class="modulo modulo-em-breve">
-        <div class="modulo-icon">📋</div>
-        <div class="modulo-title">Gestão de Processos</div>
-        <div class="modulo-desc">Cadastre e gerencie todos os processos de defesa com status e histórico.</div>
-        <span class="modulo-badge">Em breve</span>
-      </div>
-      <div class="modulo modulo-em-breve">
-        <div class="modulo-icon">📄</div>
-        <div class="modulo-title">Gerador de Petições</div>
-        <div class="modulo-desc">Motor especializado em CTB e CONTRAN para gerar petições completas automaticamente.</div>
-        <span class="modulo-badge">Em breve</span>
-      </div>
-      <div class="modulo modulo-em-breve">
-        <div class="modulo-icon">📸</div>
-        <div class="modulo-title">OCR de Autos</div>
-        <div class="modulo-desc">Envie a foto ou PDF do auto de infração e o sistema preenche o processo automaticamente.</div>
-        <span class="modulo-badge">Em breve</span>
-      </div>
-      <div class="modulo modulo-em-breve">
-        <div class="modulo-icon">⏰</div>
-        <div class="modulo-title">Controle de Prazos</div>
-        <div class="modulo-desc">Alertas automáticos por WhatsApp quando um prazo estiver se aproximando.</div>
-        <span class="modulo-badge">Em breve</span>
-      </div>
-      <div class="modulo modulo-em-breve">
-        <div class="modulo-icon">👥</div>
-        <div class="modulo-title">Clientes</div>
-        <div class="modulo-desc">Cadastro completo de clientes com histórico de processos e comunicação via WhatsApp.</div>
-        <span class="modulo-badge">Em breve</span>
-      </div>
-      <div class="modulo modulo-em-breve">
-        <div class="modulo-icon">💰</div>
-        <div class="modulo-title">Financeiro</div>
-        <div class="modulo-desc">Controle de honorários, pagamentos recebidos e inadimplência.</div>
-        <span class="modulo-badge">Em breve</span>
-      </div>
-    </div>
-
-    <!-- Dados da conta -->
-    <div class="info-grid">
-      <div class="info-box">
-        <h3>📋 Dados da conta</h3>
-        <div class="info-row">
-          <span class="label">Nome</span>
-          <span class="value">{{ user.name }}</span>
-        </div>
-        <div class="info-row">
-          <span class="label">E-mail</span>
-          <span class="value">{{ user.email or '—' }}</span>
-        </div>
-        <div class="info-row">
-          <span class="label">Telefone</span>
-          <span class="value">{{ user.phone or '—' }}</span>
-        </div>
-        <div class="info-row">
-          <span class="label">Escritório</span>
-          <span class="value">{{ user.escritorio or '—' }}</span>
-        </div>
-        <div class="info-row">
-          <span class="label">Cidade</span>
-          <span class="value">{{ user.cidade or '—' }}</span>
-        </div>
-      </div>
-      <div class="info-box">
-        <h3>🔐 Assinatura</h3>
-        <div class="info-row">
-          <span class="label">Plano</span>
-          <span class="value" style="color:var(--accent2);">{{ user.plan or 'Básico' }}</span>
-        </div>
-        <div class="info-row">
-          <span class="label">Status</span>
-          <span class="value" style="color:var(--green);">✅ Ativo</span>
-        </div>
-        <div class="info-row">
-          <span class="label">Trial até</span>
-          <span class="value">{{ user.trial_ends or '—' }}</span>
-        </div>
-        <div class="info-row">
-          <span class="label">Acesso desde</span>
-          <span class="value">{{ (user.created_at or '')[:10] }}</span>
-        </div>
-        <div class="info-row">
-          <span class="label">Suporte</span>
-          <span class="value"><a href="https://wa.me/554799776683" style="color:var(--accent2);text-decoration:none;" target="_blank">WhatsApp →</a></span>
-        </div>
-      </div>
-    </div>
-
   </div>
-</body>
-</html>
+</div>
+{% endblock %}

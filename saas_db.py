@@ -459,6 +459,78 @@ def init_saas_db():
         except Exception:
             pass
 
+    # ── DefesaPro — módulos funcionais ────────────────────────────────────────
+    conn.executescript('''
+        CREATE TABLE IF NOT EXISTS defesapro_clientes (
+            id         INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id    INTEGER NOT NULL,
+            name       TEXT NOT NULL,
+            cpf        TEXT DEFAULT '',
+            phone      TEXT DEFAULT '',
+            email      TEXT DEFAULT '',
+            cnh        TEXT DEFAULT '',
+            address    TEXT DEFAULT '',
+            notes      TEXT DEFAULT '',
+            created_at TEXT DEFAULT ''
+        );
+
+        CREATE TABLE IF NOT EXISTS defesapro_processos (
+            id             INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id        INTEGER NOT NULL,
+            cliente_id     INTEGER DEFAULT NULL,
+            numero_auto    TEXT DEFAULT '',
+            placa          TEXT DEFAULT '',
+            renavam        TEXT DEFAULT '',
+            proprietario   TEXT DEFAULT '',
+            data_infracao  TEXT DEFAULT '',
+            hora_infracao  TEXT DEFAULT '',
+            local_infracao TEXT DEFAULT '',
+            orgao_autuador TEXT DEFAULT '',
+            artigo_ctb     TEXT DEFAULT '',
+            descricao      TEXT DEFAULT '',
+            pontos         INTEGER DEFAULT 0,
+            valor_multa    REAL DEFAULT 0,
+            status         TEXT DEFAULT 'aberto',
+            fase           TEXT DEFAULT 'defesa_previa',
+            prazo_defesa   TEXT DEFAULT '',
+            honorarios     REAL DEFAULT 0,
+            pago           INTEGER DEFAULT 0,
+            observacoes    TEXT DEFAULT '',
+            created_at     TEXT DEFAULT '',
+            updated_at     TEXT DEFAULT ''
+        );
+
+        CREATE TABLE IF NOT EXISTS defesapro_peticoes (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id     INTEGER NOT NULL,
+            processo_id INTEGER DEFAULT NULL,
+            tipo        TEXT DEFAULT 'defesa_previa',
+            conteudo    TEXT DEFAULT '',
+            teses_json  TEXT DEFAULT '[]',
+            created_at  TEXT DEFAULT ''
+        );
+
+        CREATE TABLE IF NOT EXISTS defesapro_financeiro (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id     INTEGER NOT NULL,
+            processo_id INTEGER DEFAULT NULL,
+            cliente_id  INTEGER DEFAULT NULL,
+            tipo        TEXT DEFAULT 'honorario',
+            descricao   TEXT DEFAULT '',
+            valor       REAL NOT NULL DEFAULT 0,
+            pago        INTEGER DEFAULT 0,
+            data        TEXT DEFAULT '',
+            created_at  TEXT DEFAULT ''
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_defesa_cli_user  ON defesapro_clientes(user_id);
+        CREATE INDEX IF NOT EXISTS idx_defesa_proc_user ON defesapro_processos(user_id);
+        CREATE INDEX IF NOT EXISTS idx_defesa_proc_stat ON defesapro_processos(status);
+        CREATE INDEX IF NOT EXISTS idx_defesa_pet_user  ON defesapro_peticoes(user_id);
+        CREATE INDEX IF NOT EXISTS idx_defesa_fin_user  ON defesapro_financeiro(user_id);
+    ''')
+    conn.commit()
+
     conn.close()
 
 

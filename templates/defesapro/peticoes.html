@@ -1,0 +1,87 @@
+{% extends 'defesapro/base.html' %}
+{% set active = 'peticoes' %}
+{% block title %}Petições — DefesaPro{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-title">📄 Petições</div>
+    <div class="page-sub">{{ peticoes|length }} petição(ões) gerada(s)</div>
+  </div>
+  <a href="/defesapro/peticoes/gerar" class="btn btn-primary">+ Gerar petição</a>
+</div>
+
+{% if peticoes %}
+<div class="table-wrap">
+  <table>
+    <thead><tr>
+      <th>Processo</th><th>Tipo</th><th>Cliente</th><th>Data</th><th>Ações</th>
+    </tr></thead>
+    <tbody>
+    {% for pet in peticoes %}
+    <tr>
+      <td>
+        {% if pet.processo_id %}
+        <a href="/defesapro/processos/{{ pet.processo_id }}" class="td-link">
+          {{ pet.placa or ('Auto '+pet.numero_auto) if (pet.placa or pet.numero_auto) else '#'+pet.processo_id|string }}
+        </a>
+        {% else %}<span class="td-muted">—</span>{% endif %}
+      </td>
+      <td><span class="badge badge-purple">{{ {'defesa_previa':'Defesa Prévia','recurso_jari':'Recurso JARI','cetran':'CETRAN'}.get(pet.tipo,pet.tipo) }}</span></td>
+      <td class="td-muted">{{ pet.cliente_nome or '—' }}</td>
+      <td class="td-muted">{{ pet.created_at[:10] }}</td>
+      <td>
+        <button class="btn btn-outline btn-sm" onclick="showPet({{ pet.id }})">👁️ Ver</button>
+        <button class="btn btn-outline btn-sm" onclick="copyPetById({{ pet.id }})">📋 Copiar</button>
+        <form method="POST" action="/defesapro/peticoes/{{ pet.id }}/deletar" style="display:inline" onsubmit="return confirm('Excluir petição?')">
+          <button class="btn btn-danger btn-sm">🗑️</button>
+        </form>
+        <textarea id="pet-{{ pet.id }}" style="display:none">{{ pet.conteudo }}</textarea>
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="empty">
+  <div class="icon">📄</div>
+  <p>Nenhuma petição gerada ainda.</p>
+  <a href="/defesapro/peticoes/gerar" class="btn btn-primary">+ Gerar primeira petição</a>
+</div>
+{% endif %}
+
+<!-- Modal petição -->
+<div id="modal-pet" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;align-items:center;justify-content:center">
+  <div style="background:var(--surface);border:1px solid var(--border2);border-radius:16px;padding:28px;width:100%;max-width:700px;max-height:90vh;display:flex;flex-direction:column;gap:14px">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <strong>📄 Texto da Petição</strong>
+      <button onclick="document.getElementById('modal-pet').style.display='none'" style="background:none;border:none;color:var(--text3);font-size:20px;cursor:pointer">✕</button>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button onclick="copyPet()" class="btn btn-primary btn-sm">📋 Copiar</button>
+      <button onclick="printPet()" class="btn btn-outline btn-sm">🖨️ Imprimir</button>
+    </div>
+    <textarea id="modal-pet-text" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);padding:16px;font-family:monospace;font-size:12px;line-height:1.6;flex:1;min-height:420px;resize:none;width:100%"></textarea>
+  </div>
+</div>
+<script>
+function showPet(id){
+  document.getElementById('modal-pet-text').value = document.getElementById('pet-'+id).value;
+  document.getElementById('modal-pet').style.display='flex';
+}
+function copyPetById(id){
+  const t=document.getElementById('pet-'+id);
+  const ta=document.createElement('textarea');
+  ta.value=t.value; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+  alert('Texto copiado!');
+}
+function copyPet(){
+  const t=document.getElementById('modal-pet-text'); t.select(); document.execCommand('copy'); alert('Texto copiado!');
+}
+function printPet(){
+  const w=window.open('','_blank');
+  w.document.write('<pre style="font-family:Arial;font-size:14px;line-height:1.8;padding:40px;white-space:pre-wrap">'+document.getElementById('modal-pet-text').value+'</pre>');
+  w.print();
+}
+</script>
+{% endblock %}
