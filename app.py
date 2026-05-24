@@ -1158,6 +1158,190 @@ CPF: {cpf_req}
                            peticao_gerada=peticao_gerada, pid_sel=pid_sel)
 
 
+@app.route('/defesapro/peticoes/gerar-ia', methods=['POST'])
+@_defesa_login_required
+def defesa_peticao_gerar_ia():
+    """Gera petição completa usando Groq Vision LLM com prompt jurídico maximizado."""
+    import re as _re_ia, json as _json_ia
+
+    groq_key = os.environ.get('GROQ_API_KEY', '')
+    if not groq_key:
+        return jsonify({'erro': 'GROQ_API_KEY não configurada no servidor'}), 500
+
+    user_id = session['defesa_user_id']
+    data    = request.get_json(silent=True) or {}
+
+    pid_sel    = data.get('processo_id')
+    tipo       = data.get('tipo', 'defesa_previa')
+    teses_sel  = data.get('teses', [])
+    orgao_dest = (data.get('orgao_dest') or 'JARI Competente').strip()
+    cidade     = (data.get('cidade')     or 'Florianópolis/SC').strip()
+
+    conn = get_saas_db()
+    row = conn.execute(
+        '''SELECT p.*, c.name AS cliente_nome, c.cpf AS cliente_cpf, c.cnh AS cliente_cnh,
+                  c.phone AS cliente_phone
+           FROM defesapro_processos p
+           LEFT JOIN defesapro_clientes c ON c.id=p.cliente_id
+           WHERE p.id=? AND p.user_id=?''',
+        (pid_sel, user_id)
+    ).fetchone()
+    if not row:
+        conn.close()
+        return jsonify({'erro': 'Processo não encontrado'}), 404
+
+    p = dict(row)
+
+    tipo_labels = {
+        'defesa_previa': 'DEFESA PRÉVIA',
+        'recurso_jari':  'RECURSO ADMINISTRATIVO — JARI',
+        'cetran':        'RECURSO ADMINISTRATIVO — CETRAN',
+    }
+    tipo_label  = tipo_labels.get(tipo, 'DEFESA PRÉVIA')
+    nome_req    = p['cliente_nome'] or p['proprietario'] or '[NOME DO REQUERENTE]'
+    cpf_req     = p['cliente_cpf']  or '[CPF]'
+    cnh_req     = p['cliente_cnh']  or '[CNH]'
+    placa       = p['placa']        or '[PLACA]'
+    auto_num    = p['numero_auto']  or '[NÚMERO DO AUTO]'
+    data_inf    = p['data_infracao'] or '[DATA]'
+    hora_inf    = p['hora_infracao'] or '[HORA]'
+    local_inf   = p['local_infracao'] or '[LOCAL]'
+    artigo_desc = p['descricao']    or p['artigo_ctb'] or '[ARTIGO]'
+    orgao_aut   = p['orgao_autuador'] or '[ÓRGÃO AUTUADOR]'
+    valor_multa = p['valor_multa']  or 0
+    hoje        = datetime.now().strftime('%d de %B de %Y')
+
+    # Monta descrição das teses selecionadas
+    teses_bloco = ''
+    for i, tk in enumerate(teses_sel, 1):
+        t = TESES_DEFESA.get(tk)
+        if t:
+            teses_bloco += f'\n  {i}. {t["titulo"]}: {t["texto"][:200]}...'
+    if not teses_bloco:
+        teses_bloco = '\n  (Nenhuma tese específica selecionada — use argumentação geral)'
+
+    SYSTEM = (
+        'Você é um advogado brasileiro especialista em Direito de Trânsito, com 20 anos de experiência '
+        'em defesas administrativas perante DETRAN, JARI e CETRAN de todo o Brasil. '
+        'Conhece profundamente o CTB (Lei 9.503/97), todas as Resoluções do CONTRAN, '
+        'e a jurisprudência do STJ e tribunais estaduais em matéria de trânsito. '
+        'Você redige petições técnicas, formais, completas e com máxima fundamentação legal. '
+        'Nunca usa linguagem coloquial. Sempre cita artigos com seu texto ou ementa. '
+        'Sempre requer efeito suspensivo. Sempre defende a necessidade da CNH para o trabalho.'
+    )
+
+    USER = f"""Redija uma {tipo_label} completa, formal e técnica para o caso abaixo.
+
+=== DADOS DO PROCESSO ===
+Auto de Infração nº: {auto_num}
+Requerente/Proprietário: {nome_req}
+CPF: {cpf_req}  |  CNH: {cnh_req}
+Placa: {placa}
+Artigo CTB infringido: {artigo_desc}
+Data da infração: {data_inf}  |  Hora: {hora_inf}
+Local: {local_inf}
+Órgão autuador: {orgao_aut}
+Valor da multa: R$ {valor_multa:.2f}
+Destinatário: {orgao_dest}
+Cidade/UF: {cidade}
+Data de hoje: {hoje}
+
+=== TESES INDICADAS PELO ADVOGADO ===
+{teses_bloco}
+
+=== ESTRUTURA OBRIGATÓRIA — SIGA EXATAMENTE ===
+
+**CABEÇALHO**
+Excelentíssimo(a) Senhor(a) [cargo apropriado] do {orgao_dest}
+[Identificação completa do requerente com qualificação]
+[Referência ao auto de infração]
+
+**I — DOS FATOS**
+Narração objetiva: data, hora, local, auto nº, artigo. Dizer que o requerente não concorda com a autuação e exerce seu direito à ampla defesa (art. 5º, LV CF/88 e art. 285 CTB).
+
+**II — DO EFEITO SUSPENSIVO** ← SEMPRE INCLUIR, É PRIORIDADE
+— Requerer EXPRESSAMENTE a suspensão imediata de todos os efeitos da penalidade (pontos, multa, restrição) até o julgamento final
+— Fundamentar com: art. 285 §1º CTB; art. 97 da Lei 9.784/1999 (processo administrativo federal); art. 5º, LVII CF/88 (presunção de inocência); princípio da não-culpabilidade
+— Argumentar que a aplicação imediata causa dano irreparável ao requerente antes do contraditório
+— Requerer que nenhuma pontuação seja lançada na CNH durante a tramitação
+
+**III — DA NECESSIDADE DA CNH PARA SUSTENTO E MANUTENÇÃO DA FAMÍLIA** ← SEMPRE INCLUIR
+— Declarar que o requerente depende da CNH para exercer seu trabalho e sustentar sua família
+— Citar: art. 6º CF/88 (direito social ao trabalho); art. 7º CF/88 (garantias do trabalhador); art. 170 CF/88 (livre exercício da atividade econômica); art. 1º, IV CF/88 (dignidade da pessoa humana como fundamento da República)
+— Princípio da proporcionalidade: a penalidade não pode ser mais gravosa que o ilícito, especialmente quando compromete a sobrevivência do cidadão
+— Princípio da menor lesividade: entre duas sanções igualmente eficazes, deve-se escolher a menos gravosa
+— Qualquer suspensão/cassação futura da CNH representaria lesão irreparável ao sustento do requerente
+
+**IV — DAS NULIDADES DO AUTO DE INFRAÇÃO** (art. 280 e 281 CTB)
+— Verificar cada requisito formal do art. 280 CTB (data, hora, local, placa, conduta, artigo, identificação do agente, assinatura)
+— Citar art. 281 CTB: qualquer vício nos requisitos do art. 280 torna o auto nulo
+— Se infração por equipamento: questionar validade da aferição/calibração conforme Resolução CONTRAN 798/2020 e portaria INMETRO; equipamento sem certificado válido invalida autuação
+— Ausência ou insuficiência de prova fotográfica/fílmica (princípio da prova material)
+— Requerer juntada de todos os documentos do auto (fotos, relatório do equipamento, certificado INMETRO, escala do agente)
+
+**V — DO MÉRITO — FUNDAMENTOS JURÍDICOS** (desenvolva com profundidade cada tese indicada)
+— Desenvolver todas as teses selecionadas com fundamentação completa
+— CITAR OBRIGATORIAMENTE: art. 280 CTB; art. 281 CTB; art. 282 CTB; art. 283 CTB; art. 285 CTB; art. 286 CTB; art. 257 CTB (responsabilidade); art. 267 CTB (advertência)
+— CF/88: art. 5º caput (igualdade), LIV (devido processo legal), LV (contraditório e ampla defesa), LVII (presunção de inocência), art. 6º (trabalho), art. 37 (legalidade da administração)
+— Lei 9.784/1999 (processo administrativo): arts. 2º, 26, 38, 56 e 97
+— Princípios: in dubio pro reo, legalidade estrita, proporcionalidade, razoabilidade, motivação dos atos administrativos, presunção de inocência
+— Citar pelo menos 2 decisões do STJ ou tribunais estaduais favoráveis ao contribuinte em casos análogos (pode mencionar entendimento jurisprudencial pacificado)
+— Se aplicável: Resolução CONTRAN correspondente ao artigo infringido
+
+**VI — DOS PEDIDOS** (em cascata, do mais ao menos amplo)
+a) PRINCIPAL: Recebimento e conhecimento da presente {tipo_label.lower()}; cancelamento e arquivamento do Auto de Infração nº {auto_num}; declaração de nulidade de todos os efeitos
+b) SUBSIDIÁRIO 1: Caso não acolhido, conversão da penalidade em advertência por escrito, com fundamento no art. 267 CTB, considerando ser o requerente primário e de bons antecedentes
+c) SUBSIDIÁRIO 2: Caso não cabível a advertência, redução ao mínimo legal da penalidade
+d) SUBSIDIÁRIO 3: Caso mantida a multa, concessão de parcelamento em até 12 parcelas mensais, conforme permite a legislação vigente
+e) EM QUALQUER CASO: Suspensão imediata de todos os efeitos durante a tramitação (efeito suspensivo); não lançamento de pontos na CNH até decisão definitiva; notificação sobre o resultado no endereço cadastrado; juntada de todas as provas materiais (fotos, dados do equipamento, relatório da autuação)
+
+**FECHO**
+"Termos em que, pede e espera deferimento."
+{cidade}, {hoje}.
+{nome_req} — CPF: {cpf_req}
+
+=== DIRETRIZES FINAIS ===
+- Mínimo 1.200 palavras — seja completo, não resuma
+- Linguagem jurídica formal, sem coloquialismos
+- Cite artigos com a ementa ou trecho do texto quando relevante
+- Cada seção deve terminar com conclusão favorável ao requerente
+- Use negrito (*texto*) para termos jurídicos importantes
+- SEMPRE mencione art. 5º LV CF/88 e art. 285 CTB ao menos duas vezes
+
+Redija a petição completa agora, seguindo rigorosamente a estrutura acima."""
+
+    try:
+        resp = requests.post(
+            'https://api.groq.com/openai/v1/chat/completions',
+            headers={'Authorization': f'Bearer {groq_key}', 'Content-Type': 'application/json'},
+            json={
+                'model': 'llama-3.3-70b-versatile',
+                'messages': [
+                    {'role': 'system', 'content': SYSTEM},
+                    {'role': 'user',   'content': USER},
+                ],
+                'max_tokens': 4096,
+                'temperature': 0.3,
+            },
+            timeout=120,
+        )
+        resp.raise_for_status()
+        peticao_txt = resp.json()['choices'][0]['message']['content'].strip()
+    except Exception as e:
+        log.error(f'DefesaPro IA petição error: {e}')
+        conn.close()
+        return jsonify({'erro': f'Erro ao gerar petição: {e}'}), 500
+
+    # Salva no banco
+    conn.execute(
+        'INSERT INTO defesapro_peticoes (user_id,processo_id,tipo,conteudo,teses_json,created_at) VALUES (?,?,?,?,?,?)',
+        (user_id, p['id'], tipo + '_ia', peticao_txt, _json_ia.dumps(teses_sel), datetime.now().isoformat())
+    )
+    conn.commit(); conn.close()
+
+    return jsonify({'ok': True, 'peticao': peticao_txt})
+
+
 @app.route('/defesapro/peticoes/<int:tid>/deletar', methods=['POST'])
 @_defesa_login_required
 def defesa_peticao_deletar(tid):

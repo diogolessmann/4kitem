@@ -9,6 +9,16 @@
   .tese-card.checked{border-color:var(--purple);background:rgba(124,58,237,.08)}
   .tese-title{font-size:13px;font-weight:700;margin-bottom:3px}
   .tese-desc{font-size:12px;color:var(--text3);line-height:1.5}
+
+  /* IA */
+  .btn-ia{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:13px;border:none;border-radius:12px;background:linear-gradient(135deg,#0ea5e9,#6366f1);color:#fff;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;transition:.2s;margin-top:10px}
+  .btn-ia:hover{opacity:.9;transform:translateY(-1px)}
+  .btn-ia:disabled{opacity:.5;cursor:wait;transform:none}
+  .ia-spin{display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .ia-loading-panel{text-align:center;padding:60px 24px;background:var(--surface);border:1px solid var(--border);border-radius:14px}
+  .ia-loading-spin{width:48px;height:48px;border:4px solid rgba(99,102,241,.25);border-top-color:#6366f1;border-radius:50%;animation:spin .9s linear infinite;margin:0 auto 18px}
+  .ia-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.25);border-radius:8px;padding:6px 12px;font-size:12px;color:#6ee7b7;margin-bottom:14px}
 </style>
 {% endblock %}
 {% block content %}
@@ -74,12 +84,16 @@
         <div style="margin-top:12px;font-size:12px;color:var(--text3)">💡 Selecione as teses mais adequadas ao caso. A petição será montada com todas as selecionadas.</div>
       </div>
 
-      <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;padding:13px;font-size:15px">⚖️ Gerar petição agora</button>
+      <button type="submit" class="btn btn-outline" style="width:100%;justify-content:center;padding:12px;font-size:14px">📄 Gerar com template</button>
+      <button type="button" class="btn-ia" id="btn-ia" onclick="gerarComIA()">
+        ✨ Gerar com IA — Defesa Completa
+      </button>
+      <div style="font-size:11px;color:var(--text3);text-align:center;margin-top:6px">A IA usa efeito suspensivo + CNH + máximo de citações CTB</div>
     </form>
   </div>
 
   <!-- Preview / resultado -->
-  <div>
+  <div id="painel-resultado">
     {% if peticao_gerada %}
     <div class="form-card" style="margin:0;position:sticky;top:72px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
@@ -93,18 +107,51 @@
       <div style="margin-top:10px;font-size:12px;color:var(--text3)">💡 A petição foi salva automaticamente em <a href="/defesapro/peticoes" style="color:var(--purple3)">Petições</a>. Revise e edite conforme necessário antes de protocolar.</div>
     </div>
     {% else %}
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:48px 24px;text-align:center;color:var(--text3)">
+    <div id="painel-vazio" style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:48px 24px;text-align:center;color:var(--text3)">
       <div style="font-size:48px;margin-bottom:16px">📄</div>
       <div style="font-size:15px;margin-bottom:8px;color:var(--text2)">A petição aparecerá aqui</div>
-      <div style="font-size:13px">Preencha o formulário ao lado e clique em "Gerar petição".</div>
+      <div style="font-size:13px">Preencha o formulário ao lado e escolha o modo de geração.</div>
       <div style="margin-top:20px;padding:16px;background:var(--surface2);border-radius:10px;text-align:left;font-size:12px;color:var(--text2)">
-        <strong>📚 Como funciona:</strong><br>
-        1. Selecione o processo cadastrado<br>
-        2. Escolha o tipo (Defesa Prévia / Recurso)<br>
-        3. Marque as teses de defesa aplicáveis<br>
-        4. A petição é gerada com linguagem jurídica e citações do CTB/CONTRAN
+        <strong>✨ IA vs 📄 Template:</strong><br><br>
+        <strong style="color:#6ee7b7">✨ Gerar com IA</strong> — Groq LLM gera uma defesa completa e personalizada com efeito suspensivo, argumentos sobre necessidade da CNH, nulidades, máximo de citações CTB e jurisprudência.<br><br>
+        <strong style="color:var(--purple3)">📄 Template</strong> — Petição estruturada com base nas teses selecionadas, 100% determinística e instantânea.
       </div>
     </div>
+
+    <!-- Painel loading IA -->
+    <div id="painel-ia-loading" style="display:none">
+      <div class="ia-loading-panel">
+        <div class="ia-loading-spin"></div>
+        <div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:8px">Gerando defesa com IA…</div>
+        <div style="font-size:13px;color:var(--text3);line-height:1.6">
+          O Groq está elaborando a petição completa:<br>
+          efeito suspensivo · CNH para sustento · nulidades · jurisprudência
+        </div>
+        <div style="margin-top:20px;font-size:11px;color:var(--text3)">Aguarde até 30 segundos…</div>
+      </div>
+    </div>
+
+    <!-- Painel resultado IA (injetado via JS) -->
+    <div id="painel-ia-resultado" style="display:none">
+      <div class="form-card" style="margin:0;position:sticky;top:72px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <div>
+            <div class="ia-badge">✨ Gerado por IA</div>
+            <h3 style="margin:0;font-size:16px">Petição completa</h3>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button onclick="copyPet()" class="btn btn-primary btn-sm">📋 Copiar</button>
+            <button onclick="printPet()" class="btn btn-outline btn-sm">🖨️ Imprimir</button>
+          </div>
+        </div>
+        <textarea id="pet-text" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);padding:16px;font-family:monospace;font-size:11px;line-height:1.7;width:100%;min-height:560px;resize:vertical"></textarea>
+        <div style="margin-top:10px;font-size:12px;color:var(--text3)">
+          ⚠️ Revise o conteúdo antes de protocolar. A petição foi salva em
+          <a href="/defesapro/peticoes" style="color:var(--purple3)">Petições</a>.
+        </div>
+      </div>
+    </div>
+
     {% endif %}
   </div>
 </div>
@@ -117,16 +164,77 @@ function toggleTese(k){
   card.classList.toggle('checked', cb.checked);
 }
 function copyPet(){
-  const t = document.getElementById('pet-text'); t.select(); document.execCommand('copy'); alert('Texto copiado!');
+  const t = document.getElementById('pet-text');
+  if(!t) return;
+  t.select();
+  try{ navigator.clipboard.writeText(t.value); } catch(e){ document.execCommand('copy'); }
+  alert('✅ Texto copiado para a área de transferência!');
 }
 function printPet(){
+  const t = document.getElementById('pet-text');
+  if(!t) return;
   const w = window.open('','_blank');
-  w.document.write('<pre style="font-family:Arial;font-size:14px;line-height:1.8;padding:40px;white-space:pre-wrap">'+document.getElementById('pet-text').value+'</pre>');
+  w.document.write('<html><head><title>Petição DefesaPro</title><style>body{font-family:Arial,sans-serif;font-size:13px;line-height:1.8;padding:48px;max-width:800px;margin:0 auto}pre{white-space:pre-wrap;word-wrap:break-word}</style></head><body><pre>'+t.value+'</pre></body></html>');
+  w.document.close();
   w.print();
 }
+
+function gerarComIA(){
+  const form = document.getElementById('form-peticao');
+  const pid = form.querySelector('[name="processo_id"]').value;
+  if(!pid){ alert('Selecione um processo antes de gerar.'); return; }
+
+  const tipo = form.querySelector('[name="tipo"]').value;
+  const orgao_dest = form.querySelector('[name="orgao_dest"]').value;
+  const cidade = form.querySelector('[name="cidade"]').value;
+  const teses = [...form.querySelectorAll('[name="teses"]:checked')].map(el=>el.value);
+
+  // UI: show loading
+  const btn = document.getElementById('btn-ia');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="ia-spin"></span> Gerando com IA…';
+  const vazio = document.getElementById('painel-vazio');
+  const loading = document.getElementById('painel-ia-loading');
+  const resultado = document.getElementById('painel-ia-resultado');
+  if(vazio) vazio.style.display='none';
+  if(loading) loading.style.display='block';
+  if(resultado) resultado.style.display='none';
+
+  fetch('/defesapro/peticoes/gerar-ia', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({processo_id: pid, tipo, teses, orgao_dest, cidade})
+  })
+  .then(r=>r.json())
+  .then(res=>{
+    btn.disabled=false;
+    btn.innerHTML='✨ Gerar com IA — Defesa Completa';
+    if(loading) loading.style.display='none';
+    if(res.erro){
+      if(vazio) vazio.style.display='block';
+      alert('❌ Erro: '+res.erro); return;
+    }
+    // Mostra resultado
+    if(resultado){
+      resultado.style.display='block';
+      const ta = document.getElementById('pet-text');
+      if(ta) ta.value = res.peticao;
+      resultado.scrollIntoView({behavior:'smooth', block:'start'});
+    }
+  })
+  .catch(e=>{
+    btn.disabled=false;
+    btn.innerHTML='✨ Gerar com IA — Defesa Completa';
+    if(loading) loading.style.display='none';
+    if(vazio) vazio.style.display='block';
+    alert('❌ Erro de rede: '+e);
+  });
+}
+
 // Pre-select processo from URL
 const urlParams = new URLSearchParams(window.location.search);
 const pidSel = urlParams.get('processo_id');
-if(pidSel) document.getElementById('sel-processo').value = pidSel;
+if(pidSel && document.getElementById('sel-processo'))
+  document.getElementById('sel-processo').value = pidSel;
 </script>
 {% endblock %}
