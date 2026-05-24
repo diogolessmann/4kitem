@@ -571,31 +571,101 @@ def _defesa_login_required(f):
 @app.route('/defesapro/login', methods=['GET', 'POST'])
 def defesa_login():
     erro = None
+    pendente = False
     next_url = request.args.get('next') or request.form.get('next') or '/defesapro/app'
     if request.method == 'POST':
         email = (request.form.get('email') or '').strip().lower()
         senha = request.form.get('senha') or ''
         conn  = get_saas_db()
+        # Busca sem filtrar active — para mostrar mensagem adequada
         u = conn.execute(
-            'SELECT * FROM defesapro_users WHERE LOWER(email)=? AND active=1', (email,)
+            'SELECT * FROM defesapro_users WHERE LOWER(email)=?', (email,)
         ).fetchone()
         conn.close()
         if u and u['password_hash'] and check_password_hash(u['password_hash'], senha):
-            session['defesa_user_id']  = u['id']
-            session['defesa_user_name'] = u['name']
-            session['defesa_escritorio'] = u['escritorio'] or u['name']
-            session['defesa_plan']      = u['plan'] or 'basico'
-            # Atualiza last_login
-            c2 = get_saas_db()
-            c2.execute('UPDATE defesapro_users SET last_login=? WHERE id=?',
-                       (datetime.now().isoformat(), u['id']))
-            c2.commit(); c2.close()
-            return redirect(next_url)
+            if not u['active']:
+                pendente = True
+                erro = 'pending'
+            else:
+                session['defesa_user_id']   = u['id']
+                session['defesa_user_name'] = u['name']
+                session['defesa_escritorio'] = u['escritorio'] or u['name']
+                session['defesa_plan']       = u['plan'] or 'starter'
+                c2 = get_saas_db()
+                c2.execute('UPDATE defesapro_users SET last_login=? WHERE id=?',
+                           (datetime.now().isoformat(), u['id']))
+                c2.commit(); c2.close()
+                return redirect(next_url)
         elif u and not u['password_hash']:
-            erro = 'Sua conta ainda não tem senha configurada. Entre em contato com o suporte.'
+            erro = 'Sua conta não tem senha configurada. Entre em contato com o suporte.'
+        elif u and u['password_hash'] and not check_password_hash(u['password_hash'], senha):
+            erro = 'Senha incorreta.'
         else:
-            erro = 'E-mail ou senha incorretos.'
-    return render_template('defesapro/login.html', erro=erro, next=next_url)
+            erro = 'E-mail não encontrado. <a href="/defesapro/cadastro" style="color:#a855f7">Criar conta →</a>'
+    return render_template('defesapro/login.html', erro=erro, pendente=pendente, next=next_url)
+
+
+# ── DefesaPro — Cadastro (sem trial, ativação manual) ─────────────────────────
+@app.route('/defesapro/cadastro', methods=['GET', 'POST'])
+def defesa_cadastro():
+    erro = None
+    sucesso = False
+    nome_cadastrado = ''
+    if request.method == 'POST':
+        name       = request.form.get('name', '').strip()
+        email      = request.form.get('email', '').strip().lower()
+        phone      = request.form.get('phone', '').strip()
+        cpf_cnpj   = request.form.get('cpf_cnpj', '').strip()
+        escritorio = request.form.get('escritorio', '').strip()
+        cidade     = request.form.get('cidade', '').strip()
+        plan       = request.form.get('plan', 'starter').strip()
+        password   = request.form.get('password', '')
+        password2  = request.form.get('password2', '')
+
+        cpf_digits   = ''.join(c for c in cpf_cnpj if c.isdigit())
+        phone_digits = ''.join(c for c in phone if c.isdigit())
+
+        if not all([name, email, phone, cpf_cnpj, password]):
+            erro = 'Preencha todos os campos obrigatórios.'
+        elif len(password) < 6:
+            erro = 'A senha deve ter pelo menos 6 caracteres.'
+        elif password != password2:
+            erro = 'As senhas não coincidem.'
+        elif len(cpf_digits) not in (11, 14):
+            erro = 'CPF deve ter 11 dígitos ou CNPJ deve ter 14 dígitos.'
+        else:
+            conn = get_saas_db()
+            if conn.execute('SELECT id FROM defesapro_users WHERE LOWER(email)=?', (email,)).fetchone():
+                erro = 'Este e-mail já possui uma conta. Faça login.'
+                conn.close()
+            elif cpf_digits and conn.execute(
+                "SELECT id FROM defesapro_users WHERE replace(replace(replace(cpf_cnpj,'.',''),'-',''),'/','')=?",
+                (cpf_digits,)
+            ).fetchone():
+                erro = 'Este CPF/CNPJ já possui uma conta cadastrada.'
+                conn.close()
+            elif phone_digits and conn.execute(
+                "SELECT id FROM defesapro_users WHERE replace(replace(replace(replace(phone,'(',''),')',''),'-',''),' ','')=?",
+                (phone_digits,)
+            ).fetchone():
+                erro = 'Este telefone já possui uma conta cadastrada.'
+                conn.close()
+            else:
+                now = datetime.now().isoformat()
+                conn.execute(
+                    '''INSERT INTO defesapro_users
+                       (name, email, phone, cpf_cnpj, escritorio, cidade, plan,
+                        active, password_hash, created_at)
+                       VALUES (?,?,?,?,?,?,?,0,?,?)''',
+                    (name, email, phone, cpf_cnpj, escritorio, cidade, plan,
+                     generate_password_hash(password), now)
+                )
+                conn.commit(); conn.close()
+                sucesso = True
+                nome_cadastrado = name.split()[0]
+    return render_template('defesapro/cadastro.html',
+                           erro=erro, sucesso=sucesso,
+                           nome_cadastrado=nome_cadastrado)
 
 
 @app.route('/defesapro/logout')

@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Criar conta — DefesaPro</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #0a0a12;
+      color: #f0f0ff;
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 32px 20px;
+      background-image: radial-gradient(ellipse at 60% 10%, rgba(124,58,237,.1) 0%, transparent 60%);
+    }
+    .wrap { width: 100%; max-width: 520px; }
+
+    /* Logo */
+    .logo {
+      display: flex; align-items: center; justify-content: center; gap: 10px;
+      margin-bottom: 28px;
+    }
+    .logo-icon {
+      width: 44px; height: 44px; border-radius: 12px;
+      background: linear-gradient(135deg, #7c3aed, #a855f7);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px;
+    }
+    .logo-text { font-size: 24px; font-weight: 800; }
+    .logo-text span { color: #a855f7; }
+
+    /* Box */
+    .box {
+      background: #13131f;
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 20px;
+      padding: 36px 32px;
+    }
+    .box-title { font-size: 18px; font-weight: 800; margin-bottom: 4px; }
+    .box-sub { font-size: 13px; color: #7070a0; margin-bottom: 24px; line-height: 1.5; }
+
+    /* Alerta de preço */
+    .price-notice {
+      background: rgba(124,58,237,.1);
+      border: 1px solid rgba(124,58,237,.25);
+      border-radius: 12px;
+      padding: 14px 16px;
+      margin-bottom: 24px;
+      font-size: 13px;
+      color: #c084fc;
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+    }
+    .price-notice .icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+    .price-notice strong { color: #e9d5ff; }
+
+    /* Section label */
+    .section-label {
+      font-size: 11px; font-weight: 700; color: #7c3aed;
+      text-transform: uppercase; letter-spacing: 1.5px;
+      margin: 20px 0 14px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid rgba(124,58,237,.12);
+    }
+
+    /* Form */
+    .form-grid { display: grid; gap: 13px; }
+    .grid2 { grid-template-columns: 1fr 1fr; }
+    .form-group { display: flex; flex-direction: column; gap: 5px; }
+    label { font-size: 12px; color: #8080a8; font-weight: 500; }
+    input, select {
+      background: #1a1a2e;
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 10px;
+      color: #f0f0ff;
+      padding: 11px 14px;
+      font-size: 14px;
+      font-family: inherit;
+      outline: none;
+      transition: .2s;
+      width: 100%;
+    }
+    input:focus, select:focus {
+      border-color: #7c3aed;
+      box-shadow: 0 0 0 2px rgba(124,58,237,.12);
+    }
+    select option { background: #1a1a2e; }
+    .hint { font-size: 11px; color: #555578; }
+
+    /* Plan cards */
+    .plan-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 4px; }
+    .plan-card {
+      background: #1a1a2e;
+      border: 2px solid rgba(255,255,255,.07);
+      border-radius: 12px;
+      padding: 14px 12px;
+      cursor: pointer;
+      transition: .15s;
+      text-align: center;
+    }
+    .plan-card:has(input:checked) { border-color: #7c3aed; background: rgba(124,58,237,.12); }
+    .plan-card input[type=radio] { display: none; }
+    .plan-emoji { font-size: 22px; margin-bottom: 6px; }
+    .plan-name { font-size: 13px; font-weight: 700; }
+    .plan-price { font-size: 12px; color: #a855f7; font-weight: 600; margin-top: 3px; }
+    .plan-feature { font-size: 11px; color: #555578; margin-top: 4px; line-height: 1.4; }
+
+    /* Button */
+    .btn {
+      width: 100%; padding: 13px;
+      background: linear-gradient(135deg, #7c3aed, #a855f7);
+      border: none; border-radius: 12px;
+      color: #fff; font-size: 15px; font-weight: 700;
+      cursor: pointer; margin-top: 20px; font-family: inherit;
+      transition: .2s;
+    }
+    .btn:hover { opacity: .9; transform: translateY(-1px); }
+
+    /* Erro */
+    .alert-error {
+      background: rgba(239,68,68,.1);
+      border: 1px solid rgba(239,68,68,.25);
+      border-radius: 10px;
+      padding: 12px 16px;
+      color: #fca5a5;
+      font-size: 13px;
+      margin-bottom: 18px;
+    }
+
+    /* Sucesso */
+    .success-box {
+      text-align: center;
+      padding: 16px 0 8px;
+    }
+    .success-icon { font-size: 56px; margin-bottom: 16px; }
+    .success-title { font-size: 22px; font-weight: 800; margin-bottom: 8px; }
+    .success-sub { font-size: 14px; color: #7070a0; line-height: 1.6; margin-bottom: 24px; }
+    .btn-wa {
+      display: flex; align-items: center; justify-content: center; gap: 10px;
+      background: #16a34a; color: #fff;
+      border-radius: 12px; padding: 14px 20px;
+      font-size: 15px; font-weight: 700;
+      text-decoration: none; margin-bottom: 12px; transition: .2s;
+    }
+    .btn-wa:hover { opacity: .9; }
+    .btn-login-link {
+      display: block; text-align: center;
+      font-size: 13px; color: #555578; margin-top: 8px;
+    }
+    .btn-login-link a { color: #a855f7; }
+
+    /* Footer */
+    .footer {
+      text-align: center; margin-top: 20px;
+      font-size: 13px; color: #555578;
+    }
+    .footer a { color: #a855f7; }
+
+    @media (max-width: 540px) {
+      .box { padding: 28px 20px; }
+      .grid2 { grid-template-columns: 1fr; }
+      .plan-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- Logo -->
+  <div class="logo">
+    <div class="logo-icon">⚖️</div>
+    <div class="logo-text">Defesa<span>Pro</span></div>
+  </div>
+
+  <div class="box">
+
+    {% if sucesso %}
+    <!-- ── SUCESSO ── -->
+    <div class="success-box">
+      <div class="success-icon">🎉</div>
+      <div class="success-title">Cadastro recebido, {{ nome_cadastrado }}!</div>
+      <div class="success-sub">
+        Sua conta foi criada com sucesso.<br>
+        Para <strong>ativar o acesso</strong>, fale com nossa equipe pelo WhatsApp
+        e confirme o plano escolhido. A ativação é feita em minutos.
+      </div>
+      <a href="https://wa.me/5547991011351?text=Olá%2C%20acabei%20de%20criar%20minha%20conta%20no%20DefesaPro%20e%20quero%20ativar%20o%20acesso" target="_blank" class="btn-wa">
+        💬 Ativar minha conta via WhatsApp
+      </a>
+      <div class="btn-login-link">
+        Já ativou? <a href="/defesapro/login">Fazer login →</a>
+      </div>
+    </div>
+
+    {% else %}
+    <!-- ── FORMULÁRIO ── -->
+    <div class="box-title">Criar conta no DefesaPro</div>
+    <div class="box-sub">Preencha os dados abaixo. Após o cadastro, nossa equipe ativa seu acesso via WhatsApp.</div>
+
+    <div class="price-notice">
+      <span class="icon">⚖️</span>
+      <span>Sem período de testes. Acesso liberado após confirmação do pagamento.<br>
+      <strong>Planos a partir de R$ 390/mês.</strong></span>
+    </div>
+
+    {% if erro %}
+    <div class="alert-error">⚠️ {{ erro|safe }}</div>
+    {% endif %}
+
+    <form method="POST">
+      <!-- Plano -->
+      <div class="section-label">🎯 Escolha seu plano</div>
+      <div class="plan-grid">
+        <label class="plan-card">
+          <input type="radio" name="plan" value="starter" checked>
+          <div class="plan-emoji">⚡</div>
+          <div class="plan-name">Starter</div>
+          <div class="plan-price">R$ 390/mês</div>
+          <div class="plan-feature">1 usuário · Essencial</div>
+        </label>
+        <label class="plan-card">
+          <input type="radio" name="plan" value="profissional">
+          <div class="plan-emoji">🚀</div>
+          <div class="plan-name">Profissional</div>
+          <div class="plan-price">R$ 590/mês</div>
+          <div class="plan-feature">Relatórios + Prazos automáticos</div>
+        </label>
+        <label class="plan-card">
+          <input type="radio" name="plan" value="premium">
+          <div class="plan-emoji">💎</div>
+          <div class="plan-name">Premium</div>
+          <div class="plan-price">R$ 990/mês</div>
+          <div class="plan-feature">Ilimitado + OCR + Suporte dedicado</div>
+        </label>
+      </div>
+
+      <!-- Dados pessoais -->
+      <div class="section-label">👤 Seus dados</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Nome completo *</label>
+          <input type="text" name="name" placeholder="Dr. João da Silva" required maxlength="80">
+        </div>
+        <div class="form-grid grid2">
+          <div class="form-group">
+            <label>E-mail *</label>
+            <input type="email" name="email" placeholder="joao@escritorio.com.br" required>
+          </div>
+          <div class="form-group">
+            <label>WhatsApp *</label>
+            <input type="tel" name="phone" placeholder="(47) 99999-9999" required>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>CPF ou CNPJ *</label>
+          <input type="text" name="cpf_cnpj" placeholder="000.000.000-00 ou 00.000.000/0001-00" required maxlength="18" inputmode="numeric">
+        </div>
+        <div class="form-grid grid2">
+          <div class="form-group">
+            <label>Nome do escritório</label>
+            <input type="text" name="escritorio" placeholder="Escritório Silva Advogados" maxlength="80">
+          </div>
+          <div class="form-group">
+            <label>Cidade/UF</label>
+            <input type="text" name="cidade" placeholder="Joinville, SC" maxlength="60">
+          </div>
+        </div>
+      </div>
+
+      <!-- Acesso -->
+      <div class="section-label">🔐 Senha de acesso</div>
+      <div class="form-grid grid2">
+        <div class="form-group">
+          <label>Senha *</label>
+          <input type="password" name="password" placeholder="Mínimo 6 caracteres" required minlength="6">
+        </div>
+        <div class="form-group">
+          <label>Confirmar senha *</label>
+          <input type="password" name="password2" placeholder="Repita a senha" required minlength="6">
+        </div>
+      </div>
+
+      <button type="submit" class="btn">⚖️ Criar minha conta</button>
+    </form>
+
+    {% endif %}
+
+    <div class="footer">
+      Já tem conta? <a href="/defesapro/login">Entrar →</a>
+      &nbsp;·&nbsp;
+      <a href="/defesapro">← Voltar ao site</a>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>

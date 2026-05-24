@@ -79,6 +79,32 @@
       margin-top: 16px; font-size: 12px; color: #555; text-align: center;
     }
     .suporte a { color: #7c3aed; text-decoration: none; }
+
+    /* Pendente */
+    .pendente-box {
+      text-align: center; padding: 8px 0 4px;
+    }
+    .pendente-icon { font-size: 52px; margin-bottom: 14px; }
+    .pendente-title { font-size: 18px; font-weight: 800; margin-bottom: 8px; }
+    .pendente-sub {
+      font-size: 13px; color: #888; line-height: 1.6; margin-bottom: 22px;
+    }
+    .btn-wa {
+      display: flex; align-items: center; justify-content: center; gap: 10px;
+      background: #16a34a; color: #fff; border-radius: 12px;
+      padding: 13px 20px; font-size: 14px; font-weight: 700;
+      text-decoration: none; margin-bottom: 12px; transition: opacity .15s;
+    }
+    .btn-wa:hover { opacity: .88; }
+    .novo-login {
+      font-size: 12px; color: #555; text-align: center; margin-top: 6px;
+    }
+    .novo-login a { color: #a855f7; }
+    /* Criar conta link */
+    .cadastro-link {
+      margin-top: 16px; font-size: 12px; color: #555; text-align: center;
+    }
+    .cadastro-link a { color: #a855f7; text-decoration: none; }
   </style>
 </head>
 <body>
@@ -88,11 +114,30 @@
       <div class="logo-text">Defesa<span>Pro</span></div>
     </div>
 
+    {% if pendente %}
+    <!-- Conta aguardando ativação -->
+    <div class="pendente-box">
+      <div class="pendente-icon">⏳</div>
+      <div class="pendente-title">Conta aguardando ativação</div>
+      <div class="pendente-sub">
+        Seu cadastro foi recebido com sucesso!<br>
+        Para <strong style="color:#e9d5ff">liberar o acesso</strong>, nossa equipe precisa
+        confirmar o pagamento. Fale via WhatsApp — a ativação é feita em minutos.
+      </div>
+      <a href="https://wa.me/5547991011351?text=Olá%2C%20fiz%20meu%20cadastro%20no%20DefesaPro%20e%20quero%20ativar%20minha%20conta" target="_blank" class="btn-wa">
+        💬 Ativar minha conta via WhatsApp
+      </a>
+      <div class="novo-login">
+        Conta diferente? <a href="/defesapro/login">Fazer login →</a>
+      </div>
+    </div>
+
+    {% else %}
     <h2>Acesse sua conta</h2>
     <p class="sub">Sistema de gestão de defesas de multas de trânsito</p>
 
     {% if erro %}
-    <div class="erro">{{ erro }}</div>
+    <div class="erro">{{ erro|safe }}</div>
     {% endif %}
 
     <form method="post" action="{{ url_for('defesa_login') }}?next={{ next | urlencode }}">
@@ -109,8 +154,13 @@
 
     <hr class="divider">
     <div class="suporte">
-      Esqueceu a senha? <a href="https://wa.me/554799776683" target="_blank">Fale com o suporte</a>
+      Esqueceu a senha? <a href="https://wa.me/5547991011351" target="_blank">Fale com o suporte</a>
     </div>
+    <div class="cadastro-link">
+      Não tem conta? <a href="/defesapro/cadastro">Criar conta →</a>
+    </div>
+    {% endif %}
+
     <a href="/defesapro" class="back">← Voltar ao site</a>
   </div>
 </body>
