@@ -9,6 +9,19 @@
   .filter-tabs{display:flex;gap:6px;margin-bottom:20px;flex-wrap:wrap}
   .filter-tab{padding:6px 14px;border-radius:100px;font-size:12px;font-weight:600;text-decoration:none;border:1px solid var(--border);color:var(--text2);transition:.15s}
   .filter-tab:hover,.filter-tab.active{border-color:var(--purple);color:var(--purple3);background:rgba(124,58,237,.1)}
+
+  /* OCR */
+  .ocr-drop{border:2px dashed rgba(124,58,237,.35);border-radius:14px;padding:36px 20px;text-align:center;cursor:pointer;transition:.2s;background:rgba(124,58,237,.04)}
+  .ocr-drop:hover,.ocr-drop.drag{border-color:var(--purple);background:rgba(124,58,237,.1)}
+  .ocr-drop-icon{font-size:42px;margin-bottom:10px}
+  .ocr-drop-text{font-size:14px;color:var(--text2);margin-bottom:4px}
+  .ocr-drop-hint{font-size:11px;color:var(--text3)}
+  .ocr-spinner{display:none;text-align:center;padding:32px 0}
+  .ocr-spinner.show{display:block}
+  .spin{display:inline-block;width:36px;height:36px;border:3px solid rgba(124,58,237,.3);border-top-color:var(--purple);border-radius:50%;animation:spin .8s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .ocr-result-badge{background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.25);border-radius:10px;padding:10px 14px;font-size:12px;color:#86efac;margin-bottom:14px;display:none}
+  .ocr-result-badge.show{display:block}
 </style>
 {% endblock %}
 {% block content %}
@@ -17,7 +30,10 @@
     <div class="page-title">📋 Processos</div>
     <div class="page-sub">{{ processos|length }} processo(s) encontrado(s)</div>
   </div>
-  <button class="btn btn-primary" onclick="document.getElementById('modal-add').classList.add('open')">+ Novo processo</button>
+  <div style="display:flex;gap:8px">
+    <button class="btn btn-outline" onclick="document.getElementById('modal-ocr').classList.add('open')" title="Ler auto de infração por foto">📷 Ler por OCR</button>
+    <button class="btn btn-primary" onclick="document.getElementById('modal-add').classList.add('open')">+ Novo processo</button>
+  </div>
 </div>
 
 {% if erro %}<div class="alert alert-error">⚠️ {{ erro }}</div>{% endif %}
@@ -74,6 +90,37 @@
   <button class="btn btn-primary" onclick="document.getElementById('modal-add').classList.add('open')">+ Novo processo</button>
 </div>
 {% endif %}
+
+<!-- ── Modal OCR ── -->
+<div class="modal-overlay" id="modal-ocr">
+  <div class="modal" style="max-width:480px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+      <h2 style="font-size:17px;font-weight:800">📷 Ler Auto de Infração por OCR</h2>
+      <button onclick="closeOcr()" style="background:none;border:none;color:var(--text3);font-size:20px;cursor:pointer">✕</button>
+    </div>
+
+    <div id="ocr-drop-area" class="ocr-drop" onclick="document.getElementById('ocr-file').click()"
+         ondragover="event.preventDefault();this.classList.add('drag')"
+         ondragleave="this.classList.remove('drag')"
+         ondrop="event.preventDefault();this.classList.remove('drag');handleOcrDrop(event.dataTransfer.files)">
+      <div class="ocr-drop-icon">📄</div>
+      <div class="ocr-drop-text">Clique ou arraste a foto do auto aqui</div>
+      <div class="ocr-drop-hint">JPG, PNG, WEBP — máx. 10 MB</div>
+    </div>
+    <input type="file" id="ocr-file" accept="image/*" style="display:none" onchange="handleOcrFiles(this.files)">
+
+    <div class="ocr-spinner" id="ocr-spinner">
+      <div class="spin"></div>
+      <div style="font-size:13px;color:var(--text3);margin-top:12px">Analisando imagem com IA…</div>
+    </div>
+
+    <div class="ocr-result-badge" id="ocr-badge">
+      ✅ Dados extraídos com sucesso! Revise o formulário antes de salvar.
+    </div>
+
+    <div id="ocr-erro" style="display:none;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);border-radius:10px;padding:10px 14px;font-size:12px;color:#fca5a5;margin-top:12px"></div>
+  </div>
+</div>
 
 <!-- Modal novo processo -->
 <div class="modal-overlay" id="modal-add">
@@ -154,4 +201,69 @@
     </form>
   </div>
 </div>
+
+<script>
+function closeOcr(){
+  document.getElementById('modal-ocr').classList.remove('open');
+  document.getElementById('ocr-spinner').classList.remove('show');
+  document.getElementById('ocr-badge').classList.remove('show');
+  document.getElementById('ocr-erro').style.display='none';
+  document.getElementById('ocr-drop-area').style.display='';
+  document.getElementById('ocr-file').value='';
+}
+
+function handleOcrDrop(files){ if(files && files[0]) runOcr(files[0]); }
+function handleOcrFiles(files){ if(files && files[0]) runOcr(files[0]); }
+
+function runOcr(file){
+  if(file.size > 10*1024*1024){ showOcrErro('Arquivo muito grande. Máx. 10 MB.'); return; }
+  document.getElementById('ocr-drop-area').style.display='none';
+  document.getElementById('ocr-spinner').classList.add('show');
+  document.getElementById('ocr-badge').classList.remove('show');
+  document.getElementById('ocr-erro').style.display='none';
+
+  const fd = new FormData();
+  fd.append('arquivo', file);
+
+  fetch('/defesapro/processos/ocr', {method:'POST', body:fd})
+    .then(r=>r.json())
+    .then(res=>{
+      document.getElementById('ocr-spinner').classList.remove('show');
+      if(res.erro){ showOcrErro(res.erro); return; }
+      preencherFormOcr(res.dados);
+      document.getElementById('ocr-badge').classList.add('show');
+      setTimeout(()=>{ closeOcr(); document.getElementById('modal-add').classList.add('open'); }, 1300);
+    })
+    .catch(e=>{ document.getElementById('ocr-spinner').classList.remove('show'); showOcrErro('Erro de rede: '+e); });
+}
+
+function showOcrErro(msg){
+  const el=document.getElementById('ocr-erro');
+  el.textContent='⚠️ '+msg; el.style.display='block';
+  document.getElementById('ocr-drop-area').style.display='';
+}
+
+function preencherFormOcr(d){
+  const f = document.getElementById('modal-add').querySelector('form');
+  function set(n,v){ const el=f.querySelector('[name="'+n+'"]'); if(el&&v) el.value=v; }
+  set('numero_auto',   d.numero_auto);
+  set('placa',         d.placa);
+  set('proprietario',  d.proprietario);
+  set('data_infracao', d.data_infracao);
+  set('hora_infracao', d.hora_infracao);
+  set('local_infracao',d.local_infracao);
+  set('orgao_autuador',d.orgao_autuador);
+  set('prazo_defesa',  d.prazo_defesa);
+  // artigo CTB select
+  if(d.artigo_ctb_key){
+    const sel=f.querySelector('[name="artigo_ctb"]');
+    if(sel) sel.value=d.artigo_ctb_key;
+  }
+  // obs: artigo raw + valor
+  let obs='';
+  if(d.artigo_ctb) obs+='Artigo OCR: '+d.artigo_ctb+'\n';
+  if(d.valor_multa&&d.valor_multa>0) obs+='Valor da multa: R$ '+d.valor_multa.toFixed(2)+'\n';
+  if(obs){ const ta=f.querySelector('[name="observacoes"]'); if(ta) ta.value=obs.trim(); }
+}
+</script>
 {% endblock %}

@@ -835,6 +835,127 @@ def defesa_processos():
                            hoje=date.today().isoformat())
 
 
+def _map_artigo_ctb(texto):
+    """Mapeia texto livre do artigo CTB extraído por OCR para chave do CTB_ARTIGOS."""
+    import re as _re_m
+    t = texto.lower()
+    t = re.sub(r'art[igo.]*\s*', '', t)          # remove "art.", "artigo"
+    t = t.replace(',', ' ').replace(';', ' ')
+    # normaliza incisos romanos para _x
+    t = re.sub(r'\s+iv\b', '_iv', t)
+    t = re.sub(r'\s+iii\b', '_iii', t)
+    t = re.sub(r'\s+ii\b', '_ii', t)
+    t = re.sub(r'\s+i\b', '_i', t)
+    t = t.strip()
+    MAPA = {
+        '162_i': '162_i', '162': '162_i',
+        '165': '165',
+        '218_i': '218_i', '218_ii': '218_ii', '218_iii': '218_iii', '218_iv': '218_iv', '218': '218_i',
+        '230_i': '230_i', '230': '230_i',
+        '244_i': '244_i', '244': '244_i',
+        '167': '167', '208': '208', '175': '175',
+        '219': '219', '228': '228', '253': '253',
+    }
+    # tenta match direto
+    for k, v in MAPA.items():
+        if t.startswith(k) or k in t:
+            return v
+    return 'outro'
+
+
+@app.route('/defesapro/processos/ocr', methods=['POST'])
+@_defesa_login_required
+def defesa_processo_ocr():
+    """Recebe foto/imagem de um auto de infração e extrai campos via Groq Vision."""
+    import base64 as _b64ocr, mimetypes as _mt_ocr, re as _re_ocr, json as _json_ocr
+
+    groq_key = os.environ.get('GROQ_API_KEY', '')
+    if not groq_key:
+        return jsonify({'erro': 'GROQ_API_KEY não configurada no servidor'}), 500
+
+    f = request.files.get('arquivo')
+    if not f:
+        return jsonify({'erro': 'Nenhum arquivo enviado'}), 400
+
+    dados_bytes = f.read()
+    mime = f.mimetype or _mt_ocr.guess_type(f.filename or '')[0] or 'image/jpeg'
+
+    if 'pdf' in mime.lower() or (f.filename or '').lower().endswith('.pdf'):
+        return jsonify({'erro': 'Envie uma foto ou imagem do auto (JPG/PNG). PDF não suportado nesta função.'}), 415
+
+    PROMPT = (
+        'Você está analisando a foto de um AUTO DE INFRAÇÃO DE TRÂNSITO brasileiro.\n'
+        'Extraia os dados abaixo e retorne SOMENTE um objeto JSON válido — sem markdown, sem explicações:\n'
+        '{\n'
+        '  "numero_auto": "número/código do auto de infração",\n'
+        '  "placa": "placa do veículo, formato ABC1234 ou ABC-1234",\n'
+        '  "proprietario": "nome completo do proprietário ou condutor",\n'
+        '  "data_infracao": "data no formato YYYY-MM-DD",\n'
+        '  "hora_infracao": "hora no formato HH:MM",\n'
+        '  "local_infracao": "endereço ou local completo da infração",\n'
+        '  "orgao_autuador": "órgão responsável (ex: PRF, DETRAN-SC, PM, DEINFRA)",\n'
+        '  "artigo_ctb": "artigo e inciso do CTB, ex: 218 II, 165, 162 I, 244 I",\n'
+        '  "valor_multa": 195.23,\n'
+        '  "prazo_defesa": "prazo para defesa prévia no formato YYYY-MM-DD, se estiver visível"\n'
+        '}\n'
+        'Use "" para campos não visíveis. Para valor_multa use número sem símbolo R$.'
+    )
+
+    try:
+        img_b64 = _b64ocr.b64encode(dados_bytes).decode()
+        resp = requests.post(
+            'https://api.groq.com/openai/v1/chat/completions',
+            headers={'Authorization': f'Bearer {groq_key}', 'Content-Type': 'application/json'},
+            json={
+                'model': 'meta-llama/llama-4-scout-17b-16e-instruct',
+                'messages': [{'role': 'user', 'content': [
+                    {'type': 'image_url', 'image_url': {'url': f'data:{mime};base64,{img_b64}'}},
+                    {'type': 'text', 'text': PROMPT},
+                ]}],
+                'max_tokens': 1024,
+                'temperature': 0.1,
+            },
+            timeout=90,
+        )
+        resp.raise_for_status()
+        texto = resp.json()['choices'][0]['message']['content'].strip()
+    except Exception as e:
+        log.error(f'DefesaPro OCR Groq error: {e}')
+        return jsonify({'erro': f'Erro ao processar imagem: {e}'}), 500
+
+    match = _re_ocr.search(r'\{[\s\S]*\}', texto)
+    if not match:
+        return jsonify({'erro': 'A IA não conseguiu extrair dados — tente com uma foto mais nítida'}), 422
+
+    try:
+        data = _json_ocr.loads(match.group())
+    except Exception:
+        return jsonify({'erro': 'Erro ao interpretar resposta da IA — tente novamente'}), 422
+
+    # Mapeia artigo para chave do CTB_ARTIGOS
+    artigo_raw = str(data.get('artigo_ctb') or '')
+    data['artigo_ctb_key'] = _map_artigo_ctb(artigo_raw)
+
+    # Normaliza valor_multa
+    try:
+        vm = data.get('valor_multa')
+        if isinstance(vm, str):
+            vm = re.sub(r'[^\d,.]', '', vm).replace(',', '.')
+        data['valor_multa'] = round(float(vm or 0), 2)
+    except Exception:
+        data['valor_multa'] = 0.0
+
+    # Normaliza placa: remove espaços, traços extras
+    placa = str(data.get('placa') or '').upper().strip()
+    placa = re.sub(r'[^A-Z0-9]', '', placa)
+    if len(placa) >= 7:
+        data['placa'] = placa[:3] + '-' + placa[3:]
+    else:
+        data['placa'] = placa
+
+    return jsonify({'ok': True, 'dados': data})
+
+
 @app.route('/defesapro/processos/<int:pid>')
 @_defesa_login_required
 def defesa_processo_detalhe(pid):
