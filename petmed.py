@@ -225,7 +225,7 @@ def _fazer_triagem(pet_info: dict, categoria: str, historico: list) -> dict:
         for h in historico
     ])
 
-    system_prompt = f"""Você é um assistente de triagem veterinária do PETmed.
+    system_prompt = f"""Você é um assistente de triagem veterinária do VetZap.
 Você está fazendo triagem para {nome}, {especie} da raça {raca}, {idade} anos, {peso}kg.
 Categoria do problema: {categoria_info['label']}.
 
@@ -634,7 +634,37 @@ def triagem_chat():
     # GET — página do chat
     triagem = session.get('pm_triagem')
     if not triagem:
-        return redirect('/petmed/triagem')
+        # Inicializa a partir dos query params (chegando do form triagem_inicio)
+        pet_id_raw = request.args.get('pet_id', '0')
+        categoria  = request.args.get('categoria', 'outro')
+        if not categoria or categoria not in CATEGORIAS:
+            return redirect('/petmed/triagem')
+        try:
+            pet_id = int(pet_id_raw)
+        except (ValueError, TypeError):
+            pet_id = 0
+
+        pet_info = {}
+        if pet_id:
+            conn = get_petmed_db()
+            pet = conn.execute(
+                'SELECT * FROM petmed_pets WHERE id=? AND user_id=?',
+                (pet_id, u['id'])
+            ).fetchone()
+            conn.close()
+            if pet:
+                pet_info = dict(pet)
+
+        session['pm_triagem'] = {
+            'pet_id': pet_id,
+            'pet_info': pet_info,
+            'categoria': categoria,
+            'historico': [],
+            'iniciada': _now()
+        }
+        session.modified = True
+        triagem = session['pm_triagem']
+
     return render_template('petmed/triagem_chat.html',
                            u=u, triagem=triagem, categorias=CATEGORIAS)
 
@@ -713,7 +743,9 @@ def vacinas():
     conn = get_petmed_db()
     if pet_id_sel:
         vacinas_list = conn.execute(
-            'SELECT * FROM petmed_vacinas WHERE user_id=? AND pet_id=? ORDER BY proxima',
+            'SELECT v.*, p.nome as pet_nome FROM petmed_vacinas v '
+            'JOIN petmed_pets p ON v.pet_id=p.id '
+            'WHERE v.user_id=? AND v.pet_id=? ORDER BY v.proxima',
             (u['id'], pet_id_sel)
         ).fetchall()
     else:

@@ -488,7 +488,7 @@
           {% else %}<span class="badge badge-blue">🐾 Start</span>{% endif %}
         </td>
         <td>
-          {% if u.ativo %}<span class="badge badge-green">✅ Ativo</span>
+          {% if u.plano_ativo %}<span class="badge badge-green">✅ Ativo</span>
           {% else %}<span class="badge badge-red">❌ Inativo</span>{% endif %}
         </td>
         <td style="font-size:12px;color:var(--text3)">{{ u.created_at[:10] if u.created_at else '—' }}</td>

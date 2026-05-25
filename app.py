@@ -2657,7 +2657,7 @@ def saas_admin():
         from petmed_db import get_petmed_db as _get_pm_db
         pmconn = _get_pm_db()
         vetzap_users = [dict(r) for r in pmconn.execute(
-            'SELECT id, nome, email, telefone, plano, ativo, created_at FROM petmed_users ORDER BY created_at DESC'
+            'SELECT id, nome, email, telefone, plano, plano_ativo, created_at FROM petmed_users ORDER BY created_at DESC'
         ).fetchall()]
         vetzap_pets_total = pmconn.execute('SELECT COUNT(*) FROM petmed_pets').fetchone()[0]
         vetzap_triagens_total = pmconn.execute('SELECT COUNT(*) FROM petmed_triagens').fetchone()[0]
