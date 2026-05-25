@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Assinar — MandaZap</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#09090f;color:#f0fff4;font-family:'Segoe UI',sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+  body::before{content:'';position:fixed;top:0;left:50%;transform:translateX(-50%);width:600px;height:400px;background:radial-gradient(ellipse,rgba(34,197,94,.08) 0%,transparent 70%);pointer-events:none}
+  .box{background:#0e1a10;border:1px solid rgba(34,197,94,.15);border-radius:24px;padding:40px 36px;width:100%;max-width:440px}
+  .logo{text-align:center;font-size:36px;margin-bottom:6px}
+  .logo-text{text-align:center;font-size:22px;font-weight:900;color:#22c55e;margin-bottom:4px}
+  .sub{text-align:center;font-size:13px;color:#6b9e72;margin-bottom:24px}
+  .error{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:10px;padding:12px 16px;color:#fca5a5;font-size:13px;margin-bottom:20px}
+  .plan-box{background:#0a130c;border:2px solid rgba(34,197,94,.3);border-radius:14px;padding:18px;text-align:center;margin-bottom:16px}
+  .plan-name{font-size:17px;font-weight:800;color:#22c55e;margin-bottom:4px}
+  .plan-price{font-size:30px;font-weight:900;margin-bottom:4px}
+  .plan-price span{font-size:13px;font-weight:400;color:#6b9e72}
+  .plan-features{font-size:12px;color:#6b9e72;margin-top:6px}
+  .plan-switch{font-size:12px;color:#6b9e72;margin-bottom:20px;text-align:center}
+  .plan-switch a{color:#22c55e}
+  .planos-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:16px}
+  .plano-opt{background:#0a130c;border:2px solid rgba(34,197,94,.1);border-radius:10px;padding:10px;cursor:pointer;transition:.2s;text-decoration:none;display:block;text-align:center}
+  .plano-opt:hover,.plano-opt.ativo{border-color:#22c55e;background:rgba(34,197,94,.08)}
+  .plano-opt-name{font-size:13px;font-weight:700;color:#f0fff4}
+  .plano-opt-price{font-size:11px;color:#6b9e72}
+  .section-title{font-size:12px;font-weight:700;color:#6b9e72;text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px}
+  .billing-options{display:flex;flex-direction:column;gap:8px;margin-bottom:24px}
+  .billing-opt{display:flex;align-items:center;gap:12px;background:#0a130c;border:2px solid rgba(34,197,94,.08);border-radius:12px;padding:14px 16px;cursor:pointer;transition:.2s}
+  .billing-opt:has(input:checked){border-color:#22c55e;background:rgba(34,197,94,.06)}
+  .billing-opt input{accent-color:#22c55e;width:18px;height:18px;flex-shrink:0}
+  .billing-opt .opt-icon{font-size:22px}
+  .billing-opt .opt-name{font-weight:700;font-size:14px}
+  .billing-opt .opt-sub{font-size:11px;color:#6b9e72}
+  .btn{width:100%;padding:13px;background:linear-gradient(135deg,#16a34a,#22c55e);border:none;border-radius:12px;color:#fff;font-size:15px;font-weight:700;cursor:pointer;margin-top:4px;transition:.2s;font-family:inherit}
+  .btn:hover{opacity:.9}
+  .secure{text-align:center;margin-top:14px;font-size:11px;color:#6b9e72}
+  .back{display:block;text-align:center;margin-top:12px;font-size:12px;color:#6b9e72}
+  .back a{color:#22c55e}
+</style>
+</head>
+<body>
+<div class="box">
+  <div class="logo">📲</div>
+  <div class="logo-text">MandaZap</div>
+  <div class="sub">Disparos de WhatsApp em massa</div>
+
+  {% if erro %}<div class="error">⚠️ {{ erro }}</div>{% endif %}
+
+  <div class="plan-box">
+    <div class="plan-name">Plano {{ plano.label }}</div>
+    <div class="plan-price">R$ {{ plano.price }}<span>/mês</span></div>
+    <div class="plan-features">
+      📱 {{ plano.numbers }} número{{ 's' if plano.numbers > 1 else '' }} ·
+      📩 {{ plano.daily_limit if plano.daily_limit < 9999 else '∞' }} disparos/dia ·
+      👥 {{ plano.contacts_limit if plano.contacts_limit < 9999 else '∞' }} contatos
+    </div>
+  </div>
+
+  <div class="plan-switch">Plano errado? →
+    {% for key, pl in planos.items() %}
+    <a href="/mandazap/assinar/{{ key }}" {% if key == plano_key %}style="font-weight:900"{% endif %}>{{ pl.label }}</a>{% if not loop.last %} · {% endif %}
+    {% endfor %}
+  </div>
+
+  <form method="POST">
+    <div class="section-title">Forma de pagamento</div>
+    <div class="billing-options">
+      <label class="billing-opt">
+        <input type="radio" name="billing_type" value="PIX" checked>
+        <span class="opt-icon">⚡</span>
+        <div><div class="opt-name">PIX</div><div class="opt-sub">Aprovação imediata</div></div>
+      </label>
+      <label class="billing-opt">
+        <input type="radio" name="billing_type" value="BOLETO">
+        <span class="opt-icon">🏦</span>
+        <div><div class="opt-name">Boleto bancário</div><div class="opt-sub">Vencimento em 3 dias úteis</div></div>
+      </label>
+      <label class="billing-opt">
+        <input type="radio" name="billing_type" value="CREDIT_CARD">
+        <span class="opt-icon">💳</span>
+        <div><div class="opt-name">Cartão de crédito</div><div class="opt-sub">Parcelado em até 12x</div></div>
+      </label>
+    </div>
+    <button type="submit" class="btn">🔒 Confirmar assinatura</button>
+  </form>
+  <div class="secure">🔒 Pagamento processado com segurança via Asaas</div>
+  <div class="back"><a href="/mandazap/painel">← Voltar ao painel</a></div>
+</div>
+</body>
+</html>

@@ -328,6 +328,23 @@ def init_saas_db():
         "ALTER TABLE mandazap_users ADD COLUMN cpf_cnpj TEXT DEFAULT ''",
         # Agenda SC — CPF do responsável
         "ALTER TABLE agenda_businesses ADD COLUMN cpf_cnpj TEXT DEFAULT ''",
+        # Agenda SC — Multi-profissional
+        "ALTER TABLE agenda_appointments ADD COLUMN professional_id INTEGER",
+        "ALTER TABLE agenda_appointments ADD COLUMN professional_name TEXT DEFAULT ''",
+        '''CREATE TABLE IF NOT EXISTS agenda_professionals (
+            id             INTEGER PRIMARY KEY AUTOINCREMENT,
+            business_id    INTEGER NOT NULL,
+            name           TEXT NOT NULL,
+            role           TEXT DEFAULT '',
+            photo_url      TEXT DEFAULT '',
+            color          TEXT DEFAULT '#27ae60',
+            bio            TEXT DEFAULT '',
+            commission_pct REAL DEFAULT 0,
+            active         INTEGER DEFAULT 1,
+            order_pos      INTEGER DEFAULT 0,
+            created_at     TEXT DEFAULT ''
+        )''',
+        "CREATE INDEX IF NOT EXISTS idx_agenda_prof_biz ON agenda_professionals(business_id)",
         # DefesaPro Premium — monitor de e-mail e notificações
         '''CREATE TABLE IF NOT EXISTS defesapro_email_config (
             id          INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -494,9 +511,15 @@ def init_saas_db():
         "ALTER TABLE defesapro_users ADD COLUMN plan_active INTEGER DEFAULT 1",
         "ALTER TABLE mandazap_users ADD COLUMN reset_token TEXT DEFAULT ''",
         "ALTER TABLE mandazap_users ADD COLUMN reset_expires TEXT DEFAULT ''",
+        "ALTER TABLE mandazap_users ADD COLUMN asaas_customer_id TEXT DEFAULT ''",
+        "ALTER TABLE mandazap_users ADD COLUMN plan_active INTEGER DEFAULT 1",
         "ALTER TABLE despachante_users ADD COLUMN reset_token TEXT DEFAULT ''",
         "ALTER TABLE despachante_users ADD COLUMN reset_expires TEXT DEFAULT ''",
         "ALTER TABLE despachante_users ADD COLUMN password_hash TEXT DEFAULT ''",
+        "ALTER TABLE despachante_users ADD COLUMN asaas_customer_id TEXT DEFAULT ''",
+        "ALTER TABLE despachante_users ADD COLUMN plan_active INTEGER DEFAULT 1",
+        "ALTER TABLE alerta_subscribers ADD COLUMN asaas_customer_id TEXT DEFAULT ''",
+        "ALTER TABLE agenda_businesses ADD COLUMN plan_active INTEGER DEFAULT 1",
     ]
     for sql in _auth_migrations:
         try:

@@ -59,12 +59,12 @@ WEEKDAY_NAMES = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'D
 
 # ── AlertaSC constants ────────────────────────────────────────────────────────
 ALERTA_PLANS = {
-    'basico':        {'label': '👤 Individual',     'price': 'R$ 19,90', 'vehicles': 1},
-    'familia':       {'label': '👨‍👩‍👧 Família',      'price': 'R$ 39,00', 'vehicles': 4},
-    'pequena_frota': {'label': '🚐 Pequena Frota',  'price': 'R$ 99,00', 'vehicles': 9},
-    'frota_media':   {'label': '🚛 Frota Média',    'price': 'R$149,00', 'vehicles': 20},
-    'master':        {'label': '🏢 Master',         'price': 'R$229,00', 'vehicles': 50},
-    'enterprise':    {'label': '🏭 Enterprise',     'price': 'R$399,00', 'vehicles': 100},
+    'basico':        {'label': '👤 Individual',     'price': 'R$ 19,90', 'preco': 19.90,  'vehicles': 1},
+    'familia':       {'label': '👨‍👩‍👧 Família',      'price': 'R$ 39,00', 'preco': 39.00,  'vehicles': 4},
+    'pequena_frota': {'label': '🚐 Pequena Frota',  'price': 'R$ 99,00', 'preco': 99.00,  'vehicles': 9},
+    'frota_media':   {'label': '🚛 Frota Média',    'price': 'R$149,00', 'preco': 149.00, 'vehicles': 20},
+    'master':        {'label': '🏢 Master',         'price': 'R$229,00', 'preco': 229.00, 'vehicles': 50},
+    'enterprise':    {'label': '🏭 Enterprise',     'price': 'R$399,00', 'preco': 399.00, 'vehicles': 100},
 }
 
 
@@ -428,15 +428,63 @@ def alerta_sair():
     return redirect('/alerta/entrar')
 
 
+# ── AlertaSC — Checkout / Assinatura ─────────────────────────────────────────
+@app.route('/alerta/assinar/<plano>', methods=['GET', 'POST'])
+@_alerta_login_required
+def alerta_assinar(plano):
+    if plano not in ALERTA_PLANS:
+        return redirect('/alerta/minha-conta')
+    sub_id = session['alerta_sub_id']
+    p = ALERTA_PLANS[plano]
+    erro = None
+    if request.method == 'POST':
+        billing_type = request.form.get('billing_type', 'PIX').upper()
+        if billing_type not in ('PIX', 'BOLETO', 'CREDIT_CARD'):
+            billing_type = 'PIX'
+        conn = get_saas_db()
+        sub = conn.execute('SELECT * FROM alerta_subscribers WHERE id=?', (sub_id,)).fetchone()
+        conn.close()
+        if not sub:
+            return redirect('/alerta/entrar')
+        customer_id = _asaas_criar_ou_buscar_cliente_saas(
+            sub['name'], sub['email'] or '', sub['phone'], sub['cpf'], sub['id'], 'alerta_subscribers'
+        )
+        if not customer_id:
+            erro = 'Erro ao processar pagamento. Tente novamente ou entre em contato.'
+        else:
+            conn2 = get_saas_db()
+            conn2.execute('UPDATE alerta_subscribers SET asaas_customer_id=? WHERE id=?',
+                          (customer_id, sub_id))
+            conn2.commit(); conn2.close()
+            resp = _asaas_criar_assinatura_saas(
+                customer_id, 'alerta', plano, p['preco'],
+                f'AlertaSC {p["label"]} — Assinatura Mensal',
+                billing_type
+            )
+            if resp.get('id'):
+                return redirect('/alerta/aguardando-pagamento')
+            else:
+                erro = f'Não foi possível gerar o pagamento. Tente novamente.'
+    return render_template('alerta/checkout.html', plano=p, plano_key=plano, erro=erro)
+
+
+@app.route('/alerta/aguardando-pagamento')
+@_alerta_login_required
+def alerta_aguardando():
+    return render_template('alerta/aguardando.html')
+
+
 # ══════════════════════════════════════════════════════════════════════════
 #  AMIGO DESPACHANTE — Login do assinante
 # ══════════════════════════════════════════════════════════════════════════
 
 DESP_PLANS = {
-    'basico':        {'label': '🥉 Básico',        'price': 'R$ 79,90/mês'},
-    'profissional':  {'label': '🥈 Profissional',   'price': 'R$149,90/mês'},
-    'premium':       {'label': '🥇 Premium',        'price': 'R$249,90/mês'},
+    'basico':        {'label': '🥉 Básico',        'price': 'R$ 79,90/mês',  'preco': 79.90},
+    'profissional':  {'label': '🥈 Profissional',   'price': 'R$149,90/mês', 'preco': 149.90},
+    'premium':       {'label': '🥇 Premium',        'price': 'R$249,90/mês', 'preco': 249.90},
 }
+
+AGENDA_PLAN = {'label': 'Agenda SC Pro', 'preco': 79.90, 'price': 'R$ 79,90/mês'}
 
 # ── DefesaPro — CTB constants ─────────────────────────────────────────────────
 CTB_ARTIGOS = {
@@ -689,6 +737,52 @@ def amigo_desp_redefinir_senha():
                 conn.commit(); conn.close()
                 sucesso = True
     return render_template('amigo_despachante/redefinir_senha.html', sucesso=sucesso, erro=erro)
+
+
+# ── Amigo Despachante — Checkout / Assinatura ────────────────────────────────
+@app.route('/amigo-despachante/assinar/<plano>', methods=['GET', 'POST'])
+@_desp_saas_login_required
+def amigo_desp_assinar(plano):
+    if plano not in DESP_PLANS:
+        return redirect('/amigo-despachante/app')
+    user_id = session['desp_saas_user_id']
+    p = DESP_PLANS[plano]
+    erro = None
+    if request.method == 'POST':
+        billing_type = request.form.get('billing_type', 'PIX').upper()
+        if billing_type not in ('PIX', 'BOLETO', 'CREDIT_CARD'):
+            billing_type = 'PIX'
+        conn = get_saas_db()
+        u = conn.execute('SELECT * FROM despachante_users WHERE id=?', (user_id,)).fetchone()
+        conn.close()
+        if not u:
+            return redirect('/amigo-despachante/entrar')
+        customer_id = _asaas_criar_ou_buscar_cliente_saas(
+            u['name'], u['email'] or '', u['phone'], '', u['id'], 'despachante_users'
+        )
+        if not customer_id:
+            erro = 'Erro ao processar pagamento. Tente novamente ou entre em contato.'
+        else:
+            conn2 = get_saas_db()
+            conn2.execute('UPDATE despachante_users SET asaas_customer_id=?, plan=? WHERE id=?',
+                          (customer_id, plano, user_id))
+            conn2.commit(); conn2.close()
+            resp = _asaas_criar_assinatura_saas(
+                customer_id, 'despachante', plano, p['preco'],
+                f'Amigo Despachante {p["label"]} — Assinatura Mensal',
+                billing_type
+            )
+            if resp.get('id'):
+                return redirect('/amigo-despachante/aguardando-pagamento')
+            else:
+                erro = 'Não foi possível gerar o pagamento. Tente novamente.'
+    return render_template('amigo_despachante/checkout.html', plano=p, plano_key=plano, erro=erro)
+
+
+@app.route('/amigo-despachante/aguardando-pagamento')
+@_desp_saas_login_required
+def amigo_desp_aguardando():
+    return render_template('amigo_despachante/aguardando.html')
 
 
 @app.route('/defesapro')
@@ -1010,6 +1104,46 @@ def webhook_asaas_global():
             if s:
                 conn.execute('UPDATE mandaja_stores SET plan_active=? WHERE id=?',
                              (1 if ativar else 0, s['id']))
+                conn.commit()
+            conn.close()
+
+    elif ref.startswith('mandazap_'):
+        parts = ref.split('_')
+        customer_id = parts[1] if len(parts) > 1 else None
+        if customer_id:
+            conn = get_saas_db()
+            u = conn.execute('SELECT id FROM mandazap_users WHERE asaas_customer_id=?',
+                             (customer_id,)).fetchone()
+            if u:
+                conn.execute('UPDATE mandazap_users SET active=?, plan_active=? WHERE id=?',
+                             (1 if ativar else 0, 1 if ativar else 0, u['id']))
+                conn.commit()
+            conn.close()
+
+    elif ref.startswith('despachante_'):
+        parts = ref.split('_')
+        customer_id = parts[1] if len(parts) > 1 else None
+        if customer_id:
+            conn = get_saas_db()
+            u = conn.execute('SELECT id FROM despachante_users WHERE asaas_customer_id=?',
+                             (customer_id,)).fetchone()
+            if u:
+                conn.execute('UPDATE despachante_users SET active=?, plan_active=? WHERE id=?',
+                             (1 if ativar else 0, 1 if ativar else 0, u['id']))
+                conn.commit()
+            conn.close()
+
+    elif ref.startswith('alerta_'):
+        parts = ref.split('_')
+        customer_id = parts[1] if len(parts) > 1 else None
+        if customer_id:
+            conn = get_saas_db()
+            s = conn.execute('SELECT id FROM alerta_subscribers WHERE asaas_customer_id=?',
+                             (customer_id,)).fetchone()
+            if s:
+                novo_status = 'ativo' if ativar else 'suspenso'
+                conn.execute("UPDATE alerta_subscribers SET status=?, payment_status=? WHERE id=?",
+                             (novo_status, 'paid' if ativar else 'overdue', s['id']))
                 conn.commit()
             conn.close()
 
@@ -2799,6 +2933,50 @@ def agenda_financeiro_equipe():
     })
 
 
+# ── AgendaSC — Checkout / Assinatura ─────────────────────────────────────────
+@app.route('/agenda/assinar', methods=['GET', 'POST'])
+@_agenda_login_required
+def agenda_assinar():
+    biz_id = session['agenda_business_id']
+    p = AGENDA_PLAN
+    erro = None
+    if request.method == 'POST':
+        billing_type = request.form.get('billing_type', 'PIX').upper()
+        if billing_type not in ('PIX', 'BOLETO', 'CREDIT_CARD'):
+            billing_type = 'PIX'
+        conn = get_saas_db()
+        biz = conn.execute('SELECT * FROM agenda_businesses WHERE id=?', (biz_id,)).fetchone()
+        conn.close()
+        if not biz:
+            return redirect('/agenda/entrar')
+        customer_id = _asaas_criar_ou_buscar_cliente_saas(
+            biz['name'], biz['email'], biz['phone'], biz.get('cpf_cnpj', ''), biz['id'], 'agenda_businesses'
+        )
+        if not customer_id:
+            erro = 'Erro ao processar pagamento. Tente novamente ou entre em contato.'
+        else:
+            conn2 = get_saas_db()
+            conn2.execute('UPDATE agenda_businesses SET asaas_customer_id=? WHERE id=?',
+                          (customer_id, biz_id))
+            conn2.commit(); conn2.close()
+            resp = _asaas_criar_assinatura_saas(
+                customer_id, 'agenda', 'pro', p['preco'],
+                'Agenda SC Pro — Assinatura Mensal',
+                billing_type
+            )
+            if resp.get('id'):
+                return redirect('/agenda/aguardando-pagamento')
+            else:
+                erro = 'Não foi possível gerar o pagamento. Tente novamente.'
+    return render_template('agenda/checkout.html', plano=p, erro=erro)
+
+
+@app.route('/agenda/aguardando-pagamento')
+@_agenda_login_required
+def agenda_aguardando():
+    return render_template('agenda/aguardando.html')
+
+
 @app.route('/agenda/painel/configuracoes', methods=['GET', 'POST'])
 @_agenda_login_required
 def agenda_configuracoes():
@@ -4242,6 +4420,56 @@ def mandazap_redefinir_senha():
                 conn.commit(); conn.close()
                 sucesso = True
     return render_template('mandazap/redefinir_senha.html', sucesso=sucesso, erro=erro)
+
+
+# ── MandaZap — Checkout / Assinatura ─────────────────────────────────────────
+@app.route('/mandazap/assinar', methods=['GET', 'POST'])
+@app.route('/mandazap/assinar/<plano>', methods=['GET', 'POST'])
+@_mandazap_login_required
+def mandazap_assinar(plano=None):
+    user_id = session['mz_user_id']
+    if plano is None:
+        plano = session.get('mz_plan', 'solo')
+    if plano not in MANDAZAP_PLANS:
+        plano = 'solo'
+    p = MANDAZAP_PLANS[plano]
+    erro = None
+    if request.method == 'POST':
+        billing_type = request.form.get('billing_type', 'PIX').upper()
+        if billing_type not in ('PIX', 'BOLETO', 'CREDIT_CARD'):
+            billing_type = 'PIX'
+        conn = get_saas_db()
+        u = conn.execute('SELECT * FROM mandazap_users WHERE id=?', (user_id,)).fetchone()
+        conn.close()
+        if not u:
+            return redirect('/mandazap/entrar')
+        customer_id = _asaas_criar_ou_buscar_cliente_saas(
+            u['name'], u['email'], u.get('phone', ''), u.get('cpf_cnpj', ''), u['id'], 'mandazap_users'
+        )
+        if not customer_id:
+            erro = 'Erro ao processar pagamento. Tente novamente ou entre em contato.'
+        else:
+            conn2 = get_saas_db()
+            conn2.execute('UPDATE mandazap_users SET asaas_customer_id=?, plan=? WHERE id=?',
+                          (customer_id, plano, user_id))
+            conn2.commit(); conn2.close()
+            resp = _asaas_criar_assinatura_saas(
+                customer_id, 'mandazap', plano, float(p['price']),  # price is int 79/149/etc
+                f'MandaZap {p["label"]} — Assinatura Mensal',
+                billing_type
+            )
+            if resp.get('id'):
+                return redirect('/mandazap/aguardando-pagamento')
+            else:
+                erro = 'Não foi possível gerar o pagamento. Tente novamente.'
+    return render_template('mandazap/checkout.html', plano=p, plano_key=plano,
+                           planos=MANDAZAP_PLANS, erro=erro)
+
+
+@app.route('/mandazap/aguardando-pagamento')
+@_mandazap_login_required
+def mandazap_aguardando():
+    return render_template('mandazap/aguardando.html')
 
 
 @app.route('/mandazap/painel')

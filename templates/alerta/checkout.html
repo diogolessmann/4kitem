@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Assinar — AlertaSC</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#0f0a0a;color:#fff0f0;font-family:'Segoe UI',sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+  body::before{content:'';position:fixed;top:0;left:50%;transform:translateX(-50%);width:600px;height:400px;background:radial-gradient(ellipse,rgba(239,68,68,.08) 0%,transparent 70%);pointer-events:none}
+  .box{background:#1a0f0f;border:1px solid rgba(239,68,68,.15);border-radius:24px;padding:40px 36px;width:100%;max-width:440px}
+  .logo{text-align:center;font-size:36px;margin-bottom:6px}
+  .logo-text{text-align:center;font-size:22px;font-weight:900;color:#ef4444;margin-bottom:4px}
+  .sub{text-align:center;font-size:13px;color:#9a7070;margin-bottom:28px}
+  .error{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:10px;padding:12px 16px;color:#fca5a5;font-size:13px;margin-bottom:20px}
+  .plan-box{background:#140c0c;border:2px solid rgba(239,68,68,.3);border-radius:14px;padding:20px;text-align:center;margin-bottom:16px}
+  .plan-name{font-size:18px;font-weight:800;color:#ef4444;margin-bottom:4px}
+  .plan-price{font-size:30px;font-weight:900;margin-bottom:4px}
+  .plan-price span{font-size:13px;font-weight:400;color:#9a7070}
+  .plan-vehicles{font-size:12px;color:#9a7070;margin-top:4px}
+  .section-title{font-size:12px;font-weight:700;color:#9a7070;text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px}
+  .billing-options{display:flex;flex-direction:column;gap:8px;margin-bottom:24px}
+  .billing-opt{display:flex;align-items:center;gap:12px;background:#140c0c;border:2px solid rgba(239,68,68,.08);border-radius:12px;padding:14px 16px;cursor:pointer;transition:.2s}
+  .billing-opt:has(input:checked){border-color:#ef4444;background:rgba(239,68,68,.06)}
+  .billing-opt input{accent-color:#ef4444;width:18px;height:18px;flex-shrink:0}
+  .billing-opt .opt-icon{font-size:22px}
+  .billing-opt .opt-name{font-weight:700;font-size:14px}
+  .billing-opt .opt-sub{font-size:11px;color:#9a7070}
+  .btn{width:100%;padding:13px;background:linear-gradient(135deg,#dc2626,#ef4444);border:none;border-radius:12px;color:#fff;font-size:15px;font-weight:700;cursor:pointer;margin-top:4px;transition:.2s;font-family:inherit}
+  .btn:hover{opacity:.9}
+  .secure{text-align:center;margin-top:14px;font-size:11px;color:#9a7070}
+  .back{display:block;text-align:center;margin-top:12px;font-size:12px;color:#9a7070}
+  .back a{color:#ef4444}
+</style>
+</head>
+<body>
+<div class="box">
+  <div class="logo">🚨</div>
+  <div class="logo-text">AlertaSC</div>
+  <div class="sub">Monitoramento de multas e débitos veiculares</div>
+
+  {% if erro %}<div class="error">⚠️ {{ erro }}</div>{% endif %}
+
+  <div class="plan-box">
+    <div class="plan-name">{{ plano.label }}</div>
+    <div class="plan-price">{{ plano.price }}<span>/mês</span></div>
+    <div class="plan-vehicles">🚗 Até {{ plano.vehicles }} veículo{{ 's' if plano.vehicles > 1 else '' }} monitorado{{ 's' if plano.vehicles > 1 else '' }}</div>
+  </div>
+
+  <form method="POST">
+    <div class="section-title">Forma de pagamento</div>
+    <div class="billing-options">
+      <label class="billing-opt">
+        <input type="radio" name="billing_type" value="PIX" checked>
+        <span class="opt-icon">⚡</span>
+        <div><div class="opt-name">PIX</div><div class="opt-sub">Aprovação imediata</div></div>
+      </label>
+      <label class="billing-opt">
+        <input type="radio" name="billing_type" value="BOLETO">
+        <span class="opt-icon">🏦</span>
+        <div><div class="opt-name">Boleto bancário</div><div class="opt-sub">Vencimento em 3 dias úteis</div></div>
+      </label>
+      <label class="billing-opt">
+        <input type="radio" name="billing_type" value="CREDIT_CARD">
+        <span class="opt-icon">💳</span>
+        <div><div class="opt-name">Cartão de crédito</div><div class="opt-sub">Parcelado em até 12x</div></div>
+      </label>
+    </div>
+    <button type="submit" class="btn">🔒 Confirmar assinatura</button>
+  </form>
+  <div class="secure">🔒 Pagamento processado com segurança via Asaas</div>
+  <div class="back"><a href="/alerta/minha-conta">← Voltar</a></div>
+</div>
+</body>
+</html>
