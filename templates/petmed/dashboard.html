@@ -20,15 +20,43 @@
 </div>
 {% endif %}
 
+<!-- Banner paywall: plano gratuito esgotado -->
+{% if bloqueado_paywall %}
+<div style="background:linear-gradient(135deg,#ef4444,#f97316);border-radius:14px;padding:18px 22px;color:#fff;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:20px">
+  <div>
+    <div style="font-weight:800;font-size:15px">🔒 Sua consulta gratuita foi utilizada</div>
+    <div style="font-size:13px;opacity:.9;margin-top:3px">Assine um plano para continuar protegendo seu pet 24h por dia.</div>
+  </div>
+  <a href="/petmed/planos?msg=paywall" style="background:#fff;color:#ef4444;padding:10px 20px;border-radius:9px;font-weight:800;font-size:13px;text-decoration:none;white-space:nowrap">Ver planos →</a>
+</div>
+{% elif not u.plano_ativo %}
+<!-- Plano gratuito ainda disponível -->
+<div style="background:linear-gradient(135deg,#22c55e,#0ea5e9);border-radius:14px;padding:16px 22px;color:#fff;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:20px">
+  <div>
+    <div style="font-weight:800;font-size:14px">🎁 1 consulta gratuita disponível!</div>
+    <div style="font-size:12px;opacity:.9;margin-top:2px">Use agora ou assine para ter acesso ilimitado.</div>
+  </div>
+  <a href="/petmed/triagem" style="background:#fff;color:#16a34a;padding:8px 18px;border-radius:9px;font-weight:800;font-size:13px;text-decoration:none">🩺 Usar agora</a>
+</div>
+{% endif %}
+
 <div class="page-header">
   <div>
     <div class="page-title">Olá, {{ u.nome.split()[0] }}! 🐾</div>
     <div class="page-sub">
-      {% if u.plano == 'premium' %}👑 Plano Premium{% elif u.plano == 'familia' %}🐾🐾 Plano Família{% else %}🐾 Plano Start{% endif %}
+      {% if u.plano_ativo %}
+        {% if u.plano == 'premium' %}👑 Plano Premium{% elif u.plano == 'familia' %}🐾🐾 Plano Família{% else %}🐾 Plano Start{% endif %}
+      {% else %}
+        🆓 Plano Gratuito
+      {% endif %}
       · {{ total_triagens }} triagem(ns) realizadas
     </div>
   </div>
+  {% if bloqueado_paywall %}
+  <a href="/petmed/planos?msg=paywall" class="btn btn-primary btn-lg" style="background:#ef4444">🔒 Assinar plano</a>
+  {% else %}
   <a href="/petmed/triagem" class="btn btn-primary btn-lg">🩺 Nova Triagem</a>
+  {% endif %}
 </div>
 
 <!-- Stats rápidos -->
@@ -50,8 +78,8 @@
   </div>
   <div class="stat-card">
     <div class="stat-icon">🛡️</div>
-    <div class="stat-value">OK</div>
-    <div class="stat-label">Conta ativa</div>
+    <div class="stat-value">{% if u.plano_ativo %}Ativo{% else %}Grátis{% endif %}</div>
+    <div class="stat-label">Status da conta</div>
   </div>
 </div>
 
@@ -61,8 +89,10 @@
   <div class="card">
     <div class="card-title" style="display:flex;justify-content:space-between;align-items:center">
       🐾 Meus Pets
-      {% if pode_add %}
+      {% if pode_add and u.plano_ativo %}
       <a href="/petmed/pets/adicionar" class="btn btn-primary btn-sm">+ Adicionar</a>
+      {% elif not u.plano_ativo %}
+      <span style="font-size:11px;color:var(--text3)">Assine para adicionar mais</span>
       {% else %}
       <span style="font-size:11px;color:var(--text3)">Limite atingido ({{ total_pets }}/{{ limite_pets }})</span>
       {% endif %}
@@ -70,7 +100,7 @@
 
     {% if pets %}
       {% for pet in pets %}
-      <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);last-child:border:none">
+      <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)">
         <div style="width:40px;height:40px;border-radius:50%;background:var(--bg);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">
           {{ '🐱' if pet.especie == 'gato' else '🐶' }}
         </div>
@@ -82,7 +112,11 @@
             {% if pet.peso_kg %}· {{ pet.peso_kg }}kg{% endif %}
           </div>
         </div>
+        {% if bloqueado_paywall %}
+        <a href="/petmed/planos?msg=paywall" class="btn btn-sm" style="background:#fee2e2;color:#ef4444;border:none">🔒 Assinar</a>
+        {% else %}
         <a href="/petmed/triagem?pet_id={{ pet.id }}" class="btn btn-primary btn-sm">🩺 Triar</a>
+        {% endif %}
       </div>
       {% endfor %}
     {% else %}
@@ -93,7 +127,7 @@
       </div>
     {% endif %}
 
-    {% if not pode_add %}
+    {% if not pode_add and u.plano_ativo %}
     <div style="margin-top:12px;padding:10px;background:var(--bg);border-radius:8px;font-size:12px;color:var(--text3);text-align:center">
       Limite de {{ limite_pets }} pet(s) no plano atual.
       <a href="/petmed/planos" style="color:var(--teal2);font-weight:700">Fazer upgrade →</a>
@@ -141,8 +175,8 @@
 
 </div>
 
-<!-- Banner upgrade se não for premium -->
-{% if u.plano != 'premium' %}
+<!-- Banner upgrade -->
+{% if u.plano_ativo and u.plano != 'premium' %}
 <div style="margin-top:20px;background:linear-gradient(135deg,#8b5cf6,#0ea5e9);border-radius:14px;padding:20px 24px;color:#fff;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
   <div>
     <div style="font-weight:800;font-size:15px">👑 Faça upgrade para o Premium</div>

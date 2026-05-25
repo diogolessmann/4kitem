@@ -159,6 +159,29 @@ def _now():
     return datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
 
+def _triagens_usadas(user_id):
+    """Retorna quantas triagens o usuário já realizou."""
+    conn = get_petmed_db()
+    n = conn.execute(
+        'SELECT COUNT(*) FROM petmed_triagens WHERE user_id=?', (user_id,)
+    ).fetchone()[0]
+    conn.close()
+    return n
+
+
+def _check_paywall(u):
+    """
+    Verifica se o usuário pode realizar mais triagens.
+    Retorna (bloqueado: bool, triagens_usadas: int).
+    - plano_ativo=1  → assinatura ativa, sem bloqueio.
+    - plano_ativo=0  → plano gratuito: 1 triagem grátis, depois bloqueado.
+    """
+    if u['plano_ativo']:
+        return False, _triagens_usadas(u['id'])
+    usadas = _triagens_usadas(u['id'])
+    return usadas >= 1, usadas
+
+
 # ── IA: identificar raça por foto ──────────────────────────────────────────────
 def _identificar_raca(foto_base64: str, especie: str) -> str:
     if not _groq_client or not foto_base64:
@@ -695,8 +718,8 @@ def cadastrar():
                 conn = get_petmed_db()
                 conn.execute(
                     '''INSERT INTO petmed_users
-                       (nome, email, telefone, cpf, password_hash, plano)
-                       VALUES (?,?,?,?,?,?)''',
+                       (nome, email, telefone, cpf, password_hash, plano, plano_ativo)
+                       VALUES (?,?,?,?,?,?,0)''',
                     (nome, email, telefone, cpf,
                      generate_password_hash(senha), plano)
                 )
@@ -840,6 +863,7 @@ def dashboard():
     conn.close()
     novo = request.args.get('novo', '')
     pode_add, total_pets, limite_pets = _can_add_pet(u['id'], u['plano'])
+    bloqueado_paywall, triagens_usadas = _check_paywall(u)
     return render_template('petmed/dashboard.html',
                            u=u, pets=pets,
                            triagens=triagens_recentes,
@@ -849,7 +873,9 @@ def dashboard():
                            pode_add=pode_add,
                            total_pets=total_pets,
                            limite_pets=limite_pets,
-                           planos=PLANOS)
+                           planos=PLANOS,
+                           bloqueado_paywall=bloqueado_paywall,
+                           triagens_usadas=triagens_usadas)
 
 
 @petmed_bp.route('/meus-pets')
@@ -974,11 +1000,16 @@ def excluir_pet(pet_id):
 @petmed_login_required
 def triagem_inicio():
     u    = _get_user()
+    bloqueado, triagens_usadas = _check_paywall(u)
+    if bloqueado:
+        return redirect('/petmed/planos?msg=paywall')
     pets = _get_pets(u['id'])
     # Limpa triagem anterior da sessão
     session.pop('pm_triagem', None)
     return render_template('petmed/triagem_inicio.html',
-                           u=u, pets=pets, categorias=CATEGORIAS)
+                           u=u, pets=pets, categorias=CATEGORIAS,
+                           triagens_usadas=triagens_usadas,
+                           plano_ativo=u['plano_ativo'])
 
 
 @petmed_bp.route('/triagem/chat', methods=['GET', 'POST'])
@@ -992,6 +1023,15 @@ def triagem_chat():
 
         # ── Iniciar triagem ────────────────────────────────────────────────────
         if acao == 'iniciar':
+            # Verifica paywall antes de iniciar
+            bloqueado, _ = _check_paywall(u)
+            if bloqueado:
+                return jsonify({
+                    'tipo': 'paywall',
+                    'mensagem': 'Você já utilizou sua consulta gratuita. Assine um plano para continuar.',
+                    'url': '/petmed/planos?msg=paywall'
+                })
+
             pet_id    = dados.get('pet_id')
             categoria = dados.get('categoria', 'outro')
             pet_info  = {}

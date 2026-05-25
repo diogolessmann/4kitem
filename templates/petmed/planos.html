@@ -10,10 +10,17 @@
   </div>
 </div>
 
-{% if msg == 'premium' or msg == 'teleconsulta_premium' %}
+{% if msg == 'paywall' %}
+<div style="background:linear-gradient(135deg,#ef4444,#f97316);border-radius:14px;padding:18px 22px;color:#fff;margin-bottom:24px;display:flex;align-items:center;gap:16px">
+  <div style="font-size:36px">🔒</div>
+  <div>
+    <div style="font-weight:800;font-size:16px">Sua consulta gratuita foi utilizada!</div>
+    <div style="font-size:13px;opacity:.9;margin-top:3px">Escolha um plano abaixo para continuar com atendimentos ilimitados para o seu pet.</div>
+  </div>
+</div>
+{% elif msg == 'premium' or msg == 'teleconsulta_premium' %}
 <div class="alert alert-warning">👑 Esta funcionalidade está disponível apenas no plano Premium.</div>
-{% endif %}
-{% if msg == 'limite_pets' %}
+{% elif msg == 'limite_pets' %}
 <div class="alert alert-warning">🐾 Você atingiu o limite de pets do seu plano. Faça upgrade para adicionar mais!</div>
 {% endif %}
 

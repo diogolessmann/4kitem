@@ -208,6 +208,13 @@ async function iniciar() {
     });
     const data = await r.json();
     removeTyping();
+    if (data.tipo === 'paywall') {
+      addMsg('bot', '🔒 ' + data.mensagem);
+      finalizado = true;
+      document.getElementById('input-bar').style.display = 'none';
+      setTimeout(() => { window.location.href = data.url; }, 2500);
+      return;
+    }
     if (data.mensagem) addMsg('bot', data.mensagem);
     triagemIniciada = true;
   } catch(e) {
