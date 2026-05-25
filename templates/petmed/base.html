@@ -400,14 +400,15 @@
   </div>
 
   <div class="main">
-    {% block content %}{% endblock %}
-  </div>
-</div>
-
 {% else %}
 <!-- Sem sidebar (área pública) -->
 <div style="padding:32px">
-  {% block content %}{% endblock %}
+{% endif %}
+    {% block content %}{% endblock %}
+{% if session.pm_user_id %}
+  </div>
+</div>
+{% else %}
 </div>
 {% endif %}
 
