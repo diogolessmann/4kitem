@@ -160,6 +160,74 @@ def _now():
     return datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
 
+# ── Asaas — Gateway de Pagamento ──────────────────────────────────────────────
+
+_ASAAS_BASE = 'https://api.asaas.com/v3'
+
+def _asaas_headers():
+    return {
+        'access_token': os.environ.get('ASAAS_API_KEY', ''),
+        'Content-Type': 'application/json',
+    }
+
+def _asaas_req(method: str, endpoint: str, data: dict = None):
+    """Faz requisição autenticada à API do Asaas."""
+    try:
+        resp = _requests.request(
+            method,
+            f'{_ASAAS_BASE}{endpoint}',
+            headers=_asaas_headers(),
+            json=data,
+            timeout=15
+        )
+        return resp.json()
+    except Exception as e:
+        return {'error': str(e)}
+
+def _asaas_criar_ou_buscar_cliente(u) -> str:
+    """Cria ou busca cliente no Asaas. Retorna o customer_id."""
+    # Verifica se já tem ID salvo
+    if u['asaas_customer_id']:
+        return u['asaas_customer_id']
+
+    cpf = u['cpf'] or ''
+    # Busca por CPF primeiro
+    busca = _asaas_req('GET', f'/customers?cpfCnpj={cpf}')
+    if busca.get('data'):
+        cid = busca['data'][0]['id']
+    else:
+        # Cria novo cliente
+        resp = _asaas_req('POST', '/customers', {
+            'name': u['nome'],
+            'email': u['email'],
+            'mobilePhone': re.sub(r'\D', '', u['telefone'] or ''),
+            'cpfCnpj': cpf,
+        })
+        cid = resp.get('id')
+
+    if cid:
+        conn = get_petmed_db()
+        conn.execute('UPDATE petmed_users SET asaas_customer_id=? WHERE id=?',
+                     (cid, u['id']))
+        conn.commit()
+        conn.close()
+    return cid
+
+def _asaas_criar_assinatura(customer_id: str, plano: str, billing_type: str) -> dict:
+    """Cria assinatura recorrente mensal no Asaas."""
+    p = PLANOS.get(plano, PLANOS['start'])
+    import datetime as _dt
+    prox_venc = (_dt.date.today() + _dt.timedelta(days=1)).strftime('%Y-%m-%d')
+    return _asaas_req('POST', '/subscriptions', {
+        'customer': customer_id,
+        'billingType': billing_type,      # PIX, BOLETO, CREDIT_CARD
+        'value': p['preco'],
+        'nextDueDate': prox_venc,
+        'cycle': 'MONTHLY',
+        'description': f'VetZap — {p["nome"]}',
+        'externalReference': f'vetzap_{customer_id}_{plano}',
+    })
+
 # ── E-mail transacional (Resend) ───────────────────────────────────────────────
 
 def _enviar_email(para: str, assunto: str, html: str) -> bool:
@@ -751,6 +819,124 @@ def index():
 def planos():
     msg = request.args.get('msg', '')
     return render_template('petmed/planos.html', planos=PLANOS, msg=msg)
+
+
+@petmed_bp.route('/assinar/<plano>', methods=['GET', 'POST'])
+@petmed_login_required
+def assinar(plano):
+    """Checkout: escolhe método de pagamento e cria assinatura no Asaas."""
+    if plano not in PLANOS:
+        return redirect('/petmed/planos')
+    u = _get_user()
+    erro = ''
+    if request.method == 'POST':
+        billing_type = request.form.get('billing_type', 'PIX')
+        if billing_type not in ('PIX', 'BOLETO', 'CREDIT_CARD'):
+            erro = 'Método de pagamento inválido.'
+        else:
+            try:
+                customer_id = _asaas_criar_ou_buscar_cliente(u)
+                if not customer_id:
+                    erro = 'Erro ao criar perfil de pagamento. Verifique seus dados cadastrais.'
+                else:
+                    sub = _asaas_criar_assinatura(customer_id, plano, billing_type)
+                    if sub.get('id'):
+                        # Salva assinatura no banco (pendente — webhook ativa)
+                        conn = get_petmed_db()
+                        conn.execute(
+                            '''INSERT OR REPLACE INTO petmed_assinaturas
+                               (user_id, plano, valor, status, asaas_subscription_id, billing_type)
+                               VALUES (?,?,?,?,?,?)''',
+                            (u['id'], plano, PLANOS[plano]['preco'],
+                             'pendente', sub['id'], billing_type)
+                        )
+                        conn.commit()
+                        conn.close()
+                        # Redireciona para link de pagamento do Asaas
+                        payment_url = sub.get('invoiceUrl') or sub.get('bankSlipUrl') or ''
+                        if payment_url:
+                            return redirect(payment_url)
+                        return redirect('/petmed/aguardando-pagamento?sub=' + sub['id'])
+                    else:
+                        erro = sub.get('errors', [{}])[0].get('description', 'Erro ao criar assinatura.')
+            except Exception as ex:
+                erro = 'Erro ao processar pagamento. Tente novamente.'
+    p = PLANOS[plano]
+    return render_template('petmed/checkout.html', u=u, plano=plano, p=p, erro=erro)
+
+
+@petmed_bp.route('/aguardando-pagamento')
+@petmed_login_required
+def aguardando_pagamento():
+    """Página de aguardo após criar assinatura."""
+    u = _get_user()
+    sub_id = request.args.get('sub', '')
+    return render_template('petmed/aguardando.html', u=u, sub_id=sub_id)
+
+
+@petmed_bp.route('/webhook/asaas', methods=['POST'])
+def webhook_asaas():
+    """Recebe notificações de pagamento do Asaas."""
+    dados = request.get_json(silent=True) or {}
+    evento = dados.get('event', '')
+    pagamento = dados.get('payment', {})
+
+    # Eventos de pagamento confirmado
+    if evento in ('PAYMENT_RECEIVED', 'PAYMENT_CONFIRMED', 'SUBSCRIPTION_ACTIVATED'):
+        ext_ref = pagamento.get('externalReference', '')       # vetzap_custid_plano
+        subscription_id = pagamento.get('subscription', '')
+
+        # Tenta identificar pelo externalReference
+        plano_novo = None
+        if ext_ref.startswith('vetzap_'):
+            partes = ext_ref.split('_')
+            if len(partes) >= 3:
+                plano_novo = partes[-1]
+
+        if subscription_id or ext_ref:
+            conn = get_petmed_db()
+            # Busca assinatura pelo subscription_id ou externalRef
+            ass = conn.execute(
+                'SELECT * FROM petmed_assinaturas WHERE asaas_subscription_id=?',
+                (subscription_id,)
+            ).fetchone()
+            if ass and plano_novo in PLANOS:
+                conn.execute(
+                    '''UPDATE petmed_users
+                       SET plano=?, plano_ativo=1
+                       WHERE id=?''',
+                    (plano_novo, ass['user_id'])
+                )
+                conn.execute(
+                    '''UPDATE petmed_assinaturas
+                       SET status="ativo", plano=?
+                       WHERE user_id=?''',
+                    (plano_novo, ass['user_id'])
+                )
+                conn.commit()
+            conn.close()
+
+    elif evento in ('SUBSCRIPTION_CANCELLED', 'PAYMENT_OVERDUE'):
+        subscription_id = pagamento.get('subscription', '')
+        if subscription_id:
+            conn = get_petmed_db()
+            ass = conn.execute(
+                'SELECT * FROM petmed_assinaturas WHERE asaas_subscription_id=?',
+                (subscription_id,)
+            ).fetchone()
+            if ass:
+                conn.execute(
+                    'UPDATE petmed_users SET plano_ativo=0 WHERE id=?',
+                    (ass['user_id'],)
+                )
+                conn.execute(
+                    "UPDATE petmed_assinaturas SET status='cancelado' WHERE user_id=?",
+                    (ass['user_id'],)
+                )
+                conn.commit()
+            conn.close()
+
+    return jsonify({'received': True}), 200
 
 
 @petmed_bp.route('/entrar', methods=['GET', 'POST'])

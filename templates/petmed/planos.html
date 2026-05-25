@@ -51,14 +51,19 @@
     </ul>
 
     {% set plano_atual = session.pm_plano %}
-    {% if plano_atual == key %}
+    {% if plano_atual == key and session.pm_user_id %}
       <div style="background:var(--bg);border:1px solid var(--border2);border-radius:10px;padding:12px;text-align:center;font-size:13px;font-weight:700;color:var(--text3)">
         ✅ Seu plano atual
       </div>
+    {% elif session.pm_user_id %}
+      <a href="/petmed/assinar/{{ key }}"
+         style="display:block;width:100%;padding:12px;border-radius:10px;font-size:14px;font-weight:700;text-align:center;text-decoration:none;color:#fff;background:{% if key=='start' %}var(--teal){% elif key=='familia' %}var(--orange){% else %}var(--purple){% endif %}">
+        Assinar {{ p.nome }} →
+      </a>
     {% else %}
       <a href="/petmed/cadastrar?plano={{ key }}"
          style="display:block;width:100%;padding:12px;border-radius:10px;font-size:14px;font-weight:700;text-align:center;text-decoration:none;color:#fff;background:{% if key=='start' %}var(--teal){% elif key=='familia' %}var(--orange){% else %}var(--purple){% endif %}">
-        Assinar {{ p.nome }} →
+        Criar conta e assinar →
       </a>
     {% endif %}
   </div>

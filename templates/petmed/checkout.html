@@ -1,0 +1,102 @@
+{% extends 'petmed/base.html' %}
+{% set active = 'planos' %}
+{% block title %}Assinar {{ p.nome }} — VetZap{% endblock %}
+{% block content %}
+<div style="max-width:500px;margin:32px auto">
+
+  <div style="text-align:center;margin-bottom:24px">
+    <div style="font-size:40px">{{ p.emoji }}</div>
+    <h1 style="font-size:22px;font-weight:800;margin-top:8px">{{ p.nome }}</h1>
+    <div style="font-size:32px;font-weight:900;color:var(--teal2);margin-top:4px">
+      {{ p.preco_fmt }}<span style="font-size:14px;font-weight:500;color:var(--text3)">/mês</span>
+    </div>
+  </div>
+
+  {% if erro %}
+  <div class="alert alert-error">{{ erro }}</div>
+  {% endif %}
+
+  <div class="card" style="margin-bottom:20px">
+    <div class="card-title">📋 Resumo da assinatura</div>
+    <div style="font-size:13px;color:var(--text2);line-height:2">
+      {% for f in p.features %}
+      <div>✅ {{ f }}</div>
+      {% endfor %}
+    </div>
+    <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border);font-size:13px;color:var(--text3)">
+      Cobrança recorrente de <strong>{{ p.preco_fmt }}</strong> por mês. Cancele quando quiser.
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">💳 Escolha como pagar</div>
+    <form method="POST" action="/petmed/assinar/{{ plano }}">
+
+      <div style="display:grid;gap:12px;margin-bottom:20px">
+
+        <label style="display:flex;align-items:center;gap:14px;padding:14px 16px;border:2px solid var(--border);border-radius:12px;cursor:pointer;transition:.15s"
+               onmouseover="this.style.borderColor='var(--teal)'"
+               onmouseout="if(!document.getElementById('pix').checked)this.style.borderColor='var(--border)'">
+          <input type="radio" name="billing_type" id="pix" value="PIX" checked
+                 onchange="highlight(this)"
+                 style="width:18px;height:18px;accent-color:var(--teal)">
+          <div>
+            <div style="font-weight:700;font-size:14px">⚡ PIX</div>
+            <div style="font-size:12px;color:var(--text3)">Aprovação imediata · Sem taxa extra</div>
+          </div>
+        </label>
+
+        <label style="display:flex;align-items:center;gap:14px;padding:14px 16px;border:2px solid var(--border);border-radius:12px;cursor:pointer;transition:.15s"
+               onmouseover="this.style.borderColor='var(--teal)'"
+               onmouseout="if(!document.getElementById('boleto').checked)this.style.borderColor='var(--border)'">
+          <input type="radio" name="billing_type" id="boleto" value="BOLETO"
+                 onchange="highlight(this)"
+                 style="width:18px;height:18px;accent-color:var(--teal)">
+          <div>
+            <div style="font-weight:700;font-size:14px">🏦 Boleto bancário</div>
+            <div style="font-size:12px;color:var(--text3)">Vence em 3 dias úteis</div>
+          </div>
+        </label>
+
+        <label style="display:flex;align-items:center;gap:14px;padding:14px 16px;border:2px solid var(--border);border-radius:12px;cursor:pointer;transition:.15s"
+               onmouseover="this.style.borderColor='var(--teal)'"
+               onmouseout="if(!document.getElementById('cartao').checked)this.style.borderColor='var(--border)'">
+          <input type="radio" name="billing_type" id="cartao" value="CREDIT_CARD"
+                 onchange="highlight(this)"
+                 style="width:18px;height:18px;accent-color:var(--teal)">
+          <div>
+            <div style="font-weight:700;font-size:14px">💳 Cartão de crédito</div>
+            <div style="font-size:12px;color:var(--text3)">Parcelado ou à vista</div>
+          </div>
+        </label>
+      </div>
+
+      <button type="submit" class="btn btn-primary"
+              style="width:100%;justify-content:center;padding:14px;font-size:15px">
+        Continuar para pagamento →
+      </button>
+
+      <p style="text-align:center;font-size:11px;color:var(--text3);margin-top:12px">
+        🔒 Pagamento seguro via Asaas · Regulado pelo Banco Central
+      </p>
+    </form>
+  </div>
+
+  <p style="text-align:center;margin-top:16px">
+    <a href="/petmed/planos" style="font-size:13px;color:var(--text3)">← Voltar aos planos</a>
+  </p>
+
+</div>
+
+<script>
+function highlight(radio) {
+  document.querySelectorAll('label').forEach(l => l.style.borderColor = 'var(--border)');
+  radio.closest('label').style.borderColor = 'var(--teal)';
+}
+// Destaca PIX por padrão
+document.addEventListener('DOMContentLoaded', () => {
+  const pix = document.getElementById('pix');
+  if (pix) pix.closest('label').style.borderColor = 'var(--teal)';
+});
+</script>
+{% endblock %}
