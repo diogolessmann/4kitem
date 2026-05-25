@@ -1,0 +1,67 @@
+{% extends 'petmed/base.html' %}
+{% block title %}Esqueci minha senha — VetZap{% endblock %}
+{% block content %}
+<div style="max-width:420px;margin:40px auto">
+
+  <div style="text-align:center;margin-bottom:28px">
+    <div style="font-size:40px">🔑</div>
+    <h1 style="font-size:22px;font-weight:800;margin-top:8px">Recuperar senha</h1>
+    <p style="font-size:13px;color:var(--text3);margin-top:4px">
+      Informe seu e-mail e vamos gerar um código de recuperação.
+    </p>
+  </div>
+
+  {% if erro %}
+  <div class="alert alert-error">{{ erro }}</div>
+  {% endif %}
+
+  {% if codigo_gerado %}
+  <!-- Código gerado — exibir para o usuário -->
+  <div style="background:#f0fdf4;border:2px solid #22c55e;border-radius:14px;padding:24px;text-align:center;margin-bottom:20px">
+    <div style="font-size:13px;color:#166534;font-weight:600;margin-bottom:10px">
+      ✅ Código gerado com sucesso!
+    </div>
+    <div style="font-size:42px;font-weight:900;letter-spacing:8px;color:#15803d;margin:10px 0">
+      {{ codigo_gerado }}
+    </div>
+    <div style="font-size:12px;color:#166534;margin-top:8px">
+      ⏱️ Válido por 30 minutos. Anote este código!
+    </div>
+  </div>
+
+  <a href="/petmed/redefinir-senha"
+     style="display:block;text-align:center;background:var(--teal);color:#fff;padding:14px;border-radius:10px;font-weight:700;font-size:15px;text-decoration:none">
+    Usar código para redefinir senha →
+  </a>
+
+  {% elif msg %}
+  <div class="alert" style="background:#f0f9ff;border:1px solid var(--border2);color:var(--text2)">
+    {{ msg }}
+  </div>
+  <a href="/petmed/redefinir-senha" style="display:block;text-align:center;margin-top:14px;color:var(--teal2);font-weight:700">
+    Já tenho um código →
+  </a>
+
+  {% else %}
+  <div class="card">
+    <form method="POST" action="/petmed/esqueci-senha">
+      <div class="form-group">
+        <label class="form-label">E-mail cadastrado</label>
+        <input type="email" name="email" class="form-control"
+               placeholder="seu@email.com" required autofocus>
+      </div>
+      <button type="submit" class="btn btn-primary"
+              style="width:100%;justify-content:center;padding:12px">
+        Gerar código de recuperação →
+      </button>
+    </form>
+  </div>
+  {% endif %}
+
+  <p style="text-align:center;font-size:13px;margin-top:20px;color:var(--text3)">
+    Lembrou a senha?
+    <a href="/petmed/entrar" style="color:var(--teal2);font-weight:700">Entrar</a>
+  </p>
+
+</div>
+{% endblock %}

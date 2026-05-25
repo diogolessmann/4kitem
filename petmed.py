@@ -4,6 +4,7 @@ Triagem veterinária inteligente 24/7
 """
 import json
 import os
+import random
 import re
 from datetime import datetime
 from functools import wraps
@@ -729,6 +730,85 @@ def sair():
     for k in ('pm_user_id', 'pm_user_nome', 'pm_plano'):
         session.pop(k, None)
     return redirect('/petmed')
+
+
+@petmed_bp.route('/esqueci-senha', methods=['GET', 'POST'])
+def esqueci_senha():
+    """Gera código de 6 dígitos para redefinição de senha."""
+    if session.get('pm_user_id'):
+        return redirect('/petmed/dashboard')
+    codigo_gerado = None
+    erro = ''
+    msg = ''
+    if request.method == 'POST':
+        email = request.form.get('email', '').strip().lower()
+        if not email:
+            erro = 'Informe seu e-mail.'
+        else:
+            conn = get_petmed_db()
+            u = conn.execute(
+                'SELECT id FROM petmed_users WHERE email=?', (email,)
+            ).fetchone()
+            if u:
+                codigo = ''.join(random.choices('0123456789', k=6))
+                conn.execute(
+                    '''UPDATE petmed_users
+                       SET reset_token=?,
+                           reset_expires=datetime("now","+30 minutes")
+                       WHERE id=?''',
+                    (codigo, u['id'])
+                )
+                conn.commit()
+                codigo_gerado = codigo
+            conn.close()
+            # Mesmo que o e-mail não exista, mostramos a mesma tela
+            # (evita enumerar usuários); se existe, mostramos o código
+            if not codigo_gerado:
+                msg = 'Se este e-mail estiver cadastrado, um código foi gerado.'
+    return render_template('petmed/esqueci-senha.html',
+                           erro=erro, msg=msg, codigo_gerado=codigo_gerado)
+
+
+@petmed_bp.route('/redefinir-senha', methods=['GET', 'POST'])
+def redefinir_senha():
+    """Valida código e define nova senha."""
+    if session.get('pm_user_id'):
+        return redirect('/petmed/dashboard')
+    erro = ''
+    msg = ''
+    if request.method == 'POST':
+        email      = request.form.get('email', '').strip().lower()
+        codigo     = request.form.get('codigo', '').strip()
+        nova_senha = request.form.get('nova_senha', '')
+        confirmar  = request.form.get('confirmar', '')
+        if not email or not codigo:
+            erro = 'Preencha e-mail e código.'
+        elif len(nova_senha) < 6:
+            erro = 'A nova senha deve ter pelo menos 6 caracteres.'
+        elif nova_senha != confirmar:
+            erro = 'As senhas não coincidem.'
+        else:
+            conn = get_petmed_db()
+            u = conn.execute(
+                '''SELECT id FROM petmed_users
+                   WHERE email=? AND reset_token=?
+                   AND reset_expires > datetime("now")''',
+                (email, codigo)
+            ).fetchone()
+            if u:
+                conn.execute(
+                    '''UPDATE petmed_users
+                       SET password_hash=?, reset_token=NULL, reset_expires=NULL
+                       WHERE id=?''',
+                    (generate_password_hash(nova_senha), u['id'])
+                )
+                conn.commit()
+                conn.close()
+                msg = 'Senha redefinida com sucesso! Você já pode entrar.'
+            else:
+                conn.close()
+                erro = 'Código inválido ou expirado. Solicite um novo código.'
+    return render_template('petmed/redefinir-senha.html', erro=erro, msg=msg)
 
 
 # ── Área logada ────────────────────────────────────────────────────────────────

@@ -176,6 +176,8 @@ def init_petmed_db():
     # ── Migrações seguras (ADD COLUMN se não existir) ──────────────────────────
     for migration in [
         'ALTER TABLE petmed_users ADD COLUMN cpf TEXT',
+        'ALTER TABLE petmed_users ADD COLUMN reset_token TEXT',
+        'ALTER TABLE petmed_users ADD COLUMN reset_expires TEXT',
     ]:
         try:
             conn.execute(migration)

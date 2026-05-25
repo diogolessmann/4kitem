@@ -1,0 +1,71 @@
+{% extends 'petmed/base.html' %}
+{% block title %}Redefinir senha — VetZap{% endblock %}
+{% block content %}
+<div style="max-width:420px;margin:40px auto">
+
+  <div style="text-align:center;margin-bottom:28px">
+    <div style="font-size:40px">🔐</div>
+    <h1 style="font-size:22px;font-weight:800;margin-top:8px">Nova senha</h1>
+    <p style="font-size:13px;color:var(--text3);margin-top:4px">
+      Informe o código recebido e escolha uma nova senha.
+    </p>
+  </div>
+
+  {% if msg %}
+  <!-- Sucesso -->
+  <div style="background:#f0fdf4;border:2px solid #22c55e;border-radius:14px;padding:24px;text-align:center;margin-bottom:20px">
+    <div style="font-size:32px;margin-bottom:10px">✅</div>
+    <div style="font-weight:700;color:#166534;margin-bottom:6px">Senha redefinida!</div>
+    <div style="font-size:13px;color:#166534">{{ msg }}</div>
+  </div>
+  <a href="/petmed/entrar"
+     style="display:block;text-align:center;background:var(--teal);color:#fff;padding:14px;border-radius:10px;font-weight:700;font-size:15px;text-decoration:none">
+    Entrar agora →
+  </a>
+
+  {% else %}
+
+  {% if erro %}
+  <div class="alert alert-error">{{ erro }}</div>
+  {% endif %}
+
+  <div class="card">
+    <form method="POST" action="/petmed/redefinir-senha">
+      <div class="form-group">
+        <label class="form-label">E-mail cadastrado</label>
+        <input type="email" name="email" class="form-control"
+               placeholder="seu@email.com" required autofocus>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Código de recuperação (6 dígitos)</label>
+        <input type="text" name="codigo" class="form-control"
+               placeholder="000000" maxlength="6"
+               pattern="\d{6}" required
+               style="letter-spacing:6px;font-size:20px;font-weight:700;text-align:center">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Nova senha</label>
+        <input type="password" name="nova_senha" class="form-control"
+               placeholder="mínimo 6 caracteres" required minlength="6">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Confirmar nova senha</label>
+        <input type="password" name="confirmar" class="form-control"
+               placeholder="repita a senha" required minlength="6">
+      </div>
+      <button type="submit" class="btn btn-primary"
+              style="width:100%;justify-content:center;padding:12px">
+        Redefinir senha →
+      </button>
+    </form>
+  </div>
+
+  <p style="text-align:center;font-size:13px;margin-top:16px;color:var(--text3)">
+    Não tem o código?
+    <a href="/petmed/esqueci-senha" style="color:var(--teal2);font-weight:700">Solicitar código</a>
+  </p>
+
+  {% endif %}
+
+</div>
+{% endblock %}
