@@ -2462,9 +2462,11 @@ def agenda_painel():
     appointments = [dict(r) for r in conn.execute('''
         SELECT a.*, COALESCE(s.name, 'Serviço') as service_name,
                COALESCE(s.duration_minutes, 60) as duration_minutes,
-               COALESCE(s.price, 0) as price
+               COALESCE(s.price, 0) as price,
+               COALESCE(p.name, a.professional_name, '') as professional_name
         FROM agenda_appointments a
         LEFT JOIN agenda_services s ON a.service_id = s.id
+        LEFT JOIN agenda_professionals p ON a.professional_id = p.id
         WHERE a.business_id=? AND a.appointment_date >= ?
         ORDER BY a.appointment_date, a.appointment_time
     ''', (biz_id, today)).fetchall()]

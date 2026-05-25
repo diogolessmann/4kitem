@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Equipe — {{ biz.name }} · Agenda SC</title>
+<style>
+  :root{--bg:#0f0f13;--surface:#1a1a24;--surface2:#22222f;--green:#27ae60;--text:#e8e8f0;--text2:#9090a8;--border:rgba(255,255,255,0.08);--radius:14px}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh}
+  a{color:inherit;text-decoration:none}
+
+  nav{background:var(--surface);border-bottom:1px solid var(--border);padding:0 16px;height:54px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:100}
+  .nav-logo{font-size:16px;font-weight:900;background:linear-gradient(135deg,#27ae60,#2ecc71);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;flex:1}
+  .nav-btn{font-size:12px;padding:5px 10px;border-radius:8px;cursor:pointer;border:none;font-family:inherit;transition:.2s}
+  .nav-btn-green{background:rgba(39,174,96,.12);color:var(--green);border:1px solid rgba(39,174,96,.3)}
+  .nav-btn-ghost{background:none;color:var(--text2);border:1px solid var(--border)}
+  .nav-btn-ghost:hover{border-color:#e94560;color:#e94560}
+
+  .container{max-width:860px;margin:0 auto;padding:24px 16px}
+  .page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px}
+  .page-title{font-size:20px;font-weight:800}
+  .page-sub{font-size:12px;color:var(--text2);margin-top:2px}
+
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:14px}
+
+  .prof-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px}
+  .prof-card{background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:18px;display:flex;flex-direction:column;align-items:center;text-align:center;position:relative;transition:.2s}
+  .prof-card:hover{border-color:rgba(39,174,96,.3)}
+  .prof-card.inativo{opacity:.55}
+  .prof-avatar{width:72px;height:72px;border-radius:50%;object-fit:cover;margin-bottom:12px;border:3px solid var(--color, #27ae60)}
+  .prof-avatar-placeholder{width:72px;height:72px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:900;color:#fff;margin-bottom:12px;border:3px solid var(--color, #27ae60)}
+  .prof-name{font-weight:800;font-size:15px;margin-bottom:2px}
+  .prof-role{font-size:12px;color:var(--text2);margin-bottom:8px}
+  .prof-bio{font-size:11px;color:var(--text2);line-height:1.5;margin-bottom:12px}
+  .prof-commission{font-size:11px;background:rgba(39,174,96,.1);border:1px solid rgba(39,174,96,.25);color:var(--green);padding:3px 10px;border-radius:20px;display:inline-block;margin-bottom:12px}
+  .prof-badge-inativo{position:absolute;top:10px;right:10px;font-size:10px;background:rgba(233,69,96,.15);color:#e94560;border:1px solid rgba(233,69,96,.3);padding:2px 7px;border-radius:10px;font-weight:700}
+  .prof-actions{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
+
+  .btn{padding:6px 13px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;border:none;transition:.2s;font-family:inherit}
+  .btn-sm{padding:4px 9px;font-size:11px}
+  .btn-green{background:var(--green);color:#fff} .btn-green:hover{opacity:.85}
+  .btn-red{background:rgba(233,69,96,.15);color:#e94560;border:1px solid rgba(233,69,96,.3)} .btn-red:hover{background:rgba(233,69,96,.25)}
+  .btn-ghost{background:none;border:1px solid var(--border);color:var(--text2)} .btn-ghost:hover{border-color:var(--green);color:var(--green)}
+  .btn-primary{background:linear-gradient(135deg,#27ae60,#2ecc71);color:#fff;padding:9px 18px;font-size:13px;font-weight:700;border-radius:10px;border:none;cursor:pointer;font-family:inherit;transition:.2s}
+  .btn-primary:hover{opacity:.9}
+
+  .empty{text-align:center;padding:48px 24px;color:var(--text2)}
+  .empty-icon{font-size:48px;margin-bottom:12px}
+  .empty-title{font-size:15px;font-weight:700;margin-bottom:6px;color:var(--text)}
+  .empty-sub{font-size:13px;line-height:1.6}
+
+  .info-box{background:rgba(39,174,96,.05);border:1px solid rgba(39,174,96,.15);border-radius:10px;padding:14px 16px;font-size:12px;color:var(--text2);line-height:1.6;margin-bottom:20px}
+  .info-box strong{color:var(--green)}
+
+  @media(max-width:600px){
+    .prof-grid{grid-template-columns:1fr 1fr}
+    .container{padding:16px 12px}
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <span class="nav-logo">📅 Agenda SC</span>
+  <span style="font-size:12px;color:var(--text2);flex:1">{{ biz.name }}</span>
+  <a href="/agenda/painel"><button class="nav-btn nav-btn-ghost">← Painel</button></a>
+  <a href="/agenda/sair"><button class="nav-btn nav-btn-ghost">Sair</button></a>
+</nav>
+
+<div class="container">
+  <div class="page-header">
+    <div>
+      <div class="page-title">👥 Equipe</div>
+      <div class="page-sub">Gerencie os profissionais do seu negócio</div>
+    </div>
+    <a href="/agenda/equipe/novo">
+      <button class="btn-primary">+ Adicionar profissional</button>
+    </a>
+  </div>
+
+  <div class="info-box">
+    <strong>Como funciona?</strong> Cadastre seus profissionais aqui. Na hora do agendamento, o cliente poderá escolher com quem quer ser atendido, ver a foto e a especialidade de cada um. No financeiro, você acompanha a receita e comissão de cada profissional.
+  </div>
+
+  {% if profissionais %}
+  <div class="prof-grid">
+    {% for p in profissionais %}
+    <div class="prof-card {% if not p.active %}inativo{% endif %}" style="--color:{{ p.color or '#27ae60' }}">
+      {% if not p.active %}
+      <span class="prof-badge-inativo">⏸ Inativo</span>
+      {% endif %}
+
+      {% if p.photo_url %}
+      <img src="{{ p.photo_url }}" alt="{{ p.name }}" class="prof-avatar">
+      {% else %}
+      <div class="prof-avatar-placeholder" style="background:{{ p.color or '#27ae60' }}">
+        {{ p.name[0].upper() }}
+      </div>
+      {% endif %}
+
+      <div class="prof-name">{{ p.name }}</div>
+      {% if p.role %}<div class="prof-role">{{ p.role }}</div>{% endif %}
+      {% if p.bio %}<div class="prof-bio">{{ p.bio[:80] }}{% if p.bio|length > 80 %}...{% endif %}</div>{% endif %}
+
+      {% if p.commission_pct > 0 %}
+      <div class="prof-commission">💰 Comissão {{ p.commission_pct|int if p.commission_pct == p.commission_pct|int else p.commission_pct }}%</div>
+      {% endif %}
+
+      <div class="prof-actions">
+        <a href="/agenda/equipe/editar/{{ p.id }}">
+          <button class="btn btn-ghost btn-sm">✏️ Editar</button>
+        </a>
+        {% if p.active %}
+        <form method="POST" action="/agenda/equipe/excluir/{{ p.id }}" onsubmit="return confirm('Desativar este profissional?')">
+          <button type="submit" class="btn btn-red btn-sm">⏸ Desativar</button>
+        </form>
+        {% else %}
+        <form method="POST" action="/agenda/equipe/ativar/{{ p.id }}">
+          <button type="submit" class="btn btn-green btn-sm">▶ Ativar</button>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  {% else %}
+  <div class="card">
+    <div class="empty">
+      <div class="empty-icon">👤</div>
+      <div class="empty-title">Nenhum profissional cadastrado</div>
+      <div class="empty-sub">Adicione os profissionais da sua equipe para que os clientes<br>possam escolher com quem querem ser atendidos.</div>
+      <br>
+      <a href="/agenda/equipe/novo">
+        <button class="btn-primary" style="margin-top:8px">+ Adicionar primeiro profissional</button>
+      </a>
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+</body>
+</html>

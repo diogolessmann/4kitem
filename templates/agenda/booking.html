@@ -17,25 +17,40 @@
   .powered{display:inline-block;margin-top:12px;font-size:11px;color:var(--text2);background:var(--surface);padding:3px 10px;border-radius:10px}
   .powered a{color:var(--green)}
 
-  .steps-bar{display:flex;gap:0;margin:20px auto;max-width:480px;padding:0 16px}
+  .steps-bar{display:flex;gap:0;margin:20px auto;max-width:520px;padding:0 16px}
   .step-dot{flex:1;text-align:center;position:relative}
   .step-dot:not(:last-child):after{content:'';position:absolute;top:14px;left:50%;width:100%;height:2px;background:var(--border);z-index:0}
   .step-dot.done:not(:last-child):after{background:var(--green)}
   .step-circle{width:28px;height:28px;border-radius:50%;background:var(--surface2);border:2px solid var(--border);margin:0 auto 4px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;position:relative;z-index:1;transition:.3s}
   .step-dot.active .step-circle{background:var(--green);border-color:var(--green);color:#fff}
   .step-dot.done .step-circle{background:var(--green);border-color:var(--green);color:#fff}
-  .step-label{font-size:11px;color:var(--text2)}
+  .step-label{font-size:10px;color:var(--text2)}
   .step-dot.active .step-label{color:var(--green);font-weight:600}
 
-  .content{max-width:480px;margin:0 auto;padding:20px 16px}
+  .content{max-width:520px;margin:0 auto;padding:20px 16px}
   .section-title{font-size:15px;font-weight:700;margin-bottom:14px}
 
+  /* Serviço */
   .service-btn{width:100%;background:var(--surface);border:2px solid var(--border);border-radius:12px;padding:14px 16px;color:var(--text);cursor:pointer;text-align:left;margin-bottom:10px;transition:.2s;font-family:inherit}
   .service-btn:hover{border-color:var(--green);background:rgba(39,174,96,.05)}
   .service-btn.selected{border-color:var(--green);background:rgba(39,174,96,.1)}
   .service-btn .svc-name{font-weight:700;font-size:15px;margin-bottom:4px}
   .service-btn .svc-meta{font-size:12px;color:var(--text2)}
 
+  /* Profissional */
+  .prof-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-bottom:16px}
+  .prof-card{background:var(--surface);border:2px solid var(--border);border-radius:12px;padding:16px 12px;cursor:pointer;text-align:center;transition:.2s;font-family:inherit;color:var(--text)}
+  .prof-card:hover{border-color:var(--green);background:rgba(39,174,96,.05)}
+  .prof-card.selected{border-color:var(--green);background:rgba(39,174,96,.1)}
+  .prof-photo{width:56px;height:56px;border-radius:50%;margin:0 auto 8px;object-fit:cover;border:3px solid transparent;display:block}
+  .prof-initial{width:56px;height:56px;border-radius:50%;margin:0 auto 8px;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:900;color:#fff;border:3px solid transparent}
+  .prof-card.selected .prof-photo,.prof-card.selected .prof-initial{border-color:var(--green)}
+  .prof-card-name{font-weight:700;font-size:13px;margin-bottom:2px}
+  .prof-card-role{font-size:11px;color:var(--text2)}
+  .prof-skip{width:100%;background:none;border:1px dashed rgba(255,255,255,.15);border-radius:10px;padding:11px;color:var(--text2);cursor:pointer;font-size:13px;margin-bottom:4px;transition:.2s;font-family:inherit}
+  .prof-skip:hover{border-color:var(--green);color:var(--green)}
+
+  /* Calendário */
   .calendar{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:16px}
   .cal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
   .cal-title{font-size:15px;font-weight:700}
@@ -50,16 +65,19 @@
   .cal-day.selected{background:var(--green);color:#fff;font-weight:700}
   .cal-day.available:hover:not(.past){background:rgba(39,174,96,.15);border-color:var(--green)}
 
+  /* Horários */
   .slots-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px}
   .slot-btn{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 4px;color:var(--text);cursor:pointer;font-size:13px;font-weight:600;text-align:center;transition:.2s;font-family:inherit}
   .slot-btn:hover{border-color:var(--green);background:rgba(39,174,96,.1)}
   .slot-btn.selected{background:var(--green);border-color:var(--green);color:#fff}
 
+  /* Formulário */
   .form-group{margin-bottom:14px}
   .form-group label{display:block;font-size:13px;color:var(--text2);margin-bottom:5px;font-weight:500}
   .form-group input,.form-group textarea{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);padding:11px 14px;font-size:14px;outline:none;transition:.2s;font-family:inherit}
   .form-group input:focus,.form-group textarea:focus{border-color:var(--green);box-shadow:0 0 0 2px rgba(39,174,96,.12)}
 
+  /* Botões */
   .btn-next{width:100%;padding:14px;background:linear-gradient(135deg,#27ae60,#2ecc71);border:none;border-radius:12px;color:#fff;font-size:15px;font-weight:700;cursor:pointer;transition:.2s;font-family:inherit;margin-top:8px}
   .btn-next:hover{opacity:.9;transform:translateY(-1px)}
   .btn-next:disabled{opacity:.5;cursor:not-allowed;transform:none}
@@ -73,12 +91,14 @@
   .spinner{width:28px;height:28px;border:3px solid rgba(39,174,96,.2);border-top-color:var(--green);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 10px}
   @keyframes spin{to{transform:rotate(360deg)}}
 
+  /* Resumo */
   .summary-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:16px}
   .summary-row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:14px}
   .summary-row:last-child{border:none}
   .summary-row .label{color:var(--text2)}
-  .summary-row .value{font-weight:600}
+  .summary-row .value{font-weight:600;text-align:right}
 
+  /* Sucesso */
   .success-view{text-align:center;padding:40px 20px}
   .success-icon{font-size:64px;margin-bottom:16px}
   .success-title{font-size:24px;font-weight:800;margin-bottom:8px;color:var(--green)}
@@ -103,15 +123,35 @@
     {% else %}🏢{% endif %}
   </div>
   <div class="biz-name">{{ biz.name }}</div>
-  <div class="biz-sub">📅 Agendamento Online · Norte de SC</div>
+  <div class="biz-sub">📅 Agendamento Online</div>
   <div class="powered">Powered by <a href="/agenda">Agenda SC</a> · <a href="/">4KITEM</a></div>
 </div>
+
+{% set tem_profissionais = professionals and professionals|length > 0 %}
 
 <div class="steps-bar" id="steps-bar">
   <div class="step-dot active" id="sdot-1">
     <div class="step-circle">1</div>
     <div class="step-label">Serviço</div>
   </div>
+  {% if tem_profissionais %}
+  <div class="step-dot" id="sdot-2">
+    <div class="step-circle">2</div>
+    <div class="step-label">Profissional</div>
+  </div>
+  <div class="step-dot" id="sdot-3">
+    <div class="step-circle">3</div>
+    <div class="step-label">Data</div>
+  </div>
+  <div class="step-dot" id="sdot-4">
+    <div class="step-circle">4</div>
+    <div class="step-label">Horário</div>
+  </div>
+  <div class="step-dot" id="sdot-5">
+    <div class="step-circle">5</div>
+    <div class="step-label">Confirmar</div>
+  </div>
+  {% else %}
   <div class="step-dot" id="sdot-2">
     <div class="step-circle">2</div>
     <div class="step-label">Data</div>
@@ -124,6 +164,7 @@
     <div class="step-circle">4</div>
     <div class="step-label">Confirmar</div>
   </div>
+  {% endif %}
 </div>
 
 <div class="content">
@@ -149,7 +190,86 @@
     {% endif %}
   </div>
 
-  <!-- STEP 2: DATA -->
+  {% if tem_profissionais %}
+  <!-- STEP 2: PROFISSIONAL (só aparece se negócio tem equipe) -->
+  <div class="step-view" id="step-2">
+    <div class="section-title">👥 Escolha o profissional</div>
+    <div class="prof-grid">
+      {% for p in professionals %}
+      <button class="prof-card" onclick="selectProfissional({{ p.id }}, '{{ p.name | e }}')"
+              style="--cor:{{ p.color or '#27ae60' }}">
+        {% if p.photo_url %}
+        <img src="{{ p.photo_url }}" alt="{{ p.name }}" class="prof-photo" style="border-color:{{ p.color or '#27ae60' }}">
+        {% else %}
+        <div class="prof-initial" style="background:{{ p.color or '#27ae60' }}">{{ p.name[0].upper() }}</div>
+        {% endif %}
+        <div class="prof-card-name">{{ p.name }}</div>
+        {% if p.role %}<div class="prof-card-role">{{ p.role }}</div>{% endif %}
+      </button>
+      {% endfor %}
+    </div>
+    <button class="prof-skip" onclick="selectProfissional(null, 'Qualquer profissional')">
+      🎲 Qualquer profissional disponível
+    </button>
+    <button class="btn-back" onclick="goStep(1)">← Voltar</button>
+  </div>
+
+  <!-- STEP 3: DATA (com profissionais) -->
+  <div class="step-view" id="step-3">
+    <div class="section-title">📅 Escolha a data</div>
+    <div class="calendar">
+      <div class="cal-header">
+        <button class="cal-nav" onclick="changeMonth(-1)">‹</button>
+        <span class="cal-title" id="cal-title">—</span>
+        <button class="cal-nav" onclick="changeMonth(1)">›</button>
+      </div>
+      <div class="cal-grid">
+        <div class="cal-day-label">Seg</div><div class="cal-day-label">Ter</div>
+        <div class="cal-day-label">Qua</div><div class="cal-day-label">Qui</div>
+        <div class="cal-day-label">Sex</div><div class="cal-day-label">Sáb</div>
+        <div class="cal-day-label">Dom</div>
+        <div id="cal-days"></div>
+      </div>
+    </div>
+    <button class="btn-back" onclick="goStep(2)">← Voltar</button>
+  </div>
+
+  <!-- STEP 4: HORÁRIO (com profissionais) -->
+  <div class="step-view" id="step-4">
+    <div class="section-title" id="slots-title">🕐 Horários disponíveis</div>
+    <div id="slots-container"><div class="loading"><div class="spinner"></div>Buscando horários...</div></div>
+    <button class="btn-back" onclick="goStep(3)">← Voltar</button>
+  </div>
+
+  <!-- STEP 5: CONFIRMAR (com profissionais) -->
+  <div class="step-view" id="step-5">
+    <div class="section-title">👤 Seus dados</div>
+    <div class="form-group">
+      <label>Nome completo *</label>
+      <input type="text" id="cust-name" placeholder="Seu nome">
+    </div>
+    <div class="form-group">
+      <label>WhatsApp *</label>
+      <input type="tel" id="cust-phone" placeholder="(47) 99999-9999">
+    </div>
+    <div class="form-group">
+      <label>Observação (opcional)</label>
+      <textarea id="cust-notes" rows="2" placeholder="Alguma informação extra?"></textarea>
+    </div>
+    <div class="summary-box">
+      <div class="summary-row"><span class="label">📋 Serviço</span><span class="value" id="sum-service">—</span></div>
+      <div class="summary-row"><span class="label">👤 Profissional</span><span class="value" id="sum-prof">—</span></div>
+      <div class="summary-row"><span class="label">📅 Data</span><span class="value" id="sum-date">—</span></div>
+      <div class="summary-row"><span class="label">🕐 Horário</span><span class="value" id="sum-time">—</span></div>
+      <div class="summary-row"><span class="label">🏢 Local</span><span class="value">{{ biz.name }}</span></div>
+    </div>
+    <button class="btn-next" id="confirm-btn" onclick="confirmBooking()">✅ Confirmar agendamento</button>
+    <button class="btn-back" onclick="goStep(4)">← Voltar</button>
+  </div>
+
+  {% else %}
+
+  <!-- STEP 2: DATA (sem profissionais) -->
   <div class="step-view" id="step-2">
     <div class="section-title">📅 Escolha a data</div>
     <div class="calendar">
@@ -159,12 +279,9 @@
         <button class="cal-nav" onclick="changeMonth(1)">›</button>
       </div>
       <div class="cal-grid">
-        <div class="cal-day-label">Seg</div>
-        <div class="cal-day-label">Ter</div>
-        <div class="cal-day-label">Qua</div>
-        <div class="cal-day-label">Qui</div>
-        <div class="cal-day-label">Sex</div>
-        <div class="cal-day-label">Sáb</div>
+        <div class="cal-day-label">Seg</div><div class="cal-day-label">Ter</div>
+        <div class="cal-day-label">Qua</div><div class="cal-day-label">Qui</div>
+        <div class="cal-day-label">Sex</div><div class="cal-day-label">Sáb</div>
         <div class="cal-day-label">Dom</div>
         <div id="cal-days"></div>
       </div>
@@ -172,16 +289,14 @@
     <button class="btn-back" onclick="goStep(1)">← Voltar</button>
   </div>
 
-  <!-- STEP 3: HORÁRIO -->
+  <!-- STEP 3: HORÁRIO (sem profissionais) -->
   <div class="step-view" id="step-3">
     <div class="section-title" id="slots-title">🕐 Horários disponíveis</div>
-    <div id="slots-container">
-      <div class="loading"><div class="spinner"></div>Buscando horários...</div>
-    </div>
+    <div id="slots-container"><div class="loading"><div class="spinner"></div>Buscando horários...</div></div>
     <button class="btn-back" onclick="goStep(2)">← Voltar</button>
   </div>
 
-  <!-- STEP 4: CONFIRMAR -->
+  <!-- STEP 4: CONFIRMAR (sem profissionais) -->
   <div class="step-view" id="step-4">
     <div class="section-title">👤 Seus dados</div>
     <div class="form-group">
@@ -194,7 +309,7 @@
     </div>
     <div class="form-group">
       <label>Observação (opcional)</label>
-      <textarea id="cust-notes" rows="2" placeholder="Alguma informação extra para o profissional?"></textarea>
+      <textarea id="cust-notes" rows="2" placeholder="Alguma informação extra?"></textarea>
     </div>
     <div class="summary-box">
       <div class="summary-row"><span class="label">📋 Serviço</span><span class="value" id="sum-service">—</span></div>
@@ -206,14 +321,14 @@
     <button class="btn-back" onclick="goStep(3)">← Voltar</button>
   </div>
 
-  <!-- SUCESSO -->
+  {% endif %}
+
+  <!-- SUCESSO (comum aos dois fluxos) -->
   <div class="step-view" id="step-success">
     <div class="success-view">
       <div class="success-icon">🎉</div>
       <div class="success-title">Agendado com sucesso!</div>
       <div class="success-sub" id="success-msg">Seu agendamento foi enviado.<br>Aguarde a confirmação.</div>
-
-      <!-- PIX (aparece se negócio tiver chave configurada) -->
       <div id="pix-box" style="display:none;background:#0f0f13;border:1px solid rgba(39,174,96,.3);border-radius:14px;padding:16px;margin:16px 0;text-align:center">
         <div style="font-size:13px;font-weight:700;margin-bottom:8px;color:#27ae60">💸 Pague via PIX para confirmar</div>
         <div style="font-size:12px;color:#9090a8;margin-bottom:8px">Chave PIX:</div>
@@ -221,7 +336,6 @@
         <div id="pix-nome-display" style="font-size:12px;color:#9090a8;margin-bottom:10px"></div>
         <button onclick="copiarPix()" style="background:rgba(39,174,96,.15);border:1px solid rgba(39,174,96,.3);color:#27ae60;padding:7px 16px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:700">📋 Copiar chave PIX</button>
       </div>
-
       <a id="wa-confirm-link" href="#" target="_blank" class="wa-confirm-btn">💬 Avisar pelo WhatsApp</a>
       <div style="margin-top:16px">
         <a href="/agendar/{{ biz.slug }}" style="font-size:12px;color:var(--text2)">← Fazer outro agendamento</a>
@@ -234,13 +348,26 @@
 <script>
 function copiarPix() {
   const chave = document.getElementById('pix-chave-display').textContent;
-  navigator.clipboard.writeText(chave).then(() => { showToast && showToast('📋 Chave copiada!'); alert('✅ Chave PIX copiada!'); });
+  navigator.clipboard.writeText(chave).then(() => alert('✅ Chave PIX copiada!'));
 }
-const SLUG = '{{ biz.slug }}';
-const BIZ_PHONE = '{{ biz.phone }}'.replace(/\D/g, '');
-const BIZ_NAME  = '{{ biz.name }}';
 
-let selectedService = null, selectedDate = null, selectedTime = null;
+const SLUG         = '{{ biz.slug }}';
+const BIZ_PHONE    = '{{ biz.phone }}'.replace(/\D/g, '');
+const BIZ_NAME     = '{{ biz.name }}';
+const TEM_PROFS    = {{ 'true' if tem_profissionais else 'false' }};
+
+// Step mapping: com ou sem profissionais
+// Com profs: 1=Serviço, 2=Profissional, 3=Data, 4=Horário, 5=Confirmar
+// Sem profs: 1=Serviço, 2=Data, 3=Horário, 4=Confirmar
+const STEP_DATA    = TEM_PROFS ? 3 : 2;
+const STEP_HORA    = TEM_PROFS ? 4 : 3;
+const STEP_CONFIRM = TEM_PROFS ? 5 : 4;
+const TOTAL_STEPS  = TEM_PROFS ? 5 : 4;
+
+let selectedService     = null;
+let selectedProfissional = { id: null, name: 'Qualquer profissional' };
+let selectedDate        = null;
+let selectedTime        = null;
 let currentYear, currentMonth;
 
 const MONTH_NAMES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
@@ -250,7 +377,7 @@ function goStep(n) {
   document.querySelectorAll('.step-view').forEach(v => v.classList.remove('active'));
   document.getElementById('step-' + n)?.classList.add('active');
   document.querySelectorAll('.step-dot').forEach((d, i) => {
-    d.classList.remove('active', 'done');
+    d.classList.remove('active','done');
     if (i + 1 < n) d.classList.add('done');
     if (i + 1 === n) d.classList.add('active');
   });
@@ -261,7 +388,21 @@ function selectService(id, name, duration, price) {
   selectedService = { id, name, duration, price };
   const now = new Date();
   currentYear = now.getFullYear(); currentMonth = now.getMonth();
-  renderCalendar(); goStep(2);
+  if (TEM_PROFS) {
+    goStep(2); // vai para profissional
+  } else {
+    renderCalendar(); goStep(2); // vai direto para data
+  }
+}
+
+function selectProfissional(id, name) {
+  selectedProfissional = { id, name: name || 'Qualquer profissional' };
+  document.querySelectorAll('.prof-card').forEach(c => c.classList.remove('selected'));
+  if (id !== null) {
+    event.currentTarget?.classList.add('selected');
+  }
+  renderCalendar();
+  goStep(3);
 }
 
 function renderCalendar() {
@@ -295,7 +436,7 @@ function changeMonth(dir) {
 }
 
 async function selectDate(dateStr) {
-  selectedDate = dateStr; renderCalendar(); goStep(3); await loadSlots();
+  selectedDate = dateStr; renderCalendar(); goStep(STEP_HORA); await loadSlots();
 }
 
 async function loadSlots() {
@@ -330,10 +471,16 @@ function selectSlot(time) {
   const [y, m, d] = selectedDate.split('-');
   const dt = new Date(selectedDate + 'T00:00:00');
   const dayName = WEEKDAY_BR[dt.getDay()];
+  const dateStr = `${dayName.charAt(0).toUpperCase()+dayName.slice(1)}, ${d}/${m}/${y}`;
+
+  // Preenche resumo
   document.getElementById('sum-service').textContent = selectedService.name;
-  document.getElementById('sum-date').textContent    = `${dayName.charAt(0).toUpperCase()+dayName.slice(1)}, ${d}/${m}/${y}`;
+  document.getElementById('sum-date').textContent    = dateStr;
   document.getElementById('sum-time').textContent    = time;
-  goStep(4);
+  const sumProf = document.getElementById('sum-prof');
+  if (sumProf) sumProf.textContent = selectedProfissional.name;
+
+  goStep(STEP_CONFIRM);
 }
 
 async function confirmBooking() {
@@ -347,24 +494,33 @@ async function confirmBooking() {
   btn.disabled = true; btn.textContent = '⏳ Confirmando...';
 
   try {
+    const payload = {
+      customer_name: name, customer_phone: phone, customer_notes: notes,
+      service_id: selectedService.id, date: selectedDate, time: selectedTime,
+      professional_id: selectedProfissional.id
+    };
     const r = await fetch(`/api/agenda/book/${SLUG}`, {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ customer_name: name, customer_phone: phone, customer_notes: notes,
-                             service_id: selectedService.id, date: selectedDate, time: selectedTime })
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(payload)
     });
     const d = await r.json();
     if (d.success) {
       const [y, m, dy] = selectedDate.split('-');
       const dt = new Date(selectedDate + 'T00:00:00');
       const dayName = WEEKDAY_BR[dt.getDay()];
+      let profMsg = '';
+      if (TEM_PROFS && selectedProfissional.id) {
+        profMsg = `👤 Com <strong>${selectedProfissional.name}</strong><br>`;
+      }
       document.getElementById('success-msg').innerHTML =
         `<strong>${name}</strong>, seu agendamento foi enviado!<br><br>` +
         `📋 <strong>${selectedService.name}</strong><br>` +
+        profMsg +
         `📅 ${dayName.charAt(0).toUpperCase()+dayName.slice(1)}, ${dy}/${m} às <strong>${selectedTime}</strong><br>` +
         `🏢 ${BIZ_NAME}<br><br>Aguarde a confirmação. ✅`;
       const waNum = BIZ_PHONE.startsWith('55') ? BIZ_PHONE : '55' + BIZ_PHONE;
-      const msg = `Olá! Acabei de agendar pelo site:\n👤 ${name}\n📋 ${selectedService.name}\n📅 ${dayName}, ${dy}/${m} às ${selectedTime}\n📱 ${phone}`;
+      const profText = (TEM_PROFS && selectedProfissional.id) ? `\n👤 ${selectedProfissional.name}` : '';
+      const msg = `Olá! Acabei de agendar pelo site:\n👤 ${name}\n📋 ${selectedService.name}${profText}\n📅 ${dayName}, ${dy}/${m} às ${selectedTime}\n📱 ${phone}`;
       document.getElementById('wa-confirm-link').href = `https://wa.me/${waNum}?text=${encodeURIComponent(msg)}`;
       if (d.pix_chave) {
         document.getElementById('pix-chave-display').textContent = d.pix_chave;

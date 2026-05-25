@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% if modo == 'novo' %}Novo Profissional{% else %}Editar Profissional{% endif %} — Agenda SC</title>
+<style>
+  :root{--bg:#0f0f13;--surface:#1a1a24;--surface2:#22222f;--green:#27ae60;--text:#e8e8f0;--text2:#9090a8;--border:rgba(255,255,255,0.08);--radius:14px}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh}
+  a{color:inherit;text-decoration:none}
+
+  nav{background:var(--surface);border-bottom:1px solid var(--border);padding:0 16px;height:54px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:100}
+  .nav-logo{font-size:16px;font-weight:900;background:linear-gradient(135deg,#27ae60,#2ecc71);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;flex:1}
+  .nav-btn{font-size:12px;padding:5px 10px;border-radius:8px;cursor:pointer;border:none;font-family:inherit;transition:.2s;background:none;color:var(--text2);border:1px solid var(--border)}
+  .nav-btn:hover{border-color:#e94560;color:#e94560}
+
+  .container{max-width:600px;margin:0 auto;padding:24px 16px}
+  .page-title{font-size:20px;font-weight:800;margin-bottom:4px}
+  .page-sub{font-size:12px;color:var(--text2);margin-bottom:24px}
+
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:24px;margin-bottom:16px}
+  .section-title{font-size:13px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+
+  .form-group{margin-bottom:16px}
+  .form-group label{display:block;font-size:12px;color:var(--text2);margin-bottom:5px;font-weight:600}
+  .form-group input,.form-group textarea,.form-group select{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:9px 12px;font-size:13px;outline:none;transition:.2s;font-family:inherit}
+  .form-group input:focus,.form-group textarea:focus,.form-group select:focus{border-color:var(--green);box-shadow:0 0 0 2px rgba(39,174,96,.1)}
+  .form-group textarea{resize:vertical;min-height:70px}
+  .form-group input[type="color"]{padding:4px 6px;height:38px;cursor:pointer}
+  .form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .form-hint{font-size:11px;color:var(--text2);margin-top:4px}
+
+  /* Avatar preview */
+  .avatar-preview{width:80px;height:80px;border-radius:50%;background:var(--surface2);border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:900;color:var(--text2);margin-bottom:12px;overflow:hidden;transition:.3s}
+  .avatar-preview img{width:100%;height:100%;object-fit:cover}
+
+  /* Color swatches */
+  .color-swatches{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+  .color-swatch{width:28px;height:28px;border-radius:50%;cursor:pointer;border:3px solid transparent;transition:.2s}
+  .color-swatch:hover,.color-swatch.active{border-color:var(--text);transform:scale(1.1)}
+
+  /* Buttons */
+  .btn-save{width:100%;padding:13px;background:linear-gradient(135deg,#27ae60,#2ecc71);border:none;border-radius:10px;color:#fff;font-weight:700;cursor:pointer;font-size:15px;margin-top:4px;font-family:inherit;transition:.2s}
+  .btn-save:hover{opacity:.9}
+  .btn-cancel{display:block;text-align:center;padding:10px;color:var(--text2);font-size:13px;margin-top:8px;border:1px solid var(--border);border-radius:10px;transition:.2s}
+  .btn-cancel:hover{border-color:var(--green);color:var(--green)}
+
+  .error{background:rgba(233,69,96,.1);border:1px solid rgba(233,69,96,.3);border-radius:10px;padding:12px 16px;color:#fca5a5;font-size:13px;margin-bottom:20px}
+
+  @media(max-width:540px){.form-row{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<nav>
+  <span class="nav-logo">📅 Agenda SC</span>
+  <a href="/agenda/equipe"><button class="nav-btn">← Equipe</button></a>
+</nav>
+
+<div class="container">
+  <div class="page-title">{% if modo == 'novo' %}➕ Novo profissional{% else %}✏️ Editar profissional{% endif %}</div>
+  <div class="page-sub">{% if modo == 'novo' %}Cadastre um profissional da sua equipe{% else %}Atualize os dados do profissional{% endif %}</div>
+
+  {% if erro %}
+  <div class="error">⚠️ {{ erro }}</div>
+  {% endif %}
+
+  <form method="POST">
+
+    <div class="card">
+      <div class="section-title">👤 Dados pessoais</div>
+
+      <!-- Avatar preview -->
+      <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px">
+        <div class="avatar-preview" id="avatar-preview">
+          {% if prof and prof.photo_url %}
+          <img src="{{ prof.photo_url }}" id="avatar-img">
+          {% else %}
+          <span id="avatar-initial">{% if prof %}{{ prof.name[0].upper() }}{% else %}?{% endif %}</span>
+          {% endif %}
+        </div>
+        <div style="flex:1">
+          <div style="font-size:12px;color:var(--text2);margin-bottom:6px">Foto de perfil</div>
+          <div class="form-group" style="margin-bottom:0">
+            <input type="url" name="photo_url" id="photo-url-input"
+                   value="{{ prof.photo_url if prof else '' }}"
+                   placeholder="https://exemplo.com/foto.jpg"
+                   oninput="updatePreview()">
+          </div>
+          <div class="form-hint">Cole a URL de uma foto (JPEG/PNG/WebP)</div>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Nome *</label>
+          <input type="text" name="name" value="{{ prof.name if prof else '' }}"
+                 placeholder="Ex: João Silva" required autofocus oninput="updateInitial()">
+        </div>
+        <div class="form-group">
+          <label>Função / Especialidade</label>
+          <input type="text" name="role" value="{{ prof.role if prof else '' }}"
+                 placeholder="Ex: Barbeiro, Cabeleireiro...">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Bio (descrição curta)</label>
+        <textarea name="bio" placeholder="Ex: 10 anos de experiência, especialista em corte masculino...">{{ prof.bio if prof else '' }}</textarea>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="section-title">🎨 Cor de identificação</div>
+      <div class="form-group">
+        <div class="color-swatches" id="swatches">
+          {% set cores = ['#27ae60','#3498db','#9b59b6','#e74c3c','#f39c12','#1abc9c','#e91e8c','#ff5722','#607d8b','#795548'] %}
+          {% for cor in cores %}
+          <div class="color-swatch {% if prof and prof.color == cor %}active{% elif not prof and cor == '#27ae60' %}active{% endif %}"
+               style="background:{{ cor }}" onclick="selectColor('{{ cor }}')"></div>
+          {% endfor %}
+        </div>
+        <input type="hidden" name="color" id="color-input" value="{{ prof.color if prof else '#27ae60' }}">
+        <div class="form-hint" style="margin-top:8px">Usada para identificar o profissional no calendário</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="section-title">💰 Financeiro</div>
+      <div class="form-group">
+        <label>Percentual de comissão (%)</label>
+        <input type="number" name="commission_pct" min="0" max="100" step="0.5"
+               value="{{ prof.commission_pct if prof else '0' }}"
+               placeholder="Ex: 40">
+        <div class="form-hint">Percentual que o profissional recebe sobre cada serviço concluído. Use 0 para não calcular comissão.</div>
+      </div>
+    </div>
+
+    <button type="submit" class="btn-save">
+      {% if modo == 'novo' %}✅ Cadastrar profissional{% else %}💾 Salvar alterações{% endif %}
+    </button>
+    <a href="/agenda/equipe" class="btn-cancel">Cancelar</a>
+  </form>
+</div>
+
+<script>
+const colorInput = document.getElementById('color-input');
+const avatarPreview = document.getElementById('avatar-preview');
+
+function selectColor(hex) {
+  colorInput.value = hex;
+  document.querySelectorAll('.color-swatch').forEach(s => s.classList.toggle('active', s.style.background === hex || s.style.backgroundColor === hex));
+  updatePreviewStyle();
+}
+
+function updatePreviewStyle() {
+  const img = document.getElementById('avatar-img');
+  if (!img) {
+    avatarPreview.style.background = colorInput.value;
+  }
+  avatarPreview.style.borderColor = colorInput.value;
+}
+
+function updatePreview() {
+  const url = document.getElementById('photo-url-input').value.trim();
+  let img = document.getElementById('avatar-img');
+  let ini = document.getElementById('avatar-initial');
+  if (url) {
+    if (!img) {
+      img = document.createElement('img');
+      img.id = 'avatar-img';
+      avatarPreview.innerHTML = '';
+      avatarPreview.appendChild(img);
+    }
+    img.src = url;
+    img.onerror = () => { img.remove(); showInitial(); };
+  } else {
+    if (img) img.remove();
+    showInitial();
+  }
+}
+
+function showInitial() {
+  let ini = document.getElementById('avatar-initial');
+  if (!ini) {
+    ini = document.createElement('span');
+    ini.id = 'avatar-initial';
+    avatarPreview.appendChild(ini);
+  }
+  const nameInput = document.querySelector('input[name="name"]');
+  ini.textContent = nameInput.value.trim()[0]?.toUpperCase() || '?';
+  avatarPreview.style.background = colorInput.value;
+}
+
+function updateInitial() {
+  const ini = document.getElementById('avatar-initial');
+  const img = document.getElementById('avatar-img');
+  if (!img && ini) {
+    const nameInput = document.querySelector('input[name="name"]');
+    ini.textContent = nameInput.value.trim()[0]?.toUpperCase() || '?';
+  }
+}
+
+// Init
+updatePreviewStyle();
+</script>
+</body>
+</html>

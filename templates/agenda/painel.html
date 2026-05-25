@@ -337,7 +337,7 @@
               {% elif a.status=='done' %}☑️ Concluído
               {% else %}❌ Cancelado{% endif %}
             </span>
-            <div class="appt-service">{{ a.service_name }}</div>
+            <div class="appt-service">{{ a.service_name }}{% if a.professional_name %} · <span style="color:var(--text2);font-weight:400">{{ a.professional_name }}</span>{% endif %}</div>
             <div class="appt-customer">👤 {{ a.customer_name }} · 📱 {{ a.customer_phone }}</div>
             {% if a.customer_notes %}<div style="font-size:11px;color:var(--text2);margin-bottom:4px">📝 {{ a.customer_notes }}</div>{% endif %}
             <div class="appt-actions">
@@ -387,7 +387,7 @@
                 {% if a.status=='pending' %}⏳ Pendente{% elif a.status=='confirmed' %}✅ Confirmado{% elif a.status=='done' %}☑️ Concluído{% else %}❌ Cancelado{% endif %}
               </span>
             </div>
-            <div class="appt-service">{{ a.service_name }}</div>
+            <div class="appt-service">{{ a.service_name }}{% if a.professional_name %} · <span style="color:var(--text2);font-weight:400">{{ a.professional_name }}</span>{% endif %}</div>
             <div class="appt-customer">👤 {{ a.customer_name }} · 📱 {{ a.customer_phone }}</div>
             <div class="appt-actions" style="margin-top:6px">
               {% set wa = a.customer_phone|replace('(','')|replace(')','')|replace('-','')|replace(' ','') %}
@@ -833,6 +833,21 @@ async function carregarFinanceiro() {
 }
 
 // ── EQUIPE / PROFISSIONAIS ────────────────────────────────────────
+function initEquipeMeses() {
+  const sel = document.getElementById('equipe-mes');
+  if (sel.options.length > 1) return; // já inicializado
+  const now = new Date();
+  for (let i = 0; i < 6; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const val = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    const label = d.toLocaleDateString('pt-BR', {month:'long', year:'numeric'});
+    const opt = document.createElement('option');
+    opt.value = val; opt.textContent = label;
+    if (i === 0) opt.selected = true;
+    sel.appendChild(opt);
+  }
+}
+
 async function carregarEquipe() {
   const mesEl = document.getElementById('equipe-mes');
   const mes = mesEl.value || new Date().toISOString().substring(0,7);
