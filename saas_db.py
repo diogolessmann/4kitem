@@ -543,6 +543,35 @@ def init_saas_db():
         "ALTER TABLE agenda_appointments ADD COLUMN customer_email TEXT DEFAULT ''",
         # AgendaSC — lembrete automático WhatsApp (24h antes)
         "ALTER TABLE agenda_appointments ADD COLUMN reminded_at TEXT DEFAULT ''",
+        # Amigo Despachante SaaS — Clientes e Ordens de Serviço
+        """CREATE TABLE IF NOT EXISTS desp_clientes (
+            id         INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id    INTEGER NOT NULL,
+            name       TEXT NOT NULL,
+            cpf_cnpj   TEXT DEFAULT '',
+            phone      TEXT DEFAULT '',
+            email      TEXT DEFAULT '',
+            plate      TEXT DEFAULT '',
+            notes      TEXT DEFAULT '',
+            created_at TEXT
+        )""",
+        "CREATE INDEX IF NOT EXISTS idx_desp_cli_user ON desp_clientes(user_id)",
+        """CREATE TABLE IF NOT EXISTS desp_os (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id     INTEGER NOT NULL,
+            client_id   INTEGER,
+            client_name TEXT DEFAULT '',
+            tipo        TEXT DEFAULT 'outros',
+            descricao   TEXT DEFAULT '',
+            placa       TEXT DEFAULT '',
+            status      TEXT DEFAULT 'pendente',
+            valor       REAL DEFAULT 0,
+            pago        INTEGER DEFAULT 0,
+            prazo       TEXT DEFAULT '',
+            created_at  TEXT
+        )""",
+        "CREATE INDEX IF NOT EXISTS idx_desp_os_user ON desp_os(user_id)",
+        "CREATE INDEX IF NOT EXISTS idx_desp_os_status ON desp_os(status)",
     ]
     for sql in _auth_migrations:
         try:

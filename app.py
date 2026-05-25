@@ -447,7 +447,7 @@ def kids_entrar():
             erro = 'Código não encontrado ou inativo. Verifique o código enviado pelo suporte.'
         else:
             session['kids_code'] = code
-            return redirect(f'/tv/{code}')
+            return redirect(f'/painel/{code}')
     return render_template('kids/entrar.html', erro=erro)
 
 
@@ -889,6 +889,176 @@ def amigo_desp_assinar(plano):
 @_desp_saas_login_required
 def amigo_desp_aguardando():
     return render_template('amigo_despachante/aguardando.html')
+
+
+# ══════════════════════════════════════════════════════════════════════════
+#  AMIGO DESPACHANTE — Módulos: Clientes, OS, Financeiro, Consulta
+# ══════════════════════════════════════════════════════════════════════════
+
+def _desp_uid():
+    return session.get('desp_saas_user_id')
+
+# ── Clientes ──────────────────────────────────────────────────────────────────
+
+@app.route('/amigo-despachante/api/clientes')
+@_desp_saas_login_required
+def desp_api_clientes():
+    conn = get_saas_db()
+    rows = conn.execute(
+        'SELECT * FROM desp_clientes WHERE user_id=? ORDER BY name', (_desp_uid(),)
+    ).fetchall()
+    conn.close()
+    return jsonify([dict(r) for r in rows])
+
+
+@app.route('/amigo-despachante/api/clientes/add', methods=['POST'])
+@_desp_saas_login_required
+def desp_api_clientes_add():
+    d    = request.get_json() or {}
+    name = (d.get('name') or '').strip()
+    if not name:
+        return jsonify({'ok': False, 'erro': 'Nome obrigatório'}), 400
+    conn = get_saas_db()
+    cur  = conn.execute(
+        'INSERT INTO desp_clientes (user_id,name,cpf_cnpj,phone,email,plate,notes,created_at) VALUES (?,?,?,?,?,?,?,?)',
+        (_desp_uid(), name, d.get('cpf_cnpj',''), d.get('phone',''),
+         d.get('email',''), (d.get('plate') or '').upper(),
+         d.get('notes',''), datetime.now().isoformat())
+    )
+    conn.commit()
+    new_id = cur.lastrowid
+    conn.close()
+    return jsonify({'ok': True, 'id': new_id})
+
+
+@app.route('/amigo-despachante/api/clientes/<int:cid>', methods=['PUT'])
+@_desp_saas_login_required
+def desp_api_clientes_edit(cid):
+    d = request.get_json() or {}
+    name = (d.get('name') or '').strip()
+    if not name:
+        return jsonify({'ok': False, 'erro': 'Nome obrigatório'}), 400
+    conn = get_saas_db()
+    conn.execute(
+        'UPDATE desp_clientes SET name=?,cpf_cnpj=?,phone=?,email=?,plate=?,notes=? WHERE id=? AND user_id=?',
+        (name, d.get('cpf_cnpj',''), d.get('phone',''), d.get('email',''),
+         (d.get('plate') or '').upper(), d.get('notes',''), cid, _desp_uid())
+    )
+    conn.commit(); conn.close()
+    return jsonify({'ok': True})
+
+
+@app.route('/amigo-despachante/api/clientes/<int:cid>', methods=['DELETE'])
+@_desp_saas_login_required
+def desp_api_clientes_delete(cid):
+    conn = get_saas_db()
+    conn.execute('DELETE FROM desp_clientes WHERE id=? AND user_id=?', (cid, _desp_uid()))
+    conn.commit(); conn.close()
+    return jsonify({'ok': True})
+
+
+# ── Ordens de Serviço ────────────────────────────────────────────────────────
+
+DESP_OS_TIPOS = [
+    'CRLV', '2ª via CRLV', '1ª Habilitação', 'Renovação CNH',
+    'Adição de categoria', 'Transferência de propriedade',
+    'Licenciamento', 'Emplacamento', 'Recurso de multa', 'Outros'
+]
+
+@app.route('/amigo-despachante/api/os')
+@_desp_saas_login_required
+def desp_api_os():
+    status = request.args.get('status', '')
+    conn   = get_saas_db()
+    if status:
+        rows = conn.execute(
+            'SELECT * FROM desp_os WHERE user_id=? AND status=? ORDER BY created_at DESC',
+            (_desp_uid(), status)
+        ).fetchall()
+    else:
+        rows = conn.execute(
+            'SELECT * FROM desp_os WHERE user_id=? ORDER BY created_at DESC',
+            (_desp_uid(),)
+        ).fetchall()
+    conn.close()
+    return jsonify([dict(r) for r in rows])
+
+
+@app.route('/amigo-despachante/api/os/add', methods=['POST'])
+@_desp_saas_login_required
+def desp_api_os_add():
+    d           = request.get_json() or {}
+    client_name = (d.get('client_name') or '').strip()
+    tipo        = (d.get('tipo') or 'Outros').strip()
+    valor       = float(d.get('valor') or 0)
+    conn        = get_saas_db()
+    cur         = conn.execute(
+        '''INSERT INTO desp_os
+           (user_id,client_id,client_name,tipo,descricao,placa,status,valor,pago,prazo,created_at)
+           VALUES (?,?,?,?,?,?,?,?,0,?,?)''',
+        (_desp_uid(), d.get('client_id'), client_name, tipo,
+         d.get('descricao',''), (d.get('placa') or '').upper(),
+         d.get('status','pendente'), valor, d.get('prazo',''),
+         datetime.now().isoformat())
+    )
+    conn.commit()
+    new_id = cur.lastrowid
+    conn.close()
+    return jsonify({'ok': True, 'id': new_id})
+
+
+@app.route('/amigo-despachante/api/os/<int:oid>/status', methods=['POST'])
+@_desp_saas_login_required
+def desp_api_os_status(oid):
+    d      = request.get_json() or {}
+    status = d.get('status', 'pendente')
+    if status not in ('pendente', 'em_andamento', 'concluido', 'cancelado'):
+        return jsonify({'ok': False, 'erro': 'Status inválido'}), 400
+    conn = get_saas_db()
+    conn.execute('UPDATE desp_os SET status=? WHERE id=? AND user_id=?',
+                 (status, oid, _desp_uid()))
+    conn.commit(); conn.close()
+    return jsonify({'ok': True})
+
+
+@app.route('/amigo-despachante/api/os/<int:oid>/pagar', methods=['POST'])
+@_desp_saas_login_required
+def desp_api_os_pagar(oid):
+    d    = request.get_json() or {}
+    pago = 1 if d.get('pago') else 0
+    conn = get_saas_db()
+    conn.execute('UPDATE desp_os SET pago=? WHERE id=? AND user_id=?', (pago, oid, _desp_uid()))
+    conn.commit(); conn.close()
+    return jsonify({'ok': True})
+
+
+@app.route('/amigo-despachante/api/os/<int:oid>', methods=['DELETE'])
+@_desp_saas_login_required
+def desp_api_os_delete(oid):
+    conn = get_saas_db()
+    conn.execute('DELETE FROM desp_os WHERE id=? AND user_id=?', (oid, _desp_uid()))
+    conn.commit(); conn.close()
+    return jsonify({'ok': True})
+
+
+@app.route('/amigo-despachante/api/stats')
+@_desp_saas_login_required
+def desp_api_stats():
+    uid  = _desp_uid()
+    conn = get_saas_db()
+    mes  = datetime.now().strftime('%Y-%m')
+    total_cli    = conn.execute('SELECT COUNT(*) FROM desp_clientes WHERE user_id=?', (uid,)).fetchone()[0]
+    total_os     = conn.execute('SELECT COUNT(*) FROM desp_os WHERE user_id=?', (uid,)).fetchone()[0]
+    os_abertas   = conn.execute("SELECT COUNT(*) FROM desp_os WHERE user_id=? AND status IN ('pendente','em_andamento')", (uid,)).fetchone()[0]
+    os_mes       = conn.execute("SELECT COUNT(*) FROM desp_os WHERE user_id=? AND created_at LIKE ?", (uid, f'{mes}%')).fetchone()[0]
+    receita_mes  = conn.execute("SELECT COALESCE(SUM(valor),0) FROM desp_os WHERE user_id=? AND pago=1 AND created_at LIKE ?", (uid, f'{mes}%')).fetchone()[0]
+    pendente_val = conn.execute("SELECT COALESCE(SUM(valor),0) FROM desp_os WHERE user_id=? AND pago=0 AND status != 'cancelado'", (uid,)).fetchone()[0]
+    conn.close()
+    return jsonify({
+        'clientes': total_cli, 'os_total': total_os,
+        'os_abertas': os_abertas, 'os_mes': os_mes,
+        'receita_mes': receita_mes, 'pendente_val': pendente_val,
+    })
 
 
 @app.route('/defesapro')

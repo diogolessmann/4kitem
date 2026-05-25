@@ -5,114 +5,639 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Amigo Despachante — Painel</title>
 <style>
-  *{box-sizing:border-box;margin:0;padding:0}
-  body{background:#07070f;color:#f0f0ff;font-family:'Segoe UI',sans-serif;min-height:100vh}
-  nav{background:#080e18;border-bottom:1px solid rgba(59,130,246,.12);padding:0 24px;height:56px;display:flex;align-items:center;justify-content:space-between}
-  .nav-logo{font-size:17px;font-weight:900;color:#60a5fa}
-  .nav-user{font-size:13px;color:#2a4a7f}
-  .btn-sm{padding:6px 14px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:700;border:1px solid rgba(59,130,246,.3);background:rgba(59,130,246,.08);color:#60a5fa;font-family:inherit}
-  .container{max-width:760px;margin:0 auto;padding:32px 20px}
-  h2{font-size:20px;font-weight:900;margin-bottom:8px}
-  p{color:#4060a0;font-size:14px;margin-bottom:24px}
-  .plan-card{background:#080e18;border:1px solid rgba(59,130,246,.15);border-radius:20px;padding:24px;margin-bottom:20px}
-  .plan-title{font-size:13px;color:#2a4a7f;text-transform:uppercase;letter-spacing:.5px;font-weight:700;margin-bottom:12px}
-  .plan-badge{display:inline-flex;align-items:center;gap:8px;background:rgba(59,130,246,.15);border:1px solid rgba(59,130,246,.3);color:#60a5fa;padding:8px 18px;border-radius:20px;font-size:14px;font-weight:700;margin-bottom:12px}
-  .plan-price{font-size:13px;color:#4060a0}
-  .modules{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px;margin-top:24px}
-  .module{background:#080e18;border:1px solid rgba(59,130,246,.1);border-radius:16px;padding:20px;position:relative;cursor:pointer;transition:.2s}
-  .module:hover{border-color:rgba(59,130,246,.3);background:#0a1220}
-  .module-icon{font-size:28px;margin-bottom:10px}
-  .module-name{font-size:14px;font-weight:700;margin-bottom:4px}
-  .module-desc{font-size:12px;color:#4060a0;line-height:1.5}
-  .em-breve{position:absolute;top:12px;right:12px;background:rgba(99,102,241,.15);color:#818cf8;border:1px solid rgba(99,102,241,.3);padding:3px 8px;border-radius:8px;font-size:10px;font-weight:700}
-  .info-msg{background:rgba(245,158,11,.07);border:1px solid rgba(245,158,11,.15);border-radius:14px;padding:18px;font-size:13px;color:#d97706;line-height:1.7;text-align:center}
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#07070f;--surface:#0d1117;--surface2:#141b22;--border:rgba(59,130,246,.12);--border2:rgba(59,130,246,.22);--text:#f0f0ff;--text2:#4a6fa5;--accent:#3b82f6;--green:#22c55e;--red:#ef4444;--orange:#f59e0b}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',sans-serif;min-height:100vh}
+
+/* ── Nav ── */
+nav{background:var(--surface);border-bottom:1px solid var(--border);padding:0 20px;height:54px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.nav-logo{font-size:16px;font-weight:900;color:var(--accent)}
+.nav-right{display:flex;align-items:center;gap:10px}
+.nav-user{font-size:12px;color:var(--text2)}
+.btn-sm{padding:5px 12px;border-radius:7px;cursor:pointer;font-size:11px;font-weight:700;border:1px solid var(--border2);background:rgba(59,130,246,.08);color:var(--accent);font-family:inherit}
+
+/* ── Layout ── */
+.layout{display:flex;min-height:calc(100vh - 54px)}
+
+/* ── Sidebar ── */
+.sidebar{width:200px;background:var(--surface);border-right:1px solid var(--border);padding:16px 0;flex-shrink:0}
+.sb-btn{display:flex;align-items:center;gap:10px;width:100%;padding:11px 18px;background:none;border:none;color:var(--text2);cursor:pointer;font-size:13px;font-family:inherit;transition:.15s;text-align:left}
+.sb-btn:hover{background:rgba(59,130,246,.06);color:var(--text)}
+.sb-btn.active{color:var(--accent);background:rgba(59,130,246,.1);border-right:2px solid var(--accent)}
+.sb-icon{font-size:16px;width:20px;text-align:center}
+
+/* ── Content ── */
+.content{flex:1;padding:24px;max-width:900px}
+.section{display:none}
+.section.active{display:block}
+.page-title{font-size:18px;font-weight:800;margin-bottom:4px}
+.page-sub{font-size:13px;color:var(--text2);margin-bottom:20px}
+
+/* ── Stats ── */
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;margin-bottom:24px}
+.stat{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;text-align:center}
+.stat-num{font-size:24px;font-weight:900;color:var(--accent);letter-spacing:-1px}
+.stat-lbl{font-size:11px;color:var(--text2);margin-top:3px}
+
+/* ── Buttons ── */
+.btn{padding:9px 18px;border-radius:9px;cursor:pointer;font-size:13px;font-weight:700;border:none;font-family:inherit;transition:.15s}
+.btn-primary{background:linear-gradient(135deg,#1d4ed8,#3b82f6);color:#fff}
+.btn-primary:hover{opacity:.9}
+.btn-outline{background:none;border:1px solid var(--border2);color:var(--accent)}
+.btn-danger{background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.25);color:var(--red)}
+
+/* ── Table ── */
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;padding:9px 12px;font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border)}
+td{padding:10px 12px;border-bottom:1px solid var(--border);vertical-align:middle}
+tr:hover td{background:var(--surface2)}
+.badge{display:inline-block;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700}
+.badge-pendente{background:rgba(245,158,11,.15);color:var(--orange)}
+.badge-em_andamento{background:rgba(59,130,246,.15);color:var(--accent)}
+.badge-concluido{background:rgba(34,197,94,.15);color:var(--green)}
+.badge-cancelado{background:rgba(239,68,68,.12);color:var(--red)}
+.badge-pago{background:rgba(34,197,94,.15);color:var(--green)}
+.badge-pendente-pag{background:rgba(245,158,11,.12);color:var(--orange)}
+
+/* ── Modal ── */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:999;align-items:center;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal{background:#0d1117;border:1px solid var(--border2);border-radius:18px;padding:28px;width:100%;max-width:440px;box-shadow:0 20px 60px rgba(0,0,0,.6)}
+.modal h3{font-size:16px;font-weight:800;margin-bottom:18px}
+.form-group{margin-bottom:13px}
+.form-group label{display:block;font-size:11px;color:var(--text2);margin-bottom:5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px}
+.form-group input,.form-group select,.form-group textarea{width:100%;background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:9px 12px;font-size:13px;outline:none;transition:.15s;font-family:inherit}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:var(--accent)}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.modal-btns{display:flex;gap:8px;margin-top:18px}
+.modal-btns .btn{flex:1;padding:10px}
+.empty{text-align:center;padding:40px;color:var(--text2);font-size:13px}
+.empty-icon{font-size:40px;margin-bottom:10px}
+
+/* ── Financeiro ── */
+.fin-cards{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px}
+.fin-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px}
+.fin-label{font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.fin-val{font-size:26px;font-weight:900;letter-spacing:-1px}
+.fin-green{color:var(--green)}
+.fin-orange{color:var(--orange)}
+
+/* ── Consulta DETRAN ── */
+.detran-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px}
+.detran-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;text-align:center;text-decoration:none;color:var(--text);transition:.15s}
+.detran-card:hover{border-color:var(--accent);background:var(--surface2)}
+.detran-icon{font-size:28px;margin-bottom:8px}
+.detran-name{font-size:13px;font-weight:700;margin-bottom:3px}
+.detran-url{font-size:11px;color:var(--text2)}
+
+/* ── Toast ── */
+.toast{position:fixed;bottom:24px;right:24px;background:#1a2235;border:1px solid var(--border2);border-radius:12px;padding:12px 18px;font-size:13px;font-weight:600;box-shadow:0 10px 40px rgba(0,0,0,.5);z-index:9999;transform:translateY(80px);transition:.3s;opacity:0}
+.toast.show{transform:translateY(0);opacity:1}
+.toast.ok{border-color:rgba(34,197,94,.4);color:var(--green)}
+.toast.err{border-color:rgba(239,68,68,.4);color:var(--red)}
+
+/* ── Trial banners ── */
+.banner-red{display:flex;align-items:center;gap:14px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);border-radius:14px;padding:14px 20px;margin-bottom:20px;flex-wrap:wrap}
+.banner-yellow{display:flex;align-items:center;gap:14px;background:rgba(234,179,8,.06);border:1px solid rgba(234,179,8,.2);border-radius:14px;padding:12px 20px;margin-bottom:20px;flex-wrap:wrap}
+
+/* ── Mobile ── */
+@media(max-width:600px){
+  .sidebar{display:none}
+  .form-row{grid-template-columns:1fr}
+  .fin-cards{grid-template-columns:1fr}
+}
 </style>
 </head>
 <body>
+
 <nav>
   <span class="nav-logo">🚗 Amigo Despachante</span>
-  <div style="display:flex;align-items:center;gap:12px">
-    <span class="nav-user">👤 {{ user.name }}</span>
+  <div class="nav-right">
+    <span class="nav-user">{{ user.name.split()[0] }}</span>
     <a href="/amigo-despachante/sair"><button class="btn-sm">Sair</button></a>
   </div>
 </nav>
 
-<div class="container">
-  <h2>Bem-vindo, {{ user.name.split()[0] }}! 👋</h2>
-  <p>Plataforma de gestão para despachantes</p>
+<div class="layout">
 
-  {# ── Trial / Plano Banner ──────────────────────────────────────────── #}
-  {% if trial_expired and not plan_active %}
-  <div style="display:flex;align-items:center;gap:14px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);border-radius:14px;padding:14px 20px;margin-bottom:20px;flex-wrap:wrap">
-    <div style="flex:1;min-width:200px">
-      <div style="font-size:14px;font-weight:800;color:#ef4444">⚠️ Período de teste encerrado</div>
-      <div style="font-size:12px;color:#4060a0;margin-top:3px">Assine agora para continuar usando o Amigo Despachante.</div>
-    </div>
-    <a href="/amigo-despachante/assinar/{{ user.plan or 'basico' }}" style="display:inline-block;padding:10px 20px;background:linear-gradient(135deg,#1d4ed8,#3b82f6);border-radius:100px;color:#fff;font-size:13px;font-weight:700;white-space:nowrap;text-decoration:none">🚀 Assinar agora</a>
-  </div>
-  {% elif trial_ends and not trial_expired %}
-  <div style="display:flex;align-items:center;gap:14px;background:rgba(234,179,8,.06);border:1px solid rgba(234,179,8,.2);border-radius:14px;padding:12px 20px;margin-bottom:20px;flex-wrap:wrap">
-    <div style="flex:1;min-width:200px;font-size:12px;color:#4060a0">⏳ Teste grátis até <strong style="color:#eab308">{{ trial_ends[:10] }}</strong>. Após essa data o acesso será suspenso.</div>
-    <a href="/amigo-despachante/assinar/{{ user.plan or 'basico' }}" style="display:inline-block;padding:7px 16px;background:transparent;border:1px solid rgba(59,130,246,.4);border-radius:100px;color:#60a5fa;font-size:12px;font-weight:700;white-space:nowrap;text-decoration:none">Assinar agora</a>
-  </div>
-  {% endif %}
-
-  <div class="plan-card">
-    <div class="plan-title">Seu plano</div>
-    <div class="plan-badge">{{ plan_info.label }}</div>
-    <div class="plan-price">{{ plan_info.price }}</div>
-    <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
-    {% for key, pp in plans.items() %}
-      {% if key != user.plan %}
-      <a href="/amigo-despachante/assinar/{{ key }}" style="font-size:11px;padding:4px 12px;border-radius:20px;border:1px solid rgba(59,130,246,.2);color:#4060a0;text-decoration:none">{{ pp.label }} — {{ pp.price }}</a>
-      {% endif %}
-    {% endfor %}
-    </div>
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <button class="sb-btn active" onclick="showSection('dashboard',this)"><span class="sb-icon">📊</span> Dashboard</button>
+    <button class="sb-btn" onclick="showSection('clientes',this)"><span class="sb-icon">👥</span> Clientes</button>
+    <button class="sb-btn" onclick="showSection('os',this)"><span class="sb-icon">📋</span> Ordens de Serviço</button>
+    <button class="sb-btn" onclick="showSection('financeiro',this)"><span class="sb-icon">💰</span> Financeiro</button>
+    <button class="sb-btn" onclick="showSection('consulta',this)"><span class="sb-icon">🔍</span> Consulta DETRAN</button>
+    <button class="sb-btn" onclick="showSection('plano',this)"><span class="sb-icon">⚙️</span> Meu Plano</button>
   </div>
 
-  <div class="modules">
-    <div class="module">
-      <div class="em-breve">Em breve</div>
-      <div class="module-icon">📋</div>
-      <div class="module-name">Consulta DETRAN</div>
-      <div class="module-desc">Consulte multas, pontos e situação de CNH e veículos</div>
-    </div>
-    <div class="module">
-      <div class="em-breve">Em breve</div>
-      <div class="module-icon">📄</div>
-      <div class="module-name">Documentos</div>
-      <div class="module-desc">Gerencie documentos e processos dos seus clientes</div>
-    </div>
-    <div class="module">
-      <div class="em-breve">Em breve</div>
-      <div class="module-icon">📅</div>
-      <div class="module-name">Agendamentos</div>
-      <div class="module-desc">Organize seus atendimentos e prazos</div>
-    </div>
-    <div class="module">
-      <div class="em-breve">Em breve</div>
-      <div class="module-icon">💰</div>
-      <div class="module-name">Financeiro</div>
-      <div class="module-desc">Controle de receitas e comissões</div>
-    </div>
-    <div class="module">
-      <div class="em-breve">Em breve</div>
-      <div class="module-icon">👥</div>
-      <div class="module-name">Clientes</div>
-      <div class="module-desc">Cadastro e histórico dos seus clientes</div>
-    </div>
-    <div class="module">
-      <div class="em-breve">Em breve</div>
-      <div class="module-icon">📊</div>
-      <div class="module-name">Relatórios</div>
-      <div class="module-desc">Relatórios de atendimentos e desempenho</div>
-    </div>
-  </div>
+  <!-- Content -->
+  <div class="content">
 
-  <div class="info-msg" style="margin-top:28px">
-    🔧 A plataforma <strong>Amigo Despachante</strong> está em desenvolvimento ativo.<br>
-    Os módulos acima serão liberados gradualmente. Você será notificado pelo WhatsApp quando cada módulo for disponibilizado no seu plano.
+    {% if trial_expired and not plan_active %}
+    <div class="banner-red">
+      <div style="flex:1;min-width:180px"><div style="font-size:14px;font-weight:800;color:#ef4444">⚠️ Período de teste encerrado</div><div style="font-size:12px;color:var(--text2);margin-top:3px">Assine para continuar usando.</div></div>
+      <a href="/amigo-despachante/assinar/{{ user.plan or 'basico' }}" style="padding:9px 18px;background:linear-gradient(135deg,#1d4ed8,#3b82f6);border-radius:100px;color:#fff;font-size:13px;font-weight:700;white-space:nowrap;text-decoration:none">🚀 Assinar agora</a>
+    </div>
+    {% elif trial_ends and not trial_expired %}
+    <div class="banner-yellow">
+      <div style="flex:1;font-size:12px;color:var(--text2)">⏳ Teste grátis até <strong style="color:#eab308">{{ trial_ends[:10] }}</strong></div>
+      <a href="/amigo-despachante/assinar/{{ user.plan or 'basico' }}" style="padding:6px 14px;border:1px solid rgba(59,130,246,.4);border-radius:100px;color:var(--accent);font-size:12px;font-weight:700;white-space:nowrap;text-decoration:none">Assinar</a>
+    </div>
+    {% endif %}
+
+    <!-- ═══ DASHBOARD ═══ -->
+    <div class="section active" id="sec-dashboard">
+      <div class="page-title">Dashboard</div>
+      <div class="page-sub" id="dash-greeting">Carregando...</div>
+      <div class="stats-grid" id="stats-grid">
+        <div class="stat"><div class="stat-num" id="s-clientes">—</div><div class="stat-lbl">Clientes</div></div>
+        <div class="stat"><div class="stat-num" id="s-os-abertas">—</div><div class="stat-lbl">OS Abertas</div></div>
+        <div class="stat"><div class="stat-num" id="s-os-mes">—</div><div class="stat-lbl">OS este mês</div></div>
+        <div class="stat"><div class="stat-num" id="s-receita">—</div><div class="stat-lbl">Recebido este mês</div></div>
+        <div class="stat"><div class="stat-num" id="s-pendente">—</div><div class="stat-lbl">A receber</div></div>
+      </div>
+
+      <!-- Últimas OS -->
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px">
+        <div style="font-size:13px;font-weight:700;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center">
+          <span>📋 Últimas Ordens de Serviço</span>
+          <button class="btn btn-outline" style="font-size:11px;padding:5px 12px" onclick="showSection('os',document.querySelector('[onclick*=\\\"os\\\"]'))">Ver todas →</button>
+        </div>
+        <div id="dash-os-list"><div style="color:var(--text2);font-size:12px;text-align:center;padding:16px">Carregando...</div></div>
+      </div>
+    </div>
+
+    <!-- ═══ CLIENTES ═══ -->
+    <div class="section" id="sec-clientes">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+        <div class="page-title">Clientes</div>
+        <button class="btn btn-primary" onclick="openModal('modal-cli')">+ Novo Cliente</button>
+      </div>
+      <div class="page-sub">Cadastro e histórico dos seus clientes</div>
+      <div id="cli-table-wrap">
+        <div style="color:var(--text2);text-align:center;padding:40px">Carregando...</div>
+      </div>
+    </div>
+
+    <!-- ═══ ORDENS DE SERVIÇO ═══ -->
+    <div class="section" id="sec-os">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+        <div class="page-title">Ordens de Serviço</div>
+        <button class="btn btn-primary" onclick="openModal('modal-os')">+ Nova OS</button>
+      </div>
+      <div class="page-sub">Gerencie todos os processos dos seus clientes</div>
+
+      <!-- Filtros de status -->
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">
+        <button class="btn btn-outline" style="font-size:11px;padding:5px 12px" onclick="loadOS('')" id="filter-all">Todas</button>
+        <button class="btn btn-outline" style="font-size:11px;padding:5px 12px" onclick="loadOS('pendente')" id="filter-pendente">⏳ Pendentes</button>
+        <button class="btn btn-outline" style="font-size:11px;padding:5px 12px" onclick="loadOS('em_andamento')" id="filter-em_andamento">🔄 Em andamento</button>
+        <button class="btn btn-outline" style="font-size:11px;padding:5px 12px" onclick="loadOS('concluido')" id="filter-concluido">✅ Concluídas</button>
+      </div>
+
+      <div id="os-table-wrap">
+        <div style="color:var(--text2);text-align:center;padding:40px">Carregando...</div>
+      </div>
+    </div>
+
+    <!-- ═══ FINANCEIRO ═══ -->
+    <div class="section" id="sec-financeiro">
+      <div class="page-title">Financeiro</div>
+      <div class="page-sub" id="fin-mes-label">Carregando...</div>
+      <div class="fin-cards">
+        <div class="fin-card">
+          <div class="fin-label">Recebido este mês</div>
+          <div class="fin-val fin-green" id="fin-receita">—</div>
+        </div>
+        <div class="fin-card">
+          <div class="fin-label">A receber (total)</div>
+          <div class="fin-val fin-orange" id="fin-pendente">—</div>
+        </div>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px">
+        <div style="font-size:13px;font-weight:700;margin-bottom:12px">Todas as OS com valor</div>
+        <div id="fin-table-wrap"><div style="color:var(--text2);text-align:center;padding:20px">Carregando...</div></div>
+      </div>
+    </div>
+
+    <!-- ═══ CONSULTA DETRAN ═══ -->
+    <div class="section" id="sec-consulta">
+      <div class="page-title">Consulta DETRAN</div>
+      <div class="page-sub">Links diretos para os sistemas de cada estado</div>
+
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:20px">
+        <div style="font-size:13px;font-weight:700;margin-bottom:10px">🔍 Busca rápida por placa ou CPF</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <input type="text" id="consulta-input" placeholder="Placa (ABC1234) ou CPF" style="flex:1;min-width:160px;background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:9px 12px;font-size:13px;outline:none">
+          <select id="consulta-estado" style="background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:9px 12px;font-size:13px;outline:none">
+            <option value="SC">Santa Catarina</option>
+            <option value="SP">São Paulo</option>
+            <option value="PR">Paraná</option>
+            <option value="RS">Rio Grande do Sul</option>
+            <option value="RJ">Rio de Janeiro</option>
+            <option value="MG">Minas Gerais</option>
+          </select>
+          <button class="btn btn-primary" onclick="abrirDetran()">Consultar →</button>
+        </div>
+      </div>
+
+      <div class="detran-grid">
+        <a href="https://www.detran.sc.gov.br" target="_blank" class="detran-card"><div class="detran-icon">🏛️</div><div class="detran-name">DETRAN SC</div><div class="detran-url">detran.sc.gov.br</div></a>
+        <a href="https://www.detran.sp.gov.br" target="_blank" class="detran-card"><div class="detran-icon">🏛️</div><div class="detran-name">DETRAN SP</div><div class="detran-url">detran.sp.gov.br</div></a>
+        <a href="https://www.detran.pr.gov.br" target="_blank" class="detran-card"><div class="detran-icon">🏛️</div><div class="detran-name">DETRAN PR</div><div class="detran-url">detran.pr.gov.br</div></a>
+        <a href="https://www.detran.rs.gov.br" target="_blank" class="detran-card"><div class="detran-icon">🏛️</div><div class="detran-name">DETRAN RS</div><div class="detran-url">detran.rs.gov.br</div></a>
+        <a href="https://www.detran.rj.gov.br" target="_blank" class="detran-card"><div class="detran-icon">🏛️</div><div class="detran-name">DETRAN RJ</div><div class="detran-url">detran.rj.gov.br</div></a>
+        <a href="https://www.detran.mg.gov.br" target="_blank" class="detran-card"><div class="detran-icon">🏛️</div><div class="detran-name">DETRAN MG</div><div class="detran-url">detran.mg.gov.br</div></a>
+        <a href="https://portalservicos.senatran.serpro.gov.br" target="_blank" class="detran-card"><div class="detran-icon">🚗</div><div class="detran-name">SENATRAN</div><div class="detran-url">serpro.gov.br</div></a>
+        <a href="https://www.gov.br/pt-br/servicos/emitir-cnh" target="_blank" class="detran-card"><div class="detran-icon">🪪</div><div class="detran-name">Gov.br CNH</div><div class="detran-url">gov.br</div></a>
+      </div>
+    </div>
+
+    <!-- ═══ PLANO ═══ -->
+    <div class="section" id="sec-plano">
+      <div class="page-title">Meu Plano</div>
+      <div class="page-sub">Gerencie sua assinatura</div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:24px;margin-bottom:16px">
+        <div style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Plano atual</div>
+        <div style="font-size:20px;font-weight:900;color:var(--accent);margin-bottom:4px">{{ plan_info.label }}</div>
+        <div style="font-size:14px;color:var(--text2)">{{ plan_info.price }}</div>
+      </div>
+      <div style="font-size:13px;font-weight:700;margin-bottom:10px;color:var(--text2)">Trocar de plano:</div>
+      <div style="display:flex;flex-wrap:wrap;gap:10px">
+      {% for key, pp in plans.items() %}
+        <a href="/amigo-despachante/assinar/{{ key }}" style="display:inline-block;padding:10px 20px;background:{{ 'rgba(59,130,246,.15)' if key == user.plan else 'var(--surface)' }};border:1px solid {{ 'rgba(59,130,246,.4)' if key == user.plan else 'var(--border)' }};border-radius:12px;color:var(--text);text-decoration:none;font-size:13px;font-weight:700">
+          {{ pp.label }}<br><span style="font-size:12px;color:var(--text2);font-weight:400">{{ pp.price }}</span>{% if key == user.plan %}<br><span style="font-size:10px;color:var(--accent)">✓ Atual</span>{% endif %}
+        </a>
+      {% endfor %}
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /layout -->
+
+
+<!-- Modal: Novo Cliente -->
+<div class="modal-overlay" id="modal-cli">
+  <div class="modal">
+    <h3>👥 <span id="cli-modal-title">Novo Cliente</span></h3>
+    <input type="hidden" id="cli-edit-id" value="">
+    <div class="form-row">
+      <div class="form-group"><label>Nome *</label><input id="cli-name" placeholder="Nome completo"></div>
+      <div class="form-group"><label>Telefone</label><input id="cli-phone" placeholder="(47) 99999-9999"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>CPF / CNPJ</label><input id="cli-cpf" placeholder="000.000.000-00"></div>
+      <div class="form-group"><label>Placa do veículo</label><input id="cli-plate" placeholder="ABC1234" style="text-transform:uppercase"></div>
+    </div>
+    <div class="form-group"><label>E-mail</label><input id="cli-email" type="email" placeholder="cliente@email.com"></div>
+    <div class="form-group"><label>Observações</label><textarea id="cli-notes" rows="2" placeholder="Notas sobre o cliente..."></textarea></div>
+    <div class="modal-btns">
+      <button class="btn btn-outline" onclick="closeModal('modal-cli')">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarCliente()">💾 Salvar</button>
+    </div>
   </div>
 </div>
+
+<!-- Modal: Nova OS -->
+<div class="modal-overlay" id="modal-os">
+  <div class="modal">
+    <h3>📋 Nova Ordem de Serviço</h3>
+    <div class="form-row">
+      <div class="form-group"><label>Cliente</label><input id="os-client-name" placeholder="Nome do cliente" list="cli-datalist"><datalist id="cli-datalist"></datalist></div>
+      <div class="form-group"><label>Tipo de serviço</label>
+        <select id="os-tipo">
+          <option>CRLV</option><option>2ª via CRLV</option><option>1ª Habilitação</option>
+          <option>Renovação CNH</option><option>Adição de categoria</option>
+          <option>Transferência de propriedade</option><option>Licenciamento</option>
+          <option>Emplacamento</option><option>Recurso de multa</option><option>Outros</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Placa</label><input id="os-placa" placeholder="ABC1234" style="text-transform:uppercase"></div>
+      <div class="form-group"><label>Valor (R$)</label><input id="os-valor" type="number" min="0" step="0.01" placeholder="0,00"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Status</label>
+        <select id="os-status">
+          <option value="pendente">⏳ Pendente</option>
+          <option value="em_andamento">🔄 Em andamento</option>
+          <option value="concluido">✅ Concluído</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Prazo</label><input id="os-prazo" type="date"></div>
+    </div>
+    <div class="form-group"><label>Descrição / observações</label><textarea id="os-descricao" rows="2" placeholder="Detalhes do serviço..."></textarea></div>
+    <div class="modal-btns">
+      <button class="btn btn-outline" onclick="closeModal('modal-os')">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarOS()">💾 Criar OS</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ── Dados em memória ──────────────────────────────────────────────────────────
+let _clientes = [];
+let _os_list  = [];
+let _os_filter = '';
+
+// ── Seções ───────────────────────────────────────────────────────────────────
+function showSection(name, btn) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.sb-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('sec-' + name)?.classList.add('active');
+  if (btn) btn.classList.add('active');
+  // Carrega dados ao abrir
+  if (name === 'dashboard') loadDashboard();
+  if (name === 'clientes')  loadClientes();
+  if (name === 'os')        loadOS(_os_filter);
+  if (name === 'financeiro') loadFinanceiro();
+}
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+function toast(msg, ok=true) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show ' + (ok ? 'ok' : 'err');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// ── Modais ───────────────────────────────────────────────────────────────────
+function openModal(id) {
+  document.getElementById(id).classList.add('open');
+}
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+}
+document.querySelectorAll('.modal-overlay').forEach(o => {
+  o.addEventListener('click', e => { if(e.target === o) o.classList.remove('open'); });
+});
+
+// ── Formata moeda ─────────────────────────────────────────────────────────────
+function brl(v) {
+  return 'R$ ' + parseFloat(v || 0).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+
+// ── DASHBOARD ────────────────────────────────────────────────────────────────
+async function loadDashboard() {
+  const [sRes, osRes] = await Promise.all([
+    fetch('/amigo-despachante/api/stats'),
+    fetch('/amigo-despachante/api/os?limit=8')
+  ]);
+  const s  = await sRes.json();
+  const os = await osRes.json();
+
+  // Saudação dinâmica
+  const h = new Date().getHours();
+  const saud = h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite';
+  document.getElementById('dash-greeting').textContent = saud + '! Aqui está o resumo do seu negócio.';
+
+  document.getElementById('s-clientes').textContent   = s.clientes;
+  document.getElementById('s-os-abertas').textContent  = s.os_abertas;
+  document.getElementById('s-os-mes').textContent      = s.os_mes;
+  document.getElementById('s-receita').textContent     = brl(s.receita_mes);
+  document.getElementById('s-pendente').textContent    = brl(s.pendente_val);
+
+  // Últimas OS
+  const wrap = document.getElementById('dash-os-list');
+  if (!os.length) { wrap.innerHTML = '<div style="color:var(--text2);font-size:12px;text-align:center;padding:20px">Nenhuma OS ainda. <button onclick="showSection(\'os\',null);openModal(\'modal-os\')" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:12px">Criar primeira →</button></div>'; return; }
+  wrap.innerHTML = '<table><thead><tr><th>Cliente</th><th>Tipo</th><th>Status</th><th>Valor</th><th>Pago</th></tr></thead><tbody>' +
+    os.slice(0,6).map(o => `<tr>
+      <td><strong>${o.client_name||'—'}</strong>${o.placa ? '<br><span style="font-size:11px;color:var(--text2)">'+o.placa+'</span>' : ''}</td>
+      <td style="font-size:12px">${o.tipo}</td>
+      <td><span class="badge badge-${o.status}">${statusLabel(o.status)}</span></td>
+      <td style="font-size:12px">${o.valor ? brl(o.valor) : '—'}</td>
+      <td><span class="badge ${o.pago ? 'badge-pago' : 'badge-pendente-pag'}">${o.pago ? '✅ Pago' : '⏳ Pend.'}</span></td>
+    </tr>`).join('') + '</tbody></table>';
+}
+
+// ── CLIENTES ──────────────────────────────────────────────────────────────────
+async function loadClientes() {
+  const r = await fetch('/amigo-despachante/api/clientes');
+  _clientes = await r.json();
+  renderClientes();
+  // Atualiza datalist para OS
+  const dl = document.getElementById('cli-datalist');
+  dl.innerHTML = _clientes.map(c => `<option value="${c.name}">`).join('');
+}
+
+function renderClientes() {
+  const wrap = document.getElementById('cli-table-wrap');
+  if (!_clientes.length) {
+    wrap.innerHTML = '<div class="empty"><div class="empty-icon">👥</div><p>Nenhum cliente ainda.</p><button class="btn btn-primary" style="margin-top:12px" onclick="openModal(\'modal-cli\')">+ Adicionar primeiro cliente</button></div>';
+    return;
+  }
+  wrap.innerHTML = `<table>
+    <thead><tr><th>Nome</th><th>CPF/CNPJ</th><th>Telefone</th><th>Placa</th><th>Ações</th></tr></thead>
+    <tbody>` + _clientes.map(c => `
+    <tr>
+      <td><strong>${c.name}</strong>${c.email ? '<br><span style="font-size:11px;color:var(--text2)">'+c.email+'</span>' : ''}</td>
+      <td style="font-size:12px;color:var(--text2)">${c.cpf_cnpj||'—'}</td>
+      <td style="font-size:12px">${c.phone||'—'}</td>
+      <td style="font-size:12px;font-family:monospace;color:var(--accent)">${c.plate||'—'}</td>
+      <td>
+        <button class="btn btn-outline" style="font-size:11px;padding:3px 9px;margin-right:4px" onclick="editCliente(${c.id})">✏️</button>
+        <button class="btn btn-danger" style="font-size:11px;padding:3px 9px" onclick="deletarCliente(${c.id},'${c.name.replace(/'/g,"\\'")}')">🗑</button>
+      </td>
+    </tr>`).join('') + '</tbody></table>';
+}
+
+function editCliente(id) {
+  const c = _clientes.find(x => x.id === id); if (!c) return;
+  document.getElementById('cli-edit-id').value   = id;
+  document.getElementById('cli-modal-title').textContent = 'Editar Cliente';
+  document.getElementById('cli-name').value  = c.name;
+  document.getElementById('cli-phone').value = c.phone||'';
+  document.getElementById('cli-cpf').value   = c.cpf_cnpj||'';
+  document.getElementById('cli-plate').value = c.plate||'';
+  document.getElementById('cli-email').value = c.email||'';
+  document.getElementById('cli-notes').value = c.notes||'';
+  openModal('modal-cli');
+}
+
+function resetCliForm() {
+  ['cli-edit-id','cli-name','cli-phone','cli-cpf','cli-plate','cli-email','cli-notes'].forEach(id => {
+    const el = document.getElementById(id); if(el) el.value='';
+  });
+  document.getElementById('cli-modal-title').textContent = 'Novo Cliente';
+}
+
+async function salvarCliente() {
+  const id   = document.getElementById('cli-edit-id').value;
+  const name = document.getElementById('cli-name').value.trim();
+  if (!name) { toast('Nome é obrigatório', false); return; }
+  const payload = {
+    name, phone: document.getElementById('cli-phone').value.trim(),
+    cpf_cnpj: document.getElementById('cli-cpf').value.trim(),
+    plate: document.getElementById('cli-plate').value.trim().toUpperCase(),
+    email: document.getElementById('cli-email').value.trim(),
+    notes: document.getElementById('cli-notes').value.trim(),
+  };
+  const url    = id ? `/amigo-despachante/api/clientes/${id}` : '/amigo-despachante/api/clientes/add';
+  const method = id ? 'PUT' : 'POST';
+  const r = await fetch(url, { method, headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+  const d = await r.json();
+  if (d.ok) {
+    toast(id ? '✅ Cliente atualizado!' : '✅ Cliente adicionado!');
+    closeModal('modal-cli'); resetCliForm(); loadClientes();
+  } else {
+    toast(d.erro || 'Erro ao salvar', false);
+  }
+}
+
+async function deletarCliente(id, nome) {
+  if (!confirm(`Apagar o cliente "${nome}"? Esta ação não pode ser desfeita.`)) return;
+  const r = await fetch(`/amigo-despachante/api/clientes/${id}`, { method: 'DELETE' });
+  const d = await r.json();
+  if (d.ok) { toast('🗑 Cliente removido'); loadClientes(); }
+}
+
+// ── ORDENS DE SERVIÇO ─────────────────────────────────────────────────────────
+function statusLabel(s) {
+  return {'pendente':'⏳ Pendente','em_andamento':'🔄 Andamento','concluido':'✅ Concluído','cancelado':'❌ Cancelado'}[s] || s;
+}
+
+async function loadOS(filter) {
+  _os_filter = filter;
+  // Highlight filtro ativo
+  document.querySelectorAll('[id^="filter-"]').forEach(b => b.style.borderColor='');
+  const fb = document.getElementById('filter-' + (filter||'all'));
+  if (fb) fb.style.borderColor = 'var(--accent)';
+  const r = await fetch('/amigo-despachante/api/os' + (filter ? '?status='+filter : ''));
+  _os_list = await r.json();
+  renderOS();
+}
+
+function renderOS() {
+  const wrap = document.getElementById('os-table-wrap');
+  if (!_os_list.length) {
+    wrap.innerHTML = '<div class="empty"><div class="empty-icon">📋</div><p>Nenhuma OS' + (_os_filter ? ' com este status' : ' ainda') + '.</p><button class="btn btn-primary" style="margin-top:12px" onclick="openModal(\'modal-os\')">+ Criar OS</button></div>';
+    return;
+  }
+  wrap.innerHTML = `<table>
+    <thead><tr><th>Cliente</th><th>Tipo</th><th>Placa</th><th>Status</th><th>Valor</th><th>Pago</th><th>Ações</th></tr></thead>
+    <tbody>` + _os_list.map(o => `
+    <tr id="os-row-${o.id}">
+      <td><strong>${o.client_name||'—'}</strong></td>
+      <td style="font-size:12px">${o.tipo}</td>
+      <td style="font-size:12px;font-family:monospace">${o.placa||'—'}</td>
+      <td>
+        <select class="badge badge-${o.status}" style="background:none;border:none;cursor:pointer;font-size:11px;font-weight:700;color:inherit;outline:none" onchange="mudarStatus(${o.id},this.value)">
+          <option value="pendente" ${o.status==='pendente'?'selected':''}>⏳ Pendente</option>
+          <option value="em_andamento" ${o.status==='em_andamento'?'selected':''}>🔄 Andamento</option>
+          <option value="concluido" ${o.status==='concluido'?'selected':''}>✅ Concluído</option>
+          <option value="cancelado" ${o.status==='cancelado'?'selected':''}>❌ Cancelado</option>
+        </select>
+      </td>
+      <td style="font-size:12px">${o.valor ? brl(o.valor) : '—'}</td>
+      <td>
+        <label style="cursor:pointer;display:flex;align-items:center;gap:4px;font-size:12px">
+          <input type="checkbox" ${o.pago?'checked':''} onchange="marcarPago(${o.id},this.checked)" style="width:auto">
+          <span>${o.pago?'<span style="color:var(--green)">Pago</span>':'Pend.'}</span>
+        </label>
+      </td>
+      <td><button class="btn btn-danger" style="font-size:11px;padding:3px 9px" onclick="deletarOS(${o.id})">🗑</button></td>
+    </tr>`).join('') + '</tbody></table>';
+}
+
+async function salvarOS() {
+  const payload = {
+    client_name: document.getElementById('os-client-name').value.trim(),
+    tipo:        document.getElementById('os-tipo').value,
+    placa:       document.getElementById('os-placa').value.trim().toUpperCase(),
+    valor:       document.getElementById('os-valor').value || 0,
+    status:      document.getElementById('os-status').value,
+    prazo:       document.getElementById('os-prazo').value,
+    descricao:   document.getElementById('os-descricao').value.trim(),
+  };
+  const r = await fetch('/amigo-despachante/api/os/add', {
+    method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)
+  });
+  const d = await r.json();
+  if (d.ok) {
+    toast('✅ OS criada!');
+    closeModal('modal-os');
+    ['os-client-name','os-placa','os-valor','os-descricao','os-prazo'].forEach(id => document.getElementById(id).value='');
+    loadOS(_os_filter);
+  } else {
+    toast('Erro ao criar OS', false);
+  }
+}
+
+async function mudarStatus(id, status) {
+  await fetch(`/amigo-despachante/api/os/${id}/status`, {
+    method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({status})
+  });
+  toast('✅ Status atualizado'); loadOS(_os_filter);
+}
+
+async function marcarPago(id, pago) {
+  await fetch(`/amigo-despachante/api/os/${id}/pagar`, {
+    method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({pago})
+  });
+  toast(pago ? '✅ Marcado como pago' : '✅ Desmarcado');
+}
+
+async function deletarOS(id) {
+  if (!confirm('Apagar esta OS? Não pode ser desfeito.')) return;
+  const r = await fetch(`/amigo-despachante/api/os/${id}`, { method:'DELETE' });
+  const d = await r.json();
+  if (d.ok) { toast('🗑 OS removida'); loadOS(_os_filter); }
+}
+
+// ── FINANCEIRO ───────────────────────────────────────────────────────────────
+async function loadFinanceiro() {
+  const [sRes, osRes] = await Promise.all([
+    fetch('/amigo-despachante/api/stats'),
+    fetch('/amigo-despachante/api/os')
+  ]);
+  const s  = await sRes.json();
+  const os = await osRes.json();
+
+  const now = new Date();
+  document.getElementById('fin-mes-label').textContent =
+    'Resumo de ' + now.toLocaleDateString('pt-BR', {month:'long', year:'numeric'});
+  document.getElementById('fin-receita').textContent  = brl(s.receita_mes);
+  document.getElementById('fin-pendente').textContent = brl(s.pendente_val);
+
+  const comValor = os.filter(o => o.valor > 0);
+  const wrap = document.getElementById('fin-table-wrap');
+  if (!comValor.length) { wrap.innerHTML = '<div style="color:var(--text2);text-align:center;padding:20px;font-size:13px">Nenhuma OS com valor cadastrado.</div>'; return; }
+  wrap.innerHTML = `<table>
+    <thead><tr><th>Cliente</th><th>Tipo</th><th>Valor</th><th>Pagamento</th><th>Status OS</th></tr></thead>
+    <tbody>` + comValor.map(o => `
+    <tr>
+      <td><strong>${o.client_name||'—'}</strong></td>
+      <td style="font-size:12px">${o.tipo}</td>
+      <td style="font-weight:700">${brl(o.valor)}</td>
+      <td><span class="badge ${o.pago?'badge-pago':'badge-pendente-pag'}">${o.pago?'✅ Pago':'⏳ Pendente'}</span></td>
+      <td><span class="badge badge-${o.status}">${statusLabel(o.status)}</span></td>
+    </tr>`).join('') + '</tbody></table>';
+}
+
+// ── CONSULTA DETRAN ───────────────────────────────────────────────────────────
+function abrirDetran() {
+  const val    = document.getElementById('consulta-input').value.trim();
+  const estado = document.getElementById('consulta-estado').value;
+  const urls   = {
+    SC: 'https://www.detran.sc.gov.br',
+    SP: 'https://www.detran.sp.gov.br',
+    PR: 'https://www.detran.pr.gov.br',
+    RS: 'https://www.detran.rs.gov.br',
+    RJ: 'https://www.detran.rj.gov.br',
+    MG: 'https://www.detran.mg.gov.br',
+  };
+  window.open(urls[estado] || 'https://www.detran.sc.gov.br', '_blank');
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  loadDashboard();
+  loadClientes(); // pré-carrega para o datalist de OS
+});
+</script>
 </body>
 </html>
