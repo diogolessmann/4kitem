@@ -3,6 +3,7 @@ petmed.py — Blueprint PETmed
 Triagem veterinária inteligente 24/7
 """
 import json
+import logging
 import os
 import random
 import re
@@ -13,6 +14,8 @@ from flask import (Blueprint, render_template, redirect, request,
                    session, jsonify, url_for, abort)
 from werkzeug.security import generate_password_hash, check_password_hash
 from petmed_db import get_petmed_db, init_petmed_db
+
+log = logging.getLogger('petmed')
 
 try:
     from groq import Groq as _Groq
@@ -1006,6 +1009,7 @@ def cadastrar():
         elif not pet_nome:
             erro = 'Informe o nome do seu pet.'
         else:
+            _u_id = None
             try:
                 conn = get_petmed_db()
                 conn.execute(
@@ -1019,6 +1023,8 @@ def cadastrar():
                 u = conn.execute(
                     'SELECT * FROM petmed_users WHERE email=?', (email,)
                 ).fetchone()
+                if u is None:
+                    raise Exception('Usuário não encontrado após INSERT')
                 # Cria primeiro pet automaticamente
                 conn.execute(
                     '''INSERT INTO petmed_pets (user_id, nome, especie)
@@ -1026,22 +1032,33 @@ def cadastrar():
                     (u['id'], pet_nome, pet_esp)
                 )
                 conn.commit()
+                _u_id    = u['id']
+                _u_nome  = u['nome']
+                _u_plano = u['plano']
                 conn.close()
-                session['pm_user_id']   = u['id']
-                session['pm_user_nome'] = u['nome']
-                session['pm_plano']     = u['plano']
-                # E-mail de boas-vindas (assíncrono best-effort)
-                _enviar_email(
-                    para=email,
-                    assunto='🐾 Bem-vindo ao VetZap!',
-                    html=_email_boas_vindas(nome, pet_nome)
-                )
-                return redirect('/petmed/dashboard?novo=1')
             except Exception as ex:
+                log.error('[PETmed] Erro no cadastro de %s: %s', email, ex, exc_info=True)
+                try: conn.close()
+                except: pass
                 if 'UNIQUE' in str(ex):
                     erro = 'Este e-mail já está cadastrado.'
                 else:
-                    erro = f'Erro ao criar conta. Tente novamente.'
+                    erro = f'Erro ao criar conta ({type(ex).__name__}). Tente novamente.'
+
+            if _u_id:
+                session['pm_user_id']   = _u_id
+                session['pm_user_nome'] = _u_nome
+                session['pm_plano']     = _u_plano
+                # E-mail de boas-vindas (assíncrono best-effort, fora do try principal)
+                try:
+                    _enviar_email(
+                        para=email,
+                        assunto='🐾 Bem-vindo ao VetZap!',
+                        html=_email_boas_vindas(nome, pet_nome)
+                    )
+                except Exception:
+                    pass
+                return redirect('/petmed/dashboard?novo=1')
     return render_template('petmed/cadastrar.html', erro=erro,
                            planos=PLANOS, plano_sel=plano_sel)
 

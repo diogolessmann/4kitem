@@ -28,10 +28,14 @@ def init_petmed_db():
             nome          TEXT NOT NULL,
             email         TEXT NOT NULL UNIQUE,
             telefone      TEXT,
+            cpf           TEXT,
             password_hash TEXT NOT NULL,
             plano         TEXT DEFAULT "start",
             plano_ativo   INTEGER DEFAULT 1,
             trial_ends    TEXT,
+            reset_token   TEXT,
+            reset_expires TEXT,
+            asaas_customer_id TEXT,
             created_at    TEXT DEFAULT (datetime("now","localtime")),
             ultimo_acesso TEXT
         );

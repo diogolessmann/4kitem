@@ -265,6 +265,7 @@
   <button class="tab-btn" onclick="showTab('agendamentos',this)">📋 Agenda</button>
   <button class="tab-btn" onclick="showTab('clientes',this)">👥 Clientes</button>
   <button class="tab-btn" onclick="showTab('financeiro',this)">💰 Financeiro</button>
+  <button class="tab-btn" onclick="showTab('equipe',this)">👥 Equipe</button>
   <button class="tab-btn" onclick="showTab('servicos',this)">✂️ Serviços</button>
   <button class="tab-btn" onclick="showTab('horarios',this)">🕐 Horários</button>
   <button class="tab-btn" onclick="showTab('config',this)">⚙️ Config</button>
@@ -421,6 +422,27 @@
   <!-- ── TAB FINANCEIRO ─────────────────────────────────────────── -->
   <div class="tab-content" id="tab-financeiro">
     <div id="financeiro-content"><div class="empty">🔄 Carregando...</div></div>
+  </div>
+
+  <!-- ── TAB EQUIPE ────────────────────────────────────────────── -->
+  <div class="tab-content" id="tab-equipe">
+    <div class="card">
+      <div class="card-title">
+        👥 Minha Equipe
+        <a href="/agenda/equipe/novo"><button class="btn btn-green btn-sm">+ Adicionar</button></a>
+      </div>
+      <div id="equipe-list">
+        <div class="empty">🔄 Carregando...</div>
+      </div>
+    </div>
+    <!-- Financeiro por profissional -->
+    <div class="card" style="margin-top:14px">
+      <div class="card-title">
+        💰 Financeiro por profissional
+        <select id="equipe-mes" onchange="carregarEquipe()" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:4px 8px;font-size:11px;outline:none"></select>
+      </div>
+      <div id="equipe-financeiro"><div class="empty">Selecione o mês para ver os dados.</div></div>
+    </div>
   </div>
 
   <!-- ── TAB SERVIÇOS ───────────────────────────────────────────── -->
@@ -642,6 +664,7 @@ function showTab(name, btn) {
   if (btn) btn.classList.add('active');
   if (name === 'clientes')   carregarClientes();
   if (name === 'financeiro') carregarFinanceiro();
+  if (name === 'equipe')     { initEquipeMeses(); carregarEquipe(); }
 }
 
 // ── TOAST ────────────────────────────────────────────────────────
@@ -806,6 +829,63 @@ async function carregarFinanceiro() {
     <div class="card">
       <div class="card-title">🏆 Serviços mais realizados</div>
       ${topHtml}
+    </div>`;
+}
+
+// ── EQUIPE / PROFISSIONAIS ────────────────────────────────────────
+async function carregarEquipe() {
+  const mesEl = document.getElementById('equipe-mes');
+  const mes = mesEl.value || new Date().toISOString().substring(0,7);
+  const r = await fetch(`/agenda/painel/financeiro-equipe?mes=${mes}`);
+  const d = await r.json();
+
+  // Lista de profissionais
+  const listEl = document.getElementById('equipe-list');
+  if (!d.profissionais || d.profissionais.filter(p=>p.id>0).length === 0) {
+    listEl.innerHTML = `<div class="empty">Nenhum profissional cadastrado.<br><a href="/agenda/equipe/novo" style="color:var(--green)">+ Adicionar profissional</a></div>`;
+  } else {
+    listEl.innerHTML = d.profissionais.filter(p=>p.id>0).map(p => `
+      <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)">
+        ${p.photo_url
+          ? `<img src="${p.photo_url}" style="width:40px;height:40px;border-radius:50%;object-fit:cover;border:2px solid ${p.color}">`
+          : `<div style="width:40px;height:40px;border-radius:50%;background:${p.color};display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:900;color:#fff">${p.name[0].toUpperCase()}</div>`}
+        <div style="flex:1">
+          <div style="font-weight:700;font-size:13px">${p.name}</div>
+          ${p.role ? `<div style="font-size:11px;color:var(--text2)">${p.role}</div>` : ''}
+        </div>
+        <div style="display:flex;gap:6px">
+          <a href="/agenda/equipe/editar/${p.id}"><button class="btn btn-ghost btn-sm">✏️</button></a>
+        </div>
+      </div>`).join('');
+  }
+
+  // Financeiro por profissional
+  const finEl = document.getElementById('equipe-financeiro');
+  if (!d.profissionais || d.profissionais.length === 0) {
+    finEl.innerHTML = '<div class="empty">Sem dados ainda.</div>';
+    return;
+  }
+  const rows = d.profissionais.map(p => `
+    <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">
+      <div style="width:10px;height:10px;border-radius:50%;background:${p.color};flex-shrink:0"></div>
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:600">${p.name}</div>
+        ${p.commission_pct>0?`<div style="font-size:10px;color:var(--text2)">Comissão ${p.commission_pct}%</div>`:''}
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:13px;font-weight:700;color:var(--green)">R$ ${p.receita.toFixed(2)}</div>
+        ${p.commission_pct>0?`<div style="font-size:11px;color:#f59e0b">Comissão: R$ ${p.comissao.toFixed(2)}</div><div style="font-size:10px;color:var(--text2)">Líquido: R$ ${p.liquido.toFixed(2)}</div>`:''}
+        <div style="font-size:10px;color:var(--text2)">${p.qtd} atend.</div>
+      </div>
+    </div>`).join('');
+  finEl.innerHTML = `
+    ${rows}
+    <div style="display:flex;justify-content:space-between;padding:12px 0 0;font-weight:700;border-top:2px solid var(--border);margin-top:4px">
+      <span>Total</span>
+      <div style="text-align:right">
+        <div style="color:var(--green)">R$ ${d.total_receita.toFixed(2)}</div>
+        ${d.total_comissao>0?`<div style="font-size:11px;color:#f59e0b">Comissões: R$ ${d.total_comissao.toFixed(2)}</div><div style="font-size:11px;color:var(--text2)">Líquido: R$ ${d.total_liquido.toFixed(2)}</div>`:''}
+      </div>
     </div>`;
 }
 

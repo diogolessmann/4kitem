@@ -2642,6 +2642,161 @@ def agenda_registrar_pagamento(appt_id):
     return jsonify({'success': True})
 
 
+# ── AgendaSC — Gestão de Profissionais ───────────────────────────────────────
+@app.route('/agenda/equipe')
+@_agenda_login_required
+def agenda_equipe():
+    biz_id = session['agenda_business_id']
+    conn   = get_saas_db()
+    biz    = dict(conn.execute('SELECT * FROM agenda_businesses WHERE id=?', (biz_id,)).fetchone())
+    profs  = [dict(r) for r in conn.execute(
+        'SELECT * FROM agenda_professionals WHERE business_id=? ORDER BY order_pos, name', (biz_id,)
+    ).fetchall()]
+    conn.close()
+    return render_template('agenda/equipe.html', biz=biz, profissionais=profs)
+
+
+@app.route('/agenda/equipe/novo', methods=['GET', 'POST'])
+@_agenda_login_required
+def agenda_equipe_novo():
+    biz_id = session['agenda_business_id']
+    erro = ''
+    if request.method == 'POST':
+        name           = request.form.get('name', '').strip()
+        role           = request.form.get('role', '').strip()
+        photo_url      = request.form.get('photo_url', '').strip()
+        color          = request.form.get('color', '#27ae60').strip()
+        bio            = request.form.get('bio', '').strip()
+        commission_pct = float(request.form.get('commission_pct', '0').replace(',', '.') or 0)
+        if not name:
+            erro = 'Informe o nome do profissional.'
+        else:
+            conn = get_saas_db()
+            conn.execute('''INSERT INTO agenda_professionals
+                (business_id, name, role, photo_url, color, bio, commission_pct, active, created_at)
+                VALUES (?,?,?,?,?,?,?,1,?)''',
+                (biz_id, name, role, photo_url, color, bio, commission_pct,
+                 datetime.now().isoformat()))
+            conn.commit(); conn.close()
+            return redirect('/agenda/equipe')
+    return render_template('agenda/profissional_form.html', prof=None, erro=erro, modo='novo')
+
+
+@app.route('/agenda/equipe/editar/<int:prof_id>', methods=['GET', 'POST'])
+@_agenda_login_required
+def agenda_equipe_editar(prof_id):
+    biz_id = session['agenda_business_id']
+    conn   = get_saas_db()
+    prof   = conn.execute('SELECT * FROM agenda_professionals WHERE id=? AND business_id=?',
+                          (prof_id, biz_id)).fetchone()
+    if not prof:
+        conn.close()
+        return redirect('/agenda/equipe')
+    prof = dict(prof)
+    erro = ''
+    if request.method == 'POST':
+        name           = request.form.get('name', '').strip()
+        role           = request.form.get('role', '').strip()
+        photo_url      = request.form.get('photo_url', '').strip()
+        color          = request.form.get('color', '#27ae60').strip()
+        bio            = request.form.get('bio', '').strip()
+        commission_pct = float(request.form.get('commission_pct', '0').replace(',', '.') or 0)
+        if not name:
+            erro = 'Informe o nome do profissional.'
+        else:
+            conn.execute('''UPDATE agenda_professionals
+                SET name=?, role=?, photo_url=?, color=?, bio=?, commission_pct=?
+                WHERE id=? AND business_id=?''',
+                (name, role, photo_url, color, bio, commission_pct, prof_id, biz_id))
+            conn.commit(); conn.close()
+            return redirect('/agenda/equipe')
+    conn.close()
+    return render_template('agenda/profissional_form.html', prof=prof, erro=erro, modo='editar')
+
+
+@app.route('/agenda/equipe/excluir/<int:prof_id>', methods=['POST'])
+@_agenda_login_required
+def agenda_equipe_excluir(prof_id):
+    biz_id = session['agenda_business_id']
+    conn   = get_saas_db()
+    conn.execute('UPDATE agenda_professionals SET active=0 WHERE id=? AND business_id=?',
+                 (prof_id, biz_id))
+    conn.commit(); conn.close()
+    return redirect('/agenda/equipe')
+
+
+@app.route('/agenda/equipe/ativar/<int:prof_id>', methods=['POST'])
+@_agenda_login_required
+def agenda_equipe_ativar(prof_id):
+    biz_id = session['agenda_business_id']
+    conn   = get_saas_db()
+    conn.execute('UPDATE agenda_professionals SET active=1 WHERE id=? AND business_id=?',
+                 (prof_id, biz_id))
+    conn.commit(); conn.close()
+    return redirect('/agenda/equipe')
+
+
+@app.route('/agenda/painel/financeiro-equipe')
+@_agenda_login_required
+def agenda_financeiro_equipe():
+    """Retorna JSON com receita e comissão por profissional."""
+    biz_id = session['agenda_business_id']
+    mes    = request.args.get('mes', datetime.now().strftime('%Y-%m'))
+    conn   = get_saas_db()
+    # Por profissional
+    profs = [dict(r) for r in conn.execute(
+        'SELECT * FROM agenda_professionals WHERE business_id=? ORDER BY name', (biz_id,)
+    ).fetchall()]
+    resultado = []
+    total_receita = 0
+    total_comissao = 0
+    for p in profs:
+        r = conn.execute('''
+            SELECT COUNT(*) as qtd, COALESCE(SUM(s.price),0) as receita
+            FROM agenda_appointments a
+            LEFT JOIN agenda_services s ON a.service_id=s.id
+            WHERE a.business_id=? AND a.professional_id=?
+              AND strftime('%Y-%m', a.appointment_date)=?
+              AND a.status='done'
+        ''', (biz_id, p['id'], mes)).fetchone()
+        receita  = round(float(r['receita']), 2)
+        comissao = round(receita * p['commission_pct'] / 100, 2)
+        total_receita  += receita
+        total_comissao += comissao
+        resultado.append({
+            'id': p['id'], 'name': p['name'], 'role': p['role'],
+            'color': p['color'], 'photo_url': p['photo_url'],
+            'commission_pct': p['commission_pct'],
+            'qtd': r['qtd'], 'receita': receita, 'comissao': comissao,
+            'liquido': round(receita - comissao, 2)
+        })
+    # Agendamentos sem profissional definido
+    r_sem = conn.execute('''
+        SELECT COUNT(*) as qtd, COALESCE(SUM(s.price),0) as receita
+        FROM agenda_appointments a
+        LEFT JOIN agenda_services s ON a.service_id=s.id
+        WHERE a.business_id=? AND (a.professional_id IS NULL OR a.professional_id=0)
+          AND strftime('%Y-%m', a.appointment_date)=?
+          AND a.status='done'
+    ''', (biz_id, mes)).fetchone()
+    conn.close()
+    resultado.append({
+        'id': 0, 'name': 'Sem profissional', 'role': '',
+        'color': '#6b7280', 'photo_url': '',
+        'commission_pct': 0,
+        'qtd': r_sem['qtd'], 'receita': round(float(r_sem['receita']), 2),
+        'comissao': 0, 'liquido': round(float(r_sem['receita']), 2)
+    })
+    total_receita  += float(r_sem['receita'])
+    return jsonify({
+        'profissionais': resultado,
+        'total_receita': round(total_receita, 2),
+        'total_comissao': round(total_comissao, 2),
+        'total_liquido': round(total_receita - total_comissao, 2),
+        'mes': mes
+    })
+
+
 @app.route('/agenda/painel/configuracoes', methods=['GET', 'POST'])
 @_agenda_login_required
 def agenda_configuracoes():
@@ -2795,8 +2950,13 @@ def agenda_booking(slug):
     services = [dict(r) for r in conn.execute(
         'SELECT * FROM agenda_services WHERE business_id=? AND active=1 ORDER BY name', (biz['id'],)
     ).fetchall()]
+    professionals = [dict(r) for r in conn.execute(
+        'SELECT * FROM agenda_professionals WHERE business_id=? AND active=1 ORDER BY order_pos, name',
+        (biz['id'],)
+    ).fetchall()]
     conn.close()
-    return render_template('agenda/booking.html', biz=dict(biz), services=services)
+    return render_template('agenda/booking.html', biz=dict(biz), services=services,
+                           professionals=professionals)
 
 
 @app.route('/api/agenda/slots/<slug>')
@@ -2826,13 +2986,14 @@ def api_agenda_slots(slug):
 
 @app.route('/api/agenda/book/<slug>', methods=['POST'])
 def api_agenda_book(slug):
-    data           = request.get_json() or {}
-    customer_name  = data.get('customer_name', '').strip()
-    customer_phone = data.get('customer_phone', '').strip()
-    service_id     = data.get('service_id')
-    appt_date      = data.get('date', '').strip()
-    appt_time      = data.get('time', '').strip()
-    notes          = data.get('notes', '').strip()
+    data            = request.get_json() or {}
+    customer_name   = data.get('customer_name', '').strip()
+    customer_phone  = data.get('customer_phone', '').strip()
+    service_id      = data.get('service_id')
+    appt_date       = data.get('date', '').strip()
+    appt_time       = data.get('time', '').strip()
+    notes           = data.get('notes', '').strip()
+    professional_id = data.get('professional_id') or None
 
     if not all([customer_name, customer_phone, appt_date, appt_time]):
         return jsonify({'success': False, 'error': 'Preencha todos os campos obrigatórios.'})
@@ -2861,13 +3022,24 @@ def api_agenda_book(slug):
         conn.close()
         return jsonify({'success': False, 'error': 'Horário não disponível. Por favor, escolha outro.'})
 
+    # Resolve professional name
+    prof_name = ''
+    if professional_id:
+        p = conn.execute('SELECT name FROM agenda_professionals WHERE id=? AND business_id=?',
+                         (professional_id, biz['id'])).fetchone()
+        if p:
+            prof_name = p['name']
+        else:
+            professional_id = None
+
     conn.execute('''
         INSERT INTO agenda_appointments
         (business_id, service_id, customer_name, customer_phone, customer_notes,
-         appointment_date, appointment_time, status, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?)
+         appointment_date, appointment_time, status, created_at, professional_id, professional_name)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?)
     ''', (biz['id'], service_id or None, customer_name, customer_phone, notes,
-          appt_date, appt_time, datetime.now().isoformat()))
+          appt_date, appt_time, datetime.now().isoformat(),
+          professional_id, prof_name))
     conn.commit()
 
     # Registra/atualiza cliente
