@@ -4,7 +4,20 @@
 {% block content %}
 
 {% if novo %}
-<div class="alert alert-success">🎉 Bem-vindo ao VetZap! Sua conta foi criada. Cadastre seu primeiro pet abaixo!</div>
+<div class="alert alert-success">🎉 Bem-vindo ao VetZap! Sua conta foi criada. Seu pet já está cadastrado abaixo!</div>
+{% endif %}
+
+{% if vacinas_proximas %}
+<div style="background:#fef3c7;border:1px solid #fde68a;border-radius:12px;padding:14px 18px;margin-bottom:20px">
+  <div style="font-weight:700;font-size:14px;color:#92400e;margin-bottom:8px">💉 Vacinas vencendo em breve</div>
+  {% for v in vacinas_proximas %}
+  <div style="display:flex;align-items:center;justify-content:space-between;font-size:13px;padding:4px 0;border-bottom:1px solid #fde68a">
+    <span>🐾 <strong>{{ v.pet_nome }}</strong> — {{ v.nome }}</span>
+    <span style="font-weight:700;color:#d97706">{{ v.proxima[:10] }}</span>
+  </div>
+  {% endfor %}
+  <a href="/petmed/vacinas" style="font-size:12px;color:#92400e;font-weight:700;display:block;margin-top:8px">Ver cartão de vacinas →</a>
+</div>
 {% endif %}
 
 <div class="page-header">

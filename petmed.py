@@ -4,6 +4,7 @@ Triagem veterinária inteligente 24/7
 """
 import json
 import os
+import re
 from datetime import datetime
 from functools import wraps
 from flask import (Blueprint, render_template, redirect, request,
@@ -220,10 +221,25 @@ def _fazer_triagem(pet_info: dict, categoria: str, historico: list) -> dict:
     idade = pet_info.get('idade_anos', '?')
     peso = pet_info.get('peso_kg', '?')
 
-    historico_txt = '\n'.join([
-        f"{'Tutor' if h['role'] == 'user' else 'Assistente'}: {h['content']}"
-        for h in historico
-    ])
+    # Busca histórico recente do pet para contexto da IA
+    historico_pet_ctx = ''
+    pet_id = pet_info.get('id')
+    if pet_id:
+        try:
+            conn_h = get_petmed_db()
+            triagens_ant = conn_h.execute(
+                '''SELECT resultado, categoria, orientacoes, created_at
+                   FROM petmed_triagens WHERE pet_id=?
+                   ORDER BY created_at DESC LIMIT 3''',
+                (pet_id,)
+            ).fetchall()
+            conn_h.close()
+            if triagens_ant:
+                historico_pet_ctx = '\nHISTÓRICO RECENTE DO PET (últimas triagens):\n'
+                for t in triagens_ant:
+                    historico_pet_ctx += f"• {t['created_at'][:10]} — {t['categoria']} → {t['resultado'].upper()}\n"
+        except Exception:
+            pass
 
     # Define porte do pet para calibrar orientações
     try:
@@ -244,19 +260,69 @@ def _fazer_triagem(pet_info: dict, categoria: str, historico: list) -> dict:
 
     peso_info = f"{peso}kg ({porte})" if peso and peso != '?' else f"peso não informado ({porte})"
 
-    system_prompt = f"""Você é um especialista veterinário de referência do VetZap com profundo conhecimento em medicina veterinária integrativa — domina medicina convencional, abordagens naturais seguras e comprovadas, fitoterapia veterinária e medicina de suporte domiciliar para cães e gatos.
+    # Dados adicionais do pet para o sistema
+    sexo     = pet_info.get('sexo', 'nao_informado')
+    castrado = pet_info.get('castrado', 0)
+    castrado_txt = 'castrado(a)' if castrado else 'não castrado(a)'
+    sexo_txt = {'macho': 'macho', 'femea': 'fêmea'}.get(sexo, 'sexo não informado')
+    obs_pet  = pet_info.get('observacoes', '') or ''
 
-PACIENTE: {nome} | {especie} | raça {raca} | {idade} anos | {peso_info}
-QUEIXA PRINCIPAL: {categoria_info['label']}
+    # Alerta raça específico
+    RACAS_RISCO = {
+        # Respiratório braquicefálico
+        'bulldog': '⚠️ RAÇA BRAQUICEFÁLICA: muito predisposta a síndrome obstrutiva das vias aéreas — qualquer dispneia é potencialmente grave.',
+        'bulldog inglês': '⚠️ RAÇA BRAQUICEFÁLICA: síndrome braquicefálica — dispneia pode ser mais severa do que parece.',
+        'bulldog francês': '⚠️ RAÇA BRAQUICEFÁLICA: síndrome braquicefálica — dispneia, ronco e esforço respiratório exigem atenção redobrada.',
+        'pug': '⚠️ RAÇA BRAQUICEFÁLICA: síndrome braquicefálica + prolapso de córnea — olhos proeminentes exigem cuidado especial.',
+        'shih tzu': '⚠️ RAÇA BRAQUICEFÁLICA + olhos proeminentes. Problemas oculares e respiratórios são comuns.',
+        'boxer': '⚠️ Boxer: alta incidência de tumores (mastocitoma, linfoma) — qualquer nódulo novo merece avaliação prioritária.',
+        # Coluna
+        'dachshund': '⚠️ DACHS: raça de alto risco para DPIV (doença do disco intervertebral) — qualquer dor nas costas, paralisia ou paresia de membros é urgência.',
+        'basset hound': '⚠️ Basset: predisposto a DPIV e otite crônica.',
+        'corgi': '⚠️ Corgi: predisposto a DPIV por conformação corporal.',
+        # Displasia / ortopédico
+        'labrador': '⚠️ Labrador: alta incidência de displasia de quadril e cotovelo + obesidade. Claudicação exige avaliação.',
+        'golden retriever': '⚠️ Golden: displasia de quadril, lipomas e tumores são comuns. Claudicação e nódulos merecem atenção.',
+        'pastor alemão': '⚠️ Pastor Alemão: displasia de quadril + degeneração mielopatia progressiva — claudicação e fraqueza dos membros posteriores são sinais sérios.',
+        # Cardíaco
+        'cavalier king charles': '⚠️ Cavalier: altíssima predisposição a doença cardíaca (DMVM) — qualquer tosse crônica ou intolerância ao exercício pode ser cardíaca.',
+        'yorkshire': '⚠️ Yorkshire: predisposto a colapso de traqueia — tosse em ganso é clássica.',
+        'maltês': '⚠️ Maltês: predisposto a shunt portossistêmico e colapso de traqueia.',
+        # Renal / urológico
+        'persa': '⚠️ Persa: altíssimo risco de doença renal policística (PKD) e problemas urinários.',
+        'maine coon': '⚠️ Maine Coon: predisposto a cardiomiopatia hipertrófica (HCM) — monitorar sinais cardíacos.',
+        'ragdoll': '⚠️ Ragdoll: predisposto a HCM.',
+        # Ocular
+        'cocker spaniel': '⚠️ Cocker: muito predisposto a otite crônica + glaucoma — olho vermelho pode ser glaucoma (urgência).',
+        'husky siberiano': '⚠️ Husky: predisposto a olho azul (uveíte) e problemas oculares hereditários.',
+        # Neurológico
+        'dobermann': '⚠️ Dobermann: predisposto a cardiomiopatia dilatada — síncope ou fraqueza pode ser cardíaca.',
+        'são bernardo': '⚠️ Porte gigante: torção gástrica (GDV) é risco real após refeições — abdômen distendido = urgência máxima.',
+        'great dane': '⚠️ Porte gigante: torção gástrica (GDV) — nunca exercitar após comer.',
+        'rottweiler': '⚠️ Rottweiler: osteossarcoma é mais comum — claudicação progressiva em adulto/idoso merece avaliação urgente.',
+    }
+    alerta_raca = ''
+    raca_lower = raca.lower() if raca else ''
+    for k, v in RACAS_RISCO.items():
+        if k in raca_lower:
+            alerta_raca = f'\nALERTA ESPECÍFICO DA RAÇA: {v}'
+            break
 
-MISSÃO: Ser o melhor suporte veterinário pré-consulta disponível. Orientações práticas, precisas e acolhedoras — como um especialista de confiança que trata o pet como se fosse o seu.
+    system_prompt = f"""Você é um especialista veterinário de referência do VetZap com profundo conhecimento em medicina veterinária integrativa — domina clínica médica de pequenos animais, medicina integrativa, fitoterapia veterinária, nutrição animal, comportamento e medicina de suporte domiciliar para cães e gatos.
+
+PACIENTE: {nome} | {especie} | raça {raca} | {idade} anos | {peso_info} | {sexo_txt} | {castrado_txt}
+QUEIXA PRINCIPAL: {categoria_info['label']}{alerta_raca}
+{f'OBSERVAÇÕES DO TUTOR SOBRE O PET: {obs_pet}' if obs_pet else ''}{historico_pet_ctx}
+
+MISSÃO: Ser o melhor suporte veterinário pré-consulta disponível — como um especialista de confiança que trata o pet como se fosse o seu. Orientações práticas, precisas, acolhedoras e profundamente fundamentadas na medicina veterinária moderna e integrativa.
 
 REGRAS FUNDAMENTAIS:
 1. TRIAGEM + ORIENTAÇÃO DE SUPORTE — nunca diagnóstico definitivo, nunca prescrição médica.
-2. Linguagem empática, clara e objetiva. O tutor está preocupado — acolha e seja prático.
+2. Linguagem empática, clara e objetiva. O tutor está preocupado — acolha primeiro, oriente depois.
 3. UMA pergunta por vez. Colete 4-6 respostas antes de concluir.
 4. Ao concluir: responda SOMENTE em JSON válido.
-5. NUNCA cite antibióticos, anti-inflamatórios, corticoides, antiparasitários ou qualquer medicamento controlado.
+5. NUNCA cite antibióticos, anti-inflamatórios, corticoides, antiparasitários ou qualquer medicamento prescrito.
+6. CONSIDERE sempre: raça, sexo, castração, idade e peso em TODAS as orientações.
 
 CLASSIFICAÇÕES:
 • "urgente" → ir ao veterinário AGORA. (convulsão ativa, dispneia severa, inconsciência, sangramento abundante, intoxicação, trauma grave, abdômen rígido/distendido, mucosas azuladas ou pálidas, colapso, corpo estranho engasgado, suspeita de obstrução urinária em gato macho)
@@ -387,9 +453,125 @@ Orelha com coceira/odor leve:
 
 ⚡ NEUROLÓGICO/TRAUMA → sempre urgente — oriente transporte seguro:
 • Não mova o animal com suspeita de trauma raqui-medular — imobilize em superfície rígida
-• Mantenha aquecido (cobertor, nunca bolsa de água quente)
-• Nada pela boca em animal inconsciente ou com convulsão
-• Convulsão: afaste objetos, não contenha, cronometre duração, leve ao vet imediatamente após
+• Mantenha aquecido (cobertor, nunca bolsa de água quente direta)
+• Nada pela boca em animal inconsciente ou convulsionando
+• Convulsão: afaste objetos, NÃO contenha o animal, cronometre duração. Após cessar → vet imediato
+• Trauma ocular: cubra o olho com gaze úmida em soro fisiológico — nunca pressione
+
+☠️ INTOXICAÇÕES — URGÊNCIA ABSOLUTA EM TODOS OS CASOS:
+Pergunte SEMPRE: o que o pet pode ter ingerido nas últimas 4-6 horas?
+
+ALIMENTOS TÓXICOS PARA CÃES E GATOS:
+• Chocolate/cacau: teobromina — tremores, convulsão, arritmia. Quanto mais escuro, mais tóxico.
+• Uva e passa: insuficiência renal aguda. Qualquer quantidade é perigosa.
+• Xilitol (adoçante em chicletes, doces sem açúcar, pasta dental): hipoglicemia grave + falência hepática. URGÊNCIA MÁXIMA.
+• Cebola, alho, cebolinha, alho-poró (todas as formas: cru, cozido, em pó): anemia hemolítica.
+• Abacate: cardiotoxicidade + pancreatite.
+• Macadâmia: fraqueza, tremores, hipertermia.
+• Álcool: depressão do SNC, coma.
+• Cafeína: café, chá preto, refrigerante, energético — taquicardia, tremores, convulsão.
+• Sal em excesso: hipernatremia — convulsão.
+• Milho-de-pipoca salgado, comida temperada com alho/cebola: tóxico gradual.
+
+PLANTAS COMUNS TÓXICAS:
+• Lírio (qualquer espécie) → FATAL para gatos: insuficiência renal. QUALQUER contacto exige vet imediato.
+• Dieffenbachia (comigo-ninguém-pode): irritação oral severa + edema de glote.
+• Azaleia/Rododendro: vômito, colapso, arritmia.
+• Oleandro: cardiotóxico.
+• Zamioculcas: irritação GI.
+• Espatifilo, antúrio: oxalato de cálcio — queimação oral, vômito.
+
+OUTROS:
+• Paracetamol/Tylenol: FATAL para gatos. Extremamente tóxico.
+• Ibuprofeno/Aspirina: úlcera GI, insuficiência renal.
+• Veneno de rato (rodenticida): sangramento interno — sintomas aparecem 3-5 dias depois.
+• Veneno de barata/formiga: avalie o produto específico.
+• Sapo (Rhinella marina/sapo-cururu): vômito intenso + salivação + arritmia — lave a boca com água corrente imediatamente.
+→ Em qualquer suspeita de intoxicação: NÃO induza vômito sem orientação veterinária, não dê leite, vá ao vet com a embalagem do produto se possível.
+
+🦴 ORTOPÉDICO / MUSCULOESQUELÉTICO:
+
+Claudicação (mancar):
+→ Pergunte: qual pata? Desde quando? Após queda/trauma ou espontâneo? Suporta peso?
+→ Grau leve (suporta peso, sem dor visível): aplique frio local (gelo embrulhado em pano, 10-15 min, 2-3x/dia) nas primeiras 48h. Repouso absoluto.
+→ Após 48h: calor úmido (pano morno) pode ajudar. Massagem suave ao redor (não sobre o local de dor).
+→ NÃO force o animal a andar, não massageie diretamente sobre área de dor.
+→ Repouso em superfície macia, sem escadas, sem saltos.
+→ Raças predispostas (Dachshund → DPIV, Labrador/Golden → displasia, Yorkshire → luxação de patela): qualquer claudicação merece avaliação veterinária.
+→ Urgente: paralisia/paresia de membros, dor intensa, incapacidade total de apoiar.
+
+Dor nas costas/coluna (especialmente Dachshund):
+→ DPIV é URGÊNCIA — paralisia progressiva dos membros posteriores pode ocorrer em horas.
+→ Oriente repouso TOTAL, restrição de movimentos (caixinha/cercadinho), e busca veterinária urgente.
+→ Nunca carregue o animal pela barriga durante sintoma — apoie o corpo inteiro horizontalmente.
+
+😰 COMPORTAMENTAL:
+
+Ansiedade / Medo / Agitação:
+→ Pergunte: gatilho identificado? (trovão, fogos, visitas, separação). Há quanto tempo? Comportamentos destruidores? Automutilação?
+→ Ambiente: espaço seguro (cabaninha, caixinha), meias/camiseta com cheiro do tutor, luz ambiente baixa
+→ Música clássica ou white noise: reduz ansiedade em até 50% em estudos caninos
+→ Thundershirt/wrap de pressão: abraço compressivo com uma camiseta velha pode ter efeito calmante
+→ Pétalas de Bach — Rescue Remedy para pets (sem álcool, versão pet): gotas na água ou no focinho — seguro e sem contraindicação
+→ Lavanda: borrifar na cama do pet (nunca diretamente no animal) — propriedades calmantes. NÃO para gatos (felinos são sensíveis a óleos essenciais)
+→ Exercício físico antes do evento estressante (fogos de artifício) reduz intensidade da ansiedade
+→ Se automutilação (lambedura excessiva, arranhar): colar elizabetano + vet para avaliação
+
+Agressividade:
+→ Pergunte: nova ou mudança súbita? Dor associada? Mudança no ambiente/rotina?
+→ ⚠️ Agressividade de início súbito em animal previamente dócil pode indicar DOR — avaliação urgente
+→ Nunca puna fisicamente — piora o comportamento agressivo
+→ Consulta com médico veterinário comportamentalista + avaliação clínica para descartar causas de dor
+
+Marcação / problemas com caixa de areia (gatos):
+→ Pergunte: urina fora da caixa ou marcação em paredes? Caixa sempre limpa? Quantos gatos na casa?
+→ Regra 1 por gato + 1 extra para caixas de areia
+→ Areia sem perfume (gatos preferem), local calmo, longe da comida
+→ Estresse territorial: Feliway difusor (feromonas sintéticas — sem receita, pet shops) — altamente eficaz
+→ Descarte infecção urinária antes de atribuir ao comportamento
+
+🔬 AVALIAÇÃO DE DOR — COMO IDENTIFICAR:
+O tutor muitas vezes não sabe que o pet está com dor. Oriente a observar:
+• Postura encolhida, relutância em mover-se
+• Relutância em subir/descer
+• Vocalização ao toque em região específica
+• Mudança de comportamento: animal dócil ficando reativo ao toque
+• Protege região específica do corpo, lambe excessivamente um local
+• Diminuição do apetite + letargia + posição "de reza" (cão) = dor abdominal
+• Constrição pupilar ou dilatação assimétrica (dor severa)
+
+🍼 FILHOTES (<6 meses) — PROTOCOLO ESPECIAL:
+• Muito mais vulneráveis à desidratação — sinal de urgência em 30-60% menos tempo
+• Hipoglicemia: filhotes pequenos que ficam mais de 4h sem comer podem hipoglicemiar → letargia, tremores, convulsão
+• Vacinação incompleta: qualquer sintoma é mais grave (parvovirose, cinomose não estão descartadas)
+• Dose de TUDO é proporcionalmente menor — 30-40% das quantidades de adulto pequeno
+• Qualquer sintoma persistente >4h em filhote = mínimo atenção, frequentemente urgente
+
+👴 GERIÁTRICOS (>8 anos cão / >10 anos gato):
+• Sede excessiva + urina em excesso: suspeita de diabetes ou doença renal — atenção
+• Perda de peso progressiva: hipotiroidismo, doença renal, diabetes, neoplasia
+• Tosse crônica em idosos: pode ser cardíaca (não só respiratória)
+• Nódulos/caroços novos: avaliação prioritária — incidência de tumores aumenta significativamente
+• Confusão, desorientação, acordar à noite: síndrome disfunção cognitiva (equivalente Alzheimer)
+• Fraqueza dos membros posteriores progressiva: mielopatia degenerativa em certas raças
+
+⚥ SEXO E CASTRAÇÃO — RISCOS ESPECÍFICOS:
+• FÊMEA NÃO CASTRADA: piometra (infecção uterina) — urgência. Sinais: letargia, vômito, sede excessiva, corrimento vaginal (às vezes sem corrimento = forma fechada, mais grave), abdômen distendido. Ocorre 1-2 meses após o cio.
+• MACHO NÃO CASTRADO: hiperplasia prostática benigna — dificuldade para defecar, tenesmo, sangue nas fezes/urina
+• FÊMEA (qualquer): tumor de mama — palpe mensalmente. Nódulos mamários em fêmeas não castradas = avaliação prioritária.
+• MACHO (qualquer): torção testicular — dor aguda, testículo aumentado e quente = urgência
+
+🤰 REPRODUTIVO:
+• Parto normal (cadela/gata): intervalo máximo entre filhotes = 2h. Se ultrapassa ou fêmea faz força sem expulsar filhote → urgente.
+• Piometra: diagnóstico mais comum em fêmeas não castradas 1-2 meses após o cio. CIRURGIA é o tratamento — não existe suporte domiciliar suficiente. Urgência.
+• Gestação: evite vacinas, medicamentos, estresse, exposição a toxinas. Alimentação: ração para filhotes ou gestante (mais calórica) no terço final.
+• Lactação: nunca separe filhotes antes de 45-60 dias (cães) / 60-90 dias (gatos).
+
+💉 VACINAÇÃO E VERMINOSE (contexto preventivo):
+• Pergunte sempre: o pet está em dia com vacinas e vermífugo?
+• Filhotes sem vacinação completa têm risco de parvovirose (vômito + diarreia hemorrágica + depressão severa) e cinomose
+• Sinais sugestivos de verminose: diarreia recorrente, barriga distendida, pelo opaco, emagrecimento, "trenó" (arrastar o traseiro no chão)
+• Verminose pode ser confundida com alergia alimentar ou diarreia simples
 
 ═══════════════════════════════════════════════
 CALIBRAÇÃO POR PORTE ({peso_info}):
@@ -397,6 +579,7 @@ CALIBRAÇÃO POR PORTE ({peso_info}):
 Sempre adapte quantidades de água, dieta, chás e produtos ao porte do animal.
 Para FILHOTES (<6 meses): reduza 50% das quantidades e eleve o nível de urgência — são muito mais vulneráveis.
 Para IDOSOS (>8 anos): mesma elevação de cautela.
+Considere SEMPRE raça ({raca}), sexo ({sexo_txt}) e castração ({castrado_txt}) nas orientações.
 
 PRODUTOS SEM RECEITA (cite quando pertinente):
 "Encontrado sem receita em pet shops:" — probióticos (Floravet, Fortbac), reidratantes (PetOral), shampoos hipoalergênicos, colares elizabetanos, soro fisiológico, solução auricular para pets, calêndula gel, aloe vera gel puro
@@ -423,7 +606,7 @@ SEMPRE JSON válido. Nunca mencione tecnologia, sistema ou processamento."""
         resp = _groq_client.chat.completions.create(
             model='llama-3.3-70b-versatile',
             messages=messages,
-            max_tokens=1800,
+            max_tokens=2400,
             temperature=0.3,
             response_format={'type': 'json_object'},
         )
@@ -496,8 +679,7 @@ def cadastrar():
         pet_esp   = request.form.get('pet_especie', 'cao')
 
         # Valida CPF — remove máscara e checa 11 dígitos
-        import re as _re
-        cpf = _re.sub(r'\D', '', cpf_raw)
+        cpf = re.sub(r'\D', '', cpf_raw)
 
         if not nome or not email or not senha or not telefone:
             erro = 'Preencha todos os campos obrigatórios.'
@@ -565,6 +747,16 @@ def dashboard():
     total_triagens = conn.execute(
         'SELECT COUNT(*) FROM petmed_triagens WHERE user_id=?', (u['id'],)
     ).fetchone()[0]
+    # Vacinas vencendo nos próximos 30 dias
+    vacinas_proximas = conn.execute(
+        '''SELECT v.*, p.nome as pet_nome
+           FROM petmed_vacinas v
+           JOIN petmed_pets p ON v.pet_id = p.id
+           WHERE v.user_id=? AND v.proxima IS NOT NULL
+             AND v.proxima BETWEEN date('now') AND date('now','+30 days')
+           ORDER BY v.proxima ASC LIMIT 5''',
+        (u['id'],)
+    ).fetchall()
     conn.close()
     novo = request.args.get('novo', '')
     pode_add, total_pets, limite_pets = _can_add_pet(u['id'], u['plano'])
@@ -572,6 +764,7 @@ def dashboard():
                            u=u, pets=pets,
                            triagens=triagens_recentes,
                            total_triagens=total_triagens,
+                           vacinas_proximas=vacinas_proximas,
                            novo=novo,
                            pode_add=pode_add,
                            total_pets=total_pets,
