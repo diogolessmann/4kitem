@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Redefinir senha · DefesaPro</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #0f0f0f; color: #F0EFE9; font-family: 'Inter', sans-serif;
+      min-height: 100vh; display: flex; align-items: center; justify-content: center;
+      background-image: radial-gradient(ellipse at 60% 20%, rgba(124,58,237,.12) 0%, transparent 60%);
+    }
+    .box {
+      background: #1a1a1a; border: 1px solid rgba(255,255,255,.08);
+      border-radius: 20px; padding: 40px 36px; width: 100%; max-width: 400px;
+      box-shadow: 0 24px 80px rgba(0,0,0,.5);
+    }
+    .logo { display: flex; align-items: center; gap: 10px; margin-bottom: 28px; justify-content: center; }
+    .logo-icon { width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(135deg, #7c3aed, #a855f7); display: flex; align-items: center; justify-content: center; font-size: 22px; }
+    .logo-text { font-size: 22px; font-weight: 800; }
+    .logo-text span { color: #a855f7; }
+    h2 { font-size: 17px; font-weight: 700; text-align: center; margin-bottom: 6px; }
+    .sub { font-size: 13px; color: #888; text-align: center; margin-bottom: 28px; line-height: 1.5; }
+    label { display: block; font-size: 12px; font-weight: 600; color: #999; margin-bottom: 6px; margin-top: 16px; }
+    input { width: 100%; padding: 11px 14px; background: #252525; border: 1px solid rgba(255,255,255,.1); border-radius: 10px; color: #F0EFE9; font-size: 14px; font-family: inherit; outline: none; transition: border-color .15s; }
+    input:focus { border-color: #7c3aed; }
+    .btn { width: 100%; padding: 12px; border-radius: 10px; border: none; background: linear-gradient(135deg, #7c3aed, #a855f7); color: #fff; font-size: 15px; font-weight: 700; cursor: pointer; margin-top: 22px; font-family: inherit; transition: opacity .15s; }
+    .btn:hover { opacity: .88; }
+    .erro { background: rgba(239,68,68,.1); border: 1px solid rgba(239,68,68,.2); border-radius: 10px; padding: 12px 16px; font-size: 13px; color: #fca5a5; margin-bottom: 4px; text-align: center; }
+    .sucesso-box { text-align: center; padding: 8px 0; }
+    .sucesso-icon { font-size: 52px; margin-bottom: 16px; }
+    .sucesso-title { font-size: 18px; font-weight: 800; margin-bottom: 8px; color: #86efac; }
+    .sucesso-sub { font-size: 13px; color: #888; line-height: 1.6; margin-bottom: 24px; }
+    .back { display: block; text-align: center; margin-top: 20px; font-size: 12px; color: #555; text-decoration: none; }
+    .back:hover { color: #999; }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <div class="logo">
+      <div class="logo-icon">⚖️</div>
+      <div class="logo-text">Defesa<span>Pro</span></div>
+    </div>
+
+    {% if sucesso %}
+    <div class="sucesso-box">
+      <div class="sucesso-icon">✅</div>
+      <div class="sucesso-title">Senha redefinida!</div>
+      <p class="sucesso-sub">Sua senha foi atualizada com sucesso. Agora você pode fazer login.</p>
+      <a href="/defesapro/login" class="btn" style="display:block;text-align:center;text-decoration:none;padding:12px">
+        ⚖️ Entrar no DefesaPro
+      </a>
+    </div>
+    {% else %}
+    <h2>Redefinir senha</h2>
+    <p class="sub">Informe seu e-mail, o código recebido e a nova senha.</p>
+
+    {% if erro %}
+    <div class="erro">{{ erro }}</div>
+    {% endif %}
+
+    <form method="post">
+      <label for="email">E-mail</label>
+      <input type="email" id="email" name="email" value="{{ email_pre }}" placeholder="seu@email.com.br" required>
+
+      <label for="codigo">Código de 6 dígitos</label>
+      <input type="text" id="codigo" name="codigo" placeholder="123456" maxlength="6"
+             pattern="\d{6}" inputmode="numeric" autocomplete="one-time-code" required>
+
+      <label for="nova_senha">Nova senha</label>
+      <input type="password" id="nova_senha" name="nova_senha" placeholder="Mínimo 6 caracteres" minlength="6" required>
+
+      <button type="submit" class="btn">🔒 Redefinir senha</button>
+    </form>
+
+    <a href="/defesapro/esqueci-senha" class="back">← Solicitar novo código</a>
+    {% endif %}
+  </div>
+</body>
+</html>

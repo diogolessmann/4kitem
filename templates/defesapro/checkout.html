@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Assinar {{ plano.nome }} · DefesaPro</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #0f0f0f; color: #F0EFE9; font-family: 'Inter', sans-serif;
+      min-height: 100vh; display: flex; align-items: center; justify-content: center;
+      background-image: radial-gradient(ellipse at 60% 20%, rgba(124,58,237,.12) 0%, transparent 60%);
+      padding: 24px 16px;
+    }
+    .box {
+      background: #1a1a1a; border: 1px solid rgba(255,255,255,.08);
+      border-radius: 20px; padding: 40px 36px; width: 100%; max-width: 440px;
+      box-shadow: 0 24px 80px rgba(0,0,0,.5);
+    }
+    .logo { display: flex; align-items: center; gap: 10px; margin-bottom: 28px; justify-content: center; }
+    .logo-icon { width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(135deg, #7c3aed, #a855f7); display: flex; align-items: center; justify-content: center; font-size: 22px; }
+    .logo-text { font-size: 22px; font-weight: 800; }
+    .logo-text span { color: #a855f7; }
+    .plan-card {
+      background: #252525; border: 1px solid rgba(124,58,237,.3);
+      border-radius: 14px; padding: 20px; text-align: center; margin-bottom: 24px;
+    }
+    .plan-emoji { font-size: 32px; margin-bottom: 8px; }
+    .plan-name { font-size: 18px; font-weight: 800; margin-bottom: 4px; }
+    .plan-price { font-size: 32px; font-weight: 900; color: #a855f7; }
+    .plan-price span { font-size: 14px; font-weight: 500; color: #666; }
+    .section-title { font-size: 12px; font-weight: 700; color: #999; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 12px; }
+    .billing-opts { display: flex; flex-direction: column; gap: 10px; margin-bottom: 24px; }
+    .billing-opt {
+      display: flex; align-items: center; gap: 14px;
+      background: #252525; border: 2px solid rgba(255,255,255,.08);
+      border-radius: 12px; padding: 14px 16px; cursor: pointer;
+      transition: border-color .15s;
+    }
+    .billing-opt:has(input:checked) { border-color: #7c3aed; background: rgba(124,58,237,.08); }
+    .billing-opt input { accent-color: #7c3aed; width: 16px; height: 16px; cursor: pointer; }
+    .billing-label { font-size: 14px; font-weight: 600; }
+    .billing-desc { font-size: 12px; color: #666; margin-top: 2px; }
+    .btn { width: 100%; padding: 14px; border-radius: 12px; border: none; background: linear-gradient(135deg, #7c3aed, #a855f7); color: #fff; font-size: 15px; font-weight: 700; cursor: pointer; font-family: inherit; transition: opacity .15s; }
+    .btn:hover { opacity: .88; }
+    .erro { background: rgba(239,68,68,.1); border: 1px solid rgba(239,68,68,.2); border-radius: 10px; padding: 12px 16px; font-size: 13px; color: #fca5a5; margin-bottom: 16px; text-align: center; }
+    .back { display: block; text-align: center; margin-top: 16px; font-size: 12px; color: #555; text-decoration: none; }
+    .back:hover { color: #999; }
+    .secure { text-align: center; font-size: 11px; color: #555; margin-top: 12px; }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <div class="logo">
+      <div class="logo-icon">⚖️</div>
+      <div class="logo-text">Defesa<span>Pro</span></div>
+    </div>
+
+    <div class="plan-card">
+      <div class="plan-emoji">{{ plano.emoji }}</div>
+      <div class="plan-name">Plano {{ plano.nome }}</div>
+      <div class="plan-price">{{ plano.preco_fmt }}<span>/mês</span></div>
+    </div>
+
+    {% if erro %}
+    <div class="erro">{{ erro }}</div>
+    {% endif %}
+
+    <form method="post">
+      <div class="section-title">Forma de pagamento</div>
+      <div class="billing-opts">
+        <label class="billing-opt">
+          <input type="radio" name="billing_type" value="PIX" checked>
+          <div>
+            <div class="billing-label">⚡ PIX</div>
+            <div class="billing-desc">Aprovação em minutos</div>
+          </div>
+        </label>
+        <label class="billing-opt">
+          <input type="radio" name="billing_type" value="BOLETO">
+          <div>
+            <div class="billing-label">🏦 Boleto Bancário</div>
+            <div class="billing-desc">Vencimento em 3 dias úteis</div>
+          </div>
+        </label>
+        <label class="billing-opt">
+          <input type="radio" name="billing_type" value="CREDIT_CARD">
+          <div>
+            <div class="billing-label">💳 Cartão de Crédito</div>
+            <div class="billing-desc">Aprovação em até 1 hora</div>
+          </div>
+        </label>
+      </div>
+
+      <button type="submit" class="btn">Assinar {{ plano.nome }} →</button>
+    </form>
+
+    <div class="secure">🔒 Pagamento seguro · Cancele quando quiser</div>
+    <a href="/defesapro/planos" class="back">← Ver todos os planos</a>
+  </div>
+</body>
+</html>

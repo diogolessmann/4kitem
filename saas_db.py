@@ -479,6 +479,27 @@ def init_saas_db():
         "ALTER TABLE mandaja_orders ADD COLUMN change_for REAL DEFAULT 0",
         "ALTER TABLE mandaja_stores ADD COLUMN cpf_cnpj TEXT DEFAULT ''",
     ]
+    # ── DefesaPro / apps gerais — reset de senha e Asaas ────────────────────────
+    _auth_migrations = [
+        "ALTER TABLE defesapro_users ADD COLUMN reset_token TEXT DEFAULT ''",
+        "ALTER TABLE defesapro_users ADD COLUMN reset_expires TEXT DEFAULT ''",
+        "ALTER TABLE defesapro_users ADD COLUMN asaas_customer_id TEXT DEFAULT ''",
+        "ALTER TABLE agenda_businesses ADD COLUMN reset_token TEXT DEFAULT ''",
+        "ALTER TABLE agenda_businesses ADD COLUMN reset_expires TEXT DEFAULT ''",
+        "ALTER TABLE agenda_businesses ADD COLUMN asaas_customer_id TEXT DEFAULT ''",
+        "ALTER TABLE mandaja_stores ADD COLUMN reset_token TEXT DEFAULT ''",
+        "ALTER TABLE mandaja_stores ADD COLUMN reset_expires TEXT DEFAULT ''",
+        "ALTER TABLE mandaja_stores ADD COLUMN asaas_customer_id TEXT DEFAULT ''",
+        "ALTER TABLE mandaja_stores ADD COLUMN plan_active INTEGER DEFAULT 1",
+        "ALTER TABLE defesapro_users ADD COLUMN plan_active INTEGER DEFAULT 1",
+    ]
+    for sql in _auth_migrations:
+        try:
+            conn.execute(sql)
+            conn.commit()
+        except Exception:
+            pass
+
     for sql in _mandaja_migrations:
         try:
             conn.execute(sql)

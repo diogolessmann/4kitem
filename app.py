@@ -68,6 +68,69 @@ ALERTA_PLANS = {
 }
 
 
+# ── DefesaPro — planos e preços ───────────────────────────────────────────────
+DEFESAPRO_PLANOS = {
+    'starter':      {'nome': 'Starter',      'preco': 390.00, 'preco_fmt': 'R$ 390',  'emoji': '⚖️'},
+    'profissional': {'nome': 'Profissional', 'preco': 590.00, 'preco_fmt': 'R$ 590',  'emoji': '🏛️'},
+    'premium':      {'nome': 'Premium',      'preco': 990.00, 'preco_fmt': 'R$ 990',  'emoji': '👑'},
+}
+
+# ── Helpers globais: e-mail (Resend) + Asaas ──────────────────────────────────
+_ASAAS_BASE = 'https://api.asaas.com/v3'
+
+def _enviar_email(para: str, assunto: str, html: str) -> bool:
+    api_key = os.environ.get('RESEND_API_KEY', '')
+    if not api_key:
+        return False
+    from_addr = os.environ.get('EMAIL_FROM', 'VetZap <onboarding@resend.dev>')
+    try:
+        r = requests.post(
+            'https://api.resend.com/emails',
+            headers={'Authorization': f'Bearer {api_key}', 'Content-Type': 'application/json'},
+            json={'from': from_addr, 'to': [para], 'subject': assunto, 'html': html},
+            timeout=10
+        )
+        return r.status_code in (200, 201)
+    except Exception:
+        return False
+
+def _asaas_req(method: str, endpoint: str, data: dict = None):
+    api_key = os.environ.get('ASAAS_API_KEY', '')
+    if not api_key:
+        return {'error': 'no_key'}
+    try:
+        r = requests.request(
+            method, f'{_ASAAS_BASE}{endpoint}',
+            headers={'access_token': api_key, 'Content-Type': 'application/json'},
+            json=data, timeout=15
+        )
+        return r.json()
+    except Exception as e:
+        return {'error': str(e)}
+
+def _asaas_criar_ou_buscar_cliente_saas(nome, email, telefone, cpf, tabela_id, tabela):
+    """Cria ou busca cliente no Asaas para apps do saas.db."""
+    cpf_limpo = ''.join(c for c in (cpf or '') if c.isdigit())
+    busca = _asaas_req('GET', f'/customers?cpfCnpj={cpf_limpo}') if cpf_limpo else {}
+    if busca.get('data'):
+        return busca['data'][0]['id']
+    resp = _asaas_req('POST', '/customers', {
+        'name': nome, 'email': email,
+        'mobilePhone': ''.join(c for c in (telefone or '') if c.isdigit()),
+        'cpfCnpj': cpf_limpo,
+    })
+    return resp.get('id')
+
+def _asaas_criar_assinatura_saas(customer_id, app_prefix, plano_key, valor, descricao, billing_type='PIX'):
+    import datetime as _dt
+    prox = (_dt.date.today() + _dt.timedelta(days=1)).strftime('%Y-%m-%d')
+    return _asaas_req('POST', '/subscriptions', {
+        'customer': customer_id, 'billingType': billing_type,
+        'value': valor, 'nextDueDate': prox,
+        'cycle': 'MONTHLY', 'description': descricao,
+        'externalReference': f'{app_prefix}_{customer_id}_{plano_key}',
+    })
+
 # ── SaaS helpers ──────────────────────────────────────────────────────────────
 def _slugify(text):
     text = unicodedata.normalize('NFD', text)
@@ -663,6 +726,15 @@ def defesa_cadastro():
                 conn.commit(); conn.close()
                 sucesso = True
                 nome_cadastrado = name.split()[0]
+                # E-mail de boas-vindas
+                _enviar_email(email, 'Bem-vindo ao DefesaPro!', f"""
+                <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px">
+                  <div style="font-size:32px;margin-bottom:8px">⚖️</div>
+                  <h2 style="color:#7c3aed">Bem-vindo ao DefesaPro, {nome_cadastrado}!</h2>
+                  <p>Seu cadastro foi realizado com sucesso.</p>
+                  <p style="margin-top:12px">Assim que seu pagamento for confirmado, sua conta será liberada automaticamente.</p>
+                  <p style="margin-top:12px;color:#666;font-size:13px">Dúvidas? Fale pelo WhatsApp: (47) 99101-1351</p>
+                </div>""")
     return render_template('defesapro/cadastro.html',
                            erro=erro, sucesso=sucesso,
                            nome_cadastrado=nome_cadastrado)
@@ -675,6 +747,198 @@ def defesa_logout():
     session.pop('defesa_escritorio', None)
     session.pop('defesa_plan', None)
     return redirect('/defesapro/login')
+
+
+# ── DefesaPro — Recuperação de senha ─────────────────────────────────────────
+@app.route('/defesapro/esqueci-senha', methods=['GET', 'POST'])
+def defesa_esqueci_senha():
+    enviado = False
+    codigo_tela = None
+    erro = None
+    if request.method == 'POST':
+        email = request.form.get('email', '').strip().lower()
+        conn = get_saas_db()
+        u = conn.execute('SELECT * FROM defesapro_users WHERE LOWER(email)=?', (email,)).fetchone()
+        if not u:
+            erro = 'E-mail não encontrado.'
+            conn.close()
+        else:
+            codigo = str(random.randint(100000, 999999))
+            expires = (datetime.now() + timedelta(hours=2)).isoformat()
+            conn.execute('UPDATE defesapro_users SET reset_token=?, reset_expires=? WHERE id=?',
+                         (codigo, expires, u['id']))
+            conn.commit(); conn.close()
+            html_email = f"""
+            <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px">
+              <div style="font-size:32px;margin-bottom:8px">⚖️</div>
+              <h2 style="color:#7c3aed">Recuperação de senha — DefesaPro</h2>
+              <p>Olá, <strong>{u['name'].split()[0]}</strong>!</p>
+              <p>Seu código de recuperação é:</p>
+              <div style="font-size:36px;font-weight:900;letter-spacing:8px;color:#7c3aed;
+                          background:#f5f3ff;padding:20px;border-radius:12px;text-align:center;
+                          margin:20px 0">{codigo}</div>
+              <p style="color:#666;font-size:13px">Válido por 2 horas. Se não solicitou, ignore este e-mail.</p>
+            </div>"""
+            ok = _enviar_email(email, 'Código de recuperação — DefesaPro', html_email)
+            enviado = True
+            if not ok:
+                codigo_tela = codigo
+    return render_template('defesapro/esqueci_senha.html',
+                           enviado=enviado, codigo_tela=codigo_tela, erro=erro)
+
+
+@app.route('/defesapro/redefinir-senha', methods=['GET', 'POST'])
+def defesa_redefinir_senha():
+    sucesso = False
+    erro = None
+    email_pre = request.args.get('email', '')
+    if request.method == 'POST':
+        email = request.form.get('email', '').strip().lower()
+        codigo = request.form.get('codigo', '').strip()
+        nova = request.form.get('nova_senha', '')
+        if len(nova) < 6:
+            erro = 'A senha deve ter pelo menos 6 caracteres.'
+        else:
+            conn = get_saas_db()
+            u = conn.execute('SELECT * FROM defesapro_users WHERE LOWER(email)=?', (email,)).fetchone()
+            if not u or u['reset_token'] != codigo:
+                erro = 'Código inválido ou expirado.'
+                conn.close()
+            elif u['reset_expires'] and datetime.fromisoformat(u['reset_expires']) < datetime.now():
+                erro = 'Código expirado. Solicite um novo.'
+                conn.close()
+            else:
+                conn.execute('UPDATE defesapro_users SET password_hash=?, reset_token=NULL, reset_expires=NULL WHERE id=?',
+                             (generate_password_hash(nova), u['id']))
+                conn.commit(); conn.close()
+                sucesso = True
+    return render_template('defesapro/redefinir_senha.html',
+                           sucesso=sucesso, erro=erro, email_pre=email_pre)
+
+
+# ── DefesaPro — Checkout / Assinatura ────────────────────────────────────────
+@app.route('/defesapro/assinar/<plano>', methods=['GET', 'POST'])
+def defesa_assinar(plano):
+    if plano not in DEFESAPRO_PLANOS:
+        return redirect('/defesapro/planos')
+    user_id = session.get('defesa_user_id')
+    if not user_id:
+        return redirect(f'/defesapro/login?next=/defesapro/assinar/{plano}')
+    p = DEFESAPRO_PLANOS[plano]
+    erro = None
+    if request.method == 'POST':
+        billing_type = request.form.get('billing_type', 'PIX').upper()
+        if billing_type not in ('PIX', 'BOLETO', 'CREDIT_CARD'):
+            billing_type = 'PIX'
+        conn = get_saas_db()
+        u = conn.execute('SELECT * FROM defesapro_users WHERE id=?', (user_id,)).fetchone()
+        conn.close()
+        if not u:
+            return redirect('/defesapro/login')
+        # Cria/busca cliente no Asaas
+        customer_id = _asaas_criar_ou_buscar_cliente_saas(
+            u['name'], u['email'], u['phone'], u['cpf_cnpj'], u['id'], 'defesapro_users'
+        )
+        if not customer_id:
+            erro = 'Erro ao processar pagamento. Tente novamente ou entre em contato.'
+        else:
+            # Salva customer_id
+            conn2 = get_saas_db()
+            conn2.execute('UPDATE defesapro_users SET asaas_customer_id=? WHERE id=?',
+                          (customer_id, user_id))
+            conn2.commit(); conn2.close()
+            # Cria assinatura
+            resp = _asaas_criar_assinatura_saas(
+                customer_id, 'defesapro', plano, p['preco'],
+                f'DefesaPro {p["nome"]} — Assinatura Mensal',
+                billing_type
+            )
+            if resp.get('id'):
+                return redirect('/defesapro/aguardando-pagamento')
+            else:
+                erro = 'Não foi possível gerar o pagamento. Tente novamente.'
+    return render_template('defesapro/checkout.html', plano=p, plano_key=plano, erro=erro)
+
+
+@app.route('/defesapro/aguardando-pagamento')
+def defesa_aguardando():
+    return render_template('defesapro/aguardando.html')
+
+
+@app.route('/defesapro/planos')
+def defesa_planos():
+    return render_template('defesapro/planos.html', planos=DEFESAPRO_PLANOS,
+                           user_id=session.get('defesa_user_id'),
+                           plano_atual=session.get('defesa_plan'))
+
+
+# ── Webhook global Asaas (todos os apps) ─────────────────────────────────────
+@app.route('/webhook/asaas', methods=['GET', 'POST'])
+def webhook_asaas_global():
+    if request.method == 'GET':
+        return jsonify({'status': 'ok'}), 200
+    # Validação do token
+    token = os.environ.get('ASAAS_WEBHOOK_TOKEN', '')
+    if token and request.headers.get('asaas-access-token') != token:
+        return jsonify({'error': 'unauthorized'}), 401
+    try:
+        payload = request.get_json(force=True) or {}
+    except Exception:
+        return jsonify({'error': 'invalid json'}), 400
+
+    event = payload.get('event', '')
+    ref = payload.get('payment', {}).get('externalReference', '') or \
+          payload.get('subscription', {}).get('externalReference', '')
+
+    ativar = event in ('PAYMENT_RECEIVED', 'PAYMENT_CONFIRMED', 'SUBSCRIPTION_ACTIVATED')
+    desativar = event in ('SUBSCRIPTION_CANCELLED', 'PAYMENT_OVERDUE', 'PAYMENT_DELETED')
+
+    if not (ativar or desativar):
+        return jsonify({'status': 'ignored'}), 200
+
+    # Roteamento por prefixo
+    if ref.startswith('defesapro_'):
+        # externalReference = defesapro_<customer_id>_<plano>
+        parts = ref.split('_')
+        customer_id = parts[1] if len(parts) > 1 else None
+        if customer_id:
+            conn = get_saas_db()
+            u = conn.execute('SELECT id FROM defesapro_users WHERE asaas_customer_id=?',
+                             (customer_id,)).fetchone()
+            if u:
+                conn.execute('UPDATE defesapro_users SET active=? WHERE id=?',
+                             (1 if ativar else 0, u['id']))
+                conn.commit()
+            conn.close()
+
+    elif ref.startswith('agenda_'):
+        parts = ref.split('_')
+        customer_id = parts[1] if len(parts) > 1 else None
+        if customer_id:
+            conn = get_saas_db()
+            b = conn.execute('SELECT id FROM agenda_businesses WHERE asaas_customer_id=?',
+                             (customer_id,)).fetchone()
+            if b:
+                conn.execute('UPDATE agenda_businesses SET active=? WHERE id=?',
+                             (1 if ativar else 0, b['id']))
+                conn.commit()
+            conn.close()
+
+    elif ref.startswith('mandaja_'):
+        parts = ref.split('_')
+        customer_id = parts[1] if len(parts) > 1 else None
+        if customer_id:
+            conn = get_saas_db()
+            s = conn.execute('SELECT id FROM mandaja_stores WHERE asaas_customer_id=?',
+                             (customer_id,)).fetchone()
+            if s:
+                conn.execute('UPDATE mandaja_stores SET plan_active=? WHERE id=?',
+                             (1 if ativar else 0, s['id']))
+                conn.commit()
+            conn.close()
+
+    log.info(f'[WEBHOOK ASAAS] event={event} ref={ref} ativar={ativar}')
+    return jsonify({'status': 'ok'}), 200
 
 
 # ── DefesaPro — App principal ──────────────────────────────────────────────────

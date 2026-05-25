@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Planos · DefesaPro</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #0f0f0f; color: #F0EFE9; font-family: 'Inter', sans-serif;
+      min-height: 100vh; padding: 40px 20px;
+      background-image: radial-gradient(ellipse at 60% 10%, rgba(124,58,237,.1) 0%, transparent 60%);
+    }
+    .header { text-align: center; margin-bottom: 48px; }
+    .header-logo { display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 24px; }
+    .logo-icon { width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(135deg, #7c3aed, #a855f7); display: flex; align-items: center; justify-content: center; font-size: 22px; }
+    .logo-text { font-size: 22px; font-weight: 800; }
+    .logo-text span { color: #a855f7; }
+    h1 { font-size: 28px; font-weight: 900; margin-bottom: 8px; }
+    .sub { font-size: 15px; color: #888; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px; max-width: 880px; margin: 0 auto 32px; }
+    .card {
+      background: #1a1a1a; border: 2px solid rgba(255,255,255,.07);
+      border-radius: 20px; padding: 28px 24px; position: relative; transition: .2s;
+    }
+    .card:hover { transform: translateY(-3px); box-shadow: 0 8px 32px rgba(124,58,237,.15); }
+    .card.destaque { border-color: #7c3aed; }
+    .badge {
+      position: absolute; top: -13px; left: 50%; transform: translateX(-50%);
+      background: linear-gradient(135deg, #7c3aed, #a855f7);
+      color: #fff; padding: 4px 16px; border-radius: 100px; font-size: 11px; font-weight: 800;
+    }
+    .card-emoji { font-size: 28px; margin-bottom: 10px; }
+    .card-name { font-size: 19px; font-weight: 800; margin-bottom: 4px; }
+    .card-desc { font-size: 13px; color: #666; margin-bottom: 16px; }
+    .card-price { font-size: 34px; font-weight: 900; margin-bottom: 16px; }
+    .card-price span { font-size: 14px; font-weight: 500; color: #666; }
+    .features { list-style: none; margin-bottom: 20px; }
+    .features li { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #aaa; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,.05); }
+    .features li .chk { color: #22c55e; font-weight: 700; }
+    .btn-plan {
+      display: block; width: 100%; padding: 12px; border-radius: 10px; text-align: center;
+      text-decoration: none; color: #fff; font-size: 14px; font-weight: 700;
+      background: linear-gradient(135deg, #7c3aed, #a855f7); transition: opacity .15s;
+    }
+    .btn-plan:hover { opacity: .88; }
+    .btn-atual { background: #252525; border: 1px solid rgba(255,255,255,.1); color: #666; padding: 12px; border-radius: 10px; text-align: center; font-size: 13px; font-weight: 700; }
+    .back { text-align: center; margin-top: 24px; }
+    .back a { color: #666; font-size: 13px; text-decoration: none; }
+    .back a:hover { color: #999; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="header-logo">
+      <div class="logo-icon">⚖️</div>
+      <div class="logo-text">Defesa<span>Pro</span></div>
+    </div>
+    <h1>⚖️ Planos DefesaPro</h1>
+    <p class="sub">Gestão profissional de defesas de multas. Cancele quando quiser.</p>
+  </div>
+
+  <div class="grid">
+    {% set features_map = {
+      'starter': ['Até 30 processos/mês', 'Módulo de clientes', 'Geração de petições', 'Controle de prazos', 'Financeiro básico'],
+      'profissional': ['Processos ilimitados', 'Todas as funcionalidades', 'E-mail automático ao cliente', 'Relatórios avançados', 'Suporte prioritário'],
+      'premium': ['Tudo do Profissional', 'Multi-usuário (até 5)', 'API de integração', 'Personalização de petições', 'Gerente de conta dedicado'],
+    } %}
+
+    {% for key, p in planos.items() %}
+    <div class="card {% if key == 'profissional' %}destaque{% endif %}">
+      {% if key == 'profissional' %}
+      <div class="badge">⭐ Mais popular</div>
+      {% endif %}
+
+      <div class="card-emoji">{{ p.emoji }}</div>
+      <div class="card-name">{{ p.nome }}</div>
+      <div class="card-price">{{ p.preco_fmt }}<span>/mês</span></div>
+
+      <ul class="features">
+        {% for f in features_map.get(key, []) %}
+        <li><span class="chk">✓</span> {{ f }}</li>
+        {% endfor %}
+      </ul>
+
+      {% if user_id and plano_atual == key %}
+        <div class="btn-atual">✅ Seu plano atual</div>
+      {% elif user_id %}
+        <a href="/defesapro/assinar/{{ key }}" class="btn-plan">Assinar {{ p.nome }} →</a>
+      {% else %}
+        <a href="/defesapro/cadastro?plano={{ key }}" class="btn-plan">Criar conta e assinar →</a>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+
+  <div class="back">
+    <a href="/defesapro">← Voltar ao início</a>
+  </div>
+</body>
+</html>
