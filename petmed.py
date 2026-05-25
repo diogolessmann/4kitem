@@ -96,7 +96,7 @@ CATEGORIAS = {
     'trauma':        {'emoji': '🩹', 'label': 'Ferimento / Queda / Acidente'},
     'urinario':      {'emoji': '🚿', 'label': 'Dificuldade para urinar / Sangue'},
     'comportamento': {'emoji': '😴', 'label': 'Letargia / Apatia / Tristeza'},
-    'pele':          {'emoji': '🐛', 'label': 'Coceira / Feridas / Pelos caindo'},
+    'pele':          {'emoji': '🐛', 'label': 'Coceira / Feridas / Pelos caindo / Alopecia'},
     'ocular':        {'emoji': '👁️', 'label': 'Olho vermelho / Secreção / Orelha'},
     'outro':         {'emoji': '❓', 'label': 'Outro sintoma'},
 }
@@ -294,6 +294,43 @@ Inapetência isolada (sem outros sintomas):
 • Gatos: aquecimento do alimento libera aroma — fundamental para estimular
 • Ambiente calmo e tranquilo durante a refeição (estresse reduz apetite em até 40%)
 • ⚠️ Gatos com anorexia >48h: risco de lipidose hepática felina — busque vet sem demora
+
+🐾 QUEDA DE PELO / ALOPECIA:
+
+PRIMEIRAMENTE — diferencie troca de pelo normal de queda patológica:
+→ NORMAL (troca sazonal): ocorre principalmente primavera/outono, pelo de guarda sendo substituído, pelagem inteira e uniforme, pele normal embaixo, sem coceira excessiva. Raças de duplo pelame (Husky, Golden, Labrador, Pastor Alemão) têm mudança de pelagem muito intensa — pode parecer assustador mas é natural.
+→ PATOLÓGICA: regiões sem pelo (placas/manchas), pele vermelha/escamosa/com crostas embaixo, coceira intensa associada, pelo quebrando (não caindo inteiro), queda assimétrica, + outros sintomas (ganho de peso, letargia, sede excessiva → suspeita de hipotireoidismo ou Cushing).
+
+PERGUNTAS DE TRIAGEM para queda de pelo:
+• Há quanto tempo está acontecendo?
+• A queda é difusa (pelo todo) ou em manchas/regiões específicas?
+• Tem coceira intensa associada?
+• O que o pet come? Qual marca/tipo de ração ou dieta? Há quanto tempo com essa alimentação?
+• A pele embaixo do pelo está normal ou tem vermelhidão, descamação, crostas?
+• Há mudança de estação climática recente? (primavera/outono)
+• O pet saiu de um período de estresse? (mudança de casa, novos animais, etc.)
+
+ORIENTAÇÕES NUTRICIONAIS PARA PELAGEM:
+• Ômega-3: principal nutriente para saúde do pelame e pele. Fontes naturais:
+  - Sardinha em água natural (sem sal): Porte pequeno: ½ sardinha 2-3x/sem | Médio: 1 sardinha | Grande: 2 sardinhas
+  - Salmão cozido sem sal/tempero: excelente fonte, ofereça 1-2x/sem
+  - Óleo de salmão para pets (sem receita, pet shops): siga embalagem conforme o peso
+  - Óleo de linhaça: alternativa vegetal, mas menor biodisponibilidade
+• Ovo cozido (inteiro, sem sal): rico em biotina, excelente para pelo e unhas. 1-2 ovos/sem conforme porte. Sempre cozido — clara crua bloqueia absorção de biotina
+• Batata-doce cozida: vitamina A + fibras, auxilia na renovação da pele
+• Cenoura crua ralada: betacaroteno, favorece brilho e saúde da pele
+• Abóbora cozida: vitaminas B + E, favorece ciclos de crescimento do pelo
+
+ATENÇÃO À RAÇÃO:
+• Rações com baixa qualidade proteica: pelo opaco, quebradiço, queda excessiva
+• Alergias alimentares: podem causar dermatite + queda focal de pelo — ingredientes mais comuns: frango, soja, trigo, milho
+• Troca abrupta de ração: pode desencadear queda temporária — sempre faça transição gradual em 7-10 dias
+• Rações grain-free: atenção ao histórico — avaliar com vet se for raça predisposta a DCM
+
+SUPLEMENTOS DE SUPORTE (sem receita):
+• Suplementos de ômega-3 específicos para pets (PetOmega, OmegaPet ou similares)
+• Suplemento de biotina para pets (pet shops, sem receita)
+• Levedura de cerveja: rico em complexo B + zinco, melhora pelagem — Pequeno: ½ col chá | Médio: 1 col | Grande: 2 col — junto com a ração
 
 🐛 PELE — COCEIRA/DERMATITE/FERIDAS:
 
