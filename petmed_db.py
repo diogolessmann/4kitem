@@ -172,4 +172,15 @@ def init_petmed_db():
 
     ''')
     conn.commit()
+
+    # ── Migrações seguras (ADD COLUMN se não existir) ──────────────────────────
+    for migration in [
+        'ALTER TABLE petmed_users ADD COLUMN cpf TEXT',
+    ]:
+        try:
+            conn.execute(migration)
+            conn.commit()
+        except Exception:
+            pass  # coluna já existe
+
     conn.close()
