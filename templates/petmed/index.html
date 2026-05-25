@@ -289,7 +289,7 @@
     <a href="#planos">Planos</a>
     <a href="/petmed/vet/cadastro">Sou veterinário</a>
     <a href="/petmed/entrar">Entrar</a>
-    <a href="/petmed/cadastrar" class="btn-nav">Começar grátis →</a>
+    <a href="/petmed/cadastrar" class="btn-nav">Assinar →</a>
   </div>
 </nav>
 
@@ -301,7 +301,7 @@
       <h1>Seu veterinário<br>às <em>23h da noite</em></h1>
       <p>Triagem veterinária inteligente 24 horas. Saiba se seu pet precisa de atendimento urgente — agora, na hora que precisar.</p>
       <div class="hero-btns">
-        <a href="/petmed/cadastrar" class="btn-hero-primary">⚡ Começar grátis — 7 dias</a>
+        <a href="/petmed/cadastrar" class="btn-hero-primary">⚡ Assinar agora</a>
         <a href="#como-funciona" class="btn-hero-outline">Como funciona →</a>
       </div>
     </div>
@@ -401,7 +401,7 @@
 <section class="section section-center" id="planos">
   <div class="container">
     <h2>Planos simples, proteção real</h2>
-    <p class="section-sub">7 dias grátis em qualquer plano. Cancele quando quiser.</p>
+    <p class="section-sub">Proteção completa para seu pet. Cancele quando quiser.</p>
     <div class="planos-grid">
 
       {% for key, p in planos.items() %}
@@ -411,7 +411,6 @@
         <div class="plano-nome">{{ p.nome }}</div>
         <div class="plano-desc">{{ p.descricao }}</div>
         <div class="plano-preco">{{ p.preco_fmt }}<span>/mês</span></div>
-        <div class="plano-trial">✅ 7 dias grátis</div>
         <ul class="plano-features">
           {% for f in p.features %}
           <li><span class="feat-ok">✓</span> {{ f }}</li>
@@ -419,7 +418,7 @@
         </ul>
         <a href="/petmed/cadastrar?plano={{ key }}"
            class="btn-plano {% if key=='start' %}btn-green{% elif key=='familia' %}btn-orange{% else %}btn-purple{% endif %}">
-          Começar grátis →
+          Assinar →
         </a>
       </div>
       {% endfor %}
@@ -467,8 +466,8 @@
 <!-- CTA FINAL -->
 <div class="cta">
   <h2>Proteja seu pet agora ⚡</h2>
-  <p>7 dias grátis. Sem cartão de crédito. Cancele quando quiser.</p>
-  <a href="/petmed/cadastrar" class="btn-cta">Começar grátis →</a>
+  <p>Proteção completa. Cancele quando quiser.</p>
+  <a href="/petmed/cadastrar" class="btn-cta">Assinar agora →</a>
   <img src="/static/vetzap/vetzap-mascote.png" alt="" class="cta-mascote">
 </div>
 

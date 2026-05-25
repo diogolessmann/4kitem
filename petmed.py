@@ -4,7 +4,7 @@ Triagem veterinária inteligente 24/7
 """
 import json
 import os
-from datetime import datetime, timedelta
+from datetime import datetime
 from functools import wraps
 from flask import (Blueprint, render_template, redirect, request,
                    session, jsonify, url_for, abort)
@@ -412,13 +412,12 @@ def cadastrar():
         else:
             try:
                 conn = get_petmed_db()
-                trial_ends = (datetime.now() + timedelta(days=7)).strftime('%Y-%m-%d %H:%M:%S')
                 conn.execute(
                     '''INSERT INTO petmed_users
-                       (nome, email, telefone, password_hash, plano, trial_ends)
-                       VALUES (?,?,?,?,?,?)''',
+                       (nome, email, telefone, password_hash, plano)
+                       VALUES (?,?,?,?,?)''',
                     (nome, email, telefone,
-                     generate_password_hash(senha), plano, trial_ends)
+                     generate_password_hash(senha), plano)
                 )
                 conn.commit()
                 u = conn.execute(
