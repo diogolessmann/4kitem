@@ -126,7 +126,7 @@
     {% if ok == 'criado' %}<div class="alert alert-ok">✅ Produto criado com sucesso!</div>{% endif %}
     {% if ok == 'atualizado' %}<div class="alert alert-ok">✅ Produto atualizado!</div>{% endif %}
     {% if ok == 'removido' %}<div class="alert alert-ok">✅ Produto removido do cardápio.</div>{% endif %}
-    {% if erro == 'limite_plano' %}<div class="alert alert-warn">⚠️ Limite do plano atingido ({{ plan.products }} produtos). <a href="https://wa.me/5547991011351" target="_blank" style="color:#F97316">Fazer upgrade</a></div>{% endif %}
+    {% if erro == 'limite_plano' %}<div class="alert alert-warn">⚠️ Limite do plano atingido ({{ plan.products }} produtos). <a href="/mandaja/assinar/{{ store.plan }}" style="color:#F97316">Fazer upgrade →</a></div>{% endif %}
 
     <!-- Plan bar -->
     <div class="plan-bar">
@@ -137,7 +137,7 @@
       <div style="flex:1;min-width:100px">
         <div class="prog-bar"><div class="prog-fill" style="width:{{ [((prods|selectattr('active','equalto',1)|list|length / plan.products)*100)|round,100]|min }}%"></div></div>
       </div>
-      <a href="https://wa.me/5547991011351?text=Quero upgrade no MandaJá" target="_blank" class="btn btn-outline" style="font-size:12px">⬆️ Upgrade</a>
+      <a href="/mandaja/assinar/{{ store.plan }}" class="btn btn-outline" style="font-size:12px">⬆️ Upgrade</a>
     </div>
 
     <!-- Categorias -->

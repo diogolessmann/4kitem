@@ -520,6 +520,27 @@ def init_saas_db():
         "ALTER TABLE despachante_users ADD COLUMN plan_active INTEGER DEFAULT 1",
         "ALTER TABLE alerta_subscribers ADD COLUMN asaas_customer_id TEXT DEFAULT ''",
         "ALTER TABLE agenda_businesses ADD COLUMN plan_active INTEGER DEFAULT 1",
+        # AlertaSC — tabela de débitos monitorados
+        """CREATE TABLE IF NOT EXISTS alerta_debitos (
+            id             INTEGER PRIMARY KEY AUTOINCREMENT,
+            subscriber_id  INTEGER NOT NULL,
+            plate          TEXT NOT NULL,
+            plate_desc     TEXT DEFAULT '',
+            chave_unica    TEXT NOT NULL,
+            tipo           TEXT DEFAULT '',
+            descricao      TEXT DEFAULT '',
+            valor          TEXT DEFAULT '',
+            vencimento     TEXT DEFAULT '',
+            situacao       TEXT DEFAULT 'pendente',
+            found_at       TEXT,
+            notificado     INTEGER DEFAULT 0,
+            notificado_at  TEXT,
+            UNIQUE(subscriber_id, chave_unica)
+        )""",
+        "CREATE INDEX IF NOT EXISTS idx_alerta_deb_sub ON alerta_debitos(subscriber_id)",
+        "CREATE INDEX IF NOT EXISTS idx_alerta_deb_notif ON alerta_debitos(notificado)",
+        # AgendaSC — email do cliente (para enviar confirmação de agendamento)
+        "ALTER TABLE agenda_appointments ADD COLUMN customer_email TEXT DEFAULT ''",
     ]
     for sql in _auth_migrations:
         try:

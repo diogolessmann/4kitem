@@ -254,6 +254,46 @@ def _enviar_email(para: str, assunto: str, html: str) -> bool:
         return False
 
 
+def _email_pagamento_confirmado_petmed(primeiro_nome: str, plano_nome: str, preco_fmt: str) -> str:
+    return f"""<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="UTF-8"></head>
+<body style="margin:0;padding:0;background:#0a0a0a;font-family:'Segoe UI',Arial,sans-serif">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#0a0a0a;padding:40px 0">
+<tr><td align="center">
+<table width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#111;border:1px solid #222;border-radius:16px;overflow:hidden">
+<tr><td style="background:#0ea5e9;height:4px"></td></tr>
+<tr><td style="padding:36px 40px 32px">
+  <div style="font-size:40px;margin-bottom:12px">✅</div>
+  <h1 style="color:#fff;font-size:22px;font-weight:800;margin:0 0 8px">Pagamento confirmado!</h1>
+  <p style="color:#888;font-size:14px;line-height:1.7;margin:0 0 24px">
+    Sua assinatura do <strong style="color:#fff">VetZap</strong> está ativa, {primeiro_nome}. Seu pet está protegido 24h!
+  </p>
+  <div style="background:#1a1a1a;border:1px solid #2a2a2a;border-radius:12px;padding:20px;margin-bottom:24px">
+    <div style="font-size:12px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">Assinatura ativa</div>
+    <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #222">
+      <span style="font-size:13px;color:#666">Plano</span>
+      <span style="font-size:13px;color:#fff;font-weight:700">🐾 {plano_nome}</span>
+    </div>
+    <div style="display:flex;justify-content:space-between;padding:8px 0">
+      <span style="font-size:13px;color:#666">Valor mensal</span>
+      <span style="font-size:13px;color:#0ea5e9;font-weight:700">{preco_fmt}/mês</span>
+    </div>
+  </div>
+  <a href="https://4kitem.com.br/petmed/dashboard" style="display:block;text-align:center;padding:14px 28px;background:#0ea5e9;color:#fff;font-size:15px;font-weight:700;border-radius:12px;text-decoration:none;margin-bottom:20px">
+    🐾 Acessar o VetZap
+  </a>
+  <hr style="border:none;border-top:1px solid #222;margin:28px 0">
+  <p style="font-size:11px;color:#555;margin:0;line-height:1.6">
+    4KITEM · VetZap · <a href="https://4kitem.com.br" style="color:#0ea5e9">4kitem.com.br</a><br>
+    Dúvidas? WhatsApp: <a href="https://wa.me/5547991011351" style="color:#0ea5e9">(47) 99101-1351</a>
+  </p>
+</td></tr>
+</table>
+</td></tr>
+</table>
+</body></html>"""
+
+
 def _email_recuperacao(codigo: str) -> str:
     return f"""
     <div style="font-family:Inter,Arial,sans-serif;max-width:480px;margin:0 auto;background:#f0f9ff;padding:32px 20px">
@@ -310,7 +350,7 @@ def _email_boas_vindas(nome: str, pet_nome: str) -> str:
             🚨 Receber orientação em emergências
           </div>
         </div>
-        <a href="https://4kitem-production.up.railway.app/petmed/triagem"
+        <a href="https://4kitem.com.br/petmed/triagem"
            style="display:block;text-align:center;background:#0ea5e9;color:#fff;padding:14px;border-radius:10px;font-weight:700;font-size:14px;text-decoration:none">
           🩺 Fazer minha primeira consulta
         </a>
@@ -927,6 +967,14 @@ def webhook_asaas():
                     (plano_novo, ass['user_id'])
                 )
                 conn.commit()
+                # Email de confirmação de pagamento
+                u = conn.execute('SELECT nome, email FROM petmed_users WHERE id=?',
+                                 (ass['user_id'],)).fetchone()
+                if u and u['email']:
+                    p = PLANOS[plano_novo]
+                    _enviar_email(u['email'], '✅ VetZap — Assinatura ativa!',
+                        _email_pagamento_confirmado_petmed(
+                            u['nome'].split()[0], p['nome'], p['preco_fmt']))
             conn.close()
 
     elif evento in ('SUBSCRIPTION_CANCELLED', 'PAYMENT_OVERDUE'):

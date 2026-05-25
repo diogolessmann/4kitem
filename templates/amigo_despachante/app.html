@@ -41,10 +41,33 @@
   <h2>Bem-vindo, {{ user.name.split()[0] }}! 👋</h2>
   <p>Plataforma de gestão para despachantes</p>
 
+  {# ── Trial / Plano Banner ──────────────────────────────────────────── #}
+  {% if trial_expired and not plan_active %}
+  <div style="display:flex;align-items:center;gap:14px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);border-radius:14px;padding:14px 20px;margin-bottom:20px;flex-wrap:wrap">
+    <div style="flex:1;min-width:200px">
+      <div style="font-size:14px;font-weight:800;color:#ef4444">⚠️ Período de teste encerrado</div>
+      <div style="font-size:12px;color:#4060a0;margin-top:3px">Assine agora para continuar usando o Amigo Despachante.</div>
+    </div>
+    <a href="/amigo-despachante/assinar/{{ user.plan or 'basico' }}" style="display:inline-block;padding:10px 20px;background:linear-gradient(135deg,#1d4ed8,#3b82f6);border-radius:100px;color:#fff;font-size:13px;font-weight:700;white-space:nowrap;text-decoration:none">🚀 Assinar agora</a>
+  </div>
+  {% elif trial_ends and not trial_expired %}
+  <div style="display:flex;align-items:center;gap:14px;background:rgba(234,179,8,.06);border:1px solid rgba(234,179,8,.2);border-radius:14px;padding:12px 20px;margin-bottom:20px;flex-wrap:wrap">
+    <div style="flex:1;min-width:200px;font-size:12px;color:#4060a0">⏳ Teste grátis até <strong style="color:#eab308">{{ trial_ends[:10] }}</strong>. Após essa data o acesso será suspenso.</div>
+    <a href="/amigo-despachante/assinar/{{ user.plan or 'basico' }}" style="display:inline-block;padding:7px 16px;background:transparent;border:1px solid rgba(59,130,246,.4);border-radius:100px;color:#60a5fa;font-size:12px;font-weight:700;white-space:nowrap;text-decoration:none">Assinar agora</a>
+  </div>
+  {% endif %}
+
   <div class="plan-card">
     <div class="plan-title">Seu plano</div>
     <div class="plan-badge">{{ plan_info.label }}</div>
     <div class="plan-price">{{ plan_info.price }}</div>
+    <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+    {% for key, pp in plans.items() %}
+      {% if key != user.plan %}
+      <a href="/amigo-despachante/assinar/{{ key }}" style="font-size:11px;padding:4px 12px;border-radius:20px;border:1px solid rgba(59,130,246,.2);color:#4060a0;text-decoration:none">{{ pp.label }} — {{ pp.price }}</a>
+      {% endif %}
+    {% endfor %}
+    </div>
   </div>
 
   <div class="modules">

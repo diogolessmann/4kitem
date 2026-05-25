@@ -194,6 +194,22 @@ select option{background:var(--surface2)}
 <!-- MAIN -->
 <main class="main">
 
+  {# ── Trial / Plano Banner ───────────────────────────────────────────── #}
+  {% if trial_expired and not plan_active %}
+  <div style="display:flex;align-items:center;gap:14px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:14px;padding:14px 20px;margin-bottom:24px;flex-wrap:wrap">
+    <div style="flex:1;min-width:200px">
+      <div style="font-size:14px;font-weight:800;color:#ef4444">⚠️ Período de teste encerrado</div>
+      <div style="font-size:12px;color:var(--text2);margin-top:3px">Assine agora para continuar usando o MandaZap sem interrupções.</div>
+    </div>
+    <a href="/mandazap/assinar/{{ plan }}" style="display:inline-block;padding:10px 20px;background:linear-gradient(135deg,#16a34a,#22c55e);border-radius:100px;color:#fff;font-size:13px;font-weight:700;white-space:nowrap;text-decoration:none">🚀 Assinar agora</a>
+  </div>
+  {% elif trial_ends and not trial_expired %}
+  <div style="display:flex;align-items:center;gap:14px;background:rgba(234,179,8,.06);border:1px solid rgba(234,179,8,.2);border-radius:14px;padding:12px 20px;margin-bottom:24px;flex-wrap:wrap">
+    <div style="flex:1;min-width:200px;font-size:12px;color:var(--text2)">⏳ Período de teste gratuito ativo até <strong style="color:#eab308">{{ trial_ends[:10] }}</strong>. Após essa data, sua conta será pausada.</div>
+    <a href="/mandazap/assinar/{{ plan }}" style="display:inline-block;padding:7px 16px;background:transparent;border:1px solid rgba(34,197,94,.4);border-radius:100px;color:var(--green);font-size:12px;font-weight:700;white-space:nowrap;text-decoration:none">Assinar agora</a>
+  </div>
+  {% endif %}
+
   <!-- ═══════════════ DASHBOARD ═══════════════ -->
   <div class="section active" id="sec-dashboard">
     <div class="page-header">
@@ -597,16 +613,18 @@ select option{background:var(--surface2)}
           <li>{{ '{:,}'.format(p.contacts_limit).replace(',','.') if p.contacts_limit < 9999 else 'Ilimitado' }} contatos</li>
         </ul>
         {% if key != plan %}
-        <a href="mailto:contato@4kitem.com.br?subject=Upgrade MandaZap {{ p.label }}">
+        <a href="/mandazap/assinar/{{ key }}" style="text-decoration:none">
           <button class="btn btn-outline btn-sm" style="width:100%">Assinar {{ p.label }}</button>
         </a>
+        {% else %}
+        <div style="text-align:center;font-size:12px;color:var(--green);font-weight:700;padding:8px 0">✅ Plano atual</div>
         {% endif %}
       </div>
       {% endfor %}
     </div>
 
     <div style="margin-top:24px;padding:16px;background:var(--surface);border:1px solid var(--border);border-radius:12px;font-size:13px;color:var(--text2)">
-      📧 Para alterar seu plano, entre em contato: <strong style="color:var(--green)">contato@4kitem.com.br</strong>
+      🔒 Pagamento seguro via Asaas · Cancele quando quiser · Suporte: <strong style="color:var(--green)">contato@4kitem.com.br</strong>
     </div>
   </div>
 
@@ -736,8 +754,37 @@ select option{background:var(--surface2)}
       <input type="hidden" name="media_type" value="text">
       <input type="hidden" name="media_url" value="">
       <div class="form-group">
-        <label>Mensagem * — use {'{nome}'} para personalizar</label>
-        <textarea name="message" id="campanha-message" placeholder="Olá {nome}! Temos uma oferta especial pra você... 🎁" required></textarea>
+        <label style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:4px">
+          <span>Mensagem * — use <code style="background:rgba(255,255,255,.07);padding:1px 5px;border-radius:4px;font-size:10px">{'{nome}'}</code> para personalizar</span>
+          <button type="button" onclick="toggleSpintaxGuide()" style="font-size:10px;color:#f59e0b;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.2);border-radius:6px;padding:2px 8px;cursor:pointer;font-family:inherit">🔀 Anti-spam</button>
+        </label>
+        <textarea name="message" id="campanha-message" placeholder="Olá {nome}! Temos uma oferta especial pra você... 🎁" required style="min-height:120px"></textarea>
+
+        <!-- Guia spintax -->
+        <div id="spintax-guide" style="display:none;margin-top:8px;background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.18);border-radius:10px;padding:12px">
+          <div style="font-size:11px;font-weight:700;color:#f59e0b;margin-bottom:6px">🔀 Variações anti-spam — cada envio sai diferente</div>
+          <div style="font-size:11px;color:#bba;line-height:1.7;margin-bottom:10px">
+            Use <code style="background:rgba(245,158,11,.12);padding:1px 5px;border-radius:4px;color:#f59e0b">{'{opção1|opção2|opção3}'}</code> em qualquer parte da mensagem.<br>
+            O sistema escolhe uma opção aleatória para <strong style="color:#fff">cada</strong> contato — quebrando o filtro do WhatsApp.
+          </div>
+          <div style="font-size:11px;color:#888;margin-bottom:8px">Inserir na posição do cursor:</div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">
+            <button type="button" onclick="insertSpin('{Oi|Olá|Bom dia|Boa tarde}')" style="font-size:11px;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.2);border-radius:6px;padding:3px 9px;color:#f59e0b;cursor:pointer;font-family:inherit">Saudação</button>
+            <button type="button" onclick="insertSpin('{amigo|parceiro|colega|cliente}')" style="font-size:11px;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.2);border-radius:6px;padding:3px 9px;color:#f59e0b;cursor:pointer;font-family:inherit">Tratamento</button>
+            <button type="button" onclick="insertSpin('{Conheça|Acesse|Veja|Descubra}')" style="font-size:11px;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.2);border-radius:6px;padding:3px 9px;color:#f59e0b;cursor:pointer;font-family:inherit">CTA</button>
+            <button type="button" onclick="insertSpin('{exclusivo|especial|limitado}')" style="font-size:11px;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.2);border-radius:6px;padding:3px 9px;color:#f59e0b;cursor:pointer;font-family:inherit">Urgência</button>
+            <button type="button" onclick="insertSpin('{hoje|agora|esta semana}')" style="font-size:11px;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.2);border-radius:6px;padding:3px 9px;color:#f59e0b;cursor:pointer;font-family:inherit">Tempo</button>
+          </div>
+          <div style="font-size:11px;color:#888;margin-bottom:4px">Exemplo:</div>
+          <div style="font-size:11px;background:rgba(0,0,0,.3);border-radius:7px;padding:10px;color:#bba;line-height:1.7;font-family:'Courier New',monospace;word-break:break-word">
+            {'{Oi|Olá|Bom dia}'} {nome}! 👋<br>
+            {'{Você sabia que|Sabia que}'} a {'{agenda online|nossa agenda}'}<br>
+            {'{facilita|organiza}'} o atendimento do {'{seu negócio|seu salão|sua clínica}'}?<br>
+            {'{Conheça|Acesse}'}: 4kitem.com.br/agenda
+          </div>
+          <button type="button" onclick="applyExampleSpinMsg()" style="margin-top:8px;font-size:11px;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.2);border-radius:6px;padding:4px 12px;color:#22c55e;cursor:pointer;font-family:inherit">↑ Usar este exemplo</button>
+        </div>
+
         {% if templates %}
         <div style="margin-top:6px;font-size:12px;color:var(--text2)">Templates salvos:
           {% for t in templates %}
@@ -818,6 +865,32 @@ function toggleAllContacts(state) {
 function applyTemplate(btn) {
   document.getElementById('campanha-message').value = btn.dataset.msg || '';
   showToast('✅ Template aplicado!');
+}
+
+// ── Spintax ──────────────────────────────────────────────────────────────────
+function toggleSpintaxGuide() {
+  const g = document.getElementById('spintax-guide');
+  g.style.display = g.style.display === 'none' ? 'block' : 'none';
+}
+
+function insertSpin(text) {
+  const ta = document.getElementById('campanha-message');
+  const start = ta.selectionStart;
+  const end   = ta.selectionEnd;
+  const val   = ta.value;
+  ta.value = val.substring(0, start) + text + val.substring(end);
+  ta.selectionStart = ta.selectionEnd = start + text.length;
+  ta.focus();
+  showToast('✅ Variação inserida!');
+}
+
+function applyExampleSpinMsg() {
+  document.getElementById('campanha-message').value =
+    '{Oi|Olá|Bom dia} {nome}! 👋\n' +
+    '{Você sabia que|Sabia que} a {agenda online|nossa agenda}\n' +
+    '{facilita|organiza} o atendimento do {seu negócio|seu salão|sua clínica}?\n' +
+    '{Conheça|Acesse}: 4kitem.com.br/agenda';
+  showToast('✅ Exemplo aplicado!');
 }
 
 // ── Mostrar/ocultar campo de mídia conforme tipo ─────────────────────────────

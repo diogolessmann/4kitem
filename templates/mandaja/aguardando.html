@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aguardando pagamento — MandaJá</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#0a1a0f;color:#e8ffee;font-family:'Segoe UI',sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+  .box{background:#0f2318;border:1px solid rgba(34,197,94,.18);border-radius:24px;padding:40px 32px;width:100%;max-width:420px;text-align:center}
+  .icon{font-size:64px;margin-bottom:16px}
+  .title{font-size:22px;font-weight:800;color:#22c55e;margin-bottom:10px}
+  .sub{font-size:14px;color:#5a8a6a;line-height:1.7;margin-bottom:28px}
+  .steps{text-align:left;background:#091a10;border-radius:14px;padding:18px;margin-bottom:24px}
+  .step{display:flex;align-items:flex-start;gap:12px;padding:8px 0;border-bottom:1px solid rgba(34,197,94,.06)}
+  .step:last-child{border:none}
+  .step-icon{font-size:18px;flex-shrink:0;margin-top:1px}
+  .step-text{font-size:13px;color:#e8ffee;line-height:1.4}
+  .step-sub{font-size:11px;color:#5a8a6a;margin-top:2px}
+  .btn{display:block;width:100%;padding:13px;background:linear-gradient(135deg,#16a34a,#22c55e);border:none;border-radius:12px;color:#fff;font-size:14px;font-weight:700;cursor:pointer;text-decoration:none;transition:.2s;font-family:inherit}
+  .btn:hover{opacity:.9}
+  .btn-ghost{display:block;text-align:center;margin-top:10px;font-size:12px;color:#5a8a6a}
+  .btn-ghost a{color:#22c55e}
+</style>
+</head>
+<body>
+<div class="box">
+  <div class="icon">⏳</div>
+  <div class="title">Aguardando pagamento</div>
+  <div class="sub">Sua assinatura foi criada! Assim que o pagamento for confirmado, sua loja será ativada automaticamente.</div>
+
+  <div class="steps">
+    <div class="step">
+      <span class="step-icon">✅</span>
+      <div><div class="step-text">Assinatura criada</div><div class="step-sub">Você receberá os dados de pagamento no e-mail cadastrado.</div></div>
+    </div>
+    <div class="step">
+      <span class="step-icon">⏳</span>
+      <div><div class="step-text">Confirme o pagamento</div><div class="step-sub">PIX: aprovação em segundos · Boleto: até 3 dias úteis · Cartão: imediato</div></div>
+    </div>
+    <div class="step">
+      <span class="step-icon">🛍️</span>
+      <div><div class="step-text">Loja ativada</div><div class="step-sub">Após confirmação, seu cardápio digital ficará disponível para receber pedidos.</div></div>
+    </div>
+  </div>
+
+  <a href="/mandaja/painel" class="btn">🛍️ Ir para o painel</a>
+  <div class="btn-ghost"><a href="https://wa.me/5547991011351?text=Preciso+de+ajuda+com+o+pagamento+MandaJa" target="_blank">💬 Precisa de ajuda?</a></div>
+</div>
+</body>
+</html>

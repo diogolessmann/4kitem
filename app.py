@@ -131,6 +131,92 @@ def _asaas_criar_assinatura_saas(customer_id, app_prefix, plano_key, valor, desc
         'externalReference': f'{app_prefix}_{customer_id}_{plano_key}',
     })
 
+# ── Email helpers ─────────────────────────────────────────────────────────────
+def _email_base(conteudo: str, cor: str = '#22c55e') -> str:
+    """Wrapper HTML base para todos os emails transacionais."""
+    return f"""<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+</head>
+<body style="margin:0;padding:0;background:#0a0a0a;font-family:'Segoe UI',Arial,sans-serif">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#0a0a0a;padding:40px 0">
+<tr><td align="center">
+<table width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#111;border:1px solid #222;border-radius:16px;overflow:hidden">
+<tr><td style="background:{cor};height:4px"></td></tr>
+<tr><td style="padding:36px 40px 32px">
+{conteudo}
+<hr style="border:none;border-top:1px solid #222;margin:28px 0">
+<p style="font-size:11px;color:#555;margin:0;line-height:1.6">
+4KITEM · Soluções Digitais · <a href="https://4kitem.com.br" style="color:{cor}">4kitem.com.br</a><br>
+Dúvidas? WhatsApp: <a href="https://wa.me/5547991011351" style="color:{cor}">(47) 99101-1351</a>
+</p>
+</td></tr>
+</table>
+</td></tr>
+</table>
+</body></html>"""
+
+
+def _email_boas_vindas(app_nome: str, emoji: str, cor: str, primeiro_nome: str,
+                       trial_ate: str, link_painel: str, descricao: str) -> str:
+    """Email HTML de boas-vindas no trial."""
+    trial_fmt = trial_ate[:10] if trial_ate else ''
+    conteudo = f"""
+<div style="font-size:40px;margin-bottom:12px">{emoji}</div>
+<h1 style="color:#fff;font-size:22px;font-weight:800;margin:0 0 8px">Bem-vindo ao {app_nome}, {primeiro_nome}!</h1>
+<p style="color:#888;font-size:14px;line-height:1.7;margin:0 0 24px">{descricao}</p>
+
+<div style="background:#1a1a1a;border:1px solid #2a2a2a;border-radius:12px;padding:20px;margin-bottom:24px">
+  <div style="font-size:12px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">Seu período de teste</div>
+  <div style="font-size:28px;font-weight:900;color:{cor};margin-bottom:4px">7 dias grátis</div>
+  {'<div style="font-size:13px;color:#666">Trial gratuito até <strong style="color:#fff">' + trial_fmt + '</strong>. Sem cartão de crédito necessário agora.</div>' if trial_fmt else ''}
+</div>
+
+<a href="{link_painel}" style="display:block;text-align:center;padding:14px 28px;background:{cor};color:#fff;font-size:15px;font-weight:700;border-radius:12px;text-decoration:none;margin-bottom:20px">
+  Acessar meu painel →
+</a>
+
+<p style="font-size:13px;color:#666;margin:0">
+  Precisar de ajuda? Nossa equipe está no WhatsApp <a href="https://wa.me/5547991011351" style="color:{cor}">(47) 99101-1351</a>.
+</p>"""
+    return _email_base(conteudo, cor)
+
+
+def _email_pagamento_confirmado(app_nome: str, emoji: str, cor: str, primeiro_nome: str,
+                                 plano: str, valor: str, link_painel: str) -> str:
+    """Email HTML de confirmação de pagamento / assinatura ativa."""
+    conteudo = f"""
+<div style="font-size:40px;margin-bottom:12px">✅</div>
+<h1 style="color:#fff;font-size:22px;font-weight:800;margin:0 0 8px">Pagamento confirmado!</h1>
+<p style="color:#888;font-size:14px;line-height:1.7;margin:0 0 24px">
+  Sua assinatura do <strong style="color:#fff">{app_nome}</strong> está ativa, {primeiro_nome}.
+</p>
+
+<div style="background:#1a1a1a;border:1px solid #2a2a2a;border-radius:12px;padding:20px;margin-bottom:24px">
+  <div style="font-size:12px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">Detalhes da assinatura</div>
+  <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #222">
+    <span style="font-size:13px;color:#666">Produto</span>
+    <span style="font-size:13px;color:#fff;font-weight:700">{emoji} {app_nome}</span>
+  </div>
+  <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #222">
+    <span style="font-size:13px;color:#666">Plano</span>
+    <span style="font-size:13px;color:#fff;font-weight:700">{plano}</span>
+  </div>
+  <div style="display:flex;justify-content:space-between;padding:8px 0">
+    <span style="font-size:13px;color:#666">Valor mensal</span>
+    <span style="font-size:13px;color:{cor};font-weight:700">{valor}</span>
+  </div>
+</div>
+
+<a href="{link_painel}" style="display:block;text-align:center;padding:14px 28px;background:{cor};color:#fff;font-size:15px;font-weight:700;border-radius:12px;text-decoration:none;margin-bottom:20px">
+  {emoji} Ir para o painel
+</a>
+
+<p style="font-size:13px;color:#666;margin:0">
+  Sua renovação é automática todo mês. Cancele quando quiser pelo WhatsApp <a href="https://wa.me/5547991011351" style="color:{cor}">(47) 99101-1351</a>.
+</p>"""
+    return _email_base(conteudo, cor)
+
 # ── SaaS helpers ──────────────────────────────────────────────────────────────
 def _slugify(text):
     text = unicodedata.normalize('NFD', text)
@@ -418,8 +504,22 @@ def alerta_minha_conta():
         sub['plates'] = _json.loads(sub.get('plates_json') or '[]')
     except Exception:
         sub['plates'] = []
-    plan_info = ALERTA_PLANS.get(sub.get('plano', 'basico'), {})
-    return render_template('alerta/minha_conta.html', sub=sub, plan_info=plan_info)
+    plan_info      = ALERTA_PLANS.get(sub.get('plano', 'basico'), {})
+    trial_ends     = sub.get('trial_ends') or ''
+    trial_expired  = bool(trial_ends and trial_ends < datetime.now().isoformat())
+    pagamento_ok   = sub.get('status') == 'ativo'
+    # Busca últimos débitos detectados (máx 20)
+    conn2  = get_saas_db()
+    debitos_raw = conn2.execute(
+        "SELECT * FROM alerta_debitos WHERE subscriber_id=? ORDER BY found_at DESC LIMIT 20",
+        (sub['id'],)
+    ).fetchall()
+    conn2.close()
+    debitos = [dict(d) for d in debitos_raw]
+    return render_template('alerta/minha_conta.html', sub=sub, plan_info=plan_info,
+                           plans=ALERTA_PLANS, trial_ends=trial_ends,
+                           trial_expired=trial_expired, pagamento_ok=pagamento_ok,
+                           debitos=debitos)
 
 
 @app.route('/alerta/sair')
@@ -653,8 +753,14 @@ def amigo_desp_app():
     if not u:
         session.pop('desp_saas_user_id', None)
         return redirect('/amigo-despachante/entrar')
-    plan_info = DESP_PLANS.get(u['plan'], DESP_PLANS['basico'])
-    return render_template('amigo_despachante/app.html', user=dict(u), plan_info=plan_info)
+    plan_info     = DESP_PLANS.get(u['plan'], DESP_PLANS['basico'])
+    u             = dict(u)
+    trial_ends    = u.get('trial_ends') or ''
+    plan_active   = u.get('plan_active', 1)
+    trial_expired = bool(trial_ends and trial_ends < datetime.now().isoformat())
+    return render_template('amigo_despachante/app.html', user=u, plan_info=plan_info,
+                           plans=DESP_PLANS, trial_ends=trial_ends,
+                           trial_expired=trial_expired, plan_active=plan_active)
 
 
 @app.route('/amigo-despachante/sair')
@@ -1067,84 +1173,111 @@ def webhook_asaas_global():
         return jsonify({'status': 'ignored'}), 200
 
     # Roteamento por prefixo
+    parts       = ref.split('_')
+    customer_id = parts[1] if len(parts) > 1 else None
+    plano_key   = parts[2] if len(parts) > 2 else ''
+
     if ref.startswith('defesapro_'):
-        # externalReference = defesapro_<customer_id>_<plano>
-        parts = ref.split('_')
-        customer_id = parts[1] if len(parts) > 1 else None
         if customer_id:
             conn = get_saas_db()
-            u = conn.execute('SELECT id FROM defesapro_users WHERE asaas_customer_id=?',
+            u = conn.execute('SELECT id, name, email FROM defesapro_users WHERE asaas_customer_id=?',
                              (customer_id,)).fetchone()
             if u:
-                conn.execute('UPDATE defesapro_users SET active=? WHERE id=?',
-                             (1 if ativar else 0, u['id']))
+                conn.execute('UPDATE defesapro_users SET active=?, plan_active=? WHERE id=?',
+                             (1 if ativar else 0, 1 if ativar else 0, u['id']))
                 conn.commit()
+                if ativar and u['email']:
+                    p = DEFESAPRO_PLANOS.get(plano_key, {})
+                    _enviar_email(u['email'], '✅ DefesaPro — Assinatura ativa!',
+                        _email_pagamento_confirmado('DefesaPro', '⚖️', '#7c3aed',
+                            u['name'].split()[0], p.get('nome', plano_key),
+                            p.get('preco_fmt', ''), 'https://4kitem.com.br/defesapro/app'))
             conn.close()
 
     elif ref.startswith('agenda_'):
-        parts = ref.split('_')
-        customer_id = parts[1] if len(parts) > 1 else None
         if customer_id:
             conn = get_saas_db()
-            b = conn.execute('SELECT id FROM agenda_businesses WHERE asaas_customer_id=?',
+            b = conn.execute('SELECT id, name, email, owner_name FROM agenda_businesses WHERE asaas_customer_id=?',
                              (customer_id,)).fetchone()
             if b:
-                conn.execute('UPDATE agenda_businesses SET active=? WHERE id=?',
-                             (1 if ativar else 0, b['id']))
+                conn.execute('UPDATE agenda_businesses SET active=?, plan_active=? WHERE id=?',
+                             (1 if ativar else 0, 1 if ativar else 0, b['id']))
                 conn.commit()
+                if ativar and b['email']:
+                    p = AGENDA_PLAN
+                    _enviar_email(b['email'], '✅ Agenda SC — Assinatura ativa!',
+                        _email_pagamento_confirmado('Agenda SC', '📅', '#22c55e',
+                            b['owner_name'].split()[0], p['label'],
+                            p['price'], 'https://4kitem.com.br/agenda/painel'))
             conn.close()
 
     elif ref.startswith('mandaja_'):
-        parts = ref.split('_')
-        customer_id = parts[1] if len(parts) > 1 else None
         if customer_id:
             conn = get_saas_db()
-            s = conn.execute('SELECT id FROM mandaja_stores WHERE asaas_customer_id=?',
+            s = conn.execute('SELECT id, name, email, owner_name, plan FROM mandaja_stores WHERE asaas_customer_id=?',
                              (customer_id,)).fetchone()
             if s:
                 conn.execute('UPDATE mandaja_stores SET plan_active=? WHERE id=?',
                              (1 if ativar else 0, s['id']))
                 conn.commit()
+                if ativar and s['email']:
+                    p = MANDAJA_PLANS.get(plano_key or s['plan'], MANDAJA_PLANS['micro'])
+                    _enviar_email(s['email'], '✅ MandaJá — Assinatura ativa!',
+                        _email_pagamento_confirmado('MandaJá', '🛍️', '#f97316',
+                            s['owner_name'].split()[0], p['label'],
+                            f"R$ {p['price']}/mês", 'https://4kitem.com.br/mandaja/painel'))
             conn.close()
 
     elif ref.startswith('mandazap_'):
-        parts = ref.split('_')
-        customer_id = parts[1] if len(parts) > 1 else None
         if customer_id:
             conn = get_saas_db()
-            u = conn.execute('SELECT id FROM mandazap_users WHERE asaas_customer_id=?',
+            u = conn.execute('SELECT id, name, email FROM mandazap_users WHERE asaas_customer_id=?',
                              (customer_id,)).fetchone()
             if u:
                 conn.execute('UPDATE mandazap_users SET active=?, plan_active=? WHERE id=?',
                              (1 if ativar else 0, 1 if ativar else 0, u['id']))
                 conn.commit()
+                if ativar and u['email']:
+                    p = MANDAZAP_PLANS.get(plano_key, {})
+                    _enviar_email(u['email'], '✅ MandaZap — Assinatura ativa!',
+                        _email_pagamento_confirmado('MandaZap', '📲', '#22c55e',
+                            u['name'].split()[0], p.get('label', plano_key),
+                            f"R$ {p.get('price','')}/mês", 'https://4kitem.com.br/mandazap/painel'))
             conn.close()
 
     elif ref.startswith('despachante_'):
-        parts = ref.split('_')
-        customer_id = parts[1] if len(parts) > 1 else None
         if customer_id:
             conn = get_saas_db()
-            u = conn.execute('SELECT id FROM despachante_users WHERE asaas_customer_id=?',
+            u = conn.execute('SELECT id, name, email FROM despachante_users WHERE asaas_customer_id=?',
                              (customer_id,)).fetchone()
             if u:
                 conn.execute('UPDATE despachante_users SET active=?, plan_active=? WHERE id=?',
                              (1 if ativar else 0, 1 if ativar else 0, u['id']))
                 conn.commit()
+                if ativar and u['email']:
+                    p = DESP_PLANS.get(plano_key, {})
+                    _enviar_email(u['email'], '✅ Amigo Despachante — Assinatura ativa!',
+                        _email_pagamento_confirmado('Amigo Despachante', '🚗', '#3b82f6',
+                            u['name'].split()[0], p.get('label', plano_key),
+                            p.get('price', ''), 'https://4kitem.com.br/amigo-despachante/app'))
             conn.close()
 
     elif ref.startswith('alerta_'):
-        parts = ref.split('_')
-        customer_id = parts[1] if len(parts) > 1 else None
         if customer_id:
             conn = get_saas_db()
-            s = conn.execute('SELECT id FROM alerta_subscribers WHERE asaas_customer_id=?',
+            s = conn.execute('SELECT id, name, email, plano FROM alerta_subscribers WHERE asaas_customer_id=?',
                              (customer_id,)).fetchone()
             if s:
                 novo_status = 'ativo' if ativar else 'suspenso'
                 conn.execute("UPDATE alerta_subscribers SET status=?, payment_status=? WHERE id=?",
                              (novo_status, 'paid' if ativar else 'overdue', s['id']))
                 conn.commit()
+                if ativar and s.get('email'):
+                    p = ALERTA_PLANS.get(plano_key or s['plano'], {})
+                    _enviar_email(s['email'], '✅ AlertaSC — Monitoramento ativado!',
+                        _email_pagamento_confirmado('AlertaSC', '🚨', '#ef4444',
+                            s['name'].split()[0], p.get('label', plano_key or s['plano']),
+                            p.get('price', ''), 'https://4kitem.com.br/alerta/minha-conta'))
             conn.close()
 
     log.info(f'[WEBHOOK ASAAS] event={event} ref={ref} ativar={ativar}')
@@ -2464,6 +2597,19 @@ def agenda_cadastro():
                     session['agenda_business_id']   = biz['id']
                     session['agenda_business_slug'] = biz['slug']
                     session['agenda_business_name'] = biz['name']
+                    # Email de boas-vindas
+                    if email:
+                        _enviar_email(
+                            email,
+                            '📅 Bem-vindo ao Agenda SC — Seu trial de 7 dias começou!',
+                            _email_boas_vindas(
+                                'Agenda SC', '📅', '#22c55e',
+                                owner_name.split()[0],
+                                trial_ends,
+                                'https://4kitem.com.br/agenda/painel',
+                                'Sistema de agendamentos online para o seu negócio. Configure seus serviços, horários e comece a receber agendamentos agora.'
+                            )
+                        )
                     return redirect('/agenda/painel')
                 except Exception as e:
                     conn.close()
@@ -2945,10 +3091,11 @@ def agenda_assinar():
         if billing_type not in ('PIX', 'BOLETO', 'CREDIT_CARD'):
             billing_type = 'PIX'
         conn = get_saas_db()
-        biz = conn.execute('SELECT * FROM agenda_businesses WHERE id=?', (biz_id,)).fetchone()
+        biz_row = conn.execute('SELECT * FROM agenda_businesses WHERE id=?', (biz_id,)).fetchone()
         conn.close()
-        if not biz:
+        if not biz_row:
             return redirect('/agenda/entrar')
+        biz = dict(biz_row)
         customer_id = _asaas_criar_ou_buscar_cliente_saas(
             biz['name'], biz['email'], biz['phone'], biz.get('cpf_cnpj', ''), biz['id'], 'agenda_businesses'
         )
@@ -3169,6 +3316,7 @@ def api_agenda_book(slug):
     data            = request.get_json() or {}
     customer_name   = data.get('customer_name', '').strip()
     customer_phone  = data.get('customer_phone', '').strip()
+    customer_email  = data.get('customer_email', '').strip()
     service_id      = data.get('service_id')
     appt_date       = data.get('date', '').strip()
     appt_time       = data.get('time', '').strip()
@@ -3215,11 +3363,12 @@ def api_agenda_book(slug):
     conn.execute('''
         INSERT INTO agenda_appointments
         (business_id, service_id, customer_name, customer_phone, customer_notes,
-         appointment_date, appointment_time, status, created_at, professional_id, professional_name)
-        VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?)
+         appointment_date, appointment_time, status, created_at, professional_id, professional_name,
+         customer_email)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?)
     ''', (biz['id'], service_id or None, customer_name, customer_phone, notes,
           appt_date, appt_time, datetime.now().isoformat(),
-          professional_id, prof_name))
+          professional_id, prof_name, customer_email))
     conn.commit()
 
     # Registra/atualiza cliente
@@ -3253,8 +3402,293 @@ def api_agenda_book(slug):
                .replace('{negocio}', biz_full['name']))
         _agenda_send_whatsapp(customer_phone, msg, biz_full['mandazap_instance'])
 
+    # ── Email de confirmação para o cliente ─────────────────────────────────
+    if customer_email:
+        conn3 = get_saas_db()
+        svc_row = conn3.execute('SELECT name FROM agenda_services WHERE id=?', (service_id,)).fetchone() if service_id else None
+        conn3.close()
+        svc_nome = svc_row['name'] if svc_row else 'Serviço'
+        dia_fmt  = appt_date[8:10] + '/' + appt_date[5:7] + '/' + appt_date[:4]
+        html_cliente = _email_base(f"""
+<div style="font-size:36px;margin-bottom:12px">📅</div>
+<h1 style="color:#fff;font-size:20px;font-weight:800;margin:0 0 6px">Agendamento confirmado!</h1>
+<p style="color:#888;font-size:13px;margin:0 0 24px">Olá <strong style="color:#fff">{customer_name.split()[0]}</strong>, seu agendamento foi recebido com sucesso.</p>
+<div style="background:#1a1a1a;border:1px solid #2a2a2a;border-radius:12px;padding:20px;margin-bottom:24px">
+  <div style="font-size:12px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">Detalhes do agendamento</div>
+  <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #222">
+    <span style="font-size:13px;color:#666">Local</span>
+    <span style="font-size:13px;color:#fff;font-weight:700">{biz_full['name']}</span>
+  </div>
+  <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #222">
+    <span style="font-size:13px;color:#666">Serviço</span>
+    <span style="font-size:13px;color:#fff;font-weight:700">{svc_nome}</span>
+  </div>
+  <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #222">
+    <span style="font-size:13px;color:#666">Data</span>
+    <span style="font-size:13px;color:#22c55e;font-weight:700">{dia_fmt}</span>
+  </div>
+  <div style="display:flex;justify-content:space-between;padding:8px 0{';border-bottom:1px solid #222' if prof_name else ''}">
+    <span style="font-size:13px;color:#666">Horário</span>
+    <span style="font-size:13px;color:#22c55e;font-weight:700">{appt_time}</span>
+  </div>
+  {'<div style="display:flex;justify-content:space-between;padding:8px 0"><span style="font-size:13px;color:#666">Profissional</span><span style="font-size:13px;color:#fff;font-weight:700">' + prof_name + '</span></div>' if prof_name else ''}
+</div>
+<p style="font-size:13px;color:#666;margin:0">Dúvidas? Entre em contato pelo telefone <strong style="color:#fff">{biz_full.get('phone','')}</strong>.</p>
+""", '#22c55e')
+        _enviar_email(customer_email, f'✅ Agendamento confirmado — {biz_full["name"]}', html_cliente)
+
+    # ── Email de notificação para o dono do negócio ──────────────────────────
+    if biz_full.get('email'):
+        dia_fmt = appt_date[8:10] + '/' + appt_date[5:7] + '/' + appt_date[:4]
+        conn4 = get_saas_db()
+        svc_row2 = conn4.execute('SELECT name FROM agenda_services WHERE id=?', (service_id,)).fetchone() if service_id else None
+        conn4.close()
+        svc_nome2 = svc_row2['name'] if svc_row2 else 'Serviço'
+        html_dono = _email_base(f"""
+<div style="font-size:36px;margin-bottom:12px">🔔</div>
+<h1 style="color:#fff;font-size:20px;font-weight:800;margin:0 0 6px">Novo agendamento!</h1>
+<p style="color:#888;font-size:13px;margin:0 0 24px">Um cliente acabou de agendar no <strong style="color:#fff">{biz_full['name']}</strong>.</p>
+<div style="background:#1a1a1a;border:1px solid #2a2a2a;border-radius:12px;padding:20px;margin-bottom:24px">
+  <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #222">
+    <span style="font-size:13px;color:#666">Cliente</span>
+    <span style="font-size:13px;color:#fff;font-weight:700">{customer_name}</span>
+  </div>
+  <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #222">
+    <span style="font-size:13px;color:#666">Telefone</span>
+    <span style="font-size:13px;color:#fff;font-weight:700">{customer_phone}</span>
+  </div>
+  <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #222">
+    <span style="font-size:13px;color:#666">Serviço</span>
+    <span style="font-size:13px;color:#fff;font-weight:700">{svc_nome2}</span>
+  </div>
+  <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #222">
+    <span style="font-size:13px;color:#666">Data</span>
+    <span style="font-size:13px;color:#22c55e;font-weight:700">{dia_fmt}</span>
+  </div>
+  <div style="display:flex;justify-content:space-between;padding:8px 0">
+    <span style="font-size:13px;color:#666">Horário</span>
+    <span style="font-size:13px;color:#22c55e;font-weight:700">{appt_time}</span>
+  </div>
+</div>
+<a href="https://4kitem.com.br/agenda/painel" style="display:block;text-align:center;padding:12px 24px;background:#22c55e;color:#fff;font-size:14px;font-weight:700;border-radius:12px;text-decoration:none">Ver no painel →</a>
+""", '#22c55e')
+        _enviar_email(biz_full['email'], f'🔔 Novo agendamento — {customer_name} · {dia_fmt} {appt_time}', html_dono)
+
     return jsonify({'success': True, 'business_name': biz['name'], 'business_phone': biz['phone'],
                     'pix_chave': biz_full.get('pix_chave',''), 'pix_nome': biz_full.get('pix_nome','')})
+
+
+# ══════════════════════════════════════════════════════════════════════════
+#  ALERTA SC — Monitoramento automático de débitos veiculares
+# ══════════════════════════════════════════════════════════════════════════
+
+def _alerta_consultar_placa(placa: str) -> list:
+    """
+    Consulta débitos/situação de um veículo.
+    Usa API configurada via env var ALERTA_VEICULO_API_URL + ALERTA_VEICULO_API_KEY.
+    Retorna lista de dicts: {tipo, descricao, valor, vencimento, situacao}
+    """
+    api_url = os.environ.get('ALERTA_VEICULO_API_URL', '').rstrip('/')
+    api_key = os.environ.get('ALERTA_VEICULO_API_KEY', '')
+    placa_clean = _re.sub(r'[^A-Z0-9]', '', placa.upper())
+    if not (api_url and api_key and placa_clean):
+        return []
+    try:
+        r = requests.get(
+            f"{api_url}/veiculo/{placa_clean}",
+            headers={'Authorization': f'Bearer {api_key}', 'Accept': 'application/json'},
+            timeout=20
+        )
+        if r.status_code != 200:
+            log.warning(f'[AlertaSC] API retornou {r.status_code} para placa {placa_clean}')
+            return []
+        data = r.json()
+        # Normaliza: aceita {debitos: [...]} ou lista direta
+        debitos = data if isinstance(data, list) else data.get('debitos', data.get('data', []))
+        result = []
+        for d in debitos:
+            result.append({
+                'tipo':       d.get('tipo') or d.get('type') or 'Débito',
+                'descricao':  d.get('descricao') or d.get('description') or '',
+                'valor':      str(d.get('valor') or d.get('value') or ''),
+                'vencimento': str(d.get('vencimento') or d.get('dueDate') or d.get('due_date') or ''),
+                'situacao':   d.get('situacao') or d.get('status') or 'pendente',
+            })
+        return result
+    except Exception as e:
+        log.warning(f'[AlertaSC] Erro ao consultar placa {placa_clean}: {e}')
+        return []
+
+
+def _alerta_send_whatsapp(phone: str, mensagem: str) -> bool:
+    """Envia notificação via Evolution API (mesma instância do MandaZap/MandaJá)."""
+    EVO_URL  = os.environ.get('EVOLUTION_API_URL', '').rstrip('/')
+    EVO_KEY  = os.environ.get('EVOLUTION_API_KEY', '')
+    INSTANCE = os.environ.get('ALERTA_EVO_INSTANCE',
+                              os.environ.get('MANDAJA_EVO_INSTANCE', ''))
+    if not (EVO_URL and EVO_KEY and INSTANCE):
+        return False
+    phone_clean = _re.sub(r'\D', '', phone)
+    if not phone_clean.startswith('55'):
+        phone_clean = '55' + phone_clean
+    try:
+        r = requests.post(
+            f"{EVO_URL}/message/sendText/{INSTANCE}",
+            headers={'apikey': EVO_KEY, 'Content-Type': 'application/json'},
+            json={'number': phone_clean, 'text': mensagem},
+            timeout=12
+        )
+        return r.status_code in (200, 201)
+    except Exception as e:
+        log.warning(f'[AlertaSC] WhatsApp send error: {e}')
+        return False
+
+
+def _alerta_notificar_assinante(sub: dict, novos: list):
+    """Monta mensagem WhatsApp + email e envia ao assinante."""
+    nome = sub['name'].split()[0]
+    linhas = []
+    for a in novos:
+        tipo   = a.get('tipo', 'Débito')
+        valor  = a.get('valor', '')
+        venc   = a.get('vencimento', '')
+        placa  = a.get('placa', '')
+        desc_p = a.get('plate_desc', placa)
+        linha  = f"🚗 *{desc_p}* ({placa})\n   📋 {tipo}"
+        if valor:
+            linha += f" — R$ {valor}"
+        if venc:
+            linha += f"\n   📅 Vence: {venc}"
+        linhas.append(linha)
+
+    total = len(novos)
+    msg_wpp = (
+        f"🚨 *AlertaSC — Novo débito detectado!*\n\n"
+        f"Olá {nome}! Encontramos *{total} débito(s) pendente(s)*:\n\n"
+        + '\n\n'.join(linhas) +
+        f"\n\n💡 Acesse sua conta para mais detalhes:\n"
+        f"4kitem.com.br/alerta/minha-conta\n\n"
+        f"_AlertaSC · Monitoramento automático_"
+    )
+    _alerta_send_whatsapp(sub['phone'], msg_wpp)
+
+    # Email de alerta (se tiver email cadastrado)
+    if sub.get('email'):
+        linhas_html = ''.join(
+            f'<div style="padding:10px 0;border-bottom:1px solid #222">'
+            f'<span style="color:#ef4444;font-weight:700">🚗 {a.get("plate_desc",a.get("placa",""))} ({a.get("placa","")})</span><br>'
+            f'<span style="font-size:13px;color:#888">{a.get("tipo","Débito")}'
+            f'{" — R$ " + a.get("valor","") if a.get("valor") else ""}'
+            f'{"<br>📅 Vence: " + a.get("vencimento","") if a.get("vencimento") else ""}</span>'
+            f'</div>'
+            for a in novos
+        )
+        html_alerta = _email_base(f"""
+<div style="font-size:40px;margin-bottom:12px">🚨</div>
+<h1 style="color:#fff;font-size:20px;font-weight:800;margin:0 0 8px">Novo débito detectado!</h1>
+<p style="color:#888;font-size:13px;margin:0 0 20px">Olá <strong style="color:#fff">{nome}</strong>, identificamos <strong style="color:#ef4444">{total} débito(s) pendente(s)</strong> nos seus veículos.</p>
+<div style="background:#1a1a1a;border:1px solid #2a2a2a;border-radius:12px;padding:16px;margin-bottom:20px">
+{linhas_html}
+</div>
+<a href="https://4kitem.com.br/alerta/minha-conta" style="display:block;text-align:center;padding:13px 24px;background:#ef4444;color:#fff;font-size:14px;font-weight:700;border-radius:12px;text-decoration:none;margin-bottom:16px">🚨 Ver minha conta</a>
+<p style="font-size:12px;color:#555;margin:0">Regularize seus débitos para evitar restrições no veículo.</p>
+""", '#ef4444')
+        _enviar_email(sub['email'], f'🚨 AlertaSC — {total} débito(s) detectado(s) nos seus veículos', html_alerta)
+
+
+def _alerta_monitorar_assinante(sub: dict):
+    """Verifica e notifica um assinante específico."""
+    try:
+        plates = _json.loads(sub.get('plates_json') or '[]')
+    except Exception:
+        return
+
+    novos_total = []
+    conn = get_saas_db()
+
+    for item in plates:
+        placa      = (item.get('plate') if isinstance(item, dict) else item or '').strip().upper()
+        plate_desc = (item.get('desc', '') if isinstance(item, dict) else '') or placa
+        if not placa:
+            continue
+
+        debitos_atuais = _alerta_consultar_placa(placa)
+
+        # Chaves já registradas para essa placa/assinante
+        existentes = {
+            row['chave_unica']
+            for row in conn.execute(
+                'SELECT chave_unica FROM alerta_debitos WHERE subscriber_id=? AND plate=?',
+                (sub['id'], placa)
+            ).fetchall()
+        }
+
+        for deb in debitos_atuais:
+            chave = (f"{placa}_{deb.get('tipo','')}_{deb.get('vencimento','')}_{deb.get('valor','')}"
+                     ).replace(' ', '_')[:120]
+            if chave not in existentes:
+                try:
+                    conn.execute('''
+                        INSERT OR IGNORE INTO alerta_debitos
+                        (subscriber_id, plate, plate_desc, chave_unica, tipo, descricao,
+                         valor, vencimento, situacao, found_at, notificado)
+                        VALUES (?,?,?,?,?,?,?,?,?,?,0)
+                    ''', (sub['id'], placa, plate_desc, chave,
+                          deb.get('tipo',''), deb.get('descricao',''),
+                          deb.get('valor',''), deb.get('vencimento',''),
+                          deb.get('situacao','pendente'), datetime.now().isoformat()))
+                    novos_total.append({**deb, 'placa': placa, 'plate_desc': plate_desc})
+                except Exception:
+                    pass
+
+    # Atualiza last_report_at
+    conn.execute('UPDATE alerta_subscribers SET last_report_at=? WHERE id=?',
+                 (datetime.now().isoformat(), sub['id']))
+    conn.commit()
+
+    if novos_total:
+        # Marca todos como notificados antes de enviar (evita duplicata em retry)
+        conn.execute(
+            "UPDATE alerta_debitos SET notificado=1, notificado_at=? WHERE subscriber_id=? AND notificado=0",
+            (datetime.now().isoformat(), sub['id'])
+        )
+        conn.commit()
+        conn.close()
+        _alerta_notificar_assinante(sub, novos_total)
+    else:
+        conn.close()
+
+
+def _alerta_run_monitoring():
+    """Job principal de monitoramento — roda em background thread."""
+    log.info('[AlertaSC] Iniciando ciclo de monitoramento')
+    try:
+        conn = get_saas_db()
+        subs = conn.execute(
+            "SELECT * FROM alerta_subscribers WHERE status='ativo'"
+        ).fetchall()
+        conn.close()
+        total = len(subs)
+        log.info(f'[AlertaSC] {total} assinante(s) ativo(s) para monitorar')
+        for sub in subs:
+            try:
+                _alerta_monitorar_assinante(dict(sub))
+            except Exception as e:
+                log.error(f'[AlertaSC] Erro assinante {sub["id"]}: {e}')
+            time.sleep(2)   # Pausa entre consultas para não sobrecarregar API
+        log.info(f'[AlertaSC] Ciclo concluído — {total} assinante(s) verificados')
+    except Exception as e:
+        log.error(f'[AlertaSC] Erro no ciclo: {e}')
+
+
+def _alerta_scheduler_loop():
+    """Thread daemon que roda o monitoramento a cada 24h."""
+    # Aguarda 5 min após startup para não sobrecarregar na inicialização
+    time.sleep(300)
+    while True:
+        _alerta_run_monitoring()
+        # Próxima execução em 24h
+        time.sleep(86400)
 
 
 # ══════════════════════════════════════════════════════════════════════════
@@ -3648,6 +4082,16 @@ def saas_alerta_plano(sub_id):
     conn.execute('UPDATE alerta_subscribers SET plano=? WHERE id=?', (plano, sub_id))
     conn.commit(); conn.close()
     return jsonify({'success': True, 'plano': plano, 'label': ALERTA_PLANS[plano]['label']})
+
+
+# ── Admin AlertaSC — monitoramento manual ─────────────────────────────────────
+
+@app.route('/saas-admin/alerta/monitorar-agora', methods=['POST'])
+@_saas_admin_required
+def saas_alerta_monitorar_agora():
+    """Dispara o ciclo completo de monitoramento AlertaSC em background."""
+    threading.Thread(target=_alerta_run_monitoring, daemon=True).start()
+    return jsonify({'ok': True, 'msg': 'Monitoramento iniciado em background'})
 
 
 # ── Admin KidsCurator — status / delete ───────────────────────────────────────
@@ -4328,6 +4772,19 @@ def mandazap_cadastro():
                 session['mz_user_id']   = user['id']
                 session['mz_user_name'] = user['name']
                 session['mz_plan']      = user['plan']
+                # Email de boas-vindas
+                if email:
+                    _enviar_email(
+                        email,
+                        '📲 Bem-vindo ao MandaZap — 7 dias grátis!',
+                        _email_boas_vindas(
+                            'MandaZap', '📲', '#22c55e',
+                            name.split()[0],
+                            trial,
+                            'https://4kitem.com.br/mandazap/painel',
+                            'Dispare mensagens para centenas de clientes no WhatsApp com apenas alguns cliques. Importe contatos, crie campanhas e venda mais.'
+                        )
+                    )
                 return redirect('/mandazap/painel')
     return render_template('mandazap/cadastro.html', error=error)
 
@@ -4478,6 +4935,11 @@ def mandazap_painel():
     user_id  = session['mz_user_id']
     plan_key = session.get('mz_plan', 'solo')
     conn     = get_saas_db()
+    # Trial/plano info
+    _mz_row     = conn.execute('SELECT trial_ends, plan_active FROM mandazap_users WHERE id=?', (user_id,)).fetchone()
+    trial_ends  = (_mz_row['trial_ends'] or '') if _mz_row else ''
+    plan_active = (_mz_row['plan_active'] if _mz_row else 1)
+    trial_expired = bool(trial_ends and trial_ends < datetime.now().isoformat())
 
     contacts  = [dict(r) for r in conn.execute(
         'SELECT * FROM mandazap_contacts WHERE user_id=? ORDER BY name', (user_id,)
@@ -4522,6 +4984,8 @@ def mandazap_painel():
                            plans=MANDAZAP_PLANS,
                            user_name=session.get('mz_user_name', ''),
                            now=datetime.now(),
+                           trial_ends=trial_ends, trial_expired=trial_expired,
+                           plan_active=plan_active,
                            section=request.args.get('section', 'dashboard'))
 
 
@@ -7717,6 +8181,13 @@ def _startup():
         except Exception as e:
             log.error(f"[startup] Cleanup campanhas erro: {e}")
 
+        # ── AlertaSC monitoring scheduler ────────────────────────────────────
+        try:
+            threading.Thread(target=_alerta_scheduler_loop, daemon=True).start()
+            log.info('[AlertaSC] Scheduler de monitoramento iniciado (primeira execução em 5 min)')
+        except Exception as e:
+            log.error(f"[startup] AlertaSC scheduler erro: {e}")
+
     except Exception as e:
         log.error(f"Startup error: {e}")
 
@@ -7832,6 +8303,19 @@ def mandaja_cadastro():
         session['mja_store_name'] = store['name']
         session['mja_store_slug'] = store['slug']
         session['mja_plan']       = 'micro'
+        # Email de boas-vindas
+        if store.get('email'):
+            _enviar_email(
+                store['email'],
+                '🛍️ Bem-vindo ao MandaJá — Sua loja digital está pronta!',
+                _email_boas_vindas(
+                    'MandaJá', '🛍️', '#f97316',
+                    store['owner_name'].split()[0],
+                    trial_ends,
+                    'https://4kitem.com.br/mandaja/painel',
+                    'Seu cardápio digital está no ar! Adicione produtos, configure horários e comece a receber pedidos pelo WhatsApp agora mesmo.'
+                )
+            )
         return redirect('/mandaja/painel?novo=1')
     return render_template('mandaja/cadastro.html', cats=MANDAJA_STORE_CATEGORIES)
 
@@ -7938,11 +8422,16 @@ def mandaja_painel():
         (store_id,)).fetchall()
     pedidos_recentes = [dict(p) for p in pedidos_recentes]
     conn.close()
-    plan_info = MANDAJA_PLANS.get(store['plan'], MANDAJA_PLANS['micro'])
+    plan_info     = MANDAJA_PLANS.get(store['plan'], MANDAJA_PLANS['micro'])
+    trial_ends    = store.get('trial_ends') or ''
+    plan_active   = store.get('plan_active', 1)
+    trial_expired = bool(trial_ends and trial_ends < datetime.now().isoformat())
     return render_template('mandaja/painel.html',
                            store=store, stats=stats,
                            pedidos_recentes=pedidos_recentes,
-                           plan=plan_info, plans=MANDAJA_PLANS)
+                           plan=plan_info, plans=MANDAJA_PLANS,
+                           trial_ends=trial_ends, trial_expired=trial_expired,
+                           plan_active=plan_active)
 
 
 # ── Produtos ──────────────────────────────────────────────────────────────────
@@ -8387,6 +8876,61 @@ def _notify_new_order_whatsapp(store, order_id, order_number, customer_name,
         )
     except Exception as e:
         log.warning(f"[MandaJá] WhatsApp notify error: {e}")
+
+
+# ── Checkout / Asaas ─────────────────────────────────────────────────────────
+@app.route('/mandaja/assinar/<plano>', methods=['GET', 'POST'])
+@_mandaja_login_required
+def mandaja_assinar(plano):
+    if plano not in MANDAJA_PLANS:
+        return redirect('/mandaja/painel')
+    store = _mandaja_get_store()
+    if not store:
+        return redirect('/mandaja/logout')
+    p    = MANDAJA_PLANS[plano]
+    erro = ''
+    if request.method == 'POST':
+        billing_type = request.form.get('billing_type', 'PIX')
+        if billing_type not in ('PIX', 'BOLETO', 'CREDIT_CARD'):
+            erro = 'Método de pagamento inválido.'
+        else:
+            try:
+                customer_id = _asaas_criar_ou_buscar_cliente_saas(
+                    store['owner_name'], store['email'], store['phone'],
+                    store.get('cpf_cnpj', ''), store['id'], 'mandaja_stores'
+                )
+                if not customer_id:
+                    erro = 'Erro ao criar perfil de pagamento. Verifique seus dados cadastrais.'
+                else:
+                    # Salva customer_id no banco
+                    conn = get_saas_db()
+                    conn.execute('UPDATE mandaja_stores SET asaas_customer_id=? WHERE id=?',
+                                 (customer_id, store['id']))
+                    conn.commit()
+                    conn.close()
+                    sub = _asaas_criar_assinatura_saas(
+                        customer_id, 'mandaja', plano, float(p['price']),
+                        f"MandaJá {p['label']} — {store['name']}", billing_type
+                    )
+                    if sub.get('id'):
+                        payment_url = sub.get('invoiceUrl') or sub.get('bankSlipUrl') or ''
+                        if payment_url:
+                            return redirect(payment_url)
+                        return redirect('/mandaja/aguardando-pagamento')
+                    else:
+                        erro = (sub.get('errors') or [{}])[0].get('description', 'Erro ao criar assinatura.')
+            except Exception as ex:
+                log.exception('[MandaJá] Erro no checkout')
+                erro = 'Erro ao processar pagamento. Tente novamente.'
+    return render_template('mandaja/checkout.html', store=store, plano=plano, p=p,
+                           plans=MANDAJA_PLANS, erro=erro)
+
+
+@app.route('/mandaja/aguardando-pagamento')
+@_mandaja_login_required
+def mandaja_aguardando():
+    store = _mandaja_get_store()
+    return render_template('mandaja/aguardando.html', store=store)
 
 
 # ══════════════════════════════════════════════════════════════════════════════

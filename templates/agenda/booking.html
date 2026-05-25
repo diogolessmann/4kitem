@@ -253,6 +253,10 @@
       <input type="tel" id="cust-phone" placeholder="(47) 99999-9999">
     </div>
     <div class="form-group">
+      <label>E-mail (opcional — para receber confirmação)</label>
+      <input type="email" id="cust-email" placeholder="seu@email.com">
+    </div>
+    <div class="form-group">
       <label>Observação (opcional)</label>
       <textarea id="cust-notes" rows="2" placeholder="Alguma informação extra?"></textarea>
     </div>
@@ -306,6 +310,10 @@
     <div class="form-group">
       <label>WhatsApp *</label>
       <input type="tel" id="cust-phone" placeholder="(47) 99999-9999">
+    </div>
+    <div class="form-group">
+      <label>E-mail (opcional — para receber confirmação)</label>
+      <input type="email" id="cust-email" placeholder="seu@email.com">
     </div>
     <div class="form-group">
       <label>Observação (opcional)</label>
@@ -486,6 +494,7 @@ function selectSlot(time) {
 async function confirmBooking() {
   const name  = document.getElementById('cust-name').value.trim();
   const phone = document.getElementById('cust-phone').value.trim();
+  const email = (document.getElementById('cust-email') || {}).value?.trim() || '';
   const notes = document.getElementById('cust-notes').value.trim();
   if (!name)  { alert('⚠️ Informe seu nome.'); return; }
   if (!phone) { alert('⚠️ Informe seu WhatsApp.'); return; }
@@ -495,8 +504,9 @@ async function confirmBooking() {
 
   try {
     const payload = {
-      customer_name: name, customer_phone: phone, customer_notes: notes,
-      service_id: selectedService.id, date: selectedDate, time: selectedTime,
+      customer_name: name, customer_phone: phone, customer_email: email,
+      customer_notes: notes, service_id: selectedService.id,
+      date: selectedDate, time: selectedTime,
       professional_id: selectedProfissional.id
     };
     const r = await fetch(`/api/agenda/book/${SLUG}`, {

@@ -82,7 +82,10 @@
 
   <!-- ═══════════════ ALERTA SC ═══════════════ -->
   <div class="tab-content active" id="tab-alerta">
-    <h2>Assinantes do Alerta SC</h2>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+      <h2 style="margin-bottom:0">Assinantes do Alerta SC</h2>
+      <button class="btn-sm btn-orange" id="btn-monitorar" onclick="monitorarAgora()">🔍 Monitorar agora</button>
+    </div>
     {% if subscribers %}
     <table>
       <thead><tr>
@@ -828,6 +831,27 @@ async function setAlertaPlano(id, plano) {
   const d = await r.json();
   if (d.success) location.reload();
   else alert(d.error || 'Erro');
+}
+
+/* ── AlertaSC — monitorar agora ── */
+async function monitorarAgora() {
+  const btn = document.getElementById('btn-monitorar');
+  btn.disabled = true;
+  btn.textContent = '⏳ Iniciando…';
+  try {
+    const r = await fetch('/saas-admin/alerta/monitorar-agora', { method: 'POST' });
+    const d = await r.json();
+    if (d.ok) {
+      btn.textContent = '✅ Rodando em background';
+      setTimeout(() => { btn.disabled = false; btn.textContent = '🔍 Monitorar agora'; }, 5000);
+    } else {
+      btn.textContent = '❌ Erro';
+      btn.disabled = false;
+    }
+  } catch(e) {
+    btn.textContent = '❌ Erro de rede';
+    btn.disabled = false;
+  }
 }
 
 /* ── KidsCurator — mudar modo ── */

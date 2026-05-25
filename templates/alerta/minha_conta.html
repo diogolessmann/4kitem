@@ -30,6 +30,17 @@
   .plate-desc{font-size:10px;color:#78620a;font-family:inherit;letter-spacing:0;font-weight:400;display:block;margin-top:1px}
   .info-box{background:rgba(34,197,94,.07);border:1px solid rgba(34,197,94,.12);border-radius:12px;padding:16px;font-size:13px;color:#22c55e;text-align:center;line-height:1.7}
   .pending-box{background:rgba(245,158,11,.07);border:1px solid rgba(245,158,11,.12);border-radius:12px;padding:16px;font-size:13px;color:#f59e0b;text-align:center;line-height:1.7}
+  .debit-row{display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px solid rgba(255,255,255,.04)}
+  .debit-row:last-child{border-bottom:none}
+  .debit-plate{background:#090900;border:1px solid rgba(245,158,11,.2);border-radius:6px;padding:3px 8px;font-size:11px;font-family:'Courier New',monospace;font-weight:700;color:#f59e0b;letter-spacing:1px;white-space:nowrap}
+  .debit-tipo{font-size:11px;font-weight:700;color:#ef4444;text-transform:uppercase;letter-spacing:.3px}
+  .debit-desc{font-size:12px;color:#bbb;line-height:1.4;margin-top:2px}
+  .debit-meta{font-size:11px;color:#555;margin-top:3px}
+  .debit-valor{font-size:14px;font-weight:800;color:#ef4444;white-space:nowrap;text-align:right}
+  .debit-sit{font-size:10px;font-weight:700;text-align:right;margin-top:2px}
+  .sit-pendente{color:#f59e0b}
+  .sit-pago{color:#22c55e}
+  .debit-empty{text-align:center;padding:28px;color:#555;font-size:13px}
 </style>
 </head>
 <body>
@@ -48,12 +59,15 @@
       <div class="plan-badge">{{ plan_info.get('label', sub.plano) }} — {{ plan_info.get('price', '') }}</div>
     </div>
     <div style="margin-top:8px">
-      <span class="status-badge status-{{ sub.status }}">
-        {% if sub.status == 'active' %}✅ Ativo
-        {% elif sub.status == 'pending' %}⏳ Aguardando pagamento
-        {% elif sub.status == 'suspended' %}🚫 Suspenso
-        {% else %}{{ sub.status }}{% endif %}
-      </span>
+      {% if sub.status == 'ativo' %}
+      <span class="status-badge status-active">✅ Ativo</span>
+      {% elif sub.status in ('pendente', 'pending') %}
+      <span class="status-badge status-pending">⏳ Aguardando pagamento</span>
+      {% elif sub.status in ('suspenso', 'suspended') %}
+      <span class="status-badge status-suspended">🚫 Suspenso</span>
+      {% else %}
+      <span class="status-badge status-pending">{{ sub.status }}</span>
+      {% endif %}
     </div>
   </div>
 
@@ -103,17 +117,81 @@
   </div>
   {% endif %}
 
-  {% if sub.status == 'active' %}
+  {% if sub.status == 'ativo' %}
   <div class="info-box">
-    ✅ Sua assinatura está ativa! Você receberá alertas pelo WhatsApp automaticamente.<br>
-    <strong>Dúvidas ou alterações?</strong> Fale com a equipe Alerta SC.
+    ✅ Sua assinatura está ativa! Você receberá alertas automaticamente quando houver multas, vencimentos ou débitos nos seus veículos.<br>
+    <strong>Quer adicionar mais veículos?</strong>
+    <a href="/alerta/assinar/{{ sub.plano }}" style="color:#22c55e;font-weight:700">Fazer upgrade de plano →</a>
+  </div>
+  {% elif sub.status in ('pendente', 'pending') %}
+  <div class="pending-box">
+    ⏳ Pagamento pendente. Após a confirmação seu monitoramento será ativado automaticamente.<br>
+    <strong>Precisa de ajuda?</strong> Fale pelo <a href="https://wa.me/5547991011351" style="color:#f59e0b">WhatsApp</a>.
   </div>
   {% else %}
-  <div class="pending-box">
-    ⏳ Sua assinatura está pendente de pagamento.<br>
-    Entre em contato com a equipe para ativar seu plano.
+  <div style="background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);border-radius:12px;padding:16px;text-align:center">
+    <div style="font-size:14px;font-weight:800;color:#ef4444;margin-bottom:8px">⚠️ Assinatura suspensa</div>
+    <div style="font-size:13px;color:#78620a;margin-bottom:14px">Renove sua assinatura para reativar o monitoramento dos seus veículos.</div>
+    <a href="/alerta/assinar/{{ sub.plano }}" style="display:inline-block;padding:10px 24px;background:linear-gradient(135deg,#dc2626,#ef4444);border-radius:100px;color:#fff;font-size:13px;font-weight:700;text-decoration:none">🚨 Renovar assinatura</a>
   </div>
   {% endif %}
+
+  <div style="margin-top:16px;padding:16px;background:#0e0d08;border:1px solid rgba(245,158,11,.1);border-radius:14px">
+    <div style="font-size:12px;font-weight:700;color:#78620a;text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">Trocar de plano</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+    {% for key, pp in plans.items() %}
+      <a href="/alerta/assinar/{{ key }}"
+         style="display:inline-block;font-size:11px;padding:5px 12px;border-radius:20px;border:1px solid {{ 'rgba(245,158,11,.5)' if key == sub.plano else 'rgba(245,158,11,.15)' }};color:{{ '#f59e0b' if key == sub.plano else '#78620a' }};font-weight:{{ '700' if key == sub.plano else '500' }};text-decoration:none">
+        {{ pp.label }} · {{ pp.price }}{% if key == sub.plano %} ✓{% endif %}
+      </a>
+    {% endfor %}
+    </div>
+  </div>
+
+  <!-- Débitos detectados -->
+  <div class="card" style="margin-top:8px">
+    <div class="card-title" style="display:flex;align-items:center;justify-content:space-between">
+      <span>Débitos detectados</span>
+      {% if debitos %}
+      <span style="font-size:11px;color:#78620a;font-weight:400;text-transform:none;letter-spacing:0">Últimos {{ debitos|length }} registros</span>
+      {% endif %}
+    </div>
+    {% if debitos %}
+    {% for d in debitos %}
+    <div class="debit-row">
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px">
+          <span class="debit-plate">{{ d.plate }}</span>
+          <span class="debit-tipo">{{ d.tipo or 'Débito' }}</span>
+        </div>
+        <div class="debit-desc">{{ d.descricao or '—' }}</div>
+        <div class="debit-meta">
+          {% if d.vencimento %}Venc.: {{ d.vencimento }} · {% endif %}
+          Detectado: {{ d.found_at[:10] if d.found_at else '—' }}
+          {% if d.notificado %} · <span style="color:#22c55e">✓ Notificado</span>{% endif %}
+        </div>
+      </div>
+      <div style="text-align:right;flex-shrink:0">
+        {% if d.valor %}
+        <div class="debit-valor">R$ {{ d.valor }}</div>
+        {% endif %}
+        <div class="debit-sit {{ 'sit-pago' if d.situacao == 'pago' else 'sit-pendente' }}">
+          {{ '✅ Pago' if d.situacao == 'pago' else ('⏳ ' + (d.situacao or 'pendente')|capitalize) }}
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+    {% else %}
+    <div class="debit-empty">
+      {% if sub.status == 'ativo' %}
+      🔍 Nenhum débito detectado ainda.<br>
+      <span style="font-size:12px;color:#555;margin-top:4px;display:block">O monitoramento roda diariamente e você será avisado caso algo seja encontrado.</span>
+      {% else %}
+      🔒 Ative sua assinatura para iniciar o monitoramento.
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
 
 </div>
 </body>
