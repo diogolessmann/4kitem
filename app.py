@@ -3692,6 +3692,164 @@ def _alerta_scheduler_loop():
 
 
 # ══════════════════════════════════════════════════════════════════════════
+#  AGENDA SC — Lembrete automático WhatsApp (24h antes do agendamento)
+# ══════════════════════════════════════════════════════════════════════════
+
+def _agenda_enviar_lembrete_wpp(biz: dict, appt: dict, prof_name: str = '') -> bool:
+    """Envia lembrete WhatsApp para o cliente 24h antes do agendamento.
+    Usa a instância Evolution configurada no negócio.
+    Retorna True se enviou com sucesso."""
+    evo_url, evo_key = _get_evo()
+    if not evo_url or not evo_key:
+        return False
+
+    instance = (biz.get('mandazap_instance') or '').strip()
+    if not instance:
+        return False
+
+    phone = (appt.get('customer_phone') or '').strip()
+    if not phone:
+        return False
+
+    # Normaliza telefone
+    phone_clean = ''.join(c for c in phone if c.isdigit())
+    if not phone_clean.startswith('55'):
+        phone_clean = '55' + phone_clean
+
+    # Formata data e hora
+    appt_date = appt.get('appointment_date', '')
+    appt_time = appt.get('appointment_time', '')
+    try:
+        from datetime import date
+        d = datetime.strptime(appt_date, '%Y-%m-%d')
+        dia_fmt = d.strftime('%d/%m/%Y')
+        dia_semana = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'][d.weekday()]
+    except Exception:
+        dia_fmt = appt_date
+        dia_semana = ''
+
+    nome_cliente = (appt.get('customer_name') or 'Cliente').split()[0].title()
+    nome_negocio = biz.get('name', 'nossa empresa')
+    servico      = appt.get('service_name', '') or ''
+
+    # Mensagem personalizada do negócio ou padrão
+    msg_template = (biz.get('msg_lembrete') or '').strip()
+    if msg_template:
+        msg = (msg_template
+               .replace('{nome}', nome_cliente)
+               .replace('{data}', f'{dia_semana}, {dia_fmt}')
+               .replace('{hora}', appt_time)
+               .replace('{servico}', servico)
+               .replace('{negocio}', nome_negocio))
+    else:
+        linha_prof = f'\n👤 Profissional: {prof_name}' if prof_name else ''
+        linha_serv = f'\n✂️ Serviço: {servico}' if servico else ''
+        msg = (
+            f'⏰ *Lembrete de agendamento!*\n\n'
+            f'Olá {nome_cliente}! Passando para lembrar que você tem um horário marcado:\n\n'
+            f'📅 *{dia_semana}, {dia_fmt}*\n'
+            f'🕐 *{appt_time}*'
+            f'{linha_serv}'
+            f'{linha_prof}\n\n'
+            f'📍 {nome_negocio}\n\n'
+            f'_Caso precise remarcar, entre em contato com antecedência._'
+        )
+
+    try:
+        resp = requests.post(
+            f'{evo_url}/message/sendText/{instance}',
+            headers={'apikey': evo_key, 'Content-Type': 'application/json'},
+            json={'number': phone_clean, 'text': msg},
+            timeout=15
+        )
+        ok = resp.status_code in (200, 201)
+        if ok:
+            log.info(f'[AgendaSC Lembrete] ✅ Enviado para {phone_clean} (appt {appt["id"]})')
+        else:
+            log.warning(f'[AgendaSC Lembrete] ⚠️ Falha {resp.status_code} para {phone_clean}')
+        return ok
+    except Exception as e:
+        log.error(f'[AgendaSC Lembrete] Erro ao enviar para {phone_clean}: {e}')
+        return False
+
+
+def _agenda_run_lembretes():
+    """Busca agendamentos de amanhã (janela 22h–26h a partir de agora) que
+    ainda não receberam lembrete e dispara WhatsApp para cada um."""
+    try:
+        now       = datetime.now()
+        # Janela: agendamentos entre 22h e 26h a partir de agora
+        from_dt   = now + timedelta(hours=22)
+        until_dt  = now + timedelta(hours=26)
+        from_date = from_dt.strftime('%Y-%m-%d')
+        until_date = until_dt.strftime('%Y-%m-%d')
+        from_time = from_dt.strftime('%H:%M')
+        until_time = until_dt.strftime('%H:%M')
+
+        conn = get_saas_db()
+        # Busca todos os agendamentos na janela, sem lembrete, de negócios ativos com WhatsApp
+        appts = conn.execute('''
+            SELECT a.*, b.name as biz_name, b.mandazap_instance, b.mandazap_ativo,
+                   b.msg_lembrete, b.pix_chave,
+                   s.name as service_name,
+                   p.name as prof_name
+            FROM agenda_appointments a
+            JOIN agenda_businesses b ON a.business_id = b.id
+            LEFT JOIN agenda_services s ON a.service_id = s.id
+            LEFT JOIN agenda_professionals p ON a.professional_id = p.id
+            WHERE (a.reminded_at IS NULL OR a.reminded_at = '')
+              AND a.status != 'cancelado'
+              AND b.active = 1
+              AND b.mandazap_ativo = 1
+              AND b.mandazap_instance != ''
+              AND (
+                (a.appointment_date = ? AND a.appointment_time >= ?)
+                OR
+                (a.appointment_date = ? AND a.appointment_time <= ?)
+              )
+        ''', (from_date, from_time, until_date, until_time)).fetchall()
+        conn.close()
+
+        if not appts:
+            log.info('[AgendaSC Lembrete] Nenhum agendamento para lembrete neste ciclo')
+            return
+
+        log.info(f'[AgendaSC Lembrete] {len(appts)} agendamento(s) para enviar lembrete')
+        for row in appts:
+            appt = dict(row)
+            biz  = {
+                'name':               appt.get('biz_name', ''),
+                'mandazap_instance':  appt.get('mandazap_instance', ''),
+                'mandazap_ativo':     appt.get('mandazap_ativo', 0),
+                'msg_lembrete':       appt.get('msg_lembrete', ''),
+            }
+            prof_name = appt.get('prof_name') or ''
+            ok = _agenda_enviar_lembrete_wpp(biz, appt, prof_name)
+
+            # Marca como reminded (mesmo se falhou — evita flood de tentativas)
+            now_iso = datetime.now().isoformat()
+            conn2 = get_saas_db()
+            conn2.execute(
+                "UPDATE agenda_appointments SET reminded_at=? WHERE id=?",
+                (now_iso, appt['id'])
+            )
+            conn2.commit(); conn2.close()
+            time.sleep(1)   # Pausa entre envios
+
+    except Exception as e:
+        log.error(f'[AgendaSC Lembrete] Erro no ciclo: {e}')
+
+
+def _agenda_lembretes_loop():
+    """Thread daemon: verifica lembretes a cada 1 hora."""
+    # Aguarda 3 min após startup
+    time.sleep(180)
+    while True:
+        _agenda_run_lembretes()
+        time.sleep(3600)  # roda a cada 1h
+
+
+# ══════════════════════════════════════════════════════════════════════════
 #  ALERTA SC — SaaS de Monitoramento CNH & Veículo
 # ══════════════════════════════════════════════════════════════════════════
 
@@ -4092,6 +4250,16 @@ def saas_alerta_monitorar_agora():
     """Dispara o ciclo completo de monitoramento AlertaSC em background."""
     threading.Thread(target=_alerta_run_monitoring, daemon=True).start()
     return jsonify({'ok': True, 'msg': 'Monitoramento iniciado em background'})
+
+
+# ── Admin AgendaSC — lembretes manuais ────────────────────────────────────────
+
+@app.route('/saas-admin/agenda/lembretes-agora', methods=['POST'])
+@_saas_admin_required
+def saas_agenda_lembretes_agora():
+    """Dispara o ciclo de lembretes WhatsApp AgendaSC em background."""
+    threading.Thread(target=_agenda_run_lembretes, daemon=True).start()
+    return jsonify({'ok': True, 'msg': 'Lembretes iniciados em background'})
 
 
 # ── Admin KidsCurator — status / delete ───────────────────────────────────────
@@ -8187,6 +8355,13 @@ def _startup():
             log.info('[AlertaSC] Scheduler de monitoramento iniciado (primeira execução em 5 min)')
         except Exception as e:
             log.error(f"[startup] AlertaSC scheduler erro: {e}")
+
+        # ── AgendaSC lembrete automático WhatsApp ─────────────────────────
+        try:
+            threading.Thread(target=_agenda_lembretes_loop, daemon=True).start()
+            log.info('[AgendaSC] Scheduler de lembretes iniciado (primeira execução em 3 min)')
+        except Exception as e:
+            log.error(f"[startup] AgendaSC lembretes scheduler erro: {e}")
 
     except Exception as e:
         log.error(f"Startup error: {e}")

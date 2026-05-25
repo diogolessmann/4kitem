@@ -139,7 +139,10 @@
 
   <!-- ═══════════════ AGENDA SC ═══════════════ -->
   <div class="tab-content" id="tab-agenda">
-    <h2>Negócios cadastrados no Agenda SC</h2>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+      <h2 style="margin-bottom:0">Negócios cadastrados no Agenda SC</h2>
+      <button class="btn-sm btn-green" id="btn-lembretes" onclick="enviarLembretes()">⏰ Enviar lembretes agora</button>
+    </div>
     {% if businesses %}
     <table>
       <thead><tr>
@@ -831,6 +834,25 @@ async function setAlertaPlano(id, plano) {
   const d = await r.json();
   if (d.success) location.reload();
   else alert(d.error || 'Erro');
+}
+
+/* ── AgendaSC — enviar lembretes agora ── */
+async function enviarLembretes() {
+  const btn = document.getElementById('btn-lembretes');
+  btn.disabled = true;
+  btn.textContent = '⏳ Iniciando…';
+  try {
+    const r = await fetch('/saas-admin/agenda/lembretes-agora', { method: 'POST' });
+    const d = await r.json();
+    if (d.ok) {
+      btn.textContent = '✅ Rodando em background';
+      setTimeout(() => { btn.disabled = false; btn.textContent = '⏰ Enviar lembretes agora'; }, 5000);
+    } else {
+      btn.textContent = '❌ Erro'; btn.disabled = false;
+    }
+  } catch(e) {
+    btn.textContent = '❌ Erro de rede'; btn.disabled = false;
+  }
 }
 
 /* ── AlertaSC — monitorar agora ── */

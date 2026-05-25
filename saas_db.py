@@ -541,6 +541,8 @@ def init_saas_db():
         "CREATE INDEX IF NOT EXISTS idx_alerta_deb_notif ON alerta_debitos(notificado)",
         # AgendaSC — email do cliente (para enviar confirmação de agendamento)
         "ALTER TABLE agenda_appointments ADD COLUMN customer_email TEXT DEFAULT ''",
+        # AgendaSC — lembrete automático WhatsApp (24h antes)
+        "ALTER TABLE agenda_appointments ADD COLUMN reminded_at TEXT DEFAULT ''",
     ]
     for sql in _auth_migrations:
         try:
