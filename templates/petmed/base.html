@@ -257,11 +257,58 @@
     .badge-plano-familia { background: #fff7ed; color: #c2410c; }
     .badge-plano-premium { background: #ede9fe; color: #7c3aed; }
 
+    /* ── Nav mobile (bottom bar) ── */
+    .mobile-nav {
+      display: none;
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      z-index: 200;
+      padding: 6px 0 env(safe-area-inset-bottom, 6px);
+      box-shadow: 0 -4px 20px rgba(0,0,0,.08);
+    }
+    .mobile-nav-items {
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+    }
+    .mobile-nav-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+      padding: 6px 10px;
+      border-radius: 10px;
+      text-decoration: none;
+      color: var(--text3);
+      font-size: 10px;
+      font-weight: 600;
+      min-width: 56px;
+      transition: .15s;
+    }
+    .mobile-nav-item .mn-icon { font-size: 20px; line-height: 1; }
+    .mobile-nav-item.active, .mobile-nav-item:hover { color: var(--teal2); }
+    .mobile-nav-item.mn-triagem {
+      background: var(--teal);
+      color: #fff !important;
+      border-radius: 14px;
+      padding: 8px 14px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .mobile-nav-item.mn-triagem:hover { background: var(--teal2); }
+
     /* ── Responsivo ── */
     @media (max-width: 768px) {
       .sidebar { display: none; }
-      .main { padding: 16px; }
+      .main { padding: 16px 14px 80px; }
       .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
+      .topbar-nav a:not(.btn) { display: none; }
+      .mobile-nav { display: block; }
+      /* Topbar compacto no mobile */
+      .topbar { padding: 0 14px; }
+      .topbar-logo span.topbar-logo-txt { display: none; }
     }
 
     {% block extra_style %}{% endblock %}
@@ -365,5 +412,34 @@
 {% endif %}
 
 {% block extra_scripts %}{% endblock %}
+
+{% if session.pm_user_id %}
+<!-- Navegação mobile (bottom bar) -->
+<nav class="mobile-nav">
+  <div class="mobile-nav-items">
+    <a href="/petmed/dashboard" class="mobile-nav-item {% if active=='dashboard' %}active{% endif %}">
+      <span class="mn-icon">🏠</span>
+      <span>Início</span>
+    </a>
+    <a href="/petmed/historico" class="mobile-nav-item {% if active=='historico' %}active{% endif %}">
+      <span class="mn-icon">📋</span>
+      <span>Histórico</span>
+    </a>
+    <a href="/petmed/triagem" class="mobile-nav-item mn-triagem">
+      <span class="mn-icon">🩺</span>
+      <span>Triagem</span>
+    </a>
+    <a href="/petmed/meus-pets" class="mobile-nav-item {% if active=='pets' %}active{% endif %}">
+      <span class="mn-icon">🐾</span>
+      <span>Pets</span>
+    </a>
+    <a href="/petmed/vacinas" class="mobile-nav-item {% if active=='vacinas' %}active{% endif %}">
+      <span class="mn-icon">💉</span>
+      <span>Vacinas</span>
+    </a>
+  </div>
+</nav>
+{% endif %}
+
 </body>
 </html>
