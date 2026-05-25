@@ -6,6 +6,7 @@ import json
 import os
 import random
 import re
+import requests as _requests
 from datetime import datetime
 from functools import wraps
 from flask import (Blueprint, render_template, redirect, request,
@@ -157,6 +158,101 @@ def _can_add_pet(user_id, plano):
 
 def _now():
     return datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+
+# ── E-mail transacional (Resend) ───────────────────────────────────────────────
+
+def _enviar_email(para: str, assunto: str, html: str) -> bool:
+    """Envia e-mail via Resend API. Retorna True se enviado com sucesso."""
+    api_key = os.environ.get('RESEND_API_KEY', '')
+    if not api_key:
+        return False
+    from_addr = os.environ.get('EMAIL_FROM', 'VetZap <onboarding@resend.dev>')
+    try:
+        resp = _requests.post(
+            'https://api.resend.com/emails',
+            headers={
+                'Authorization': f'Bearer {api_key}',
+                'Content-Type': 'application/json',
+            },
+            json={'from': from_addr, 'to': [para], 'subject': assunto, 'html': html},
+            timeout=10
+        )
+        return resp.status_code in (200, 201)
+    except Exception:
+        return False
+
+
+def _email_recuperacao(codigo: str) -> str:
+    return f"""
+    <div style="font-family:Inter,Arial,sans-serif;max-width:480px;margin:0 auto;background:#f0f9ff;padding:32px 20px">
+      <div style="text-align:center;margin-bottom:24px">
+        <span style="font-size:36px">🐾</span>
+        <h1 style="font-size:22px;font-weight:800;color:#0c4a6e;margin:8px 0 4px">VetZap</h1>
+        <p style="font-size:13px;color:#7ea8bf;margin:0">Triagem Veterinária 24h</p>
+      </div>
+      <div style="background:#fff;border-radius:16px;padding:28px 24px;border:1px solid #e0f2fe">
+        <h2 style="font-size:18px;font-weight:700;color:#0c4a6e;margin-top:0">🔑 Recuperação de senha</h2>
+        <p style="font-size:14px;color:#075985;line-height:1.6">
+          Recebemos uma solicitação para redefinir a senha da sua conta VetZap.
+          Use o código abaixo para continuar:
+        </p>
+        <div style="background:#f0fdf4;border:2px solid #22c55e;border-radius:12px;padding:20px;text-align:center;margin:20px 0">
+          <div style="font-size:11px;color:#166534;font-weight:600;margin-bottom:6px">SEU CÓDIGO</div>
+          <div style="font-size:44px;font-weight:900;letter-spacing:10px;color:#15803d">{codigo}</div>
+          <div style="font-size:12px;color:#166534;margin-top:8px">⏱️ Válido por 30 minutos</div>
+        </div>
+        <p style="font-size:13px;color:#7ea8bf;margin-bottom:0">
+          Se você não solicitou a recuperação de senha, ignore este e-mail.
+          Sua senha permanece a mesma.
+        </p>
+      </div>
+      <p style="text-align:center;font-size:11px;color:#7ea8bf;margin-top:20px">
+        VetZap — Proteção 24h para o seu pet 🐾
+      </p>
+    </div>
+    """
+
+
+def _email_boas_vindas(nome: str, pet_nome: str) -> str:
+    primeiro = nome.split()[0]
+    return f"""
+    <div style="font-family:Inter,Arial,sans-serif;max-width:480px;margin:0 auto;background:#f0f9ff;padding:32px 20px">
+      <div style="text-align:center;margin-bottom:24px">
+        <span style="font-size:36px">🐾</span>
+        <h1 style="font-size:22px;font-weight:800;color:#0c4a6e;margin:8px 0 4px">VetZap</h1>
+        <p style="font-size:13px;color:#7ea8bf;margin:0">Triagem Veterinária 24h</p>
+      </div>
+      <div style="background:#fff;border-radius:16px;padding:28px 24px;border:1px solid #e0f2fe">
+        <h2 style="font-size:18px;font-weight:700;color:#0c4a6e;margin-top:0">
+          Bem-vindo, {primeiro}! 🎉
+        </h2>
+        <p style="font-size:14px;color:#075985;line-height:1.6">
+          Sua conta foi criada e <strong>{pet_nome}</strong> já está cadastrado(a) no VetZap.
+        </p>
+        <div style="background:#f0f9ff;border-radius:10px;padding:16px;margin:20px 0">
+          <div style="font-size:13px;font-weight:700;color:#0c4a6e;margin-bottom:8px">O que você pode fazer agora:</div>
+          <div style="font-size:13px;color:#075985;line-height:2">
+            🩺 Realizar sua consulta gratuita<br>
+            💉 Registrar vacinas de {pet_nome}<br>
+            📋 Acompanhar o histórico de saúde<br>
+            🚨 Receber orientação em emergências
+          </div>
+        </div>
+        <a href="https://4kitem-production.up.railway.app/petmed/triagem"
+           style="display:block;text-align:center;background:#0ea5e9;color:#fff;padding:14px;border-radius:10px;font-weight:700;font-size:14px;text-decoration:none">
+          🩺 Fazer minha primeira consulta
+        </a>
+        <p style="font-size:12px;color:#7ea8bf;margin-top:16px;margin-bottom:0;line-height:1.5">
+          ⚠️ O VetZap oferece triagem e orientação geral — não substitui avaliação veterinária presencial.
+          Em emergências, procure uma clínica imediatamente.
+        </p>
+      </div>
+      <p style="text-align:center;font-size:11px;color:#7ea8bf;margin-top:20px">
+        VetZap — Proteção 24h para o seu pet 🐾
+      </p>
+    </div>
+    """
 
 
 def _triagens_usadas(user_id):
@@ -738,6 +834,12 @@ def cadastrar():
                 session['pm_user_id']   = u['id']
                 session['pm_user_nome'] = u['nome']
                 session['pm_plano']     = u['plano']
+                # E-mail de boas-vindas (assíncrono best-effort)
+                _enviar_email(
+                    para=email,
+                    assunto='🐾 Bem-vindo ao VetZap!',
+                    html=_email_boas_vindas(nome, pet_nome)
+                )
                 return redirect('/petmed/dashboard?novo=1')
             except Exception as ex:
                 if 'UNIQUE' in str(ex):
@@ -782,12 +884,18 @@ def esqueci_senha():
                     (codigo, u['id'])
                 )
                 conn.commit()
-                codigo_gerado = codigo
+                # Tenta enviar por e-mail
+                email_ok = _enviar_email(
+                    para=email,
+                    assunto='🔑 Seu código de recuperação — VetZap',
+                    html=_email_recuperacao(codigo)
+                )
+                if not email_ok:
+                    # Fallback: exibe o código na tela (sem e-mail configurado)
+                    codigo_gerado = codigo
             conn.close()
-            # Mesmo que o e-mail não exista, mostramos a mesma tela
-            # (evita enumerar usuários); se existe, mostramos o código
             if not codigo_gerado:
-                msg = 'Se este e-mail estiver cadastrado, um código foi gerado.'
+                msg = 'Código enviado para seu e-mail. Verifique a caixa de entrada (e o spam).'
     return render_template('petmed/esqueci-senha.html',
                            erro=erro, msg=msg, codigo_gerado=codigo_gerado)
 
