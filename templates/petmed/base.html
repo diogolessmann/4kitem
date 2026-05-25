@@ -53,7 +53,7 @@
     .topbar-logo {
       font-size: 20px;
       font-weight: 800;
-      color: var(--teal2);
+      color: #25D366;
       text-decoration: none;
       display: flex;
       align-items: center;
@@ -272,7 +272,10 @@
 
 <!-- Topbar -->
 <div class="topbar">
-  <a href="/petmed" class="topbar-logo">🐾 <span>PET</span>med</a>
+  <a href="/petmed" class="topbar-logo">
+    <img src="/static/vetzap/vetzap-logo-icon.png" alt="VetZap" style="width:32px;height:32px;border-radius:8px;flex-shrink:0">
+    Vet<span>Zap</span>
+  </a>
   <div class="topbar-nav">
     {% if session.pm_user_id %}
       <a href="/petmed/dashboard">Dashboard</a>

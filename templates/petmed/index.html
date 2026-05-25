@@ -3,274 +3,276 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>PETmed — Triagem Veterinária Inteligente 24h</title>
-  <meta name="description" content="Triagem veterinária inteligente via WhatsApp e app. Disponível 24 horas por dia. Seu veterinário às 23h.">
+  <title>VetZap — Triagem Veterinária Inteligente 24h</title>
+  <meta name="description" content="Triagem veterinária inteligente 24 horas. Seu veterinário às 23h — via WhatsApp.">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <style>
     :root {
-      --teal: #0ea5e9; --teal2: #0284c7; --teal3: #38bdf8;
-      --green: #22c55e; --yellow: #f59e0b; --red: #ef4444;
+      --green:  #22c55e; --green2: #16a34a; --wgreen: #25D366;
+      --teal:   #0ea5e9; --teal2:  #0284c7;
       --purple: #8b5cf6; --orange: #f97316;
+      --navy:   #0c4a6e; --navy2:  #075985;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Inter', sans-serif; background: #fff; color: #0c4a6e; }
+    body { font-family: 'Inter', sans-serif; background: #fff; color: var(--navy); }
     a { text-decoration: none; }
+    img { display: block; max-width: 100%; }
 
-    /* ── NAV ── */
+    /* NAV */
     nav {
       display: flex; align-items: center; justify-content: space-between;
       padding: 0 40px; height: 64px;
       background: #fff; border-bottom: 1px solid #e0f2fe;
       position: sticky; top: 0; z-index: 100;
+      box-shadow: 0 1px 12px rgba(14,165,233,.06);
     }
-    .logo { font-size: 22px; font-weight: 900; color: #0284c7; }
-    .logo span { color: #0c4a6e; }
-    .nav-links { display: flex; align-items: center; gap: 8px; }
-    .nav-links a { padding: 7px 16px; border-radius: 8px; font-size: 14px; font-weight: 500; color: #075985; }
+    .nav-logo { display: flex; align-items: center; gap: 10px; }
+    .nav-logo img { width: 38px; height: 38px; border-radius: 9px; }
+    .nav-logo span { font-size: 20px; font-weight: 900; color: var(--navy); }
+    .nav-logo span em { color: var(--wgreen); font-style: normal; }
+    .nav-links { display: flex; align-items: center; gap: 6px; }
+    .nav-links a { padding: 7px 14px; border-radius: 8px; font-size: 14px; font-weight: 500; color: var(--navy2); }
     .nav-links a:hover { background: #f0f9ff; }
-    .btn-nav {
-      background: #0ea5e9; color: #fff !important;
-      padding: 9px 20px !important; border-radius: 9px;
-      font-weight: 700 !important;
-    }
-    .btn-nav:hover { background: #0284c7 !important; }
+    .btn-nav { background: var(--wgreen) !important; color: #fff !important; padding: 9px 20px !important; border-radius: 9px; font-weight: 700 !important; }
+    .btn-nav:hover { background: var(--green2) !important; }
 
-    /* ── HERO ── */
+    /* HERO */
     .hero {
-      background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 50%, #fdf4ff 100%);
-      padding: 80px 40px 60px;
-      text-align: center;
+      background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 40%, #e0f2fe 100%);
+      padding: 64px 40px 0;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      align-items: center;
+      gap: 40px;
+      max-width: 1200px;
+      margin: 0 auto;
+      min-height: 520px;
     }
+    .hero-text { padding-bottom: 40px; }
     .hero-badge {
       display: inline-flex; align-items: center; gap: 6px;
       background: #dcfce7; color: #16a34a;
-      padding: 6px 16px; border-radius: 100px;
-      font-size: 13px; font-weight: 700; margin-bottom: 24px;
+      padding: 6px 14px; border-radius: 100px;
+      font-size: 12px; font-weight: 700; margin-bottom: 20px;
     }
     .hero h1 {
-      font-size: clamp(36px, 5vw, 62px);
+      font-size: clamp(32px, 4vw, 56px);
       font-weight: 900; line-height: 1.1;
-      color: #0c4a6e; margin-bottom: 16px;
+      color: var(--navy); margin-bottom: 14px;
     }
-    .hero h1 em { color: #0ea5e9; font-style: normal; }
-    .hero p {
-      font-size: 18px; color: #075985; max-width: 560px;
-      margin: 0 auto 32px; line-height: 1.6;
-    }
-    .hero-btns { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+    .hero h1 em { color: var(--wgreen); font-style: normal; }
+    .hero p { font-size: 17px; color: var(--navy2); max-width: 480px; margin-bottom: 28px; line-height: 1.6; }
+    .hero-btns { display: flex; gap: 10px; flex-wrap: wrap; }
     .btn-hero-primary {
-      background: #0ea5e9; color: #fff;
-      padding: 15px 32px; border-radius: 12px;
-      font-size: 16px; font-weight: 700;
-      box-shadow: 0 4px 20px rgba(14,165,233,.35);
+      background: var(--wgreen); color: #fff;
+      padding: 14px 28px; border-radius: 12px;
+      font-size: 15px; font-weight: 700;
+      box-shadow: 0 4px 20px rgba(37,211,102,.3);
       transition: .2s;
     }
-    .btn-hero-primary:hover { background: #0284c7; transform: translateY(-1px); }
+    .btn-hero-primary:hover { background: var(--green2); transform: translateY(-1px); }
     .btn-hero-outline {
-      background: #fff; color: #0284c7;
-      padding: 15px 32px; border-radius: 12px;
-      font-size: 16px; font-weight: 700;
+      background: #fff; color: var(--navy2);
+      padding: 14px 28px; border-radius: 12px;
+      font-size: 15px; font-weight: 700;
       border: 2px solid #bae6fd; transition: .2s;
     }
-    .btn-hero-outline:hover { border-color: #0ea5e9; transform: translateY(-1px); }
+    .btn-hero-outline:hover { border-color: var(--teal); transform: translateY(-1px); }
 
-    /* ── Cena hero ── */
-    .hero-scene {
-      max-width: 680px; margin: 48px auto 0;
-      background: #fff; border-radius: 20px;
-      box-shadow: 0 8px 60px rgba(14,165,233,.15);
-      padding: 24px; text-align: left;
+    /* Hero image — desktop */
+    .hero-img-wrap { position: relative; }
+    .hero-img-desktop {
+      width: 100%; border-radius: 20px;
+      box-shadow: 0 12px 60px rgba(14,165,233,.15);
     }
-    .chat-header {
-      display: flex; align-items: center; gap: 10px;
-      padding-bottom: 16px; border-bottom: 1px solid #e0f2fe; margin-bottom: 16px;
-    }
-    .chat-avatar {
-      width: 40px; height: 40px; border-radius: 50%;
-      background: linear-gradient(135deg, #0ea5e9, #8b5cf6);
-      display: flex; align-items: center; justify-content: center;
-      font-size: 20px;
-    }
-    .chat-name { font-weight: 700; font-size: 14px; }
-    .chat-status { font-size: 12px; color: #22c55e; font-weight: 600; }
-    .bubble {
-      padding: 10px 14px; border-radius: 12px;
-      font-size: 14px; line-height: 1.5; margin-bottom: 8px;
-      max-width: 85%;
-    }
-    .bubble-bot {
-      background: #f0f9ff; color: #0c4a6e;
-      border-radius: 4px 12px 12px 12px;
-    }
-    .bubble-user {
-      background: #0ea5e9; color: #fff;
-      border-radius: 12px 4px 12px 12px;
-      margin-left: auto;
-    }
-    .result-card {
-      background: #dcfce7; border: 1px solid #bbf7d0;
-      border-radius: 12px; padding: 14px 16px; margin-top: 8px;
-    }
-    .result-title { font-weight: 800; color: #16a34a; font-size: 15px; margin-bottom: 4px; }
-    .result-text { font-size: 13px; color: #166534; line-height: 1.5; }
+    .hero-img-mobile { display: none; }
 
-    /* ── SEÇÃO PROBLEMA ── */
+    /* MASCOTE flutuante no hero */
+    .mascote-float {
+      position: absolute;
+      bottom: -20px; left: -30px;
+      width: 120px;
+    }
+
+    /* SEÇÕES */
     .section { padding: 72px 40px; }
     .section-center { text-align: center; }
-    .section h2 {
-      font-size: clamp(26px, 3.5vw, 40px);
-      font-weight: 800; margin-bottom: 12px;
-    }
-    .section-sub { font-size: 16px; color: #075985; max-width: 560px; margin: 0 auto 40px; line-height: 1.6; }
+    .container { max-width: 1100px; margin: 0 auto; }
+    .section h2 { font-size: clamp(24px, 3vw, 38px); font-weight: 800; margin-bottom: 10px; }
+    .section-sub { font-size: 16px; color: var(--navy2); max-width: 520px; margin: 0 auto 36px; line-height: 1.6; }
+    .bg-light { background: #f0fdf4; }
+    .bg-navy { background: var(--navy); color: #fff; }
 
-    .problema-box {
-      max-width: 680px; margin: 0 auto;
-      background: #0c4a6e; color: #e0f2fe;
-      border-radius: 20px; padding: 32px 36px;
-      font-size: 17px; line-height: 2;
+    /* BANNER EMERGÊNCIA */
+    .emergencia-wrap {
+      max-width: 840px; margin: 0 auto;
+      border-radius: 20px; overflow: hidden;
+      box-shadow: 0 8px 40px rgba(0,0,0,.12);
     }
-    .problema-box strong { color: #38bdf8; }
-    .problema-box .hora { color: #f59e0b; font-weight: 700; font-size: 22px; }
-    .problema-solve {
-      margin-top: 24px; padding-top: 24px;
-      border-top: 1px solid rgba(255,255,255,.15);
-      text-align: center;
-    }
-    .problema-solve strong { color: #22c55e; font-size: 20px; }
+    .emergencia-wrap img { width: 100%; }
 
-    /* ── COMO FUNCIONA ── */
-    .bg-light { background: #f0f9ff; }
-    .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 24px; max-width: 900px; margin: 0 auto; }
+    /* COMO FUNCIONA */
+    .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; max-width: 900px; margin: 0 auto; }
     .step {
-      background: #fff; border: 1px solid #e0f2fe;
-      border-radius: 16px; padding: 24px;
-      text-align: center;
+      background: #fff; border: 1px solid #dcfce7;
+      border-radius: 16px; padding: 22px;
+      text-align: center; position: relative;
     }
     .step-num {
-      width: 36px; height: 36px; border-radius: 50%;
-      background: #0ea5e9; color: #fff;
-      font-weight: 800; font-size: 16px;
+      width: 32px; height: 32px; border-radius: 50%;
+      background: var(--wgreen); color: #fff;
+      font-weight: 800; font-size: 14px;
       display: flex; align-items: center; justify-content: center;
-      margin: 0 auto 12px;
+      margin: 0 auto 10px;
     }
-    .step-icon { font-size: 32px; margin-bottom: 10px; }
-    .step h3 { font-size: 15px; font-weight: 700; margin-bottom: 6px; }
-    .step p { font-size: 13px; color: #075985; line-height: 1.5; }
+    .step-icon { font-size: 30px; margin-bottom: 8px; }
+    .step h3 { font-size: 14px; font-weight: 700; margin-bottom: 6px; }
+    .step p { font-size: 13px; color: var(--navy2); line-height: 1.5; }
 
-    /* ── RESULTADOS ── */
-    .urgencia-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; max-width: 780px; margin: 0 auto; }
-    .urgencia-card {
-      border-radius: 16px; padding: 24px;
-      text-align: center;
+    /* URGÊNCIA */
+    .urgencia-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      gap: 20px; max-width: 720px; margin: 0 auto;
     }
-    .urgencia-card.estavel { background: #dcfce7; border: 2px solid #bbf7d0; }
-    .urgencia-card.atencao { background: #fef3c7; border: 2px solid #fde68a; }
-    .urgencia-card.urgente { background: #fee2e2; border: 2px solid #fecaca; }
-    .urgencia-card .icone { font-size: 36px; margin-bottom: 10px; }
-    .urgencia-card h3 { font-size: 16px; font-weight: 800; margin-bottom: 6px; }
+    .urgencia-card { border-radius: 16px; padding: 24px 20px; text-align: center; }
+    .urgencia-card img { width: 72px; height: 72px; margin: 0 auto 14px; object-fit: contain; }
+    .urgencia-card h3 { font-size: 15px; font-weight: 800; margin-bottom: 6px; }
     .urgencia-card p { font-size: 13px; line-height: 1.5; }
-    .urgencia-card.estavel h3 { color: #16a34a; }
-    .urgencia-card.atencao h3 { color: #d97706; }
-    .urgencia-card.urgente h3 { color: #dc2626; }
+    .urgencia-estavel { background: #dcfce7; border: 2px solid #bbf7d0; }
+    .urgencia-estavel h3 { color: #16a34a; }
+    .urgencia-estavel p { color: #166534; }
+    .urgencia-atencao { background: #fef3c7; border: 2px solid #fde68a; }
+    .urgencia-atencao h3 { color: #d97706; }
+    .urgencia-atencao p { color: #92400e; }
+    .urgencia-urgente { background: #fee2e2; border: 2px solid #fecaca; }
+    .urgencia-urgente h3 { color: #dc2626; }
+    .urgencia-urgente p { color: #991b1b; }
 
-    /* ── PLANOS ── */
-    .planos-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px; max-width: 980px; margin: 0 auto; }
+    /* PLANOS */
+    .planos-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px; max-width: 960px; margin: 0 auto; }
     .plano-card {
       background: #fff; border: 2px solid #e0f2fe;
-      border-radius: 20px; padding: 28px 24px;
+      border-radius: 20px; padding: 24px;
       position: relative; transition: .2s;
+      text-align: center;
     }
-    .plano-card:hover { transform: translateY(-3px); box-shadow: 0 8px 32px rgba(14,165,233,.12); }
-    .plano-card.destaque { border-color: #f97316; box-shadow: 0 4px 24px rgba(249,115,22,.15); }
-    .plano-badge {
-      position: absolute; top: -12px; left: 50%; transform: translateX(-50%);
-      background: #f97316; color: #fff;
-      padding: 4px 16px; border-radius: 100px;
-      font-size: 11px; font-weight: 800;
+    .plano-card:hover { transform: translateY(-3px); box-shadow: 0 8px 32px rgba(14,165,233,.1); }
+    .plano-card.destaque { border-color: var(--orange); }
+    .plano-badge-top {
+      position: absolute; top: -13px; left: 50%; transform: translateX(-50%);
+      background: var(--orange); color: #fff;
+      padding: 4px 16px; border-radius: 100px; font-size: 11px; font-weight: 800;
     }
-    .plano-emoji { font-size: 28px; margin-bottom: 10px; }
+    .plano-card img { width: 80px; height: 80px; margin: 0 auto 12px; object-fit: contain; border-radius: 14px; }
     .plano-nome { font-size: 18px; font-weight: 800; margin-bottom: 4px; }
-    .plano-desc { font-size: 13px; color: #075985; margin-bottom: 16px; }
-    .plano-preco { font-size: 32px; font-weight: 900; color: #0c4a6e; }
-    .plano-preco span { font-size: 14px; font-weight: 500; color: #7ea8bf; }
-    .plano-features { margin: 16px 0; }
+    .plano-desc { font-size: 13px; color: var(--navy2); margin-bottom: 12px; }
+    .plano-preco { font-size: 30px; font-weight: 900; }
+    .plano-preco span { font-size: 14px; font-weight: 400; color: #94a3b8; }
+    .plano-trial { font-size: 11px; color: var(--green2); font-weight: 700; margin-bottom: 16px; }
+    .plano-features { text-align: left; margin-bottom: 18px; }
     .plano-features li {
       display: flex; align-items: center; gap: 8px;
-      font-size: 13px; color: #075985; padding: 5px 0;
-      border-bottom: 1px solid #f0f9ff;
+      font-size: 13px; color: var(--navy2);
+      padding: 5px 0; border-bottom: 1px solid #f0f9ff;
       list-style: none;
     }
     .plano-features li:last-child { border: none; }
-    .feat-ok { color: #22c55e; font-weight: 700; }
-    .feat-no { color: #cbd5e1; }
+    .feat-ok { color: var(--green2); font-weight: 700; flex-shrink: 0; }
     .btn-plano {
-      width: 100%; padding: 12px;
+      display: block; width: 100%; padding: 12px;
       border-radius: 10px; font-size: 14px; font-weight: 700;
-      border: none; cursor: pointer; transition: .15s;
-      text-align: center; display: block;
+      border: none; cursor: pointer; transition: .15s; color: #fff;
     }
-    .btn-plano-teal { background: #0ea5e9; color: #fff; }
-    .btn-plano-teal:hover { background: #0284c7; }
-    .btn-plano-orange { background: #f97316; color: #fff; }
-    .btn-plano-orange:hover { background: #ea580c; }
-    .btn-plano-purple { background: #8b5cf6; color: #fff; }
-    .btn-plano-purple:hover { background: #7c3aed; }
+    .btn-green  { background: var(--wgreen); }
+    .btn-green:hover  { background: var(--green2); }
+    .btn-orange { background: var(--orange); }
+    .btn-orange:hover { background: #ea580c; }
+    .btn-purple { background: var(--purple); }
+    .btn-purple:hover { background: #7c3aed; }
 
-    /* ── STATS ── */
-    .stats-strip {
-      background: #0c4a6e; color: #fff;
-      padding: 40px; display: flex;
-      justify-content: center; gap: 60px; flex-wrap: wrap;
+    /* BANNER RADIO */
+    .banner-radio-wrap {
+      max-width: 900px; margin: 0 auto;
+      border-radius: 20px; overflow: hidden;
+      box-shadow: 0 8px 40px rgba(14,165,233,.12);
+      position: relative;
+    }
+    .banner-radio-wrap img { width: 100%; }
+    .banner-radio-overlay {
+      position: absolute; top: 50%; right: 6%;
+      transform: translateY(-50%);
       text-align: center;
     }
-    .stat-item .val { font-size: 36px; font-weight: 900; color: #38bdf8; }
-    .stat-item .lbl { font-size: 14px; color: #bae6fd; margin-top: 4px; }
+    .banner-radio-overlay .tag { font-size: 11px; font-weight: 700; color: var(--navy2); background: rgba(255,255,255,.9); padding: 4px 12px; border-radius: 100px; margin-bottom: 8px; display: inline-block; }
+    .banner-radio-overlay p { font-size: 20px; font-weight: 900; color: var(--navy); line-height: 1.3; }
+    .banner-radio-overlay a { display: inline-block; margin-top: 12px; background: var(--wgreen); color: #fff; padding: 10px 22px; border-radius: 9px; font-size: 14px; font-weight: 700; }
 
-    /* ── LEGAL ── */
+    /* STATS */
+    .stats-strip {
+      background: var(--navy); color: #fff;
+      padding: 40px; display: flex;
+      justify-content: center; gap: 60px; flex-wrap: wrap; text-align: center;
+    }
+    .stat-val { font-size: 36px; font-weight: 900; color: #34d399; }
+    .stat-lbl { font-size: 13px; color: #bae6fd; margin-top: 4px; }
+
+    /* LEGAL */
     .legal-box {
-      max-width: 680px; margin: 0 auto;
-      background: #f0f9ff; border: 1px solid #bae6fd;
+      max-width: 660px; margin: 0 auto;
+      background: #f0fdf4; border: 1px solid #bbf7d0;
       border-radius: 16px; padding: 24px 28px;
     }
-    .legal-box h3 { font-size: 16px; font-weight: 800; margin-bottom: 12px; color: #0c4a6e; }
-    .legal-row {
-      display: flex; align-items: flex-start; gap: 10px;
-      font-size: 13px; color: #075985; margin-bottom: 8px;
-    }
-    .legal-ok { color: #16a34a; font-size: 16px; flex-shrink: 0; }
-    .legal-no { color: #dc2626; font-size: 16px; flex-shrink: 0; }
+    .legal-box h3 { font-size: 15px; font-weight: 800; margin-bottom: 12px; }
+    .legal-row { display: flex; gap: 10px; font-size: 13px; color: var(--navy2); margin-bottom: 7px; }
+    .l-ok { color: var(--green2); font-size: 16px; flex-shrink: 0; }
+    .l-no { color: #dc2626; font-size: 16px; flex-shrink: 0; }
 
-    /* ── CTA ── */
+    /* CTA */
     .cta {
-      background: linear-gradient(135deg, #0ea5e9, #8b5cf6);
+      background: linear-gradient(135deg, var(--wgreen), #059669);
       padding: 72px 40px; text-align: center; color: #fff;
+      position: relative; overflow: hidden;
     }
-    .cta h2 { font-size: 36px; font-weight: 900; margin-bottom: 12px; }
-    .cta p { font-size: 17px; opacity: .85; margin-bottom: 32px; }
+    .cta-mascote {
+      position: absolute; bottom: 0; right: 5%;
+      width: 180px; opacity: .9;
+    }
+    .cta h2 { font-size: 36px; font-weight: 900; margin-bottom: 10px; }
+    .cta p { font-size: 17px; opacity: .9; margin-bottom: 28px; }
     .btn-cta {
-      background: #fff; color: #0ea5e9;
+      background: #fff; color: var(--wgreen);
       padding: 16px 36px; border-radius: 12px;
       font-size: 17px; font-weight: 800;
       box-shadow: 0 4px 20px rgba(0,0,0,.2);
       transition: .2s; display: inline-block;
     }
-    .btn-cta:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(0,0,0,.25); }
+    .btn-cta:hover { transform: translateY(-2px); }
 
-    /* ── FOOTER ── */
+    /* FOOTER */
     footer {
-      background: #0c4a6e; color: #bae6fd;
-      padding: 32px 40px; text-align: center;
-      font-size: 13px;
+      background: var(--navy); color: #bae6fd;
+      padding: 32px 40px; text-align: center; font-size: 13px;
     }
-    footer a { color: #38bdf8; }
+    footer a { color: #34d399; }
 
-    @media (max-width: 600px) {
-      .section { padding: 48px 20px; }
+    /* RESPONSIVO */
+    @media (max-width: 768px) {
       nav { padding: 0 16px; }
-      .hero { padding: 48px 20px 36px; }
-      .problema-box { padding: 20px; }
+      .hero { grid-template-columns: 1fr; padding: 40px 20px 0; gap: 24px; min-height: auto; }
+      .hero-img-desktop { display: none; }
+      .hero-img-mobile { display: block; width: 100%; border-radius: 16px; box-shadow: 0 8px 32px rgba(0,0,0,.12); }
+      .mascote-float { display: none; }
+      .section { padding: 48px 20px; }
+      .urgencia-grid { grid-template-columns: 1fr; max-width: 320px; }
       .stats-strip { gap: 32px; }
+      .banner-radio-overlay { display: none; }
+      .cta-mascote { width: 100px; }
       .btn-nav { display: none; }
+      .hero-text { padding-bottom: 0; }
+    }
+    @media (max-width: 480px) {
+      .hero h1 { font-size: 30px; }
+      .planos-grid { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -278,193 +280,213 @@
 
 <!-- NAV -->
 <nav>
-  <div class="logo">🐾 <span>PET</span>med</div>
+  <a href="/petmed" class="nav-logo">
+    <img src="/static/vetzap/vetzap-logo-icon.png" alt="VetZap">
+    <span>Vet<em>Zap</em></span>
+  </a>
   <div class="nav-links">
     <a href="#como-funciona">Como funciona</a>
     <a href="#planos">Planos</a>
     <a href="/petmed/vet/cadastro">Sou veterinário</a>
     <a href="/petmed/entrar">Entrar</a>
-    <a href="/petmed/cadastrar" class="btn-nav">Começar grátis 7 dias →</a>
+    <a href="/petmed/cadastrar" class="btn-nav">Começar grátis →</a>
   </div>
 </nav>
 
 <!-- HERO -->
-<section class="hero">
-  <div class="hero-badge">✅ Legalmente regulamentado — CFMV Res. 1.465/2022</div>
-  <h1>Seu veterinário<br>às <em>23h da noite</em></h1>
-  <p>Triagem veterinária inteligente 24 horas. Saiba se seu pet precisa de atendimento urgente — agora, na hora que precisar.</p>
-  <div class="hero-btns">
-    <a href="/petmed/cadastrar" class="btn-hero-primary">🐾 Começar grátis — 7 dias</a>
-    <a href="#como-funciona" class="btn-hero-outline">Como funciona →</a>
-  </div>
-
-  <!-- Chat demo -->
-  <div class="hero-scene">
-    <div class="chat-header">
-      <div class="chat-avatar">🐾</div>
-      <div>
-        <div class="chat-name">PETmed</div>
-        <div class="chat-status">● Online agora</div>
+<div style="background:linear-gradient(135deg,#f0fdf4 0%,#dcfce7 40%,#e0f2fe 100%)">
+  <div class="hero container">
+    <div class="hero-text">
+      <div class="hero-badge">✅ Regulamentado — CFMV Res. 1.465/2022</div>
+      <h1>Seu veterinário<br>às <em>23h da noite</em></h1>
+      <p>Triagem veterinária inteligente 24 horas. Saiba se seu pet precisa de atendimento urgente — agora, na hora que precisar.</p>
+      <div class="hero-btns">
+        <a href="/petmed/cadastrar" class="btn-hero-primary">⚡ Começar grátis — 7 dias</a>
+        <a href="#como-funciona" class="btn-hero-outline">Como funciona →</a>
       </div>
     </div>
-    <div class="bubble bubble-bot">Olá! Sou o assistente PETmed 🐾<br>Qual o nome do seu pet e o que está acontecendo?</div>
-    <div class="bubble bubble-user">Meu cachorro Max está vomitando bastante. São 23h e não sei se é urgente...</div>
-    <div class="bubble bubble-bot">Entendi! Vou te ajudar a avaliar o Max. Há quanto tempo ele está vomitando e quantas vezes já vomitou?</div>
-    <div class="bubble bubble-user">Umas 3 vezes nas últimas 2 horas</div>
-    <div class="bubble bubble-bot">Ele está letárgico ou consegue andar normalmente? Bebeu água hoje?</div>
-    <div class="bubble bubble-user">Está meio quieto mas anda. Bebeu pouca água.</div>
-    <div class="result-card">
-      <div class="result-title">🟡 ATENÇÃO — Monitorar</div>
-      <div class="result-text">O Max apresenta sintomas que merecem atenção. Não é emergência imediata, mas recomendo consulta veterinária amanhã cedo. Enquanto isso: ofereça água em pequenas quantidades, retire a ração por 6 horas e mantenha-o em repouso. 🐾</div>
+    <div class="hero-img-wrap">
+      <img src="/static/vetzap/vetzap-hero-desktop.png" alt="VetZap em uso" class="hero-img-desktop">
+      <img src="/static/vetzap/vetzap-hero-mobile.png" alt="VetZap em uso" class="hero-img-mobile">
+      <img src="/static/vetzap/vetzap-mascote.png" alt="Mascote VetZap" class="mascote-float">
     </div>
   </div>
-</section>
+</div>
 
 <!-- O PROBLEMA -->
 <section class="section section-center">
-  <h2>Você já passou por isso?</h2>
-  <p class="section-sub">Acontece com milhões de tutores todo mês. Mas não precisa ser assim.</p>
-  <div class="problema-box">
-    <div class="hora">23h17</div><br>
-    Seu cachorro vomitou <strong>4 vezes</strong>.<br>
-    Está <strong>deitado, sem querer levantar</strong>.<br>
-    A clínica está <strong>fechada</strong>.<br>
-    O Google diz <strong>10 coisas diferentes</strong>.<br>
-    O pronto-socorro fica a <strong>40 minutos</strong> e custa <strong>R$ 400</strong>.<br><br>
-    Você não sabe se é urgente. <strong>Você está em pânico.</strong>
-    <div class="problema-solve">
-      O PETmed resolve isso em <strong>3 minutos</strong>. ✅
+  <div class="container">
+    <h2>Você já passou por isso?</h2>
+    <p class="section-sub">Acontece com milhões de tutores todo mês. Mas não precisa ser assim.</p>
+    <div class="emergencia-wrap">
+      <img src="/static/vetzap/vetzap-banner-emergencia.png" alt="Antes e depois do VetZap">
+    </div>
+    <div style="margin-top:24px;background:#0c4a6e;color:#e0f2fe;border-radius:16px;padding:24px 32px;max-width:680px;margin-left:auto;margin-right:auto;font-size:16px;line-height:1.9">
+      <span style="color:#f59e0b;font-size:22px;font-weight:800">23h17</span> — cachorro vomitou 4 vezes.<br>
+      Clínica <strong style="color:#38bdf8">fechada</strong>. Google diz <strong style="color:#38bdf8">10 coisas diferentes</strong>.<br>
+      Pronto-socorro: <strong style="color:#38bdf8">40 min + R$400</strong>.<br><br>
+      <strong style="color:#34d399;font-size:18px">O VetZap resolve em 3 minutos. ✅</strong>
     </div>
   </div>
 </section>
 
 <!-- COMO FUNCIONA -->
 <section class="section bg-light section-center" id="como-funciona">
-  <h2>Como funciona</h2>
-  <p class="section-sub">Triagem inteligente em minutos. Sem apps para baixar.</p>
-  <div class="steps">
-    <div class="step">
-      <div class="step-icon">📸</div>
-      <div class="step-num">1</div>
-      <h3>Cadastre seu pet</h3>
-      <p>Nome, espécie e uma foto. Nossa tecnologia identifica a raça automaticamente.</p>
-    </div>
-    <div class="step">
-      <div class="step-icon">🤒</div>
-      <div class="step-num">2</div>
-      <h3>Descreva o problema</h3>
-      <p>Escolha a categoria do sintoma. Fazemos perguntas específicas para a raça do seu pet.</p>
-    </div>
-    <div class="step">
-      <div class="step-icon">🩺</div>
-      <div class="step-num">3</div>
-      <h3>Triagem inteligente</h3>
-      <p>Analisamos os sintomas e fazemos perguntas direcionadas para entender a gravidade.</p>
-    </div>
-    <div class="step">
-      <div class="step-icon">✅</div>
-      <div class="step-num">4</div>
-      <h3>Resultado claro</h3>
-      <p>Estável, atenção ou urgente — com orientações práticas para cada situação.</p>
+  <div class="container">
+    <h2>Como funciona</h2>
+    <p class="section-sub">Triagem inteligente em minutos. Sem apps para baixar.</p>
+    <div class="steps">
+      <div class="step">
+        <div class="step-icon">📸</div>
+        <div class="step-num">1</div>
+        <h3>Cadastre seu pet</h3>
+        <p>Nome, espécie e uma foto. Identificamos a raça automaticamente.</p>
+      </div>
+      <div class="step">
+        <div class="step-icon">🤒</div>
+        <div class="step-num">2</div>
+        <h3>Descreva o problema</h3>
+        <p>Escolha a categoria. Fazemos perguntas específicas para a raça.</p>
+      </div>
+      <div class="step">
+        <div class="step-icon">🩺</div>
+        <div class="step-num">3</div>
+        <h3>Triagem inteligente</h3>
+        <p>Analisamos os sintomas e avaliamos a gravidade do caso.</p>
+      </div>
+      <div class="step">
+        <div class="step-icon">✅</div>
+        <div class="step-num">4</div>
+        <h3>Resultado claro</h3>
+        <p>Estável, atenção ou urgente — com orientações práticas.</p>
+      </div>
     </div>
   </div>
 </section>
 
-<!-- CLASSIFICAÇÕES -->
+<!-- URGÊNCIA -->
 <section class="section section-center">
-  <h2>Classificação de urgência</h2>
-  <p class="section-sub">Saiba exatamente o que fazer com seu pet.</p>
-  <div class="urgencia-cards">
-    <div class="urgencia-card estavel">
-      <div class="icone">🟢</div>
-      <h3>ESTÁVEL</h3>
-      <p>Seu pet está bem. Agende uma consulta de rotina. Receba orientações de cuidados em casa.</p>
+  <div class="container">
+    <h2>Classificação de urgência</h2>
+    <p class="section-sub">Saiba exatamente o que fazer.</p>
+    <div class="urgencia-grid">
+      <div class="urgencia-card urgencia-estavel">
+        <img src="/static/vetzap/vetzap-urgencia-estavel.png" alt="Estável">
+        <h3>ESTÁVEL</h3>
+        <p>Seu pet está bem. Agende uma consulta de rotina e receba orientações de cuidados em casa.</p>
+      </div>
+      <div class="urgencia-card urgencia-atencao">
+        <img src="/static/vetzap/vetzap-urgencia-atencao.png" alt="Atenção">
+        <h3>ATENÇÃO</h3>
+        <p>Monitore com cuidado. Consulta recomendada em até 24h com orientações para agir agora.</p>
+      </div>
+      <div class="urgencia-card urgencia-urgente">
+        <div style="width:72px;height:72px;margin:0 auto 14px;background:#fee2e2;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:36px">🚨</div>
+        <h3>URGENTE</h3>
+        <p>Vá ao veterinário agora. Mostramos as clínicas abertas mais próximas de você.</p>
+      </div>
     </div>
-    <div class="urgencia-card atencao">
-      <div class="icone">🟡</div>
-      <h3>ATENÇÃO</h3>
-      <p>Monitore com cuidado. Consulta recomendada em até 24h. Orientações de como agir agora.</p>
-    </div>
-    <div class="urgencia-card urgente">
-      <div class="icone">🔴</div>
-      <h3>URGENTE</h3>
-      <p>Vá ao veterinário agora. Mostramos as clínicas abertas mais próximas de você.</p>
-    </div>
-  </div>
-</section>
-
-<!-- LEGAL -->
-<section class="section bg-light section-center">
-  <h2>100% legal e seguro</h2>
-  <p class="section-sub">Operamos dentro das normas do CFMV — Resolução nº 1.465/2022 que regulamenta a teletriagem veterinária no Brasil.</p>
-  <div class="legal-box">
-    <h3>O que fazemos (e o que não fazemos)</h3>
-    <div class="legal-row"><span class="legal-ok">✅</span> Teletriagem — classificação de urgência dos sintomas</div>
-    <div class="legal-row"><span class="legal-ok">✅</span> Teleorientação — cuidados gerais e conduta em casa</div>
-    <div class="legal-row"><span class="legal-ok">✅</span> Encaminhamento para clínicas abertas próximas</div>
-    <div class="legal-row"><span class="legal-ok">✅</span> Teleconsulta com veterinário (plano Premium)</div>
-    <div class="legal-row"><span class="legal-no">❌</span> Não realizamos diagnósticos clínicos</div>
-    <div class="legal-row"><span class="legal-no">❌</span> Não prescrevemos medicamentos</div>
-    <div class="legal-row"><span class="legal-no">❌</span> Não substituímos a consulta presencial</div>
   </div>
 </section>
 
 <!-- STATS -->
 <div class="stats-strip">
-  <div class="stat-item"><div class="val">92M</div><div class="lbl">pets no Brasil</div></div>
-  <div class="stat-item"><div class="val">24h</div><div class="lbl">disponível sempre</div></div>
-  <div class="stat-item"><div class="val">3min</div><div class="lbl">triagem completa</div></div>
-  <div class="stat-item"><div class="val">R$77bi</div><div class="lbl">mercado pet BR</div></div>
+  <div><div class="stat-val">92M</div><div class="stat-lbl">pets no Brasil</div></div>
+  <div><div class="stat-val">24h</div><div class="stat-lbl">disponível sempre</div></div>
+  <div><div class="stat-val">3min</div><div class="stat-lbl">triagem completa</div></div>
+  <div><div class="stat-val">R$77bi</div><div class="stat-lbl">mercado pet BR</div></div>
 </div>
 
 <!-- PLANOS -->
 <section class="section section-center" id="planos">
-  <h2>Planos simples, proteção real</h2>
-  <p class="section-sub">7 dias grátis em qualquer plano. Cancele quando quiser.</p>
-  <div class="planos-grid">
-    {% for key, p in planos.items() %}
-    <div class="plano-card {% if p.get('destaque') %}destaque{% endif %}">
-      {% if p.get('destaque') %}<div class="plano-badge">⭐ Mais vendido</div>{% endif %}
-      <div class="plano-emoji">{{ p.emoji }}</div>
-      <div class="plano-nome">{{ p.nome }}</div>
-      <div class="plano-desc">{{ p.descricao }}</div>
-      <div class="plano-preco">{{ p.preco_fmt }}<span>/mês</span></div>
-      <ul class="plano-features">
-        {% for f in p.features %}
-        <li><span class="feat-ok">✓</span> {{ f }}</li>
-        {% endfor %}
-      </ul>
-      <a href="/petmed/cadastrar?plano={{ key }}"
-         class="btn-plano {% if key=='start' %}btn-plano-teal{% elif key=='familia' %}btn-plano-orange{% else %}btn-plano-purple{% endif %}">
-        Começar grátis →
-      </a>
+  <div class="container">
+    <h2>Planos simples, proteção real</h2>
+    <p class="section-sub">7 dias grátis em qualquer plano. Cancele quando quiser.</p>
+    <div class="planos-grid">
+
+      {% for key, p in planos.items() %}
+      <div class="plano-card {% if p.get('destaque') %}destaque{% endif %}">
+        {% if p.get('destaque') %}<div class="plano-badge-top">⭐ Mais vendido</div>{% endif %}
+        <img src="/static/vetzap/vetzap-plano-{{ key }}.png" alt="{{ p.nome }}">
+        <div class="plano-nome">{{ p.nome }}</div>
+        <div class="plano-desc">{{ p.descricao }}</div>
+        <div class="plano-preco">{{ p.preco_fmt }}<span>/mês</span></div>
+        <div class="plano-trial">✅ 7 dias grátis</div>
+        <ul class="plano-features">
+          {% for f in p.features %}
+          <li><span class="feat-ok">✓</span> {{ f }}</li>
+          {% endfor %}
+        </ul>
+        <a href="/petmed/cadastrar?plano={{ key }}"
+           class="btn-plano {% if key=='start' %}btn-green{% elif key=='familia' %}btn-orange{% else %}btn-purple{% endif %}">
+          Começar grátis →
+        </a>
+      </div>
+      {% endfor %}
+
     </div>
-    {% endfor %}
+    <p style="margin-top:20px;font-size:13px;color:#94a3b8">
+      Clínicas veterinárias: <a href="/petmed/vet/cadastro" style="color:var(--wgreen);font-weight:700">Plano Clínica R$297/mês →</a>
+    </p>
   </div>
-  <p style="margin-top:20px;font-size:13px;color:#7ea8bf">
-    Clínicas veterinárias: <a href="/petmed/vet/cadastro" style="color:#0284c7;font-weight:700">Plano Clínica R$297/mês →</a>
-  </p>
 </section>
 
-<!-- CTA -->
+<!-- BANNER RÁDIO / PARCEIROS -->
+<section class="section bg-light section-center">
+  <div class="container">
+    <h2>Onde você nos encontra</h2>
+    <p class="section-sub">Parceiro da Rádio SC News — informação pet em Santa Catarina.</p>
+    <div class="banner-radio-wrap">
+      <img src="/static/vetzap/vetzap-banner-radio.png" alt="VetZap na Rádio SC News">
+      <div class="banner-radio-overlay">
+        <div class="tag">🎙️ Parceiro oficial</div>
+        <p>Rádio SC News<br>+ VetZap</p>
+        <a href="https://radioscnews.com.br" target="_blank">Ouvir agora →</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- LEGAL -->
+<section class="section section-center">
+  <div class="container">
+    <h2>100% legal e seguro</h2>
+    <p class="section-sub">Operamos dentro das normas do CFMV — Resolução nº 1.465/2022.</p>
+    <div class="legal-box">
+      <h3>O que fazemos — e o que não fazemos</h3>
+      <div class="legal-row"><span class="l-ok">✅</span> Teletriagem — classificação de urgência dos sintomas</div>
+      <div class="legal-row"><span class="l-ok">✅</span> Teleorientação — cuidados gerais e conduta em casa</div>
+      <div class="legal-row"><span class="l-ok">✅</span> Encaminhamento para clínicas abertas próximas</div>
+      <div class="legal-row"><span class="l-ok">✅</span> Teleconsulta com veterinário (plano Premium)</div>
+      <div class="legal-row"><span class="l-no">❌</span> Não realizamos diagnósticos clínicos</div>
+      <div class="legal-row"><span class="l-no">❌</span> Não prescrevemos medicamentos</div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA FINAL -->
 <div class="cta">
-  <h2>Proteja seu pet agora 🐾</h2>
+  <h2>Proteja seu pet agora ⚡</h2>
   <p>7 dias grátis. Sem cartão de crédito. Cancele quando quiser.</p>
   <a href="/petmed/cadastrar" class="btn-cta">Começar grátis →</a>
+  <img src="/static/vetzap/vetzap-mascote.png" alt="" class="cta-mascote">
 </div>
 
 <!-- FOOTER -->
 <footer>
-  <div style="font-size:20px;font-weight:900;color:#fff;margin-bottom:8px">🐾 PETmed</div>
+  <div style="display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:8px">
+    <img src="/static/vetzap/vetzap-logo-icon.png" alt="VetZap" style="width:28px;height:28px;border-radius:6px">
+    <span style="font-size:18px;font-weight:900;color:#fff">VetZap</span>
+  </div>
   <div style="margin-bottom:8px">Triagem veterinária inteligente 24 horas</div>
   <div>
-    <a href="/petmed/planos">Planos</a> ·
+    <a href="#planos">Planos</a> ·
     <a href="/petmed/vet/cadastro">Para veterinários</a> ·
     <a href="/petmed/entrar">Entrar</a>
   </div>
-  <div style="margin-top:16px;font-size:11px;opacity:.6">
-    © 2026 PETmed · Serviço de teletriagem e teleorientação veterinária · CFMV Res. 1.465/2022<br>
-    Não substitui consulta veterinária presencial. Em emergências, procure uma clínica imediatamente.
+  <div style="margin-top:14px;font-size:11px;opacity:.5">
+    © 2026 VetZap · Teletriagem e teleorientação veterinária · CFMV Res. 1.465/2022<br>
+    Não substitui consulta veterinária presencial.
   </div>
 </footer>
 
