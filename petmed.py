@@ -877,6 +877,12 @@ def aguardando_pagamento():
 @petmed_bp.route('/webhook/asaas', methods=['POST'])
 def webhook_asaas():
     """Recebe notificações de pagamento do Asaas."""
+    # Valida token de autenticação do Asaas
+    token_esperado = os.environ.get('ASAAS_WEBHOOK_TOKEN', '')
+    token_recebido = request.headers.get('asaas-access-token', '')
+    if token_esperado and token_recebido != token_esperado:
+        return jsonify({'error': 'unauthorized'}), 401
+
     dados = request.get_json(silent=True) or {}
     evento = dados.get('event', '')
     pagamento = dados.get('payment', {})
