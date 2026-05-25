@@ -1,11 +1,11 @@
 {% extends 'petmed/base.html' %}
 {% set active = 'planos' %}
-{% block title %}Planos — PETmed{% endblock %}
+{% block title %}Planos — VetZap{% endblock %}
 {% block content %}
 
 <div class="page-header">
   <div>
-    <div class="page-title">⭐ Planos PETmed</div>
+    <div class="page-title">⭐ Planos VetZap</div>
     <div class="page-sub">7 dias grátis em qualquer plano. Cancele quando quiser.</div>
   </div>
 </div>
@@ -66,12 +66,12 @@
       <div style="font-size:19px;font-weight:800;margin-bottom:6px">🏥 Plano Clínica — R$ 297/mês</div>
       <div style="font-size:13px;color:var(--text3);margin-bottom:10px">Para clínicas veterinárias — seu plantão digital 24h</div>
       <ul style="list-style:none;display:flex;flex-wrap:wrap;gap:8px">
-        {% for f in ['Bot PETmed com sua marca','Pré-agendamento automático','Dashboard de triagens','Captura de novos clientes','WhatsApp Business integrado'] %}
+        {% for f in ['Bot VetZap com sua marca','Pré-agendamento automático','Dashboard de triagens','Captura de novos clientes','WhatsApp Business integrado'] %}
         <li style="background:var(--bg);border:1px solid var(--border2);border-radius:100px;padding:4px 12px;font-size:12px;font-weight:600;color:var(--text2)">✓ {{ f }}</li>
         {% endfor %}
       </ul>
     </div>
-    <a href="https://wa.me/5547999999999?text=Quero+saber+sobre+o+Plano+Clínica+PETmed" target="_blank"
+    <a href="https://wa.me/5547991011351?text=Quero+saber+sobre+o+Plano+Clínica+VetZap" target="_blank"
        class="btn btn-primary btn-lg">
       💬 Falar com comercial
     </a>
@@ -84,7 +84,7 @@
   {% for q, a in [
     ('Precisa de cartão de crédito?', 'Não! Os 7 dias grátis não exigem nenhum dado de pagamento.'),
     ('Posso cancelar a qualquer hora?', 'Sim, sem multa e sem burocracia.'),
-    ('É um diagnóstico veterinário?', 'Não. O PETmed oferece triagem e orientação geral. Para diagnóstico, sempre consulte um veterinário.'),
+    ('É um diagnóstico veterinário?', 'Não. O VetZap oferece triagem e orientação geral. Para diagnóstico, sempre consulte um veterinário.'),
     ('Funciona para outras espécies?', 'Atualmente otimizado para cães e gatos. Outras espécies em breve!'),
   ] %}
   <div style="border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:8px">

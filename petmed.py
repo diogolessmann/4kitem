@@ -4,9 +4,6 @@ Triagem veterinária inteligente 24/7
 """
 import json
 import os
-import re
-import base64
-import traceback
 from datetime import datetime, timedelta
 from functools import wraps
 from flask import (Blueprint, render_template, redirect, request,
@@ -755,11 +752,9 @@ def adicionar_vacina():
 # ── Teleconsulta (Premium) ─────────────────────────────────────────────────────
 
 @petmed_bp.route('/teleconsulta')
-@petmed_login_required
+@petmed_premium_required
 def teleconsulta():
     u = _get_user()
-    if u['plano'] != 'premium':
-        return redirect('/petmed/planos?msg=teleconsulta_premium')
     pets = _get_pets(u['id'])
     conn = get_petmed_db()
     vets = conn.execute(

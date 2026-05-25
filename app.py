@@ -2652,6 +2652,20 @@ def saas_admin():
         conn4.close()
     except Exception:
         mandaja_stores = []
+    # VetZap — usuários
+    try:
+        from petmed_db import get_petmed_db as _get_pm_db
+        pmconn = _get_pm_db()
+        vetzap_users = [dict(r) for r in pmconn.execute(
+            'SELECT id, nome, email, telefone, plano, ativo, created_at FROM petmed_users ORDER BY created_at DESC'
+        ).fetchall()]
+        vetzap_pets_total = pmconn.execute('SELECT COUNT(*) FROM petmed_pets').fetchone()[0]
+        vetzap_triagens_total = pmconn.execute('SELECT COUNT(*) FROM petmed_triagens').fetchone()[0]
+        pmconn.close()
+    except Exception:
+        vetzap_users = []
+        vetzap_pets_total = 0
+        vetzap_triagens_total = 0
     return render_template('saas_admin.html',
                            subscribers=subscribers, businesses=businesses,
                            mz_users=mz_users, mz_plans=MANDAZAP_PLANS,
@@ -2660,6 +2674,9 @@ def saas_admin():
                            desp_users=desp_users, desp_plans=DESP_PLANS,
                            defesa_users=defesa_users,
                            mandaja_stores=mandaja_stores, mandaja_plans=MANDAJA_PLANS,
+                           vetzap_users=vetzap_users,
+                           vetzap_pets_total=vetzap_pets_total,
+                           vetzap_triagens_total=vetzap_triagens_total,
                            alerta_plans=ALERTA_PLANS)
 
 

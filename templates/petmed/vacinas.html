@@ -1,6 +1,6 @@
 {% extends 'petmed/base.html' %}
 {% set active = 'vacinas' %}
-{% block title %}Vacinas — PETmed{% endblock %}
+{% block title %}Vacinas — VetZap{% endblock %}
 {% block content %}
 
 <div class="page-header">
@@ -54,7 +54,7 @@
   {% for v in vacinas %}
   {% set dias_prox = none %}
   {% if v.proxima %}
-    {% set hoje = now().strftime('%Y-%m-%d') if now else '' %}
+    {# próxima dose disponível #}
   {% endif %}
   <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border)">
     <div>
