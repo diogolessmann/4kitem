@@ -492,6 +492,11 @@ def init_saas_db():
         "ALTER TABLE mandaja_stores ADD COLUMN asaas_customer_id TEXT DEFAULT ''",
         "ALTER TABLE mandaja_stores ADD COLUMN plan_active INTEGER DEFAULT 1",
         "ALTER TABLE defesapro_users ADD COLUMN plan_active INTEGER DEFAULT 1",
+        "ALTER TABLE mandazap_users ADD COLUMN reset_token TEXT DEFAULT ''",
+        "ALTER TABLE mandazap_users ADD COLUMN reset_expires TEXT DEFAULT ''",
+        "ALTER TABLE despachante_users ADD COLUMN reset_token TEXT DEFAULT ''",
+        "ALTER TABLE despachante_users ADD COLUMN reset_expires TEXT DEFAULT ''",
+        "ALTER TABLE despachante_users ADD COLUMN password_hash TEXT DEFAULT ''",
     ]
     for sql in _auth_migrations:
         try:

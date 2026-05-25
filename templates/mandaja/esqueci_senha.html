@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Recuperar senha — MandaJá</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#070710;color:#EEEEF5;font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center}
+  .card{background:#0E0E1C;border:1px solid rgba(249,115,22,.2);border-radius:20px;padding:40px 36px;width:100%;max-width:400px;margin:24px}
+  .logo{text-align:center;margin-bottom:28px}
+  .logo-icon{font-size:42px;display:block;margin-bottom:8px}
+  .logo-name{font-size:22px;font-weight:900;color:#F97316}
+  .logo-sub{font-size:13px;color:#9090B0;margin-top:4px}
+  label{display:block;font-size:13px;font-weight:600;color:#9090B0;margin-bottom:6px}
+  input{width:100%;background:#07070E;border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:12px 14px;color:#EEEEF5;font-size:14px;outline:none;transition:.2s}
+  input:focus{border-color:#F97316}
+  .field{margin-bottom:18px}
+  .btn{width:100%;padding:13px;border-radius:10px;background:linear-gradient(135deg,#EA580C,#F97316);color:#fff;font-size:15px;font-weight:700;border:none;cursor:pointer;transition:.2s;margin-top:6px;font-family:inherit}
+  .btn:hover{opacity:.9}
+  .error{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:10px;padding:12px 14px;font-size:13px;color:#FCA5A5;margin-bottom:18px}
+  .sucesso{background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.3);border-radius:10px;padding:14px 16px;font-size:13px;color:#86EFAC;margin-bottom:18px;text-align:center;line-height:1.6}
+  .links{text-align:center;margin-top:20px;font-size:13px;color:#55557A}
+  .links a{color:#F97316}
+  .code-box{background:#07070E;border:1px solid rgba(249,115,22,.3);border-radius:14px;padding:20px;text-align:center;margin:16px 0}
+  .code-val{font-size:36px;font-weight:900;letter-spacing:8px;color:#F97316}
+  .code-label{font-size:12px;color:#9090B0;margin-top:6px}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">
+    <span class="logo-icon">🛵</span>
+    <div class="logo-name">MandaJá</div>
+    <div class="logo-sub">Recuperação de senha</div>
+  </div>
+
+  {% if enviado %}
+    {% if codigo_tela %}
+      <div class="code-box">
+        <div style="font-size:13px;color:#9090B0;margin-bottom:10px">Seu código de recuperação:</div>
+        <div class="code-val">{{ codigo_tela }}</div>
+        <div class="code-label">Válido por 2 horas</div>
+      </div>
+    {% else %}
+      <div class="sucesso">📬 <strong>Código enviado!</strong><br>Verifique seu e-mail para continuar.</div>
+    {% endif %}
+    <a href="/mandaja/redefinir-senha" class="btn" style="display:block;text-align:center;text-decoration:none;padding:13px;border-radius:10px">
+      Inserir código →
+    </a>
+  {% else %}
+    {% if erro %}
+    <div class="error">{{ erro }}</div>
+    {% endif %}
+
+    <form method="POST">
+      <div class="field">
+        <label>E-mail cadastrado</label>
+        <input type="email" name="email" placeholder="seu@email.com" autofocus required>
+      </div>
+      <button type="submit" class="btn">🔑 Enviar código</button>
+    </form>
+  {% endif %}
+
+  <div class="links">
+    <a href="/mandaja/entrar">← Voltar ao login</a>
+  </div>
+</div>
+</body>
+</html>

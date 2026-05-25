@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Entrar — MandaZap</title>
+<title>Redefinir senha — MandaZap</title>
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
   body{background:#09090f;color:#f0fff4;font-family:'Segoe UI',sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
@@ -17,30 +17,52 @@
   label{display:block;font-size:12px;color:#6b9e72;margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
   input{width:100%;background:#0a130c;border:1px solid rgba(34,197,94,.1);border-radius:10px;color:#f0fff4;padding:11px 14px;font-size:14px;outline:none;transition:.2s}
   input:focus{border-color:#22c55e;box-shadow:0 0 0 2px rgba(34,197,94,.1)}
-  .btn{width:100%;padding:13px;background:linear-gradient(135deg,#16a34a,#22c55e);border:none;border-radius:12px;color:#fff;font-size:15px;font-weight:700;cursor:pointer;margin-top:8px;transition:.2s;font-family:inherit;box-shadow:0 0 20px rgba(34,197,94,.2)}
-  .btn:hover{opacity:.9;transform:translateY(-1px)}
+  .btn{width:100%;padding:13px;background:linear-gradient(135deg,#16a34a,#22c55e);border:none;border-radius:12px;color:#fff;font-size:15px;font-weight:700;cursor:pointer;margin-top:8px;transition:.2s;font-family:inherit}
+  .btn:hover{opacity:.9}
   .footer{text-align:center;margin-top:20px;font-size:13px;color:#6b9e72}
   .footer a{color:#22c55e}
+  .sucesso-box{text-align:center;padding:8px 0}
+  .sucesso-icon{font-size:56px;margin-bottom:16px}
+  .sucesso-title{font-size:18px;font-weight:800;color:#86efac;margin-bottom:8px}
+  .sucesso-sub{font-size:13px;color:#6b9e72;line-height:1.6;margin-bottom:24px}
 </style>
 </head>
 <body>
 <div class="box">
   <div class="logo">📲</div>
   <div class="logo-text">MandaZap</div>
-  <div class="sub">Acesse sua plataforma de WhatsApp</div>
-  {% if error %}<div class="error">⚠️ {{ error }}</div>{% endif %}
-  <form method="POST" action="/mandazap/entrar">
+
+  {% if sucesso %}
+  <div class="sucesso-box">
+    <div class="sucesso-icon">✅</div>
+    <div class="sucesso-title">Senha redefinida!</div>
+    <p class="sucesso-sub">Sua senha foi atualizada. Faça login com a nova senha.</p>
+    <a href="/mandazap/entrar" class="btn" style="display:block;text-align:center;text-decoration:none;padding:13px;border-radius:12px">
+      🔓 Entrar no painel
+    </a>
+  </div>
+  {% else %}
+  <div class="sub">Redefinir senha</div>
+  {% if erro %}
+  <div class="error">⚠️ {{ erro }}</div>
+  {% endif %}
+  <form method="POST">
     <div class="form-group">
-      <label>E-mail</label>
-      <input type="email" name="email" placeholder="joao@empresa.com" required autofocus>
+      <label>E-mail cadastrado</label>
+      <input type="email" name="email" placeholder="seu@email.com" autofocus required>
     </div>
     <div class="form-group">
-      <label>Senha</label>
-      <input type="password" name="password" placeholder="••••••••" required>
+      <label>Código de 6 dígitos</label>
+      <input type="text" name="codigo" placeholder="123456" maxlength="6" pattern="\d{6}" inputmode="numeric" autocomplete="one-time-code" required>
     </div>
-    <button type="submit" class="btn">🔓 Entrar no painel</button>
+    <div class="form-group">
+      <label>Nova senha</label>
+      <input type="password" name="nova_senha" placeholder="Mínimo 6 caracteres" minlength="6" required>
+    </div>
+    <button type="submit" class="btn">🔒 Redefinir senha</button>
   </form>
-  <div class="footer">Não tem conta? <a href="/mandazap/cadastro">Criar grátis</a> &nbsp;·&nbsp; <a href="/mandazap/esqueci-senha">Esqueci a senha</a> &nbsp;·&nbsp; <a href="/mandazap">← Voltar</a></div>
+  <div class="footer"><a href="/mandazap/esqueci-senha">← Solicitar novo código</a></div>
+  {% endif %}
 </div>
 </body>
 </html>

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Amigo Despachante — Entrar</title>
+<title>Recuperar senha — Amigo Despachante</title>
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
   body{background:#07070f;color:#f0f0ff;font-family:'Segoe UI',sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
@@ -11,42 +11,55 @@
   .box{background:#080e18;border:1px solid rgba(59,130,246,.18);border-radius:24px;padding:44px 40px;width:100%;max-width:400px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
   .logo{text-align:center;font-size:48px;margin-bottom:10px}
   .title{text-align:center;font-size:22px;font-weight:900;color:#60a5fa;margin-bottom:4px}
-  .sub{text-align:center;font-size:13px;color:#1e3a5f;margin-bottom:30px}
+  .sub{text-align:center;font-size:13px;color:#2a4a7f;margin-bottom:30px}
   .error{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:10px;padding:12px 16px;color:#fca5a5;font-size:13px;margin-bottom:20px;text-align:center}
+  .sucesso{background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.2);border-radius:10px;padding:14px;font-size:13px;color:#86efac;margin-bottom:20px;text-align:center;line-height:1.6}
   .form-group{margin-bottom:14px}
   label{display:block;font-size:11px;color:#2a4a7f;margin-bottom:6px;font-weight:700;text-transform:uppercase;letter-spacing:.7px}
   input{width:100%;background:#050c18;border:1px solid rgba(59,130,246,.15);border-radius:12px;color:#f0f0ff;padding:12px 16px;font-size:15px;outline:none;transition:.2s}
   input:focus{border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,.1)}
   .btn{width:100%;padding:14px;background:linear-gradient(135deg,#1d4ed8,#3b82f6);border:none;border-radius:12px;color:#fff;font-size:15px;font-weight:700;cursor:pointer;margin-top:8px;transition:.2s;font-family:inherit;box-shadow:0 0 24px rgba(59,130,246,.2)}
-  .btn:hover{opacity:.9;transform:translateY(-1px)}
-  .info{background:rgba(59,130,246,.06);border:1px solid rgba(59,130,246,.1);border-radius:10px;padding:12px 14px;font-size:12px;color:#2a4a7f;text-align:center;margin-top:20px;line-height:1.6}
+  .btn:hover{opacity:.9}
   .footer{text-align:center;margin-top:20px;font-size:13px;color:#444}
   .footer a{color:#60a5fa}
+  .code-box{background:#050c18;border:1px solid rgba(59,130,246,.3);border-radius:14px;padding:20px;text-align:center;margin:16px 0}
+  .code-val{font-size:36px;font-weight:900;letter-spacing:8px;color:#60a5fa}
+  .code-label{font-size:12px;color:#2a4a7f;margin-top:6px}
 </style>
 </head>
 <body>
 <div class="box">
   <div class="logo">🚗</div>
   <div class="title">Amigo Despachante</div>
-  <div class="sub">Plataforma para despachantes</div>
-  {% if erro %}
-  <div class="error">⚠️ {{ erro }}</div>
+  <div class="sub">Recuperação de senha</div>
+
+  {% if enviado %}
+    {% if codigo_tela %}
+      <div class="code-box">
+        <div style="font-size:13px;color:#2a4a7f;margin-bottom:10px">Seu código de recuperação:</div>
+        <div class="code-val">{{ codigo_tela }}</div>
+        <div class="code-label">Válido por 2 horas</div>
+      </div>
+    {% else %}
+      <div class="sucesso">📬 <strong>Código enviado!</strong><br>Verifique seu e-mail para continuar.</div>
+    {% endif %}
+    <a href="/amigo-despachante/redefinir-senha" class="btn" style="display:block;text-align:center;text-decoration:none;padding:14px;border-radius:12px">
+      Inserir código →
+    </a>
+  {% else %}
+    {% if erro %}
+    <div class="error">⚠️ {{ erro }}</div>
+    {% endif %}
+    <form method="POST">
+      <div class="form-group">
+        <label>Telefone / WhatsApp cadastrado</label>
+        <input type="tel" name="phone" placeholder="(47) 99999-9999" autofocus required>
+      </div>
+      <button type="submit" class="btn">🔑 Enviar código</button>
+    </form>
   {% endif %}
-  <form method="POST">
-    <div class="form-group">
-      <label>Telefone / WhatsApp</label>
-      <input type="tel" name="phone" placeholder="(47) 99999-9999" required autofocus>
-    </div>
-    <div class="form-group">
-      <label>Senha</label>
-      <input type="password" name="senha" placeholder="••••••••" required>
-    </div>
-    <button type="submit" class="btn">🔓 Entrar na plataforma</button>
-  </form>
-  <div class="footer" style="margin-top:20px">
-    <a href="/amigo-despachante/esqueci-senha" style="color:#2a4a7f;font-size:12px">Esqueci minha senha</a>
-    &nbsp;·&nbsp;<a href="/">← Início</a>
-  </div>
+
+  <div class="footer"><a href="/amigo-despachante/entrar">← Voltar ao login</a></div>
 </div>
 </body>
 </html>

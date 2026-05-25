@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Entrar — Agenda SC</title>
+<title>Redefinir senha — Agenda SC</title>
 <style>
   :root{--bg:#0f0f13;--surface:#1a1a24;--surface2:#22222f;--green:#27ae60;--text:#e8e8f0;--text2:#9090a8;--border:rgba(255,255,255,0.08)}
   *{box-sizing:border-box;margin:0;padding:0}
@@ -16,39 +16,57 @@
   label{display:block;font-size:13px;color:var(--text2);margin-bottom:6px;font-weight:500}
   input{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);padding:10px 14px;font-size:14px;outline:none;transition:.2s;font-family:inherit}
   input:focus{border-color:var(--green);box-shadow:0 0 0 2px rgba(39,174,96,.15)}
-  .btn-submit{width:100%;padding:13px;background:linear-gradient(135deg,#27ae60,#2ecc71);border:none;border-radius:12px;color:#fff;font-size:15px;font-weight:700;cursor:pointer;margin-top:8px;transition:.2s}
+  .btn-submit{width:100%;padding:13px;background:linear-gradient(135deg,#27ae60,#2ecc71);border:none;border-radius:12px;color:#fff;font-size:15px;font-weight:700;cursor:pointer;margin-top:8px;transition:.2s;font-family:inherit}
   .btn-submit:hover{opacity:.9}
   .footer-link{text-align:center;margin-top:20px;font-size:13px;color:var(--text2)}
   .footer-link a{color:var(--green)}
+  .sucesso-box{text-align:center;padding:16px 0}
+  .sucesso-icon{font-size:56px;margin-bottom:16px}
+  .sucesso-title{font-size:18px;font-weight:800;margin-bottom:8px;color:#86efac}
+  .sucesso-sub{font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:24px}
 </style>
 </head>
 <body>
 
 <div class="box">
   <div class="logo">📅 Agenda SC</div>
-  <div class="subtitle">Acesse o painel do seu negócio</div>
 
-  {% if error %}
-  <div class="error">⚠️ {{ error }}</div>
+  {% if sucesso %}
+  <div class="sucesso-box">
+    <div class="sucesso-icon">✅</div>
+    <div class="sucesso-title">Senha redefinida!</div>
+    <p class="sucesso-sub">Sua senha foi atualizada com sucesso. Faça login com a nova senha.</p>
+    <a href="/agenda/entrar" class="btn-submit" style="display:block;text-align:center;text-decoration:none;padding:13px;border-radius:12px">
+      📅 Entrar no painel
+    </a>
+  </div>
+  {% else %}
+  <div class="subtitle">Redefinir senha</div>
+
+  {% if erro %}
+  <div class="error">⚠️ {{ erro }}</div>
   {% endif %}
 
-  <form method="POST" action="/agenda/entrar">
+  <form method="POST">
     <div class="form-group">
       <label>WhatsApp cadastrado</label>
       <input type="tel" name="phone" placeholder="(47) 99999-9999" required>
     </div>
     <div class="form-group">
-      <label>Senha</label>
-      <input type="password" name="password" placeholder="Sua senha" required>
+      <label>Código de 6 dígitos</label>
+      <input type="text" name="codigo" placeholder="123456" maxlength="6" pattern="\d{6}" inputmode="numeric" autocomplete="one-time-code" required>
     </div>
-    <button type="submit" class="btn-submit">📅 Entrar no painel</button>
+    <div class="form-group">
+      <label>Nova senha</label>
+      <input type="password" name="nova_senha" placeholder="Mínimo 6 caracteres" minlength="6" required>
+    </div>
+    <button type="submit" class="btn-submit">🔒 Redefinir senha</button>
   </form>
 
   <div class="footer-link">
-    Ainda não tem conta? <a href="/agenda/cadastro">Criar grátis</a>
-    &nbsp;·&nbsp; <a href="/agenda/esqueci-senha">Esqueci a senha</a>
-    &nbsp;·&nbsp; <a href="/agenda">Voltar</a>
+    <a href="/agenda/esqueci-senha">← Solicitar novo código</a>
   </div>
+  {% endif %}
 </div>
 
 </body>

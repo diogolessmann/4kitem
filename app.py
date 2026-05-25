@@ -615,6 +615,82 @@ def amigo_desp_sair():
     session.pop('desp_saas_name', None)
     return redirect('/amigo-despachante/entrar')
 
+
+# ── Amigo Despachante — Recuperação de senha ─────────────────────────────────
+@app.route('/amigo-despachante/esqueci-senha', methods=['GET', 'POST'])
+def amigo_desp_esqueci_senha():
+    enviado = False
+    codigo_tela = None
+    erro = None
+    if request.method == 'POST':
+        phone_raw = request.form.get('phone', '').strip()
+        phone_clean = phone_raw.replace(' ','').replace('-','').replace('(','').replace(')','').replace('+','')
+        conn = get_saas_db()
+        u = conn.execute(
+            "SELECT * FROM despachante_users WHERE REPLACE(REPLACE(REPLACE(REPLACE(phone,' ',''),'-',''),'(',''),')','') LIKE ?",
+            (f'%{phone_clean[-8:]}',)
+        ).fetchone()
+        if not u:
+            erro = 'Número não encontrado.'
+            conn.close()
+        else:
+            codigo = str(random.randint(100000, 999999))
+            expires = (datetime.now() + timedelta(hours=2)).isoformat()
+            conn.execute('UPDATE despachante_users SET reset_token=?, reset_expires=? WHERE id=?',
+                         (codigo, expires, u['id']))
+            conn.commit(); conn.close()
+            ok = False
+            if u['email']:
+                html_email = f"""
+                <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px">
+                  <div style="font-size:32px;margin-bottom:8px">🚗</div>
+                  <h2 style="color:#0ea5e9">Recuperação de senha — Amigo Despachante</h2>
+                  <p>Olá, <strong>{u['name'].split()[0]}</strong>!</p>
+                  <p>Seu código de recuperação é:</p>
+                  <div style="font-size:36px;font-weight:900;letter-spacing:8px;color:#0ea5e9;
+                              background:#f0f9ff;padding:20px;border-radius:12px;text-align:center;
+                              margin:20px 0">{codigo}</div>
+                  <p style="color:#666;font-size:13px">Válido por 2 horas.</p>
+                </div>"""
+                ok = _enviar_email(u['email'], 'Código de recuperação — Amigo Despachante', html_email)
+            enviado = True
+            if not ok:
+                codigo_tela = codigo
+    return render_template('amigo_despachante/esqueci_senha.html',
+                           enviado=enviado, codigo_tela=codigo_tela, erro=erro)
+
+
+@app.route('/amigo-despachante/redefinir-senha', methods=['GET', 'POST'])
+def amigo_desp_redefinir_senha():
+    sucesso = False
+    erro = None
+    if request.method == 'POST':
+        phone_raw = request.form.get('phone', '').strip()
+        phone_clean = phone_raw.replace(' ','').replace('-','').replace('(','').replace(')','').replace('+','')
+        codigo = request.form.get('codigo', '').strip()
+        nova = request.form.get('nova_senha', '')
+        if len(nova) < 6:
+            erro = 'A senha deve ter pelo menos 6 caracteres.'
+        else:
+            conn = get_saas_db()
+            u = conn.execute(
+                "SELECT * FROM despachante_users WHERE REPLACE(REPLACE(REPLACE(REPLACE(phone,' ',''),'-',''),'(',''),')','') LIKE ?",
+                (f'%{phone_clean[-8:]}',)
+            ).fetchone()
+            if not u or u['reset_token'] != codigo:
+                erro = 'Código inválido ou número incorreto.'
+                conn.close()
+            elif u['reset_expires'] and datetime.fromisoformat(u['reset_expires']) < datetime.now():
+                erro = 'Código expirado. Solicite um novo.'
+                conn.close()
+            else:
+                conn.execute('UPDATE despachante_users SET password_hash=?, reset_token=NULL, reset_expires=NULL WHERE id=?',
+                             (generate_password_hash(nova), u['id']))
+                conn.commit(); conn.close()
+                sucesso = True
+    return render_template('amigo_despachante/redefinir_senha.html', sucesso=sucesso, erro=erro)
+
+
 @app.route('/defesapro')
 def defesapro_landing():
     return render_template('defesapro/landing.html')
@@ -2295,6 +2371,81 @@ def agenda_sair():
     return redirect('/agenda')
 
 
+# ── AgendaSC — Recuperação de senha ──────────────────────────────────────────
+@app.route('/agenda/esqueci-senha', methods=['GET', 'POST'])
+def agenda_esqueci_senha():
+    enviado = False
+    codigo_tela = None
+    erro = None
+    if request.method == 'POST':
+        phone_raw = request.form.get('phone', '').strip()
+        phone_digits = ''.join(c for c in phone_raw if c.isdigit())
+        conn = get_saas_db()
+        biz = conn.execute(
+            "SELECT * FROM agenda_businesses WHERE replace(replace(replace(replace(replace(phone,'(',''),')',''),'-',''),' ',''),'+','') = ?",
+            (phone_digits,)
+        ).fetchone()
+        if not biz:
+            erro = 'Número não encontrado. Verifique o WhatsApp cadastrado.'
+            conn.close()
+        else:
+            codigo = str(random.randint(100000, 999999))
+            expires = (datetime.now() + timedelta(hours=2)).isoformat()
+            conn.execute('UPDATE agenda_businesses SET reset_token=?, reset_expires=? WHERE id=?',
+                         (codigo, expires, biz['id']))
+            conn.commit(); conn.close()
+            ok = False
+            if biz['email']:
+                html_email = f"""
+                <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px">
+                  <div style="font-size:32px;margin-bottom:8px">📅</div>
+                  <h2 style="color:#27ae60">Recuperação de senha — Agenda SC</h2>
+                  <p>Olá, <strong>{biz['owner_name'].split()[0]}</strong>!</p>
+                  <p>Seu código de recuperação é:</p>
+                  <div style="font-size:36px;font-weight:900;letter-spacing:8px;color:#27ae60;
+                              background:#f0fdf4;padding:20px;border-radius:12px;text-align:center;
+                              margin:20px 0">{codigo}</div>
+                  <p style="color:#666;font-size:13px">Válido por 2 horas.</p>
+                </div>"""
+                ok = _enviar_email(biz['email'], 'Código de recuperação — Agenda SC', html_email)
+            enviado = True
+            if not ok:
+                codigo_tela = codigo
+    return render_template('agenda/esqueci_senha.html',
+                           enviado=enviado, codigo_tela=codigo_tela, erro=erro)
+
+
+@app.route('/agenda/redefinir-senha', methods=['GET', 'POST'])
+def agenda_redefinir_senha():
+    sucesso = False
+    erro = None
+    if request.method == 'POST':
+        phone_raw = request.form.get('phone', '').strip()
+        phone_digits = ''.join(c for c in phone_raw if c.isdigit())
+        codigo = request.form.get('codigo', '').strip()
+        nova = request.form.get('nova_senha', '')
+        if len(nova) < 6:
+            erro = 'A senha deve ter pelo menos 6 caracteres.'
+        else:
+            conn = get_saas_db()
+            biz = conn.execute(
+                "SELECT * FROM agenda_businesses WHERE replace(replace(replace(replace(replace(phone,'(',''),')',''),'-',''),' ',''),'+','') = ?",
+                (phone_digits,)
+            ).fetchone()
+            if not biz or biz['reset_token'] != codigo:
+                erro = 'Código inválido. Verifique o número e o código.'
+                conn.close()
+            elif biz['reset_expires'] and datetime.fromisoformat(biz['reset_expires']) < datetime.now():
+                erro = 'Código expirado. Solicite um novo.'
+                conn.close()
+            else:
+                conn.execute('UPDATE agenda_businesses SET password_hash=?, reset_token=NULL, reset_expires=NULL WHERE id=?',
+                             (generate_password_hash(nova), biz['id']))
+                conn.commit(); conn.close()
+                sucesso = True
+    return render_template('agenda/redefinir_senha.html', sucesso=sucesso, erro=erro)
+
+
 @app.route('/agenda/painel')
 @_agenda_login_required
 def agenda_painel():
@@ -3852,6 +4003,71 @@ def mandazap_sair():
     for k in ('mz_user_id', 'mz_user_name', 'mz_plan'):
         session.pop(k, None)
     return redirect('/mandazap')
+
+
+# ── MandaZap — Recuperação de senha ──────────────────────────────────────────
+@app.route('/mandazap/esqueci-senha', methods=['GET', 'POST'])
+def mandazap_esqueci_senha():
+    enviado = False
+    codigo_tela = None
+    erro = None
+    if request.method == 'POST':
+        email = request.form.get('email', '').strip().lower()
+        conn = get_saas_db()
+        u = conn.execute('SELECT * FROM mandazap_users WHERE email=?', (email,)).fetchone()
+        if not u:
+            erro = 'E-mail não encontrado.'
+            conn.close()
+        else:
+            codigo = str(random.randint(100000, 999999))
+            expires = (datetime.now() + timedelta(hours=2)).isoformat()
+            conn.execute('UPDATE mandazap_users SET reset_token=?, reset_expires=? WHERE id=?',
+                         (codigo, expires, u['id']))
+            conn.commit(); conn.close()
+            html_email = f"""
+            <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px">
+              <div style="font-size:32px;margin-bottom:8px">📲</div>
+              <h2 style="color:#2563eb">Recuperação de senha — MandaZap</h2>
+              <p>Olá, <strong>{u['name'].split()[0]}</strong>!</p>
+              <p>Seu código de recuperação é:</p>
+              <div style="font-size:36px;font-weight:900;letter-spacing:8px;color:#2563eb;
+                          background:#eff6ff;padding:20px;border-radius:12px;text-align:center;
+                          margin:20px 0">{codigo}</div>
+              <p style="color:#666;font-size:13px">Válido por 2 horas.</p>
+            </div>"""
+            ok = _enviar_email(email, 'Código de recuperação — MandaZap', html_email)
+            enviado = True
+            if not ok:
+                codigo_tela = codigo
+    return render_template('mandazap/esqueci_senha.html',
+                           enviado=enviado, codigo_tela=codigo_tela, erro=erro)
+
+
+@app.route('/mandazap/redefinir-senha', methods=['GET', 'POST'])
+def mandazap_redefinir_senha():
+    sucesso = False
+    erro = None
+    if request.method == 'POST':
+        email = request.form.get('email', '').strip().lower()
+        codigo = request.form.get('codigo', '').strip()
+        nova = request.form.get('nova_senha', '')
+        if len(nova) < 6:
+            erro = 'A senha deve ter pelo menos 6 caracteres.'
+        else:
+            conn = get_saas_db()
+            u = conn.execute('SELECT * FROM mandazap_users WHERE email=?', (email,)).fetchone()
+            if not u or u['reset_token'] != codigo:
+                erro = 'Código inválido ou e-mail incorreto.'
+                conn.close()
+            elif u['reset_expires'] and datetime.fromisoformat(u['reset_expires']) < datetime.now():
+                erro = 'Código expirado. Solicite um novo.'
+                conn.close()
+            else:
+                conn.execute('UPDATE mandazap_users SET password_hash=?, reset_token=NULL, reset_expires=NULL WHERE id=?',
+                             (generate_password_hash(nova), u['id']))
+                conn.commit(); conn.close()
+                sucesso = True
+    return render_template('mandazap/redefinir_senha.html', sucesso=sucesso, erro=erro)
 
 
 @app.route('/mandazap/painel')
@@ -7223,6 +7439,71 @@ def mandaja_logout():
     for k in ('mja_store_id', 'mja_store_name', 'mja_store_slug', 'mja_plan'):
         session.pop(k, None)
     return redirect('/mandaja')
+
+
+# ── MandaJá — Recuperação de senha ───────────────────────────────────────────
+@app.route('/mandaja/esqueci-senha', methods=['GET', 'POST'])
+def mandaja_esqueci_senha():
+    enviado = False
+    codigo_tela = None
+    erro = None
+    if request.method == 'POST':
+        email = request.form.get('email', '').strip().lower()
+        conn = get_saas_db()
+        store = conn.execute('SELECT * FROM mandaja_stores WHERE LOWER(email)=?', (email,)).fetchone()
+        if not store:
+            erro = 'E-mail não encontrado.'
+            conn.close()
+        else:
+            codigo = str(random.randint(100000, 999999))
+            expires = (datetime.now() + timedelta(hours=2)).isoformat()
+            conn.execute('UPDATE mandaja_stores SET reset_token=?, reset_expires=? WHERE id=?',
+                         (codigo, expires, store['id']))
+            conn.commit(); conn.close()
+            html_email = f"""
+            <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px">
+              <div style="font-size:32px;margin-bottom:8px">🛵</div>
+              <h2 style="color:#f97316">Recuperação de senha — MandaJá</h2>
+              <p>Olá, <strong>{store['owner_name'].split()[0]}</strong>!</p>
+              <p>Seu código de recuperação é:</p>
+              <div style="font-size:36px;font-weight:900;letter-spacing:8px;color:#f97316;
+                          background:#fff7ed;padding:20px;border-radius:12px;text-align:center;
+                          margin:20px 0">{codigo}</div>
+              <p style="color:#666;font-size:13px">Válido por 2 horas.</p>
+            </div>"""
+            ok = _enviar_email(email, 'Código de recuperação — MandaJá', html_email)
+            enviado = True
+            if not ok:
+                codigo_tela = codigo
+    return render_template('mandaja/esqueci_senha.html',
+                           enviado=enviado, codigo_tela=codigo_tela, erro=erro)
+
+
+@app.route('/mandaja/redefinir-senha', methods=['GET', 'POST'])
+def mandaja_redefinir_senha():
+    sucesso = False
+    erro = None
+    if request.method == 'POST':
+        email = request.form.get('email', '').strip().lower()
+        codigo = request.form.get('codigo', '').strip()
+        nova = request.form.get('nova_senha', '')
+        if len(nova) < 6:
+            erro = 'A senha deve ter pelo menos 6 caracteres.'
+        else:
+            conn = get_saas_db()
+            store = conn.execute('SELECT * FROM mandaja_stores WHERE LOWER(email)=?', (email,)).fetchone()
+            if not store or store['reset_token'] != codigo:
+                erro = 'Código inválido ou e-mail incorreto.'
+                conn.close()
+            elif store['reset_expires'] and datetime.fromisoformat(store['reset_expires']) < datetime.now():
+                erro = 'Código expirado. Solicite um novo.'
+                conn.close()
+            else:
+                conn.execute('UPDATE mandaja_stores SET password_hash=?, reset_token=NULL, reset_expires=NULL WHERE id=?',
+                             (generate_password_hash(nova), store['id']))
+                conn.commit(); conn.close()
+                sucesso = True
+    return render_template('mandaja/redefinir_senha.html', sucesso=sucesso, erro=erro)
 
 
 # ── Dashboard ─────────────────────────────────────────────────────────────────
