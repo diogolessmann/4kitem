@@ -110,16 +110,37 @@ def _asaas_req(method: str, endpoint: str, data: dict = None):
 
 def _asaas_criar_ou_buscar_cliente_saas(nome, email, telefone, cpf, tabela_id, tabela):
     """Cria ou busca cliente no Asaas para apps do saas.db."""
+    import re as _re_asaas
     cpf_limpo = ''.join(c for c in (cpf or '') if c.isdigit())
-    busca = _asaas_req('GET', f'/customers?cpfCnpj={cpf_limpo}') if cpf_limpo else {}
-    if busca.get('data'):
-        return busca['data'][0]['id']
-    resp = _asaas_req('POST', '/customers', {
-        'name': nome, 'email': email,
+    # 1. Busca por CPF/CNPJ se disponível
+    if cpf_limpo:
+        busca = _asaas_req('GET', f'/customers?cpfCnpj={cpf_limpo}')
+        if busca.get('data'):
+            return busca['data'][0]['id']
+    # 2. Busca por e-mail como fallback
+    if email:
+        busca_email = _asaas_req('GET', f'/customers?email={email}')
+        if busca_email.get('data'):
+            return busca_email['data'][0]['id']
+    # 3. Tenta criar o cliente
+    payload = {
+        'name': nome or 'Cliente',
+        'email': email,
         'mobilePhone': ''.join(c for c in (telefone or '') if c.isdigit()),
-        'cpfCnpj': cpf_limpo,
-    })
-    return resp.get('id')
+    }
+    if cpf_limpo:
+        payload['cpfCnpj'] = cpf_limpo
+    resp = _asaas_req('POST', '/customers', payload)
+    if resp.get('id'):
+        return resp['id']
+    # 4. Se já existe, extrai o ID do erro (Asaas retorna cus_XXXX na mensagem)
+    erros = resp.get('errors', [])
+    for err in erros:
+        desc = err.get('description', '')
+        match = _re_asaas.search(r'cus_\w+', desc)
+        if match:
+            return match.group(0)
+    return None
 
 def _asaas_criar_assinatura_saas(customer_id, app_prefix, plano_key, valor, descricao, billing_type='PIX'):
     import datetime as _dt
@@ -363,6 +384,34 @@ BAU_CATEGORIES = {
     'email':    {'label': 'E-mail',         'icon': '📧'},
     'compras':  {'label': 'Compras',        'icon': '🛒'},
     'outros':   {'label': 'Outros',         'icon': '🔧'},
+}
+
+BAU_PLANS = {
+    'mensal': {
+        'label': 'Baú Mensal', 'price': 'R$ 19,90/mês',
+        'preco': 19.90, 'cycle': 'MONTHLY',
+        'entradas': 'Ilimitadas',
+        'features': ['Entradas ilimitadas', 'Categorias', 'Busca rápida', 'Acesso em qualquer dispositivo'],
+    },
+    'anual': {
+        'label': 'Baú Anual', 'price': 'R$ 14,90/mês (R$ 178,80/ano)',
+        'preco': 178.80, 'cycle': 'YEARLY',
+        'entradas': 'Ilimitadas',
+        'features': ['Tudo do Mensal', '25% de desconto', 'Suporte prioritário'],
+    },
+}
+
+KIDS_PLANS = {
+    'mensal': {
+        'label': 'KidsCurator Mensal', 'price': 'R$ 49,90/mês',
+        'preco': 49.90, 'cycle': 'MONTHLY',
+        'features': ['6 categorias de conteúdo', '1 código de acesso', 'Atualização automática de conteúdo', 'Suporte via WhatsApp'],
+    },
+    'anual': {
+        'label': 'KidsCurator Anual', 'price': 'R$ 39,90/mês (R$ 478,80/ano)',
+        'preco': 478.80, 'cycle': 'YEARLY',
+        'features': ['Tudo do Mensal', '20% de desconto', '2 códigos de acesso'],
+    },
 }
 
 
