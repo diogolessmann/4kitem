@@ -266,7 +266,7 @@ let   currentMode = "{{ client.mode }}";
 function compartilharKids() {
   const tvUrl = `https://4kitem.com.br/tv/${CLIENT_CODE}`;
   const msg = encodeURIComponent(
-    '📺 Olha que legal! Aqui em *{{ client.name }}* usamos o *Kids TV* — uma TV infantil curada, ' +
+    '📺 Olha que legal! Aqui em *' + {{ client.name | tojson }} + '* usamos o *Kids TV* — uma TV infantil curada, ' +
     'só com conteúdo educativo e seguro para crianças.\n\n' +
     '✅ Sem anúncios inadequados\n' +
     '✅ Vídeos selecionados por especialistas\n' +

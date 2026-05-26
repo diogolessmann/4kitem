@@ -111,35 +111,56 @@ def _asaas_req(method: str, endpoint: str, data: dict = None):
 def _asaas_criar_ou_buscar_cliente_saas(nome, email, telefone, cpf, tabela_id, tabela):
     """Cria ou busca cliente no Asaas para apps do saas.db."""
     import re as _re_asaas
+    api_key = os.environ.get('ASAAS_API_KEY', '')
+    if not api_key:
+        log.error('[Asaas] ASAAS_API_KEY não configurada nas variáveis de ambiente!')
+        return None
     cpf_limpo = ''.join(c for c in (cpf or '') if c.isdigit())
+    log.info('[Asaas] Iniciando busca/criação de cliente: nome=%s email=%s cpf_len=%d tabela=%s',
+             nome, email, len(cpf_limpo), tabela)
     # 1. Busca por CPF/CNPJ se disponível
-    if cpf_limpo:
+    if cpf_limpo and len(cpf_limpo) in (11, 14):
         busca = _asaas_req('GET', f'/customers?cpfCnpj={cpf_limpo}')
+        log.info('[Asaas] Busca por CPF: %s', busca)
         if busca.get('data'):
-            return busca['data'][0]['id']
+            cid = busca['data'][0]['id']
+            log.info('[Asaas] Cliente encontrado por CPF: %s', cid)
+            return cid
     # 2. Busca por e-mail como fallback
     if email:
         busca_email = _asaas_req('GET', f'/customers?email={email}')
+        log.info('[Asaas] Busca por email: %s', busca_email)
         if busca_email.get('data'):
-            return busca_email['data'][0]['id']
+            cid = busca_email['data'][0]['id']
+            log.info('[Asaas] Cliente encontrado por e-mail: %s', cid)
+            return cid
     # 3. Tenta criar o cliente
+    fone_limpo = ''.join(c for c in (telefone or '') if c.isdigit())
     payload = {
         'name': nome or 'Cliente',
-        'email': email,
-        'mobilePhone': ''.join(c for c in (telefone or '') if c.isdigit()),
+        'email': email or '',
+        'mobilePhone': fone_limpo,
+        'notificationDisabled': True,
     }
-    if cpf_limpo:
+    if cpf_limpo and len(cpf_limpo) in (11, 14):
         payload['cpfCnpj'] = cpf_limpo
+    log.info('[Asaas] Criando cliente: payload=%s', payload)
     resp = _asaas_req('POST', '/customers', payload)
+    log.info('[Asaas] Resposta criação: %s', resp)
     if resp.get('id'):
+        log.info('[Asaas] Cliente criado: %s', resp['id'])
         return resp['id']
     # 4. Se já existe, extrai o ID do erro (Asaas retorna cus_XXXX na mensagem)
     erros = resp.get('errors', [])
     for err in erros:
         desc = err.get('description', '')
+        log.info('[Asaas] Erro na criação: %s', desc)
         match = _re_asaas.search(r'cus_\w+', desc)
         if match:
-            return match.group(0)
+            cid = match.group(0)
+            log.info('[Asaas] ID extraído do erro: %s', cid)
+            return cid
+    log.error('[Asaas] Falha total na criação do cliente. Resposta: %s', resp)
     return None
 
 def _asaas_criar_assinatura_saas(customer_id, app_prefix, plano_key, valor, descricao, billing_type='PIX'):
@@ -3319,7 +3340,9 @@ def agenda_assinar():
             biz['name'], biz['email'], biz['phone'], biz.get('cpf_cnpj', ''), biz['id'], 'agenda_businesses'
         )
         if not customer_id:
-            erro = 'Erro ao processar pagamento. Tente novamente ou entre em contato.'
+            log.error('[AgendaSC] Falha ao obter customer_id para biz_id=%s email=%s', biz_id, biz.get('email'))
+            erro = ('Não conseguimos processar o pagamento agora. '
+                    'Entre em contato pelo WhatsApp (47) 99101-1351 e ativamos sua conta manualmente em minutos. 💬')
         else:
             conn2 = get_saas_db()
             conn2.execute('UPDATE agenda_businesses SET asaas_customer_id=? WHERE id=?',
@@ -8676,13 +8699,24 @@ def mandaja_cadastro():
                                    error='Este WhatsApp já está vinculado a uma loja. Faça login ou entre em contato pelo WhatsApp (47) 99101-1351.',
                                    cats=MANDAJA_STORE_CATEGORIES)
         trial_ends = (datetime.now() + timedelta(days=7)).isoformat()
-        conn.execute('''
-            INSERT INTO mandaja_stores
-            (name, slug, owner_name, phone, email, password_hash, category, city, plan, created_at, trial_ends, cpf_cnpj)
-            VALUES (?,?,?,?,?,?,?,?,'micro',?,?,?)
-        ''', (name, slug, owner_name, phone, email,
-              generate_password_hash(senha), category, city,
-              datetime.now().isoformat(), trial_ends, cpf_cnpj_digits))
+        try:
+            conn.execute('''
+                INSERT INTO mandaja_stores
+                (name, slug, owner_name, phone, email, password_hash, category, city, plan, created_at, trial_ends, cpf_cnpj)
+                VALUES (?,?,?,?,?,?,?,?,'micro',?,?,?)
+            ''', (name, slug, owner_name, phone, email,
+                  generate_password_hash(senha), category, city,
+                  datetime.now().isoformat(), trial_ends, cpf_cnpj_digits))
+        except Exception as _mja_err:
+            log.error('[MandaJá] Erro no INSERT (possível coluna faltando): %s', _mja_err)
+            # Tenta sem cpf_cnpj — coluna pode ainda não existir no DB de produção
+            conn.execute('''
+                INSERT INTO mandaja_stores
+                (name, slug, owner_name, phone, email, password_hash, category, city, plan, created_at, trial_ends)
+                VALUES (?,?,?,?,?,?,?,?,'micro',?,?)
+            ''', (name, slug, owner_name, phone, email,
+                  generate_password_hash(senha), category, city,
+                  datetime.now().isoformat(), trial_ends))
         conn.commit()
         store = conn.execute('SELECT * FROM mandaja_stores WHERE email=?', (email,)).fetchone()
         # Cria horários padrão (Seg-Sex 08-22, Sab 08-20)

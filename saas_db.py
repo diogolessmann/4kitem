@@ -591,14 +591,16 @@ def init_saas_db():
             conn.execute(sql)
             conn.commit()
         except Exception:
-            pass
+            try: conn.rollback()
+            except: pass
 
     for sql in _mandaja_migrations:
         try:
             conn.execute(sql)
             conn.commit()
         except Exception:
-            pass
+            try: conn.rollback()
+            except: pass
 
     # ── DefesaPro — módulos funcionais ────────────────────────────────────────
     conn.executescript('''
