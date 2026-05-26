@@ -1363,6 +1363,31 @@ def excluir_pet(pet_id):
     return redirect('/petmed/meus-pets?msg=pet_removido')
 
 
+# ── Cartão público do pet ─────────────────────────────────────────────────────
+
+@petmed_bp.route('/pets/<int:pet_id>/cartao')
+def cartao_pet(pet_id):
+    """Página pública compartilhável do pet — sem login necessário."""
+    conn = get_petmed_db()
+    pet = conn.execute(
+        'SELECT * FROM petmed_pets WHERE id=?', (pet_id,)
+    ).fetchone()
+    if not pet:
+        conn.close()
+        return redirect('/petmed'), 302
+    pet = dict(pet)
+    # Vacinas do pet (só nomes e status)
+    vacinas = conn.execute(
+        'SELECT nome, data_aplic, proxima FROM petmed_vacinas WHERE pet_id=? ORDER BY data_aplic DESC',
+        (pet_id,)
+    ).fetchall()
+    conn.close()
+    vacinas = [dict(v) for v in vacinas]
+    return render_template('petmed/cartao_pet.html',
+                           pet=pet, vacinas=vacinas,
+                           portal_url='https://vetzap.4kitem.com.br')
+
+
 # ── Triagem ────────────────────────────────────────────────────────────────────
 
 @petmed_bp.route('/triagem')

@@ -14,8 +14,10 @@
   .biz-icon{font-size:48px;margin-bottom:10px}
   .biz-name{font-size:24px;font-weight:900;margin-bottom:4px}
   .biz-sub{font-size:13px;color:var(--text2)}
-  .powered{display:inline-block;margin-top:12px;font-size:11px;color:var(--text2);background:var(--surface);padding:3px 10px;border-radius:10px}
-  .powered a{color:var(--green)}
+  .powered{display:inline-flex;align-items:center;gap:7px;margin-top:14px;font-size:12px;font-weight:600;color:var(--text2);background:rgba(39,174,96,.08);border:1px solid rgba(39,174,96,.2);padding:7px 14px;border-radius:20px;text-decoration:none;transition:.2s}
+  .powered:hover{background:rgba(39,174,96,.15);border-color:rgba(39,174,96,.35);color:var(--text)}
+  .powered a{color:var(--green);text-decoration:none}
+  .powered .pow-badge{background:var(--green);color:#fff;font-size:10px;font-weight:800;padding:2px 6px;border-radius:6px;letter-spacing:.3px}
 
   .steps-bar{display:flex;gap:0;margin:20px auto;max-width:520px;padding:0 16px}
   .step-dot{flex:1;text-align:center;position:relative}
@@ -124,7 +126,10 @@
   </div>
   <div class="biz-name">{{ biz.name }}</div>
   <div class="biz-sub">📅 Agendamento Online</div>
-  <div class="powered">Powered by <a href="/agenda">Agenda SC</a> · <a href="/">4KITEM</a></div>
+  <a href="/agenda/cadastro" class="powered" target="_blank" rel="noopener">
+    <span class="pow-badge">GRÁTIS</span>
+    Agendamento pelo <strong style="color:var(--green)">Agenda SC</strong> — para o seu negócio também
+  </a>
 </div>
 
 {% set tem_profissionais = professionals and professionals|length > 0 %}
