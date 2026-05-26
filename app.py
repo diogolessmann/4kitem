@@ -163,13 +163,13 @@ def _asaas_criar_ou_buscar_cliente_saas(nome, email, telefone, cpf, tabela_id, t
     log.error('[Asaas] Falha total na criação do cliente. Resposta: %s', resp)
     return None
 
-def _asaas_criar_assinatura_saas(customer_id, app_prefix, plano_key, valor, descricao, billing_type='PIX'):
+def _asaas_criar_assinatura_saas(customer_id, app_prefix, plano_key, valor, descricao, billing_type='PIX', cycle='MONTHLY'):
     import datetime as _dt
     prox = (_dt.date.today() + _dt.timedelta(days=1)).strftime('%Y-%m-%d')
     return _asaas_req('POST', '/subscriptions', {
         'customer': customer_id, 'billingType': billing_type,
         'value': valor, 'nextDueDate': prox,
-        'cycle': 'MONTHLY', 'description': descricao,
+        'cycle': cycle, 'description': descricao,
         'externalReference': f'{app_prefix}_{customer_id}_{plano_key}',
     })
 
@@ -589,7 +589,7 @@ def kids_assinar(plano):
                         resp = _asaas_criar_assinatura_saas(
                             customer_id, 'kids', plano, p['preco'],
                             f"KidsCurator {p['label']} — {empresa}",
-                            billing_type
+                            billing_type, p.get('cycle', 'MONTHLY')
                         )
                         if resp.get('id'):
                             session['kids_pending_code'] = code
@@ -5661,7 +5661,7 @@ def bau_assinar(plano):
             resp = _asaas_criar_assinatura_saas(
                 customer_id, 'bau', plano, p['preco'],
                 f"Baú SC {p['label']} — Cofre Digital",
-                billing_type
+                billing_type, p.get('cycle', 'MONTHLY')
             )
             if resp.get('id'):
                 invoice_url = resp.get('invoiceUrl') or resp.get('bankSlipUrl') or ''

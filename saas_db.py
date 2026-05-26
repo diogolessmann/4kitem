@@ -549,13 +549,6 @@ def init_saas_db():
         "ALTER TABLE bau_users ADD COLUMN plan TEXT DEFAULT 'mensal'",
         "ALTER TABLE bau_users ADD COLUMN plan_active INTEGER DEFAULT 0",
         "ALTER TABLE bau_users ADD COLUMN asaas_customer_id TEXT DEFAULT ''",
-        # KidsCurator — checkout self-service
-        "ALTER TABLE kids_clients ADD COLUMN email TEXT DEFAULT ''",
-        "ALTER TABLE kids_clients ADD COLUMN phone TEXT DEFAULT ''",
-        "ALTER TABLE kids_clients ADD COLUMN plan TEXT DEFAULT 'mensal'",
-        "ALTER TABLE kids_clients ADD COLUMN plan_active INTEGER DEFAULT 0",
-        "ALTER TABLE kids_clients ADD COLUMN trial_ends TEXT DEFAULT ''",
-        "ALTER TABLE kids_clients ADD COLUMN asaas_customer_id TEXT DEFAULT ''",
         # Amigo Despachante SaaS — Clientes e Ordens de Serviço
         """CREATE TABLE IF NOT EXISTS desp_clientes (
             id         INTEGER PRIMARY KEY AUTOINCREMENT,
