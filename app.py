@@ -4317,6 +4317,26 @@ def saas_admin_logout():
     return redirect('/saas-admin/login')
 
 
+@app.route('/saas-admin/asaas-test')
+@_saas_admin_required
+def saas_asaas_test():
+    """Diagnóstico da integração Asaas — mostra resposta real da API."""
+    api_key = os.environ.get('ASAAS_API_KEY', '')
+    resultado = {
+        'api_key_set': bool(api_key),
+        'api_key_prefix': api_key[:20] + '...' if api_key else '',
+    }
+    if api_key:
+        resultado['customers'] = _asaas_req('GET', '/customers?limit=1')
+        # Tenta criar cliente teste
+        resultado['create_test'] = _asaas_req('POST', '/customers', {
+            'name': 'Teste Diagnostico',
+            'email': 'diagnostico@teste.com',
+            'notificationDisabled': True,
+        })
+    return jsonify(resultado)
+
+
 @app.route('/saas-admin')
 @_saas_admin_required
 def saas_admin():
