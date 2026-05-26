@@ -527,6 +527,94 @@ def kids_sair():
     return redirect('/kids/entrar')
 
 
+@app.route('/kids/assinar/<plano>', methods=['GET', 'POST'])
+def kids_assinar(plano):
+    if plano not in KIDS_PLANS:
+        return redirect('/kids')
+    p = KIDS_PLANS[plano]
+    erro = None
+    if request.method == 'POST':
+        nome      = request.form.get('name', '').strip()
+        empresa   = request.form.get('empresa', '').strip()
+        email     = request.form.get('email', '').strip().lower()
+        phone     = request.form.get('phone', '').strip()
+        cpf_cnpj  = request.form.get('cpf_cnpj', '').strip()
+        billing_type = request.form.get('billing_type', 'PIX').upper()
+        cpf_digits = ''.join(c for c in cpf_cnpj if c.isdigit())
+        if not all([nome, empresa, email, phone, cpf_cnpj]):
+            erro = 'Preencha todos os campos obrigatórios.'
+        elif len(cpf_digits) not in (11, 14):
+            erro = 'CPF deve ter 11 dígitos ou CNPJ 14 dígitos.'
+        elif billing_type not in ('PIX', 'BOLETO', 'CREDIT_CARD'):
+            billing_type = 'PIX'
+        else:
+            try:
+                import secrets as _sec
+                kconn = get_kids_conn()
+                # Verifica e-mail duplicado
+                ex = kconn.execute('SELECT id FROM clients WHERE email=?', (email,)).fetchone()
+                if ex:
+                    erro = 'E-mail já cadastrado. Entre em contato pelo WhatsApp.'
+                    kconn.close()
+                else:
+                    # Gera código único
+                    while True:
+                        code = ''.join(_sec.choice('ABCDEFGHJKLMNPQRSTUVWXYZ23456789') for _ in range(6))
+                        if not kconn.execute('SELECT id FROM clients WHERE code=?', (code,)).fetchone():
+                            break
+                    now = datetime.now().isoformat()
+                    kconn.execute('''INSERT INTO clients
+                        (code, name, email, phone, cpf_cnpj, plan, plan_active, active, created_at, city)
+                        VALUES (?,?,?,?,?,?,0,0,?,?)''',
+                        (code, empresa, email, phone, cpf_cnpj, plano, now, 'SC'))
+                    kconn.commit()
+                    client = kconn.execute('SELECT * FROM clients WHERE code=?', (code,)).fetchone()
+                    kconn.close()
+                    # Cria/busca cliente no Asaas
+                    customer_id = _asaas_criar_ou_buscar_cliente_saas(
+                        nome, email, phone, cpf_cnpj, client['id'], 'kids_clients_placeholder'
+                    )
+                    if not customer_id:
+                        erro = ('Não conseguimos processar o pagamento agora. '
+                                'Entre em contato pelo WhatsApp (47) 99101-1351. 💬')
+                        # Remove o cliente criado
+                        kconn2 = get_kids_conn()
+                        kconn2.execute('DELETE FROM clients WHERE code=?', (code,))
+                        kconn2.commit(); kconn2.close()
+                    else:
+                        kconn3 = get_kids_conn()
+                        kconn3.execute('UPDATE clients SET asaas_customer_id=? WHERE code=?',
+                                       (customer_id, code))
+                        kconn3.commit(); kconn3.close()
+                        resp = _asaas_criar_assinatura_saas(
+                            customer_id, 'kids', plano, p['preco'],
+                            f"KidsCurator {p['label']} — {empresa}",
+                            billing_type
+                        )
+                        if resp.get('id'):
+                            session['kids_pending_code'] = code
+                            session['kids_pending_email'] = email
+                            invoice_url = resp.get('invoiceUrl') or resp.get('bankSlipUrl') or ''
+                            if invoice_url:
+                                return redirect(invoice_url)
+                            return redirect('/kids/aguardando-pagamento')
+                        else:
+                            erro = 'Não foi possível gerar o pagamento. Tente novamente.'
+                            kconn4 = get_kids_conn()
+                            kconn4.execute('DELETE FROM clients WHERE code=?', (code,))
+                            kconn4.commit(); kconn4.close()
+            except Exception:
+                log.exception('[Kids] Erro no checkout')
+                erro = 'Erro ao processar. Tente novamente ou entre em contato.'
+    return render_template('kids/checkout.html', plano=p, plano_key=plano, erro=erro)
+
+
+@app.route('/kids/aguardando-pagamento')
+def kids_aguardando():
+    email = session.get('kids_pending_email', '')
+    return render_template('kids/aguardando.html', email=email)
+
+
 # ══════════════════════════════════════════════════════════════════════════
 #  ALERTA SC — Login do assinante
 # ══════════════════════════════════════════════════════════════════════════
@@ -1519,6 +1607,48 @@ def webhook_asaas_global():
                             s['name'].split()[0], p.get('label', plano_key or s['plano']),
                             p.get('price', ''), 'https://4kitem.com.br/alerta/minha-conta'))
             conn.close()
+
+    elif ref.startswith('bau_'):
+        if customer_id:
+            conn = get_saas_db()
+            u = conn.execute('SELECT id, name, email, plan FROM bau_users WHERE asaas_customer_id=?',
+                             (customer_id,)).fetchone()
+            if u:
+                conn.execute('UPDATE bau_users SET active=?, plan_active=? WHERE id=?',
+                             (1 if ativar else 0, 1 if ativar else 0, u['id']))
+                conn.commit()
+                if ativar and u['email']:
+                    p = BAU_PLANS.get(plano_key or u['plan'] or 'mensal', BAU_PLANS['mensal'])
+                    _enviar_email(u['email'], '✅ Baú SC — Assinatura ativa!',
+                        _email_pagamento_confirmado('Baú SC', '🗝️', '#7c3aed',
+                            u['name'].split()[0], p['label'],
+                            p['price'], 'https://4kitem.com.br/bau/painel'))
+            conn.close()
+
+    elif ref.startswith('kids_'):
+        if customer_id:
+            try:
+                kconn = get_kids_conn()
+                c = kconn.execute('SELECT * FROM clients WHERE asaas_customer_id=?',
+                                  (customer_id,)).fetchone()
+                if c:
+                    kconn.execute('UPDATE clients SET active=?, plan_active=? WHERE id=?',
+                                  (1 if ativar else 0, 1 if ativar else 0, c['id']))
+                    kconn.commit()
+                    if ativar and c.get('email'):
+                        p = KIDS_PLANS.get(plano_key or c.get('plan', 'mensal'), KIDS_PLANS['mensal'])
+                        _enviar_email(c['email'], '✅ KidsCurator — Acesso liberado!',
+                            _email_pagamento_confirmado('KidsCurator', '📺', '#3b82f6',
+                                c['name'].split()[0], p['label'],
+                                p['price'],
+                                f'https://4kitem.com.br/painel/{c["code"]}') +
+                            f'<div style="font-family:sans-serif;max-width:480px;margin:auto;padding:0 32px 24px">'
+                            f'<p style="background:#1e3a5f;border-radius:10px;padding:16px;color:#93c5fd;font-size:15px">'
+                            f'🔑 Seu código de acesso: <strong style="font-size:20px;color:#60a5fa">{c["code"]}</strong><br>'
+                            f'<small>Use em: 4kitem.com.br/kids/entrar</small></p></div>')
+                kconn.close()
+            except Exception:
+                log.exception('[Webhook] Erro ao ativar KidsCurator')
 
     log.info(f'[WEBHOOK ASAAS] event={event} ref={ref} ativar={ativar}')
     return jsonify({'status': 'ok'}), 200
@@ -5052,6 +5182,7 @@ def bau_painel():
     q        = request.args.get('q', '').strip()
     cat      = request.args.get('cat', '')
     conn     = get_saas_db()
+    user     = dict(conn.execute('SELECT * FROM bau_users WHERE id=?', (user_id,)).fetchone())
     query    = 'SELECT * FROM bau_entries WHERE user_id=?'
     params   = [user_id]
     if q:
@@ -5067,10 +5198,28 @@ def bau_painel():
         c = BAU_CATEGORIES.get(e['category'], BAU_CATEGORIES['outros'])
         e['cat_label'] = c['label']
         e['cat_icon']  = c['icon']
+    # Trial status
+    trial_ends = user.get('trial_ends', '')
+    trial_active = False
+    trial_days_left = 0
+    if trial_ends:
+        try:
+            td = datetime.fromisoformat(trial_ends)
+            delta = (td - datetime.now()).days
+            trial_active = delta >= 0
+            trial_days_left = max(0, delta)
+        except Exception:
+            pass
+    plan_active = user.get('plan_active', 0)
     return render_template('bau/painel.html',
                            entries=entries, categories=BAU_CATEGORIES,
                            q=q, cat=cat,
-                           user_name=session.get('bau_user_name', ''))
+                           user=user,
+                           user_name=session.get('bau_user_name', ''),
+                           trial_active=trial_active,
+                           trial_days_left=trial_days_left,
+                           plan_active=plan_active,
+                           bau_plans=BAU_PLANS)
 
 
 @app.route('/bau/entrada/add', methods=['POST'])
@@ -5477,6 +5626,129 @@ def alerta_ajuda():
 @_bau_login_required
 def bau_ajuda():
     return render_template('bau/ajuda.html')
+
+
+# ── Baú SC — Checkout / assinatura ───────────────────────────────────────────
+
+@app.route('/bau/assinar/<plano>', methods=['GET', 'POST'])
+@_bau_login_required
+def bau_assinar(plano):
+    if plano not in BAU_PLANS:
+        return redirect('/bau/painel')
+    user_id = session['bau_user_id']
+    p = BAU_PLANS[plano]
+    erro = None
+    if request.method == 'POST':
+        billing_type = request.form.get('billing_type', 'PIX').upper()
+        if billing_type not in ('PIX', 'BOLETO', 'CREDIT_CARD'):
+            billing_type = 'PIX'
+        conn = get_saas_db()
+        u = conn.execute('SELECT * FROM bau_users WHERE id=?', (user_id,)).fetchone()
+        conn.close()
+        if not u:
+            return redirect('/bau/entrar')
+        customer_id = _asaas_criar_ou_buscar_cliente_saas(
+            u['name'], u['email'], u['phone'], u['cpf_cnpj'], u['id'], 'bau_users'
+        )
+        if not customer_id:
+            erro = ('Não conseguimos processar o pagamento agora. '
+                    'Entre em contato pelo WhatsApp (47) 99101-1351. 💬')
+        else:
+            conn2 = get_saas_db()
+            conn2.execute('UPDATE bau_users SET asaas_customer_id=?, plan=? WHERE id=?',
+                          (customer_id, plano, user_id))
+            conn2.commit(); conn2.close()
+            resp = _asaas_criar_assinatura_saas(
+                customer_id, 'bau', plano, p['preco'],
+                f"Baú SC {p['label']} — Cofre Digital",
+                billing_type
+            )
+            if resp.get('id'):
+                invoice_url = resp.get('invoiceUrl') or resp.get('bankSlipUrl') or ''
+                if invoice_url:
+                    return redirect(invoice_url)
+                return redirect('/bau/aguardando-pagamento')
+            else:
+                erro = 'Não foi possível gerar o pagamento. Tente novamente.'
+    return render_template('bau/checkout.html', plano=p, plano_key=plano, erro=erro)
+
+
+@app.route('/bau/aguardando-pagamento')
+@_bau_login_required
+def bau_aguardando():
+    return render_template('bau/aguardando.html')
+
+
+# ── Baú SC — Recuperação de senha ────────────────────────────────────────────
+
+@app.route('/bau/esqueci-senha', methods=['GET', 'POST'])
+def bau_esqueci_senha():
+    import secrets as _sec
+    mensagem = None
+    erro = None
+    if request.method == 'POST':
+        email = request.form.get('email', '').strip().lower()
+        if not email:
+            erro = 'Informe seu e-mail.'
+        else:
+            conn = get_saas_db()
+            u = conn.execute('SELECT * FROM bau_users WHERE email=?', (email,)).fetchone()
+            if u:
+                token = _sec.token_urlsafe(32)
+                expires = (datetime.now() + timedelta(hours=2)).isoformat()
+                conn.execute('UPDATE bau_users SET reset_token=?, reset_expires=? WHERE id=?',
+                             (token, expires, u['id']))
+                conn.commit()
+                link = f'https://4kitem.com.br/bau/redefinir-senha?token={token}'
+                _enviar_email(email, '🔐 Baú SC — Redefinir senha',
+                    f'''<div style="font-family:sans-serif;max-width:480px;margin:auto;padding:32px">
+                    <h2 style="color:#a78bfa">🗝️ Redefinir sua senha</h2>
+                    <p>Olá, {u["name"].split()[0]}! Clique no botão abaixo para criar uma nova senha.</p>
+                    <a href="{link}" style="display:inline-block;margin:24px 0;padding:14px 28px;
+                       background:linear-gradient(135deg,#7c3aed,#a78bfa);color:#fff;
+                       text-decoration:none;border-radius:10px;font-weight:700">
+                       Redefinir senha →</a>
+                    <p style="color:#888;font-size:12px">Link válido por 2 horas. Se não solicitou, ignore este e-mail.</p>
+                    </div>''')
+            conn.close()
+            # Mesmo se e-mail não existir, mostramos a mesma mensagem (anti-enumeração)
+            mensagem = 'Se este e-mail estiver cadastrado, você receberá as instruções em breve.'
+    return render_template('bau/esqueci_senha.html', mensagem=mensagem, erro=erro)
+
+
+@app.route('/bau/redefinir-senha', methods=['GET', 'POST'])
+def bau_redefinir_senha():
+    token = request.args.get('token', '') or request.form.get('token', '')
+    erro = None
+    sucesso = None
+    if not token:
+        return redirect('/bau/entrar')
+    conn = get_saas_db()
+    u = conn.execute('SELECT * FROM bau_users WHERE reset_token=?', (token,)).fetchone()
+    if not u:
+        conn.close()
+        return render_template('bau/redefinir_senha.html', token=token,
+                               erro='Link inválido ou expirado. Solicite um novo.', sucesso=None)
+    if u['reset_expires'] and datetime.now().isoformat() > u['reset_expires']:
+        conn.close()
+        return render_template('bau/redefinir_senha.html', token=token,
+                               erro='Link expirado. Solicite um novo.', sucesso=None)
+    if request.method == 'POST':
+        senha = request.form.get('password', '')
+        confirma = request.form.get('password_confirm', '')
+        if len(senha) < 6:
+            erro = 'A senha deve ter pelo menos 6 caracteres.'
+        elif senha != confirma:
+            erro = 'As senhas não coincidem.'
+        else:
+            conn.execute("UPDATE bau_users SET password_hash=?, reset_token='', reset_expires='' WHERE id=?",
+                         (generate_password_hash(senha), u['id']))
+            conn.commit()
+            conn.close()
+            return render_template('bau/redefinir_senha.html', token='', erro=None,
+                                   sucesso='Senha redefinida com sucesso! Faça login.')
+    conn.close()
+    return render_template('bau/redefinir_senha.html', token=token, erro=erro, sucesso=sucesso)
 
 
 # ── QR Code ───────────────────────────────────────────────────────────────────

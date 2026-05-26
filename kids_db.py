@@ -222,12 +222,24 @@ def init_db():
                 'Bem-vindo! · Informe à recepção sua chegada · Obrigado pela preferência')
     """)
 
-    # Migração: adiciona coluna embedding_ok se não existir
-    try:
-        conn.execute("ALTER TABLE videos ADD COLUMN embedding_ok INTEGER DEFAULT 1")
-        conn.commit()
-    except Exception:
-        pass  # coluna já existe
+    # Migrações de colunas — sempre safe (try/except)
+    _kids_migrations = [
+        "ALTER TABLE videos ADD COLUMN embedding_ok INTEGER DEFAULT 1",
+        "ALTER TABLE clients ADD COLUMN email TEXT DEFAULT ''",
+        "ALTER TABLE clients ADD COLUMN phone TEXT DEFAULT ''",
+        "ALTER TABLE clients ADD COLUMN cpf_cnpj TEXT DEFAULT ''",
+        "ALTER TABLE clients ADD COLUMN plan TEXT DEFAULT 'mensal'",
+        "ALTER TABLE clients ADD COLUMN plan_active INTEGER DEFAULT 0",
+        "ALTER TABLE clients ADD COLUMN trial_ends TEXT DEFAULT ''",
+        "ALTER TABLE clients ADD COLUMN asaas_customer_id TEXT DEFAULT ''",
+    ]
+    for sql in _kids_migrations:
+        try:
+            conn.execute(sql)
+            conn.commit()
+        except Exception:
+            try: conn.rollback()
+            except: pass
 
     # Corrige clientes que tinham modo removido (juridico/evento) → vibe
     conn.execute("""

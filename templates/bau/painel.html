@@ -93,6 +93,24 @@
 
 <div class="container">
 
+  {% if not plan_active %}
+  <div style="background:linear-gradient(135deg,rgba(124,58,237,.15),rgba(167,139,250,.08));border:1px solid rgba(167,139,250,.3);border-radius:14px;padding:16px 20px;margin-bottom:20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+    <div style="flex:1;min-width:200px">
+      {% if trial_active %}
+      <div style="font-size:14px;font-weight:700;color:#a78bfa">⏳ Período de teste — {{ trial_days_left }} dia{{ 's' if trial_days_left != 1 else '' }} restante{{ 's' if trial_days_left != 1 else '' }}</div>
+      <div style="font-size:12px;color:#8888aa;margin-top:2px">Assine para continuar usando o Baú após o trial.</div>
+      {% else %}
+      <div style="font-size:14px;font-weight:700;color:#fca5a5">⚠️ Seu período de teste encerrou</div>
+      <div style="font-size:12px;color:#8888aa;margin-top:2px">Assine para recuperar acesso completo ao seu cofre.</div>
+      {% endif %}
+    </div>
+    <div style="display:flex;gap:8px;flex-shrink:0">
+      <a href="/bau/assinar/mensal" style="padding:9px 18px;background:linear-gradient(135deg,#7c3aed,#a78bfa);color:#fff;border-radius:10px;font-size:13px;font-weight:700;text-decoration:none">R$ 19,90/mês →</a>
+      <a href="/bau/assinar/anual" style="padding:9px 18px;background:rgba(167,139,250,.12);color:#a78bfa;border:1px solid rgba(167,139,250,.3);border-radius:10px;font-size:13px;font-weight:700;text-decoration:none">Anual (25% off)</a>
+    </div>
+  </div>
+  {% endif %}
+
   <!-- Toolbar -->
   <form method="GET" action="/bau/painel">
     <div class="toolbar">

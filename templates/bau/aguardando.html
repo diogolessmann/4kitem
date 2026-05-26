@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aguardando pagamento · Baú SC</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #09090f; color: #f0f0ff; font-family: 'Inter', sans-serif;
+      min-height: 100vh; display: flex; align-items: center; justify-content: center;
+      background-image: radial-gradient(ellipse at 60% 20%, rgba(124,58,237,.12) 0%, transparent 60%);
+      padding: 24px 16px;
+    }
+    .box {
+      background: #13131f; border: 1px solid rgba(255,255,255,.08);
+      border-radius: 20px; padding: 48px 36px; width: 100%; max-width: 440px;
+      box-shadow: 0 24px 80px rgba(0,0,0,.5); text-align: center;
+    }
+    .logo { display: flex; align-items: center; gap: 10px; margin-bottom: 32px; justify-content: center; }
+    .logo-icon { width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(135deg, #7c3aed, #a855f7); display: flex; align-items: center; justify-content: center; font-size: 22px; }
+    .logo-text { font-size: 22px; font-weight: 800; }
+    .logo-text span { color: #a78bfa; }
+    .big-icon { font-size: 64px; margin-bottom: 20px; }
+    h1 { font-size: 22px; font-weight: 800; margin-bottom: 10px; }
+    p { font-size: 14px; color: #8888aa; line-height: 1.7; margin-bottom: 28px; }
+    .steps {
+      background: #1a1a2e; border: 1px solid rgba(255,255,255,.07);
+      border-radius: 14px; padding: 20px; text-align: left; margin-bottom: 28px;
+    }
+    .steps-title { font-size: 12px; font-weight: 700; color: #8888aa; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 14px; }
+    .step { font-size: 13px; color: #aaa; line-height: 2.2; }
+    .step strong { color: #f0f0ff; }
+    .btn {
+      display: block; padding: 14px 28px; border-radius: 12px;
+      background: linear-gradient(135deg, #7c3aed, #a78bfa);
+      color: #fff; text-decoration: none; font-size: 14px; font-weight: 700;
+      transition: opacity .15s; margin-bottom: 16px;
+    }
+    .btn:hover { opacity: .88; }
+    .suporte { font-size: 12px; color: #555; }
+    .suporte a { color: #a78bfa; text-decoration: none; font-weight: 700; }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <div class="logo">
+      <div class="logo-icon">🗝️</div>
+      <div class="logo-text">Baú<span> SC</span></div>
+    </div>
+
+    <div class="big-icon">⏳</div>
+    <h1>Aguardando pagamento</h1>
+    <p>Assim que seu pagamento for confirmado, sua assinatura será ativada automaticamente. Você receberá uma confirmação por e-mail.</p>
+
+    <div class="steps">
+      <div class="steps-title">ℹ️ Prazos de aprovação</div>
+      <div class="step">
+        ⚡ <strong>PIX:</strong> aprovação em minutos<br>
+        🏦 <strong>Boleto:</strong> até 3 dias úteis após pagamento<br>
+        💳 <strong>Cartão:</strong> aprovação em até 1 hora
+      </div>
+    </div>
+
+    <a href="/bau/painel" class="btn">🗝️ Ir para o cofre →</a>
+
+    <div class="suporte">
+      Dúvidas? Fale pelo WhatsApp
+      <a href="https://wa.me/5547991011351">47 99101-1351</a>
+    </div>
+  </div>
+</body>
+</html>
