@@ -13,7 +13,7 @@ import requests as _requests
 from datetime import datetime, timedelta
 from functools import wraps
 from flask import (Blueprint, render_template, redirect, request,
-                   session, jsonify, url_for)
+                   session, jsonify)
 from werkzeug.security import generate_password_hash, check_password_hash
 from pubshow_db import get_pubshow_db, init_pubshow_db
 
@@ -413,20 +413,6 @@ def _videos_do_canal(canal_key, limit=60):
 
     conn.close()
     return videos
-
-
-def _pedido_pendente(business_id):
-    """Busca o próximo pedido especial (parabéns/dedicatória etc.) pendente."""
-    conn = get_pubshow_db()
-    p = conn.execute(
-        '''SELECT * FROM pubshow_pedidos
-           WHERE business_id=? AND status="pendente"
-           AND tipo IN ("parabens","dedicatoria","brinde","chegada","casamento","vip")
-           ORDER BY created_at ASC LIMIT 1''',
-        (business_id,)
-    ).fetchone()
-    conn.close()
-    return dict(p) if p else None
 
 
 # ── ROTAS PÚBLICAS ─────────────────────────────────────────────────────────────
@@ -976,7 +962,6 @@ def painel_qrcode():
     # Gera QR como PNG base64
     try:
         import qrcode
-        from qrcode.image.styledpil import StyledPilImage
         qr = qrcode.QRCode(
             version=None,
             error_correction=qrcode.constants.ERROR_CORRECT_H,
@@ -1009,7 +994,7 @@ def painel_dispensar_pedido(pid):
         (pid, b['id'])
     )
     conn.commit(); conn.close()
-    return redirect('/pubshow/painel')
+    return redirect('/pubshow/painel?aba=fila')
 
 
 @pubshow_bp.route('/painel/pedido/<int:pid>/confirmar-pix', methods=['POST'])
@@ -1040,6 +1025,21 @@ def painel_recusar_pix(pid):
     )
     conn.commit(); conn.close()
     return redirect('/pubshow/painel?aba=fila')
+
+
+@pubshow_bp.route('/painel/toggle-pix', methods=['POST'])
+@pubshow_login_required
+def painel_toggle_pix():
+    """Ativa/desativa a exigência de PIX — atualiza APENAS requer_pix, sem tocar em outras configs."""
+    b = _get_business()
+    requer_pix = 1 if request.form.get('requer_pix') else 0
+    conn = get_pubshow_db()
+    conn.execute(
+        'UPDATE pubshow_businesses SET requer_pix=? WHERE id=?',
+        (requer_pix, b['id'])
+    )
+    conn.commit(); conn.close()
+    return redirect('/pubshow/painel?aba=config')
 
 
 @pubshow_bp.route('/painel/config', methods=['POST'])
@@ -1137,43 +1137,47 @@ def painel_relatorio():
     b = _get_business()
     conn = get_pubshow_db()
 
-    # Receita por período
+    # Receita por período (exclui pedidos aguardando PIX — ainda não pagos)
     receita_hoje = conn.execute(
         '''SELECT COALESCE(SUM(valor),0) FROM pubshow_pedidos
-           WHERE business_id=? AND date(created_at)=date("now","localtime")''', (b['id'],)
+           WHERE business_id=? AND status!="aguardando_pix"
+           AND date(created_at)=date("now","localtime")''', (b['id'],)
     ).fetchone()[0]
     receita_semana = conn.execute(
         '''SELECT COALESCE(SUM(valor),0) FROM pubshow_pedidos
-           WHERE business_id=? AND created_at>=datetime("now","-7 days","localtime")''', (b['id'],)
+           WHERE business_id=? AND status!="aguardando_pix"
+           AND created_at>=datetime("now","-7 days","localtime")''', (b['id'],)
     ).fetchone()[0]
     receita_mes = conn.execute(
         '''SELECT COALESCE(SUM(valor),0) FROM pubshow_pedidos
-           WHERE business_id=? AND strftime("%Y-%m",created_at)=strftime("%Y-%m","now","localtime")''', (b['id'],)
+           WHERE business_id=? AND status!="aguardando_pix"
+           AND strftime("%Y-%m",created_at)=strftime("%Y-%m","now","localtime")''', (b['id'],)
     ).fetchone()[0]
     receita_total = conn.execute(
-        'SELECT COALESCE(SUM(valor),0) FROM pubshow_pedidos WHERE business_id=?', (b['id'],)
+        '''SELECT COALESCE(SUM(valor),0) FROM pubshow_pedidos
+           WHERE business_id=? AND status!="aguardando_pix"''', (b['id'],)
     ).fetchone()[0]
 
-    # Top tipos pedidos (último mês)
+    # Top tipos pedidos (último mês — apenas pagos)
     top_tipos = conn.execute(
         '''SELECT tipo, COUNT(*) n, COALESCE(SUM(valor),0) receita
-           FROM pubshow_pedidos WHERE business_id=?
+           FROM pubshow_pedidos WHERE business_id=? AND status!="aguardando_pix"
            AND created_at>=datetime("now","-30 days","localtime")
            GROUP BY tipo ORDER BY n DESC''', (b['id'],)
     ).fetchall()
 
-    # Músicas mais pedidas (último mês)
+    # Músicas mais pedidas (último mês — apenas pagas)
     top_musicas = conn.execute(
         '''SELECT titulo_pedido, COUNT(*) n FROM pubshow_pedidos
-           WHERE business_id=? AND titulo_pedido IS NOT NULL
+           WHERE business_id=? AND titulo_pedido IS NOT NULL AND status!="aguardando_pix"
            AND created_at>=datetime("now","-30 days","localtime")
            GROUP BY titulo_pedido ORDER BY n DESC LIMIT 10''', (b['id'],)
     ).fetchall()
 
-    # Pedidos por dia (últimos 14 dias)
+    # Pedidos por dia (últimos 14 dias — apenas pagos)
     por_dia = conn.execute(
         '''SELECT date(created_at,"localtime") dia, COUNT(*) n, COALESCE(SUM(valor),0) r
-           FROM pubshow_pedidos WHERE business_id=?
+           FROM pubshow_pedidos WHERE business_id=? AND status!="aguardando_pix"
            AND created_at>=datetime("now","-14 days","localtime")
            GROUP BY dia ORDER BY dia''', (b['id'],)
     ).fetchall()
@@ -1232,7 +1236,7 @@ def admin_dashboard():
     bars = conn.execute(
         '''SELECT b.*,
            (SELECT COUNT(*) FROM pubshow_pedidos p WHERE p.business_id=b.id) total_pedidos,
-           (SELECT COALESCE(SUM(p.valor),0) FROM pubshow_pedidos p WHERE p.business_id=b.id) total_receita,
+           (SELECT COALESCE(SUM(p.valor),0) FROM pubshow_pedidos p WHERE p.business_id=b.id AND p.status!="aguardando_pix") total_receita,
            (SELECT COUNT(*) FROM pubshow_pedidos p WHERE p.business_id=b.id AND p.status="pendente") fila_atual
            FROM pubshow_businesses b ORDER BY b.created_at DESC'''
     ).fetchall()
@@ -1243,7 +1247,7 @@ def admin_dashboard():
     ).fetchone()[0]
     receita_hoje = conn.execute(
         '''SELECT COALESCE(SUM(valor),0) FROM pubshow_pedidos
-           WHERE date(created_at)=date("now","localtime")'''
+           WHERE date(created_at)=date("now","localtime") AND status!="aguardando_pix"'''
     ).fetchone()[0]
     conn.close()
     return render_template('pubshow/admin.html',

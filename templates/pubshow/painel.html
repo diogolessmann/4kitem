@@ -191,15 +191,7 @@
 
       {% if b.pix_key %}
       <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
-        <form method="POST" action="/pubshow/painel/config" style="margin:0">
-          {# campos ocultos para não perder outros configs — form dedicado ao toggle #}
-          <input type="hidden" name="hora_ini"          value="{{ b.jukebox_hora_ini or '00:00' }}">
-          <input type="hidden" name="hora_fim"          value="{{ b.jukebox_hora_fim or '23:59' }}">
-          <input type="hidden" name="mensagem_jukebox"  value="{{ b.mensagem_jukebox or '' }}">
-          <input type="hidden" name="aviso_jukebox"     value="{{ b.aviso_jukebox or '' }}">
-          <input type="hidden" name="limite_pedidos_hora" value="{{ b.limite_pedidos_hora or 10 }}">
-          {% if b.jukebox_ativo %}<input type="hidden" name="jukebox_ativo" value="1">{% endif %}
-          {% for key in bloqueados_parsed %}<input type="hidden" name="tipos_ativos_ignorar" value="{{ key }}">{% endfor %}
+        <form method="POST" action="/pubshow/painel/toggle-pix" style="margin:0">
           <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
             <div style="position:relative;width:44px;height:24px;flex-shrink:0">
               <input type="checkbox" name="requer_pix" id="toggle-pix"
