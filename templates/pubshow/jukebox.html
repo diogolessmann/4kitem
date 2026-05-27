@@ -161,10 +161,113 @@
   .btn-confirmar:active{opacity:.85}
   .btn-voltar{background:none;border:none;color:var(--text2);font-size:13px;cursor:pointer;padding:10px 0;display:block;margin:0 auto;font-family:inherit}
   .aviso-pix{font-size:11px;color:var(--text2);text-align:center;margin-top:8px;line-height:1.5}
+
+  /* ── PIX PENDENTE ───────────────────────────────────────────────── */
+  .pix-screen{padding:20px;max-width:420px;margin:0 auto}
+  .pix-screen-title{font-size:18px;font-weight:900;text-align:center;margin-bottom:4px}
+  .pix-screen-sub{font-size:13px;color:var(--text2);text-align:center;margin-bottom:20px}
+  .pix-qr-wrap{background:#fff;border-radius:16px;padding:16px;display:flex;justify-content:center;margin-bottom:20px;box-shadow:0 0 40px rgba(34,197,94,.15)}
+  .pix-qr-wrap img{width:220px;height:220px;display:block}
+  .pix-valor-big{font-size:40px;font-weight:900;color:#4ade80;text-align:center;margin-bottom:4px}
+  .pix-recebedor{font-size:13px;color:var(--text2);text-align:center;margin-bottom:16px}
+  .pix-copiacola-box{background:var(--surface2);border:1px solid rgba(34,197,94,.25);border-radius:12px;padding:14px;margin-bottom:14px}
+  .pix-copiacola-label{font-size:10px;font-weight:800;color:#22c55e;text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px}
+  .pix-copiacola-val{font-size:10px;color:var(--text2);word-break:break-all;line-height:1.6;font-family:monospace}
+  .btn-copiar-pix{width:100%;background:rgba(34,197,94,.15);border:1px solid rgba(34,197,94,.3);color:#4ade80;border-radius:10px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:20px}
+  .btn-copiar-pix:active{opacity:.7}
+  .pix-status-box{text-align:center;padding:16px;border-radius:14px;background:var(--surface2);border:1px solid var(--border)}
+  .pix-status-icon{font-size:32px;margin-bottom:8px}
+  .pix-status-text{font-size:14px;font-weight:700;color:#fbbf24}
+  .pix-status-sub{font-size:12px;color:var(--text2);margin-top:6px}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .spinner{display:inline-block;width:18px;height:18px;border:2px solid rgba(251,191,36,.3);border-top-color:#fbbf24;border-radius:50%;animation:spin .8s linear infinite;vertical-align:middle;margin-right:6px}
 </style>
 </head>
 <body>
 
+{% if pix_pendente %}
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!-- TELA PIX PENDENTE                                                       -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<div class="header">
+  <div class="header-top">
+    <span class="canal-badge">{{ canal.emoji }} {{ canal.nome }}</span>
+    <span class="bar-nome">{{ b.nome }}</span>
+  </div>
+  <div class="tocando-agora"><span class="dot-live"></span>Pagamento via PIX</div>
+</div>
+
+<div class="pix-screen">
+  <div class="pix-screen-title">{{ pix_pendente.tipo_emoji }} {{ pix_pendente.tipo_nome }}</div>
+  <div class="pix-screen-sub">Escaneie o QR ou copie o código abaixo</div>
+
+  {% if pix_pendente.qr_b64 %}
+  <div class="pix-qr-wrap">
+    <img src="data:image/png;base64,{{ pix_pendente.qr_b64 }}" alt="QR PIX">
+  </div>
+  {% endif %}
+
+  <div class="pix-valor-big">R$ {{ '%.2f'|format(pix_pendente.valor)|replace('.',',') }}</div>
+  <div class="pix-recebedor">Recebedor: <strong>{{ pix_pendente.recebedor }}</strong></div>
+
+  <div class="pix-copiacola-box">
+    <div class="pix-copiacola-label">📋 Pix Copia e Cola</div>
+    <div class="pix-copiacola-val" id="copiacola-val">{{ pix_pendente.payload }}</div>
+  </div>
+
+  <button class="btn-copiar-pix" onclick="copiarPayload()">📋 Copiar código PIX</button>
+
+  <div class="pix-status-box" id="pix-status-box">
+    <div class="pix-status-icon">⏳</div>
+    <div class="pix-status-text"><span class="spinner"></span><span id="pix-status-text">Aguardando confirmação do pagamento...</span></div>
+    <div class="pix-status-sub" id="pix-status-sub">O estabelecimento confirma após receber o PIX</div>
+  </div>
+</div>
+
+<script>
+function copiarPayload() {
+  const txt = document.getElementById('copiacola-val').textContent.trim();
+  navigator.clipboard.writeText(txt).then(() => {
+    const btn = document.querySelector('.btn-copiar-pix');
+    btn.textContent = '✅ Código copiado!';
+    setTimeout(() => btn.textContent = '📋 Copiar código PIX', 3000);
+  });
+}
+
+(function pollPix() {
+  fetch('/pubshow/api/pedido-status/{{ pix_pendente.pedido_id }}')
+    .then(r => r.json())
+    .then(d => {
+      const box   = document.getElementById('pix-status-box');
+      const icon  = box.querySelector('.pix-status-icon');
+      const text  = document.getElementById('pix-status-text');
+      const sub   = document.getElementById('pix-status-sub');
+      if (d.status === 'pendente' || d.status === 'exibido') {
+        icon.textContent  = '✅';
+        text.innerHTML    = 'Pagamento confirmado! Pedido na fila 🎉';
+        text.style.color  = '#4ade80';
+        box.style.borderColor = 'rgba(34,197,94,.4)';
+        sub.textContent   = 'Aguarde — seu pedido aparece na tela em breve!';
+        box.querySelector('.spinner')?.remove();
+      } else if (d.status === 'dispensado') {
+        icon.textContent  = '❌';
+        text.innerHTML    = 'Pedido recusado pelo estabelecimento.';
+        text.style.color  = '#f87171';
+        sub.textContent   = 'Tente novamente ou fale com o responsável.';
+        box.querySelector('.spinner')?.remove();
+      } else {
+        setTimeout(pollPix, 4000);
+      }
+    })
+    .catch(() => setTimeout(pollPix, 6000));
+})();
+</script>
+
+{% else %}
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!-- TELA NORMAL                                                             -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
 <div class="header">
   <div class="header-top">
     <span class="canal-badge">{{ canal.emoji }} {{ canal.nome }}</span>
@@ -503,5 +606,7 @@ function copiarPix() {
   });
 }
 </script>
+
+{% endif %}{# fim {% else %} pix_pendente #}
 </body>
 </html>

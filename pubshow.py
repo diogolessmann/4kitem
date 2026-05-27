@@ -94,6 +94,91 @@ TIPOS_PEDIDO = {
 def _gerar_code(n=8):
     return ''.join(random.choices(string.ascii_uppercase + string.digits, k=n))
 
+
+# ── PIX Copia-e-Cola (EMV padrão Banco Central) ────────────────────────────────
+
+def _crc16(data: str) -> int:
+    """CRC16-CCITT — exigido pelo padrão PIX EMV."""
+    crc = 0xFFFF
+    for byte in data.encode('utf-8'):
+        crc ^= byte << 8
+        for _ in range(8):
+            crc = ((crc << 1) ^ 0x1021) if (crc & 0x8000) else (crc << 1)
+            crc &= 0xFFFF
+    return crc
+
+
+def _formatar_chave_pix(chave: str, tipo: str) -> str:
+    """Normaliza a chave PIX conforme tipo para o campo EMV."""
+    chave = chave.strip()
+    if tipo == 'telefone':
+        digits = re.sub(r'\D', '', chave)
+        if len(digits) == 11:          # DDD + 9 dígitos
+            return f'+55{digits}'
+        if len(digits) == 13 and digits.startswith('55'):
+            return f'+{digits}'
+        return f'+55{digits}'
+    if tipo in ('cpf', 'cnpj'):
+        return re.sub(r'\D', '', chave)
+    return chave.lower()               # email / evp
+
+
+def _pix_emv(chave_raw: str, tipo: str, nome_recebedor: str, valor: float, txid: str) -> str:
+    """Gera payload EMV Pix Copia-e-Cola — padrão BCB."""
+    import unicodedata
+
+    def tlv(tag, value):
+        return f'{tag}{len(value):02d}{value}'
+
+    chave = _formatar_chave_pix(chave_raw, tipo)
+
+    # Tag 26 — Merchant Account Info
+    mai = tlv('26', tlv('0014', 'br.gov.bcb.pix') + tlv('01', chave))
+
+    # Tag 62 — Additional Data (referência da transação, max 25 chars alfanumérico)
+    ref = re.sub(r'[^A-Za-z0-9]', '', txid)[:25] or 'PUBSHOW'
+    adf = tlv('62', tlv('05', ref))
+
+    # Nome: sem acento, uppercase, max 25
+    nome_ascii = unicodedata.normalize('NFD', nome_recebedor or 'PUBSHOW JUKEBOX')
+    nome_ascii = ''.join(c for c in nome_ascii if unicodedata.category(c) != 'Mn')
+    nome_ascii = re.sub(r'[^A-Za-z0-9 ]', '', nome_ascii).upper()[:25].strip()
+
+    payload = (
+        '000201'                          # Payload Format Indicator
+        '010212'                          # Point of Initiation = 12 (QR único)
+        + mai                             # Merchant Account Info
+        + '52040000'                      # Merchant Category Code
+        + '5303986'                       # Currency BRL
+        + tlv('54', f'{valor:.2f}')       # Transaction Amount
+        + '5802BR'                        # Country Code
+        + tlv('59', nome_ascii)           # Merchant Name
+        + tlv('60', 'SAO PAULO')          # Merchant City
+        + adf                             # Additional Data
+        + '6304'                          # CRC placeholder
+    )
+    return payload + f'{_crc16(payload):04X}'
+
+
+def _pix_qr_b64(payload: str) -> str:
+    """Gera QR code do payload PIX como PNG base64."""
+    try:
+        import qrcode
+        qr = qrcode.QRCode(
+            version=None,
+            error_correction=qrcode.constants.ERROR_CORRECT_M,
+            box_size=8, border=2
+        )
+        qr.add_data(payload)
+        qr.make(fit=True)
+        img = qr.make_image(fill_color='black', back_color='white')
+        buf = io.BytesIO()
+        img.save(buf, format='PNG')
+        return base64.b64encode(buf.getvalue()).decode()
+    except Exception as e:
+        log.error('[PUBSHOW] Erro QR PIX: %s', e)
+        return ''
+
 def _gerar_jukebox_token():
     """Token rotativo para o QR do Jukebox — independente do code da TV."""
     return ''.join(random.choices(string.ascii_uppercase + string.digits, k=12))
@@ -420,9 +505,10 @@ def jukebox(token):
     if b['suspenso']:
         return render_template('pubshow/qr_invalido.html'), 403
 
-    sucesso = None
-    erro    = ''
-    ip_cliente = request.headers.get('X-Forwarded-For', request.remote_addr or '').split(',')[0].strip()
+    sucesso      = None
+    erro         = ''
+    pix_pendente = None
+    ip_cliente   = request.headers.get('X-Forwarded-For', request.remote_addr or '').split(',')[0].strip()
 
     # Aviso temporário
     aviso = None
@@ -458,17 +544,53 @@ def jukebox(token):
                 erro = 'Selecione uma música antes de confirmar.'
             else:
                 preco = precos_bar[tipo]['preco']
-                conn2 = get_pubshow_db()
-                conn2.execute(
-                    '''INSERT INTO pubshow_pedidos
-                       (business_id, tipo, nome_cliente, mensagem, categoria, status, valor,
-                        youtube_id, titulo_pedido, thumb_url, ip_cliente)
-                       VALUES (?,?,?,?,?,?,?,?,?,?,?)''',
-                    (b['id'], tipo, nome_cliente, mensagem, categoria, 'pendente', preco,
-                     youtube_id or None, titulo_pedido or None, thumb_url or None, ip_cliente)
-                )
-                conn2.commit(); conn2.close()
-                sucesso = tipo
+                usar_pix = bool(b['requer_pix']) and bool(b['pix_key'])
+
+                if usar_pix:
+                    # ── PIX: cria pedido aguardando confirmação ───────────────
+                    txid = f'P{b["id"]}T{int(datetime.now().timestamp())}'
+                    payload = _pix_emv(
+                        b['pix_key'], b['pix_tipo'] or 'telefone',
+                        b['pix_nome_recebedor'] or b['nome'],
+                        preco, txid
+                    )
+                    qr_b64 = _pix_qr_b64(payload)
+                    conn2 = get_pubshow_db()
+                    cur = conn2.execute(
+                        '''INSERT INTO pubshow_pedidos
+                           (business_id, tipo, nome_cliente, mensagem, categoria, status, valor,
+                            youtube_id, titulo_pedido, thumb_url, ip_cliente, pix_txid, pix_payload)
+                           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)''',
+                        (b['id'], tipo, nome_cliente, mensagem, categoria,
+                         'aguardando_pix', preco,
+                         youtube_id or None, titulo_pedido or None, thumb_url or None,
+                         ip_cliente, txid, payload)
+                    )
+                    pedido_id = cur.lastrowid
+                    conn2.commit(); conn2.close()
+                    pix_pendente = {
+                        'pedido_id': pedido_id,
+                        'payload':   payload,
+                        'qr_b64':    qr_b64,
+                        'valor':     preco,
+                        'recebedor': b['pix_nome_recebedor'] or b['nome'],
+                        'tipo_nome': precos_bar[tipo]['nome'],
+                        'tipo_emoji':precos_bar[tipo]['emoji'],
+                    }
+                    sucesso = None
+                else:
+                    # ── Fluxo direto (sem PIX ou PIX não exigido) ─────────────
+                    conn2 = get_pubshow_db()
+                    conn2.execute(
+                        '''INSERT INTO pubshow_pedidos
+                           (business_id, tipo, nome_cliente, mensagem, categoria, status, valor,
+                            youtube_id, titulo_pedido, thumb_url, ip_cliente)
+                           VALUES (?,?,?,?,?,?,?,?,?,?,?)''',
+                        (b['id'], tipo, nome_cliente, mensagem, categoria, 'pendente', preco,
+                         youtube_id or None, titulo_pedido or None, thumb_url or None, ip_cliente)
+                    )
+                    conn2.commit(); conn2.close()
+                    sucesso = tipo
 
     # Fila atual (últimos 5 pedidos pendentes)
     conn3 = get_pubshow_db()
@@ -488,6 +610,7 @@ def jukebox(token):
                            tipos_disponiveis=tipos_bar,
                            fila=[dict(f) for f in fila],
                            sucesso=sucesso, erro=erro,
+                           pix_pendente=pix_pendente,
                            total_videos=total_videos,
                            aberto=aberto, motivo_fechado=motivo_fechado,
                            aviso=aviso)
@@ -504,6 +627,7 @@ def api_status(code):
         return jsonify({'error': 'not_found'}), 404
 
     # Pedido especial — aparece como overlay na TV (parabéns, dedicatória etc.)
+    # Só conta pedidos confirmados (pendente), nunca aguardando_pix
     pedido_especial = conn.execute(
         '''SELECT * FROM pubshow_pedidos
            WHERE business_id=? AND status="pendente"
@@ -525,21 +649,41 @@ def api_status(code):
         (b['id'],)
     ).fetchone()
 
-    # Contagem total na fila (para mostrar no indicador)
+    # Contagem da fila: só pedidos confirmados (exclui aguardando_pix)
     total_fila = conn.execute(
         'SELECT COUNT(*) FROM pubshow_pedidos WHERE business_id=? AND status="pendente"',
         (b['id'],)
     ).fetchone()[0]
 
+    # Pedidos aguardando PIX: para mostrar badge no painel do bar
+    aguardando_pix = conn.execute(
+        'SELECT COUNT(*) FROM pubshow_pedidos WHERE business_id=? AND status="aguardando_pix"',
+        (b['id'],)
+    ).fetchone()[0]
+
     result = {
-        'canal_atual': b['canal_atual'],
-        'jukebox_ativo': bool(b['jukebox_ativo']),
-        'pedido': dict(pedido_especial) if pedido_especial else None,      # overlay imediato
-        'pedido_musica': dict(pedido_musica) if pedido_musica else None,   # espera fim do vídeo
-        'total_fila': total_fila,
+        'canal_atual':    b['canal_atual'],
+        'jukebox_ativo':  bool(b['jukebox_ativo']),
+        'pedido':         dict(pedido_especial) if pedido_especial else None,
+        'pedido_musica':  dict(pedido_musica)   if pedido_musica   else None,
+        'total_fila':     total_fila,
+        'aguardando_pix': aguardando_pix,
     }
     conn.close()
     return jsonify(result)
+
+
+@pubshow_bp.route('/api/pedido-status/<int:pedido_id>')
+def api_pedido_status(pedido_id):
+    """Polling do cliente: retorna status atual do pedido."""
+    conn = get_pubshow_db()
+    row = conn.execute(
+        'SELECT status FROM pubshow_pedidos WHERE id=?', (pedido_id,)
+    ).fetchone()
+    conn.close()
+    if not row:
+        return jsonify({'error': 'not_found'}), 404
+    return jsonify({'status': row['status']})
 
 
 @pubshow_bp.route('/api/pedido-exibido/<int:pedido_id>', methods=['POST'])
@@ -684,6 +828,11 @@ def painel():
            ORDER BY created_at ASC LIMIT 20''',
         (b['id'],)
     ).fetchall()
+    aguardando_pix = conn.execute(
+        '''SELECT * FROM pubshow_pedidos WHERE business_id=? AND status="aguardando_pix"
+           ORDER BY created_at DESC LIMIT 20''',
+        (b['id'],)
+    ).fetchall()
     conn.close()
     import json as _json
     bd = dict(b)
@@ -696,6 +845,7 @@ def painel():
                            pedidos_hoje=[dict(p) for p in pedidos_hoje],
                            total_hoje=total_hoje,
                            fila=[dict(f) for f in fila],
+                           aguardando_pix=[dict(p) for p in aguardando_pix],
                            tipos=TIPOS_PEDIDO,
                            planos=PLANOS,
                            bloqueados_parsed=bloqueados_parsed,
@@ -783,6 +933,36 @@ def painel_dispensar_pedido(pid):
     return redirect('/pubshow/painel')
 
 
+@pubshow_bp.route('/painel/pedido/<int:pid>/confirmar-pix', methods=['POST'])
+@pubshow_login_required
+def painel_confirmar_pix(pid):
+    """Bar confirma que o PIX foi recebido → pedido entra na fila."""
+    b = _get_business()
+    conn = get_pubshow_db()
+    conn.execute(
+        """UPDATE pubshow_pedidos SET status='pendente'
+           WHERE id=? AND business_id=? AND status='aguardando_pix'""",
+        (pid, b['id'])
+    )
+    conn.commit(); conn.close()
+    return redirect('/pubshow/painel?aba=fila')
+
+
+@pubshow_bp.route('/painel/pedido/<int:pid>/recusar-pix', methods=['POST'])
+@pubshow_login_required
+def painel_recusar_pix(pid):
+    """Bar recusa o pedido PIX (não recebeu pagamento)."""
+    b = _get_business()
+    conn = get_pubshow_db()
+    conn.execute(
+        """UPDATE pubshow_pedidos SET status='dispensado'
+           WHERE id=? AND business_id=? AND status='aguardando_pix'""",
+        (pid, b['id'])
+    )
+    conn.commit(); conn.close()
+    return redirect('/pubshow/painel?aba=fila')
+
+
 @pubshow_bp.route('/painel/config', methods=['POST'])
 @pubshow_login_required
 def painel_config():
@@ -832,17 +1012,20 @@ def painel_config():
             except Exception:
                 pass
 
+    requer_pix = 1 if request.form.get('requer_pix') else 0
+
     conn = get_pubshow_db()
     conn.execute(
         '''UPDATE pubshow_businesses SET
            jukebox_ativo=?, jukebox_hora_ini=?, jukebox_hora_fim=?,
            mensagem_jukebox=?, aviso_jukebox=?, aviso_expira=?,
-           limite_pedidos_hora=?, tipos_bloqueados=?, precos_custom=?
+           limite_pedidos_hora=?, tipos_bloqueados=?, precos_custom=?,
+           requer_pix=?
            WHERE id=?''',
         (jukebox_ativo, hora_ini, hora_fim,
          mensagem or None, aviso or None, aviso_expira,
          limite, json.dumps(bloqueados), json.dumps(precos),
-         b['id'])
+         requer_pix, b['id'])
     )
     conn.commit(); conn.close()
     return redirect('/pubshow/painel?aba=config')

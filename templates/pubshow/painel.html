@@ -188,8 +188,74 @@
         </div>
         <button type="submit" class="btn-primary">💾 Salvar PIX</button>
       </form>
+
+      {% if b.pix_key %}
+      <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
+        <form method="POST" action="/pubshow/painel/config" style="margin:0">
+          {# campos ocultos para não perder outros configs — form dedicado ao toggle #}
+          <input type="hidden" name="hora_ini"          value="{{ b.jukebox_hora_ini or '00:00' }}">
+          <input type="hidden" name="hora_fim"          value="{{ b.jukebox_hora_fim or '23:59' }}">
+          <input type="hidden" name="mensagem_jukebox"  value="{{ b.mensagem_jukebox or '' }}">
+          <input type="hidden" name="aviso_jukebox"     value="{{ b.aviso_jukebox or '' }}">
+          <input type="hidden" name="limite_pedidos_hora" value="{{ b.limite_pedidos_hora or 10 }}">
+          {% if b.jukebox_ativo %}<input type="hidden" name="jukebox_ativo" value="1">{% endif %}
+          {% for key in bloqueados_parsed %}<input type="hidden" name="tipos_ativos_ignorar" value="{{ key }}">{% endfor %}
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
+            <div style="position:relative;width:44px;height:24px;flex-shrink:0">
+              <input type="checkbox" name="requer_pix" id="toggle-pix"
+                     {% if b.requer_pix %}checked{% endif %}
+                     onchange="this.form.submit()"
+                     style="opacity:0;width:0;height:0;position:absolute">
+              <label for="toggle-pix" style="
+                position:absolute;inset:0;border-radius:12px;cursor:pointer;transition:.3s;
+                background:{% if b.requer_pix %}#22c55e{% else %}rgba(255,255,255,.12){% endif %};
+                display:block">
+                <span style="
+                  position:absolute;top:3px;left:{% if b.requer_pix %}22px{% else %}3px{% endif %};
+                  width:18px;height:18px;border-radius:50%;background:#fff;transition:.3s;display:block">
+                </span>
+              </label>
+            </div>
+            <div>
+              <div style="font-size:13px;font-weight:700">Exigir PIX antes da fila</div>
+              <div style="font-size:11px;color:var(--text2)">Pedido só entra na fila após você confirmar o pagamento</div>
+            </div>
+          </label>
+        </form>
+      </div>
+      {% endif %}
     </div>
   </div>
+
+  <!-- Aguardando confirmação PIX -->
+  {% if aguardando_pix %}
+  <div class="card" style="margin-bottom:24px;border-color:rgba(251,191,36,.2);background:linear-gradient(135deg,#13131f,#1a1500)">
+    <div class="card-title" style="color:#fbbf24">⏳ Aguardando confirmação PIX ({{ aguardando_pix|length }})</div>
+    <p style="font-size:12px;color:var(--text2);margin-bottom:14px">Confira no seu celular se o PIX foi recebido antes de confirmar.</p>
+    {% for p in aguardando_pix %}
+    {% set t = tipos.get(p.tipo, {}) %}
+    <div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid rgba(255,255,255,.05)">
+      <span style="font-size:22px">{{ t.get('emoji','🎵') }}</span>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:14px;font-weight:700">{{ p.nome_cliente }}</div>
+        <div style="font-size:11px;color:var(--text2)">
+          {{ t.get('nome', p.tipo) }}{% if p.titulo_pedido %} · <em>{{ p.titulo_pedido[:40] }}</em>{% endif %}
+          <span style="margin-left:6px;color:var(--text2)">{{ (p.created_at or '')[:16] }}</span>
+        </div>
+      </div>
+      <span style="font-size:16px;font-weight:900;color:#4ade80;white-space:nowrap">R$ {{ '%.2f'|format(p.valor or 0)|replace('.',',') }}</span>
+      <div style="display:flex;gap:6px">
+        <form method="POST" action="/pubshow/painel/pedido/{{ p.id }}/confirmar-pix" style="margin:0">
+          <button type="submit" style="background:rgba(34,197,94,.15);border:1px solid rgba(34,197,94,.3);color:#4ade80;padding:6px 12px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">✅ Confirmar</button>
+        </form>
+        <form method="POST" action="/pubshow/painel/pedido/{{ p.id }}/recusar-pix" style="margin:0">
+          <button type="submit" style="background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);color:#f87171;padding:6px 10px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">✗</button>
+        </form>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
 
   <!-- Histórico hoje -->
   {% if pedidos_hoje %}

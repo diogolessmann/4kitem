@@ -127,6 +127,11 @@ def init_pubshow_db():
         'ALTER TABLE pubshow_businesses ADD COLUMN precos_custom TEXT DEFAULT "{}"',
         # Pedidos guardam IP para limite anti-spam
         'ALTER TABLE pubshow_pedidos ADD COLUMN ip_cliente TEXT',
+        # PIX verification — pedido fica aguardando_pix até bar confirmar
+        'ALTER TABLE pubshow_pedidos ADD COLUMN pix_txid TEXT',
+        'ALTER TABLE pubshow_pedidos ADD COLUMN pix_payload TEXT',
+        # Bar pode exigir PIX antes de entrar na fila
+        'ALTER TABLE pubshow_businesses ADD COLUMN requer_pix INTEGER DEFAULT 0',
     ]:
         try:
             conn.execute(m); conn.commit()
