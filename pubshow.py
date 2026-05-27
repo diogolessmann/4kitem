@@ -389,7 +389,7 @@ def _asaas_criar_cobranca_pix_jukebox(b, pedido_id: int, valor: float, descricao
     }
 
 
-def _videos_do_canal(canal_key, limit=60):
+def _videos_do_canal(canal_key, limit=500):
     import random
     cat = CANAIS.get(canal_key, {}).get('cat', canal_key)
     conn = get_pubshow_db()
@@ -1388,7 +1388,7 @@ def admin_import_playlist():
     page_token = None
     paginas    = 0
 
-    while paginas < 20:   # máx 1000 vídeos (20 × 50)
+    while paginas < 100:  # máx 5000 vídeos (100 × 50)
         params = {
             'part':       'snippet',
             'playlistId': playlist_id,
