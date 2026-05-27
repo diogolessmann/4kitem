@@ -15,104 +15,144 @@
   /* Now Playing bar */
   #now-playing{
     position:fixed;bottom:0;left:0;right:0;z-index:10;
-    background:linear-gradient(transparent,rgba(0,0,0,.85));
-    padding:40px 32px 20px;
+    background:linear-gradient(transparent,rgba(0,0,0,.9));
+    padding:60px 32px 24px;
     display:flex;align-items:flex-end;justify-content:space-between;
-    transition:opacity .5s;
+    transition:opacity .6s;
   }
-  #now-playing.hidden{opacity:0}
+  #now-playing.hidden{opacity:0;pointer-events:none}
   .np-left{display:flex;align-items:center;gap:16px}
   .np-canal-badge{
     background:var(--canal-cor,#ef4444);
     padding:6px 14px;border-radius:8px;
-    font-size:13px;font-weight:800;letter-spacing:.5px;
+    font-size:13px;font-weight:800;letter-spacing:.5px;white-space:nowrap;
   }
-  .np-titulo{font-size:18px;font-weight:700;text-shadow:0 2px 8px rgba(0,0,0,.8)}
-  .np-artista{font-size:13px;color:rgba(255,255,255,.7);margin-top:2px}
-  .np-right{display:flex;align-items:center;gap:12px}
-  .np-qr-hint{font-size:12px;color:rgba(255,255,255,.6);text-align:center}
-  .np-qr-hint strong{display:block;font-size:18px}
+  .np-info{}
+  .np-titulo{font-size:20px;font-weight:800;text-shadow:0 2px 12px rgba(0,0,0,.9)}
+  .np-artista{font-size:14px;color:rgba(255,255,255,.65);margin-top:3px}
+  .np-right{display:flex;align-items:center;gap:20px;flex-shrink:0}
+  .np-qr{font-size:12px;color:rgba(255,255,255,.55);text-align:right;line-height:1.6}
+  .np-qr strong{display:block;font-size:22px;margin-bottom:2px}
+
+  /* FILA — próxima pedido */
+  #fila-badge{
+    position:fixed;top:20px;left:20px;z-index:50;
+    background:rgba(0,0,0,.8);border:1px solid rgba(255,255,255,.2);
+    border-radius:12px;padding:10px 18px;
+    display:none;align-items:center;gap:10px;
+    font-size:14px;font-weight:700;
+    backdrop-filter:blur(8px);
+    animation:slideIn .4s ease;
+  }
+  @keyframes slideIn{from{transform:translateX(-20px);opacity:0}to{transform:translateX(0);opacity:1}}
+  #fila-badge.show{display:flex}
+  .fila-dot{width:8px;height:8px;border-radius:50%;background:#f59e0b;animation:blink 1s ease-in-out infinite}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+
+  /* PRÓXIMO — aparece 15s antes do fim do vídeo */
+  #proximo-card{
+    position:fixed;bottom:100px;right:24px;z-index:50;
+    background:rgba(0,0,0,.85);border:2px solid #f59e0b;
+    border-radius:16px;padding:14px 20px;max-width:280px;
+    display:none;animation:slideIn .4s ease;
+    backdrop-filter:blur(8px);
+  }
+  #proximo-card.show{display:block}
+  .prox-label{font-size:10px;color:#f59e0b;font-weight:800;text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px}
+  .prox-tipo{font-size:16px;font-weight:800;margin-bottom:2px}
+  .prox-nome{font-size:13px;color:rgba(255,255,255,.65)}
 
   /* Overlay especial (parabéns, dedicatória etc.) */
   #overlay{
     position:fixed;inset:0;z-index:100;
     display:none;align-items:center;justify-content:center;
-    background:rgba(0,0,0,.92);backdrop-filter:blur(8px);
+    background:rgba(0,0,0,.93);backdrop-filter:blur(12px);
   }
   #overlay.show{display:flex}
   .overlay-box{
-    text-align:center;padding:48px 56px;
-    border-radius:28px;border:2px solid var(--overlay-cor,#ec4899);
-    background:linear-gradient(135deg,rgba(0,0,0,.8),rgba(20,0,20,.9));
-    max-width:700px;animation:popIn .4s cubic-bezier(.34,1.56,.64,1);
+    text-align:center;padding:52px 64px;
+    border-radius:32px;border:2px solid var(--overlay-cor,#ec4899);
+    background:linear-gradient(135deg,rgba(0,0,0,.85),rgba(10,0,20,.9));
+    max-width:740px;width:90%;
+    animation:popIn .5s cubic-bezier(.34,1.56,.64,1);
   }
-  @keyframes popIn{from{transform:scale(.6);opacity:0}to{transform:scale(1);opacity:1}}
-  .overlay-emoji{font-size:96px;margin-bottom:16px;animation:pulse 1s ease-in-out infinite alternate}
-  @keyframes pulse{from{transform:scale(1)}to{transform:scale(1.1)}}
-  .overlay-titulo{font-size:42px;font-weight:900;color:var(--overlay-cor,#ec4899);margin-bottom:8px;letter-spacing:-1px}
-  .overlay-nome{font-size:56px;font-weight:900;color:#fff;margin-bottom:12px;letter-spacing:-2px}
-  .overlay-msg{font-size:20px;color:rgba(255,255,255,.8);margin-bottom:24px;line-height:1.5}
-  .overlay-de{font-size:15px;color:rgba(255,255,255,.5)}
-  .overlay-bar{height:6px;border-radius:3px;background:var(--overlay-cor,#ec4899);margin-top:24px;animation:shrink linear forwards}
+  @keyframes popIn{from{transform:scale(.55);opacity:0}to{transform:scale(1);opacity:1}}
+  .overlay-emoji{font-size:100px;margin-bottom:16px;display:block;animation:pulse 1.2s ease-in-out infinite alternate}
+  @keyframes pulse{from{transform:scale(1)}to{transform:scale(1.12)}}
+  .overlay-titulo{font-size:38px;font-weight:900;color:var(--overlay-cor,#ec4899);margin-bottom:8px;letter-spacing:-1px;text-transform:uppercase}
+  .overlay-nome{font-size:62px;font-weight:900;color:#fff;margin-bottom:14px;letter-spacing:-2px;line-height:1}
+  .overlay-msg{font-size:22px;color:rgba(255,255,255,.82);margin-bottom:20px;line-height:1.5;font-style:italic}
+  .overlay-de{font-size:14px;color:rgba(255,255,255,.4);margin-bottom:20px}
+  .overlay-bar{height:5px;border-radius:3px;background:var(--overlay-cor,#ec4899);margin-top:16px;animation:shrink linear forwards}
   @keyframes shrink{from{width:100%}to{width:0}}
 
   /* Confetes */
   .confete{position:fixed;top:-10px;border-radius:50%;animation:cair linear forwards;pointer-events:none;z-index:200}
   @keyframes cair{to{transform:translateY(110vh) rotate(720deg);opacity:0}}
 
-  /* Canais selector (canto) */
+  /* Canais selector */
   #canal-selector{
     position:fixed;top:20px;right:20px;z-index:50;
-    display:flex;flex-direction:column;gap:8px;
-    opacity:0;transition:opacity .3s;
+    display:flex;flex-direction:column;gap:6px;
+    opacity:0;transition:opacity .3s;max-height:90vh;overflow-y:auto;
   }
   #canal-selector:hover,#canal-selector.visible{opacity:1}
   .canal-btn{
-    background:rgba(0,0,0,.7);border:1px solid rgba(255,255,255,.2);
-    border-radius:10px;padding:8px 14px;font-size:13px;font-weight:700;
+    background:rgba(0,0,0,.75);border:1px solid rgba(255,255,255,.18);
+    border-radius:10px;padding:7px 14px;font-size:12px;font-weight:700;
     cursor:pointer;color:#fff;transition:.2s;white-space:nowrap;
-    display:flex;align-items:center;gap:8px;
+    display:flex;align-items:center;gap:8px;backdrop-filter:blur(6px);
   }
-  .canal-btn:hover,.canal-btn.ativo{background:rgba(255,255,255,.15);border-color:rgba(255,255,255,.5)}
+  .canal-btn:hover,.canal-btn.ativo{background:rgba(255,255,255,.18);border-color:rgba(255,255,255,.5)}
   .canal-btn.ativo{border-color:var(--canal-cor,#ef4444)}
 </style>
 </head>
 <body>
 
-<!-- Player YouTube -->
+<!-- Player YouTube (IFrame API) -->
 <div id="player-wrap">
-  <iframe id="yt-player"
-    src="about:blank"
-    allow="autoplay; encrypted-media; fullscreen"
-    allowfullscreen></iframe>
+  <div id="yt-player"></div>
 </div>
 
 <!-- Now Playing -->
 <div id="now-playing" style="--canal-cor:{{ canal.cor }}">
   <div class="np-left">
     <span class="np-canal-badge">{{ canal.emoji }} {{ canal.nome }}</span>
-    <div>
+    <div class="np-info">
       <div class="np-titulo" id="np-titulo">{{ videos[0].titulo if videos else 'Carregando...' }}</div>
       <div class="np-artista" id="np-artista">{{ videos[0].artista if videos else '' }}</div>
     </div>
   </div>
   <div class="np-right">
-    <div class="np-qr-hint">
+    <div class="np-qr">
       <strong>📱</strong>
-      Scaneie para pedir
+      Scaneie o QR<br>para pedir
     </div>
   </div>
+</div>
+
+<!-- Fila badge (canto superior) -->
+<div id="fila-badge">
+  <div class="fila-dot"></div>
+  <span id="fila-txt">1 pedido na fila</span>
+</div>
+
+<!-- Próximo na fila (aparece ~15s antes do fim) -->
+<div id="proximo-card">
+  <div class="prox-label">⏭ Próximo — pedido da mesa</div>
+  <div class="prox-tipo" id="prox-tipo">🎵 Pedido de música</div>
+  <div class="prox-nome" id="prox-nome">de alguém</div>
 </div>
 
 <!-- Overlay especial -->
 <div id="overlay">
   <div class="overlay-box" id="overlay-box">
-    <div class="overlay-emoji" id="ov-emoji">🎂</div>
+    <span class="overlay-emoji" id="ov-emoji">🎂</span>
     <div class="overlay-titulo" id="ov-titulo">PARABÉNS!</div>
-    <div class="overlay-nome" id="ov-nome">Ana</div>
+    <div class="overlay-nome" id="ov-nome"></div>
     <div class="overlay-msg" id="ov-msg"></div>
     <div class="overlay-de" id="ov-de"></div>
-    <div class="overlay-bar" id="ov-bar" style="animation-duration:8s"></div>
+    <div class="overlay-bar" id="ov-bar"></div>
   </div>
 </div>
 
@@ -121,55 +161,171 @@
   {% for key, c in canais.items() %}
   <button class="canal-btn {% if key == canal_key %}ativo{% endif %}"
           onclick="trocarCanal('{{ key }}')"
-          style="{% if key == canal_key %}--canal-cor:{{ c.cor }};border-color:{{ c.cor }}{% endif %}">
+          style="{% if key == canal_key %}border-color:{{ c.cor }}{% endif %}">
     {{ c.emoji }} {{ c.nome }}
   </button>
   {% endfor %}
 </div>
 
+<!-- YouTube IFrame API -->
+<script src="https://www.youtube.com/iframe_api"></script>
 <script>
-const CODE       = '{{ b.code }}';
-const CANAL_KEY  = '{{ canal_key }}';
-const BASE_URL   = '/pubshow';
+const CODE      = '{{ b.code }}';
+const CANAL_KEY = '{{ canal_key }}';
+const BASE_URL  = '/pubshow';
 
-// Biblioteca de vídeos do canal atual
+// ── Biblioteca de vídeos ──────────────────────────────────────────────────────
 const VIDEOS = {{ videos | tojson }};
-let videoIdx    = 0;
-let overlayAtivo= false;
-let pedidoAtual = null;
+let videoIdx     = Math.floor(Math.random() * Math.min(VIDEOS.length, 5)); // começa aleatório nos primeiros 5
+let overlayAtivo = false;
+let pedidoAtual  = null;
+let pedidoMusica = null; // pedido esperando fim do vídeo
+let player       = null;
+let proximoTimer = null;
+let filaTimer    = null;
 
-// Tipos de pedido com configuração visual
+// Tipos de pedido — configuração visual
 const TIPO_CONFIG = {
-  parabens:    {emoji:'🎂', titulo:'PARABÉNS!',          cor:'#ec4899', duracao:10000, confetes:true},
-  dedicatoria: {emoji:'💌', titulo:'DEDICATÓRIA',        cor:'#ef4444', duracao:8000,  confetes:false},
-  brinde:      {emoji:'🍻', titulo:'BRINDE GERAL!',      cor:'#22c55e', duracao:6000,  confetes:true},
-  chegada:     {emoji:'🎉', titulo:'CHEGARAM!',           cor:'#f97316', duracao:6000,  confetes:true},
-  casamento:   {emoji:'💍', titulo:'ELA DISSE SIM! 💍',   cor:'#a855f7', duracao:12000, confetes:true},
-  vip:         {emoji:'👑', titulo:'PEDIDO VIP!',         cor:'#8b5cf6', duracao:5000,  confetes:false},
+  parabens:    {emoji:'🎂', titulo:'PARABÉNS!',           cor:'#ec4899', duracao:10000, confetes:true},
+  dedicatoria: {emoji:'💌', titulo:'DEDICATÓRIA ❤️',      cor:'#ef4444', duracao:9000,  confetes:false},
+  brinde:      {emoji:'🍻', titulo:'BRINDE GERAL!',        cor:'#22c55e', duracao:6000,  confetes:true},
+  chegada:     {emoji:'🎉', titulo:'CHEGARAM!',            cor:'#f97316', duracao:7000,  confetes:true},
+  casamento:   {emoji:'💍', titulo:'ELA DISSE SIM! 💍',    cor:'#a855f7', duracao:14000, confetes:true},
 };
 
-// ── Player ────────────────────────────────────────────────────────────────────
-function tocarVideo(idx) {
+const TIPOS_MUSICA = {
+  vip:    {emoji:'👑', label:'VIP — Tocar AGORA'},
+  flash:  {emoji:'⚡', label:'Prioridade na fila'},
+  musica: {emoji:'🎵', label:'Pedido de música'},
+};
+
+// ── YouTube IFrame API ────────────────────────────────────────────────────────
+function onYouTubeIframeAPIReady() {
   if (!VIDEOS.length) return;
+  const v = VIDEOS[videoIdx];
+  player = new YT.Player('yt-player', {
+    height: '100%',
+    width:  '100%',
+    videoId: v.youtube_id,
+    playerVars: {
+      autoplay:        1,
+      rel:             0,
+      modestbranding:  1,
+      controls:        0,
+      iv_load_policy:  3,
+      disablekb:       1,
+      fs:              0,
+      playsinline:     1,
+      cc_load_policy:  0,
+    },
+    events: {
+      onReady:       onPlayerReady,
+      onStateChange: onPlayerStateChange,
+      onError:       onPlayerError,
+    }
+  });
+}
+
+function onPlayerReady(e) {
+  e.target.playVideo();
+  atualizarNowPlaying(VIDEOS[videoIdx]);
+  esconderNowPlayingComDelay();
+}
+
+function onPlayerStateChange(e) {
+  // YT.PlayerState.ENDED = 0
+  if (e.data === 0) {
+    clearTimeout(proximoTimer);
+    document.getElementById('proximo-card').classList.remove('show');
+    avancarFila();
+  }
+  // YT.PlayerState.PLAYING = 1
+  if (e.data === 1) {
+    agendarProximoCard();
+  }
+}
+
+function onPlayerError(e) {
+  // Vídeo indisponível — pula para o próximo
+  console.warn('YT erro:', e.data, 'pulando vídeo...');
+  setTimeout(avancarFila, 2000);
+}
+
+// ── Lógica de avanço com fila ─────────────────────────────────────────────────
+function avancarFila() {
+  if (pedidoMusica) {
+    // Tem pedido na fila! Processa antes de avançar
+    const p = pedidoMusica;
+    pedidoMusica = null;
+    esconderBadgeFila();
+
+    // Marca como exibido
+    fetch(`${BASE_URL}/api/pedido-exibido/${p.id}`, {method:'POST'});
+
+    // Avança para próximo vídeo normalmente
+    videoIdx = (videoIdx + 1) % VIDEOS.length;
+    carregarVideo(videoIdx);
+  } else {
+    videoIdx = (videoIdx + 1) % VIDEOS.length;
+    carregarVideo(videoIdx);
+  }
+}
+
+function carregarVideo(idx) {
+  if (!VIDEOS.length || !player) return;
   const v = VIDEOS[idx % VIDEOS.length];
-  const iframe = document.getElementById('yt-player');
-  iframe.src = `https://www.youtube.com/embed/${v.youtube_id}?autoplay=1&rel=0&modestbranding=1&controls=0&iv_load_policy=3&disablekb=1&fs=0&playsinline=1`;
-  document.getElementById('np-titulo').textContent = v.titulo || '';
+  player.loadVideoById(v.youtube_id);
+  atualizarNowPlaying(v);
+  esconderNowPlayingComDelay();
+}
+
+// ── "Próximo na fila" — aparece ~20s antes do fim ────────────────────────────
+function agendarProximoCard() {
+  clearTimeout(proximoTimer);
+  if (!pedidoMusica) return;
+  try {
+    const total  = player.getDuration();
+    const agora  = player.getCurrentTime();
+    const restam = total - agora;
+    const mostrarEm = Math.max(0, (restam - 20) * 1000);
+    proximoTimer = setTimeout(() => mostrarProximoCard(pedidoMusica), mostrarEm);
+  } catch(e) {}
+}
+
+function mostrarProximoCard(p) {
+  if (!p) return;
+  const cfg = TIPOS_MUSICA[p.tipo] || TIPOS_MUSICA.musica;
+  document.getElementById('prox-tipo').textContent = `${cfg.emoji} ${cfg.label}`;
+  document.getElementById('prox-nome').textContent  = `de ${p.nome_cliente || 'alguém'}`;
+  document.getElementById('proximo-card').classList.add('show');
+}
+
+// ── Badge da fila ─────────────────────────────────────────────────────────────
+function mostrarBadgeFila(total) {
+  const badge = document.getElementById('fila-badge');
+  document.getElementById('fila-txt').textContent =
+    total === 1 ? '1 pedido na fila' : `${total} pedidos na fila`;
+  badge.classList.add('show');
+}
+
+function esconderBadgeFila() {
+  document.getElementById('fila-badge').classList.remove('show');
+  document.getElementById('proximo-card').classList.remove('show');
+}
+
+// ── Now Playing ───────────────────────────────────────────────────────────────
+function atualizarNowPlaying(v) {
+  document.getElementById('np-titulo').textContent  = v.titulo  || '';
   document.getElementById('np-artista').textContent = v.artista || '';
-
-  // Esconde barra após 5s
   const np = document.getElementById('now-playing');
-  clearTimeout(window._npTimer);
   np.classList.remove('hidden');
-  window._npTimer = setTimeout(() => np.classList.add('hidden'), 5000);
+}
 
-  // Avança para próximo após duração + 2s buffer
-  const duracao = (v.duracao_seg || 180) * 1000;
-  clearTimeout(window._nextTimer);
-  window._nextTimer = setTimeout(() => {
-    videoIdx = (idx + 1) % VIDEOS.length;
-    tocarVideo(videoIdx);
-  }, duracao + 2000);
+function esconderNowPlayingComDelay() {
+  clearTimeout(window._npTimer);
+  window._npTimer = setTimeout(() => {
+    document.getElementById('now-playing').classList.add('hidden');
+  }, 6000);
 }
 
 // ── Overlay especial ──────────────────────────────────────────────────────────
@@ -179,29 +335,28 @@ function mostrarOverlay(pedido) {
   const box = document.getElementById('overlay-box');
 
   box.style.setProperty('--overlay-cor', cfg.cor);
-  document.getElementById('ov-emoji').textContent = cfg.emoji;
+  document.getElementById('ov-emoji').textContent  = cfg.emoji;
   document.getElementById('ov-titulo').textContent = cfg.titulo;
   document.getElementById('ov-titulo').style.color = cfg.cor;
-  document.getElementById('ov-nome').textContent = pedido.nome_cliente || '';
-  document.getElementById('ov-msg').textContent = pedido.mensagem || '';
-  document.getElementById('ov-de').textContent = pedido.nome_cliente ? `Pedido de ${pedido.nome_cliente}` : '';
+  document.getElementById('ov-nome').textContent   = pedido.nome_cliente || '';
+  document.getElementById('ov-msg').textContent    = pedido.mensagem || '';
+  document.getElementById('ov-de').textContent     = pedido.nome_cliente
+    ? `💌 pedido enviado pela mesa` : '';
 
+  // Barra de progresso
   const bar = document.getElementById('ov-bar');
+  bar.style.background        = cfg.cor;
   bar.style.animationDuration = (cfg.duracao / 1000) + 's';
-  bar.style.background = cfg.cor;
-  // Reset animation
   bar.style.animation = 'none';
   bar.offsetHeight; // reflow
   bar.style.animation = '';
 
   document.getElementById('overlay').classList.add('show');
+  if (cfg.confetes) lancarConfetes(cfg.cor);
 
-  if (cfg.confetes) lancarConfetes();
-
-  // Marca como exibido na API
+  // Marca como exibido
   fetch(`${BASE_URL}/api/pedido-exibido/${pedido.id}`, {method:'POST'});
 
-  // Fecha após duração
   clearTimeout(window._overlayTimer);
   window._overlayTimer = setTimeout(() => {
     document.getElementById('overlay').classList.remove('show');
@@ -210,23 +365,24 @@ function mostrarOverlay(pedido) {
   }, cfg.duracao);
 }
 
-function lancarConfetes() {
-  const cores = ['#ec4899','#f97316','#22c55e','#3b82f6','#a855f7','#eab308','#ef4444','#fff'];
-  for (let i = 0; i < 80; i++) {
+function lancarConfetes(corPrincipal) {
+  const cores = [corPrincipal,'#f97316','#22c55e','#3b82f6','#eab308','#fff','#ec4899','#a855f7'];
+  for (let i = 0; i < 100; i++) {
     setTimeout(() => {
       const el = document.createElement('div');
       el.className = 'confete';
+      const size = 6 + Math.random() * 12;
       el.style.cssText = `
         left:${Math.random()*100}vw;
-        width:${6+Math.random()*10}px;
-        height:${6+Math.random()*10}px;
+        width:${size}px; height:${size}px;
         background:${cores[Math.floor(Math.random()*cores.length)]};
-        animation-duration:${2+Math.random()*3}s;
-        animation-delay:${Math.random()*.5}s;
+        animation-duration:${2.5 + Math.random() * 3}s;
+        animation-delay:${Math.random() * 0.8}s;
+        border-radius:${Math.random() > .5 ? '50%' : '2px'};
       `;
       document.body.appendChild(el);
-      setTimeout(() => el.remove(), 4000);
-    }, i * 30);
+      setTimeout(() => el.remove(), 5000);
+    }, i * 25);
   }
 }
 
@@ -236,21 +392,42 @@ async function pollStatus() {
     const res  = await fetch(`${BASE_URL}/api/status/${CODE}`);
     const data = await res.json();
 
-    // Troca de canal
+    // Troca de canal pelo dono do bar
     if (data.canal_atual && data.canal_atual !== window._canalAtual) {
       window._canalAtual = data.canal_atual;
-      location.reload(); // Recarrega com novo canal
+      location.reload();
     }
 
-    // Pedido especial
-    if (data.pedido && !overlayAtivo && data.pedido.id !== (pedidoAtual?.id)) {
+    // Pedido especial — mostra overlay imediatamente
+    if (data.pedido && !overlayAtivo && data.pedido.id !== pedidoAtual?.id) {
       pedidoAtual = data.pedido;
       mostrarOverlay(data.pedido);
     }
+
+    // Pedido de música — entra na fila, espera vídeo acabar
+    if (data.pedido_musica && data.pedido_musica.id !== pedidoMusica?.id) {
+      pedidoMusica = data.pedido_musica;
+      mostrarBadgeFila(data.total_fila);
+      agendarProximoCard(); // agenda o "próximo" card
+    }
+
+    // Sem pedido de música — limpa indicadores
+    if (!data.pedido_musica && pedidoMusica) {
+      pedidoMusica = null;
+      esconderBadgeFila();
+    }
+
+    // Badge de fila geral
+    if (data.total_fila > 0 && !pedidoMusica) {
+      mostrarBadgeFila(data.total_fila);
+    } else if (data.total_fila === 0) {
+      esconderBadgeFila();
+    }
+
   } catch(e) {}
 }
 
-// ── Trocar canal (via botão) ──────────────────────────────────────────────────
+// ── Trocar canal ──────────────────────────────────────────────────────────────
 async function trocarCanal(canal) {
   await fetch(`${BASE_URL}/api/trocar-canal/${CODE}`, {
     method: 'POST',
@@ -260,7 +437,7 @@ async function trocarCanal(canal) {
   location.reload();
 }
 
-// Mostrar seletor com mouse
+// Mouse move → mostra seletor de canal
 document.addEventListener('mousemove', () => {
   const sel = document.getElementById('canal-selector');
   sel.classList.add('visible');
@@ -269,9 +446,8 @@ document.addEventListener('mousemove', () => {
 });
 
 // ── Init ──────────────────────────────────────────────────────────────────────
-window._canalAtual = '{{ canal_key }}';
-tocarVideo(0);
-setInterval(pollStatus, 4000); // Verifica pedidos a cada 4s
+window._canalAtual = CANAL_KEY;
+setInterval(pollStatus, 4000);
 </script>
 </body>
 </html>

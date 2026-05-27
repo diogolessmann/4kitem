@@ -357,19 +357,39 @@ def api_status(code):
         conn.close()
         return jsonify({'error': 'not_found'}), 404
 
-    # Próximo pedido especial
-    pedido = conn.execute(
+    # Pedido especial — aparece como overlay na TV (parabéns, dedicatória etc.)
+    pedido_especial = conn.execute(
         '''SELECT * FROM pubshow_pedidos
            WHERE business_id=? AND status="pendente"
-           AND tipo IN ("parabens","dedicatoria","brinde","chegada","casamento","vip")
+           AND tipo IN ("parabens","dedicatoria","brinde","chegada","casamento")
            ORDER BY created_at ASC LIMIT 1''',
         (b['id'],)
     ).fetchone()
 
+    # Pedido de música — espera o vídeo atual acabar (VIP, flash, musica)
+    pedido_musica = conn.execute(
+        '''SELECT * FROM pubshow_pedidos
+           WHERE business_id=? AND status="pendente"
+           AND tipo IN ("vip","flash","musica")
+           ORDER BY
+             CASE tipo WHEN "vip" THEN 1 WHEN "flash" THEN 2 ELSE 3 END,
+             created_at ASC
+           LIMIT 1''',
+        (b['id'],)
+    ).fetchone()
+
+    # Contagem total na fila (para mostrar no indicador)
+    total_fila = conn.execute(
+        'SELECT COUNT(*) FROM pubshow_pedidos WHERE business_id=? AND status="pendente"',
+        (b['id'],)
+    ).fetchone()[0]
+
     result = {
         'canal_atual': b['canal_atual'],
         'jukebox_ativo': bool(b['jukebox_ativo']),
-        'pedido': dict(pedido) if pedido else None,
+        'pedido': dict(pedido_especial) if pedido_especial else None,      # overlay imediato
+        'pedido_musica': dict(pedido_musica) if pedido_musica else None,   # espera fim do vídeo
+        'total_fila': total_fila,
     }
     conn.close()
     return jsonify(result)
