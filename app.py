@@ -4452,6 +4452,32 @@ def saas_admin_unban():
     return render_template('saas_admin_unban.html', resultado=resultado, mensagem=mensagem, busca=busca)
 
 
+@app.route('/saas-admin/petmed-diag')
+@_saas_admin_required
+def saas_petmed_diag():
+    """Diagnóstico do banco PETmed — verifica tabelas, colunas e tenta INSERT de teste."""
+    resultado = {}
+    try:
+        from petmed_db import get_petmed_db as _get_pm, init_petmed_db as _init_pm
+        conn = _get_pm()
+        # Lista tabelas
+        tabelas = [r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()]
+        resultado['tabelas'] = tabelas
+        # Verifica colunas de petmed_users
+        if 'petmed_users' in tabelas:
+            cols = [r[1] for r in conn.execute("PRAGMA table_info(petmed_users)").fetchall()]
+            resultado['colunas_petmed_users'] = cols
+            resultado['total_users'] = conn.execute("SELECT COUNT(*) FROM petmed_users").fetchone()[0]
+        else:
+            resultado['ERRO'] = 'Tabela petmed_users NÃO EXISTE — banco não inicializado!'
+            _init_pm()
+            resultado['acao'] = 'init_petmed_db() chamado — tente cadastrar novamente'
+        conn.close()
+    except Exception as e:
+        resultado['exception'] = f'{type(e).__name__}: {e}'
+    return jsonify(resultado)
+
+
 @app.route('/saas-admin/asaas-test')
 @_saas_admin_required
 def saas_asaas_test():
@@ -9807,12 +9833,13 @@ except Exception as _pm_err:
 
 with app.app_context():
     _startup()
-    # Inicializa banco PETmed
+    # Inicializa banco PETmed (independente do blueprint)
     try:
-        init_petmed_db()
-        log.info('[PETmed] Banco inicializado')
+        from petmed_db import init_petmed_db as _init_petmed_db
+        _init_petmed_db()
+        log.info('[PETmed] Banco inicializado com sucesso')
     except Exception as _e:
-        log.warning(f'[PETmed] Erro ao inicializar banco: {_e}')
+        log.error(f'[PETmed] ERRO ao inicializar banco: {_e}', exc_info=True)
 
 if __name__ == '__main__':
     app.run(debug=True, port=5001)

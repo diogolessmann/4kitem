@@ -1085,13 +1085,25 @@ def cadastrar():
                 _u_plano = u['plano']
                 conn.close()
             except Exception as ex:
-                log.error('[PETmed] Erro no cadastro de %s: %s', email, ex, exc_info=True)
+                log.error('[PETmed] Erro no cadastro de %s: %s | detalhe: %s', email, type(ex).__name__, str(ex), exc_info=True)
                 try: conn.close()
                 except: pass
                 if 'UNIQUE' in str(ex):
-                    erro = 'Este e-mail já está cadastrado.'
+                    erro = 'Este e-mail já está cadastrado. Faça login ou use outro e-mail.'
+                elif 'no such table' in str(ex).lower():
+                    # Banco não inicializado — tenta recriar e pede para tentar de novo
+                    try:
+                        from petmed_db import init_petmed_db as _reinit
+                        _reinit()
+                        log.warning('[PETmed] Banco recriado após "no such table". Usuário deve tentar novamente.')
+                    except Exception as _re:
+                        log.error('[PETmed] Falha ao recriar banco: %s', _re)
+                    erro = 'Sistema reiniciado. Por favor, tente cadastrar novamente.'
+                elif 'no column' in str(ex).lower():
+                    erro = 'Erro de estrutura no banco de dados. Contate o suporte: (47) 99101-1351'
+                    log.critical('[PETmed] COLUNA INEXISTENTE: %s', ex)
                 else:
-                    erro = f'Erro ao criar conta ({type(ex).__name__}). Tente novamente.'
+                    erro = f'Erro ao criar conta: {ex}. Tente novamente ou contate (47) 99101-1351'
 
             if _u_id:
                 session['pm_user_id']   = _u_id
