@@ -314,12 +314,12 @@
   <h2 class="section-title">O bar inteiro participa.<br>Ninguém esquece.</h2>
   <p class="section-sub" style="max-width:560px;margin:0 auto 48px">Cada pedido especial aparece na tela do bar em tamanho gigante. Com animação, música e confetes.</p>
   <div class="dedicatorias-grid">
-    {% for tipo, info in [('🎂','Parabéns!','Nome na tela + confetes + todo mundo canta','R$ 15'),('💌','Dedicatória','Mensagem de amor na tela inteira','R$ 10'),('🍻','Brinde Geral','Todo o bar levanta o copo junto','R$ 5'),('🎉','Chegamos!','Sua chegada anunciada no telão','R$ 5'),('💍','Pedido de casamento','O momento mais épico do bar','R$ 25'),('👑','Tocar AGORA','Sua música interrompe tudo','R$ 10')] %}
+    {% for emoji, nome, desc, preco in [('🎂','Parabéns!','Nome na tela + confetes + todo mundo canta','R$ 15'),('💌','Dedicatória','Mensagem de amor na tela inteira','R$ 10'),('🍻','Brinde Geral','Todo o bar levanta o copo junto','R$ 5'),('🎉','Chegamos!','Sua chegada anunciada no telão','R$ 5'),('💍','Pedido de casamento','O momento mais épico do bar','R$ 25'),('👑','Tocar AGORA','Sua música interrompe tudo','R$ 10')] %}
     <div class="ded-card">
-      <div class="ded-emoji">{{ tipo }}</div>
-      <div class="ded-nome">{{ info }}</div>
-      <div class="ded-desc">{{ loop.index }}</div>
-      <div class="ded-preco" style="color:{% if loop.index==5 %}#a855f7{% elif loop.index==1 %}#ec4899{% else %}#f97316{% endif %}">{{ loop.cycle('R$ 15','R$ 10','R$ 5','R$ 5','R$ 25','R$ 10') }}</div>
+      <div class="ded-emoji">{{ emoji }}</div>
+      <div class="ded-nome">{{ nome }}</div>
+      <div class="ded-desc">{{ desc }}</div>
+      <div class="ded-preco">{{ preco }}</div>
     </div>
     {% endfor %}
   </div>
