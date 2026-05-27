@@ -1,0 +1,110 @@
+{% extends 'petmed/base.html' %}
+{% set active = 'planos' %}
+{% block title %}Consulta 24h — VetZap{% endblock %}
+{% block content %}
+<div style="max-width:500px;margin:32px auto">
+
+  <div style="text-align:center;margin-bottom:24px">
+    <div style="font-size:48px">🩺</div>
+    <h1 style="font-size:22px;font-weight:800;margin-top:8px">{{ c.nome }}</h1>
+    <div style="font-size:13px;color:var(--text3);margin-top:4px">{{ c.descricao }}</div>
+    <div style="font-size:38px;font-weight:900;color:#10b981;margin-top:10px">
+      {{ c.preco_fmt }}<span style="font-size:14px;font-weight:500;color:var(--text3)"> · pagamento único</span>
+    </div>
+  </div>
+
+  {% if erro %}
+  <div class="alert alert-error">{{ erro }}</div>
+  {% endif %}
+
+  <!-- O que está incluído -->
+  <div class="card" style="margin-bottom:20px">
+    <div class="card-title">✅ O que está incluído</div>
+    <div style="font-size:13px;color:var(--text2);line-height:2.2">
+      {% for f in c.features %}
+      <div style="display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border);padding:6px 0">
+        <span style="color:#10b981;font-weight:700">✓</span> {{ f }}
+      </div>
+      {% endfor %}
+    </div>
+    <div style="margin-top:14px;padding-top:0;font-size:12px;color:var(--text3)">
+      💡 Gostou? Assine o plano mensal <strong>Start por R$ 49,90/mês</strong> e tenha acesso ilimitado.
+    </div>
+  </div>
+
+  <!-- Forma de pagamento -->
+  <div class="card">
+    <div class="card-title">💳 Como você quer pagar?</div>
+    <form method="POST" action="/petmed/consulta-agora">
+
+      <div style="display:grid;gap:12px;margin-bottom:20px">
+
+        <label id="lbl-pix" style="display:flex;align-items:center;gap:14px;padding:14px 16px;border:2px solid #10b981;border-radius:12px;cursor:pointer;transition:.15s">
+          <input type="radio" name="billing_type" id="pix" value="PIX" checked
+                 onchange="highlight(this)"
+                 style="width:18px;height:18px;accent-color:#10b981">
+          <div>
+            <div style="font-weight:700;font-size:14px">⚡ PIX</div>
+            <div style="font-size:12px;color:var(--text3)">Aprovação imediata · Acesso liberado na hora</div>
+          </div>
+        </label>
+
+        <label id="lbl-boleto" style="display:flex;align-items:center;gap:14px;padding:14px 16px;border:2px solid var(--border);border-radius:12px;cursor:pointer;transition:.15s">
+          <input type="radio" name="billing_type" id="boleto" value="BOLETO"
+                 onchange="highlight(this)"
+                 style="width:18px;height:18px;accent-color:#10b981">
+          <div>
+            <div style="font-weight:700;font-size:14px">🏦 Boleto bancário</div>
+            <div style="font-size:12px;color:var(--text3)">Acesso liberado após compensação (até 3 dias)</div>
+          </div>
+        </label>
+
+        <label id="lbl-cartao" style="display:flex;align-items:center;gap:14px;padding:14px 16px;border:2px solid var(--border);border-radius:12px;cursor:pointer;transition:.15s">
+          <input type="radio" name="billing_type" id="cartao" value="CREDIT_CARD"
+                 onchange="highlight(this)"
+                 style="width:18px;height:18px;accent-color:#10b981">
+          <div>
+            <div style="font-weight:700;font-size:14px">💳 Cartão de crédito</div>
+            <div style="font-size:12px;color:var(--text3)">Aprovação imediata</div>
+          </div>
+        </label>
+
+      </div>
+
+      <button type="submit"
+              style="display:block;width:100%;padding:15px;background:#10b981;color:#fff;font-size:16px;font-weight:800;border:none;border-radius:12px;cursor:pointer;font-family:inherit">
+        🩺 Pagar R$ 32,90 e atender meu pet →
+      </button>
+
+      <p style="text-align:center;font-size:11px;color:var(--text3);margin-top:12px">
+        🔒 Pagamento seguro · Regulado pelo Banco Central · Sem assinatura
+      </p>
+    </form>
+  </div>
+
+  <!-- Upsell sutil para mensal -->
+  <div style="background:linear-gradient(135deg,#0ea5e915,#10b98115);border:1px solid #10b98130;border-radius:14px;padding:16px 20px;margin-top:16px;text-align:center">
+    <div style="font-size:13px;color:var(--text2);margin-bottom:10px">
+      Prefere <strong>acesso ilimitado</strong> sem precisar pagar toda vez?
+    </div>
+    <a href="/petmed/planos"
+       style="display:inline-block;padding:9px 22px;background:var(--surface);border:1px solid var(--border2);border-radius:9px;font-size:13px;font-weight:700;color:var(--text1);text-decoration:none">
+      Ver planos mensais a partir de R$ 49,90/mês →
+    </a>
+  </div>
+
+  <p style="text-align:center;margin-top:16px">
+    <a href="/petmed/planos" style="font-size:13px;color:var(--text3)">← Voltar</a>
+  </p>
+</div>
+
+<script>
+function highlight(radio) {
+  ['lbl-pix','lbl-boleto','lbl-cartao'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.borderColor = 'var(--border)';
+  });
+  radio.closest('label').style.borderColor = '#10b981';
+}
+</script>
+{% endblock %}

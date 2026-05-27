@@ -187,6 +187,7 @@ def init_petmed_db():
         'ALTER TABLE petmed_users ADD COLUMN reset_expires TEXT',
         'ALTER TABLE petmed_users ADD COLUMN asaas_customer_id TEXT',
         'ALTER TABLE petmed_users ADD COLUMN ultimo_acesso TEXT',
+        'ALTER TABLE petmed_users ADD COLUMN consulta_expires TEXT',
         'ALTER TABLE petmed_assinaturas ADD COLUMN asaas_subscription_id TEXT',
         'ALTER TABLE petmed_assinaturas ADD COLUMN asaas_payment_id TEXT',
         'ALTER TABLE petmed_assinaturas ADD COLUMN billing_type TEXT',

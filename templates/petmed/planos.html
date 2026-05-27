@@ -6,16 +6,16 @@
 <div class="page-header">
   <div>
     <div class="page-title">⭐ Planos VetZap</div>
-    <div class="page-sub">Proteção completa para seu pet. Cancele quando quiser.</div>
+    <div class="page-sub">Teste agora ou proteja seu pet todo mês. Sem compromisso.</div>
   </div>
 </div>
 
 {% if msg == 'paywall' %}
-<div style="background:linear-gradient(135deg,#ef4444,#f97316);border-radius:14px;padding:18px 22px;color:#fff;margin-bottom:24px;display:flex;align-items:center;gap:16px">
-  <div style="font-size:36px">🔒</div>
+<div style="background:linear-gradient(135deg,#ef4444,#f97316);border-radius:14px;padding:20px 24px;color:#fff;margin-bottom:28px;display:flex;align-items:center;gap:16px">
+  <div style="font-size:40px">🔒</div>
   <div>
-    <div style="font-weight:800;font-size:16px">Sua consulta gratuita foi utilizada!</div>
-    <div style="font-size:13px;opacity:.9;margin-top:3px">Escolha um plano abaixo para continuar com atendimentos ilimitados para o seu pet.</div>
+    <div style="font-weight:800;font-size:17px">Atendimento disponível apenas para assinantes</div>
+    <div style="font-size:13px;opacity:.9;margin-top:4px">Pague R$ 32,90 para uma consulta agora, ou assine um plano mensal e tenha acesso ilimitado.</div>
   </div>
 </div>
 {% elif msg == 'premium' or msg == 'teleconsulta_premium' %}
@@ -24,6 +24,49 @@
 <div class="alert alert-warning">🐾 Você atingiu o limite de pets do seu plano. Faça upgrade para adicionar mais!</div>
 {% endif %}
 
+<!-- ── CONSULTA AVULSA — destaque máximo ──────────────────────────────────── -->
+<div style="max-width:960px;margin-bottom:28px">
+  <div style="background:linear-gradient(135deg,#052e16,#064e3b);border:2px solid #10b981;border-radius:20px;padding:28px 32px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:24px">
+    <div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+        <span style="font-size:32px">🩺</span>
+        <div>
+          <div style="font-size:20px;font-weight:800;color:#fff">Consulta 24h — Teste sem compromisso</div>
+          <div style="font-size:13px;color:#6ee7b7;margin-top:2px">Pague uma vez · Atenda seu pet agora · Sem assinatura</div>
+        </div>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px">
+        {% for f in ['Triagem completa 24/7','Classificação de urgência','Orientações imediatas','Identificação de raça por foto','Sem fidelidade'] %}
+        <span style="background:#10b98120;border:1px solid #10b98140;border-radius:100px;padding:4px 12px;font-size:12px;font-weight:600;color:#6ee7b7">✓ {{ f }}</span>
+        {% endfor %}
+      </div>
+    </div>
+    <div style="text-align:center;flex-shrink:0">
+      <div style="font-size:36px;font-weight:900;color:#10b981">R$ 32,90</div>
+      <div style="font-size:12px;color:#6ee7b7;margin-bottom:12px">pagamento único</div>
+      {% if session.pm_user_id %}
+        <a href="/petmed/consulta-agora"
+           style="display:inline-block;padding:13px 28px;background:#10b981;color:#fff;font-size:15px;font-weight:800;border-radius:12px;text-decoration:none">
+          🩺 Consultar agora →
+        </a>
+      {% else %}
+        <a href="/petmed/cadastrar?plano=start"
+           style="display:inline-block;padding:13px 28px;background:#10b981;color:#fff;font-size:15px;font-weight:800;border-radius:12px;text-decoration:none">
+          🩺 Criar conta e consultar →
+        </a>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- ── SEPARADOR ───────────────────────────────────────────────────────────── -->
+<div style="max-width:960px;display:flex;align-items:center;gap:16px;margin-bottom:24px">
+  <div style="flex:1;height:1px;background:var(--border)"></div>
+  <div style="font-size:13px;color:var(--text3);font-weight:700;white-space:nowrap">OU ASSINE E TENHA ACESSO ILIMITADO</div>
+  <div style="flex:1;height:1px;background:var(--border)"></div>
+</div>
+
+<!-- ── PLANOS MENSAIS ──────────────────────────────────────────────────────── -->
 <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:20px;max-width:960px">
 
   {% for key, p in planos.items() %}
@@ -32,15 +75,20 @@
        onmouseout="this.style.transform='';this.style.boxShadow=''">
 
     {% if p.get('destaque') %}
-    <div style="position:absolute;top:-13px;left:50%;transform:translateX(-50%);background:var(--orange);color:#fff;padding:4px 16px;border-radius:100px;font-size:11px;font-weight:800">⭐ Mais vendido</div>
+    <div style="position:absolute;top:-13px;left:50%;transform:translateX(-50%);background:var(--orange);color:#fff;padding:4px 16px;border-radius:100px;font-size:11px;font-weight:800">⭐ Mais popular</div>
     {% endif %}
 
     <div style="font-size:28px;margin-bottom:8px">{{ p.emoji }}</div>
     <div style="font-size:19px;font-weight:800;margin-bottom:4px">{{ p.nome }}</div>
     <div style="font-size:13px;color:var(--text3);margin-bottom:16px">{{ p.descricao }}</div>
-    <div style="font-size:34px;font-weight:900;margin-bottom:4px;color:var(--text1)">
+    <div style="font-size:34px;font-weight:900;margin-bottom:2px;color:var(--text1)">
       {{ p.preco_fmt }}<span style="font-size:14px;font-weight:500;color:var(--text3)">/mês</span>
     </div>
+    {% if key == 'start' %}
+    <div style="font-size:11px;color:#10b981;font-weight:700;margin-bottom:14px">só R$ 17 a mais que a consulta avulsa!</div>
+    {% else %}
+    <div style="margin-bottom:14px"></div>
+    {% endif %}
 
     <ul style="list-style:none;margin-bottom:20px">
       {% for f in p.features %}
@@ -89,12 +137,12 @@
   </div>
 </div>
 
-<!-- FAQ rápido -->
+<!-- FAQ -->
 <div style="max-width:680px;margin-top:32px">
   <div style="font-size:16px;font-weight:800;margin-bottom:16px">Dúvidas frequentes</div>
   {% for q, a in [
-    ('Como funciona o pagamento?', 'O pagamento é mensal. Cancele quando quiser, sem multa e sem burocracia.'),
-    ('Posso cancelar a qualquer hora?', 'Sim, sem multa e sem burocracia.'),
+    ('Posso testar antes de assinar?', 'Sim! A Consulta 24h por R$ 32,90 te dá acesso completo por 24 horas, sem nenhum compromisso.'),
+    ('Como funciona o plano mensal?', 'Cobrança automática todo mês. Cancele quando quiser, sem multa e sem burocracia.'),
     ('É um diagnóstico veterinário?', 'Não. O VetZap oferece triagem e orientação geral. Para diagnóstico, sempre consulte um veterinário.'),
     ('Funciona para outras espécies?', 'Atualmente otimizado para cães e gatos. Outras espécies em breve!'),
   ] %}
