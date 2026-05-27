@@ -1348,6 +1348,88 @@ def admin_bar_acao(bid):
     return redirect(f'/pubshow/admin/bar/{bid}')
 
 
+# ── ADMIN — GESTÃO DE VÍDEOS ───────────────────────────────────────────────────
+
+@pubshow_bp.route('/admin/videos')
+@_admin_required
+def admin_videos():
+    conn = get_pubshow_db()
+    videos = conn.execute(
+        'SELECT id, youtube_id, titulo, artista, categoria, ativo FROM pubshow_videos ORDER BY categoria, titulo'
+    ).fetchall()
+    conn.close()
+    por_cat = {}
+    for v in videos:
+        cat = v['categoria']
+        por_cat.setdefault(cat, []).append(dict(v))
+    return render_template('pubshow/admin_videos.html', por_cat=por_cat,
+                           total=len(videos))
+
+
+@pubshow_bp.route('/admin/videos/check-one', methods=['POST'])
+@_admin_required
+def admin_videos_check_one():
+    """Verifica se um vídeo específico está disponível e embeddable via oEmbed."""
+    yid = request.json.get('youtube_id', '')
+    if not yid:
+        return jsonify({'ok': False, 'erro': 'ID vazio'})
+    try:
+        r = requests.get(
+            'https://www.youtube.com/oembed',
+            params={'url': f'https://www.youtube.com/watch?v={yid}', 'format': 'json'},
+            timeout=8
+        )
+        if r.status_code == 200:
+            data = r.json()
+            return jsonify({'ok': True, 'titulo': data.get('title',''), 'autor': data.get('author_name','')})
+        elif r.status_code == 401:
+            return jsonify({'ok': False, 'erro': 'Embed bloqueado (401)'})
+        elif r.status_code == 404:
+            return jsonify({'ok': False, 'erro': 'Vídeo removido (404)'})
+        else:
+            return jsonify({'ok': False, 'erro': f'HTTP {r.status_code}'})
+    except Exception as e:
+        return jsonify({'ok': False, 'erro': str(e)[:80]})
+
+
+@pubshow_bp.route('/admin/videos/deletar', methods=['POST'])
+@_admin_required
+def admin_videos_deletar():
+    """Deleta vídeos pelo youtube_id (lista de IDs ruins)."""
+    ids = request.json.get('ids', [])
+    if not ids:
+        return jsonify({'ok': False})
+    conn = get_pubshow_db()
+    placeholders = ','.join('?' * len(ids))
+    deleted = conn.execute(f'DELETE FROM pubshow_videos WHERE youtube_id IN ({placeholders})', ids).rowcount
+    conn.commit(); conn.close()
+    log.info(f'[PUBSHOW ADMIN] Deletados {deleted} vídeos quebrados')
+    return jsonify({'ok': True, 'deleted': deleted})
+
+
+@pubshow_bp.route('/admin/videos/add', methods=['POST'])
+@_admin_required
+def admin_videos_add():
+    """Adiciona um vídeo manualmente à biblioteca."""
+    data = request.json or {}
+    yid      = (data.get('youtube_id') or '').strip()
+    titulo   = (data.get('titulo') or '').strip()
+    artista  = (data.get('artista') or '').strip()
+    categoria = (data.get('categoria') or '').strip()
+    if not yid or not titulo or not categoria:
+        return jsonify({'ok': False, 'erro': 'Campos obrigatórios: youtube_id, titulo, categoria'})
+    try:
+        conn = get_pubshow_db()
+        conn.execute(
+            'INSERT OR IGNORE INTO pubshow_videos (youtube_id, titulo, artista, categoria, subcategoria, duracao_seg, views_milhoes, ativo) VALUES (?,?,?,?,?,?,?,1)',
+            (yid, titulo, artista, categoria, '', 0, 0)
+        )
+        conn.commit(); conn.close()
+        return jsonify({'ok': True})
+    except Exception as e:
+        return jsonify({'ok': False, 'erro': str(e)[:100]})
+
+
 # ── CHECKOUT / ASSINATURA ─────────────────────────────────────────────────────
 
 @pubshow_bp.route('/assinar/<plano>', methods=['GET', 'POST'])
