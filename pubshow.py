@@ -1366,6 +1366,94 @@ def admin_videos():
                            total=len(videos))
 
 
+@pubshow_bp.route('/admin/import-playlist', methods=['POST'])
+@_admin_required
+def admin_import_playlist():
+    """Importa todos os vídeos de uma playlist do YouTube via Data API v3."""
+    import os, re
+    api_key = os.environ.get('YOUTUBE_API_KEY', '')
+    if not api_key:
+        return jsonify({'ok': False, 'erro': 'Configure YOUTUBE_API_KEY nas variáveis do Railway'})
+
+    data      = request.get_json() or {}
+    url_input = data.get('playlist_url', '').strip()
+    categoria = data.get('categoria', 'rock').strip()
+    subcategoria = data.get('subcategoria', '').strip() or 'playlist'
+
+    # Extrai playlist ID da URL ou aceita ID direto
+    m = re.search(r'[?&]list=([A-Za-z0-9_-]+)', url_input)
+    playlist_id = m.group(1) if m else url_input
+
+    videos     = []
+    page_token = None
+    paginas    = 0
+
+    while paginas < 20:   # máx 1000 vídeos (20 × 50)
+        params = {
+            'part':       'snippet',
+            'playlistId': playlist_id,
+            'maxResults': 50,
+            'key':        api_key,
+        }
+        if page_token:
+            params['pageToken'] = page_token
+
+        try:
+            r = _requests.get(
+                'https://www.googleapis.com/youtube/v3/playlistItems',
+                params=params, timeout=15
+            )
+        except Exception as e:
+            return jsonify({'ok': False, 'erro': f'Erro de rede: {e}'})
+
+        if r.status_code == 400:
+            return jsonify({'ok': False, 'erro': 'Playlist ID inválido'})
+        if r.status_code == 403:
+            return jsonify({'ok': False, 'erro': 'API Key inválida ou cota excedida'})
+        if r.status_code != 200:
+            return jsonify({'ok': False, 'erro': f'YouTube API HTTP {r.status_code}'})
+
+        d = r.json()
+        for item in d.get('items', []):
+            sn     = item.get('snippet', {})
+            vid_id = sn.get('resourceId', {}).get('videoId', '')
+            titulo = sn.get('title', '')
+            artista = sn.get('videoOwnerChannelTitle', '') or sn.get('channelTitle', '')
+            # Ignora vídeos privados/removidos
+            if vid_id and titulo and titulo not in ('Private video', 'Deleted video'):
+                videos.append((vid_id, titulo, artista, categoria, subcategoria))
+
+        page_token = d.get('nextPageToken')
+        paginas   += 1
+        if not page_token:
+            break
+
+    if not videos:
+        return jsonify({'ok': False, 'erro': 'Playlist vazia ou não encontrada'})
+
+    # Insere no banco (INSERT OR IGNORE — não duplica)
+    conn     = get_pubshow_db()
+    inseridos = 0
+    for vid_id, titulo, artista, cat, subcat in videos:
+        conn.execute(
+            '''INSERT OR IGNORE INTO pubshow_videos
+               (youtube_id, titulo, artista, categoria, subcategoria, duracao_seg, qualidade)
+               VALUES (?,?,?,?,?,180,'HD')''',
+            (vid_id, titulo, artista, cat, subcat)
+        )
+        inseridos += conn.execute('SELECT changes()').fetchone()[0]
+    conn.commit()
+    conn.close()
+
+    return jsonify({
+        'ok':       True,
+        'total':    len(videos),
+        'inseridos': inseridos,
+        'duplicados': len(videos) - inseridos,
+        'msg': f'✅ {inseridos} vídeos novos importados de {len(videos)} na playlist!'
+    })
+
+
 @pubshow_bp.route('/admin/videos/check-one', methods=['POST'])
 @_admin_required
 def admin_videos_check_one():
