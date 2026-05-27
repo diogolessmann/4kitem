@@ -917,6 +917,39 @@ def painel():
                            precos_parsed=precos_parsed)
 
 
+@pubshow_bp.route('/painel/fila-json')
+@pubshow_login_required
+def painel_fila_json():
+    """Retorna fila + aguardando_pix como JSON — usado pelo polling do painel sem recarregar a página."""
+    b = _get_business()
+    conn = get_pubshow_db()
+    fila = conn.execute(
+        '''SELECT id, nome_cliente, tipo, mensagem, valor, created_at
+           FROM pubshow_pedidos WHERE business_id=? AND status="pendente"
+           ORDER BY created_at ASC LIMIT 20''',
+        (b['id'],)
+    ).fetchall()
+    aguardando = conn.execute(
+        '''SELECT id, nome_cliente, tipo, mensagem, valor, created_at
+           FROM pubshow_pedidos WHERE business_id=? AND status="aguardando_pix"
+           ORDER BY created_at DESC LIMIT 20''',
+        (b['id'],)
+    ).fetchall()
+    pedidos_hoje = conn.execute(
+        '''SELECT COALESCE(SUM(valor),0) FROM pubshow_pedidos
+           WHERE business_id=? AND status!="aguardando_pix"
+           AND date(created_at)=date("now","localtime")''',
+        (b['id'],)
+    ).fetchone()[0]
+    conn.close()
+    return jsonify({
+        'fila': [dict(r) for r in fila],
+        'aguardando_pix': [dict(r) for r in aguardando],
+        'total_hoje': float(pedidos_hoje),
+        'fila_count': len(fila),
+    })
+
+
 @pubshow_bp.route('/painel/canal', methods=['POST'])
 @pubshow_login_required
 def painel_canal():

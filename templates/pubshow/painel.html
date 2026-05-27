@@ -82,7 +82,7 @@
   <div class="grid-3">
     <div class="card">
       <div class="card-title">💰 Jukebox hoje</div>
-      <div class="stat-val" style="color:var(--green)">R$ {{ '%.2f'|format(total_hoje) }}</div>
+      <div class="stat-val" style="color:var(--green)" id="total-hoje">R$ {{ '%.2f'|format(total_hoje)|replace('.',',') }}</div>
       <div class="stat-sub">{{ pedidos_hoje|length }} pedidos recebidos</div>
     </div>
     <div class="card">
@@ -142,6 +142,7 @@
     <!-- Fila de pedidos -->
     <div class="card">
       <div class="card-title">📋 Fila de pedidos pendentes</div>
+      <div id="fila-pedidos">
       {% if fila %}
         {% for p in fila %}
         {% set t = tipos.get(p.tipo, {}) %}
@@ -160,6 +161,7 @@
       {% else %}
         <div class="empty-state">Nenhum pedido na fila agora.<br>Os pedidos aparecem aqui em tempo real. 🎉</div>
       {% endif %}
+      </div>
     </div>
 
     <!-- Configurar PIX -->
@@ -226,7 +228,7 @@
     <p style="font-size:12px;color:var(--text2);margin-bottom:14px">Confira no seu celular se o PIX foi recebido antes de confirmar.</p>
     {% for p in aguardando_pix %}
     {% set t = tipos.get(p.tipo, {}) %}
-    <div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid rgba(255,255,255,.05)">
+    <div class="pix-pedido-row" style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid rgba(255,255,255,.05)">
       <span style="font-size:22px">{{ t.get('emoji','🎵') }}</span>
       <div style="flex:1;min-width:0">
         <div style="font-size:14px;font-weight:700">{{ p.nome_cliente }}</div>
@@ -453,8 +455,62 @@ function copiar(texto, btn) {
     setTimeout(() => btn.textContent = orig, 2000);
   });
 }
-// Atualiza fila a cada 15s
-setInterval(() => location.reload(), 15000);
+// Atualiza fila a cada 10s via fetch — sem recarregar a página inteira
+const TIPOS_INFO = {{ tipos | tojson }};
+
+function renderFila(fila) {
+  const div = document.getElementById('fila-pedidos');
+  if (!div) return;
+  if (!fila.length) {
+    div.innerHTML = '<div class="empty-state">Nenhum pedido na fila agora.<br>Os pedidos aparecem aqui em tempo real. 🎉</div>';
+    return;
+  }
+  div.innerHTML = fila.map(p => {
+    const t = TIPOS_INFO[p.tipo] || {};
+    const emoji = t.emoji || '🎵';
+    const nome_tipo = t.nome || p.tipo;
+    const msg = p.mensagem ? ` · "${p.mensagem.substring(0,40)}"` : '';
+    const valor = Math.round(p.valor || 0);
+    return `<div class="pedido-row">
+      <span class="pedido-emoji">${emoji}</span>
+      <div class="pedido-info">
+        <div class="pedido-nome">${p.nome_cliente}</div>
+        <div class="pedido-tipo">${nome_tipo}${msg}</div>
+      </div>
+      <span class="pedido-valor">R$ ${valor}</span>
+      <form method="POST" action="/pubshow/painel/pedido/${p.id}/dispensar" style="margin:0">
+        <button type="submit" class="pedido-dispensar">✓ OK</button>
+      </form>
+    </div>`;
+  }).join('');
+}
+
+function renderTotalHoje(total) {
+  const el = document.getElementById('total-hoje');
+  if (el) el.textContent = 'R$ ' + total.toFixed(2).replace('.', ',');
+  const el2 = document.getElementById('fila-count');
+  // atualizado via renderFila
+}
+
+function pollFila() {
+  fetch('/pubshow/painel/fila-json')
+    .then(r => r.json())
+    .then(d => {
+      renderFila(d.fila || []);
+      renderTotalHoje(d.total_hoje || 0);
+      // Se houver mudança nos aguardando_pix, recarrega só se nenhum input estiver em foco
+      const temPix = (d.aguardando_pix || []).length;
+      const pixAtual = document.querySelectorAll('.pix-pedido-row').length;
+      if (temPix !== pixAtual) {
+        const focado = document.activeElement;
+        const digitando = focado && (focado.tagName==='INPUT'||focado.tagName==='TEXTAREA'||focado.tagName==='SELECT');
+        if (!digitando) location.reload();
+      }
+    })
+    .catch(() => {}) // falha silenciosa
+    .finally(() => setTimeout(pollFila, 10000));
+}
+setTimeout(pollFila, 10000);
 </script>
 </body>
 </html>
