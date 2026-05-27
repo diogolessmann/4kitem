@@ -107,6 +107,10 @@ def init_pubshow_db():
         'ALTER TABLE pubshow_assinaturas ADD COLUMN asaas_subscription_id TEXT',
         'ALTER TABLE pubshow_assinaturas ADD COLUMN asaas_payment_id TEXT',
         'ALTER TABLE pubshow_assinaturas ADD COLUMN billing_type TEXT',
+        # Música específica — cliente escolhe o vídeo
+        'ALTER TABLE pubshow_pedidos ADD COLUMN youtube_id TEXT',
+        'ALTER TABLE pubshow_pedidos ADD COLUMN titulo_pedido TEXT',
+        'ALTER TABLE pubshow_pedidos ADD COLUMN thumb_url TEXT',
     ]:
         try:
             conn.execute(m); conn.commit()

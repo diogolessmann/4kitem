@@ -85,14 +85,15 @@ PLANOS = {
 }
 
 TIPOS_PEDIDO = {
-    'musica':    {'nome': 'Pedir música',          'emoji': '🎵', 'preco': 2.00,  'cor': '#3b82f6'},
-    'flash':     {'nome': 'Prioridade na fila',    'emoji': '⚡', 'preco': 5.00,  'cor': '#f59e0b'},
-    'vip':       {'nome': 'Tocar AGORA',           'emoji': '👑', 'preco': 10.00, 'cor': '#8b5cf6'},
-    'parabens':  {'nome': 'Parabéns! 🎂',          'emoji': '🎂', 'preco': 15.00, 'cor': '#ec4899'},
-    'dedicatoria':{'nome': 'Dedicatória ❤️',       'emoji': '💌', 'preco': 10.00, 'cor': '#ef4444'},
-    'brinde':    {'nome': 'Brinde Geral! 🍻',       'emoji': '🍻', 'preco': 5.00,  'cor': '#22c55e'},
-    'chegada':   {'nome': 'Chegamos! 🎉',           'emoji': '🎉', 'preco': 5.00,  'cor': '#f97316'},
-    'casamento': {'nome': 'Pedido de Casamento 💍', 'emoji': '💍', 'preco': 25.00, 'cor': '#a855f7'},
+    'musica':          {'nome': 'Música aleatória',     'emoji': '🎵', 'preco': 2.00,  'cor': '#3b82f6'},
+    'musica_especifica':{'nome': 'Escolher a música',   'emoji': '🎯', 'preco': 8.00,  'cor': '#06b6d4'},
+    'flash':           {'nome': 'Prioridade na fila',   'emoji': '⚡', 'preco': 5.00,  'cor': '#f59e0b'},
+    'vip':             {'nome': 'Tocar AGORA',          'emoji': '👑', 'preco': 10.00, 'cor': '#8b5cf6'},
+    'parabens':        {'nome': 'Parabéns! 🎂',         'emoji': '🎂', 'preco': 15.00, 'cor': '#ec4899'},
+    'dedicatoria':     {'nome': 'Dedicatória ❤️',      'emoji': '💌', 'preco': 10.00, 'cor': '#ef4444'},
+    'brinde':          {'nome': 'Brinde Geral! 🍻',     'emoji': '🍻', 'preco': 5.00,  'cor': '#22c55e'},
+    'chegada':         {'nome': 'Chegamos! 🎉',         'emoji': '🎉', 'preco': 5.00,  'cor': '#f97316'},
+    'casamento':       {'nome': 'Pedido de Casamento 💍','emoji': '💍', 'preco': 25.00, 'cor': '#a855f7'},
 }
 
 
@@ -331,23 +332,30 @@ def jukebox(code):
     erro    = ''
 
     if request.method == 'POST':
-        tipo         = request.form.get('tipo', '')
-        nome_cliente = request.form.get('nome_cliente', '').strip()
-        mensagem     = request.form.get('mensagem', '').strip()
-        categoria    = request.form.get('categoria', b['canal_atual'])
+        tipo          = request.form.get('tipo', '')
+        nome_cliente  = request.form.get('nome_cliente', '').strip()
+        mensagem      = request.form.get('mensagem', '').strip()
+        categoria     = request.form.get('categoria', b['canal_atual'])
+        youtube_id    = request.form.get('youtube_id', '').strip()[:20]
+        titulo_pedido = request.form.get('titulo_pedido', '').strip()[:80]
+        thumb_url     = request.form.get('thumb_url', '').strip()[:200]
 
         if tipo not in TIPOS_PEDIDO:
             erro = 'Tipo de pedido inválido.'
         elif not nome_cliente:
             erro = 'Informe seu nome.'
+        elif tipo == 'musica_especifica' and not youtube_id:
+            erro = 'Selecione uma música antes de confirmar.'
         else:
             t = TIPOS_PEDIDO[tipo]
             conn2 = get_pubshow_db()
             conn2.execute(
                 '''INSERT INTO pubshow_pedidos
-                   (business_id, tipo, nome_cliente, mensagem, categoria, status, valor)
-                   VALUES (?,?,?,?,?,?,?)''',
-                (b['id'], tipo, nome_cliente, mensagem, categoria, 'pendente', t['preco'])
+                   (business_id, tipo, nome_cliente, mensagem, categoria, status, valor,
+                    youtube_id, titulo_pedido, thumb_url)
+                   VALUES (?,?,?,?,?,?,?,?,?,?)''',
+                (b['id'], tipo, nome_cliente, mensagem, categoria, 'pendente', t['preco'],
+                 youtube_id or None, titulo_pedido or None, thumb_url or None)
             )
             conn2.commit(); conn2.close()
             sucesso = tipo
@@ -443,6 +451,64 @@ def api_trocar_canal(code):
 def api_videos(categoria):
     videos = _videos_do_canal(categoria)
     return jsonify({'videos': videos, 'total': len(videos)})
+
+
+@pubshow_bp.route('/api/buscar')
+def api_buscar():
+    """Busca músicas no YouTube via InnerTube API (sem chave)."""
+    q = request.args.get('q', '').strip()
+    if not q or len(q) < 2:
+        return jsonify({'resultados': []})
+    try:
+        resp = _requests.post(
+            'https://www.youtube.com/youtubei/v1/search'
+            '?key=AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8',
+            json={
+                'query': q,
+                'context': {
+                    'client': {
+                        'clientName': 'WEB',
+                        'clientVersion': '2.20231121.08.00',
+                        'hl': 'pt',
+                        'gl': 'BR',
+                    }
+                }
+            },
+            headers={'Content-Type': 'application/json'},
+            timeout=8
+        )
+        data = resp.json()
+        resultados = []
+        sections = (data.get('contents', {})
+                    .get('twoColumnSearchResultsRenderer', {})
+                    .get('primaryContents', {})
+                    .get('sectionListRenderer', {})
+                    .get('contents', []))
+        for sec in sections:
+            for item in sec.get('itemSectionRenderer', {}).get('contents', []):
+                vr = item.get('videoRenderer', {})
+                if not vr:
+                    continue
+                vid_id = vr.get('videoId', '')
+                titulo = ''.join(r.get('text', '') for r in vr.get('title', {}).get('runs', []))
+                canal  = (vr.get('longBylineText', {}).get('runs') or [{}])[0].get('text', '')
+                duracao= vr.get('lengthText', {}).get('simpleText', '')
+                if vid_id and titulo:
+                    resultados.append({
+                        'id':      vid_id,
+                        'titulo':  titulo[:70],
+                        'canal':   canal[:40],
+                        'duracao': duracao,
+                        'thumb':   f'https://i.ytimg.com/vi/{vid_id}/mqdefault.jpg',
+                    })
+                if len(resultados) >= 8:
+                    break
+            if len(resultados) >= 8:
+                break
+        return jsonify({'resultados': resultados})
+    except Exception as e:
+        log.error('YouTube search error: %s', e)
+        return jsonify({'resultados': []})
 
 
 # ── PAINEL DO BAR ─────────────────────────────────────────────────────────────

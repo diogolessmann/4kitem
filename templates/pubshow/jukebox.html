@@ -14,27 +14,25 @@
 
   .header{
     background:linear-gradient(135deg,#1a0a2e,#0a1a2e);
-    padding:20px 20px 24px;
-    border-bottom:1px solid var(--border);
+    padding:20px 20px 24px;border-bottom:1px solid var(--border);
   }
   .header-top{display:flex;align-items:center;gap:12px;margin-bottom:8px}
-  .canal-badge{
-    background:{{ canal.cor }};
-    padding:5px 12px;border-radius:8px;font-size:12px;font-weight:800;color:#fff;
-  }
+  .canal-badge{background:{{ canal.cor }};padding:5px 12px;border-radius:8px;font-size:12px;font-weight:800;color:#fff}
   .bar-nome{font-size:18px;font-weight:800}
   .tocando-agora{font-size:12px;color:var(--text2);display:flex;align-items:center;gap:6px}
   .dot-live{width:7px;height:7px;background:#22c55e;border-radius:50%;animation:blink 1.2s ease-in-out infinite}
   @keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
 
   /* Sucesso */
-  .success-box{
-    margin:20px;padding:20px;border-radius:16px;
-    background:#052e16;border:1px solid #22c55e44;text-align:center;
-  }
+  .success-box{margin:20px;padding:20px;border-radius:16px;background:#052e16;border:1px solid #22c55e44;text-align:center}
   .success-box .emoji{font-size:48px;margin-bottom:8px}
   .success-box h3{color:#4ade80;font-size:18px;margin-bottom:6px}
   .success-box p{color:#86efac;font-size:13px;line-height:1.5}
+  .success-musica{background:#031a2e;border-color:#06b6d444;margin-top:10px;border-radius:12px;padding:12px;display:flex;gap:10px;align-items:center}
+  .success-musica img{width:56px;height:40px;border-radius:6px;object-fit:cover;flex-shrink:0}
+  .success-musica-info{text-align:left}
+  .success-musica-titulo{font-size:13px;font-weight:700;color:#67e8f9}
+  .success-musica-canal{font-size:11px;color:var(--text2)}
 
   /* Erro */
   .erro-box{margin:16px;padding:14px 16px;border-radius:12px;background:#2d0a0a;border:1px solid #ef444433;color:#f87171;font-size:13px}
@@ -45,9 +43,9 @@
   .fila-item{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)}
   .fila-item:last-child{border:none}
   .fila-emoji{font-size:22px;flex-shrink:0}
-  .fila-info{flex:1}
+  .fila-info{flex:1;min-width:0}
   .fila-nome{font-size:13px;font-weight:700}
-  .fila-tipo{font-size:11px;color:var(--text2)}
+  .fila-tipo{font-size:11px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .fila-empty{font-size:13px;color:var(--text2);padding:8px 0}
 
   /* Grid de pedidos */
@@ -58,35 +56,109 @@
   .pedido-card{
     background:var(--surface);border:1px solid var(--border);
     border-radius:16px;padding:16px 14px;cursor:pointer;
-    transition:.2s;text-align:center;
-    -webkit-tap-highlight-color:transparent;
+    transition:.15s;text-align:center;-webkit-tap-highlight-color:transparent;
+    position:relative;overflow:hidden;
   }
   .pedido-card:active{transform:scale(.96)}
-  .pedido-card.selected{border-color:var(--card-cor);background:color-mix(in srgb,var(--card-cor) 15%,var(--surface))}
-  .pedido-card .card-emoji{font-size:36px;margin-bottom:8px}
-  .pedido-card .card-nome{font-size:12px;font-weight:700;line-height:1.3;margin-bottom:6px}
-  .pedido-card .card-preco{
-    font-size:16px;font-weight:900;color:var(--card-cor);
+  .pedido-card.destaque{border-color:rgba(6,182,212,.4);background:rgba(6,182,212,.05)}
+  .pedido-card.destaque::after{
+    content:'★ NOVO';position:absolute;top:6px;right:-22px;
+    background:#06b6d4;color:#fff;font-size:8px;font-weight:900;
+    padding:2px 28px;transform:rotate(40deg);letter-spacing:.5px;
   }
+  .pedido-card .card-emoji{font-size:32px;margin-bottom:6px}
+  .pedido-card .card-nome{font-size:12px;font-weight:700;line-height:1.3;margin-bottom:6px}
+  .pedido-card .card-preco{font-size:16px;font-weight:900;color:var(--card-cor)}
 
-  /* Formulário */
+  /* Seção de busca de música */
+  #busca-section{padding:0 20px 20px;display:none}
+  #busca-section.show{display:block}
+  .busca-header{display:flex;align-items:center;gap:10px;margin-bottom:16px}
+  .busca-title{font-size:15px;font-weight:800}
+  .btn-busca-back{background:none;border:none;color:var(--text2);font-size:22px;cursor:pointer;padding:0;line-height:1}
+
+  .busca-input-wrap{position:relative;margin-bottom:12px}
+  .busca-input{
+    width:100%;background:var(--surface2);border:2px solid rgba(6,182,212,.4);
+    border-radius:14px;padding:14px 48px 14px 16px;color:var(--text);font-size:15px;
+    font-family:inherit;outline:none;
+  }
+  .busca-input:focus{border-color:#06b6d4}
+  .busca-btn{
+    position:absolute;right:8px;top:50%;transform:translateY(-50%);
+    background:#06b6d4;border:none;border-radius:10px;padding:8px 12px;
+    font-size:16px;cursor:pointer;color:#fff;transition:.15s;
+  }
+  .busca-btn:active{opacity:.8}
+
+  .busca-loading{text-align:center;padding:20px;color:var(--text2);font-size:13px;display:none}
+  .busca-loading.show{display:block}
+
+  /* Resultados */
+  #resultados-lista{display:flex;flex-direction:column;gap:8px}
+  .resultado-item{
+    background:var(--surface);border:2px solid var(--border);
+    border-radius:14px;padding:10px 12px;display:flex;gap:10px;align-items:center;
+    cursor:pointer;transition:.15s;-webkit-tap-highlight-color:transparent;
+  }
+  .resultado-item:active{transform:scale(.98)}
+  .resultado-item.selecionado{border-color:#06b6d4;background:rgba(6,182,212,.08)}
+  .resultado-thumb{width:72px;height:48px;border-radius:8px;object-fit:cover;flex-shrink:0;background:#1a1a2e}
+  .resultado-info{flex:1;min-width:0}
+  .resultado-titulo{font-size:13px;font-weight:700;line-height:1.3;margin-bottom:3px;
+    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .resultado-canal{font-size:11px;color:var(--text2)}
+  .resultado-duracao{font-size:10px;color:var(--text2);margin-top:2px}
+  .resultado-check{width:24px;height:24px;border-radius:50%;background:#06b6d4;
+    display:none;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+  .resultado-item.selecionado .resultado-check{display:flex}
+
+  /* Selecionado preview */
+  #selecionado-box{
+    background:rgba(6,182,212,.08);border:2px solid #06b6d4;
+    border-radius:14px;padding:12px;margin-top:12px;display:none;
+    flex-direction:column;gap:8px;
+  }
+  #selecionado-box.show{display:flex}
+  .sel-label{font-size:10px;color:#06b6d4;font-weight:900;text-transform:uppercase;letter-spacing:.8px}
+  .sel-video{display:flex;gap:10px;align-items:center}
+  .sel-thumb{width:72px;height:48px;border-radius:8px;object-fit:cover;flex-shrink:0}
+  .sel-titulo{font-size:13px;font-weight:700;color:#67e8f9;line-height:1.3}
+  .sel-canal{font-size:11px;color:var(--text2)}
+  .btn-confirmar-busca{
+    background:linear-gradient(135deg,#06b6d4,#0891b2);color:#fff;
+    border:none;border-radius:12px;padding:14px;font-size:15px;font-weight:800;
+    cursor:pointer;font-family:inherit;width:100%;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .btn-confirmar-busca:active{opacity:.85}
+
+  /* Formulário de confirmação */
   .form-section{padding:0 20px;display:none}
   .form-section.show{display:block}
   .form-title{font-size:15px;font-weight:800;margin-bottom:16px;display:flex;align-items:center;gap:8px}
   .form-group{margin-bottom:14px}
   .form-group label{font-size:12px;font-weight:700;color:var(--text2);display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px}
-  .form-group input,.form-group textarea,.form-group select{
+  .form-group input,.form-group textarea{
     width:100%;background:var(--surface2);border:1px solid var(--border);
     border-radius:10px;padding:12px 14px;color:var(--text);font-size:14px;
     font-family:inherit;outline:none;resize:none;
   }
   .form-group input:focus,.form-group textarea:focus{border-color:var(--accent-cor,#ec4899)}
 
-  /* PIX info */
-  .pix-box{
-    background:var(--surface2);border:1px solid #22c55e44;
-    border-radius:14px;padding:18px;margin-bottom:16px;
+  /* Preview da música no form */
+  .musica-preview{
+    background:var(--surface2);border:1px solid rgba(6,182,212,.3);
+    border-radius:12px;padding:12px;margin-bottom:14px;
+    display:flex;gap:10px;align-items:center;
   }
+  .musica-preview img{width:64px;height:44px;border-radius:8px;object-fit:cover;flex-shrink:0}
+  .musica-preview-info{}
+  .musica-preview-titulo{font-size:13px;font-weight:700;color:#67e8f9;line-height:1.3}
+  .musica-preview-canal{font-size:11px;color:var(--text2);margin-top:2px}
+
+  /* PIX */
+  .pix-box{background:var(--surface2);border:1px solid #22c55e44;border-radius:14px;padding:18px;margin-bottom:16px}
   .pix-title{font-size:12px;font-weight:700;color:#22c55e;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px}
   .pix-valor{font-size:28px;font-weight:900;color:#4ade80;margin-bottom:6px}
   .pix-chave{font-size:13px;color:var(--text2);margin-bottom:8px}
@@ -99,12 +171,10 @@
     display:block;width:100%;padding:16px;
     background:linear-gradient(135deg,var(--accent-cor,#ec4899),var(--accent-cor2,#f97316));
     color:#fff;font-size:16px;font-weight:800;border:none;border-radius:14px;
-    cursor:pointer;font-family:inherit;margin-top:12px;
-    -webkit-tap-highlight-color:transparent;
+    cursor:pointer;font-family:inherit;margin-top:12px;-webkit-tap-highlight-color:transparent;
   }
   .btn-confirmar:active{opacity:.85}
   .btn-voltar{background:none;border:none;color:var(--text2);font-size:13px;cursor:pointer;padding:10px 0;display:block;margin:0 auto;font-family:inherit}
-
   .aviso-pix{font-size:11px;color:var(--text2);text-align:center;margin-top:8px;line-height:1.5}
 </style>
 </head>
@@ -128,7 +198,9 @@
     <div class="emoji">{{ t.emoji }}</div>
     <h3>Pedido enviado! {{ t.emoji }}</h3>
     <p>
-      {% if sucesso == 'parabens' %}
+      {% if sucesso == 'musica_especifica' %}
+        Sua música está na fila! Toca quando o vídeo atual terminar. 🎯
+      {% elif sucesso == 'parabens' %}
         O Parabéns vai aparecer na tela em breve. Prepara a câmera! 📸
       {% elif sucesso == 'dedicatoria' %}
         Sua dedicatória vai aparecer na tela em instantes! ❤️
@@ -157,7 +229,11 @@
     <span class="fila-emoji">{{ t.get('emoji','🎵') }}</span>
     <div class="fila-info">
       <div class="fila-nome">{{ p.nome_cliente }}</div>
-      <div class="fila-tipo">{{ t.get('nome', p.tipo) }}{% if p.mensagem %} · "{{ p.mensagem[:30] }}..."{% endif %}</div>
+      <div class="fila-tipo">
+        {% if p.titulo_pedido %}🎯 {{ p.titulo_pedido[:35] }}
+        {% else %}{{ t.get('nome', p.tipo) }}{% if p.mensagem %} · "{{ p.mensagem[:25] }}..."{% endif %}
+        {% endif %}
+      </div>
     </div>
   </div>
   {% endfor %}
@@ -169,27 +245,81 @@
   <div class="pedidos-titulo">🎰 O que você quer?</div>
   <div class="pedidos-grid">
     {% for key, t in tipos.items() %}
+    {% if key == 'musica_especifica' %}
+    <div class="pedido-card destaque" style="--card-cor:{{ t.cor }}"
+         onclick="abrirBusca()">
+      <div class="card-emoji">{{ t.emoji }}</div>
+      <div class="card-nome">{{ t.nome }}</div>
+      <div class="card-preco">R$ {{ '%.0f'|format(t.preco) }}</div>
+    </div>
+    {% else %}
     <div class="pedido-card" style="--card-cor:{{ t.cor }}"
          onclick="selecionarTipo('{{ key }}', '{{ t.nome }}', '{{ t.emoji }}', {{ t.preco }}, '{{ t.cor }}')">
       <div class="card-emoji">{{ t.emoji }}</div>
       <div class="card-nome">{{ t.nome }}</div>
       <div class="card-preco">R$ {{ '%.0f'|format(t.preco) }}</div>
     </div>
+    {% endif %}
     {% endfor %}
   </div>
 </div>
 
-<!-- Formulário -->
+<!-- Busca de música específica -->
+<div id="busca-section">
+  <div class="busca-header">
+    <button class="btn-busca-back" onclick="voltarGrid()">←</button>
+    <div class="busca-title">🎯 Escolha sua música</div>
+  </div>
+
+  <div class="busca-input-wrap">
+    <input type="text" class="busca-input" id="busca-input"
+           placeholder="Digite o nome da música ou artista..."
+           oninput="onBuscaInput()" onkeydown="if(event.key==='Enter'){buscar()}">
+    <button class="busca-btn" onclick="buscar()">🔍</button>
+  </div>
+
+  <div class="busca-loading" id="busca-loading">🔍 Buscando...</div>
+  <div id="resultados-lista"></div>
+
+  <div id="selecionado-box">
+    <div class="sel-label">✅ Música selecionada</div>
+    <div class="sel-video">
+      <img id="sel-thumb" class="sel-thumb" src="" alt="">
+      <div>
+        <div id="sel-titulo" class="sel-titulo"></div>
+        <div id="sel-canal" class="sel-canal"></div>
+      </div>
+    </div>
+    <button class="btn-confirmar-busca" onclick="confirmarMusica()">
+      Confirmar esta música →
+    </button>
+  </div>
+</div>
+
+<!-- Formulário de confirmação -->
 <div class="form-section" id="form-section">
   <div class="form-title" id="form-title">🎵 Pedido</div>
 
   <form method="POST" id="form-pedido">
     <input type="hidden" name="tipo" id="inp-tipo">
     <input type="hidden" name="categoria" value="{{ b.canal_atual or 'rock' }}">
+    <input type="hidden" name="youtube_id" id="inp-youtube-id">
+    <input type="hidden" name="titulo_pedido" id="inp-titulo-pedido">
+    <input type="hidden" name="thumb_url" id="inp-thumb-url">
+
+    <!-- Preview da música específica (quando for musica_especifica) -->
+    <div class="musica-preview" id="musica-preview" style="display:none">
+      <img id="prev-thumb" src="" alt="" onerror="this.style.display='none'">
+      <div class="musica-preview-info">
+        <div class="musica-preview-titulo" id="prev-titulo"></div>
+        <div class="musica-preview-canal" id="prev-canal"></div>
+      </div>
+    </div>
 
     <div class="form-group">
       <label>Seu nome *</label>
-      <input type="text" name="nome_cliente" id="inp-nome" placeholder="Como você quer aparecer na tela?" maxlength="40" required>
+      <input type="text" name="nome_cliente" id="inp-nome"
+             placeholder="Como você quer aparecer na tela?" maxlength="40" required>
     </div>
 
     <div class="form-group" id="msg-group" style="display:none">
@@ -213,7 +343,7 @@
     <div class="pix-box" style="border-color:#f59e0b44">
       <div class="pix-title" style="color:#f59e0b">💛 Pagamento no balcão</div>
       <div class="pix-valor" id="pix-valor" style="color:#fbbf24">R$ —</div>
-      <div style="font-size:13px;color:var(--text2)">Pague o valor acima diretamente no caixa do bar e confirme abaixo.</div>
+      <div style="font-size:13px;color:var(--text2)">Pague o valor acima diretamente no caixa.</div>
     </div>
     {% endif %}
 
@@ -227,46 +357,151 @@
 
 <script>
 const PRECOS = {{ tipos | tojson }};
-let tipoAtual = '';
+let tipoAtual    = '';
+let buscaTimer   = null;
+let videoSel     = null; // {id, titulo, canal, thumb}
 
+// ── Grid principal ────────────────────────────────────────────────────────────
 function selecionarTipo(key, nome, emoji, preco, cor) {
   tipoAtual = key;
-  document.getElementById('inp-tipo').value = key;
+  document.getElementById('inp-tipo').value  = key;
   document.getElementById('form-title').innerHTML = `${emoji} ${nome}`;
   document.getElementById('pix-valor').textContent = 'R$ ' + preco.toFixed(2).replace('.', ',');
 
-  // Mostra campo de mensagem para tipos especiais
-  const msgGroup = document.getElementById('msg-group');
-  const msgLabel = document.getElementById('msg-label');
-  const msgInp   = document.getElementById('inp-msg');
-  const especiais = ['parabens', 'dedicatoria', 'brinde', 'chegada', 'casamento'];
+  const especiais = ['parabens','dedicatoria','brinde','chegada','casamento'];
+  const msgGroup  = document.getElementById('msg-group');
+  const msgLabel  = document.getElementById('msg-label');
+  const msgInp    = document.getElementById('inp-msg');
 
   if (especiais.includes(key)) {
     msgGroup.style.display = 'block';
-    if (key === 'parabens')    { msgLabel.textContent = 'Recado (aparece na tela)'; msgInp.placeholder = 'Ex: 30 anos de glória! 🎉'; }
-    else if (key === 'dedicatoria') { msgLabel.textContent = 'Mensagem de amor ❤️'; msgInp.placeholder = 'Sua mensagem para aparecer na tela...'; }
-    else if (key === 'casamento') { msgLabel.textContent = 'Mensagem especial 💍'; msgInp.placeholder = 'Ex: Ana, você quer casar comigo?'; }
-    else { msgLabel.textContent = 'Mensagem (opcional)'; msgInp.placeholder = 'Algum recado? Aparece na tela.'; }
+    if (key === 'parabens')      msgLabel.textContent = 'Recado (aparece na tela)';
+    else if (key === 'dedicatoria') msgLabel.textContent = 'Mensagem de amor ❤️';
+    else if (key === 'casamento')   msgLabel.textContent = 'Mensagem especial 💍';
+    else                            msgLabel.textContent = 'Mensagem (opcional)';
   } else {
     msgGroup.style.display = 'none';
   }
 
-  // Altera cor do botão confirmar
-  document.getElementById('btn-confirmar').style.background = `linear-gradient(135deg, ${cor}, ${cor}cc)`;
+  document.getElementById('musica-preview').style.display = 'none';
+  document.getElementById('inp-youtube-id').value    = '';
+  document.getElementById('inp-titulo-pedido').value = '';
+  document.getElementById('inp-thumb-url').value     = '';
+  document.getElementById('btn-confirmar').style.background =
+    `linear-gradient(135deg, ${cor}, ${cor}cc)`;
   document.getElementById('form-section').style.setProperty('--accent-cor', cor);
 
-  // Mostra form, esconde grid
-  document.getElementById('grid-section').style.display = 'none';
+  document.getElementById('grid-section').style.display   = 'none';
+  document.getElementById('busca-section').style.display  = 'none';
   document.getElementById('form-section').classList.add('show');
-  window.scrollTo({top: 0, behavior: 'smooth'});
+  window.scrollTo({top:0, behavior:'smooth'});
 }
 
 function voltarGrid() {
-  document.getElementById('grid-section').style.display = 'block';
+  document.getElementById('grid-section').style.display  = 'block';
+  document.getElementById('busca-section').style.display = 'none';
   document.getElementById('form-section').classList.remove('show');
-  window.scrollTo({top: 0, behavior: 'smooth'});
+  window.scrollTo({top:0, behavior:'smooth'});
 }
 
+// ── Busca de música específica ────────────────────────────────────────────────
+function abrirBusca() {
+  document.getElementById('grid-section').style.display   = 'none';
+  document.getElementById('form-section').classList.remove('show');
+  document.getElementById('busca-section').style.display  = 'block';
+  videoSel = null;
+  document.getElementById('selecionado-box').classList.remove('show');
+  document.getElementById('resultados-lista').innerHTML = '';
+  document.getElementById('busca-input').focus();
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+function onBuscaInput() {
+  clearTimeout(buscaTimer);
+  const q = document.getElementById('busca-input').value.trim();
+  if (q.length >= 3) buscaTimer = setTimeout(buscar, 600);
+}
+
+async function buscar() {
+  const q = document.getElementById('busca-input').value.trim();
+  if (!q) return;
+  const loading = document.getElementById('busca-loading');
+  const lista   = document.getElementById('resultados-lista');
+  loading.classList.add('show');
+  lista.innerHTML = '';
+  document.getElementById('selecionado-box').classList.remove('show');
+  videoSel = null;
+
+  try {
+    const res  = await fetch(`/pubshow/api/buscar?q=${encodeURIComponent(q)}`);
+    const data = await res.json();
+    loading.classList.remove('show');
+
+    if (!data.resultados || !data.resultados.length) {
+      lista.innerHTML = '<div style="text-align:center;padding:24px;color:#8888aa;font-size:13px">Nenhum resultado. Tente outra busca.</div>';
+      return;
+    }
+
+    lista.innerHTML = data.resultados.map((v, i) => `
+      <div class="resultado-item" id="res-${i}" onclick="selecionarVideo(${i}, ${JSON.stringify(v).replace(/"/g,'&quot;')})">
+        <img class="resultado-thumb" src="${v.thumb}" alt="" onerror="this.src=''">
+        <div class="resultado-info">
+          <div class="resultado-titulo">${v.titulo}</div>
+          <div class="resultado-canal">${v.canal}</div>
+          <div class="resultado-duracao">${v.duracao}</div>
+        </div>
+        <div class="resultado-check">✓</div>
+      </div>
+    `).join('');
+  } catch(e) {
+    loading.classList.remove('show');
+    lista.innerHTML = '<div style="text-align:center;padding:24px;color:#f87171;font-size:13px">Erro na busca. Tente novamente.</div>';
+  }
+}
+
+function selecionarVideo(idx, video) {
+  // Remove seleção anterior
+  document.querySelectorAll('.resultado-item').forEach(el => el.classList.remove('selecionado'));
+  document.getElementById('res-' + idx).classList.add('selecionado');
+
+  videoSel = video;
+  document.getElementById('sel-thumb').src    = video.thumb;
+  document.getElementById('sel-titulo').textContent = video.titulo;
+  document.getElementById('sel-canal').textContent  = video.canal;
+  document.getElementById('selecionado-box').classList.add('show');
+  document.getElementById('selecionado-box').scrollIntoView({behavior:'smooth', block:'nearest'});
+}
+
+function confirmarMusica() {
+  if (!videoSel) return;
+
+  // Preenche o formulário com os dados da música e vai pro form de confirmação
+  document.getElementById('inp-tipo').value          = 'musica_especifica';
+  document.getElementById('inp-youtube-id').value    = videoSel.id;
+  document.getElementById('inp-titulo-pedido').value = videoSel.titulo;
+  document.getElementById('inp-thumb-url').value     = videoSel.thumb;
+
+  // Preview no form
+  document.getElementById('prev-thumb').src          = videoSel.thumb;
+  document.getElementById('prev-titulo').textContent = videoSel.titulo;
+  document.getElementById('prev-canal').textContent  = videoSel.canal;
+  document.getElementById('musica-preview').style.display = 'flex';
+
+  const preco = PRECOS['musica_especifica'].preco;
+  document.getElementById('pix-valor').textContent = 'R$ ' + preco.toFixed(2).replace('.', ',');
+  document.getElementById('form-title').innerHTML = '🎯 Música específica';
+  document.getElementById('msg-group').style.display = 'none';
+
+  const cor = '#06b6d4';
+  document.getElementById('btn-confirmar').style.background = `linear-gradient(135deg, ${cor}, #0891b2)`;
+  document.getElementById('form-section').style.setProperty('--accent-cor', cor);
+
+  document.getElementById('busca-section').style.display = 'none';
+  document.getElementById('form-section').classList.add('show');
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+// ── PIX ───────────────────────────────────────────────────────────────────────
 function copiarPix() {
   const chave = document.getElementById('pix-chave-val')?.textContent?.trim();
   if (!chave) return;
