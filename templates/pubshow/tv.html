@@ -198,6 +198,7 @@ let pedidoMusica = null; // pedido esperando fim do vídeo
 let player       = null;
 let proximoTimer = null;
 let filaTimer    = null;
+let stallTimer   = null; // detecta tela preta (vídeo bloqueado sem disparar erro)
 
 // Tipos de pedido — configuração visual
 const TIPO_CONFIG = {
@@ -247,25 +248,48 @@ function onPlayerReady(e) {
   e.target.playVideo();
   atualizarNowPlaying(VIDEOS[videoIdx]);
   esconderNowPlayingComDelay();
+  iniciarStallDetector();
 }
 
 function onPlayerStateChange(e) {
   // YT.PlayerState.ENDED = 0
   if (e.data === 0) {
     clearTimeout(proximoTimer);
+    clearTimeout(stallTimer);
     document.getElementById('proximo-card').classList.remove('show');
     avancarFila();
   }
-  // YT.PlayerState.PLAYING = 1
+  // YT.PlayerState.PLAYING = 1 — vídeo tocando, cancela detector de stall
   if (e.data === 1) {
+    clearTimeout(stallTimer);
     agendarProximoCard();
+  }
+  // YT.PlayerState.BUFFERING = 3 — reinicia o detector (pode estar carregando)
+  if (e.data === 3) {
+    iniciarStallDetector();
   }
 }
 
 function onPlayerError(e) {
-  // Vídeo indisponível — pula para o próximo
-  console.warn('YT erro:', e.data, 'pulando vídeo...');
-  setTimeout(avancarFila, 2000);
+  // Vídeo indisponível ou bloqueado — pula para o próximo
+  console.warn('YT erro código:', e.data, '→ pulando...');
+  clearTimeout(stallTimer);
+  setTimeout(avancarFila, 1500);
+}
+
+function iniciarStallDetector() {
+  // Se após 7s o player ainda não está tocando (state != PLAYING),
+  // considera vídeo bloqueado (sem embed) e pula silenciosamente
+  clearTimeout(stallTimer);
+  stallTimer = setTimeout(() => {
+    if (!player) return;
+    const state = player.getPlayerState();
+    // -1=unstarted, 5=cued — ambos indicam que não começou
+    if (state === -1 || state === 5) {
+      console.warn('Stall detectado (tela preta) → pulando vídeo...');
+      avancarFila();
+    }
+  }, 7000);
 }
 
 // ── Lógica de avanço com fila ─────────────────────────────────────────────────
@@ -300,6 +324,7 @@ function carregarVideo(idx) {
   player.loadVideoById(v.youtube_id);
   atualizarNowPlaying(v);
   esconderNowPlayingComDelay();
+  iniciarStallDetector(); // detecta se esse vídeo também bloqueia embed
 }
 
 // ── "Próximo na fila" — aparece ~20s antes do fim ────────────────────────────
