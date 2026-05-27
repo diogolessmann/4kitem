@@ -257,8 +257,8 @@ def _limite_atingido(b, ip):
     return count >= limite
 
 def _admin_ok():
-    """Verifica se a sessão atual é admin."""
-    return session.get('pubshow_admin') is True
+    """Verifica se a sessão atual é admin — aceita login PUBSHOW ou SaaS master."""
+    return session.get('pubshow_admin') is True or session.get('saas_admin') is True
 
 def _admin_required(f):
     @wraps(f)
