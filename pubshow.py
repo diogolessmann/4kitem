@@ -987,10 +987,9 @@ def painel_qrcode():
     if not b:
         return redirect('/pubshow/entrar')
 
-    # URL pública do Jukebox — usa jukebox_token rotativo
-    base = request.host_url.rstrip('/')
+    # URL pública do Jukebox — sempre www para evitar erro de certificado SSL
     token = b['jukebox_token'] or b['code']
-    jukebox_url = f"{base}/pubshow/jukebox/{token}"
+    jukebox_url = f"https://www.4kitem.com.br/pubshow/jukebox/{token}"
 
     # Gera QR como PNG base64
     try:
