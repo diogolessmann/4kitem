@@ -589,6 +589,21 @@ def _seed_videos(conn):
         ('xRkbCQ5UT_c', 'WSL — Best Moments 2023',            'World Surf League','surf','pro',    420, 20),
         ('gHx4l4OxFPs', 'Surf — Greatest Wipeouts',           'WSL',             'surf','wipeout', 300, 30),
         ('qNDPTBFKOSE', 'Women Surfing — Best Rides WSL',     'WSL Women',       'surf','women',   360, 20),
+        # Tahiti — sonho de qualquer surfista
+        ('sQP6HiTCRuY', 'Tahiti — Perfect Blue Barrels',      'WSL',             'surf','barrel',  300, 30),
+        # Tom Curren / Andy Irons — lendas clássicas
+        ('y3GpEgMq8F8', 'Andy Irons — Greatest Rides',        'WSL',             'surf','legend',  480, 45),
+        ('yRqbBLRj7lQ', 'Tom Curren — Lost Tapes',            'Surf History',    'surf','legend',  360, 35),
+        # Owen Wright / Julian Wilson
+        ('VsRPeVh4JCk', 'Julian Wilson — Best Backflips',     'WSL',             'surf','pro',     300, 25),
+        # Brasil na WSL — galera unida
+        ('FjF3SVNeDd4', 'Brasil Surf — Melhores Momentos',    'WSL Brazil',      'surf','brasil',  360, 30),
+        # Artificiais — Wavegarden e Kelly Slater's pool
+        ('PIzIIq9NeGE', 'Kelly Slater Wave Pool — Perfect Wave','WSL',           'surf','pool',    240, 50),
+        # Bodyboard — Jaws no belly
+        ('RXZFBLU4Gxk', 'Bodyboard — Jaws Biggest Waves',     'IBA World Tour',  'surf','bodyboard',300,20),
+        # Longboard clássico — estilo raiz
+        ('DdKhQZ0e7A4', 'Longboard — Classic Style Noseriders','Surf History',   'surf','long',    300, 15),
 
         # ══════════════════════════════════════════════════════════════════════
         # 🪂 AÉREO — 25+ vídeos — impossível não travar de ver
@@ -622,6 +637,24 @@ def _seed_videos(conn):
         ('oT2PCBNXFCE', 'Helicopter Aerobatics — Insane Tricks','Heli',          'aerio','heli',   240, 30),
         # Speed riding — ski + paraglider
         ('TGLF2sNmcVY', 'Speed Riding — Alps Mountains',       'Red Bull',        'aerio','speed',  180, 40),
+        # Jet Wingsuit — asa movida a motor
+        ('kC7GEiMO8IY', 'Jet Wingsuit — Powered Human Flight', 'Jetman Dubai',    'aerio','wingsuit',300, 90),
+        # Jetman — voo em formação com avião
+        ('PvGlCnxoMOA', 'Jetman Dubai — Flying with A380',     'Jetman',          'aerio','wingsuit',180, 70),
+        # Hot Air Balloon extremo
+        ('4sMYf_STBCQ', 'Balloon — Record Altitude Journey',   'Red Bull',        'aerio','balo',   300, 25),
+        # Stunt Plane — pilotos acrobáticos
+        ('n6FfV8mMCFQ', 'Stunt Pilot — Insane Maneuvers',      'Red Bull',        'aerio','plane',  240, 35),
+        # Proximity Flying — raspar o chão voando
+        ('ETyzOlXMwgM', 'Proximity Flying — Extreme Low Pass', 'Red Bull',        'aerio','wingsuit',240, 55),
+        # Human Cannonball
+        ('VY4-DKqFdac', 'Human Cannonball — World Record',     'Red Bull',        'aerio','record', 180, 40),
+        # Speed gliding
+        ('pRW-z4yOlnI', 'Speed Gliding — Fastest Alpine Runs', 'Red Bull',        'aerio','speed',  240, 30),
+        # Skyrunning — correr em montanhas
+        ('ZGi5Xt-P-S4', 'Skyrunning — Ultra High Altitude',    'Red Bull',        'aerio','sky',    300, 20),
+        # Air Guitar do céu — formação de paraquedistas
+        ('Cqg0jYJXlT4', 'Skydiving Formation — World Record',  'IBA',             'aerio','skydive',300, 35),
 
         # ══════════════════════════════════════════════════════════════════════
         # 🛹 RADICAL — 25+ vídeos — extremo ao máximo
@@ -656,6 +689,21 @@ def _seed_videos(conn):
         # Parkour / Freerunning
         ('aZSs5b04pYs', 'Parkour — Best Athletes 2023',        'Red Bull',        'radical','parkour',300, 45),
         ('cvXg-hoQTKs', 'Freerunning — Most Creative Moves',   'Red Bull',        'radical','parkour',360, 35),
+        # Cliff Diving — saltos de pedras altas
+        ('LLRrMbEPkuU', 'Cliff Diving — Red Bull World Series', 'Red Bull',       'radical','dive',   300, 40),
+        ('Lm7VwYMgqHo', 'High Diving — World Record Jump',     'Red Bull',        'radical','dive',   240, 35),
+        # Longboard / Downhill
+        ('_tMQzMFsYRY', 'Downhill Longboard — Fastest Ever',   'Red Bull',        'radical','skate',  300, 30),
+        # Rollerblading agressivo
+        ('6xIhWLqkaMQ', 'Aggressive Inline — Best Tricks',     'Blade World',     'radical','blade',  360, 20),
+        # Kitesurf
+        ('l-ZmrGKYvds', 'Kitesurf — Insane Tricks',            'Red Bull Surf',   'radical','water',  300, 25),
+        # Skysurf — paraquedas + prancha
+        ('5f9oTq3KFBY', 'Skysurf — Surfing the Clouds',        'Red Bull',        'radical','air',    240, 30),
+        # Slackline — equilibrismo entre montanhas
+        ('jK5qMtf6gQM', 'Highline — Between the Mountains',    'Red Bull',        'radical','slack',  300, 35),
+        # Street Luge
+        ('aBQOqXIQkpA', 'Street Luge — Downhill Racing',       'Red Bull',        'radical','luge',   240, 20),
 
         # ══════════════════════════════════════════════════════════════════════
         # ROCK SHOWS — Os maiores shows da história do rock
@@ -674,21 +722,44 @@ def _seed_videos(conn):
         ('9jK-NcRmVcw', 'Legião Urbana — Ao Vivo Brasília','Legião Urbana',   'show_rock', 'brasil', 600, 80),
         # Pink Floyd — The Wall / Pulse
         ('x-xTttimcNk', 'Pink Floyd — Pulse Concert', 'Pink Floyd',           'show_rock', 'lendario', 600, 300),
+        # Nirvana — Unplugged MTV — uma das sessões mais icônicas
+        ('fRuSmops8E4', 'Nirvana — MTV Unplugged 1993',    'Nirvana',          'show_rock', 'lendario', 2700, 250),
+        # Rolling Stones — Havana Moon
+        ('SmPzGKRnFTU', 'Rolling Stones — Havana Moon',   'Rolling Stones',   'show_rock', 'lendario', 600, 150),
+        # Foo Fighters — ao vivo em Wembley
+        ('o5iQGBJg7LM', 'Foo Fighters — Live Wembley',    'Foo Fighters',     'show_rock', 'classico', 600, 100),
+        # Red Hot Chili Peppers — Rock in Rio
+        ('OgvE-YB_IkA', 'RHCP — Rock in Rio Highlights',  'Red Hot Chili Peppers','show_rock','atual', 600, 90),
+        # Led Zeppelin — The Song Remains the Same
+        ('BQzNBBiVuvQ', 'Led Zeppelin — Live Madison Square Garden','Led Zeppelin','show_rock','lendario',600,120),
 
         # ══════════════════════════════════════════════════════════════════════
         # SERTANEJO SHOWS — Grandes palcos
         # ══════════════════════════════════════════════════════════════════════
-        ('7mRdJRbzJow', 'Gusttavo Lima — Ao Vivo',    'Gusttavo Lima',        'show_sertanejo', 'atual', 1800, 200),
-        ('xQkPHoJiuBE', 'Marília Mendonça — Ao Vivo', 'Marília Mendonça',     'show_sertanejo', 'atual', 1800, 300),
-        ('EJnV78LtoKA', 'Jorge & Mateus — Live',      'Jorge & Mateus',       'show_sertanejo', 'atual', 1800, 150),
-        ('SJc1S2IlONM', 'Henrique & Juliano — Ao Vivo','Henrique & Juliano',  'show_sertanejo', 'atual', 1800, 100),
+        ('7mRdJRbzJow', 'Gusttavo Lima — Ao Vivo',        'Gusttavo Lima',        'show_sertanejo', 'atual', 1800, 200),
+        ('xQkPHoJiuBE', 'Marília Mendonça — Ao Vivo',   'Marília Mendonça',     'show_sertanejo', 'atual', 1800, 300),
+        ('EJnV78LtoKA', 'Jorge & Mateus — Live',         'Jorge & Mateus',       'show_sertanejo', 'atual', 1800, 150),
+        ('SJc1S2IlONM', 'Henrique & Juliano — Ao Vivo',  'Henrique & Juliano',   'show_sertanejo', 'atual', 1800, 100),
+        ('cOBTxMdQPZU', 'Luan Santana — Ao Vivo',        'Luan Santana',         'show_sertanejo', 'atual', 1800, 120),
+        ('6VHsS_nkNaY', 'Zezé Di Camargo & Luciano — Ao Vivo','ZDC&L',          'show_sertanejo', 'raiz',  1800,  80),
+        ('laMk3EUBWXU', 'Fernando & Sorocaba — Ao Vivo', 'Fernando & Sorocaba',  'show_sertanejo', 'atual', 1800,  70),
+        ('n-9BHfVKVKo', 'Chitãozinho & Xororó — Ao Vivo','Chitãozinho & Xororó','show_sertanejo', 'raiz',  1800,  60),
+        ('fjvVN3X4wac', 'Maiara & Maraisa — Ao Vivo',    'Maiara & Maraisa',     'show_sertanejo', 'atual', 1800,  90),
+        ('4KkQgcVKgPQ', 'Israel & Rodolffo — Ao Vivo',   'Israel & Rodolffo',    'show_sertanejo', 'atual', 1800,  70),
 
         # ══════════════════════════════════════════════════════════════════════
         # PAGODE SHOWS — Boteco pra arena
         # ══════════════════════════════════════════════════════════════════════
-        ('JqHC4cjDH38', 'Thiaguinho — Tardezinha Ao Vivo','Thiaguinho',       'show_pagode', 'atual', 1800, 100),
-        ('m2pt9sOlG_c', 'Péricles — Ao Vivo',         'Péricles',             'show_pagode', 'atual', 1800, 60),
-        ('9sNGCZpuKq8', 'Pagodão de Boteco — Clássicos','Vários',             'show_pagode', 'classico', 1800, 50),
+        ('JqHC4cjDH38', 'Thiaguinho — Tardezinha Ao Vivo',    'Thiaguinho',           'show_pagode', 'atual',   1800, 100),
+        ('m2pt9sOlG_c', 'Péricles — Ao Vivo',                'Péricles',             'show_pagode', 'atual',   1800,  60),
+        ('9sNGCZpuKq8', 'Pagodão de Boteco — Clássicos',      'Vários',               'show_pagode', 'classico',1800,  50),
+        ('b4XRRjLSpbw', 'Sorriso Maroto — Ao Vivo',           'Sorriso Maroto',       'show_pagode', 'atual',   1800,  70),
+        ('7kjHURtTD7E', 'Grupo Menos É Mais — Ao Vivo',       'Menos É Mais',         'show_pagode', 'atual',   1800,  55),
+        ('OHlGDGEfMTE', 'Seu Jorge — Ao Vivo',                'Seu Jorge',            'show_pagode', 'mpb',     1800,  65),
+        ('lS2LCp4bKk0', 'Pagode Anos 90 — As Melhores',       'Compilação',           'show_pagode', 'classico',1800,  80),
+        ('BYKZhgDoW68', 'Mumuzinho — Ao Vivo',                'Mumuzinho',            'show_pagode', 'atual',   1800,  45),
+        ('vJKHtS5TGbk', 'Belo — Ao Vivo',                     'Belo',                 'show_pagode', 'atual',   1800,  40),
+        ('PbX0P0mbLDU', 'Dilsinho — Ao Vivo',                 'Dilsinho',             'show_pagode', 'atual',   1800,  50),
     ]
 
     conn.executemany(

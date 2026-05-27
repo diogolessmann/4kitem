@@ -34,19 +34,24 @@ TIPOS_ESTABELECIMENTO = {
 }
 
 CANAIS = {
-    'rock':           {'nome': 'Rock TV',         'emoji': '🎸', 'cor': '#ef4444', 'cat': 'rock'},
-    'punk':           {'nome': 'Punk TV',          'emoji': '🤘', 'cor': '#f97316', 'cat': 'punk'},
-    'sertanejo':      {'nome': 'Sertanejo TV',     'emoji': '🤠', 'cor': '#eab308', 'cat': 'sertanejo'},
-    'pagode':         {'nome': 'Pagode TV',        'emoji': '🥁', 'cor': '#22c55e', 'cat': 'pagode'},
-    'pop':            {'nome': 'Pop TV',           'emoji': '🎤', 'cor': '#a855f7', 'cat': 'pop'},
-    'f1':             {'nome': 'Speed TV',         'emoji': '🏎️', 'cor': '#e11d48', 'cat': 'f1'},
-    'futebol':        {'nome': 'Futebol TV',       'emoji': '⚽', 'cor': '#16a34a', 'cat': 'futebol'},
-    'surf':           {'nome': 'Surf TV',          'emoji': '🏄', 'cor': '#0ea5e9', 'cat': 'surf'},
-    'aerio':          {'nome': 'Aéreo TV',         'emoji': '🪂', 'cor': '#6366f1', 'cat': 'aerio'},
-    'radical':        {'nome': 'Radical TV',       'emoji': '🛹', 'cor': '#f59e0b', 'cat': 'radical'},
-    'show_rock':      {'nome': 'Rock Shows',       'emoji': '🎸🎤','cor': '#dc2626','cat': 'show_rock'},
-    'show_sertanejo': {'nome': 'Sertanejo Shows',  'emoji': '🤠🎤','cor': '#ca8a04','cat': 'show_sertanejo'},
-    'show_pagode':    {'nome': 'Pagode Shows',     'emoji': '🥁🎤','cor': '#15803d','cat': 'show_pagode'},
+    # ── MÚSICA ───────────────────────────────────────────────────────────────
+    'rock':           {'nome': 'Rock TV',          'emoji': '🎸',  'cor': '#ef4444', 'cat': 'rock',      'grupo': 'musica'},
+    'punk':           {'nome': 'Punk TV',           'emoji': '🤘',  'cor': '#f97316', 'cat': 'punk',      'grupo': 'musica'},
+    'sertanejo':      {'nome': 'Sertanejo TV',      'emoji': '🤠',  'cor': '#eab308', 'cat': 'sertanejo', 'grupo': 'musica'},
+    'pagode':         {'nome': 'Pagode TV',         'emoji': '🥁',  'cor': '#22c55e', 'cat': 'pagode',    'grupo': 'musica'},
+    'pop':            {'nome': 'Pop TV',            'emoji': '🎤',  'cor': '#a855f7', 'cat': 'pop',       'grupo': 'musica'},
+    # ── SHOWS AO VIVO ────────────────────────────────────────────────────────
+    'show_rock':      {'nome': 'Rock Shows',        'emoji': '🎸🎤', 'cor': '#dc2626', 'cat': 'show_rock',      'grupo': 'shows'},
+    'show_sertanejo': {'nome': 'Sertanejo Shows',   'emoji': '🤠🎤', 'cor': '#ca8a04', 'cat': 'show_sertanejo', 'grupo': 'shows'},
+    'show_pagode':    {'nome': 'Pagode Shows',      'emoji': '🥁🎤', 'cor': '#15803d', 'cat': 'show_pagode',    'grupo': 'shows'},
+    # ── SPORT ────────────────────────────────────────────────────────────────
+    'sport_mix':      {'nome': 'Sport Mix',         'emoji': '🏆',  'cor': '#f59e0b',
+                       'cat': ['f1', 'futebol', 'surf', 'aerio', 'radical'],       'grupo': 'sport'},
+    'f1':             {'nome': 'Speed TV',          'emoji': '🏎️',  'cor': '#e11d48', 'cat': 'f1',        'grupo': 'sport'},
+    'futebol':        {'nome': 'Futebol TV',        'emoji': '⚽',  'cor': '#16a34a', 'cat': 'futebol',   'grupo': 'sport'},
+    'surf':           {'nome': 'Surf TV',           'emoji': '🏄',  'cor': '#0ea5e9', 'cat': 'surf',      'grupo': 'sport'},
+    'aerio':          {'nome': 'Aéreo TV',          'emoji': '🪂',  'cor': '#6366f1', 'cat': 'aerio',     'grupo': 'sport'},
+    'radical':        {'nome': 'Radical TV',        'emoji': '🛹',  'cor': '#f59e0b', 'cat': 'radical',   'grupo': 'sport'},
 }
 
 PLANOS = {
@@ -162,15 +167,30 @@ def _asaas_criar_assinatura(customer_id, plano, billing_type, business_id):
     })
 
 
-def _videos_do_canal(canal_key, limit=50):
+def _videos_do_canal(canal_key, limit=60):
+    import random
     cat = CANAIS.get(canal_key, {}).get('cat', canal_key)
     conn = get_pubshow_db()
-    videos = conn.execute(
-        'SELECT * FROM pubshow_videos WHERE categoria=? AND ativo=1 ORDER BY ordem, views_milhoes DESC LIMIT ?',
-        (cat, limit)
-    ).fetchall()
+
+    if isinstance(cat, list):
+        # Multi-categoria (ex: sport_mix) — busca de todas e embaralha
+        placeholders = ','.join('?' * len(cat))
+        videos = conn.execute(
+            f'SELECT * FROM pubshow_videos WHERE categoria IN ({placeholders}) AND ativo=1',
+            cat
+        ).fetchall()
+        videos = [dict(v) for v in videos]
+        random.shuffle(videos)
+        videos = videos[:limit]
+    else:
+        videos = conn.execute(
+            'SELECT * FROM pubshow_videos WHERE categoria=? AND ativo=1 ORDER BY ordem, views_milhoes DESC LIMIT ?',
+            (cat, limit)
+        ).fetchall()
+        videos = [dict(v) for v in videos]
+
     conn.close()
-    return [dict(v) for v in videos]
+    return videos
 
 
 def _pedido_pendente(business_id):

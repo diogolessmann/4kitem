@@ -93,10 +93,16 @@
   /* Canais selector */
   #canal-selector{
     position:fixed;top:20px;right:20px;z-index:50;
-    display:flex;flex-direction:column;gap:6px;
+    display:flex;flex-direction:column;gap:4px;
     opacity:0;transition:opacity .3s;max-height:90vh;overflow-y:auto;
+    padding-right:2px;
   }
   #canal-selector:hover,#canal-selector.visible{opacity:1}
+  .canal-grupo-label{
+    font-size:9px;font-weight:900;letter-spacing:1.5px;text-transform:uppercase;
+    color:rgba(255,255,255,.3);padding:6px 4px 2px;margin-top:4px;
+  }
+  .canal-grupo-label:first-child{margin-top:0}
   .canal-btn{
     background:rgba(0,0,0,.75);border:1px solid rgba(255,255,255,.18);
     border-radius:10px;padding:7px 14px;font-size:12px;font-weight:700;
@@ -105,6 +111,7 @@
   }
   .canal-btn:hover,.canal-btn.ativo{background:rgba(255,255,255,.18);border-color:rgba(255,255,255,.5)}
   .canal-btn.ativo{border-color:var(--canal-cor,#ef4444)}
+  .canal-btn.mix{border-style:dashed}
 </style>
 </head>
 <body>
@@ -158,12 +165,20 @@
 
 <!-- Seletor de canal -->
 <div id="canal-selector">
-  {% for key, c in canais.items() %}
-  <button class="canal-btn {% if key == canal_key %}ativo{% endif %}"
-          onclick="trocarCanal('{{ key }}')"
-          style="{% if key == canal_key %}border-color:{{ c.cor }}{% endif %}">
-    {{ c.emoji }} {{ c.nome }}
-  </button>
+  {% set grupos = [
+    ('musica', '🎵 Música'),
+    ('shows',  '🎤 Shows'),
+    ('sport',  '🏆 Sport'),
+  ] %}
+  {% for grupo_key, grupo_label in grupos %}
+    <div class="canal-grupo-label">{{ grupo_label }}</div>
+    {% for key, c in canais.items() if c.get('grupo') == grupo_key %}
+    <button class="canal-btn {% if key == canal_key %}ativo{% endif %} {% if key == 'sport_mix' %}mix{% endif %}"
+            onclick="trocarCanal('{{ key }}')"
+            style="{% if key == canal_key %}border-color:{{ c.cor }}{% endif %}">
+      {{ c.emoji }} {{ c.nome }}
+    </button>
+    {% endfor %}
   {% endfor %}
 </div>
 
