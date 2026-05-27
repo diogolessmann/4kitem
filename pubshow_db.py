@@ -111,6 +111,11 @@ def init_pubshow_db():
         'ALTER TABLE pubshow_pedidos ADD COLUMN youtube_id TEXT',
         'ALTER TABLE pubshow_pedidos ADD COLUMN titulo_pedido TEXT',
         'ALTER TABLE pubshow_pedidos ADD COLUMN thumb_url TEXT',
+        # QR Code com token rotativo — separado do code da TV
+        'ALTER TABLE pubshow_businesses ADD COLUMN jukebox_token TEXT',
+        # Admin pode suspender um bar
+        'ALTER TABLE pubshow_businesses ADD COLUMN suspenso INTEGER DEFAULT 0',
+        'ALTER TABLE pubshow_businesses ADD COLUMN notas_admin TEXT',
     ]:
         try:
             conn.execute(m); conn.commit()

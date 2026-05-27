@@ -102,6 +102,22 @@ TIPOS_PEDIDO = {
 def _gerar_code(n=8):
     return ''.join(random.choices(string.ascii_uppercase + string.digits, k=n))
 
+def _gerar_jukebox_token():
+    """Token rotativo para o QR do Jukebox — independente do code da TV."""
+    return ''.join(random.choices(string.ascii_uppercase + string.digits, k=12))
+
+def _admin_ok():
+    """Verifica se a sessão atual é admin."""
+    return session.get('pubshow_admin') is True
+
+def _admin_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not _admin_ok():
+            return redirect('/pubshow/admin/login')
+        return f(*args, **kwargs)
+    return decorated
+
 
 def _get_business():
     bid = session.get('pub_business_id')
@@ -275,16 +291,17 @@ def cadastro():
             erro = 'A senha deve ter ao menos 6 caracteres.'
         else:
             try:
-                code = _gerar_code()
+                code  = _gerar_code()
+                jtoken = _gerar_jukebox_token()
                 trial = (datetime.now() + timedelta(days=7)).isoformat()
                 conn = get_pubshow_db()
                 conn.execute(
                     '''INSERT INTO pubshow_businesses
                        (nome, tipo, email, telefone, cpf_cnpj, password_hash, code,
-                        plano, plano_ativo, canal_atual, trial_ends)
-                       VALUES (?,?,?,?,?,?,?,?,1,?,?)''',
+                        plano, plano_ativo, canal_atual, trial_ends, jukebox_token)
+                       VALUES (?,?,?,?,?,?,?,?,1,?,?,?)''',
                     (nome, tipo, email, telefone, cpf_cnpj,
-                     generate_password_hash(senha), code, plano_sel, 'rock', trial)
+                     generate_password_hash(senha), code, plano_sel, 'rock', trial, jtoken)
                 )
                 conn.commit()
                 b = conn.execute('SELECT * FROM pubshow_businesses WHERE email=?', (email,)).fetchone()
@@ -321,13 +338,22 @@ def tv(code):
 
 # ── JUKEBOX MOBILE (cliente do bar escaneia QR) ───────────────────────────────
 
-@pubshow_bp.route('/jukebox/<code>', methods=['GET', 'POST'])
-def jukebox(code):
+@pubshow_bp.route('/jukebox/<token>', methods=['GET', 'POST'])
+def jukebox(token):
     conn = get_pubshow_db()
-    b = conn.execute('SELECT * FROM pubshow_businesses WHERE code=?', (code,)).fetchone()
+    # Busca por jukebox_token primeiro; fallback para code (retrocompatibilidade)
+    b = conn.execute(
+        'SELECT * FROM pubshow_businesses WHERE jukebox_token=?', (token,)
+    ).fetchone()
+    if not b:
+        b = conn.execute(
+            'SELECT * FROM pubshow_businesses WHERE code=?', (token,)
+        ).fetchone()
     conn.close()
     if not b:
-        return 'Estabelecimento não encontrado', 404
+        return render_template('pubshow/qr_invalido.html'), 404
+    if b['suspenso']:
+        return render_template('pubshow/qr_invalido.html'), 403
 
     sucesso = None
     erro    = ''
@@ -601,9 +627,10 @@ def painel_qrcode():
     if not b:
         return redirect('/pubshow/entrar')
 
-    # URL pública do Jukebox deste bar
+    # URL pública do Jukebox — usa jukebox_token rotativo
     base = request.host_url.rstrip('/')
-    jukebox_url = f"{base}/pubshow/jukebox/{b['code']}"
+    token = b['jukebox_token'] or b['code']
+    jukebox_url = f"{base}/pubshow/jukebox/{token}"
 
     # Gera QR como PNG base64
     try:
@@ -642,6 +669,127 @@ def painel_dispensar_pedido(pid):
     )
     conn.commit(); conn.close()
     return redirect('/pubshow/painel')
+
+
+@pubshow_bp.route('/painel/novo-qr', methods=['POST'])
+@pubshow_login_required
+def painel_novo_qr():
+    """Gera novo jukebox_token — invalida QR codes antigos imediatamente."""
+    b = _get_business()
+    novo = _gerar_jukebox_token()
+    conn = get_pubshow_db()
+    conn.execute('UPDATE pubshow_businesses SET jukebox_token=? WHERE id=?', (novo, b['id']))
+    conn.commit(); conn.close()
+    log.info('[PUBSHOW] Novo QR gerado para business_id=%s', b['id'])
+    return redirect('/pubshow/painel/qrcode')
+
+
+# ── ADMIN MASTER ──────────────────────────────────────────────────────────────
+
+@pubshow_bp.route('/admin/login', methods=['GET', 'POST'])
+def admin_login():
+    erro = ''
+    if request.method == 'POST':
+        senha = request.form.get('senha', '')
+        admin_pass = os.environ.get('PUBSHOW_ADMIN_PASS', '')
+        if admin_pass and senha == admin_pass:
+            session['pubshow_admin'] = True
+            return redirect('/pubshow/admin')
+        erro = 'Senha incorreta.'
+    return render_template('pubshow/admin_login.html', erro=erro)
+
+
+@pubshow_bp.route('/admin/logout')
+def admin_logout():
+    session.pop('pubshow_admin', None)
+    return redirect('/pubshow/admin/login')
+
+
+@pubshow_bp.route('/admin')
+@_admin_required
+def admin_dashboard():
+    conn = get_pubshow_db()
+    bars = conn.execute(
+        '''SELECT b.*,
+           (SELECT COUNT(*) FROM pubshow_pedidos p WHERE p.business_id=b.id) total_pedidos,
+           (SELECT COALESCE(SUM(p.valor),0) FROM pubshow_pedidos p WHERE p.business_id=b.id) total_receita,
+           (SELECT COUNT(*) FROM pubshow_pedidos p WHERE p.business_id=b.id AND p.status="pendente") fila_atual
+           FROM pubshow_businesses b ORDER BY b.created_at DESC'''
+    ).fetchall()
+    total_videos = conn.execute('SELECT COUNT(*) FROM pubshow_videos WHERE ativo=1').fetchone()[0]
+    total_pedidos_hoje = conn.execute(
+        '''SELECT COUNT(*) FROM pubshow_pedidos
+           WHERE date(created_at)=date("now","localtime")'''
+    ).fetchone()[0]
+    receita_hoje = conn.execute(
+        '''SELECT COALESCE(SUM(valor),0) FROM pubshow_pedidos
+           WHERE date(created_at)=date("now","localtime")'''
+    ).fetchone()[0]
+    conn.close()
+    return render_template('pubshow/admin.html',
+                           bars=[dict(b) for b in bars],
+                           total_videos=total_videos,
+                           total_pedidos_hoje=total_pedidos_hoje,
+                           receita_hoje=receita_hoje,
+                           canais=CANAIS, planos=PLANOS,
+                           now=datetime.now().isoformat())
+
+
+@pubshow_bp.route('/admin/bar/<int:bid>')
+@_admin_required
+def admin_bar(bid):
+    conn = get_pubshow_db()
+    b = conn.execute('SELECT * FROM pubshow_businesses WHERE id=?', (bid,)).fetchone()
+    if not b:
+        conn.close(); return redirect('/pubshow/admin')
+    pedidos = conn.execute(
+        '''SELECT * FROM pubshow_pedidos WHERE business_id=?
+           ORDER BY created_at DESC LIMIT 50''', (bid,)
+    ).fetchall()
+    ass = conn.execute(
+        'SELECT * FROM pubshow_assinaturas WHERE business_id=?', (bid,)
+    ).fetchone()
+    conn.close()
+    return render_template('pubshow/admin_bar.html',
+                           b=dict(b), pedidos=[dict(p) for p in pedidos],
+                           ass=dict(ass) if ass else None,
+                           canais=CANAIS, planos=PLANOS, tipos=TIPOS_PEDIDO)
+
+
+@pubshow_bp.route('/admin/bar/<int:bid>/acao', methods=['POST'])
+@_admin_required
+def admin_bar_acao(bid):
+    acao = request.form.get('acao', '')
+    conn = get_pubshow_db()
+    if acao == 'ativar_plano':
+        plano = request.form.get('plano', 'bar')
+        conn.execute('UPDATE pubshow_businesses SET plano=?, plano_ativo=1 WHERE id=?', (plano, bid))
+    elif acao == 'desativar_plano':
+        conn.execute('UPDATE pubshow_businesses SET plano_ativo=0 WHERE id=?', (bid,))
+    elif acao == 'suspender':
+        conn.execute('UPDATE pubshow_businesses SET suspenso=1 WHERE id=?', (bid,))
+    elif acao == 'reativar':
+        conn.execute('UPDATE pubshow_businesses SET suspenso=0 WHERE id=?', (bid,))
+    elif acao == 'novo_qr':
+        novo = _gerar_jukebox_token()
+        conn.execute('UPDATE pubshow_businesses SET jukebox_token=? WHERE id=?', (novo, bid))
+    elif acao == 'toggle_jukebox':
+        atual = conn.execute('SELECT jukebox_ativo FROM pubshow_businesses WHERE id=?', (bid,)).fetchone()[0]
+        conn.execute('UPDATE pubshow_businesses SET jukebox_ativo=? WHERE id=?', (0 if atual else 1, bid))
+    elif acao == 'trocar_canal':
+        canal = request.form.get('canal', 'rock')
+        if canal in CANAIS:
+            conn.execute('UPDATE pubshow_businesses SET canal_atual=? WHERE id=?', (canal, bid))
+    elif acao == 'nota':
+        nota = request.form.get('nota', '').strip()[:500]
+        conn.execute('UPDATE pubshow_businesses SET notas_admin=? WHERE id=?', (nota, bid))
+    elif acao == 'limpar_fila':
+        conn.execute(
+            "UPDATE pubshow_pedidos SET status='dispensado' WHERE business_id=? AND status='pendente'",
+            (bid,)
+        )
+    conn.commit(); conn.close()
+    return redirect(f'/pubshow/admin/bar/{bid}')
 
 
 # ── CHECKOUT / ASSINATURA ─────────────────────────────────────────────────────
