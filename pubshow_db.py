@@ -141,10 +141,8 @@ def init_pubshow_db():
             try: conn.rollback()
             except: pass
 
-    # Seed da biblioteca de vídeos (só insere se estiver vazia)
-    total = conn.execute('SELECT COUNT(*) FROM pubshow_videos').fetchone()[0]
-    if total == 0:
-        _seed_videos(conn)
+    # Seed da biblioteca de vídeos — INSERT OR IGNORE, seguro rodar sempre
+    _seed_videos(conn)
 
     # Corrige vídeos que ficaram indisponíveis no YouTube (UPDATE por youtube_id)
     _corrigir_videos_quebrados(conn)
@@ -814,6 +812,199 @@ def _seed_videos(conn):
         ('BYKZhgDoW68', 'Mumuzinho — Ao Vivo',                'Mumuzinho',            'show_pagode', 'atual',   1800,  45),
         ('vJKHtS5TGbk', 'Belo — Ao Vivo',                     'Belo',                 'show_pagode', 'atual',   1800,  40),
         ('PbX0P0mbLDU', 'Dilsinho — Ao Vivo',                 'Dilsinho',             'show_pagode', 'atual',   1800,  50),
+
+        # ══════════════════════════════════════════════════════════════════════
+        # ROCK extra — mais clássicos e nacionais
+        # ══════════════════════════════════════════════════════════════════════
+        ('4RvWE6j2374', 'Knockin\' on Heaven\'s Door',    'Guns N\' Roses',        'rock', 'classic', 337, 300),
+        ('NMTnz7cFbYY', 'Hysteria',                       'Def Leppard',           'rock', 'classic', 242, 200),
+        ('vkiEws7-RDQ', 'Jump',                           'Van Halen',             'rock', 'classic', 244, 300),
+        ('2X_2IdybTV0', 'Running with the Devil',         'Van Halen',             'rock', 'classic', 213, 180),
+        ('kZD-1HXKL4c', 'Pour Some Sugar on Me',         'Def Leppard',           'rock', 'classic', 272, 200),
+        ('ePlRbNNJWcs', 'I Love Rock \'n\' Roll',         'Joan Jett',             'rock', 'classic', 175, 200),
+        ('btPJPFnesV4', 'Eye of the Tiger',               'Survivor',              'rock', 'classic', 245, 700),
+        ('u02id7zS4jk', 'Space Oddity',                   'David Bowie',           'rock', 'classic', 314, 300),
+        ('yVNp_T8n8-E', 'Heroes',                         'David Bowie',           'rock', 'classic', 360, 250),
+        ('HiMBFBAFkyQ', 'Roxanne',                        'The Police',            'rock', 'classic', 195, 300),
+        ('EOrEfSP0k2k', 'Every Breath You Take',         'The Police',            'rock', 'classic', 255, 400),
+        ('xLYiIBCN9ec', 'Don\'t You (Forget About Me)',  'Simple Minds',          'rock', 'classic', 256, 400),
+        ('swYjSMCI2X8', 'Don\'t Stop (Fleetwood Mac)',   'Fleetwood Mac',         'rock', 'classic', 195, 300),
+        ('dUMdFPkSJls', 'Go Your Own Way',               'Fleetwood Mac',         'rock', 'classic', 219, 250),
+        ('EkHTsc9KGcQ', 'Girls Just Wanna Have Fun',     'Cyndi Lauper',          'rock', 'classic', 238, 350),
+        ('YkgkThdzX-8', 'We Are Young',                  'fun.',                  'rock', '2010s',   250, 600),
+        ('oUzB9MioFX4', 'Wonderwall',                    'Oasis',                 'rock', 'britpop', 258, 400),
+        ('6hzrDeceDF0', 'Don\'t Look Back in Anger',     'Oasis',                 'rock', 'britpop', 277, 350),
+        ('hpSpTuzbocY', 'Champagne Supernova',           'Oasis',                 'rock', 'britpop', 428, 300),
+        ('JDH4BZ3bfsg', 'Yellow',                        'Coldplay',              'rock', '2000s',   268, 800),
+        ('pPFXn3cWqNA', 'Speed of Sound',                'Coldplay',              'rock', '2000s',   272, 400),
+        ('3YxaaGgTQYM', 'Bring Me to Life',              'Evanescence',           'rock', 'emo',     223, 600),
+        ('YDhNBnaMFM8', 'Wish You Were Here',            'Pink Floyd',            'rock', 'classic', 313, 400),
+        ('yKNxeF4KMsY', 'Yellow (Live)',                 'Coldplay',              'rock', 'live',    270, 400),
+        # Brasil rock nacional extra
+        ('EiMCqmNMelU', 'Pálido',                        'Titãs',                 'rock', 'brasil',  220, 80),
+        ('kGbAO6ZQKZM', 'Comida',                        'Titãs',                 'rock', 'brasil',  283, 100),
+        ('S_tDEJwRpMk', 'É Uma Partida de Futebol',     'Skank',                 'rock', 'brasil',  225, 90),
+        ('cqMaHbg0AiU', 'Jackie Tequila',               'Skank',                 'rock', 'brasil',  218, 80),
+        ('eSz-4zFlSoI', 'Nada Sei',                      'Roupa Nova',            'rock', 'brasil',  255, 70),
+        ('GPvl5uG-hLU', 'Separação',                     'Barão Vermelho',        'rock', 'brasil',  241, 60),
+        ('1YYR4apxDo', 'Enter Sandman (Live)',           'Metallica',             'rock', 'live',    330, 400),
+        ('UCt9sWFJSmM', 'Battery',                       'Metallica',             'rock', 'metal',   312, 250),
+        ('oZa-6sCq5_A', 'For Whom the Bell Tolls',      'Metallica',             'rock', 'metal',   310, 220),
+        ('oC8MZLBvW_U', 'Crazy Little Thing Called Love','Queen',                 'rock', 'classic', 162, 350),
+        ('m-GpfMhReMg', 'I Want to Break Free',         'Queen',                 'rock', 'classic', 245, 500),
+        ('sRznObHiWFU', 'Radio Ga Ga',                  'Queen',                 'rock', 'classic', 305, 280),
+
+        # ══════════════════════════════════════════════════════════════════════
+        # POP extra — hits internacionais 2010-2024
+        # ══════════════════════════════════════════════════════════════════════
+        ('9bZkp7q19f0', 'Gangnam Style',                 'PSY',                   'pop', 'viral',   219, 4500),
+        ('RgKAFK5djSk', 'See You Again',                 'Wiz Khalifa',           'pop', 'atual',   229, 5500),
+        ('kffacxfA7G4', 'Despacito',                     'Luis Fonsi',            'pop', 'latin',   229, 8000),
+        ('fRh_vgS2dFE', 'Sorry',                         'Justin Bieber',         'pop', 'atual',   221, 3200),
+        ('6Zbi0XmGtMw', 'Baby',                          'Justin Bieber',         'pop', 'atual',   215, 2900),
+        ('DjMkfURSqEM', 'We Found Love',                 'Rihanna',               'pop', 'atual',   212, 1400),
+        ('CvUK-8ke-KU', 'Umbrella',                      'Rihanna',               'pop', 'atual',   280, 700),
+        ('32OAc4bIW7A', 'Chandelier',                    'Sia',                   'pop', 'atual',   217, 1500),
+        ('2vjPBrBU-TM', 'Cheap Thrills',                 'Sia',                   'pop', 'atual',   207, 2700),
+        ('0KSOMA3QBU0', 'Dark Horse',                    'Katy Perry',            'pop', 'atual',   217, 1400),
+        ('HLQNRMpgnAc', 'Into You',                      'Ariana Grande',         'pop', 'atual',   199, 1800),
+        ('pB-5XG-DbAA', 'God is a Woman',                'Ariana Grande',         'pop', 'atual',   197, 1500),
+        ('v-Dur3uXXCQ', 'Thank U, Next',                 'Ariana Grande',         'pop', 'atual',   207, 1800),
+        ('TbwlC2B-BIg', '7 Rings',                       'Ariana Grande',         'pop', 'atual',   179, 2200),
+        ('8xg3vE8Ie_E', 'Love Story',                    'Taylor Swift',          'pop', 'atual',   234, 1200),
+        ('IdneKLhsWOQ', 'Anti-Hero',                     'Taylor Swift',          'pop', 'atual',   196, 1500),
+        ('kU9miEN2T0c', 'Cruel Summer',                  'Taylor Swift',          'pop', 'atual',   178, 1300),
+        ('NG8xtMGIBOQ', 'Bad Guy',                       'Billie Eilish',         'pop', 'atual',   194, 2000),
+        ('H5v3kku4y6Q', 'Happier Than Ever',             'Billie Eilish',         'pop', 'atual',   245, 900),
+        ('Yd9vlbRGE7A', 'Flowers',                       'Miley Cyrus',           'pop', 'atual',   200, 1500),
+        ('MrOqgs-pDss', 'Heart of Glass',                'Blondie',               'pop', 'classic', 214, 300),
+        ('MV_3Dpw-BRY', 'Wake Me Up',                    'Avicii',                'pop', 'atual',   247, 1700),
+        ('UtF6Jej8yb4', 'Levels',                        'Avicii',                'pop', 'atual',   201, 1400),
+        ('1-xGerv5FOk', 'The nights',                    'Avicii',                'pop', 'atual',   185, 1100),
+        ('ZbZSe6N_BXs', 'Happy',                         'Pharrell Williams',     'pop', 'atual',   233, 1400),
+        ('d27gTrPPAyk', 'Get Lucky',                     'Daft Punk',             'pop', 'atual',   248, 900),
+        ('5NV6Rdv1h3Q', 'Around the World',              'Daft Punk',             'pop', 'classic', 235, 400),
+        ('CduA0TJLXq4', 'Somebody That I Used to Know',  'Gotye',                 'pop', 'atual',   244, 1100),
+        ('hT_nvWreIhg', 'Counting Stars',                'OneRepublic',           'pop', 'atual',   257, 1400),
+        ('UceaB4D0jpo', 'Stressed Out',                  'Twenty One Pilots',     'pop', 'atual',   201, 1700),
+        ('pXRviuL6vMY', 'Heathens',                      'Twenty One Pilots',     'pop', 'atual',   181, 1000),
+        ('SlPhMPnQ58k', 'Envolver',                      'Anitta',                'pop', 'brasil',  185, 800),
+        ('qB3kK0QTe2g', 'Girl from Rio',                 'Anitta',                'pop', 'brasil',  193, 400),
+        ('NvKPJHNGSqY', 'Funk Rave',                     'Anitta',                'pop', 'brasil',  180, 350),
+        ('VrpGhEVyrg0', 'Vai Malandra',                  'MC Zaac & Maejor',      'pop', 'brasil',  192, 600),
+        ('nNGvF6DQRPE', 'Bum Bum Tam Tam',               'MC Fioti',              'pop', 'brasil',  181, 800),
+
+        # ══════════════════════════════════════════════════════════════════════
+        # SERTANEJO extra — raíz e atual
+        # ══════════════════════════════════════════════════════════════════════
+        ('b0mq7LKggkk', 'Camarote',                      'Vitor & Luan',          'sertanejo', 'universitario', 241, 350),
+        ('7Ve503XQDBA', 'Amor de Copo em Copo',          'Vitor & Luan',          'sertanejo', 'universitario', 238, 250),
+        ('jVe503XQDBA', 'Trem Bala (Pagode)',             'Ana Vilela',            'sertanejo', 'atual',         234, 300),
+        ('FIJFdQWKXiU', 'Vou Cuidar de Você',            'Bruno e Marrone',        'sertanejo', 'raiz',          258, 150),
+        ('6MpXDHuuSLM', 'Dormi na Praça',                'Bruno e Marrone',        'sertanejo', 'raiz',          245, 130),
+        ('l30HOv-zglI', 'Mil Vezes',                     'Gusttavo Lima',          'sertanejo', 'universitario', 253, 200),
+        ('jve503xqdba', 'Tô Bebendo',                    'Gusttavo Lima',          'sertanejo', 'universitario', 247, 180),
+        ('z3iWxMrMGOM', 'Sofrência',                     'Gusttavo Lima',          'sertanejo', 'universitario', 250, 220),
+        ('iPUmE-tne5U', 'Caiu na Net',                   'Forró Boys',             'sertanejo', 'atual',         228, 160),
+        ('_KiQDVBWv4Q', 'Batom de Cereja',               'Jorge & Mateus',         'sertanejo', 'universitario', 240, 200),
+        ('W-nDEOO_mgo', 'Propaganda',                    'Jorge & Mateus',         'sertanejo', 'universitario', 238, 180),
+        ('J5tMFGCWMhc', 'Meu Pedaço de Pecado',         'João Gomes',             'sertanejo', 'atual',         197, 400),
+        ('o83aaJL4hzs', 'Eu Tenho a Senha',              'João Gomes',             'sertanejo', 'atual',         198, 350),
+        ('MiNBSIJIoEA', 'Traição',                       'MC Livinho',             'sertanejo', 'atual',         192, 280),
+        ('eSz4zFlSoI1', 'De Quem É a Culpa',             'Zé Neto & Cristiano',   'sertanejo', 'universitario', 238, 230),
+        ('9A5J57EeGrA', 'Cheirosa',                      'Xand Avião',             'sertanejo', 'forró',         218, 180),
+        ('aHGE6BdSP7E', 'Isso Cê Não Esperava',         'Wesley Safadão',         'sertanejo', 'forró',         225, 300),
+        ('x5mVF3mIIoA', 'Camarote',                      'Wesley Safadão',         'sertanejo', 'forró',         219, 280),
+        ('3qHsTCn1j5U', 'Caiu na Net',                   'Wesley Safadão',         'sertanejo', 'forró',         212, 250),
+        ('PjxEGdOt7yY', 'Morena',                        'Felipe Araújo',          'sertanejo', 'atual',         228, 180),
+        ('kZVyVfC0LMY', 'Esquecer Você',                 'Matheus & Kauan',        'sertanejo', 'universitario', 235, 160),
+        ('z3iWXmrMGOM', 'De Janeiro a Janeiro',          'Rodolffo',               'sertanejo', 'atual',         229, 220),
+        ('sWQi7nQcEXQ', 'Cê Topa?',                      'Ana Castela & Gustavo Mioto','sertanejo','atual',      195, 380),
+
+        # ══════════════════════════════════════════════════════════════════════
+        # PAGODE extra — boteco e moderno
+        # ══════════════════════════════════════════════════════════════════════
+        ('Hix6m6v7y4g', 'Deus Salve o Rei',              'Ferrugem',              'pagode', 'moderno', 248, 90),
+        ('OTXe4yCJow0', 'Amigos',                        'Dilsinho',              'pagode', 'moderno', 237, 80),
+        ('UJCNKBh4l6Q', 'Intenção',                      'Dilsinho',              'pagode', 'moderno', 230, 70),
+        ('YJn7oABPaxc', 'Largado às Traças',             'Dilsinho',              'pagode', 'moderno', 241, 130),
+        ('GXSv9_5ZpCo', 'Haja Coração',                  'Thiaguinho',            'pagode', 'moderno', 228, 120),
+        ('oAZzVLJP3lo', 'Sorriso Aberto',                'Thiaguinho',            'pagode', 'moderno', 237, 100),
+        ('t7Wq1GDSwcY', 'Se Você Quer Me Ver',           'Ferrugem',              'pagode', 'moderno', 243, 80),
+        ('eiMvEFymQnk', 'Compasso',                      'Ferrugem',              'pagode', 'moderno', 235, 70),
+        ('MtSGNxAKBKA', 'Compasso do Amor',              'Sorriso Maroto',        'pagode', 'moderno', 240, 80),
+        ('pPBB8SCPQDE', 'Episódio Triste',               'Sorriso Maroto',        'pagode', 'moderno', 248, 70),
+        ('6BFWT_h5fYA', 'Meu Vício',                     'Belo',                  'pagode', 'moderno', 258, 80),
+        ('w5RuK2MLOGY', 'Sem Querer',                    'Belo',                  'pagode', 'moderno', 248, 70),
+        ('JuF-EJHhPbE', 'Lealdade',                      'Péricles',              'pagode', 'moderno', 240, 65),
+        ('xnFHMLuQHaU', 'Não Chores Mais',              'Péricles',              'pagode', 'moderno', 233, 60),
+        ('3qqGfE6FoxY', 'Boa Noite Cinderela',           'Mumuzinho',             'pagode', 'moderno', 225, 60),
+        ('vPHXnKzSSe8', 'Recaída',                       'Mumuzinho',             'pagode', 'moderno', 231, 55),
+        ('e5mDxTOaWQE', 'Não Vou Desistir',              'Grupo Revelação',       'pagode', 'classic', 245, 75),
+        ('R0V0kGaxCnE', 'Sublime',                       'Grupo Revelação',       'pagode', 'classic', 238, 65),
+        ('7KO_wHDFE6U', 'Sorte Grande',                  'Exaltasamba',           'pagode', 'classic', 252, 70),
+        ('yOgAbKJGrTA', 'Magia',                         'Exaltasamba',           'pagode', 'classic', 248, 65),
+        ('CuSmV4QSXHU', 'Apaga o Abajur',               'Fundo de Quintal',      'pagode', 'roots',   235, 60),
+        ('kh-oJX3Iqpg', 'Que Saudade da Amélia',        'Fundo de Quintal',      'pagode', 'roots',   241, 55),
+        ('nG5jkiVNhUE', 'Pago pra Ver',                 'Zeca Pagodinho',        'pagode', 'classic', 238, 100),
+        ('DyNUhk5XHDE', 'Ogum',                          'Zeca Pagodinho',        'pagode', 'classic', 244, 85),
+        ('aBHT9rBJkJ4', 'Menos é Mais',                 'Grupo Menos É Mais',    'pagode', 'moderno', 235, 55),
+        ('MJfIuB2HFTU', 'Me Tira do Sufoco',            'Grupo Menos É Mais',    'pagode', 'moderno', 228, 50),
+
+        # ══════════════════════════════════════════════════════════════════════
+        # FUTEBOL extra — mais conteúdo
+        # ══════════════════════════════════════════════════════════════════════
+        ('3t08VWK0Sc0', 'Brasil 1994 — Todos os Gols',   'CBF Brasil',            'futebol', 'world',  480, 150),
+        ('HK-E6hLfCgs', 'Haaland — Best Goals 2023',    'Manchester City',        'futebol', 'goals',  360, 200),
+        ('UrZAJbT2jxQ', 'Mbappe — Speed & Skills',      'PSG',                   'futebol', 'skills', 360, 180),
+        ('6aeVGE8Jmcc', 'Vinicius Jr — Best Moments',   'Real Madrid',           'futebol', 'skills', 360, 150),
+        ('UCIjdfjcSO8', 'Rodri — UCL Final 2024',       'Man City',              'futebol', 'goals',  300, 120),
+        ('HEBDFpigTJE', 'Futebol de Rua Brasil',        'Compilação',            'futebol', 'street', 300, 80),
+        ('nDcSf8XcfQU', 'Garrincha — A Alegria do Povo','CBF História',          'futebol', 'legend', 480, 100),
+        ('r79l6x2Pqgg', 'Romário — Greatest Goals',     'Romário',               'futebol', 'legend', 480, 90),
+        ('LCRTQl8MHQE', 'Kaka — AC Milan Best Moments', 'AC Milan',              'futebol', 'legend', 480, 110),
+        ('zBZla1PKGYE', 'Ronaldinho — FC Barcelona Top 10','FC Barcelona',       'futebol', 'goals',  300, 250),
+        ('sN2kIH3oWqg', 'Brasil 2002 — Campeões do Mundo','CBF',                 'futebol', 'world',  600, 200),
+
+        # ══════════════════════════════════════════════════════════════════════
+        # SURF extra
+        # ══════════════════════════════════════════════════════════════════════
+        ('G8FIuvQqVhk', 'Surf — Best Barrels 2023',     'WSL',                   'surf', 'barrel',  360, 20),
+        ('pGXnm8Ej7NQ', 'Surfe Brasileiro — Melhores',  'CBSurf',                'surf', 'brasil',  300, 25),
+        ('PiPHF2FNxRo', 'Tatiana Weston-Webb Best Rides','WSL Women',            'surf', 'women',   300, 18),
+
+        # ══════════════════════════════════════════════════════════════════════
+        # SHOW ROCK extra
+        # ══════════════════════════════════════════════════════════════════════
+        ('iWnyCs3TDZU', 'Metallica — Master of Puppets Live','Metallica',         'show_rock', 'lendario', 600, 300),
+        ('BqRSRlOXFLg', 'AC/DC — Highway to Hell Live',  'AC/DC',                'show_rock', 'lendario', 300, 200),
+        ('WSeNSzJ2-Pw', 'Nirvana — Where Did You Sleep Last Night','Nirvana',    'show_rock', 'lendario', 330, 150),
+        ('GZoXvFaOa48', 'Pearl Jam — Alive Live',        'Pearl Jam',            'show_rock', 'classico', 540, 90),
+        ('JWBFfxelNJ0', 'Iron Maiden — The Trooper Live','Iron Maiden',          'show_rock', 'metal',    240, 100),
+        ('DvkU4NQh3XA', 'System of a Down — Chop Suey! Live','SOAD',            'show_rock', 'metal',    215, 120),
+        ('yqq7MgPmqcI', 'Soundgarden — Black Hole Sun Live','Soundgarden',       'show_rock', 'grunge',  240, 80),
+        ('szm-zVQyyos', 'The Doors — Light My Fire Live', 'The Doors',           'show_rock', 'classic',  428, 90),
+        ('P2EDjVTpEm0', 'Aerosmith — Dream On Live',    'Aerosmith',             'show_rock', 'classic',  263, 85),
+        ('SHOmFSB3CKU', 'Legião Urbana — Faroeste Caboclo Ao Vivo','Legião',    'show_rock', 'brasil',   420, 80),
+
+        # ══════════════════════════════════════════════════════════════════════
+        # SHOW SERTANEJO extra
+        # ══════════════════════════════════════════════════════════════════════
+        ('g0PdE4LKhRc', 'Gusttavo Lima — Buteco',       'Gusttavo Lima',         'show_sertanejo', 'atual',  1800, 150),
+        ('uWN6rLZYw2I', 'Marília Mendonça — Mineirinha', 'Marília Mendonça',     'show_sertanejo', 'atual',  1800, 180),
+        ('kZW3eSjAOAQ', 'Zé Neto & Cristiano — Ao Vivo','Zé Neto & Cristiano',  'show_sertanejo', 'atual',  1800,  90),
+        ('TGMgQ7VCUQ0', 'Wesley Safadão — Camarote Show','Wesley Safadão',       'show_sertanejo', 'forró',  1800, 120),
+        ('hE5QsZXqzgQ', 'Ana Castela — Boiadeira Live', 'Ana Castela',           'show_sertanejo', 'atual',  1800,  80),
+        ('JfIyaB6mxOs', 'Matheus & Kauan — Ao Vivo',   'Matheus & Kauan',       'show_sertanejo', 'atual',  1800,  65),
+
+        # ══════════════════════════════════════════════════════════════════════
+        # SHOW PAGODE extra
+        # ══════════════════════════════════════════════════════════════════════
+        ('HiGlFUyuYb0', 'Thiaguinho — Espetáculo',      'Thiaguinho',            'show_pagode', 'atual',   1800, 80),
+        ('Ib3VwKBhOBs', 'Zeca Pagodinho — 40 Anos',    'Zeca Pagodinho',        'show_pagode', 'classico',1800, 70),
+        ('yH4bMbAFHj8', 'Grupo Revelação — 25 Anos',   'Grupo Revelação',       'show_pagode', 'classico',1800, 55),
+        ('WJdYoU9CZOQ', 'Exaltasamba — Ao Vivo',        'Exaltasamba',           'show_pagode', 'classico',1800, 60),
+        ('Aw9O0AQMWMQ', 'Rodriguinho — Ao Vivo',        'Rodriguinho',           'show_pagode', 'atual',   1800, 45),
     ]
 
     conn.executemany(
