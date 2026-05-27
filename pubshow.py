@@ -85,15 +85,16 @@ PLANOS = {
 }
 
 TIPOS_PEDIDO = {
-    'musica':          {'nome': 'Música aleatória',     'emoji': '🎵', 'preco': 2.00,  'cor': '#3b82f6'},
-    'musica_especifica':{'nome': 'Escolher a música',   'emoji': '🎯', 'preco': 8.00,  'cor': '#06b6d4'},
-    'flash':           {'nome': 'Prioridade na fila',   'emoji': '⚡', 'preco': 5.00,  'cor': '#f59e0b'},
-    'vip':             {'nome': 'Tocar AGORA',          'emoji': '👑', 'preco': 10.00, 'cor': '#8b5cf6'},
-    'parabens':        {'nome': 'Parabéns! 🎂',         'emoji': '🎂', 'preco': 15.00, 'cor': '#ec4899'},
-    'dedicatoria':     {'nome': 'Dedicatória ❤️',      'emoji': '💌', 'preco': 10.00, 'cor': '#ef4444'},
-    'brinde':          {'nome': 'Brinde Geral! 🍻',     'emoji': '🍻', 'preco': 5.00,  'cor': '#22c55e'},
-    'chegada':         {'nome': 'Chegamos! 🎉',         'emoji': '🎉', 'preco': 5.00,  'cor': '#f97316'},
-    'casamento':       {'nome': 'Pedido de Casamento 💍','emoji': '💍', 'preco': 25.00, 'cor': '#a855f7'},
+    'musica':           {'nome': 'Música aleatória',       'emoji': '🎵', 'preco': 2.00,  'cor': '#3b82f6'},
+    'musica_especifica':{'nome': 'Buscar na biblioteca',   'emoji': '🎯', 'preco': 5.00,  'cor': '#06b6d4'},
+    'musica_externa':   {'nome': 'Buscar no YouTube',      'emoji': '🌐', 'preco': 20.00, 'cor': '#dc2626'},
+    'flash':            {'nome': 'Prioridade na fila',     'emoji': '⚡', 'preco': 5.00,  'cor': '#f59e0b'},
+    'vip':              {'nome': 'Tocar AGORA',            'emoji': '👑', 'preco': 10.00, 'cor': '#8b5cf6'},
+    'parabens':         {'nome': 'Parabéns! 🎂',           'emoji': '🎂', 'preco': 15.00, 'cor': '#ec4899'},
+    'dedicatoria':      {'nome': 'Dedicatória ❤️',        'emoji': '💌', 'preco': 10.00, 'cor': '#ef4444'},
+    'brinde':           {'nome': 'Brinde Geral! 🍻',       'emoji': '🍻', 'preco': 5.00,  'cor': '#22c55e'},
+    'chegada':          {'nome': 'Chegamos! 🎉',           'emoji': '🎉', 'preco': 5.00,  'cor': '#f97316'},
+    'casamento':        {'nome': 'Pedido de Casamento 💍', 'emoji': '💍', 'preco': 25.00, 'cor': '#a855f7'},
 }
 
 
@@ -344,7 +345,7 @@ def jukebox(code):
             erro = 'Tipo de pedido inválido.'
         elif not nome_cliente:
             erro = 'Informe seu nome.'
-        elif tipo == 'musica_especifica' and not youtube_id:
+        elif tipo in ('musica_especifica', 'musica_externa') and not youtube_id:
             erro = 'Selecione uma música antes de confirmar.'
         else:
             t = TIPOS_PEDIDO[tipo]
@@ -368,13 +369,15 @@ def jukebox(code):
            ORDER BY created_at ASC LIMIT 10''',
         (b['id'],)
     ).fetchall()
-    canal = CANAIS.get(b['canal_atual'], CANAIS['rock'])
+    canal        = CANAIS.get(b['canal_atual'], CANAIS['rock'])
+    total_videos = conn3.execute('SELECT COUNT(*) FROM pubshow_videos WHERE ativo=1').fetchone()[0]
     conn3.close()
 
     return render_template('pubshow/jukebox.html',
                            b=dict(b), canal=canal,
                            tipos=TIPOS_PEDIDO, fila=[dict(f) for f in fila],
-                           sucesso=sucesso, erro=erro)
+                           sucesso=sucesso, erro=erro,
+                           total_videos=total_videos)
 
 
 # ── API (usada pelo TV player via JS polling) ─────────────────────────────────
@@ -451,6 +454,25 @@ def api_trocar_canal(code):
 def api_videos(categoria):
     videos = _videos_do_canal(categoria)
     return jsonify({'videos': videos, 'total': len(videos)})
+
+
+@pubshow_bp.route('/api/buscar-biblioteca')
+def api_buscar_biblioteca():
+    """Busca na biblioteca curada de vídeos (rápido, sem API externa)."""
+    q = request.args.get('q', '').strip()
+    if not q or len(q) < 2:
+        return jsonify({'resultados': []})
+    conn = get_pubshow_db()
+    like = f'%{q}%'
+    rows = conn.execute(
+        '''SELECT youtube_id, titulo, artista, categoria, duracao_seg
+           FROM pubshow_videos
+           WHERE ativo=1 AND (titulo LIKE ? OR artista LIKE ?)
+           ORDER BY views_milhoes DESC LIMIT 12''',
+        (like, like)
+    ).fetchall()
+    conn.close()
+    return jsonify({'resultados': [dict(r) for r in rows]})
 
 
 @pubshow_bp.route('/api/buscar')
