@@ -227,6 +227,152 @@
   </div>
   {% endif %}
 
+  <!-- Configurações do Jukebox -->
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-title">⚙️ Configurações do Jukebox</div>
+    <form method="POST" action="/pubshow/painel/config" style="display:flex;flex-direction:column;gap:18px">
+
+      <!-- Liga/desliga -->
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--surface2);border-radius:12px;border:1px solid var(--border)">
+        <div>
+          <div style="font-size:14px;font-weight:700">🔔 Jukebox ativo</div>
+          <div style="font-size:12px;color:var(--text2);margin-top:2px">Clientes podem fazer pedidos</div>
+        </div>
+        <label style="position:relative;display:inline-block;width:48px;height:26px;cursor:pointer">
+          <input type="checkbox" name="jukebox_ativo" {% if b.jukebox_ativo %}checked{% endif %} style="opacity:0;width:0;height:0">
+          <span style="position:absolute;inset:0;background:{% if b.jukebox_ativo %}#22c55e{% else %}#333{% endif %};border-radius:13px;transition:.3s"></span>
+          <span style="position:absolute;left:{% if b.jukebox_ativo %}24px{% else %}2px{% endif %};top:2px;width:22px;height:22px;background:#fff;border-radius:50%;transition:.3s"></span>
+        </label>
+      </div>
+
+      <!-- Horário -->
+      <div>
+        <label class="label-sm">⏰ Horário de funcionamento</label>
+        <div style="display:flex;gap:10px;align-items:center">
+          <input type="time" name="hora_ini" value="{{ b.jukebox_hora_ini or '00:00' }}"
+            style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-size:13px;font-family:inherit;outline:none;flex:1">
+          <span style="color:var(--text2)">até</span>
+          <input type="time" name="hora_fim" value="{{ b.jukebox_hora_fim or '23:59' }}"
+            style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-size:13px;font-family:inherit;outline:none;flex:1">
+        </div>
+        <div style="font-size:11px;color:var(--text2);margin-top:5px">Fora deste horário, o Jukebox exibe "fechado" para os clientes.</div>
+      </div>
+
+      <!-- Mensagem de boas-vindas -->
+      <div>
+        <label class="label-sm">💬 Mensagem de boas-vindas no Jukebox</label>
+        <input type="text" name="mensagem_jukebox" maxlength="120"
+          value="{{ b.mensagem_jukebox or '' }}"
+          placeholder="Ex: Bem-vindo ao Vita! 🍕🍷 Peça sua música!"
+          style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;color:var(--text);font-size:13px;font-family:inherit;outline:none">
+      </div>
+
+      <!-- Aviso temporário -->
+      <div>
+        <label class="label-sm">📢 Aviso temporário (some automaticamente)</label>
+        <div style="display:flex;gap:8px">
+          <input type="text" name="aviso_jukebox" maxlength="120"
+            value="{{ b.aviso_jukebox or '' }}"
+            placeholder='Ex: ⚽ Hoje tem jogo! Pedidos pausados até o fim.'
+            style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;color:var(--text);font-size:13px;font-family:inherit;outline:none">
+          <select name="aviso_horas" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-size:13px;font-family:inherit;outline:none;width:80px">
+            <option value="1">1h</option><option value="2">2h</option>
+            <option value="4" selected>4h</option><option value="8">8h</option>
+            <option value="24">24h</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Limite anti-spam -->
+      <div>
+        <label class="label-sm">🛡️ Limite de pedidos por cliente por hora</label>
+        <div style="display:flex;gap:10px;align-items:center">
+          <input type="number" name="limite_pedidos_hora" min="1" max="50"
+            value="{{ b.limite_pedidos_hora or 10 }}"
+            style="width:80px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-size:13px;font-family:inherit;outline:none">
+          <span style="font-size:13px;color:var(--text2)">pedidos por hora por cliente (anti-spam)</span>
+        </div>
+      </div>
+
+      <!-- Tipos de pedido disponíveis -->
+      <div>
+        <label class="label-sm">✅ Tipos de pedido disponíveis</label>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px">
+          {% for key, t in tipos.items() %}
+          <label style="display:flex;align-items:center;gap:6px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:7px 12px;cursor:pointer;font-size:12px;font-weight:700">
+            <input type="checkbox" name="tipos_ativos" value="{{ key }}"
+              {% if key not in bloqueados_parsed %}checked{% endif %}
+              style="width:14px;height:14px;accent-color:#ef4444">
+            {{ t.emoji }} {{ t.nome }}
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- Preços custom -->
+      <div>
+        <label class="label-sm">💰 Preços customizados (deixe em branco para usar o padrão)</label>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px;margin-top:6px">
+          {% for key, t in tipos.items() %}
+          <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 12px">
+            <div style="font-size:11px;color:var(--text2);margin-bottom:4px">{{ t.emoji }} {{ t.nome }}</div>
+            <div style="display:flex;align-items:center;gap:6px">
+              <span style="font-size:12px;color:var(--text2)">R$</span>
+              <input type="number" name="preco_{{ key }}" step="0.50" min="0.50" max="200"
+                value="{{ precos_parsed.get(key, '') }}"
+                placeholder="{{ t.preco }}"
+                style="width:100%;background:transparent;border:none;color:var(--text);font-size:14px;font-weight:700;font-family:inherit;outline:none">
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <button type="submit" class="btn-primary" style="width:100%">💾 Salvar configurações</button>
+    </form>
+  </div>
+
+  <!-- Conta -->
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-title">🔐 Segurança da conta</div>
+    {% set erro_senha = request.args.get('erro') %}
+    {% set ok_senha   = request.args.get('ok') %}
+    {% if ok_senha == 'senha' %}
+    <div style="background:#052e16;border:1px solid #22c55e44;border-radius:10px;padding:10px 14px;font-size:13px;color:#4ade80;margin-bottom:14px">✅ Senha alterada com sucesso!</div>
+    {% elif erro_senha == 'senha_errada' %}
+    <div style="background:#2d0a0a;border:1px solid #ef444433;border-radius:10px;padding:10px 14px;font-size:13px;color:#f87171;margin-bottom:14px">❌ Senha atual incorreta.</div>
+    {% elif erro_senha == 'senha_curta' %}
+    <div style="background:#2d0a0a;border:1px solid #ef444433;border-radius:10px;padding:10px 14px;font-size:13px;color:#f87171;margin-bottom:14px">❌ A nova senha deve ter ao menos 6 caracteres.</div>
+    {% elif erro_senha == 'senha_diferente' %}
+    <div style="background:#2d0a0a;border:1px solid #ef444433;border-radius:10px;padding:10px 14px;font-size:13px;color:#f87171;margin-bottom:14px">❌ As senhas não coincidem.</div>
+    {% endif %}
+    <form method="POST" action="/pubshow/painel/senha" style="display:flex;flex-direction:column;gap:12px;max-width:400px">
+      <div>
+        <label class="label-sm">Senha atual</label>
+        <input type="password" name="senha_atual" required
+          style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;color:var(--text);font-size:13px;font-family:inherit;outline:none">
+      </div>
+      <div>
+        <label class="label-sm">Nova senha</label>
+        <input type="password" name="senha_nova" required minlength="6"
+          style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;color:var(--text);font-size:13px;font-family:inherit;outline:none">
+      </div>
+      <div>
+        <label class="label-sm">Confirmar nova senha</label>
+        <input type="password" name="senha_conf" required
+          style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;color:var(--text);font-size:13px;font-family:inherit;outline:none">
+      </div>
+      <button type="submit" class="btn-primary" style="width:fit-content">🔐 Alterar senha</button>
+    </form>
+  </div>
+
+  <!-- Link relatório -->
+  <div style="text-align:center;margin-bottom:24px">
+    <a href="/pubshow/painel/relatorio" style="display:inline-flex;align-items:center;gap:8px;padding:12px 28px;background:var(--surface);border:1px solid var(--border2);border-radius:12px;color:var(--text);text-decoration:none;font-size:14px;font-weight:700">
+      📊 Ver relatório completo de receita
+    </a>
+  </div>
+
   <!-- Assinar -->
   {% if not b.plano_ativo %}
   <div style="background:linear-gradient(135deg,rgba(239,68,68,.1),rgba(249,115,22,.08));border:1px solid rgba(239,68,68,.3);border-radius:16px;padding:24px;margin-top:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px">

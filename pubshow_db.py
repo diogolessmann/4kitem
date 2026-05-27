@@ -116,6 +116,17 @@ def init_pubshow_db():
         # Admin pode suspender um bar
         'ALTER TABLE pubshow_businesses ADD COLUMN suspenso INTEGER DEFAULT 0',
         'ALTER TABLE pubshow_businesses ADD COLUMN notas_admin TEXT',
+        # Configurações do painel do bar
+        'ALTER TABLE pubshow_businesses ADD COLUMN jukebox_hora_ini TEXT DEFAULT "00:00"',
+        'ALTER TABLE pubshow_businesses ADD COLUMN jukebox_hora_fim TEXT DEFAULT "23:59"',
+        'ALTER TABLE pubshow_businesses ADD COLUMN tipos_bloqueados TEXT DEFAULT "[]"',
+        'ALTER TABLE pubshow_businesses ADD COLUMN mensagem_jukebox TEXT',
+        'ALTER TABLE pubshow_businesses ADD COLUMN aviso_jukebox TEXT',
+        'ALTER TABLE pubshow_businesses ADD COLUMN aviso_expira TEXT',
+        'ALTER TABLE pubshow_businesses ADD COLUMN limite_pedidos_hora INTEGER DEFAULT 10',
+        'ALTER TABLE pubshow_businesses ADD COLUMN precos_custom TEXT DEFAULT "{}"',
+        # Pedidos guardam IP para limite anti-spam
+        'ALTER TABLE pubshow_pedidos ADD COLUMN ip_cliente TEXT',
     ]:
         try:
             conn.execute(m); conn.commit()

@@ -106,6 +106,68 @@ def _gerar_jukebox_token():
     """Token rotativo para o QR do Jukebox — independente do code da TV."""
     return ''.join(random.choices(string.ascii_uppercase + string.digits, k=12))
 
+
+def _jukebox_aberto(b):
+    """Verifica se o jukebox está aberto no horário configurado."""
+    import json
+    if not b['jukebox_ativo']:
+        return False, 'Jukebox desativado pelo estabelecimento.'
+    if b['suspenso']:
+        return False, 'Estabelecimento temporariamente indisponível.'
+    hora_ini = b['jukebox_hora_ini'] or '00:00'
+    hora_fim = b['jukebox_hora_fim'] or '23:59'
+    if hora_ini != '00:00' or hora_fim != '23:59':
+        agora = datetime.now().strftime('%H:%M')
+        if hora_ini <= hora_fim:
+            if not (hora_ini <= agora <= hora_fim):
+                return False, f'Jukebox disponível das {hora_ini} às {hora_fim}.'
+        else:  # passa da meia-noite
+            if not (agora >= hora_ini or agora <= hora_fim):
+                return False, f'Jukebox disponível das {hora_ini} às {hora_fim}.'
+    return True, ''
+
+
+def _tipos_disponiveis(b):
+    """Retorna TIPOS_PEDIDO filtrado pelo que o bar não bloqueou."""
+    import json
+    try:
+        bloqueados = json.loads(b['tipos_bloqueados'] or '[]')
+    except Exception:
+        bloqueados = []
+    return {k: v for k, v in TIPOS_PEDIDO.items() if k not in bloqueados}
+
+
+def _precos_do_bar(b):
+    """Retorna preços customizados ou padrão."""
+    import json
+    try:
+        custom = json.loads(b['precos_custom'] or '{}')
+    except Exception:
+        custom = {}
+    tipos = {}
+    for k, v in TIPOS_PEDIDO.items():
+        t = dict(v)
+        if k in custom:
+            t['preco'] = float(custom[k])
+        tipos[k] = t
+    return tipos
+
+
+def _limite_atingido(b, ip):
+    """Verifica se o IP já atingiu o limite de pedidos na última hora."""
+    limite = b['limite_pedidos_hora'] or 10
+    if limite <= 0:
+        return False
+    conn = get_pubshow_db()
+    count = conn.execute(
+        '''SELECT COUNT(*) FROM pubshow_pedidos
+           WHERE business_id=? AND ip_cliente=?
+           AND created_at >= datetime("now", "-1 hour", "localtime")''',
+        (b['id'], ip)
+    ).fetchone()[0]
+    conn.close()
+    return count >= limite
+
 def _admin_ok():
     """Verifica se a sessão atual é admin."""
     return session.get('pubshow_admin') is True
@@ -357,35 +419,53 @@ def jukebox(token):
 
     sucesso = None
     erro    = ''
+    ip_cliente = request.headers.get('X-Forwarded-For', request.remote_addr or '').split(',')[0].strip()
+
+    # Aviso temporário
+    aviso = None
+    if b['aviso_jukebox']:
+        expira = b['aviso_expira'] or ''
+        if not expira or expira > datetime.now().isoformat():
+            aviso = b['aviso_jukebox']
+
+    # Verifica horário e status
+    aberto, motivo_fechado = _jukebox_aberto(b)
+    tipos_bar  = _tipos_disponiveis(b)
+    precos_bar = _precos_do_bar(b)
 
     if request.method == 'POST':
-        tipo          = request.form.get('tipo', '')
-        nome_cliente  = request.form.get('nome_cliente', '').strip()
-        mensagem      = request.form.get('mensagem', '').strip()
-        categoria     = request.form.get('categoria', b['canal_atual'])
-        youtube_id    = request.form.get('youtube_id', '').strip()[:20]
-        titulo_pedido = request.form.get('titulo_pedido', '').strip()[:80]
-        thumb_url     = request.form.get('thumb_url', '').strip()[:200]
-
-        if tipo not in TIPOS_PEDIDO:
-            erro = 'Tipo de pedido inválido.'
-        elif not nome_cliente:
-            erro = 'Informe seu nome.'
-        elif tipo in ('musica_especifica', 'musica_externa') and not youtube_id:
-            erro = 'Selecione uma música antes de confirmar.'
+        if not aberto:
+            erro = motivo_fechado
+        elif _limite_atingido(b, ip_cliente):
+            erro = 'Muitos pedidos em pouco tempo. Aguarde um momento.'
         else:
-            t = TIPOS_PEDIDO[tipo]
-            conn2 = get_pubshow_db()
-            conn2.execute(
-                '''INSERT INTO pubshow_pedidos
-                   (business_id, tipo, nome_cliente, mensagem, categoria, status, valor,
-                    youtube_id, titulo_pedido, thumb_url)
-                   VALUES (?,?,?,?,?,?,?,?,?,?)''',
-                (b['id'], tipo, nome_cliente, mensagem, categoria, 'pendente', t['preco'],
-                 youtube_id or None, titulo_pedido or None, thumb_url or None)
-            )
-            conn2.commit(); conn2.close()
-            sucesso = tipo
+            tipo          = request.form.get('tipo', '')
+            nome_cliente  = request.form.get('nome_cliente', '').strip()
+            mensagem      = request.form.get('mensagem', '').strip()
+            categoria     = request.form.get('categoria', b['canal_atual'])
+            youtube_id    = request.form.get('youtube_id', '').strip()[:20]
+            titulo_pedido = request.form.get('titulo_pedido', '').strip()[:80]
+            thumb_url     = request.form.get('thumb_url', '').strip()[:200]
+
+            if tipo not in tipos_bar:
+                erro = 'Tipo de pedido inválido.'
+            elif not nome_cliente:
+                erro = 'Informe seu nome.'
+            elif tipo in ('musica_especifica', 'musica_externa') and not youtube_id:
+                erro = 'Selecione uma música antes de confirmar.'
+            else:
+                preco = precos_bar[tipo]['preco']
+                conn2 = get_pubshow_db()
+                conn2.execute(
+                    '''INSERT INTO pubshow_pedidos
+                       (business_id, tipo, nome_cliente, mensagem, categoria, status, valor,
+                        youtube_id, titulo_pedido, thumb_url, ip_cliente)
+                       VALUES (?,?,?,?,?,?,?,?,?,?,?)''',
+                    (b['id'], tipo, nome_cliente, mensagem, categoria, 'pendente', preco,
+                     youtube_id or None, titulo_pedido or None, thumb_url or None, ip_cliente)
+                )
+                conn2.commit(); conn2.close()
+                sucesso = tipo
 
     # Fila atual (últimos 5 pedidos pendentes)
     conn3 = get_pubshow_db()
@@ -401,9 +481,13 @@ def jukebox(token):
 
     return render_template('pubshow/jukebox.html',
                            b=dict(b), canal=canal,
-                           tipos=TIPOS_PEDIDO, fila=[dict(f) for f in fila],
+                           tipos=precos_bar,
+                           tipos_disponiveis=tipos_bar,
+                           fila=[dict(f) for f in fila],
                            sucesso=sucesso, erro=erro,
-                           total_videos=total_videos)
+                           total_videos=total_videos,
+                           aberto=aberto, motivo_fechado=motivo_fechado,
+                           aviso=aviso)
 
 
 # ── API (usada pelo TV player via JS polling) ─────────────────────────────────
@@ -581,13 +665,21 @@ def painel():
         (b['id'],)
     ).fetchall()
     conn.close()
+    import json as _json
+    bd = dict(b)
+    try:    bloqueados_parsed = _json.loads(bd.get('tipos_bloqueados') or '[]')
+    except: bloqueados_parsed = []
+    try:    precos_parsed = _json.loads(bd.get('precos_custom') or '{}')
+    except: precos_parsed = {}
     return render_template('pubshow/painel.html',
-                           b=dict(b), canais=CANAIS,
+                           b=bd, canais=CANAIS,
                            pedidos_hoje=[dict(p) for p in pedidos_hoje],
                            total_hoje=total_hoje,
                            fila=[dict(f) for f in fila],
                            tipos=TIPOS_PEDIDO,
-                           planos=PLANOS)
+                           planos=PLANOS,
+                           bloqueados_parsed=bloqueados_parsed,
+                           precos_parsed=precos_parsed)
 
 
 @pubshow_bp.route('/painel/canal', methods=['POST'])
@@ -669,6 +761,152 @@ def painel_dispensar_pedido(pid):
     )
     conn.commit(); conn.close()
     return redirect('/pubshow/painel')
+
+
+@pubshow_bp.route('/painel/config', methods=['POST'])
+@pubshow_login_required
+def painel_config():
+    """Salva todas as configurações do Jukebox do bar."""
+    import json
+    b = _get_business()
+
+    # Horário
+    hora_ini = request.form.get('hora_ini', '00:00').strip()
+    hora_fim = request.form.get('hora_fim', '23:59').strip()
+
+    # Jukebox on/off
+    jukebox_ativo = 1 if request.form.get('jukebox_ativo') else 0
+
+    # Mensagem de boas-vindas
+    mensagem = request.form.get('mensagem_jukebox', '').strip()[:120]
+
+    # Aviso temporário
+    aviso      = request.form.get('aviso_jukebox', '').strip()[:120]
+    aviso_horas= request.form.get('aviso_horas', '4')
+    aviso_expira = None
+    if aviso:
+        try:
+            horas = max(1, min(72, int(aviso_horas)))
+            aviso_expira = (datetime.now() + timedelta(hours=horas)).isoformat()
+        except Exception:
+            aviso_expira = None
+
+    # Limite anti-spam
+    try:
+        limite = max(1, min(50, int(request.form.get('limite_pedidos_hora', 10))))
+    except Exception:
+        limite = 10
+
+    # Tipos bloqueados
+    todos_tipos = list(TIPOS_PEDIDO.keys())
+    ativos      = request.form.getlist('tipos_ativos')
+    bloqueados  = [t for t in todos_tipos if t not in ativos]
+
+    # Preços custom
+    precos = {}
+    for k in todos_tipos:
+        val = request.form.get(f'preco_{k}', '').strip()
+        if val:
+            try:
+                precos[k] = round(float(val.replace(',', '.')), 2)
+            except Exception:
+                pass
+
+    conn = get_pubshow_db()
+    conn.execute(
+        '''UPDATE pubshow_businesses SET
+           jukebox_ativo=?, jukebox_hora_ini=?, jukebox_hora_fim=?,
+           mensagem_jukebox=?, aviso_jukebox=?, aviso_expira=?,
+           limite_pedidos_hora=?, tipos_bloqueados=?, precos_custom=?
+           WHERE id=?''',
+        (jukebox_ativo, hora_ini, hora_fim,
+         mensagem or None, aviso or None, aviso_expira,
+         limite, json.dumps(bloqueados), json.dumps(precos),
+         b['id'])
+    )
+    conn.commit(); conn.close()
+    return redirect('/pubshow/painel?aba=config')
+
+
+@pubshow_bp.route('/painel/senha', methods=['POST'])
+@pubshow_login_required
+def painel_senha():
+    b = _get_business()
+    atual  = request.form.get('senha_atual', '')
+    nova   = request.form.get('senha_nova', '')
+    conf   = request.form.get('senha_conf', '')
+    if not check_password_hash(b['password_hash'], atual):
+        return redirect('/pubshow/painel?aba=conta&erro=senha_errada')
+    if len(nova) < 6:
+        return redirect('/pubshow/painel?aba=conta&erro=senha_curta')
+    if nova != conf:
+        return redirect('/pubshow/painel?aba=conta&erro=senha_diferente')
+    conn = get_pubshow_db()
+    conn.execute('UPDATE pubshow_businesses SET password_hash=? WHERE id=?',
+                 (generate_password_hash(nova), b['id']))
+    conn.commit(); conn.close()
+    return redirect('/pubshow/painel?aba=conta&ok=senha')
+
+
+@pubshow_bp.route('/painel/relatorio')
+@pubshow_login_required
+def painel_relatorio():
+    import json
+    b = _get_business()
+    conn = get_pubshow_db()
+
+    # Receita por período
+    receita_hoje = conn.execute(
+        '''SELECT COALESCE(SUM(valor),0) FROM pubshow_pedidos
+           WHERE business_id=? AND date(created_at)=date("now","localtime")''', (b['id'],)
+    ).fetchone()[0]
+    receita_semana = conn.execute(
+        '''SELECT COALESCE(SUM(valor),0) FROM pubshow_pedidos
+           WHERE business_id=? AND created_at>=datetime("now","-7 days","localtime")''', (b['id'],)
+    ).fetchone()[0]
+    receita_mes = conn.execute(
+        '''SELECT COALESCE(SUM(valor),0) FROM pubshow_pedidos
+           WHERE business_id=? AND strftime("%Y-%m",created_at)=strftime("%Y-%m","now","localtime")''', (b['id'],)
+    ).fetchone()[0]
+    receita_total = conn.execute(
+        'SELECT COALESCE(SUM(valor),0) FROM pubshow_pedidos WHERE business_id=?', (b['id'],)
+    ).fetchone()[0]
+
+    # Top tipos pedidos (último mês)
+    top_tipos = conn.execute(
+        '''SELECT tipo, COUNT(*) n, COALESCE(SUM(valor),0) receita
+           FROM pubshow_pedidos WHERE business_id=?
+           AND created_at>=datetime("now","-30 days","localtime")
+           GROUP BY tipo ORDER BY n DESC''', (b['id'],)
+    ).fetchall()
+
+    # Músicas mais pedidas (último mês)
+    top_musicas = conn.execute(
+        '''SELECT titulo_pedido, COUNT(*) n FROM pubshow_pedidos
+           WHERE business_id=? AND titulo_pedido IS NOT NULL
+           AND created_at>=datetime("now","-30 days","localtime")
+           GROUP BY titulo_pedido ORDER BY n DESC LIMIT 10''', (b['id'],)
+    ).fetchall()
+
+    # Pedidos por dia (últimos 14 dias)
+    por_dia = conn.execute(
+        '''SELECT date(created_at,"localtime") dia, COUNT(*) n, COALESCE(SUM(valor),0) r
+           FROM pubshow_pedidos WHERE business_id=?
+           AND created_at>=datetime("now","-14 days","localtime")
+           GROUP BY dia ORDER BY dia''', (b['id'],)
+    ).fetchall()
+
+    conn.close()
+    return render_template('pubshow/relatorio.html',
+                           b=dict(b),
+                           receita_hoje=receita_hoje,
+                           receita_semana=receita_semana,
+                           receita_mes=receita_mes,
+                           receita_total=receita_total,
+                           top_tipos=[dict(t) for t in top_tipos],
+                           top_musicas=[dict(m) for m in top_musicas],
+                           por_dia=[dict(d) for d in por_dia],
+                           tipos=TIPOS_PEDIDO)
 
 
 @pubshow_bp.route('/painel/novo-qr', methods=['POST'])
