@@ -17,6 +17,16 @@ from petmed_db import get_petmed_db, init_petmed_db
 
 log = logging.getLogger('petmed')
 
+# ── DEV_WHITELIST — nunca bloqueados pelo anti-golpe (re-cadastro livre) ───────
+_pm_wl_raw = os.environ.get('DEV_WHITELIST', '47997766831,diogolessmann@gmail.com')
+_PM_WHITELIST: set = {x.strip().lower() for x in _pm_wl_raw.split(',') if x.strip()}
+
+def _pm_is_whitelisted(*values) -> bool:
+    for v in values:
+        if v and str(v).strip().lower() in _PM_WHITELIST:
+            return True
+    return False
+
 try:
     from groq import Groq as _Groq
     _groq_client = _Groq(api_key=os.environ.get('GROQ_API_KEY', ''))
@@ -1060,6 +1070,15 @@ def cadastrar():
             _u_id = None
             try:
                 conn = get_petmed_db()
+                # DEV_WHITELIST: se email/telefone está na whitelist e já existe, remove antes de re-cadastrar
+                _tel_digits = re.sub(r'\D', '', telefone)
+                if _pm_is_whitelisted(email, _tel_digits):
+                    existing = conn.execute('SELECT id FROM petmed_users WHERE email=?', (email,)).fetchone()
+                    if existing:
+                        conn.execute('DELETE FROM petmed_pets WHERE user_id=?', (existing['id'],))
+                        conn.execute('DELETE FROM petmed_users WHERE id=?', (existing['id'],))
+                        conn.commit()
+                        log.info('[PETmed] Whitelist: registro antigo de %s removido para re-cadastro', email)
                 conn.execute(
                     '''INSERT INTO petmed_users
                        (nome, email, telefone, cpf, password_hash, plano, plano_ativo)

@@ -32,6 +32,19 @@ app.secret_key = os.environ.get('SECRET_KEY', '4kitem-secret-2024-xk91')
 # ── SaaS admin password ────────────────────────────────────────────────────────
 SAAS_ADMIN_PW = os.environ.get('SAAS_ADMIN_PASSWORD', 'admin4kitem2024')
 
+# ── DEV_WHITELIST — nunca bloqueados pelo anti-golpe (re-cadastro livre) ───────
+# Adicione telefones (apenas dígitos) ou e-mails separados por vírgula na env:
+#   DEV_WHITELIST=47997766831,diogolessmann@gmail.com
+_wl_raw = os.environ.get('DEV_WHITELIST', '47997766831,diogolessmann@gmail.com')
+DEV_WHITELIST: set = {x.strip().lower() for x in _wl_raw.split(',') if x.strip()}
+
+def _is_whitelisted(*values) -> bool:
+    """Retorna True se qualquer valor (email ou dígitos de telefone) estiver no DEV_WHITELIST."""
+    for v in values:
+        if v and str(v).strip().lower() in DEV_WHITELIST:
+            return True
+    return False
+
 # ── AgendaSC constants ────────────────────────────────────────────────────────
 BUSINESS_TYPES = {
     'barbearia':    '💈 Barbearia',
@@ -1321,16 +1334,17 @@ def defesa_cadastro():
             erro = 'CPF deve ter 11 dígitos ou CNPJ deve ter 14 dígitos.'
         else:
             conn = get_saas_db()
-            if conn.execute('SELECT id FROM defesapro_users WHERE LOWER(email)=?', (email,)).fetchone():
+            _wl = _is_whitelisted(phone_digits, email)
+            if (not _wl) and conn.execute('SELECT id FROM defesapro_users WHERE LOWER(email)=?', (email,)).fetchone():
                 erro = 'Este e-mail já possui uma conta. Faça login.'
                 conn.close()
-            elif cpf_digits and conn.execute(
+            elif (not _wl) and cpf_digits and conn.execute(
                 "SELECT id FROM defesapro_users WHERE replace(replace(replace(cpf_cnpj,'.',''),'-',''),'/','')=?",
                 (cpf_digits,)
             ).fetchone():
                 erro = 'Este CPF/CNPJ já possui uma conta cadastrada.'
                 conn.close()
-            elif phone_digits and conn.execute(
+            elif (not _wl) and phone_digits and conn.execute(
                 "SELECT id FROM defesapro_users WHERE replace(replace(replace(replace(phone,'(',''),')',''),'-',''),' ','')=?",
                 (phone_digits,)
             ).fetchone():
@@ -2953,11 +2967,12 @@ def agenda_cadastro():
             # Normaliza telefone para checar duplicata
             phone_digits = ''.join(c for c in phone if c.isdigit())
             conn = get_saas_db()
-            existing_phone = conn.execute(
+            _wl = _is_whitelisted(phone_digits, email.lower() if email else '')
+            existing_phone = (not _wl) and conn.execute(
                 "SELECT id FROM agenda_businesses WHERE replace(replace(replace(replace(replace(phone,'(',''),')',''),'-',''),' ',''),'+','') = ?",
                 (phone_digits,)
             ).fetchone()
-            existing_cpf = conn.execute(
+            existing_cpf = (not _wl) and conn.execute(
                 "SELECT id FROM agenda_businesses WHERE replace(replace(replace(cpf_cnpj,'.',''),'-',''),'/','') = ?",
                 (cpf_digits,)
             ).fetchone()
@@ -5298,19 +5313,20 @@ def bau_cadastro():
             error = 'CPF deve ter 11 dígitos ou CNPJ 14 dígitos.'
         else:
             conn = get_saas_db()
+            _wl = _is_whitelisted(phone_digits, email)
             # Anti-golpe: e-mail único
-            if conn.execute('SELECT id FROM bau_users WHERE email=?', (email,)).fetchone():
+            if (not _wl) and conn.execute('SELECT id FROM bau_users WHERE email=?', (email,)).fetchone():
                 error = 'E-mail já cadastrado. Faça login.'
                 conn.close()
             # Anti-golpe: CPF/CNPJ único
-            elif conn.execute(
+            elif (not _wl) and conn.execute(
                 "SELECT id FROM bau_users WHERE replace(replace(replace(cpf_cnpj,'.',''),'-',''),'/','') = ?",
                 (cpf_digits,)
             ).fetchone():
                 error = 'CPF/CNPJ já possui uma conta. Faça login ou entre em contato.'
                 conn.close()
             # Anti-golpe: telefone único
-            elif conn.execute(
+            elif (not _wl) and conn.execute(
                 "SELECT id FROM bau_users WHERE replace(replace(replace(replace(phone,'(',''),')',''),'-',''),' ','') = ?",
                 (phone_digits,)
             ).fetchone():
@@ -5484,16 +5500,17 @@ def mandazap_cadastro():
             error = 'CPF deve ter 11 dígitos ou CNPJ 14 dígitos.'
         else:
             conn = get_saas_db()
-            if conn.execute('SELECT id FROM mandazap_users WHERE email=?', (email,)).fetchone():
+            _wl = _is_whitelisted(phone_digits, email)
+            if (not _wl) and conn.execute('SELECT id FROM mandazap_users WHERE email=?', (email,)).fetchone():
                 error = 'E-mail já cadastrado. Faça login.'
                 conn.close()
-            elif conn.execute(
+            elif (not _wl) and conn.execute(
                 "SELECT id FROM mandazap_users WHERE replace(replace(replace(cpf_cnpj,'.',''),'-',''),'/','') = ?",
                 (cpf_digits,)
             ).fetchone():
                 error = 'CPF/CNPJ já possui uma conta. Faça login ou entre em contato.'
                 conn.close()
-            elif conn.execute(
+            elif (not _wl) and conn.execute(
                 "SELECT id FROM mandazap_users WHERE replace(replace(replace(replace(phone,'(',''),')',''),'-',''),' ','') = ?",
                 (phone_digits,)
             ).fetchone():
