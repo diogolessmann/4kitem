@@ -4760,6 +4760,19 @@ def saas_pubshow_bar_trial(bid):
     return jsonify({'success': True})
 
 
+@app.route('/saas-admin/pubshow/reseed', methods=['POST'])
+@_saas_admin_required
+def saas_pubshow_reseed():
+    """Força re-inserção de todos os vídeos do seed (INSERT OR IGNORE — seguro)."""
+    from pubshow_db import get_pubshow_db as _get_ps_db, _seed_videos as _sv
+    psconn = _get_ps_db()
+    before = psconn.execute('SELECT COUNT(*) FROM pubshow_videos WHERE ativo=1').fetchone()[0]
+    _sv(psconn)
+    after  = psconn.execute('SELECT COUNT(*) FROM pubshow_videos WHERE ativo=1').fetchone()[0]
+    psconn.close()
+    return jsonify({'success': True, 'antes': before, 'depois': after, 'novos': after - before})
+
+
 @app.route('/admin/alerta/<int:sub_id>/status', methods=['POST'])
 @_saas_admin_required
 def saas_alerta_status(sub_id):
