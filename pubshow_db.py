@@ -258,6 +258,14 @@ def _seed_videos(conn):
         ('pYxW8VbHpQM', 'Proibida pra Mim',           'Charlie Brown Jr',      'punk', 'brasil',   248,  60),
         ('d0iCJlmqQs4', 'Ela Vai Voltar',             'Charlie Brown Jr',      'punk', 'brasil',   221,  50),
         ('TGjn0bFB8HU', 'Garota Nacional',            'Skank',                 'punk', 'brasil',   241,  70),
+        # Clássicos punk que completam 50 — experiência garantida
+        ('3JDLMoAiB4I', 'Creep',                       'Radiohead',             'punk', 'indie',    237, 500),
+        ('u9Dg-g7t2l4', 'Smells Like Teen Spirit',    'Nirvana',               'punk', 'grunge',   301, 1200),
+        ('XFkzRNTy2ko', 'Everlong',                    'Foo Fighters',          'punk', 'grunge',   250, 400),
+        ('1VQ_3sBZEm0', 'Best of You',                 'Foo Fighters',          'punk', 'grunge',   256, 350),
+        ('hTWKbfoikeg', 'Seven Nation Army',           'The White Stripes',     'punk', 'indie',    231, 600),
+        ('Q0oIoR9mLrc', 'Boulevard of Broken Dreams',  'Green Day',             'punk', 'punk',     261, 800),
+        ('6Ejga4jAnSA', 'When I Come Around',          'Green Day',             'punk', 'punk',     188, 350),
 
         # ══════════════════════════════════════════════════════════════════════
         # SERTANEJO — 50+ vídeos — da raiz ao moderno
@@ -306,6 +314,19 @@ def _seed_videos(conn):
         ('zMOPL5gRFM8', 'Regime Fechado',             'Simone & Simaria',      'sertanejo','atual',     218, 180),
         ('TQB0YX8hqrI', 'Aqui e Agora',              'Victor & Leo',           'sertanejo','atual',     231, 150),
         ('qYqkQ7BPKHY', 'Borboletas',                'Victor & Leo',           'sertanejo','atual',     245, 130),
+        # Mais raízes — memória afetiva total
+        ('1oYDiB5-PbI', 'Faz Parte do Meu Show',     'Roberto Carlos',         'sertanejo','raiz',     263, 200),
+        ('I0JtmfMhXaU', 'Não Aprendi Dizer Adeus',   'Leandro & Leonardo',     'sertanejo','raiz',     255, 180),
+        ('5G4gASYqFQo', 'Saudade do Nordeste',        'Chitãozinho & Xororó',   'sertanejo','raiz',     270, 150),
+        ('lMWGMlILlj4', 'A Lua Me Traiu',             'Zezé di Camargo',        'sertanejo','raiz',     241, 130),
+        # Universitário que lotou forró e balada
+        ('AqNlKoWMjnk', 'Não Era Amor',               'Gusttavo Lima',          'sertanejo','universitario', 248, 280),
+        ('vYHpBVfNDKg', 'Tô Indo',                    'Luan Santana',           'sertanejo','universitario', 237, 200),
+        ('r1sAVOJjpXE', 'Flor e o Beija-Flor',        'Henrique & Juliano',     'sertanejo','universitario', 243, 180),
+        ('YBsFvKdF0Po', 'Largado às Traças Ao Vivo',  'Zé Neto & Cristiano',    'sertanejo','universitario', 242, 350),
+        # Atual — os números de Spotify e YouTube não mentem
+        ('t3T7H_3Tp9g', 'Seu Eu',                     'Ana Castela',            'sertanejo','atual',     198, 300),
+        ('0YPqd0UZFGM', 'Abalo Emocional',             'Marília Mendonça',       'sertanejo','feminejo', 231, 280),
 
         # ══════════════════════════════════════════════════════════════════════
         # PAGODE — 50+ vídeos — boteco clássico até pagode moderno
@@ -360,6 +381,23 @@ def _seed_videos(conn):
         ('mA80kMjKMak', 'Cheia de Marra',             'Rodriguinho',           'pagode','moderno',  229,  70),
         # Pagode roots — Fundo de Quintal
         ('xCF7QRhm3-Y', 'Minha Liberdade',            'Fundo de Quintal',      'pagode','roots',    242,  60),
+        # Mais clássicos que todo boteco conhece
+        ('eOKmCTmHHZE', 'Pé na Areia',                'Zeca Pagodinho',        'pagode','classic',  231,  90),
+        ('xWqMzqISs9g', 'Sem Limite',                  'Zeca Pagodinho',        'pagode','classic',  244,  80),
+        ('e5S4BKmlARM', 'Amor Colorido',               'Raça Negra',            'pagode','classic',  252, 120),
+        ('IZXYzMBoq0k', 'Não Precisa',                 'Raça Negra',            'pagode','classic',  237, 100),
+        ('bq3ZD2BmFmY', 'Se Você Pensa',               'Fundo de Quintal',      'pagode','roots',    248,  80),
+        ('7xWUkMyX4Dk', 'Alguém Me Avisou',            'Fundo de Quintal',      'pagode','roots',    231,  70),
+        ('DaC_PRlqQ4Y', 'Coração em Desalinho',        'Grupo Revelação',       'pagode','classic',  241,  85),
+        ('0C9e7MBCJSY', 'Amor Que Se Cuida',           'Exaltasamba',           'pagode','classic',  247,  75),
+        # Pagode anos 2000 — bailão do coração
+        ('vPWpyDsNEYk', 'Lembranças',                  'Thiaguinho',            'pagode','moderno',  219, 110),
+        ('JOVQbgjPKaE', 'Flor',                        'Ferrugem',              'pagode','moderno',  235,  85),
+        ('E-jzv-8JNKI', 'Faltando um Pedaço',          'Belo',                  'pagode','moderno',  241,  70),
+        ('eLKBaJVJjwE', 'Prazer em te Conhecer',       'Sorriso Maroto',        'pagode','moderno',  228,  65),
+        ('5wqGkx_nVJU', 'Inseguro',                    'Péricles',              'pagode','moderno',  234,  60),
+        ('m3x6IKASP5U', 'Vagabundo',                   'Mumuzinho',             'pagode','moderno',  222,  55),
+        ('Z7pqrqr3XlI', 'Cilada',                      'Rodriguinho',           'pagode','moderno',  218,  50),
 
         # ══════════════════════════════════════════════════════════════════════
         # POP — 50+ vídeos — os maiores de todos os tempos
@@ -426,8 +464,12 @@ def _seed_videos(conn):
         # Brasil pop
         ('SlPhMPnQ58k', 'Envolver',                   'Anitta',                'pop', 'brasil', 185, 800),
         ('qB3kK0QTe2g', 'Girl from Rio',              'Anitta',                'pop', 'brasil', 193, 400),
-        ('ZbZSe6N_BXs', 'Happy',                      'Pharrell Williams',      'pop', 'atual', 233, 700),
-        ('CevxZvSJLk8', 'Poker Face (Remix)',         'Lady Gaga',             'pop', 'atual', 237, 600),
+        # Completando 50 pop — os que não podem faltar
+        ('hT_nvWreIhg', 'Counting Stars',             'OneRepublic',           'pop', 'atual', 257, 1400),
+        ('MV_3Dpw-BRY', 'Wake Me Up',                 'Avicii',                'pop', 'atual', 247, 1700),
+        ('YkgkThdzX-8', 'We Are Young',               'fun.',                  'pop', 'atual', 250, 600),
+        ('d27gTrPPAyk', 'Get Lucky',                  'Daft Punk ft. Pharrell','pop', 'atual', 248, 900),
+        ('CduA0TJLXq4', 'Somebody That I Used to Know','Gotye ft. Kimbra',     'pop', 'atual', 244, 1100),
 
         # ══════════════════════════════════════════════════════════════════════
         # 🏎️ F1 / SPEED — 30+ vídeos — velocidade pura, drift, rally
