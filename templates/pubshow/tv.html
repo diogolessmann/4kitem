@@ -329,19 +329,19 @@ function onPlayerError(e) {
 }
 
 function iniciarStallDetector() {
-  // Se após 4s ainda não está tocando, vídeo está travado
+  // Se após 4s ainda não está tocando, vídeo está travado ou indisponível
   clearTimeout(stallTimer);
   stallTimer = setTimeout(() => {
     if (!player) return;
     const state = player.getPlayerState();
-    // -1=unstarted, 5=cued — não começou a tocar
-    if (state === -1 || state === 5) {
-      console.warn('Stall detectado → pulando...');
+    // -1=unstarted, 2=paused/indisponível, 5=cued — não começou a tocar
+    if (state === -1 || state === 2 || state === 5) {
+      console.warn('Stall detectado (state=' + state + ') → pulando...');
       _marcarVideoRuim();
       _skipCount++;
       avancarFila();
     }
-  }, 4000); // 4s em vez de 7s
+  }, 4000);
 }
 
 // ── Lógica de avanço com fila ─────────────────────────────────────────────────
