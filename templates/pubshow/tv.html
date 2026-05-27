@@ -112,12 +112,40 @@
   .canal-btn:hover,.canal-btn.ativo{background:rgba(255,255,255,.18);border-color:rgba(255,255,255,.5)}
   .canal-btn.ativo{border-color:var(--canal-cor,#ef4444)}
   .canal-btn.mix{border-style:dashed}
+
+  /* Botão fullscreen */
+  #fs-btn{
+    position:fixed;top:20px;left:20px;z-index:50;
+    background:rgba(0,0,0,.75);border:1px solid rgba(255,255,255,.18);
+    border-radius:10px;padding:7px 14px;font-size:12px;font-weight:700;
+    cursor:pointer;color:#fff;backdrop-filter:blur(6px);
+    opacity:0;transition:opacity .3s;white-space:nowrap;
+    display:flex;align-items:center;gap:8px;
+  }
+  #fs-btn:hover{background:rgba(255,255,255,.18);border-color:rgba(255,255,255,.5)}
+  #fs-btn.visible{opacity:1}
+
+  /* Dica inicial de fullscreen */
+  #fs-hint{
+    position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+    z-index:60;background:rgba(0,0,0,.85);backdrop-filter:blur(10px);
+    border:1px solid rgba(255,255,255,.2);border-radius:16px;
+    padding:20px 32px;text-align:center;font-size:15px;font-weight:700;
+    pointer-events:none;opacity:0;transition:opacity .4s;
+  }
+  #fs-hint.show{opacity:1}
 </style>
 </head>
 <body>
 
+<!-- Botão fullscreen (canto superior esquerdo, aparece ao mover mouse) -->
+<button id="fs-btn" onclick="toggleFullscreen()" title="Tela cheia (F)">⛶ Tela cheia</button>
+
+<!-- Dica inicial -->
+<div id="fs-hint">⛶ Clique para tela cheia · Tecla F</div>
+
 <!-- Player YouTube (IFrame API) -->
-<div id="player-wrap">
+<div id="player-wrap" onclick="toggleFullscreen()" style="cursor:pointer">
   <div id="yt-player"></div>
 </div>
 
@@ -488,17 +516,52 @@ async function trocarCanal(canal) {
   location.reload();
 }
 
-// Mouse move → mostra seletor de canal
+// ── Fullscreen ────────────────────────────────────────────────────────────────
+function toggleFullscreen() {
+  if (!document.fullscreenElement) {
+    document.documentElement.requestFullscreen().catch(() => {});
+  } else {
+    document.exitFullscreen().catch(() => {});
+  }
+}
+
+document.addEventListener('fullscreenchange', () => {
+  const btn = document.getElementById('fs-btn');
+  if (document.fullscreenElement) {
+    btn.textContent = '✕ Sair da tela cheia';
+  } else {
+    btn.innerHTML = '⛶ Tela cheia';
+  }
+});
+
+// Tecla F = fullscreen
+document.addEventListener('keydown', e => {
+  if (e.key === 'f' || e.key === 'F') toggleFullscreen();
+});
+
+// Mouse move → mostra seletor de canal + botão fullscreen
 document.addEventListener('mousemove', () => {
   const sel = document.getElementById('canal-selector');
+  const fsb = document.getElementById('fs-btn');
   sel.classList.add('visible');
+  fsb.classList.add('visible');
   clearTimeout(window._selTimer);
-  window._selTimer = setTimeout(() => sel.classList.remove('visible'), 3000);
+  window._selTimer = setTimeout(() => {
+    sel.classList.remove('visible');
+    fsb.classList.remove('visible');
+  }, 3000);
 });
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 window._canalAtual = CANAL_KEY;
 setInterval(pollStatus, 4000);
+
+// Dica fullscreen — aparece 2s após abrir, some em 4s
+setTimeout(() => {
+  const hint = document.getElementById('fs-hint');
+  hint.classList.add('show');
+  setTimeout(() => hint.classList.remove('show'), 4000);
+}, 2000);
 </script>
 </body>
 </html>
