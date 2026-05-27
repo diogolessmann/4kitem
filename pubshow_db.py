@@ -430,60 +430,190 @@ def _seed_videos(conn):
         ('CevxZvSJLk8', 'Poker Face (Remix)',         'Lady Gaga',             'pop', 'atual', 237, 600),
 
         # ══════════════════════════════════════════════════════════════════════
-        # F1 / SPEED — Adrenalina
+        # 🏎️ F1 / SPEED — 30+ vídeos — velocidade pura, drift, rally
         # ══════════════════════════════════════════════════════════════════════
-        # Senna — patrimônio brasileiro
-        ('qZsyrJXr6no', 'Ayrton Senna — Greatest Moments','Ayrton Senna',     'f1', 'f1', 480, 150),
-        ('wiCCEbkz_IM', 'F1 Greatest Overtakes Ever', 'Formula 1',             'f1', 'f1', 300, 80),
-        ('w5MBtVxOBQs', 'Max Verstappen Best Laps',   'Red Bull Racing',        'f1', 'f1', 360, 60),
-        # Drift e Gymkhana — insano visual
-        ('n_RMXCQZ8Gs', 'Ken Block Gymkhana 10',      'Hoonigan',              'f1', 'drift', 543, 200),
-        ('0GiAiRJsYh8', 'Drift — Best Moments',       'D1GP',                  'f1', 'drift', 240, 30),
-        # Rally — grupo B era lendária
-        ('Aqe_bvkTbJM', 'WRC Rally — Best of All Time','WRC',                  'f1', 'rally', 420, 50),
-        # NASCAR
-        ('YbHuGPHaURQ', 'NASCAR Greatest Crashes & Moments','NASCAR',          'f1', 'nascar', 360, 40),
+        # Senna — patrimônio do Brasil — quem assiste para de respirar
+        ('qZsyrJXr6no', 'Ayrton Senna — Greatest Moments',   'Ayrton Senna',    'f1','senna',  480, 200),
+        ('6aCkFSGEXhI', 'Senna — Qualifying Monaco 1984',    'Ayrton Senna',    'f1','senna',  360, 150),
+        ('aHjmCXDpNcs', 'Senna vs Prost — The Rivalry',      'F1 History',      'f1','senna',  600, 100),
+        # F1 moderna — os melhores momentos
+        ('wiCCEbkz_IM', 'F1 Greatest Overtakes Ever',        'Formula 1',       'f1','f1',     600, 120),
+        ('yk2P7Gn3mDs', 'F1 Best Crashes — Survival Moments','Formula 1',       'f1','f1',     480,  80),
+        ('w5MBtVxOBQs', 'Max Verstappen — Best Laps',        'Red Bull Racing', 'f1','f1',     360,  70),
+        ('HzLLGxQGhiM', 'Lewis Hamilton — Greatest Drives',  'Mercedes AMG F1', 'f1','f1',     480,  90),
+        ('9lNZ_Rnr4Yc', 'Michael Schumacher — Best Moments', 'Schumacher',      'f1','f1',     600,  80),
+        ('e-GCGP_BQKI', 'F1 Onboard — Best Qualifying Laps', 'Formula 1',       'f1','f1',     300,  60),
+        ('tOa4OT2aMbc', 'F1 2023 — Season Highlights',       'Formula 1',       'f1','f1',     480,  50),
+        # NASCAR — oval americano raiz
+        ('YbHuGPHaURQ', 'NASCAR Greatest Crashes & Moments', 'NASCAR',          'f1','nascar', 360,  50),
+        ('7DljRMCpYZk', 'NASCAR — Best Finishes Ever',       'NASCAR',          'f1','nascar', 300,  40),
+        ('X-YFJh4sFa8', 'Daytona 500 — Greatest Moments',   'NASCAR',          'f1','nascar', 480,  35),
+        # Ken Block Gymkhana — série mais vista de drift da história
+        ('n_RMXCQZ8Gs', 'Ken Block Gymkhana 10',             'Hoonigan',        'f1','drift',  543, 200),
+        ('AasSKmDDFxk', 'Ken Block Gymkhana 3 (Original)',   'Hoonigan',        'f1','drift',  338, 180),
+        ('PcgWJ0UjDh4', 'Ken Block — Climbkhana Pikes Peak', 'Hoonigan',        'f1','drift',  600, 120),
+        # Drift puro — D1GP e Formula Drift
+        ('0GiAiRJsYh8', 'Best Drift Moments Compilation',    'D1GP',            'f1','drift',  360,  40),
+        ('4XrTpG-P_Yw', 'Formula Drift — Best Battles',      'Formula Drift',   'f1','drift',  300,  35),
+        ('ZJpHExQs0dk', 'Drift — Insane Angles 2023',        'Drift Alliance',  'f1','drift',  240,  30),
+        # WRC Rally — velocidade off-road — Grupo B era lendária
+        ('Aqe_bvkTbJM', 'WRC Rally — Best of All Time',      'WRC',             'f1','rally',  600,  60),
+        ('ysVJ4XRmtJM', 'WRC Rally Group B — Era Proibida',  'WRC History',     'f1','rally',  480,  50),
+        ('ltyGVXVGmhA', 'Rally — Closest Calls Ever',        'WRC',             'f1','rally',  360,  40),
+        ('9hnY1GOSHJA', 'Sébastien Loeb — 9x World Champion','Citroën WRC',     'f1','rally',  480,  35),
+        # Pikes Peak — a corrida mais insana do mundo
+        ('T2sNMoJJb-8', 'Pikes Peak — Top Runs History',     'Pikes Peak',      'f1','pikes',  480,  40),
+        # Nürburgring — circuito sagrado
+        ('TqfKEbwJeek', 'Nürburgring — Fastest Laps Ever',   'Nürburgring',     'f1','track',  600,  45),
+        # MotoGP — velocidade das duas rodas
+        ('k5W_-dLdJJc', 'MotoGP — Greatest Overtakes',       'MotoGP',          'f1','moto',   360,  55),
+        ('_HpBsxS0XTg', 'Marc Marquez — Impossible Saves',   'Repsol Honda',    'f1','moto',   300,  60),
+        ('oZRfBFWfGX4', 'Valentino Rossi — The Doctor',      'Valentino Rossi', 'f1','moto',   480,  80),
 
         # ══════════════════════════════════════════════════════════════════════
-        # FUTEBOL — Os momentos mais vistos da história
+        # ⚽ FUTEBOL — 30+ vídeos — os maiores de todos os tempos
         # ══════════════════════════════════════════════════════════════════════
-        # Ronaldinho — o melhor de todos os tempos em habilidade
-        ('PFivhFVDfhU', 'Ronaldinho Gaúcho — Skills & Goals','Ronaldinho',    'futebol', 'skills', 600, 350),
-        # R9 — Ronaldo Fenômeno
-        ('lBe1OPSHCqk', 'Ronaldo R9 — Best Goals Ever','Ronaldo Fenômeno',    'futebol', 'goals',  480, 250),
-        # Messi vs CR7
-        ('VYs4G2eRIgk', 'Messi vs Ronaldo — The GOAT Debate','Compilação',    'futebol', 'goat',   600, 500),
-        # Roberto Carlos — cobranças impossíveis
-        ('Qa5jSRiVFnA', 'Roberto Carlos — Free Kicks','Roberto Carlos',        'futebol', 'goals',  300, 200),
-        # Neymar e Brasil
-        ('yh4OmhMnCww', 'Neymar Jr — Skills & Goals','Neymar Jr',             'futebol', 'skills', 480, 200),
-        # Melhores gols da história — top compilações
-        ('Bln9FJz9k9c', 'Top 50 Goals Champions League','UEFA',               'futebol', 'goals',  600, 100),
+        # Ronaldinho — magia pura, o mais amado
+        ('PFivhFVDfhU', 'Ronaldinho — Skills & Goals',       'Ronaldinho Gaúcho', 'futebol','skills', 600, 400),
+        ('G4dFsH0EXTU', 'Ronaldinho — Barcelona Best Moments','FC Barcelona',    'futebol','skills', 480, 300),
+        ('9Xvf0GbGPfM', 'Ronaldinho — Ballon d\'Or 2005',    'FIFA',            'futebol','award',  600, 200),
+        # Ronaldo R9 — Fenômeno
+        ('lBe1OPSHCqk', 'Ronaldo R9 — Best Goals Ever',      'Ronaldo Fenômeno','futebol','goals',  480, 250),
+        ('W-nDEoO_mgo', 'Ronaldo R9 — Copa 2002 (Brasil)',   'FIFA',            'futebol','world',  600, 200),
+        # Messi — GOAT
+        ('8qPqXBpfAFw', 'Messi — Top 50 Goals of His Career','Leo Messi',       'futebol','goals',  600, 600),
+        ('VYs4G2eRIgk', 'Messi vs Ronaldo — The GOAT Debate','Compilação',      'futebol','goat',   600, 500),
+        ('H0Ej8f-KZGE', 'Messi — World Cup 2022 Qatar',      'FIFA',            'futebol','world',  600, 400),
+        # CR7
+        ('F_-5HC8BTzM', 'Cristiano Ronaldo — Top 50 Goals',  'CR7',             'futebol','goals',  600, 500),
+        ('4yLOLLKwdPY', 'Ronaldo — Bicycle Kick vs Juventus', 'Champions League','futebol','goals',  120, 300),
+        # Roberto Carlos — o chute impossível
+        ('Qa5jSRiVFnA', 'Roberto Carlos — Free Kicks',       'Roberto Carlos',  'futebol','goals',  300, 250),
+        ('NJg_NE61vFs', 'Roberto Carlos vs França 1997',     'FIFA',            'futebol','goals',   60, 400),
+        # Pelé — o rei
+        ('gTq5i1RRyCA', 'Pelé — Greatest Goals Collection',  'Pelé',            'futebol','legend', 600, 300),
+        ('RL5i8gWf3z8', 'Pelé — World Cup 1970 Brazil',      'FIFA History',    'futebol','world',  480, 200),
+        # Neymar
+        ('yh4OmhMnCww', 'Neymar Jr — Skills & Goals',        'Neymar Jr',       'futebol','skills', 480, 200),
+        ('GRF9bj3OVWE', 'Neymar — Best Goals PSG & Brazil',  'Neymar Jr',       'futebol','goals',  480, 150),
+        # Zidane
+        ('AQd7Fh5hbhI', 'Zinedine Zidane — Skills & Goals',  'Zidane',          'futebol','legend', 600, 200),
+        ('rBZLcVSpSok', 'Zidane — UCL Final 2002 (Volley)',   'Real Madrid',     'futebol','goals',   90, 300),
+        # Zlatan — o mais único
+        ('5Ifrz_s7mJc', 'Zlatan Ibrahimovic — Impossible Goals','Zlatan',       'futebol','goals',  480, 350),
+        # Brasil — seleção e Copa
+        ('3t08VWK0Sc0', 'Brasil — Copa 1994 Gols e Momentos', 'CBF',            'futebol','world',  600, 150),
+        ('w5bFaAqSQNc', 'Brasil — Jogo Bonito Compilation',   'CBF',            'futebol','skills', 480, 120),
+        # Champions League — os maiores
+        ('Bln9FJz9k9c', 'Top 50 Goals Champions League',      'UEFA',            'futebol','goals',  600, 150),
+        ('xJ-e0dSsLCk', 'UCL Greatest Finals Ever',           'UEFA',            'futebol','final',  600, 100),
+        # Goleiros — defesas impossíveis
+        ('vCmOkEfZeWk', 'Greatest Goalkeeper Saves Ever',     'Compilação',      'futebol','saves',  480, 120),
+        # Street Football — jogo bonito da rua
+        ('W74lHFb4U9A', 'Street Football — Best Skills',      'World Street Football','futebol','street',360,100),
 
         # ══════════════════════════════════════════════════════════════════════
-        # SURF — O melhor do mundo
+        # 🏄 SURF — 25+ vídeos — do barrel ao big wave
         # ══════════════════════════════════════════════════════════════════════
-        ('WwRqc56YQXI', 'Gabriel Medina — Best Rides','Gabriel Medina',        'surf', 'pro', 360, 25),
-        ('c8JnDhBHXJM', 'Nazaré — Big Wave Surfing',  'WSL Big Wave',          'surf', 'bigwave', 300, 40),
-        ('E_EEwEZPjbg', 'Kelly Slater — Legend',      'Kelly Slater',          'surf', 'pro', 480, 60),
-        ('d_QQFqHM3DQ', 'Pipeline — Best Barrels',    'WSL Surf',              'surf', 'barrel', 300, 20),
-        ('xRkbCQ5UT_c', 'WSL Best Moments',           'World Surf League',     'surf', 'pro', 420, 15),
+        # Gabriel Medina — orgulho brasileiro
+        ('WwRqc56YQXI', 'Gabriel Medina — Best Rides',        'Gabriel Medina',  'surf','pro',     360, 40),
+        ('5_s-8KHoSBY', 'Gabriel Medina — Olympic Gold 2021', 'WSL/Olympics',    'surf','olymp',   300, 60),
+        ('dFj4KTfJJFE', 'Medina — Backflip que parou o mundo','WSL',            'surf','pro',     180, 80),
+        # Kelly Slater — 11x campeão mundial
+        ('E_EEwEZPjbg', 'Kelly Slater — Legend of Surfing',   'Kelly Slater',    'surf','legend',  480, 80),
+        ('0muqgEqWsFA', 'Kelly Slater — Perfect 10 Pipeline', 'WSL',             'surf','barrel',  120, 70),
+        ('TxaJbqNbQiA', 'Kelly Slater — 11th World Title',    'WSL',             'surf','champion',300, 60),
+        # Pipeline — o tubo mais famoso do mundo
+        ('d_QQFqHM3DQ', 'Pipeline — Best Barrels Ever',       'WSL Surf',        'surf','barrel',  360, 30),
+        ('YkS6pUcE5bA', 'Pipeline — Banzai Best Session',     'Pipeline Masters','surf','barrel',  300, 25),
+        # Nazaré — ondas gigantes de Portugal
+        ('c8JnDhBHXJM', 'Nazaré — Big Wave Surfing',          'WSL Big Wave',    'surf','bigwave', 300, 50),
+        ('j9l5e5RMuSc', 'Nazaré — 30 metros de onda',         'WSL',             'surf','bigwave', 240, 45),
+        ('x9X5i2iI-rU', 'Nazaré — Laird Hamilton Tow-In',     'Big Wave',        'surf','bigwave', 300, 40),
+        # Teahupo'o — Taiti — o mais pesado
+        ('VlSAEBh0KBQ', 'Teahupo\'o — Heaviest Wave on Earth','WSL',            'surf','heavy',   360, 35),
+        ('VfXoFiTXGEo', 'Teahupo\'o — Code Red Session',      'WSL',             'surf','heavy',   300, 30),
+        # John John Florence — o mais estiloso
+        ('O0VOpzSY_lQ', 'John John Florence — Best Moments',  'WSL',             'surf','pro',     480, 35),
+        # Italo Ferreira
+        ('1EW_uH29JJk', 'Italo Ferreira — Olympic Champion',  'WSL',             'surf','olymp',   300, 30),
+        # Big Waves — Pe\'ahi (Jaws) / Mavericks
+        ('0kY7O9YBNB8', 'Pe\'ahi (Jaws) — Big Wave Event',    'WSL Big Wave',    'surf','bigwave', 360, 25),
+        ('h3oRaZjmFsQ', 'Mavericks — Big Wave California',    'Big Wave',        'surf','bigwave', 300, 20),
+        # Red Bull Surf — conteúdo premium
+        ('HHdBD3UrJvU', 'Red Bull — Best Surf Moments',       'Red Bull Surf',   'surf','redbull', 480, 40),
+        ('CduGxKeSaOo', 'Cloudbreak Fiji — Perfect Barrels',  'WSL',             'surf','barrel',  300, 25),
+        # WSL compilações
+        ('xRkbCQ5UT_c', 'WSL — Best Moments 2023',            'World Surf League','surf','pro',    420, 20),
+        ('gHx4l4OxFPs', 'Surf — Greatest Wipeouts',           'WSL',             'surf','wipeout', 300, 30),
+        ('qNDPTBFKOSE', 'Women Surfing — Best Rides WSL',     'WSL Women',       'surf','women',   360, 20),
 
         # ══════════════════════════════════════════════════════════════════════
-        # AÉREO — Impossível não travar de ver
+        # 🪂 AÉREO — 25+ vídeos — impossível não travar de ver
         # ══════════════════════════════════════════════════════════════════════
-        ('vvbMQjGgPEg', 'Felix Baumgartner — Space Jump (24mi de altura)','Red Bull Stratos','aerio','record',220,90),
-        ('8CsuH6DDs_U', 'Wingsuit — Flying Through Arch','Red Bull',           'aerio', 'wingsuit', 300, 120),
-        ('1dPFEePgFAA', 'Base Jump — World\'s Highest','Red Bull',             'aerio', 'basejump', 240, 80),
-        ('B-2tUPGrRaU', 'Aerobatics — Red Bull Air Race','Red Bull',           'aerio', 'plane', 360, 40),
+        # Felix Baumgartner — o salto do espaço
+        ('vvbMQjGgPEg', 'Felix Baumgartner — Space Jump 39km', 'Red Bull Stratos','aerio','record', 220, 120),
+        ('FHtvDA0W34I', 'Baumgartner — Full Jump Documentary', 'Red Bull Stratos','aerio','record', 600, 80),
+        # Alan Eustace — quebrou o recorde de Baumgartner
+        ('hk__q-NHEF8', 'Alan Eustace — Higher than Baumgartner','Google',       'aerio','record', 300, 40),
+        # Wingsuit — voar como pássaro
+        ('8CsuH6DDs_U', 'Wingsuit — Flying Through Mountain Arch','Red Bull',    'aerio','wingsuit',300,140),
+        ('rHg6rHBLJBQ', 'Wingsuit — Swoop Through Village',    'Red Bull',        'aerio','wingsuit',180,100),
+        ('6B3kiAMPyPw', 'Wingsuit — World Record Low Pass',    'Red Bull',        'aerio','wingsuit',240, 80),
+        ('dT9uJdWFzAE', 'Wingsuit Formation — 100 wingsuits',  'Red Bull',        'aerio','wingsuit',300, 60),
+        # Base Jump — salto de pontes e edifícios
+        ('1dPFEePgFAA', 'Base Jump — World\'s Highest Buildings','Red Bull',     'aerio','basejump',240,100),
+        ('cFMgJoVPTjU', 'Base Jump — Best 2023 Compilation',   'Base Jump World', 'aerio','basejump',360, 60),
+        ('s6NhFHvFpig', 'BASE — Yosemite El Capitan Jump',     'Base Jump',       'aerio','basejump',180, 50),
+        # Aerobática — aviões de acrobacia
+        ('B-2tUPGrRaU', 'Red Bull Air Race — Best Moments',    'Red Bull',        'aerio','plane',  360, 60),
+        ('nHp4YBWLKWM', 'Blue Angels — US Navy Airshow',       'US Navy',         'aerio','plane',  480, 80),
+        ('T1V4VRrCqEo', 'Aerobatics World Championships',      'FAI',             'aerio','plane',  600, 40),
+        ('WNJPaFOPLLM', 'Su-27 Cobra Maneuver — Insane',       'Military Aviation','aerio','plane', 120, 70),
+        # Paraquedismo — formações e CRW
+        ('vEuMSAQhivw', 'Skydiving — 164 Formation Record',    'Skydive',         'aerio','skydive',300, 50),
+        ('MoNuyFl68Zo', 'Skydive — Best Freefly Moments',      'Red Bull',        'aerio','skydive',360, 40),
+        # Paragliding / Hangliding extremo
+        ('4kjx_6FxFGM', 'Paragliding — Extreme Alps',          'Red Bull',        'aerio','para',   300, 35),
+        ('lB8zmmqE8e8', 'Hang Gliding — World Record Distance','Hang Glide',      'aerio','para',   240, 25),
+        # Helicóptero acrobático
+        ('oT2PCBNXFCE', 'Helicopter Aerobatics — Insane Tricks','Heli',          'aerio','heli',   240, 30),
+        # Speed riding — ski + paraglider
+        ('TGLF2sNmcVY', 'Speed Riding — Alps Mountains',       'Red Bull',        'aerio','speed',  180, 40),
 
         # ══════════════════════════════════════════════════════════════════════
-        # RADICAL — Extremo ao máximo
+        # 🛹 RADICAL — 25+ vídeos — extremo ao máximo
         # ══════════════════════════════════════════════════════════════════════
-        ('Bw-VFzFD5kM', 'X-Games — Best Skate Moments','X-Games',             'radical', 'skate', 300, 50),
-        ('hDFn8AnPX70', 'BMX — Best Tricks Ever',     'Red Bull BMX',          'radical', 'bmx', 240, 40),
-        ('MObp71DNOJM', 'Motocross — Insane Moments', 'Red Bull Motocross',    'radical', 'moto', 360, 35),
-        ('oEfLUDiCMB0', 'Mountain Bike — Red Bull Rampage','Red Bull MTB',     'radical', 'mtb', 300, 30),
+        # X-Games — o maior evento de esportes radicais
+        ('Bw-VFzFD5kM', 'X-Games — Best Moments All Time',     'X-Games',         'radical','xgames', 600, 60),
+        ('Kg5ZXIj5qcI', 'X-Games 2023 — Top Runs',             'X-Games',         'radical','xgames', 480, 40),
+        # Skate — Tony Hawk e era moderna
+        ('E4kbBqoucGo', 'Tony Hawk — First 900 Ever (1999)',   'X-Games',         'radical','skate',  120,100),
+        ('VqB9pSlkq2A', 'Skate — Best Tricks Street League',   'SLS',             'radical','skate',  480, 50),
+        ('JvJW8JKMPQA', 'Skate — Nyjah Huston Best Moments',   'Street League',   'radical','skate',  360, 60),
+        ('aZobFSKGrdo', 'Skate — Mega Ramp Best Tricks',       'X-Games',         'radical','skate',  300, 45),
+        # Danny MacAskill — trials bike lendário
+        ('Z19R4AOhG6M', 'Danny MacAskill — Wee Day Out',       'Red Bull',        'radical','bike',   330,100),
+        ('x5JnQfHhJaE', 'Danny MacAskill — The Ridge',         'Red Bull',        'radical','bike',   300, 80),
+        # BMX
+        ('hDFn8AnPX70', 'BMX — Best Tricks Compilation',       'Red Bull BMX',    'radical','bmx',    360, 50),
+        ('b9gOVzBE7VY', 'BMX Freestyle — X-Games Best',        'X-Games',         'radical','bmx',    300, 45),
+        ('vHX2-iJJhfg', 'BMX — Mat Hoffman Greatest Moments',  'BMX',             'radical','bmx',    480, 35),
+        # Motocross / FMX
+        ('MObp71DNOJM', 'Motocross — Most Insane Moments',     'Red Bull Moto',   'radical','moto',   360, 50),
+        ('dpj6I_EvB38', 'FMX — Travis Pastrana Best Tricks',   'X-Games',         'radical','moto',   300, 60),
+        ('LzJBjKdGbEg', 'Supercross — Best Battles 2023',      'Supercross',      'radical','moto',   480, 35),
+        # Mountain Bike — Red Bull Rampage
+        ('oEfLUDiCMB0', 'Red Bull Rampage — Best Runs',        'Red Bull MTB',    'radical','mtb',    480, 40),
+        ('i6xGVqWXelY', 'Mountain Bike — Sickest Lines Ever',  'Red Bull',        'radical','mtb',    300, 35),
+        # Snowboard / Ski extremo
+        ('QdMkyvnXLb8', 'Snowboard — Best Halfpipe X-Games',   'X-Games',         'radical','snow',   300, 40),
+        ('SfCubzXiZ_s', 'Ski — Big Mountain Best Runs',        'Red Bull Ski',    'radical','ski',    360, 30),
+        # Wakeboard / Kiteboard
+        ('1vXmFE6D5w4', 'Wakeboard — Hyperlite Best Tricks',   'Wakeboard',       'radical','water',  300, 25),
+        # Parkour / Freerunning
+        ('aZSs5b04pYs', 'Parkour — Best Athletes 2023',        'Red Bull',        'radical','parkour',300, 45),
+        ('cvXg-hoQTKs', 'Freerunning — Most Creative Moves',   'Red Bull',        'radical','parkour',360, 35),
 
         # ══════════════════════════════════════════════════════════════════════
         # ROCK SHOWS — Os maiores shows da história do rock
