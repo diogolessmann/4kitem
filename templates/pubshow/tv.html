@@ -219,14 +219,18 @@ const BASE_URL  = '/pubshow';
 
 // ── Biblioteca de vídeos ──────────────────────────────────────────────────────
 const VIDEOS = {{ videos | tojson }};
-let videoIdx     = Math.floor(Math.random() * Math.min(VIDEOS.length, 5)); // começa aleatório nos primeiros 5
+let videoIdx     = Math.floor(Math.random() * Math.min(VIDEOS.length, 5));
 let overlayAtivo = false;
 let pedidoAtual  = null;
-let pedidoMusica = null; // pedido esperando fim do vídeo
+let pedidoMusica = null;
 let player       = null;
 let proximoTimer = null;
 let filaTimer    = null;
-let stallTimer   = null; // detecta tela preta (vídeo bloqueado sem disparar erro)
+let stallTimer   = null;
+let _skipCount   = 0; // contagem de skips seguidos — evita loop infinito
+
+// Vídeos que falharam nesta sessão — não tentar novamente
+const _skipSet = new Set(JSON.parse(localStorage.getItem('ps_skip_'+CANAL_KEY)||'[]'));
 
 // Tipos de pedido — configuração visual
 const TIPO_CONFIG = {
@@ -298,26 +302,40 @@ function onPlayerStateChange(e) {
   }
 }
 
+function _marcarVideoRuim() {
+  // Marca o vídeo atual como ruim para não repetir
+  if (VIDEOS.length && VIDEOS[videoIdx]) {
+    const yid = VIDEOS[videoIdx].youtube_id;
+    if (yid) {
+      _skipSet.add(yid);
+      try { localStorage.setItem('ps_skip_'+CANAL_KEY, JSON.stringify([..._skipSet])); } catch(e){}
+    }
+  }
+}
+
 function onPlayerError(e) {
-  // Vídeo indisponível ou bloqueado — pula para o próximo
+  // Erro 100/101/150 = vídeo indisponível ou sem embed
   console.warn('YT erro código:', e.data, '→ pulando...');
   clearTimeout(stallTimer);
-  setTimeout(avancarFila, 1500);
+  _marcarVideoRuim();
+  _skipCount++;
+  setTimeout(avancarFila, 800); // mais rápido
 }
 
 function iniciarStallDetector() {
-  // Se após 7s o player ainda não está tocando (state != PLAYING),
-  // considera vídeo bloqueado (sem embed) e pula silenciosamente
+  // Se após 4s ainda não está tocando, vídeo está travado
   clearTimeout(stallTimer);
   stallTimer = setTimeout(() => {
     if (!player) return;
     const state = player.getPlayerState();
-    // -1=unstarted, 5=cued — ambos indicam que não começou
+    // -1=unstarted, 5=cued — não começou a tocar
     if (state === -1 || state === 5) {
-      console.warn('Stall detectado (tela preta) → pulando vídeo...');
+      console.warn('Stall detectado → pulando...');
+      _marcarVideoRuim();
+      _skipCount++;
       avancarFila();
     }
-  }, 7000);
+  }, 4000); // 4s em vez de 7s
 }
 
 // ── Lógica de avanço com fila ─────────────────────────────────────────────────
@@ -348,11 +366,27 @@ function avancarFila() {
 
 function carregarVideo(idx) {
   if (!VIDEOS.length || !player) return;
-  const v = VIDEOS[idx % VIDEOS.length];
+
+  // Pula vídeos já marcados como ruins (máx. VIDEOS.length tentativas)
+  let tentativas = 0;
+  while (_skipSet.has(VIDEOS[idx % VIDEOS.length].youtube_id) && tentativas < VIDEOS.length) {
+    idx = (idx + 1) % VIDEOS.length;
+    tentativas++;
+  }
+  // Se todos falharam, limpa a skip list e recomeça do início
+  if (tentativas >= VIDEOS.length) {
+    _skipSet.clear();
+    try { localStorage.removeItem('ps_skip_'+CANAL_KEY); } catch(e){}
+    idx = 0;
+  }
+
+  videoIdx = idx % VIDEOS.length;
+  _skipCount = 0; // reset contador de skips
+  const v = VIDEOS[videoIdx];
   player.loadVideoById(v.youtube_id);
   atualizarNowPlaying(v);
   esconderNowPlayingComDelay();
-  iniciarStallDetector(); // detecta se esse vídeo também bloqueia embed
+  iniciarStallDetector();
 }
 
 // ── "Próximo na fila" — aparece ~20s antes do fim ────────────────────────────

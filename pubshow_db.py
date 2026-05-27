@@ -146,7 +146,34 @@ def init_pubshow_db():
     if total == 0:
         _seed_videos(conn)
 
+    # Corrige vídeos que ficaram indisponíveis no YouTube (UPDATE por youtube_id)
+    _corrigir_videos_quebrados(conn)
+
     conn.close()
+
+
+def _corrigir_videos_quebrados(conn):
+    """Substitui IDs de vídeos que foram removidos/bloqueados no YouTube.
+    Cada tupla: (id_antigo, id_novo, titulo_novo, artista_novo)
+    """
+    substituicoes = [
+        # Radical TV — Motocross Insane foi removido
+        ('MObp71DNOJM', 'vKXzrFciFp8', 'Motocross — Red Bull Best Moments', 'Red Bull Moto'),
+        # Sertanejo — alguns MCs/funk não permitem embed
+        ('WEVa_1ZG85I', 'nrTX7jLmgQI', 'Balada (Tchê Tchê Rere)', 'Gusttavo Lima'),
+        # Radical — Skate vídeo removido
+        ('VqB9pSlkq2A', 'aZobFSKGrdo', 'Skate — Mega Ramp Best Tricks', 'X-Games'),
+    ]
+    for id_antigo, id_novo, titulo_novo, artista_novo in substituicoes:
+        try:
+            conn.execute(
+                'UPDATE pubshow_videos SET youtube_id=?, titulo=?, artista=? WHERE youtube_id=?',
+                (id_novo, titulo_novo, artista_novo, id_antigo)
+            )
+            conn.commit()
+        except Exception:
+            try: conn.rollback()
+            except: pass
 
 
 def _seed_videos(conn):
