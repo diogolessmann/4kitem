@@ -2,6 +2,8 @@
 pubshow.py — Blueprint PUBSHOW
 Jukebox digital 2.0 para bares, pubs e estabelecimentos
 """
+import base64
+import io
 import logging
 import os
 import random
@@ -501,6 +503,44 @@ def painel_pix():
     )
     conn.commit(); conn.close()
     return redirect('/pubshow/painel')
+
+
+@pubshow_bp.route('/painel/qrcode')
+@pubshow_login_required
+def painel_qrcode():
+    """Página de impressão de QR Codes para as mesas."""
+    b = _get_business()
+    if not b:
+        return redirect('/pubshow/entrar')
+
+    # URL pública do Jukebox deste bar
+    base = request.host_url.rstrip('/')
+    jukebox_url = f"{base}/pubshow/jukebox/{b['code']}"
+
+    # Gera QR como PNG base64
+    try:
+        import qrcode
+        from qrcode.image.styledpil import StyledPilImage
+        qr = qrcode.QRCode(
+            version=None,
+            error_correction=qrcode.constants.ERROR_CORRECT_H,
+            box_size=10,
+            border=2,
+        )
+        qr.add_data(jukebox_url)
+        qr.make(fit=True)
+        img = qr.make_image(fill_color='black', back_color='white')
+        buf = io.BytesIO()
+        img.save(buf, format='PNG')
+        qr_b64 = base64.b64encode(buf.getvalue()).decode()
+    except Exception as ex:
+        log.error('QR error: %s', ex)
+        qr_b64 = None
+
+    return render_template('pubshow/qrcode.html',
+                           b=dict(b),
+                           jukebox_url=jukebox_url,
+                           qr_b64=qr_b64)
 
 
 @pubshow_bp.route('/painel/pedido/<int:pid>/dispensar', methods=['POST'])
