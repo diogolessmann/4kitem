@@ -44,7 +44,7 @@ def init_pubshow_db():
             trial_ends           TEXT,
             reset_token          TEXT,
             reset_expires        TEXT,
-            created_at           TEXT DEFAULT (datetime("now","localtime")),
+            created_at           TEXT DEFAULT CURRENT_TIMESTAMP,
             ultimo_acesso        TEXT
         );
 
@@ -61,7 +61,7 @@ def init_pubshow_db():
             qualidade     TEXT DEFAULT "HD",
             ativo         INTEGER DEFAULT 1,
             ordem         INTEGER DEFAULT 999,
-            created_at    TEXT DEFAULT (datetime("now","localtime"))
+            created_at    TEXT DEFAULT CURRENT_TIMESTAMP
         );
 
         -- ── Fila do Jukebox ────────────────────────────────────────────────────
@@ -75,7 +75,7 @@ def init_pubshow_db():
             status        TEXT DEFAULT "pendente",
             valor         REAL,
             exibido_at    TEXT,
-            created_at    TEXT DEFAULT (datetime("now","localtime")),
+            created_at    TEXT DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (business_id) REFERENCES pubshow_businesses(id)
         );
 
@@ -89,7 +89,7 @@ def init_pubshow_db():
             asaas_subscription_id  TEXT,
             asaas_payment_id       TEXT,
             billing_type           TEXT,
-            created_at             TEXT DEFAULT (datetime("now","localtime")),
+            created_at             TEXT DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (business_id) REFERENCES pubshow_businesses(id)
         );
 
@@ -147,7 +147,7 @@ def _seed_videos(conn):
         ('JGDsLZpnj9s', 'In the End',              'Linkin Park',          'punk', None, 219, 1200),
         ('bWXazVeUID0', 'My Own Summer',            'Deftones',            'punk', None, 234, 100),
         ('KW1pSMGPbkE', 'Breed',                   'Nirvana',              'punk', None, 183, 80),
-        ('5-5-5-5',     'Sangue Latino',            'Raimundos',           'punk', None, 195, 50),
+        ('O4erFVLaqlE', 'Sangue Latino',             'Raimundos',           'punk', None, 195, 50),
 
         # ── SERTANEJO ─────────────────────────────────────────────────────────
         ('L4SJHm3VTBQ', 'Coração de Cowboy',      'Gusttavo Lima',        'sertanejo', None, 246, 800),
