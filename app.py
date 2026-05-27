@@ -4673,6 +4673,34 @@ def saas_admin():
         vetzap_users = []
         vetzap_pets_total = 0
         vetzap_triagens_total = 0
+    # PUBSHOW — estabelecimentos
+    try:
+        from pubshow_db import get_pubshow_db as _get_ps_db
+        psconn = _get_ps_db()
+        now_iso = datetime.now().isoformat()
+        pubshow_bars = [dict(r) for r in psconn.execute(
+            'SELECT id, nome, email, telefone, tipo, plano, plano_ativo, suspenso, trial_ends, canal_atual, created_at FROM pubshow_businesses ORDER BY created_at DESC'
+        ).fetchall()]
+        # Totais globais
+        pubshow_total_pedidos = psconn.execute('SELECT COUNT(*) FROM pubshow_pedidos').fetchone()[0]
+        pubshow_total_receita = psconn.execute("SELECT COALESCE(SUM(valor),0) FROM pubshow_pedidos WHERE status='pago'").fetchone()[0]
+        pubshow_total_videos  = psconn.execute('SELECT COUNT(*) FROM pubshow_videos WHERE ativo=1').fetchone()[0]
+        psconn.close()
+        # Calcula status legível para cada bar
+        for b in pubshow_bars:
+            if b['suspenso']:
+                b['_status'] = 'suspenso'
+            elif b['plano_ativo']:
+                b['_status'] = 'ativo'
+            elif b['trial_ends'] and b['trial_ends'] > now_iso:
+                b['_status'] = 'trial'
+            else:
+                b['_status'] = 'inativo'
+    except Exception:
+        pubshow_bars = []
+        pubshow_total_pedidos = 0
+        pubshow_total_receita = 0
+        pubshow_total_videos  = 0
     return render_template('saas_admin.html',
                            subscribers=subscribers, businesses=businesses,
                            mz_users=mz_users, mz_plans=MANDAZAP_PLANS,
@@ -4684,7 +4712,52 @@ def saas_admin():
                            vetzap_users=vetzap_users,
                            vetzap_pets_total=vetzap_pets_total,
                            vetzap_triagens_total=vetzap_triagens_total,
-                           alerta_plans=ALERTA_PLANS)
+                           alerta_plans=ALERTA_PLANS,
+                           pubshow_bars=pubshow_bars,
+                           pubshow_total_pedidos=pubshow_total_pedidos,
+                           pubshow_total_receita=pubshow_total_receita,
+                           pubshow_total_videos=pubshow_total_videos)
+
+
+@app.route('/saas-admin/pubshow/bar/<int:bid>/status', methods=['POST'])
+@_saas_admin_required
+def saas_pubshow_bar_status(bid):
+    from pubshow_db import get_pubshow_db as _get_ps_db
+    data   = request.get_json() or {}
+    acao   = data.get('acao', '')  # 'ativar' | 'suspender' | 'desativar'
+    psconn = _get_ps_db()
+    if acao == 'suspender':
+        psconn.execute('UPDATE pubshow_businesses SET suspenso=1 WHERE id=?', (bid,))
+    elif acao == 'ativar':
+        psconn.execute('UPDATE pubshow_businesses SET suspenso=0, plano_ativo=1 WHERE id=?', (bid,))
+    elif acao == 'desativar':
+        psconn.execute('UPDATE pubshow_businesses SET plano_ativo=0 WHERE id=?', (bid,))
+    psconn.commit(); psconn.close()
+    return jsonify({'success': True})
+
+
+@app.route('/saas-admin/pubshow/bar/<int:bid>/plan', methods=['POST'])
+@_saas_admin_required
+def saas_pubshow_bar_plan(bid):
+    from pubshow_db import get_pubshow_db as _get_ps_db
+    data  = request.get_json() or {}
+    plano = data.get('plano', 'bar')
+    psconn = _get_ps_db()
+    psconn.execute('UPDATE pubshow_businesses SET plano=?, plano_ativo=1, suspenso=0 WHERE id=?', (plano, bid))
+    psconn.commit(); psconn.close()
+    return jsonify({'success': True})
+
+
+@app.route('/saas-admin/pubshow/bar/<int:bid>/trial', methods=['POST'])
+@_saas_admin_required
+def saas_pubshow_bar_trial(bid):
+    from pubshow_db import get_pubshow_db as _get_ps_db
+    data  = request.get_json() or {}
+    trial = data.get('trial_ends', '').strip()
+    psconn = _get_ps_db()
+    psconn.execute('UPDATE pubshow_businesses SET trial_ends=? WHERE id=?', (trial or None, bid))
+    psconn.commit(); psconn.close()
+    return jsonify({'success': True})
 
 
 @app.route('/admin/alerta/<int:sub_id>/status', methods=['POST'])
@@ -6519,6 +6592,55 @@ def mz_testar_envio(num_id):
         })
     except Exception as e:
         return jsonify({'ok': False, 'erro': str(e), 'instance': instance, 'phone': phone})
+
+
+# ── Otimizador de mensagem (Anti-Spam) ────────────────────────────────────────
+
+@app.route('/mandazap/otimizar-mensagem', methods=['POST'])
+@_mandazap_login_required
+def mz_otimizar_mensagem():
+    """Transforma texto simples em mensagem com variações spintax anti-spam."""
+    data   = request.get_json() or {}
+    texto  = (data.get('texto') or '').strip()
+    if not texto:
+        return jsonify({'erro': 'Texto vazio'}), 400
+
+    groq_key = os.environ.get('GROQ_API_KEY', '')
+    if not groq_key:
+        return jsonify({'erro': 'Serviço indisponível no momento'}), 500
+
+    prompt = (
+        "Você é um especialista em marketing via WhatsApp. "
+        "Transforme a mensagem abaixo adicionando variações no formato {opção1|opção2|opção3} "
+        "em TODOS os lugares possíveis para tornar cada envio único e evitar bloqueio.\n\n"
+        "Regras obrigatórias:\n"
+        "1. Adicione {variações} em: saudações, adjetivos, verbos de ação, conectivos, CTAs, emojis.\n"
+        "2. Mantenha {nome} onde já existir ou adicione no início.\n"
+        "3. URLs devem permanecer EXATAMENTE iguais, nunca as altere.\n"
+        "4. Dados concretos (endereço, telefone, preços, datas) jamais viram variações.\n"
+        "5. Adicione pelo menos 8 variações espalhadas pelo texto.\n"
+        "6. Use sinônimos brasileiros naturais e informais.\n"
+        "7. Retorne APENAS a mensagem transformada, sem explicações, sem prefixos.\n\n"
+        f"Mensagem original:\n{texto}"
+    )
+
+    try:
+        resp = requests.post(
+            'https://api.groq.com/openai/v1/chat/completions',
+            headers={'Authorization': f'Bearer {groq_key}', 'Content-Type': 'application/json'},
+            json={
+                'model': 'meta-llama/llama-4-scout-17b-16e-instruct',
+                'messages': [{'role': 'user', 'content': prompt}],
+                'max_tokens': 1200,
+                'temperature': 0.7,
+            },
+            timeout=25,
+        )
+        resp.raise_for_status()
+        resultado = resp.json()['choices'][0]['message']['content'].strip()
+        return jsonify({'ok': True, 'resultado': resultado})
+    except Exception as ex:
+        return jsonify({'erro': f'Erro ao processar: {ex}'}), 500
 
 
 # ── Campanhas ─────────────────────────────────────────────────────────────────

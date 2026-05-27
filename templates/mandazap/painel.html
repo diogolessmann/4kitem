@@ -733,9 +733,10 @@ select option{background:var(--surface2)}
 
 <!-- Modal: Nova Campanha -->
 <div class="modal-overlay" id="modal-campanha">
-  <div class="modal">
+  <div class="modal" id="modal-campanha-box" style="max-width:520px;width:96vw;transition:max-width .3s">
     <h3>📢 Nova Campanha</h3>
-    <form method="POST" action="/mandazap/campanhas/add">
+    <form method="POST" action="/mandazap/campanhas/add" id="form-campanha">
+      <!-- Campos de configuração -->
       <div class="form-group"><label>Nome da Campanha *</label><input type="text" name="name" placeholder="Ex: Promoção Verão, Lembrete CRLV..." required maxlength="120"></div>
       <div class="form-group">
         <label>Lista de Contatos</label>
@@ -753,49 +754,67 @@ select option{background:var(--surface2)}
       </div>
       <input type="hidden" name="media_type" value="text">
       <input type="hidden" name="media_url" value="">
-      <div class="form-group">
-        <label style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:4px">
-          <span>Mensagem * — use <code style="background:rgba(255,255,255,.07);padding:1px 5px;border-radius:4px;font-size:10px">{'{nome}'}</code> para personalizar</span>
-          <button type="button" onclick="toggleSpintaxGuide()" style="font-size:10px;color:#f59e0b;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.2);border-radius:6px;padding:2px 8px;cursor:pointer;font-family:inherit">🔀 Anti-spam</button>
-        </label>
-        <textarea name="message" id="campanha-message" placeholder="Olá {nome}! Temos uma oferta especial pra você... 🎁" required style="min-height:120px"></textarea>
 
-        <!-- Guia spintax -->
-        <div id="spintax-guide" style="display:none;margin-top:8px;background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.18);border-radius:10px;padding:12px">
-          <div style="font-size:11px;font-weight:700;color:#f59e0b;margin-bottom:6px">🔀 Variações anti-spam — cada envio sai diferente</div>
-          <div style="font-size:11px;color:#bba;line-height:1.7;margin-bottom:10px">
-            Use <code style="background:rgba(245,158,11,.12);padding:1px 5px;border-radius:4px;color:#f59e0b">{'{opção1|opção2|opção3}'}</code> em qualquer parte da mensagem.<br>
-            O sistema escolhe uma opção aleatória para <strong style="color:#fff">cada</strong> contato — quebrando o filtro do WhatsApp.
+      <!-- Painel duplo: Tela A + Tela B -->
+      <div id="campanha-paineis" style="display:grid;grid-template-columns:1fr;gap:12px">
+
+        <!-- TELA A — texto original -->
+        <div>
+          <label style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px">
+            <span style="font-size:12px;font-weight:700;color:var(--text2)">📋 Tela A — Cole sua mensagem</span>
+            {% if templates %}
+            <span style="font-size:11px;color:var(--text2)">
+              Templates:
+              {% for t in templates %}
+              <button type="button" data-msg="{{ t.message|e }}" onclick="applyTemplateA(this)"
+                style="margin-left:3px;background:rgba(34,197,94,.08);border:1px solid var(--border2);border-radius:5px;padding:1px 7px;font-size:10px;color:var(--green);cursor:pointer">{{ t.name }}</button>
+              {% endfor %}
+            </span>
+            {% endif %}
+          </label>
+          <textarea id="campanha-texto-original"
+            placeholder="Cole aqui sua mensagem como ela está, texto simples, sem variações.&#10;&#10;Exemplo:&#10;Olá! Temos novidades incríveis pra você..."
+            style="width:100%;min-height:160px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:10px 12px;color:#f0f0ff;font-size:13px;font-family:inherit;outline:none;resize:vertical;line-height:1.6"
+            oninput="campanhaMsgAlterada()"></textarea>
+
+          <!-- Botão central de otimização -->
+          <div style="text-align:center;margin:10px 0 2px">
+            <button type="button" id="btn-otimizar" onclick="otimizarMensagem()"
+              style="background:linear-gradient(135deg,#f59e0b,#ef4444);border:none;border-radius:10px;padding:10px 28px;font-size:13px;font-weight:800;color:#fff;cursor:pointer;font-family:inherit;letter-spacing:.3px;transition:.2s;box-shadow:0 4px 14px rgba(245,158,11,.35)">
+              ⚡ Otimizar Anti-Spam →
+            </button>
+            <div id="otimizar-status" style="font-size:11px;color:var(--text2);margin-top:4px;min-height:16px"></div>
           </div>
-          <div style="font-size:11px;color:#888;margin-bottom:8px">Inserir na posição do cursor:</div>
-          <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">
-            <button type="button" onclick="insertSpin('{Oi|Olá|Bom dia|Boa tarde}')" style="font-size:11px;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.2);border-radius:6px;padding:3px 9px;color:#f59e0b;cursor:pointer;font-family:inherit">Saudação</button>
-            <button type="button" onclick="insertSpin('{amigo|parceiro|colega|cliente}')" style="font-size:11px;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.2);border-radius:6px;padding:3px 9px;color:#f59e0b;cursor:pointer;font-family:inherit">Tratamento</button>
-            <button type="button" onclick="insertSpin('{Conheça|Acesse|Veja|Descubra}')" style="font-size:11px;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.2);border-radius:6px;padding:3px 9px;color:#f59e0b;cursor:pointer;font-family:inherit">CTA</button>
-            <button type="button" onclick="insertSpin('{exclusivo|especial|limitado}')" style="font-size:11px;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.2);border-radius:6px;padding:3px 9px;color:#f59e0b;cursor:pointer;font-family:inherit">Urgência</button>
-            <button type="button" onclick="insertSpin('{hoje|agora|esta semana}')" style="font-size:11px;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.2);border-radius:6px;padding:3px 9px;color:#f59e0b;cursor:pointer;font-family:inherit">Tempo</button>
-          </div>
-          <div style="font-size:11px;color:#888;margin-bottom:4px">Exemplo:</div>
-          <div style="font-size:11px;background:rgba(0,0,0,.3);border-radius:7px;padding:10px;color:#bba;line-height:1.7;font-family:'Courier New',monospace;word-break:break-word">
-            {'{Oi|Olá|Bom dia}'} {nome}! 👋<br>
-            {'{Você sabia que|Sabia que}'} a {'{agenda online|nossa agenda}'}<br>
-            {'{facilita|organiza}'} o atendimento do {'{seu negócio|seu salão|sua clínica}'}?<br>
-            {'{Conheça|Acesse}'}: 4kitem.com.br/agenda
-          </div>
-          <button type="button" onclick="applyExampleSpinMsg()" style="margin-top:8px;font-size:11px;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.2);border-radius:6px;padding:4px 12px;color:#22c55e;cursor:pointer;font-family:inherit">↑ Usar este exemplo</button>
         </div>
 
-        {% if templates %}
-        <div style="margin-top:6px;font-size:12px;color:var(--text2)">Templates salvos:
-          {% for t in templates %}
-          <button type="button" data-msg="{{ t.message|e }}" onclick="applyTemplate(this)" style="margin:2px 3px;background:rgba(34,197,94,.08);border:1px solid var(--border2);border-radius:6px;padding:2px 8px;font-size:11px;color:var(--green);cursor:pointer">{{ t.name }}</button>
-          {% endfor %}
+        <!-- TELA B — resultado otimizado (escondida até otimizar) -->
+        <div id="painel-b" style="display:none">
+          <label style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
+            <span style="font-size:12px;font-weight:700;color:#22c55e">✅ Tela B — Anti-Spam pronto</span>
+            <span style="font-size:10px;background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.25);border-radius:5px;padding:2px 7px;color:#22c55e">editável</span>
+          </label>
+          <textarea name="message" id="campanha-message"
+            placeholder="O resultado otimizado aparece aqui..."
+            style="width:100%;min-height:200px;background:rgba(34,197,94,.04);border:1px solid rgba(34,197,94,.25);border-radius:10px;padding:10px 12px;color:#f0f0ff;font-size:13px;font-family:inherit;outline:none;resize:vertical;line-height:1.6"
+            required></textarea>
+          <div style="font-size:11px;color:var(--text2);margin-top:4px">
+            ↑ Revise e edite se quiser. Use <code style="background:rgba(255,255,255,.07);padding:1px 5px;border-radius:4px">{nome}</code> para personalizar por contato.
+          </div>
         </div>
-        {% endif %}
-      </div>
-      <div class="modal-btns">
+
+        <!-- Fallback: campo direto (quando usuário não usa otimizador) -->
+        <div id="painel-direto" style="display:none">
+          <label style="font-size:12px;font-weight:700;color:var(--text2);display:block;margin-bottom:5px">
+            Mensagem * <span style="font-weight:400;color:#888">— use {nome} para personalizar</span>
+          </label>
+          <!-- campo espelho do #campanha-message para envio direto -->
+        </div>
+
+      </div><!-- /paineis -->
+
+      <div class="modal-btns" style="margin-top:14px">
         <button type="button" class="btn btn-outline" onclick="closeModal('modal-campanha')">Cancelar</button>
-        <button type="submit" class="btn btn-green" style="flex:1">🚀 Criar Campanha</button>
+        <button type="submit" id="btn-criar-campanha" class="btn btn-green" style="flex:1" disabled>🚀 Criar Campanha</button>
       </div>
     </form>
   </div>
@@ -839,7 +858,28 @@ function showSection(name) {
 
 // ── Modais ───────────────────────────────────────────────────────────────────
 function openModal(id) { document.getElementById(id)?.classList.add('open'); }
-function closeModal(id) { document.getElementById(id)?.classList.remove('open'); }
+function closeModal(id) {
+  document.getElementById(id)?.classList.remove('open');
+  // Reset especial para o modal de campanha
+  if (id === 'modal-campanha') {
+    const box = document.getElementById('modal-campanha-box');
+    if (box) box.style.maxWidth = '520px';
+    const paineis = document.getElementById('campanha-paineis');
+    if (paineis) paineis.style.gridTemplateColumns = '1fr';
+    const textoA = document.getElementById('campanha-texto-original');
+    if (textoA) textoA.value = '';
+    const textoB = document.getElementById('campanha-message');
+    if (textoB) textoB.value = '';
+    const painelB = document.getElementById('painel-b');
+    if (painelB) painelB.style.display = 'none';
+    const btnCriar = document.getElementById('btn-criar-campanha');
+    if (btnCriar) btnCriar.disabled = true;
+    const status = document.getElementById('otimizar-status');
+    if (status) status.textContent = '';
+    const btnOtimizar = document.getElementById('btn-otimizar');
+    if (btnOtimizar) btnOtimizar.textContent = '⚡ Otimizar Anti-Spam →';
+  }
+}
 document.querySelectorAll('.modal-overlay').forEach(o => {
   o.addEventListener('click', e => { if(e.target===o) o.classList.remove('open'); });
 });
@@ -861,36 +901,94 @@ function toggleAllContacts(state) {
 }
 
 
-// ── Aplicar template na campanha ────────────────────────────────────────────
+// ── Aplicar template na campanha (Tela A) ────────────────────────────────────
 function applyTemplate(btn) {
-  document.getElementById('campanha-message').value = btn.dataset.msg || '';
+  // Retrocompatibilidade (usado em outros lugares)
+  const ta = document.getElementById('campanha-message');
+  if (ta) ta.value = btn.dataset.msg || '';
   showToast('✅ Template aplicado!');
 }
-
-// ── Spintax ──────────────────────────────────────────────────────────────────
-function toggleSpintaxGuide() {
-  const g = document.getElementById('spintax-guide');
-  g.style.display = g.style.display === 'none' ? 'block' : 'none';
+function applyTemplateA(btn) {
+  const ta = document.getElementById('campanha-texto-original');
+  if (ta) {
+    ta.value = btn.dataset.msg || '';
+    campanhaMsgAlterada();
+  }
+  showToast('✅ Template carregado na Tela A');
 }
 
+// ── Controle do painel duplo ──────────────────────────────────────────────────
+function campanhaMsgAlterada() {
+  // Quando o usuário edita a Tela A, reseta a Tela B
+  const temTexto = (document.getElementById('campanha-texto-original')?.value || '').trim().length > 0;
+  document.getElementById('btn-otimizar').style.opacity = temTexto ? '1' : '.5';
+  // Se mudar texto depois de ter otimizado, esconde painel B
+  if (document.getElementById('painel-b').style.display !== 'none') {
+    document.getElementById('painel-b').style.display = 'none';
+    document.getElementById('campanha-message').value = '';
+    document.getElementById('btn-criar-campanha').disabled = true;
+    document.getElementById('otimizar-status').textContent = 'Texto alterado — otimize novamente.';
+  }
+}
+
+async function otimizarMensagem() {
+  const texto = (document.getElementById('campanha-texto-original')?.value || '').trim();
+  if (!texto) { showToast('⚠️ Cole sua mensagem na Tela A primeiro.'); return; }
+
+  const btn    = document.getElementById('btn-otimizar');
+  const status = document.getElementById('otimizar-status');
+  btn.disabled = true;
+  btn.textContent = '⏳ Otimizando...';
+  status.textContent = 'Processando variações anti-spam...';
+
+  try {
+    const r = await fetch('/mandazap/otimizar-mensagem', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ texto }),
+    });
+    const d = await r.json();
+
+    if (d.ok && d.resultado) {
+      document.getElementById('campanha-message').value = d.resultado;
+      document.getElementById('painel-b').style.display = 'block';
+      document.getElementById('btn-criar-campanha').disabled = false;
+      status.textContent = '✅ Pronto! Revise a Tela B antes de criar.';
+      btn.textContent = '🔄 Regerar Anti-Spam';
+      // Expande modal para mostrar os dois painéis
+      document.getElementById('modal-campanha-box').style.maxWidth = '860px';
+      // Muda grid para 2 colunas em telas largas
+      document.getElementById('campanha-paineis').style.gridTemplateColumns = 'minmax(0,1fr) minmax(0,1fr)';
+      showToast('✅ Mensagem otimizada!');
+    } else {
+      status.textContent = '❌ ' + (d.erro || 'Erro ao otimizar.');
+      btn.textContent = '⚡ Otimizar Anti-Spam →';
+    }
+  } catch(e) {
+    status.textContent = '❌ Erro de conexão.';
+    btn.textContent = '⚡ Otimizar Anti-Spam →';
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+// ── Spintax legado (mantido para retrocompatibilidade) ───────────────────────
+function toggleSpintaxGuide() {
+  const g = document.getElementById('spintax-guide');
+  if (g) g.style.display = g.style.display === 'none' ? 'block' : 'none';
+}
 function insertSpin(text) {
   const ta = document.getElementById('campanha-message');
-  const start = ta.selectionStart;
-  const end   = ta.selectionEnd;
-  const val   = ta.value;
+  if (!ta) return;
+  const start = ta.selectionStart, end = ta.selectionEnd, val = ta.value;
   ta.value = val.substring(0, start) + text + val.substring(end);
   ta.selectionStart = ta.selectionEnd = start + text.length;
   ta.focus();
-  showToast('✅ Variação inserida!');
 }
-
 function applyExampleSpinMsg() {
-  document.getElementById('campanha-message').value =
-    '{Oi|Olá|Bom dia} {nome}! 👋\n' +
-    '{Você sabia que|Sabia que} a {agenda online|nossa agenda}\n' +
-    '{facilita|organiza} o atendimento do {seu negócio|seu salão|sua clínica}?\n' +
-    '{Conheça|Acesse}: 4kitem.com.br/agenda';
-  showToast('✅ Exemplo aplicado!');
+  document.getElementById('campanha-texto-original').value =
+    'Olá! Temos novidades para você.\n\nConheça nossos serviços e venha nos visitar.';
+  campanhaMsgAlterada();
 }
 
 // ── Mostrar/ocultar campo de mídia conforme tipo ─────────────────────────────
@@ -911,9 +1009,11 @@ function toggleMediaField(prefix) {
   }
 }
 
-// ── Usar template em campanha (legado) ──────────────────────────────────────
+// ── Usar template em campanha ────────────────────────────────────────────────
 function useTemplate(msg) {
-  document.getElementById('campanha-message').value = msg;
+  // Carrega o template na Tela A para o usuário otimizar antes de enviar
+  const ta = document.getElementById('campanha-texto-original');
+  if (ta) { ta.value = msg; campanhaMsgAlterada(); }
   closeModal('modal-template');
   openModal('modal-campanha');
 }

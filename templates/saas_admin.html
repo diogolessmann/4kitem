@@ -79,6 +79,7 @@
     <button class="tab-btn" onclick="showTab('defesa',this)">⚖️ DefesaPro ({{ defesa_users|length }})</button>
     <button class="tab-btn" onclick="showTab('mandaja',this)">🛵 MandaJá ({{ mandaja_stores|length }})</button>
     <button class="tab-btn" onclick="showTab('vetzap',this)">🐾 VetZap ({{ vetzap_users|length }})</button>
+    <button class="tab-btn" onclick="showTab('pubshow',this)">📺 PUBSHOW ({{ pubshow_bars|length }})</button>
   </div>
 
   <!-- ═══════════════ ALERTA SC ═══════════════ -->
@@ -550,6 +551,96 @@
     </div>
   </div>
 
+  <!-- ═══════════════ PUBSHOW ═══════════════ -->
+  <div class="tab-content" id="tab-pubshow">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:20px">
+      <h2 style="margin-bottom:0">📺 Estabelecimentos PUBSHOW</h2>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;font-size:12px">
+        <span style="background:rgba(99,102,241,.12);border:1px solid rgba(99,102,241,.25);border-radius:8px;padding:5px 14px;color:#818cf8">
+          🏢 {{ pubshow_bars|length }} estabelecimentos
+        </span>
+        <span style="background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.25);border-radius:8px;padding:5px 14px;color:var(--green)">
+          📦 {{ pubshow_total_pedidos }} pedidos totais
+        </span>
+        <span style="background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.25);border-radius:8px;padding:5px 14px;color:var(--orange)">
+          💰 R$ {{ '%.0f'|format(pubshow_total_receita) }} Jukebox
+        </span>
+        <a href="/pubshow/admin" target="_blank"
+           style="background:rgba(99,102,241,.15);border:1px solid rgba(99,102,241,.3);border-radius:8px;padding:5px 14px;color:#818cf8;font-weight:700;text-decoration:none">
+          🔗 Painel PUBSHOW
+        </a>
+        <a href="/pubshow/admin/videos" target="_blank"
+           style="background:rgba(168,85,247,.15);border:1px solid rgba(168,85,247,.3);border-radius:8px;padding:5px 14px;color:#c084fc;font-weight:700;text-decoration:none">
+          🎬 {{ pubshow_total_videos }} vídeos
+        </a>
+      </div>
+    </div>
+
+    {% if pubshow_bars %}
+    <table>
+      <thead><tr>
+        <th>Estabelecimento</th>
+        <th>Contato</th>
+        <th>Plano</th>
+        <th>Status</th>
+        <th>Canal</th>
+        <th>Cadastro</th>
+        <th>Ações</th>
+      </tr></thead>
+      <tbody>
+        {% for b in pubshow_bars %}
+        <tr id="ps-bar-{{ b.id }}">
+          <td>
+            <strong>{{ b.nome }}</strong>
+            <div style="font-size:11px;color:var(--text2)">{{ b.tipo or '' }}</div>
+          </td>
+          <td>
+            <div>{{ b.email or '—' }}</div>
+            {% if b.telefone %}<div style="font-size:11px;color:var(--text2)">{{ b.telefone }}</div>{% endif %}
+          </td>
+          <td>{{ b.plano or '—' }}</td>
+          <td>
+            {% if b._status == 'ativo' %}
+              <span class="badge badge-active">✅ Ativo</span>
+            {% elif b._status == 'trial' %}
+              <span class="badge badge-pending">⏳ Trial</span>
+            {% elif b._status == 'suspenso' %}
+              <span class="badge badge-suspended">⛔ Suspenso</span>
+            {% else %}
+              <span class="badge" style="background:rgba(136,136,170,.15);color:var(--text2)">⚪ Inativo</span>
+            {% endif %}
+          </td>
+          <td style="font-size:12px;color:var(--text2)">{{ b.canal_atual or 'rock' }}</td>
+          <td style="font-size:11px;color:var(--text2)">{{ (b.created_at or '')[:10] }}</td>
+          <td>
+            <div class="actions" style="min-width:130px">
+              <a href="/pubshow/admin/bar/{{ b.id }}" target="_blank"
+                 class="btn-sm btn-purple" style="text-align:center;display:block;text-decoration:none">🔗 Gerenciar</a>
+              {% if b._status == 'suspenso' %}
+              <button class="btn-sm btn-green" onclick="setPsStatus({{ b.id }},'ativar')">▶ Reativar</button>
+              {% elif b._status == 'ativo' %}
+              <button class="btn-sm btn-orange" onclick="setPsStatus({{ b.id }},'suspender')">⏸ Suspender</button>
+              <button class="btn-sm btn-red" onclick="setPsStatus({{ b.id }},'desativar')">✕ Desativar plano</button>
+              {% elif b._status == 'trial' %}
+              <button class="btn-sm btn-orange" onclick="setPsStatus({{ b.id }},'suspender')">⏸ Suspender</button>
+              {% else %}
+              <button class="btn-sm btn-green" onclick="setPsStatus({{ b.id }},'ativar')">▶ Ativar</button>
+              {% endif %}
+              <div style="border-top:1px solid var(--border);margin:2px 0;font-size:10px;color:var(--text2);padding-top:2px">Plano:</div>
+              <button class="btn-sm btn-blue" onclick="setPsPlano({{ b.id }},'bar')">🍺 Bar R$129</button>
+              <button class="btn-sm btn-blue" onclick="setPsPlano({{ b.id }},'premium')">🏟️ Premium R$249</button>
+              <button class="btn-sm btn-orange" onclick="openPsTrial({{ b.id }},'{{ (b.trial_ends or '')[:10] }}')">📅 Trial</button>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty">Nenhum estabelecimento PUBSHOW cadastrado ainda.</div>
+    {% endif %}
+  </div>
+
 </div>
 
 <!-- ═══════════════ MODAL TRIAL (genérico) ═══════════════ -->
@@ -593,8 +684,9 @@ const _trialUrls = {
   agenda:   id => `/admin/agenda/${id}/trial`,
   mandazap:    id => `/admin/mandazap/user/${id}/trial`,
   bau:         id => `/admin/bau/user/${id}/trial`,
-  despachante: id => `/admin/despachante/user/${id}/trial`,
-  defesa:      id => `/admin/defesapro/user/${id}/trial`,
+  despachante:  id => `/admin/despachante/user/${id}/trial`,
+  defesa:       id => `/admin/defesapro/user/${id}/trial`,
+  pubshow_bar:  id => `/saas-admin/pubshow/bar/${id}/trial`,
 };
 async function saveTrialDate() {
   const date = document.getElementById('trialDateInput').value;
@@ -920,6 +1012,32 @@ async function setDefesaPlan(id, plan) {
   const d = await r.json();
   if (d.success) location.reload();
   else alert(d.error || 'Erro');
+}
+
+/* ── PUBSHOW ── */
+async function setPsStatus(id, acao) {
+  const msgs = { ativar:'Ativar/reativar este estabelecimento?', suspender:'Suspender este estabelecimento?', desativar:'Desativar plano deste estabelecimento?' };
+  if (!confirm(msgs[acao] || 'Confirmar?')) return;
+  const r = await fetch(`/saas-admin/pubshow/bar/${id}/status`, {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ acao })
+  });
+  const d = await r.json();
+  if (d.success) location.reload();
+  else alert(d.error || 'Erro');
+}
+async function setPsPlano(id, plano) {
+  if (!confirm(`Ativar plano "${plano}" para este estabelecimento?`)) return;
+  const r = await fetch(`/saas-admin/pubshow/bar/${id}/plan`, {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ plano })
+  });
+  const d = await r.json();
+  if (d.success) location.reload();
+  else alert(d.error || 'Erro');
+}
+function openPsTrial(id, current) {
+  openTrial('pubshow_bar', id, current);
 }
 
 // ── MandaJá ──────────────────────────────────────────────────────────────────

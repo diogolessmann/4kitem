@@ -214,8 +214,11 @@
 <script src="https://www.youtube.com/iframe_api"></script>
 <script>
 const CODE      = '{{ b.code }}';
-const CANAL_KEY = '{{ canal_key }}';
+let   CANAL_KEY = '{{ canal_key }}';
 const BASE_URL  = '/pubshow';
+
+// Info de canais disponível no JS para atualizar UI sem reload
+const CANAIS_JS = {{ canais | tojson }};
 
 // ── Biblioteca de vídeos ──────────────────────────────────────────────────────
 const VIDEOS = {{ videos | tojson }};
@@ -227,7 +230,8 @@ let player       = null;
 let proximoTimer = null;
 let filaTimer    = null;
 let stallTimer   = null;
-let _skipCount   = 0; // contagem de skips seguidos — evita loop infinito
+let _skipCount   = 0;
+let _loopGuard   = 0; // guard global — só zera quando vídeo de fato toca
 
 // Vídeos que falharam nesta sessão — não tentar novamente
 const _skipSet = new Set(JSON.parse(localStorage.getItem('ps_skip_'+CANAL_KEY)||'[]'));
@@ -294,6 +298,8 @@ function onPlayerStateChange(e) {
   // YT.PlayerState.PLAYING = 1 — vídeo tocando, cancela detector de stall
   if (e.data === 1) {
     clearTimeout(stallTimer);
+    _loopGuard = 0;  // vídeo tocou de verdade → zera o guard
+    _skipCount = 0;
     agendarProximoCard();
   }
   // YT.PlayerState.BUFFERING = 3 — reinicia o detector (pode estar carregando)
@@ -367,13 +373,22 @@ function avancarFila() {
 function carregarVideo(idx) {
   if (!VIDEOS.length || !player) return;
 
+  // Guard contra loop infinito: se tentou mais que (qtd vídeos × 2) vezes sem
+  // jamais entrar no estado PLAYING, para tudo e exibe aviso.
+  _loopGuard++;
+  if (_loopGuard > VIDEOS.length * 2 + 2) {
+    _loopGuard = 0;
+    mostrarErroSemVideos();
+    return;
+  }
+
   // Pula vídeos já marcados como ruins (máx. VIDEOS.length tentativas)
   let tentativas = 0;
   while (_skipSet.has(VIDEOS[idx % VIDEOS.length].youtube_id) && tentativas < VIDEOS.length) {
     idx = (idx + 1) % VIDEOS.length;
     tentativas++;
   }
-  // Se todos falharam, limpa a skip list e recomeça do início
+  // Se todos na skip list, limpa e recomeça — mas _loopGuard continua contando
   if (tentativas >= VIDEOS.length) {
     _skipSet.clear();
     try { localStorage.removeItem('ps_skip_'+CANAL_KEY); } catch(e){}
@@ -381,12 +396,24 @@ function carregarVideo(idx) {
   }
 
   videoIdx = idx % VIDEOS.length;
-  _skipCount = 0; // reset contador de skips
   const v = VIDEOS[videoIdx];
   player.loadVideoById(v.youtube_id);
   atualizarNowPlaying(v);
   esconderNowPlayingComDelay();
   iniciarStallDetector();
+}
+
+function mostrarErroSemVideos() {
+  // Todos os vídeos do canal falharam — exibe aviso e troca para Rock
+  clearTimeout(stallTimer);
+  document.getElementById('np-titulo').textContent  = 'Canal temporariamente indisponível';
+  document.getElementById('np-artista').textContent = 'Aguarde, trocando de canal...';
+  document.getElementById('now-playing').classList.remove('hidden');
+  // Após 4s, tenta trocar para rock automaticamente
+  setTimeout(() => {
+    const fallback = CANAL_KEY !== 'rock' ? 'rock' : 'pop';
+    trocarCanal(fallback);
+  }, 4000);
 }
 
 // ── "Próximo na fila" — aparece ~20s antes do fim ────────────────────────────
@@ -505,10 +532,9 @@ async function pollStatus() {
     const res  = await fetch(`${BASE_URL}/api/status/${CODE}`);
     const data = await res.json();
 
-    // Troca de canal pelo dono do bar
+    // Troca de canal pelo dono do bar (sem reload)
     if (data.canal_atual && data.canal_atual !== window._canalAtual) {
-      window._canalAtual = data.canal_atual;
-      location.reload();
+      trocarCanal(data.canal_atual);
     }
 
     // Pedido especial — mostra overlay imediatamente
@@ -540,14 +566,74 @@ async function pollStatus() {
   } catch(e) {}
 }
 
-// ── Trocar canal ──────────────────────────────────────────────────────────────
+// ── Trocar canal (sem reload de página) ──────────────────────────────────────
 async function trocarCanal(canal) {
-  await fetch(`${BASE_URL}/api/trocar-canal/${CODE}`, {
+  if (canal === CANAL_KEY) return;
+
+  // 1. Notifica o servidor
+  fetch(`${BASE_URL}/api/trocar-canal/${CODE}`, {
     method: 'POST',
     headers: {'Content-Type':'application/json'},
     body: JSON.stringify({canal}),
+  }).catch(() => {});
+
+  // 2. Busca vídeos do novo canal
+  let novosVideos;
+  try {
+    const r = await fetch(`${BASE_URL}/api/videos/${canal}`);
+    const d = await r.json();
+    novosVideos = d.videos || [];
+  } catch(e) {
+    novosVideos = [];
+  }
+
+  if (!novosVideos.length) {
+    // Fallback: recarrega se não vier nada (não deveria acontecer)
+    location.reload();
+    return;
+  }
+
+  // 3. Atualiza estado interno
+  const info = CANAIS_JS[canal] || {};
+  CANAL_KEY = canal;
+  window._canalAtual = canal;
+
+  VIDEOS.length = 0;
+  novosVideos.forEach(v => VIDEOS.push(v));
+
+  // Carrega skip list do novo canal (se existir)
+  _skipSet.clear();
+  try {
+    const stored = localStorage.getItem('ps_skip_' + canal);
+    if (stored) JSON.parse(stored).forEach(id => _skipSet.add(id));
+  } catch(e) {}
+
+  videoIdx    = Math.floor(Math.random() * Math.min(VIDEOS.length, 5));
+  _loopGuard  = 0;
+  _skipCount  = 0;
+  pedidoMusica = null;
+  esconderBadgeFila();
+
+  // 4. Atualiza visual — badge do canal
+  const nowPlaying = document.getElementById('now-playing');
+  nowPlaying.style.setProperty('--canal-cor', info.cor || '#ef4444');
+  const badge = nowPlaying.querySelector('.np-canal-badge');
+  if (badge) badge.textContent = `${info.emoji || ''} ${info.nome || canal}`;
+
+  // 5. Atualiza botões do seletor
+  document.querySelectorAll('.canal-btn').forEach(btn => {
+    btn.classList.remove('ativo');
+    btn.style.borderColor = '';
   });
-  location.reload();
+  const btnAtivo = document.querySelector(`.canal-btn[onclick="trocarCanal('${canal}')"]`);
+  if (btnAtivo) {
+    btnAtivo.classList.add('ativo');
+    btnAtivo.style.borderColor = info.cor || '#ef4444';
+  }
+
+  // 6. Carrega o primeiro vídeo
+  clearTimeout(stallTimer);
+  carregarVideo(videoIdx);
 }
 
 // ── Fullscreen ────────────────────────────────────────────────────────────────
