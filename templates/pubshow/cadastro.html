@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Criar conta — PUBSHOW</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:#08080f;color:#f0f0ff;font-family:'Segoe UI',sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+  .box{background:#13131f;border:1px solid rgba(255,255,255,.08);border-radius:24px;padding:40px 36px;width:100%;max-width:480px}
+  .logo{font-size:24px;font-weight:900;background:linear-gradient(135deg,#ef4444,#f97316);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:6px}
+  h1{font-size:20px;font-weight:800;margin-bottom:4px}
+  .sub{font-size:13px;color:#8888aa;margin-bottom:24px}
+  label{font-size:11px;font-weight:700;color:#8888aa;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:5px;margin-top:12px}
+  input,select{width:100%;background:#1a1a2e;border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:11px 14px;color:#f0f0ff;font-size:14px;outline:none;font-family:inherit}
+  input:focus,select:focus{border-color:#ef4444}
+  .btn{width:100%;padding:14px;background:linear-gradient(135deg,#ef4444,#f97316);color:#fff;font-size:15px;font-weight:800;border:none;border-radius:12px;cursor:pointer;font-family:inherit;margin-top:20px}
+  .erro{background:#2d0a0a;border:1px solid #ef444433;border-radius:10px;padding:12px 14px;color:#f87171;font-size:13px;margin-bottom:16px}
+  .link{display:block;text-align:center;margin-top:16px;font-size:12px;color:#8888aa;text-decoration:none}
+  .link:hover{color:#f0f0ff}
+  .trial-badge{display:inline-block;background:rgba(34,197,94,.15);border:1px solid rgba(34,197,94,.3);color:#4ade80;padding:5px 14px;border-radius:100px;font-size:12px;font-weight:700;margin-bottom:16px}
+</style>
+</head>
+<body>
+<div class="box">
+  <div class="logo">📺 PUBSHOW</div>
+  <h1>Criar conta</h1>
+  <div class="trial-badge">🎉 7 dias grátis — sem cartão</div>
+  {% if erro %}<div class="erro">{{ erro }}</div>{% endif %}
+  <form method="POST">
+    <input type="hidden" name="plano" value="{{ plano_sel }}">
+    <label>Nome do estabelecimento *</label>
+    <input type="text" name="nome" placeholder="Ex: Bar do Toninho" required>
+    <label>Tipo de estabelecimento *</label>
+    <select name="tipo" required>
+      {% for k, v in tipos.items() %}
+      <option value="{{ k }}">{{ v }}</option>
+      {% endfor %}
+    </select>
+    <label>E-mail *</label>
+    <input type="email" name="email" placeholder="contato@seubarnome.com" required>
+    <label>WhatsApp *</label>
+    <input type="tel" name="telefone" placeholder="(47) 99101-1351" required>
+    <label>CPF ou CNPJ *</label>
+    <input type="text" name="cpf_cnpj" placeholder="000.000.000-00 ou 00.000.000/0001-00" required>
+    <label>Senha *</label>
+    <input type="password" name="senha" placeholder="Mínimo 6 caracteres" required>
+    <button type="submit" class="btn">Criar conta e começar grátis →</button>
+  </form>
+  <a href="/pubshow/entrar" class="link">Já tem conta? Entrar →</a>
+</div>
+</body>
+</html>

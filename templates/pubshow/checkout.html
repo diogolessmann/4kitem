@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Assinar {{ p.nome }} — PUBSHOW</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:#08080f;color:#f0f0ff;font-family:'Segoe UI',sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+  .box{width:100%;max-width:500px}
+  .logo{font-size:22px;font-weight:900;background:linear-gradient(135deg,#ef4444,#f97316);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:24px;display:block;text-decoration:none}
+  .card{background:#13131f;border:1px solid rgba(255,255,255,.08);border-radius:20px;padding:28px;margin-bottom:16px}
+  .plan-header{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+  .plan-emoji{font-size:36px}
+  .plan-nome{font-size:20px;font-weight:900}
+  .plan-preco{font-size:32px;font-weight:900;color:#ef4444;margin-bottom:4px}
+  .plan-sub{font-size:13px;color:#8888aa}
+  .features{list-style:none;display:flex;flex-direction:column;gap:8px;margin-top:16px}
+  .features li{font-size:13px;color:#c8c8e8;display:flex;align-items:center;gap:8px}
+  .features li::before{content:'✓';color:#22c55e;font-weight:900;font-size:14px;flex-shrink:0}
+  .section-title{font-size:11px;font-weight:700;color:#8888aa;text-transform:uppercase;letter-spacing:.6px;margin-bottom:14px}
+  .billing-options{display:flex;flex-direction:column;gap:10px}
+  .billing-opt{position:relative}
+  .billing-opt input[type=radio]{position:absolute;opacity:0;width:0;height:0}
+  .billing-opt label{display:flex;align-items:center;gap:12px;padding:14px 16px;border:2px solid rgba(255,255,255,.08);border-radius:12px;cursor:pointer;transition:.15s;font-size:14px}
+  .billing-opt input:checked + label{border-color:#ef4444;background:rgba(239,68,68,.08)}
+  .billing-opt label:hover{border-color:rgba(255,255,255,.2)}
+  .billing-icon{font-size:22px;width:32px;text-align:center}
+  .billing-info{flex:1}
+  .billing-name{font-weight:700;font-size:14px}
+  .billing-desc{font-size:12px;color:#8888aa;margin-top:2px}
+  .billing-badge{font-size:11px;font-weight:700;background:rgba(34,197,94,.15);color:#4ade80;border:1px solid rgba(34,197,94,.3);padding:3px 8px;border-radius:100px}
+  .btn{width:100%;padding:16px;background:linear-gradient(135deg,#ef4444,#f97316);color:#fff;font-size:16px;font-weight:800;border:none;border-radius:12px;cursor:pointer;font-family:inherit;margin-top:20px}
+  .btn:hover{opacity:.9}
+  .btn:active{transform:scale(.99)}
+  .erro{background:#2d0a0a;border:1px solid #ef444433;border-radius:10px;padding:12px 14px;color:#f87171;font-size:13px;margin-bottom:16px}
+  .back{display:block;text-align:center;margin-top:16px;font-size:12px;color:#8888aa;text-decoration:none}
+  .back:hover{color:#f0f0ff}
+  .trial-note{background:rgba(34,197,94,.07);border:1px solid rgba(34,197,94,.2);border-radius:12px;padding:14px 16px;font-size:13px;color:#4ade80;margin-top:16px;line-height:1.6}
+  .trial-note strong{color:#86efac}
+  .guarantee{display:flex;align-items:center;gap:10px;font-size:12px;color:#8888aa;margin-top:14px;text-align:left}
+  .guarantee span{font-size:20px}
+</style>
+</head>
+<body>
+<div class="box">
+  <a href="/pubshow" class="logo">📺 PUBSHOW</a>
+
+  {% if erro %}<div class="erro">{{ erro }}</div>{% endif %}
+
+  <!-- Resumo do plano -->
+  <div class="card">
+    <div class="plan-header">
+      <div class="plan-emoji">{{ p.emoji }}</div>
+      <div>
+        <div class="plan-nome">Plano {{ p.nome }}</div>
+        <div class="plan-sub">{{ p.descricao }}</div>
+      </div>
+    </div>
+    <div class="plan-preco">{{ p.preco_fmt }}<span style="font-size:14px;font-weight:400;color:#8888aa">/mês</span></div>
+    <ul class="features">
+      {% for f in p.features %}
+      <li>{{ f }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+
+  <!-- Forma de pagamento -->
+  <div class="card">
+    <div class="section-title">💳 Forma de pagamento</div>
+    <form method="POST" class="billing-options" id="form-checkout">
+      <div class="billing-opt">
+        <input type="radio" name="billing_type" value="PIX" id="pix" checked>
+        <label for="pix">
+          <span class="billing-icon">🟢</span>
+          <div class="billing-info">
+            <div class="billing-name">PIX</div>
+            <div class="billing-desc">Aprovação instantânea</div>
+          </div>
+          <span class="billing-badge">Recomendado</span>
+        </label>
+      </div>
+      <div class="billing-opt">
+        <input type="radio" name="billing_type" value="BOLETO" id="boleto">
+        <label for="boleto">
+          <span class="billing-icon">📄</span>
+          <div class="billing-info">
+            <div class="billing-name">Boleto Bancário</div>
+            <div class="billing-desc">Vence em 3 dias úteis</div>
+          </div>
+        </label>
+      </div>
+      <div class="billing-opt">
+        <input type="radio" name="billing_type" value="CREDIT_CARD" id="cartao">
+        <label for="cartao">
+          <span class="billing-icon">💳</span>
+          <div class="billing-info">
+            <div class="billing-name">Cartão de crédito</div>
+            <div class="billing-desc">Débito automático mensal</div>
+          </div>
+        </label>
+      </div>
+
+      <button type="submit" class="btn">Confirmar assinatura →</button>
+    </form>
+
+    <div class="trial-note">
+      🎉 Você está no <strong>período gratuito de 7 dias</strong>. A cobrança só começa após o trial. Cancele quando quiser, sem multa.
+    </div>
+
+    <div class="guarantee">
+      <span>🔒</span>
+      <span>Pagamento processado com segurança. Seus dados nunca são armazenados em nossos servidores.</span>
+    </div>
+  </div>
+
+  <a href="/pubshow/painel" class="back">← Voltar ao painel</a>
+</div>
+</body>
+</html>

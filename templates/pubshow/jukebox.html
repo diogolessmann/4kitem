@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Jukebox — {{ b.nome }}</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  :root{
+    --bg:#08080f;--surface:#13131f;--surface2:#1a1a2e;
+    --border:rgba(255,255,255,.08);--text:#f0f0ff;--text2:#8888aa;
+  }
+  body{background:var(--bg);color:var(--text);font-family:'Segoe UI',sans-serif;min-height:100vh;padding-bottom:40px}
+
+  .header{
+    background:linear-gradient(135deg,#1a0a2e,#0a1a2e);
+    padding:20px 20px 24px;
+    border-bottom:1px solid var(--border);
+  }
+  .header-top{display:flex;align-items:center;gap:12px;margin-bottom:8px}
+  .canal-badge{
+    background:{{ canal.cor }};
+    padding:5px 12px;border-radius:8px;font-size:12px;font-weight:800;color:#fff;
+  }
+  .bar-nome{font-size:18px;font-weight:800}
+  .tocando-agora{font-size:12px;color:var(--text2);display:flex;align-items:center;gap:6px}
+  .dot-live{width:7px;height:7px;background:#22c55e;border-radius:50%;animation:blink 1.2s ease-in-out infinite}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+
+  /* Sucesso */
+  .success-box{
+    margin:20px;padding:20px;border-radius:16px;
+    background:#052e16;border:1px solid #22c55e44;text-align:center;
+  }
+  .success-box .emoji{font-size:48px;margin-bottom:8px}
+  .success-box h3{color:#4ade80;font-size:18px;margin-bottom:6px}
+  .success-box p{color:#86efac;font-size:13px;line-height:1.5}
+
+  /* Erro */
+  .erro-box{margin:16px;padding:14px 16px;border-radius:12px;background:#2d0a0a;border:1px solid #ef444433;color:#f87171;font-size:13px}
+
+  /* Fila */
+  .fila-section{padding:16px 20px 8px;border-bottom:1px solid var(--border)}
+  .fila-titulo{font-size:11px;font-weight:700;color:var(--text2);letter-spacing:.8px;text-transform:uppercase;margin-bottom:10px}
+  .fila-item{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)}
+  .fila-item:last-child{border:none}
+  .fila-emoji{font-size:22px;flex-shrink:0}
+  .fila-info{flex:1}
+  .fila-nome{font-size:13px;font-weight:700}
+  .fila-tipo{font-size:11px;color:var(--text2)}
+  .fila-empty{font-size:13px;color:var(--text2);padding:8px 0}
+
+  /* Grid de pedidos */
+  .pedidos-section{padding:20px}
+  .pedidos-titulo{font-size:15px;font-weight:800;margin-bottom:16px}
+  .pedidos-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+
+  .pedido-card{
+    background:var(--surface);border:1px solid var(--border);
+    border-radius:16px;padding:16px 14px;cursor:pointer;
+    transition:.2s;text-align:center;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .pedido-card:active{transform:scale(.96)}
+  .pedido-card.selected{border-color:var(--card-cor);background:color-mix(in srgb,var(--card-cor) 15%,var(--surface))}
+  .pedido-card .card-emoji{font-size:36px;margin-bottom:8px}
+  .pedido-card .card-nome{font-size:12px;font-weight:700;line-height:1.3;margin-bottom:6px}
+  .pedido-card .card-preco{
+    font-size:16px;font-weight:900;color:var(--card-cor);
+  }
+
+  /* Formulário */
+  .form-section{padding:0 20px;display:none}
+  .form-section.show{display:block}
+  .form-title{font-size:15px;font-weight:800;margin-bottom:16px;display:flex;align-items:center;gap:8px}
+  .form-group{margin-bottom:14px}
+  .form-group label{font-size:12px;font-weight:700;color:var(--text2);display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px}
+  .form-group input,.form-group textarea,.form-group select{
+    width:100%;background:var(--surface2);border:1px solid var(--border);
+    border-radius:10px;padding:12px 14px;color:var(--text);font-size:14px;
+    font-family:inherit;outline:none;resize:none;
+  }
+  .form-group input:focus,.form-group textarea:focus{border-color:var(--accent-cor,#ec4899)}
+
+  /* PIX info */
+  .pix-box{
+    background:var(--surface2);border:1px solid #22c55e44;
+    border-radius:14px;padding:18px;margin-bottom:16px;
+  }
+  .pix-title{font-size:12px;font-weight:700;color:#22c55e;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px}
+  .pix-valor{font-size:28px;font-weight:900;color:#4ade80;margin-bottom:6px}
+  .pix-chave{font-size:13px;color:var(--text2);margin-bottom:8px}
+  .pix-chave strong{color:var(--text);word-break:break-all}
+  .btn-copy{background:#22c55e20;border:1px solid #22c55e44;color:#4ade80;
+    border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;width:100%;font-family:inherit}
+  .btn-copy:active{opacity:.7}
+
+  .btn-confirmar{
+    display:block;width:100%;padding:16px;
+    background:linear-gradient(135deg,var(--accent-cor,#ec4899),var(--accent-cor2,#f97316));
+    color:#fff;font-size:16px;font-weight:800;border:none;border-radius:14px;
+    cursor:pointer;font-family:inherit;margin-top:12px;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .btn-confirmar:active{opacity:.85}
+  .btn-voltar{background:none;border:none;color:var(--text2);font-size:13px;cursor:pointer;padding:10px 0;display:block;margin:0 auto;font-family:inherit}
+
+  .aviso-pix{font-size:11px;color:var(--text2);text-align:center;margin-top:8px;line-height:1.5}
+</style>
+</head>
+<body>
+
+<!-- Cabeçalho -->
+<div class="header">
+  <div class="header-top">
+    <span class="canal-badge">{{ canal.emoji }} {{ canal.nome }}</span>
+    <span class="bar-nome">{{ b.nome }}</span>
+  </div>
+  <div class="tocando-agora">
+    <span class="dot-live"></span>
+    Jukebox ativo — escolha seu pedido abaixo
+  </div>
+</div>
+
+{% if sucesso %}
+  {% set t = tipos[sucesso] %}
+  <div class="success-box">
+    <div class="emoji">{{ t.emoji }}</div>
+    <h3>Pedido enviado! {{ t.emoji }}</h3>
+    <p>
+      {% if sucesso == 'parabens' %}
+        O Parabéns vai aparecer na tela em breve. Prepara a câmera! 📸
+      {% elif sucesso == 'dedicatoria' %}
+        Sua dedicatória vai aparecer na tela em instantes! ❤️
+      {% elif sucesso == 'brinde' %}
+        Brinde geral na tela! Levanta o copo! 🍻
+      {% elif sucesso == 'chegada' %}
+        Sua chegada vai aparecer na tela agora! 🎉
+      {% elif sucesso == 'casamento' %}
+        O pedido vai aparecer na tela! Boa sorte! 💍🥹
+      {% else %}
+        Seu pedido está na fila! Aguarda um momento.
+      {% endif %}
+    </p>
+  </div>
+{% endif %}
+
+{% if erro %}<div class="erro-box">⚠️ {{ erro }}</div>{% endif %}
+
+<!-- Fila atual -->
+{% if fila %}
+<div class="fila-section">
+  <div class="fila-titulo">📋 Fila agora ({{ fila|length }})</div>
+  {% for p in fila[:4] %}
+  {% set t = tipos.get(p.tipo, {}) %}
+  <div class="fila-item">
+    <span class="fila-emoji">{{ t.get('emoji','🎵') }}</span>
+    <div class="fila-info">
+      <div class="fila-nome">{{ p.nome_cliente }}</div>
+      <div class="fila-tipo">{{ t.get('nome', p.tipo) }}{% if p.mensagem %} · "{{ p.mensagem[:30] }}..."{% endif %}</div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<!-- Grid de pedidos -->
+<div class="pedidos-section" id="grid-section">
+  <div class="pedidos-titulo">🎰 O que você quer?</div>
+  <div class="pedidos-grid">
+    {% for key, t in tipos.items() %}
+    <div class="pedido-card" style="--card-cor:{{ t.cor }}"
+         onclick="selecionarTipo('{{ key }}', '{{ t.nome }}', '{{ t.emoji }}', {{ t.preco }}, '{{ t.cor }}')">
+      <div class="card-emoji">{{ t.emoji }}</div>
+      <div class="card-nome">{{ t.nome }}</div>
+      <div class="card-preco">R$ {{ '%.0f'|format(t.preco) }}</div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- Formulário -->
+<div class="form-section" id="form-section">
+  <div class="form-title" id="form-title">🎵 Pedido</div>
+
+  <form method="POST" id="form-pedido">
+    <input type="hidden" name="tipo" id="inp-tipo">
+    <input type="hidden" name="categoria" value="{{ b.canal_atual or 'rock' }}">
+
+    <div class="form-group">
+      <label>Seu nome *</label>
+      <input type="text" name="nome_cliente" id="inp-nome" placeholder="Como você quer aparecer na tela?" maxlength="40" required>
+    </div>
+
+    <div class="form-group" id="msg-group" style="display:none">
+      <label id="msg-label">Mensagem (opcional)</label>
+      <textarea name="mensagem" id="inp-msg" rows="2"
+        placeholder="Aparece na tela do bar..." maxlength="80"></textarea>
+    </div>
+
+    <!-- PIX do bar -->
+    {% if b.pix_key %}
+    <div class="pix-box">
+      <div class="pix-title">💚 Pague via PIX para o bar</div>
+      <div class="pix-valor" id="pix-valor">R$ —</div>
+      <div class="pix-chave">
+        Chave PIX: <strong id="pix-chave-val">{{ b.pix_key }}</strong>
+        {% if b.pix_nome_recebedor %}<br>Recebedor: <strong>{{ b.pix_nome_recebedor }}</strong>{% endif %}
+      </div>
+      <button type="button" class="btn-copy" onclick="copiarPix()">📋 Copiar chave PIX</button>
+    </div>
+    {% else %}
+    <div class="pix-box" style="border-color:#f59e0b44">
+      <div class="pix-title" style="color:#f59e0b">💛 Pagamento no balcão</div>
+      <div class="pix-valor" id="pix-valor" style="color:#fbbf24">R$ —</div>
+      <div style="font-size:13px;color:var(--text2)">Pague o valor acima diretamente no caixa do bar e confirme abaixo.</div>
+    </div>
+    {% endif %}
+
+    <button type="submit" class="btn-confirmar" id="btn-confirmar">
+      ✅ Paguei! Confirmar pedido
+    </button>
+    <p class="aviso-pix">Ao confirmar, você declara que realizou o pagamento.<br>O pedido aparece na tela do bar após confirmação.</p>
+    <button type="button" class="btn-voltar" onclick="voltarGrid()">← Voltar</button>
+  </form>
+</div>
+
+<script>
+const PRECOS = {{ tipos | tojson }};
+let tipoAtual = '';
+
+function selecionarTipo(key, nome, emoji, preco, cor) {
+  tipoAtual = key;
+  document.getElementById('inp-tipo').value = key;
+  document.getElementById('form-title').innerHTML = `${emoji} ${nome}`;
+  document.getElementById('pix-valor').textContent = 'R$ ' + preco.toFixed(2).replace('.', ',');
+
+  // Mostra campo de mensagem para tipos especiais
+  const msgGroup = document.getElementById('msg-group');
+  const msgLabel = document.getElementById('msg-label');
+  const msgInp   = document.getElementById('inp-msg');
+  const especiais = ['parabens', 'dedicatoria', 'brinde', 'chegada', 'casamento'];
+
+  if (especiais.includes(key)) {
+    msgGroup.style.display = 'block';
+    if (key === 'parabens')    { msgLabel.textContent = 'Recado (aparece na tela)'; msgInp.placeholder = 'Ex: 30 anos de glória! 🎉'; }
+    else if (key === 'dedicatoria') { msgLabel.textContent = 'Mensagem de amor ❤️'; msgInp.placeholder = 'Sua mensagem para aparecer na tela...'; }
+    else if (key === 'casamento') { msgLabel.textContent = 'Mensagem especial 💍'; msgInp.placeholder = 'Ex: Ana, você quer casar comigo?'; }
+    else { msgLabel.textContent = 'Mensagem (opcional)'; msgInp.placeholder = 'Algum recado? Aparece na tela.'; }
+  } else {
+    msgGroup.style.display = 'none';
+  }
+
+  // Altera cor do botão confirmar
+  document.getElementById('btn-confirmar').style.background = `linear-gradient(135deg, ${cor}, ${cor}cc)`;
+  document.getElementById('form-section').style.setProperty('--accent-cor', cor);
+
+  // Mostra form, esconde grid
+  document.getElementById('grid-section').style.display = 'none';
+  document.getElementById('form-section').classList.add('show');
+  window.scrollTo({top: 0, behavior: 'smooth'});
+}
+
+function voltarGrid() {
+  document.getElementById('grid-section').style.display = 'block';
+  document.getElementById('form-section').classList.remove('show');
+  window.scrollTo({top: 0, behavior: 'smooth'});
+}
+
+function copiarPix() {
+  const chave = document.getElementById('pix-chave-val')?.textContent?.trim();
+  if (!chave) return;
+  navigator.clipboard.writeText(chave).then(() => {
+    const btn = document.querySelector('.btn-copy');
+    btn.textContent = '✅ Copiado!';
+    setTimeout(() => btn.textContent = '📋 Copiar chave PIX', 2000);
+  });
+}
+</script>
+</body>
+</html>

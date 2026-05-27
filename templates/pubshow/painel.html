@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Painel — PUBSHOW</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  :root{--bg:#08080f;--surface:#13131f;--surface2:#1a1a2e;--border:rgba(255,255,255,.08);--border2:rgba(255,255,255,.14);--text:#f0f0ff;--text2:#8888aa;--green:#22c55e;--orange:#f97316}
+  body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-height:100vh}
+  nav{background:var(--surface);border-bottom:1px solid var(--border);padding:0 24px;height:60px;display:flex;align-items:center;justify-content:space-between}
+  .nav-logo{font-size:18px;font-weight:900;background:linear-gradient(135deg,#ef4444,#f97316);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+  .nav-right{display:flex;align-items:center;gap:12px}
+  .nav-btn{padding:7px 16px;border-radius:8px;border:1px solid var(--border2);background:none;color:var(--text2);font-size:13px;cursor:pointer;text-decoration:none;font-family:inherit}
+  .nav-btn:hover{color:var(--text)}
+  .main{max-width:1100px;margin:0 auto;padding:28px 24px}
+  .page-title{font-size:22px;font-weight:800;margin-bottom:4px}
+  .page-sub{font-size:13px;color:var(--text2);margin-bottom:28px}
+  .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:24px}
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px}
+  .card-title{font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.6px;margin-bottom:14px}
+  .stat-val{font-size:32px;font-weight:900;letter-spacing:-1px}
+  .stat-sub{font-size:12px;color:var(--text2);margin-top:2px}
+
+  /* Canais */
+  .canais-grid{display:flex;flex-wrap:wrap;gap:8px}
+  .canal-btn{
+    padding:8px 14px;border-radius:10px;border:1px solid var(--border2);
+    background:var(--surface2);color:var(--text2);font-size:13px;font-weight:700;
+    cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:6px;transition:.15s;
+  }
+  .canal-btn:hover{border-color:var(--border2);color:var(--text)}
+  .canal-btn.ativo{color:#fff;border-color:transparent}
+
+  /* TV Link */
+  .tv-link-box{background:linear-gradient(135deg,#0f0f1f,#1a0030);border:1px solid rgba(139,92,246,.3);border-radius:14px;padding:18px 20px}
+  .tv-link-url{font-size:13px;color:#a78bfa;word-break:break-all;margin:6px 0 10px;font-family:monospace}
+  .btn-sm{padding:7px 14px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);color:var(--text);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit}
+  .btn-sm:hover{background:var(--surface)}
+  .btn-primary{background:linear-gradient(135deg,#ef4444,#f97316);color:#fff;border:none;padding:9px 20px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit}
+
+  /* Fila pedidos */
+  .pedido-row{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)}
+  .pedido-row:last-child{border:none}
+  .pedido-emoji{font-size:24px;flex-shrink:0}
+  .pedido-info{flex:1}
+  .pedido-nome{font-size:14px;font-weight:700}
+  .pedido-tipo{font-size:11px;color:var(--text2)}
+  .pedido-valor{font-size:14px;font-weight:800;color:var(--green)}
+  .pedido-dispensar{background:none;border:1px solid var(--border2);color:var(--text2);padding:5px 10px;border-radius:7px;font-size:11px;cursor:pointer;font-family:inherit}
+  .pedido-dispensar:hover{color:#ef4444;border-color:#ef444444}
+  .empty-state{text-align:center;padding:24px;color:var(--text2);font-size:13px}
+
+  /* PIX config */
+  .pix-form input,.pix-form select{
+    background:var(--surface2);border:1px solid var(--border);border-radius:10px;
+    padding:10px 14px;color:var(--text);font-size:13px;font-family:inherit;outline:none;width:100%;
+  }
+  .pix-form input:focus{border-color:var(--green)}
+  .label-sm{font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:5px}
+
+  @media(max-width:768px){.grid-3,.grid-2{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<nav>
+  <div class="nav-logo">📺 PUBSHOW</div>
+  <div class="nav-right">
+    <span style="font-size:13px;color:var(--text2)">{{ b.nome }}</span>
+    <a href="/pubshow/tv/{{ b.code }}" target="_blank" class="nav-btn">📺 Abrir TV</a>
+    <a href="/pubshow/sair" class="nav-btn">Sair</a>
+  </div>
+</nav>
+
+<div class="main">
+  <div class="page-title">Olá, {{ b.nome }} 👋</div>
+  <div class="page-sub">Painel de controle do PUBSHOW</div>
+
+  <!-- Stats -->
+  <div class="grid-3">
+    <div class="card">
+      <div class="card-title">💰 Jukebox hoje</div>
+      <div class="stat-val" style="color:var(--green)">R$ {{ '%.2f'|format(total_hoje) }}</div>
+      <div class="stat-sub">{{ pedidos_hoje|length }} pedidos recebidos</div>
+    </div>
+    <div class="card">
+      <div class="card-title">📋 Fila agora</div>
+      <div class="stat-val">{{ fila|length }}</div>
+      <div class="stat-sub">pedidos aguardando</div>
+    </div>
+    <div class="card">
+      <div class="card-title">📺 Canal ativo</div>
+      {% set c = canais.get(b.canal_atual, {}) %}
+      <div class="stat-val" style="font-size:28px">{{ c.get('emoji','📺') }} {{ c.get('nome','—') }}</div>
+      <div class="stat-sub">
+        {% if b.plano_ativo %}✅ Assinatura ativa{% else %}⚠️ Trial / sem assinatura{% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <!-- Trocar canal -->
+    <div class="card">
+      <div class="card-title">📺 Trocar canal agora</div>
+      <form method="POST" action="/pubshow/painel/canal">
+        <div class="canais-grid" style="margin-bottom:16px">
+          {% for key, c in canais.items() %}
+          <button type="submit" name="canal" value="{{ key }}"
+                  class="canal-btn {% if b.canal_atual == key %}ativo{% endif %}"
+                  {% if b.canal_atual == key %}style="background:{{ c.cor }};border-color:{{ c.cor }}"{% endif %}>
+            {{ c.emoji }} {{ c.nome }}
+          </button>
+          {% endfor %}
+        </div>
+      </form>
+    </div>
+
+    <!-- TV Link + QR -->
+    <div class="card">
+      <div class="card-title">📺 Link da TV (abra no navegador da sua tela)</div>
+      <div class="tv-link-box">
+        <div style="font-size:12px;color:#a78bfa;font-weight:700">TV PLAYER</div>
+        <div class="tv-link-url">4kitem.com.br/pubshow/tv/{{ b.code }}</div>
+        <button class="btn-sm" onclick="copiar('https://4kitem.com.br/pubshow/tv/{{ b.code }}', this)">📋 Copiar link da TV</button>
+      </div>
+      <div style="margin-top:14px"></div>
+      <div class="card-title">📱 QR Code do Jukebox (cole nas mesas)</div>
+      <div class="tv-link-box" style="border-color:rgba(34,197,94,.3)">
+        <div style="font-size:12px;color:#22c55e;font-weight:700">JUKEBOX (clientes)</div>
+        <div class="tv-link-url" style="color:#4ade80">4kitem.com.br/pubshow/jukebox/{{ b.code }}</div>
+        <button class="btn-sm" onclick="copiar('https://4kitem.com.br/pubshow/jukebox/{{ b.code }}', this)">📋 Copiar link do Jukebox</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <!-- Fila de pedidos -->
+    <div class="card">
+      <div class="card-title">📋 Fila de pedidos pendentes</div>
+      {% if fila %}
+        {% for p in fila %}
+        {% set t = tipos.get(p.tipo, {}) %}
+        <div class="pedido-row">
+          <span class="pedido-emoji">{{ t.get('emoji','🎵') }}</span>
+          <div class="pedido-info">
+            <div class="pedido-nome">{{ p.nome_cliente }}</div>
+            <div class="pedido-tipo">{{ t.get('nome', p.tipo) }}{% if p.mensagem %} · "{{ p.mensagem[:40] }}"{% endif %}</div>
+          </div>
+          <span class="pedido-valor">R$ {{ '%.0f'|format(p.valor or 0) }}</span>
+          <form method="POST" action="/pubshow/painel/pedido/{{ p.id }}/dispensar" style="margin:0">
+            <button type="submit" class="pedido-dispensar">✓ OK</button>
+          </form>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div class="empty-state">Nenhum pedido na fila agora.<br>Os pedidos aparecem aqui em tempo real. 🎉</div>
+      {% endif %}
+    </div>
+
+    <!-- Configurar PIX -->
+    <div class="card">
+      <div class="card-title">💚 Sua chave PIX (Jukebox)</div>
+      <p style="font-size:13px;color:var(--text2);margin-bottom:16px;line-height:1.6">
+        Configure sua chave PIX para os clientes pagarem diretamente no seu celular. <strong style="color:var(--text)">100% do valor é seu.</strong>
+      </p>
+      <form method="POST" action="/pubshow/painel/pix" class="pix-form" style="display:flex;flex-direction:column;gap:12px">
+        <div>
+          <label class="label-sm">Tipo de chave</label>
+          <select name="pix_tipo">
+            <option value="telefone" {% if b.pix_tipo=='telefone' %}selected{% endif %}>📱 Telefone</option>
+            <option value="cpf"      {% if b.pix_tipo=='cpf'     %}selected{% endif %}>🪪 CPF</option>
+            <option value="email"    {% if b.pix_tipo=='email'   %}selected{% endif %}>📧 E-mail</option>
+            <option value="aleatorio"{% if b.pix_tipo=='aleatorio'%}selected{% endif %}>🔑 Chave aleatória</option>
+          </select>
+        </div>
+        <div>
+          <label class="label-sm">Chave PIX</label>
+          <input type="text" name="pix_key" value="{{ b.pix_key or '' }}" placeholder="Ex: 47997766831">
+        </div>
+        <div>
+          <label class="label-sm">Nome do recebedor (aparece no Jukebox)</label>
+          <input type="text" name="pix_nome" value="{{ b.pix_nome_recebedor or '' }}" placeholder="Ex: Bar do Toninho">
+        </div>
+        <button type="submit" class="btn-primary">💾 Salvar PIX</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Histórico hoje -->
+  {% if pedidos_hoje %}
+  <div class="card">
+    <div class="card-title">📊 Pedidos de hoje</div>
+    <div style="overflow-x:auto">
+      <table style="width:100%;border-collapse:collapse;font-size:13px">
+        <thead>
+          <tr style="border-bottom:1px solid var(--border)">
+            <th style="text-align:left;padding:8px 0;color:var(--text2);font-weight:600">Horário</th>
+            <th style="text-align:left;padding:8px 0;color:var(--text2);font-weight:600">Cliente</th>
+            <th style="text-align:left;padding:8px 0;color:var(--text2);font-weight:600">Pedido</th>
+            <th style="text-align:right;padding:8px 0;color:var(--text2);font-weight:600">Valor</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in pedidos_hoje %}
+          {% set t = tipos.get(p.tipo, {}) %}
+          <tr style="border-bottom:1px solid var(--border)">
+            <td style="padding:8px 0;color:var(--text2)">{{ p.created_at[11:16] if p.created_at else '—' }}</td>
+            <td style="padding:8px 0">{{ p.nome_cliente }}</td>
+            <td style="padding:8px 0">{{ t.get('emoji','') }} {{ t.get('nome', p.tipo) }}</td>
+            <td style="padding:8px 0;text-align:right;color:var(--green);font-weight:700">R$ {{ '%.0f'|format(p.valor or 0) }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+        <tfoot>
+          <tr>
+            <td colspan="3" style="padding:10px 0;font-weight:700">Total do dia</td>
+            <td style="padding:10px 0;text-align:right;color:var(--green);font-weight:900;font-size:16px">R$ {{ '%.2f'|format(total_hoje) }}</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Assinar -->
+  {% if not b.plano_ativo %}
+  <div style="background:linear-gradient(135deg,rgba(239,68,68,.1),rgba(249,115,22,.08));border:1px solid rgba(239,68,68,.3);border-radius:16px;padding:24px;margin-top:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px">
+    <div>
+      <div style="font-weight:800;font-size:16px;margin-bottom:4px">⚠️ Ative sua assinatura</div>
+      <div style="font-size:13px;color:var(--text2)">Seu trial gratuito expira em breve. Assine para manter o Jukebox ativo.</div>
+    </div>
+    <a href="/pubshow/assinar/bar" style="padding:12px 24px;background:linear-gradient(135deg,#ef4444,#f97316);color:#fff;font-weight:800;font-size:14px;border-radius:12px;text-decoration:none">
+      Assinar R$ 89,90/mês →
+    </a>
+  </div>
+  {% endif %}
+</div>
+
+<script>
+function copiar(texto, btn) {
+  navigator.clipboard.writeText(texto).then(() => {
+    const orig = btn.textContent;
+    btn.textContent = '✅ Copiado!';
+    setTimeout(() => btn.textContent = orig, 2000);
+  });
+}
+// Atualiza fila a cada 15s
+setInterval(() => location.reload(), 15000);
+</script>
+</body>
+</html>

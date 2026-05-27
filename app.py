@@ -9847,6 +9847,16 @@ except Exception as _pm_err:
     log.warning(f'[PETmed] Erro ao carregar blueprint: {_pm_err}')
 
 # ══════════════════════════════════════════════════════════════════════════════
+# PUBSHOW — Jukebox digital para bares e pubs
+# ══════════════════════════════════════════════════════════════════════════════
+try:
+    from pubshow import pubshow_bp
+    app.register_blueprint(pubshow_bp)
+    log.info('[PUBSHOW] Blueprint registrado em /pubshow')
+except Exception as _ps_err:
+    log.warning(f'[PUBSHOW] Erro ao carregar blueprint: {_ps_err}')
+
+# ══════════════════════════════════════════════════════════════════════════════
 
 with app.app_context():
     _startup()
@@ -9857,6 +9867,13 @@ with app.app_context():
         log.info('[PETmed] Banco inicializado com sucesso')
     except Exception as _e:
         log.error(f'[PETmed] ERRO ao inicializar banco: {_e}', exc_info=True)
+    # Inicializa banco PUBSHOW
+    try:
+        from pubshow_db import init_pubshow_db as _init_pubshow_db
+        _init_pubshow_db()
+        log.info('[PUBSHOW] Banco inicializado com sucesso')
+    except Exception as _e:
+        log.error(f'[PUBSHOW] ERRO ao inicializar banco: {_e}', exc_info=True)
 
 if __name__ == '__main__':
     app.run(debug=True, port=5001)

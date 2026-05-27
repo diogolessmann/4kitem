@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Planos — PUBSHOW</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:#08080f;color:#f0f0ff;font-family:'Segoe UI',sans-serif;min-height:100vh;padding:0 0 60px}
+
+  /* NAV */
+  nav{background:#13131f;border-bottom:1px solid rgba(255,255,255,.08);padding:0 24px;height:56px;display:flex;align-items:center;justify-content:space-between}
+  .logo{font-size:20px;font-weight:900;background:linear-gradient(135deg,#ef4444,#f97316);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;text-decoration:none}
+  .nav-links{display:flex;gap:16px}
+  .nav-links a{font-size:13px;color:#8888aa;text-decoration:none}
+  .nav-links a:hover{color:#f0f0ff}
+
+  /* HERO */
+  .hero{text-align:center;padding:60px 24px 40px}
+  .hero h1{font-size:36px;font-weight:900;letter-spacing:-1px;margin-bottom:12px}
+  .hero h1 span{background:linear-gradient(135deg,#ef4444,#f97316);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+  .hero p{font-size:16px;color:#8888aa;max-width:520px;margin:0 auto 16px;line-height:1.6}
+
+  /* JUKEBOX HIGHLIGHT */
+  .jukebox-box{display:inline-flex;align-items:center;gap:10px;background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.25);border-radius:100px;padding:10px 22px;font-size:14px;color:#4ade80;font-weight:700;margin-bottom:40px}
+
+  /* PLANS GRID */
+  .plans{max-width:1000px;margin:0 auto;padding:0 24px;display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+  .plan{background:#13131f;border:1px solid rgba(255,255,255,.08);border-radius:20px;padding:28px;position:relative;transition:.2s}
+  .plan:hover{transform:translateY(-4px);border-color:rgba(255,255,255,.16)}
+  .plan.destaque{border-color:rgba(239,68,68,.5);background:linear-gradient(180deg,#1a0a0a,#13131f)}
+  .destaque-badge{position:absolute;top:-13px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#ef4444,#f97316);color:#fff;font-size:11px;font-weight:900;padding:4px 16px;border-radius:100px;white-space:nowrap;letter-spacing:.5px}
+  .plan-emoji{font-size:36px;margin-bottom:12px}
+  .plan-nome{font-size:18px;font-weight:800;margin-bottom:4px}
+  .plan-desc{font-size:13px;color:#8888aa;margin-bottom:20px}
+  .plan-preco{font-size:38px;font-weight:900;letter-spacing:-1px;margin-bottom:4px}
+  .plan-preco.destaque-preco{background:linear-gradient(135deg,#ef4444,#f97316);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+  .plan-ciclo{font-size:13px;color:#8888aa;margin-bottom:24px}
+  .features{list-style:none;display:flex;flex-direction:column;gap:10px;margin-bottom:28px}
+  .features li{font-size:13px;color:#c8c8e8;display:flex;align-items:flex-start;gap:8px;line-height:1.4}
+  .features li::before{content:'✓';color:#22c55e;font-weight:900;font-size:14px;flex-shrink:0;margin-top:1px}
+  .features li.highlight{color:#fff;font-weight:700}
+  .features li.highlight::before{content:'★';color:#f59e0b}
+  .btn-plan{display:block;text-align:center;padding:13px;border-radius:12px;font-size:14px;font-weight:800;text-decoration:none;transition:.15s;font-family:inherit;cursor:pointer;border:none;width:100%}
+  .btn-plan.primary{background:linear-gradient(135deg,#ef4444,#f97316);color:#fff}
+  .btn-plan.primary:hover{opacity:.9}
+  .btn-plan.secondary{background:none;border:1px solid rgba(255,255,255,.15);color:#c8c8e8}
+  .btn-plan.secondary:hover{border-color:rgba(255,255,255,.35);color:#fff}
+
+  /* JUKEBOX INFO */
+  .info-section{max-width:780px;margin:48px auto 0;padding:0 24px}
+  .info-box{background:linear-gradient(135deg,rgba(34,197,94,.07),rgba(16,185,129,.04));border:1px solid rgba(34,197,94,.2);border-radius:20px;padding:28px;text-align:center}
+  .info-box h2{font-size:22px;font-weight:900;margin-bottom:10px}
+  .info-box p{font-size:14px;color:#8888aa;line-height:1.7;max-width:540px;margin:0 auto 20px}
+  .jukebox-numbers{display:flex;justify-content:center;gap:32px;flex-wrap:wrap}
+  .jk-num{text-align:center}
+  .jk-val{font-size:28px;font-weight:900;color:#22c55e}
+  .jk-label{font-size:12px;color:#8888aa;margin-top:2px}
+
+  /* FAQ */
+  .faq{max-width:640px;margin:48px auto 0;padding:0 24px}
+  .faq h2{font-size:20px;font-weight:800;margin-bottom:20px;text-align:center}
+  .faq-item{border-bottom:1px solid rgba(255,255,255,.08);padding:16px 0}
+  .faq-q{font-size:14px;font-weight:700;margin-bottom:6px}
+  .faq-a{font-size:13px;color:#8888aa;line-height:1.6}
+
+  @media(max-width:768px){.plans{grid-template-columns:1fr}.hero h1{font-size:26px}.jukebox-numbers{gap:20px}}
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="/pubshow" class="logo">📺 PUBSHOW</a>
+  <div class="nav-links">
+    <a href="/pubshow/entrar">Entrar</a>
+    <a href="/pubshow/cadastro" style="color:#ef4444;font-weight:700">Criar conta grátis</a>
+  </div>
+</nav>
+
+<div class="hero">
+  <h1>Preços simples,<br><span>resultado real</span></h1>
+  <p>Comece grátis por 7 dias. Cancele quando quiser. Sem fidelidade, sem multa.</p>
+  <div class="jukebox-box">
+    💚 100% do Jukebox vai direto pra você — o PUBSHOW se paga sozinho
+  </div>
+</div>
+
+<div class="plans">
+  {% for key, p in planos.items() %}
+  <div class="plan {% if p.get('destaque') %}destaque{% endif %}">
+    {% if p.get('destaque') %}<div class="destaque-badge">⭐ MAIS POPULAR</div>{% endif %}
+    <div class="plan-emoji">{{ p.emoji }}</div>
+    <div class="plan-nome">{{ p.nome }}</div>
+    <div class="plan-desc">{{ p.descricao }}</div>
+    <div class="plan-preco {% if p.get('destaque') %}destaque-preco{% endif %}">{{ p.preco_fmt }}</div>
+    <div class="plan-ciclo">por mês · cobrado mensalmente</div>
+    <ul class="features">
+      {% for f in p.features %}
+      <li {% if 'Jukebox' in f or '100%' in f %}class="highlight"{% endif %}>{{ f }}</li>
+      {% endfor %}
+    </ul>
+    <a href="/pubshow/cadastro?plano={{ key }}" class="btn-plan {% if p.get('destaque') %}primary{% else %}secondary{% endif %}">
+      Começar grátis →
+    </a>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Jukebox info box -->
+<div class="info-section">
+  <div class="info-box">
+    <h2>🎶 O Jukebox se paga por você</h2>
+    <p>
+      Seus clientes pagam diretamente no seu celular via PIX — sem intermediários.
+      Uma sexta-feira comum num bar movimentado pode gerar mais do que o valor da mensalidade em pedidos de Jukebox.
+    </p>
+    <div class="jukebox-numbers">
+      <div class="jk-num">
+        <div class="jk-val">R$ 101</div>
+        <div class="jk-label">numa boa sexta-feira</div>
+      </div>
+      <div class="jk-num">
+        <div class="jk-val">R$ 89,90</div>
+        <div class="jk-label">mensalidade do plano Bar</div>
+      </div>
+      <div class="jk-num">
+        <div class="jk-val">100%</div>
+        <div class="jk-label">do Jukebox é seu</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- FAQ -->
+<div class="faq">
+  <h2>Perguntas frequentes</h2>
+
+  <div class="faq-item">
+    <div class="faq-q">Preciso instalar algum aplicativo na TV?</div>
+    <div class="faq-a">Não. O PUBSHOW roda direto no navegador da TV. Abra o link TV Player em qualquer Smart TV, Chromecast ou notebook conectado à tela.</div>
+  </div>
+  <div class="faq-item">
+    <div class="faq-q">O cliente precisa instalar algo para usar o Jukebox?</div>
+    <div class="faq-a">Não. O cliente escaneia o QR Code com a câmera do celular e acessa direto no navegador — sem app, sem cadastro.</div>
+  </div>
+  <div class="faq-item">
+    <div class="faq-q">Como recebo o dinheiro do Jukebox?</div>
+    <div class="faq-a">O cliente paga direto na sua chave PIX. O dinheiro cai na sua conta instantaneamente. O PUBSHOW não intermedia nem toca no dinheiro.</div>
+  </div>
+  <div class="faq-item">
+    <div class="faq-q">Posso cancelar quando quiser?</div>
+    <div class="faq-a">Sim. Sem fidelidade, sem multa. Cancele pelo painel ou pelo WhatsApp do suporte.</div>
+  </div>
+  <div class="faq-item">
+    <div class="faq-q">O período de trial é realmente grátis?</div>
+    <div class="faq-a">Sim. 7 dias grátis, sem cartão de crédito. A cobrança só inicia após o trial e você pode cancelar antes sem pagar nada.</div>
+  </div>
+  <div class="faq-item">
+    <div class="faq-q">Quantos canais e vídeos estão disponíveis?</div>
+    <div class="faq-a">São {{ canais|length }} canais temáticos com centenas de vídeos curados — rock, pagode, sertanejo, pop, futebol, F1, surf, radical e shows ao vivo. A biblioteca é atualizada regularmente.</div>
+  </div>
+</div>
+
+</body>
+</html>

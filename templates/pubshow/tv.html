@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PUBSHOW TV — {{ b.nome }}</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:#000;color:#fff;font-family:'Segoe UI',sans-serif;overflow:hidden;height:100vh;width:100vw}
+
+  /* Player */
+  #player-wrap{position:fixed;inset:0;z-index:1}
+  #yt-player{width:100%;height:100%;border:none;display:block}
+
+  /* Now Playing bar */
+  #now-playing{
+    position:fixed;bottom:0;left:0;right:0;z-index:10;
+    background:linear-gradient(transparent,rgba(0,0,0,.85));
+    padding:40px 32px 20px;
+    display:flex;align-items:flex-end;justify-content:space-between;
+    transition:opacity .5s;
+  }
+  #now-playing.hidden{opacity:0}
+  .np-left{display:flex;align-items:center;gap:16px}
+  .np-canal-badge{
+    background:var(--canal-cor,#ef4444);
+    padding:6px 14px;border-radius:8px;
+    font-size:13px;font-weight:800;letter-spacing:.5px;
+  }
+  .np-titulo{font-size:18px;font-weight:700;text-shadow:0 2px 8px rgba(0,0,0,.8)}
+  .np-artista{font-size:13px;color:rgba(255,255,255,.7);margin-top:2px}
+  .np-right{display:flex;align-items:center;gap:12px}
+  .np-qr-hint{font-size:12px;color:rgba(255,255,255,.6);text-align:center}
+  .np-qr-hint strong{display:block;font-size:18px}
+
+  /* Overlay especial (parabéns, dedicatória etc.) */
+  #overlay{
+    position:fixed;inset:0;z-index:100;
+    display:none;align-items:center;justify-content:center;
+    background:rgba(0,0,0,.92);backdrop-filter:blur(8px);
+  }
+  #overlay.show{display:flex}
+  .overlay-box{
+    text-align:center;padding:48px 56px;
+    border-radius:28px;border:2px solid var(--overlay-cor,#ec4899);
+    background:linear-gradient(135deg,rgba(0,0,0,.8),rgba(20,0,20,.9));
+    max-width:700px;animation:popIn .4s cubic-bezier(.34,1.56,.64,1);
+  }
+  @keyframes popIn{from{transform:scale(.6);opacity:0}to{transform:scale(1);opacity:1}}
+  .overlay-emoji{font-size:96px;margin-bottom:16px;animation:pulse 1s ease-in-out infinite alternate}
+  @keyframes pulse{from{transform:scale(1)}to{transform:scale(1.1)}}
+  .overlay-titulo{font-size:42px;font-weight:900;color:var(--overlay-cor,#ec4899);margin-bottom:8px;letter-spacing:-1px}
+  .overlay-nome{font-size:56px;font-weight:900;color:#fff;margin-bottom:12px;letter-spacing:-2px}
+  .overlay-msg{font-size:20px;color:rgba(255,255,255,.8);margin-bottom:24px;line-height:1.5}
+  .overlay-de{font-size:15px;color:rgba(255,255,255,.5)}
+  .overlay-bar{height:6px;border-radius:3px;background:var(--overlay-cor,#ec4899);margin-top:24px;animation:shrink linear forwards}
+  @keyframes shrink{from{width:100%}to{width:0}}
+
+  /* Confetes */
+  .confete{position:fixed;top:-10px;border-radius:50%;animation:cair linear forwards;pointer-events:none;z-index:200}
+  @keyframes cair{to{transform:translateY(110vh) rotate(720deg);opacity:0}}
+
+  /* Canais selector (canto) */
+  #canal-selector{
+    position:fixed;top:20px;right:20px;z-index:50;
+    display:flex;flex-direction:column;gap:8px;
+    opacity:0;transition:opacity .3s;
+  }
+  #canal-selector:hover,#canal-selector.visible{opacity:1}
+  .canal-btn{
+    background:rgba(0,0,0,.7);border:1px solid rgba(255,255,255,.2);
+    border-radius:10px;padding:8px 14px;font-size:13px;font-weight:700;
+    cursor:pointer;color:#fff;transition:.2s;white-space:nowrap;
+    display:flex;align-items:center;gap:8px;
+  }
+  .canal-btn:hover,.canal-btn.ativo{background:rgba(255,255,255,.15);border-color:rgba(255,255,255,.5)}
+  .canal-btn.ativo{border-color:var(--canal-cor,#ef4444)}
+</style>
+</head>
+<body>
+
+<!-- Player YouTube -->
+<div id="player-wrap">
+  <iframe id="yt-player"
+    src="about:blank"
+    allow="autoplay; encrypted-media; fullscreen"
+    allowfullscreen></iframe>
+</div>
+
+<!-- Now Playing -->
+<div id="now-playing" style="--canal-cor:{{ canal.cor }}">
+  <div class="np-left">
+    <span class="np-canal-badge">{{ canal.emoji }} {{ canal.nome }}</span>
+    <div>
+      <div class="np-titulo" id="np-titulo">{{ videos[0].titulo if videos else 'Carregando...' }}</div>
+      <div class="np-artista" id="np-artista">{{ videos[0].artista if videos else '' }}</div>
+    </div>
+  </div>
+  <div class="np-right">
+    <div class="np-qr-hint">
+      <strong>📱</strong>
+      Scaneie para pedir
+    </div>
+  </div>
+</div>
+
+<!-- Overlay especial -->
+<div id="overlay">
+  <div class="overlay-box" id="overlay-box">
+    <div class="overlay-emoji" id="ov-emoji">🎂</div>
+    <div class="overlay-titulo" id="ov-titulo">PARABÉNS!</div>
+    <div class="overlay-nome" id="ov-nome">Ana</div>
+    <div class="overlay-msg" id="ov-msg"></div>
+    <div class="overlay-de" id="ov-de"></div>
+    <div class="overlay-bar" id="ov-bar" style="animation-duration:8s"></div>
+  </div>
+</div>
+
+<!-- Seletor de canal -->
+<div id="canal-selector">
+  {% for key, c in canais.items() %}
+  <button class="canal-btn {% if key == canal_key %}ativo{% endif %}"
+          onclick="trocarCanal('{{ key }}')"
+          style="{% if key == canal_key %}--canal-cor:{{ c.cor }};border-color:{{ c.cor }}{% endif %}">
+    {{ c.emoji }} {{ c.nome }}
+  </button>
+  {% endfor %}
+</div>
+
+<script>
+const CODE       = '{{ b.code }}';
+const CANAL_KEY  = '{{ canal_key }}';
+const BASE_URL   = '/pubshow';
+
+// Biblioteca de vídeos do canal atual
+const VIDEOS = {{ videos | tojson }};
+let videoIdx    = 0;
+let overlayAtivo= false;
+let pedidoAtual = null;
+
+// Tipos de pedido com configuração visual
+const TIPO_CONFIG = {
+  parabens:    {emoji:'🎂', titulo:'PARABÉNS!',          cor:'#ec4899', duracao:10000, confetes:true},
+  dedicatoria: {emoji:'💌', titulo:'DEDICATÓRIA',        cor:'#ef4444', duracao:8000,  confetes:false},
+  brinde:      {emoji:'🍻', titulo:'BRINDE GERAL!',      cor:'#22c55e', duracao:6000,  confetes:true},
+  chegada:     {emoji:'🎉', titulo:'CHEGARAM!',           cor:'#f97316', duracao:6000,  confetes:true},
+  casamento:   {emoji:'💍', titulo:'ELA DISSE SIM! 💍',   cor:'#a855f7', duracao:12000, confetes:true},
+  vip:         {emoji:'👑', titulo:'PEDIDO VIP!',         cor:'#8b5cf6', duracao:5000,  confetes:false},
+};
+
+// ── Player ────────────────────────────────────────────────────────────────────
+function tocarVideo(idx) {
+  if (!VIDEOS.length) return;
+  const v = VIDEOS[idx % VIDEOS.length];
+  const iframe = document.getElementById('yt-player');
+  iframe.src = `https://www.youtube.com/embed/${v.youtube_id}?autoplay=1&rel=0&modestbranding=1&controls=0&iv_load_policy=3&disablekb=1&fs=0&playsinline=1`;
+  document.getElementById('np-titulo').textContent = v.titulo || '';
+  document.getElementById('np-artista').textContent = v.artista || '';
+
+  // Esconde barra após 5s
+  const np = document.getElementById('now-playing');
+  clearTimeout(window._npTimer);
+  np.classList.remove('hidden');
+  window._npTimer = setTimeout(() => np.classList.add('hidden'), 5000);
+
+  // Avança para próximo após duração + 2s buffer
+  const duracao = (v.duracao_seg || 180) * 1000;
+  clearTimeout(window._nextTimer);
+  window._nextTimer = setTimeout(() => {
+    videoIdx = (idx + 1) % VIDEOS.length;
+    tocarVideo(videoIdx);
+  }, duracao + 2000);
+}
+
+// ── Overlay especial ──────────────────────────────────────────────────────────
+function mostrarOverlay(pedido) {
+  overlayAtivo = true;
+  const cfg = TIPO_CONFIG[pedido.tipo] || TIPO_CONFIG['brinde'];
+  const box = document.getElementById('overlay-box');
+
+  box.style.setProperty('--overlay-cor', cfg.cor);
+  document.getElementById('ov-emoji').textContent = cfg.emoji;
+  document.getElementById('ov-titulo').textContent = cfg.titulo;
+  document.getElementById('ov-titulo').style.color = cfg.cor;
+  document.getElementById('ov-nome').textContent = pedido.nome_cliente || '';
+  document.getElementById('ov-msg').textContent = pedido.mensagem || '';
+  document.getElementById('ov-de').textContent = pedido.nome_cliente ? `Pedido de ${pedido.nome_cliente}` : '';
+
+  const bar = document.getElementById('ov-bar');
+  bar.style.animationDuration = (cfg.duracao / 1000) + 's';
+  bar.style.background = cfg.cor;
+  // Reset animation
+  bar.style.animation = 'none';
+  bar.offsetHeight; // reflow
+  bar.style.animation = '';
+
+  document.getElementById('overlay').classList.add('show');
+
+  if (cfg.confetes) lancarConfetes();
+
+  // Marca como exibido na API
+  fetch(`${BASE_URL}/api/pedido-exibido/${pedido.id}`, {method:'POST'});
+
+  // Fecha após duração
+  clearTimeout(window._overlayTimer);
+  window._overlayTimer = setTimeout(() => {
+    document.getElementById('overlay').classList.remove('show');
+    overlayAtivo = false;
+    pedidoAtual  = null;
+  }, cfg.duracao);
+}
+
+function lancarConfetes() {
+  const cores = ['#ec4899','#f97316','#22c55e','#3b82f6','#a855f7','#eab308','#ef4444','#fff'];
+  for (let i = 0; i < 80; i++) {
+    setTimeout(() => {
+      const el = document.createElement('div');
+      el.className = 'confete';
+      el.style.cssText = `
+        left:${Math.random()*100}vw;
+        width:${6+Math.random()*10}px;
+        height:${6+Math.random()*10}px;
+        background:${cores[Math.floor(Math.random()*cores.length)]};
+        animation-duration:${2+Math.random()*3}s;
+        animation-delay:${Math.random()*.5}s;
+      `;
+      document.body.appendChild(el);
+      setTimeout(() => el.remove(), 4000);
+    }, i * 30);
+  }
+}
+
+// ── Polling da API ────────────────────────────────────────────────────────────
+async function pollStatus() {
+  try {
+    const res  = await fetch(`${BASE_URL}/api/status/${CODE}`);
+    const data = await res.json();
+
+    // Troca de canal
+    if (data.canal_atual && data.canal_atual !== window._canalAtual) {
+      window._canalAtual = data.canal_atual;
+      location.reload(); // Recarrega com novo canal
+    }
+
+    // Pedido especial
+    if (data.pedido && !overlayAtivo && data.pedido.id !== (pedidoAtual?.id)) {
+      pedidoAtual = data.pedido;
+      mostrarOverlay(data.pedido);
+    }
+  } catch(e) {}
+}
+
+// ── Trocar canal (via botão) ──────────────────────────────────────────────────
+async function trocarCanal(canal) {
+  await fetch(`${BASE_URL}/api/trocar-canal/${CODE}`, {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({canal}),
+  });
+  location.reload();
+}
+
+// Mostrar seletor com mouse
+document.addEventListener('mousemove', () => {
+  const sel = document.getElementById('canal-selector');
+  sel.classList.add('visible');
+  clearTimeout(window._selTimer);
+  window._selTimer = setTimeout(() => sel.classList.remove('visible'), 3000);
+});
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+window._canalAtual = '{{ canal_key }}';
+tocarVideo(0);
+setInterval(pollStatus, 4000); // Verifica pedidos a cada 4s
+</script>
+</body>
+</html>

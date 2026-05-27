@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PUBSHOW — O Jukebox Digital do Seu Bar</title>
+<meta name="description" content="A primeira Jukebox digital do Brasil. Clientes pagam para escolher a música. 100% do dinheiro vai pro seu bar.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg:#08080f; --bg2:#0e0e1a; --surface:#13131f; --surface2:#1a1a2e;
+    --border:rgba(255,255,255,0.07); --border2:rgba(255,255,255,0.12);
+    --text:#f0f0ff; --text2:#8888aa;
+    --red:#ef4444; --orange:#f97316; --green:#22c55e;
+  }
+  body { font-family:'Inter',sans-serif; background:var(--bg); color:var(--text); overflow-x:hidden; }
+
+  /* NAV */
+  nav {
+    position:fixed; top:0; left:0; right:0; z-index:100;
+    padding:0 5%; height:64px;
+    display:flex; align-items:center; justify-content:space-between;
+    background:rgba(8,8,15,0.9); backdrop-filter:blur(20px);
+    border-bottom:1px solid var(--border);
+  }
+  .nav-logo { font-size:20px; font-weight:900; background:linear-gradient(135deg,#ef4444,#f97316); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; text-decoration:none; }
+  .nav-links { display:flex; align-items:center; gap:10px; }
+  .btn-nav { padding:8px 18px; border-radius:100px; font-size:13px; font-weight:700; text-decoration:none; transition:.2s; }
+  .btn-nav-outline { border:1px solid var(--border2); color:var(--text2); }
+  .btn-nav-outline:hover { color:var(--text); }
+  .btn-nav-primary { background:linear-gradient(135deg,#ef4444,#f97316); color:#fff; }
+  .btn-nav-primary:hover { opacity:.9; }
+
+  /* HERO */
+  .hero {
+    padding:140px 5% 80px;
+    max-width:1200px; margin:0 auto;
+    display:grid; grid-template-columns:1fr 1fr; gap:60px; align-items:center;
+  }
+  .hero-badge {
+    display:inline-flex; align-items:center; gap:8px;
+    background:rgba(239,68,68,0.12); border:1px solid rgba(239,68,68,0.25);
+    color:#fca5a5; padding:6px 16px; border-radius:100px;
+    font-size:12px; font-weight:600; letter-spacing:.5px; text-transform:uppercase;
+    margin-bottom:24px;
+  }
+  h1 { font-size:clamp(36px,5vw,62px); font-weight:900; letter-spacing:-2px; line-height:1.05; margin-bottom:20px; }
+  .gradient { background:linear-gradient(135deg,#ef4444,#f97316,#eab308); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+  .hero p { font-size:17px; color:var(--text2); line-height:1.7; margin-bottom:32px; }
+  .hero-actions { display:flex; gap:12px; flex-wrap:wrap; }
+  .btn-primary { display:inline-flex; align-items:center; gap:8px; background:linear-gradient(135deg,#ef4444,#f97316); color:#fff; padding:14px 28px; border-radius:12px; font-weight:700; font-size:15px; text-decoration:none; box-shadow:0 0 40px rgba(239,68,68,.3); transition:.2s; }
+  .btn-primary:hover { transform:translateY(-2px); box-shadow:0 0 60px rgba(239,68,68,.4); }
+  .btn-outline { display:inline-flex; align-items:center; gap:8px; background:transparent; color:var(--text); padding:14px 28px; border-radius:12px; font-weight:600; font-size:15px; text-decoration:none; border:1px solid var(--border2); transition:.2s; }
+  .btn-outline:hover { background:var(--surface); }
+
+  /* MOCKUP JUKEBOX */
+  .jukebox-mockup {
+    background:var(--surface2); border:1px solid var(--border2); border-radius:28px;
+    padding:24px; box-shadow:0 40px 80px rgba(0,0,0,.5);
+    max-width:320px; margin:0 auto;
+  }
+  .jukebox-header { display:flex; align-items:center; gap:10px; margin-bottom:16px; }
+  .jukebox-badge { background:#ef4444; padding:5px 10px; border-radius:7px; font-size:11px; font-weight:800; }
+  .jukebox-title { font-size:15px; font-weight:700; }
+  .jukebox-live { display:flex; align-items:center; gap:5px; font-size:11px; color:var(--text2); }
+  .dot { width:7px; height:7px; border-radius:50%; background:#22c55e; animation:blink 1.2s ease-in-out infinite; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.2} }
+  .jukebox-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .jk-card { background:var(--surface); border-radius:12px; padding:12px; text-align:center; border:1px solid var(--border); }
+  .jk-emoji { font-size:28px; margin-bottom:4px; }
+  .jk-nome { font-size:10px; font-weight:700; color:var(--text2); margin-bottom:4px; }
+  .jk-preco { font-size:14px; font-weight:900; }
+  .jk-card.hot { border-color:rgba(236,72,153,.4); background:rgba(236,72,153,.06); }
+  .jk-card.hot .jk-preco { color:#ec4899; }
+
+  /* STATS */
+  .stats { display:flex; gap:32px; flex-wrap:wrap; align-items:center; max-width:1200px; margin:0 auto; padding:0 5% 80px; }
+  .stat { display:flex; align-items:center; gap:10px; }
+  .stat-num { font-size:28px; font-weight:800; letter-spacing:-1px; color:#f97316; }
+  .stat-label { font-size:13px; color:var(--text2); line-height:1.4; }
+  .stat-div { width:1px; height:40px; background:var(--border); }
+
+  /* CANAIS */
+  .section { padding:80px 5%; position:relative; z-index:1; }
+  .section-center { max-width:1100px; margin:0 auto; }
+  .section-tag { display:inline-flex; align-items:center; gap:6px; background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.2); color:#fca5a5; padding:5px 14px; border-radius:100px; font-size:12px; font-weight:600; letter-spacing:.5px; text-transform:uppercase; margin-bottom:16px; }
+  .section-title { font-size:clamp(28px,4vw,44px); font-weight:800; letter-spacing:-1.5px; line-height:1.1; margin-bottom:14px; }
+  .section-sub { font-size:16px; color:var(--text2); line-height:1.7; margin-bottom:48px; }
+
+  .canais-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:12px; }
+  .canal-card { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:18px 14px; text-align:center; transition:.2s; }
+  .canal-card:hover { transform:translateY(-3px); border-color:var(--border2); }
+  .canal-emoji { font-size:32px; margin-bottom:8px; }
+  .canal-nome { font-size:13px; font-weight:700; }
+  .canal-dot { width:8px; height:8px; border-radius:50%; margin:6px auto 0; }
+
+  /* JUKEBOX SECTION */
+  .jukebox-section { background:var(--bg2); border-top:1px solid var(--border); border-bottom:1px solid var(--border); padding:100px 5%; }
+  .jukebox-explain { max-width:1100px; margin:0 auto; display:grid; grid-template-columns:1fr 1fr; gap:60px; align-items:center; }
+  .step { display:flex; gap:16px; margin-bottom:24px; }
+  .step-num { width:40px; height:40px; border-radius:12px; background:linear-gradient(135deg,#ef4444,#f97316); display:flex; align-items:center; justify-content:center; font-size:18px; font-weight:900; flex-shrink:0; }
+  .step-text h4 { font-size:15px; font-weight:700; margin-bottom:4px; }
+  .step-text p { font-size:13px; color:var(--text2); line-height:1.5; }
+
+  /* DEDICATÓRIAS */
+  .dedicatorias-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:12px; max-width:1100px; margin:0 auto; }
+  .ded-card { background:var(--surface); border-radius:16px; padding:20px; border:1px solid var(--border); text-align:center; }
+  .ded-emoji { font-size:40px; margin-bottom:8px; }
+  .ded-nome { font-size:14px; font-weight:700; margin-bottom:4px; }
+  .ded-desc { font-size:12px; color:var(--text2); margin-bottom:10px; }
+  .ded-preco { font-size:22px; font-weight:900; }
+
+  /* PLANOS */
+  .plans-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:20px; max-width:960px; margin:48px auto 0; }
+  .plan-card { background:var(--surface); border:1px solid var(--border); border-radius:20px; padding:32px; position:relative; transition:.3s; }
+  .plan-card:hover { transform:translateY(-4px); }
+  .plan-card.featured { border-color:rgba(239,68,68,.4); background:linear-gradient(135deg,rgba(239,68,68,.06),var(--surface)); }
+  .plan-tag { position:absolute; top:-1px; left:50%; transform:translateX(-50%); background:linear-gradient(135deg,#ef4444,#f97316); color:#fff; font-size:11px; font-weight:700; padding:4px 16px; border-radius:0 0 10px 10px; }
+  .plan-icon { font-size:36px; margin-bottom:12px; }
+  .plan-name { font-size:18px; font-weight:700; margin-bottom:4px; }
+  .plan-desc { font-size:13px; color:var(--text2); margin-bottom:20px; }
+  .plan-price { font-size:42px; font-weight:900; letter-spacing:-2px; margin-bottom:4px; }
+  .plan-price span { font-size:18px; font-weight:500; color:var(--text2); vertical-align:super; }
+  .plan-period { font-size:13px; color:var(--text2); margin-bottom:24px; }
+  .plan-features { list-style:none; margin-bottom:24px; display:flex; flex-direction:column; gap:9px; }
+  .plan-features li { font-size:13px; display:flex; align-items:center; gap:8px; }
+  .plan-features li::before { content:'✓'; width:18px; height:18px; border-radius:50%; background:rgba(34,197,94,.12); color:#22c55e; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:11px; font-weight:700; }
+  .plan-btn { display:block; width:100%; padding:13px; border-radius:12px; font-weight:700; font-size:14px; text-decoration:none; text-align:center; transition:.2s; }
+  .plan-btn-primary { background:linear-gradient(135deg,#ef4444,#f97316); color:#fff; }
+  .plan-btn-outline { background:var(--surface2); color:var(--text); border:1px solid var(--border2); }
+  .plan-btn-outline:hover { background:var(--surface); }
+
+  /* HIGHLIGHT: dinheiro pro bar */
+  .money-box { background:linear-gradient(135deg,rgba(34,197,94,.08),rgba(16,185,129,.05)); border:2px solid rgba(34,197,94,.25); border-radius:20px; padding:32px; max-width:960px; margin:0 auto 48px; display:flex; align-items:center; gap:24px; flex-wrap:wrap; }
+  .money-num { font-size:48px; font-weight:900; color:#4ade80; letter-spacing:-2px; flex-shrink:0; }
+  .money-text h3 { font-size:18px; font-weight:800; margin-bottom:6px; }
+  .money-text p { font-size:14px; color:var(--text2); line-height:1.6; }
+
+  footer { border-top:1px solid var(--border); padding:32px 5%; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px; }
+  .footer-logo { font-size:16px; font-weight:900; }
+  footer p { font-size:12px; color:var(--text2); }
+  footer a { color:var(--text2); text-decoration:none; font-size:13px; }
+
+  @media(max-width:768px) { .hero { grid-template-columns:1fr; padding-top:100px; } .jukebox-explain { grid-template-columns:1fr; } .stats { justify-content:center; } .stat-div { display:none; } }
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="/pubshow" class="nav-logo">📺 PUBSHOW</a>
+  <div class="nav-links">
+    <a href="/" class="btn-nav btn-nav-outline">← 4KITEM</a>
+    <a href="/pubshow/entrar" class="btn-nav btn-nav-outline">Entrar</a>
+    <a href="/pubshow/cadastro" class="btn-nav btn-nav-primary">🎰 Começar grátis</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<div style="max-width:1200px;margin:0 auto;">
+<div class="hero">
+  <div>
+    <div class="hero-badge">🎰 PUBSHOW · Jukebox Digital 2.0</div>
+    <h1>A atração<br>é a alma<br><span class="gradient">do pub.</span></h1>
+    <p>TV temática com curadoria por canal + Jukebox onde os clientes pagam para escolher. <strong style="color:var(--text)">100% do dinheiro vai pro seu bar.</strong></p>
+    <div class="hero-actions">
+      <a href="/pubshow/cadastro" class="btn-primary">🎰 Começar 7 dias grátis</a>
+      <a href="https://wa.me/5547991011351?text=Quero+conhecer+o+PUBSHOW" target="_blank" class="btn-outline">💬 Falar no WhatsApp</a>
+    </div>
+  </div>
+
+  <!-- Mockup Jukebox -->
+  <div class="jukebox-mockup">
+    <div class="jukebox-header">
+      <div>
+        <div class="jukebox-badge">🎸 Rock TV</div>
+      </div>
+      <div>
+        <div class="jukebox-title">Bar do Toninho</div>
+        <div class="jukebox-live"><span class="dot"></span> Jukebox ativo</div>
+      </div>
+    </div>
+    <div class="jukebox-grid">
+      <div class="jk-card">
+        <div class="jk-emoji">🎵</div>
+        <div class="jk-nome">Pedir música</div>
+        <div class="jk-preco" style="color:#3b82f6">R$ 2</div>
+      </div>
+      <div class="jk-card">
+        <div class="jk-emoji">⚡</div>
+        <div class="jk-nome">Prioridade</div>
+        <div class="jk-preco" style="color:#f59e0b">R$ 5</div>
+      </div>
+      <div class="jk-card hot">
+        <div class="jk-emoji">🎂</div>
+        <div class="jk-nome">Parabéns!</div>
+        <div class="jk-preco">R$ 15</div>
+      </div>
+      <div class="jk-card">
+        <div class="jk-emoji">💌</div>
+        <div class="jk-nome">Dedicatória</div>
+        <div class="jk-preco" style="color:#ef4444">R$ 10</div>
+      </div>
+    </div>
+    <div style="margin-top:12px;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.2);border-radius:10px;padding:10px;text-align:center;font-size:12px;color:#4ade80;font-weight:700">
+      💚 100% do pagamento vai pro bar
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- STATS -->
+<div class="stats">
+  <div class="stat"><div class="stat-num">{{ total_canais }}+</div><div class="stat-label">Canais<br>temáticos</div></div>
+  <div class="stat-div"></div>
+  <div class="stat"><div class="stat-num">{{ total_videos }}+</div><div class="stat-label">Vídeos<br>curados</div></div>
+  <div class="stat-div"></div>
+  <div class="stat"><div class="stat-num">100%</div><div class="stat-label">Jukebox<br>pro bar</div></div>
+  <div class="stat-div"></div>
+  <div class="stat"><div class="stat-num">0</div><div class="stat-label">Apps para<br>instalar</div></div>
+</div>
+
+<!-- CANAIS -->
+<div class="section" style="background:var(--bg2);border-top:1px solid var(--border);border-bottom:1px solid var(--border)">
+<div class="section-center" style="text-align:center">
+  <div class="section-tag">📺 Canais temáticos</div>
+  <h2 class="section-title">Um canal para cada estilo.<br>Troca com 1 clique.</h2>
+  <p class="section-sub" style="max-width:560px;margin:0 auto 48px">Música, esportes e shows curados. O dono escolhe o canal, liga e esquece.</p>
+  <div class="canais-grid">
+    {% for key, c in canais.items() %}
+    <div class="canal-card">
+      <div class="canal-emoji">{{ c.emoji }}</div>
+      <div class="canal-nome">{{ c.nome }}</div>
+      <div class="canal-dot" style="background:{{ c.cor }}"></div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+</div>
+
+<!-- JUKEBOX COMO FUNCIONA -->
+<div class="jukebox-section">
+<div class="jukebox-explain">
+  <div>
+    <div class="section-tag">🎰 Jukebox 2.0</div>
+    <h2 class="section-title">Seus clientes<br>controlam a TV.<br><span class="gradient">E pagam por isso.</span></h2>
+    <p style="font-size:15px;color:var(--text2);line-height:1.7;margin-bottom:32px">
+      QR Code na mesa. Cliente escaneia, escolhe, paga via PIX. Dinheiro cai direto na sua conta. O PUBSHOW só fica com a assinatura.
+    </p>
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-text"><h4>QR Code na mesa ou balcão</h4><p>Imprime e cola. Qualquer cliente pode escanear com o celular — sem app.</p></div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-text"><h4>Escolhe o pedido e paga</h4><p>Música, Parabéns, Dedicatória, Brinde. Paga direto na sua chave PIX.</p></div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-text"><h4>Aparece na TV do bar</h4><p>"🎂 PARABÉNS, ANA!" — o bar inteiro vê. Todo mundo filma. Todo mundo quer participar.</p></div>
+    </div>
+  </div>
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:28px">
+    <div style="font-size:13px;font-weight:700;color:var(--text2);margin-bottom:16px;text-transform:uppercase;letter-spacing:.5px">💰 Simulação — sexta à noite</div>
+    {% for item in [('2 Parabéns','R$ 15 cada','R$ 30'),('3 Dedicatórias','R$ 10 cada','R$ 30'),('5 Prioridades','R$ 5 cada','R$ 25'),('8 Pedidos de música','R$ 2 cada','R$ 16')] %}
+    <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);font-size:13px">
+      <span><strong>{{ item[0] }}</strong> <span style="color:var(--text2)">· {{ item[1] }}</span></span>
+      <span style="font-weight:700;color:var(--green)">{{ item[2] }}</span>
+    </div>
+    {% endfor %}
+    <div style="display:flex;justify-content:space-between;padding:14px 0 0;font-size:15px;font-weight:800">
+      <span>Total da sexta</span>
+      <span style="color:var(--green)">R$ 101</span>
+    </div>
+    <div style="margin-top:12px;background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.2);border-radius:10px;padding:12px;font-size:12px;color:#4ade80;text-align:center">
+      4 sextas = <strong>R$ 404/mês</strong> · Assinatura = <strong>R$ 89,90</strong><br>
+      <strong style="font-size:14px">Lucro líquido: R$ 314/mês</strong>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- DEDICATÓRIAS -->
+<div class="section">
+<div class="section-center" style="text-align:center">
+  <div class="section-tag">🎂 Momentos especiais</div>
+  <h2 class="section-title">O bar inteiro participa.<br>Ninguém esquece.</h2>
+  <p class="section-sub" style="max-width:560px;margin:0 auto 48px">Cada pedido especial aparece na tela do bar em tamanho gigante. Com animação, música e confetes.</p>
+  <div class="dedicatorias-grid">
+    {% for tipo, info in [('🎂','Parabéns!','Nome na tela + confetes + todo mundo canta','R$ 15'),('💌','Dedicatória','Mensagem de amor na tela inteira','R$ 10'),('🍻','Brinde Geral','Todo o bar levanta o copo junto','R$ 5'),('🎉','Chegamos!','Sua chegada anunciada no telão','R$ 5'),('💍','Pedido de casamento','O momento mais épico do bar','R$ 25'),('👑','Tocar AGORA','Sua música interrompe tudo','R$ 10')] %}
+    <div class="ded-card">
+      <div class="ded-emoji">{{ tipo }}</div>
+      <div class="ded-nome">{{ info }}</div>
+      <div class="ded-desc">{{ loop.index }}</div>
+      <div class="ded-preco" style="color:{% if loop.index==5 %}#a855f7{% elif loop.index==1 %}#ec4899{% else %}#f97316{% endif %}">{{ loop.cycle('R$ 15','R$ 10','R$ 5','R$ 5','R$ 25','R$ 10') }}</div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+</div>
+
+<!-- PLANOS -->
+<div class="section" id="planos" style="background:var(--bg2);border-top:1px solid var(--border)">
+<div class="section-center" style="text-align:center">
+  <div class="section-tag">✦ Planos</div>
+  <h2 class="section-title">Simples. Sem surpresas.</h2>
+
+  <!-- Destaque: 100% do Jukebox pro bar -->
+  <div class="money-box">
+    <div class="money-num">100%</div>
+    <div class="money-text">
+      <h3>Todo o dinheiro do Jukebox vai pro seu bar</h3>
+      <p>O PUBSHOW cobra apenas a assinatura mensal. Cada pedido dos clientes vai direto para a sua chave PIX — sem divisão, sem taxa, sem burocracia.</p>
+    </div>
+  </div>
+
+  <div class="plans-grid">
+    {% for key, p in planos.items() %}
+    <div class="plan-card {% if p.get('destaque') %}featured{% endif %}">
+      {% if p.get('destaque') %}<div class="plan-tag">⭐ Mais popular</div>{% endif %}
+      <div class="plan-icon">{{ p.emoji }}</div>
+      <div class="plan-name">{{ p.nome }}</div>
+      <div class="plan-desc">{{ p.descricao }}</div>
+      <div class="plan-price"><span>R$</span>{{ '%.0f'|format(p.preco) }}</div>
+      <div class="plan-period">por mês · cancele quando quiser</div>
+      <ul class="plan-features">
+        {% for f in p.features %}
+        <li>{{ f }}</li>
+        {% endfor %}
+      </ul>
+      <a href="/pubshow/cadastro?plano={{ key }}"
+         class="plan-btn {% if p.get('destaque') %}plan-btn-primary{% else %}plan-btn-outline{% endif %}">
+        Começar 7 dias grátis →
+      </a>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+</div>
+
+<!-- CTA FINAL -->
+<div style="padding:80px 5%;text-align:center">
+  <div style="max-width:580px;margin:0 auto;background:linear-gradient(135deg,rgba(239,68,68,.1),rgba(249,115,22,.06));border:1px solid rgba(239,68,68,.2);border-radius:28px;padding:52px 36px">
+    <div style="font-size:48px;margin-bottom:16px">🎰</div>
+    <h2 style="font-size:clamp(24px,4vw,36px);font-weight:800;letter-spacing:-1px;margin-bottom:12px">Seu bar merece ser<br>a atração da cidade.</h2>
+    <p style="color:var(--text2);font-size:15px;margin-bottom:28px;line-height:1.7">7 dias grátis. Sem cartão. Configura em 5 minutos e o Jukebox já começa a gerar dinheiro.</p>
+    <a href="/pubshow/cadastro" class="btn-primary" style="font-size:16px;padding:16px 36px">
+      🎰 Começar grátis agora →
+    </a>
+    <p style="margin-top:16px;font-size:12px;color:var(--text2)">Ou fale no <a href="https://wa.me/5547991011351" target="_blank" style="color:#f97316">WhatsApp: (47) 99101-1351</a></p>
+  </div>
+</div>
+
+<footer>
+  <div class="footer-logo"><span style="background:linear-gradient(135deg,#ef4444,#f97316);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">4K</span>ITEM</div>
+  <p>© 2026 4KITEM · PUBSHOW · Norte de SC</p>
+  <a href="/">← Voltar à plataforma</a>
+</footer>
+
+</body>
+</html>
