@@ -274,7 +274,7 @@ function avancarFila() {
     const p = pedidoMusica;
     pedidoMusica = null;
     esconderBadgeFila();
-    fetch(`${BASE_URL}/api/pedido-exibido/${p.id}`, {method:'POST'});
+    fetch(`${BASE_URL}/api/pedido-exibido/${p.id}`, {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:CODE})});
 
     if (p.youtube_id) {
       // 🎯 Música específica — toca o vídeo exato pedido pelo cliente
@@ -381,7 +381,7 @@ function mostrarOverlay(pedido) {
   if (cfg.confetes) lancarConfetes(cfg.cor);
 
   // Marca como exibido
-  fetch(`${BASE_URL}/api/pedido-exibido/${pedido.id}`, {method:'POST'});
+  fetch(`${BASE_URL}/api/pedido-exibido/${pedido.id}`, {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:CODE})});
 
   clearTimeout(window._overlayTimer);
   window._overlayTimer = setTimeout(() => {

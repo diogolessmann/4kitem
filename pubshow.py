@@ -53,18 +53,10 @@ CANAIS = {
     'futebol':        {'nome': 'Futebol TV',        'emoji': '⚽',  'cor': '#16a34a', 'cat': 'futebol',   'grupo': 'sport'},
     'surf':           {'nome': 'Surf TV',           'emoji': '🏄',  'cor': '#0ea5e9', 'cat': 'surf',      'grupo': 'sport'},
     'aerio':          {'nome': 'Aéreo TV',          'emoji': '🪂',  'cor': '#6366f1', 'cat': 'aerio',     'grupo': 'sport'},
-    'radical':        {'nome': 'Radical TV',        'emoji': '🛹',  'cor': '#f59e0b', 'cat': 'radical',   'grupo': 'sport'},
+    'radical':        {'nome': 'Radical TV',        'emoji': '🛹',  'cor': '#f43f5e', 'cat': 'radical',   'grupo': 'sport'},
 }
 
 PLANOS = {
-    'casa': {
-        'nome': 'Casa',
-        'emoji': '🏠',
-        'preco': 19.90,
-        'preco_fmt': 'R$ 19,90',
-        'descricao': 'Para fãs em casa',
-        'features': ['1 tela', 'Todos os canais', 'Sem Jukebox', 'Atualização mensal da biblioteca'],
-    },
     'bar': {
         'nome': 'Bar / Pub',
         'emoji': '🍺',
@@ -108,12 +100,23 @@ def _gerar_jukebox_token():
 
 
 def _jukebox_aberto(b):
-    """Verifica se o jukebox está aberto no horário configurado."""
-    import json
-    if not b['jukebox_ativo']:
-        return False, 'Jukebox desativado pelo estabelecimento.'
+    """Verifica se o jukebox está aberto — plano/trial, horário, status."""
     if b['suspenso']:
         return False, 'Estabelecimento temporariamente indisponível.'
+
+    # ── Verifica plano ativo ou trial vigente ─────────────────────────────────
+    plano_ok = bool(b['plano_ativo'])
+    if not plano_ok:
+        trial_ends = (b['trial_ends'] or '')[:19]  # 'YYYY-MM-DDTHH:MM:SS'
+        if trial_ends and trial_ends >= datetime.now().isoformat()[:19]:
+            plano_ok = True   # ainda no trial
+    if not plano_ok:
+        return False, 'Jukebox indisponível. Fale com o responsável do estabelecimento.'
+
+    if not b['jukebox_ativo']:
+        return False, 'Jukebox desativado pelo estabelecimento.'
+
+    # ── Verifica horário de funcionamento ─────────────────────────────────────
     hora_ini = b['jukebox_hora_ini'] or '00:00'
     hora_fim = b['jukebox_hora_fim'] or '23:59'
     if hora_ini != '00:00' or hora_fim != '23:59':
@@ -509,11 +512,12 @@ def api_status(code):
         (b['id'],)
     ).fetchone()
 
-    # Pedido de música — espera o vídeo atual acabar (VIP, flash, musica)
+    # Pedido de música — espera o vídeo atual acabar
+    # VIP → toca na frente de tudo; flash → prioridade; restantes → ordem de chegada
     pedido_musica = conn.execute(
         '''SELECT * FROM pubshow_pedidos
            WHERE business_id=? AND status="pendente"
-           AND tipo IN ("vip","flash","musica")
+           AND tipo IN ("vip","flash","musica","musica_especifica","musica_externa")
            ORDER BY
              CASE tipo WHEN "vip" THEN 1 WHEN "flash" THEN 2 ELSE 3 END,
              created_at ASC
@@ -540,7 +544,23 @@ def api_status(code):
 
 @pubshow_bp.route('/api/pedido-exibido/<int:pedido_id>', methods=['POST'])
 def api_pedido_exibido(pedido_id):
+    """Marca pedido como exibido. Valida que a TV (code) é dona do pedido."""
+    data = request.get_json(silent=True) or {}
+    code = data.get('code') or request.form.get('code', '')
     conn = get_pubshow_db()
+    pedido = conn.execute(
+        'SELECT id, business_id FROM pubshow_pedidos WHERE id=?', (pedido_id,)
+    ).fetchone()
+    if not pedido:
+        conn.close()
+        return jsonify({'error': 'not_found'}), 404
+    if code:  # se code foi enviado, verifica ownership
+        b = conn.execute(
+            'SELECT id FROM pubshow_businesses WHERE code=?', (code,)
+        ).fetchone()
+        if not b or b['id'] != pedido['business_id']:
+            conn.close()
+            return jsonify({'error': 'unauthorized'}), 403
     conn.execute(
         "UPDATE pubshow_pedidos SET status='exibido', exibido_at=datetime('now','localtime') WHERE id=?",
         (pedido_id,)
