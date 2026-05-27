@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Desbanir Email / Telefone — Admin</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#0f0f13;color:#e8e8f0;font-family:'Segoe UI',sans-serif;padding:32px 16px}
+  .container{max-width:700px;margin:0 auto}
+  h1{font-size:22px;font-weight:800;color:#fff;margin-bottom:4px}
+  .sub{font-size:13px;color:#9090a8;margin-bottom:28px}
+  .back{display:inline-block;color:#9090a8;font-size:13px;margin-bottom:20px;text-decoration:none}
+  .back:hover{color:#fff}
+  .card{background:#1a1a24;border:1px solid #2a2a3a;border-radius:16px;padding:24px;margin-bottom:20px}
+  .form-row{display:flex;gap:12px;align-items:flex-end}
+  input[type=text]{flex:1;background:#22222f;border:1px solid #333;border-radius:10px;padding:11px 14px;color:#fff;font-size:14px;outline:none}
+  input[type=text]:focus{border-color:#22c55e}
+  .btn{padding:11px 22px;background:#22c55e;color:#fff;font-size:14px;font-weight:700;border:none;border-radius:10px;cursor:pointer}
+  .btn:hover{opacity:.9}
+  .btn-red{background:#ef4444}
+  .msg-ok{background:#052e16;border:1px solid #22c55e33;border-radius:10px;padding:14px 18px;color:#4ade80;font-size:14px;margin-bottom:20px}
+  .msg-err{background:#2d0a0a;border:1px solid #ef444433;border-radius:10px;padding:14px 18px;color:#f87171;font-size:14px;margin-bottom:20px}
+  .result-item{background:#22222f;border:1px solid #333;border-radius:12px;padding:16px 18px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+  .result-info{flex:1}
+  .result-info strong{color:#fff;font-size:14px}
+  .result-info .meta{font-size:12px;color:#9090a8;margin-top:4px}
+  .tag{display:inline-block;background:#22c55e22;color:#22c55e;font-size:11px;font-weight:700;padding:2px 8px;border-radius:6px;margin-right:6px}
+  .empty{color:#9090a8;font-size:14px;text-align:center;padding:24px}
+  .warning{background:#1a1000;border:1px solid #f59e0b44;border-radius:10px;padding:14px 18px;color:#fbbf24;font-size:13px;margin-bottom:20px}
+</style>
+</head>
+<body>
+<div class="container">
+  <a href="/saas-admin" class="back">← Voltar ao admin</a>
+  <h1>🔓 Desbanir E-mail ou Telefone</h1>
+  <p class="sub">Busque um e-mail ou telefone já cadastrado para liberar novo cadastro.</p>
+
+  {% if mensagem %}
+    {% if '✅' in mensagem %}
+      <div class="msg-ok">{{ mensagem }}</div>
+    {% else %}
+      <div class="msg-err">{{ mensagem }}</div>
+    {% endif %}
+  {% endif %}
+
+  <div class="card">
+    <form method="POST">
+      <div class="form-row">
+        <input type="text" name="busca" value="{{ busca or '' }}" placeholder="Digite o e-mail ou telefone (ex: diogo@gmail.com ou 47997766831)" autocomplete="off">
+        <button type="submit" class="btn">Buscar</button>
+      </div>
+    </form>
+  </div>
+
+  {% if resultado is not none %}
+    {% if resultado %}
+      <div class="warning">⚠️ Deletar um registro remove todos os dados associados. Use apenas para liberar re-cadastro.</div>
+      {% for r in resultado %}
+      <div class="result-item">
+        <div class="result-info">
+          <strong>{{ r.nome or '(sem nome)' }}</strong>
+          <div class="meta">
+            <span class="tag">{{ r.tabela }}</span>
+            {% if r.email %}📧 {{ r.email }}{% endif %}
+            {% if r.telefone %} · 📱 {{ r.telefone }}{% endif %}
+            {% if r.created_at %} · Cadastrado: {{ r.created_at[:10] }}{% endif %}
+          </div>
+        </div>
+        {% if not r.get('kids_db') %}
+        <form method="POST" onsubmit="return confirm('Confirmar remoção de {{ r.nome }}? Esta ação não pode ser desfeita.')">
+          <input type="hidden" name="acao" value="deletar">
+          <input type="hidden" name="tabela" value="{{ r.tabela }}">
+          <input type="hidden" name="registro_id" value="{{ r.id }}">
+          <button type="submit" class="btn btn-red">🗑️ Remover</button>
+        </form>
+        {% else %}
+        <span style="font-size:12px;color:#9090a8">kids.db — remova manualmente</span>
+        {% endif %}
+      </div>
+      {% endfor %}
+    {% else %}
+      <div class="empty">Nenhum registro encontrado para <strong>"{{ busca }}"</strong>.</div>
+    {% endif %}
+  {% endif %}
+</div>
+</body>
+</html>

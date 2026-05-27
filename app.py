@@ -173,6 +173,25 @@ def _asaas_criar_assinatura_saas(customer_id, app_prefix, plano_key, valor, desc
         'externalReference': f'{app_prefix}_{customer_id}_{plano_key}',
     })
 
+def _asaas_get_pix_qr(subscription_id: str) -> dict:
+    """Busca QR Code PIX do primeiro pagamento de uma assinatura Asaas."""
+    try:
+        payments = _asaas_req('GET', f'/subscriptions/{subscription_id}/payments?limit=1')
+        if not payments.get('data'):
+            return {}
+        payment_id = payments['data'][0].get('id', '')
+        if not payment_id:
+            return {}
+        qr = _asaas_req('GET', f'/payments/{payment_id}/pixQrCode')
+        return {
+            'encodedImage': qr.get('encodedImage', ''),
+            'payload': qr.get('payload', ''),
+            'payment_id': payment_id,
+        }
+    except Exception as e:
+        log.error('[Asaas PIX QR] Erro: %s', e)
+        return {}
+
 # ── Email helpers ─────────────────────────────────────────────────────────────
 def _email_base(conteudo: str, cor: str = '#22c55e') -> str:
     """Wrapper HTML base para todos os emails transacionais."""
@@ -3484,6 +3503,13 @@ def agenda_assinar():
                 billing_type
             )
             if resp.get('id'):
+                if billing_type == 'PIX':
+                    pix = _asaas_get_pix_qr(resp['id'])
+                    session['agenda_pix_qr'] = pix.get('encodedImage', '')
+                    session['agenda_pix_payload'] = pix.get('payload', '')
+                else:
+                    session.pop('agenda_pix_qr', None)
+                    session.pop('agenda_pix_payload', None)
                 return redirect('/agenda/aguardando-pagamento')
             else:
                 erro = 'Não foi possível gerar o pagamento. Tente novamente.'
@@ -3493,7 +3519,9 @@ def agenda_assinar():
 @app.route('/agenda/aguardando-pagamento')
 @_agenda_login_required
 def agenda_aguardando():
-    return render_template('agenda/aguardando.html')
+    pix_qr = session.pop('agenda_pix_qr', '')
+    pix_payload = session.pop('agenda_pix_payload', '')
+    return render_template('agenda/aguardando.html', pix_qr=pix_qr, pix_payload=pix_payload)
 
 
 @app.route('/agenda/painel/configuracoes', methods=['GET', 'POST'])
@@ -4315,6 +4343,83 @@ def saas_admin_login():
 def saas_admin_logout():
     session.pop('saas_admin', None)
     return redirect('/saas-admin/login')
+
+
+@app.route('/saas-admin/unban', methods=['GET', 'POST'])
+@_saas_admin_required
+def saas_admin_unban():
+    """Desbanir e-mail ou telefone já usado em qualquer SaaS."""
+    resultado = None
+    mensagem = None
+    busca = request.form.get('busca', '').strip() if request.method == 'POST' else ''
+    acao = request.form.get('acao', '')
+    tabela = request.form.get('tabela', '')
+    registro_id = request.form.get('registro_id', '')
+
+    if acao == 'deletar' and tabela and registro_id:
+        try:
+            conn = get_saas_db()
+            conn.execute(f'DELETE FROM {tabela} WHERE id=?', (registro_id,))
+            conn.commit(); conn.close()
+            mensagem = f'✅ Registro removido de {tabela} (id={registro_id}). O e-mail/telefone pode ser usado novamente.'
+        except Exception as e:
+            mensagem = f'❌ Erro ao remover: {e}'
+        return render_template('saas_admin_unban.html', resultado=None, mensagem=mensagem, busca='')
+
+    if request.method == 'POST' and busca:
+        conn = get_saas_db()
+        busca_lower = busca.lower()
+        busca_digits = ''.join(c for c in busca if c.isdigit())
+        encontrados = []
+
+        tabelas = [
+            ('agenda_businesses',  'phone', 'email', 'name'),
+            ('alerta_subscribers', 'phone', 'email', 'name'),
+            ('mandazap_users',     'email', 'email', 'name'),
+            ('bau_users',          'email', 'email', 'name'),
+            ('mandaja_stores',     'phone', 'email', 'name'),
+        ]
+        for (tb, col_phone, col_email, col_name) in tabelas:
+            try:
+                rows = conn.execute(
+                    f"SELECT id, {col_name} as nome, {col_phone} as telefone, {col_email} as email, created_at FROM {tb}"
+                ).fetchall()
+                for r in rows:
+                    r = dict(r)
+                    phone_d = ''.join(c for c in (r.get('telefone') or '') if c.isdigit())
+                    if (busca_lower in (r.get('email') or '').lower() or
+                        (busca_digits and busca_digits in phone_d)):
+                        encontrados.append({
+                            'tabela': tb, 'id': r['id'],
+                            'nome': r.get('nome', ''),
+                            'email': r.get('email', ''),
+                            'telefone': r.get('telefone', ''),
+                            'created_at': r.get('created_at', ''),
+                        })
+            except Exception:
+                pass
+
+        # Verifica também em kids.db
+        try:
+            kconn = get_kids_conn()
+            kids_rows = kconn.execute('SELECT id, name, email, created_at FROM clients').fetchall()
+            for r in kids_rows:
+                r = dict(r)
+                if busca_lower in (r.get('email') or '').lower():
+                    encontrados.append({
+                        'tabela': 'clients (kids.db)', 'id': r['id'],
+                        'nome': r.get('name', ''), 'email': r.get('email', ''),
+                        'telefone': '', 'created_at': r.get('created_at', ''),
+                        'kids_db': True,
+                    })
+            kconn.close()
+        except Exception:
+            pass
+
+        conn.close()
+        resultado = encontrados
+
+    return render_template('saas_admin_unban.html', resultado=resultado, mensagem=mensagem, busca=busca)
 
 
 @app.route('/saas-admin/asaas-test')
