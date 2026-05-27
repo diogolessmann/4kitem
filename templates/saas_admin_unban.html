@@ -67,16 +67,12 @@
             {% if r.created_at %} · Cadastrado: {{ r.created_at[:10] }}{% endif %}
           </div>
         </div>
-        {% if not r.get('kids_db') %}
         <form method="POST" onsubmit="return confirm('Confirmar remoção de {{ r.nome }}? Esta ação não pode ser desfeita.')">
           <input type="hidden" name="acao" value="deletar">
           <input type="hidden" name="tabela" value="{{ r.tabela }}">
           <input type="hidden" name="registro_id" value="{{ r.id }}">
           <button type="submit" class="btn btn-red">🗑️ Remover</button>
         </form>
-        {% else %}
-        <span style="font-size:12px;color:#9090a8">kids.db — remova manualmente</span>
-        {% endif %}
       </div>
       {% endfor %}
     {% else %}

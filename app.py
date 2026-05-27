@@ -4358,8 +4358,16 @@ def saas_admin_unban():
 
     if acao == 'deletar' and tabela and registro_id:
         try:
-            conn = get_saas_db()
-            conn.execute(f'DELETE FROM {tabela} WHERE id=?', (registro_id,))
+            if 'petmed' in tabela:
+                from petmed_db import get_petmed_db as _get_pm_db
+                conn = _get_pm_db()
+                conn.execute('DELETE FROM petmed_users WHERE id=?', (registro_id,))
+            elif 'kids' in tabela or 'clients' in tabela:
+                conn = get_kids_conn()
+                conn.execute('DELETE FROM clients WHERE id=?', (registro_id,))
+            else:
+                conn = get_saas_db()
+                conn.execute(f'DELETE FROM {tabela} WHERE id=?', (registro_id,))
             conn.commit(); conn.close()
             mensagem = f'✅ Registro removido de {tabela} (id={registro_id}). O e-mail/telefone pode ser usado novamente.'
         except Exception as e:
@@ -4399,7 +4407,30 @@ def saas_admin_unban():
             except Exception:
                 pass
 
-        # Verifica também em kids.db
+        conn.close()
+
+        # VetZap (petmed.db)
+        try:
+            from petmed_db import get_petmed_db as _get_pm_db
+            pmconn = _get_pm_db()
+            pm_rows = pmconn.execute('SELECT id, nome, email, telefone, created_at FROM petmed_users').fetchall()
+            for r in pm_rows:
+                r = dict(r)
+                phone_d = ''.join(c for c in (r.get('telefone') or '') if c.isdigit())
+                if (busca_lower in (r.get('email') or '').lower() or
+                    (busca_digits and busca_digits in phone_d)):
+                    encontrados.append({
+                        'tabela': 'petmed_users (VetZap)', 'id': r['id'],
+                        'nome': r.get('nome', ''), 'email': r.get('email', ''),
+                        'telefone': r.get('telefone', ''),
+                        'created_at': r.get('created_at', ''),
+                        'petmed_db': True,
+                    })
+            pmconn.close()
+        except Exception:
+            pass
+
+        # KidsCurator (kids.db)
         try:
             kconn = get_kids_conn()
             kids_rows = kconn.execute('SELECT id, name, email, created_at FROM clients').fetchall()
@@ -4407,7 +4438,7 @@ def saas_admin_unban():
                 r = dict(r)
                 if busca_lower in (r.get('email') or '').lower():
                     encontrados.append({
-                        'tabela': 'clients (kids.db)', 'id': r['id'],
+                        'tabela': 'clients (KidsCurator)', 'id': r['id'],
                         'nome': r.get('name', ''), 'email': r.get('email', ''),
                         'telefone': '', 'created_at': r.get('created_at', ''),
                         'kids_db': True,
@@ -4416,7 +4447,6 @@ def saas_admin_unban():
         except Exception:
             pass
 
-        conn.close()
         resultado = encontrados
 
     return render_template('saas_admin_unban.html', resultado=resultado, mensagem=mensagem, busca=busca)
