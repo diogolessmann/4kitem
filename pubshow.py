@@ -60,8 +60,8 @@ PLANOS = {
     'bar': {
         'nome': 'Bar / Pub',
         'emoji': '🍺',
-        'preco': 89.90,
-        'preco_fmt': 'R$ 89,90',
+        'preco': 129.90,
+        'preco_fmt': 'R$ 129,90',
         'descricao': 'Para estabelecimentos',
         'destaque': True,
         'features': ['Telas ilimitadas', 'Todos os canais', 'Jukebox ativo (100% pra você)', 'QR Code de mesa', 'Parabéns e Dedicatórias', 'Painel de gestão'],
@@ -69,8 +69,8 @@ PLANOS = {
     'premium': {
         'nome': 'Premium / Rede',
         'emoji': '🏟️',
-        'preco': 189.90,
-        'preco_fmt': 'R$ 189,90',
+        'preco': 249.90,
+        'preco_fmt': 'R$ 249,90',
         'descricao': 'Para redes e múltiplos locais',
         'features': ['Tudo do Bar', 'Múltiplos locais', 'Painel unificado', 'Suporte prioritário', 'Relatório de pedidos'],
     },
