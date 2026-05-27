@@ -337,6 +337,58 @@ def _asaas_criar_assinatura(customer_id, plano, billing_type, business_id):
     })
 
 
+def _asaas_criar_cobranca_pix_jukebox(b, pedido_id: int, valor: float, descricao: str):
+    """Cria cobrança PIX avulsa no Asaas para pedido de Jukebox.
+
+    Retorna dict com {payment_id, qr_b64, payload, expiracao}
+    ou None em caso de erro (usar fallback manual).
+    """
+    if not os.environ.get('ASAAS_API_KEY'):
+        return None   # Asaas não configurado — usar PIX manual
+
+    # Garante que o bar tem cliente no Asaas
+    customer_id = _asaas_criar_ou_buscar_cliente(b)
+    if not customer_id:
+        log.warning('[PUBSHOW] Asaas: sem customer para bar %s', b['id'])
+        return None
+
+    import datetime as _dt
+    venc = (_dt.date.today() + _dt.timedelta(days=1)).strftime('%Y-%m-%d')
+
+    # 1) Cria cobrança PIX avulsa
+    resp = _asaas_req('POST', '/payments', {
+        'customer':          customer_id,
+        'billingType':       'PIX',
+        'value':             round(valor, 2),
+        'dueDate':           venc,
+        'description':       f'Jukebox — {descricao} — {b["nome"]}',
+        'externalReference': f'jukebox_{pedido_id}',
+        'postalService':     False,
+    })
+
+    payment_id = resp.get('id')
+    if not payment_id:
+        log.error('[PUBSHOW] Asaas criar cobrança falhou: %s', resp)
+        return None
+
+    # 2) Busca QR code PIX
+    qr_resp = _asaas_req('GET', f'/payments/{payment_id}/pixQrCode')
+    encoded  = qr_resp.get('encodedImage', '')
+    payload  = qr_resp.get('payload', '')
+    expira   = qr_resp.get('expirationDate', '')
+
+    if not payload:
+        log.error('[PUBSHOW] Asaas QR vazio para payment %s', payment_id)
+        return None
+
+    return {
+        'payment_id': payment_id,
+        'qr_b64':     encoded,
+        'payload':    payload,
+        'expiracao':  expira,
+    }
+
+
 def _videos_do_canal(canal_key, limit=60):
     import random
     cat = CANAIS.get(canal_key, {}).get('cat', canal_key)
@@ -547,35 +599,62 @@ def jukebox(token):
                 usar_pix = bool(b['requer_pix']) and bool(b['pix_key'])
 
                 if usar_pix:
-                    # ── PIX: cria pedido aguardando confirmação ───────────────
+                    # ── Cria pedido como aguardando_pix (sem asaas_payment_id ainda) ─
                     txid = f'P{b["id"]}T{int(datetime.now().timestamp())}'
-                    payload = _pix_emv(
-                        b['pix_key'], b['pix_tipo'] or 'telefone',
-                        b['pix_nome_recebedor'] or b['nome'],
-                        preco, txid
-                    )
-                    qr_b64 = _pix_qr_b64(payload)
                     conn2 = get_pubshow_db()
                     cur = conn2.execute(
                         '''INSERT INTO pubshow_pedidos
                            (business_id, tipo, nome_cliente, mensagem, categoria, status, valor,
-                            youtube_id, titulo_pedido, thumb_url, ip_cliente, pix_txid, pix_payload)
-                           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)''',
+                            youtube_id, titulo_pedido, thumb_url, ip_cliente, pix_txid)
+                           VALUES (?,?,?,?,?,?,?,?,?,?,?,?)''',
                         (b['id'], tipo, nome_cliente, mensagem, categoria,
                          'aguardando_pix', preco,
                          youtube_id or None, titulo_pedido or None, thumb_url or None,
-                         ip_cliente, txid, payload)
+                         ip_cliente, txid)
                     )
                     pedido_id = cur.lastrowid
                     conn2.commit(); conn2.close()
+
+                    # ── Tenta Asaas primeiro (confirmação automática) ──────────
+                    descricao_pedido = precos_bar[tipo]['nome']
+                    if titulo_pedido:
+                        descricao_pedido += f' — {titulo_pedido[:40]}'
+                    asaas_data = _asaas_criar_cobranca_pix_jukebox(b, pedido_id, preco, descricao_pedido)
+
+                    if asaas_data:
+                        # Asaas gerou QR — salva payment_id e usa payload do Asaas
+                        conn3 = get_pubshow_db()
+                        conn3.execute(
+                            'UPDATE pubshow_pedidos SET asaas_payment_id=?, pix_payload=? WHERE id=?',
+                            (asaas_data['payment_id'], asaas_data['payload'], pedido_id)
+                        )
+                        conn3.commit(); conn3.close()
+                        pix_qr    = asaas_data['qr_b64']
+                        pix_payload = asaas_data['payload']
+                    else:
+                        # Fallback: EMV manual (confirmar no painel)
+                        pix_payload = _pix_emv(
+                            b['pix_key'], b['pix_tipo'] or 'telefone',
+                            b['pix_nome_recebedor'] or b['nome'],
+                            preco, txid
+                        )
+                        pix_qr = _pix_qr_b64(pix_payload)
+                        conn3 = get_pubshow_db()
+                        conn3.execute(
+                            'UPDATE pubshow_pedidos SET pix_payload=? WHERE id=?',
+                            (pix_payload, pedido_id)
+                        )
+                        conn3.commit(); conn3.close()
+
                     pix_pendente = {
-                        'pedido_id': pedido_id,
-                        'payload':   payload,
-                        'qr_b64':    qr_b64,
-                        'valor':     preco,
-                        'recebedor': b['pix_nome_recebedor'] or b['nome'],
-                        'tipo_nome': precos_bar[tipo]['nome'],
-                        'tipo_emoji':precos_bar[tipo]['emoji'],
+                        'pedido_id':  pedido_id,
+                        'payload':    pix_payload,
+                        'qr_b64':     pix_qr,
+                        'valor':      preco,
+                        'recebedor':  b['pix_nome_recebedor'] or b['nome'],
+                        'tipo_nome':  precos_bar[tipo]['nome'],
+                        'tipo_emoji': precos_bar[tipo]['emoji'],
+                        'via_asaas':  bool(asaas_data),
                     }
                     sucesso = None
                 else:
@@ -1334,5 +1413,48 @@ def webhook_asaas():
                 conn.execute("UPDATE pubshow_assinaturas SET status='cancelado' WHERE id=?", (ass['id'],))
                 conn.commit()
             conn.close()
+
+    return jsonify({'status': 'ok'}), 200
+
+
+# ── WEBHOOK ASAAS — JUKEBOX (cobranças avulsas PIX) ──────────────────────────
+
+@pubshow_bp.route('/webhook/asaas-jukebox', methods=['GET', 'POST'])
+def webhook_asaas_jukebox():
+    """Recebe confirmação de pagamento PIX do Asaas para pedidos de Jukebox.
+
+    Configurar no painel Asaas:
+      URL: https://<seu-dominio>/pubshow/webhook/asaas-jukebox
+      Eventos: PAYMENT_RECEIVED, PAYMENT_CONFIRMED
+    """
+    if request.method == 'GET':
+        return jsonify({'status': 'ok'}), 200
+
+    token_esp = os.environ.get('ASAAS_WEBHOOK_TOKEN', '')
+    token_rec = request.headers.get('asaas-access-token', '')
+    if token_esp and token_rec != token_esp:
+        return jsonify({'error': 'unauthorized'}), 401
+
+    dados     = request.get_json(silent=True) or {}
+    evento    = dados.get('event', '')
+    pagamento = dados.get('payment', {})
+    ext_ref   = pagamento.get('externalReference', '')
+    pay_id    = pagamento.get('id', '')
+
+    log.info('[PUBSHOW] Webhook Jukebox: evento=%s ref=%s', evento, ext_ref)
+
+    if evento in ('PAYMENT_RECEIVED', 'PAYMENT_CONFIRMED') and ext_ref.startswith('jukebox_'):
+        try:
+            pedido_id = int(ext_ref.split('_', 1)[1])
+            conn = get_pubshow_db()
+            conn.execute(
+                "UPDATE pubshow_pedidos SET status='pendente' WHERE id=? AND status='aguardando_pix'",
+                (pedido_id,)
+            )
+            conn.commit()
+            conn.close()
+            log.info('[PUBSHOW] Jukebox PIX confirmado — pedido #%s (Asaas %s)', pedido_id, pay_id)
+        except Exception as ex:
+            log.error('[PUBSHOW] Webhook Jukebox erro: %s', ex, exc_info=True)
 
     return jsonify({'status': 'ok'}), 200

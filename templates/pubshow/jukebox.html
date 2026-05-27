@@ -220,7 +220,9 @@
   <div class="pix-status-box" id="pix-status-box">
     <div class="pix-status-icon">⏳</div>
     <div class="pix-status-text"><span class="spinner"></span><span id="pix-status-text">Aguardando confirmação do pagamento...</span></div>
-    <div class="pix-status-sub" id="pix-status-sub">O estabelecimento confirma após receber o PIX</div>
+    <div class="pix-status-sub" id="pix-status-sub">
+      {% if pix_pendente.via_asaas %}Confirmação automática após o pagamento{% else %}O estabelecimento confirma após receber o PIX{% endif %}
+    </div>
   </div>
 </div>
 
