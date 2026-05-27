@@ -34,10 +34,20 @@
   .btn-nav-primary:hover { opacity:.9; }
 
   /* HERO */
+  .hero-bg {
+    background:url('/static/img/pubshow/pubshow-pub-rock-vibe.png') center/cover no-repeat;
+    position:relative;
+  }
+  .hero-bg::before {
+    content:''; position:absolute; inset:0;
+    background:linear-gradient(135deg, rgba(8,8,15,.92) 0%, rgba(8,8,15,.75) 100%);
+    z-index:0;
+  }
   .hero {
     padding:140px 5% 80px;
     max-width:1200px; margin:0 auto;
     display:grid; grid-template-columns:1fr 1fr; gap:60px; align-items:center;
+    position:relative; z-index:1;
   }
   .hero-badge {
     display:inline-flex; align-items:center; gap:8px;
@@ -158,7 +168,7 @@
 </nav>
 
 <!-- HERO -->
-<div style="max-width:1200px;margin:0 auto;">
+<div class="hero-bg">
 <div class="hero">
   <div>
     <div class="hero-badge">🎰 PUBSHOW · Jukebox Digital 2.0</div>
@@ -170,41 +180,29 @@
     </div>
   </div>
 
-  <!-- Mockup Jukebox -->
-  <div class="jukebox-mockup">
-    <div class="jukebox-header">
-      <div>
-        <div class="jukebox-badge">🎸 Rock TV</div>
+  <!-- Hero Image: TV no bar -->
+  <div style="position:relative">
+    <img src="/static/img/pubshow/pubshow-hero-tv-bar.png"
+         alt="TV PUBSHOW no bar"
+         style="width:100%;border-radius:20px;box-shadow:0 40px 80px rgba(0,0,0,.6);display:block">
+    <!-- Jukebox overlay flutuante -->
+    <div style="position:absolute;bottom:-20px;left:-20px;background:#13131f;border:1px solid rgba(255,255,255,.15);border-radius:16px;padding:14px 18px;box-shadow:0 20px 40px rgba(0,0,0,.5);min-width:200px">
+      <div style="font-size:11px;color:#8888aa;font-weight:700;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px"><span class="dot" style="display:inline-block;margin-right:5px"></span> Jukebox ativo</div>
+      <div style="display:flex;gap:8px">
+        <div style="background:#1a1a2e;border-radius:8px;padding:8px 10px;text-align:center;flex:1">
+          <div style="font-size:16px">🎂</div>
+          <div style="font-size:10px;color:#ec4899;font-weight:800;margin-top:2px">R$ 15</div>
+        </div>
+        <div style="background:#1a1a2e;border-radius:8px;padding:8px 10px;text-align:center;flex:1">
+          <div style="font-size:16px">💍</div>
+          <div style="font-size:10px;color:#a855f7;font-weight:800;margin-top:2px">R$ 25</div>
+        </div>
+        <div style="background:#1a1a2e;border-radius:8px;padding:8px 10px;text-align:center;flex:1">
+          <div style="font-size:16px">🎵</div>
+          <div style="font-size:10px;color:#3b82f6;font-weight:800;margin-top:2px">R$ 2</div>
+        </div>
       </div>
-      <div>
-        <div class="jukebox-title">Bar do Toninho</div>
-        <div class="jukebox-live"><span class="dot"></span> Jukebox ativo</div>
-      </div>
-    </div>
-    <div class="jukebox-grid">
-      <div class="jk-card">
-        <div class="jk-emoji">🎵</div>
-        <div class="jk-nome">Pedir música</div>
-        <div class="jk-preco" style="color:#3b82f6">R$ 2</div>
-      </div>
-      <div class="jk-card">
-        <div class="jk-emoji">⚡</div>
-        <div class="jk-nome">Prioridade</div>
-        <div class="jk-preco" style="color:#f59e0b">R$ 5</div>
-      </div>
-      <div class="jk-card hot">
-        <div class="jk-emoji">🎂</div>
-        <div class="jk-nome">Parabéns!</div>
-        <div class="jk-preco">R$ 15</div>
-      </div>
-      <div class="jk-card">
-        <div class="jk-emoji">💌</div>
-        <div class="jk-nome">Dedicatória</div>
-        <div class="jk-preco" style="color:#ef4444">R$ 10</div>
-      </div>
-    </div>
-    <div style="margin-top:12px;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.2);border-radius:10px;padding:10px;text-align:center;font-size:12px;color:#4ade80;font-weight:700">
-      💚 100% do pagamento vai pro bar
+      <div style="margin-top:8px;font-size:11px;color:#4ade80;font-weight:700;text-align:center">💚 100% pro bar</div>
     </div>
   </div>
 </div>
@@ -261,6 +259,13 @@
       <div class="step-text"><h4>Aparece na TV do bar</h4><p>"🎂 PARABÉNS, ANA!" — o bar inteiro vê. Todo mundo filma. Todo mundo quer participar.</p></div>
     </div>
   </div>
+  <div style="display:flex;flex-direction:column;gap:20px">
+    <img src="/static/img/pubshow/pubshow-jukebox-celular.png"
+         alt="Cliente usando Jukebox no celular"
+         style="width:100%;border-radius:16px;box-shadow:0 20px 40px rgba(0,0,0,.4)">
+    <img src="/static/img/pubshow/pubshow-qrcode-mesa.png"
+         alt="QR Code nas mesas do bar"
+         style="width:100%;border-radius:16px;box-shadow:0 20px 40px rgba(0,0,0,.4)">
   <div style="background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:28px">
     <div style="font-size:13px;font-weight:700;color:var(--text2);margin-bottom:16px;text-transform:uppercase;letter-spacing:.5px">💰 Simulação — sexta à noite</div>
     {% for item in [('2 Parabéns','R$ 15 cada','R$ 30'),('3 Dedicatórias','R$ 10 cada','R$ 30'),('5 Prioridades','R$ 5 cada','R$ 25'),('8 Pedidos de música','R$ 2 cada','R$ 16')] %}
@@ -278,7 +283,28 @@
       <strong style="font-size:14px">Lucro líquido: R$ 314/mês</strong>
     </div>
   </div>
+  </div>
 </div>
+</div>
+
+<!-- MOMENTOS NA TELA - fotos reais -->
+<div style="padding:60px 5% 0;max-width:1100px;margin:0 auto">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+    <div style="position:relative;border-radius:20px;overflow:hidden">
+      <img src="/static/img/pubshow/pubshow-parabens-tela.png"
+           alt="Parabéns na tela do bar" style="width:100%;display:block">
+      <div style="position:absolute;bottom:0;left:0;right:0;padding:16px;background:linear-gradient(transparent,rgba(0,0,0,.8));font-weight:800;font-size:14px">
+        🎂 Parabéns na tela — R$ 15
+      </div>
+    </div>
+    <div style="position:relative;border-radius:20px;overflow:hidden">
+      <img src="/static/img/pubshow/pubshow-casamento-tela.png"
+           alt="Pedido de casamento na tela" style="width:100%;display:block">
+      <div style="position:absolute;bottom:0;left:0;right:0;padding:16px;background:linear-gradient(transparent,rgba(0,0,0,.8));font-weight:800;font-size:14px">
+        💍 Pedido de casamento — R$ 25
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- DEDICATÓRIAS -->
@@ -297,7 +323,6 @@
     </div>
     {% endfor %}
   </div>
-</div>
 </div>
 
 <!-- PLANOS -->
