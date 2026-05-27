@@ -93,25 +93,60 @@
 
 <!-- ── Modal OCR ── -->
 <div class="modal-overlay" id="modal-ocr">
-  <div class="modal" style="max-width:480px">
+  <div class="modal" style="max-width:560px">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
-      <h2 style="font-size:17px;font-weight:800">📷 Ler Auto de Infração por OCR</h2>
+      <h2 style="font-size:17px;font-weight:800">📷 Ler Documentos por OCR</h2>
       <button onclick="closeOcr()" style="background:none;border:none;color:var(--text3);font-size:20px;cursor:pointer">✕</button>
     </div>
 
-    <div id="ocr-drop-area" class="ocr-drop" onclick="document.getElementById('ocr-file').click()"
-         ondragover="event.preventDefault();this.classList.add('drag')"
-         ondragleave="this.classList.remove('drag')"
-         ondrop="event.preventDefault();this.classList.remove('drag');handleOcrDrop(event.dataTransfer.files)">
-      <div class="ocr-drop-icon">📄</div>
-      <div class="ocr-drop-text">Clique ou arraste a foto do auto aqui</div>
-      <div class="ocr-drop-hint">JPG, PNG, WEBP — máx. 10 MB</div>
+    <div id="ocr-drop-area" style="display:flex;flex-direction:column;gap:12px">
+
+      <!-- Auto de infração — OBRIGATÓRIO -->
+      <div>
+        <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--purple3);margin-bottom:6px">📄 Auto de Infração <span style="color:var(--red)">*obrigatório</span></div>
+        <label class="ocr-drop" id="drop-auto" style="display:block;cursor:pointer"
+               ondragover="event.preventDefault();this.classList.add('drag')"
+               ondragleave="this.classList.remove('drag')"
+               ondrop="event.preventDefault();this.classList.remove('drag');setOcrFile('auto',event.dataTransfer.files[0])">
+          <div class="ocr-drop-icon" style="font-size:28px;margin-bottom:6px">📄</div>
+          <div class="ocr-drop-text" id="drop-auto-txt">Clique ou arraste a foto do auto aqui</div>
+          <div class="ocr-drop-hint">JPG, PNG — máx. 10 MB</div>
+          <input type="file" accept="image/*" style="display:none" id="file-auto" onchange="setOcrFile('auto',this.files[0])">
+        </label>
+      </div>
+
+      <!-- Dados do veículo — OPCIONAL -->
+      <div>
+        <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);margin-bottom:6px">🚗 CRLV / Dados do Veículo <span style="color:var(--text3);font-weight:400">(opcional)</span></div>
+        <label class="ocr-drop" id="drop-veiculo" style="display:block;cursor:pointer;padding:16px 20px"
+               ondragover="event.preventDefault();this.classList.add('drag')"
+               ondragleave="this.classList.remove('drag')"
+               ondrop="event.preventDefault();this.classList.remove('drag');setOcrFile('veiculo',event.dataTransfer.files[0])">
+          <div class="ocr-drop-text" id="drop-veiculo-txt" style="font-size:13px">Arraste o CRLV ou foto do documento do veículo</div>
+          <div class="ocr-drop-hint">Preenche placa, RENAVAM e proprietário automaticamente</div>
+          <input type="file" accept="image/*" style="display:none" id="file-veiculo" onchange="setOcrFile('veiculo',this.files[0])">
+        </label>
+      </div>
+
+      <!-- Dados do condutor — OPCIONAL -->
+      <div>
+        <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);margin-bottom:6px">👤 Documento do Condutor/Infrator <span style="color:var(--text3);font-weight:400">(opcional)</span></div>
+        <label class="ocr-drop" id="drop-condutor" style="display:block;cursor:pointer;padding:16px 20px"
+               ondragover="event.preventDefault();this.classList.add('drag')"
+               ondragleave="this.classList.remove('drag')"
+               ondrop="event.preventDefault();this.classList.remove('drag');setOcrFile('condutor',event.dataTransfer.files[0])">
+          <div class="ocr-drop-text" id="drop-condutor-txt" style="font-size:13px">Arraste o RG, CNH ou CPF do condutor infrator</div>
+          <div class="ocr-drop-hint">Preenche dados do condutor separado do proprietário</div>
+          <input type="file" accept="image/*" style="display:none" id="file-condutor" onchange="setOcrFile('condutor',this.files[0])">
+        </label>
+      </div>
+
+      <button onclick="runOcr()" id="btn-ocr-run" class="btn btn-primary" style="width:100%;justify-content:center;padding:12px" disabled>📷 Analisar documentos</button>
     </div>
-    <input type="file" id="ocr-file" accept="image/*" style="display:none" onchange="handleOcrFiles(this.files)">
 
     <div class="ocr-spinner" id="ocr-spinner">
       <div class="spin"></div>
-      <div style="font-size:13px;color:var(--text3);margin-top:12px">Analisando imagem…</div>
+      <div style="font-size:13px;color:var(--text3);margin-top:12px">Analisando imagens…</div>
     </div>
 
     <div class="ocr-result-badge" id="ocr-badge">
@@ -149,8 +184,12 @@
           </select>
         </div>
         <div class="form-group">
-          <label>Proprietário/Condutor</label>
-          <input class="form-control" name="proprietario" placeholder="Nome do proprietário">
+          <label>Proprietário do veículo</label>
+          <input class="form-control" name="proprietario" id="f-proprietario" placeholder="Nome do proprietário (dono do veículo)">
+        </div>
+        <div class="form-group">
+          <label>Condutor infrator <span style="font-size:10px;color:var(--text3)">(se diferente do proprietário)</span></label>
+          <input class="form-control" name="condutor" id="f-condutor" placeholder="Nome de quem cometeu a infração">
         </div>
         <div class="form-group">
           <label>Cliente cadastrado</label>
@@ -203,44 +242,75 @@
 </div>
 
 <script>
+// ── OCR com 3 arquivos ──────────────────────────────────────────────────────
+const _ocrFiles = {auto: null, veiculo: null, condutor: null};
+
+function setOcrFile(tipo, file){
+  if(!file) return;
+  _ocrFiles[tipo] = file;
+  const label = {auto:'drop-auto-txt', veiculo:'drop-veiculo-txt', condutor:'drop-condutor-txt'}[tipo];
+  const drop   = {auto:'drop-auto', veiculo:'drop-veiculo', condutor:'drop-condutor'}[tipo];
+  document.getElementById(label).textContent = '✅ ' + file.name;
+  document.getElementById(drop).style.borderColor = 'rgba(34,197,94,.5)';
+  document.getElementById(drop).style.background  = 'rgba(34,197,94,.06)';
+  // Habilita botão de analisar quando ao menos o auto foi adicionado
+  document.getElementById('btn-ocr-run').disabled = !_ocrFiles.auto;
+}
+
 function closeOcr(){
   document.getElementById('modal-ocr').classList.remove('open');
   document.getElementById('ocr-spinner').classList.remove('show');
   document.getElementById('ocr-badge').classList.remove('show');
   document.getElementById('ocr-erro').style.display='none';
-  document.getElementById('ocr-drop-area').style.display='';
-  document.getElementById('ocr-file').value='';
+  // Resetar dropzones
+  ['auto','veiculo','condutor'].forEach(t => {
+    _ocrFiles[t] = null;
+    const labels = {auto:'drop-auto-txt',veiculo:'drop-veiculo-txt',condutor:'drop-condutor-txt'};
+    const drops  = {auto:'drop-auto',veiculo:'drop-veiculo',condutor:'drop-condutor'};
+    const defaults= {auto:'Clique ou arraste a foto do auto aqui', veiculo:'Arraste o CRLV ou foto do documento do veículo', condutor:'Arraste o RG, CNH ou CPF do condutor infrator'};
+    document.getElementById(labels[t]).textContent = defaults[t];
+    document.getElementById(drops[t]).style.borderColor = '';
+    document.getElementById(drops[t]).style.background  = '';
+  });
+  ['file-auto','file-veiculo','file-condutor'].forEach(id => {
+    const el = document.getElementById(id); if(el) el.value='';
+  });
+  document.getElementById('btn-ocr-run').disabled = true;
 }
 
-function handleOcrDrop(files){ if(files && files[0]) runOcr(files[0]); }
-function handleOcrFiles(files){ if(files && files[0]) runOcr(files[0]); }
+// Ativar click no label corretamente
+['auto','veiculo','condutor'].forEach(t => {
+  const drop = document.getElementById('drop-'+t);
+  if(drop) drop.addEventListener('click', () => document.getElementById('file-'+t).click());
+});
 
-function runOcr(file){
-  if(file.size > 10*1024*1024){ showOcrErro('Arquivo muito grande. Máx. 10 MB.'); return; }
+function runOcr(){
+  if(!_ocrFiles.auto){ showOcrErro('Adicione ao menos a foto do auto de infração.'); return; }
   document.getElementById('ocr-drop-area').style.display='none';
   document.getElementById('ocr-spinner').classList.add('show');
   document.getElementById('ocr-badge').classList.remove('show');
   document.getElementById('ocr-erro').style.display='none';
 
   const fd = new FormData();
-  fd.append('arquivo', file);
+  fd.append('arquivo_auto', _ocrFiles.auto);
+  if(_ocrFiles.veiculo)  fd.append('arquivo_veiculo',  _ocrFiles.veiculo);
+  if(_ocrFiles.condutor) fd.append('arquivo_condutor', _ocrFiles.condutor);
 
   fetch('/defesapro/processos/ocr', {method:'POST', body:fd})
     .then(r=>r.json())
     .then(res=>{
       document.getElementById('ocr-spinner').classList.remove('show');
-      if(res.erro){ showOcrErro(res.erro); return; }
+      if(res.erro){ showOcrErro(res.erro); document.getElementById('ocr-drop-area').style.display=''; return; }
       preencherFormOcr(res.dados);
       document.getElementById('ocr-badge').classList.add('show');
-      setTimeout(()=>{ closeOcr(); document.getElementById('modal-add').classList.add('open'); }, 1300);
+      setTimeout(()=>{ closeOcr(); document.getElementById('modal-add').classList.add('open'); }, 1400);
     })
-    .catch(e=>{ document.getElementById('ocr-spinner').classList.remove('show'); showOcrErro('Erro de rede: '+e); });
+    .catch(e=>{ document.getElementById('ocr-spinner').classList.remove('show'); document.getElementById('ocr-drop-area').style.display=''; showOcrErro('Erro de rede: '+e); });
 }
 
 function showOcrErro(msg){
   const el=document.getElementById('ocr-erro');
   el.textContent='⚠️ '+msg; el.style.display='block';
-  document.getElementById('ocr-drop-area').style.display='';
 }
 
 function preencherFormOcr(d){
@@ -249,20 +319,21 @@ function preencherFormOcr(d){
   set('numero_auto',   d.numero_auto);
   set('placa',         d.placa);
   set('proprietario',  d.proprietario);
+  set('condutor',      d.condutor);        // ← novo campo separado
   set('data_infracao', d.data_infracao);
   set('hora_infracao', d.hora_infracao);
   set('local_infracao',d.local_infracao);
   set('orgao_autuador',d.orgao_autuador);
   set('prazo_defesa',  d.prazo_defesa);
-  // artigo CTB select
   if(d.artigo_ctb_key){
     const sel=f.querySelector('[name="artigo_ctb"]');
     if(sel) sel.value=d.artigo_ctb_key;
   }
-  // obs: artigo raw + valor
   let obs='';
   if(d.artigo_ctb) obs+='Artigo OCR: '+d.artigo_ctb+'\n';
   if(d.valor_multa&&d.valor_multa>0) obs+='Valor da multa: R$ '+d.valor_multa.toFixed(2)+'\n';
+  if(d.condutor_cpf) obs+='CPF condutor: '+d.condutor_cpf+'\n';
+  if(d.condutor_cnh) obs+='CNH condutor: '+d.condutor_cnh+'\n';
   if(obs){ const ta=f.querySelector('[name="observacoes"]'); if(ta) ta.value=obs.trim(); }
 }
 </script>

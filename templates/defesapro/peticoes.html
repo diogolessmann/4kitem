@@ -14,7 +14,7 @@
 <div class="table-wrap">
   <table>
     <thead><tr>
-      <th>Processo</th><th>Tipo</th><th>Cliente</th><th>Data</th><th>Ações</th>
+      <th>Placa</th><th>Nº Auto de Infração</th><th>Tipo</th><th>Cliente</th><th>Data</th><th>Ações</th>
     </tr></thead>
     <tbody>
     {% for pet in peticoes %}
@@ -22,9 +22,16 @@
       <td>
         {% if pet.processo_id %}
         <a href="/defesapro/processos/{{ pet.processo_id }}" class="td-link">
-          {{ pet.placa or ('Auto '+pet.numero_auto) if (pet.placa or pet.numero_auto) else '#'+pet.processo_id|string }}
+          {{ pet.placa or '—' }}
         </a>
         {% else %}<span class="td-muted">—</span>{% endif %}
+      </td>
+      <td>
+        {% if pet.numero_auto %}
+          <span style="font-family:monospace;font-size:12px;color:var(--purple3);font-weight:700">{{ pet.numero_auto }}</span>
+        {% else %}
+          <span class="td-muted">—</span>
+        {% endif %}
       </td>
       <td><span class="badge badge-purple">{{ {'defesa_previa':'Defesa Prévia','recurso_jari':'Recurso JARI','cetran':'CETRAN'}.get(pet.tipo,pet.tipo) }}</span></td>
       <td class="td-muted">{{ pet.cliente_nome or '—' }}</td>

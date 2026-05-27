@@ -1824,6 +1824,7 @@ def defesa_processos():
         numero_auto  = request.form.get('numero_auto', '').strip()
         placa        = request.form.get('placa', '').strip().upper()
         proprietario = request.form.get('proprietario', '').strip()
+        condutor     = request.form.get('condutor', '').strip()
         data_inf     = request.form.get('data_infracao', '').strip()
         hora_inf     = request.form.get('hora_infracao', '').strip()
         local_inf    = request.form.get('local_infracao', '').strip()
@@ -1839,11 +1840,11 @@ def defesa_processos():
             now = datetime.now().isoformat()
             pid = conn.execute(
                 '''INSERT INTO defesapro_processos
-                   (user_id,cliente_id,numero_auto,placa,proprietario,data_infracao,
+                   (user_id,cliente_id,numero_auto,placa,proprietario,condutor,data_infracao,
                     hora_infracao,local_infracao,orgao_autuador,artigo_ctb,descricao,
                     pontos,valor_multa,prazo_defesa,honorarios,observacoes,created_at,updated_at)
-                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)''',
-                (user_id, cliente_id, numero_auto, placa, proprietario, data_inf,
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)''',
+                (user_id, cliente_id, numero_auto, placa, proprietario, condutor, data_inf,
                  hora_inf, local_inf, orgao, artigo, artigo_info['label'],
                  artigo_info['pontos'], artigo_info['valor'], prazo, honorarios, obs, now, now)
             ).lastrowid
@@ -1908,64 +1909,118 @@ def defesa_processo_ocr():
     if not groq_key:
         return jsonify({'erro': 'GROQ_API_KEY não configurada no servidor'}), 500
 
-    f = request.files.get('arquivo')
-    if not f:
-        return jsonify({'erro': 'Nenhum arquivo enviado'}), 400
+    # Suporta até 3 imagens: auto de infração, dados do veículo, dados do condutor
+    f_auto     = request.files.get('arquivo_auto') or request.files.get('arquivo')
+    f_veiculo  = request.files.get('arquivo_veiculo')
+    f_condutor = request.files.get('arquivo_condutor')
 
-    dados_bytes = f.read()
-    mime = f.mimetype or _mt_ocr.guess_type(f.filename or '')[0] or 'image/jpeg'
+    if not f_auto:
+        return jsonify({'erro': 'Envie ao menos a foto do auto de infração'}), 400
 
-    if 'pdf' in mime.lower() or (f.filename or '').lower().endswith('.pdf'):
-        return jsonify({'erro': 'Envie uma foto ou imagem do auto (JPG/PNG). PDF não suportado nesta função.'}), 415
+    def _ocr_imagem(arq, prompt_txt):
+        """Chama Groq Vision em uma imagem e retorna dict com dados extraídos."""
+        dados_bytes = arq.read()
+        mime = arq.mimetype or _mt_ocr.guess_type(arq.filename or '')[0] or 'image/jpeg'
+        if 'pdf' in mime.lower() or (arq.filename or '').lower().endswith('.pdf'):
+            return None, 'Envie foto/imagem (JPG/PNG), não PDF.'
+        if len(dados_bytes) > 10 * 1024 * 1024:
+            return None, 'Arquivo muito grande. Máx. 10 MB.'
+        img_b64 = _b64ocr.b64encode(dados_bytes).decode()
+        try:
+            resp = requests.post(
+                'https://api.groq.com/openai/v1/chat/completions',
+                headers={'Authorization': f'Bearer {groq_key}', 'Content-Type': 'application/json'},
+                json={
+                    'model': 'meta-llama/llama-4-scout-17b-16e-instruct',
+                    'messages': [{'role': 'user', 'content': [
+                        {'type': 'image_url', 'image_url': {'url': f'data:{mime};base64,{img_b64}'}},
+                        {'type': 'text', 'text': prompt_txt},
+                    ]}],
+                    'max_tokens': 1024,
+                    'temperature': 0.1,
+                },
+                timeout=90,
+            )
+            resp.raise_for_status()
+            texto = resp.json()['choices'][0]['message']['content'].strip()
+        except Exception as e:
+            return None, f'Erro ao processar imagem: {e}'
+        m = _re_ocr.search(r'\{[\s\S]*\}', texto)
+        if not m:
+            return None, 'Não foi possível extrair dados — tente com foto mais nítida'
+        try:
+            return _json_ocr.loads(m.group()), None
+        except Exception:
+            return None, 'Erro ao interpretar resposta — tente novamente'
 
-    PROMPT = (
+    PROMPT_AUTO = (
         'Você está analisando a foto de um AUTO DE INFRAÇÃO DE TRÂNSITO brasileiro.\n'
         'Extraia os dados abaixo e retorne SOMENTE um objeto JSON válido — sem markdown, sem explicações:\n'
         '{\n'
         '  "numero_auto": "número/código do auto de infração",\n'
         '  "placa": "placa do veículo, formato ABC1234 ou ABC-1234",\n'
-        '  "proprietario": "nome completo do proprietário ou condutor",\n'
+        '  "proprietario": "nome completo do proprietário do veículo conforme consta no auto",\n'
+        '  "condutor": "nome completo do condutor infrator (se diferente do proprietário, caso contrário deixe vazio)",\n'
         '  "data_infracao": "data no formato YYYY-MM-DD",\n'
         '  "hora_infracao": "hora no formato HH:MM",\n'
         '  "local_infracao": "endereço ou local completo da infração",\n'
         '  "orgao_autuador": "órgão responsável (ex: PRF, DETRAN-SC, PM, DEINFRA)",\n'
         '  "artigo_ctb": "artigo e inciso do CTB, ex: 218 II, 165, 162 I, 244 I",\n'
         '  "valor_multa": 195.23,\n'
-        '  "prazo_defesa": "prazo para defesa prévia no formato YYYY-MM-DD, se estiver visível"\n'
+        '  "prazo_defesa": "prazo para defesa prévia no formato YYYY-MM-DD, se visível"\n'
         '}\n'
         'Use "" para campos não visíveis. Para valor_multa use número sem símbolo R$.'
     )
 
-    try:
-        img_b64 = _b64ocr.b64encode(dados_bytes).decode()
-        resp = requests.post(
-            'https://api.groq.com/openai/v1/chat/completions',
-            headers={'Authorization': f'Bearer {groq_key}', 'Content-Type': 'application/json'},
-            json={
-                'model': 'meta-llama/llama-4-scout-17b-16e-instruct',
-                'messages': [{'role': 'user', 'content': [
-                    {'type': 'image_url', 'image_url': {'url': f'data:{mime};base64,{img_b64}'}},
-                    {'type': 'text', 'text': PROMPT},
-                ]}],
-                'max_tokens': 1024,
-                'temperature': 0.1,
-            },
-            timeout=90,
-        )
-        resp.raise_for_status()
-        texto = resp.json()['choices'][0]['message']['content'].strip()
-    except Exception as e:
-        log.error(f'DefesaPro OCR Groq error: {e}')
-        return jsonify({'erro': f'Erro ao processar imagem: {e}'}), 500
+    PROMPT_VEICULO = (
+        'Você está analisando um documento de veículo brasileiro (CRLV, DUT, nota fiscal ou similar).\n'
+        'Extraia SOMENTE os campos abaixo em JSON válido:\n'
+        '{\n'
+        '  "placa": "placa do veículo",\n'
+        '  "renavam": "número RENAVAM",\n'
+        '  "proprietario": "nome do proprietário conforme o documento"\n'
+        '}\n'
+        'Use "" para campos não visíveis. Retorne APENAS o JSON, sem explicações.'
+    )
 
-    match = _re_ocr.search(r'\{[\s\S]*\}', texto)
-    if not match:
-        return jsonify({'erro': 'Não foi possível extrair dados — tente com uma foto mais nítida e legível'}), 422
+    PROMPT_CONDUTOR = (
+        'Você está analisando um documento de identificação brasileiro (RG, CNH, CPF, comprovante).\n'
+        'Extraia SOMENTE os campos abaixo em JSON válido:\n'
+        '{\n'
+        '  "condutor": "nome completo da pessoa",\n'
+        '  "cpf": "CPF da pessoa (somente números)",\n'
+        '  "cnh": "número da CNH, se visível"\n'
+        '}\n'
+        'Use "" para campos não visíveis. Retorne APENAS o JSON, sem explicações.'
+    )
 
-    try:
-        data = _json_ocr.loads(match.group())
-    except Exception:
-        return jsonify({'erro': 'Erro ao interpretar resposta — tente novamente'}), 422
+    # Processa imagem do auto (obrigatório)
+    data, erro = _ocr_imagem(f_auto, PROMPT_AUTO)
+    if erro:
+        log.error(f'DefesaPro OCR auto error: {erro}')
+        return jsonify({'erro': erro}), 422
+
+    # Mescla dados do CRLV/veículo (opcional)
+    if f_veiculo and f_veiculo.filename:
+        dados_v, _ = _ocr_imagem(f_veiculo, PROMPT_VEICULO)
+        if dados_v:
+            if dados_v.get('placa') and not data.get('placa'):
+                data['placa'] = dados_v['placa']
+            if dados_v.get('renavam'):
+                data['renavam'] = dados_v['renavam']
+            if dados_v.get('proprietario') and not data.get('proprietario'):
+                data['proprietario'] = dados_v['proprietario']
+
+    # Mescla dados do condutor/infrator (opcional)
+    if f_condutor and f_condutor.filename:
+        dados_c, _ = _ocr_imagem(f_condutor, PROMPT_CONDUTOR)
+        if dados_c:
+            if dados_c.get('condutor'):
+                data['condutor'] = dados_c['condutor']
+            if dados_c.get('cpf'):
+                data['condutor_cpf'] = dados_c['cpf']
+            if dados_c.get('cnh'):
+                data['condutor_cnh'] = dados_c['cnh']
 
     # Mapeia artigo para chave do CTB_ARTIGOS
     artigo_raw = str(data.get('artigo_ctb') or '')
@@ -2234,7 +2289,10 @@ def defesa_peticao_gerar_ia():
         'cetran':        'RECURSO ADMINISTRATIVO — CETRAN',
     }
     tipo_label  = tipo_labels.get(tipo, 'DEFESA PRÉVIA')
-    nome_req    = p['cliente_nome'] or p['proprietario'] or '[NOME DO REQUERENTE]'
+    # Condutor infrator tem prioridade; se ausente, usa cliente ou proprietário
+    condutor_p  = p.get('condutor', '') or ''
+    nome_req    = p['cliente_nome'] or condutor_p or p['proprietario'] or '[NOME DO REQUERENTE]'
+    nome_prop   = p['proprietario'] or nome_req  # proprietário do veículo
     cpf_req     = p['cliente_cpf']  or '[CPF]'
     cnh_req     = p['cliente_cnh']  or '[CNH]'
     placa       = p['placa']        or '[PLACA]'
@@ -2270,7 +2328,9 @@ def defesa_peticao_gerar_ia():
 
 === DADOS DO PROCESSO ===
 Auto de Infração nº: {auto_num}
-Requerente/Proprietário: {nome_req}
+Requerente (quem assina a defesa): {nome_req}
+Proprietário do veículo: {nome_prop}
+{f'Condutor infrator: {condutor_p}' if condutor_p and condutor_p != nome_req else ''}
 CPF: {cpf_req}  |  CNH: {cnh_req}
 Placa: {placa}
 Artigo CTB infringido: {artigo_desc}
@@ -2316,13 +2376,32 @@ Narração objetiva: data, hora, local, auto nº, artigo. Dizer que o requerente
 — Requerer juntada de todos os documentos do auto (fotos, relatório do equipamento, certificado INMETRO, escala do agente)
 
 **V — DO MÉRITO — FUNDAMENTOS JURÍDICOS** (desenvolva com profundidade cada tese indicada)
-— Desenvolver todas as teses selecionadas com fundamentação completa
-— CITAR OBRIGATORIAMENTE: art. 280 CTB; art. 281 CTB; art. 282 CTB; art. 283 CTB; art. 285 CTB; art. 286 CTB; art. 257 CTB (responsabilidade); art. 267 CTB (advertência)
-— CF/88: art. 5º caput (igualdade), LIV (devido processo legal), LV (contraditório e ampla defesa), LVII (presunção de inocência), art. 6º (trabalho), art. 37 (legalidade da administração)
-— Lei 9.784/1999 (processo administrativo): arts. 2º, 26, 38, 56 e 97
-— Princípios: in dubio pro reo, legalidade estrita, proporcionalidade, razoabilidade, motivação dos atos administrativos, presunção de inocência
-— Citar pelo menos 2 decisões do STJ ou tribunais estaduais favoráveis ao contribuinte em casos análogos (pode mencionar entendimento jurisprudencial pacificado)
-— Se aplicável: Resolução CONTRAN correspondente ao artigo infringido
+— Desenvolver todas as teses selecionadas com fundamentação EXTENSA e completa — cada tese deve ter ao menos 3 parágrafos
+— CITAR OBRIGATORIAMENTE os seguintes artigos do CTB (Lei 9.503/97):
+  · art. 256 CTB (espécies de penalidades: multa, suspensão, cassação, frequência a curso)
+  · art. 257 CTB (responsabilidade do proprietário e do condutor)
+  · art. 258 CTB (responsabilidade solidária)
+  · art. 259 CTB (atenuantes e agravantes)
+  · art. 261 CTB (penalidade de multa — critérios)
+  · art. 262 CTB (suspensão do direito de dirigir)
+  · art. 264 CTB (cassação — requisitos)
+  · art. 265 CTB (advertência por escrito)
+  · art. 267 CTB (conversão em advertência para infratores primários)
+  · art. 280 CTB (requisitos formais do auto de infração — todos os incisos)
+  · art. 281 CTB (nulidade do auto quando ausente qualquer requisito do art. 280)
+  · art. 282 CTB (processo de aplicação das penalidades)
+  · art. 283 CTB (notificação do autuado — prazos e formas)
+  · art. 284 CTB (prazo de 15 dias para identificação do condutor)
+  · art. 285 CTB (defesa prévia — direito do autuado e prazo de 30 dias)
+  · art. 286 CTB (julgamento pela autoridade de trânsito)
+  · art. 288 CTB (recurso à JARI — prazo e legitimidade)
+  · art. 289 CTB (recurso ao CETRAN — segunda instância)
+  · art. 290 CTB (efeito suspensivo dos recursos)
+— CF/88 — citar integralmente: art. 5º caput, LIV (devido processo legal), LV (contraditório e ampla defesa), LVII (presunção de inocência), LVI (inadmissibilidade de provas ilícitas), LXXVIII (razoável duração do processo); art. 6º (direito social ao trabalho); art. 37 (legalidade administrativa); art. 170 (livre exercício de atividade econômica)
+— Lei 9.784/1999 (processo administrativo federal): arts. 2º (princípios), 26 (notificação), 38 (instrução), 56 (recursos), 61 (efeito suspensivo), 64 (julgamento)
+— Resolução CONTRAN: citar a Resolução CONTRAN específica do artigo infringido e questionar seu cumprimento pela autoridade autuadora
+— Princípios constitucionais: in dubio pro reo, legalidade estrita, proporcionalidade, razoabilidade, motivação dos atos administrativos, presunção de inocência, contraditório, ampla defesa, dignidade da pessoa humana
+— Citar pelo menos 3 decisões do STJ ou tribunais estaduais favoráveis ao contribuinte em casos análogos, com ementa resumida
 
 **VI — DOS PEDIDOS** (em cascata, do mais ao menos amplo)
 a) PRINCIPAL: Recebimento e conhecimento da presente {tipo_label.lower()}; cancelamento e arquivamento do Auto de Infração nº {auto_num}; declaração de nulidade de todos os efeitos
@@ -2337,12 +2416,13 @@ e) EM QUALQUER CASO: Suspensão imediata de todos os efeitos durante a tramitaç
 {nome_req} — CPF: {cpf_req}
 
 === DIRETRIZES FINAIS ===
-- Mínimo 1.200 palavras — seja completo, não resuma
+- Mínimo 1.800 palavras — seja EXTENSO, completo, não resuma nem abrevia
 - Linguagem jurídica formal, sem coloquialismos
-- Cite artigos com a ementa ou trecho do texto quando relevante
-- Cada seção deve terminar com conclusão favorável ao requerente
-- Use negrito (*texto*) para termos jurídicos importantes
-- SEMPRE mencione art. 5º LV CF/88 e art. 285 CTB ao menos duas vezes
+- Cite TODOS os artigos listados acima, com o texto ou ementa do dispositivo quando relevante
+- Cada seção deve ter ao menos 2–3 parágrafos completos e terminar com conclusão favorável ao requerente
+- Use negrito (*texto*) para termos jurídicos e nomes de artigos importantes
+- SEMPRE mencione art. 5º LV CF/88 e art. 285 CTB ao menos duas vezes cada
+- A petição deve demonstrar erudição jurídica — quanto mais fundamentação e citações, melhor
 
 Redija a petição completa agora, seguindo rigorosamente a estrutura acima."""
 
