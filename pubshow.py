@@ -1374,7 +1374,7 @@ def admin_videos_check_one():
     if not yid:
         return jsonify({'ok': False, 'erro': 'ID vazio'})
     try:
-        r = requests.get(
+        r = _requests.get(
             'https://www.youtube.com/oembed',
             params={'url': f'https://www.youtube.com/watch?v={yid}', 'format': 'json'},
             timeout=8
