@@ -590,6 +590,9 @@ def init_saas_db():
         "ALTER TABLE agenda_businesses ADD COLUMN address TEXT DEFAULT ''",
         "ALTER TABLE agenda_businesses ADD COLUMN instagram TEXT DEFAULT ''",
         "ALTER TABLE agenda_businesses ADD COLUMN logo_url TEXT DEFAULT ''",
+        # AgendaSC — Bloco 2: lembrete 2h antes + avaliação pós-atendimento
+        "ALTER TABLE agenda_appointments ADD COLUMN reminded_2h_at TEXT DEFAULT ''",
+        "ALTER TABLE agenda_businesses ADD COLUMN msg_avaliacao TEXT DEFAULT ''",
     ]
     for sql in _auth_migrations:
         try:

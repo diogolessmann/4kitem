@@ -3368,6 +3368,14 @@ def agenda_appt_action(appt_id, action):
                 f"Olá {{nome}}, infelizmente seu agendamento de *{{servico}}* foi *cancelado*. 😔\n\n"
                 f"Entre em contato para reagendar."
             )
+        elif new_status == 'done':
+            # Pedido de avaliação pós-atendimento
+            tpl = (biz.get('msg_avaliacao') or
+                   "Olá {nome}! 😊\n\n"
+                   "Foi um prazer te atender hoje em *{negocio}*! 🙌\n\n"
+                   "Sua opinião é muito importante para nós. "
+                   "Que tal deixar uma avaliação rápida? ⭐\n\n"
+                   "Conta pra gente: como foi a experiência?")
         else:
             tpl = None
         if tpl:
@@ -4504,12 +4512,87 @@ def _agenda_run_lembretes():
 
 
 def _agenda_lembretes_loop():
-    """Thread daemon: verifica lembretes a cada 1 hora."""
-    # Aguarda 3 min após startup
+    """Thread daemon: verifica lembretes 24h antes a cada 1 hora."""
     time.sleep(180)
     while True:
         _agenda_run_lembretes()
-        time.sleep(3600)  # roda a cada 1h
+        time.sleep(3600)
+
+
+def _agenda_run_lembretes_2h():
+    """Busca agendamentos confirmados daqui a ~2h que ainda não receberam lembrete de 2h
+    e dispara WhatsApp: 'Você está chegando?'."""
+    try:
+        now      = datetime.now()
+        from_dt  = now + timedelta(minutes=90)   # janela: 1h30 → 2h30
+        until_dt = now + timedelta(minutes=150)
+        from_date  = from_dt.strftime('%Y-%m-%d')
+        until_date = until_dt.strftime('%Y-%m-%d')
+        from_time  = from_dt.strftime('%H:%M')
+        until_time = until_dt.strftime('%H:%M')
+
+        conn = get_saas_db()
+        appts = conn.execute('''
+            SELECT a.*, b.name as biz_name, b.mandazap_instance, b.mandazap_ativo,
+                   s.name as service_name, p.name as prof_name
+            FROM agenda_appointments a
+            JOIN agenda_businesses b ON a.business_id = b.id
+            LEFT JOIN agenda_services s ON a.service_id = s.id
+            LEFT JOIN agenda_professionals p ON a.professional_id = p.id
+            WHERE (a.reminded_2h_at IS NULL OR a.reminded_2h_at = '')
+              AND a.status IN ('pending', 'confirmed')
+              AND b.active = 1
+              AND b.mandazap_ativo = 1
+              AND b.mandazap_instance != ''
+              AND (
+                (a.appointment_date = ? AND a.appointment_time >= ?)
+                OR
+                (a.appointment_date = ? AND a.appointment_time <= ?)
+              )
+        ''', (from_date, from_time, until_date, until_time)).fetchall()
+        conn.close()
+
+        if not appts:
+            return
+
+        log.info(f'[AgendaSC Lembrete2h] {len(appts)} agendamento(s) para lembrete 2h')
+        for row in appts:
+            appt     = dict(row)
+            phone    = appt.get('customer_phone', '')
+            instance = appt.get('mandazap_instance', '')
+            if not phone or not instance:
+                continue
+            nome       = (appt.get('customer_name') or '').split()[0]
+            servico    = appt.get('service_name') or 'agendamento'
+            hora       = appt.get('appointment_time', '')
+            negocio    = appt.get('biz_name', '')
+            prof_name  = appt.get('prof_name') or ''
+            prof_line  = f'\n👤 Com: *{prof_name}*' if prof_name else ''
+            msg = (
+                f"Olá {nome}! 🔔\n\n"
+                f"Lembrete: seu *{servico}* em *{negocio}* começa em breve!\n"
+                f"🕐 Horário: *{hora}*{prof_line}\n\n"
+                f"Você está chegando? 😊"
+            )
+            _agenda_send_whatsapp(phone, msg, instance)
+
+            now_iso = datetime.now().isoformat()
+            conn2 = get_saas_db()
+            conn2.execute("UPDATE agenda_appointments SET reminded_2h_at=? WHERE id=?",
+                          (now_iso, appt['id']))
+            conn2.commit(); conn2.close()
+            time.sleep(1)
+
+    except Exception as e:
+        log.error(f'[AgendaSC Lembrete2h] Erro: {e}')
+
+
+def _agenda_lembretes_2h_loop():
+    """Thread daemon: verifica lembretes 2h antes a cada 30 minutos."""
+    time.sleep(300)   # aguarda 5 min após startup
+    while True:
+        _agenda_run_lembretes_2h()
+        time.sleep(1800)  # a cada 30 min
 
 
 # ══════════════════════════════════════════════════════════════════════════
@@ -5159,9 +5242,17 @@ def saas_alerta_monitorar_agora():
 @app.route('/saas-admin/agenda/lembretes-agora', methods=['POST'])
 @_saas_admin_required
 def saas_agenda_lembretes_agora():
-    """Dispara o ciclo de lembretes WhatsApp AgendaSC em background."""
+    """Dispara o ciclo de lembretes 24h AgendaSC em background."""
     threading.Thread(target=_agenda_run_lembretes, daemon=True).start()
-    return jsonify({'ok': True, 'msg': 'Lembretes iniciados em background'})
+    return jsonify({'ok': True, 'msg': 'Lembretes 24h iniciados em background'})
+
+
+@app.route('/saas-admin/agenda/lembretes-2h-agora', methods=['POST'])
+@_saas_admin_required
+def saas_agenda_lembretes_2h_agora():
+    """Dispara o ciclo de lembretes 2h AgendaSC em background."""
+    threading.Thread(target=_agenda_run_lembretes_2h, daemon=True).start()
+    return jsonify({'ok': True, 'msg': 'Lembretes 2h iniciados em background'})
 
 
 # ── Admin KidsCurator — status / delete ───────────────────────────────────────
@@ -9459,12 +9550,19 @@ def _startup():
         except Exception as e:
             log.error(f"[startup] AlertaSC scheduler erro: {e}")
 
-        # ── AgendaSC lembrete automático WhatsApp ─────────────────────────
+        # ── AgendaSC lembrete automático WhatsApp (24h antes) ────────────
         try:
             threading.Thread(target=_agenda_lembretes_loop, daemon=True).start()
-            log.info('[AgendaSC] Scheduler de lembretes iniciado (primeira execução em 3 min)')
+            log.info('[AgendaSC] Scheduler 24h iniciado (primeira execução em 3 min)')
         except Exception as e:
             log.error(f"[startup] AgendaSC lembretes scheduler erro: {e}")
+
+        # ── AgendaSC lembrete 2h antes ────────────────────────────────────
+        try:
+            threading.Thread(target=_agenda_lembretes_2h_loop, daemon=True).start()
+            log.info('[AgendaSC] Scheduler 2h iniciado (primeira execução em 5 min)')
+        except Exception as e:
+            log.error(f"[startup] AgendaSC lembretes 2h scheduler erro: {e}")
 
     except Exception as e:
         log.error(f"Startup error: {e}")

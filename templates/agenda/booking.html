@@ -109,15 +109,26 @@
   .summary-row .value{font-weight:600;text-align:right}
 
   /* Sucesso */
-  .success-view{text-align:center;padding:40px 20px}
-  .success-icon{font-size:64px;margin-bottom:16px}
-  .success-title{font-size:24px;font-weight:800;margin-bottom:8px;color:var(--green)}
-  .success-sub{color:var(--text2);font-size:14px;line-height:1.6;margin-bottom:28px}
-  .wa-confirm-btn{display:inline-flex;align-items:center;gap:8px;background:linear-gradient(135deg,#25D366,#128C7E);color:#fff;padding:13px 24px;border-radius:12px;font-weight:700;font-size:15px;text-decoration:none;transition:.2s}
+  @keyframes popIn{0%{transform:scale(.2) rotate(-20deg);opacity:0}65%{transform:scale(1.25) rotate(6deg)}100%{transform:scale(1) rotate(0);opacity:1}}
+  @keyframes slideUp{from{transform:translateY(28px);opacity:0}to{transform:translateY(0);opacity:1}}
+  .success-view{text-align:center;padding:28px 12px 20px}
+  .success-icon{font-size:72px;margin-bottom:10px;display:inline-block;animation:popIn .65s cubic-bezier(.34,1.56,.64,1) both}
+  .success-title{font-size:22px;font-weight:800;margin-bottom:6px;color:var(--green);animation:slideUp .5s .25s both}
+  .success-sub{color:var(--text2);font-size:13px;margin-bottom:18px;animation:slideUp .5s .35s both}
+  .success-card{background:#22222f;border-radius:14px;padding:12px 16px;margin:0 0 14px;text-align:left;border:1px solid rgba(255,255,255,.07);animation:slideUp .5s .45s both}
+  .sc-row{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.05);font-size:13px}
+  .sc-row:last-child{border:none}
+  .sc-row .lbl{color:#9090a8;min-width:68px;flex-shrink:0}
+  .sc-row .val{font-weight:700;color:#e8e8f0}
+  .gcal-btn{display:flex;align-items:center;justify-content:center;gap:8px;background:#fff;color:#1a73e8;padding:12px 20px;border-radius:12px;font-weight:700;font-size:14px;text-decoration:none;margin-bottom:10px;border:1px solid rgba(26,115,232,.25);transition:.2s;animation:slideUp .5s .55s both}
+  .gcal-btn:hover{background:#f0f4ff;border-color:rgba(26,115,232,.5)}
+  .wa-confirm-btn{display:flex;align-items:center;justify-content:center;gap:8px;background:linear-gradient(135deg,#25D366,#128C7E);color:#fff;padding:13px 24px;border-radius:12px;font-weight:700;font-size:15px;text-decoration:none;transition:.2s;margin-bottom:10px;animation:slideUp .5s .65s both}
   .wa-confirm-btn:hover{opacity:.9;transform:translateY(-1px)}
 </style>
 </head>
 <body>
+
+<canvas id="confetti-canvas" style="position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:9999;display:none"></canvas>
 
 <div class="biz-header" style="{% if biz.cover_photo %}padding:0 0 20px;{% endif %}">
   {% if biz.cover_photo %}
@@ -382,16 +393,35 @@
     <div class="success-view">
       <div class="success-icon">🎉</div>
       <div class="success-title">Agendado com sucesso!</div>
-      <div class="success-sub" id="success-msg">Seu agendamento foi enviado.<br>Aguarde a confirmação.</div>
-      <div id="pix-box" style="display:none;background:#0f0f13;border:1px solid rgba(39,174,96,.3);border-radius:14px;padding:16px;margin:16px 0;text-align:center">
+      <div class="success-sub" id="success-msg">Aguarde a confirmação pelo WhatsApp! ✅</div>
+
+      <!-- Card resumo -->
+      <div class="success-card">
+        <div class="sc-row"><span class="lbl">📋 Serviço</span><span class="val" id="sc-service">—</span></div>
+        <div class="sc-row" id="sc-prof-row" style="display:none"><span class="lbl">👤 Com</span><span class="val" id="sc-prof">—</span></div>
+        <div class="sc-row"><span class="lbl">📅 Data</span><span class="val" id="sc-date">—</span></div>
+        <div class="sc-row"><span class="lbl">🕐 Horário</span><span class="val" id="sc-time">—</span></div>
+        <div class="sc-row"><span class="lbl">🏢 Local</span><span class="val">{{ biz.name }}</span></div>
+      </div>
+
+      <!-- PIX (opcional) -->
+      <div id="pix-box" style="display:none;background:#0f0f13;border:1px solid rgba(39,174,96,.3);border-radius:14px;padding:16px;margin-bottom:12px;text-align:center">
         <div style="font-size:13px;font-weight:700;margin-bottom:8px;color:#27ae60">💸 Pague via PIX para confirmar</div>
         <div style="font-size:12px;color:#9090a8;margin-bottom:8px">Chave PIX:</div>
         <div id="pix-chave-display" style="font-size:16px;font-weight:800;color:#e8e8f0;word-break:break-all;background:#22222f;padding:10px;border-radius:8px;margin-bottom:8px"></div>
         <div id="pix-nome-display" style="font-size:12px;color:#9090a8;margin-bottom:10px"></div>
         <button onclick="copiarPix()" style="background:rgba(39,174,96,.15);border:1px solid rgba(39,174,96,.3);color:#27ae60;padding:7px 16px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:700">📋 Copiar chave PIX</button>
       </div>
+
+      <!-- Google Calendar -->
+      <a id="gcal-btn" href="#" target="_blank" class="gcal-btn">
+        📅 Adicionar ao Google Calendar
+      </a>
+
+      <!-- WhatsApp avisar dono -->
       <a id="wa-confirm-link" href="#" target="_blank" class="wa-confirm-btn">💬 Avisar pelo WhatsApp</a>
-      <div style="margin-top:16px">
+
+      <div style="text-align:center;margin-top:6px">
         <a href="/agendar/{{ biz.slug }}" style="font-size:12px;color:var(--text2)">← Fazer outro agendamento</a>
       </div>
     </div>
@@ -405,9 +435,71 @@ function copiarPix() {
   navigator.clipboard.writeText(chave).then(() => alert('✅ Chave PIX copiada!'));
 }
 
+// ── Google Calendar URL ────────────────────────────────────────────────────────
+function buildGCalUrl(date, time, serviceName, durationMin, bizName, address) {
+  const [yr, mo, da] = date.split('-').map(Number);
+  const [hr, mi]     = time.split(':').map(Number);
+  const pad = n => String(n).padStart(2, '0');
+  const startStr = `${yr}${pad(mo)}${pad(da)}T${pad(hr)}${pad(mi)}00`;
+  const endDt    = new Date(yr, mo - 1, da, hr, mi + durationMin);
+  const endStr   = `${endDt.getFullYear()}${pad(endDt.getMonth()+1)}${pad(endDt.getDate())}T${pad(endDt.getHours())}${pad(endDt.getMinutes())}00`;
+  const p = new URLSearchParams({
+    action: 'TEMPLATE',
+    text: `${serviceName} — ${bizName}`,
+    dates: `${startStr}/${endStr}`,
+    details: `Agendamento em ${bizName}`,
+    location: address || bizName
+  });
+  return 'https://calendar.google.com/calendar/render?' + p.toString();
+}
+
+// ── Confetti 🎉 ────────────────────────────────────────────────────────────────
+function launchConfetti() {
+  const canvas = document.getElementById('confetti-canvas');
+  if (!canvas) return;
+  canvas.width  = window.innerWidth;
+  canvas.height = window.innerHeight;
+  canvas.style.display = 'block';
+  const ctx = canvas.getContext('2d');
+  const COLORS = ['#27ae60','#2ecc71','#3498db','#9b59b6','#f39c12','#e74c3c','#1abc9c','#f1c40f'];
+  const particles = Array.from({length: 110}, () => ({
+    x: Math.random() * canvas.width,
+    y: -10 - Math.random() * 90,
+    vx: (Math.random() - .5) * 4,
+    vy: 2.5 + Math.random() * 3.5,
+    color: COLORS[Math.floor(Math.random() * COLORS.length)],
+    w: 8 + Math.random() * 9, h: 4 + Math.random() * 4,
+    rot: Math.random() * 360, rs: (Math.random() - .5) * 9,
+    circle: Math.random() > .6
+  }));
+  let frame = 0;
+  const MAX = 210;
+  (function draw() {
+    if (frame++ > MAX) { canvas.style.display = 'none'; return; }
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const alpha = Math.max(0, 1 - (frame - 120) / 90); // fade começa na metade
+    particles.forEach(p => {
+      p.x += p.vx; p.y += (p.vy += .055); p.rot += p.rs;
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rot * Math.PI / 180);
+      ctx.fillStyle = p.color;
+      if (p.circle) {
+        ctx.beginPath(); ctx.arc(0, 0, p.w / 2, 0, Math.PI * 2); ctx.fill();
+      } else {
+        ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+      }
+      ctx.restore();
+    });
+    requestAnimationFrame(draw);
+  })();
+}
+
 const SLUG         = '{{ biz.slug }}';
 const BIZ_PHONE    = '{{ biz.phone }}'.replace(/\D/g, '');
 const BIZ_NAME     = '{{ biz.name }}';
+const BIZ_ADDRESS  = '{{ biz.address | e }}';
 const TEM_PROFS    = {{ 'true' if tem_profissionais else 'false' }};
 
 // Step mapping: com ou sem profissionais
@@ -563,30 +655,48 @@ async function confirmBooking() {
     if (d.success) {
       const [y, m, dy] = selectedDate.split('-');
       const dt = new Date(selectedDate + 'T00:00:00');
-      const dayName = WEEKDAY_BR[dt.getDay()];
-      let profMsg = '';
+      const dayName  = WEEKDAY_BR[dt.getDay()];
+      const dayCap   = dayName.charAt(0).toUpperCase() + dayName.slice(1);
+      const firstName = name.split(' ')[0];
+
+      // Preenche success-msg e card
+      document.getElementById('success-msg').textContent = `${firstName}, aguarde a confirmação! ✅`;
+      document.getElementById('sc-service').textContent  = selectedService.name;
+      document.getElementById('sc-date').textContent     = `${dayCap}, ${dy}/${m}`;
+      document.getElementById('sc-time').textContent     = selectedTime;
       if (TEM_PROFS && selectedProfissional.id) {
-        profMsg = `👤 Com <strong>${selectedProfissional.name}</strong><br>`;
+        document.getElementById('sc-prof').textContent    = selectedProfissional.name;
+        document.getElementById('sc-prof-row').style.display = 'flex';
       }
-      document.getElementById('success-msg').innerHTML =
-        `<strong>${name}</strong>, seu agendamento foi enviado!<br><br>` +
-        `📋 <strong>${selectedService.name}</strong><br>` +
-        profMsg +
-        `📅 ${dayName.charAt(0).toUpperCase()+dayName.slice(1)}, ${dy}/${m} às <strong>${selectedTime}</strong><br>` +
-        `🏢 ${BIZ_NAME}<br><br>Aguarde a confirmação. ✅`;
-      const waNum = BIZ_PHONE.startsWith('55') ? BIZ_PHONE : '55' + BIZ_PHONE;
-      const profText = (TEM_PROFS && selectedProfissional.id) ? `\n👤 ${selectedProfissional.name}` : '';
-      const msg = `Olá! Acabei de agendar pelo site:\n👤 ${name}\n📋 ${selectedService.name}${profText}\n📅 ${dayName}, ${dy}/${m} às ${selectedTime}\n📱 ${phone}`;
-      document.getElementById('wa-confirm-link').href = `https://wa.me/${waNum}?text=${encodeURIComponent(msg)}`;
+
+      // Google Calendar
+      document.getElementById('gcal-btn').href = buildGCalUrl(
+        selectedDate, selectedTime,
+        selectedService.name, selectedService.duration || 60,
+        BIZ_NAME, BIZ_ADDRESS
+      );
+
+      // WhatsApp confirm link
+      const waNum   = BIZ_PHONE.startsWith('55') ? BIZ_PHONE : '55' + BIZ_PHONE;
+      const profTxt = (TEM_PROFS && selectedProfissional.id) ? `\n👤 ${selectedProfissional.name}` : '';
+      const waMsg   = `Olá! Acabei de agendar pelo site:\n👤 ${name}\n📋 ${selectedService.name}${profTxt}\n📅 ${dayName}, ${dy}/${m} às ${selectedTime}\n📱 ${phone}`;
+      document.getElementById('wa-confirm-link').href = `https://wa.me/${waNum}?text=${encodeURIComponent(waMsg)}`;
+
+      // PIX (opcional)
       if (d.pix_chave) {
         document.getElementById('pix-chave-display').textContent = d.pix_chave;
         document.getElementById('pix-nome-display').textContent  = d.pix_nome || '';
         document.getElementById('pix-box').style.display = 'block';
       }
+
+      // Exibe tela de sucesso
       document.getElementById('steps-bar').style.display = 'none';
       document.querySelectorAll('.step-view').forEach(v => v.classList.remove('active'));
       document.getElementById('step-success').classList.add('active');
       window.scrollTo(0, 0);
+
+      // 🎉 Confetti!
+      launchConfetti();
     } else {
       alert('❌ ' + (d.error || 'Erro ao agendar. Tente novamente.'));
       btn.disabled = false; btn.textContent = '✅ Confirmar agendamento';
