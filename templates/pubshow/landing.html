@@ -35,13 +35,18 @@
 
   /* HERO */
   .hero-bg {
-    background:url('/static/img/pubshow/pubshow-pub-rock-vibe.png') center/cover no-repeat;
     position:relative;
+    overflow:hidden;
+  }
+  .hero-video {
+    position:absolute; inset:0; width:100%; height:100%;
+    object-fit:cover; object-position:center;
+    z-index:0; pointer-events:none;
   }
   .hero-bg::before {
     content:''; position:absolute; inset:0;
-    background:linear-gradient(135deg, rgba(8,8,15,.92) 0%, rgba(8,8,15,.75) 100%);
-    z-index:0;
+    background:linear-gradient(135deg, rgba(8,8,15,.92) 0%, rgba(8,8,15,.78) 100%);
+    z-index:1;
   }
   .hero {
     padding:140px 5% 80px;
@@ -169,7 +174,10 @@
 
 <!-- HERO -->
 <div class="hero-bg">
-<div class="hero">
+<video class="hero-video" autoplay muted loop playsinline poster="{{ url_for('static', filename='pubshow/hero.png') }}">
+  <source src="{{ url_for('static', filename='pubshow/pubshow-hero.mp4') }}" type="video/mp4">
+</video>
+<div class="hero" style="z-index:2;position:relative">
   <div>
     <div class="hero-badge">⚡ Novo · Happy Hour · Ranking · Promoção Relâmpago</div>
     <h1>A TV que faz<br>seu bar ganhar<br><span class="gradient">dinheiro sozinha.</span></h1>
@@ -188,7 +196,7 @@
 
   <!-- Hero Image: TV no bar -->
   <div style="position:relative">
-    <img src="/static/img/pubshow/pubshow-hero-tv-bar.png"
+    <img src="{{ url_for('static', filename='pubshow/hero.png') }}"
          alt="TV PUBSHOW no bar"
          style="width:100%;border-radius:20px;box-shadow:0 40px 80px rgba(0,0,0,.6);display:block">
     <!-- Jukebox overlay flutuante -->
