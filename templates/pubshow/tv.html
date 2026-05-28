@@ -91,27 +91,51 @@
   @keyframes cair{to{transform:translateY(110vh) rotate(720deg);opacity:0}}
 
   /* Canais selector */
+  /* ── Seletor de canal — abas de nicho ──────────────────────────────────── */
   #canal-selector{
     position:fixed;top:20px;right:20px;z-index:50;
-    display:flex;flex-direction:column;gap:4px;
-    opacity:0;transition:opacity .3s;max-height:90vh;overflow-y:auto;
-    padding-right:2px;
+    display:flex;flex-direction:column;gap:0;
+    opacity:0;transition:opacity .3s;
+    background:rgba(0,0,0,.82);backdrop-filter:blur(14px);
+    border:1px solid rgba(255,255,255,.12);border-radius:14px;
+    overflow:hidden;min-width:190px;
   }
   #canal-selector:hover,#canal-selector.visible{opacity:1}
+
+  /* Abas de nicho (topo do seletor) */
+  #canal-tabs{
+    display:flex;border-bottom:1px solid rgba(255,255,255,.08);
+    overflow-x:auto;scrollbar-width:none;
+  }
+  #canal-tabs::-webkit-scrollbar{display:none}
+  .canal-tab{
+    flex:1;min-width:48px;padding:9px 6px;font-size:13px;text-align:center;
+    cursor:pointer;background:none;border:none;color:rgba(255,255,255,.45);
+    transition:.2s;border-bottom:2px solid transparent;white-space:nowrap;
+  }
+  .canal-tab.ativo{color:#fff;border-bottom-color:var(--tab-cor,#ef4444)}
+  .canal-tab:hover{color:rgba(255,255,255,.85)}
+
+  /* Lista de canais do nicho ativo */
+  #canal-lista{
+    display:flex;flex-direction:column;gap:2px;padding:8px;
+    max-height:70vh;overflow-y:auto;scrollbar-width:thin;
+    scrollbar-color:rgba(255,255,255,.15) transparent;
+  }
+  .canal-btn{
+    background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);
+    border-radius:8px;padding:7px 12px;font-size:12px;font-weight:700;
+    cursor:pointer;color:#fff;transition:.2s;white-space:nowrap;
+    display:flex;align-items:center;gap:8px;text-align:left;width:100%;
+  }
+  .canal-btn:hover{background:rgba(255,255,255,.14);border-color:rgba(255,255,255,.35)}
+  .canal-btn.ativo{background:rgba(255,255,255,.18);border-color:var(--canal-cor,#ef4444);color:#fff}
+  .canal-btn.mix{border-style:dashed;font-size:11px;opacity:.85}
+  /* label de grupo dentro da lista (sub-separador se necessário) */
   .canal-grupo-label{
     font-size:9px;font-weight:900;letter-spacing:1.5px;text-transform:uppercase;
-    color:rgba(255,255,255,.3);padding:6px 4px 2px;margin-top:4px;
+    color:rgba(255,255,255,.25);padding:4px 4px 2px;
   }
-  .canal-grupo-label:first-child{margin-top:0}
-  .canal-btn{
-    background:rgba(0,0,0,.75);border:1px solid rgba(255,255,255,.18);
-    border-radius:10px;padding:7px 14px;font-size:12px;font-weight:700;
-    cursor:pointer;color:#fff;transition:.2s;white-space:nowrap;
-    display:flex;align-items:center;gap:8px;backdrop-filter:blur(6px);
-  }
-  .canal-btn:hover,.canal-btn.ativo{background:rgba(255,255,255,.18);border-color:rgba(255,255,255,.5)}
-  .canal-btn.ativo{border-color:var(--canal-cor,#ef4444)}
-  .canal-btn.mix{border-style:dashed}
 
   /* Botão fullscreen */
   #fs-btn{
@@ -414,27 +438,49 @@
   <div class="ranking-bar" id="ranking-bar"></div>
 </div>
 
-<!-- Seletor de canal -->
+<!-- Seletor de canal — abas de nicho -->
+{% set grupos = [
+  ('musica',        '🎵',  'Música',  '#a855f7'),
+  ('shows',         '🎤',  'Shows',   '#ec4899'),
+  ('sport',         '🏆',  'Sport',   '#f59e0b'),
+  ('viral',         '💥',  'Viral',   '#ef4444'),
+  ('entretenimento','🎭',  'Extra',   '#22c55e'),
+] %}
+{# Descobre o nicho do canal atual para pré-selecionar a aba #}
+{% set canal_grupo = canais[canal_key].get('grupo', 'musica') if canal_key in canais else 'musica' %}
+
 <div id="canal-selector">
-  {% set grupos = [
-    ('musica',        '🎵 Música'),
-    ('shows',         '🎤 Shows'),
-    ('sport',         '🏆 Sport'),
-    ('viral',         '💥 Viral'),
-    ('entretenimento','🎭 Extra'),
-  ] %}
-  {% for grupo_key, grupo_label in grupos %}
-    {% if canais.values()|selectattr('grupo','equalto',grupo_key)|list %}
-    <div class="canal-grupo-label">{{ grupo_label }}</div>
-    {% for key, c in canais.items() if c.get('grupo') == grupo_key %}
-    <button class="canal-btn {% if key == canal_key %}ativo{% endif %} {% if key == 'sport_mix' %}mix{% endif %}"
-            onclick="trocarCanal('{{ key }}')"
-            style="{% if key == canal_key %}border-color:{{ c.cor }}{% endif %}">
-      {{ c.emoji }} {{ c.nome }}
+  <!-- Abas de nicho -->
+  <div id="canal-tabs">
+    {% for gkey, gemoji, glabel, gcor in grupos %}
+    {% if canais.values()|selectattr('grupo','equalto',gkey)|list %}
+    <button class="canal-tab {% if gkey == canal_grupo %}ativo{% endif %}"
+            style="--tab-cor:{{ gcor }}"
+            onclick="selecionarNicho('{{ gkey }}', '{{ gcor }}', this)">
+      {{ gemoji }}<br><span style="font-size:9px;font-weight:800;letter-spacing:.5px">{{ glabel }}</span>
     </button>
-    {% endfor %}
     {% endif %}
-  {% endfor %}
+    {% endfor %}
+  </div>
+
+  <!-- Canais do nicho ativo -->
+  <div id="canal-lista">
+    {% for gkey, gemoji, glabel, gcor in grupos %}
+    {% set grupo_canais = canais.items()|selectattr('1.grupo','equalto',gkey)|list %}
+    {% if grupo_canais %}
+    <div class="canal-nicho-group" data-nicho="{{ gkey }}"
+         style="display:{% if gkey == canal_grupo %}flex{% else %}none{% endif %};flex-direction:column;gap:2px">
+      {% for key, c in grupo_canais %}
+      <button class="canal-btn {% if key == canal_key %}ativo{% endif %} {% if key == 'sport_mix' %}mix{% endif %}"
+              onclick="trocarCanal('{{ key }}')"
+              style="{% if key == canal_key %}--canal-cor:{{ c.cor }};border-color:{{ c.cor }}{% endif %}">
+        {{ c.emoji }} {{ c.nome }}
+      </button>
+      {% endfor %}
+    </div>
+    {% endif %}
+    {% endfor %}
+  </div>
 </div>
 
 <!-- YouTube IFrame API -->
@@ -959,6 +1005,25 @@ function mostrarRanking() {
   _rankingTimer = setTimeout(() => el.classList.remove('show'), duracao);
 }
 
+// ── Seletor de nicho — abas ───────────────────────────────────────────────────
+function _mostrarNicho(nichoKey, cor) {
+  // Mostra só os canais do nicho, ativa a aba
+  document.querySelectorAll('.canal-nicho-group').forEach(el => {
+    el.style.display = el.dataset.nicho === nichoKey ? 'flex' : 'none';
+  });
+  document.querySelectorAll('.canal-tab').forEach(tab => {
+    tab.classList.remove('ativo');
+    if (tab.getAttribute('onclick') && tab.getAttribute('onclick').includes(`'${nichoKey}'`)) {
+      tab.classList.add('ativo');
+      tab.style.setProperty('--tab-cor', cor || '#ef4444');
+    }
+  });
+}
+
+function selecionarNicho(nichoKey, cor, tabEl) {
+  _mostrarNicho(nichoKey, cor);
+}
+
 // ── Polling da API ────────────────────────────────────────────────────────────
 async function pollStatus() {
   try {
@@ -1070,15 +1135,20 @@ async function trocarCanal(canal) {
   const badge = nowPlaying.querySelector('.np-canal-badge');
   if (badge) badge.textContent = `${info.emoji || ''} ${info.nome || canal}`;
 
-  // 5. Atualiza botões do seletor
+  // 5. Atualiza botões do seletor + aba de nicho
   document.querySelectorAll('.canal-btn').forEach(btn => {
     btn.classList.remove('ativo');
     btn.style.borderColor = '';
+    btn.style.removeProperty('--canal-cor');
   });
   const btnAtivo = document.querySelector(`.canal-btn[onclick="trocarCanal('${canal}')"]`);
   if (btnAtivo) {
     btnAtivo.classList.add('ativo');
     btnAtivo.style.borderColor = info.cor || '#ef4444';
+    btnAtivo.style.setProperty('--canal-cor', info.cor || '#ef4444');
+    // Garante que o nicho do novo canal está visível
+    const nicho = info.grupo || 'musica';
+    _mostrarNicho(nicho, info.cor || '#ef4444');
   }
 
   // 6. Carrega o primeiro vídeo
