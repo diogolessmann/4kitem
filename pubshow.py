@@ -1332,6 +1332,28 @@ def painel_relatorio():
            GROUP BY dia ORDER BY dia''', (b['id'],)
     ).fetchall()
 
+    # Pedidos por hora do dia — últimos 30 dias (horários de pico)
+    por_hora_raw = conn.execute(
+        '''SELECT CAST(strftime('%H', created_at, 'localtime') AS INTEGER) hora, COUNT(*) n
+           FROM pubshow_pedidos WHERE business_id=? AND status!="aguardando_pix"
+           AND created_at>=datetime("now","-30 days","localtime")
+           GROUP BY hora ORDER BY hora''', (b['id'],)
+    ).fetchall()
+    # Normaliza para 0..23 com zeros nos horários sem pedido
+    horas_dict = {row['hora']: row['n'] for row in por_hora_raw}
+    por_hora = [{'hora': h, 'n': horas_dict.get(h, 0)} for h in range(24)]
+
+    # Pedidos por dia da semana (0=Dom ... 6=Sáb) — últimos 30 dias
+    por_weekday_raw = conn.execute(
+        '''SELECT CAST(strftime('%w', created_at, 'localtime') AS INTEGER) wd, COUNT(*) n
+           FROM pubshow_pedidos WHERE business_id=? AND status!="aguardando_pix"
+           AND created_at>=datetime("now","-30 days","localtime")
+           GROUP BY wd''', (b['id'],)
+    ).fetchall()
+    dias_semana = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb']
+    wd_dict = {row['wd']: row['n'] for row in por_weekday_raw}
+    por_weekday = [{'dia': dias_semana[i], 'n': wd_dict.get(i, 0)} for i in range(7)]
+
     conn.close()
     return render_template('pubshow/relatorio.html',
                            b=dict(b),
@@ -1342,6 +1364,8 @@ def painel_relatorio():
                            top_tipos=[dict(t) for t in top_tipos],
                            top_musicas=[dict(m) for m in top_musicas],
                            por_dia=[dict(d) for d in por_dia],
+                           por_hora=por_hora,
+                           por_weekday=por_weekday,
                            tipos=TIPOS_PEDIDO)
 
 

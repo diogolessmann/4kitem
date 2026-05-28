@@ -24,11 +24,26 @@
   .card-title{font-size:12px;font-weight:700;color:#8888aa;text-transform:uppercase;letter-spacing:.5px;margin-bottom:16px}
 
   /* Barras do gráfico por dia */
-  .chart{display:flex;align-items:flex-end;gap:6px;height:80px;margin-bottom:8px}
+  .chart{display:flex;align-items:flex-end;gap:4px;height:80px;margin-bottom:8px}
   .bar-wrap{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px}
   .bar{width:100%;background:linear-gradient(180deg,#22c55e,#16a34a);border-radius:4px 4px 0 0;min-height:2px;transition:.3s}
   .bar-label{font-size:9px;color:#8888aa;writing-mode:vertical-lr;transform:rotate(180deg);white-space:nowrap}
   .bar-val{font-size:9px;color:#4ade80;font-weight:700}
+  /* Horas do dia */
+  .hora-chart{display:flex;align-items:flex-end;gap:2px;height:70px;margin-bottom:6px}
+  .hora-wrap{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px}
+  .hora-bar{width:100%;border-radius:3px 3px 0 0;min-height:2px;transition:.3s}
+  .hora-bar.pico{background:linear-gradient(180deg,#ef4444,#f97316)}
+  .hora-bar.normal{background:linear-gradient(180deg,#3b82f6,#1d4ed8)}
+  .hora-bar.vazio{background:rgba(255,255,255,.08)}
+  .hora-label{font-size:8px;color:#8888aa}
+  /* Dias da semana */
+  .wd-chart{display:flex;gap:8px;margin-bottom:4px}
+  .wd-wrap{flex:1;text-align:center}
+  .wd-bar-bg{height:50px;background:rgba(255,255,255,.05);border-radius:6px;position:relative;overflow:hidden;margin-bottom:4px}
+  .wd-bar-fill{position:absolute;bottom:0;left:0;right:0;background:linear-gradient(180deg,#a855f7,#7c3aed);border-radius:6px;transition:.3s}
+  .wd-nome{font-size:10px;font-weight:700;color:#8888aa}
+  .wd-n{font-size:11px;color:#c4b5fd;font-weight:700}
 
   /* Top tipos */
   .tipo-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.05)}
@@ -77,6 +92,50 @@
       <div class="stat-label">Total acumulado</div>
     </div>
   </div>
+
+  <!-- Horários de pico -->
+  {% set max_hora = por_hora|map(attribute='n')|max %}
+  {% if max_hora > 0 %}
+  {% set pico_hora = por_hora|sort(attribute='n',reverse=true)|first %}
+  <div class="card">
+    <div class="card-title">🕐 Horários de pico — últimos 30 dias
+      <span style="margin-left:8px;font-size:11px;color:#f59e0b;font-weight:700">📌 Pico: {{ '%02d'|format(pico_hora.hora) }}h ({{ pico_hora.n }} pedidos)</span>
+    </div>
+    <div class="hora-chart">
+      {% for h in por_hora %}
+      {% set pct = ((h.n / max_hora * 65)|int if max_hora > 0 else 0) %}
+      <div class="hora-wrap" title="{{ '%02d'|format(h.hora) }}h — {{ h.n }} pedidos">
+        <div class="hora-bar {% if h.n == max_hora %}pico{% elif h.n > 0 %}normal{% else %}vazio{% endif %}"
+             style="height:{{ [2, pct]|max }}px"></div>
+        <div class="hora-label">{% if h.hora % 4 == 0 %}{{ '%02d'|format(h.hora) }}{% endif %}</div>
+      </div>
+      {% endfor %}
+    </div>
+    <div style="font-size:10px;color:#8888aa;display:flex;gap:14px;margin-top:4px">
+      <span><span style="display:inline-block;width:10px;height:10px;background:linear-gradient(#ef4444,#f97316);border-radius:2px;margin-right:4px"></span>Pico</span>
+      <span><span style="display:inline-block;width:10px;height:10px;background:linear-gradient(#3b82f6,#1d4ed8);border-radius:2px;margin-right:4px"></span>Ativo</span>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Dias da semana -->
+  {% set max_wd = por_weekday|map(attribute='n')|max %}
+  {% if max_wd > 0 %}
+  <div class="card">
+    <div class="card-title">📅 Pedidos por dia da semana — últimos 30 dias</div>
+    <div class="wd-chart">
+      {% for wd in por_weekday %}
+      <div class="wd-wrap">
+        <div class="wd-bar-bg">
+          <div class="wd-bar-fill" style="height:{{ ((wd.n / max_wd * 46)|int if max_wd > 0 else 0) }}px"></div>
+        </div>
+        <div class="wd-nome">{{ wd.dia }}</div>
+        <div class="wd-n">{{ wd.n if wd.n > 0 else '—' }}</div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
 
   <!-- Gráfico 14 dias -->
   {% if por_dia %}
