@@ -61,7 +61,8 @@ input:focus,select:focus{border-color:#7c3aed}
   <button class="btn btn-primary" id="btn-verificar" onclick="iniciarVerificacao()">🔍 Verificar Todos</button>
   <button class="btn btn-danger" id="btn-apagar" onclick="apagarSelecionados()" disabled>🗑️ Apagar Selecionados (<span id="sel-count">0</span>)</button>
   <button class="btn btn-ghost" onclick="document.getElementById('modal-add').classList.add('open')">+ Adicionar Vídeo</button>
-  <button class="btn" style="background:rgba(34,197,94,.15);border:1px solid rgba(34,197,94,.3);color:#4ade80" onclick="document.getElementById('modal-playlist').classList.add('open')">📋 Importar Playlist</button>
+  <button class="btn" style="background:rgba(34,197,94,.15);border:1px solid rgba(34,197,94,.3);color:#4ade80" onclick="document.getElementById('modal-lote').classList.add('open')">📋 Importar em Lote</button>
+  <button class="btn" style="background:rgba(99,102,241,.15);border:1px solid rgba(99,102,241,.3);color:#a5b4fc" onclick="document.getElementById('modal-playlist').classList.add('open')">🤖 Importar Playlist (API)</button>
   <span id="msg-ok" style="font-size:12px;color:#4ade80;display:none">✅ Operação concluída!</span>
 </div>
 
@@ -147,6 +148,54 @@ input:focus,select:focus{border-color:#7c3aed}
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
       <button class="btn btn-ghost" onclick="document.getElementById('modal-add').classList.remove('open')">Cancelar</button>
       <button class="btn btn-primary" onclick="adicionarVideo()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal importar em lote (sem API key) -->
+<div class="modal-overlay" id="modal-lote">
+  <div class="modal" style="max-width:600px;max-height:90vh;overflow-y:auto">
+    <h3>📋 Importar Vídeos em Lote</h3>
+    <p style="font-size:12px;color:#64748b;margin-bottom:16px">
+      Cole links ou IDs do YouTube — um por linha. O sistema busca o título automaticamente.<br>
+      <span style="color:#a78bfa">Exemplo: https://youtu.be/dQw4w9WgXcQ &nbsp;ou&nbsp; dQw4w9WgXcQ</span>
+    </p>
+    <div class="form-group">
+      <label>Categoria *</label>
+      <select id="lote-cat">
+        <option value="rock">🎸 Rock Clips</option>
+        <option value="punk">⚡ Punk Clips</option>
+        <option value="sertanejo">🤠 Sertanejo Clips</option>
+        <option value="pagode">🥁 Pagode Clips</option>
+        <option value="pop">🎵 Pop Clips</option>
+        <option value="show_rock">🎤 Shows — Rock</option>
+        <option value="show_sertanejo">🎤 Shows — Sertanejo</option>
+        <option value="show_pagode">🎤 Shows — Pagode</option>
+        <option value="radical">🛹 Radical</option>
+        <option value="futebol">⚽ Futebol</option>
+        <option value="surf">🏄 Surf</option>
+        <option value="aerio">🪂 Aéreo</option>
+        <option value="f1">🏎️ Speed / F1</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Links / IDs (um por linha) *</label>
+      <textarea id="lote-links" style="width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:10px 12px;color:#e2e8f0;font-size:12px;font-family:monospace;outline:none;resize:vertical;min-height:120px" placeholder="https://www.youtube.com/watch?v=dQw4w9WgXcQ&#10;https://youtu.be/hTWKbfoikeg&#10;oHg5SJYRHA0"></textarea>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:14px">
+      <button class="btn btn-primary" id="btn-lote-buscar" onclick="lotesBuscarTitulos()" style="flex:1">🔍 Buscar Títulos</button>
+      <button class="btn btn-ghost" onclick="document.getElementById('modal-lote').classList.remove('open');loteLimpar()">Cancelar</button>
+    </div>
+
+    <!-- Preview dos vídeos encontrados -->
+    <div id="lote-preview" style="display:none">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#64748b;margin-bottom:8px">Preview — desmarque os que não quer salvar</div>
+      <div id="lote-lista" style="display:flex;flex-direction:column;gap:6px;max-height:280px;overflow-y:auto;margin-bottom:12px"></div>
+      <div id="lote-msg-err" style="display:none;font-size:12px;color:#f87171;margin-bottom:10px"></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end">
+        <button class="btn btn-ghost" onclick="document.getElementById('modal-lote').classList.remove('open');loteLimpar()">Cancelar</button>
+        <button class="btn btn-primary" id="btn-lote-salvar" onclick="loteSalvar()">💾 Salvar Selecionados</button>
+      </div>
     </div>
   </div>
 </div>
@@ -318,6 +367,134 @@ async function adicionarVideo() {
     alert('❌ Erro: ' + d.erro);
   }
 }
+
+// ── IMPORTAR EM LOTE ─────────────────────────────────────────────────────────
+
+function extrairYoutubeId(texto) {
+  // Suporta: youtu.be/ID, youtube.com/watch?v=ID, youtube.com/shorts/ID, ID puro
+  const padroes = [
+    /(?:youtu\.be\/)([A-Za-z0-9_-]{11})/,
+    /(?:youtube\.com\/(?:watch\?v=|shorts\/|embed\/))([A-Za-z0-9_-]{11})/,
+    /^([A-Za-z0-9_-]{11})$/
+  ];
+  for (const p of padroes) {
+    const m = texto.trim().match(p);
+    if (m) return m[1];
+  }
+  return null;
+}
+
+let loteItens = []; // [{youtube_id, titulo, artista}]
+
+async function lotesBuscarTitulos() {
+  const raw = document.getElementById('lote-links').value;
+  const linhas = raw.split('\n').map(l => l.trim()).filter(Boolean);
+  if (!linhas.length) { alert('Cole pelo menos um link ou ID.'); return; }
+
+  const btn = document.getElementById('btn-lote-buscar');
+  btn.disabled = true; btn.textContent = '⏳ Buscando...';
+
+  const ids = [];
+  for (const linha of linhas) {
+    const id = extrairYoutubeId(linha);
+    if (id && !ids.includes(id)) ids.push(id);
+  }
+  if (!ids.length) { alert('Nenhum ID válido encontrado.'); btn.disabled = false; btn.textContent = '🔍 Buscar Títulos'; return; }
+
+  loteItens = [];
+  const cat = document.getElementById('lote-cat').value;
+  const lista = document.getElementById('lote-lista');
+  lista.innerHTML = '';
+  document.getElementById('lote-preview').style.display = 'block';
+  document.getElementById('lote-msg-err').style.display = 'none';
+
+  for (let i = 0; i < ids.length; i++) {
+    const yid = ids[i];
+    // Cria linha de preview com loading
+    const div = document.createElement('div');
+    div.id = 'lote-row-' + yid;
+    div.style.cssText = 'display:flex;align-items:center;gap:8px;padding:8px 10px;background:rgba(255,255,255,.04);border-radius:8px;font-size:12px';
+    div.innerHTML = `
+      <input type="checkbox" class="cb-sel lote-cb" value="${yid}" checked style="flex-shrink:0">
+      <a href="https://youtu.be/${yid}" target="_blank" style="font-family:monospace;color:#a78bfa;font-size:11px;flex-shrink:0">${yid}</a>
+      <span id="lote-tit-${yid}" style="flex:1;color:#94a3b8">⏳ buscando...</span>
+    `;
+    lista.appendChild(div);
+
+    // Busca via oEmbed
+    try {
+      const r = await fetch('/pubshow/admin/videos/oembed', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({youtube_id: yid})
+      });
+      const d = await r.json();
+      const titEl = document.getElementById('lote-tit-' + yid);
+      if (d.ok) {
+        titEl.style.color = '#e2e8f0';
+        titEl.textContent = d.titulo + (d.artista ? ' — ' + d.artista : '');
+        loteItens.push({youtube_id: yid, titulo: d.titulo, artista: d.artista || '', categoria: cat});
+      } else {
+        titEl.style.color = '#f87171';
+        titEl.textContent = '❌ Indisponível para embed (não adicionar)';
+        // Desmarca automaticamente os que não fazem embed
+        div.querySelector('input[type=checkbox]').checked = false;
+        loteItens.push({youtube_id: yid, titulo: '(sem título)', artista: '', categoria: cat, erro: true});
+      }
+    } catch(e) {
+      document.getElementById('lote-tit-' + yid).textContent = '⚠️ timeout';
+    }
+    await new Promise(r => setTimeout(r, 150));
+  }
+
+  btn.disabled = false; btn.textContent = '🔍 Buscar Títulos';
+}
+
+async function loteSalvar() {
+  // Pega apenas os marcados
+  const cat = document.getElementById('lote-cat').value;
+  const selecionados = [...document.querySelectorAll('.lote-cb:checked')].map(cb => cb.value);
+  if (!selecionados.length) { alert('Selecione pelo menos um vídeo.'); return; }
+
+  const payload = loteItens
+    .filter(it => selecionados.includes(it.youtube_id) && !it.erro)
+    .map(it => ({...it, categoria: cat}));
+
+  if (!payload.length) { alert('Nenhum vídeo válido selecionado.'); return; }
+
+  const btn = document.getElementById('btn-lote-salvar');
+  btn.disabled = true; btn.textContent = '⏳ Salvando...';
+
+  try {
+    const r = await fetch('/pubshow/admin/videos/add-batch', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(payload)
+    });
+    const d = await r.json();
+    if (d.ok) {
+      document.getElementById('modal-lote').classList.remove('open');
+      loteLimpar();
+      document.getElementById('msg-ok').style.display = 'inline';
+      document.getElementById('msg-ok').textContent = `✅ ${d.inseridos} vídeo(s) adicionados! ${d.duplicados > 0 ? '(' + d.duplicados + ' já existiam)' : ''}`;
+      setTimeout(() => { document.getElementById('msg-ok').style.display = 'none'; location.reload(); }, 3000);
+    } else {
+      alert('Erro: ' + d.erro);
+    }
+  } catch(e) {
+    alert('Erro de rede: ' + e);
+  }
+  btn.disabled = false; btn.textContent = '💾 Salvar Selecionados';
+}
+
+function loteLimpar() {
+  document.getElementById('lote-links').value = '';
+  document.getElementById('lote-lista').innerHTML = '';
+  document.getElementById('lote-preview').style.display = 'none';
+  loteItens = [];
+}
+
+// ── IMPORTAR PLAYLIST (API KEY) ───────────────────────────────────────────────
 
 async function importarPlaylist() {
   const url  = document.getElementById('pl-url').value.trim();

@@ -1518,6 +1518,65 @@ def admin_videos_add():
         return jsonify({'ok': False, 'erro': str(e)[:100]})
 
 
+@pubshow_bp.route('/admin/videos/add-batch', methods=['POST'])
+@_admin_required
+def admin_videos_add_batch():
+    """Insere vários vídeos de uma vez. Recebe lista de {youtube_id, titulo, artista, categoria}."""
+    items = request.json or []
+    if not isinstance(items, list):
+        return jsonify({'ok': False, 'erro': 'Esperado uma lista JSON'})
+    conn = get_pubshow_db()
+    inseridos = 0
+    duplicados = 0
+    erros = 0
+    for item in items:
+        yid  = (item.get('youtube_id') or '').strip()
+        tit  = (item.get('titulo') or '').strip()
+        art  = (item.get('artista') or '').strip()
+        cat  = (item.get('categoria') or '').strip()
+        if not yid or not tit or not cat:
+            erros += 1
+            continue
+        try:
+            conn.execute(
+                'INSERT OR IGNORE INTO pubshow_videos '
+                '(youtube_id, titulo, artista, categoria, subcategoria, duracao_seg, views_milhoes, ativo) '
+                'VALUES (?,?,?,?,?,0,0,1)',
+                (yid, tit, art, cat, '')
+            )
+            changed = conn.execute('SELECT changes()').fetchone()[0]
+            if changed:
+                inseridos += 1
+            else:
+                duplicados += 1
+        except Exception:
+            erros += 1
+    conn.commit()
+    conn.close()
+    return jsonify({'ok': True, 'inseridos': inseridos, 'duplicados': duplicados, 'erros': erros})
+
+
+@pubshow_bp.route('/admin/videos/oembed', methods=['POST'])
+@_admin_required
+def admin_videos_oembed():
+    """Busca título e autor via oEmbed (sem API key). Recebe {youtube_id}."""
+    yid = (request.json or {}).get('youtube_id', '').strip()
+    if not yid:
+        return jsonify({'ok': False})
+    try:
+        r = _requests.get(
+            'https://www.youtube.com/oembed',
+            params={'url': f'https://www.youtube.com/watch?v={yid}', 'format': 'json'},
+            timeout=8
+        )
+        if r.status_code == 200:
+            d = r.json()
+            return jsonify({'ok': True, 'titulo': d.get('title', ''), 'artista': d.get('author_name', '')})
+        return jsonify({'ok': False, 'erro': f'HTTP {r.status_code}'})
+    except Exception as e:
+        return jsonify({'ok': False, 'erro': str(e)[:60]})
+
+
 # ── CHECKOUT / ASSINATURA ─────────────────────────────────────────────────────
 
 @pubshow_bp.route('/assinar/<plano>', methods=['GET', 'POST'])
