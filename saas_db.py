@@ -584,6 +584,12 @@ def init_saas_db():
         "ALTER TABLE agenda_businesses ADD COLUMN cover_photo TEXT DEFAULT ''",
         "ALTER TABLE agenda_businesses ADD COLUMN max_days_advance INTEGER DEFAULT 60",
         "ALTER TABLE agenda_appointments ADD COLUMN cancel_token TEXT DEFAULT ''",
+        # AgendaSC — customização da página pública
+        "ALTER TABLE agenda_businesses ADD COLUMN primary_color TEXT DEFAULT '#27ae60'",
+        "ALTER TABLE agenda_businesses ADD COLUMN description TEXT DEFAULT ''",
+        "ALTER TABLE agenda_businesses ADD COLUMN address TEXT DEFAULT ''",
+        "ALTER TABLE agenda_businesses ADD COLUMN instagram TEXT DEFAULT ''",
+        "ALTER TABLE agenda_businesses ADD COLUMN logo_url TEXT DEFAULT ''",
     ]
     for sql in _auth_migrations:
         try:

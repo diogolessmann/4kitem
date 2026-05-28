@@ -520,6 +520,63 @@
   <!-- ── TAB CONFIG ─────────────────────────────────────────────── -->
   <div class="tab-content" id="tab-config">
 
+    <!-- Identidade Visual -->
+    <div class="card">
+      <div class="card-title">🎨 Identidade visual</div>
+      <p style="font-size:12px;color:var(--text2);margin-bottom:16px">Personalize como sua página de agendamento aparece para os clientes.</p>
+
+      <!-- Logo + Cor -->
+      <div class="form-row" style="align-items:flex-start">
+        <div class="form-group">
+          <label>Logo do negócio</label>
+          <div style="display:flex;align-items:center;gap:10px;margin-top:4px">
+            {% if biz.logo_url %}
+            <img id="logo-preview" src="{{ biz.logo_url }}" style="width:52px;height:52px;border-radius:50%;object-fit:cover;border:2px solid rgba(255,255,255,.1)">
+            {% else %}
+            <div id="logo-empty" style="width:52px;height:52px;border-radius:50%;background:var(--surface2);border:2px dashed rgba(255,255,255,.12);display:flex;align-items:center;justify-content:center;font-size:20px">🏢</div>
+            <img id="logo-preview" src="" style="width:52px;height:52px;border-radius:50%;object-fit:cover;border:2px solid rgba(255,255,255,.1);display:none">
+            {% endif %}
+            <div>
+              <input type="file" id="logo-input" accept="image/*" style="display:none" onchange="uploadLogo(this)">
+              <button class="btn btn-ghost btn-sm" onclick="document.getElementById('logo-input').click()">📷 Trocar</button>
+              <div id="logo-msg" style="font-size:11px;margin-top:4px;display:none"></div>
+            </div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Cor principal</label>
+          <div style="display:flex;align-items:center;gap:8px;margin-top:4px">
+            <input type="color" id="primary-color" value="{{ biz.primary_color or '#27ae60' }}" onchange="atualizarPreviewCor(this.value);debounceConfig()" style="width:44px;height:44px;border:none;border-radius:8px;cursor:pointer;background:none;padding:2px">
+            <input type="text" id="primary-color-hex" value="{{ biz.primary_color or '#27ae60' }}" placeholder="#27ae60" oninput="sincronizarCor(this.value)" style="width:90px;font-size:13px">
+            <span style="font-size:11px;color:var(--text2)">Aparece nos botões e destaques</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Descrição -->
+      <div class="form-group">
+        <label>Descrição do negócio</label>
+        <textarea id="biz-description" rows="2" placeholder="Ex: O melhor salão de beleza da região. Atendimento personalizado e produtos premium." oninput="debounceConfig()" style="resize:none">{{ biz.description or '' }}</textarea>
+      </div>
+
+      <!-- Endereço + Instagram -->
+      <div class="form-row">
+        <div class="form-group">
+          <label>Endereço</label>
+          <input type="text" id="biz-address" value="{{ biz.address or '' }}" placeholder="Rua das Flores, 123 — Bairro, Cidade" oninput="debounceConfig()">
+        </div>
+        <div class="form-group">
+          <label>Instagram</label>
+          <input type="text" id="biz-instagram" value="{{ biz.instagram or '' }}" placeholder="@seunegocio" oninput="debounceConfig()">
+        </div>
+      </div>
+
+      <div style="display:flex;gap:8px;align-items:center;margin-top:4px">
+        <button class="btn btn-green btn-sm" onclick="salvarConfig()">💾 Salvar</button>
+        <a href="/agendar/{{ biz.slug }}" target="_blank" class="btn btn-ghost btn-sm">👁️ Ver página</a>
+      </div>
+    </div>
+
     <!-- MandaZap -->
     <div class="card">
       <div class="card-title">🤖 MandaZap — WhatsApp Automático</div>
@@ -983,6 +1040,35 @@ async function testarWhatsapp() {
   btn.disabled = false;
 }
 
+async function uploadLogo(input) {
+  const msg = document.getElementById('logo-msg');
+  if (!input.files || !input.files[0]) return;
+  const fd = new FormData();
+  fd.append('logo', input.files[0]);
+  msg.style.display = 'block'; msg.style.color = '#9090a8'; msg.textContent = '⏳ Enviando...';
+  try {
+    const r = await fetch('/agenda/painel/upload-logo', { method: 'POST', body: fd });
+    const d = await r.json();
+    if (d.success) {
+      msg.style.color = '#27ae60'; msg.textContent = '✅ Logo salvo!';
+      const prev = document.getElementById('logo-preview');
+      const empty = document.getElementById('logo-empty');
+      if (prev) { prev.src = d.url; prev.style.display = 'block'; }
+      if (empty) empty.style.display = 'none';
+    } else { msg.style.color = '#e94560'; msg.textContent = '❌ ' + d.error; }
+  } catch(e) { msg.style.color = '#e94560'; msg.textContent = '❌ Erro ao enviar.'; }
+}
+
+function atualizarPreviewCor(val) {
+  document.getElementById('primary-color-hex').value = val;
+}
+function sincronizarCor(val) {
+  if (/^#[0-9a-fA-F]{6}$/.test(val)) {
+    document.getElementById('primary-color').value = val;
+    debounceConfig();
+  }
+}
+
 async function uploadCover(input) {
   const msg = document.getElementById('cover-msg');
   if (!input.files || !input.files[0]) return;
@@ -1023,6 +1109,10 @@ async function salvarConfig() {
     msg_lembrete:      document.getElementById('msg-lembrete').value.trim(),
     max_days_advance:  maxDaysEl ? parseInt(maxDaysEl.value) || 60 : 60,
     msg_cancelamento:  document.getElementById('msg-cancelamento').value.trim(),
+    primary_color:     document.getElementById('primary-color')?.value || '#27ae60',
+    description:       document.getElementById('biz-description')?.value.trim() || '',
+    address:           document.getElementById('biz-address')?.value.trim() || '',
+    instagram:         document.getElementById('biz-instagram')?.value.trim() || '',
   };
   const r = await fetch('/agenda/painel/configuracoes', {
     method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)

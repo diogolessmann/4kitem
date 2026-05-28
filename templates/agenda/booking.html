@@ -4,19 +4,27 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Agendar — {{ biz.name }}</title>
-<meta name="description" content="Agende seu horário em {{ biz.name }} de forma rápida e fácil.">
+<meta name="description" content="{{ biz.description or ('Agende seu horário em ' + biz.name + ' de forma rápida e fácil.') }}">
+{% set cor = biz.primary_color or '#27ae60' %}
 <style>
-  :root{--bg:#0f0f13;--surface:#1a1a24;--surface2:#22222f;--green:#27ae60;--text:#e8e8f0;--text2:#9090a8;--border:rgba(255,255,255,0.08);--radius:16px}
+  :root{
+    --bg:#0f0f13;--surface:#1a1a24;--surface2:#22222f;
+    --green:{{ cor }};
+    --text:#e8e8f0;--text2:#9090a8;--border:rgba(255,255,255,0.08);--radius:16px
+  }
   *{box-sizing:border-box;margin:0;padding:0}
   body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh;padding-bottom:40px}
 
-  .biz-header{background:linear-gradient(135deg,rgba(39,174,96,.2),rgba(39,174,96,.05));border-bottom:1px solid rgba(39,174,96,.2);padding:28px 20px;text-align:center}
+  .biz-header{background:linear-gradient(135deg,color-mix(in srgb,{{ cor }} 20%,transparent),color-mix(in srgb,{{ cor }} 5%,transparent));border-bottom:1px solid color-mix(in srgb,{{ cor }} 20%,transparent);padding:28px 20px;text-align:center}
   .biz-icon{font-size:48px;margin-bottom:10px}
   .biz-name{font-size:24px;font-weight:900;margin-bottom:4px}
   .biz-sub{font-size:13px;color:var(--text2)}
-  .powered{display:inline-flex;align-items:center;gap:7px;margin-top:14px;font-size:12px;font-weight:600;color:var(--text2);background:rgba(39,174,96,.08);border:1px solid rgba(39,174,96,.2);padding:7px 14px;border-radius:20px;text-decoration:none;transition:.2s}
-  .powered:hover{background:rgba(39,174,96,.15);border-color:rgba(39,174,96,.35);color:var(--text)}
-  .powered a{color:var(--green);text-decoration:none}
+  .biz-desc{font-size:13px;color:var(--text2);margin:8px auto 0;max-width:340px;line-height:1.5}
+  .biz-info{display:flex;align-items:center;justify-content:center;gap:16px;flex-wrap:wrap;margin-top:12px}
+  .biz-info a{font-size:12px;color:var(--text2);text-decoration:none;display:flex;align-items:center;gap:4px;transition:.2s}
+  .biz-info a:hover{color:var(--green)}
+  .powered{display:inline-flex;align-items:center;gap:7px;margin-top:14px;font-size:12px;font-weight:600;color:var(--text2);background:color-mix(in srgb,{{ cor }} 8%,transparent);border:1px solid color-mix(in srgb,{{ cor }} 20%,transparent);padding:7px 14px;border-radius:20px;text-decoration:none;transition:.2s}
+  .powered:hover{background:color-mix(in srgb,{{ cor }} 15%,transparent);color:var(--text)}
   .powered .pow-badge{background:var(--green);color:#fff;font-size:10px;font-weight:800;padding:2px 6px;border-radius:6px;letter-spacing:.3px}
 
   .steps-bar{display:flex;gap:0;margin:20px auto;max-width:520px;padding:0 16px}
@@ -113,12 +121,21 @@
 
 <div class="biz-header" style="{% if biz.cover_photo %}padding:0 0 20px;{% endif %}">
   {% if biz.cover_photo %}
-  <div style="width:100%;height:180px;overflow:hidden;margin-bottom:16px">
+  <div style="width:100%;height:180px;overflow:hidden;margin-bottom:16px;position:relative">
     <img src="{{ biz.cover_photo }}" alt="{{ biz.name }}" style="width:100%;height:100%;object-fit:cover">
+    {% if biz.logo_url %}
+    <div style="position:absolute;bottom:-28px;left:50%;transform:translateX(-50%)">
+      <img src="{{ biz.logo_url }}" alt="Logo" style="width:56px;height:56px;border-radius:50%;object-fit:cover;border:3px solid #1a1a24;box-shadow:0 4px 12px rgba(0,0,0,.4)">
+    </div>
+    {% endif %}
   </div>
-  <div style="padding:0 20px">
-  {% endif %}
-  {% if not biz.cover_photo %}
+  <div style="padding:{% if biz.logo_url %}32px{% else %}0{% endif %} 20px 0">
+  {% else %}
+  {% if biz.logo_url %}
+  <div style="margin-bottom:10px">
+    <img src="{{ biz.logo_url }}" alt="Logo" style="width:64px;height:64px;border-radius:50%;object-fit:cover;border:3px solid rgba(255,255,255,.1)">
+  </div>
+  {% else %}
   <div class="biz-icon">
     {% if biz.business_type == 'barbearia' %}💈
     {% elif biz.business_type == 'salao' %}💇
@@ -132,8 +149,23 @@
     {% else %}🏢{% endif %}
   </div>
   {% endif %}
+  {% endif %}
   <div class="biz-name">{{ biz.name }}</div>
+  {% if biz.description %}
+  <div class="biz-desc">{{ biz.description }}</div>
+  {% else %}
   <div class="biz-sub">📅 Agendamento Online</div>
+  {% endif %}
+  {% if biz.address or biz.instagram %}
+  <div class="biz-info">
+    {% if biz.address %}
+    <a href="https://maps.google.com/?q={{ biz.address|urlencode }}" target="_blank">📍 {{ biz.address }}</a>
+    {% endif %}
+    {% if biz.instagram %}
+    <a href="https://instagram.com/{{ biz.instagram|replace('@','') }}" target="_blank">📸 {{ biz.instagram if biz.instagram.startswith('@') else '@' + biz.instagram }}</a>
+    {% endif %}
+  </div>
+  {% endif %}
   <a href="/agenda/cadastro" class="powered" target="_blank" rel="noopener">
     <span class="pow-badge">GRÁTIS</span>
     Agendamento pelo <strong style="color:var(--green)">Agenda SC</strong> — para o seu negócio também

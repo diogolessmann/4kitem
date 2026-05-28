@@ -3628,27 +3628,60 @@ def agenda_configuracoes():
     if request.method == 'POST':
         data = request.get_json(silent=True) or {}
         fields = ['pix_chave','pix_nome','mandazap_instance',
-                  'msg_confirmacao','msg_lembrete','msg_cancelamento']
+                  'msg_confirmacao','msg_lembrete','msg_cancelamento',
+                  'primary_color','description','address','instagram']
         updates = {f: data.get(f,'') for f in fields}
         updates['mandazap_ativo'] = 1 if data.get('mandazap_ativo') else 0
+        # Valida cor hex
+        import re as _re_color
+        cor = updates.get('primary_color','').strip()
+        if not cor or not _re_color.match(r'^#[0-9a-fA-F]{6}$', cor):
+            updates['primary_color'] = '#27ae60'
         try:
             updates['max_days_advance'] = max(1, min(365, int(data.get('max_days_advance', 60))))
         except Exception:
             updates['max_days_advance'] = 60
         conn.execute('''UPDATE agenda_businesses SET
             pix_chave=?, pix_nome=?, mandazap_instance=?, mandazap_ativo=?,
-            msg_confirmacao=?, msg_lembrete=?, msg_cancelamento=?, max_days_advance=?
+            msg_confirmacao=?, msg_lembrete=?, msg_cancelamento=?, max_days_advance=?,
+            primary_color=?, description=?, address=?, instagram=?
             WHERE id=?''',
             (updates['pix_chave'], updates['pix_nome'], updates['mandazap_instance'],
              updates['mandazap_ativo'], updates['msg_confirmacao'],
              updates['msg_lembrete'], updates['msg_cancelamento'],
-             updates['max_days_advance'], biz_id))
+             updates['max_days_advance'], updates['primary_color'],
+             updates['description'], updates['address'], updates['instagram'], biz_id))
         conn.commit()
         conn.close()
         return jsonify({'success': True})
     biz = dict(conn.execute('SELECT * FROM agenda_businesses WHERE id=?', (biz_id,)).fetchone())
     conn.close()
     return jsonify(biz)
+
+
+@app.route('/agenda/painel/upload-logo', methods=['POST'])
+@_agenda_login_required
+def agenda_upload_logo():
+    """Faz upload do logo do negócio."""
+    biz_id = session['agenda_business_id']
+    f = request.files.get('logo')
+    if not f or not f.filename:
+        return jsonify({'success': False, 'error': 'Nenhum arquivo enviado.'})
+    ext = f.filename.rsplit('.', 1)[-1].lower() if '.' in f.filename else ''
+    if ext not in ('jpg', 'jpeg', 'png', 'webp'):
+        return jsonify({'success': False, 'error': 'Formato inválido. Use JPG, PNG ou WEBP.'})
+    f.seek(0, 2); size = f.tell(); f.seek(0)
+    if size > 2 * 1024 * 1024:
+        return jsonify({'success': False, 'error': 'Imagem muito grande. Máximo 2MB.'})
+    upload_dir = os.path.join(os.path.dirname(__file__), 'static', 'agenda_logos')
+    os.makedirs(upload_dir, exist_ok=True)
+    filename = f"logo_{biz_id}.{ext}"
+    f.save(os.path.join(upload_dir, filename))
+    url = f"/static/agenda_logos/{filename}"
+    conn = get_saas_db()
+    conn.execute('UPDATE agenda_businesses SET logo_url=? WHERE id=?', (url, biz_id))
+    conn.commit(); conn.close()
+    return jsonify({'success': True, 'url': f"{url}?v={uuid.uuid4().hex[:6]}"})
 
 
 @app.route('/agenda/painel/upload-cover', methods=['POST'])
