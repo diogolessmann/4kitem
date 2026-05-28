@@ -29,6 +29,7 @@ log = logging.getLogger('4kitem')
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', '4kitem-secret-2024-xk91')
+app.config['TEMPLATES_AUTO_RELOAD'] = True  # templates sempre relidos do disco
 
 # ── SaaS admin password ────────────────────────────────────────────────────────
 SAAS_ADMIN_PW = os.environ.get('SAAS_ADMIN_PASSWORD', 'admin4kitem2024')
@@ -10139,6 +10140,36 @@ def mandaja_horarios():
 
 
 # ── Pedidos ───────────────────────────────────────────────────────────────────
+@app.route('/mandaja/api/novos-pedidos')
+@_mandaja_login_required
+def mandaja_api_novos_pedidos():
+    """Endpoint de polling — retorna pedidos novos desde um dado timestamp."""
+    store    = _mandaja_get_store()
+    if not store:
+        return jsonify({'error': 'auth'}), 401
+    store_id = store['id']
+    since    = request.args.get('since', '')   # ISO string: "2024-01-01T12:00:00"
+    conn     = get_saas_db()
+    if since:
+        rows = conn.execute(
+            "SELECT id, order_number, customer_name, total, created_at FROM mandaja_orders "
+            "WHERE store_id=? AND status='new' AND created_at > ? ORDER BY id DESC LIMIT 20",
+            (store_id, since)).fetchall()
+    else:
+        rows = conn.execute(
+            "SELECT id, order_number, customer_name, total, created_at FROM mandaja_orders "
+            "WHERE store_id=? AND status='new' ORDER BY id DESC LIMIT 20",
+            (store_id,)).fetchall()
+    count_total_new = conn.execute(
+        "SELECT COUNT(*) FROM mandaja_orders WHERE store_id=? AND status='new'",
+        (store_id,)).fetchone()[0]
+    conn.close()
+    return jsonify({
+        'novos': [dict(r) for r in rows],
+        'count_new': count_total_new
+    })
+
+
 @app.route('/mandaja/pedidos')
 @_mandaja_login_required
 def mandaja_pedidos():
@@ -10275,6 +10306,65 @@ def mandaja_financeiro():
                            pedidos_mes=pedidos_mes,
                            pedidos_entregues=pedidos_entregues,
                            pedidos=[dict(p) for p in pedidos_list])
+
+
+# ── Tela da Cozinha (sem login — acesso via slug) ────────────────────────────
+@app.route('/cozinha/<slug>')
+def mandaja_cozinha(slug):
+    conn  = get_saas_db()
+    store = conn.execute('SELECT * FROM mandaja_stores WHERE slug=? AND active=1', (slug,)).fetchone()
+    conn.close()
+    if not store:
+        return 'Loja não encontrada', 404
+    return render_template('mandaja/cozinha.html', store=dict(store))
+
+
+@app.route('/cozinha/<slug>/api')
+def mandaja_cozinha_api(slug):
+    """API de polling para a tela da cozinha — retorna pedidos ativos."""
+    conn  = get_saas_db()
+    store = conn.execute('SELECT id FROM mandaja_stores WHERE slug=? AND active=1', (slug,)).fetchone()
+    if not store:
+        conn.close()
+        return jsonify({'error': 'not found'}), 404
+    rows = conn.execute(
+        "SELECT id, order_number, customer_name, delivery_type, customer_notes, "
+        "items_json, status, created_at, updated_at "
+        "FROM mandaja_orders "
+        "WHERE store_id=? AND status IN ('new','confirmed','preparing') "
+        "ORDER BY id ASC",
+        (store['id'],)).fetchall()
+    conn.close()
+    pedidos = []
+    for r in rows:
+        p = dict(r)
+        p['items'] = _json.loads(p.get('items_json') or '[]')
+        del p['items_json']
+        pedidos.append(p)
+    return jsonify({'pedidos': pedidos, 'ts': datetime.now().isoformat()})
+
+
+@app.route('/cozinha/<slug>/status', methods=['POST'])
+def mandaja_cozinha_status(slug):
+    """Atualiza status do pedido direto da tela da cozinha."""
+    conn  = get_saas_db()
+    store = conn.execute('SELECT id FROM mandaja_stores WHERE slug=? AND active=1', (slug,)).fetchone()
+    if not store:
+        conn.close()
+        return jsonify({'error': 'not found'}), 404
+    data       = request.json or {}
+    order_id   = data.get('order_id')
+    new_status = data.get('status')
+    valid      = ('confirmed', 'preparing', 'ready')
+    if not order_id or new_status not in valid:
+        conn.close()
+        return jsonify({'error': 'invalido'}), 400
+    conn.execute(
+        'UPDATE mandaja_orders SET status=?, updated_at=? WHERE id=? AND store_id=?',
+        (new_status, datetime.now().isoformat(), order_id, store['id']))
+    conn.commit()
+    conn.close()
+    return jsonify({'ok': True})
 
 
 # ── Loja pública (vitrine do cliente) ─────────────────────────────────────────

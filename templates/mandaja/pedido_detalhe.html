@@ -13,6 +13,8 @@
   .btn{padding:8px 18px;border-radius:100px;font-size:13px;font-weight:700;transition:.2s;cursor:pointer;border:none}
   .btn-outline{border:1px solid rgba(249,115,22,.3);color:#F97316;background:transparent}
   .btn-outline:hover{background:rgba(249,115,22,.08)}
+  .btn-print{background:linear-gradient(135deg,#EA580C,#F97316);color:#fff;display:flex;align-items:center;gap:6px}
+  .btn-print:hover{opacity:.9}
   .btn-danger{border:1px solid rgba(239,68,68,.3);color:#F87171;font-size:12px;padding:6px 14px;border-radius:100px;font-weight:600;background:transparent;cursor:pointer}
 
   .container{max-width:680px;margin:24px auto;padding:0 20px}
@@ -36,7 +38,7 @@
   .item-qty{background:rgba(249,115,22,.15);color:#F97316;border-radius:6px;padding:2px 8px;font-size:13px;font-weight:700;margin-right:8px}
   .item-name{font-size:14px;font-weight:600}
   .item-note{font-size:11px;color:#55557A;margin-top:2px}
-  .item-price{font-size:14px;font-weight:700;color:#4ADE80}
+  .item-price{font-size:14px;font-weight:700;color:#4ADE80;white-space:nowrap;margin-left:12px}
 
   .total-row{display:flex;justify-content:space-between;padding:8px 0;font-size:13px;color:#9090B0}
   .total-row.total{font-size:18px;font-weight:900;color:#EEEEF5;border-top:1px solid rgba(255,255,255,.08);padding-top:12px;margin-top:4px}
@@ -45,26 +47,246 @@
   .status-btns{display:flex;gap:8px;flex-wrap:wrap}
   .status-btn{padding:10px 18px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;border:1px solid rgba(255,255,255,.1);background:transparent;color:#9090B0;transition:.2s}
   .status-btn:hover{border-color:#F97316;color:#F97316}
-  .status-btn.active-status{background:rgba(249,115,22,.15);border-color:#F97316;color:#F97316}
   .status-btn.cancel-btn{border-color:rgba(239,68,68,.3);color:#F87171}
   .status-btn.cancel-btn:hover{background:rgba(239,68,68,.1)}
   .status-btn.confirm-btn{border-color:rgba(74,222,128,.3);color:#4ADE80}
   .status-btn.confirm-btn:hover{background:rgba(74,222,128,.1)}
+
+  /* Elemento só visível na impressão */
+  .print-only{display:none}
+
+  /* ═══════════════════════════════════════
+     IMPRESSÃO — @media print
+     Funciona em térmica 80mm e A4
+  ═══════════════════════════════════════ */
+  @media print {
+    /* Oculta tudo que não é conteúdo */
+    .topbar, .no-print, h2 .print-icon { display:none !important }
+
+    body {
+      background: #fff !important;
+      color: #000 !important;
+      font-family: 'Courier New', Courier, monospace !important;
+      font-size: 12px !important;
+    }
+
+    .container {
+      max-width: 100% !important;
+      margin: 0 !important;
+      padding: 0 4px !important;
+    }
+
+    .card {
+      background: #fff !important;
+      border: none !important;
+      border-radius: 0 !important;
+      padding: 0 !important;
+      margin-bottom: 0 !important;
+      page-break-inside: avoid;
+    }
+
+    /* Esconde card de status e botão imprimir */
+    .card-status { display:none !important }
+
+    h2 {
+      font-size: 11px !important;
+      font-weight: bold !important;
+      color: #000 !important;
+      border-bottom: 1px dashed #000 !important;
+      padding-bottom: 4px !important;
+      margin-bottom: 8px !important;
+    }
+
+    /* Cabeçalho da loja — só na impressão */
+    .print-only {
+      display: block !important;
+      text-align: center;
+      margin-bottom: 8px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid #000;
+    }
+    .print-only .store-name-print {
+      font-size: 16px;
+      font-weight: 900;
+      letter-spacing: .5px;
+    }
+    .print-only .store-contact {
+      font-size: 11px;
+      color: #333;
+      margin-top: 2px;
+    }
+
+    /* Número do pedido em destaque */
+    .print-order-num {
+      font-size: 20px !important;
+      font-weight: 900 !important;
+      text-align: center !important;
+      margin: 8px 0 4px !important;
+    }
+    .print-order-date {
+      font-size: 11px !important;
+      text-align: center !important;
+      color: #555 !important;
+      margin-bottom: 10px !important;
+      padding-bottom: 8px !important;
+      border-bottom: 1px dashed #000 !important;
+    }
+
+    /* Badge de status */
+    .badge {
+      background: none !important;
+      color: #000 !important;
+      border: 1px solid #000 !important;
+      padding: 2px 8px !important;
+      font-size: 11px !important;
+    }
+
+    /* Info grid */
+    .info-grid {
+      display: block !important;
+    }
+    .info-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 3px 0;
+      border-bottom: 1px dotted #ccc;
+    }
+    .info-item:last-child { border-bottom:none }
+    .info-item .lbl {
+      font-size: 11px !important;
+      color: #555 !important;
+      font-weight: bold !important;
+      text-transform: uppercase !important;
+    }
+    .info-item .val {
+      font-size: 11px !important;
+      font-weight: bold !important;
+      color: #000 !important;
+    }
+
+    /* Endereço */
+    .addr-box {
+      background: none !important;
+      border: 1px solid #000 !important;
+      border-radius: 0 !important;
+      color: #000 !important;
+      font-size: 12px !important;
+      padding: 6px !important;
+      margin-top: 6px !important;
+    }
+
+    /* Observação do cliente */
+    .obs-box {
+      background: none !important;
+      border: 1px dashed #000 !important;
+      border-radius: 0 !important;
+      color: #000 !important;
+      font-size: 12px !important;
+      font-weight: bold !important;
+      padding: 6px !important;
+      margin-top: 6px !important;
+    }
+
+    /* Itens */
+    .item-row {
+      border-bottom: 1px dotted #ccc !important;
+      padding: 5px 0 !important;
+      display: flex !important;
+      align-items: flex-start !important;
+    }
+    .item-qty {
+      background: none !important;
+      color: #000 !important;
+      font-size: 13px !important;
+      font-weight: 900 !important;
+      min-width: 28px !important;
+      padding: 0 !important;
+      border-radius: 0 !important;
+    }
+    .item-name {
+      font-size: 12px !important;
+      font-weight: bold !important;
+      color: #000 !important;
+      flex: 1 !important;
+    }
+    .item-note {
+      font-size: 11px !important;
+      color: #333 !important;
+      font-style: italic !important;
+    }
+    .item-price {
+      font-size: 12px !important;
+      font-weight: 700 !important;
+      color: #000 !important;
+    }
+
+    /* Totais */
+    .total-row {
+      font-size: 12px !important;
+      color: #000 !important;
+      padding: 4px 0 !important;
+    }
+    .total-row.total {
+      font-size: 15px !important;
+      font-weight: 900 !important;
+      border-top: 2px solid #000 !important;
+      padding-top: 6px !important;
+      margin-top: 4px !important;
+      color: #000 !important;
+    }
+
+    /* Rodapé */
+    .print-footer {
+      display: block !important;
+      text-align: center;
+      font-size: 11px;
+      color: #555;
+      margin-top: 12px;
+      padding-top: 8px;
+      border-top: 1px dashed #000;
+    }
+
+    /* Separador entre seções */
+    .print-sep {
+      display: block !important;
+      border-top: 1px dashed #000;
+      margin: 8px 0;
+    }
+
+    a { color: #000 !important; text-decoration: none !important }
+  }
 </style>
 </head>
 <body>
 
 <div class="topbar">
   <div class="topbar-logo">🛵 MandaJá</div>
-  <div style="display:flex;gap:10px">
-    <a href="/mandaja/pedidos" class="btn btn-outline">← Pedidos</a>
-    <a href="/mandaja/logout" class="btn-danger">Sair</a>
+  <div style="display:flex;gap:10px;align-items:center">
+    <a href="/mandaja/pedidos" class="btn btn-outline no-print">← Pedidos</a>
+    <button onclick="window.print()" class="btn btn-print no-print">🖨️ Imprimir</button>
+    <a href="/mandaja/logout" class="btn-danger no-print">Sair</a>
   </div>
 </div>
 
 <div class="container">
-  <!-- Header -->
-  <div class="card">
+
+  <!-- CABEÇALHO DA LOJA (só aparece na impressão) -->
+  <div class="print-only">
+    <div class="store-name-print">{{ store.name }}</div>
+    {% if store.phone %}<div class="store-contact">📞 {{ store.phone }}</div>{% endif %}
+    {% if store.address %}<div class="store-contact">📍 {{ store.address }}{% if store.city %} — {{ store.city }}{% endif %}</div>{% endif %}
+  </div>
+
+  <!-- Número do pedido em destaque (impressão) -->
+  <div class="print-order-num print-only">PEDIDO {{ pedido.order_number }}</div>
+  <div class="print-order-date print-only">
+    {{ pedido.created_at[:16].replace('T',' ') if pedido.created_at else '' }}
+    {%- set sl_status = {'new':'Novo','confirmed':'Confirmado','preparing':'Preparando','ready':'Pronto','delivered':'Entregue','cancelled':'Cancelado'} %}
+    — {{ sl_status.get(pedido.status, pedido.status) }}
+  </div>
+
+  <!-- Card status (tela) -->
+  <div class="card card-status no-print">
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:16px">
       <div>
         <h1 style="font-size:24px;font-weight:900;margin-bottom:4px">Pedido {{ pedido.order_number }}</h1>
@@ -74,8 +296,6 @@
       {% set sl = {'new':'🆕 Novo','confirmed':'✅ Confirmado','preparing':'👨‍🍳 Preparando','ready':'📦 Pronto','delivered':'🚚 Entregue','cancelled':'❌ Cancelado'} %}
       <span class="badge {{ sc.get(pedido.status,'badge-new') }}" id="statusBadge">{{ sl.get(pedido.status, pedido.status) }}</span>
     </div>
-
-    <!-- Status actions -->
     <h2>📋 Atualizar status</h2>
     <div class="status-btns">
       <button class="status-btn confirm-btn" onclick="setStatus('confirmed')">✅ Confirmar</button>
@@ -86,7 +306,7 @@
     </div>
   </div>
 
-  <!-- Cliente -->
+  <!-- Card Cliente -->
   <div class="card">
     <h2>👤 Cliente</h2>
     <div class="info-grid">
@@ -96,7 +316,10 @@
       </div>
       <div class="info-item">
         <div class="lbl">Telefone</div>
-        <div class="val"><a href="https://wa.me/55{{ pedido.customer_phone|replace(' ','')|replace('-','')|replace('(','')|replace(')','') }}" target="_blank" style="color:#4ADE80">{{ pedido.customer_phone }} 💬</a></div>
+        <div class="val">
+          <a href="https://wa.me/55{{ pedido.customer_phone|replace(' ','')|replace('-','')|replace('(','')|replace(')','') }}" target="_blank" style="color:#4ADE80" class="no-print">{{ pedido.customer_phone }} 💬</a>
+          <span class="print-only" style="display:none">{{ pedido.customer_phone }}</span>
+        </div>
       </div>
       <div class="info-item">
         <div class="lbl">Tipo</div>
@@ -104,30 +327,40 @@
       </div>
       <div class="info-item">
         <div class="lbl">Pagamento</div>
-        <div class="val">{{ {'pix':'💳 PIX','dinheiro':'💵 Dinheiro','cartao':'💳 Cartão'}.get(pedido.payment_method, pedido.payment_method) }}</div>
+        <div class="val">{{ {'pix':'PIX','dinheiro':'Dinheiro','cartao':'Cartão'}.get(pedido.payment_method, pedido.payment_method) }}</div>
       </div>
+      {% if pedido.get('change_for') and pedido.get('change_for', 0) > 0 %}
+      <div class="info-item">
+        <div class="lbl">Troco para</div>
+        <div class="val">R${{ '%.2f'|format(pedido.change_for) }}</div>
+      </div>
+      {% endif %}
     </div>
+
     {% if pedido.delivery_type == 'delivery' and pedido.address %}
-    <div style="margin-top:14px;padding:12px;background:#07070E;border-radius:10px;font-size:13px;color:#9090B0">
+    <div class="addr-box" style="margin-top:14px;padding:12px;background:#07070E;border-radius:10px;font-size:13px;color:#9090B0">
       📍 {{ pedido.address }}{% if pedido.neighborhood %}, {{ pedido.neighborhood }}{% endif %}{% if pedido.city %} — {{ pedido.city }}{% endif %}{% if pedido.cep %} / {{ pedido.cep }}{% endif %}
     </div>
     {% endif %}
+
     {% if pedido.customer_notes %}
-    <div style="margin-top:10px;padding:12px;background:#07070E;border-radius:10px;font-size:13px;color:#FCD34D">
-      ⚠️ {{ pedido.customer_notes }}
+    <div class="obs-box" style="margin-top:10px;padding:12px;background:#07070E;border-radius:10px;font-size:13px;color:#FCD34D">
+      ⚠️ OBS: {{ pedido.customer_notes }}
     </div>
     {% endif %}
   </div>
 
-  <!-- Itens -->
+  <hr class="print-sep" style="display:none">
+
+  <!-- Card Itens -->
   <div class="card">
     <h2>🛒 Itens do pedido</h2>
     {% for item in pedido.items %}
     <div class="item-row">
-      <div>
+      <div style="flex:1;min-width:0">
         <span class="item-qty">{{ item.qty }}x</span>
         <span class="item-name">{{ item.name }}</span>
-        {% if item.get('notes') %}<div class="item-note" style="margin-left:32px">ℹ️ {{ item.notes }}</div>{% endif %}
+        {% if item.get('notes') %}<div class="item-note" style="margin-left:32px">↳ {{ item.notes }}</div>{% endif %}
       </div>
       <div class="item-price">R${{ '%.2f'|format(float(item.price) * int(item.qty)) }}</div>
     </div>
@@ -146,11 +379,18 @@
       </div>
       {% endif %}
       <div class="total-row total">
-        <span>Total</span>
+        <span>TOTAL</span>
         <span style="color:#4ADE80">R${{ '%.2f'|format(pedido.total) }}</span>
       </div>
     </div>
   </div>
+
+  <!-- Rodapé só na impressão -->
+  <div class="print-footer" style="display:none">
+    Obrigado pela preferência! — {{ store.name }}
+    {% if store.whatsapp %}<br>WhatsApp: {{ store.whatsapp }}{% endif %}
+  </div>
+
 </div>
 
 <script>
@@ -174,11 +414,11 @@ async function setStatus(status) {
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({status})
   });
-  if(r.ok) {
+  if (r.ok) {
     const badge = document.getElementById('statusBadge');
     badge.className = 'badge ' + (classes[status] || 'badge-new');
     badge.textContent = labels[status] || status;
-    // Show toast
+    // Toast
     const t = document.createElement('div');
     t.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#0E0E1C;border:1px solid rgba(74,222,128,.3);color:#4ADE80;padding:12px 20px;border-radius:10px;font-size:13px;font-weight:700;z-index:1000';
     t.textContent = 'Status atualizado!';

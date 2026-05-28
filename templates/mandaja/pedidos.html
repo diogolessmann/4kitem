@@ -48,9 +48,16 @@
   .empty .big{font-size:48px;margin-bottom:12px}
 
   @media(max-width:640px){
-    .sidebar{display:none}.content{padding:16px}
+    .sidebar{display:none}.content{padding:16px;padding-bottom:80px}
     .hide-mobile{display:none}
   }
+  .bottom-nav{display:none;position:fixed;bottom:0;left:0;right:0;background:#0A0A18;border-top:1px solid rgba(249,115,22,.15);padding:8px 0 max(8px,env(safe-area-inset-bottom));z-index:60}
+  .bottom-nav-inner{display:flex;justify-content:space-around;align-items:center}
+  .bnav-item{display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 12px;border-radius:10px;font-size:10px;font-weight:700;color:#55557A;text-decoration:none;transition:.15s;position:relative;min-width:60px}
+  .bnav-item.active,.bnav-item:hover{color:#F97316}
+  .bnav-item .ic{font-size:20px;line-height:1}
+  .bnav-badge{position:absolute;top:2px;right:8px;background:#F97316;color:#fff;border-radius:100px;font-size:9px;font-weight:900;padding:1px 5px;min-width:16px;text-align:center;{% if not status_filter or status_filter == 'new' %}display:block{% else %}display:none{% endif %}}
+  @media(max-width:640px){.bottom-nav{display:block}}
 </style>
 </head>
 <body>
@@ -73,6 +80,7 @@
     <div class="nav-sep">Loja</div>
     <a href="/mandaja/configuracoes" class="nav-item"><span class="ic">⚙️</span> Configurações</a>
     <a href="/loja/{{ store.slug }}" target="_blank" class="nav-item"><span class="ic">🔗</span> Ver loja</a>
+    <a href="/cozinha/{{ store.slug }}" target="_blank" class="nav-item"><span class="ic">🍳</span> Tela cozinha</a>
     <div class="nav-sep">Conta</div>
     <a href="/mandaja/logout" class="nav-item" style="color:#F87171"><span class="ic">🚪</span> Sair</a>
   </nav>
@@ -132,5 +140,76 @@
     {% endif %}
   </main>
 </div>
+
+<!-- Bottom nav mobile -->
+<nav class="bottom-nav">
+  <div class="bottom-nav-inner">
+    <a href="/mandaja/painel" class="bnav-item"><span class="ic">📊</span><span>Painel</span></a>
+    <a href="/mandaja/pedidos" class="bnav-item active">
+      <span class="ic">🛍️</span><span>Pedidos</span>
+      <span class="bnav-badge" id="bnavBadge2"></span>
+    </a>
+    <a href="/mandaja/produtos" class="bnav-item"><span class="ic">📦</span><span>Produtos</span></a>
+    <a href="/mandaja/configuracoes" class="bnav-item"><span class="ic">⚙️</span><span>Config</span></a>
+  </div>
+</nav>
+
+<script>
+/* ─── Auto-refresh silencioso na lista de pedidos ─────────────── */
+// Só faz auto-refresh se não há filtro (mostra todos) ou filtro = new/confirmed/preparing
+const _statusF = '{{ status_filter }}';
+const _shouldRefresh = !_statusF || ['new','confirmed','preparing'].includes(_statusF);
+
+let _lastCount = document.querySelectorAll('tbody tr').length;
+let _titleBase = document.title;
+let _soundPlayed = false;
+
+function playAlertSound() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const notes = [880, 1108, 1318];
+    notes.forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.type = 'sine'; osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0, ctx.currentTime + i * 0.12);
+      gain.gain.linearRampToValueAtTime(0.25, ctx.currentTime + i * 0.12 + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.12 + 0.45);
+      osc.start(ctx.currentTime + i * 0.12);
+      osc.stop(ctx.currentTime + i * 0.12 + 0.5);
+    });
+  } catch(e) {}
+}
+
+async function checkNovos() {
+  if (!_shouldRefresh) return;
+  try {
+    const r = await fetch('/mandaja/api/novos-pedidos');
+    if (!r.ok) return;
+    const d = await r.json();
+    const cnt = d.count_new || 0;
+    // Atualiza título da aba
+    document.title = cnt > 0 ? `(${cnt}) ${_titleBase}` : _titleBase;
+    // Se chegou pedido novo, avisa e recarrega
+    if (d.novos && d.novos.length > 0 && !_soundPlayed) {
+      playAlertSound();
+      _soundPlayed = true;
+      setTimeout(() => { _soundPlayed = false; }, 30000);
+      // Recarrega a página para mostrar os novos pedidos
+      setTimeout(() => location.reload(), 1500);
+    }
+  } catch(e) {}
+}
+
+document.addEventListener('click', () => {
+  try { new (window.AudioContext || window.webkitAudioContext)(); } catch(e) {}
+}, { once: true });
+
+if (_shouldRefresh) {
+  checkNovos();
+  setInterval(checkNovos, 30000);
+}
+</script>
 </body>
 </html>
