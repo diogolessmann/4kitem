@@ -565,7 +565,18 @@ function toggleMute() {
 
 // ── YouTube IFrame API ────────────────────────────────────────────────────────
 function onYouTubeIframeAPIReady() {
-  if (!VIDEOS.length) return;
+  if (!VIDEOS.length) {
+    // Página carregou sem vídeos — esconde overlay e faz fallback para rock
+    const overlay = document.getElementById('som-overlay');
+    if (overlay) overlay.classList.add('hidden');
+    const fallback = (typeof CANAL_KEY !== 'undefined' && CANAL_KEY !== 'rock') ? 'rock' : 'pop';
+    fetch(`${BASE_URL}/api/trocar-canal/${CODE}`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({canal: fallback}),
+    }).then(() => location.reload()).catch(() => location.reload());
+    return;
+  }
   const v = VIDEOS[videoIdx];
   player = new YT.Player('yt-player', {
     height: '100%',
@@ -984,8 +995,17 @@ async function trocarCanal(canal) {
   }
 
   if (!novosVideos.length) {
-    // Fallback: recarrega se não vier nada (não deveria acontecer)
-    location.reload();
+    // Canal sem vídeos — reverte o servidor e mantém o canal atual
+    fetch(`${BASE_URL}/api/trocar-canal/${CODE}`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({canal: CANAL_KEY}),
+    }).catch(() => {});
+    // Aviso visual temporário
+    const np = document.getElementById('np-titulo');
+    const npOrig = np ? np.textContent : '';
+    if (np) np.textContent = '⚠️ Canal sem vídeos — mantendo atual';
+    setTimeout(() => { if (np) np.textContent = npOrig; }, 3000);
     return;
   }
 
