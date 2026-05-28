@@ -161,6 +161,50 @@
   }
   #mute-btn.show{display:flex}
   #mute-btn:hover{background:rgba(255,255,255,.18)}
+
+  /* ── QR code fixo — canto inferior esquerdo ─────────────────────────────── */
+  #qr-fixo{
+    position:fixed;bottom:24px;left:24px;z-index:40;
+    background:rgba(0,0,0,.82);border:1px solid rgba(255,255,255,.18);
+    border-radius:18px;padding:14px 18px;
+    display:flex;align-items:center;gap:14px;
+    backdrop-filter:blur(10px);
+    opacity:0;transition:opacity .8s;pointer-events:none;
+  }
+  #qr-fixo.visible{opacity:1;pointer-events:auto}
+  #qr-fixo img{width:80px;height:80px;border-radius:10px;display:block}
+  .qr-txt strong{display:block;font-size:14px;font-weight:900;color:#fff;margin-bottom:4px}
+  .qr-txt span{font-size:11px;color:rgba(255,255,255,.55);line-height:1.6;display:block}
+
+  /* ── CTA quando fila vazia há muito tempo ───────────────────────────────── */
+  #cta-vazia{
+    position:fixed;bottom:130px;left:24px;z-index:40;
+    background:linear-gradient(135deg,rgba(239,68,68,.22),rgba(249,115,22,.16));
+    border:1.5px solid rgba(239,68,68,.5);
+    border-radius:18px;padding:18px 22px;max-width:220px;
+    backdrop-filter:blur(10px);
+    display:none;
+    animation:pulseBorder 2.5s ease-in-out infinite;
+  }
+  #cta-vazia.show{display:block}
+  @keyframes pulseBorder{
+    0%,100%{border-color:rgba(239,68,68,.4);box-shadow:none}
+    50%{border-color:rgba(249,115,22,.9);box-shadow:0 0 24px rgba(239,68,68,.3)}
+  }
+  .cta-emoji{font-size:32px;display:block;margin-bottom:8px}
+  .cta-titulo{font-size:17px;font-weight:900;color:#fff;line-height:1.3;margin-bottom:6px}
+  .cta-sub{font-size:11px;color:rgba(255,255,255,.6);line-height:1.6}
+  .cta-preco{font-size:20px;font-weight:900;color:#f97316;margin-top:10px;display:block}
+
+  /* ── Overlay fullscreen melhorado ───────────────────────────────────────── */
+  .overlay-qr-viral{
+    margin-top:24px;padding-top:18px;
+    border-top:1px solid rgba(255,255,255,.1);
+    display:flex;align-items:center;justify-content:center;gap:14px;
+  }
+  .overlay-qr-viral img{width:56px;height:56px;border-radius:8px;opacity:.75}
+  .overlay-qr-viral span{font-size:12px;color:rgba(255,255,255,.4);text-align:left;line-height:1.6}
+  .overlay-qr-viral strong{display:block;color:rgba(255,255,255,.65);font-size:13px}
 </style>
 </head>
 <body>
@@ -176,6 +220,23 @@
 
 <!-- Botão mute/unmute fixo -->
 <button id="mute-btn" onclick="toggleMute()">🔇 Sem som</button>
+
+<!-- QR code fixo — canto inferior esquerdo, aparece após ativar som -->
+<div id="qr-fixo">
+  <img src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&color=ffffff&bgcolor=00000000&data={{ request.host_url }}pubshow/jukebox/{{ b.jukebox_token or b.code }}" alt="QR Jukebox">
+  <div class="qr-txt">
+    <strong>📱 Peça uma música</strong>
+    <span>Escaneie e pague<br>pelo celular via PIX</span>
+  </div>
+</div>
+
+<!-- CTA quando fila vazia por 3+ minutos -->
+<div id="cta-vazia">
+  <span class="cta-emoji">🎵</span>
+  <div class="cta-titulo">A próxima música<br>é sua!</div>
+  <div class="cta-sub">Escaneie o QR ao lado,<br>escolha e pague pelo celular.</div>
+  <span class="cta-preco">a partir de R$ 2</span>
+</div>
 
 <!-- Botão fullscreen (canto superior esquerdo, aparece ao mover mouse) -->
 <button id="fs-btn" onclick="toggleFullscreen()" title="Tela cheia (F)">⛶ Tela cheia</button>
@@ -227,6 +288,10 @@
     <div class="overlay-msg" id="ov-msg"></div>
     <div class="overlay-de" id="ov-de"></div>
     <div class="overlay-bar" id="ov-bar"></div>
+    <div class="overlay-qr-viral">
+      <img src="https://api.qrserver.com/v1/create-qr-code/?size=112x112&color=ffffff&bgcolor=00000000&data={{ request.host_url }}pubshow/jukebox/{{ b.jukebox_token or b.code }}" alt="QR">
+      <span><strong>Crie o seu momento!</strong>Escaneie e peça<br>parabéns, dedicatória...</span>
+    </div>
   </div>
 </div>
 
@@ -256,9 +321,10 @@
 <!-- YouTube IFrame API -->
 <script src="https://www.youtube.com/iframe_api"></script>
 <script>
-const CODE      = '{{ b.code }}';
-let   CANAL_KEY = '{{ canal_key }}';
-const BASE_URL  = '/pubshow';
+const CODE        = '{{ b.code }}';
+let   CANAL_KEY   = '{{ canal_key }}';
+const BASE_URL    = '/pubshow';
+const JUKEBOX_URL = '{{ request.host_url }}pubshow/jukebox/{{ b.jukebox_token or b.code }}';
 
 // Info de canais disponível no JS para atualizar UI sem reload
 const CANAIS_JS = {{ canais | tojson }};
@@ -309,6 +375,24 @@ function ativarSom() {
   }
   // Se player ainda não carregou, marca pra desmutar quando estiver pronto
   window._autoUnmute = true;
+  // Mostra QR fixo após ativar som
+  setTimeout(() => document.getElementById('qr-fixo').classList.add('visible'), 1500);
+  // Inicia timer de CTA vazia
+  resetIdleTimer();
+}
+
+// ── CTA Fila Vazia ────────────────────────────────────────────────────────────
+let _idleTimer = null;
+function resetIdleTimer() {
+  clearTimeout(_idleTimer);
+  document.getElementById('cta-vazia').classList.remove('show');
+  _idleTimer = setTimeout(() => {
+    document.getElementById('cta-vazia').classList.add('show');
+  }, 3 * 60 * 1000); // 3 minutos sem pedido → mostra CTA
+}
+function cancelarCtaVazia() {
+  clearTimeout(_idleTimer);
+  document.getElementById('cta-vazia').classList.remove('show');
 }
 
 function toggleMute() {
@@ -622,6 +706,7 @@ async function pollStatus() {
     if (data.pedido && !overlayAtivo && data.pedido.id !== pedidoAtual?.id) {
       pedidoAtual = data.pedido;
       mostrarOverlay(data.pedido);
+      cancelarCtaVazia(); // pedido especial = bar ativo
     }
 
     // Pedido de música — entra na fila, espera vídeo acabar
@@ -629,6 +714,7 @@ async function pollStatus() {
       pedidoMusica = data.pedido_musica;
       mostrarBadgeFila(data.total_fila);
       agendarProximoCard(); // agenda o "próximo" card
+      resetIdleTimer(); // há atividade — reinicia timer de CTA
     }
 
     // Sem pedido de música — limpa indicadores
@@ -640,6 +726,7 @@ async function pollStatus() {
     // Badge de fila geral
     if (data.total_fila > 0 && !pedidoMusica) {
       mostrarBadgeFila(data.total_fila);
+      resetIdleTimer();
     } else if (data.total_fila === 0) {
       esconderBadgeFila();
     }
