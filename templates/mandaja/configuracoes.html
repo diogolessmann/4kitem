@@ -101,6 +101,13 @@
           <label>Descrição da loja</label>
           <textarea name="description">{{ store.description }}</textarea>
         </div>
+        <div class="field">
+          <label>💬 Mensagem de boas-vindas (aparece no topo da loja)</label>
+          <input type="text" name="msg_boas_vindas"
+                 value="{{ store.get('msg_boas_vindas','') }}"
+                 placeholder="Ex: 🍕 Entrega em até 40 min! Mínimo R$25.">
+          <div class="hint">Opcional — aparece como aviso no topo da página da loja.</div>
+        </div>
         <div class="grid2">
           <div class="field">
             <label>Logo (URL)</label>
@@ -109,6 +116,66 @@
           <div class="field">
             <label>Banner (URL)</label>
             <input type="url" name="banner_url" value="{{ store.get('banner_url','') }}" placeholder="https://...">
+          </div>
+        </div>
+      </div>
+
+      <!-- Personalização visual -->
+      <div class="card">
+        <h2>🎨 Personalização Visual</h2>
+        <div class="grid2">
+          <div class="field">
+            <label>Cor principal da loja</label>
+            <div style="display:flex;align-items:center;gap:10px">
+              <input type="color" name="cor_primaria" id="corPrimaria"
+                     value="{{ store.get('cor_primaria','#EA580C') }}"
+                     style="width:52px;height:40px;border:none;border-radius:8px;cursor:pointer;background:none;padding:0"
+                     oninput="previewCor(this.value)">
+              <input type="text" id="corHex"
+                     value="{{ store.get('cor_primaria','#EA580C') }}"
+                     placeholder="#EA580C" maxlength="7"
+                     style="flex:1"
+                     oninput="document.getElementById('corPrimaria').value=this.value">
+            </div>
+            <div class="hint">Cor dos botões, preços e destaques na loja pública.</div>
+          </div>
+          <div class="field">
+            <label>Prévia</label>
+            <div id="corPreview" style="border-radius:10px;padding:12px 16px;font-size:13px;font-weight:700;color:#fff;text-align:center;transition:.2s;background:{{ store.get('cor_primaria','#EA580C') }}">
+              Adicionar ao carrinho →
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Redes sociais -->
+      <div class="card">
+        <h2>📱 Redes Sociais e Contato Público</h2>
+        <div class="field">
+          <label>📲 WhatsApp público (botão na loja)</label>
+          <input type="tel" name="whatsapp_publico"
+                 value="{{ store.get('whatsapp_publico','') }}"
+                 placeholder="(47) 99999-9999">
+          <div class="hint">Aparece como botão "Falar no WhatsApp" na loja. Pode ser diferente do número de pedidos.</div>
+        </div>
+        <div class="grid3">
+          <div class="field">
+            <label>📸 Instagram</label>
+            <input type="text" name="instagram"
+                   value="{{ store.get('instagram','') }}"
+                   placeholder="@sualoja">
+          </div>
+          <div class="field">
+            <label>👍 Facebook</label>
+            <input type="text" name="facebook"
+                   value="{{ store.get('facebook','') }}"
+                   placeholder="sualoja">
+          </div>
+          <div class="field">
+            <label>🎵 TikTok</label>
+            <input type="text" name="tiktok"
+                   value="{{ store.get('tiktok','') }}"
+                   placeholder="@sualoja">
           </div>
         </div>
       </div>
@@ -285,5 +352,11 @@
     </div>
   </main>
 </div>
+<script>
+function previewCor(val) {
+  document.getElementById('corPreview').style.background = val;
+  document.getElementById('corHex').value = val;
+}
+</script>
 </body>
 </html>

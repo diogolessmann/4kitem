@@ -5,18 +5,33 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{{ store.name }} — Delivery</title>
 <meta name="description" content="{{ store.description or store.name + ' — peça agora pelo delivery' }}">
+{% set COR = store.get('cor_primaria','') or '#EA580C' %}
+{% set COR_DARK = COR %}
 <style>
+  :root{--cor:{{ COR }}}
   *{box-sizing:border-box;margin:0;padding:0}
   body{background:#f5f5f5;color:#111;font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh;padding-bottom:120px}
   a{text-decoration:none;color:inherit}
 
+  /* Aviso de boas-vindas */
+  .boas-vindas{background:var(--cor);color:#fff;text-align:center;padding:10px 16px;font-size:13px;font-weight:700;line-height:1.4}
+
+  /* Redes sociais */
+  .social-bar{display:flex;align-items:center;justify-content:center;gap:10px;padding:8px 16px;background:#f9f9f9;border-bottom:1px solid #eee;flex-wrap:wrap}
+  .social-btn{display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:100px;font-size:12px;font-weight:700;text-decoration:none;transition:.15s}
+  .social-wa{background:#25D366;color:#fff}
+  .social-ig{background:linear-gradient(135deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888);color:#fff}
+  .social-fb{background:#1877F2;color:#fff}
+  .social-tt{background:#000;color:#fff}
+  .social-btn:hover{opacity:.85;transform:scale(1.04)}
+
   /* Header da loja */
   .store-header{background:#fff;box-shadow:0 1px 8px rgba(0,0,0,.08)}
-  .store-banner{height:180px;background:linear-gradient(135deg,#EA580C,#F97316);overflow:hidden;position:relative}
+  .store-banner{height:180px;background:linear-gradient(135deg,var(--cor),{{ COR }}dd);overflow:hidden;position:relative}
   .store-banner img{width:100%;height:100%;object-fit:cover}
   .store-banner-overlay{position:absolute;inset:0;background:linear-gradient(to bottom,transparent 40%,rgba(0,0,0,.5))}
   .store-info{padding:16px 20px;display:flex;align-items:flex-start;gap:16px}
-  .store-logo{width:72px;height:72px;border-radius:14px;background:#F97316;display:flex;align-items:center;justify-content:center;font-size:32px;flex-shrink:0;overflow:hidden;margin-top:-36px;box-shadow:0 4px 12px rgba(0,0,0,.15);border:3px solid #fff}
+  .store-logo{width:72px;height:72px;border-radius:14px;background:var(--cor);display:flex;align-items:center;justify-content:center;font-size:32px;flex-shrink:0;overflow:hidden;margin-top:-36px;box-shadow:0 4px 12px rgba(0,0,0,.15);border:3px solid #fff}
   .store-logo img{width:100%;height:100%;object-fit:cover}
   .store-meta{flex:1;margin-top:4px}
   .store-name{font-size:20px;font-weight:900;margin-bottom:4px}
@@ -31,27 +46,27 @@
   .cat-nav::-webkit-scrollbar{display:none}
   .cat-nav-inner{display:inline-flex;gap:4px;padding:10px 0}
   .cat-btn{padding:7px 16px;border-radius:100px;font-size:13px;font-weight:600;cursor:pointer;border:none;background:transparent;color:#555;transition:.2s;white-space:nowrap}
-  .cat-btn:hover,.cat-btn.active{background:#EA580C;color:#fff}
+  .cat-btn:hover,.cat-btn.active{background:var(--cor);color:#fff}
 
   /* Produtos */
   .section-title{font-size:14px;font-weight:800;color:#111;padding:20px 16px 12px;text-transform:uppercase;letter-spacing:.5px}
   .prod-list{padding:0 12px;display:flex;flex-direction:column;gap:10px}
   .prod-card{background:#fff;border-radius:14px;display:flex;align-items:center;gap:14px;padding:14px;box-shadow:0 1px 4px rgba(0,0,0,.06);cursor:pointer;transition:.15s;border:2px solid transparent}
-  .prod-card:hover{border-color:#F97316;box-shadow:0 4px 12px rgba(249,115,22,.15)}
+  .prod-card:hover{border-color:var(--cor);box-shadow:0 4px 12px rgba(0,0,0,.12)}
   .prod-card.unavailable{opacity:.5;cursor:not-allowed}
   .prod-img{width:88px;height:88px;border-radius:10px;background:#f5f5f5;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:32px;overflow:hidden}
   .prod-img img{width:100%;height:100%;object-fit:cover}
   .prod-body{flex:1;min-width:0}
   .prod-name{font-size:15px;font-weight:700;margin-bottom:4px}
   .prod-desc{font-size:12px;color:#888;line-height:1.4;margin-bottom:8px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-  .prod-price{font-size:16px;font-weight:900;color:#EA580C}
+  .prod-price{font-size:16px;font-weight:900;color:var(--cor)}
   .prod-stock{font-size:11px;color:#dc2626;font-weight:600;margin-top:2px}
-  .add-btn{width:32px;height:32px;border-radius:50%;background:#EA580C;color:#fff;border:none;font-size:20px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:.15s}
-  .add-btn:hover{background:#C2410C;transform:scale(1.1)}
+  .add-btn{width:32px;height:32px;border-radius:50%;background:var(--cor);color:#fff;border:none;font-size:20px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:.15s}
+  .add-btn:hover{opacity:.85;transform:scale(1.1)}
 
   /* Carrinho flutuante */
-  .cart-bar{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);width:calc(100% - 32px);max-width:480px;background:linear-gradient(135deg,#EA580C,#F97316);color:#fff;border-radius:16px;padding:15px 20px;align-items:center;justify-content:space-between;box-shadow:0 8px 24px rgba(249,115,22,.4);cursor:pointer;z-index:100;transition:.2s;display:none}
-  .cart-bar:hover{transform:translateX(-50%) translateY(-2px);box-shadow:0 12px 32px rgba(249,115,22,.5)}
+  .cart-bar{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);width:calc(100% - 32px);max-width:480px;background:var(--cor);color:#fff;border-radius:16px;padding:15px 20px;align-items:center;justify-content:space-between;box-shadow:0 8px 24px rgba(0,0,0,.25);cursor:pointer;z-index:100;transition:.2s;display:none}
+  .cart-bar:hover{transform:translateX(-50%) translateY(-2px);box-shadow:0 12px 32px rgba(0,0,0,.3)}
   .cart-bar .cart-count{background:rgba(255,255,255,.25);padding:3px 10px;border-radius:100px;font-size:13px;font-weight:700}
   .cart-bar .cart-total{font-size:16px;font-weight:900}
   .cart-bar .cart-label{font-size:14px;font-weight:700}
@@ -66,33 +81,33 @@
   /* Carrinho items */
   .cart-item{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid #f0f0f0}
   .cart-item-name{flex:1;font-size:14px;font-weight:600}
-  .cart-item-price{font-size:13px;color:#EA580C;font-weight:700;white-space:nowrap}
+  .cart-item-price{font-size:13px;color:var(--cor);font-weight:700;white-space:nowrap}
   .qty-ctrl{display:flex;align-items:center;gap:8px}
-  .qty-btn{width:28px;height:28px;border-radius:50%;border:1.5px solid #EA580C;background:transparent;color:#EA580C;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:700}
+  .qty-btn{width:28px;height:28px;border-radius:50%;border:1.5px solid var(--cor);background:transparent;color:var(--cor);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:700}
   .qty-val{font-size:14px;font-weight:700;min-width:20px;text-align:center}
   .item-note-input{width:100%;margin-top:6px;padding:8px 10px;border:1px solid #e5e5e5;border-radius:8px;font-size:12px;color:#555;outline:none;font-family:inherit}
-  .item-note-input:focus{border-color:#F97316}
+  .item-note-input:focus{border-color:var(--cor)}
 
   /* Checkout form */
   .checkout-section{margin-top:20px;padding-top:20px;border-top:2px solid #f0f0f0}
   .checkout-section h3{font-size:15px;font-weight:700;margin-bottom:14px;color:#333}
   .cf label{font-size:12px;font-weight:600;color:#666;margin-bottom:4px;display:block}
   .cf input,.cf select,.cf textarea{width:100%;padding:10px 12px;border:1.5px solid #e5e5e5;border-radius:10px;font-size:14px;outline:none;font-family:inherit;transition:.2s;background:#fff}
-  .cf input:focus,.cf select:focus,.cf textarea:focus{border-color:#F97316}
+  .cf input:focus,.cf select:focus,.cf textarea:focus{border-color:var(--cor)}
   .cf .field{margin-bottom:12px}
   .cf .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   .delivery-tabs{display:flex;gap:8px;margin-bottom:14px}
   .delivery-tab{flex:1;padding:10px;border:1.5px solid #e5e5e5;border-radius:10px;text-align:center;font-size:13px;font-weight:600;cursor:pointer;transition:.2s;background:transparent;color:#555}
-  .delivery-tab.active{border-color:#EA580C;background:rgba(234,88,12,.06);color:#EA580C}
+  .delivery-tab.active{border-color:var(--cor);background:rgba(0,0,0,.04);color:var(--cor)}
   .pay-opts{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
   .pay-opt{padding:9px 16px;border:1.5px solid #e5e5e5;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;transition:.2s;background:transparent;color:#555}
-  .pay-opt.active{border-color:#EA580C;background:rgba(234,88,12,.06);color:#EA580C}
+  .pay-opt.active{border-color:var(--cor);background:rgba(0,0,0,.04);color:var(--cor)}
 
   /* Totais no modal */
   .summary-row{display:flex;justify-content:space-between;font-size:13px;color:#777;padding:4px 0}
   .summary-row.total{font-size:17px;font-weight:900;color:#111;padding-top:10px;border-top:1.5px solid #e5e5e5;margin-top:6px}
 
-  .submit-btn{width:100%;padding:15px;background:linear-gradient(135deg,#EA580C,#F97316);color:#fff;border:none;border-radius:12px;font-size:16px;font-weight:800;cursor:pointer;margin-top:16px;transition:.2s}
+  .submit-btn{width:100%;padding:15px;background:var(--cor);color:#fff;border:none;border-radius:12px;font-size:16px;font-weight:800;cursor:pointer;margin-top:16px;transition:.2s}
   .submit-btn:hover{opacity:.92}
   .submit-btn:disabled{opacity:.5;cursor:not-allowed}
 
@@ -106,6 +121,32 @@
 </style>
 </head>
 <body>
+
+{% if store.get('msg_boas_vindas') %}
+<div class="boas-vindas">{{ store.msg_boas_vindas }}</div>
+{% endif %}
+
+{% set has_social = store.get('whatsapp_publico') or store.get('instagram') or store.get('facebook') or store.get('tiktok') %}
+{% if has_social %}
+<div class="social-bar">
+  {% if store.get('whatsapp_publico') %}
+  {% set wa_clean = store.whatsapp_publico | replace('(','') | replace(')','') | replace('-','') | replace(' ','') %}
+  <a href="https://wa.me/55{{ wa_clean }}" target="_blank" class="social-btn social-wa">💬 WhatsApp</a>
+  {% endif %}
+  {% if store.get('instagram') %}
+  {% set ig = store.instagram | replace('@','') %}
+  <a href="https://instagram.com/{{ ig }}" target="_blank" class="social-btn social-ig">📸 Instagram</a>
+  {% endif %}
+  {% if store.get('facebook') %}
+  {% set fb = store.facebook | replace('@','') %}
+  <a href="https://facebook.com/{{ fb }}" target="_blank" class="social-btn social-fb">👍 Facebook</a>
+  {% endif %}
+  {% if store.get('tiktok') %}
+  {% set tt = store.tiktok | replace('@','') %}
+  <a href="https://tiktok.com/@{{ tt }}" target="_blank" class="social-btn social-tt">🎵 TikTok</a>
+  {% endif %}
+</div>
+{% endif %}
 
 <!-- Store Header -->
 <div class="store-header">
@@ -308,7 +349,7 @@
       <div class="checkout-section" style="border-top:2px solid #f0f0f0;margin-top:20px;padding-top:16px">
         <div class="summary-row"><span>Subtotal</span><span id="sumSubtotal">R$0,00</span></div>
         <div class="summary-row" id="deliveryRow"><span>Entrega</span><span>R${{ '%.2f'|format(store.delivery_fee) }}</span></div>
-        <div class="summary-row total"><span>Total</span><span id="sumTotal" style="color:#EA580C">R$0,00</span></div>
+        <div class="summary-row total"><span>Total</span><span id="sumTotal" style="color:var(--cor)">R$0,00</span></div>
       </div>
 
       <button class="submit-btn" onclick="submitOrder()" id="submitBtn">Fazer pedido →</button>
@@ -338,15 +379,15 @@
   .badge-obrig{background:#fee2e2;color:#dc2626}
   .badge-opc{background:#f0f0f0;color:#666}
   .opcao-item{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-radius:10px;border:1.5px solid #e5e5e5;margin-bottom:6px;cursor:pointer;transition:.15s}
-  .opcao-item:hover{border-color:#EA580C;background:rgba(234,88,12,.03)}
-  .opcao-item.selected{border-color:#EA580C;background:rgba(234,88,12,.06)}
+  .opcao-item:hover{border-color:var(--cor);background:rgba(0,0,0,.03)}
+  .opcao-item.selected{border-color:var(--cor);background:rgba(0,0,0,.04)}
   .opcao-item-left{display:flex;align-items:center;gap:10px}
   .opcao-check{width:18px;height:18px;border-radius:50%;border:2px solid #ccc;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:.15s}
-  .opcao-item.selected .opcao-check{background:#EA580C;border-color:#EA580C}
+  .opcao-item.selected .opcao-check{background:var(--cor);border-color:var(--cor)}
   .opcao-item.selected .opcao-check::after{content:'✓';color:#fff;font-size:11px;font-weight:900}
   .opcao-check-multi{border-radius:4px}
   .opcao-name{font-size:14px;font-weight:600;color:#111}
-  .opcao-extra{font-size:12px;color:#EA580C;font-weight:700}
+  .opcao-extra{font-size:12px;color:var(--cor);font-weight:700}
 </style>
 
 <!-- Success Modal -->

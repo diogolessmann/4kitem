@@ -500,6 +500,12 @@ def init_saas_db():
         "ALTER TABLE mandaja_orders ADD COLUMN wa_sent_confirmed INTEGER DEFAULT 0",
         "ALTER TABLE mandaja_orders ADD COLUMN wa_sent_ready INTEGER DEFAULT 0",
         "ALTER TABLE mandaja_orders ADD COLUMN wa_sent_delivered INTEGER DEFAULT 0",
+        "ALTER TABLE mandaja_stores ADD COLUMN cor_primaria TEXT DEFAULT '#EA580C'",
+        "ALTER TABLE mandaja_stores ADD COLUMN instagram TEXT DEFAULT ''",
+        "ALTER TABLE mandaja_stores ADD COLUMN facebook TEXT DEFAULT ''",
+        "ALTER TABLE mandaja_stores ADD COLUMN tiktok TEXT DEFAULT ''",
+        "ALTER TABLE mandaja_stores ADD COLUMN whatsapp_publico TEXT DEFAULT ''",
+        "ALTER TABLE mandaja_stores ADD COLUMN msg_boas_vindas TEXT DEFAULT ''",
     ]
     # ── DefesaPro / apps gerais — reset de senha e Asaas ────────────────────────
     _auth_migrations = [

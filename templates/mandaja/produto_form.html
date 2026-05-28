@@ -115,12 +115,12 @@
         <div class="field">
           <label>Preço de venda (R$) *</label>
           <input type="number" name="price" step="0.01" min="0" placeholder="0,00"
-                 value="{{ '%.2f'|format(prod.price) if prod else '' }}" required>
+                 value="{{ '%.2f'|format(prod.price or 0) if prod else '' }}" required>
         </div>
         <div class="field">
           <label>Custo / preço de compra (R$)</label>
           <input type="number" name="cost" step="0.01" min="0" placeholder="0,00 (opcional)"
-                 value="{{ '%.2f'|format(prod.cost) if prod else '' }}">
+                 value="{{ '%.2f'|format(prod.cost or 0) if prod else '' }}">
           <div class="hint">Usado no controle financeiro — não aparece na loja</div>
         </div>
       </div>
