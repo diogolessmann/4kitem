@@ -10017,17 +10017,22 @@ def mandaja_produto_novo():
             stock = int(request.form.get('stock', -1) or -1)
         except (ValueError, TypeError):
             price, cost, stock = 0.0, 0.0, -1
-        category_id = request.form.get('category_id') or None
-        photo_url   = request.form.get('photo_url', '').strip()
+        category_id  = request.form.get('category_id') or None
+        photo_url    = request.form.get('photo_url', '').strip()
+        options_raw  = request.form.get('options_json', '[]').strip()
+        try:
+            _json.loads(options_raw)
+        except Exception:
+            options_raw = '[]'
         if not name:
             conn.close()
             return render_template('mandaja/produto_form.html',
                                    store=store, cats=[dict(c) for c in cats],
                                    error='Nome é obrigatório.', prod=None)
         conn.execute('''
-            INSERT INTO mandaja_products (store_id, category_id, name, description, price, cost, photo_url, stock, created_at)
-            VALUES (?,?,?,?,?,?,?,?,?)
-        ''', (store_id, category_id, name, description, price, cost, photo_url, stock, datetime.now().isoformat()))
+            INSERT INTO mandaja_products (store_id, category_id, name, description, price, cost, photo_url, stock, options_json, created_at)
+            VALUES (?,?,?,?,?,?,?,?,?,?)
+        ''', (store_id, category_id, name, description, price, cost, photo_url, stock, options_raw, datetime.now().isoformat()))
         conn.commit()
         conn.close()
         return redirect('/mandaja/produtos?ok=criado')
@@ -10064,13 +10069,18 @@ def mandaja_produto_editar(prod_id):
             stock = int(request.form.get('stock', -1) or -1)
         except (ValueError, TypeError):
             price, cost, stock = 0.0, 0.0, -1
-        category_id = request.form.get('category_id') or None
-        photo_url   = request.form.get('photo_url', '').strip()
-        active      = 1 if request.form.get('active') else 0
+        category_id  = request.form.get('category_id') or None
+        photo_url    = request.form.get('photo_url', '').strip()
+        active       = 1 if request.form.get('active') else 0
+        options_raw  = request.form.get('options_json', '[]').strip()
+        try:
+            _json.loads(options_raw)  # valida JSON
+        except Exception:
+            options_raw = '[]'
         conn.execute('''
             UPDATE mandaja_products SET name=?, description=?, price=?, cost=?,
-            category_id=?, photo_url=?, stock=?, active=? WHERE id=?
-        ''', (name, description, price, cost, category_id, photo_url, stock, active, prod_id))
+            category_id=?, photo_url=?, stock=?, active=?, options_json=? WHERE id=?
+        ''', (name, description, price, cost, category_id, photo_url, stock, active, options_raw, prod_id))
         conn.commit()
         conn.close()
         return redirect('/mandaja/produtos?ok=atualizado')
@@ -10213,16 +10223,30 @@ def mandaja_pedido_detalhe(order_id):
 @app.route('/mandaja/pedidos/<int:order_id>/status', methods=['POST'])
 @_mandaja_login_required
 def mandaja_pedido_status(order_id):
-    store_id   = session['mja_store_id']
+    store      = _mandaja_get_store()
+    if not store:
+        return jsonify({'error': 'auth'}), 401
+    store_id   = store['id']
     new_status = request.json.get('status')
     valid      = ('new', 'confirmed', 'preparing', 'ready', 'delivered', 'cancelled')
     if new_status not in valid:
         return jsonify({'error': 'Status inválido'}), 400
-    conn = get_saas_db()
+    conn  = get_saas_db()
+    order = conn.execute('SELECT * FROM mandaja_orders WHERE id=? AND store_id=?',
+                         (order_id, store_id)).fetchone()
+    if not order:
+        conn.close()
+        return jsonify({'error': 'Pedido não encontrado'}), 404
     conn.execute('UPDATE mandaja_orders SET status=?, updated_at=? WHERE id=? AND store_id=?',
                  (new_status, datetime.now().isoformat(), order_id, store_id))
     conn.commit()
     conn.close()
+    # Notifica cliente via WhatsApp se status relevante
+    if new_status in ('confirmed', 'preparing', 'ready', 'delivered'):
+        import threading
+        threading.Thread(
+            target=_mandaja_wa_cliente, args=(dict(store), dict(order), new_status), daemon=True
+        ).start()
     return jsonify({'ok': True, 'status': new_status})
 
 
@@ -10258,7 +10282,8 @@ def mandaja_config():
         # Salvar dados da loja
         fields = ['name', 'owner_name', 'phone', 'email', 'description', 'category',
                   'address', 'neighborhood', 'city', 'state', 'cep',
-                  'pix_chave', 'pix_nome', 'whatsapp', 'logo_url', 'banner_url']
+                  'pix_chave', 'pix_nome', 'whatsapp', 'logo_url', 'banner_url',
+                  'mandazap_instance']
         updates = {f: request.form.get(f, '').strip() for f in fields}
         updates['delivery_fee']    = float(request.form.get('delivery_fee', 0) or 0)
         updates['min_order']       = float(request.form.get('min_order', 0) or 0)
@@ -10266,6 +10291,7 @@ def mandaja_config():
         updates['delivery_radius'] = int(request.form.get('delivery_radius', 5) or 5)
         updates['accepts_card']    = 1 if request.form.get('accepts_card') else 0
         updates['accepts_cash']    = 1 if request.form.get('accepts_cash') else 0
+        updates['mandazap_ativo']  = 1 if request.form.get('mandazap_ativo') else 0
         set_clause = ', '.join(f'{k}=?' for k in updates)
         conn.execute(f'UPDATE mandaja_stores SET {set_clause} WHERE id=?',
                      (*updates.values(), store_id))
@@ -10276,6 +10302,53 @@ def mandaja_config():
     conn.close()
     return render_template('mandaja/configuracoes.html',
                            store=store, cats=MANDAJA_STORE_CATEGORIES)
+
+
+# ── WhatsApp automático para o CLIENTE (MandaJá) ─────────────────────────────
+def _mandaja_wa_cliente(store, order, new_status):
+    """Envia WA pro cliente quando o status do pedido muda."""
+    try:
+        instance = store.get('mandazap_instance', '') if hasattr(store, 'get') else store['mandazap_instance']
+        ativo    = store.get('mandazap_ativo', 0) if hasattr(store, 'get') else store['mandazap_ativo']
+        if not ativo or not instance:
+            return
+        phone = order.get('customer_phone', '') if hasattr(order, 'get') else order['customer_phone']
+        nome  = (order.get('customer_name', '') if hasattr(order, 'get') else order['customer_name']).split()[0]
+        loja  = store.get('name', '') if hasattr(store, 'get') else store['name']
+        num   = order.get('order_number', '') if hasattr(order, 'get') else order['order_number']
+        tipo  = order.get('delivery_type', 'delivery') if hasattr(order, 'get') else order['delivery_type']
+        wa_num = store.get('whatsapp', '') or (store.get('phone', '') if hasattr(store, 'get') else '')
+        wa_num_clean = ''.join(c for c in wa_num if c.isdigit())
+
+        msgs = {
+            'confirmed': (
+                f"✅ Olá, {nome}! Seu pedido *#{num}* foi confirmado por *{loja}*.\n\n"
+                f"Já estamos separando tudo com carinho 😊\n\n"
+                f"Qualquer dúvida, fale com a gente!"
+            ),
+            'preparing': (
+                f"👨‍🍳 Boa notícia, {nome}! Seu pedido *#{num}* está sendo preparado agora!\n\n"
+                f"Em breve estará pronto 🔥"
+            ),
+            'ready': (
+                f"📦 Pedido *#{num}* pronto!\n\n"
+                + (f"🚚 Seu pedido saiu para entrega! Fique de olho 👀"
+                   if tipo == 'delivery' else
+                   f"🏠 Pode vir retirar! Seu pedido está te esperando em *{loja}*.")
+                + (f"\n\n📲 Fale conosco: wa.me/55{wa_num_clean}" if wa_num_clean else '')
+            ),
+            'delivered': (
+                f"🎉 Pedido *#{num}* entregue!\n\n"
+                f"Obrigado pela preferência, {nome}! Esperamos que tenha curtido 😊\n\n"
+                f"*{loja}* te espera na próxima!"
+            ),
+        }
+        msg = msgs.get(new_status)
+        if not msg:
+            return
+        _agenda_send_whatsapp(phone, msg, instance)
+    except Exception as e:
+        log.warning(f'[MandaJá] WA cliente error: {e}')
 
 
 # ── Financeiro ────────────────────────────────────────────────────────────────
@@ -10348,10 +10421,11 @@ def mandaja_cozinha_api(slug):
 def mandaja_cozinha_status(slug):
     """Atualiza status do pedido direto da tela da cozinha."""
     conn  = get_saas_db()
-    store = conn.execute('SELECT id FROM mandaja_stores WHERE slug=? AND active=1', (slug,)).fetchone()
+    store = conn.execute('SELECT * FROM mandaja_stores WHERE slug=? AND active=1', (slug,)).fetchone()
     if not store:
         conn.close()
         return jsonify({'error': 'not found'}), 404
+    store      = dict(store)
     data       = request.json or {}
     order_id   = data.get('order_id')
     new_status = data.get('status')
@@ -10359,11 +10433,24 @@ def mandaja_cozinha_status(slug):
     if not order_id or new_status not in valid:
         conn.close()
         return jsonify({'error': 'invalido'}), 400
+    order = conn.execute(
+        'SELECT * FROM mandaja_orders WHERE id=? AND store_id=?',
+        (order_id, store['id'])).fetchone()
+    if not order:
+        conn.close()
+        return jsonify({'error': 'pedido nao encontrado'}), 404
+    order = dict(order)
     conn.execute(
         'UPDATE mandaja_orders SET status=?, updated_at=? WHERE id=? AND store_id=?',
         (new_status, datetime.now().isoformat(), order_id, store['id']))
     conn.commit()
     conn.close()
+    # WA pro cliente
+    if new_status in ('confirmed', 'preparing', 'ready'):
+        import threading
+        threading.Thread(
+            target=_mandaja_wa_cliente, args=(store, order, new_status), daemon=True
+        ).start()
     return jsonify({'ok': True})
 
 

@@ -495,6 +495,11 @@ def init_saas_db():
         "ALTER TABLE mandaja_products ADD COLUMN options_json TEXT DEFAULT '[]'",
         "ALTER TABLE mandaja_orders ADD COLUMN change_for REAL DEFAULT 0",
         "ALTER TABLE mandaja_stores ADD COLUMN cpf_cnpj TEXT DEFAULT ''",
+        "ALTER TABLE mandaja_stores ADD COLUMN mandazap_instance TEXT DEFAULT ''",
+        "ALTER TABLE mandaja_stores ADD COLUMN mandazap_ativo INTEGER DEFAULT 0",
+        "ALTER TABLE mandaja_orders ADD COLUMN wa_sent_confirmed INTEGER DEFAULT 0",
+        "ALTER TABLE mandaja_orders ADD COLUMN wa_sent_ready INTEGER DEFAULT 0",
+        "ALTER TABLE mandaja_orders ADD COLUMN wa_sent_delivered INTEGER DEFAULT 0",
     ]
     # ── DefesaPro / apps gerais — reset de senha e Asaas ────────────────────────
     _auth_migrations = [

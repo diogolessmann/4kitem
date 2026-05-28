@@ -223,6 +223,43 @@
         </div>
       </div>
 
+      <!-- WhatsApp automático pro cliente -->
+      <div class="card">
+        <h2>📲 WhatsApp Automático — Cliente</h2>
+        <p style="font-size:13px;color:#9090B0;margin-bottom:16px;line-height:1.5">
+          Envie mensagens automáticas pro cliente quando o status do pedido mudar.<br>
+          Precisa de uma instância MandaZap ativa.
+        </p>
+        <div class="toggle-row" style="margin-bottom:14px">
+          <div>
+            <div style="font-size:14px;font-weight:600">Ativar WA automático</div>
+            <div style="font-size:12px;color:#55557A">Confirmar, Preparando, Pronto, Entregue</div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" name="mandazap_ativo" value="1" id="mzAtivo"
+                   {% if store.get('mandazap_ativo',0) %}checked{% endif %}
+                   onchange="document.getElementById('mzFields').style.display=this.checked?'':'none'">
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div id="mzFields" style="{% if not store.get('mandazap_ativo',0) %}display:none{% endif %}">
+          <div class="field">
+            <label>Instância MandaZap</label>
+            <input type="text" name="mandazap_instance"
+                   value="{{ store.get('mandazap_instance','') }}"
+                   placeholder="Ex: minha-loja-delivery">
+            <div class="hint">Nome da instância configurada no MandaZap. Deixe em branco para desativar.</div>
+          </div>
+        </div>
+        <div style="background:rgba(249,115,22,.06);border:1px solid rgba(249,115,22,.2);border-radius:10px;padding:12px 14px;font-size:12px;color:#9090B0;margin-top:8px">
+          📋 Mensagens enviadas automaticamente:<br>
+          ✅ <strong>Confirmado</strong> — "Seu pedido foi confirmado!"<br>
+          👨‍🍳 <strong>Preparando</strong> — "Estamos preparando agora!"<br>
+          📦 <strong>Pronto</strong> — "Saiu para entrega!" / "Pode vir retirar!"<br>
+          🚚 <strong>Entregue</strong> — "Obrigado pela preferência!"
+        </div>
+      </div>
+
       <button type="submit" class="btn-save">💾 Salvar configurações</button>
     </form>
 

@@ -316,6 +316,39 @@
   </div>
 </div>
 
+<!-- Modal de Adicionais / Opções do produto -->
+<div class="modal-bg" id="opcoesModal">
+  <div class="modal">
+    <h2 id="opcoesTitle">Opções <button class="modal-close" onclick="closeOpcoes()">✕</button></h2>
+    <div id="opcoesBody"></div>
+    <div style="display:flex;align-items:center;gap:12px;margin-top:16px">
+      <div class="qty-ctrl">
+        <button class="qty-btn" onclick="changeOpQty(-1)">−</button>
+        <span class="qty-val" id="opQty">1</span>
+        <button class="qty-btn" onclick="changeOpQty(1)">+</button>
+      </div>
+      <button class="submit-btn" style="margin-top:0;flex:1" onclick="confirmOpcoes()">Adicionar ao pedido</button>
+    </div>
+  </div>
+</div>
+<style>
+  .opcao-group{margin-bottom:16px}
+  .opcao-group-title{font-size:13px;font-weight:800;color:#111;margin-bottom:2px;display:flex;justify-content:space-between}
+  .opcao-badge{font-size:10px;font-weight:700;padding:2px 8px;border-radius:100px}
+  .badge-obrig{background:#fee2e2;color:#dc2626}
+  .badge-opc{background:#f0f0f0;color:#666}
+  .opcao-item{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-radius:10px;border:1.5px solid #e5e5e5;margin-bottom:6px;cursor:pointer;transition:.15s}
+  .opcao-item:hover{border-color:#EA580C;background:rgba(234,88,12,.03)}
+  .opcao-item.selected{border-color:#EA580C;background:rgba(234,88,12,.06)}
+  .opcao-item-left{display:flex;align-items:center;gap:10px}
+  .opcao-check{width:18px;height:18px;border-radius:50%;border:2px solid #ccc;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:.15s}
+  .opcao-item.selected .opcao-check{background:#EA580C;border-color:#EA580C}
+  .opcao-item.selected .opcao-check::after{content:'✓';color:#fff;font-size:11px;font-weight:900}
+  .opcao-check-multi{border-radius:4px}
+  .opcao-name{font-size:14px;font-weight:600;color:#111}
+  .opcao-extra{font-size:12px;color:#EA580C;font-weight:700}
+</style>
+
 <!-- Success Modal -->
 <div class="modal-bg" id="successModal">
   <div class="modal">
@@ -341,23 +374,129 @@ const STORE_SLUG = '{{ store.slug }}';
 const DELIVERY_FEE = {{ store.delivery_fee }};
 const MIN_ORDER = {{ store.min_order }};
 
+// Mapa de opções por produto (injetado pelo servidor)
+const PROD_OPCOES = {};
+{% for p in prods %}
+{% if p.options_json and p.options_json != '[]' %}
+try { PROD_OPCOES[{{ p.id }}] = JSON.parse({{ p.options_json | tojson }}); } catch(e){}
+{% endif %}
+{% endfor %}
+
 let cart = [];
 let deliveryType = 'delivery';
 let paymentMethod = 'pix';
 
+// Estado do modal de opções
+let _opProd = null;  // { id, name, price, photo }
+let _opQty  = 1;
+let _opSel  = {};    // { grupoIdx: [itemIdx, ...] }
+
 function addToCart(id, name, price, photo) {
-  const existing = cart.find(i => i.id === id);
+  const opcoes = PROD_OPCOES[id];
+  if (opcoes && opcoes.length > 0) {
+    // Abre modal de opções antes de adicionar
+    _opProd = { id, name, price: parseFloat(price), photo };
+    _opQty  = 1;
+    _opSel  = {};
+    opcoes.forEach((_, i) => { _opSel[i] = []; });
+    renderOpcoesModal(opcoes, name);
+    document.getElementById('opcoesModal').classList.add('show');
+    document.body.style.overflow = 'hidden';
+    return;
+  }
+  _pushToCart(id, name, parseFloat(price), photo, 1, '', []);
+}
+
+function _pushToCart(id, name, price, photo, qty, notes, extras) {
+  // Monta nome com extras selecionados
+  const extrasStr = extras.map(e => e.nome).filter(Boolean).join(', ');
+  const fullName  = extrasStr ? `${name} (${extrasStr})` : name;
+  const extraPreco = extras.reduce((s, e) => s + (e.preco || 0), 0);
+  const totalPrice = price + extraPreco;
+  const existing = cart.find(i => i.id === id && i.notes === notes && i.fullName === fullName);
   if (existing) {
-    existing.qty++;
+    existing.qty += qty;
   } else {
-    cart.push({ id, name, price: parseFloat(price), qty: 1, notes: '', photo });
+    cart.push({ id, name: fullName, fullName, price: totalPrice, qty, notes, photo });
   }
   updateCartBar();
-  // Animate
   const bar = document.getElementById('cartBar');
   bar.style.transform = 'translateX(-50%) scale(1.04)';
   setTimeout(() => bar.style.transform = 'translateX(-50%)', 150);
 }
+
+/* ─── Modal de opções ──────────────────────────────── */
+function renderOpcoesModal(opcoes, nome) {
+  document.getElementById('opcoesTitle').childNodes[0].textContent = nome + ' ';
+  document.getElementById('opQty').textContent = _opQty;
+  const body = document.getElementById('opcoesBody');
+  body.innerHTML = opcoes.map((op, oi) => `
+    <div class="opcao-group">
+      <div class="opcao-group-title">
+        ${op.nome}
+        <span class="opcao-badge ${op.obrigatorio ? 'badge-obrig' : 'badge-opc'}">
+          ${op.obrigatorio ? 'Obrigatório' : 'Opcional'}
+        </span>
+      </div>
+      ${(op.itens || []).map((it, ii) => `
+        <div class="opcao-item ${(_opSel[oi]||[]).includes(ii)?'selected':''}"
+             onclick="toggleOpc(${oi},${ii},'${op.tipo}')">
+          <div class="opcao-item-left">
+            <div class="opcao-check ${op.tipo==='multipla'?'opcao-check-multi':''}"></div>
+            <span class="opcao-name">${it.nome}</span>
+          </div>
+          ${it.preco > 0 ? `<span class="opcao-extra">+R$${parseFloat(it.preco).toFixed(2).replace('.',',')}</span>` : ''}
+        </div>
+      `).join('')}
+    </div>
+  `).join('');
+}
+
+function toggleOpc(grupoIdx, itemIdx, tipo) {
+  if (!_opSel[grupoIdx]) _opSel[grupoIdx] = [];
+  if (tipo === 'unica') {
+    _opSel[grupoIdx] = [itemIdx];
+  } else {
+    const pos = _opSel[grupoIdx].indexOf(itemIdx);
+    if (pos >= 0) _opSel[grupoIdx].splice(pos, 1);
+    else _opSel[grupoIdx].push(itemIdx);
+  }
+  renderOpcoesModal(PROD_OPCOES[_opProd.id], _opProd.name);
+}
+
+function changeOpQty(delta) {
+  _opQty = Math.max(1, _opQty + delta);
+  document.getElementById('opQty').textContent = _opQty;
+}
+
+function confirmOpcoes() {
+  const opcoes = PROD_OPCOES[_opProd.id] || [];
+  // Valida obrigatórios
+  for (let i = 0; i < opcoes.length; i++) {
+    if (opcoes[i].obrigatorio && (!_opSel[i] || _opSel[i].length === 0)) {
+      alert(`Selecione uma opção para "${opcoes[i].nome}"`);
+      return;
+    }
+  }
+  // Monta lista de extras selecionados
+  const extras = [];
+  opcoes.forEach((op, oi) => {
+    (_opSel[oi] || []).forEach(ii => {
+      extras.push({ nome: op.itens[ii].nome, preco: op.itens[ii].preco || 0 });
+    });
+  });
+  closeOpcoes();
+  _pushToCart(_opProd.id, _opProd.name, _opProd.price, _opProd.photo, _opQty, '', extras);
+}
+
+function closeOpcoes() {
+  document.getElementById('opcoesModal').classList.remove('show');
+  document.body.style.overflow = '';
+  _opProd = null;
+}
+document.getElementById('opcoesModal').addEventListener('click', function(e) {
+  if (e.target === this) closeOpcoes();
+});
 
 function updateCartBar() {
   const total = cart.reduce((s, i) => s + i.price * i.qty, 0);

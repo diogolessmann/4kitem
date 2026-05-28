@@ -136,6 +136,20 @@
         <div class="hint">Quando chegar a 0, o produto fica indisponível automaticamente</div>
       </div>
 
+      <!-- Adicionais / Complementos -->
+      <div style="margin-bottom:18px">
+        <label style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <span>🧩 Adicionais / Opções</span>
+          <button type="button" onclick="addOpcao()" style="padding:5px 14px;border-radius:8px;background:rgba(249,115,22,.15);color:#F97316;border:1px solid rgba(249,115,22,.3);font-size:12px;font-weight:700;cursor:pointer">+ Adicionar opção</button>
+        </label>
+        <div id="opcoesContainer" style="display:flex;flex-direction:column;gap:10px"></div>
+        <input type="hidden" name="options_json" id="optionsJsonInput">
+        <div style="font-size:11px;color:#55557A;margin-top:6px">
+          Exemplos: ponto da carne, tamanho, borda, acompanhamento, sabor...<br>
+          Cada opção pode ser obrigatória ou opcional, e ter itens com preço extra.
+        </div>
+      </div>
+
       {% if prod %}
       <!-- Status ativo/inativo -->
       <div class="switch-row" style="margin-bottom:16px">
@@ -166,6 +180,19 @@
   </div>
 </div>
 
+<style>
+  .opcao-card{background:#07070E;border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:14px;margin-bottom:2px}
+  .opcao-head{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+  .opcao-head input{flex:1;min-width:140px}
+  .opcao-head select{width:auto;padding:10px 10px}
+  .item-row-opt{display:flex;align-items:center;gap:6px;margin-bottom:6px}
+  .item-row-opt input[type=text]{flex:1}
+  .item-row-opt input[type=number]{width:90px}
+  .del-btn{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);color:#F87171;border-radius:8px;padding:6px 10px;cursor:pointer;font-size:13px;flex-shrink:0}
+  .del-btn:hover{background:rgba(239,68,68,.2)}
+  .add-item-btn{background:rgba(74,222,128,.08);border:1px solid rgba(74,222,128,.2);color:#4ADE80;border-radius:8px;padding:6px 12px;cursor:pointer;font-size:12px;font-weight:600;margin-top:4px}
+  .add-item-btn:hover{background:rgba(74,222,128,.15)}
+</style>
 <script>
 function updatePreview(url) {
   const box = document.getElementById('imgPreview');
@@ -175,6 +202,92 @@ function updatePreview(url) {
     box.innerHTML = '📦';
   }
 }
+
+/* ─── Adicionais / Opções ─────────────────────────────── */
+let _opcoes = [];
+
+// Carrega opções existentes (edição)
+try {
+  const raw = {{ (prod.options_json if prod and prod.options_json else '[]') | tojson }};
+  _opcoes = Array.isArray(raw) ? raw : JSON.parse(raw || '[]');
+} catch(e) { _opcoes = []; }
+
+function renderOpcoes() {
+  const container = document.getElementById('opcoesContainer');
+  if (_opcoes.length === 0) {
+    container.innerHTML = '<div style="font-size:12px;color:#55557A;padding:8px;text-align:center;border:1px dashed rgba(255,255,255,.08);border-radius:8px">Nenhuma opção adicionada</div>';
+    syncJson();
+    return;
+  }
+  container.innerHTML = _opcoes.map((op, oi) => `
+    <div class="opcao-card">
+      <div class="opcao-head">
+        <input type="text" placeholder="Nome da opção (ex: Ponto da carne)"
+               value="${escHtml(op.nome || '')}"
+               oninput="_opcoes[${oi}].nome = this.value; syncJson()">
+        <select onchange="_opcoes[${oi}].tipo = this.value; syncJson()">
+          <option value="unica"     ${op.tipo==='unica'    ?'selected':''}>Escolha única</option>
+          <option value="multipla"  ${op.tipo==='multipla' ?'selected':''}>Múltipla escolha</option>
+        </select>
+        <select onchange="_opcoes[${oi}].obrigatorio = this.value==='1'; syncJson()">
+          <option value="1" ${op.obrigatorio?'selected':''}>Obrigatório</option>
+          <option value="0" ${!op.obrigatorio?'selected':''}>Opcional</option>
+        </select>
+        <button type="button" class="del-btn" onclick="removeOpcao(${oi})">🗑️</button>
+      </div>
+      <div id="items-${oi}">
+        ${(op.itens||[]).map((it, ii) => `
+          <div class="item-row-opt">
+            <input type="text" placeholder="Ex: Mal passado" value="${escHtml(it.nome||'')}"
+                   oninput="_opcoes[${oi}].itens[${ii}].nome=this.value;syncJson()">
+            <input type="number" placeholder="+R$0,00" step="0.50" min="0"
+                   value="${it.preco||0}"
+                   oninput="_opcoes[${oi}].itens[${ii}].preco=parseFloat(this.value)||0;syncJson()"
+                   title="Preço extra (0 = sem custo adicional)">
+            <button type="button" class="del-btn" onclick="removeItem(${oi},${ii})">✕</button>
+          </div>
+        `).join('')}
+      </div>
+      <button type="button" class="add-item-btn" onclick="addItem(${oi})">+ Item</button>
+    </div>
+  `).join('');
+  syncJson();
+}
+
+function syncJson() {
+  document.getElementById('optionsJsonInput').value = JSON.stringify(_opcoes);
+}
+
+function addOpcao() {
+  _opcoes.push({ nome: '', tipo: 'unica', obrigatorio: false, itens: [{ nome: '', preco: 0 }] });
+  renderOpcoes();
+}
+
+function removeOpcao(i) {
+  _opcoes.splice(i, 1);
+  renderOpcoes();
+}
+
+function addItem(oi) {
+  _opcoes[oi].itens = _opcoes[oi].itens || [];
+  _opcoes[oi].itens.push({ nome: '', preco: 0 });
+  renderOpcoes();
+}
+
+function removeItem(oi, ii) {
+  _opcoes[oi].itens.splice(ii, 1);
+  renderOpcoes();
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// Garante que o JSON é sincronizado antes do submit
+document.getElementById('prodForm').addEventListener('submit', syncJson);
+
+// Render inicial
+renderOpcoes();
 </script>
 </body>
 </html>
