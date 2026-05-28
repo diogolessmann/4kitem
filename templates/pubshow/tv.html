@@ -196,6 +196,29 @@
   .cta-sub{font-size:11px;color:rgba(255,255,255,.6);line-height:1.6}
   .cta-preco{font-size:20px;font-weight:900;color:#f97316;margin-top:10px;display:block}
 
+  /* ── Promoção Relâmpago — countdown na TV ───────────────────────────────── */
+  #promo-relampago{
+    position:fixed;top:0;left:0;right:0;z-index:80;
+    background:linear-gradient(135deg,#7c2d12,#1c0a00);
+    border-bottom:3px solid #f97316;
+    padding:18px 32px;
+    display:none;align-items:center;justify-content:space-between;
+    gap:16px;
+    animation:slideDown .4s ease;
+  }
+  @keyframes slideDown{from{transform:translateY(-100%);opacity:0}to{transform:none;opacity:1}}
+  #promo-relampago.show{display:flex}
+  .promo-left{display:flex;align-items:center;gap:16px;flex:1}
+  .promo-emoji-big{font-size:48px;flex-shrink:0;animation:bounce 1s ease-in-out infinite alternate}
+  @keyframes bounce{from{transform:scale(1)}to{transform:scale(1.15)}}
+  .promo-txt strong{display:block;font-size:28px;font-weight:900;color:#fff;letter-spacing:-0.5px;line-height:1.1}
+  .promo-txt span{font-size:15px;color:rgba(255,255,255,.65)}
+  .promo-timer-wrap{text-align:center;flex-shrink:0}
+  .promo-timer-label{font-size:11px;font-weight:700;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px}
+  .promo-timer{font-size:52px;font-weight:900;color:#fb923c;letter-spacing:-2px;font-variant-numeric:tabular-nums;line-height:1}
+  .promo-timer.urgente{color:#ef4444;animation:piscar .5s ease-in-out infinite alternate}
+  @keyframes piscar{from{opacity:1}to{opacity:.4}}
+
   /* ── Slide de propaganda do bar ─────────────────────────────────────────── */
   #slide-propaganda{
     position:fixed;inset:0;z-index:90;
@@ -315,6 +338,21 @@
   </div>
 </div>
 
+<!-- Promoção Relâmpago — topo da tela com countdown -->
+<div id="promo-relampago">
+  <div class="promo-left">
+    <span class="promo-emoji-big" id="promo-emoji">🍺</span>
+    <div class="promo-txt">
+      <strong id="promo-msg">CHOPP EM DOBRO!</strong>
+      <span>⚡ Promoção Relâmpago — só agora!</span>
+    </div>
+  </div>
+  <div class="promo-timer-wrap">
+    <div class="promo-timer-label">Acaba em</div>
+    <div class="promo-timer" id="promo-timer">--:--</div>
+  </div>
+</div>
+
 <!-- Slide de propaganda do bar -->
 <div id="slide-propaganda">
   <div class="slide-box" id="slide-box">
@@ -412,6 +450,44 @@ function ativarSom() {
   setTimeout(() => document.getElementById('qr-fixo').classList.add('visible'), 1500);
   // Inicia timer de CTA vazia
   resetIdleTimer();
+}
+
+// ── Promoção Relâmpago — countdown ───────────────────────────────────────────
+let _promoTimer = null;
+let _promoExpira = null;
+
+function atualizarPromo(promo) {
+  const el = document.getElementById('promo-relampago');
+  if (!promo) {
+    el.classList.remove('show');
+    clearInterval(_promoTimer);
+    _promoExpira = null;
+    return;
+  }
+  // Atualiza conteúdo
+  document.getElementById('promo-emoji').textContent = promo.emoji || '🍺';
+  document.getElementById('promo-msg').textContent   = promo.msg;
+  el.classList.add('show');
+
+  if (_promoExpira !== promo.expira) {
+    _promoExpira = promo.expira;
+    clearInterval(_promoTimer);
+    _promoTimer = setInterval(() => {
+      const diff = new Date(promo.expira) - new Date();
+      const timerEl = document.getElementById('promo-timer');
+      if (diff <= 0) {
+        el.classList.remove('show');
+        clearInterval(_promoTimer);
+        return;
+      }
+      const min  = Math.floor(diff / 60000);
+      const sec  = Math.floor((diff % 60000) / 1000);
+      timerEl.textContent = `${String(min).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+      // Últimos 60s: pisca urgente
+      if (diff < 60000) timerEl.classList.add('urgente');
+      else timerEl.classList.remove('urgente');
+    }, 500);
+  }
 }
 
 // ── CTA Fila Vazia ────────────────────────────────────────────────────────────
@@ -765,6 +841,9 @@ async function pollStatus() {
   try {
     const res  = await fetch(`${BASE_URL}/api/status/${CODE}`);
     const data = await res.json();
+
+    // Promoção Relâmpago
+    atualizarPromo(data.promo || null);
 
     // Troca de canal pelo dono do bar (sem reload)
     if (data.canal_atual && data.canal_atual !== window._canalAtual) {

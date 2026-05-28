@@ -754,6 +754,20 @@ def api_status(code):
         (b['id'],)
     ).fetchone()[0]
 
+    # Promoção Relâmpago — verifica se ainda está dentro do prazo
+    promo = None
+    if b['promo_msg'] and b['promo_expira']:
+        if b['promo_expira'] > datetime.now().strftime('%Y-%m-%dT%H:%M:%S'):
+            promo = {
+                'msg':    b['promo_msg'],
+                'emoji':  b['promo_emoji'] or '🍺',
+                'expira': b['promo_expira'],
+            }
+        else:
+            # Limpeza automática quando expirou
+            conn.execute('UPDATE pubshow_businesses SET promo_msg=NULL, promo_expira=NULL WHERE id=?', (b['id'],))
+            conn.commit()
+
     result = {
         'canal_atual':    b['canal_atual'],
         'jukebox_ativo':  bool(b['jukebox_ativo']),
@@ -761,6 +775,7 @@ def api_status(code):
         'pedido_musica':  dict(pedido_musica)   if pedido_musica   else None,
         'total_fila':     total_fila,
         'aguardando_pix': aguardando_pix,
+        'promo':          promo,
     }
     conn.close()
     return jsonify(result)
@@ -953,7 +968,8 @@ def painel():
                            bloqueados_parsed=bloqueados_parsed,
                            precos_parsed=precos_parsed,
                            temas_habilitados=temas_habilitados,
-                           anuncios_parsed=anuncios_parsed)
+                           anuncios_parsed=anuncios_parsed,
+                           promo_ativa=bool(bd.get('promo_msg') and bd.get('promo_expira') and bd['promo_expira'] > datetime.now().strftime('%Y-%m-%dT%H:%M:%S')))
 
 
 @pubshow_bp.route('/painel/fila-json')
@@ -999,6 +1015,28 @@ def painel_canal():
         conn.execute('UPDATE pubshow_businesses SET canal_atual=? WHERE id=?', (canal, b['id']))
         conn.commit(); conn.close()
         session['pub_canal'] = canal
+    return redirect('/pubshow/painel')
+
+
+@pubshow_bp.route('/painel/promo', methods=['POST'])
+@pubshow_login_required
+def painel_promo():
+    """Inicia ou encerra uma Promoção Relâmpago na TV."""
+    b = _get_business()
+    acao = request.form.get('acao', 'iniciar')
+    conn = get_pubshow_db()
+    if acao == 'encerrar':
+        conn.execute('UPDATE pubshow_businesses SET promo_msg=NULL, promo_expira=NULL WHERE id=?', (b['id'],))
+    else:
+        msg    = request.form.get('promo_msg', '').strip()[:80]
+        emoji  = request.form.get('promo_emoji', '🍺').strip()[:4]
+        minutos = int(request.form.get('promo_minutos', 10) or 10)
+        minutos = max(1, min(minutos, 120))  # entre 1 e 120 min
+        expira  = (datetime.now() + timedelta(minutes=minutos)).strftime('%Y-%m-%dT%H:%M:%S')
+        if msg:
+            conn.execute('UPDATE pubshow_businesses SET promo_msg=?, promo_expira=?, promo_emoji=? WHERE id=?',
+                         (msg, expira, emoji, b['id']))
+    conn.commit(); conn.close()
     return redirect('/pubshow/painel')
 
 

@@ -138,6 +138,10 @@ def init_pubshow_db():
         'ALTER TABLE pubshow_businesses ADD COLUMN temas_habilitados TEXT DEFAULT NULL',
         # Slides de propaganda do bar na TV (JSON array de {titulo, subtitulo, emoji, cor})
         'ALTER TABLE pubshow_businesses ADD COLUMN anuncios_json TEXT DEFAULT "[]"',
+        # Promoção Relâmpago — expira em ISO datetime, NULL = sem promoção ativa
+        'ALTER TABLE pubshow_businesses ADD COLUMN promo_msg TEXT DEFAULT NULL',
+        'ALTER TABLE pubshow_businesses ADD COLUMN promo_expira TEXT DEFAULT NULL',
+        'ALTER TABLE pubshow_businesses ADD COLUMN promo_emoji TEXT DEFAULT "🍺"',
     ]:
         try:
             conn.execute(m); conn.commit()

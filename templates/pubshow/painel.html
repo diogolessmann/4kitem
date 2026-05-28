@@ -122,6 +122,47 @@
   </div>
   {% endif %}
 
+  <!-- Promoção Relâmpago -->
+  <div class="card" style="margin-bottom:20px;border-color:{% if promo_ativa %}rgba(249,115,22,.5){% else %}rgba(255,255,255,.08){% endif %};background:{% if promo_ativa %}rgba(249,115,22,.06){% else %}var(--surface){% endif %}">
+    <div class="card-title">⚡ Promoção Relâmpago</div>
+    {% if promo_ativa %}
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;padding:12px 14px;background:rgba(249,115,22,.12);border:1px solid rgba(249,115,22,.3);border-radius:12px">
+      <span style="font-size:28px">{{ b.promo_emoji or '🍺' }}</span>
+      <div>
+        <div style="font-size:15px;font-weight:800;color:#fb923c">{{ b.promo_msg }}</div>
+        <div style="font-size:11px;color:#8888aa;margin-top:2px">⏱️ Encerra: {{ (b.promo_expira or '')[:16]|replace('T',' ') }}</div>
+      </div>
+    </div>
+    <form method="POST" action="/pubshow/painel/promo">
+      <input type="hidden" name="acao" value="encerrar">
+      <button type="submit" style="background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.3);color:#f87171;border-radius:8px;padding:8px 18px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">⏹ Encerrar promoção</button>
+    </form>
+    {% else %}
+    <p style="font-size:12px;color:#8888aa;margin-bottom:14px">Lança uma oferta ao vivo. Aparece na TV como um countdown — clientes veem e correm pedir!</p>
+    <form method="POST" action="/pubshow/painel/promo" style="display:flex;flex-direction:column;gap:10px">
+      <input type="hidden" name="acao" value="iniciar">
+      <div style="display:grid;grid-template-columns:60px 1fr;gap:8px">
+        <input name="promo_emoji" placeholder="🍺" value="🍺" maxlength="4"
+               style="background:#0a0a12;border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:8px;color:#f0f0ff;font-size:24px;text-align:center;outline:none">
+        <input name="promo_msg" placeholder="Ex: CHOPP EM DOBRO! Só agora!" maxlength="60" required
+               style="background:#0a0a12;border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:8px 12px;color:#f0f0ff;font-size:13px;outline:none">
+      </div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <label style="font-size:12px;color:#8888aa;white-space:nowrap">⏱️ Duração:</label>
+        <select name="promo_minutos" style="background:#0a0a12;border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:8px 12px;color:#f0f0ff;font-size:13px;outline:none">
+          <option value="5">5 minutos</option>
+          <option value="10" selected>10 minutos</option>
+          <option value="15">15 minutos</option>
+          <option value="20">20 minutos</option>
+          <option value="30">30 minutos</option>
+          <option value="60">1 hora</option>
+        </select>
+        <button type="submit" style="background:linear-gradient(135deg,#f97316,#ef4444);color:#fff;border:none;border-radius:8px;padding:9px 22px;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;white-space:nowrap">⚡ Lançar agora!</button>
+      </div>
+    </form>
+    {% endif %}
+  </div>
+
   <!-- Stats -->
   <div class="grid-3">
     <div class="card">
