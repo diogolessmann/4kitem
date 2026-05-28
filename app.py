@@ -3370,7 +3370,11 @@ def agenda_appt_action(appt_id, action):
             )
         elif new_status == 'done':
             # Pedido de avaliação pós-atendimento
-            tpl = (biz.get('msg_avaliacao') or
+            try:
+                _msg_aval = biz['msg_avaliacao']
+            except Exception:
+                _msg_aval = ''
+            tpl = (_msg_aval or
                    "Olá {nome}! 😊\n\n"
                    "Foi um prazer te atender hoje em *{negocio}*! 🙌\n\n"
                    "Sua opinião é muito importante para nós. "
@@ -4448,14 +4452,13 @@ def _agenda_run_lembretes():
     """Busca agendamentos de amanhã (janela 22h–26h a partir de agora) que
     ainda não receberam lembrete e dispara WhatsApp para cada um."""
     try:
-        now       = datetime.now()
+        now      = datetime.now()
         # Janela: agendamentos entre 22h e 26h a partir de agora
-        from_dt   = now + timedelta(hours=22)
-        until_dt  = now + timedelta(hours=26)
-        from_date = from_dt.strftime('%Y-%m-%d')
-        until_date = until_dt.strftime('%Y-%m-%d')
-        from_time = from_dt.strftime('%H:%M')
-        until_time = until_dt.strftime('%H:%M')
+        from_dt  = now + timedelta(hours=22)
+        until_dt = now + timedelta(hours=26)
+        # Usa string datetime para comparação correta mesmo quando from_date == until_date
+        from_str  = from_dt.strftime('%Y-%m-%d %H:%M')
+        until_str = until_dt.strftime('%Y-%m-%d %H:%M')
 
         conn = get_saas_db()
         # Busca todos os agendamentos na janela, sem lembrete, de negócios ativos com WhatsApp
@@ -4469,16 +4472,13 @@ def _agenda_run_lembretes():
             LEFT JOIN agenda_services s ON a.service_id = s.id
             LEFT JOIN agenda_professionals p ON a.professional_id = p.id
             WHERE (a.reminded_at IS NULL OR a.reminded_at = '')
-              AND a.status != 'cancelado'
+              AND a.status NOT IN ('cancelled', 'done')
               AND b.active = 1
               AND b.mandazap_ativo = 1
               AND b.mandazap_instance != ''
-              AND (
-                (a.appointment_date = ? AND a.appointment_time >= ?)
-                OR
-                (a.appointment_date = ? AND a.appointment_time <= ?)
-              )
-        ''', (from_date, from_time, until_date, until_time)).fetchall()
+              AND (a.appointment_date || ' ' || a.appointment_time) >= ?
+              AND (a.appointment_date || ' ' || a.appointment_time) <= ?
+        ''', (from_str, until_str)).fetchall()
         conn.close()
 
         if not appts:
@@ -4526,10 +4526,9 @@ def _agenda_run_lembretes_2h():
         now      = datetime.now()
         from_dt  = now + timedelta(minutes=90)   # janela: 1h30 → 2h30
         until_dt = now + timedelta(minutes=150)
-        from_date  = from_dt.strftime('%Y-%m-%d')
-        until_date = until_dt.strftime('%Y-%m-%d')
-        from_time  = from_dt.strftime('%H:%M')
-        until_time = until_dt.strftime('%H:%M')
+        # Usa comparação de string datetime para evitar bug de OR com mesmo dia
+        from_str  = from_dt.strftime('%Y-%m-%d %H:%M')
+        until_str = until_dt.strftime('%Y-%m-%d %H:%M')
 
         conn = get_saas_db()
         appts = conn.execute('''
@@ -4544,12 +4543,9 @@ def _agenda_run_lembretes_2h():
               AND b.active = 1
               AND b.mandazap_ativo = 1
               AND b.mandazap_instance != ''
-              AND (
-                (a.appointment_date = ? AND a.appointment_time >= ?)
-                OR
-                (a.appointment_date = ? AND a.appointment_time <= ?)
-              )
-        ''', (from_date, from_time, until_date, until_time)).fetchall()
+              AND (a.appointment_date || ' ' || a.appointment_time) >= ?
+              AND (a.appointment_date || ' ' || a.appointment_time) <= ?
+        ''', (from_str, until_str)).fetchall()
         conn.close()
 
         if not appts:

@@ -499,7 +499,7 @@ function launchConfetti() {
 const SLUG         = '{{ biz.slug }}';
 const BIZ_PHONE    = '{{ biz.phone }}'.replace(/\D/g, '');
 const BIZ_NAME     = '{{ biz.name }}';
-const BIZ_ADDRESS  = '{{ biz.address | e }}';
+const BIZ_ADDRESS  = '{{ biz.address or "" | e }}';
 const TEM_PROFS    = {{ 'true' if tem_profissionais else 'false' }};
 
 // Step mapping: com ou sem profissionais
