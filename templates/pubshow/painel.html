@@ -442,6 +442,76 @@
     </form>
   </div>
 
+  <!-- Happy Hour dinâmico -->
+  <div class="card" style="margin-bottom:16px;border-color:{% if hh_desconto_atual > 0 %}rgba(250,204,21,.5){% else %}rgba(255,255,255,.08){% endif %};background:{% if hh_desconto_atual > 0 %}rgba(250,204,21,.05){% else %}var(--surface){% endif %}">
+    <div class="card-title">🎉 Happy Hour dinâmico
+      {% if hh_desconto_atual > 0 %}<span style="margin-left:8px;font-size:11px;color:#fbbf24;font-weight:700;font-style:normal">● ATIVO agora — {{ hh_desconto_atual }}% off</span>{% endif %}
+    </div>
+    <p style="font-size:12px;color:#8888aa;margin-bottom:14px">Desconto automático nos preços durante o horário configurado. Os clientes veem o preço já com desconto.</p>
+    <form method="POST" action="/pubshow/painel/happy-hour" style="display:flex;flex-direction:column;gap:14px">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--surface2);border-radius:12px;border:1px solid var(--border)">
+        <div>
+          <div style="font-size:14px;font-weight:700">🍺 Ativar Happy Hour</div>
+          <div style="font-size:12px;color:var(--text2);margin-top:2px">Desconto automático por horário</div>
+        </div>
+        <label style="position:relative;display:inline-block;width:48px;height:26px;cursor:pointer">
+          <input type="checkbox" name="hh_ativo" value="1" id="hh-toggle" onchange="toggleHH(this.checked)" {% if happy_hour %}checked{% endif %} style="opacity:0;width:0;height:0">
+          <span style="position:absolute;inset:0;background:{% if happy_hour %}#f59e0b{% else %}#333{% endif %};border-radius:13px;transition:.3s"></span>
+          <span style="position:absolute;left:{% if happy_hour %}24px{% else %}2px{% endif %};top:2px;width:22px;height:22px;background:#fff;border-radius:50%;transition:.3s"></span>
+        </label>
+      </div>
+      <div id="hh-config" style="display:{% if happy_hour %}flex{% else %}none{% endif %};flex-direction:column;gap:12px">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+          <div>
+            <label class="label-sm">Início</label>
+            <input type="time" name="hh_ini" value="{{ (happy_hour or {}).get('ini','18:00') }}"
+              style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-size:13px;font-family:inherit;width:100%;outline:none">
+          </div>
+          <div>
+            <label class="label-sm">Fim</label>
+            <input type="time" name="hh_fim" value="{{ (happy_hour or {}).get('fim','20:00') }}"
+              style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-size:13px;font-family:inherit;width:100%;outline:none">
+          </div>
+          <div>
+            <label class="label-sm">Desconto %</label>
+            <input type="number" name="hh_desconto" min="1" max="80" value="{{ (happy_hour or {}).get('desconto',20) }}"
+              style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:#fbbf24;font-size:16px;font-weight:900;font-family:inherit;width:100%;outline:none">
+          </div>
+        </div>
+        <div>
+          <label class="label-sm" style="margin-bottom:8px">Dias da semana</label>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            {% set dias_hh = (happy_hour or {}).get('dias',[0,1,2,3,4,5,6]) %}
+            {% for d_val, d_nome in [(0,'Dom'),(1,'Seg'),(2,'Ter'),(3,'Qua'),(4,'Qui'),(5,'Sex'),(6,'Sáb')] %}
+            <label style="display:flex;align-items:center;gap:5px;background:var(--surface2);border:1px solid {% if d_val in dias_hh %}rgba(251,191,36,.4){% else %}var(--border){% endif %};border-radius:8px;padding:6px 12px;cursor:pointer;font-size:12px;font-weight:700;transition:.15s">
+              <input type="checkbox" name="hh_dias" value="{{ d_val }}" {% if d_val in dias_hh %}checked{% endif %} style="accent-color:#f59e0b;width:14px;height:14px">
+              {{ d_nome }}
+            </label>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+      <button type="submit" style="background:linear-gradient(135deg,#f59e0b,#d97706);color:#000;border:none;border-radius:8px;padding:9px 22px;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;align-self:flex-start">💾 Salvar Happy Hour</button>
+    </form>
+  </div>
+
+  <!-- Notificação WhatsApp -->
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-title">📲 Notificações WhatsApp</div>
+    <p style="font-size:12px;color:#8888aa;margin-bottom:14px">Receba uma mensagem no seu WhatsApp sempre que chegar um novo pedido. O número usado é o telefone do cadastro: <strong style="color:var(--text)">{{ b.telefone or '—' }}</strong></p>
+    <form method="POST" action="/pubshow/painel/notif" style="display:flex;align-items:center;gap:14px">
+      <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
+        <span style="position:relative;display:inline-block;width:48px;height:26px">
+          <input type="checkbox" name="whatsapp_notif" {% if b.whatsapp_notif %}checked{% endif %} onchange="this.form.submit()" style="opacity:0;width:0;height:0">
+          <span style="position:absolute;inset:0;background:{% if b.whatsapp_notif %}#22c55e{% else %}#333{% endif %};border-radius:13px;transition:.3s"></span>
+          <span style="position:absolute;left:{% if b.whatsapp_notif %}24px{% else %}2px{% endif %};top:2px;width:22px;height:22px;background:#fff;border-radius:50%;transition:.3s"></span>
+        </span>
+        <span style="font-size:14px;font-weight:700">{% if b.whatsapp_notif %}✅ Ativado{% else %}Desativado{% endif %}</span>
+      </label>
+      <span style="font-size:12px;color:var(--text2)">Toggle salva automaticamente</span>
+    </form>
+  </div>
+
   <!-- Configurações do Jukebox -->
   <div class="card" style="margin-bottom:16px">
     <div class="card-title">⚙️ Configurações do Jukebox</div>
@@ -603,6 +673,10 @@
 </div>
 
 <script>
+function toggleHH(on) {
+  document.getElementById('hh-config').style.display = on ? 'flex' : 'none';
+}
+
 function atualizarLabel(key) {
   const cb = document.querySelector(`input[value="${key}"]`);
   const lbl = document.getElementById('label-' + key);

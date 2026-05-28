@@ -341,8 +341,27 @@ function copiarPayload() {
 
 <!-- Grid principal — 5 opções em destaque -->
 <div class="pedidos-section" id="grid-section">
+  {% if hh_desconto > 0 %}
+  <div style="background:linear-gradient(135deg,#78350f,#92400e);border:1px solid rgba(251,191,36,.4);border-radius:14px;padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;gap:12px">
+    <span style="font-size:28px">🎉</span>
+    <div>
+      <div style="font-size:14px;font-weight:800;color:#fbbf24">Happy Hour! {{ hh_desconto }}% de desconto</div>
+      <div style="font-size:11px;color:#d97706;margin-top:1px">Aproveite — preços já com desconto abaixo</div>
+    </div>
+  </div>
+  {% endif %}
   <div class="pedidos-titulo">🎰 O que você quer fazer?</div>
   <div class="pedidos-grid">
+
+    {# Macro para mostrar preço com ou sem desconto #}
+    {% macro preco_card(t) %}
+      {% if t.get('happy_hour') %}
+        <div class="card-preco">R$ {{ '%.0f'|format(t.preco) }}</div>
+        <div style="font-size:9px;color:var(--text2);text-decoration:line-through;margin-top:-2px">R$ {{ '%.0f'|format(t.preco_original) }}</div>
+      {% else %}
+        <div class="card-preco">R$ {{ '%.0f'|format(t.preco) }}</div>
+      {% endif %}
+    {% endmacro %}
 
     {# 1. Música aleatória #}
     {% if 'musica' in tipos %}{% set t = tipos['musica'] %}
@@ -350,7 +369,7 @@ function copiarPayload() {
          onclick="selecionarTipo('musica','{{ t.nome }}','{{ t.emoji }}',{{ t.preco }},'{{ t.cor }}')">
       <div class="card-emoji">{{ t.emoji }}</div>
       <div class="card-nome">Música<br>aleatória</div>
-      <div class="card-preco">R$ {{ '%.0f'|format(t.preco) }}</div>
+      {{ preco_card(t) }}
     </div>{% endif %}
 
     {# 2. Furar a fila #}
@@ -359,7 +378,7 @@ function copiarPayload() {
          onclick="selecionarTipo('flash','{{ t.nome }}','{{ t.emoji }}',{{ t.preco }},'{{ t.cor }}')">
       <div class="card-emoji">{{ t.emoji }}</div>
       <div class="card-nome">Furar<br>a fila</div>
-      <div class="card-preco">R$ {{ '%.0f'|format(t.preco) }}</div>
+      {{ preco_card(t) }}
     </div>{% endif %}
 
     {# 3. Buscar na biblioteca #}
@@ -368,7 +387,7 @@ function copiarPayload() {
       <div class="badge-lib">CURADO</div>
       <div class="card-emoji">{{ t.emoji }}</div>
       <div class="card-nome">Escolher<br>a música</div>
-      <div class="card-preco">R$ {{ '%.0f'|format(t.preco) }}</div>
+      {{ preco_card(t) }}
       <div class="card-detalhe">{{ total_videos }} vídeos</div>
     </div>{% endif %}
 
@@ -378,7 +397,7 @@ function copiarPayload() {
          onclick="selecionarTipo('parabens','{{ t.nome }}','{{ t.emoji }}',{{ t.preco }},'{{ t.cor }}')">
       <div class="card-emoji">{{ t.emoji }}</div>
       <div class="card-nome">Parabéns<br>na tela! 🎂</div>
-      <div class="card-preco">R$ {{ '%.0f'|format(t.preco) }}</div>
+      {{ preco_card(t) }}
     </div>{% endif %}
 
     {# 5. Dedicatória — ocupa linha inteira #}
@@ -387,7 +406,7 @@ function copiarPayload() {
          onclick="selecionarTipo('dedicatoria','{{ t.nome }}','{{ t.emoji }}',{{ t.preco }},'{{ t.cor }}')">
       <div class="card-emoji">{{ t.emoji }}</div>
       <div class="card-nome">Dedicatória — mensagem aparece na tela ❤️</div>
-      <div class="card-preco">R$ {{ '%.0f'|format(t.preco) }}</div>
+      {{ preco_card(t) }}
     </div>{% endif %}
 
   </div>
@@ -405,14 +424,14 @@ function copiarPayload() {
         <div class="badge-ext">EXTERNO</div>
         <div class="card-emoji">{{ t.emoji }}</div>
         <div class="card-nome">{{ t.nome }}</div>
-        <div class="card-preco">R$ {{ '%.0f'|format(t.preco) }}</div>
+        {{ preco_card(t) }}
       </div>
       {% else %}
       <div class="pedido-card" style="--card-cor:{{ t.cor }}"
            onclick="selecionarTipo('{{ key }}','{{ t.nome }}','{{ t.emoji }}',{{ t.preco }},'{{ t.cor }}')">
         <div class="card-emoji">{{ t.emoji }}</div>
         <div class="card-nome">{{ t.nome }}</div>
-        <div class="card-preco">R$ {{ '%.0f'|format(t.preco) }}</div>
+        {{ preco_card(t) }}
       </div>
       {% endif %}
     {% endif %}{% endfor %}

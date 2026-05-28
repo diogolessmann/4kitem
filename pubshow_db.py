@@ -142,6 +142,10 @@ def init_pubshow_db():
         'ALTER TABLE pubshow_businesses ADD COLUMN promo_msg TEXT DEFAULT NULL',
         'ALTER TABLE pubshow_businesses ADD COLUMN promo_expira TEXT DEFAULT NULL',
         'ALTER TABLE pubshow_businesses ADD COLUMN promo_emoji TEXT DEFAULT "🍺"',
+        # Notificação WhatsApp ao dono do bar quando chega pedido
+        'ALTER TABLE pubshow_businesses ADD COLUMN whatsapp_notif INTEGER DEFAULT 0',
+        # Happy Hour dinâmico — JSON {ini, fim, desconto, dias}
+        'ALTER TABLE pubshow_businesses ADD COLUMN happy_hour_json TEXT DEFAULT NULL',
     ]:
         try:
             conn.execute(m); conn.commit()

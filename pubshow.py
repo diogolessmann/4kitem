@@ -239,20 +239,50 @@ def _tipos_disponiveis(b):
     return {k: v for k, v in TIPOS_PEDIDO.items() if k not in bloqueados}
 
 
+def _happy_hour_desconto(b):
+    """Retorna o percentual de desconto ativo no momento (0 se não há happy hour)."""
+    import json as _json
+    try:
+        hh = _json.loads(b['happy_hour_json'] or 'null')
+    except Exception:
+        return 0
+    if not hh:
+        return 0
+    agora = datetime.now()
+    hora_str = agora.strftime('%H:%M')
+    wd = agora.weekday()  # 0=segunda … 6=domingo
+    # Converte domingo: Python usa 6, mas UI usa 0 pra domingo — normaliza para 0-6 (0=Dom)
+    wd_ui = (wd + 1) % 7  # 0=Dom, 1=Seg … 6=Sáb
+    dias = hh.get('dias', [0, 1, 2, 3, 4, 5, 6])
+    if wd_ui not in dias:
+        return 0
+    ini = hh.get('ini', '00:00')
+    fim = hh.get('fim', '23:59')
+    if ini <= hora_str <= fim:
+        return int(hh.get('desconto', 0))
+    return 0
+
+
 def _precos_do_bar(b):
-    """Retorna preços customizados ou padrão."""
+    """Retorna preços customizados + Happy Hour aplicado."""
     import json
     try:
         custom = json.loads(b['precos_custom'] or '{}')
     except Exception:
         custom = {}
+    desconto_pct = _happy_hour_desconto(b)
     tipos = {}
     for k, v in TIPOS_PEDIDO.items():
         t = dict(v)
         if k in custom:
             t['preco'] = float(custom[k])
+        if desconto_pct > 0:
+            preco_original = t['preco']
+            t['preco'] = round(preco_original * (1 - desconto_pct / 100), 2)
+            t['preco_original'] = preco_original
+            t['happy_hour'] = True
         tipos[k] = t
-    return tipos
+    return tipos, desconto_pct
 
 
 def _limite_atingido(b, ip):
@@ -401,6 +431,34 @@ def _asaas_criar_cobranca_pix_jukebox(b, pedido_id: int, valor: float, descricao
         'payload':    payload,
         'expiracao':  expira,
     }
+
+
+def _pubshow_notify_bar(b, mensagem: str):
+    """Envia notificação WhatsApp para o dono do bar via Evolution API.
+    Silencioso — nunca levanta exceção.
+    """
+    if not b.get('whatsapp_notif'):
+        return
+    telefone = (b.get('telefone') or '').strip()
+    if not telefone:
+        return
+    evo_url = os.environ.get('EVOLUTION_API_URL', '').rstrip('/')
+    evo_key = os.environ.get('EVOLUTION_API_KEY', '')
+    instance = os.environ.get('PUBSHOW_WA_INSTANCE', '')
+    if not evo_url or not evo_key or not instance:
+        return
+    digits = re.sub(r'\D', '', telefone)
+    if not digits.startswith('55'):
+        digits = '55' + digits
+    try:
+        _requests.post(
+            f'{evo_url}/message/sendText/{instance}',
+            json={'number': digits + '@s.whatsapp.net', 'text': mensagem},
+            headers={'apikey': evo_key},
+            timeout=8
+        )
+    except Exception as ex:
+        log.warning('[PUBSHOW] WhatsApp notify error: %s', ex)
 
 
 def _videos_do_canal(canal_key, limit=500):
@@ -585,8 +643,8 @@ def jukebox(token):
 
     # Verifica horário e status
     aberto, motivo_fechado = _jukebox_aberto(b)
-    tipos_bar  = _tipos_disponiveis(b)
-    precos_bar = _precos_do_bar(b)
+    tipos_bar              = _tipos_disponiveis(b)
+    precos_bar, hh_desconto = _precos_do_bar(b)
 
     if request.method == 'POST':
         if not aberto:
@@ -611,6 +669,8 @@ def jukebox(token):
             else:
                 preco = precos_bar[tipo]['preco']
                 usar_pix = bool(b['requer_pix']) and bool(b['pix_key'])
+                tipo_nome  = precos_bar[tipo]['nome']
+                tipo_emoji = precos_bar[tipo]['emoji']
 
                 if usar_pix:
                     # ── Cria pedido como aguardando_pix (sem asaas_payment_id ainda) ─
@@ -630,7 +690,7 @@ def jukebox(token):
                     conn2.commit(); conn2.close()
 
                     # ── Tenta Asaas primeiro (confirmação automática) ──────────
-                    descricao_pedido = precos_bar[tipo]['nome']
+                    descricao_pedido = tipo_nome
                     if titulo_pedido:
                         descricao_pedido += f' — {titulo_pedido[:40]}'
                     asaas_data = _asaas_criar_cobranca_pix_jukebox(b, pedido_id, preco, descricao_pedido)
@@ -660,14 +720,23 @@ def jukebox(token):
                         )
                         conn3.commit(); conn3.close()
 
+                    # ── Notificação WhatsApp ao bar ───────────────────────────
+                    hh_txt = f' 🎉 Happy Hour {hh_desconto}% off!' if hh_desconto else ''
+                    _pubshow_notify_bar(dict(b),
+                        f'🎵 *Novo pedido PIX aguardando!*{hh_txt}\n'
+                        f'{tipo_emoji} {tipo_nome}\n'
+                        f'👤 {nome_cliente}\n'
+                        f'💰 R$ {preco:.2f}\n'
+                        f'📋 Acesse o painel para confirmar.')
+
                     pix_pendente = {
                         'pedido_id':  pedido_id,
                         'payload':    pix_payload,
                         'qr_b64':     pix_qr,
                         'valor':      preco,
                         'recebedor':  b['pix_nome_recebedor'] or b['nome'],
-                        'tipo_nome':  precos_bar[tipo]['nome'],
-                        'tipo_emoji': precos_bar[tipo]['emoji'],
+                        'tipo_nome':  tipo_nome,
+                        'tipo_emoji': tipo_emoji,
                         'via_asaas':  bool(asaas_data),
                     }
                     sucesso = None
@@ -685,6 +754,16 @@ def jukebox(token):
                     conn2.commit(); conn2.close()
                     sucesso = tipo
 
+                    # ── Notificação WhatsApp ao bar ───────────────────────────
+                    hh_txt = f' 🎉 Happy Hour {hh_desconto}% off!' if hh_desconto else ''
+                    _pubshow_notify_bar(dict(b),
+                        f'🎵 *Novo pedido no Jukebox!*{hh_txt}\n'
+                        f'{tipo_emoji} {tipo_nome}\n'
+                        f'👤 {nome_cliente}'
+                        + (f'\n📝 {mensagem}' if mensagem else '')
+                        + (f'\n🎶 {titulo_pedido}' if titulo_pedido else '')
+                        + f'\n💰 R$ {preco:.2f}')
+
     # Fila atual (últimos 5 pedidos pendentes)
     conn3 = get_pubshow_db()
     fila = conn3.execute(
@@ -701,6 +780,7 @@ def jukebox(token):
                            b=dict(b), canal=canal,
                            tipos=precos_bar,
                            tipos_disponiveis=tipos_bar,
+                           hh_desconto=hh_desconto,
                            fila=[dict(f) for f in fila],
                            sucesso=sucesso, erro=erro,
                            pix_pendente=pix_pendente,
@@ -956,6 +1036,9 @@ def painel():
     except: temas_habilitados = None
     try:    anuncios_parsed = _json.loads(bd.get('anuncios_json') or '[]')
     except: anuncios_parsed = []
+    try:    happy_hour = _json.loads(bd.get('happy_hour_json') or 'null')
+    except: happy_hour = None
+    hh_desconto_atual = _happy_hour_desconto(bd)
     # None = todos habilitados
     return render_template('pubshow/painel.html',
                            b=bd, canais=CANAIS,
@@ -969,6 +1052,8 @@ def painel():
                            precos_parsed=precos_parsed,
                            temas_habilitados=temas_habilitados,
                            anuncios_parsed=anuncios_parsed,
+                           happy_hour=happy_hour,
+                           hh_desconto_atual=hh_desconto_atual,
                            promo_ativa=bool(bd.get('promo_msg') and bd.get('promo_expira') and bd['promo_expira'] > datetime.now().strftime('%Y-%m-%dT%H:%M:%S')))
 
 
@@ -1079,6 +1164,47 @@ def painel_temas():
     conn.execute('UPDATE pubshow_businesses SET temas_habilitados=? WHERE id=?', (valor, b['id']))
     conn.commit(); conn.close()
     return redirect('/pubshow/painel')
+
+
+@pubshow_bp.route('/painel/happy-hour', methods=['POST'])
+@pubshow_login_required
+def painel_happy_hour():
+    """Salva configuração de Happy Hour do bar."""
+    import json as _json
+    b = _get_business()
+    ativo = request.form.get('hh_ativo') == '1'
+    if not ativo:
+        conn = get_pubshow_db()
+        conn.execute('UPDATE pubshow_businesses SET happy_hour_json=NULL WHERE id=?', (b['id'],))
+        conn.commit(); conn.close()
+        return redirect('/pubshow/painel?aba=config')
+    ini      = request.form.get('hh_ini', '18:00').strip()
+    fim      = request.form.get('hh_fim', '20:00').strip()
+    try:
+        desconto = max(1, min(80, int(request.form.get('hh_desconto', '20') or '20')))
+    except Exception:
+        desconto = 20
+    dias = [int(d) for d in request.form.getlist('hh_dias') if d.isdigit()]
+    if not dias:
+        dias = [0, 1, 2, 3, 4, 5, 6]
+    hh = {'ini': ini, 'fim': fim, 'desconto': desconto, 'dias': dias}
+    conn = get_pubshow_db()
+    conn.execute('UPDATE pubshow_businesses SET happy_hour_json=? WHERE id=?',
+                 (_json.dumps(hh), b['id']))
+    conn.commit(); conn.close()
+    return redirect('/pubshow/painel?aba=config')
+
+
+@pubshow_bp.route('/painel/notif', methods=['POST'])
+@pubshow_login_required
+def painel_notif():
+    """Ativa/desativa notificações WhatsApp ao bar."""
+    b = _get_business()
+    ativo = 1 if request.form.get('whatsapp_notif') else 0
+    conn = get_pubshow_db()
+    conn.execute('UPDATE pubshow_businesses SET whatsapp_notif=? WHERE id=?', (ativo, b['id']))
+    conn.commit(); conn.close()
+    return redirect('/pubshow/painel?aba=config')
 
 
 @pubshow_bp.route('/painel/pix', methods=['POST'])
