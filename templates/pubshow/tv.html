@@ -134,9 +134,48 @@
     pointer-events:none;opacity:0;transition:opacity .4s;
   }
   #fs-hint.show{opacity:1}
+
+  /* Overlay de ativação de som (autoplay policy) */
+  #som-overlay{
+    position:fixed;inset:0;z-index:200;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    background:rgba(0,0,0,.88);backdrop-filter:blur(8px);
+    cursor:pointer;
+  }
+  #som-overlay.hidden{display:none}
+  #som-overlay .som-box{
+    background:rgba(255,255,255,.06);border:2px solid rgba(255,255,255,.15);
+    border-radius:24px;padding:40px 56px;text-align:center;
+    animation:popIn .4s cubic-bezier(.34,1.56,.64,1);
+  }
+  #som-overlay .som-icon{font-size:72px;margin-bottom:16px;display:block}
+  #som-overlay .som-titulo{font-size:22px;font-weight:900;margin-bottom:8px}
+  #som-overlay .som-sub{font-size:14px;color:rgba(255,255,255,.55);line-height:1.5}
+  /* Botão mute/unmute fixo no canto */
+  #mute-btn{
+    position:fixed;bottom:80px;right:24px;z-index:50;
+    background:rgba(0,0,0,.8);border:1px solid rgba(255,255,255,.25);
+    border-radius:10px;padding:8px 14px;font-size:14px;font-weight:700;
+    cursor:pointer;color:#fff;backdrop-filter:blur(6px);
+    transition:.2s;display:none;align-items:center;gap:6px;
+  }
+  #mute-btn.show{display:flex}
+  #mute-btn:hover{background:rgba(255,255,255,.18)}
 </style>
 </head>
 <body>
+
+<!-- Overlay de ativação de som — aparece na primeira abertura -->
+<div id="som-overlay" onclick="ativarSom()">
+  <div class="som-box">
+    <span class="som-icon">🔊</span>
+    <div class="som-titulo">Clique para ativar o som</div>
+    <div class="som-sub">Os clips vão começar a tocar agora.<br>Clique em qualquer lugar para continuar.</div>
+  </div>
+</div>
+
+<!-- Botão mute/unmute fixo -->
+<button id="mute-btn" onclick="toggleMute()">🔇 Sem som</button>
 
 <!-- Botão fullscreen (canto superior esquerdo, aparece ao mover mouse) -->
 <button id="fs-btn" onclick="toggleFullscreen()" title="Tela cheia (F)">⛶ Tela cheia</button>
@@ -145,7 +184,7 @@
 <div id="fs-hint">⛶ Clique para tela cheia · Tecla F</div>
 
 <!-- Player YouTube (IFrame API) -->
-<div id="player-wrap" onclick="toggleFullscreen()" style="cursor:pointer">
+<div id="player-wrap" style="cursor:pointer">
   <div id="yt-player"></div>
 </div>
 
@@ -253,6 +292,37 @@ const TIPOS_MUSICA = {
   musica_externa:   {emoji:'🌐', label:'Do YouTube'},
 };
 
+// ── Som / Autoplay ────────────────────────────────────────────────────────────
+let _isMuted = true;
+
+function ativarSom() {
+  document.getElementById('som-overlay').classList.add('hidden');
+  if (player && player.unMute) {
+    player.unMute();
+    player.setVolume(100);
+    _isMuted = false;
+    document.getElementById('mute-btn').classList.remove('show');
+  }
+  // Se player ainda não carregou, marca pra desmutar quando estiver pronto
+  window._autoUnmute = true;
+}
+
+function toggleMute() {
+  if (!player) return;
+  if (_isMuted) {
+    player.unMute();
+    player.setVolume(100);
+    _isMuted = false;
+    document.getElementById('mute-btn').textContent = '🔊 Com som';
+    setTimeout(() => document.getElementById('mute-btn').classList.remove('show'), 1500);
+  } else {
+    player.mute();
+    _isMuted = true;
+    document.getElementById('mute-btn').innerHTML = '🔇 Sem som';
+    document.getElementById('mute-btn').classList.add('show');
+  }
+}
+
 // ── YouTube IFrame API ────────────────────────────────────────────────────────
 function onYouTubeIframeAPIReady() {
   if (!VIDEOS.length) return;
@@ -263,6 +333,7 @@ function onYouTubeIframeAPIReady() {
     videoId: v.youtube_id,
     playerVars: {
       autoplay:        1,
+      mute:            1,  // inicia mutado — evita bloqueio de autoplay do browser
       rel:             0,
       modestbranding:  1,
       controls:        0,
@@ -282,6 +353,12 @@ function onYouTubeIframeAPIReady() {
 
 function onPlayerReady(e) {
   e.target.playVideo();
+  // Se usuário já clicou no overlay antes do player carregar, desmuta agora
+  if (window._autoUnmute) {
+    e.target.unMute();
+    e.target.setVolume(100);
+    _isMuted = false;
+  }
   atualizarNowPlaying(VIDEOS[videoIdx]);
   esconderNowPlayingComDelay();
   iniciarStallDetector();
@@ -612,6 +689,8 @@ async function trocarCanal(canal) {
   _loopGuard  = 0;
   _skipCount  = 0;
   pedidoMusica = null;
+  // Limpa lista de vídeos ruins do novo tema para dar chance fresca
+  try { localStorage.removeItem('ps_skip_' + canal); } catch(e) {}
   esconderBadgeFila();
 
   // 4. Atualiza visual — badge do canal
