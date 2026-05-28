@@ -715,6 +715,12 @@
           <label>❌ Mensagem de cancelamento</label>
           <textarea id="msg-cancelamento" rows="3" oninput="debounceConfig()" placeholder="Olá {nome}, infelizmente seu agendamento foi cancelado. Entre em contato para reagendar.">{{ biz.msg_cancelamento or '' }}</textarea>
         </div>
+        <div class="form-group">
+          <label>⭐ Mensagem de avaliação
+            <span style="font-size:10px;background:rgba(34,197,94,.15);color:#22c55e;border:1px solid rgba(34,197,94,.3);border-radius:20px;padding:1px 8px;font-weight:700">✨ Automático — após atendimento</span>
+          </label>
+          <textarea id="msg-avaliacao" rows="3" oninput="debounceConfig()" placeholder="Olá {nome}! Foi um prazer te atender em {negocio}! Conta pra gente: como foi a experiência? ⭐">{{ biz.msg_avaliacao or '' }}</textarea>
+        </div>
       </div>
     </div>
 
@@ -1189,6 +1195,7 @@ async function salvarConfig() {
     msg_lembrete:      document.getElementById('msg-lembrete').value.trim(),
     max_days_advance:  maxDaysEl ? parseInt(maxDaysEl.value) || 60 : 60,
     msg_cancelamento:  document.getElementById('msg-cancelamento').value.trim(),
+    msg_avaliacao:     document.getElementById('msg-avaliacao')?.value.trim() || '',
     primary_color:     document.getElementById('primary-color')?.value || '#27ae60',
     description:       document.getElementById('biz-description')?.value.trim() || '',
     address:           document.getElementById('biz-address')?.value.trim() || '',

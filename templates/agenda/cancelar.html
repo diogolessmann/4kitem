@@ -48,6 +48,7 @@
     <div class="info-row"><span class="info-label">Data</span><span class="info-val">{{ appt.appointment_date[8:10] }}/{{ appt.appointment_date[5:7] }}/{{ appt.appointment_date[:4] }}</span></div>
     <div class="info-row"><span class="info-label">Horário</span><span class="info-val">{{ appt.appointment_time }}</span></div>
   </div>
+  <a href="/reagendar/{{ appt.cancel_token }}" class="btn-reagendar">📅 Reagendar em outro horário</a>
   {% endif %}
 
 {% elif status == 'concluido' %}

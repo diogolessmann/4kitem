@@ -3691,7 +3691,7 @@ def agenda_configuracoes():
     if request.method == 'POST':
         data = request.get_json(silent=True) or {}
         fields = ['pix_chave','pix_nome','mandazap_instance',
-                  'msg_confirmacao','msg_lembrete','msg_cancelamento',
+                  'msg_confirmacao','msg_lembrete','msg_cancelamento','msg_avaliacao',
                   'primary_color','description','address','instagram']
         updates = {f: data.get(f,'') for f in fields}
         updates['mandazap_ativo'] = 1 if data.get('mandazap_ativo') else 0
@@ -3706,12 +3706,12 @@ def agenda_configuracoes():
             updates['max_days_advance'] = 60
         conn.execute('''UPDATE agenda_businesses SET
             pix_chave=?, pix_nome=?, mandazap_instance=?, mandazap_ativo=?,
-            msg_confirmacao=?, msg_lembrete=?, msg_cancelamento=?, max_days_advance=?,
-            primary_color=?, description=?, address=?, instagram=?
+            msg_confirmacao=?, msg_lembrete=?, msg_cancelamento=?, msg_avaliacao=?,
+            max_days_advance=?, primary_color=?, description=?, address=?, instagram=?
             WHERE id=?''',
             (updates['pix_chave'], updates['pix_nome'], updates['mandazap_instance'],
              updates['mandazap_ativo'], updates['msg_confirmacao'],
-             updates['msg_lembrete'], updates['msg_cancelamento'],
+             updates['msg_lembrete'], updates['msg_cancelamento'], updates['msg_avaliacao'],
              updates['max_days_advance'], updates['primary_color'],
              updates['description'], updates['address'], updates['instagram'], biz_id))
         conn.commit()
