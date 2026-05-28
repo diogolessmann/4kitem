@@ -196,6 +196,26 @@
   .cta-sub{font-size:11px;color:rgba(255,255,255,.6);line-height:1.6}
   .cta-preco{font-size:20px;font-weight:900;color:#f97316;margin-top:10px;display:block}
 
+  /* ── Slide de propaganda do bar ─────────────────────────────────────────── */
+  #slide-propaganda{
+    position:fixed;inset:0;z-index:90;
+    display:none;align-items:center;justify-content:center;
+    background:rgba(0,0,0,.96);
+    animation:fadeSlide .6s ease;
+  }
+  #slide-propaganda.show{display:flex}
+  @keyframes fadeSlide{from{opacity:0}to{opacity:1}}
+  .slide-box{
+    text-align:center;padding:48px 64px;max-width:700px;width:90%;
+    border-radius:32px;border:2px solid var(--slide-cor,#ef4444);
+    background:linear-gradient(135deg,rgba(0,0,0,.9),rgba(10,0,20,.95));
+    animation:popIn .5s cubic-bezier(.34,1.56,.64,1);
+  }
+  .slide-emoji{font-size:90px;display:block;margin-bottom:16px}
+  .slide-titulo{font-size:42px;font-weight:900;color:var(--slide-cor,#ef4444);letter-spacing:-1.5px;line-height:1.1;margin-bottom:12px}
+  .slide-sub{font-size:20px;color:rgba(255,255,255,.75);line-height:1.5;margin-bottom:20px}
+  .slide-bar{height:4px;border-radius:2px;background:var(--slide-cor,#ef4444);margin-top:20px;animation:shrink linear forwards}
+
   /* ── Overlay fullscreen melhorado ───────────────────────────────────────── */
   .overlay-qr-viral{
     margin-top:24px;padding-top:18px;
@@ -295,6 +315,16 @@
   </div>
 </div>
 
+<!-- Slide de propaganda do bar -->
+<div id="slide-propaganda">
+  <div class="slide-box" id="slide-box">
+    <span class="slide-emoji" id="slide-emoji">📢</span>
+    <div class="slide-titulo" id="slide-titulo"></div>
+    <div class="slide-sub" id="slide-sub"></div>
+    <div class="slide-bar" id="slide-bar"></div>
+  </div>
+</div>
+
 <!-- Seletor de canal -->
 <div id="canal-selector">
   {% set grupos = [
@@ -325,14 +355,17 @@ const CODE        = '{{ b.code }}';
 let   CANAL_KEY   = '{{ canal_key }}';
 const BASE_URL    = '/pubshow';
 const JUKEBOX_URL = '{{ request.host_url }}pubshow/jukebox/{{ b.jukebox_token or b.code }}';
+const ANUNCIOS    = {{ anuncios | tojson }};  // slides de propaganda do bar
 
 // Info de canais disponível no JS para atualizar UI sem reload
 const CANAIS_JS = {{ canais | tojson }};
 
 // ── Biblioteca de vídeos ──────────────────────────────────────────────────────
 const VIDEOS = {{ videos | tojson }};
-let videoIdx     = Math.floor(Math.random() * Math.min(VIDEOS.length, 5));
-let overlayAtivo = false;
+let videoIdx        = Math.floor(Math.random() * Math.min(VIDEOS.length, 5));
+let _videosPlayed   = 0;   // contador de vídeos tocados — trigger de propaganda
+let _anuncioIdx     = 0;   // qual slide mostrar agora
+let overlayAtivo    = false;
 let pedidoAtual  = null;
 let pedidoMusica = null;
 let player       = null;
@@ -526,12 +559,10 @@ function avancarFila() {
       });
       esconderNowPlayingComDelay();
     } else {
-      videoIdx = (videoIdx + 1) % VIDEOS.length;
-      carregarVideo(videoIdx);
+      proximoVideoOuSlide();
     }
   } else {
-    videoIdx = (videoIdx + 1) % VIDEOS.length;
-    carregarVideo(videoIdx);
+    proximoVideoOuSlide();
   }
 }
 
@@ -668,6 +699,44 @@ function mostrarOverlay(pedido) {
     overlayAtivo = false;
     pedidoAtual  = null;
   }, cfg.duracao);
+}
+
+// ── Propaganda do bar — slide entre vídeos ───────────────────────────────────
+function proximoVideoOuSlide() {
+  _videosPlayed++;
+  // A cada 3 vídeos, se houver slides, exibe um
+  if (ANUNCIOS.length && _videosPlayed % 3 === 0) {
+    const slide = ANUNCIOS[_anuncioIdx % ANUNCIOS.length];
+    _anuncioIdx++;
+    mostrarSlide(slide);
+  } else {
+    videoIdx = (videoIdx + 1) % VIDEOS.length;
+    carregarVideo(videoIdx);
+  }
+}
+
+function mostrarSlide(slide) {
+  const duracao = 8000; // 8 segundos
+  const box    = document.getElementById('slide-box');
+  const el     = document.getElementById('slide-propaganda');
+  document.getElementById('slide-emoji').textContent  = slide.emoji || '📢';
+  document.getElementById('slide-titulo').textContent = slide.titulo;
+  document.getElementById('slide-sub').textContent    = slide.subtitulo || '';
+  box.style.setProperty('--slide-cor', slide.cor || '#ef4444');
+  el.style.setProperty('--slide-cor', slide.cor || '#ef4444');
+  const bar = document.getElementById('slide-bar');
+  bar.style.animation = 'none';
+  bar.offsetHeight; // reflow
+  bar.style.animation = `shrink ${duracao/1000}s linear forwards`;
+  el.classList.add('show');
+  // Pausa o player durante o slide
+  if (player && player.pauseVideo) player.pauseVideo();
+  clearTimeout(window._slideTimer);
+  window._slideTimer = setTimeout(() => {
+    el.classList.remove('show');
+    videoIdx = (videoIdx + 1) % VIDEOS.length;
+    carregarVideo(videoIdx);
+  }, duracao);
 }
 
 function lancarConfetes(corPrincipal) {

@@ -287,6 +287,32 @@
   </div>
   {% endif %}
 
+  <!-- Propaganda do bar na TV -->
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-title">📢 Propaganda do bar na TV</div>
+    <p style="font-size:12px;color:#8888aa;margin-bottom:16px">Crie até 3 slides que aparecem entre os vídeos na tela. Perfeito para happy hour, promoções e eventos.</p>
+    <form method="POST" action="/pubshow/painel/anuncios">
+      {% for i in range(1, 4) %}
+      {% set sl = anuncios_parsed[i-1] if anuncios_parsed|length >= i else {} %}
+      <div style="background:#0a0a12;border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:14px;margin-bottom:12px">
+        <div style="font-size:11px;font-weight:700;color:#8888aa;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Slide {{ i }}</div>
+        <div style="display:grid;grid-template-columns:60px 1fr 100px;gap:8px;margin-bottom:8px">
+          <input name="slide_{{ i }}_emoji" placeholder="🍺" value="{{ sl.get('emoji','') }}"
+                 style="background:#13131f;border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:8px;color:#f0f0ff;font-size:20px;text-align:center;outline:none">
+          <input name="slide_{{ i }}_titulo" placeholder="Ex: Happy Hour das 17h às 20h" value="{{ sl.get('titulo','') }}"
+                 style="background:#13131f;border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:8px 12px;color:#f0f0ff;font-size:13px;outline:none">
+          <input type="color" name="slide_{{ i }}_cor" value="{{ sl.get('cor','#ef4444') }}"
+                 style="background:#13131f;border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:4px;width:100%;height:38px;cursor:pointer">
+        </div>
+        <input name="slide_{{ i }}_sub" placeholder="Ex: Chopp R$ 8 · Caipirinha R$ 12 · Boteco do Zé" value="{{ sl.get('subtitulo','') }}"
+               style="width:100%;background:#13131f;border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:8px 12px;color:#f0f0ff;font-size:12px;outline:none">
+      </div>
+      {% endfor %}
+      <button type="submit" style="background:linear-gradient(135deg,#ef4444,#f97316);color:#fff;border:none;border-radius:8px;padding:9px 22px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">💾 Salvar propaganda</button>
+      <span style="font-size:11px;color:#8888aa;margin-left:10px">Slides em branco não são exibidos</span>
+    </form>
+  </div>
+
   <!-- Temas habilitados na TV -->
   <div class="card" style="margin-bottom:16px">
     <div class="card-title">🎬 Temas disponíveis na TV</div>

@@ -545,8 +545,11 @@ def tv(code):
             canais_tv[canal_key] = CANAIS.get(canal_key, CANAIS['rock'])
     else:
         canais_tv = CANAIS
+    try:    anuncios = _json.loads(b['anuncios_json'] or '[]')
+    except: anuncios = []
     return render_template('pubshow/tv.html', b=dict(b), canal=canal,
-                           canal_key=canal_key, videos=videos, canais=canais_tv)
+                           canal_key=canal_key, videos=videos, canais=canais_tv,
+                           anuncios=anuncios)
 
 
 # ── JUKEBOX MOBILE (cliente do bar escaneia QR) ───────────────────────────────
@@ -932,6 +935,8 @@ def painel():
     except: precos_parsed = {}
     try:    temas_habilitados = _json.loads(bd.get('temas_habilitados') or 'null')
     except: temas_habilitados = None
+    try:    anuncios_parsed = _json.loads(bd.get('anuncios_json') or '[]')
+    except: anuncios_parsed = []
     # None = todos habilitados
     return render_template('pubshow/painel.html',
                            b=bd, canais=CANAIS,
@@ -943,7 +948,8 @@ def painel():
                            planos=PLANOS,
                            bloqueados_parsed=bloqueados_parsed,
                            precos_parsed=precos_parsed,
-                           temas_habilitados=temas_habilitados)
+                           temas_habilitados=temas_habilitados,
+                           anuncios_parsed=anuncios_parsed)
 
 
 @pubshow_bp.route('/painel/fila-json')
@@ -989,6 +995,27 @@ def painel_canal():
         conn.execute('UPDATE pubshow_businesses SET canal_atual=? WHERE id=?', (canal, b['id']))
         conn.commit(); conn.close()
         session['pub_canal'] = canal
+    return redirect('/pubshow/painel')
+
+
+@pubshow_bp.route('/painel/anuncios', methods=['POST'])
+@pubshow_login_required
+def painel_anuncios():
+    """Salva slides de propaganda do bar (até 3)."""
+    import json as _json
+    b = _get_business()
+    slides = []
+    for i in range(1, 4):
+        titulo    = request.form.get(f'slide_{i}_titulo', '').strip()[:60]
+        subtitulo = request.form.get(f'slide_{i}_sub', '').strip()[:80]
+        emoji     = request.form.get(f'slide_{i}_emoji', '').strip()[:4]
+        cor       = request.form.get(f'slide_{i}_cor', '#ef4444').strip()[:7]
+        if titulo:
+            slides.append({'titulo': titulo, 'subtitulo': subtitulo, 'emoji': emoji or '📢', 'cor': cor})
+    conn = get_pubshow_db()
+    conn.execute('UPDATE pubshow_businesses SET anuncios_json=? WHERE id=?',
+                 (_json.dumps(slides, ensure_ascii=False), b['id']))
+    conn.commit(); conn.close()
     return redirect('/pubshow/painel')
 
 
