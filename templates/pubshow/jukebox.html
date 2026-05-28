@@ -52,6 +52,13 @@
     position:relative;overflow:hidden;
   }
   .pedido-card:active{transform:scale(.96)}
+  .pedido-card.full{grid-column:1/-1} /* ocupa linha inteira */
+  .pedido-card.full .card-emoji{font-size:28px}
+  .pedido-card.full .card-nome{font-size:13px}
+  .pedido-card.highlight{
+    background:linear-gradient(135deg,rgba(var(--card-rgb),.12),rgba(var(--card-rgb),.06));
+    border-color:rgba(var(--card-rgb),.4);
+  }
   .pedido-card.lib{border-color:rgba(6,182,212,.35);background:rgba(6,182,212,.04)}
   .pedido-card.ext{border-color:rgba(220,38,38,.35);background:rgba(220,38,38,.04)}
   .badge-lib{position:absolute;top:6px;right:-22px;background:#06b6d4;color:#fff;
@@ -62,6 +69,21 @@
   .pedido-card .card-nome{font-size:11px;font-weight:700;line-height:1.3;margin-bottom:6px}
   .pedido-card .card-preco{font-size:16px;font-weight:900;color:var(--card-cor)}
   .card-detalhe{font-size:9px;color:var(--text2);margin-top:3px}
+
+  /* Mais opções */
+  .btn-mais-opcoes{
+    display:flex;align-items:center;justify-content:center;gap:6px;
+    width:100%;background:none;border:1px dashed rgba(255,255,255,.15);
+    border-radius:12px;padding:12px;color:var(--text2);font-size:13px;font-weight:600;
+    cursor:pointer;font-family:inherit;margin-top:12px;transition:.15s;
+  }
+  .btn-mais-opcoes:hover{border-color:rgba(255,255,255,.3);color:var(--text)}
+  .mais-opcoes-grid{
+    display:grid;grid-template-columns:1fr 1fr;gap:10px;
+    margin-top:10px;
+    animation:fadeIn .2s ease;
+  }
+  @keyframes fadeIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
 
   /* ── BUSCA ─────────────────────────────────────────────────────── */
   #busca-section{padding:0 20px 20px;display:none}
@@ -317,37 +339,86 @@ function copiarPayload() {
 </div>
 {% endif %}
 
-<!-- Grid principal -->
+<!-- Grid principal — 5 opções em destaque -->
 <div class="pedidos-section" id="grid-section">
-  <div class="pedidos-titulo">🎰 O que você quer?</div>
+  <div class="pedidos-titulo">🎰 O que você quer fazer?</div>
   <div class="pedidos-grid">
-    {% for key, t in tipos.items() %}
-    {% if key == 'musica_especifica' %}
+
+    {# 1. Música aleatória #}
+    {% if 'musica' in tipos %}{% set t = tipos['musica'] %}
+    <div class="pedido-card" style="--card-cor:{{ t.cor }}"
+         onclick="selecionarTipo('musica','{{ t.nome }}','{{ t.emoji }}',{{ t.preco }},'{{ t.cor }}')">
+      <div class="card-emoji">{{ t.emoji }}</div>
+      <div class="card-nome">Música<br>aleatória</div>
+      <div class="card-preco">R$ {{ '%.0f'|format(t.preco) }}</div>
+    </div>{% endif %}
+
+    {# 2. Furar a fila #}
+    {% if 'flash' in tipos %}{% set t = tipos['flash'] %}
+    <div class="pedido-card" style="--card-cor:{{ t.cor }}"
+         onclick="selecionarTipo('flash','{{ t.nome }}','{{ t.emoji }}',{{ t.preco }},'{{ t.cor }}')">
+      <div class="card-emoji">{{ t.emoji }}</div>
+      <div class="card-nome">Furar<br>a fila</div>
+      <div class="card-preco">R$ {{ '%.0f'|format(t.preco) }}</div>
+    </div>{% endif %}
+
+    {# 3. Buscar na biblioteca #}
+    {% if 'musica_especifica' in tipos %}{% set t = tipos['musica_especifica'] %}
     <div class="pedido-card lib" style="--card-cor:{{ t.cor }}" onclick="abrirBusca('biblioteca')">
       <div class="badge-lib">CURADO</div>
       <div class="card-emoji">{{ t.emoji }}</div>
-      <div class="card-nome">{{ t.nome }}</div>
+      <div class="card-nome">Escolher<br>a música</div>
       <div class="card-preco">R$ {{ '%.0f'|format(t.preco) }}</div>
-      <div class="card-detalhe">nos {{ total_videos }} vídeos do bar</div>
-    </div>
-    {% elif key == 'musica_externa' %}
-    <div class="pedido-card ext" style="--card-cor:{{ t.cor }}" onclick="abrirBusca('youtube')">
-      <div class="badge-ext">EXTERNO</div>
-      <div class="card-emoji">{{ t.emoji }}</div>
-      <div class="card-nome">{{ t.nome }}</div>
-      <div class="card-preco">R$ {{ '%.0f'|format(t.preco) }}</div>
-      <div class="card-detalhe">qualquer vídeo da internet</div>
-    </div>
-    {% else %}
+      <div class="card-detalhe">{{ total_videos }} vídeos</div>
+    </div>{% endif %}
+
+    {# 4. Parabéns #}
+    {% if 'parabens' in tipos %}{% set t = tipos['parabens'] %}
     <div class="pedido-card" style="--card-cor:{{ t.cor }}"
-         onclick="selecionarTipo('{{ key }}','{{ t.nome }}','{{ t.emoji }}',{{ t.preco }},'{{ t.cor }}')">
+         onclick="selecionarTipo('parabens','{{ t.nome }}','{{ t.emoji }}',{{ t.preco }},'{{ t.cor }}')">
       <div class="card-emoji">{{ t.emoji }}</div>
-      <div class="card-nome">{{ t.nome }}</div>
+      <div class="card-nome">Parabéns<br>na tela! 🎂</div>
       <div class="card-preco">R$ {{ '%.0f'|format(t.preco) }}</div>
-    </div>
-    {% endif %}
-    {% endfor %}
+    </div>{% endif %}
+
+    {# 5. Dedicatória — ocupa linha inteira #}
+    {% if 'dedicatoria' in tipos %}{% set t = tipos['dedicatoria'] %}
+    <div class="pedido-card full" style="--card-cor:{{ t.cor }}"
+         onclick="selecionarTipo('dedicatoria','{{ t.nome }}','{{ t.emoji }}',{{ t.preco }},'{{ t.cor }}')">
+      <div class="card-emoji">{{ t.emoji }}</div>
+      <div class="card-nome">Dedicatória — mensagem aparece na tela ❤️</div>
+      <div class="card-preco">R$ {{ '%.0f'|format(t.preco) }}</div>
+    </div>{% endif %}
+
   </div>
+
+  {# Mais opções: VIP, brinde, chegada, casamento, YouTube #}
+  {% set extras = ['vip','brinde','chegada','casamento','musica_externa'] %}
+  {% if extras|select('in', tipos)|list %}
+  <button class="btn-mais-opcoes" onclick="toggleMaisOpcoes(this)" id="btn-mais">
+    ⋯ Mais opções
+  </button>
+  <div class="mais-opcoes-grid" id="mais-opcoes" style="display:none">
+    {% for key in extras %}{% if key in tipos %}{% set t = tipos[key] %}
+      {% if key == 'musica_externa' %}
+      <div class="pedido-card ext" style="--card-cor:{{ t.cor }}" onclick="abrirBusca('youtube')">
+        <div class="badge-ext">EXTERNO</div>
+        <div class="card-emoji">{{ t.emoji }}</div>
+        <div class="card-nome">{{ t.nome }}</div>
+        <div class="card-preco">R$ {{ '%.0f'|format(t.preco) }}</div>
+      </div>
+      {% else %}
+      <div class="pedido-card" style="--card-cor:{{ t.cor }}"
+           onclick="selecionarTipo('{{ key }}','{{ t.nome }}','{{ t.emoji }}',{{ t.preco }},'{{ t.cor }}')">
+        <div class="card-emoji">{{ t.emoji }}</div>
+        <div class="card-nome">{{ t.nome }}</div>
+        <div class="card-preco">R$ {{ '%.0f'|format(t.preco) }}</div>
+      </div>
+      {% endif %}
+    {% endif %}{% endfor %}
+  </div>
+  {% endif %}
+
 </div>
 
 <!-- Busca (biblioteca ou YouTube) -->
@@ -435,6 +506,14 @@ let tipoAtual  = '';
 let modosBusca = 'biblioteca'; // 'biblioteca' | 'youtube'
 let buscaTimer = null;
 let videoSel   = null;
+
+// ── Mais opções ───────────────────────────────────────────────────────────────
+function toggleMaisOpcoes(btn) {
+  const div = document.getElementById('mais-opcoes');
+  const aberto = div.style.display !== 'none';
+  div.style.display = aberto ? 'none' : 'grid';
+  btn.textContent = aberto ? '⋯ Mais opções' : '▲ Menos opções';
+}
 
 // ── Grid ──────────────────────────────────────────────────────────────────────
 function selecionarTipo(key, nome, emoji, preco, cor) {
