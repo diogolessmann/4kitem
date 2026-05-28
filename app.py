@@ -3426,7 +3426,8 @@ def agenda_appt_action(appt_id, action):
 
     # 🏆 Marco de conquista (5ª, 10ª, 25ª... visita)
     if milestone_visits and biz and biz['mandazap_ativo'] and biz['mandazap_instance']:
-        nome = appt['customer_name'].split()[0]
+        _nome_parts = (appt['customer_name'] or '').split()
+        nome = _nome_parts[0] if _nome_parts else 'Cliente'
         marcos = {
             5:   ('🥈', f'Você já é um cliente especial! Obrigado por confiar na gente. 💚'),
             10:  ('🥇', f'10 visitas! Você já faz parte da família! 🎉'),
@@ -4657,13 +4658,10 @@ def _agenda_lembretes_2h_loop():
         time.sleep(1800)  # a cada 30 min
 
 
-def _agenda_run_resumo_mensal():
-    """Envia resumo do mês anterior para donos de negócios ativos.
-    Só executa no dia 1º de cada mês."""
+def _agenda_enviar_resumo():
+    """Lógica interna de envio do resumo mensal (sem verificação de dia)."""
     try:
         today = datetime.now()
-        if today.day != 1:
-            return
         # Mês anterior
         prev_month = today.month - 1 or 12
         prev_year  = today.year if today.month > 1 else today.year - 1
@@ -4710,6 +4708,13 @@ def _agenda_run_resumo_mensal():
 
     except Exception as e:
         log.error(f'[AgendaSC Resumo] Erro: {e}')
+
+
+def _agenda_run_resumo_mensal():
+    """Wrapper com verificação de dia — só executa no dia 1º."""
+    if datetime.now().day != 1:
+        return
+    _agenda_enviar_resumo()
 
 
 def _agenda_resumo_loop():
@@ -5383,15 +5388,8 @@ def saas_agenda_lembretes_2h_agora():
 @app.route('/saas-admin/agenda/resumo-agora', methods=['POST'])
 @_saas_admin_required
 def saas_agenda_resumo_agora():
-    """Dispara o resumo mensal AgendaSC em background (ignora verificação de dia)."""
-    def _run():
-        try:
-            _agenda_run_resumo_mensal.__wrapped__() if hasattr(_agenda_run_resumo_mensal, '__wrapped__') else None
-        except Exception:
-            pass
-        # Força execução ignorando checagem do dia 1
-        _agenda_run_resumo_mensal()
-    threading.Thread(target=_agenda_run_resumo_mensal, daemon=True).start()
+    """Dispara o resumo mensal AgendaSC em background, ignorando verificação de dia."""
+    threading.Thread(target=_agenda_enviar_resumo, daemon=True).start()
     return jsonify({'ok': True, 'msg': 'Resumo mensal disparado em background'})
 
 

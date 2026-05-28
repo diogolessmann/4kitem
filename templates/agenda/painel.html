@@ -316,7 +316,7 @@
     <div class="link-box" style="margin-bottom:14px">
       <span style="font-size:16px">🔗</span>
       <span class="link-url">4kitem.com.br/agendar/{{ biz.slug }}</span>
-      <button onclick="copiarLinkAgenda()" class="nav-btn nav-btn-green" style="flex-shrink:0;padding:6px 12px">📋 Copiar</button>
+      <button onclick="copiarLinkAgenda(this)" class="nav-btn nav-btn-green" style="flex-shrink:0;padding:6px 12px">📋 Copiar</button>
       <a href="https://api.whatsapp.com/send?text={{ ('Agende online: https://4kitem.com.br/agendar/' + biz.slug) | urlencode }}" target="_blank" style="flex-shrink:0">
         <button class="nav-btn" style="background:rgba(37,211,102,.15);color:#25D366;border:1px solid rgba(37,211,102,.3);padding:6px 12px">📲 Enviar</button>
       </a>
@@ -825,10 +825,9 @@ let _configTimer = null;
 let _payApptId   = null;
 
 // ── LINK AGENDA ──────────────────────────────────────────────────
-function copiarLinkAgenda() {
+function copiarLinkAgenda(btn) {
   const url = 'https://4kitem.com.br/agendar/{{ biz.slug }}';
   navigator.clipboard.writeText(url).then(() => {
-    const btn = event.target;
     const orig = btn.textContent;
     btn.textContent = '✅ Copiado!';
     setTimeout(() => btn.textContent = orig, 2000);
