@@ -6963,7 +6963,7 @@ def _send_image(evo_url, evo_key, instance, phone, image_url, caption=''):
 
 def _antiban_delay(sent_count: int):
     """
-    Delay humanizado anti-ban v2 — estratégia em 3 fases:
+    Delay humanizado anti-ban v3 — estratégia em 3 fases:
 
     FASE 1 — Warm-up (primeiras 20 msgs):
       Base 40–90s para não disparar alerta de novo número.
@@ -6974,28 +6974,36 @@ def _antiban_delay(sent_count: int):
     FASE 3 — Volume (150+):
       Base 15–40s (número já aquecido).
 
-    Pausas longas obrigatórias:
-      A cada 25 msgs: 2–5 min  (simula pausa para ler resposta)
-      A cada 75 msgs: 5–12 min (simula saída do celular)
-      A cada 150 msgs: 10–20 min (pausa refeição/reunião)
+    Pausas obrigatórias (BARREIRA REAL = 45 consecutivas):
+      A cada 20 msgs: 3–6 min  (reseta contador interno do Meta)
+      A cada 40 msgs: 8–15 min (pausa crítica — antes do limite de 45)
+      A cada 100 msgs: 15–25 min (simula saída do celular)
+      A cada 200 msgs: 25–40 min (pausa refeição/reunião)
 
     Delays NUNCA são fixos — o Meta detecta padrões matemáticos.
     """
     # Pausas longas — checar do mais raro ao mais frequente
-    if sent_count > 0 and sent_count % 150 == 0:
-        pausa = random.uniform(600, 1200)
+    if sent_count > 0 and sent_count % 200 == 0:
+        pausa = random.uniform(1500, 2400)
+        log.info(f"Anti-ban: pausa extra longa {pausa:.0f}s apos {sent_count} enviados")
+        time.sleep(pausa)
+        return
+
+    if sent_count > 0 and sent_count % 100 == 0:
+        pausa = random.uniform(900, 1500)
         log.info(f"Anti-ban: pausa longa {pausa:.0f}s apos {sent_count} enviados")
         time.sleep(pausa)
         return
 
-    if sent_count > 0 and sent_count % 75 == 0:
-        pausa = random.uniform(300, 720)
-        log.info(f"Anti-ban: pausa media {pausa:.0f}s apos {sent_count} enviados")
+    # CRÍTICO: pausa a cada 40 msgs — antes da barreira de 45 do Meta
+    if sent_count > 0 and sent_count % 40 == 0:
+        pausa = random.uniform(480, 900)
+        log.info(f"Anti-ban: pausa critica {pausa:.0f}s apos {sent_count} enviados (barreira 45)")
         time.sleep(pausa)
         return
 
-    if sent_count > 0 and sent_count % 25 == 0:
-        pausa = random.uniform(120, 300)
+    if sent_count > 0 and sent_count % 20 == 0:
+        pausa = random.uniform(180, 360)
         log.info(f"Anti-ban: pausa curta {pausa:.0f}s apos {sent_count} enviados")
         time.sleep(pausa)
         return
