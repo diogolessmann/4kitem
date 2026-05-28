@@ -127,37 +127,13 @@ input:focus,select:focus{border-color:#7c3aed}
       <label>Categoria *</label>
       <select id="add-cat">
         <option value="">— Selecione —</option>
-        <optgroup label="🎵 Música">
-          <option value="rock">🎸 Rock Clips</option>
-          <option value="punk">⚡ Punk / Alternativo</option>
-          <option value="sertanejo">🤠 Sertanejo Clips</option>
-          <option value="pagode">🥁 Pagode Clips</option>
-          <option value="pop">🎵 Pop Clips</option>
-          <option value="country">🤠 Country / Rodeio</option>
-          <option value="reggae">🎸 Reggae Clips</option>
+        {% for grupo_label, itens in canais_grupos %}
+        <optgroup label="{{ grupo_label }}">
+          {% for key, c in itens %}
+          <option value="{{ key }}">{{ c.emoji }} {{ c.nome }}</option>
+          {% endfor %}
         </optgroup>
-        <optgroup label="🎤 Shows ao Vivo">
-          <option value="show_rock">🎤 Shows — Rock</option>
-          <option value="show_sertanejo">🎤 Shows — Sertanejo</option>
-          <option value="show_pagode">🎤 Shows — Pagode</option>
-        </optgroup>
-        <optgroup label="🏆 Esporte">
-          <option value="f1">🏎️ Speed / F1</option>
-          <option value="rally">🏎️ Rally / Drift</option>
-          <option value="futebol">⚽ Futebol</option>
-          <option value="surf">🏄 Surf</option>
-          <option value="kitesurf">🌊 Kitesurf / Wake</option>
-          <option value="aerio">🪂 Aéreo</option>
-          <option value="wingsuit">🪂 Wingsuit / BASE</option>
-          <option value="aviacao">✈️ Jatos / Aviação</option>
-          <option value="radical">🛹 Radical</option>
-          <option value="skate">🛹 Skate Clips</option>
-          <option value="lutas">🥊 UFC / Lutas</option>
-        </optgroup>
-        <optgroup label="🎭 Entretenimento">
-          <option value="batidas">💥 Batidas / Crashes</option>
-          <option value="standup">🎭 Stand-up Comedy</option>
-        </optgroup>
+        {% endfor %}
       </select>
     </div>
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
@@ -178,37 +154,13 @@ input:focus,select:focus{border-color:#7c3aed}
     <div class="form-group">
       <label>Categoria *</label>
       <select id="lote-cat">
-        <optgroup label="🎵 Música">
-          <option value="rock">🎸 Rock Clips</option>
-          <option value="punk">⚡ Punk / Alternativo</option>
-          <option value="sertanejo">🤠 Sertanejo Clips</option>
-          <option value="pagode">🥁 Pagode Clips</option>
-          <option value="pop">🎵 Pop Clips</option>
-          <option value="country">🤠 Country / Rodeio</option>
-          <option value="reggae">🎸 Reggae Clips</option>
+        {% for grupo_label, itens in canais_grupos %}
+        <optgroup label="{{ grupo_label }}">
+          {% for key, c in itens %}
+          <option value="{{ key }}">{{ c.emoji }} {{ c.nome }}</option>
+          {% endfor %}
         </optgroup>
-        <optgroup label="🎤 Shows ao Vivo">
-          <option value="show_rock">🎤 Shows — Rock</option>
-          <option value="show_sertanejo">🎤 Shows — Sertanejo</option>
-          <option value="show_pagode">🎤 Shows — Pagode</option>
-        </optgroup>
-        <optgroup label="🏆 Esporte">
-          <option value="f1">🏎️ Speed / F1</option>
-          <option value="rally">🏎️ Rally / Drift</option>
-          <option value="futebol">⚽ Futebol</option>
-          <option value="surf">🏄 Surf</option>
-          <option value="kitesurf">🌊 Kitesurf / Wake</option>
-          <option value="aerio">🪂 Aéreo</option>
-          <option value="wingsuit">🪂 Wingsuit / BASE</option>
-          <option value="aviacao">✈️ Jatos / Aviação</option>
-          <option value="radical">🛹 Radical</option>
-          <option value="skate">🛹 Skate Clips</option>
-          <option value="lutas">🥊 UFC / Lutas</option>
-        </optgroup>
-        <optgroup label="🎭 Entretenimento">
-          <option value="batidas">💥 Batidas / Crashes</option>
-          <option value="standup">🎭 Stand-up Comedy</option>
-        </optgroup>
+        {% endfor %}
       </select>
     </div>
     <div class="form-group">
@@ -245,37 +197,13 @@ input:focus,select:focus{border-color:#7c3aed}
     <div class="form-group">
       <label>Categoria *</label>
       <select id="pl-cat">
-        <optgroup label="🎵 Música">
-          <option value="rock">🎸 Rock Clips</option>
-          <option value="punk">⚡ Punk / Alternativo</option>
-          <option value="sertanejo">🤠 Sertanejo Clips</option>
-          <option value="pagode">🥁 Pagode Clips</option>
-          <option value="pop">🎵 Pop Clips</option>
-          <option value="country">🤠 Country / Rodeio</option>
-          <option value="reggae">🎸 Reggae Clips</option>
+        {% for grupo_label, itens in canais_grupos %}
+        <optgroup label="{{ grupo_label }}">
+          {% for key, c in itens %}
+          <option value="{{ key }}">{{ c.emoji }} {{ c.nome }}</option>
+          {% endfor %}
         </optgroup>
-        <optgroup label="🎤 Shows ao Vivo">
-          <option value="show_rock">🎤 Shows — Rock</option>
-          <option value="show_sertanejo">🎤 Shows — Sertanejo</option>
-          <option value="show_pagode">🎤 Shows — Pagode</option>
-        </optgroup>
-        <optgroup label="🏆 Esporte">
-          <option value="f1">🏎️ Speed / F1</option>
-          <option value="rally">🏎️ Rally / Drift</option>
-          <option value="futebol">⚽ Futebol</option>
-          <option value="surf">🏄 Surf</option>
-          <option value="kitesurf">🌊 Kitesurf / Wake</option>
-          <option value="aerio">🪂 Aéreo</option>
-          <option value="wingsuit">🪂 Wingsuit / BASE</option>
-          <option value="aviacao">✈️ Jatos / Aviação</option>
-          <option value="radical">🛹 Radical</option>
-          <option value="skate">🛹 Skate Clips</option>
-          <option value="lutas">🥊 UFC / Lutas</option>
-        </optgroup>
-        <optgroup label="🎭 Entretenimento">
-          <option value="batidas">💥 Batidas / Crashes</option>
-          <option value="standup">🎭 Stand-up Comedy</option>
-        </optgroup>
+        {% endfor %}
       </select>
     </div>
     <div id="pl-resultado" style="display:none;margin-bottom:12px;padding:12px;background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.2);border-radius:8px;font-size:13px;color:#4ade80"></div>

@@ -1820,8 +1820,22 @@ def admin_videos():
     for v in videos:
         cat = v['categoria']
         por_cat.setdefault(cat, []).append(dict(v))
+    # Agrupa canais por grupo para os selects do admin
+    _grupo_labels = {
+        'musica': '🎵 Música', 'shows': '🎤 Shows ao Vivo',
+        'sport': '🏆 Esporte', 'viral': '💥 Viral',
+        'entretenimento': '🎭 Entretenimento',
+    }
+    _grupo_ordem = ['musica', 'shows', 'sport', 'viral', 'entretenimento']
+    canais_grupos = []
+    _visto = {}
+    for g in _grupo_ordem:
+        itens = [(k, v) for k, v in CANAIS.items()
+                 if v.get('grupo') == g and isinstance(v.get('cat'), str)]
+        if itens:
+            canais_grupos.append((_grupo_labels.get(g, g), itens))
     return render_template('pubshow/admin_videos.html', por_cat=por_cat,
-                           total=len(videos))
+                           total=len(videos), canais_grupos=canais_grupos)
 
 
 @pubshow_bp.route('/admin/import-playlist', methods=['POST'])
