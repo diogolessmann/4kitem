@@ -926,9 +926,13 @@ def painel():
            ORDER BY created_at DESC LIMIT 20''',
         (b['id'],)
     ).fetchall()
+    total_pedidos_bar = conn.execute(
+        'SELECT COUNT(*) FROM pubshow_pedidos WHERE business_id=?', (b['id'],)
+    ).fetchone()[0]
     conn.close()
     import json as _json
     bd = dict(b)
+    bd['total_pedidos'] = total_pedidos_bar
     try:    bloqueados_parsed = _json.loads(bd.get('tipos_bloqueados') or '[]')
     except: bloqueados_parsed = []
     try:    precos_parsed = _json.loads(bd.get('precos_custom') or '{}')
