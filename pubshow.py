@@ -48,12 +48,26 @@ CANAIS = {
     'show_pagode':    {'nome': 'Pagode Shows',      'emoji': '🥁🎤', 'cor': '#15803d', 'cat': 'show_pagode',    'grupo': 'shows'},
     # ── SPORT ────────────────────────────────────────────────────────────────
     'sport_mix':      {'nome': 'Sport Mix',         'emoji': '🏆',  'cor': '#f59e0b',
-                       'cat': ['f1', 'futebol', 'surf', 'aerio', 'radical'],       'grupo': 'sport'},
+                       'cat': ['f1', 'futebol', 'surf', 'aerio', 'radical',
+                               'rally', 'wingsuit', 'aviacao', 'lutas', 'skate', 'kitesurf'],
+                       'grupo': 'sport'},
     'f1':             {'nome': 'Speed Clips',       'emoji': '🏎️',  'cor': '#e11d48', 'cat': 'f1',        'grupo': 'sport'},
     'futebol':        {'nome': 'Futebol Clips',     'emoji': '⚽',  'cor': '#16a34a', 'cat': 'futebol',   'grupo': 'sport'},
     'surf':           {'nome': 'Surf Clips',        'emoji': '🏄',  'cor': '#0ea5e9', 'cat': 'surf',      'grupo': 'sport'},
     'aerio':          {'nome': 'Aéreo Clips',       'emoji': '🪂',  'cor': '#6366f1', 'cat': 'aerio',     'grupo': 'sport'},
     'radical':        {'nome': 'Radical Clips',     'emoji': '🛹',  'cor': '#f43f5e', 'cat': 'radical',   'grupo': 'sport'},
+    'rally':          {'nome': 'Rally / Drift',     'emoji': '🏎️',  'cor': '#f97316', 'cat': 'rally',     'grupo': 'sport'},
+    'wingsuit':       {'nome': 'Wingsuit / BASE',   'emoji': '🪂',  'cor': '#3b82f6', 'cat': 'wingsuit',  'grupo': 'sport'},
+    'aviacao':        {'nome': 'Jatos / Aviação',   'emoji': '✈️',  'cor': '#06b6d4', 'cat': 'aviacao',   'grupo': 'sport'},
+    'lutas':          {'nome': 'UFC / Lutas',       'emoji': '🥊',  'cor': '#dc2626', 'cat': 'lutas',     'grupo': 'sport'},
+    'skate':          {'nome': 'Skate Clips',       'emoji': '🛹',  'cor': '#8b5cf6', 'cat': 'skate',     'grupo': 'sport'},
+    'kitesurf':       {'nome': 'Kitesurf / Wake',   'emoji': '🌊',  'cor': '#0891b2', 'cat': 'kitesurf',  'grupo': 'sport'},
+    # ── MÚSICA EXTRA ─────────────────────────────────────────────────────────
+    'country':        {'nome': 'Country / Rodeio',  'emoji': '🤠',  'cor': '#a16207', 'cat': 'country',   'grupo': 'musica'},
+    'reggae':         {'nome': 'Reggae Clips',      'emoji': '🎸',  'cor': '#15803d', 'cat': 'reggae',    'grupo': 'musica'},
+    # ── ENTRETENIMENTO ───────────────────────────────────────────────────────
+    'batidas':        {'nome': 'Batidas / Crashes', 'emoji': '💥',  'cor': '#b45309', 'cat': 'batidas',   'grupo': 'viral'},
+    'standup':        {'nome': 'Stand-up Comedy',   'emoji': '🎭',  'cor': '#7c3aed', 'cat': 'standup',   'grupo': 'entretenimento'},
 }
 
 PLANOS = {
