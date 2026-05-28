@@ -404,10 +404,10 @@ function carregarVideo(idx) {
 }
 
 function mostrarErroSemVideos() {
-  // Todos os vídeos do canal falharam — exibe aviso e troca para Rock
+  // Todos os vídeos do tema falharam — exibe aviso e troca para Rock
   clearTimeout(stallTimer);
-  document.getElementById('np-titulo').textContent  = 'Canal temporariamente indisponível';
-  document.getElementById('np-artista').textContent = 'Aguarde, trocando de canal...';
+  document.getElementById('np-titulo').textContent  = 'Tema temporariamente indisponível';
+  document.getElementById('np-artista').textContent = 'Aguarde, trocando de tema...';
   document.getElementById('now-playing').classList.remove('hidden');
   // Após 4s, tenta trocar para rock automaticamente
   setTimeout(() => {
