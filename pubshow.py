@@ -918,6 +918,29 @@ def api_videos(categoria):
     return jsonify({'videos': videos, 'total': len(videos)})
 
 
+@pubshow_bp.route('/api/ranking/<code>')
+def api_ranking(code):
+    """Retorna top músicas pedidas nas últimas 6h para o bar (ranking da noite)."""
+    conn = get_pubshow_db()
+    b = conn.execute('SELECT id FROM pubshow_businesses WHERE code=?', (code,)).fetchone()
+    if not b:
+        conn.close()
+        return jsonify({'ranking': []})
+    rows = conn.execute(
+        '''SELECT titulo_pedido, COUNT(*) n
+           FROM pubshow_pedidos
+           WHERE business_id=? AND titulo_pedido IS NOT NULL
+           AND status != "aguardando_pix"
+           AND created_at >= datetime("now", "-6 hours", "localtime")
+           GROUP BY titulo_pedido
+           ORDER BY n DESC
+           LIMIT 5''',
+        (b['id'],)
+    ).fetchall()
+    conn.close()
+    return jsonify({'ranking': [dict(r) for r in rows]})
+
+
 @pubshow_bp.route('/api/buscar-biblioteca')
 def api_buscar_biblioteca():
     """Busca na biblioteca curada de vídeos (rápido, sem API externa)."""
