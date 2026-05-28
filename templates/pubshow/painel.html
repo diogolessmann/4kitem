@@ -378,9 +378,9 @@
             <div style="font-size:11px;color:var(--text2);margin-bottom:4px">{{ t.emoji }} {{ t.nome }}</div>
             <div style="display:flex;align-items:center;gap:6px">
               <span style="font-size:12px;color:var(--text2)">R$</span>
-              <input type="number" name="preco_{{ key }}" step="0.50" min="0.50" max="200"
-                value="{{ precos_parsed.get(key, '') }}"
-                placeholder="{{ t.preco }}"
+              <input type="number" name="preco_{{ key }}" step="0.01" min="0.50" max="200"
+                value="{{ '%.2f'|format(precos_parsed[key]|float) if precos_parsed.get(key) else '' }}"
+                placeholder="{{ '%.2f'|format(t.preco) }}"
                 style="width:100%;background:transparent;border:none;color:var(--text);font-size:14px;font-weight:700;font-family:inherit;outline:none">
             </div>
           </div>
