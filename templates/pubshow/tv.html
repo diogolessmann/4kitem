@@ -238,6 +238,10 @@
   .slide-titulo{font-size:42px;font-weight:900;color:var(--slide-cor,#ef4444);letter-spacing:-1.5px;line-height:1.1;margin-bottom:12px}
   .slide-sub{font-size:20px;color:rgba(255,255,255,.75);line-height:1.5;margin-bottom:20px}
   .slide-bar{height:4px;border-radius:2px;background:var(--slide-cor,#ef4444);margin-top:20px;animation:shrink linear forwards}
+  /* Slide de imagem */
+  #slide-img-box{display:none;flex-direction:column;align-items:center;gap:16px;animation:popIn .5s cubic-bezier(.34,1.56,.64,1)}
+  #slide-img-box img{max-height:82vh;max-width:92vw;border-radius:20px;object-fit:contain;box-shadow:0 0 80px rgba(0,0,0,.8)}
+  #slide-img-box .slide-bar{width:min(600px,90vw)}
 
   /* ── Overlay fullscreen melhorado ───────────────────────────────────────── */
   .overlay-qr-viral{
@@ -396,6 +400,10 @@
     <div class="slide-sub" id="slide-sub"></div>
     <div class="slide-bar" id="slide-bar"></div>
   </div>
+  <div id="slide-img-box">
+    <img id="slide-img" src="" alt="">
+    <div class="slide-bar" id="slide-bar-img"></div>
+  </div>
 </div>
 
 <!-- Ranking da noite -->
@@ -437,6 +445,12 @@ let   CANAL_KEY   = '{{ canal_key }}';
 const BASE_URL    = '/pubshow';
 const JUKEBOX_URL = '{{ request.host_url }}pubshow/jukebox/{{ b.jukebox_token or b.code }}';
 const ANUNCIOS    = {{ anuncios | tojson }};  // slides de propaganda do bar
+// Slides padrão do sistema (exibidos quando o bar ainda não tem slides próprios)
+const ANUNCIOS_DEFAULT = [
+  {tipo:'imagem', url:'/static/pubshow/slides/slide1.png', titulo:''},
+  {tipo:'imagem', url:'/static/pubshow/slides/slide2.png', titulo:''},
+];
+const ANUNCIOS_EFETIVOS = ANUNCIOS.length > 0 ? ANUNCIOS : ANUNCIOS_DEFAULT;
 
 // Info de canais disponível no JS para atualizar UI sem reload
 const CANAIS_JS = {{ canais | tojson }};
@@ -834,9 +848,9 @@ function mostrarOverlay(pedido) {
 // ── Propaganda do bar — slide entre vídeos ───────────────────────────────────
 function proximoVideoOuSlide() {
   _videosPlayed++;
-  // A cada 3 vídeos, se houver slides, exibe um
-  if (ANUNCIOS.length && _videosPlayed % 3 === 0) {
-    const slide = ANUNCIOS[_anuncioIdx % ANUNCIOS.length];
+  // A cada 3 vídeos exibe um slide (usa ANUNCIOS_EFETIVOS: próprios ou padrão)
+  if (ANUNCIOS_EFETIVOS.length && _videosPlayed % 3 === 0) {
+    const slide = ANUNCIOS_EFETIVOS[_anuncioIdx % ANUNCIOS_EFETIVOS.length];
     _anuncioIdx++;
     mostrarSlide(slide);
   } else {
@@ -847,23 +861,41 @@ function proximoVideoOuSlide() {
 
 function mostrarSlide(slide) {
   const duracao = 8000; // 8 segundos
-  const box    = document.getElementById('slide-box');
   const el     = document.getElementById('slide-propaganda');
-  document.getElementById('slide-emoji').textContent  = slide.emoji || '📢';
-  document.getElementById('slide-titulo').textContent = slide.titulo;
-  document.getElementById('slide-sub').textContent    = slide.subtitulo || '';
-  box.style.setProperty('--slide-cor', slide.cor || '#ef4444');
-  el.style.setProperty('--slide-cor', slide.cor || '#ef4444');
-  const bar = document.getElementById('slide-bar');
-  bar.style.animation = 'none';
-  bar.offsetHeight; // reflow
-  bar.style.animation = `shrink ${duracao/1000}s linear forwards`;
+  const box    = document.getElementById('slide-box');
+  const imgBox = document.getElementById('slide-img-box');
+
+  if (slide.tipo === 'imagem' && slide.url) {
+    // ── Slide de imagem ──────────────────────────────────────────────────
+    box.style.display    = 'none';
+    imgBox.style.display = 'flex';
+    document.getElementById('slide-img').src = slide.url;
+    const bar = document.getElementById('slide-bar-img');
+    bar.style.animation = 'none';
+    bar.offsetHeight;
+    bar.style.animation = `shrink ${duracao/1000}s linear forwards`;
+  } else {
+    // ── Slide de texto ───────────────────────────────────────────────────
+    box.style.display    = '';
+    imgBox.style.display = 'none';
+    document.getElementById('slide-emoji').textContent  = slide.emoji || '📢';
+    document.getElementById('slide-titulo').textContent = slide.titulo || '';
+    document.getElementById('slide-sub').textContent    = slide.subtitulo || '';
+    box.style.setProperty('--slide-cor', slide.cor || '#ef4444');
+    el.style.setProperty('--slide-cor', slide.cor || '#ef4444');
+    const bar = document.getElementById('slide-bar');
+    bar.style.animation = 'none';
+    bar.offsetHeight;
+    bar.style.animation = `shrink ${duracao/1000}s linear forwards`;
+  }
+
   el.classList.add('show');
-  // Pausa o player durante o slide
   if (player && player.pauseVideo) player.pauseVideo();
   clearTimeout(window._slideTimer);
   window._slideTimer = setTimeout(() => {
     el.classList.remove('show');
+    box.style.display    = '';
+    imgBox.style.display = 'none';
     videoIdx = (videoIdx + 1) % VIDEOS.length;
     carregarVideo(videoIdx);
   }, duracao);

@@ -396,6 +396,32 @@
       <button type="submit" style="background:linear-gradient(135deg,#ef4444,#f97316);color:#fff;border:none;border-radius:8px;padding:9px 22px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">💾 Salvar propaganda</button>
       <span style="font-size:11px;color:#8888aa;margin-left:10px">Slides em branco não são exibidos</span>
     </form>
+
+    <!-- Slides de imagem -->
+    <div style="margin-top:20px;padding-top:16px;border-top:1px solid rgba(255,255,255,.07)">
+      <div style="font-size:12px;font-weight:700;color:#8888aa;text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">🖼️ Slides de imagem</div>
+      {% set slides_img = anuncios_parsed | selectattr('tipo','equalto','imagem') | list %}
+      {% if slides_img %}
+      <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:12px">
+        {% for sl in slides_img %}
+        <div style="position:relative;border-radius:10px;overflow:hidden;border:1px solid rgba(255,255,255,.12)">
+          <img src="{{ sl.url }}" style="height:80px;width:auto;display:block;max-width:140px;object-fit:cover">
+          <form method="POST" action="/pubshow/painel/delete-slide" style="position:absolute;top:4px;right:4px">
+            <input type="hidden" name="url" value="{{ sl.url }}">
+            <button type="submit" style="background:rgba(0,0,0,.7);border:none;border-radius:4px;color:#fff;font-size:12px;padding:2px 6px;cursor:pointer" title="Remover">✕</button>
+          </form>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+      <form method="POST" action="/pubshow/painel/upload-slide" enctype="multipart/form-data" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <label style="background:#13131f;border:1px dashed rgba(255,255,255,.2);border-radius:8px;padding:8px 16px;cursor:pointer;font-size:12px;color:#8888aa;display:flex;align-items:center;gap:8px">
+          📁 Escolher imagem (PNG/JPG)
+          <input type="file" name="imagem" accept="image/png,image/jpeg,image/gif,image/webp" style="display:none" onchange="this.closest('form').submit()">
+        </label>
+        <span style="font-size:11px;color:#555">Imagem substitui um slot de texto · máximo {{ plano_max_anuncios }} slides no total</span>
+      </form>
+    </div>
   </div>
 
   <!-- Temas habilitados na TV -->

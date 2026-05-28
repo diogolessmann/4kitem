@@ -146,6 +146,8 @@ def init_pubshow_db():
         'ALTER TABLE pubshow_businesses ADD COLUMN whatsapp_notif INTEGER DEFAULT 0',
         # Happy Hour dinâmico — JSON {ini, fim, desconto, dias}
         'ALTER TABLE pubshow_businesses ADD COLUMN happy_hour_json TEXT DEFAULT NULL',
+        # Anti-fraude: IP de cadastro para detectar multi-trials
+        'ALTER TABLE pubshow_businesses ADD COLUMN signup_ip TEXT DEFAULT NULL',
     ]:
         try:
             conn.execute(m); conn.commit()

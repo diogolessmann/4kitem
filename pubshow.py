@@ -13,7 +13,7 @@ import requests as _requests
 from datetime import datetime, timedelta
 from functools import wraps
 from flask import (Blueprint, render_template, redirect, request,
-                   session, jsonify)
+                   session, jsonify, send_from_directory)
 from werkzeug.security import generate_password_hash, check_password_hash
 from pubshow_db import get_pubshow_db, init_pubshow_db
 
@@ -71,24 +71,85 @@ CANAIS = {
 }
 
 PLANOS = {
+    'starter': {
+        'nome': 'Starter',
+        'emoji': '🌱',
+        'preco': 69.90,
+        'preco_fmt': 'R$ 69,90',
+        'descricao': 'Para começar',
+        'features': ['TV com clips 24/7', '3 tipos de pedido', '1 slide de propaganda', 'QR Code de mesa', 'Painel de gestão'],
+        'max_tipos': ['musica', 'musica_especifica', 'dedicatoria'],
+        'max_anuncios': 1,
+        'analytics': False,
+        'whatsapp': False,
+        'happy_hour': False,
+    },
     'bar': {
-        'nome': 'Bar / Pub',
+        'nome': 'Bar',
         'emoji': '🍺',
         'preco': 129.90,
         'preco_fmt': 'R$ 129,90',
-        'descricao': 'Para estabelecimentos',
+        'descricao': 'Para bares e botecos',
         'destaque': True,
-        'features': ['Telas ilimitadas', 'Todos os temas de clips', 'Jukebox ativo (100% pra você)', 'QR Code de mesa', 'Parabéns e Dedicatórias', 'Painel de gestão'],
+        'features': ['Tudo do Starter', 'Todos os tipos de pedido', '3 slides de propaganda', 'Analytics de horários', 'Parabéns e Dedicatórias', 'Promoção Relâmpago'],
+        'max_tipos': None,
+        'max_anuncios': 3,
+        'analytics': True,
+        'whatsapp': False,
+        'happy_hour': False,
     },
-    'premium': {
-        'nome': 'Premium / Rede',
+    'pro': {
+        'nome': 'Pro',
+        'emoji': '🚀',
+        'preco': 199.90,
+        'preco_fmt': 'R$ 199,90',
+        'descricao': 'Para maximizar o lucro',
+        'features': ['Tudo do Bar', 'Happy Hour automático', 'Notificação WhatsApp', 'Ranking da noite na TV', '5 slides de propaganda', 'Relatórios completos'],
+        'max_tipos': None,
+        'max_anuncios': 5,
+        'analytics': True,
+        'whatsapp': True,
+        'happy_hour': True,
+    },
+    'rede': {
+        'nome': 'Rede',
         'emoji': '🏟️',
-        'preco': 249.90,
-        'preco_fmt': 'R$ 249,90',
+        'preco': 349.90,
+        'preco_fmt': 'R$ 349,90',
         'descricao': 'Para redes e múltiplos locais',
-        'features': ['Tudo do Bar', 'Múltiplos locais', 'Painel unificado', 'Suporte prioritário', 'Relatório de pedidos'],
+        'features': ['Tudo do Pro', 'Múltiplos locais', 'Painel unificado', 'Suporte prioritário', 'Slides ilimitados'],
+        'max_tipos': None,
+        'max_anuncios': 999,
+        'analytics': True,
+        'whatsapp': True,
+        'happy_hour': True,
+        'multi': True,
     },
 }
+
+def _plano_permite(b, feature: str) -> bool:
+    """Verifica se o plano atual do bar permite uma feature."""
+    plano_key = b.get('plano', 'bar') or 'bar'
+    p = PLANOS.get(plano_key, PLANOS['bar'])
+    return bool(p.get(feature, False))
+
+
+def _plano_max_anuncios(b) -> int:
+    plano_key = b.get('plano', 'bar') or 'bar'
+    p = PLANOS.get(plano_key, PLANOS['bar'])
+    return int(p.get('max_anuncios', 3))
+
+
+def _plano_tipos_permitidos(b) -> list | None:
+    """Retorna lista de tipos permitidos ou None (= todos)."""
+    plano_key = b.get('plano', 'bar') or 'bar'
+    p = PLANOS.get(plano_key, PLANOS['bar'])
+    return p.get('max_tipos', None)  # None = sem restrição
+
+
+# ── Diretório de uploads de slides ───────────────────────────────────────────
+_SLIDES_DIR = os.path.join(os.environ.get('DATA_DIR', os.path.dirname(__file__)), 'pubshow_slides')
+
 
 TIPOS_PEDIDO = {
     'musica':           {'nome': 'Música aleatória',       'emoji': '🎵', 'preco': 2.00,  'cor': '#3b82f6'},
@@ -240,7 +301,9 @@ def _tipos_disponiveis(b):
 
 
 def _happy_hour_desconto(b):
-    """Retorna o percentual de desconto ativo no momento (0 se não há happy hour)."""
+    """Retorna o percentual de desconto ativo no momento (0 se plano não permite ou não há happy hour)."""
+    if not _plano_permite(b, 'happy_hour'):
+        return 0
     import json as _json
     try:
         hh = _json.loads(b['happy_hour_json'] or 'null')
@@ -437,6 +500,8 @@ def _pubshow_notify_bar(b, mensagem: str):
     """Envia notificação WhatsApp para o dono do bar via Evolution API.
     Silencioso — nunca levanta exceção.
     """
+    if not _plano_permite(b, 'whatsapp'):
+        return
     if not b.get('whatsapp_notif'):
         return
     telefone = (b.get('telefone') or '').strip()
@@ -549,32 +614,54 @@ def cadastro():
             erro = 'Preencha todos os campos obrigatórios.'
         elif len(senha) < 6:
             erro = 'A senha deve ter ao menos 6 caracteres.'
+        elif plano_sel not in PLANOS:
+            plano_sel = 'bar'
+            erro = ''
         else:
+            # ── Anti-fraude: 1 trial por IP e por CPF/CNPJ ───────────────────
+            ip_cliente = (request.headers.get('X-Forwarded-For') or request.remote_addr or '').split(',')[0].strip()
             try:
-                code  = _gerar_code()
-                jtoken = _gerar_jukebox_token()
-                trial = (datetime.now() + timedelta(days=7)).isoformat()
-                conn = get_pubshow_db()
-                conn.execute(
-                    '''INSERT INTO pubshow_businesses
-                       (nome, tipo, email, telefone, cpf_cnpj, password_hash, code,
-                        plano, plano_ativo, canal_atual, trial_ends, jukebox_token)
-                       VALUES (?,?,?,?,?,?,?,?,1,?,?,?)''',
-                    (nome, tipo, email, telefone, cpf_cnpj,
-                     generate_password_hash(senha), code, plano_sel, 'rock', trial, jtoken)
-                )
-                conn.commit()
-                b = conn.execute('SELECT * FROM pubshow_businesses WHERE email=?', (email,)).fetchone()
-                conn.close()
-                session['pub_business_id']   = b['id']
-                session['pub_business_nome'] = b['nome']
-                session['pub_canal']         = b['canal_atual']
-                return redirect('/pubshow/painel')
-            except Exception as ex:
-                if 'UNIQUE' in str(ex):
-                    erro = 'Este e-mail já está cadastrado. Faça login.'
-                else:
-                    erro = f'Erro ao cadastrar: {ex}'
+                conn_chk = get_pubshow_db()
+                dup_cpf = conn_chk.execute(
+                    'SELECT id FROM pubshow_businesses WHERE cpf_cnpj=? LIMIT 1', (cpf_cnpj,)
+                ).fetchone()
+                dup_ip = conn_chk.execute(
+                    "SELECT id FROM pubshow_businesses WHERE signup_ip=? AND trial_ends IS NOT NULL AND trial_ends > ? LIMIT 1",
+                    (ip_cliente, datetime.now().isoformat())
+                ).fetchone() if ip_cliente else None
+                conn_chk.close()
+            except Exception:
+                dup_cpf = dup_ip = None
+            if dup_cpf:
+                erro = 'CPF/CNPJ já cadastrado. Faça login ou entre em contato.'
+            elif dup_ip:
+                erro = 'Já existe um trial ativo neste dispositivo. Aguarde o período encerrar.'
+            else:
+                try:
+                    code  = _gerar_code()
+                    jtoken = _gerar_jukebox_token()
+                    trial = (datetime.now() + timedelta(days=7)).isoformat()
+                    conn = get_pubshow_db()
+                    conn.execute(
+                        '''INSERT INTO pubshow_businesses
+                           (nome, tipo, email, telefone, cpf_cnpj, password_hash, code,
+                            plano, plano_ativo, canal_atual, trial_ends, jukebox_token, signup_ip)
+                           VALUES (?,?,?,?,?,?,?,?,1,?,?,?,?)''',
+                        (nome, tipo, email, telefone, cpf_cnpj,
+                         generate_password_hash(senha), code, plano_sel, 'rock', trial, jtoken, ip_cliente)
+                    )
+                    conn.commit()
+                    b = conn.execute('SELECT * FROM pubshow_businesses WHERE email=?', (email,)).fetchone()
+                    conn.close()
+                    session['pub_business_id']   = b['id']
+                    session['pub_business_nome'] = b['nome']
+                    session['pub_canal']         = b['canal_atual']
+                    return redirect('/pubshow/painel')
+                except Exception as ex:
+                    if 'UNIQUE' in str(ex):
+                        erro = 'Este e-mail já está cadastrado. Faça login.'
+                    else:
+                        erro = f'Erro ao cadastrar: {ex}'
     return render_template('pubshow/cadastro.html', erro=erro,
                            planos=PLANOS, plano_sel=plano_sel,
                            tipos=TIPOS_ESTABELECIMENTO)
@@ -645,6 +732,11 @@ def jukebox(token):
     aberto, motivo_fechado = _jukebox_aberto(b)
     tipos_bar              = _tipos_disponiveis(b)
     precos_bar, hh_desconto = _precos_do_bar(b)
+
+    # ── Feature gating: filtra tipos pelo plano ───────────────────────────────
+    tipos_permitidos = _plano_tipos_permitidos(b)
+    if tipos_permitidos is not None:
+        precos_bar = {k: v for k, v in precos_bar.items() if k in tipos_permitidos}
 
     if request.method == 'POST':
         if not aberto:
@@ -1077,6 +1169,10 @@ def painel():
                            anuncios_parsed=anuncios_parsed,
                            happy_hour=happy_hour,
                            hh_desconto_atual=hh_desconto_atual,
+                           plano_max_anuncios=_plano_max_anuncios(bd),
+                           plano_permite_hh=_plano_permite(bd, 'happy_hour'),
+                           plano_permite_wa=_plano_permite(bd, 'whatsapp'),
+                           plano_permite_analytics=_plano_permite(bd, 'analytics'),
                            promo_ativa=bool(bd.get('promo_msg') and bd.get('promo_expira') and bd['promo_expira'] > datetime.now().strftime('%Y-%m-%dT%H:%M:%S')))
 
 
@@ -1165,6 +1261,77 @@ def painel_anuncios():
     conn = get_pubshow_db()
     conn.execute('UPDATE pubshow_businesses SET anuncios_json=? WHERE id=?',
                  (_json.dumps(slides, ensure_ascii=False), b['id']))
+    conn.commit(); conn.close()
+    return redirect('/pubshow/painel')
+
+
+@pubshow_bp.route('/painel/upload-slide', methods=['POST'])
+@pubshow_login_required
+def painel_upload_slide():
+    """Upload de imagem como slide de propaganda."""
+    import json as _json
+    b = _get_business()
+    max_slides = _plano_max_anuncios(b)
+    try:
+        anuncios = _json.loads(b['anuncios_json'] or '[]')
+    except Exception:
+        anuncios = []
+    # Remove slides de imagem existentes para contar total
+    imgs_existentes = [s for s in anuncios if s.get('tipo') == 'imagem']
+    texto_existentes = [s for s in anuncios if s.get('tipo') != 'imagem']
+    total = len(texto_existentes) + len(imgs_existentes)
+    if total >= max_slides:
+        return redirect('/pubshow/painel?erro=limite_slides')
+    f = request.files.get('imagem')
+    if not f or not f.filename:
+        return redirect('/pubshow/painel')
+    ext = f.filename.rsplit('.', 1)[-1].lower()
+    if ext not in ('png', 'jpg', 'jpeg', 'gif', 'webp'):
+        return redirect('/pubshow/painel?erro=formato_invalido')
+    code = b['code']
+    pasta = os.path.join(_SLIDES_DIR, code)
+    os.makedirs(pasta, exist_ok=True)
+    fname = f'{random.randint(10000,99999)}.{ext}'
+    f.save(os.path.join(pasta, fname))
+    url = f'/pubshow/slide/{code}/{fname}'
+    anuncios.append({'tipo': 'imagem', 'url': url, 'titulo': ''})
+    conn = get_pubshow_db()
+    conn.execute('UPDATE pubshow_businesses SET anuncios_json=? WHERE id=?',
+                 (_json.dumps(anuncios, ensure_ascii=False), b['id']))
+    conn.commit(); conn.close()
+    return redirect('/pubshow/painel')
+
+
+@pubshow_bp.route('/slide/<code>/<filename>')
+def slide_serve(code, filename):
+    """Serve imagens de slide do bar."""
+    pasta = os.path.join(_SLIDES_DIR, code)
+    return send_from_directory(pasta, filename)
+
+
+@pubshow_bp.route('/painel/delete-slide', methods=['POST'])
+@pubshow_login_required
+def painel_delete_slide():
+    """Remove um slide de imagem."""
+    import json as _json
+    b = _get_business()
+    url_del = request.form.get('url', '')
+    try:
+        anuncios = _json.loads(b['anuncios_json'] or '[]')
+    except Exception:
+        anuncios = []
+    anuncios = [s for s in anuncios if s.get('url') != url_del]
+    # Apaga o arquivo físico
+    if url_del.startswith('/pubshow/slide/'):
+        partes = url_del.split('/')
+        if len(partes) >= 5:
+            try:
+                os.remove(os.path.join(_SLIDES_DIR, partes[3], partes[4]))
+            except Exception:
+                pass
+    conn = get_pubshow_db()
+    conn.execute('UPDATE pubshow_businesses SET anuncios_json=? WHERE id=?',
+                 (_json.dumps(anuncios, ensure_ascii=False), b['id']))
     conn.commit(); conn.close()
     return redirect('/pubshow/painel')
 
