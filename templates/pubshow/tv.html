@@ -233,11 +233,14 @@
 <!-- Seletor de canal -->
 <div id="canal-selector">
   {% set grupos = [
-    ('musica', '🎵 Música'),
-    ('shows',  '🎤 Shows'),
-    ('sport',  '🏆 Sport'),
+    ('musica',        '🎵 Música'),
+    ('shows',         '🎤 Shows'),
+    ('sport',         '🏆 Sport'),
+    ('viral',         '💥 Viral'),
+    ('entretenimento','🎭 Extra'),
   ] %}
   {% for grupo_key, grupo_label in grupos %}
+    {% if canais.values()|selectattr('grupo','equalto',grupo_key)|list %}
     <div class="canal-grupo-label">{{ grupo_label }}</div>
     {% for key, c in canais.items() if c.get('grupo') == grupo_key %}
     <button class="canal-btn {% if key == canal_key %}ativo{% endif %} {% if key == 'sport_mix' %}mix{% endif %}"
@@ -246,6 +249,7 @@
       {{ c.emoji }} {{ c.nome }}
     </button>
     {% endfor %}
+    {% endif %}
   {% endfor %}
 </div>
 

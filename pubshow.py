@@ -531,11 +531,22 @@ def tv(code):
     conn.close()
     if not b:
         return 'Estabelecimento não encontrado', 404
+    import json as _json
     canal_key = b['canal_atual'] or 'rock'
     canal     = CANAIS.get(canal_key, CANAIS['rock'])
     videos    = _videos_do_canal(canal_key)
+    # Filtra canais pelo que o bar habilitou (None = todos)
+    try:    temas_hab = _json.loads(b['temas_habilitados'] or 'null')
+    except: temas_hab = None
+    if temas_hab:
+        canais_tv = {k: v for k, v in CANAIS.items() if k in temas_hab}
+        # Garante que o canal atual sempre aparece
+        if canal_key not in canais_tv:
+            canais_tv[canal_key] = CANAIS.get(canal_key, CANAIS['rock'])
+    else:
+        canais_tv = CANAIS
     return render_template('pubshow/tv.html', b=dict(b), canal=canal,
-                           canal_key=canal_key, videos=videos, canais=CANAIS)
+                           canal_key=canal_key, videos=videos, canais=canais_tv)
 
 
 # ── JUKEBOX MOBILE (cliente do bar escaneia QR) ───────────────────────────────
@@ -919,6 +930,9 @@ def painel():
     except: bloqueados_parsed = []
     try:    precos_parsed = _json.loads(bd.get('precos_custom') or '{}')
     except: precos_parsed = {}
+    try:    temas_habilitados = _json.loads(bd.get('temas_habilitados') or 'null')
+    except: temas_habilitados = None
+    # None = todos habilitados
     return render_template('pubshow/painel.html',
                            b=bd, canais=CANAIS,
                            pedidos_hoje=[dict(p) for p in pedidos_hoje],
@@ -928,7 +942,8 @@ def painel():
                            tipos=TIPOS_PEDIDO,
                            planos=PLANOS,
                            bloqueados_parsed=bloqueados_parsed,
-                           precos_parsed=precos_parsed)
+                           precos_parsed=precos_parsed,
+                           temas_habilitados=temas_habilitados)
 
 
 @pubshow_bp.route('/painel/fila-json')
@@ -974,6 +989,26 @@ def painel_canal():
         conn.execute('UPDATE pubshow_businesses SET canal_atual=? WHERE id=?', (canal, b['id']))
         conn.commit(); conn.close()
         session['pub_canal'] = canal
+    return redirect('/pubshow/painel')
+
+
+@pubshow_bp.route('/painel/temas', methods=['POST'])
+@pubshow_login_required
+def painel_temas():
+    """Salva quais temas o bar quer habilitar na TV."""
+    import json as _json
+    b = _get_business()
+    selecionados = request.form.getlist('temas')
+    # Filtra só keys válidas
+    validos = [k for k in selecionados if k in CANAIS]
+    # Se marcou tudo ou nada → NULL (= todos habilitados)
+    if not validos or len(validos) == len(CANAIS):
+        valor = None
+    else:
+        valor = _json.dumps(validos)
+    conn = get_pubshow_db()
+    conn.execute('UPDATE pubshow_businesses SET temas_habilitados=? WHERE id=?', (valor, b['id']))
+    conn.commit(); conn.close()
     return redirect('/pubshow/painel')
 
 

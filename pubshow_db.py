@@ -134,6 +134,8 @@ def init_pubshow_db():
         'ALTER TABLE pubshow_pedidos ADD COLUMN asaas_payment_id TEXT',
         # Bar pode exigir PIX antes de entrar na fila
         'ALTER TABLE pubshow_businesses ADD COLUMN requer_pix INTEGER DEFAULT 0',
+        # Temas habilitados pelo bar (JSON array de keys; NULL = todos habilitados)
+        'ALTER TABLE pubshow_businesses ADD COLUMN temas_habilitados TEXT DEFAULT NULL',
     ]:
         try:
             conn.execute(m); conn.commit()

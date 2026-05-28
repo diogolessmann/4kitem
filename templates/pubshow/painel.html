@@ -287,6 +287,50 @@
   </div>
   {% endif %}
 
+  <!-- Temas habilitados na TV -->
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-title">🎬 Temas disponíveis na TV</div>
+    <p style="font-size:12px;color:#8888aa;margin-bottom:14px">Escolha quais temas aparecem no seletor da sua tela. Temas sem vídeos cadastrados não tocarão nada.</p>
+    <form method="POST" action="/pubshow/painel/temas">
+      {% set grupos_temas = [
+        ('musica',        '🎵 Música'),
+        ('shows',         '🎤 Shows ao Vivo'),
+        ('sport',         '🏆 Esporte'),
+        ('viral',         '💥 Viral'),
+        ('entretenimento','🎭 Entretenimento'),
+      ] %}
+      {% for grupo_key, grupo_label in grupos_temas %}
+        {% set temas_grupo = canais.items()|selectattr('1.grupo','equalto',grupo_key)|list %}
+        {% if temas_grupo %}
+        <div style="margin-bottom:14px">
+          <div style="font-size:11px;font-weight:700;color:#8888aa;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">{{ grupo_label }}</div>
+          <div style="display:flex;flex-wrap:wrap;gap:8px">
+            {% for key, c in temas_grupo %}
+            {% set habilitado = temas_habilitados is none or key in temas_habilitados %}
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;
+                          background:{% if habilitado %}rgba(255,255,255,.07){% else %}rgba(255,255,255,.03){% endif %};
+                          border:1px solid {% if habilitado %}rgba(255,255,255,.18){% else %}rgba(255,255,255,.07){% endif %};
+                          border-radius:8px;padding:6px 12px;font-size:12px;font-weight:600;
+                          transition:.15s" id="label-{{ key }}">
+              <input type="checkbox" name="temas" value="{{ key }}"
+                     {% if habilitado %}checked{% endif %}
+                     onchange="atualizarLabel('{{ key }}')"
+                     style="accent-color:{{ c.cor }};width:13px;height:13px;cursor:pointer">
+              {{ c.emoji }} {{ c.nome }}
+            </label>
+            {% endfor %}
+          </div>
+        </div>
+        {% endif %}
+      {% endfor %}
+      <div style="display:flex;gap:10px;align-items:center;margin-top:6px">
+        <button type="submit" style="background:linear-gradient(135deg,#ef4444,#f97316);color:#fff;border:none;border-radius:8px;padding:9px 22px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">💾 Salvar temas</button>
+        <button type="button" onclick="marcarTodos(true)" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:#c8c8e8;border-radius:8px;padding:9px 16px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">✅ Marcar todos</button>
+        <button type="button" onclick="marcarTodos(false)" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:#c8c8e8;border-radius:8px;padding:9px 16px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">☐ Desmarcar todos</button>
+      </div>
+    </form>
+  </div>
+
   <!-- Configurações do Jukebox -->
   <div class="card" style="margin-bottom:16px">
     <div class="card-title">⚙️ Configurações do Jukebox</div>
@@ -448,6 +492,25 @@
 </div>
 
 <script>
+function atualizarLabel(key) {
+  const cb = document.querySelector(`input[value="${key}"]`);
+  const lbl = document.getElementById('label-' + key);
+  if (!lbl) return;
+  if (cb.checked) {
+    lbl.style.background = 'rgba(255,255,255,.07)';
+    lbl.style.borderColor = 'rgba(255,255,255,.18)';
+  } else {
+    lbl.style.background = 'rgba(255,255,255,.03)';
+    lbl.style.borderColor = 'rgba(255,255,255,.07)';
+  }
+}
+function marcarTodos(val) {
+  document.querySelectorAll('input[name="temas"]').forEach(cb => {
+    cb.checked = val;
+    atualizarLabel(cb.value);
+  });
+}
+
 function copiar(texto, btn) {
   navigator.clipboard.writeText(texto).then(() => {
     const orig = btn.textContent;
