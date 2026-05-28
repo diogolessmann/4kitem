@@ -37,11 +37,11 @@ TIPOS_ESTABELECIMENTO = {
 
 CANAIS = {
     # ── MÚSICA ───────────────────────────────────────────────────────────────
-    'rock':           {'nome': 'Rock TV',          'emoji': '🎸',  'cor': '#ef4444', 'cat': 'rock',      'grupo': 'musica'},
-    'punk':           {'nome': 'Punk TV',           'emoji': '🤘',  'cor': '#f97316', 'cat': 'punk',      'grupo': 'musica'},
-    'sertanejo':      {'nome': 'Sertanejo TV',      'emoji': '🤠',  'cor': '#eab308', 'cat': 'sertanejo', 'grupo': 'musica'},
-    'pagode':         {'nome': 'Pagode TV',         'emoji': '🥁',  'cor': '#22c55e', 'cat': 'pagode',    'grupo': 'musica'},
-    'pop':            {'nome': 'Pop TV',            'emoji': '🎤',  'cor': '#a855f7', 'cat': 'pop',       'grupo': 'musica'},
+    'rock':           {'nome': 'Rock Clips',        'emoji': '🎸',  'cor': '#ef4444', 'cat': 'rock',      'grupo': 'musica'},
+    'punk':           {'nome': 'Punk Clips',        'emoji': '🤘',  'cor': '#f97316', 'cat': 'punk',      'grupo': 'musica'},
+    'sertanejo':      {'nome': 'Sertanejo Clips',   'emoji': '🤠',  'cor': '#eab308', 'cat': 'sertanejo', 'grupo': 'musica'},
+    'pagode':         {'nome': 'Pagode Clips',      'emoji': '🥁',  'cor': '#22c55e', 'cat': 'pagode',    'grupo': 'musica'},
+    'pop':            {'nome': 'Pop Clips',         'emoji': '🎤',  'cor': '#a855f7', 'cat': 'pop',       'grupo': 'musica'},
     # ── SHOWS AO VIVO ────────────────────────────────────────────────────────
     'show_rock':      {'nome': 'Rock Shows',        'emoji': '🎸🎤', 'cor': '#dc2626', 'cat': 'show_rock',      'grupo': 'shows'},
     'show_sertanejo': {'nome': 'Sertanejo Shows',   'emoji': '🤠🎤', 'cor': '#ca8a04', 'cat': 'show_sertanejo', 'grupo': 'shows'},
@@ -49,11 +49,11 @@ CANAIS = {
     # ── SPORT ────────────────────────────────────────────────────────────────
     'sport_mix':      {'nome': 'Sport Mix',         'emoji': '🏆',  'cor': '#f59e0b',
                        'cat': ['f1', 'futebol', 'surf', 'aerio', 'radical'],       'grupo': 'sport'},
-    'f1':             {'nome': 'Speed TV',          'emoji': '🏎️',  'cor': '#e11d48', 'cat': 'f1',        'grupo': 'sport'},
-    'futebol':        {'nome': 'Futebol TV',        'emoji': '⚽',  'cor': '#16a34a', 'cat': 'futebol',   'grupo': 'sport'},
-    'surf':           {'nome': 'Surf TV',           'emoji': '🏄',  'cor': '#0ea5e9', 'cat': 'surf',      'grupo': 'sport'},
-    'aerio':          {'nome': 'Aéreo TV',          'emoji': '🪂',  'cor': '#6366f1', 'cat': 'aerio',     'grupo': 'sport'},
-    'radical':        {'nome': 'Radical TV',        'emoji': '🛹',  'cor': '#f43f5e', 'cat': 'radical',   'grupo': 'sport'},
+    'f1':             {'nome': 'Speed Clips',       'emoji': '🏎️',  'cor': '#e11d48', 'cat': 'f1',        'grupo': 'sport'},
+    'futebol':        {'nome': 'Futebol Clips',     'emoji': '⚽',  'cor': '#16a34a', 'cat': 'futebol',   'grupo': 'sport'},
+    'surf':           {'nome': 'Surf Clips',        'emoji': '🏄',  'cor': '#0ea5e9', 'cat': 'surf',      'grupo': 'sport'},
+    'aerio':          {'nome': 'Aéreo Clips',       'emoji': '🪂',  'cor': '#6366f1', 'cat': 'aerio',     'grupo': 'sport'},
+    'radical':        {'nome': 'Radical Clips',     'emoji': '🛹',  'cor': '#f43f5e', 'cat': 'radical',   'grupo': 'sport'},
 }
 
 PLANOS = {
@@ -64,7 +64,7 @@ PLANOS = {
         'preco_fmt': 'R$ 129,90',
         'descricao': 'Para estabelecimentos',
         'destaque': True,
-        'features': ['Telas ilimitadas', 'Todos os canais', 'Jukebox ativo (100% pra você)', 'QR Code de mesa', 'Parabéns e Dedicatórias', 'Painel de gestão'],
+        'features': ['Telas ilimitadas', 'Todos os temas de clips', 'Jukebox ativo (100% pra você)', 'QR Code de mesa', 'Parabéns e Dedicatórias', 'Painel de gestão'],
     },
     'premium': {
         'nome': 'Premium / Rede',
