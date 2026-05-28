@@ -6995,16 +6995,16 @@ def _antiban_delay(sent_count: int):
         time.sleep(pausa)
         return
 
-    # CRÍTICO: pausa a cada 40 msgs — antes da barreira de 45 do Meta
-    if sent_count > 0 and sent_count % 40 == 0:
-        pausa = random.uniform(480, 900)
-        log.info(f"Anti-ban: pausa critica {pausa:.0f}s apos {sent_count} enviados (barreira 45)")
+    # CRÍTICO: pausa forte a cada 30 msgs — nunca chega na zona de risco 40-53
+    if sent_count > 0 and sent_count % 30 == 0:
+        pausa = random.uniform(900, 1800)  # 15–30 min — reset total do contador Meta
+        log.info(f"Anti-ban: pausa critica {pausa:.0f}s apos {sent_count} enviados (antes zona 40-53)")
         time.sleep(pausa)
         return
 
-    if sent_count > 0 and sent_count % 20 == 0:
-        pausa = random.uniform(180, 360)
-        log.info(f"Anti-ban: pausa curta {pausa:.0f}s apos {sent_count} enviados")
+    if sent_count > 0 and sent_count % 15 == 0:
+        pausa = random.uniform(240, 480)   # 4–8 min entre blocos
+        log.info(f"Anti-ban: pausa media {pausa:.0f}s apos {sent_count} enviados")
         time.sleep(pausa)
         return
 
