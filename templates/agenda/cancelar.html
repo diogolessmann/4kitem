@@ -21,6 +21,8 @@
   .btn-red:hover{background:rgba(233,69,96,.25)}
   .btn-green{background:#27ae60;color:#fff}
   .btn-green:hover{opacity:.85}
+  .btn-reagendar{background:rgba(52,152,219,.15);color:#3498db;border:1px solid rgba(52,152,219,.3);width:100%;padding:14px;border-radius:12px;border:none;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;transition:.2s;margin-top:10px;display:block;text-align:center;text-decoration:none}
+  .btn-reagendar:hover{background:rgba(52,152,219,.25)}
   .alert{background:rgba(245,166,35,.08);border:1px solid rgba(245,166,35,.25);border-radius:12px;padding:14px;font-size:13px;color:#f5a623;margin-bottom:20px;line-height:1.5}
   .badge-ok{background:rgba(39,174,96,.1);border:1px solid rgba(39,174,96,.3);border-radius:12px;padding:14px;font-size:13px;color:#27ae60;margin-bottom:20px}
   .badge-err{background:rgba(233,69,96,.1);border:1px solid rgba(233,69,96,.3);border-radius:12px;padding:14px;font-size:13px;color:#e94560;margin-bottom:20px}
@@ -63,9 +65,10 @@
     <div class="info-row"><span class="info-label">Data</span><span class="info-val">{{ appt.appointment_date[8:10] }}/{{ appt.appointment_date[5:7] }}/{{ appt.appointment_date[:4] }}</span></div>
     <div class="info-row"><span class="info-label">Horário</span><span class="info-val">{{ appt.appointment_time }}</span></div>
   </div>
+  <a href="/reagendar/{{ appt.cancel_token }}" class="btn-reagendar">📅 Reagendar em outro horário</a>
   {% endif %}
   {% if appt and appt.biz_phone %}
-  <p class="sub">Para reagendar, entre em contato com <strong>{{ appt.biz_name }}</strong>:<br><a href="https://wa.me/55{{ appt.biz_phone | replace('(','') | replace(')','') | replace('-','') | replace(' ','') }}" style="color:#27ae60">📲 WhatsApp</a></p>
+  <p class="sub" style="margin-top:14px">Ou fale com <strong>{{ appt.biz_name }}</strong>: <a href="https://wa.me/55{{ appt.biz_phone | replace('(','') | replace(')','') | replace('-','') | replace(' ','') }}" style="color:#27ae60">📲 WhatsApp</a></p>
   {% endif %}
 
 {% elif status == 'tarde_demais' %}

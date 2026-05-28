@@ -3249,6 +3249,24 @@ def agenda_painel():
     total_clientes = conn.execute(
         'SELECT COUNT(*) FROM agenda_customers WHERE business_id=?', (biz_id,)
     ).fetchone()[0]
+    # Setup flags para onboarding
+    tem_servicos = len(services) > 0
+    tem_horarios = conn.execute(
+        'SELECT COUNT(*) FROM agenda_availability WHERE business_id=? AND active=1', (biz_id,)
+    ).fetchone()[0] > 0
+    tem_profissionais = conn.execute(
+        'SELECT COUNT(*) FROM agenda_professionals WHERE business_id=? AND active=1', (biz_id,)
+    ).fetchone()[0] > 0
+    # Horas economizadas (total atendimentos × duração média)
+    total_atendimentos = conn.execute(
+        "SELECT COUNT(*) FROM agenda_appointments WHERE business_id=? AND status='done'", (biz_id,)
+    ).fetchone()[0]
+    avg_dur = conn.execute(
+        "SELECT COALESCE(AVG(s.duration_minutes),60) FROM agenda_appointments a "
+        "LEFT JOIN agenda_services s ON a.service_id=s.id "
+        "WHERE a.business_id=? AND a.status='done'", (biz_id,)
+    ).fetchone()[0] or 60
+    horas_economizadas = round(total_atendimentos * avg_dur / 60, 1)
     conn.close()
     # Verifica trial
     trial_ends_str = biz.get('trial_ends', '')
@@ -3263,6 +3281,11 @@ def agenda_painel():
                            hoje_count=hoje_count,
                            receita_mes=round(receita_mes, 2),
                            total_clientes=total_clientes,
+                           tem_servicos=tem_servicos,
+                           tem_horarios=tem_horarios,
+                           tem_profissionais=tem_profissionais,
+                           total_atendimentos=total_atendimentos,
+                           horas_economizadas=horas_economizadas,
                            trial_expired=trial_expired,
                            trial_ends=trial_ends_str)
 
@@ -3343,6 +3366,7 @@ def agenda_appt_action(appt_id, action):
         return jsonify({'success': False, 'error': 'Não encontrado'})
     conn.execute('UPDATE agenda_appointments SET status=? WHERE id=? AND business_id=?',
                  (new_status, appt_id, biz_id))
+    milestone_visits = None
     if new_status == 'done':
         conn.execute('''
             UPDATE agenda_customers
@@ -3352,7 +3376,16 @@ def agenda_appt_action(appt_id, action):
             WHERE business_id=? AND phone=?
         ''', (appt['price'], datetime.now().date().isoformat(),
               biz_id, appt['customer_phone']))
-    conn.commit()
+        conn.commit()
+        # Verifica marco de visitas
+        row_v = conn.execute(
+            'SELECT total_visits FROM agenda_customers WHERE business_id=? AND phone=?',
+            (biz_id, appt['customer_phone'])
+        ).fetchone()
+        if row_v and row_v['total_visits'] in (5, 10, 25, 50, 100):
+            milestone_visits = row_v['total_visits']
+    else:
+        conn.commit()
 
     # WhatsApp automático
     biz = conn.execute('SELECT * FROM agenda_businesses WHERE id=?', (biz_id,)).fetchone()
@@ -3390,6 +3423,24 @@ def agenda_appt_action(appt_id, action):
                    .replace('{hora}', appt['appointment_time'])
                    .replace('{negocio}', biz['name']))
             _agenda_send_whatsapp(appt['customer_phone'], msg, biz['mandazap_instance'])
+
+    # 🏆 Marco de conquista (5ª, 10ª, 25ª... visita)
+    if milestone_visits and biz and biz['mandazap_ativo'] and biz['mandazap_instance']:
+        nome = appt['customer_name'].split()[0]
+        marcos = {
+            5:   ('🥈', f'Você já é um cliente especial! Obrigado por confiar na gente. 💚'),
+            10:  ('🥇', f'10 visitas! Você já faz parte da família! 🎉'),
+            25:  ('💎', f'25 visitas! Incrível! Você é nosso cliente VIP! 👑'),
+            50:  ('🏆', f'50 visitas! Você é uma lenda! Muito obrigado por tudo! 🙌'),
+            100: ('👑', f'100 visitas! Não temos nem palavras... Obrigado de coração! ❤️'),
+        }
+        emoji, texto = marcos.get(milestone_visits, ('⭐', f'{milestone_visits}ª visita! Obrigado!'))
+        msg_marco = (
+            f"{emoji} Parabéns, {nome}!\n\n"
+            f"Você acaba de completar sua *{milestone_visits}ª visita* em *{biz['name']}*!\n\n"
+            f"{texto}"
+        )
+        _agenda_send_whatsapp(appt['customer_phone'], msg_marco, biz['mandazap_instance'])
 
     return jsonify({'success': True, 'status': new_status})
 
@@ -3831,6 +3882,21 @@ def agenda_lista_clientes():
         ''', (biz_id,)).fetchall()
     conn.close()
     return jsonify([dict(r) for r in rows])
+
+
+@app.route('/reagendar/<token>')
+def agenda_reagendar_token(token):
+    """Redireciona para a página de agendamento do negócio via token de cancelamento."""
+    conn = get_saas_db()
+    row = conn.execute(
+        'SELECT b.slug FROM agenda_appointments a '
+        'JOIN agenda_businesses b ON a.business_id = b.id '
+        'WHERE a.cancel_token=?', (token,)
+    ).fetchone()
+    conn.close()
+    if not row:
+        return redirect('/agenda/entrar')
+    return redirect(f'/agendar/{row["slug"]}')
 
 
 @app.route('/cancelar/<token>', methods=['GET', 'POST'])
@@ -4591,6 +4657,69 @@ def _agenda_lembretes_2h_loop():
         time.sleep(1800)  # a cada 30 min
 
 
+def _agenda_run_resumo_mensal():
+    """Envia resumo do mês anterior para donos de negócios ativos.
+    Só executa no dia 1º de cada mês."""
+    try:
+        today = datetime.now()
+        if today.day != 1:
+            return
+        # Mês anterior
+        prev_month = today.month - 1 or 12
+        prev_year  = today.year if today.month > 1 else today.year - 1
+        mes_str    = f'{prev_year}-{str(prev_month).zfill(2)}'
+        mes_nomes  = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
+                      'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
+        mes_nome   = mes_nomes[prev_month - 1]
+
+        conn = get_saas_db()
+        bizs = conn.execute('''
+            SELECT b.id, b.name, b.owner_name, b.phone,
+                   b.mandazap_instance, b.mandazap_ativo,
+                   COUNT(a.id) as total_appts,
+                   COALESCE(SUM(s.price), 0) as receita,
+                   COUNT(DISTINCT a.customer_phone) as clientes_unicos
+            FROM agenda_businesses b
+            LEFT JOIN agenda_appointments a
+                ON b.id = a.business_id
+                AND strftime('%Y-%m', a.appointment_date) = ?
+                AND a.status = 'done'
+            LEFT JOIN agenda_services s ON a.service_id = s.id
+            WHERE b.active = 1
+              AND b.mandazap_ativo = 1
+              AND b.mandazap_instance != ''
+            GROUP BY b.id
+        ''', (mes_str,)).fetchall()
+        conn.close()
+
+        log.info(f'[AgendaSC Resumo] Enviando resumo de {mes_nome} para {len(bizs)} negócio(s)')
+        for biz in bizs:
+            if not biz['phone'] or biz['total_appts'] == 0:
+                continue
+            nome_dono = (biz['owner_name'] or '').split()[0]
+            msg = (
+                f"📊 *Resumo de {mes_nome} — {biz['name']}*\n\n"
+                f"✅ Atendimentos: *{biz['total_appts']}*\n"
+                f"👥 Clientes atendidos: *{biz['clientes_unicos']}*\n"
+                f"💰 Receita estimada: *R$ {biz['receita']:.0f}*\n\n"
+                f"Parabéns, {nome_dono}! Continue assim. 💪\n\n"
+                f"Ver painel: https://4kitem.com.br/agenda/painel"
+            )
+            _agenda_send_whatsapp(biz['phone'], msg, biz['mandazap_instance'])
+            time.sleep(2)
+
+    except Exception as e:
+        log.error(f'[AgendaSC Resumo] Erro: {e}')
+
+
+def _agenda_resumo_loop():
+    """Thread daemon: verifica resumo mensal a cada 6 horas."""
+    time.sleep(600)  # 10 min após startup
+    while True:
+        _agenda_run_resumo_mensal()
+        time.sleep(21600)  # a cada 6h
+
+
 # ══════════════════════════════════════════════════════════════════════════
 #  ALERTA SC — SaaS de Monitoramento CNH & Veículo
 # ══════════════════════════════════════════════════════════════════════════
@@ -5249,6 +5378,21 @@ def saas_agenda_lembretes_2h_agora():
     """Dispara o ciclo de lembretes 2h AgendaSC em background."""
     threading.Thread(target=_agenda_run_lembretes_2h, daemon=True).start()
     return jsonify({'ok': True, 'msg': 'Lembretes 2h iniciados em background'})
+
+
+@app.route('/saas-admin/agenda/resumo-agora', methods=['POST'])
+@_saas_admin_required
+def saas_agenda_resumo_agora():
+    """Dispara o resumo mensal AgendaSC em background (ignora verificação de dia)."""
+    def _run():
+        try:
+            _agenda_run_resumo_mensal.__wrapped__() if hasattr(_agenda_run_resumo_mensal, '__wrapped__') else None
+        except Exception:
+            pass
+        # Força execução ignorando checagem do dia 1
+        _agenda_run_resumo_mensal()
+    threading.Thread(target=_agenda_run_resumo_mensal, daemon=True).start()
+    return jsonify({'ok': True, 'msg': 'Resumo mensal disparado em background'})
 
 
 # ── Admin KidsCurator — status / delete ───────────────────────────────────────
@@ -9559,6 +9703,13 @@ def _startup():
             log.info('[AgendaSC] Scheduler 2h iniciado (primeira execução em 5 min)')
         except Exception as e:
             log.error(f"[startup] AgendaSC lembretes 2h scheduler erro: {e}")
+
+        # ── AgendaSC resumo mensal ────────────────────────────────────────
+        try:
+            threading.Thread(target=_agenda_resumo_loop, daemon=True).start()
+            log.info('[AgendaSC] Scheduler resumo mensal iniciado (roda dia 1º)')
+        except Exception as e:
+            log.error(f"[startup] AgendaSC resumo mensal scheduler erro: {e}")
 
     except Exception as e:
         log.error(f"Startup error: {e}")

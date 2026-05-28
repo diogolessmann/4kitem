@@ -265,7 +265,7 @@
   <button class="tab-btn" onclick="showTab('agendamentos',this)">📋 Agenda</button>
   <button class="tab-btn" onclick="showTab('clientes',this)">👥 Clientes</button>
   <button class="tab-btn" onclick="showTab('financeiro',this)">💰 Financeiro</button>
-  <button class="tab-btn" onclick="showTab('equipe',this)">👥 Equipe</button>
+  {% if tem_profissionais %}<button class="tab-btn" onclick="showTab('equipe',this)">🧑‍🤝‍🧑 Equipe</button>{% endif %}
   <button class="tab-btn" onclick="showTab('servicos',this)">✂️ Serviços</button>
   <button class="tab-btn" onclick="showTab('horarios',this)">🕐 Horários</button>
   <button class="tab-btn" onclick="showTab('config',this)">⚙️ Config</button>
@@ -311,6 +311,61 @@
 
   <!-- ── TAB HOJE ───────────────────────────────────────────────── -->
   <div class="tab-content active" id="tab-hoje">
+
+    <!-- 🔗 Link da agenda — sempre visível -->
+    <div class="link-box" style="margin-bottom:14px">
+      <span style="font-size:16px">🔗</span>
+      <span class="link-url">4kitem.com.br/agendar/{{ biz.slug }}</span>
+      <button onclick="copiarLinkAgenda()" class="nav-btn nav-btn-green" style="flex-shrink:0;padding:6px 12px">📋 Copiar</button>
+      <a href="https://api.whatsapp.com/send?text={{ ('Agende online: https://4kitem.com.br/agendar/' + biz.slug) | urlencode }}" target="_blank" style="flex-shrink:0">
+        <button class="nav-btn" style="background:rgba(37,211,102,.15);color:#25D366;border:1px solid rgba(37,211,102,.3);padding:6px 12px">📲 Enviar</button>
+      </a>
+    </div>
+
+    <!-- 🚀 Onboarding checklist (some quando tudo configurado) -->
+    {% set setup_completo = tem_servicos and tem_horarios and biz.mandazap_instance %}
+    {% if not setup_completo %}
+    <div class="card" style="border-color:rgba(245,166,35,.4);background:rgba(245,166,35,.04);margin-bottom:14px">
+      <div class="card-title" style="color:var(--accent2);margin-bottom:12px">🚀 Configure sua agenda — 3 passos</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+
+        <div style="display:flex;align-items:center;gap:12px;padding:10px 12px;background:var(--surface2);border-radius:10px;{% if tem_servicos %}opacity:.5{% endif %}">
+          <div style="font-size:20px">{% if tem_servicos %}✅{% else %}❌{% endif %}</div>
+          <div style="flex:1">
+            <div style="font-size:13px;font-weight:700">{% if tem_servicos %}Serviços configurados{% else %}Adicione seus serviços{% endif %}</div>
+            {% if not tem_servicos %}<div style="font-size:11px;color:var(--text2)">Ex: Corte, Barba, Escova...</div>{% endif %}
+          </div>
+          {% if not tem_servicos %}
+          <button class="nav-btn nav-btn-green" style="flex-shrink:0" onclick="switchTab('servicos')">Ir agora →</button>
+          {% endif %}
+        </div>
+
+        <div style="display:flex;align-items:center;gap:12px;padding:10px 12px;background:var(--surface2);border-radius:10px;{% if tem_horarios %}opacity:.5{% endif %}">
+          <div style="font-size:20px">{% if tem_horarios %}✅{% else %}❌{% endif %}</div>
+          <div style="flex:1">
+            <div style="font-size:13px;font-weight:700">{% if tem_horarios %}Horários configurados{% else %}Configure seus horários{% endif %}</div>
+            {% if not tem_horarios %}<div style="font-size:11px;color:var(--text2)">Dias e horários que você atende</div>{% endif %}
+          </div>
+          {% if not tem_horarios %}
+          <button class="nav-btn nav-btn-green" style="flex-shrink:0" onclick="switchTab('horarios')">Ir agora →</button>
+          {% endif %}
+        </div>
+
+        <div style="display:flex;align-items:center;gap:12px;padding:10px 12px;background:var(--surface2);border-radius:10px;{% if biz.mandazap_instance %}opacity:.5{% endif %}">
+          <div style="font-size:20px">{% if biz.mandazap_instance %}✅{% else %}❌{% endif %}</div>
+          <div style="flex:1">
+            <div style="font-size:13px;font-weight:700">{% if biz.mandazap_instance %}WhatsApp conectado{% else %}Conecte seu WhatsApp{% endif %}</div>
+            {% if not biz.mandazap_instance %}<div style="font-size:11px;color:var(--text2)">Para receber confirmações automáticas</div>{% endif %}
+          </div>
+          {% if not biz.mandazap_instance %}
+          <button class="nav-btn nav-btn-green" style="flex-shrink:0" onclick="switchTab('config')">Ir agora →</button>
+          {% endif %}
+        </div>
+
+      </div>
+    </div>
+    {% endif %}
+
     <div class="stats">
       {% set hoje_list = appointments | selectattr('appointment_date','equalto',today) | list %}
       {% set pendentes  = hoje_list | selectattr('status','equalto','pending')   | list %}
@@ -330,6 +385,10 @@
       <div class="stat purple">
         <div class="n">R${{ '%.0f'|format(receita_mes) }}</div>
         <div class="l">💰 Este mês</div>
+      </div>
+      <div class="stat" style="border-color:rgba(52,152,219,.25)">
+        <div class="n" style="color:#3498db;font-size:22px">{{ horas_economizadas }}h</div>
+        <div class="l">⏱️ Horas gerenciadas</div>
       </div>
     </div>
 
@@ -759,7 +818,28 @@
 let _configTimer = null;
 let _payApptId   = null;
 
+// ── LINK AGENDA ──────────────────────────────────────────────────
+function copiarLinkAgenda() {
+  const url = 'https://4kitem.com.br/agendar/{{ biz.slug }}';
+  navigator.clipboard.writeText(url).then(() => {
+    const btn = event.target;
+    const orig = btn.textContent;
+    btn.textContent = '✅ Copiado!';
+    setTimeout(() => btn.textContent = orig, 2000);
+  }).catch(() => {
+    prompt('Copie o link abaixo:', url);
+  });
+}
+
 // ── TABS ─────────────────────────────────────────────────────────
+// Navega para uma aba pelo nome (usado no onboarding)
+function switchTab(name) {
+  const btn = [...document.querySelectorAll('.tab-btn')]
+    .find(b => (b.getAttribute('onclick') || '').includes("'" + name + "'"));
+  showTab(name, btn || null);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
 function showTab(name, btn) {
   document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
