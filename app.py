@@ -3630,19 +3630,51 @@ def agenda_configuracoes():
                   'msg_confirmacao','msg_lembrete','msg_cancelamento']
         updates = {f: data.get(f,'') for f in fields}
         updates['mandazap_ativo'] = 1 if data.get('mandazap_ativo') else 0
+        try:
+            updates['max_days_advance'] = max(1, min(365, int(data.get('max_days_advance', 60))))
+        except Exception:
+            updates['max_days_advance'] = 60
         conn.execute('''UPDATE agenda_businesses SET
             pix_chave=?, pix_nome=?, mandazap_instance=?, mandazap_ativo=?,
-            msg_confirmacao=?, msg_lembrete=?, msg_cancelamento=?
+            msg_confirmacao=?, msg_lembrete=?, msg_cancelamento=?, max_days_advance=?
             WHERE id=?''',
             (updates['pix_chave'], updates['pix_nome'], updates['mandazap_instance'],
              updates['mandazap_ativo'], updates['msg_confirmacao'],
-             updates['msg_lembrete'], updates['msg_cancelamento'], biz_id))
+             updates['msg_lembrete'], updates['msg_cancelamento'],
+             updates['max_days_advance'], biz_id))
         conn.commit()
         conn.close()
         return jsonify({'success': True})
     biz = dict(conn.execute('SELECT * FROM agenda_businesses WHERE id=?', (biz_id,)).fetchone())
     conn.close()
     return jsonify(biz)
+
+
+@app.route('/agenda/painel/upload-cover', methods=['POST'])
+@_agenda_login_required
+def agenda_upload_cover():
+    """Faz upload da foto de capa do negócio."""
+    biz_id = session['agenda_business_id']
+    f = request.files.get('cover')
+    if not f or not f.filename:
+        return jsonify({'success': False, 'error': 'Nenhum arquivo enviado.'})
+    ext = f.filename.rsplit('.', 1)[-1].lower() if '.' in f.filename else ''
+    if ext not in ('jpg', 'jpeg', 'png', 'webp'):
+        return jsonify({'success': False, 'error': 'Formato inválido. Use JPG, PNG ou WEBP.'})
+    f.seek(0, 2)
+    size = f.tell(); f.seek(0)
+    if size > 4 * 1024 * 1024:
+        return jsonify({'success': False, 'error': 'Imagem muito grande. Máximo 4MB.'})
+    upload_dir = os.path.join(os.path.dirname(__file__), 'static', 'agenda_covers')
+    os.makedirs(upload_dir, exist_ok=True)
+    filename = f"biz_{biz_id}.{ext}"
+    filepath = os.path.join(upload_dir, filename)
+    f.save(filepath)
+    url = f"/static/agenda_covers/{filename}?v={uuid.uuid4().hex[:6]}"
+    conn = get_saas_db()
+    conn.execute('UPDATE agenda_businesses SET cover_photo=? WHERE id=?', (url.split('?')[0], biz_id))
+    conn.commit(); conn.close()
+    return jsonify({'success': True, 'url': url})
 
 
 @app.route('/agenda/painel/testar-whatsapp', methods=['POST'])
@@ -3755,6 +3787,75 @@ def agenda_lista_clientes():
     return jsonify([dict(r) for r in rows])
 
 
+@app.route('/cancelar/<token>', methods=['GET', 'POST'])
+def agenda_cancelar_token(token):
+    """Página pública de cancelamento via token enviado no WhatsApp/email."""
+    conn = get_saas_db()
+    appt = conn.execute(
+        'SELECT a.*, b.name as biz_name, b.phone as biz_phone, s.name as svc_name '
+        'FROM agenda_appointments a '
+        'LEFT JOIN agenda_businesses b ON a.business_id = b.id '
+        'LEFT JOIN agenda_services s ON a.service_id = s.id '
+        'WHERE a.cancel_token=?', (token,)
+    ).fetchone()
+
+    if not appt:
+        conn.close()
+        return render_template('agenda/cancelar.html', status='invalido', appt=None)
+
+    appt = dict(appt)
+
+    # Já cancelado
+    if appt['status'] == 'cancelled':
+        conn.close()
+        return render_template('agenda/cancelar.html', status='ja_cancelado', appt=appt)
+
+    # Já concluído
+    if appt['status'] == 'done':
+        conn.close()
+        return render_template('agenda/cancelar.html', status='concluido', appt=appt)
+
+    # Verifica janela de 24h
+    from datetime import datetime as _dt, timedelta as _td
+    appt_dt_str = f"{appt['appointment_date']} {appt['appointment_time']}"
+    try:
+        appt_dt = _dt.strptime(appt_dt_str, '%Y-%m-%d %H:%M')
+    except Exception:
+        try:
+            appt_dt = _dt.strptime(appt_dt_str, '%Y-%m-%d %H:%M:%S')
+        except Exception:
+            appt_dt = _dt.now() + _td(days=2)  # fallback seguro
+
+    horas_restantes = (appt_dt - _dt.now()).total_seconds() / 3600
+    pode_cancelar = horas_restantes >= 24
+
+    if request.method == 'POST' and pode_cancelar:
+        conn.execute(
+            "UPDATE agenda_appointments SET status='cancelled' WHERE cancel_token=?", (token,)
+        )
+        conn.commit()
+        # WhatsApp para o dono
+        biz_full = conn.execute('SELECT * FROM agenda_businesses WHERE id=?', (appt['business_id'],)).fetchone()
+        conn.close()
+        biz_full = dict(biz_full) if biz_full else {}
+        if biz_full.get('mandazap_ativo') and biz_full.get('mandazap_instance') and biz_full.get('phone'):
+            dia_fmt = appt['appointment_date'][8:10] + '/' + appt['appointment_date'][5:7] + '/' + appt['appointment_date'][:4]
+            msg_cancel = (
+                f"❌ *Agendamento cancelado*\n\n"
+                f"*Cliente:* {appt['customer_name']}\n"
+                f"*Serviço:* {appt.get('svc_name','')}\n"
+                f"*Data:* {dia_fmt} às {appt['appointment_time']}\n\n"
+                f"O horário ficou disponível novamente."
+            )
+            _agenda_send_whatsapp(biz_full['phone'], msg_cancel, biz_full['mandazap_instance'])
+        return render_template('agenda/cancelar.html', status='cancelado', appt=appt)
+
+    conn.close()
+    return render_template('agenda/cancelar.html',
+                           status='pendente' if pode_cancelar else 'tarde_demais',
+                           appt=appt, horas=round(horas_restantes, 1))
+
+
 @app.route('/agendar/<slug>')
 def agenda_booking(slug):
     conn = get_saas_db()
@@ -3786,14 +3887,27 @@ def api_agenda_slots(slug):
     date_str   = request.args.get('date', '')
     service_id = request.args.get('service_id', '')
     conn = get_saas_db()
-    biz = conn.execute('SELECT id, trial_ends FROM agenda_businesses WHERE slug=? AND active=1', (slug,)).fetchone()
+    biz = conn.execute('SELECT * FROM agenda_businesses WHERE slug=? AND active=1', (slug,)).fetchone()
     if not biz:
         conn.close()
         return jsonify({'slots': []})
-    trial_ends = biz['trial_ends'] or ''
+    biz = dict(biz)
+    trial_ends = biz.get('trial_ends') or ''
     if trial_ends and trial_ends < datetime.now().isoformat():
         conn.close()
         return jsonify({'slots': []})
+    # Verifica limite de antecedência
+    max_days = int(biz.get('max_days_advance') or 60)
+    if date_str:
+        try:
+            from datetime import date as _date
+            req_date = _date.fromisoformat(date_str)
+            limit_date = _date.today() + timedelta(days=max_days)
+            if req_date > limit_date:
+                conn.close()
+                return jsonify({'slots': [], 'bloqueado': True, 'msg': f'Agendamentos disponíveis até {max_days} dias de antecedência.'})
+        except Exception:
+            pass
     duration = 60
     if service_id:
         svc = conn.execute(
@@ -3855,15 +3969,16 @@ def api_agenda_book(slug):
         else:
             professional_id = None
 
+    cancel_token = uuid.uuid4().hex
     conn.execute('''
         INSERT INTO agenda_appointments
         (business_id, service_id, customer_name, customer_phone, customer_notes,
          appointment_date, appointment_time, status, created_at, professional_id, professional_name,
-         customer_email)
-        VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?)
+         customer_email, cancel_token)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?)
     ''', (biz['id'], service_id or None, customer_name, customer_phone, notes,
           appt_date, appt_time, datetime.now().isoformat(),
-          professional_id, prof_name, customer_email))
+          professional_id, prof_name, customer_email, cancel_token))
     conn.commit()
 
     # Registra/atualiza cliente
@@ -3872,6 +3987,9 @@ def api_agenda_book(slug):
     # WhatsApp automático (se MandaZap ativo)
     biz_full = dict(conn.execute('SELECT * FROM agenda_businesses WHERE id=?', (biz['id'],)).fetchone())
     conn.close()
+
+    cancel_url = f"https://4kitem.com.br/cancelar/{cancel_token}"
+    dia_fmt_wa = appt_date[8:10] + '/' + appt_date[5:7] + '/' + appt_date[:4]
 
     if biz_full.get('mandazap_ativo') and biz_full.get('mandazap_instance'):
         svc_name = ''
@@ -3887,15 +4005,31 @@ def api_agenda_book(slug):
             f"📅 Data: {{data}}\n"
             f"🕐 Horário: {{hora}}\n"
             f"🏢 Local: {{negocio}}\n\n"
-            f"Aguarde a confirmação. Em caso de dúvidas, entre em contato."
+            f"Aguarde a confirmação. Em caso de dúvidas, entre em contato.\n\n"
+            f"❌ Para cancelar (até 24h antes): {{cancelar}}"
         )
         msg = (tpl
                .replace('{nome}', customer_name.split()[0])
                .replace('{servico}', svc_name)
-               .replace('{data}', appt_date)
+               .replace('{data}', dia_fmt_wa)
                .replace('{hora}', appt_time)
-               .replace('{negocio}', biz_full['name']))
+               .replace('{negocio}', biz_full['name'])
+               .replace('{cancelar}', cancel_url))
         _agenda_send_whatsapp(customer_phone, msg, biz_full['mandazap_instance'])
+
+        # WhatsApp para o DONO do negócio
+        phone_dono = biz_full.get('phone', '').strip()
+        if phone_dono:
+            msg_dono = (
+                f"🔔 *Novo agendamento!*\n\n"
+                f"*Cliente:* {customer_name}\n"
+                f"*Telefone:* {customer_phone}\n"
+                f"*Serviço:* {svc_name}\n"
+                f"*Data:* {dia_fmt_wa}\n"
+                f"*Horário:* {appt_time}\n\n"
+                f"Acesse o painel para confirmar: https://4kitem.com.br/agenda/painel"
+            )
+            _agenda_send_whatsapp(phone_dono, msg_dono, biz_full['mandazap_instance'])
 
     # ── Email de confirmação para o cliente ─────────────────────────────────
     if customer_email:

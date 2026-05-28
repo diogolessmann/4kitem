@@ -580,6 +580,10 @@ def init_saas_db():
         "CREATE INDEX IF NOT EXISTS idx_desp_os_status ON desp_os(status)",
         # DefesaPro — campo condutor separado do proprietário
         "ALTER TABLE defesapro_processos ADD COLUMN condutor TEXT DEFAULT ''",
+        # AgendaSC — foto de capa, limite de antecedência e token de cancelamento
+        "ALTER TABLE agenda_businesses ADD COLUMN cover_photo TEXT DEFAULT ''",
+        "ALTER TABLE agenda_businesses ADD COLUMN max_days_advance INTEGER DEFAULT 60",
+        "ALTER TABLE agenda_appointments ADD COLUMN cancel_token TEXT DEFAULT ''",
     ]
     for sql in _auth_migrations:
         try:

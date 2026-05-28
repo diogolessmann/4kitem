@@ -111,7 +111,14 @@
 </head>
 <body>
 
-<div class="biz-header">
+<div class="biz-header" style="{% if biz.cover_photo %}padding:0 0 20px;{% endif %}">
+  {% if biz.cover_photo %}
+  <div style="width:100%;height:180px;overflow:hidden;margin-bottom:16px">
+    <img src="{{ biz.cover_photo }}" alt="{{ biz.name }}" style="width:100%;height:100%;object-fit:cover">
+  </div>
+  <div style="padding:0 20px">
+  {% endif %}
+  {% if not biz.cover_photo %}
   <div class="biz-icon">
     {% if biz.business_type == 'barbearia' %}💈
     {% elif biz.business_type == 'salao' %}💇
@@ -124,12 +131,14 @@
     {% elif biz.business_type == 'academia' %}💪
     {% else %}🏢{% endif %}
   </div>
+  {% endif %}
   <div class="biz-name">{{ biz.name }}</div>
   <div class="biz-sub">📅 Agendamento Online</div>
   <a href="/agenda/cadastro" class="powered" target="_blank" rel="noopener">
     <span class="pow-badge">GRÁTIS</span>
     Agendamento pelo <strong style="color:var(--green)">Agenda SC</strong> — para o seu negócio também
   </a>
+  {% if biz.cover_photo %}</div>{% endif %}
 </div>
 
 {% set tem_profissionais = professionals and professionals|length > 0 %}
