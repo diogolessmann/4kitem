@@ -1595,6 +1595,110 @@ def slide_serve(code, filename):
     return send_from_directory(pasta, filename)
 
 
+# ── PWA — Manifest dinâmico + Ícone ──────────────────────────────────────────
+
+@pubshow_bp.route('/manifest/<token>.json')
+def jukebox_manifest(token):
+    """Web App Manifest dinâmico — nome do bar, start_url com o token correto."""
+    import json as _json2
+    from flask import Response as _Response
+    conn = get_pubshow_db()
+    b = conn.execute(
+        'SELECT nome FROM pubshow_businesses WHERE jukebox_token=? OR code=? LIMIT 1',
+        (token, token)
+    ).fetchone()
+    conn.close()
+    nome = (b['nome'] if b else 'Jukebox') or 'Jukebox'
+    manifest = {
+        'name':             f'Jukebox — {nome}',
+        'short_name':       'Jukebox',
+        'description':      f'Peça músicas no {nome} direto pelo seu celular',
+        'start_url':        f'/pubshow/jukebox/{token}',
+        'scope':            f'/pubshow/jukebox/{token}',
+        'display':          'standalone',
+        'background_color': '#08080f',
+        'theme_color':      '#08080f',
+        'orientation':      'portrait',
+        'lang':             'pt-BR',
+        'icons': [
+            {'src': f'/pubshow/pwa-icon/{token}/192.png', 'sizes': '192x192', 'type': 'image/png', 'purpose': 'any maskable'},
+            {'src': f'/pubshow/pwa-icon/{token}/512.png', 'sizes': '512x512', 'type': 'image/png', 'purpose': 'any maskable'},
+        ],
+        'screenshots': [],
+    }
+    return _Response(
+        _json2.dumps(manifest, ensure_ascii=False),
+        mimetype='application/manifest+json',
+        headers={'Cache-Control': 'public, max-age=3600'}
+    )
+
+
+@pubshow_bp.route('/pwa-icon/<token>/<int:size>.png')
+def pwa_icon(token, size):
+    """Gera ícone PNG para o PWA do Jukebox — fundo escuro + nota musical verde."""
+    from flask import Response as _Response
+    if size not in (192, 512):
+        size = 192
+    try:
+        from PIL import Image, ImageDraw, ImageFont
+        import io as _io2
+
+        img  = Image.new('RGBA', (size, size), (0, 0, 0, 0))
+        draw = ImageDraw.Draw(img)
+
+        # ── Fundo com cantos arredondados ─────────────────────────────────────
+        r = size // 6
+        draw.rounded_rectangle([0, 0, size - 1, size - 1], radius=r, fill=(8, 8, 15))
+
+        # ── Círculo de brilho (glow) ──────────────────────────────────────────
+        glow_r = size // 3
+        cx = cy = size // 2
+        for spread in range(glow_r, 0, -4):
+            alpha = int(40 * spread / glow_r)
+            draw.ellipse([cx - spread, cy - spread, cx + spread, cy + spread],
+                         fill=(74, 222, 128, alpha))
+
+        # ── Nota musical desenhada com formas básicas ─────────────────────────
+        # Cabeça da nota (elipse inclinada)
+        u = size // 20
+        # Nota simples: haste vertical + cabeça oval
+        stem_x = cx + u * 3
+        stem_y_top = cy - u * 5
+        stem_y_bot = cy + u * 3
+        head_cx  = cx
+        head_cy  = cy + u * 3
+        head_rx  = u * 4
+        head_ry  = u * 2
+
+        # Haste
+        draw.rectangle([stem_x - u, stem_y_top, stem_x + u, stem_y_bot],
+                       fill=(74, 222, 128))
+        # Cabeça oval
+        draw.ellipse([head_cx - head_rx, head_cy - head_ry,
+                      head_cx + head_rx, head_cy + head_ry],
+                     fill=(74, 222, 128))
+        # Bandeirinha
+        bx, by = stem_x + u, stem_y_top
+        draw.line([(bx, by), (bx + u*3, by + u*2), (bx, by + u*4)],
+                  fill=(74, 222, 128), width=max(2, u))
+
+        buf = _io2.BytesIO()
+        img.save(buf, format='PNG', optimize=True)
+        buf.seek(0)
+        return _Response(buf.read(), mimetype='image/png',
+                         headers={'Cache-Control': 'public, max-age=86400'})
+
+    except Exception as ex:
+        log.warning('[PWA] icon gen error: %s', ex)
+        # Fallback: PNG 1×1 transparente
+        import base64 as _b64
+        px = _b64.b64decode(
+            'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVQI12NgAAIABQ'
+            'AABjkB6QAAAABJRU5ErkJggg=='
+        )
+        return _Response(px, mimetype='image/png')
+
+
 @pubshow_bp.route('/painel/delete-slide', methods=['POST'])
 @pubshow_login_required
 def painel_delete_slide():

@@ -4,6 +4,19 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>Jukebox — {{ b.nome }}</title>
+
+<!-- ── PWA ──────────────────────────────────────────────────────────────── -->
+<link rel="manifest" href="/pubshow/manifest/{{ b.jukebox_token or b.code }}.json">
+<meta name="theme-color" content="#08080f">
+<meta name="mobile-web-app-capable" content="yes">
+<!-- iOS Safari -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Jukebox">
+<link rel="apple-touch-icon" href="/pubshow/pwa-icon/{{ b.jukebox_token or b.code }}/192.png">
+<!-- Descrição para share/bookmark -->
+<meta name="description" content="Peça músicas no {{ b.nome }} direto pelo seu celular 🎵">
+<!-- ────────────────────────────────────────────────────────────────────── -->
 <style>
   *{margin:0;padding:0;box-sizing:border-box}
   :root{
@@ -924,5 +937,107 @@ function copiarPix() {
 </script>
 
 {% endif %}{# fim {% else %} pix_pendente #}
+
+<!-- ── Banner de instalação PWA ─────────────────────────────────────────────── -->
+<div id="pwa-banner" style="
+  display:none;position:fixed;bottom:0;left:0;right:0;z-index:999;
+  background:linear-gradient(135deg,#0d1f17,#0a1525);
+  border-top:1px solid rgba(74,222,128,.3);
+  padding:14px 18px 18px;
+  box-shadow:0 -4px 30px rgba(0,0,0,.6);
+  animation:slideUp .35s ease;
+">
+<style>
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+#pwa-banner .pwa-row{display:flex;align-items:center;gap:12px}
+#pwa-banner .pwa-icon{width:44px;height:44px;border-radius:10px;background:rgba(74,222,128,.15);border:1px solid rgba(74,222,128,.3);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0}
+#pwa-banner .pwa-text{flex:1;min-width:0}
+#pwa-banner .pwa-title{font-size:14px;font-weight:800;color:#f0f0ff;margin-bottom:2px}
+#pwa-banner .pwa-sub{font-size:11px;color:#8888aa;line-height:1.4}
+#pwa-banner .pwa-close{background:none;border:none;color:#8888aa;font-size:20px;cursor:pointer;padding:4px;flex-shrink:0}
+#pwa-banner .btn-instalar{display:block;width:100%;margin-top:12px;padding:13px;background:linear-gradient(135deg,#16a34a,#15803d);color:#fff;font-size:14px;font-weight:800;border:none;border-radius:12px;cursor:pointer;font-family:inherit;-webkit-tap-highlight-color:transparent}
+#pwa-banner .btn-instalar:active{opacity:.85}
+/* instrução iOS */
+#pwa-ios-tip{display:none;margin-top:10px;padding:10px 12px;background:rgba(255,255,255,.04);border-radius:10px;border:1px solid rgba(255,255,255,.08);font-size:12px;color:#aaa;line-height:1.6;text-align:center}
+</style>
+<div class="pwa-row">
+  <div class="pwa-icon">🎵</div>
+  <div class="pwa-text">
+    <div class="pwa-title">Instalar Jukebox</div>
+    <div class="pwa-sub">Abre direto, sem barra do browser — como um app!</div>
+  </div>
+  <button class="pwa-close" onclick="fecharBannerPwa()" aria-label="Fechar">✕</button>
+</div>
+<!-- Android: botão de instalação nativo -->
+<button class="btn-instalar" id="btn-pwa-instalar" style="display:none"
+        onclick="instalarPwa()">📲 Adicionar à tela inicial</button>
+<!-- iOS: instrução manual -->
+<div id="pwa-ios-tip">
+  Toque em <strong style="color:#fff">⬆️ Compartilhar</strong> e depois em
+  <strong style="color:#fff">Adicionar à Tela Inicial</strong>
+</div>
+</div>
+
+<script>
+// ── PWA Service Worker ────────────────────────────────────────────────────────
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/static/pubshow/sw.js', {scope: '/'})
+    .then(reg => console.log('[SW] registrado:', reg.scope))
+    .catch(err => console.warn('[SW] erro:', err));
+}
+
+// ── Banner de instalação ──────────────────────────────────────────────────────
+let _pwaPrompt = null;
+
+// Já instalado? Não mostra
+function _jaInstalado() {
+  return window.matchMedia('(display-mode: standalone)').matches
+    || window.navigator.standalone === true
+    || document.referrer.startsWith('android-app://');
+}
+
+function fecharBannerPwa() {
+  document.getElementById('pwa-banner').style.display = 'none';
+  try { sessionStorage.setItem('pwa_dismissed', '1'); } catch(e) {}
+}
+
+function instalarPwa() {
+  if (!_pwaPrompt) return;
+  _pwaPrompt.prompt();
+  _pwaPrompt.userChoice.then(r => {
+    if (r.outcome === 'accepted') fecharBannerPwa();
+    _pwaPrompt = null;
+  });
+}
+
+function _mostrarBannerPwa() {
+  if (_jaInstalado()) return;
+  try { if (sessionStorage.getItem('pwa_dismissed')) return; } catch(e) {}
+  document.getElementById('pwa-banner').style.display = 'block';
+}
+
+// Android Chrome: captura o prompt de instalação nativo
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  _pwaPrompt = e;
+  document.getElementById('btn-pwa-instalar').style.display = 'block';
+  // Mostra após 3s (não logo de cara)
+  setTimeout(_mostrarBannerPwa, 3000);
+});
+
+// iOS Safari: detecta e mostra instrução manual
+(function() {
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const isSafari = /safari/i.test(navigator.userAgent) && !/crios|fxios|opios/i.test(navigator.userAgent);
+  if (isIOS && isSafari && !_jaInstalado()) {
+    document.getElementById('pwa-ios-tip').style.display = 'block';
+    setTimeout(_mostrarBannerPwa, 3000);
+  }
+})();
+
+// Esconde após instalar
+window.addEventListener('appinstalled', () => fecharBannerPwa());
+</script>
+
 </body>
 </html>
