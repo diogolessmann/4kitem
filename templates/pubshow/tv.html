@@ -780,8 +780,9 @@ function onPlayerStateChange(e) {
     agendarProximoCard();
   }
   // YT.PlayerState.BUFFERING = 3 — reinicia o detector (pode estar carregando)
+  // Se estamos carregando um pedido específico, mantém o timeout longo (8s)
   if (e.data === 3) {
-    iniciarStallDetector();
+    iniciarStallDetector(_pedidoYtId ? 8000 : 2500);
   }
 }
 
@@ -838,7 +839,20 @@ function _pularVideo() {
 }
 
 // ── Lógica de avanço com fila ─────────────────────────────────────────────────
-function avancarFila() {
+async function avancarFila() {
+  // ── Race condition fix: se não há pedido em memória, consulta API imediatamente ──
+  // O polling (a cada ~3s) pode ter perdido o pedido se o vídeo terminou entre dois ciclos
+  if (!pedidoMusica) {
+    try {
+      const _r = await fetch(`${BASE_URL}/api/status/${CODE}`, {cache: 'no-store'});
+      const _d = await _r.json();
+      if (_d.pedido_musica) {
+        pedidoMusica = _d.pedido_musica;
+        mostrarBadgeFila(_d.total_fila);
+      }
+    } catch(_e) { /* silencioso — fallback para próximo vídeo da biblioteca */ }
+  }
+
   if (pedidoMusica) {
     const p = pedidoMusica;
     pedidoMusica = null;
