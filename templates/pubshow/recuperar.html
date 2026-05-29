@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Recuperar senha — PUBSHOW</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:#08080f;color:#f0f0ff;font-family:'Segoe UI',sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+  .box{background:#13131f;border:1px solid rgba(255,255,255,.08);border-radius:24px;padding:40px 36px;width:100%;max-width:420px}
+  .logo{font-size:26px;font-weight:900;background:linear-gradient(135deg,#ef4444,#f97316);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:8px}
+  h1{font-size:20px;font-weight:800;margin-bottom:4px}
+  .sub{font-size:13px;color:#8888aa;margin-bottom:28px;line-height:1.5}
+  label{font-size:11px;font-weight:700;color:#8888aa;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:5px}
+  input{width:100%;background:#1a1a2e;border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:12px 14px;color:#f0f0ff;font-size:14px;outline:none;margin-bottom:16px;font-family:inherit}
+  input:focus{border-color:#ef4444}
+  .btn{width:100%;padding:14px;background:linear-gradient(135deg,#ef4444,#f97316);color:#fff;font-size:15px;font-weight:800;border:none;border-radius:12px;cursor:pointer;font-family:inherit}
+  .btn:hover{opacity:.9}
+  .erro{background:#2d0a0a;border:1px solid #ef444433;border-radius:10px;padding:12px 14px;color:#f87171;font-size:13px;margin-bottom:16px}
+  .ok{background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.25);border-radius:10px;padding:14px;color:#4ade80;font-size:13px;line-height:1.6;margin-bottom:16px}
+  .links{margin-top:20px;font-size:12px;text-align:center}
+  .links a{color:#8888aa;text-decoration:none}
+  .links a:hover{color:#f0f0ff}
+</style>
+</head>
+<body>
+<div class="box">
+  <div class="logo">📺 PUBSHOW</div>
+  <h1>Recuperar senha</h1>
+  <p class="sub">Informe o e-mail da sua conta. Enviaremos um link de redefinição no <strong>WhatsApp</strong> do número cadastrado.</p>
+
+  {% if erro %}<div class="erro">{{ erro }}</div>{% endif %}
+
+  {% if msg %}
+    <div class="ok">✅ {{ msg }}</div>
+    <div class="links"><a href="/pubshow/entrar">← Voltar para o login</a></div>
+  {% else %}
+    <form method="POST">
+      <label>E-mail da conta</label>
+      <input type="email" name="email" placeholder="seu@email.com" required autocomplete="email">
+      <button type="submit" class="btn">Enviar link →</button>
+    </form>
+    <div class="links">
+      <a href="/pubshow/entrar">← Voltar para o login</a>
+    </div>
+  {% endif %}
+</div>
+</body>
+</html>

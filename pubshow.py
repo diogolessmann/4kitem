@@ -596,6 +596,100 @@ def sair():
     return redirect('/pubshow/entrar')
 
 
+# ── RECUPERAÇÃO DE SENHA ───────────────────────────────────────────────────────
+
+def _pubshow_send_wa(telefone: str, mensagem: str) -> bool:
+    """Envia mensagem WhatsApp via Evolution API. Retorna True se enviou."""
+    evo_url  = os.environ.get('EVOLUTION_API_URL', '').rstrip('/')
+    evo_key  = os.environ.get('EVOLUTION_API_KEY', '')
+    instance = os.environ.get('PUBSHOW_WA_INSTANCE', '')
+    if not evo_url or not evo_key or not instance:
+        return False
+    digits = re.sub(r'\D', '', telefone)
+    if not digits.startswith('55'):
+        digits = '55' + digits
+    try:
+        r = _requests.post(
+            f'{evo_url}/message/sendText/{instance}',
+            json={'number': digits + '@s.whatsapp.net', 'text': mensagem},
+            headers={'apikey': evo_key},
+            timeout=8
+        )
+        return r.status_code < 300
+    except Exception as ex:
+        log.warning('[PUBSHOW] WA send error: %s', ex)
+        return False
+
+
+@pubshow_bp.route('/recuperar', methods=['GET', 'POST'])
+def recuperar_senha():
+    msg  = ''
+    erro = ''
+    if request.method == 'POST':
+        email = request.form.get('email', '').strip().lower()
+        conn  = get_pubshow_db()
+        b = conn.execute(
+            'SELECT * FROM pubshow_businesses WHERE email=?', (email,)
+        ).fetchone()
+        if not b:
+            # Resposta genérica — não vaza se e-mail existe
+            msg = 'Se este e-mail estiver cadastrado, você receberá o link de redefinição no WhatsApp.'
+        else:
+            token   = _gerar_code(32)
+            expira  = (datetime.now() + timedelta(hours=2)).isoformat()
+            conn.execute(
+                'UPDATE pubshow_businesses SET reset_token=?, reset_expires=? WHERE id=?',
+                (token, expira, b['id'])
+            )
+            conn.commit()
+            link = f'https://www.4kitem.com.br/pubshow/recuperar/{token}'
+            sent = _pubshow_send_wa(
+                b['telefone'] or '',
+                f'🔐 *PUBSHOW — Redefinição de senha*\n\n'
+                f'Olá, {b["nome"]}!\n\n'
+                f'Clique no link abaixo para criar uma nova senha. O link expira em 2 horas.\n\n'
+                f'{link}\n\n'
+                f'Se não foi você que pediu, ignore esta mensagem.'
+            )
+            if sent:
+                msg = 'Link enviado! Verifique o WhatsApp do número cadastrado. O link expira em 2 horas.'
+            else:
+                # Fallback: mostra o link na tela (modo dev / sem WA configurado)
+                msg = f'Link gerado. Acesse: {link}'
+        conn.close()
+    return render_template('pubshow/recuperar.html', msg=msg, erro=erro)
+
+
+@pubshow_bp.route('/recuperar/<token>', methods=['GET', 'POST'])
+def recuperar_senha_form(token):
+    conn = get_pubshow_db()
+    b = conn.execute(
+        "SELECT * FROM pubshow_businesses WHERE reset_token=? AND reset_expires>?",
+        (token, datetime.now().isoformat())
+    ).fetchone()
+    conn.close()
+    if not b:
+        return render_template('pubshow/recuperar.html',
+                               msg='', erro='Link inválido ou expirado. Solicite um novo.')
+    erro = ''
+    if request.method == 'POST':
+        nova = request.form.get('senha', '')
+        conf = request.form.get('confirma', '')
+        if len(nova) < 6:
+            erro = 'A senha deve ter ao menos 6 caracteres.'
+        elif nova != conf:
+            erro = 'As senhas não coincidem.'
+        else:
+            conn2 = get_pubshow_db()
+            conn2.execute(
+                'UPDATE pubshow_businesses SET password_hash=?, reset_token=NULL, reset_expires=NULL WHERE id=?',
+                (generate_password_hash(nova), b['id'])
+            )
+            conn2.commit(); conn2.close()
+            return redirect('/pubshow/entrar?ok=senha')
+    return render_template('pubshow/recuperar_form.html', token=token, erro=erro)
+
+
 @pubshow_bp.route('/cadastro', methods=['GET', 'POST'])
 def cadastro():
     if session.get('pub_business_id'):
