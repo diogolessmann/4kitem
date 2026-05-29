@@ -1362,6 +1362,8 @@ def painel_happy_hour():
     """Salva configuração de Happy Hour do bar."""
     import json as _json
     b = _get_business()
+    if not _plano_permite(dict(b), 'happy_hour'):
+        return redirect('/pubshow/planos')
     ativo = request.form.get('hh_ativo') == '1'
     if not ativo:
         conn = get_pubshow_db()
@@ -1390,6 +1392,8 @@ def painel_happy_hour():
 def painel_notif():
     """Ativa/desativa notificações WhatsApp ao bar."""
     b = _get_business()
+    if not _plano_permite(dict(b), 'whatsapp'):
+        return redirect('/pubshow/planos')
     ativo = 1 if request.form.get('whatsapp_notif') else 0
     conn = get_pubshow_db()
     conn.execute('UPDATE pubshow_businesses SET whatsapp_notif=? WHERE id=?', (ativo, b['id']))
@@ -1601,6 +1605,8 @@ def painel_senha():
 def painel_relatorio():
     import json
     b = _get_business()
+    if not _plano_permite(dict(b), 'analytics'):
+        return redirect('/pubshow/planos')
     conn = get_pubshow_db()
 
     # Receita por período (exclui pedidos aguardando PIX — ainda não pagos)
