@@ -83,6 +83,8 @@ PLANOS = {
         'analytics': False,
         'whatsapp': False,
         'happy_hour': False,
+        # Starter: só canais de música na TV
+        'grupos_tv': ['musica'],
     },
     'bar': {
         'nome': 'Bar',
@@ -97,6 +99,8 @@ PLANOS = {
         'analytics': True,
         'whatsapp': False,
         'happy_hour': False,
+        # Bar: música + shows + esporte principal
+        'grupos_tv': ['musica', 'shows', 'sport'],
     },
     'pro': {
         'nome': 'Pro',
@@ -110,6 +114,8 @@ PLANOS = {
         'analytics': True,
         'whatsapp': True,
         'happy_hour': True,
+        # Pro: todos os canais
+        'grupos_tv': None,
     },
     'rede': {
         'nome': 'Rede',
@@ -124,6 +130,8 @@ PLANOS = {
         'whatsapp': True,
         'happy_hour': True,
         'multi': True,
+        # Rede: todos os canais
+        'grupos_tv': None,
     },
 }
 
@@ -132,6 +140,18 @@ def _plano_permite(b, feature: str) -> bool:
     plano_key = b.get('plano', 'bar') or 'bar'
     p = PLANOS.get(plano_key, PLANOS['bar'])
     return bool(p.get(feature, False))
+
+
+def _plano_canais_permitidos(b) -> dict:
+    """Retorna o subconjunto de CANAIS permitido pelo plano do bar.
+    None nos grupos_tv significa todos os canais liberados.
+    """
+    plano_key = b.get('plano', 'bar') or 'bar'
+    p = PLANOS.get(plano_key, PLANOS['bar'])
+    grupos = p.get('grupos_tv')          # None = sem restrição
+    if grupos is None:
+        return CANAIS
+    return {k: v for k, v in CANAIS.items() if v.get('grupo') in grupos}
 
 
 def _plano_max_anuncios(b) -> int:
@@ -774,16 +794,18 @@ def tv(code):
     canal_key = b['canal_atual'] or 'rock'
     canal     = CANAIS.get(canal_key, CANAIS['rock'])
     videos    = _videos_do_canal(canal_key)
-    # Filtra canais pelo que o bar habilitou (None = todos)
+    # 1) Filtra canais pelo plano do bar (grupos_tv)
+    canais_plano = _plano_canais_permitidos(dict(b))
+    # 2) Filtra pelos temas que o bar habilitou dentro do que o plano permite
     try:    temas_hab = _json.loads(b['temas_habilitados'] or 'null')
     except: temas_hab = None
     if temas_hab:
-        canais_tv = {k: v for k, v in CANAIS.items() if k in temas_hab}
+        canais_tv = {k: v for k, v in canais_plano.items() if k in temas_hab}
         # Garante que o canal atual sempre aparece
         if canal_key not in canais_tv:
             canais_tv[canal_key] = CANAIS.get(canal_key, CANAIS['rock'])
     else:
-        canais_tv = CANAIS
+        canais_tv = canais_plano
     try:    anuncios = _json.loads(b['anuncios_json'] or '[]')
     except: anuncios = []
     return render_template('pubshow/tv.html', b=dict(b), canal=canal,
@@ -1248,9 +1270,10 @@ def painel():
     try:    happy_hour = _json.loads(bd.get('happy_hour_json') or 'null')
     except: happy_hour = None
     hh_desconto_atual = _happy_hour_desconto(bd)
-    # None = todos habilitados
+    # Canais que o plano do bar permite ver/selecionar na TV
+    canais_plano = _plano_canais_permitidos(bd)
     return render_template('pubshow/painel.html',
-                           b=bd, canais=CANAIS,
+                           b=bd, canais=canais_plano,
                            pedidos_hoje=[dict(p) for p in pedidos_hoje],
                            total_hoje=total_hoje,
                            fila=[dict(f) for f in fila],
@@ -1796,6 +1819,81 @@ def painel_novo_qr():
     conn.commit(); conn.close()
     log.info('[PUBSHOW] Novo QR gerado para business_id=%s', b['id'])
     return redirect('/pubshow/painel/qrcode')
+
+
+# ── MULTI-LOCAIS (plano Rede) ─────────────────────────────────────────────────
+
+@pubshow_bp.route('/painel/rede')
+@pubshow_login_required
+def painel_rede():
+    """Painel unificado para donos com múltiplos locais (plano Rede)."""
+    b = _get_business()
+    if not _plano_permite(dict(b), 'multi'):
+        return redirect('/pubshow/planos')
+    conn = get_pubshow_db()
+    # Busca todas as filiais vinculadas a este dono
+    filiais = conn.execute(
+        '''SELECT b.*,
+           (SELECT COUNT(*) FROM pubshow_pedidos p WHERE p.business_id=b.id AND p.status="pendente") fila,
+           (SELECT COALESCE(SUM(p.valor),0) FROM pubshow_pedidos p
+            WHERE p.business_id=b.id AND p.status!="aguardando_pix"
+            AND date(p.created_at)=date("now","localtime")) receita_hoje
+           FROM pubshow_businesses b
+           WHERE b.owner_business_id=? OR b.id=?
+           ORDER BY b.nome''',
+        (b['id'], b['id'])
+    ).fetchall()
+    conn.close()
+    return render_template('pubshow/painel_rede.html',
+                           b=dict(b),
+                           filiais=[dict(f) for f in filiais],
+                           planos=PLANOS)
+
+
+@pubshow_bp.route('/painel/rede/nova-filial', methods=['GET', 'POST'])
+@pubshow_login_required
+def painel_rede_nova_filial():
+    """Cadastra uma nova unidade/filial vinculada ao dono atual (plano Rede)."""
+    b = _get_business()
+    if not _plano_permite(dict(b), 'multi'):
+        return redirect('/pubshow/planos')
+    erro = ''
+    if request.method == 'POST':
+        nome     = request.form.get('nome', '').strip()
+        tipo     = request.form.get('tipo', 'bar')
+        email    = request.form.get('email', '').strip().lower()
+        telefone = request.form.get('telefone', '').strip()
+        senha    = request.form.get('senha', '')
+        if not all([nome, email, telefone, senha]):
+            erro = 'Preencha todos os campos.'
+        elif len(senha) < 6:
+            erro = 'Senha mínima de 6 caracteres.'
+        else:
+            try:
+                code   = _gerar_code()
+                jtoken = _gerar_jukebox_token()
+                trial  = (datetime.now() + timedelta(days=365 * 10)).isoformat()  # plano herdado do dono
+                conn = get_pubshow_db()
+                conn.execute(
+                    '''INSERT INTO pubshow_businesses
+                       (nome, tipo, email, telefone, cpf_cnpj, password_hash, code,
+                        plano, plano_ativo, canal_atual, trial_ends, jukebox_token, owner_business_id)
+                       VALUES (?,?,?,?,?,?,?,?,1,?,?,?,?)''',
+                    (nome, tipo, email, telefone,
+                     f'filial_{b["id"]}_{_gerar_code(6)}',  # CPF/CNPJ sintético
+                     generate_password_hash(senha), code,
+                     b.get('plano', 'rede'), 'rock', trial, jtoken, b['id'])
+                )
+                conn.commit(); conn.close()
+                log.info('[PUBSHOW-REDE] Nova filial criada por business_id=%s: %s', b['id'], nome)
+                return redirect('/pubshow/painel/rede?ok=filial')
+            except Exception as ex:
+                if 'UNIQUE' in str(ex):
+                    erro = 'Este e-mail já está cadastrado.'
+                else:
+                    erro = f'Erro ao cadastrar filial: {ex}'
+    return render_template('pubshow/painel_rede_nova.html',
+                           b=dict(b), erro=erro, tipos=TIPOS_ESTABELECIMENTO)
 
 
 # ── ADMIN MASTER ──────────────────────────────────────────────────────────────

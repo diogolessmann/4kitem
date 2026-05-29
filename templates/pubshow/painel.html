@@ -74,6 +74,7 @@
       {% if not b.plano_ativo %}<span style="margin-left:4px;color:#f97316">Trial</span>{% endif %}
     </a>
     <span style="font-size:13px;color:var(--text2)">{{ b.nome }}</span>
+    {% if plano_info.get('multi') %}<a href="/pubshow/painel/rede" class="nav-btn" style="color:#a855f7">🏟️ Minha rede</a>{% endif %}
     <a href="/pubshow/tv/{{ b.code }}" target="_blank" class="nav-btn">📺 Abrir TV</a>
     <a href="/pubshow/sair" class="nav-btn">Sair</a>
   </div>

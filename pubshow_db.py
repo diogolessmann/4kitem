@@ -148,6 +148,9 @@ def init_pubshow_db():
         'ALTER TABLE pubshow_businesses ADD COLUMN happy_hour_json TEXT DEFAULT NULL',
         # Anti-fraude: IP de cadastro para detectar multi-trials
         'ALTER TABLE pubshow_businesses ADD COLUMN signup_ip TEXT DEFAULT NULL',
+        # Multi-locais (plano Rede): FK para o dono/negócio principal
+        # NULL = bar independente; preenchido = filial vinculada a outro business_id
+        'ALTER TABLE pubshow_businesses ADD COLUMN owner_business_id INTEGER DEFAULT NULL',
     ]:
         try:
             conn.execute(m); conn.commit()
