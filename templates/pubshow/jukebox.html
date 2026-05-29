@@ -136,6 +136,9 @@
   .busca-loading{text-align:center;padding:16px;color:var(--text2);font-size:13px;display:none}
   .busca-loading.show{display:block}
 
+  /* Contador de resultados */
+  .busca-count{font-size:11px;color:var(--text2);text-align:right;margin-bottom:6px}
+
   /* Lista de resultados — SEM foto */
   #resultados-lista{display:flex;flex-direction:column;gap:6px}
   .resultado-item{
@@ -501,6 +504,7 @@ async function jaPaguei() {
   </div>
 
   <div class="busca-loading" id="busca-loading">🔍 Buscando...</div>
+  <div class="busca-count" id="busca-count" style="display:none"></div>
   <div id="resultados-lista"></div>
 
   <div id="selecionado-box">
@@ -581,10 +585,12 @@ async function jaPaguei() {
 <script>
 const PRECOS     = {{ tipos | tojson }};
 const TOTAL_VIDS = {{ total_videos }};
-let tipoAtual  = '';
-let modosBusca = 'biblioteca'; // 'biblioteca' | 'youtube'
-let buscaTimer = null;
-let videoSel   = null;
+const BAR_TOKEN  = '{{ b.jukebox_token or b.code }}';
+let tipoAtual    = '';
+let modosBusca   = 'biblioteca'; // 'biblioteca' | 'youtube'
+let buscaTimer   = null;
+let videoSel     = null;
+let _biblioCache = null; // cache da lista completa (carregada 1x)
 
 // ── Mais opções ───────────────────────────────────────────────────────────────
 function toggleMaisOpcoes(btn) {
@@ -626,6 +632,7 @@ function selecionarTipo(key, nome, emoji, preco, cor) {
 
 function voltarGrid() {
   esconderTudo();
+  videoSel = null;
   document.getElementById('grid-section').style.display = 'block';
   window.scrollTo({top:0,behavior:'smooth'});
 }
@@ -641,13 +648,12 @@ function abrirBusca(modo) {
   modosBusca = modo;
   videoSel   = null;
 
-  const cor     = modo === 'youtube' ? '#dc2626' : '#06b6d4';
-  const titleEl = document.getElementById('busca-title');
-  const subEl   = document.getElementById('busca-subtitle');
-  titleEl.textContent = modo === 'youtube' ? '🌐 Buscar no YouTube' : '🎯 Buscar na biblioteca';
-  subEl.textContent   = modo === 'youtube'
+  const cor = modo === 'youtube' ? '#dc2626' : '#06b6d4';
+  document.getElementById('busca-title').textContent = modo === 'youtube'
+    ? '🌐 Buscar no YouTube' : '🎵 Músicas disponíveis';
+  document.getElementById('busca-subtitle').textContent = modo === 'youtube'
     ? `Qualquer música da internet — R$ ${PRECOS['musica_externa'].preco.toFixed(0)}`
-    : `Nos ${TOTAL_VIDS} vídeos curados do bar — R$ ${PRECOS['musica_especifica'].preco.toFixed(0)}`;
+    : `${TOTAL_VIDS} músicas no acervo — R$ ${PRECOS['musica_especifica'].preco.toFixed(0)}`;
 
   document.querySelector('.busca-input').style.setProperty('border-color', cor);
   document.querySelector('.busca-btn').style.background = cor;
@@ -656,68 +662,123 @@ function abrirBusca(modo) {
   document.querySelector('.btn-confirmar-busca').style.background = `linear-gradient(135deg,${cor},${cor}cc)`;
 
   document.getElementById('busca-input').value = '';
+  document.getElementById('busca-input').placeholder =
+    modo === 'youtube' ? 'Artista ou nome da música...' : '🔍 Filtrar lista...';
   document.getElementById('resultados-lista').innerHTML = '';
   document.getElementById('selecionado-box').classList.remove('show');
   document.getElementById('busca-loading').classList.remove('show');
+  document.getElementById('busca-count').style.display = 'none';
 
   esconderTudo();
   document.getElementById('busca-section').style.display = 'block';
-  document.getElementById('busca-input').focus();
   window.scrollTo({top:0,behavior:'smooth'});
+
+  // Biblioteca: carrega lista completa imediatamente (com cache)
+  if (modo === 'biblioteca') {
+    if (_biblioCache) {
+      _renderLista(_biblioCache);   // usa cache — zero request
+    } else {
+      _carregarBibliotecaCompleta();
+    }
+  }
 }
 
-function onBuscaInput() {
-  clearTimeout(buscaTimer);
-  const q = document.getElementById('busca-input').value.trim();
-  if (q.length >= 2) buscaTimer = setTimeout(buscar, 500);
-}
-
-async function buscar() {
-  const q = document.getElementById('busca-input').value.trim();
-  if (!q) return;
+async function _carregarBibliotecaCompleta() {
   const loading = document.getElementById('busca-loading');
-  const lista   = document.getElementById('resultados-lista');
   loading.classList.add('show');
-  lista.innerHTML = '';
-  document.getElementById('selecionado-box').classList.remove('show');
-  videoSel = null;
-
-  const BAR_TOKEN = '{{ b.jukebox_token or b.code }}';
-  const url = modosBusca === 'youtube'
-    ? `/pubshow/api/buscar?q=${encodeURIComponent(q)}`
-    : `/pubshow/api/buscar-biblioteca?q=${encodeURIComponent(q)}&bar=${encodeURIComponent(BAR_TOKEN)}`;
-
   try {
-    const res  = await fetch(url);
+    const res  = await fetch(`/pubshow/api/buscar-biblioteca?bar=${encodeURIComponent(BAR_TOKEN)}`);
     const data = await res.json();
     loading.classList.remove('show');
+    _biblioCache = data.resultados || [];
+    _renderLista(_biblioCache);
+  } catch(e) {
+    loading.classList.remove('show');
+    document.getElementById('resultados-lista').innerHTML =
+      '<div style="text-align:center;padding:24px;color:#f87171;font-size:13px">Erro ao carregar lista. Tente novamente.</div>';
+  }
+}
 
-    if (!data.resultados?.length) {
-      lista.innerHTML = '<div style="text-align:center;padding:24px;color:#8888aa;font-size:13px">Nenhum resultado. Tente outra busca.</div>';
-      return;
-    }
+function _renderLista(lista) {
+  const countEl = document.getElementById('busca-count');
+  countEl.style.display = lista.length ? 'block' : 'none';
+  countEl.textContent   = `${lista.length} música${lista.length !== 1 ? 's' : ''}`;
 
-    lista.innerHTML = data.resultados.map((v, i) => {
-      // biblioteca retorna youtube_id + titulo + artista + duracao_seg
-      // youtube   retorna id       + titulo + canal   + duracao
-      const id     = v.youtube_id || v.id || '';
-      const titulo = v.titulo  || '';
-      const sub    = modosBusca === 'youtube'
-        ? `${v.canal || ''}${v.duracao ? ' · ' + v.duracao : ''}`
-        : `${v.artista || ''}${v.duracao_seg ? ' · ' + Math.floor(v.duracao_seg/60) + 'min' : ''}`;
-      return `
-        <div class="resultado-item" id="res-${i}"
-             onclick='selecionarVideo(${i}, ${JSON.stringify({id, titulo, sub})})'>
+  if (!lista.length) {
+    document.getElementById('resultados-lista').innerHTML =
+      '<div style="text-align:center;padding:24px;color:#8888aa;font-size:13px">Nenhuma música encontrada.</div>';
+    return;
+  }
+  document.getElementById('resultados-lista').innerHTML = lista.map((v, i) => {
+    const id  = v.youtube_id || v.id || '';
+    const sub = `${v.artista || ''}${v.duracao_seg ? ' · ' + Math.floor(v.duracao_seg/60) + 'min' : ''}`;
+    return `<div class="resultado-item" id="res-${i}"
+             onclick='selecionarVideo(${i}, ${JSON.stringify({id, titulo:v.titulo, sub})})'>
           <div class="resultado-info">
-            <div class="resultado-titulo">${titulo}</div>
+            <div class="resultado-titulo">${v.titulo || ''}</div>
             <div class="resultado-sub">${sub}</div>
           </div>
           <div class="resultado-check">✓</div>
         </div>`;
+  }).join('');
+}
+
+function onBuscaInput() {
+  clearTimeout(buscaTimer);
+  const q = document.getElementById('busca-input').value.trim().toLowerCase();
+
+  if (modosBusca === 'biblioteca') {
+    // Filtro local — instantâneo, zero request
+    if (_biblioCache) {
+      const filtrado = q.length < 1
+        ? _biblioCache
+        : _biblioCache.filter(v =>
+            (v.titulo  || '').toLowerCase().includes(q) ||
+            (v.artista || '').toLowerCase().includes(q)
+          );
+      _renderLista(filtrado);
+    }
+  } else {
+    // YouTube — busca remota com debounce
+    if (q.length >= 2) buscaTimer = setTimeout(buscar, 500);
+  }
+}
+
+async function buscar() {
+  // Usado apenas para YouTube
+  if (modosBusca === 'biblioteca') { onBuscaInput(); return; }
+  const q = document.getElementById('busca-input').value.trim();
+  if (!q) return;
+  const loading = document.getElementById('busca-loading');
+  loading.classList.add('show');
+  document.getElementById('resultados-lista').innerHTML = '';
+  document.getElementById('selecionado-box').classList.remove('show');
+  videoSel = null;
+  try {
+    const res  = await fetch(`/pubshow/api/buscar?q=${encodeURIComponent(q)}`);
+    const data = await res.json();
+    loading.classList.remove('show');
+    if (!data.resultados?.length) {
+      document.getElementById('resultados-lista').innerHTML =
+        '<div style="text-align:center;padding:24px;color:#8888aa;font-size:13px">Nenhum resultado. Tente outra busca.</div>';
+      return;
+    }
+    document.getElementById('resultados-lista').innerHTML = data.resultados.map((v, i) => {
+      const id  = v.id || '';
+      const sub = `${v.canal || ''}${v.duracao ? ' · ' + v.duracao : ''}`;
+      return `<div class="resultado-item" id="res-${i}"
+               onclick='selecionarVideo(${i}, ${JSON.stringify({id, titulo:v.titulo, sub})})'>
+            <div class="resultado-info">
+              <div class="resultado-titulo">${v.titulo || ''}</div>
+              <div class="resultado-sub">${sub}</div>
+            </div>
+            <div class="resultado-check">✓</div>
+          </div>`;
     }).join('');
   } catch(e) {
     loading.classList.remove('show');
-    lista.innerHTML = '<div style="text-align:center;padding:24px;color:#f87171;font-size:13px">Erro na busca. Tente novamente.</div>';
+    document.getElementById('resultados-lista').innerHTML =
+      '<div style="text-align:center;padding:24px;color:#f87171;font-size:13px">Erro na busca. Tente novamente.</div>';
   }
 }
 

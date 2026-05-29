@@ -1214,17 +1214,17 @@ def api_ranking(code):
 def api_buscar_biblioteca():
     """Busca na biblioteca curada de vídeos (rápido, sem API externa).
     Se ?bar=<token> for passado, filtra pelos gêneros que o bar liberou.
+    Se ?q= vazio → retorna top 150 por popularidade (lista completa inicial).
+    Se ?q=termo  → filtra por título/artista (limite 30 resultados).
     """
     import json as _json
-    q = request.args.get('q', '').strip()
-    if not q or len(q) < 2:
-        return jsonify({'resultados': []})
+    q          = request.args.get('q', '').strip()
+    bar_token  = request.args.get('bar', '').strip()
+    lista_full = not q  # sem query = carregamento inicial completo
 
     conn = get_pubshow_db()
-    like = f'%{q}%'
 
     # Descobre gêneros permitidos para este bar (opcional)
-    bar_token = request.args.get('bar', '').strip()
     generos_permitidos = None
     if bar_token:
         brow = conn.execute(
@@ -1238,29 +1238,49 @@ def api_buscar_biblioteca():
             except Exception:
                 generos_permitidos = None
 
-    if generos_permitidos:
-        # Filtra por categoria (pode ser lista de géneros)
-        placeholders = ','.join('?' * len(generos_permitidos))
-        rows = conn.execute(
-            f'''SELECT youtube_id, titulo, artista, categoria, duracao_seg
-                FROM pubshow_videos
-                WHERE ativo=1
-                  AND categoria IN ({placeholders})
-                  AND (titulo LIKE ? OR artista LIKE ?)
-                ORDER BY views_milhoes DESC LIMIT 12''',
-            (*generos_permitidos, like, like)
-        ).fetchall()
+    limite = 150 if lista_full else 30
+
+    if lista_full:
+        # Carregamento inicial — top N por popularidade
+        if generos_permitidos:
+            placeholders = ','.join('?' * len(generos_permitidos))
+            rows = conn.execute(
+                f'''SELECT youtube_id, titulo, artista, categoria, duracao_seg
+                    FROM pubshow_videos
+                    WHERE ativo=1 AND categoria IN ({placeholders})
+                    ORDER BY views_milhoes DESC LIMIT {limite}''',
+                tuple(generos_permitidos)
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                f'''SELECT youtube_id, titulo, artista, categoria, duracao_seg
+                    FROM pubshow_videos WHERE ativo=1
+                    ORDER BY views_milhoes DESC LIMIT {limite}'''
+            ).fetchall()
     else:
-        rows = conn.execute(
-            '''SELECT youtube_id, titulo, artista, categoria, duracao_seg
-               FROM pubshow_videos
-               WHERE ativo=1 AND (titulo LIKE ? OR artista LIKE ?)
-               ORDER BY views_milhoes DESC LIMIT 12''',
-            (like, like)
-        ).fetchall()
+        # Busca por termo
+        like = f'%{q}%'
+        if generos_permitidos:
+            placeholders = ','.join('?' * len(generos_permitidos))
+            rows = conn.execute(
+                f'''SELECT youtube_id, titulo, artista, categoria, duracao_seg
+                    FROM pubshow_videos
+                    WHERE ativo=1 AND categoria IN ({placeholders})
+                      AND (titulo LIKE ? OR artista LIKE ?)
+                    ORDER BY views_milhoes DESC LIMIT {limite}''',
+                (*generos_permitidos, like, like)
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                f'''SELECT youtube_id, titulo, artista, categoria, duracao_seg
+                    FROM pubshow_videos
+                    WHERE ativo=1 AND (titulo LIKE ? OR artista LIKE ?)
+                    ORDER BY views_milhoes DESC LIMIT {limite}''',
+                (like, like)
+            ).fetchall()
 
     conn.close()
-    return jsonify({'resultados': [dict(r) for r in rows]})
+    return jsonify({'resultados': [dict(r) for r in rows], 'total': len(rows)})
 
 
 @pubshow_bp.route('/api/buscar')
