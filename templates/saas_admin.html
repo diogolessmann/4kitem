@@ -631,8 +631,10 @@
               <button class="btn-sm btn-green" onclick="setPsStatus({{ b.id }},'ativar')">▶ Ativar</button>
               {% endif %}
               <div style="border-top:1px solid var(--border);margin:2px 0;font-size:10px;color:var(--text2);padding-top:2px">Plano:</div>
+              <button class="btn-sm btn-blue" onclick="setPsPlano({{ b.id }},'starter')">🌱 Starter R$69</button>
               <button class="btn-sm btn-blue" onclick="setPsPlano({{ b.id }},'bar')">🍺 Bar R$129</button>
-              <button class="btn-sm btn-blue" onclick="setPsPlano({{ b.id }},'premium')">🏟️ Premium R$249</button>
+              <button class="btn-sm btn-blue" onclick="setPsPlano({{ b.id }},'pro')">🚀 Pro R$199</button>
+              <button class="btn-sm btn-purple" onclick="setPsPlano({{ b.id }},'rede')">🏟️ Rede R$349</button>
               <button class="btn-sm btn-orange" onclick="openPsTrial({{ b.id }},'{{ (b.trial_ends or '')[:10] }}')">📅 Trial</button>
             </div>
           </td>

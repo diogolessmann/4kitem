@@ -8,7 +8,7 @@ import os
 import random
 import re
 import requests as _requests
-from datetime import datetime
+from datetime import datetime, timedelta
 from functools import wraps
 from flask import (Blueprint, render_template, redirect, request,
                    session, jsonify, url_for, abort)
@@ -1083,7 +1083,7 @@ def webhook_asaas():
         if ext_ref.startswith('vetzap_consulta_avulsa_'):
             try:
                 uid = int(ext_ref.split('_')[-1])
-                exp = (datetime.now() + __import__('datetime').timedelta(hours=CONSULTA_AVULSA['horas'])).strftime('%Y-%m-%d %H:%M:%S')
+                exp = (datetime.now() + timedelta(hours=CONSULTA_AVULSA['horas'])).strftime('%Y-%m-%d %H:%M:%S')
                 conn.execute('UPDATE petmed_users SET consulta_expires=? WHERE id=?', (exp, uid))
                 conn.execute("UPDATE petmed_assinaturas SET status='ativo' WHERE user_id=? AND plano='consulta_avulsa'", (uid,))
                 conn.commit()

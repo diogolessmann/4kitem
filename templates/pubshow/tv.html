@@ -140,14 +140,16 @@
   /* Botão fullscreen */
   #fs-btn{
     position:fixed;top:20px;left:20px;z-index:50;
-    background:rgba(0,0,0,.75);border:1px solid rgba(255,255,255,.18);
-    border-radius:10px;padding:7px 14px;font-size:12px;font-weight:700;
+    background:rgba(0,0,0,.75);border:1px solid rgba(255,255,255,.35);
+    border-radius:10px;padding:9px 18px;font-size:13px;font-weight:800;
     cursor:pointer;color:#fff;backdrop-filter:blur(6px);
-    opacity:0;transition:opacity .3s;white-space:nowrap;
+    opacity:0.85;transition:opacity .3s,transform .2s;white-space:nowrap;
     display:flex;align-items:center;gap:8px;
+    box-shadow:0 2px 12px rgba(0,0,0,.5);
   }
-  #fs-btn:hover{background:rgba(255,255,255,.18);border-color:rgba(255,255,255,.5)}
-  #fs-btn.visible{opacity:1}
+  #fs-btn:hover{background:rgba(255,255,255,.22);border-color:rgba(255,255,255,.7);opacity:1;transform:scale(1.05)}
+  #fs-btn.visible{opacity:0.85}
+  #fs-btn.hidden-fs{opacity:0;pointer-events:none}
 
   /* Dica inicial de fullscreen */
   #fs-hint{
@@ -1219,12 +1221,16 @@ const _proximoVideoOriginal = proximoVideoOuSlide;
   };
 })();
 
-// Dica fullscreen — aparece 2s após abrir, some em 4s
+// Dica fullscreen — aparece 1s após abrir, some após 6s
+// (só mostra se ainda não entrou em fullscreen antes nesta sessão)
 setTimeout(() => {
-  const hint = document.getElementById('fs-hint');
-  hint.classList.add('show');
-  setTimeout(() => hint.classList.remove('show'), 4000);
-}, 2000);
+  if (!document.fullscreenElement && !sessionStorage.getItem('fs_shown')) {
+    const hint = document.getElementById('fs-hint');
+    hint.classList.add('show');
+    sessionStorage.setItem('fs_shown','1');
+    setTimeout(() => hint.classList.remove('show'), 6000);
+  }
+}, 1000);
 </script>
 </body>
 </html>
