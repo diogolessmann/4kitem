@@ -1076,6 +1076,12 @@ async function pollStatus() {
 async function trocarCanal(canal) {
   if (canal === CANAL_KEY) return;
 
+  // Cancela timers ativos ANTES do await para evitar race condition
+  // (stall detector ou proximoTimer podem disparar durante o fetch e bagunçar o estado)
+  clearTimeout(stallTimer);
+  clearTimeout(proximoTimer);
+  document.getElementById('proximo-card').classList.remove('show');
+
   // 1. Notifica o servidor
   fetch(`${BASE_URL}/api/trocar-canal/${CODE}`, {
     method: 'POST',
@@ -1154,8 +1160,10 @@ async function trocarCanal(canal) {
   }
 
   // 6. Carrega o primeiro vídeo
+  // Usa cueVideoById para preparar sem auto-play imediato, depois dá um curto delay
+  // antes de chamar carregarVideo — evita conflito se o player ainda estava carregando
   clearTimeout(stallTimer);
-  carregarVideo(videoIdx);
+  setTimeout(() => carregarVideo(videoIdx), 300);
 }
 
 // ── Fullscreen ────────────────────────────────────────────────────────────────
