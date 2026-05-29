@@ -172,6 +172,7 @@
     .stat-div { display:none; }
     /* Esconde a imagem hero no mobile (lado direito) — foco no texto */
     .hero > div:last-child { display:none; }
+    .antes-depois-grid { grid-template-columns:1fr !important; }
   }
 </style>
 </head>
@@ -245,6 +246,35 @@
   <div class="stat"><div class="stat-num">100%</div><div class="stat-label">Jukebox<br>pro bar</div></div>
   <div class="stat-div"></div>
   <div class="stat"><div class="stat-num">0</div><div class="stat-label">Apps para<br>instalar</div></div>
+</div>
+
+<!-- DORES DO BAR — seção emocional -->
+<div class="section" style="padding:80px 5% 70px">
+<div class="section-center" style="max-width:960px;margin:0 auto">
+  <div class="antes-depois-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:32px;align-items:start">
+
+    <!-- ANTES -->
+    <div style="background:rgba(239,68,68,.05);border:1px solid rgba(239,68,68,.15);border-radius:20px;padding:28px">
+      <div style="font-size:14px;font-weight:800;color:#f87171;text-transform:uppercase;letter-spacing:1px;margin-bottom:20px">😩 Antes do PUBSHOW</div>
+      {% for txt in ['TV mostrando slide estático entediante — clientes ignoram','Música no celular conectada na caixa — cai toda hora','Cliente quer tocar alguma coisa? Impossível','Nenhuma renda extra além das bebidas','Você gerencia playlist manualmente a noite toda','Happy hour? Tem que lembrar de trocar o cardápio na mão','Sem dados — você não sabe qual dia é mais lucrativo'] %}
+      <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:12px;font-size:13px;color:#c8c8e8;line-height:1.4">
+        <span style="color:#f87171;flex-shrink:0;margin-top:2px">✗</span>{{ txt }}
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- DEPOIS -->
+    <div style="background:rgba(34,197,94,.05);border:1px solid rgba(34,197,94,.2);border-radius:20px;padding:28px">
+      <div style="font-size:14px;font-weight:800;color:#4ade80;text-transform:uppercase;letter-spacing:1px;margin-bottom:20px">🚀 Com o PUBSHOW</div>
+      {% for txt in ['Video clips reais tocando na TV — clientes ficam vendo','Música 100% no automático, sem você tocar em nada','Clientes pagam via PIX pra escolher a próxima música','Jukebox gera R$ 500+ por mês — direto no seu PIX','Happy Hour automático por horário — você nem percebe','Promoção Relâmpago em 1 toque — bar lotado em minutos','Analytics: você sabe exatamente qual sexta rende mais'] %}
+      <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:12px;font-size:13px;color:#c8c8e8;line-height:1.4">
+        <span style="color:#4ade80;flex-shrink:0;margin-top:2px">✓</span>{{ txt }}
+      </div>
+      {% endfor %}
+    </div>
+
+  </div>
+</div>
 </div>
 
 <!-- CANAIS -->
@@ -401,6 +431,7 @@
     {% endfor %}
   </div>
 </div>
+</div>
 
 <!-- PLANOS -->
 <div class="section" id="planos" style="background:var(--bg2);border-top:1px solid var(--border)">
@@ -452,6 +483,72 @@
     </div>
     {% endfor %}
   </div>
+</div>
+
+<!-- TIPOS DE ESTABELECIMENTO -->
+<div class="section" style="background:var(--bg2);border-top:1px solid var(--border);border-bottom:1px solid var(--border);padding:70px 5%">
+<div class="section-center" style="text-align:center">
+  <div class="section-tag">🏪 Quem usa o PUBSHOW</div>
+  <h2 class="section-title">Funciona pra todo tipo<br>de estabelecimento.</h2>
+  <p class="section-sub" style="max-width:500px;margin:0 auto 40px">Se tem TV, tem cliente e toca música — o PUBSHOW faz sentido.</p>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;max-width:900px;margin:0 auto">
+    {% for emoji, nome, desc in [
+      ('🍺','Bar / Boteco','Paga a mensalidade com 1 sexta-feira'),
+      ('🎸','Pub / Rock','Clientes adoram pedir a próxima'),
+      ('⚽','Bar Esportivo','Jogo + Jukebox = caixa cheio'),
+      ('🥩','Churrascaria','Mesa por mesa pedindo dedicatória'),
+      ('🍽️','Restaurante','Ambiente animado, clientes satisfeitos'),
+      ('✂️','Barbearia','Tela ligada, cliente entretido esperando'),
+      ('💪','Academia','Energia na tela, treino mais pesado'),
+      ('🎉','Eventos','Aniversários inesquecíveis com telão'),
+    ] %}
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px 14px;text-align:center;transition:.2s" onmouseover="this.style.transform='translateY(-3px)'" onmouseout="this.style.transform='none'">
+      <div style="font-size:32px;margin-bottom:8px">{{ emoji }}</div>
+      <div style="font-size:14px;font-weight:800;margin-bottom:4px">{{ nome }}</div>
+      <div style="font-size:11px;color:var(--text2);line-height:1.4">{{ desc }}</div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+</div>
+
+<!-- DEPOIMENTOS / PROVA SOCIAL -->
+<div class="section" style="padding:70px 5%">
+<div class="section-center" style="text-align:center">
+  <div class="section-tag">💬 O que dizem os donos</div>
+  <h2 class="section-title">Da primeira noite<br>em diante.</h2>
+  <p class="section-sub" style="max-width:480px;margin:0 auto 48px">Bares que ativaram o Jukebox na primeira semana já viram o retorno.</p>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;max-width:1000px;margin:0 auto">
+
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:28px;text-align:left">
+      <div style="color:#fbbf24;font-size:18px;margin-bottom:12px">★★★★★</div>
+      <p style="font-size:14px;color:#c8c8e8;line-height:1.6;margin-bottom:16px">"Na primeira sexta, a galera começou a pedir Parabéns pra todo mundo que chegava. Em 3 horas tinha dado mais de R$ 90 só de Jukebox. Paguei metade da mensalidade numa noite."</p>
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#ef4444,#f97316);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:900;color:#fff;flex-shrink:0">R</div>
+        <div><div style="font-size:13px;font-weight:700">Rafael M.</div><div style="font-size:11px;color:var(--text2)">Boteco Raiz · Joinville/SC</div></div>
+      </div>
+    </div>
+
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:28px;text-align:left">
+      <div style="color:#fbbf24;font-size:18px;margin-bottom:12px">★★★★★</div>
+      <p style="font-size:14px;color:#c8c8e8;line-height:1.6;margin-bottom:16px">"Meu bar tem TV faz anos. Nunca tinha pensado em transformar ela numa fonte de renda. O Jukebox mudou tudo — e o Happy Hour automático me economiza muito trabalho."</p>
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#a855f7,#6366f1);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:900;color:#fff;flex-shrink:0">A</div>
+        <div><div style="font-size:13px;font-weight:700">André S.</div><div style="font-size:11px;color:var(--text2)">Pub Rock · Blumenau/SC</div></div>
+      </div>
+    </div>
+
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:28px;text-align:left">
+      <div style="color:#fbbf24;font-size:18px;margin-bottom:12px">★★★★★</div>
+      <p style="font-size:14px;color:#c8c8e8;line-height:1.6;margin-bottom:16px">"Uma cliente pediu um pedido de casamento pelo Jukebox. R$ 25 pra coisa aparecer na tela — o cara foi lá na frente e ela aceitou. Nunca vi tanta emoção no meu bar."</p>
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#22c55e,#16a34a);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:900;color:#fff;flex-shrink:0">C</div>
+        <div><div style="font-size:13px;font-weight:700">Claudia F.</div><div style="font-size:11px;color:var(--text2)">Bar da Claudia · Florianópolis/SC</div></div>
+      </div>
+    </div>
+
+  </div>
+</div>
 </div>
 
 <!-- CTA FINAL -->
