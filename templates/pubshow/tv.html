@@ -793,13 +793,11 @@ function onPlayerError(e) {
   // Erro 100/101/150 = vídeo indisponível ou sem embed
   console.warn('YT erro código:', e.data, '→ pulando...');
   clearTimeout(stallTimer);
-  _marcarVideoRuim();
-  _skipCount++;
-  setTimeout(avancarFila, 800); // mais rápido
+  setTimeout(_pularVideo, 600);
 }
 
 function iniciarStallDetector() {
-  // Se após 4s ainda não está tocando, vídeo está travado ou indisponível
+  // Se após 2.5s ainda não está tocando, vídeo está travado ou indisponível
   clearTimeout(stallTimer);
   stallTimer = setTimeout(() => {
     if (!player) return;
@@ -807,11 +805,19 @@ function iniciarStallDetector() {
     // -1=unstarted, 2=paused/indisponível, 5=cued — não começou a tocar
     if (state === -1 || state === 2 || state === 5) {
       console.warn('Stall detectado (state=' + state + ') → pulando...');
-      _marcarVideoRuim();
-      _skipCount++;
-      avancarFila();
+      _pularVideo();
     }
-  }, 4000);
+  }, 2500);
+}
+
+// Pula para o próximo vídeo por erro/stall — NÃO conta como vídeo tocado
+// (evita acionar slide de propaganda durante recuperação de erro)
+function _pularVideo() {
+  clearTimeout(stallTimer);
+  _marcarVideoRuim();
+  _skipCount++;
+  videoIdx = (videoIdx + 1) % VIDEOS.length;
+  carregarVideo(videoIdx);
 }
 
 // ── Lógica de avanço com fila ─────────────────────────────────────────────────
@@ -830,6 +836,7 @@ function avancarFila() {
         artista: `pedido por ${p.nome_cliente || 'alguém'}`,
       });
       esconderNowPlayingComDelay();
+      iniciarStallDetector(); // detecta se o vídeo pedido tem embedding bloqueado
     } else {
       proximoVideoOuSlide();
     }
