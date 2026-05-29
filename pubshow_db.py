@@ -93,6 +93,20 @@ def init_pubshow_db():
             FOREIGN KEY (business_id) REFERENCES pubshow_businesses(id)
         );
 
+        -- ── Slides do Sistema — aparecem em TODAS as TVs (gerenciados pelo admin) ──
+        CREATE TABLE IF NOT EXISTS pubshow_slides_sistema (
+            id         INTEGER PRIMARY KEY AUTOINCREMENT,
+            tipo       TEXT DEFAULT "texto",   -- "texto" | "imagem"
+            titulo     TEXT,
+            subtitulo  TEXT,
+            emoji      TEXT DEFAULT "📺",
+            cor        TEXT DEFAULT "#ef4444",
+            url        TEXT,                   -- para tipo=imagem
+            ativo      INTEGER DEFAULT 1,
+            ordem      INTEGER DEFAULT 0,
+            created_at TEXT DEFAULT (datetime("now"))
+        );
+
         -- ── Índices ────────────────────────────────────────────────────────────
         CREATE INDEX IF NOT EXISTS idx_pubshow_pedidos_biz    ON pubshow_pedidos(business_id);
         CREATE INDEX IF NOT EXISTS idx_pubshow_pedidos_status ON pubshow_pedidos(status);
@@ -153,6 +167,8 @@ def init_pubshow_db():
         'ALTER TABLE pubshow_businesses ADD COLUMN owner_business_id INTEGER DEFAULT NULL',
         # Gêneros liberados no Jukebox (JSON array; NULL = todos)
         'ALTER TABLE pubshow_businesses ADD COLUMN generos_jukebox TEXT DEFAULT NULL',
+        # Slides do sistema — bar pode desativar os slides globais do admin
+        'ALTER TABLE pubshow_businesses ADD COLUMN usar_slides_sistema INTEGER DEFAULT 1',
     ]:
         try:
             conn.execute(m); conn.commit()

@@ -817,6 +817,16 @@ def tv(code):
     try:    anuncios = _json.loads(b['anuncios_json'] or '[]')
     except: anuncios = []
 
+    # Slides do sistema — aparecem em TODAS as TVs (se bar não desativou)
+    if b.get('usar_slides_sistema', 1):
+        try:
+            slides_sis = conn.execute(
+                'SELECT * FROM pubshow_slides_sistema WHERE ativo=1 ORDER BY ordem, id'
+            ).fetchall()
+            anuncios = anuncios + [dict(s) for s in slides_sis]
+        except Exception:
+            pass
+
     # Gera QR do Jukebox server-side — mais confiável que API externa
     _jk_token = b['jukebox_token'] or b['code']
     _jk_url   = f"https://4kitem.com.br/pubshow/jukebox/{_jk_token}"
@@ -1446,6 +1456,19 @@ def painel_promo():
         if msg:
             conn.execute('UPDATE pubshow_businesses SET promo_msg=?, promo_expira=?, promo_emoji=? WHERE id=?',
                          (msg, expira, emoji, b['id']))
+    conn.commit(); conn.close()
+    return redirect('/pubshow/painel')
+
+
+@pubshow_bp.route('/painel/toggle-slides-sistema', methods=['POST'])
+@pubshow_login_required
+def painel_toggle_slides_sistema():
+    """Bar ativa/desativa slides globais do sistema na sua TV."""
+    b = _get_business()
+    conn = get_pubshow_db()
+    atual = conn.execute('SELECT usar_slides_sistema FROM pubshow_businesses WHERE id=?', (b['id'],)).fetchone()
+    novo = 0 if (atual and atual[0]) else 1
+    conn.execute('UPDATE pubshow_businesses SET usar_slides_sistema=? WHERE id=?', (novo, b['id']))
     conn.commit(); conn.close()
     return redirect('/pubshow/painel')
 
@@ -2136,6 +2159,96 @@ def admin_bar_upload_slide(bid):
     conn.commit(); conn.close()
     log.info('[PUBSHOW-ADMIN] Slide enviado para bar %s: %s', bid, url)
     return redirect(f'/pubshow/admin/bar/{bid}')
+
+
+# ── ADMIN — SLIDES DO SISTEMA (globais, aparecem em todas as TVs) ─────────────
+
+@pubshow_bp.route('/admin/slides-sistema')
+@_admin_required
+def admin_slides_sistema():
+    conn = get_pubshow_db()
+    slides = conn.execute(
+        'SELECT * FROM pubshow_slides_sistema ORDER BY ordem, id'
+    ).fetchall()
+    conn.close()
+    return render_template('pubshow/admin_slides_sistema.html',
+                           slides=[dict(s) for s in slides])
+
+
+@pubshow_bp.route('/admin/slides-sistema/add', methods=['POST'])
+@_admin_required
+def admin_slides_sistema_add():
+    import json as _json
+    titulo    = request.form.get('titulo', '').strip()[:60]
+    subtitulo = request.form.get('subtitulo', '').strip()[:80]
+    emoji     = request.form.get('emoji', '📺').strip()[:4]
+    cor       = request.form.get('cor', '#ef4444').strip()[:7]
+    if titulo:
+        conn = get_pubshow_db()
+        conn.execute(
+            'INSERT INTO pubshow_slides_sistema (tipo,titulo,subtitulo,emoji,cor) VALUES (?,?,?,?,?)',
+            ('texto', titulo, subtitulo, emoji or '📺', cor)
+        )
+        conn.commit(); conn.close()
+    return redirect('/pubshow/admin/slides-sistema')
+
+
+@pubshow_bp.route('/admin/slides-sistema/upload', methods=['POST'])
+@_admin_required
+def admin_slides_sistema_upload():
+    f = request.files.get('imagem')
+    if not f or not f.filename:
+        return redirect('/pubshow/admin/slides-sistema')
+    ext = f.filename.rsplit('.', 1)[-1].lower()
+    if ext not in ('png', 'jpg', 'jpeg', 'gif', 'webp'):
+        return redirect('/pubshow/admin/slides-sistema?erro=formato')
+    pasta = os.path.join(_SLIDES_DIR, 'sistema')
+    os.makedirs(pasta, exist_ok=True)
+    fname = f'sis_{random.randint(100000, 999999)}.{ext}'
+    f.save(os.path.join(pasta, fname))
+    url = f'/pubshow/slide-sistema/{fname}'
+    conn = get_pubshow_db()
+    conn.execute(
+        'INSERT INTO pubshow_slides_sistema (tipo,url) VALUES (?,?)',
+        ('imagem', url)
+    )
+    conn.commit(); conn.close()
+    return redirect('/pubshow/admin/slides-sistema')
+
+
+@pubshow_bp.route('/slide-sistema/<filename>')
+def slide_sistema_serve(filename):
+    """Serve imagens dos slides globais do sistema."""
+    pasta = os.path.join(_SLIDES_DIR, 'sistema')
+    return send_from_directory(pasta, filename)
+
+
+@pubshow_bp.route('/admin/slides-sistema/toggle/<int:sid>', methods=['POST'])
+@_admin_required
+def admin_slides_sistema_toggle(sid):
+    conn = get_pubshow_db()
+    row = conn.execute('SELECT ativo FROM pubshow_slides_sistema WHERE id=?', (sid,)).fetchone()
+    if row:
+        conn.execute('UPDATE pubshow_slides_sistema SET ativo=? WHERE id=?', (0 if row[0] else 1, sid))
+        conn.commit()
+    conn.close()
+    return redirect('/pubshow/admin/slides-sistema')
+
+
+@pubshow_bp.route('/admin/slides-sistema/delete/<int:sid>', methods=['POST'])
+@_admin_required
+def admin_slides_sistema_delete(sid):
+    conn = get_pubshow_db()
+    row = conn.execute('SELECT url FROM pubshow_slides_sistema WHERE id=?', (sid,)).fetchone()
+    if row and row['url'] and '/slide-sistema/' in (row['url'] or ''):
+        try:
+            fname = row['url'].split('/')[-1]
+            os.remove(os.path.join(_SLIDES_DIR, 'sistema', fname))
+        except Exception:
+            pass
+    conn.execute('DELETE FROM pubshow_slides_sistema WHERE id=?', (sid,))
+    conn.commit(); conn.close()
+    return redirect('/pubshow/admin/slides-sistema')
 
 
 # ── ADMIN — GESTÃO DE VÍDEOS ───────────────────────────────────────────────────
