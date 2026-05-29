@@ -374,10 +374,12 @@
 
   <!-- Propaganda do bar na TV -->
   <div class="card" style="margin-bottom:16px">
-    <div class="card-title">📢 Propaganda do bar na TV</div>
-    <p style="font-size:12px;color:#8888aa;margin-bottom:16px">Crie até 3 slides que aparecem entre os vídeos na tela. Perfeito para happy hour, promoções e eventos.</p>
+    <div class="card-title">📢 Propaganda do bar na TV
+      {% if plano_max_anuncios < 999 %}<span style="margin-left:8px;font-size:11px;color:var(--text2);font-weight:600">{{ plano_max_anuncios }} slide{{ 's' if plano_max_anuncios > 1 else '' }} no seu plano</span>{% endif %}
+    </div>
+    <p style="font-size:12px;color:#8888aa;margin-bottom:16px">Crie até {{ plano_max_anuncios if plano_max_anuncios < 999 else 'ilimitados' }} slides que aparecem entre os vídeos na tela. Perfeito para happy hour, promoções e eventos.</p>
     <form method="POST" action="/pubshow/painel/anuncios">
-      {% for i in range(1, 4) %}
+      {% for i in range(1, [plano_max_anuncios + 1, 6]|min) %}
       {% set sl = anuncios_parsed[i-1] if anuncios_parsed|length >= i else {} %}
       <div style="background:#0a0a12;border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:14px;margin-bottom:12px">
         <div style="font-size:11px;font-weight:700;color:#8888aa;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Slide {{ i }}</div>
@@ -469,10 +471,20 @@
   </div>
 
   <!-- Happy Hour dinâmico -->
-  <div class="card" style="margin-bottom:16px;border-color:{% if hh_desconto_atual > 0 %}rgba(250,204,21,.5){% else %}rgba(255,255,255,.08){% endif %};background:{% if hh_desconto_atual > 0 %}rgba(250,204,21,.05){% else %}var(--surface){% endif %}">
+  <div class="card" style="margin-bottom:16px;border-color:{% if hh_desconto_atual > 0 %}rgba(250,204,21,.5){% elif not plano_permite_hh %}rgba(139,92,246,.25){% else %}rgba(255,255,255,.08){% endif %};background:{% if hh_desconto_atual > 0 %}rgba(250,204,21,.05){% else %}var(--surface){% endif %}">
     <div class="card-title">🎉 Happy Hour dinâmico
-      {% if hh_desconto_atual > 0 %}<span style="margin-left:8px;font-size:11px;color:#fbbf24;font-weight:700;font-style:normal">● ATIVO agora — {{ hh_desconto_atual }}% off</span>{% endif %}
+      {% if not plano_permite_hh %}<span style="margin-left:8px;font-size:11px;background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;padding:2px 8px;border-radius:20px;font-weight:700">🔒 Plano Pro</span>{% elif hh_desconto_atual > 0 %}<span style="margin-left:8px;font-size:11px;color:#fbbf24;font-weight:700;font-style:normal">● ATIVO agora — {{ hh_desconto_atual }}% off</span>{% endif %}
     </div>
+    {% if not plano_permite_hh %}
+    <div style="display:flex;align-items:center;gap:16px;padding:16px;background:rgba(139,92,246,.06);border:1px dashed rgba(139,92,246,.3);border-radius:12px">
+      <span style="font-size:36px">🎉</span>
+      <div>
+        <div style="font-size:14px;font-weight:700;color:#c4b5fd;margin-bottom:4px">Desconto automático nos preços</div>
+        <div style="font-size:12px;color:#8888aa;line-height:1.6">Configure horários de Happy Hour e os clientes já veem o preço com desconto. Disponível no <strong style="color:#a78bfa">Plano Pro (R$ 199,90/mês)</strong>.</div>
+        <a href="/pubshow/planos" style="display:inline-block;margin-top:10px;background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;padding:7px 18px;border-radius:8px;font-size:12px;font-weight:700;text-decoration:none">🚀 Fazer upgrade</a>
+      </div>
+    </div>
+    {% else %}
     <p style="font-size:12px;color:#8888aa;margin-bottom:14px">Desconto automático nos preços durante o horário configurado. Os clientes veem o preço já com desconto.</p>
     <form method="POST" action="/pubshow/painel/happy-hour" style="display:flex;flex-direction:column;gap:14px">
       <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--surface2);border-radius:12px;border:1px solid var(--border)">
@@ -519,11 +531,24 @@
       </div>
       <button type="submit" style="background:linear-gradient(135deg,#f59e0b,#d97706);color:#000;border:none;border-radius:8px;padding:9px 22px;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;align-self:flex-start">💾 Salvar Happy Hour</button>
     </form>
+    {% endif %}
   </div>
 
   <!-- Notificação WhatsApp -->
-  <div class="card" style="margin-bottom:16px">
-    <div class="card-title">📲 Notificações WhatsApp</div>
+  <div class="card" style="margin-bottom:16px;border-color:{% if not plano_permite_wa %}rgba(34,197,94,.15){% else %}rgba(255,255,255,.08){% endif %}">
+    <div class="card-title">📲 Notificações WhatsApp
+      {% if not plano_permite_wa %}<span style="margin-left:8px;font-size:11px;background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;padding:2px 8px;border-radius:20px;font-weight:700">🔒 Plano Pro</span>{% endif %}
+    </div>
+    {% if not plano_permite_wa %}
+    <div style="display:flex;align-items:center;gap:16px;padding:16px;background:rgba(139,92,246,.06);border:1px dashed rgba(139,92,246,.3);border-radius:12px">
+      <span style="font-size:36px">📲</span>
+      <div>
+        <div style="font-size:14px;font-weight:700;color:#c4b5fd;margin-bottom:4px">Alerta de novo pedido no celular</div>
+        <div style="font-size:12px;color:#8888aa;line-height:1.6">Receba uma mensagem no WhatsApp a cada pedido confirmado. Disponível no <strong style="color:#a78bfa">Plano Pro (R$ 199,90/mês)</strong>.</div>
+        <a href="/pubshow/planos" style="display:inline-block;margin-top:10px;background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;padding:7px 18px;border-radius:8px;font-size:12px;font-weight:700;text-decoration:none">🚀 Fazer upgrade</a>
+      </div>
+    </div>
+    {% else %}
     <p style="font-size:12px;color:#8888aa;margin-bottom:14px">Receba uma mensagem no seu WhatsApp sempre que chegar um novo pedido. O número usado é o telefone do cadastro: <strong style="color:var(--text)">{{ b.telefone or '—' }}</strong></p>
     <form method="POST" action="/pubshow/painel/notif" style="display:flex;align-items:center;gap:14px">
       <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
@@ -536,6 +561,7 @@
       </label>
       <span style="font-size:12px;color:var(--text2)">Toggle salva automaticamente</span>
     </form>
+    {% endif %}
   </div>
 
   <!-- Configurações do Jukebox -->
@@ -679,9 +705,20 @@
 
   <!-- Link relatório -->
   <div style="text-align:center;margin-bottom:24px">
+    {% if plano_permite_analytics %}
     <a href="/pubshow/painel/relatorio" style="display:inline-flex;align-items:center;gap:8px;padding:12px 28px;background:var(--surface);border:1px solid var(--border2);border-radius:12px;color:var(--text);text-decoration:none;font-size:14px;font-weight:700">
       📊 Ver relatório completo de receita
     </a>
+    {% else %}
+    <div style="display:inline-flex;align-items:center;gap:12px;padding:14px 28px;background:var(--surface);border:1px dashed rgba(139,92,246,.3);border-radius:12px">
+      <span style="font-size:24px">📊</span>
+      <div style="text-align:left">
+        <div style="font-size:14px;font-weight:700;color:#c4b5fd">Relatórios completos <span style="font-size:11px;background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;padding:2px 8px;border-radius:20px;margin-left:6px">🔒 Plano Bar</span></div>
+        <div style="font-size:12px;color:#8888aa;margin-top:2px">Analytics de horário, músicas mais pedidas e receita.</div>
+      </div>
+      <a href="/pubshow/planos" style="background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;padding:8px 16px;border-radius:8px;font-size:12px;font-weight:700;text-decoration:none;white-space:nowrap">Fazer upgrade</a>
+    </div>
+    {% endif %}
   </div>
 
   <!-- Assinar -->
