@@ -91,6 +91,17 @@
   .card-nome{font-size:10px;color:#aaa;margin-top:8px;font-weight:600}
   .card-nome.micro{font-size:7px;margin-top:4px}
 
+  /* PIX badge no cartão */
+  .card-pix{
+    margin-top:10px;padding:8px 10px;border-radius:8px;
+    background:#f0fdf4;border:1px solid #bbf7d0;
+    font-size:10px;color:#15803d;font-weight:700;line-height:1.5;
+  }
+  .card-pix.mini{padding:5px 7px;font-size:8px;margin-top:6px;border-radius:5px}
+  .card-pix.micro{display:none}
+  .card-pix-chave{font-size:9px;color:#166534;font-family:monospace;word-break:break-all;font-weight:600;margin-top:2px}
+  .card-pix-chave.mini{font-size:7px}
+
   /* ── PRINT ─────────────────────────────────────── */
   @media print{
     body{background:#fff!important;padding:0}
@@ -150,6 +161,15 @@
           📱 Aponte a câmera para o QR Code<br>
           Acessa direto — sem baixar nada!
         </div>
+        {% if b.pix_key %}
+        <div class="card-pix">
+          💳 Pagamento via PIX{% if b.requer_pix %} · <strong>obrigatório</strong>{% endif %}
+          <div class="card-pix-chave">{{ b.pix_key }}</div>
+          {% if b.pix_nome_recebedor and b.pix_nome_recebedor != b.nome %}
+          <div style="font-size:8px;color:#16a34a;margin-top:1px">{{ b.pix_nome_recebedor }}</div>
+          {% endif %}
+        </div>
+        {% endif %}
         <div class="card-nome">{{ b.nome }}</div>
       </div>
       {% endfor %}
@@ -204,6 +224,12 @@ function setTamanho(t, btn) {
     });
     card.querySelectorAll('.card-nome').forEach(el => {
       el.className = 'card-nome' + (cfg.cls ? ' ' + cfg.cls : '');
+    });
+    card.querySelectorAll('.card-pix').forEach(el => {
+      el.className = 'card-pix' + (cfg.cls ? ' ' + cfg.cls : '');
+    });
+    card.querySelectorAll('.card-pix-chave').forEach(el => {
+      el.className = 'card-pix-chave' + (cfg.cls ? ' ' + cfg.cls : '');
     });
   });
 }
