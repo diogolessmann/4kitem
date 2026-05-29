@@ -920,6 +920,16 @@ def jukebox(token):
                 tipo_emoji = precos_bar[tipo]['emoji']
 
                 if usar_pix:
+                    # ── Incremento de centavos por pedido — facilita identificação no extrato ─
+                    # Conta pedidos de hoje para determinar o offset (+N centavos)
+                    conn_off = get_pubshow_db()
+                    _offset = conn_off.execute(
+                        "SELECT COUNT(*) FROM pubshow_pedidos WHERE business_id=? AND date(created_at)=date('now','localtime')",
+                        (b['id'],)
+                    ).fetchone()[0]
+                    conn_off.close()
+                    preco_final = round(preco + _offset * 0.01, 2)
+
                     # ── Cria pedido como aguardando_pix (sem asaas_payment_id ainda) ─
                     txid = f'P{b["id"]}T{int(datetime.now().timestamp())}'
                     conn2 = get_pubshow_db()
@@ -929,7 +939,7 @@ def jukebox(token):
                             youtube_id, titulo_pedido, thumb_url, ip_cliente, pix_txid)
                            VALUES (?,?,?,?,?,?,?,?,?,?,?,?)''',
                         (b['id'], tipo, nome_cliente, mensagem, categoria,
-                         'aguardando_pix', preco,
+                         'aguardando_pix', preco_final,
                          youtube_id or None, titulo_pedido or None, thumb_url or None,
                          ip_cliente, txid)
                     )
@@ -940,7 +950,7 @@ def jukebox(token):
                     descricao_pedido = tipo_nome
                     if titulo_pedido:
                         descricao_pedido += f' — {titulo_pedido[:40]}'
-                    asaas_data = _asaas_criar_cobranca_pix_jukebox(b, pedido_id, preco, descricao_pedido)
+                    asaas_data = _asaas_criar_cobranca_pix_jukebox(b, pedido_id, preco_final, descricao_pedido)
 
                     if asaas_data:
                         # Asaas gerou QR — salva payment_id e usa payload do Asaas
@@ -957,7 +967,7 @@ def jukebox(token):
                         pix_payload = _pix_emv(
                             b['pix_key'], b['pix_tipo'] or 'telefone',
                             b['pix_nome_recebedor'] or b['nome'],
-                            preco, txid
+                            preco_final, txid
                         )
                         pix_qr = _pix_qr_b64(pix_payload)
                         conn3 = get_pubshow_db()
@@ -973,14 +983,14 @@ def jukebox(token):
                         f'🎵 *Novo pedido PIX aguardando!*{hh_txt}\n'
                         f'{tipo_emoji} {tipo_nome}\n'
                         f'👤 {nome_cliente}\n'
-                        f'💰 R$ {preco:.2f}\n'
+                        f'💰 R$ {preco_final:.2f}\n'
                         f'📋 Acesse o painel para confirmar.')
 
                     pix_pendente = {
                         'pedido_id':  pedido_id,
                         'payload':    pix_payload,
                         'qr_b64':     pix_qr,
-                        'valor':      preco,
+                        'valor':      preco_final,
                         'recebedor':  b['pix_nome_recebedor'] or b['nome'],
                         'tipo_nome':  tipo_nome,
                         'tipo_emoji': tipo_emoji,
@@ -989,13 +999,25 @@ def jukebox(token):
                     sucesso = None
                 else:
                     # ── Fluxo direto (sem PIX ou PIX não exigido) ─────────────
+                    # Aplica offset de centavos se bar tem PIX configurado (manual)
+                    if b.get('pix_key'):
+                        conn_off2 = get_pubshow_db()
+                        _offset2 = conn_off2.execute(
+                            "SELECT COUNT(*) FROM pubshow_pedidos WHERE business_id=? AND date(created_at)=date('now','localtime')",
+                            (b['id'],)
+                        ).fetchone()[0]
+                        conn_off2.close()
+                        preco_direto = round(preco + _offset2 * 0.01, 2)
+                    else:
+                        preco_direto = preco
+
                     conn2 = get_pubshow_db()
                     conn2.execute(
                         '''INSERT INTO pubshow_pedidos
                            (business_id, tipo, nome_cliente, mensagem, categoria, status, valor,
                             youtube_id, titulo_pedido, thumb_url, ip_cliente)
                            VALUES (?,?,?,?,?,?,?,?,?,?,?)''',
-                        (b['id'], tipo, nome_cliente, mensagem, categoria, 'pendente', preco,
+                        (b['id'], tipo, nome_cliente, mensagem, categoria, 'pendente', preco_direto,
                          youtube_id or None, titulo_pedido or None, thumb_url or None, ip_cliente)
                     )
                     conn2.commit(); conn2.close()
@@ -1009,7 +1031,7 @@ def jukebox(token):
                         f'👤 {nome_cliente}'
                         + (f'\n📝 {mensagem}' if mensagem else '')
                         + (f'\n🎶 {titulo_pedido}' if titulo_pedido else '')
-                        + f'\n💰 R$ {preco:.2f}')
+                        + f'\n💰 R$ {preco_direto:.2f}')
 
     # Fila atual (últimos 5 pedidos pendentes)
     conn3 = get_pubshow_db()
@@ -1021,6 +1043,19 @@ def jukebox(token):
     ).fetchall()
     canal        = CANAIS.get(b['canal_atual'], CANAIS['rock'])
     total_videos = conn3.execute('SELECT COUNT(*) FROM pubshow_videos WHERE ativo=1').fetchone()[0]
+
+    # PIX cent offset — cada pedido do dia recebe +N centavos para identificação no extrato
+    # Ex: 1º pedido = R$5,00 / 2º = R$5,01 / 3º = R$5,02 ...
+    pix_offset = 0
+    if b.get('pix_key'):
+        try:
+            pix_offset = conn3.execute(
+                "SELECT COUNT(*) FROM pubshow_pedidos WHERE business_id=? AND date(created_at)=date('now','localtime')",
+                (b['id'],)
+            ).fetchone()[0]
+        except Exception:
+            pix_offset = 0
+
     conn3.close()
 
     return render_template('pubshow/jukebox.html',
@@ -1033,7 +1068,8 @@ def jukebox(token):
                            pix_pendente=pix_pendente,
                            total_videos=total_videos,
                            aberto=aberto, motivo_fechado=motivo_fechado,
-                           aviso=aviso, token=token)
+                           aviso=aviso, token=token,
+                           pix_offset=pix_offset)
 
 
 @pubshow_bp.route('/jukebox/<token>/ja-paguei/<int:pedido_id>', methods=['POST'])

@@ -562,6 +562,7 @@ const CANAIS_JS = {{ canais | tojson }};
 const VIDEOS = {{ videos | tojson }};
 let videoIdx        = Math.floor(Math.random() * Math.min(VIDEOS.length, 5));
 let _videosPlayed   = 0;   // contador de vídeos tocados — trigger de propaganda
+let _pedidoYtId     = null; // youtube_id do pedido específico em carregamento (null = nenhum)
 let _anuncioIdx     = 0;   // qual slide mostrar agora
 let overlayAtivo    = false;
 let pedidoAtual  = null;
@@ -773,8 +774,9 @@ function onPlayerStateChange(e) {
   // YT.PlayerState.PLAYING = 1 — vídeo tocando, cancela detector de stall
   if (e.data === 1) {
     clearTimeout(stallTimer);
-    _loopGuard = 0;  // vídeo tocou de verdade → zera o guard
-    _skipCount = 0;
+    _loopGuard  = 0;      // vídeo tocou de verdade → zera o guard
+    _skipCount  = 0;
+    _pedidoYtId = null;   // pedido carregou com sucesso
     agendarProximoCard();
   }
   // YT.PlayerState.BUFFERING = 3 — reinicia o detector (pode estar carregando)
@@ -801,24 +803,34 @@ function onPlayerError(e) {
   setTimeout(_pularVideo, 600);
 }
 
-function iniciarStallDetector() {
-  // Se após 2.5s ainda não está tocando, vídeo está travado ou indisponível
+function iniciarStallDetector(delayMs) {
+  // Se após delayMs ainda não está tocando, vídeo está travado ou indisponível
+  // Pedidos específicos usam timeout maior (8s) para dar tempo ao YouTube de carregar
+  const delay = delayMs || 2500;
   clearTimeout(stallTimer);
   stallTimer = setTimeout(() => {
     if (!player) return;
     const state = player.getPlayerState();
     // -1=unstarted, 2=paused/indisponível, 5=cued — não começou a tocar
     if (state === -1 || state === 2 || state === 5) {
-      console.warn('Stall detectado (state=' + state + ') → pulando...');
+      console.warn('Stall detectado (state=' + state + ', delay=' + delay + 'ms) → pulando...');
       _pularVideo();
     }
-  }, 2500);
+  }, delay);
 }
 
 // Pula para o próximo vídeo por erro/stall — NÃO conta como vídeo tocado
 // (evita acionar slide de propaganda durante recuperação de erro)
 function _pularVideo() {
   clearTimeout(stallTimer);
+  if (_pedidoYtId) {
+    // Stall num pedido específico — não marca nenhum vídeo da biblioteca como ruim
+    // Apenas cancela o pedido e retoma o fluxo normal
+    console.warn('Pedido específico (' + _pedidoYtId + ') não carregou → retomando biblioteca');
+    _pedidoYtId = null;
+    proximoVideoOuSlide();
+    return;
+  }
   _marcarVideoRuim();
   _skipCount++;
   videoIdx = (videoIdx + 1) % VIDEOS.length;
@@ -835,13 +847,14 @@ function avancarFila() {
 
     if (p.youtube_id) {
       // 🎯 Música específica — toca o vídeo exato pedido pelo cliente
+      _pedidoYtId = p.youtube_id; // flag para stall detector não marcar vídeos como ruins
       player.loadVideoById(p.youtube_id);
       atualizarNowPlaying({
         titulo:  p.titulo_pedido || '🎯 Pedido especial',
         artista: `pedido por ${p.nome_cliente || 'alguém'}`,
       });
       esconderNowPlayingComDelay();
-      iniciarStallDetector(); // detecta se o vídeo pedido tem embedding bloqueado
+      iniciarStallDetector(8000); // 8s para pedidos — YouTube demora mais que 2.5s para carregar
     } else {
       proximoVideoOuSlide();
     }

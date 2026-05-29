@@ -592,6 +592,9 @@ async function jaPaguei() {
 const PRECOS     = {{ tipos | tojson }};
 const TOTAL_VIDS = {{ total_videos }};
 const BAR_TOKEN  = '{{ b.jukebox_token or b.code }}';
+// Offset de centavos do dia — identifica cada pedido no extrato PIX
+// Ex: pix_offset=3 → preço exibido = R$5,03 (3º pedido do dia)
+const PIX_OFFSET = {{ pix_offset | default(0) }};
 let tipoAtual    = '';
 let modosBusca   = 'biblioteca'; // 'biblioteca' | 'youtube'
 let buscaTimer   = null;
@@ -607,11 +610,17 @@ function toggleMaisOpcoes(btn) {
 }
 
 // ── Grid ──────────────────────────────────────────────────────────────────────
+function _precoComOffset(preco) {
+  // Adiciona centavos de identificação ao preço PIX (ex: R$5,00 → R$5,03)
+  return Math.round((preco + PIX_OFFSET * 0.01) * 100) / 100;
+}
+
 function selecionarTipo(key, nome, emoji, preco, cor) {
   tipoAtual = key;
   document.getElementById('inp-tipo').value  = key;
   document.getElementById('form-title').innerHTML = `${emoji} ${nome}`;
-  document.getElementById('pix-valor').textContent = 'R$ ' + preco.toFixed(2).replace('.', ',');
+  const precoFinal = _precoComOffset(preco);
+  document.getElementById('pix-valor').textContent = 'R$ ' + precoFinal.toFixed(2).replace('.', ',');
 
   const especiais = ['parabens','dedicatoria','brinde','chegada','casamento'];
   const mgr = document.getElementById('msg-group');
@@ -814,7 +823,8 @@ function confirmarMusica() {
   document.getElementById('prev-sub').textContent    = videoSel.sub;
   document.getElementById('musica-preview').style.display = 'block';
 
-  document.getElementById('pix-valor').textContent   = 'R$ ' + preco.toFixed(2).replace('.', ',');
+  const precoFinalBusca = _precoComOffset(preco);
+  document.getElementById('pix-valor').textContent   = 'R$ ' + precoFinalBusca.toFixed(2).replace('.', ',');
   document.getElementById('form-title').innerHTML    = PRECOS[tipo].emoji + ' ' + PRECOS[tipo].nome;
   document.getElementById('msg-group').style.display = 'none';
   document.getElementById('btn-confirmar').style.background = `linear-gradient(135deg,${cor},${cor}cc)`;
