@@ -999,8 +999,8 @@ function proximoVideoOuSlide() {
   }
 }
 
-function mostrarSlide(slide, onEnd) {
-  const duracao = 8000; // 8 segundos
+function mostrarSlide(slide, onEnd, duracaoMs) {
+  const duracao = duracaoMs || 8000; // 8s padrão (bar), 15s para sistema
   const el     = document.getElementById('slide-propaganda');
   const box    = document.getElementById('slide-box');
   const imgBox = document.getElementById('slide-img-box');
@@ -1073,7 +1073,7 @@ function _mostrarSlidesSistemaSeq(idx) {
     _agendarSlidesSistema();
     return;
   }
-  mostrarSlide(SLIDES_SISTEMA[idx], () => _mostrarSlidesSistemaSeq(idx + 1));
+  mostrarSlide(SLIDES_SISTEMA[idx], () => _mostrarSlidesSistemaSeq(idx + 1), 15000);
 }
 
 function lancarConfetes(corPrincipal) {

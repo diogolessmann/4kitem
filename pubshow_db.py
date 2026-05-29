@@ -207,6 +207,9 @@ def _seed_slides_sistema(conn):
         # (url, ordem)
         ('/static/pubshow/slides/slide1.png', 1),
         ('/static/pubshow/slides/slide2.png', 2),
+        ('/static/pubshow/slides/slide3.png', 3),
+        ('/static/pubshow/slides/slide4.png', 4),
+        ('/static/pubshow/slides/slide5.png', 5),
     ]
     for url, ordem in slides_padrao:
         # Só insere se ainda não existe um slide com essa url
