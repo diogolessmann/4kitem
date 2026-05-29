@@ -158,6 +158,17 @@ def init_pubshow_db():
             try: conn.rollback()
             except: pass
 
+    # ── Migração de dados: normaliza planos antigos ──────────────────────────────
+    # "premium" era o plano antigo R$249 → equivale ao Pro atual
+    # "bar_129" ou qualquer outra variante → bar
+    try:
+        conn.execute("UPDATE pubshow_businesses SET plano='pro' WHERE plano='premium'")
+        conn.execute("UPDATE pubshow_assinaturas SET plano='pro' WHERE plano='premium'")
+        conn.commit()
+    except Exception:
+        try: conn.rollback()
+        except: pass
+
     # Seed da biblioteca de vídeos — INSERT OR IGNORE, seguro rodar sempre
     _seed_videos(conn)
 
