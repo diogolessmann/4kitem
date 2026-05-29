@@ -1,4 +1,4 @@
-{% extends "despachante/base.html" %}
+﻿{% extends "despachante/base.html" %}
 
 {% block title %}Retenção de Clientes · Lessmann{% endblock %}
 {% block topbar_title %}🔄 Retenção de Clientes{% endblock %}
@@ -159,7 +159,7 @@
             {% if d.telefone %}
             {% set tel = d.telefone | replace('(','') | replace(')','') | replace(' ','') | replace('-','') %}
             {% set nome1 = (d.nome or 'cliente').split()[0] %}
-            {% set msg = 'Olá ' ~ nome1 ~ '! Sou o Diogo da Despachante Lessmann. Passando para lembrar que seu ' ~ servicos.get(d.servico, d.servico) ~ ' (' ~ (d.placa or '') ~ ') vence em ' ~ (ano + 1) ~ '. Podemos cuidar de tudo para você! (47) 99101-1351' %}
+            {% set msg = 'Olá ' ~ nome1 ~ '! Sou o Diogo da Despachante Lessmann. Passando para lembrar que seu ' ~ servicos.get(d.servico, d.servico) ~ ' (' ~ (d.placa or '') ~ ') vence em ' ~ (ano + 1) ~ '. Podemos cuidar de tudo para você! (47) 99960-6998' %}
             <a href="https://wa.me/55{{ tel }}?text={{ msg | urlencode }}"
                target="_blank" class="zap-link">
               💬 WhatsApp

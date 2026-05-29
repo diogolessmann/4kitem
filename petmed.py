@@ -1,4 +1,4 @@
-"""
+﻿"""
 petmed.py — Blueprint PETmed
 Triagem veterinária inteligente 24/7
 """
@@ -326,7 +326,7 @@ def _email_consulta_avulsa_ativada(primeiro_nome: str) -> str:
   <hr style="border:none;border-top:1px solid #222;margin:28px 0">
   <p style="font-size:11px;color:#555;margin:0;line-height:1.6">
     4KITEM · VetZap · <a href="https://4kitem.com.br" style="color:#10b981">4kitem.com.br</a><br>
-    Dúvidas? WhatsApp: <a href="https://wa.me/5547991011351" style="color:#10b981">(47) 99101-1351</a>
+    Dúvidas? WhatsApp: <a href="https://wa.me/5547999606998" style="color:#10b981">(47) 99960-6998</a>
   </p>
 </td></tr>
 </table>
@@ -366,7 +366,7 @@ def _email_pagamento_confirmado_petmed(primeiro_nome: str, plano_nome: str, prec
   <hr style="border:none;border-top:1px solid #222;margin:28px 0">
   <p style="font-size:11px;color:#555;margin:0;line-height:1.6">
     4KITEM · VetZap · <a href="https://4kitem.com.br" style="color:#0ea5e9">4kitem.com.br</a><br>
-    Dúvidas? WhatsApp: <a href="https://wa.me/5547991011351" style="color:#0ea5e9">(47) 99101-1351</a>
+    Dúvidas? WhatsApp: <a href="https://wa.me/5547999606998" style="color:#0ea5e9">(47) 99960-6998</a>
   </p>
 </td></tr>
 </table>
@@ -996,7 +996,7 @@ def consulta_agora():
                         erro = desc[0].get('description', 'Erro ao gerar pagamento.') if desc else 'Erro ao gerar pagamento.'
             except Exception as ex:
                 log.error('[PETmed] Erro consulta avulsa: %s', ex, exc_info=True)
-                erro = 'Erro ao processar. Tente novamente ou contate (47) 99101-1351'
+                erro = 'Erro ao processar. Tente novamente ou contate (47) 99960-6998'
     return render_template('petmed/consulta_checkout.html',
                            u=u, c=CONSULTA_AVULSA, erro=erro)
 
@@ -1268,10 +1268,10 @@ def cadastrar():
                         log.error('[PETmed] Falha ao recriar banco: %s', _re)
                     erro = 'Sistema reiniciado. Por favor, tente cadastrar novamente.'
                 elif 'no column' in str(ex).lower():
-                    erro = 'Erro de estrutura no banco de dados. Contate o suporte: (47) 99101-1351'
+                    erro = 'Erro de estrutura no banco de dados. Contate o suporte: (47) 99960-6998'
                     log.critical('[PETmed] COLUNA INEXISTENTE: %s', ex)
                 else:
-                    erro = f'Erro ao criar conta: {ex}. Tente novamente ou contate (47) 99101-1351'
+                    erro = f'Erro ao criar conta: {ex}. Tente novamente ou contate (47) 99960-6998'
 
             if _u_id:
                 session['pm_user_id']   = _u_id

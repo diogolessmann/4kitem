@@ -1,4 +1,4 @@
-"""
+﻿"""
 desp_rag.py — IA do Despachante Lessmann
 RAG com base de conhecimento embutida (CTB, DETRAN-SC, SC normativas) +
 suporte a documentos do usuário (PDF, DOCX).
@@ -655,7 +655,7 @@ PERFIL DO ESCRITÓRIO:
 - CNPJ: 28.858.795/0001-92 | CPF: 060.625.099-99
 - Localização: Schroeder/SC — CITRAN Guaramirim
 - Atende: Schroeder, Guaramirim, Jaraguá do Sul, Massaranduba, Corupá e região Norte SC
-- WhatsApp: (47) 99101-1351
+- WhatsApp: (47) 99960-6998
 - Serviços: transferências, licenciamentos, CNH, ANTT, RNTRC, procurações, baixas, inventários, etc.
 
 SUA ESPECIALIDADE:

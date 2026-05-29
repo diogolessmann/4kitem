@@ -1,4 +1,4 @@
-{% extends 'petmed/base.html' %}
+﻿{% extends 'petmed/base.html' %}
 {% set active = 'teleconsulta' %}
 {% block title %}Teleconsulta — VetZap{% endblock %}
 {% block content %}
@@ -40,7 +40,7 @@
     <div class="empty" style="padding:32px">
       <div class="icon">👨‍⚕️</div>
       <p style="margin-bottom:12px">Nenhum veterinário disponível no momento.</p>
-      <a href="https://wa.me/5547991011351?text=Olá!%20Sou%20assinante%20Premium%20do%20VetZap%20e%20gostaria%20de%20agendar%20uma%20teleconsulta." target="_blank" style="display:inline-block;padding:10px 20px;background:linear-gradient(135deg,#25d366,#128c7e);border-radius:100px;color:#fff;font-size:13px;font-weight:700;text-decoration:none">💬 Solicitar via WhatsApp</a>
+      <a href="https://wa.me/5547999606998?text=Olá!%20Sou%20assinante%20Premium%20do%20VetZap%20e%20gostaria%20de%20agendar%20uma%20teleconsulta." target="_blank" style="display:inline-block;padding:10px 20px;background:linear-gradient(135deg,#25d366,#128c7e);border-radius:100px;color:#fff;font-size:13px;font-weight:700;text-decoration:none">💬 Solicitar via WhatsApp</a>
     </div>
     {% endif %}
   </div>
@@ -75,7 +75,7 @@
 <script>
 function solicitarConsulta(vetId, vetNome) {
   const msg = encodeURIComponent('Olá! Sou assinante Premium do VetZap e gostaria de agendar uma teleconsulta com Dr(a). ' + vetNome + '.');
-  window.open('https://wa.me/5547991011351?text=' + msg, '_blank');
+  window.open('https://wa.me/5547999606998?text=' + msg, '_blank');
 }
 </script>
 {% endblock %}
