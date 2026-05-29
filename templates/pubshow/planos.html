@@ -25,7 +25,7 @@
   .jukebox-box{display:inline-flex;align-items:center;gap:10px;background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.25);border-radius:100px;padding:10px 22px;font-size:14px;color:#4ade80;font-weight:700;margin-bottom:40px}
 
   /* PLANS GRID */
-  .plans{max-width:1000px;margin:0 auto;padding:0 24px;display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+  .plans{max-width:1100px;margin:0 auto;padding:0 24px;display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:20px}
   .plan{background:#13131f;border:1px solid rgba(255,255,255,.08);border-radius:20px;padding:28px;position:relative;transition:.2s}
   .plan:hover{transform:translateY(-4px);border-color:rgba(255,255,255,.16)}
   .plan.destaque{border-color:rgba(239,68,68,.5);background:linear-gradient(180deg,#1a0a0a,#13131f)}
@@ -99,9 +99,15 @@
       <li {% if 'Jukebox' in f or '100%' in f %}class="highlight"{% endif %}>{{ f }}</li>
       {% endfor %}
     </ul>
+    {% if session.pub_business_id %}
+    <a href="/pubshow/assinar/{{ key }}" class="btn-plan {% if p.get('destaque') %}primary{% else %}secondary{% endif %}">
+      Assinar {{ p.nome }} →
+    </a>
+    {% else %}
     <a href="/pubshow/cadastro?plano={{ key }}" class="btn-plan {% if p.get('destaque') %}primary{% else %}secondary{% endif %}">
       Começar grátis →
     </a>
+    {% endif %}
   </div>
   {% endfor %}
 </div>
@@ -116,11 +122,11 @@
     </p>
     <div class="jukebox-numbers">
       <div class="jk-num">
-        <div class="jk-val">R$ 101</div>
+        <div class="jk-val">R$ 150+</div>
         <div class="jk-label">numa boa sexta-feira</div>
       </div>
       <div class="jk-num">
-        <div class="jk-val">R$ 89,90</div>
+        <div class="jk-val">{{ planos.bar.preco_fmt }}</div>
         <div class="jk-label">mensalidade do plano Bar</div>
       </div>
       <div class="jk-num">
