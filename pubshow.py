@@ -816,9 +816,28 @@ def tv(code):
         canais_tv = canais_plano
     try:    anuncios = _json.loads(b['anuncios_json'] or '[]')
     except: anuncios = []
+
+    # Gera QR do Jukebox server-side — mais confiável que API externa
+    _jk_token = b['jukebox_token'] or b['code']
+    _jk_url   = f"https://4kitem.com.br/pubshow/jukebox/{_jk_token}"
+    try:
+        import qrcode as _qrcode, io as _io, base64 as _base64
+        _qr = _qrcode.QRCode(version=None,
+                              error_correction=_qrcode.constants.ERROR_CORRECT_M,
+                              box_size=7, border=2)
+        _qr.add_data(_jk_url)
+        _qr.make(fit=True)
+        _img = _qr.make_image(fill_color='black', back_color='white')
+        _buf = _io.BytesIO()
+        _img.save(_buf, format='PNG')
+        tv_qr_b64 = _base64.b64encode(_buf.getvalue()).decode()
+    except Exception:
+        tv_qr_b64 = None
+
     return render_template('pubshow/tv.html', b=dict(b), canal=canal,
                            canal_key=canal_key, videos=videos, canais=canais_tv,
-                           anuncios=anuncios)
+                           anuncios=anuncios, tv_qr_b64=tv_qr_b64,
+                           jukebox_url=_jk_url)
 
 
 # ── JUKEBOX MOBILE (cliente do bar escaneia QR) ───────────────────────────────
@@ -1550,9 +1569,9 @@ def painel_qrcode():
     if not b:
         return redirect('/pubshow/entrar')
 
-    # URL pública do Jukebox — sempre www para evitar erro de certificado SSL
+    # URL pública do Jukebox — sem www (www. perde o path no redirect do Railway)
     token = b['jukebox_token'] or b['code']
-    jukebox_url = f"https://www.4kitem.com.br/pubshow/jukebox/{token}"
+    jukebox_url = f"https://4kitem.com.br/pubshow/jukebox/{token}"
 
     # Gera QR como PNG base64
     try:

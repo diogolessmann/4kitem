@@ -331,7 +331,11 @@
 
 <!-- QR code fixo — canto inferior esquerdo, aparece após ativar som -->
 <div id="qr-fixo">
-  <img src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&color=ffffff&bgcolor=00000000&data={{ request.host_url }}pubshow/jukebox/{{ b.jukebox_token or b.code }}" alt="QR Jukebox">
+  {% if tv_qr_b64 %}
+  <img src="data:image/png;base64,{{ tv_qr_b64 }}" alt="QR Jukebox" style="border-radius:8px">
+  {% else %}
+  <img src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&color=000000&bgcolor=ffffff&data={{ jukebox_url }}" alt="QR Jukebox" style="border-radius:8px">
+  {% endif %}
   <div class="qr-txt">
     <strong>📱 Peça uma música</strong>
     <span>Escaneie e pague<br>pelo celular via PIX</span>
@@ -397,7 +401,7 @@
     <div class="overlay-de" id="ov-de"></div>
     <div class="overlay-bar" id="ov-bar"></div>
     <div class="overlay-qr-viral">
-      <img src="https://api.qrserver.com/v1/create-qr-code/?size=112x112&color=ffffff&bgcolor=00000000&data={{ request.host_url }}pubshow/jukebox/{{ b.jukebox_token or b.code }}" alt="QR">
+      {% if tv_qr_b64 %}<img src="data:image/png;base64,{{ tv_qr_b64 }}" alt="QR" style="width:56px;height:56px;border-radius:6px">{% else %}<img src="https://api.qrserver.com/v1/create-qr-code/?size=112x112&color=000000&bgcolor=ffffff&data={{ jukebox_url }}" alt="QR">{% endif %}
       <span><strong>Crie o seu momento!</strong>Escaneie e peça<br>parabéns, dedicatória...</span>
     </div>
   </div>
