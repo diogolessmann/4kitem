@@ -710,6 +710,14 @@ def recuperar_senha_form(token):
     return render_template('pubshow/recuperar_form.html', token=token, erro=erro)
 
 
+@pubshow_bp.route('/bem-vindo')
+@pubshow_login_required
+def bem_vindo():
+    """Página de onboarding pós-cadastro — guia o bar pelos primeiros passos."""
+    b = _get_business()
+    return render_template('pubshow/bem_vindo.html', b=dict(b), planos=PLANOS, canais=CANAIS)
+
+
 @pubshow_bp.route('/cadastro', methods=['GET', 'POST'])
 def cadastro():
     if session.get('pub_business_id'):
@@ -770,7 +778,7 @@ def cadastro():
                     session['pub_business_id']   = b['id']
                     session['pub_business_nome'] = b['nome']
                     session['pub_canal']         = b['canal_atual']
-                    return redirect('/pubshow/painel')
+                    return redirect('/pubshow/bem-vindo')
                 except Exception as ex:
                     if 'UNIQUE' in str(ex):
                         erro = 'Este e-mail já está cadastrado. Faça login.'
@@ -2329,6 +2337,54 @@ def assinar(plano):
 def aguardando():
     b = _get_business()
     return render_template('pubshow/aguardando.html', b=dict(b))
+
+
+@pubshow_bp.route('/painel/cancelar', methods=['GET', 'POST'])
+@pubshow_login_required
+def painel_cancelar():
+    """Cancelamento de assinatura pelo próprio bar."""
+    b = _get_business()
+    bd = dict(b)
+    conn = get_pubshow_db()
+    ass = conn.execute(
+        'SELECT * FROM pubshow_assinaturas WHERE business_id=?', (b['id'],)
+    ).fetchone()
+    conn.close()
+
+    if request.method == 'POST':
+        confirmacao = request.form.get('confirmar', '').strip().upper()
+        if confirmacao != 'CANCELAR':
+            return render_template('pubshow/cancelar.html', b=bd, ass=dict(ass) if ass else None,
+                                   erro='Digite CANCELAR para confirmar.')
+        # Tenta cancelar no Asaas
+        if ass and ass.get('asaas_subscription_id'):
+            try:
+                _asaas_req('DELETE', f'/subscriptions/{ass["asaas_subscription_id"]}', {})
+            except Exception as ex:
+                log.warning('[PUBSHOW] Erro ao cancelar Asaas: %s', ex)
+        # Marca como cancelado no banco
+        conn2 = get_pubshow_db()
+        if ass:
+            conn2.execute(
+                "UPDATE pubshow_assinaturas SET status='cancelado' WHERE business_id=?", (b['id'],)
+            )
+        conn2.execute(
+            'UPDATE pubshow_businesses SET plano_ativo=0 WHERE id=?', (b['id'],)
+        )
+        conn2.commit(); conn2.close()
+        log.info('[PUBSHOW] Assinatura cancelada por business_id=%s', b['id'])
+        # Notifica admin via WhatsApp
+        _pubshow_send_wa(
+            os.environ.get('PUBSHOW_ADMIN_PHONE', ''),
+            f'⚠️ *PUBSHOW — Cancelamento*\n'
+            f'Bar: {b["nome"]}\n'
+            f'E-mail: {b["email"]}\n'
+            f'Plano: {b.get("plano","—")}\n'
+            f'Data: {datetime.now().strftime("%d/%m/%Y %H:%M")}'
+        )
+        return redirect('/pubshow/painel?ok=cancelamento')
+
+    return render_template('pubshow/cancelar.html', b=bd, ass=dict(ass) if ass else None, erro='')
 
 
 @pubshow_bp.route('/planos')

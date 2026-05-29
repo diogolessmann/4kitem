@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bem-vindo ao PUBSHOW 🎉</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:#08080f;color:#f0f0ff;font-family:'Inter',sans-serif;min-height:100vh;padding:0 0 80px}
+  nav{background:#13131f;border-bottom:1px solid rgba(255,255,255,.08);padding:0 24px;height:56px;display:flex;align-items:center;justify-content:space-between}
+  .logo{font-size:18px;font-weight:900;background:linear-gradient(135deg,#ef4444,#f97316);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+  .skip{font-size:12px;color:#8888aa;text-decoration:none}
+  .skip:hover{color:#f0f0ff}
+
+  .hero{text-align:center;padding:48px 24px 40px;max-width:600px;margin:0 auto}
+  .hero-emoji{font-size:64px;margin-bottom:16px}
+  .hero h1{font-size:clamp(26px,5vw,40px);font-weight:900;letter-spacing:-1.5px;line-height:1.1;margin-bottom:12px}
+  .hero h1 span{background:linear-gradient(135deg,#ef4444,#f97316);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+  .hero p{font-size:15px;color:#8888aa;line-height:1.7}
+
+  .steps{max-width:700px;margin:0 auto;padding:0 24px}
+
+  .step-card{background:#13131f;border:1px solid rgba(255,255,255,.08);border-radius:20px;padding:28px;margin-bottom:16px;display:flex;gap:20px;align-items:flex-start}
+  .step-num{width:44px;height:44px;border-radius:14px;background:linear-gradient(135deg,#ef4444,#f97316);display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:900;flex-shrink:0;color:#fff}
+  .step-num.done{background:linear-gradient(135deg,#22c55e,#16a34a)}
+  .step-body{flex:1}
+  .step-title{font-size:17px;font-weight:800;margin-bottom:4px}
+  .step-desc{font-size:13px;color:#8888aa;line-height:1.6;margin-bottom:14px}
+  .step-action{display:inline-flex;align-items:center;gap:6px;padding:10px 20px;border-radius:10px;font-size:13px;font-weight:700;text-decoration:none;transition:.15s}
+  .btn-primary{background:linear-gradient(135deg,#ef4444,#f97316);color:#fff}
+  .btn-primary:hover{opacity:.9}
+  .btn-outline{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:#c8c8e8}
+  .btn-outline:hover{background:rgba(255,255,255,.1)}
+  .step-done-badge{display:inline-flex;align-items:center;gap:4px;font-size:12px;color:#4ade80;font-weight:700}
+
+  /* TV preview */
+  .tv-preview{background:#0a0a14;border:2px solid rgba(255,255,255,.1);border-radius:12px;padding:12px;font-size:11px;color:#8888aa;font-family:monospace;margin-top:10px}
+  .tv-url{color:#a78bfa;word-break:break-all}
+
+  /* Trial badge */
+  .trial-card{background:linear-gradient(135deg,rgba(249,115,22,.1),rgba(234,179,8,.06));border:1px solid rgba(249,115,22,.25);border-radius:20px;padding:24px;margin-bottom:16px;text-align:center}
+  .trial-card h3{font-size:18px;font-weight:800;color:#fb923c;margin-bottom:6px}
+  .trial-card p{font-size:13px;color:#8888aa;line-height:1.6}
+
+  /* CTA final */
+  .cta-final{max-width:600px;margin:32px auto 0;padding:0 24px;text-align:center}
+  .cta-btn{display:inline-flex;align-items:center;gap:8px;padding:16px 36px;background:linear-gradient(135deg,#ef4444,#f97316);color:#fff;font-size:16px;font-weight:800;border-radius:14px;text-decoration:none;box-shadow:0 0 40px rgba(239,68,68,.25)}
+  .cta-btn:hover{opacity:.9;transform:translateY(-2px)}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="logo">📺 PUBSHOW</div>
+  <a href="/pubshow/painel" class="skip">Pular para o painel →</a>
+</nav>
+
+<div class="hero">
+  <div class="hero-emoji">🎉</div>
+  <h1>Bem-vindo, <span>{{ b.nome }}!</span></h1>
+  <p>Seu Jukebox já está ativo. Siga os 4 passos abaixo e na mesma noite seus clientes já vão pagar via PIX pra tocar música.</p>
+</div>
+
+<div class="steps">
+
+  <!-- Trial ativo -->
+  <div class="trial-card">
+    <h3>⏱️ 7 dias de trial grátis ativados</h3>
+    <p>Teste tudo sem pagar nada. A cobrança só começa após o trial e você pode cancelar antes sem custo.</p>
+  </div>
+
+  <!-- Passo 1 — TV -->
+  <div class="step-card">
+    <div class="step-num">1</div>
+    <div class="step-body">
+      <div class="step-title">📺 Abra o player na TV do bar</div>
+      <div class="step-desc">Cole o link abaixo no navegador da sua Smart TV, Chromecast ou notebook conectado à TV. Os clips começam a tocar automaticamente.</div>
+      <div class="tv-preview">
+        Link da sua TV:<br>
+        <span class="tv-url">https://www.4kitem.com.br/pubshow/tv/{{ b.code }}</span>
+      </div>
+      <div style="margin-top:10px">
+        <a href="/pubshow/tv/{{ b.code }}" target="_blank" class="step-action btn-primary">📺 Testar agora →</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Passo 2 — PIX -->
+  <div class="step-card">
+    <div class="step-num">2</div>
+    <div class="step-body">
+      <div class="step-title">💰 Configure sua chave PIX</div>
+      <div class="step-desc">Para seus clientes pagarem, você precisa cadastrar uma chave PIX. O dinheiro cai direto na sua conta — o PUBSHOW não toca em nada.</div>
+      <a href="/pubshow/painel?aba=config#pix" class="step-action btn-primary">Configurar PIX →</a>
+    </div>
+  </div>
+
+  <!-- Passo 3 — QR Code -->
+  <div class="step-card">
+    <div class="step-num">3</div>
+    <div class="step-body">
+      <div class="step-title">📱 Imprima o QR Code para as mesas</div>
+      <div class="step-desc">Seus clientes escaneiam o QR com a câmera do celular e abrem o Jukebox. Sem app, sem cadastro. Imprima e cole nas mesas ou no balcão.</div>
+      <a href="/pubshow/painel/qrcode" class="step-action btn-primary">🖨️ Gerar QR Code →</a>
+    </div>
+  </div>
+
+  <!-- Passo 4 — Canal -->
+  <div class="step-card">
+    <div class="step-num">4</div>
+    <div class="step-body">
+      <div class="step-title">🎬 Escolha o canal certo para o seu bar</div>
+      <div class="step-desc">
+        Rock, Sertanejo, Pagode, Futebol, F1 — escolha o estilo que combina com o seu público.
+        {% if b.plano in ('starter',) %}
+        <br><span style="color:#f97316;font-size:12px">🌱 Starter: acesso aos canais de música.</span>
+        {% endif %}
+      </div>
+      <a href="/pubshow/painel?aba=tv" class="step-action btn-primary">🎬 Escolher canal →</a>
+    </div>
+  </div>
+
+</div>
+
+<div class="cta-final">
+  <a href="/pubshow/painel" class="cta-btn">🚀 Abrir o painel completo →</a>
+  <p style="font-size:12px;color:#8888aa;margin-top:16px">
+    Ficou em dúvida? <a href="https://wa.me/5547999606998?text=Acabei+de+criar+minha+conta+no+PUBSHOW" target="_blank" style="color:#f97316;font-weight:700">WhatsApp: (47) 99960-6998</a>
+  </p>
+</div>
+
+</body>
+</html>
