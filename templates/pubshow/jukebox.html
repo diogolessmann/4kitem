@@ -267,16 +267,24 @@
 
   <button class="btn-copiar-pix" onclick="copiarPayload()">📋 Copiar código PIX</button>
 
-  <div class="pix-status-box" id="pix-status-box">
+  <!-- Botão trust-based: entra direto na fila -->
+  <button class="btn-confirmar" id="btn-ja-paguei"
+          style="background:linear-gradient(135deg,#16a34a,#15803d);margin-bottom:16px"
+          onclick="jaPaguei()">
+    ✅ Já Paguei — Entrar na Fila
+  </button>
+
+  <div class="pix-status-box" id="pix-status-box" style="display:none">
     <div class="pix-status-icon">⏳</div>
-    <div class="pix-status-text"><span class="spinner"></span><span id="pix-status-text">Aguardando confirmação do pagamento...</span></div>
-    <div class="pix-status-sub" id="pix-status-sub">
-      {% if pix_pendente.via_asaas %}Confirmação automática após o pagamento{% else %}O estabelecimento confirma após receber o PIX{% endif %}
-    </div>
+    <div class="pix-status-text"><span class="spinner"></span><span id="pix-status-text">Confirmando...</span></div>
+    <div class="pix-status-sub" id="pix-status-sub">Verificando pagamento...</div>
   </div>
 </div>
 
 <script>
+const PIX_TOKEN     = '{{ b.jukebox_token or b.code }}';
+const PIX_PEDIDO_ID = {{ pix_pendente.pedido_id }};
+
 function copiarPayload() {
   const txt = document.getElementById('copiacola-val').textContent.trim();
   navigator.clipboard.writeText(txt).then(() => {
@@ -286,33 +294,37 @@ function copiarPayload() {
   });
 }
 
-(function pollPix() {
-  fetch('/pubshow/api/pedido-status/{{ pix_pendente.pedido_id }}')
-    .then(r => r.json())
-    .then(d => {
-      const box   = document.getElementById('pix-status-box');
-      const icon  = box.querySelector('.pix-status-icon');
-      const text  = document.getElementById('pix-status-text');
-      const sub   = document.getElementById('pix-status-sub');
-      if (d.status === 'pendente' || d.status === 'exibido') {
-        icon.textContent  = '✅';
-        text.innerHTML    = 'Pagamento confirmado! Pedido na fila 🎉';
-        text.style.color  = '#4ade80';
-        box.style.borderColor = 'rgba(34,197,94,.4)';
-        sub.textContent   = 'Aguarde — seu pedido aparece na tela em breve!';
-        box.querySelector('.spinner')?.remove();
-      } else if (d.status === 'dispensado') {
-        icon.textContent  = '❌';
-        text.innerHTML    = 'Pedido recusado pelo estabelecimento.';
-        text.style.color  = '#f87171';
-        sub.textContent   = 'Tente novamente ou fale com o responsável.';
-        box.querySelector('.spinner')?.remove();
-      } else {
-        setTimeout(pollPix, 4000);
-      }
-    })
-    .catch(() => setTimeout(pollPix, 6000));
-})();
+async function jaPaguei() {
+  const btn = document.getElementById('btn-ja-paguei');
+  btn.disabled = true;
+  btn.textContent = '⏳ Confirmando...';
+
+  try {
+    const r = await fetch(`/pubshow/jukebox/${PIX_TOKEN}/ja-paguei/${PIX_PEDIDO_ID}`, {method: 'POST'});
+    const d = await r.json();
+
+    if (d.ok) {
+      btn.remove();
+      document.querySelector('.btn-copiar-pix').style.display = 'none';
+      const box  = document.getElementById('pix-status-box');
+      const icon = box.querySelector('.pix-status-icon');
+      box.style.display = 'block';
+      icon.textContent  = '✅';
+      document.getElementById('pix-status-text').innerHTML = 'Pedido confirmado! Na fila 🎉';
+      document.getElementById('pix-status-text').style.color = '#4ade80';
+      document.getElementById('pix-status-sub').textContent = 'Aguarde — seu pedido aparece na tela em breve!';
+      box.style.borderColor = 'rgba(34,197,94,.4)';
+      box.querySelector('.spinner')?.remove();
+    } else {
+      btn.disabled = false;
+      btn.textContent = '✅ Já Paguei — Entrar na Fila';
+      alert(d.error || 'Erro ao confirmar. Tente novamente.');
+    }
+  } catch(e) {
+    btn.disabled = false;
+    btn.textContent = '✅ Já Paguei — Entrar na Fila';
+  }
+}
 </script>
 
 {% else %}
@@ -528,7 +540,21 @@ function copiarPayload() {
         placeholder="Aparece na tela do bar..." maxlength="80"></textarea>
     </div>
 
-    {% if b.pix_key %}
+    {% if b.requer_pix and b.pix_key %}
+    <div class="pix-box">
+      <div class="pix-title">💚 Pagamento via PIX</div>
+      <div class="pix-valor" id="pix-valor">R$ —</div>
+      <div style="font-size:12px;color:var(--text2);margin-top:6px;line-height:1.5">
+        Ao confirmar você verá o <strong style="color:#4ade80">QR code PIX</strong> para escanear com seu banco.
+        {% if b.pix_nome_recebedor %}<br>Recebedor: <strong style="color:var(--text)">{{ b.pix_nome_recebedor }}</strong>{% endif %}
+      </div>
+    </div>
+    <button type="submit" class="btn-confirmar" id="btn-confirmar"
+            style="background:linear-gradient(135deg,#16a34a,#15803d)">
+      📱 Ver QR para Pagar →
+    </button>
+    <p class="aviso-pix">Você verá o QR code PIX após confirmar. Só paga depois de ver o código.</p>
+    {% elif b.pix_key %}
     <div class="pix-box">
       <div class="pix-title">💚 Pague via PIX para o bar</div>
       <div class="pix-valor" id="pix-valor">R$ —</div>
@@ -537,16 +563,17 @@ function copiarPayload() {
       </div>
       <button type="button" class="btn-copy" onclick="copiarPix()">📋 Copiar chave PIX</button>
     </div>
+    <button type="submit" class="btn-confirmar" id="btn-confirmar">✅ Paguei! Confirmar pedido</button>
+    <p class="aviso-pix">Ao confirmar, você declara que realizou o pagamento.</p>
     {% else %}
     <div class="pix-box" style="border-color:#f59e0b44">
       <div class="pix-title" style="color:#f59e0b">💛 Pagamento no balcão</div>
       <div class="pix-valor" id="pix-valor" style="color:#fbbf24">R$ —</div>
       <div style="font-size:13px;color:var(--text2)">Pague o valor acima diretamente no caixa.</div>
     </div>
+    <button type="submit" class="btn-confirmar" id="btn-confirmar">✅ Confirmar pedido</button>
+    <p class="aviso-pix">Seu pedido entra na fila imediatamente.</p>
     {% endif %}
-
-    <button type="submit" class="btn-confirmar" id="btn-confirmar">✅ Paguei! Confirmar pedido</button>
-    <p class="aviso-pix">Ao confirmar, você declara que realizou o pagamento.</p>
     <button type="button" class="btn-voltar" onclick="voltarGrid()">← Voltar</button>
   </form>
 </div>

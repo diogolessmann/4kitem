@@ -1022,7 +1022,28 @@ def jukebox(token):
                            pix_pendente=pix_pendente,
                            total_videos=total_videos,
                            aberto=aberto, motivo_fechado=motivo_fechado,
-                           aviso=aviso)
+                           aviso=aviso, token=token)
+
+
+@pubshow_bp.route('/jukebox/<token>/ja-paguei/<int:pedido_id>', methods=['POST'])
+def jukebox_ja_paguei(token, pedido_id):
+    """Cliente confirma que pagou o PIX — trust-based, entra direto na fila."""
+    conn = get_pubshow_db()
+    b = conn.execute(
+        'SELECT id FROM pubshow_businesses WHERE jukebox_token=? OR code=?', (token, token)
+    ).fetchone()
+    if not b:
+        conn.close()
+        return jsonify({'ok': False, 'error': 'Bar não encontrado'}), 404
+    updated = conn.execute(
+        """UPDATE pubshow_pedidos SET status='pendente'
+           WHERE id=? AND business_id=? AND status='aguardando_pix'""",
+        (pedido_id, b['id'])
+    ).rowcount
+    conn.commit(); conn.close()
+    if updated:
+        return jsonify({'ok': True})
+    return jsonify({'ok': False, 'error': 'Pedido não encontrado ou já confirmado'})
 
 
 # ── API (usada pelo TV player via JS polling) ─────────────────────────────────
