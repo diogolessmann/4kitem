@@ -1758,6 +1758,7 @@ def admin_dashboard():
 @pubshow_bp.route('/admin/bar/<int:bid>')
 @_admin_required
 def admin_bar(bid):
+    import json as _json
     conn = get_pubshow_db()
     b = conn.execute('SELECT * FROM pubshow_businesses WHERE id=?', (bid,)).fetchone()
     if not b:
@@ -1770,10 +1771,15 @@ def admin_bar(bid):
         'SELECT * FROM pubshow_assinaturas WHERE business_id=?', (bid,)
     ).fetchone()
     conn.close()
+    try:
+        anuncios_list = _json.loads(b['anuncios_json'] or '[]')
+    except Exception:
+        anuncios_list = []
     return render_template('pubshow/admin_bar.html',
                            b=dict(b), pedidos=[dict(p) for p in pedidos],
                            ass=dict(ass) if ass else None,
-                           canais=CANAIS, planos=PLANOS, tipos=TIPOS_PEDIDO)
+                           canais=CANAIS, planos=PLANOS, tipos=TIPOS_PEDIDO,
+                           anuncios_list=anuncios_list)
 
 
 @pubshow_bp.route('/admin/bar/<int:bid>/acao', methods=['POST'])
@@ -1809,6 +1815,39 @@ def admin_bar_acao(bid):
             (bid,)
         )
     conn.commit(); conn.close()
+    return redirect(f'/pubshow/admin/bar/{bid}')
+
+
+@pubshow_bp.route('/admin/bar/<int:bid>/upload-slide', methods=['POST'])
+@_admin_required
+def admin_bar_upload_slide(bid):
+    """Admin envia um slide de imagem para a TV de um bar (venda de mídia)."""
+    import json as _json
+    conn = get_pubshow_db()
+    b = conn.execute('SELECT * FROM pubshow_businesses WHERE id=?', (bid,)).fetchone()
+    if not b:
+        conn.close(); return redirect('/pubshow/admin')
+    f = request.files.get('imagem')
+    if not f or not f.filename:
+        conn.close(); return redirect(f'/pubshow/admin/bar/{bid}')
+    ext = f.filename.rsplit('.', 1)[-1].lower()
+    if ext not in ('png', 'jpg', 'jpeg', 'gif', 'webp'):
+        conn.close(); return redirect(f'/pubshow/admin/bar/{bid}?erro=formato')
+    code = b['code']
+    pasta = os.path.join(_SLIDES_DIR, code)
+    os.makedirs(pasta, exist_ok=True)
+    fname = f'adm_{random.randint(10000,99999)}.{ext}'
+    f.save(os.path.join(pasta, fname))
+    url = f'/pubshow/slide/{code}/{fname}'
+    try:
+        anuncios = _json.loads(b['anuncios_json'] or '[]')
+    except Exception:
+        anuncios = []
+    anuncios.append({'tipo': 'imagem', 'url': url, 'titulo': '', 'admin': True})
+    conn.execute('UPDATE pubshow_businesses SET anuncios_json=? WHERE id=?',
+                 (_json.dumps(anuncios, ensure_ascii=False), bid))
+    conn.commit(); conn.close()
+    log.info('[PUBSHOW-ADMIN] Slide enviado para bar %s: %s', bid, url)
     return redirect(f'/pubshow/admin/bar/{bid}')
 
 

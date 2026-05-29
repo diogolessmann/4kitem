@@ -200,6 +200,45 @@
 
   </div>
 
+  <!-- Slides de propaganda do bar -->
+  <div class="card" style="margin-bottom:20px">
+    <div class="card-title">🖼️ Slides de propaganda na TV</div>
+    {% import 'pubshow/_macros.html' as m ignore missing %}
+    {% set anuncios = b.anuncios_json | default('[]') %}
+    {% set slides_parsed = [] %}
+    {# Parse slides #}
+    {% if anuncios %}
+    <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:14px">
+      {% for sl in anuncios_list %}
+      <div style="border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:8px;background:#0a0a12;text-align:center;min-width:100px;max-width:160px">
+        {% if sl.get('tipo') == 'imagem' %}
+        <img src="{{ sl.url }}" style="height:60px;width:auto;max-width:140px;object-fit:cover;border-radius:6px;display:block;margin:0 auto 6px">
+        <div style="font-size:10px;color:#8888aa">imagem</div>
+        {% else %}
+        <div style="font-size:20px;margin-bottom:4px">{{ sl.get('emoji','📢') }}</div>
+        <div style="font-size:11px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:130px">{{ sl.get('titulo','—') }}</div>
+        <div style="font-size:10px;color:#8888aa">texto</div>
+        {% endif %}
+      </div>
+      {% endfor %}
+      {% if not anuncios_list %}
+      <span style="font-size:12px;color:#8888aa">Nenhum slide cadastrado.</span>
+      {% endif %}
+    </div>
+    {% endif %}
+    <!-- Upload de imagem para o bar pelo admin -->
+    <div style="border-top:1px solid rgba(255,255,255,.07);padding-top:12px;margin-top:4px">
+      <div style="font-size:11px;color:#8888aa;margin-bottom:8px;font-weight:700">⬆️ Enviar slide de imagem para a TV do bar</div>
+      <form method="POST" action="/pubshow/admin/bar/{{ b.id }}/upload-slide" enctype="multipart/form-data" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <label style="background:#13131f;border:1px dashed rgba(255,255,255,.2);border-radius:8px;padding:7px 14px;cursor:pointer;font-size:12px;color:#8888aa;display:flex;align-items:center;gap:8px">
+          📁 Escolher imagem (PNG/JPG)
+          <input type="file" name="imagem" accept="image/png,image/jpeg,image/gif,image/webp" style="display:none">
+        </label>
+        <button type="submit" style="background:linear-gradient(135deg,#ef4444,#f97316);color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Enviar para TV</button>
+      </form>
+    </div>
+  </div>
+
   <!-- Notas do admin -->
   <div class="card" style="margin-bottom:20px">
     <div class="card-title">📝 Notas internas</div>
