@@ -795,8 +795,8 @@ def cadastro():
 def tv(code):
     conn = get_pubshow_db()
     b = conn.execute('SELECT * FROM pubshow_businesses WHERE code=?', (code,)).fetchone()
-    conn.close()
     if not b:
+        conn.close()
         return 'Estabelecimento não encontrado', 404
     import json as _json
     canal_key = b['canal_atual'] or 'rock'
@@ -818,7 +818,9 @@ def tv(code):
     except: anuncios = []
 
     # Slides do sistema — aparecem em TODAS as TVs (se bar não desativou)
-    if b.get('usar_slides_sistema', 1):
+    try:    usar_slides_sis = b['usar_slides_sistema']
+    except: usar_slides_sis = 1
+    if usar_slides_sis or usar_slides_sis is None:
         try:
             slides_sis = conn.execute(
                 'SELECT * FROM pubshow_slides_sistema WHERE ativo=1 ORDER BY ordem, id'
@@ -826,6 +828,8 @@ def tv(code):
             anuncios = anuncios + [dict(s) for s in slides_sis]
         except Exception:
             pass
+
+    conn.close()
 
     # Gera QR do Jukebox server-side — mais confiável que API externa
     _jk_token = b['jukebox_token'] or b['code']
