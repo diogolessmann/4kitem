@@ -655,9 +655,10 @@ async function buscar() {
   document.getElementById('selecionado-box').classList.remove('show');
   videoSel = null;
 
+  const BAR_TOKEN = '{{ b.jukebox_token or b.code }}';
   const url = modosBusca === 'youtube'
     ? `/pubshow/api/buscar?q=${encodeURIComponent(q)}`
-    : `/pubshow/api/buscar-biblioteca?q=${encodeURIComponent(q)}`;
+    : `/pubshow/api/buscar-biblioteca?q=${encodeURIComponent(q)}&bar=${encodeURIComponent(BAR_TOKEN)}`;
 
   try {
     const res  = await fetch(url);

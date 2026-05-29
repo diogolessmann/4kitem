@@ -697,6 +697,26 @@
         </div>
       </div>
 
+      <!-- Gêneros liberados no Jukebox -->
+      <div>
+        <label class="label-sm">🎵 Gêneros disponíveis para busca no Jukebox</label>
+        <div style="font-size:11px;color:var(--text2);margin-bottom:8px">
+          Clientes só verão músicas destes gêneros ao buscar na biblioteca.
+          Se nenhum for selecionado, <strong style="color:var(--text)">todos os gêneros ficam disponíveis</strong>.
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">
+          {% for key, ch in canais_todos.items() %}
+          <label style="display:flex;align-items:center;gap:5px;background:var(--surface2);border:1px solid {% if generos_jukebox and key in generos_jukebox %}#ef444466{% else %}var(--border){% endif %};border-radius:8px;padding:6px 11px;cursor:pointer;font-size:12px;font-weight:600;transition:.15s" id="gj-lbl-{{ key }}">
+            <input type="checkbox" name="generos_jukebox" value="{{ key }}"
+              {% if generos_jukebox and key in generos_jukebox %}checked{% endif %}
+              style="width:14px;height:14px;accent-color:#ef4444"
+              onchange="atualizarGeneroLbl('{{ key }}',this.checked)">
+            {{ ch.emoji }} {{ ch.nome }}
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+
       <button type="submit" class="btn-primary" style="width:100%">💾 Salvar configurações</button>
     </form>
   </div>
@@ -812,6 +832,12 @@ function marcarTodos(val) {
     cb.checked = val;
     atualizarLabel(cb.value);
   });
+}
+
+function atualizarGeneroLbl(key, checked) {
+  const lbl = document.getElementById('gj-lbl-' + key);
+  if (!lbl) return;
+  lbl.style.borderColor = checked ? '#ef444466' : 'var(--border)';
 }
 
 function copiar(texto, btn) {

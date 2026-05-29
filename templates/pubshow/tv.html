@@ -188,39 +188,67 @@
   #mute-btn.show{display:flex}
   #mute-btn:hover{background:rgba(255,255,255,.18)}
 
-  /* ── QR code fixo — canto inferior esquerdo ─────────────────────────────── */
-  #qr-fixo{
-    position:fixed;bottom:24px;left:24px;z-index:40;
-    background:rgba(0,0,0,.82);border:1px solid rgba(255,255,255,.18);
-    border-radius:18px;padding:14px 18px;
-    display:flex;align-items:center;gap:14px;
-    backdrop-filter:blur(10px);
-    opacity:0;transition:opacity .8s;pointer-events:none;
+  /* ── CTA Fullscreen — vídeo loop + fallback imagem ──────────────────────── */
+  #cta-fullscreen{
+    position:fixed;inset:0;z-index:95;
+    background:url('/static/pubshow/cta-fallback.png') center/cover no-repeat;
+    display:none;flex-direction:column;align-items:center;justify-content:center;
+    animation:ctaFadeIn .5s ease;
+    cursor:pointer;overflow:hidden;
   }
-  #qr-fixo.visible{opacity:1;pointer-events:auto}
-  #qr-fixo img{width:80px;height:80px;border-radius:10px;display:block}
-  .qr-txt strong{display:block;font-size:14px;font-weight:900;color:#fff;margin-bottom:4px}
-  .qr-txt span{font-size:11px;color:rgba(255,255,255,.55);line-height:1.6;display:block}
+  #cta-fullscreen.show{display:flex}
+  @keyframes ctaFadeIn{from{opacity:0}to{opacity:1}}
 
-  /* ── CTA quando fila vazia há muito tempo ───────────────────────────────── */
-  #cta-vazia{
-    position:fixed;bottom:130px;left:24px;z-index:40;
-    background:linear-gradient(135deg,rgba(239,68,68,.22),rgba(249,115,22,.16));
-    border:1.5px solid rgba(239,68,68,.5);
-    border-radius:18px;padding:18px 22px;max-width:220px;
-    backdrop-filter:blur(10px);
-    display:none;
-    animation:pulseBorder 2.5s ease-in-out infinite;
+  /* Vídeo de fundo em loop */
+  #cta-video{
+    position:absolute;inset:0;width:100%;height:100%;
+    object-fit:cover;z-index:0;
   }
-  #cta-vazia.show{display:block}
-  @keyframes pulseBorder{
-    0%,100%{border-color:rgba(239,68,68,.4);box-shadow:none}
-    50%{border-color:rgba(249,115,22,.9);box-shadow:0 0 24px rgba(239,68,68,.3)}
+
+  /* Scrim escuro sobre o vídeo para o card ficar legível */
+  #cta-fullscreen::before{
+    content:'';position:absolute;inset:0;z-index:1;
+    background:rgba(0,0,0,.55);
   }
-  .cta-emoji{font-size:32px;display:block;margin-bottom:8px}
-  .cta-titulo{font-size:17px;font-weight:900;color:#fff;line-height:1.3;margin-bottom:6px}
-  .cta-sub{font-size:11px;color:rgba(255,255,255,.6);line-height:1.6}
-  .cta-preco{font-size:20px;font-weight:900;color:#f97316;margin-top:10px;display:block}
+
+  /* Card branco — imita o lightbox da foto do slide 1 */
+  .cta-fs-card{
+    position:relative;z-index:2;
+    background:#fff;border-radius:20px;
+    padding:28px 36px;max-width:420px;width:90%;
+    text-align:center;
+    box-shadow:0 0 80px rgba(0,0,0,.7), 0 0 0 6px rgba(255,255,255,.15);
+    animation:ctaCardPop .6s cubic-bezier(.34,1.56,.64,1);
+  }
+  @keyframes ctaCardPop{from{transform:scale(.55);opacity:0}to{transform:scale(1);opacity:1}}
+
+  .cta-fs-titulo{
+    font-size:clamp(18px,2.4vw,28px);font-weight:900;
+    color:#111;letter-spacing:-.5px;line-height:1.1;
+    margin-bottom:16px;
+  }
+  .cta-fs-qr{
+    background:#fff;border-radius:12px;
+    display:inline-flex;align-items:center;justify-content:center;
+    margin-bottom:16px;
+  }
+  .cta-fs-qr img{width:clamp(160px,18vw,220px);height:clamp(160px,18vw,220px);display:block;border-radius:8px}
+  .cta-fs-sub{
+    font-size:clamp(12px,1.4vw,16px);color:#555;
+    margin-bottom:10px;line-height:1.5;
+  }
+  .cta-fs-preco{
+    font-size:clamp(14px,1.6vw,20px);font-weight:900;color:#f97316;
+    letter-spacing:-.3px;
+  }
+
+  /* Barra de progresso no rodapé da tela */
+  .cta-fs-barra{
+    position:absolute;bottom:0;left:0;height:5px;z-index:3;
+    background:linear-gradient(90deg,#f97316,#ef4444);
+    animation:ctaBarra linear forwards;
+  }
+  @keyframes ctaBarra{from{width:100%}to{width:0%}}
 
   /* ── Promoção Relâmpago — countdown na TV ───────────────────────────────── */
   #promo-relampago{
@@ -281,38 +309,54 @@
 
   /* ── Ranking da noite ───────────────────────────────────────────────────── */
   #ranking-overlay{
-    position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
-    z-index:85;
-    background:rgba(0,0,0,.94);backdrop-filter:blur(16px);
-    border:2px solid rgba(251,191,36,.4);border-radius:28px;
-    padding:36px 52px;min-width:400px;max-width:560px;width:90%;
-    display:none;
-    animation:rankingEntrar .6s cubic-bezier(.34,1.56,.64,1);
+    position:fixed;inset:0;z-index:85;
+    background:url('/static/pubshow/ranking-bg.png') center/cover no-repeat;
+    display:none;align-items:center;justify-content:center;
+    animation:rankingEntrar .5s ease;
   }
-  #ranking-overlay.show{display:block}
-  @keyframes rankingEntrar{from{transform:translate(-50%,-50%) scale(.55);opacity:0}to{transform:translate(-50%,-50%) scale(1);opacity:1}}
-  .ranking-titulo{font-size:13px;font-weight:900;color:#fbbf24;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:6px;text-align:center}
-  .ranking-sub{font-size:11px;color:rgba(255,255,255,.4);text-align:center;margin-bottom:20px}
+  #ranking-overlay.show{display:flex}
+  @keyframes rankingEntrar{from{opacity:0;transform:scale(1.04)}to{opacity:1;transform:scale(1)}}
+
+  /* Conteúdo dinâmico — card translúcido posicionado sobre o lousa da imagem */
+  #ranking-conteudo{
+    position:absolute;
+    /* a lousa da foto está ~8% left, 4% top, ~65% wide, 95% tall
+       centramos o texto da lista no terço central da lousa */
+    left:8%;top:28%;
+    width:58%;
+  }
+  .ranking-titulo{display:none} /* já existe na imagem */
+  .ranking-sub{display:none}    /* já existe na imagem */
   .ranking-lista{}
   .ranking-item{
     display:flex;align-items:center;gap:16px;
-    padding:10px 0;border-bottom:1px solid rgba(255,255,255,.06);
+    padding:9px 0;border-bottom:1px solid rgba(255,255,255,.1);
   }
   .ranking-item:last-child{border:none}
   .ranking-pos{
-    font-size:24px;font-weight:900;width:36px;text-align:center;flex-shrink:0;
-    color:rgba(255,255,255,.3);
+    font-size:26px;font-weight:900;width:40px;text-align:center;flex-shrink:0;
+    color:rgba(255,255,255,.5);
   }
-  .ranking-item:nth-child(1) .ranking-pos{color:#fbbf24;font-size:28px}
+  .ranking-item:nth-child(1) .ranking-pos{color:#fbbf24;font-size:30px}
   .ranking-item:nth-child(2) .ranking-pos{color:#94a3b8}
   .ranking-item:nth-child(3) .ranking-pos{color:#cd7c2f}
-  .ranking-musica{flex:1;font-size:15px;font-weight:700;line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .ranking-badge{
-    font-size:11px;font-weight:800;background:rgba(251,191,36,.15);
-    color:#fbbf24;border:1px solid rgba(251,191,36,.3);
-    padding:3px 10px;border-radius:20px;white-space:nowrap;flex-shrink:0;
+  .ranking-musica{
+    flex:1;font-size:clamp(16px,2.2vw,26px);font-weight:900;
+    color:#fff;text-shadow:2px 2px 8px rgba(0,0,0,.9);
+    line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+    font-family:'Segoe UI',sans-serif;letter-spacing:-.3px;
   }
-  .ranking-bar{height:3px;background:linear-gradient(90deg,#fbbf24,transparent);border-radius:2px;margin-top:20px;animation:shrink linear forwards}
+  .ranking-badge{
+    font-size:11px;font-weight:800;
+    background:rgba(251,191,36,.25);color:#fbbf24;
+    border:1px solid rgba(251,191,36,.5);
+    padding:3px 10px;border-radius:20px;white-space:nowrap;flex-shrink:0;
+    text-shadow:none;
+  }
+  .ranking-bar{
+    height:4px;background:linear-gradient(90deg,#fbbf24,transparent);
+    border-radius:2px;margin-top:14px;animation:shrink linear forwards;
+  }
 </style>
 </head>
 <body>
@@ -329,25 +373,29 @@
 <!-- Botão mute/unmute fixo -->
 <button id="mute-btn" onclick="toggleMute()">🔇 Sem som</button>
 
-<!-- QR code fixo — canto inferior esquerdo, aparece após ativar som -->
-<div id="qr-fixo">
-  {% if tv_qr_b64 %}
-  <img src="data:image/png;base64,{{ tv_qr_b64 }}" alt="QR Jukebox" style="border-radius:8px">
-  {% else %}
-  <img src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&color=000000&bgcolor=ffffff&data={{ jukebox_url }}" alt="QR Jukebox" style="border-radius:8px">
-  {% endif %}
-  <div class="qr-txt">
-    <strong>📱 Peça uma música</strong>
-    <span>Escaneie e pague<br>pelo celular via PIX</span>
-  </div>
-</div>
+<!-- CTA Fullscreen — vídeo loop + fallback foto escura + card HTML com QR real -->
+<div id="cta-fullscreen" onclick="fecharCtaFullscreen()">
+  <!-- Vídeo de fundo em loop (muda quando ativado pelo JS) -->
+  <video id="cta-video" autoplay loop muted playsinline preload="auto">
+    <source src="/static/pubshow/cta-bg.mp4" type="video/mp4">
+  </video>
 
-<!-- CTA quando fila vazia por 3+ minutos -->
-<div id="cta-vazia">
-  <span class="cta-emoji">🎵</span>
-  <div class="cta-titulo">A próxima música<br>é sua!</div>
-  <div class="cta-sub">Escaneie o QR ao lado,<br>escolha e pague pelo celular.</div>
-  <span class="cta-preco">a partir de R$ 2</span>
+  <!-- Card branco centralizado — imita o lightbox do slide 1 -->
+  <div class="cta-fs-card">
+    <div class="cta-fs-titulo">📱 ESCANEIE E PEÇA UMA MÚSICA</div>
+    <div class="cta-fs-qr">
+      {% if tv_qr_b64 %}
+      <img src="data:image/png;base64,{{ tv_qr_b64 }}" alt="QR Jukebox">
+      {% else %}
+      <img src="https://api.qrserver.com/v1/create-qr-code/?size=440x440&color=000000&bgcolor=ffffff&data={{ jukebox_url }}" alt="QR Jukebox">
+      {% endif %}
+    </div>
+    <div class="cta-fs-sub">A próxima pode ser sua — R$ 2<br>Pague via PIX direto no celular</div>
+    <div class="cta-fs-preco">⚡ PUBSHOW JUKEBOX ⚡</div>
+  </div>
+
+  <!-- Barra de progresso de 10s no rodapé -->
+  <div class="cta-fs-barra" id="cta-barra"></div>
 </div>
 
 <!-- Botão fullscreen (canto superior esquerdo, aparece ao mover mouse) -->
@@ -436,12 +484,12 @@
   </div>
 </div>
 
-<!-- Ranking da noite -->
+<!-- Ranking da noite — background fotográfico + lista dinâmica sobreposta -->
 <div id="ranking-overlay">
-  <div class="ranking-titulo">🏆 Ranking da noite</div>
-  <div class="ranking-sub">Músicas mais pedidas hoje no {{ b.nome }}</div>
-  <div class="ranking-lista" id="ranking-lista"></div>
-  <div class="ranking-bar" id="ranking-bar"></div>
+  <div id="ranking-conteudo">
+    <div class="ranking-lista" id="ranking-lista"></div>
+    <div class="ranking-bar" id="ranking-bar"></div>
+  </div>
 </div>
 
 <!-- Seletor de canal — abas de nicho -->
@@ -497,12 +545,12 @@ let   CANAL_KEY   = '{{ canal_key }}';
 const BASE_URL    = '/pubshow';
 const JUKEBOX_URL = '{{ request.host_url }}pubshow/jukebox/{{ b.jukebox_token or b.code }}';
 const ANUNCIOS    = {{ anuncios | tojson }};  // slides de propaganda do bar
-// Slides padrão do sistema (exibidos quando o bar ainda não tem slides próprios)
+// Slides padrão do sistema — cardápio de preços (sempre exibido)
 const ANUNCIOS_DEFAULT = [
-  {tipo:'imagem', url:'/static/pubshow/slides/slide1.png', titulo:''},
-  {tipo:'imagem', url:'/static/pubshow/slides/slide2.png', titulo:''},
+  {tipo:'imagem', url:'/static/pubshow/slide-cardapio.png', titulo:''},
 ];
-const ANUNCIOS_EFETIVOS = ANUNCIOS.length > 0 ? ANUNCIOS : ANUNCIOS_DEFAULT;
+// Mescla slides do bar com o cardápio padrão (cardápio aparece a cada ciclo)
+const ANUNCIOS_EFETIVOS = [...ANUNCIOS, ...ANUNCIOS_DEFAULT];
 
 // Info de canais disponível no JS para atualizar UI sem reload
 const CANAIS_JS = {{ canais | tojson }};
@@ -555,10 +603,8 @@ function ativarSom() {
   }
   // Se player ainda não carregou, marca pra desmutar quando estiver pronto
   window._autoUnmute = true;
-  // Mostra QR fixo após ativar som
-  setTimeout(() => document.getElementById('qr-fixo').classList.add('visible'), 1500);
-  // Inicia timer de CTA vazia
-  resetIdleTimer();
+  // Inicia ciclo periódico de CTA fullscreen
+  iniciarCtaPeriodicO();
 }
 
 // ── Promoção Relâmpago — countdown ───────────────────────────────────────────
@@ -599,18 +645,48 @@ function atualizarPromo(promo) {
   }
 }
 
-// ── CTA Fila Vazia ────────────────────────────────────────────────────────────
-let _idleTimer = null;
-function resetIdleTimer() {
-  clearTimeout(_idleTimer);
-  document.getElementById('cta-vazia').classList.remove('show');
-  _idleTimer = setTimeout(() => {
-    document.getElementById('cta-vazia').classList.add('show');
-  }, 3 * 60 * 1000); // 3 minutos sem pedido → mostra CTA
+// ── CTA Fullscreen Periódico ──────────────────────────────────────────────────
+const CTA_INTERVALO_MS = 5 * 60 * 1000; // aparece a cada 5 minutos
+const CTA_DURACAO_MS   = 10 * 1000;     // fica visível por 10 segundos
+let _ctaTimer = null;
+
+function iniciarCtaPeriodicO() {
+  clearTimeout(_ctaTimer);
+  _ctaTimer = setTimeout(mostrarCtaFullscreen, CTA_INTERVALO_MS);
 }
-function cancelarCtaVazia() {
-  clearTimeout(_idleTimer);
-  document.getElementById('cta-vazia').classList.remove('show');
+
+function mostrarCtaFullscreen() {
+  // Não mostra se outro overlay estiver visível (parabéns, slide, ranking, promo)
+  const bloqueadores = ['#overlay', '#slide-propaganda', '#ranking-overlay'];
+  if (bloqueadores.some(sel => document.querySelector(sel)?.classList.contains('show'))) {
+    iniciarCtaPeriodicO(); // tenta de novo no próximo ciclo
+    return;
+  }
+  const el    = document.getElementById('cta-fullscreen');
+  const barra = document.getElementById('cta-barra');
+  const vid   = document.getElementById('cta-video');
+
+  // Reinicia o vídeo do início a cada exibição
+  if (vid) { try { vid.currentTime = 0; vid.play(); } catch(e){} }
+
+  el.classList.add('show');
+
+  // Reinicia animação da barra de progresso
+  barra.style.animation = 'none';
+  barra.offsetHeight;
+  barra.style.animation = `ctaBarra ${CTA_DURACAO_MS / 1000}s linear forwards`;
+
+  // Fecha após a duração
+  setTimeout(() => {
+    el.classList.remove('show');
+    if (vid) { try { vid.pause(); } catch(e){} }
+    iniciarCtaPeriodicO();
+  }, CTA_DURACAO_MS);
+}
+
+function fecharCtaFullscreen() {
+  document.getElementById('cta-fullscreen').classList.remove('show');
+  iniciarCtaPeriodicO();
 }
 
 function toggleMute() {
@@ -1048,7 +1124,6 @@ async function pollStatus() {
     if (data.pedido && !overlayAtivo && data.pedido.id !== pedidoAtual?.id) {
       pedidoAtual = data.pedido;
       mostrarOverlay(data.pedido);
-      cancelarCtaVazia(); // pedido especial = bar ativo
     }
 
     // Pedido de música — entra na fila, espera vídeo acabar
@@ -1056,7 +1131,6 @@ async function pollStatus() {
       pedidoMusica = data.pedido_musica;
       mostrarBadgeFila(data.total_fila);
       agendarProximoCard(); // agenda o "próximo" card
-      resetIdleTimer(); // há atividade — reinicia timer de CTA
     }
 
     // Sem pedido de música — limpa indicadores
@@ -1068,7 +1142,6 @@ async function pollStatus() {
     // Badge de fila geral
     if (data.total_fila > 0 && !pedidoMusica) {
       mostrarBadgeFila(data.total_fila);
-      resetIdleTimer();
     } else if (data.total_fila === 0) {
       esconderBadgeFila();
     }

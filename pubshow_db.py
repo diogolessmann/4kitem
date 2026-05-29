@@ -151,6 +151,8 @@ def init_pubshow_db():
         # Multi-locais (plano Rede): FK para o dono/negócio principal
         # NULL = bar independente; preenchido = filial vinculada a outro business_id
         'ALTER TABLE pubshow_businesses ADD COLUMN owner_business_id INTEGER DEFAULT NULL',
+        # Gêneros liberados no Jukebox (JSON array; NULL = todos)
+        'ALTER TABLE pubshow_businesses ADD COLUMN generos_jukebox TEXT DEFAULT NULL',
     ]:
         try:
             conn.execute(m); conn.commit()

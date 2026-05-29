@@ -858,6 +858,7 @@ def jukebox(token):
         return render_template('pubshow/qr_invalido.html'), 404
     if b['suspenso']:
         return render_template('pubshow/qr_invalido.html'), 403
+    b = dict(b)  # converte para dict — sqlite3.Row não tem .get() em Python < 3.12
 
     sucesso      = None
     erro         = ''
@@ -1012,7 +1013,7 @@ def jukebox(token):
     conn3.close()
 
     return render_template('pubshow/jukebox.html',
-                           b=dict(b), canal=canal,
+                           b=b, canal=canal,
                            tipos=precos_bar,
                            tipos_disponiveis=tipos_bar,
                            hh_desconto=hh_desconto,
@@ -1121,13 +1122,15 @@ def api_pedido_exibido(pedido_id):
     if not pedido:
         conn.close()
         return jsonify({'error': 'not_found'}), 404
-    if code:  # se code foi enviado, verifica ownership
-        b = conn.execute(
-            'SELECT id FROM pubshow_businesses WHERE code=?', (code,)
-        ).fetchone()
-        if not b or b['id'] != pedido['business_id']:
-            conn.close()
-            return jsonify({'error': 'unauthorized'}), 403
+    if not code:  # code é obrigatório — sempre enviado pela TV
+        conn.close()
+        return jsonify({'error': 'unauthorized'}), 401
+    b = conn.execute(
+        'SELECT id FROM pubshow_businesses WHERE code=?', (code,)
+    ).fetchone()
+    if not b or b['id'] != pedido['business_id']:
+        conn.close()
+        return jsonify({'error': 'unauthorized'}), 403
     conn.execute(
         "UPDATE pubshow_pedidos SET status='exibido', exibido_at=datetime('now','localtime') WHERE id=?",
         (pedido_id,)
@@ -1178,19 +1181,53 @@ def api_ranking(code):
 
 @pubshow_bp.route('/api/buscar-biblioteca')
 def api_buscar_biblioteca():
-    """Busca na biblioteca curada de vídeos (rápido, sem API externa)."""
+    """Busca na biblioteca curada de vídeos (rápido, sem API externa).
+    Se ?bar=<token> for passado, filtra pelos gêneros que o bar liberou.
+    """
+    import json as _json
     q = request.args.get('q', '').strip()
     if not q or len(q) < 2:
         return jsonify({'resultados': []})
+
     conn = get_pubshow_db()
     like = f'%{q}%'
-    rows = conn.execute(
-        '''SELECT youtube_id, titulo, artista, categoria, duracao_seg
-           FROM pubshow_videos
-           WHERE ativo=1 AND (titulo LIKE ? OR artista LIKE ?)
-           ORDER BY views_milhoes DESC LIMIT 12''',
-        (like, like)
-    ).fetchall()
+
+    # Descobre gêneros permitidos para este bar (opcional)
+    bar_token = request.args.get('bar', '').strip()
+    generos_permitidos = None
+    if bar_token:
+        brow = conn.execute(
+            '''SELECT generos_jukebox FROM pubshow_businesses
+               WHERE jukebox_token=? OR code=? LIMIT 1''',
+            (bar_token, bar_token)
+        ).fetchone()
+        if brow and brow['generos_jukebox']:
+            try:
+                generos_permitidos = _json.loads(brow['generos_jukebox'])
+            except Exception:
+                generos_permitidos = None
+
+    if generos_permitidos:
+        # Filtra por categoria (pode ser lista de géneros)
+        placeholders = ','.join('?' * len(generos_permitidos))
+        rows = conn.execute(
+            f'''SELECT youtube_id, titulo, artista, categoria, duracao_seg
+                FROM pubshow_videos
+                WHERE ativo=1
+                  AND categoria IN ({placeholders})
+                  AND (titulo LIKE ? OR artista LIKE ?)
+                ORDER BY views_milhoes DESC LIMIT 12''',
+            (*generos_permitidos, like, like)
+        ).fetchall()
+    else:
+        rows = conn.execute(
+            '''SELECT youtube_id, titulo, artista, categoria, duracao_seg
+               FROM pubshow_videos
+               WHERE ativo=1 AND (titulo LIKE ? OR artista LIKE ?)
+               ORDER BY views_milhoes DESC LIMIT 12''',
+            (like, like)
+        ).fetchall()
+
     conn.close()
     return jsonify({'resultados': [dict(r) for r in rows]})
 
@@ -1296,6 +1333,8 @@ def painel():
     except: anuncios_parsed = []
     try:    happy_hour = _json.loads(bd.get('happy_hour_json') or 'null')
     except: happy_hour = None
+    try:    generos_jukebox = _json.loads(bd.get('generos_jukebox') or 'null')
+    except: generos_jukebox = None
     hh_desconto_atual = _happy_hour_desconto(bd)
     # Canais que o plano do bar permite ver/selecionar na TV
     canais_plano = _plano_canais_permitidos(bd)
@@ -1313,6 +1352,8 @@ def painel():
                            anuncios_parsed=anuncios_parsed,
                            happy_hour=happy_hour,
                            hh_desconto_atual=hh_desconto_atual,
+                           generos_jukebox=generos_jukebox,
+                           canais_todos=CANAIS,
                            plano_max_anuncios=_plano_max_anuncios(bd),
                            plano_permite_hh=_plano_permite(bd, 'happy_hour'),
                            plano_permite_wa=_plano_permite(bd, 'whatsapp'),
@@ -1414,7 +1455,7 @@ def painel_anuncios():
 def painel_upload_slide():
     """Upload de imagem como slide de propaganda."""
     import json as _json
-    b = _get_business()
+    b = dict(_get_business())  # dict() para .get() funcionar em _plano_max_anuncios
     max_slides = _plano_max_anuncios(b)
     try:
         anuncios = _json.loads(b['anuncios_json'] or '[]')
@@ -1558,7 +1599,7 @@ def painel_pix():
         (pix_key, pix_tipo, pix_nome, b['id'])
     )
     conn.commit(); conn.close()
-    return redirect('/pubshow/painel')
+    return redirect('/pubshow/painel?aba=config')
 
 
 @pubshow_bp.route('/painel/qrcode')
@@ -1707,18 +1748,24 @@ def painel_config():
 
     requer_pix = 1 if request.form.get('requer_pix') else 0
 
+    # Gêneros do Jukebox (quais categorias o cliente pode buscar na biblioteca)
+    todos_generos = set(CANAIS.keys())
+    generos_sel   = [g for g in request.form.getlist('generos_jukebox') if g in todos_generos]
+    # NULL = todos liberados; lista = apenas os selecionados
+    generos_json  = json.dumps(generos_sel) if generos_sel else None
+
     conn = get_pubshow_db()
     conn.execute(
         '''UPDATE pubshow_businesses SET
            jukebox_ativo=?, jukebox_hora_ini=?, jukebox_hora_fim=?,
            mensagem_jukebox=?, aviso_jukebox=?, aviso_expira=?,
            limite_pedidos_hora=?, tipos_bloqueados=?, precos_custom=?,
-           requer_pix=?
+           requer_pix=?, generos_jukebox=?
            WHERE id=?''',
         (jukebox_ativo, hora_ini, hora_fim,
          mensagem or None, aviso or None, aviso_expira,
          limite, json.dumps(bloqueados), json.dumps(precos),
-         requer_pix, b['id'])
+         requer_pix, generos_json, b['id'])
     )
     conn.commit(); conn.close()
     return redirect('/pubshow/painel?aba=config')
@@ -1881,8 +1928,8 @@ def painel_rede():
 @pubshow_login_required
 def painel_rede_nova_filial():
     """Cadastra uma nova unidade/filial vinculada ao dono atual (plano Rede)."""
-    b = _get_business()
-    if not _plano_permite(dict(b), 'multi'):
+    b = dict(_get_business())  # dict() para .get() funcionar abaixo
+    if not _plano_permite(b, 'multi'):
         return redirect('/pubshow/planos')
     erro = ''
     if request.method == 'POST':
@@ -2080,26 +2127,58 @@ def admin_videos():
         'SELECT id, youtube_id, titulo, artista, categoria, ativo FROM pubshow_videos ORDER BY categoria, titulo'
     ).fetchall()
     conn.close()
+
+    # Monta por_cat (categoria → lista de vídeos)
     por_cat = {}
     for v in videos:
         cat = v['categoria']
         por_cat.setdefault(cat, []).append(dict(v))
-    # Agrupa canais por grupo para os selects do admin
-    _grupo_labels = {
-        'musica': '🎵 Música', 'shows': '🎤 Shows ao Vivo',
-        'sport': '🏆 Esporte', 'viral': '💥 Viral',
-        'entretenimento': '🎭 Entretenimento',
+
+    # Ordem e rótulos dos nichos
+    _NICHO_META = {
+        'musica':         ('🎵', 'Música'),
+        'shows':          ('🎤', 'Shows ao Vivo'),
+        'sport':          ('🏆', 'Esporte'),
+        'viral':          ('💥', 'Viral'),
+        'entretenimento': ('🎭', 'Entretenimento'),
     }
-    _grupo_ordem = ['musica', 'shows', 'sport', 'viral', 'entretenimento']
+    _NICHO_ORDEM = ['musica', 'shows', 'sport', 'viral', 'entretenimento']
+
+    # Estrutura nicho → [(cat_key, canal_info, vids)]
+    por_nicho = []
+    cats_mapeadas = set()
+    for gkey in _NICHO_ORDEM:
+        gemoji, glabel = _NICHO_META.get(gkey, ('📁', gkey))
+        cats_nicho = []
+        for cat_key, cinfo in CANAIS.items():
+            if cinfo.get('grupo') == gkey and isinstance(cinfo.get('cat'), str):
+                if cat_key in por_cat:
+                    cats_nicho.append((cat_key, cinfo, por_cat[cat_key]))
+                    cats_mapeadas.add(cat_key)
+        if cats_nicho:
+            total_nicho = sum(len(vids) for _, _, vids in cats_nicho)
+            por_nicho.append((gkey, gemoji, glabel, cats_nicho, total_nicho))
+
+    # Categorias sem nicho (multi-cat como sport_mix, ou categorias órfãs)
+    sem_nicho = [(cat, {'nome': cat, 'emoji': '📁', 'cor': '#64748b'}, vids)
+                 for cat, vids in por_cat.items() if cat not in cats_mapeadas]
+    if sem_nicho:
+        total_sem = sum(len(v) for _, _, v in sem_nicho)
+        por_nicho.append(('outros', '📁', 'Outros / Multi-cat', sem_nicho, total_sem))
+
+    # Canais agrupados para os <select> dos modais
     canais_grupos = []
-    _visto = {}
-    for g in _grupo_ordem:
+    for gkey in _NICHO_ORDEM:
+        gemoji, glabel = _NICHO_META.get(gkey, ('', gkey))
         itens = [(k, v) for k, v in CANAIS.items()
-                 if v.get('grupo') == g and isinstance(v.get('cat'), str)]
+                 if v.get('grupo') == gkey and isinstance(v.get('cat'), str)]
         if itens:
-            canais_grupos.append((_grupo_labels.get(g, g), itens))
-    return render_template('pubshow/admin_videos.html', por_cat=por_cat,
-                           total=len(videos), canais_grupos=canais_grupos)
+            canais_grupos.append((f'{gemoji} {glabel}', itens))
+
+    return render_template('pubshow/admin_videos.html',
+                           por_nicho=por_nicho,
+                           total=len(videos),
+                           canais_grupos=canais_grupos)
 
 
 @pubshow_bp.route('/admin/import-playlist', methods=['POST'])
@@ -2396,9 +2475,9 @@ def painel_cancelar():
         _pubshow_send_wa(
             os.environ.get('PUBSHOW_ADMIN_PHONE', ''),
             f'⚠️ *PUBSHOW — Cancelamento*\n'
-            f'Bar: {b["nome"]}\n'
-            f'E-mail: {b["email"]}\n'
-            f'Plano: {b.get("plano","—")}\n'
+            f'Bar: {bd["nome"]}\n'
+            f'E-mail: {bd["email"]}\n'
+            f'Plano: {bd.get("plano","—")}\n'
             f'Data: {datetime.now().strftime("%d/%m/%Y %H:%M")}'
         )
         return redirect('/pubshow/painel?ok=cancelamento')
