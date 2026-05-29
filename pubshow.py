@@ -830,7 +830,7 @@ def tv(code):
 
     # Gera QR do Jukebox server-side — mais confiável que API externa
     _jk_token = b['jukebox_token'] or b['code']
-    _jk_url   = f"https://4kitem.com.br/pubshow/jukebox/{_jk_token}"
+    _jk_url   = f"https://www.4kitem.com.br/pubshow/jukebox/{_jk_token}"
     try:
         import qrcode as _qrcode, io as _io, base64 as _base64
         _qr = _qrcode.QRCode(version=None,
@@ -1675,9 +1675,8 @@ def painel_qrcode():
     if not b:
         return redirect('/pubshow/entrar')
 
-    # URL pública do Jukebox — sem www (www. perde o path no redirect do Railway)
     token = b['jukebox_token'] or b['code']
-    jukebox_url = f"https://4kitem.com.br/pubshow/jukebox/{token}"
+    jukebox_url = f"https://www.4kitem.com.br/pubshow/jukebox/{token}"
 
     # Gera QR como PNG base64
     try:
