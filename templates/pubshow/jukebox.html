@@ -535,7 +535,8 @@ async function jaPaguei() {
     <div class="form-group">
       <label>Seu nome *</label>
       <input type="text" name="nome_cliente" id="inp-nome"
-             placeholder="Como quer aparecer na tela?" maxlength="40" required>
+             placeholder="Como quer aparecer na tela?" maxlength="40" required
+             oninput="atualizarPixRef()">
     </div>
 
     <div class="form-group" id="msg-group" style="display:none">
@@ -565,7 +566,12 @@ async function jaPaguei() {
       <div class="pix-chave">Chave PIX: <strong id="pix-chave-val">{{ b.pix_key }}</strong>
         {% if b.pix_nome_recebedor %}<br>Recebedor: <strong>{{ b.pix_nome_recebedor }}</strong>{% endif %}
       </div>
-      <button type="button" class="btn-copy" onclick="copiarPix()">📋 Copiar chave PIX</button>
+      <!-- Referência que aparecerá no extrato bancário do bar -->
+      <div id="pix-ref-box" style="background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.2);border-radius:8px;padding:8px 12px;margin:8px 0;font-size:11px;color:#8888aa;display:none">
+        📄 No extrato do bar aparecerá:<br>
+        <strong id="pix-ref-txt" style="color:#4ade80;font-size:12px"></strong>
+      </div>
+      <button type="button" class="btn-copy" onclick="copiarPix()">📋 Copiar PIX (Copia e Cola)</button>
     </div>
     <button type="submit" class="btn-confirmar" id="btn-confirmar">✅ Paguei! Confirmar pedido</button>
     <p class="aviso-pix">Ao confirmar, você declara que realizou o pagamento.</p>
@@ -801,6 +807,7 @@ function confirmarMusica() {
   document.getElementById('inp-tipo').value          = tipo;
   document.getElementById('inp-youtube-id').value    = videoSel.id;
   document.getElementById('inp-titulo-pedido').value = videoSel.titulo;
+  atualizarPixRef();
   document.getElementById('inp-thumb-url').value     = '';
 
   document.getElementById('prev-titulo').textContent = videoSel.titulo;
@@ -818,13 +825,90 @@ function confirmarMusica() {
   window.scrollTo({top:0,behavior:'smooth'});
 }
 
+// ── PIX Copia e Cola (payload EMV com música na descrição) ────────────────────
+function _pixTlv(id, val) {
+  const s = String(val);
+  return id + String(s.length).padStart(2,'0') + s;
+}
+function _pixCrc16(str) {
+  let crc = 0xFFFF;
+  for (let i = 0; i < str.length; i++) {
+    crc ^= str.charCodeAt(i) << 8;
+    for (let j = 0; j < 8; j++) {
+      crc = (crc & 0x8000) ? ((crc << 1) ^ 0x1021) : (crc << 1);
+      crc &= 0xFFFF;
+    }
+  }
+  return crc.toString(16).toUpperCase().padStart(4,'0');
+}
+
+function gerarPixCopiaECola(chave, nomeRecebedor, valorReais, descricao) {
+  // merchant account info (field 26)
+  let mai = _pixTlv('00','BR.GOV.BCB.PIX') + _pixTlv('01', chave);
+  if (descricao) mai += _pixTlv('02', descricao.substring(0,25));
+  // txid: só alfanumérico, max 25
+  const txid = (descricao||'PUBSHOW').replace(/[^a-zA-Z0-9]/g,'').substring(0,25) || 'PUBSHOW';
+  const payload = [
+    _pixTlv('00','01'),
+    _pixTlv('01','11'),
+    _pixTlv('26', mai),
+    _pixTlv('52','0000'),
+    _pixTlv('53','986'),
+    _pixTlv('54', valorReais.toFixed(2)),
+    _pixTlv('58','BR'),
+    _pixTlv('59', nomeRecebedor.replace(/[^\w\s]/gi,'').substring(0,25)),
+    _pixTlv('60','Brasil'),
+    _pixTlv('62', _pixTlv('05', txid)),
+    '6304'
+  ].join('');
+  return payload + _pixCrc16(payload);
+}
+
+function _pixDescricao() {
+  const titulo = (document.getElementById('inp-titulo-pedido')?.value || '').trim();
+  const nome   = (document.getElementById('inp-nome')?.value || '').trim();
+  // Monta referência: "SeeYouAgain-Shaggy" (max 25 chars)
+  let ref = titulo.replace(/[^a-zA-Z0-9 ]/g,'').substring(0,16);
+  if (nome) ref += '-' + nome.replace(/[^a-zA-Z0-9]/g,'').substring(0,8);
+  return ref.substring(0,25);
+}
+
+function atualizarPixRef() {
+  const box = document.getElementById('pix-ref-box');
+  const txt = document.getElementById('pix-ref-txt');
+  if (!box || !txt) return;
+  const titulo = (document.getElementById('inp-titulo-pedido')?.value || '').trim();
+  const nome   = (document.getElementById('inp-nome')?.value || '').trim();
+  if (titulo || nome) {
+    const ref = (titulo ? titulo.substring(0,20) : '') + (nome ? ' · ' + nome.substring(0,12) : '');
+    txt.textContent = ref;
+    box.style.display = 'block';
+  } else {
+    box.style.display = 'none';
+  }
+}
+
 function copiarPix() {
-  const chave = document.getElementById('pix-chave-val')?.textContent?.trim();
+  const chave   = document.getElementById('pix-chave-val')?.textContent?.trim();
+  const nome_r  = '{{ (b.pix_nome_recebedor or b.nome or "BAR")|replace("'","") }}';
+  const valorEl = document.getElementById('pix-valor');
+  const valorStr = valorEl ? valorEl.textContent.replace(/[^0-9,]/g,'').replace(',','.') : '0';
+  const valor   = parseFloat(valorStr) || 0;
+  const desc    = _pixDescricao();
   if (!chave) return;
-  navigator.clipboard.writeText(chave).then(() => {
-    const btn = document.querySelector('.btn-copy');
-    btn.textContent = '✅ Copiado!';
-    setTimeout(() => btn.textContent = '📋 Copiar chave PIX', 2000);
+
+  const payload = gerarPixCopiaECola(chave, nome_r, valor, desc);
+  const btn = document.querySelector('.btn-copy');
+
+  navigator.clipboard.writeText(payload).then(() => {
+    btn.textContent = '✅ PIX copiado!';
+    setTimeout(() => btn.textContent = '📋 Copiar PIX (Copia e Cola)', 2500);
+  }).catch(() => {
+    // fallback: copia só a chave
+    navigator.clipboard.writeText(chave).then(() => {
+      btn.textContent = '✅ Chave copiada!';
+      setTimeout(() => btn.textContent = '📋 Copiar PIX (Copia e Cola)', 2500);
+    });
   });
 }
 </script>
