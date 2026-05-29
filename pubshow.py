@@ -817,17 +817,14 @@ def tv(code):
     try:    anuncios = _json.loads(b['anuncios_json'] or '[]')
     except: anuncios = []
 
-    # Slides do sistema — aparecem em TODAS as TVs (se bar não desativou)
-    try:    usar_slides_sis = b['usar_slides_sistema']
-    except: usar_slides_sis = 1
-    if usar_slides_sis or usar_slides_sis is None:
-        try:
-            slides_sis = conn.execute(
-                'SELECT * FROM pubshow_slides_sistema WHERE ativo=1 ORDER BY ordem, id'
-            ).fetchall()
-            anuncios = anuncios + [dict(s) for s in slides_sis]
-        except Exception:
-            pass
+    # Slides do sistema — obrigatórios em TODAS as TVs, exibidos a cada 10 min via JS
+    try:
+        _ss_rows = conn.execute(
+            'SELECT * FROM pubshow_slides_sistema WHERE ativo=1 ORDER BY ordem, id'
+        ).fetchall()
+        slides_sistema = [dict(s) for s in _ss_rows]
+    except Exception:
+        slides_sistema = []
 
     conn.close()
 
@@ -850,8 +847,8 @@ def tv(code):
 
     return render_template('pubshow/tv.html', b=dict(b), canal=canal,
                            canal_key=canal_key, videos=videos, canais=canais_tv,
-                           anuncios=anuncios, tv_qr_b64=tv_qr_b64,
-                           jukebox_url=_jk_url)
+                           anuncios=anuncios, slides_sistema=slides_sistema,
+                           tv_qr_b64=tv_qr_b64, jukebox_url=_jk_url)
 
 
 # ── JUKEBOX MOBILE (cliente do bar escaneia QR) ───────────────────────────────

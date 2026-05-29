@@ -193,7 +193,36 @@ def init_pubshow_db():
     # Corrige vídeos que ficaram indisponíveis no YouTube (UPDATE por youtube_id)
     _corrigir_videos_quebrados(conn)
 
+    # Seed dos slides do sistema — imagens de static/pubshow/slides/
+    _seed_slides_sistema(conn)
+
     conn.close()
+
+
+def _seed_slides_sistema(conn):
+    """Registra as imagens padrão do sistema na tabela pubshow_slides_sistema.
+    Usa INSERT OR IGNORE via url única para não duplicar a cada restart.
+    """
+    slides_padrao = [
+        # (url, ordem)
+        ('/static/pubshow/slides/slide1.png', 1),
+        ('/static/pubshow/slides/slide2.png', 2),
+    ]
+    for url, ordem in slides_padrao:
+        # Só insere se ainda não existe um slide com essa url
+        existe = conn.execute(
+            'SELECT id FROM pubshow_slides_sistema WHERE url=?', (url,)
+        ).fetchone()
+        if not existe:
+            try:
+                conn.execute(
+                    'INSERT INTO pubshow_slides_sistema (tipo, url, ordem, ativo) VALUES (?,?,?,1)',
+                    ('imagem', url, ordem)
+                )
+                conn.commit()
+            except Exception:
+                try: conn.rollback()
+                except: pass
 
 
 def _corrigir_videos_quebrados(conn):

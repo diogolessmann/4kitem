@@ -545,12 +545,15 @@ let   CANAL_KEY   = '{{ canal_key }}';
 const BASE_URL    = '/pubshow';
 const JUKEBOX_URL = 'https://4kitem.com.br/pubshow/jukebox/{{ b.jukebox_token or b.code }}';
 const ANUNCIOS    = {{ anuncios | tojson }};  // slides de propaganda do bar
-// Slides padrão do sistema — cardápio de preços (sempre exibido)
+// Slides padrão do sistema — cardápio de preços (sempre exibido junto aos do bar)
 const ANUNCIOS_DEFAULT = [
   {tipo:'imagem', url:'/static/pubshow/slide-cardapio.png', titulo:''},
 ];
 // Mescla slides do bar com o cardápio padrão (cardápio aparece a cada ciclo)
 const ANUNCIOS_EFETIVOS = [...ANUNCIOS, ...ANUNCIOS_DEFAULT];
+
+// Slides do sistema — obrigatórios, exibidos a cada 10 minutos em todas as TVs
+const SLIDES_SISTEMA = {{ slides_sistema | tojson }};
 
 // Info de canais disponível no JS para atualizar UI sem reload
 const CANAIS_JS = {{ canais | tojson }};
@@ -605,6 +608,8 @@ function ativarSom() {
   window._autoUnmute = true;
   // Inicia ciclo periódico de CTA fullscreen
   iniciarCtaPeriodicO();
+  // Inicia timer dos slides do sistema (10 min)
+  _agendarSlidesSistema();
 }
 
 // ── Promoção Relâmpago — countdown ───────────────────────────────────────────
@@ -994,7 +999,7 @@ function proximoVideoOuSlide() {
   }
 }
 
-function mostrarSlide(slide) {
+function mostrarSlide(slide, onEnd) {
   const duracao = 8000; // 8 segundos
   const el     = document.getElementById('slide-propaganda');
   const box    = document.getElementById('slide-box');
@@ -1031,9 +1036,44 @@ function mostrarSlide(slide) {
     el.classList.remove('show');
     box.style.display    = '';
     imgBox.style.display = 'none';
+    if (typeof onEnd === 'function') {
+      onEnd();
+    } else {
+      videoIdx = (videoIdx + 1) % VIDEOS.length;
+      carregarVideo(videoIdx);
+    }
+  }, duracao);
+}
+
+// ── Slides do Sistema — obrigatórios a cada 10 minutos em todas as TVs ───────
+const _SS_INTERVAL = 10 * 60 * 1000; // 10 minutos
+let   _ssTimer     = null;
+
+function _agendarSlidesSistema() {
+  clearTimeout(_ssTimer);
+  if (!SLIDES_SISTEMA.length) return;
+  _ssTimer = setTimeout(_iniciarSlidesSistema, _SS_INTERVAL);
+}
+
+function _iniciarSlidesSistema() {
+  // Não interrompe overlay especial (parabéns, dedicatória etc.)
+  if (overlayAtivo) { _agendarSlidesSistema(); return; }
+  // Pausa o vídeo atual e cancela timers pendentes
+  if (player && player.pauseVideo) player.pauseVideo();
+  clearTimeout(window._slideTimer);
+  clearTimeout(stallTimer);
+  _mostrarSlidesSistemaSeq(0);
+}
+
+function _mostrarSlidesSistemaSeq(idx) {
+  if (idx >= SLIDES_SISTEMA.length) {
+    // Todos os slides do sistema foram exibidos — retoma vídeo e reagenda
     videoIdx = (videoIdx + 1) % VIDEOS.length;
     carregarVideo(videoIdx);
-  }, duracao);
+    _agendarSlidesSistema();
+    return;
+  }
+  mostrarSlide(SLIDES_SISTEMA[idx], () => _mostrarSlidesSistemaSeq(idx + 1));
 }
 
 function lancarConfetes(corPrincipal) {
