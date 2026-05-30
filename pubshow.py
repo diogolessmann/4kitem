@@ -3016,19 +3016,55 @@ def painel_relatorio():
     wd_dict = {row['wd']: row['n'] for row in por_weekday_raw}
     por_weekday = [{'dia': dias_semana[i], 'n': wd_dict.get(i, 0)} for i in range(7)]
 
+    # Ticket médio e total pedidos do mês
+    mes_stats = conn.execute(
+        '''SELECT COUNT(*) n, COALESCE(AVG(valor),0) ticket
+           FROM pubshow_pedidos WHERE business_id=? AND status!="aguardando_pix"
+           AND strftime("%Y-%m",datetime(created_at,"-3 hours"))=strftime("%Y-%m",date("now","-3 hours"))''',
+        (b['id'],)
+    ).fetchone()
+    total_pedidos_mes = mes_stats['n'] if mes_stats else 0
+    ticket_medio = float(mes_stats['ticket'] if mes_stats else 0)
+
+    # Receita mês anterior
+    receita_mes_anterior = float(conn.execute(
+        '''SELECT COALESCE(SUM(valor),0) FROM pubshow_pedidos WHERE business_id=?
+           AND status!="aguardando_pix"
+           AND strftime("%Y-%m",datetime(created_at,"-3 hours"))=strftime("%Y-%m",date("now","-3 hours","-1 month"))''',
+        (b['id'],)
+    ).fetchone()[0])
+
+    # Projeção do mês (ritmo atual × dias restantes)
+    import calendar as _cal
+    _hoje = datetime.utcnow() - timedelta(hours=3)
+    _dias_no_mes = _cal.monthrange(_hoje.year, _hoje.month)[1]
+    _dia_atual = _hoje.day
+    projecao_mes = float(receita_mes) / _dia_atual * _dias_no_mes if _dia_atual > 0 else 0
+
+    # Melhor dia da semana e melhor hora
+    melhor_wd = max(por_weekday, key=lambda x: x['n']) if por_weekday else None
+    melhor_hora = max(por_hora, key=lambda x: x['n']) if por_hora else None
+
     conn.close()
     return render_template('pubshow/relatorio.html',
                            b=dict(b),
-                           receita_hoje=receita_hoje,
-                           receita_semana=receita_semana,
-                           receita_mes=receita_mes,
-                           receita_total=receita_total,
+                           receita_hoje=float(receita_hoje),
+                           receita_semana=float(receita_semana),
+                           receita_mes=float(receita_mes),
+                           receita_total=float(receita_total),
+                           receita_mes_anterior=receita_mes_anterior,
+                           total_pedidos_mes=total_pedidos_mes,
+                           ticket_medio=ticket_medio,
+                           projecao_mes=projecao_mes,
+                           melhor_wd=melhor_wd,
+                           melhor_hora=melhor_hora,
                            top_tipos=[dict(t) for t in top_tipos],
                            top_musicas=[dict(m) for m in top_musicas],
                            por_dia=[dict(d) for d in por_dia],
                            por_hora=por_hora,
                            por_weekday=por_weekday,
-                           tipos=TIPOS_PEDIDO)
+                           tipos=TIPOS_PEDIDO,
+                           mes_atual=_hoje.strftime('%B de %Y').capitalize())
 
 
 @pubshow_bp.route('/painel/novo-qr', methods=['POST'])
