@@ -110,6 +110,34 @@
   </div>
   {% endif %}
 
+  {# ── Status da assinatura ativa ── #}
+  {% if b.plano_ativo and assinatura %}
+    {% set ass_status = assinatura.status or 'ativo' %}
+    {% set proximo = assinatura.proximo_vencimento or '' %}
+  <div style="background:{% if ass_status == 'inadimplente' %}rgba(245,158,11,.07){% elif ass_status == 'suspenso' %}rgba(239,68,68,.07){% else %}rgba(74,222,128,.05){% endif %};border:1px solid {% if ass_status == 'inadimplente' %}rgba(245,158,11,.3){% elif ass_status == 'suspenso' %}rgba(239,68,68,.3){% else %}rgba(74,222,128,.2){% endif %};border-radius:14px;padding:14px 20px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+    <div style="display:flex;align-items:center;gap:10px">
+      <span style="font-size:20px">{% if ass_status == 'inadimplente' %}⚠️{% elif ass_status == 'suspenso' %}🔴{% else %}✅{% endif %}</span>
+      <div>
+        <div style="font-size:13px;font-weight:700;color:{% if ass_status == 'inadimplente' %}#fbbf24{% elif ass_status == 'suspenso' %}#f87171{% else %}#4ade80{% endif %}">
+          {% if ass_status == 'inadimplente' %}Pagamento pendente — regularize para evitar suspensão
+          {% elif ass_status == 'suspenso' %}Assinatura suspensa — pagamento necessário
+          {% else %}{{ plano_info.get('nome','') }} {{ plano_info.get('emoji','') }} — Assinatura ativa{% endif %}
+        </div>
+        <div style="font-size:11px;color:#6b7280;margin-top:2px">
+          {% if proximo %}Próxima cobrança: <strong style="color:#9ca3af">{{ proximo[:10] }}</strong> · {% endif %}
+          {{ assinatura.billing_type or 'PIX' }} · R$ {{ '%.2f'|format(assinatura.valor or 0)|replace('.',',') }}/mês
+        </div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      {% if ass_status in ('inadimplente', 'suspenso') %}
+      <a href="/pubshow/planos" style="background:#f59e0b;color:#08080f;padding:7px 16px;border-radius:8px;font-size:12px;font-weight:700;text-decoration:none">Regularizar →</a>
+      {% endif %}
+      <a href="/pubshow/painel/cancelar" style="background:transparent;border:1px solid rgba(255,255,255,.12);color:#6b7280;padding:7px 14px;border-radius:8px;font-size:11px;font-weight:600;text-decoration:none">Cancelar assinatura</a>
+    </div>
+  </div>
+  {% endif %}
+
   {% set pix_ok      = b.pix_key and b.pix_key|length > 3 %}
   {% set tv_ok       = b.ultimo_acesso and b.ultimo_acesso > '' %}
   {% set pedido_ok   = b.total_pedidos is defined and b.total_pedidos > 0 %}

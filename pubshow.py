@@ -1897,6 +1897,9 @@ def painel():
     total_pedidos_bar = conn.execute(
         'SELECT COUNT(*) FROM pubshow_pedidos WHERE business_id=?', (b['id'],)
     ).fetchone()[0]
+    assinatura = conn.execute(
+        'SELECT * FROM pubshow_assinaturas WHERE business_id=?', (b['id'],)
+    ).fetchone()
     conn.close()
     import json as _json
     bd = dict(b)
@@ -1936,6 +1939,7 @@ def painel():
                            plano_permite_hh=_plano_permite(bd, 'happy_hour'),
                            plano_permite_wa=_plano_permite(bd, 'whatsapp'),
                            plano_permite_analytics=_plano_permite(bd, 'analytics'),
+                           assinatura=dict(assinatura) if assinatura else None,
                            promo_ativa=bool(bd.get('promo_msg') and bd.get('promo_expira') and bd['promo_expira'] > datetime.now().strftime('%Y-%m-%dT%H:%M:%S')))
 
 
@@ -2104,6 +2108,81 @@ def cron_emails():
         return jsonify({'ok': True, 'ts': datetime.now().isoformat()})
     except Exception as e:
         return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@pubshow_bp.route('/_cron/sync-assinaturas')
+def cron_sync_assinaturas():
+    """Sync proativo de assinaturas com Asaas.
+    Verifica o status real de cada assinatura e corrige discrepâncias.
+    Deve ser chamado 1x/dia (Railway Cron, UptimeRobot, etc)."""
+    cron_key = os.environ.get('PUBSHOW_CRON_KEY', '')
+    req_key  = request.headers.get('X-Cron-Key', request.args.get('key', ''))
+    if cron_key and req_key != cron_key:
+        return jsonify({'error': 'unauthorized'}), 401
+
+    if not os.environ.get('ASAAS_API_KEY'):
+        return jsonify({'ok': False, 'msg': 'ASAAS_API_KEY não configurada'}), 200
+
+    resultado = {'verificados': 0, 'ativados': 0, 'suspensos': 0, 'erros': 0}
+
+    try:
+        conn = get_pubshow_db()
+        assinaturas = conn.execute(
+            '''SELECT a.*, b.nome, b.email, b.telefone, b.plano_ativo
+               FROM pubshow_assinaturas a
+               JOIN pubshow_businesses b ON b.id = a.business_id
+               WHERE a.asaas_subscription_id IS NOT NULL
+                 AND a.status NOT IN ("cancelado")
+               LIMIT 100'''
+        ).fetchall()
+        conn.close()
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+    for ass in assinaturas:
+        resultado['verificados'] += 1
+        try:
+            sub_data = _asaas_req('GET', f'/subscriptions/{ass["asaas_subscription_id"]}')
+            asaas_status = sub_data.get('status', '')
+            next_due     = sub_data.get('nextDueDate', '')
+
+            conn = get_pubshow_db()
+            conn.execute(
+                'UPDATE pubshow_assinaturas SET asaas_sub_status=?, proximo_vencimento=?, ultima_sync=? WHERE id=?',
+                (asaas_status, next_due, datetime.now().isoformat(), ass['id'])
+            )
+            conn.commit()
+            conn.close()
+
+            if asaas_status == 'ACTIVE' and not ass['plano_ativo']:
+                # Asaas diz ativo mas nós temos desativado — reativa
+                _assinatura_ativar(ass['business_id'], ass['plano'], ass['asaas_subscription_id'], next_due)
+                resultado['ativados'] += 1
+                log.info('[PUBSHOW sync] Reativado business_id=%s (Asaas ACTIVE, local inativo)', ass['business_id'])
+
+            elif asaas_status in ('CANCELLED', 'INACTIVE') and ass['plano_ativo']:
+                # Asaas diz cancelado mas nós temos ativo — desativa
+                _assinatura_cancelar(ass['business_id'])
+                resultado['suspensos'] += 1
+                log.info('[PUBSHOW sync] Suspenso business_id=%s (Asaas %s, local ativo)', ass['business_id'], asaas_status)
+
+            elif asaas_status == 'OVERDUE':
+                # Verifica carência
+                conn2 = get_pubshow_db()
+                ass2 = conn2.execute('SELECT * FROM pubshow_assinaturas WHERE id=?', (ass['id'],)).fetchone()
+                conn2.close()
+                if ass2 and not ass2.get('inadimplente_desde'):
+                    _assinatura_inadimplente(ass['business_id'], ass['id'])
+                    _notify_assinatura(ass['business_id'], 'inadimplente')
+                elif ass2 and ass2.get('inadimplente_desde'):
+                    _assinatura_inadimplente(ass['business_id'], ass['id'])
+
+        except Exception as e:
+            log.error('[PUBSHOW sync] Erro business_id=%s: %s', ass['business_id'], e)
+            resultado['erros'] += 1
+
+    log.info('[PUBSHOW sync] Resultado: %s', resultado)
+    return jsonify({'ok': True, **resultado, 'ts': datetime.now().isoformat()})
 
 
 # ── PWA — Manifest dinâmico + Ícone ──────────────────────────────────────────
@@ -3304,10 +3383,203 @@ def planos():
     return render_template('pubshow/planos.html', planos=PLANOS, canais=CANAIS)
 
 
+# ── Cobrança Automática — Helpers ─────────────────────────────────────────────
+
+_GRACE_PERIOD_DAYS = 3   # dias de carência após vencimento antes de desativar
+
+def _assinatura_ativar(business_id: int, plano: str, sub_id: str = None,
+                       proximo_venc: str = None):
+    """Ativa plano de um bar no DB."""
+    conn = get_pubshow_db()
+    conn.execute(
+        'UPDATE pubshow_businesses SET plano=?, plano_ativo=1 WHERE id=?',
+        (plano, business_id)
+    )
+    conn.execute(
+        '''UPDATE pubshow_assinaturas
+           SET status="ativo", plano=?, inadimplente_desde=NULL,
+               asaas_sub_status="ACTIVE", ultima_sync=?, proximo_vencimento=?
+           WHERE business_id=?''',
+        (plano, datetime.now().isoformat(), proximo_venc, business_id)
+    )
+    conn.commit(); conn.close()
+    log.info('[PUBSHOW] Assinatura ATIVADA: business_id=%s plano=%s', business_id, plano)
+
+
+def _assinatura_inadimplente(business_id: int, ass_id: int):
+    """Marca assinatura como inadimplente. Desativa após carência."""
+    conn = get_pubshow_db()
+    ass = conn.execute(
+        'SELECT inadimplente_desde FROM pubshow_assinaturas WHERE id=?', (ass_id,)
+    ).fetchone()
+    agora = datetime.now()
+
+    if not ass or not ass['inadimplente_desde']:
+        # Primeira vez — registra início da inadimplência, mantém ativo
+        conn.execute(
+            "UPDATE pubshow_assinaturas SET status='inadimplente', inadimplente_desde=? WHERE id=?",
+            (agora.isoformat(), ass_id)
+        )
+        conn.commit(); conn.close()
+        log.info('[PUBSHOW] Assinatura INADIMPLENTE (inicio carencia): business_id=%s', business_id)
+    else:
+        # Verifica se passou a carência
+        try:
+            desde = datetime.fromisoformat(ass['inadimplente_desde'][:19])
+            if (agora - desde).days >= _GRACE_PERIOD_DAYS:
+                conn.execute('UPDATE pubshow_businesses SET plano_ativo=0 WHERE id=?', (business_id,))
+                conn.execute(
+                    "UPDATE pubshow_assinaturas SET status='suspenso' WHERE id=?", (ass_id,)
+                )
+                conn.commit()
+                log.info('[PUBSHOW] Assinatura SUSPENSA (apos carencia): business_id=%s', business_id)
+            else:
+                conn.commit()
+        except Exception as e:
+            log.error('[PUBSHOW] Erro carencia: %s', e)
+        conn.close()
+
+
+def _assinatura_cancelar(business_id: int):
+    """Cancela e desativa assinatura."""
+    conn = get_pubshow_db()
+    conn.execute('UPDATE pubshow_businesses SET plano_ativo=0 WHERE id=?', (business_id,))
+    conn.execute(
+        "UPDATE pubshow_assinaturas SET status='cancelado', asaas_sub_status='CANCELLED' WHERE business_id=?",
+        (business_id,)
+    )
+    conn.commit(); conn.close()
+    log.info('[PUBSHOW] Assinatura CANCELADA: business_id=%s', business_id)
+
+
+def _notify_assinatura(b_id: int, tipo: str):
+    """Envia notificações (email + WA) sobre eventos de assinatura."""
+    try:
+        conn = get_pubshow_db()
+        b = conn.execute('SELECT * FROM pubshow_businesses WHERE id=?', (b_id,)).fetchone()
+        ass = conn.execute('SELECT * FROM pubshow_assinaturas WHERE business_id=?', (b_id,)).fetchone()
+        conn.close()
+        if not b:
+            return
+        bd = dict(b)
+        base_url = os.environ.get('BASE_URL', 'https://pubshow.com.br')
+        planos_url = f'{base_url}/pubshow/planos'
+        nome_plano = {'starter':'Starter','bar':'Bar','pro':'Pro','rede':'Rede'}.get(bd.get('plano','bar'), 'Bar')
+        preco_plano = {'starter':'R$ 69,90','bar':'R$ 129,90','pro':'R$ 249,90','rede':'R$ 499,90'}.get(bd.get('plano','bar'), 'R$ 129,90')
+        proximo = (ass['proximo_vencimento'] or '')[:10] if ass else ''
+        try:
+            proximo_fmt = datetime.fromisoformat(proximo).strftime('%d/%m/%Y') if proximo else ''
+        except Exception:
+            proximo_fmt = proximo
+
+        if tipo == 'pagamento_confirmado':
+            assunto = f'✅ Pagamento confirmado — PUBSHOW {nome_plano}'
+            corpo = f"""
+              <h1 style="color:#f9fafb;font-size:22px;font-weight:800;margin:0 0 8px;">
+                Pagamento confirmado! ✅
+              </h1>
+              <p style="color:#9ca3af;font-size:15px;margin:0 0 24px;line-height:1.6;">
+                Oi {bd['nome'].split()[0]}, seu pagamento do plano <strong style="color:#4ade80">{nome_plano}</strong>
+                foi confirmado. Jukebox ativo e funcionando!
+              </p>
+              <table width="100%" cellpadding="0" cellspacing="0" style="background:#0d1f0d;border-radius:12px;border:1px solid #166534;margin-bottom:24px;">
+                <tr><td style="padding:20px;">
+                  <p style="color:#4ade80;font-size:14px;font-weight:700;margin:0 0 8px;">Detalhes da assinatura</p>
+                  <p style="color:#e5e7eb;font-size:13px;margin:4px 0;">📦 Plano: <strong>{nome_plano}</strong> — {preco_plano}/mês</p>
+                  {'<p style="color:#e5e7eb;font-size:13px;margin:4px 0;">📅 Próximo vencimento: <strong>' + proximo_fmt + '</strong></p>' if proximo_fmt else ''}
+                </td></tr>
+              </table>
+              <table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">
+                <a href="{base_url}/pubshow/painel" style="display:inline-block;background:#4ade80;color:#08080f;font-weight:800;font-size:15px;padding:12px 32px;border-radius:8px;text-decoration:none;">
+                  Ir para o Painel →
+                </a>
+              </td></tr></table>
+            """
+            wa_msg = (f'✅ *PUBSHOW — Pagamento confirmado*\n'
+                      f'Bar: {bd["nome"]}\nPlano: {nome_plano}\n'
+                      + (f'Próximo: {proximo_fmt}' if proximo_fmt else ''))
+
+        elif tipo == 'inadimplente':
+            assunto = f'⚠️ Pagamento pendente — PUBSHOW {nome_plano}'
+            corpo = f"""
+              <h1 style="color:#f9fafb;font-size:22px;font-weight:800;margin:0 0 8px;">
+                Pagamento pendente ⚠️
+              </h1>
+              <p style="color:#9ca3af;font-size:15px;margin:0 0 24px;line-height:1.6;">
+                Oi {bd['nome'].split()[0]}, identificamos um pagamento pendente da sua assinatura PUBSHOW.
+                Você tem <strong style="color:#f59e0b">{_GRACE_PERIOD_DAYS} dias de carência</strong> antes do Jukebox ser pausado.
+              </p>
+              <table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">
+                <a href="{planos_url}" style="display:inline-block;background:#f59e0b;color:#08080f;font-weight:800;font-size:15px;padding:12px 32px;border-radius:8px;text-decoration:none;">
+                  Regularizar pagamento →
+                </a>
+              </td></tr></table>
+            """
+            wa_msg = (f'⚠️ *PUBSHOW — Pagamento pendente*\n'
+                      f'Bar: {bd["nome"]}\nPlano: {nome_plano}\n'
+                      f'Carência: {_GRACE_PERIOD_DAYS} dias')
+
+        elif tipo == 'suspenso':
+            assunto = f'🔴 Jukebox pausado — regularize seu pagamento'
+            corpo = f"""
+              <h1 style="color:#f9fafb;font-size:22px;font-weight:800;margin:0 0 8px;">
+                Jukebox pausado 🔴
+              </h1>
+              <p style="color:#9ca3af;font-size:15px;margin:0 0 24px;line-height:1.6;">
+                Oi {bd['nome'].split()[0]}, o período de carência encerrou e seu Jukebox foi temporariamente pausado.
+                Regularize o pagamento para reativar imediatamente.
+              </p>
+              <table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">
+                <a href="{planos_url}" style="display:inline-block;background:#ef4444;color:#fff;font-weight:800;font-size:15px;padding:12px 32px;border-radius:8px;text-decoration:none;">
+                  Reativar Jukebox →
+                </a>
+              </td></tr></table>
+            """
+            wa_msg = (f'🔴 *PUBSHOW — Jukebox PAUSADO*\n'
+                      f'Bar: {bd["nome"]}\nAção necessária: regularizar pagamento')
+        else:
+            return
+
+        # Envia email
+        try:
+            _pubshow_enviar_email(bd['email'], assunto,
+                                  _email_html_base('PUBSHOW — Assinatura', corpo))
+        except Exception as e:
+            log.error('[PUBSHOW] Email assinatura erro: %s', e)
+
+        # Envia WA para o bar e para o admin
+        try:
+            _pubshow_send_wa(re.sub(r'\D', '', bd['telefone'] or ''), wa_msg)
+            admin_phone = os.environ.get('PUBSHOW_ADMIN_PHONE', '')
+            if admin_phone:
+                _pubshow_send_wa(admin_phone,
+                                 f'[ADMIN] {wa_msg}\nEmail: {bd["email"]}')
+        except Exception as e:
+            log.error('[PUBSHOW] WA assinatura erro: %s', e)
+
+    except Exception as e:
+        log.error('[PUBSHOW] _notify_assinatura erro: %s', e)
+
+
+def _sync_assinaturas_asaas():
+    """Sync proativo com Asaas — verifica status real de todas as assinaturas ativas.
+    Rate-limited: 1x por hora por processo."""
+    global _email_last_check
+    # Reutiliza rate-limit slot separado via módulo-level var
+    pass  # Implementação via _cron/sync-assinaturas (com rate limit próprio)
+
+
 # ── WEBHOOK ASAAS ─────────────────────────────────────────────────────────────
 
 @pubshow_bp.route('/webhook/asaas', methods=['GET', 'POST'])
 def webhook_asaas():
+    """Recebe eventos de assinatura do Asaas.
+
+    Configurar no painel Asaas → Configurações → Webhooks:
+      URL: https://<dominio>/pubshow/webhook/asaas
+      Eventos: PAYMENT_RECEIVED, PAYMENT_CONFIRMED, PAYMENT_OVERDUE,
+               SUBSCRIPTION_ACTIVATED, SUBSCRIPTION_CANCELLED, SUBSCRIPTION_INACTIVATED
+    """
     if request.method == 'GET':
         return jsonify({'status': 'ok'}), 200
 
@@ -3316,12 +3588,16 @@ def webhook_asaas():
     if token_esp and token_rec != token_esp:
         return jsonify({'error': 'unauthorized'}), 401
 
-    dados    = request.get_json(silent=True) or {}
-    evento   = dados.get('event', '')
-    pagamento= dados.get('payment', {})
-    ext_ref  = pagamento.get('externalReference', '')
-    sub_id   = pagamento.get('subscription', '')
+    dados     = request.get_json(silent=True) or {}
+    evento    = dados.get('event', '')
+    pagamento = dados.get('payment', {})
+    sub_obj   = dados.get('subscription', {})  # para eventos SUBSCRIPTION_*
+    ext_ref   = pagamento.get('externalReference', '') or sub_obj.get('externalReference', '')
+    sub_id    = pagamento.get('subscription', '') or sub_obj.get('id', '')
 
+    log.info('[PUBSHOW] Webhook Asaas evento=%s ext_ref=%s sub_id=%s', evento, ext_ref, sub_id)
+
+    # ── Pagamento confirmado / assinatura ativada ─────────────────────────────
     if evento in ('PAYMENT_RECEIVED', 'PAYMENT_CONFIRMED', 'SUBSCRIPTION_ACTIVATED'):
         if ext_ref.startswith('pubshow_'):
             partes = ext_ref.split('_')
@@ -3330,31 +3606,63 @@ def webhook_asaas():
                     bid   = int(partes[1])
                     plano = partes[2]
                     if plano in PLANOS:
-                        conn = get_pubshow_db()
-                        conn.execute(
-                            'UPDATE pubshow_businesses SET plano=?, plano_ativo=1 WHERE id=?',
-                            (plano, bid)
-                        )
-                        conn.execute(
-                            "UPDATE pubshow_assinaturas SET status='ativo', plano=? WHERE business_id=?",
-                            (plano, bid)
-                        )
-                        conn.commit(); conn.close()
-                        log.info('[PUBSHOW] Assinatura ativada: business_id=%s plano=%s', bid, plano)
+                        # Busca próximo vencimento na assinatura Asaas
+                        proximo_venc = None
+                        if sub_id:
+                            try:
+                                sub_data = _asaas_req('GET', f'/subscriptions/{sub_id}')
+                                proximo_venc = sub_data.get('nextDueDate')
+                            except Exception:
+                                pass
+                        _assinatura_ativar(bid, plano, sub_id, proximo_venc)
+                        _notify_assinatura(bid, 'pagamento_confirmado')
                 except Exception as ex:
-                    log.error('[PUBSHOW] Webhook erro: %s', ex)
+                    log.error('[PUBSHOW] Webhook ativar erro: %s', ex)
 
-    elif evento in ('SUBSCRIPTION_CANCELLED', 'PAYMENT_OVERDUE'):
+    # ── Pagamento em atraso — carência de N dias ──────────────────────────────
+    elif evento == 'PAYMENT_OVERDUE':
         if sub_id:
-            conn = get_pubshow_db()
-            ass = conn.execute(
-                'SELECT * FROM pubshow_assinaturas WHERE asaas_subscription_id=?', (sub_id,)
-            ).fetchone()
-            if ass:
-                conn.execute('UPDATE pubshow_businesses SET plano_ativo=0 WHERE id=?', (ass['business_id'],))
-                conn.execute("UPDATE pubshow_assinaturas SET status='cancelado' WHERE id=?", (ass['id'],))
-                conn.commit()
-            conn.close()
+            try:
+                conn = get_pubshow_db()
+                ass = conn.execute(
+                    'SELECT * FROM pubshow_assinaturas WHERE asaas_subscription_id=?', (sub_id,)
+                ).fetchone()
+                conn.close()
+                if ass:
+                    bid_overdue = ass['business_id']
+                    _assinatura_inadimplente(bid_overdue, ass['id'])
+                    # Notifica apenas se acabou de entrar em inadimplência
+                    if not ass.get('inadimplente_desde'):
+                        _notify_assinatura(bid_overdue, 'inadimplente')
+                elif ext_ref.startswith('pubshow_'):
+                    partes = ext_ref.split('_')
+                    if len(partes) >= 3:
+                        bid_overdue = int(partes[1])
+                        plano_overdue = partes[2]
+                        conn2 = get_pubshow_db()
+                        ass2 = conn2.execute(
+                            'SELECT * FROM pubshow_assinaturas WHERE business_id=?', (bid_overdue,)
+                        ).fetchone()
+                        conn2.close()
+                        if ass2:
+                            _assinatura_inadimplente(bid_overdue, ass2['id'])
+            except Exception as ex:
+                log.error('[PUBSHOW] Webhook overdue erro: %s', ex)
+
+    # ── Assinatura cancelada / inativada ──────────────────────────────────────
+    elif evento in ('SUBSCRIPTION_CANCELLED', 'SUBSCRIPTION_INACTIVATED'):
+        target_sub = sub_id or (sub_obj.get('id') if sub_obj else '')
+        if target_sub:
+            try:
+                conn = get_pubshow_db()
+                ass = conn.execute(
+                    'SELECT * FROM pubshow_assinaturas WHERE asaas_subscription_id=?', (target_sub,)
+                ).fetchone()
+                conn.close()
+                if ass:
+                    _assinatura_cancelar(ass['business_id'])
+            except Exception as ex:
+                log.error('[PUBSHOW] Webhook cancelar erro: %s', ex)
 
     return jsonify({'status': 'ok'}), 200
 

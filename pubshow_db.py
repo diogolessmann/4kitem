@@ -169,6 +169,11 @@ def init_pubshow_db():
         'ALTER TABLE pubshow_businesses ADD COLUMN generos_jukebox TEXT DEFAULT NULL',
         # Slides do sistema — bar pode desativar os slides globais do admin
         'ALTER TABLE pubshow_businesses ADD COLUMN usar_slides_sistema INTEGER DEFAULT 1',
+        # Assinaturas — campos adicionais para cobrança automática
+        'ALTER TABLE pubshow_assinaturas ADD COLUMN proximo_vencimento TEXT',
+        'ALTER TABLE pubshow_assinaturas ADD COLUMN inadimplente_desde TEXT',
+        'ALTER TABLE pubshow_assinaturas ADD COLUMN asaas_sub_status TEXT',
+        'ALTER TABLE pubshow_assinaturas ADD COLUMN ultima_sync TEXT',
     ]:
         try:
             conn.execute(m); conn.commit()
