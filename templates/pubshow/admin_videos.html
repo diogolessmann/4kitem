@@ -124,6 +124,7 @@ tr.hidden-search{display:none}
     <h1>🎬 Vídeos</h1><span class="sub">{{ total }} cadastrados</span>
     <button class="btn btn-primary" id="btn-verificar" onclick="iniciarVerificacao()">🔍 Verificar Todos</button>
     <button class="btn btn-danger" id="btn-apagar" onclick="apagarSelecionados()" disabled>🗑️ Apagar (<span id="sel-count">0</span>)</button>
+    <button class="btn" id="btn-autoremover" onclick="autoRemoverQuebrados()" style="background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.4);color:#f87171;font-weight:700">🔥 Auto-remover Quebrados</button>
     <button class="btn btn-ghost" onclick="abrirModal('modal-add')">+ Vídeo</button>
     <button class="btn btn-green" onclick="abrirModal('modal-lote')">📋 Lote</button>
     <button class="btn btn-indigo" onclick="abrirModal('modal-playlist')">🤖 Playlist API</button>
@@ -543,6 +544,53 @@ async function importarPlaylist(){
     else{errEl.textContent='❌ '+d.erro;errEl.style.display='block';}
   }catch(e){errEl.textContent='❌ Rede: '+e;errEl.style.display='block'}
   btn.disabled=false;btn.textContent='📥 Importar';
+}
+
+// ── Auto-remover quebrados (1-click, paralelo no servidor) ────────────────────
+async function autoRemoverQuebrados(){
+  const total = TODOS_IDS.length;
+  if(!confirm(`Verificar ${total} vídeos e remover automaticamente os quebrados?\n\nIsso leva ~${Math.ceil(total/20)}s e não pode ser desfeito.`)) return;
+
+  const btn = document.getElementById('btn-autoremover');
+  btn.disabled = true;
+  btn.textContent = '⏳ Verificando...';
+
+  // Mostra progresso
+  document.getElementById('prog-wrap').style.display = 'block';
+  document.getElementById('prog-fill').style.width = '30%';
+  document.getElementById('prog-label').textContent = `Verificando ${total} vídeos em paralelo...`;
+
+  try {
+    const r = await fetch('/pubshow/admin/videos/remover-quebrados', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: '{}'
+    });
+    const d = await r.json();
+
+    document.getElementById('prog-fill').style.width = '100%';
+
+    if(d.ok){
+      const msg = `✅ Verificação concluída!\n\n` +
+        `📊 Verificados: ${d.verificados}\n` +
+        `❌ Quebrados encontrados: ${d.quebrados}\n` +
+        `🗑️ Removidos: ${d.removidos}\n\n` +
+        (d.removidos > 0 ? `Recarregando a página...` : `Biblioteca está limpa! 🎉`);
+      alert(msg);
+      if(d.removidos > 0) location.reload();
+      else {
+        document.getElementById('s-err').textContent = `❌ 0 quebrados`;
+        document.getElementById('prog-label').textContent = '✅ Biblioteca limpa!';
+      }
+    } else {
+      alert('❌ Erro: ' + d.erro);
+    }
+  } catch(e) {
+    alert('❌ Erro de rede: ' + e);
+  }
+
+  btn.disabled = false;
+  btn.textContent = '🔥 Auto-remover Quebrados';
 }
 
 // ── Seed categorias vazias ─────────────────────────────────────────────────────

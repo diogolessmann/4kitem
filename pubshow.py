@@ -3188,6 +3188,106 @@ def admin_videos_check_one():
         return jsonify({'ok': False, 'erro': str(e)[:80]})
 
 
+@pubshow_bp.route('/admin/videos/check-bulk', methods=['POST'])
+@_admin_required
+def admin_videos_check_bulk():
+    """Verifica uma lista de youtube_ids em paralelo via oEmbed.
+    Retorna {ok: True, resultados: [{youtube_id, ok, erro}]}
+    Muito mais rápido que check-one sequencial no cliente."""
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    ids = request.json.get('ids', [])
+    if not ids:
+        return jsonify({'ok': False, 'erro': 'Lista vazia'})
+    ids = ids[:600]   # limite de segurança
+
+    def _check(yid):
+        try:
+            r = _requests.get(
+                'https://www.youtube.com/oembed',
+                params={'url': f'https://www.youtube.com/watch?v={yid}', 'format': 'json'},
+                timeout=7
+            )
+            if r.status_code == 200:
+                return {'youtube_id': yid, 'ok': True}
+            elif r.status_code == 401:
+                return {'youtube_id': yid, 'ok': False, 'erro': 'embed bloqueado'}
+            elif r.status_code == 404:
+                return {'youtube_id': yid, 'ok': False, 'erro': 'removido'}
+            else:
+                return {'youtube_id': yid, 'ok': False, 'erro': f'HTTP {r.status_code}'}
+        except Exception as e:
+            return {'youtube_id': yid, 'ok': False, 'erro': 'timeout'}
+
+    resultados = []
+    # 20 threads paralelas — rápido sem sobrecarregar o YouTube
+    with ThreadPoolExecutor(max_workers=20) as ex:
+        futuros = {ex.submit(_check, yid): yid for yid in ids}
+        for fut in as_completed(futuros):
+            try:
+                resultados.append(fut.result())
+            except Exception:
+                resultados.append({'youtube_id': futuros[fut], 'ok': False, 'erro': 'erro'})
+
+    quebrados = [r['youtube_id'] for r in resultados if not r['ok']]
+    ok_count  = sum(1 for r in resultados if r['ok'])
+    log.info('[PUBSHOW admin] check-bulk: %d ok, %d quebrados', ok_count, len(quebrados))
+    return jsonify({'ok': True, 'resultados': resultados,
+                    'total': len(resultados), 'quebrados': quebrados,
+                    'ok_count': ok_count})
+
+
+@pubshow_bp.route('/admin/videos/remover-quebrados', methods=['POST'])
+@_admin_required
+def admin_videos_remover_quebrados():
+    """Verifica TODOS os vídeos ativos em paralelo e remove os quebrados.
+    Endpoint de 1-click para limpeza automática da biblioteca."""
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    conn = get_pubshow_db()
+    todos = conn.execute(
+        'SELECT youtube_id FROM pubshow_videos WHERE ativo=1'
+    ).fetchall()
+    conn.close()
+
+    ids = [r['youtube_id'] for r in todos]
+    if not ids:
+        return jsonify({'ok': True, 'removidos': 0, 'msg': 'Nenhum vídeo na biblioteca'})
+
+    def _check(yid):
+        try:
+            r = _requests.get(
+                'https://www.youtube.com/oembed',
+                params={'url': f'https://www.youtube.com/watch?v={yid}', 'format': 'json'},
+                timeout=7
+            )
+            return yid, r.status_code == 200
+        except Exception:
+            return yid, None   # None = timeout, não remove (dúvida)
+
+    quebrados = []
+    with ThreadPoolExecutor(max_workers=20) as ex:
+        futuros = {ex.submit(_check, yid): yid for yid in ids}
+        for fut in as_completed(futuros):
+            yid, ok = fut.result()
+            if ok is False:   # explicitamente quebrado (não timeout)
+                quebrados.append(yid)
+
+    removidos = 0
+    if quebrados:
+        conn2 = get_pubshow_db()
+        ph = ','.join('?' * len(quebrados))
+        conn2.execute(f'UPDATE pubshow_videos SET ativo=0 WHERE youtube_id IN ({ph})', quebrados)
+        removidos = conn2.execute('SELECT changes()').fetchone()[0]
+        conn2.commit()
+        conn2.close()
+
+    log.info('[PUBSHOW admin] remover-quebrados: %d verificados, %d removidos', len(ids), removidos)
+    return jsonify({'ok': True, 'verificados': len(ids),
+                    'quebrados': len(quebrados), 'removidos': removidos,
+                    'ids_removidos': quebrados})
+
+
 @pubshow_bp.route('/admin/videos/deletar', methods=['POST'])
 @_admin_required
 def admin_videos_deletar():
