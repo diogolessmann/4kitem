@@ -229,7 +229,8 @@ def _pix_emv(chave_raw: str, tipo: str, nome_recebedor: str, valor: float, txid:
     chave = _formatar_chave_pix(chave_raw, tipo)
 
     # Tag 26 — Merchant Account Info
-    mai = tlv('26', tlv('0014', 'br.gov.bcb.pix') + tlv('01', chave))
+    # Sub-tag 00 = GUI (br.gov.bcb.pix), sub-tag 01 = chave PIX
+    mai = tlv('26', tlv('00', 'br.gov.bcb.pix') + tlv('01', chave))
 
     # Tag 62 — Additional Data (referência da transação, max 25 chars alfanumérico)
     ref = re.sub(r'[^A-Za-z0-9]', '', txid)[:25] or 'PUBSHOW'
@@ -1537,6 +1538,8 @@ def jukebox(token):
                     conn2.commit(); conn2.close()
 
                     # ── Tenta Asaas primeiro (confirmação automática) ──────────
+                    pix_qr = ''      # inicializa antes do if/else (Bug #1)
+                    pix_payload = '' # evita NameError se algum ramo falhar
                     descricao_pedido = tipo_nome
                     if titulo_pedido:
                         descricao_pedido += f' — {titulo_pedido[:40]}'
@@ -4331,7 +4334,11 @@ def webhook_asaas_jukebox():
 
     if evento in ('PAYMENT_RECEIVED', 'PAYMENT_CONFIRMED') and ext_ref.startswith('jukebox_'):
         try:
-            pedido_id = int(ext_ref.split('_', 1)[1])
+            _parts = ext_ref.split('_', 1)
+            if len(_parts) < 2 or not _parts[1].isdigit():
+                log.warning('[PUBSHOW] Webhook jukebox: ext_ref inválida: %s', ext_ref)
+                return jsonify({'ok': False}), 200
+            pedido_id = int(_parts[1])
             conn = get_pubshow_db()
             conn.execute(
                 "UPDATE pubshow_pedidos SET status='pendente' WHERE id=? AND status='aguardando_pix'",

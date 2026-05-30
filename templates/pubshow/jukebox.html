@@ -415,11 +415,22 @@ const PIX_PEDIDO_ID = {{ pix_pendente.pedido_id }};
 
 function copiarPayload() {
   const txt = document.getElementById('copiacola-val').textContent.trim();
-  navigator.clipboard.writeText(txt).then(() => {
-    const btn = document.querySelector('.btn-copiar-pix');
-    btn.textContent = '✅ Código copiado!';
-    setTimeout(() => btn.textContent = '📋 Copiar código PIX', 3000);
-  });
+  const btn = document.querySelector('.btn-copiar-pix');
+  // Fallback para navegadores sem clipboard API (iOS HTTP, etc.) — Bug #9 fix
+  const _ok = () => { btn.textContent = '✅ Código copiado!'; setTimeout(() => btn.textContent = '📋 Copiar código PIX', 3000); };
+  const _fail = () => {
+    // Fallback: seleciona o texto para copiar manualmente
+    const el = document.getElementById('copiacola-val');
+    const range = document.createRange(); range.selectNodeContents(el);
+    const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(range);
+    btn.textContent = '📌 Selecione e copie (Ctrl+C)';
+    setTimeout(() => btn.textContent = '📋 Copiar código PIX', 4000);
+  };
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(txt).then(_ok).catch(_fail);
+  } else {
+    _fail();
+  }
 }
 
 async function jaPaguei() {
@@ -449,8 +460,11 @@ async function jaPaguei() {
       alert(d.error || 'Erro ao confirmar. Tente novamente.');
     }
   } catch(e) {
+    // Bug #8 fix — feedback ao usuário em falha de rede
     btn.disabled = false;
     btn.textContent = '✅ Já Paguei — Entrar na Fila';
+    const sub = document.getElementById('pix-status-sub');
+    if (sub) { sub.textContent = '⚠️ Erro de conexão. Tente novamente.'; sub.style.color = '#f87171'; }
   }
 }
 </script>
@@ -1010,13 +1024,14 @@ function _pixCrc16(str) {
 
 function gerarPixCopiaECola(chave, nomeRecebedor, valorReais, descricao) {
   // merchant account info (field 26)
-  let mai = _pixTlv('00','BR.GOV.BCB.PIX') + _pixTlv('01', chave);
+  // GUI deve ser minúsculo conforme spec BCB — Bug #7 fix
+  let mai = _pixTlv('00','br.gov.bcb.pix') + _pixTlv('01', chave);
   if (descricao) mai += _pixTlv('02', descricao.substring(0,25));
   // txid: só alfanumérico, max 25
   const txid = (descricao||'PUBSHOW').replace(/[^a-zA-Z0-9]/g,'').substring(0,25) || 'PUBSHOW';
   const payload = [
     _pixTlv('00','01'),
-    _pixTlv('01','11'),
+    _pixTlv('01','12'),  // 12 = QR único (one-time) — consistente com Python — Bug #7 fix
     _pixTlv('26', mai),
     _pixTlv('52','0000'),
     _pixTlv('53','986'),
