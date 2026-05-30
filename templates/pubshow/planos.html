@@ -193,10 +193,20 @@ input[type=range]{width:100%;accent-color:var(--green);height:6px;border-radius:
   </div>
 </div>
 
+<!-- TOGGLE MENSAL / ANUAL -->
+<div class="toggle-wrap">
+  <span style="font-weight:700;color:var(--text)">Mensal</span>
+  <button class="toggle" id="toggle-anual" onclick="toggleAnual()" aria-label="Alternar plano anual">
+    <div class="toggle-knob"></div>
+  </button>
+  <span style="font-weight:700;color:var(--text)">Anual</span>
+  <span class="desconto-badge" id="desconto-badge">💚 2 meses grátis — economize 17%</span>
+</div>
+
 <!-- PLANS -->
 <div class="plans-wrap">
   {% for key, p in planos.items() %}
-  <div class="plan {% if p.get('destaque') %}destaque{% endif %}">
+  <div class="plan {% if p.get('destaque') %}destaque{% endif %}" data-plano="{{ key }}">
     {% if p.get('destaque') %}<div class="destaque-badge">⭐ MAIS POPULAR</div>{% endif %}
     <div class="plan-icon">{{ p.emoji }}</div>
     <div class="plan-nome">{{ p.nome }}</div>
@@ -482,6 +492,49 @@ document.querySelectorAll('.faq-q').forEach(q => {
     if (!wasOpen) item.classList.add('open');
   });
 });
+
+// ── Toggle Anual/Mensal ───────────────────────────────────────────────────────
+const PRECOS_MENSAL = { starter: 69.90, bar: 129.90, pro: 199.90 };
+const DESCONTO_ANUAL = 0.17; // 17% ≈ 2 meses grátis
+let _anual = false;
+
+function toggleAnual() {
+  _anual = !_anual;
+  const toggle = document.getElementById('toggle-anual');
+  toggle.classList.toggle('on', _anual);
+  toggle.querySelector('.toggle-knob').style.left = _anual ? '24px' : '2px';
+
+  // Atualiza cada plano
+  document.querySelectorAll('[data-preco]').forEach(el => {
+    const planoKey = el.closest('.plan')?.dataset.plano;
+    if (!planoKey || !PRECOS_MENSAL[planoKey]) return;
+    const base = PRECOS_MENSAL[planoKey];
+    const preco = _anual ? (base * (1 - DESCONTO_ANUAL)).toFixed(2) : base.toFixed(2);
+    el.textContent = preco.replace('.', ',').replace(/,00$/, '');
+  });
+
+  // Atualiza ciclo
+  document.querySelectorAll('.plan-ciclo').forEach(el => {
+    el.textContent = _anual ? '/mês · cobrado anualmente' : '/mês · sem fidelidade';
+  });
+
+  // Mostra/esconde economia
+  document.querySelectorAll('[id^="eco-"]').forEach(el => {
+    const planoKey = el.id.replace('eco-', '');
+    if (!PRECOS_MENSAL[planoKey]) return;
+    const economia = (PRECOS_MENSAL[planoKey] * DESCONTO_ANUAL * 12).toFixed(0);
+    el.textContent = `💚 Economize R$ ${economia}/ano`;
+    el.style.display = _anual ? 'block' : 'none';
+  });
+
+  // Atualiza CTA dos planos
+  document.querySelectorAll('[data-href-mensal]').forEach(el => {
+    el.href = _anual ? el.dataset.hrefAnual : el.dataset.hrefMensal;
+    el.textContent = _anual
+      ? el.textContent.replace('→', '— plano anual →')
+      : el.textContent.replace('— plano anual →', '→');
+  });
+}
 </script>
 </body>
 </html>

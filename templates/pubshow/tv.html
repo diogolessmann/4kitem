@@ -482,6 +482,19 @@
     <img id="slide-img" src="" alt="">
     <div class="slide-bar" id="slide-bar-img"></div>
   </div>
+  <!-- Ranking dinâmico — substitui slide3.png com dados reais -->
+  <div id="slide-ranking-box" style="display:none;flex-direction:column;align-items:center;justify-content:center;width:100%;max-width:860px;padding:0 48px">
+    <div style="text-align:center;margin-bottom:32px">
+      <div style="font-size:56px;margin-bottom:8px">🏆</div>
+      <div style="font-size:52px;font-weight:900;letter-spacing:-2px;color:#f59e0b;text-shadow:0 0 40px rgba(245,158,11,.5)">RANKING DA NOITE</div>
+      <div style="font-size:18px;color:rgba(255,255,255,.5);margin-top:6px" id="rk-bar-nome"></div>
+    </div>
+    <div id="rk-lista" style="width:100%;display:flex;flex-direction:column;gap:14px"></div>
+    <div style="margin-top:28px;text-align:center;font-size:16px;color:rgba(255,255,255,.4)">
+      🎵 Peça a sua música — escaneie o QR nas mesas
+    </div>
+    <div class="slide-bar" id="slide-bar-ranking" style="width:min(600px,90vw);margin-top:20px"></div>
+  </div>
 </div>
 
 <!-- Ranking da noite — background fotográfico + lista dinâmica sobreposta -->
@@ -1035,10 +1048,54 @@ function mostrarSlide(slide, onEnd, duracaoMs) {
   const box    = document.getElementById('slide-box');
   const imgBox = document.getElementById('slide-img-box');
 
-  if (slide.tipo === 'imagem' && slide.url) {
-    // ── Slide de imagem ──────────────────────────────────────────────────
+  if (slide.tipo === 'imagem' && slide.url && slide.url.includes('slide3')) {
+    // ── Ranking dinâmico — busca dados reais e exibe HTML ────────────────
+    box.style.display    = 'none';
+    imgBox.style.display = 'none';
+    const rkBox = document.getElementById('slide-ranking-box');
+    rkBox.style.display  = 'flex';
+    document.getElementById('rk-bar-nome').textContent = '';
+    document.getElementById('rk-lista').innerHTML = '<div style="color:rgba(255,255,255,.3);font-size:20px;text-align:center">Carregando...</div>';
+    // Busca ranking real
+    fetch(`${BASE_URL}/api/ranking/${CODE}`)
+      .then(r => r.json())
+      .then(d => {
+        const ranking = d.ranking || [];
+        const nome = d.bar_nome || '';
+        document.getElementById('rk-bar-nome').textContent = nome;
+        if (!ranking.length) {
+          document.getElementById('rk-lista').innerHTML =
+            '<div style="color:rgba(255,255,255,.4);font-size:22px;text-align:center;padding:20px">Nenhum pedido ainda hoje.<br>Escaneie o QR e peça a primeira! 🎵</div>';
+        } else {
+          const medals = ['🥇','🥈','🥉','4️⃣','5️⃣'];
+          document.getElementById('rk-lista').innerHTML = ranking.map((r, i) => {
+            const pct = Math.round((r.n / ranking[0].n) * 100);
+            return `<div style="background:rgba(255,255,255,.06);border:1px solid rgba(245,158,11,${i===0?.35:.12});border-radius:16px;padding:18px 24px;display:flex;align-items:center;gap:18px;animation:popIn .4s ${i*.08}s both">
+              <div style="font-size:${i===0?44:34}px;flex-shrink:0;width:52px;text-align:center">${medals[i]||'▪'}</div>
+              <div style="flex:1;min-width:0">
+                <div style="font-size:${i===0?26:22}px;font-weight:900;color:${i===0?'#fbbf24':'#f0f0ff'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.titulo_pedido||'Música aleatória'}</div>
+                <div style="margin-top:6px;height:6px;background:rgba(255,255,255,.1);border-radius:3px;overflow:hidden">
+                  <div style="height:100%;width:${pct}%;background:${i===0?'linear-gradient(90deg,#f59e0b,#ef4444)':'rgba(255,255,255,.3)'};border-radius:3px"></div>
+                </div>
+              </div>
+              <div style="font-size:${i===0?28:22}px;font-weight:900;color:${i===0?'#fbbf24':'#8888aa'};flex-shrink:0">${r.n}×</div>
+            </div>`;
+          }).join('');
+        }
+      })
+      .catch(() => {
+        document.getElementById('rk-lista').innerHTML =
+          '<div style="color:rgba(255,255,255,.3);font-size:20px;text-align:center">Sem dados de ranking ainda.</div>';
+      });
+    const bar = document.getElementById('slide-bar-ranking');
+    bar.style.animation = 'none'; bar.offsetHeight;
+    bar.style.animation = `shrink ${duracao/1000}s linear forwards`;
+
+  } else if (slide.tipo === 'imagem' && slide.url) {
+    // ── Slide de imagem normal ───────────────────────────────────────────
     box.style.display    = 'none';
     imgBox.style.display = 'flex';
+    document.getElementById('slide-ranking-box').style.display = 'none';
     document.getElementById('slide-img').src = slide.url;
     const bar = document.getElementById('slide-bar-img');
     bar.style.animation = 'none';
@@ -1066,6 +1123,7 @@ function mostrarSlide(slide, onEnd, duracaoMs) {
     el.classList.remove('show');
     box.style.display    = '';
     imgBox.style.display = 'none';
+    document.getElementById('slide-ranking-box').style.display = 'none';
     if (typeof onEnd === 'function') {
       onEnd();
     } else {
