@@ -31,6 +31,34 @@ app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', '4kitem-secret-2024-xk91')
 app.config['TEMPLATES_AUTO_RELOAD'] = True  # templates sempre relidos do disco
 
+# ── Sentry — monitoramento de erros em produção ────────────────────────────────
+_SENTRY_DSN = os.environ.get('SENTRY_DSN', '')
+if _SENTRY_DSN:
+    try:
+        import sentry_sdk
+        from sentry_sdk.integrations.flask import FlaskIntegration
+        from sentry_sdk.integrations.logging import LoggingIntegration
+        sentry_sdk.init(
+            dsn=_SENTRY_DSN,
+            integrations=[
+                FlaskIntegration(transaction_style='url'),
+                LoggingIntegration(level=logging.WARNING, event_level=logging.ERROR),
+            ],
+            traces_sample_rate=0.1,   # 10% das requests para performance tracing
+            profiles_sample_rate=0.0,
+            environment=os.environ.get('RAILWAY_ENVIRONMENT', 'production'),
+            release=os.environ.get('RAILWAY_GIT_COMMIT_SHA', 'unknown')[:8],
+            send_default_pii=False,   # não envia dados pessoais
+            before_send=lambda event, hint: event,
+        )
+        log.info('[Sentry] Inicializado — monitoramento de erros ativo')
+    except ImportError:
+        log.warning('[Sentry] sentry-sdk não instalado — sem monitoramento')
+    except Exception as _se:
+        log.warning('[Sentry] Falha ao inicializar: %s', _se)
+else:
+    log.info('[Sentry] SENTRY_DSN não configurado — monitoramento desabilitado')
+
 # ── SaaS admin password ────────────────────────────────────────────────────────
 SAAS_ADMIN_PW = os.environ.get('SAAS_ADMIN_PASSWORD', 'admin4kitem2024')
 
