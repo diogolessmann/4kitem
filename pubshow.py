@@ -280,6 +280,43 @@ def _gerar_jukebox_token():
     return ''.join(random.choices(string.ascii_uppercase + string.digits, k=12))
 
 
+def _ts_to_brt(ts: str) -> str:
+    """Converte um timestamp ISO (UTC ou sem fuso) para horário de Brasília (UTC-3).
+    Se o servidor já estiver em BRT (TZ=America/Sao_Paulo), detecta e não duplica.
+    Retorna string no formato 'YYYY-MM-DD HH:MM:SS' já em hora local Brasil.
+    """
+    if not ts:
+        return ts
+    try:
+        # Normaliza: aceita 'T' ou ' ', descarta microsegundos e offset
+        ts_clean = ts[:19].replace('T', ' ')
+        dt = datetime.strptime(ts_clean, '%Y-%m-%d %H:%M:%S')
+
+        # Detecta se o servidor já está rodando em BRT checando a hora do sistema
+        import time as _t
+        utc_offset_h = -(_t.timezone if not _t.daylight else _t.altzone) / 3600
+        if utc_offset_h <= -2.5:
+            # Servidor já em BRT (UTC-3) ou parecido — não ajusta
+            return ts_clean
+        # Servidor em UTC (offset=0) ou UTC-1, UTC+x: subtrai para chegar a UTC-3
+        # Ajuste = offset_servidor - (-3) = offset_servidor + 3
+        ajuste = -(utc_offset_h + 3)
+        dt_brt = dt + timedelta(hours=ajuste)
+        return dt_brt.strftime('%Y-%m-%d %H:%M:%S')
+    except Exception:
+        return ts[:19].replace('T', ' ')
+
+
+def _pedidos_com_hora_local(pedidos: list) -> list:
+    """Converte created_at de cada pedido para hora de Brasília."""
+    resultado = []
+    for p in pedidos:
+        d = dict(p) if not isinstance(p, dict) else p
+        d['created_at'] = _ts_to_brt(d.get('created_at', ''))
+        resultado.append(d)
+    return resultado
+
+
 # ── Email onboarding ──────────────────────────────────────────────────────────
 
 _email_last_check = 0.0   # timestamp da última verificação da fila (rate limit)
@@ -820,7 +857,7 @@ def _limite_atingido(b, ip):
     count = conn.execute(
         '''SELECT COUNT(*) FROM pubshow_pedidos
            WHERE business_id=? AND ip_cliente=?
-           AND created_at >= datetime("now", "-1 hour", "localtime")''',
+           AND created_at >= datetime("now", -1 hour)''',
         (b['id'], ip)
     ).fetchone()[0]
     conn.close()
@@ -1044,7 +1081,7 @@ def entrar():
             session['pub_business_nome'] = b['nome']
             session['pub_canal']         = b['canal_atual']
             conn2 = get_pubshow_db()
-            conn2.execute("UPDATE pubshow_businesses SET ultimo_acesso=datetime('now','localtime') WHERE id=?", (b['id'],))
+            conn2.execute("UPDATE pubshow_businesses SET ultimo_acesso=datetime('now','-3 hours') WHERE id=?", (b['id'],))
             conn2.commit(); conn2.close()
             return redirect('/pubshow/painel')
         erro = 'E-mail ou senha incorretos.'
@@ -1372,7 +1409,7 @@ def jukebox(token):
                     # Conta pedidos de hoje para determinar o offset (+N centavos)
                     conn_off = get_pubshow_db()
                     _offset = conn_off.execute(
-                        "SELECT COUNT(*) FROM pubshow_pedidos WHERE business_id=? AND date(created_at)=date('now','localtime')",
+                        "SELECT COUNT(*) FROM pubshow_pedidos WHERE business_id=? AND date(created_at)=date('now','-3 hours')",
                         (b['id'],)
                     ).fetchone()[0]
                     conn_off.close()
@@ -1451,7 +1488,7 @@ def jukebox(token):
                     if b.get('pix_key'):
                         conn_off2 = get_pubshow_db()
                         _offset2 = conn_off2.execute(
-                            "SELECT COUNT(*) FROM pubshow_pedidos WHERE business_id=? AND date(created_at)=date('now','localtime')",
+                            "SELECT COUNT(*) FROM pubshow_pedidos WHERE business_id=? AND date(created_at)=date('now','-3 hours')",
                             (b['id'],)
                         ).fetchone()[0]
                         conn_off2.close()
@@ -1498,7 +1535,7 @@ def jukebox(token):
     if b.get('pix_key'):
         try:
             pix_offset = conn3.execute(
-                "SELECT COUNT(*) FROM pubshow_pedidos WHERE business_id=? AND date(created_at)=date('now','localtime')",
+                "SELECT COUNT(*) FROM pubshow_pedidos WHERE business_id=? AND date(created_at)=date('now','-3 hours')",
                 (b['id'],)
             ).fetchone()[0]
         except Exception:
@@ -1648,7 +1685,7 @@ def api_pedido_exibido(pedido_id):
         conn.close()
         return jsonify({'error': 'unauthorized'}), 403
     conn.execute(
-        "UPDATE pubshow_pedidos SET status='exibido', exibido_at=datetime('now','localtime') WHERE id=?",
+        "UPDATE pubshow_pedidos SET status='exibido', exibido_at=datetime('now','-3 hours') WHERE id=?",
         (pedido_id,)
     )
     conn.commit(); conn.close()
@@ -1685,7 +1722,7 @@ def api_ranking(code):
            FROM pubshow_pedidos
            WHERE business_id=? AND titulo_pedido IS NOT NULL
            AND status != "aguardando_pix"
-           AND created_at >= datetime("now", "-6 hours", "localtime")
+           AND created_at >= datetime("now", -6 hours)
            GROUP BY titulo_pedido
            ORDER BY n DESC
            LIMIT 5''',
@@ -1842,7 +1879,7 @@ def painel():
     conn = get_pubshow_db()
     pedidos_hoje = conn.execute(
         '''SELECT * FROM pubshow_pedidos WHERE business_id=?
-           AND date(created_at)=date("now","localtime")
+           AND date(created_at, "-3 hours")=date("now", "-3 hours")
            ORDER BY created_at DESC''',
         (b['id'],)
     ).fetchall()
@@ -1881,10 +1918,10 @@ def painel():
     canais_plano = _plano_canais_permitidos(bd)
     return render_template('pubshow/painel.html',
                            b=bd, canais=canais_plano,
-                           pedidos_hoje=[dict(p) for p in pedidos_hoje],
+                           pedidos_hoje=_pedidos_com_hora_local([dict(p) for p in pedidos_hoje]),
                            total_hoje=total_hoje,
-                           fila=[dict(f) for f in fila],
-                           aguardando_pix=[dict(p) for p in aguardando_pix],
+                           fila=_pedidos_com_hora_local([dict(f) for f in fila]),
+                           aguardando_pix=_pedidos_com_hora_local([dict(p) for p in aguardando_pix]),
                            tipos=TIPOS_PEDIDO,
                            planos=PLANOS,
                            bloqueados_parsed=bloqueados_parsed,
@@ -1923,7 +1960,7 @@ def painel_fila_json():
     pedidos_hoje = conn.execute(
         '''SELECT COALESCE(SUM(valor),0) FROM pubshow_pedidos
            WHERE business_id=? AND status!="aguardando_pix"
-           AND date(created_at)=date("now","localtime")''',
+           AND date(created_at)=date("now","-3 hours")''',
         (b['id'],)
     ).fetchone()[0]
     conn.close()
@@ -2482,17 +2519,17 @@ def painel_relatorio():
     receita_hoje = conn.execute(
         '''SELECT COALESCE(SUM(valor),0) FROM pubshow_pedidos
            WHERE business_id=? AND status!="aguardando_pix"
-           AND date(created_at)=date("now","localtime")''', (b['id'],)
+           AND date(created_at)=date("now","-3 hours")''', (b['id'],)
     ).fetchone()[0]
     receita_semana = conn.execute(
         '''SELECT COALESCE(SUM(valor),0) FROM pubshow_pedidos
            WHERE business_id=? AND status!="aguardando_pix"
-           AND created_at>=datetime("now","-7 days","localtime")''', (b['id'],)
+           AND created_at>=datetime("now", -7 days)''', (b['id'],)
     ).fetchone()[0]
     receita_mes = conn.execute(
         '''SELECT COALESCE(SUM(valor),0) FROM pubshow_pedidos
            WHERE business_id=? AND status!="aguardando_pix"
-           AND strftime("%Y-%m",created_at)=strftime("%Y-%m","now","localtime")''', (b['id'],)
+           AND strftime("%Y-%m",datetime(created_at,"-3 hours"))=strftime("%Y-%m",date("now","-3 hours"))''', (b['id'],)
     ).fetchone()[0]
     receita_total = conn.execute(
         '''SELECT COALESCE(SUM(valor),0) FROM pubshow_pedidos
@@ -2503,7 +2540,7 @@ def painel_relatorio():
     top_tipos = conn.execute(
         '''SELECT tipo, COUNT(*) n, COALESCE(SUM(valor),0) receita
            FROM pubshow_pedidos WHERE business_id=? AND status!="aguardando_pix"
-           AND created_at>=datetime("now","-30 days","localtime")
+           AND created_at>=datetime("now", -30 days)
            GROUP BY tipo ORDER BY n DESC''', (b['id'],)
     ).fetchall()
 
@@ -2511,23 +2548,23 @@ def painel_relatorio():
     top_musicas = conn.execute(
         '''SELECT titulo_pedido, COUNT(*) n FROM pubshow_pedidos
            WHERE business_id=? AND titulo_pedido IS NOT NULL AND status!="aguardando_pix"
-           AND created_at>=datetime("now","-30 days","localtime")
+           AND created_at>=datetime("now", -30 days)
            GROUP BY titulo_pedido ORDER BY n DESC LIMIT 10''', (b['id'],)
     ).fetchall()
 
     # Pedidos por dia (últimos 14 dias — apenas pagos)
     por_dia = conn.execute(
-        '''SELECT date(created_at,"localtime") dia, COUNT(*) n, COALESCE(SUM(valor),0) r
+        '''SELECT date(created_at,"-3 hours") dia, COUNT(*) n, COALESCE(SUM(valor),0) r
            FROM pubshow_pedidos WHERE business_id=? AND status!="aguardando_pix"
-           AND created_at>=datetime("now","-14 days","localtime")
+           AND created_at>=datetime("now", -14 days)
            GROUP BY dia ORDER BY dia''', (b['id'],)
     ).fetchall()
 
     # Pedidos por hora do dia — últimos 30 dias (horários de pico)
     por_hora_raw = conn.execute(
-        '''SELECT CAST(strftime('%H', created_at, 'localtime') AS INTEGER) hora, COUNT(*) n
+        '''SELECT CAST(strftime('%H', datetime(created_at, '-3 hours')) AS INTEGER) hora, COUNT(*) n
            FROM pubshow_pedidos WHERE business_id=? AND status!="aguardando_pix"
-           AND created_at>=datetime("now","-30 days","localtime")
+           AND created_at>=datetime("now", -30 days)
            GROUP BY hora ORDER BY hora''', (b['id'],)
     ).fetchall()
     # Normaliza para 0..23 com zeros nos horários sem pedido
@@ -2536,9 +2573,9 @@ def painel_relatorio():
 
     # Pedidos por dia da semana (0=Dom ... 6=Sáb) — últimos 30 dias
     por_weekday_raw = conn.execute(
-        '''SELECT CAST(strftime('%w', created_at, 'localtime') AS INTEGER) wd, COUNT(*) n
+        '''SELECT CAST(strftime('%w', datetime(created_at, '-3 hours')) AS INTEGER) wd, COUNT(*) n
            FROM pubshow_pedidos WHERE business_id=? AND status!="aguardando_pix"
-           AND created_at>=datetime("now","-30 days","localtime")
+           AND created_at>=datetime("now", -30 days)
            GROUP BY wd''', (b['id'],)
     ).fetchall()
     dias_semana = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb']
@@ -2589,7 +2626,7 @@ def painel_rede():
            (SELECT COUNT(*) FROM pubshow_pedidos p WHERE p.business_id=b.id AND p.status="pendente") fila,
            (SELECT COALESCE(SUM(p.valor),0) FROM pubshow_pedidos p
             WHERE p.business_id=b.id AND p.status!="aguardando_pix"
-            AND date(p.created_at)=date("now","localtime")) receita_hoje
+            AND date(p.created_at)=date("now","-3 hours")) receita_hoje
            FROM pubshow_businesses b
            WHERE b.owner_business_id=? OR b.id=?
            ORDER BY b.nome''',
@@ -2683,11 +2720,11 @@ def admin_dashboard():
     total_videos = conn.execute('SELECT COUNT(*) FROM pubshow_videos WHERE ativo=1').fetchone()[0]
     total_pedidos_hoje = conn.execute(
         '''SELECT COUNT(*) FROM pubshow_pedidos
-           WHERE date(created_at)=date("now","localtime")'''
+           WHERE date(created_at)=date("now","-3 hours")'''
     ).fetchone()[0]
     receita_hoje = conn.execute(
         '''SELECT COALESCE(SUM(valor),0) FROM pubshow_pedidos
-           WHERE date(created_at)=date("now","localtime") AND status!="aguardando_pix"'''
+           WHERE date(created_at)=date("now","-3 hours") AND status!="aguardando_pix"'''
     ).fetchone()[0]
     # Emails pendentes de enviar
     emails_pendentes = conn.execute(
