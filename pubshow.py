@@ -1722,7 +1722,7 @@ def api_ranking(code):
            FROM pubshow_pedidos
            WHERE business_id=? AND titulo_pedido IS NOT NULL
            AND status != "aguardando_pix"
-           AND created_at >= datetime("now", -6 hours)
+           AND created_at >= datetime("now", "-6 hours")
            GROUP BY titulo_pedido
            ORDER BY n DESC
            LIMIT 5''',
