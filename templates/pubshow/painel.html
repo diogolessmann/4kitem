@@ -635,6 +635,24 @@
     {% endif %}
   </div>
 
+  <!-- Notificação Push no Celular -->
+  <div class="card" style="margin-bottom:16px;border-color:rgba(99,102,241,.3);background:rgba(99,102,241,.04)">
+    <div class="card-title">🔔 Notificação Push no Celular</div>
+    <p style="font-size:12px;color:#8888aa;margin-bottom:16px">
+      Receba uma notificação <strong style="color:var(--text)">nativa no celular</strong> (igual ao WhatsApp) sempre que chegar um pedido — mesmo com a tela bloqueada.<br>
+      <span style="color:#a5b4fc">Abra o painel no celular do bar e ative abaixo.</span>
+    </p>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button id="push-btn" onclick="ativarPush()" style="background:linear-gradient(135deg,#6366f1,#818cf8);color:#fff;border:none;border-radius:10px;padding:10px 20px;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit">
+        🔔 Ativar notificações neste celular
+      </button>
+      <button onclick="testarPush()" style="background:rgba(99,102,241,.15);border:1px solid rgba(99,102,241,.3);color:#a5b4fc;border-radius:10px;padding:10px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">
+        🧪 Testar
+      </button>
+    </div>
+    <div id="push-status" style="font-size:12px;color:#8888aa;margin-top:10px"></div>
+  </div>
+
   <!-- Configurações do Jukebox -->
   <div class="card" style="margin-bottom:16px">
     <div class="card-title">⚙️ Configurações do Jukebox</div>
@@ -942,6 +960,102 @@ function pollFila() {
     .finally(() => setTimeout(pollFila, 10000));
 }
 setTimeout(pollFila, 10000);
+</script>
+
+<!-- ── Web Push — notificação nativa no celular do bar ───────────────────── -->
+<script>
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const raw = atob(base64);
+  return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
+}
+
+async function ativarPush() {
+  const btn = document.getElementById('push-btn');
+  const status = document.getElementById('push-status');
+
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+    status.textContent = '⚠️ Seu navegador não suporta notificações push. Use Chrome ou Edge.';
+    status.style.color = '#f87171';
+    return;
+  }
+
+  try {
+    btn.disabled = true;
+    btn.textContent = '⏳ Aguardando permissão...';
+
+    const perm = await Notification.requestPermission();
+    if (perm !== 'granted') {
+      status.textContent = '❌ Permissão negada. Ative nas configurações do navegador.';
+      status.style.color = '#f87171';
+      btn.disabled = false;
+      btn.textContent = '🔔 Ativar notificações neste celular';
+      return;
+    }
+
+    // Registra SW
+    const reg = await navigator.serviceWorker.register('/static/pubshow/sw-painel.js', {scope: '/pubshow/painel'});
+    await navigator.serviceWorker.ready;
+
+    // Busca VAPID public key
+    const kRes = await fetch('/pubshow/painel/push/vapid-key');
+    const { publicKey } = await kRes.json();
+    if (!publicKey) throw new Error('Chave VAPID não disponível');
+
+    // Inscreve no push
+    const sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(publicKey)
+    });
+
+    // Salva no servidor
+    await fetch('/pubshow/painel/push/subscribe', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(sub.toJSON())
+    });
+
+    btn.textContent = '✅ Notificações ativas neste celular!';
+    btn.style.background = 'linear-gradient(135deg,#16a34a,#22c55e)';
+    status.textContent = '🎉 Você receberá notificações quando chegarem pedidos.';
+    status.style.color = '#4ade80';
+
+  } catch(e) {
+    console.error('[Push]', e);
+    status.textContent = '❌ Erro: ' + e.message;
+    status.style.color = '#f87171';
+    btn.disabled = false;
+    btn.textContent = '🔔 Ativar notificações neste celular';
+  }
+}
+
+async function testarPush() {
+  const status = document.getElementById('push-status');
+  try {
+    await fetch('/pubshow/painel/push/test', {method: 'POST'});
+    status.textContent = '🧪 Notificação de teste enviada! Aguarde alguns segundos.';
+    status.style.color = '#a5b4fc';
+  } catch(e) {
+    status.textContent = '❌ Erro ao enviar teste.';
+    status.style.color = '#f87171';
+  }
+}
+
+// Checa se já tem push ativo neste dispositivo
+(async function checkPushStatus() {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+  try {
+    const reg = await navigator.serviceWorker.getRegistration('/pubshow/painel');
+    if (!reg) return;
+    const sub = await reg.pushManager.getSubscription();
+    if (sub) {
+      const btn = document.getElementById('push-btn');
+      btn.textContent = '✅ Notificações ativas neste celular!';
+      btn.style.background = 'linear-gradient(135deg,#16a34a,#22c55e)';
+    }
+  } catch(_) {}
+})();
 </script>
 </body>
 </html>

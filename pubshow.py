@@ -317,6 +317,101 @@ def _pedidos_com_hora_local(pedidos: list) -> list:
     return resultado
 
 
+# ── Web Push — notificações nativas no celular do bar ────────────────────────
+
+_vapid_cache: dict = {}
+
+def _vapid_keys():
+    """Retorna (pub_b64url, priv_pem) — gera e persiste no DB se não existir."""
+    global _vapid_cache
+    if _vapid_cache:
+        return _vapid_cache['pub'], _vapid_cache['priv']
+    # Env vars têm prioridade
+    pub  = os.environ.get('VAPID_PUBLIC_KEY', '')
+    priv = os.environ.get('VAPID_PRIVATE_KEY', '')
+    if pub and priv:
+        _vapid_cache = {'pub': pub, 'priv': priv}
+        return pub, priv
+    # Tenta banco
+    try:
+        conn = get_pubshow_db()
+        row = conn.execute('SELECT pub_key, priv_key FROM pubshow_vapid_keys LIMIT 1').fetchone()
+        if row:
+            _vapid_cache = {'pub': row['pub_key'], 'priv': row['priv_key']}
+            conn.close()
+            return row['pub_key'], row['priv_key']
+        # Gera novo par
+        from cryptography.hazmat.primitives.asymmetric import ec
+        from cryptography.hazmat.primitives import serialization
+        import base64 as _b64
+        priv_key = ec.generate_private_key(ec.SECP256R1())
+        pub_raw  = priv_key.public_key().public_bytes(
+            serialization.Encoding.X962, serialization.PublicFormat.UncompressedPoint)
+        pub_b64  = _b64.urlsafe_b64encode(pub_raw).rstrip(b'=').decode()
+        priv_pem = priv_key.private_bytes(
+            serialization.Encoding.PEM,
+            serialization.PrivateFormat.TraditionalOpenSSL,
+            serialization.NoEncryption()).decode()
+        conn.execute('INSERT OR IGNORE INTO pubshow_vapid_keys (id, pub_key, priv_key) VALUES (1,?,?)',
+                     (pub_b64, priv_pem))
+        conn.commit(); conn.close()
+        _vapid_cache = {'pub': pub_b64, 'priv': priv_pem}
+        return pub_b64, priv_pem
+    except Exception as _e:
+        log.warning('[Push] Erro ao gerar VAPID: %s', _e)
+        try: conn.close()
+        except: pass
+        return '', ''
+
+
+def _enviar_push_pedido(business_id: int, tipo_emoji: str, tipo_nome: str,
+                        nome_cliente: str, valor: float):
+    """Envia Web Push para todas as subscriptions ativas do bar."""
+    pub, priv = _vapid_keys()
+    if not pub or not priv:
+        return
+    try:
+        import json as _json
+        from pywebpush import webpush, WebPushException
+        conn = get_pubshow_db()
+        subs = conn.execute(
+            'SELECT subscription FROM pubshow_push_subscriptions WHERE business_id=?',
+            (business_id,)
+        ).fetchall()
+        conn.close()
+        if not subs:
+            return
+        payload = _json.dumps({
+            'titulo': f'{tipo_emoji} Novo pedido no Jukebox!',
+            'corpo':  f'{nome_cliente} — {tipo_nome} · R$ {valor:.2f}',
+            'url':    '/pubshow/painel'
+        })
+        mortos = []
+        for row in subs:
+            try:
+                sub_info = _json.loads(row['subscription'])
+                webpush(
+                    subscription_info=sub_info,
+                    data=payload,
+                    vapid_private_key=priv,
+                    vapid_claims={'sub': 'mailto:contato@4kitem.com.br'}
+                )
+            except WebPushException as _wpe:
+                if _wpe.response and _wpe.response.status_code in (404, 410):
+                    mortos.append(row['subscription'])
+            except Exception as _pe:
+                log.debug('[Push] Erro ao enviar push: %s', _pe)
+        # Remove subscriptions expiradas
+        if mortos:
+            conn2 = get_pubshow_db()
+            for s in mortos:
+                conn2.execute(
+                    'DELETE FROM pubshow_push_subscriptions WHERE subscription=?', (s,))
+            conn2.commit(); conn2.close()
+    except Exception as _e:
+        log.warning('[Push] Erro geral: %s', _e)
+
+
 # ── Email onboarding ──────────────────────────────────────────────────────────
 
 _email_last_check = 0.0   # timestamp da última verificação da fila (rate limit)
@@ -1462,7 +1557,7 @@ def jukebox(token):
                         )
                         conn3.commit(); conn3.close()
 
-                    # ── Notificação WhatsApp ao bar ───────────────────────────
+                    # ── Notificação WhatsApp + Push ao bar ───────────────────
                     hh_txt = f' 🎉 Happy Hour {hh_desconto}% off!' if hh_desconto else ''
                     _pubshow_notify_bar(dict(b),
                         f'🎵 *Novo pedido PIX aguardando!*{hh_txt}\n'
@@ -1470,6 +1565,7 @@ def jukebox(token):
                         f'👤 {nome_cliente}\n'
                         f'💰 R$ {preco_final:.2f}\n'
                         f'📋 Acesse o painel para confirmar.')
+                    _enviar_push_pedido(b['id'], tipo_emoji, tipo_nome, nome_cliente, preco_final)
 
                     pix_pendente = {
                         'pedido_id':  pedido_id,
@@ -1508,7 +1604,7 @@ def jukebox(token):
                     conn2.commit(); conn2.close()
                     sucesso = tipo
 
-                    # ── Notificação WhatsApp ao bar ───────────────────────────
+                    # ── Notificação WhatsApp + Push ao bar ───────────────────
                     hh_txt = f' 🎉 Happy Hour {hh_desconto}% off!' if hh_desconto else ''
                     _pubshow_notify_bar(dict(b),
                         f'🎵 *Novo pedido no Jukebox!*{hh_txt}\n'
@@ -1517,6 +1613,7 @@ def jukebox(token):
                         + (f'\n📝 {mensagem}' if mensagem else '')
                         + (f'\n🎶 {titulo_pedido}' if titulo_pedido else '')
                         + f'\n💰 R$ {preco_direto:.2f}')
+                    _enviar_push_pedido(b['id'], tipo_emoji, tipo_nome, nome_cliente, preco_direto)
 
     # Fila atual (últimos 5 pedidos pendentes)
     conn3 = get_pubshow_db()
@@ -2009,6 +2106,64 @@ def painel_promo():
                          (msg, expira, emoji, b['id']))
     conn.commit(); conn.close()
     return redirect('/pubshow/painel')
+
+
+@pubshow_bp.route('/painel/push/subscribe', methods=['POST'])
+@pubshow_login_required
+def painel_push_subscribe():
+    """Salva subscription Web Push do dispositivo do bar."""
+    import json as _json
+    b = _get_business()
+    sub = request.json
+    if not sub or 'endpoint' not in sub:
+        return jsonify({'ok': False, 'erro': 'subscription inválida'}), 400
+    conn = get_pubshow_db()
+    try:
+        conn.execute(
+            'INSERT OR REPLACE INTO pubshow_push_subscriptions (business_id, subscription) VALUES (?,?)',
+            (b['id'], _json.dumps(sub))
+        )
+        conn.commit()
+    except Exception as _e:
+        log.warning('[Push] Erro ao salvar subscription: %s', _e)
+    finally:
+        conn.close()
+    return jsonify({'ok': True})
+
+
+@pubshow_bp.route('/painel/push/unsubscribe', methods=['POST'])
+@pubshow_login_required
+def painel_push_unsubscribe():
+    """Remove subscription Web Push do dispositivo."""
+    import json as _json
+    b = _get_business()
+    sub = request.json
+    if not sub:
+        return jsonify({'ok': False}), 400
+    conn = get_pubshow_db()
+    conn.execute(
+        'DELETE FROM pubshow_push_subscriptions WHERE business_id=? AND subscription=?',
+        (b['id'], _json.dumps(sub))
+    )
+    conn.commit(); conn.close()
+    return jsonify({'ok': True})
+
+
+@pubshow_bp.route('/painel/push/test', methods=['POST'])
+@pubshow_login_required
+def painel_push_test():
+    """Envia push de teste para confirmar que está funcionando."""
+    b = _get_business()
+    _enviar_push_pedido(b['id'], '🧪', 'Teste', 'Sistema PUBSHOW', 0.0)
+    return jsonify({'ok': True})
+
+
+@pubshow_bp.route('/painel/push/vapid-key')
+@pubshow_login_required
+def painel_push_vapid_key():
+    """Retorna a chave pública VAPID para o cliente registrar o SW."""
+    pub, _ = _vapid_keys()
+    return jsonify({'publicKey': pub})
 
 
 @pubshow_bp.route('/painel/toggle-slides-sistema', methods=['POST'])

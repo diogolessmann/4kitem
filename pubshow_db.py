@@ -203,6 +203,30 @@ def init_pubshow_db():
         try: conn.rollback()
         except: pass
 
+    # ── Tabelas Web Push — notificações nativas no celular do bar ────────────────
+    try:
+        conn.execute(
+            'CREATE TABLE IF NOT EXISTS pubshow_vapid_keys ('
+            '  id        INTEGER PRIMARY KEY,'
+            '  pub_key   TEXT NOT NULL,'
+            '  priv_key  TEXT NOT NULL,'
+            '  created_at TEXT DEFAULT CURRENT_TIMESTAMP'
+            ')'
+        )
+        conn.execute(
+            'CREATE TABLE IF NOT EXISTS pubshow_push_subscriptions ('
+            '  id              INTEGER PRIMARY KEY AUTOINCREMENT,'
+            '  business_id     INTEGER NOT NULL,'
+            '  subscription    TEXT NOT NULL,'
+            '  created_at      TEXT DEFAULT CURRENT_TIMESTAMP,'
+            '  UNIQUE(business_id, subscription)'
+            ')'
+        )
+        conn.commit()
+    except Exception:
+        try: conn.rollback()
+        except: pass
+
     # ── Migração de dados: normaliza planos antigos ──────────────────────────────
     # "premium" era o plano antigo R$249 → equivale ao Pro atual
     # "bar_129" ou qualquer outra variante → bar
