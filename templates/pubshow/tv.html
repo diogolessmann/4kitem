@@ -1204,7 +1204,17 @@ async function pollStatus() {
     if (data.pedido_musica && data.pedido_musica.id !== pedidoMusica?.id) {
       pedidoMusica = data.pedido_musica;
       mostrarBadgeFila(data.total_fila);
-      agendarProximoCard(); // agenda o "próximo" card
+
+      // 👑 VIP "Tocar AGORA" — interrompe o vídeo atual imediatamente
+      if (data.pedido_musica.tipo === 'vip' && player) {
+        clearTimeout(stallTimer);
+        clearTimeout(proximoTimer);
+        document.getElementById('proximo-card').classList.remove('show');
+        avancarFila(); // chama agora, sem esperar o vídeo terminar
+        return;
+      }
+
+      agendarProximoCard(); // agenda o "próximo" card para pedidos normais
     }
 
     // Sem pedido de música — limpa indicadores
@@ -1355,7 +1365,7 @@ document.addEventListener('mousemove', () => {
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 window._canalAtual = CANAL_KEY;
-setInterval(pollStatus, 4000);
+setInterval(pollStatus, 2500); // 2.5s — mais responsivo para pedidos VIP e fila
 
 // Ranking: carrega a cada 5min; mostra a cada 7 vídeos tocados
 carregarRanking();

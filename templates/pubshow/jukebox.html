@@ -362,8 +362,14 @@ async function jaPaguei() {
     <div class="emoji">{{ t.emoji }}</div>
     <h3>Pedido enviado! {{ t.emoji }}</h3>
     <p>
-      {% if sucesso in ('musica_especifica','musica_externa') %}
-        Sua música entra na fila quando o vídeo atual terminar!
+      {% if sucesso == 'vip' %}
+        Sua música vai tocar agora! O vídeo atual será interrompido. 👑
+      {% elif sucesso == 'flash' %}
+        Seu pedido furou a fila — toca na próxima! ⚡
+      {% elif sucesso in ('musica_especifica','musica_externa') %}
+        Sua música entra na fila e toca quando o vídeo atual terminar!
+      {% elif sucesso == 'musica' %}
+        Pedido na fila! O próximo vídeo do canal vai tocar em breve.
       {% elif sucesso == 'parabens' %}O Parabéns aparece na tela em breve. Prepara a câmera! 📸
       {% elif sucesso == 'dedicatoria' %}Sua dedicatória aparece na tela em instantes! ❤️
       {% elif sucesso == 'brinde' %}Brinde geral na tela! Levanta o copo! 🍻
