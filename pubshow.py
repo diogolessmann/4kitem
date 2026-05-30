@@ -9,6 +9,7 @@ import os
 import random
 import re
 import string
+import time as _time
 import requests as _requests
 from datetime import datetime, timedelta
 from functools import wraps
@@ -277,6 +278,448 @@ def _pix_qr_b64(payload: str) -> str:
 def _gerar_jukebox_token():
     """Token rotativo para o QR do Jukebox — independente do code da TV."""
     return ''.join(random.choices(string.ascii_uppercase + string.digits, k=12))
+
+
+# ── Email onboarding ──────────────────────────────────────────────────────────
+
+_email_last_check = 0.0   # timestamp da última verificação da fila (rate limit)
+
+def _pubshow_enviar_email(para: str, assunto: str, html: str) -> bool:
+    """Envia email via Resend API. Usa RESEND_API_KEY do environment."""
+    api_key = os.environ.get('RESEND_API_KEY', '')
+    if not api_key:
+        log.warning('[PUBSHOW email] RESEND_API_KEY não configurada — email não enviado')
+        return False
+    from_addr = os.environ.get('PUBSHOW_EMAIL_FROM',
+                  os.environ.get('EMAIL_FROM', 'PUBSHOW Jukebox <noreply@pubshow.com.br>'))
+    try:
+        r = _requests.post(
+            'https://api.resend.com/emails',
+            headers={'Authorization': f'Bearer {api_key}', 'Content-Type': 'application/json'},
+            json={'from': from_addr, 'to': [para], 'subject': assunto, 'html': html},
+            timeout=10
+        )
+        ok = r.status_code in (200, 201)
+        if not ok:
+            log.error('[PUBSHOW email] Resend erro %s: %s', r.status_code, r.text[:200])
+        return ok
+    except Exception as e:
+        log.error('[PUBSHOW email] Exceção ao enviar: %s', e)
+        return False
+
+
+def _email_html_base(titulo: str, corpo: str) -> str:
+    """Wrapper HTML base para todos os emails — dark theme PUBSHOW."""
+    return f"""<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{titulo}</title>
+</head>
+<body style="margin:0;padding:0;background:#0d0d14;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#0d0d14;padding:32px 16px;">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
+
+        <!-- Header -->
+        <tr><td style="background:linear-gradient(135deg,#08080f 0%,#131320 100%);border-radius:16px 16px 0 0;padding:32px 40px;text-align:center;border-bottom:2px solid #4ade80;">
+          <div style="font-size:32px;margin-bottom:8px;">🎵</div>
+          <div style="color:#4ade80;font-size:22px;font-weight:800;letter-spacing:2px;">PUBSHOW</div>
+          <div style="color:#6b7280;font-size:12px;letter-spacing:1px;margin-top:4px;">JUKEBOX DIGITAL</div>
+        </td></tr>
+
+        <!-- Body -->
+        <tr><td style="background:#131320;padding:40px;border-radius:0 0 16px 16px;">
+          {corpo}
+        </td></tr>
+
+        <!-- Footer -->
+        <tr><td style="padding:24px 0;text-align:center;">
+          <p style="color:#374151;font-size:12px;margin:0;">
+            PUBSHOW Jukebox Digital &bull; Você recebeu este email por ser cliente PUBSHOW.<br>
+            <a href="mailto:suporte@pubshow.com.br" style="color:#4ade80;text-decoration:none;">suporte@pubshow.com.br</a>
+          </p>
+        </td></tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>"""
+
+
+def _email_boas_vindas(nome: str, code: str, token: str, plano: str, trial_ends: str) -> tuple:
+    """Email dia 0 — boas-vindas com links da TV e Jukebox."""
+    base_url = os.environ.get('BASE_URL', 'https://pubshow.com.br')
+    tv_url = f'{base_url}/pubshow/tv/{code}'
+    jk_url = f'{base_url}/pubshow/jukebox/{token}'
+    painel_url = f'{base_url}/pubshow/painel'
+    nome_plano = {'starter': 'Starter 🌱', 'bar': 'Bar 🍺', 'pro': 'Pro ⚡', 'rede': 'Rede 🏢'}.get(plano, plano)
+
+    try:
+        trial_fmt = datetime.fromisoformat(trial_ends[:19]).strftime('%d/%m/%Y')
+    except Exception:
+        trial_fmt = '7 dias'
+
+    corpo = f"""
+      <h1 style="color:#f9fafb;font-size:26px;font-weight:800;margin:0 0 8px;">
+        Bem-vindo ao PUBSHOW, {nome.split()[0]}! 🎉
+      </h1>
+      <p style="color:#9ca3af;font-size:15px;margin:0 0 28px;line-height:1.6;">
+        Seu Jukebox está pronto e no ar. Seu trial gratuito vai até <strong style="color:#4ade80">{trial_fmt}</strong>.
+        Abra a TV, cole o link e os clientes já podem pedir músicas pelo celular!
+      </p>
+
+      <!-- Links box -->
+      <table width="100%" cellpadding="0" cellspacing="0" style="background:#08080f;border-radius:12px;border:1px solid #1f2937;margin-bottom:28px;">
+        <tr><td style="padding:20px 24px;">
+          <p style="color:#6b7280;font-size:11px;font-weight:700;letter-spacing:1px;margin:0 0 12px;text-transform:uppercase;">Seus links</p>
+
+          <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:12px;">
+            <tr>
+              <td style="color:#4ade80;font-size:13px;font-weight:700;padding-bottom:4px;">📺 TV / Telão</td>
+            </tr>
+            <tr>
+              <td>
+                <a href="{tv_url}" style="color:#e5e7eb;font-size:13px;text-decoration:none;word-break:break-all;">{tv_url}</a>
+              </td>
+            </tr>
+          </table>
+
+          <table width="100%" cellpadding="0" cellspacing="0">
+            <tr>
+              <td style="color:#a78bfa;font-size:13px;font-weight:700;padding-bottom:4px;">🎵 Jukebox (clientes)</td>
+            </tr>
+            <tr>
+              <td>
+                <a href="{jk_url}" style="color:#e5e7eb;font-size:13px;text-decoration:none;word-break:break-all;">{jk_url}</a>
+              </td>
+            </tr>
+          </table>
+        </td></tr>
+      </table>
+
+      <!-- Steps -->
+      <p style="color:#9ca3af;font-size:13px;font-weight:700;letter-spacing:1px;text-transform:uppercase;margin:0 0 16px;">Como funciona em 3 passos</p>
+      <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:28px;">
+        <tr>
+          <td style="padding:12px 16px;background:#1a1a2e;border-radius:8px;margin-bottom:8px;" valign="top">
+            <div style="color:#4ade80;font-size:18px;font-weight:800;display:inline;">1.</div>
+            <span style="color:#e5e7eb;font-size:14px;"> Abra o link da TV em qualquer navegador no telão do seu bar</span>
+          </td>
+        </tr>
+        <tr><td style="height:8px;"></td></tr>
+        <tr>
+          <td style="padding:12px 16px;background:#1a1a2e;border-radius:8px;" valign="top">
+            <div style="color:#4ade80;font-size:18px;font-weight:800;display:inline;">2.</div>
+            <span style="color:#e5e7eb;font-size:14px;"> Coloque o QR code visível para os clientes escanear com o celular</span>
+          </td>
+        </tr>
+        <tr><td style="height:8px;"></td></tr>
+        <tr>
+          <td style="padding:12px 16px;background:#1a1a2e;border-radius:8px;" valign="top">
+            <div style="color:#4ade80;font-size:18px;font-weight:800;display:inline;">3.</div>
+            <span style="color:#e5e7eb;font-size:14px;"> Pedidos chegam em tempo real — você aprova no painel, a música toca na TV!</span>
+          </td>
+        </tr>
+      </table>
+
+      <!-- CTA -->
+      <table width="100%" cellpadding="0" cellspacing="0">
+        <tr>
+          <td align="center">
+            <a href="{painel_url}" style="display:inline-block;background:#4ade80;color:#08080f;font-weight:800;font-size:16px;padding:14px 40px;border-radius:8px;text-decoration:none;letter-spacing:0.5px;">
+              Abrir painel de gestão →
+            </a>
+          </td>
+        </tr>
+      </table>
+    """
+    assunto = f'🎵 Seu Jukebox está no ar! Código TV: {code}'
+    return assunto, _email_html_base('Bem-vindo ao PUBSHOW', corpo)
+
+
+def _email_dica_setup(nome: str, code: str) -> tuple:
+    """Email dia 2 — dicas de configuração (PIX, QR, preços)."""
+    base_url = os.environ.get('BASE_URL', 'https://pubshow.com.br')
+    painel_url = f'{base_url}/pubshow/painel'
+
+    corpo = f"""
+      <h1 style="color:#f9fafb;font-size:24px;font-weight:800;margin:0 0 8px;">
+        Já configurou seu Jukebox, {nome.split()[0]}? ⚙️
+      </h1>
+      <p style="color:#9ca3af;font-size:15px;margin:0 0 28px;line-height:1.6;">
+        Em 5 minutos você deixa o PUBSHOW completo e começa a faturar com pedidos de música.
+        Veja o que ainda falta configurar:
+      </p>
+
+      <!-- Checklist -->
+      <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:28px;">
+
+        <tr><td style="padding:14px 16px 14px 16px;background:#0d1f0d;border-radius:8px;border-left:3px solid #4ade80;margin-bottom:8px;">
+          <div style="color:#4ade80;font-size:15px;font-weight:700;margin-bottom:4px;">💰 Configure seu PIX</div>
+          <div style="color:#9ca3af;font-size:13px;line-height:1.5;">
+            Receba pagamentos direto na sua conta. Vá em Painel → Configurações → Chave PIX.
+          </div>
+        </td></tr>
+
+        <tr><td style="height:10px;"></td></tr>
+
+        <tr><td style="padding:14px 16px;background:#12121f;border-radius:8px;border-left:3px solid #a78bfa;">
+          <div style="color:#a78bfa;font-size:15px;font-weight:700;margin-bottom:4px;">🎛️ Personalize os preços</div>
+          <div style="color:#9ca3af;font-size:13px;line-height:1.5;">
+            Defina o valor de cada tipo de pedido (VIP, Flash, Parabéns...) conforme o seu público.
+          </div>
+        </td></tr>
+
+        <tr><td style="height:10px;"></td></tr>
+
+        <tr><td style="padding:14px 16px;background:#12121f;border-radius:8px;border-left:3px solid #f59e0b;">
+          <div style="color:#f59e0b;font-size:15px;font-weight:700;margin-bottom:4px;">📺 Imprima o QR Code</div>
+          <div style="color:#9ca3af;font-size:13px;line-height:1.5;">
+            Coloque na mesa ou balcão para os clientes escanear. Quanto mais visível, mais pedidos!
+          </div>
+        </td></tr>
+
+        <tr><td style="height:10px;"></td></tr>
+
+        <tr><td style="padding:14px 16px;background:#12121f;border-radius:8px;border-left:3px solid #06b6d4;">
+          <div style="color:#06b6d4;font-size:15px;font-weight:700;margin-bottom:4px;">🎬 Adicione seus anúncios</div>
+          <div style="color:#9ca3af;font-size:13px;line-height:1.5;">
+            Anuncie promoções e pratos especiais diretamente na tela entre os vídeos.
+          </div>
+        </td></tr>
+
+      </table>
+
+      <!-- CTA -->
+      <table width="100%" cellpadding="0" cellspacing="0">
+        <tr>
+          <td align="center">
+            <a href="{painel_url}" style="display:inline-block;background:#4ade80;color:#08080f;font-weight:800;font-size:16px;padding:14px 40px;border-radius:8px;text-decoration:none;">
+              Configurar agora →
+            </a>
+          </td>
+        </tr>
+      </table>
+    """
+    assunto = '⚙️ Configure seu PIX e comece a receber pedidos hoje'
+    return assunto, _email_html_base('Dicas de configuração', corpo)
+
+
+def _email_trial_ending(nome: str, plano: str, trial_ends: str) -> tuple:
+    """Email dia 5 — trial acaba em 2 dias."""
+    base_url = os.environ.get('BASE_URL', 'https://pubshow.com.br')
+    planos_url = f'{base_url}/pubshow/planos'
+    nome_plano = {'starter': 'Starter', 'bar': 'Bar', 'pro': 'Pro', 'rede': 'Rede'}.get(plano, 'Bar')
+    preco_plano = {'starter': 'R$ 69,90', 'bar': 'R$ 129,90', 'pro': 'R$ 249,90', 'rede': 'R$ 499,90'}.get(plano, 'R$ 129,90')
+
+    try:
+        trial_fmt = datetime.fromisoformat(trial_ends[:19]).strftime('%d/%m/%Y')
+    except Exception:
+        trial_fmt = 'em 2 dias'
+
+    corpo = f"""
+      <h1 style="color:#f9fafb;font-size:24px;font-weight:800;margin:0 0 8px;">
+        ⏰ Seu trial acaba em 2 dias, {nome.split()[0]}
+      </h1>
+      <p style="color:#9ca3af;font-size:15px;margin:0 0 28px;line-height:1.6;">
+        Seu período gratuito encerra em <strong style="color:#f59e0b">{trial_fmt}</strong>.
+        Assine agora para não perder o acesso ao seu Jukebox.
+      </p>
+
+      <!-- Perda de acesso -->
+      <table width="100%" cellpadding="0" cellspacing="0" style="background:#1f0a0a;border:1px solid #7f1d1d;border-radius:12px;margin-bottom:24px;">
+        <tr><td style="padding:20px 24px;">
+          <p style="color:#f87171;font-size:14px;font-weight:700;margin:0 0 12px;">Se você não assinar até {trial_fmt}:</p>
+          <p style="color:#9ca3af;font-size:13px;margin:4px 0;">❌ O Jukebox fica offline para seus clientes</p>
+          <p style="color:#9ca3af;font-size:13px;margin:4px 0;">❌ Os pedidos de música param de funcionar</p>
+          <p style="color:#9ca3af;font-size:13px;margin:4px 0;">❌ A TV para de tocar os clips</p>
+        </td></tr>
+      </table>
+
+      <!-- Plano recomendado -->
+      <table width="100%" cellpadding="0" cellspacing="0" style="background:#0d1f0d;border:1px solid #166534;border-radius:12px;margin-bottom:28px;">
+        <tr><td style="padding:20px 24px;">
+          <p style="color:#4ade80;font-size:14px;font-weight:700;margin:0 0 8px;">✅ Continue com o plano {nome_plano}</p>
+          <p style="color:#6b7280;font-size:13px;margin:0 0 4px;">Apenas <strong style="color:#4ade80;font-size:18px;">{preco_plano}/mês</strong></p>
+          <p style="color:#9ca3af;font-size:13px;margin:0;">Cancele a qualquer momento &bull; Sem fidelidade</p>
+        </td></tr>
+      </table>
+
+      <!-- CTA -->
+      <table width="100%" cellpadding="0" cellspacing="0">
+        <tr>
+          <td align="center">
+            <a href="{planos_url}" style="display:inline-block;background:#f59e0b;color:#08080f;font-weight:800;font-size:16px;padding:14px 40px;border-radius:8px;text-decoration:none;">
+              Garantir minha assinatura →
+            </a>
+          </td>
+        </tr>
+      </table>
+    """
+    assunto = f'⏰ Faltam 2 dias! Garanta o PUBSHOW no seu bar'
+    return assunto, _email_html_base('Trial acabando', corpo)
+
+
+def _email_trial_expirado(nome: str, plano: str) -> tuple:
+    """Email dia 7+ — trial expirado."""
+    base_url = os.environ.get('BASE_URL', 'https://pubshow.com.br')
+    planos_url = f'{base_url}/pubshow/planos'
+    nome_plano = {'starter': 'Starter', 'bar': 'Bar', 'pro': 'Pro', 'rede': 'Rede'}.get(plano, 'Bar')
+    preco_plano = {'starter': 'R$ 69,90', 'bar': 'R$ 129,90', 'pro': 'R$ 249,90', 'rede': 'R$ 499,90'}.get(plano, 'R$ 129,90')
+
+    corpo = f"""
+      <h1 style="color:#f9fafb;font-size:24px;font-weight:800;margin:0 0 8px;">
+        Seu trial expirou 😢
+      </h1>
+      <p style="color:#9ca3af;font-size:15px;margin:0 0 28px;line-height:1.6;">
+        Oi {nome.split()[0]}, seu período gratuito no PUBSHOW encerrou.
+        Mas a boa notícia: você pode reativar o Jukebox agora mesmo e voltar a receber pedidos de música!
+      </p>
+
+      <!-- O que você estava usando -->
+      <table width="100%" cellpadding="0" cellspacing="0" style="background:#12121f;border-radius:12px;border:1px solid #1f2937;margin-bottom:24px;">
+        <tr><td style="padding:20px 24px;">
+          <p style="color:#6b7280;font-size:12px;font-weight:700;letter-spacing:1px;margin:0 0 12px;text-transform:uppercase;">O que você vai reativar</p>
+          <p style="color:#e5e7eb;font-size:13px;margin:6px 0;">🎵 TV com clips musicais 24/7</p>
+          <p style="color:#e5e7eb;font-size:13px;margin:6px 0;">📱 Jukebox para os clientes pedirem músicas</p>
+          <p style="color:#e5e7eb;font-size:13px;margin:6px 0;">💰 Recebimento via PIX integrado</p>
+          <p style="color:#e5e7eb;font-size:13px;margin:6px 0;">📊 Painel de gestão completo</p>
+        </td></tr>
+      </table>
+
+      <!-- Preço -->
+      <table width="100%" cellpadding="0" cellspacing="0" style="background:#0d1f0d;border:1px solid #166534;border-radius:12px;margin-bottom:28px;">
+        <tr><td style="padding:20px 24px;text-align:center;">
+          <p style="color:#4ade80;font-size:13px;font-weight:700;margin:0 0 4px;">Plano {nome_plano}</p>
+          <p style="color:#4ade80;font-size:32px;font-weight:800;margin:0 0 4px;">{preco_plano}<span style="font-size:16px;font-weight:400;color:#6b7280;">/mês</span></p>
+          <p style="color:#6b7280;font-size:12px;margin:0;">Cancele quando quiser &bull; Sem fidelidade</p>
+        </td></tr>
+      </table>
+
+      <!-- CTA -->
+      <table width="100%" cellpadding="0" cellspacing="0">
+        <tr>
+          <td align="center">
+            <a href="{planos_url}" style="display:inline-block;background:#4ade80;color:#08080f;font-weight:800;font-size:16px;padding:14px 40px;border-radius:8px;text-decoration:none;">
+              Reativar meu Jukebox →
+            </a>
+          </td>
+        </tr>
+      </table>
+
+      <p style="color:#4b5563;font-size:12px;margin-top:24px;text-align:center;">
+        Dúvidas? Responda este email ou fale com a gente: <a href="mailto:suporte@pubshow.com.br" style="color:#4ade80;">suporte@pubshow.com.br</a>
+      </p>
+    """
+    assunto = '🔴 Seu trial expirou — Reative o PUBSHOW agora'
+    return assunto, _email_html_base('Trial expirado', corpo)
+
+
+def _agendar_emails_onboarding(business_id: int, trial_ends: str):
+    """Agenda os 4 emails de onboarding para um novo cadastro."""
+    agora = datetime.now()
+    emails = [
+        ('boas_vindas',   agora + timedelta(minutes=1)),    # imediato (~1min)
+        ('dica_setup',    agora + timedelta(days=2)),         # dia 2
+        ('trial_ending',  agora + timedelta(days=5)),         # dia 5 (2 dias antes do fim)
+        ('trial_expirado', agora + timedelta(days=7, hours=1)), # dia 7 (logo após expirar)
+    ]
+    try:
+        conn = get_pubshow_db()
+        for tipo, quando in emails:
+            conn.execute(
+                'INSERT INTO pubshow_email_queue (business_id, tipo, scheduled_at) VALUES (?,?,?)',
+                (business_id, tipo, quando.isoformat())
+            )
+        conn.commit()
+        conn.close()
+        log.info('[PUBSHOW email] %d emails agendados para business_id=%d', len(emails), business_id)
+    except Exception as e:
+        log.error('[PUBSHOW email] Erro ao agendar: %s', e)
+
+
+def _processar_fila_emails():
+    """Verifica e envia emails pendentes da fila. Chame de qualquer rota frequente."""
+    global _email_last_check
+    now_ts = _time.time()
+    # Rate limit: só verifica a cada 10 minutos
+    if now_ts - _email_last_check < 600:
+        return
+    _email_last_check = now_ts
+
+    try:
+        conn = get_pubshow_db()
+        pendentes = conn.execute(
+            '''SELECT q.id, q.tipo, q.scheduled_at, q.business_id,
+                      b.nome, b.email, b.code, b.jukebox_token, b.plano,
+                      b.trial_ends, b.plano_ativo
+               FROM pubshow_email_queue q
+               JOIN pubshow_businesses b ON b.id = q.business_id
+               WHERE q.sent_at IS NULL
+                 AND q.scheduled_at <= ?
+               ORDER BY q.scheduled_at ASC
+               LIMIT 20''',
+            (datetime.now().isoformat(),)
+        ).fetchall()
+        conn.close()
+    except Exception as e:
+        log.error('[PUBSHOW email] Erro ao buscar fila: %s', e)
+        return
+
+    for row in pendentes:
+        tipo      = row['tipo']
+        nome      = row['nome']
+        email     = row['email']
+        code      = row['code']
+        token     = row['jukebox_token'] or code
+        plano     = row['plano'] or 'bar'
+        trial_end = row['trial_ends'] or ''
+
+        try:
+            if tipo == 'boas_vindas':
+                assunto, html = _email_boas_vindas(nome, code, token, plano, trial_end)
+            elif tipo == 'dica_setup':
+                assunto, html = _email_dica_setup(nome, code)
+            elif tipo == 'trial_ending':
+                # Só envia se ainda não assinou
+                if row['plano_ativo']:
+                    _marcar_email_enviado(row['id'])
+                    continue
+                assunto, html = _email_trial_ending(nome, plano, trial_end)
+            elif tipo == 'trial_expirado':
+                if row['plano_ativo']:
+                    _marcar_email_enviado(row['id'])
+                    continue
+                assunto, html = _email_trial_expirado(nome, plano)
+            else:
+                _marcar_email_enviado(row['id'])
+                continue
+
+            ok = _pubshow_enviar_email(email, assunto, html)
+            if ok:
+                _marcar_email_enviado(row['id'])
+                log.info('[PUBSHOW email] Enviado "%s" para %s (id=%d)', tipo, email, row['id'])
+            else:
+                log.warning('[PUBSHOW email] Falhou "%s" para %s', tipo, email)
+        except Exception as e:
+            log.error('[PUBSHOW email] Erro ao processar id=%d tipo=%s: %s', row['id'], tipo, e)
+
+
+def _marcar_email_enviado(queue_id: int):
+    """Marca um email da fila como enviado."""
+    try:
+        conn = get_pubshow_db()
+        conn.execute(
+            'UPDATE pubshow_email_queue SET sent_at=? WHERE id=?',
+            (datetime.now().isoformat(), queue_id)
+        )
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        log.error('[PUBSHOW email] Erro ao marcar enviado id=%d: %s', queue_id, e)
 
 
 def _jukebox_aberto(b):
@@ -778,6 +1221,11 @@ def cadastro():
                     session['pub_business_id']   = b['id']
                     session['pub_business_nome'] = b['nome']
                     session['pub_canal']         = b['canal_atual']
+                    # Agenda sequência de emails de onboarding
+                    try:
+                        _agendar_emails_onboarding(b['id'], trial)
+                    except Exception:
+                        pass
                     return redirect('/pubshow/bem-vindo')
                 except Exception as ex:
                     if 'UNIQUE' in str(ex):
@@ -1386,6 +1834,11 @@ def painel():
     b = _get_business()
     if not b:
         return redirect('/pubshow/entrar')
+    # Processa fila de emails pendentes (rate-limited: 1x/10min por processo)
+    try:
+        _processar_fila_emails()
+    except Exception:
+        pass
     conn = get_pubshow_db()
     pedidos_hoje = conn.execute(
         '''SELECT * FROM pubshow_pedidos WHERE business_id=?
@@ -1593,6 +2046,27 @@ def slide_serve(code, filename):
     """Serve imagens de slide do bar."""
     pasta = os.path.join(_SLIDES_DIR, code)
     return send_from_directory(pasta, filename)
+
+
+# ── Cron externo — ping por UptimeRobot/Railway Cron ────────────────────────
+
+@pubshow_bp.route('/_cron/emails')
+def cron_emails():
+    """Endpoint para disparar o processamento de emails via cron externo.
+    Requer header X-Cron-Key com PUBSHOW_CRON_KEY do environment.
+    Se a variável não estiver configurada, qualquer chamada funciona (desenvolvimento)."""
+    from flask import Response as _Response
+    cron_key = os.environ.get('PUBSHOW_CRON_KEY', '')
+    req_key  = request.headers.get('X-Cron-Key', request.args.get('key', ''))
+    if cron_key and req_key != cron_key:
+        return _Response('Unauthorized', status=401)
+    global _email_last_check
+    _email_last_check = 0.0  # força processamento imediato
+    try:
+        _processar_fila_emails()
+        return jsonify({'ok': True, 'ts': datetime.now().isoformat()})
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
 
 
 # ── PWA — Manifest dinâmico + Ícone ──────────────────────────────────────────
@@ -2215,12 +2689,21 @@ def admin_dashboard():
         '''SELECT COALESCE(SUM(valor),0) FROM pubshow_pedidos
            WHERE date(created_at)=date("now","localtime") AND status!="aguardando_pix"'''
     ).fetchone()[0]
+    # Emails pendentes de enviar
+    emails_pendentes = conn.execute(
+        '''SELECT COUNT(*) FROM pubshow_email_queue
+           WHERE sent_at IS NULL AND scheduled_at <= ?''',
+        (datetime.now().isoformat(),)
+    ).fetchone()[0]
+    emails_total = conn.execute('SELECT COUNT(*) FROM pubshow_email_queue').fetchone()[0]
     conn.close()
     return render_template('pubshow/admin.html',
                            bars=[dict(b) for b in bars],
                            total_videos=total_videos,
                            total_pedidos_hoje=total_pedidos_hoje,
                            receita_hoje=receita_hoje,
+                           emails_pendentes=emails_pendentes,
+                           emails_total=emails_total,
                            canais=CANAIS, planos=PLANOS,
                            now=datetime.now().isoformat())
 

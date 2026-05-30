@@ -104,7 +104,7 @@ def init_pubshow_db():
             url        TEXT,                   -- para tipo=imagem
             ativo      INTEGER DEFAULT 1,
             ordem      INTEGER DEFAULT 0,
-            created_at TEXT DEFAULT (datetime("now"))
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
         );
 
         -- ── Índices ────────────────────────────────────────────────────────────
@@ -175,6 +175,28 @@ def init_pubshow_db():
         except Exception:
             try: conn.rollback()
             except: pass
+
+    # ── Tabela fila de emails de onboarding ───────────────────────────────────
+    try:
+        conn.execute(
+            'CREATE TABLE IF NOT EXISTS pubshow_email_queue ('
+            '  id           INTEGER PRIMARY KEY AUTOINCREMENT,'
+            '  business_id  INTEGER NOT NULL,'
+            '  tipo         TEXT NOT NULL,'
+            '  scheduled_at TEXT NOT NULL,'
+            '  sent_at      TEXT DEFAULT NULL,'
+            '  created_at   TEXT DEFAULT CURRENT_TIMESTAMP,'
+            '  FOREIGN KEY (business_id) REFERENCES pubshow_businesses(id)'
+            ')'
+        )
+        conn.execute(
+            'CREATE INDEX IF NOT EXISTS idx_email_queue_pending '
+            'ON pubshow_email_queue(sent_at, scheduled_at)'
+        )
+        conn.commit()
+    except Exception:
+        try: conn.rollback()
+        except: pass
 
     # ── Migração de dados: normaliza planos antigos ──────────────────────────────
     # "premium" era o plano antigo R$249 → equivale ao Pro atual
