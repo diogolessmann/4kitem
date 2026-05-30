@@ -995,7 +995,7 @@ async function ativarPush() {
     }
 
     // Registra SW
-    const reg = await navigator.serviceWorker.register('/static/pubshow/sw-painel.js', {scope: '/pubshow/painel'});
+    const reg = await navigator.serviceWorker.register('/pubshow/sw-painel.js', {scope: '/pubshow/'});
     await navigator.serviceWorker.ready;
 
     // Busca VAPID public key
@@ -1046,7 +1046,7 @@ async function testarPush() {
 (async function checkPushStatus() {
   if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
   try {
-    const reg = await navigator.serviceWorker.getRegistration('/pubshow/painel');
+    const reg = await navigator.serviceWorker.getRegistration('/pubshow/');
     if (!reg) return;
     const sub = await reg.pushManager.getSubscription();
     if (sub) {

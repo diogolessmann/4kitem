@@ -2344,6 +2344,28 @@ def cron_sync_assinaturas():
     return jsonify({'ok': True, **resultado, 'ts': datetime.now().isoformat()})
 
 
+# ── Service Worker do Painel (Push Notifications) ────────────────────────────
+
+@pubshow_bp.route('/sw-painel.js')
+def painel_sw():
+    """Serve o Service Worker do painel com escopo /pubshow/ permitido.
+    Precisa estar em /pubshow/sw-painel.js (não em /static/) para que o
+    browser aceite o escopo /pubshow/ via header Service-Worker-Allowed.
+    """
+    import os as _os
+    sw_path = _os.path.join(_os.path.dirname(__file__), 'static', 'pubshow', 'sw-painel.js')
+    try:
+        with open(sw_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+    except FileNotFoundError:
+        content = '// sw-painel.js not found'
+    from flask import Response as _Resp
+    resp = _Resp(content, mimetype='application/javascript')
+    resp.headers['Service-Worker-Allowed'] = '/pubshow/'
+    resp.headers['Cache-Control'] = 'no-store'
+    return resp
+
+
 # ── PWA — Manifest dinâmico + Ícone ──────────────────────────────────────────
 
 @pubshow_bp.route('/manifest/<token>.json')
