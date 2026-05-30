@@ -10,6 +10,7 @@ import random
 import re
 import string
 import time as _time
+import threading as _threading
 import requests as _requests
 from datetime import datetime, timedelta
 from functools import wraps
@@ -1002,9 +1003,10 @@ def _asaas_headers():
 def _asaas_req(method, endpoint, data=None):
     try:
         r = _requests.request(method, f'{_ASAAS_BASE}{endpoint}',
-                              headers=_asaas_headers(), json=data, timeout=15)
+                              headers=_asaas_headers(), json=data, timeout=4)
         return r.json()
     except Exception as e:
+        log.debug('[PUBSHOW] Asaas timeout/erro: %s %s — %s', method, endpoint, e)
         return {'error': str(e)}
 
 
@@ -1570,15 +1572,16 @@ def jukebox(token):
                         )
                         conn3.commit(); conn3.close()
 
-                    # ── Notificação WhatsApp + Push ao bar ───────────────────
-                    hh_txt = f' 🎉 Happy Hour {hh_desconto}% off!' if hh_desconto else ''
-                    _pubshow_notify_bar(dict(b),
-                        f'🎵 *Novo pedido PIX aguardando!*{hh_txt}\n'
-                        f'{tipo_emoji} {tipo_nome}\n'
-                        f'👤 {nome_cliente}\n'
-                        f'💰 R$ {preco_final:.2f}\n'
-                        f'📋 Acesse o painel para confirmar.')
-                    _enviar_push_pedido(b['id'], tipo_emoji, tipo_nome, nome_cliente, preco_final)
+                    # ── Notificação WhatsApp + Push em background (não bloqueia resposta) ──
+                    _hh_txt = f' 🎉 Happy Hour {hh_desconto}% off!' if hh_desconto else ''
+                    _bid, _emoji, _tnome, _nome, _preco = b['id'], tipo_emoji, tipo_nome, nome_cliente, preco_final
+                    _bd_copy = dict(b)
+                    def _notif_pix():
+                        try: _pubshow_notify_bar(_bd_copy, f'🎵 *Novo pedido PIX aguardando!*{_hh_txt}\n{_emoji} {_tnome}\n👤 {_nome}\n💰 R$ {_preco:.2f}\n📋 Acesse o painel para confirmar.')
+                        except: pass
+                        try: _enviar_push_pedido(_bid, _emoji, _tnome, _nome, _preco)
+                        except: pass
+                    _threading.Thread(target=_notif_pix, daemon=True).start()
 
                     pix_pendente = {
                         'pedido_id':  pedido_id,
@@ -1617,16 +1620,17 @@ def jukebox(token):
                     conn2.commit(); conn2.close()
                     sucesso = tipo
 
-                    # ── Notificação WhatsApp + Push ao bar ───────────────────
-                    hh_txt = f' 🎉 Happy Hour {hh_desconto}% off!' if hh_desconto else ''
-                    _pubshow_notify_bar(dict(b),
-                        f'🎵 *Novo pedido no Jukebox!*{hh_txt}\n'
-                        f'{tipo_emoji} {tipo_nome}\n'
-                        f'👤 {nome_cliente}'
-                        + (f'\n📝 {mensagem}' if mensagem else '')
-                        + (f'\n🎶 {titulo_pedido}' if titulo_pedido else '')
-                        + f'\n💰 R$ {preco_direto:.2f}')
-                    _enviar_push_pedido(b['id'], tipo_emoji, tipo_nome, nome_cliente, preco_direto)
+                    # ── Notificação WhatsApp + Push em background (não bloqueia resposta) ──
+                    _hh_txt2 = f' 🎉 Happy Hour {hh_desconto}% off!' if hh_desconto else ''
+                    _bid2, _emoji2, _tnome2, _nome2, _preco2 = b['id'], tipo_emoji, tipo_nome, nome_cliente, preco_direto
+                    _bd_copy2 = dict(b)
+                    _msg_extra = (f'\n📝 {mensagem}' if mensagem else '') + (f'\n🎶 {titulo_pedido}' if titulo_pedido else '')
+                    def _notif_direto():
+                        try: _pubshow_notify_bar(_bd_copy2, f'🎵 *Novo pedido no Jukebox!*{_hh_txt2}\n{_emoji2} {_tnome2}\n👤 {_nome2}{_msg_extra}\n💰 R$ {_preco2:.2f}')
+                        except: pass
+                        try: _enviar_push_pedido(_bid2, _emoji2, _tnome2, _nome2, _preco2)
+                        except: pass
+                    _threading.Thread(target=_notif_direto, daemon=True).start()
 
     # Fila atual (últimos 5 pedidos pendentes)
     conn3 = get_pubshow_db()
