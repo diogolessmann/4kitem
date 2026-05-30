@@ -189,6 +189,7 @@ tr.hidden-search{display:none}
           <th>Título</th>
           <th>Artista</th>
           <th>Status</th>
+          <th style="width:40px"></th>
         </tr></thead>
         <tbody id="tbody-{{ cat_key }}">
         {% for v in vids %}
@@ -200,6 +201,13 @@ tr.hidden-search{display:none}
           <td style="display:flex;align-items:center;gap:3px">
             <span class="dot" id="dot-{{ v.youtube_id }}"></span>
             <span class="status-txt" id="msg-{{ v.youtube_id }}">—</span>
+          </td>
+          <td>
+            <button onclick="removerVideo('{{ v.youtube_id }}', '{{ v.titulo|replace("'","") }}')"
+              title="Remover este vídeo"
+              style="background:none;border:none;cursor:pointer;font-size:15px;opacity:.4;padding:2px 6px;border-radius:6px;transition:.15s"
+              onmouseover="this.style.opacity='1';this.style.background='rgba(239,68,68,.15)'"
+              onmouseout="this.style.opacity='.4';this.style.background='none'">🗑</button>
           </td>
         </tr>
         {% endfor %}
@@ -318,6 +326,26 @@ function fecharModal(id){ document.getElementById(id).classList.remove('open') }
 document.querySelectorAll('.modal-overlay').forEach(el =>
   el.addEventListener('click', e => { if(e.target===el) el.classList.remove('open') })
 );
+
+// ── Remover vídeo individual ──────────────────────────────────────────────────
+async function removerVideo(yid, titulo) {
+  if (!confirm(`Remover "${titulo}" (${yid}) da biblioteca?`)) return;
+  try {
+    const res = await fetch('/pubshow/admin/videos/deletar', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ids: [yid]})
+    });
+    const d = await res.json();
+    if (d.ok && d.deleted > 0) {
+      const row = document.getElementById('row-' + yid);
+      if (row) { row.style.transition = 'opacity .3s'; row.style.opacity = '0'; setTimeout(() => row.remove(), 300); }
+      toast('🗑 Vídeo removido!');
+    } else {
+      alert('Erro ao remover vídeo.');
+    }
+  } catch(e) { alert('Erro de conexão.'); }
+}
 
 // ── Toast ─────────────────────────────────────────────────────────────────────
 function toast(msg, dur=3500){
