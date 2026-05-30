@@ -247,6 +247,16 @@
   .pix-status-sub{font-size:12px;color:var(--text2);margin-top:6px}
   @keyframes spin{to{transform:rotate(360deg)}}
   .spinner{display:inline-block;width:18px;height:18px;border:2px solid rgba(251,191,36,.3);border-top-color:#fbbf24;border-radius:50%;animation:spin .8s linear infinite;vertical-align:middle;margin-right:6px}
+
+  /* ── Tutorial Carousel ──────────────────────────────────────────── */
+  .tutorial-wrap{overflow:hidden;position:relative;margin:0;padding:10px 0 4px}
+  .tutorial-track{display:flex;transition:transform .35s cubic-bezier(.4,0,.2,1);will-change:transform;cursor:grab;user-select:none}
+  .tutorial-track:active{cursor:grabbing}
+  .tutorial-slide{min-width:100%;padding:0 16px;box-sizing:border-box;flex-shrink:0}
+  .tutorial-slide img{width:100%;border-radius:14px;display:block;box-shadow:0 4px 20px rgba(0,0,0,.5)}
+  .tutorial-dots{display:flex;justify-content:center;gap:6px;padding:8px 0 2px}
+  .t-dot{height:4px;border-radius:2px;background:rgba(255,255,255,.2);transition:width .25s,background .25s;cursor:pointer}
+  .t-dot.on{background:#ef4444}
 </style>
 </head>
 <body>
@@ -382,6 +392,22 @@ async function jaPaguei() {
 {% endif %}
 
 {% if erro %}<div class="erro-box">⚠️ {{ erro }}</div>{% endif %}
+
+<!-- ── Tutorial: Como funciona — carousel swipeable ─────────────────────── -->
+<div class="tutorial-wrap" id="tutorial-wrap">
+  <div class="tutorial-track" id="tutorial-track">
+    <div class="tutorial-slide">
+      <img src="/static/pubshow/slides/slide2.png" alt="Tabela de preços" loading="lazy">
+    </div>
+    <div class="tutorial-slide">
+      <img src="/static/pubshow/slides/slide1.png" alt="Como escanear" loading="lazy">
+    </div>
+  </div>
+  <div class="tutorial-dots" id="tutorial-dots">
+    <div class="t-dot on" style="width:20px" onclick="tutorialGoTo(0)"></div>
+    <div class="t-dot" style="width:8px" onclick="tutorialGoTo(1)"></div>
+  </div>
+</div>
 
 {% if fila %}
 <div class="fila-section">
@@ -940,6 +966,55 @@ function copiarPix() {
     });
   });
 }
+
+// ── Tutorial Carousel ─────────────────────────────────────────────────────────
+(function() {
+  const wrap  = document.getElementById('tutorial-wrap');
+  const track = document.getElementById('tutorial-track');
+  const dots  = document.getElementById('tutorial-dots');
+  if (!wrap || !track || !dots) return;
+
+  const TOTAL = track.children.length;
+  let cur = 0, timer = null, startX = 0, dragging = false;
+
+  window.tutorialGoTo = function(n) {
+    cur = (n + TOTAL) % TOTAL;
+    track.style.transform = `translateX(-${cur * 100}%)`;
+    Array.from(dots.children).forEach((d, i) => {
+      d.classList.toggle('on', i === cur);
+      d.style.width = i === cur ? '20px' : '8px';
+    });
+  };
+
+  function schedule() {
+    clearInterval(timer);
+    timer = setInterval(() => tutorialGoTo(cur + 1), 4500);
+  }
+
+  // Touch / swipe
+  track.addEventListener('touchstart', e => {
+    startX = e.touches[0].clientX;
+    clearInterval(timer);
+  }, {passive:true});
+  track.addEventListener('touchend', e => {
+    const dx = e.changedTouches[0].clientX - startX;
+    if (Math.abs(dx) > 40) tutorialGoTo(cur + (dx < 0 ? 1 : -1));
+    schedule();
+  }, {passive:true});
+
+  // Mouse drag
+  track.addEventListener('mousedown', e => { startX = e.clientX; dragging = true; clearInterval(timer); });
+  document.addEventListener('mouseup', e => {
+    if (!dragging) return;
+    dragging = false;
+    const dx = e.clientX - startX;
+    if (Math.abs(dx) > 40) tutorialGoTo(cur + (dx < 0 ? 1 : -1));
+    schedule();
+  });
+
+  tutorialGoTo(0);
+  schedule();
+})();
 </script>
 
 {% endif %}{# fim {% else %} pix_pendente #}

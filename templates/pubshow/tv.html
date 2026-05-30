@@ -609,8 +609,8 @@ function ativarSom() {
   window._autoUnmute = true;
   // Inicia ciclo periódico de CTA fullscreen
   iniciarCtaPeriodicO();
-  // Inicia timer dos slides do sistema (10 min)
-  _agendarSlidesSistema();
+  // Exibe slides do sistema 2 min após TV ligar (tutorial inicial)
+  if (SLIDES_SISTEMA.length) setTimeout(_iniciarSlidesSistema, 2 * 60 * 1000);
 }
 
 // ── Promoção Relâmpago — countdown ───────────────────────────────────────────
@@ -1015,11 +1015,14 @@ function mostrarOverlay(pedido) {
 // ── Propaganda do bar — slide entre vídeos ───────────────────────────────────
 function proximoVideoOuSlide() {
   _videosPlayed++;
-  // A cada 3 vídeos exibe um slide (usa ANUNCIOS_EFETIVOS: próprios ou padrão)
+  // A cada 3 vídeos exibe slide do bar (propaganda/cardápio)
   if (ANUNCIOS_EFETIVOS.length && _videosPlayed % 3 === 0) {
     const slide = ANUNCIOS_EFETIVOS[_anuncioIdx % ANUNCIOS_EFETIVOS.length];
     _anuncioIdx++;
     mostrarSlide(slide);
+  // A cada 5 vídeos (quando não cai no % 3) exibe slides do sistema (tutorial)
+  } else if (SLIDES_SISTEMA.length && _videosPlayed % 5 === 0) {
+    _iniciarSlidesSistema();
   } else {
     videoIdx = (videoIdx + 1) % VIDEOS.length;
     carregarVideo(videoIdx);
@@ -1072,15 +1075,9 @@ function mostrarSlide(slide, onEnd, duracaoMs) {
   }, duracao);
 }
 
-// ── Slides do Sistema — obrigatórios a cada 10 minutos em todas as TVs ───────
-const _SS_INTERVAL = 10 * 60 * 1000; // 10 minutos
-let   _ssTimer     = null;
-
-function _agendarSlidesSistema() {
-  clearTimeout(_ssTimer);
-  if (!SLIDES_SISTEMA.length) return;
-  _ssTimer = setTimeout(_iniciarSlidesSistema, _SS_INTERVAL);
-}
+// ── Slides do Sistema — exibidos no startup e a cada 5 vídeos ────────────────
+// (não usa timer fixo — integrado ao contador de vídeos em proximoVideoOuSlide)
+function _agendarSlidesSistema() { /* no-op — mantido por compatibilidade */ }
 
 function _iniciarSlidesSistema() {
   // Não interrompe overlay especial (parabéns, dedicatória etc.)
