@@ -651,7 +651,7 @@ def _email_trial_ending(nome: str, plano: str, trial_ends: str) -> tuple:
     base_url = os.environ.get('BASE_URL', 'https://pubshow.com.br')
     planos_url = f'{base_url}/pubshow/planos'
     nome_plano = {'starter': 'Starter', 'bar': 'Bar', 'pro': 'Pro', 'rede': 'Rede'}.get(plano, 'Bar')
-    preco_plano = {'starter': 'R$ 69,90', 'bar': 'R$ 129,90', 'pro': 'R$ 249,90', 'rede': 'R$ 499,90'}.get(plano, 'R$ 129,90')
+    preco_plano = {k: p['preco_fmt'] for k, p in PLANOS.items()}.get(plano, 'R$ 129,90')
 
     try:
         trial_fmt = datetime.fromisoformat(trial_ends[:19]).strftime('%d/%m/%Y')
@@ -706,7 +706,7 @@ def _email_trial_expirado(nome: str, plano: str) -> tuple:
     base_url = os.environ.get('BASE_URL', 'https://pubshow.com.br')
     planos_url = f'{base_url}/pubshow/planos'
     nome_plano = {'starter': 'Starter', 'bar': 'Bar', 'pro': 'Pro', 'rede': 'Rede'}.get(plano, 'Bar')
-    preco_plano = {'starter': 'R$ 69,90', 'bar': 'R$ 129,90', 'pro': 'R$ 249,90', 'rede': 'R$ 499,90'}.get(plano, 'R$ 129,90')
+    preco_plano = {k: p['preco_fmt'] for k, p in PLANOS.items()}.get(plano, 'R$ 129,90')
 
     corpo = f"""
       <h1 style="color:#f9fafb;font-size:24px;font-weight:800;margin:0 0 8px;">
@@ -958,7 +958,7 @@ def _limite_atingido(b, ip):
     count = conn.execute(
         '''SELECT COUNT(*) FROM pubshow_pedidos
            WHERE business_id=? AND ip_cliente=?
-           AND created_at >= datetime("now", -1 hour)''',
+           AND created_at >= datetime("now", "-1 hours")''',
         (b['id'], ip)
     ).fetchone()[0]
     conn.close()
@@ -1244,7 +1244,8 @@ def recuperar_senha():
                 (token, expira, b['id'])
             )
             conn.commit()
-            link = f'https://www.4kitem.com.br/pubshow/recuperar/{token}'
+            _base = os.environ.get('BASE_URL', 'https://www.4kitem.com.br')
+            link = f'{_base}/pubshow/recuperar/{token}'
             sent = _pubshow_send_wa(
                 b['telefone'] or '',
                 f'🔐 *PUBSHOW — Redefinição de senha*\n\n'
@@ -1297,6 +1298,8 @@ def recuperar_senha_form(token):
 def bem_vindo():
     """Página de onboarding pós-cadastro — guia o bar pelos primeiros passos."""
     b = _get_business()
+    if not b:
+        return redirect('/pubshow/entrar')
     return render_template('pubshow/bem_vindo.html', b=dict(b), planos=PLANOS, canais=CANAIS)
 
 
@@ -1808,12 +1811,24 @@ def api_pedido_exibido(pedido_id):
 
 @pubshow_bp.route('/api/trocar-canal/<code>', methods=['POST'])
 def api_trocar_canal(code):
-    canal = request.json.get('canal', 'rock') if request.is_json else request.form.get('canal', 'rock')
+    # Verifica token de TV — usa jukebox_token ou session do painel
+    conn = get_pubshow_db()
+    b = conn.execute(
+        'SELECT id FROM pubshow_businesses WHERE code=? OR jukebox_token=?', (code, code)
+    ).fetchone()
+    conn.close()
+    if not b:
+        return jsonify({'error': 'não autorizado'}), 403
+    # Aceita da TV (token na URL) ou do painel logado (session)
+    if session.get('pub_business_id') and session['pub_business_id'] != b['id']:
+        return jsonify({'error': 'não autorizado'}), 403
+    data = (request.json or {}) if request.is_json else request.form
+    canal = data.get('canal', 'rock')
     if canal not in CANAIS:
         return jsonify({'error': 'canal inválido'}), 400
-    conn = get_pubshow_db()
-    conn.execute('UPDATE pubshow_businesses SET canal_atual=? WHERE code=?', (canal, code))
-    conn.commit(); conn.close()
+    conn2 = get_pubshow_db()
+    conn2.execute('UPDATE pubshow_businesses SET canal_atual=? WHERE id=?', (canal, b['id']))
+    conn2.commit(); conn2.close()
     return jsonify({'ok': True, 'canal': canal})
 
 
@@ -2089,6 +2104,8 @@ def painel():
 def painel_fila_json():
     """Retorna fila + aguardando_pix como JSON — usado pelo polling do painel sem recarregar a página."""
     b = _get_business()
+    if not b:
+        return jsonify({'error': 'não autorizado'}), 401
     conn = get_pubshow_db()
     fila = conn.execute(
         '''SELECT id, nome_cliente, tipo, mensagem, valor, created_at
@@ -2142,7 +2159,8 @@ def painel_promo():
     else:
         msg    = request.form.get('promo_msg', '').strip()[:80]
         emoji  = request.form.get('promo_emoji', '🍺').strip()[:4]
-        minutos = int(request.form.get('promo_minutos', 10) or 10)
+        try: minutos = int(request.form.get('promo_minutos', 10) or 10)
+        except (ValueError, TypeError): minutos = 10
         minutos = max(1, min(minutos, 120))  # entre 1 e 120 min
         expira  = (datetime.now() + timedelta(minutes=minutos)).strftime('%Y-%m-%dT%H:%M:%S')
         if msg:
@@ -2503,8 +2521,7 @@ def cron_sync_assinaturas():
 # ── Service Worker do Painel (Push Notifications) ────────────────────────────
 
 @pubshow_bp.route('/painel/manifest.json')
-@pubshow_login_required
-def painel_manifest():
+def painel_manifest():  # público — browser busca sem session
     """Web App Manifest para o painel do bar — PWA instalável."""
     import json as _json2
     from flask import Response as _Resp2
@@ -3564,7 +3581,7 @@ def admin_import_playlist():
 @_admin_required
 def admin_videos_check_one():
     """Verifica se um vídeo específico está disponível e embeddable via oEmbed."""
-    yid = request.json.get('youtube_id', '')
+    yid = (request.json or {}).get('youtube_id', '')
     if not yid:
         return jsonify({'ok': False, 'erro': 'ID vazio'})
     try:
@@ -3594,7 +3611,7 @@ def admin_videos_check_bulk():
     Muito mais rápido que check-one sequencial no cliente."""
     from concurrent.futures import ThreadPoolExecutor, as_completed
 
-    ids = request.json.get('ids', [])
+    ids = (request.json or {}).get('ids', [])
     if not ids:
         return jsonify({'ok': False, 'erro': 'Lista vazia'})
     ids = ids[:600]   # limite de segurança
@@ -3690,7 +3707,7 @@ def admin_videos_remover_quebrados():
 @_admin_required
 def admin_videos_deletar():
     """Deleta vídeos pelo youtube_id (lista de IDs ruins)."""
-    ids = request.json.get('ids', [])
+    ids = (request.json or {}).get('ids', [])
     if not ids:
         return jsonify({'ok': False})
     conn = get_pubshow_db()
