@@ -279,10 +279,10 @@ def init_pubshow_db():
 
 def _seed_slides_sistema(conn):
     """Registra as imagens padrão do sistema na tabela pubshow_slides_sistema.
-    Usa INSERT OR IGNORE via url única para não duplicar a cada restart.
+    M9 fix: verifica se o arquivo existe antes de registrar — evita slides quebrados.
     """
+    _base = os.path.dirname(os.path.abspath(__file__))
     slides_padrao = [
-        # (url, ordem)
         ('/static/pubshow/slides/slide1.png', 1),
         ('/static/pubshow/slides/slide2.png', 2),
         ('/static/pubshow/slides/slide3.png', 3),
@@ -290,7 +290,10 @@ def _seed_slides_sistema(conn):
         ('/static/pubshow/slides/slide5.png', 5),
     ]
     for url, ordem in slides_padrao:
-        # Só insere se ainda não existe um slide com essa url
+        # Verifica se o arquivo físico existe antes de registrar
+        caminho_fisico = os.path.join(_base, url.lstrip('/').replace('/', os.sep))
+        if not os.path.exists(caminho_fisico):
+            continue
         existe = conn.execute(
             'SELECT id FROM pubshow_slides_sistema WHERE url=?', (url,)
         ).fetchone()

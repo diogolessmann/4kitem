@@ -170,7 +170,10 @@ def _plano_tipos_permitidos(b) -> list | None:
 
 
 # ── Diretório de uploads de slides ───────────────────────────────────────────
-_SLIDES_DIR = os.path.join(os.environ.get('DATA_DIR', os.path.dirname(__file__)), 'pubshow_slides')
+_SLIDES_DIR = os.path.join(
+    os.environ.get('DATA_DIR', os.path.abspath(os.path.dirname(__file__) or '.')),
+    'pubshow_slides'
+)
 
 
 TIPOS_PEDIDO = {
@@ -956,14 +959,18 @@ def _limite_atingido(b, ip):
     if limite <= 0:
         return False
     conn = get_pubshow_db()
-    count = conn.execute(
-        '''SELECT COUNT(*) FROM pubshow_pedidos
-           WHERE business_id=? AND ip_cliente=?
-           AND created_at >= datetime("now", "-1 hours")''',
-        (b['id'], ip)
-    ).fetchone()[0]
-    conn.close()
-    return count >= limite
+    try:
+        count = conn.execute(
+            '''SELECT COUNT(*) FROM pubshow_pedidos
+               WHERE business_id=? AND ip_cliente=?
+               AND created_at >= datetime("now", "-1 hours")''',
+            (b['id'], ip)
+        ).fetchone()[0]
+        return count >= limite
+    except Exception:
+        return False  # em caso de erro, não bloqueia o pedido
+    finally:
+        conn.close()  # A4 fix: sempre fecha a conexão
 
 def _admin_ok():
     """Verifica se a sessão atual é admin — aceita login PUBSHOW ou SaaS master."""
@@ -1945,9 +1952,10 @@ def api_buscar():
     if not q or len(q) < 2:
         return jsonify({'resultados': []})
     try:
+        # B2: chave configurável via env — fallback para chave pública do cliente web YT
+        _yt_key = os.environ.get('YOUTUBE_INNERTUBE_KEY', 'AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8')
         resp = _requests.post(
-            'https://www.youtube.com/youtubei/v1/search'
-            '?key=AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8',
+            f'https://www.youtube.com/youtubei/v1/search?key={_yt_key}',
             json={
                 'query': q,
                 'context': {
@@ -2141,7 +2149,8 @@ def painel_fila_json():
 @pubshow_bp.route('/painel/canal', methods=['POST'])
 @pubshow_login_required
 def painel_canal():
-    b    = _get_business()
+    b = _get_business()
+    if not b: return redirect('/pubshow/entrar')
     canal = request.form.get('canal', 'rock')
     if canal in CANAIS:
         conn = get_pubshow_db()
@@ -2156,6 +2165,7 @@ def painel_canal():
 def painel_promo():
     """Inicia ou encerra uma Promoção Relâmpago na TV."""
     b = _get_business()
+    if not b: return redirect('/pubshow/entrar')
     acao = request.form.get('acao', 'iniciar')
     conn = get_pubshow_db()
     if acao == 'encerrar':
@@ -2220,6 +2230,7 @@ def painel_push_unsubscribe():
 def painel_push_test():
     """Envia push de teste para confirmar que está funcionando."""
     b = _get_business()
+    if not b: return jsonify({'ok': False}), 401
     _enviar_push_pedido(b['id'], '🧪', 'Teste', 'Sistema PUBSHOW', 0.0)
     return jsonify({'ok': True})
 
@@ -2258,7 +2269,7 @@ def api_validar_cupom(codigo):
 
 
 def _aplicar_cupom(codigo: str) -> dict | None:
-    """Aplica um cupom — incrementa uso e retorna dados. Retorna None se inválido."""
+    """Aplica um cupom — incrementa uso atomicamente. M5 fix: sem race condition."""
     if not codigo:
         return None
     conn = get_pubshow_db()
@@ -2272,9 +2283,20 @@ def _aplicar_cupom(codigo: str) -> dict | None:
         c = dict(c)
         if c.get('valido_ate') and c['valido_ate'] < datetime.now().isoformat():
             return None
-        if c.get('max_usos') is not None and c['usos'] >= c['max_usos']:
-            return None
-        conn.execute("UPDATE pubshow_cupons SET usos=usos+1 WHERE id=?", (c['id'],))
+        # M5 fix: UPDATE atômico com verificação de max_usos — evita race condition
+        # Se max_usos for NULL (ilimitado) ou usos < max_usos, incrementa e retorna 1 row
+        if c.get('max_usos') is not None:
+            updated = conn.execute(
+                "UPDATE pubshow_cupons SET usos=usos+1 WHERE id=? AND usos < max_usos",
+                (c['id'],)
+            ).rowcount
+        else:
+            updated = conn.execute(
+                "UPDATE pubshow_cupons SET usos=usos+1 WHERE id=?",
+                (c['id'],)
+            ).rowcount
+        if not updated:
+            return None  # max_usos atingido por outro request simultâneo
         conn.commit()
         return c
     except Exception as _e:
@@ -2353,6 +2375,7 @@ def painel_push_vapid_key():
 def painel_toggle_slides_sistema():
     """Bar ativa/desativa slides globais do sistema na sua TV."""
     b = _get_business()
+    if not b: return redirect('/pubshow/entrar')
     conn = get_pubshow_db()
     atual = conn.execute('SELECT usar_slides_sistema FROM pubshow_businesses WHERE id=?', (b['id'],)).fetchone()
     novo = 0 if (atual and atual[0]) else 1
@@ -2367,6 +2390,7 @@ def painel_anuncios():
     """Salva slides de propaganda do bar (até 3)."""
     import json as _json
     b = _get_business()
+    if not b: return redirect('/pubshow/entrar')
     slides = []
     for i in range(1, 4):
         titulo    = request.form.get(f'slide_{i}_titulo', '').strip()[:60]
@@ -2438,8 +2462,9 @@ def cron_emails():
     req_key  = request.headers.get('X-Cron-Key', request.args.get('key', ''))
     if cron_key and req_key != cron_key:
         return _Response('Unauthorized', status=401)
+    # M8 fix: não reseta _email_last_check — respeita o rate-limit de 10min
+    # mesmo quando chamado pelo cron externo, evitando emails duplicados
     global _email_last_check
-    _email_last_check = 0.0  # força processamento imediato
     try:
         _processar_fila_emails()
         return jsonify({'ok': True, 'ts': datetime.now().isoformat()})
@@ -2755,6 +2780,7 @@ def painel_happy_hour():
 def painel_notif():
     """Ativa/desativa notificações WhatsApp ao bar."""
     b = _get_business()
+    if not b: return redirect('/pubshow/entrar')
     if not _plano_permite(dict(b), 'whatsapp'):
         return redirect('/pubshow/planos')
     ativo = 1 if request.form.get('whatsapp_notif') else 0
@@ -2864,6 +2890,7 @@ def painel_recusar_pix(pid):
 def painel_toggle_pix():
     """Ativa/desativa a exigência de PIX — atualiza APENAS requer_pix, sem tocar em outras configs."""
     b = _get_business()
+    if not b: return redirect('/pubshow/entrar')
     requer_pix = 1 if request.form.get('requer_pix') else 0
     conn = get_pubshow_db()
     conn.execute(
@@ -2880,6 +2907,7 @@ def painel_config():
     """Salva todas as configurações do Jukebox do bar."""
     import json
     b = _get_business()
+    if not b: return redirect('/pubshow/entrar')
 
     # Horário
     hora_ini = request.form.get('hora_ini', '00:00').strip()
@@ -2952,6 +2980,7 @@ def painel_config():
 @pubshow_login_required
 def painel_senha():
     b = _get_business()
+    if not b: return redirect('/pubshow/entrar')
     atual  = request.form.get('senha_atual', '')
     nova   = request.form.get('senha_nova', '')
     conf   = request.form.get('senha_conf', '')
@@ -2973,6 +3002,7 @@ def painel_senha():
 def painel_relatorio():
     import json
     b = _get_business()
+    if not b: return redirect('/pubshow/entrar')
     if not _plano_permite(dict(b), 'analytics'):
         return redirect('/pubshow/planos')
     conn = get_pubshow_db()
@@ -4249,7 +4279,11 @@ def webhook_asaas():
 
     token_esp = os.environ.get('ASAAS_WEBHOOK_TOKEN', '')
     token_rec = request.headers.get('asaas-access-token', '')
-    if token_esp and token_rec != token_esp:
+    # A8 fix: rejeita se token não configurado OU se token não bate
+    if not token_esp:
+        log.warning('[PUBSHOW] Webhook recebido mas ASAAS_WEBHOOK_TOKEN não configurado — bloqueado')
+        return jsonify({'error': 'not configured'}), 403
+    if token_rec != token_esp:
         return jsonify({'error': 'unauthorized'}), 401
 
     dados     = request.get_json(silent=True) or {}
@@ -4346,7 +4380,11 @@ def webhook_asaas_jukebox():
 
     token_esp = os.environ.get('ASAAS_WEBHOOK_TOKEN', '')
     token_rec = request.headers.get('asaas-access-token', '')
-    if token_esp and token_rec != token_esp:
+    # A8 fix: rejeita se token não configurado OU se token não bate
+    if not token_esp:
+        log.warning('[PUBSHOW] Webhook recebido mas ASAAS_WEBHOOK_TOKEN não configurado — bloqueado')
+        return jsonify({'error': 'not configured'}), 403
+    if token_rec != token_esp:
         return jsonify({'error': 'unauthorized'}), 401
 
     dados     = request.get_json(silent=True) or {}
