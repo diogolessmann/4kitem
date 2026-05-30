@@ -249,11 +249,11 @@
   .spinner{display:inline-block;width:18px;height:18px;border:2px solid rgba(251,191,36,.3);border-top-color:#fbbf24;border-radius:50%;animation:spin .8s linear infinite;vertical-align:middle;margin-right:6px}
 
   /* ── Tutorial Carousel (inline, topo do jukebox) ───────────────── */
-  .tutorial-wrap{overflow:hidden;position:relative;margin:0;padding:10px 0 4px}
-  .tutorial-track{display:flex;transition:transform .35s cubic-bezier(.4,0,.2,1);will-change:transform;cursor:grab;user-select:none}
+  .tutorial-wrap{overflow:hidden;position:relative;margin:0;padding:10px 0 4px;width:100%}
+  .tutorial-track{display:flex;transition:transform .35s cubic-bezier(.4,0,.2,1);will-change:transform;cursor:grab;user-select:none;width:100%}
   .tutorial-track:active{cursor:grabbing}
-  .tutorial-slide{min-width:100%;padding:0 16px;box-sizing:border-box;flex-shrink:0}
-  .tutorial-slide img{width:100%;border-radius:14px;display:block;box-shadow:0 4px 20px rgba(0,0,0,.5)}
+  .tutorial-slide{min-width:100vw;width:100vw;padding:0 16px;box-sizing:border-box;flex-shrink:0}
+  .tutorial-slide img{width:100%;border-radius:14px;display:block;box-shadow:0 4px 20px rgba(0,0,0,.5);max-height:260px;object-fit:contain}
   .tutorial-dots{display:flex;justify-content:center;gap:6px;padding:8px 0 2px}
   .t-dot{height:4px;border-radius:2px;background:rgba(255,255,255,.2);transition:width .25s,background .25s;cursor:pointer}
   .t-dot.on{background:#ef4444}
@@ -263,32 +263,35 @@
     position:fixed;inset:0;z-index:9999;
     background:#08080f;
     display:flex;flex-direction:column;
+    overflow:hidden;
     animation:fadeIn .3s ease;
-    touch-action:pan-y;
   }
   #onboarding.hide{animation:fadeOut .35s ease forwards}
   @keyframes fadeOut{to{opacity:0;pointer-events:none}}
-  .ob-track{display:flex;flex:1;transition:transform .4s cubic-bezier(.4,0,.2,1);will-change:transform}
+  /* wrapper de clip — necessário para iOS Safari não vazar conteúdo */
+  .ob-clip{flex:1;overflow:hidden;width:100%;position:relative}
+  .ob-track{display:flex;height:100%;transition:transform .4s cubic-bezier(.4,0,.2,1);will-change:transform}
   .ob-slide{
-    min-width:100%;flex-shrink:0;
+    min-width:100vw;width:100vw;flex-shrink:0;
     display:flex;flex-direction:column;align-items:center;justify-content:center;
-    padding:32px 28px;text-align:center;
+    padding:40px 32px;text-align:center;overflow:hidden;box-sizing:border-box;
   }
-  .ob-emoji{font-size:72px;margin-bottom:20px;filter:drop-shadow(0 0 24px currentColor)}
-  .ob-titulo{font-size:26px;font-weight:900;line-height:1.2;margin-bottom:12px;letter-spacing:-.5px}
-  .ob-sub{font-size:15px;color:#8888aa;line-height:1.6;max-width:300px}
+  .ob-emoji{font-size:72px;margin-bottom:20px;line-height:1}
+  .ob-titulo{font-size:24px;font-weight:900;line-height:1.25;margin-bottom:12px;letter-spacing:-.3px;word-break:break-word}
+  .ob-sub{font-size:14px;color:#8888aa;line-height:1.65;max-width:280px}
   .ob-step{
     font-size:11px;font-weight:800;color:#ef4444;letter-spacing:1px;
-    text-transform:uppercase;margin-bottom:10px;
+    text-transform:uppercase;margin-bottom:14px;
   }
   .ob-bottom{
-    padding:20px 28px 36px;display:flex;flex-direction:column;align-items:center;gap:14px;
+    padding:16px 28px 32px;display:flex;flex-direction:column;align-items:center;gap:12px;
+    flex-shrink:0;
   }
   .ob-dots{display:flex;gap:7px}
   .ob-dot{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.2);transition:.25s;cursor:pointer}
   .ob-dot.on{background:#ef4444;width:22px;border-radius:4px}
   .ob-btn{
-    width:100%;max-width:320px;padding:16px;border:none;border-radius:16px;
+    width:100%;max-width:320px;padding:15px;border:none;border-radius:16px;
     background:linear-gradient(135deg,#ef4444,#f97316);
     color:#fff;font-size:16px;font-weight:900;cursor:pointer;font-family:inherit;
     box-shadow:0 4px 24px rgba(239,68,68,.4);
@@ -296,8 +299,8 @@
   }
   .ob-btn:active{transform:scale(.97)}
   .ob-skip{
-    background:none;border:none;color:#8888aa;font-size:13px;cursor:pointer;
-    font-family:inherit;padding:6px;
+    background:none;border:none;color:#8888aa;font-size:14px;cursor:pointer;
+    font-family:inherit;padding:8px 16px;
   }
 </style>
 </head>
@@ -308,40 +311,43 @@
 <!-- ONBOARDING FULLSCREEN — aparece na primeira visita, ensina como funciona  -->
 <!-- ══════════════════════════════════════════════════════════════════════════ -->
 <div id="onboarding">
-  <div class="ob-track" id="ob-track">
+  <!-- ob-clip: necessário para clip funcionar no iOS Safari com position:fixed -->
+  <div class="ob-clip">
+    <div class="ob-track" id="ob-track">
 
-    <!-- Slide 1 — Boas-vindas -->
-    <div class="ob-slide">
-      <div class="ob-step">Passo 1 de 4</div>
-      <div class="ob-emoji">🎵</div>
-      <div class="ob-titulo">Bem-vindo ao Jukebox do {{ b.nome }}!</div>
-      <div class="ob-sub">Aqui você controla a música da noite direto pelo celular, sem precisar falar com ninguém.</div>
+      <!-- Slide 1 — Boas-vindas -->
+      <div class="ob-slide">
+        <div class="ob-step">Passo 1 de 4</div>
+        <div class="ob-emoji">🎵</div>
+        <div class="ob-titulo">Bem-vindo ao Jukebox do {{ b.nome }}!</div>
+        <div class="ob-sub">Aqui você controla a música da noite direto pelo celular, sem precisar falar com ninguém.</div>
+      </div>
+
+      <!-- Slide 2 — Escolha o pedido -->
+      <div class="ob-slide">
+        <div class="ob-step">Passo 2 de 4</div>
+        <div class="ob-emoji">🎯</div>
+        <div class="ob-titulo">Escolha o tipo de pedido</div>
+        <div class="ob-sub">Música aleatória, escolha a música, prioridade na fila, parabéns, dedicatória... cada um com um preço diferente.</div>
+      </div>
+
+      <!-- Slide 3 — Pague via PIX -->
+      <div class="ob-slide">
+        <div class="ob-step">Passo 3 de 4</div>
+        <div class="ob-emoji">💸</div>
+        <div class="ob-titulo">Pague via PIX em segundos</div>
+        <div class="ob-sub">Tudo pelo celular, sem maquininha. Escaneia o QR do PIX ou copia e cola o código.</div>
+      </div>
+
+      <!-- Slide 4 — Música na TV -->
+      <div class="ob-slide">
+        <div class="ob-step">Passo 4 de 4</div>
+        <div class="ob-emoji">📺</div>
+        <div class="ob-titulo">Sua música toca na TV!</div>
+        <div class="ob-sub">Depois do pagamento confirmado, seu pedido entra na fila e aparece na tela do bar. Aproveite! 🍺</div>
+      </div>
+
     </div>
-
-    <!-- Slide 2 — Escolha o pedido -->
-    <div class="ob-slide">
-      <div class="ob-step">Passo 2 de 4</div>
-      <div class="ob-emoji">🎯</div>
-      <div class="ob-titulo">Escolha o tipo de pedido</div>
-      <div class="ob-sub">Música aleatória, escolha a música, prioridade na fila, parabéns, dedicatória... cada um com um preço diferente.</div>
-    </div>
-
-    <!-- Slide 3 — Pague via PIX -->
-    <div class="ob-slide">
-      <div class="ob-step">Passo 3 de 4</div>
-      <div class="ob-emoji">💸</div>
-      <div class="ob-titulo">Pague via PIX em segundos</div>
-      <div class="ob-sub">Tudo pelo celular, sem maquininha. Escaneia o QR do PIX ou copia e cola o código.</div>
-    </div>
-
-    <!-- Slide 4 — Música na TV -->
-    <div class="ob-slide">
-      <div class="ob-step">Passo 4 de 4</div>
-      <div class="ob-emoji">📺</div>
-      <div class="ob-titulo">Sua música toca na TV!</div>
-      <div class="ob-sub">Depois do pagamento confirmado, seu pedido entra na fila e aparece na tela do bar. Aproveite! 🍺</div>
-    </div>
-
   </div>
 
   <div class="ob-bottom">
@@ -1071,7 +1077,7 @@ function obGoTo(n) {
   obCur = Math.max(0, Math.min(n, OB_TOTAL - 1));
   const track = document.getElementById('ob-track');
   if (!track) return;
-  track.style.transform = `translateX(-${obCur * 100}%)`;
+  track.style.transform = `translateX(-${obCur * 100}vw)`;
 
   // Dots
   document.querySelectorAll('.ob-dot').forEach((d, i) => d.classList.toggle('on', i === obCur));
@@ -1127,7 +1133,7 @@ function fecharOnboarding() {
 
   window.tutorialGoTo = function(n) {
     cur = (n + TOTAL) % TOTAL;
-    track.style.transform = `translateX(-${cur * 100}%)`;
+    track.style.transform = `translateX(-${cur * 100}vw)`;
     Array.from(dots.children).forEach((d, i) => {
       d.classList.toggle('on', i === cur);
       d.style.width = i === cur ? '20px' : '8px';
