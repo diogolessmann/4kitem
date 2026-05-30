@@ -1311,6 +1311,7 @@ def cadastro():
         cpf_cnpj = request.form.get('cpf_cnpj', '').strip()
         senha    = request.form.get('senha', '')
         plano_sel= request.form.get('plano', 'bar')
+        cupom_cod= request.form.get('cupom', '').strip()
         if not all([nome, email, telefone, senha, cpf_cnpj]):
             erro = 'Preencha todos os campos obrigatórios.'
         elif len(senha) < 6:
@@ -1341,7 +1342,12 @@ def cadastro():
                 try:
                     code  = _gerar_code()
                     jtoken = _gerar_jukebox_token()
-                    trial = (datetime.now() + timedelta(days=7)).isoformat()
+                    # Aplica cupom — estende trial se válido
+                    trial_dias = 7
+                    cupom_dados = _aplicar_cupom(cupom_cod) if cupom_cod else None
+                    if cupom_dados and cupom_dados['tipo'] == 'trial':
+                        trial_dias = int(cupom_dados['valor'])
+                    trial = (datetime.now() + timedelta(days=trial_dias)).isoformat()
                     conn = get_pubshow_db()
                     conn.execute(
                         '''INSERT INTO pubshow_businesses
@@ -2187,6 +2193,122 @@ def painel_push_test():
     b = _get_business()
     _enviar_push_pedido(b['id'], '🧪', 'Teste', 'Sistema PUBSHOW', 0.0)
     return jsonify({'ok': True})
+
+
+# ── Cupons de desconto ────────────────────────────────────────────────────────
+
+@pubshow_bp.route('/api/validar-cupom/<codigo>')
+def api_validar_cupom(codigo):
+    """Valida um cupom e retorna seus benefícios (público — sem login)."""
+    conn = get_pubshow_db()
+    try:
+        c = conn.execute(
+            "SELECT * FROM pubshow_cupons WHERE codigo=? COLLATE NOCASE AND ativo=1",
+            (codigo.strip().upper(),)
+        ).fetchone()
+    finally:
+        conn.close()
+    if not c:
+        return jsonify({'ok': False, 'erro': 'Cupom inválido ou expirado.'})
+    c = dict(c)
+    # Verifica validade por data
+    if c.get('valido_ate') and c['valido_ate'] < datetime.now().isoformat():
+        return jsonify({'ok': False, 'erro': 'Este cupom expirou.'})
+    # Verifica limite de usos
+    if c.get('max_usos') is not None and c['usos'] >= c['max_usos']:
+        return jsonify({'ok': False, 'erro': 'Cupom esgotado.'})
+    # Monta mensagem
+    if c['tipo'] == 'trial':
+        msg = f"🎉 {c['valor']} dias grátis (em vez de 7)"
+    elif c['tipo'] == 'desconto_pct':
+        msg = f"💸 {c['valor']}% de desconto no primeiro mês"
+    else:
+        msg = f"✅ Benefício aplicado: {c['descricao'] or c['codigo']}"
+    return jsonify({'ok': True, 'tipo': c['tipo'], 'valor': c['valor'],
+                    'descricao': c['descricao'], 'msg': msg})
+
+
+def _aplicar_cupom(codigo: str) -> dict | None:
+    """Aplica um cupom — incrementa uso e retorna dados. Retorna None se inválido."""
+    if not codigo:
+        return None
+    conn = get_pubshow_db()
+    try:
+        c = conn.execute(
+            "SELECT * FROM pubshow_cupons WHERE codigo=? COLLATE NOCASE AND ativo=1",
+            (codigo.strip().upper(),)
+        ).fetchone()
+        if not c:
+            return None
+        c = dict(c)
+        if c.get('valido_ate') and c['valido_ate'] < datetime.now().isoformat():
+            return None
+        if c.get('max_usos') is not None and c['usos'] >= c['max_usos']:
+            return None
+        conn.execute("UPDATE pubshow_cupons SET usos=usos+1 WHERE id=?", (c['id'],))
+        conn.commit()
+        return c
+    except Exception as _e:
+        log.warning('[Cupom] Erro ao aplicar: %s', _e)
+        return None
+    finally:
+        conn.close()
+
+
+@pubshow_bp.route('/admin/cupons')
+@_admin_required
+def admin_cupons():
+    conn = get_pubshow_db()
+    cupons = [dict(c) for c in conn.execute(
+        'SELECT * FROM pubshow_cupons ORDER BY criado_em DESC'
+    ).fetchall()]
+    conn.close()
+    return render_template('pubshow/admin_cupons.html', cupons=cupons)
+
+
+@pubshow_bp.route('/admin/cupons/criar', methods=['POST'])
+@_admin_required
+def admin_cupons_criar():
+    codigo   = request.form.get('codigo', '').strip().upper()
+    descricao= request.form.get('descricao', '').strip()
+    tipo     = request.form.get('tipo', 'trial')
+    valor    = int(request.form.get('valor', 30))
+    max_usos = request.form.get('max_usos', '').strip()
+    max_usos = int(max_usos) if max_usos else None
+    valido_ate = request.form.get('valido_ate', '').strip() or None
+    if not codigo:
+        return redirect('/pubshow/admin/cupons')
+    conn = get_pubshow_db()
+    try:
+        conn.execute(
+            'INSERT OR IGNORE INTO pubshow_cupons (codigo, descricao, tipo, valor, max_usos, valido_ate) VALUES (?,?,?,?,?,?)',
+            (codigo, descricao, tipo, valor, max_usos, valido_ate)
+        )
+        conn.commit()
+    except Exception: pass
+    finally: conn.close()
+    return redirect('/pubshow/admin/cupons')
+
+
+@pubshow_bp.route('/admin/cupons/toggle/<int:cid>', methods=['POST'])
+@_admin_required
+def admin_cupons_toggle(cid):
+    conn = get_pubshow_db()
+    atual = conn.execute('SELECT ativo FROM pubshow_cupons WHERE id=?', (cid,)).fetchone()
+    if atual:
+        conn.execute('UPDATE pubshow_cupons SET ativo=? WHERE id=?', (0 if atual[0] else 1, cid))
+        conn.commit()
+    conn.close()
+    return redirect('/pubshow/admin/cupons')
+
+
+@pubshow_bp.route('/admin/cupons/excluir/<int:cid>', methods=['POST'])
+@_admin_required
+def admin_cupons_excluir(cid):
+    conn = get_pubshow_db()
+    conn.execute('DELETE FROM pubshow_cupons WHERE id=?', (cid,))
+    conn.commit(); conn.close()
+    return redirect('/pubshow/admin/cupons')
 
 
 @pubshow_bp.route('/painel/push/vapid-key')

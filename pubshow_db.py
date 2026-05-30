@@ -181,6 +181,33 @@ def init_pubshow_db():
             try: conn.rollback()
             except: pass
 
+    # ── Tabela de cupons de desconto ──────────────────────────────────────────
+    try:
+        conn.execute(
+            'CREATE TABLE IF NOT EXISTS pubshow_cupons ('
+            '  id           INTEGER PRIMARY KEY AUTOINCREMENT,'
+            '  codigo       TEXT NOT NULL UNIQUE COLLATE NOCASE,'
+            '  descricao    TEXT,'
+            '  tipo         TEXT NOT NULL DEFAULT "trial",'  # trial | desconto_pct
+            '  valor        INTEGER NOT NULL DEFAULT 30,'    # dias de trial OU % desconto
+            '  max_usos     INTEGER DEFAULT NULL,'           # NULL = ilimitado
+            '  usos         INTEGER NOT NULL DEFAULT 0,'
+            '  valido_ate   TEXT DEFAULT NULL,'              # NULL = sem expiração
+            '  ativo        INTEGER NOT NULL DEFAULT 1,'
+            '  criado_em    TEXT DEFAULT CURRENT_TIMESTAMP'
+            ')'
+        )
+        conn.commit()
+        # Seed: cupom padrão para primeiros clientes
+        conn.execute(
+            "INSERT OR IGNORE INTO pubshow_cupons (codigo, descricao, tipo, valor, max_usos) "
+            "VALUES ('PUBSHOW30', 'Trial de 30 dias para novos bares', 'trial', 30, NULL)"
+        )
+        conn.commit()
+    except Exception:
+        try: conn.rollback()
+        except: pass
+
     # ── Tabela fila de emails de onboarding ───────────────────────────────────
     try:
         conn.execute(

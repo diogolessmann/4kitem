@@ -45,9 +45,44 @@
     <input type="text" name="cpf_cnpj" placeholder="000.000.000-00 ou 00.000.000/0001-00" required>
     <label>Senha *</label>
     <input type="password" name="senha" placeholder="Mínimo 6 caracteres" required>
-    <button type="submit" class="btn">Criar conta e começar grátis →</button>
+
+    <!-- Campo de cupom -->
+    <label>Cupom de desconto <span style="font-weight:400;text-transform:none;letter-spacing:0">(opcional)</span></label>
+    <div style="display:flex;gap:8px">
+      <input type="text" name="cupom" id="inp-cupom" placeholder="Ex: PUBSHOW30"
+             maxlength="20" style="text-transform:uppercase;flex:1"
+             oninput="this.value=this.value.toUpperCase();validarCupom(this.value)">
+    </div>
+    <div id="cupom-feedback" style="font-size:12px;margin-top:5px;min-height:18px"></div>
+
+    <button type="submit" class="btn" id="btn-submit">Criar conta e começar grátis →</button>
   </form>
   <a href="/pubshow/entrar" class="link">Já tem conta? Entrar →</a>
+
+<script>
+let _cupomTimer = null;
+let _cupomValido = false;
+
+function validarCupom(val) {
+  const fb = document.getElementById('cupom-feedback');
+  clearTimeout(_cupomTimer);
+  if (!val || val.length < 3) { fb.textContent = ''; _cupomValido = false; return; }
+  fb.innerHTML = '<span style="color:#8888aa">⏳ Verificando...</span>';
+  _cupomTimer = setTimeout(async () => {
+    try {
+      const r = await fetch('/pubshow/api/validar-cupom/' + encodeURIComponent(val));
+      const d = await r.json();
+      if (d.ok) {
+        fb.innerHTML = `<span style="color:#4ade80">✅ ${d.msg}</span>`;
+        _cupomValido = true;
+      } else {
+        fb.innerHTML = `<span style="color:#f87171">❌ ${d.erro}</span>`;
+        _cupomValido = false;
+      }
+    } catch(e) { fb.textContent = ''; }
+  }, 600);
+}
+</script>
 </div>
 </body>
 </html>
