@@ -4,6 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Painel — PUBSHOW</title>
+<!-- PWA -->
+<link rel="manifest" href="/pubshow/painel/manifest.json">
+<meta name="theme-color" content="#ef4444">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="PUBSHOW">
+<link rel="apple-touch-icon" href="/static/pubshow/icon-192.png">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
 <style>
   *{margin:0;padding:0;box-sizing:border-box}
@@ -221,6 +229,41 @@
       </div>
     </form>
     {% endif %}
+  </div>
+
+  <!-- Dashboard de receita acumulada -->
+  <div class="card" style="margin-bottom:20px;border-color:rgba(34,197,94,.25);background:linear-gradient(135deg,rgba(34,197,94,.06),rgba(16,185,129,.03))">
+    <div class="card-title">📈 Receita do Jukebox</div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px">
+      <div style="text-align:center">
+        <div style="font-size:11px;color:var(--text2);font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Esta semana</div>
+        <div style="font-size:24px;font-weight:900;color:var(--green)">R$ {{ '%.0f'|format(receita_semana)|replace('.',',') }}</div>
+      </div>
+      <div style="text-align:center;border-left:1px solid rgba(255,255,255,.08);border-right:1px solid rgba(255,255,255,.08)">
+        <div style="font-size:11px;color:var(--text2);font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Este mês</div>
+        <div style="font-size:24px;font-weight:900;color:#22d3ee">R$ {{ '%.0f'|format(receita_mes)|replace('.',',') }}</div>
+      </div>
+      <div style="text-align:center">
+        <div style="font-size:11px;color:var(--text2);font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Total geral</div>
+        <div style="font-size:24px;font-weight:900;color:#a78bfa">R$ {{ '%.0f'|format(receita_total)|replace('.',',') }}</div>
+      </div>
+    </div>
+    <!-- Mini gráfico últimos 7 dias -->
+    <div style="font-size:11px;color:var(--text2);margin-bottom:8px;font-weight:700">Últimos 7 dias</div>
+    <div style="display:flex;align-items:flex-end;gap:4px;height:48px">
+      {% set max_val = receita_7dias.values()|max if receita_7dias else 1 %}
+      {% set max_val = max_val if max_val > 0 else 1 %}
+      {% for i in range(7) %}
+        {% set dia = (now_brt - timedelta(days=6-i)).strftime('%Y-%m-%d') %}
+        {% set val = receita_7dias.get(dia, 0) %}
+        {% set pct = ((val / max_val) * 100)|int %}
+        {% set pct = pct if pct > 4 else 4 %}
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px">
+          <div style="width:100%;height:{{ pct }}%;background:{% if i==6 %}linear-gradient(180deg,#22c55e,#16a34a){% else %}rgba(34,197,94,.35){% endif %};border-radius:3px 3px 0 0;min-height:4px;transition:.3s" title="R$ {{ '%.2f'|format(val) }}"></div>
+          <div style="font-size:9px;color:var(--text2)">{{ (now_brt - timedelta(days=6-i)).strftime('%d') }}</div>
+        </div>
+      {% endfor %}
+    </div>
   </div>
 
   <!-- Stats -->

@@ -1998,6 +1998,27 @@ def painel():
     total_pedidos_bar = conn.execute(
         'SELECT COUNT(*) FROM pubshow_pedidos WHERE business_id=?', (b['id'],)
     ).fetchone()[0]
+
+    # ── Receita acumulada ─────────────────────────────────────────────────────
+    _base_q = "SELECT COALESCE(SUM(valor),0) FROM pubshow_pedidos WHERE business_id=? AND status NOT IN ('aguardando_pix')"
+    receita_semana = float(conn.execute(
+        _base_q + " AND date(created_at,'-3 hours') >= date('now','-3 hours','-6 days')", (b['id'],)
+    ).fetchone()[0])
+    receita_mes = float(conn.execute(
+        _base_q + " AND strftime('%Y-%m', datetime(created_at,'-3 hours')) = strftime('%Y-%m', datetime('now','-3 hours'))", (b['id'],)
+    ).fetchone()[0])
+    receita_total = float(conn.execute(_base_q, (b['id'],)).fetchone()[0])
+    # Últimos 7 dias para mini-gráfico
+    dias_raw = conn.execute(
+        """SELECT date(created_at,'-3 hours') as dia, COALESCE(SUM(valor),0) as tot
+           FROM pubshow_pedidos WHERE business_id=?
+           AND status NOT IN ('aguardando_pix')
+           AND date(created_at,'-3 hours') >= date('now','-3 hours','-6 days')
+           GROUP BY dia ORDER BY dia""",
+        (b['id'],)
+    ).fetchall()
+    receita_7dias = {str(r['dia']): float(r['tot']) for r in dias_raw}
+
     assinatura = conn.execute(
         'SELECT * FROM pubshow_assinaturas WHERE business_id=?', (b['id'],)
     ).fetchone()
@@ -2040,6 +2061,12 @@ def painel():
                            plano_permite_hh=_plano_permite(bd, 'happy_hour'),
                            plano_permite_wa=_plano_permite(bd, 'whatsapp'),
                            plano_permite_analytics=_plano_permite(bd, 'analytics'),
+                           receita_semana=receita_semana,
+                           receita_mes=receita_mes,
+                           receita_total=receita_total,
+                           receita_7dias=receita_7dias,
+                           now_brt=datetime.utcnow() - timedelta(hours=3),
+                           timedelta=timedelta,
                            assinatura=dict(assinatura) if assinatura else None,
                            promo_ativa=bool(bd.get('promo_msg') and bd.get('promo_expira') and bd['promo_expira'] > datetime.now().strftime('%Y-%m-%dT%H:%M:%S')))
 
@@ -2345,6 +2372,31 @@ def cron_sync_assinaturas():
 
 
 # ── Service Worker do Painel (Push Notifications) ────────────────────────────
+
+@pubshow_bp.route('/painel/manifest.json')
+@pubshow_login_required
+def painel_manifest():
+    """Web App Manifest para o painel do bar — PWA instalável."""
+    import json as _json2
+    from flask import Response as _Resp2
+    b = _get_business()
+    nome = dict(b)['nome'] if b else 'PUBSHOW'
+    manifest = {
+        'name': f'PUBSHOW — {nome}',
+        'short_name': 'PUBSHOW',
+        'description': 'Painel de gestão do Jukebox',
+        'start_url': '/pubshow/painel',
+        'display': 'standalone',
+        'background_color': '#08080f',
+        'theme_color': '#ef4444',
+        'orientation': 'portrait',
+        'icons': [
+            {'src': '/static/pubshow/icon-192.png', 'sizes': '192x192', 'type': 'image/png', 'purpose': 'any maskable'},
+            {'src': '/static/pubshow/icon-512.png', 'sizes': '512x512', 'type': 'image/png', 'purpose': 'any maskable'},
+        ]
+    }
+    return _Resp2(_json2.dumps(manifest), mimetype='application/manifest+json')
+
 
 @pubshow_bp.route('/sw-painel.js')
 def painel_sw():
