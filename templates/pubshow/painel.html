@@ -681,10 +681,30 @@
   <!-- Notificação Push no Celular -->
   <div class="card" style="margin-bottom:16px;border-color:rgba(99,102,241,.3);background:rgba(99,102,241,.04)">
     <div class="card-title">🔔 Notificação Push no Celular</div>
-    <p style="font-size:12px;color:#8888aa;margin-bottom:16px">
-      Receba uma notificação <strong style="color:var(--text)">nativa no celular</strong> (igual ao WhatsApp) sempre que chegar um pedido — mesmo com a tela bloqueada.<br>
-      <span style="color:#a5b4fc">Abra o painel no celular do bar e ative abaixo.</span>
+    <p style="font-size:12px;color:#8888aa;margin-bottom:14px">
+      Receba uma notificação <strong style="color:var(--text)">nativa no celular</strong> (igual ao WhatsApp) sempre que chegar um pedido — mesmo com a tela bloqueada.
     </p>
+
+    <!-- Instrução iOS -->
+    <div id="ios-install-tip" style="display:none;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.3);border-radius:12px;padding:12px 14px;margin-bottom:14px;font-size:12px;line-height:1.7">
+      <div style="font-weight:800;color:#fbbf24;margin-bottom:4px">📱 iPhone / iPad — instale o app primeiro:</div>
+      <div style="color:#fcd34d">
+        1. Toque em <strong>⬆️ Compartilhar</strong> no Safari<br>
+        2. Toque em <strong>"Adicionar à Tela de Início"</strong><br>
+        3. Abra o <strong>PUBSHOW</strong> pela tela inicial<br>
+        4. Volte aqui e ative as notificações
+      </div>
+    </div>
+
+    <!-- Instrução Android -->
+    <div id="android-install-tip" style="display:none;background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.2);border-radius:12px;padding:12px 14px;margin-bottom:14px;font-size:12px;line-height:1.7">
+      <div style="font-weight:800;color:#4ade80;margin-bottom:4px">📱 Android — instale o app (opcional mas recomendado):</div>
+      <div style="color:#86efac">
+        Toque em <strong>⋮ Menu</strong> no Chrome → <strong>"Adicionar à tela inicial"</strong><br>
+        Depois clique em Ativar abaixo.
+      </div>
+    </div>
+
     <div style="display:flex;gap:10px;flex-wrap:wrap">
       <button id="push-btn" onclick="ativarPush()" style="background:linear-gradient(135deg,#6366f1,#818cf8);color:#fff;border:none;border-radius:10px;padding:10px 20px;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit">
         🔔 Ativar notificações neste celular
@@ -1084,6 +1104,36 @@ async function testarPush() {
     status.style.color = '#f87171';
   }
 }
+
+// Detecta plataforma e mostra dica de instalação correta
+(function detectPlataforma() {
+  const ua = navigator.userAgent;
+  const isIOS = /iPad|iPhone|iPod/.test(ua) && !window.MSStream;
+  const isAndroid = /Android/.test(ua);
+  const isStandalone = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
+
+  if (isIOS && !isStandalone) {
+    // iOS sem PWA instalado → mostra instrução
+    const tip = document.getElementById('ios-install-tip');
+    if (tip) tip.style.display = 'block';
+  } else if (isAndroid && !isStandalone) {
+    // Android sem PWA → mostra dica opcional
+    const tip = document.getElementById('android-install-tip');
+    if (tip) tip.style.display = 'block';
+  }
+
+  // iOS sem PWA não suporta push — desabilita botão
+  if (isIOS && !isStandalone) {
+    const btn = document.getElementById('push-btn');
+    if (btn) {
+      btn.style.opacity = '.5';
+      btn.style.cursor = 'default';
+      btn.onclick = () => {
+        document.getElementById('ios-install-tip').scrollIntoView({behavior:'smooth'});
+      };
+    }
+  }
+})();
 
 // Checa se já tem push ativo neste dispositivo
 (async function checkPushStatus() {

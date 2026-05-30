@@ -36,7 +36,7 @@ def init_petmed_db():
             reset_token   TEXT,
             reset_expires TEXT,
             asaas_customer_id TEXT,
-            created_at    TEXT DEFAULT (datetime("now","localtime")),
+            created_at    TEXT DEFAULT CURRENT_TIMESTAMP,
             ultimo_acesso TEXT
         );
 
@@ -55,7 +55,7 @@ def init_petmed_db():
             cor        TEXT,
             foto_url   TEXT,
             observacoes TEXT,
-            created_at TEXT DEFAULT (datetime("now","localtime")),
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (user_id) REFERENCES petmed_users(id)
         );
 
@@ -73,7 +73,7 @@ def init_petmed_db():
             resultado       TEXT DEFAULT "estavel",
             orientacoes     TEXT,
             encaminhar_vet  INTEGER DEFAULT 0,
-            created_at      TEXT DEFAULT (datetime("now","localtime")),
+            created_at      TEXT DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (user_id) REFERENCES petmed_users(id),
             FOREIGN KEY (pet_id)  REFERENCES petmed_pets(id)
         );
@@ -95,7 +95,7 @@ def init_petmed_db():
             valor_consulta  REAL DEFAULT 79.90,
             password_hash   TEXT NOT NULL,
             ativo         INTEGER DEFAULT 1,
-            created_at    TEXT DEFAULT (datetime("now","localtime"))
+            created_at    TEXT DEFAULT CURRENT_TIMESTAMP
         );
 
         -- ── Teleconsultas ──────────────────────────────────────────────────────
@@ -111,7 +111,7 @@ def init_petmed_db():
             notas_vet    TEXT,
             prescricao   TEXT,
             duracao_min  INTEGER,
-            created_at   TEXT DEFAULT (datetime("now","localtime")),
+            created_at   TEXT DEFAULT CURRENT_TIMESTAMP,
             iniciada_at  TEXT,
             finalizada_at TEXT,
             FOREIGN KEY (user_id)    REFERENCES petmed_users(id),
@@ -129,7 +129,7 @@ def init_petmed_db():
             data_aplic TEXT,
             proxima    TEXT,
             lembrar    INTEGER DEFAULT 1,
-            created_at TEXT DEFAULT (datetime("now","localtime")),
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (pet_id)  REFERENCES petmed_pets(id),
             FOREIGN KEY (user_id) REFERENCES petmed_users(id)
         );
@@ -142,7 +142,7 @@ def init_petmed_db():
             valor          REAL,
             status         TEXT DEFAULT "ativo",
             gateway_id     TEXT,
-            created_at     TEXT DEFAULT (datetime("now","localtime")),
+            created_at     TEXT DEFAULT CURRENT_TIMESTAMP,
             renovacao_em   TEXT,
             cancelado_em   TEXT,
             FOREIGN KEY (user_id) REFERENCES petmed_users(id)
@@ -163,7 +163,7 @@ def init_petmed_db():
             password_hash TEXT NOT NULL,
             plano         TEXT DEFAULT "clinica",
             ativo         INTEGER DEFAULT 1,
-            created_at    TEXT DEFAULT (datetime("now","localtime"))
+            created_at    TEXT DEFAULT CURRENT_TIMESTAMP
         );
 
         -- ── Índices ────────────────────────────────────────────────────────────
