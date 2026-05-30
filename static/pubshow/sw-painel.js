@@ -19,7 +19,7 @@ self.addEventListener('push', e => {
             icon:      '/static/pubshow/icon-192.png',
             badge:     '/static/pubshow/icon-192.png',
             vibrate:   [200, 100, 200, 100, 400],
-            tag:       'pubshow-pedido',
+            tag:       `pubshow-pedido-${data.pedido_id || Date.now()}`,
             renotify:  true,
             requireInteraction: false,
             data: { url }

@@ -367,7 +367,7 @@ def _vapid_keys():
 
 
 def _enviar_push_pedido(business_id: int, tipo_emoji: str, tipo_nome: str,
-                        nome_cliente: str, valor: float):
+                        nome_cliente: str, valor: float, pedido_id: int = 0):
     """Envia Web Push para todas as subscriptions ativas do bar."""
     pub, priv = _vapid_keys()
     if not pub or not priv:
@@ -388,9 +388,10 @@ def _enviar_push_pedido(business_id: int, tipo_emoji: str, tipo_nome: str,
         if not subs:
             return
         payload = _json.dumps({
-            'titulo': f'{tipo_emoji} Novo pedido no Jukebox!',
-            'corpo':  f'{nome_cliente} — {tipo_nome} · R$ {valor:.2f}',
-            'url':    '/pubshow/painel'
+            'titulo':    f'{tipo_emoji} Novo pedido no Jukebox!',
+            'corpo':     f'{nome_cliente} — {tipo_nome} · R$ {valor:.2f}',
+            'url':       '/pubshow/painel',
+            'pedido_id': pedido_id  # usado no SW para tag única por pedido
         })
         mortos = []
         for row in subs:
@@ -1503,7 +1504,7 @@ def jukebox(token):
             titulo_pedido = request.form.get('titulo_pedido', '').strip()[:80]
             thumb_url     = request.form.get('thumb_url', '').strip()[:200]
 
-            if tipo not in tipos_bar:
+            if tipo not in tipos_bar or tipo not in precos_bar:
                 erro = 'Tipo de pedido inválido.'
             elif not nome_cliente:
                 erro = 'Informe seu nome.'
@@ -1767,12 +1768,15 @@ def api_status(code):
     return jsonify(result)
 
 
-@pubshow_bp.route('/api/pedido-status/<int:pedido_id>')
-def api_pedido_status(pedido_id):
-    """Polling do cliente: retorna status atual do pedido."""
+@pubshow_bp.route('/api/pedido-status/<token>/<int:pedido_id>')
+def api_pedido_status(token, pedido_id):
+    """Polling do cliente: retorna status do pedido — requer token do jukebox."""
     conn = get_pubshow_db()
     row = conn.execute(
-        'SELECT status FROM pubshow_pedidos WHERE id=?', (pedido_id,)
+        '''SELECT p.status FROM pubshow_pedidos p
+           JOIN pubshow_businesses b ON p.business_id = b.id
+           WHERE p.id=? AND (b.jukebox_token=? OR b.code=?)''',
+        (pedido_id, token, token)
     ).fetchone()
     conn.close()
     if not row:
@@ -2735,7 +2739,7 @@ def painel_happy_hour():
         desconto = max(1, min(80, int(request.form.get('hh_desconto', '20') or '20')))
     except Exception:
         desconto = 20
-    dias = [int(d) for d in request.form.getlist('hh_dias') if d.isdigit()]
+    dias = [int(d) for d in request.form.getlist('hh_dias') if d.isdigit() and 0 <= int(d) <= 6]
     if not dias:
         dias = [0, 1, 2, 3, 4, 5, 6]
     hh = {'ini': ini, 'fim': fim, 'desconto': desconto, 'dias': dias}
