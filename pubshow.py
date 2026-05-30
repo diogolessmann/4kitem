@@ -372,7 +372,11 @@ def _enviar_push_pedido(business_id: int, tipo_emoji: str, tipo_nome: str,
         return
     try:
         import json as _json
-        from pywebpush import webpush, WebPushException
+        try:
+            from pywebpush import webpush, WebPushException
+        except ImportError:
+            log.debug('[Push] pywebpush não instalado — push desabilitado')
+            return
         conn = get_pubshow_db()
         subs = conn.execute(
             'SELECT subscription FROM pubshow_push_subscriptions WHERE business_id=?',
