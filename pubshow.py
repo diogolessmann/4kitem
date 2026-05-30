@@ -3285,6 +3285,151 @@ def admin_videos_oembed():
         return jsonify({'ok': False, 'erro': str(e)[:60]})
 
 
+@pubshow_bp.route('/admin/videos/seed-categorias', methods=['POST'])
+@_admin_required
+def admin_videos_seed_categorias():
+    """Busca e importa vídeos para categorias vazias via YouTube Search API.
+    Usa queries curadas por categoria — importa até 20 vídeos por categoria.
+    Só importa categorias que têm menos de MIN_VIDEOS vídeos ativos."""
+
+    api_key = os.environ.get('YOUTUBE_API_KEY', '')
+    if not api_key:
+        return jsonify({'ok': False, 'erro': 'YOUTUBE_API_KEY não configurada'})
+
+    MIN_VIDEOS = 5   # só seed se tiver menos que isso
+
+    # Queries curadas por categoria — ajustadas para conteúdo viral de qualidade
+    SEED_QUERIES = {
+        'rally': [
+            'Ken Block Gymkhana official',
+            'WRC Rally onboard highlights',
+            'rally car drift extreme',
+            'rally crash compilation',
+        ],
+        'wingsuit': [
+            'wingsuit proximity flying POV',
+            'BASE jump wingsuit extreme',
+            'wingsuit flying compilation 4K',
+            'wingsuit aerobatics highlights',
+        ],
+        'aviacao': [
+            'fighter jet aerobatics airshow',
+            'Blue Angels airshow 4K',
+            'F-22 Raptor extreme maneuvers',
+            'airshow best moments compilation',
+        ],
+        'lutas': [
+            'UFC best knockouts compilation',
+            'UFC highlights official',
+            'MMA incredible moments',
+            'UFC greatest fights highlights',
+        ],
+        'skate': [
+            'skateboarding best tricks compilation',
+            'street skateboarding highlights',
+            'Tony Hawk skateboarding',
+            'skate best moments viral',
+        ],
+        'kitesurf': [
+            'kitesurfing tricks compilation 4K',
+            'kiteboarding best moments',
+            'wakeboarding extreme tricks',
+            'kitesurf highlights viral',
+        ],
+        'batidas': [
+            'crash compilation funny',
+            'epic fail compilation viral',
+            'amazing catches fails compilation',
+            'sports crash compilation',
+        ],
+        'standup': [
+            'stand up comedy viral moments',
+            'comédia stand up brasileiro',
+            'Whindersson Nunes stand up',
+            'stand up comedy best moments',
+        ],
+    }
+
+    conn = get_pubshow_db()
+    resultado = {}
+    total_inseridos = 0
+
+    for categoria, queries in SEED_QUERIES.items():
+        # Checa quantos vídeos já existem
+        atual = conn.execute(
+            'SELECT COUNT(*) FROM pubshow_videos WHERE categoria=? AND ativo=1', (categoria,)
+        ).fetchone()[0]
+
+        if atual >= MIN_VIDEOS:
+            resultado[categoria] = {'skip': True, 'existentes': atual}
+            continue
+
+        inseridos_cat = 0
+        vistos = set()
+
+        for query in queries:
+            if inseridos_cat >= 20:
+                break
+            try:
+                r = _requests.get(
+                    'https://www.googleapis.com/youtube/v3/search',
+                    params={
+                        'part': 'snippet',
+                        'q': query,
+                        'type': 'video',
+                        'videoDuration': 'medium',   # 4-20 min
+                        'videoEmbeddable': 'true',
+                        'maxResults': 10,
+                        'key': api_key,
+                        'relevanceLanguage': 'pt',
+                        'safeSearch': 'moderate',
+                    },
+                    timeout=12
+                )
+                if r.status_code == 403:
+                    resultado[categoria] = {'erro': 'API quota excedida'}
+                    break
+                if r.status_code != 200:
+                    continue
+
+                for item in r.json().get('items', []):
+                    if inseridos_cat >= 20:
+                        break
+                    vid_id = item.get('id', {}).get('videoId', '')
+                    sn = item.get('snippet', {})
+                    titulo = sn.get('title', '').strip()
+                    artista = sn.get('channelTitle', '').strip()
+
+                    if not vid_id or not titulo or vid_id in vistos:
+                        continue
+                    if any(w in titulo.lower() for w in ['private', 'deleted', '#shorts']):
+                        continue
+                    vistos.add(vid_id)
+
+                    try:
+                        conn.execute(
+                            '''INSERT OR IGNORE INTO pubshow_videos
+                               (youtube_id, titulo, artista, categoria, subcategoria, duracao_seg, qualidade, ativo)
+                               VALUES (?,?,?,?,?,180,"HD",1)''',
+                            (vid_id, titulo, artista, categoria, query[:30])
+                        )
+                        if conn.execute('SELECT changes()').fetchone()[0]:
+                            inseridos_cat += 1
+                            total_inseridos += 1
+                    except Exception:
+                        pass
+
+            except Exception as e:
+                log.error('[PUBSHOW seed] Erro query "%s": %s', query, e)
+
+        conn.commit()
+        resultado[categoria] = {'inseridos': inseridos_cat, 'existentes': atual}
+
+    conn.close()
+    log.info('[PUBSHOW seed] Total inseridos: %d', total_inseridos)
+    return jsonify({'ok': True, 'total': total_inseridos, 'categorias': resultado})
+
+
 # ── CHECKOUT / ASSINATURA ─────────────────────────────────────────────────────
 
 @pubshow_bp.route('/assinar/<plano>', methods=['GET', 'POST'])

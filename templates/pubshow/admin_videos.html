@@ -127,6 +127,7 @@ tr.hidden-search{display:none}
     <button class="btn btn-ghost" onclick="abrirModal('modal-add')">+ Vídeo</button>
     <button class="btn btn-green" onclick="abrirModal('modal-lote')">📋 Lote</button>
     <button class="btn btn-indigo" onclick="abrirModal('modal-playlist')">🤖 Playlist API</button>
+    <button class="btn" id="btn-seed" onclick="seedCategorias()" style="background:rgba(74,222,128,.15);border:1px solid rgba(74,222,128,.35);color:#4ade80">🌱 Seed Categorias Vazias</button>
   </div>
 
   <!-- Tabs de nicho -->
@@ -542,6 +543,32 @@ async function importarPlaylist(){
     else{errEl.textContent='❌ '+d.erro;errEl.style.display='block';}
   }catch(e){errEl.textContent='❌ Rede: '+e;errEl.style.display='block'}
   btn.disabled=false;btn.textContent='📥 Importar';
+}
+
+// ── Seed categorias vazias ─────────────────────────────────────────────────────
+async function seedCategorias(){
+  const btn = document.getElementById('btn-seed');
+  if(!confirm('Buscar e importar vídeos para as categorias com menos de 5 vídeos?\n\nIsso pode levar 30-60 segundos e consume cota da YouTube API.')) return;
+  btn.disabled=true;
+  btn.textContent='⏳ Buscando...';
+  try{
+    const r = await fetch('/pubshow/admin/videos/seed-categorias',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});
+    const d = await r.json();
+    if(d.ok){
+      let msg = `✅ ${d.total} vídeos importados!\n\n`;
+      for(const [cat, info] of Object.entries(d.categorias||{})){
+        if(info.skip) msg += `${cat}: já tinha ${info.existentes} vídeos\n`;
+        else if(info.erro) msg += `${cat}: ❌ ${info.erro}\n`;
+        else msg += `${cat}: +${info.inseridos} novos\n`;
+      }
+      alert(msg);
+      location.reload();
+    } else {
+      alert('❌ Erro: ' + d.erro);
+    }
+  }catch(e){alert('❌ Rede: '+e)}
+  btn.disabled=false;
+  btn.textContent='🌱 Seed Categorias Vazias';
 }
 </script>
 </body>
