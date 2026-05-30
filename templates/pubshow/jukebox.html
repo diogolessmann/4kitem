@@ -464,8 +464,15 @@ async function jaPaguei() {
   <div class="header-top">
     <span class="canal-badge">{{ canal.emoji }} {{ canal.nome }}</span>
     <span class="bar-nome">{{ b.nome }}</span>
+    <!-- Language toggle -->
+    <div style="margin-left:auto;display:flex;gap:4px;flex-shrink:0">
+      <button id="btn-lang-pt" onclick="setLang('pt')"
+        style="background:rgba(255,255,255,.12);border:none;border-radius:6px;padding:4px 8px;font-size:14px;cursor:pointer;opacity:1;transition:.15s" title="Português">🇧🇷</button>
+      <button id="btn-lang-en" onclick="setLang('en')"
+        style="background:none;border:none;border-radius:6px;padding:4px 8px;font-size:14px;cursor:pointer;opacity:.45;transition:.15s" title="English">🇺🇸</button>
+    </div>
   </div>
-  <div class="tocando-agora"><span class="dot-live"></span>Jukebox ativo — escolha seu pedido abaixo</div>
+  <div class="tocando-agora"><span class="dot-live"></span><span data-i18n="status">Jukebox ativo — escolha seu pedido abaixo</span></div>
 </div>
 
 {% if sucesso %}
@@ -513,7 +520,7 @@ async function jaPaguei() {
 
 {% if fila %}
 <div class="fila-section">
-  <div class="fila-titulo">📋 Fila agora ({{ fila|length }})</div>
+  <div class="fila-titulo"><span data-i18n="fila">📋 Fila agora</span> ({{ fila|length }})</div>
   {% for p in fila[:4] %}{% set t = tipos.get(p.tipo, {}) %}
   <div class="fila-item">
     <span class="fila-emoji">{{ t.get('emoji','🎵') }}</span>
@@ -545,7 +552,7 @@ async function jaPaguei() {
   @keyframes hh-bounce{from{transform:scale(1)}to{transform:scale(1.15)}}
   </style>
   {% endif %}
-  <div class="pedidos-titulo">🎰 O que você quer fazer?</div>
+  <div class="pedidos-titulo" data-i18n="titulo_grid">🎰 O que você quer fazer?</div>
   <div class="pedidos-grid">
 
     {# Macro para mostrar preço com ou sem desconto #}
@@ -563,7 +570,7 @@ async function jaPaguei() {
     <div class="pedido-card" style="--card-cor:{{ t.cor }}"
          onclick="selecionarTipo('musica','{{ t.nome }}','{{ t.emoji }}',{{ t.preco }},'{{ t.cor }}')">
       <div class="card-emoji">{{ t.emoji }}</div>
-      <div class="card-nome">Música<br>aleatória</div>
+      <div class="card-nome" data-i18n="card_musica">Música<br>aleatória</div>
       {{ preco_card(t) }}
     </div>{% endif %}
 
@@ -572,7 +579,7 @@ async function jaPaguei() {
     <div class="pedido-card" style="--card-cor:{{ t.cor }}"
          onclick="selecionarTipo('flash','{{ t.nome }}','{{ t.emoji }}',{{ t.preco }},'{{ t.cor }}')">
       <div class="card-emoji">{{ t.emoji }}</div>
-      <div class="card-nome">Furar<br>a fila</div>
+      <div class="card-nome" data-i18n="card_flash">Furar<br>a fila</div>
       {{ preco_card(t) }}
     </div>{% endif %}
 
@@ -581,7 +588,7 @@ async function jaPaguei() {
     <div class="pedido-card lib" style="--card-cor:{{ t.cor }}" onclick="abrirBusca('biblioteca')">
       <div class="badge-lib">CURADO</div>
       <div class="card-emoji">{{ t.emoji }}</div>
-      <div class="card-nome">Escolher<br>a música</div>
+      <div class="card-nome" data-i18n="card_especifica">Escolher<br>a música</div>
       {{ preco_card(t) }}
       <div class="card-detalhe">{{ total_videos }} vídeos</div>
     </div>{% endif %}
@@ -591,7 +598,7 @@ async function jaPaguei() {
     <div class="pedido-card" style="--card-cor:{{ t.cor }}"
          onclick="selecionarTipo('parabens','{{ t.nome }}','{{ t.emoji }}',{{ t.preco }},'{{ t.cor }}')">
       <div class="card-emoji">{{ t.emoji }}</div>
-      <div class="card-nome">Parabéns<br>na tela! 🎂</div>
+      <div class="card-nome" data-i18n="card_parabens">Parabéns<br>na tela! 🎂</div>
       {{ preco_card(t) }}
     </div>{% endif %}
 
@@ -600,7 +607,7 @@ async function jaPaguei() {
     <div class="pedido-card full" style="--card-cor:{{ t.cor }}"
          onclick="selecionarTipo('dedicatoria','{{ t.nome }}','{{ t.emoji }}',{{ t.preco }},'{{ t.cor }}')">
       <div class="card-emoji">{{ t.emoji }}</div>
-      <div class="card-nome">Dedicatória — mensagem aparece na tela ❤️</div>
+      <div class="card-nome" data-i18n="card_dedicatoria">Dedicatória — mensagem aparece na tela ❤️</div>
       {{ preco_card(t) }}
     </div>{% endif %}
 
@@ -610,7 +617,7 @@ async function jaPaguei() {
   {% set extras = ['vip','brinde','chegada','casamento','musica_externa'] %}
   {% if extras|select('in', tipos)|list %}
   <button class="btn-mais-opcoes" onclick="toggleMaisOpcoes(this)" id="btn-mais">
-    ⋯ Mais opções
+    <span data-i18n="mais_opcoes">⋯ Mais opções</span>
   </button>
   <div class="mais-opcoes-grid" id="mais-opcoes" style="display:none">
     {% for key in extras %}{% if key in tipos %}{% set t = tipos[key] %}
@@ -680,16 +687,18 @@ async function jaPaguei() {
     </div>
 
     <div class="form-group">
-      <label>Seu nome *</label>
+      <label data-i18n="label_nome">Seu nome *</label>
       <input type="text" name="nome_cliente" id="inp-nome"
              placeholder="Como quer aparecer na tela?" maxlength="40" required
+             data-i18n-ph="placeholder_nome"
              oninput="atualizarPixRef()">
     </div>
 
     <div class="form-group" id="msg-group" style="display:none">
-      <label id="msg-label">Mensagem (opcional)</label>
+      <label id="msg-label" data-i18n="label_msg">Mensagem (opcional)</label>
       <textarea name="mensagem" id="inp-msg" rows="2"
-        placeholder="Aparece na tela do bar..." maxlength="80"></textarea>
+        placeholder="Aparece na tela do bar..." maxlength="80"
+        data-i18n-ph="placeholder_msg"></textarea>
     </div>
 
     {% if b.requer_pix and b.pix_key %}
@@ -1172,6 +1181,107 @@ function fecharOnboarding() {
 </script>
 
 {% endif %}{# fim {% else %} pix_pendente #}
+
+<!-- ── Multi-idioma PT/EN ─────────────────────────────────────────────────── -->
+<script>
+const TRANS = {
+  pt: {
+    status:          'Jukebox ativo — escolha seu pedido abaixo',
+    fila:            '📋 Fila agora',
+    titulo_grid:     '🎰 O que você quer fazer?',
+    mais_opcoes:     '⋯ Mais opções',
+    card_musica:     'Música<br>aleatória',
+    card_flash:      'Furar<br>a fila',
+    card_especifica: 'Escolher<br>a música',
+    card_parabens:   'Parabéns<br>na tela! 🎂',
+    card_dedicatoria:'Dedicatória — mensagem aparece na tela ❤️',
+    label_nome:      'Seu nome *',
+    placeholder_nome:'Como quer aparecer na tela?',
+    label_msg:       'Mensagem (opcional)',
+    placeholder_msg: 'Aparece na tela do bar...',
+    ob1_step:'Passo 1 de 4',ob1_title:'Bem-vindo ao Jukebox do {{ b.nome }}!',
+    ob1_sub:'Aqui você controla a música da noite direto pelo celular, sem precisar falar com ninguém.',
+    ob2_step:'Passo 2 de 4',ob2_title:'Escolha o tipo de pedido',
+    ob2_sub:'Música aleatória, escolha a música, prioridade na fila, parabéns, dedicatória... cada um com um preço diferente.',
+    ob3_step:'Passo 3 de 4',ob3_title:'Pague via PIX em segundos',
+    ob3_sub:'Tudo pelo celular, sem maquininha. Escaneia o QR do PIX ou copia e cola o código.',
+    ob4_step:'Passo 4 de 4',ob4_title:'Sua música toca na TV!',
+    ob4_sub:'Depois do pagamento confirmado, seu pedido entra na fila e aparece na tela do bar. Aproveite! 🍺',
+    ob_proximo:'Próximo →',ob_btn:'🎵 Vamos lá!',
+  },
+  en: {
+    status:          'Jukebox active — choose your order below',
+    fila:            '📋 Queue now',
+    titulo_grid:     '🎰 What do you want?',
+    mais_opcoes:     '⋯ More options',
+    card_musica:     'Random<br>song',
+    card_flash:      'Skip<br>the queue',
+    card_especifica: 'Choose<br>the song',
+    card_parabens:   'Happy Birthday<br>on screen! 🎂',
+    card_dedicatoria:'Dedication — message on screen ❤️',
+    label_nome:      'Your name *',
+    placeholder_nome:'How do you want to appear on screen?',
+    label_msg:       'Message (optional)',
+    placeholder_msg: 'Appears on the bar screen...',
+    ob1_step:'Step 1 of 4',ob1_title:'Welcome to {{ b.nome }} Jukebox!',
+    ob1_sub:'Control the music of the night directly from your phone — no need to talk to anyone.',
+    ob2_step:'Step 2 of 4',ob2_title:'Choose your order type',
+    ob2_sub:'Random song, pick a song, skip the queue, happy birthday, dedication... each with a different price.',
+    ob3_step:'Step 3 of 4',ob3_title:'Pay via PIX in seconds',
+    ob3_sub:'Everything from your phone, no card machine. Scan the PIX QR code or copy & paste the code.',
+    ob4_step:'Step 4 of 4',ob4_title:'Your song plays on TV!',
+    ob4_sub:'After payment is confirmed, your order joins the queue and appears on the bar screen. Enjoy! 🍺',
+    ob_proximo:'Next →',ob_btn:'🎵 Let\'s go!',
+  }
+};
+
+let _currentLang = localStorage.getItem('jk_lang') || 'pt';
+
+function setLang(lang) {
+  _currentLang = lang;
+  localStorage.setItem('jk_lang', lang);
+  const T = TRANS[lang];
+
+  // Botões de idioma
+  ['pt','en'].forEach(l => {
+    const btn = document.getElementById('btn-lang-' + l);
+    if (!btn) return;
+    btn.style.opacity = l === lang ? '1' : '.35';
+    btn.style.background = l === lang ? 'rgba(255,255,255,.14)' : 'none';
+  });
+
+  // Elementos data-i18n (innerHTML para suportar <br>)
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.dataset.i18n;
+    if (T[key] !== undefined) el.innerHTML = T[key];
+  });
+
+  // Placeholders (data-i18n-ph)
+  document.querySelectorAll('[data-i18n-ph]').forEach(el => {
+    const key = el.dataset.i18nPh;
+    if (T[key] !== undefined) el.placeholder = T[key];
+  });
+
+  // Onboarding slides (se ainda visíveis)
+  const ob = document.getElementById('onboarding');
+  if (ob) {
+    const slides = ob.querySelectorAll('.ob-slide');
+    [[0,'ob1'],[1,'ob2'],[2,'ob3'],[3,'ob4']].forEach(([i,pref]) => {
+      if (!slides[i]) return;
+      slides[i].querySelector('.ob-step').textContent   = T[pref+'_step'];
+      slides[i].querySelector('.ob-titulo').textContent = T[pref+'_title'];
+      slides[i].querySelector('.ob-sub').textContent    = T[pref+'_sub'];
+    });
+    const skip = document.getElementById('ob-skip');
+    const btn  = document.getElementById('ob-btn');
+    if (skip) skip.textContent = T.ob_proximo;
+    if (btn)  btn.textContent  = T.ob_btn;
+  }
+}
+
+// Aplica idioma salvo ao carregar
+document.addEventListener('DOMContentLoaded', () => setLang(_currentLang));
+</script>
 
 <!-- ── Banner de instalação PWA ─────────────────────────────────────────────── -->
 <div id="pwa-banner" style="
