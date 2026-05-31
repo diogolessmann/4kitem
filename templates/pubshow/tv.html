@@ -1269,7 +1269,11 @@ async function pollStatus() {
         return;
       }
 
-      agendarProximoCard(); // agenda o "próximo" card para pedidos normais
+      // Mostra banner "PRÓXIMA" imediatamente ao detectar pedido (não só 20s antes)
+      // Isso garante que o dono veja que a música está na fila antes de clicar "Tocou"
+      mostrarProximoCard(pedidoMusica);
+
+      agendarProximoCard(); // agenda para reexibir ~20s antes do fim
     }
 
     // Sem pedido de música — limpa indicadores

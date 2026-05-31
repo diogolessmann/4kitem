@@ -970,6 +970,9 @@ function copiar(texto, btn) {
 // Atualiza fila a cada 10s via fetch — sem recarregar a página inteira
 const TIPOS_INFO = {{ tipos | tojson }};
 
+// Tipos de pedido que a TV toca automaticamente (sem precisar do bar owner)
+const TIPOS_AUTO_TV = ['musica', 'musica_especifica', 'musica_externa', 'flash', 'vip'];
+
 function renderFila(fila) {
   const div = document.getElementById('fila-pedidos');
   if (!div) return;
@@ -977,24 +980,51 @@ function renderFila(fila) {
     div.innerHTML = '<div class="empty-state">Nenhum pedido na fila agora.<br>Os pedidos aparecem aqui em tempo real. 🎉</div>';
     return;
   }
-  div.innerHTML = fila.map(p => {
+
+  // Destaca o PRÓXIMO a tocar (primeiro da lista)
+  div.innerHTML = fila.map((p, idx) => {
     const t = TIPOS_INFO[p.tipo] || {};
     const emoji = t.emoji || '🎵';
     const nome_tipo = t.nome || p.tipo;
-    const msg = p.mensagem ? ` · "${p.mensagem.substring(0,40)}"` : '';
+    const musica = p.titulo_pedido ? `🎵 ${p.titulo_pedido.substring(0,40)}` : '';
+    const msg = p.mensagem ? ` · "${p.mensagem.substring(0,30)}"` : '';
     const valor = Math.round(p.valor || 0);
-    return `<div class="pedido-row">
+    const isAutoTV = TIPOS_AUTO_TV.includes(p.tipo);
+    const isProximo = idx === 0;
+
+    // Destaque visual para o próximo da fila
+    const proxBorder = isProximo ? 'border-left:3px solid #22c55e;padding-left:10px;' : '';
+    const proxLabel = isProximo
+      ? `<span style="font-size:9px;font-weight:800;color:#22c55e;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:2px">▶ PRÓXIMO</span>`
+      : '';
+
+    // Aviso para músicas que tocam automaticamente
+    const btnTitle = isAutoTV
+      ? 'A TV toca automaticamente. Clique SÓ se a TV já tocou e você precisa limpar da lista.'
+      : 'Marcar como exibido na TV';
+    const btnOnclick = isAutoTV
+      ? `onclick="return confirm('⚠️ A TV deveria tocar esta música automaticamente.\\n\\nSó confirme se a música JÁ TOCOU na TV.\\n\\nTem certeza?')" `
+      : '';
+
+    return `<div class="pedido-row" style="${proxBorder}">
       <span class="pedido-emoji">${emoji}</span>
       <div class="pedido-info">
+        ${proxLabel}
         <div class="pedido-nome">${p.nome_cliente}</div>
-        <div class="pedido-tipo">${nome_tipo}${msg}</div>
+        <div class="pedido-tipo">${musica || nome_tipo}${msg}</div>
       </div>
       <span class="pedido-valor">R$ ${valor}</span>
       <form method="POST" action="/pubshow/painel/pedido/${p.id}/dispensar" style="margin:0">
-        <button type="submit" class="pedido-dispensar">✓ OK</button>
+        <button type="submit" class="pedido-dispensar" title="${btnTitle}" ${btnOnclick}>
+          ${isAutoTV ? '📺 Tocou' : '✅ OK'}
+        </button>
       </form>
     </div>`;
   }).join('');
+
+  // Atualiza contador da fila no header
+  const count = document.getElementById('fila-count');
+  if (count) count.textContent = fila.length;
 }
 
 function renderTotalHoje(total) {
@@ -1020,9 +1050,9 @@ function pollFila() {
       }
     })
     .catch(() => {}) // falha silenciosa
-    .finally(() => setTimeout(pollFila, 10000));
+    .finally(() => setTimeout(pollFila, 3000)); // Poll a cada 3s para fila em tempo real
 }
-setTimeout(pollFila, 10000);
+setTimeout(pollFila, 3000);
 </script>
 
 <!-- ── Web Push — notificação nativa no celular do bar ───────────────────── -->
