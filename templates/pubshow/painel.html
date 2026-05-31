@@ -342,7 +342,7 @@
           </div>
           <span class="pedido-valor">R$ {{ '%.0f'|format(p.valor or 0) }}</span>
           <form method="POST" action="/pubshow/painel/pedido/{{ p.id }}/dispensar" style="margin:0">
-            <button type="submit" class="pedido-dispensar">✓ OK</button>
+            <button type="submit" class="pedido-dispensar" title="Marcar como tocado/exibido (só clique após a TV executar)">📺 Tocou</button>
           </form>
         </div>
         {% endfor %}

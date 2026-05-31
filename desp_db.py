@@ -443,6 +443,18 @@ def init_db():
         # ── Portal do cliente — token público ──
         "ALTER TABLE ordens_servico ADD COLUMN token_publico TEXT",
         "CREATE UNIQUE INDEX IF NOT EXISTS idx_os_token ON ordens_servico(token_publico)",
+        # ── Entrega de documentos ao cliente ──
+        "ALTER TABLE ordens_servico ADD COLUMN entregue_em TEXT DEFAULT NULL",
+        "ALTER TABLE ordens_servico ADD COLUMN entregue_por TEXT DEFAULT NULL",
+        # ── Prazo legal da OS (ex: 30 dias para protocolar transferência) ──
+        "ALTER TABLE ordens_servico ADD COLUMN prazo_legal TEXT DEFAULT NULL",
+        # ── CNH do cliente ──
+        "ALTER TABLE clientes ADD COLUMN cnh TEXT DEFAULT NULL",
+        "ALTER TABLE clientes ADD COLUMN categoria_cnh TEXT DEFAULT NULL",
+        "ALTER TABLE clientes ADD COLUMN vencimento_cnh TEXT DEFAULT NULL",
+        # ── Performance: índice em atualizado_em ──
+        "CREATE INDEX IF NOT EXISTS idx_desp_os_atualizado ON ordens_servico(atualizado_em DESC)",
+        "CREATE INDEX IF NOT EXISTS idx_desp_os_status ON ordens_servico(status)",
     ]
     for sql in _migrations:
         try:

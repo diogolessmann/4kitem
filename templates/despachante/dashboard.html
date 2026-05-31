@@ -2,7 +2,7 @@
 
 {% block title %}Dashboard · Lessmann{% endblock %}
 {% block topbar_title %}
-  <span id="saudacao-txt">Olá, Diogo 👋</span>
+  <span id="saudacao-txt">Olá, {{ desp.nome.split()[0]|title if desp and desp.nome else 'Despachante' }} 👋</span>
 {% endblock %}
 {% block topbar_actions %}
   <a href="{{ url_for('desp_nova_os') }}" class="btn btn-primary btn-sm">

@@ -7966,10 +7966,14 @@ DESP_CONFIG = {
     "cidade":       os.environ.get("DESP_CIDADE",     "SCHROEDER"),
     "citran":       os.environ.get("DESP_CITRAN",     "Guaramirim"),
     "whatsapp":     os.environ.get("DESP_WHATSAPP",   "47999606998"),
-    "whatsapp_fmt": "(47) 99960-6998",
+    "whatsapp_fmt": "(47) " + os.environ.get("DESP_WHATSAPP", "47999606998")[2:7] + "-" + os.environ.get("DESP_WHATSAPP", "47999606998")[7:],
 }
-DESP_PASSWORD       = os.environ.get("DESP_PASSWORD",       "lessmann2026")
-DESP_ADMIN_PASSWORD = os.environ.get("DESP_ADMIN_PASSWORD", "lessmann@admin2026")
+DESP_PASSWORD       = os.environ.get("DESP_PASSWORD", "")
+DESP_ADMIN_PASSWORD = os.environ.get("DESP_ADMIN_PASSWORD", "")
+if not DESP_PASSWORD:
+    import secrets as _sec
+    DESP_PASSWORD = _sec.token_urlsafe(12)
+    log.warning('[Desp] DESP_PASSWORD não configurado — usando senha temporária: %s', DESP_PASSWORD)
 
 
 def _desp_login_required(f):
@@ -8126,8 +8130,8 @@ def desp_nova_os():
             'situacao_pag': f.get('situacao_pag', ''),
         }
         os_id = desp_criar_os(dados_os)
-        # Redireciona direto para o protocolo de impressão (3 vias)
-        return redirect(url_for('desp_print_protocolo', os_id=os_id, auto='1'))
+        # Redireciona para o detalhe da OS (impressão é opcional pelo botão)
+        return redirect(url_for('desp_detalhe_os', id=os_id))
     placa_pre = request.args.get('placa', '')
     cpf_pre   = request.args.get('cpf', '').strip()
     veiculo   = desp_buscar_placa(placa_pre) if placa_pre else None
@@ -8813,7 +8817,8 @@ def desp_backup():
     conn = get_desp_conn()
     buf  = io.BytesIO()
     tabelas = ['clientes', 'veiculos', 'ordens_servico', 'os_parcelas',
-               'os_historico', 'debitos_veiculo']
+               'os_historico', 'debitos_veiculo', 'config', 'protocolos_renavam',
+               'documentos', 'mensagens_log']
     with zipfile.ZipFile(buf, 'w', zipfile.ZIP_DEFLATED) as zf:
         for tbl in tabelas:
             try:
@@ -8849,7 +8854,7 @@ def desp_pwa_manifest():
         "name": "Lessmann Despachante",
         "short_name": "Lessmann",
         "description": "Sistema de gestão de OS para despachante documentalista",
-        "start_url": "/despachante/dashboard",
+        "start_url": "/despachante/",
         "display": "standalone",
         "background_color": "#111111",
         "theme_color": "#6366F1",
