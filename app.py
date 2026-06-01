@@ -121,21 +121,98 @@ DEFESAPRO_PLANOS = {
 # ── Helpers globais: e-mail (Resend) + Asaas ──────────────────────────────────
 _ASAAS_BASE = 'https://api.asaas.com/v3'
 
-def _enviar_email(para: str, assunto: str, html: str) -> bool:
+def _enviar_email(para: str, assunto: str, html: str,
+                  anexo_nome: str = None, anexo_bytes: bytes = None) -> bool:
+    import base64
     api_key = os.environ.get('RESEND_API_KEY', '')
     if not api_key:
         return False
     from_addr = os.environ.get('EMAIL_FROM', 'VetZap <onboarding@resend.dev>')
+    payload: dict = {'from': from_addr, 'to': [para], 'subject': assunto, 'html': html}
+    if anexo_nome and anexo_bytes:
+        payload['attachments'] = [{'filename': anexo_nome,
+                                   'content': base64.b64encode(anexo_bytes).decode()}]
     try:
         r = requests.post(
             'https://api.resend.com/emails',
             headers={'Authorization': f'Bearer {api_key}', 'Content-Type': 'application/json'},
-            json={'from': from_addr, 'to': [para], 'subject': assunto, 'html': html},
-            timeout=10
+            json=payload,
+            timeout=20
         )
         return r.status_code in (200, 201)
     except Exception:
         return False
+
+
+def _gerar_backup_zip() -> bytes:
+    """Gera o ZIP de backup do desp.db e retorna os bytes."""
+    import zipfile
+    conn = get_desp_conn()
+    buf  = io.BytesIO()
+    tabelas = ['clientes', 'veiculos', 'ordens_servico', 'os_parcelas',
+               'os_historico', 'debitos_veiculo', 'config', 'protocolos_renavam',
+               'documentos']
+    with zipfile.ZipFile(buf, 'w', zipfile.ZIP_DEFLATED) as zf:
+        for tbl in tabelas:
+            try:
+                rows = conn.execute(f'SELECT * FROM {tbl}').fetchall()
+                if not rows:
+                    continue
+                cols = rows[0].keys()
+                sb   = io.StringIO()
+                w    = csv.writer(sb)
+                w.writerow(list(cols))
+                for r in rows:
+                    w.writerow([r[c] for c in cols])
+                zf.writestr(f'{tbl}.csv', sb.getvalue())
+            except Exception:
+                pass
+        n_os  = conn.execute('SELECT COUNT(*) FROM ordens_servico').fetchone()[0]
+        n_cli = conn.execute('SELECT COUNT(*) FROM clientes').fetchone()[0]
+        meta  = f'Backup Lessmann Despachante\nData: {date.today()}\nOS: {n_os}\nClientes: {n_cli}\n'
+        zf.writestr('_info.txt', meta)
+    conn.close()
+    buf.seek(0)
+    return buf.read()
+
+
+def _enviar_backup_email():
+    """Gera ZIP e envia por e-mail para BACKUP_EMAIL."""
+    dest = os.environ.get('BACKUP_EMAIL', 'diogolessmann@gmail.com')
+    try:
+        zdata = _gerar_backup_zip()
+        fname = f'lessmann_backup_{date.today()}.zip'
+        ok = _enviar_email(
+            para=dest,
+            assunto=f'📦 Backup Despachante Lessmann — {date.today()}',
+            html=(f'<p>Backup automático gerado em <strong>{datetime.now().strftime("%d/%m/%Y %H:%M")}</strong>.</p>'
+                  f'<p>Arquivo: <code>{fname}</code></p>'
+                  f'<p><em>Despachante Lessmann — Sistema Automático</em></p>'),
+            anexo_nome=fname,
+            anexo_bytes=zdata,
+        )
+        log.info(f'[Backup] Email {"enviado" if ok else "FALHOU"} → {dest}')
+        return ok
+    except Exception as e:
+        log.error(f'[Backup] Erro ao gerar/enviar backup: {e}')
+        return False
+
+
+def _backup_scheduler():
+    """Thread que dispara backup diário às 7h (horário do servidor / Sao Paulo)."""
+    log.info('[Backup] Agendador iniciado — backup diário às 07:00')
+    while True:
+        now      = datetime.now()
+        proximo  = now.replace(hour=7, minute=0, second=0, microsecond=0)
+        if proximo <= now:
+            proximo += timedelta(days=1)
+        espera = (proximo - now).total_seconds()
+        log.info(f'[Backup] Próximo backup em {espera/3600:.1f}h ({proximo.strftime("%d/%m %H:%M")})')
+        time.sleep(espera)
+        _enviar_backup_email()
+
+
+threading.Thread(target=_backup_scheduler, daemon=True, name='backup-scheduler').start()
 
 def _asaas_req(method: str, endpoint: str, data: dict = None):
     api_key = os.environ.get('ASAAS_API_KEY', '')
@@ -8873,39 +8950,23 @@ def desp_api_mensagem(chave):
 @app.route('/despachante/backup')
 @_desp_login_required
 def desp_backup():
-    """Download ZIP com todas as tabelas em CSV."""
-    import zipfile
-    conn = get_desp_conn()
-    buf  = io.BytesIO()
-    tabelas = ['clientes', 'veiculos', 'ordens_servico', 'os_parcelas',
-               'os_historico', 'debitos_veiculo', 'config', 'protocolos_renavam',
-               'documentos', 'mensagens_log']
-    with zipfile.ZipFile(buf, 'w', zipfile.ZIP_DEFLATED) as zf:
-        for tbl in tabelas:
-            try:
-                rows = conn.execute(f'SELECT * FROM {tbl}').fetchall()
-                if not rows:
-                    continue
-                cols = rows[0].keys()
-                sb   = io.StringIO()
-                w    = csv.writer(sb)
-                w.writerow(list(cols))
-                for r in rows:
-                    w.writerow([r[c] for c in cols])
-                zf.writestr(f'{tbl}.csv', sb.getvalue())
-            except Exception:
-                pass
-        # Metadados
-        meta = f'Backup Lessmann Despachante\nData: {date.today()}\n'
-        meta += f'OS: {conn.execute("SELECT COUNT(*) FROM ordens_servico").fetchone()[0]}\n'
-        meta += f'Clientes: {conn.execute("SELECT COUNT(*) FROM clientes").fetchone()[0]}\n'
-        zf.writestr('_info.txt', meta)
-    conn.close()
-    buf.seek(0)
+    """Download direto do ZIP de backup."""
     from flask import send_file
+    zdata = _gerar_backup_zip()
     fname = f'lessmann_backup_{date.today()}.zip'
-    return send_file(buf, mimetype='application/zip',
+    return send_file(io.BytesIO(zdata), mimetype='application/zip',
                      as_attachment=True, download_name=fname)
+
+
+@app.route('/despachante/backup/email', methods=['POST'])
+@_desp_login_required
+def desp_backup_email():
+    """Dispara backup por e-mail imediatamente (ação manual)."""
+    def _run():
+        _enviar_backup_email()
+    threading.Thread(target=_run, daemon=True).start()
+    dest = os.environ.get('BACKUP_EMAIL', 'diogolessmann@gmail.com')
+    return jsonify({'ok': True, 'msg': f'Backup sendo enviado para {dest}'})
 
 
 @app.route('/despachante/manifest.json')
