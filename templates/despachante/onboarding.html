@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Configure seu escritório — Amigo Despachante</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',sans-serif;background:#0a0a12;color:#f0f0ff;min-height:100vh;
+     display:flex;align-items:center;justify-content:center;padding:24px}
+.card{background:#13131f;border:1px solid rgba(255,255,255,.07);border-radius:20px;
+      padding:40px 36px;width:100%;max-width:580px;box-shadow:0 24px 64px rgba(0,0,0,.6)}
+.header{text-align:center;margin-bottom:36px}
+.logo{font-size:40px;margin-bottom:12px}
+.header h1{font-size:22px;font-weight:800;color:#f0f0ff;margin-bottom:6px}
+.header p{font-size:14px;color:#6666aa;line-height:1.5}
+.section-title{font-size:12px;font-weight:700;color:#6366f1;text-transform:uppercase;
+               letter-spacing:.8px;margin:24px 0 14px}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.form-group{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
+label{font-size:12px;font-weight:600;color:#8888aa}
+input{background:#0d0d1a;border:1px solid rgba(255,255,255,.1);border-radius:8px;
+      color:#f0f0ff;padding:10px 13px;font-size:14px;font-family:inherit;outline:none;
+      transition:border-color .15s;width:100%}
+input:focus{border-color:#6366f1}
+input::placeholder{color:#44447a}
+.required::after{content:' *';color:#6366f1}
+.btn-submit{width:100%;padding:13px;border-radius:10px;border:none;
+            background:linear-gradient(135deg,#6366f1,#4f46e5);
+            color:#fff;font-size:15px;font-weight:700;cursor:pointer;
+            font-family:inherit;transition:.2s;margin-top:8px;letter-spacing:.3px}
+.btn-submit:hover{opacity:.9;transform:translateY(-1px)}
+.btn-skip{display:block;text-align:center;margin-top:14px;font-size:13px;
+          color:#44447a;cursor:pointer;text-decoration:none}
+.btn-skip:hover{color:#8888aa}
+.alert-err{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);
+           color:#fca5a5;padding:12px 14px;border-radius:8px;font-size:13px;
+           margin-bottom:20px;text-align:center}
+.step-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(99,102,241,.15);
+            border:1px solid rgba(99,102,241,.3);border-radius:20px;padding:4px 12px;
+            font-size:12px;color:#818cf8;margin-bottom:16px}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="header">
+    <div class="logo">🚗</div>
+    <div class="step-badge">✨ Configuração inicial</div>
+    <h1>Configure seu escritório</h1>
+    <p>Preencha os dados do seu escritório. Eles aparecem nos documentos,<br>
+       mensagens e protocolos gerados pelo sistema.</p>
+  </div>
+
+  {% if erro %}
+  <div class="alert-err">{{ erro }}</div>
+  {% endif %}
+
+  <form method="POST">
+
+    <div class="section-title">🪪 Dados do Despachante</div>
+    <div class="form-group">
+      <label class="required">Nome completo</label>
+      <input type="text" name="nome" placeholder="Ex: João Carlos da Silva"
+             value="{{ nome_saas }}" required autocomplete="name">
+    </div>
+    <div class="grid-2">
+      <div class="form-group">
+        <label>CPF</label>
+        <input type="text" name="cpf" placeholder="000.000.000-00">
+      </div>
+      <div class="form-group">
+        <label>CNPJ (se houver)</label>
+        <input type="text" name="cnpj" placeholder="00.000.000/0001-00">
+      </div>
+      <div class="form-group">
+        <label class="required">Credencial DETRAN</label>
+        <input type="text" name="credencial" placeholder="Ex: 2095" required>
+      </div>
+      <div class="form-group">
+        <label class="required">Cidade</label>
+        <input type="text" name="cidade" placeholder="Ex: Schroeder" required>
+      </div>
+      <div class="form-group">
+        <label>CITRAN</label>
+        <input type="text" name="citran" placeholder="Ex: Guaramirim">
+      </div>
+      <div class="form-group">
+        <label class="required">WhatsApp (somente dígitos)</label>
+        <input type="text" name="whatsapp" placeholder="Ex: 47991011351"
+               required pattern="[0-9]{10,11}">
+      </div>
+    </div>
+
+    <div class="section-title">💾 Backup automático</div>
+    <div class="form-group">
+      <label>Email para receber o backup diário</label>
+      <input type="email" name="backup_email" placeholder="seu@email.com">
+    </div>
+
+    <button type="submit" class="btn-submit">
+      Salvar e ir para o Dashboard →
+    </button>
+  </form>
+
+  <a href="/despachante/" class="btn-skip">Pular por agora — configurar depois em ⚙️ Configurações</a>
+</div>
+
+<script>
+// Máscara simples para WhatsApp
+document.querySelector('[name="whatsapp"]').addEventListener('input', function() {
+  this.value = this.value.replace(/\D/g,'');
+});
+</script>
+</body>
+</html>

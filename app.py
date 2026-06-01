@@ -8417,12 +8417,63 @@ def desp_tutorial():
     return desp_render('tutorial.html')
 
 
+# ── Onboarding — primeiro acesso de tenant SaaS ───────────────────────────────
+
+def _desp_needs_onboarding() -> bool:
+    """True se é tenant SaaS e ainda não configurou o perfil."""
+    if not session.get('desp_saas_user_id'):
+        return False
+    from desp_db import get_config as _gc
+    return not bool(_gc('desp_nome'))
+
+
+@app.route('/despachante/onboarding', methods=['GET', 'POST'])
+@_desp_login_required
+def desp_onboarding():
+    if not session.get('desp_saas_user_id'):
+        return redirect('/despachante/')
+    from desp_db import set_config as _sc
+    erro = None
+    if request.method == 'POST':
+        nome   = request.form.get('nome', '').strip()
+        cred   = request.form.get('credencial', '').strip()
+        cidade = request.form.get('cidade', '').strip()
+        wpp    = ''.join(c for c in request.form.get('whatsapp','') if c.isdigit())
+        if not all([nome, cred, cidade, wpp]):
+            erro = 'Nome, credencial, cidade e WhatsApp são obrigatórios.'
+        else:
+            # Formata WhatsApp: (47) 99101-1351
+            wpp_fmt = f'({wpp[:2]}) {wpp[2:7]}-{wpp[7:]}' if len(wpp) >= 10 else wpp
+            campos = {
+                'desp_nome':    nome,
+                'desp_cpf':     request.form.get('cpf','').strip(),
+                'desp_cnpj':    request.form.get('cnpj','').strip(),
+                'desp_cred':    cred,
+                'desp_cidade':  cidade,
+                'desp_citran':  request.form.get('citran','').strip(),
+                'desp_wpp':     wpp,
+                'desp_wpp_fmt': wpp_fmt,
+                'desp_backup_email': request.form.get('backup_email','').strip(),
+            }
+            for k, v in campos.items():
+                if v:
+                    _sc(k, v)
+            return redirect('/despachante/')
+    # Pré-popula com dados da conta SaaS
+    nome_saas = session.get('desp_saas_name', '')
+    return render_template('despachante/onboarding.html',
+                           nome_saas=nome_saas, erro=erro)
+
+
 # ── Dashboard ─────────────────────────────────────────────────────────────────
 @app.route('/despachante/')
 @app.route('/despachante')
 @_desp_login_required
 def desp_dashboard():
-    stats   = desp_stats()
+    # Redireciona para onboarding se tenant novo sem perfil configurado
+    if _desp_needs_onboarding():
+        return redirect(url_for('desp_onboarding'))
+    stats    = desp_stats()
     recentes = desp_listar_os(limit=8)
     return desp_render('dashboard.html', stats=stats, recentes=recentes)
 
