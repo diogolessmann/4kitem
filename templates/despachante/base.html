@@ -325,6 +325,9 @@
         <a href="{{ url_for('desp_mensagens') }}" class="nav-link {% if request.endpoint == 'desp_mensagens' %}active{% endif %}">
           <span class="icon">💬</span> Templates WhatsApp
         </a>
+        <a href="{{ url_for('desp_configuracoes') }}" class="nav-link {% if request.endpoint == 'desp_configuracoes' %}active{% endif %}">
+          <span class="icon">⚙️</span> Configurações
+        </a>
         <a href="https://wa.me/{{ desp.whatsapp }}" target="_blank" class="nav-link">
           <span class="icon">💬</span> WhatsApp
         </a>

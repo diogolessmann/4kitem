@@ -1,0 +1,123 @@
+{% extends "despachante/base.html" %}
+{% block title %}Configurações — Despachante{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>⚙️ Configurações do Escritório</h1>
+</div>
+
+{% if sucesso %}
+<div class="alert alert-success">✅ Configurações salvas com sucesso!</div>
+{% endif %}
+
+{% if not is_saas %}
+<div class="alert" style="background:rgba(99,102,241,.1);border:1px solid rgba(99,102,241,.3);color:#a5b4fc;border-radius:10px;padding:14px 18px;margin-bottom:24px">
+  ℹ️ Você está no modo <strong>acesso direto</strong>. As configurações abaixo são gerenciadas pelas variáveis de ambiente no Railway — não são editáveis aqui.
+</div>
+{% endif %}
+
+<form method="POST">
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+
+  <!-- Dados do Despachante -->
+  <div class="card" style="grid-column:1/-1">
+    <h3 style="margin-bottom:20px;font-size:15px;color:var(--text-muted)">🪪 Dados do Despachante</h3>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+      <div class="form-group">
+        <label>Nome Completo</label>
+        <input type="text" name="desp_nome" class="form-control"
+               value="{{ cfg.nome }}" {{ 'readonly' if not is_saas }}>
+      </div>
+      <div class="form-group">
+        <label>CPF</label>
+        <input type="text" name="desp_cpf" class="form-control"
+               value="{{ cfg.cpf }}" placeholder="000.000.000-00" {{ 'readonly' if not is_saas }}>
+      </div>
+      <div class="form-group">
+        <label>CNPJ</label>
+        <input type="text" name="desp_cnpj" class="form-control"
+               value="{{ cfg.cnpj }}" placeholder="00.000.000/0001-00" {{ 'readonly' if not is_saas }}>
+      </div>
+      <div class="form-group">
+        <label>Credencial DETRAN</label>
+        <input type="text" name="desp_cred" class="form-control"
+               value="{{ cfg.credencial }}" placeholder="Ex: 2095" {{ 'readonly' if not is_saas }}>
+      </div>
+      <div class="form-group">
+        <label>Cidade</label>
+        <input type="text" name="desp_cidade" class="form-control"
+               value="{{ cfg.cidade }}" placeholder="Ex: Schroeder" {{ 'readonly' if not is_saas }}>
+      </div>
+      <div class="form-group">
+        <label>CITRAN (cidade de vinculação)</label>
+        <input type="text" name="desp_citran" class="form-control"
+               value="{{ cfg.citran }}" placeholder="Ex: Guaramirim" {{ 'readonly' if not is_saas }}>
+      </div>
+      <div class="form-group">
+        <label>WhatsApp (somente dígitos, com DDD)</label>
+        <input type="text" name="desp_wpp" class="form-control"
+               value="{{ cfg.whatsapp }}" placeholder="Ex: 47991011351" {{ 'readonly' if not is_saas }}>
+      </div>
+      <div class="form-group">
+        <label>WhatsApp (formatado para exibição)</label>
+        <input type="text" name="desp_wpp_fmt" class="form-control"
+               value="{{ cfg.whatsapp_fmt }}" placeholder="Ex: (47) 99101-1351" {{ 'readonly' if not is_saas }}>
+      </div>
+    </div>
+  </div>
+
+  <!-- WhatsApp / Evolution API -->
+  <div class="card">
+    <h3 style="margin-bottom:20px;font-size:15px;color:var(--text-muted)">💬 WhatsApp — Evolution API</h3>
+    <div class="form-group">
+      <label>EVO_URL (URL da instância)</label>
+      <input type="text" name="desp_evo_url" class="form-control"
+             value="{{ evo_url }}" placeholder="https://evolution-api..." {{ 'readonly' if not is_saas }}>
+    </div>
+    <div class="form-group">
+      <label>EVO_KEY (API Key)</label>
+      <input type="password" name="desp_evo_key" class="form-control"
+             value="{{ evo_key }}" placeholder="••••••••" {{ 'readonly' if not is_saas }}>
+    </div>
+    <div class="form-group">
+      <label>EVO_INSTANCE (nome da instância)</label>
+      <input type="text" name="desp_evo_instance" class="form-control"
+             value="{{ evo_instance }}" placeholder="Ex: minha-instancia" {{ 'readonly' if not is_saas }}>
+    </div>
+  </div>
+
+  <!-- Backup -->
+  <div class="card">
+    <h3 style="margin-bottom:20px;font-size:15px;color:var(--text-muted)">💾 Backup Automático</h3>
+    <div class="form-group">
+      <label>Email para receber o backup diário</label>
+      <input type="email" name="desp_backup_email" class="form-control"
+             value="{{ backup_email }}" placeholder="seu@email.com" {{ 'readonly' if not is_saas }}>
+    </div>
+    <p style="font-size:12px;color:var(--text-muted);margin-top:8px">
+      O backup é enviado automaticamente às <strong>07:00</strong> todo dia com todas as suas OSs, clientes e veículos em formato ZIP.
+    </p>
+    {% if is_saas %}
+    <button type="button" class="btn btn-secondary btn-sm" style="margin-top:12px"
+            onclick="dispararBackup()">📧 Enviar backup agora</button>
+    {% endif %}
+  </div>
+
+</div>
+
+{% if is_saas %}
+<div style="margin-top:24px">
+  <button type="submit" class="btn btn-primary">💾 Salvar Configurações</button>
+</div>
+{% endif %}
+</form>
+
+{% if is_saas %}
+<script>
+function dispararBackup() {
+  fetch('/despachante/backup/email', {method:'POST'})
+    .then(r => r.json())
+    .then(d => alert(d.msg || 'Backup enviado!'));
+}
+</script>
+{% endif %}
+{% endblock %}

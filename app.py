@@ -144,10 +144,20 @@ def _enviar_email(para: str, assunto: str, html: str,
         return False
 
 
-def _gerar_backup_zip() -> bytes:
-    """Gera o ZIP de backup do desp.db e retorna os bytes."""
+def _desp_backup_dest() -> str:
+    """Retorna o email de destino do backup para o usuário atual."""
+    if session.get('desp_saas_user_id'):
+        from desp_db import get_config as _gc
+        return _gc('desp_backup_email') or ''
+    return os.environ.get('BACKUP_EMAIL', 'diogolessmann@gmail.com')
+
+
+def _gerar_backup_zip(db_path: str = None) -> bytes:
+    """Gera o ZIP de backup e retorna os bytes. db_path opcional para tenants."""
     import zipfile
-    conn = get_desp_conn()
+    conn = get_desp_conn() if not db_path else __import__('sqlite3').connect(db_path)
+    if db_path:
+        conn.row_factory = __import__('sqlite3').Row
     buf  = io.BytesIO()
     tabelas = ['clientes', 'veiculos', 'ordens_servico', 'os_parcelas',
                'os_historico', 'debitos_veiculo', 'config', 'protocolos_renavam',
@@ -176,18 +186,23 @@ def _gerar_backup_zip() -> bytes:
     return buf.read()
 
 
-def _enviar_backup_email():
-    """Gera ZIP e envia por e-mail para BACKUP_EMAIL."""
-    dest = os.environ.get('BACKUP_EMAIL', 'diogolessmann@gmail.com')
+def _enviar_backup_email(dest: str = None, db_path: str = None):
+    """Gera ZIP e envia por e-mail. dest e db_path opcionais para tenants."""
+    if not dest:
+        dest = os.environ.get('BACKUP_EMAIL', 'diogolessmann@gmail.com')
+    if not dest:
+        log.warning('[Backup] Sem email de destino configurado — backup não enviado')
+        return False
     try:
-        zdata = _gerar_backup_zip()
-        fname = f'lessmann_backup_{date.today()}.zip'
+        zdata = _gerar_backup_zip(db_path=db_path)
+        nome  = (db_path or 'lessmann').split('/')[-1].replace('.db','')
+        fname = f'{nome}_backup_{date.today()}.zip'
         ok = _enviar_email(
             para=dest,
-            assunto=f'📦 Backup Despachante Lessmann — {date.today()}',
+            assunto=f'📦 Backup Despachante — {date.today()}',
             html=(f'<p>Backup automático gerado em <strong>{datetime.now().strftime("%d/%m/%Y %H:%M")}</strong>.</p>'
                   f'<p>Arquivo: <code>{fname}</code></p>'
-                  f'<p><em>Despachante Lessmann — Sistema Automático</em></p>'),
+                  f'<p><em>Amigo Despachante — Sistema Automático</em></p>'),
             anexo_nome=fname,
             anexo_bytes=zdata,
         )
@@ -8105,6 +8120,28 @@ def _desp_admin_required(f):
     return decorated
 
 
+def _desp_get_evo_config() -> tuple:
+    """Retorna (evo_url, evo_key, evo_instance) para o usuário atual."""
+    if session.get('desp_saas_user_id'):
+        from desp_db import get_config as _gc
+        url = (_gc('desp_evo_url') or '').rstrip('/')
+        key = _gc('desp_evo_key') or ''
+        inst = _gc('desp_evo_instance') or ''
+    else:
+        url  = os.environ.get('EVO_URL', '').rstrip('/')
+        key  = os.environ.get('EVO_KEY', '')
+        inst = os.environ.get('EVO_INSTANCE', '')
+    return url, key, inst
+
+
+def _desp_get_backup_email() -> str:
+    """Retorna o email de backup do usuário atual."""
+    if session.get('desp_saas_user_id'):
+        from desp_db import get_config as _gc
+        return _gc('desp_backup_email') or ''
+    return os.environ.get('BACKUP_EMAIL', 'diogolessmann@gmail.com')
+
+
 def _desp_get_config() -> dict:
     """
     Retorna a config do despachante ativa:
@@ -8394,10 +8431,10 @@ def desp_detalhe_os(id):
         placa         = (os_.get('placa') or '').upper(),
         mes           = '', exercicio = datetime.now().year,
         pendente      = f'{os_pend:.2f}'.replace('.', ','),
-        pix           = DESP_CONFIG.get('cpf', ''),
-        despachante   = DESP_CONFIG['nome'].title(),
-        whatsapp      = DESP_CONFIG['whatsapp_fmt'],
-        cidade        = DESP_CONFIG['cidade'],
+        pix           = _desp_get_config().get('cpf', ''),
+        despachante   = _desp_get_config()['nome'].title(),
+        whatsapp      = _desp_get_config()['whatsapp_fmt'],
+        cidade        = _desp_get_config()['cidade'],
     )
     def _render_tpl(chave):
         try: return tpls[chave]['texto'].format(**_vars)
@@ -9042,25 +9079,51 @@ def desp_nao_lic_disparar():
     delay_s      = max(1, min(30, int(data.get('delay', 4))))
     if not mensagem_tpl:
         return jsonify({'erro': 'Mensagem não pode estar vazia'}), 400
-    evo_url      = os.environ.get('EVO_URL', '').rstrip('/')
-    evo_key      = os.environ.get('EVO_KEY', '')
-    evo_instance = os.environ.get('EVO_INSTANCE', '')
+    evo_url, evo_key, evo_instance = _desp_get_evo_config()
     if not evo_url or not evo_key or not evo_instance:
-        return jsonify({'erro': 'WhatsApp não configurado (EVO_URL / EVO_KEY / EVO_INSTANCE).'}), 400
+        return jsonify({'erro': 'WhatsApp não configurado. Configure em ⚙️ Configurações.'}), 400
     contatos = desp_nao_lic(exercicio=exercicio, final_placa=final or None, mostrar=mostrar)
     vars_extra = dict(
         exercicio=exercicio,
         mes='',
         marca='', modelo='',
-        despachante=DESP_CONFIG['nome'].title(),
-        whatsapp=DESP_CONFIG['whatsapp_fmt'],
-        cidade=DESP_CONFIG['cidade'],
+        despachante=_desp_get_config()['nome'].title(),
+        whatsapp=_desp_get_config()['whatsapp_fmt'],
+        cidade=_desp_get_config()['cidade'],
     )
     job_id = uuid.uuid4().hex
     _desp_jobs[job_id] = {'status': 'running', 'sent': 0, 'failed': 0, 'total': len(contatos), 'results': []}
     threading.Thread(target=_desp_dispatch_worker, daemon=True,
                      args=(job_id, contatos, mensagem_tpl, evo_url, evo_key, evo_instance, delay_s, vars_extra)).start()
     return jsonify({'job_id': job_id, 'total': len(contatos)})
+
+
+@app.route('/despachante/configuracoes', methods=['GET', 'POST'])
+@_desp_login_required
+def desp_configuracoes():
+    """Perfil e configurações do escritório — editável apenas para tenants SaaS."""
+    from desp_db import get_config as _gc, set_config as _sc
+    is_saas = bool(session.get('desp_saas_user_id'))
+    sucesso = False
+    if request.method == 'POST' and is_saas:
+        campos = ['desp_nome','desp_cpf','desp_cnpj','desp_cred',
+                  'desp_cidade','desp_citran','desp_wpp','desp_wpp_fmt',
+                  'desp_evo_url','desp_evo_key','desp_evo_instance',
+                  'desp_backup_email']
+        for c in campos:
+            val = request.form.get(c, '').strip()
+            if val:
+                _sc(c, val)
+        sucesso = True
+    cfg = _desp_get_config() if is_saas else DESP_CONFIG
+    # Para tenants, pega também configs extras do banco
+    evo_url      = _gc('desp_evo_url')      if is_saas else os.environ.get('EVO_URL','')
+    evo_key      = _gc('desp_evo_key')      if is_saas else os.environ.get('EVO_KEY','')
+    evo_instance = _gc('desp_evo_instance') if is_saas else os.environ.get('EVO_INSTANCE','')
+    backup_email = _gc('desp_backup_email') if is_saas else os.environ.get('BACKUP_EMAIL','')
+    return desp_render('configuracoes.html', cfg=cfg, is_saas=is_saas,
+                       evo_url=evo_url, evo_key=evo_key, evo_instance=evo_instance,
+                       backup_email=backup_email, sucesso=sucesso)
 
 
 @app.route('/despachante/mensagens', methods=['GET', 'POST'])
@@ -9103,10 +9166,11 @@ def desp_backup():
 @_desp_login_required
 def desp_backup_email():
     """Dispara backup por e-mail imediatamente (ação manual)."""
+    dest     = _desp_backup_dest()
+    db_path  = getattr(__import__('flask').g, 'desp_db_path', None)
     def _run():
-        _enviar_backup_email()
+        _enviar_backup_email(dest=dest, db_path=db_path)
     threading.Thread(target=_run, daemon=True).start()
-    dest = os.environ.get('BACKUP_EMAIL', 'diogolessmann@gmail.com')
     return jsonify({'ok': True, 'msg': f'Backup sendo enviado para {dest}'})
 
 
@@ -9215,19 +9279,17 @@ def desp_lista_disparar():
     delay_s      = max(1, min(30, int(data.get('delay', 4))))
     if not mensagem_tpl:
         return jsonify({'erro': 'Mensagem não pode estar vazia'}), 400
-    evo_url      = os.environ.get('EVO_URL', '').rstrip('/')
-    evo_key      = os.environ.get('EVO_KEY', '')
-    evo_instance = os.environ.get('EVO_INSTANCE', '')
+    evo_url, evo_key, evo_instance = _desp_get_evo_config()
     if not evo_url or not evo_key or not evo_instance:
-        return jsonify({'erro': 'WhatsApp não configurado. Preencha EVO_URL, EVO_KEY e EVO_INSTANCE.'}), 400
+        return jsonify({'erro': 'WhatsApp não configurado. Configure em ⚙️ Configurações.'}), 400
     contatos = desp_lista_final_placa(final, int(exercicio), situacao or None)
     mes_str  = DESP_MESES[DESP_FINAIS_PLACA.get(final, 0)]
     vars_extra = dict(
         exercicio=exercicio,
         mes=mes_str,
-        despachante=DESP_CONFIG['nome'].title(),
-        whatsapp=DESP_CONFIG['whatsapp_fmt'],
-        cidade=DESP_CONFIG['cidade'],
+        despachante=_desp_get_config()['nome'].title(),
+        whatsapp=_desp_get_config()['whatsapp_fmt'],
+        cidade=_desp_get_config()['cidade'],
     )
     job_id = uuid.uuid4().hex
     _desp_jobs[job_id] = {'status': 'running', 'sent': 0, 'failed': 0, 'total': len(contatos), 'results': []}
