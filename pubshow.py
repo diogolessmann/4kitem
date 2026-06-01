@@ -1524,8 +1524,23 @@ def jukebox(token):
                 tipo_emoji = precos_bar[tipo]['emoji']
 
                 if usar_pix:
+                    # ── Anti-spam: não cria pedido duplicado em menos de 60s ────────
+                    conn_dedup = get_pubshow_db()
+                    _dup = conn_dedup.execute(
+                        """SELECT id FROM pubshow_pedidos
+                           WHERE business_id=? AND ip_cliente=? AND tipo=?
+                           AND COALESCE(youtube_id,'')=COALESCE(?,'')
+                           AND status IN ('aguardando_pix','pendente')
+                           AND created_at >= datetime('now','-60 seconds')
+                           LIMIT 1""",
+                        (b['id'], ip_cliente, tipo, youtube_id or None)
+                    ).fetchone()
+                    conn_dedup.close()
+                    if _dup:
+                        erro = 'Pedido já enviado! Aguarde um momento antes de tentar novamente.'
+
+                if usar_pix and not erro:
                     # ── Incremento de centavos por pedido — facilita identificação no extrato ─
-                    # Conta pedidos de hoje para determinar o offset (+N centavos)
                     conn_off = get_pubshow_db()
                     _offset = conn_off.execute(
                         "SELECT COUNT(*) FROM pubshow_pedidos WHERE business_id=? AND date(created_at)=date('now','-3 hours')",
@@ -1605,8 +1620,24 @@ def jukebox(token):
                         'via_asaas':  bool(asaas_data),
                     }
                     sucesso = None
-                else:
+                elif not erro:
                     # ── Fluxo direto (sem PIX ou PIX não exigido) ─────────────
+                    # Anti-spam: bloqueia duplicata em 60s
+                    conn_dedup2 = get_pubshow_db()
+                    _dup2 = conn_dedup2.execute(
+                        """SELECT id FROM pubshow_pedidos
+                           WHERE business_id=? AND ip_cliente=? AND tipo=?
+                           AND COALESCE(youtube_id,'')=COALESCE(?,'')
+                           AND status IN ('pendente','exibido')
+                           AND created_at >= datetime('now','-60 seconds')
+                           LIMIT 1""",
+                        (b['id'], ip_cliente, tipo, youtube_id or None)
+                    ).fetchone()
+                    conn_dedup2.close()
+                    if _dup2:
+                        erro = 'Pedido já enviado! Aguarde antes de tentar novamente.'
+
+                if not usar_pix and not erro:
                     # Aplica offset de centavos se bar tem PIX configurado (manual)
                     if b.get('pix_key'):
                         conn_off2 = get_pubshow_db()

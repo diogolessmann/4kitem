@@ -698,7 +698,10 @@ async function jaPaguei() {
 <div class="form-section" id="form-section">
   <div class="form-title" id="form-title">🎵 Pedido</div>
 
-  <form method="POST" id="form-pedido">
+  <form method="POST" id="form-pedido" onsubmit="
+    const btn = document.getElementById('btn-confirmar');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Enviando...'; }
+  ">
     <input type="hidden" name="tipo" id="inp-tipo">
     <input type="hidden" name="categoria" value="{{ b.canal_atual or 'rock' }}">
     <input type="hidden" name="youtube_id" id="inp-youtube-id">
