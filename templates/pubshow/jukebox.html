@@ -412,6 +412,36 @@
 <script>
 const PIX_TOKEN     = '{{ b.jukebox_token or b.code }}';
 const PIX_PEDIDO_ID = {{ pix_pendente.pedido_id }};
+let _posicaoTimer = null;
+
+function iniciarPollingPosicao() {
+  clearInterval(_posicaoTimer);
+  _atualizarPosicao();
+  _posicaoTimer = setInterval(_atualizarPosicao, 5000);
+}
+
+async function _atualizarPosicao() {
+  try {
+    const r = await fetch(`/pubshow/api/pedido-status/${PIX_TOKEN}/${PIX_PEDIDO_ID}`);
+    const d = await r.json();
+    const sub = document.getElementById('pix-status-sub');
+    if (!sub) { clearInterval(_posicaoTimer); return; }
+
+    if (d.status === 'exibido') {
+      clearInterval(_posicaoTimer);
+      sub.innerHTML = '🎵 <strong style="color:#4ade80">Sua música está tocando agora!</strong>';
+      document.getElementById('pix-status-text').innerHTML = 'Curtindo! 🎸';
+    } else if (d.status === 'pendente' && d.posicao) {
+      const pos = d.posicao;
+      const tempo = d.tempo_min;
+      const posLabel = pos === 1 ? '🟢 <strong style="color:#4ade80">Você é o próximo!</strong>' : `📍 Você é o <strong style="color:#f0f0ff">${pos}º</strong> da fila`;
+      const tempoLabel = tempo ? ` · ⏱ ~${tempo} min` : '';
+      sub.innerHTML = `${posLabel}${tempoLabel}`;
+    } else if (d.status === 'aguardando_pix') {
+      sub.textContent = '⏳ Aguardando confirmação do pagamento...';
+    }
+  } catch(e) { /* silencioso */ }
+}
 
 function copiarPayload() {
   const txt = document.getElementById('copiacola-val').textContent.trim();
@@ -462,8 +492,11 @@ async function jaPaguei() {
         icon.textContent = '✅';
         document.getElementById('pix-status-text').innerHTML = 'Pedido confirmado! Na fila 🎉';
         document.getElementById('pix-status-text').style.color = '#4ade80';
-        document.getElementById('pix-status-sub').textContent = 'Aguarde — seu pedido aparece na tela em breve!';
+        document.getElementById('pix-status-sub').textContent = 'Buscando posição na fila...';
         box.style.borderColor = 'rgba(34,197,94,.4)';
+
+        // Busca posição na fila em tempo real
+        iniciarPollingPosicao();
       }
     } else {
       btn.disabled = false;
@@ -522,6 +555,36 @@ async function jaPaguei() {
       {% else %}Seu pedido está na fila! Aguarda um momento.
       {% endif %}
     </p>
+    {% if sucesso in ('musica','musica_especifica','musica_externa','flash') and pedido_id_sucesso %}
+    <div id="fila-posicao" style="margin-top:12px;font-size:13px;color:#86efac">⏳ Calculando posição...</div>
+    <script>
+    (function() {
+      const TOKEN = '{{ b.jukebox_token or b.code }}';
+      const PID   = {{ pedido_id_sucesso or 0 }};
+      if (!PID) return;
+      let _t = null;
+      async function updatePos() {
+        try {
+          const r = await fetch(`/pubshow/api/pedido-status/${TOKEN}/${PID}`);
+          const d = await r.json();
+          const el = document.getElementById('fila-posicao');
+          if (!el) { clearInterval(_t); return; }
+          if (d.status === 'exibido') {
+            clearInterval(_t);
+            el.innerHTML = '🎵 <strong>Sua música está tocando agora!</strong>';
+          } else if (d.posicao) {
+            const p = d.posicao;
+            const label = p === 1 ? '🟢 <strong>Você é o próximo!</strong>' : `📍 ${p}º da fila`;
+            const tempo = d.tempo_min ? ` · ⏱ ~${d.tempo_min} min` : '';
+            el.innerHTML = `${label}${tempo}`;
+          }
+        } catch(e) {}
+      }
+      updatePos();
+      _t = setInterval(updatePos, 5000);
+    })();
+    </script>
+    {% endif %}
   </div>
 {% endif %}
 

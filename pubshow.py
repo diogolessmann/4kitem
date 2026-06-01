@@ -1659,6 +1659,7 @@ def jukebox(token):
                         (b['id'], tipo, nome_cliente, mensagem, categoria, 'pendente', preco_direto,
                          youtube_id or None, titulo_pedido or None, thumb_url or None, ip_cliente)
                     )
+                    pedido_id_sucesso = conn2.lastrowid
                     conn2.commit(); conn2.close()
                     sucesso = tipo
 
@@ -1710,7 +1711,8 @@ def jukebox(token):
                            total_videos=total_videos,
                            aberto=aberto, motivo_fechado=motivo_fechado,
                            aviso=aviso, token=token,
-                           pix_offset=pix_offset)
+                           pix_offset=pix_offset,
+                           pedido_id_sucesso=locals().get('pedido_id_sucesso'))
 
 
 @pubshow_bp.route('/jukebox/<token>/ja-paguei/<int:pedido_id>', methods=['POST'])
@@ -1830,18 +1832,41 @@ def api_status(code):
 
 @pubshow_bp.route('/api/pedido-status/<token>/<int:pedido_id>')
 def api_pedido_status(token, pedido_id):
-    """Polling do cliente: retorna status do pedido — requer token do jukebox."""
+    """Polling do cliente: retorna status + posição na fila + tempo estimado."""
     conn = get_pubshow_db()
     row = conn.execute(
-        '''SELECT p.status FROM pubshow_pedidos p
+        '''SELECT p.status, p.business_id, p.created_at FROM pubshow_pedidos p
            JOIN pubshow_businesses b ON p.business_id = b.id
            WHERE p.id=? AND (b.jukebox_token=? OR b.code=?)''',
         (pedido_id, token, token)
     ).fetchone()
-    conn.close()
     if not row:
+        conn.close()
         return jsonify({'error': 'not_found'}), 404
-    return jsonify({'status': row['status']})
+
+    status = row['status']
+    posicao = None
+    tempo_min = None
+
+    if status == 'pendente':
+        # Conta pedidos confirmados ANTES deste na fila (pela data de criação)
+        posicao = conn.execute(
+            """SELECT COUNT(*) FROM pubshow_pedidos
+               WHERE business_id=? AND status='pendente'
+               AND created_at <= (SELECT created_at FROM pubshow_pedidos WHERE id=?)
+               AND id != ?""",
+            (row['business_id'], pedido_id, pedido_id)
+        ).fetchone()[0] + 1  # posição 1-indexed
+
+        # Tempo estimado: ~3 min por posição (duração média de um clipe)
+        tempo_min = posicao * 3
+
+    conn.close()
+    return jsonify({
+        'status': status,
+        'posicao': posicao,
+        'tempo_min': tempo_min
+    })
 
 
 @pubshow_bp.route('/api/pedido-exibido/<int:pedido_id>', methods=['POST'])
