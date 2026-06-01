@@ -1684,14 +1684,36 @@ def jukebox(token):
 
 @pubshow_bp.route('/jukebox/<token>/ja-paguei/<int:pedido_id>', methods=['POST'])
 def jukebox_ja_paguei(token, pedido_id):
-    """Cliente confirma que pagou o PIX — trust-based, entra direto na fila."""
+    """Cliente avisa que pagou o PIX.
+    Se o bar tem 'requer_pix=1' (confirmação manual ativa):
+      → pedido fica em 'aguardando_pix', aguarda bar confirmar no painel
+      → retorna ok=True com modo='aguardando_bar'
+    Se requer_pix=0 (trust-based):
+      → entra direto na fila (comportamento original)
+    """
     conn = get_pubshow_db()
     b = conn.execute(
-        'SELECT id FROM pubshow_businesses WHERE jukebox_token=? OR code=?', (token, token)
+        'SELECT id, requer_pix FROM pubshow_businesses WHERE jukebox_token=? OR code=?',
+        (token, token)
     ).fetchone()
     if not b:
         conn.close()
         return jsonify({'ok': False, 'error': 'Bar não encontrado'}), 404
+
+    # Verifica se o bar exige confirmação manual de PIX
+    if b['requer_pix']:
+        # Não move para 'pendente' — bar precisa confirmar no painel
+        # Apenas registra que o cliente avisou que pagou
+        conn.execute(
+            """UPDATE pubshow_pedidos SET pix_cliente_avisou=1
+               WHERE id=? AND business_id=? AND status='aguardando_pix'""",
+            (pedido_id, b['id'])
+        )
+        conn.commit(); conn.close()
+        return jsonify({'ok': True, 'modo': 'aguardando_bar',
+                        'msg': 'Aviso enviado! O bar vai confirmar seu pagamento em instantes.'})
+
+    # Trust-based: sem exigência de PIX — entra direto na fila
     updated = conn.execute(
         """UPDATE pubshow_pedidos SET status='pendente'
            WHERE id=? AND business_id=? AND status='aguardando_pix'""",
@@ -1699,7 +1721,7 @@ def jukebox_ja_paguei(token, pedido_id):
     ).rowcount
     conn.commit(); conn.close()
     if updated:
-        return jsonify({'ok': True})
+        return jsonify({'ok': True, 'modo': 'direto'})
     return jsonify({'ok': False, 'error': 'Pedido não encontrado ou já confirmado'})
 
 

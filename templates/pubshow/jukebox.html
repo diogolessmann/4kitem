@@ -448,12 +448,23 @@ async function jaPaguei() {
       const box  = document.getElementById('pix-status-box');
       const icon = box.querySelector('.pix-status-icon');
       box.style.display = 'block';
-      icon.textContent  = '✅';
-      document.getElementById('pix-status-text').innerHTML = 'Pedido confirmado! Na fila 🎉';
-      document.getElementById('pix-status-text').style.color = '#4ade80';
-      document.getElementById('pix-status-sub').textContent = 'Aguarde — seu pedido aparece na tela em breve!';
-      box.style.borderColor = 'rgba(34,197,94,.4)';
       box.querySelector('.spinner')?.remove();
+
+      if (d.modo === 'aguardando_bar') {
+        // Bar exige confirmação manual — cliente avisou mas bar ainda não confirmou
+        icon.textContent = '⏳';
+        document.getElementById('pix-status-text').innerHTML = 'Pagamento enviado! Aguardando o bar confirmar.';
+        document.getElementById('pix-status-text').style.color = '#fbbf24';
+        document.getElementById('pix-status-sub').textContent = d.msg || 'O bar vai verificar seu PIX e confirmar em instantes.';
+        box.style.borderColor = 'rgba(251,191,36,.4)';
+      } else {
+        // Trust-based — entrou direto na fila
+        icon.textContent = '✅';
+        document.getElementById('pix-status-text').innerHTML = 'Pedido confirmado! Na fila 🎉';
+        document.getElementById('pix-status-text').style.color = '#4ade80';
+        document.getElementById('pix-status-sub').textContent = 'Aguarde — seu pedido aparece na tela em breve!';
+        box.style.borderColor = 'rgba(34,197,94,.4)';
+      }
     } else {
       btn.disabled = false;
       btn.textContent = '✅ Já Paguei — Entrar na Fila';

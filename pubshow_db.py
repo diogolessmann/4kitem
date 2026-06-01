@@ -144,6 +144,8 @@ def init_pubshow_db():
         # PIX verification — pedido fica aguardando_pix até bar confirmar
         'ALTER TABLE pubshow_pedidos ADD COLUMN pix_txid TEXT',
         'ALTER TABLE pubshow_pedidos ADD COLUMN pix_payload TEXT',
+        # Cliente avisou que pagou — bar ainda não confirmou (requer_pix=1)
+        'ALTER TABLE pubshow_pedidos ADD COLUMN pix_cliente_avisou INTEGER DEFAULT 0',
         # PIX via Asaas — payment_id para rastrear cobrança
         'ALTER TABLE pubshow_pedidos ADD COLUMN asaas_payment_id TEXT',
         # Bar pode exigir PIX antes de entrar na fila
