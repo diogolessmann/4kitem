@@ -76,6 +76,10 @@
       {% endfor %}
     {% endwith %}
 
+    {% if erro %}
+      <div class="flash-err">{{ erro }}</div>
+    {% endif %}
+
     <form method="POST">
       <div class="form-group">
         <label for="usuario">Seu Nome</label>

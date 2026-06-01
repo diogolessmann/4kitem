@@ -515,11 +515,20 @@ def get_cliente(id_: int) -> dict | None:
     conn.close()
     return dict(row) if row else None
 
+_CLIENTES_COLS = {
+    'tipo', 'nome', 'cpf', 'cnpj', 'rg', 'nascimento', 'nome_mae',
+    'telefone', 'email', 'cep', 'logradouro', 'numero', 'complemento',
+    'bairro', 'cidade', 'uf', 'cnh', 'categoria_cnh', 'vencimento_cnh',
+}
+
 def atualizar_cliente(id_: int, dados: dict):
+    safe = {k: v for k, v in dados.items() if k in _CLIENTES_COLS}
+    if not safe:
+        return
     conn = get_conn()
-    campos = ", ".join(f"{k}=:{k}" for k in dados if k != "id")
-    dados["id"] = id_
-    conn.execute(f"UPDATE clientes SET {campos} WHERE id=:id", dados)
+    campos = ", ".join(f"{k}=:{k}" for k in safe)
+    safe["id"] = id_
+    conn.execute(f"UPDATE clientes SET {campos} WHERE id=:id", safe)
     conn.commit()
     conn.close()
 

@@ -8751,17 +8751,77 @@ def desp_nao_licenciados():
         finais=sorted(DESP_FINAIS_PLACA.items(), key=lambda x: x[1]))
 
 
+_desp_jobs: dict = {}  # job_id → {status, sent, failed, total, results}
+
+
+def _desp_dispatch_worker(job_id: str, contatos: list, mensagem_tpl: str,
+                           evo_url: str, evo_key: str, evo_instance: str,
+                           delay_s: int, vars_extra: dict):
+    """Worker que roda em thread — envia WhatsApp para cada contato."""
+    job = _desp_jobs[job_id]
+    job['total'] = len(contatos)
+    for c in contatos:
+        if job.get('cancelado'):
+            break
+        tel = (c.get('telefone') or '').replace('(','').replace(')','').replace('-','').replace(' ','').replace('+','')
+        if not tel:
+            job['results'].append({'nome': c.get('cliente', c.get('nome','?')), 'status': 'sem_telefone'})
+            job['failed'] += 1
+            continue
+        if not tel.startswith('55'):
+            tel = '55' + tel
+        nome_curto = (c.get('cliente') or c.get('nome') or 'Cliente').split()[0].title()
+        try:
+            msg = mensagem_tpl.format(
+                nome=nome_curto,
+                nome_completo=(c.get('cliente') or c.get('nome') or '').title(),
+                placa=(c.get('placa') or '').upper(),
+                **vars_extra,
+            )
+        except KeyError as e:
+            job['results'].append({'nome': nome_curto, 'tel': tel, 'status': 'erro', 'detalhe': f'Variável inválida: {e}'})
+            job['failed'] += 1
+            continue
+        try:
+            resp = requests.post(
+                f"{evo_url}/message/sendText/{evo_instance}",
+                headers={'apikey': evo_key, 'Content-Type': 'application/json'},
+                json={'number': tel, 'text': msg}, timeout=12
+            )
+            ok = resp.status_code in (200, 201)
+            job['results'].append({'nome': nome_curto, 'tel': tel,
+                                   'status': 'ok' if ok else 'erro',
+                                   'detalhe': '' if ok else resp.text[:120]})
+            if ok:
+                job['sent'] += 1
+            else:
+                job['failed'] += 1
+        except Exception as e:
+            job['results'].append({'nome': nome_curto, 'tel': tel, 'status': 'erro', 'detalhe': str(e)[:120]})
+            job['failed'] += 1
+        time.sleep(delay_s)
+    job['status'] = 'done'
+
+
+@app.route('/despachante/dispatch-status/<job_id>')
+@_desp_login_required
+def desp_dispatch_status(job_id):
+    job = _desp_jobs.get(job_id)
+    if not job:
+        return jsonify({'erro': 'Job não encontrado'}), 404
+    return jsonify(job)
+
+
 @app.route('/despachante/nao-licenciados/disparar', methods=['POST'])
 @_desp_login_required
 def desp_nao_lic_disparar():
-    """Dispara WhatsApp para veículos sem licenciamento via Evolution API."""
-    _req          = requests
-    data          = request.get_json(silent=True) or {}
-    exercicio     = int(data.get('exercicio', datetime.now().year))
-    final         = data.get('final', '')
-    mostrar       = data.get('mostrar', 'sem_os')
-    mensagem_tpl  = data.get('mensagem', '').strip()
-    delay_s       = max(1, min(30, int(data.get('delay', 4))))
+    """Dispara WhatsApp para veículos sem licenciamento — roda em background."""
+    data         = request.get_json(silent=True) or {}
+    exercicio    = int(data.get('exercicio', datetime.now().year))
+    final        = data.get('final', '')
+    mostrar      = data.get('mostrar', 'sem_os')
+    mensagem_tpl = data.get('mensagem', '').strip()
+    delay_s      = max(1, min(30, int(data.get('delay', 4))))
     if not mensagem_tpl:
         return jsonify({'erro': 'Mensagem não pode estar vazia'}), 400
     evo_url      = os.environ.get('EVO_URL', '').rstrip('/')
@@ -8769,49 +8829,20 @@ def desp_nao_lic_disparar():
     evo_instance = os.environ.get('EVO_INSTANCE', '')
     if not evo_url or not evo_key or not evo_instance:
         return jsonify({'erro': 'WhatsApp não configurado (EVO_URL / EVO_KEY / EVO_INSTANCE).'}), 400
-    veiculos = desp_nao_lic(exercicio=exercicio,
-                             final_placa=final or None,
-                             mostrar=mostrar)
-    results = []
-    for v in veiculos:
-        tel = (v.get('telefone') or '').replace('(','').replace(')','').replace('-','').replace(' ','').replace('+','')
-        if not tel:
-            results.append({'nome': v.get('cliente','?'), 'status': 'sem_telefone'})
-            continue
-        if not tel.startswith('55'): tel = '55' + tel
-        nome_curto = (v.get('cliente') or 'Cliente').split()[0].title()
-        try:
-            msg = mensagem_tpl.format(
-                nome=nome_curto,
-                nome_completo=(v.get('cliente') or '').title(),
-                placa=(v.get('placa') or '').upper(),
-                exercicio=exercicio,
-                mes=v.get('mes_venc_nome', ''),
-                marca=v.get('marca') or '',
-                modelo=v.get('modelo') or '',
-                despachante=DESP_CONFIG['nome'].title(),
-                whatsapp=DESP_CONFIG['whatsapp_fmt'],
-                cidade=DESP_CONFIG['cidade'],
-            )
-        except KeyError as e:
-            return jsonify({'erro': f'Variável inválida na mensagem: {e}'}), 400
-        try:
-            resp = _req.post(
-                f"{evo_url}/message/sendText/{evo_instance}",
-                headers={'apikey': evo_key, 'Content-Type': 'application/json'},
-                json={'number': tel, 'text': msg}, timeout=12
-            )
-            ok = resp.status_code in (200, 201)
-            results.append({'nome': v.get('cliente',''), 'tel': tel,
-                            'status': 'ok' if ok else 'erro',
-                            'detalhe': '' if ok else resp.text[:120]})
-        except Exception as e:
-            results.append({'nome': v.get('cliente',''), 'tel': tel,
-                            'status': 'erro', 'detalhe': str(e)[:120]})
-        time.sleep(delay_s)
-    sent   = sum(1 for r in results if r['status'] == 'ok')
-    failed = len(results) - sent
-    return jsonify({'sent': sent, 'failed': failed, 'results': results})
+    contatos = desp_nao_lic(exercicio=exercicio, final_placa=final or None, mostrar=mostrar)
+    vars_extra = dict(
+        exercicio=exercicio,
+        mes='',
+        marca='', modelo='',
+        despachante=DESP_CONFIG['nome'].title(),
+        whatsapp=DESP_CONFIG['whatsapp_fmt'],
+        cidade=DESP_CONFIG['cidade'],
+    )
+    job_id = uuid.uuid4().hex
+    _desp_jobs[job_id] = {'status': 'running', 'sent': 0, 'failed': 0, 'total': len(contatos), 'results': []}
+    threading.Thread(target=_desp_dispatch_worker, daemon=True,
+                     args=(job_id, contatos, mensagem_tpl, evo_url, evo_key, evo_instance, delay_s, vars_extra)).start()
+    return jsonify({'job_id': job_id, 'total': len(contatos)})
 
 
 @app.route('/despachante/mensagens', methods=['GET', 'POST'])
@@ -8973,50 +9004,34 @@ def desp_set_situacao(os_id):
 @app.route('/despachante/lista/disparar', methods=['POST'])
 @_desp_login_required
 def desp_lista_disparar():
-    _req = requests
+    """Dispara WhatsApp para lista de final de placa — roda em background."""
     data         = request.get_json(silent=True) or {}
     final        = data.get('final', '5')
     exercicio    = data.get('exercicio', datetime.now().year)
     situacao     = data.get('situacao', 'pendente')
     mensagem_tpl = data.get('mensagem', '').strip()
     delay_s      = max(1, min(30, int(data.get('delay', 4))))
-    if not mensagem_tpl: return jsonify({'erro': 'Mensagem não pode estar vazia'}), 400
-    evo_url = os.environ.get('EVO_URL','').rstrip('/')
-    evo_key = os.environ.get('EVO_KEY','')
-    evo_instance = os.environ.get('EVO_INSTANCE','')
+    if not mensagem_tpl:
+        return jsonify({'erro': 'Mensagem não pode estar vazia'}), 400
+    evo_url      = os.environ.get('EVO_URL', '').rstrip('/')
+    evo_key      = os.environ.get('EVO_KEY', '')
+    evo_instance = os.environ.get('EVO_INSTANCE', '')
     if not evo_url or not evo_key or not evo_instance:
         return jsonify({'erro': 'WhatsApp não configurado. Preencha EVO_URL, EVO_KEY e EVO_INSTANCE.'}), 400
-    ordens  = desp_lista_final_placa(final, int(exercicio), situacao or None)
-    mes_str = DESP_MESES[DESP_FINAIS_PLACA.get(final, 0)]
-    results = []
-    for o in ordens:
-        tel = (o.get('telefone') or '').replace('(','').replace(')','').replace('-','').replace(' ','').replace('+','')
-        if not tel: results.append({'nome': o.get('cliente','?'), 'status': 'sem_telefone'}); continue
-        if not tel.startswith('55'): tel = '55' + tel
-        nome_curto = (o.get('cliente') or 'Cliente').split()[0].title()
-        try:
-            msg = mensagem_tpl.format(
-                nome=nome_curto, nome_completo=(o.get('cliente') or '').title(),
-                placa=(o.get('placa') or '').upper(), exercicio=o.get('exercicio') or exercicio,
-                mes=mes_str, despachante=DESP_CONFIG['nome'].title(),
-                whatsapp=DESP_CONFIG['whatsapp_fmt'], cidade=DESP_CONFIG['cidade'],
-            )
-        except KeyError as e:
-            return jsonify({'erro': f'Variável inválida: {e}'}), 400
-        try:
-            resp = _req.post(f"{evo_url}/message/sendText/{evo_instance}",
-                headers={'apikey': evo_key, 'Content-Type': 'application/json'},
-                json={'number': tel, 'text': msg}, timeout=12)
-            ok = resp.status_code in (200, 201)
-            results.append({'nome': o.get('cliente',''), 'tel': tel,
-                            'status': 'ok' if ok else 'erro',
-                            'detalhe': '' if ok else resp.text[:120]})
-        except Exception as e:
-            results.append({'nome': o.get('cliente',''), 'tel': tel, 'status': 'erro', 'detalhe': str(e)[:120]})
-        time.sleep(delay_s)
-    sent = sum(1 for r in results if r['status'] == 'ok')
-    failed = len(results) - sent
-    return jsonify({'sent': sent, 'failed': failed, 'results': results})
+    contatos = desp_lista_final_placa(final, int(exercicio), situacao or None)
+    mes_str  = DESP_MESES[DESP_FINAIS_PLACA.get(final, 0)]
+    vars_extra = dict(
+        exercicio=exercicio,
+        mes=mes_str,
+        despachante=DESP_CONFIG['nome'].title(),
+        whatsapp=DESP_CONFIG['whatsapp_fmt'],
+        cidade=DESP_CONFIG['cidade'],
+    )
+    job_id = uuid.uuid4().hex
+    _desp_jobs[job_id] = {'status': 'running', 'sent': 0, 'failed': 0, 'total': len(contatos), 'results': []}
+    threading.Thread(target=_desp_dispatch_worker, daemon=True,
+                     args=(job_id, contatos, mensagem_tpl, evo_url, evo_key, evo_instance, delay_s, vars_extra)).start()
+    return jsonify({'job_id': job_id, 'total': len(contatos)})
 
 
 # ── Print protocolo ───────────────────────────────────────────────────────────
