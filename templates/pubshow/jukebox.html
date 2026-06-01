@@ -434,8 +434,10 @@ async function _atualizarPosicao() {
     } else if (d.status === 'pendente' && d.posicao) {
       const pos = d.posicao;
       const tempo = d.tempo_min;
-      const posLabel = pos === 1 ? '🟢 <strong style="color:#4ade80">Você é o próximo!</strong>' : `📍 Você é o <strong style="color:#f0f0ff">${pos}º</strong> da fila`;
-      const tempoLabel = tempo ? ` · ⏱ ~${tempo} min` : '';
+      const posLabel = pos === 1
+        ? '🟢 <strong style="color:#4ade80">Você é o próximo!</strong> Toca quando o vídeo atual acabar.'
+        : `📍 Você é o <strong style="color:#f0f0ff">${pos}º</strong> da fila`;
+      const tempoLabel = tempo ? ` · ⏱ ~${tempo} min` : (pos === 1 ? '' : '');
       sub.innerHTML = `${posLabel}${tempoLabel}`;
     } else if (d.status === 'aguardando_pix') {
       sub.textContent = '⏳ Aguardando confirmação do pagamento...';

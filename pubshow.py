@@ -1858,8 +1858,12 @@ def api_pedido_status(token, pedido_id):
             (row['business_id'], pedido_id, pedido_id)
         ).fetchone()[0] + 1  # posição 1-indexed
 
-        # Tempo estimado: ~3 min por posição (duração média de um clipe)
-        tempo_min = posicao * 3
+        # Tempo estimado: 4 min por posição + 2 min de overhead do vídeo atual
+        # Clips do YouTube duram em média 3-5 min, usando 4 como base
+        if posicao == 1:
+            tempo_min = None  # 1º = toca quando o atual acabar, sem estimativa fixa
+        else:
+            tempo_min = (posicao - 1) * 4 + 2  # músicas antes + metade do atual
 
     conn.close()
     return jsonify({
