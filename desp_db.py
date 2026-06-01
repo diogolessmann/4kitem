@@ -264,9 +264,21 @@ KANBAN_COLUNAS = [
 ]
 
 # ── Conexão ─────────────────────────────────────────────────────────────────
-def get_conn():
-    os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
-    conn = sqlite3.connect(DB_PATH)
+def get_conn(db_path: str = None) -> sqlite3.Connection:
+    """
+    Retorna conexão SQLite.
+    Se db_path não for passado, usa flask.g.desp_db_path (tenant SaaS)
+    ou DB_PATH (Diogo, acesso direto).
+    """
+    if db_path is None:
+        try:
+            from flask import g
+            db_path = getattr(g, 'desp_db_path', None) or DB_PATH
+        except RuntimeError:
+            db_path = DB_PATH
+    resolved = db_path or DB_PATH
+    os.makedirs(os.path.dirname(os.path.abspath(resolved)), exist_ok=True)
+    conn = sqlite3.connect(resolved)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA foreign_keys=ON")

@@ -1033,37 +1033,28 @@ def amigo_desp_entrar():
         else:
             session['desp_saas_user_id'] = u['id']
             session['desp_saas_name']    = u['name']
+            session['desp_usuario']      = u['name']
+            session['desp_is_admin']     = True  # dono do tenant é sempre admin
             conn2 = get_saas_db()
             conn2.execute('UPDATE despachante_users SET last_login=? WHERE id=?',
                          (datetime.now().isoformat(), u['id']))
             conn2.commit(); conn2.close()
-            return redirect('/amigo-despachante/app')
+            return redirect('/despachante/')
     return render_template('amigo_despachante/entrar.html', erro=erro)
 
 
 @app.route('/amigo-despachante/app')
 @_desp_saas_login_required
 def amigo_desp_app():
-    conn = get_saas_db()
-    u    = conn.execute('SELECT * FROM despachante_users WHERE id=?', (session['desp_saas_user_id'],)).fetchone()
-    conn.close()
-    if not u:
-        session.pop('desp_saas_user_id', None)
-        return redirect('/amigo-despachante/entrar')
-    plan_info     = DESP_PLANS.get(u['plan'], DESP_PLANS['basico'])
-    u             = dict(u)
-    trial_ends    = u.get('trial_ends') or ''
-    plan_active   = u.get('plan_active', 1)
-    trial_expired = bool(trial_ends and trial_ends < datetime.now().isoformat())
-    return render_template('amigo_despachante/app.html', user=u, plan_info=plan_info,
-                           plans=DESP_PLANS, trial_ends=trial_ends,
-                           trial_expired=trial_expired, plan_active=plan_active)
+    """Mantido por compatibilidade — redireciona para o dashboard completo."""
+    return redirect('/despachante/')
 
 
 @app.route('/amigo-despachante/sair')
 def amigo_desp_sair():
-    session.pop('desp_saas_user_id', None)
-    session.pop('desp_saas_name', None)
+    for k in ('desp_saas_user_id', 'desp_saas_name', 'desp_usuario',
+              'desp_is_admin', 'desp_logged', 'desp_user_id'):
+        session.pop(k, None)
     return redirect('/amigo-despachante/entrar')
 
 
@@ -8061,6 +8052,33 @@ if not DESP_PASSWORD:
     log.warning('[Desp] DESP_PASSWORD não configurado — usando senha temporária: %s', DESP_PASSWORD)
 
 
+def _desp_tenant_db_path(user_id: int) -> str:
+    """Retorna o caminho do banco SQLite isolado para um tenant SaaS."""
+    data_dir = os.environ.get('DATA_DIR', os.path.dirname(os.path.abspath(__file__)))
+    return os.path.join(data_dir, f'desp_{user_id}.db')
+
+
+@app.before_request
+def _desp_set_tenant_context():
+    """Seta g.desp_db_path para o banco correto a cada request."""
+    from flask import g
+    saas_uid = session.get('desp_saas_user_id')
+    if saas_uid:
+        g.desp_db_path = _desp_tenant_db_path(saas_uid)
+        # Garante que o banco do tenant existe e está inicializado
+        if not os.path.exists(g.desp_db_path):
+            from desp_db import init_db as _desp_init
+            _desp_init()
+            log.info(f'[Desp SaaS] Banco criado para tenant {saas_uid}: {g.desp_db_path}')
+    else:
+        g.desp_db_path = None  # usa DB_PATH fixo (Diogo)
+
+
+def _desp_is_logged() -> bool:
+    """True se logado por qualquer método (direto ou SaaS)."""
+    return bool(session.get('desp_logged') or session.get('desp_saas_user_id'))
+
+
 def _desp_usuario_atual():
     """Retorna o nome do usuário logado no despachante (para log de movimentações)."""
     return session.get('desp_usuario', DESP_CONFIG.get('nome', 'Sistema'))
@@ -8069,17 +8087,17 @@ def _desp_usuario_atual():
 def _desp_login_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
-        if not session.get('desp_logged'):
+        if not _desp_is_logged():
             return redirect('/despachante/login')
         return f(*args, **kwargs)
     return decorated
 
 
 def _desp_admin_required(f):
-    """Requer senha de administrador (separada da senha de acesso geral)."""
+    """Requer perfil admin (direto ou SaaS)."""
     @wraps(f)
     def decorated(*args, **kwargs):
-        if not session.get('desp_logged'):
+        if not _desp_is_logged():
             return redirect('/despachante/login')
         if not session.get('desp_is_admin'):
             return redirect(url_for('desp_admin_login', next=request.path))
@@ -8087,22 +8105,48 @@ def _desp_admin_required(f):
     return decorated
 
 
+def _desp_get_config() -> dict:
+    """
+    Retorna a config do despachante ativa:
+    - Tenant SaaS → lê da tabela config do banco do tenant
+    - Diogo (direto) → usa DESP_CONFIG do env
+    """
+    if not session.get('desp_saas_user_id'):
+        return DESP_CONFIG
+    try:
+        from desp_db import get_config as _gc
+        nome  = _gc('desp_nome')  or session.get('desp_saas_name', 'Despachante')
+        cpf   = _gc('desp_cpf')   or ''
+        cnpj  = _gc('desp_cnpj')  or ''
+        cred  = _gc('desp_cred')  or ''
+        cidade= _gc('desp_cidade')or ''
+        citran= _gc('desp_citran')or ''
+        wpp   = _gc('desp_wpp')   or ''
+        wpp_f = _gc('desp_wpp_fmt')or wpp
+        return dict(nome=nome, cpf=cpf, cnpj=cnpj, credencial=cred,
+                    cidade=cidade, citran=citran, whatsapp=wpp, whatsapp_fmt=wpp_f)
+    except Exception:
+        return dict(nome=session.get('desp_saas_name','Despachante'),
+                    cpf='', cnpj='', credencial='', cidade='',
+                    citran='', whatsapp='', whatsapp_fmt='')
+
+
 def _desp_globals():
     hoje = datetime.now()
-    # Badge de alertas globais na sidebar — calculado 1x por request
     try:
         _st = desp_stats()
         _n_alertas = len(_st.get('parcelas_vencidas', [])) + len(_st.get('os_paradas', []))
     except Exception:
         _n_alertas = 0
     return dict(
-        desp=DESP_CONFIG,
+        desp=_desp_get_config(),
         servicos=DESP_SERVICOS,
         servicos_grupos=DESP_SERVICOS_GRUPOS,
         status_labels=DESP_STATUS_LABELS,
         hoje=hoje, mes_atual=hoje.month, meses=DESP_MESES,
         finais_placa_nav=sorted(DESP_FINAIS_PLACA.items(), key=lambda x: x[1]),
         n_alertas=_n_alertas,
+        is_saas_tenant=bool(session.get('desp_saas_user_id')),
     )
 
 
@@ -8158,9 +8202,11 @@ def desp_login():
 
 @app.route('/despachante/logout')
 def desp_logout():
-    for k in ('desp_logged', 'desp_user_id', 'desp_usuario', 'desp_is_admin'):
+    saas = bool(session.get('desp_saas_user_id'))
+    for k in ('desp_logged', 'desp_user_id', 'desp_usuario', 'desp_is_admin',
+              'desp_saas_user_id', 'desp_saas_name'):
         session.pop(k, None)
-    return redirect('/despachante/login')
+    return redirect('/amigo-despachante/entrar' if saas else '/despachante/login')
 
 
 
