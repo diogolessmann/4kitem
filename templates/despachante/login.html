@@ -78,8 +78,14 @@
 
     <form method="POST">
       <div class="form-group">
+        <label for="usuario">Seu Nome</label>
+        <input type="text" id="usuario" name="usuario" placeholder="Ex: Diogo ou Thalia"
+               style="width:100%;padding:10px 14px;background:#252525;border:1px solid rgba(255,255,255,0.11);border-radius:8px;color:#F0EFE9;font-size:14px;font-family:inherit;outline:none;"
+               required autocomplete="name">
+      </div>
+      <div class="form-group">
         <label for="senha">Senha de Acesso</label>
-        <input type="password" id="senha" name="senha" placeholder="••••••••" autofocus required>
+        <input type="password" id="senha" name="senha" placeholder="••••••••" required>
       </div>
       <button type="submit" class="btn">Entrar no Sistema →</button>
     </form>

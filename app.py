@@ -7976,6 +7976,11 @@ if not DESP_PASSWORD:
     log.warning('[Desp] DESP_PASSWORD não configurado — usando senha temporária: %s', DESP_PASSWORD)
 
 
+def _desp_usuario_atual():
+    """Retorna o nome do usuário logado no despachante (para log de movimentações)."""
+    return session.get('desp_usuario', DESP_CONFIG.get('nome', 'Sistema'))
+
+
 def _desp_login_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
@@ -8027,6 +8032,9 @@ def desp_login():
     if request.method == 'POST':
         if request.form.get('senha') == DESP_PASSWORD:
             session['desp_logged'] = True
+            # Salva nome do usuário para log de movimentações
+            _nome_user = request.form.get('usuario', '').strip()
+            session['desp_usuario'] = _nome_user if _nome_user else 'Sistema'
             return redirect('/despachante/')
         erro = 'Senha incorreta.'
     return render_template('despachante/login.html', erro=erro)
@@ -8191,7 +8199,29 @@ def desp_atualizar_status(id):
     nota   = request.form.get('nota', '')
     pago   = request.form.get('pago')
     desp_atualizar_os_status(id, status, float(pago) if pago else None)
-    desp_reg_hist(id, status, nota)
+    desp_reg_hist(id, status, nota, usuario=_desp_usuario_atual())
+    return redirect(url_for('desp_detalhe_os', id=id))
+
+
+@app.route('/despachante/os/<int:id>/entregar', methods=['POST'])
+@_desp_login_required
+def desp_marcar_entregue(id):
+    """Marca a OS como documento entregue ao cliente — com data/hora e quem entregou."""
+    usuario = _desp_usuario_atual()
+    agora   = datetime.now().strftime('%Y-%m-%d %H:%M')
+    conn = get_desp_conn()
+    conn.execute(
+        "UPDATE ordens_servico SET entregue_em=?, entregue_por=? WHERE id=?",
+        (agora, usuario, id)
+    )
+    conn.commit(); conn.close()
+    # Registra no histórico (imutável)
+    desp_reg_hist(
+        id,
+        'entregue',
+        f'Documento entregue ao cliente por {usuario} em {agora}',
+        usuario=usuario
+    )
     return redirect(url_for('desp_detalhe_os', id=id))
 
 

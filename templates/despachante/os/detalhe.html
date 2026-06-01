@@ -10,6 +10,18 @@
 {% block topbar_actions %}
   <a href="{{ url_for('desp_lista_os') }}" class="btn btn-ghost btn-sm">← Voltar</a>
   <a href="{{ url_for('desp_print_protocolo', os_id=os.id) }}" target="_blank" class="btn btn-secondary btn-sm">🖨️ Protocolo</a>
+  {% if os.status == 'concluida' and not os.entregue_em %}
+  <form method="POST" action="{{ url_for('desp_marcar_entregue', id=os.id) }}" style="display:inline"
+        onsubmit="return confirm('Confirmar entrega do documento para o cliente?')">
+    <button type="submit" class="btn btn-primary btn-sm" style="background:#059669">
+      📦 Marcar Entregue
+    </button>
+  </form>
+  {% elif os.entregue_em %}
+  <span style="font-size:12px;font-weight:700;color:#34d399;padding:6px 12px;background:rgba(52,211,153,.1);border:1px solid rgba(52,211,153,.3);border-radius:8px;">
+    ✅ Entregue em {{ (os.entregue_em or '')[:16] }}
+  </span>
+  {% endif %}
 {% endblock %}
 
 {% block extra_style %}
@@ -423,7 +435,8 @@
                     {% if loop.last %}border-bottom:none;{% endif %}">
           <div style="display:flex;flex-direction:column;align-items:center;gap:0;padding-top:3px;">
             <div style="width:8px;height:8px;border-radius:50%;background:
-              {% if h.status == 'concluida' %}var(--green)
+              {% if h.status == 'entregue' %}#34d399
+              {% elif h.status == 'concluida' %}var(--green)
               {% elif h.status == 'andamento' %}var(--blue)
               {% elif h.status == 'cancelada' %}var(--red)
               {% elif h.status == 'aberta' %}var(--yellow)
