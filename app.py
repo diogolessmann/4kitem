@@ -896,6 +896,13 @@ DESP_PLANS = {
     'premium':       {'label': '🥇 Premium',        'price': 'R$249,90/mês', 'preco': 249.90},
 }
 
+# Limites por plano — None = ilimitado
+DESP_PLAN_LIMITS = {
+    'basico':       {'os_mes': 50,   'clientes': 200,  'whatsapp': False},
+    'profissional': {'os_mes': None, 'clientes': None,  'whatsapp': True},
+    'premium':      {'os_mes': None, 'clientes': None,  'whatsapp': True},
+}
+
 AGENDA_PLAN = {'label': 'Agenda SC Pro', 'preco': 79.90, 'price': 'R$ 79,90/mês'}
 
 # ── DefesaPro — CTB constants ─────────────────────────────────────────────────
@@ -8142,6 +8149,57 @@ def _desp_get_backup_email() -> str:
     return os.environ.get('BACKUP_EMAIL', 'diogolessmann@gmail.com')
 
 
+def _desp_get_plan() -> dict:
+    """Retorna o plano e limites do tenant atual (sem limites para Diogo)."""
+    uid = session.get('desp_saas_user_id')
+    if not uid:
+        return {'plan': 'premium', 'plan_active': 1, **DESP_PLAN_LIMITS['premium']}
+    conn = get_saas_db()
+    u = conn.execute(
+        'SELECT plan, plan_active, trial_ends FROM despachante_users WHERE id=?', (uid,)
+    ).fetchone()
+    conn.close()
+    if not u:
+        return {'plan': 'basico', 'plan_active': 0, **DESP_PLAN_LIMITS['basico']}
+    plan = u['plan'] if u['plan'] in DESP_PLAN_LIMITS else 'basico'
+    return {'plan': plan, 'plan_active': u['plan_active'],
+            'trial_ends': u['trial_ends'], **DESP_PLAN_LIMITS[plan]}
+
+
+def _desp_check_limit(tipo: str) -> tuple:
+    """
+    Verifica se o tenant pode executar a ação.
+    tipo: 'os_mes' | 'whatsapp'
+    Retorna (permitido: bool, mensagem: str)
+    """
+    uid = session.get('desp_saas_user_id')
+    if not uid:
+        return True, ''  # Diogo: sem limites
+    plano = _desp_get_plan()
+    if not plano.get('plan_active'):
+        return False, 'Plano inativo. Regularize sua assinatura para continuar.'
+    if tipo == 'whatsapp':
+        if not plano.get('whatsapp'):
+            return False, f'Disparo de WhatsApp não disponível no plano {DESP_PLANS[plano["plan"]]["label"]}. Faça upgrade para o Profissional.'
+        return True, ''
+    if tipo == 'os_mes':
+        limite = plano.get('os_mes')
+        if limite is None:
+            return True, ''
+        from desp_db import get_conn as _gc
+        conn = _gc()
+        mes = datetime.now().strftime('%Y-%m')
+        n = conn.execute(
+            "SELECT COUNT(*) FROM ordens_servico WHERE strftime('%Y-%m', criado_em)=?", (mes,)
+        ).fetchone()[0]
+        conn.close()
+        if n >= limite:
+            return False, (f'Limite de {limite} O.S./mês atingido no plano {DESP_PLANS[plano["plan"]]["label"]}. '
+                          f'Faça upgrade para o Profissional ou aguarde o próximo mês.')
+        return True, ''
+    return True, ''
+
+
 def _desp_get_config() -> dict:
     """
     Retorna a config do despachante ativa:
@@ -8475,7 +8533,8 @@ def desp_dashboard():
         return redirect(url_for('desp_onboarding'))
     stats    = desp_stats()
     recentes = desp_listar_os(limit=8)
-    return desp_render('dashboard.html', stats=stats, recentes=recentes)
+    plano    = _desp_get_plan() if session.get('desp_saas_user_id') else None
+    return desp_render('dashboard.html', stats=stats, recentes=recentes, plano=plano)
 
 
 # ── Ordens de Serviço ─────────────────────────────────────────────────────────
@@ -8494,6 +8553,12 @@ def desp_lista_os():
 @_desp_login_required
 def desp_nova_os():
     if request.method == 'POST':
+        # Verifica limite de OS do plano
+        ok, msg = _desp_check_limit('os_mes')
+        if not ok:
+            from flask import flash
+            flash(f'🚫 {msg}', 'erro')
+            return redirect(url_for('desp_nova_os'))
         f = request.form
         cliente_id = f.get('cliente_id') or None
         if not cliente_id:
@@ -9225,6 +9290,9 @@ def desp_nao_lic_disparar():
     delay_s      = max(1, min(30, int(data.get('delay', 4))))
     if not mensagem_tpl:
         return jsonify({'erro': 'Mensagem não pode estar vazia'}), 400
+    ok_plano, msg_plano = _desp_check_limit('whatsapp')
+    if not ok_plano:
+        return jsonify({'erro': msg_plano}), 403
     evo_url, evo_key, evo_instance = _desp_get_evo_config()
     if not evo_url or not evo_key or not evo_instance:
         return jsonify({'erro': 'WhatsApp não configurado. Configure em ⚙️ Configurações.'}), 400
@@ -9425,6 +9493,9 @@ def desp_lista_disparar():
     delay_s      = max(1, min(30, int(data.get('delay', 4))))
     if not mensagem_tpl:
         return jsonify({'erro': 'Mensagem não pode estar vazia'}), 400
+    ok_plano, msg_plano = _desp_check_limit('whatsapp')
+    if not ok_plano:
+        return jsonify({'erro': msg_plano}), 403
     evo_url, evo_key, evo_instance = _desp_get_evo_config()
     if not evo_url or not evo_key or not evo_instance:
         return jsonify({'erro': 'WhatsApp não configurado. Configure em ⚙️ Configurações.'}), 400

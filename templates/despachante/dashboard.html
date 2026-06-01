@@ -168,6 +168,44 @@
 </div>
 {% endif %}
 
+<!-- ── Banner de plano (SaaS tenants) ── -->
+{% if plano %}
+{% set limite_os = plano.os_mes %}
+{% set os_mes_atual = stats.os_mes %}
+{% set pct = ((os_mes_atual / limite_os * 100) | int) if limite_os else 0 %}
+
+{% if not plano.plan_active %}
+<div style="background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);border-radius:12px;
+            padding:14px 18px;margin-bottom:16px;display:flex;align-items:center;gap:14px">
+  <span style="font-size:22px">🚫</span>
+  <div style="flex:1">
+    <strong>Plano inativo</strong>
+    <div style="font-size:13px;color:var(--text-muted)">Regularize sua assinatura para continuar criando O.S.</div>
+  </div>
+  <a href="/amigo-despachante/assinar/profissional" class="btn btn-sm btn-primary">Regularizar</a>
+</div>
+
+{% elif limite_os and pct >= 80 %}
+<div style="background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);border-radius:12px;
+            padding:14px 18px;margin-bottom:16px;display:flex;align-items:center;gap:14px">
+  <span style="font-size:22px">⚠️</span>
+  <div style="flex:1">
+    <strong>{{ os_mes_atual }}/{{ limite_os }} O.S. este mês</strong>
+    <div style="font-size:13px;color:var(--text-muted)">
+      {% if pct >= 100 %}Limite atingido — faça upgrade para criar mais O.S.
+      {% else %}Você usou {{ pct }}% do limite mensal do plano Básico.{% endif %}
+    </div>
+    <div style="background:rgba(255,255,255,.08);border-radius:4px;height:4px;margin-top:8px;width:200px">
+      <div style="background:#f59e0b;border-radius:4px;height:4px;width:{{ [pct,100]|min }}%"></div>
+    </div>
+  </div>
+  <a href="/amigo-despachante/assinar/profissional" class="btn btn-sm btn-warning"
+     style="white-space:nowrap">⬆️ Upgrade</a>
+</div>
+{% endif %}
+
+{% endif %}
+
 <!-- ── KPIs ── -->
 <div class="kpi-grid">
 
