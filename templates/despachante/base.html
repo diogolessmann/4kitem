@@ -368,6 +368,12 @@
         <a href="{{ url_for('desp_usuarios') }}" class="nav-link {% if request.endpoint == 'desp_usuarios' %}active{% endif %}">
           <span class="icon">👥</span> Usuários
         </a>
+        {% if not is_saas_tenant %}
+        <a href="{{ url_for('desp_migrar_saas') }}" class="nav-link {% if request.endpoint == 'desp_migrar_saas' %}active{% endif %}"
+           style="color:#f59e0b">
+          <span class="icon">🚀</span> Migrar para SaaS
+        </a>
+        {% endif %}
         {% endif %}
         <a href="/despachante/logout" class="nav-link">
           <span class="icon">🚪</span> Sair

@@ -8217,19 +8217,18 @@ def desp_login():
         # ── Modo legado: senha única (DESP_PASSWORD) ───────────────────────
         else:
             if senha == DESP_PASSWORD:
-                # Primeira vez: cria o admin automaticamente e migra
                 nome_user = request.form.get('usuario', '').strip() or 'Diogo'
-                novo_id = desp_criar_usuario(
-                    nome=nome_user,
-                    usuario=login or 'diogo',
-                    senha_hash=generate_password_hash(senha),
-                    role='admin'
-                )
                 session['desp_logged']   = True
-                session['desp_user_id']  = novo_id
                 session['desp_usuario']  = nome_user
                 session['desp_is_admin'] = True
-                log.info(f'[Desp] Migração para multi-usuário: admin "{nome_user}" criado automaticamente')
+
+                # Se já migrou para SaaS, usa o banco do tenant automaticamente
+                tenant_id = _desp_direct_config('desp_saas_tenant_id')
+                if tenant_id:
+                    session['desp_saas_user_id'] = int(tenant_id)
+                    session['desp_saas_name']    = nome_user
+                    log.info(f'[Desp] Login direto → usando tenant {tenant_id}')
+
                 return redirect('/despachante/')
             else:
                 erro = 'Senha incorreta.'
@@ -8245,6 +8244,102 @@ def desp_logout():
         session.pop(k, None)
     return redirect('/amigo-despachante/entrar' if saas else '/despachante/login')
 
+
+
+# ── Fase 4: Migração do Diogo para conta SaaS ────────────────────────────────
+
+def _desp_direct_config(chave: str):
+    """Lê config diretamente do desp.db fixo, ignorando contexto de tenant."""
+    from desp_db import DB_PATH as _FIXED_DB
+    import sqlite3 as _sq3
+    try:
+        c = _sq3.connect(_FIXED_DB)
+        r = c.execute("SELECT valor FROM config WHERE chave=?", (chave,)).fetchone()
+        c.close()
+        return r[0] if r else None
+    except Exception:
+        return None
+
+
+def _desp_direct_set_config(chave: str, valor: str):
+    """Salva config diretamente no desp.db fixo."""
+    from desp_db import DB_PATH as _FIXED_DB
+    import sqlite3 as _sq3
+    c = _sq3.connect(_FIXED_DB)
+    c.execute("""INSERT INTO config (chave, valor, atualizado_em)
+                 VALUES (?,?,CURRENT_TIMESTAMP)
+                 ON CONFLICT(chave) DO UPDATE SET valor=excluded.valor,
+                 atualizado_em=CURRENT_TIMESTAMP""", (chave, valor))
+    c.commit()
+    c.close()
+
+
+@app.route('/despachante/migrar', methods=['GET', 'POST'])
+@_desp_admin_required
+def desp_migrar_saas():
+    """Migra o desp.db de Diogo para uma conta SaaS isolada."""
+    import shutil
+    from desp_db import DB_PATH as _FIXED_DB
+
+    # Já migrado?
+    tenant_existente = _desp_direct_config('desp_saas_tenant_id')
+    if tenant_existente:
+        return desp_render('migrar.html', ja_migrado=True,
+                           tenant_id=tenant_existente, erro=None, sucesso=False)
+
+    erro = None
+    if request.method == 'POST':
+        nome   = request.form.get('nome', '').strip()
+        email  = request.form.get('email', '').strip().lower()
+        phone  = request.form.get('phone', '').strip()
+        senha  = request.form.get('senha', '').strip()
+
+        if not all([nome, email, phone, senha]):
+            erro = 'Todos os campos são obrigatórios.'
+        elif len(senha) < 6:
+            erro = 'Senha deve ter pelo menos 6 caracteres.'
+        else:
+            # 1. Cria conta em despachante_users (saas.db)
+            phone_digits = ''.join(c for c in phone if c.isdigit())
+            now = datetime.now().isoformat()
+            trial = (datetime.now() + timedelta(days=36500)).isoformat()  # sem expiração
+            try:
+                conn_saas = get_saas_db()
+                cur = conn_saas.execute("""
+                    INSERT INTO despachante_users
+                        (name, email, phone, plan, active, password_hash, created_at, trial_ends, plan_active)
+                    VALUES (?,?,?,'profissional',1,?,?,?,1)
+                """, (nome, email, phone_digits, generate_password_hash(senha), now, trial))
+                tenant_id = cur.lastrowid
+                conn_saas.commit()
+                conn_saas.close()
+            except Exception as ex:
+                erro = f'Erro ao criar conta SaaS: {ex}'
+                return desp_render('migrar.html', erro=erro, sucesso=False,
+                                   ja_migrado=False, tenant_id=None)
+
+            # 2. Copia desp.db → desp_<id>.db
+            destino = _desp_tenant_db_path(tenant_id)
+            try:
+                if not os.path.exists(destino):
+                    shutil.copy2(_FIXED_DB, destino)
+                    log.info(f'[Migração] {_FIXED_DB} → {destino}')
+                else:
+                    log.info(f'[Migração] {destino} já existe, mantido.')
+            except Exception as ex:
+                erro = f'Erro ao copiar banco de dados: {ex}'
+                return desp_render('migrar.html', erro=erro, sucesso=False,
+                                   ja_migrado=False, tenant_id=None)
+
+            # 3. Salva tenant_id no desp.db para o login direto reconhecer
+            _desp_direct_set_config('desp_saas_tenant_id', str(tenant_id))
+
+            log.info(f'[Migração] Concluída: Diogo → tenant {tenant_id}')
+            return desp_render('migrar.html', sucesso=True, tenant_id=tenant_id,
+                               ja_migrado=False, erro=None, email=email)
+
+    return desp_render('migrar.html', erro=erro, sucesso=False,
+                       ja_migrado=False, tenant_id=None)
 
 
 # ── Admin Login (fallback para acesso admin via DESP_ADMIN_PASSWORD) ──────────

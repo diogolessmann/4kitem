@@ -1,0 +1,94 @@
+{% extends "despachante/base.html" %}
+{% block title %}Migração SaaS — Despachante{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>🚀 Migração para Conta SaaS</h1>
+</div>
+
+{% if ja_migrado %}
+<div class="card" style="max-width:560px;margin:0 auto;text-align:center">
+  <div style="font-size:48px;margin-bottom:16px">✅</div>
+  <h2 style="margin-bottom:8px">Sistema já migrado!</h2>
+  <p style="color:var(--text-muted);margin-bottom:20px">
+    Sua conta SaaS está ativa (Tenant ID: <code>{{ tenant_id }}</code>).
+    Você pode fazer login em ambos os sistemas.
+  </p>
+  <div style="display:flex;gap:12px;justify-content:center">
+    <a href="/despachante/" class="btn btn-primary">Ir para o Dashboard</a>
+    <a href="/amigo-despachante/entrar" class="btn btn-secondary">Login SaaS</a>
+  </div>
+</div>
+
+{% elif sucesso %}
+<div class="card" style="max-width:560px;margin:0 auto;text-align:center">
+  <div style="font-size:48px;margin-bottom:16px">🎉</div>
+  <h2 style="margin-bottom:8px">Migração concluída!</h2>
+  <p style="color:var(--text-muted);margin-bottom:4px">
+    Seu banco de dados foi copiado com sucesso para a conta SaaS <strong>#{{ tenant_id }}</strong>.
+  </p>
+  <p style="color:var(--text-muted);margin-bottom:20px">
+    A partir de agora, use o login SaaS em
+    <code>/amigo-despachante/entrar</code> com o email <strong>{{ email }}</strong>.
+    O login direto em <code>/despachante/login</code> continua funcionando normalmente.
+  </p>
+  <div style="background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);
+              border-radius:10px;padding:16px;margin-bottom:20px;text-align:left">
+    <strong>O que foi feito:</strong>
+    <ul style="margin:8px 0 0 20px;color:var(--text-muted);font-size:14px">
+      <li>Conta criada em <code>despachante_users</code> (tenant #{{ tenant_id }})</li>
+      <li>Banco de dados copiado para <code>desp_{{ tenant_id }}.db</code></li>
+      <li>Login direto atualizado para usar o novo banco</li>
+    </ul>
+  </div>
+  <div style="display:flex;gap:12px;justify-content:center">
+    <a href="/despachante/" class="btn btn-primary">Ir para o Dashboard</a>
+    <a href="/amigo-despachante/entrar" class="btn btn-secondary">Testar Login SaaS</a>
+  </div>
+</div>
+
+{% else %}
+<div class="card" style="max-width:560px;margin:0 auto">
+  <p style="color:var(--text-muted);margin-bottom:24px;line-height:1.6">
+    Esta ação cria sua conta no sistema SaaS e copia todos os seus dados
+    (<strong>clientes, OS, veículos</strong>) para um banco isolado.
+    Após a migração, novos assinantes não terão acesso aos seus dados.
+  </p>
+
+  {% if erro %}
+  <div class="alert alert-danger">{{ erro }}</div>
+  {% endif %}
+
+  <form method="POST">
+    <div class="form-group">
+      <label>Seu nome completo</label>
+      <input type="text" name="nome" class="form-control"
+             placeholder="Ex: Diogo Kaue Lessmann" required
+             value="{{ desp.nome }}">
+    </div>
+    <div class="form-group">
+      <label>Email de acesso</label>
+      <input type="email" name="email" class="form-control"
+             placeholder="Ex: diogolessmann@gmail.com" required>
+    </div>
+    <div class="form-group">
+      <label>Telefone / WhatsApp (somente dígitos)</label>
+      <input type="text" name="phone" class="form-control"
+             placeholder="Ex: 47991011351" required
+             value="{{ desp.whatsapp }}">
+    </div>
+    <div class="form-group">
+      <label>Senha de acesso SaaS (mín. 6 caracteres)</label>
+      <input type="password" name="senha" class="form-control" required minlength="6">
+    </div>
+    <div style="background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);
+                border-radius:8px;padding:14px;margin-bottom:20px;font-size:13px;color:#fcd34d">
+      ⚠️ Esta operação <strong>não pode ser desfeita</strong>.
+      Certifique-se de que o Railway está saudável antes de prosseguir.
+    </div>
+    <button type="submit" class="btn btn-primary" style="width:100%">
+      🚀 Executar Migração
+    </button>
+  </form>
+</div>
+{% endif %}
+{% endblock %}
