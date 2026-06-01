@@ -361,14 +361,19 @@
         <a href="{{ url_for('desp_backup') }}" class="nav-link" title="Baixar backup ZIP completo">
           <span class="icon">💾</span> Backup
         </a>
+        {% if session.get('desp_is_admin') %}
+        <a href="{{ url_for('desp_usuarios') }}" class="nav-link {% if request.endpoint == 'desp_usuarios' %}active{% endif %}">
+          <span class="icon">👥</span> Usuários
+        </a>
+        {% endif %}
         <a href="/despachante/logout" class="nav-link">
           <span class="icon">🚪</span> Sair
         </a>
       </div>
     </nav>
     <div class="sidebar-footer">
-      <strong>{{ desp.nome | title }}</strong>
-      Cred. {{ desp.credencial }} · {{ desp.cidade }}
+      <strong>{{ session.get('desp_usuario') or desp.nome | title }}</strong>
+      <span style="font-size:11px;opacity:.6">{{ '🔑 Admin' if session.get('desp_is_admin') else '👤 Operador' }}</span>
     </div>
   </aside>
 

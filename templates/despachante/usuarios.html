@@ -1,0 +1,154 @@
+{% extends "despachante/base.html" %}
+{% block title %}Usuários — Despachante Lessmann{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>👥 Usuários do Sistema</h1>
+  <button class="btn btn-primary" onclick="document.getElementById('modal-novo').style.display='flex'">+ Novo Usuário</button>
+</div>
+
+{% with msgs = get_flashed_messages(with_categories=true) %}
+  {% for cat, msg in msgs %}
+    <div class="alert alert-{{ 'danger' if cat == 'erro' else 'success' }}">{{ msg }}</div>
+  {% endfor %}
+{% endwith %}
+
+<div class="card">
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Nome</th>
+        <th>Login</th>
+        <th>Perfil</th>
+        <th>Status</th>
+        <th>Último acesso</th>
+        <th>Ações</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for u in usuarios %}
+      <tr id="row-{{ u.id }}" {% if not u.ativo %}style="opacity:.5"{% endif %}>
+        <td><strong>{{ u.nome }}</strong></td>
+        <td><code>{{ u.usuario }}</code></td>
+        <td>
+          <span class="badge {% if u.role == 'admin' %}badge-purple{% else %}badge-blue{% endif %}">
+            {{ '🔑 Admin' if u.role == 'admin' else '👤 Operador' }}
+          </span>
+        </td>
+        <td>
+          <span class="badge {{ 'badge-green' if u.ativo else 'badge-red' }}">
+            {{ 'Ativo' if u.ativo else 'Inativo' }}
+          </span>
+        </td>
+        <td style="font-size:12px;color:var(--text-muted)">
+          {{ u.ultimo_login[:16].replace('T',' ') if u.ultimo_login else '—' }}
+        </td>
+        <td>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            {% if u.id != session.get('desp_user_id') %}
+            <button class="btn btn-sm {{ 'btn-warning' if u.ativo else 'btn-success' }}"
+                    onclick="toggleUsuario({{ u.id }}, {{ 'false' if u.ativo else 'true' }})">
+              {{ 'Desativar' if u.ativo else 'Ativar' }}
+            </button>
+            {% endif %}
+            <button class="btn btn-sm btn-secondary"
+                    onclick="resetSenha({{ u.id }}, '{{ u.nome }}')">
+              🔒 Nova Senha
+            </button>
+          </div>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="6" style="text-align:center;color:var(--text-muted)">Nenhum usuário cadastrado.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- Modal Novo Usuário -->
+<div id="modal-novo" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:999;align-items:center;justify-content:center">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:28px;width:360px;max-width:95vw">
+    <h3 style="margin-bottom:20px">Novo Usuário</h3>
+    <form method="POST" action="/despachante/usuarios/novo">
+      <div class="form-group">
+        <label>Nome completo</label>
+        <input type="text" name="nome" class="form-control" placeholder="Ex: Thalia Souza" required>
+      </div>
+      <div class="form-group">
+        <label>Login (usuário)</label>
+        <input type="text" name="usuario" class="form-control" placeholder="Ex: thalia" required>
+      </div>
+      <div class="form-group">
+        <label>Senha (mín. 6 caracteres)</label>
+        <input type="password" name="senha" class="form-control" required minlength="6">
+      </div>
+      <div class="form-group">
+        <label>Perfil</label>
+        <select name="role" class="form-control">
+          <option value="operador">👤 Operador — acesso normal</option>
+          <option value="admin">🔑 Admin — acesso total</option>
+        </select>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:20px">
+        <button type="submit" class="btn btn-primary" style="flex:1">Criar Usuário</button>
+        <button type="button" class="btn btn-secondary" onclick="document.getElementById('modal-novo').style.display='none'">Cancelar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal Reset Senha -->
+<div id="modal-senha" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:999;align-items:center;justify-content:center">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:28px;width:320px;max-width:95vw">
+    <h3 style="margin-bottom:4px">Redefinir Senha</h3>
+    <p id="modal-senha-nome" style="color:var(--text-muted);font-size:13px;margin-bottom:16px"></p>
+    <div class="form-group">
+      <label>Nova senha (mín. 6 caracteres)</label>
+      <input type="password" id="nova-senha" class="form-control" minlength="6">
+    </div>
+    <div style="display:flex;gap:8px;margin-top:20px">
+      <button class="btn btn-primary" style="flex:1" onclick="confirmarSenha()">Salvar</button>
+      <button class="btn btn-secondary" onclick="document.getElementById('modal-senha').style.display='none'">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let _resetUid = null;
+
+function toggleUsuario(uid, ativo) {
+  if (!confirm(ativo ? 'Ativar este usuário?' : 'Desativar este usuário?')) return;
+  fetch(`/despachante/usuarios/${uid}/toggle`, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ativo})
+  }).then(r => r.json()).then(d => {
+    if (d.ok) location.reload();
+    else alert(d.erro || 'Erro');
+  });
+}
+
+function resetSenha(uid, nome) {
+  _resetUid = uid;
+  document.getElementById('modal-senha-nome').textContent = nome;
+  document.getElementById('nova-senha').value = '';
+  document.getElementById('modal-senha').style.display = 'flex';
+}
+
+function confirmarSenha() {
+  const senha = document.getElementById('nova-senha').value.trim();
+  if (senha.length < 6) { alert('Senha deve ter pelo menos 6 caracteres.'); return; }
+  fetch(`/despachante/usuarios/${_resetUid}/senha`, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({senha})
+  }).then(r => r.json()).then(d => {
+    if (d.ok) {
+      document.getElementById('modal-senha').style.display = 'none';
+      alert('Senha redefinida com sucesso!');
+    } else {
+      alert(d.erro || 'Erro ao redefinir senha');
+    }
+  });
+}
+</script>
+{% endblock %}

@@ -464,6 +464,7 @@ def init_db():
             pass  # Já existe — ok
 
     conn.close()
+    init_usuarios_table()
 
 # ── Número de O.S. ───────────────────────────────────────────────────────────
 def _novo_numero_os(conn):
@@ -1988,3 +1989,83 @@ def revogar_token_os(os_id: int):
     )
     conn.commit()
     conn.close()
+
+
+# ── Usuários do sistema (multi-usuário) ──────────────────────────────────────
+
+def init_usuarios_table():
+    """Cria a tabela de usuários se não existir (chamado em init_db)."""
+    conn = get_conn()
+    conn.executescript("""
+        CREATE TABLE IF NOT EXISTS desp_usuarios (
+            id           INTEGER PRIMARY KEY AUTOINCREMENT,
+            nome         TEXT    NOT NULL,
+            usuario      TEXT    NOT NULL UNIQUE,
+            senha_hash   TEXT    NOT NULL,
+            role         TEXT    DEFAULT 'operador',
+            ativo        INTEGER DEFAULT 1,
+            criado_em    TEXT    DEFAULT CURRENT_TIMESTAMP,
+            ultimo_login TEXT
+        );
+        CREATE INDEX IF NOT EXISTS idx_desp_usuarios_login ON desp_usuarios(usuario);
+    """)
+    conn.commit()
+    conn.close()
+
+
+def criar_usuario(nome: str, usuario: str, senha_hash: str, role: str = 'operador') -> int:
+    conn = get_conn()
+    cur  = conn.execute(
+        "INSERT INTO desp_usuarios (nome, usuario, senha_hash, role) VALUES (?,?,?,?)",
+        (nome, usuario.lower().strip(), senha_hash, role)
+    )
+    conn.commit()
+    id_ = cur.lastrowid
+    conn.close()
+    return id_
+
+
+def get_usuario_por_login(usuario: str) -> dict | None:
+    conn = get_conn()
+    row  = conn.execute(
+        "SELECT * FROM desp_usuarios WHERE usuario=? AND ativo=1", (usuario.lower().strip(),)
+    ).fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+
+def listar_usuarios() -> list:
+    conn = get_conn()
+    rows = conn.execute(
+        "SELECT id, nome, usuario, role, ativo, criado_em, ultimo_login FROM desp_usuarios ORDER BY id"
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def toggle_usuario(user_id: int, ativo: bool):
+    conn = get_conn()
+    conn.execute("UPDATE desp_usuarios SET ativo=? WHERE id=?", (1 if ativo else 0, user_id))
+    conn.commit()
+    conn.close()
+
+
+def atualizar_senha_usuario(user_id: int, senha_hash: str):
+    conn = get_conn()
+    conn.execute("UPDATE desp_usuarios SET senha_hash=? WHERE id=?", (senha_hash, user_id))
+    conn.commit()
+    conn.close()
+
+
+def registrar_ultimo_login(user_id: int):
+    conn = get_conn()
+    conn.execute("UPDATE desp_usuarios SET ultimo_login=CURRENT_TIMESTAMP WHERE id=?", (user_id,))
+    conn.commit()
+    conn.close()
+
+
+def contar_usuarios() -> int:
+    conn = get_conn()
+    n = conn.execute("SELECT COUNT(*) FROM desp_usuarios").fetchone()[0]
+    conn.close()
+    return n

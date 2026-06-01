@@ -8019,6 +8019,14 @@ from desp_db import (
     toggle_checklist_item as desp_toggle_chk,
     add_checklist_item as desp_add_chk,
     remove_checklist_item as desp_remove_chk,
+    # Usuários
+    criar_usuario as desp_criar_usuario,
+    get_usuario_por_login as desp_get_usuario,
+    listar_usuarios as desp_listar_usuarios,
+    toggle_usuario as desp_toggle_usuario,
+    atualizar_senha_usuario as desp_atualizar_senha_usuario,
+    registrar_ultimo_login as desp_reg_login,
+    contar_usuarios as desp_contar_usuarios,
 )
 # ChromaDB desabilitado por padrão (evita OOM no Railway free tier)
 # Para habilitar: setar DESP_RAG_ENABLED=1 no ambiente
@@ -8107,34 +8115,121 @@ def desp_render(template, **ctx):
 def desp_login():
     erro = None
     if request.method == 'POST':
-        if request.form.get('senha') == DESP_PASSWORD:
-            session['desp_logged'] = True
-            # Salva nome do usuário para log de movimentações
-            _nome_user = request.form.get('usuario', '').strip()
-            session['desp_usuario'] = _nome_user if _nome_user else 'Sistema'
-            return redirect('/despachante/')
-        erro = 'Senha incorreta.'
+        login = (request.form.get('usuario') or '').strip().lower()
+        senha = request.form.get('senha') or ''
+
+        # ── Modo multi-usuário (tabela desp_usuarios populada) ─────────────
+        if desp_contar_usuarios() > 0:
+            u = desp_get_usuario(login)
+            if not u:
+                erro = 'Usuário não encontrado.'
+            elif not check_password_hash(u['senha_hash'], senha):
+                erro = 'Senha incorreta.'
+            else:
+                session['desp_logged']   = True
+                session['desp_user_id']  = u['id']
+                session['desp_usuario']  = u['nome']
+                session['desp_is_admin'] = (u['role'] == 'admin')
+                desp_reg_login(u['id'])
+                return redirect('/despachante/')
+
+        # ── Modo legado: senha única (DESP_PASSWORD) ───────────────────────
+        else:
+            if senha == DESP_PASSWORD:
+                # Primeira vez: cria o admin automaticamente e migra
+                nome_user = request.form.get('usuario', '').strip() or 'Diogo'
+                novo_id = desp_criar_usuario(
+                    nome=nome_user,
+                    usuario=login or 'diogo',
+                    senha_hash=generate_password_hash(senha),
+                    role='admin'
+                )
+                session['desp_logged']   = True
+                session['desp_user_id']  = novo_id
+                session['desp_usuario']  = nome_user
+                session['desp_is_admin'] = True
+                log.info(f'[Desp] Migração para multi-usuário: admin "{nome_user}" criado automaticamente')
+                return redirect('/despachante/')
+            else:
+                erro = 'Senha incorreta.'
+
     return render_template('despachante/login.html', erro=erro)
+
 
 @app.route('/despachante/logout')
 def desp_logout():
-    session.pop('desp_logged', None)
-    session.pop('desp_is_admin', None)
+    for k in ('desp_logged', 'desp_user_id', 'desp_usuario', 'desp_is_admin'):
+        session.pop(k, None)
     return redirect('/despachante/login')
 
 
-# ── Admin Login (para áreas restritas como Tabela de Preços) ──────────────────
+
+# ── Admin Login (fallback para acesso admin via DESP_ADMIN_PASSWORD) ──────────
 @app.route('/despachante/admin-login', methods=['GET', 'POST'])
 @_desp_login_required
 def desp_admin_login():
+    if session.get('desp_is_admin'):
+        return redirect(request.args.get('next') or '/despachante/precos')
     erro = None
     next_url = request.args.get('next') or request.form.get('next') or '/despachante/precos'
     if request.method == 'POST':
-        if request.form.get('senha') == DESP_ADMIN_PASSWORD:
+        if DESP_ADMIN_PASSWORD and request.form.get('senha') == DESP_ADMIN_PASSWORD:
             session['desp_is_admin'] = True
             return redirect(next_url)
         erro = 'Senha de administrador incorreta.'
     return render_template('despachante/admin_login.html', erro=erro, next=next_url)
+
+
+# ── Gerenciamento de Usuários (admin only) ────────────────────────────────────
+@app.route('/despachante/usuarios')
+@_desp_admin_required
+def desp_usuarios():
+    usuarios = desp_listar_usuarios()
+    return desp_render('usuarios.html', usuarios=usuarios)
+
+
+@app.route('/despachante/usuarios/novo', methods=['POST'])
+@_desp_admin_required
+def desp_usuario_novo():
+    nome   = request.form.get('nome', '').strip()
+    login  = request.form.get('usuario', '').strip().lower()
+    senha  = request.form.get('senha', '').strip()
+    role   = request.form.get('role', 'operador')
+    erros  = []
+    if not nome:  erros.append('Nome obrigatório.')
+    if not login: erros.append('Usuário obrigatório.')
+    if len(senha) < 6: erros.append('Senha deve ter pelo menos 6 caracteres.')
+    if role not in ('admin', 'operador'): role = 'operador'
+    if erros:
+        from flask import flash
+        [flash(e, 'erro') for e in erros]
+        return redirect(url_for('desp_usuarios'))
+    try:
+        desp_criar_usuario(nome, login, generate_password_hash(senha), role)
+    except Exception:
+        from flask import flash
+        flash('Usuário já existe com esse login.', 'erro')
+    return redirect(url_for('desp_usuarios'))
+
+
+@app.route('/despachante/usuarios/<int:uid>/toggle', methods=['POST'])
+@_desp_admin_required
+def desp_usuario_toggle(uid):
+    if uid == session.get('desp_user_id'):
+        return jsonify({'erro': 'Você não pode desativar sua própria conta'}), 400
+    ativo = request.get_json(silent=True) or {}
+    desp_toggle_usuario(uid, bool(ativo.get('ativo', True)))
+    return jsonify({'ok': True})
+
+
+@app.route('/despachante/usuarios/<int:uid>/senha', methods=['POST'])
+@_desp_admin_required
+def desp_usuario_reset_senha(uid):
+    nova = (request.get_json(silent=True) or {}).get('senha', '').strip()
+    if len(nova) < 6:
+        return jsonify({'erro': 'Senha deve ter pelo menos 6 caracteres'}), 400
+    desp_atualizar_senha_usuario(uid, generate_password_hash(nova))
+    return jsonify({'ok': True})
 
 
 # ── Tutorial ──────────────────────────────────────────────────────────────────
