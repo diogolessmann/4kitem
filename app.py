@@ -11328,9 +11328,7 @@ def _sz_uid():
 
 @app.route('/slotzap')
 def slotzap_landing():
-    if session.get('sz_user_id'):
-        return redirect('/slotzap/app')
-    return render_template('slotzap/entrar.html', erro=None)
+    return redirect('/slotzap/entrar')
 
 
 @app.route('/slotzap/entrar', methods=['GET', 'POST'])
