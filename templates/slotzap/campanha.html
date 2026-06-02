@@ -285,6 +285,11 @@ input:focus{border-color:#6366f1}
       <input type="text" id="res-nome" placeholder="Ex: João Silva" autocomplete="off">
     </div>
     <div class="form-group">
+      <label>CPF do cliente * (exigido pelo Asaas p/ gerar PIX)</label>
+      <input type="text" id="res-cpf" placeholder="000.000.000-00" maxlength="14"
+             oninput="this.value=this.value.replace(/\D/g,'').replace(/(\d{3})(\d)/,'$1.$2').replace(/(\d{3})(\d)/,'$1.$2').replace(/(\d{3})(\d{1,2})$/,'$1-$2')">
+    </div>
+    <div class="form-group">
       <label>WhatsApp (opcional)</label>
       <input type="text" id="res-tel" placeholder="Ex: 47991234567">
     </div>
@@ -370,8 +375,10 @@ function clicarSlot(id, num, status, nome, tel, qr, copia) {
 
 async function confirmarReserva() {
   const nome = document.getElementById('res-nome').value.trim();
+  const cpf  = document.getElementById('res-cpf').value.replace(/\D/g,'');
   const tel  = document.getElementById('res-tel').value.trim();
   if (!nome) { alert('Informe o nome do cliente.'); return; }
+  if (cpf.length !== 11) { alert('Informe um CPF válido (11 dígitos).'); return; }
 
   document.querySelector('#modal-reservar .btn-primary').textContent = '⏳ Gerando PIX...';
   document.querySelector('#modal-reservar .btn-primary').disabled = true;
@@ -379,7 +386,7 @@ async function confirmarReserva() {
   const r = await fetch(`/slotzap/campanha/${CAMP_ID}/reservar`, {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({numero: _slotNum, nome, tel})
+    body: JSON.stringify({numero: _slotNum, nome, cpf, tel})
   }).then(r => r.json());
 
   if (r.erro) { alert(r.erro); location.reload(); return; }

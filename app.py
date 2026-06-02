@@ -11710,9 +11710,9 @@ def slotzap_pagar(slot_id):
     if not slot:
         conn.close()
         return jsonify({'erro': 'Slot não encontrado'}), 404
-    conn.execute("UPDATE slotzap_slots SET status='pago', pago_em=? WHERE id=?",
-                 (datetime.now().isoformat(), slot_id))
-    conn.commit(); conn.close()
+    conn.close()
+    # Usa o helper: marca pago (idempotente) e notifica o grupo, como no fluxo automático
+    _sz_marcar_pago(slot_id)
     return jsonify({'ok': True})
 
 
@@ -11914,91 +11914,6 @@ def _sz_marcar_pago(slot_id):
         except Exception as _wpp_err:
             log.warning(f'[SlotZap] Erro ao notificar grupo: {_wpp_err}')
     return True
-
-
-@app.route('/slotzap/debug-pix')
-@_sz_login_required
-def slotzap_debug_pix():
-    """Debug: testa o fluxo completo de PIX usando o mesmo código de produção."""
-    cpf_test = ''.join(c for c in (request.args.get('cpf', '') or '') if c.isdigit())
-    customer_id = _sz_criar_cliente_asaas('Teste SlotZap Debug', '', cpf_test)
-
-    r_pagamento = None
-    r_qrcode    = None
-
-    # Busca dados do cliente criado para mostrar no debug
-    r_cliente = _asaas_req('GET', f'/customers/{customer_id}') if customer_id else {'erro': 'cliente nao criado'}
-
-    if customer_id:
-        from datetime import datetime as _dt, timedelta as _td
-        venc = (_dt.now() + _td(days=1)).strftime('%Y-%m-%d')
-        r_pagamento = _asaas_req('POST', '/payments', {
-            'customer':          customer_id,
-            'billingType':       'PIX',
-            'value':             5.00,
-            'dueDate':           venc,
-            'description':       'SlotZap debug PIX',
-            'externalReference': 'debug_test',
-        })
-        charge_id = r_pagamento.get('id', '')
-        if charge_id:
-            r_qrcode = _asaas_req('GET', f'/payments/{charge_id}/pixQrCode')
-
-    return jsonify({
-        'customer_id': customer_id,
-        'cliente':     r_cliente,
-        'pagamento':   r_pagamento,
-        'qrcode':      r_qrcode,
-        'tem_qr':      bool(r_qrcode and r_qrcode.get('encodedImage')),
-        'tem_copia':   bool(r_qrcode and r_qrcode.get('payload')),
-    })
-
-
-@app.route('/slotzap/campanha/<int:camp_id>/bot-info')
-@_sz_login_required
-def slotzap_bot_info(camp_id):
-    """Retorna o número de telefone do bot WhatsApp conectado."""
-    # Tenta múltiplos nomes de variável (compatibilidade Railway)
-    evo_url = (os.environ.get('EVO_URL') or os.environ.get('EVOLUTION_API_URL') or '').rstrip('/')
-    evo_key = os.environ.get('EVO_KEY') or os.environ.get('EVOLUTION_API_KEY') or ''
-    inst    = os.environ.get('EVO_INSTANCE') or os.environ.get('EVOLUTION_INSTANCE') or ''
-    if not evo_url or not inst:
-        return jsonify({'numero': None, 'debug': f'EVO_URL={bool(evo_url)} INST={bool(inst)}'})
-    headers = {'apikey': evo_key}
-    numero  = None
-    try:
-        # Tentativa 1: fetchInstances (lista todas)
-        ri = requests.get(f'{evo_url}/instance/fetchInstances', headers=headers, timeout=8)
-        data = ri.json() if ri.content else []
-        if isinstance(data, list):
-            for item in data:
-                if not isinstance(item, dict): continue
-                inner = item.get('instance', item)
-                iname = (inner.get('instanceName', '') if isinstance(inner, dict) else '') or item.get('instanceName', '')
-                owner = (inner.get('owner', '')       if isinstance(inner, dict) else '') or item.get('owner', '')
-                if iname == inst and owner:
-                    numero = owner.split('@')[0]
-                    if numero.startswith('55') and len(numero) > 11:
-                        numero = numero[2:]
-                    break
-    except Exception:
-        pass
-
-    if not numero:
-        try:
-            # Tentativa 2: connectionState — algumas versões retornam o número aqui
-            rc = requests.get(f'{evo_url}/instance/connectionState/{inst}', headers=headers, timeout=8)
-            cd = rc.json() if rc.content else {}
-            inner = cd.get('instance', cd) if isinstance(cd, dict) else {}
-            owner = inner.get('owner', '') if isinstance(inner, dict) else ''
-            if owner and '@' in owner:
-                numero = owner.split('@')[0]
-                if numero.startswith('55') and len(numero) > 11:
-                    numero = numero[2:]
-        except Exception:
-            pass
-
-    return jsonify({'numero': numero, 'instance': inst, 'evo_url': evo_url})
 
 
 @app.route('/slotzap/campanha/<int:camp_id>/grupos')
