@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{ camp.nome }} — SlotZap</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',sans-serif;background:#09090f;color:#f0f0ff;min-height:100vh}
+
+.header{background:#13131f;border-bottom:1px solid rgba(255,255,255,.07);padding:16px 20px;text-align:center}
+.logo{font-size:13px;color:#6666aa;margin-bottom:6px}
+.camp-nome{font-size:20px;font-weight:800}
+.camp-desc{font-size:13px;color:#8888aa;margin-top:4px;line-height:1.5}
+.camp-preco{font-size:22px;font-weight:800;color:#6366f1;margin-top:8px}
+
+.stats{display:flex;justify-content:center;gap:12px;padding:16px 20px;flex-wrap:wrap}
+.stat{background:#13131f;border:1px solid rgba(255,255,255,.07);border-radius:10px;
+      padding:10px 16px;text-align:center;min-width:80px}
+.stat-val{font-size:20px;font-weight:800}
+.stat-lbl{font-size:10px;color:#6666aa;margin-top:2px}
+.green{color:#22c55e}.yellow{color:#f59e0b}.gray{color:#6666aa}
+
+.legenda{display:flex;justify-content:center;gap:14px;padding:0 20px 12px;flex-wrap:wrap}
+.leg{display:flex;align-items:center;gap:5px;font-size:11px;color:#8888aa}
+.leg-box{width:16px;height:16px;border-radius:3px}
+
+.grid-wrap{padding:12px 16px 100px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(48px,1fr));gap:5px}
+.slot{border-radius:8px;height:48px;display:flex;align-items:center;justify-content:center;
+      font-size:12px;font-weight:700;border:2px solid transparent;transition:.15s}
+.slot-disponivel{background:rgba(99,102,241,.1);border-color:rgba(99,102,241,.25);
+                  color:#818cf8;cursor:pointer}
+.slot-disponivel:hover,.slot-disponivel:active{background:rgba(99,102,241,.3);border-color:#6366f1;transform:scale(1.05)}
+.slot-reservado{background:rgba(245,158,11,.1);border-color:rgba(245,158,11,.2);color:#f59e0b;cursor:not-allowed}
+.slot-pago{background:rgba(34,197,94,.1);border-color:rgba(34,197,94,.2);color:#22c55e;cursor:not-allowed;font-size:10px}
+
+.footer-fixed{position:fixed;bottom:0;left:0;right:0;background:#13131f;
+               border-top:1px solid rgba(255,255,255,.07);padding:12px 16px;text-align:center}
+.footer-txt{font-size:11px;color:#44447a;margin-bottom:4px}
+.badge-live{display:inline-flex;align-items:center;gap:5px;background:rgba(34,197,94,.1);
+             border:1px solid rgba(34,197,94,.2);border-radius:20px;padding:3px 10px;
+             font-size:11px;color:#22c55e;font-weight:600}
+.pulse{width:6px;height:6px;background:#22c55e;border-radius:50%;animation:pulse 1.5s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* Modal */
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:100;
+          align-items:flex-end;justify-content:center;padding:0}
+.overlay.open{display:flex}
+.modal{background:#13131f;border:1px solid rgba(99,102,241,.3);border-radius:20px 20px 0 0;
+        padding:28px 24px 36px;width:100%;max-width:480px}
+.modal h3{font-size:17px;font-weight:800;margin-bottom:4px}
+.modal-sub{font-size:13px;color:#6666aa;margin-bottom:20px}
+.form-group{margin-bottom:14px}
+label{display:block;font-size:12px;font-weight:600;color:#8888aa;margin-bottom:5px}
+input{width:100%;background:#0a0a15;border:1px solid rgba(255,255,255,.1);border-radius:9px;
+      color:#f0f0ff;padding:12px 14px;font-size:15px;font-family:inherit;outline:none}
+input:focus{border-color:#6366f1}
+.btn-pix{width:100%;padding:14px;border-radius:10px;border:none;margin-top:8px;
+          background:linear-gradient(135deg,#6366f1,#7c3aed);color:#fff;
+          font-size:15px;font-weight:700;cursor:pointer;font-family:inherit}
+.btn-pix:disabled{opacity:.5;cursor:not-allowed}
+.btn-cancel{width:100%;padding:11px;border-radius:10px;border:none;margin-top:8px;
+             background:rgba(255,255,255,.06);color:#8888aa;font-size:14px;
+             cursor:pointer;font-family:inherit}
+
+/* QR Modal */
+.qr-modal{background:#13131f;border:1px solid rgba(99,102,241,.3);border-radius:20px 20px 0 0;
+           padding:28px 24px 36px;width:100%;max-width:480px;text-align:center}
+.qr-modal h3{font-size:16px;font-weight:800;margin-bottom:4px}
+.qr-img{width:200px;height:200px;border-radius:12px;background:#fff;padding:10px;
+         margin:16px auto;display:block}
+.preco-label{font-size:24px;font-weight:800;color:#6366f1;margin:8px 0 4px}
+.copia-cola{background:#0a0a15;border:1px solid rgba(255,255,255,.1);border-radius:9px;
+             padding:12px 14px;font-size:11px;word-break:break-all;color:#8888aa;
+             cursor:pointer;text-align:left;margin:8px 0}
+.copia-cola:active{border-color:#6366f1}
+.instrucao{font-size:12px;color:#6666aa;margin:8px 0;line-height:1.6}
+.btn-ok{width:100%;padding:13px;border-radius:10px;border:none;margin-top:12px;
+         background:rgba(34,197,94,.15);color:#22c55e;border:1px solid rgba(34,197,94,.3);
+         font-size:14px;font-weight:700;cursor:pointer;font-family:inherit}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">🎯 SlotZap</div>
+  <div class="camp-nome">{{ camp.nome }}</div>
+  {% if camp.descricao %}
+  <div class="camp-desc">{{ camp.descricao }}</div>
+  {% endif %}
+  <div class="camp-preco">R$ {{ '%.2f'|format(camp.preco) }}</div>
+</div>
+
+<div class="stats">
+  <div class="stat"><div class="stat-val green" id="cnt-pagos">{{ pagos }}</div><div class="stat-lbl">✅ Vendidos</div></div>
+  <div class="stat"><div class="stat-val yellow" id="cnt-res">{{ reservados }}</div><div class="stat-lbl">⏳ Reservados</div></div>
+  <div class="stat"><div class="stat-val gray" id="cnt-liv">{{ disponiveis }}</div><div class="stat-lbl">⬜ Disponíveis</div></div>
+</div>
+
+<div class="legenda">
+  <div class="leg"><div class="leg-box" style="background:rgba(99,102,241,.2);border:2px solid rgba(99,102,241,.4)"></div> Disponível — clique para comprar</div>
+  <div class="leg"><div class="leg-box" style="background:rgba(245,158,11,.2);border:2px solid rgba(245,158,11,.4)"></div> Reservado</div>
+  <div class="leg"><div class="leg-box" style="background:rgba(34,197,94,.2);border:2px solid rgba(34,197,94,.4)"></div> Pago ✓</div>
+</div>
+
+<div class="grid-wrap">
+  <div class="grid" id="grid">
+    {% for s in slots %}
+    <div class="slot slot-{{ s.status }}" id="slot-{{ s.numero }}"
+         {% if s.status == 'disponivel' %}onclick="selecionarSlot({{ s.numero }})"{% endif %}>
+      {{ s.numero }}{% if s.status == 'pago' %}<br>✓{% endif %}
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<div class="footer-fixed">
+  <div class="badge-live"><div class="pulse"></div> Ao vivo — atualiza automaticamente</div>
+</div>
+
+<!-- Modal: Escolher número -->
+<div class="overlay" id="modal-escolha">
+  <div class="modal">
+    <h3>🎯 Slot <span id="slot-escolhido"></span></h3>
+    <div class="modal-sub">Preencha seus dados e receba o PIX na hora</div>
+    <div class="form-group">
+      <label>Seu nome *</label>
+      <input type="text" id="inp-nome" placeholder="Ex: João Silva" autocomplete="name">
+    </div>
+    <div class="form-group">
+      <label>WhatsApp (opcional)</label>
+      <input type="tel" id="inp-tel" placeholder="Ex: 47991234567" autocomplete="tel">
+    </div>
+    <button class="btn-pix" id="btn-gerar" onclick="gerarPix()">⚡ Gerar PIX — R$ {{ '%.2f'|format(camp.preco) }}</button>
+    <button class="btn-cancel" onclick="fecharModal()">Cancelar</button>
+  </div>
+</div>
+
+<!-- Modal: QR Code PIX -->
+<div class="overlay" id="modal-pix">
+  <div class="qr-modal">
+    <h3>💰 Pague agora e o slot é seu!</h3>
+    <div class="preco-label">R$ {{ '%.2f'|format(camp.preco) }}</div>
+    <img id="qr-img" class="qr-img" src="" alt="QR Code PIX">
+    <div class="instrucao">Escaneie com o app do seu banco<br>ou copie o código abaixo:</div>
+    <div class="copia-cola" id="qr-copia" onclick="copiar()">Carregando...</div>
+    <div style="font-size:11px;color:#44447a;margin-bottom:4px">Toque para copiar · Válido por 24h</div>
+    <div class="instrucao" style="color:#f59e0b">
+      ⏳ Após o pagamento, o slot vira <strong>verde</strong> automaticamente
+    </div>
+    <button class="btn-ok" onclick="fecharModal(); location.reload()">✅ Já paguei — ver status</button>
+  </div>
+</div>
+
+<script>
+const TOKEN   = '{{ token }}';
+let _slotSel  = null;
+
+function selecionarSlot(num) {
+  _slotSel = num;
+  document.getElementById('slot-escolhido').textContent = '#' + num;
+  document.getElementById('inp-nome').value = '';
+  document.getElementById('inp-tel').value  = '';
+  document.getElementById('btn-gerar').disabled = false;
+  document.getElementById('btn-gerar').textContent = '⚡ Gerar PIX — R$ {{ '%.2f'|format(camp.preco) }}';
+  abrirModal('modal-escolha');
+}
+
+async function gerarPix() {
+  const nome = document.getElementById('inp-nome').value.trim();
+  const tel  = document.getElementById('inp-tel').value.trim();
+  if (!nome) { document.getElementById('inp-nome').focus(); return; }
+
+  const btn = document.getElementById('btn-gerar');
+  btn.disabled = true;
+  btn.textContent = '⏳ Gerando PIX...';
+
+  const r = await fetch(`/slotzap/p/${TOKEN}/reservar`, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({numero: _slotSel, nome, tel})
+  }).then(r => r.json());
+
+  if (r.erro) {
+    alert(r.erro);
+    btn.disabled = false;
+    btn.textContent = '⚡ Gerar PIX — R$ {{ '%.2f'|format(camp.preco) }}';
+    fecharModal();
+    atualizarGrid();
+    return;
+  }
+
+  fecharModal();
+
+  if (r.pix_qr) {
+    document.getElementById('qr-img').src  = 'data:image/png;base64,' + r.pix_qr;
+    document.getElementById('qr-copia').textContent = r.pix_copia || 'PIX gerado';
+    abrirModal('modal-pix');
+  } else {
+    alert('PIX gerado! Aguarde confirmação do pagamento.');
+    atualizarGrid();
+  }
+}
+
+function copiar() {
+  const txt = document.getElementById('qr-copia').textContent;
+  navigator.clipboard.writeText(txt).then(() => {
+    document.getElementById('qr-copia').textContent = '✅ Copiado! Cole no app do banco';
+    setTimeout(() => document.getElementById('qr-copia').textContent = txt, 2000);
+  });
+}
+
+function abrirModal(id) {
+  document.querySelectorAll('.overlay').forEach(m => m.classList.remove('open'));
+  document.getElementById(id).classList.add('open');
+}
+function fecharModal() {
+  document.querySelectorAll('.overlay').forEach(m => m.classList.remove('open'));
+}
+document.querySelectorAll('.overlay').forEach(m =>
+  m.addEventListener('click', e => { if (e.target === m) fecharModal(); })
+);
+
+// Polling — atualiza grid a cada 15 segundos
+async function atualizarGrid() {
+  try {
+    const d = await fetch(`/slotzap/p/${TOKEN}/status`).then(r => r.json());
+    if (!d.slots) return;
+    let pagos = 0, res = 0, liv = 0;
+    Object.entries(d.slots).forEach(([num, status]) => {
+      const el = document.getElementById('slot-' + num);
+      if (!el) return;
+      // Atualiza classe
+      el.className = 'slot slot-' + status;
+      if (status === 'disponivel') {
+        el.onclick = () => selecionarSlot(parseInt(num));
+        el.innerHTML = num;
+        liv++;
+      } else if (status === 'reservado') {
+        el.onclick = null;
+        el.innerHTML = num;
+        res++;
+      } else {
+        el.onclick = null;
+        el.innerHTML = num + '<br>✓';
+        pagos++;
+      }
+    });
+    document.getElementById('cnt-pagos').textContent = pagos;
+    document.getElementById('cnt-res').textContent   = res;
+    document.getElementById('cnt-liv').textContent   = liv;
+  } catch(e) {}
+}
+setInterval(atualizarGrid, 15000);
+</script>
+</body>
+</html>

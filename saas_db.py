@@ -746,7 +746,20 @@ def init_slotzap_db():
         CREATE INDEX IF NOT EXISTS idx_sz_slots_status ON slotzap_slots(status);
         CREATE INDEX IF NOT EXISTS idx_sz_slots_charge ON slotzap_slots(asaas_charge_id);
     ''')
-    conn.commit()
+    # Migrations suaves para SlotZap
+    _sz_migrations = [
+        "ALTER TABLE slotzap_campanhas ADD COLUMN token_publico TEXT DEFAULT ''",
+        "ALTER TABLE slotzap_campanhas ADD COLUMN grupo_wpp_id TEXT DEFAULT ''",
+        "ALTER TABLE slotzap_campanhas ADD COLUMN evo_instance TEXT DEFAULT ''",
+        "ALTER TABLE slotzap_campanhas ADD COLUMN msg_pagamento TEXT DEFAULT ''",
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_sz_camp_token ON slotzap_campanhas(token_publico)",
+    ]
+    for sql in _sz_migrations:
+        try:
+            conn.execute(sql)
+            conn.commit()
+        except Exception:
+            pass
     conn.close()
 
 

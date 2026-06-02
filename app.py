@@ -1748,19 +1748,59 @@ def webhook_asaas_global():
             conn.close()
 
     elif ref.startswith('sz_'):
-        # SlotZap — pagamento de slot avulso
-        # externalReference = sz_{slot_id}
+        # SlotZap — pagamento de slot avulso (externalReference = sz_{slot_id})
         try:
             slot_id = int(ref.split('_')[1])
             if ativar:
                 conn = get_saas_db()
+                # Marca slot como pago
                 conn.execute(
                     "UPDATE slotzap_slots SET status='pago', pago_em=? WHERE id=?",
                     (datetime.now().isoformat(), slot_id)
                 )
                 conn.commit()
+
+                # Busca dados para notificação WhatsApp
+                row = conn.execute('''
+                    SELECT s.numero, s.cliente_nome, s.cliente_tel,
+                           c.nome AS camp_nome, c.preco, c.grupo_wpp_id,
+                           c.evo_instance, c.msg_pagamento, c.id AS camp_id,
+                           (SELECT COUNT(*) FROM slotzap_slots WHERE campanha_id=c.id AND status="pago")      AS pagos,
+                           (SELECT COUNT(*) FROM slotzap_slots WHERE campanha_id=c.id AND status="disponivel") AS livres,
+                           c.total_slots
+                    FROM slotzap_slots s
+                    JOIN slotzap_campanhas c ON c.id = s.campanha_id
+                    WHERE s.id=?
+                ''', (slot_id,)).fetchone()
                 conn.close()
-                log.info(f'[SlotZap] Slot {slot_id} marcado como PAGO via webhook Asaas')
+
+                if row:
+                    row = dict(row)
+                    log.info(f'[SlotZap] Slot #{row["numero"]} — {row["camp_nome"]} — PAGO ({row["cliente_nome"]})')
+
+                    # Notifica grupo WhatsApp se configurado
+                    grupo_id = row.get('grupo_wpp_id', '').strip()
+                    instance = row.get('evo_instance', '').strip() or os.environ.get('EVO_INSTANCE', '')
+                    evo_url  = os.environ.get('EVO_URL', '').rstrip('/')
+                    evo_key  = os.environ.get('EVO_KEY', '')
+
+                    if grupo_id and instance and evo_url:
+                        tpl = row.get('msg_pagamento') or (
+                            f"✅ *Slot #{row['numero']} — PAGO!*\n"
+                            f"👤 {row['cliente_nome']}\n"
+                            f"🎯 {row['camp_nome']}\n\n"
+                            f"📊 {row['pagos']}/{row['total_slots']} vendidos · {row['livres']} livres"
+                        )
+                        try:
+                            requests.post(
+                                f"{evo_url}/message/sendText/{instance}",
+                                headers={'apikey': evo_key, 'Content-Type': 'application/json'},
+                                json={'number': grupo_id, 'text': tpl},
+                                timeout=10
+                            )
+                            log.info(f'[SlotZap] Notificação WPP enviada para grupo {grupo_id}')
+                        except Exception as _wpp_err:
+                            log.warning(f'[SlotZap] Erro ao notificar grupo: {_wpp_err}')
         except Exception as _sz_err:
             log.error(f'[SlotZap] Webhook error: {_sz_err}')
 
@@ -11565,6 +11605,171 @@ def slotzap_cancelar(slot_id):
     )
     conn.commit(); conn.close()
     return jsonify({'ok': True})
+
+
+@app.route('/slotzap/campanha/<int:camp_id>/gerar-link', methods=['POST'])
+@_sz_login_required
+def slotzap_gerar_link(camp_id):
+    """Gera token público para a campanha."""
+    import secrets as _sec
+    conn = get_saas_db()
+    camp = conn.execute('SELECT * FROM slotzap_campanhas WHERE id=? AND user_id=?',
+                        (camp_id, _sz_uid())).fetchone()
+    if not camp:
+        conn.close()
+        return jsonify({'erro': 'Campanha não encontrada'}), 404
+    token = dict(camp).get('token_publico') or _sec.token_urlsafe(16)
+    conn.execute('UPDATE slotzap_campanhas SET token_publico=? WHERE id=?', (token, camp_id))
+    conn.commit(); conn.close()
+    base = os.environ.get('BASE_URL', 'https://www.4kitem.com.br').rstrip('/')
+    return jsonify({'ok': True, 'token': token, 'url': f'{base}/slotzap/p/{token}'})
+
+
+@app.route('/slotzap/campanha/<int:camp_id>/config-wpp', methods=['POST'])
+@_sz_login_required
+def slotzap_config_wpp(camp_id):
+    """Salva configuração de WhatsApp para notificações automáticas."""
+    data     = request.get_json() or {}
+    grupo_id = (data.get('grupo_id') or '').strip()
+    instance = (data.get('instance') or '').strip()
+    msg      = (data.get('msg') or '').strip()
+    conn = get_saas_db()
+    conn.execute('SELECT id FROM slotzap_campanhas WHERE id=? AND user_id=?',
+                 (camp_id, _sz_uid())).fetchone()
+    conn.execute('UPDATE slotzap_campanhas SET grupo_wpp_id=?,evo_instance=?,msg_pagamento=? WHERE id=?',
+                 (grupo_id, instance, msg, camp_id))
+    conn.commit(); conn.close()
+    return jsonify({'ok': True})
+
+
+@app.route('/slotzap/campanha/<int:camp_id>/grupos')
+@_sz_login_required
+def slotzap_listar_grupos(camp_id):
+    """Lista grupos WhatsApp disponíveis na instância Evolution API."""
+    conn = get_saas_db()
+    camp = conn.execute('SELECT evo_instance FROM slotzap_campanhas WHERE id=? AND user_id=?',
+                        (camp_id, _sz_uid())).fetchone()
+    conn.close()
+    instance = (dict(camp).get('evo_instance') or '') if camp else ''
+    evo_url  = os.environ.get('EVO_URL', '').rstrip('/')
+    evo_key  = os.environ.get('EVO_KEY', '')
+    inst     = instance or os.environ.get('EVO_INSTANCE', '')
+    if not evo_url or not inst:
+        return jsonify({'grupos': []})
+    try:
+        r = requests.get(f'{evo_url}/group/fetchAllGroups/{inst}?getParticipants=false',
+                         headers={'apikey': evo_key}, timeout=10)
+        grupos = [{'id': g.get('id'), 'nome': g.get('subject', g.get('id'))}
+                  for g in (r.json() if isinstance(r.json(), list) else [])]
+        return jsonify({'grupos': grupos})
+    except Exception as e:
+        return jsonify({'grupos': [], 'erro': str(e)})
+
+
+# ── Página pública (sem login) ─────────────────────────────────────────────────
+
+@app.route('/slotzap/p/<token>')
+def slotzap_publico(token):
+    conn   = get_saas_db()
+    camp   = conn.execute('SELECT * FROM slotzap_campanhas WHERE token_publico=? AND status="ativa"',
+                          (token,)).fetchone()
+    if not camp:
+        conn.close()
+        return render_template('slotzap/nao_encontrado.html'), 404
+    camp  = dict(camp)
+    slots = [dict(r) for r in conn.execute(
+        'SELECT numero, status FROM slotzap_slots WHERE campanha_id=? ORDER BY numero',
+        (camp['id'],)
+    ).fetchall()]
+    conn.close()
+    pagos      = sum(1 for s in slots if s['status'] == 'pago')
+    reservados = sum(1 for s in slots if s['status'] == 'reservado')
+    disponiveis= sum(1 for s in slots if s['status'] == 'disponivel')
+    return render_template('slotzap/publico.html',
+                           camp=camp, slots=slots, token=token,
+                           pagos=pagos, reservados=reservados, disponiveis=disponiveis)
+
+
+@app.route('/slotzap/p/<token>/status')
+def slotzap_publico_status(token):
+    """Polling — retorna status atual dos slots para atualização em tempo real."""
+    conn  = get_saas_db()
+    camp  = conn.execute('SELECT id FROM slotzap_campanhas WHERE token_publico=?', (token,)).fetchone()
+    if not camp:
+        conn.close()
+        return jsonify({'erro': 'not found'}), 404
+    slots = conn.execute(
+        'SELECT numero, status FROM slotzap_slots WHERE campanha_id=? ORDER BY numero',
+        (dict(camp)['id'],)
+    ).fetchall()
+    conn.close()
+    return jsonify({'slots': {str(s['numero']): s['status'] for s in slots}})
+
+
+@app.route('/slotzap/p/<token>/reservar', methods=['POST'])
+def slotzap_publico_reservar(token):
+    """Reserva slot publicamente (sem login do admin)."""
+    data         = request.get_json() or {}
+    numero       = int(data.get('numero', 0))
+    cliente_nome = (data.get('nome') or '').strip()
+    cliente_tel  = ''.join(c for c in (data.get('tel') or '') if c.isdigit())
+
+    if not cliente_nome:
+        return jsonify({'erro': 'Nome obrigatório'}), 400
+
+    conn  = get_saas_db()
+    camp  = conn.execute('SELECT * FROM slotzap_campanhas WHERE token_publico=? AND status="ativa"',
+                         (token,)).fetchone()
+    slot  = conn.execute('SELECT * FROM slotzap_slots WHERE campanha_id=? AND numero=?',
+                         (dict(camp)['id'] if camp else -1, numero)).fetchone() if camp else None
+
+    if not camp or not slot:
+        conn.close()
+        return jsonify({'erro': 'Campanha ou slot não encontrado'}), 404
+    if dict(slot)['status'] != 'disponivel':
+        conn.close()
+        return jsonify({'erro': f'Slot #{numero} já foi reservado. Escolha outro!'}), 400
+
+    preco   = float(dict(camp)['preco'])
+    slot_id = dict(slot)['id']
+    charge_id = pix_qr = pix_copia = ''
+
+    # Cria cliente e cobrança no Asaas
+    customer_id = None
+    if cliente_tel:
+        tel_fmt = ('55' + cliente_tel) if not cliente_tel.startswith('55') else cliente_tel
+        busca   = _asaas_req('GET', f'/customers?mobilePhone={tel_fmt}&limit=1')
+        if busca.get('data'):
+            customer_id = busca['data'][0].get('id')
+    if not customer_id:
+        resp_cli    = _asaas_req('POST', '/customers', {
+            'name': cliente_nome, 'mobilePhone': cliente_tel or None,
+            'notificationDisabled': True,
+        })
+        customer_id = resp_cli.get('id')
+
+    if customer_id:
+        venc     = (datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d')
+        resp_pay = _asaas_req('POST', '/payments', {
+            'customer': customer_id, 'billingType': 'PIX', 'value': preco,
+            'dueDate': venc,
+            'description': f"SlotZap — {dict(camp)['nome']} — Slot #{numero}",
+            'externalReference': f'sz_{slot_id}',
+        })
+        charge_id = resp_pay.get('id', '')
+        if charge_id:
+            qr_resp   = _asaas_req('GET', f'/payments/{charge_id}/pixQrCode')
+            pix_qr    = qr_resp.get('encodedImage', '')
+            pix_copia = qr_resp.get('payload', '')
+
+    conn.execute(
+        'UPDATE slotzap_slots SET status=?,cliente_nome=?,cliente_tel=?,'
+        'asaas_charge_id=?,pix_qr_code=?,pix_copia_cola=?,reservado_em=? WHERE id=?',
+        ('reservado', cliente_nome, cliente_tel, charge_id,
+         pix_qr, pix_copia, datetime.now().isoformat(), slot_id)
+    )
+    conn.commit(); conn.close()
+    return jsonify({'ok': True, 'pix_qr': pix_qr, 'pix_copia': pix_copia, 'valor': preco})
 
 
 @app.route('/slotzap/campanha/<int:camp_id>/encerrar', methods=['POST'])

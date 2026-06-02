@@ -93,9 +93,56 @@ input:focus{border-color:#6366f1}
   <span class="nav-logo">🎯 SlotZap</span>
   <a href="/slotzap/app" class="nav-btn">← Campanhas</a>
   {% if camp.status == 'ativa' %}
-  <button class="btn-encerrar" onclick="encerrar()">Encerrar campanha</button>
+  <button class="nav-btn" style="border-color:#6366f1;color:#a5b4fc" onclick="gerarLink()">🔗 Link público</button>
+  <button class="nav-btn" style="border-color:#22c55e;color:#86efac" onclick="abrirConfigWpp()">💬 WhatsApp</button>
+  <button class="btn-encerrar" onclick="encerrar()">Encerrar</button>
   {% endif %}
 </nav>
+
+<!-- Modal: Link público -->
+<div class="overlay" id="modal-link">
+  <div class="modal">
+    <h3>🔗 Link público da campanha</h3>
+    <div class="modal-sub">Compartilhe com seus clientes — eles escolhem o número e pagam sozinhos</div>
+    <div style="background:#0a0a15;border:1px solid rgba(99,102,241,.3);border-radius:8px;
+                padding:12px;font-size:13px;word-break:break-all;cursor:pointer;color:#a5b4fc"
+         id="link-url" onclick="copiarLink()">
+      Gerando link...
+    </div>
+    <div style="font-size:11px;color:#44447a;text-align:center;margin-top:6px">Toque para copiar</div>
+    <div class="modal-btns" style="margin-top:16px">
+      <button class="btn btn-primary" onclick="copiarLink()">📋 Copiar link</button>
+      <button class="btn btn-secondary" onclick="fecharModal()">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Configurar WhatsApp -->
+<div class="overlay" id="modal-wpp">
+  <div class="modal">
+    <h3>💬 Notificação no Grupo WhatsApp</h3>
+    <div class="modal-sub">Quando alguém pagar, o sistema envia mensagem automática no grupo</div>
+    <div class="form-group">
+      <label>ID do Grupo (clique em "Buscar grupos" ou cole manualmente)</label>
+      <input type="text" id="wpp-grupo" placeholder="120363xxxxxx@g.us"
+             value="{{ camp.grupo_wpp_id or '' }}">
+    </div>
+    <button class="btn btn-secondary" style="width:100%;margin-bottom:14px" onclick="buscarGrupos()">
+      🔍 Buscar grupos disponíveis
+    </button>
+    <div id="lista-grupos" style="display:none;margin-bottom:14px;max-height:160px;overflow-y:auto"></div>
+    <div class="form-group">
+      <label>Mensagem personalizada (opcional — deixe em branco para padrão)</label>
+      <textarea id="wpp-msg" rows="3" style="width:100%;background:#0a0a15;border:1px solid rgba(255,255,255,.1);
+                border-radius:8px;color:#f0f0ff;padding:10px 12px;font-size:13px;font-family:inherit;resize:vertical"
+                placeholder="✅ Slot #{numero} PAGO! — {cliente}&#10;📊 {vendidos}/{total} vendidos">{{ camp.msg_pagamento or '' }}</textarea>
+    </div>
+    <div class="modal-btns">
+      <button class="btn btn-primary" onclick="salvarWpp()">💾 Salvar</button>
+      <button class="btn btn-secondary" onclick="fecharModal()">Cancelar</button>
+    </div>
+  </div>
+</div>
 
 <div class="container">
   <div class="camp-header">
@@ -288,6 +335,60 @@ async function encerrar() {
   if (!confirm('Encerrar esta campanha? Ela ficará somente leitura.')) return;
   const r = await fetch(`/slotzap/campanha/${CAMP_ID}/encerrar`, {method:'POST'}).then(r=>r.json());
   if (r.ok) location.reload();
+}
+
+let _linkUrl = '';
+async function gerarLink() {
+  const r = await fetch(`/slotzap/campanha/${CAMP_ID}/gerar-link`, {method:'POST'}).then(r=>r.json());
+  if (r.ok) {
+    _linkUrl = r.url;
+    document.getElementById('link-url').textContent = r.url;
+    abrirModal('modal-link');
+  } else alert(r.erro || 'Erro ao gerar link');
+}
+
+function copiarLink() {
+  navigator.clipboard.writeText(_linkUrl).then(() => {
+    document.getElementById('link-url').textContent = '✅ Link copiado!';
+    setTimeout(() => document.getElementById('link-url').textContent = _linkUrl, 1500);
+  });
+}
+
+function abrirConfigWpp() { abrirModal('modal-wpp'); }
+
+async function buscarGrupos() {
+  const lista = document.getElementById('lista-grupos');
+  lista.style.display = 'block';
+  lista.innerHTML = '<div style="color:#6666aa;font-size:12px;padding:8px">Buscando grupos...</div>';
+  const r = await fetch(`/slotzap/campanha/${CAMP_ID}/grupos`).then(r=>r.json());
+  if (!r.grupos || r.grupos.length === 0) {
+    lista.innerHTML = '<div style="color:#ef4444;font-size:12px;padding:8px">Nenhum grupo encontrado. Verifique a instância WhatsApp.</div>';
+    return;
+  }
+  lista.innerHTML = r.grupos.map(g =>
+    `<div onclick="selecionarGrupo('${g.id}','${g.nome.replace(/'/g,"\\'")}' )"
+          style="padding:8px 10px;border-radius:6px;cursor:pointer;font-size:13px;
+                 border:1px solid rgba(255,255,255,.07);margin-bottom:4px;background:#0a0a15">
+       💬 ${g.nome}<br><span style="font-size:10px;color:#44447a">${g.id}</span>
+     </div>`
+  ).join('');
+}
+
+function selecionarGrupo(id, nome) {
+  document.getElementById('wpp-grupo').value = id;
+  document.getElementById('lista-grupos').style.display = 'none';
+}
+
+async function salvarWpp() {
+  const grupo_id = document.getElementById('wpp-grupo').value.trim();
+  const msg      = document.getElementById('wpp-msg').value.trim();
+  const instance = ''; // usa a instância global do .env
+  const r = await fetch(`/slotzap/campanha/${CAMP_ID}/config-wpp`, {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({grupo_id, instance, msg})
+  }).then(r=>r.json());
+  if (r.ok) { fecharModal(); alert('✅ WhatsApp configurado! O grupo receberá notificações automáticas.'); }
+  else alert('Erro: ' + (r.erro || JSON.stringify(r)));
 }
 
 function abrirModal(id) {
