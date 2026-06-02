@@ -229,11 +229,38 @@ async function gerarPix() {
     }
     document.getElementById('qr-copia').textContent = r.pix_copia || '';
     abrirModal('modal-pix');
+    startPixPoll();
   } else {
     // Sem QR e sem copia-cola — slot reservado, pagamento manual
     alert('Slot reservado! Entre em contato com o vendedor para efetuar o pagamento.');
     atualizarGrid();
   }
+}
+
+let _pixPoll = null;
+function startPixPoll() {
+  stopPixPoll();
+  let tentativas = 0;
+  _pixPoll = setInterval(async () => {
+    tentativas++;
+    if (tentativas > 150) { stopPixPoll(); return; }  // para após ~10 min
+    try {
+      const r = await fetch(`/slotzap/p/${TOKEN}/confirmar`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({numero: _slotSel})
+      }).then(r => r.json());
+      if (r.pago) {
+        stopPixPoll();
+        atualizarGrid();
+        fecharModal();
+        alert('🎉 Pagamento confirmado! Seu número está garantido.');
+      }
+    } catch (e) {}
+  }, 4000);
+}
+function stopPixPoll() {
+  if (_pixPoll) { clearInterval(_pixPoll); _pixPoll = null; }
 }
 
 async function jaPaguei(btn) {
@@ -279,6 +306,7 @@ function abrirModal(id) {
   document.getElementById(id).classList.add('open');
 }
 function fecharModal() {
+  stopPixPoll();
   document.querySelectorAll('.overlay').forEach(m => m.classList.remove('open'));
 }
 document.querySelectorAll('.overlay').forEach(m =>
