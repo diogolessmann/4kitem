@@ -5222,6 +5222,15 @@ def saas_admin():
         pubshow_total_pedidos = 0
         pubshow_total_receita = 0
         pubshow_total_videos  = 0
+    # SlotZap users
+    try:
+        conn_sz = get_saas_db()
+        sz_users = [dict(r) for r in conn_sz.execute(
+            'SELECT id, name, email, phone, active, created_at, last_login FROM slotzap_users ORDER BY id DESC'
+        ).fetchall()]
+        conn_sz.close()
+    except Exception:
+        sz_users = []
     return render_template('saas_admin.html',
                            subscribers=subscribers, businesses=businesses,
                            mz_users=mz_users, mz_plans=MANDAZAP_PLANS,
@@ -5237,7 +5246,23 @@ def saas_admin():
                            pubshow_bars=pubshow_bars,
                            pubshow_total_pedidos=pubshow_total_pedidos,
                            pubshow_total_receita=pubshow_total_receita,
-                           pubshow_total_videos=pubshow_total_videos)
+                           pubshow_total_videos=pubshow_total_videos,
+                           sz_users=sz_users)
+
+
+@app.route('/saas-admin/slotzap/reset-senha', methods=['POST'])
+@_saas_admin_required
+def saas_sz_reset_senha():
+    data  = request.get_json() or {}
+    uid   = data.get('user_id')
+    senha = (data.get('senha') or '').strip()
+    if not uid or len(senha) < 6:
+        return jsonify({'erro': 'user_id e senha (mín. 6 chars) obrigatórios'}), 400
+    conn = get_saas_db()
+    conn.execute('UPDATE slotzap_users SET password_hash=? WHERE id=?',
+                 (generate_password_hash(senha), uid))
+    conn.commit(); conn.close()
+    return jsonify({'ok': True})
 
 
 @app.route('/saas-admin/pubshow/bar/<int:bid>/status', methods=['POST'])

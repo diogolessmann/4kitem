@@ -80,6 +80,7 @@
     <button class="tab-btn" onclick="showTab('mandaja',this)">🛵 MandaJá ({{ mandaja_stores|length }})</button>
     <button class="tab-btn" onclick="showTab('vetzap',this)">🐾 VetZap ({{ vetzap_users|length }})</button>
     <button class="tab-btn" onclick="showTab('pubshow',this)">📺 PUBSHOW ({{ pubshow_bars|length }})</button>
+    <button class="tab-btn" onclick="showTab('slotzap',this)">🎯 SlotZap ({{ sz_users|length }})</button>
   </div>
 
   <!-- ═══════════════ ALERTA SC ═══════════════ -->
@@ -661,6 +662,43 @@
   </div>
 </div>
 
+  <!-- ═══════════════ SLOTZAP ═══════════════ -->
+  <div class="tab-content" id="tab-slotzap">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px">
+      <h2 style="margin:0">🎯 Usuários — SlotZap</h2>
+      <button class="btn-sm btn-green" onclick="criarSzUser()">+ Criar usuário</button>
+    </div>
+    {% if sz_users %}
+    <table>
+      <thead><tr>
+        <th>#</th><th>Nome</th><th>Email</th><th>Telefone</th><th>Status</th><th>Criado em</th><th>Último acesso</th><th>Ações</th>
+      </tr></thead>
+      <tbody>
+      {% for u in sz_users %}
+      <tr>
+        <td>{{ u.id }}</td>
+        <td><strong>{{ u.name }}</strong></td>
+        <td>{{ u.email }}</td>
+        <td>{{ u.phone or '—' }}</td>
+        <td>
+          <span class="badge {{ 'badge-active' if u.active else 'badge-suspended' }}">
+            {{ 'Ativo' if u.active else 'Inativo' }}
+          </span>
+        </td>
+        <td style="font-size:12px">{{ (u.created_at or '')[:10] }}</td>
+        <td style="font-size:12px">{{ (u.last_login or '')[:16].replace('T',' ') or '—' }}</td>
+        <td>
+          <button class="btn-sm btn-orange" onclick="szResetSenha({{ u.id }}, '{{ u.name }}')">🔒 Senha</button>
+        </td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty">Nenhum usuário SlotZap ainda.</div>
+    {% endif %}
+  </div>
+
 <script>
 /* ── Tabs ── */
 function showTab(name, btn) {
@@ -1018,6 +1056,35 @@ async function setDefesaPlan(id, plan) {
   const d = await r.json();
   if (d.success) location.reload();
   else alert(d.error || 'Erro');
+}
+
+/* ── SLOTZAP ── */
+async function criarSzUser() {
+  const name  = prompt('Nome do usuário:');
+  if (!name) return;
+  const email = prompt('Email:');
+  if (!email) return;
+  const phone = prompt('Telefone (opcional):') || '';
+  const senha = prompt('Senha (mín. 6 caracteres):');
+  if (!senha || senha.length < 6) { alert('Senha inválida.'); return; }
+  const r = await fetch('/saas-admin/slotzap/criar-usuario', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({name, email, phone, senha})
+  }).then(r => r.json());
+  if (r.ok) { alert(`✅ Usuário criado! ID: ${r.id}`); location.reload(); }
+  else alert('Erro: ' + (r.erro || JSON.stringify(r)));
+}
+
+async function szResetSenha(uid, nome) {
+  const senha = prompt(`Nova senha para ${nome} (mín. 6 caracteres):`);
+  if (!senha || senha.length < 6) return;
+  const r = await fetch('/saas-admin/slotzap/reset-senha', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({user_id: uid, senha})
+  }).then(r => r.json());
+  alert(r.ok ? '✅ Senha redefinida!' : 'Erro: ' + r.erro);
 }
 
 /* ── PUBSHOW ── */
