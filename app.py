@@ -11419,6 +11419,21 @@ def _cpf_valido(cpf) -> bool:
             return False
     return True
 
+_sz_reserve_hits = {}  # ip -> [timestamps] (anti-abuso da reserva pública)
+def _sz_rate_ok(ip, limite=20, janela=900) -> bool:
+    """Limita tentativas de reserva por IP (default: 20 em 15 min)."""
+    import time as _t
+    now  = _t.time()
+    hits = [t for t in _sz_reserve_hits.get(ip, []) if now - t < janela]
+    if len(hits) >= limite:
+        _sz_reserve_hits[ip] = hits
+        return False
+    hits.append(now)
+    _sz_reserve_hits[ip] = hits
+    if len(_sz_reserve_hits) > 5000:   # limpeza leve para não crescer sem fim
+        _sz_reserve_hits.clear()
+    return True
+
 
 @app.route('/slotzap')
 def slotzap_landing():
@@ -12249,6 +12264,9 @@ def slotzap_publico_confirmar(token):
 @app.route('/slotzap/p/<token>/reservar', methods=['POST'])
 def slotzap_publico_reservar(token):
     """Reserva slot publicamente (sem login do admin)."""
+    ip = (request.headers.get('X-Forwarded-For') or request.remote_addr or '').split(',')[0].strip()
+    if not _sz_rate_ok(ip):
+        return jsonify({'erro': 'Muitas tentativas. Aguarde alguns minutos e tente novamente.'}), 429
     data         = request.get_json() or {}
     numero       = int(data.get('numero', 0))
     cliente_nome = (data.get('nome') or '').strip()
