@@ -11662,19 +11662,22 @@ def slotzap_numeros_disponiveis(camp_id):
 
 
 def _sz_criar_cliente_asaas(nome, tel):
-    """Cria ou reutiliza cliente no Asaas para SlotZap. Nunca envia celular vazio."""
+    """Cria ou reutiliza cliente no Asaas para SlotZap.
+    Nunca envia celular na criação — evita erros de validação do Asaas."""
     customer_id = None
     tel_limpo = ''.join(c for c in (tel or '') if c.isdigit())
-    if tel_limpo:
+    # Tenta reusar cliente existente pelo telefone (só se tiver 11 dígitos válidos)
+    if len(tel_limpo) == 11:
         tel_fmt = ('55' + tel_limpo) if not tel_limpo.startswith('55') else tel_limpo
         busca = _asaas_req('GET', f'/customers?mobilePhone={tel_fmt}&limit=1')
         if busca.get('data'):
             customer_id = busca['data'][0].get('id')
+    # Cria novo cliente só com nome — sem celular para evitar rejeição do Asaas
     if not customer_id:
-        dados = {'name': nome, 'notificationDisabled': True}
-        if tel_limpo:
-            dados['mobilePhone'] = tel_limpo  # só inclui se tiver número
-        resp = _asaas_req('POST', '/customers', dados)
+        resp = _asaas_req('POST', '/customers', {
+            'name': nome or 'Cliente SlotZap',
+            'notificationDisabled': True,
+        })
         customer_id = resp.get('id')
     return customer_id
 
