@@ -1747,6 +1747,23 @@ def webhook_asaas_global():
                             p.get('price', ''), 'https://4kitem.com.br/amigo-despachante/app'))
             conn.close()
 
+    elif ref.startswith('sz_'):
+        # SlotZap — pagamento de slot avulso
+        # externalReference = sz_{slot_id}
+        try:
+            slot_id = int(ref.split('_')[1])
+            if ativar:
+                conn = get_saas_db()
+                conn.execute(
+                    "UPDATE slotzap_slots SET status='pago', pago_em=? WHERE id=?",
+                    (datetime.now().isoformat(), slot_id)
+                )
+                conn.commit()
+                conn.close()
+                log.info(f'[SlotZap] Slot {slot_id} marcado como PAGO via webhook Asaas')
+        except Exception as _sz_err:
+            log.error(f'[SlotZap] Webhook error: {_sz_err}')
+
     elif ref.startswith('alerta_'):
         if customer_id:
             conn = get_saas_db()
@@ -10252,6 +10269,8 @@ def _startup():
         init_db()
         init_saas_db()
         init_desp_db()
+        from saas_db import init_slotzap_db as _init_sz
+        _init_sz()
         s = stats()
         log.info(f"DB OK — {s['channels']} canais | {s['videos']} vídeos | "
                  f"{s['clients']} clientes")
@@ -11290,6 +11309,276 @@ with app.app_context():
         log.info('[PUBSHOW] Banco inicializado com sucesso')
     except Exception as _e:
         log.error(f'[PUBSHOW] ERRO ao inicializar banco: {_e}', exc_info=True)
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  SLOTZAP — Venda de slots numerados com PIX automático via Asaas
+# ══════════════════════════════════════════════════════════════════════════════
+
+def _sz_login_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not session.get('sz_user_id'):
+            return redirect('/slotzap/entrar')
+        return f(*args, **kwargs)
+    return decorated
+
+def _sz_uid():
+    return session.get('sz_user_id')
+
+
+@app.route('/slotzap')
+def slotzap_landing():
+    if session.get('sz_user_id'):
+        return redirect('/slotzap/app')
+    return render_template('slotzap/entrar.html', erro=None)
+
+
+@app.route('/slotzap/entrar', methods=['GET', 'POST'])
+def slotzap_entrar():
+    erro = None
+    if request.method == 'POST':
+        email = (request.form.get('email') or '').strip().lower()
+        senha = request.form.get('senha') or ''
+        conn  = get_saas_db()
+        u     = conn.execute('SELECT * FROM slotzap_users WHERE email=? AND active=1', (email,)).fetchone()
+        conn.close()
+        if not u:
+            erro = 'Email não encontrado ou conta inativa.'
+        elif not check_password_hash(u['password_hash'], senha):
+            erro = 'Senha incorreta.'
+        else:
+            session['sz_user_id']   = u['id']
+            session['sz_user_name'] = u['name']
+            conn2 = get_saas_db()
+            conn2.execute('UPDATE slotzap_users SET last_login=? WHERE id=?',
+                          (datetime.now().isoformat(), u['id']))
+            conn2.commit(); conn2.close()
+            return redirect('/slotzap/app')
+    return render_template('slotzap/entrar.html', erro=erro)
+
+
+@app.route('/slotzap/sair')
+def slotzap_sair():
+    session.pop('sz_user_id', None)
+    session.pop('sz_user_name', None)
+    return redirect('/slotzap/entrar')
+
+
+@app.route('/slotzap/app')
+@_sz_login_required
+def slotzap_app():
+    conn = get_saas_db()
+    campanhas = [dict(r) for r in conn.execute('''
+        SELECT c.*,
+            (SELECT COUNT(*) FROM slotzap_slots s WHERE s.campanha_id=c.id AND s.status="pago")      AS pagos,
+            (SELECT COUNT(*) FROM slotzap_slots s WHERE s.campanha_id=c.id AND s.status="reservado") AS reservados,
+            (SELECT COUNT(*) FROM slotzap_slots s WHERE s.campanha_id=c.id AND s.status="disponivel") AS disponiveis
+        FROM slotzap_campanhas c
+        WHERE c.user_id=?
+        ORDER BY c.id DESC
+    ''', (_sz_uid(),)).fetchall()]
+    conn.close()
+    return render_template('slotzap/app.html',
+                           campanhas=campanhas,
+                           user_name=session.get('sz_user_name', ''))
+
+
+@app.route('/slotzap/nova', methods=['GET', 'POST'])
+@_sz_login_required
+def slotzap_nova():
+    erro = None
+    if request.method == 'POST':
+        nome    = request.form.get('nome', '').strip()
+        descr   = request.form.get('descricao', '').strip()
+        preco   = float(request.form.get('preco') or 0)
+        total   = int(request.form.get('total_slots') or 100)
+        inicio  = int(request.form.get('slots_inicio') or 1)
+        if not nome or preco <= 0 or total < 2:
+            erro = 'Nome, preço e quantidade são obrigatórios.'
+        else:
+            conn = get_saas_db()
+            cur  = conn.execute(
+                'INSERT INTO slotzap_campanhas (user_id,nome,descricao,preco,total_slots,slots_inicio,status,created_at) '
+                'VALUES (?,?,?,?,?,?,?,?)',
+                (_sz_uid(), nome, descr, preco, total, inicio, 'ativa', datetime.now().isoformat())
+            )
+            camp_id = cur.lastrowid
+            for n in range(inicio, inicio + total):
+                conn.execute('INSERT OR IGNORE INTO slotzap_slots (campanha_id,numero,status) VALUES (?,?,?)',
+                             (camp_id, n, 'disponivel'))
+            conn.commit(); conn.close()
+            return redirect(f'/slotzap/campanha/{camp_id}')
+    return render_template('slotzap/nova.html', erro=erro)
+
+
+@app.route('/slotzap/campanha/<int:camp_id>')
+@_sz_login_required
+def slotzap_campanha(camp_id):
+    conn = get_saas_db()
+    camp = conn.execute('SELECT * FROM slotzap_campanhas WHERE id=? AND user_id=?',
+                        (camp_id, _sz_uid())).fetchone()
+    if not camp:
+        conn.close()
+        return redirect('/slotzap/app')
+    camp  = dict(camp)
+    slots = [dict(r) for r in conn.execute(
+        'SELECT * FROM slotzap_slots WHERE campanha_id=? ORDER BY numero', (camp_id,)
+    ).fetchall()]
+    conn.close()
+    pagos      = sum(1 for s in slots if s['status'] == 'pago')
+    reservados = sum(1 for s in slots if s['status'] == 'reservado')
+    disponiveis= sum(1 for s in slots if s['status'] == 'disponivel')
+    receita    = pagos * float(camp['preco'])
+    return render_template('slotzap/campanha.html',
+                           camp=camp, slots=slots,
+                           pagos=pagos, reservados=reservados,
+                           disponiveis=disponiveis, receita=receita)
+
+
+@app.route('/slotzap/campanha/<int:camp_id>/reservar', methods=['POST'])
+@_sz_login_required
+def slotzap_reservar(camp_id):
+    data         = request.get_json() or {}
+    numero       = int(data.get('numero', 0))
+    cliente_nome = (data.get('nome') or '').strip()
+    cliente_tel  = ''.join(c for c in (data.get('tel') or '') if c.isdigit())
+
+    if not cliente_nome:
+        return jsonify({'erro': 'Nome do cliente obrigatório'}), 400
+
+    conn  = get_saas_db()
+    camp  = conn.execute('SELECT * FROM slotzap_campanhas WHERE id=? AND user_id=?',
+                         (camp_id, _sz_uid())).fetchone()
+    slot  = conn.execute('SELECT * FROM slotzap_slots WHERE campanha_id=? AND numero=?',
+                         (camp_id, numero)).fetchone()
+
+    if not camp or not slot:
+        conn.close()
+        return jsonify({'erro': 'Slot não encontrado'}), 404
+    if dict(slot)['status'] != 'disponivel':
+        conn.close()
+        return jsonify({'erro': f'Slot #{numero} não está disponível'}), 400
+
+    preco     = float(dict(camp)['preco'])
+    slot_id   = dict(slot)['id']
+    charge_id = pix_qr = pix_copia = ''
+
+    # Cria cobrança PIX no Asaas
+    customer_id = None
+    if cliente_tel:
+        tel_fmt = ('55' + cliente_tel) if not cliente_tel.startswith('55') else cliente_tel
+        busca   = _asaas_req('GET', f'/customers?mobilePhone={tel_fmt}&limit=1')
+        if busca.get('data'):
+            customer_id = busca['data'][0].get('id')
+    if not customer_id:
+        resp_cli    = _asaas_req('POST', '/customers', {
+            'name': cliente_nome,
+            'mobilePhone': cliente_tel or None,
+            'notificationDisabled': True,
+        })
+        customer_id = resp_cli.get('id')
+
+    if customer_id:
+        venc     = (datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d')
+        resp_pay = _asaas_req('POST', '/payments', {
+            'customer':          customer_id,
+            'billingType':       'PIX',
+            'value':             preco,
+            'dueDate':           venc,
+            'description':       f"SlotZap — {dict(camp)['nome']} — Slot #{numero}",
+            'externalReference': f'sz_{slot_id}',
+        })
+        charge_id = resp_pay.get('id', '')
+        if charge_id:
+            qr_resp   = _asaas_req('GET', f'/payments/{charge_id}/pixQrCode')
+            pix_qr    = qr_resp.get('encodedImage', '')
+            pix_copia = qr_resp.get('payload', '')
+
+    conn.execute(
+        'UPDATE slotzap_slots SET status=?,cliente_nome=?,cliente_tel=?,'
+        'asaas_charge_id=?,pix_qr_code=?,pix_copia_cola=?,reservado_em=? WHERE id=?',
+        ('reservado', cliente_nome, cliente_tel, charge_id,
+         pix_qr, pix_copia, datetime.now().isoformat(), slot_id)
+    )
+    conn.commit(); conn.close()
+
+    return jsonify({'ok': True, 'pix_qr': pix_qr, 'pix_copia': pix_copia,
+                    'charge_id': charge_id, 'slot_id': slot_id})
+
+
+@app.route('/slotzap/slot/<int:slot_id>/pagar', methods=['POST'])
+@_sz_login_required
+def slotzap_pagar(slot_id):
+    conn = get_saas_db()
+    slot = conn.execute('''SELECT s.* FROM slotzap_slots s
+        JOIN slotzap_campanhas c ON c.id=s.campanha_id
+        WHERE s.id=? AND c.user_id=?''', (slot_id, _sz_uid())).fetchone()
+    if not slot:
+        conn.close()
+        return jsonify({'erro': 'Slot não encontrado'}), 404
+    conn.execute("UPDATE slotzap_slots SET status='pago', pago_em=? WHERE id=?",
+                 (datetime.now().isoformat(), slot_id))
+    conn.commit(); conn.close()
+    return jsonify({'ok': True})
+
+
+@app.route('/slotzap/slot/<int:slot_id>/cancelar', methods=['POST'])
+@_sz_login_required
+def slotzap_cancelar(slot_id):
+    conn = get_saas_db()
+    slot = conn.execute('''SELECT s.* FROM slotzap_slots s
+        JOIN slotzap_campanhas c ON c.id=s.campanha_id
+        WHERE s.id=? AND c.user_id=?''', (slot_id, _sz_uid())).fetchone()
+    if not slot:
+        conn.close()
+        return jsonify({'erro': 'Slot não encontrado'}), 404
+    charge = dict(slot).get('asaas_charge_id', '')
+    if charge:
+        _asaas_req('DELETE', f'/payments/{charge}')
+    conn.execute(
+        "UPDATE slotzap_slots SET status='disponivel',cliente_nome='',cliente_tel='',"
+        "asaas_charge_id='',pix_qr_code='',pix_copia_cola='',reservado_em=NULL,pago_em=NULL WHERE id=?",
+        (slot_id,)
+    )
+    conn.commit(); conn.close()
+    return jsonify({'ok': True})
+
+
+@app.route('/slotzap/campanha/<int:camp_id>/encerrar', methods=['POST'])
+@_sz_login_required
+def slotzap_encerrar(camp_id):
+    conn = get_saas_db()
+    conn.execute("UPDATE slotzap_campanhas SET status='encerrada' WHERE id=? AND user_id=?",
+                 (camp_id, _sz_uid()))
+    conn.commit(); conn.close()
+    return jsonify({'ok': True})
+
+
+# ── SlotZap no SaaS Admin ──────────────────────────────────────────────────────
+@app.route('/saas-admin/slotzap/criar-usuario', methods=['POST'])
+@_saas_admin_required
+def saas_sz_criar_usuario():
+    data  = request.get_json() or {}
+    name  = (data.get('name') or '').strip()
+    email = (data.get('email') or '').strip().lower()
+    phone = (data.get('phone') or '').strip()
+    senha = (data.get('senha') or '').strip()
+    if not all([name, email, senha]):
+        return jsonify({'erro': 'name, email e senha obrigatórios'}), 400
+    conn = get_saas_db()
+    try:
+        cur = conn.execute(
+            'INSERT INTO slotzap_users (name,email,phone,password_hash,created_at) VALUES (?,?,?,?,?)',
+            (name, email, phone, generate_password_hash(senha), datetime.now().isoformat())
+        )
+        conn.commit()
+        user_id = cur.lastrowid
+        conn.close()
+        return jsonify({'ok': True, 'id': user_id})
+    except Exception as e:
+        conn.close()
+        return jsonify({'erro': str(e)}), 400
+
 
 if __name__ == '__main__':
     app.run(debug=True, port=5001)

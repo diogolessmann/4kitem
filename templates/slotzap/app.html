@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SlotZap — Campanhas</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',sans-serif;background:#09090f;color:#f0f0ff;min-height:100vh}
+nav{background:#13131f;border-bottom:1px solid rgba(255,255,255,.07);
+    padding:0 24px;height:56px;display:flex;align-items:center;gap:12px}
+.nav-logo{font-size:18px;font-weight:800;background:linear-gradient(135deg,#6366f1,#a855f7);
+           -webkit-background-clip:text;-webkit-text-fill-color:transparent;flex:1}
+.nav-user{font-size:12px;color:#6666aa}
+.nav-btn{background:none;border:1px solid rgba(255,255,255,.1);border-radius:7px;
+          color:#8888aa;padding:5px 12px;font-size:12px;cursor:pointer;font-family:inherit}
+.nav-btn:hover{border-color:#6366f1;color:#a5b4fc}
+.container{max-width:900px;margin:0 auto;padding:32px 20px}
+.header{display:flex;align-items:center;justify-content:space-between;margin-bottom:28px}
+.header h1{font-size:20px;font-weight:800}
+.btn-new{background:linear-gradient(135deg,#6366f1,#7c3aed);color:#fff;border:none;
+          border-radius:9px;padding:10px 20px;font-size:13px;font-weight:700;
+          cursor:pointer;font-family:inherit;text-decoration:none}
+.empty{text-align:center;padding:60px 20px;color:#44447a}
+.empty-icon{font-size:48px;margin-bottom:12px}
+.camps{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px}
+.camp-card{background:#13131f;border:1px solid rgba(255,255,255,.07);border-radius:14px;
+            padding:20px;text-decoration:none;color:inherit;transition:.2s;display:block}
+.camp-card:hover{border-color:#6366f1;transform:translateY(-2px)}
+.camp-nome{font-size:15px;font-weight:700;margin-bottom:4px}
+.camp-preco{font-size:13px;color:#6366f1;font-weight:600;margin-bottom:16px}
+.camp-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.stat{background:#0d0d1a;border-radius:8px;padding:10px;text-align:center}
+.stat-val{font-size:18px;font-weight:800}
+.stat-lbl{font-size:10px;color:#6666aa;margin-top:2px}
+.green{color:#22c55e}.yellow{color:#f59e0b}.gray{color:#6666aa}
+.badge{display:inline-block;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700;margin-bottom:8px}
+.badge-ativa{background:rgba(34,197,94,.15);color:#22c55e}
+.badge-enc{background:rgba(107,114,128,.15);color:#9ca3af}
+</style>
+</head>
+<body>
+<nav>
+  <span class="nav-logo">🎯 SlotZap</span>
+  <span class="nav-user">{{ user_name }}</span>
+  <a href="/slotzap/sair"><button class="nav-btn">Sair</button></a>
+</nav>
+<div class="container">
+  <div class="header">
+    <h1>Suas campanhas</h1>
+    <a href="/slotzap/nova" class="btn-new">+ Nova Campanha</a>
+  </div>
+
+  {% if not campanhas %}
+  <div class="empty">
+    <div class="empty-icon">🎯</div>
+    <p style="font-size:16px;font-weight:600;margin-bottom:8px">Nenhuma campanha ainda</p>
+    <p style="font-size:14px">Crie sua primeira campanha de slots numerados</p>
+    <a href="/slotzap/nova" class="btn-new" style="display:inline-block;margin-top:20px">+ Nova Campanha</a>
+  </div>
+  {% else %}
+  <div class="camps">
+    {% for c in campanhas %}
+    <a href="/slotzap/campanha/{{ c.id }}" class="camp-card">
+      <div>
+        <span class="badge {{ 'badge-ativa' if c.status == 'ativa' else 'badge-enc' }}">
+          {{ '🟢 Ativa' if c.status == 'ativa' else '⚫ Encerrada' }}
+        </span>
+      </div>
+      <div class="camp-nome">{{ c.nome }}</div>
+      <div class="camp-preco">R$ {{ '%.2f'|format(c.preco) }} por slot</div>
+      <div class="camp-stats">
+        <div class="stat"><div class="stat-val green">{{ c.pagos }}</div><div class="stat-lbl">Pagos</div></div>
+        <div class="stat"><div class="stat-val yellow">{{ c.reservados }}</div><div class="stat-lbl">Reservados</div></div>
+        <div class="stat"><div class="stat-val gray">{{ c.disponiveis }}</div><div class="stat-lbl">Livres</div></div>
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+  {% endif %}
+</div>
+</body>
+</html>

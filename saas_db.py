@@ -696,6 +696,60 @@ def init_saas_db():
     conn.close()
 
 
+def init_slotzap_db():
+    """Cria tabelas do SlotZap no saas.db."""
+    conn = get_db()
+    conn.executescript('''
+        CREATE TABLE IF NOT EXISTS slotzap_users (
+            id            INTEGER PRIMARY KEY AUTOINCREMENT,
+            name          TEXT NOT NULL,
+            email         TEXT NOT NULL UNIQUE,
+            phone         TEXT DEFAULT '',
+            password_hash TEXT NOT NULL,
+            active        INTEGER DEFAULT 1,
+            created_at    TEXT DEFAULT '',
+            last_login    TEXT DEFAULT '',
+            pix_key       TEXT DEFAULT '',
+            evo_instance  TEXT DEFAULT '',
+            notes         TEXT DEFAULT ''
+        );
+        CREATE INDEX IF NOT EXISTS idx_sz_users_email ON slotzap_users(email);
+
+        CREATE TABLE IF NOT EXISTS slotzap_campanhas (
+            id           INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id      INTEGER NOT NULL,
+            nome         TEXT NOT NULL,
+            descricao    TEXT DEFAULT '',
+            preco        REAL NOT NULL DEFAULT 0,
+            total_slots  INTEGER NOT NULL DEFAULT 100,
+            slots_inicio INTEGER DEFAULT 1,
+            status       TEXT DEFAULT "ativa",
+            created_at   TEXT DEFAULT ''
+        );
+        CREATE INDEX IF NOT EXISTS idx_sz_camp_user ON slotzap_campanhas(user_id);
+
+        CREATE TABLE IF NOT EXISTS slotzap_slots (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            campanha_id     INTEGER NOT NULL,
+            numero          INTEGER NOT NULL,
+            status          TEXT DEFAULT "disponivel",
+            cliente_nome    TEXT DEFAULT '',
+            cliente_tel     TEXT DEFAULT '',
+            asaas_charge_id TEXT DEFAULT '',
+            pix_qr_code     TEXT DEFAULT '',
+            pix_copia_cola  TEXT DEFAULT '',
+            reservado_em    TEXT DEFAULT '',
+            pago_em         TEXT DEFAULT '',
+            UNIQUE(campanha_id, numero)
+        );
+        CREATE INDEX IF NOT EXISTS idx_sz_slots_camp   ON slotzap_slots(campanha_id);
+        CREATE INDEX IF NOT EXISTS idx_sz_slots_status ON slotzap_slots(status);
+        CREATE INDEX IF NOT EXISTS idx_sz_slots_charge ON slotzap_slots(asaas_charge_id);
+    ''')
+    conn.commit()
+    conn.close()
+
+
 def salvar_nota_dev(titulo: str, texto: str) -> int:
     conn = get_db()
     cur  = conn.execute(

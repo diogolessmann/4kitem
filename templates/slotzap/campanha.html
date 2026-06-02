@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{ camp.nome }} — SlotZap</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',sans-serif;background:#09090f;color:#f0f0ff;min-height:100vh}
+nav{background:#13131f;border-bottom:1px solid rgba(255,255,255,.07);
+    padding:0 24px;height:56px;display:flex;align-items:center;gap:12px}
+.nav-logo{font-size:18px;font-weight:800;background:linear-gradient(135deg,#6366f1,#a855f7);
+          -webkit-background-clip:text;-webkit-text-fill-color:transparent;flex:1}
+.nav-btn{background:none;border:1px solid rgba(255,255,255,.1);border-radius:7px;
+         color:#8888aa;padding:5px 12px;font-size:12px;cursor:pointer;font-family:inherit;text-decoration:none}
+
+.container{max-width:1100px;margin:0 auto;padding:28px 20px}
+
+/* Header */
+.camp-header{margin-bottom:24px}
+.camp-nome{font-size:22px;font-weight:800;margin-bottom:4px}
+.camp-preco{font-size:14px;color:#6366f1;font-weight:600}
+.stats-bar{display:flex;gap:12px;margin-top:16px;flex-wrap:wrap}
+.stat{background:#13131f;border:1px solid rgba(255,255,255,.07);border-radius:10px;
+      padding:12px 18px;min-width:110px;text-align:center}
+.stat-val{font-size:22px;font-weight:800}
+.stat-lbl{font-size:11px;color:#6666aa;margin-top:2px}
+.green{color:#22c55e}.yellow{color:#f59e0b}.gray{color:#6666aa}.purple{color:#a855f7}
+
+/* Legenda */
+.legenda{display:flex;gap:16px;margin-bottom:20px;flex-wrap:wrap;align-items:center}
+.leg-item{display:flex;align-items:center;gap:6px;font-size:12px;color:#8888aa}
+.leg-box{width:20px;height:20px;border-radius:4px;flex-shrink:0}
+
+/* Grid */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(52px,1fr));gap:6px;margin-bottom:32px}
+.slot{border-radius:8px;height:52px;display:flex;align-items:center;justify-content:center;
+      font-size:13px;font-weight:700;cursor:pointer;transition:.15s;border:2px solid transparent;
+      flex-direction:column;gap:2px;position:relative}
+.slot:hover{transform:scale(1.08);z-index:2}
+.slot-num{font-size:12px;font-weight:800}
+.slot-ini{font-size:9px;font-weight:600;opacity:.8}
+
+.slot-disponivel{background:rgba(99,102,241,.1);border-color:rgba(99,102,241,.25);color:#818cf8}
+.slot-disponivel:hover{background:rgba(99,102,241,.25);border-color:#6366f1}
+.slot-reservado{background:rgba(245,158,11,.12);border-color:rgba(245,158,11,.3);color:#f59e0b}
+.slot-pago{background:rgba(34,197,94,.12);border-color:rgba(34,197,94,.3);color:#22c55e;cursor:default}
+.slot-pago:hover{transform:none}
+
+/* Modal Reservar */
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:100;
+          align-items:center;justify-content:center;padding:20px}
+.overlay.open{display:flex}
+.modal{background:#13131f;border:1px solid rgba(99,102,241,.3);border-radius:16px;
+        padding:28px;width:100%;max-width:400px}
+.modal h3{font-size:16px;font-weight:800;margin-bottom:4px}
+.modal-sub{font-size:13px;color:#6666aa;margin-bottom:20px}
+.form-group{margin-bottom:14px}
+label{display:block;font-size:12px;font-weight:600;color:#8888aa;margin-bottom:5px}
+input{width:100%;background:#0a0a15;border:1px solid rgba(255,255,255,.1);border-radius:8px;
+      color:#f0f0ff;padding:10px 12px;font-size:14px;font-family:inherit;outline:none}
+input:focus{border-color:#6366f1}
+.modal-btns{display:flex;gap:8px;margin-top:20px}
+.btn{flex:1;padding:10px;border-radius:8px;border:none;font-size:13px;font-weight:700;
+     cursor:pointer;font-family:inherit}
+.btn-primary{background:linear-gradient(135deg,#6366f1,#7c3aed);color:#fff}
+.btn-secondary{background:rgba(255,255,255,.07);color:#8888aa}
+.btn-danger{background:rgba(239,68,68,.15);color:#ef4444;border:1px solid rgba(239,68,68,.3)}
+.btn-success{background:rgba(34,197,94,.15);color:#22c55e;border:1px solid rgba(34,197,94,.3)}
+
+/* QR Code modal */
+.qr-area{text-align:center;margin:16px 0}
+.qr-area img{width:180px;height:180px;border-radius:8px;background:#fff;padding:8px}
+.copia-cola{background:#0a0a15;border:1px solid rgba(255,255,255,.1);border-radius:8px;
+             padding:10px 12px;font-size:11px;word-break:break-all;color:#8888aa;
+             cursor:pointer;margin-top:8px;text-align:left}
+.copia-cola:hover{border-color:#6366f1;color:#a5b4fc}
+
+/* Info slot reservado */
+.slot-info{background:#0a0a15;border:1px solid rgba(245,158,11,.2);border-radius:10px;
+            padding:14px;margin-bottom:14px;font-size:13px}
+.slot-info strong{color:#f59e0b}
+
+/* Encerrar campanha */
+.btn-encerrar{background:none;border:1px solid rgba(239,68,68,.3);color:#ef4444;
+               border-radius:8px;padding:8px 16px;font-size:12px;cursor:pointer;font-family:inherit}
+.btn-encerrar:hover{background:rgba(239,68,68,.1)}
+</style>
+</head>
+<body>
+<nav>
+  <span class="nav-logo">🎯 SlotZap</span>
+  <a href="/slotzap/app" class="nav-btn">← Campanhas</a>
+  {% if camp.status == 'ativa' %}
+  <button class="btn-encerrar" onclick="encerrar()">Encerrar campanha</button>
+  {% endif %}
+</nav>
+
+<div class="container">
+  <div class="camp-header">
+    <div class="camp-nome">{{ camp.nome }}</div>
+    {% if camp.descricao %}<div style="color:#6666aa;font-size:13px;margin-top:2px">{{ camp.descricao }}</div>{% endif %}
+    <div class="camp-preco">R$ {{ '%.2f'|format(camp.preco) }} por slot</div>
+    <div class="stats-bar">
+      <div class="stat"><div class="stat-val green">{{ pagos }}</div><div class="stat-lbl">✅ Pagos</div></div>
+      <div class="stat"><div class="stat-val yellow">{{ reservados }}</div><div class="stat-lbl">🟡 Reservados</div></div>
+      <div class="stat"><div class="stat-val gray">{{ disponiveis }}</div><div class="stat-lbl">⬜ Livres</div></div>
+      <div class="stat"><div class="stat-val purple">R$ {{ '%.0f'|format(receita) }}</div><div class="stat-lbl">💰 Recebido</div></div>
+    </div>
+  </div>
+
+  <div class="legenda">
+    <div class="leg-item"><div class="leg-box" style="background:rgba(99,102,241,.2);border:2px solid rgba(99,102,241,.4)"></div> Disponível</div>
+    <div class="leg-item"><div class="leg-box" style="background:rgba(245,158,11,.2);border:2px solid rgba(245,158,11,.4)"></div> Reservado (aguardando pagamento)</div>
+    <div class="leg-item"><div class="leg-box" style="background:rgba(34,197,94,.2);border:2px solid rgba(34,197,94,.4)"></div> Pago ✓</div>
+  </div>
+
+  <!-- Grid de slots -->
+  <div class="grid">
+    {% for s in slots %}
+    <div class="slot slot-{{ s.status }}"
+         onclick="clicarSlot({{ s.id }}, {{ s.numero }}, '{{ s.status }}', '{{ s.cliente_nome|e }}', '{{ s.cliente_tel }}', '{{ s.pix_qr_code }}', '{{ s.pix_copia_cola|e }}')"
+         title="{{ s.cliente_nome if s.cliente_nome else ('Disponível' if s.status == 'disponivel' else s.status) }}">
+      <span class="slot-num">{{ s.numero }}</span>
+      {% if s.status == 'pago' %}<span class="slot-ini">✓</span>
+      {% elif s.status == 'reservado' %}<span class="slot-ini">•••</span>{% endif %}
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- Modal: Reservar slot disponível -->
+<div class="overlay" id="modal-reservar">
+  <div class="modal">
+    <h3>🎯 Reservar Slot <span id="res-num"></span></h3>
+    <div class="modal-sub">Informe o cliente e o sistema gera o PIX automaticamente</div>
+    <div class="form-group">
+      <label>Nome do cliente *</label>
+      <input type="text" id="res-nome" placeholder="Ex: João Silva" autocomplete="off">
+    </div>
+    <div class="form-group">
+      <label>WhatsApp (opcional)</label>
+      <input type="text" id="res-tel" placeholder="Ex: 47991234567">
+    </div>
+    <div class="modal-btns">
+      <button class="btn btn-primary" onclick="confirmarReserva()">⚡ Gerar PIX</button>
+      <button class="btn btn-secondary" onclick="fecharModal()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: QR Code PIX -->
+<div class="overlay" id="modal-pix">
+  <div class="modal">
+    <h3>💰 PIX gerado — Slot <span id="pix-num"></span></h3>
+    <div class="modal-sub" id="pix-cliente"></div>
+    <div class="qr-area">
+      <img id="pix-qr" src="" alt="QR Code PIX">
+    </div>
+    <div class="copia-cola" id="pix-copia" onclick="copiar()" title="Clique para copiar"></div>
+    <div style="font-size:11px;color:#44447a;text-align:center;margin-top:6px">Clique no código para copiar</div>
+    <div class="modal-btns" style="margin-top:16px">
+      <button class="btn btn-success" onclick="marcarPagoAtual()">✅ Marcar como Pago</button>
+      <button class="btn btn-secondary" onclick="fecharModal()">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Slot reservado -->
+<div class="overlay" id="modal-reservado">
+  <div class="modal">
+    <h3>🟡 Slot <span id="rsv-num"></span> — Reservado</h3>
+    <div class="slot-info">
+      <div><strong id="rsv-nome"></strong></div>
+      <div style="color:#8888aa;font-size:12px;margin-top:4px" id="rsv-tel"></div>
+    </div>
+    {% if camp.status == 'ativa' %}
+    <div class="modal-btns">
+      <button class="btn btn-success" onclick="marcarPagoAtual()">✅ Confirmar Pagamento</button>
+      <button class="btn btn-secondary" onclick="verPix()">📋 Ver PIX</button>
+      <button class="btn btn-danger" onclick="cancelarAtual()">✕ Cancelar</button>
+    </div>
+    {% endif %}
+    <button class="btn btn-secondary" style="margin-top:8px;width:100%" onclick="fecharModal()">Fechar</button>
+  </div>
+</div>
+
+<!-- Modal: Slot pago -->
+<div class="overlay" id="modal-pago">
+  <div class="modal" style="text-align:center">
+    <div style="font-size:40px;margin-bottom:12px">✅</div>
+    <h3>Slot <span id="pg-num"></span> — Pago</h3>
+    <div style="color:#6666aa;font-size:13px;margin:8px 0 20px"><strong id="pg-nome"></strong></div>
+    {% if camp.status == 'ativa' %}
+    <button class="btn btn-danger" style="width:100%" onclick="cancelarAtual()">↩ Estornar / Cancelar</button>
+    {% endif %}
+    <button class="btn btn-secondary" style="width:100%;margin-top:8px" onclick="fecharModal()">Fechar</button>
+  </div>
+</div>
+
+<script>
+const CAMP_ID = {{ camp.id }};
+const CAMP_STATUS = "{{ camp.status }}";
+let _slotId = null, _slotNum = null, _pixQr = '', _pixCopia = '';
+
+function clicarSlot(id, num, status, nome, tel, qr, copia) {
+  _slotId = id; _slotNum = num; _pixQr = qr; _pixCopia = copia;
+  if (status === 'disponivel' && CAMP_STATUS === 'ativa') {
+    document.getElementById('res-num').textContent = '#' + num;
+    document.getElementById('res-nome').value = '';
+    document.getElementById('res-tel').value = '';
+    abrirModal('modal-reservar');
+  } else if (status === 'reservado') {
+    document.getElementById('rsv-num').textContent = '#' + num;
+    document.getElementById('rsv-nome').textContent = nome || '—';
+    document.getElementById('rsv-tel').textContent = tel ? 'WhatsApp: ' + tel : '';
+    abrirModal('modal-reservado');
+  } else if (status === 'pago') {
+    document.getElementById('pg-num').textContent = '#' + num;
+    document.getElementById('pg-nome').textContent = nome || '—';
+    abrirModal('modal-pago');
+  }
+}
+
+async function confirmarReserva() {
+  const nome = document.getElementById('res-nome').value.trim();
+  const tel  = document.getElementById('res-tel').value.trim();
+  if (!nome) { alert('Informe o nome do cliente.'); return; }
+
+  document.querySelector('#modal-reservar .btn-primary').textContent = '⏳ Gerando PIX...';
+  document.querySelector('#modal-reservar .btn-primary').disabled = true;
+
+  const r = await fetch(`/slotzap/campanha/${CAMP_ID}/reservar`, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({numero: _slotNum, nome, tel})
+  }).then(r => r.json());
+
+  if (r.erro) { alert(r.erro); location.reload(); return; }
+
+  _slotId  = r.slot_id;
+  _pixQr   = r.pix_qr;
+  _pixCopia= r.pix_copia;
+
+  fecharModal();
+  if (_pixQr) {
+    document.getElementById('pix-num').textContent = '#' + _slotNum;
+    document.getElementById('pix-cliente').textContent = nome;
+    document.getElementById('pix-qr').src = 'data:image/png;base64,' + _pixQr;
+    document.getElementById('pix-copia').textContent = _pixCopia;
+    abrirModal('modal-pix');
+  } else {
+    location.reload();
+  }
+}
+
+function verPix() {
+  if (!_pixQr && !_pixCopia) { alert('PIX não disponível para este slot.'); return; }
+  fecharModal();
+  document.getElementById('pix-num').textContent  = '#' + _slotNum;
+  document.getElementById('pix-qr').src  = _pixQr  ? 'data:image/png;base64,' + _pixQr : '';
+  document.getElementById('pix-copia').textContent = _pixCopia || '(sem código)';
+  document.getElementById('pix-cliente').textContent = '';
+  abrirModal('modal-pix');
+}
+
+async function marcarPagoAtual() {
+  const r = await fetch(`/slotzap/slot/${_slotId}/pagar`, {method:'POST'}).then(r=>r.json());
+  if (r.ok) location.reload(); else alert(r.erro);
+}
+
+async function cancelarAtual() {
+  if (!confirm('Cancelar esta reserva e liberar o slot?')) return;
+  const r = await fetch(`/slotzap/slot/${_slotId}/cancelar`, {method:'POST'}).then(r=>r.json());
+  if (r.ok) location.reload(); else alert(r.erro);
+}
+
+function copiar() {
+  const txt = document.getElementById('pix-copia').textContent;
+  navigator.clipboard.writeText(txt).then(() => {
+    document.getElementById('pix-copia').textContent = '✅ Copiado!';
+    setTimeout(() => document.getElementById('pix-copia').textContent = txt, 1500);
+  });
+}
+
+async function encerrar() {
+  if (!confirm('Encerrar esta campanha? Ela ficará somente leitura.')) return;
+  const r = await fetch(`/slotzap/campanha/${CAMP_ID}/encerrar`, {method:'POST'}).then(r=>r.json());
+  if (r.ok) location.reload();
+}
+
+function abrirModal(id) {
+  document.querySelectorAll('.overlay').forEach(m => m.classList.remove('open'));
+  document.getElementById(id).classList.add('open');
+}
+function fecharModal() {
+  document.querySelectorAll('.overlay').forEach(m => m.classList.remove('open'));
+  const btn = document.querySelector('#modal-reservar .btn-primary');
+  if (btn) { btn.textContent = '⚡ Gerar PIX'; btn.disabled = false; }
+}
+document.querySelectorAll('.overlay').forEach(m =>
+  m.addEventListener('click', e => { if (e.target === m) fecharModal(); })
+);
+</script>
+</body>
+</html>

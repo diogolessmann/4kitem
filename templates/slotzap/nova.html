@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SlotZap — Nova Campanha</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',sans-serif;background:#09090f;color:#f0f0ff;min-height:100vh}
+nav{background:#13131f;border-bottom:1px solid rgba(255,255,255,.07);
+    padding:0 24px;height:56px;display:flex;align-items:center;gap:12px}
+.nav-logo{font-size:18px;font-weight:800;background:linear-gradient(135deg,#6366f1,#a855f7);
+          -webkit-background-clip:text;-webkit-text-fill-color:transparent;flex:1}
+.nav-btn{background:none;border:1px solid rgba(255,255,255,.1);border-radius:7px;
+         color:#8888aa;padding:5px 12px;font-size:12px;cursor:pointer;font-family:inherit;text-decoration:none}
+.container{max-width:560px;margin:40px auto;padding:0 20px}
+h1{font-size:20px;font-weight:800;margin-bottom:24px}
+.card{background:#13131f;border:1px solid rgba(255,255,255,.07);border-radius:16px;padding:28px}
+.form-group{margin-bottom:18px}
+label{display:block;font-size:12px;font-weight:600;color:#8888aa;margin-bottom:6px}
+input,textarea,select{width:100%;background:#0d0d1a;border:1px solid rgba(255,255,255,.1);
+  border-radius:8px;color:#f0f0ff;padding:11px 13px;font-size:14px;font-family:inherit;outline:none;transition:.15s}
+input:focus,textarea:focus,select:focus{border-color:#6366f1}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.hint{font-size:11px;color:#44447a;margin-top:5px}
+.preview{background:#0d0d1a;border:1px solid rgba(255,255,255,.06);border-radius:8px;
+          padding:12px 14px;margin-top:16px;font-size:13px;color:#8888aa;line-height:1.6}
+.preview strong{color:#a5b4fc}
+.btn-submit{width:100%;padding:13px;border-radius:9px;border:none;margin-top:20px;
+             background:linear-gradient(135deg,#6366f1,#7c3aed);color:#fff;
+             font-size:15px;font-weight:700;cursor:pointer;font-family:inherit}
+.btn-submit:hover{opacity:.9}
+.err{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);color:#fca5a5;
+     padding:11px 14px;border-radius:8px;font-size:13px;margin-bottom:16px}
+</style>
+</head>
+<body>
+<nav>
+  <span class="nav-logo">🎯 SlotZap</span>
+  <a href="/slotzap/app" class="nav-btn">← Voltar</a>
+</nav>
+<div class="container">
+  <h1>Nova Campanha</h1>
+  <div class="card">
+    {% if erro %}<div class="err">{{ erro }}</div>{% endif %}
+    <form method="POST" id="form">
+      <div class="form-group">
+        <label>Nome da campanha *</label>
+        <input type="text" name="nome" id="nome" placeholder="Ex: Lista Junho 2026" required
+               oninput="atualizar()">
+      </div>
+      <div class="form-group">
+        <label>Descrição (opcional)</label>
+        <textarea name="descricao" rows="2" placeholder="Detalhes do produto ou campanha"
+                  style="resize:vertical"></textarea>
+      </div>
+      <div class="grid2">
+        <div class="form-group">
+          <label>Preço por slot (R$) *</label>
+          <input type="number" name="preco" id="preco" placeholder="29.90" step="0.01"
+                 min="0.01" required oninput="atualizar()">
+        </div>
+        <div class="form-group">
+          <label>Quantidade de slots *</label>
+          <input type="number" name="total_slots" id="total" placeholder="300"
+                 min="2" max="1000" required value="300" oninput="atualizar()">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Numeração começa em</label>
+        <input type="number" name="slots_inicio" id="inicio" value="1" min="0" oninput="atualizar()">
+        <div class="hint">Normalmente 1. Use 0 se quiser começar do zero.</div>
+      </div>
+
+      <div class="preview" id="preview">
+        Preencha os campos acima para ver o resumo.
+      </div>
+
+      <button type="submit" class="btn-submit">🚀 Criar Campanha</button>
+    </form>
+  </div>
+</div>
+<script>
+function atualizar() {
+  const nome  = document.getElementById('nome').value.trim();
+  const preco = parseFloat(document.getElementById('preco').value) || 0;
+  const total = parseInt(document.getElementById('total').value) || 0;
+  const ini   = parseInt(document.getElementById('inicio').value) || 1;
+  if (!nome || !preco || !total) {
+    document.getElementById('preview').innerHTML = 'Preencha os campos acima para ver o resumo.';
+    return;
+  }
+  const fim = ini + total - 1;
+  const pot = (preco * total).toLocaleString('pt-BR', {style:'currency', currency:'BRL'});
+  document.getElementById('preview').innerHTML =
+    `<strong>${nome}</strong><br>
+     Slots <strong>#${ini}</strong> ao <strong>#${fim}</strong> ·
+     <strong>${total}</strong> números ·
+     <strong>R$ ${preco.toFixed(2)}</strong>/slot<br>
+     Potencial de receita: <strong style="color:#22c55e">${pot}</strong>`;
+}
+</script>
+</body>
+</html>
