@@ -11651,31 +11651,47 @@ def slotzap_config_wpp(camp_id):
 @_sz_login_required
 def slotzap_bot_info(camp_id):
     """Retorna o número de telefone do bot WhatsApp conectado."""
-    evo_url = os.environ.get('EVO_URL', '').rstrip('/')
-    evo_key = os.environ.get('EVO_KEY', '')
-    inst    = os.environ.get('EVO_INSTANCE', '')
+    # Tenta múltiplos nomes de variável (compatibilidade Railway)
+    evo_url = (os.environ.get('EVO_URL') or os.environ.get('EVOLUTION_API_URL') or '').rstrip('/')
+    evo_key = os.environ.get('EVO_KEY') or os.environ.get('EVOLUTION_API_KEY') or ''
+    inst    = os.environ.get('EVO_INSTANCE') or os.environ.get('EVOLUTION_INSTANCE') or ''
     if not evo_url or not inst:
-        return jsonify({'numero': None})
+        return jsonify({'numero': None, 'debug': f'EVO_URL={bool(evo_url)} INST={bool(inst)}'})
+    headers = {'apikey': evo_key}
+    numero  = None
     try:
-        ri = requests.get(f'{evo_url}/instance/fetchInstances',
-                          headers={'apikey': evo_key}, timeout=8)
-        instances = ri.json() if ri.content else []
-        numero = None
-        if isinstance(instances, list):
-            for item in instances:
-                iname = ''
-                owner = ''
-                if isinstance(item, dict):
-                    inner = item.get('instance', item)
-                    iname = inner.get('instanceName', '') if isinstance(inner, dict) else item.get('instanceName', '')
-                    owner = inner.get('owner', '') if isinstance(inner, dict) else item.get('owner', '')
+        # Tentativa 1: fetchInstances (lista todas)
+        ri = requests.get(f'{evo_url}/instance/fetchInstances', headers=headers, timeout=8)
+        data = ri.json() if ri.content else []
+        if isinstance(data, list):
+            for item in data:
+                if not isinstance(item, dict): continue
+                inner = item.get('instance', item)
+                iname = (inner.get('instanceName', '') if isinstance(inner, dict) else '') or item.get('instanceName', '')
+                owner = (inner.get('owner', '')       if isinstance(inner, dict) else '') or item.get('owner', '')
                 if iname == inst and owner:
-                    # owner vem como "5547999999999@s.whatsapp.net" → extrai só o número
-                    numero = owner.split('@')[0].lstrip('55') if '@' in owner else owner
+                    numero = owner.split('@')[0]
+                    if numero.startswith('55') and len(numero) > 11:
+                        numero = numero[2:]
                     break
-        return jsonify({'numero': numero, 'instance': inst})
-    except Exception as e:
-        return jsonify({'numero': None, 'erro': str(e)})
+    except Exception:
+        pass
+
+    if not numero:
+        try:
+            # Tentativa 2: connectionState — algumas versões retornam o número aqui
+            rc = requests.get(f'{evo_url}/instance/connectionState/{inst}', headers=headers, timeout=8)
+            cd = rc.json() if rc.content else {}
+            inner = cd.get('instance', cd) if isinstance(cd, dict) else {}
+            owner = inner.get('owner', '') if isinstance(inner, dict) else ''
+            if owner and '@' in owner:
+                numero = owner.split('@')[0]
+                if numero.startswith('55') and len(numero) > 11:
+                    numero = numero[2:]
+        except Exception:
+            pass
+
+    return jsonify({'numero': numero, 'instance': inst, 'evo_url': evo_url})
 
 
 @app.route('/slotzap/campanha/<int:camp_id>/grupos')
