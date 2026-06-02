@@ -139,21 +139,16 @@ input:focus{border-color:#6366f1}
       <div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:14px">
         <div style="min-width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#7c3aed);
                     display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800">1</div>
-        <div>
-          <div style="font-size:13px;font-weight:700;margin-bottom:3px">Adicione o bot ao seu grupo</div>
-          <div style="font-size:12px;color:#6666aa;line-height:1.5">
-            Abra o grupo no WhatsApp → <em>Adicionar participante</em> → cole o número abaixo
+        <div style="width:100%">
+          <div style="font-size:13px;font-weight:700;margin-bottom:3px">Escolha o número do bot</div>
+          <div style="font-size:12px;color:#6666aa;margin-bottom:8px;line-height:1.5">
+            Selecione qual número vai enviar as notificações no grupo
           </div>
-          <div id="bot-numero-box" style="margin-top:8px;background:#0a0a15;border:1px solid rgba(99,102,241,.3);
-               border-radius:8px;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;gap:8px">
-            <span id="bot-numero-txt" style="font-size:15px;font-weight:700;color:#a5b4fc;letter-spacing:.5px">
-              Carregando…
-            </span>
-            <button onclick="copiarBotNumero()" style="background:rgba(99,102,241,.15);border:1px solid rgba(99,102,241,.3);
-                    border-radius:6px;color:#a5b4fc;padding:4px 10px;font-size:11px;cursor:pointer;font-family:inherit;
-                    white-space:nowrap">
-              📋 Copiar
-            </button>
+          <div id="lista-bots" style="display:flex;flex-direction:column;gap:6px">
+            <div style="color:#6666aa;font-size:12px">Carregando números...</div>
+          </div>
+          <div style="margin-top:8px;font-size:12px;color:#6666aa;line-height:1.5">
+            Depois, abra o grupo → <em>Adicionar participante</em> → cole o número escolhido
           </div>
         </div>
       </div>
@@ -456,40 +451,55 @@ function copiarLink() {
   });
 }
 
+let _selectedInstance = '';
+
 async function abrirConfigWpp() {
   abrirModal('modal-wpp');
-  // Carrega o número do bot automaticamente
-  const el = document.getElementById('bot-numero-txt');
-  if (!el) return;
+  const lista = document.getElementById('lista-bots');
+  if (!lista) return;
   try {
-    const r = await fetch(`/slotzap/campanha/${CAMP_ID}/bot-info`).then(r => r.json());
-    if (r.numero) {
-      el.textContent = r.numero;
-    } else {
-      el.textContent = 'Não disponível';
-      el.style.color = '#6666aa';
+    const r = await fetch(`/slotzap/campanha/${CAMP_ID}/numeros-disponiveis`).then(r => r.json());
+    const nums = r.numeros || [];
+    if (nums.length === 0) {
+      lista.innerHTML = '<div style="color:#ef4444;font-size:12px">Nenhum número conectado no MandaZap.</div>';
+      return;
     }
+    lista.innerHTML = nums.map((n, i) => `
+      <div onclick="selecionarBot('${n.instance}','${n.phone}',this)"
+           style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;
+                  border:2px solid rgba(255,255,255,.07);background:#0a0a15;cursor:pointer;transition:.15s"
+           class="bot-card" data-instance="${n.instance}">
+        <div style="width:36px;height:36px;border-radius:50%;background:rgba(99,102,241,.15);
+                    display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">📱</div>
+        <div>
+          <div style="font-size:13px;font-weight:700">${n.label}</div>
+          <div style="font-size:11px;color:#6666aa">${n.phone}</div>
+        </div>
+        <div style="margin-left:auto;font-size:18px;display:none" class="check-ico">✅</div>
+      </div>`).join('');
+    // Seleciona o primeiro automaticamente
+    const primeiro = lista.querySelector('.bot-card');
+    if (primeiro) primeiro.click();
   } catch(e) {
-    el.textContent = 'Erro ao carregar';
-    el.style.color = '#ef4444';
+    lista.innerHTML = '<div style="color:#ef4444;font-size:12px">Erro ao carregar números.</div>';
   }
 }
 
-function copiarBotNumero() {
-  const num = document.getElementById('bot-numero-txt').textContent.trim();
-  if (!num || num === 'Carregando…' || num === 'Não disponível') return;
-  navigator.clipboard.writeText(num).then(() => {
-    const btn = document.querySelector('#bot-numero-box button');
-    btn.textContent = '✅ Copiado!';
-    setTimeout(() => btn.textContent = '📋 Copiar', 1500);
+function selecionarBot(instance, phone, el) {
+  _selectedInstance = instance;
+  document.querySelectorAll('.bot-card').forEach(c => {
+    c.style.borderColor = 'rgba(255,255,255,.07)';
+    c.querySelector('.check-ico').style.display = 'none';
   });
+  el.style.borderColor = '#6366f1';
+  el.querySelector('.check-ico').style.display = 'block';
 }
 
 async function buscarGrupos() {
   const lista = document.getElementById('lista-grupos');
   lista.style.display = 'block';
   lista.innerHTML = '<div style="color:#6666aa;font-size:12px;padding:8px">Buscando grupos...</div>';
-  const r = await fetch(`/slotzap/campanha/${CAMP_ID}/grupos`).then(r=>r.json());
+  const r = await fetch(`/slotzap/campanha/${CAMP_ID}/grupos?instance=${encodeURIComponent(_selectedInstance)}`).then(r=>r.json());
   if (!r.grupos || r.grupos.length === 0) {
     lista.innerHTML = '<div style="color:#ef4444;font-size:12px;padding:8px">Nenhum grupo encontrado. Verifique a instância WhatsApp.</div>';
     return;
@@ -511,7 +521,7 @@ function selecionarGrupo(id, nome) {
 async function salvarWpp() {
   const grupo_id = document.getElementById('wpp-grupo').value.trim();
   const msg      = document.getElementById('wpp-msg').value.trim();
-  const instance = ''; // usa a instância global do .env
+  const instance = _selectedInstance;
   const r = await fetch(`/slotzap/campanha/${CAMP_ID}/config-wpp`, {
     method:'POST', headers:{'Content-Type':'application/json'},
     body: JSON.stringify({grupo_id, instance, msg})

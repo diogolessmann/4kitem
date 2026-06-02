@@ -11647,6 +11647,32 @@ def slotzap_config_wpp(camp_id):
     return jsonify({'ok': True})
 
 
+@app.route('/slotzap/campanha/<int:camp_id>/numeros-disponiveis')
+@_sz_login_required
+def slotzap_numeros_disponiveis(camp_id):
+    """Retorna os números WhatsApp conectados no MandaZap para usar como bot."""
+    evo_url = (os.environ.get('EVO_URL') or os.environ.get('EVOLUTION_API_URL') or '').rstrip('/')
+    evo_key = os.environ.get('EVO_KEY') or os.environ.get('EVOLUTION_API_KEY') or ''
+    if not evo_url:
+        return jsonify({'numeros': []})
+    conn = get_saas_db()
+    numeros_db = conn.execute(
+        "SELECT id, user_id, label, phone FROM mandazap_numbers WHERE status='connected' ORDER BY id"
+    ).fetchall()
+    conn.close()
+    numeros = []
+    for n in numeros_db:
+        n = dict(n)
+        instance = f"mz{n['user_id']}n{n['id']}"
+        phone_clean = n['phone'].lstrip('55') if n['phone'] and n['phone'].startswith('55') else n['phone']
+        numeros.append({
+            'instance': instance,
+            'label': n['label'] or phone_clean,
+            'phone': phone_clean,
+        })
+    return jsonify({'numeros': numeros})
+
+
 @app.route('/slotzap/campanha/<int:camp_id>/bot-info')
 @_sz_login_required
 def slotzap_bot_info(camp_id):
@@ -11702,9 +11728,10 @@ def slotzap_listar_grupos(camp_id):
     camp = conn.execute('SELECT evo_instance FROM slotzap_campanhas WHERE id=? AND user_id=?',
                         (camp_id, _sz_uid())).fetchone()
     conn.close()
-    instance = (dict(camp).get('evo_instance') or '') if camp else ''
-    evo_url  = os.environ.get('EVO_URL', '').rstrip('/')
-    evo_key  = os.environ.get('EVO_KEY', '')
+    # Aceita instância via query param (selecionada pelo usuário no modal)
+    instance = request.args.get('instance') or (dict(camp).get('evo_instance') or '') if camp else ''
+    evo_url  = (os.environ.get('EVO_URL') or os.environ.get('EVOLUTION_API_URL') or '').rstrip('/')
+    evo_key  = os.environ.get('EVO_KEY') or os.environ.get('EVOLUTION_API_KEY') or ''
     inst     = instance or os.environ.get('EVO_INSTANCE', '')
     if not evo_url or not inst:
         return jsonify({'grupos': []})
