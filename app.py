@@ -5243,7 +5243,10 @@ def saas_admin():
     try:
         conn_sz = get_saas_db()
         sz_users = [dict(r) for r in conn_sz.execute(
-            'SELECT id, name, email, phone, active, created_at, last_login FROM slotzap_users ORDER BY id DESC'
+            "SELECT u.id, u.name, u.email, u.phone, u.active, u.plan, u.plan_active, "
+            "u.created_at, u.last_login, "
+            "(SELECT COUNT(*) FROM mandazap_users m WHERE lower(m.email)=lower(u.email)) AS tem_mandazap "
+            "FROM slotzap_users u ORDER BY u.id DESC"
         ).fetchall()]
         conn_sz.close()
     except Exception:
