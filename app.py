@@ -11377,6 +11377,18 @@ def _sz_plan_active() -> bool:
     conn.close()
     return bool(u and dict(u).get('plan_active'))
 
+def _cpf_valido(cpf) -> bool:
+    """Valida CPF pelos dígitos verificadores (não só o tamanho)."""
+    cpf = ''.join(c for c in (cpf or '') if c.isdigit())
+    if len(cpf) != 11 or cpf == cpf[0] * 11:
+        return False
+    for i in (9, 10):
+        soma = sum(int(cpf[n]) * ((i + 1) - n) for n in range(i))
+        dig  = (soma * 10) % 11 % 10
+        if dig != int(cpf[i]):
+            return False
+    return True
+
 
 @app.route('/slotzap')
 def slotzap_landing():
@@ -11410,6 +11422,8 @@ def slotzap_cadastro(plano='start'):
             erro = 'A senha deve ter pelo menos 6 caracteres.'
         elif len(cpf_digits) not in (11, 14):
             erro = 'CPF deve ter 11 dígitos ou CNPJ 14 dígitos.'
+        elif len(cpf_digits) == 11 and not _cpf_valido(cpf_digits):
+            erro = 'CPF inválido. Confira os números.'
         else:
             conn = get_saas_db()
             if conn.execute('SELECT id FROM slotzap_users WHERE email=?', (email,)).fetchone():
@@ -11695,6 +11709,8 @@ def slotzap_reservar(camp_id):
 
     if not cliente_nome:
         return jsonify({'erro': 'Nome do cliente obrigatório'}), 400
+    if not _cpf_valido(cliente_cpf):
+        return jsonify({'erro': 'CPF inválido. Confira os números.'}), 400
 
     conn  = get_saas_db()
     camp  = conn.execute('SELECT * FROM slotzap_campanhas WHERE id=? AND user_id=?',
@@ -11945,6 +11961,23 @@ def _sz_marcar_pago(slot_id):
             log.info(f'[SlotZap] Notificação WPP enviada para grupo {grupo_id}')
         except Exception as _wpp_err:
             log.warning(f'[SlotZap] Erro ao notificar grupo: {_wpp_err}')
+
+    # Confirmação no WhatsApp do COMPRADOR (se ele informou o número)
+    tel = ''.join(c for c in (row.get('cliente_tel') or '') if c.isdigit())
+    if tel and instance and evo_url:
+        numero_wpp = tel if tel.startswith('55') else ('55' + tel)
+        primeiro   = (row['cliente_nome'] or '').split()[0] if row.get('cliente_nome') else ''
+        msg_cli = (f"✅ *Pagamento confirmado!*\n\n"
+                   f"Seu número *{row['numero']}* na *{row['camp_nome']}* está garantido. 🎯\n"
+                   f"Obrigado{(', ' + primeiro) if primeiro else ''}!")
+        try:
+            requests.post(
+                f"{evo_url}/message/sendText/{instance}",
+                headers={'apikey': evo_key, 'Content-Type': 'application/json'},
+                json={'number': numero_wpp, 'text': msg_cli}, timeout=10)
+            log.info(f'[SlotZap] Confirmação enviada ao comprador {numero_wpp}')
+        except Exception as _cli_err:
+            log.warning(f'[SlotZap] Erro ao confirmar p/ comprador: {_cli_err}')
     return True
 
 
@@ -12191,8 +12224,8 @@ def slotzap_publico_reservar(token):
 
     if not cliente_nome:
         return jsonify({'erro': 'Nome obrigatório'}), 400
-    if not cliente_cpf or len(cliente_cpf) != 11:
-        return jsonify({'erro': 'CPF obrigatório (11 dígitos)'}), 400
+    if not _cpf_valido(cliente_cpf):
+        return jsonify({'erro': 'CPF inválido. Confira os números.'}), 400
 
     conn  = get_saas_db()
     camp  = conn.execute('SELECT * FROM slotzap_campanhas WHERE token_publico=? AND status="ativa"',
