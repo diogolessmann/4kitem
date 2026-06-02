@@ -145,11 +145,12 @@ input:focus{border-color:#6366f1}
     <h3>💰 Pague agora e o slot é seu!</h3>
     <div class="preco-label">R$ {{ '%.2f'|format(camp.preco) }}</div>
     <img id="qr-img" class="qr-img" src="" alt="QR Code PIX">
-    <div class="instrucao">Escaneie com o app do seu banco<br>ou copie o código abaixo:</div>
+    <div class="instrucao">Escaneie com o app do seu banco<br>ou copie o código Pix abaixo:</div>
+    <div style="font-size:12px;font-weight:600;color:#a5b4fc;margin:10px 0 4px">📋 Pix Copia e Cola</div>
     <div class="copia-cola" id="qr-copia" onclick="copiar()">Carregando...</div>
-    <div style="font-size:11px;color:#44447a;margin-bottom:4px">Toque para copiar · Válido por 24h</div>
-    <div class="instrucao" style="color:#f59e0b">
-      ⏳ Após o pagamento, o slot vira <strong>verde</strong> automaticamente
+    <div style="font-size:11px;color:#44447a;margin:4px 0 8px">Toque no código para copiar · Válido por 24h</div>
+    <div class="instrucao" style="color:#f59e0b;background:rgba(245,158,11,.08);border-radius:8px;padding:8px">
+      ⏳ Após pagar, o slot vira <strong>verde</strong> automaticamente
     </div>
     <button class="btn-ok" onclick="fecharModal(); location.reload()">✅ Já paguei — ver status</button>
   </div>
@@ -195,12 +196,19 @@ async function gerarPix() {
 
   fecharModal();
 
-  if (r.pix_qr) {
-    document.getElementById('qr-img').src  = 'data:image/png;base64,' + r.pix_qr;
-    document.getElementById('qr-copia').textContent = r.pix_copia || 'PIX gerado';
+  if (r.pix_qr || r.pix_copia) {
+    const img = document.getElementById('qr-img');
+    if (r.pix_qr) {
+      img.src = 'data:image/png;base64,' + r.pix_qr;
+      img.style.display = 'block';
+    } else {
+      img.style.display = 'none';
+    }
+    document.getElementById('qr-copia').textContent = r.pix_copia || '';
     abrirModal('modal-pix');
   } else {
-    alert('PIX gerado! Aguarde confirmação do pagamento.');
+    // Sem QR e sem copia-cola — slot reservado, pagamento manual
+    alert('Slot reservado! Entre em contato com o vendedor para efetuar o pagamento.');
     atualizarGrid();
   }
 }
