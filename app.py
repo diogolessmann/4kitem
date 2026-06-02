@@ -11687,8 +11687,8 @@ def _sz_criar_cliente_asaas(nome, tel, cpf=''):
 @_sz_login_required
 def slotzap_debug_pix():
     """Debug: testa o fluxo completo de PIX usando o mesmo código de produção."""
-    # Usa a mesma função do código real
-    customer_id = _sz_criar_cliente_asaas('Teste SlotZap Debug', '')
+    cpf_test = ''.join(c for c in (request.args.get('cpf', '') or '') if c.isdigit())
+    customer_id = _sz_criar_cliente_asaas('Teste SlotZap Debug', '', cpf_test)
 
     r_pagamento = None
     r_qrcode    = None
