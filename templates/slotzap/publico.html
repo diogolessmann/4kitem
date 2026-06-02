@@ -44,6 +44,16 @@ body{font-family:'Inter',sans-serif;background:#09090f;color:#f0f0ff;min-height:
 .slot-disponivel:hover,.slot-disponivel:active{background:rgba(99,102,241,.3);border-color:#6366f1;transform:scale(1.05)}
 .slot-reservado{background:rgba(245,158,11,.1);border-color:rgba(245,158,11,.2);color:#f59e0b;cursor:not-allowed}
 .slot-pago{background:rgba(34,197,94,.1);border-color:rgba(34,197,94,.2);color:#22c55e;cursor:not-allowed;font-size:10px}
+.slot-sel{background:#6366f1!important;border-color:#a5b4fc!important;color:#fff!important;transform:scale(1.05)}
+
+.selbar{position:fixed;bottom:0;left:0;right:0;background:#13131f;border-top:1px solid rgba(99,102,241,.3);
+        padding:12px 16px;display:none;align-items:center;justify-content:space-between;gap:12px;z-index:50}
+.selbar.open{display:flex}
+.selbar-info{font-size:13px;color:#c9d6e2}
+.selbar-info b{color:#fff;font-size:15px}
+.selbar-total{color:#a5b4fc;font-weight:800}
+.selbar-btn{background:linear-gradient(135deg,#6366f1,#7c3aed);color:#fff;border:none;border-radius:9px;
+            padding:12px 18px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap}
 
 .footer-fixed{position:fixed;bottom:0;left:0;right:0;background:#13131f;
                border-top:1px solid rgba(255,255,255,.07);padding:12px 16px;text-align:center}
@@ -112,7 +122,7 @@ input:focus{border-color:#6366f1}
 </div>
 
 <div class="legenda">
-  <div class="leg"><div class="leg-box" style="background:rgba(99,102,241,.2);border:2px solid rgba(99,102,241,.4)"></div> Disponível — clique para comprar</div>
+  <div class="leg"><div class="leg-box" style="background:rgba(99,102,241,.2);border:2px solid rgba(99,102,241,.4)"></div> Disponível — toque para selecionar</div>
   <div class="leg"><div class="leg-box" style="background:rgba(245,158,11,.2);border:2px solid rgba(245,158,11,.4)"></div> Reservado</div>
   <div class="leg"><div class="leg-box" style="background:rgba(34,197,94,.2);border:2px solid rgba(34,197,94,.4)"></div> Pago ✓</div>
 </div>
@@ -121,21 +131,26 @@ input:focus{border-color:#6366f1}
   <div class="grid" id="grid">
     {% for s in slots %}
     <div class="slot slot-{{ s.status }}" id="slot-{{ s.numero }}"
-         {% if s.status == 'disponivel' %}onclick="selecionarSlot({{ s.numero }})"{% endif %}>
+         {% if s.status == 'disponivel' %}onclick="toggleSlot({{ s.numero }})"{% endif %}>
       {{ s.numero }}{% if s.status == 'pago' %}<br>✓{% endif %}
     </div>
     {% endfor %}
   </div>
 </div>
 
-<div class="footer-fixed">
+<div class="footer-fixed" id="bar-live">
   <div class="badge-live"><div class="pulse"></div> Ao vivo — atualiza automaticamente</div>
+</div>
+
+<div class="selbar" id="selbar">
+  <div class="selbar-info"><b id="sel-qtd">0</b> número(s) · <span class="selbar-total" id="sel-total">R$ 0,00</span></div>
+  <button class="selbar-btn" onclick="abrirCheckout()">Comprar →</button>
 </div>
 
 <!-- Modal: Escolher número -->
 <div class="overlay" id="modal-escolha">
   <div class="modal">
-    <h3>🎯 Slot <span id="slot-escolhido"></span></h3>
+    <h3>🎯 <span id="slot-escolhido"></span></h3>
     <div class="modal-sub">Preencha seus dados e receba o PIX na hora</div>
     <div class="form-group">
       <label>Seu nome *</label>
@@ -158,8 +173,8 @@ input:focus{border-color:#6366f1}
 <!-- Modal: QR Code PIX -->
 <div class="overlay" id="modal-pix">
   <div class="qr-modal">
-    <h3>💰 Pague agora e o slot é seu!</h3>
-    <div class="preco-label">R$ {{ '%.2f'|format(camp.preco) }}</div>
+    <h3>💰 Pague agora e o número é seu!</h3>
+    <div class="preco-label" id="pix-preco">R$ {{ '%.2f'|format(camp.preco) }}</div>
     <img id="qr-img" class="qr-img" src="" alt="QR Code PIX">
     <div class="instrucao">Escaneie com o app do seu banco<br>ou copie o código Pix abaixo:</div>
     <div style="font-size:12px;font-weight:600;color:#a5b4fc;margin:10px 0 4px">📋 Pix Copia e Cola</div>
@@ -174,16 +189,39 @@ input:focus{border-color:#6366f1}
 </div>
 
 <script>
-const TOKEN   = '{{ token }}';
-let _slotSel  = null;
+const TOKEN = '{{ token }}';
+const PRECO = {{ camp.preco }};
+const _sel  = new Set();   // números selecionados
+let _slotSel = null;       // 1º número da compra atual (p/ confirmar pagamento)
 
-function selecionarSlot(num) {
-  _slotSel = num;
-  document.getElementById('slot-escolhido').textContent = '#' + num;
+function fmtBRL(v){ return 'R$ ' + Number(v).toFixed(2).replace('.', ','); }
+
+function toggleSlot(num){
+  const el = document.getElementById('slot-' + num);
+  if (!el || !el.classList.contains('slot-disponivel')) return;
+  if (_sel.has(num)) { _sel.delete(num); el.classList.remove('slot-sel'); }
+  else { _sel.add(num); el.classList.add('slot-sel'); }
+  atualizarBarra();
+}
+function atualizarBarra(){
+  const n = _sel.size;
+  document.getElementById('sel-qtd').textContent   = n;
+  document.getElementById('sel-total').textContent = fmtBRL(n * PRECO);
+  document.getElementById('selbar').classList.toggle('open', n > 0);
+  document.getElementById('bar-live').style.display = n > 0 ? 'none' : '';
+}
+function abrirCheckout(){
+  if (_sel.size === 0) return;
+  const nums = [..._sel].sort((a,b)=>a-b);
+  document.getElementById('slot-escolhido').textContent =
+    (nums.length === 1) ? ('Número #' + nums[0])
+                        : (nums.length + ' números: ' + nums.map(x=>'#'+x).join(', '));
   document.getElementById('inp-nome').value = '';
+  document.getElementById('inp-cpf').value  = '';
   document.getElementById('inp-tel').value  = '';
-  document.getElementById('btn-gerar').disabled = false;
-  document.getElementById('btn-gerar').textContent = '⚡ Gerar PIX — R$ {{ '%.2f'|format(camp.preco) }}';
+  const btn = document.getElementById('btn-gerar');
+  btn.disabled = false;
+  btn.textContent = '⚡ Gerar PIX — ' + fmtBRL(_sel.size * PRECO);
   abrirModal('modal-escolha');
 }
 
@@ -199,6 +237,9 @@ async function gerarPix() {
     return;
   }
 
+  const numeros = [..._sel].sort((a,b)=>a-b);
+  if (numeros.length === 0) { alert('Selecione ao menos um número.'); return; }
+
   const btn = document.getElementById('btn-gerar');
   btn.disabled = true;
   btn.textContent = '⏳ Gerando PIX...';
@@ -206,18 +247,21 @@ async function gerarPix() {
   const r = await fetch(`/slotzap/p/${TOKEN}/reservar`, {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({numero: _slotSel, nome, cpf, tel})
+    body: JSON.stringify({numeros, nome, cpf, tel})
   }).then(r => r.json());
 
   if (r.erro) {
     alert(r.erro);
     btn.disabled = false;
-    btn.textContent = '⚡ Gerar PIX — R$ {{ '%.2f'|format(camp.preco) }}';
+    btn.textContent = '⚡ Gerar PIX — ' + fmtBRL(_sel.size * PRECO);
     fecharModal();
     atualizarGrid();
     return;
   }
 
+  _slotSel = numeros[0];
+  _sel.clear();
+  atualizarBarra();
   fecharModal();
 
   if (r.pix_qr || r.pix_copia) {
@@ -229,11 +273,11 @@ async function gerarPix() {
       img.style.display = 'none';
     }
     document.getElementById('qr-copia').textContent = r.pix_copia || '';
+    if (r.valor != null) document.getElementById('pix-preco').textContent = fmtBRL(r.valor);
     abrirModal('modal-pix');
     startPixPoll();
   } else {
-    // Sem QR e sem copia-cola — slot reservado, pagamento manual
-    alert('Slot reservado! Entre em contato com o vendedor para efetuar o pagamento.');
+    alert('Reservado! Combine o pagamento com o vendedor.');
     atualizarGrid();
   }
 }
@@ -323,26 +367,25 @@ async function atualizarGrid() {
     Object.entries(d.slots).forEach(([num, status]) => {
       const el = document.getElementById('slot-' + num);
       if (!el) return;
-      // Atualiza classe
+      const n = parseInt(num);
       el.className = 'slot slot-' + status;
       if (status === 'disponivel') {
-        el.onclick = () => selecionarSlot(parseInt(num));
+        el.onclick = () => toggleSlot(n);
         el.innerHTML = num;
+        if (_sel.has(n)) el.classList.add('slot-sel');   // mantém seleção
         liv++;
-      } else if (status === 'reservado') {
-        el.onclick = null;
-        el.innerHTML = num;
-        res++;
       } else {
         el.onclick = null;
-        el.innerHTML = num + '<br>✓';
-        pagos++;
+        if (_sel.has(n)) _sel.delete(n);                 // alguém pegou: tira da seleção
+        el.innerHTML = (status === 'pago') ? (num + '<br>✓') : num;
+        if (status === 'reservado') res++; else pagos++;
       }
     });
     const total = pagos + res + liv;
     const pct = total ? Math.round(pagos / total * 100) : 0;
     document.getElementById('prog-pct').textContent  = pct;
     document.getElementById('prog-fill').style.width = pct + '%';
+    atualizarBarra();
   } catch(e) {}
 }
 setInterval(atualizarGrid, 15000);

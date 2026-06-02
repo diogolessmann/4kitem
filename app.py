@@ -1798,10 +1798,12 @@ def webhook_asaas_global():
             conn.close()
 
     elif ref.startswith('sz_'):
-        # SlotZap — pagamento de slot avulso (externalReference = sz_{slot_id})
+        # SlotZap — pagamento de número(s) (1 cobrança pode cobrir vários slots)
         try:
             if ativar:
-                _sz_marcar_pago(int(ref.split('_')[1]))
+                cid = payload.get('payment', {}).get('id', '')
+                if not (cid and _sz_marcar_pago_charge(cid)):
+                    _sz_marcar_pago(int(ref.split('_')[1]))  # fallback p/ reservas antigas
         except Exception as _sz_err:
             log.error(f'[SlotZap] Webhook error: {_sz_err}')
 
@@ -12100,6 +12102,67 @@ def _sz_marcar_pago(slot_id):
     return True
 
 
+def _sz_marcar_pago_charge(charge_id):
+    """Dá baixa em TODOS os slots reservados com este charge_id (suporta multi-compra).
+    Notifica o grupo uma única vez e avisa o comprador. Idempotente. Retorna nº de slots."""
+    if not charge_id:
+        return 0
+    conn  = get_saas_db()
+    slots = [dict(r) for r in conn.execute(
+        "SELECT id, numero, cliente_nome, cliente_tel, campanha_id FROM slotzap_slots "
+        "WHERE asaas_charge_id=? AND status='reservado'", (charge_id,)).fetchall()]
+    if not slots:
+        conn.close()
+        return 0
+    agora = datetime.now().isoformat()
+    conn.executemany("UPDATE slotzap_slots SET status='pago', pago_em=? WHERE id=?",
+                     [(agora, s['id']) for s in slots])
+    conn.commit()
+    camp = dict(conn.execute('''
+        SELECT c.nome, c.grupo_wpp_id, c.evo_instance, c.token_publico, c.total_slots,
+               (SELECT COUNT(*) FROM slotzap_slots WHERE campanha_id=c.id AND status="pago") AS pagos
+        FROM slotzap_campanhas c WHERE c.id=?''', (slots[0]['campanha_id'],)).fetchone())
+    conn.close()
+
+    numeros  = sorted(s['numero'] for s in slots)
+    nums_str = ', '.join('#' + str(n) for n in numeros)
+    nome_cli = slots[0]['cliente_nome'] or ''
+    tel_cli  = ''.join(c for c in (slots[0]['cliente_tel'] or '') if c.isdigit())
+    log.info(f'[SlotZap] PAGO ({charge_id}): {nums_str} — {camp["nome"]} ({nome_cli})')
+
+    instance = (camp.get('evo_instance') or '').strip() or os.environ.get('EVO_INSTANCE', '')
+    evo_url  = os.environ.get('EVO_URL', '').rstrip('/')
+    evo_key  = os.environ.get('EVO_KEY', '')
+    total    = camp.get('total_slots') or 0
+    pct      = round(camp['pagos'] / total * 100) if total else 0
+
+    grupo_id = (camp.get('grupo_wpp_id') or '').strip()
+    if grupo_id and instance and evo_url:
+        base_url = os.environ.get('BASE_URL', 'https://www.4kitem.com.br').rstrip('/')
+        token    = camp.get('token_publico') or ''
+        link     = f"\n🔗 {base_url}/slotzap/p/{token}" if token else ''
+        tpl = (f"✅ *{nums_str} — PAGO!*\n👤 {nome_cli}\n🎯 {camp['nome']}\n\n📊 {pct}% concluído{link}")
+        try:
+            requests.post(f"{evo_url}/message/sendText/{instance}",
+                headers={'apikey': evo_key, 'Content-Type': 'application/json'},
+                json={'number': grupo_id, 'text': tpl}, timeout=10)
+        except Exception as _e:
+            log.warning(f'[SlotZap] grupo: {_e}')
+
+    if tel_cli and instance and evo_url:
+        nwpp = tel_cli if tel_cli.startswith('55') else ('55' + tel_cli)
+        prim = nome_cli.split()[0] if nome_cli else ''
+        msg  = (f"✅ *Pagamento confirmado!*\n\nSeu(s) número(s) {nums_str} na *{camp['nome']}* "
+                f"está(ão) garantido(s). 🎯\nObrigado{(', ' + prim) if prim else ''}!")
+        try:
+            requests.post(f"{evo_url}/message/sendText/{instance}",
+                headers={'apikey': evo_key, 'Content-Type': 'application/json'},
+                json={'number': nwpp, 'text': msg}, timeout=10)
+        except Exception as _e:
+            log.warning(f'[SlotZap] DM: {_e}')
+    return len(slots)
+
+
 SZ_RESERVA_EXPIRA_MIN = 30  # libera o número se a reserva não for paga neste tempo
 
 def _sz_expirar_reservas(camp_id):
@@ -12327,7 +12390,7 @@ def slotzap_publico_confirmar(token):
     pay    = _asaas_req('GET', f'/payments/{charge_id}')
     status = (pay.get('status') or '').upper()
     if status in ('RECEIVED', 'CONFIRMED', 'RECEIVED_IN_CASH'):
-        _sz_marcar_pago(slot['id'])
+        _sz_marcar_pago_charge(charge_id)
         return jsonify({'pago': True})
     return jsonify({'pago': False, 'status': status})
 
@@ -12339,11 +12402,20 @@ def slotzap_publico_reservar(token):
     if not _sz_rate_ok(ip):
         return jsonify({'erro': 'Muitas tentativas. Aguarde alguns minutos e tente novamente.'}), 429
     data         = request.get_json() or {}
-    numero       = int(data.get('numero', 0))
     cliente_nome = (data.get('nome') or '').strip()
     cliente_cpf  = ''.join(c for c in (data.get('cpf') or '') if c.isdigit())
     cliente_tel  = ''.join(c for c in (data.get('tel') or '') if c.isdigit())
+    # Aceita 'numeros' (lista) ou 'numero' (único, compatibilidade)
+    brutos = data.get('numeros') if data.get('numeros') is not None else [data.get('numero', 0)]
+    try:
+        numeros = sorted({int(n) for n in brutos if int(n) > 0})
+    except (TypeError, ValueError):
+        numeros = []
 
+    if not numeros:
+        return jsonify({'erro': 'Escolha pelo menos um número.'}), 400
+    if len(numeros) > 50:
+        return jsonify({'erro': 'Máximo de 50 números por compra.'}), 400
     if not cliente_nome:
         return jsonify({'erro': 'Nome obrigatório'}), 400
     if not _cpf_valido(cliente_cpf):
@@ -12352,37 +12424,47 @@ def slotzap_publico_reservar(token):
     conn  = get_saas_db()
     camp  = conn.execute('SELECT * FROM slotzap_campanhas WHERE token_publico=? AND status="ativa"',
                          (token,)).fetchone()
-    slot  = conn.execute('SELECT * FROM slotzap_slots WHERE campanha_id=? AND numero=?',
-                         (dict(camp)['id'] if camp else -1, numero)).fetchone() if camp else None
-
-    if not camp or not slot:
+    if not camp:
         conn.close()
-        return jsonify({'erro': 'Campanha ou slot não encontrado'}), 404
-    if dict(slot)['status'] != 'disponivel':
+        return jsonify({'erro': 'Campanha não encontrada'}), 404
+    camp = dict(camp)
+    ph    = ','.join('?' * len(numeros))
+    slots = [dict(r) for r in conn.execute(
+        f'SELECT * FROM slotzap_slots WHERE campanha_id=? AND numero IN ({ph})',
+        (camp['id'], *numeros)).fetchall()]
+    if len(slots) != len(numeros):
         conn.close()
-        return jsonify({'erro': f'Slot #{numero} já foi reservado. Escolha outro!'}), 400
+        return jsonify({'erro': 'Algum número não existe nesta campanha.'}), 404
+    ocupados = sorted(s['numero'] for s in slots if s['status'] != 'disponivel')
+    if ocupados:
+        conn.close()
+        return jsonify({'erro': 'Já reservado(s): ' + ', '.join('#' + str(n) for n in ocupados)
+                        + '. Atualize a página e escolha outros.'}), 400
 
-    preco   = float(dict(camp)['preco'])
-    slot_id = dict(slot)['id']
-    _ow     = conn.execute('SELECT asaas_wallet_id FROM slotzap_users WHERE id=?', (dict(camp)['user_id'],)).fetchone()
+    preco = float(camp['preco'])
+    total = round(preco * len(numeros), 2)
+    _ow   = conn.execute('SELECT asaas_wallet_id FROM slotzap_users WHERE id=?', (camp['user_id'],)).fetchone()
     owner_wallet = (dict(_ow).get('asaas_wallet_id') or '').strip() if _ow else ''
+    first_id = slots[0]['id']
+    desc = (f"SlotZap — {camp['nome']} — "
+            + (f"{len(numeros)} números" if len(numeros) > 1 else f"Slot #{numeros[0]}"))
 
-    # Cria cliente e cobrança no Asaas — só reserva o slot se o PIX for gerado
+    # Uma única cobrança PIX cobre todos os números — só reserva se gerar o PIX
     erro_msg, charge_id, pix_qr, pix_copia = _sz_gerar_pix(
-        cliente_nome, cliente_tel, cliente_cpf, preco,
-        f"SlotZap — {dict(camp)['nome']} — Slot #{numero}", f'sz_{slot_id}', owner_wallet)
+        cliente_nome, cliente_tel, cliente_cpf, total, desc, f'sz_{first_id}', owner_wallet)
     if erro_msg:
         conn.close()
         return jsonify({'erro': erro_msg}), 502
 
-    conn.execute(
+    agora = datetime.now().isoformat()
+    conn.executemany(
         'UPDATE slotzap_slots SET status=?,cliente_nome=?,cliente_tel=?,'
         'asaas_charge_id=?,pix_qr_code=?,pix_copia_cola=?,reservado_em=? WHERE id=?',
-        ('reservado', cliente_nome, cliente_tel, charge_id,
-         pix_qr, pix_copia, datetime.now().isoformat(), slot_id)
-    )
+        [('reservado', cliente_nome, cliente_tel, charge_id, pix_qr, pix_copia, agora, s['id'])
+         for s in slots])
     conn.commit(); conn.close()
-    return jsonify({'ok': True, 'pix_qr': pix_qr, 'pix_copia': pix_copia, 'valor': preco})
+    return jsonify({'ok': True, 'pix_qr': pix_qr, 'pix_copia': pix_copia,
+                    'valor': total, 'numeros': numeros})
 
 
 @app.route('/slotzap/campanha/<int:camp_id>/encerrar', methods=['POST'])
