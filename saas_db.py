@@ -753,6 +753,10 @@ def init_slotzap_db():
         "ALTER TABLE slotzap_campanhas ADD COLUMN evo_instance TEXT DEFAULT ''",
         "ALTER TABLE slotzap_campanhas ADD COLUMN msg_pagamento TEXT DEFAULT ''",
         "CREATE UNIQUE INDEX IF NOT EXISTS idx_sz_camp_token ON slotzap_campanhas(token_publico)",
+        # Cobrança / assinatura
+        "ALTER TABLE slotzap_users ADD COLUMN plan TEXT DEFAULT 'start'",
+        "ALTER TABLE slotzap_users ADD COLUMN asaas_customer_id TEXT DEFAULT ''",
+        "ALTER TABLE slotzap_users ADD COLUMN cpf_cnpj TEXT DEFAULT ''",
     ]
     for sql in _sz_migrations:
         try:
@@ -760,6 +764,14 @@ def init_slotzap_db():
             conn.commit()
         except Exception:
             pass
+    # plan_active: cria a coluna e marca usuários JÁ existentes como ativos (grandfather).
+    # O UPDATE só roda na 1ª vez (quando o ALTER tem sucesso); depois o ALTER falha e é ignorado.
+    try:
+        conn.execute("ALTER TABLE slotzap_users ADD COLUMN plan_active INTEGER DEFAULT 0")
+        conn.execute("UPDATE slotzap_users SET plan_active=1")
+        conn.commit()
+    except Exception:
+        pass
     conn.close()
 
 

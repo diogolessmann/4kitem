@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SlotZap — Aguardando pagamento</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',sans-serif;background:#09090f;color:#f0f0ff;
+     min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+.card{background:#13131f;border:1px solid rgba(255,255,255,.07);border-radius:20px;
+      padding:34px 30px;width:100%;max-width:400px;text-align:center;box-shadow:0 24px 64px rgba(0,0,0,.6)}
+.logo-icon{font-size:38px}
+h1{font-size:20px;font-weight:800;margin-top:6px}
+.sub{font-size:13px;color:#8888aa;margin-top:6px}
+.qr{width:210px;height:210px;background:#fff;border-radius:12px;padding:10px;margin:18px auto;display:block}
+.preco{font-size:24px;font-weight:800;color:#a5b4fc;margin:8px 0}
+.copia{background:#0d0d1a;border:1px solid rgba(255,255,255,.1);border-radius:9px;padding:11px 13px;
+       font-size:11px;word-break:break-all;color:#8888aa;cursor:pointer;text-align:left;margin:10px 0}
+.copia:active{border-color:#6366f1}
+.status{display:inline-flex;align-items:center;gap:8px;background:rgba(245,158,11,.1);
+        border:1px solid rgba(245,158,11,.25);border-radius:20px;padding:7px 14px;
+        font-size:12px;color:#f59e0b;font-weight:600;margin-top:10px}
+.dot{width:7px;height:7px;background:#f59e0b;border-radius:50%;animation:pulse 1.3s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.aviso{font-size:12px;color:#6666aa;margin-top:16px;line-height:1.6}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo-icon">🎯</div>
+  <h1>Falta só o pagamento!</h1>
+  {% if pix and pix.payload %}
+  <div class="sub">Escaneie o PIX abaixo para ativar sua assinatura{% if p %} SlotZap {{ p.label }}{% endif %}.</div>
+  {% if p %}<div class="preco">R$ {{ p.price }}/mês</div>{% endif %}
+  {% if pix.encodedImage %}<img class="qr" src="data:image/png;base64,{{ pix.encodedImage }}" alt="QR PIX">{% endif %}
+  <div style="font-size:12px;font-weight:600;color:#a5b4fc;margin:8px 0 2px">📋 PIX Copia e Cola</div>
+  <div class="copia" id="copia" onclick="copiar()">{{ pix.payload }}</div>
+  {% else %}
+  <div class="sub">Sua cobrança foi gerada. Assim que o pagamento for confirmado, seu acesso é liberado automaticamente.</div>
+  {% endif %}
+
+  <div class="status"><span class="dot"></span> Aguardando confirmação do pagamento…</div>
+  <div class="aviso">Esta página libera o acesso sozinha assim que o PIX cair. Pode deixar aberta. 😉</div>
+</div>
+
+<script>
+function copiar(){
+  const el = document.getElementById('copia');
+  if(!el) return;
+  navigator.clipboard.writeText(el.textContent.trim()).then(()=>{
+    const t = el.textContent;
+    el.textContent = '✅ Copiado! Cole no app do seu banco';
+    setTimeout(()=>el.textContent = t, 2000);
+  });
+}
+// Verifica a ativação a cada 5s e entra no painel quando confirmar
+setInterval(async ()=>{
+  try{
+    const d = await fetch('/slotzap/assinatura-status').then(r=>r.json());
+    if(d.ativo){ window.location = '/slotzap/app'; }
+  }catch(e){}
+}, 5000);
+</script>
+</body>
+</html>

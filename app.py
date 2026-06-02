@@ -497,6 +497,14 @@ MANDAZAP_PLANS = {
     'agencia':   {'label': 'Agência',   'numbers': 10, 'daily_limit': 99999, 'contacts_limit': 99999, 'price': 499},
 }
 
+# Planos do SlotZap (venda de slots numerados com PIX)
+SLOTZAP_PLANS = {
+    'start': {'label': 'Start', 'price': 69,
+              'desc': 'Campanhas e números ilimitados, link público, baixa automática e notificação no grupo do WhatsApp.'},
+    'pro':   {'label': 'Pro',   'price': 137,
+              'desc': 'Tudo do Start + suporte prioritário e (em breve) taxa por venda zerada.'},
+}
+
 # ── MandaJá — Planos ─────────────────────────────────────────────────────────
 MANDAJA_PLANS = {
     'micro':    {'label': 'Micro',    'products': 5,   'price': 59,  'emoji': '🌱'},
@@ -1745,6 +1753,24 @@ def webhook_asaas_global():
                         _email_pagamento_confirmado('Amigo Despachante', '🚗', '#3b82f6',
                             u['name'].split()[0], p.get('label', plano_key),
                             p.get('price', ''), 'https://4kitem.com.br/amigo-despachante/app'))
+            conn.close()
+
+    elif ref.startswith('slotzap_'):
+        # SlotZap — assinatura mensal (externalReference = slotzap_{customer_id}_{plano})
+        if customer_id:
+            conn = get_saas_db()
+            u = conn.execute('SELECT id, name, email FROM slotzap_users WHERE asaas_customer_id=?',
+                             (customer_id,)).fetchone()
+            if u:
+                conn.execute('UPDATE slotzap_users SET active=?, plan_active=? WHERE id=?',
+                             (1 if ativar else 0, 1 if ativar else 0, u['id']))
+                conn.commit()
+                if ativar and u['email']:
+                    p = SLOTZAP_PLANS.get(plano_key, {})
+                    _enviar_email(u['email'], '✅ SlotZap — Assinatura ativa!',
+                        _email_pagamento_confirmado('SlotZap', '🎯', '#6366f1',
+                            u['name'].split()[0], p.get('label', plano_key),
+                            f"R$ {p.get('price','')}/mês", 'https://4kitem.com.br/slotzap/app'))
             conn.close()
 
     elif ref.startswith('sz_'):
@@ -11341,10 +11367,117 @@ def _sz_login_required(f):
 def _sz_uid():
     return session.get('sz_user_id')
 
+def _sz_plan_active() -> bool:
+    """True se o usuário logado tem assinatura ativa."""
+    uid = _sz_uid()
+    if not uid:
+        return False
+    conn = get_saas_db()
+    u = conn.execute('SELECT plan_active FROM slotzap_users WHERE id=?', (uid,)).fetchone()
+    conn.close()
+    return bool(u and dict(u).get('plan_active'))
+
 
 @app.route('/slotzap')
 def slotzap_landing():
-    return redirect('/slotzap/entrar')
+    return redirect('/slotzap/planos')
+
+
+@app.route('/slotzap/planos')
+def slotzap_planos():
+    return render_template('slotzap/planos.html', planos=SLOTZAP_PLANS)
+
+
+@app.route('/slotzap/cadastro', methods=['GET', 'POST'])
+@app.route('/slotzap/cadastro/<plano>', methods=['GET', 'POST'])
+def slotzap_cadastro(plano='start'):
+    if plano not in SLOTZAP_PLANS:
+        plano = 'start'
+    erro = None
+    if request.method == 'POST':
+        plano    = request.form.get('plano', plano)
+        if plano not in SLOTZAP_PLANS:
+            plano = 'start'
+        name     = (request.form.get('name') or '').strip()
+        email    = (request.form.get('email') or '').strip().lower()
+        senha    = request.form.get('senha') or ''
+        phone    = (request.form.get('phone') or '').strip()
+        cpf_cnpj = (request.form.get('cpf_cnpj') or '').strip()
+        cpf_digits = ''.join(c for c in cpf_cnpj if c.isdigit())
+        if not all([name, email, senha, phone, cpf_cnpj]):
+            erro = 'Preencha todos os campos.'
+        elif len(senha) < 6:
+            erro = 'A senha deve ter pelo menos 6 caracteres.'
+        elif len(cpf_digits) not in (11, 14):
+            erro = 'CPF deve ter 11 dígitos ou CNPJ 14 dígitos.'
+        else:
+            conn = get_saas_db()
+            if conn.execute('SELECT id FROM slotzap_users WHERE email=?', (email,)).fetchone():
+                erro = 'E-mail já cadastrado. Faça login.'
+                conn.close()
+            else:
+                cur = conn.execute(
+                    'INSERT INTO slotzap_users (name,email,phone,cpf_cnpj,password_hash,plan,plan_active,active,created_at) '
+                    'VALUES (?,?,?,?,?,?,0,1,?)',
+                    (name, email, phone, cpf_cnpj, generate_password_hash(senha), plano, datetime.now().isoformat())
+                )
+                conn.commit()
+                uid = cur.lastrowid
+                conn.close()
+                session['sz_user_id']   = uid
+                session['sz_user_name'] = name
+                return redirect(f'/slotzap/assinar/{plano}')
+    return render_template('slotzap/cadastro.html', erro=erro, plano=plano, planos=SLOTZAP_PLANS)
+
+
+@app.route('/slotzap/assinar', methods=['GET', 'POST'])
+@app.route('/slotzap/assinar/<plano>', methods=['GET', 'POST'])
+@_sz_login_required
+def slotzap_assinar(plano=None):
+    uid = _sz_uid()
+    conn = get_saas_db()
+    u = conn.execute('SELECT * FROM slotzap_users WHERE id=?', (uid,)).fetchone()
+    conn.close()
+    if not u:
+        return redirect('/slotzap/entrar')
+    u = dict(u)
+    if plano is None:
+        plano = u.get('plan') or 'start'
+    if plano not in SLOTZAP_PLANS:
+        plano = 'start'
+    p = SLOTZAP_PLANS[plano]
+    erro = None
+    if request.method == 'POST':
+        customer_id = _asaas_criar_ou_buscar_cliente_saas(
+            u['name'], u['email'], u.get('phone', ''), u.get('cpf_cnpj', ''), u['id'], 'slotzap_users')
+        if not customer_id:
+            erro = 'Erro ao processar o pagamento. Confira seu CPF/CNPJ e tente novamente.'
+        else:
+            conn2 = get_saas_db()
+            conn2.execute('UPDATE slotzap_users SET asaas_customer_id=?, plan=? WHERE id=?',
+                          (customer_id, plano, uid))
+            conn2.commit(); conn2.close()
+            resp = _asaas_criar_assinatura_saas(
+                customer_id, 'slotzap', plano, float(p['price']),
+                f'SlotZap {p["label"]} — Assinatura Mensal', 'PIX')
+            if resp.get('id'):
+                pix = _asaas_get_pix_qr(resp['id'])
+                return render_template('slotzap/aguardando.html', pix=pix, p=p)
+            erro = 'Não foi possível gerar a cobrança. Tente novamente.'
+    return render_template('slotzap/assinar.html', plano=plano, p=p,
+                           planos=SLOTZAP_PLANS, erro=erro, user_name=u['name'])
+
+
+@app.route('/slotzap/aguardando-pagamento')
+@_sz_login_required
+def slotzap_aguardando():
+    return render_template('slotzap/aguardando.html')
+
+
+@app.route('/slotzap/assinatura-status')
+@_sz_login_required
+def slotzap_assinatura_status():
+    return jsonify({'ativo': _sz_plan_active()})
 
 
 @app.route('/slotzap/entrar', methods=['GET', 'POST'])
@@ -11381,6 +11514,8 @@ def slotzap_sair():
 @app.route('/slotzap/app')
 @_sz_login_required
 def slotzap_app():
+    if not _sz_plan_active():
+        return redirect('/slotzap/assinar')
     conn = get_saas_db()
     campanhas = [dict(r) for r in conn.execute('''
         SELECT c.*,
@@ -11400,6 +11535,8 @@ def slotzap_app():
 @app.route('/slotzap/nova', methods=['GET', 'POST'])
 @_sz_login_required
 def slotzap_nova():
+    if not _sz_plan_active():
+        return redirect('/slotzap/assinar')
     erro = None
     if request.method == 'POST':
         nome    = request.form.get('nome', '').strip()
@@ -11430,6 +11567,8 @@ def slotzap_nova():
 @app.route('/slotzap/campanha/<int:camp_id>')
 @_sz_login_required
 def slotzap_campanha(camp_id):
+    if not _sz_plan_active():
+        return redirect('/slotzap/assinar')
     conn = get_saas_db()
     camp = conn.execute('SELECT * FROM slotzap_campanhas WHERE id=? AND user_id=?',
                         (camp_id, _sz_uid())).fetchone()

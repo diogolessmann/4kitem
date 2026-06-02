@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SlotZap — Planos</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',sans-serif;background:#09090f;color:#f0f0ff;min-height:100vh;padding:40px 20px}
+.wrap{max-width:760px;margin:0 auto}
+.logo{text-align:center;margin-bottom:8px}
+.logo-icon{font-size:44px}
+.logo h1{font-size:28px;font-weight:800;background:linear-gradient(135deg,#6366f1,#a855f7);
+         -webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.logo p{font-size:14px;color:#8888aa;margin-top:6px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px;margin-top:34px}
+.card{background:#13131f;border:1px solid rgba(255,255,255,.08);border-radius:18px;padding:28px 24px;
+      display:flex;flex-direction:column}
+.card.destaque{border-color:#6366f1;box-shadow:0 0 0 1px #6366f1,0 20px 50px rgba(99,102,241,.18)}
+.tag{align-self:flex-start;font-size:11px;font-weight:700;color:#a5b4fc;background:rgba(99,102,241,.15);
+     padding:3px 10px;border-radius:20px;margin-bottom:12px}
+.nome{font-size:20px;font-weight:800}
+.preco{font-size:34px;font-weight:800;margin:10px 0 2px}
+.preco span{font-size:14px;color:#8888aa;font-weight:600}
+.desc{font-size:13px;color:#9999bb;line-height:1.6;margin:12px 0 20px;flex:1}
+.btn{display:block;text-align:center;text-decoration:none;padding:13px;border-radius:10px;
+     background:linear-gradient(135deg,#6366f1,#7c3aed);color:#fff;font-size:15px;font-weight:700}
+.btn.sec{background:rgba(255,255,255,.06);color:#c9d6e2}
+.login{text-align:center;margin-top:28px;font-size:13px;color:#8888aa}
+.login a{color:#a5b4fc;text-decoration:none;font-weight:600}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="logo">
+    <div class="logo-icon">🎯</div>
+    <h1>SlotZap</h1>
+    <p>Venda seus números/cotas pelo WhatsApp com PIX automático e baixa em tempo real.</p>
+  </div>
+
+  <div class="grid">
+    {% for key, p in planos.items() %}
+    <div class="card {% if key == 'start' %}destaque{% endif %}">
+      {% if key == 'start' %}<div class="tag">MAIS POPULAR</div>{% else %}<div class="tag">PREMIUM</div>{% endif %}
+      <div class="nome">SlotZap {{ p.label }}</div>
+      <div class="preco">R$ {{ p.price }}<span>/mês</span></div>
+      <div class="desc">{{ p.desc }}</div>
+      <a class="btn {% if key != 'start' %}sec{% endif %}" href="/slotzap/cadastro/{{ key }}">Assinar {{ p.label }} →</a>
+    </div>
+    {% endfor %}
+  </div>
+
+  <div class="login">Já tem conta? <a href="/slotzap/entrar">Entrar</a></div>
+</div>
+</body>
+</html>

@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SlotZap — Assinar {{ p.label }}</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',sans-serif;background:#09090f;color:#f0f0ff;
+     min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+.card{background:#13131f;border:1px solid rgba(255,255,255,.07);border-radius:20px;
+      padding:36px 32px;width:100%;max-width:420px;box-shadow:0 24px 64px rgba(0,0,0,.6)}
+.logo{text-align:center;margin-bottom:18px}
+.logo-icon{font-size:40px}
+.logo h1{font-size:22px;font-weight:800}
+.resumo{background:#0d0d1a;border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:18px 20px;margin:18px 0}
+.linha{display:flex;justify-content:space-between;align-items:center;font-size:14px;color:#9999bb}
+.linha.total{margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,.08);
+             font-size:16px;color:#fff;font-weight:700}
+.preco{font-size:22px;font-weight:800;color:#a5b4fc}
+.desc{font-size:12px;color:#8888aa;line-height:1.6;margin-top:10px}
+.btn{width:100%;padding:14px;border-radius:9px;border:none;
+     background:linear-gradient(135deg,#6366f1,#7c3aed);color:#fff;
+     font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;margin-top:6px}
+.err{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);color:#fca5a5;
+     padding:11px 14px;border-radius:8px;font-size:13px;margin-bottom:16px;text-align:center}
+.info{font-size:11px;color:#44447a;text-align:center;margin-top:12px;line-height:1.6}
+.trocar{text-align:center;margin-top:14px;font-size:12px}
+.trocar a{color:#8888aa;text-decoration:none}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">
+    <div class="logo-icon">🎯</div>
+    <h1>Confirmar assinatura</h1>
+  </div>
+  {% if erro %}<div class="err">{{ erro }}</div>{% endif %}
+  <div class="resumo">
+    <div class="linha"><span>Plano</span><span style="color:#fff;font-weight:700">SlotZap {{ p.label }}</span></div>
+    <div class="linha total"><span>Total mensal</span><span class="preco">R$ {{ p.price }}/mês</span></div>
+    <div class="desc">{{ p.desc }}</div>
+  </div>
+  <form method="POST" action="/slotzap/assinar/{{ plano }}">
+    <button type="submit" class="btn">⚡ Gerar PIX da assinatura</button>
+  </form>
+  <div class="info">Cobrança mensal recorrente via PIX (Asaas). Cancele quando quiser.</div>
+  <div class="trocar">
+    <a href="/slotzap/planos">← trocar de plano</a>
+  </div>
+</div>
+</body>
+</html>
