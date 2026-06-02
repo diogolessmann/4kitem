@@ -11833,6 +11833,38 @@ def slotzap_listar_grupos(camp_id):
     return jsonify({'grupos': [], 'erro': last_err})
 
 
+@app.route('/slotzap/campanha/<int:camp_id>/test-wpp')
+@_sz_login_required
+def slotzap_test_wpp(camp_id):
+    """Diagnóstico: envia uma mensagem de teste ao grupo configurado e retorna
+    a resposta crua do Evolution API (para descobrir erros de envio)."""
+    conn = get_saas_db()
+    camp = conn.execute('SELECT grupo_wpp_id, evo_instance FROM slotzap_campanhas WHERE id=? AND user_id=?',
+                        (camp_id, _sz_uid())).fetchone()
+    conn.close()
+    if not camp:
+        return jsonify({'erro': 'campanha não encontrada'}), 404
+    camp     = dict(camp)
+    grupo_id = (camp.get('grupo_wpp_id') or '').strip()
+    instance = (camp.get('evo_instance') or '').strip() or os.environ.get('EVO_INSTANCE', '')
+    evo_url  = (os.environ.get('EVO_URL') or os.environ.get('EVOLUTION_API_URL') or '').rstrip('/')
+    evo_key  = os.environ.get('EVO_KEY') or os.environ.get('EVOLUTION_API_KEY') or ''
+    if not grupo_id:
+        return jsonify({'erro': 'campanha sem grupo configurado'})
+    if not evo_url or not instance:
+        return jsonify({'erro': f'config incompleta: evo_url={bool(evo_url)} instance={instance}'})
+    try:
+        r = requests.post(
+            f"{evo_url}/message/sendText/{instance}",
+            headers={'apikey': evo_key, 'Content-Type': 'application/json'},
+            json={'number': grupo_id, 'text': '🔔 Teste SlotZap — se você vê isto no grupo, as notificações estão OK!'},
+            timeout=20)
+        return jsonify({'status': r.status_code, 'instance': instance, 'grupo': grupo_id,
+                        'resposta': (r.json() if r.content else {})})
+    except Exception as e:
+        return jsonify({'erro': str(e), 'instance': instance, 'grupo': grupo_id})
+
+
 # ── Página pública (sem login) ─────────────────────────────────────────────────
 
 @app.route('/slotzap/p/<token>')
