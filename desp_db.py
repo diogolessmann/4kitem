@@ -2077,7 +2077,10 @@ def registrar_ultimo_login(user_id: int):
 
 
 def contar_usuarios() -> int:
-    conn = get_conn()
-    n = conn.execute("SELECT COUNT(*) FROM desp_usuarios").fetchone()[0]
-    conn.close()
-    return n
+    try:
+        conn = get_conn()
+        n = conn.execute("SELECT COUNT(*) FROM desp_usuarios").fetchone()[0]
+        conn.close()
+        return n
+    except Exception:
+        return 0  # tabela ainda não existe — modo legado

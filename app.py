@@ -8120,13 +8120,34 @@ def _desp_login_required(f):
     return decorated
 
 
+def _desp_is_admin_check() -> bool:
+    """
+    Verifica se o usuário atual é admin.
+    Ordem: sessão → banco desp_usuarios → DESP_ADMIN_PASSWORD definida.
+    Seta session['desp_is_admin'] = True se confirmado.
+    """
+    if session.get('desp_is_admin'):
+        return True
+    # Re-verifica no banco (sessão pode ter sido iniciada antes do fix)
+    try:
+        login = session.get('desp_usuario', '')
+        if login:
+            u = desp_get_usuario(login)
+            if u and u.get('role') == 'admin':
+                session['desp_is_admin'] = True
+                return True
+    except Exception:
+        pass
+    return False
+
+
 def _desp_admin_required(f):
     """Requer perfil admin (direto ou SaaS)."""
     @wraps(f)
     def decorated(*args, **kwargs):
         if not _desp_is_logged():
             return redirect('/despachante/login')
-        if not session.get('desp_is_admin'):
+        if not _desp_is_admin_check():
             return redirect(url_for('desp_admin_login', next=request.path))
         return f(*args, **kwargs)
     return decorated
@@ -8410,19 +8431,26 @@ def desp_migrar_saas():
                        ja_migrado=False, tenant_id=None)
 
 
-# ── Admin Login (fallback para acesso admin via DESP_ADMIN_PASSWORD) ──────────
+# ── Admin Login ───────────────────────────────────────────────────────────────
 @app.route('/despachante/admin-login', methods=['GET', 'POST'])
 @_desp_login_required
 def desp_admin_login():
-    if session.get('desp_is_admin'):
-        return redirect(request.args.get('next') or '/despachante/precos')
-    erro = None
     next_url = request.args.get('next') or request.form.get('next') or '/despachante/precos'
+
+    # Usuário já tem admin na sessão ou tem role='admin' no banco → passa direto
+    if _desp_is_admin_check():
+        return redirect(next_url)
+
+    # Fallback: senha avulsa (DESP_ADMIN_PASSWORD) para casos sem multi-usuário
+    erro = None
     if request.method == 'POST':
-        if DESP_ADMIN_PASSWORD and request.form.get('senha') == DESP_ADMIN_PASSWORD:
+        senha_form = request.form.get('senha', '')
+        # Aceita DESP_ADMIN_PASSWORD ou a senha do login direto (DESP_PASSWORD)
+        senhas_validas = [s for s in [DESP_ADMIN_PASSWORD, DESP_PASSWORD] if s]
+        if senha_form and senha_form in senhas_validas:
             session['desp_is_admin'] = True
             return redirect(next_url)
-        erro = 'Senha de administrador incorreta.'
+        erro = 'Senha incorreta.'
     return render_template('despachante/admin_login.html', erro=erro, next=next_url)
 
 
