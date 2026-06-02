@@ -1750,62 +1750,8 @@ def webhook_asaas_global():
     elif ref.startswith('sz_'):
         # SlotZap — pagamento de slot avulso (externalReference = sz_{slot_id})
         try:
-            slot_id = int(ref.split('_')[1])
             if ativar:
-                conn = get_saas_db()
-                # Marca slot como pago
-                conn.execute(
-                    "UPDATE slotzap_slots SET status='pago', pago_em=? WHERE id=?",
-                    (datetime.now().isoformat(), slot_id)
-                )
-                conn.commit()
-
-                # Busca dados para notificação WhatsApp
-                row = conn.execute('''
-                    SELECT s.numero, s.cliente_nome, s.cliente_tel,
-                           c.nome AS camp_nome, c.preco, c.grupo_wpp_id,
-                           c.evo_instance, c.msg_pagamento, c.id AS camp_id,
-                           c.token_publico,
-                           (SELECT COUNT(*) FROM slotzap_slots WHERE campanha_id=c.id AND status="pago")      AS pagos,
-                           (SELECT COUNT(*) FROM slotzap_slots WHERE campanha_id=c.id AND status="disponivel") AS livres,
-                           c.total_slots
-                    FROM slotzap_slots s
-                    JOIN slotzap_campanhas c ON c.id = s.campanha_id
-                    WHERE s.id=?
-                ''', (slot_id,)).fetchone()
-                conn.close()
-
-                if row:
-                    row = dict(row)
-                    log.info(f'[SlotZap] Slot #{row["numero"]} — {row["camp_nome"]} — PAGO ({row["cliente_nome"]})')
-
-                    # Notifica grupo WhatsApp se configurado
-                    grupo_id = row.get('grupo_wpp_id', '').strip()
-                    instance = row.get('evo_instance', '').strip() or os.environ.get('EVO_INSTANCE', '')
-                    evo_url  = os.environ.get('EVO_URL', '').rstrip('/')
-                    evo_key  = os.environ.get('EVO_KEY', '')
-
-                    if grupo_id and instance and evo_url:
-                        base_url = os.environ.get('BASE_URL', 'https://www.4kitem.com.br').rstrip('/')
-                        token    = row.get('token_publico') or ''
-                        link_str = f"\n🔗 {base_url}/slotzap/p/{token}" if token else ''
-                        tpl = row.get('msg_pagamento') or (
-                            f"✅ *Slot #{row['numero']} — PAGO!*\n"
-                            f"👤 {row['cliente_nome']}\n"
-                            f"🎯 {row['camp_nome']}\n\n"
-                            f"📊 {row['pagos']}/{row['total_slots']} vendidos · {row['livres']} livres"
-                            f"{link_str}"
-                        )
-                        try:
-                            requests.post(
-                                f"{evo_url}/message/sendText/{instance}",
-                                headers={'apikey': evo_key, 'Content-Type': 'application/json'},
-                                json={'number': grupo_id, 'text': tpl},
-                                timeout=10
-                            )
-                            log.info(f'[SlotZap] Notificação WPP enviada para grupo {grupo_id}')
-                        except Exception as _wpp_err:
-                            log.warning(f'[SlotZap] Erro ao notificar grupo: {_wpp_err}')
+                _sz_marcar_pago(int(ref.split('_')[1]))
         except Exception as _sz_err:
             log.error(f'[SlotZap] Webhook error: {_sz_err}')
 
@@ -11712,6 +11658,63 @@ def _sz_gerar_pix(nome, tel, cpf, valor, descricao, ext_ref):
     return (None, charge_id, pix_qr, pix_copia)
 
 
+def _sz_marcar_pago(slot_id):
+    """Marca um slot como pago (idempotente) e notifica o grupo WhatsApp.
+    Retorna True se deu baixa agora; False se já estava pago ou não existe."""
+    conn = get_saas_db()
+    slot = conn.execute('SELECT status FROM slotzap_slots WHERE id=?', (slot_id,)).fetchone()
+    if not slot or dict(slot)['status'] == 'pago':
+        conn.close()
+        return False
+    conn.execute("UPDATE slotzap_slots SET status='pago', pago_em=? WHERE id=?",
+                 (datetime.now().isoformat(), slot_id))
+    conn.commit()
+    row = conn.execute('''
+        SELECT s.numero, s.cliente_nome, s.cliente_tel,
+               c.nome AS camp_nome, c.preco, c.grupo_wpp_id,
+               c.evo_instance, c.msg_pagamento, c.id AS camp_id, c.token_publico,
+               (SELECT COUNT(*) FROM slotzap_slots WHERE campanha_id=c.id AND status="pago")      AS pagos,
+               (SELECT COUNT(*) FROM slotzap_slots WHERE campanha_id=c.id AND status="disponivel") AS livres,
+               c.total_slots
+        FROM slotzap_slots s
+        JOIN slotzap_campanhas c ON c.id = s.campanha_id
+        WHERE s.id=?
+    ''', (slot_id,)).fetchone()
+    conn.close()
+    if not row:
+        return True
+    row = dict(row)
+    log.info(f'[SlotZap] Slot #{row["numero"]} — {row["camp_nome"]} — PAGO ({row["cliente_nome"]})')
+
+    grupo_id = (row.get('grupo_wpp_id') or '').strip()
+    instance = (row.get('evo_instance') or '').strip() or os.environ.get('EVO_INSTANCE', '')
+    evo_url  = os.environ.get('EVO_URL', '').rstrip('/')
+    evo_key  = os.environ.get('EVO_KEY', '')
+    if grupo_id and instance and evo_url:
+        base_url = os.environ.get('BASE_URL', 'https://www.4kitem.com.br').rstrip('/')
+        token    = row.get('token_publico') or ''
+        link_str = f"\n🔗 {base_url}/slotzap/p/{token}" if token else ''
+        total    = row.get('total_slots') or 0
+        pct      = round(row['pagos'] / total * 100) if total else 0
+        tpl = row.get('msg_pagamento') or (
+            f"✅ *Slot #{row['numero']} — PAGO!*\n"
+            f"👤 {row['cliente_nome']}\n"
+            f"🎯 {row['camp_nome']}\n\n"
+            f"📊 {pct}% concluído"
+            f"{link_str}"
+        )
+        try:
+            requests.post(
+                f"{evo_url}/message/sendText/{instance}",
+                headers={'apikey': evo_key, 'Content-Type': 'application/json'},
+                json={'number': grupo_id, 'text': tpl}, timeout=10
+            )
+            log.info(f'[SlotZap] Notificação WPP enviada para grupo {grupo_id}')
+        except Exception as _wpp_err:
+            log.warning(f'[SlotZap] Erro ao notificar grupo: {_wpp_err}')
+    return True
+
+
 @app.route('/slotzap/debug-pix')
 @_sz_login_required
 def slotzap_debug_pix():
@@ -11841,9 +11844,12 @@ def slotzap_publico(token):
     pagos      = sum(1 for s in slots if s['status'] == 'pago')
     reservados = sum(1 for s in slots if s['status'] == 'reservado')
     disponiveis= sum(1 for s in slots if s['status'] == 'disponivel')
+    total      = len(slots)
+    pct        = round(pagos / total * 100) if total else 0
     return render_template('slotzap/publico.html',
                            camp=camp, slots=slots, token=token,
-                           pagos=pagos, reservados=reservados, disponiveis=disponiveis)
+                           pagos=pagos, reservados=reservados, disponiveis=disponiveis,
+                           pct=pct)
 
 
 @app.route('/slotzap/p/<token>/status')
@@ -11860,6 +11866,37 @@ def slotzap_publico_status(token):
     ).fetchall()
     conn.close()
     return jsonify({'slots': {str(s['numero']): s['status'] for s in slots}})
+
+
+@app.route('/slotzap/p/<token>/confirmar', methods=['POST'])
+def slotzap_publico_confirmar(token):
+    """Confere ativamente no Asaas se o PIX do slot foi pago e dá baixa.
+    Usado pelo botão 'Já paguei' — funciona mesmo sem webhook."""
+    data   = request.get_json() or {}
+    numero = int(data.get('numero', 0))
+    conn = get_saas_db()
+    camp = conn.execute('SELECT id FROM slotzap_campanhas WHERE token_publico=?',
+                        (token,)).fetchone()
+    if not camp:
+        conn.close()
+        return jsonify({'erro': 'not found'}), 404
+    slot = conn.execute('SELECT * FROM slotzap_slots WHERE campanha_id=? AND numero=?',
+                        (dict(camp)['id'], numero)).fetchone()
+    conn.close()
+    if not slot:
+        return jsonify({'erro': 'slot não encontrado'}), 404
+    slot = dict(slot)
+    if slot['status'] == 'pago':
+        return jsonify({'pago': True})
+    charge_id = (slot.get('asaas_charge_id') or '').strip()
+    if not charge_id:
+        return jsonify({'pago': False})
+    pay    = _asaas_req('GET', f'/payments/{charge_id}')
+    status = (pay.get('status') or '').upper()
+    if status in ('RECEIVED', 'CONFIRMED', 'RECEIVED_IN_CASH'):
+        _sz_marcar_pago(slot['id'])
+        return jsonify({'pago': True})
+    return jsonify({'pago': False, 'status': status})
 
 
 @app.route('/slotzap/p/<token>/reservar', methods=['POST'])

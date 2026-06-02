@@ -22,6 +22,15 @@ body{font-family:'Inter',sans-serif;background:#09090f;color:#f0f0ff;min-height:
 .stat-lbl{font-size:10px;color:#6666aa;margin-top:2px}
 .green{color:#22c55e}.yellow{color:#f59e0b}.gray{color:#6666aa}
 
+.progresso{max-width:480px;margin:14px auto 4px;padding:0 24px}
+.prog-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.prog-head span{font-size:13px;color:#a5b4fc;font-weight:600}
+.prog-head .prog-pct{font-size:20px;font-weight:800;color:#22c55e}
+.prog-bar{height:16px;background:rgba(255,255,255,.06);border-radius:20px;overflow:hidden;
+          border:1px solid rgba(255,255,255,.06)}
+.prog-fill{height:100%;background:linear-gradient(90deg,#6366f1,#22c55e);
+           border-radius:20px;transition:width .6s ease;min-width:0}
+
 .legenda{display:flex;justify-content:center;gap:14px;padding:0 20px 12px;flex-wrap:wrap}
 .leg{display:flex;align-items:center;gap:5px;font-size:11px;color:#8888aa}
 .leg-box{width:16px;height:16px;border-radius:3px}
@@ -94,10 +103,12 @@ input:focus{border-color:#6366f1}
   <div class="camp-preco">R$ {{ '%.2f'|format(camp.preco) }}</div>
 </div>
 
-<div class="stats">
-  <div class="stat"><div class="stat-val green" id="cnt-pagos">{{ pagos }}</div><div class="stat-lbl">✅ Vendidos</div></div>
-  <div class="stat"><div class="stat-val yellow" id="cnt-res">{{ reservados }}</div><div class="stat-lbl">⏳ Reservados</div></div>
-  <div class="stat"><div class="stat-val gray" id="cnt-liv">{{ disponiveis }}</div><div class="stat-lbl">⬜ Disponíveis</div></div>
+<div class="progresso">
+  <div class="prog-head">
+    <span>🔥 Progresso da campanha</span>
+    <span class="prog-pct"><span id="prog-pct">{{ pct }}</span>%</span>
+  </div>
+  <div class="prog-bar"><div class="prog-fill" id="prog-fill" style="width:{{ pct }}%"></div></div>
 </div>
 
 <div class="legenda">
@@ -157,7 +168,7 @@ input:focus{border-color:#6366f1}
     <div class="instrucao" style="color:#f59e0b;background:rgba(245,158,11,.08);border-radius:8px;padding:8px">
       ⏳ Após pagar, o slot vira <strong>verde</strong> automaticamente
     </div>
-    <button class="btn-ok" onclick="fecharModal(); location.reload()">✅ Já paguei — ver status</button>
+    <button class="btn-ok" id="btn-japaguei" onclick="jaPaguei(this)">✅ Já paguei — ver status</button>
   </div>
 </div>
 
@@ -225,6 +236,36 @@ async function gerarPix() {
   }
 }
 
+async function jaPaguei(btn) {
+  btn.disabled = true;
+  btn.textContent = '⏳ Verificando pagamento...';
+  try {
+    const r = await fetch(`/slotzap/p/${TOKEN}/confirmar`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({numero: _slotSel})
+    }).then(r => r.json());
+    if (r.pago) {
+      btn.textContent = '✅ Pagamento confirmado!';
+      atualizarGrid();
+      setTimeout(() => {
+        fecharModal();
+        alert('🎉 Pagamento confirmado! Seu número está garantido.');
+        btn.disabled = false;
+        btn.textContent = '✅ Já paguei — ver status';
+      }, 600);
+    } else {
+      btn.disabled = false;
+      btn.textContent = '✅ Já paguei — ver status';
+      alert('Ainda não identificamos o pagamento. Se você acabou de pagar, aguarde alguns segundos e clique novamente.');
+    }
+  } catch (e) {
+    btn.disabled = false;
+    btn.textContent = '✅ Já paguei — ver status';
+    alert('Não foi possível verificar agora. Tente novamente em instantes.');
+  }
+}
+
 function copiar() {
   const txt = document.getElementById('qr-copia').textContent;
   navigator.clipboard.writeText(txt).then(() => {
@@ -269,9 +310,10 @@ async function atualizarGrid() {
         pagos++;
       }
     });
-    document.getElementById('cnt-pagos').textContent = pagos;
-    document.getElementById('cnt-res').textContent   = res;
-    document.getElementById('cnt-liv').textContent   = liv;
+    const total = pagos + res + liv;
+    const pct = total ? Math.round(pagos / total * 100) : 0;
+    document.getElementById('prog-pct').textContent  = pct;
+    document.getElementById('prog-fill').style.width = pct + '%';
   } catch(e) {}
 }
 setInterval(atualizarGrid, 15000);
