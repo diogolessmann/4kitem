@@ -12066,6 +12066,67 @@ def slotzap_test_wpp(camp_id):
         return jsonify({'erro': str(e), 'instance': instance, 'grupo': grupo_id})
 
 
+@app.route('/slotzap/campanha/<int:camp_id>/enviar-lista', methods=['POST'])
+@_sz_login_required
+def slotzap_enviar_lista(camp_id):
+    """Envia a lista de números (só nomes, sem expor pago/total) ao grupo do WhatsApp."""
+    if not _sz_plan_active():
+        return jsonify({'erro': 'Assinatura inativa.'}), 402
+    conn = get_saas_db()
+    camp = conn.execute('SELECT * FROM slotzap_campanhas WHERE id=? AND user_id=?',
+                        (camp_id, _sz_uid())).fetchone()
+    if not camp:
+        conn.close()
+        return jsonify({'erro': 'Campanha não encontrada'}), 404
+    camp  = dict(camp)
+    slots = [dict(r) for r in conn.execute(
+        'SELECT numero, status, cliente_nome FROM slotzap_slots WHERE campanha_id=? ORDER BY numero',
+        (camp_id,)).fetchall()]
+    conn.close()
+
+    grupo_id = (camp.get('grupo_wpp_id') or '').strip()
+    if not grupo_id:
+        return jsonify({'erro': 'Configure o grupo do WhatsApp primeiro (botão 💬 WhatsApp).'}), 400
+    instance = (camp.get('evo_instance') or '').strip() or os.environ.get('EVO_INSTANCE', '')
+    evo_url  = (os.environ.get('EVO_URL') or os.environ.get('EVOLUTION_API_URL') or '').rstrip('/')
+    evo_key  = os.environ.get('EVO_KEY') or os.environ.get('EVOLUTION_API_KEY') or ''
+    if not evo_url or not instance:
+        return jsonify({'erro': 'WhatsApp não configurado.'}), 400
+
+    # Monta as linhas: número - nome (sem diferenciar pago/reservado, sem expor total)
+    pad    = len(str(max((s['numero'] for s in slots), default=1)))
+    linhas = []
+    for s in slots:
+        nome = s['cliente_nome'] if s['status'] in ('reservado', 'pago') else ''
+        linhas.append(f"{str(s['numero']).zfill(pad)} - {nome}".rstrip())
+
+    # Quebra em blocos de ~3500 caracteres (limite do WhatsApp ~4096)
+    header = f"🎯 *{camp['nome']}* — Lista de números\n\n"
+    blocos, atual = [], header
+    for ln in linhas:
+        if len(atual) + len(ln) + 1 > 3500:
+            blocos.append(atual)
+            atual = ''
+        atual += (('\n' if atual else '') + ln)
+    if atual.strip():
+        blocos.append(atual)
+
+    enviados = 0
+    for txt in blocos:
+        try:
+            r = requests.post(
+                f"{evo_url}/message/sendText/{instance}",
+                headers={'apikey': evo_key, 'Content-Type': 'application/json'},
+                json={'number': grupo_id, 'text': txt}, timeout=20)
+            if r.status_code in (200, 201):
+                enviados += 1
+        except Exception as _e:
+            log.warning(f'[SlotZap] Erro ao enviar lista: {_e}')
+    if enviados:
+        return jsonify({'ok': True, 'mensagens': enviados})
+    return jsonify({'erro': 'Não foi possível enviar a lista. Verifique o número/grupo.'}), 502
+
+
 # ── Página pública (sem login) ─────────────────────────────────────────────────
 
 @app.route('/slotzap/p/<token>')
