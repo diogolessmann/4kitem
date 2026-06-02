@@ -11661,23 +11661,24 @@ def slotzap_numeros_disponiveis(camp_id):
     return jsonify({'numeros': numeros})
 
 
-def _sz_criar_cliente_asaas(nome, tel):
-    """Cria ou reutiliza cliente no Asaas para SlotZap.
-    Nunca envia celular na criação — evita erros de validação do Asaas."""
+def _sz_criar_cliente_asaas(nome, tel, cpf=''):
+    """Cria ou reutiliza cliente no Asaas para SlotZap com CPF obrigatório."""
     customer_id = None
-    tel_limpo = ''.join(c for c in (tel or '') if c.isdigit())
-    # Tenta reusar cliente existente pelo telefone (só se tiver 11 dígitos válidos)
-    if len(tel_limpo) == 11:
-        tel_fmt = ('55' + tel_limpo) if not tel_limpo.startswith('55') else tel_limpo
-        busca = _asaas_req('GET', f'/customers?mobilePhone={tel_fmt}&limit=1')
+    cpf_limpo = ''.join(c for c in (cpf or '') if c.isdigit())
+    # Busca cliente existente pelo CPF
+    if cpf_limpo:
+        busca = _asaas_req('GET', f'/customers?cpfCnpj={cpf_limpo}&limit=1')
         if busca.get('data'):
             customer_id = busca['data'][0].get('id')
-    # Cria novo cliente só com nome — sem celular para evitar rejeição do Asaas
+    # Cria novo cliente com CPF
     if not customer_id:
-        resp = _asaas_req('POST', '/customers', {
+        dados = {
             'name': nome or 'Cliente SlotZap',
             'notificationDisabled': True,
-        })
+        }
+        if cpf_limpo:
+            dados['cpfCnpj'] = cpf_limpo
+        resp = _asaas_req('POST', '/customers', dados)
         customer_id = resp.get('id')
     return customer_id
 
@@ -11838,10 +11839,13 @@ def slotzap_publico_reservar(token):
     data         = request.get_json() or {}
     numero       = int(data.get('numero', 0))
     cliente_nome = (data.get('nome') or '').strip()
+    cliente_cpf  = ''.join(c for c in (data.get('cpf') or '') if c.isdigit())
     cliente_tel  = ''.join(c for c in (data.get('tel') or '') if c.isdigit())
 
     if not cliente_nome:
         return jsonify({'erro': 'Nome obrigatório'}), 400
+    if not cliente_cpf or len(cliente_cpf) != 11:
+        return jsonify({'erro': 'CPF obrigatório (11 dígitos)'}), 400
 
     conn  = get_saas_db()
     camp  = conn.execute('SELECT * FROM slotzap_campanhas WHERE token_publico=? AND status="ativa"',
@@ -11861,7 +11865,7 @@ def slotzap_publico_reservar(token):
     charge_id = pix_qr = pix_copia = ''
 
     # Cria cliente e cobrança no Asaas
-    customer_id = _sz_criar_cliente_asaas(cliente_nome, cliente_tel)
+    customer_id = _sz_criar_cliente_asaas(cliente_nome, cliente_tel, cliente_cpf)
 
     if customer_id:
         venc     = (datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d')
