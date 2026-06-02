@@ -154,34 +154,38 @@ def _desp_backup_dest() -> str:
 
 def _gerar_backup_zip(db_path: str = None) -> bytes:
     """Gera o ZIP de backup e retorna os bytes. db_path opcional para tenants."""
-    import zipfile
-    conn = get_desp_conn() if not db_path else __import__('sqlite3').connect(db_path)
+    import zipfile, sqlite3 as _sq3
     if db_path:
-        conn.row_factory = __import__('sqlite3').Row
-    buf  = io.BytesIO()
+        conn = _sq3.connect(db_path)
+        conn.row_factory = _sq3.Row
+    else:
+        conn = get_desp_conn()
+    buf = io.BytesIO()
     tabelas = ['clientes', 'veiculos', 'ordens_servico', 'os_parcelas',
                'os_historico', 'debitos_veiculo', 'config', 'protocolos_renavam',
                'documentos']
-    with zipfile.ZipFile(buf, 'w', zipfile.ZIP_DEFLATED) as zf:
-        for tbl in tabelas:
-            try:
-                rows = conn.execute(f'SELECT * FROM {tbl}').fetchall()
-                if not rows:
-                    continue
-                cols = rows[0].keys()
-                sb   = io.StringIO()
-                w    = csv.writer(sb)
-                w.writerow(list(cols))
-                for r in rows:
-                    w.writerow([r[c] for c in cols])
-                zf.writestr(f'{tbl}.csv', sb.getvalue())
-            except Exception:
-                pass
-        n_os  = conn.execute('SELECT COUNT(*) FROM ordens_servico').fetchone()[0]
-        n_cli = conn.execute('SELECT COUNT(*) FROM clientes').fetchone()[0]
-        meta  = f'Backup Lessmann Despachante\nData: {date.today()}\nOS: {n_os}\nClientes: {n_cli}\n'
-        zf.writestr('_info.txt', meta)
-    conn.close()
+    try:
+        with zipfile.ZipFile(buf, 'w', zipfile.ZIP_DEFLATED) as zf:
+            for tbl in tabelas:
+                try:
+                    rows = conn.execute(f'SELECT * FROM {tbl}').fetchall()
+                    if not rows:
+                        continue
+                    cols = rows[0].keys()
+                    sb   = io.StringIO()
+                    w    = csv.writer(sb)
+                    w.writerow(list(cols))
+                    for r in rows:
+                        w.writerow([r[c] for c in cols])
+                    zf.writestr(f'{tbl}.csv', sb.getvalue())
+                except Exception:
+                    pass
+            n_os  = conn.execute('SELECT COUNT(*) FROM ordens_servico').fetchone()[0]
+            n_cli = conn.execute('SELECT COUNT(*) FROM clientes').fetchone()[0]
+            meta  = f'Backup Despachante\nData: {date.today()}\nOS: {n_os}\nClientes: {n_cli}\n'
+            zf.writestr('_info.txt', meta)
+    finally:
+        conn.close()
     buf.seek(0)
     return buf.read()
 
@@ -8087,11 +8091,12 @@ def _desp_set_tenant_context():
     saas_uid = session.get('desp_saas_user_id')
     if saas_uid:
         g.desp_db_path = _desp_tenant_db_path(saas_uid)
-        # Garante que o banco do tenant existe e está inicializado
-        if not os.path.exists(g.desp_db_path):
+        # Inicializa banco apenas uma vez por tenant (singleton em memória)
+        if saas_uid not in _desp_init_done:
             from desp_db import init_db as _desp_init
             _desp_init()
-            log.info(f'[Desp SaaS] Banco criado para tenant {saas_uid}: {g.desp_db_path}')
+            _desp_init_done.add(saas_uid)
+            log.info(f'[Desp SaaS] Banco inicializado para tenant {saas_uid}: {g.desp_db_path}')
     else:
         g.desp_db_path = None  # usa DB_PATH fixo (Diogo)
 
@@ -8154,16 +8159,19 @@ def _desp_get_plan() -> dict:
     uid = session.get('desp_saas_user_id')
     if not uid:
         return {'plan': 'premium', 'plan_active': 1, **DESP_PLAN_LIMITS['premium']}
-    conn = get_saas_db()
-    u = conn.execute(
-        'SELECT plan, plan_active, trial_ends FROM despachante_users WHERE id=?', (uid,)
-    ).fetchone()
-    conn.close()
-    if not u:
-        return {'plan': 'basico', 'plan_active': 0, **DESP_PLAN_LIMITS['basico']}
-    plan = u['plan'] if u['plan'] in DESP_PLAN_LIMITS else 'basico'
-    return {'plan': plan, 'plan_active': u['plan_active'],
-            'trial_ends': u['trial_ends'], **DESP_PLAN_LIMITS[plan]}
+    try:
+        conn = get_saas_db()
+        u = conn.execute(
+            'SELECT plan, plan_active, trial_ends FROM despachante_users WHERE id=?', (uid,)
+        ).fetchone()
+        conn.close()
+        if not u:
+            return {'plan': 'basico', 'plan_active': 0, **DESP_PLAN_LIMITS['basico']}
+        plan = u['plan'] if u['plan'] in DESP_PLAN_LIMITS else 'basico'
+        return {'plan': plan, 'plan_active': u['plan_active'],
+                'trial_ends': u['trial_ends'], **DESP_PLAN_LIMITS[plan]}
+    except Exception:
+        return {'plan': 'basico', 'plan_active': 1, **DESP_PLAN_LIMITS['basico']}
 
 
 def _desp_check_limit(tipo: str) -> tuple:
@@ -8188,11 +8196,13 @@ def _desp_check_limit(tipo: str) -> tuple:
             return True, ''
         from desp_db import get_conn as _gc
         conn = _gc()
-        mes = datetime.now().strftime('%Y-%m')
-        n = conn.execute(
-            "SELECT COUNT(*) FROM ordens_servico WHERE strftime('%Y-%m', criado_em)=?", (mes,)
-        ).fetchone()[0]
-        conn.close()
+        try:
+            mes = datetime.now().strftime('%Y-%m')
+            n = conn.execute(
+                "SELECT COUNT(*) FROM ordens_servico WHERE strftime('%Y-%m', criado_em)=?", (mes,)
+            ).fetchone()[0]
+        finally:
+            conn.close()
         if n >= limite:
             return False, (f'Limite de {limite} O.S./mês atingido no plano {DESP_PLANS[plano["plan"]]["label"]}. '
                           f'Faça upgrade para o Profissional ou aguarde o próximo mês.')
@@ -9217,7 +9227,18 @@ def desp_nao_licenciados():
         finais=sorted(DESP_FINAIS_PLACA.items(), key=lambda x: x[1]))
 
 
-_desp_jobs: dict = {}  # job_id → {status, sent, failed, total, results}
+_desp_jobs: dict = {}           # job_id → {status, sent, failed, total, results}
+_desp_init_done: set = set()    # tenant IDs já inicializados (evita init_db em todo request)
+
+
+def _desp_new_job(total: int) -> str:
+    """Cria um novo job de disparo e limpa jobs antigos (evita memory leak)."""
+    concluidos = [k for k, v in list(_desp_jobs.items()) if v.get('status') == 'done']
+    for k in concluidos[:-20]:   # mantém os 20 jobs concluídos mais recentes
+        _desp_jobs.pop(k, None)
+    job_id = uuid.uuid4().hex
+    _desp_jobs[job_id] = {'status': 'running', 'sent': 0, 'failed': 0, 'total': total, 'results': []}
+    return job_id
 
 
 def _desp_dispatch_worker(job_id: str, contatos: list, mensagem_tpl: str,
@@ -9305,8 +9326,7 @@ def desp_nao_lic_disparar():
         whatsapp=_desp_get_config()['whatsapp_fmt'],
         cidade=_desp_get_config()['cidade'],
     )
-    job_id = uuid.uuid4().hex
-    _desp_jobs[job_id] = {'status': 'running', 'sent': 0, 'failed': 0, 'total': len(contatos), 'results': []}
+    job_id = _desp_new_job(len(contatos))
     threading.Thread(target=_desp_dispatch_worker, daemon=True,
                      args=(job_id, contatos, mensagem_tpl, evo_url, evo_key, evo_instance, delay_s, vars_extra)).start()
     return jsonify({'job_id': job_id, 'total': len(contatos)})
@@ -9508,8 +9528,7 @@ def desp_lista_disparar():
         whatsapp=_desp_get_config()['whatsapp_fmt'],
         cidade=_desp_get_config()['cidade'],
     )
-    job_id = uuid.uuid4().hex
-    _desp_jobs[job_id] = {'status': 'running', 'sent': 0, 'failed': 0, 'total': len(contatos), 'results': []}
+    job_id = _desp_new_job(len(contatos))
     threading.Thread(target=_desp_dispatch_worker, daemon=True,
                      args=(job_id, contatos, mensagem_tpl, evo_url, evo_key, evo_instance, delay_s, vars_extra)).start()
     return jsonify({'job_id': job_id, 'total': len(contatos)})
