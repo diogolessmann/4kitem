@@ -11815,14 +11815,22 @@ def slotzap_listar_grupos(camp_id):
     inst     = instance or os.environ.get('EVO_INSTANCE', '')
     if not evo_url or not inst:
         return jsonify({'grupos': []})
-    try:
-        r = requests.get(f'{evo_url}/group/fetchAllGroups/{inst}?getParticipants=false',
-                         headers={'apikey': evo_key}, timeout=10)
-        grupos = [{'id': g.get('id'), 'nome': g.get('subject', g.get('id'))}
-                  for g in (r.json() if isinstance(r.json(), list) else [])]
-        return jsonify({'grupos': grupos})
-    except Exception as e:
-        return jsonify({'grupos': [], 'erro': str(e)})
+    # fetchAllGroups do Evolution é lento — timeout generoso + 1 retry
+    last_err = ''
+    for tentativa in range(2):
+        try:
+            r = requests.get(f'{evo_url}/group/fetchAllGroups/{inst}?getParticipants=false',
+                             headers={'apikey': evo_key}, timeout=45)
+            data = r.json() if r.content else []
+            grupos = [{'id': g.get('id'), 'nome': g.get('subject', g.get('id'))}
+                      for g in (data if isinstance(data, list) else [])]
+            return jsonify({'grupos': grupos})
+        except requests.exceptions.Timeout:
+            last_err = 'timeout'
+        except Exception as e:
+            last_err = str(e)
+            break
+    return jsonify({'grupos': [], 'erro': last_err})
 
 
 # ── Página pública (sem login) ─────────────────────────────────────────────────

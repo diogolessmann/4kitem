@@ -498,10 +498,13 @@ function selecionarBot(instance, phone, el) {
 async function buscarGrupos() {
   const lista = document.getElementById('lista-grupos');
   lista.style.display = 'block';
-  lista.innerHTML = '<div style="color:#6666aa;font-size:12px;padding:8px">Buscando grupos...</div>';
+  lista.innerHTML = '<div style="color:#6666aa;font-size:12px;padding:8px">Buscando grupos... (pode levar até 40s)</div>';
   const r = await fetch(`/slotzap/campanha/${CAMP_ID}/grupos?instance=${encodeURIComponent(_selectedInstance)}`).then(r=>r.json());
   if (!r.grupos || r.grupos.length === 0) {
-    lista.innerHTML = '<div style="color:#ef4444;font-size:12px;padding:8px">Nenhum grupo encontrado. Verifique a instância WhatsApp.</div>';
+    const msg = (r.erro === 'timeout')
+      ? '⏳ O WhatsApp demorou para responder. Clique em "Buscar grupos" de novo.'
+      : (r.erro ? 'Erro ao buscar grupos. Tente novamente.' : 'Nenhum grupo encontrado nesse número. Confirme que o bot está no grupo.');
+    lista.innerHTML = `<div style="color:#ef4444;font-size:12px;padding:8px">${msg}</div>`;
     return;
   }
   lista.innerHTML = r.grupos.map(g =>
