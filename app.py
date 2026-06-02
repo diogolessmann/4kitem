@@ -11463,6 +11463,8 @@ def slotzap_nova():
         inicio  = int(request.form.get('slots_inicio') or 1)
         if not nome or preco <= 0 or total < 2:
             erro = 'Nome, preço e quantidade são obrigatórios.'
+        elif preco < 5:
+            erro = 'O valor mínimo por número é R$ 5,00 (exigência do Asaas para gerar PIX).'
         else:
             conn = get_saas_db()
             cur  = conn.execute(
@@ -11509,6 +11511,7 @@ def slotzap_reservar(camp_id):
     data         = request.get_json() or {}
     numero       = int(data.get('numero', 0))
     cliente_nome = (data.get('nome') or '').strip()
+    cliente_cpf  = ''.join(c for c in (data.get('cpf') or '') if c.isdigit())
     cliente_tel  = ''.join(c for c in (data.get('tel') or '') if c.isdigit())
 
     if not cliente_nome:
@@ -11527,28 +11530,16 @@ def slotzap_reservar(camp_id):
         conn.close()
         return jsonify({'erro': f'Slot #{numero} não está disponível'}), 400
 
-    preco     = float(dict(camp)['preco'])
-    slot_id   = dict(slot)['id']
-    charge_id = pix_qr = pix_copia = ''
+    preco   = float(dict(camp)['preco'])
+    slot_id = dict(slot)['id']
 
-    # Cria cobrança PIX no Asaas
-    customer_id = _sz_criar_cliente_asaas(cliente_nome, cliente_tel)
-
-    if customer_id:
-        venc     = (datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d')
-        resp_pay = _asaas_req('POST', '/payments', {
-            'customer':          customer_id,
-            'billingType':       'PIX',
-            'value':             preco,
-            'dueDate':           venc,
-            'description':       f"SlotZap — {dict(camp)['nome']} — Slot #{numero}",
-            'externalReference': f'sz_{slot_id}',
-        })
-        charge_id = resp_pay.get('id', '')
-        if charge_id:
-            qr_resp   = _asaas_req('GET', f'/payments/{charge_id}/pixQrCode')
-            pix_qr    = qr_resp.get('encodedImage', '')
-            pix_copia = qr_resp.get('payload', '')
+    # Cria cliente + cobrança PIX no Asaas — só reserva se o PIX for gerado
+    erro_msg, charge_id, pix_qr, pix_copia = _sz_gerar_pix(
+        cliente_nome, cliente_tel, cliente_cpf, preco,
+        f"SlotZap — {dict(camp)['nome']} — Slot #{numero}", f'sz_{slot_id}')
+    if erro_msg:
+        conn.close()
+        return jsonify({'erro': erro_msg}), 502
 
     conn.execute(
         'UPDATE slotzap_slots SET status=?,cliente_nome=?,cliente_tel=?,'
@@ -11683,6 +11674,44 @@ def _sz_criar_cliente_asaas(nome, tel, cpf=''):
     return customer_id
 
 
+def _sz_gerar_pix(nome, tel, cpf, valor, descricao, ext_ref):
+    """Cria cliente + cobrança PIX no Asaas e busca o QR.
+    Retorna (erro_msg, charge_id, pix_qr, pix_copia).
+    erro_msg é None em caso de sucesso; caso contrário, mensagem amigável."""
+    customer_id = _sz_criar_cliente_asaas(nome, tel, cpf)
+    if not customer_id:
+        log.error('[SlotZap] Falha ao criar cliente Asaas (nome=%s)', nome)
+        return ('Não foi possível criar o cadastro de pagamento. Tente novamente.',
+                '', '', '')
+
+    venc     = (datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d')
+    resp_pay = _asaas_req('POST', '/payments', {
+        'customer':          customer_id,
+        'billingType':       'PIX',
+        'value':             round(float(valor), 2),
+        'dueDate':           venc,
+        'description':       descricao,
+        'externalReference': ext_ref,
+    })
+    charge_id = resp_pay.get('id', '')
+    if not charge_id:
+        errs = resp_pay.get('errors') or []
+        msg  = errs[0].get('description') if errs and errs[0].get('description') \
+               else 'Não foi possível gerar a cobrança PIX. Tente novamente.'
+        log.error('[SlotZap] Falha na cobrança Asaas: %s', resp_pay)
+        return (msg, '', '', '')
+
+    qr_resp   = _asaas_req('GET', f'/payments/{charge_id}/pixQrCode')
+    pix_qr    = qr_resp.get('encodedImage', '')
+    pix_copia = qr_resp.get('payload', '')
+    if not pix_copia:
+        log.error('[SlotZap] Cobrança %s criada mas sem PIX: %s', charge_id, qr_resp)
+        return ('A cobrança foi criada, mas o PIX não foi gerado. Tente novamente.',
+                charge_id, '', '')
+
+    return (None, charge_id, pix_qr, pix_copia)
+
+
 @app.route('/slotzap/debug-pix')
 @_sz_login_required
 def slotzap_debug_pix():
@@ -11702,7 +11731,7 @@ def slotzap_debug_pix():
         r_pagamento = _asaas_req('POST', '/payments', {
             'customer':          customer_id,
             'billingType':       'PIX',
-            'value':             1.00,
+            'value':             5.00,
             'dueDate':           venc,
             'description':       'SlotZap debug PIX',
             'externalReference': 'debug_test',
@@ -11862,24 +11891,14 @@ def slotzap_publico_reservar(token):
 
     preco   = float(dict(camp)['preco'])
     slot_id = dict(slot)['id']
-    charge_id = pix_qr = pix_copia = ''
 
-    # Cria cliente e cobrança no Asaas
-    customer_id = _sz_criar_cliente_asaas(cliente_nome, cliente_tel, cliente_cpf)
-
-    if customer_id:
-        venc     = (datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d')
-        resp_pay = _asaas_req('POST', '/payments', {
-            'customer': customer_id, 'billingType': 'PIX', 'value': preco,
-            'dueDate': venc,
-            'description': f"SlotZap — {dict(camp)['nome']} — Slot #{numero}",
-            'externalReference': f'sz_{slot_id}',
-        })
-        charge_id = resp_pay.get('id', '')
-        if charge_id:
-            qr_resp   = _asaas_req('GET', f'/payments/{charge_id}/pixQrCode')
-            pix_qr    = qr_resp.get('encodedImage', '')
-            pix_copia = qr_resp.get('payload', '')
+    # Cria cliente e cobrança no Asaas — só reserva o slot se o PIX for gerado
+    erro_msg, charge_id, pix_qr, pix_copia = _sz_gerar_pix(
+        cliente_nome, cliente_tel, cliente_cpf, preco,
+        f"SlotZap — {dict(camp)['nome']} — Slot #{numero}", f'sz_{slot_id}')
+    if erro_msg:
+        conn.close()
+        return jsonify({'erro': erro_msg}), 502
 
     conn.execute(
         'UPDATE slotzap_slots SET status=?,cliente_nome=?,cliente_tel=?,'
