@@ -9,11 +9,19 @@
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Inter',sans-serif;background:#09090f;color:#f0f0ff;min-height:100vh}
 nav{background:#13131f;border-bottom:1px solid rgba(255,255,255,.07);
-    padding:0 24px;height:56px;display:flex;align-items:center;gap:12px}
+    padding:0 16px;height:56px;display:flex;align-items:center;gap:8px;overflow:hidden}
 .nav-logo{font-size:18px;font-weight:800;background:linear-gradient(135deg,#6366f1,#a855f7);
-          -webkit-background-clip:text;-webkit-text-fill-color:transparent;flex:1}
+          -webkit-background-clip:text;-webkit-text-fill-color:transparent;flex:1;white-space:nowrap}
 .nav-btn{background:none;border:1px solid rgba(255,255,255,.1);border-radius:7px;
-         color:#8888aa;padding:5px 12px;font-size:12px;cursor:pointer;font-family:inherit;text-decoration:none}
+         color:#8888aa;padding:5px 10px;font-size:12px;cursor:pointer;font-family:inherit;
+         text-decoration:none;white-space:nowrap}
+@media(max-width:600px){
+  nav{padding:0 10px;gap:6px}
+  .nav-logo{font-size:15px}
+  .nav-btn{padding:5px 8px;font-size:11px}
+  .nav-btn .nav-txt{display:none}
+  .nav-btn .nav-ico{display:inline}
+}
 
 .container{max-width:1100px;margin:0 auto;padding:28px 20px}
 
@@ -91,11 +99,11 @@ input:focus{border-color:#6366f1}
 <body>
 <nav>
   <span class="nav-logo">🎯 SlotZap</span>
-  <a href="/slotzap/app" class="nav-btn">← Campanhas</a>
+  <a href="/slotzap/app" class="nav-btn">← <span class="nav-txt">Campanhas</span></a>
   {% if camp.status == 'ativa' %}
-  <button class="nav-btn" style="border-color:#6366f1;color:#a5b4fc" onclick="gerarLink()">🔗 Link público</button>
-  <button class="nav-btn" style="border-color:#22c55e;color:#86efac" onclick="abrirConfigWpp()">💬 WhatsApp</button>
-  <button class="btn-encerrar" onclick="encerrar()">Encerrar</button>
+  <button class="nav-btn" style="border-color:#6366f1;color:#a5b4fc" onclick="gerarLink()">🔗 <span class="nav-txt">Link público</span></button>
+  <button class="nav-btn" style="border-color:#22c55e;color:#86efac" onclick="abrirConfigWpp()">💬 <span class="nav-txt">WhatsApp</span></button>
+  <button class="btn-encerrar" onclick="encerrar()"><span class="nav-txt">Encerrar</span><span class="nav-ico" style="display:none">✕</span></button>
   {% endif %}
 </nav>
 
