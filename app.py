@@ -505,6 +505,27 @@ SLOTZAP_PLANS = {
               'desc': 'Tudo do Start + suporte prioritário e (em breve) taxa por venda zerada.'},
 }
 
+# Desconto de combo: quem já assina um produto ativo paga 25% menos no outro
+COMBO_DESCONTO = 0.25
+
+def _combo_desconto_ativo(email, produto_atual) -> bool:
+    """True se o e-mail já tem assinatura ATIVA do outro produto (MandaZap <-> SlotZap)."""
+    if not email:
+        return False
+    email = email.strip().lower()
+    conn = get_saas_db()
+    try:
+        if produto_atual == 'slotzap':
+            r = conn.execute("SELECT 1 FROM mandazap_users WHERE lower(email)=? AND plan_active=1 LIMIT 1",
+                             (email,)).fetchone()
+        else:
+            r = conn.execute("SELECT 1 FROM slotzap_users WHERE lower(email)=? AND plan_active=1 LIMIT 1",
+                             (email,)).fetchone()
+    except Exception:
+        r = None
+    conn.close()
+    return bool(r)
+
 # ── MandaJá — Planos ─────────────────────────────────────────────────────────
 MANDAJA_PLANS = {
     'micro':    {'label': 'Micro',    'products': 5,   'price': 59,  'emoji': '🌱'},
@@ -6395,6 +6416,13 @@ def mandazap_assinar(plano=None):
     if plano not in MANDAZAP_PLANS:
         plano = 'solo'
     p = MANDAZAP_PLANS[plano]
+    # Desconto combo: se já tem SlotZap ativo (mesmo e-mail)
+    conn0  = get_saas_db()
+    _urow  = conn0.execute('SELECT email FROM mandazap_users WHERE id=?', (user_id,)).fetchone()
+    conn0.close()
+    _email      = dict(_urow)['email'] if _urow else ''
+    combo       = _combo_desconto_ativo(_email, 'mandazap')
+    preco_final = round(p['price'] * (1 - COMBO_DESCONTO), 2) if combo else float(p['price'])
     erro = None
     if request.method == 'POST':
         billing_type = request.form.get('billing_type', 'PIX').upper()
@@ -6415,17 +6443,16 @@ def mandazap_assinar(plano=None):
             conn2.execute('UPDATE mandazap_users SET asaas_customer_id=?, plan=? WHERE id=?',
                           (customer_id, plano, user_id))
             conn2.commit(); conn2.close()
+            desc = f'MandaZap {p["label"]} — Assinatura Mensal' + (' (combo -25%)' if combo else '')
             resp = _asaas_criar_assinatura_saas(
-                customer_id, 'mandazap', plano, float(p['price']),  # price is int 79/149/etc
-                f'MandaZap {p["label"]} — Assinatura Mensal',
-                billing_type
-            )
+                customer_id, 'mandazap', plano, preco_final, desc, billing_type)
             if resp.get('id'):
                 return redirect('/mandazap/aguardando-pagamento')
             else:
                 erro = 'Não foi possível gerar o pagamento. Tente novamente.'
     return render_template('mandazap/checkout.html', plano=p, plano_key=plano,
-                           planos=MANDAZAP_PLANS, erro=erro)
+                           planos=MANDAZAP_PLANS, erro=erro,
+                           combo=combo, preco_final=preco_final)
 
 
 @app.route('/mandazap/aguardando-pagamento')
@@ -11463,6 +11490,8 @@ def slotzap_assinar(plano=None):
     if plano not in SLOTZAP_PLANS:
         plano = 'start'
     p = SLOTZAP_PLANS[plano]
+    combo       = _combo_desconto_ativo(u['email'], 'slotzap')
+    preco_final = round(p['price'] * (1 - COMBO_DESCONTO), 2) if combo else float(p['price'])
     erro = None
     if request.method == 'POST':
         customer_id = _asaas_criar_ou_buscar_cliente_saas(
@@ -11474,15 +11503,16 @@ def slotzap_assinar(plano=None):
             conn2.execute('UPDATE slotzap_users SET asaas_customer_id=?, plan=? WHERE id=?',
                           (customer_id, plano, uid))
             conn2.commit(); conn2.close()
+            desc = f'SlotZap {p["label"]} — Assinatura Mensal' + (' (combo -25%)' if combo else '')
             resp = _asaas_criar_assinatura_saas(
-                customer_id, 'slotzap', plano, float(p['price']),
-                f'SlotZap {p["label"]} — Assinatura Mensal', 'PIX')
+                customer_id, 'slotzap', plano, preco_final, desc, 'PIX')
             if resp.get('id'):
                 pix = _asaas_get_pix_qr(resp['id'])
                 return render_template('slotzap/aguardando.html', pix=pix, p=p)
             erro = 'Não foi possível gerar a cobrança. Tente novamente.'
     return render_template('slotzap/assinar.html', plano=plano, p=p,
-                           planos=SLOTZAP_PLANS, erro=erro, user_name=u['name'])
+                           planos=SLOTZAP_PLANS, erro=erro, user_name=u['name'],
+                           combo=combo, preco_final=preco_final)
 
 
 @app.route('/slotzap/aguardando-pagamento')

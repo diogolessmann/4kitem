@@ -39,7 +39,12 @@ body{font-family:'Inter',sans-serif;background:#09090f;color:#f0f0ff;
   {% if erro %}<div class="err">{{ erro }}</div>{% endif %}
   <div class="resumo">
     <div class="linha"><span>Plano</span><span style="color:#fff;font-weight:700">SlotZap {{ p.label }}</span></div>
+    {% if combo %}
+    <div class="linha"><span>🔗 Desconto combo (-25%)</span><span style="color:#22c55e;font-weight:700">você já é MandaZap!</span></div>
+    <div class="linha total"><span>Total mensal</span><span class="preco"><s style="color:#6666aa;font-size:14px">R$ {{ '%.0f'|format(p.price) }}</s> R$ {{ '%.2f'|format(preco_final) }}/mês</span></div>
+    {% else %}
     <div class="linha total"><span>Total mensal</span><span class="preco">R$ {{ p.price }}/mês</span></div>
+    {% endif %}
     <div class="desc">{{ p.desc }}</div>
   </div>
   <form method="POST" action="/slotzap/assinar/{{ plano }}">
