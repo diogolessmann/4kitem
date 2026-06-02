@@ -11685,17 +11685,15 @@ def _sz_criar_cliente_asaas(nome, tel):
 @app.route('/slotzap/debug-pix')
 @_sz_login_required
 def slotzap_debug_pix():
-    """Debug: testa criação de cliente + pagamento PIX no Asaas e retorna resposta completa."""
-    # 1. Cria cliente de teste
-    r_cliente = _asaas_req('POST', '/customers', {
-        'name': 'Teste SlotZap Debug',
-        'mobilePhone': '47999999999',
-        'notificationDisabled': True,
-    })
-    customer_id = r_cliente.get('id')
+    """Debug: testa o fluxo completo de PIX usando o mesmo código de produção."""
+    # Usa a mesma função do código real
+    customer_id = _sz_criar_cliente_asaas('Teste SlotZap Debug', '')
 
     r_pagamento = None
     r_qrcode    = None
+
+    # Busca dados do cliente criado para mostrar no debug
+    r_cliente = _asaas_req('GET', f'/customers/{customer_id}') if customer_id else {'erro': 'cliente nao criado'}
 
     if customer_id:
         from datetime import datetime as _dt, timedelta as _td
@@ -11713,9 +11711,12 @@ def slotzap_debug_pix():
             r_qrcode = _asaas_req('GET', f'/payments/{charge_id}/pixQrCode')
 
     return jsonify({
-        'cliente':   r_cliente,
-        'pagamento': r_pagamento,
-        'qrcode':    r_qrcode,
+        'customer_id': customer_id,
+        'cliente':     r_cliente,
+        'pagamento':   r_pagamento,
+        'qrcode':      r_qrcode,
+        'tem_qr':      bool(r_qrcode and r_qrcode.get('encodedImage')),
+        'tem_copia':   bool(r_qrcode and r_qrcode.get('payload')),
     })
 
 
