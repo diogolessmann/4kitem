@@ -11673,6 +11673,43 @@ def slotzap_numeros_disponiveis(camp_id):
     return jsonify({'numeros': numeros})
 
 
+@app.route('/slotzap/debug-pix')
+@_sz_login_required
+def slotzap_debug_pix():
+    """Debug: testa criação de cliente + pagamento PIX no Asaas e retorna resposta completa."""
+    # 1. Cria cliente de teste
+    r_cliente = _asaas_req('POST', '/customers', {
+        'name': 'Teste SlotZap Debug',
+        'mobilePhone': '47999999999',
+        'notificationDisabled': True,
+    })
+    customer_id = r_cliente.get('id')
+
+    r_pagamento = None
+    r_qrcode    = None
+
+    if customer_id:
+        from datetime import datetime as _dt, timedelta as _td
+        venc = (_dt.now() + _td(days=1)).strftime('%Y-%m-%d')
+        r_pagamento = _asaas_req('POST', '/payments', {
+            'customer':          customer_id,
+            'billingType':       'PIX',
+            'value':             1.00,
+            'dueDate':           venc,
+            'description':       'SlotZap debug PIX',
+            'externalReference': 'debug_test',
+        })
+        charge_id = r_pagamento.get('id', '')
+        if charge_id:
+            r_qrcode = _asaas_req('GET', f'/payments/{charge_id}/pixQrCode')
+
+    return jsonify({
+        'cliente':   r_cliente,
+        'pagamento': r_pagamento,
+        'qrcode':    r_qrcode,
+    })
+
+
 @app.route('/slotzap/campanha/<int:camp_id>/bot-info')
 @_sz_login_required
 def slotzap_bot_info(camp_id):
