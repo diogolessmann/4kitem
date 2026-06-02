@@ -760,6 +760,8 @@ def init_slotzap_db():
         # Recuperação de senha
         "ALTER TABLE slotzap_users ADD COLUMN reset_token TEXT DEFAULT ''",
         "ALTER TABLE slotzap_users ADD COLUMN reset_expires TEXT DEFAULT ''",
+        # Asaas Split — walletId do cliente p/ receber a parte dele das vendas
+        "ALTER TABLE slotzap_users ADD COLUMN asaas_wallet_id TEXT DEFAULT ''",
     ]
     for sql in _sz_migrations:
         try:

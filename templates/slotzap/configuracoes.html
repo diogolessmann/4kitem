@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SlotZap — Configurações</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',sans-serif;background:#09090f;color:#f0f0ff;min-height:100vh;padding:24px 16px}
+.wrap{max-width:560px;margin:0 auto}
+.top{display:flex;align-items:center;gap:12px;margin-bottom:24px}
+.top a{color:#a5b4fc;text-decoration:none;font-size:14px}
+h1{font-size:22px;font-weight:800}
+.card{background:#13131f;border:1px solid rgba(255,255,255,.07);border-radius:16px;padding:24px}
+label{display:block;font-size:13px;font-weight:600;color:#c9d6e2;margin-bottom:6px}
+input{width:100%;background:#0d0d1a;border:1px solid rgba(255,255,255,.1);border-radius:9px;
+      color:#f0f0ff;padding:12px 14px;font-size:14px;font-family:inherit;outline:none}
+input:focus{border-color:#6366f1}
+.btn{width:100%;padding:13px;border-radius:9px;border:none;margin-top:16px;
+     background:linear-gradient(135deg,#6366f1,#7c3aed);color:#fff;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit}
+.ok{background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);color:#86efac;
+    padding:11px 14px;border-radius:8px;font-size:13px;margin-bottom:16px;text-align:center}
+.info{background:rgba(99,102,241,.08);border:1px solid rgba(99,102,241,.2);border-radius:10px;
+      padding:14px 16px;font-size:13px;color:#c9d6e2;line-height:1.6;margin-top:16px}
+.info b{color:#fff}
+.hint{font-size:12px;color:#8888aa;margin-top:6px;line-height:1.5}
+.status{font-size:13px;margin-top:10px;font-weight:600}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <a href="/slotzap/app">← Campanhas</a>
+    <h1>⚙️ Configurações</h1>
+  </div>
+
+  {% if msg %}<div class="ok">✅ {{ msg }}</div>{% endif %}
+
+  <div class="card">
+    <form method="POST">
+      <label>Seu Wallet ID do Asaas (para receber o dinheiro das vendas)</label>
+      <input type="text" name="wallet_id" value="{{ u.asaas_wallet_id or '' }}"
+             placeholder="ex: 8a7b6c5d-1234-...">
+      <div class="hint">No painel do Asaas: <b>Minha conta → Integrações → Wallet ID</b> (ou Conta → Dados da conta). É um código único da sua conta.</div>
+      {% if u.asaas_wallet_id %}
+        <div class="status" style="color:#22c55e">🟢 Recebimento configurado — você recebe {{ 100 - taxa }}% de cada venda.</div>
+      {% else %}
+        <div class="status" style="color:#f59e0b">🟡 Sem Wallet ID, o dinheiro das vendas não é repassado para você. Configure para começar a receber.</div>
+      {% endif %}
+      <button type="submit" class="btn">💾 Salvar</button>
+    </form>
+
+    <div class="info">
+      💡 <b>Como funciona:</b> quando alguém paga um número da sua rifa, o valor cai e o
+      Asaas <b>repassa automaticamente {{ 100 - taxa }}%</b> para a sua conta (Wallet ID acima).
+      A plataforma retém <b>{{ taxa }}%</b> por venda como taxa de serviço.
+    </div>
+  </div>
+</div>
+</body>
+</html>

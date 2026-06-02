@@ -508,6 +508,9 @@ SLOTZAP_PLANS = {
 # Desconto de combo: quem já assina um produto ativo paga 25% menos no outro
 COMBO_DESCONTO = 0.25
 
+# Taxa da plataforma por venda (Asaas Split): você retém 10%, cliente recebe o resto
+SZ_TAXA_VENDA = 0.10
+
 def _combo_desconto_ativo(email, produto_atual) -> bool:
     """True se o e-mail já tem assinatura ATIVA do outro produto (MandaZap <-> SlotZap)."""
     if not email:
@@ -11656,6 +11659,26 @@ def slotzap_app():
                            user_name=session.get('sz_user_name', ''))
 
 
+@app.route('/slotzap/configuracoes', methods=['GET', 'POST'])
+@_sz_login_required
+def slotzap_config():
+    if not _sz_plan_active():
+        return redirect('/slotzap/assinar')
+    uid  = _sz_uid()
+    msg  = None
+    conn = get_saas_db()
+    if request.method == 'POST':
+        wallet = (request.form.get('wallet_id') or '').strip()
+        conn.execute('UPDATE slotzap_users SET asaas_wallet_id=? WHERE id=?', (wallet, uid))
+        conn.commit()
+        msg = 'Configuração salva!'
+    u = dict(conn.execute('SELECT name, email, asaas_wallet_id FROM slotzap_users WHERE id=?',
+                          (uid,)).fetchone())
+    conn.close()
+    return render_template('slotzap/configuracoes.html', u=u, msg=msg,
+                           taxa=int(SZ_TAXA_VENDA * 100))
+
+
 @app.route('/slotzap/nova', methods=['GET', 'POST'])
 @_sz_login_required
 def slotzap_nova():
@@ -11775,11 +11798,13 @@ def slotzap_reservar(camp_id):
 
     preco   = float(dict(camp)['preco'])
     slot_id = dict(slot)['id']
+    _ow     = conn.execute('SELECT asaas_wallet_id FROM slotzap_users WHERE id=?', (_sz_uid(),)).fetchone()
+    owner_wallet = (dict(_ow).get('asaas_wallet_id') or '').strip() if _ow else ''
 
     # Cria cliente + cobrança PIX no Asaas — só reserva se o PIX for gerado
     erro_msg, charge_id, pix_qr, pix_copia = _sz_gerar_pix(
         cliente_nome, cliente_tel, cliente_cpf, preco,
-        f"SlotZap — {dict(camp)['nome']} — Slot #{numero}", f'sz_{slot_id}')
+        f"SlotZap — {dict(camp)['nome']} — Slot #{numero}", f'sz_{slot_id}', owner_wallet)
     if erro_msg:
         conn.close()
         return jsonify({'erro': erro_msg}), 502
@@ -11917,25 +11942,32 @@ def _sz_criar_cliente_asaas(nome, tel, cpf=''):
     return customer_id
 
 
-def _sz_gerar_pix(nome, tel, cpf, valor, descricao, ext_ref):
+def _sz_gerar_pix(nome, tel, cpf, valor, descricao, ext_ref, split_wallet=''):
     """Cria cliente + cobrança PIX no Asaas e busca o QR.
-    Retorna (erro_msg, charge_id, pix_qr, pix_copia).
-    erro_msg é None em caso de sucesso; caso contrário, mensagem amigável."""
+    Se split_wallet for informado, repassa (100 - taxa)% ao cliente via Asaas Split.
+    Retorna (erro_msg, charge_id, pix_qr, pix_copia)."""
     customer_id = _sz_criar_cliente_asaas(nome, tel, cpf)
     if not customer_id:
         log.error('[SlotZap] Falha ao criar cliente Asaas (nome=%s)', nome)
         return ('Não foi possível criar o cadastro de pagamento. Tente novamente.',
                 '', '', '')
 
-    venc     = (datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d')
-    resp_pay = _asaas_req('POST', '/payments', {
+    venc    = (datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d')
+    payload = {
         'customer':          customer_id,
         'billingType':       'PIX',
         'value':             round(float(valor), 2),
         'dueDate':           venc,
         'description':       descricao,
         'externalReference': ext_ref,
-    })
+    }
+    # Asaas Split: cliente recebe (100 - taxa)%, plataforma retém a taxa
+    if split_wallet:
+        payload['split'] = [{
+            'walletId':        split_wallet,
+            'percentualValue': round((1 - SZ_TAXA_VENDA) * 100, 2),
+        }]
+    resp_pay = _asaas_req('POST', '/payments', payload)
     charge_id = resp_pay.get('id', '')
     if not charge_id:
         errs = resp_pay.get('errors') or []
@@ -12293,11 +12325,13 @@ def slotzap_publico_reservar(token):
 
     preco   = float(dict(camp)['preco'])
     slot_id = dict(slot)['id']
+    _ow     = conn.execute('SELECT asaas_wallet_id FROM slotzap_users WHERE id=?', (dict(camp)['user_id'],)).fetchone()
+    owner_wallet = (dict(_ow).get('asaas_wallet_id') or '').strip() if _ow else ''
 
     # Cria cliente e cobrança no Asaas — só reserva o slot se o PIX for gerado
     erro_msg, charge_id, pix_qr, pix_copia = _sz_gerar_pix(
         cliente_nome, cliente_tel, cliente_cpf, preco,
-        f"SlotZap — {dict(camp)['nome']} — Slot #{numero}", f'sz_{slot_id}')
+        f"SlotZap — {dict(camp)['nome']} — Slot #{numero}", f'sz_{slot_id}', owner_wallet)
     if erro_msg:
         conn.close()
         return jsonify({'erro': erro_msg}), 502
