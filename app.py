@@ -11511,6 +11511,68 @@ def slotzap_sair():
     return redirect('/slotzap/entrar')
 
 
+@app.route('/slotzap/recuperar-senha', methods=['GET', 'POST'])
+def slotzap_recuperar_senha():
+    fase        = 'pedir'
+    erro        = None
+    sucesso     = False
+    codigo_tela = None
+    email_in    = ''
+    if request.method == 'POST':
+        etapa    = request.form.get('etapa', 'pedir')
+        email_in = (request.form.get('email') or '').strip().lower()
+        if etapa == 'pedir':
+            conn = get_saas_db()
+            u = conn.execute('SELECT * FROM slotzap_users WHERE email=?', (email_in,)).fetchone()
+            if not u:
+                erro = 'E-mail não encontrado.'
+                conn.close()
+            else:
+                codigo  = str(random.randint(100000, 999999))
+                expires = (datetime.now() + timedelta(hours=2)).isoformat()
+                conn.execute('UPDATE slotzap_users SET reset_token=?, reset_expires=? WHERE id=?',
+                             (codigo, expires, u['id']))
+                conn.commit(); conn.close()
+                html_email = f"""
+                <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px">
+                  <div style="font-size:32px;margin-bottom:8px">🎯</div>
+                  <h2 style="color:#6366f1">Recuperação de senha — SlotZap</h2>
+                  <p>Olá, <strong>{u['name'].split()[0]}</strong>!</p>
+                  <p>Seu código de recuperação é:</p>
+                  <div style="font-size:36px;font-weight:900;letter-spacing:8px;color:#6366f1;
+                              background:#eef2ff;padding:20px;border-radius:12px;text-align:center;margin:20px 0">{codigo}</div>
+                  <p style="color:#666;font-size:13px">Válido por 2 horas.</p>
+                </div>"""
+                ok = _enviar_email(u['email'], 'Código de recuperação — SlotZap', html_email)
+                fase = 'redefinir'
+                if not ok:
+                    codigo_tela = codigo
+        else:  # redefinir
+            codigo = (request.form.get('codigo') or '').strip()
+            nova   = request.form.get('nova_senha') or ''
+            fase   = 'redefinir'
+            if len(nova) < 6:
+                erro = 'A senha deve ter pelo menos 6 caracteres.'
+            else:
+                conn = get_saas_db()
+                u = conn.execute('SELECT * FROM slotzap_users WHERE email=?', (email_in,)).fetchone()
+                if not u or (u['reset_token'] or '') != codigo:
+                    erro = 'Código inválido ou e-mail incorreto.'
+                    conn.close()
+                elif u['reset_expires'] and datetime.fromisoformat(u['reset_expires']) < datetime.now():
+                    erro = 'Código expirado. Solicite um novo.'
+                    conn.close()
+                else:
+                    conn.execute("UPDATE slotzap_users SET password_hash=?, reset_token='', reset_expires='' WHERE id=?",
+                                 (generate_password_hash(nova), u['id']))
+                    conn.commit(); conn.close()
+                    sucesso = True
+                    fase    = 'pedir'
+    return render_template('slotzap/recuperar_senha.html',
+                           fase=fase, erro=erro, sucesso=sucesso,
+                           codigo_tela=codigo_tela, email_in=email_in)
+
+
 @app.route('/slotzap/app')
 @_sz_login_required
 def slotzap_app():

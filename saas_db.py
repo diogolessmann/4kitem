@@ -757,6 +757,9 @@ def init_slotzap_db():
         "ALTER TABLE slotzap_users ADD COLUMN plan TEXT DEFAULT 'start'",
         "ALTER TABLE slotzap_users ADD COLUMN asaas_customer_id TEXT DEFAULT ''",
         "ALTER TABLE slotzap_users ADD COLUMN cpf_cnpj TEXT DEFAULT ''",
+        # Recuperação de senha
+        "ALTER TABLE slotzap_users ADD COLUMN reset_token TEXT DEFAULT ''",
+        "ALTER TABLE slotzap_users ADD COLUMN reset_expires TEXT DEFAULT ''",
     ]
     for sql in _sz_migrations:
         try:
