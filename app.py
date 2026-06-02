@@ -1765,6 +1765,7 @@ def webhook_asaas_global():
                     SELECT s.numero, s.cliente_nome, s.cliente_tel,
                            c.nome AS camp_nome, c.preco, c.grupo_wpp_id,
                            c.evo_instance, c.msg_pagamento, c.id AS camp_id,
+                           c.token_publico,
                            (SELECT COUNT(*) FROM slotzap_slots WHERE campanha_id=c.id AND status="pago")      AS pagos,
                            (SELECT COUNT(*) FROM slotzap_slots WHERE campanha_id=c.id AND status="disponivel") AS livres,
                            c.total_slots
@@ -1785,11 +1786,15 @@ def webhook_asaas_global():
                     evo_key  = os.environ.get('EVO_KEY', '')
 
                     if grupo_id and instance and evo_url:
+                        base_url = os.environ.get('BASE_URL', 'https://www.4kitem.com.br').rstrip('/')
+                        token    = row.get('token_publico') or ''
+                        link_str = f"\n🔗 {base_url}/slotzap/p/{token}" if token else ''
                         tpl = row.get('msg_pagamento') or (
                             f"✅ *Slot #{row['numero']} — PAGO!*\n"
                             f"👤 {row['cliente_nome']}\n"
                             f"🎯 {row['camp_nome']}\n\n"
                             f"📊 {row['pagos']}/{row['total_slots']} vendidos · {row['livres']} livres"
+                            f"{link_str}"
                         )
                         try:
                             requests.post(
@@ -11640,6 +11645,37 @@ def slotzap_config_wpp(camp_id):
                  (grupo_id, instance, msg, camp_id))
     conn.commit(); conn.close()
     return jsonify({'ok': True})
+
+
+@app.route('/slotzap/campanha/<int:camp_id>/bot-info')
+@_sz_login_required
+def slotzap_bot_info(camp_id):
+    """Retorna o número de telefone do bot WhatsApp conectado."""
+    evo_url = os.environ.get('EVO_URL', '').rstrip('/')
+    evo_key = os.environ.get('EVO_KEY', '')
+    inst    = os.environ.get('EVO_INSTANCE', '')
+    if not evo_url or not inst:
+        return jsonify({'numero': None})
+    try:
+        ri = requests.get(f'{evo_url}/instance/fetchInstances',
+                          headers={'apikey': evo_key}, timeout=8)
+        instances = ri.json() if ri.content else []
+        numero = None
+        if isinstance(instances, list):
+            for item in instances:
+                iname = ''
+                owner = ''
+                if isinstance(item, dict):
+                    inner = item.get('instance', item)
+                    iname = inner.get('instanceName', '') if isinstance(inner, dict) else item.get('instanceName', '')
+                    owner = inner.get('owner', '') if isinstance(inner, dict) else item.get('owner', '')
+                if iname == inst and owner:
+                    # owner vem como "5547999999999@s.whatsapp.net" → extrai só o número
+                    numero = owner.split('@')[0].lstrip('55') if '@' in owner else owner
+                    break
+        return jsonify({'numero': numero, 'instance': inst})
+    except Exception as e:
+        return jsonify({'numero': None, 'erro': str(e)})
 
 
 @app.route('/slotzap/campanha/<int:camp_id>/grupos')

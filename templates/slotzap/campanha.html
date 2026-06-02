@@ -119,25 +119,102 @@ input:focus{border-color:#6366f1}
 
 <!-- Modal: Configurar WhatsApp -->
 <div class="overlay" id="modal-wpp">
-  <div class="modal">
-    <h3>💬 Notificação no Grupo WhatsApp</h3>
-    <div class="modal-sub">Quando alguém pagar, o sistema envia mensagem automática no grupo</div>
-    <div class="form-group">
-      <label>ID do Grupo (clique em "Buscar grupos" ou cole manualmente)</label>
-      <input type="text" id="wpp-grupo" placeholder="120363xxxxxx@g.us"
-             value="{{ camp.grupo_wpp_id or '' }}">
+  <div class="modal" style="max-width:460px">
+    <h3>💬 Conectar ao Grupo WhatsApp</h3>
+    <div class="modal-sub">Quando alguém pagar o PIX, o grupo recebe uma notificação automática</div>
+
+    {% if not camp.grupo_wpp_id %}
+    <!-- Tutorial de 3 passos -->
+    <div style="margin:16px 0">
+
+      <!-- Passo 1 -->
+      <div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:14px">
+        <div style="min-width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#7c3aed);
+                    display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800">1</div>
+        <div>
+          <div style="font-size:13px;font-weight:700;margin-bottom:3px">Adicione o bot ao seu grupo</div>
+          <div style="font-size:12px;color:#6666aa;line-height:1.5">
+            Abra o grupo no WhatsApp → <em>Adicionar participante</em> → cole o número abaixo
+          </div>
+          <div id="bot-numero-box" style="margin-top:8px;background:#0a0a15;border:1px solid rgba(99,102,241,.3);
+               border-radius:8px;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;gap:8px">
+            <span id="bot-numero-txt" style="font-size:15px;font-weight:700;color:#a5b4fc;letter-spacing:.5px">
+              Carregando…
+            </span>
+            <button onclick="copiarBotNumero()" style="background:rgba(99,102,241,.15);border:1px solid rgba(99,102,241,.3);
+                    border-radius:6px;color:#a5b4fc;padding:4px 10px;font-size:11px;cursor:pointer;font-family:inherit;
+                    white-space:nowrap">
+              📋 Copiar
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Passo 2 -->
+      <div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:14px">
+        <div style="min-width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#7c3aed);
+                    display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800">2</div>
+        <div style="width:100%">
+          <div style="font-size:13px;font-weight:700;margin-bottom:3px">Clique em "Buscar grupos"</div>
+          <div style="font-size:12px;color:#6666aa;margin-bottom:8px">O sistema lista todos os grupos em que o bot está</div>
+          <button class="btn btn-secondary" style="width:100%" onclick="buscarGrupos()">
+            🔍 Buscar grupos disponíveis
+          </button>
+          <div id="lista-grupos" style="display:none;margin-top:8px;max-height:150px;overflow-y:auto;border-radius:8px;
+               border:1px solid rgba(255,255,255,.07)"></div>
+        </div>
+      </div>
+
+      <!-- Passo 3 -->
+      <div style="display:flex;gap:12px;align-items:flex-start">
+        <div style="min-width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#7c3aed);
+                    display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800">3</div>
+        <div style="width:100%">
+          <div style="font-size:13px;font-weight:700;margin-bottom:3px">Selecione o grupo e salve</div>
+          <div style="font-size:12px;color:#6666aa;margin-bottom:8px">Grupo selecionado:</div>
+          <input type="text" id="wpp-grupo" placeholder="(nenhum selecionado ainda)"
+                 value="{{ camp.grupo_wpp_id or '' }}"
+                 style="background:#0a0a15;border:1px solid rgba(255,255,255,.1);border-radius:8px;
+                        color:#f0f0ff;padding:10px 12px;font-size:13px;width:100%;font-family:inherit">
+        </div>
+      </div>
     </div>
-    <button class="btn btn-secondary" style="width:100%;margin-bottom:14px" onclick="buscarGrupos()">
-      🔍 Buscar grupos disponíveis
+
+    {% else %}
+    <!-- Já configurado — modo edição compacto -->
+    <div style="background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.25);border-radius:10px;
+                padding:12px 14px;margin:14px 0;font-size:13px">
+      ✅ <strong style="color:#22c55e">Grupo conectado!</strong> Notificações ativas.
+    </div>
+    <div class="form-group">
+      <label>ID do Grupo</label>
+      <input type="text" id="wpp-grupo" value="{{ camp.grupo_wpp_id or '' }}"
+             style="background:#0a0a15;border:1px solid rgba(255,255,255,.1);border-radius:8px;
+                    color:#f0f0ff;padding:10px 12px;font-size:13px;width:100%;font-family:inherit">
+    </div>
+    <button class="btn btn-secondary" style="width:100%;margin-bottom:10px" onclick="buscarGrupos()">
+      🔍 Trocar grupo
     </button>
-    <div id="lista-grupos" style="display:none;margin-bottom:14px;max-height:160px;overflow-y:auto"></div>
-    <div class="form-group">
-      <label>Mensagem personalizada (opcional — deixe em branco para padrão)</label>
-      <textarea id="wpp-msg" rows="3" style="width:100%;background:#0a0a15;border:1px solid rgba(255,255,255,.1);
-                border-radius:8px;color:#f0f0ff;padding:10px 12px;font-size:13px;font-family:inherit;resize:vertical"
-                placeholder="✅ Slot #{numero} PAGO! — {cliente}&#10;📊 {vendidos}/{total} vendidos">{{ camp.msg_pagamento or '' }}</textarea>
-    </div>
-    <div class="modal-btns">
+    <div id="lista-grupos" style="display:none;margin-bottom:14px;max-height:150px;overflow-y:auto;border-radius:8px;
+         border:1px solid rgba(255,255,255,.07)"></div>
+    {% endif %}
+
+    <!-- Mensagem personalizada (colapsável) -->
+    <details style="margin-top:14px">
+      <summary style="font-size:12px;color:#6666aa;cursor:pointer;user-select:none">
+        ✏️ Personalizar mensagem do grupo (opcional)
+      </summary>
+      <div style="margin-top:10px">
+        <textarea id="wpp-msg" rows="3" style="width:100%;background:#0a0a15;border:1px solid rgba(255,255,255,.1);
+                  border-radius:8px;color:#f0f0ff;padding:10px 12px;font-size:13px;font-family:inherit;resize:vertical"
+                  placeholder="✅ Slot #{numero} PAGO! — {cliente}&#10;📊 {vendidos}/{total} vendidos&#10;Deixe em branco para usar o padrão">{{ camp.msg_pagamento or '' }}</textarea>
+        <div style="font-size:11px;color:#44447a;margin-top:4px">
+          Variáveis: {numero} {cliente} {vendidos} {total} {livres}
+        </div>
+      </div>
+    </details>
+
+    <div class="modal-btns" style="margin-top:18px">
       <button class="btn btn-primary" onclick="salvarWpp()">💾 Salvar</button>
       <button class="btn btn-secondary" onclick="fecharModal()">Cancelar</button>
     </div>
@@ -153,7 +230,24 @@ input:focus{border-color:#6366f1}
       <div class="stat"><div class="stat-val green">{{ pagos }}</div><div class="stat-lbl">✅ Pagos</div></div>
       <div class="stat"><div class="stat-val yellow">{{ reservados }}</div><div class="stat-lbl">🟡 Reservados</div></div>
       <div class="stat"><div class="stat-val gray">{{ disponiveis }}</div><div class="stat-lbl">⬜ Livres</div></div>
-      <div class="stat"><div class="stat-val purple">R$ {{ '%.0f'|format(receita) }}</div><div class="stat-lbl">💰 Recebido</div></div>
+      {% set pct = ((pagos / camp.total_slots) * 100) | round(1) if camp.total_slots > 0 else 0 %}
+      <div class="stat" style="min-width:160px;flex:1">
+        <div style="display:flex;align-items:baseline;gap:4px;justify-content:center;margin-bottom:6px">
+          <span class="stat-val" style="color:#a855f7">{{ pct | int }}%</span>
+          <span style="font-size:11px;color:#6666aa">vendido</span>
+        </div>
+        <div style="background:rgba(255,255,255,.07);border-radius:99px;height:8px;overflow:hidden">
+          <div style="height:100%;width:{{ pct }}%;border-radius:99px;
+                      background:linear-gradient(90deg,#6366f1,#a855f7);
+                      transition:width .6s ease;
+                      {% if pct >= 80 %}background:linear-gradient(90deg,#f59e0b,#ef4444);{% endif %}
+                      {% if pct == 100 %}background:linear-gradient(90deg,#22c55e,#16a34a);{% endif %}">
+          </div>
+        </div>
+        <div style="font-size:10px;color:#44447a;margin-top:4px;text-align:center">
+          {{ pagos }}/{{ camp.total_slots }} slots
+        </div>
+      </div>
     </div>
   </div>
 
@@ -354,7 +448,34 @@ function copiarLink() {
   });
 }
 
-function abrirConfigWpp() { abrirModal('modal-wpp'); }
+async function abrirConfigWpp() {
+  abrirModal('modal-wpp');
+  // Carrega o número do bot automaticamente
+  const el = document.getElementById('bot-numero-txt');
+  if (!el) return;
+  try {
+    const r = await fetch(`/slotzap/campanha/${CAMP_ID}/bot-info`).then(r => r.json());
+    if (r.numero) {
+      el.textContent = r.numero;
+    } else {
+      el.textContent = 'Não disponível';
+      el.style.color = '#6666aa';
+    }
+  } catch(e) {
+    el.textContent = 'Erro ao carregar';
+    el.style.color = '#ef4444';
+  }
+}
+
+function copiarBotNumero() {
+  const num = document.getElementById('bot-numero-txt').textContent.trim();
+  if (!num || num === 'Carregando…' || num === 'Não disponível') return;
+  navigator.clipboard.writeText(num).then(() => {
+    const btn = document.querySelector('#bot-numero-box button');
+    btn.textContent = '✅ Copiado!';
+    setTimeout(() => btn.textContent = '📋 Copiar', 1500);
+  });
+}
 
 async function buscarGrupos() {
   const lista = document.getElementById('lista-grupos');
