@@ -105,6 +105,7 @@ input:focus{border-color:#6366f1}
   <button class="nav-btn" style="border-color:#22c55e;color:#86efac" onclick="abrirConfigWpp()">💬 <span class="nav-txt">WhatsApp</span></button>
   <button class="nav-btn" style="border-color:#f59e0b;color:#fbbf24" onclick="enviarLista(this)">📋 <span class="nav-txt">Enviar lista</span></button>
   <a href="/slotzap/campanha/{{ camp.id }}/exportar" class="nav-btn" style="border-color:#38bdf8;color:#7dd3fc">⬇️ <span class="nav-txt">Exportar</span></a>
+  <button class="nav-btn" style="border-color:#a855f7;color:#c4b5fd" onclick="abrirEditar()">✏️ <span class="nav-txt">Editar</span></button>
   <button class="btn-encerrar" onclick="encerrar()"><span class="nav-txt">Encerrar</span><span class="nav-ico" style="display:none">✕</span></button>
   {% endif %}
 </nav>
@@ -350,10 +351,55 @@ input:focus{border-color:#6366f1}
   </div>
 </div>
 
+<!-- Modal: Editar campanha -->
+<div class="overlay" id="modal-editar">
+  <div class="modal">
+    <h3>✏️ Editar campanha</h3>
+    <div class="form-group">
+      <label>Nome</label>
+      <input type="text" id="ed-nome" value="{{ camp.nome }}">
+    </div>
+    <div class="form-group">
+      <label>Descrição</label>
+      <input type="text" id="ed-descr" value="{{ camp.descricao or '' }}">
+    </div>
+    <div class="form-group">
+      <label>Preço por número (R$)</label>
+      <input type="number" id="ed-preco" step="0.01" min="5" value="{{ '%.2f'|format(camp.preco) }}">
+    </div>
+    <div class="form-group">
+      <label>Total de números (só dá para aumentar)</label>
+      <input type="number" id="ed-total" min="{{ camp.total_slots }}" value="{{ camp.total_slots }}">
+    </div>
+    <div class="modal-btns">
+      <button class="btn btn-primary" onclick="salvarEditar()">💾 Salvar</button>
+      <button class="btn btn-secondary" onclick="fecharModal()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
 <script>
 const CAMP_ID = {{ camp.id }};
 const CAMP_STATUS = "{{ camp.status }}";
 let _slotId = null, _slotNum = null, _pixQr = '', _pixCopia = '';
+
+function abrirEditar() { abrirModal('modal-editar'); }
+async function salvarEditar() {
+  const nome = document.getElementById('ed-nome').value.trim();
+  const descricao = document.getElementById('ed-descr').value.trim();
+  const preco = parseFloat(document.getElementById('ed-preco').value || 0);
+  const total_slots = parseInt(document.getElementById('ed-total').value || 0);
+  if (!nome) { alert('Informe o nome.'); return; }
+  if (!(preco >= 5)) { alert('O preço mínimo por número é R$ 5,00.'); return; }
+  const r = await fetch(`/slotzap/campanha/${CAMP_ID}/editar`, {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({nome, descricao, preco, total_slots})
+  }).then(r=>r.json());
+  if (r.ok) {
+    alert('✅ Campanha atualizada!' + (r.numeros_adicionados ? (' +' + r.numeros_adicionados + ' números') : ''));
+    location.reload();
+  } else { alert('Erro: ' + (r.erro || 'tente novamente')); }
+}
 
 function clicarSlot(id, num, status, nome, tel, qr, copia) {
   _slotId = id; _slotNum = num; _pixQr = qr; _pixCopia = copia;

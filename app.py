@@ -11769,6 +11769,45 @@ def slotzap_exportar(camp_id):
                     headers={'Content-Disposition': f'attachment; filename=slotzap_{nome_arq}.csv'})
 
 
+@app.route('/slotzap/campanha/<int:camp_id>/editar', methods=['POST'])
+@_sz_login_required
+def slotzap_editar(camp_id):
+    """Edita nome/descrição/preço e permite AUMENTAR a quantidade de números."""
+    if not _sz_plan_active():
+        return jsonify({'erro': 'Assinatura inativa.'}), 402
+    data  = request.get_json() or {}
+    nome  = (data.get('nome') or '').strip()
+    descr = (data.get('descricao') or '').strip()
+    try:    preco = float(data.get('preco') or 0)
+    except (TypeError, ValueError): preco = 0
+    try:    novo_total = int(data.get('total_slots') or 0)
+    except (TypeError, ValueError): novo_total = 0
+    if not nome:
+        return jsonify({'erro': 'Nome obrigatório'}), 400
+    if preco < 5:
+        return jsonify({'erro': 'O valor mínimo por número é R$ 5,00.'}), 400
+
+    conn = get_saas_db()
+    camp = conn.execute('SELECT * FROM slotzap_campanhas WHERE id=? AND user_id=?',
+                        (camp_id, _sz_uid())).fetchone()
+    if not camp:
+        conn.close()
+        return jsonify({'erro': 'Campanha não encontrada'}), 404
+    camp = dict(camp)
+    conn.execute('UPDATE slotzap_campanhas SET nome=?, descricao=?, preco=? WHERE id=?',
+                 (nome, descr, preco, camp_id))
+    add = 0
+    if novo_total and novo_total > camp['total_slots']:
+        inicio = camp['slots_inicio'] or 1
+        for n in range(inicio + camp['total_slots'], inicio + novo_total):
+            conn.execute('INSERT OR IGNORE INTO slotzap_slots (campanha_id,numero,status) VALUES (?,?,?)',
+                         (camp_id, n, 'disponivel'))
+        conn.execute('UPDATE slotzap_campanhas SET total_slots=? WHERE id=?', (novo_total, camp_id))
+        add = novo_total - camp['total_slots']
+    conn.commit(); conn.close()
+    return jsonify({'ok': True, 'numeros_adicionados': add})
+
+
 @app.route('/slotzap/campanha/<int:camp_id>/reservar', methods=['POST'])
 @_sz_login_required
 def slotzap_reservar(camp_id):
