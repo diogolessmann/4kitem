@@ -762,6 +762,10 @@ def init_slotzap_db():
         "ALTER TABLE slotzap_users ADD COLUMN reset_expires TEXT DEFAULT ''",
         # Asaas Split — walletId do cliente p/ receber a parte dele das vendas
         "ALTER TABLE slotzap_users ADD COLUMN asaas_wallet_id TEXT DEFAULT ''",
+        # Sorteio do ganhador
+        "ALTER TABLE slotzap_campanhas ADD COLUMN ganhador_numero INTEGER DEFAULT 0",
+        "ALTER TABLE slotzap_campanhas ADD COLUMN ganhador_nome TEXT DEFAULT ''",
+        "ALTER TABLE slotzap_campanhas ADD COLUMN sorteado_em TEXT DEFAULT ''",
     ]
     for sql in _sz_migrations:
         try:

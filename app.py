@@ -11810,6 +11810,47 @@ def slotzap_editar(camp_id):
     return jsonify({'ok': True, 'numeros_adicionados': add})
 
 
+@app.route('/slotzap/campanha/<int:camp_id>/sortear', methods=['POST'])
+@_sz_login_required
+def slotzap_sortear(camp_id):
+    """Sorteia um ganhador entre os números PAGOS e anuncia no grupo."""
+    if not _sz_plan_active():
+        return jsonify({'erro': 'Assinatura inativa.'}), 402
+    conn = get_saas_db()
+    camp = conn.execute('SELECT * FROM slotzap_campanhas WHERE id=? AND user_id=?',
+                        (camp_id, _sz_uid())).fetchone()
+    if not camp:
+        conn.close()
+        return jsonify({'erro': 'Campanha não encontrada'}), 404
+    camp  = dict(camp)
+    pagos = [dict(r) for r in conn.execute(
+        "SELECT numero, cliente_nome FROM slotzap_slots WHERE campanha_id=? AND status='pago'",
+        (camp_id,)).fetchall()]
+    if not pagos:
+        conn.close()
+        return jsonify({'erro': 'Nenhum número pago para sortear ainda.'}), 400
+    ganhador = random.choice(pagos)
+    conn.execute('UPDATE slotzap_campanhas SET ganhador_numero=?, ganhador_nome=?, sorteado_em=? WHERE id=?',
+                 (ganhador['numero'], ganhador['cliente_nome'] or '', datetime.now().isoformat(), camp_id))
+    conn.commit(); conn.close()
+
+    # Anuncia no grupo (se configurado)
+    grupo_id = (camp.get('grupo_wpp_id') or '').strip()
+    instance = (camp.get('evo_instance') or '').strip() or os.environ.get('EVO_INSTANCE', '')
+    evo_url  = os.environ.get('EVO_URL', '').rstrip('/')
+    evo_key  = os.environ.get('EVO_KEY', '')
+    if grupo_id and instance and evo_url:
+        msg = (f"🎉🏆 *RESULTADO DO SORTEIO* 🏆🎉\n\n🎯 {camp['nome']}\n\n"
+               f"🥇 Número *#{ganhador['numero']}*\n👤 {ganhador['cliente_nome'] or '—'}\n\nParabéns! 🎊")
+        try:
+            requests.post(f"{evo_url}/message/sendText/{instance}",
+                headers={'apikey': evo_key, 'Content-Type': 'application/json'},
+                json={'number': grupo_id, 'text': msg}, timeout=10)
+        except Exception as _e:
+            log.warning(f'[SlotZap] sorteio grupo: {_e}')
+    return jsonify({'ok': True, 'numero': ganhador['numero'], 'nome': ganhador['cliente_nome'] or ''})
+
+
 @app.route('/slotzap/campanha/<int:camp_id>/reservar', methods=['POST'])
 @_sz_login_required
 def slotzap_reservar(camp_id):
