@@ -17,7 +17,7 @@ import requests
 from datetime import datetime, timedelta, date
 from functools import wraps
 from flask import (Flask, render_template, redirect, jsonify,
-                   request, abort, url_for, session)
+                   request, abort, url_for, session, Response)
 from werkzeug.security import generate_password_hash, check_password_hash
 
 logging.basicConfig(
@@ -11631,6 +11631,7 @@ def slotzap_nova():
 def slotzap_campanha(camp_id):
     if not _sz_plan_active():
         return redirect('/slotzap/assinar')
+    _sz_expirar_reservas(camp_id)
     conn = get_saas_db()
     camp = conn.execute('SELECT * FROM slotzap_campanhas WHERE id=? AND user_id=?',
                         (camp_id, _sz_uid())).fetchone()
@@ -11650,6 +11651,37 @@ def slotzap_campanha(camp_id):
                            camp=camp, slots=slots,
                            pagos=pagos, reservados=reservados,
                            disponiveis=disponiveis, receita=receita)
+
+
+@app.route('/slotzap/campanha/<int:camp_id>/exportar')
+@_sz_login_required
+def slotzap_exportar(camp_id):
+    """Exporta a lista de compradores da campanha em CSV (para o dono operar/entregar)."""
+    if not _sz_plan_active():
+        return redirect('/slotzap/assinar')
+    conn = get_saas_db()
+    camp = conn.execute('SELECT nome FROM slotzap_campanhas WHERE id=? AND user_id=?',
+                        (camp_id, _sz_uid())).fetchone()
+    if not camp:
+        conn.close()
+        return redirect('/slotzap/app')
+    slots = [dict(r) for r in conn.execute(
+        'SELECT numero, status, cliente_nome, cliente_tel, reservado_em, pago_em '
+        'FROM slotzap_slots WHERE campanha_id=? ORDER BY numero', (camp_id,)).fetchall()]
+    conn.close()
+    buf = io.StringIO()
+    w   = csv.writer(buf, delimiter=';')
+    w.writerow(['Numero', 'Status', 'Cliente', 'WhatsApp', 'Reservado em', 'Pago em'])
+    st_map = {'disponivel': 'Disponível', 'reservado': 'Reservado', 'pago': 'Pago'}
+    for s in slots:
+        w.writerow([s['numero'], st_map.get(s['status'], s['status']),
+                    s['cliente_nome'] or '', s['cliente_tel'] or '',
+                    s['reservado_em'] or '', s['pago_em'] or ''])
+    nome_arq = (''.join(c for c in dict(camp)['nome'] if c.isalnum() or c in ' -_')
+                .strip().replace(' ', '_') or 'campanha')
+    conteudo = '﻿' + buf.getvalue()  # BOM p/ o Excel abrir acentos corretamente
+    return Response(conteudo, mimetype='text/csv; charset=utf-8',
+                    headers={'Content-Disposition': f'attachment; filename=slotzap_{nome_arq}.csv'})
 
 
 @app.route('/slotzap/campanha/<int:camp_id>/reservar', methods=['POST'])
@@ -11916,6 +11948,33 @@ def _sz_marcar_pago(slot_id):
     return True
 
 
+SZ_RESERVA_EXPIRA_MIN = 30  # libera o número se a reserva não for paga neste tempo
+
+def _sz_expirar_reservas(camp_id):
+    """Libera slots reservados (não pagos) que passaram do tempo de expiração,
+    cancelando a cobrança Asaas para o cliente não pagar um número já liberado."""
+    limite = (datetime.now() - timedelta(minutes=SZ_RESERVA_EXPIRA_MIN)).isoformat()
+    conn = get_saas_db()
+    expirados = [dict(r) for r in conn.execute(
+        "SELECT id, asaas_charge_id FROM slotzap_slots "
+        "WHERE campanha_id=? AND status='reservado' AND reservado_em!='' AND reservado_em < ?",
+        (camp_id, limite)).fetchall()]
+    for s in expirados:
+        if s.get('asaas_charge_id'):
+            try:
+                _asaas_req('DELETE', f"/payments/{s['asaas_charge_id']}")
+            except Exception:
+                pass
+        conn.execute(
+            "UPDATE slotzap_slots SET status='disponivel',cliente_nome='',cliente_tel='',"
+            "asaas_charge_id='',pix_qr_code='',pix_copia_cola='',reservado_em='' WHERE id=?",
+            (s['id'],))
+    if expirados:
+        conn.commit()
+    conn.close()
+    return len(expirados)
+
+
 @app.route('/slotzap/campanha/<int:camp_id>/grupos')
 @_sz_login_required
 def slotzap_listar_grupos(camp_id):
@@ -12053,6 +12112,9 @@ def slotzap_publico(token):
         conn.close()
         return render_template('slotzap/nao_encontrado.html'), 404
     camp  = dict(camp)
+    conn.close()
+    _sz_expirar_reservas(camp['id'])
+    conn  = get_saas_db()
     slots = [dict(r) for r in conn.execute(
         'SELECT numero, status FROM slotzap_slots WHERE campanha_id=? ORDER BY numero',
         (camp['id'],)
@@ -12074,12 +12136,14 @@ def slotzap_publico_status(token):
     """Polling — retorna status atual dos slots para atualização em tempo real."""
     conn  = get_saas_db()
     camp  = conn.execute('SELECT id FROM slotzap_campanhas WHERE token_publico=?', (token,)).fetchone()
+    conn.close()
     if not camp:
-        conn.close()
         return jsonify({'erro': 'not found'}), 404
+    cid = dict(camp)['id']
+    _sz_expirar_reservas(cid)
+    conn  = get_saas_db()
     slots = conn.execute(
-        'SELECT numero, status FROM slotzap_slots WHERE campanha_id=? ORDER BY numero',
-        (dict(camp)['id'],)
+        'SELECT numero, status FROM slotzap_slots WHERE campanha_id=? ORDER BY numero', (cid,)
     ).fetchall()
     conn.close()
     return jsonify({'slots': {str(s['numero']): s['status'] for s in slots}})
