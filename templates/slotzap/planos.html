@@ -29,6 +29,13 @@ body{font-family:'Inter',sans-serif;background:#09090f;color:#f0f0ff;min-height:
 .btn.sec{background:rgba(255,255,255,.06);color:#c9d6e2}
 .login{text-align:center;margin-top:28px;font-size:13px;color:#8888aa}
 .login a{color:#a5b4fc;text-decoration:none;font-weight:600}
+.como{max-width:560px;margin:30px auto 6px;display:flex;flex-direction:column;gap:12px}
+.passo{display:flex;gap:14px;align-items:center;background:#13131f;border:1px solid rgba(255,255,255,.06);
+       border-radius:12px;padding:14px 16px}
+.passo-n{min-width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#7c3aed);
+         display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px}
+.passo b{font-size:14px}.passo span{font-size:13px;color:#9999bb;line-height:1.5}
+.planos-titulo{text-align:center;font-size:16px;color:#8888aa;font-weight:700;margin:30px 0 -8px}
 </style>
 </head>
 <body>
@@ -36,9 +43,16 @@ body{font-family:'Inter',sans-serif;background:#09090f;color:#f0f0ff;min-height:
   <div class="logo">
     <div class="logo-icon">🎯</div>
     <h1>SlotZap</h1>
-    <p>Venda seus números/cotas pelo WhatsApp com PIX automático e baixa em tempo real.</p>
+    <p>Faça <b>rifas, sorteios e venda de cotas</b> pelo WhatsApp — sem planilha e sem vender o mesmo número duas vezes.</p>
   </div>
 
+  <div class="como">
+    <div class="passo"><div class="passo-n">1</div><div><b>Crie a campanha</b><br><span>Diga quantos números e o preço de cada um.</span></div></div>
+    <div class="passo"><div class="passo-n">2</div><div><b>Compartilhe o link</b><br><span>O cliente escolhe o número e paga no PIX na hora.</span></div></div>
+    <div class="passo"><div class="passo-n">3</div><div><b>Pronto, vendido!</b><br><span>O número trava sozinho quando o PIX cai e o grupo é avisado.</span></div></div>
+  </div>
+
+  <h2 class="planos-titulo">Escolha seu plano</h2>
   <div class="grid">
     {% for key, p in planos.items() %}
     <div class="card {% if key == 'start' %}destaque{% endif %}">
