@@ -11532,19 +11532,7 @@ def slotzap_reservar(camp_id):
     charge_id = pix_qr = pix_copia = ''
 
     # Cria cobrança PIX no Asaas
-    customer_id = None
-    if cliente_tel:
-        tel_fmt = ('55' + cliente_tel) if not cliente_tel.startswith('55') else cliente_tel
-        busca   = _asaas_req('GET', f'/customers?mobilePhone={tel_fmt}&limit=1')
-        if busca.get('data'):
-            customer_id = busca['data'][0].get('id')
-    if not customer_id:
-        resp_cli    = _asaas_req('POST', '/customers', {
-            'name': cliente_nome,
-            'mobilePhone': cliente_tel or None,
-            'notificationDisabled': True,
-        })
-        customer_id = resp_cli.get('id')
+    customer_id = _sz_criar_cliente_asaas(cliente_nome, cliente_tel)
 
     if customer_id:
         venc     = (datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d')
@@ -11671,6 +11659,24 @@ def slotzap_numeros_disponiveis(camp_id):
             'phone': phone_clean,
         })
     return jsonify({'numeros': numeros})
+
+
+def _sz_criar_cliente_asaas(nome, tel):
+    """Cria ou reutiliza cliente no Asaas para SlotZap. Nunca envia celular vazio."""
+    customer_id = None
+    tel_limpo = ''.join(c for c in (tel or '') if c.isdigit())
+    if tel_limpo:
+        tel_fmt = ('55' + tel_limpo) if not tel_limpo.startswith('55') else tel_limpo
+        busca = _asaas_req('GET', f'/customers?mobilePhone={tel_fmt}&limit=1')
+        if busca.get('data'):
+            customer_id = busca['data'][0].get('id')
+    if not customer_id:
+        dados = {'name': nome, 'notificationDisabled': True}
+        if tel_limpo:
+            dados['mobilePhone'] = tel_limpo  # só inclui se tiver número
+        resp = _asaas_req('POST', '/customers', dados)
+        customer_id = resp.get('id')
+    return customer_id
 
 
 @app.route('/slotzap/debug-pix')
@@ -11851,18 +11857,7 @@ def slotzap_publico_reservar(token):
     charge_id = pix_qr = pix_copia = ''
 
     # Cria cliente e cobrança no Asaas
-    customer_id = None
-    if cliente_tel:
-        tel_fmt = ('55' + cliente_tel) if not cliente_tel.startswith('55') else cliente_tel
-        busca   = _asaas_req('GET', f'/customers?mobilePhone={tel_fmt}&limit=1')
-        if busca.get('data'):
-            customer_id = busca['data'][0].get('id')
-    if not customer_id:
-        resp_cli    = _asaas_req('POST', '/customers', {
-            'name': cliente_nome, 'mobilePhone': cliente_tel or None,
-            'notificationDisabled': True,
-        })
-        customer_id = resp_cli.get('id')
+    customer_id = _sz_criar_cliente_asaas(cliente_nome, cliente_tel)
 
     if customer_id:
         venc     = (datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d')
