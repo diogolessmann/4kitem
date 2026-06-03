@@ -103,7 +103,7 @@ input:focus{border-color:#6366f1}
   {% if camp.status == 'ativa' %}
   <button class="nav-btn" style="border-color:#6366f1;color:#a5b4fc" onclick="gerarLink()">🔗 <span class="nav-txt">Link público</span></button>
   <button class="nav-btn" style="border-color:#22c55e;color:#86efac" onclick="abrirConfigWpp()">💬 <span class="nav-txt">WhatsApp</span></button>
-  <button class="nav-btn" style="border-color:#f59e0b;color:#fbbf24" onclick="enviarLista(this)">📋 <span class="nav-txt">Enviar lista</span></button>
+  <button class="nav-btn" style="border-color:#f59e0b;color:#fbbf24" onclick="abrirEnviarLista()">📋 <span class="nav-txt">Enviar lista</span></button>
   <a href="/slotzap/campanha/{{ camp.id }}/exportar" class="nav-btn" style="border-color:#38bdf8;color:#7dd3fc">⬇️ <span class="nav-txt">Exportar</span></a>
   <button class="nav-btn" style="border-color:#a855f7;color:#c4b5fd" onclick="abrirEditar()">✏️ <span class="nav-txt">Editar</span></button>
   <button class="btn-encerrar" onclick="encerrar()"><span class="nav-txt">Encerrar</span><span class="nav-ico" style="display:none">✕</span></button>
@@ -362,6 +362,24 @@ input:focus{border-color:#6366f1}
   </div>
 </div>
 
+<!-- Modal: Enviar lista -->
+<div class="overlay" id="modal-lista">
+  <div class="modal">
+    <h3>📋 Enviar lista no grupo</h3>
+    <div class="modal-sub">Escreva uma mensagem (chamada, link, etc.) — a lista de números vai logo abaixo dela. Deixe em branco para usar o padrão.</div>
+    <div class="form-group">
+      <label>Mensagem antes da lista (opcional)</label>
+      <textarea id="lista-msg" rows="5"
+        style="width:100%;background:#0a0a15;border:1px solid rgba(255,255,255,.1);border-radius:8px;color:#f0f0ff;padding:10px 12px;font-size:13px;font-family:inherit;resize:vertical"
+        placeholder="Ex: 🎉 Rifa da bicicleta Jaya! Garanta seu número 👇&#10;https://www.4kitem.com.br/slotzap/p/SEU-LINK">{{ camp.msg_lista or '' }}</textarea>
+    </div>
+    <div class="modal-btns">
+      <button class="btn btn-primary" onclick="enviarListaConfirm(this)">📋 Enviar para o grupo</button>
+      <button class="btn btn-secondary" onclick="fecharModal()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
 <!-- Modal: Editar campanha -->
 <div class="overlay" id="modal-editar">
   <div class="modal">
@@ -530,21 +548,23 @@ function copiarLink() {
 
 let _selectedInstance = '';
 
-async function enviarLista(btn) {
+function abrirEnviarLista() {
   const grupo = "{{ camp.grupo_wpp_id or '' }}";
   if (!grupo) { alert('Configure o grupo do WhatsApp primeiro (botão 💬 WhatsApp).'); return; }
-  if (!confirm('Enviar a lista atualizada de números para o grupo do WhatsApp?')) return;
-  const txt = btn.querySelector('.nav-txt');
-  const orig = txt ? txt.textContent : '';
-  if (txt) txt.textContent = 'Enviando...';
-  btn.disabled = true;
+  abrirModal('modal-lista');
+}
+async function enviarListaConfirm(btn) {
+  const msg = document.getElementById('lista-msg').value.trim();
+  btn.disabled = true; btn.textContent = '⏳ Enviando...';
   try {
-    const r = await fetch(`/slotzap/campanha/${CAMP_ID}/enviar-lista`, {method:'POST'}).then(r=>r.json());
-    if (r.ok) alert('✅ Lista enviada para o grupo!');
+    const r = await fetch(`/slotzap/campanha/${CAMP_ID}/enviar-lista`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({msg})
+    }).then(r=>r.json());
+    if (r.ok) { fecharModal(); alert('✅ Lista enviada para o grupo!'); }
     else alert('Erro: ' + (r.erro || 'tente novamente'));
   } catch(e) { alert('Erro ao enviar. Tente novamente.'); }
-  if (txt) txt.textContent = orig;
-  btn.disabled = false;
+  btn.disabled = false; btn.textContent = '📋 Enviar para o grupo';
 }
 
 async function abrirConfigWpp() {
@@ -623,7 +643,7 @@ async function salvarWpp() {
     method:'POST', headers:{'Content-Type':'application/json'},
     body: JSON.stringify({grupo_id, instance, msg})
   }).then(r=>r.json());
-  if (r.ok) { fecharModal(); alert('✅ WhatsApp configurado! O grupo receberá notificações automáticas.'); }
+  if (r.ok) { fecharModal(); alert('✅ WhatsApp configurado! O grupo receberá notificações automáticas.'); location.reload(); }
   else alert('Erro: ' + (r.erro || JSON.stringify(r)));
 }
 

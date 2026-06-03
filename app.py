@@ -13051,6 +13051,10 @@ def slotzap_enviar_lista(camp_id):
     slots = [dict(r) for r in conn.execute(
         'SELECT numero, status, cliente_nome FROM slotzap_slots WHERE campanha_id=? ORDER BY numero',
         (camp_id,)).fetchall()]
+    # Mensagem personalizada (cabeçalho da lista) — salva pra reutilizar
+    msg_topo = ((request.get_json(silent=True) or {}).get('msg') or '').strip()
+    conn.execute('UPDATE slotzap_campanhas SET msg_lista=? WHERE id=?', (msg_topo, camp_id))
+    conn.commit()
     conn.close()
 
     grupo_id = (camp.get('grupo_wpp_id') or '').strip()
@@ -13070,7 +13074,7 @@ def slotzap_enviar_lista(camp_id):
         linhas.append(f"{str(s['numero']).zfill(pad)} - {nome}".rstrip())
 
     # Quebra em blocos de ~3500 caracteres (limite do WhatsApp ~4096)
-    header = f"🎯 *{camp['nome']}* — Lista de números\n\n"
+    header = (msg_topo + "\n\n") if msg_topo else f"🎯 *{camp['nome']}* — Lista de números\n\n"
     blocos, atual = [], header
     for ln in linhas:
         if len(atual) + len(ln) + 1 > 3500:

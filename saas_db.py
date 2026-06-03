@@ -781,6 +781,8 @@ def init_slotzap_db():
         # White-label (plano Pro): marca e cor na página pública
         "ALTER TABLE slotzap_users ADD COLUMN marca TEXT DEFAULT ''",
         "ALTER TABLE slotzap_users ADD COLUMN cor TEXT DEFAULT ''",
+        # Mensagem personalizada que vai ANTES da lista de números no grupo
+        "ALTER TABLE slotzap_campanhas ADD COLUMN msg_lista TEXT DEFAULT ''",
     ]
     for sql in _sz_migrations:
         try:
