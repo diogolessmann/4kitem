@@ -24,6 +24,12 @@ img{max-width:100%;display:block}
 .btn:hover{opacity:.92}
 .btn-lg{font-size:17px;padding:17px 34px}
 .muted{color:#9999bb}
+.topnav{position:sticky;top:0;z-index:100;display:flex;align-items:center;justify-content:space-between;
+        padding:12px 20px;background:rgba(9,9,15,.85);backdrop-filter:blur(10px);border-bottom:1px solid rgba(255,255,255,.06)}
+.tn-brand{display:flex;align-items:center;gap:8px;font-weight:800;font-size:16px;color:#fff;text-decoration:none}
+.tn-brand img{width:26px;height:26px;border-radius:7px}
+.tn-login{text-decoration:none;color:#c9d6e2;font-weight:700;font-size:14px;border:1px solid rgba(255,255,255,.18);padding:8px 18px;border-radius:9px}
+.tn-login:hover{border-color:#6366f1;color:#fff}
 
 /* Hero */
 .hero{text-align:center;padding:54px 20px 30px;background:radial-gradient(800px 380px at 50% -10%,rgba(99,102,241,.22),transparent)}
@@ -90,6 +96,11 @@ details p{margin-top:10px;font-size:14px;color:#b8b8d4}
 </style>
 </head>
 <body>
+
+<div class="topnav">
+  <a href="/slotzap/planos" class="tn-brand"><img src="/static/slotzap/icone.png" alt="">SlotZap</a>
+  <a href="/slotzap/entrar" class="tn-login">Entrar →</a>
+</div>
 
 <!-- HERO -->
 <div class="hero">
