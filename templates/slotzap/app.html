@@ -60,7 +60,7 @@ nav{background:#13131f;border-bottom:1px solid rgba(255,255,255,.07);
 
   {% if campanhas %}
   <div class="dash">
-    <div class="dash-card"><div class="dash-val green">R$ {{ '%.2f'|format(total_arrecadado) }}</div><div class="dash-lbl">💰 Arrecadado</div></div>
+    <div class="dash-card"><div class="dash-val green">R$ {{ '%.2f'|format(total_arrecadado)|replace('.', ',') }}</div><div class="dash-lbl">💰 Arrecadado</div></div>
     <div class="dash-card"><div class="dash-val">{{ total_vendidos }}</div><div class="dash-lbl">🎯 Números vendidos</div></div>
     <div class="dash-card"><div class="dash-val">{{ ativas }}</div><div class="dash-lbl">🟢 Campanhas ativas</div></div>
   </div>
