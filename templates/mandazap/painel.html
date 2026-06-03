@@ -319,13 +319,18 @@ select option{background:var(--surface2)}
           <span class="badge {{ n.status }}" id="num-badge-{{ n.id }}">{{ '🟢 Conectado' if n.status == 'connected' else '🔴 Desconectado' }}</span>
           <button type="button" onclick="verificarConexao({{ n.id }}, this)" style="background:none;border:none;cursor:pointer;font-size:12px;color:var(--text2);padding:2px 4px" title="Verificar conexão">🔄</button>
         </div>
-        {% if n.status == 'connected' %}
+        {% if n.in_cooldown %}
+        <div style="font-size:11px;margin-top:7px;padding:6px 9px;border-radius:7px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);color:#fca5a5;line-height:1.4"
+             title="Proteção pós-ban: após um possível ban, todos os números ficam pausados por algumas horas para não queimar os outros.">
+          🛑 Em cooldown de segurança até <strong>{{ n.cooldown_hm }}</strong>
+        </div>
+        {% elif n.status == 'connected' %}
         <div style="font-size:11px;margin-top:7px;padding:6px 9px;border-radius:7px;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2);color:#fbbf24;line-height:1.4"
-             title="Número novo manda pouco e vai aumentando até 21 dias — é o que mais protege contra ban.">
+             title="Número novo manda pouco e vai aumentando até ~25 dias — é o que mais protege contra ban.">
           {% if n.warmup_done %}
           🔥 Número aquecido · hoje: <strong>{{ n.sent_today }}</strong> enviados
           {% else %}
-          🔥 Aquecimento dia <strong>{{ n.warmup_day }}/21</strong> · hoje <strong>{{ n.sent_today }}/{{ n.warmup_cap }}</strong> msgs
+          🔥 Aquecimento dia <strong>{{ n.warmup_day }}/25</strong> · hoje <strong>{{ n.sent_today }}/{{ n.warmup_cap }}</strong> msgs
           {% endif %}
         </div>
         {% endif %}

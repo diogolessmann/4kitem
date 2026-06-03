@@ -6958,13 +6958,20 @@ def mandazap_painel():
     numbers   = [dict(r) for r in conn.execute(
         'SELECT * FROM mandazap_numbers WHERE user_id=? ORDER BY created_at DESC', (user_id,)
     ).fetchall()]
-    # Info de aquecimento (warm-up) por número, para exibir no painel
+    # Info de aquecimento (warm-up) e cooldown por número, para exibir no painel
     for _n in numbers:
         _age = _mz_number_age_days(_n)
         _n['warmup_day']  = _age
-        _n['warmup_done'] = _age >= 21
+        _n['warmup_done'] = _age >= 25
         _n['warmup_cap']  = _mz_warmup_cap(_age)
         _n['sent_today']  = _mz_number_sent_today(conn, _n['id'])
+        _n['in_cooldown'] = _mz_in_cooldown(_n)
+        _n['cooldown_hm'] = ''
+        if _n['in_cooldown']:
+            try:
+                _n['cooldown_hm'] = datetime.fromisoformat(_n['cooldown_until']).strftime('%d/%m %H:%M')
+            except Exception:
+                pass
     campaigns = [dict(r) for r in conn.execute('''
         SELECT c.*, l.name as list_name, n.label as number_label
         FROM mandazap_campaigns c
@@ -8243,61 +8250,39 @@ def _send_image(evo_url, evo_key, instance, phone, image_url, caption=''):
 
 def _antiban_delay(sent_count: int):
     """
-    Delay humanizado anti-ban v3 — estratégia em 3 fases:
+    Delay humanizado anti-ban v4 — LOTES COM PAUSA LONGA (pacing por número).
 
-    FASE 1 — Warm-up (primeiras 20 msgs):
-      Base 40–90s para não disparar alerta de novo número.
+    `sent_count` = nº de envios DESTE número na sessão.
 
-    FASE 2 — Ritmo normal (20–150):
-      Base 20–55s com jitter ±25%.
-
-    FASE 3 — Volume (150+):
-      Base 15–40s (número já aquecido).
-
-    Pausas obrigatórias (BARREIRA REAL = 45 consecutivas):
-      A cada 20 msgs: 3–6 min  (reseta contador interno do Meta)
-      A cada 40 msgs: 8–15 min (pausa crítica — antes do limite de 45)
-      A cada 100 msgs: 15–25 min (simula saída do celular)
-      A cada 200 msgs: 25–40 min (pausa refeição/reunião)
-
-    Delays NUNCA são fixos — o Meta detecta padrões matemáticos.
+    - A cada lote de MZ_BATCH_SIZE envios (padrão 30): descansa 40–75 min
+      (como uma pessoa que manda um bloco e larga o celular).
+    - A cada 12 envios: micro-pausa de 2–5 min (olhou outra coisa).
+    - Entre mensagens: intervalo aleatório que começa devagar (número frio)
+      e acelera conforme aquece. Nunca fixo — o Meta detecta padrão matemático.
     """
-    # Pausas longas — checar do mais raro ao mais frequente
-    if sent_count > 0 and sent_count % 200 == 0:
-        pausa = random.uniform(1500, 2400)
-        log.info(f"Anti-ban: pausa extra longa {pausa:.0f}s apos {sent_count} enviados")
+    # Pausa LONGA entre lotes — o que mais imita comportamento humano real
+    if sent_count > 0 and sent_count % MZ_BATCH_SIZE == 0:
+        pausa = random.uniform(2400, 4500)   # 40–75 min de descanso entre lotes
+        log.info(f"Anti-ban: descanso de lote {pausa/60:.0f}min apos {sent_count} envios")
         time.sleep(pausa)
         return
 
-    if sent_count > 0 and sent_count % 100 == 0:
-        pausa = random.uniform(900, 1500)
-        log.info(f"Anti-ban: pausa longa {pausa:.0f}s apos {sent_count} enviados")
+    # Micro-pausa periódica (simula distração)
+    if sent_count > 0 and sent_count % 12 == 0:
+        pausa = random.uniform(120, 300)     # 2–5 min
+        log.info(f"Anti-ban: micro-pausa {pausa:.0f}s apos {sent_count} envios")
         time.sleep(pausa)
         return
 
-    # CRÍTICO: pausa forte a cada 30 msgs — nunca chega na zona de risco 40-53
-    if sent_count > 0 and sent_count % 30 == 0:
-        pausa = random.uniform(900, 1800)  # 15–30 min — reset total do contador Meta
-        log.info(f"Anti-ban: pausa critica {pausa:.0f}s apos {sent_count} enviados (antes zona 40-53)")
-        time.sleep(pausa)
-        return
-
-    if sent_count > 0 and sent_count % 15 == 0:
-        pausa = random.uniform(240, 480)   # 4–8 min entre blocos
-        log.info(f"Anti-ban: pausa media {pausa:.0f}s apos {sent_count} enviados")
-        time.sleep(pausa)
-        return
-
-    # Fase de envio baseada no aquecimento
+    # Intervalo entre mensagens, mais lento enquanto o número ainda está frio
     if sent_count < 20:
-        base = random.uniform(40, 90)   # warm-up: mais devagar
-    elif sent_count < 150:
-        base = random.uniform(20, 55)   # ritmo normal
+        base = random.uniform(45, 100)   # número frio: bem devagar
+    elif sent_count < 80:
+        base = random.uniform(25, 60)    # esquentando
     else:
-        base = random.uniform(15, 40)   # aquecido
+        base = random.uniform(18, 45)    # já no ritmo
 
-    # Jitter assimétrico — evita padrão de intervalo regular
-    jitter = base * random.uniform(0.75, 1.35)
+    jitter = base * random.uniform(0.8, 1.35)   # jitter assimétrico
     log.debug(f"Anti-ban delay: {jitter:.1f}s (sent={sent_count})")
     time.sleep(jitter)
 
@@ -8323,6 +8308,13 @@ MZ_WARMUP_CURVE = [
 # Janela de horário "humano" (hora local do servidor). Fora disso, pausa e retoma sozinho.
 MZ_SEND_HOUR_START = int(os.environ.get('MZ_SEND_HOUR_START', '8'))
 MZ_SEND_HOUR_END   = int(os.environ.get('MZ_SEND_HOUR_END', '21'))
+
+# Cooldown pós-ban: ao detectar ban, pausa TODOS os números do usuário por N horas
+# (o conteúdo/lista que banou um número vai banar os outros — circuit breaker).
+MZ_BAN_COOLDOWN_HOURS = float(os.environ.get('MZ_BAN_COOLDOWN_HOURS', '6'))
+
+# Lotes: envia em blocos e descansa bastante entre eles (mais humano, menos ban).
+MZ_BATCH_SIZE = int(os.environ.get('MZ_BATCH_SIZE', '30'))
 
 
 def _mz_warmup_cap(days_active: int) -> int:
@@ -8381,6 +8373,32 @@ def _mz_in_send_window(now=None) -> bool:
     if MZ_SEND_HOUR_START < MZ_SEND_HOUR_END:
         return MZ_SEND_HOUR_START <= h < MZ_SEND_HOUR_END
     return h >= MZ_SEND_HOUR_START or h < MZ_SEND_HOUR_END  # janela que cruza meia-noite
+
+
+def _mz_in_cooldown(num_row: dict) -> bool:
+    """True se o número está em cooldown de segurança pós-ban."""
+    cu = (num_row.get('cooldown_until') or '')
+    if not cu:
+        return False
+    try:
+        return datetime.fromisoformat(cu) > datetime.now()
+    except Exception:
+        return False
+
+
+def _mz_set_cooldown(user_id: int, hours: float = None):
+    """Circuit breaker: pausa TODOS os números do usuário por N horas após um ban.
+    O conteúdo/lista que banou um número provavelmente banaria os outros também.
+    """
+    hours = MZ_BAN_COOLDOWN_HOURS if hours is None else hours
+    until = (datetime.now() + timedelta(hours=hours)).isoformat()
+    try:
+        c = get_saas_db()
+        c.execute('UPDATE mandazap_numbers SET cooldown_until=? WHERE user_id=?', (until, user_id))
+        c.commit(); c.close()
+        log.warning(f"[MZ Cooldown] user {user_id}: TODOS os números pausados por {hours}h (até {until[:16]})")
+    except Exception as e:
+        log.error(f"set cooldown error: {e}")
 
 
 def _mz_campaign_scheduler():
@@ -8610,6 +8628,18 @@ def _dispatch_campaign_inner(cid: int, user_id: int, delay_s: int = 3, continuar
         conn.commit(); conn.close()
         return
 
+    # Remove números em cooldown de segurança pós-ban (circuit breaker)
+    senders = [s for s in senders if not _mz_in_cooldown(s['row'])]
+    if not senders:
+        conn.execute(
+            "UPDATE mandazap_campaigns SET status='agendada', error_log=? WHERE id=?",
+            ('Números em cooldown de segurança pós-ban. Retoma automaticamente quando o '
+             'período de proteção passar.', cid)
+        )
+        conn.commit(); conn.close()
+        log.info(f"Campanha {cid}: todos os números em cooldown pós-ban — agendada")
+        return
+
     # Remove números que já bateram o teto diário / aquecimento de hoje
     senders = [s for s in senders if s['remaining'] > 0]
     if not senders:
@@ -8766,20 +8796,19 @@ def _dispatch_campaign_inner(cid: int, user_id: int, delay_s: int = 3, continuar
                 time.sleep(random.uniform(4, 10))
 
             elif _is_disconnected(err):
-                # Este número desconectou (ban/sessão) — remove do pool e segue com os outros
-                log.error(f"Campanha {cid}: número {sender['id']} desconectou — {err}")
-                sender['remaining'] = 0
-                senders = [s for s in senders if s['id'] != sender['id']]
-                consec_fails = 0  # não conta como falha de API
-                if not senders:
-                    conn.execute(
-                        "UPDATE mandazap_campaigns SET status='erro', sent=?, finished_at=?, error_log=? WHERE id=?",
-                        (sent_count, datetime.now().isoformat(),
-                         f'Número(s) WhatsApp desconectado(s) durante o disparo (possível ban). '
-                         f'{sent_count} enviados antes. Reconecte e retome.', cid)
-                    )
-                    conn.commit(); conn.close()
-                    return
+                # CIRCUIT BREAKER: um número caiu (provável ban). O conteúdo/lista que
+                # banou este vai banar os outros — então PARA tudo e poe todos em cooldown.
+                log.error(f"Campanha {cid}: número {sender['id']} desconectou (ban?) — circuit breaker — {err}")
+                _mz_set_cooldown(user_id)
+                conn.execute(
+                    "UPDATE mandazap_campaigns SET status='erro', sent=?, finished_at=?, error_log=? WHERE id=?",
+                    (sent_count, datetime.now().isoformat(),
+                     f'🛑 Possível ban detectado após {sent_count} envios. Por segurança, TODOS os seus '
+                     f'números foram pausados por {MZ_BAN_COOLDOWN_HOURS:.0f}h. Reconecte o número banido e '
+                     f'revise a lista/mensagem antes de retomar.', cid)
+                )
+                conn.commit(); conn.close()
+                return
 
             else:
                 # Falha real (API down, timeout, erro temporario) — conta consecutiva
@@ -8787,9 +8816,12 @@ def _dispatch_campaign_inner(cid: int, user_id: int, delay_s: int = 3, continuar
                 if consec_fails >= MAX_CONSEC:
                     # Verifica se é ban ou problema de API
                     is_ban = not _check_instance_connected(evo_url, evo_key, instance)
-                    motivo = ('Numero possivelmente banido — instancia desconectada. Reconecte o numero.'
-                              if is_ban else
-                              f'API retornou {MAX_CONSEC} erros consecutivos. Verifique a conexao e tente novamente.')
+                    if is_ban:
+                        _mz_set_cooldown(user_id)   # circuit breaker — protege os outros números
+                        motivo = (f'🛑 Possível ban — instância desconectada. TODOS os seus números foram '
+                                  f'pausados por {MZ_BAN_COOLDOWN_HOURS:.0f}h por segurança. Reconecte e revise a lista/mensagem.')
+                    else:
+                        motivo = f'API retornou {MAX_CONSEC} erros consecutivos. Verifique a conexão e tente novamente.'
                     log.error(f"Campanha {cid}: {MAX_CONSEC} falhas consecutivas ({'ban?' if is_ban else 'API error'}) — {err}")
                     conn.execute(
                         "UPDATE mandazap_campaigns SET status='erro', sent=?, finished_at=?, error_log=? WHERE id=?",
@@ -8812,17 +8844,18 @@ def _dispatch_campaign_inner(cid: int, user_id: int, delay_s: int = 3, continuar
         # A cada 25 envios DESTE número, confere se ele ainda está conectado
         if ok and sender['sent'] > 0 and sender['sent'] % 25 == 0:
             if not _check_instance_connected(evo_url, evo_key, sender['instance']):
-                log.error(f"Campanha {cid}: número {sender['id']} desconectou após {sender['sent']} envios — possível ban")
-                sender['remaining'] = 0
-                senders = [s for s in senders if s['id'] != sender['id']]
-                if not senders:
-                    conn.execute(
-                        "UPDATE mandazap_campaigns SET status='erro', sent=?, finished_at=?, error_log=? WHERE id=?",
-                        (sent_count, datetime.now().isoformat(),
-                         f'Número desconectou/banido após {sent_count} enviados. Reconecte e aguarde 24h antes de retomar.', cid)
-                    )
-                    conn.commit(); conn.close()
-                    return
+                # CIRCUIT BREAKER: ban detectado na checagem periódica — para tudo e cooldown
+                log.error(f"Campanha {cid}: número {sender['id']} desconectou após {sender['sent']} envios — circuit breaker")
+                _mz_set_cooldown(user_id)
+                conn.execute(
+                    "UPDATE mandazap_campaigns SET status='erro', sent=?, finished_at=?, error_log=? WHERE id=?",
+                    (sent_count, datetime.now().isoformat(),
+                     f'🛑 Possível ban detectado após {sent_count} envios. Por segurança, TODOS os seus '
+                     f'números foram pausados por {MZ_BAN_COOLDOWN_HOURS:.0f}h. Reconecte e revise a '
+                     f'lista/mensagem antes de retomar.', cid)
+                )
+                conn.commit(); conn.close()
+                return
 
         # Delay anti-ban humanizado — baseado no contador DESTE número (pacing por número)
         if ok:
