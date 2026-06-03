@@ -8123,11 +8123,25 @@ def _check_instance_connected(evo_url: str, evo_key: str, instance: str) -> bool
         return True  # Em caso de dúvida, tenta enviar e vê o que acontece
 
 
+def _mz_phone_key(p: str) -> str:
+    """Chave canônica p/ casar número mesmo com o 9º dígito do celular BR variando.
+    O WhatsApp às vezes registra o número SEM o 9 (ex.: 554797766831), mesmo você
+    enviando COM o 9 (5547997766831). Sem isso, a validação descartava ~80% da lista.
+    Ex.: '5547997766831' e '554797766831' -> '4797766831'.
+    """
+    d = _re.sub(r'\D', '', p or '')
+    if d.startswith('55') and len(d) >= 12:
+        d = d[2:]                  # remove o DDI 55
+    if len(d) == 11 and d[2] == '9':
+        d = d[:2] + d[3:]          # remove o 9 do celular -> DDD + 8 dígitos
+    return d
+
+
 def _validate_numbers_batch(evo_url: str, evo_key: str, instance: str,
                             phones: list, batch_size: int = 50) -> set:
     """Verifica em lote quais números têm WhatsApp ativo via Evolution API.
-    Retorna um set() com os phones VÁLIDOS (que existem no WhatsApp).
-    Phones que a API não conseguiu verificar ficam no set (safe default = tenta enviar).
+    Retorna um set() de CHAVES CANÔNICAS válidas (tolerante ao 9º dígito BR).
+    Phones que a API não conseguiu verificar entram no set (safe default = tenta enviar).
     """
     valid = set()
     for i in range(0, len(phones), batch_size):
@@ -8146,20 +8160,18 @@ def _validate_numbers_batch(evo_url: str, evo_key: str, instance: str,
                     for item in data:
                         if item.get('exists') or item.get('numberExists'):
                             jid = item.get('jid') or item.get('number') or ''
-                            # Extrai só os dígitos do jid  "5547...@s.whatsapp.net"
                             num = jid.split('@')[0] if '@' in jid else jid
                             if num:
-                                valid.add(num)
+                                valid.add(_mz_phone_key(num))   # ← casa pelo 9º dígito
                 else:
-                    # Se a API falhou ou retornou formato inesperado, inclui todos (fail-open)
-                    valid.update(chunk)
+                    # Formato inesperado — inclui todos (fail-open)
+                    valid.update(_mz_phone_key(p) for p in chunk)
             else:
-                # Endpoint não disponível ou erro — inclui todos (fail-open)
                 log.warning(f"whatsappNumbers batch error HTTP {r.status_code} — fail-open para {len(chunk)} phones")
-                valid.update(chunk)
+                valid.update(_mz_phone_key(p) for p in chunk)
         except Exception as e:
             log.warning(f"whatsappNumbers batch exception: {e} — fail-open para {len(chunk)} phones")
-            valid.update(chunk)
+            valid.update(_mz_phone_key(p) for p in chunk)
         # Pequena pausa entre batches para não sobrecarregar
         if i + batch_size < len(phones):
             time.sleep(random.uniform(1.5, 3.0))
@@ -8296,15 +8308,16 @@ def _antiban_delay(sent_count: int):
 # Número novo manda pouco e cresce gradualmente até ~21 dias (depois só o plano limita).
 # É a defesa nº1 contra ban de número novo.
 MZ_WARMUP_CURVE = [
-    (0,   20),       # primeiras 24h
-    (1,   40),
-    (2,   60),
-    (3,   80),
-    (5,   120),
-    (7,   160),
-    (10,  220),
-    (14,  300),
-    (21,  10**9),    # 21+ dias: sem teto de warm-up
+    (0,   15),       # primeiras 24h — bem devagar
+    (1,   25),
+    (2,   35),
+    (3,   45),
+    (5,   60),
+    (7,   80),
+    (10,  100),
+    (14,  140),
+    (18,  200),
+    (25,  10**9),    # 25+ dias: número maduro, sem teto de warm-up (só o plano limita)
 ]
 
 # Janela de horário "humano" (hora local do servidor). Fora disso, pausa e retoma sozinho.
@@ -8628,12 +8641,22 @@ def _dispatch_campaign_inner(cid: int, user_id: int, delay_s: int = 3, continuar
                  (f'Validando {len(raw_phones)} números... aguarde.', cid))
     conn.commit()
 
-    valid_phones = _validate_numbers_batch(evo_url, evo_key, instance, raw_phones)
-    invalid_count = len(raw_phones) - len(valid_phones)
-    log.info(f"Campanha {cid}: {len(valid_phones)} válidos, {invalid_count} sem WhatsApp — removidos da fila")
+    valid_keys = _validate_numbers_batch(evo_url, evo_key, instance, raw_phones)
 
-    # Filtra contacts mantendo só os válidos
-    contacts = [c for c in contacts if _norm(c.get('phone','')) in valid_phones]
+    # Filtra mantendo só os válidos (casando pela chave canônica do 9º dígito)
+    contacts_valid = [c for c in contacts if _mz_phone_key(_norm(c.get('phone',''))) in valid_keys]
+
+    # Rede de segurança: se a validação derrubou mais da metade de uma lista grande,
+    # provavelmente foi falha de matching/API — confia na lista completa em vez de furar tudo.
+    if len(contacts) >= 20 and len(contacts_valid) < 0.5 * len(contacts):
+        log.warning(f"Campanha {cid}: validação suspeita ({len(contacts_valid)}/{len(contacts)} válidos) "
+                    f"— usando a lista completa (provável falha de validação)")
+        invalid_count = 0
+    else:
+        invalid_count = len(contacts) - len(contacts_valid)
+        contacts = contacts_valid
+
+    log.info(f"Campanha {cid}: {len(contacts)} na fila, {invalid_count} sem WhatsApp removidos")
     total_real = prev_sent + len(contacts)
     conn.execute("UPDATE mandazap_campaigns SET total=?, error_log=? WHERE id=?",
                  (total_real,
