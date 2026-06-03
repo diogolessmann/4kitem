@@ -7896,17 +7896,22 @@ def mz_otimizar_mensagem():
         return jsonify({'erro': 'Serviço indisponível no momento'}), 500
 
     prompt = (
-        "Você é um especialista em marketing via WhatsApp. "
+        "Você é um especialista em marketing via WhatsApp e anti-bloqueio. "
         "Transforme a mensagem abaixo adicionando variações no formato {opção1|opção2|opção3} "
-        "em TODOS os lugares possíveis para tornar cada envio único e evitar bloqueio.\n\n"
+        "para tornar cada envio único e evitar bloqueio.\n\n"
         "Regras obrigatórias:\n"
-        "1. Adicione {variações} em: saudações, adjetivos, verbos de ação, conectivos, CTAs, emojis.\n"
-        "2. Mantenha {nome} onde já existir ou adicione no início.\n"
-        "3. URLs devem permanecer EXATAMENTE iguais, nunca as altere.\n"
-        "4. Dados concretos (endereço, telefone, preços, datas) jamais viram variações.\n"
-        "5. Adicione pelo menos 8 variações espalhadas pelo texto.\n"
-        "6. Use sinônimos brasileiros naturais e informais.\n"
-        "7. Retorne APENAS a mensagem transformada, sem explicações, sem prefixos.\n\n"
+        "1. Adicione {variações} em: saudações, adjetivos, verbos de ação, conectivos e CTAs.\n"
+        "2. Varie TAMBÉM emojis quando houver, ex: {🛵|🛴|⚡} ou {😊|😄|🙂}.\n"
+        "3. Mantenha {nome} onde já existir ou adicione no início.\n"
+        "4. URLs permanecem EXATAMENTE iguais — nunca altere nem coloque variação em links.\n"
+        "5. NUNCA varie dados FACTUAIS nem números: preços, parcelas (ex: 72x), prazos, "
+        "garantias, datas, horários, endereço, telefone, CEP, %. Eles são FIXOS e idênticos.\n"
+        "6. NUNCA troque por sinônimos que mudem o SENTIDO ou façam afirmação diferente "
+        "(ex: não troque 'revendedor' por 'autorizado/oficial' se não for o mesmo significado).\n"
+        "7. As variações devem ser sinônimos naturais e informais do Brasil, todas com o MESMO sentido.\n"
+        "8. Evite saudação dupla (não gere 'Oi, Olá' junto) — escolha UMA saudação variável.\n"
+        "9. Adicione pelo menos 8 variações espalhadas pelo texto.\n"
+        "10. Retorne APENAS a mensagem transformada, sem explicações, sem prefixos.\n\n"
         f"Mensagem original:\n{texto}"
     )
 
@@ -8193,6 +8198,39 @@ def _apply_spintax(text: str) -> str:
     def pick(m):
         return random.choice(m.group(1).split('|'))
     return _re.sub(r'\{([^{}]*\|[^{}]*)\}', pick, text)
+
+
+def _mz_uniquify_urls(text: str) -> str:
+    """Faz cada URL da mensagem sair ÚNICA, anexando um token aleatório.
+    Link idêntico enviado em massa é o MAIOR gatilho de ban do WhatsApp —
+    com um ?r=token diferente por mensagem, o fingerprint de URL repetida some.
+    Os domínios próprios ignoram o parâmetro, então a página abre normal.
+    """
+    alfa = 'abcdefghijklmnopqrstuvwxyz0123456789'
+    def repl(m):
+        url = m.group(0)
+        # devolve a pontuação final que o regex possa ter capturado
+        trail = ''
+        while url and url[-1] in '.,;:!?)]}':
+            trail = url[-1] + trail
+            url = url[:-1]
+        token = ''.join(random.choices(alfa, k=6))
+        sep = '&' if '?' in url else '?'
+        return f"{url}{sep}r={token}{trail}"
+    return _re.sub(r'https?://[^\s]+', repl, text)
+
+
+def _mz_personalize(message: str, contact: dict) -> str:
+    """Aplica variáveis do contato + spintax + URLs únicas. Cada msg sai diferente."""
+    nome_curto    = (contact.get('name') or 'Cliente').split()[0].title()
+    nome_completo = (contact.get('name') or 'Cliente').title()
+    msg = (message
+           .replace('{nome}', nome_curto)
+           .replace('{name}', nome_curto)
+           .replace('{nome_completo}', nome_completo))
+    msg = _apply_spintax(msg)        # variações {a|b|c}
+    msg = _mz_uniquify_urls(msg)     # URLs únicas por mensagem (anti-fingerprint)
+    return msg
 
 
 def _send_text(evo_url, evo_key, instance, phone, text):
@@ -8753,15 +8791,8 @@ def _dispatch_campaign_inner(cid: int, user_id: int, delay_s: int = 3, continuar
         if not phone.startswith('55'):
             phone = '55' + phone
 
-        nome_curto    = (c.get('name') or 'Cliente').split()[0].title()
-        nome_completo = (c.get('name') or 'Cliente').title()
-        # 1. Substitui variáveis de contato
-        msg = (message
-               .replace('{nome}', nome_curto)
-               .replace('{name}', nome_curto)
-               .replace('{nome_completo}', nome_completo))
-        # 2. Aplica spintax {opção1|opção2} — cada mensagem sai diferente
-        msg = _apply_spintax(msg)
+        # Personaliza + spintax + URLs únicas — cada mensagem sai diferente
+        msg = _mz_personalize(message, c)
 
         if is_image:
             ok, err, invalido = _send_image(evo_url, evo_key, instance, phone, media_url, msg)
