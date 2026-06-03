@@ -3611,7 +3611,10 @@ def agenda_painel():
         'SELECT * FROM agenda_services WHERE business_id=? AND active=1 ORDER BY name', (biz_id,)
     ).fetchall()]
     availability = [dict(r) for r in conn.execute(
-        'SELECT * FROM agenda_availability WHERE business_id=? ORDER BY weekday', (biz_id,)
+        'SELECT * FROM agenda_availability WHERE business_id=? AND professional_id IS NULL ORDER BY weekday', (biz_id,)
+    ).fetchall()]
+    profissionais = [dict(r) for r in conn.execute(
+        'SELECT id, name, color FROM agenda_professionals WHERE business_id=? AND active=1 ORDER BY order_pos, name', (biz_id,)
     ).fetchall()]
     today = datetime.now().strftime('%Y-%m-%d')
     appointments = [dict(r) for r in conn.execute('''
@@ -3669,6 +3672,7 @@ def agenda_painel():
                            weekday_names=WEEKDAY_NAMES,
                            business_types=BUSINESS_TYPES,
                            seg=agenda_seg(biz.get('business_type')),
+                           profissionais=profissionais,
                            hoje_count=hoje_count,
                            receita_mes=round(receita_mes, 2),
                            total_clientes=total_clientes,

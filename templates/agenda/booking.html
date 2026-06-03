@@ -595,7 +595,8 @@ async function loadSlots() {
   const [y, m, d] = selectedDate.split('-');
   document.getElementById('slots-title').textContent = `🕐 ${dayName}, ${d}/${m}`;
   try {
-    const r = await fetch(`/api/agenda/slots/${SLUG}?date=${selectedDate}&service_id=${selectedService.id}`);
+    const profParam = (TEM_PROFS && selectedProfissional.id) ? `&professional_id=${selectedProfissional.id}` : '';
+    const r = await fetch(`/api/agenda/slots/${SLUG}?date=${selectedDate}&service_id=${selectedService.id}${profParam}`);
     const data = await r.json();
     const slots = data.slots || [];
     if (!slots.length) {

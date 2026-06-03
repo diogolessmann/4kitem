@@ -395,10 +395,16 @@
 
     <div class="card">
       <div class="card-title">📅 Agendamentos de hoje</div>
+      {% if profissionais %}
+      <select id="filter-prof-hoje" onchange="applyProfFilter(this.value)" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:8px;font-size:12px;outline:none;margin-bottom:12px">
+        <option value="">👥 Todos os profissionais</option>
+        {% for p in profissionais %}<option value="{{ p.id }}">👤 {{ p.name }}</option>{% endfor %}
+      </select>
+      {% endif %}
       {% set hoje_ativos = hoje_list | rejectattr('status','equalto','cancelled') | list %}
       {% if hoje_ativos %}
         {% for a in hoje_ativos | sort(attribute='appointment_time') %}
-        <div class="appt-card" id="appt-{{ a.id }}">
+        <div class="appt-card" id="appt-{{ a.id }}" data-prof="{{ a.professional_id or '' }}">
           <div class="appt-time-box">
             <div class="t">{{ a.appointment_time }}</div>
           </div>
@@ -440,6 +446,12 @@
   <div class="tab-content" id="tab-agendamentos">
     <div class="card">
       <div class="card-title">📋 Próximos agendamentos</div>
+      {% if profissionais %}
+      <select id="filter-prof-agenda" onchange="applyProfFilter(this.value)" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:8px;font-size:12px;outline:none;margin-bottom:12px">
+        <option value="">👥 Todos os profissionais</option>
+        {% for p in profissionais %}<option value="{{ p.id }}">👤 {{ p.name }}</option>{% endfor %}
+      </select>
+      {% endif %}
       {% set proximos = appointments | rejectattr('status','equalto','cancelled') | list %}
       {% if proximos %}
         {% for a in proximos | sort(attribute='appointment_date') %}
@@ -559,6 +571,16 @@
     <div class="card">
       <div class="card-title">🕐 Dias e Horários de Atendimento</div>
       <p style="font-size:12px;color:var(--text2);margin-bottom:16px">Ative os dias em que você atende e defina o horário.</p>
+      {% if profissionais %}
+      <div style="margin-bottom:16px">
+        <label style="font-size:12px;font-weight:600;display:block;margin-bottom:6px">Configurar horário de:</label>
+        <select id="horario-prof-sel" onchange="loadHorarioProf()" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:10px;font-size:13px;outline:none">
+          <option value="">🏢 Horário geral do negócio (padrão)</option>
+          {% for p in profissionais %}<option value="{{ p.id }}">👤 {{ p.name }}</option>{% endfor %}
+        </select>
+        <div id="horario-prof-hint" style="font-size:11px;color:var(--text2);margin-top:6px"></div>
+      </div>
+      {% endif %}
       {% set avail_map = {} %}{% for a in availability %}{% if avail_map.update({a.weekday: a}) %}{% endif %}{% endfor %}
       <div id="horarios-form">
         {% for wd in range(7) %}{% set av = avail_map.get(wd) %}
@@ -937,6 +959,32 @@ function toggleDay(wd) {
     el.disabled = !ok; el.style.opacity = ok ? '1' : '.4';
   });
 }
+let currentHorarioProf = '';
+function applyHorarios(availability) {
+  const map = {};
+  (availability || []).forEach(a => { map[a.weekday] = a; });
+  for (let wd = 0; wd < 7; wd++) {
+    const av = map[wd];
+    document.getElementById('day-'+wd).checked = !!av;
+    document.getElementById('start-'+wd).value = av ? av.start_time : '08:00';
+    document.getElementById('end-'+wd).value   = av ? av.end_time   : '18:00';
+    toggleDay(wd);
+  }
+}
+async function loadHorarioProf() {
+  const sel = document.getElementById('horario-prof-sel');
+  currentHorarioProf = sel ? sel.value : '';
+  const hint = document.getElementById('horario-prof-hint');
+  const url = '/agenda/painel/horario/load' + (currentHorarioProf ? ('?professional_id='+currentHorarioProf) : '');
+  const r = await fetch(url);
+  const d = await r.json();
+  applyHorarios(d.availability);
+  if (hint) {
+    if (!currentHorarioProf) hint.textContent = '';
+    else if (d.tem_proprio)  hint.textContent = '✅ Este profissional tem horário próprio configurado.';
+    else hint.textContent = 'ℹ️ Sem horário próprio — mostrando o horário geral. Ajuste e salve para criar um horário só dele.';
+  }
+}
 async function saveHorarios() {
   const availability = [];
   for (let wd = 0; wd < 7; wd++) {
@@ -944,9 +992,22 @@ async function saveHorarios() {
       availability.push({ weekday:wd, start_time:document.getElementById('start-'+wd).value, end_time:document.getElementById('end-'+wd).value });
     }
   }
-  const r = await fetch('/agenda/painel/horario/save', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({availability}) });
+  const r = await fetch('/agenda/painel/horario/save', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({availability, professional_id: currentHorarioProf || null}) });
   const d = await r.json();
   showToast(d.success ? '✅ Horários salvos!' : '❌ Erro ao salvar', d.success ? 'ok' : 'err');
+  const hint = document.getElementById('horario-prof-hint');
+  if (d.success && currentHorarioProf && hint) hint.textContent = '✅ Este profissional tem horário próprio configurado.';
+}
+
+// ── FILTRO DE AGENDA POR PROFISSIONAL ────────────────────────────
+function applyProfFilter(val) {
+  document.querySelectorAll('.appt-card[data-prof]').forEach(c => {
+    c.style.display = (!val || c.getAttribute('data-prof') === String(val)) ? '' : 'none';
+  });
+  ['filter-prof-hoje','filter-prof-agenda'].forEach(id => {
+    const e = document.getElementById(id);
+    if (e && e.value !== String(val)) e.value = val;
+  });
 }
 
 // ── CLIENTES ─────────────────────────────────────────────────────
