@@ -71,7 +71,7 @@
 
   <div class="tabs">
     <button class="tab-btn active" onclick="showTab('alerta',this)">🚨 Alerta SC ({{ subscribers|length }})</button>
-    <button class="tab-btn" onclick="showTab('agenda',this)">📅 Agenda SC ({{ businesses|length }})</button>
+    <button class="tab-btn" onclick="showTab('agenda',this)">📅 AgendaJá ({{ businesses|length }})</button>
     <button class="tab-btn" onclick="showTab('mandazap',this)">💬 MandaZap ({{ mz_users|length }})</button>
     <button class="tab-btn" onclick="showTab('bau',this)">🗄️ Baú ({{ bau_users|length }})</button>
     <button class="tab-btn" onclick="showTab('kids',this)">📺 KidsCurator ({{ kids_clients|length }})</button>
@@ -143,8 +143,11 @@
   <!-- ═══════════════ AGENDA SC ═══════════════ -->
   <div class="tab-content" id="tab-agenda">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
-      <h2 style="margin-bottom:0">Negócios cadastrados no Agenda SC</h2>
-      <button class="btn-sm btn-green" id="btn-lembretes" onclick="enviarLembretes()">⏰ Enviar lembretes agora</button>
+      <h2 style="margin-bottom:0">Negócios cadastrados no AgendaJá</h2>
+      <div style="display:flex;gap:8px">
+        <button class="btn-sm btn-green" id="btn-backfill" onclick="backfillServicos()">🗂️ Criar serviços-padrão</button>
+        <button class="btn-sm btn-green" id="btn-lembretes" onclick="enviarLembretes()">⏰ Enviar lembretes agora</button>
+      </div>
     </div>
     {% if businesses %}
     <table>
@@ -691,6 +694,8 @@
         <td style="font-size:12px">{{ (u.last_login or '')[:16].replace('T',' ') or '—' }}</td>
         <td>
           <button class="btn-sm btn-orange" onclick="szResetSenha({{ u.id }}, '{{ u.name }}')">🔒 Senha</button>
+          <button class="btn-sm" style="background:#7c3aed;color:#fff" onclick="setSzPlan({{ u.id }}, 'pro')">⭐ Pro</button>
+          <button class="btn-sm" style="background:#374151;color:#cbd5e1" onclick="setSzPlan({{ u.id }}, 'start')">Start</button>
         </td>
       </tr>
       {% endfor %}
@@ -775,7 +780,7 @@ async function deleteSub(id) {
   else alert(d.error || 'Erro');
 }
 
-/* ── Agenda SC ── */
+/* ── AgendaJá ── */
 async function setAgendaStatus(id, active) {
   if (!confirm(active ? 'Ativar este negócio?' : 'Suspender este negócio?')) return;
   const r = await fetch(`/admin/agenda/${id}/status`, {
@@ -994,6 +999,27 @@ async function enviarLembretes() {
   }
 }
 
+/* ── AgendaJá — criar serviços-padrão por ramo (só nos negócios sem serviço) ── */
+async function backfillServicos() {
+  if (!confirm('Criar serviços-modelo do ramo nos negócios que estão SEM nenhum serviço?\n\nÉ seguro: nunca apaga nem altera serviços que já existem.')) return;
+  const btn = document.getElementById('btn-backfill');
+  btn.disabled = true;
+  btn.textContent = '⏳ Processando…';
+  try {
+    const r = await fetch('/saas-admin/agenda/backfill-servicos', { method: 'POST' });
+    const d = await r.json();
+    if (d.ok) {
+      btn.textContent = '✅ Pronto';
+      alert(`✅ Concluído!\n\nNegócios atualizados: ${d.negocios_atualizados}\nServiços adicionados: ${d.servicos_adicionados}`);
+      setTimeout(() => { btn.disabled = false; btn.textContent = '🗂️ Criar serviços-padrão'; }, 4000);
+    } else {
+      btn.textContent = '❌ Erro'; btn.disabled = false;
+    }
+  } catch(e) {
+    btn.textContent = '❌ Erro de rede'; btn.disabled = false;
+  }
+}
+
 /* ── AlertaSC — monitorar agora ── */
 async function monitorarAgora() {
   const btn = document.getElementById('btn-monitorar');
@@ -1087,6 +1113,17 @@ async function szResetSenha(uid, nome) {
     body: JSON.stringify({user_id: uid, senha})
   }).then(r => r.json());
   alert(r.ok ? '✅ Senha redefinida!' : 'Erro: ' + r.erro);
+}
+
+async function setSzPlan(uid, plan) {
+  if (!confirm('Definir plano ' + plan.toUpperCase() + ' e ATIVAR a assinatura deste usuário?')) return;
+  const r = await fetch('/saas-admin/slotzap/set-plan', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({user_id: uid, plan})
+  }).then(r => r.json());
+  if (r.ok) { alert('✅ Plano ' + plan.toUpperCase() + ' ativado!'); location.reload(); }
+  else alert('Erro: ' + (r.erro || ''));
 }
 
 /* ── PUBSHOW ── */

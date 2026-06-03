@@ -5491,6 +5491,23 @@ def saas_sz_reset_senha():
     return jsonify({'ok': True})
 
 
+@app.route('/saas-admin/slotzap/set-plan', methods=['POST'])
+@_saas_admin_required
+def saas_sz_set_plan():
+    """Define o plano (start/pro) e ativa a assinatura do usuário SlotZap."""
+    data = request.get_json() or {}
+    uid  = data.get('user_id')
+    plan = (data.get('plan') or 'start').strip()
+    if plan not in ('start', 'pro'):
+        plan = 'start'
+    if not uid:
+        return jsonify({'erro': 'user_id obrigatório'}), 400
+    conn = get_saas_db()
+    conn.execute('UPDATE slotzap_users SET plan=?, plan_active=1, active=1 WHERE id=?', (plan, uid))
+    conn.commit(); conn.close()
+    return jsonify({'ok': True})
+
+
 @app.route('/saas-admin/pubshow/bar/<int:bid>/status', methods=['POST'])
 @_saas_admin_required
 def saas_pubshow_bar_status(bid):
