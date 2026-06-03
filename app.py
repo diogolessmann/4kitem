@@ -12094,6 +12094,16 @@ def slotzap_config():
                            taxa=int(SZ_TAXA_VENDA * 100), is_pro=is_pro)
 
 
+@app.route('/slotzap/guia')
+@_sz_login_required
+def slotzap_guia():
+    conn = get_saas_db()
+    u = dict(conn.execute('SELECT plan FROM slotzap_users WHERE id=?', (_sz_uid(),)).fetchone() or {})
+    conn.close()
+    return render_template('slotzap/guia.html', planos=SLOTZAP_PLANS,
+                           taxa=int(SZ_TAXA_VENDA * 100), plan=u.get('plan', 'start'))
+
+
 @app.route('/slotzap/nova', methods=['GET', 'POST'])
 @_sz_login_required
 def slotzap_nova():
