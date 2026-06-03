@@ -319,6 +319,16 @@ select option{background:var(--surface2)}
           <span class="badge {{ n.status }}" id="num-badge-{{ n.id }}">{{ '🟢 Conectado' if n.status == 'connected' else '🔴 Desconectado' }}</span>
           <button type="button" onclick="verificarConexao({{ n.id }}, this)" style="background:none;border:none;cursor:pointer;font-size:12px;color:var(--text2);padding:2px 4px" title="Verificar conexão">🔄</button>
         </div>
+        {% if n.status == 'connected' %}
+        <div style="font-size:11px;margin-top:7px;padding:6px 9px;border-radius:7px;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2);color:#fbbf24;line-height:1.4"
+             title="Número novo manda pouco e vai aumentando até 21 dias — é o que mais protege contra ban.">
+          {% if n.warmup_done %}
+          🔥 Número aquecido · hoje: <strong>{{ n.sent_today }}</strong> enviados
+          {% else %}
+          🔥 Aquecimento dia <strong>{{ n.warmup_day }}/21</strong> · hoje <strong>{{ n.sent_today }}/{{ n.warmup_cap }}</strong> msgs
+          {% endif %}
+        </div>
+        {% endif %}
         <div class="qr-placeholder" id="qr-wrap-{{ n.id }}">
           {% if n.status == 'connected' %}
           <div class="qr-icon">✅</div>
@@ -451,10 +461,11 @@ select option{background:var(--surface2)}
         <thead><tr><th>Campanha</th><th>Lista</th><th>Número</th><th>Enviados</th><th>Status</th><th>Data</th><th style="width:120px"></th></tr></thead>
         <tbody>
         {% for c in campaigns %}
-        {% set is_active = c.status in ('enviando', 'sending') %}
-        {% set is_done   = c.status in ('concluida', 'done') %}
-        {% set is_err    = c.status in ('erro', 'failed') %}
-        {% set can_send  = c.status in ('rascunho', 'draft', 'erro', 'failed', 'cancelada') %}
+        {% set is_active  = c.status in ('enviando', 'sending') %}
+        {% set is_waiting = c.status == 'agendada' %}
+        {% set is_done    = c.status in ('concluida', 'done') %}
+        {% set is_err     = c.status in ('erro', 'failed') %}
+        {% set can_send   = c.status in ('rascunho', 'draft', 'erro', 'failed', 'cancelada') %}
         <tr id="camp-row-{{ c.id }}">
           <td>
             <div style="font-weight:700">{{ c.name }}</div>
@@ -482,8 +493,8 @@ select option{background:var(--surface2)}
             {% else %}—{% endif %}
           </td>
           <td id="camp-status-{{ c.id }}">
-            <span class="badge {{ 'done' if is_done else 'sending' if is_active else 'failed' if is_err else 'draft' }}">
-              {{ {'concluida':'✅ Concluída','done':'✅ Concluída','enviando':'⏳ Enviando','sending':'⏳ Enviando','draft':'📝 Rascunho','rascunho':'📝 Rascunho','failed':'❌ Falhou','erro':'❌ Erro'}.get(c.status, c.status) }}
+            <span class="badge {{ 'done' if is_done else 'sending' if (is_active or is_waiting) else 'failed' if is_err else 'draft' }}">
+              {{ {'concluida':'✅ Concluída','done':'✅ Concluída','enviando':'⏳ Enviando','sending':'⏳ Enviando','agendada':'⏰ Aguardando horário','draft':'📝 Rascunho','rascunho':'📝 Rascunho','failed':'❌ Falhou','erro':'❌ Erro'}.get(c.status, c.status) }}
             </span>
           </td>
           <td style="color:var(--text2);font-size:11px">{{ c.created_at[:10] if c.created_at else '—' }}</td>
@@ -504,11 +515,11 @@ select option{background:var(--surface2)}
                       onclick="dispararCampanha({{ c.id }}, '{{ c.name|replace("'","\\'")|replace('"','\\"') }}', false)"
                       title="Disparar agora">🚀 Disparar</button>
               {% endif %}
-              {% elif is_active %}
+              {% elif is_active or is_waiting %}
               <button class="btn btn-sm" id="camp-btn-{{ c.id }}"
                       onclick="pararCampanha({{ c.id }}, '{{ c.name|replace("'","\\'")|replace('"','\\"') }}')"
                       style="background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);color:#ef4444"
-                      title="Parar campanha">⏹ Parar</button>
+                      title="{{ 'Cancelar agendamento' if is_waiting else 'Parar campanha' }}">⏹ {{ 'Cancelar' if is_waiting else 'Parar' }}</button>
               <span id="camp-prog-{{ c.id }}" style="font-size:10px;color:var(--text2)">{{ c.sent }}/{{ c.total }}</span>
               {% endif %}
               <form method="POST" action="/mandazap/campanhas/{{ c.id }}/duplicar" style="display:inline">
@@ -805,6 +816,25 @@ select option{background:var(--surface2)}
           <option value="">— Selecionar número —</option>
           {% for n in numbers %}<option value="{{ n.id }}">{{ n.label }} — {{ n.phone or 'sem número' }} {{ '🟢' if n.status=='connected' else '🔴' }}</option>{% endfor %}
         </select>
+      </div>
+
+      {% if mz_stats.numbers_connected > 1 %}
+      <div class="form-group" style="background:rgba(34,197,94,.05);border:1px solid rgba(34,197,94,.2);border-radius:10px;padding:10px 12px">
+        <label style="display:flex;align-items:flex-start;gap:9px;cursor:pointer;margin:0">
+          <input type="checkbox" name="multi_number" value="1" style="margin-top:3px;width:16px;height:16px;accent-color:#22c55e">
+          <span>
+            <span style="font-weight:700;color:#22c55e">🛡️ Distribuir entre meus {{ mz_stats.numbers_connected }} números (anti-ban)</span>
+            <span style="display:block;font-size:11px;color:var(--text2);margin-top:3px;line-height:1.5">
+              Divide a campanha entre todos os números conectados. Cada número manda menos = muito menos risco de bloqueio.
+            </span>
+          </span>
+        </label>
+      </div>
+      {% endif %}
+
+      <div style="font-size:11px;color:var(--text3);background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:8px;padding:8px 11px;margin-bottom:12px;line-height:1.5">
+        🔒 <strong>Proteção anti-ban automática:</strong> envios só no horário comercial (8h–21h),
+        aquecimento gradual de número novo e ritmo humanizado. Campanhas grandes podem levar horas/dias — é proposital, pra proteger seu número.
       </div>
       <input type="hidden" name="media_type" value="text">
       <input type="hidden" name="media_url" value="">
@@ -1341,14 +1371,22 @@ function _pollProgress(cid) {
           </div>`;
       }
       if (statusCell) {
-        const labels = {concluida:'✅ Concluída',done:'✅ Concluída',enviando:'⏳ Enviando',sending:'⏳ Enviando',erro:'❌ Erro',failed:'❌ Falhou',cancelada:'⏹ Cancelada',rascunho:'📝 Rascunho',draft:'📝 Rascunho'};
-        const cls    = {concluida:'done',done:'done',enviando:'sending',sending:'sending',erro:'failed',failed:'failed',cancelada:'failed'};
+        const labels = {concluida:'✅ Concluída',done:'✅ Concluída',enviando:'⏳ Enviando',sending:'⏳ Enviando',agendada:'⏰ Aguardando horário',erro:'❌ Erro',failed:'❌ Falhou',cancelada:'⏹ Cancelada',rascunho:'📝 Rascunho',draft:'📝 Rascunho'};
+        const cls    = {concluida:'done',done:'done',enviando:'sending',sending:'sending',agendada:'sending',erro:'failed',failed:'failed',cancelada:'failed'};
         statusCell.innerHTML = `<span class="badge ${cls[d.status]||'draft'}">${labels[d.status]||d.status}</span>`;
       }
 
       // Atualiza progresso separado (não sobrescreve o botão Parar)
       const prog = document.getElementById('camp-prog-' + cid);
       if (prog) prog.textContent = `${d.sent}/${d.total||'?'}`;
+
+      // Campanha pausada pela proteção anti-ban (horário/aquecimento) — retoma sozinha
+      if (d.status === 'agendada') {
+        clearInterval(_pollTimers[cid]);
+        delete _pollTimers[cid];
+        showToast(`⏰ Campanha pausada pela proteção anti-ban (${d.sent} enviados). Retoma automaticamente no horário permitido.`);
+        setTimeout(() => location.reload(), 1800);
+      }
 
       // Campanha finalizada
       if (['concluida','done','erro','failed','cancelada'].includes(d.status)) {

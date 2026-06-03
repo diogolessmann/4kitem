@@ -301,6 +301,15 @@ def init_saas_db():
         "ALTER TABLE mandazap_templates ADD COLUMN media_url TEXT DEFAULT ''",
         "ALTER TABLE mandazap_campaigns ADD COLUMN error_log TEXT DEFAULT ''",
         "ALTER TABLE mandazap_campaigns ADD COLUMN updated_at TEXT DEFAULT ''",
+        # MandaZap — anti-ban v4 (aquecimento, multi-número, janela de horário)
+        "ALTER TABLE mandazap_numbers   ADD COLUMN warmup_start TEXT DEFAULT ''",
+        "ALTER TABLE mandazap_campaigns ADD COLUMN multi_number INTEGER DEFAULT 0",
+        '''CREATE TABLE IF NOT EXISTS mandazap_number_daily (
+            number_id INTEGER NOT NULL,
+            day       TEXT NOT NULL,
+            sent      INTEGER DEFAULT 0,
+            PRIMARY KEY (number_id, day)
+        )''',
         # Amigo Despachante — autenticação
         "ALTER TABLE despachante_users ADD COLUMN password_hash TEXT DEFAULT ''",
         "ALTER TABLE despachante_users ADD COLUMN last_login TEXT DEFAULT ''",
@@ -345,6 +354,9 @@ def init_saas_db():
             created_at     TEXT DEFAULT ''
         )''',
         "CREATE INDEX IF NOT EXISTS idx_agenda_prof_biz ON agenda_professionals(business_id)",
+        # AgendaJá — horário próprio por profissional (NULL = horário geral do negócio)
+        "ALTER TABLE agenda_availability ADD COLUMN professional_id INTEGER DEFAULT NULL",
+        "CREATE INDEX IF NOT EXISTS idx_agenda_avail_prof ON agenda_availability(business_id, professional_id, weekday)",
         # DefesaPro Premium — monitor de e-mail e notificações
         '''CREATE TABLE IF NOT EXISTS defesapro_email_config (
             id          INTEGER PRIMARY KEY AUTOINCREMENT,

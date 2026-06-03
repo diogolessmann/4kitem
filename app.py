@@ -789,8 +789,13 @@ KIDS_PLANS = {
 }
 
 
-def _get_slots(business_id, date_str, service_duration):
-    """Gera horários disponíveis para uma data e duração de serviço."""
+def _get_slots(business_id, date_str, service_duration, professional_id=None):
+    """Gera horários disponíveis para uma data e duração de serviço.
+
+    Se professional_id for informado e o profissional tiver horário próprio
+    configurado, usa o horário dele (e checa conflitos só com os agendamentos
+    dele). Caso contrário, usa o horário geral do negócio (linhas com
+    professional_id NULL) e checa conflitos com todos os agendamentos."""
     try:
         dt = datetime.strptime(date_str, '%Y-%m-%d')
         weekday = dt.weekday()
@@ -798,20 +803,47 @@ def _get_slots(business_id, date_str, service_duration):
         return []
 
     conn = get_saas_db()
-    avail = conn.execute(
-        'SELECT start_time, end_time FROM agenda_availability WHERE business_id=? AND weekday=? AND active=1',
-        (business_id, weekday)
-    ).fetchone()
+
+    avail = None
+    if professional_id:
+        tem_proprio = conn.execute(
+            'SELECT 1 FROM agenda_availability WHERE business_id=? AND professional_id=? AND active=1 LIMIT 1',
+            (business_id, professional_id)
+        ).fetchone()
+        if tem_proprio:
+            avail = conn.execute(
+                'SELECT start_time, end_time FROM agenda_availability '
+                'WHERE business_id=? AND professional_id=? AND weekday=? AND active=1',
+                (business_id, professional_id, weekday)
+            ).fetchone()
+            if not avail:
+                conn.close()
+                return []
+    if avail is None:
+        avail = conn.execute(
+            'SELECT start_time, end_time FROM agenda_availability '
+            'WHERE business_id=? AND professional_id IS NULL AND weekday=? AND active=1',
+            (business_id, weekday)
+        ).fetchone()
     if not avail:
         conn.close()
         return []
 
-    booked = conn.execute('''
-        SELECT a.appointment_time, COALESCE(s.duration_minutes, 60) as duration_minutes
-        FROM agenda_appointments a
-        LEFT JOIN agenda_services s ON a.service_id = s.id
-        WHERE a.business_id=? AND a.appointment_date=? AND a.status != 'cancelled'
-    ''', (business_id, date_str)).fetchall()
+    if professional_id:
+        booked = conn.execute('''
+            SELECT a.appointment_time, COALESCE(s.duration_minutes, 60) as duration_minutes
+            FROM agenda_appointments a
+            LEFT JOIN agenda_services s ON a.service_id = s.id
+            WHERE a.business_id=? AND a.appointment_date=? AND a.status != 'cancelled'
+              AND a.professional_id=?
+        ''', (business_id, date_str, professional_id)).fetchall()
+    else:
+        booked = conn.execute('''
+            SELECT a.appointment_time, COALESCE(s.duration_minutes, 60) as duration_minutes
+            FROM agenda_appointments a
+            LEFT JOIN agenda_services s ON a.service_id = s.id
+            WHERE a.business_id=? AND a.appointment_date=? AND a.status != 'cancelled'
+        ''', (business_id, date_str)).fetchall()
     conn.close()
 
     slots = []
@@ -3689,20 +3721,68 @@ def agenda_delete_service(svc_id):
 def agenda_save_horario():
     biz_id = session['agenda_business_id']
     data   = request.get_json() or {}
+    prof_id = data.get('professional_id') or None
     conn   = get_saas_db()
-    conn.execute('DELETE FROM agenda_availability WHERE business_id=?', (biz_id,))
+    # Valida que o profissional pertence ao negócio (ou trata como horário geral)
+    if prof_id:
+        ok = conn.execute('SELECT 1 FROM agenda_professionals WHERE id=? AND business_id=?',
+                          (prof_id, biz_id)).fetchone()
+        if not ok:
+            prof_id = None
+    if prof_id:
+        conn.execute('DELETE FROM agenda_availability WHERE business_id=? AND professional_id=?',
+                     (biz_id, prof_id))
+    else:
+        conn.execute('DELETE FROM agenda_availability WHERE business_id=? AND professional_id IS NULL',
+                     (biz_id,))
     for item in data.get('availability', []):
         wday = item.get('weekday')
         s    = item.get('start_time', '')
         e    = item.get('end_time', '')
         if wday is not None and s and e:
             conn.execute('''
-                INSERT INTO agenda_availability (business_id, weekday, start_time, end_time, active)
-                VALUES (?, ?, ?, ?, 1)
-            ''', (biz_id, wday, s, e))
+                INSERT INTO agenda_availability (business_id, professional_id, weekday, start_time, end_time, active)
+                VALUES (?, ?, ?, ?, ?, 1)
+            ''', (biz_id, prof_id, wday, s, e))
     conn.commit()
     conn.close()
     return jsonify({'success': True})
+
+
+@app.route('/agenda/painel/horario/load')
+@_agenda_login_required
+def agenda_load_horario():
+    """Retorna os horários de um profissional (professional_id) ou do negócio
+    (sem professional_id). Usado pelo seletor de profissional na aba Horários."""
+    biz_id  = session['agenda_business_id']
+    prof_id = request.args.get('professional_id') or None
+    conn    = get_saas_db()
+    if prof_id:
+        rows = conn.execute(
+            'SELECT weekday, start_time, end_time FROM agenda_availability '
+            'WHERE business_id=? AND professional_id=? AND active=1 ORDER BY weekday',
+            (biz_id, prof_id)
+        ).fetchall()
+        tem_proprio = len(rows) > 0
+        # fallback visual: se não tem próprio, mostra o do negócio como base
+        if not tem_proprio:
+            rows = conn.execute(
+                'SELECT weekday, start_time, end_time FROM agenda_availability '
+                'WHERE business_id=? AND professional_id IS NULL AND active=1 ORDER BY weekday',
+                (biz_id,)
+            ).fetchall()
+    else:
+        tem_proprio = True
+        rows = conn.execute(
+            'SELECT weekday, start_time, end_time FROM agenda_availability '
+            'WHERE business_id=? AND professional_id IS NULL AND active=1 ORDER BY weekday',
+            (biz_id,)
+        ).fetchall()
+    conn.close()
+    return jsonify({
+        'tem_proprio': tem_proprio,
+        'availability': [dict(r) for r in rows]
+    })
 
 
 @app.route('/agenda/painel/agendamento/<int:appt_id>/<action>', methods=['POST'])
@@ -4393,7 +4473,8 @@ def api_agenda_slots(slug):
         if svc:
             duration = svc['duration_minutes']
     conn.close()
-    return jsonify({'slots': _get_slots(biz['id'], date_str, duration)})
+    professional_id = request.args.get('professional_id') or None
+    return jsonify({'slots': _get_slots(biz['id'], date_str, duration, professional_id)})
 
 
 @app.route('/api/agenda/book/<slug>', methods=['POST'])
@@ -4430,7 +4511,7 @@ def api_agenda_book(slug):
         if svc:
             duration = svc['duration_minutes']
 
-    slots = _get_slots(biz['id'], appt_date, duration)
+    slots = _get_slots(biz['id'], appt_date, duration, professional_id)
     if appt_time not in slots:
         conn.close()
         return jsonify({'success': False, 'error': 'Horário não disponível. Por favor, escolha outro.'})
@@ -8372,6 +8453,7 @@ def _dispatch_campaign_inner(cid: int, user_id: int, delay_s: int = 3, continuar
         return
 
     total_cap = sum(s['remaining'] for s in senders)
+    instance  = senders[0]['instance']  # número conectado p/ a pré-validação em lote
     log.info(f"Campanha {cid}: pool de {len(senders)} número(s), capacidade hoje={total_cap} (multi={multi})")
 
     # ── Pré-validação de números ─────────────────────────────────────────────
