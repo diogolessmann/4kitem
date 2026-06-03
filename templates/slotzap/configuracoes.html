@@ -48,6 +48,21 @@ input:focus{border-color:#6366f1}
       {% else %}
         <div class="status" style="color:#f59e0b">🟡 Sem Wallet ID, o dinheiro das vendas não é repassado para você. Configure para começar a receber.</div>
       {% endif %}
+      {% if is_pro %}
+      <div style="border-top:1px solid rgba(255,255,255,.08);margin:18px 0;padding-top:16px">
+        <label style="color:#c084fc">🎨 Personalização (Pro)</label>
+        <div class="hint" style="margin-bottom:10px">Sua marca e cor aparecem na página pública — sem "SlotZap".</div>
+        <label>Nome da sua marca</label>
+        <input type="text" name="marca" value="{{ u.marca or '' }}" placeholder="Ex: Rifas do João" maxlength="40">
+        <label style="margin-top:10px">Cor principal (hex)</label>
+        <input type="text" name="cor" value="{{ u.cor or '' }}" placeholder="#6366f1" maxlength="7">
+      </div>
+      {% else %}
+      <div style="border-top:1px solid rgba(255,255,255,.08);margin:18px 0;padding-top:16px">
+        <div class="status" style="color:#c084fc">🎨 <b>White-label</b> (sua marca e cor na página pública) está no plano <b>Pro</b>.
+          <a href="/slotzap/assinar/pro" style="color:#a5b4fc;font-weight:700">Fazer upgrade →</a></div>
+      </div>
+      {% endif %}
       <button type="submit" class="btn">💾 Salvar</button>
     </form>
 

@@ -5784,6 +5784,40 @@ def saas_agenda_resumo_agora():
     return jsonify({'ok': True, 'msg': 'Resumo mensal disparado em background'})
 
 
+@app.route('/saas-admin/agenda/backfill-servicos', methods=['POST'])
+@_saas_admin_required
+def saas_agenda_backfill_servicos():
+    """Adiciona serviços-modelo do ramo nos negócios que NÃO têm nenhum serviço.
+    Seguro e idempotente: nunca apaga nem altera serviços existentes — só semeia
+    quando o negócio tem ZERO serviços cadastrados."""
+    conn = get_saas_db()
+    bizs = conn.execute('SELECT id, name, business_type FROM agenda_businesses').fetchall()
+    now_iso = datetime.now().isoformat()
+    negocios_seedados, servicos_add, detalhes = 0, 0, []
+    for b in bizs:
+        total = conn.execute(
+            'SELECT COUNT(*) FROM agenda_services WHERE business_id=?', (b['id'],)
+        ).fetchone()[0]
+        if total > 0:
+            continue  # já tem serviços — não mexe
+        servicos = agenda_seg(b['business_type'])['servicos']
+        for nome, dur, preco in servicos:
+            conn.execute(
+                'INSERT INTO agenda_services (business_id, name, duration_minutes, price, active, created_at) '
+                'VALUES (?, ?, ?, ?, 1, ?)',
+                (b['id'], nome, dur, preco, now_iso)
+            )
+        negocios_seedados += 1
+        servicos_add += len(servicos)
+        detalhes.append({'id': b['id'], 'nome': b['name'],
+                         'ramo': b['business_type'], 'servicos': len(servicos)})
+    conn.commit(); conn.close()
+    return jsonify({'ok': True,
+                    'negocios_atualizados': negocios_seedados,
+                    'servicos_adicionados': servicos_add,
+                    'detalhes': detalhes})
+
+
 # ── Admin KidsCurator — status / delete ───────────────────────────────────────
 
 @app.route('/admin/kids/client/<int:client_id>/mode', methods=['POST'])
@@ -11855,16 +11889,23 @@ def slotzap_config():
     uid  = _sz_uid()
     msg  = None
     conn = get_saas_db()
+    is_pro = (dict(conn.execute('SELECT plan FROM slotzap_users WHERE id=?', (uid,)).fetchone() or {}).get('plan') == 'pro')
     if request.method == 'POST':
         wallet = (request.form.get('wallet_id') or '').strip()
         conn.execute('UPDATE slotzap_users SET asaas_wallet_id=? WHERE id=?', (wallet, uid))
+        if is_pro:  # white-label só no Pro
+            marca = (request.form.get('marca') or '').strip()[:40]
+            cor   = (request.form.get('cor') or '').strip()
+            if cor and not (cor.startswith('#') and len(cor) in (4, 7)):
+                cor = ''
+            conn.execute('UPDATE slotzap_users SET marca=?, cor=? WHERE id=?', (marca, cor, uid))
         conn.commit()
         msg = 'Configuração salva!'
-    u = dict(conn.execute('SELECT name, email, asaas_wallet_id FROM slotzap_users WHERE id=?',
+    u = dict(conn.execute('SELECT name, email, asaas_wallet_id, plan, marca, cor FROM slotzap_users WHERE id=?',
                           (uid,)).fetchone())
     conn.close()
     return render_template('slotzap/configuracoes.html', u=u, msg=msg,
-                           taxa=int(SZ_TAXA_VENDA * 100))
+                           taxa=int(SZ_TAXA_VENDA * 100), is_pro=is_pro)
 
 
 @app.route('/slotzap/nova', methods=['GET', 'POST'])
@@ -12561,7 +12602,16 @@ def slotzap_publico(token):
         'SELECT numero, status FROM slotzap_slots WHERE campanha_id=? ORDER BY numero',
         (camp['id'],)
     ).fetchall()]
+    # White-label (plano Pro): marca e cor do dono
+    dono  = conn.execute('SELECT plan, plan_active, marca, cor FROM slotzap_users WHERE id=?',
+                         (camp['user_id'],)).fetchone()
     conn.close()
+    marca, cor = '', ''
+    if dono:
+        dono = dict(dono)
+        if dono.get('plan') == 'pro' and dono.get('plan_active'):
+            marca = (dono.get('marca') or '').strip()
+            cor   = (dono.get('cor') or '').strip()
     pagos      = sum(1 for s in slots if s['status'] == 'pago')
     reservados = sum(1 for s in slots if s['status'] == 'reservado')
     disponiveis= sum(1 for s in slots if s['status'] == 'disponivel')
@@ -12570,7 +12620,7 @@ def slotzap_publico(token):
     return render_template('slotzap/publico.html',
                            camp=camp, slots=slots, token=token,
                            pagos=pagos, reservados=reservados, disponiveis=disponiveis,
-                           pct=pct)
+                           pct=pct, marca=marca, cor=cor)
 
 
 @app.route('/slotzap/p/<token>/status')

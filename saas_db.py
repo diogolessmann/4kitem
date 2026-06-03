@@ -217,7 +217,7 @@ def init_saas_db():
     ''')
     conn.commit()
 
-    # ── Novas tabelas Agenda SC ────────────────────────────────────────────────
+    # ── Novas tabelas AgendaJá ────────────────────────────────────────────────
     conn.executescript('''
         CREATE TABLE IF NOT EXISTS agenda_customers (
             id           INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -304,7 +304,7 @@ def init_saas_db():
         # Amigo Despachante — autenticação
         "ALTER TABLE despachante_users ADD COLUMN password_hash TEXT DEFAULT ''",
         "ALTER TABLE despachante_users ADD COLUMN last_login TEXT DEFAULT ''",
-        # Agenda SC — configurações por negócio
+        # AgendaJá — configurações por negócio
         "ALTER TABLE agenda_businesses ADD COLUMN mandazap_ativo INTEGER DEFAULT 0",
         "ALTER TABLE agenda_businesses ADD COLUMN mandazap_instance TEXT DEFAULT ''",
         "ALTER TABLE agenda_businesses ADD COLUMN pix_chave TEXT DEFAULT ''",
@@ -326,9 +326,9 @@ def init_saas_db():
         # MandaZap — anti-golpe
         "ALTER TABLE mandazap_users ADD COLUMN phone TEXT DEFAULT ''",
         "ALTER TABLE mandazap_users ADD COLUMN cpf_cnpj TEXT DEFAULT ''",
-        # Agenda SC — CPF do responsável
+        # AgendaJá — CPF do responsável
         "ALTER TABLE agenda_businesses ADD COLUMN cpf_cnpj TEXT DEFAULT ''",
-        # Agenda SC — Multi-profissional
+        # AgendaJá — Multi-profissional
         "ALTER TABLE agenda_appointments ADD COLUMN professional_id INTEGER",
         "ALTER TABLE agenda_appointments ADD COLUMN professional_name TEXT DEFAULT ''",
         '''CREATE TABLE IF NOT EXISTS agenda_professionals (
@@ -766,6 +766,9 @@ def init_slotzap_db():
         "ALTER TABLE slotzap_campanhas ADD COLUMN ganhador_numero INTEGER DEFAULT 0",
         "ALTER TABLE slotzap_campanhas ADD COLUMN ganhador_nome TEXT DEFAULT ''",
         "ALTER TABLE slotzap_campanhas ADD COLUMN sorteado_em TEXT DEFAULT ''",
+        # White-label (plano Pro): marca e cor na página pública
+        "ALTER TABLE slotzap_users ADD COLUMN marca TEXT DEFAULT ''",
+        "ALTER TABLE slotzap_users ADD COLUMN cor TEXT DEFAULT ''",
     ]
     for sql in _sz_migrations:
         try:
