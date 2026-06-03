@@ -551,7 +551,7 @@ async function abrirConfigWpp() {
     const r = await fetch(`/slotzap/campanha/${CAMP_ID}/numeros-disponiveis`).then(r => r.json());
     const nums = r.numeros || [];
     if (nums.length === 0) {
-      lista.innerHTML = '<div style="color:#ef4444;font-size:12px">Nenhum número conectado no MandaZap.</div>';
+      lista.innerHTML = '<div style="color:#f59e0b;font-size:12px;line-height:1.5">Você ainda não tem um número WhatsApp conectado. Conecte um no <a href="/mandazap" target="_blank" style="color:#a5b4fc;font-weight:700">MandaZap</a> (com o mesmo e-mail) para avisar no grupo automaticamente.</div>';
       return;
     }
     lista.innerHTML = nums.map((n, i) => `

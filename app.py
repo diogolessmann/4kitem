@@ -8036,6 +8036,86 @@ def _antiban_delay(sent_count: int):
     time.sleep(jitter)
 
 
+# ── Anti-ban v4: aquecimento, limite por número e janela de horário ───────────
+
+# Curva de aquecimento (warm-up): teto de msgs/dia conforme a IDADE do número.
+# Número novo manda pouco e cresce gradualmente até ~21 dias (depois só o plano limita).
+# É a defesa nº1 contra ban de número novo.
+MZ_WARMUP_CURVE = [
+    (0,   20),       # primeiras 24h
+    (1,   40),
+    (2,   60),
+    (3,   80),
+    (5,   120),
+    (7,   160),
+    (10,  220),
+    (14,  300),
+    (21,  10**9),    # 21+ dias: sem teto de warm-up
+]
+
+# Janela de horário "humano" (hora local do servidor). Fora disso, pausa e retoma sozinho.
+MZ_SEND_HOUR_START = int(os.environ.get('MZ_SEND_HOUR_START', '8'))
+MZ_SEND_HOUR_END   = int(os.environ.get('MZ_SEND_HOUR_END', '21'))
+
+
+def _mz_warmup_cap(days_active: int) -> int:
+    """Teto diário de mensagens conforme a idade do número (curva de aquecimento)."""
+    cap = MZ_WARMUP_CURVE[0][1]
+    for d, c in MZ_WARMUP_CURVE:
+        if days_active >= d:
+            cap = c
+    return cap
+
+
+def _mz_number_age_days(num_row: dict) -> int:
+    ref = (num_row.get('warmup_start') or num_row.get('created_at') or '')
+    try:
+        return max(0, (datetime.now() - datetime.fromisoformat(ref)).days)
+    except Exception:
+        return 999  # sem data confiável → trata como número maduro
+
+
+def _mz_number_sent_today(conn, number_id: int) -> int:
+    today = datetime.now().strftime('%Y-%m-%d')
+    row = conn.execute(
+        'SELECT sent FROM mandazap_number_daily WHERE number_id=? AND day=?',
+        (number_id, today)
+    ).fetchone()
+    return (row['sent'] if row else 0)
+
+
+def _mz_inc_number_sent(number_id: int, n: int = 1):
+    """Incrementa o contador diário de envios DESTE número (conexão própria)."""
+    today = datetime.now().strftime('%Y-%m-%d')
+    try:
+        c = get_saas_db()
+        c.execute(
+            'INSERT INTO mandazap_number_daily (number_id, day, sent) VALUES (?,?,?) '
+            'ON CONFLICT(number_id, day) DO UPDATE SET sent = sent + ?',
+            (number_id, today, n, n)
+        )
+        c.commit(); c.close()
+    except Exception as e:
+        log.warning(f"number_daily inc error: {e}")
+
+
+def _mz_number_remaining(conn, num_row: dict, plan_daily: int) -> int:
+    """Quantas msgs este número ainda pode enviar HOJE (mínimo entre warm-up e plano)."""
+    cap_day = min(_mz_warmup_cap(_mz_number_age_days(num_row)), plan_daily)
+    return max(0, cap_day - _mz_number_sent_today(conn, num_row['id']))
+
+
+def _mz_in_send_window(now=None) -> bool:
+    """True se o horário atual está dentro da janela de envio humano."""
+    now = now or datetime.now()
+    if MZ_SEND_HOUR_START == MZ_SEND_HOUR_END:
+        return True  # 24h
+    h = now.hour
+    if MZ_SEND_HOUR_START < MZ_SEND_HOUR_END:
+        return MZ_SEND_HOUR_START <= h < MZ_SEND_HOUR_END
+    return h >= MZ_SEND_HOUR_START or h < MZ_SEND_HOUR_END  # janela que cruza meia-noite
+
+
 def _dispatch_campaign(cid: int, user_id: int, delay_s: int = 3, continuar: bool = True):
     """
     Executa o disparo de uma campanha em background thread.
@@ -8084,27 +8164,55 @@ def _dispatch_campaign_inner(cid: int, user_id: int, delay_s: int = 3, continuar
         log.warning(f"Campanha {cid}: já está sendo enviada (race condition evitada)")
         return
 
-    # Verifica daily_limit do plano
-    plan_key   = conn.execute('SELECT plan FROM mandazap_users WHERE id=?', (user_id,)).fetchone()
-    plan_key   = (plan_key['plan'] if plan_key else 'solo')
-    plan_info  = MANDAZAP_PLANS.get(plan_key, MANDAZAP_PLANS['solo'])
-    daily_lim  = plan_info.get('daily_limit', 399)
-    today      = datetime.now().strftime('%Y-%m-%d')
-    today_sent = conn.execute(
-        "SELECT COALESCE(SUM(sent),0) FROM mandazap_campaigns WHERE user_id=? AND finished_at LIKE ?",
-        (user_id, f"{today}%")
-    ).fetchone()[0]
+    # Plano do usuário
+    plan_key  = conn.execute('SELECT plan FROM mandazap_users WHERE id=?', (user_id,)).fetchone()
+    plan_key  = (plan_key['plan'] if plan_key else 'solo')
+    plan_info = MANDAZAP_PLANS.get(plan_key, MANDAZAP_PLANS['solo'])
+    daily_lim = plan_info.get('daily_limit', 399)
+    # Cota POR número = limite do plano dividido pela qtd de números (~399/número)
+    per_num_plan = max(1, daily_lim // max(1, plan_info.get('numbers', 1)))
 
-    # Instância WhatsApp
-    num_id   = camp.get('number_id')
-    instance = f"mz{user_id}n{num_id}" if num_id else None
-    if not instance:
+    # ── POOL de números (multi-número é OPT-IN via camp.multi_number) ───────
+    multi = bool(camp.get('multi_number'))
+    if multi:
+        num_rows = [dict(r) for r in conn.execute(
+            "SELECT * FROM mandazap_numbers WHERE user_id=? AND status='connected' ORDER BY created_at",
+            (user_id,)
+        ).fetchall()]
+        if not num_rows:
+            one = conn.execute('SELECT * FROM mandazap_numbers WHERE id=? AND user_id=?',
+                               (camp.get('number_id'), user_id)).fetchone()
+            num_rows = [dict(one)] if one else []
+    else:
+        one = conn.execute('SELECT * FROM mandazap_numbers WHERE id=? AND user_id=?',
+                           (camp.get('number_id'), user_id)).fetchone()
+        num_rows = [dict(one)] if one else []
+
+    if not num_rows:
+        conn.execute("UPDATE mandazap_campaigns SET status='erro',error_log=? WHERE id=?",
+                     ('Nenhum número WhatsApp selecionado/conectado na campanha.', cid))
+        conn.commit(); conn.close()
+        log.error(f"Campanha {cid}: nenhum número")
+        return
+
+    senders = [{
+        'id': nr['id'],
+        'instance': f"mz{user_id}n{nr['id']}",
+        'row': nr,
+        'remaining': _mz_number_remaining(conn, nr, per_num_plan),
+        'sent': 0,
+    } for nr in num_rows]
+    instance = senders[0]['instance']  # usado na pré-validação de números
+
+    # ── Janela de horário humano: fora dela, agenda p/ retomar sozinho ──────
+    if not _mz_in_send_window():
         conn.execute(
-            "UPDATE mandazap_campaigns SET status='erro',error_log=? WHERE id=?",
-            ('Nenhum número WhatsApp selecionado na campanha.', cid)
+            "UPDATE mandazap_campaigns SET status='agendada', error_log=? WHERE id=?",
+            (f'⏰ Fora do horário de envio ({MZ_SEND_HOUR_START}h–{MZ_SEND_HOUR_END}h). '
+             f'Retoma automaticamente quando abrir.', cid)
         )
         conn.commit(); conn.close()
-        log.error(f"Campanha {cid}: nenhum número selecionado")
+        log.info(f"Campanha {cid}: fora da janela de horário — agendada")
         return
 
     # Carrega contatos da lista
@@ -8167,22 +8275,8 @@ def _dispatch_campaign_inner(cid: int, user_id: int, delay_s: int = 3, continuar
         log.info(f"Campanha {cid}: todos os {total_real} contatos já receberam. Concluída.")
         return
 
-    # Verifica limite diário
-    can_send = min(len(contacts), max(0, daily_lim - today_sent))
-    if can_send == 0:
-        conn.execute(
-            "UPDATE mandazap_campaigns SET status='erro',error_log=? WHERE id=?",
-            (f'Limite diário do plano {plan_key} atingido ({daily_lim} msgs/dia).', cid)
-        )
-        conn.commit(); conn.close()
-        log.warning(f"Campanha {cid}: limite diário atingido ({today_sent}/{daily_lim})")
-        return
-
-    if can_send < len(contacts):
-        log.info(f"Campanha {cid}: limite diário parcial — enviando {can_send}/{len(contacts)} restantes")
-        contacts = contacts[:can_send]
-
     # Randomiza ordem dos contatos — evita padrão previsível e fingerprint de sequência
+    # (a capacidade do dia é aplicada após a pré-validação dos números)
     random.shuffle(contacts)
 
     # Marca como "enviando" — preserva sent anterior se estiver continuando
@@ -8203,15 +8297,30 @@ def _dispatch_campaign_inner(cid: int, user_id: int, delay_s: int = 3, continuar
     first_err    = ''
     MAX_CONSEC   = 3   # aborta após 3 falhas REAIS consecutivas (ban detecta-se rápido)
 
-    # Verifica conexão da instância ANTES de iniciar o disparo
-    if not _check_instance_connected(evo_url, evo_key, instance):
-        log.error(f"Campanha {cid}: instância {instance} não está conectada — abortando")
+    # Verifica conexão de cada número do pool — descarta os desconectados
+    senders = [s for s in senders if _check_instance_connected(evo_url, evo_key, s['instance'])]
+    if not senders:
+        log.error(f"Campanha {cid}: nenhum número conectado — abortando")
         conn.execute(
             "UPDATE mandazap_campaigns SET status='erro', error_log=? WHERE id=?",
-            ('Número WhatsApp desconectado. Reconecte o número no painel Números antes de disparar.', cid)
+            ('Número WhatsApp desconectado. Reconecte no painel Números antes de disparar.', cid)
         )
         conn.commit(); conn.close()
         return
+
+    # Remove números que já bateram o teto diário / aquecimento de hoje
+    senders = [s for s in senders if s['remaining'] > 0]
+    if not senders:
+        conn.execute(
+            "UPDATE mandazap_campaigns SET status='agendada', error_log=? WHERE id=?",
+            ('Limite diário/aquecimento dos números atingido. Retoma amanhã automaticamente.', cid)
+        )
+        conn.commit(); conn.close()
+        log.info(f"Campanha {cid}: sem capacidade hoje (warm-up/limite) — agendada p/ amanhã")
+        return
+
+    total_cap = sum(s['remaining'] for s in senders)
+    log.info(f"Campanha {cid}: pool de {len(senders)} número(s), capacidade hoje={total_cap} (multi={multi})")
 
     # ── Pré-validação de números ─────────────────────────────────────────────
     # Verifica em lote quais phones existem no WhatsApp ANTES de enviar.
@@ -12402,27 +12511,31 @@ def slotzap_config_wpp(camp_id):
 @app.route('/slotzap/campanha/<int:camp_id>/numeros-disponiveis')
 @_sz_login_required
 def slotzap_numeros_disponiveis(camp_id):
-    """Retorna os números WhatsApp conectados no MandaZap para usar como bot."""
+    """Números WhatsApp conectados da conta MandaZap com o MESMO e-mail do usuário
+    SlotZap logado (isolamento por cliente). Sem conta MandaZap = nenhum número."""
     evo_url = (os.environ.get('EVO_URL') or os.environ.get('EVOLUTION_API_URL') or '').rstrip('/')
-    evo_key = os.environ.get('EVO_KEY') or os.environ.get('EVOLUTION_API_KEY') or ''
     if not evo_url:
         return jsonify({'numeros': []})
     conn = get_saas_db()
-    numeros_db = conn.execute(
-        "SELECT id, user_id, label, phone FROM mandazap_numbers WHERE status='connected' ORDER BY id"
-    ).fetchall()
-    conn.close()
+    sz    = conn.execute('SELECT email FROM slotzap_users WHERE id=?', (_sz_uid(),)).fetchone()
+    email = (dict(sz).get('email') or '').strip().lower() if sz else ''
     numeros = []
-    for n in numeros_db:
-        n = dict(n)
-        instance = f"mz{n['user_id']}n{n['id']}"
-        phone_clean = n['phone'].lstrip('55') if n['phone'] and n['phone'].startswith('55') else n['phone']
-        numeros.append({
-            'instance': instance,
-            'label': n['label'] or phone_clean,
-            'phone': phone_clean,
-        })
-    return jsonify({'numeros': numeros})
+    if email:
+        rows = conn.execute(
+            "SELECT n.id, n.user_id, n.label, n.phone FROM mandazap_numbers n "
+            "JOIN mandazap_users u ON u.id = n.user_id "
+            "WHERE n.status='connected' AND lower(u.email)=? ORDER BY n.id", (email,)).fetchall()
+        for n in rows:
+            n = dict(n)
+            instance = f"mz{n['user_id']}n{n['id']}"
+            phone_clean = n['phone'].lstrip('55') if n['phone'] and n['phone'].startswith('55') else n['phone']
+            numeros.append({
+                'instance': instance,
+                'label': n['label'] or phone_clean,
+                'phone': phone_clean,
+            })
+    conn.close()
+    return jsonify({'numeros': numeros, 'tem_mandazap': bool(numeros)})
 
 
 def _sz_criar_cliente_asaas(nome, tel, cpf=''):
