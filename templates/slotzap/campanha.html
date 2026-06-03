@@ -397,8 +397,12 @@ let _slotId = null, _slotNum = null, _pixQr = '', _pixCopia = '';
 async function sortear() {
   if (!confirm('Sortear um ganhador entre os números PAGOS? O resultado será anunciado no grupo (se configurado).')) return;
   const r = await fetch(`/slotzap/campanha/${CAMP_ID}/sortear`, {method:'POST'}).then(r=>r.json());
-  if (r.ok) { alert('🏆 Ganhador: #' + r.numero + ' — ' + (r.nome || '—')); location.reload(); }
-  else alert('Erro: ' + (r.erro || 'tente novamente'));
+  if (r.ok) {
+    let m = '🏆 Ganhador: #' + r.numero + ' — ' + (r.nome || '—');
+    m += r.grupo_enviado ? '\n\n✅ Resultado anunciado no grupo!' : '\n\n⚠️ Não consegui enviar no grupo. Configure o WhatsApp (💬) e tente de novo.';
+    alert(m);
+    location.reload();
+  } else alert('Erro: ' + (r.erro || 'tente novamente'));
 }
 
 function abrirEditar() { abrirModal('modal-editar'); }

@@ -6721,6 +6721,13 @@ def mandazap_painel():
     numbers   = [dict(r) for r in conn.execute(
         'SELECT * FROM mandazap_numbers WHERE user_id=? ORDER BY created_at DESC', (user_id,)
     ).fetchall()]
+    # Info de aquecimento (warm-up) por número, para exibir no painel
+    for _n in numbers:
+        _age = _mz_number_age_days(_n)
+        _n['warmup_day']  = _age
+        _n['warmup_done'] = _age >= 21
+        _n['warmup_cap']  = _mz_warmup_cap(_age)
+        _n['sent_today']  = _mz_number_sent_today(conn, _n['id'])
     campaigns = [dict(r) for r in conn.execute('''
         SELECT c.*, l.name as list_name, n.label as number_label
         FROM mandazap_campaigns c
@@ -7138,10 +7145,18 @@ def mz_check_status(num_id):
                                     break
                 except Exception:
                     pass
-            conn.execute(
-                'UPDATE mandazap_numbers SET status=?, phone=? WHERE id=?',
-                (new_status, phone_info or num['phone'], num_id)
-            )
+            # Marca o início do aquecimento (warm-up) no PRIMEIRO connect deste número
+            has_warmup = ('warmup_start' in num.keys()) and (num['warmup_start'])
+            if is_connected and not has_warmup:
+                conn.execute(
+                    'UPDATE mandazap_numbers SET status=?, phone=?, warmup_start=? WHERE id=?',
+                    (new_status, phone_info or num['phone'], datetime.now().isoformat(), num_id)
+                )
+            else:
+                conn.execute(
+                    'UPDATE mandazap_numbers SET status=?, phone=? WHERE id=?',
+                    (new_status, phone_info or num['phone'], num_id)
+                )
             conn.commit()
 
         conn.close()
@@ -7682,6 +7697,7 @@ def mz_campaign_add():
     media_url    = request.form.get('media_url', '').strip()
     list_id      = request.form.get('list_id') or None
     number_id    = request.form.get('number_id') or None
+    multi_number = 1 if request.form.get('multi_number') else 0
     if not name or not message:
         return redirect('/mandazap/painel?section=campanhas')
 
@@ -7699,9 +7715,9 @@ def mz_campaign_add():
 
     conn.execute('''
         INSERT INTO mandazap_campaigns
-        (user_id, name, message, media_type, media_url, list_id, number_id, status, total, sent, scheduled_at, created_at)
-        VALUES (?,?,?,?,?,?,?,?,?,0,NULL,?)
-    ''', (user_id, name, message, media_type, media_url, list_id, number_id,
+        (user_id, name, message, media_type, media_url, list_id, number_id, multi_number, status, total, sent, scheduled_at, created_at)
+        VALUES (?,?,?,?,?,?,?,?,?,?,0,NULL,?)
+    ''', (user_id, name, message, media_type, media_url, list_id, number_id, multi_number,
           'rascunho', total, datetime.now().isoformat()))
     conn.commit()
     conn.close()
@@ -7719,10 +7735,11 @@ def mz_campaign_duplicar(cid):
     if c:
         conn.execute('''
             INSERT INTO mandazap_campaigns
-            (user_id, name, message, media_type, media_url, list_id, number_id, status, total, sent, created_at)
-            VALUES (?,?,?,?,?,?,?,'rascunho',?,0,?)
+            (user_id, name, message, media_type, media_url, list_id, number_id, multi_number, status, total, sent, created_at)
+            VALUES (?,?,?,?,?,?,?,?,'rascunho',?,0,?)
         ''', (user_id, f"Cópia — {c['name']}", c['message'],
               c['media_type'], c['media_url'] or '', c['list_id'], c['number_id'],
+              (c['multi_number'] if 'multi_number' in c.keys() else 0),
               c['total'], datetime.now().isoformat()))
         conn.commit()
     conn.close()
@@ -8116,6 +8133,41 @@ def _mz_in_send_window(now=None) -> bool:
     return h >= MZ_SEND_HOUR_START or h < MZ_SEND_HOUR_END  # janela que cruza meia-noite
 
 
+def _mz_campaign_scheduler():
+    """Daemon: retoma campanhas 'agendada' quando entra a janela de horário.
+    Também dispara campanhas com scheduled_at já vencido. Sobrevive a restart do app.
+    """
+    time.sleep(90)  # espera o app subir por completo
+    while True:
+        try:
+            if _mz_in_send_window():
+                conn = get_saas_db()
+                rows = [dict(r) for r in conn.execute(
+                    "SELECT id, user_id, scheduled_at, updated_at FROM mandazap_campaigns WHERE status='agendada'"
+                ).fetchall()]
+                conn.close()
+                now = datetime.now()
+                for r in rows:
+                    # Respeita agendamento futuro (scheduled_at)
+                    sched = r.get('scheduled_at')
+                    if sched:
+                        try:
+                            if datetime.fromisoformat(sched) > now:
+                                continue
+                        except Exception:
+                            pass
+                    log.info(f"[MZ Scheduler] retomando campanha agendada {r['id']}")
+                    threading.Thread(
+                        target=_dispatch_campaign,
+                        args=(r['id'], r['user_id']),
+                        kwargs={'continuar': True}, daemon=True
+                    ).start()
+                    time.sleep(8)  # espaça os disparos entre campanhas
+        except Exception as e:
+            log.error(f"[MZ Scheduler] erro: {e}")
+        time.sleep(300)  # checa a cada 5 min
+
+
 def _dispatch_campaign(cid: int, user_id: int, delay_s: int = 3, continuar: bool = True):
     """
     Executa o disparo de uma campanha em background thread.
@@ -8361,6 +8413,15 @@ def _dispatch_campaign_inner(cid: int, user_id: int, delay_s: int = 3, continuar
         log.warning(f"Campanha {cid}: zero contatos válidos após pré-validação")
         return
 
+    # Aplica a capacidade do dia: o excedente fica p/ retomar amanhã
+    capped = len(contacts) > total_cap
+    if capped:
+        log.info(f"Campanha {cid}: capacidade {total_cap} < {len(contacts)} restantes — "
+                 f"envia {total_cap} hoje, resto amanhã")
+        contacts = contacts[:total_cap]
+
+    rr = 0  # ponteiro de round-robin entre os números do pool
+
     for c in contacts:
         # Verifica se campanha foi cancelada externamente
         chk = get_saas_db()
@@ -8374,6 +8435,26 @@ def _dispatch_campaign_inner(cid: int, user_id: int, delay_s: int = 3, continuar
             )
             conn.commit(); conn.close()
             return
+
+        # Janela de horário: se fechou no meio, pausa e agenda retomada
+        if not _mz_in_send_window():
+            conn.execute(
+                "UPDATE mandazap_campaigns SET status='agendada', sent=?, error_log=? WHERE id=?",
+                (sent_count,
+                 f'⏰ Pausada fora do horário ({MZ_SEND_HOUR_START}h–{MZ_SEND_HOUR_END}h). '
+                 f'{sent_count} enviados. Retoma automaticamente.', cid)
+            )
+            conn.commit(); conn.close()
+            log.info(f"Campanha {cid}: janela fechou — pausada em {sent_count}")
+            return
+
+        # Seleciona o próximo número do pool com capacidade (round-robin)
+        active = [s for s in senders if s['remaining'] > 0]
+        if not active:
+            break  # capacidade esgotada no meio → finaliza (resto fica p/ amanhã)
+        sender   = active[rr % len(active)]
+        rr      += 1
+        instance = sender['instance']
 
         phone = (c.get('phone') or '').replace(' ','').replace('-','').replace('+','').replace('(','').replace(')','')
         if not phone:
@@ -8397,8 +8478,11 @@ def _dispatch_campaign_inner(cid: int, user_id: int, delay_s: int = 3, continuar
             ok, err, invalido = _send_text(evo_url, evo_key, instance, phone, msg)
 
         if ok:
-            sent_count   += 1
-            consec_fails  = 0
+            sent_count          += 1
+            consec_fails         = 0
+            sender['sent']      += 1
+            sender['remaining'] -= 1
+            _mz_inc_number_sent(sender['id'])  # contador diário deste número
             # Registra no log de enviados para poder continuar de onde parou
             try:
                 _log = get_saas_db()
@@ -8421,16 +8505,20 @@ def _dispatch_campaign_inner(cid: int, user_id: int, delay_s: int = 3, continuar
                 time.sleep(random.uniform(4, 10))
 
             elif _is_disconnected(err):
-                # Instância desconectou (ban ou sessão expirada) — aborta imediatamente
-                log.error(f"Campanha {cid}: instancia desconectou durante envio — {err}")
-                conn.execute(
-                    "UPDATE mandazap_campaigns SET status='erro', sent=?, finished_at=?, error_log=? WHERE id=?",
-                    (sent_count, datetime.now().isoformat(),
-                     f'Numero WhatsApp desconectado durante o disparo (possivel ban). '
-                     f'{sent_count} enviados antes da desconexao. Reconecte o numero.', cid)
-                )
-                conn.commit(); conn.close()
-                return
+                # Este número desconectou (ban/sessão) — remove do pool e segue com os outros
+                log.error(f"Campanha {cid}: número {sender['id']} desconectou — {err}")
+                sender['remaining'] = 0
+                senders = [s for s in senders if s['id'] != sender['id']]
+                consec_fails = 0  # não conta como falha de API
+                if not senders:
+                    conn.execute(
+                        "UPDATE mandazap_campaigns SET status='erro', sent=?, finished_at=?, error_log=? WHERE id=?",
+                        (sent_count, datetime.now().isoformat(),
+                         f'Número(s) WhatsApp desconectado(s) durante o disparo (possível ban). '
+                         f'{sent_count} enviados antes. Reconecte e retome.', cid)
+                    )
+                    conn.commit(); conn.close()
+                    return
 
             else:
                 # Falha real (API down, timeout, erro temporario) — conta consecutiva
@@ -8460,30 +8548,43 @@ def _dispatch_campaign_inner(cid: int, user_id: int, delay_s: int = 3, continuar
                       (sent_count, datetime.now().isoformat(), cid))
         conn2.commit(); conn2.close()
 
-        # A cada 25 enviados verifica se a instância ainda está conectada
-        if ok and sent_count > 0 and sent_count % 25 == 0:
-            if not _check_instance_connected(evo_url, evo_key, instance):
-                log.error(f"Campanha {cid}: instancia desconectou apos {sent_count} enviados — possivel ban")
-                conn.execute(
-                    "UPDATE mandazap_campaigns SET status='erro', sent=?, finished_at=?, error_log=? WHERE id=?",
-                    (sent_count, datetime.now().isoformat(),
-                     f'Numero desconectou/banido apos {sent_count} enviados. Reconecte o numero e aguarde 24h antes de tentar novamente.', cid)
-                )
-                conn.commit(); conn.close()
-                return
+        # A cada 25 envios DESTE número, confere se ele ainda está conectado
+        if ok and sender['sent'] > 0 and sender['sent'] % 25 == 0:
+            if not _check_instance_connected(evo_url, evo_key, sender['instance']):
+                log.error(f"Campanha {cid}: número {sender['id']} desconectou após {sender['sent']} envios — possível ban")
+                sender['remaining'] = 0
+                senders = [s for s in senders if s['id'] != sender['id']]
+                if not senders:
+                    conn.execute(
+                        "UPDATE mandazap_campaigns SET status='erro', sent=?, finished_at=?, error_log=? WHERE id=?",
+                        (sent_count, datetime.now().isoformat(),
+                         f'Número desconectou/banido após {sent_count} enviados. Reconecte e aguarde 24h antes de retomar.', cid)
+                    )
+                    conn.commit(); conn.close()
+                    return
 
-        # Delay anti-ban humanizado após envio bem-sucedido
+        # Delay anti-ban humanizado — baseado no contador DESTE número (pacing por número)
         if ok:
-            _antiban_delay(sent_count)
+            _antiban_delay(sender['sent'])
 
-    # Finaliza
+    # Finaliza — se sobrou fila por causa do teto diário, agenda p/ amanhã
+    if capped:
+        conn.execute(
+            "UPDATE mandazap_campaigns SET status='agendada', sent=?, error_log=? WHERE id=?",
+            (sent_count,
+             f'Limite diário/aquecimento atingido. {sent_count} enviados hoje. '
+             f'O restante é enviado automaticamente amanhã.', cid)
+        )
+        conn.commit(); conn.close()
+        log.info(f"Campanha {cid}: parcial {sent_count} (teto diário) — agendada p/ amanhã")
+        return
     error_log = f"{failed_count} falhas. {first_err}" if failed_count else ''
     conn.execute(
         "UPDATE mandazap_campaigns SET status='concluida', sent=?, finished_at=?, error_log=? WHERE id=?",
         (sent_count, datetime.now().isoformat(), error_log, cid)
     )
     conn.commit(); conn.close()
-    log.info(f"Campanha {cid} concluída: {sent_count}/{total} enviados")
+    log.info(f"Campanha {cid} concluída: {sent_count} enviados")
 
 
 @app.route('/mandazap/campanhas/<int:cid>/cancelar', methods=['POST'])
@@ -10893,6 +10994,13 @@ def _startup():
         except Exception as e:
             log.error(f"[startup] Cleanup campanhas erro: {e}")
 
+        # ── MandaZap scheduler (retoma campanhas agendadas / janela de horário) ─
+        try:
+            threading.Thread(target=_mz_campaign_scheduler, daemon=True).start()
+            log.info(f'[MandaZap] Scheduler anti-ban iniciado (janela {MZ_SEND_HOUR_START}h–{MZ_SEND_HOUR_END}h, checa a cada 5 min)')
+        except Exception as e:
+            log.error(f"[startup] MandaZap scheduler erro: {e}")
+
         # ── AlertaSC monitoring scheduler ────────────────────────────────────
         try:
             threading.Thread(target=_alerta_scheduler_loop, daemon=True).start()
@@ -12342,6 +12450,13 @@ def slotzap_editar(camp_id):
     return jsonify({'ok': True, 'numeros_adicionados': add})
 
 
+def _evo_cfg():
+    """(url, key) da Evolution API — aceita EVO_* e EVOLUTION_API_* (nomes variam no Railway)."""
+    url = (os.environ.get('EVO_URL') or os.environ.get('EVOLUTION_API_URL') or '').rstrip('/')
+    key = os.environ.get('EVO_KEY') or os.environ.get('EVOLUTION_API_KEY') or ''
+    return url, key
+
+
 @app.route('/slotzap/campanha/<int:camp_id>/sortear', methods=['POST'])
 @_sz_login_required
 def slotzap_sortear(camp_id):
@@ -12369,18 +12484,22 @@ def slotzap_sortear(camp_id):
     # Anuncia no grupo (se configurado)
     grupo_id = (camp.get('grupo_wpp_id') or '').strip()
     instance = (camp.get('evo_instance') or '').strip() or os.environ.get('EVO_INSTANCE', '')
-    evo_url  = os.environ.get('EVO_URL', '').rstrip('/')
-    evo_key  = os.environ.get('EVO_KEY', '')
+    evo_url, evo_key = _evo_cfg()
+    grupo_enviado = False
     if grupo_id and instance and evo_url:
         msg = (f"🎉🏆 *RESULTADO DO SORTEIO* 🏆🎉\n\n🎯 {camp['nome']}\n\n"
                f"🥇 Número *#{ganhador['numero']}*\n👤 {ganhador['cliente_nome'] or '—'}\n\nParabéns! 🎊")
         try:
-            requests.post(f"{evo_url}/message/sendText/{instance}",
+            r = requests.post(f"{evo_url}/message/sendText/{instance}",
                 headers={'apikey': evo_key, 'Content-Type': 'application/json'},
-                json={'number': grupo_id, 'text': msg}, timeout=10)
+                json={'number': grupo_id, 'text': msg}, timeout=15)
+            grupo_enviado = r.status_code in (200, 201)
+            if not grupo_enviado:
+                log.warning(f'[SlotZap] sorteio grupo HTTP {r.status_code}: {r.text[:200]}')
         except Exception as _e:
             log.warning(f'[SlotZap] sorteio grupo: {_e}')
-    return jsonify({'ok': True, 'numero': ganhador['numero'], 'nome': ganhador['cliente_nome'] or ''})
+    return jsonify({'ok': True, 'numero': ganhador['numero'],
+                    'nome': ganhador['cliente_nome'] or '', 'grupo_enviado': grupo_enviado})
 
 
 @app.route('/slotzap/campanha/<int:camp_id>/reservar', methods=['POST'])
@@ -12635,8 +12754,7 @@ def _sz_marcar_pago(slot_id):
 
     grupo_id = (row.get('grupo_wpp_id') or '').strip()
     instance = (row.get('evo_instance') or '').strip() or os.environ.get('EVO_INSTANCE', '')
-    evo_url  = os.environ.get('EVO_URL', '').rstrip('/')
-    evo_key  = os.environ.get('EVO_KEY', '')
+    evo_url, evo_key = _evo_cfg()
     if grupo_id and instance and evo_url:
         base_url = os.environ.get('BASE_URL', 'https://www.4kitem.com.br').rstrip('/')
         token    = row.get('token_publico') or ''
@@ -12708,8 +12826,7 @@ def _sz_marcar_pago_charge(charge_id):
     log.info(f'[SlotZap] PAGO ({charge_id}): {nums_str} — {camp["nome"]} ({nome_cli})')
 
     instance = (camp.get('evo_instance') or '').strip() or os.environ.get('EVO_INSTANCE', '')
-    evo_url  = os.environ.get('EVO_URL', '').rstrip('/')
-    evo_key  = os.environ.get('EVO_KEY', '')
+    evo_url, evo_key = _evo_cfg()
     total    = camp.get('total_slots') or 0
     pct      = round(camp['pagos'] / total * 100) if total else 0
 
