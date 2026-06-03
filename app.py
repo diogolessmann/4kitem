@@ -12705,10 +12705,13 @@ def slotzap_config_wpp(camp_id):
     instance = (data.get('instance') or '').strip()
     msg      = (data.get('msg') or '').strip()
     conn = get_saas_db()
-    conn.execute('SELECT id FROM slotzap_campanhas WHERE id=? AND user_id=?',
-                 (camp_id, _sz_uid())).fetchone()
-    conn.execute('UPDATE slotzap_campanhas SET grupo_wpp_id=?,evo_instance=?,msg_pagamento=? WHERE id=?',
-                 (grupo_id, instance, msg, camp_id))
+    if instance:
+        conn.execute('UPDATE slotzap_campanhas SET grupo_wpp_id=?,evo_instance=?,msg_pagamento=? WHERE id=? AND user_id=?',
+                     (grupo_id, instance, msg, camp_id, _sz_uid()))
+    else:
+        # Sem número selecionado: NÃO apaga o evo_instance já salvo
+        conn.execute('UPDATE slotzap_campanhas SET grupo_wpp_id=?,msg_pagamento=? WHERE id=? AND user_id=?',
+                     (grupo_id, msg, camp_id, _sz_uid()))
     conn.commit(); conn.close()
     return jsonify({'ok': True})
 
