@@ -98,6 +98,169 @@ BUSINESS_TYPES = {
     'outros':       '🏢 Outro',
 }
 
+# ── AgendaJá — Customização por ramo ──────────────────────────────────────────
+# Para cada business_type: terminologia adaptada + serviços-modelo semeados no
+# cadastro. 'servicos' = lista de (nome, duração_min, preço). Fallback = 'outros'.
+AGENDA_SEGMENTS = {
+    'barbearia': {
+        'prof': 'Barbeiro', 'profs': 'Barbeiros', 'cliente': 'Cliente', 'clientes': 'Clientes',
+        'servico': 'Serviço', 'agendar_cta': 'Agendar horário',
+        'servicos': [
+            ('Corte de cabelo', 30, 35.0), ('Barba', 20, 25.0),
+            ('Corte + Barba', 50, 55.0), ('Sobrancelha', 10, 10.0), ('Pezinho / acabamento', 10, 15.0),
+        ],
+    },
+    'salao': {
+        'prof': 'Profissional', 'profs': 'Profissionais', 'cliente': 'Cliente', 'clientes': 'Clientes',
+        'servico': 'Serviço', 'agendar_cta': 'Agendar horário',
+        'servicos': [
+            ('Corte feminino', 60, 60.0), ('Escova', 40, 45.0), ('Coloração', 120, 150.0),
+            ('Hidratação', 60, 70.0), ('Manicure', 40, 35.0), ('Pedicure', 50, 40.0),
+        ],
+    },
+    'estetica': {
+        'prof': 'Esteticista', 'profs': 'Esteticistas', 'cliente': 'Cliente', 'clientes': 'Clientes',
+        'servico': 'Procedimento', 'agendar_cta': 'Agendar horário',
+        'servicos': [
+            ('Limpeza de pele', 60, 120.0), ('Design de sobrancelha', 30, 40.0),
+            ('Massagem relaxante', 60, 100.0), ('Depilação', 40, 60.0), ('Drenagem linfática', 60, 110.0),
+        ],
+    },
+    'clinica': {
+        'prof': 'Profissional', 'profs': 'Profissionais', 'cliente': 'Paciente', 'clientes': 'Pacientes',
+        'servico': 'Atendimento', 'agendar_cta': 'Marcar consulta',
+        'servicos': [
+            ('Consulta', 30, 200.0), ('Retorno', 20, 0.0), ('Avaliação inicial', 40, 250.0),
+        ],
+    },
+    'dentista': {
+        'prof': 'Dentista', 'profs': 'Dentistas', 'cliente': 'Paciente', 'clientes': 'Pacientes',
+        'servico': 'Procedimento', 'agendar_cta': 'Marcar consulta',
+        'servicos': [
+            ('Consulta / avaliação', 30, 0.0), ('Limpeza', 40, 120.0),
+            ('Restauração', 60, 200.0), ('Clareamento', 60, 600.0),
+        ],
+    },
+    'psicologia': {
+        'prof': 'Terapeuta', 'profs': 'Terapeutas', 'cliente': 'Paciente', 'clientes': 'Pacientes',
+        'servico': 'Sessão', 'agendar_cta': 'Marcar sessão',
+        'servicos': [
+            ('Primeira sessão', 60, 180.0), ('Sessão de terapia', 50, 150.0),
+        ],
+    },
+    'nutricao': {
+        'prof': 'Nutricionista', 'profs': 'Nutricionistas', 'cliente': 'Paciente', 'clientes': 'Pacientes',
+        'servico': 'Consulta', 'agendar_cta': 'Marcar consulta',
+        'servicos': [
+            ('Primeira consulta', 60, 200.0), ('Retorno', 30, 120.0), ('Avaliação física', 40, 150.0),
+        ],
+    },
+    'fisioterapia': {
+        'prof': 'Fisioterapeuta', 'profs': 'Fisioterapeutas', 'cliente': 'Paciente', 'clientes': 'Pacientes',
+        'servico': 'Sessão', 'agendar_cta': 'Marcar sessão',
+        'servicos': [
+            ('Avaliação', 40, 150.0), ('Sessão de fisioterapia', 50, 100.0),
+        ],
+    },
+    'pet': {
+        'prof': 'Profissional', 'profs': 'Profissionais', 'cliente': 'Tutor', 'clientes': 'Tutores',
+        'servico': 'Serviço', 'agendar_cta': 'Agendar horário',
+        'servicos': [
+            ('Banho', 60, 50.0), ('Tosa', 60, 70.0), ('Banho + Tosa', 90, 100.0),
+            ('Consulta veterinária', 30, 120.0), ('Vacina', 15, 80.0),
+        ],
+    },
+    'academia': {
+        'prof': 'Instrutor', 'profs': 'Instrutores', 'cliente': 'Aluno', 'clientes': 'Alunos',
+        'servico': 'Atividade', 'agendar_cta': 'Agendar horário',
+        'servicos': [
+            ('Aula experimental', 60, 0.0), ('Avaliação física', 40, 80.0), ('Personal trainer', 60, 100.0),
+        ],
+    },
+    'mecanica': {
+        'prof': 'Mecânico', 'profs': 'Mecânicos', 'cliente': 'Cliente', 'clientes': 'Clientes',
+        'servico': 'Serviço', 'agendar_cta': 'Agendar serviço',
+        'servicos': [
+            ('Troca de óleo', 40, 120.0), ('Revisão completa', 90, 250.0),
+            ('Alinhamento e balanceamento', 60, 120.0), ('Diagnóstico', 30, 80.0),
+        ],
+    },
+    'advocacia': {
+        'prof': 'Profissional', 'profs': 'Profissionais', 'cliente': 'Cliente', 'clientes': 'Clientes',
+        'servico': 'Atendimento', 'agendar_cta': 'Agendar reunião',
+        'servicos': [
+            ('Consulta jurídica', 60, 250.0), ('Reunião', 45, 0.0),
+        ],
+    },
+    'consultoria': {
+        'prof': 'Consultor', 'profs': 'Consultores', 'cliente': 'Cliente', 'clientes': 'Clientes',
+        'servico': 'Sessão', 'agendar_cta': 'Agendar reunião',
+        'servicos': [
+            ('Sessão de consultoria', 60, 200.0), ('Reunião de diagnóstico', 45, 0.0),
+        ],
+    },
+    'fotografia': {
+        'prof': 'Fotógrafo', 'profs': 'Fotógrafos', 'cliente': 'Cliente', 'clientes': 'Clientes',
+        'servico': 'Sessão', 'agendar_cta': 'Agendar sessão',
+        'servicos': [
+            ('Ensaio fotográfico', 90, 350.0), ('Sessão em estúdio', 60, 250.0),
+        ],
+    },
+    'tatuagem': {
+        'prof': 'Tatuador', 'profs': 'Tatuadores', 'cliente': 'Cliente', 'clientes': 'Clientes',
+        'servico': 'Serviço', 'agendar_cta': 'Agendar horário',
+        'servicos': [
+            ('Orçamento / avaliação', 30, 0.0), ('Sessão de tatuagem', 120, 300.0), ('Piercing', 30, 80.0),
+        ],
+    },
+    'lavacao': {
+        'prof': 'Atendente', 'profs': 'Atendentes', 'cliente': 'Cliente', 'clientes': 'Clientes',
+        'servico': 'Serviço', 'agendar_cta': 'Agendar serviço',
+        'servicos': [
+            ('Lavagem simples', 40, 40.0), ('Lavagem completa', 60, 70.0),
+            ('Polimento', 120, 250.0), ('Higienização interna', 90, 180.0), ('Enceramento', 40, 60.0),
+        ],
+    },
+    'escola': {
+        'prof': 'Professor', 'profs': 'Professores', 'cliente': 'Aluno', 'clientes': 'Alunos',
+        'servico': 'Aula', 'agendar_cta': 'Agendar aula',
+        'servicos': [
+            ('Aula experimental', 60, 0.0), ('Entrevista / matrícula', 30, 0.0), ('Aula particular', 60, 80.0),
+        ],
+    },
+    'imobiliaria': {
+        'prof': 'Corretor', 'profs': 'Corretores', 'cliente': 'Cliente', 'clientes': 'Clientes',
+        'servico': 'Atendimento', 'agendar_cta': 'Agendar visita',
+        'servicos': [
+            ('Visita a imóvel', 60, 0.0), ('Reunião', 45, 0.0), ('Avaliação de imóvel', 60, 0.0),
+        ],
+    },
+    'outros': {
+        'prof': 'Profissional', 'profs': 'Profissionais', 'cliente': 'Cliente', 'clientes': 'Clientes',
+        'servico': 'Serviço', 'agendar_cta': 'Agendar horário',
+        'servicos': [
+            ('Atendimento', 60, 0.0),
+        ],
+    },
+}
+
+def agenda_seg(business_type):
+    """Retorna a config do ramo (terminologia + serviços-modelo), com fallback."""
+    return AGENDA_SEGMENTS.get(business_type or 'outros', AGENDA_SEGMENTS['outros'])
+
+def agenda_seg_da_sessao():
+    """Config do ramo do negócio logado (via session). Usa fallback se não achar."""
+    try:
+        biz_id = session.get('agenda_business_id')
+        if not biz_id:
+            return AGENDA_SEGMENTS['outros']
+        _c = get_saas_db()
+        _row = _c.execute('SELECT business_type FROM agenda_businesses WHERE id=?', (biz_id,)).fetchone()
+        _c.close()
+        return agenda_seg(_row['business_type'] if _row else None)
+    except Exception:
+        return AGENDA_SEGMENTS['outros']
+
 WEEKDAY_NAMES = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo']
 
 # ── AlertaSC constants ────────────────────────────────────────────────────────
@@ -939,7 +1102,7 @@ DESP_PLAN_LIMITS = {
     'premium':      {'os_mes': None, 'clientes': None,  'whatsapp': True},
 }
 
-AGENDA_PLAN = {'label': 'Agenda SC Pro', 'preco': 79.90, 'price': 'R$ 79,90/mês'}
+AGENDA_PLAN = {'label': 'AgendaJá Pro', 'preco': 49.90, 'price': 'R$ 49,90/mês'}
 
 # ── DefesaPro — CTB constants ─────────────────────────────────────────────────
 CTB_ARTIGOS = {
@@ -1722,8 +1885,8 @@ def webhook_asaas_global():
                 conn.commit()
                 if ativar and b['email']:
                     p = AGENDA_PLAN
-                    _enviar_email(b['email'], '✅ Agenda SC — Assinatura ativa!',
-                        _email_pagamento_confirmado('Agenda SC', '📅', '#22c55e',
+                    _enviar_email(b['email'], '✅ AgendaJá — Assinatura ativa!',
+                        _email_pagamento_confirmado('AgendaJá', '📅', '#22c55e',
                             b['owner_name'].split()[0], p['label'],
                             p['price'], 'https://4kitem.com.br/agenda/painel'))
             conn.close()
@@ -3174,7 +3337,7 @@ def alerta():
 # ══════════════════════════════════════════════════════════════════════════
 
 def _agenda_send_whatsapp(phone: str, message: str, instance: str) -> bool:
-    """Envia mensagem WhatsApp via Evolution API para o Agenda SC."""
+    """Envia mensagem WhatsApp via Evolution API para o AgendaJá."""
     evo_url = os.environ.get('EVOLUTION_API_URL', '').rstrip('/')
     evo_key = os.environ.get('EVOLUTION_API_KEY', '')
     if not evo_url or not evo_key or not instance or not phone:
@@ -3261,6 +3424,18 @@ def agenda_cadastro():
                           generate_password_hash(password), cpf_cnpj, datetime.now().isoformat(), trial_ends))
                     conn.commit()
                     biz = conn.execute('SELECT * FROM agenda_businesses WHERE slug=?', (slug,)).fetchone()
+                    # Semeia serviços-modelo de acordo com o ramo escolhido
+                    try:
+                        _now_iso = datetime.now().isoformat()
+                        for _sn, _sd, _sp in agenda_seg(business_type)['servicos']:
+                            conn.execute(
+                                'INSERT INTO agenda_services (business_id, name, duration_minutes, price, active, created_at) '
+                                'VALUES (?, ?, ?, ?, 1, ?)',
+                                (biz['id'], _sn, _sd, _sp, _now_iso)
+                            )
+                        conn.commit()
+                    except Exception as _seed_err:
+                        log.error(f'Agenda seed servicos error: {_seed_err}')
                     conn.close()
                     session['agenda_business_id']   = biz['id']
                     session['agenda_business_slug'] = biz['slug']
@@ -3269,9 +3444,9 @@ def agenda_cadastro():
                     if email:
                         _enviar_email(
                             email,
-                            '📅 Bem-vindo ao Agenda SC — Seu trial de 7 dias começou!',
+                            '📅 Bem-vindo ao AgendaJá — Seu trial de 7 dias começou!',
                             _email_boas_vindas(
-                                'Agenda SC', '📅', '#22c55e',
+                                'AgendaJá', '📅', '#22c55e',
                                 owner_name.split()[0],
                                 trial_ends,
                                 'https://4kitem.com.br/agenda/painel',
@@ -3347,7 +3522,7 @@ def agenda_esqueci_senha():
                 html_email = f"""
                 <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px">
                   <div style="font-size:32px;margin-bottom:8px">📅</div>
-                  <h2 style="color:#27ae60">Recuperação de senha — Agenda SC</h2>
+                  <h2 style="color:#27ae60">Recuperação de senha — AgendaJá</h2>
                   <p>Olá, <strong>{biz['owner_name'].split()[0]}</strong>!</p>
                   <p>Seu código de recuperação é:</p>
                   <div style="font-size:36px;font-weight:900;letter-spacing:8px;color:#27ae60;
@@ -3355,7 +3530,7 @@ def agenda_esqueci_senha():
                               margin:20px 0">{codigo}</div>
                   <p style="color:#666;font-size:13px">Válido por 2 horas.</p>
                 </div>"""
-                ok = _enviar_email(biz['email'], 'Código de recuperação — Agenda SC', html_email)
+                ok = _enviar_email(biz['email'], 'Código de recuperação — AgendaJá', html_email)
             enviado = True
             if not ok:
                 codigo_tela = codigo
@@ -3461,6 +3636,7 @@ def agenda_painel():
                            today=today,
                            weekday_names=WEEKDAY_NAMES,
                            business_types=BUSINESS_TYPES,
+                           seg=agenda_seg(biz.get('business_type')),
                            hoje_count=hoje_count,
                            receita_mes=round(receita_mes, 2),
                            total_clientes=total_clientes,
@@ -3667,7 +3843,8 @@ def agenda_equipe():
         'SELECT * FROM agenda_professionals WHERE business_id=? ORDER BY order_pos, name', (biz_id,)
     ).fetchall()]
     conn.close()
-    return render_template('agenda/equipe.html', biz=biz, profissionais=profs)
+    return render_template('agenda/equipe.html', biz=biz, profissionais=profs,
+                           seg=agenda_seg(biz.get('business_type')))
 
 
 @app.route('/agenda/equipe/novo', methods=['GET', 'POST'])
@@ -3693,7 +3870,8 @@ def agenda_equipe_novo():
                  datetime.now().isoformat()))
             conn.commit(); conn.close()
             return redirect('/agenda/equipe')
-    return render_template('agenda/profissional_form.html', prof=None, erro=erro, modo='novo')
+    return render_template('agenda/profissional_form.html', prof=None, erro=erro, modo='novo',
+                           seg=agenda_seg_da_sessao())
 
 
 @app.route('/agenda/equipe/editar/<int:prof_id>', methods=['GET', 'POST'])
@@ -3725,7 +3903,8 @@ def agenda_equipe_editar(prof_id):
             conn.commit(); conn.close()
             return redirect('/agenda/equipe')
     conn.close()
-    return render_template('agenda/profissional_form.html', prof=prof, erro=erro, modo='editar')
+    return render_template('agenda/profissional_form.html', prof=prof, erro=erro, modo='editar',
+                           seg=agenda_seg_da_sessao())
 
 
 @app.route('/agenda/equipe/excluir/<int:prof_id>', methods=['POST'])
@@ -3842,7 +4021,7 @@ def agenda_assinar():
             conn2.commit(); conn2.close()
             resp = _asaas_criar_assinatura_saas(
                 customer_id, 'agenda', 'pro', p['preco'],
-                'Agenda SC Pro — Assinatura Mensal',
+                'AgendaJá Pro — Assinatura Mensal',
                 billing_type
             )
             if resp.get('id'):
@@ -3978,7 +4157,7 @@ def agenda_testar_whatsapp():
         return jsonify({'success': False, 'error': 'Evolution API não configurada no servidor. Contate o suporte.'})
     msg = (f"✅ *Teste de integração — {biz['name']}*\n\n"
            f"Sua conexão com o WhatsApp automático está funcionando!\n\n"
-           f"📲 *MandaZap + Agenda SC* ativado com sucesso.\n"
+           f"📲 *MandaZap + AgendaJá* ativado com sucesso.\n"
            f"Seus clientes vão receber confirmações, lembretes e avisos automaticamente.")
     ok = _agenda_send_whatsapp(phone, msg, instance)
     if ok:
@@ -4175,7 +4354,8 @@ def agenda_booking(slug):
     ).fetchall()]
     conn.close()
     return render_template('agenda/booking.html', biz=dict(biz), services=services,
-                           professionals=professionals)
+                           professionals=professionals,
+                           seg=agenda_seg(biz['business_type']))
 
 
 @app.route('/api/agenda/slots/<slug>')
@@ -5846,7 +6026,7 @@ def saas_mandaja_toggle(store_id):
     return jsonify({'success': True, 'active': new_active})
 
 
-# ── Admin Agenda SC ───────────────────────────────────────────────────────────
+# ── Admin AgendaJá ───────────────────────────────────────────────────────────
 
 @app.route('/admin/agenda/<int:biz_id>/status', methods=['POST'])
 @_saas_admin_required
@@ -11656,8 +11836,14 @@ def slotzap_app():
         ORDER BY c.id DESC
     ''', (_sz_uid(),)).fetchall()]
     conn.close()
+    total_arrecadado = sum((c['pagos'] or 0) * float(c['preco'] or 0) for c in campanhas)
+    total_vendidos   = sum((c['pagos'] or 0) for c in campanhas)
+    ativas           = sum(1 for c in campanhas if c['status'] == 'ativa')
     return render_template('slotzap/app.html',
                            campanhas=campanhas,
+                           total_arrecadado=total_arrecadado,
+                           total_vendidos=total_vendidos,
+                           ativas=ativas,
                            user_name=session.get('sz_user_name', ''))
 
 
