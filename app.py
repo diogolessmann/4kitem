@@ -7316,6 +7316,175 @@ def _parse_vcf(content: str) -> list:
     return contacts
 
 
+def _mz_normalize_phone(phone: str) -> str:
+    """Limpa e garante DDI 55 para números brasileiros sem prefixo."""
+    phone = _re.sub(r'[^\d+]', '', phone or '')
+    if not phone:
+        return ''
+    if phone.startswith('0'):
+        phone = '55' + phone[1:]
+    elif len(phone) <= 11 and not phone.startswith('+'):
+        phone = '55' + phone
+    return phone
+
+
+@app.route('/mandazap/contatos/delete-bulk', methods=['POST'])
+@_mandazap_login_required
+def mz_contact_delete_bulk():
+    """Apaga vários contatos de uma vez (seleção em massa)."""
+    user_id = session['mz_user_id']
+    ids = request.form.getlist('ids')
+    if not ids:
+        ids = (request.get_json(silent=True) or {}).get('ids', [])
+    ids = [int(i) for i in ids if str(i).isdigit()]
+    if ids:
+        conn = get_saas_db()
+        ph = ','.join('?' * len(ids))
+        owned = [r['id'] for r in conn.execute(
+            f'SELECT id FROM mandazap_contacts WHERE user_id=? AND id IN ({ph})',
+            [user_id] + ids
+        ).fetchall()]
+        if owned:
+            ph2 = ','.join('?' * len(owned))
+            conn.execute(f'DELETE FROM mandazap_list_contacts WHERE contact_id IN ({ph2})', owned)
+            conn.execute(f'DELETE FROM mandazap_contacts WHERE id IN ({ph2}) AND user_id=?', owned + [user_id])
+            conn.commit()
+        conn.close()
+        log.info(f'Bulk delete: {len(owned)} contatos do user {user_id}')
+    return redirect('/mandazap/painel?section=contatos')
+
+
+def _mz_extract_contacts_ai(text: str) -> list:
+    """Usa a IA (Groq) para extrair pares Nome + Telefone de um texto bruto de PDF."""
+    groq_key = os.environ.get('GROQ_API_KEY', '')
+    if not groq_key:
+        return []
+    text = (text or '')[:12000]
+    prompt = (
+        "Você recebe o texto bruto extraído de um PDF que contém uma lista de pessoas/clientes. "
+        "Extraia TODOS os contatos encontrados, cada um com nome e telefone.\n\n"
+        "Regras:\n"
+        "1. 'phone' deve conter apenas dígitos (sem espaços, parênteses ou traços).\n"
+        "2. Mantenha o DDD. Se não houver país, NÃO invente — apenas os dígitos do telefone.\n"
+        "3. Se um item tiver telefone mas não nome, use 'Contato' como nome.\n"
+        "4. Ignore cabeçalhos, rodapés, totais e linhas sem telefone.\n"
+        "5. Não invente contatos que não estejam no texto.\n"
+        'Responda APENAS em JSON no formato: {"contacts":[{"name":"...","phone":"..."}]}\n\n'
+        f"Texto do PDF:\n{text}"
+    )
+    try:
+        resp = requests.post(
+            'https://api.groq.com/openai/v1/chat/completions',
+            headers={'Authorization': f'Bearer {groq_key}', 'Content-Type': 'application/json'},
+            json={
+                'model': 'meta-llama/llama-4-scout-17b-16e-instruct',
+                'messages': [{'role': 'user', 'content': prompt}],
+                'max_tokens': 4000,
+                'temperature': 0.1,
+                'response_format': {'type': 'json_object'},
+            },
+            timeout=40,
+        )
+        resp.raise_for_status()
+        content = resp.json()['choices'][0]['message']['content'].strip()
+        data = _json.loads(content)
+        out = []
+        for c in (data.get('contacts') or []):
+            name  = str(c.get('name', '')).strip() or 'Contato'
+            phone = _re.sub(r'[^\d]', '', str(c.get('phone', '')))
+            if len(phone) >= 8:
+                out.append({'name': name[:120], 'phone': phone})
+        return out
+    except Exception as ex:
+        log.error(f'AI pdf extract error: {ex}')
+        return []
+
+
+def _mz_extract_contacts_regex(text: str) -> list:
+    """Fallback sem IA: acha telefones por regex e tenta pegar o nome na mesma linha."""
+    out = []
+    seen = set()
+    for line in (text or '').splitlines():
+        m = _re.search(r'(\+?\d[\d\s().\-]{7,}\d)', line)
+        if not m:
+            continue
+        phone = _re.sub(r'[^\d]', '', m.group(1))
+        if len(phone) < 8 or len(phone) > 13 or phone in seen:
+            continue
+        # nome = texto antes do telefone, sem dígitos/símbolos
+        name = line[:m.start()].strip(' :|-\t')
+        name = _re.sub(r'[\d]', '', name).strip(' :|-\t') or 'Contato'
+        seen.add(phone)
+        out.append({'name': name[:120], 'phone': phone})
+    return out
+
+
+@app.route('/mandazap/contatos/extrair-pdf', methods=['POST'])
+@_mandazap_login_required
+def mz_contact_extract_pdf():
+    """Lê um PDF, extrai o texto e usa IA para detectar Nome + Telefone (preview)."""
+    f = request.files.get('pdf_file')
+    if not f or not f.filename:
+        return jsonify({'erro': 'Nenhum arquivo enviado'}), 400
+    if not f.filename.lower().endswith('.pdf'):
+        return jsonify({'erro': 'Envie um arquivo PDF'}), 400
+    try:
+        import pdfplumber
+        raw = f.read()
+        if len(raw) > 15 * 1024 * 1024:
+            return jsonify({'erro': 'PDF muito grande (limite 15MB)'}), 400
+        parts = []
+        with pdfplumber.open(io.BytesIO(raw)) as pdf:
+            for page in pdf.pages[:40]:
+                parts.append(page.extract_text() or '')
+        full_text = '\n'.join(parts).strip()
+    except Exception as ex:
+        log.error(f'pdf read error: {ex}')
+        return jsonify({'erro': 'Não consegui ler este PDF.'}), 500
+
+    if not full_text:
+        return jsonify({'erro': 'PDF sem texto extraível (parece ser digitalizado/imagem). Use um PDF gerado digitalmente.'}), 422
+
+    contacts = _mz_extract_contacts_ai(full_text) or _mz_extract_contacts_regex(full_text)
+    if not contacts:
+        return jsonify({'erro': 'Não encontrei nome + telefone neste PDF.'}), 422
+
+    # dedup por telefone preservando ordem
+    uniq, seen = [], set()
+    for c in contacts:
+        p = c['phone']
+        if p not in seen:
+            seen.add(p)
+            uniq.append(c)
+    return jsonify({'ok': True, 'contacts': uniq[:1000], 'count': len(uniq[:1000])})
+
+
+@app.route('/mandazap/contatos/import-json', methods=['POST'])
+@_mandazap_login_required
+def mz_contact_import_json():
+    """Importa contatos a partir de uma lista JSON (usado após preview do PDF)."""
+    user_id = session['mz_user_id']
+    items   = (request.get_json(silent=True) or {}).get('contacts', [])
+    if not items:
+        return jsonify({'erro': 'Nenhum contato para importar'}), 400
+    conn  = get_saas_db()
+    count = 0
+    for c in items:
+        name  = str(c.get('name', '')).strip()[:120] or 'Contato'
+        phone = _mz_normalize_phone(str(c.get('phone', '')))
+        if not phone:
+            continue
+        conn.execute(
+            'INSERT OR IGNORE INTO mandazap_contacts (user_id, name, phone, email, tag, created_at) VALUES (?,?,?,?,?,?)',
+            (user_id, name, phone, '', 'pdf', datetime.now().isoformat())
+        )
+        count += 1
+    conn.commit()
+    conn.close()
+    log.info(f'Import JSON: {count} contatos para user {user_id}')
+    return jsonify({'ok': True, 'count': count})
+
+
 # ── Listas ────────────────────────────────────────────────────────────────────
 
 @app.route('/mandazap/listas/add', methods=['POST'])

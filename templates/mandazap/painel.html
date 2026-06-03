@@ -358,15 +358,23 @@ select option{background:var(--surface2)}
       </div>
       <button class="btn btn-green" onclick="openModal('modal-contato')">+ Adicionar</button>
       <button class="btn btn-outline" onclick="openModal('modal-import-csv')">📁 Importar CSV / VCF</button>
+      <button class="btn btn-outline" onclick="mzOpenPdfModal()">🤖 Importar PDF (IA)</button>
     </div>
 
     {% if contacts %}
+    <div id="contacts-bulk-bar" style="display:none;align-items:center;gap:12px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin-bottom:12px">
+      <strong><span id="contacts-bulk-count">0</span> selecionado(s)</strong>
+      <button type="button" class="btn btn-outline" style="margin-left:auto" onclick="mzToggleAll(false)">Limpar seleção</button>
+      <button type="button" class="btn" style="background:#c0392b;color:#fff" onclick="mzBulkDelete()">🗑 Apagar selecionados</button>
+    </div>
+    <form id="contacts-bulk-form" method="POST" action="/mandazap/contatos/delete-bulk">
     <div class="card-box">
       <table class="table" id="contacts-table">
-        <thead><tr><th>Nome</th><th>WhatsApp</th><th>Tag</th><th style="width:40px"></th></tr></thead>
+        <thead><tr><th style="width:36px"><input type="checkbox" id="contacts-select-all" onclick="mzToggleAll(this.checked)" title="Selecionar todos"></th><th>Nome</th><th>WhatsApp</th><th>Tag</th><th style="width:40px"></th></tr></thead>
         <tbody>
         {% for c in contacts %}
         <tr data-search="{{ c.name|lower }} {{ c.phone }} {{ (c.tag or '')|lower }} {{ (c.notes or '')|lower }}">
+          <td><input type="checkbox" class="c-check" name="ids" value="{{ c.id }}" onclick="mzUpdateBulkBar()"></td>
           <td>
             <div style="font-weight:700">{{ c.name }}</div>
             {% if c.notes %}<div style="font-size:11px;color:var(--text3);margin-top:2px">📝 {{ c.notes[:60] }}{% if c.notes|length > 60 %}…{% endif %}</div>{% endif %}
@@ -376,15 +384,14 @@ select option{background:var(--surface2)}
           </td>
           <td>{% if c.tag %}<span class="tag-pill">{{ c.tag }}</span>{% else %}<span style="color:var(--text3)">—</span>{% endif %}</td>
           <td>
-            <form method="POST" action="/mandazap/contatos/{{ c.id }}/delete" onsubmit="return confirm('Apagar {{ c.name }}?')">
-              <button type="submit" class="btn-icon">🗑</button>
-            </form>
+            <button type="button" class="btn-icon" data-name="{{ c.name|e }}" onclick="mzDeleteOne({{ c.id }}, this.dataset.name)">🗑</button>
           </td>
         </tr>
         {% endfor %}
         </tbody>
       </table>
     </div>
+    </form>
     {% else %}
     <div class="empty"><div class="empty-icon">👥</div><h4>Nenhum contato ainda</h4><p>Adicione contatos manualmente ou importe um arquivo CSV com nome e telefone.</p></div>
     {% endif %}
@@ -680,6 +687,53 @@ select option{background:var(--surface2)}
   </div>
 </div>
 
+<!-- Modal: Importar PDF com IA -->
+<div class="modal-overlay" id="modal-import-pdf">
+  <div class="modal" style="max-width:660px">
+    <h3>🤖 Importar PDF com IA</h3>
+    <div style="font-size:13px;color:var(--text2);margin-bottom:14px;line-height:1.6">
+      Envie um <strong style="color:var(--green)">PDF</strong> com uma lista (relatório, cadastro, planilha exportada…).
+      A IA lê o conteúdo e extrai <strong>Nome + Telefone</strong> automaticamente. Você revisa antes de importar.
+    </div>
+
+    <!-- Etapa 1: upload -->
+    <div id="pdf-step-upload">
+      <div class="import-box">
+        <div class="imp-icon">🤖</div>
+        <label for="pdf-input">
+          <div>Clique para selecionar o arquivo PDF</div>
+          <div class="imp-hint" id="pdf-filename">Nenhum arquivo selecionado</div>
+        </label>
+        <input type="file" name="pdf_file" id="pdf-input" accept=".pdf" onchange="document.getElementById('pdf-filename').textContent=this.files[0]?.name||'Nenhum arquivo'">
+      </div>
+      <div class="modal-btns" style="margin-top:16px">
+        <button type="button" class="btn btn-outline" onclick="closeModal('modal-import-pdf')">Cancelar</button>
+        <button type="button" class="btn btn-green" style="flex:1" onclick="mzExtractPdf()">🔍 Extrair contatos</button>
+      </div>
+    </div>
+
+    <!-- Etapa 2: carregando -->
+    <div id="pdf-step-loading" style="display:none;text-align:center;padding:30px 0">
+      <div style="font-size:34px;margin-bottom:10px">⏳</div>
+      <div style="color:var(--text2)">Lendo o PDF e extraindo os contatos com IA…</div>
+    </div>
+
+    <!-- Etapa 3: preview -->
+    <div id="pdf-step-preview" style="display:none">
+      <div id="pdf-preview-count" style="font-weight:700;margin-bottom:10px"></div>
+      <div style="max-height:320px;overflow:auto;border:1px solid var(--border);border-radius:10px">
+        <table class="table" style="margin:0"><thead><tr><th>Nome</th><th>Telefone</th><th style="width:40px"></th></tr></thead>
+          <tbody id="pdf-preview-body"></tbody>
+        </table>
+      </div>
+      <div class="modal-btns" style="margin-top:16px">
+        <button type="button" class="btn btn-outline" onclick="closeModal('modal-import-pdf')">Cancelar</button>
+        <button type="button" class="btn btn-green" id="pdf-import-btn" style="flex:1" onclick="mzConfirmPdfImport()">📥 Importar contatos</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Modal: Nova Lista -->
 <div class="modal-overlay" id="modal-lista">
   <div class="modal">
@@ -893,6 +947,105 @@ function filterContacts(q) {
   document.querySelectorAll('#contacts-table tbody tr').forEach(tr => {
     tr.style.display = tr.dataset.search?.includes(lq) ? '' : 'none';
   });
+  mzUpdateBulkBar();
+}
+
+// ── Seleção em massa de contatos ─────────────────────────────────────────────
+function mzVisibleChecks() {
+  return [...document.querySelectorAll('#contacts-table tbody input.c-check')]
+    .filter(cb => cb.closest('tr').style.display !== 'none');
+}
+function mzUpdateBulkBar() {
+  const checks  = mzVisibleChecks();
+  const checked = checks.filter(cb => cb.checked);
+  const bar = document.getElementById('contacts-bulk-bar');
+  if (bar) bar.style.display = checked.length ? 'flex' : 'none';
+  const cnt = document.getElementById('contacts-bulk-count');
+  if (cnt) cnt.textContent = checked.length;
+  const sa = document.getElementById('contacts-select-all');
+  if (sa) sa.checked = checks.length > 0 && checked.length === checks.length;
+}
+function mzToggleAll(state) {
+  mzVisibleChecks().forEach(cb => cb.checked = state);
+  mzUpdateBulkBar();
+}
+function mzBulkDelete() {
+  const checked = mzVisibleChecks().filter(cb => cb.checked);
+  if (!checked.length) return;
+  if (!confirm('Apagar ' + checked.length + ' contato(s) selecionado(s)? Esta ação não pode ser desfeita.')) return;
+  document.getElementById('contacts-bulk-form').submit();
+}
+async function mzDeleteOne(id, name) {
+  if (!confirm('Apagar ' + name + '?')) return;
+  await fetch('/mandazap/contatos/' + id + '/delete', { method: 'POST' });
+  location.reload();
+}
+
+// ── Importar PDF com IA ──────────────────────────────────────────────────────
+let mzPdfContacts = [];
+function mzEsc(s) { return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function mzOpenPdfModal() {
+  mzPdfContacts = [];
+  document.getElementById('pdf-input').value = '';
+  document.getElementById('pdf-filename').textContent = 'Nenhum arquivo selecionado';
+  document.getElementById('pdf-step-upload').style.display  = 'block';
+  document.getElementById('pdf-step-loading').style.display = 'none';
+  document.getElementById('pdf-step-preview').style.display = 'none';
+  openModal('modal-import-pdf');
+}
+async function mzExtractPdf() {
+  const inp = document.getElementById('pdf-input');
+  if (!inp.files.length) { showToast('⚠️ Selecione um PDF primeiro.'); return; }
+  const fd = new FormData();
+  fd.append('pdf_file', inp.files[0]);
+  document.getElementById('pdf-step-upload').style.display  = 'none';
+  document.getElementById('pdf-step-loading').style.display = 'block';
+  try {
+    const r = await fetch('/mandazap/contatos/extrair-pdf', { method: 'POST', body: fd });
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.erro || 'Falha ao processar o PDF');
+    mzPdfContacts = d.contacts || [];
+    mzRenderPdfPreview();
+  } catch (e) {
+    document.getElementById('pdf-step-loading').style.display = 'none';
+    document.getElementById('pdf-step-upload').style.display  = 'block';
+    showToast('⚠️ ' + e.message);
+  }
+}
+function mzRenderPdfPreview() {
+  document.getElementById('pdf-step-loading').style.display = 'none';
+  document.getElementById('pdf-step-preview').style.display = 'block';
+  document.getElementById('pdf-preview-count').textContent =
+    mzPdfContacts.length + ' contato(s) encontrado(s) — revise e edite se precisar:';
+  document.getElementById('pdf-preview-body').innerHTML = mzPdfContacts.map((c, i) => `
+    <tr>
+      <td><input style="width:100%" value="${mzEsc(c.name)}"  oninput="mzPdfContacts[${i}].name=this.value"></td>
+      <td><input style="width:100%;font-family:monospace" value="${mzEsc(c.phone)}" oninput="mzPdfContacts[${i}].phone=this.value"></td>
+      <td><button type="button" class="btn-icon" onclick="mzPdfRemove(${i})">🗑</button></td>
+    </tr>`).join('');
+  const btn = document.getElementById('pdf-import-btn');
+  btn.textContent = '📥 Importar ' + mzPdfContacts.length + ' contatos';
+  btn.disabled = mzPdfContacts.length === 0;
+}
+function mzPdfRemove(i) { mzPdfContacts.splice(i, 1); mzRenderPdfPreview(); }
+async function mzConfirmPdfImport() {
+  if (!mzPdfContacts.length) { showToast('⚠️ Nada para importar.'); return; }
+  const btn = document.getElementById('pdf-import-btn');
+  btn.disabled = true; btn.textContent = '⏳ Importando...';
+  try {
+    const r = await fetch('/mandazap/contatos/import-json', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contacts: mzPdfContacts }),
+    });
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.erro || 'Falha ao importar');
+    showToast('✅ ' + d.count + ' contato(s) importado(s)!');
+    setTimeout(() => location.href = '/mandazap/painel?section=contatos', 700);
+  } catch (e) {
+    btn.disabled = false; btn.textContent = '📥 Importar contatos';
+    showToast('⚠️ ' + e.message);
+  }
 }
 
 // ── Marcar todos na lista ────────────────────────────────────────────────────
