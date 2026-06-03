@@ -223,7 +223,7 @@
           <div style="font-size:10px;color:#ec4899;font-weight:800;margin-top:2px">R$ 15</div>
         </div>
         <div style="background:#1a1a2e;border-radius:8px;padding:8px 10px;text-align:center;flex:1">
-          <div style="font-size:16px">💍</div>
+          <div style="font-size:16px">💕</div>
           <div style="font-size:10px;color:#a855f7;font-weight:800;margin-top:2px">R$ 25</div>
         </div>
         <div style="background:#1a1a2e;border-radius:8px;padding:8px 10px;text-align:center;flex:1">
@@ -434,7 +434,7 @@
          style="width:100%;border-radius:16px;box-shadow:0 20px 40px rgba(0,0,0,.4)">
   <div style="background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:28px">
     <div style="font-size:13px;font-weight:700;color:var(--text2);margin-bottom:16px;text-transform:uppercase;letter-spacing:.5px">💰 Simulação — sexta no happy hour</div>
-    {% for item in [('3 Parabéns','R$ 15 cada','R$ 45'),('4 Dedicatórias','R$ 10 cada','R$ 40'),('6 Prioridades na fila','R$ 5 cada','R$ 30'),('12 Pedidos de música','R$ 2 cada','R$ 24'),('1 Pedido de casamento','R$ 25 cada','R$ 25')] %}
+    {% for item in [('3 Parabéns','R$ 15 cada','R$ 45'),('4 Dedicatórias','R$ 10 cada','R$ 40'),('6 Prioridades na fila','R$ 5 cada','R$ 30'),('12 Pedidos de música','R$ 2 cada','R$ 24'),('1 Pedido de namoro','R$ 25 cada','R$ 25')] %}
     <div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border);font-size:13px">
       <span><strong>{{ item[0] }}</strong> <span style="color:var(--text2)">· {{ item[1] }}</span></span>
       <span style="font-weight:700;color:var(--green)">{{ item[2] }}</span>
@@ -466,9 +466,9 @@
     </div>
     <div style="position:relative;border-radius:20px;overflow:hidden">
       <img src="/static/img/pubshow/pubshow-casamento-tela.png"
-           alt="Pedido de casamento na tela" style="width:100%;display:block">
+           alt="Pedido de namoro na tela" style="width:100%;display:block">
       <div style="position:absolute;bottom:0;left:0;right:0;padding:16px;background:linear-gradient(transparent,rgba(0,0,0,.8));font-weight:800;font-size:14px">
-        💍 Pedido de casamento — R$ 25
+        💕 Pedido de namoro — R$ 25
       </div>
     </div>
   </div>
@@ -481,7 +481,7 @@
   <h2 class="section-title">O bar inteiro participa.<br>Ninguém esquece.</h2>
   <p class="section-sub" style="max-width:560px;margin:0 auto 48px">Seu cliente paga R$ 15 e o nome dele aparece na TV do bar com confetes e música. Todo mundo vira, todo mundo grava, todo mundo quer fazer igual.</p>
   <div class="dedicatorias-grid">
-    {% for emoji, nome, desc, preco in [('🎂','Parabéns!','Nome na tela + confetes + todo mundo canta','R$ 15'),('💌','Dedicatória','Mensagem de amor na tela inteira','R$ 10'),('🍻','Brinde Geral','Todo o bar levanta o copo junto','R$ 5'),('🎉','Chegamos!','Sua chegada anunciada no telão','R$ 5'),('💍','Pedido de casamento','O momento mais épico do bar','R$ 25'),('👑','Tocar AGORA','Sua música interrompe tudo','R$ 10')] %}
+    {% for emoji, nome, desc, preco in [('🎂','Parabéns!','Nome na tela + confetes + todo mundo canta','R$ 15'),('💌','Dedicatória','Mensagem de amor na tela inteira','R$ 10'),('🍻','Brinde Geral','Todo o bar levanta o copo junto','R$ 5'),('🎉','Chegamos!','Sua chegada anunciada no telão','R$ 5'),('💕','Pedido de namoro','O momento mais épico do bar','R$ 25'),('👑','Tocar AGORA','Sua música interrompe tudo','R$ 10')] %}
     <div class="ded-card">
       <div class="ded-emoji">{{ emoji }}</div>
       <div class="ded-nome">{{ nome }}</div>
@@ -600,7 +600,7 @@
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:28px;text-align:left">
       <div style="color:#fbbf24;font-size:18px;margin-bottom:12px">★★★★★</div>
-      <p style="font-size:14px;color:#c8c8e8;line-height:1.6;margin-bottom:16px">"Uma cliente pediu um pedido de casamento pelo Jukebox. R$ 25 pra coisa aparecer na tela — o cara foi lá na frente e ela aceitou. Nunca vi tanta emoção no meu bar."</p>
+      <p style="font-size:14px;color:#c8c8e8;line-height:1.6;margin-bottom:16px">"Um cliente fez um pedido de namoro pelo Jukebox. R$ 25 pra coisa aparecer na tela — o cara foi lá na frente e ela aceitou. Nunca vi tanta emoção no meu bar."</p>
       <div style="display:flex;align-items:center;gap:10px">
         <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#22c55e,#16a34a);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:900;color:#fff;flex-shrink:0">C</div>
         <div><div style="font-size:13px;font-weight:700">Claudia F.</div><div style="font-size:11px;color:var(--text2)">Bar da Claudia · Florianópolis/SC</div></div>

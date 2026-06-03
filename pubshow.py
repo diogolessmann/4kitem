@@ -186,7 +186,8 @@ TIPOS_PEDIDO = {
     'dedicatoria':      {'nome': 'Dedicatória ❤️',        'emoji': '💌', 'preco': 10.00, 'cor': '#ef4444'},
     'brinde':           {'nome': 'Brinde Geral! 🍻',       'emoji': '🍻', 'preco': 5.00,  'cor': '#22c55e'},
     'chegada':          {'nome': 'Chegamos! 🎉',           'emoji': '🎉', 'preco': 5.00,  'cor': '#f97316'},
-    'casamento':        {'nome': 'Pedido de Casamento 💍', 'emoji': '💍', 'preco': 25.00, 'cor': '#a855f7'},
+    # chave 'casamento' mantida por compatibilidade com o banco; rótulo agora é "Namoro"
+    'casamento':        {'nome': 'Pedido de Namoro 💕',   'emoji': '💕', 'preco': 25.00, 'cor': '#a855f7'},
 }
 
 
