@@ -884,6 +884,7 @@ select option{background:var(--surface2)}
           </label>
           <textarea name="message" id="campanha-message"
             placeholder="O resultado otimizado aparece aqui..."
+            oninput="mzRenderRisk()"
             style="width:100%;min-height:200px;background:rgba(34,197,94,.04);border:1px solid rgba(34,197,94,.25);border-radius:10px;padding:10px 12px;color:#f0f0ff;font-size:13px;font-family:inherit;outline:none;resize:vertical;line-height:1.6"
             required></textarea>
           <div style="font-size:11px;color:var(--text2);margin-top:4px">
@@ -900,6 +901,9 @@ select option{background:var(--surface2)}
         </div>
 
       </div><!-- /paineis -->
+
+      <!-- Scanner de risco anti-ban (atualiza ao vivo) -->
+      <div id="risco-panel" style="display:none;margin-top:14px;background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:12px;padding:12px 14px"></div>
 
       <div class="modal-btns" style="margin-top:14px">
         <button type="button" class="btn btn-outline" onclick="closeModal('modal-campanha')">Cancelar</button>
@@ -967,6 +971,8 @@ function closeModal(id) {
     if (status) status.textContent = '';
     const btnOtimizar = document.getElementById('btn-otimizar');
     if (btnOtimizar) btnOtimizar.textContent = '⚡ Otimizar Anti-Spam →';
+    const risco = document.getElementById('risco-panel');
+    if (risco) { risco.style.display = 'none'; risco.innerHTML = ''; }
   }
 }
 document.querySelectorAll('.modal-overlay').forEach(o => {
@@ -1105,6 +1111,88 @@ function applyTemplateA(btn) {
   showToast('✅ Template carregado na Tela A');
 }
 
+// ── Scanner de risco anti-ban (consultor ao vivo) ────────────────────────────
+function mzAnalyzeRisk(text) {
+  text = (text || '').trim();
+  if (!text) return { score: 100, items: [], empty: true };
+  const items = []; let score = 100;
+
+  // Links (o que MAIS bana)
+  const links = (text.match(/https?:\/\/[^\s]+/g) || []).length;
+  if (links === 0)      items.push({lvl:'ok',  t:'Nenhum link — risco zero de link'});
+  else if (links === 1) items.push({lvl:'ok',  t:'1 link — ideal'});
+  else if (links === 2) { score -= 15; items.push({lvl:'warn', t:'2 links — risco médio. Tente deixar só 1.'}); }
+  else                  { score -= 32; items.push({lvl:'bad',  t:links + ' links — ALTO risco. Reduza para 1 link.'}); }
+
+  // Tamanho
+  const len = text.length;
+  if (len <= 600)       items.push({lvl:'ok',  t:'Tamanho bom (' + len + ' caracteres)'});
+  else if (len <= 1000) { score -= 8;  items.push({lvl:'warn', t:'Mensagem longa (' + len + '). Ideal < 600.'}); }
+  else                  { score -= 18; items.push({lvl:'bad',  t:'Muito longa (' + len + '). Encurte para < 800.'}); }
+
+  // Opt-out (reduz denúncia, que é o que mais bana)
+  if (/\b(sair|descadastr\w*|n[ãa]o\s+receber|pare\s+de\s+receber|remover|stop)\b/i.test(text))
+    items.push({lvl:'ok', t:'Tem opção de sair (reduz denúncia)'});
+  else { score -= 12; items.push({lvl:'warn', t:'Sem saída. Adicione "responda SAIR pra não receber".'}); }
+
+  // Spintax
+  if (/\{[^{}]*\|[^{}]*\}/.test(text)) items.push({lvl:'ok', t:'Tem variações {a|b} — cada envio sai único'});
+  else { score -= 15; items.push({lvl:'warn', t:'Sem variações. Use o botão "Otimizar Anti-Spam".'}); }
+
+  // Personalização
+  if (/\{nome\}|\{name\}/i.test(text)) items.push({lvl:'ok', t:'Usa {nome} — personalizado'});
+  else { score -= 6; items.push({lvl:'warn', t:'Sem {nome}. Personalizar reduz cara de robô.'}); }
+
+  // CAIXA ALTA
+  const caps = (text.match(/\b[A-ZÀ-Ý]{4,}\b/g) || []).filter(w => !/^(WHATSAPP|PIX|SC|CRLV|CEP)$/.test(w));
+  if (caps.length >= 3) { score -= 10; items.push({lvl:'warn', t:caps.length + ' palavras em CAIXA ALTA — parece spam.'}); }
+
+  // Palavras-gatilho de spam
+  const gat = ['gr[áa]tis','promo[çc][ãa]o','imperd[íi]vel','clique\\s+aqui','urgente','[úu]ltima\\s+chance','ganhe','renda\\s+extra','dinheiro\\s+f[áa]cil','100%','garantido'];
+  const hits = (text.match(new RegExp('\\b(' + gat.join('|') + ')\\b','gi')) || []);
+  if (hits.length >= 3) { score -= 12; items.push({lvl:'warn', t:'Muitas palavras-gatilho de spam (' + [...new Set(hits.map(h=>h.toLowerCase()))].slice(0,3).join(', ') + '…)'}); }
+  else if (hits.length > 0) items.push({lvl:'warn', t:'Palavra-gatilho de spam: ' + hits[0]});
+
+  // Emojis em excesso
+  let emojis = 0; try { emojis = (text.match(/\p{Extended_Pictographic}/gu) || []).length; } catch(e){}
+  if (emojis > 10) { score -= 8; items.push({lvl:'warn', t:emojis + ' emojis — exagero. Reduza.'}); }
+
+  // Pontuação exagerada
+  if (/[!?]{3,}/.test(text)) { score -= 5; items.push({lvl:'warn', t:'Pontuação exagerada (!!! ou ???).'}); }
+
+  score = Math.max(0, Math.min(100, score));
+  return { score, items };
+}
+
+function mzRenderRisk() {
+  const panel = document.getElementById('risco-panel');
+  if (!panel) return;
+  const a = document.getElementById('campanha-texto-original');
+  const b = document.getElementById('campanha-message');
+  const text = ((b && b.value) || (a && a.value) || '').trim();
+  if (!text) { panel.style.display = 'none'; return; }
+  panel.style.display = 'block';
+  const r = mzAnalyzeRisk(text);
+  let cor, label;
+  if (r.score >= 80)      { cor = '#22c55e'; label = 'Baixo risco de ban'; }
+  else if (r.score >= 55) { cor = '#f59e0b'; label = 'Risco médio — dá pra melhorar'; }
+  else                    { cor = '#ef4444'; label = 'Risco ALTO de ban'; }
+  const icon = { ok:'✅', warn:'⚠️', bad:'🔴' };
+  panel.innerHTML =
+    '<div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">' +
+      '<div style="font-size:28px;font-weight:900;color:' + cor + ';line-height:1">' + r.score + '</div>' +
+      '<div style="flex:1">' +
+        '<div style="font-weight:800;color:' + cor + ';font-size:13px">🛡️ ' + label + '</div>' +
+        '<div style="height:6px;background:rgba(255,255,255,.1);border-radius:4px;margin-top:5px;overflow:hidden">' +
+          '<div style="height:100%;width:' + r.score + '%;background:' + cor + ';transition:.3s"></div>' +
+        '</div>' +
+      '</div>' +
+    '</div>' +
+    '<div style="display:flex;flex-direction:column;gap:3px">' +
+      r.items.map(i => '<div style="font-size:11px;color:var(--text2);line-height:1.45">' + icon[i.lvl] + ' ' + i.t + '</div>').join('') +
+    '</div>';
+}
+
 // ── Controle do painel duplo ──────────────────────────────────────────────────
 function campanhaMsgAlterada() {
   // Quando o usuário edita a Tela A, reseta a Tela B
@@ -1117,6 +1205,7 @@ function campanhaMsgAlterada() {
     document.getElementById('btn-criar-campanha').disabled = true;
     document.getElementById('otimizar-status').textContent = 'Texto alterado — otimize novamente.';
   }
+  mzRenderRisk();
 }
 
 async function otimizarMensagem() {
@@ -1147,6 +1236,7 @@ async function otimizarMensagem() {
       document.getElementById('modal-campanha-box').style.maxWidth = '860px';
       // Muda grid para 2 colunas em telas largas
       document.getElementById('campanha-paineis').style.gridTemplateColumns = 'minmax(0,1fr) minmax(0,1fr)';
+      mzRenderRisk();
       showToast('✅ Mensagem otimizada!');
     } else {
       status.textContent = '❌ ' + (d.erro || 'Erro ao otimizar.');
