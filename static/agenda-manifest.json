@@ -1,6 +1,6 @@
 {
-  "name": "Agenda SC — Painel",
-  "short_name": "Agenda SC",
+  "name": "AgendaJá — Painel",
+  "short_name": "AgendaJá",
   "description": "Painel de agendamentos para negócios",
   "start_url": "/agenda/painel",
   "display": "standalone",

@@ -179,12 +179,13 @@
   {% endif %}
   <a href="/agenda/cadastro" class="powered" target="_blank" rel="noopener">
     <span class="pow-badge">GRÁTIS</span>
-    Agendamento pelo <strong style="color:var(--green)">Agenda SC</strong> — para o seu negócio também
+    Agendamento pelo <strong style="color:var(--green)">AgendaJá</strong> — para o seu negócio também
   </a>
   {% if biz.cover_photo %}</div>{% endif %}
 </div>
 
 {% set tem_profissionais = professionals and professionals|length > 0 %}
+{% set seg = seg | default({'prof':'Profissional','profs':'Profissionais','cliente':'Cliente','servico':'Serviço','agendar_cta':'Agendar horário'}, true) %}
 
 <div class="steps-bar" id="steps-bar">
   <div class="step-dot active" id="sdot-1">
@@ -194,7 +195,7 @@
   {% if tem_profissionais %}
   <div class="step-dot" id="sdot-2">
     <div class="step-circle">2</div>
-    <div class="step-label">Profissional</div>
+    <div class="step-label">{{ seg.prof }}</div>
   </div>
   <div class="step-dot" id="sdot-3">
     <div class="step-circle">3</div>
@@ -228,7 +229,7 @@
 
   <!-- STEP 1: SERVIÇO -->
   <div class="step-view active" id="step-1">
-    <div class="section-title">✂️ Escolha o serviço</div>
+    <div class="section-title">📋 Escolha o {{ seg.servico|lower }}</div>
     {% if services %}
       {% for s in services %}
       <button class="service-btn" onclick="selectService({{ s.id }}, '{{ s.name | e }}', {{ s.duration_minutes }}, {{ s.price }})">
@@ -250,7 +251,7 @@
   {% if tem_profissionais %}
   <!-- STEP 2: PROFISSIONAL (só aparece se negócio tem equipe) -->
   <div class="step-view" id="step-2">
-    <div class="section-title">👥 Escolha o profissional</div>
+    <div class="section-title">👥 Escolha o {{ seg.prof|lower }}</div>
     <div class="prof-grid">
       {% for p in professionals %}
       <button class="prof-card" onclick="selectProfissional({{ p.id }}, '{{ p.name | e }}')"
@@ -265,8 +266,8 @@
       </button>
       {% endfor %}
     </div>
-    <button class="prof-skip" onclick="selectProfissional(null, 'Qualquer profissional')">
-      🎲 Qualquer profissional disponível
+    <button class="prof-skip" onclick="selectProfissional(null, QUALQUER_LABEL)">
+      🎲 Qualquer {{ seg.prof|lower }} disponível
     </button>
     <button class="btn-back" onclick="goStep(1)">← Voltar</button>
   </div>
@@ -319,7 +320,7 @@
     </div>
     <div class="summary-box">
       <div class="summary-row"><span class="label">📋 Serviço</span><span class="value" id="sum-service">—</span></div>
-      <div class="summary-row"><span class="label">👤 Profissional</span><span class="value" id="sum-prof">—</span></div>
+      <div class="summary-row"><span class="label">👤 {{ seg.prof }}</span><span class="value" id="sum-prof">—</span></div>
       <div class="summary-row"><span class="label">📅 Data</span><span class="value" id="sum-date">—</span></div>
       <div class="summary-row"><span class="label">🕐 Horário</span><span class="value" id="sum-time">—</span></div>
       <div class="summary-row"><span class="label">🏢 Local</span><span class="value">{{ biz.name }}</span></div>
@@ -501,6 +502,7 @@ const BIZ_PHONE    = '{{ biz.phone }}'.replace(/\D/g, '');
 const BIZ_NAME     = '{{ biz.name }}';
 const BIZ_ADDRESS  = '{{ biz.address or "" | e }}';
 const TEM_PROFS    = {{ 'true' if tem_profissionais else 'false' }};
+const QUALQUER_LABEL = 'Qualquer {{ seg.prof|lower }}';
 
 // Step mapping: com ou sem profissionais
 // Com profs: 1=Serviço, 2=Profissional, 3=Data, 4=Horário, 5=Confirmar
@@ -511,7 +513,7 @@ const STEP_CONFIRM = TEM_PROFS ? 5 : 4;
 const TOTAL_STEPS  = TEM_PROFS ? 5 : 4;
 
 let selectedService     = null;
-let selectedProfissional = { id: null, name: 'Qualquer profissional' };
+let selectedProfissional = { id: null, name: QUALQUER_LABEL };
 let selectedDate        = null;
 let selectedTime        = null;
 let currentYear, currentMonth;
@@ -542,7 +544,7 @@ function selectService(id, name, duration, price) {
 }
 
 function selectProfissional(id, name) {
-  selectedProfissional = { id, name: name || 'Qualquer profissional' };
+  selectedProfissional = { id, name: name || QUALQUER_LABEL };
   document.querySelectorAll('.prof-card').forEach(c => c.classList.remove('selected'));
   if (id !== null) {
     event.currentTarget?.classList.add('selected');

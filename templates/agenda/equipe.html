@@ -1,9 +1,10 @@
+{% set seg = seg | default({'prof':'Profissional','profs':'Profissionais','cliente':'Cliente','clientes':'Clientes','servico':'Servico','agendar_cta':'Agendar horario'}, true) %}
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Equipe — {{ biz.name }} · Agenda SC</title>
+<title>Equipe — {{ biz.name }} · AgendaJá</title>
 <style>
   :root{--bg:#0f0f13;--surface:#1a1a24;--surface2:#22222f;--green:#27ae60;--text:#e8e8f0;--text2:#9090a8;--border:rgba(255,255,255,0.08);--radius:14px}
   *{box-sizing:border-box;margin:0;padding:0}
@@ -62,7 +63,7 @@
 <body>
 
 <nav>
-  <span class="nav-logo">📅 Agenda SC</span>
+  <span class="nav-logo">📅 AgendaJá</span>
   <span style="font-size:12px;color:var(--text2);flex:1">{{ biz.name }}</span>
   <a href="/agenda/painel"><button class="nav-btn nav-btn-ghost">← Painel</button></a>
   <a href="/agenda/sair"><button class="nav-btn nav-btn-ghost">Sair</button></a>
@@ -72,15 +73,15 @@
   <div class="page-header">
     <div>
       <div class="page-title">👥 Equipe</div>
-      <div class="page-sub">Gerencie os profissionais do seu negócio</div>
+      <div class="page-sub">Gerencie os {{ seg.profs|lower }} do seu negócio</div>
     </div>
     <a href="/agenda/equipe/novo">
-      <button class="btn-primary">+ Adicionar profissional</button>
+      <button class="btn-primary">+ Adicionar {{ seg.prof|lower }}</button>
     </a>
   </div>
 
   <div class="info-box">
-    <strong>Como funciona?</strong> Cadastre seus profissionais aqui. Na hora do agendamento, o cliente poderá escolher com quem quer ser atendido, ver a foto e a especialidade de cada um. No financeiro, você acompanha a receita e comissão de cada profissional.
+    <strong>Como funciona?</strong> Cadastre seus {{ seg.profs|lower }} aqui. Na hora do agendamento, o cliente poderá escolher com quem quer ser atendido, ver a foto e a especialidade de cada um. No financeiro, você acompanha a receita e comissão de cada {{ seg.prof|lower }}.
   </div>
 
   {% if profissionais %}
@@ -112,7 +113,7 @@
           <button class="btn btn-ghost btn-sm">✏️ Editar</button>
         </a>
         {% if p.active %}
-        <form method="POST" action="/agenda/equipe/excluir/{{ p.id }}" onsubmit="return confirm('Desativar este profissional?')">
+        <form method="POST" action="/agenda/equipe/excluir/{{ p.id }}" onsubmit="return confirm('Desativar este {{ seg.prof|lower }}?')">
           <button type="submit" class="btn btn-red btn-sm">⏸ Desativar</button>
         </form>
         {% else %}
@@ -129,11 +130,11 @@
   <div class="card">
     <div class="empty">
       <div class="empty-icon">👤</div>
-      <div class="empty-title">Nenhum profissional cadastrado</div>
-      <div class="empty-sub">Adicione os profissionais da sua equipe para que os clientes<br>possam escolher com quem querem ser atendidos.</div>
+      <div class="empty-title">Nenhum {{ seg.prof|lower }} cadastrado</div>
+      <div class="empty-sub">Adicione os {{ seg.profs|lower }} da sua equipe para que os clientes<br>possam escolher com quem querem ser atendidos.</div>
       <br>
       <a href="/agenda/equipe/novo">
-        <button class="btn-primary" style="margin-top:8px">+ Adicionar primeiro profissional</button>
+        <button class="btn-primary" style="margin-top:8px">+ Adicionar primeiro {{ seg.prof|lower }}</button>
       </a>
     </div>
   </div>

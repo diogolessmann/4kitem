@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#27ae60">
 <link rel="manifest" href="/static/agenda-manifest.json">
-<title>Painel — {{ biz.name }} · Agenda SC</title>
+<title>Painel — {{ biz.name }} · AgendaJá</title>
 <style>
   :root{--bg:#0f0f13;--surface:#1a1a24;--surface2:#22222f;--accent:#e94560;--accent2:#f5a623;--green:#27ae60;--blue:#3498db;--purple:#9b59b6;--text:#e8e8f0;--text2:#9090a8;--border:rgba(255,255,255,0.08);--radius:14px}
   *{box-sizing:border-box;margin:0;padding:0}
@@ -146,7 +146,7 @@
 <body>
 
 <nav>
-  <span class="nav-logo">📅 Agenda SC</span>
+  <span class="nav-logo">📅 AgendaJá</span>
   <span class="nav-biz">{{ biz.name }}</span>
   <a href="/agendar/{{ biz.slug }}" target="_blank">
     <button class="nav-btn nav-btn-green">🔗 Minha página</button>
@@ -260,13 +260,14 @@
 .gs-btn:hover{background:rgba(39,174,96,.22)}
 </style>
 
+{% set seg = seg | default({'prof':'Profissional','profs':'Profissionais','cliente':'Cliente','clientes':'Clientes','servico':'Serviço','agendar_cta':'Agendar horário'}, true) %}
 <div class="tabs">
   <button class="tab-btn active" onclick="showTab('hoje',this)">📅 Hoje</button>
   <button class="tab-btn" onclick="showTab('agendamentos',this)">📋 Agenda</button>
-  <button class="tab-btn" onclick="showTab('clientes',this)">👥 Clientes</button>
+  <button class="tab-btn" onclick="showTab('clientes',this)">👥 {{ seg.clientes }}</button>
   <button class="tab-btn" onclick="showTab('financeiro',this)">💰 Financeiro</button>
   {% if tem_profissionais %}<button class="tab-btn" onclick="showTab('equipe',this)">🧑‍🤝‍🧑 Equipe</button>{% endif %}
-  <button class="tab-btn" onclick="showTab('servicos',this)">✂️ Serviços</button>
+  <button class="tab-btn" onclick="showTab('servicos',this)">🗂️ Serviços</button>
   <button class="tab-btn" onclick="showTab('horarios',this)">🕐 Horários</button>
   <button class="tab-btn" onclick="showTab('config',this)">⚙️ Config</button>
 </div>
@@ -380,7 +381,7 @@
       </div>
       <div class="stat blue">
         <div class="n">{{ total_clientes }}</div>
-        <div class="l">👥 Clientes</div>
+        <div class="l">👥 {{ seg.clientes }}</div>
       </div>
       <div class="stat purple">
         <div class="n">R${{ '%.0f'|format(receita_mes) }}</div>
@@ -480,7 +481,7 @@
   <div class="tab-content" id="tab-clientes">
     <div class="card">
       <div class="card-title">
-        👥 Clientes
+        👥 {{ seg.clientes }}
         <span style="font-size:12px;font-weight:400;color:var(--text2)">{{ total_clientes }} total</span>
       </div>
       <div class="form-group" style="margin-bottom:14px">
@@ -509,7 +510,7 @@
     <!-- Financeiro por profissional -->
     <div class="card" style="margin-top:14px">
       <div class="card-title">
-        💰 Financeiro por profissional
+        💰 Financeiro por {{ seg.prof|lower }}
         <select id="equipe-mes" onchange="carregarEquipe()" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:4px 8px;font-size:11px;outline:none"></select>
       </div>
       <div id="equipe-financeiro"><div class="empty">Selecione o mês para ver os dados.</div></div>
@@ -519,7 +520,7 @@
   <!-- ── TAB SERVIÇOS ───────────────────────────────────────────── -->
   <div class="tab-content" id="tab-servicos">
     <div class="card">
-      <div class="card-title">✂️ Meus Serviços</div>
+      <div class="card-title">📋 Meus Serviços</div>
       <div id="services-list">
         {% if services %}
           {% for s in services %}
