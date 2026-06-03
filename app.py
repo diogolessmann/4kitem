@@ -1889,7 +1889,24 @@ def webhook_asaas_global():
     customer_id = parts[1] if len(parts) > 1 else None
     plano_key   = parts[2] if len(parts) > 2 else ''
 
-    if ref.startswith('defesapro_'):
+    if ref.startswith('agendawpp_'):
+        # Add-on WhatsApp Automático do AgendaJá (R$ 39,90/mês)
+        if customer_id:
+            conn = get_saas_db()
+            b = conn.execute('SELECT id, name, email, owner_name FROM agenda_businesses WHERE asaas_customer_id=?',
+                             (customer_id,)).fetchone()
+            if b:
+                conn.execute('UPDATE agenda_businesses SET wpp_addon=? WHERE id=?',
+                             (1 if ativar else 0, b['id']))
+                conn.commit()
+                if ativar and b['email']:
+                    _enviar_email(b['email'], '✅ AgendaJá — WhatsApp Automático ativo!',
+                        _email_pagamento_confirmado('AgendaJá', '📲', '#22c55e',
+                            b['owner_name'].split()[0], 'WhatsApp Automático (add-on)',
+                            'R$ 39,90/mês', 'https://4kitem.com.br/agenda/painel'))
+            conn.close()
+
+    elif ref.startswith('defesapro_'):
         if customer_id:
             conn = get_saas_db()
             u = conn.execute('SELECT id, name, email FROM defesapro_users WHERE asaas_customer_id=?',
@@ -4120,6 +4137,141 @@ def agenda_assinar():
             else:
                 erro = 'Não foi possível gerar o pagamento. Tente novamente.'
     return render_template('agenda/checkout.html', plano=p, erro=erro)
+
+
+# ── AgendaJá — Add-on WhatsApp Automático (R$ 39,90/mês) ──────────────────────
+AGENDA_WPP_ADDON = {'label': 'AgendaJá — WhatsApp Automático', 'preco': 39.90, 'price': 'R$ 39,90/mês'}
+
+
+@app.route('/agenda/whatsapp/contratar', methods=['GET', 'POST'])
+@_agenda_login_required
+def agenda_wpp_contratar():
+    biz_id = session['agenda_business_id']
+    p = AGENDA_WPP_ADDON
+    erro = None
+    conn = get_saas_db()
+    biz = dict(conn.execute('SELECT * FROM agenda_businesses WHERE id=?', (biz_id,)).fetchone())
+    conn.close()
+    if biz.get('wpp_addon'):
+        return redirect('/agenda/painel')
+    if request.method == 'POST':
+        billing_type = request.form.get('billing_type', 'PIX').upper()
+        if billing_type not in ('PIX', 'BOLETO', 'CREDIT_CARD'):
+            billing_type = 'PIX'
+        customer_id = _asaas_criar_ou_buscar_cliente_saas(
+            biz['name'], biz['email'], biz['phone'], biz.get('cpf_cnpj', ''), biz['id'], 'agenda_businesses'
+        )
+        if not customer_id:
+            log.error('[AgendaWpp] Falha customer_id biz_id=%s', biz_id)
+            erro = ('Não conseguimos processar o pagamento agora. '
+                    'Fale no WhatsApp (47) 99960-6998 e ativamos manualmente. 💬')
+        else:
+            conn2 = get_saas_db()
+            conn2.execute('UPDATE agenda_businesses SET asaas_customer_id=? WHERE id=?',
+                          (customer_id, biz_id))
+            conn2.commit(); conn2.close()
+            resp = _asaas_criar_assinatura_saas(
+                customer_id, 'agendawpp', 'addon', p['preco'],
+                'AgendaJá — WhatsApp Automático (add-on)', billing_type
+            )
+            if resp.get('id'):
+                if billing_type == 'PIX':
+                    pix = _asaas_get_pix_qr(resp['id'])
+                    session['agenda_pix_qr'] = pix.get('encodedImage', '')
+                    session['agenda_pix_payload'] = pix.get('payload', '')
+                else:
+                    session.pop('agenda_pix_qr', None)
+                    session.pop('agenda_pix_payload', None)
+                return redirect('/agenda/aguardando-pagamento')
+            else:
+                erro = 'Não foi possível gerar o pagamento. Tente novamente.'
+    return render_template('agenda/checkout_wpp.html', plano=p, erro=erro)
+
+
+@app.route('/agenda/whatsapp/qr')
+@_agenda_login_required
+def agenda_wpp_qr():
+    """Cria/retorna o QR Code da instância Evolution do negócio (add-on ativo)."""
+    biz_id = session['agenda_business_id']
+    conn = get_saas_db()
+    biz = dict(conn.execute('SELECT * FROM agenda_businesses WHERE id=?', (biz_id,)).fetchone())
+    conn.close()
+    if not biz.get('wpp_addon'):
+        return jsonify({'erro': 'Add-on de WhatsApp não contratado.'}), 402
+    evo_url = os.environ.get('EVOLUTION_API_URL', '').rstrip('/')
+    evo_key = os.environ.get('EVOLUTION_API_KEY', '')
+    if not evo_url or not evo_key:
+        return jsonify({'erro': 'Evolution API não configurada.'})
+    instance = f'agenda{biz_id}'
+    headers = {'apikey': evo_key, 'Content-Type': 'application/json'}
+    # Já salva a instância no negócio (os envios usam esse nome)
+    conn2 = get_saas_db()
+    conn2.execute('UPDATE agenda_businesses SET mandazap_instance=?, mandazap_ativo=1 WHERE id=?',
+                  (instance, biz_id))
+    conn2.commit(); conn2.close()
+    try:
+        import requests as _req
+
+        def _return_qr(qr):
+            if not qr.startswith('data:'):
+                qr = 'data:image/png;base64,' + qr
+            return jsonify({'qr': qr, 'instance': instance})
+
+        # 1) tenta QR na instância existente
+        try:
+            r_conn = _req.get(f'{evo_url}/instance/connect/{instance}', headers=headers, timeout=12)
+            qr = _evo_extract_qr(r_conn.json() if r_conn.content else {})
+            if qr:
+                return _return_qr(qr)
+        except Exception:
+            pass
+        # 2) reset + cria limpa
+        _evo_delete_instance(evo_url, instance, headers)
+        time.sleep(1.5)
+        cr = _req.post(f'{evo_url}/instance/create', headers=headers,
+                       json={'instanceName': instance, 'qrcode': True,
+                             'integration': 'WHATSAPP-BAILEYS'}, timeout=20)
+        qr = _evo_extract_qr(cr.json() if cr.content else {})
+        if qr:
+            return _return_qr(qr)
+        # 3) polling
+        for _ in range(3):
+            time.sleep(2.5)
+            r2 = _req.get(f'{evo_url}/instance/connect/{instance}', headers=headers, timeout=15)
+            qr = _evo_extract_qr(r2.json() if r2.content else {})
+            if qr:
+                return _return_qr(qr)
+        return jsonify({'erro': 'QR Code não disponível ainda. Aguarde 5s e tente de novo.'})
+    except Exception as e:
+        log.error(f'[AgendaWpp QR] {e}')
+        return jsonify({'erro': 'Erro ao gerar QR Code.'})
+
+
+@app.route('/agenda/whatsapp/status')
+@_agenda_login_required
+def agenda_wpp_status():
+    """Verifica se a instância do negócio está conectada ao WhatsApp."""
+    biz_id = session['agenda_business_id']
+    conn = get_saas_db()
+    biz = dict(conn.execute('SELECT * FROM agenda_businesses WHERE id=?', (biz_id,)).fetchone())
+    conn.close()
+    evo_url = os.environ.get('EVOLUTION_API_URL', '').rstrip('/')
+    evo_key = os.environ.get('EVOLUTION_API_KEY', '')
+    instance = biz.get('mandazap_instance') or f'agenda{biz_id}'
+    if not evo_url or not evo_key:
+        return jsonify({'connected': False})
+    try:
+        import requests as _req
+        r = _req.get(f'{evo_url}/instance/connectionState/{instance}',
+                     headers={'apikey': evo_key}, timeout=8)
+        d = r.json() if r.content else {}
+        state = (d.get('instance', {}).get('state') if isinstance(d.get('instance'), dict)
+                 else d.get('state', '')) or ''
+        return jsonify({'connected': state == 'open', 'state': state,
+                        'addon': bool(biz.get('wpp_addon'))})
+    except Exception:
+        return jsonify({'connected': False})
+
 
 
 @app.route('/agenda/aguardando-pagamento')

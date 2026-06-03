@@ -357,6 +357,8 @@ def init_saas_db():
         # AgendaJá — horário próprio por profissional (NULL = horário geral do negócio)
         "ALTER TABLE agenda_availability ADD COLUMN professional_id INTEGER DEFAULT NULL",
         "CREATE INDEX IF NOT EXISTS idx_agenda_avail_prof ON agenda_availability(business_id, professional_id, weekday)",
+        # AgendaJá — add-on WhatsApp Automático (R$ 39,90/mês)
+        "ALTER TABLE agenda_businesses ADD COLUMN wpp_addon INTEGER DEFAULT 0",
         # DefesaPro Premium — monitor de e-mail e notificações
         '''CREATE TABLE IF NOT EXISTS defesapro_email_config (
             id          INTEGER PRIMARY KEY AUTOINCREMENT,

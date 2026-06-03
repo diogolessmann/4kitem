@@ -663,13 +663,13 @@
     <div class="card">
       <div class="card-title">🤖 MandaZap — WhatsApp Automático</div>
 
-      {% if not biz.mandazap_ativo %}
+      {% if not biz.wpp_addon %}
       <div class="upgrade-banner" style="flex-direction:column;align-items:flex-start;gap:12px">
         <div style="display:flex;align-items:center;gap:12px">
           <div class="upgrade-icon">🚀</div>
           <div class="upgrade-text">
             <h3>Reduza faltas em até 60%!</h3>
-            <p>Ative o MandaZap e envie confirmações, <strong>lembretes automáticos 24h antes</strong> e avisos de cancelamento pelo WhatsApp.</p>
+            <p>Ative o WhatsApp automático e envie confirmações, <strong>lembretes automáticos 24h antes</strong> e avisos de cancelamento pelo WhatsApp.</p>
           </div>
         </div>
         <div style="background:rgba(0,0,0,.25);border-radius:10px;padding:12px 16px;width:100%">
@@ -677,19 +677,24 @@
           <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
             <div style="font-size:13px;color:#fff">
               <strong style="font-size:16px;color:#2ecc71">R$ 39,90<span style="font-size:12px;font-weight:400">/mês</span></strong>
-              &nbsp;· WhatsApp automático add-on
+              &nbsp;· add-on do AgendaJá
             </div>
-            <a href="/mandazap/cadastro" target="_blank" style="background:linear-gradient(135deg,#27ae60,#2ecc71);color:#fff;padding:7px 16px;border-radius:8px;font-size:12px;font-weight:800;white-space:nowrap">
-              Contratar MandaZap →
+            <a href="/agenda/whatsapp/contratar" style="background:linear-gradient(135deg,#27ae60,#2ecc71);color:#fff;padding:7px 16px;border-radius:8px;font-size:12px;font-weight:800;white-space:nowrap">
+              Contratar WhatsApp Automático →
             </a>
-            <span style="font-size:11px;color:rgba(255,255,255,.5)">Após criar, cole o nome da instância abaixo ↓</span>
+            <span style="font-size:11px;color:rgba(255,255,255,.5)">Após pagar, você conecta seu número por QR Code aqui ↓</span>
           </div>
         </div>
       </div>
       {% else %}
-      <div style="background:rgba(39,174,96,.08);border:1px solid rgba(39,174,96,.2);border-radius:10px;padding:10px 14px;margin-bottom:16px;display:flex;align-items:center;gap:8px">
-        <span style="font-size:16px">✅</span>
-        <span style="font-size:13px;color:#27ae60;font-weight:600">MandaZap ativo — WhatsApp automático funcionando</span>
+      <div style="background:rgba(39,174,96,.08);border:1px solid rgba(39,174,96,.2);border-radius:10px;padding:12px 14px;margin-bottom:16px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+          <span style="font-size:16px">✅</span>
+          <span style="font-size:13px;color:#27ae60;font-weight:600">Add-on WhatsApp Automático ativo</span>
+        </div>
+        <button onclick="abrirQrWpp()" style="width:100%;padding:10px;background:linear-gradient(135deg,#27ae60,#2ecc71);border:none;border-radius:10px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">
+          📲 Conectar / Reconectar meu WhatsApp (QR Code)
+        </button>
       </div>
       {% endif %}
 
@@ -701,11 +706,16 @@
             <span class="slider"></span>
           </label>
         </div>
+        {% if biz.wpp_addon %}
+        <input type="hidden" id="mz-instance" value="{{ biz.mandazap_instance or '' }}">
+        <div style="font-size:11px;color:var(--text2);margin:4px 0 8px">📲 Seu WhatsApp é conectado pelo botão <strong>"Conectar WhatsApp (QR Code)"</strong> acima.</div>
+        {% else %}
         <div class="form-group">
           <label>Nome da instância Evolution API</label>
           <input type="text" id="mz-instance" value="{{ biz.mandazap_instance or '' }}" placeholder="Ex: minha-barbearia" oninput="debounceConfig()">
           <div style="font-size:10px;color:var(--text2);margin-top:3px">Crie sua instância no <a href="/mandazap" target="_blank" style="color:var(--green)">MandaZap</a> e cole o nome aqui.</div>
         </div>
+        {% endif %}
         <!-- Botão Testar -->
         <button onclick="testarWhatsapp()" id="btn-testar-wpp" style="margin-top:4px;width:100%;padding:10px;background:rgba(39,174,96,.12);border:1px solid rgba(39,174,96,.3);border-radius:10px;color:#27ae60;font-size:13px;font-weight:700;cursor:pointer;transition:.2s;font-family:inherit">
           📲 Testar envio agora
@@ -1185,6 +1195,60 @@ async function testarWhatsapp() {
     btn.textContent = '📲 Testar envio agora';
   }
   btn.disabled = false;
+}
+
+// ── Conectar WhatsApp via QR (add-on) ────────────────────────────
+let _qrStatusTimer = null;
+async function abrirQrWpp() {
+  let ov = document.getElementById('qr-wpp-overlay');
+  if (!ov) {
+    ov = document.createElement('div');
+    ov.id = 'qr-wpp-overlay';
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;z-index:9999;padding:20px';
+    ov.innerHTML = `
+      <div style="background:var(--surface,#1a1a24);border:1px solid var(--border,#2a2a3a);border-radius:18px;padding:24px;max-width:340px;width:100%;text-align:center">
+        <div style="font-size:16px;font-weight:800;margin-bottom:4px">📲 Conectar WhatsApp</div>
+        <div style="font-size:12px;color:var(--text2,#9090a8);margin-bottom:16px">Abra o WhatsApp → Aparelhos conectados → Conectar aparelho e aponte para o QR.</div>
+        <div id="qr-wpp-body" style="min-height:240px;display:flex;align-items:center;justify-content:center">⏳ Gerando QR Code...</div>
+        <button onclick="fecharQrWpp()" style="margin-top:14px;width:100%;padding:10px;background:var(--surface2,#22222f);border:1px solid var(--border,#2a2a3a);border-radius:10px;color:var(--text,#e8e8f0);font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Fechar</button>
+      </div>`;
+    document.body.appendChild(ov);
+  }
+  ov.style.display = 'flex';
+  const body = document.getElementById('qr-wpp-body');
+  body.innerHTML = '⏳ Gerando QR Code...';
+  try {
+    const r = await fetch('/agenda/whatsapp/qr');
+    const d = await r.json();
+    if (d.qr) {
+      body.innerHTML = `<img src="${d.qr}" alt="QR Code" style="width:240px;height:240px;border-radius:10px;background:#fff;padding:6px">`;
+      iniciarPollingStatus();
+    } else {
+      body.innerHTML = `<div style="color:#ef4444;font-size:13px">❌ ${d.erro || 'Não foi possível gerar o QR.'}</div>`;
+    }
+  } catch(e) {
+    body.innerHTML = '<div style="color:#ef4444;font-size:13px">❌ Erro de conexão.</div>';
+  }
+}
+function iniciarPollingStatus() {
+  if (_qrStatusTimer) clearInterval(_qrStatusTimer);
+  _qrStatusTimer = setInterval(async () => {
+    try {
+      const r = await fetch('/agenda/whatsapp/status');
+      const d = await r.json();
+      if (d.connected) {
+        clearInterval(_qrStatusTimer);
+        const body = document.getElementById('qr-wpp-body');
+        if (body) body.innerHTML = '<div style="color:#27ae60;font-size:15px;font-weight:700">✅ WhatsApp conectado!</div>';
+        setTimeout(fecharQrWpp, 1800);
+      }
+    } catch(e) {}
+  }, 3000);
+}
+function fecharQrWpp() {
+  if (_qrStatusTimer) clearInterval(_qrStatusTimer);
+  const ov = document.getElementById('qr-wpp-overlay');
+  if (ov) ov.style.display = 'none';
 }
 
 async function uploadLogo(input) {
