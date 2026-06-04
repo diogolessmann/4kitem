@@ -12655,11 +12655,26 @@ def slotzap_nova():
     if request.method == 'POST':
         nome    = request.form.get('nome', '').strip()
         descr   = request.form.get('descricao', '').strip()
-        preco   = float(request.form.get('preco') or 0)
-        total   = int(request.form.get('total_slots') or 100)
-        inicio  = int(request.form.get('slots_inicio') or 1)
+        # Preço aceita vírgula (34,90) e ponto de milhar (1.234,56)
+        preco_raw = (request.form.get('preco') or '0').strip()
+        if ',' in preco_raw:
+            preco_raw = preco_raw.replace('.', '').replace(',', '.')
+        try:
+            preco = float(preco_raw or 0)
+        except ValueError:
+            preco = 0
+        try:
+            total = int(float((request.form.get('total_slots') or '0').replace(',', '.')))
+        except ValueError:
+            total = 0
+        try:
+            inicio = int(float((request.form.get('slots_inicio') or '1').replace(',', '.')))
+        except ValueError:
+            inicio = 1
         if not nome or preco <= 0 or total < 2:
             erro = 'Nome, preço e quantidade são obrigatórios.'
+        elif total > 5000:
+            erro = 'Quantidade máxima de 5.000 números por campanha.'
         elif preco < 5:
             erro = 'O valor mínimo por número é R$ 5,00 (exigência do Asaas para gerar PIX).'
         else:
