@@ -388,6 +388,21 @@ input:focus{border-color:#6366f1}
         Deixe vazio/0 para não usar a trava.
       </div>
     </div>
+    <div class="form-group" style="border-top:1px solid rgba(255,255,255,.08);padding-top:14px">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+        <input type="checkbox" id="ed-soesgotado" style="width:auto"
+               {% if camp.sortear_so_esgotado %}checked{% endif %}>
+        🔒 Só sortear quando ESGOTAR (100% pago)
+      </label>
+      <label style="margin-top:12px">🔑 Senha do sorteio (evita clique errado)</label>
+      <input type="text" id="ed-sorteio-senha" autocomplete="off"
+             placeholder="{% if camp.sortear_senha %}•••••• definida — digite p/ trocar{% else %}defina uma senha (opcional){% endif %}">
+      {% if camp.sortear_senha %}
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-top:8px;font-size:12px;color:#fca5a5">
+        <input type="checkbox" id="ed-remover-senha" style="width:auto"> Remover a senha do sorteio
+      </label>
+      {% endif %}
+    </div>
     <div class="form-group">
       <label>📅 Data do sorteio (opcional — mostra contador na página)</label>
       <input type="datetime-local" id="ed-data" value="{{ camp.data_sorteio or '' }}">
@@ -417,18 +432,25 @@ input:focus{border-color:#6366f1}
 const CAMP_ID = {{ camp.id }};
 const CAMP_STATUS = "{{ camp.status }}";
 const CAMP_INSTANCE = "{{ camp.evo_instance or '' }}";
+const CAMP_TEM_SENHA = {{ 'true' if camp.sortear_senha else 'false' }};
 let _slotId = null, _slotNum = null, _pixQr = '', _pixCopia = '';
 
-async function sortear(forcar) {
+async function sortear(forcar, senha) {
   if (!forcar && !confirm('Sortear um ganhador entre os números PAGOS? O resultado será anunciado no grupo (se configurado).')) return;
+  if (CAMP_TEM_SENHA && senha === undefined) {
+    senha = prompt('🔑 Digite a senha do sorteio para confirmar:') || '';
+    if (!senha) return;
+  }
   const r = await fetch(`/slotzap/campanha/${CAMP_ID}/sortear`, {
     method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({forcar: !!forcar})
+    body: JSON.stringify({forcar: !!forcar, senha: senha || ''})
   }).then(r=>r.json());
+  if (r.erro === 'senha_errada') { alert('🔑 Senha do sorteio incorreta. Tente de novo.'); return; }
+  if (r.erro === 'trava_esgotado') { alert(r.msg || '🔒 Só é possível sortear quando esgotar.'); return; }
   if (r.erro === 'trava_custo') {
     if (confirm('🚫 TRAVA ANTI-PREJUÍZO\n\n' + (r.msg || '') +
                 '\n\nQuer sortear MESMO ASSIM, assumindo o prejuízo?')) {
-      return sortear(true);
+      return sortear(true, senha);
     }
     return;
   }
@@ -450,11 +472,15 @@ async function salvarEditar() {
   const indicacao_ativa = document.getElementById('ed-indic').checked;
   const indicacao_meta = parseInt(document.getElementById('ed-indic-meta').value || 10);
   const custo_premio = document.getElementById('ed-custo').value || '';
+  const sortear_so_esgotado = document.getElementById('ed-soesgotado').checked;
+  const sortear_senha = document.getElementById('ed-sorteio-senha').value || '';
+  const _remEl = document.getElementById('ed-remover-senha');
+  const remover_senha = _remEl ? _remEl.checked : false;
   if (!nome) { alert('Informe o nome.'); return; }
   if (!(preco >= 5)) { alert('O preço mínimo por número é R$ 5,00.'); return; }
   const r = await fetch(`/slotzap/campanha/${CAMP_ID}/editar`, {
     method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({nome, descricao, preco, total_slots, data_sorteio, indicacao_ativa, indicacao_meta, custo_premio})
+    body: JSON.stringify({nome, descricao, preco, total_slots, data_sorteio, indicacao_ativa, indicacao_meta, custo_premio, sortear_so_esgotado, sortear_senha, remover_senha})
   }).then(r=>r.json());
   if (r.ok) {
     alert('✅ Campanha atualizada!' + (r.numeros_adicionados ? (' +' + r.numeros_adicionados + ' números') : ''));

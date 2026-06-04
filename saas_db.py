@@ -810,6 +810,9 @@ def init_slotzap_db():
         "CREATE INDEX IF NOT EXISTS idx_sz_ref_camp ON slotzap_indicadores(campanha_id)",
         # Custo do prêmio: trava o sorteio até a arrecadação real cobrir o prêmio (anti-prejuízo)
         "ALTER TABLE slotzap_campanhas ADD COLUMN custo_premio REAL DEFAULT 0",
+        # Travas do sorteio: só sortear quando esgotar (100% pago) + senha (anti-clique errado)
+        "ALTER TABLE slotzap_campanhas ADD COLUMN sortear_so_esgotado INTEGER DEFAULT 0",
+        "ALTER TABLE slotzap_campanhas ADD COLUMN sortear_senha TEXT DEFAULT ''",
     ]
     for sql in _sz_migrations:
         try:
