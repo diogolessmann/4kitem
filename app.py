@@ -12943,10 +12943,8 @@ def slotzap_editar(camp_id):
         custo_raw = custo_raw.replace('.', '').replace(',', '.')
     try:    custo_premio = max(0.0, float(custo_raw or 0))
     except (TypeError, ValueError): custo_premio = 0.0
-    # Travas do sorteio
-    so_esgotado   = 1 if data.get('sortear_so_esgotado') else 0
-    senha_in      = (data.get('sortear_senha') or '').strip()[:60]
-    remover_senha = bool(data.get('remover_senha'))
+    # Trava do sorteio (a senha agora é a de LOGIN da conta — nada a guardar por campanha)
+    so_esgotado = 1 if data.get('sortear_so_esgotado') else 0
     if not nome:
         return jsonify({'erro': 'Nome obrigatório'}), 400
     if preco < 5:
@@ -12959,18 +12957,11 @@ def slotzap_editar(camp_id):
         conn.close()
         return jsonify({'erro': 'Campanha não encontrada'}), 404
     camp = dict(camp)
-    # Senha do sorteio: nova (hash) / remover / manter a atual — nunca apaga sem querer
-    if remover_senha:
-        senha_final = ''
-    elif senha_in:
-        senha_final = generate_password_hash(senha_in)
-    else:
-        senha_final = camp.get('sortear_senha') or ''
     conn.execute('UPDATE slotzap_campanhas SET nome=?, descricao=?, preco=?, data_sorteio=?, '
                  'indicacao_ativa=?, indicacao_meta=?, custo_premio=?, '
-                 'sortear_so_esgotado=?, sortear_senha=? WHERE id=?',
+                 'sortear_so_esgotado=? WHERE id=?',
                  (nome, descr, preco, data_sorteio, indic_ativa, indic_meta, custo_premio,
-                  so_esgotado, senha_final, camp_id))
+                  so_esgotado, camp_id))
     add = 0
     if novo_total and novo_total > camp['total_slots']:
         inicio = camp['slots_inicio'] or 1
@@ -13178,13 +13169,12 @@ def slotzap_sortear(camp_id):
                 'msg': (f'🔒 Esta campanha está configurada para sortear SOMENTE quando esgotar.\n'
                         f'Ainda faltam {faltam_n} número(s) serem pagos.')}), 409
 
-    # ── SENHA do sorteio (evita clique errado / sorteio acidental) ──
-    senha_hash = (camp.get('sortear_senha') or '').strip()
-    if senha_hash:
-        senha = (request.get_json(silent=True) or {}).get('senha') or ''
-        if not senha or not check_password_hash(senha_hash, senha):
-            conn.close()
-            return jsonify({'erro': 'senha_errada', 'msg': 'Senha do sorteio incorreta.'}), 403
+    # ── SENHA: sortear exige a senha de LOGIN da conta (anti-clique errado + autenticação) ──
+    _u = conn.execute('SELECT password_hash FROM slotzap_users WHERE id=?', (_sz_uid(),)).fetchone()
+    senha = (request.get_json(silent=True) or {}).get('senha') or ''
+    if not _u or not check_password_hash(dict(_u)['password_hash'], senha):
+        conn.close()
+        return jsonify({'erro': 'senha_errada', 'msg': 'Senha da conta incorreta.'}), 403
 
     # Provably fair: seed travado de antemão + lista pública dos pagos → resultado determinístico
     seed, commit = _sz_seed_commit(conn, camp_id, camp)
