@@ -383,6 +383,20 @@ input:focus{border-color:#6366f1}
       <label>📅 Data do sorteio (opcional — mostra contador na página)</label>
       <input type="datetime-local" id="ed-data" value="{{ camp.data_sorteio or '' }}">
     </div>
+    <div class="form-group" style="border-top:1px solid rgba(255,255,255,.08);padding-top:14px">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+        <input type="checkbox" id="ed-indic" style="width:auto"
+               {% if camp.indicacao_ativa %}checked{% endif %}>
+        🔗 Ativar indicação premiada
+      </label>
+      <div style="font-size:11px;color:#8888aa;margin:6px 0 10px;line-height:1.5">
+        Cada comprador ganha um link próprio. A cada X amigos que <b>comprarem</b> por ele,
+        ele ganha 1 número grátis (sai do seu estoque).
+      </div>
+      <label>Amigos pagantes por número grátis</label>
+      <input type="number" id="ed-indic-meta" min="1" max="1000"
+             value="{{ camp.indicacao_meta or 10 }}">
+    </div>
     <div class="modal-btns">
       <button class="btn btn-primary" onclick="salvarEditar()">💾 Salvar</button>
       <button class="btn btn-secondary" onclick="fecharModal()">Cancelar</button>
@@ -414,11 +428,13 @@ async function salvarEditar() {
   const preco = parseFloat(document.getElementById('ed-preco').value || 0);
   const total_slots = parseInt(document.getElementById('ed-total').value || 0);
   const data_sorteio = document.getElementById('ed-data').value || '';
+  const indicacao_ativa = document.getElementById('ed-indic').checked;
+  const indicacao_meta = parseInt(document.getElementById('ed-indic-meta').value || 10);
   if (!nome) { alert('Informe o nome.'); return; }
   if (!(preco >= 5)) { alert('O preço mínimo por número é R$ 5,00.'); return; }
   const r = await fetch(`/slotzap/campanha/${CAMP_ID}/editar`, {
     method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({nome, descricao, preco, total_slots, data_sorteio})
+    body: JSON.stringify({nome, descricao, preco, total_slots, data_sorteio, indicacao_ativa, indicacao_meta})
   }).then(r=>r.json());
   if (r.ok) {
     alert('✅ Campanha atualizada!' + (r.numeros_adicionados ? (' +' + r.numeros_adicionados + ' números') : ''));

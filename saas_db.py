@@ -794,6 +794,20 @@ def init_slotzap_db():
         "ALTER TABLE slotzap_campanhas ADD COLUMN sorteio_commit TEXT DEFAULT ''",
         "ALTER TABLE slotzap_campanhas ADD COLUMN sorteio_hash TEXT DEFAULT ''",
         "ALTER TABLE slotzap_campanhas ADD COLUMN sorteio_pagos TEXT DEFAULT ''",
+        # Indicação premiada (referral): liga/desliga + meta de amigos pagantes por nº grátis
+        "ALTER TABLE slotzap_campanhas ADD COLUMN indicacao_ativa INTEGER DEFAULT 0",
+        "ALTER TABLE slotzap_campanhas ADD COLUMN indicacao_meta INTEGER DEFAULT 10",
+        # Rastreio nos slots: código de quem indicou esta compra + se o nº é brinde de indicação
+        "ALTER TABLE slotzap_slots ADD COLUMN indicado_por TEXT DEFAULT ''",
+        "ALTER TABLE slotzap_slots ADD COLUMN brinde INTEGER DEFAULT 0",
+        # Registro de indicadores (código opaco -> contato), por campanha
+        ("CREATE TABLE IF NOT EXISTS slotzap_indicadores ("
+         "id INTEGER PRIMARY KEY AUTOINCREMENT, campanha_id INTEGER NOT NULL, "
+         "codigo TEXT NOT NULL, nome TEXT DEFAULT '', tel TEXT DEFAULT '', "
+         "indicados_pagos INTEGER DEFAULT 0, premios_dados INTEGER DEFAULT 0, "
+         "criado_em TEXT DEFAULT '')"),
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_sz_ref_codigo ON slotzap_indicadores(codigo)",
+        "CREATE INDEX IF NOT EXISTS idx_sz_ref_camp ON slotzap_indicadores(campanha_id)",
     ]
     for sql in _sz_migrations:
         try:

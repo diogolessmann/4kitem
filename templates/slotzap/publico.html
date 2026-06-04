@@ -231,6 +231,19 @@ async function verificarSorteio(btn){
   </button>
 </div>
 
+{% if camp.indicacao_ativa %}
+<div style="max-width:480px;margin:12px auto 0;padding:0 16px">
+  <div style="background:rgba(34,197,94,.07);border:1px solid rgba(34,197,94,.22);
+       border-radius:12px;padding:11px 14px;text-align:center">
+    <div style="font-size:12.5px;color:#22c55e;font-weight:800">🎁 Indique e ganhe número GRÁTIS</div>
+    <div style="font-size:11px;color:#8888aa;margin-top:4px;line-height:1.5">
+      Compre seu número e ganhe um link pessoal. A cada <b>{{ camp.indicacao_meta }} amigos que comprarem</b>
+      por ele, você ganha <b>1 número grátis</b>!
+    </div>
+  </div>
+</div>
+{% endif %}
+
 <div id="feed-recentes" style="max-width:480px;margin:12px auto 0;padding:0 16px;display:none">
   <div style="background:rgba(34,197,94,.07);border:1px solid rgba(34,197,94,.18);
        border-radius:12px;padding:10px 14px">
@@ -304,12 +317,23 @@ async function verificarSorteio(btn){
       <span style="font-size:11px">Reserva válida por ~30 min — pague para garantir seu número</span>
     </div>
     <button class="btn-ok" id="btn-japaguei" onclick="jaPaguei(this)">✅ Já paguei — ver status</button>
+
+    <div id="ref-share" style="display:none;margin-top:14px;padding:13px;border:1px solid rgba(34,197,94,.35);
+         border-radius:11px;background:rgba(34,197,94,.07);text-align:left">
+      <div style="font-size:12.5px;color:#22c55e;font-weight:800;margin-bottom:4px">🎁 Ganhe números GRÁTIS!</div>
+      <div id="ref-share-txt" style="font-size:11.5px;color:#c9d6e2;line-height:1.55;margin-bottom:9px"></div>
+      <button onclick="compartilharRef()" style="width:100%;padding:11px;border-radius:9px;border:none;
+          background:#22c55e;color:#06280f;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">
+        📲 Compartilhar meu link de indicação</button>
+    </div>
   </div>
 </div>
 
 <script>
 const TOKEN = '{{ token }}';
 const PRECO = {{ camp.preco }};
+const REF   = new URLSearchParams(location.search).get('ref') || '';  // quem indicou (opcional)
+let _meuRef = '';            // código de indicação do próprio comprador (após comprar)
 const _sel  = new Set();   // números selecionados
 let _slotSel = null;       // 1º número da compra atual (p/ confirmar pagamento)
 
@@ -340,6 +364,22 @@ function atualizarBarra(){
   document.getElementById('sel-total').textContent = fmtBRL(n * PRECO);
   document.getElementById('selbar').classList.toggle('open', n > 0);
   document.getElementById('bar-live').style.display = n > 0 ? 'none' : '';
+}
+function mostrarRefShare(ativa, meta){
+  const box = document.getElementById('ref-share');
+  if (!box) return;
+  if (!ativa || !_meuRef){ box.style.display = 'none'; return; }
+  document.getElementById('ref-share-txt').innerHTML =
+    'Compartilhe seu link! A cada <b>' + (meta || 10) + ' amigos que comprarem</b> por ele, '
+    + 'você ganha <b>1 número grátis</b> 🍀';
+  box.style.display = 'block';
+}
+function compartilharRef(){
+  const base = window.location.href.split('?')[0].split('#')[0];
+  const url  = base + '?ref=' + encodeURIComponent(_meuRef);
+  const txt  = '🛵 Garanti meu número e você também pode! Entra pelo MEU link 👇\n' + url;
+  if (navigator.share){ navigator.share({title: document.title, text: txt, url}).catch(()=>{}); }
+  else { window.open('https://wa.me/?text=' + encodeURIComponent(txt), '_blank'); }
 }
 function compartilhar(){
   const url = window.location.href.split('?')[0].split('#')[0];
@@ -403,7 +443,7 @@ async function gerarPix() {
   const r = await fetch(`/slotzap/p/${TOKEN}/reservar`, {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({numeros, nome, cpf, tel})
+    body: JSON.stringify({numeros, nome, cpf, tel, ref: REF})
   }).then(r => r.json());
 
   if (r.erro) {
@@ -430,6 +470,8 @@ async function gerarPix() {
     }
     document.getElementById('qr-copia').textContent = r.pix_copia || '';
     if (r.valor != null) document.getElementById('pix-preco').textContent = fmtBRL(r.valor);
+    _meuRef = r.meu_ref || '';
+    mostrarRefShare(r.indicacao_ativa, r.indicacao_meta);
     abrirModal('modal-pix');
     startPixPoll();
   } else {

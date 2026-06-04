@@ -12773,6 +12773,11 @@ def slotzap_editar(camp_id):
     except (TypeError, ValueError): novo_total = 0
     # Data do sorteio: aceita 'YYYY-MM-DDTHH:MM' (datetime-local) ou vazio p/ remover
     data_sorteio = (data.get('data_sorteio') or '').strip()[:16]
+    # Indicação premiada
+    indic_ativa = 1 if data.get('indicacao_ativa') else 0
+    try:    indic_meta = int(data.get('indicacao_meta') or 10)
+    except (TypeError, ValueError): indic_meta = 10
+    indic_meta = max(1, min(1000, indic_meta))
     if not nome:
         return jsonify({'erro': 'Nome obrigatório'}), 400
     if preco < 5:
@@ -12785,8 +12790,9 @@ def slotzap_editar(camp_id):
         conn.close()
         return jsonify({'erro': 'Campanha não encontrada'}), 404
     camp = dict(camp)
-    conn.execute('UPDATE slotzap_campanhas SET nome=?, descricao=?, preco=?, data_sorteio=? WHERE id=?',
-                 (nome, descr, preco, data_sorteio, camp_id))
+    conn.execute('UPDATE slotzap_campanhas SET nome=?, descricao=?, preco=?, data_sorteio=?, '
+                 'indicacao_ativa=?, indicacao_meta=? WHERE id=?',
+                 (nome, descr, preco, data_sorteio, indic_ativa, indic_meta, camp_id))
     add = 0
     if novo_total and novo_total > camp['total_slots']:
         inicio = camp['slots_inicio'] or 1
@@ -12827,6 +12833,63 @@ def _sz_seed_commit(conn, camp_id, camp=None):
         if isinstance(row, dict):
             row['sorteio_seed'], row['sorteio_commit'] = seed, commit
     return seed, commit
+
+
+def _sz_ref_get_or_create(conn, camp_id, nome, tel):
+    """Cria/recupera o código de indicação de um comprador (1 por telefone na campanha).
+    Sem telefone não há código (não dá pra premiar nem avisar). Retorna o código ou ''."""
+    import secrets as _sec
+    tel = ''.join(c for c in (tel or '') if c.isdigit())
+    if not tel:
+        return ''
+    row = conn.execute('SELECT codigo FROM slotzap_indicadores WHERE campanha_id=? AND tel=?',
+                       (camp_id, tel)).fetchone()
+    if row:
+        return dict(row)['codigo']
+    for _ in range(5):
+        codigo = _sec.token_urlsafe(8)
+        try:
+            conn.execute('INSERT INTO slotzap_indicadores (campanha_id,codigo,nome,tel,criado_em) '
+                         'VALUES (?,?,?,?,?)',
+                         (camp_id, codigo, (nome or '').strip()[:60], tel, datetime.now().isoformat()))
+            conn.commit()
+            return codigo
+        except Exception:
+            continue  # colisão de código (raríssimo) — tenta outro
+    return ''
+
+
+def _sz_premiar_indicacao(conn, camp_id, codigo, meta):
+    """Credita +1 indicação PAGA ao código e concede número(s)-brinde ao bater a meta.
+    Retorna lista de premiados [{numero, nome, tel}] para notificar."""
+    if not codigo:
+        return []
+    ref = conn.execute('SELECT * FROM slotzap_indicadores WHERE campanha_id=? AND codigo=?',
+                       (camp_id, codigo)).fetchone()
+    if not ref:
+        return []
+    ref   = dict(ref)
+    novos = (ref['indicados_pagos'] or 0) + 1
+    conn.execute('UPDATE slotzap_indicadores SET indicados_pagos=? WHERE id=?', (novos, ref['id']))
+    conn.commit()
+    meta = max(1, int(meta or 10))
+    premiados = []
+    while (ref['premios_dados'] or 0) < (novos // meta):
+        livre = conn.execute(
+            "SELECT id, numero FROM slotzap_slots WHERE campanha_id=? AND status='disponivel' "
+            "ORDER BY RANDOM() LIMIT 1", (camp_id,)).fetchone()
+        if not livre:
+            break  # sem estoque livre pra premiar agora
+        livre = dict(livre)
+        conn.execute("UPDATE slotzap_slots SET status='pago', cliente_nome=?, cliente_tel=?, "
+                     "pago_em=?, brinde=1 WHERE id=?",
+                     ((ref['nome'] or 'Indicador'), ref['tel'], datetime.now().isoformat(), livre['id']))
+        ref['premios_dados'] = (ref['premios_dados'] or 0) + 1
+        conn.execute('UPDATE slotzap_indicadores SET premios_dados=? WHERE id=?',
+                     (ref['premios_dados'], ref['id']))
+        conn.commit()
+        premiados.append({'numero': livre['numero'], 'nome': ref['nome'], 'tel': ref['tel']})
+    return premiados
 
 
 @app.route('/slotzap/campanha/<int:camp_id>/sortear', methods=['POST'])
@@ -13188,7 +13251,7 @@ def _sz_marcar_pago_charge(charge_id):
         return 0
     conn  = get_saas_db()
     slots = [dict(r) for r in conn.execute(
-        "SELECT id, numero, cliente_nome, cliente_tel, campanha_id FROM slotzap_slots "
+        "SELECT id, numero, cliente_nome, cliente_tel, campanha_id, indicado_por FROM slotzap_slots "
         "WHERE asaas_charge_id=? AND status='reservado'", (charge_id,)).fetchall()]
     if not slots:
         conn.close()
@@ -13198,9 +13261,22 @@ def _sz_marcar_pago_charge(charge_id):
                      [(agora, s['id']) for s in slots])
     conn.commit()
     camp = dict(conn.execute('''
-        SELECT c.nome, c.grupo_wpp_id, c.evo_instance, c.token_publico, c.total_slots, c.preco,
+        SELECT c.id, c.nome, c.grupo_wpp_id, c.evo_instance, c.token_publico, c.total_slots, c.preco,
+               c.indicacao_ativa, c.indicacao_meta,
                (SELECT COUNT(*) FROM slotzap_slots WHERE campanha_id=c.id AND status="pago") AS pagos
         FROM slotzap_campanhas c WHERE c.id=?''', (slots[0]['campanha_id'],)).fetchone())
+
+    # ── Indicação premiada: credita o indicador e concede brinde se bater a meta ──
+    if camp.get('indicacao_ativa') and (slots[0].get('indicado_por') or '').strip():
+        try:
+            premiados = _sz_premiar_indicacao(conn, camp['id'],
+                                              slots[0]['indicado_por'].strip(),
+                                              camp.get('indicacao_meta') or 10)
+        except Exception as _e:
+            premiados = []
+            log.warning(f'[SlotZap] indicacao: {_e}')
+    else:
+        premiados = []
     conn.close()
 
     numeros  = sorted(s['numero'] for s in slots)
@@ -13253,6 +13329,28 @@ def _sz_marcar_pago_charge(charge_id):
                 json={'number': nwpp, 'text': msg}, timeout=10)
         except Exception as _e:
             log.warning(f'[SlotZap] DM: {_e}')
+
+    # Avisa quem GANHOU número grátis por indicação
+    if premiados and instance and evo_url:
+        base_url = os.environ.get('BASE_URL', 'https://www.4kitem.com.br').rstrip('/')
+        token    = camp.get('token_publico') or ''
+        link     = f"\n🔗 {base_url}/slotzap/p/{token}" if token else ''
+        for p in premiados:
+            ptel = ''.join(c for c in (p.get('tel') or '') if c.isdigit())
+            if not ptel:
+                continue
+            pwpp = ptel if ptel.startswith('55') else ('55' + ptel)
+            pmsg = (f"🎁 *VOCÊ GANHOU UM NÚMERO GRÁTIS!*\n\n"
+                    f"Por indicar amigos que compraram na *{camp['nome']}*, "
+                    f"você acaba de ganhar o número *#{p['numero']}*! 🍀\n"
+                    f"Ele já está garantido no seu nome e concorre ao sorteio."
+                    f"{link}\n\nObrigado por divulgar! Continue indicando pra ganhar mais. 🚀")
+            try:
+                requests.post(f"{evo_url}/message/sendText/{instance}",
+                    headers={'apikey': evo_key, 'Content-Type': 'application/json'},
+                    json={'number': pwpp, 'text': pmsg}, timeout=10)
+            except Exception as _e:
+                log.warning(f'[SlotZap] premio indicacao DM: {_e}')
     return len(slots)
 
 
@@ -13529,6 +13627,7 @@ def slotzap_publico_reservar(token):
     cliente_nome = (data.get('nome') or '').strip()
     cliente_cpf  = ''.join(c for c in (data.get('cpf') or '') if c.isdigit())
     cliente_tel  = ''.join(c for c in (data.get('tel') or '') if c.isdigit())
+    ref_in       = (data.get('ref') or '').strip()[:32]   # código de quem indicou (opcional)
     # Aceita 'numeros' (lista) ou 'numero' (único, compatibilidade)
     brutos = data.get('numeros') if data.get('numeros') is not None else [data.get('numero', 0)]
     try:
@@ -13581,14 +13680,24 @@ def slotzap_publico_reservar(token):
         return jsonify({'erro': erro_msg}), 502
 
     agora = datetime.now().isoformat()
+    indic_ativa = bool(camp.get('indicacao_ativa'))
+    ref_save = ref_in if indic_ativa else ''
     conn.executemany(
         'UPDATE slotzap_slots SET status=?,cliente_nome=?,cliente_tel=?,'
-        'asaas_charge_id=?,pix_qr_code=?,pix_copia_cola=?,reservado_em=? WHERE id=?',
-        [('reservado', cliente_nome, cliente_tel, charge_id, pix_qr, pix_copia, agora, s['id'])
+        'asaas_charge_id=?,pix_qr_code=?,pix_copia_cola=?,reservado_em=?,indicado_por=? WHERE id=?',
+        [('reservado', cliente_nome, cliente_tel, charge_id, pix_qr, pix_copia, agora, ref_save, s['id'])
          for s in slots])
-    conn.commit(); conn.close()
+    conn.commit()
+    # Código de indicação do PRÓPRIO comprador (pra ele compartilhar) — só se a campanha permite e deu telefone
+    meu_ref = ''
+    if indic_ativa and cliente_tel:
+        meu_ref = _sz_ref_get_or_create(conn, camp['id'], cliente_nome, cliente_tel)
+    conn.close()
     return jsonify({'ok': True, 'pix_qr': pix_qr, 'pix_copia': pix_copia,
-                    'valor': total, 'numeros': numeros})
+                    'valor': total, 'numeros': numeros,
+                    'meu_ref': meu_ref,
+                    'indicacao_ativa': indic_ativa,
+                    'indicacao_meta': camp.get('indicacao_meta') or 10})
 
 
 @app.route('/slotzap/campanha/<int:camp_id>/encerrar', methods=['POST'])
