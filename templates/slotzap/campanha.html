@@ -380,6 +380,15 @@ input:focus{border-color:#6366f1}
       <input type="number" id="ed-total" min="{{ camp.total_slots }}" value="{{ camp.total_slots }}">
     </div>
     <div class="form-group">
+      <label>🏆 Custo do prêmio (R$) — trava anti-prejuízo</label>
+      <input type="text" id="ed-custo" inputmode="decimal" placeholder="ex: 4690,00"
+             value="{{ ('%.2f'|format(camp.custo_premio)|replace('.', ',')) if camp.custo_premio else '' }}">
+      <div style="font-size:11px;color:#8888aa;margin-top:5px;line-height:1.5">
+        O botão <b>Sortear</b> fica <b>bloqueado</b> até a arrecadação cobrir esse valor.
+        Deixe vazio/0 para não usar a trava.
+      </div>
+    </div>
+    <div class="form-group">
       <label>📅 Data do sorteio (opcional — mostra contador na página)</label>
       <input type="datetime-local" id="ed-data" value="{{ camp.data_sorteio or '' }}">
     </div>
@@ -410,9 +419,19 @@ const CAMP_STATUS = "{{ camp.status }}";
 const CAMP_INSTANCE = "{{ camp.evo_instance or '' }}";
 let _slotId = null, _slotNum = null, _pixQr = '', _pixCopia = '';
 
-async function sortear() {
-  if (!confirm('Sortear um ganhador entre os números PAGOS? O resultado será anunciado no grupo (se configurado).')) return;
-  const r = await fetch(`/slotzap/campanha/${CAMP_ID}/sortear`, {method:'POST'}).then(r=>r.json());
+async function sortear(forcar) {
+  if (!forcar && !confirm('Sortear um ganhador entre os números PAGOS? O resultado será anunciado no grupo (se configurado).')) return;
+  const r = await fetch(`/slotzap/campanha/${CAMP_ID}/sortear`, {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({forcar: !!forcar})
+  }).then(r=>r.json());
+  if (r.erro === 'trava_custo') {
+    if (confirm('🚫 TRAVA ANTI-PREJUÍZO\n\n' + (r.msg || '') +
+                '\n\nQuer sortear MESMO ASSIM, assumindo o prejuízo?')) {
+      return sortear(true);
+    }
+    return;
+  }
   if (r.ok) {
     let m = '🏆 Ganhador: #' + r.numero + ' — ' + (r.nome || '—');
     m += r.grupo_enviado ? '\n\n✅ Resultado anunciado no grupo!' : '\n\n⚠️ Não consegui enviar no grupo. Configure o WhatsApp (💬) e tente de novo.';
@@ -430,11 +449,12 @@ async function salvarEditar() {
   const data_sorteio = document.getElementById('ed-data').value || '';
   const indicacao_ativa = document.getElementById('ed-indic').checked;
   const indicacao_meta = parseInt(document.getElementById('ed-indic-meta').value || 10);
+  const custo_premio = document.getElementById('ed-custo').value || '';
   if (!nome) { alert('Informe o nome.'); return; }
   if (!(preco >= 5)) { alert('O preço mínimo por número é R$ 5,00.'); return; }
   const r = await fetch(`/slotzap/campanha/${CAMP_ID}/editar`, {
     method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({nome, descricao, preco, total_slots, data_sorteio, indicacao_ativa, indicacao_meta})
+    body: JSON.stringify({nome, descricao, preco, total_slots, data_sorteio, indicacao_ativa, indicacao_meta, custo_premio})
   }).then(r=>r.json());
   if (r.ok) {
     alert('✅ Campanha atualizada!' + (r.numeros_adicionados ? (' +' + r.numeros_adicionados + ' números') : ''));

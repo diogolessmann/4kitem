@@ -12779,6 +12779,12 @@ def slotzap_editar(camp_id):
     try:    indic_meta = int(data.get('indicacao_meta') or 10)
     except (TypeError, ValueError): indic_meta = 10
     indic_meta = max(1, min(1000, indic_meta))
+    # Custo do prêmio (aceita vírgula) — trava o sorteio até cobrir
+    custo_raw = str(data.get('custo_premio') or '0').strip()
+    if ',' in custo_raw:
+        custo_raw = custo_raw.replace('.', '').replace(',', '.')
+    try:    custo_premio = max(0.0, float(custo_raw or 0))
+    except (TypeError, ValueError): custo_premio = 0.0
     if not nome:
         return jsonify({'erro': 'Nome obrigatório'}), 400
     if preco < 5:
@@ -12792,8 +12798,8 @@ def slotzap_editar(camp_id):
         return jsonify({'erro': 'Campanha não encontrada'}), 404
     camp = dict(camp)
     conn.execute('UPDATE slotzap_campanhas SET nome=?, descricao=?, preco=?, data_sorteio=?, '
-                 'indicacao_ativa=?, indicacao_meta=? WHERE id=?',
-                 (nome, descr, preco, data_sorteio, indic_ativa, indic_meta, camp_id))
+                 'indicacao_ativa=?, indicacao_meta=?, custo_premio=? WHERE id=?',
+                 (nome, descr, preco, data_sorteio, indic_ativa, indic_meta, custo_premio, camp_id))
     add = 0
     if novo_total and novo_total > camp['total_slots']:
         inicio = camp['slots_inicio'] or 1
@@ -12910,11 +12916,32 @@ def slotzap_sortear(camp_id):
         return jsonify({'erro': 'Campanha não encontrada'}), 404
     camp  = dict(camp)
     pagos = sorted([dict(r) for r in conn.execute(
-        "SELECT numero, cliente_nome FROM slotzap_slots WHERE campanha_id=? AND status='pago'",
+        "SELECT numero, cliente_nome, IFNULL(brinde,0) AS brinde FROM slotzap_slots "
+        "WHERE campanha_id=? AND status='pago'",
         (camp_id,)).fetchall()], key=lambda x: x['numero'])
     if not pagos:
         conn.close()
         return jsonify({'erro': 'Nenhum número pago para sortear ainda.'}), 400
+
+    # ── TRAVA ANTI-PREJUÍZO: não deixa sortear antes de cobrir o custo do prêmio ──
+    custo = float(camp.get('custo_premio') or 0)
+    if custo > 0:
+        _ow = conn.execute('SELECT asaas_wallet_id FROM slotzap_users WHERE id=?', (_sz_uid(),)).fetchone()
+        tem_wallet = bool((dict(_ow).get('asaas_wallet_id') or '').strip()) if _ow else False
+        net        = (1 - SZ_TAXA_VENDA) if tem_wallet else 1.0   # quanto VOCÊ recebe por número
+        pagos_reais = sum(1 for p in pagos if not p.get('brinde'))   # brinde não é dinheiro
+        arrecadado  = pagos_reais * float(camp['preco']) * net
+        forcar      = bool((request.get_json(silent=True) or {}).get('forcar'))
+        if arrecadado < custo and not forcar:
+            conn.close()
+            faltam = custo - arrecadado
+            return jsonify({
+                'erro': 'trava_custo',
+                'msg': (f'⚠️ Você arrecadou R$ {arrecadado:.2f} de R$ {custo:.2f} necessários para cobrir o prêmio.\n'
+                        f'Sortear agora geraria PREJUÍZO de R$ {faltam:.2f}.\n\n'
+                        f'Venda mais números antes de sortear.'),
+                'arrecadado': round(arrecadado, 2), 'custo': round(custo, 2),
+                'faltam': round(faltam, 2)}), 409
     # Provably fair: seed travado de antemão + lista pública dos pagos → resultado determinístico
     seed, commit = _sz_seed_commit(conn, camp_id, camp)
     pagos_str = ','.join(str(p['numero']) for p in pagos)
@@ -13259,9 +13286,16 @@ def _sz_marcar_pago_charge(charge_id):
         conn.close()
         return 0
     agora = datetime.now().isoformat()
-    conn.executemany("UPDATE slotzap_slots SET status='pago', pago_em=? WHERE id=?",
-                     [(agora, s['id']) for s in slots])
+    # Baixa ATÔMICA: marca como pago condicionado a ainda estar 'reservado'.
+    # Se outra chamada (webhook + "Já paguei") já marcou, rowcount=0 e abortamos
+    # ANTES de creditar indicação — evita brinde/aviso em dobro (prejuízo).
+    cur = conn.execute(
+        "UPDATE slotzap_slots SET status='pago', pago_em=? "
+        "WHERE asaas_charge_id=? AND status='reservado'", (agora, charge_id))
     conn.commit()
+    if cur.rowcount == 0:
+        conn.close()
+        return 0   # já processado por outra via — não credita/avisa de novo
     camp = dict(conn.execute('''
         SELECT c.id, c.nome, c.grupo_wpp_id, c.evo_instance, c.token_publico, c.total_slots, c.preco,
                c.indicacao_ativa, c.indicacao_meta,

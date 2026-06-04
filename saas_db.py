@@ -808,6 +808,8 @@ def init_slotzap_db():
          "criado_em TEXT DEFAULT '')"),
         "CREATE UNIQUE INDEX IF NOT EXISTS idx_sz_ref_codigo ON slotzap_indicadores(codigo)",
         "CREATE INDEX IF NOT EXISTS idx_sz_ref_camp ON slotzap_indicadores(campanha_id)",
+        # Custo do prêmio: trava o sorteio até a arrecadação real cobrir o prêmio (anti-prejuízo)
+        "ALTER TABLE slotzap_campanhas ADD COLUMN custo_premio REAL DEFAULT 0",
     ]
     for sql in _sz_migrations:
         try:
