@@ -6409,9 +6409,23 @@ def painel(code):
     client = get_client(code)
     if not client:
         abort(404)
+    # Trava: só o estabelecimento logado (com o código) acessa o painel
+    if (session.get('kids_code') or '').strip().upper() != code.strip().upper():
+        return redirect('/kids/entrar')
+    # QR Code do link da TV
+    tv_qr_b64 = None
+    try:
+        import qrcode as _qr, io as _io, base64 as _b64
+        q = _qr.QRCode(error_correction=_qr.constants.ERROR_CORRECT_M, box_size=7, border=2)
+        q.add_data(f'https://www.4kitem.com.br/tv/{client["code"]}')
+        q.make(fit=True)
+        _buf = _io.BytesIO()
+        q.make_image(fill_color='black', back_color='white').save(_buf, format='PNG')
+        tv_qr_b64 = _b64.b64encode(_buf.getvalue()).decode()
+    except Exception:
+        pass
     return render_template('painel/index.html',
-                           client=client,
-                           modes=MODES)
+                           client=client, modes=MODES, tv_qr_b64=tv_qr_b64)
 
 
 # ══════════════════════════════════════════════════════════════════════════
@@ -6454,6 +6468,9 @@ def api_tv_status(code):
 # ── Mudar modo (painel → POST) ────────────────────────────────────────────
 @app.route('/api/tv/<code>/mode', methods=['POST'])
 def api_set_mode(code):
+    # Trava: só o estabelecimento logado pode trocar o canal (paciente não troca)
+    if (session.get('kids_code') or '').strip().upper() != code.strip().upper():
+        return jsonify({'error': 'nao_autorizado'}), 403
     data = request.get_json(silent=True) or {}
     mode = data.get('mode', '')
     if not set_client_mode(code, mode):
@@ -13914,6 +13931,8 @@ def slotzap_publico_reservar(token):
         return jsonify({'erro': 'Nome obrigatório'}), 400
     if not _cpf_valido(cliente_cpf):
         return jsonify({'erro': 'CPF inválido. Confira os números.'}), 400
+    if len(cliente_tel) < 10:
+        return jsonify({'erro': 'Informe seu WhatsApp com DDD — é por ele que você recebe o número e o aviso se ganhar.'}), 400
 
     conn  = get_saas_db()
     camp  = conn.execute('SELECT * FROM slotzap_campanhas WHERE token_publico=? AND status="ativa"',

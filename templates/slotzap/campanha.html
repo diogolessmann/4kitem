@@ -317,6 +317,7 @@ input:focus{border-color:#6366f1}
       <div><strong id="rsv-nome"></strong></div>
       <div style="color:#8888aa;font-size:12px;margin-top:4px" id="rsv-tel"></div>
     </div>
+    <button class="btn btn-success" style="width:100%;margin-bottom:8px" onclick="falarWhats()">💬 Falar no WhatsApp</button>
     {% if camp.status == 'ativa' %}
     <div class="modal-btns">
       <button class="btn btn-success" onclick="marcarPagoAtual()">✅ Confirmar Pagamento</button>
@@ -333,9 +334,11 @@ input:focus{border-color:#6366f1}
   <div class="modal" style="text-align:center">
     <div style="font-size:40px;margin-bottom:12px">✅</div>
     <h3>Slot <span id="pg-num"></span> — Pago</h3>
-    <div style="color:#6666aa;font-size:13px;margin:8px 0 20px"><strong id="pg-nome"></strong></div>
+    <div style="color:#6666aa;font-size:13px;margin:8px 0 4px"><strong id="pg-nome"></strong></div>
+    <div style="color:#8888aa;font-size:12px;margin-bottom:16px" id="pg-tel"></div>
+    <button class="btn btn-success" style="width:100%" onclick="falarWhats()">💬 Falar no WhatsApp</button>
     {% if camp.status == 'ativa' %}
-    <button class="btn btn-danger" style="width:100%" onclick="cancelarAtual()">↩ Estornar / Cancelar</button>
+    <button class="btn btn-danger" style="width:100%;margin-top:8px" onclick="cancelarAtual()">↩ Estornar / Cancelar</button>
     {% endif %}
     <button class="btn btn-secondary" style="width:100%;margin-top:8px" onclick="fecharModal()">Fechar</button>
   </div>
@@ -507,8 +510,15 @@ async function salvarEditar() {
   } else { alert('Erro: ' + (r.erro || 'tente novamente')); }
 }
 
+let _slotTel = '';
+function falarWhats() {
+  const d = (_slotTel || '').replace(/\D/g, '');
+  if (!d) { alert('Este comprador não informou o WhatsApp. 😕\n\nDica: ative o WhatsApp obrigatório no checkout para sempre conseguir contato.'); return; }
+  const num = d.startsWith('55') ? d : ('55' + d);
+  window.open('https://wa.me/' + num, '_blank');
+}
 function clicarSlot(id, num, status, nome, tel, qr, copia) {
-  _slotId = id; _slotNum = num; _pixQr = qr; _pixCopia = copia;
+  _slotId = id; _slotNum = num; _pixQr = qr; _pixCopia = copia; _slotTel = tel || '';
   if (status === 'disponivel' && CAMP_STATUS === 'ativa') {
     document.getElementById('res-num').textContent = '#' + num;
     document.getElementById('res-nome').value = '';
@@ -517,11 +527,12 @@ function clicarSlot(id, num, status, nome, tel, qr, copia) {
   } else if (status === 'reservado') {
     document.getElementById('rsv-num').textContent = '#' + num;
     document.getElementById('rsv-nome').textContent = nome || '—';
-    document.getElementById('rsv-tel').textContent = tel ? 'WhatsApp: ' + tel : '';
+    document.getElementById('rsv-tel').textContent = tel ? 'WhatsApp: ' + tel : '⚠️ Sem WhatsApp informado';
     abrirModal('modal-reservado');
   } else if (status === 'pago') {
     document.getElementById('pg-num').textContent = '#' + num;
     document.getElementById('pg-nome').textContent = nome || '—';
+    document.getElementById('pg-tel').textContent = tel ? '📱 ' + tel : '⚠️ Sem WhatsApp informado';
     abrirModal('modal-pago');
   }
 }

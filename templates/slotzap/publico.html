@@ -294,8 +294,9 @@ async function verificarSorteio(btn){
              oninput="this.value=this.value.replace(/\D/g,'').replace(/(\d{3})(\d)/,'$1.$2').replace(/(\d{3})(\d)/,'$1.$2').replace(/(\d{3})(\d{1,2})$/,'$1-$2')">
     </div>
     <div class="form-group">
-      <label>WhatsApp (opcional)</label>
-      <input type="tel" id="inp-tel" placeholder="Ex: 47991234567" autocomplete="tel">
+      <label>WhatsApp * (com DDD — é como você recebe o número e o aviso do prêmio)</label>
+      <input type="tel" id="inp-tel" placeholder="Ex: 47991234567" autocomplete="tel"
+             oninput="this.value=this.value.replace(/\D/g,'')">
     </div>
     <button class="btn-pix" id="btn-gerar" onclick="gerarPix()">⚡ Gerar PIX — R$ {{ '%.2f'|format(camp.preco) }}</button>
     <button class="btn-cancel" onclick="fecharModal()">Cancelar</button>
@@ -430,6 +431,14 @@ async function gerarPix() {
     document.getElementById('inp-cpf').focus();
     document.getElementById('inp-cpf').style.borderColor = '#ef4444';
     setTimeout(() => document.getElementById('inp-cpf').style.borderColor = '', 2000);
+    return;
+  }
+  const telDigits = tel.replace(/\D/g, '');
+  if (telDigits.length < 10) {
+    const e = document.getElementById('inp-tel');
+    e.focus(); e.style.borderColor = '#ef4444';
+    setTimeout(() => e.style.borderColor = '', 2000);
+    alert('Informe seu WhatsApp com DDD — é por ele que você recebe o número e o aviso se ganhar.');
     return;
   }
 
