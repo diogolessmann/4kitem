@@ -777,12 +777,12 @@ BAU_PLANS = {
 
 KIDS_PLANS = {
     'mensal': {
-        'label': 'KidsCurator Mensal', 'price': 'R$ 49,90/mês',
+        'label': 'SalaTV Mensal', 'price': 'R$ 49,90/mês',
         'preco': 49.90, 'cycle': 'MONTHLY',
         'features': ['6 categorias de conteúdo', '1 código de acesso', 'Atualização automática de conteúdo', 'Suporte via WhatsApp'],
     },
     'anual': {
-        'label': 'KidsCurator Anual', 'price': 'R$ 39,90/mês (R$ 478,80/ano)',
+        'label': 'SalaTV Anual', 'price': 'R$ 39,90/mês (R$ 478,80/ano)',
         'preco': 478.80, 'cycle': 'YEARLY',
         'features': ['Tudo do Mensal', '20% de desconto', '2 códigos de acesso'],
     },
@@ -973,7 +973,7 @@ def kids_assinar(plano):
                         kconn3.commit(); kconn3.close()
                         resp = _asaas_criar_assinatura_saas(
                             customer_id, 'kids', plano, p['preco'],
-                            f"KidsCurator {p['label']} — {empresa}",
+                            f"SalaTV {p['label']} — {empresa}",
                             billing_type, p.get('cycle', 'MONTHLY')
                         )
                         if resp.get('id'):
@@ -2066,8 +2066,8 @@ def webhook_asaas_global():
                     kconn.commit()
                     if ativar and c.get('email'):
                         p = KIDS_PLANS.get(plano_key or c.get('plan', 'mensal'), KIDS_PLANS['mensal'])
-                        _enviar_email(c['email'], '✅ KidsCurator — Acesso liberado!',
-                            _email_pagamento_confirmado('KidsCurator', '📺', '#3b82f6',
+                        _enviar_email(c['email'], '✅ SalaTV — Acesso liberado!',
+                            _email_pagamento_confirmado('SalaTV', '📺', '#3b82f6',
                                 c['name'].split()[0], p['label'],
                                 p['price'],
                                 f'https://4kitem.com.br/painel/{c["code"]}') +
@@ -2077,7 +2077,7 @@ def webhook_asaas_global():
                             f'<small>Use em: 4kitem.com.br/kids/entrar</small></p></div>')
                 kconn.close()
             except Exception:
-                log.exception('[Webhook] Erro ao ativar KidsCurator')
+                log.exception('[Webhook] Erro ao ativar SalaTV')
 
     log.info(f'[WEBHOOK ASAAS] event={event} ref={ref} ativar={ativar}')
     return jsonify({'status': 'ok'}), 200
@@ -5506,7 +5506,7 @@ def saas_admin_unban():
         except Exception:
             pass
 
-        # KidsCurator (kids.db)
+        # SalaTV (kids.db)
         try:
             kconn = get_kids_conn()
             kids_rows = kconn.execute('SELECT id, name, email, created_at FROM clients').fetchall()
@@ -5514,7 +5514,7 @@ def saas_admin_unban():
                 r = dict(r)
                 if busca_lower in (r.get('email') or '').lower():
                     encontrados.append({
-                        'tabela': 'clients (KidsCurator)', 'id': r['id'],
+                        'tabela': 'clients (SalaTV)', 'id': r['id'],
                         'nome': r.get('name', ''), 'email': r.get('email', ''),
                         'telefone': '', 'created_at': r.get('created_at', ''),
                         'kids_db': True,
@@ -5604,7 +5604,7 @@ def saas_admin():
         'SELECT id, name, email, active, created_at, trial_ends FROM bau_users ORDER BY created_at DESC'
     ).fetchall()]
     conn.close()
-    # KidsCurator clients
+    # SalaTV clients
     try:
         kconn = get_kids_conn()
         kids_clients = [dict(r) for r in kconn.execute(
@@ -6072,7 +6072,7 @@ def saas_agenda_backfill_servicos():
                     'detalhes': detalhes})
 
 
-# ── Admin KidsCurator — status / delete ───────────────────────────────────────
+# ── Admin SalaTV — status / delete ───────────────────────────────────────
 
 @app.route('/admin/kids/client/<int:client_id>/mode', methods=['POST'])
 @_saas_admin_required
@@ -12785,6 +12785,10 @@ def slotzap_editar(camp_id):
         custo_raw = custo_raw.replace('.', '').replace(',', '.')
     try:    custo_premio = max(0.0, float(custo_raw or 0))
     except (TypeError, ValueError): custo_premio = 0.0
+    # Travas do sorteio
+    so_esgotado   = 1 if data.get('sortear_so_esgotado') else 0
+    senha_in      = (data.get('sortear_senha') or '').strip()[:60]
+    remover_senha = bool(data.get('remover_senha'))
     if not nome:
         return jsonify({'erro': 'Nome obrigatório'}), 400
     if preco < 5:
@@ -12797,9 +12801,18 @@ def slotzap_editar(camp_id):
         conn.close()
         return jsonify({'erro': 'Campanha não encontrada'}), 404
     camp = dict(camp)
+    # Senha do sorteio: nova (hash) / remover / manter a atual — nunca apaga sem querer
+    if remover_senha:
+        senha_final = ''
+    elif senha_in:
+        senha_final = generate_password_hash(senha_in)
+    else:
+        senha_final = camp.get('sortear_senha') or ''
     conn.execute('UPDATE slotzap_campanhas SET nome=?, descricao=?, preco=?, data_sorteio=?, '
-                 'indicacao_ativa=?, indicacao_meta=?, custo_premio=? WHERE id=?',
-                 (nome, descr, preco, data_sorteio, indic_ativa, indic_meta, custo_premio, camp_id))
+                 'indicacao_ativa=?, indicacao_meta=?, custo_premio=?, '
+                 'sortear_so_esgotado=?, sortear_senha=? WHERE id=?',
+                 (nome, descr, preco, data_sorteio, indic_ativa, indic_meta, custo_premio,
+                  so_esgotado, senha_final, camp_id))
     add = 0
     if novo_total and novo_total > camp['total_slots']:
         inicio = camp['slots_inicio'] or 1
@@ -12942,6 +12955,24 @@ def slotzap_sortear(camp_id):
                         f'Venda mais números antes de sortear.'),
                 'arrecadado': round(arrecadado, 2), 'custo': round(custo, 2),
                 'faltam': round(faltam, 2)}), 409
+    # ── TRAVA "só sortear quando esgotar" (100% pago) ──
+    if camp.get('sortear_so_esgotado'):
+        total_camp = camp.get('total_slots') or len(pagos)
+        if len(pagos) < total_camp:
+            conn.close()
+            faltam_n = total_camp - len(pagos)
+            return jsonify({'erro': 'trava_esgotado',
+                'msg': (f'🔒 Esta campanha está configurada para sortear SOMENTE quando esgotar.\n'
+                        f'Ainda faltam {faltam_n} número(s) serem pagos.')}), 409
+
+    # ── SENHA do sorteio (evita clique errado / sorteio acidental) ──
+    senha_hash = (camp.get('sortear_senha') or '').strip()
+    if senha_hash:
+        senha = (request.get_json(silent=True) or {}).get('senha') or ''
+        if not senha or not check_password_hash(senha_hash, senha):
+            conn.close()
+            return jsonify({'erro': 'senha_errada', 'msg': 'Senha do sorteio incorreta.'}), 403
+
     # Provably fair: seed travado de antemão + lista pública dos pagos → resultado determinístico
     seed, commit = _sz_seed_commit(conn, camp_id, camp)
     pagos_str = ','.join(str(p['numero']) for p in pagos)

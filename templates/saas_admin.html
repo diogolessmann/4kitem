@@ -74,7 +74,7 @@
     <button class="tab-btn" onclick="showTab('agenda',this)">📅 AgendaJá ({{ businesses|length }})</button>
     <button class="tab-btn" onclick="showTab('mandazap',this)">💬 MandaZap ({{ mz_users|length }})</button>
     <button class="tab-btn" onclick="showTab('bau',this)">🗄️ Baú ({{ bau_users|length }})</button>
-    <button class="tab-btn" onclick="showTab('kids',this)">📺 KidsCurator ({{ kids_clients|length }})</button>
+    <button class="tab-btn" onclick="showTab('kids',this)">📺 SalaTV ({{ kids_clients|length }})</button>
     <button class="tab-btn" onclick="showTab('desp',this)">🚗 Despachante ({{ desp_users|length }})</button>
     <button class="tab-btn" onclick="showTab('defesa',this)">⚖️ DefesaPro ({{ defesa_users|length }})</button>
     <button class="tab-btn" onclick="showTab('mandaja',this)">🛵 MandaJá ({{ mandaja_stores|length }})</button>
@@ -268,7 +268,7 @@
 
   <!-- ═══════════════ KIDSCURATOR ═══════════════ -->
   <div class="tab-content" id="tab-kids">
-    <h2>Clientes KidsCurator (TV)</h2>
+    <h2>Clientes SalaTV (TV)</h2>
     {% if kids_clients %}
     <table>
       <thead><tr>
@@ -305,7 +305,7 @@
       </tbody>
     </table>
     {% else %}
-    <div class="empty">Nenhum cliente KidsCurator ainda.</div>
+    <div class="empty">Nenhum cliente SalaTV ainda.</div>
     {% endif %}
   </div>
 
@@ -854,7 +854,7 @@ async function deleteBau(id) {
   else alert(d.error || 'Erro');
 }
 
-/* ── KidsCurator ── */
+/* ── SalaTV ── */
 async function setKidsStatus(id, active) {
   if (!confirm(active ? 'Ativar cliente?' : 'Suspender cliente?')) return;
   const r = await fetch(`/admin/kids/client/${id}/status`, {
@@ -866,7 +866,7 @@ async function setKidsStatus(id, active) {
   else alert(d.error || 'Erro');
 }
 async function deleteKids(id) {
-  if (!confirm('Deletar cliente do KidsCurator?')) return;
+  if (!confirm('Deletar cliente do SalaTV?')) return;
   const r = await fetch(`/admin/kids/client/${id}/delete`, { method: 'POST' });
   const d = await r.json();
   if (d.success) document.getElementById('kids-' + id)?.remove();
@@ -1041,7 +1041,7 @@ async function monitorarAgora() {
   }
 }
 
-/* ── KidsCurator — mudar modo ── */
+/* ── SalaTV — mudar modo ── */
 async function setKidsMode(id, mode) {
   const r = await fetch(`/admin/kids/client/${id}/mode`, {
     method:'POST', headers:{'Content-Type':'application/json'},

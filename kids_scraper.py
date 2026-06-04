@@ -1,5 +1,5 @@
 """
-kids_scraper.py — KidsCurator: busca automática de vídeos via YouTube RSS
+kids_scraper.py — SalaTV: busca automática de vídeos via YouTube RSS
 Não precisa de API key. Usa feeds públicos do YouTube.
 
 Fluxo:
@@ -150,7 +150,7 @@ def scrape_all(force_resolve: bool = False) -> dict:
         log.error("requests não instalado. Execute: pip install requests")
         return {'error': 'requests not installed'}
 
-    log.info("═══ KidsCurator Scraper iniciado ═══")
+    log.info("═══ SalaTV Scraper iniciado ═══")
 
     conn     = get_conn()
     channels = [dict(r) for r in conn.execute("SELECT * FROM channels WHERE active = 1").fetchall()]
