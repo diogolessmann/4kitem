@@ -13198,7 +13198,7 @@ def _sz_marcar_pago_charge(charge_id):
                      [(agora, s['id']) for s in slots])
     conn.commit()
     camp = dict(conn.execute('''
-        SELECT c.nome, c.grupo_wpp_id, c.evo_instance, c.token_publico, c.total_slots,
+        SELECT c.nome, c.grupo_wpp_id, c.evo_instance, c.token_publico, c.total_slots, c.preco,
                (SELECT COUNT(*) FROM slotzap_slots WHERE campanha_id=c.id AND status="pago") AS pagos
         FROM slotzap_campanhas c WHERE c.id=?''', (slots[0]['campanha_id'],)).fetchone())
     conn.close()
@@ -13228,10 +13228,25 @@ def _sz_marcar_pago_charge(charge_id):
             log.warning(f'[SlotZap] grupo: {_e}')
 
     if tel_cli and instance and evo_url:
-        nwpp = tel_cli if tel_cli.startswith('55') else ('55' + tel_cli)
-        prim = nome_cli.split()[0] if nome_cli else ''
-        msg  = (f"✅ *Pagamento confirmado!*\n\nSeu(s) número(s) {nums_str} na *{camp['nome']}* "
-                f"está(ão) garantido(s). 🎯\nObrigado{(', ' + prim) if prim else ''}!")
+        nwpp     = tel_cli if tel_cli.startswith('55') else ('55' + tel_cli)
+        prim     = nome_cli.split()[0] if nome_cli else ''
+        preco    = float(camp.get('preco') or 0)
+        valor    = preco * len(slots)
+        data_fmt = datetime.now().strftime('%d/%m/%Y às %H:%M')
+        codigo   = (charge_id[-8:] if charge_id else str(slots[0]['id'])).upper()
+        base_url = os.environ.get('BASE_URL', 'https://www.4kitem.com.br').rstrip('/')
+        token    = camp.get('token_publico') or ''
+        link     = f"\n🔗 Acompanhe: {base_url}/slotzap/p/{token}" if token else ''
+        msg = (f"🧾 *COMPROVANTE — Pagamento confirmado!*\n\n"
+               f"🎯 {camp['nome']}\n"
+               f"🔢 Número(s): {nums_str}\n"
+               f"💰 Valor: R$ {valor:.2f}\n"
+               f"📅 {data_fmt}\n"
+               f"🧾 Código: {codigo}\n\n"
+               f"Seu(s) número(s) está(ão) garantido(s)! 🎉\n"
+               f"🔒 Sorteio auditável — você poderá conferir o resultado pelo link."
+               f"{link}\n\n"
+               f"Guarde este comprovante. Boa sorte{(', ' + prim) if prim else ''}! 🍀")
         try:
             requests.post(f"{evo_url}/message/sendText/{instance}",
                 headers={'apikey': evo_key, 'Content-Type': 'application/json'},
