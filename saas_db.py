@@ -786,6 +786,8 @@ def init_slotzap_db():
         "ALTER TABLE slotzap_users ADD COLUMN cor TEXT DEFAULT ''",
         # Mensagem personalizada que vai ANTES da lista de números no grupo
         "ALTER TABLE slotzap_campanhas ADD COLUMN msg_lista TEXT DEFAULT ''",
+        # Data/hora do sorteio (string 'YYYY-MM-DDTHH:MM') p/ contador regressivo
+        "ALTER TABLE slotzap_campanhas ADD COLUMN data_sorteio TEXT DEFAULT ''",
     ]
     for sql in _sz_migrations:
         try:

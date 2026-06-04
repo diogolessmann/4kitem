@@ -129,6 +129,17 @@ input:focus{border-color:#6366f1}
 </div>
 {% endif %}
 
+{% if camp.data_sorteio and not camp.ganhador_numero %}
+<div style="max-width:480px;margin:14px auto 0;padding:0 16px">
+  <div style="background:linear-gradient(135deg,rgba(124,58,237,.2),rgba(99,102,241,.12));
+       border:1px solid rgba(124,58,237,.45);border-radius:14px;padding:13px;text-align:center">
+    <div style="font-size:11px;color:#c4b5fd;font-weight:800;letter-spacing:1.5px">⏰ SORTEIO EM</div>
+    <div id="countdown" data-dt="{{ camp.data_sorteio }}"
+         style="font-size:23px;font-weight:800;margin-top:4px;color:#fff">—</div>
+  </div>
+</div>
+{% endif %}
+
 {% set livres = slots|selectattr('status','equalto','disponivel')|list|length %}
 {% set vendidos = slots|length - livres %}
 <div class="progresso">
@@ -476,6 +487,27 @@ async function atualizarGrid() {
 }
 setInterval(atualizarGrid, 15000);
 atualizarGrid();   // popula feed + status logo ao abrir
+
+// Contador regressivo do sorteio
+(function(){
+  const el = document.getElementById('countdown');
+  if (!el) return;
+  const alvo = new Date(el.dataset.dt).getTime();
+  if (isNaN(alvo)) { el.textContent = '—'; return; }
+  function tick(){
+    const diff = alvo - Date.now();
+    if (diff <= 0){ el.textContent = '🎉 É agora! Sorteio acontecendo'; return; }
+    const d = Math.floor(diff / 86400000);
+    const h = Math.floor(diff % 86400000 / 3600000);
+    const m = Math.floor(diff % 3600000 / 60000);
+    const s = Math.floor(diff % 60000 / 1000);
+    el.textContent = (d > 0 ? d + 'd ' : '')
+      + String(h).padStart(2,'0') + 'h '
+      + String(m).padStart(2,'0') + 'm '
+      + String(s).padStart(2,'0') + 's';
+  }
+  tick(); setInterval(tick, 1000);
+})();
 </script>
 </body>
 </html>

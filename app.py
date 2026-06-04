@@ -12771,6 +12771,8 @@ def slotzap_editar(camp_id):
     except (TypeError, ValueError): preco = 0
     try:    novo_total = int(data.get('total_slots') or 0)
     except (TypeError, ValueError): novo_total = 0
+    # Data do sorteio: aceita 'YYYY-MM-DDTHH:MM' (datetime-local) ou vazio p/ remover
+    data_sorteio = (data.get('data_sorteio') or '').strip()[:16]
     if not nome:
         return jsonify({'erro': 'Nome obrigatório'}), 400
     if preco < 5:
@@ -12783,8 +12785,8 @@ def slotzap_editar(camp_id):
         conn.close()
         return jsonify({'erro': 'Campanha não encontrada'}), 404
     camp = dict(camp)
-    conn.execute('UPDATE slotzap_campanhas SET nome=?, descricao=?, preco=? WHERE id=?',
-                 (nome, descr, preco, camp_id))
+    conn.execute('UPDATE slotzap_campanhas SET nome=?, descricao=?, preco=?, data_sorteio=? WHERE id=?',
+                 (nome, descr, preco, data_sorteio, camp_id))
     add = 0
     if novo_total and novo_total > camp['total_slots']:
         inicio = camp['slots_inicio'] or 1

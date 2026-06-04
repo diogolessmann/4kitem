@@ -379,6 +379,10 @@ input:focus{border-color:#6366f1}
       <label>Total de números (só dá para aumentar)</label>
       <input type="number" id="ed-total" min="{{ camp.total_slots }}" value="{{ camp.total_slots }}">
     </div>
+    <div class="form-group">
+      <label>📅 Data do sorteio (opcional — mostra contador na página)</label>
+      <input type="datetime-local" id="ed-data" value="{{ camp.data_sorteio or '' }}">
+    </div>
     <div class="modal-btns">
       <button class="btn btn-primary" onclick="salvarEditar()">💾 Salvar</button>
       <button class="btn btn-secondary" onclick="fecharModal()">Cancelar</button>
@@ -409,11 +413,12 @@ async function salvarEditar() {
   const descricao = document.getElementById('ed-descr').value.trim();
   const preco = parseFloat(document.getElementById('ed-preco').value || 0);
   const total_slots = parseInt(document.getElementById('ed-total').value || 0);
+  const data_sorteio = document.getElementById('ed-data').value || '';
   if (!nome) { alert('Informe o nome.'); return; }
   if (!(preco >= 5)) { alert('O preço mínimo por número é R$ 5,00.'); return; }
   const r = await fetch(`/slotzap/campanha/${CAMP_ID}/editar`, {
     method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({nome, descricao, preco, total_slots})
+    body: JSON.stringify({nome, descricao, preco, total_slots, data_sorteio})
   }).then(r=>r.json());
   if (r.ok) {
     alert('✅ Campanha atualizada!' + (r.numeros_adicionados ? (' +' + r.numeros_adicionados + ' números') : ''));
