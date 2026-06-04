@@ -12591,6 +12591,7 @@ def slotzap_app():
     campanhas = [dict(r) for r in conn.execute('''
         SELECT c.*,
             (SELECT COUNT(*) FROM slotzap_slots s WHERE s.campanha_id=c.id AND s.status="pago")      AS pagos,
+            (SELECT COUNT(*) FROM slotzap_slots s WHERE s.campanha_id=c.id AND s.status="pago" AND IFNULL(s.brinde,0)=0) AS pagos_reais,
             (SELECT COUNT(*) FROM slotzap_slots s WHERE s.campanha_id=c.id AND s.status="reservado") AS reservados,
             (SELECT COUNT(*) FROM slotzap_slots s WHERE s.campanha_id=c.id AND s.status="disponivel") AS disponiveis
         FROM slotzap_campanhas c
@@ -12601,7 +12602,7 @@ def slotzap_app():
                            (_sz_uid(),)).fetchone() or {})
     conn.close()
     tem_wallet       = bool((_u.get('asaas_wallet_id') or '').strip())
-    total_arrecadado = sum((c['pagos'] or 0) * float(c['preco'] or 0) for c in campanhas)
+    total_arrecadado = sum((c['pagos_reais'] or 0) * float(c['preco'] or 0) for c in campanhas)
     total_vendidos   = sum((c['pagos'] or 0) for c in campanhas)
     ativas           = sum(1 for c in campanhas if c['status'] == 'ativa')
     return render_template('slotzap/app.html',
@@ -12859,17 +12860,18 @@ def _sz_ref_get_or_create(conn, camp_id, nome, tel):
     return ''
 
 
-def _sz_premiar_indicacao(conn, camp_id, codigo, meta):
-    """Credita +1 indicação PAGA ao código e concede número(s)-brinde ao bater a meta.
+def _sz_premiar_indicacao(conn, camp_id, codigo, meta, qtd=1):
+    """Credita as VENDAS (números) feitas por indicação ao código e concede número(s)-brinde
+    ao bater a meta (ex.: a cada 10 números vendidos pelo link, 1 grátis).
     Retorna lista de premiados [{numero, nome, tel}] para notificar."""
-    if not codigo:
+    if not codigo or qtd < 1:
         return []
     ref = conn.execute('SELECT * FROM slotzap_indicadores WHERE campanha_id=? AND codigo=?',
                        (camp_id, codigo)).fetchone()
     if not ref:
         return []
     ref   = dict(ref)
-    novos = (ref['indicados_pagos'] or 0) + 1
+    novos = (ref['indicados_pagos'] or 0) + qtd   # soma os números vendidos por esta indicação
     conn.execute('UPDATE slotzap_indicadores SET indicados_pagos=? WHERE id=?', (novos, ref['id']))
     conn.commit()
     meta = max(1, int(meta or 10))
@@ -13271,7 +13273,8 @@ def _sz_marcar_pago_charge(charge_id):
         try:
             premiados = _sz_premiar_indicacao(conn, camp['id'],
                                               slots[0]['indicado_por'].strip(),
-                                              camp.get('indicacao_meta') or 10)
+                                              camp.get('indicacao_meta') or 10,
+                                              qtd=len(slots))   # conta NÚMEROS vendidos, não amigos
         except Exception as _e:
             premiados = []
             log.warning(f'[SlotZap] indicacao: {_e}')

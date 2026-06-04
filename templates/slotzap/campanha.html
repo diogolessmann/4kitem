@@ -390,10 +390,10 @@ input:focus{border-color:#6366f1}
         🔗 Ativar indicação premiada
       </label>
       <div style="font-size:11px;color:#8888aa;margin:6px 0 10px;line-height:1.5">
-        Cada comprador ganha um link próprio. A cada X amigos que <b>comprarem</b> por ele,
-        ele ganha 1 número grátis (sai do seu estoque).
+        Cada comprador ganha um link próprio. A cada X <b>números vendidos</b> pelo link dele,
+        ele ganha 1 número grátis (sai do seu estoque). Só conta venda <b>paga</b>.
       </div>
-      <label>Amigos pagantes por número grátis</label>
+      <label>Números vendidos por número grátis</label>
       <input type="number" id="ed-indic-meta" min="1" max="1000"
              value="{{ camp.indicacao_meta or 10 }}">
     </div>

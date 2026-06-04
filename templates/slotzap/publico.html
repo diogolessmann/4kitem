@@ -237,8 +237,8 @@ async function verificarSorteio(btn){
        border-radius:12px;padding:11px 14px;text-align:center">
     <div style="font-size:12.5px;color:#22c55e;font-weight:800">🎁 Indique e ganhe número GRÁTIS</div>
     <div style="font-size:11px;color:#8888aa;margin-top:4px;line-height:1.5">
-      Compre seu número e ganhe um link pessoal. A cada <b>{{ camp.indicacao_meta }} amigos que comprarem</b>
-      por ele, você ganha <b>1 número grátis</b>!
+      Compre seu número e ganhe um link pessoal. A cada <b>{{ camp.indicacao_meta }} números vendidos</b>
+      pelo seu link, você ganha <b>1 número grátis</b>!
     </div>
   </div>
 </div>
@@ -370,7 +370,7 @@ function mostrarRefShare(ativa, meta){
   if (!box) return;
   if (!ativa || !_meuRef){ box.style.display = 'none'; return; }
   document.getElementById('ref-share-txt').innerHTML =
-    'Compartilhe seu link! A cada <b>' + (meta || 10) + ' amigos que comprarem</b> por ele, '
+    'Compartilhe seu link! A cada <b>' + (meta || 10) + ' números vendidos</b> pelo seu link, '
     + 'você ganha <b>1 número grátis</b> 🍀';
   box.style.display = 'block';
 }
