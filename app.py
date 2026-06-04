@@ -12678,11 +12678,13 @@ def slotzap_nova():
         elif preco < 5:
             erro = 'O valor mínimo por número é R$ 5,00 (exigência do Asaas para gerar PIX).'
         else:
+            import secrets as _sec
+            token_pub = _sec.token_urlsafe(16)
             conn = get_saas_db()
             cur  = conn.execute(
-                'INSERT INTO slotzap_campanhas (user_id,nome,descricao,preco,total_slots,slots_inicio,status,created_at) '
-                'VALUES (?,?,?,?,?,?,?,?)',
-                (_sz_uid(), nome, descr, preco, total, inicio, 'ativa', datetime.now().isoformat())
+                'INSERT INTO slotzap_campanhas (user_id,nome,descricao,preco,total_slots,slots_inicio,status,created_at,token_publico) '
+                'VALUES (?,?,?,?,?,?,?,?,?)',
+                (_sz_uid(), nome, descr, preco, total, inicio, 'ativa', datetime.now().isoformat(), token_pub)
             )
             camp_id = cur.lastrowid
             for n in range(inicio, inicio + total):
