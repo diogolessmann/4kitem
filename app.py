@@ -12806,10 +12806,35 @@ def _evo_cfg():
     return url, key
 
 
+def _sz_seed_commit(conn, camp_id, camp=None):
+    """Garante que a campanha tenha um seed secreto + commit (sha256 do seed).
+    O commit é publicado ANTES do sorteio; o seed só é revelado DEPOIS.
+    Retorna (seed, commit)."""
+    import hashlib, secrets as _sec
+    row = camp
+    if row is None:
+        r = conn.execute('SELECT sorteio_seed, sorteio_commit FROM slotzap_campanhas WHERE id=?',
+                         (camp_id,)).fetchone()
+        row = dict(r) if r else {}
+    seed   = (row.get('sorteio_seed') or '').strip()
+    commit = (row.get('sorteio_commit') or '').strip()
+    if not seed or not commit:
+        seed   = _sec.token_urlsafe(24)
+        commit = hashlib.sha256(seed.encode()).hexdigest()
+        conn.execute('UPDATE slotzap_campanhas SET sorteio_seed=?, sorteio_commit=? WHERE id=?',
+                     (seed, commit, camp_id))
+        conn.commit()
+        if isinstance(row, dict):
+            row['sorteio_seed'], row['sorteio_commit'] = seed, commit
+    return seed, commit
+
+
 @app.route('/slotzap/campanha/<int:camp_id>/sortear', methods=['POST'])
 @_sz_login_required
 def slotzap_sortear(camp_id):
-    """Sorteia um ganhador entre os números PAGOS e anuncia no grupo."""
+    """Sorteia um ganhador entre os números PAGOS, de forma AUDITÁVEL (provably fair),
+    e anuncia no grupo. Ganhador = sha256(seed + '|' + lista_pagos) % qtd_pagos."""
+    import hashlib
     if not _sz_plan_active():
         return jsonify({'erro': 'Assinatura inativa.'}), 402
     conn = get_saas_db()
@@ -12819,15 +12844,22 @@ def slotzap_sortear(camp_id):
         conn.close()
         return jsonify({'erro': 'Campanha não encontrada'}), 404
     camp  = dict(camp)
-    pagos = [dict(r) for r in conn.execute(
+    pagos = sorted([dict(r) for r in conn.execute(
         "SELECT numero, cliente_nome FROM slotzap_slots WHERE campanha_id=? AND status='pago'",
-        (camp_id,)).fetchall()]
+        (camp_id,)).fetchall()], key=lambda x: x['numero'])
     if not pagos:
         conn.close()
         return jsonify({'erro': 'Nenhum número pago para sortear ainda.'}), 400
-    ganhador = random.choice(pagos)
-    conn.execute('UPDATE slotzap_campanhas SET ganhador_numero=?, ganhador_nome=?, sorteado_em=? WHERE id=?',
-                 (ganhador['numero'], ganhador['cliente_nome'] or '', datetime.now().isoformat(), camp_id))
+    # Provably fair: seed travado de antemão + lista pública dos pagos → resultado determinístico
+    seed, commit = _sz_seed_commit(conn, camp_id, camp)
+    pagos_str = ','.join(str(p['numero']) for p in pagos)
+    resultado = hashlib.sha256((seed + '|' + pagos_str).encode()).hexdigest()
+    indice    = int(resultado, 16) % len(pagos)
+    ganhador  = pagos[indice]
+    conn.execute('UPDATE slotzap_campanhas SET ganhador_numero=?, ganhador_nome=?, sorteado_em=?, '
+                 'sorteio_hash=?, sorteio_pagos=? WHERE id=?',
+                 (ganhador['numero'], ganhador['cliente_nome'] or '', datetime.now().isoformat(),
+                  resultado, pagos_str, camp_id))
     conn.commit(); conn.close()
 
     # Anuncia no grupo (se configurado)
@@ -13399,6 +13431,12 @@ def slotzap_publico(token):
     disponiveis= sum(1 for s in slots if s['status'] == 'disponivel')
     total      = len(slots)
     pct        = round(pagos / total * 100) if total else 0
+    # Sorteio auditável: garante o commit (publicado antes) e só revela o seed DEPOIS do sorteio
+    conn = get_saas_db()
+    _sz_seed_commit(conn, camp['id'], camp)
+    conn.close()
+    if not camp.get('ganhador_numero'):
+        camp['sorteio_seed'] = ''   # NUNCA expõe o código secreto antes do resultado
     return render_template('slotzap/publico.html',
                            camp=camp, slots=slots, token=token,
                            pagos=pagos, reservados=reservados, disponiveis=disponiveis,

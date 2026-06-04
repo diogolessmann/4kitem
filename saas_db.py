@@ -788,6 +788,12 @@ def init_slotzap_db():
         "ALTER TABLE slotzap_campanhas ADD COLUMN msg_lista TEXT DEFAULT ''",
         # Data/hora do sorteio (string 'YYYY-MM-DDTHH:MM') p/ contador regressivo
         "ALTER TABLE slotzap_campanhas ADD COLUMN data_sorteio TEXT DEFAULT ''",
+        # Sorteio auditável (provably fair): seed secreto, commit (sha256 do seed),
+        # hash do resultado e snapshot dos números pagos usados no cálculo
+        "ALTER TABLE slotzap_campanhas ADD COLUMN sorteio_seed TEXT DEFAULT ''",
+        "ALTER TABLE slotzap_campanhas ADD COLUMN sorteio_commit TEXT DEFAULT ''",
+        "ALTER TABLE slotzap_campanhas ADD COLUMN sorteio_hash TEXT DEFAULT ''",
+        "ALTER TABLE slotzap_campanhas ADD COLUMN sorteio_pagos TEXT DEFAULT ''",
     ]
     for sql in _sz_migrations:
         try:

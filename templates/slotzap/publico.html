@@ -125,6 +125,70 @@ input:focus{border-color:#6366f1}
               border:1px solid rgba(250,204,21,.45);border-radius:14px;padding:16px;text-align:center">
     <div style="font-size:12px;color:#fde047;font-weight:800;letter-spacing:1px">🏆 GANHADOR</div>
     <div style="font-size:22px;font-weight:800;margin-top:4px">#{{ camp.ganhador_numero }} — {{ camp.ganhador_nome or '—' }}</div>
+    <details style="margin-top:12px;text-align:left">
+      <summary style="cursor:pointer;font-size:12px;color:#a5b4fc;font-weight:700;text-align:center">
+        🔒 Sorteio 100% auditável — toque para conferir</summary>
+      <div style="font-size:11px;color:#8888aa;line-height:1.7;margin-top:10px;word-break:break-all">
+        <b style="color:#c9d6e2">Método:</b> código verificável (provably fair)<br>
+        <b style="color:#c9d6e2">Lacre (hash do código), publicado antes:</b><br>{{ camp.sorteio_commit }}<br><br>
+        <b style="color:#c9d6e2">Código secreto revelado:</b><br>{{ camp.sorteio_seed }}<br><br>
+        <b style="color:#c9d6e2">Fórmula:</b> SHA-256(código + "|" + números pagos) → número, dividido pela quantidade de pagos, dá o índice do ganhador na lista ordenada.<br><br>
+        <b style="color:#c9d6e2">Resultado (hash):</b><br>{{ camp.sorteio_hash }}
+      </div>
+      <button onclick="verificarSorteio(this)" style="width:100%;margin-top:12px;padding:11px;
+          border-radius:9px;border:1px solid rgba(34,197,94,.4);background:rgba(34,197,94,.1);
+          color:#86efac;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">
+        🔍 Verificar agora no meu navegador</button>
+      <div id="verif-res" style="font-size:12px;margin-top:10px;line-height:1.6"></div>
+    </details>
+  </div>
+</div>
+<script>
+const SORTEIO = {
+  commit: "{{ camp.sorteio_commit }}",
+  seed:   "{{ camp.sorteio_seed }}",
+  pagos:  "{{ camp.sorteio_pagos }}",
+  hash:   "{{ camp.sorteio_hash }}",
+  ganhador: {{ camp.ganhador_numero }}
+};
+async function _sha256hex(s){
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
+  return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2,'0')).join('');
+}
+async function verificarSorteio(btn){
+  btn.disabled = true; btn.textContent = '⏳ Verificando...';
+  const el = document.getElementById('verif-res');
+  try {
+    const commitCalc = await _sha256hex(SORTEIO.seed);
+    const hashCalc   = await _sha256hex(SORTEIO.seed + '|' + SORTEIO.pagos);
+    const nums = SORTEIO.pagos.split(',').map(Number);
+    const idx  = Number(BigInt('0x' + hashCalc) % BigInt(nums.length));
+    const ganhadorCalc = nums[idx];
+    const okCommit   = (commitCalc === SORTEIO.commit);
+    const okGanhador = (ganhadorCalc === SORTEIO.ganhador);
+    if (okCommit && okGanhador){
+      el.style.color = '#22c55e';
+      el.innerHTML = '✅ <b>Verificado!</b> O código bate com o lacre publicado e o ganhador <b>#' +
+                     ganhadorCalc + '</b> é exatamente o resultado do cálculo. Sorteio justo, sem manipulação.';
+    } else {
+      el.style.color = '#ef4444';
+      el.innerHTML = '⚠️ Inconsistência detectada. ' +
+                     (okCommit ? '' : 'O lacre não confere. ') +
+                     (okGanhador ? '' : 'O ganhador não confere com o cálculo.');
+    }
+  } catch(e){ el.style.color = '#ef4444'; el.textContent = 'Erro ao verificar: ' + e.message; }
+  btn.disabled = false; btn.textContent = '🔍 Verificar de novo';
+}
+</script>
+{% elif camp.sorteio_commit %}
+<div style="max-width:480px;margin:14px auto 0;padding:0 20px">
+  <div style="background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.2);
+       border-radius:12px;padding:12px 14px;text-align:center">
+    <div style="font-size:12px;color:#22c55e;font-weight:800">🔒 Sorteio 100% auditável</div>
+    <div style="font-size:11px;color:#8888aa;margin-top:5px;line-height:1.6">
+      O resultado é definido por um código já <b>lacrado</b> (não pode ser alterado).
+      Após o sorteio, você poderá <b>conferir matematicamente</b> que foi justo.
+    </div>
   </div>
 </div>
 {% endif %}
