@@ -13417,8 +13417,20 @@ def slotzap_publico_status(token):
     slots = conn.execute(
         'SELECT numero, status FROM slotzap_slots WHERE campanha_id=? ORDER BY numero', (cid,)
     ).fetchall()
+    # Feed de prova social: últimos pagos (só 1º nome, por privacidade)
+    recs  = conn.execute(
+        "SELECT numero, cliente_nome FROM slotzap_slots "
+        "WHERE campanha_id=? AND status='pago' AND pago_em<>'' "
+        "ORDER BY pago_em DESC LIMIT 12", (cid,)
+    ).fetchall()
     conn.close()
-    return jsonify({'slots': {str(s['numero']): s['status'] for s in slots}})
+    def _primeiro_nome(n):
+        p = (n or '').strip().split()
+        return p[0][:18].title() if p else 'Alguém'
+    recentes = [{'numero': dict(r)['numero'], 'nome': _primeiro_nome(dict(r)['cliente_nome'])}
+                for r in recs]
+    return jsonify({'slots': {str(s['numero']): s['status'] for s in slots},
+                    'recentes': recentes})
 
 
 @app.route('/slotzap/p/<token>/confirmar', methods=['POST'])
