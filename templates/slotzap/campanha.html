@@ -476,16 +476,13 @@ async function cancelarEstornar() {
   if (!confirm('⚠️ ATENÇÃO: isto vai DEVOLVER o PIX de TODOS que pagaram e CANCELAR a campanha.\nNão dá pra desfazer. Tem certeza?')) return;
   const txt = prompt('Para confirmar, digite ESTORNAR (em maiúsculas):');
   if ((txt || '').trim().toUpperCase() !== 'ESTORNAR') { alert('Operação cancelada.'); return; }
-  let senha = '';
-  if (CAMP_TEM_SENHA) {
-    senha = prompt('🔑 Digite a senha do sorteio para confirmar:') || '';
-    if (!senha) return;
-  }
+  const senha = prompt('🔑 Digite a SENHA DA SUA CONTA para confirmar o estorno:') || '';
+  if (!senha) return;
   const r = await fetch(`/slotzap/campanha/${CAMP_ID}/cancelar-estornar`, {
     method:'POST', headers:{'Content-Type':'application/json'},
     body: JSON.stringify({senha})
   }).then(r=>r.json());
-  if (r.erro === 'senha_errada') { alert('🔑 Senha incorreta.'); return; }
+  if (r.erro === 'senha_errada') { alert('🔑 Senha da conta incorreta.'); return; }
   if (r.ok) {
     alert('✅ Campanha cancelada.\n' + (r.estornados || 0) + ' pagamento(s) estornado(s).'
           + (r.falhas ? ('\n⚠️ ' + r.falhas + ' falharam — verifique no painel do Asaas.') : ''));
