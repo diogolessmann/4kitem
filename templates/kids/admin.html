@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SalaTV — Admin de Conteúdo</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{--bg:#0f0f17;--surface:#1a1a26;--surface2:#22222f;--border:rgba(255,255,255,.08);
+        --text:#e8e8f0;--text2:#9090a8;--accent:#8b5cf6;--accent2:#6366f1;--green:#22c55e;--red:#ef4444;--amber:#f59e0b}
+  body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;padding:20px;max-width:1200px;margin:0 auto}
+  a{color:var(--accent)}
+  h1{font-size:22px;margin-bottom:2px}.sub{color:var(--text2);font-size:13px;margin-bottom:18px}
+  .stats{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:22px}
+  .stat{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 18px;flex:1;min-width:120px}
+  .stat .n{font-size:24px;font-weight:900}.stat .l{font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.4px}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px;margin-bottom:22px}
+  .card-title{font-size:15px;font-weight:800;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--border);vertical-align:middle}
+  th{color:var(--text2);font-size:11px;text-transform:uppercase;letter-spacing:.4px}
+  .btn{border:none;border-radius:9px;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;color:#fff;background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  .btn:hover{opacity:.9}
+  .btn-sm{padding:5px 10px;font-size:12px;border-radius:7px}
+  .btn-ghost{background:var(--surface2);border:1px solid var(--border);color:var(--text)}
+  .btn-red{background:var(--red)}.btn-green{background:var(--green)}.btn-amber{background:var(--amber);color:#1a1a26}
+  input,select{background:var(--surface2);border:1px solid var(--border);border-radius:9px;color:var(--text);padding:9px 11px;font-size:13px;font-family:inherit;outline:none}
+  input:focus,select:focus{border-color:var(--accent)}
+  .form-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:12px}
+  .form-row input,.form-row select{flex:1;min-width:90px}
+  .pill{font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px}
+  .pill-on{background:rgba(34,197,94,.15);color:var(--green)}.pill-off{background:rgba(239,68,68,.15);color:var(--red)}
+  .thumb{width:64px;height:36px;object-fit:cover;border-radius:5px;background:#000}
+  .filters{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+  .muted{color:var(--text2);font-size:12px}
+  .prog{height:8px;background:var(--surface2);border-radius:6px;overflow:hidden;margin-top:8px;display:none}
+  .prog>div{height:100%;background:var(--accent);width:0%}
+  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--surface2);border:1px solid var(--border);padding:12px 20px;border-radius:10px;font-size:13px;display:none;z-index:99}
+</style>
+</head>
+<body>
+  <h1>📺 SalaTV — Admin de Conteúdo</h1>
+  <div class="sub"><a href="/saas-admin">← Voltar ao painel SaaS</a></div>
+
+  <div class="stats">
+    <div class="stat"><div class="n">{{ stats.channels }}</div><div class="l">Canais ativos</div></div>
+    <div class="stat"><div class="n">{{ stats.videos }}</div><div class="l">Vídeos OK</div></div>
+    <div class="stat"><div class="n" style="color:var(--red)">{{ stats.videos_blocked }}</div><div class="l">Com problema</div></div>
+    <div class="stat"><div class="n">{{ stats.clients }}</div><div class="l">Estabelecimentos</div></div>
+  </div>
+
+  <!-- ── CANAIS ── -->
+  <div class="card">
+    <div class="card-title">📡 Canais
+      <span class="muted">{{ channels|length }} cadastrados</span>
+    </div>
+    <table>
+      <thead><tr><th>Canal</th><th>Categoria</th><th>Idade</th><th>Vídeos</th><th>Status</th><th></th></tr></thead>
+      <tbody>
+      {% for c in channels %}
+        <tr id="ch-{{ c.id }}">
+          <td><strong>{{ c.name }}</strong><br><span class="muted">{{ c.handle }}</span></td>
+          <td>{{ c.category }}{% if not c.is_safe %} <span class="pill pill-off">não-safe</span>{% endif %}</td>
+          <td>{{ c.age_min }}–{{ c.age_max }}</td>
+          <td><a href="/saas-admin/salatv?canal={{ c.id }}">{{ c.n_videos }}</a>{% if c.n_blocked %} <span class="pill pill-off">{{ c.n_blocked }}⚠</span>{% endif %}</td>
+          <td>{% if c.active %}<span class="pill pill-on">ativo</span>{% else %}<span class="pill pill-off">inativo</span>{% endif %}</td>
+          <td style="white-space:nowrap;text-align:right">
+            <button class="btn btn-sm btn-green" onclick="scrapeCanal({{ c.id }})">🔄 Buscar vídeos</button>
+            <button class="btn btn-sm btn-ghost" onclick="toggleCanal({{ c.id }})">{% if c.active %}⏸{% else %}▶{% endif %}</button>
+            <button class="btn btn-sm btn-red" onclick="delCanal({{ c.id }},'{{ c.name|e }}')">🗑</button>
+          </td>
+        </tr>
+      {% else %}
+        <tr><td colspan="6" class="muted">Nenhum canal ainda. Adicione abaixo.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+
+    <form method="POST" action="/saas-admin/salatv/canal/add" class="form-row">
+      <input name="name" placeholder="Nome do canal" required style="flex:2">
+      <input name="handle" placeholder="@handle" required>
+      <input name="category" placeholder="Categoria (ex: Musical)">
+      <input name="age_min" type="number" value="0" title="Idade mín" style="max-width:80px">
+      <input name="age_max" type="number" value="14" title="Idade máx" style="max-width:80px">
+      <select name="gender" title="Gênero"><option value="N">Todos</option><option value="M">Masc</option><option value="F">Fem</option></select>
+      <label class="muted" style="display:flex;align-items:center;gap:5px"><input type="checkbox" name="is_safe" checked style="width:auto;flex:none"> safe</label>
+      <button class="btn" type="submit">+ Adicionar canal</button>
+    </form>
+  </div>
+
+  <!-- ── VÍDEOS ── -->
+  <div class="card">
+    <div class="card-title">🎬 Vídeos
+      <button class="btn btn-amber btn-sm" id="btn-revisar" onclick="revisarLinks()">🔍 Revisar links do YouTube</button>
+    </div>
+    <div class="prog" id="prog"><div id="prog-bar"></div></div>
+    <div class="muted" id="revisao-info" style="margin-bottom:10px">
+      {% if revisao.done_at %}Última revisão: {{ revisao.done_at }} · {{ revisao.broken }} com problema{% endif %}
+    </div>
+
+    <form method="GET" action="/saas-admin/salatv" class="filters">
+      <select name="canal" onchange="this.form.submit()">
+        <option value="">Todos os canais</option>
+        {% for c in channels %}<option value="{{ c.id }}" {% if filtro_canal==c.id %}selected{% endif %}>{{ c.name }}</option>{% endfor %}
+      </select>
+      <input name="q" value="{{ q }}" placeholder="🔍 Buscar título / ID">
+      <label class="muted" style="display:flex;align-items:center;gap:5px"><input type="checkbox" name="problema" value="1" onchange="this.form.submit()" {% if filtro_problema %}checked{% endif %} style="width:auto"> só com problema</label>
+      <button class="btn btn-ghost btn-sm" type="submit">Filtrar</button>
+    </form>
+
+    <form method="POST" action="/saas-admin/salatv/video/add" class="form-row" style="margin-bottom:14px">
+      <input name="youtube" placeholder="Link ou ID do YouTube" required style="flex:2">
+      <input name="title" placeholder="Título (opcional)" style="flex:2">
+      <select name="canal"><option value="">Sem canal</option>{% for c in channels %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}</select>
+      <button class="btn btn-green" type="submit">+ Add vídeo avulso</button>
+    </form>
+
+    <table>
+      <thead><tr><th></th><th>Título</th><th>Canal</th><th>ID</th><th>Status</th><th></th></tr></thead>
+      <tbody>
+      {% for v in videos %}
+        <tr id="vid-{{ v.id }}">
+          <td><img class="thumb" loading="lazy" src="{{ v.thumbnail or 'https://i.ytimg.com/vi/' ~ v.youtube_id ~ '/hqdefault.jpg' }}" onerror="this.style.opacity=.2"></td>
+          <td>{{ v.title or '—' }}</td>
+          <td class="muted">{{ v.channel_name or '—' }}</td>
+          <td><a href="https://youtu.be/{{ v.youtube_id }}" target="_blank">{{ v.youtube_id }}</a></td>
+          <td>{% if v.embedding_ok %}<span class="pill pill-on">OK</span>{% else %}<span class="pill pill-off">⚠ problema</span>{% endif %}</td>
+          <td style="text-align:right"><button class="btn btn-sm btn-red" onclick="delVideo({{ v.id }})">🗑</button></td>
+        </tr>
+      {% else %}
+        <tr><td colspan="6" class="muted">Nenhum vídeo neste filtro.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    <div class="muted" style="margin-top:8px">Mostrando até 300 vídeos.</div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+<script>
+function toast(m){const t=document.getElementById('toast');t.textContent=m;t.style.display='block';setTimeout(()=>t.style.display='none',2600);}
+async function post(url){const r=await fetch(url,{method:'POST'});return r.json().catch(()=>({}));}
+
+async function toggleCanal(id){await post(`/saas-admin/salatv/canal/${id}/toggle`);location.reload();}
+async function delCanal(id,nome){if(!confirm(`Excluir o canal "${nome}" e TODOS os vídeos dele?`))return;await post(`/saas-admin/salatv/canal/${id}/delete`);document.getElementById('ch-'+id)?.remove();toast('Canal removido.');}
+async function scrapeCanal(id){const d=await post(`/saas-admin/salatv/canal/${id}/scrape`);toast(d.msg||'Buscando vídeos...');}
+async function delVideo(id){if(!confirm('Remover este vídeo?'))return;await post(`/saas-admin/salatv/video/${id}/delete`);document.getElementById('vid-'+id)?.remove();toast('Vídeo removido.');}
+
+let _revTimer=null;
+async function revisarLinks(){
+  const btn=document.getElementById('btn-revisar');
+  const d=await post('/saas-admin/salatv/revisar-links');
+  if(d.ok===false){toast(d.msg||'Já em andamento');return;}
+  btn.disabled=true;document.getElementById('prog').style.display='block';
+  _revTimer=setInterval(async()=>{
+    const r=await fetch('/saas-admin/salatv/revisar-links/status');const s=await r.json();
+    const pct=s.total?Math.round(s.checked/s.total*100):0;
+    document.getElementById('prog-bar').style.width=pct+'%';
+    document.getElementById('revisao-info').textContent=`Revisando... ${s.checked}/${s.total} · ${s.broken} com problema`;
+    if(!s.running){clearInterval(_revTimer);btn.disabled=false;
+      document.getElementById('revisao-info').textContent=`✅ Revisão concluída · ${s.broken} vídeos com problema. Filtre por "só com problema".`;
+      toast('Revisão concluída!');}
+  },1500);
+}
+</script>
+</body>
+</html>

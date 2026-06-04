@@ -12998,11 +12998,11 @@ def slotzap_cancelar_estornar(camp_id):
         conn.close()
         return jsonify({'erro': 'Campanha não encontrada'}), 404
     camp = dict(camp)
-    # Mesma senha do sorteio protege o estorno (ação destrutiva)
-    senha_hash = (camp.get('sortear_senha') or '').strip()
-    if senha_hash and not check_password_hash(senha_hash, data.get('senha') or ''):
+    # Estorno SEMPRE exige a senha da CONTA (ação destrutiva: devolve dinheiro de verdade)
+    u = conn.execute('SELECT password_hash FROM slotzap_users WHERE id=?', (_sz_uid(),)).fetchone()
+    if not u or not check_password_hash(dict(u)['password_hash'], data.get('senha') or ''):
         conn.close()
-        return jsonify({'erro': 'senha_errada', 'msg': 'Senha incorreta.'}), 403
+        return jsonify({'erro': 'senha_errada', 'msg': 'Senha da conta incorreta.'}), 403
     # Charges PAGOS (exclui brindes — não houve pagamento) e PENDENTES (reservados)
     pagos_ch = [dict(r)['asaas_charge_id'] for r in conn.execute(
         "SELECT DISTINCT asaas_charge_id FROM slotzap_slots WHERE campanha_id=? "

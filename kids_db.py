@@ -450,3 +450,107 @@ def stats():
     }
     conn.close()
     return r
+
+
+# ══════════════════════════════════════════════════════════════════════════
+#  SalaTV — Admin de conteúdo (canais + vídeos + revisor de links)
+# ══════════════════════════════════════════════════════════════════════════
+
+def list_channels_admin():
+    """Todos os canais (ativos e inativos) com contagem de vídeos."""
+    conn = get_conn()
+    rows = conn.execute("""
+        SELECT c.*,
+               (SELECT COUNT(*) FROM videos v WHERE v.channel_ref = c.id) AS n_videos,
+               (SELECT COUNT(*) FROM videos v WHERE v.channel_ref = c.id AND v.embedding_ok = 0) AS n_blocked
+        FROM channels c
+        ORDER BY c.active DESC, c.name
+    """).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def toggle_channel(ch_id: int) -> bool:
+    conn = get_conn()
+    cur = conn.execute("UPDATE channels SET active = 1 - active WHERE id = ?", (ch_id,))
+    conn.commit(); conn.close()
+    return cur.rowcount > 0
+
+
+def delete_channel(ch_id: int) -> bool:
+    """Remove canal e seus vídeos."""
+    conn = get_conn()
+    conn.execute("DELETE FROM videos WHERE channel_ref = ?", (ch_id,))
+    cur = conn.execute("DELETE FROM channels WHERE id = ?", (ch_id,))
+    conn.commit(); conn.close()
+    return cur.rowcount > 0
+
+
+def update_channel(ch_id: int, **fields) -> bool:
+    cols = [k for k in ('name','handle','category','age_min','age_max','gender','language','is_safe') if k in fields]
+    if not cols:
+        return False
+    conn = get_conn()
+    sets = ', '.join(f"{c}=?" for c in cols)
+    cur = conn.execute(f"UPDATE channels SET {sets} WHERE id=?",
+                       [fields[c] for c in cols] + [ch_id])
+    conn.commit(); conn.close()
+    return cur.rowcount > 0
+
+
+def list_videos_admin(channel_ref=None, only_blocked=False, q='', limit=300):
+    conn = get_conn()
+    where, params = ["1=1"], []
+    if channel_ref:
+        where.append("v.channel_ref = ?"); params.append(channel_ref)
+    if only_blocked:
+        where.append("v.embedding_ok = 0")
+    if q:
+        where.append("(v.title LIKE ? OR v.youtube_id LIKE ?)"); params += [f"%{q}%", f"%{q}%"]
+    rows = conn.execute(f"""
+        SELECT v.*, c.name AS channel_name
+        FROM videos v LEFT JOIN channels c ON c.id = v.channel_ref
+        WHERE {' AND '.join(where)}
+        ORDER BY v.last_seen DESC
+        LIMIT ?
+    """, params + [limit]).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def add_video_manual(youtube_id: str, title: str = '', channel_ref=None,
+                     thumbnail: str = '', age_min: int = 0, age_max: int = 14,
+                     gender: str = 'N') -> bool:
+    """Adiciona um vídeo avulso pelo youtube_id. Retorna True se inseriu."""
+    if not thumbnail:
+        thumbnail = f"https://i.ytimg.com/vi/{youtube_id}/hqdefault.jpg"
+    conn = get_conn()
+    cur = conn.execute("""
+        INSERT OR IGNORE INTO videos
+            (channel_ref, youtube_id, title, thumbnail, age_min, age_max, gender, embedding_ok)
+        VALUES (?,?,?,?,?,?,?,1)
+    """, (channel_ref, youtube_id, title or youtube_id, thumbnail, age_min, age_max, gender))
+    conn.commit(); ok = cur.rowcount > 0; conn.close()
+    return ok
+
+
+def delete_video(video_id: int) -> bool:
+    conn = get_conn()
+    cur = conn.execute("DELETE FROM videos WHERE id = ?", (video_id,))
+    conn.commit(); conn.close()
+    return cur.rowcount > 0
+
+
+def set_video_ok(youtube_id: str, ok: int = 1) -> bool:
+    conn = get_conn()
+    cur = conn.execute("UPDATE videos SET embedding_ok = ? WHERE youtube_id = ?", (1 if ok else 0, youtube_id))
+    conn.commit(); conn.close()
+    return cur.rowcount > 0
+
+
+def all_video_ids():
+    """(id, youtube_id) de todos os vídeos — para o revisor de links."""
+    conn = get_conn()
+    rows = conn.execute("SELECT id, youtube_id, embedding_ok FROM videos").fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
