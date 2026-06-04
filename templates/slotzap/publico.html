@@ -129,12 +129,26 @@ input:focus{border-color:#6366f1}
 </div>
 {% endif %}
 
+{% set livres = slots|selectattr('status','equalto','disponivel')|list|length %}
+{% set vendidos = slots|length - livres %}
 <div class="progresso">
   <div class="prog-head">
     <span>🔥 Progresso da campanha</span>
     <span class="prog-pct"><span id="prog-pct">{{ pct }}</span>%</span>
   </div>
   <div class="prog-bar"><div class="prog-fill" id="prog-fill" style="width:{{ pct }}%"></div></div>
+  <div style="text-align:center;font-size:12.5px;color:#f59e0b;margin-top:9px;font-weight:700">
+    🔥 <span id="prog-vendidos">{{ vendidos }}</span> já garantiram ·
+    restam só <span id="prog-restantes">{{ livres }}</span>!
+  </div>
+</div>
+
+<div style="max-width:480px;margin:14px auto 0;padding:0 16px">
+  <button onclick="numeroAleatorio()" style="width:100%;padding:14px;border-radius:12px;
+      border:1px solid rgba(99,102,241,.45);background:rgba(99,102,241,.12);color:#a5b4fc;
+      font-size:15px;font-weight:800;cursor:pointer;font-family:inherit">
+    🎲 Me dá um número da sorte aleatório!
+  </button>
 </div>
 
 <div class="legenda">
@@ -225,6 +239,21 @@ function atualizarBarra(){
   document.getElementById('sel-total').textContent = fmtBRL(n * PRECO);
   document.getElementById('selbar').classList.toggle('open', n > 0);
   document.getElementById('bar-live').style.display = n > 0 ? 'none' : '';
+}
+function numeroAleatorio(){
+  const livres = [...document.querySelectorAll('.slot-disponivel')]
+                 .map(el => parseInt(el.id.replace('slot-','')))
+                 .filter(n => !_sel.has(n));
+  if (!livres.length){ alert('Todos os números já foram escolhidos! 🎉'); return; }
+  const escolhido = livres[Math.floor(Math.random() * livres.length)];
+  toggleSlot(escolhido);
+  const el = document.getElementById('slot-' + escolhido);
+  if (el){
+    el.scrollIntoView({behavior:'smooth', block:'center'});
+    el.style.transition = 'transform .2s';
+    el.style.transform = 'scale(1.25)';
+    setTimeout(() => { el.style.transform = ''; }, 350);
+  }
 }
 function abrirCheckout(){
   if (_sel.size === 0) return;
@@ -401,6 +430,10 @@ async function atualizarGrid() {
     const pct = total ? Math.round(pagos / total * 100) : 0;
     document.getElementById('prog-pct').textContent  = pct;
     document.getElementById('prog-fill').style.width = pct + '%';
+    const rest = document.getElementById('prog-restantes');
+    if (rest) rest.textContent = liv;
+    const vend = document.getElementById('prog-vendidos');
+    if (vend) vend.textContent = (pagos + res);
     atualizarBarra();
   } catch(e) {}
 }
