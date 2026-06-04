@@ -6528,6 +6528,164 @@ def kids_refresh():
 
 
 # ══════════════════════════════════════════════════════════════════════════
+#  SalaTV — Admin de conteúdo (canais + vídeos + revisor de links do YouTube)
+# ══════════════════════════════════════════════════════════════════════════
+_salatv_revisao = {'running': False, 'total': 0, 'checked': 0, 'broken': 0, 'done_at': ''}
+
+
+def _yt_extract_id(s):
+    import re as _re
+    s = (s or '').strip()
+    if not s:
+        return ''
+    m = _re.search(r'(?:v=|youtu\.be/|/embed/|/shorts/)([A-Za-z0-9_-]{11})', s)
+    if m:
+        return m.group(1)
+    if _re.fullmatch(r'[A-Za-z0-9_-]{11}', s):
+        return s
+    return ''
+
+
+def _yt_alive(youtube_id):
+    """True se o vídeo existe e permite embed (via oEmbed do YouTube)."""
+    try:
+        import requests as _req
+        r = _req.get('https://www.youtube.com/oembed',
+                     params={'url': f'https://www.youtube.com/watch?v={youtube_id}',
+                             'format': 'json'}, timeout=8)
+        return r.status_code == 200
+    except Exception:
+        return True  # erro de rede: não marca como quebrado
+
+
+@app.route('/saas-admin/salatv')
+@_saas_admin_required
+def salatv_admin():
+    import kids_db
+    ch_id = request.args.get('canal', type=int)
+    only_blocked = request.args.get('problema') == '1'
+    q = request.args.get('q', '').strip()
+    return render_template('kids/admin.html',
+                           channels=kids_db.list_channels_admin(),
+                           videos=kids_db.list_videos_admin(channel_ref=ch_id, only_blocked=only_blocked, q=q),
+                           stats=kids_db.stats(), modes=MODES,
+                           filtro_canal=ch_id, filtro_problema=only_blocked, q=q,
+                           revisao=_salatv_revisao)
+
+
+@app.route('/saas-admin/salatv/canal/add', methods=['POST'])
+@_saas_admin_required
+def salatv_canal_add():
+    import kids_db
+    name = request.form.get('name', '').strip()
+    handle = request.form.get('handle', '').strip().lstrip('@')
+    category = request.form.get('category', 'Geral').strip() or 'Geral'
+    try:
+        age_min = int(request.form.get('age_min') or 0)
+        age_max = int(request.form.get('age_max') or 14)
+    except ValueError:
+        age_min, age_max = 0, 14
+    gender = request.form.get('gender', 'N').strip() or 'N'
+    is_safe = 1 if request.form.get('is_safe') else 0
+    if name and handle:
+        kids_db.add_channel(name, '@' + handle, None, age_min, age_max, gender, category, 'PT-BR', is_safe)
+    return redirect('/saas-admin/salatv')
+
+
+@app.route('/saas-admin/salatv/canal/<int:ch_id>/toggle', methods=['POST'])
+@_saas_admin_required
+def salatv_canal_toggle(ch_id):
+    import kids_db
+    kids_db.toggle_channel(ch_id)
+    return jsonify({'ok': True})
+
+
+@app.route('/saas-admin/salatv/canal/<int:ch_id>/delete', methods=['POST'])
+@_saas_admin_required
+def salatv_canal_delete(ch_id):
+    import kids_db
+    kids_db.delete_channel(ch_id)
+    return jsonify({'ok': True})
+
+
+@app.route('/saas-admin/salatv/canal/<int:ch_id>/scrape', methods=['POST'])
+@_saas_admin_required
+def salatv_canal_scrape(ch_id):
+    def _run():
+        try:
+            import kids_db
+            from kids_scraper import resolve_channel_id, fetch_channel_videos
+            conn = kids_db.get_conn()
+            row = conn.execute('SELECT * FROM channels WHERE id=?', (ch_id,)).fetchone()
+            conn.close()
+            if not row:
+                return
+            ch = dict(row)
+            yt = ch.get('channel_id')
+            if not yt:
+                yt = resolve_channel_id(ch['handle'])
+                if yt:
+                    kids_db.update_channel_id(ch_id, yt)
+            if yt:
+                fetch_channel_videos(yt, ch_id, ch['age_min'], ch['age_max'], ch['gender'])
+        except Exception as e:
+            log.error(f'[SalaTV scrape canal] {e}')
+    threading.Thread(target=_run, daemon=True).start()
+    return jsonify({'ok': True, 'msg': 'Buscando vídeos em background...'})
+
+
+@app.route('/saas-admin/salatv/video/add', methods=['POST'])
+@_saas_admin_required
+def salatv_video_add():
+    import kids_db
+    yid = _yt_extract_id(request.form.get('youtube', ''))
+    ch_id = request.form.get('canal', type=int)
+    title = request.form.get('title', '').strip()
+    erro = '' if yid else 'link_invalido'
+    if yid:
+        kids_db.add_video_manual(yid, title, ch_id)
+    return redirect('/saas-admin/salatv' + ('?erro=' + erro if erro else ''))
+
+
+@app.route('/saas-admin/salatv/video/<int:vid>/delete', methods=['POST'])
+@_saas_admin_required
+def salatv_video_delete(vid):
+    import kids_db
+    kids_db.delete_video(vid)
+    return jsonify({'ok': True})
+
+
+@app.route('/saas-admin/salatv/revisar-links', methods=['POST'])
+@_saas_admin_required
+def salatv_revisar_links():
+    if _salatv_revisao['running']:
+        return jsonify({'ok': False, 'msg': 'Revisão já em andamento'})
+
+    def _run():
+        import kids_db
+        vids = kids_db.all_video_ids()
+        _salatv_revisao.update(running=True, total=len(vids), checked=0, broken=0, done_at='')
+        broken = 0
+        for v in vids:
+            alive = _yt_alive(v['youtube_id'])
+            kids_db.set_video_ok(v['youtube_id'], 1 if alive else 0)
+            if not alive:
+                broken += 1
+            _salatv_revisao['checked'] += 1
+            _salatv_revisao['broken'] = broken
+        _salatv_revisao.update(running=False, done_at=datetime.now().strftime('%d/%m %H:%M'))
+
+    threading.Thread(target=_run, daemon=True).start()
+    return jsonify({'ok': True})
+
+
+@app.route('/saas-admin/salatv/revisar-links/status')
+@_saas_admin_required
+def salatv_revisar_status():
+    return jsonify(_salatv_revisao)
+
+
+# ══════════════════════════════════════════════════════════════════════════
 #  BAÚ SC — Cofre digital de credenciais
 # ══════════════════════════════════════════════════════════════════════════
 
@@ -12823,6 +12981,61 @@ def slotzap_editar(camp_id):
         add = novo_total - camp['total_slots']
     conn.commit(); conn.close()
     return jsonify({'ok': True, 'numeros_adicionados': add})
+
+
+@app.route('/slotzap/campanha/<int:camp_id>/cancelar-estornar', methods=['POST'])
+@_sz_login_required
+def slotzap_cancelar_estornar(camp_id):
+    """Cancela a campanha e ESTORNA no Asaas todos os PIX pagos (devolve o dinheiro).
+    Também cancela cobranças pendentes. Protegido pela senha do sorteio (se definida)."""
+    if not _sz_plan_active():
+        return jsonify({'erro': 'Assinatura inativa.'}), 402
+    data = request.get_json() or {}
+    conn = get_saas_db()
+    camp = conn.execute('SELECT * FROM slotzap_campanhas WHERE id=? AND user_id=?',
+                        (camp_id, _sz_uid())).fetchone()
+    if not camp:
+        conn.close()
+        return jsonify({'erro': 'Campanha não encontrada'}), 404
+    camp = dict(camp)
+    # Mesma senha do sorteio protege o estorno (ação destrutiva)
+    senha_hash = (camp.get('sortear_senha') or '').strip()
+    if senha_hash and not check_password_hash(senha_hash, data.get('senha') or ''):
+        conn.close()
+        return jsonify({'erro': 'senha_errada', 'msg': 'Senha incorreta.'}), 403
+    # Charges PAGOS (exclui brindes — não houve pagamento) e PENDENTES (reservados)
+    pagos_ch = [dict(r)['asaas_charge_id'] for r in conn.execute(
+        "SELECT DISTINCT asaas_charge_id FROM slotzap_slots WHERE campanha_id=? "
+        "AND status='pago' AND IFNULL(brinde,0)=0 AND asaas_charge_id<>''", (camp_id,)).fetchall()]
+    pend_ch = [dict(r)['asaas_charge_id'] for r in conn.execute(
+        "SELECT DISTINCT asaas_charge_id FROM slotzap_slots WHERE campanha_id=? "
+        "AND status='reservado' AND asaas_charge_id<>''", (camp_id,)).fetchall()]
+    conn.close()
+
+    estornados, falhas = 0, 0
+    for cid in pagos_ch:
+        try:
+            resp = _asaas_req('POST', f'/payments/{cid}/refund')
+            if resp.get('id') or (resp.get('status', '').upper() in ('REFUNDED', 'REFUND_REQUESTED', 'PENDING')):
+                estornados += 1
+            else:
+                falhas += 1
+                log.warning(f'[SlotZap] estorno falhou {cid}: {resp}')
+        except Exception as _e:
+            falhas += 1
+            log.warning(f'[SlotZap] estorno erro {cid}: {_e}')
+    for cid in pend_ch:
+        try:
+            _asaas_req('DELETE', f'/payments/{cid}')
+        except Exception:
+            pass
+
+    conn = get_saas_db()
+    conn.execute("UPDATE slotzap_campanhas SET status='cancelada' WHERE id=?", (camp_id,))
+    conn.commit(); conn.close()
+    log.info(f'[SlotZap] Campanha {camp_id} CANCELADA — {estornados} estornos, {falhas} falhas')
+    return jsonify({'ok': True, 'estornados': estornados, 'falhas': falhas,
+                    'total': len(pagos_ch)})
 
 
 def _evo_cfg():

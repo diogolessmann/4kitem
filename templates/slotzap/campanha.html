@@ -425,6 +425,16 @@ input:focus{border-color:#6366f1}
       <button class="btn btn-primary" onclick="salvarEditar()">💾 Salvar</button>
       <button class="btn btn-secondary" onclick="fecharModal()">Cancelar</button>
     </div>
+    <div style="border-top:1px solid rgba(239,68,68,.25);margin-top:16px;padding-top:12px">
+      <div style="font-size:12px;color:#fca5a5;font-weight:800;margin-bottom:8px">⚠️ Zona de risco</div>
+      <button class="btn" style="width:100%;background:rgba(239,68,68,.12);
+              color:#fca5a5;border:1px solid rgba(239,68,68,.45)" onclick="cancelarEstornar()">
+        ↩️ Cancelar campanha e ESTORNAR todos os PIX</button>
+      <div style="font-size:11px;color:#8888aa;margin-top:6px;line-height:1.5">
+        Devolve o dinheiro de <b>todos</b> que pagaram (via Asaas) e cancela a campanha.
+        Use se não vender no prazo. <b>Não dá pra desfazer.</b>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -460,6 +470,27 @@ async function sortear(forcar, senha) {
     alert(m);
     location.reload();
   } else alert('Erro: ' + (r.erro || 'tente novamente'));
+}
+
+async function cancelarEstornar() {
+  if (!confirm('⚠️ ATENÇÃO: isto vai DEVOLVER o PIX de TODOS que pagaram e CANCELAR a campanha.\nNão dá pra desfazer. Tem certeza?')) return;
+  const txt = prompt('Para confirmar, digite ESTORNAR (em maiúsculas):');
+  if ((txt || '').trim().toUpperCase() !== 'ESTORNAR') { alert('Operação cancelada.'); return; }
+  let senha = '';
+  if (CAMP_TEM_SENHA) {
+    senha = prompt('🔑 Digite a senha do sorteio para confirmar:') || '';
+    if (!senha) return;
+  }
+  const r = await fetch(`/slotzap/campanha/${CAMP_ID}/cancelar-estornar`, {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({senha})
+  }).then(r=>r.json());
+  if (r.erro === 'senha_errada') { alert('🔑 Senha incorreta.'); return; }
+  if (r.ok) {
+    alert('✅ Campanha cancelada.\n' + (r.estornados || 0) + ' pagamento(s) estornado(s).'
+          + (r.falhas ? ('\n⚠️ ' + r.falhas + ' falharam — verifique no painel do Asaas.') : ''));
+    location.href = '/slotzap/app';
+  } else { alert('Erro: ' + (r.erro || 'tente novamente')); }
 }
 
 function abrirEditar() { abrirModal('modal-editar'); }
