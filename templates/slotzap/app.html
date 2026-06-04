@@ -54,6 +54,16 @@ nav{background:#13131f;border-bottom:1px solid rgba(255,255,255,.07);
   <a href="/slotzap/sair"><button class="nav-btn">Sair</button></a>
 </nav>
 <div class="container">
+  {% if not tem_wallet %}
+  <a href="/slotzap/configuracoes" style="display:block;text-decoration:none;
+      background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.4);border-radius:12px;
+      padding:14px 18px;margin-bottom:22px;color:#fca5a5;line-height:1.5;font-size:13px">
+    ⚠️ <b style="color:#fff">Cadastre sua carteira de recebimento (Asaas)</b><br>
+    Sem ela, o dinheiro das suas vendas <b style="color:#fff">não cai automaticamente</b> na sua conta.
+    Você recebe {{ 100 - taxa }}% de cada número vendido. <b style="color:#fff">Toque aqui para configurar →</b>
+  </a>
+  {% endif %}
+
   <div class="header">
     <h1>Suas campanhas</h1>
     <a href="/slotzap/nova" class="btn-new">+ Nova Campanha</a>

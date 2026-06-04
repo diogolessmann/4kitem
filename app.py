@@ -5577,7 +5577,7 @@ def saas_asaas_test():
 @app.route('/saas-admin')
 @_saas_admin_required
 def saas_admin():
-    """Painel de admin do SaaS — lista assinantes do Alerta SC."""
+    """Painel de admin do SaaS — lista assinantes do AlertaJá."""
     conn = get_saas_db()
     subscribers = [dict(r) for r in conn.execute('''
         SELECT s.*, COUNT(r.id) as reports_count
@@ -5900,7 +5900,7 @@ def saas_alerta_delete(sub_id):
     return jsonify({'success': True})
 
 
-# ── Admin Alerta SC — trial ───────────────────────────────────────────────────
+# ── Admin AlertaJá — trial ───────────────────────────────────────────────────
 
 @app.route('/admin/alerta/<int:sub_id>/trial', methods=['POST'])
 @_saas_admin_required
@@ -5987,7 +5987,7 @@ def saas_bau_delete(user_id):
     return jsonify({'success': True})
 
 
-# ── Admin Alerta SC — mudar plano ────────────────────────────────────────────
+# ── Admin AlertaJá — mudar plano ────────────────────────────────────────────
 
 @app.route('/admin/alerta/<int:sub_id>/plano', methods=['POST'])
 @_saas_admin_required
@@ -12597,7 +12597,10 @@ def slotzap_app():
         WHERE c.user_id=?
         ORDER BY c.id DESC
     ''', (_sz_uid(),)).fetchall()]
+    _u = dict(conn.execute('SELECT asaas_wallet_id FROM slotzap_users WHERE id=?',
+                           (_sz_uid(),)).fetchone() or {})
     conn.close()
+    tem_wallet       = bool((_u.get('asaas_wallet_id') or '').strip())
     total_arrecadado = sum((c['pagos'] or 0) * float(c['preco'] or 0) for c in campanhas)
     total_vendidos   = sum((c['pagos'] or 0) for c in campanhas)
     ativas           = sum(1 for c in campanhas if c['status'] == 'ativa')
@@ -12606,6 +12609,8 @@ def slotzap_app():
                            total_arrecadado=total_arrecadado,
                            total_vendidos=total_vendidos,
                            ativas=ativas,
+                           tem_wallet=tem_wallet,
+                           taxa=int(SZ_TAXA_VENDA * 100),
                            user_name=session.get('sz_user_name', ''))
 
 
