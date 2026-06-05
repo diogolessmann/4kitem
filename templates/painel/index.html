@@ -166,8 +166,11 @@
 
 <!-- Header -->
 <div class="header">
-  <div class="header-logo"><span>4K</span>ITEM Painel</div>
-  <div class="header-code">{{ client.code }}</div>
+  <div class="header-logo"><span>Sala</span>TV Painel</div>
+  <div style="display:flex;align-items:center;gap:10px">
+    <div class="header-code">{{ client.code }}</div>
+    <a href="/kids/sair" style="font-size:12px;color:var(--text2);text-decoration:none;border:1px solid var(--border);border-radius:8px;padding:6px 12px">Sair</a>
+  </div>
 </div>
 
 <!-- Card do cliente -->
@@ -192,6 +195,23 @@
     </div>
     <div class="tv-link-arrow">→</div>
   </a>
+
+  <div style="display:flex;gap:14px;align-items:center;margin-top:14px;flex-wrap:wrap">
+    {% if tv_qr_b64 %}
+    <div style="background:#fff;border-radius:12px;padding:8px;flex-shrink:0">
+      <img src="data:image/png;base64,{{ tv_qr_b64 }}" alt="QR da TV" style="width:104px;height:104px;display:block">
+    </div>
+    {% endif %}
+    <div style="flex:1;min-width:160px">
+      <div style="font-size:12px;color:var(--text2);line-height:1.5;margin-bottom:10px">
+        📲 Aponte a câmera da Smart TV (ou celular) para o QR e abra a TV em segundos.
+      </div>
+      <button onclick="testarTV()" id="btn-testar-tv" style="width:100%;padding:11px;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif">
+        ▶ Testar minha TV
+      </button>
+      <div id="testar-tv-result" style="font-size:12px;margin-top:8px;display:none"></div>
+    </div>
+  </div>
 </div>
 
 <!-- Stats -->
@@ -318,6 +338,11 @@ async function setMode(mode, btn) {
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify({ mode }),
     });
+    if (res.status === 403) {
+      showToast('⚠️ Sessão expirada. Faça login novamente.', 'error');
+      setTimeout(() => location.href = '/kids/entrar', 1600);
+      return;
+    }
     const data = await res.json();
 
     if (data.ok) {
@@ -340,6 +365,33 @@ async function setMode(mode, btn) {
     btn.classList.remove('loading');
     showToast('❌ Falha de conexão', 'error');
   }
+}
+
+// ── Testar TV ──────────────────────────────────────────────────────────
+async function testarTV() {
+  const btn = document.getElementById('btn-testar-tv');
+  const res = document.getElementById('testar-tv-result');
+  btn.disabled = true; btn.textContent = '⏳ Testando...';
+  res.style.display = 'none';
+  try {
+    const r = await fetch(`${BASE_URL}api/tv/${CLIENT_CODE}/playlist?limit=10`);
+    const p = await r.json();
+    const n = (p.videos || []).length;
+    res.style.display = 'block';
+    if (n > 0) {
+      res.style.color = '#22c55e';
+      res.textContent = `✅ Tudo certo! ${n}+ vídeos prontos. Abrindo a TV...`;
+      window.open(`/tv/${CLIENT_CODE}`, '_blank');
+    } else {
+      res.style.color = '#f59e0b';
+      res.textContent = '⚠️ Sem vídeos neste modo ainda. Tente outro modo ou clique em "Buscar novos vídeos".';
+    }
+  } catch(e) {
+    res.style.display = 'block';
+    res.style.color = '#ef4444';
+    res.textContent = '❌ Não consegui testar agora. Tente de novo.';
+  }
+  btn.disabled = false; btn.textContent = '▶ Testar minha TV';
 }
 
 // ── Refresh scraper ────────────────────────────────────────────────────
