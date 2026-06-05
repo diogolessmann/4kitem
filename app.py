@@ -6424,8 +6424,10 @@ def painel(code):
         tv_qr_b64 = _b64.b64encode(_buf.getvalue()).decode()
     except Exception:
         pass
+    import kids_db as _kdb
     return render_template('painel/index.html',
-                           client=client, modes=MODES, tv_qr_b64=tv_qr_b64)
+                           client=client, modes=MODES, tv_qr_b64=tv_qr_b64,
+                           ads=_kdb.list_ads(client['code']), ad_limit=_kdb.AD_LIMIT)
 
 
 # ══════════════════════════════════════════════════════════════════════════
@@ -6477,6 +6479,75 @@ def api_set_mode(code):
         return jsonify({'error': f'modo inválido: {mode}'}), 400
     return jsonify({'ok': True, 'mode': mode,
                     'mode_label': MODES[mode]['label']})
+
+
+# ── SalaTV — Anúncios do estabelecimento (entre os vídeos) ────────────────────
+def _salatv_owner(code):
+    return (session.get('kids_code') or '').strip().upper() == (code or '').strip().upper()
+
+
+@app.route('/api/tv/<code>/ads')
+def api_tv_ads(code):
+    """Anúncios ativos do estabelecimento — consumido pelo player da TV."""
+    import kids_db
+    return jsonify({'ads': kids_db.list_ads(code, active_only=True)})
+
+
+@app.route('/painel/<code>/ad/add', methods=['POST'])
+def salatv_ad_add(code):
+    if not _salatv_owner(code):
+        return redirect('/kids/entrar')
+    import kids_db
+    kids_db.add_ad(
+        code, tipo='texto',
+        titulo=request.form.get('titulo', '').strip(),
+        subtitulo=request.form.get('subtitulo', '').strip(),
+        emoji=(request.form.get('emoji', '').strip() or '📢'),
+        cor=(request.form.get('cor', '').strip() or '#6366f1'),
+    )
+    return redirect(f'/painel/{code}#anuncios')
+
+
+@app.route('/painel/<code>/ad/upload', methods=['POST'])
+def salatv_ad_upload(code):
+    if not _salatv_owner(code):
+        return redirect('/kids/entrar')
+    import kids_db, random as _rnd
+    fobj = request.files.get('imagem')
+    if not fobj or not fobj.filename:
+        return redirect(f'/painel/{code}#anuncios')
+    ext = fobj.filename.rsplit('.', 1)[-1].lower()
+    if ext not in ('png', 'jpg', 'jpeg', 'gif', 'webp'):
+        return redirect(f'/painel/{code}?erro=formato#anuncios')
+    pasta = os.path.join(app.static_folder, 'salatv_ads', code)
+    os.makedirs(pasta, exist_ok=True)
+    fname = f'{_rnd.randint(10000,99999)}.{ext}'
+    fobj.save(os.path.join(pasta, fname))
+    kids_db.add_ad(code, tipo='imagem', image_url=f'/static/salatv_ads/{code}/{fname}')
+    return redirect(f'/painel/{code}#anuncios')
+
+
+@app.route('/painel/<code>/ad/<int:ad_id>/delete', methods=['POST'])
+def salatv_ad_delete(code, ad_id):
+    if not _salatv_owner(code):
+        return jsonify({'error': 'nao_autorizado'}), 403
+    import kids_db
+    removed = kids_db.delete_ad(ad_id, code)
+    if removed and removed.get('tipo') == 'imagem' and removed.get('image_url', '').startswith('/static/'):
+        try:
+            os.remove(os.path.join(app.static_folder, removed['image_url'].split('/static/', 1)[1]))
+        except Exception:
+            pass
+    return jsonify({'ok': True})
+
+
+@app.route('/painel/<code>/ad/<int:ad_id>/toggle', methods=['POST'])
+def salatv_ad_toggle(code, ad_id):
+    if not _salatv_owner(code):
+        return jsonify({'error': 'nao_autorizado'}), 403
+    import kids_db
+    kids_db.toggle_ad(ad_id, code)
+    return jsonify({'ok': True})
 
 # ── Criar cliente ─────────────────────────────────────────────────────────
 @app.route('/api/clients', methods=['POST'])
@@ -13990,13 +14061,42 @@ def slotzap_publico_reservar(token):
                     'indicacao_meta': camp.get('indicacao_meta') or 10})
 
 
+def _sz_check_senha_conta(conn, senha):
+    """Confere a senha de LOGIN da conta SlotZap do usuário logado."""
+    u = conn.execute('SELECT password_hash FROM slotzap_users WHERE id=?', (_sz_uid(),)).fetchone()
+    return bool(u) and check_password_hash(dict(u)['password_hash'], senha or '')
+
+
 @app.route('/slotzap/campanha/<int:camp_id>/encerrar', methods=['POST'])
 @_sz_login_required
 def slotzap_encerrar(camp_id):
+    senha = (request.get_json(silent=True) or {}).get('senha') or ''
     conn = get_saas_db()
+    if not _sz_check_senha_conta(conn, senha):
+        conn.close()
+        return jsonify({'erro': 'senha_errada', 'msg': 'Senha da conta incorreta.'}), 403
     conn.execute("UPDATE slotzap_campanhas SET status='encerrada' WHERE id=? AND user_id=?",
                  (camp_id, _sz_uid()))
     conn.commit(); conn.close()
+    return jsonify({'ok': True})
+
+
+@app.route('/slotzap/campanha/<int:camp_id>/reabrir', methods=['POST'])
+@_sz_login_required
+def slotzap_reabrir(camp_id):
+    """Reabre uma campanha ENCERRADA (volta a vender). Não reabre canceladas/estornadas."""
+    senha = (request.get_json(silent=True) or {}).get('senha') or ''
+    conn = get_saas_db()
+    if not _sz_check_senha_conta(conn, senha):
+        conn.close()
+        return jsonify({'erro': 'senha_errada', 'msg': 'Senha da conta incorreta.'}), 403
+    cur = conn.execute("UPDATE slotzap_campanhas SET status='ativa' "
+                       "WHERE id=? AND user_id=? AND status='encerrada'", (camp_id, _sz_uid()))
+    conn.commit()
+    ok = cur.rowcount > 0
+    conn.close()
+    if not ok:
+        return jsonify({'erro': 'Só dá pra reabrir campanhas encerradas (cancelada/estornada não reabre).'}), 400
     return jsonify({'ok': True})
 
 
