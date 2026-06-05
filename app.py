@@ -1261,7 +1261,9 @@ def _desp_saas_login_required(f):
 
 @app.route('/amigo-despachante')
 def amigo_desp_landing():
-    return render_template('amigo_despachante/landing.html', plans=DESP_PLANS)
+    # Página oficial única do produto = /despachante-info (marketing completo).
+    # A área do cliente continua em /amigo-despachante/entrar.
+    return redirect('/despachante-info')
 
 
 @app.route('/amigo-despachante/entrar', methods=['GET', 'POST'])
