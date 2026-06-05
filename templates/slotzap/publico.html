@@ -235,11 +235,23 @@ async function verificarSorteio(btn){
 <div style="max-width:480px;margin:12px auto 0;padding:0 16px">
   <div style="background:rgba(34,197,94,.07);border:1px solid rgba(34,197,94,.22);
        border-radius:12px;padding:11px 14px;text-align:center">
-    <div style="font-size:12.5px;color:#22c55e;font-weight:800">🎁 Indique e ganhe número GRÁTIS</div>
+    <div style="font-size:13px;color:#22c55e;font-weight:800">🎁 INDIQUE E GANHE — {{ camp.indicacao_meta }} VENDAS = 1 NÚMERO GRÁTIS</div>
     <div style="font-size:11px;color:#8888aa;margin-top:4px;line-height:1.5">
-      Compre seu número e ganhe um link pessoal. A cada <b>{{ camp.indicacao_meta }} números vendidos</b>
-      pelo seu link, você ganha <b>1 número grátis</b>!
+      Ao comprar, você ganha um <b>link pessoal</b>. Cada amigo que comprar por ele conta;
+      a cada <b>{{ camp.indicacao_meta }} números vendidos</b> = <b>1 número grátis pra você</b>! 🍀
     </div>
+  </div>
+</div>
+<!-- Link pessoal (aparece pra quem já comprou — salvo no navegador) -->
+<div id="meu-ref-box" style="display:none;max-width:480px;margin:10px auto 0;padding:0 16px">
+  <div style="background:rgba(34,197,94,.13);border:1px solid rgba(34,197,94,.45);
+       border-radius:12px;padding:13px 14px;text-align:center">
+    <div style="font-size:13px;color:#22c55e;font-weight:800;margin-bottom:6px">🎁 SEU LINK DE INDICAÇÃO ESTÁ ATIVO!</div>
+    <div style="font-size:11px;color:#c9d6e2;line-height:1.5;margin-bottom:9px">
+      Compartilhe e ganhe <b>1 número grátis</b> a cada <b>{{ camp.indicacao_meta }} vendas</b> pelo seu link.</div>
+    <button onclick="compartilharRef()" style="width:100%;padding:12px;border-radius:9px;border:none;
+        background:#22c55e;color:#06280f;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit">
+      📲 Compartilhar meu link e ganhar</button>
   </div>
 </div>
 {% endif %}
@@ -367,6 +379,11 @@ function atualizarBarra(){
   document.getElementById('bar-live').style.display = n > 0 ? 'none' : '';
 }
 function mostrarRefShare(ativa, meta){
+  if (ativa && _meuRef){
+    try { localStorage.setItem('sz_ref_' + TOKEN, _meuRef); } catch(e){}
+    const mb = document.getElementById('meu-ref-box');
+    if (mb) mb.style.display = 'block';   // link fixo no topo, persistente
+  }
   const box = document.getElementById('ref-share');
   if (!box) return;
   if (!ativa || !_meuRef){ box.style.display = 'none'; return; }
@@ -602,6 +619,16 @@ async function atualizarGrid() {
 }
 setInterval(atualizarGrid, 15000);
 atualizarGrid();   // popula feed + status logo ao abrir
+
+// Restaura o link de indicação do comprador (se já comprou neste navegador)
+try {
+  const _r = localStorage.getItem('sz_ref_' + TOKEN);
+  if (_r) {
+    _meuRef = _r;
+    const mb = document.getElementById('meu-ref-box');
+    if (mb) mb.style.display = 'block';
+  }
+} catch(e) {}
 
 // Contador regressivo do sorteio
 (function(){
