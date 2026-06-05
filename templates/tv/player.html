@@ -307,6 +307,20 @@
     <div class="qr-label">Painel<br>de controle</div>
   </div>
 
+  <!-- Overlay de Anúncio do estabelecimento (entre os vídeos) -->
+  <div id="ad-overlay" style="position:fixed;inset:0;z-index:9999;display:none;align-items:center;justify-content:center;background:#000;overflow:hidden">
+    <div id="ad-img-wrap" style="display:none;width:100%;height:100%">
+      <img id="ad-img" style="width:100%;height:100%;object-fit:contain" alt="">
+    </div>
+    <div id="ad-text-wrap" style="display:none;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:5vw;width:100%;height:100%">
+      <div id="ad-emoji" style="font-size:13vw;line-height:1;margin-bottom:3vh"></div>
+      <div id="ad-titulo" style="font-size:6vw;font-weight:900;color:#fff;line-height:1.1;text-shadow:0 2px 12px rgba(0,0,0,.3)"></div>
+      <div id="ad-sub" style="font-size:3vw;color:rgba(255,255,255,.9);margin-top:2.5vh;text-shadow:0 2px 8px rgba(0,0,0,.3)"></div>
+    </div>
+    <div style="position:absolute;top:3vh;left:3vw;background:rgba(0,0,0,.45);color:#fff;font-size:1.5vw;padding:.6vh 1.6vw;border-radius:40px;letter-spacing:.15em;font-weight:700">PUBLICIDADE</div>
+    <div id="ad-prog" style="position:absolute;bottom:0;left:0;height:7px;width:0;background:rgba(255,255,255,.9)"></div>
+  </div>
+
 </div>
 
 <script>
@@ -322,6 +336,49 @@
 const CLIENT_CODE = "{{ client.code }}";
 const BASE_URL    = window.location.origin + '/';
 const TICKER_MSGS = {{ (client.ticker_msg or '') | tojson }};
+
+// ── Anúncios do estabelecimento (entre os vídeos) ──────────────────────────
+let ADS            = [];
+let videosSinceAd  = 0;
+let adIndex        = 0;
+let adShowing      = false;
+const AD_EVERY     = 4;       // 1 anúncio a cada N vídeos
+const AD_DURATION  = 9000;    // ms que o anúncio fica na tela
+
+async function fetchAds() {
+  try {
+    const r = await fetch(`${BASE_URL}api/tv/${CLIENT_CODE}/ads`);
+    const d = await r.json();
+    ADS = d.ads || [];
+  } catch(e) { /* mantém ADS atual */ }
+}
+
+function showAd(done) {
+  if (!ADS.length) { done(); return; }
+  adShowing = true;
+  const ad = ADS[adIndex % ADS.length]; adIndex++;
+  const ov  = document.getElementById('ad-overlay');
+  const img = document.getElementById('ad-img-wrap');
+  const txt = document.getElementById('ad-text-wrap');
+  if (ad.tipo === 'imagem' && ad.image_url) {
+    document.getElementById('ad-img').src = ad.image_url;
+    img.style.display = 'block'; txt.style.display = 'none'; ov.style.background = '#000';
+  } else {
+    document.getElementById('ad-emoji').textContent  = ad.emoji || '📢';
+    document.getElementById('ad-titulo').textContent = ad.titulo || '';
+    document.getElementById('ad-sub').textContent    = ad.subtitulo || '';
+    txt.style.background = ad.cor || '#6366f1';
+    txt.style.display = 'flex'; img.style.display = 'none'; ov.style.background = ad.cor || '#000';
+  }
+  try { if (ytPlayer) ytPlayer.pauseVideo(); } catch(e) {}
+  ov.style.display = 'flex';
+  const prog = document.getElementById('ad-prog');
+  prog.style.transition = 'none'; prog.style.width = '0%';
+  requestAnimationFrame(() => {
+    prog.style.transition = `width ${AD_DURATION}ms linear`; prog.style.width = '100%';
+  });
+  setTimeout(() => { ov.style.display = 'none'; adShowing = false; done(); }, AD_DURATION);
+}
 
 // ── Estado do player ──────────────────────────────────────────────────────
 let ytPlayer          = null;   // instância da YT.Player API
@@ -540,8 +597,17 @@ function safeNextVideo(opts = {}) {
     }
 
     currentIndex = (currentIndex + 1) % playlist.length;
-    loadVideo(playlist[currentIndex]);
-    if (currentIndex === 0) fetchPlaylist(); // recarrega a cada ciclo
+    videosSinceAd++;
+    const _advance = () => {
+      loadVideo(playlist[currentIndex]);
+      if (currentIndex === 0) { fetchPlaylist(); fetchAds(); } // recarrega a cada ciclo
+    };
+    if (ADS.length && videosSinceAd >= AD_EVERY) {
+      videosSinceAd = 0;
+      showAd(_advance);   // mostra anúncio e depois carrega o próximo vídeo
+    } else {
+      _advance();
+    }
   }, delay);
 }
 
@@ -649,6 +715,7 @@ setInterval(async () => {
 // ── Init ──────────────────────────────────────────────────────────────────
 (async () => {
   buildTicker(TICKER_MSGS);
+  fetchAds();   // carrega anúncios do estabelecimento (não bloqueia o início)
 
   const ok = await fetchPlaylist();
 

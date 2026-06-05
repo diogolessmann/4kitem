@@ -248,6 +248,56 @@
   {% endfor %}
 </div>
 
+<!-- ── Meus anúncios na TV ── -->
+<div class="section-title" id="anuncios">📢 Meus anúncios na TV <span style="font-weight:400;color:var(--text2);font-size:12px">({{ ads|length }}/{{ ad_limit }})</span></div>
+<div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:18px;margin-bottom:16px">
+  <p style="font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:14px">
+    Mostre suas próprias <strong style="color:var(--text)">promoções, avisos e ofertas</strong> entre os vídeos — aparecem automaticamente na sua TV a cada poucos vídeos.
+  </p>
+
+  {% if ads %}
+  <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px">
+    {% for a in ads %}
+    <div id="ad-{{ a.id }}" style="display:flex;align-items:center;gap:10px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:8px 12px">
+      {% if a.tipo == 'imagem' %}
+        <img src="{{ a.image_url }}" style="width:56px;height:32px;object-fit:cover;border-radius:5px;flex-shrink:0">
+        <div style="flex:1;font-size:13px">🖼️ Anúncio em imagem</div>
+      {% else %}
+        <div style="width:40px;height:32px;display:flex;align-items:center;justify-content:center;font-size:20px;background:{{ a.cor }};border-radius:5px;flex-shrink:0">{{ a.emoji }}</div>
+        <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:700">{{ a.titulo or '(sem título)' }}</div><div style="font-size:11px;color:var(--text2)">{{ a.subtitulo }}</div></div>
+      {% endif %}
+      <button onclick="toggleAd({{ a.id }},this)" style="background:none;border:1px solid var(--border);border-radius:7px;color:{{ '#22c55e' if a.ativo else 'var(--text2)' }};font-size:11px;font-weight:700;padding:5px 9px;cursor:pointer">{{ 'Ativo' if a.ativo else 'Pausado' }}</button>
+      <button onclick="delAd({{ a.id }})" style="background:none;border:none;color:#ef4444;font-size:15px;cursor:pointer">🗑</button>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% if ads|length < ad_limit %}
+  <div style="display:grid;grid-template-columns:1fr;gap:14px">
+    <form method="POST" action="/painel/{{ client.code }}/ad/add" style="border:1px dashed var(--border);border-radius:12px;padding:14px">
+      <div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:10px;text-transform:uppercase;letter-spacing:.4px">✍️ Anúncio em texto</div>
+      <div style="display:flex;gap:8px;margin-bottom:8px">
+        <input name="emoji" maxlength="2" value="📢" style="width:54px;text-align:center;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:9px;font-size:16px">
+        <input name="titulo" placeholder="Título (ex: Promoção de outubro!)" required style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:9px 11px;font-size:13px;font-family:'Inter',sans-serif">
+        <input type="color" name="cor" value="#6366f1" title="Cor de fundo" style="width:44px;height:38px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);cursor:pointer">
+      </div>
+      <input name="subtitulo" placeholder="Subtítulo (opcional)" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:9px 11px;font-size:13px;font-family:'Inter',sans-serif;margin-bottom:10px">
+      <button type="submit" style="width:100%;padding:10px;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif">+ Adicionar anúncio em texto</button>
+    </form>
+
+    <form method="POST" action="/painel/{{ client.code }}/ad/upload" enctype="multipart/form-data" style="border:1px dashed var(--border);border-radius:12px;padding:14px">
+      <div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:10px;text-transform:uppercase;letter-spacing:.4px">🖼️ Anúncio em imagem</div>
+      <input type="file" name="imagem" accept="image/*" required style="width:100%;font-size:13px;color:var(--text2);margin-bottom:10px">
+      <div style="font-size:11px;color:var(--text2);margin-bottom:10px">Dica: use uma imagem horizontal (16:9) pra ficar perfeita na TV.</div>
+      <button type="submit" style="width:100%;padding:10px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif">+ Enviar imagem</button>
+    </form>
+  </div>
+  {% else %}
+  <div style="font-size:12px;color:var(--text2)">Você atingiu o limite de {{ ad_limit }} anúncios. Apague um para adicionar outro.</div>
+  {% endif %}
+</div>
+
 <!-- ── Compartilhe com as famílias ── -->
 <div style="background:linear-gradient(135deg,rgba(99,102,241,.1) 0%,rgba(139,92,246,.08) 100%);border:1px solid rgba(99,102,241,.25);border-radius:16px;padding:18px;margin-bottom:16px">
   <div style="font-size:13px;font-weight:800;color:#818cf8;margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px">📤 Compartilhe com as famílias</div>
@@ -403,6 +453,18 @@ async function triggerRefresh() {
   } catch(e) {
     showToast('❌ Falha ao iniciar busca', 'error');
   }
+}
+
+// ── Anúncios ───────────────────────────────────────────────────────────
+async function toggleAd(id, btn) {
+  await fetch(`${BASE_URL}painel/${CLIENT_CODE}/ad/${id}/toggle`, { method: 'POST' });
+  location.reload();
+}
+async function delAd(id) {
+  if (!confirm('Remover este anúncio?')) return;
+  await fetch(`${BASE_URL}painel/${CLIENT_CODE}/ad/${id}/delete`, { method: 'POST' });
+  document.getElementById('ad-' + id)?.remove();
+  showToast('🗑️ Anúncio removido.', 'success');
 }
 
 // ── Toast ──────────────────────────────────────────────────────────────

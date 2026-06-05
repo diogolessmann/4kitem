@@ -180,10 +180,26 @@ def init_db():
             created_at  TEXT    DEFAULT CURRENT_TIMESTAMP
         );
 
+        -- SalaTV: anúncios do próprio estabelecimento (aparecem entre os vídeos)
+        CREATE TABLE IF NOT EXISTS salatv_ads (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            client_code TEXT    NOT NULL,
+            tipo        TEXT    DEFAULT 'texto',
+            titulo      TEXT    DEFAULT '',
+            subtitulo   TEXT    DEFAULT '',
+            emoji       TEXT    DEFAULT '📢',
+            cor         TEXT    DEFAULT '#6366f1',
+            image_url   TEXT    DEFAULT '',
+            ativo       INTEGER DEFAULT 1,
+            ordem       INTEGER DEFAULT 0,
+            created_at  TEXT    DEFAULT CURRENT_TIMESTAMP
+        );
+
         CREATE INDEX IF NOT EXISTS idx_vid_gender ON videos(gender);
         CREATE INDEX IF NOT EXISTS idx_vid_age    ON videos(age_min, age_max);
         CREATE INDEX IF NOT EXISTS idx_vid_pub    ON videos(published_at DESC);
         CREATE INDEX IF NOT EXISTS idx_vid_ch     ON videos(channel_ref);
+        CREATE INDEX IF NOT EXISTS idx_ads_client ON salatv_ads(client_code, ativo);
     """)
 
     # Seed canais
@@ -554,3 +570,58 @@ def all_video_ids():
     rows = conn.execute("SELECT id, youtube_id, embedding_ok FROM videos").fetchall()
     conn.close()
     return [dict(r) for r in rows]
+
+
+# ══════════════════════════════════════════════════════════════════════════
+#  SalaTV — Anúncios do estabelecimento (entre os vídeos)
+# ══════════════════════════════════════════════════════════════════════════
+AD_LIMIT = 6  # máximo de anúncios por estabelecimento
+
+def list_ads(client_code: str, active_only: bool = False):
+    conn = get_conn()
+    where = "WHERE client_code = ?" + (" AND ativo = 1" if active_only else "")
+    rows = conn.execute(
+        f"SELECT * FROM salatv_ads {where} ORDER BY ordem, id", (client_code,)
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def count_ads(client_code: str) -> int:
+    conn = get_conn()
+    n = conn.execute("SELECT COUNT(*) FROM salatv_ads WHERE client_code=?", (client_code,)).fetchone()[0]
+    conn.close()
+    return n
+
+
+def add_ad(client_code, tipo='texto', titulo='', subtitulo='', emoji='📢',
+           cor='#6366f1', image_url='') -> bool:
+    if count_ads(client_code) >= AD_LIMIT:
+        return False
+    conn = get_conn()
+    conn.execute("""
+        INSERT INTO salatv_ads (client_code, tipo, titulo, subtitulo, emoji, cor, image_url)
+        VALUES (?,?,?,?,?,?,?)
+    """, (client_code, tipo, titulo, subtitulo, emoji, cor, image_url))
+    conn.commit(); conn.close()
+    return True
+
+
+def delete_ad(ad_id: int, client_code: str) -> dict | None:
+    """Remove o anúncio (validando o dono). Retorna o anúncio removido (p/ apagar arquivo)."""
+    conn = get_conn()
+    row = conn.execute("SELECT * FROM salatv_ads WHERE id=? AND client_code=?",
+                       (ad_id, client_code)).fetchone()
+    if not row:
+        conn.close(); return None
+    conn.execute("DELETE FROM salatv_ads WHERE id=? AND client_code=?", (ad_id, client_code))
+    conn.commit(); conn.close()
+    return dict(row)
+
+
+def toggle_ad(ad_id: int, client_code: str) -> bool:
+    conn = get_conn()
+    cur = conn.execute("UPDATE salatv_ads SET ativo = 1 - ativo WHERE id=? AND client_code=?",
+                       (ad_id, client_code))
+    conn.commit(); conn.close()
+    return cur.rowcount > 0
