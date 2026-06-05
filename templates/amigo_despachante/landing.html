@@ -1,31 +1,74 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Amigo Despachante — Plataforma para Despachantes</title>
+<title>Amigo Despachante — O sistema completo para despachantes de trânsito</title>
+<meta name="description" content="Gerencie clientes, veículos, ordens de serviço, licenciamentos e financeiro do seu despachante num só lugar. Com IA especializada em DETRAN-SC. Teste grátis.">
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
-  body{background:#07070f;color:#f0f0ff;font-family:'Segoe UI',sans-serif;min-height:100vh}
-  nav{background:rgba(8,14,24,.95);border-bottom:1px solid rgba(59,130,246,.12);padding:0 24px;height:60px;display:flex;align-items:center;justify-content:space-between;backdrop-filter:blur(10px)}
-  .nav-logo{font-size:18px;font-weight:900;color:#60a5fa}
-  .nav-btn{padding:8px 20px;border-radius:10px;background:rgba(59,130,246,.15);border:1px solid rgba(59,130,246,.3);color:#60a5fa;font-size:13px;font-weight:700;cursor:pointer;text-decoration:none;font-family:inherit}
-  .hero{text-align:center;padding:80px 24px 60px;max-width:700px;margin:0 auto}
-  .hero-icon{font-size:64px;margin-bottom:20px}
-  .hero h1{font-size:38px;font-weight:900;line-height:1.2;margin-bottom:16px}
-  .hero h1 span{color:#60a5fa}
-  .hero p{font-size:16px;color:#4060a0;line-height:1.7;margin-bottom:32px}
+  :root{--bg:#07070f;--bg2:#0a0f1a;--surface:#0c1320;--border:rgba(59,130,246,.14);--blue:#60a5fa;--blue2:#3b82f6;--text:#eaf0ff;--muted:#7c93c0}
+  body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;line-height:1.6}
+  a{text-decoration:none}
+  nav{position:sticky;top:0;z-index:50;background:rgba(8,14,24,.92);border-bottom:1px solid var(--border);padding:0 24px;height:60px;display:flex;align-items:center;justify-content:space-between;backdrop-filter:blur(10px)}
+  .nav-logo{font-size:18px;font-weight:900;color:var(--blue)}
+  .nav-btn{padding:8px 20px;border-radius:10px;background:rgba(59,130,246,.15);border:1px solid rgba(59,130,246,.3);color:var(--blue);font-size:13px;font-weight:700}
+  .wrap{max-width:1040px;margin:0 auto;padding:0 24px}
+  .btn-primary{display:inline-block;padding:14px 30px;background:linear-gradient(135deg,#1d4ed8,#3b82f6);border-radius:14px;color:#fff;font-size:15px;font-weight:800}
+  .btn-sec{display:inline-block;padding:14px 30px;background:transparent;border:1px solid rgba(59,130,246,.35);border-radius:14px;color:var(--blue);font-size:15px;font-weight:700}
+  .kicker{display:inline-block;font-size:12px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;color:var(--blue);margin-bottom:14px}
+
+  /* HERO */
+  .hero{text-align:center;padding:72px 24px 56px;max-width:760px;margin:0 auto}
+  .hero-icon{font-size:60px;margin-bottom:18px}
+  .hero h1{font-size:clamp(30px,5vw,44px);font-weight:900;line-height:1.12;margin-bottom:18px}
+  .hero h1 span{color:var(--blue)}
+  .hero p{font-size:17px;color:var(--muted);margin-bottom:30px}
   .hero-btns{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
-  .btn-primary{padding:14px 32px;background:linear-gradient(135deg,#1d4ed8,#3b82f6);border:none;border-radius:14px;color:#fff;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;text-decoration:none}
-  .btn-sec{padding:14px 32px;background:transparent;border:1px solid rgba(59,130,246,.3);border-radius:14px;color:#60a5fa;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;text-decoration:none}
-  .plans{max-width:900px;margin:0 auto;padding:48px 24px}
-  .plans h2{text-align:center;font-size:26px;font-weight:900;margin-bottom:32px}
-  .plans-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px}
-  .plan-card{background:#080e18;border:1px solid rgba(59,130,246,.12);border-radius:20px;padding:24px;text-align:center}
-  .plan-icon{font-size:28px;margin-bottom:10px}
-  .plan-name{font-size:16px;font-weight:800;color:#60a5fa;margin-bottom:4px}
-  .plan-price{font-size:13px;color:#4060a0;margin-bottom:12px}
-  .plan-features{font-size:12px;color:#4060a0;line-height:1.7}
+  .selos{display:flex;gap:18px;justify-content:center;flex-wrap:wrap;margin-top:24px;font-size:13px;color:var(--muted)}
+  .selos b{color:#34d399}
+
+  /* SECTION */
+  section{padding:56px 0}
+  .sec-title{font-size:clamp(24px,3.5vw,34px);font-weight:900;line-height:1.15;text-align:center;margin-bottom:12px}
+  .sec-sub{text-align:center;color:var(--muted);font-size:16px;max-width:620px;margin:0 auto 40px}
+
+  /* PROBLEMA */
+  .problem{background:var(--bg2);border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
+  .prob-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px}
+  .prob{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px}
+  .prob .x{color:#f87171;font-weight:900;margin-right:6px}
+
+  /* FEATURES */
+  .feat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}
+  .feat{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:22px}
+  .feat .ic{width:46px;height:46px;border-radius:12px;background:rgba(59,130,246,.14);display:flex;align-items:center;justify-content:center;font-size:22px;margin-bottom:12px}
+  .feat h3{font-size:17px;font-weight:800;margin-bottom:6px}
+  .feat p{font-size:14px;color:var(--muted)}
+
+  /* COMO FUNCIONA */
+  .steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:18px}
+  .step{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:24px;text-align:center}
+  .step-n{width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#1d4ed8,#3b82f6);color:#fff;font-weight:900;font-size:20px;display:flex;align-items:center;justify-content:center;margin:0 auto 12px}
+  .step h3{font-size:16px;font-weight:800;margin-bottom:6px}
+  .step p{font-size:14px;color:var(--muted)}
+
+  /* PLANS */
+  .plans-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin-top:8px}
+  .plan-card{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:26px;text-align:center}
+  .plan-icon{font-size:30px;margin-bottom:10px}
+  .plan-name{font-size:18px;font-weight:900;color:var(--blue);margin-bottom:4px}
+  .plan-price{font-size:15px;color:var(--text);font-weight:700;margin-bottom:14px}
+  .plan-features{font-size:13px;color:var(--muted);line-height:1.9;text-align:left;display:inline-block}
+  .plan-features li{list-style:none}
+  .plan-features .ok{color:#34d399;margin-right:6px}
+
+  /* CTA */
+  .cta{background:var(--bg2);border-top:1px solid var(--border);text-align:center}
+  .cta h2{font-size:clamp(24px,3.5vw,34px);font-weight:900;margin-bottom:12px}
+  .cta p{color:var(--muted);margin-bottom:24px}
+  footer{text-align:center;color:var(--muted);font-size:13px;padding:30px 24px;border-top:1px solid var(--border)}
+  footer a{color:var(--blue)}
 </style>
 </head>
 <body>
@@ -34,28 +77,108 @@
   <a href="/amigo-despachante/entrar" class="nav-btn">🔓 Entrar</a>
 </nav>
 
-<div class="hero">
+<!-- HERO -->
+<header class="hero">
   <div class="hero-icon">🚗</div>
-  <h1>A plataforma que o <span>despachante moderno</span> precisa</h1>
-  <p>Gerencie seus clientes, consultas, documentos e financeiro em um único lugar. Feito especialmente para despachantes de trânsito.</p>
+  <span class="kicker">Sistema para despachantes de trânsito</span>
+  <h1>Todo o seu despachante <span>organizado num só lugar.</span></h1>
+  <p>Pare de controlar clientes, veículos e prazos em caderno, planilha e WhatsApp. O Amigo Despachante reúne tudo — com uma IA que entende de DETRAN-SC pra te ajudar no dia a dia.</p>
   <div class="hero-btns">
     <a href="/amigo-despachante/entrar" class="btn-primary">🔓 Acessar minha conta</a>
-    <a href="https://wa.me/5547999606998?text=Olá%2C%20quero%20saber%20mais%20sobre%20o%20Amigo%20Despachante" target="_blank" class="btn-sec">💬 Falar com vendas</a>
+    <a href="https://wa.me/5547999606998?text=Ol%C3%A1%2C%20quero%20saber%20mais%20sobre%20o%20Amigo%20Despachante" target="_blank" class="btn-sec">💬 Falar com vendas</a>
   </div>
-</div>
+  <div class="selos">
+    <span><b>✓</b> Sem instalar nada</span>
+    <span><b>✓</b> Acessa do PC ou celular</span>
+    <span><b>✓</b> Backup automático</span>
+  </div>
+</header>
 
-<div class="plans">
-  <h2>Planos</h2>
-  <div class="plans-grid">
-    {% for key, p in plans.items() %}
-    <div class="plan-card">
-      <div class="plan-icon">{{ '🥉' if key=='basico' else '🥈' if key=='profissional' else '🥇' }}</div>
-      <div class="plan-name">{{ p.label }}</div>
-      <div class="plan-price">{{ p.price }}</div>
-      <div class="plan-features">Acesso completo à plataforma<br>Suporte via WhatsApp<br>Atualizações automáticas</div>
+<!-- PROBLEMA -->
+<section class="problem">
+  <div class="wrap">
+    <h2 class="sec-title">A papelada não pode te dominar.</h2>
+    <p class="sec-sub">Despachante que se organiza fecha mais serviço e nunca perde um prazo. Sem sistema, é fácil escorregar:</p>
+    <div class="prob-grid">
+      <div class="prob"><span class="x">✕</span> Cliente liga e você não acha o processo dele na hora.</div>
+      <div class="prob"><span class="x">✕</span> Licenciamento vence e você só lembra depois da multa.</div>
+      <div class="prob"><span class="x">✕</span> Não sabe quanto entrou no mês nem quem ficou devendo.</div>
+      <div class="prob"><span class="x">✕</span> Dúvida de DETRAN e tem que ligar pra alguém pra confirmar.</div>
     </div>
-    {% endfor %}
   </div>
-</div>
+</section>
+
+<!-- O QUE VOCÊ GERENCIA -->
+<section>
+  <div class="wrap">
+    <div style="text-align:center"><span class="kicker">Tudo num lugar só</span></div>
+    <h2 class="sec-title">O que você controla no Amigo Despachante</h2>
+    <p class="sec-sub">Cada parte do seu negócio organizada e fácil de achar.</p>
+    <div class="feat-grid">
+      <div class="feat"><div class="ic">👥</div><h3>Clientes e veículos</h3><p>Cadastro completo com histórico. Acha qualquer cliente ou placa em segundos.</p></div>
+      <div class="feat"><div class="ic">🗂️</div><h3>Ordens de serviço (Kanban)</h3><p>Veja cada serviço numa coluna — "a fazer", "em andamento", "concluído". Nada se perde no meio.</p></div>
+      <div class="feat"><div class="ic">📅</div><h3>Controle de licenciamento</h3><p>Acompanhe vencimentos por final de placa e seja avisado antes de vencer.</p></div>
+      <div class="feat"><div class="ic">💰</div><h3>Financeiro</h3><p>Quanto entrou, quanto falta receber e relatórios do mês — sem planilha à parte.</p></div>
+      <div class="feat"><div class="ic">🤖</div><h3>IA especialista em DETRAN-SC</h3><p>Tire dúvidas de processos, prazos e procedimentos com um assistente treinado no DETRAN-SC.</p></div>
+      <div class="feat"><div class="ic">☁️</div><h3>Backup automático</h3><p>Seus dados salvos na nuvem todos os dias. Nunca mais perde nada se o PC der problema.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- COMO FUNCIONA -->
+<section class="problem">
+  <div class="wrap">
+    <div style="text-align:center"><span class="kicker">Simples de começar</span></div>
+    <h2 class="sec-title">Como funciona</h2>
+    <p class="sec-sub">Em poucos minutos você já está com o despachante organizado.</p>
+    <div class="steps">
+      <div class="step"><div class="step-n">1</div><h3>Crie sua conta</h3><p>Sem instalar nada. Acessa pelo navegador, no PC ou no celular.</p></div>
+      <div class="step"><div class="step-n">2</div><h3>Cadastre clientes e serviços</h3><p>Lança seus clientes, veículos e as ordens de serviço em andamento.</p></div>
+      <div class="step"><div class="step-n">3</div><h3>Acompanhe tudo no painel</h3><p>Kanban, prazos de licenciamento e financeiro atualizados na sua frente.</p></div>
+      <div class="step"><div class="step-n">4</div><h3>Conte com a IA</h3><p>Bateu uma dúvida de DETRAN-SC? Pergunta pro assistente e segue o serviço.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- PLANOS -->
+<section>
+  <div class="wrap">
+    <div style="text-align:center"><span class="kicker">Planos</span></div>
+    <h2 class="sec-title">Escolha o seu plano</h2>
+    <p class="sec-sub">Comece simples e cresça quando quiser. Cancele quando quiser.</p>
+    <div class="plans-grid">
+      {% for key, p in plans.items() %}
+      <div class="plan-card">
+        <div class="plan-icon">{{ '🥉' if key=='basico' else '🥈' if key=='profissional' else '🥇' }}</div>
+        <div class="plan-name">{{ p.label }}</div>
+        <div class="plan-price">{{ p.price }}</div>
+        <ul class="plan-features">
+          <li><span class="ok">✓</span> Acesso completo à plataforma</li>
+          <li><span class="ok">✓</span> Clientes, veículos e ordens de serviço</li>
+          <li><span class="ok">✓</span> IA especialista em DETRAN-SC</li>
+          <li><span class="ok">✓</span> Suporte via WhatsApp</li>
+          <li><span class="ok">✓</span> Backup automático na nuvem</li>
+        </ul>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="cta">
+  <div class="wrap">
+    <h2>Pronto pra organizar seu despachante?</h2>
+    <p>Comece hoje e tenha tudo na palma da mão — sem papelada perdida.</p>
+    <div class="hero-btns" style="justify-content:center">
+      <a href="/amigo-despachante/entrar" class="btn-primary">🔓 Acessar minha conta</a>
+      <a href="https://wa.me/5547999606998?text=Ol%C3%A1%2C%20quero%20saber%20mais%20sobre%20o%20Amigo%20Despachante" target="_blank" class="btn-sec">💬 Falar com vendas</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  Amigo Despachante — uma solução <a href="/">4KITEM</a> · Norte de Santa Catarina
+</footer>
 </body>
 </html>
