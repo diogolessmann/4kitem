@@ -13066,7 +13066,7 @@ def slotzap_editar(camp_id):
 @_sz_login_required
 def slotzap_cancelar_estornar(camp_id):
     """Cancela a campanha e ESTORNA no Asaas todos os PIX pagos (devolve o dinheiro).
-    Também cancela cobranças pendentes. Protegido pela senha do sorteio (se definida)."""
+    Também cancela cobranças pendentes. Protegido pela senha de LOGIN da conta."""
     if not _sz_plan_active():
         return jsonify({'erro': 'Assinatura inativa.'}), 402
     data = request.get_json() or {}
