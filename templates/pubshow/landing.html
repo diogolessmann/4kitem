@@ -352,16 +352,15 @@
       Do QR Code na mesa ao clip tocando na tela — veja o ciclo completo de um pedido no Jukebox.
     </p>
 
-    <!-- Player de vídeo (YouTube embed) -->
-    {% set DEMO_VIDEO_ID = '' %}{# Cole aqui o ID do YouTube quando tiver o vídeo gravado #}
-    {% if DEMO_VIDEO_ID %}
-    <div style="position:relative;padding-bottom:56.25%;border-radius:20px;overflow:hidden;box-shadow:0 0 80px rgba(239,68,68,.2);border:1px solid rgba(239,68,68,.2)">
-      <iframe
-        src="https://www.youtube.com/embed/{{ DEMO_VIDEO_ID }}?rel=0&modestbranding=1&color=red"
-        style="position:absolute;inset:0;width:100%;height:100%;border:none"
-        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-        allowfullscreen loading="lazy">
-      </iframe>
+    <!-- Player de vídeo (self-hosted) -->
+    {% if True %}{# demo PubShow "Como Funciona" #}
+    <div style="position:relative;border-radius:20px;overflow:hidden;box-shadow:0 0 80px rgba(239,68,68,.2);border:1px solid rgba(239,68,68,.2)">
+      <video controls preload="metadata" playsinline
+             poster="{{ url_for('static', filename='pubshow/como-funciona-poster.jpg') }}"
+             style="width:100%;display:block;background:#000;border-radius:20px">
+        <source src="{{ url_for('static', filename='pubshow/como-funciona.mp4') }}" type="video/mp4">
+        Seu navegador não suporta vídeo.
+      </video>
     </div>
     {% else %}
     <!-- Placeholder enquanto não há vídeo: mockup clicável -->
