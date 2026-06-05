@@ -3,7 +3,15 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{{ client.name }} — 4KITEM TV</title>
+  <title>{{ client.name }} — SalaTV</title>
+  <!-- PWA: instalar a TV na tela inicial e abrir em tela cheia -->
+  <link rel="manifest" href="/tv/{{ client.code }}/manifest.json">
+  <meta name="theme-color" content="#0f0f1f">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="SalaTV">
+  <link rel="apple-touch-icon" href="/tv/{{ client.code }}/icon/192.png">
   <!-- YouTube IFrame Player API — async para não bloquear o parser -->
   <script async src="https://www.youtube.com/iframe_api"></script>
   <style>
@@ -716,6 +724,17 @@ setInterval(async () => {
 (async () => {
   buildTicker(TICKER_MSGS);
   fetchAds();   // carrega anúncios do estabelecimento (não bloqueia o início)
+
+  // PWA: registra o service worker (TV instalável / tela cheia)
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/salatv-sw.js').catch(() => {});
+  }
+  // Heartbeat: contabiliza "horas no ar" enquanto a TV está tocando
+  setInterval(() => {
+    if (videoStarted && !adShowing) {
+      fetch(`${BASE_URL}api/tv/${CLIENT_CODE}/heartbeat`, { method: 'POST' }).catch(() => {});
+    }
+  }, 60000);
 
   const ok = await fetchPlaylist();
 

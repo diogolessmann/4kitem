@@ -200,6 +200,14 @@ def init_db():
         CREATE INDEX IF NOT EXISTS idx_vid_pub    ON videos(published_at DESC);
         CREATE INDEX IF NOT EXISTS idx_vid_ch     ON videos(channel_ref);
         CREATE INDEX IF NOT EXISTS idx_ads_client ON salatv_ads(client_code, ativo);
+
+        -- SalaTV: horas no ar (heartbeat do player, 1 min por batida)
+        CREATE TABLE IF NOT EXISTS salatv_uptime (
+            client_code TEXT NOT NULL,
+            dia         TEXT NOT NULL,
+            minutos     INTEGER DEFAULT 0,
+            PRIMARY KEY (client_code, dia)
+        );
     """)
 
     # Seed canais
@@ -625,3 +633,39 @@ def toggle_ad(ad_id: int, client_code: str) -> bool:
                        (ad_id, client_code))
     conn.commit(); conn.close()
     return cur.rowcount > 0
+
+
+# ══════════════════════════════════════════════════════════════════════════
+#  SalaTV — Horas no ar (uptime via heartbeat do player)
+# ══════════════════════════════════════════════════════════════════════════
+def bump_uptime(client_code: str, minutos: int = 1):
+    import datetime as _dt
+    dia = _dt.date.today().isoformat()
+    conn = get_conn()
+    conn.execute("""
+        INSERT INTO salatv_uptime (client_code, dia, minutos) VALUES (?,?,?)
+        ON CONFLICT(client_code, dia) DO UPDATE SET minutos = minutos + ?
+    """, (client_code, dia, minutos, minutos))
+    conn.commit(); conn.close()
+
+
+def uptime_summary(client_code: str) -> dict:
+    import datetime as _dt
+    hoje = _dt.date.today().isoformat()
+    mes  = _dt.date.today().strftime('%Y-%m')
+    conn = get_conn()
+    r_hoje  = conn.execute("SELECT COALESCE(minutos,0) FROM salatv_uptime WHERE client_code=? AND dia=?",
+                           (client_code, hoje)).fetchone()
+    r_mes   = conn.execute("SELECT COALESCE(SUM(minutos),0) FROM salatv_uptime WHERE client_code=? AND dia LIKE ?",
+                           (client_code, mes + '%')).fetchone()
+    r_total = conn.execute("SELECT COALESCE(SUM(minutos),0) FROM salatv_uptime WHERE client_code=?",
+                           (client_code,)).fetchone()
+    min_hoje  = r_hoje[0] if r_hoje else 0
+    min_mes   = r_mes[0] if r_mes else 0
+    min_total = r_total[0] if r_total else 0
+    return {
+        'min_hoje':  min_hoje,
+        'horas_hoje': round(min_hoje / 60, 1),
+        'horas_mes': round(min_mes / 60, 1),
+        'horas_total': round(min_total / 60, 1),
+    }

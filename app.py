@@ -6427,7 +6427,8 @@ def painel(code):
     import kids_db as _kdb
     return render_template('painel/index.html',
                            client=client, modes=MODES, tv_qr_b64=tv_qr_b64,
-                           ads=_kdb.list_ads(client['code']), ad_limit=_kdb.AD_LIMIT)
+                           ads=_kdb.list_ads(client['code']), ad_limit=_kdb.AD_LIMIT,
+                           uptime=_kdb.uptime_summary(client['code']))
 
 
 # ══════════════════════════════════════════════════════════════════════════
@@ -6548,6 +6549,79 @@ def salatv_ad_toggle(code, ad_id):
     import kids_db
     kids_db.toggle_ad(ad_id, code)
     return jsonify({'ok': True})
+
+
+# ── SalaTV — Heartbeat (horas no ar) + PWA (manifest/ícone/service worker) ─────
+@app.route('/api/tv/<code>/heartbeat', methods=['POST'])
+def api_tv_heartbeat(code):
+    import kids_db
+    if not get_client(code):
+        return jsonify({'ok': False}), 404
+    kids_db.bump_uptime(code, 1)
+    return jsonify({'ok': True})
+
+
+@app.route('/tv/<code>/manifest.json')
+def tv_manifest(code):
+    client = get_client(code)
+    nome = (client['name'] if client else 'SalaTV') or 'SalaTV'
+    manifest = {
+        'name':             f'SalaTV — {nome}',
+        'short_name':       'SalaTV',
+        'description':      f'TV de {nome} — conteúdo curado para a sala de espera',
+        'start_url':        f'/tv/{code}',
+        'scope':            f'/tv/{code}',
+        'display':          'fullscreen',
+        'orientation':      'landscape',
+        'background_color': '#000000',
+        'theme_color':      '#0f0f1f',
+        'lang':             'pt-BR',
+        'icons': [
+            {'src': f'/tv/{code}/icon/192.png', 'sizes': '192x192', 'type': 'image/png', 'purpose': 'any maskable'},
+            {'src': f'/tv/{code}/icon/512.png', 'sizes': '512x512', 'type': 'image/png', 'purpose': 'any maskable'},
+        ],
+    }
+    import json as _json
+    return app.response_class(_json.dumps(manifest), mimetype='application/manifest+json')
+
+
+@app.route('/tv/<code>/icon/<int:size>.png')
+def tv_icon(code, size):
+    if size not in (192, 512):
+        size = 192
+    try:
+        from PIL import Image, ImageDraw
+        import io as _io
+        img  = Image.new('RGBA', (size, size), (0, 0, 0, 0))
+        draw = ImageDraw.Draw(img)
+        r = size // 6
+        draw.rounded_rectangle([0, 0, size - 1, size - 1], radius=r, fill=(15, 15, 31))
+        cx = cy = size // 2
+        rr = size // 3
+        draw.ellipse([cx - rr, cy - rr, cx + rr, cy + rr], fill=(99, 102, 241, 255))
+        st = size // 7
+        draw.polygon([(cx - st + size // 22, cy - int(st * 1.25)),
+                      (cx - st + size // 22, cy + int(st * 1.25)),
+                      (cx + int(st * 1.4), cy)], fill=(255, 255, 255, 255))
+        buf = _io.BytesIO()
+        img.save(buf, format='PNG')
+        return app.response_class(buf.getvalue(), mimetype='image/png')
+    except Exception as e:
+        log.error(f'[SalaTV icon] {e}')
+        abort(404)
+
+
+@app.route('/salatv-sw.js')
+def salatv_sw():
+    js = (
+        "const C='salatv-v1';"
+        "self.addEventListener('install',e=>self.skipWaiting());"
+        "self.addEventListener('activate',e=>self.clients.claim());"
+        "self.addEventListener('fetch',e=>{});"
+    )
+    resp = app.response_class(js, mimetype='application/javascript')
+    resp.headers['Service-Worker-Allowed'] = '/'
+    return resp
 
 # ── Criar cliente ─────────────────────────────────────────────────────────
 @app.route('/api/clients', methods=['POST'])
