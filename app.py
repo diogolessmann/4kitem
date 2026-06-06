@@ -6627,6 +6627,7 @@ def salatv_sw():
 
 # ── Criar cliente ─────────────────────────────────────────────────────────
 @app.route('/api/clients', methods=['POST'])
+@_saas_admin_required
 def api_create_client():
     data = request.get_json(silent=True) or {}
     name = data.get('name', '').strip()
@@ -6681,6 +6682,9 @@ def api_bad_video(code, youtube_id):
 # ── Admin: refresh scraper ────────────────────────────────────────────────
 @app.route('/kids/admin/refresh', methods=['POST'])
 def kids_refresh():
+    # Anti-abuso: só estabelecimento logado pode disparar a busca de vídeos
+    if not session.get('kids_code'):
+        return jsonify({'error': 'nao_autorizado'}), 403
     def _run():
         try:
             from kids_scraper import scrape_all

@@ -203,7 +203,6 @@
   <!-- Slides de propaganda do bar -->
   <div class="card" style="margin-bottom:20px">
     <div class="card-title">🖼️ Slides de propaganda na TV</div>
-    {% import 'pubshow/_macros.html' as m ignore missing %}
     {% set anuncios = b.anuncios_json | default('[]') %}
     {% set slides_parsed = [] %}
     {# Parse slides #}
