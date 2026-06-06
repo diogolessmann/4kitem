@@ -2025,14 +2025,19 @@ def webhook_asaas_global():
             conn.close()
 
     elif ref.startswith('sz_'):
-        # SlotZap — pagamento de número(s) (1 cobrança pode cobrir vários slots)
-        try:
-            if ativar:
-                cid = payload.get('payment', {}).get('id', '')
-                if not (cid and _sz_marcar_pago_charge(cid)):
-                    _sz_marcar_pago(int(ref.split('_')[1]))  # fallback p/ reservas antigas
-        except Exception as _sz_err:
-            log.error(f'[SlotZap] Webhook error: {_sz_err}')
+        # SlotZap — pagamento de número(s). Processa em SEGUNDO PLANO para responder
+        # rápido ao Asaas (envios de WhatsApp são lentos e causavam timeout/pausa do webhook).
+        if ativar:
+            cid = payload.get('payment', {}).get('id', '')
+            try:    slot_fb = int(ref.split('_')[1])
+            except (IndexError, ValueError): slot_fb = 0
+            def _sz_baixa_bg(cid=cid, slot_fb=slot_fb):
+                try:
+                    if not (cid and _sz_marcar_pago_charge(cid)):
+                        if slot_fb: _sz_marcar_pago(slot_fb)
+                except Exception as _e:
+                    log.error(f'[SlotZap] Webhook bg error: {_e}')
+            threading.Thread(target=_sz_baixa_bg, daemon=True).start()
 
     elif ref.startswith('alerta_'):
         if customer_id:
