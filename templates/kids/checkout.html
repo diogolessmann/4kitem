@@ -103,6 +103,15 @@
         <input type="text" name="cpf_cnpj" placeholder="000.000.000-00" required>
       </div>
 
+      <div class="form-group">
+        <label>Cupom de desconto (opcional)</label>
+        <div style="display:flex;gap:8px;align-items:stretch">
+          <input type="text" id="cupom" name="cupom" placeholder="Tem um cupom?" autocomplete="off" style="flex:1;text-transform:uppercase">
+          <button type="button" onclick="aplicarCupom()" style="padding:0 18px;border:none;border-radius:10px;background:#6366f1;color:#fff;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">Aplicar</button>
+        </div>
+        <div id="cupom-msg" style="font-size:13px;margin-top:8px;display:none"></div>
+      </div>
+
       <hr class="sep">
       <div class="section-title">Forma de pagamento</div>
 
@@ -136,5 +145,31 @@
     <div class="secure">🔒 Pagamento seguro · Cancele quando quiser</div>
     <a href="/kids" class="back">← Saiba mais sobre o SalaTV</a>
   </div>
+
+  <script>
+  async function aplicarCupom() {
+    const inp = document.getElementById('cupom');
+    const msg = document.getElementById('cupom-msg');
+    const code = (inp.value || '').trim();
+    if (!code) { return; }
+    msg.style.display = 'block';
+    msg.style.color = '#9090a8';
+    msg.textContent = 'Validando...';
+    try {
+      const r = await fetch(`/api/kids/validar-cupom/${encodeURIComponent(code)}?plano={{ plano_key }}`);
+      const d = await r.json();
+      if (d.ok) {
+        msg.style.color = '#22c55e';
+        msg.innerHTML = `✅ Cupom <b>${d.codigo}</b> aplicado: <b>${d.desconto_pct}% OFF</b> · de R$ ${d.preco_original.toFixed(2).replace('.',',')} por <b>R$ ${d.preco_final.toFixed(2).replace('.',',')}</b>`;
+      } else {
+        msg.style.color = '#ef4444';
+        msg.textContent = '❌ ' + (d.erro || 'Cupom inválido');
+      }
+    } catch (e) {
+      msg.style.color = '#ef4444';
+      msg.textContent = '❌ Não consegui validar agora.';
+    }
+  }
+  </script>
 </body>
 </html>

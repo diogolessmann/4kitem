@@ -971,12 +971,25 @@ def kids_assinar(plano):
                         kconn3.execute('UPDATE clients SET asaas_customer_id=? WHERE code=?',
                                        (customer_id, code))
                         kconn3.commit(); kconn3.close()
+                        # Cupom de desconto (opcional)
+                        import kids_db as _kdb
+                        cupom_raw = request.form.get('cupom', '').strip()
+                        valor_final = p['preco']
+                        cupom_obj = _kdb.validar_cupom(cupom_raw) if cupom_raw else None
+                        if cupom_obj:
+                            valor_final = round(p['preco'] * (1 - cupom_obj['desconto_pct'] / 100.0), 2)
+                        descricao = f"SalaTV {p['label']} — {empresa}"
+                        if cupom_obj:
+                            descricao += f" (cupom {cupom_obj['codigo']} -{cupom_obj['desconto_pct']}%)"
                         resp = _asaas_criar_assinatura_saas(
-                            customer_id, 'kids', plano, p['preco'],
-                            f"SalaTV {p['label']} — {empresa}",
+                            customer_id, 'kids', plano, valor_final,
+                            descricao,
                             billing_type, p.get('cycle', 'MONTHLY')
                         )
                         if resp.get('id'):
+                            if cupom_obj:
+                                try: _kdb.registrar_uso_cupom(cupom_obj['codigo'])
+                                except Exception: pass
                             session['kids_pending_code'] = code
                             session['kids_pending_email'] = email
                             invoice_url = resp.get('invoiceUrl') or resp.get('bankSlipUrl') or ''
@@ -6738,7 +6751,7 @@ def salatv_admin():
                            videos=kids_db.list_videos_admin(channel_ref=ch_id, only_blocked=only_blocked, q=q),
                            stats=kids_db.stats(), modes=MODES,
                            filtro_canal=ch_id, filtro_problema=only_blocked, q=q,
-                           revisao=_salatv_revisao)
+                           revisao=_salatv_revisao, cupons=kids_db.list_cupons())
 
 
 @app.route('/saas-admin/salatv/canal/add', methods=['POST'])
@@ -6851,6 +6864,59 @@ def salatv_revisar_links():
 @_saas_admin_required
 def salatv_revisar_status():
     return jsonify(_salatv_revisao)
+
+
+# ── SalaTV — Cupons de desconto ───────────────────────────────────────────────
+@app.route('/api/kids/validar-cupom/<codigo>')
+def api_kids_validar_cupom(codigo):
+    """Valida um cupom e devolve o preço com desconto para o plano informado."""
+    import kids_db
+    plano = request.args.get('plano', 'mensal')
+    p = KIDS_PLANS.get(plano)
+    if not p:
+        return jsonify({'ok': False, 'erro': 'plano inválido'}), 400
+    c = kids_db.validar_cupom(codigo)
+    if not c:
+        return jsonify({'ok': False, 'erro': 'Cupom inválido ou expirado'})
+    preco_final = round(p['preco'] * (1 - c['desconto_pct'] / 100.0), 2)
+    return jsonify({
+        'ok': True,
+        'codigo': c['codigo'],
+        'desconto_pct': c['desconto_pct'],
+        'preco_original': p['preco'],
+        'preco_final': preco_final,
+        'descricao': c.get('descricao', ''),
+    })
+
+
+@app.route('/saas-admin/salatv/cupom/add', methods=['POST'])
+@_saas_admin_required
+def salatv_cupom_add():
+    import kids_db
+    kids_db.add_cupom(
+        request.form.get('codigo', '').strip(),
+        request.form.get('desconto_pct', '10'),
+        request.form.get('descricao', '').strip(),
+        request.form.get('max_usos', '').strip() or None,
+        request.form.get('valido_ate', '').strip() or None,
+    )
+    return redirect('/saas-admin/salatv#cupons')
+
+
+@app.route('/saas-admin/salatv/cupom/<int:cid>/toggle', methods=['POST'])
+@_saas_admin_required
+def salatv_cupom_toggle(cid):
+    import kids_db
+    kids_db.toggle_cupom(cid)
+    return jsonify({'ok': True})
+
+
+@app.route('/saas-admin/salatv/cupom/<int:cid>/delete', methods=['POST'])
+@_saas_admin_required
+def salatv_cupom_delete(cid):
+    import kids_db
+    kids_db.delete_cupom(cid)
+    return jsonify({'ok': True})
 
 
 # ══════════════════════════════════════════════════════════════════════════

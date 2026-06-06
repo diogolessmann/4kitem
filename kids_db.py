@@ -208,6 +208,19 @@ def init_db():
             minutos     INTEGER DEFAULT 0,
             PRIMARY KEY (client_code, dia)
         );
+
+        -- SalaTV: cupons de desconto na assinatura
+        CREATE TABLE IF NOT EXISTS kids_cupons (
+            id           INTEGER PRIMARY KEY AUTOINCREMENT,
+            codigo       TEXT NOT NULL UNIQUE COLLATE NOCASE,
+            descricao    TEXT DEFAULT '',
+            desconto_pct INTEGER NOT NULL DEFAULT 10,
+            max_usos     INTEGER DEFAULT NULL,
+            usos         INTEGER NOT NULL DEFAULT 0,
+            valido_ate   TEXT DEFAULT NULL,
+            ativo        INTEGER NOT NULL DEFAULT 1,
+            criado_em    TEXT DEFAULT CURRENT_TIMESTAMP
+        );
     """)
 
     # Seed canais
@@ -669,3 +682,82 @@ def uptime_summary(client_code: str) -> dict:
         'horas_mes': round(min_mes / 60, 1),
         'horas_total': round(min_total / 60, 1),
     }
+
+
+# ══════════════════════════════════════════════════════════════════════════
+#  SalaTV — Cupons de desconto
+# ══════════════════════════════════════════════════════════════════════════
+def validar_cupom(codigo: str):
+    """Retorna dict do cupom se válido (ativo, não expirado, com usos disponíveis),
+    senão None."""
+    import datetime as _dt
+    codigo = (codigo or '').strip()
+    if not codigo:
+        return None
+    conn = get_conn()
+    row = conn.execute(
+        "SELECT * FROM kids_cupons WHERE codigo = ? COLLATE NOCASE AND ativo = 1",
+        (codigo,)
+    ).fetchone()
+    conn.close()
+    if not row:
+        return None
+    c = dict(row)
+    if c.get('valido_ate'):
+        try:
+            if _dt.date.fromisoformat(c['valido_ate'][:10]) < _dt.date.today():
+                return None
+        except Exception:
+            pass
+    if c.get('max_usos') is not None and c['usos'] >= c['max_usos']:
+        return None
+    return c
+
+
+def registrar_uso_cupom(codigo: str):
+    conn = get_conn()
+    conn.execute("UPDATE kids_cupons SET usos = usos + 1 WHERE codigo = ? COLLATE NOCASE", (codigo,))
+    conn.commit(); conn.close()
+
+
+def list_cupons():
+    conn = get_conn()
+    rows = conn.execute("SELECT * FROM kids_cupons ORDER BY ativo DESC, criado_em DESC").fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def add_cupom(codigo, desconto_pct=10, descricao='', max_usos=None, valido_ate=None) -> bool:
+    codigo = (codigo or '').strip()
+    if not codigo:
+        return False
+    try:
+        desconto_pct = max(1, min(100, int(desconto_pct)))
+    except Exception:
+        desconto_pct = 10
+    conn = get_conn()
+    try:
+        conn.execute(
+            "INSERT INTO kids_cupons (codigo, descricao, desconto_pct, max_usos, valido_ate) "
+            "VALUES (?,?,?,?,?)",
+            (codigo, descricao, desconto_pct, max_usos or None, valido_ate or None)
+        )
+        conn.commit(); ok = True
+    except Exception:
+        ok = False
+    conn.close()
+    return ok
+
+
+def toggle_cupom(cid: int) -> bool:
+    conn = get_conn()
+    cur = conn.execute("UPDATE kids_cupons SET ativo = 1 - ativo WHERE id = ?", (cid,))
+    conn.commit(); conn.close()
+    return cur.rowcount > 0
+
+
+def delete_cupom(cid: int) -> bool:
+    conn = get_conn()
+    cur = conn.execute("DELETE FROM kids_cupons WHERE id = ?", (cid,))
+    conn.commit(); conn.close()
+    return cur.rowcount > 0

@@ -135,6 +135,42 @@
     <div class="muted" style="margin-top:8px">Mostrando até 300 vídeos.</div>
   </div>
 
+  <!-- ── CUPONS ── -->
+  <div class="card" id="cupons">
+    <div class="card-title">🎟️ Cupons de desconto
+      <span class="muted">{{ cupons|length }} cupom(ns)</span>
+    </div>
+    <table>
+      <thead><tr><th>Código</th><th>Desconto</th><th>Usos</th><th>Validade</th><th>Status</th><th></th></tr></thead>
+      <tbody>
+      {% for c in cupons %}
+        <tr id="cup-{{ c.id }}">
+          <td><strong>{{ c.codigo }}</strong>{% if c.descricao %}<br><span class="muted">{{ c.descricao }}</span>{% endif %}</td>
+          <td>{{ c.desconto_pct }}%</td>
+          <td>{{ c.usos }}{% if c.max_usos %}/{{ c.max_usos }}{% endif %}</td>
+          <td>{{ c.valido_ate or '—' }}</td>
+          <td>{% if c.ativo %}<span class="pill pill-on">ativo</span>{% else %}<span class="pill pill-off">inativo</span>{% endif %}</td>
+          <td style="text-align:right;white-space:nowrap">
+            <button class="btn btn-sm btn-ghost" onclick="toggleCupom({{ c.id }})">{% if c.ativo %}⏸{% else %}▶{% endif %}</button>
+            <button class="btn btn-sm btn-red" onclick="delCupom({{ c.id }})">🗑</button>
+          </td>
+        </tr>
+      {% else %}
+        <tr><td colspan="6" class="muted">Nenhum cupom ainda.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    <form method="POST" action="/saas-admin/salatv/cupom/add" class="form-row">
+      <input name="codigo" placeholder="CÓDIGO (ex: BEMVINDO20)" required style="flex:2;text-transform:uppercase">
+      <input name="desconto_pct" type="number" min="1" max="100" value="10" title="% desconto" style="max-width:90px">
+      <input name="descricao" placeholder="Descrição (opcional)" style="flex:2">
+      <input name="max_usos" type="number" min="1" placeholder="Máx usos" style="max-width:100px">
+      <input name="valido_ate" type="date" title="Válido até (opcional)">
+      <button class="btn" type="submit">+ Criar cupom</button>
+    </form>
+    <div class="muted" style="margin-top:6px">O desconto é aplicado no valor da assinatura no checkout do SalaTV.</div>
+  </div>
+
   <div class="toast" id="toast"></div>
 
 <script>
@@ -145,6 +181,8 @@ async function toggleCanal(id){await post(`/saas-admin/salatv/canal/${id}/toggle
 async function delCanal(id,nome){if(!confirm(`Excluir o canal "${nome}" e TODOS os vídeos dele?`))return;await post(`/saas-admin/salatv/canal/${id}/delete`);document.getElementById('ch-'+id)?.remove();toast('Canal removido.');}
 async function scrapeCanal(id){const d=await post(`/saas-admin/salatv/canal/${id}/scrape`);toast(d.msg||'Buscando vídeos...');}
 async function delVideo(id){if(!confirm('Remover este vídeo?'))return;await post(`/saas-admin/salatv/video/${id}/delete`);document.getElementById('vid-'+id)?.remove();toast('Vídeo removido.');}
+async function toggleCupom(id){await post(`/saas-admin/salatv/cupom/${id}/toggle`);location.reload();}
+async function delCupom(id){if(!confirm('Excluir este cupom?'))return;await post(`/saas-admin/salatv/cupom/${id}/delete`);document.getElementById('cup-'+id)?.remove();toast('Cupom removido.');}
 
 let _revTimer=null;
 async function revisarLinks(){
