@@ -13862,28 +13862,50 @@ def _sz_marcar_pago_charge(charge_id):
 SZ_RESERVA_EXPIRA_MIN = 30  # libera o número se a reserva não for paga neste tempo
 
 def _sz_expirar_reservas(camp_id):
-    """Libera slots reservados (não pagos) que passaram do tempo de expiração,
-    cancelando a cobrança Asaas para o cliente não pagar um número já liberado."""
+    """Libera slots reservados (não pagos) que passaram do tempo de expiração.
+    ANTES de liberar, confere no Asaas se a cobrança foi PAGA — se foi, credita o número
+    em vez de liberar (evita 'pagou atrasado e ficou sem número')."""
     limite = (datetime.now() - timedelta(minutes=SZ_RESERVA_EXPIRA_MIN)).isoformat()
     conn = get_saas_db()
     expirados = [dict(r) for r in conn.execute(
         "SELECT id, asaas_charge_id FROM slotzap_slots "
         "WHERE campanha_id=? AND status='reservado' AND reservado_em!='' AND reservado_em < ?",
         (camp_id, limite)).fetchall()]
+    conn.close()
+    if not expirados:
+        return 0
+    pagos_recuperar, a_liberar = [], []
     for s in expirados:
-        if s.get('asaas_charge_id'):
+        cid = (s.get('asaas_charge_id') or '').strip()
+        pago = False
+        if cid:
             try:
-                _asaas_req('DELETE', f"/payments/{s['asaas_charge_id']}")
+                pay = _asaas_req('GET', f'/payments/{cid}')
+                if (pay.get('status') or '').upper() in ('RECEIVED', 'CONFIRMED', 'RECEIVED_IN_CASH'):
+                    pago = True
             except Exception:
                 pass
-        conn.execute(
-            "UPDATE slotzap_slots SET status='disponivel',cliente_nome='',cliente_tel='',"
-            "asaas_charge_id='',pix_qr_code='',pix_copia_cola='',reservado_em='' WHERE id=?",
-            (s['id'],))
-    if expirados:
-        conn.commit()
-    conn.close()
-    return len(expirados)
+        if pago:
+            pagos_recuperar.append(cid)          # estava paga! credita
+        else:
+            if cid:
+                try: _asaas_req('DELETE', f"/payments/{cid}")   # cancela p/ não pagarem depois
+                except Exception: pass
+            a_liberar.append(s['id'])
+    # Credita as que estavam pagas (cada uma abre/fecha sua conexão — slot ainda 'reservado')
+    for cid in pagos_recuperar:
+        try: _sz_marcar_pago_charge(cid)
+        except Exception as _e: log.warning(f'[SlotZap] expirar/recuperar pago: {_e}')
+    # Libera de fato as não pagas
+    if a_liberar:
+        conn = get_saas_db()
+        for sid in a_liberar:
+            conn.execute(
+                "UPDATE slotzap_slots SET status='disponivel',cliente_nome='',cliente_tel='',"
+                "asaas_charge_id='',pix_qr_code='',pix_copia_cola='',reservado_em='' WHERE id=?",
+                (sid,))
+        conn.commit(); conn.close()
+    return len(a_liberar)
 
 
 @app.route('/slotzap/campanha/<int:camp_id>/grupos')
@@ -14244,6 +14266,44 @@ def slotzap_reabrir(camp_id):
     if not ok:
         return jsonify({'erro': 'Só dá pra reabrir campanhas encerradas (cancelada/estornada não reabre).'}), 400
     return jsonify({'ok': True})
+
+
+@app.route('/slotzap/campanha/<int:camp_id>/marcar-pago-manual', methods=['POST'])
+@_sz_login_required
+def slotzap_marcar_pago_manual(camp_id):
+    """Marca um número como PAGO manualmente (ex.: cliente pagou fora do fluxo ou após a
+    reserva expirar). Conta como venda REAL (brinde=0). Protegido pela senha de login."""
+    if not _sz_plan_active():
+        return jsonify({'erro': 'Assinatura inativa.'}), 402
+    data = request.get_json() or {}
+    try:    numero = int(data.get('numero') or 0)
+    except (TypeError, ValueError): numero = 0
+    nome = (data.get('nome') or '').strip()[:80]
+    tel  = ''.join(c for c in (data.get('tel') or '') if c.isdigit())
+    conn = get_saas_db()
+    if not _sz_check_senha_conta(conn, data.get('senha') or ''):
+        conn.close()
+        return jsonify({'erro': 'senha_errada', 'msg': 'Senha da conta incorreta.'}), 403
+    dono = conn.execute('SELECT 1 FROM slotzap_campanhas WHERE id=? AND user_id=?',
+                        (camp_id, _sz_uid())).fetchone()
+    if not dono:
+        conn.close()
+        return jsonify({'erro': 'Campanha não encontrada'}), 404
+    slot = conn.execute('SELECT id, status FROM slotzap_slots WHERE campanha_id=? AND numero=?',
+                        (camp_id, numero)).fetchone()
+    if not slot:
+        conn.close()
+        return jsonify({'erro': 'Esse número não existe na campanha.'}), 404
+    slot = dict(slot)
+    if slot['status'] == 'pago':
+        conn.close()
+        return jsonify({'erro': 'Esse número já está pago.'}), 400
+    conn.execute("UPDATE slotzap_slots SET status='pago', cliente_nome=?, cliente_tel=?, "
+                 "pago_em=?, brinde=0 WHERE id=?",
+                 (nome or 'Pagamento manual', tel, datetime.now().isoformat(), slot['id']))
+    conn.commit(); conn.close()
+    log.info(f'[SlotZap] Slot #{numero} (camp {camp_id}) marcado PAGO MANUAL — {nome}')
+    return jsonify({'ok': True, 'numero': numero})
 
 
 # ── SlotZap no SaaS Admin ──────────────────────────────────────────────────────

@@ -291,6 +291,12 @@ input:focus{border-color:#6366f1}
       <button class="btn btn-primary" onclick="confirmarReserva()">⚡ Gerar PIX</button>
       <button class="btn btn-secondary" onclick="fecharModal()">Cancelar</button>
     </div>
+    <button class="btn" style="width:100%;margin-top:12px;background:rgba(34,197,94,.12);
+            color:#86efac;border:1px solid rgba(34,197,94,.4)" onclick="marcarPagoManual()">
+      ✅ Já pagou por fora? Marcar como PAGO</button>
+    <div style="font-size:11px;color:#8888aa;margin-top:6px;line-height:1.4">
+      Use quando o cliente <b>realmente pagou</b> mas o número não confirmou (ex: pagou após a reserva expirar).
+      Preencha o <b>nome</b> (e WhatsApp se tiver) acima.</div>
   </div>
 </div>
 
@@ -539,6 +545,21 @@ function clicarSlot(id, num, status, nome, tel, qr, copia) {
   }
 }
 
+async function marcarPagoManual() {
+  const nome = document.getElementById('res-nome').value.trim();
+  const tel  = document.getElementById('res-tel').value.trim();
+  if (!nome) { alert('Informe o nome do cliente no campo acima.'); return; }
+  if (!confirm('Marcar o número #' + _slotNum + ' como PAGO para "' + nome + '"?\n\n⚠️ Use SÓ se o cliente realmente pagou (ex: pagou depois da reserva expirar).')) return;
+  const senha = prompt('🔑 Digite a SENHA DA SUA CONTA para confirmar:') || '';
+  if (!senha) return;
+  const r = await fetch(`/slotzap/campanha/${CAMP_ID}/marcar-pago-manual`, {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({numero: _slotNum, nome, tel, senha})
+  }).then(r=>r.json());
+  if (r.erro === 'senha_errada') { alert('🔑 Senha da conta incorreta.'); return; }
+  if (r.ok) { alert('✅ Número #' + r.numero + ' marcado como PAGO para ' + nome + '!'); location.reload(); }
+  else { alert('Erro: ' + (r.erro || 'tente novamente')); }
+}
 async function confirmarReserva() {
   const nome = document.getElementById('res-nome').value.trim();
   const cpf  = document.getElementById('res-cpf').value.replace(/\D/g,'');
