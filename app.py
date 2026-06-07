@@ -68,6 +68,12 @@ SAAS_ADMIN_PW = os.environ.get('SAAS_ADMIN_PASSWORD', 'admin4kitem2024')
 _wl_raw = os.environ.get('DEV_WHITELIST', '47997766831,diogolessmann@gmail.com')
 DEV_WHITELIST: set = {x.strip().lower() for x in _wl_raw.split(',') if x.strip()}
 
+# Token de admin/dev por URL — FAIL-CLOSED: só autoriza se DEV_TOKEN estiver
+# configurado no ambiente (sem fallback inseguro para um token conhecido).
+_DEV_TOKEN_ENV = os.environ.get('DEV_TOKEN')
+def _dev_token_ok(token):
+    return bool(_DEV_TOKEN_ENV) and (token == _DEV_TOKEN_ENV)
+
 def _is_whitelisted(*values) -> bool:
     """Retorna True se qualquer valor (email ou dígitos de telefone) estiver no DEV_WHITELIST."""
     for v in values:
@@ -7429,7 +7435,7 @@ def mz_set_plan_email():
     token = request.args.get('token','')
     email = request.args.get('email','')
     plan  = request.args.get('plan','agencia')
-    if token != os.environ.get('DEV_TOKEN','diogo4kitem'):
+    if not _dev_token_ok(token):
         return 'Acesso negado', 403
     if plan not in MANDAZAP_PLANS:
         return f'Plano inválido. Opções: {list(MANDAZAP_PLANS.keys())}', 400
@@ -7453,7 +7459,7 @@ def mz_criar_conta_admin():
     senha    = request.args.get('senha', '')
     nome     = request.args.get('nome', 'Admin')
     plan     = request.args.get('plan', 'agencia')
-    if token != os.environ.get('DEV_TOKEN', 'diogo4kitem'):
+    if not _dev_token_ok(token):
         return 'Acesso negado', 403
     if not email or not senha:
         return 'Informe email e senha', 400
@@ -7888,7 +7894,8 @@ def mz_contact_add():
 def mz_contact_delete(cid):
     user_id = session['mz_user_id']
     conn    = get_saas_db()
-    conn.execute('DELETE FROM mandazap_list_contacts WHERE contact_id=?', (cid,))
+    conn.execute('DELETE FROM mandazap_list_contacts WHERE contact_id=? AND contact_id IN '
+                 '(SELECT id FROM mandazap_contacts WHERE user_id=?)', (cid, user_id))
     conn.execute('DELETE FROM mandazap_contacts WHERE id=? AND user_id=?', (cid, user_id))
     conn.commit()
     conn.close()
@@ -8206,7 +8213,8 @@ def mz_list_add():
 def mz_list_delete(lid):
     user_id = session['mz_user_id']
     conn    = get_saas_db()
-    conn.execute('DELETE FROM mandazap_list_contacts WHERE list_id=?', (lid,))
+    conn.execute('DELETE FROM mandazap_list_contacts WHERE list_id=? AND list_id IN '
+                 '(SELECT id FROM mandazap_lists WHERE user_id=?)', (lid, user_id))
     conn.execute('DELETE FROM mandazap_lists WHERE id=? AND user_id=?', (lid, user_id))
     conn.commit()
     conn.close()
@@ -8470,14 +8478,14 @@ DEV_TOKEN = os.environ.get('DEV_TOKEN', 'diogo4kitem')
 
 @app.route('/dev/<token>')
 def dev_page(token):
-    if token != DEV_TOKEN:
+    if not _dev_token_ok(token):
         abort(404)
     notas = listar_notas_dev()
     return render_template('dev.html', notas=notas, now=datetime.now(), token=token)
 
 @app.route('/dev/<token>/nota', methods=['POST'])
 def dev_nota(token):
-    if token != DEV_TOKEN:
+    if not _dev_token_ok(token):
         abort(404)
     titulo = request.form.get('titulo', '').strip() or 'Sem título'
     texto  = request.form.get('texto', '').strip()
