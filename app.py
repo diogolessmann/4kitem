@@ -4702,6 +4702,23 @@ def api_agenda_book(slug):
         else:
             professional_id = None
 
+    # Anti duplo-agendamento: re-checa logo antes de inserir (fecha a janela de corrida)
+    if professional_id:
+        _dup = conn.execute(
+            "SELECT 1 FROM agenda_appointments WHERE business_id=? AND appointment_date=? "
+            "AND appointment_time=? AND professional_id=? AND status!='cancelled' LIMIT 1",
+            (biz['id'], appt_date, appt_time, professional_id)
+        ).fetchone()
+    else:
+        _dup = conn.execute(
+            "SELECT 1 FROM agenda_appointments WHERE business_id=? AND appointment_date=? "
+            "AND appointment_time=? AND status!='cancelled' LIMIT 1",
+            (biz['id'], appt_date, appt_time)
+        ).fetchone()
+    if _dup:
+        conn.close()
+        return jsonify({'success': False, 'error': 'Esse horário acabou de ser reservado. Escolha outro.'})
+
     cancel_token = uuid.uuid4().hex
     conn.execute('''
         INSERT INTO agenda_appointments
