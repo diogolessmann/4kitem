@@ -13893,6 +13893,38 @@ def _sz_marcar_pago_charge(charge_id):
     return len(slots)
 
 
+def _sz_reconciliar_loop():
+    """Robô 24/7 (camada de segurança independente do webhook): a cada ~3 min confere
+    no Asaas as cobranças de slots ainda 'reservado' e credita as que foram pagas.
+    Funciona mesmo se o webhook cair, ninguém estiver na página, etc."""
+    time.sleep(120)  # deixa o app subir
+    log.info('[SlotZap] Reconciliador de pagamentos ATIVO (verifica a cada 3 min)')
+    while True:
+        try:
+            conn = get_saas_db()
+            limite = (datetime.now() - timedelta(seconds=90)).isoformat()
+            charges = [dict(r)['asaas_charge_id'] for r in conn.execute(
+                "SELECT DISTINCT asaas_charge_id FROM slotzap_slots "
+                "WHERE status='reservado' AND asaas_charge_id<>'' AND reservado_em<>'' "
+                "AND reservado_em < ?", (limite,)).fetchall()]
+            conn.close()
+            for cid in charges:
+                try:
+                    pay = _asaas_req('GET', f'/payments/{cid}')
+                    if (pay.get('status') or '').upper() in ('RECEIVED', 'CONFIRMED', 'RECEIVED_IN_CASH'):
+                        n = _sz_marcar_pago_charge(cid)
+                        if n:
+                            log.info(f'[SlotZap] Reconciliador creditou {cid} ({n} slot(s)) — webhook nao pegou')
+                except Exception as _e:
+                    log.warning(f'[SlotZap] reconciliador charge {cid}: {_e}')
+        except Exception as _e:
+            log.error(f'[SlotZap] reconciliador loop: {_e}')
+        time.sleep(180)  # a cada 3 minutos
+
+
+threading.Thread(target=_sz_reconciliar_loop, daemon=True, name='sz-reconciliador').start()
+
+
 SZ_RESERVA_EXPIRA_MIN = 30  # libera o número se a reserva não for paga neste tempo
 
 def _sz_expirar_reservas(camp_id):
