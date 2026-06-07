@@ -285,10 +285,9 @@
   </a>
   <div class="nav-links">
     <a href="#como-funciona">Como funciona</a>
-    <a href="#planos">Planos</a>
-    <a href="/petmed/vet/cadastro">Sou veterinário</a>
+    <a href="#planos">Preços</a>
     <a href="/petmed/entrar">Entrar</a>
-    <a href="/petmed/cadastrar" class="btn-nav">Assinar →</a>
+    <a href="/petmed/cadastrar" class="btn-nav">Criar conta →</a>
   </div>
 </nav>
 
@@ -300,14 +299,14 @@
       <h1>Seu veterinário<br>às <em>23h da noite</em></h1>
       <p>Triagem veterinária inteligente 24 horas. Saiba se seu pet precisa de atendimento urgente — agora, na hora que precisar.</p>
       <div class="hero-btns">
-        <a href="/petmed/cadastrar" class="btn-hero-primary">⚡ 1 atendimento grátis — começar</a>
-        <a href="#como-funciona" class="btn-hero-outline">Como funciona →</a>
+        <a href="/petmed/cadastrar" class="btn-hero-primary">🩺 Fazer a triagem do meu pet</a>
+        <a href="#planos" class="btn-hero-outline">Ver preços →</a>
       </div>
     </div>
     <div class="hero-img-wrap">
-      <img src="/static/vetzap/vetzap-hero-desktop.png" alt="VetZap em uso" class="hero-img-desktop">
-      <img src="/static/vetzap/vetzap-hero-mobile.png" alt="VetZap em uso" class="hero-img-mobile">
-      <img src="/static/vetzap/vetzap-mascote.png" alt="Mascote VetZap" class="mascote-float">
+      <img src="/static/vetzap/vetzap-hero-desktop.webp" alt="VetZap em uso" class="hero-img-desktop">
+      <img src="/static/vetzap/vetzap-hero-mobile.webp" alt="VetZap em uso" class="hero-img-mobile">
+      <img src="/static/vetzap/vetzap-mascote.webp" alt="Mascote VetZap" class="mascote-float">
     </div>
   </div>
 </div>
@@ -318,7 +317,7 @@
     <h2>Você já passou por isso?</h2>
     <p class="section-sub">Acontece com milhões de tutores todo mês. Mas não precisa ser assim.</p>
     <div class="emergencia-wrap">
-      <img src="/static/vetzap/vetzap-banner-emergencia.png" alt="Antes e depois do VetZap">
+      <img src="/static/vetzap/vetzap-banner-emergencia.webp" alt="Antes e depois do VetZap">
     </div>
     <div style="margin-top:24px;background:#0c4a6e;color:#e0f2fe;border-radius:16px;padding:24px 32px;max-width:680px;margin-left:auto;margin-right:auto;font-size:16px;line-height:1.9">
       <span style="color:#f59e0b;font-size:22px;font-weight:800">23h17</span> — cachorro vomitou 4 vezes.<br>
@@ -370,17 +369,17 @@
     <p class="section-sub">Saiba exatamente o que fazer.</p>
     <div class="urgencia-grid">
       <div class="urgencia-card urgencia-estavel">
-        <img src="/static/vetzap/vetzap-urgencia-estavel.png" alt="Estável">
+        <img src="/static/vetzap/vetzap-urgencia-estavel.webp" alt="Estável">
         <h3>ESTÁVEL</h3>
         <p>Seu pet está bem. Agende uma consulta de rotina e receba orientações de cuidados em casa.</p>
       </div>
       <div class="urgencia-card urgencia-atencao">
-        <img src="/static/vetzap/vetzap-urgencia-atencao.png" alt="Atenção">
+        <img src="/static/vetzap/vetzap-urgencia-atencao.webp" alt="Atenção">
         <h3>ATENÇÃO</h3>
         <p>Monitore com cuidado. Consulta recomendada em até 24h com orientações para agir agora.</p>
       </div>
       <div class="urgencia-card urgencia-urgente">
-        <img src="/static/vetzap/vetzap-urgencia-urgente.png" alt="Urgente">
+        <img src="/static/vetzap/vetzap-urgencia-urgente.webp" alt="Urgente">
         <h3>URGENTE</h3>
         <p>Vá ao veterinário agora. Mostramos as clínicas abertas mais próximas de você.</p>
       </div>
@@ -396,35 +395,38 @@
   <div><div class="stat-val">100%</div><div class="stat-lbl">digital e seguro</div></div>
 </div>
 
-<!-- PLANOS -->
+<!-- PREÇOS (créditos por atendimento) -->
 <section class="section section-center" id="planos">
   <div class="container">
-    <h2>Planos simples, proteção real</h2>
-    <p class="section-sub">Proteção completa para seu pet. Cancele quando quiser.</p>
+    <h2>Pague só pelo que usar</h2>
+    <p class="section-sub">Sem mensalidade. 1 crédito = 1 atendimento completo (triagem com IA, do início ao resultado). Os créditos não expiram.</p>
     <div class="planos-grid">
 
-      {% for key, p in planos.items() %}
+      {% for key, p in pacotes.items() %}
       <div class="plano-card {% if p.get('destaque') %}destaque{% endif %}">
-        {% if p.get('destaque') %}<div class="plano-badge-top">⭐ Mais vendido</div>{% endif %}
-        <img src="/static/vetzap/vetzap-plano-{{ key }}.png" alt="{{ p.nome }}">
-        <div class="plano-nome">{{ p.nome }}</div>
-        <div class="plano-desc">{{ p.descricao }}</div>
-        <div class="plano-preco">{{ p.preco_fmt }}<span>/mês</span></div>
+        {% if p.get('destaque') %}<div class="plano-badge-top">⭐ Mais escolhido</div>{% endif %}
+        <div style="font-size:48px;margin:6px 0 10px">{{ p.emoji }}</div>
+        <div class="plano-nome">{{ p.rotulo }}</div>
+        <div class="plano-desc">{{ p.cada }}</div>
+        <div class="plano-preco">{{ p.preco_fmt }}<span> à vista</span></div>
+        {% if p.get('economia') %}<div style="color:var(--wgreen);font-weight:700;font-size:13px;margin-top:6px">{{ p.economia }}</div>{% endif %}
         <ul class="plano-features">
-          {% for f in p.features %}
-          <li><span class="feat-ok">✓</span> {{ f }}</li>
-          {% endfor %}
+          <li><span class="feat-ok">✓</span> Triagem completa com IA 24/7</li>
+          <li><span class="feat-ok">✓</span> Classificação de urgência</li>
+          <li><span class="feat-ok">✓</span> Identificação de raça por foto</li>
+          <li><span class="feat-ok">✓</span> Histórico e orientações salvos</li>
+          <li><span class="feat-ok">✓</span> Créditos sem prazo de validade</li>
         </ul>
-        <a href="/petmed/cadastrar?plano={{ key }}"
-           class="btn-plano {% if key=='start' %}btn-green{% elif key=='familia' %}btn-orange{% else %}btn-purple{% endif %}">
-          Assinar →
+        <a href="/petmed/cadastrar"
+           class="btn-plano {% if key=='p1' %}btn-green{% elif key=='p5' %}btn-orange{% else %}btn-purple{% endif %}">
+          Começar →
         </a>
       </div>
       {% endfor %}
 
     </div>
     <p style="margin-top:20px;font-size:13px;color:#94a3b8">
-      Clínicas veterinárias: <a href="/petmed/vet/cadastro" style="color:var(--wgreen);font-weight:700">Plano Clínica R$297/mês →</a>
+      Pagamento via PIX com confirmação automática. Criar conta é grátis — você só paga quando atender.
     </p>
   </div>
 </section>
@@ -435,7 +437,7 @@
     <h2>Onde você nos encontra</h2>
     <p class="section-sub">Parceiro da Rádio SC News — informação pet em Santa Catarina.</p>
     <div class="banner-radio-wrap">
-      <img src="/static/vetzap/vetzap-banner-radio.png" alt="VetZap na Rádio SC News">
+      <img src="/static/vetzap/vetzap-banner-radio.webp" alt="VetZap na Rádio SC News">
       <div class="banner-radio-overlay">
         <div class="tag">🎙️ Parceiro oficial</div>
         <p>Rádio SC News<br>+ VetZap</p>
@@ -455,7 +457,6 @@
       <div class="legal-row"><span class="l-ok">✅</span> Teletriagem — classificação de urgência dos sintomas</div>
       <div class="legal-row"><span class="l-ok">✅</span> Teleorientação — cuidados gerais e conduta em casa</div>
       <div class="legal-row"><span class="l-ok">✅</span> Encaminhamento para clínicas abertas próximas</div>
-      <div class="legal-row"><span class="l-ok">✅</span> Teleconsulta com veterinário (plano Premium)</div>
       <div class="legal-row"><span class="l-no">❌</span> Não realizamos diagnósticos clínicos</div>
       <div class="legal-row"><span class="l-no">❌</span> Não prescrevemos medicamentos</div>
     </div>
@@ -465,9 +466,9 @@
 <!-- CTA FINAL -->
 <div class="cta">
   <h2>Proteja seu pet agora ⚡</h2>
-  <p>1 atendimento grátis. Sem cartão de crédito. Cancele quando quiser.</p>
+  <p>Crie sua conta grátis e pague só pelo atendimento que usar. A partir de R$ 19,90.</p>
   <a href="/petmed/cadastrar" class="btn-cta">Começar agora →</a>
-  <img src="/static/vetzap/vetzap-mascote.png" alt="" class="cta-mascote">
+  <img src="/static/vetzap/vetzap-mascote.webp" alt="" class="cta-mascote">
 </div>
 
 <!-- FOOTER -->
@@ -478,8 +479,7 @@
   </div>
   <div style="margin-bottom:8px">Triagem veterinária inteligente 24 horas</div>
   <div>
-    <a href="#planos">Planos</a> ·
-    <a href="/petmed/vet/cadastro">Para veterinários</a> ·
+    <a href="#planos">Preços</a> ·
     <a href="/petmed/entrar">Entrar</a>
   </div>
   <div style="margin-top:14px;font-size:11px;opacity:.5">

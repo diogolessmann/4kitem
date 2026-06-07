@@ -4,7 +4,7 @@
 {% block content %}
 
 {% if novo %}
-<div class="alert alert-success">🎉 Bem-vindo ao VetZap! Sua conta foi criada. Seu pet já está cadastrado abaixo!</div>
+<div class="alert alert-success">🎉 Conta criada! Compre um atendimento e faça a triagem do seu pet em 2 minutos.</div>
 {% endif %}
 
 {% if vacinas_proximas %}
@@ -20,40 +20,32 @@
 </div>
 {% endif %}
 
-<!-- Banner paywall: plano gratuito esgotado -->
+<!-- Banner crédito -->
 {% if bloqueado_paywall %}
 <div style="background:linear-gradient(135deg,#ef4444,#f97316);border-radius:14px;padding:18px 22px;color:#fff;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:20px">
   <div>
-    <div style="font-weight:800;font-size:15px">🔒 Sua consulta gratuita foi utilizada</div>
-    <div style="font-size:13px;opacity:.9;margin-top:3px">Assine um plano para continuar protegendo seu pet 24h por dia.</div>
+    <div style="font-weight:800;font-size:15px">🔒 Você está sem créditos</div>
+    <div style="font-size:13px;opacity:.9;margin-top:3px">Compre um atendimento (a partir de R$ 19,90) e faça a triagem do seu pet agora.</div>
   </div>
-  <a href="/petmed/planos?msg=paywall" style="background:#fff;color:#ef4444;padding:10px 20px;border-radius:9px;font-weight:800;font-size:13px;text-decoration:none;white-space:nowrap">Ver planos →</a>
+  <a href="/petmed/creditos?msg=sem_credito" style="background:#fff;color:#ef4444;padding:10px 20px;border-radius:9px;font-weight:800;font-size:13px;text-decoration:none;white-space:nowrap">🪙 Comprar créditos →</a>
 </div>
-{% elif not u.plano_ativo %}
-<!-- Plano gratuito ainda disponível -->
+{% else %}
 <div style="background:linear-gradient(135deg,#22c55e,#0ea5e9);border-radius:14px;padding:16px 22px;color:#fff;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:20px">
   <div>
-    <div style="font-weight:800;font-size:14px">🎁 1 consulta gratuita disponível!</div>
-    <div style="font-size:12px;opacity:.9;margin-top:2px">Use agora ou assine para ter acesso ilimitado.</div>
+    <div style="font-weight:800;font-size:14px">🪙 Você tem {{ creditos }} atendimento(s) disponível(is)</div>
+    <div style="font-size:12px;opacity:.9;margin-top:2px">Pronto pra usar quando quiser. Triagem completa com IA.</div>
   </div>
-  <a href="/petmed/triagem" style="background:#fff;color:#16a34a;padding:8px 18px;border-radius:9px;font-weight:800;font-size:13px;text-decoration:none">🩺 Usar agora</a>
+  <a href="/petmed/triagem" style="background:#fff;color:#0284c7;padding:8px 18px;border-radius:9px;font-weight:800;font-size:13px;text-decoration:none">🩺 Nova triagem</a>
 </div>
 {% endif %}
 
 <div class="page-header">
   <div>
-    <div class="page-title">Olá, {{ u.nome.split()[0] }}! 🐾</div>
-    <div class="page-sub">
-      {% if u.plano_ativo %}
-        {% if u.plano == 'premium' %}👑 Plano Premium{% elif u.plano == 'familia' %}🐾🐾 Plano Família{% else %}🐾 Plano Start{% endif %}
-      {% else %}
-        🆓 Plano Gratuito
-      {% endif %}
-      · {{ total_triagens }} triagem(ns) realizadas
-    </div>
+    <div class="page-title">Olá, {{ u.nome.split()[0] if u.nome else 'tutor' }}! 🐾</div>
+    <div class="page-sub">🪙 {{ creditos }} crédito(s) · {{ total_triagens }} triagem(ns) realizadas</div>
   </div>
   {% if bloqueado_paywall %}
-  <a href="/petmed/planos?msg=paywall" class="btn btn-primary btn-lg" style="background:#ef4444">🔒 Assinar plano</a>
+  <a href="/petmed/creditos?msg=sem_credito" class="btn btn-primary btn-lg" style="background:#ef4444">🪙 Comprar créditos</a>
   {% else %}
   <a href="/petmed/triagem" class="btn btn-primary btn-lg">🩺 Nova Triagem</a>
   {% endif %}
@@ -61,6 +53,11 @@
 
 <!-- Stats rápidos -->
 <div class="grid-4" style="margin-bottom:24px">
+  <div class="stat-card">
+    <div class="stat-icon">🪙</div>
+    <div class="stat-value">{{ creditos }}</div>
+    <div class="stat-label">Créditos (atendimentos)</div>
+  </div>
   <div class="stat-card">
     <div class="stat-icon">🐶</div>
     <div class="stat-value">{{ pets|length }}</div>
@@ -76,11 +73,6 @@
     <div class="stat-value">24/7</div>
     <div class="stat-label">Disponível sempre</div>
   </div>
-  <div class="stat-card">
-    <div class="stat-icon">🛡️</div>
-    <div class="stat-value">{% if u.plano_ativo %}Ativo{% else %}Grátis{% endif %}</div>
-    <div class="stat-label">Status da conta</div>
-  </div>
 </div>
 
 <div class="grid-2" style="gap:20px">
@@ -89,13 +81,7 @@
   <div class="card">
     <div class="card-title" style="display:flex;justify-content:space-between;align-items:center">
       🐾 Meus Pets
-      {% if pode_add and u.plano_ativo %}
       <a href="/petmed/pets/adicionar" class="btn btn-primary btn-sm">+ Adicionar</a>
-      {% elif not u.plano_ativo %}
-      <span style="font-size:11px;color:var(--text3)">Assine para adicionar mais</span>
-      {% else %}
-      <span style="font-size:11px;color:var(--text3)">Limite atingido ({{ total_pets }}/{{ limite_pets }})</span>
-      {% endif %}
     </div>
 
     {% if pets %}
@@ -113,7 +99,7 @@
           </div>
         </div>
         {% if bloqueado_paywall %}
-        <a href="/petmed/planos?msg=paywall" class="btn btn-sm" style="background:#fee2e2;color:#ef4444;border:none">🔒 Assinar</a>
+        <a href="/petmed/creditos?msg=sem_credito" class="btn btn-sm" style="background:#fee2e2;color:#ef4444;border:none">🪙 Créditos</a>
         {% else %}
         <a href="/petmed/triagem?pet_id={{ pet.id }}" class="btn btn-primary btn-sm">🩺 Triar</a>
         {% endif %}
@@ -125,13 +111,6 @@
         <p>Nenhum pet cadastrado ainda.<br>Adicione seu primeiro pet!</p>
         <a href="/petmed/pets/adicionar" class="btn btn-primary">+ Adicionar pet</a>
       </div>
-    {% endif %}
-
-    {% if not pode_add and u.plano_ativo %}
-    <div style="margin-top:12px;padding:10px;background:var(--bg);border-radius:8px;font-size:12px;color:var(--text3);text-align:center">
-      Limite de {{ limite_pets }} pet(s) no plano atual.
-      <a href="/petmed/planos" style="color:var(--teal2);font-weight:700">Fazer upgrade →</a>
-    </div>
     {% endif %}
   </div>
 
@@ -174,16 +153,5 @@
   </div>
 
 </div>
-
-<!-- Banner upgrade -->
-{% if u.plano_ativo and u.plano != 'premium' %}
-<div style="margin-top:20px;background:linear-gradient(135deg,#8b5cf6,#0ea5e9);border-radius:14px;padding:20px 24px;color:#fff;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
-  <div>
-    <div style="font-weight:800;font-size:15px">👑 Faça upgrade para o Premium</div>
-    <div style="font-size:13px;opacity:.85;margin-top:2px">Teleconsulta com veterinário incluída + pets ilimitados</div>
-  </div>
-  <a href="/petmed/planos" style="background:#fff;color:#8b5cf6;padding:10px 20px;border-radius:9px;font-weight:700;font-size:13px;text-decoration:none">Ver Premium →</a>
-</div>
-{% endif %}
 
 {% endblock %}

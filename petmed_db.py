@@ -148,6 +148,20 @@ def init_petmed_db():
             FOREIGN KEY (user_id) REFERENCES petmed_users(id)
         );
 
+        -- ── Compras de crédito (pago por atendimento) ──────────────────────────
+        CREATE TABLE IF NOT EXISTS petmed_compras (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id         INTEGER NOT NULL,
+            pacote          TEXT,
+            creditos        INTEGER NOT NULL,
+            valor           REAL,
+            status          TEXT DEFAULT "pendente",
+            asaas_payment_id TEXT,
+            billing_type    TEXT,
+            created_at      TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES petmed_users(id)
+        );
+
         -- ── Clínicas B2B parceiras ─────────────────────────────────────────────
         CREATE TABLE IF NOT EXISTS petmed_clinicas (
             id            INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -173,6 +187,8 @@ def init_petmed_db():
         CREATE INDEX IF NOT EXISTS idx_petmed_triagens_data  ON petmed_triagens(created_at);
         CREATE INDEX IF NOT EXISTS idx_petmed_consul_user    ON petmed_teleconsultas(user_id);
         CREATE INDEX IF NOT EXISTS idx_petmed_consul_vet     ON petmed_teleconsultas(vet_id);
+        CREATE INDEX IF NOT EXISTS idx_petmed_compras_user   ON petmed_compras(user_id);
+        CREATE INDEX IF NOT EXISTS idx_petmed_compras_pay    ON petmed_compras(asaas_payment_id);
 
     ''')
     conn.commit()
@@ -191,6 +207,8 @@ def init_petmed_db():
         'ALTER TABLE petmed_assinaturas ADD COLUMN asaas_subscription_id TEXT',
         'ALTER TABLE petmed_assinaturas ADD COLUMN asaas_payment_id TEXT',
         'ALTER TABLE petmed_assinaturas ADD COLUMN billing_type TEXT',
+        # ── Modelo de CRÉDITOS (pago por atendimento) ──────────────────────────
+        'ALTER TABLE petmed_users ADD COLUMN creditos INTEGER DEFAULT 0',
     ]:
         try:
             conn.execute(migration)

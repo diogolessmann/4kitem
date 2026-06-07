@@ -33,7 +33,53 @@ try:
 except Exception:
     _groq_client = None
 
+# ── IA: Gemini (multimodal) + Groq (rápido) — os dois ligados ───────────────────
+GEMINI_KEY   = os.environ.get('GEMINI_API_KEY', '')
+GEMINI_MODEL = os.environ.get('GEMINI_MODEL', 'gemini-2.5-flash')
+# VETZAP_AI: 'gemini' | 'groq' | 'auto' (default: gemini primário, groq de reserva)
+AI_PROVIDER  = os.environ.get('VETZAP_AI', 'auto').strip().lower()
+_GEMINI_URL  = 'https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent'
+
+def _gemini_on():
+    return bool(GEMINI_KEY)
+
+def _use_gemini():
+    """Decide se o Gemini é o motor primário."""
+    if AI_PROVIDER == 'groq':
+        return False
+    if AI_PROVIDER == 'gemini':
+        return True
+    return _gemini_on()  # auto: usa Gemini se tiver chave
+
+def _gemini_call(system, contents, json_mode=True, max_tokens=2048, temperature=0.3):
+    """Chama o Gemini via REST. `contents` no formato Gemini. Retorna o texto (str)."""
+    body = {
+        'contents': contents,
+        'generationConfig': {'temperature': temperature, 'maxOutputTokens': max_tokens},
+    }
+    if system:
+        body['systemInstruction'] = {'parts': [{'text': system}]}
+    if json_mode:
+        body['generationConfig']['responseMimeType'] = 'application/json'
+    r = _requests.post(_GEMINI_URL.format(model=GEMINI_MODEL),
+                       params={'key': GEMINI_KEY}, json=body, timeout=90)
+    r.raise_for_status()
+    data = r.json()
+    return data['candidates'][0]['content']['parts'][0]['text'].strip()
+
 petmed_bp = Blueprint('petmed', __name__, url_prefix='/petmed')
+
+# ── MODELO DE CRÉDITOS (pago por atendimento) ──────────────────────────────────
+# 1 crédito = 1 atendimento completo (triagem com IA do início ao resultado).
+PRECO_UNIT = 29.0
+PACOTES_CREDITO = {
+    'p1':  {'creditos': 1,  'preco': 29.0,  'preco_fmt': 'R$ 29',  'rotulo': '1 atendimento',
+            'cada': 'R$ 29,00/atend.', 'emoji': '🩺'},
+    'p5':  {'creditos': 5,  'preco': 119.0, 'preco_fmt': 'R$ 119', 'rotulo': '5 atendimentos',
+            'cada': 'R$ 23,80/atend.', 'emoji': '🐾', 'destaque': True, 'economia': 'Economize R$ 26'},
+    'p10': {'creditos': 10, 'preco': 199.0, 'preco_fmt': 'R$ 199', 'rotulo': '10 atendimentos',
+            'cada': 'R$ 19,90/atend.', 'emoji': '👑', 'economia': 'Economize R$ 91'},
+}
 
 # ── Consulta Avulsa (pagamento único, acesso por 24h) ──────────────────────────
 CONSULTA_AVULSA = {
@@ -177,14 +223,14 @@ def _get_pets(user_id):
     return pets
 
 
-def _can_add_pet(user_id, plano):
+def _can_add_pet(user_id, plano=None):
+    """Modelo de crédito: pets ilimitados (sem trava de plano)."""
     conn = get_petmed_db()
     total = conn.execute(
         'SELECT COUNT(*) FROM petmed_pets WHERE user_id=?', (user_id,)
     ).fetchone()[0]
     conn.close()
-    limite = LIMITE_PETS.get(plano, 1)
-    return total < limite, total, limite
+    return True, total, 999
 
 
 def _now():
@@ -257,6 +303,21 @@ def _asaas_criar_pagamento_avulso(customer_id: str, user_id: int, billing_type: 
         'externalReference': f'vetzap_consulta_avulsa_{user_id}',
     })
 
+def _asaas_criar_pagamento_creditos(customer_id: str, user_id: int, pacote: str, billing_type: str) -> dict:
+    """Cria cobrança única (PIX/boleto/cartão) para compra de um pacote de créditos."""
+    import datetime as _dt
+    p = PACOTES_CREDITO[pacote]
+    venc = (_dt.date.today() + _dt.timedelta(days=1)).strftime('%Y-%m-%d')
+    return _asaas_req('POST', '/payments', {
+        'customer': customer_id,
+        'billingType': billing_type,
+        'value': p['preco'],
+        'dueDate': venc,
+        'description': f'VetZap — {p["rotulo"]} (créditos)',
+        'externalReference': f'vetzap_cred_{user_id}_{pacote}',
+    })
+
+
 def _asaas_criar_assinatura(customer_id: str, plano: str, billing_type: str) -> dict:
     """Cria assinatura recorrente mensal no Asaas."""
     p = PLANOS.get(plano, PLANOS['start'])
@@ -322,6 +383,36 @@ def _email_consulta_avulsa_ativada(primeiro_nome: str) -> str:
   </div>
   <a href="https://4kitem.com.br/petmed/dashboard" style="display:block;text-align:center;padding:14px 28px;background:#10b981;color:#fff;font-size:15px;font-weight:700;border-radius:12px;text-decoration:none;margin-bottom:20px">
     🐾 Iniciar atendimento agora
+  </a>
+  <hr style="border:none;border-top:1px solid #222;margin:28px 0">
+  <p style="font-size:11px;color:#555;margin:0;line-height:1.6">
+    4KITEM · VetZap · <a href="https://4kitem.com.br" style="color:#10b981">4kitem.com.br</a><br>
+    Dúvidas? WhatsApp: <a href="https://wa.me/5547999606998" style="color:#10b981">(47) 99960-6998</a>
+  </p>
+</td></tr>
+</table>
+</td></tr>
+</table>
+</body></html>"""
+
+
+def _email_creditos_liberados(primeiro_nome: str, qtd: int) -> str:
+    plural = 'atendimentos' if qtd != 1 else 'atendimento'
+    return f"""<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="UTF-8"></head>
+<body style="margin:0;padding:0;background:#0a0a0a;font-family:'Segoe UI',Arial,sans-serif">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#0a0a0a;padding:40px 0">
+<tr><td align="center">
+<table width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#111;border:1px solid #222;border-radius:16px;overflow:hidden">
+<tr><td style="background:#10b981;height:4px"></td></tr>
+<tr><td style="padding:36px 40px 32px">
+  <div style="font-size:40px;margin-bottom:12px">🐾</div>
+  <h1 style="color:#fff;font-size:22px;font-weight:800;margin:0 0 8px">Créditos liberados, {primeiro_nome}!</h1>
+  <p style="color:#888;font-size:14px;line-height:1.7;margin:0 0 24px">
+    Pagamento confirmado. Você tem <strong style="color:#10b981">{qtd} {plural}</strong> prontos pra usar no VetZap.
+  </p>
+  <a href="https://4kitem.com.br/petmed/triagem" style="display:block;text-align:center;padding:14px 28px;background:#10b981;color:#fff;font-size:15px;font-weight:700;border-radius:12px;text-decoration:none;margin-bottom:20px">
+    🩺 Iniciar atendimento agora
   </a>
   <hr style="border:none;border-top:1px solid #222;margin:28px 0">
   <p style="font-size:11px;color:#555;margin:0;line-height:1.6">
@@ -407,7 +498,11 @@ def _email_recuperacao(codigo: str) -> str:
 
 
 def _email_boas_vindas(nome: str, pet_nome: str) -> str:
-    primeiro = nome.split()[0]
+    primeiro = (nome.split()[0] if nome else 'tutor')
+    tem_pet = bool(pet_nome)
+    linha_pet = (f"Sua conta foi criada e <strong>{pet_nome}</strong> já está cadastrado(a) no VetZap."
+                 if tem_pet else
+                 "Sua conta foi criada! Cadastre seu pet e faça a primeira triagem em 2 minutos.")
     return f"""
     <div style="font-family:Inter,Arial,sans-serif;max-width:480px;margin:0 auto;background:#f0f9ff;padding:32px 20px">
       <div style="text-align:center;margin-bottom:24px">
@@ -420,15 +515,15 @@ def _email_boas_vindas(nome: str, pet_nome: str) -> str:
           Bem-vindo, {primeiro}! 🎉
         </h2>
         <p style="font-size:14px;color:#075985;line-height:1.6">
-          Sua conta foi criada e <strong>{pet_nome}</strong> já está cadastrado(a) no VetZap.
+          {linha_pet}
         </p>
         <div style="background:#f0f9ff;border-radius:10px;padding:16px;margin:20px 0">
-          <div style="font-size:13px;font-weight:700;color:#0c4a6e;margin-bottom:8px">O que você pode fazer agora:</div>
+          <div style="font-size:13px;font-weight:700;color:#0c4a6e;margin-bottom:8px">O que você pode fazer:</div>
           <div style="font-size:13px;color:#075985;line-height:2">
-            🩺 Realizar sua consulta gratuita<br>
-            💉 Registrar vacinas de {pet_nome}<br>
-            📋 Acompanhar o histórico de saúde<br>
-            🚨 Receber orientação em emergências
+            🩺 Triagem com IA em minutos<br>
+            💉 Registrar e acompanhar vacinas<br>
+            📋 Histórico de saúde do pet<br>
+            🚨 Orientação em emergências 24h
           </div>
         </div>
         <a href="https://4kitem.com.br/petmed/triagem"
@@ -457,62 +552,95 @@ def _triagens_usadas(user_id):
     return n
 
 
+def _get_creditos(user_id):
+    """Saldo de créditos do usuário."""
+    conn = get_petmed_db()
+    row = conn.execute('SELECT creditos FROM petmed_users WHERE id=?', (user_id,)).fetchone()
+    conn.close()
+    return (row['creditos'] or 0) if row else 0
+
+
+def _add_creditos(user_id, qtd):
+    """Soma créditos (usado pelo webhook e admin)."""
+    conn = get_petmed_db()
+    conn.execute('UPDATE petmed_users SET creditos = COALESCE(creditos,0) + ? WHERE id=?',
+                 (int(qtd), user_id))
+    conn.commit()
+    conn.close()
+
+
+def _debita_credito(user_id):
+    """Debita 1 crédito de forma atômica. Retorna True se debitou, False se sem saldo."""
+    conn = get_petmed_db()
+    cur = conn.execute(
+        'UPDATE petmed_users SET creditos = creditos - 1 WHERE id=? AND creditos > 0',
+        (user_id,)
+    )
+    conn.commit()
+    ok = cur.rowcount > 0
+    conn.close()
+    return ok
+
+
 def _check_paywall(u):
     """
-    Verifica se o usuário pode realizar mais triagens.
-    Retorna (bloqueado: bool, triagens_usadas: int).
-    - plano_ativo=1              → assinatura mensal ativa, sem bloqueio.
-    - consulta_expires no futuro → consulta avulsa ativa, sem bloqueio.
-    - caso contrário             → bloqueado (sem triagem grátis).
+    Modelo de CRÉDITOS: pode atender se tiver saldo > 0.
+    Retorna (bloqueado: bool, creditos: int).
     """
-    if u['plano_ativo']:
-        return False, _triagens_usadas(u['id'])
-    # Verifica consulta avulsa ativa
-    consulta_exp = u['consulta_expires'] if 'consulta_expires' in u.keys() else None
-    if consulta_exp:
+    cred = (u['creditos'] if 'creditos' in u.keys() and u['creditos'] is not None else 0)
+    return (cred < 1), cred
+
+
+@petmed_bp.app_context_processor
+def _pm_inject_creditos():
+    """Expõe pm_creditos nos templates do VetZap (sem pesar o resto do site)."""
+    try:
+        if request.endpoint and request.endpoint.startswith('petmed.') and session.get('pm_user_id'):
+            return {'pm_creditos': _get_creditos(session['pm_user_id'])}
+    except Exception:
+        pass
+    return {}
+
+
+# ── IA: identificar raça por foto (Gemini primário + Groq reserva) ─────────────
+def _identificar_raca(foto_base64: str, especie: str) -> str:
+    if not foto_base64 or (not _gemini_on() and not _groq_client):
+        return 'Não identificada'
+    tipo = 'cão' if especie == 'cao' else 'gato'
+    prompt = (
+        f'Identifique a raça deste {tipo} na foto. '
+        'Responda SOMENTE com o nome da raça, sem explicações. '
+        'Exemplos: "Golden Retriever", "Labrador", "SRD (Sem Raça Definida)", '
+        '"Poodle", "Bulldog Francês", "Persa", "Siamês". '
+        'Se não conseguir identificar, responda "SRD".'
+    )
+
+    # 1) Gemini (multimodal nativo)
+    if _use_gemini() and _gemini_on():
         try:
-            exp_dt = datetime.strptime(consulta_exp, '%Y-%m-%d %H:%M:%S')
-            if exp_dt > datetime.now():
-                return False, _triagens_usadas(u['id'])
+            contents = [{'role': 'user', 'parts': [
+                {'inline_data': {'mime_type': 'image/jpeg', 'data': foto_base64}},
+                {'text': prompt},
+            ]}]
+            return _gemini_call(None, contents, json_mode=False, max_tokens=50, temperature=0.1)
+        except Exception as e:
+            log.warning('[PETmed] Gemini raça falhou, tentando Groq: %s', e)
+
+    # 2) Groq (reserva)
+    if _groq_client:
+        try:
+            resp = _groq_client.chat.completions.create(
+                model='meta-llama/llama-4-scout-17b-16e-instruct',
+                messages=[{'role': 'user', 'content': [
+                    {'type': 'image_url', 'image_url': {'url': f'data:image/jpeg;base64,{foto_base64}'}},
+                    {'type': 'text', 'text': prompt},
+                ]}],
+                max_tokens=50, temperature=0.1,
+            )
+            return resp.choices[0].message.content.strip()
         except Exception:
             pass
-    usadas = _triagens_usadas(u['id'])
-    return True, usadas
-
-
-# ── IA: identificar raça por foto ──────────────────────────────────────────────
-def _identificar_raca(foto_base64: str, especie: str) -> str:
-    if not _groq_client or not foto_base64:
-        return 'Não identificada'
-    try:
-        tipo = 'cão' if especie == 'cao' else 'gato'
-        resp = _groq_client.chat.completions.create(
-            model='meta-llama/llama-4-scout-17b-16e-instruct',
-            messages=[{
-                'role': 'user',
-                'content': [
-                    {
-                        'type': 'image_url',
-                        'image_url': {'url': f'data:image/jpeg;base64,{foto_base64}'}
-                    },
-                    {
-                        'type': 'text',
-                        'text': (
-                            f'Identifique a raça deste {tipo} na foto. '
-                            'Responda SOMENTE com o nome da raça, sem explicações. '
-                            'Exemplos: "Golden Retriever", "Labrador", "SRD (Sem Raça Definida)", '
-                            '"Poodle", "Bulldog Francês", "Persa", "Siamês". '
-                            'Se não conseguir identificar, responda "SRD".'
-                        )
-                    }
-                ]
-            }],
-            max_tokens=50,
-            temperature=0.1,
-        )
-        return resp.choices[0].message.content.strip()
-    except Exception:
-        return 'Não identificada'
+    return 'Não identificada'
 
 
 # ── IA: triagem inteligente ─────────────────────────────────────────────────────
@@ -527,7 +655,7 @@ def _fazer_triagem(pet_info: dict, categoria: str, historico: list) -> dict:
         'encaminhar': bool
     }
     """
-    if not _groq_client:
+    if not _gemini_on() and not _groq_client:
         return {
             'tipo': 'resultado',
             'resultado': 'atencao',
@@ -919,40 +1047,117 @@ DURANTE TRIAGEM (antes de concluir):
 
 SEMPRE JSON válido. Nunca mencione tecnologia, sistema ou processamento."""
 
-    messages = [{'role': 'system', 'content': system_prompt}]
+    # ── Motor 1: Gemini (primário) ──────────────────────────────────────────────
+    if _use_gemini() and _gemini_on():
+        try:
+            contents = []
+            for h in historico:
+                role = 'model' if h['role'] == 'assistant' else 'user'
+                contents.append({'role': role, 'parts': [{'text': h['content']}]})
+            if not contents:
+                contents = [{'role': 'user', 'parts': [{'text': 'Inicie a triagem.'}]}]
+            raw = _gemini_call(system_prompt, contents, json_mode=True,
+                               max_tokens=2400, temperature=0.3)
+            return json.loads(raw)
+        except Exception as e:
+            log.warning('[PETmed] Gemini triagem falhou, tentando Groq: %s', e)
 
-    for h in historico:
-        messages.append({'role': h['role'], 'content': h['content']})
+    # ── Motor 2: Groq (reserva / turbo texto) ───────────────────────────────────
+    if _groq_client:
+        try:
+            messages = [{'role': 'system', 'content': system_prompt}]
+            for h in historico:
+                messages.append({'role': h['role'], 'content': h['content']})
+            resp = _groq_client.chat.completions.create(
+                model='llama-3.3-70b-versatile',
+                messages=messages,
+                max_tokens=2400,
+                temperature=0.3,
+                response_format={'type': 'json_object'},
+            )
+            return json.loads(resp.choices[0].message.content.strip())
+        except Exception as e:
+            log.warning('[PETmed] Groq triagem falhou: %s', e)
 
-    try:
-        resp = _groq_client.chat.completions.create(
-            model='llama-3.3-70b-versatile',
-            messages=messages,
-            max_tokens=2400,
-            temperature=0.3,
-            response_format={'type': 'json_object'},
-        )
-        raw = resp.choices[0].message.content.strip()
-        data = json.loads(raw)
-        return data
-    except Exception as e:
-        return {
-            'tipo': 'pergunta',
-            'mensagem': 'Pode me descrever melhor o que está acontecendo com seu pet?'
-        }
+    return {
+        'tipo': 'pergunta',
+        'mensagem': 'Pode me descrever melhor o que está acontecendo com seu pet?'
+    }
 
 
 # ── Rotas públicas ─────────────────────────────────────────────────────────────
 
 @petmed_bp.route('/')
 def index():
-    return render_template('petmed/index.html', planos=PLANOS)
+    return render_template('petmed/index.html', planos=PLANOS, pacotes=PACOTES_CREDITO)
 
 
 @petmed_bp.route('/planos')
 def planos():
+    # modelo de planos foi descontinuado → redireciona para créditos
+    return redirect('/petmed/creditos?' + request.query_string.decode('utf-8'))
+
+
+@petmed_bp.route('/creditos')
+def creditos():
+    """Vitrine de pacotes de crédito (1 crédito = 1 atendimento)."""
     msg = request.args.get('msg', '')
-    return render_template('petmed/planos.html', planos=PLANOS, consulta=CONSULTA_AVULSA, msg=msg)
+    saldo = None
+    if session.get('pm_user_id'):
+        saldo = _get_creditos(session['pm_user_id'])
+    return render_template('petmed/creditos.html',
+                           pacotes=PACOTES_CREDITO, msg=msg, saldo=saldo,
+                           preco_unit=PRECO_UNIT)
+
+
+@petmed_bp.route('/comprar/<pacote>', methods=['POST'])
+@petmed_login_required
+def comprar(pacote):
+    """Cria cobrança única (PIX/boleto/cartão) para um pacote de créditos."""
+    if pacote not in PACOTES_CREDITO:
+        return redirect('/petmed/creditos?msg=pacote_invalido')
+    u = _get_user()
+    billing_type = request.form.get('billing_type', 'PIX')
+    if billing_type not in ('PIX', 'BOLETO', 'CREDIT_CARD'):
+        billing_type = 'PIX'
+
+    # CPF é exigido pelo Asaas — coleta na compra (cadastro não pede mais)
+    cpf = re.sub(r'\D', '', request.form.get('cpf', '') or '')
+    if not (u['cpf'] and len(re.sub(r'\D', '', u['cpf'])) == 11):
+        if len(cpf) != 11:
+            return redirect('/petmed/creditos?msg=cpf')
+        conn = get_petmed_db()
+        conn.execute('UPDATE petmed_users SET cpf=? WHERE id=?', (cpf, u['id']))
+        conn.commit()
+        conn.close()
+        u = _get_user()  # refetch com o CPF salvo
+
+    try:
+        customer_id = _asaas_criar_ou_buscar_cliente(u)
+        if not customer_id:
+            return redirect('/petmed/creditos?msg=erro_pagamento')
+        pag = _asaas_criar_pagamento_creditos(customer_id, u['id'], pacote, billing_type)
+        if pag.get('id'):
+            p = PACOTES_CREDITO[pacote]
+            conn = get_petmed_db()
+            conn.execute(
+                '''INSERT INTO petmed_compras
+                   (user_id, pacote, creditos, valor, status, asaas_payment_id, billing_type)
+                   VALUES (?,?,?,?,?,?,?)''',
+                (u['id'], pacote, p['creditos'], p['preco'], 'pendente', pag['id'], billing_type)
+            )
+            conn.commit()
+            conn.close()
+            payment_url = pag.get('invoiceUrl') or pag.get('bankSlipUrl') or ''
+            if payment_url:
+                return redirect(payment_url)
+            return redirect('/petmed/dashboard?msg=aguardando_pgto')
+        else:
+            log.error('[PETmed] Asaas créditos sem id: %s', pag)
+            return redirect('/petmed/creditos?msg=erro_pagamento')
+    except Exception as ex:
+        log.error('[PETmed] Erro compra créditos: %s', ex, exc_info=True)
+        return redirect('/petmed/creditos?msg=erro_pagamento')
 
 
 @petmed_bp.route('/consulta-agora', methods=['GET', 'POST'])
@@ -1079,7 +1284,34 @@ def webhook_asaas():
 
         conn = get_petmed_db()
 
-        # ── Consulta Avulsa: pagamento único ─────────────────────────────────────
+        # ── Compra de CRÉDITOS (modelo atual) ────────────────────────────────────
+        if payment_id:
+            compra = conn.execute(
+                "SELECT * FROM petmed_compras WHERE asaas_payment_id=? AND status='pendente'",
+                (payment_id,)
+            ).fetchone()
+            if compra:
+                conn.execute(
+                    'UPDATE petmed_users SET creditos = COALESCE(creditos,0) + ? WHERE id=?',
+                    (compra['creditos'], compra['user_id'])
+                )
+                conn.execute("UPDATE petmed_compras SET status='pago' WHERE id=?", (compra['id'],))
+                conn.commit()
+                log.info('[PETmed] +%s créditos (compra %s) p/ user_id=%s',
+                         compra['creditos'], compra['id'], compra['user_id'])
+                u_row = conn.execute('SELECT nome, email FROM petmed_users WHERE id=?',
+                                     (compra['user_id'],)).fetchone()
+                if u_row and u_row['email']:
+                    _enviar_email(
+                        u_row['email'],
+                        '✅ VetZap — Créditos liberados!',
+                        _email_creditos_liberados(u_row['nome'].split()[0] if u_row['nome'] else 'tutor',
+                                                  compra['creditos'])
+                    )
+                conn.close()
+                return jsonify({'status': 'ok'}), 200
+
+        # ── Consulta Avulsa: pagamento único (legado) ────────────────────────────
         if ext_ref.startswith('vetzap_consulta_avulsa_'):
             try:
                 uid = int(ext_ref.split('_')[-1])
@@ -1195,26 +1427,21 @@ def cadastrar():
     erro = ''
     plano_sel = request.args.get('plano', 'start')
     if request.method == 'POST':
-        nome      = request.form.get('nome', '').strip()
         email     = request.form.get('email', '').strip().lower()
-        telefone  = request.form.get('telefone', '').strip()
         senha     = request.form.get('senha', '')
-        plano     = request.form.get('plano', 'start')
-        cpf_raw   = request.form.get('cpf', '').strip()
+        # Campos opcionais (cadastro mínimo: só email + senha)
+        nome      = request.form.get('nome', '').strip()
+        telefone  = request.form.get('telefone', '').strip()
         pet_nome  = request.form.get('pet_nome', '').strip()
         pet_esp   = request.form.get('pet_especie', 'cao')
+        # Se não informar nome, usa o início do e-mail
+        if not nome:
+            nome = email.split('@')[0].replace('.', ' ').replace('_', ' ').title() or 'Tutor'
 
-        # Valida CPF — remove máscara e checa 11 dígitos
-        cpf = re.sub(r'\D', '', cpf_raw)
-
-        if not nome or not email or not senha or not telefone:
-            erro = 'Preencha todos os campos obrigatórios.'
+        if not email or '@' not in email:
+            erro = 'Informe um e-mail válido.'
         elif len(senha) < 6:
             erro = 'A senha deve ter pelo menos 6 caracteres.'
-        elif len(cpf) != 11:
-            erro = 'CPF inválido. Digite os 11 dígitos.'
-        elif not pet_nome:
-            erro = 'Informe o nome do seu pet.'
         else:
             _u_id = None
             try:
@@ -1230,10 +1457,9 @@ def cadastrar():
                         log.info('[PETmed] Whitelist: registro antigo de %s removido para re-cadastro', email)
                 conn.execute(
                     '''INSERT INTO petmed_users
-                       (nome, email, telefone, cpf, password_hash, plano, plano_ativo)
-                       VALUES (?,?,?,?,?,?,0)''',
-                    (nome, email, telefone, cpf,
-                     generate_password_hash(senha), plano)
+                       (nome, email, telefone, password_hash, plano_ativo, creditos)
+                       VALUES (?,?,?,?,0,0)''',
+                    (nome, email, telefone, generate_password_hash(senha))
                 )
                 conn.commit()
                 u = conn.execute(
@@ -1241,13 +1467,14 @@ def cadastrar():
                 ).fetchone()
                 if u is None:
                     raise Exception('Usuário não encontrado após INSERT')
-                # Cria primeiro pet automaticamente
-                conn.execute(
-                    '''INSERT INTO petmed_pets (user_id, nome, especie)
-                       VALUES (?,?,?)''',
-                    (u['id'], pet_nome, pet_esp)
-                )
-                conn.commit()
+                # Cria o primeiro pet só se o tutor informou (opcional)
+                if pet_nome:
+                    conn.execute(
+                        '''INSERT INTO petmed_pets (user_id, nome, especie)
+                           VALUES (?,?,?)''',
+                        (u['id'], pet_nome, pet_esp)
+                    )
+                    conn.commit()
                 _u_id    = u['id']
                 _u_nome  = u['nome']
                 _u_plano = u['plano']
@@ -1424,7 +1651,9 @@ def dashboard():
                            limite_pets=limite_pets,
                            planos=PLANOS,
                            bloqueado_paywall=bloqueado_paywall,
-                           triagens_usadas=triagens_usadas)
+                           triagens_usadas=triagens_usadas,
+                           creditos=(u['creditos'] if 'creditos' in u.keys() and u['creditos'] is not None else 0),
+                           pacotes=PACOTES_CREDITO)
 
 
 @petmed_bp.route('/meus-pets')
@@ -1576,7 +1805,7 @@ def triagem_inicio():
     u    = _get_user()
     bloqueado, triagens_usadas = _check_paywall(u)
     if bloqueado:
-        return redirect('/petmed/planos?msg=paywall')
+        return redirect('/petmed/creditos?msg=sem_credito')
     pets = _get_pets(u['id'])
     # Limpa triagem anterior da sessão
     session.pop('pm_triagem', None)
@@ -1602,8 +1831,8 @@ def triagem_chat():
             if bloqueado:
                 return jsonify({
                     'tipo': 'paywall',
-                    'mensagem': 'Você já utilizou sua consulta gratuita. Assine um plano para continuar.',
-                    'url': '/petmed/planos?msg=paywall'
+                    'mensagem': 'Você está sem créditos. Compre um atendimento para continuar.',
+                    'url': '/petmed/creditos?msg=sem_credito'
                 })
 
             pet_id    = dados.get('pet_id')
@@ -1694,7 +1923,10 @@ def triagem_chat():
                 )
                 conn.commit()
                 conn.close()
+                # Debita 1 crédito por atendimento concluído
+                _debita_credito(u['id'])
                 session.pop('pm_triagem', None)
+                resultado['creditos_restantes'] = _get_creditos(u['id'])
                 return jsonify(resultado)
 
             return jsonify({'tipo': 'pergunta', 'mensagem': 'Pode me contar mais sobre o que está acontecendo?'})

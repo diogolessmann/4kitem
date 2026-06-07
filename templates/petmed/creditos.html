@@ -1,0 +1,67 @@
+{% extends "petmed/base.html" %}
+{% set active = 'creditos' %}
+{% block title %}Comprar créditos — VetZap{% endblock %}
+
+{% block content %}
+<div style="max-width:880px;margin:0 auto">
+
+  <div style="text-align:center;margin-bottom:8px">
+    <h1 class="page-title" style="font-size:26px">Pague só pelo que usar 🐾</h1>
+    <p class="page-sub" style="font-size:14px">1 crédito = 1 atendimento completo (triagem com IA do início ao resultado). Sem mensalidade.</p>
+  </div>
+
+  {% if saldo is not none %}
+  <div style="text-align:center;margin:14px 0 22px">
+    <span class="badge badge-teal" style="font-size:14px;padding:6px 16px">🪙 Você tem {{ saldo }} atendimento(s)</span>
+  </div>
+  {% endif %}
+
+  {% if msg == 'sem_credito' %}
+    <div class="alert alert-warning">Você está sem créditos. Escolha um pacote abaixo para continuar atendendo.</div>
+  {% elif msg == 'cpf' %}
+    <div class="alert alert-error">Informe um CPF válido (11 dígitos) — o banco exige para emitir a cobrança.</div>
+  {% elif msg == 'erro_pagamento' %}
+    <div class="alert alert-error">Não foi possível gerar a cobrança agora. Tente novamente ou fale no WhatsApp (47) 99960-6998.</div>
+  {% elif msg == 'pacote_invalido' %}
+    <div class="alert alert-error">Pacote inválido.</div>
+  {% endif %}
+
+  {% if session.pm_user_id %}
+  <!-- Campo CPF (exigido pelo Asaas) -->
+  <div class="card" style="max-width:380px;margin:0 auto 18px">
+    <label class="form-label" for="cpf">Seu CPF (para o pagamento)</label>
+    <input class="form-control" id="cpf" inputmode="numeric" autocomplete="off" placeholder="Só números"
+           oninput="this.value=this.value.replace(/\D/g,'').slice(0,11);document.querySelectorAll('.cpf-h').forEach(h=>h.value=this.value)">
+    <p style="font-size:11px;color:var(--text3);margin-top:6px">Exigido pelo banco para emitir a cobrança. Guardamos com segurança.</p>
+  </div>
+  {% endif %}
+
+  <div class="grid-3">
+    {% for k, p in pacotes.items() %}
+    <div class="card" style="text-align:center;position:relative;{% if p.destaque %}border:2px solid var(--teal);{% endif %}">
+      {% if p.destaque %}<div class="badge badge-teal" style="position:absolute;top:-11px;left:50%;transform:translateX(-50%)">Mais escolhido</div>{% endif %}
+      <div style="font-size:34px;margin:6px 0">{{ p.emoji }}</div>
+      <div style="font-size:15px;font-weight:700;color:var(--text1)">{{ p.rotulo }}</div>
+      <div style="font-size:34px;font-weight:800;color:var(--teal2);margin:8px 0 2px">{{ p.preco_fmt }}</div>
+      <div style="font-size:12px;color:var(--text3)">{{ p.cada }}</div>
+      {% if p.economia %}<div class="badge badge-green" style="margin-top:8px">{{ p.economia }}</div>{% endif %}
+
+      {% if session.pm_user_id %}
+      <form method="post" action="/petmed/comprar/{{ k }}" style="margin-top:16px"
+            onsubmit="if(!this.querySelector('.cpf-h').value || this.querySelector('.cpf-h').value.length!=11){alert('Preencha seu CPF (11 dígitos) acima.');return false}">
+        <input type="hidden" name="cpf" class="cpf-h">
+        <input type="hidden" name="billing_type" value="PIX">
+        <button class="btn btn-primary btn-lg" style="width:100%;justify-content:center">Pagar no PIX</button>
+      </form>
+      {% else %}
+      <a href="/petmed/cadastrar" class="btn btn-primary btn-lg" style="width:100%;justify-content:center;margin-top:16px">Criar conta e comprar</a>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+
+  <p style="text-align:center;font-size:12px;color:var(--text3);margin-top:18px">
+    Pagamento via PIX com confirmação automática. Seus créditos não expiram. 🔒
+  </p>
+</div>
+{% endblock %}
