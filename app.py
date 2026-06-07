@@ -1886,9 +1886,13 @@ def defesa_planos():
 def webhook_asaas_global():
     if request.method == 'GET':
         return jsonify({'status': 'ok'}), 200
-    # Validação do token
-    token = os.environ.get('ASAAS_WEBHOOK_TOKEN', '')
-    if token and request.headers.get('asaas-access-token') != token:
+    # Validação do token (tolerante a espaços/quebras de linha e aspas acidentais
+    # no valor da env — causa comum de 401 ao colar o token no Railway)
+    token = os.environ.get('ASAAS_WEBHOOK_TOKEN', '').strip().strip('"').strip("'")
+    recebido = (request.headers.get('asaas-access-token') or '').strip().strip('"').strip("'")
+    if token and recebido != token:
+        log.warning('[Webhook Asaas] 401 — token nao confere (len env=%d, len recebido=%d)',
+                    len(token), len(recebido))
         return jsonify({'error': 'unauthorized'}), 401
     try:
         payload = request.get_json(force=True) or {}
