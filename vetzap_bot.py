@@ -42,10 +42,12 @@ def _vets_plantao():
         if not item:
             continue
         if ':' in item:
-            tel, nome = item.split(':', 1)
+            nome, tel = item.split(':', 1)   # formato: "Nome:numero"
         else:
-            tel, nome = item, 'Veterinário(a)'
-        vets.append({'telefone': ''.join(c for c in tel if c.isdigit()), 'nome': nome.strip()})
+            nome, tel = 'Veterinário(a)', item
+        digits = ''.join(c for c in tel if c.isdigit())
+        if digits:
+            vets.append({'telefone': digits, 'nome': nome.strip() or 'Veterinário(a)'})
     return vets
 
 
@@ -325,9 +327,38 @@ def acionar_vets(telefone_tutor, resumo):
     for v in vets:
         wa_send(v['telefone'],
                 f"🚨 *Corrida VetZap!*\nCaso: {resumo}\n"
-                f"Aceita? Responda *ACEITO* e ligue em vídeo pro tutor.\n"
-                f"Tutor: wa.me/{telefone_tutor}")
+                f"Responda *ACEITO* pra pegar e atender o tutor por vídeo. 🩺")
     return len(vets)
+
+
+def _vet_por_numero(telefone):
+    """Retorna o vet de plantão se o número for de um vet (compara últimos dígitos)."""
+    d10 = ''.join(c for c in str(telefone) if c.isdigit())[-10:]
+    for v in _vets_plantao():
+        vd = ''.join(c for c in v['telefone'] if c.isdigit())
+        if vd and vd[-10:] == d10:
+            return v
+    return None
+
+
+def aceitar_corrida(vet):
+    """Vet aceitou: assume a corrida aberta mais antiga (tutor em 'na_fila')."""
+    conn = _db()
+    row = conn.execute("SELECT * FROM vetzap_wa WHERE estado='na_fila' "
+                       "ORDER BY updated_at ASC LIMIT 1").fetchone()
+    conn.close()
+    if not row:
+        wa_send(vet['telefone'], 'Nenhuma corrida aberta agora. Te aviso quando aparecer! 🐾')
+        return None
+    tutor = row['telefone']
+    _salva(tutor, 'atendido', json.loads(row['historico'] or '[]'))
+    wa_send(tutor, f"🩺 {vet['nome']} vai te atender! Vai te *ligar em VÍDEO* aqui no "
+                   f"WhatsApp em instantes. Pode atender! 📹")
+    wa_send(vet['telefone'], f"✅ Corrida sua! Ligue em *vídeo* agora pro tutor 👉 wa.me/{tutor}")
+    for v in _vets_plantao():
+        if v['telefone'] != vet['telefone']:
+            wa_send(v['telefone'], 'Essa corrida já foi aceita por outro vet. 🏁')
+    return tutor
 
 
 # ── Webhook que recebe as mensagens da Evolution API ───────────────────────────
@@ -349,6 +380,12 @@ def wa_webhook():
         media = None  # TODO: baixar imageMessage/audioMessage da Evolution e passar base64
         if not telefone:
             return jsonify({'ignored': 'no-phone'}), 200
+
+        # Se quem mandou é um VET de plantão e disse "ACEITO" → pega a corrida
+        vet = _vet_por_numero(telefone)
+        if vet and 'aceito' in (texto or '').lower():
+            aceitar_corrida(vet)
+            return jsonify({'ok': True, 'acao': 'corrida_aceita'}), 200
 
         out = processar(telefone, texto=texto, media=media)
         for txt in out['mensagens']:
