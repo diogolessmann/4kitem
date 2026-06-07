@@ -1062,8 +1062,8 @@ def webhook_asaas():
         return jsonify({'status': 'ok'}), 200
 
     # Valida token de autenticação do Asaas
-    token_esperado = os.environ.get('ASAAS_WEBHOOK_TOKEN', '')
-    token_recebido = request.headers.get('asaas-access-token', '')
+    token_esperado = os.environ.get('ASAAS_WEBHOOK_TOKEN', '').strip().strip('"').strip("'")
+    token_recebido = (request.headers.get('asaas-access-token', '') or '').strip().strip('"').strip("'")
     if token_esperado and token_recebido != token_esperado:
         return jsonify({'error': 'unauthorized'}), 401
 

@@ -4360,8 +4360,8 @@ def webhook_asaas():
     if request.method == 'GET':
         return jsonify({'status': 'ok'}), 200
 
-    token_esp = os.environ.get('ASAAS_WEBHOOK_TOKEN', '')
-    token_rec = request.headers.get('asaas-access-token', '')
+    token_esp = os.environ.get('ASAAS_WEBHOOK_TOKEN', '').strip().strip('"').strip("'")
+    token_rec = (request.headers.get('asaas-access-token', '') or '').strip().strip('"').strip("'")
     # A8 fix: rejeita se token não configurado OU se token não bate
     if not token_esp:
         log.warning('[PUBSHOW] Webhook recebido mas ASAAS_WEBHOOK_TOKEN não configurado — bloqueado')
@@ -4461,8 +4461,8 @@ def webhook_asaas_jukebox():
     if request.method == 'GET':
         return jsonify({'status': 'ok'}), 200
 
-    token_esp = os.environ.get('ASAAS_WEBHOOK_TOKEN', '')
-    token_rec = request.headers.get('asaas-access-token', '')
+    token_esp = os.environ.get('ASAAS_WEBHOOK_TOKEN', '').strip().strip('"').strip("'")
+    token_rec = (request.headers.get('asaas-access-token', '') or '').strip().strip('"').strip("'")
     # A8 fix: rejeita se token não configurado OU se token não bate
     if not token_esp:
         log.warning('[PUBSHOW] Webhook recebido mas ASAAS_WEBHOOK_TOKEN não configurado — bloqueado')
