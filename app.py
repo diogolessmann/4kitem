@@ -12726,6 +12726,14 @@ try:
 except Exception as _pm_err:
     log.warning(f'[PETmed] Erro ao carregar blueprint: {_pm_err}')
 
+# VetZap Bot — "Uber do Veterinário" no WhatsApp (Fase 1)
+try:
+    from vetzap_bot import vetzap_bp
+    app.register_blueprint(vetzap_bp)
+    log.info('[VetZap] Bot blueprint registrado em /vetzap')
+except Exception as _vz_err:
+    log.warning(f'[VetZap] Erro ao carregar bot blueprint: {_vz_err}')
+
 # ══════════════════════════════════════════════════════════════════════════════
 # PUBSHOW — Jukebox digital para bares e pubs
 # ══════════════════════════════════════════════════════════════════════════════
