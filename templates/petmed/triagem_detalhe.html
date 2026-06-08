@@ -8,7 +8,7 @@
     <div class="page-title">🩺 Triagem #{{ t.id }}</div>
     <div class="page-sub">{{ t.pet_nome }} · {{ t.created_at[:16] if t.created_at else '' }}</div>
   </div>
-  <a href="/petmed/historico" class="btn btn-outline">← Histórico</a>
+  <a href="/vetzap/historico" class="btn btn-outline">← Histórico</a>
 </div>
 
 <!-- Resultado -->
@@ -61,8 +61,8 @@
 {% endif %}
 
 <div style="margin-top:16px;display:flex;gap:10px">
-  <a href="/petmed/triagem" class="btn btn-primary">🩺 Nova triagem</a>
-  <a href="/petmed/historico" class="btn btn-outline">← Histórico</a>
+  <a href="/vetzap/triagem" class="btn btn-primary">🩺 Nova triagem</a>
+  <a href="/vetzap/historico" class="btn btn-outline">← Histórico</a>
 </div>
 
 {% endblock %}

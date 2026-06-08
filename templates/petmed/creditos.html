@@ -47,14 +47,14 @@
       {% if p.economia %}<div class="badge badge-green" style="margin-top:8px">{{ p.economia }}</div>{% endif %}
 
       {% if session.pm_user_id %}
-      <form method="post" action="/petmed/comprar/{{ k }}" style="margin-top:16px"
+      <form method="post" action="/vetzap/comprar/{{ k }}" style="margin-top:16px"
             onsubmit="if(!this.querySelector('.cpf-h').value || this.querySelector('.cpf-h').value.length!=11){alert('Preencha seu CPF (11 dígitos) acima.');return false}">
         <input type="hidden" name="cpf" class="cpf-h">
         <input type="hidden" name="billing_type" value="PIX">
         <button class="btn btn-primary btn-lg" style="width:100%;justify-content:center">Pagar no PIX</button>
       </form>
       {% else %}
-      <a href="/petmed/cadastrar" class="btn btn-primary btn-lg" style="width:100%;justify-content:center;margin-top:16px">Criar conta e comprar</a>
+      <a href="/vetzap/cadastrar" class="btn btn-primary btn-lg" style="width:100%;justify-content:center;margin-top:16px">Criar conta e comprar</a>
       {% endif %}
     </div>
     {% endfor %}

@@ -12,16 +12,16 @@
 
 {% if pets %}
 <div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap">
-  <a href="/petmed/vacinas" class="btn {% if not pet_id_sel %}btn-primary{% else %}btn-outline{% endif %} btn-sm">Todos</a>
+  <a href="/vetzap/vacinas" class="btn {% if not pet_id_sel %}btn-primary{% else %}btn-outline{% endif %} btn-sm">Todos</a>
   {% for pet in pets %}
-  <a href="/petmed/vacinas?pet_id={{ pet.id }}" class="btn {% if pet_id_sel==pet.id|string %}btn-primary{% else %}btn-outline{% endif %} btn-sm">{{ pet.nome }}</a>
+  <a href="/vetzap/vacinas?pet_id={{ pet.id }}" class="btn {% if pet_id_sel==pet.id|string %}btn-primary{% else %}btn-outline{% endif %} btn-sm">{{ pet.nome }}</a>
   {% endfor %}
 </div>
 
 <!-- Adicionar vacina -->
 <div class="card" style="margin-bottom:20px">
   <div class="card-title">➕ Registrar vacina</div>
-  <form method="POST" action="/petmed/vacinas/adicionar">
+  <form method="POST" action="/vetzap/vacinas/adicionar">
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr auto;gap:10px;align-items:end;flex-wrap:wrap">
       <div>
         <label class="form-label">Pet</label>
@@ -83,7 +83,7 @@
 <div class="empty">
   <div class="icon">🐾</div>
   <p>Cadastre um pet primeiro para controlar as vacinas.</p>
-  <a href="/petmed/pets/adicionar" class="btn btn-primary">+ Cadastrar pet</a>
+  <a href="/vetzap/pets/adicionar" class="btn btn-primary">+ Cadastrar pet</a>
 </div>
 {% endif %}
 

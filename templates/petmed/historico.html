@@ -8,14 +8,14 @@
     <div class="page-title">📋 Histórico de Triagens</div>
     <div class="page-sub">{{ triagens|length }} triagem(ns) registrada(s)</div>
   </div>
-  <a href="/petmed/triagem" class="btn btn-primary">🩺 Nova Triagem</a>
+  <a href="/vetzap/triagem" class="btn btn-primary">🩺 Nova Triagem</a>
 </div>
 
 {% if pets %}
 <div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap">
-  <a href="/petmed/historico" class="btn {% if not pet_id_sel %}btn-primary{% else %}btn-outline{% endif %} btn-sm">Todos</a>
+  <a href="/vetzap/historico" class="btn {% if not pet_id_sel %}btn-primary{% else %}btn-outline{% endif %} btn-sm">Todos</a>
   {% for pet in pets %}
-  <a href="/petmed/historico?pet_id={{ pet.id }}"
+  <a href="/vetzap/historico?pet_id={{ pet.id }}"
      class="btn {% if pet_id_sel == pet.id|string %}btn-primary{% else %}btn-outline{% endif %} btn-sm">
     {{ pet.nome }}
   </a>
@@ -26,7 +26,7 @@
 {% if triagens %}
 <div style="display:flex;flex-direction:column;gap:10px">
   {% for t in triagens %}
-  <a href="/petmed/historico/{{ t.id }}" style="text-decoration:none">
+  <a href="/vetzap/historico/{{ t.id }}" style="text-decoration:none">
   <div class="card urgencia-{{ t.resultado }}" style="cursor:pointer;transition:.15s" onmouseover="this.style.borderColor='var(--teal3)'" onmouseout="this.style.borderColor=''">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
       <div style="display:flex;align-items:center;gap:12px">
@@ -69,7 +69,7 @@
 <div class="empty">
   <div class="icon">📋</div>
   <p>Nenhuma triagem registrada ainda.<br>Faça sua primeira triagem!</p>
-  <a href="/petmed/triagem" class="btn btn-primary">🩺 Iniciar triagem</a>
+  <a href="/vetzap/triagem" class="btn btn-primary">🩺 Iniciar triagem</a>
 </div>
 {% endif %}
 

@@ -319,20 +319,20 @@
 
 <!-- Topbar -->
 <div class="topbar">
-  <a href="/petmed" class="topbar-logo">
+  <a href="/vetzap" class="topbar-logo">
     <img src="/static/vetzap/vetzap-logo-icon.png" alt="VetZap" style="width:32px;height:32px;border-radius:8px;flex-shrink:0">
     Vet<span>Zap</span>
   </a>
   <div class="topbar-nav">
     {% if session.pm_user_id %}
-      <a href="/petmed/creditos" class="badge badge-teal" style="font-size:12px" title="Seus créditos">🪙 {{ pm_creditos if pm_creditos is not none else 0 }} créd.</a>
-      <a href="/petmed/dashboard">Dashboard</a>
-      <a href="/petmed/triagem" class="btn btn-primary btn-sm">🩺 Nova Triagem</a>
-      <a href="/petmed/sair" class="btn-outline btn btn-sm">Sair</a>
+      <a href="/vetzap/creditos" class="badge badge-teal" style="font-size:12px" title="Seus créditos">🪙 {{ pm_creditos if pm_creditos is not none else 0 }} créd.</a>
+      <a href="/vetzap/dashboard">Dashboard</a>
+      <a href="/vetzap/triagem" class="btn btn-primary btn-sm">🩺 Nova Triagem</a>
+      <a href="/vetzap/sair" class="btn-outline btn btn-sm">Sair</a>
     {% else %}
-      <a href="/petmed/creditos">Preços</a>
-      <a href="/petmed/entrar">Entrar</a>
-      <a href="/petmed/cadastrar" class="btn btn-primary btn-sm">Criar conta</a>
+      <a href="/vetzap/creditos">Preços</a>
+      <a href="/vetzap/entrar">Entrar</a>
+      <a href="/vetzap/cadastrar" class="btn btn-primary btn-sm">Criar conta</a>
     {% endif %}
   </div>
 </div>
@@ -343,33 +343,33 @@
   <div class="sidebar">
     <div class="sidebar-section">
       <div class="sidebar-label">Principal</div>
-      <a href="/petmed/dashboard" class="{% if active=='dashboard' %}active{% endif %}">
+      <a href="/vetzap/dashboard" class="{% if active=='dashboard' %}active{% endif %}">
         <span class="icon">🏠</span> Dashboard
       </a>
-      <a href="/petmed/triagem" class="{% if active=='triagem' %}active{% endif %}" style="background:#0ea5e9;color:#fff;font-weight:700">
+      <a href="/vetzap/triagem" class="{% if active=='triagem' %}active{% endif %}" style="background:#0ea5e9;color:#fff;font-weight:700">
         <span class="icon">🩺</span> Nova Triagem
       </a>
-      <a href="/petmed/historico" class="{% if active=='historico' %}active{% endif %}">
+      <a href="/vetzap/historico" class="{% if active=='historico' %}active{% endif %}">
         <span class="icon">📋</span> Histórico
       </a>
     </div>
 
     <div class="sidebar-section">
       <div class="sidebar-label">Meus Pets</div>
-      <a href="/petmed/meus-pets" class="{% if active=='pets' %}active{% endif %}">
+      <a href="/vetzap/meus-pets" class="{% if active=='pets' %}active{% endif %}">
         <span class="icon">🐶</span> Meus Pets
       </a>
-      <a href="/petmed/vacinas" class="{% if active=='vacinas' %}active{% endif %}">
+      <a href="/vetzap/vacinas" class="{% if active=='vacinas' %}active{% endif %}">
         <span class="icon">💉</span> Vacinas
       </a>
     </div>
 
     <div class="sidebar-section">
       <div class="sidebar-label">Conta</div>
-      <a href="/petmed/creditos" class="{% if active=='creditos' %}active{% endif %}">
+      <a href="/vetzap/creditos" class="{% if active=='creditos' %}active{% endif %}">
         <span class="icon">🪙</span> Comprar créditos
       </a>
-      <a href="/petmed/sair">
+      <a href="/vetzap/sair">
         <span class="icon">🚪</span> Sair
       </a>
     </div>
@@ -377,7 +377,7 @@
     <div style="margin-top:auto;padding:12px 8px;border-top:1px solid var(--border);margin-top:20px">
       <div style="font-size:11px;color:var(--text3);margin-bottom:4px">Seu saldo</div>
       <span class="badge badge-teal" style="font-size:13px">🪙 {{ pm_creditos if pm_creditos is not none else 0 }} atendimento(s)</span>
-      <a href="/petmed/creditos" style="display:block;font-size:11px;color:var(--teal2);margin-top:6px;font-weight:600">Comprar mais →</a>
+      <a href="/vetzap/creditos" style="display:block;font-size:11px;color:var(--teal2);margin-top:6px;font-weight:600">Comprar mais →</a>
     </div>
   </div>
 
@@ -400,23 +400,23 @@
 <!-- Navegação mobile (bottom bar) -->
 <nav class="mobile-nav">
   <div class="mobile-nav-items">
-    <a href="/petmed/dashboard" class="mobile-nav-item {% if active=='dashboard' %}active{% endif %}">
+    <a href="/vetzap/dashboard" class="mobile-nav-item {% if active=='dashboard' %}active{% endif %}">
       <span class="mn-icon">🏠</span>
       <span>Início</span>
     </a>
-    <a href="/petmed/historico" class="mobile-nav-item {% if active=='historico' %}active{% endif %}">
+    <a href="/vetzap/historico" class="mobile-nav-item {% if active=='historico' %}active{% endif %}">
       <span class="mn-icon">📋</span>
       <span>Histórico</span>
     </a>
-    <a href="/petmed/triagem" class="mobile-nav-item mn-triagem">
+    <a href="/vetzap/triagem" class="mobile-nav-item mn-triagem">
       <span class="mn-icon">🩺</span>
       <span>Triagem</span>
     </a>
-    <a href="/petmed/meus-pets" class="mobile-nav-item {% if active=='pets' %}active{% endif %}">
+    <a href="/vetzap/meus-pets" class="mobile-nav-item {% if active=='pets' %}active{% endif %}">
       <span class="mn-icon">🐾</span>
       <span>Pets</span>
     </a>
-    <a href="/petmed/vacinas" class="mobile-nav-item {% if active=='vacinas' %}active{% endif %}">
+    <a href="/vetzap/vacinas" class="mobile-nav-item {% if active=='vacinas' %}active{% endif %}">
       <span class="mn-icon">💉</span>
       <span>Vacinas</span>
     </a>

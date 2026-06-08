@@ -67,7 +67,7 @@ def _gemini_call(system, contents, json_mode=True, max_tokens=2048, temperature=
     data = r.json()
     return data['candidates'][0]['content']['parts'][0]['text'].strip()
 
-petmed_bp = Blueprint('petmed', __name__, url_prefix='/petmed')
+petmed_bp = Blueprint('petmed', __name__, url_prefix='/vetzap')
 
 # ── MODELO DE CRÉDITOS (pago por atendimento) ──────────────────────────────────
 # 1 crédito = 1 atendimento completo (triagem com IA do início ao resultado).
@@ -187,7 +187,7 @@ def petmed_login_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
         if not session.get('pm_user_id'):
-            return redirect('/petmed/entrar')
+            return redirect('/vetzap/entrar')
         return f(*args, **kwargs)
     return decorated
 
@@ -196,9 +196,9 @@ def petmed_premium_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
         if not session.get('pm_user_id'):
-            return redirect('/petmed/entrar')
+            return redirect('/vetzap/entrar')
         if session.get('pm_plano') != 'premium':
-            return redirect('/petmed/planos?msg=premium')
+            return redirect('/vetzap/planos?msg=premium')
         return f(*args, **kwargs)
     return decorated
 
@@ -381,7 +381,7 @@ def _email_consulta_avulsa_ativada(primeiro_nome: str) -> str:
       <span style="font-size:13px;color:#10b981;font-weight:700">24 horas a partir de agora</span>
     </div>
   </div>
-  <a href="https://4kitem.com.br/petmed/dashboard" style="display:block;text-align:center;padding:14px 28px;background:#10b981;color:#fff;font-size:15px;font-weight:700;border-radius:12px;text-decoration:none;margin-bottom:20px">
+  <a href="https://4kitem.com.br/vetzap/dashboard" style="display:block;text-align:center;padding:14px 28px;background:#10b981;color:#fff;font-size:15px;font-weight:700;border-radius:12px;text-decoration:none;margin-bottom:20px">
     🐾 Iniciar atendimento agora
   </a>
   <hr style="border:none;border-top:1px solid #222;margin:28px 0">
@@ -411,7 +411,7 @@ def _email_creditos_liberados(primeiro_nome: str, qtd: int) -> str:
   <p style="color:#888;font-size:14px;line-height:1.7;margin:0 0 24px">
     Pagamento confirmado. Você tem <strong style="color:#10b981">{qtd} {plural}</strong> prontos pra usar no VetZap.
   </p>
-  <a href="https://4kitem.com.br/petmed/triagem" style="display:block;text-align:center;padding:14px 28px;background:#10b981;color:#fff;font-size:15px;font-weight:700;border-radius:12px;text-decoration:none;margin-bottom:20px">
+  <a href="https://4kitem.com.br/vetzap/triagem" style="display:block;text-align:center;padding:14px 28px;background:#10b981;color:#fff;font-size:15px;font-weight:700;border-radius:12px;text-decoration:none;margin-bottom:20px">
     🩺 Iniciar atendimento agora
   </a>
   <hr style="border:none;border-top:1px solid #222;margin:28px 0">
@@ -451,7 +451,7 @@ def _email_pagamento_confirmado_petmed(primeiro_nome: str, plano_nome: str, prec
       <span style="font-size:13px;color:#0ea5e9;font-weight:700">{preco_fmt}/mês</span>
     </div>
   </div>
-  <a href="https://4kitem.com.br/petmed/dashboard" style="display:block;text-align:center;padding:14px 28px;background:#0ea5e9;color:#fff;font-size:15px;font-weight:700;border-radius:12px;text-decoration:none;margin-bottom:20px">
+  <a href="https://4kitem.com.br/vetzap/dashboard" style="display:block;text-align:center;padding:14px 28px;background:#0ea5e9;color:#fff;font-size:15px;font-weight:700;border-radius:12px;text-decoration:none;margin-bottom:20px">
     🐾 Acessar o VetZap
   </a>
   <hr style="border:none;border-top:1px solid #222;margin:28px 0">
@@ -526,7 +526,7 @@ def _email_boas_vindas(nome: str, pet_nome: str) -> str:
             🚨 Orientação em emergências 24h
           </div>
         </div>
-        <a href="https://4kitem.com.br/petmed/triagem"
+        <a href="https://4kitem.com.br/vetzap/triagem"
            style="display:block;text-align:center;background:#0ea5e9;color:#fff;padding:14px;border-radius:10px;font-weight:700;font-size:14px;text-decoration:none">
           🩺 Fazer minha primeira consulta
         </a>
@@ -1087,18 +1087,12 @@ SEMPRE JSON válido. Nunca mencione tecnologia, sistema ou processamento."""
 
 # ── Rotas públicas ─────────────────────────────────────────────────────────────
 
-@petmed_bp.route('/')
-def index():
-    # /vetzap é a landing pública oficial agora. Logado vai pro app; visitante vê a landing.
-    if session.get('pm_user_id'):
-        return redirect('/petmed/dashboard')
-    return redirect('/vetzap')
-
+# (landing pública '/vetzap/' é servida pelo vetzap_bot; não há index aqui p/ evitar colisão)
 
 @petmed_bp.route('/planos')
 def planos():
     # modelo de planos foi descontinuado → redireciona para créditos
-    return redirect('/petmed/creditos?' + request.query_string.decode('utf-8'))
+    return redirect('/vetzap/creditos?' + request.query_string.decode('utf-8'))
 
 
 @petmed_bp.route('/creditos')
@@ -1118,7 +1112,7 @@ def creditos():
 def comprar(pacote):
     """Cria cobrança única (PIX/boleto/cartão) para um pacote de créditos."""
     if pacote not in PACOTES_CREDITO:
-        return redirect('/petmed/creditos?msg=pacote_invalido')
+        return redirect('/vetzap/creditos?msg=pacote_invalido')
     u = _get_user()
     billing_type = request.form.get('billing_type', 'PIX')
     if billing_type not in ('PIX', 'BOLETO', 'CREDIT_CARD'):
@@ -1128,7 +1122,7 @@ def comprar(pacote):
     cpf = re.sub(r'\D', '', request.form.get('cpf', '') or '')
     if not (u['cpf'] and len(re.sub(r'\D', '', u['cpf'])) == 11):
         if len(cpf) != 11:
-            return redirect('/petmed/creditos?msg=cpf')
+            return redirect('/vetzap/creditos?msg=cpf')
         conn = get_petmed_db()
         conn.execute('UPDATE petmed_users SET cpf=? WHERE id=?', (cpf, u['id']))
         conn.commit()
@@ -1138,7 +1132,7 @@ def comprar(pacote):
     try:
         customer_id = _asaas_criar_ou_buscar_cliente(u)
         if not customer_id:
-            return redirect('/petmed/creditos?msg=erro_pagamento')
+            return redirect('/vetzap/creditos?msg=erro_pagamento')
         pag = _asaas_criar_pagamento_creditos(customer_id, u['id'], pacote, billing_type)
         if pag.get('id'):
             p = PACOTES_CREDITO[pacote]
@@ -1154,13 +1148,13 @@ def comprar(pacote):
             payment_url = pag.get('invoiceUrl') or pag.get('bankSlipUrl') or ''
             if payment_url:
                 return redirect(payment_url)
-            return redirect('/petmed/dashboard?msg=aguardando_pgto')
+            return redirect('/vetzap/dashboard?msg=aguardando_pgto')
         else:
             log.error('[PETmed] Asaas créditos sem id: %s', pag)
-            return redirect('/petmed/creditos?msg=erro_pagamento')
+            return redirect('/vetzap/creditos?msg=erro_pagamento')
     except Exception as ex:
         log.error('[PETmed] Erro compra créditos: %s', ex, exc_info=True)
-        return redirect('/petmed/creditos?msg=erro_pagamento')
+        return redirect('/vetzap/creditos?msg=erro_pagamento')
 
 
 @petmed_bp.route('/consulta-agora', methods=['GET', 'POST'])
@@ -1170,7 +1164,7 @@ def consulta_agora():
     u = _get_user()
     # Se já tem assinatura ativa, vai direto pro dashboard
     if u['plano_ativo']:
-        return redirect('/petmed/dashboard')
+        return redirect('/vetzap/dashboard')
     erro = ''
     if request.method == 'POST':
         billing_type = request.form.get('billing_type', 'PIX')
@@ -1198,7 +1192,7 @@ def consulta_agora():
                         payment_url = pag.get('invoiceUrl') or pag.get('bankSlipUrl') or ''
                         if payment_url:
                             return redirect(payment_url)
-                        return redirect('/petmed/aguardando-pagamento?tipo=avulsa')
+                        return redirect('/vetzap/aguardando-pagamento?tipo=avulsa')
                     else:
                         desc = pag.get('errors', [{}])
                         erro = desc[0].get('description', 'Erro ao gerar pagamento.') if desc else 'Erro ao gerar pagamento.'
@@ -1214,7 +1208,7 @@ def consulta_agora():
 def assinar(plano):
     """Checkout: escolhe método de pagamento e cria assinatura no Asaas."""
     if plano not in PLANOS:
-        return redirect('/petmed/planos')
+        return redirect('/vetzap/planos')
     u = _get_user()
     erro = ''
     if request.method == 'POST':
@@ -1244,7 +1238,7 @@ def assinar(plano):
                         payment_url = sub.get('invoiceUrl') or sub.get('bankSlipUrl') or ''
                         if payment_url:
                             return redirect(payment_url)
-                        return redirect('/petmed/aguardando-pagamento?sub=' + sub['id'])
+                        return redirect('/vetzap/aguardando-pagamento?sub=' + sub['id'])
                     else:
                         erro = sub.get('errors', [{}])[0].get('description', 'Erro ao criar assinatura.')
             except Exception as ex:
@@ -1397,7 +1391,7 @@ def webhook_asaas():
 @petmed_bp.route('/entrar', methods=['GET', 'POST'])
 def entrar():
     if session.get('pm_user_id'):
-        return redirect('/petmed/dashboard')
+        return redirect('/vetzap/dashboard')
     erro = ''
     if request.method == 'POST':
         email = request.form.get('email', '').strip().lower()
@@ -1418,7 +1412,7 @@ def entrar():
             )
             conn2.commit()
             conn2.close()
-            return redirect('/petmed/dashboard')
+            return redirect('/vetzap/dashboard')
         erro = 'E-mail ou senha incorretos.'
     return render_template('petmed/entrar.html', erro=erro)
 
@@ -1426,7 +1420,7 @@ def entrar():
 @petmed_bp.route('/cadastrar', methods=['GET', 'POST'])
 def cadastrar():
     if session.get('pm_user_id'):
-        return redirect('/petmed/dashboard')
+        return redirect('/vetzap/dashboard')
     erro = ''
     plano_sel = request.args.get('plano', 'start')
     if request.method == 'POST':
@@ -1516,7 +1510,7 @@ def cadastrar():
                     )
                 except Exception:
                     pass
-                return redirect('/petmed/dashboard?novo=1')
+                return redirect('/vetzap/dashboard?novo=1')
     return render_template('petmed/cadastrar.html', erro=erro,
                            planos=PLANOS, plano_sel=plano_sel)
 
@@ -1525,14 +1519,14 @@ def cadastrar():
 def sair():
     for k in ('pm_user_id', 'pm_user_nome', 'pm_plano'):
         session.pop(k, None)
-    return redirect('/petmed')
+    return redirect('/vetzap')
 
 
 @petmed_bp.route('/esqueci-senha', methods=['GET', 'POST'])
 def esqueci_senha():
     """Gera código de 6 dígitos para redefinição de senha."""
     if session.get('pm_user_id'):
-        return redirect('/petmed/dashboard')
+        return redirect('/vetzap/dashboard')
     codigo_gerado = None
     erro = ''
     msg = ''
@@ -1575,7 +1569,7 @@ def esqueci_senha():
 def redefinir_senha():
     """Valida código e define nova senha."""
     if session.get('pm_user_id'):
-        return redirect('/petmed/dashboard')
+        return redirect('/vetzap/dashboard')
     erro = ''
     msg = ''
     if request.method == 'POST':
@@ -1682,7 +1676,7 @@ def adicionar_pet():
     erro = ''
 
     if not pode_add:
-        return redirect(f'/petmed/planos?msg=limite_pets&plano={u["plano"]}')
+        return redirect(f'/vetzap/planos?msg=limite_pets&plano={u["plano"]}')
 
     if request.method == 'POST':
         nome        = request.form.get('nome', '').strip()
@@ -1714,7 +1708,7 @@ def adicionar_pet():
             )
             conn.commit()
             conn.close()
-            return redirect('/petmed/meus-pets?msg=pet_adicionado')
+            return redirect('/vetzap/meus-pets?msg=pet_adicionado')
 
     return render_template('petmed/adicionar_pet.html',
                            u=u, erro=erro,
@@ -1757,7 +1751,7 @@ def editar_pet(pet_id):
             )
             conn2.commit()
             conn2.close()
-            return redirect('/petmed/meus-pets?msg=pet_editado')
+            return redirect('/vetzap/meus-pets?msg=pet_editado')
 
     return render_template('petmed/editar_pet.html', u=u, pet=pet, erro=erro)
 
@@ -1772,7 +1766,7 @@ def excluir_pet(pet_id):
     )
     conn.commit()
     conn.close()
-    return redirect('/petmed/meus-pets?msg=pet_removido')
+    return redirect('/vetzap/meus-pets?msg=pet_removido')
 
 
 # ── Cartão público do pet ─────────────────────────────────────────────────────
@@ -1786,7 +1780,7 @@ def cartao_pet(pet_id):
     ).fetchone()
     if not pet:
         conn.close()
-        return redirect('/petmed'), 302
+        return redirect('/vetzap'), 302
     pet = dict(pet)
     # Vacinas do pet (só nomes e status)
     vacinas = conn.execute(
@@ -1808,7 +1802,7 @@ def triagem_inicio():
     u    = _get_user()
     bloqueado, triagens_usadas = _check_paywall(u)
     if bloqueado:
-        return redirect('/petmed/creditos?msg=sem_credito')
+        return redirect('/vetzap/creditos?msg=sem_credito')
     pets = _get_pets(u['id'])
     # Limpa triagem anterior da sessão
     session.pop('pm_triagem', None)
@@ -1835,7 +1829,7 @@ def triagem_chat():
                 return jsonify({
                     'tipo': 'paywall',
                     'mensagem': 'Você está sem créditos. Compre um atendimento para continuar.',
-                    'url': '/petmed/creditos?msg=sem_credito'
+                    'url': '/vetzap/creditos?msg=sem_credito'
                 })
 
             pet_id    = dados.get('pet_id')
@@ -1943,7 +1937,7 @@ def triagem_chat():
         pet_id_raw = request.args.get('pet_id', '0')
         categoria  = request.args.get('categoria', 'outro')
         if not categoria or categoria not in CATEGORIAS:
-            return redirect('/petmed/triagem')
+            return redirect('/vetzap/triagem')
         try:
             pet_id = int(pet_id_raw)
         except (ValueError, TypeError):
@@ -2083,7 +2077,7 @@ def adicionar_vacina():
         )
         conn.commit()
         conn.close()
-    return redirect(f'/petmed/vacinas?msg=vacina_adicionada&pet_id={pet_id or ""}')
+    return redirect(f'/vetzap/vacinas?msg=vacina_adicionada&pet_id={pet_id or ""}')
 
 
 # ── Teleconsulta (Premium) ─────────────────────────────────────────────────────
@@ -2175,7 +2169,7 @@ def vet_cadastro():
                 )
                 conn.commit()
                 conn.close()
-                return redirect('/petmed/vet/cadastro?ok=1')
+                return redirect('/vetzap/vet/cadastro?ok=1')
             except Exception as ex:
                 if 'UNIQUE' in str(ex):
                     erro = 'Este e-mail já está cadastrado.'

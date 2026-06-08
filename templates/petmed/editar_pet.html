@@ -5,11 +5,11 @@
 <div style="max-width:560px">
 <div class="page-header">
   <div><div class="page-title">✏️ Editar {{ pet.nome }}</div></div>
-  <a href="/petmed/meus-pets" class="btn btn-outline">← Voltar</a>
+  <a href="/vetzap/meus-pets" class="btn btn-outline">← Voltar</a>
 </div>
 {% if erro %}<div class="alert alert-error">{{ erro }}</div>{% endif %}
 <div class="card">
-<form method="POST" action="/petmed/pets/{{ pet.id }}/editar">
+<form method="POST" action="/vetzap/pets/{{ pet.id }}/editar">
   <div class="grid-2">
     <div class="form-group">
       <label class="form-label">Nome *</label>
@@ -55,7 +55,7 @@
   </div>
   <div style="display:flex;gap:10px">
     <button type="submit" class="btn btn-primary" style="flex:1;justify-content:center">💾 Salvar alterações</button>
-    <a href="/petmed/meus-pets" class="btn btn-outline">Cancelar</a>
+    <a href="/vetzap/meus-pets" class="btn btn-outline">Cancelar</a>
   </div>
 </form>
 </div>

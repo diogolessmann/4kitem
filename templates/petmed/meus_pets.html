@@ -9,9 +9,9 @@
     <div class="page-sub">{{ total_pets }} de {{ limite_pets }} pet(s) cadastrado(s)</div>
   </div>
   {% if pode_add %}
-  <a href="/petmed/pets/adicionar" class="btn btn-primary">+ Adicionar Pet</a>
+  <a href="/vetzap/pets/adicionar" class="btn btn-primary">+ Adicionar Pet</a>
   {% else %}
-  <a href="/petmed/planos" class="btn btn-outline">⬆️ Upgrade para mais pets</a>
+  <a href="/vetzap/planos" class="btn btn-outline">⬆️ Upgrade para mais pets</a>
   {% endif %}
 </div>
 
@@ -66,10 +66,10 @@
     {% endif %}
 
     <div style="display:flex;gap:8px;flex-wrap:wrap">
-      <a href="/petmed/triagem?pet_id={{ pet.id }}" class="btn btn-primary btn-sm">🩺 Triar agora</a>
-      <a href="/petmed/pets/{{ pet.id }}/cartao" class="btn btn-outline btn-sm" title="Compartilhar cartão do pet" target="_blank">📤 Cartão</a>
-      <a href="/petmed/pets/{{ pet.id }}/editar" class="btn btn-outline btn-sm">✏️ Editar</a>
-      <form method="POST" action="/petmed/pets/{{ pet.id }}/excluir" style="display:inline" onsubmit="return confirm('Remover {{ pet.nome }}?')">
+      <a href="/vetzap/triagem?pet_id={{ pet.id }}" class="btn btn-primary btn-sm">🩺 Triar agora</a>
+      <a href="/vetzap/pets/{{ pet.id }}/cartao" class="btn btn-outline btn-sm" title="Compartilhar cartão do pet" target="_blank">📤 Cartão</a>
+      <a href="/vetzap/pets/{{ pet.id }}/editar" class="btn btn-outline btn-sm">✏️ Editar</a>
+      <form method="POST" action="/vetzap/pets/{{ pet.id }}/excluir" style="display:inline" onsubmit="return confirm('Remover {{ pet.nome }}?')">
         <button type="submit" class="btn btn-outline btn-sm" style="color:var(--red)">🗑️</button>
       </form>
     </div>
@@ -81,7 +81,7 @@
 <div class="empty">
   <div class="icon">🐾</div>
   <p>Nenhum pet cadastrado ainda.<br>Adicione seu primeiro pet para começar!</p>
-  <a href="/petmed/pets/adicionar" class="btn btn-primary">+ Adicionar meu primeiro pet</a>
+  <a href="/vetzap/pets/adicionar" class="btn btn-primary">+ Adicionar meu primeiro pet</a>
 </div>
 {% endif %}
 

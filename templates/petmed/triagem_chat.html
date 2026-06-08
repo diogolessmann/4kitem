@@ -201,7 +201,7 @@ function autoResize(el) {
 async function iniciar() {
   const typing = addTyping();
   try {
-    const r = await fetch('/petmed/triagem/chat', {
+    const r = await fetch('/vetzap/triagem/chat', {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
       body: JSON.stringify({ acao:'iniciar', pet_id: petId, categoria })
@@ -237,7 +237,7 @@ async function enviar() {
   const typing = addTyping();
 
   try {
-    const r = await fetch('/petmed/triagem/chat', {
+    const r = await fetch('/vetzap/triagem/chat', {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
       body: JSON.stringify({ acao:'responder', mensagem: txt })
@@ -274,8 +274,8 @@ function mostrarResultado(data) {
     <div class="resultado-titulo">${emoji} ${titulo}</div>
     <div class="resultado-orientacoes">${(data.orientacoes||'').replace(/\n/g,'<br>')}</div>
     <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">
-      <a href="/petmed/historico" style="background:#fff;border:1px solid currentColor;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:700;text-decoration:none">📋 Ver histórico</a>
-      <a href="/petmed/triagem" style="background:#fff;border:1px solid currentColor;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:700;text-decoration:none">🩺 Nova triagem</a>
+      <a href="/vetzap/historico" style="background:#fff;border:1px solid currentColor;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:700;text-decoration:none">📋 Ver histórico</a>
+      <a href="/vetzap/triagem" style="background:#fff;border:1px solid currentColor;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:700;text-decoration:none">🩺 Nova triagem</a>
       ${cls==='urgente' ? '<a href="https://www.google.com/maps/search/veterinario+emergencia" target="_blank" style="background:#dc2626;color:#fff;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:700;text-decoration:none">🗺️ Clínicas abertas</a>' : ''}
     </div>
   `;

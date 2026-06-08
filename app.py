@@ -12734,6 +12734,14 @@ try:
 except Exception as _vz_err:
     log.warning(f'[VetZap] Erro ao carregar bot blueprint: {_vz_err}')
 
+# Rebrand: redireciona URLs antigas /petmed/* -> /vetzap/* (links/e-mails antigos)
+@app.route('/petmed')
+@app.route('/petmed/')
+@app.route('/petmed/<path:sub>')
+def _vetzap_legacy_redirect(sub=''):
+    qs = ('?' + request.query_string.decode('utf-8')) if request.query_string else ''
+    return redirect('/vetzap/' + sub + qs, code=301)
+
 # ══════════════════════════════════════════════════════════════════════════════
 # PUBSHOW — Jukebox digital para bares e pubs
 # ══════════════════════════════════════════════════════════════════════════════

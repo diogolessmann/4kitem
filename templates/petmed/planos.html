@@ -45,12 +45,12 @@
       <div style="font-size:36px;font-weight:900;color:#10b981">R$ 32,90</div>
       <div style="font-size:12px;color:#6ee7b7;margin-bottom:12px">pagamento único</div>
       {% if session.pm_user_id %}
-        <a href="/petmed/consulta-agora"
+        <a href="/vetzap/consulta-agora"
            style="display:inline-block;padding:13px 28px;background:#10b981;color:#fff;font-size:15px;font-weight:800;border-radius:12px;text-decoration:none">
           🩺 Consultar agora →
         </a>
       {% else %}
-        <a href="/petmed/cadastrar?plano=start"
+        <a href="/vetzap/cadastrar?plano=start"
            style="display:inline-block;padding:13px 28px;background:#10b981;color:#fff;font-size:15px;font-weight:800;border-radius:12px;text-decoration:none">
           🩺 Criar conta e consultar →
         </a>
@@ -104,12 +104,12 @@
         ✅ Seu plano atual
       </div>
     {% elif session.pm_user_id %}
-      <a href="/petmed/assinar/{{ key }}"
+      <a href="/vetzap/assinar/{{ key }}"
          style="display:block;width:100%;padding:12px;border-radius:10px;font-size:14px;font-weight:700;text-align:center;text-decoration:none;color:#fff;background:{% if key=='start' %}var(--teal){% elif key=='familia' %}var(--orange){% else %}var(--purple){% endif %}">
         Assinar {{ p.nome }} →
       </a>
     {% else %}
-      <a href="/petmed/cadastrar?plano={{ key }}"
+      <a href="/vetzap/cadastrar?plano={{ key }}"
          style="display:block;width:100%;padding:12px;border-radius:10px;font-size:14px;font-weight:700;text-align:center;text-decoration:none;color:#fff;background:{% if key=='start' %}var(--teal){% elif key=='familia' %}var(--orange){% else %}var(--purple){% endif %}">
         Criar conta e assinar →
       </a>

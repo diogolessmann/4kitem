@@ -16,7 +16,7 @@
     <span style="font-weight:700;color:#d97706">{{ v.proxima[:10] }}</span>
   </div>
   {% endfor %}
-  <a href="/petmed/vacinas" style="font-size:12px;color:#92400e;font-weight:700;display:block;margin-top:8px">Ver cartão de vacinas →</a>
+  <a href="/vetzap/vacinas" style="font-size:12px;color:#92400e;font-weight:700;display:block;margin-top:8px">Ver cartão de vacinas →</a>
 </div>
 {% endif %}
 
@@ -27,7 +27,7 @@
     <div style="font-weight:800;font-size:15px">🔒 Você está sem créditos</div>
     <div style="font-size:13px;opacity:.9;margin-top:3px">Compre um atendimento (a partir de R$ 19,90) e faça a triagem do seu pet agora.</div>
   </div>
-  <a href="/petmed/creditos?msg=sem_credito" style="background:#fff;color:#ef4444;padding:10px 20px;border-radius:9px;font-weight:800;font-size:13px;text-decoration:none;white-space:nowrap">🪙 Comprar créditos →</a>
+  <a href="/vetzap/creditos?msg=sem_credito" style="background:#fff;color:#ef4444;padding:10px 20px;border-radius:9px;font-weight:800;font-size:13px;text-decoration:none;white-space:nowrap">🪙 Comprar créditos →</a>
 </div>
 {% else %}
 <div style="background:linear-gradient(135deg,#22c55e,#0ea5e9);border-radius:14px;padding:16px 22px;color:#fff;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:20px">
@@ -35,7 +35,7 @@
     <div style="font-weight:800;font-size:14px">🪙 Você tem {{ creditos }} atendimento(s) disponível(is)</div>
     <div style="font-size:12px;opacity:.9;margin-top:2px">Pronto pra usar quando quiser. Triagem completa com IA.</div>
   </div>
-  <a href="/petmed/triagem" style="background:#fff;color:#0284c7;padding:8px 18px;border-radius:9px;font-weight:800;font-size:13px;text-decoration:none">🩺 Nova triagem</a>
+  <a href="/vetzap/triagem" style="background:#fff;color:#0284c7;padding:8px 18px;border-radius:9px;font-weight:800;font-size:13px;text-decoration:none">🩺 Nova triagem</a>
 </div>
 {% endif %}
 
@@ -45,9 +45,9 @@
     <div class="page-sub">🪙 {{ creditos }} crédito(s) · {{ total_triagens }} triagem(ns) realizadas</div>
   </div>
   {% if bloqueado_paywall %}
-  <a href="/petmed/creditos?msg=sem_credito" class="btn btn-primary btn-lg" style="background:#ef4444">🪙 Comprar créditos</a>
+  <a href="/vetzap/creditos?msg=sem_credito" class="btn btn-primary btn-lg" style="background:#ef4444">🪙 Comprar créditos</a>
   {% else %}
-  <a href="/petmed/triagem" class="btn btn-primary btn-lg">🩺 Nova Triagem</a>
+  <a href="/vetzap/triagem" class="btn btn-primary btn-lg">🩺 Nova Triagem</a>
   {% endif %}
 </div>
 
@@ -81,7 +81,7 @@
   <div class="card">
     <div class="card-title" style="display:flex;justify-content:space-between;align-items:center">
       🐾 Meus Pets
-      <a href="/petmed/pets/adicionar" class="btn btn-primary btn-sm">+ Adicionar</a>
+      <a href="/vetzap/pets/adicionar" class="btn btn-primary btn-sm">+ Adicionar</a>
     </div>
 
     {% if pets %}
@@ -99,9 +99,9 @@
           </div>
         </div>
         {% if bloqueado_paywall %}
-        <a href="/petmed/creditos?msg=sem_credito" class="btn btn-sm" style="background:#fee2e2;color:#ef4444;border:none">🪙 Créditos</a>
+        <a href="/vetzap/creditos?msg=sem_credito" class="btn btn-sm" style="background:#fee2e2;color:#ef4444;border:none">🪙 Créditos</a>
         {% else %}
-        <a href="/petmed/triagem?pet_id={{ pet.id }}" class="btn btn-primary btn-sm">🩺 Triar</a>
+        <a href="/vetzap/triagem?pet_id={{ pet.id }}" class="btn btn-primary btn-sm">🩺 Triar</a>
         {% endif %}
       </div>
       {% endfor %}
@@ -109,7 +109,7 @@
       <div class="empty" style="padding:24px">
         <div class="icon">🐾</div>
         <p>Nenhum pet cadastrado ainda.<br>Adicione seu primeiro pet!</p>
-        <a href="/petmed/pets/adicionar" class="btn btn-primary">+ Adicionar pet</a>
+        <a href="/vetzap/pets/adicionar" class="btn btn-primary">+ Adicionar pet</a>
       </div>
     {% endif %}
   </div>
@@ -118,7 +118,7 @@
   <div class="card">
     <div class="card-title" style="display:flex;justify-content:space-between;align-items:center">
       📋 Triagens Recentes
-      <a href="/petmed/historico" class="btn btn-outline btn-sm">Ver tudo</a>
+      <a href="/vetzap/historico" class="btn btn-outline btn-sm">Ver tudo</a>
     </div>
 
     {% if triagens %}
@@ -147,7 +147,7 @@
       <div class="empty" style="padding:24px">
         <div class="icon">🩺</div>
         <p>Nenhuma triagem ainda.<br>Faça sua primeira triagem!</p>
-        <a href="/petmed/triagem" class="btn btn-primary">🩺 Iniciar triagem</a>
+        <a href="/vetzap/triagem" class="btn btn-primary">🩺 Iniciar triagem</a>
       </div>
     {% endif %}
   </div>

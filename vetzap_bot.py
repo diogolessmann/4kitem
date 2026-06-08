@@ -15,7 +15,7 @@ import os
 import json
 import logging
 from datetime import datetime
-from flask import Blueprint, request, jsonify, render_template
+from flask import Blueprint, request, jsonify, render_template, session, redirect
 import requests as _req
 
 log = logging.getLogger('vetzap_bot')
@@ -364,6 +364,9 @@ def aceitar_corrida(vet):
 # ── Página de vendas (landing pública) ─────────────────────────────────────────
 @vetzap_bp.route('/')
 def vetzap_landing():
+    # Usuário logado vai direto pro app; visitante vê a landing pública.
+    if session.get('pm_user_id'):
+        return redirect('/vetzap/dashboard')
     numero = ''.join(c for c in os.environ.get('VETZAP_WA_NUMERO', '') if c.isdigit())
     p = preco_por_horario()
     return render_template('vetzap/landing.html', numero=numero, preco=p,

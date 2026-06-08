@@ -58,7 +58,7 @@
     {% else %}
     <div class="alert alert-info">
       Você ainda não tem pets cadastrados.
-      <a href="/petmed/pets/adicionar" style="font-weight:700;color:var(--teal2)">Cadastrar pet →</a>
+      <a href="/vetzap/pets/adicionar" style="font-weight:700;color:var(--teal2)">Cadastrar pet →</a>
       ou faça uma triagem rápida abaixo.
     </div>
     <button class="pet-btn" onclick="selecionarPet(0, this)" style="max-width:240px">
@@ -93,7 +93,7 @@
 
 </div>
 
-<form id="form-triagem" method="GET" action="/petmed/triagem/chat" style="display:none">
+<form id="form-triagem" method="GET" action="/vetzap/triagem/chat" style="display:none">
   <input type="hidden" name="pet_id" id="input-pet-id">
   <input type="hidden" name="categoria" id="input-categoria">
 </form>

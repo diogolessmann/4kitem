@@ -18,7 +18,7 @@
     <div style="font-weight:700;color:#166534;margin-bottom:6px">Senha redefinida!</div>
     <div style="font-size:13px;color:#166534">{{ msg }}</div>
   </div>
-  <a href="/petmed/entrar"
+  <a href="/vetzap/entrar"
      style="display:block;text-align:center;background:var(--teal);color:#fff;padding:14px;border-radius:10px;font-weight:700;font-size:15px;text-decoration:none">
     Entrar agora →
   </a>
@@ -30,7 +30,7 @@
   {% endif %}
 
   <div class="card">
-    <form method="POST" action="/petmed/redefinir-senha">
+    <form method="POST" action="/vetzap/redefinir-senha">
       <div class="form-group">
         <label class="form-label">E-mail cadastrado</label>
         <input type="email" name="email" class="form-control"
@@ -62,7 +62,7 @@
 
   <p style="text-align:center;font-size:13px;margin-top:16px;color:var(--text3)">
     Não tem o código?
-    <a href="/petmed/esqueci-senha" style="color:var(--teal2);font-weight:700">Solicitar código</a>
+    <a href="/vetzap/esqueci-senha" style="color:var(--teal2);font-weight:700">Solicitar código</a>
   </p>
 
   {% endif %}

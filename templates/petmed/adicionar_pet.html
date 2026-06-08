@@ -18,13 +18,13 @@
     <div class="page-title">➕ Adicionar Pet</div>
     <div class="page-sub">Limite: {{ limite_pets }} pet(s) no seu plano</div>
   </div>
-  <a href="/petmed/meus-pets" class="btn btn-outline">← Voltar</a>
+  <a href="/vetzap/meus-pets" class="btn btn-outline">← Voltar</a>
 </div>
 
 {% if erro %}<div class="alert alert-error">{{ erro }}</div>{% endif %}
 
 <div class="card">
-<form method="POST" action="/petmed/pets/adicionar" id="form-pet">
+<form method="POST" action="/vetzap/pets/adicionar" id="form-pet">
   <input type="hidden" name="foto_base64" id="foto-b64">
 
   <!-- Foto + identificação de raça -->
@@ -103,7 +103,7 @@
     <button type="submit" class="btn btn-primary btn-lg" style="flex:1;justify-content:center">
       🐾 Salvar pet
     </button>
-    <a href="/petmed/meus-pets" class="btn btn-outline btn-lg">Cancelar</a>
+    <a href="/vetzap/meus-pets" class="btn btn-outline btn-lg">Cancelar</a>
   </div>
 </form>
 </div>
@@ -149,7 +149,7 @@ async function identificarRaca(b64) {
   div.textContent = '🔍 Identificando raça...';
 
   try {
-    const r = await fetch('/petmed/identificar-raca', {
+    const r = await fetch('/vetzap/identificar-raca', {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
       body: JSON.stringify({ foto: b64, especie: especieSel })

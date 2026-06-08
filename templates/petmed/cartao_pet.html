@@ -10,7 +10,7 @@
 <meta property="og:site_name"   content="VetZap">
 <meta property="og:title"       content="{{ pet.nome }} — {{ 'Gato' if pet.especie == 'gato' else 'Cão' }} {{ pet.raca or 'SRD' }}">
 <meta property="og:description" content="Conheça {{ pet.nome }}! {{ pet.idade_anos }}a {{ pet.idade_meses or 0 }}m · {{ pet.raca or 'SRD' }} · {{ 'Macho' if pet.sexo == 'macho' else ('Fêmea' if pet.sexo == 'femea' else '') }}{% if pet.castrado %} · Castrado{% endif %}. Saúde e bem-estar monitorados pelo VetZap.">
-<meta property="og:url"         content="{{ portal_url }}/petmed/pets/{{ pet.id }}/cartao">
+<meta property="og:url"         content="{{ portal_url }}/vetzap/pets/{{ pet.id }}/cartao">
 {% if pet.foto_url %}
 <meta property="og:image"       content="{{ pet.foto_url }}">
 <meta property="og:image:width"  content="1200">
@@ -24,7 +24,7 @@
 {% if pet.foto_url %}<meta name="twitter:image" content="{{ pet.foto_url }}">{% endif %}
 
 <meta name="description" content="Cartão de saúde de {{ pet.nome }} no VetZap.">
-<link rel="canonical" href="{{ portal_url }}/petmed/pets/{{ pet.id }}/cartao">
+<link rel="canonical" href="{{ portal_url }}/vetzap/pets/{{ pet.id }}/cartao">
 
 <style>
   :root{
@@ -115,7 +115,7 @@
       <div class="logo-sub">Saúde do seu pet no WhatsApp</div>
     </div>
   </a>
-  <a href="{{ portal_url }}/petmed/cadastro" class="header-cta">✅ Cadastre seu pet</a>
+  <a href="{{ portal_url }}/vetzap/cadastro" class="header-cta">✅ Cadastre seu pet</a>
 </div>
 
 <div class="container">
@@ -199,7 +199,7 @@
     <div class="share-label">📤 Compartilhar cartão</div>
     <div class="share-btns">
       <a class="btn-wpp"
-         href="https://wa.me/?text={{ ('🐾 ' + pet.nome + ' tem um cartão de saúde no VetZap! Veja aqui: ' + portal_url + '/petmed/pets/' + (pet.id | string) + '/cartao') | urlencode }}"
+         href="https://wa.me/?text={{ ('🐾 ' + pet.nome + ' tem um cartão de saúde no VetZap! Veja aqui: ' + portal_url + '/vetzap/pets/' + (pet.id | string) + '/cartao') | urlencode }}"
          target="_blank" rel="noopener">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.096.537 4.07 1.482 5.793L.057 23.25l5.6-1.469A11.942 11.942 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.847 0-3.584-.496-5.086-1.362l-.364-.214-3.327.873.887-3.243-.235-.374A9.961 9.961 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/></svg>
         Compartilhar no WhatsApp
@@ -213,7 +213,7 @@
 
   <!-- ── Powered by ── -->
   <div class="powered-footer">
-    <a href="{{ portal_url }}/petmed/cadastro" class="powered-pill">
+    <a href="{{ portal_url }}/vetzap/cadastro" class="powered-pill">
       <span class="powered-badge">GRÁTIS</span>
       <span>Crie o cartão do seu pet no</span>
       <strong>VetZap</strong>
