@@ -12744,6 +12744,14 @@ try:
 except Exception as _ps_err:
     log.warning(f'[PUBSHOW] Erro ao carregar blueprint: {_ps_err}')
 
+# PUBSHOW EN — versão internacional (inglês / USD)
+try:
+    from pubshow_en import pubshow_en_bp
+    app.register_blueprint(pubshow_en_bp)
+    log.info('[PUBSHOW EN] Blueprint registrado em /pubshow-en')
+except Exception as _ps_en_err:
+    log.warning(f'[PUBSHOW EN] Erro ao carregar blueprint: {_ps_en_err}')
+
 # ══════════════════════════════════════════════════════════════════════════════
 
 with app.app_context():
@@ -12762,6 +12770,13 @@ with app.app_context():
         log.info('[PUBSHOW] Banco inicializado com sucesso')
     except Exception as _e:
         log.error(f'[PUBSHOW] ERRO ao inicializar banco: {_e}', exc_info=True)
+    # Inicializa banco PUBSHOW EN (internacional)
+    try:
+        from pubshow_en_db import init_pubshow_db as _init_pubshow_en_db
+        _init_pubshow_en_db()
+        log.info('[PUBSHOW EN] Banco inicializado com sucesso')
+    except Exception as _e:
+        log.error(f'[PUBSHOW EN] ERRO ao inicializar banco: {_e}', exc_info=True)
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  SLOTZAP — Venda de slots numerados com PIX automático via Asaas
