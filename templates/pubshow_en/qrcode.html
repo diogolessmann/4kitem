@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QR Code — {{ b.nome }} — PUBSHOW</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:#0a0a12;color:#f0f0ff;font-family:'Segoe UI',sans-serif;min-height:100vh;padding:0 0 60px}
+
+  /* NAV */
+  nav{background:#13131f;border-bottom:1px solid rgba(255,255,255,.08);padding:0 24px;height:56px;
+      display:flex;align-items:center;justify-content:space-between;print-color-adjust:exact}
+  .logo{font-size:18px;font-weight:900;background:linear-gradient(135deg,#ef4444,#f97316);
+        -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;text-decoration:none}
+  .nav-back{font-size:13px;color:#8888aa;text-decoration:none;display:flex;align-items:center;gap:6px}
+  .nav-back:hover{color:#fff}
+
+  /* PAGE CONTENT */
+  .page{max-width:900px;margin:0 auto;padding:32px 24px}
+  .page-header{margin-bottom:32px}
+  .page-header h1{font-size:28px;font-weight:900;margin-bottom:6px}
+  .page-header p{font-size:14px;color:#8888aa;line-height:1.6}
+
+  /* CONTROLS */
+  .controls{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:32px}
+  .ctrl-label{font-size:13px;color:#8888aa;font-weight:600}
+  .qty-btn{background:#13131f;border:1px solid rgba(255,255,255,.15);color:#fff;
+            border-radius:8px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;transition:.15s}
+  .qty-btn.ativo,.qty-btn:hover{background:rgba(239,68,68,.2);border-color:#ef4444;color:#ef4444}
+  .btn-print{background:linear-gradient(135deg,#ef4444,#f97316);color:#fff;border:none;
+              border-radius:10px;padding:10px 24px;font-size:14px;font-weight:800;cursor:pointer;
+              margin-left:auto;transition:.15s}
+  .btn-print:hover{opacity:.9}
+
+  /* URL BOX */
+  .url-box{background:#13131f;border:1px solid rgba(255,255,255,.1);border-radius:12px;
+            padding:14px 18px;margin-bottom:32px;display:flex;align-items:center;gap:12px}
+  .url-label{font-size:11px;color:#8888aa;font-weight:700;text-transform:uppercase;letter-spacing:.8px;white-space:nowrap}
+  .url-text{font-size:13px;color:#ef4444;font-family:monospace;word-break:break-all}
+  .url-copy{background:none;border:1px solid rgba(255,255,255,.15);color:#8888aa;
+             border-radius:6px;padding:5px 10px;font-size:11px;cursor:pointer;white-space:nowrap;transition:.15s}
+  .url-copy:hover{border-color:#ef4444;color:#ef4444}
+
+  /* PRINT GRID */
+  #print-area{display:grid;gap:16px}
+  #print-area.cols-1{grid-template-columns:1fr}
+  #print-area.cols-2{grid-template-columns:repeat(2,1fr)}
+  #print-area.cols-4{grid-template-columns:repeat(4,1fr)}
+  #print-area.cols-6{grid-template-columns:repeat(6,1fr)}
+
+  /* CARD */
+  .qr-card{
+    background:#fff;color:#000;border-radius:16px;
+    padding:20px 16px 16px;text-align:center;
+    position:relative;overflow:hidden;
+    border:3px solid #ef4444;
+  }
+  .qr-card.mini{padding:14px 10px 12px;border-radius:10px;border-width:2px}
+  .qr-card.micro{padding:10px 8px 8px;border-radius:8px;border-width:2px}
+
+  /* Stripe topo */
+  .qr-card::before{
+    content:'';position:absolute;top:0;left:0;right:0;height:6px;
+    background:linear-gradient(135deg,#ef4444,#f97316);
+  }
+  .qr-card.mini::before,.qr-card.micro::before{height:4px}
+
+  .card-logo{font-size:11px;font-weight:900;letter-spacing:.5px;color:#ef4444;margin-bottom:8px;text-transform:uppercase}
+  .card-logo.mini{font-size:9px;margin-bottom:6px}
+
+  .card-headline{font-size:15px;font-weight:900;margin-bottom:4px;line-height:1.2}
+  .card-headline.mini{font-size:12px;margin-bottom:3px}
+  .card-headline.micro{font-size:10px;margin-bottom:2px}
+
+  .card-sub{font-size:11px;color:#555;margin-bottom:12px;line-height:1.4}
+  .card-sub.mini{font-size:9px;margin-bottom:8px}
+  .card-sub.micro{font-size:8px;margin-bottom:6px}
+
+  .qr-img{width:100%;max-width:200px;height:auto;border-radius:8px;border:1px solid #eee}
+  .qr-img.mini{max-width:140px;border-radius:6px}
+  .qr-img.micro{max-width:90px;border-radius:4px}
+
+  .card-instrucao{
+    margin-top:12px;font-size:10px;color:#777;
+    background:#f9f9f9;border-radius:8px;padding:8px;line-height:1.5;
+  }
+  .card-instrucao.mini{margin-top:8px;font-size:8px;padding:6px;border-radius:6px}
+  .card-instrucao.micro{display:none}
+
+  .card-nome{font-size:10px;color:#aaa;margin-top:8px;font-weight:600}
+  .card-nome.micro{font-size:7px;margin-top:4px}
+
+  /* PIX badge no cartão */
+  .card-pix{
+    margin-top:10px;padding:8px 10px;border-radius:8px;
+    background:#f0fdf4;border:1px solid #bbf7d0;
+    font-size:10px;color:#15803d;font-weight:700;line-height:1.5;
+  }
+  .card-pix.mini{padding:5px 7px;font-size:8px;margin-top:6px;border-radius:5px}
+  .card-pix.micro{display:none}
+  .card-pix-chave{font-size:9px;color:#166534;font-family:monospace;word-break:break-all;font-weight:600;margin-top:2px}
+  .card-pix-chave.mini{font-size:7px}
+
+  /* ── PRINT ─────────────────────────────────────── */
+  @media print{
+    body{background:#fff!important;padding:0}
+    nav,.controls,.url-box,.page-header{display:none!important}
+    .page{padding:8px;max-width:100%}
+    #print-area{gap:8px}
+    .qr-card{break-inside:avoid;-webkit-print-color-adjust:exact;print-color-adjust:exact;border:2px solid #ef4444!important}
+    .qr-card::before{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="/pubshow-en" class="logo">📺 PUBSHOW</a>
+  <a href="/pubshow-en/painel" class="nav-back">← Painel</a>
+</nav>
+
+<div class="page">
+  <div class="page-header">
+    <h1>🖨️ Imprimir QR Codes</h1>
+    <p>Cole nas mesas, no cardápio ou no balcão. O cliente escaneia e pede direto — sem app, sem cadastro.</p>
+  </div>
+
+  <!-- URL pública -->
+  <div class="url-box">
+    <span class="url-label">Link do Jukebox</span>
+    <span class="url-text" id="jukebox-url">{{ jukebox_url }}</span>
+    <button class="url-copy" onclick="copiarURL()">Copiar</button>
+  </div>
+
+  <!-- Controles -->
+  <div class="controls">
+    <span class="ctrl-label">Tamanho:</span>
+    <button class="qty-btn ativo" onclick="setTamanho('grande',this)">Grande (1 por folha)</button>
+    <button class="qty-btn" onclick="setTamanho('medio',this)">Médio (2 por folha)</button>
+    <button class="qty-btn" onclick="setTamanho('pequeno',this)">Pequeno (4 por folha)</button>
+    <button class="qty-btn" onclick="setTamanho('mini',this)">Mini (6 por folha)</button>
+    <button class="btn-print" onclick="window.print()">🖨️ Imprimir</button>
+  </div>
+
+  <!-- Grid de QR codes -->
+  <div id="print-area" class="cols-1">
+    {% if qr_b64 %}
+
+      {% set total_cards = 1 %}
+      {% for i in range(6) %}
+      <div class="qr-card" id="card-{{ i }}" {% if i > 0 %}style="display:none"{% endif %}>
+        <div class="card-logo">📺 PUBSHOW Jukebox</div>
+        <div class="card-headline">🎵 Peça sua música!</div>
+        <div class="card-sub">
+          Dedique uma música, faça um brinde,<br>
+          peça parabéns — tudo pelo celular!
+        </div>
+        <img class="qr-img" src="data:image/png;base64,{{ qr_b64 }}" alt="QR Code Jukebox">
+        <div class="card-instrucao">
+          📱 Aponte a câmera para o QR Code<br>
+          Acessa direto — sem baixar nada!
+        </div>
+        {% if b.pix_key %}
+        <div class="card-pix">
+          💳 Pagamento via PIX{% if b.requer_pix %} · <strong>obrigatório</strong>{% endif %}
+          <div class="card-pix-chave">{{ b.pix_key }}</div>
+          {% if b.pix_nome_recebedor and b.pix_nome_recebedor != b.nome %}
+          <div style="font-size:8px;color:#16a34a;margin-top:1px">{{ b.pix_nome_recebedor }}</div>
+          {% endif %}
+        </div>
+        {% endif %}
+        <div class="card-nome">{{ b.nome }}</div>
+      </div>
+      {% endfor %}
+
+    {% else %}
+      <div style="text-align:center;padding:60px;color:#8888aa">
+        <div style="font-size:48px;margin-bottom:16px">⚠️</div>
+        <div>Erro ao gerar QR Code. Instale a biblioteca qrcode no servidor.</div>
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+<script>
+const TAMANHOS = {
+  grande:   { cols:'cols-1', qtd:1, cls:'',      img:'200px' },
+  medio:    { cols:'cols-2', qtd:2, cls:'',      img:'180px' },
+  pequeno:  { cols:'cols-4', qtd:4, cls:'mini',  img:'140px' },
+  mini:     { cols:'cols-6', qtd:6, cls:'micro', img:'90px'  },
+};
+
+let tamanhoAtual = 'grande';
+
+function setTamanho(t, btn) {
+  tamanhoAtual = t;
+  // botões
+  document.querySelectorAll('.qty-btn').forEach(b => b.classList.remove('ativo'));
+  btn.classList.add('ativo');
+  // grid
+  const cfg  = TAMANHOS[t];
+  const area = document.getElementById('print-area');
+  area.className = `cols-1 ${cfg.cols}`;
+  // cards
+  document.querySelectorAll('.qr-card').forEach((card, i) => {
+    card.style.display = i < cfg.qtd ? '' : 'none';
+    card.className = 'qr-card' + (cfg.cls ? ' ' + cfg.cls : '');
+    // ajusta textos dentro
+    card.querySelectorAll('.card-logo').forEach(el => {
+      el.className = 'card-logo' + (cfg.cls ? ' ' + cfg.cls : '');
+    });
+    card.querySelectorAll('.card-headline').forEach(el => {
+      el.className = 'card-headline' + (cfg.cls ? ' ' + cfg.cls : '');
+    });
+    card.querySelectorAll('.card-sub').forEach(el => {
+      el.className = 'card-sub' + (cfg.cls ? ' ' + cfg.cls : '');
+    });
+    card.querySelectorAll('.qr-img').forEach(el => {
+      el.className = 'qr-img' + (cfg.cls === 'mini' ? ' mini' : cfg.cls === 'micro' ? ' micro' : '');
+    });
+    card.querySelectorAll('.card-instrucao').forEach(el => {
+      el.className = 'card-instrucao' + (cfg.cls ? ' ' + cfg.cls : '');
+    });
+    card.querySelectorAll('.card-nome').forEach(el => {
+      el.className = 'card-nome' + (cfg.cls ? ' ' + cfg.cls : '');
+    });
+    card.querySelectorAll('.card-pix').forEach(el => {
+      el.className = 'card-pix' + (cfg.cls ? ' ' + cfg.cls : '');
+    });
+    card.querySelectorAll('.card-pix-chave').forEach(el => {
+      el.className = 'card-pix-chave' + (cfg.cls ? ' ' + cfg.cls : '');
+    });
+  });
+}
+
+function copiarURL() {
+  const url = document.getElementById('jukebox-url').textContent;
+  navigator.clipboard.writeText(url).then(() => {
+    const btn = document.querySelector('.url-copy');
+    btn.textContent = 'Copiado!';
+    btn.style.borderColor = '#22c55e';
+    btn.style.color = '#22c55e';
+    setTimeout(() => { btn.textContent = 'Copiar'; btn.style.borderColor = ''; btn.style.color = ''; }, 2000);
+  });
+}
+</script>
+</body>
+</html>

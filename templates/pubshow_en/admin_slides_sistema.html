@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Slides do Sistema — PUBSHOW Admin</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:#09090f;color:#f0f0ff;font-family:'Segoe UI',sans-serif;padding:24px}
+  a{color:#ef4444;text-decoration:none}
+  .header{display:flex;align-items:center;gap:16px;margin-bottom:28px;flex-wrap:wrap}
+  .logo{font-size:20px;font-weight:900;background:linear-gradient(135deg,#ef4444,#f97316);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+  .nav-link{font-size:13px;color:#8888aa}
+  .nav-link:hover{color:#fff}
+  h2{font-size:20px;font-weight:800;margin-bottom:4px}
+  .sub{font-size:13px;color:#8888aa;margin-bottom:24px;line-height:1.5}
+
+  .card{background:#13131f;border:1px solid rgba(255,255,255,.09);border-radius:16px;padding:24px;margin-bottom:20px}
+  .card-title{font-size:14px;font-weight:800;margin-bottom:16px;color:#f0f0ff}
+
+  input,textarea,select{background:#0a0a12;border:1px solid rgba(255,255,255,.12);border-radius:8px;
+    padding:9px 12px;color:#f0f0ff;font-size:13px;font-family:inherit;outline:none;width:100%}
+  input:focus,textarea:focus{border-color:#ef4444}
+  label{font-size:11px;font-weight:700;color:#8888aa;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:5px}
+  .row{display:grid;gap:12px;margin-bottom:12px}
+  .row-3{grid-template-columns:60px 1fr 110px}
+  .row-2{grid-template-columns:1fr 1fr}
+
+  .btn{border:none;border-radius:8px;padding:9px 22px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit}
+  .btn-red{background:linear-gradient(135deg,#ef4444,#f97316);color:#fff}
+  .btn-ghost{background:transparent;border:1px solid rgba(255,255,255,.15);color:#8888aa}
+  .btn-ghost:hover{border-color:#ef4444;color:#ef4444}
+
+  /* Tabela de slides */
+  .slides-list{display:flex;flex-direction:column;gap:10px}
+  .slide-row{background:#0a0a12;border:1px solid rgba(255,255,255,.09);border-radius:12px;
+    padding:14px 18px;display:flex;align-items:center;gap:14px}
+  .slide-row.inativo{opacity:.4}
+  .slide-emoji{font-size:28px;flex-shrink:0;width:40px;text-align:center}
+  .slide-img{width:80px;height:48px;object-fit:cover;border-radius:6px;flex-shrink:0}
+  .slide-info{flex:1;min-width:0}
+  .slide-titulo{font-size:14px;font-weight:700;margin-bottom:2px;
+    display:flex;align-items:center;gap:8px}
+  .slide-sub{font-size:12px;color:#8888aa;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .slide-actions{display:flex;gap:8px;flex-shrink:0}
+  .badge-on{background:#16a34a22;border:1px solid #16a34a55;color:#4ade80;
+    font-size:10px;font-weight:800;padding:2px 8px;border-radius:100px}
+  .badge-off{background:#ef444422;border:1px solid #ef444455;color:#f87171;
+    font-size:10px;font-weight:800;padding:2px 8px;border-radius:100px}
+
+  .empty{text-align:center;padding:48px 0;color:#8888aa;font-size:14px}
+  .upload-label{background:#0a0a12;border:2px dashed rgba(255,255,255,.15);border-radius:10px;
+    padding:16px 24px;cursor:pointer;font-size:13px;color:#8888aa;display:inline-flex;
+    align-items:center;gap:8px;transition:.15s}
+  .upload-label:hover{border-color:#ef4444;color:#ef4444}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <span class="logo">📺 PUBSHOW</span>
+  <a href="/pubshow-en/admin" class="nav-link">← Admin</a>
+  <h2 style="margin:0">📢 Slides do Sistema</h2>
+</div>
+
+<p class="sub">
+  Slides que aparecem em <strong>todas as TVs</strong> — após os slides próprios de cada bar.<br>
+  Ideal para divulgar o PUBSHOW, promoções sazonais ou avisos gerais. O bar pode desativar individualmente.
+</p>
+
+<!-- Lista de slides ativos -->
+<div class="card">
+  <div class="card-title">📋 Slides cadastrados ({{ slides|length }})</div>
+  {% if slides %}
+  <div class="slides-list">
+    {% for s in slides %}
+    <div class="slide-row{% if not s.ativo %} inativo{% endif %}">
+      {% if s.tipo == 'imagem' and s.url %}
+        <img src="{{ s.url }}" class="slide-img" alt="slide">
+      {% else %}
+        <div class="slide-emoji">{{ s.emoji or '📢' }}</div>
+      {% endif %}
+
+      <div class="slide-info">
+        <div class="slide-titulo">
+          {{ s.titulo or s.url or '(imagem)' }}
+          <span class="{{ 'badge-on' if s.ativo else 'badge-off' }}">{{ 'ON' if s.ativo else 'OFF' }}</span>
+        </div>
+        {% if s.subtitulo %}<div class="slide-sub">{{ s.subtitulo }}</div>{% endif %}
+        <div style="font-size:10px;color:#666;margin-top:3px">{{ s.tipo }} · id={{ s.id }}</div>
+      </div>
+
+      <div class="slide-actions">
+        <form method="POST" action="/pubshow-en/admin/slides-sistema/toggle/{{ s.id }}">
+          <button class="btn btn-ghost" style="font-size:11px;padding:6px 14px" title="Ativar/Desativar">
+            {{ '⏸ Pausar' if s.ativo else '▶ Ativar' }}
+          </button>
+        </form>
+        <form method="POST" action="/pubshow-en/admin/slides-sistema/delete/{{ s.id }}"
+              onsubmit="return confirm('Excluir este slide do sistema?')">
+          <button class="btn" style="background:#2d0a0a;border:1px solid #ef444433;color:#f87171;font-size:11px;padding:6px 14px">
+            🗑 Excluir
+          </button>
+        </form>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty">Nenhum slide do sistema cadastrado ainda.<br>Crie abaixo para aparecer em todas as TVs.</div>
+  {% endif %}
+</div>
+
+<!-- Novo slide de texto -->
+<div class="card">
+  <div class="card-title">✏️ Novo slide de texto</div>
+  <form method="POST" action="/pubshow-en/admin/slides-sistema/add">
+    <div class="row row-3">
+      <div>
+        <label>Emoji</label>
+        <input name="emoji" placeholder="📺" value="📺" maxlength="4" style="text-align:center;font-size:22px">
+      </div>
+      <div>
+        <label>Título *</label>
+        <input name="titulo" placeholder="Ex: Conheça o PUBSHOW Jukebox" maxlength="60" required>
+      </div>
+      <div>
+        <label>Cor</label>
+        <input type="color" name="cor" value="#ef4444" style="height:42px;padding:4px">
+      </div>
+    </div>
+    <div style="margin-bottom:14px">
+      <label>Subtítulo</label>
+      <input name="subtitulo" placeholder="Ex: Escaneie o QR e peça sua música!" maxlength="80">
+    </div>
+    <button type="submit" class="btn btn-red">➕ Adicionar slide de texto</button>
+  </form>
+</div>
+
+<!-- Novo slide de imagem -->
+<div class="card">
+  <div class="card-title">🖼️ Novo slide de imagem</div>
+  <p style="font-size:12px;color:#8888aa;margin-bottom:16px">PNG, JPG, GIF ou WebP. Recomendado: proporção 16:9 (ex: 1920×1080).</p>
+  <form method="POST" action="/pubshow-en/admin/slides-sistema/upload" enctype="multipart/form-data">
+    <label class="upload-label">
+      📁 Escolher imagem
+      <input type="file" name="imagem" accept="image/png,image/jpeg,image/gif,image/webp"
+             style="display:none;width:auto" onchange="this.closest('form').submit()">
+    </label>
+  </form>
+</div>
+
+</body>
+</html>

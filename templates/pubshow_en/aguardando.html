@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aguardando pagamento — PUBSHOW</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:#08080f;color:#f0f0ff;font-family:'Segoe UI',sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;text-align:center}
+  .box{width:100%;max-width:440px}
+  .logo{font-size:22px;font-weight:900;background:linear-gradient(135deg,#ef4444,#f97316);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:32px;display:block;text-decoration:none}
+  .icon{font-size:64px;margin-bottom:16px;animation:pulse 2s ease-in-out infinite}
+  @keyframes pulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.08);opacity:.8}}
+  h1{font-size:24px;font-weight:900;margin-bottom:8px}
+  .sub{font-size:14px;color:#8888aa;margin-bottom:32px;line-height:1.6}
+  .card{background:#13131f;border:1px solid rgba(255,255,255,.08);border-radius:20px;padding:24px;margin-bottom:20px;text-align:left}
+  .step{display:flex;align-items:flex-start;gap:12px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.06)}
+  .step:last-child{border:none}
+  .step-num{width:26px;height:26px;border-radius:50%;background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.3);color:#ef4444;font-size:12px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+  .step-text{font-size:13px;color:#c8c8e8;line-height:1.5}
+  .step-text strong{color:#f0f0ff}
+  .btn{display:inline-block;padding:14px 32px;background:linear-gradient(135deg,#ef4444,#f97316);color:#fff;font-size:14px;font-weight:800;border-radius:12px;text-decoration:none;margin-bottom:12px;border:none;cursor:pointer;font-family:inherit;width:100%}
+  .btn:hover{opacity:.9}
+  .btn-outline{display:inline-block;padding:12px 24px;border:1px solid rgba(255,255,255,.15);color:#8888aa;font-size:13px;font-weight:600;border-radius:10px;text-decoration:none;width:100%;text-align:center}
+  .btn-outline:hover{color:#f0f0ff;border-color:rgba(255,255,255,.3)}
+  .spinner{display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite;margin-right:8px;vertical-align:middle}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .status-badge{display:inline-flex;align-items:center;gap:8px;background:rgba(234,179,8,.1);border:1px solid rgba(234,179,8,.3);color:#fbbf24;padding:8px 16px;border-radius:100px;font-size:13px;font-weight:700;margin-bottom:24px}
+  .dot{width:8px;height:8px;border-radius:50%;background:#fbbf24;animation:blink 1.2s ease-in-out infinite}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+</style>
+</head>
+<body>
+<div class="box">
+  <a href="/pubshow-en" class="logo">📺 PUBSHOW</a>
+
+  <div class="icon">⏳</div>
+  <div class="status-badge"><div class="dot"></div> Aguardando confirmação</div>
+
+  <h1>Pagamento em processamento</h1>
+  <p class="sub">
+    Assim que o pagamento for confirmado, sua conta será ativada automaticamente.
+    Isso pode levar alguns minutos.
+  </p>
+
+  <div class="card">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-text"><strong>PIX ou Boleto:</strong> realize o pagamento conforme as instruções enviadas ao seu e-mail ou abra o link de pagamento recebido.</div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-text"><strong>Confirmação automática:</strong> em até 5 minutos o sistema identifica o pagamento e ativa sua assinatura.</div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-text"><strong>Seu PUBSHOW ativo:</strong> volte ao painel — o status mudará para <strong style="color:#22c55e">✅ Assinatura ativa</strong> automaticamente.</div>
+    </div>
+  </div>
+
+  <a href="/pubshow-en/painel" class="btn">
+    <span class="spinner"></span> Verificar status do pagamento
+  </a>
+  <a href="https://wa.me/5547999999999?text=Ol%C3%A1%2C%20preciso%20de%20ajuda%20com%20o%20pagamento%20do%20PUBSHOW" class="btn-outline" target="_blank">
+    💬 Falar com suporte via WhatsApp
+  </a>
+</div>
+
+<script>
+// Verifica automaticamente a cada 15s se o pagamento foi confirmado
+let tentativas = 0;
+const timer = setInterval(() => {
+  tentativas++;
+  fetch('/pubshow-en/painel', {method:'HEAD'}).then(() => {
+    // Recarrega para checar status atualizado
+    if (tentativas >= 2) location.href = '/pubshow-en/painel';
+  });
+  if (tentativas >= 20) clearInterval(timer); // para após 5 min
+}, 15000);
+</script>
+</body>
+</html>

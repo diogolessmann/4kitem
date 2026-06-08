@@ -1,0 +1,1199 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Painel — PUBSHOW</title>
+<!-- PWA -->
+<link rel="manifest" href="/pubshow-en/painel/manifest.json">
+<meta name="theme-color" content="#ef4444">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="PUBSHOW">
+<link rel="apple-touch-icon" href="/static/pubshow/icon-192.png">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  :root{--bg:#08080f;--surface:#13131f;--surface2:#1a1a2e;--border:rgba(255,255,255,.08);--border2:rgba(255,255,255,.14);--text:#f0f0ff;--text2:#8888aa;--green:#22c55e;--orange:#f97316}
+  body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-height:100vh}
+  nav{background:var(--surface);border-bottom:1px solid var(--border);padding:0 24px;height:60px;display:flex;align-items:center;justify-content:space-between}
+  .nav-logo{font-size:18px;font-weight:900;background:linear-gradient(135deg,#ef4444,#f97316);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+  .nav-right{display:flex;align-items:center;gap:12px}
+  .nav-btn{padding:7px 16px;border-radius:8px;border:1px solid var(--border2);background:none;color:var(--text2);font-size:13px;cursor:pointer;text-decoration:none;font-family:inherit}
+  .nav-btn:hover{color:var(--text)}
+  .main{max-width:1100px;margin:0 auto;padding:28px 24px}
+  .page-title{font-size:22px;font-weight:800;margin-bottom:4px}
+  .page-sub{font-size:13px;color:var(--text2);margin-bottom:28px}
+  .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:24px}
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px}
+  .card-title{font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.6px;margin-bottom:14px}
+  .stat-val{font-size:32px;font-weight:900;letter-spacing:-1px}
+  .stat-sub{font-size:12px;color:var(--text2);margin-top:2px}
+
+  /* Canais */
+  .canais-grid{display:flex;flex-wrap:wrap;gap:8px}
+  .canal-btn{
+    padding:8px 14px;border-radius:10px;border:1px solid var(--border2);
+    background:var(--surface2);color:var(--text2);font-size:13px;font-weight:700;
+    cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:6px;transition:.15s;
+  }
+  .canal-btn:hover{border-color:var(--border2);color:var(--text)}
+  .canal-btn.ativo{color:#fff;border-color:transparent}
+
+  /* TV Link */
+  .tv-link-box{background:linear-gradient(135deg,#0f0f1f,#1a0030);border:1px solid rgba(139,92,246,.3);border-radius:14px;padding:18px 20px}
+  .tv-link-url{font-size:13px;color:#a78bfa;word-break:break-all;margin:6px 0 10px;font-family:monospace}
+  .btn-sm{padding:7px 14px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);color:var(--text);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit}
+  .btn-sm:hover{background:var(--surface)}
+  .btn-primary{background:linear-gradient(135deg,#ef4444,#f97316);color:#fff;border:none;padding:9px 20px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit}
+
+  /* Fila pedidos */
+  .pedido-row{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)}
+  .pedido-row:last-child{border:none}
+  .pedido-emoji{font-size:24px;flex-shrink:0}
+  .pedido-info{flex:1}
+  .pedido-nome{font-size:14px;font-weight:700}
+  .pedido-tipo{font-size:11px;color:var(--text2)}
+  .pedido-valor{font-size:14px;font-weight:800;color:var(--green)}
+  .pedido-dispensar{background:none;border:1px solid var(--border2);color:var(--text2);padding:5px 10px;border-radius:7px;font-size:11px;cursor:pointer;font-family:inherit}
+  .pedido-dispensar:hover{color:#ef4444;border-color:#ef444444}
+  .empty-state{text-align:center;padding:24px;color:var(--text2);font-size:13px}
+
+  /* PIX config */
+  .pix-form input,.pix-form select{
+    background:var(--surface2);border:1px solid var(--border);border-radius:10px;
+    padding:10px 14px;color:var(--text);font-size:13px;font-family:inherit;outline:none;width:100%;
+  }
+  .pix-form input:focus{border-color:var(--green)}
+  .label-sm{font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:5px}
+
+  @media(max-width:768px){.grid-3,.grid-2{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<nav>
+  <div class="nav-logo">🎬 PUBSHOW</div>
+  <div class="nav-right">
+    {% set plano_info = planos.get(b.plano or 'bar', {}) %}
+    <a href="/pubshow-en/planos" style="display:inline-flex;align-items:center;gap:4px;padding:5px 12px;border-radius:20px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);font-size:11px;font-weight:700;color:var(--text2);text-decoration:none;transition:.15s" title="Ver planos">
+      {{ plano_info.get('emoji','🌱') }} {{ plano_info.get('nome','—') }}
+      {% if not b.plano_ativo %}<span style="margin-left:4px;color:#f97316">Trial</span>{% endif %}
+    </a>
+    <span style="font-size:13px;color:var(--text2)">{{ b.nome }}</span>
+    {% if plano_info.get('multi') %}<a href="/pubshow-en/painel/rede" class="nav-btn" style="color:#a855f7">🏟️ Minha rede</a>{% endif %}
+    <a href="/pubshow-en/tv/{{ b.code }}" target="_blank" class="nav-btn">📺 Abrir TV</a>
+    <a href="/pubshow-en/sair" class="nav-btn">Sair</a>
+  </div>
+</nav>
+
+<div class="main">
+  {% set plano_info = planos.get(b.plano or 'bar', {}) %}
+  <div class="page-title">Olá, {{ b.nome }} 👋</div>
+  <div class="page-sub">Painel de controle do PUBSHOW
+    {% if b.plano_ativo %}<span style="margin-left:10px;font-size:11px;background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.3);color:#4ade80;padding:2px 10px;border-radius:20px">✅ {{ plano_info.get('emoji','') }} {{ plano_info.get('nome','') }}</span>{% endif %}
+  </div>
+  {# ── Banner cancelamento bem-sucedido ── #}
+  {% if request.args.get('ok') == 'cancelamento' %}
+  <div style="background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.25);border-radius:14px;padding:14px 20px;margin-bottom:20px;font-size:13px;color:#fca5a5">
+    ✅ Assinatura cancelada. O Jukebox fica ativo até o fim do período pago. Sentiremos sua falta! 💔
+    <a href="https://wa.me/5547999606998" target="_blank" style="color:#f97316;font-weight:700;margin-left:8px">Mudou de ideia? Fale conosco →</a>
+  </div>
+  {% endif %}
+
+  {# ── Trial countdown ── #}
+  {% if not b.plano_ativo and b.trial_ends %}
+    {% set now_iso = now_iso if now_iso is defined else '' %}
+    {% set dias_str = b.trial_ends[:10] %}
+  <div style="background:linear-gradient(135deg,rgba(249,115,22,.1),rgba(234,179,8,.06));border:1px solid rgba(249,115,22,.25);border-radius:14px;padding:14px 20px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+    <div style="display:flex;align-items:center;gap:10px">
+      <span style="font-size:22px">⏱️</span>
+      <div>
+        <div style="font-size:13px;font-weight:700;color:#fb923c">Trial gratuito ativo</div>
+        <div style="font-size:12px;color:#8888aa">Expira em {{ dias_str }} · Assine para não perder acesso</div>
+      </div>
+    </div>
+    <a href="/pubshow-en/planos" style="background:linear-gradient(135deg,#f97316,#ef4444);color:#fff;padding:8px 20px;border-radius:10px;font-size:13px;font-weight:700;text-decoration:none;white-space:nowrap">Ver planos →</a>
+  </div>
+  {% endif %}
+
+  {# ── Status da assinatura ativa ── #}
+  {% if b.plano_ativo and assinatura %}
+    {% set ass_status = assinatura.status or 'ativo' %}
+    {% set proximo = assinatura.proximo_vencimento or '' %}
+  <div style="background:{% if ass_status == 'inadimplente' %}rgba(245,158,11,.07){% elif ass_status == 'suspenso' %}rgba(239,68,68,.07){% else %}rgba(74,222,128,.05){% endif %};border:1px solid {% if ass_status == 'inadimplente' %}rgba(245,158,11,.3){% elif ass_status == 'suspenso' %}rgba(239,68,68,.3){% else %}rgba(74,222,128,.2){% endif %};border-radius:14px;padding:14px 20px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+    <div style="display:flex;align-items:center;gap:10px">
+      <span style="font-size:20px">{% if ass_status == 'inadimplente' %}⚠️{% elif ass_status == 'suspenso' %}🔴{% else %}✅{% endif %}</span>
+      <div>
+        <div style="font-size:13px;font-weight:700;color:{% if ass_status == 'inadimplente' %}#fbbf24{% elif ass_status == 'suspenso' %}#f87171{% else %}#4ade80{% endif %}">
+          {% if ass_status == 'inadimplente' %}Pagamento pendente — regularize para evitar suspensão
+          {% elif ass_status == 'suspenso' %}Assinatura suspensa — pagamento necessário
+          {% else %}{{ plano_info.get('nome','') }} {{ plano_info.get('emoji','') }} — Assinatura ativa{% endif %}
+        </div>
+        <div style="font-size:11px;color:#6b7280;margin-top:2px">
+          {% if proximo %}Próxima cobrança: <strong style="color:#9ca3af">{{ proximo[:10] }}</strong> · {% endif %}
+          {{ assinatura.billing_type or 'PIX' }} · R$ {{ '%.2f'|format(assinatura.valor or 0)|replace('.',',') }}/mês
+        </div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      {% if ass_status in ('inadimplente', 'suspenso') %}
+      <a href="/pubshow-en/planos" style="background:#f59e0b;color:#08080f;padding:7px 16px;border-radius:8px;font-size:12px;font-weight:700;text-decoration:none">Regularizar →</a>
+      {% endif %}
+      <a href="/pubshow-en/painel/cancelar" style="background:transparent;border:1px solid rgba(255,255,255,.12);color:#6b7280;padding:7px 14px;border-radius:8px;font-size:11px;font-weight:600;text-decoration:none">Cancelar assinatura</a>
+    </div>
+  </div>
+  {% endif %}
+
+  {% set pix_ok      = b.pix_key and b.pix_key|length > 3 %}
+  {% set tv_ok       = b.ultimo_acesso and b.ultimo_acesso > '' %}
+  {% set pedido_ok   = b.total_pedidos is defined and b.total_pedidos > 0 %}
+  {% set setup_done  = pix_ok and pedido_ok %}
+
+  {% if not setup_done %}
+  <div style="background:linear-gradient(135deg,rgba(239,68,68,.1),rgba(249,115,22,.06));border:1px solid rgba(239,68,68,.25);border-radius:18px;padding:20px 24px;margin-bottom:24px">
+    <div style="font-size:13px;font-weight:800;color:#fca5a5;margin-bottom:16px">🚀 Configure seu PUBSHOW em 3 passos</div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+
+      <!-- Passo 1: PIX -->
+      <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:{% if pix_ok %}rgba(34,197,94,.1){% else %}rgba(255,255,255,.04){% endif %};border:1px solid {% if pix_ok %}rgba(34,197,94,.3){% else %}rgba(255,255,255,.1){% endif %};border-radius:12px">
+        <span style="font-size:22px;flex-shrink:0">{% if pix_ok %}✅{% else %}1️⃣{% endif %}</span>
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:700;{% if pix_ok %}color:#4ade80{% endif %}">Configure sua chave PIX</div>
+          <div style="font-size:11px;color:#8888aa;margin-top:2px">Necessário para receber os pagamentos do Jukebox</div>
+        </div>
+        {% if not pix_ok %}<a href="#pix-config" style="font-size:12px;font-weight:700;color:#f97316;text-decoration:none">Configurar →</a>{% endif %}
+      </div>
+
+      <!-- Passo 2: TV -->
+      <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:12px">
+        <span style="font-size:22px;flex-shrink:0">2️⃣</span>
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:700">Abra o TV Player na tela do bar</div>
+          <div style="font-size:11px;color:#8888aa;margin-top:2px">Copie o link abaixo e abra num navegador conectado à TV</div>
+        </div>
+        <a href="/pubshow-en/tv/{{ b.code }}" target="_blank" style="font-size:12px;font-weight:700;color:#a78bfa;text-decoration:none;white-space:nowrap">Abrir TV →</a>
+      </div>
+
+      <!-- Passo 3: QR -->
+      <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:{% if pedido_ok %}rgba(34,197,94,.1){% else %}rgba(255,255,255,.04){% endif %};border:1px solid {% if pedido_ok %}rgba(34,197,94,.3){% else %}rgba(255,255,255,.1){% endif %};border-radius:12px">
+        <span style="font-size:22px;flex-shrink:0">{% if pedido_ok %}✅{% else %}3️⃣{% endif %}</span>
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:700;{% if pedido_ok %}color:#4ade80{% endif %}">{% if pedido_ok %}Primeiro pedido recebido! 🎉{% else %}Imprima o QR Code e coloque nas mesas{% endif %}</div>
+          <div style="font-size:11px;color:#8888aa;margin-top:2px">{% if pedido_ok %}O Jukebox está funcionando!{% else %}Clientes escaneiam e pagam pelo celular{% endif %}</div>
+        </div>
+        {% if not pedido_ok %}<a href="/pubshow-en/painel/qrcode" style="font-size:12px;font-weight:700;color:#22c55e;text-decoration:none">QR Code →</a>{% endif %}
+      </div>
+
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Promoção Relâmpago -->
+  <div class="card" style="margin-bottom:20px;border-color:{% if promo_ativa %}rgba(249,115,22,.5){% else %}rgba(255,255,255,.08){% endif %};background:{% if promo_ativa %}rgba(249,115,22,.06){% else %}var(--surface){% endif %}">
+    <div class="card-title">⚡ Promoção Relâmpago</div>
+    {% if promo_ativa %}
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;padding:12px 14px;background:rgba(249,115,22,.12);border:1px solid rgba(249,115,22,.3);border-radius:12px">
+      <span style="font-size:28px">{{ b.promo_emoji or '🍺' }}</span>
+      <div>
+        <div style="font-size:15px;font-weight:800;color:#fb923c">{{ b.promo_msg }}</div>
+        <div style="font-size:11px;color:#8888aa;margin-top:2px">⏱️ Encerra: {{ (b.promo_expira or '')[:16]|replace('T',' ') }}</div>
+      </div>
+    </div>
+    <form method="POST" action="/pubshow-en/painel/promo">
+      <input type="hidden" name="acao" value="encerrar">
+      <button type="submit" style="background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.3);color:#f87171;border-radius:8px;padding:8px 18px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">⏹ Encerrar promoção</button>
+    </form>
+    {% else %}
+    <p style="font-size:12px;color:#8888aa;margin-bottom:14px">Lança uma oferta ao vivo. Aparece na TV como um countdown — clientes veem e correm pedir!</p>
+    <form method="POST" action="/pubshow-en/painel/promo" style="display:flex;flex-direction:column;gap:10px">
+      <input type="hidden" name="acao" value="iniciar">
+      <div style="display:grid;grid-template-columns:60px 1fr;gap:8px">
+        <input name="promo_emoji" placeholder="🍺" value="🍺" maxlength="4"
+               style="background:#0a0a12;border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:8px;color:#f0f0ff;font-size:24px;text-align:center;outline:none">
+        <input name="promo_msg" placeholder="Ex: CHOPP EM DOBRO! Só agora!" maxlength="60" required
+               style="background:#0a0a12;border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:8px 12px;color:#f0f0ff;font-size:13px;outline:none">
+      </div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <label style="font-size:12px;color:#8888aa;white-space:nowrap">⏱️ Duração:</label>
+        <select name="promo_minutos" style="background:#0a0a12;border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:8px 12px;color:#f0f0ff;font-size:13px;outline:none">
+          <option value="5">5 minutos</option>
+          <option value="10" selected>10 minutos</option>
+          <option value="15">15 minutos</option>
+          <option value="20">20 minutos</option>
+          <option value="30">30 minutos</option>
+          <option value="60">1 hora</option>
+        </select>
+        <button type="submit" style="background:linear-gradient(135deg,#f97316,#ef4444);color:#fff;border:none;border-radius:8px;padding:9px 22px;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;white-space:nowrap">⚡ Lançar agora!</button>
+      </div>
+    </form>
+    {% endif %}
+  </div>
+
+  <!-- Dashboard de receita acumulada -->
+  <div class="card" style="margin-bottom:20px;border-color:rgba(34,197,94,.25);background:linear-gradient(135deg,rgba(34,197,94,.06),rgba(16,185,129,.03))">
+    <div class="card-title">📈 Receita do Jukebox</div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px">
+      <div style="text-align:center">
+        <div style="font-size:11px;color:var(--text2);font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Esta semana</div>
+        <div style="font-size:24px;font-weight:900;color:var(--green)">R$ {{ '%.0f'|format(receita_semana)|replace('.',',') }}</div>
+      </div>
+      <div style="text-align:center;border-left:1px solid rgba(255,255,255,.08);border-right:1px solid rgba(255,255,255,.08)">
+        <div style="font-size:11px;color:var(--text2);font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Este mês</div>
+        <div style="font-size:24px;font-weight:900;color:#22d3ee">R$ {{ '%.0f'|format(receita_mes)|replace('.',',') }}</div>
+      </div>
+      <div style="text-align:center">
+        <div style="font-size:11px;color:var(--text2);font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Total geral</div>
+        <div style="font-size:24px;font-weight:900;color:#a78bfa">R$ {{ '%.0f'|format(receita_total)|replace('.',',') }}</div>
+      </div>
+    </div>
+    <!-- Mini gráfico últimos 7 dias -->
+    <div style="font-size:11px;color:var(--text2);margin-bottom:8px;font-weight:700">Últimos 7 dias</div>
+    <div style="display:flex;align-items:flex-end;gap:4px;height:48px">
+      {% set max_val = receita_7dias.values()|max if receita_7dias else 1 %}
+      {% set max_val = max_val if max_val > 0 else 1 %}
+      {% for i in range(7) %}
+        {% set dia = (now_brt - timedelta(days=6-i)).strftime('%Y-%m-%d') %}
+        {% set val = receita_7dias.get(dia, 0) %}
+        {% set pct = ((val / max_val) * 100)|int %}
+        {% set pct = pct if pct > 4 else 4 %}
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px">
+          <div style="width:100%;height:{{ pct }}%;background:{% if i==6 %}linear-gradient(180deg,#22c55e,#16a34a){% else %}rgba(34,197,94,.35){% endif %};border-radius:3px 3px 0 0;min-height:4px;transition:.3s" title="R$ {{ '%.2f'|format(val) }}"></div>
+          <div style="font-size:9px;color:var(--text2)">{{ (now_brt - timedelta(days=6-i)).strftime('%d') }}</div>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="grid-3">
+    <div class="card">
+      <div class="card-title">💰 Jukebox hoje</div>
+      <div class="stat-val" style="color:var(--green)" id="total-hoje">R$ {{ '%.2f'|format(total_hoje)|replace('.',',') }}</div>
+      <div class="stat-sub">{{ pedidos_hoje|length }} pedidos recebidos</div>
+    </div>
+    <div class="card">
+      <div class="card-title">📋 Fila agora</div>
+      <div class="stat-val">{{ fila|length }}</div>
+      <div class="stat-sub">pedidos aguardando</div>
+    </div>
+    <div class="card">
+      <div class="card-title">🎬 Tema ativo</div>
+      {% set c = canais.get(b.canal_atual, {}) %}
+      <div class="stat-val" style="font-size:28px">{{ c.get('emoji','📺') }} {{ c.get('nome','—') }}</div>
+      <div class="stat-sub">
+        {% if b.plano_ativo %}✅ Assinatura ativa{% else %}⚠️ Trial / sem assinatura{% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <!-- Trocar tema -->
+    <div class="card">
+      <div class="card-title">🎬 Trocar tema agora</div>
+      <form method="POST" action="/pubshow-en/painel/canal">
+        <div class="canais-grid" style="margin-bottom:16px">
+          {% for key, c in canais.items() %}
+          <button type="submit" name="canal" value="{{ key }}"
+                  class="canal-btn {% if b.canal_atual == key %}ativo{% endif %}"
+                  {% if b.canal_atual == key %}style="background:{{ c.cor }};border-color:{{ c.cor }}"{% endif %}>
+            {{ c.emoji }} {{ c.nome }}
+          </button>
+          {% endfor %}
+        </div>
+      </form>
+    </div>
+
+    <!-- TV Link + QR -->
+    <div class="card">
+      <div class="card-title">📺 TV Player — abra este link na tela do bar</div>
+      <div class="tv-link-box">
+        <div style="font-size:12px;color:#a78bfa;font-weight:700">TV PLAYER</div>
+        <div class="tv-link-url">www.4kitem.com.br/pubshow-en/tv/{{ b.code }}</div>
+        <button class="btn-sm" onclick="copiar('https://www.4kitem.com.br/pubshow-en/tv/{{ b.code }}', this)">📋 Copiar link da TV</button>
+      </div>
+      <div style="margin-top:14px"></div>
+      <div class="card-title">📱 QR Code do Jukebox (cole nas mesas)</div>
+      <div class="tv-link-box" style="border-color:rgba(34,197,94,.3)">
+        <div style="font-size:12px;color:#22c55e;font-weight:700">JUKEBOX (clientes)</div>
+        <div class="tv-link-url" style="color:#4ade80;font-size:11px">https://www.4kitem.com.br/pubshow-en/jukebox/{{ b.jukebox_token or b.code }}</div>
+        <a href="/pubshow-en/painel/qrcode" class="btn-sm" style="text-decoration:none;background:linear-gradient(135deg,#ef4444,#f97316);color:#fff;border:none">🖨️ Imprimir QR Code</a>
+        <form method="POST" action="/pubshow-en/painel/novo-qr" style="display:inline" onsubmit="return confirm('Gerar novo QR invalida todos os QR codes anteriores. Continuar?')">
+          <button type="submit" class="btn-sm" style="border-color:rgba(245,158,11,.4);color:#f59e0b">🔄 Novo QR (invalidar antigos)</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <!-- Fila de pedidos -->
+    <div class="card">
+      <div class="card-title">📋 Fila de pedidos pendentes</div>
+      <div id="fila-pedidos">
+      {% if fila %}
+        {% for p in fila %}
+        {% set t = tipos.get(p.tipo, {}) %}
+        <div class="pedido-row">
+          <span class="pedido-emoji">{{ t.get('emoji','🎵') }}</span>
+          <div class="pedido-info">
+            <div class="pedido-nome">{{ p.nome_cliente }}</div>
+            <div class="pedido-tipo">{{ t.get('nome', p.tipo) }}{% if p.mensagem %} · "{{ p.mensagem[:40] }}"{% endif %}</div>
+          </div>
+          <span class="pedido-valor">R$ {{ '%.0f'|format(p.valor or 0) }}</span>
+          <form method="POST" action="/pubshow-en/painel/pedido/{{ p.id }}/dispensar" style="margin:0">
+            <button type="submit" class="pedido-dispensar" title="Marcar como tocado/exibido (só clique após a TV executar)">📺 Tocou</button>
+          </form>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div class="empty-state">Nenhum pedido na fila agora.<br>Os pedidos aparecem aqui em tempo real. 🎉</div>
+      {% endif %}
+      </div>
+    </div>
+
+    <!-- Configurar PIX -->
+    <div class="card" id="pix-config">
+      <div class="card-title">💚 Sua chave PIX (Jukebox)</div>
+      <p style="font-size:13px;color:var(--text2);margin-bottom:16px;line-height:1.6">
+        Configure sua chave PIX para os clientes pagarem diretamente no seu celular. <strong style="color:var(--text)">100% do valor é seu.</strong>
+      </p>
+      <form method="POST" action="/pubshow-en/painel/pix" class="pix-form" style="display:flex;flex-direction:column;gap:12px">
+        <div>
+          <label class="label-sm">Tipo de chave</label>
+          <select name="pix_tipo">
+            <option value="telefone" {% if b.pix_tipo=='telefone' %}selected{% endif %}>📱 Telefone</option>
+            <option value="cpf"      {% if b.pix_tipo=='cpf'     %}selected{% endif %}>🪪 CPF</option>
+            <option value="email"    {% if b.pix_tipo=='email'   %}selected{% endif %}>📧 E-mail</option>
+            <option value="aleatorio"{% if b.pix_tipo=='aleatorio'%}selected{% endif %}>🔑 Chave aleatória</option>
+          </select>
+        </div>
+        <div>
+          <label class="label-sm">Chave PIX</label>
+          <input type="text" name="pix_key" value="{{ b.pix_key or '' }}" placeholder="Ex: 47997766831">
+        </div>
+        <div>
+          <label class="label-sm">Nome do recebedor (aparece no Jukebox)</label>
+          <input type="text" name="pix_nome" value="{{ b.pix_nome_recebedor or '' }}" placeholder="Ex: Bar do Toninho">
+        </div>
+        <button type="submit" class="btn-primary">💾 Salvar PIX</button>
+      </form>
+
+      {% if b.pix_key %}
+      <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
+        <form method="POST" action="/pubshow-en/painel/toggle-pix" style="margin:0">
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
+            <div style="position:relative;width:44px;height:24px;flex-shrink:0">
+              <input type="checkbox" name="requer_pix" id="toggle-pix"
+                     {% if b.requer_pix %}checked{% endif %}
+                     onchange="this.form.submit()"
+                     style="opacity:0;width:0;height:0;position:absolute">
+              <label for="toggle-pix" style="
+                position:absolute;inset:0;border-radius:12px;cursor:pointer;transition:.3s;
+                background:{% if b.requer_pix %}#22c55e{% else %}rgba(255,255,255,.12){% endif %};
+                display:block">
+                <span style="
+                  position:absolute;top:3px;left:{% if b.requer_pix %}22px{% else %}3px{% endif %};
+                  width:18px;height:18px;border-radius:50%;background:#fff;transition:.3s;display:block">
+                </span>
+              </label>
+            </div>
+            <div>
+              <div style="font-size:13px;font-weight:700">Exigir PIX antes da fila</div>
+              <div style="font-size:11px;color:var(--text2)">Pedido só entra na fila após você confirmar o pagamento</div>
+            </div>
+          </label>
+        </form>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Aguardando confirmação PIX -->
+  {% if aguardando_pix %}
+  <div class="card" style="margin-bottom:24px;border-color:rgba(251,191,36,.3);background:linear-gradient(135deg,#13131f,#1a1500)">
+    <div class="card-title" style="color:#fbbf24">⏳ Aguardando confirmação PIX ({{ aguardando_pix|length }})</div>
+    <p style="font-size:12px;color:var(--text2);margin-bottom:14px">
+      ⚠️ <strong style="color:#f0f0ff">Verifique no banco se o PIX foi recebido</strong> antes de confirmar.
+      Confirmar sem receber o PIX libera a música de graça.
+    </p>
+    {% for p in aguardando_pix %}
+    {% set t = tipos.get(p.tipo, {}) %}
+    {% set avisou = p.get('pix_cliente_avisou', 0) if p is mapping else 0 %}
+    <div class="pix-pedido-row" style="display:flex;align-items:center;gap:12px;padding:12px;margin-bottom:8px;border-radius:12px;
+      {% if avisou %}background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.3){% else %}background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07){% endif %}">
+      <span style="font-size:22px">{{ t.get('emoji','🎵') }}</span>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:14px;font-weight:700;display:flex;align-items:center;gap:8px">
+          {{ p.nome_cliente }}
+          {% if avisou %}
+          <span style="font-size:10px;font-weight:800;background:rgba(34,197,94,.2);border:1px solid rgba(34,197,94,.4);color:#4ade80;padding:2px 8px;border-radius:100px">💬 CLIENTE AVISOU QUE PAGOU</span>
+          {% endif %}
+        </div>
+        <div style="font-size:11px;color:var(--text2)">
+          {{ t.get('nome', p.tipo) }}{% if p.titulo_pedido %} · <em>{{ p.titulo_pedido[:40] }}</em>{% endif %}
+          · {{ (p.created_at or '')[-8:-3] }}h
+        </div>
+      </div>
+      <span style="font-size:16px;font-weight:900;color:#4ade80;white-space:nowrap">R$ {{ '%.2f'|format(p.valor or 0)|replace('.',',') }}</span>
+      <div style="display:flex;gap:6px">
+        <form method="POST" action="/pubshow-en/painel/pedido/{{ p.id }}/confirmar-pix" style="margin:0">
+          <button type="submit"
+            style="background:linear-gradient(135deg,rgba(34,197,94,.2),rgba(34,197,94,.1));border:1px solid rgba(34,197,94,.4);color:#4ade80;padding:8px 14px;border-radius:8px;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit">
+            ✅ Recebi — Confirmar
+          </button>
+        </form>
+        <form method="POST" action="/pubshow-en/painel/pedido/{{ p.id }}/recusar-pix" style="margin:0">
+          <button type="submit"
+            style="background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);color:#f87171;padding:8px 10px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit"
+            title="Recusar — PIX não recebido">✗ Recusar</button>
+        </form>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <!-- Histórico hoje -->
+  {% if pedidos_hoje %}
+  <div class="card">
+    <div class="card-title">📊 Pedidos de hoje</div>
+    <div style="overflow-x:auto">
+      <table style="width:100%;border-collapse:collapse;font-size:13px">
+        <thead>
+          <tr style="border-bottom:1px solid var(--border)">
+            <th style="text-align:left;padding:8px 0;color:var(--text2);font-weight:600">Horário</th>
+            <th style="text-align:left;padding:8px 0;color:var(--text2);font-weight:600">Cliente</th>
+            <th style="text-align:left;padding:8px 0;color:var(--text2);font-weight:600">Pedido</th>
+            <th style="text-align:right;padding:8px 0;color:var(--text2);font-weight:600">Valor</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in pedidos_hoje %}
+          {% set t = tipos.get(p.tipo, {}) %}
+          <tr style="border-bottom:1px solid var(--border)">
+            <td style="padding:8px 0;color:var(--text2)">{{ p.created_at[11:16] if p.created_at else '—' }}</td>
+            <td style="padding:8px 0">{{ p.nome_cliente }}</td>
+            <td style="padding:8px 0">{{ t.get('emoji','') }} {{ t.get('nome', p.tipo) }}</td>
+            <td style="padding:8px 0;text-align:right;color:var(--green);font-weight:700">R$ {{ '%.0f'|format(p.valor or 0) }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+        <tfoot>
+          <tr>
+            <td colspan="3" style="padding:10px 0;font-weight:700">Total do dia</td>
+            <td style="padding:10px 0;text-align:right;color:var(--green);font-weight:900;font-size:16px">R$ {{ '%.2f'|format(total_hoje) }}</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Propaganda do bar na TV -->
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-title">📢 Propaganda do bar na TV
+      {% if plano_max_anuncios < 999 %}<span style="margin-left:8px;font-size:11px;color:var(--text2);font-weight:600">{{ plano_max_anuncios }} slide{{ 's' if plano_max_anuncios > 1 else '' }} no seu plano</span>{% endif %}
+    </div>
+    <p style="font-size:12px;color:#8888aa;margin-bottom:16px">Crie até {{ plano_max_anuncios if plano_max_anuncios < 999 else 'ilimitados' }} slides que aparecem entre os vídeos na tela. Perfeito para happy hour, promoções e eventos.</p>
+
+    <!-- Slides do sistema — obrigatórios, sem toggle para o bar -->
+    <div style="background:#0a0a12;border:1px solid rgba(34,197,94,.2);border-radius:10px;padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;gap:14px">
+      <div style="flex:1">
+        <div style="font-size:12px;font-weight:700;color:#4ade80">
+          📢 Slides do Sistema
+          <span style="margin-left:8px;font-size:10px;background:#16a34a22;border:1px solid #16a34a55;color:#4ade80;padding:2px 8px;border-radius:100px">ATIVO</span>
+        </div>
+        <div style="font-size:11px;color:#8888aa;margin-top:2px">Slides institucionais do PUBSHOW — exibidos automaticamente a cada 10 minutos na sua TV.</div>
+      </div>
+    </div>
+    <form method="POST" action="/pubshow-en/painel/anuncios">
+      {% for i in range(1, [plano_max_anuncios + 1, 6]|min) %}
+      {% set sl = anuncios_parsed[i-1] if anuncios_parsed|length >= i else {} %}
+      <div style="background:#0a0a12;border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:14px;margin-bottom:12px">
+        <div style="font-size:11px;font-weight:700;color:#8888aa;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Slide {{ i }}</div>
+        <div style="display:grid;grid-template-columns:60px 1fr 100px;gap:8px;margin-bottom:8px">
+          <input name="slide_{{ i }}_emoji" placeholder="🍺" value="{{ sl.get('emoji','') }}"
+                 style="background:#13131f;border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:8px;color:#f0f0ff;font-size:20px;text-align:center;outline:none">
+          <input name="slide_{{ i }}_titulo" placeholder="Ex: Happy Hour das 17h às 20h" value="{{ sl.get('titulo','') }}"
+                 style="background:#13131f;border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:8px 12px;color:#f0f0ff;font-size:13px;outline:none">
+          <input type="color" name="slide_{{ i }}_cor" value="{{ sl.get('cor','#ef4444') }}"
+                 style="background:#13131f;border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:4px;width:100%;height:38px;cursor:pointer">
+        </div>
+        <input name="slide_{{ i }}_sub" placeholder="Ex: Chopp R$ 8 · Caipirinha R$ 12 · Boteco do Zé" value="{{ sl.get('subtitulo','') }}"
+               style="width:100%;background:#13131f;border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:8px 12px;color:#f0f0ff;font-size:12px;outline:none">
+      </div>
+      {% endfor %}
+      <button type="submit" style="background:linear-gradient(135deg,#ef4444,#f97316);color:#fff;border:none;border-radius:8px;padding:9px 22px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">💾 Salvar propaganda</button>
+      <span style="font-size:11px;color:#8888aa;margin-left:10px">Slides em branco não são exibidos</span>
+    </form>
+
+    <!-- Slides de imagem -->
+    <div style="margin-top:20px;padding-top:16px;border-top:1px solid rgba(255,255,255,.07)">
+      <div style="font-size:12px;font-weight:700;color:#8888aa;text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">🖼️ Slides de imagem</div>
+      {% set slides_img = anuncios_parsed | selectattr('tipo','equalto','imagem') | list %}
+      {% if slides_img %}
+      <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:12px">
+        {% for sl in slides_img %}
+        <div style="position:relative;border-radius:10px;overflow:hidden;border:1px solid rgba(255,255,255,.12)">
+          <img src="{{ sl.url }}" style="height:80px;width:auto;display:block;max-width:140px;object-fit:cover">
+          <form method="POST" action="/pubshow-en/painel/delete-slide" style="position:absolute;top:4px;right:4px">
+            <input type="hidden" name="url" value="{{ sl.url }}">
+            <button type="submit" style="background:rgba(0,0,0,.7);border:none;border-radius:4px;color:#fff;font-size:12px;padding:2px 6px;cursor:pointer" title="Remover">✕</button>
+          </form>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+      <form method="POST" action="/pubshow-en/painel/upload-slide" enctype="multipart/form-data" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <label style="background:#13131f;border:1px dashed rgba(255,255,255,.2);border-radius:8px;padding:8px 16px;cursor:pointer;font-size:12px;color:#8888aa;display:flex;align-items:center;gap:8px">
+          📁 Escolher imagem (PNG/JPG)
+          <input type="file" name="imagem" accept="image/png,image/jpeg,image/gif,image/webp" style="display:none" onchange="this.closest('form').submit()">
+        </label>
+        <span style="font-size:11px;color:#555">Imagem substitui um slot de texto · máximo {{ plano_max_anuncios }} slides no total</span>
+      </form>
+    </div>
+  </div>
+
+  <!-- Temas habilitados na TV -->
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-title">🎬 Temas disponíveis na TV</div>
+    <p style="font-size:12px;color:#8888aa;margin-bottom:14px">Escolha quais temas aparecem no seletor da sua tela. Temas sem vídeos cadastrados não tocarão nada.</p>
+    <form method="POST" action="/pubshow-en/painel/temas">
+      {% set grupos_temas = [
+        ('musica',        '🎵 Música'),
+        ('shows',         '🎤 Shows ao Vivo'),
+        ('sport',         '🏆 Esporte'),
+        ('viral',         '💥 Viral'),
+        ('entretenimento','🎭 Entretenimento'),
+      ] %}
+      {% for grupo_key, grupo_label in grupos_temas %}
+        {% set temas_grupo = canais.items()|selectattr('1.grupo','equalto',grupo_key)|list %}
+        {% if temas_grupo %}
+        <div style="margin-bottom:14px">
+          <div style="font-size:11px;font-weight:700;color:#8888aa;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">{{ grupo_label }}</div>
+          <div style="display:flex;flex-wrap:wrap;gap:8px">
+            {% for key, c in temas_grupo %}
+            {% set habilitado = temas_habilitados is none or key in temas_habilitados %}
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;
+                          background:{% if habilitado %}rgba(255,255,255,.07){% else %}rgba(255,255,255,.03){% endif %};
+                          border:1px solid {% if habilitado %}rgba(255,255,255,.18){% else %}rgba(255,255,255,.07){% endif %};
+                          border-radius:8px;padding:6px 12px;font-size:12px;font-weight:600;
+                          transition:.15s" id="label-{{ key }}">
+              <input type="checkbox" name="temas" value="{{ key }}"
+                     {% if habilitado %}checked{% endif %}
+                     onchange="atualizarLabel('{{ key }}')"
+                     style="accent-color:{{ c.cor }};width:13px;height:13px;cursor:pointer">
+              {{ c.emoji }} {{ c.nome }}
+            </label>
+            {% endfor %}
+          </div>
+        </div>
+        {% endif %}
+      {% endfor %}
+      <div style="display:flex;gap:10px;align-items:center;margin-top:6px">
+        <button type="submit" style="background:linear-gradient(135deg,#ef4444,#f97316);color:#fff;border:none;border-radius:8px;padding:9px 22px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">💾 Salvar temas</button>
+        <button type="button" onclick="marcarTodos(true)" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:#c8c8e8;border-radius:8px;padding:9px 16px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">✅ Marcar todos</button>
+        <button type="button" onclick="marcarTodos(false)" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:#c8c8e8;border-radius:8px;padding:9px 16px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">☐ Desmarcar todos</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Happy Hour dinâmico -->
+  <div class="card" style="margin-bottom:16px;border-color:{% if hh_desconto_atual > 0 %}rgba(250,204,21,.5){% elif not plano_permite_hh %}rgba(139,92,246,.25){% else %}rgba(255,255,255,.08){% endif %};background:{% if hh_desconto_atual > 0 %}rgba(250,204,21,.05){% else %}var(--surface){% endif %}">
+    <div class="card-title">🎉 Happy Hour dinâmico
+      {% if not plano_permite_hh %}<span style="margin-left:8px;font-size:11px;background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;padding:2px 8px;border-radius:20px;font-weight:700">🔒 Plano Pro</span>{% elif hh_desconto_atual > 0 %}<span style="margin-left:8px;font-size:11px;color:#fbbf24;font-weight:700;font-style:normal">● ATIVO agora — {{ hh_desconto_atual }}% off</span>{% endif %}
+    </div>
+    {% if not plano_permite_hh %}
+    <div style="display:flex;align-items:center;gap:16px;padding:16px;background:rgba(139,92,246,.06);border:1px dashed rgba(139,92,246,.3);border-radius:12px">
+      <span style="font-size:36px">🎉</span>
+      <div>
+        <div style="font-size:14px;font-weight:700;color:#c4b5fd;margin-bottom:4px">Desconto automático nos preços</div>
+        <div style="font-size:12px;color:#8888aa;line-height:1.6">Configure horários de Happy Hour e os clientes já veem o preço com desconto. Disponível no <strong style="color:#a78bfa">Plano Pro (R$ 199,90/mês)</strong>.</div>
+        <a href="/pubshow-en/planos" style="display:inline-block;margin-top:10px;background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;padding:7px 18px;border-radius:8px;font-size:12px;font-weight:700;text-decoration:none">🚀 Fazer upgrade</a>
+      </div>
+    </div>
+    {% else %}
+    <p style="font-size:12px;color:#8888aa;margin-bottom:14px">Desconto automático nos preços durante o horário configurado. Os clientes veem o preço já com desconto.</p>
+    <form method="POST" action="/pubshow-en/painel/happy-hour" style="display:flex;flex-direction:column;gap:14px">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--surface2);border-radius:12px;border:1px solid var(--border)">
+        <div>
+          <div style="font-size:14px;font-weight:700">🍺 Ativar Happy Hour</div>
+          <div style="font-size:12px;color:var(--text2);margin-top:2px">Desconto automático por horário</div>
+        </div>
+        <label style="position:relative;display:inline-block;width:48px;height:26px;cursor:pointer">
+          <input type="checkbox" name="hh_ativo" value="1" id="hh-toggle" onchange="toggleHH(this.checked)" {% if happy_hour %}checked{% endif %} style="opacity:0;width:0;height:0">
+          <span style="position:absolute;inset:0;background:{% if happy_hour %}#f59e0b{% else %}#333{% endif %};border-radius:13px;transition:.3s"></span>
+          <span style="position:absolute;left:{% if happy_hour %}24px{% else %}2px{% endif %};top:2px;width:22px;height:22px;background:#fff;border-radius:50%;transition:.3s"></span>
+        </label>
+      </div>
+      <div id="hh-config" style="display:{% if happy_hour %}flex{% else %}none{% endif %};flex-direction:column;gap:12px">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+          <div>
+            <label class="label-sm">Início</label>
+            <input type="time" name="hh_ini" value="{{ (happy_hour or {}).get('ini','18:00') }}"
+              style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-size:13px;font-family:inherit;width:100%;outline:none">
+          </div>
+          <div>
+            <label class="label-sm">Fim</label>
+            <input type="time" name="hh_fim" value="{{ (happy_hour or {}).get('fim','20:00') }}"
+              style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-size:13px;font-family:inherit;width:100%;outline:none">
+          </div>
+          <div>
+            <label class="label-sm">Desconto %</label>
+            <input type="number" name="hh_desconto" min="1" max="80" value="{{ (happy_hour or {}).get('desconto',20) }}"
+              style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:#fbbf24;font-size:16px;font-weight:900;font-family:inherit;width:100%;outline:none">
+          </div>
+        </div>
+        <div>
+          <label class="label-sm" style="margin-bottom:8px">Dias da semana</label>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            {% set dias_hh = (happy_hour or {}).get('dias',[0,1,2,3,4,5,6]) %}
+            {% for d_val, d_nome in [(0,'Dom'),(1,'Seg'),(2,'Ter'),(3,'Qua'),(4,'Qui'),(5,'Sex'),(6,'Sáb')] %}
+            <label style="display:flex;align-items:center;gap:5px;background:var(--surface2);border:1px solid {% if d_val in dias_hh %}rgba(251,191,36,.4){% else %}var(--border){% endif %};border-radius:8px;padding:6px 12px;cursor:pointer;font-size:12px;font-weight:700;transition:.15s">
+              <input type="checkbox" name="hh_dias" value="{{ d_val }}" {% if d_val in dias_hh %}checked{% endif %} style="accent-color:#f59e0b;width:14px;height:14px">
+              {{ d_nome }}
+            </label>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+      <button type="submit" style="background:linear-gradient(135deg,#f59e0b,#d97706);color:#000;border:none;border-radius:8px;padding:9px 22px;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;align-self:flex-start">💾 Salvar Happy Hour</button>
+    </form>
+    {% endif %}
+  </div>
+
+  <!-- Notificação WhatsApp -->
+  <div class="card" style="margin-bottom:16px;border-color:{% if not plano_permite_wa %}rgba(34,197,94,.15){% else %}rgba(255,255,255,.08){% endif %}">
+    <div class="card-title">📲 Notificações WhatsApp
+      {% if not plano_permite_wa %}<span style="margin-left:8px;font-size:11px;background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;padding:2px 8px;border-radius:20px;font-weight:700">🔒 Plano Pro</span>{% endif %}
+    </div>
+    {% if not plano_permite_wa %}
+    <div style="display:flex;align-items:center;gap:16px;padding:16px;background:rgba(139,92,246,.06);border:1px dashed rgba(139,92,246,.3);border-radius:12px">
+      <span style="font-size:36px">📲</span>
+      <div>
+        <div style="font-size:14px;font-weight:700;color:#c4b5fd;margin-bottom:4px">Alerta de novo pedido no celular</div>
+        <div style="font-size:12px;color:#8888aa;line-height:1.6">Receba uma mensagem no WhatsApp a cada pedido confirmado. Disponível no <strong style="color:#a78bfa">Plano Pro (R$ 199,90/mês)</strong>.</div>
+        <a href="/pubshow-en/planos" style="display:inline-block;margin-top:10px;background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;padding:7px 18px;border-radius:8px;font-size:12px;font-weight:700;text-decoration:none">🚀 Fazer upgrade</a>
+      </div>
+    </div>
+    {% else %}
+    <p style="font-size:12px;color:#8888aa;margin-bottom:14px">Receba uma mensagem no seu WhatsApp sempre que chegar um novo pedido. O número usado é o telefone do cadastro: <strong style="color:var(--text)">{{ b.telefone or '—' }}</strong></p>
+    <form method="POST" action="/pubshow-en/painel/notif" style="display:flex;align-items:center;gap:14px">
+      <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
+        <span style="position:relative;display:inline-block;width:48px;height:26px">
+          <input type="checkbox" name="whatsapp_notif" {% if b.whatsapp_notif %}checked{% endif %} onchange="this.form.submit()" style="opacity:0;width:0;height:0">
+          <span style="position:absolute;inset:0;background:{% if b.whatsapp_notif %}#22c55e{% else %}#333{% endif %};border-radius:13px;transition:.3s"></span>
+          <span style="position:absolute;left:{% if b.whatsapp_notif %}24px{% else %}2px{% endif %};top:2px;width:22px;height:22px;background:#fff;border-radius:50%;transition:.3s"></span>
+        </span>
+        <span style="font-size:14px;font-weight:700">{% if b.whatsapp_notif %}✅ Ativado{% else %}Desativado{% endif %}</span>
+      </label>
+      <span style="font-size:12px;color:var(--text2)">Toggle salva automaticamente</span>
+    </form>
+    {% endif %}
+  </div>
+
+  <!-- Notificação Push no Celular -->
+  <div class="card" style="margin-bottom:16px;border-color:rgba(99,102,241,.3);background:rgba(99,102,241,.04)">
+    <div class="card-title">🔔 Notificação Push no Celular</div>
+    <p style="font-size:12px;color:#8888aa;margin-bottom:14px">
+      Receba uma notificação <strong style="color:var(--text)">nativa no celular</strong> (igual ao WhatsApp) sempre que chegar um pedido — mesmo com a tela bloqueada.
+    </p>
+
+    <!-- Instrução iOS -->
+    <div id="ios-install-tip" style="display:none;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.3);border-radius:12px;padding:12px 14px;margin-bottom:14px;font-size:12px;line-height:1.7">
+      <div style="font-weight:800;color:#fbbf24;margin-bottom:4px">📱 iPhone / iPad — instale o app primeiro:</div>
+      <div style="color:#fcd34d">
+        1. Toque em <strong>⬆️ Compartilhar</strong> no Safari<br>
+        2. Toque em <strong>"Adicionar à Tela de Início"</strong><br>
+        3. Abra o <strong>PUBSHOW</strong> pela tela inicial<br>
+        4. Volte aqui e ative as notificações
+      </div>
+    </div>
+
+    <!-- Instrução Android -->
+    <div id="android-install-tip" style="display:none;background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.2);border-radius:12px;padding:12px 14px;margin-bottom:14px;font-size:12px;line-height:1.7">
+      <div style="font-weight:800;color:#4ade80;margin-bottom:4px">📱 Android — instale o app (opcional mas recomendado):</div>
+      <div style="color:#86efac">
+        Toque em <strong>⋮ Menu</strong> no Chrome → <strong>"Adicionar à tela inicial"</strong><br>
+        Depois clique em Ativar abaixo.
+      </div>
+    </div>
+
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button id="push-btn" onclick="ativarPush()" style="background:linear-gradient(135deg,#6366f1,#818cf8);color:#fff;border:none;border-radius:10px;padding:10px 20px;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit">
+        🔔 Ativar notificações neste celular
+      </button>
+      <button onclick="testarPush()" style="background:rgba(99,102,241,.15);border:1px solid rgba(99,102,241,.3);color:#a5b4fc;border-radius:10px;padding:10px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">
+        🧪 Testar
+      </button>
+    </div>
+    <div id="push-status" style="font-size:12px;color:#8888aa;margin-top:10px"></div>
+  </div>
+
+  <!-- Configurações do Jukebox -->
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-title">⚙️ Configurações do Jukebox</div>
+    <form method="POST" action="/pubshow-en/painel/config" style="display:flex;flex-direction:column;gap:18px">
+
+      <!-- Liga/desliga -->
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--surface2);border-radius:12px;border:1px solid var(--border)">
+        <div>
+          <div style="font-size:14px;font-weight:700">🔔 Jukebox ativo</div>
+          <div style="font-size:12px;color:var(--text2);margin-top:2px">Clientes podem fazer pedidos</div>
+        </div>
+        <label style="position:relative;display:inline-block;width:48px;height:26px;cursor:pointer">
+          <input type="checkbox" name="jukebox_ativo" {% if b.jukebox_ativo %}checked{% endif %} style="opacity:0;width:0;height:0">
+          <span style="position:absolute;inset:0;background:{% if b.jukebox_ativo %}#22c55e{% else %}#333{% endif %};border-radius:13px;transition:.3s"></span>
+          <span style="position:absolute;left:{% if b.jukebox_ativo %}24px{% else %}2px{% endif %};top:2px;width:22px;height:22px;background:#fff;border-radius:50%;transition:.3s"></span>
+        </label>
+      </div>
+
+      <!-- Horário -->
+      <div>
+        <label class="label-sm">⏰ Horário de funcionamento</label>
+        <div style="display:flex;gap:10px;align-items:center">
+          <input type="time" name="hora_ini" value="{{ b.jukebox_hora_ini or '00:00' }}"
+            style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-size:13px;font-family:inherit;outline:none;flex:1">
+          <span style="color:var(--text2)">até</span>
+          <input type="time" name="hora_fim" value="{{ b.jukebox_hora_fim or '23:59' }}"
+            style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-size:13px;font-family:inherit;outline:none;flex:1">
+        </div>
+        <div style="font-size:11px;color:var(--text2);margin-top:5px">Fora deste horário, o Jukebox exibe "fechado" para os clientes.</div>
+      </div>
+
+      <!-- Mensagem de boas-vindas -->
+      <div>
+        <label class="label-sm">💬 Mensagem de boas-vindas no Jukebox</label>
+        <input type="text" name="mensagem_jukebox" maxlength="120"
+          value="{{ b.mensagem_jukebox or '' }}"
+          placeholder="Ex: Bem-vindo ao Vita! 🍕🍷 Peça sua música!"
+          style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;color:var(--text);font-size:13px;font-family:inherit;outline:none">
+      </div>
+
+      <!-- Aviso temporário -->
+      <div>
+        <label class="label-sm">📢 Aviso temporário (some automaticamente)</label>
+        <div style="display:flex;gap:8px">
+          <input type="text" name="aviso_jukebox" maxlength="120"
+            value="{{ b.aviso_jukebox or '' }}"
+            placeholder='Ex: ⚽ Hoje tem jogo! Pedidos pausados até o fim.'
+            style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;color:var(--text);font-size:13px;font-family:inherit;outline:none">
+          <select name="aviso_horas" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-size:13px;font-family:inherit;outline:none;width:80px">
+            <option value="1">1h</option><option value="2">2h</option>
+            <option value="4" selected>4h</option><option value="8">8h</option>
+            <option value="24">24h</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Limite anti-spam -->
+      <div>
+        <label class="label-sm">🛡️ Limite de pedidos por cliente por hora</label>
+        <div style="display:flex;gap:10px;align-items:center">
+          <input type="number" name="limite_pedidos_hora" min="1" max="50"
+            value="{{ b.limite_pedidos_hora or 10 }}"
+            style="width:80px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-size:13px;font-family:inherit;outline:none">
+          <span style="font-size:13px;color:var(--text2)">pedidos por hora por cliente (anti-spam)</span>
+        </div>
+      </div>
+
+      <!-- Tipos de pedido disponíveis -->
+      <div>
+        <label class="label-sm">✅ Tipos de pedido disponíveis</label>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px">
+          {% for key, t in tipos.items() %}
+          <label style="display:flex;align-items:center;gap:6px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:7px 12px;cursor:pointer;font-size:12px;font-weight:700">
+            <input type="checkbox" name="tipos_ativos" value="{{ key }}"
+              {% if key not in bloqueados_parsed %}checked{% endif %}
+              style="width:14px;height:14px;accent-color:#ef4444">
+            {{ t.emoji }} {{ t.nome }}
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- Preços custom -->
+      <div>
+        <label class="label-sm">💰 Preços customizados (deixe em branco para usar o padrão)</label>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px;margin-top:6px">
+          {% for key, t in tipos.items() %}
+          <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 12px">
+            <div style="font-size:11px;color:var(--text2);margin-bottom:4px">{{ t.emoji }} {{ t.nome }}</div>
+            <div style="display:flex;align-items:center;gap:6px">
+              <span style="font-size:12px;color:var(--text2)">R$</span>
+              <input type="number" name="preco_{{ key }}" step="0.01" min="0.50" max="200"
+                value="{{ '%.2f'|format(precos_parsed[key]|float) if precos_parsed.get(key) else '' }}"
+                placeholder="{{ '%.2f'|format(t.preco) }}"
+                style="width:100%;background:transparent;border:none;color:var(--text);font-size:14px;font-weight:700;font-family:inherit;outline:none">
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- Gêneros liberados no Jukebox -->
+      <div>
+        <label class="label-sm">🎵 Gêneros disponíveis para busca no Jukebox</label>
+        <div style="font-size:11px;color:var(--text2);margin-bottom:8px">
+          Clientes só verão músicas destes gêneros ao buscar na biblioteca.
+          Se nenhum for selecionado, <strong style="color:var(--text)">todos os gêneros ficam disponíveis</strong>.
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">
+          {% for key, ch in canais_todos.items() %}
+          <label style="display:flex;align-items:center;gap:5px;background:var(--surface2);border:1px solid {% if generos_jukebox and key in generos_jukebox %}#ef444466{% else %}var(--border){% endif %};border-radius:8px;padding:6px 11px;cursor:pointer;font-size:12px;font-weight:600;transition:.15s" id="gj-lbl-{{ key }}">
+            <input type="checkbox" name="generos_jukebox" value="{{ key }}"
+              {% if generos_jukebox and key in generos_jukebox %}checked{% endif %}
+              style="width:14px;height:14px;accent-color:#ef4444"
+              onchange="atualizarGeneroLbl('{{ key }}',this.checked)">
+            {{ ch.emoji }} {{ ch.nome }}
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+
+      <button type="submit" class="btn-primary" style="width:100%">💾 Salvar configurações</button>
+    </form>
+  </div>
+
+  <!-- Conta -->
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-title">🔐 Segurança da conta</div>
+    {% set erro_senha = request.args.get('erro') %}
+    {% set ok_senha   = request.args.get('ok') %}
+    {% if ok_senha == 'senha' %}
+    <div style="background:#052e16;border:1px solid #22c55e44;border-radius:10px;padding:10px 14px;font-size:13px;color:#4ade80;margin-bottom:14px">✅ Senha alterada com sucesso!</div>
+    {% elif erro_senha == 'senha_errada' %}
+    <div style="background:#2d0a0a;border:1px solid #ef444433;border-radius:10px;padding:10px 14px;font-size:13px;color:#f87171;margin-bottom:14px">❌ Senha atual incorreta.</div>
+    {% elif erro_senha == 'senha_curta' %}
+    <div style="background:#2d0a0a;border:1px solid #ef444433;border-radius:10px;padding:10px 14px;font-size:13px;color:#f87171;margin-bottom:14px">❌ A nova senha deve ter ao menos 6 caracteres.</div>
+    {% elif erro_senha == 'senha_diferente' %}
+    <div style="background:#2d0a0a;border:1px solid #ef444433;border-radius:10px;padding:10px 14px;font-size:13px;color:#f87171;margin-bottom:14px">❌ As senhas não coincidem.</div>
+    {% endif %}
+    <form method="POST" action="/pubshow-en/painel/senha" style="display:flex;flex-direction:column;gap:12px;max-width:400px">
+      <div>
+        <label class="label-sm">Senha atual</label>
+        <input type="password" name="senha_atual" required
+          style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;color:var(--text);font-size:13px;font-family:inherit;outline:none">
+      </div>
+      <div>
+        <label class="label-sm">Nova senha</label>
+        <input type="password" name="senha_nova" required minlength="6"
+          style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;color:var(--text);font-size:13px;font-family:inherit;outline:none">
+      </div>
+      <div>
+        <label class="label-sm">Confirmar nova senha</label>
+        <input type="password" name="senha_conf" required
+          style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;color:var(--text);font-size:13px;font-family:inherit;outline:none">
+      </div>
+      <button type="submit" class="btn-primary" style="width:fit-content">🔐 Alterar senha</button>
+    </form>
+  </div>
+
+  <!-- Link relatório -->
+  <div style="text-align:center;margin-bottom:24px">
+    {% if plano_permite_analytics %}
+    <a href="/pubshow-en/painel/relatorio" style="display:inline-flex;align-items:center;gap:8px;padding:12px 28px;background:var(--surface);border:1px solid var(--border2);border-radius:12px;color:var(--text);text-decoration:none;font-size:14px;font-weight:700">
+      📊 Ver relatório completo de receita
+    </a>
+    {% else %}
+    <div style="display:inline-flex;align-items:center;gap:12px;padding:14px 28px;background:var(--surface);border:1px dashed rgba(139,92,246,.3);border-radius:12px">
+      <span style="font-size:24px">📊</span>
+      <div style="text-align:left">
+        <div style="font-size:14px;font-weight:700;color:#c4b5fd">Relatórios completos <span style="font-size:11px;background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;padding:2px 8px;border-radius:20px;margin-left:6px">🔒 Plano Bar</span></div>
+        <div style="font-size:12px;color:#8888aa;margin-top:2px">Analytics de horário, músicas mais pedidas e receita.</div>
+      </div>
+      <a href="/pubshow-en/planos" style="background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;padding:8px 16px;border-radius:8px;font-size:12px;font-weight:700;text-decoration:none;white-space:nowrap">Fazer upgrade</a>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Assinar -->
+  {% if not b.plano_ativo %}
+  {% set plano_atual = planos.get(b.plano or 'bar', planos.bar) %}
+  <div style="background:linear-gradient(135deg,rgba(239,68,68,.1),rgba(249,115,22,.08));border:1px solid rgba(239,68,68,.3);border-radius:16px;padding:24px;margin-top:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px">
+    <div>
+      <div style="font-weight:800;font-size:16px;margin-bottom:4px">⚠️ Ative sua assinatura</div>
+      <div style="font-size:13px;color:var(--text2)">Seu trial expira em {{ (b.trial_ends or '')[:10] }}. Assine para manter o Jukebox ativo.</div>
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <a href="/pubshow-en/assinar/{{ b.plano or 'bar' }}" style="padding:12px 24px;background:linear-gradient(135deg,#ef4444,#f97316);color:#fff;font-weight:800;font-size:14px;border-radius:12px;text-decoration:none">
+        {{ plano_atual.get('emoji','') }} Assinar {{ plano_atual.get('nome','Bar') }} {{ plano_atual.get('preco_fmt','') }}/mês →
+      </a>
+      <a href="/pubshow-en/planos" style="padding:12px 20px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:#c8c8e8;font-weight:700;font-size:13px;border-radius:12px;text-decoration:none">
+        Ver todos os planos
+      </a>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Cancelar assinatura -->
+  {% if b.plano_ativo %}
+  <div style="margin-top:32px;padding-top:24px;border-top:1px solid rgba(255,255,255,.06);text-align:center">
+    <p style="font-size:12px;color:#8888aa;margin-bottom:10px">Quer pausar ou cancelar? Fale antes com o suporte — podemos ajudar.</p>
+    <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+      <a href="https://wa.me/5547999606998?text=Quero+falar+sobre+minha+assinatura+PUBSHOW" target="_blank"
+         style="padding:8px 18px;background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.2);border-radius:10px;font-size:13px;font-weight:700;color:#4ade80;text-decoration:none">
+        💬 Falar com suporte
+      </a>
+      <a href="/pubshow-en/painel/cancelar"
+         style="padding:8px 18px;background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.15);border-radius:10px;font-size:13px;font-weight:600;color:#f87171;text-decoration:none">
+        Cancelar assinatura
+      </a>
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+<script>
+function toggleHH(on) {
+  document.getElementById('hh-config').style.display = on ? 'flex' : 'none';
+}
+
+function atualizarLabel(key) {
+  const cb = document.querySelector(`input[value="${key}"]`);
+  const lbl = document.getElementById('label-' + key);
+  if (!lbl) return;
+  if (cb.checked) {
+    lbl.style.background = 'rgba(255,255,255,.07)';
+    lbl.style.borderColor = 'rgba(255,255,255,.18)';
+  } else {
+    lbl.style.background = 'rgba(255,255,255,.03)';
+    lbl.style.borderColor = 'rgba(255,255,255,.07)';
+  }
+}
+function marcarTodos(val) {
+  document.querySelectorAll('input[name="temas"]').forEach(cb => {
+    cb.checked = val;
+    atualizarLabel(cb.value);
+  });
+}
+
+function atualizarGeneroLbl(key, checked) {
+  const lbl = document.getElementById('gj-lbl-' + key);
+  if (!lbl) return;
+  lbl.style.borderColor = checked ? '#ef444466' : 'var(--border)';
+}
+
+function copiar(texto, btn) {
+  navigator.clipboard.writeText(texto).then(() => {
+    const orig = btn.textContent;
+    btn.textContent = '✅ Copiado!';
+    setTimeout(() => btn.textContent = orig, 2000);
+  });
+}
+// Atualiza fila a cada 10s via fetch — sem recarregar a página inteira
+const TIPOS_INFO = {{ tipos | tojson }};
+
+// Tipos de pedido que a TV toca automaticamente (sem precisar do bar owner)
+const TIPOS_AUTO_TV = ['musica', 'musica_especifica', 'musica_externa', 'flash', 'vip'];
+
+function renderFila(fila) {
+  const div = document.getElementById('fila-pedidos');
+  if (!div) return;
+  if (!fila.length) {
+    div.innerHTML = '<div class="empty-state">Nenhum pedido na fila agora.<br>Os pedidos aparecem aqui em tempo real. 🎉</div>';
+    return;
+  }
+
+  // Destaca o PRÓXIMO a tocar (primeiro da lista)
+  div.innerHTML = fila.map((p, idx) => {
+    const t = TIPOS_INFO[p.tipo] || {};
+    const emoji = t.emoji || '🎵';
+    const nome_tipo = t.nome || p.tipo;
+    const musica = p.titulo_pedido ? `🎵 ${p.titulo_pedido.substring(0,40)}` : '';
+    const msg = p.mensagem ? ` · "${p.mensagem.substring(0,30)}"` : '';
+    const valor = Math.round(p.valor || 0);
+    const isAutoTV = TIPOS_AUTO_TV.includes(p.tipo);
+    const isProximo = idx === 0;
+
+    // Destaque visual para o próximo da fila
+    const proxBorder = isProximo ? 'border-left:3px solid #22c55e;padding-left:10px;' : '';
+    const proxLabel = isProximo
+      ? `<span style="font-size:9px;font-weight:800;color:#22c55e;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:2px">▶ PRÓXIMO</span>`
+      : '';
+
+    // Aviso para músicas que tocam automaticamente
+    const btnTitle = isAutoTV
+      ? 'A TV toca automaticamente. Clique SÓ se a TV já tocou e você precisa limpar da lista.'
+      : 'Marcar como exibido na TV';
+    const btnOnclick = isAutoTV
+      ? `onclick="return confirm('⚠️ A TV deveria tocar esta música automaticamente.\\n\\nSó confirme se a música JÁ TOCOU na TV.\\n\\nTem certeza?')" `
+      : '';
+
+    return `<div class="pedido-row" style="${proxBorder}">
+      <span class="pedido-emoji">${emoji}</span>
+      <div class="pedido-info">
+        ${proxLabel}
+        <div class="pedido-nome">${p.nome_cliente}</div>
+        <div class="pedido-tipo">${musica || nome_tipo}${msg}</div>
+      </div>
+      <span class="pedido-valor">R$ ${valor}</span>
+      <form method="POST" action="/pubshow-en/painel/pedido/${p.id}/dispensar" style="margin:0">
+        <button type="submit" class="pedido-dispensar" title="${btnTitle}" ${btnOnclick}>
+          ${isAutoTV ? '📺 Tocou' : '✅ OK'}
+        </button>
+      </form>
+    </div>`;
+  }).join('');
+
+  // Atualiza contador da fila no header
+  const count = document.getElementById('fila-count');
+  if (count) count.textContent = fila.length;
+}
+
+function renderTotalHoje(total) {
+  const el = document.getElementById('total-hoje');
+  if (el) el.textContent = 'R$ ' + total.toFixed(2).replace('.', ',');
+  const el2 = document.getElementById('fila-count');
+  // atualizado via renderFila
+}
+
+function pollFila() {
+  fetch('/pubshow-en/painel/fila-json')
+    .then(r => r.json())
+    .then(d => {
+      renderFila(d.fila || []);
+      renderTotalHoje(d.total_hoje || 0);
+      // Se houver mudança nos aguardando_pix, recarrega só se nenhum input estiver em foco
+      const temPix = (d.aguardando_pix || []).length;
+      const pixAtual = document.querySelectorAll('.pix-pedido-row').length;
+      if (temPix !== pixAtual) {
+        const focado = document.activeElement;
+        const digitando = focado && (focado.tagName==='INPUT'||focado.tagName==='TEXTAREA'||focado.tagName==='SELECT');
+        if (!digitando) location.reload();
+      }
+    })
+    .catch(() => {}) // falha silenciosa
+    .finally(() => setTimeout(pollFila, 3000)); // Poll a cada 3s para fila em tempo real
+}
+setTimeout(pollFila, 3000);
+</script>
+
+<!-- ── Web Push — notificação nativa no celular do bar ───────────────────── -->
+<script>
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const raw = atob(base64);
+  return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
+}
+
+async function ativarPush() {
+  const btn = document.getElementById('push-btn');
+  const status = document.getElementById('push-status');
+
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+    status.textContent = '⚠️ Seu navegador não suporta notificações push. Use Chrome ou Edge.';
+    status.style.color = '#f87171';
+    return;
+  }
+
+  try {
+    btn.disabled = true;
+    btn.textContent = '⏳ Aguardando permissão...';
+
+    const perm = await Notification.requestPermission();
+    if (perm !== 'granted') {
+      status.textContent = '❌ Permissão negada. Ative nas configurações do navegador.';
+      status.style.color = '#f87171';
+      btn.disabled = false;
+      btn.textContent = '🔔 Ativar notificações neste celular';
+      return;
+    }
+
+    // Registra SW
+    const reg = await navigator.serviceWorker.register('/pubshow-en/sw-painel.js', {scope: '/pubshow-en/'});
+    await navigator.serviceWorker.ready;
+
+    // Busca VAPID public key
+    const kRes = await fetch('/pubshow-en/painel/push/vapid-key');
+    const { publicKey } = await kRes.json();
+    if (!publicKey) throw new Error('Chave VAPID não disponível');
+
+    // Inscreve no push
+    const sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(publicKey)
+    });
+
+    // Salva no servidor
+    await fetch('/pubshow-en/painel/push/subscribe', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(sub.toJSON())
+    });
+
+    btn.textContent = '✅ Notificações ativas neste celular!';
+    btn.style.background = 'linear-gradient(135deg,#16a34a,#22c55e)';
+    status.textContent = '🎉 Você receberá notificações quando chegarem pedidos.';
+    status.style.color = '#4ade80';
+
+  } catch(e) {
+    console.error('[Push]', e);
+    status.textContent = '❌ Erro: ' + e.message;
+    status.style.color = '#f87171';
+    btn.disabled = false;
+    btn.textContent = '🔔 Ativar notificações neste celular';
+  }
+}
+
+async function testarPush() {
+  const status = document.getElementById('push-status');
+  try {
+    await fetch('/pubshow-en/painel/push/test', {method: 'POST'});
+    status.textContent = '🧪 Notificação de teste enviada! Aguarde alguns segundos.';
+    status.style.color = '#a5b4fc';
+  } catch(e) {
+    status.textContent = '❌ Erro ao enviar teste.';
+    status.style.color = '#f87171';
+  }
+}
+
+// Detecta plataforma e mostra dica de instalação correta
+(function detectPlataforma() {
+  const ua = navigator.userAgent;
+  const isIOS = /iPad|iPhone|iPod/.test(ua) && !window.MSStream;
+  const isAndroid = /Android/.test(ua);
+  const isStandalone = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
+
+  if (isIOS && !isStandalone) {
+    // iOS sem PWA instalado → mostra instrução
+    const tip = document.getElementById('ios-install-tip');
+    if (tip) tip.style.display = 'block';
+  } else if (isAndroid && !isStandalone) {
+    // Android sem PWA → mostra dica opcional
+    const tip = document.getElementById('android-install-tip');
+    if (tip) tip.style.display = 'block';
+  }
+
+  // iOS sem PWA não suporta push — desabilita botão
+  if (isIOS && !isStandalone) {
+    const btn = document.getElementById('push-btn');
+    if (btn) {
+      btn.style.opacity = '.5';
+      btn.style.cursor = 'default';
+      btn.onclick = () => {
+        document.getElementById('ios-install-tip').scrollIntoView({behavior:'smooth'});
+      };
+    }
+  }
+})();
+
+// Checa se já tem push ativo neste dispositivo
+(async function checkPushStatus() {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+  try {
+    const reg = await navigator.serviceWorker.getRegistration('/pubshow-en/');
+    if (!reg) return;
+    const sub = await reg.pushManager.getSubscription();
+    if (sub) {
+      const btn = document.getElementById('push-btn');
+      btn.textContent = '✅ Notificações ativas neste celular!';
+      btn.style.background = 'linear-gradient(135deg,#16a34a,#22c55e)';
+    }
+  } catch(_) {}
+})();
+</script>
+</body>
+</html>

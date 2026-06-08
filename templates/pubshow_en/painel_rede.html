@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rede de Locais — PUBSHOW</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:#08080f;color:#f0f0ff;font-family:'Segoe UI',sans-serif;min-height:100vh;padding:0 0 60px}
+  nav{background:#13131f;border-bottom:1px solid rgba(255,255,255,.08);padding:0 24px;height:56px;display:flex;align-items:center;justify-content:space-between}
+  .logo{font-size:20px;font-weight:900;background:linear-gradient(135deg,#ef4444,#f97316);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;text-decoration:none}
+  .nav-links{display:flex;gap:12px;align-items:center}
+  .nav-links a{font-size:13px;color:#8888aa;text-decoration:none}
+  .nav-links a:hover{color:#f0f0ff}
+  .btn-primary{display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg,#ef4444,#f97316);color:#fff;padding:8px 18px;border-radius:10px;font-size:13px;font-weight:700;text-decoration:none}
+  .btn-outline{display:inline-flex;align-items:center;gap:6px;background:none;border:1px solid rgba(255,255,255,.15);color:#c8c8e8;padding:8px 18px;border-radius:10px;font-size:13px;font-weight:600;text-decoration:none}
+  .btn-outline:hover{border-color:rgba(255,255,255,.3);color:#fff}
+
+  .page{max-width:1100px;margin:0 auto;padding:32px 24px}
+  .page-header{margin-bottom:32px}
+  .page-header h1{font-size:28px;font-weight:900;margin-bottom:6px}
+  .page-header p{font-size:14px;color:#8888aa}
+
+  .ok-banner{background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.25);border-radius:12px;padding:12px 16px;color:#4ade80;font-size:13px;margin-bottom:24px}
+
+  .stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin-bottom:32px}
+  .stat-card{background:#13131f;border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:20px}
+  .stat-label{font-size:11px;color:#8888aa;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+  .stat-val{font-size:28px;font-weight:900;letter-spacing:-1px}
+
+  .locais-grid{display:grid;gap:16px}
+  .local-card{background:#13131f;border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+  .local-card:first-child{border-color:rgba(239,68,68,.3);background:linear-gradient(135deg,rgba(239,68,68,.06),#13131f)}
+  .local-icon{width:48px;height:48px;border-radius:14px;background:linear-gradient(135deg,#ef4444,#f97316);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0}
+  .local-info{flex:1;min-width:160px}
+  .local-nome{font-size:16px;font-weight:800;margin-bottom:2px}
+  .local-meta{font-size:12px;color:#8888aa}
+  .local-stats{display:flex;gap:20px;flex-wrap:wrap}
+  .local-stat{text-align:center}
+  .local-stat-val{font-size:18px;font-weight:900}
+  .local-stat-lbl{font-size:10px;color:#8888aa;margin-top:1px}
+  .fila-badge{background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.3);color:#f87171;border-radius:100px;padding:3px 10px;font-size:11px;font-weight:700}
+  .local-actions{display:flex;gap:8px;flex-wrap:wrap;margin-left:auto}
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="/pubshow-en/painel" class="logo">📺 PUBSHOW</a>
+  <div class="nav-links">
+    <a href="/pubshow-en/painel">← Meu painel</a>
+    <a href="/pubshow-en/painel/rede/nova-filial" class="btn-primary">+ Nova unidade</a>
+  </div>
+</nav>
+
+<div class="page">
+
+  <div class="page-header">
+    <h1>🏟️ Minha rede de locais</h1>
+    <p>Plano Rede — {{ filiais|length }} unidade{% if filiais|length != 1 %}s{% endif %} cadastrada{% if filiais|length != 1 %}s{% endif %}</p>
+  </div>
+
+  {% if request.args.get('ok') == 'filial' %}
+  <div class="ok-banner">✅ Nova unidade cadastrada com sucesso!</div>
+  {% endif %}
+
+  <!-- Totais consolidados -->
+  {% set total_fila = filiais | sum(attribute='fila') %}
+  {% set total_receita = filiais | sum(attribute='receita_hoje') %}
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-label">Unidades ativas</div>
+      <div class="stat-val">{{ filiais|length }}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Na fila agora</div>
+      <div class="stat-val" style="color:#f97316">{{ total_fila }}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Receita hoje (rede)</div>
+      <div class="stat-val" style="color:#22c55e">R$ {{ '%.0f'|format(total_receita) }}</div>
+    </div>
+  </div>
+
+  <!-- Lista de locais -->
+  <div class="locais-grid">
+    {% for f in filiais %}
+    <div class="local-card">
+      <div class="local-icon">
+        {% if f.id == b.id %}🏠{% else %}🏪{% endif %}
+      </div>
+      <div class="local-info">
+        <div class="local-nome">
+          {{ f.nome }}
+          {% if f.id == b.id %}<span style="font-size:11px;color:#f97316;font-weight:600"> · Principal</span>{% endif %}
+        </div>
+        <div class="local-meta">
+          {{ f.tipo or 'bar' }} · {{ f.canal_atual or 'rock' }} · {{ f.email }}
+        </div>
+      </div>
+      <div class="local-stats">
+        <div class="local-stat">
+          <div class="local-stat-val" style="color:#22c55e">R$ {{ '%.0f'|format(f.receita_hoje) }}</div>
+          <div class="local-stat-lbl">Hoje</div>
+        </div>
+        <div class="local-stat">
+          {% if f.fila > 0 %}
+          <div class="fila-badge">{{ f.fila }} na fila</div>
+          {% else %}
+          <div class="local-stat-val" style="color:#8888aa">0</div>
+          <div class="local-stat-lbl">Na fila</div>
+          {% endif %}
+        </div>
+      </div>
+      <div class="local-actions">
+        <a href="/pubshow-en/tv/{{ f.code }}" target="_blank" class="btn-outline">📺 TV</a>
+        <a href="/pubshow-en/painel" class="btn-outline">⚙️ Painel</a>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+</div>
+</body>
+</html>

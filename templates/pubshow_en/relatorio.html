@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Relatório Pro — {{ b.nome }}</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#08080f;--s:#13131f;--s2:#1a1a2e;--bd:rgba(255,255,255,.08);--t:#f0f0ff;--t2:#8888aa;--green:#22c55e;--red:#ef4444;--orange:#f97316;--blue:#3b82f6;--purple:#a855f7;--yellow:#f59e0b}
+body{background:var(--bg);color:var(--t);font-family:'Segoe UI',sans-serif;min-height:100vh;padding-bottom:60px}
+
+nav{background:rgba(8,8,15,.95);backdrop-filter:blur(12px);border-bottom:1px solid var(--bd);padding:0 20px;height:54px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:10}
+.back{font-size:13px;color:var(--t2);text-decoration:none;display:flex;align-items:center;gap:4px}
+.back:hover{color:var(--t)}
+.nav-title{font-size:15px;font-weight:800;margin-left:4px}
+.print-btn{margin-left:auto;background:rgba(255,255,255,.06);border:1px solid var(--bd);border-radius:8px;padding:6px 14px;color:var(--t2);font-size:12px;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:6px}
+.print-btn:hover{color:var(--t);border-color:rgba(255,255,255,.2)}
+
+.page{max-width:880px;margin:0 auto;padding:24px 16px}
+
+/* ── Hero do mês ── */
+.mes-hero{background:linear-gradient(135deg,rgba(34,197,94,.1),rgba(16,185,129,.05));border:1px solid rgba(34,197,94,.2);border-radius:24px;padding:28px;margin-bottom:20px}
+.mes-nome{font-size:13px;font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px}
+.mes-receita{font-size:52px;font-weight:900;letter-spacing:-2px;color:var(--green);line-height:1}
+.mes-sub{font-size:14px;color:var(--t2);margin-top:8px}
+.mes-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:20px}
+.mes-stat{background:rgba(255,255,255,.05);border-radius:14px;padding:14px;text-align:center}
+.mes-stat-val{font-size:20px;font-weight:900;margin-bottom:3px}
+.mes-stat-label{font-size:10px;color:var(--t2);text-transform:uppercase;letter-spacing:.5px}
+
+/* ── Comparativo ── */
+.compare-row{display:flex;align-items:center;gap:8px;margin-top:14px;font-size:13px}
+.compare-chip{padding:3px 10px;border-radius:100px;font-size:11px;font-weight:800}
+.up{background:rgba(34,197,94,.15);color:var(--green)}
+.down{background:rgba(239,68,68,.15);color:#f87171}
+.neutral{background:rgba(255,255,255,.08);color:var(--t2)}
+
+/* ── Insights ── */
+.insights{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px}
+.insight{background:var(--s);border:1px solid var(--bd);border-radius:16px;padding:18px;display:flex;align-items:flex-start;gap:12px}
+.insight-icon{font-size:28px;flex-shrink:0;line-height:1}
+.insight-titulo{font-size:13px;font-weight:800;margin-bottom:3px}
+.insight-sub{font-size:12px;color:var(--t2);line-height:1.5}
+
+/* ── Cards ── */
+.card{background:var(--s);border:1px solid var(--bd);border-radius:18px;padding:22px;margin-bottom:16px}
+.card-title{font-size:12px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between}
+.card-badge{font-size:10px;padding:2px 8px;border-radius:100px;background:rgba(245,158,11,.15);color:var(--yellow);font-weight:800}
+
+/* ── Gráfico de barras 14 dias ── */
+.chart{display:flex;align-items:flex-end;gap:3px;height:100px}
+.bw{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;min-width:0}
+.bv{font-size:8px;color:var(--green);font-weight:700;min-height:10px}
+.bar{width:100%;background:linear-gradient(180deg,#22c55e,#16a34a);border-radius:4px 4px 0 0;min-height:3px;transition:.3s}
+.bar.today{background:linear-gradient(180deg,#4ade80,#22c55e);box-shadow:0 0 12px rgba(74,222,128,.4)}
+.bl{font-size:8px;color:var(--t2);margin-top:2px}
+
+/* ── Gráfico de horas ── */
+.hora-chart{display:flex;align-items:flex-end;gap:2px;height:80px}
+.hw{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px}
+.hbar{width:100%;border-radius:3px 3px 0 0;min-height:3px}
+.hbar.pico{background:linear-gradient(180deg,#ef4444,#f97316)}
+.hbar.ok{background:rgba(59,130,246,.6)}
+.hbar.low{background:rgba(255,255,255,.08)}
+.hl{font-size:7px;color:var(--t2)}
+
+/* ── Dias da semana ── */
+.wd{display:flex;gap:8px}
+.wdw{flex:1;text-align:center}
+.wdbg{height:56px;background:rgba(255,255,255,.05);border-radius:8px;position:relative;overflow:hidden;margin-bottom:5px}
+.wdfill{position:absolute;bottom:0;left:0;right:0;background:linear-gradient(180deg,#a855f7,#7c3aed);border-radius:8px;transition:.4s}
+.wdname{font-size:9px;font-weight:700;color:var(--t2)}
+.wdn{font-size:11px;color:#c4b5fd;font-weight:800}
+
+/* ── Top tipos ── */
+.tipo-row{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid rgba(255,255,255,.05)}
+.tipo-row:last-child{border:none}
+.tipo-info{min-width:110px;font-size:12px}
+.tipo-nome{font-weight:700;margin-bottom:2px}
+.tipo-sub{font-size:10px;color:var(--t2)}
+.tipo-bar-bg{flex:1;height:6px;background:rgba(255,255,255,.06);border-radius:3px;overflow:hidden}
+.tipo-fill{height:100%;border-radius:3px;background:linear-gradient(135deg,#ef4444,#f97316)}
+.tipo-receita{font-size:12px;color:var(--green);font-weight:800;min-width:56px;text-align:right}
+
+/* ── Top músicas ── */
+.musica-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.05);font-size:13px}
+.musica-row:last-child{border:none}
+.musica-pos{font-size:18px;width:28px;text-align:center;flex-shrink:0}
+.musica-titulo{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
+.musica-bar-bg{width:80px;height:4px;background:rgba(255,255,255,.06);border-radius:2px;overflow:hidden;flex-shrink:0}
+.musica-bar-fill{height:100%;background:linear-gradient(135deg,#f59e0b,#ef4444);border-radius:2px}
+.musica-count{color:var(--yellow);font-weight:800;font-size:11px;min-width:28px;text-align:right}
+
+/* ── Projeção ── */
+.projecao-box{background:linear-gradient(135deg,rgba(168,85,247,.08),rgba(99,102,241,.05));border:1px solid rgba(168,85,247,.25);border-radius:16px;padding:20px;margin-bottom:16px;display:flex;align-items:center;gap:16px}
+.projecao-icon{font-size:36px;flex-shrink:0}
+.projecao-val{font-size:32px;font-weight:900;color:#c4b5fd;letter-spacing:-1px}
+.projecao-label{font-size:12px;color:var(--t2);margin-top:2px}
+
+.empty{text-align:center;padding:60px;color:var(--t2)}
+
+@media print{nav .print-btn{display:none}}
+@media(max-width:600px){
+  .insights{grid-template-columns:1fr}
+  .mes-stats{grid-template-columns:1fr 1fr}
+  .mes-receita{font-size:38px}
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="/pubshow-en/painel" class="back">← Painel</a>
+  <div class="nav-title">📊 Relatório Pro — {{ b.nome }}</div>
+  <button class="print-btn" onclick="window.print()">🖨️ Imprimir</button>
+</nav>
+
+<div class="page">
+
+  {% if not por_dia and not top_tipos %}
+  <div class="empty">
+    <div style="font-size:52px;margin-bottom:16px">📊</div>
+    <div style="font-size:16px;font-weight:700;margin-bottom:8px">Ainda sem dados</div>
+    <div>Os relatórios aparecem assim que o Jukebox começar a receber pedidos.</div>
+  </div>
+  {% else %}
+
+  <!-- Hero do mês -->
+  <div class="mes-hero">
+    <div class="mes-nome">📅 {{ mes_atual }}</div>
+    <div class="mes-receita">R$ {{ '%.2f'|format(receita_mes)|replace('.',',') }}</div>
+    <div class="mes-sub">receita total do Jukebox este mês</div>
+
+    <!-- Comparativo com mês anterior -->
+    <div class="compare-row">
+      {% if receita_mes_anterior > 0 %}
+        {% set variacao = ((receita_mes - receita_mes_anterior) / receita_mes_anterior * 100)|round(1) %}
+        {% if variacao > 0 %}
+          <span class="compare-chip up">▲ {{ variacao }}% vs mês anterior</span>
+          <span style="color:var(--t2);font-size:12px">Mês passado: R$ {{ '%.0f'|format(receita_mes_anterior) }}</span>
+        {% elif variacao < 0 %}
+          <span class="compare-chip down">▼ {{ (variacao * -1) }}% vs mês anterior</span>
+          <span style="color:var(--t2);font-size:12px">Mês passado: R$ {{ '%.0f'|format(receita_mes_anterior) }}</span>
+        {% else %}
+          <span class="compare-chip neutral">= Igual ao mês anterior</span>
+        {% endif %}
+      {% else %}
+        <span class="compare-chip neutral">📅 Primeiro mês de dados</span>
+      {% endif %}
+    </div>
+
+    <div class="mes-stats">
+      <div class="mes-stat">
+        <div class="mes-stat-val" style="color:var(--blue)">{{ total_pedidos_mes }}</div>
+        <div class="mes-stat-label">Pedidos no mês</div>
+      </div>
+      <div class="mes-stat">
+        <div class="mes-stat-val" style="color:var(--yellow)">R$ {{ '%.2f'|format(ticket_medio)|replace('.',',') }}</div>
+        <div class="mes-stat-label">Ticket médio</div>
+      </div>
+      <div class="mes-stat">
+        <div class="mes-stat-val" style="color:var(--t2)">R$ {{ '%.0f'|format(receita_hoje) }}</div>
+        <div class="mes-stat-label">Hoje</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Projeção do mês -->
+  {% if projecao_mes > receita_mes %}
+  <div class="projecao-box">
+    <div class="projecao-icon">🔮</div>
+    <div>
+      <div class="projecao-val">R$ {{ '%.0f'|format(projecao_mes) }}</div>
+      <div class="projecao-label">Projeção para o fim do mês no ritmo atual</div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Insights automáticos -->
+  {% set max_hora = por_hora|map(attribute='n')|max %}
+  {% set max_wd = por_weekday|map(attribute='n')|max %}
+  {% if melhor_hora and melhor_hora.n > 0 or melhor_wd and melhor_wd.n > 0 %}
+  <div class="insights">
+    {% if melhor_hora and melhor_hora.n > 0 %}
+    <div class="insight">
+      <div class="insight-icon">🕐</div>
+      <div>
+        <div class="insight-titulo">Horário de pico</div>
+        <div class="insight-sub">A maioria dos pedidos chega às <strong style="color:var(--t)">{{ '%02d'|format(melhor_hora.hora) }}h</strong> — tenha o Jukebox ativo neste horário.</div>
+      </div>
+    </div>
+    {% endif %}
+    {% if melhor_wd and melhor_wd.n > 0 %}
+    <div class="insight">
+      <div class="insight-icon">📅</div>
+      <div>
+        <div class="insight-titulo">Melhor dia da semana</div>
+        <div class="insight-sub"><strong style="color:var(--t)">{{ melhor_wd.dia }}</strong> é o dia com mais pedidos. Prepare promoções relâmpago para este dia.</div>
+      </div>
+    </div>
+    {% endif %}
+    {% if ticket_medio > 0 %}
+    <div class="insight">
+      <div class="insight-icon">💡</div>
+      <div>
+        <div class="insight-titulo">Dica de receita</div>
+        <div class="insight-sub">Com ticket médio de R$ {{ '%.2f'|format(ticket_medio)|replace('.',',') }}, cada 10 pedidos a mais valem R$ {{ '%.0f'|format(ticket_medio * 10) }} extras.</div>
+      </div>
+    </div>
+    {% endif %}
+    {% if receita_semana > 0 %}
+    <div class="insight">
+      <div class="insight-icon">📈</div>
+      <div>
+        <div class="insight-titulo">Últimos 7 dias</div>
+        <div class="insight-sub">Receita de <strong style="color:var(--green)">R$ {{ '%.0f'|format(receita_semana) }}</strong> na semana — média de R$ {{ '%.0f'|format(receita_semana / 7) }}/dia.</div>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  <!-- Gráfico 14 dias -->
+  {% if por_dia %}
+  <div class="card">
+    <div class="card-title">📈 Receita — últimos 14 dias</div>
+    {% set max_r = por_dia|map(attribute='r')|max %}
+    {% set max_r = max_r if max_r > 0 else 1 %}
+    <div class="chart">
+      {% for d in por_dia %}
+      {% set pct = ((d.r / max_r * 90)|int)|max(3) %}
+      <div class="bw">
+        <div class="bv">{% if d.r %}R${{ '%.0f'|format(d.r) }}{% endif %}</div>
+        <div class="bar {% if loop.last %}today{% endif %}" style="height:{{ pct }}px"></div>
+        <div class="bl">{{ d.dia[5:] }}</div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Horários de pico -->
+  {% if max_hora > 0 %}
+  <div class="card">
+    <div class="card-title">
+      🕐 Horários de pico — últimos 30 dias
+      {% if melhor_hora %}<span class="card-badge">Pico: {{ '%02d'|format(melhor_hora.hora) }}h</span>{% endif %}
+    </div>
+    <div class="hora-chart">
+      {% for h in por_hora %}
+      {% set pct = ((h.n / max_hora * 70)|int)|max(3) if max_hora > 0 else 3 %}
+      <div class="hw" title="{{ '%02d'|format(h.hora) }}h — {{ h.n }} pedidos">
+        <div class="hbar {% if h.n == max_hora %}pico{% elif h.n > 0 %}ok{% else %}low{% endif %}"
+             style="height:{{ pct if h.n > 0 else 3 }}px"></div>
+        <div class="hl">{% if h.hora % 4 == 0 %}{{ '%02d'|format(h.hora) }}{% endif %}</div>
+      </div>
+      {% endfor %}
+    </div>
+    <div style="font-size:10px;color:var(--t2);display:flex;gap:14px;margin-top:6px">
+      <span>🔴 Pico &nbsp; 🔵 Ativo &nbsp; ⬛ Sem pedidos</span>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Dias da semana -->
+  {% if max_wd > 0 %}
+  <div class="card">
+    <div class="card-title">📅 Pedidos por dia da semana — últimos 30 dias</div>
+    <div class="wd">
+      {% for wd in por_weekday %}
+      {% set pct = ((wd.n / max_wd * 50)|int) if max_wd > 0 else 0 %}
+      <div class="wdw">
+        <div class="wdbg">
+          <div class="wdfill" style="height:{{ pct }}px"></div>
+        </div>
+        <div class="wdname">{{ wd.dia }}</div>
+        <div class="wdn">{{ wd.n if wd.n > 0 else '—' }}</div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Top tipos de pedido -->
+  {% if top_tipos %}
+  <div class="card">
+    <div class="card-title">🏆 Pedidos por tipo — últimos 30 dias</div>
+    {% set max_n = top_tipos|map(attribute='n')|max %}
+    {% for t in top_tipos %}
+    {% set cfg = tipos.get(t.tipo, {}) %}
+    <div class="tipo-row">
+      <div class="tipo-info">
+        <div class="tipo-nome">{{ cfg.get('emoji','') }} {{ cfg.get('nome', t.tipo) }}</div>
+        <div class="tipo-sub">{{ t.n }} pedido{{ 's' if t.n != 1 else '' }}</div>
+      </div>
+      <div class="tipo-bar-bg">
+        <div class="tipo-fill" style="width:{{ (t.n / max_n * 100)|int }}%"></div>
+      </div>
+      <div class="tipo-receita">R$ {{ '%.0f'|format(t.receita) }}</div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <!-- Top músicas -->
+  {% if top_musicas %}
+  <div class="card">
+    <div class="card-title">🎵 Músicas mais pedidas — últimos 30 dias</div>
+    {% set max_m = top_musicas[0].n %}
+    {% for m in top_musicas %}
+    <div class="musica-row">
+      <div class="musica-pos">{{ ['🥇','🥈','🥉','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣','9️⃣','🔟'][loop.index0] if loop.index0 < 10 else loop.index }}</div>
+      <div class="musica-titulo">{{ m.titulo_pedido }}</div>
+      <div class="musica-bar-bg">
+        <div class="musica-bar-fill" style="width:{{ (m.n / max_m * 100)|int }}%"></div>
+      </div>
+      <div class="musica-count">{{ m.n }}×</div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <!-- Resumo financeiro -->
+  <div class="card" style="border-color:rgba(168,85,247,.2)">
+    <div class="card-title">💰 Resumo financeiro total</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+      <div>
+        <div style="font-size:11px;color:var(--t2);margin-bottom:4px">Total acumulado</div>
+        <div style="font-size:28px;font-weight:900;color:#c4b5fd">R$ {{ '%.2f'|format(receita_total)|replace('.',',') }}</div>
+      </div>
+      <div>
+        <div style="font-size:11px;color:var(--t2);margin-bottom:4px">Últimos 7 dias</div>
+        <div style="font-size:28px;font-weight:900;color:var(--green)">R$ {{ '%.2f'|format(receita_semana)|replace('.',',') }}</div>
+      </div>
+    </div>
+    <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--bd);font-size:12px;color:var(--t2)">
+      💡 100% desta receita foi paga direto na sua chave PIX — o PUBSHOW não fica com nada.
+    </div>
+  </div>
+
+  {% endif %}
+</div>
+</body>
+</html>

@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin — PUBSHOW</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:#08080f;color:#f0f0ff;font-family:'Segoe UI',sans-serif;min-height:100vh;padding-bottom:60px}
+  nav{background:#13131f;border-bottom:1px solid rgba(255,255,255,.08);padding:0 24px;height:54px;
+      display:flex;align-items:center;justify-content:space-between}
+  .logo{font-size:17px;font-weight:900;background:linear-gradient(135deg,#ef4444,#f97316);
+        -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+  .nav-right{display:flex;gap:16px;align-items:center}
+  .nav-right a{font-size:12px;color:#8888aa;text-decoration:none}
+  .nav-right a:hover{color:#fff}
+  .badge-admin{background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.3);
+               color:#ef4444;font-size:10px;font-weight:900;padding:3px 10px;border-radius:100px;letter-spacing:.5px}
+  .page{max-width:1100px;margin:0 auto;padding:28px 20px}
+  h1{font-size:22px;font-weight:900;margin-bottom:20px}
+
+  /* Stats */
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:28px}
+  .stat{background:#13131f;border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:18px}
+  .stat-val{font-size:26px;font-weight:900;margin-bottom:4px}
+  .stat-label{font-size:12px;color:#8888aa}
+
+  /* Busca */
+  .search-bar{margin-bottom:18px}
+  .search-bar input{
+    background:#13131f;border:1px solid rgba(255,255,255,.1);border-radius:10px;
+    padding:10px 16px;color:#f0f0ff;font-size:14px;font-family:inherit;outline:none;width:100%;max-width:360px;
+  }
+  .search-bar input:focus{border-color:#ef4444}
+
+  /* Tabela */
+  .table-wrap{overflow-x:auto}
+  table{width:100%;border-collapse:collapse}
+  th{font-size:11px;font-weight:700;color:#8888aa;text-transform:uppercase;letter-spacing:.5px;
+     padding:10px 14px;border-bottom:1px solid rgba(255,255,255,.08);text-align:left;white-space:nowrap}
+  td{padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.05);font-size:13px;vertical-align:middle}
+  tr:hover td{background:rgba(255,255,255,.02)}
+  .status-ok{color:#22c55e;font-weight:700;font-size:11px}
+  .status-trial{color:#f59e0b;font-weight:700;font-size:11px}
+  .status-inativo{color:#8888aa;font-weight:700;font-size:11px}
+  .status-suspenso{color:#ef4444;font-weight:700;font-size:11px}
+  .btn-sm{background:#13131f;border:1px solid rgba(255,255,255,.15);color:#c8c8e8;
+    border-radius:8px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer;
+    text-decoration:none;white-space:nowrap;font-family:inherit}
+  .btn-sm:hover{border-color:rgba(255,255,255,.35);color:#fff}
+  .btn-danger{border-color:rgba(239,68,68,.35);color:#ef4444}
+  .btn-danger:hover{background:rgba(239,68,68,.1)}
+  .btn-success{border-color:rgba(34,197,94,.35);color:#22c55e}
+  .btn-success:hover{background:rgba(34,197,94,.1)}
+
+  @media(max-width:768px){.stats{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<nav>
+  <div class="logo">📺 PUBSHOW Admin</div>
+  <div class="nav-right">
+    <span class="badge-admin">ADMIN</span>
+    <a href="/pubshow-en/admin/logout">Sair</a>
+  </div>
+</nav>
+
+<div class="page">
+  <h1>Painel Master</h1>
+
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-val">{{ bars|length }}</div>
+      <div class="stat-label">Estabelecimentos</div>
+    </div>
+    <div class="stat">
+      <div class="stat-val">{{ bars|selectattr('plano_ativo','equalto',1)|list|length }}</div>
+      <div class="stat-label">Planos ativos</div>
+    </div>
+    <div class="stat">
+      <div class="stat-val">{{ total_pedidos_hoje }}</div>
+      <div class="stat-label">Pedidos hoje</div>
+    </div>
+    <div class="stat">
+      <div class="stat-val" style="color:#22c55e">R$ {{ '%.0f'|format(receita_hoje) }}</div>
+      <div class="stat-label">Receita Jukebox hoje</div>
+    </div>
+  </div>
+
+  <div style="margin-bottom:16px;display:flex;gap:10px;flex-wrap:wrap">
+    <a href="/pubshow-en/admin/videos" style="display:inline-flex;align-items:center;gap:8px;background:rgba(124,58,237,.15);border:1px solid rgba(124,58,237,.3);border-radius:10px;padding:10px 18px;color:#a78bfa;font-size:13px;font-weight:700;text-decoration:none">
+      🎬 Gerenciar Biblioteca de Vídeos — {{ total_videos }} vídeos
+    </a>
+    <a href="/pubshow-en/admin/slides-sistema" style="display:inline-flex;align-items:center;gap:8px;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);border-radius:10px;padding:10px 18px;color:#f87171;font-size:13px;font-weight:700;text-decoration:none">
+      📢 Slides do Sistema (todas as TVs)
+    </a>
+    <a href="/pubshow-en/_cron/emails" target="_blank" style="display:inline-flex;align-items:center;gap:8px;background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.25);border-radius:10px;padding:10px 18px;color:#4ade80;font-size:13px;font-weight:700;text-decoration:none">
+      📧 Emails pendentes: {{ emails_pendentes }} / {{ emails_total }} total
+    </a>
+    <a href="/pubshow-en/admin/cupons" style="display:inline-flex;align-items:center;gap:8px;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);border-radius:10px;padding:10px 18px;color:#fbbf24;font-size:13px;font-weight:700;text-decoration:none">
+      🏷️ Cupons de Desconto
+    </a>
+  </div>
+
+  <div class="search-bar">
+    <input type="text" placeholder="🔍 Filtrar por nome ou email..." oninput="filtrar(this.value)">
+  </div>
+
+  <div class="table-wrap">
+    <table id="tabela-bars">
+      <thead>
+        <tr>
+          <th>Estabelecimento</th>
+          <th>Plano</th>
+          <th>Status</th>
+          <th>Tema</th>
+          <th>Pedidos</th>
+          <th>Receita</th>
+          <th>Fila</th>
+          <th>Cadastro</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for b in bars %}
+        <tr data-search="{{ b.nome|lower }} {{ b.email|lower }}">
+          <td>
+            <div style="font-weight:700">{{ b.nome }}</div>
+            <div style="font-size:11px;color:#8888aa">{{ b.email }}</div>
+          </td>
+          <td>{{ b.plano or '—' }}</td>
+          <td>
+            {% if b.suspenso %}
+              <span class="status-suspenso">⛔ SUSPENSO</span>
+            {% elif b.plano_ativo %}
+              <span class="status-ok">✅ Ativo</span>
+            {% elif b.trial_ends and b.trial_ends > now %}
+              <span class="status-trial">⏳ Trial</span>
+            {% else %}
+              <span class="status-inativo">⚪ Inativo</span>
+            {% endif %}
+          </td>
+          <td style="font-size:12px">{{ canais.get(b.canal_atual or 'rock', {}).get('emoji','') }} {{ canais.get(b.canal_atual or 'rock', {}).get('nome','—') }}</td>
+          <td style="text-align:center">{{ b.total_pedidos }}</td>
+          <td>R$ {{ '%.0f'|format(b.total_receita) }}</td>
+          <td style="text-align:center">
+            {% if b.fila_atual > 0 %}<span style="color:#f59e0b;font-weight:700">{{ b.fila_atual }}</span>{% else %}—{% endif %}
+          </td>
+          <td style="font-size:11px;color:#8888aa">{{ (b.created_at or '')[:10] }}</td>
+          <td>
+            <a href="/pubshow-en/admin/bar/{{ b.id }}" class="btn-sm">Gerenciar</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+const now = '{{ now }}';
+function filtrar(q) {
+  q = q.toLowerCase();
+  document.querySelectorAll('#tabela-bars tbody tr').forEach(tr => {
+    tr.style.display = tr.dataset.search.includes(q) ? '' : 'none';
+  });
+}
+</script>
+</body>
+</html>

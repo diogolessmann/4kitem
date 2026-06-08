@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin — {{ b.nome }} — PUBSHOW</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:#08080f;color:#f0f0ff;font-family:'Segoe UI',sans-serif;min-height:100vh;padding-bottom:60px}
+  nav{background:#13131f;border-bottom:1px solid rgba(255,255,255,.08);padding:0 24px;height:54px;
+      display:flex;align-items:center;gap:12px}
+  .back{font-size:13px;color:#8888aa;text-decoration:none}
+  .back:hover{color:#fff}
+  .logo{font-size:16px;font-weight:900;color:#ef4444}
+  .badge-admin{background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.3);
+               color:#ef4444;font-size:10px;font-weight:900;padding:3px 10px;border-radius:100px;margin-left:auto}
+
+  .page{max-width:900px;margin:0 auto;padding:24px 20px}
+  .bar-header{margin-bottom:24px}
+  .bar-header h1{font-size:22px;font-weight:900;margin-bottom:4px}
+  .bar-header .meta{font-size:13px;color:#8888aa}
+
+  /* Grid de cards */
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px}
+  .card{background:#13131f;border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:20px}
+  .card-title{font-size:12px;font-weight:700;color:#8888aa;text-transform:uppercase;letter-spacing:.5px;margin-bottom:14px}
+  .info-row{display:flex;justify-content:space-between;align-items:center;
+            padding:8px 0;border-bottom:1px solid rgba(255,255,255,.05);font-size:13px}
+  .info-row:last-child{border:none}
+  .info-label{color:#8888aa}
+  .info-val{font-weight:600}
+  .status-ok{color:#22c55e}
+  .status-warn{color:#f59e0b}
+  .status-bad{color:#ef4444}
+
+  /* Ações */
+  .acoes{display:flex;flex-direction:column;gap:8px}
+  .btn-acao{
+    background:#0a0a12;border:1px solid rgba(255,255,255,.12);color:#c8c8e8;
+    border-radius:10px;padding:10px 16px;font-size:13px;font-weight:700;
+    cursor:pointer;font-family:inherit;text-align:left;width:100%;transition:.15s;
+    display:flex;align-items:center;gap:8px;
+  }
+  .btn-acao:hover{background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.25)}
+  .btn-acao.danger{border-color:rgba(239,68,68,.3);color:#f87171}
+  .btn-acao.danger:hover{background:rgba(239,68,68,.08)}
+  .btn-acao.success{border-color:rgba(34,197,94,.3);color:#4ade80}
+  .btn-acao.success:hover{background:rgba(34,197,94,.08)}
+  .btn-acao.warn{border-color:rgba(245,158,11,.3);color:#fbbf24}
+  .btn-acao.warn:hover{background:rgba(245,158,11,.08)}
+
+  /* Formulários inline */
+  .form-inline{display:flex;gap:8px;margin-top:10px}
+  .form-inline select,.form-inline input{
+    flex:1;background:#0a0a12;border:1px solid rgba(255,255,255,.12);
+    border-radius:8px;padding:8px 12px;color:#f0f0ff;font-size:13px;font-family:inherit;outline:none;
+  }
+  .form-inline button{background:linear-gradient(135deg,#ef4444,#f97316);color:#fff;border:none;
+    border-radius:8px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap}
+
+  /* Notas admin */
+  textarea{width:100%;background:#0a0a12;border:1px solid rgba(255,255,255,.12);
+    border-radius:10px;padding:10px 14px;color:#f0f0ff;font-size:13px;font-family:inherit;
+    outline:none;resize:vertical;min-height:80px;margin-bottom:8px}
+  textarea:focus{border-color:#ef4444}
+
+  /* Pedidos */
+  .pedidos-table{width:100%;border-collapse:collapse;font-size:12px}
+  .pedidos-table th{color:#8888aa;font-weight:700;text-transform:uppercase;letter-spacing:.4px;
+    padding:8px 10px;border-bottom:1px solid rgba(255,255,255,.08);text-align:left}
+  .pedidos-table td{padding:8px 10px;border-bottom:1px solid rgba(255,255,255,.04)}
+  .status-chip{font-size:10px;font-weight:700;padding:2px 8px;border-radius:100px}
+  .chip-pendente{background:rgba(245,158,11,.15);color:#fbbf24}
+  .chip-exibido{background:rgba(34,197,94,.15);color:#4ade80}
+  .chip-dispensado{background:rgba(100,100,120,.15);color:#8888aa}
+
+  @media(max-width:600px){.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<nav>
+  <a href="/pubshow-en/admin" class="back">← Admin</a>
+  <div class="logo">{{ b.nome }}</div>
+  <span class="badge-admin">ADMIN</span>
+</nav>
+
+<div class="page">
+  <div class="bar-header">
+    <h1>{{ b.nome }}</h1>
+    <div class="meta">{{ b.email }} · {{ b.telefone or '—' }} · ID #{{ b.id }}</div>
+  </div>
+
+  <div class="grid">
+
+    <!-- Info do bar -->
+    <div class="card">
+      <div class="card-title">📊 Informações</div>
+      <div class="info-row"><span class="info-label">Plano</span><span class="info-val">{{ b.plano or '—' }}</span></div>
+      <div class="info-row">
+        <span class="info-label">Status</span>
+        <span class="info-val {% if b.suspenso %}status-bad{% elif b.plano_ativo %}status-ok{% else %}status-warn{% endif %}">
+          {% if b.suspenso %}⛔ Suspenso{% elif b.plano_ativo %}✅ Ativo{% else %}⚪ Inativo{% endif %}
+        </span>
+      </div>
+      <div class="info-row"><span class="info-label">Jukebox</span>
+        <span class="info-val {% if b.jukebox_ativo %}status-ok{% else %}status-bad{% endif %}">
+          {% if b.jukebox_ativo %}✅ On{% else %}❌ Off{% endif %}
+        </span>
+      </div>
+      <div class="info-row"><span class="info-label">Tema ativo</span>
+        <span class="info-val">{{ canais.get(b.canal_atual or 'rock', {}).get('emoji','') }} {{ canais.get(b.canal_atual or 'rock', {}).get('nome','—') }}</span>
+      </div>
+      <div class="info-row"><span class="info-label">Trial até</span>
+        <span class="info-val" style="font-size:11px">{{ (b.trial_ends or '—')[:10] }}</span>
+      </div>
+      <div class="info-row"><span class="info-label">Cadastro</span>
+        <span class="info-val" style="font-size:11px">{{ (b.created_at or '—')[:10] }}</span>
+      </div>
+      <div class="info-row"><span class="info-label">Último acesso</span>
+        <span class="info-val" style="font-size:11px">{{ (b.ultimo_acesso or '—')[:16] }}</span>
+      </div>
+      {% if b.pix_key %}
+      <div class="info-row"><span class="info-label">PIX</span>
+        <span class="info-val" style="font-size:11px">{{ b.pix_key }}</span>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Ações -->
+    <div class="card">
+      <div class="card-title">⚡ Ações</div>
+      <div class="acoes">
+
+        <!-- Plano -->
+        <form method="POST" action="/pubshow-en/admin/bar/{{ b.id }}/acao">
+          <input type="hidden" name="acao" value="ativar_plano">
+          <div class="form-inline">
+            <select name="plano">
+              {% for key, p in planos.items() %}
+              <option value="{{ key }}" {% if key == b.plano %}selected{% endif %}>{{ p.emoji }} {{ p.nome }}</option>
+              {% endfor %}
+            </select>
+            <button type="submit">✅ Ativar plano</button>
+          </div>
+        </form>
+
+        <form method="POST" action="/pubshow-en/admin/bar/{{ b.id }}/acao">
+          <input type="hidden" name="acao" value="desativar_plano">
+          <button type="submit" class="btn-acao warn">⚪ Desativar plano</button>
+        </form>
+
+        <!-- Tema de clips -->
+        <form method="POST" action="/pubshow-en/admin/bar/{{ b.id }}/acao">
+          <input type="hidden" name="acao" value="trocar_canal">
+          <div class="form-inline">
+            <select name="canal">
+              {% for key, c in canais.items() %}
+              <option value="{{ key }}" {% if key == b.canal_atual %}selected{% endif %}>{{ c.emoji }} {{ c.nome }}</option>
+              {% endfor %}
+            </select>
+            <button type="submit">🎬 Trocar tema</button>
+          </div>
+        </form>
+
+        <!-- Jukebox on/off -->
+        <form method="POST" action="/pubshow-en/admin/bar/{{ b.id }}/acao">
+          <input type="hidden" name="acao" value="toggle_jukebox">
+          <button type="submit" class="btn-acao {% if b.jukebox_ativo %}warn{% else %}success{% endif %}">
+            {% if b.jukebox_ativo %}🔕 Desativar Jukebox{% else %}🔔 Ativar Jukebox{% endif %}
+          </button>
+        </form>
+
+        <!-- Novo QR -->
+        <form method="POST" action="/pubshow-en/admin/bar/{{ b.id }}/acao">
+          <input type="hidden" name="acao" value="novo_qr">
+          <button type="submit" class="btn-acao warn">🔄 Gerar novo QR Code</button>
+        </form>
+
+        <!-- Limpar fila -->
+        <form method="POST" action="/pubshow-en/admin/bar/{{ b.id }}/acao">
+          <input type="hidden" name="acao" value="limpar_fila">
+          <button type="submit" class="btn-acao danger" onclick="return confirm('Limpar toda a fila?')">🗑️ Limpar fila de pedidos</button>
+        </form>
+
+        <!-- Suspender / reativar -->
+        {% if b.suspenso %}
+        <form method="POST" action="/pubshow-en/admin/bar/{{ b.id }}/acao">
+          <input type="hidden" name="acao" value="reativar">
+          <button type="submit" class="btn-acao success">✅ Reativar estabelecimento</button>
+        </form>
+        {% else %}
+        <form method="POST" action="/pubshow-en/admin/bar/{{ b.id }}/acao">
+          <input type="hidden" name="acao" value="suspender">
+          <button type="submit" class="btn-acao danger" onclick="return confirm('Suspender este bar?')">⛔ Suspender estabelecimento</button>
+        </form>
+        {% endif %}
+
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Slides de propaganda do bar -->
+  <div class="card" style="margin-bottom:20px">
+    <div class="card-title">🖼️ Slides de propaganda na TV</div>
+    {% set anuncios = b.anuncios_json | default('[]') %}
+    {% set slides_parsed = [] %}
+    {# Parse slides #}
+    {% if anuncios %}
+    <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:14px">
+      {% for sl in anuncios_list %}
+      <div style="border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:8px;background:#0a0a12;text-align:center;min-width:100px;max-width:160px">
+        {% if sl.get('tipo') == 'imagem' %}
+        <img src="{{ sl.url }}" style="height:60px;width:auto;max-width:140px;object-fit:cover;border-radius:6px;display:block;margin:0 auto 6px">
+        <div style="font-size:10px;color:#8888aa">imagem</div>
+        {% else %}
+        <div style="font-size:20px;margin-bottom:4px">{{ sl.get('emoji','📢') }}</div>
+        <div style="font-size:11px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:130px">{{ sl.get('titulo','—') }}</div>
+        <div style="font-size:10px;color:#8888aa">texto</div>
+        {% endif %}
+      </div>
+      {% endfor %}
+      {% if not anuncios_list %}
+      <span style="font-size:12px;color:#8888aa">Nenhum slide cadastrado.</span>
+      {% endif %}
+    </div>
+    {% endif %}
+    <!-- Upload de imagem para o bar pelo admin -->
+    <div style="border-top:1px solid rgba(255,255,255,.07);padding-top:12px;margin-top:4px">
+      <div style="font-size:11px;color:#8888aa;margin-bottom:8px;font-weight:700">⬆️ Enviar slide de imagem para a TV do bar</div>
+      <form method="POST" action="/pubshow-en/admin/bar/{{ b.id }}/upload-slide" enctype="multipart/form-data" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <label style="background:#13131f;border:1px dashed rgba(255,255,255,.2);border-radius:8px;padding:7px 14px;cursor:pointer;font-size:12px;color:#8888aa;display:flex;align-items:center;gap:8px">
+          📁 Escolher imagem (PNG/JPG)
+          <input type="file" name="imagem" accept="image/png,image/jpeg,image/gif,image/webp" style="display:none">
+        </label>
+        <button type="submit" style="background:linear-gradient(135deg,#ef4444,#f97316);color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Enviar para TV</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Notas do admin -->
+  <div class="card" style="margin-bottom:20px">
+    <div class="card-title">📝 Notas internas</div>
+    <form method="POST" action="/pubshow-en/admin/bar/{{ b.id }}/acao">
+      <input type="hidden" name="acao" value="nota">
+      <textarea name="nota" placeholder="Anotações sobre este cliente (visível só para admin)...">{{ b.notas_admin or '' }}</textarea>
+      <button type="submit" style="background:linear-gradient(135deg,#ef4444,#f97316);color:#fff;border:none;border-radius:8px;padding:8px 20px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Salvar nota</button>
+    </form>
+  </div>
+
+  <!-- Últimos pedidos -->
+  <div class="card">
+    <div class="card-title">📋 Últimos 50 pedidos</div>
+    {% if pedidos %}
+    <div style="overflow-x:auto">
+      <table class="pedidos-table">
+        <thead>
+          <tr><th>#</th><th>Tipo</th><th>Cliente</th><th>Música</th><th>Valor</th><th>Status</th><th>Data</th></tr>
+        </thead>
+        <tbody>
+          {% for p in pedidos %}
+          {% set t = tipos.get(p.tipo, {}) %}
+          <tr>
+            <td style="color:#8888aa">{{ p.id }}</td>
+            <td>{{ t.get('emoji','') }} {{ t.get('nome', p.tipo) }}</td>
+            <td>{{ p.nome_cliente or '—' }}</td>
+            <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+              {{ p.titulo_pedido or p.mensagem or '—' }}
+            </td>
+            <td style="color:#4ade80;font-weight:700">{% if p.valor %}R$ {{ '%.0f'|format(p.valor) }}{% else %}—{% endif %}</td>
+            <td>
+              <span class="status-chip {% if p.status=='pendente' %}chip-pendente{% elif p.status=='exibido' %}chip-exibido{% else %}chip-dispensado{% endif %}">
+                {{ p.status }}
+              </span>
+            </td>
+            <td style="color:#8888aa;white-space:nowrap">{{ (p.created_at or '')[:16] }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div style="color:#8888aa;font-size:13px;padding:8px 0">Nenhum pedido ainda.</div>
+    {% endif %}
+  </div>
+</div>
+</body>
+</html>

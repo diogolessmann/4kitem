@@ -1,0 +1,1464 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PUBSHOW TV — {{ b.nome }}</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:#000;color:#fff;font-family:'Segoe UI',sans-serif;overflow:hidden;height:100vh;width:100vw}
+
+  /* Player */
+  #player-wrap{position:fixed;inset:0;z-index:1}
+  #yt-player{width:100%;height:100%;border:none;display:block}
+
+  /* Now Playing bar */
+  #now-playing{
+    position:fixed;bottom:0;left:0;right:0;z-index:10;
+    background:linear-gradient(transparent,rgba(0,0,0,.9));
+    padding:60px 32px 24px;
+    display:flex;align-items:flex-end;justify-content:space-between;
+    transition:opacity .6s;
+  }
+  #now-playing.hidden{opacity:0;pointer-events:none}
+  .np-left{display:flex;align-items:center;gap:16px}
+  .np-canal-badge{
+    background:var(--canal-cor,#ef4444);
+    padding:6px 14px;border-radius:8px;
+    font-size:13px;font-weight:800;letter-spacing:.5px;white-space:nowrap;
+  }
+  .np-info{}
+  .np-titulo{font-size:20px;font-weight:800;text-shadow:0 2px 12px rgba(0,0,0,.9)}
+  .np-artista{font-size:14px;color:rgba(255,255,255,.65);margin-top:3px}
+  .np-right{display:flex;align-items:center;gap:20px;flex-shrink:0}
+  .np-qr{font-size:12px;color:rgba(255,255,255,.55);text-align:right;line-height:1.6}
+  .np-qr strong{display:block;font-size:22px;margin-bottom:2px}
+
+  /* FILA — próxima pedido */
+  #fila-badge{
+    position:fixed;top:20px;left:20px;z-index:50;
+    background:rgba(0,0,0,.8);border:1px solid rgba(255,255,255,.2);
+    border-radius:12px;padding:10px 18px;
+    display:none;align-items:center;gap:10px;
+    font-size:14px;font-weight:700;
+    backdrop-filter:blur(8px);
+    animation:slideIn .4s ease;
+  }
+  @keyframes slideIn{from{transform:translateX(-20px);opacity:0}to{transform:translateX(0);opacity:1}}
+  #fila-badge.show{display:flex}
+  .fila-dot{width:8px;height:8px;border-radius:50%;background:#f59e0b;animation:blink 1s ease-in-out infinite}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+
+  /* PRÓXIMO — aparece 15s antes do fim do vídeo */
+  #proximo-card{
+    position:fixed;bottom:100px;right:24px;z-index:50;
+    background:rgba(0,0,0,.85);border:2px solid #f59e0b;
+    border-radius:16px;padding:14px 20px;max-width:280px;
+    display:none;animation:slideIn .4s ease;
+    backdrop-filter:blur(8px);
+  }
+  #proximo-card.show{display:block}
+  .prox-label{font-size:10px;color:#f59e0b;font-weight:800;text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px}
+  .prox-tipo{font-size:16px;font-weight:800;margin-bottom:2px}
+  .prox-nome{font-size:13px;color:rgba(255,255,255,.65)}
+
+  /* Overlay especial (parabéns, dedicatória etc.) */
+  #overlay{
+    position:fixed;inset:0;z-index:100;
+    display:none;align-items:center;justify-content:center;
+    background:rgba(0,0,0,.93);backdrop-filter:blur(12px);
+  }
+  #overlay.show{display:flex}
+  .overlay-box{
+    text-align:center;padding:52px 64px;
+    border-radius:32px;border:2px solid var(--overlay-cor,#ec4899);
+    background:linear-gradient(135deg,rgba(0,0,0,.85),rgba(10,0,20,.9));
+    max-width:740px;width:90%;
+    animation:popIn .5s cubic-bezier(.34,1.56,.64,1);
+  }
+  @keyframes popIn{from{transform:scale(.55);opacity:0}to{transform:scale(1);opacity:1}}
+  .overlay-emoji{font-size:100px;margin-bottom:16px;display:block;animation:pulse 1.2s ease-in-out infinite alternate}
+  @keyframes pulse{from{transform:scale(1)}to{transform:scale(1.12)}}
+  .overlay-titulo{font-size:38px;font-weight:900;color:var(--overlay-cor,#ec4899);margin-bottom:8px;letter-spacing:-1px;text-transform:uppercase}
+  .overlay-nome{font-size:62px;font-weight:900;color:#fff;margin-bottom:14px;letter-spacing:-2px;line-height:1}
+  .overlay-msg{font-size:22px;color:rgba(255,255,255,.82);margin-bottom:20px;line-height:1.5;font-style:italic}
+  .overlay-de{font-size:14px;color:rgba(255,255,255,.4);margin-bottom:20px}
+  .overlay-bar{height:5px;border-radius:3px;background:var(--overlay-cor,#ec4899);margin-top:16px;animation:shrink linear forwards}
+  @keyframes shrink{from{width:100%}to{width:0}}
+
+  /* Confetes */
+  .confete{position:fixed;top:-10px;border-radius:50%;animation:cair linear forwards;pointer-events:none;z-index:200}
+  @keyframes cair{to{transform:translateY(110vh) rotate(720deg);opacity:0}}
+
+  /* Canais selector */
+  /* ── Seletor de canal — abas de nicho ──────────────────────────────────── */
+  #canal-selector{
+    position:fixed;top:20px;right:20px;z-index:50;
+    display:flex;flex-direction:column;gap:0;
+    opacity:0;transition:opacity .3s;
+    background:rgba(0,0,0,.82);backdrop-filter:blur(14px);
+    border:1px solid rgba(255,255,255,.12);border-radius:14px;
+    overflow:hidden;min-width:190px;
+  }
+  #canal-selector:hover,#canal-selector.visible{opacity:1}
+
+  /* Abas de nicho (topo do seletor) */
+  #canal-tabs{
+    display:flex;border-bottom:1px solid rgba(255,255,255,.08);
+    overflow-x:auto;scrollbar-width:none;
+  }
+  #canal-tabs::-webkit-scrollbar{display:none}
+  .canal-tab{
+    flex:1;min-width:48px;padding:9px 6px;font-size:13px;text-align:center;
+    cursor:pointer;background:none;border:none;color:rgba(255,255,255,.45);
+    transition:.2s;border-bottom:2px solid transparent;white-space:nowrap;
+  }
+  .canal-tab.ativo{color:#fff;border-bottom-color:var(--tab-cor,#ef4444)}
+  .canal-tab:hover{color:rgba(255,255,255,.85)}
+
+  /* Lista de canais do nicho ativo */
+  #canal-lista{
+    display:flex;flex-direction:column;gap:2px;padding:8px;
+    max-height:70vh;overflow-y:auto;scrollbar-width:thin;
+    scrollbar-color:rgba(255,255,255,.15) transparent;
+  }
+  .canal-btn{
+    background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);
+    border-radius:8px;padding:7px 12px;font-size:12px;font-weight:700;
+    cursor:pointer;color:#fff;transition:.2s;white-space:nowrap;
+    display:flex;align-items:center;gap:8px;text-align:left;width:100%;
+  }
+  .canal-btn:hover{background:rgba(255,255,255,.14);border-color:rgba(255,255,255,.35)}
+  .canal-btn.ativo{background:rgba(255,255,255,.18);border-color:var(--canal-cor,#ef4444);color:#fff}
+  .canal-btn.mix{border-style:dashed;font-size:11px;opacity:.85}
+  /* label de grupo dentro da lista (sub-separador se necessário) */
+  .canal-grupo-label{
+    font-size:9px;font-weight:900;letter-spacing:1.5px;text-transform:uppercase;
+    color:rgba(255,255,255,.25);padding:4px 4px 2px;
+  }
+
+  /* Botão fullscreen */
+  #fs-btn{
+    position:fixed;top:20px;left:20px;z-index:50;
+    background:rgba(0,0,0,.75);border:1px solid rgba(255,255,255,.35);
+    border-radius:10px;padding:9px 18px;font-size:13px;font-weight:800;
+    cursor:pointer;color:#fff;backdrop-filter:blur(6px);
+    opacity:0.85;transition:opacity .3s,transform .2s;white-space:nowrap;
+    display:flex;align-items:center;gap:8px;
+    box-shadow:0 2px 12px rgba(0,0,0,.5);
+  }
+  #fs-btn:hover{background:rgba(255,255,255,.22);border-color:rgba(255,255,255,.7);opacity:1;transform:scale(1.05)}
+  #fs-btn.visible{opacity:0.85}
+  #fs-btn.hidden-fs{opacity:0;pointer-events:none}
+
+  /* Dica inicial de fullscreen */
+  #fs-hint{
+    position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+    z-index:60;background:rgba(0,0,0,.85);backdrop-filter:blur(10px);
+    border:1px solid rgba(255,255,255,.2);border-radius:16px;
+    padding:20px 32px;text-align:center;font-size:15px;font-weight:700;
+    pointer-events:none;opacity:0;transition:opacity .4s;
+  }
+  #fs-hint.show{opacity:1}
+
+  /* Overlay de ativação de som (autoplay policy) */
+  #som-overlay{
+    position:fixed;inset:0;z-index:200;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    background:rgba(0,0,0,.88);backdrop-filter:blur(8px);
+    cursor:pointer;
+  }
+  #som-overlay.hidden{display:none}
+  #som-overlay .som-box{
+    background:rgba(255,255,255,.06);border:2px solid rgba(255,255,255,.15);
+    border-radius:24px;padding:40px 56px;text-align:center;
+    animation:popIn .4s cubic-bezier(.34,1.56,.64,1);
+  }
+  #som-overlay .som-icon{font-size:72px;margin-bottom:16px;display:block}
+  #som-overlay .som-titulo{font-size:22px;font-weight:900;margin-bottom:8px}
+  #som-overlay .som-sub{font-size:14px;color:rgba(255,255,255,.55);line-height:1.5}
+  /* Botão mute/unmute fixo no canto */
+  #mute-btn{
+    position:fixed;bottom:80px;right:24px;z-index:50;
+    background:rgba(0,0,0,.8);border:1px solid rgba(255,255,255,.25);
+    border-radius:10px;padding:8px 14px;font-size:14px;font-weight:700;
+    cursor:pointer;color:#fff;backdrop-filter:blur(6px);
+    transition:.2s;display:none;align-items:center;gap:6px;
+  }
+  #mute-btn.show{display:flex}
+  #mute-btn:hover{background:rgba(255,255,255,.18)}
+
+  /* ── CTA Fullscreen — vídeo loop + fallback imagem ──────────────────────── */
+  #cta-fullscreen{
+    position:fixed;inset:0;z-index:95;
+    background:url('/static/pubshow/cta-fallback.webp') center/cover no-repeat;
+    display:none;flex-direction:column;align-items:center;justify-content:center;
+    animation:ctaFadeIn .5s ease;
+    cursor:pointer;overflow:hidden;
+  }
+  #cta-fullscreen.show{display:flex}
+  @keyframes ctaFadeIn{from{opacity:0}to{opacity:1}}
+
+  /* Vídeo de fundo em loop */
+  #cta-video{
+    position:absolute;inset:0;width:100%;height:100%;
+    object-fit:cover;z-index:0;
+  }
+
+  /* Scrim escuro sobre o vídeo para o card ficar legível */
+  #cta-fullscreen::before{
+    content:'';position:absolute;inset:0;z-index:1;
+    background:rgba(0,0,0,.55);
+  }
+
+  /* Card branco — imita o lightbox da foto do slide 1 */
+  .cta-fs-card{
+    position:relative;z-index:2;
+    background:#fff;border-radius:20px;
+    padding:28px 36px;max-width:420px;width:90%;
+    text-align:center;
+    box-shadow:0 0 80px rgba(0,0,0,.7), 0 0 0 6px rgba(255,255,255,.15);
+    animation:ctaCardPop .6s cubic-bezier(.34,1.56,.64,1);
+  }
+  @keyframes ctaCardPop{from{transform:scale(.55);opacity:0}to{transform:scale(1);opacity:1}}
+
+  .cta-fs-titulo{
+    font-size:clamp(18px,2.4vw,28px);font-weight:900;
+    color:#111;letter-spacing:-.5px;line-height:1.1;
+    margin-bottom:16px;
+  }
+  .cta-fs-qr{
+    background:#fff;border-radius:12px;
+    display:inline-flex;align-items:center;justify-content:center;
+    margin-bottom:16px;
+  }
+  .cta-fs-qr img{width:clamp(160px,18vw,220px);height:clamp(160px,18vw,220px);display:block;border-radius:8px}
+  .cta-fs-sub{
+    font-size:clamp(12px,1.4vw,16px);color:#555;
+    margin-bottom:10px;line-height:1.5;
+  }
+  .cta-fs-preco{
+    font-size:clamp(14px,1.6vw,20px);font-weight:900;color:#f97316;
+    letter-spacing:-.3px;
+  }
+
+  /* Barra de progresso no rodapé da tela */
+  .cta-fs-barra{
+    position:absolute;bottom:0;left:0;height:5px;z-index:3;
+    background:linear-gradient(90deg,#f97316,#ef4444);
+    animation:ctaBarra linear forwards;
+  }
+  @keyframes ctaBarra{from{width:100%}to{width:0%}}
+
+  /* ── Promoção Relâmpago — countdown na TV ───────────────────────────────── */
+  #promo-relampago{
+    position:fixed;top:0;left:0;right:0;z-index:80;
+    background:linear-gradient(135deg,#7c2d12,#1c0a00);
+    border-bottom:3px solid #f97316;
+    padding:18px 32px;
+    display:none;align-items:center;justify-content:space-between;
+    gap:16px;
+    animation:slideDown .4s ease;
+  }
+  @keyframes slideDown{from{transform:translateY(-100%);opacity:0}to{transform:none;opacity:1}}
+  #promo-relampago.show{display:flex}
+  .promo-left{display:flex;align-items:center;gap:16px;flex:1}
+  .promo-emoji-big{font-size:48px;flex-shrink:0;animation:bounce 1s ease-in-out infinite alternate}
+  @keyframes bounce{from{transform:scale(1)}to{transform:scale(1.15)}}
+  .promo-txt strong{display:block;font-size:28px;font-weight:900;color:#fff;letter-spacing:-0.5px;line-height:1.1}
+  .promo-txt span{font-size:15px;color:rgba(255,255,255,.65)}
+  .promo-timer-wrap{text-align:center;flex-shrink:0}
+  .promo-timer-label{font-size:11px;font-weight:700;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px}
+  .promo-timer{font-size:52px;font-weight:900;color:#fb923c;letter-spacing:-2px;font-variant-numeric:tabular-nums;line-height:1}
+  .promo-timer.urgente{color:#ef4444;animation:piscar .5s ease-in-out infinite alternate}
+  @keyframes piscar{from{opacity:1}to{opacity:.4}}
+
+  /* ── Slide de propaganda do bar ─────────────────────────────────────────── */
+  #slide-propaganda{
+    position:fixed;inset:0;z-index:90;
+    display:none;align-items:center;justify-content:center;
+    background:rgba(0,0,0,.96);
+    animation:fadeSlide .6s ease;
+  }
+  #slide-propaganda.show{display:flex}
+  @keyframes fadeSlide{from{opacity:0}to{opacity:1}}
+  .slide-box{
+    text-align:center;padding:48px 64px;max-width:700px;width:90%;
+    border-radius:32px;border:2px solid var(--slide-cor,#ef4444);
+    background:linear-gradient(135deg,rgba(0,0,0,.9),rgba(10,0,20,.95));
+    animation:popIn .5s cubic-bezier(.34,1.56,.64,1);
+  }
+  .slide-emoji{font-size:90px;display:block;margin-bottom:16px}
+  .slide-titulo{font-size:42px;font-weight:900;color:var(--slide-cor,#ef4444);letter-spacing:-1.5px;line-height:1.1;margin-bottom:12px}
+  .slide-sub{font-size:20px;color:rgba(255,255,255,.75);line-height:1.5;margin-bottom:20px}
+  .slide-bar{height:4px;border-radius:2px;background:var(--slide-cor,#ef4444);margin-top:20px;animation:shrink linear forwards}
+  /* Slide de imagem */
+  #slide-img-box{display:none;flex-direction:column;align-items:center;gap:16px;animation:popIn .5s cubic-bezier(.34,1.56,.64,1)}
+  #slide-img-box img{max-height:82vh;max-width:92vw;border-radius:20px;object-fit:contain;box-shadow:0 0 80px rgba(0,0,0,.8)}
+  #slide-img-box .slide-bar{width:min(600px,90vw)}
+
+  /* ── Overlay fullscreen melhorado ───────────────────────────────────────── */
+  .overlay-qr-viral{
+    margin-top:24px;padding-top:18px;
+    border-top:1px solid rgba(255,255,255,.1);
+    display:flex;align-items:center;justify-content:center;gap:14px;
+  }
+  .overlay-qr-viral img{width:56px;height:56px;border-radius:8px;opacity:.75}
+  .overlay-qr-viral span{font-size:12px;color:rgba(255,255,255,.4);text-align:left;line-height:1.6}
+  .overlay-qr-viral strong{display:block;color:rgba(255,255,255,.65);font-size:13px}
+
+  /* ── Ranking da noite ───────────────────────────────────────────────────── */
+  #ranking-overlay{
+    position:fixed;inset:0;z-index:85;
+    background:url('/static/pubshow/ranking-bg.webp') center/cover no-repeat;
+    display:none;align-items:center;justify-content:center;
+    animation:rankingEntrar .5s ease;
+  }
+  #ranking-overlay.show{display:flex}
+  @keyframes rankingEntrar{from{opacity:0;transform:scale(1.04)}to{opacity:1;transform:scale(1)}}
+
+  /* Conteúdo dinâmico — card translúcido posicionado sobre o lousa da imagem */
+  #ranking-conteudo{
+    position:absolute;
+    /* a lousa da foto está ~8% left, 4% top, ~65% wide, 95% tall
+       centramos o texto da lista no terço central da lousa */
+    left:8%;top:28%;
+    width:58%;
+  }
+  .ranking-titulo{display:none} /* já existe na imagem */
+  .ranking-sub{display:none}    /* já existe na imagem */
+  .ranking-lista{}
+  .ranking-item{
+    display:flex;align-items:center;gap:16px;
+    padding:9px 0;border-bottom:1px solid rgba(255,255,255,.1);
+  }
+  .ranking-item:last-child{border:none}
+  .ranking-pos{
+    font-size:26px;font-weight:900;width:40px;text-align:center;flex-shrink:0;
+    color:rgba(255,255,255,.5);
+  }
+  .ranking-item:nth-child(1) .ranking-pos{color:#fbbf24;font-size:30px}
+  .ranking-item:nth-child(2) .ranking-pos{color:#94a3b8}
+  .ranking-item:nth-child(3) .ranking-pos{color:#cd7c2f}
+  .ranking-musica{
+    flex:1;font-size:clamp(16px,2.2vw,26px);font-weight:900;
+    color:#fff;text-shadow:2px 2px 8px rgba(0,0,0,.9);
+    line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+    font-family:'Segoe UI',sans-serif;letter-spacing:-.3px;
+  }
+  .ranking-badge{
+    font-size:11px;font-weight:800;
+    background:rgba(251,191,36,.25);color:#fbbf24;
+    border:1px solid rgba(251,191,36,.5);
+    padding:3px 10px;border-radius:20px;white-space:nowrap;flex-shrink:0;
+    text-shadow:none;
+  }
+  .ranking-bar{
+    height:4px;background:linear-gradient(90deg,#fbbf24,transparent);
+    border-radius:2px;margin-top:14px;animation:shrink linear forwards;
+  }
+</style>
+</head>
+<body>
+
+<!-- Overlay de ativação de som — aparece na primeira abertura -->
+<div id="som-overlay" onclick="ativarSom()">
+  <div class="som-box">
+    <span class="som-icon">🔊</span>
+    <div class="som-titulo">Clique para ativar o som</div>
+    <div class="som-sub">Os clips vão começar a tocar agora.<br>Clique em qualquer lugar para continuar.</div>
+  </div>
+</div>
+
+<!-- Botão mute/unmute fixo -->
+<button id="mute-btn" onclick="toggleMute()">🔇 Sem som</button>
+
+<!-- CTA Fullscreen — vídeo loop + fallback foto escura + card HTML com QR real -->
+<div id="cta-fullscreen" onclick="fecharCtaFullscreen()">
+  <!-- Vídeo de fundo em loop (muda quando ativado pelo JS) -->
+  <video id="cta-video" autoplay loop muted playsinline preload="auto">
+    <source src="/static/pubshow/cta-bg.mp4" type="video/mp4">
+  </video>
+
+  <!-- Card branco centralizado — imita o lightbox do slide 1 -->
+  <div class="cta-fs-card">
+    <div class="cta-fs-titulo">📱 ESCANEIE E PEÇA UMA MÚSICA</div>
+    <div class="cta-fs-qr">
+      {% if tv_qr_b64 %}
+      <img src="data:image/png;base64,{{ tv_qr_b64 }}" alt="QR Jukebox">
+      {% else %}
+      <img src="https://api.qrserver.com/v1/create-qr-code/?size=440x440&color=000000&bgcolor=ffffff&data={{ jukebox_url }}" alt="QR Jukebox">
+      {% endif %}
+    </div>
+    <div class="cta-fs-sub">A próxima pode ser sua — R$ 2<br>Pague via PIX direto no celular</div>
+    <div class="cta-fs-preco">⚡ PUBSHOW JUKEBOX ⚡</div>
+  </div>
+
+  <!-- Barra de progresso de 10s no rodapé -->
+  <div class="cta-fs-barra" id="cta-barra"></div>
+</div>
+
+<!-- Botão fullscreen (canto superior esquerdo, aparece ao mover mouse) -->
+<button id="fs-btn" onclick="toggleFullscreen()" title="Tela cheia (F)">⛶ Tela cheia</button>
+
+<!-- Dica inicial -->
+<div id="fs-hint">⛶ Clique para tela cheia · Tecla F</div>
+
+<!-- Player YouTube (IFrame API) -->
+<div id="player-wrap" style="cursor:pointer">
+  <div id="yt-player"></div>
+</div>
+
+<!-- Now Playing -->
+<div id="now-playing" style="--canal-cor:{{ canal.cor }}">
+  <div class="np-left">
+    <span class="np-canal-badge">{{ canal.emoji }} {{ canal.nome }}</span>
+    <div class="np-info">
+      <div class="np-titulo" id="np-titulo">{{ videos[0].titulo if videos else 'Carregando...' }}</div>
+      <div class="np-artista" id="np-artista">{{ videos[0].artista if videos else '' }}</div>
+    </div>
+  </div>
+  <div class="np-right">
+    <div class="np-qr">
+      <strong>📱</strong>
+      Scaneie o QR<br>para pedir
+    </div>
+  </div>
+</div>
+
+<!-- Fila badge (canto superior) -->
+<div id="fila-badge">
+  <div class="fila-dot"></div>
+  <span id="fila-txt">1 pedido na fila</span>
+</div>
+
+<!-- Próximo na fila (aparece ~15s antes do fim) -->
+<div id="proximo-card">
+  <div class="prox-label">⏭ Próximo — pedido da mesa</div>
+  <div class="prox-tipo" id="prox-tipo">🎵 Pedido de música</div>
+  <div class="prox-nome" id="prox-nome">de alguém</div>
+</div>
+
+<!-- Overlay especial -->
+<div id="overlay">
+  <div class="overlay-box" id="overlay-box">
+    <span class="overlay-emoji" id="ov-emoji">🎂</span>
+    <div class="overlay-titulo" id="ov-titulo">PARABÉNS!</div>
+    <div class="overlay-nome" id="ov-nome"></div>
+    <div class="overlay-msg" id="ov-msg"></div>
+    <div class="overlay-de" id="ov-de"></div>
+    <div class="overlay-bar" id="ov-bar"></div>
+    <div class="overlay-qr-viral">
+      {% if tv_qr_b64 %}<img src="data:image/png;base64,{{ tv_qr_b64 }}" alt="QR" style="width:56px;height:56px;border-radius:6px">{% else %}<img src="https://api.qrserver.com/v1/create-qr-code/?size=112x112&color=000000&bgcolor=ffffff&data={{ jukebox_url }}" alt="QR">{% endif %}
+      <span><strong>Crie o seu momento!</strong>Escaneie e peça<br>parabéns, dedicatória...</span>
+    </div>
+  </div>
+</div>
+
+<!-- Promoção Relâmpago — topo da tela com countdown -->
+<div id="promo-relampago">
+  <div class="promo-left">
+    <span class="promo-emoji-big" id="promo-emoji">🍺</span>
+    <div class="promo-txt">
+      <strong id="promo-msg">CHOPP EM DOBRO!</strong>
+      <span>⚡ Promoção Relâmpago — só agora!</span>
+    </div>
+  </div>
+  <div class="promo-timer-wrap">
+    <div class="promo-timer-label">Acaba em</div>
+    <div class="promo-timer" id="promo-timer">--:--</div>
+  </div>
+</div>
+
+<!-- Slide de propaganda do bar -->
+<div id="slide-propaganda">
+  <div class="slide-box" id="slide-box">
+    <span class="slide-emoji" id="slide-emoji">📢</span>
+    <div class="slide-titulo" id="slide-titulo"></div>
+    <div class="slide-sub" id="slide-sub"></div>
+    <div class="slide-bar" id="slide-bar"></div>
+  </div>
+  <div id="slide-img-box">
+    <img id="slide-img" src="" alt="">
+    <div class="slide-bar" id="slide-bar-img"></div>
+  </div>
+  <!-- Ranking dinâmico — substitui slide3.png com dados reais -->
+  <div id="slide-ranking-box" style="display:none;flex-direction:column;align-items:center;justify-content:center;width:100%;max-width:860px;padding:0 48px">
+    <div style="text-align:center;margin-bottom:32px">
+      <div style="font-size:56px;margin-bottom:8px">🏆</div>
+      <div style="font-size:52px;font-weight:900;letter-spacing:-2px;color:#f59e0b;text-shadow:0 0 40px rgba(245,158,11,.5)">RANKING DA NOITE</div>
+      <div style="font-size:18px;color:rgba(255,255,255,.5);margin-top:6px" id="rk-bar-nome"></div>
+    </div>
+    <div id="rk-lista" style="width:100%;display:flex;flex-direction:column;gap:14px"></div>
+    <div style="margin-top:28px;text-align:center;font-size:16px;color:rgba(255,255,255,.4)">
+      🎵 Peça a sua música — escaneie o QR nas mesas
+    </div>
+    <div class="slide-bar" id="slide-bar-ranking" style="width:min(600px,90vw);margin-top:20px"></div>
+  </div>
+</div>
+
+<!-- Ranking da noite — background fotográfico + lista dinâmica sobreposta -->
+<div id="ranking-overlay">
+  <div id="ranking-conteudo">
+    <div class="ranking-lista" id="ranking-lista"></div>
+    <div class="ranking-bar" id="ranking-bar"></div>
+  </div>
+</div>
+
+<!-- Seletor de canal — abas de nicho -->
+{% set grupos = [
+  ('musica',        '🎵',  'Música',  '#a855f7'),
+  ('shows',         '🎤',  'Shows',   '#ec4899'),
+  ('sport',         '🏆',  'Sport',   '#f59e0b'),
+  ('viral',         '💥',  'Viral',   '#ef4444'),
+  ('entretenimento','🎭',  'Extra',   '#22c55e'),
+] %}
+{# Descobre o nicho do canal atual para pré-selecionar a aba #}
+{% set canal_grupo = canais[canal_key].get('grupo', 'musica') if canal_key in canais else 'musica' %}
+
+<div id="canal-selector">
+  <!-- Abas de nicho -->
+  <div id="canal-tabs">
+    {% for gkey, gemoji, glabel, gcor in grupos %}
+    {% if canais.values()|selectattr('grupo','equalto',gkey)|list %}
+    <button class="canal-tab {% if gkey == canal_grupo %}ativo{% endif %}"
+            style="--tab-cor:{{ gcor }}"
+            onclick="selecionarNicho('{{ gkey }}', '{{ gcor }}', this)">
+      {{ gemoji }}<br><span style="font-size:9px;font-weight:800;letter-spacing:.5px">{{ glabel }}</span>
+    </button>
+    {% endif %}
+    {% endfor %}
+  </div>
+
+  <!-- Canais do nicho ativo -->
+  <div id="canal-lista">
+    {% for gkey, gemoji, glabel, gcor in grupos %}
+    {% set grupo_canais = canais.items()|selectattr('1.grupo','equalto',gkey)|list %}
+    {% if grupo_canais %}
+    <div class="canal-nicho-group" data-nicho="{{ gkey }}"
+         style="display:{% if gkey == canal_grupo %}flex{% else %}none{% endif %};flex-direction:column;gap:2px">
+      {% for key, c in grupo_canais %}
+      <button class="canal-btn {% if key == canal_key %}ativo{% endif %} {% if key == 'sport_mix' %}mix{% endif %}"
+              onclick="trocarCanal('{{ key }}')"
+              style="{% if key == canal_key %}--canal-cor:{{ c.cor }};border-color:{{ c.cor }}{% endif %}">
+        {{ c.emoji }} {{ c.nome }}
+      </button>
+      {% endfor %}
+    </div>
+    {% endif %}
+    {% endfor %}
+  </div>
+</div>
+
+<!-- YouTube IFrame API -->
+<script src="https://www.youtube.com/iframe_api"></script>
+<script>
+const CODE        = '{{ b.code }}';
+let   CANAL_KEY   = '{{ canal_key }}';
+const BASE_URL    = '/pubshow-en';
+const JUKEBOX_URL = 'https://www.4kitem.com.br/pubshow-en/jukebox/{{ b.jukebox_token or b.code }}';
+const ANUNCIOS    = {{ anuncios | tojson }};  // slides de propaganda do bar
+// Slides padrão do sistema — cardápio de preços (sempre exibido junto aos do bar)
+const ANUNCIOS_DEFAULT = [
+  {tipo:'imagem', url:'/static/pubshow/slide-cardapio.webp', titulo:''},
+];
+// Mescla slides do bar com o cardápio padrão (cardápio aparece a cada ciclo)
+const ANUNCIOS_EFETIVOS = [...ANUNCIOS, ...ANUNCIOS_DEFAULT];
+
+// Slides do sistema — obrigatórios, exibidos a cada 10 minutos em todas as TVs
+const SLIDES_SISTEMA = {{ slides_sistema | tojson }};
+
+// Info de canais disponível no JS para atualizar UI sem reload
+const CANAIS_JS = {{ canais | tojson }};
+
+// ── Biblioteca de vídeos ──────────────────────────────────────────────────────
+const VIDEOS = {{ videos | tojson }};
+let videoIdx        = Math.floor(Math.random() * Math.min(VIDEOS.length, 5));
+let _videosPlayed   = 0;   // contador de vídeos tocados — trigger de propaganda
+let _pedidoYtId     = null; // youtube_id do pedido específico em carregamento (null = nenhum)
+let _anuncioIdx     = 0;   // qual slide mostrar agora
+let overlayAtivo    = false;
+let pedidoAtual  = null;
+let pedidoMusica = null;
+let player       = null;
+let proximoTimer = null;
+let filaTimer    = null;
+let stallTimer   = null;
+let _skipCount   = 0;
+let _loopGuard   = 0; // guard global — só zera quando vídeo de fato toca
+
+// Vídeos que falharam nesta sessão — não tentar novamente
+const _skipSet = new Set(JSON.parse(localStorage.getItem('ps_skip_'+CANAL_KEY)||'[]'));
+
+// Tipos de pedido — configuração visual
+const TIPO_CONFIG = {
+  parabens:    {emoji:'🎂', titulo:'PARABÉNS!',           cor:'#ec4899', duracao:10000, confetes:true},
+  dedicatoria: {emoji:'💌', titulo:'DEDICATÓRIA ❤️',      cor:'#ef4444', duracao:9000,  confetes:false},
+  brinde:      {emoji:'🍻', titulo:'BRINDE GERAL!',        cor:'#22c55e', duracao:6000,  confetes:true},
+  chegada:     {emoji:'🎉', titulo:'CHEGARAM!',            cor:'#f97316', duracao:7000,  confetes:true},
+  casamento:   {emoji:'💕', titulo:'ELA DISSE SIM! 💕',    cor:'#a855f7', duracao:14000, confetes:true},
+};
+
+const TIPOS_MUSICA = {
+  vip:              {emoji:'👑', label:'VIP — Tocar AGORA'},
+  flash:            {emoji:'⚡', label:'Prioridade na fila'},
+  musica:           {emoji:'🎵', label:'Pedido de música'},
+  musica_especifica:{emoji:'🎯', label:'Da biblioteca'},
+  musica_externa:   {emoji:'🌐', label:'Do YouTube'},
+};
+
+// ── Som / Autoplay ────────────────────────────────────────────────────────────
+let _isMuted = true;
+
+function ativarSom() {
+  document.getElementById('som-overlay').classList.add('hidden');
+  if (player && player.unMute) {
+    player.unMute();
+    player.setVolume(100);
+    _isMuted = false;
+    document.getElementById('mute-btn').classList.remove('show');
+  }
+  // Se player ainda não carregou, marca pra desmutar quando estiver pronto
+  window._autoUnmute = true;
+  // Inicia ciclo periódico de CTA fullscreen
+  iniciarCtaPeriodicO();
+  // Exibe slides do sistema 2 min após TV ligar (tutorial inicial)
+  if (SLIDES_SISTEMA.length) setTimeout(_iniciarSlidesSistema, 2 * 60 * 1000);
+}
+
+// ── Promoção Relâmpago — countdown ───────────────────────────────────────────
+let _promoTimer = null;
+let _promoExpira = null;
+
+function atualizarPromo(promo) {
+  const el = document.getElementById('promo-relampago');
+  if (!promo) {
+    el.classList.remove('show');
+    clearInterval(_promoTimer);
+    _promoExpira = null;
+    return;
+  }
+  // Atualiza conteúdo
+  document.getElementById('promo-emoji').textContent = promo.emoji || '🍺';
+  document.getElementById('promo-msg').textContent   = promo.msg;
+  el.classList.add('show');
+
+  if (_promoExpira !== promo.expira) {
+    _promoExpira = promo.expira;
+    clearInterval(_promoTimer);
+    _promoTimer = setInterval(() => {
+      const diff = new Date(promo.expira) - new Date();
+      const timerEl = document.getElementById('promo-timer');
+      if (diff <= 0) {
+        el.classList.remove('show');
+        clearInterval(_promoTimer);
+        return;
+      }
+      const min  = Math.floor(diff / 60000);
+      const sec  = Math.floor((diff % 60000) / 1000);
+      timerEl.textContent = `${String(min).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+      // Últimos 60s: pisca urgente
+      if (diff < 60000) timerEl.classList.add('urgente');
+      else timerEl.classList.remove('urgente');
+    }, 500);
+  }
+}
+
+// ── CTA Fullscreen Periódico ──────────────────────────────────────────────────
+const CTA_INTERVALO_MS = 5 * 60 * 1000; // aparece a cada 5 minutos
+const CTA_DURACAO_MS   = 10 * 1000;     // fica visível por 10 segundos
+let _ctaTimer = null;
+
+function iniciarCtaPeriodicO() {
+  clearTimeout(_ctaTimer);
+  _ctaTimer = setTimeout(mostrarCtaFullscreen, CTA_INTERVALO_MS);
+}
+
+function mostrarCtaFullscreen() {
+  // Não mostra se outro overlay estiver visível (parabéns, slide, ranking, promo)
+  const bloqueadores = ['#overlay', '#slide-propaganda', '#ranking-overlay'];
+  if (bloqueadores.some(sel => document.querySelector(sel)?.classList.contains('show'))) {
+    iniciarCtaPeriodicO(); // tenta de novo no próximo ciclo
+    return;
+  }
+  const el    = document.getElementById('cta-fullscreen');
+  const barra = document.getElementById('cta-barra');
+  const vid   = document.getElementById('cta-video');
+
+  // Reinicia o vídeo do início a cada exibição
+  if (vid) { try { vid.currentTime = 0; vid.play(); } catch(e){} }
+
+  el.classList.add('show');
+
+  // Reinicia animação da barra de progresso
+  barra.style.animation = 'none';
+  barra.offsetHeight;
+  barra.style.animation = `ctaBarra ${CTA_DURACAO_MS / 1000}s linear forwards`;
+
+  // Fecha após a duração
+  setTimeout(() => {
+    el.classList.remove('show');
+    if (vid) { try { vid.pause(); } catch(e){} }
+    iniciarCtaPeriodicO();
+  }, CTA_DURACAO_MS);
+}
+
+function fecharCtaFullscreen() {
+  document.getElementById('cta-fullscreen').classList.remove('show');
+  iniciarCtaPeriodicO();
+}
+
+function toggleMute() {
+  if (!player) return;
+  if (_isMuted) {
+    player.unMute();
+    player.setVolume(100);
+    _isMuted = false;
+    document.getElementById('mute-btn').textContent = '🔊 Com som';
+    setTimeout(() => document.getElementById('mute-btn').classList.remove('show'), 1500);
+  } else {
+    player.mute();
+    _isMuted = true;
+    document.getElementById('mute-btn').innerHTML = '🔇 Sem som';
+    document.getElementById('mute-btn').classList.add('show');
+  }
+}
+
+// ── YouTube IFrame API ────────────────────────────────────────────────────────
+function onYouTubeIframeAPIReady() {
+  if (!VIDEOS.length) {
+    // Página carregou sem vídeos — esconde overlay e faz fallback para rock
+    const overlay = document.getElementById('som-overlay');
+    if (overlay) overlay.classList.add('hidden');
+    const fallback = (typeof CANAL_KEY !== 'undefined' && CANAL_KEY !== 'rock') ? 'rock' : 'pop';
+    fetch(`${BASE_URL}/api/trocar-canal/${CODE}`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({canal: fallback}),
+    }).then(() => location.reload()).catch(() => location.reload());
+    return;
+  }
+  const v = VIDEOS[videoIdx];
+  player = new YT.Player('yt-player', {
+    height: '100%',
+    width:  '100%',
+    videoId: v.youtube_id,
+    playerVars: {
+      autoplay:        1,
+      mute:            1,  // inicia mutado — evita bloqueio de autoplay do browser
+      rel:             0,
+      modestbranding:  1,
+      controls:        0,
+      iv_load_policy:  3,
+      disablekb:       1,
+      fs:              0,
+      playsinline:     1,
+      cc_load_policy:  0,
+    },
+    events: {
+      onReady:       onPlayerReady,
+      onStateChange: onPlayerStateChange,
+      onError:       onPlayerError,
+    }
+  });
+}
+
+function onPlayerReady(e) {
+  e.target.playVideo();
+  // Se usuário já clicou no overlay antes do player carregar, desmuta agora
+  if (window._autoUnmute) {
+    e.target.unMute();
+    e.target.setVolume(100);
+    _isMuted = false;
+  }
+  atualizarNowPlaying(VIDEOS[videoIdx]);
+  esconderNowPlayingComDelay();
+  iniciarStallDetector();
+}
+
+function onPlayerStateChange(e) {
+  // YT.PlayerState.ENDED = 0
+  if (e.data === 0) {
+    clearTimeout(proximoTimer);
+    clearTimeout(stallTimer);
+    document.getElementById('proximo-card').classList.remove('show');
+    avancarFila();
+  }
+  // YT.PlayerState.PLAYING = 1 — vídeo tocando, cancela detector de stall
+  if (e.data === 1) {
+    clearTimeout(stallTimer);
+    _loopGuard  = 0;      // vídeo tocou de verdade → zera o guard
+    _skipCount  = 0;
+    _pedidoYtId = null;   // pedido carregou com sucesso
+    agendarProximoCard();
+  }
+  // YT.PlayerState.BUFFERING = 3 — reinicia o detector (pode estar carregando)
+  // Se estamos carregando um pedido específico, mantém o timeout longo (8s)
+  if (e.data === 3) {
+    iniciarStallDetector(_pedidoYtId ? 8000 : 2500);
+  }
+}
+
+function _marcarVideoRuim() {
+  // Marca o vídeo atual como ruim para não repetir
+  if (VIDEOS.length && VIDEOS[videoIdx]) {
+    const yid = VIDEOS[videoIdx].youtube_id;
+    if (yid) {
+      _skipSet.add(yid);
+      try { localStorage.setItem('ps_skip_'+CANAL_KEY, JSON.stringify([..._skipSet])); } catch(e){}
+    }
+  }
+}
+
+function onPlayerError(e) {
+  // Erro 100/101/150 = vídeo indisponível ou sem embed
+  console.warn('YT erro código:', e.data, '→ pulando...');
+  clearTimeout(stallTimer);
+  setTimeout(_pularVideo, 600);
+}
+
+function iniciarStallDetector(delayMs) {
+  // Se após delayMs ainda não está tocando, vídeo está travado ou indisponível
+  // Pedidos específicos usam timeout maior (8s) para dar tempo ao YouTube de carregar
+  const delay = delayMs || 2500;
+  clearTimeout(stallTimer);
+  stallTimer = setTimeout(() => {
+    if (!player) return;
+    const state = player.getPlayerState();
+    // -1=unstarted, 2=paused/indisponível, 5=cued — não começou a tocar
+    if (state === -1 || state === 2 || state === 5) {
+      console.warn('Stall detectado (state=' + state + ', delay=' + delay + 'ms) → pulando...');
+      _pularVideo();
+    }
+  }, delay);
+}
+
+// Pula para o próximo vídeo por erro/stall — NÃO conta como vídeo tocado
+// (evita acionar slide de propaganda durante recuperação de erro)
+function _pularVideo() {
+  clearTimeout(stallTimer);
+  if (_pedidoYtId) {
+    // Stall num pedido específico — não marca nenhum vídeo da biblioteca como ruim
+    // Apenas cancela o pedido e retoma o fluxo normal
+    console.warn('Pedido específico (' + _pedidoYtId + ') não carregou → retomando biblioteca');
+    _pedidoYtId = null;
+    proximoVideoOuSlide();
+    return;
+  }
+  _marcarVideoRuim();
+  _skipCount++;
+  videoIdx = (videoIdx + 1) % VIDEOS.length;
+  carregarVideo(videoIdx);
+}
+
+// ── Lógica de avanço com fila ─────────────────────────────────────────────────
+async function avancarFila() {
+  // ── Race condition fix: se não há pedido em memória, consulta API imediatamente ──
+  // O polling (a cada ~3s) pode ter perdido o pedido se o vídeo terminou entre dois ciclos
+  if (!pedidoMusica) {
+    try {
+      const _r = await fetch(`${BASE_URL}/api/status/${CODE}`, {cache: 'no-store'});
+      const _d = await _r.json();
+      if (_d.pedido_musica) {
+        pedidoMusica = _d.pedido_musica;
+        mostrarBadgeFila(_d.total_fila);
+      }
+    } catch(_e) { /* silencioso — fallback para próximo vídeo da biblioteca */ }
+  }
+
+  if (pedidoMusica) {
+    const p = pedidoMusica;
+    pedidoMusica = null;
+    esconderBadgeFila();
+    fetch(`${BASE_URL}/api/pedido-exibido/${p.id}`, {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:CODE})});
+
+    if (p.youtube_id) {
+      // 🎯 Música específica — toca o vídeo exato pedido pelo cliente
+      _pedidoYtId = p.youtube_id; // flag para stall detector não marcar vídeos como ruins
+      player.loadVideoById(p.youtube_id);
+      atualizarNowPlaying({
+        titulo:  p.titulo_pedido || '🎯 Pedido especial',
+        artista: `pedido por ${p.nome_cliente || 'alguém'}`,
+      });
+      esconderNowPlayingComDelay();
+      iniciarStallDetector(8000); // 8s para pedidos — YouTube demora mais que 2.5s para carregar
+    } else {
+      proximoVideoOuSlide();
+    }
+  } else {
+    proximoVideoOuSlide();
+  }
+}
+
+function carregarVideo(idx) {
+  if (!VIDEOS.length || !player) return;
+
+  // Guard contra loop infinito: se tentou mais que (qtd vídeos × 2) vezes sem
+  // jamais entrar no estado PLAYING, para tudo e exibe aviso.
+  _loopGuard++;
+  if (_loopGuard > VIDEOS.length * 2 + 2) {
+    _loopGuard = 0;
+    mostrarErroSemVideos();
+    return;
+  }
+
+  // Pula vídeos já marcados como ruins (máx. VIDEOS.length tentativas)
+  let tentativas = 0;
+  while (_skipSet.has(VIDEOS[idx % VIDEOS.length].youtube_id) && tentativas < VIDEOS.length) {
+    idx = (idx + 1) % VIDEOS.length;
+    tentativas++;
+  }
+  // Se todos na skip list, limpa e recomeça — mas _loopGuard continua contando
+  if (tentativas >= VIDEOS.length) {
+    _skipSet.clear();
+    try { localStorage.removeItem('ps_skip_'+CANAL_KEY); } catch(e){}
+    idx = 0;
+  }
+
+  videoIdx = idx % VIDEOS.length;
+  const v = VIDEOS[videoIdx];
+  player.loadVideoById(v.youtube_id);
+  atualizarNowPlaying(v);
+  esconderNowPlayingComDelay();
+  iniciarStallDetector();
+}
+
+function mostrarErroSemVideos() {
+  // Todos os vídeos do tema falharam — exibe aviso e troca para Rock
+  clearTimeout(stallTimer);
+  document.getElementById('np-titulo').textContent  = 'Tema temporariamente indisponível';
+  document.getElementById('np-artista').textContent = 'Aguarde, trocando de tema...';
+  document.getElementById('now-playing').classList.remove('hidden');
+  // Após 4s, tenta trocar para rock automaticamente
+  setTimeout(() => {
+    const fallback = CANAL_KEY !== 'rock' ? 'rock' : 'pop';
+    trocarCanal(fallback);
+  }, 4000);
+}
+
+// ── "Próximo na fila" — aparece ~20s antes do fim ────────────────────────────
+function agendarProximoCard() {
+  clearTimeout(proximoTimer);
+  if (!pedidoMusica) return;
+  try {
+    const total  = player.getDuration();
+    const agora  = player.getCurrentTime();
+    const restam = total - agora;
+    const mostrarEm = Math.max(0, (restam - 20) * 1000);
+    proximoTimer = setTimeout(() => mostrarProximoCard(pedidoMusica), mostrarEm);
+  } catch(e) {}
+}
+
+function mostrarProximoCard(p) {
+  if (!p) return;
+  const cfg = TIPOS_MUSICA[p.tipo] || TIPOS_MUSICA.musica;
+  const label = p.youtube_id
+    ? `🎯 ${p.titulo_pedido || 'Música específica'}`
+    : `${cfg.emoji} ${cfg.label}`;
+  document.getElementById('prox-tipo').textContent = label;
+  document.getElementById('prox-nome').textContent = `de ${p.nome_cliente || 'alguém'}`;
+  document.getElementById('proximo-card').classList.add('show');
+}
+
+// ── Badge da fila ─────────────────────────────────────────────────────────────
+function mostrarBadgeFila(total) {
+  const badge = document.getElementById('fila-badge');
+  document.getElementById('fila-txt').textContent =
+    total === 1 ? '1 pedido na fila' : `${total} pedidos na fila`;
+  badge.classList.add('show');
+}
+
+function esconderBadgeFila() {
+  document.getElementById('fila-badge').classList.remove('show');
+  document.getElementById('proximo-card').classList.remove('show');
+}
+
+// ── Now Playing ───────────────────────────────────────────────────────────────
+function atualizarNowPlaying(v) {
+  document.getElementById('np-titulo').textContent  = v.titulo  || '';
+  document.getElementById('np-artista').textContent = v.artista || '';
+  const np = document.getElementById('now-playing');
+  np.classList.remove('hidden');
+}
+
+function esconderNowPlayingComDelay() {
+  clearTimeout(window._npTimer);
+  window._npTimer = setTimeout(() => {
+    document.getElementById('now-playing').classList.add('hidden');
+  }, 6000);
+}
+
+// ── Overlay especial ──────────────────────────────────────────────────────────
+function mostrarOverlay(pedido) {
+  overlayAtivo = true;
+  const cfg = TIPO_CONFIG[pedido.tipo] || TIPO_CONFIG['brinde'];
+  const box = document.getElementById('overlay-box');
+
+  box.style.setProperty('--overlay-cor', cfg.cor);
+  document.getElementById('ov-emoji').textContent  = cfg.emoji;
+  document.getElementById('ov-titulo').textContent = cfg.titulo;
+  document.getElementById('ov-titulo').style.color = cfg.cor;
+  document.getElementById('ov-nome').textContent   = pedido.nome_cliente || '';
+  document.getElementById('ov-msg').textContent    = pedido.mensagem || '';
+  document.getElementById('ov-de').textContent     = pedido.nome_cliente
+    ? `💌 pedido enviado pela mesa` : '';
+
+  // Barra de progresso
+  const bar = document.getElementById('ov-bar');
+  bar.style.background        = cfg.cor;
+  bar.style.animationDuration = (cfg.duracao / 1000) + 's';
+  bar.style.animation = 'none';
+  bar.offsetHeight; // reflow
+  bar.style.animation = '';
+
+  document.getElementById('overlay').classList.add('show');
+  if (cfg.confetes) lancarConfetes(cfg.cor);
+
+  // Marca como exibido
+  fetch(`${BASE_URL}/api/pedido-exibido/${pedido.id}`, {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:CODE})});
+
+  clearTimeout(window._overlayTimer);
+  window._overlayTimer = setTimeout(() => {
+    document.getElementById('overlay').classList.remove('show');
+    overlayAtivo = false;
+    pedidoAtual  = null;
+  }, cfg.duracao);
+}
+
+// ── Propaganda do bar — slide entre vídeos ───────────────────────────────────
+function proximoVideoOuSlide() {
+  _videosPlayed++;
+  // A cada 3 vídeos exibe slide do bar (propaganda/cardápio)
+  if (ANUNCIOS_EFETIVOS.length && _videosPlayed % 3 === 0) {
+    const slide = ANUNCIOS_EFETIVOS[_anuncioIdx % ANUNCIOS_EFETIVOS.length];
+    _anuncioIdx++;
+    mostrarSlide(slide);
+  // A cada 5 vídeos (quando não cai no % 3) exibe slides do sistema (tutorial)
+  } else if (SLIDES_SISTEMA.length && _videosPlayed % 5 === 0) {
+    _iniciarSlidesSistema();
+  } else {
+    videoIdx = (videoIdx + 1) % VIDEOS.length;
+    carregarVideo(videoIdx);
+  }
+}
+
+function mostrarSlide(slide, onEnd, duracaoMs) {
+  const duracao = duracaoMs || 8000; // 8s padrão (bar), 15s para sistema
+  const el     = document.getElementById('slide-propaganda');
+  const box    = document.getElementById('slide-box');
+  const imgBox = document.getElementById('slide-img-box');
+
+  if (slide.tipo === 'imagem' && slide.url && slide.url.includes('slide3')) {
+    // ── Ranking dinâmico — busca dados reais e exibe HTML ────────────────
+    box.style.display    = 'none';
+    imgBox.style.display = 'none';
+    const rkBox = document.getElementById('slide-ranking-box');
+    rkBox.style.display  = 'flex';
+    document.getElementById('rk-bar-nome').textContent = '';
+    document.getElementById('rk-lista').innerHTML = '<div style="color:rgba(255,255,255,.3);font-size:20px;text-align:center">Carregando...</div>';
+    // Busca ranking real
+    fetch(`${BASE_URL}/api/ranking/${CODE}`)
+      .then(r => r.json())
+      .then(d => {
+        const ranking = d.ranking || [];
+        const nome = d.bar_nome || '';
+        document.getElementById('rk-bar-nome').textContent = nome;
+        if (!ranking.length) {
+          document.getElementById('rk-lista').innerHTML =
+            '<div style="color:rgba(255,255,255,.4);font-size:22px;text-align:center;padding:20px">Nenhum pedido ainda hoje.<br>Escaneie o QR e peça a primeira! 🎵</div>';
+        } else {
+          const medals = ['🥇','🥈','🥉','4️⃣','5️⃣'];
+          document.getElementById('rk-lista').innerHTML = ranking.map((r, i) => {
+            const pct = Math.round((r.n / ranking[0].n) * 100);
+            return `<div style="background:rgba(255,255,255,.06);border:1px solid rgba(245,158,11,${i===0?.35:.12});border-radius:16px;padding:18px 24px;display:flex;align-items:center;gap:18px;animation:popIn .4s ${i*.08}s both">
+              <div style="font-size:${i===0?44:34}px;flex-shrink:0;width:52px;text-align:center">${medals[i]||'▪'}</div>
+              <div style="flex:1;min-width:0">
+                <div style="font-size:${i===0?26:22}px;font-weight:900;color:${i===0?'#fbbf24':'#f0f0ff'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.titulo_pedido||'Música aleatória'}</div>
+                <div style="margin-top:6px;height:6px;background:rgba(255,255,255,.1);border-radius:3px;overflow:hidden">
+                  <div style="height:100%;width:${pct}%;background:${i===0?'linear-gradient(90deg,#f59e0b,#ef4444)':'rgba(255,255,255,.3)'};border-radius:3px"></div>
+                </div>
+              </div>
+              <div style="font-size:${i===0?28:22}px;font-weight:900;color:${i===0?'#fbbf24':'#8888aa'};flex-shrink:0">${r.n}×</div>
+            </div>`;
+          }).join('');
+        }
+      })
+      .catch(() => {
+        document.getElementById('rk-lista').innerHTML =
+          '<div style="color:rgba(255,255,255,.3);font-size:20px;text-align:center">Sem dados de ranking ainda.</div>';
+      });
+    const bar = document.getElementById('slide-bar-ranking');
+    bar.style.animation = 'none'; bar.offsetHeight;
+    bar.style.animation = `shrink ${duracao/1000}s linear forwards`;
+
+  } else if (slide.tipo === 'imagem' && slide.url) {
+    // ── Slide de imagem normal ───────────────────────────────────────────
+    box.style.display    = 'none';
+    imgBox.style.display = 'flex';
+    document.getElementById('slide-ranking-box').style.display = 'none';
+    document.getElementById('slide-img').src = slide.url;
+    const bar = document.getElementById('slide-bar-img');
+    bar.style.animation = 'none';
+    bar.offsetHeight;
+    bar.style.animation = `shrink ${duracao/1000}s linear forwards`;
+  } else {
+    // ── Slide de texto ───────────────────────────────────────────────────
+    box.style.display    = '';
+    imgBox.style.display = 'none';
+    document.getElementById('slide-emoji').textContent  = slide.emoji || '📢';
+    document.getElementById('slide-titulo').textContent = slide.titulo || '';
+    document.getElementById('slide-sub').textContent    = slide.subtitulo || '';
+    box.style.setProperty('--slide-cor', slide.cor || '#ef4444');
+    el.style.setProperty('--slide-cor', slide.cor || '#ef4444');
+    const bar = document.getElementById('slide-bar');
+    bar.style.animation = 'none';
+    bar.offsetHeight;
+    bar.style.animation = `shrink ${duracao/1000}s linear forwards`;
+  }
+
+  el.classList.add('show');
+  if (player && player.pauseVideo) player.pauseVideo();
+  clearTimeout(window._slideTimer);
+  window._slideTimer = setTimeout(() => {
+    el.classList.remove('show');
+    box.style.display    = '';
+    imgBox.style.display = 'none';
+    document.getElementById('slide-ranking-box').style.display = 'none';
+    if (typeof onEnd === 'function') {
+      onEnd();
+    } else {
+      videoIdx = (videoIdx + 1) % VIDEOS.length;
+      carregarVideo(videoIdx);
+    }
+  }, duracao);
+}
+
+// ── Slides do Sistema — exibidos no startup e a cada 5 vídeos ────────────────
+// (não usa timer fixo — integrado ao contador de vídeos em proximoVideoOuSlide)
+function _agendarSlidesSistema() { /* no-op — mantido por compatibilidade */ }
+
+function _iniciarSlidesSistema() {
+  // Não interrompe overlay especial (parabéns, dedicatória etc.)
+  if (overlayAtivo) { _agendarSlidesSistema(); return; }
+  // Pausa o vídeo atual e cancela timers pendentes
+  if (player && player.pauseVideo) player.pauseVideo();
+  clearTimeout(window._slideTimer);
+  clearTimeout(stallTimer);
+  _mostrarSlidesSistemaSeq(0);
+}
+
+function _mostrarSlidesSistemaSeq(idx) {
+  if (idx >= SLIDES_SISTEMA.length) {
+    // Todos os slides do sistema foram exibidos — retoma vídeo e reagenda
+    videoIdx = (videoIdx + 1) % VIDEOS.length;
+    carregarVideo(videoIdx);
+    _agendarSlidesSistema();
+    return;
+  }
+  mostrarSlide(SLIDES_SISTEMA[idx], () => _mostrarSlidesSistemaSeq(idx + 1), 15000);
+}
+
+function lancarConfetes(corPrincipal) {
+  const cores = [corPrincipal,'#f97316','#22c55e','#3b82f6','#eab308','#fff','#ec4899','#a855f7'];
+  for (let i = 0; i < 100; i++) {
+    setTimeout(() => {
+      const el = document.createElement('div');
+      el.className = 'confete';
+      const size = 6 + Math.random() * 12;
+      el.style.cssText = `
+        left:${Math.random()*100}vw;
+        width:${size}px; height:${size}px;
+        background:${cores[Math.floor(Math.random()*cores.length)]};
+        animation-duration:${2.5 + Math.random() * 3}s;
+        animation-delay:${Math.random() * 0.8}s;
+        border-radius:${Math.random() > .5 ? '50%' : '2px'};
+      `;
+      document.body.appendChild(el);
+      setTimeout(() => el.remove(), 5000);
+    }, i * 25);
+  }
+}
+
+// ── Ranking da noite ─────────────────────────────────────────────────────────
+let _rankingDados  = [];
+let _rankingTimer  = null;
+
+async function carregarRanking() {
+  try {
+    const r = await fetch(`${BASE_URL}/api/ranking/${CODE}`);
+    const d = await r.json();
+    _rankingDados = (d.ranking || []).filter(x => x.titulo_pedido && x.n >= 1);
+  } catch(e) {}
+}
+
+function mostrarRanking() {
+  if (!_rankingDados.length || overlayAtivo) return;
+  const el    = document.getElementById('ranking-overlay');
+  const lista = document.getElementById('ranking-lista');
+  const duracao = 12000; // 12s
+
+  const medalhas = ['🥇','🥈','🥉','4','5'];
+  lista.innerHTML = _rankingDados.map((item, i) => `
+    <div class="ranking-item">
+      <div class="ranking-pos">${medalhas[i] || (i+1)}</div>
+      <div class="ranking-musica">${item.titulo_pedido}</div>
+      <div class="ranking-badge">${item.n}× pedida</div>
+    </div>
+  `).join('');
+
+  const bar = document.getElementById('ranking-bar');
+  bar.style.animation = 'none';
+  bar.offsetHeight;
+  bar.style.animation = `shrink ${duracao/1000}s linear forwards`;
+
+  el.classList.add('show');
+  clearTimeout(_rankingTimer);
+  _rankingTimer = setTimeout(() => el.classList.remove('show'), duracao);
+}
+
+// ── Seletor de nicho — abas ───────────────────────────────────────────────────
+function _mostrarNicho(nichoKey, cor) {
+  // Mostra só os canais do nicho, ativa a aba
+  document.querySelectorAll('.canal-nicho-group').forEach(el => {
+    el.style.display = el.dataset.nicho === nichoKey ? 'flex' : 'none';
+  });
+  document.querySelectorAll('.canal-tab').forEach(tab => {
+    tab.classList.remove('ativo');
+    if (tab.getAttribute('onclick') && tab.getAttribute('onclick').includes(`'${nichoKey}'`)) {
+      tab.classList.add('ativo');
+      tab.style.setProperty('--tab-cor', cor || '#ef4444');
+    }
+  });
+}
+
+function selecionarNicho(nichoKey, cor, tabEl) {
+  _mostrarNicho(nichoKey, cor);
+}
+
+// ── Polling da API ────────────────────────────────────────────────────────────
+async function pollStatus() {
+  try {
+    const res  = await fetch(`${BASE_URL}/api/status/${CODE}`);
+    const data = await res.json();
+
+    // Promoção Relâmpago
+    atualizarPromo(data.promo || null);
+
+    // Troca de canal pelo dono do bar (sem reload)
+    if (data.canal_atual && data.canal_atual !== window._canalAtual) {
+      trocarCanal(data.canal_atual);
+    }
+
+    // Pedido especial — mostra overlay imediatamente
+    if (data.pedido && !overlayAtivo && data.pedido.id !== pedidoAtual?.id) {
+      pedidoAtual = data.pedido;
+      mostrarOverlay(data.pedido);
+    }
+
+    // Pedido de música — entra na fila, espera vídeo acabar
+    if (data.pedido_musica && data.pedido_musica.id !== pedidoMusica?.id) {
+      pedidoMusica = data.pedido_musica;
+      mostrarBadgeFila(data.total_fila);
+
+      // 👑 VIP "Tocar AGORA" — interrompe o vídeo atual imediatamente
+      if (data.pedido_musica.tipo === 'vip' && player) {
+        clearTimeout(stallTimer);
+        clearTimeout(proximoTimer);
+        document.getElementById('proximo-card').classList.remove('show');
+        avancarFila(); // chama agora, sem esperar o vídeo terminar
+        return;
+      }
+
+      // Mostra banner "PRÓXIMA" imediatamente ao detectar pedido (não só 20s antes)
+      // Isso garante que o dono veja que a música está na fila antes de clicar "Tocou"
+      mostrarProximoCard(pedidoMusica);
+
+      agendarProximoCard(); // agenda para reexibir ~20s antes do fim
+    }
+
+    // Sem pedido de música — limpa indicadores
+    if (!data.pedido_musica && pedidoMusica) {
+      pedidoMusica = null;
+      esconderBadgeFila();
+    }
+
+    // Badge de fila geral
+    if (data.total_fila > 0 && !pedidoMusica) {
+      mostrarBadgeFila(data.total_fila);
+    } else if (data.total_fila === 0) {
+      esconderBadgeFila();
+    }
+
+  } catch(e) {}
+}
+
+// ── Trocar canal (sem reload de página) ──────────────────────────────────────
+async function trocarCanal(canal) {
+  if (canal === CANAL_KEY) return;
+
+  // Cancela timers ativos ANTES do await para evitar race condition
+  // (stall detector ou proximoTimer podem disparar durante o fetch e bagunçar o estado)
+  clearTimeout(stallTimer);
+  clearTimeout(proximoTimer);
+  document.getElementById('proximo-card').classList.remove('show');
+
+  // 1. Notifica o servidor
+  fetch(`${BASE_URL}/api/trocar-canal/${CODE}`, {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({canal}),
+  }).catch(() => {});
+
+  // 2. Busca vídeos do novo canal
+  let novosVideos;
+  try {
+    const r = await fetch(`${BASE_URL}/api/videos/${canal}`);
+    const d = await r.json();
+    novosVideos = d.videos || [];
+  } catch(e) {
+    novosVideos = [];
+  }
+
+  if (!novosVideos.length) {
+    // Canal sem vídeos — reverte o servidor e mantém o canal atual
+    fetch(`${BASE_URL}/api/trocar-canal/${CODE}`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({canal: CANAL_KEY}),
+    }).catch(() => {});
+    // Aviso visual temporário
+    const np = document.getElementById('np-titulo');
+    const npOrig = np ? np.textContent : '';
+    if (np) np.textContent = '⚠️ Canal sem vídeos — mantendo atual';
+    setTimeout(() => { if (np) np.textContent = npOrig; }, 3000);
+    return;
+  }
+
+  // 3. Atualiza estado interno
+  const info = CANAIS_JS[canal] || {};
+  CANAL_KEY = canal;
+  window._canalAtual = canal;
+
+  VIDEOS.length = 0;
+  novosVideos.forEach(v => VIDEOS.push(v));
+
+  // Carrega skip list do novo canal (se existir)
+  _skipSet.clear();
+  try {
+    const stored = localStorage.getItem('ps_skip_' + canal);
+    if (stored) JSON.parse(stored).forEach(id => _skipSet.add(id));
+  } catch(e) {}
+
+  videoIdx    = Math.floor(Math.random() * Math.min(VIDEOS.length, 5));
+  _loopGuard  = 0;
+  _skipCount  = 0;
+  pedidoMusica = null;
+  // Limpa lista de vídeos ruins do novo tema para dar chance fresca
+  try { localStorage.removeItem('ps_skip_' + canal); } catch(e) {}
+  esconderBadgeFila();
+
+  // 4. Atualiza visual — badge do canal
+  const nowPlaying = document.getElementById('now-playing');
+  nowPlaying.style.setProperty('--canal-cor', info.cor || '#ef4444');
+  const badge = nowPlaying.querySelector('.np-canal-badge');
+  if (badge) badge.textContent = `${info.emoji || ''} ${info.nome || canal}`;
+
+  // 5. Atualiza botões do seletor + aba de nicho
+  document.querySelectorAll('.canal-btn').forEach(btn => {
+    btn.classList.remove('ativo');
+    btn.style.borderColor = '';
+    btn.style.removeProperty('--canal-cor');
+  });
+  const btnAtivo = document.querySelector(`.canal-btn[onclick="trocarCanal('${canal}')"]`);
+  if (btnAtivo) {
+    btnAtivo.classList.add('ativo');
+    btnAtivo.style.borderColor = info.cor || '#ef4444';
+    btnAtivo.style.setProperty('--canal-cor', info.cor || '#ef4444');
+    // Garante que o nicho do novo canal está visível
+    const nicho = info.grupo || 'musica';
+    _mostrarNicho(nicho, info.cor || '#ef4444');
+  }
+
+  // 6. Carrega o primeiro vídeo
+  // Usa cueVideoById para preparar sem auto-play imediato, depois dá um curto delay
+  // antes de chamar carregarVideo — evita conflito se o player ainda estava carregando
+  clearTimeout(stallTimer);
+  setTimeout(() => carregarVideo(videoIdx), 300);
+}
+
+// ── Fullscreen ────────────────────────────────────────────────────────────────
+function toggleFullscreen() {
+  if (!document.fullscreenElement) {
+    document.documentElement.requestFullscreen().catch(() => {});
+  } else {
+    document.exitFullscreen().catch(() => {});
+  }
+}
+
+document.addEventListener('fullscreenchange', () => {
+  const btn = document.getElementById('fs-btn');
+  if (document.fullscreenElement) {
+    btn.textContent = '✕ Sair da tela cheia';
+  } else {
+    btn.innerHTML = '⛶ Tela cheia';
+  }
+});
+
+// Tecla F = fullscreen
+document.addEventListener('keydown', e => {
+  if (e.key === 'f' || e.key === 'F') toggleFullscreen();
+});
+
+// Mouse move → mostra seletor de canal + botão fullscreen
+document.addEventListener('mousemove', () => {
+  const sel = document.getElementById('canal-selector');
+  const fsb = document.getElementById('fs-btn');
+  sel.classList.add('visible');
+  fsb.classList.add('visible');
+  clearTimeout(window._selTimer);
+  window._selTimer = setTimeout(() => {
+    sel.classList.remove('visible');
+    fsb.classList.remove('visible');
+  }, 3000);
+});
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+window._canalAtual = CANAL_KEY;
+setInterval(pollStatus, 2500); // 2.5s — mais responsivo para pedidos VIP e fila
+
+// Ranking: carrega a cada 5min; mostra a cada 7 vídeos tocados
+carregarRanking();
+setInterval(carregarRanking, 5 * 60 * 1000);
+
+// Intercepta proximoVideoOuSlide para injetar ranking a cada 7 vídeos
+const _proximoVideoOriginal = proximoVideoOuSlide;
+(function(){
+  let _contadorRanking = 0;
+  window.proximoVideoOuSlide = function() {
+    _contadorRanking++;
+    // A cada 7 vídeos, se ranking tiver dados e não houver overlay ativo, mostra ranking
+    if (_contadorRanking % 7 === 0 && _rankingDados.length >= 2 && !overlayAtivo) {
+      mostrarRanking();
+      // Continua passando para o próximo vídeo/slide após o ranking
+      setTimeout(() => {
+        _proximoVideoOriginal();
+      }, 12500);
+      return;
+    }
+    _proximoVideoOriginal();
+  };
+})();
+
+// Dica fullscreen — aparece 1s após abrir, some após 6s
+// (só mostra se ainda não entrou em fullscreen antes nesta sessão)
+setTimeout(() => {
+  if (!document.fullscreenElement && !sessionStorage.getItem('fs_shown')) {
+    const hint = document.getElementById('fs-hint');
+    hint.classList.add('show');
+    sessionStorage.setItem('fs_shown','1');
+    setTimeout(() => hint.classList.remove('show'), 6000);
+  }
+}, 1000);
+</script>
+</body>
+</html>

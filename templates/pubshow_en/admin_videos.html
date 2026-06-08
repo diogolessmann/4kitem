@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Admin Vídeos — PUBSHOW</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a0f;color:#e2e8f0;font-family:'Segoe UI',sans-serif;padding-bottom:60px}
+a{color:inherit;text-decoration:none}
+
+/* Topo fixo */
+.topbar{
+  position:sticky;top:0;z-index:80;
+  background:rgba(10,10,15,.96);backdrop-filter:blur(12px);
+  border-bottom:1px solid rgba(255,255,255,.07);
+  padding:14px 24px 0;
+}
+.topbar-row1{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+h1{font-size:20px;font-weight:900;letter-spacing:-.3px}
+.sub{font-size:12px;color:#64748b;margin-left:4px}
+.btn{padding:8px 16px;border-radius:9px;border:none;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:5px}
+.btn-primary{background:linear-gradient(135deg,#7c3aed,#6366f1);color:#fff}
+.btn-danger{background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.3);color:#fca5a5}
+.btn-ghost{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:#94a3b8}
+.btn-green{background:rgba(34,197,94,.15);border:1px solid rgba(34,197,94,.3);color:#4ade80}
+.btn-indigo{background:rgba(99,102,241,.15);border:1px solid rgba(99,102,241,.3);color:#a5b4fc}
+.btn:hover{opacity:.82}
+.btn:disabled{opacity:.35;cursor:not-allowed}
+
+/* Tabs de nicho */
+.nicho-tabs{display:flex;gap:2px;overflow-x:auto;padding-bottom:0;scrollbar-width:none}
+.nicho-tabs::-webkit-scrollbar{display:none}
+.nicho-tab{
+  padding:8px 16px 10px;border-radius:10px 10px 0 0;font-size:12px;font-weight:700;
+  cursor:pointer;border:none;font-family:inherit;white-space:nowrap;
+  background:transparent;color:#64748b;border-bottom:3px solid transparent;
+  transition:.15s;position:relative;
+}
+.nicho-tab:hover{color:#e2e8f0;background:rgba(255,255,255,.04)}
+.nicho-tab.ativo{color:#fff;border-bottom-color:var(--tab-cor,#7c3aed);background:rgba(255,255,255,.05)}
+.nicho-tab .tab-count{
+  font-size:10px;font-weight:800;background:rgba(255,255,255,.1);
+  border-radius:10px;padding:1px 6px;margin-left:4px;
+}
+.nicho-tab.ativo .tab-count{background:var(--tab-cor,#7c3aed);color:#fff}
+
+/* Progresso */
+#prog-wrap{display:none;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:14px 20px;margin:16px 24px 0}
+#prog-label{font-size:12px;color:#94a3b8;margin-bottom:7px}
+#prog-bar{height:6px;background:rgba(255,255,255,.08);border-radius:3px;overflow:hidden}
+#prog-fill{height:100%;background:linear-gradient(90deg,#7c3aed,#6366f1);width:0;transition:width .25s;border-radius:3px}
+#prog-stats{display:flex;gap:20px;margin-top:8px;font-size:11px}
+.stat-ok{color:#4ade80}.stat-err{color:#f87171}.stat-skip{color:#94a3b8}
+
+/* Busca */
+.search-wrap{padding:14px 24px 0}
+#search-input{
+  width:100%;max-width:420px;background:rgba(255,255,255,.06);
+  border:1px solid rgba(255,255,255,.1);border-radius:9px;padding:8px 14px;
+  color:#e2e8f0;font-size:13px;font-family:inherit;outline:none;
+}
+#search-input:focus{border-color:#7c3aed}
+
+/* Nichos e categorias */
+.content{padding:20px 24px}
+.nicho-block{display:none}
+.nicho-block.visivel{display:block}
+
+.cat-section{margin-bottom:24px}
+.cat-header{
+  display:flex;align-items:center;gap:10px;
+  padding:10px 14px;border-radius:10px 10px 0 0;
+  background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);
+  cursor:pointer;user-select:none;
+}
+.cat-header:hover{background:rgba(255,255,255,.07)}
+.cat-emoji{font-size:18px}
+.cat-nome{font-size:13px;font-weight:800}
+.cat-count{font-size:11px;color:#64748b;background:rgba(255,255,255,.06);border-radius:8px;padding:2px 8px}
+.cat-key{font-size:10px;font-family:monospace;color:#475569;background:rgba(255,255,255,.04);border-radius:5px;padding:2px 6px}
+.cat-toggle{margin-left:auto;font-size:11px;color:#64748b}
+
+/* Tabela */
+.table-wrap{border:1px solid rgba(255,255,255,.06);border-top:none;border-radius:0 0 10px 10px;overflow:hidden}
+.table-wrap.colapsado{display:none}
+table{width:100%;border-collapse:collapse;background:rgba(255,255,255,.025)}
+th{padding:9px 12px;text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#475569;border-bottom:1px solid rgba(255,255,255,.05)}
+td{padding:8px 12px;font-size:12px;border-bottom:1px solid rgba(255,255,255,.035)}
+tr:last-child td{border-bottom:none}
+tr.hidden-search{display:none}
+.yid{font-family:monospace;color:#a78bfa;font-size:11px}
+.dot{width:7px;height:7px;border-radius:50%;display:inline-block;background:#334155;flex-shrink:0}
+.dot.ok{background:#4ade80}.dot.err{background:#f87171}
+.dot.chk{background:#f59e0b;animation:pulse .8s ease-in-out infinite alternate}
+@keyframes pulse{from{opacity:.35}to{opacity:1}}
+.status-txt{font-size:10px;color:#64748b;margin-left:3px}
+.cb{accent-color:#7c3aed;width:13px;height:13px;cursor:pointer}
+
+/* Modal */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:200;align-items:center;justify-content:center;padding:20px}
+.modal-overlay.open{display:flex}
+.modal{background:#12121a;border:1px solid rgba(255,255,255,.1);border-radius:16px;padding:24px;width:100%;max-width:460px;max-height:90vh;overflow-y:auto}
+.modal h3{font-size:15px;font-weight:800;margin-bottom:14px}
+.fg{margin-bottom:11px}
+.fg label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#64748b;display:block;margin-bottom:4px}
+.fg input,.fg select,.fg textarea{width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:8px 11px;color:#e2e8f0;font-size:13px;font-family:inherit;outline:none}
+.fg input:focus,.fg select:focus,.fg textarea:focus{border-color:#7c3aed}
+
+/* Lote preview */
+#lote-lista{display:flex;flex-direction:column;gap:5px;max-height:260px;overflow-y:auto;margin-bottom:10px}
+.lote-row{display:flex;align-items:center;gap:8px;padding:7px 9px;background:rgba(255,255,255,.04);border-radius:7px;font-size:12px}
+
+/* Toast */
+#toast{position:fixed;bottom:24px;right:24px;z-index:300;background:#1e1e2e;border:1px solid rgba(124,58,237,.4);border-radius:10px;padding:10px 16px;font-size:13px;color:#a78bfa;display:none;animation:fadeIn .25s}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+</style>
+</head>
+<body>
+
+<!-- ── TOPO FIXO ───────────────────────────────────────────────────────────── -->
+<div class="topbar">
+  <div class="topbar-row1">
+    <a href="/pubshow-en/admin" class="btn btn-ghost">← Admin</a>
+    <h1>🎬 Vídeos</h1><span class="sub">{{ total }} cadastrados</span>
+    <button class="btn btn-primary" id="btn-verificar" onclick="iniciarVerificacao()">🔍 Verificar Todos</button>
+    <button class="btn btn-danger" id="btn-apagar" onclick="apagarSelecionados()" disabled>🗑️ Apagar (<span id="sel-count">0</span>)</button>
+    <button class="btn" id="btn-autoremover" onclick="autoRemoverQuebrados()" style="background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.4);color:#f87171;font-weight:700">🔥 Auto-remover Quebrados</button>
+    <button class="btn btn-ghost" onclick="abrirModal('modal-add')">+ Vídeo</button>
+    <button class="btn btn-green" onclick="abrirModal('modal-lote')">📋 Lote</button>
+    <button class="btn btn-indigo" onclick="abrirModal('modal-playlist')">🤖 Playlist API</button>
+    <button class="btn" id="btn-seed" onclick="seedCategorias()" style="background:rgba(74,222,128,.15);border:1px solid rgba(74,222,128,.35);color:#4ade80">🌱 Seed Categorias Vazias</button>
+  </div>
+
+  <!-- Tabs de nicho -->
+  <div class="nicho-tabs">
+    <button class="nicho-tab ativo" data-nicho="todos" style="--tab-cor:#7c3aed" onclick="filtrarNicho('todos',this)">
+      🌐 Todos <span class="tab-count">{{ total }}</span>
+    </button>
+    {% for gkey, gemoji, glabel, cats, total_nicho in por_nicho %}
+    <button class="nicho-tab" data-nicho="{{ gkey }}"
+            style="--tab-cor:{{ {'musica':'#a855f7','shows':'#ec4899','sport':'#f59e0b','viral':'#ef4444','entretenimento':'#22c55e','outros':'#64748b'}.get(gkey,'#7c3aed') }}"
+            onclick="filtrarNicho('{{ gkey }}',this)">
+      {{ gemoji }} {{ glabel }} <span class="tab-count">{{ total_nicho }}</span>
+    </button>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- ── BUSCA ───────────────────────────────────────────────────────────────── -->
+<div class="search-wrap">
+  <input id="search-input" placeholder="🔍 Filtrar por título ou artista…" oninput="filtrarTexto(this.value)" autocomplete="off">
+</div>
+
+<!-- ── PROGRESSO ──────────────────────────────────────────────────────────── -->
+<div id="prog-wrap">
+  <div id="prog-label">Verificando… 0 / {{ total }}</div>
+  <div id="prog-bar"><div id="prog-fill"></div></div>
+  <div id="prog-stats">
+    <span class="stat-ok" id="s-ok">✅ 0 ok</span>
+    <span class="stat-err" id="s-err">❌ 0 quebrados</span>
+    <span class="stat-skip" id="s-skip">⏳ {{ total }} restantes</span>
+  </div>
+</div>
+
+<!-- ── CONTEÚDO POR NICHO ─────────────────────────────────────────────────── -->
+<div class="content">
+{% for gkey, gemoji, glabel, cats, total_nicho in por_nicho %}
+<div class="nicho-block visivel" data-nicho="{{ gkey }}">
+  {% for cat_key, cinfo, vids in cats %}
+  <div class="cat-section" data-cat="{{ cat_key }}">
+    <!-- cabeçalho clicável -->
+    <div class="cat-header" onclick="toggleCatSection('sec-{{ cat_key }}','tog-{{ cat_key }}')">
+      <span class="cat-emoji">{{ cinfo.emoji or gemoji }}</span>
+      <span class="cat-nome">{{ cinfo.nome or cat_key }}</span>
+      <span class="cat-count">{{ vids|length }}</span>
+      <span class="cat-key">{{ cat_key }}</span>
+      <input type="checkbox" class="cb" id="cb-cat-{{ cat_key }}"
+             onclick="event.stopPropagation();toggleCat('{{ cat_key }}')"
+             title="Selecionar todos de {{ cinfo.nome or cat_key }}">
+      <span class="cat-toggle" id="tog-{{ cat_key }}">▼</span>
+    </div>
+
+    <!-- tabela de vídeos -->
+    <div class="table-wrap" id="sec-{{ cat_key }}">
+      <table>
+        <thead><tr>
+          <th style="width:30px"></th>
+          <th>YouTube ID</th>
+          <th>Título</th>
+          <th>Artista</th>
+          <th>Status</th>
+          <th style="width:40px"></th>
+        </tr></thead>
+        <tbody id="tbody-{{ cat_key }}">
+        {% for v in vids %}
+        <tr id="row-{{ v.youtube_id }}" data-titulo="{{ v.titulo|lower }}" data-artista="{{ (v.artista or '')|lower }}">
+          <td><input type="checkbox" class="cb cb-video" value="{{ v.youtube_id }}" onchange="atualizarContador()"></td>
+          <td><a href="https://youtu.be/{{ v.youtube_id }}" target="_blank" class="yid">{{ v.youtube_id }}</a></td>
+          <td style="max-width:300px">{{ v.titulo }}</td>
+          <td style="color:#64748b">{{ v.artista or '—' }}</td>
+          <td style="display:flex;align-items:center;gap:3px">
+            <span class="dot" id="dot-{{ v.youtube_id }}"></span>
+            <span class="status-txt" id="msg-{{ v.youtube_id }}">—</span>
+          </td>
+          <td>
+            <button onclick="removerVideo('{{ v.youtube_id }}', '{{ v.titulo|replace("'","") }}')"
+              title="Remover este vídeo"
+              style="background:none;border:none;cursor:pointer;font-size:15px;opacity:.4;padding:2px 6px;border-radius:6px;transition:.15s"
+              onmouseover="this.style.opacity='1';this.style.background='rgba(239,68,68,.15)'"
+              onmouseout="this.style.opacity='.4';this.style.background='none'">🗑</button>
+          </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endfor %}
+</div>
+
+<!-- ── MODAL ADICIONAR ────────────────────────────────────────────────────── -->
+<div class="modal-overlay" id="modal-add">
+  <div class="modal">
+    <h3>➕ Adicionar Vídeo</h3>
+    <div class="fg"><label>YouTube ID *</label><input id="add-yid" placeholder="hTWKbfoikeg"></div>
+    <div class="fg"><label>Título *</label><input id="add-titulo" placeholder="Smells Like Teen Spirit"></div>
+    <div class="fg"><label>Artista</label><input id="add-artista" placeholder="Nirvana"></div>
+    <div class="fg">
+      <label>Categoria *</label>
+      <select id="add-cat">
+        <option value="">— Selecione —</option>
+        {% for grupo_label, itens in canais_grupos %}
+        <optgroup label="{{ grupo_label }}">
+          {% for key, c in itens %}
+          <option value="{{ key }}">{{ c.emoji }} {{ c.nome }}</option>
+          {% endfor %}
+        </optgroup>
+        {% endfor %}
+      </select>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
+      <button class="btn btn-ghost" onclick="fecharModal('modal-add')">Cancelar</button>
+      <button class="btn btn-primary" onclick="adicionarVideo()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── MODAL LOTE ─────────────────────────────────────────────────────────── -->
+<div class="modal-overlay" id="modal-lote">
+  <div class="modal" style="max-width:580px">
+    <h3>📋 Importar em Lote</h3>
+    <p style="font-size:12px;color:#64748b;margin-bottom:14px">Cole links ou IDs — um por linha. O título é buscado automaticamente via oEmbed.</p>
+    <div class="fg">
+      <label>Categoria *</label>
+      <select id="lote-cat">
+        {% for grupo_label, itens in canais_grupos %}
+        <optgroup label="{{ grupo_label }}">
+          {% for key, c in itens %}
+          <option value="{{ key }}">{{ c.emoji }} {{ c.nome }}</option>
+          {% endfor %}
+        </optgroup>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="fg">
+      <label>Links / IDs (um por linha) *</label>
+      <textarea id="lote-links" style="min-height:100px;resize:vertical" placeholder="https://youtu.be/dQw4w9WgXcQ&#10;hTWKbfoikeg"></textarea>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:12px">
+      <button class="btn btn-primary" id="btn-lote-buscar" onclick="lotesBuscarTitulos()" style="flex:1">🔍 Buscar Títulos</button>
+      <button class="btn btn-ghost" onclick="fecharModal('modal-lote');loteLimpar()">Cancelar</button>
+    </div>
+    <div id="lote-preview" style="display:none">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#64748b;margin-bottom:6px">Preview — desmarque os que não quer salvar</div>
+      <div id="lote-lista"></div>
+      <div id="lote-msg-err" style="display:none;font-size:12px;color:#f87171;margin-bottom:8px"></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end">
+        <button class="btn btn-ghost" onclick="fecharModal('modal-lote');loteLimpar()">Cancelar</button>
+        <button class="btn btn-primary" id="btn-lote-salvar" onclick="loteSalvar()">💾 Salvar Selecionados</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── MODAL PLAYLIST API ─────────────────────────────────────────────────── -->
+<div class="modal-overlay" id="modal-playlist">
+  <div class="modal" style="max-width:500px">
+    <h3>🤖 Importar Playlist (API)</h3>
+    <p style="font-size:12px;color:#64748b;margin-bottom:14px">Requer YOUTUBE_API_KEY configurada no Railway. Importa todos os vídeos da playlist para a categoria escolhida.</p>
+    <div class="fg"><label>URL da Playlist *</label><input id="pl-url" placeholder="https://www.youtube.com/playlist?list=PLxxxx"></div>
+    <div class="fg">
+      <label>Categoria *</label>
+      <select id="pl-cat">
+        {% for grupo_label, itens in canais_grupos %}
+        <optgroup label="{{ grupo_label }}">
+          {% for key, c in itens %}
+          <option value="{{ key }}">{{ c.emoji }} {{ c.nome }}</option>
+          {% endfor %}
+        </optgroup>
+        {% endfor %}
+      </select>
+    </div>
+    <div id="pl-ok"  style="display:none;margin-bottom:10px;padding:10px 14px;background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.2);border-radius:8px;font-size:13px;color:#4ade80"></div>
+    <div id="pl-err" style="display:none;margin-bottom:10px;padding:10px 14px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);border-radius:8px;font-size:13px;color:#f87171"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn btn-ghost" onclick="fecharModal('modal-playlist')">Fechar</button>
+      <button class="btn btn-primary" id="btn-importar" onclick="importarPlaylist()">📥 Importar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── TOAST ──────────────────────────────────────────────────────────────── -->
+<div id="toast"></div>
+
+<script>
+const TOTAL = {{ total }};
+let verificando = false, contOk = 0, contErr = 0;
+const ruinsDetectados = new Set();
+const TODOS_IDS = [...document.querySelectorAll('.cb-video')].map(el => el.value);
+
+// ── Modais ────────────────────────────────────────────────────────────────────
+function abrirModal(id){ document.getElementById(id).classList.add('open') }
+function fecharModal(id){ document.getElementById(id).classList.remove('open') }
+document.querySelectorAll('.modal-overlay').forEach(el =>
+  el.addEventListener('click', e => { if(e.target===el) el.classList.remove('open') })
+);
+
+// ── Remover vídeo individual ──────────────────────────────────────────────────
+async function removerVideo(yid, titulo) {
+  if (!confirm(`Remover "${titulo}" (${yid}) da biblioteca?`)) return;
+  try {
+    const res = await fetch('/pubshow-en/admin/videos/deletar', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ids: [yid]})
+    });
+    const d = await res.json();
+    if (d.ok && d.deleted > 0) {
+      const row = document.getElementById('row-' + yid);
+      if (row) { row.style.transition = 'opacity .3s'; row.style.opacity = '0'; setTimeout(() => row.remove(), 300); }
+      toast('🗑 Vídeo removido!');
+    } else {
+      alert('Erro ao remover vídeo.');
+    }
+  } catch(e) { alert('Erro de conexão.'); }
+}
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+function toast(msg, dur=3500){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.style.display='block';
+  clearTimeout(t._t); t._t=setTimeout(()=>t.style.display='none', dur);
+}
+
+// ── Filtro de nicho (tabs) ────────────────────────────────────────────────────
+function filtrarNicho(nicho, tabEl) {
+  document.querySelectorAll('.nicho-tab').forEach(t => t.classList.remove('ativo'));
+  tabEl.classList.add('ativo');
+  document.querySelectorAll('.nicho-block').forEach(b => {
+    b.classList.toggle('visivel', nicho === 'todos' || b.dataset.nicho === nicho);
+  });
+  // Limpa busca ao trocar de aba
+  const si = document.getElementById('search-input');
+  si.value = '';
+  filtrarTexto('');
+}
+
+// ── Filtro de texto ───────────────────────────────────────────────────────────
+function filtrarTexto(q) {
+  q = q.toLowerCase().trim();
+  document.querySelectorAll('#tbody-' + '*' + ' tr[data-titulo]').forEach(() => {}); // noop
+  document.querySelectorAll('tr[data-titulo]').forEach(tr => {
+    const match = !q ||
+      tr.dataset.titulo.includes(q) ||
+      tr.dataset.artista.includes(q) ||
+      tr.querySelector('.yid')?.textContent.includes(q);
+    tr.classList.toggle('hidden-search', !match);
+  });
+  // Mostra/oculta seções sem resultados visíveis
+  document.querySelectorAll('.cat-section').forEach(sec => {
+    const temVisivel = [...sec.querySelectorAll('tr[data-titulo]')].some(tr => !tr.classList.contains('hidden-search'));
+    sec.style.display = temVisivel ? '' : (q ? 'none' : '');
+  });
+}
+
+// ── Collapse de seção ────────────────────────────────────────────────────────
+function toggleCatSection(secId, togId) {
+  const wrap = document.getElementById(secId);
+  const tog  = document.getElementById(togId);
+  if(!wrap) return;
+  const col = wrap.classList.toggle('colapsado');
+  tog.textContent = col ? '▶' : '▼';
+}
+
+// ── Seleção de checkboxes ─────────────────────────────────────────────────────
+function toggleCat(cat) {
+  const master = document.getElementById('cb-cat-'+cat);
+  document.querySelectorAll('#tbody-'+cat+' .cb-video').forEach(cb => cb.checked = master.checked);
+  atualizarContador();
+}
+function atualizarContador() {
+  const n = document.querySelectorAll('.cb-video:checked').length;
+  document.getElementById('sel-count').textContent = n;
+  document.getElementById('btn-apagar').disabled = n === 0;
+}
+
+// ── Verificação em massa ──────────────────────────────────────────────────────
+async function iniciarVerificacao() {
+  if (verificando) return;
+  verificando = true; contOk = 0; contErr = 0; ruinsDetectados.clear();
+  document.getElementById('btn-verificar').disabled = true;
+  document.getElementById('prog-wrap').style.display = 'block';
+  TODOS_IDS.forEach(yid => {
+    document.getElementById('dot-'+yid).className = 'dot chk';
+    document.getElementById('msg-'+yid).textContent = '…';
+  });
+
+  for (let i = 0; i < TODOS_IDS.length; i++) {
+    const yid = TODOS_IDS[i];
+    const pct = Math.round((i / TODOS_IDS.length) * 100);
+    document.getElementById('prog-fill').style.width = pct + '%';
+    document.getElementById('prog-label').textContent = `Verificando… ${i+1} / ${TODOS_IDS.length}`;
+    document.getElementById('s-skip').textContent = `⏳ ${TODOS_IDS.length - i - 1} restantes`;
+
+    try {
+      const res = await fetch('/pubshow-en/admin/videos/check-one', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({youtube_id: yid})
+      });
+      const d = await res.json();
+      const dot = document.getElementById('dot-'+yid);
+      const msg = document.getElementById('msg-'+yid);
+      const row = document.getElementById('row-'+yid);
+      if (d.ok) {
+        dot.className='dot ok'; msg.style.color='#4ade80'; msg.textContent='✅ ok'; contOk++;
+      } else {
+        dot.className='dot err'; msg.style.color='#f87171';
+        msg.textContent='❌ '+(d.erro||'erro');
+        row.style.background='rgba(239,68,68,.06)';
+        const cb = row.querySelector('.cb-video');
+        if (cb) cb.checked = true;
+        ruinsDetectados.add(yid); contErr++;
+      }
+    } catch(e) {
+      document.getElementById('msg-'+yid).textContent='⚠️ timeout'; contErr++;
+    }
+
+    document.getElementById('s-ok').textContent = `✅ ${contOk} ok`;
+    document.getElementById('s-err').textContent = `❌ ${contErr} quebrados`;
+    atualizarContador();
+    await new Promise(r => setTimeout(r, 180));
+  }
+
+  document.getElementById('prog-fill').style.width = '100%';
+  document.getElementById('prog-label').textContent =
+    `✅ Concluído — ${contOk} ok · ${contErr} quebrado(s)`;
+  document.getElementById('btn-verificar').disabled = false;
+  verificando = false;
+}
+
+// ── Apagar selecionados ───────────────────────────────────────────────────────
+async function apagarSelecionados() {
+  const ids = [...document.querySelectorAll('.cb-video:checked')].map(cb => cb.value);
+  if (!ids.length) return;
+  if (!confirm(`Apagar ${ids.length} vídeo(s)? Esta ação não pode ser desfeita.`)) return;
+  const res = await fetch('/pubshow-en/admin/videos/deletar', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ids})
+  });
+  const d = await res.json();
+  if (d.ok) {
+    ids.forEach(yid => { const r=document.getElementById('row-'+yid); if(r) r.remove(); });
+    toast(`✅ ${d.deleted} vídeo(s) removidos!`);
+    atualizarContador();
+  }
+}
+
+// ── Adicionar vídeo ───────────────────────────────────────────────────────────
+async function adicionarVideo() {
+  const yid=document.getElementById('add-yid').value.trim();
+  const titulo=document.getElementById('add-titulo').value.trim();
+  const artista=document.getElementById('add-artista').value.trim();
+  const cat=document.getElementById('add-cat').value;
+  if (!yid||!titulo||!cat){alert('Preencha YouTube ID, Título e Categoria.');return}
+  const res=await fetch('/pubshow-en/admin/videos/add',{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({youtube_id:yid,titulo,artista,categoria:cat})
+  });
+  const d=await res.json();
+  if(d.ok){fecharModal('modal-add');toast('✅ Vídeo adicionado! Recarregue para ver.');
+  }else{alert('❌ Erro: '+d.erro)}
+}
+
+// ── Importar em lote ──────────────────────────────────────────────────────────
+function extrairYoutubeId(t) {
+  const ps=[/(?:youtu\.be\/)([A-Za-z0-9_-]{11})/,
+            /(?:youtube\.com\/(?:watch\?v=|shorts\/|embed\/))([A-Za-z0-9_-]{11})/,
+            /^([A-Za-z0-9_-]{11})$/];
+  for(const p of ps){const m=t.trim().match(p);if(m)return m[1]}return null;
+}
+let loteItens=[];
+
+async function lotesBuscarTitulos() {
+  const raw=document.getElementById('lote-links').value;
+  const linhas=raw.split('\n').map(l=>l.trim()).filter(Boolean);
+  if(!linhas.length){alert('Cole pelo menos um link ou ID.');return}
+  const btn=document.getElementById('btn-lote-buscar');
+  btn.disabled=true;btn.textContent='⏳ Buscando...';
+  const ids=[]; for(const l of linhas){const id=extrairYoutubeId(l);if(id&&!ids.includes(id))ids.push(id)}
+  if(!ids.length){alert('Nenhum ID válido.');btn.disabled=false;btn.textContent='🔍 Buscar Títulos';return}
+  loteItens=[];
+  const lista=document.getElementById('lote-lista');
+  lista.innerHTML='';
+  document.getElementById('lote-preview').style.display='block';
+  document.getElementById('lote-msg-err').style.display='none';
+  for(const yid of ids){
+    const div=document.createElement('div');div.className='lote-row';
+    div.innerHTML=`<input type="checkbox" class="cb lote-cb" value="${yid}" checked>
+      <a href="https://youtu.be/${yid}" target="_blank" style="font-family:monospace;color:#a78bfa;font-size:11px">${yid}</a>
+      <span id="lote-tit-${yid}" style="flex:1;color:#94a3b8">⏳ buscando…</span>`;
+    lista.appendChild(div);
+    try{
+      const r=await fetch('/pubshow-en/admin/videos/oembed',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({youtube_id:yid})});
+      const d=await r.json();
+      const el=document.getElementById('lote-tit-'+yid);
+      if(d.ok){el.style.color='#e2e8f0';el.textContent=d.titulo+(d.artista?' — '+d.artista:'');loteItens.push({youtube_id:yid,titulo:d.titulo,artista:d.artista||''});}
+      else{el.style.color='#f87171';el.textContent='❌ Indisponível para embed';div.querySelector('input').checked=false;loteItens.push({youtube_id:yid,titulo:'',artista:'',erro:true});}
+    }catch(e){document.getElementById('lote-tit-'+yid).textContent='⚠️ timeout'}
+    await new Promise(r=>setTimeout(r,150));
+  }
+  btn.disabled=false;btn.textContent='🔍 Buscar Títulos';
+}
+
+async function loteSalvar(){
+  const cat=document.getElementById('lote-cat').value;
+  const sels=[...document.querySelectorAll('.lote-cb:checked')].map(cb=>cb.value);
+  if(!sels.length){alert('Selecione ao menos um vídeo.');return}
+  const payload=loteItens.filter(it=>sels.includes(it.youtube_id)&&!it.erro).map(it=>({...it,categoria:cat}));
+  if(!payload.length){alert('Nenhum vídeo válido selecionado.');return}
+  const btn=document.getElementById('btn-lote-salvar');btn.disabled=true;btn.textContent='⏳ Salvando...';
+  try{
+    const r=await fetch('/pubshow-en/admin/videos/add-batch',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    const d=await r.json();
+    if(d.ok){fecharModal('modal-lote');loteLimpar();toast(`✅ ${d.inseridos} adicionados${d.duplicados?' ('+d.duplicados+' já existiam)':''}!`);setTimeout(()=>location.reload(),2500);}
+    else{alert('Erro: '+d.erro)}
+  }catch(e){alert('Erro de rede: '+e)}
+  btn.disabled=false;btn.textContent='💾 Salvar Selecionados';
+}
+
+function loteLimpar(){
+  document.getElementById('lote-links').value='';
+  document.getElementById('lote-lista').innerHTML='';
+  document.getElementById('lote-preview').style.display='none';
+  loteItens=[];
+}
+
+// ── Importar playlist ─────────────────────────────────────────────────────────
+async function importarPlaylist(){
+  const url=document.getElementById('pl-url').value.trim();
+  const cat=document.getElementById('pl-cat').value;
+  const okEl=document.getElementById('pl-ok'), errEl=document.getElementById('pl-err');
+  const btn=document.getElementById('btn-importar');
+  okEl.style.display=errEl.style.display='none';
+  if(!url){errEl.textContent='Cole a URL da playlist.';errEl.style.display='block';return}
+  btn.disabled=true;btn.textContent='⏳ Importando...';
+  try{
+    const r=await fetch('/pubshow-en/admin/import-playlist',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({playlist_url:url,categoria:cat})});
+    const d=await r.json();
+    if(d.ok){okEl.textContent=d.msg+(d.duplicados>0?' ('+d.duplicados+' já existiam)':'');okEl.style.display='block';document.getElementById('pl-url').value='';setTimeout(()=>location.reload(),3000);}
+    else{errEl.textContent='❌ '+d.erro;errEl.style.display='block';}
+  }catch(e){errEl.textContent='❌ Rede: '+e;errEl.style.display='block'}
+  btn.disabled=false;btn.textContent='📥 Importar';
+}
+
+// ── Auto-remover quebrados (1-click, paralelo no servidor) ────────────────────
+async function autoRemoverQuebrados(){
+  const total = TODOS_IDS.length;
+  if(!confirm(`Verificar ${total} vídeos e remover automaticamente os quebrados?\n\nIsso leva ~${Math.ceil(total/20)}s e não pode ser desfeito.`)) return;
+
+  const btn = document.getElementById('btn-autoremover');
+  btn.disabled = true;
+  btn.textContent = '⏳ Verificando...';
+
+  // Mostra progresso
+  document.getElementById('prog-wrap').style.display = 'block';
+  document.getElementById('prog-fill').style.width = '30%';
+  document.getElementById('prog-label').textContent = `Verificando ${total} vídeos em paralelo...`;
+
+  try {
+    const r = await fetch('/pubshow-en/admin/videos/remover-quebrados', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: '{}'
+    });
+    const d = await r.json();
+
+    document.getElementById('prog-fill').style.width = '100%';
+
+    if(d.ok){
+      const msg = `✅ Verificação concluída!\n\n` +
+        `📊 Verificados: ${d.verificados}\n` +
+        `❌ Quebrados encontrados: ${d.quebrados}\n` +
+        `🗑️ Removidos: ${d.removidos}\n\n` +
+        (d.removidos > 0 ? `Recarregando a página...` : `Biblioteca está limpa! 🎉`);
+      alert(msg);
+      if(d.removidos > 0) location.reload();
+      else {
+        document.getElementById('s-err').textContent = `❌ 0 quebrados`;
+        document.getElementById('prog-label').textContent = '✅ Biblioteca limpa!';
+      }
+    } else {
+      alert('❌ Erro: ' + d.erro);
+    }
+  } catch(e) {
+    alert('❌ Erro de rede: ' + e);
+  }
+
+  btn.disabled = false;
+  btn.textContent = '🔥 Auto-remover Quebrados';
+}
+
+// ── Seed categorias vazias ─────────────────────────────────────────────────────
+async function seedCategorias(){
+  const btn = document.getElementById('btn-seed');
+  if(!confirm('Buscar e importar vídeos para as categorias com menos de 5 vídeos?\n\nIsso pode levar 30-60 segundos e consume cota da YouTube API.')) return;
+  btn.disabled=true;
+  btn.textContent='⏳ Buscando...';
+  try{
+    const r = await fetch('/pubshow-en/admin/videos/seed-categorias',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});
+    const d = await r.json();
+    if(d.ok){
+      let msg = `✅ ${d.total} vídeos importados!\n\n`;
+      for(const [cat, info] of Object.entries(d.categorias||{})){
+        if(info.skip) msg += `${cat}: já tinha ${info.existentes} vídeos\n`;
+        else if(info.erro) msg += `${cat}: ❌ ${info.erro}\n`;
+        else msg += `${cat}: +${info.inseridos} novos\n`;
+      }
+      alert(msg);
+      location.reload();
+    } else {
+      alert('❌ Erro: ' + d.erro);
+    }
+  }catch(e){alert('❌ Rede: '+e)}
+  btn.disabled=false;
+  btn.textContent='🌱 Seed Categorias Vazias';
+}
+</script>
+</body>
+</html>

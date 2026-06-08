@@ -27,14 +27,14 @@ pubshow_en_bp = Blueprint('pubshow_en', __name__, url_prefix='/pubshow-en')
 _ASAAS_BASE = 'https://api.asaas.com/v3'
 
 TIPOS_ESTABELECIMENTO = {
-    'bar':        '🍺 Bar / Boteco',
-    'pub':        '🎸 Pub Rock',
-    'esportivo':  '⚽ Bar Esportivo',
-    'churrasco':  '🥩 Churrascaria',
-    'restaurante':'🍽️ Restaurante',
-    'academia':   '💪 Academia',
-    'barbearia':  '✂️ Barbearia',
-    'outro':      '🏢 Outro',
+    'bar':        '🍺 Bar / Pub',
+    'pub':        '🎸 Rock Pub',
+    'esportivo':  '⚽ Sports Bar',
+    'churrasco':  '🥩 Steakhouse / BBQ',
+    'restaurante':'🍽️ Restaurant',
+    'academia':   '💪 Gym',
+    'barbearia':  '✂️ Barbershop',
+    'outro':      '🏢 Other',
 }
 
 CANAIS = {
@@ -76,10 +76,10 @@ PLANOS = {
     'starter': {
         'nome': 'Starter',
         'emoji': '🌱',
-        'preco': 69.90,
-        'preco_fmt': 'R$ 69,90',
-        'descricao': 'Para começar',
-        'features': ['TV com clips 24/7', '3 tipos de pedido', '1 slide de propaganda', 'QR Code de mesa', 'Painel de gestão'],
+        'preco': 19.00,
+        'preco_fmt': '$19',
+        'descricao': 'To get started',
+        'features': ['24/7 video clips on your TV', '3 request types', '1 ad slide', 'Table QR code', 'Management dashboard'],
         'max_tipos': ['musica', 'musica_especifica', 'dedicatoria'],
         'max_anuncios': 1,
         'analytics': False,
@@ -91,11 +91,11 @@ PLANOS = {
     'bar': {
         'nome': 'Bar',
         'emoji': '🍺',
-        'preco': 129.90,
-        'preco_fmt': 'R$ 129,90',
-        'descricao': 'Para bares e botecos',
+        'preco': 39.00,
+        'preco_fmt': '$39',
+        'descricao': 'For bars & pubs',
         'destaque': True,
-        'features': ['Tudo do Starter', 'Todos os tipos de pedido', '3 slides de propaganda', 'Analytics de horários', 'Parabéns e Dedicatórias', 'Promoção Relâmpago'],
+        'features': ['Everything in Starter', 'All request types', '3 ad slides', 'Peak-hours analytics', 'Birthdays & dedications', 'Flash promotions'],
         'max_tipos': None,
         'max_anuncios': 3,
         'analytics': True,
@@ -107,10 +107,10 @@ PLANOS = {
     'pro': {
         'nome': 'Pro',
         'emoji': '🚀',
-        'preco': 199.90,
-        'preco_fmt': 'R$ 199,90',
-        'descricao': 'Para maximizar o lucro',
-        'features': ['Tudo do Bar', 'Happy Hour automático', 'Notificação WhatsApp', 'Ranking da noite na TV', '5 slides de propaganda', 'Relatórios completos'],
+        'preco': 59.00,
+        'preco_fmt': '$59',
+        'descricao': 'Maximize your revenue',
+        'features': ['Everything in Bar', 'Automatic happy hour', 'WhatsApp notifications', 'Live night ranking on TV', '5 ad slides', 'Full reports'],
         'max_tipos': None,
         'max_anuncios': 5,
         'analytics': True,
@@ -120,12 +120,12 @@ PLANOS = {
         'grupos_tv': None,
     },
     'rede': {
-        'nome': 'Rede',
+        'nome': 'Network',
         'emoji': '🏟️',
-        'preco': 349.90,
-        'preco_fmt': 'R$ 349,90',
-        'descricao': 'Para redes e múltiplos locais',
-        'features': ['Tudo do Pro', 'Múltiplos locais', 'Painel unificado', 'Suporte prioritário', 'Slides ilimitados'],
+        'preco': 99.00,
+        'preco_fmt': '$99',
+        'descricao': 'For chains & multiple venues',
+        'features': ['Everything in Pro', 'Multiple locations', 'Unified dashboard', 'Priority support', 'Unlimited slides'],
         'max_tipos': None,
         'max_anuncios': 999,
         'analytics': True,
@@ -177,17 +177,17 @@ _SLIDES_DIR = os.path.join(
 
 
 TIPOS_PEDIDO = {
-    'musica':           {'nome': 'Música aleatória',       'emoji': '🎵', 'preco': 2.00,  'cor': '#3b82f6'},
-    'musica_especifica':{'nome': 'Buscar na biblioteca',   'emoji': '🎯', 'preco': 5.00,  'cor': '#06b6d4'},
-    'musica_externa':   {'nome': 'Buscar no YouTube',      'emoji': '🌐', 'preco': 20.00, 'cor': '#dc2626'},
-    'flash':            {'nome': 'Prioridade na fila',     'emoji': '⚡', 'preco': 5.00,  'cor': '#f59e0b'},
-    'vip':              {'nome': 'Tocar AGORA',            'emoji': '👑', 'preco': 10.00, 'cor': '#8b5cf6'},
-    'parabens':         {'nome': 'Parabéns! 🎂',           'emoji': '🎂', 'preco': 15.00, 'cor': '#ec4899'},
-    'dedicatoria':      {'nome': 'Dedicatória ❤️',        'emoji': '💌', 'preco': 10.00, 'cor': '#ef4444'},
-    'brinde':           {'nome': 'Brinde Geral! 🍻',       'emoji': '🍻', 'preco': 5.00,  'cor': '#22c55e'},
-    'chegada':          {'nome': 'Chegamos! 🎉',           'emoji': '🎉', 'preco': 5.00,  'cor': '#f97316'},
-    # chave 'casamento' mantida por compatibilidade com o banco; rótulo agora é "Namoro"
-    'casamento':        {'nome': 'Pedido de Namoro 💕',   'emoji': '💕', 'preco': 25.00, 'cor': '#a855f7'},
+    'musica':           {'nome': 'Random song',           'emoji': '🎵', 'preco': 1.00,  'cor': '#3b82f6'},
+    'musica_especifica':{'nome': 'Search the library',    'emoji': '🎯', 'preco': 2.00,  'cor': '#06b6d4'},
+    'musica_externa':   {'nome': 'Search YouTube',        'emoji': '🌐', 'preco': 5.00,  'cor': '#dc2626'},
+    'flash':            {'nome': 'Skip the line',         'emoji': '⚡', 'preco': 2.00,  'cor': '#f59e0b'},
+    'vip':              {'nome': 'Play it NOW',           'emoji': '👑', 'preco': 3.00,  'cor': '#8b5cf6'},
+    'parabens':         {'nome': 'Happy Birthday! 🎂',    'emoji': '🎂', 'preco': 4.00,  'cor': '#ec4899'},
+    'dedicatoria':      {'nome': 'Dedication ❤️',         'emoji': '💌', 'preco': 3.00,  'cor': '#ef4444'},
+    'brinde':           {'nome': 'Round of cheers! 🍻',   'emoji': '🍻', 'preco': 2.00,  'cor': '#22c55e'},
+    'chegada':          {'nome': 'We just arrived! 🎉',   'emoji': '🎉', 'preco': 2.00,  'cor': '#f97316'},
+    # 'casamento' key kept for DB compatibility; label is now "Date request"
+    'casamento':        {'nome': 'Will you date me? 💕',  'emoji': '💕', 'preco': 7.00,  'cor': '#a855f7'},
 }
 
 

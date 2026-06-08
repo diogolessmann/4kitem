@@ -1,0 +1,1482 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Jukebox — {{ b.nome }}</title>
+
+<!-- ── PWA ──────────────────────────────────────────────────────────────── -->
+<link rel="manifest" href="/pubshow-en/manifest/{{ b.jukebox_token or b.code }}.json">
+<meta name="theme-color" content="#08080f">
+<meta name="mobile-web-app-capable" content="yes">
+<!-- iOS Safari -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Jukebox">
+<link rel="apple-touch-icon" href="/pubshow-en/pwa-icon/{{ b.jukebox_token or b.code }}/192.png">
+<!-- Descrição para share/bookmark -->
+<meta name="description" content="Peça músicas no {{ b.nome }} direto pelo seu celular 🎵">
+<!-- ────────────────────────────────────────────────────────────────────── -->
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  :root{
+    --bg:#08080f;--surface:#13131f;--surface2:#1a1a2e;
+    --border:rgba(255,255,255,.08);--text:#f0f0ff;--text2:#8888aa;
+  }
+  body{background:var(--bg);color:var(--text);font-family:'Segoe UI',sans-serif;min-height:100vh;padding-bottom:40px}
+
+  .header{
+    background:linear-gradient(160deg,#120820 0%,#0a1525 60%,#08080f 100%);
+    padding:22px 20px 26px;border-bottom:1px solid var(--border);
+    position:relative;overflow:hidden;
+  }
+  .header::before{
+    content:'';position:absolute;top:-40px;right:-40px;
+    width:180px;height:180px;border-radius:50%;
+    background:radial-gradient(circle,{{ canal.cor }}33 0%,transparent 70%);
+    pointer-events:none;
+  }
+  .header-top{display:flex;align-items:center;gap:12px;margin-bottom:10px;position:relative;z-index:1}
+  .canal-badge{
+    background:{{ canal.cor }};padding:5px 14px;border-radius:100px;
+    font-size:11px;font-weight:800;color:#fff;letter-spacing:.3px;
+    box-shadow:0 0 16px {{ canal.cor }}66;
+  }
+  .bar-nome{font-size:20px;font-weight:900;letter-spacing:-.5px}
+  .tocando-agora{font-size:12px;color:var(--text2);display:flex;align-items:center;gap:6px;position:relative;z-index:1}
+  .dot-live{width:7px;height:7px;background:#22c55e;border-radius:50%;animation:blink 1.2s ease-in-out infinite}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+
+  /* Sucesso */
+  .success-box{
+    margin:20px;padding:28px 20px;border-radius:20px;
+    background:linear-gradient(135deg,#052e16,#064e3b);
+    border:1px solid rgba(34,197,94,.35);text-align:center;
+    box-shadow:0 0 40px rgba(34,197,94,.1);
+    animation:pop-in .4s cubic-bezier(.34,1.56,.64,1);
+  }
+  @keyframes pop-in{from{transform:scale(.8);opacity:0}to{transform:scale(1);opacity:1}}
+  .success-box .emoji{font-size:56px;margin-bottom:10px;display:block}
+  .success-box h3{color:#4ade80;font-size:20px;font-weight:900;margin-bottom:8px}
+  .success-box p{color:#86efac;font-size:13px;line-height:1.6}
+  .success-musica-nome{color:#67e8f9;font-size:13px;font-weight:700;margin-top:10px;padding:10px 14px;background:rgba(6,182,212,.1);border-radius:12px;border:1px solid rgba(6,182,212,.2)}
+
+  /* Erro */
+  .erro-box{margin:16px;padding:14px 16px;border-radius:12px;background:#2d0a0a;border:1px solid #ef444433;color:#f87171;font-size:13px}
+
+  /* Fila */
+  .fila-section{padding:16px 20px 8px;border-bottom:1px solid var(--border)}
+  .fila-titulo{font-size:11px;font-weight:700;color:var(--text2);letter-spacing:.8px;text-transform:uppercase;margin-bottom:10px}
+  .fila-item{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)}
+  .fila-item:last-child{border:none}
+  .fila-emoji{font-size:20px;flex-shrink:0}
+  .fila-info{flex:1;min-width:0}
+  .fila-nome{font-size:13px;font-weight:700}
+  .fila-tipo{font-size:11px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .fila-empty{font-size:13px;color:var(--text2);padding:8px 0}
+
+  /* Grid de pedidos */
+  .pedidos-section{padding:20px}
+  .pedidos-titulo{font-size:15px;font-weight:800;margin-bottom:16px}
+  .pedidos-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .pedido-card{
+    background:linear-gradient(145deg,#141422,#0e0e1c);
+    border:1px solid rgba(255,255,255,.09);
+    border-radius:18px;padding:18px 14px;cursor:pointer;
+    transition:.18s;text-align:center;-webkit-tap-highlight-color:transparent;
+    position:relative;overflow:hidden;
+    box-shadow:0 4px 20px rgba(0,0,0,.4);
+  }
+  .pedido-card::after{
+    content:'';position:absolute;inset:0;border-radius:18px;
+    background:radial-gradient(circle at 50% 0%,rgba(var(--card-rgb),.12) 0%,transparent 65%);
+    pointer-events:none;
+  }
+  .pedido-card:active{transform:scale(.94);box-shadow:0 2px 10px rgba(0,0,0,.6)}
+  .pedido-card.full{grid-column:1/-1} /* ocupa linha inteira */
+  .pedido-card.full .card-emoji{font-size:28px}
+  .pedido-card.full .card-nome{font-size:13px}
+  .pedido-card.highlight{
+    background:linear-gradient(135deg,rgba(var(--card-rgb),.12),rgba(var(--card-rgb),.06));
+    border-color:rgba(var(--card-rgb),.4);
+  }
+  .pedido-card.lib{border-color:rgba(6,182,212,.35);background:rgba(6,182,212,.04)}
+  .pedido-card.ext{border-color:rgba(220,38,38,.35);background:rgba(220,38,38,.04)}
+  .badge-lib{position:absolute;top:6px;right:-22px;background:#06b6d4;color:#fff;
+    font-size:8px;font-weight:900;padding:2px 28px;transform:rotate(40deg);letter-spacing:.5px}
+  .badge-ext{position:absolute;top:6px;right:-22px;background:#dc2626;color:#fff;
+    font-size:8px;font-weight:900;padding:2px 28px;transform:rotate(40deg);letter-spacing:.5px}
+  .pedido-card .card-emoji{font-size:36px;margin-bottom:8px;filter:drop-shadow(0 2px 8px rgba(0,0,0,.5))}
+  .pedido-card .card-nome{font-size:11px;font-weight:800;line-height:1.3;margin-bottom:7px;color:#d4d4f0}
+  .pedido-card .card-preco{font-size:18px;font-weight:900;color:var(--card-cor);text-shadow:0 0 20px var(--card-cor)66}
+  .card-detalhe{font-size:9px;color:var(--text2);margin-top:3px}
+
+  /* Mais opções */
+  .btn-mais-opcoes{
+    display:flex;align-items:center;justify-content:center;gap:6px;
+    width:100%;background:none;border:1px dashed rgba(255,255,255,.15);
+    border-radius:12px;padding:12px;color:var(--text2);font-size:13px;font-weight:600;
+    cursor:pointer;font-family:inherit;margin-top:12px;transition:.15s;
+  }
+  .btn-mais-opcoes:hover{border-color:rgba(255,255,255,.3);color:var(--text)}
+  .mais-opcoes-grid{
+    display:grid;grid-template-columns:1fr 1fr;gap:10px;
+    margin-top:10px;
+    animation:fadeIn .2s ease;
+  }
+  @keyframes fadeIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+
+  /* ── BUSCA ─────────────────────────────────────────────────────── */
+  #busca-section{padding:0 20px 20px;display:none}
+  #busca-section.show{display:block}
+
+  .busca-header{display:flex;align-items:center;gap:10px;margin-bottom:4px}
+  .btn-busca-back{background:none;border:none;color:var(--text2);font-size:22px;cursor:pointer;padding:0;line-height:1}
+  .busca-title{font-size:15px;font-weight:800}
+  .busca-subtitle{font-size:11px;color:var(--text2);margin-bottom:14px;padding-left:34px}
+
+  .busca-input-wrap{position:relative;margin-bottom:10px}
+  .busca-input{
+    width:100%;background:var(--surface2);border:2px solid var(--busca-cor,#06b6d4);
+    border-radius:14px;padding:13px 48px 13px 16px;color:var(--text);font-size:15px;
+    font-family:inherit;outline:none;
+  }
+  .busca-btn{
+    position:absolute;right:8px;top:50%;transform:translateY(-50%);
+    background:var(--busca-cor,#06b6d4);border:none;border-radius:10px;
+    padding:8px 12px;font-size:16px;cursor:pointer;color:#fff;
+  }
+  .busca-loading{text-align:center;padding:16px;color:var(--text2);font-size:13px;display:none}
+  .busca-loading.show{display:block}
+
+  /* Contador de resultados */
+  .busca-count{font-size:11px;color:var(--text2);text-align:right;margin-bottom:6px}
+
+  /* Lista de resultados — SEM foto */
+  #resultados-lista{display:flex;flex-direction:column;gap:6px}
+  .resultado-item{
+    background:var(--surface);border:1px solid var(--border);
+    border-radius:12px;padding:12px 14px;cursor:pointer;
+    transition:.15s;display:flex;align-items:center;gap:10px;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .resultado-item:active{transform:scale(.98)}
+  .resultado-item.selecionado{border-color:var(--busca-cor,#06b6d4);background:rgba(6,182,212,.07)}
+  .resultado-info{flex:1;min-width:0}
+  .resultado-titulo{font-size:13px;font-weight:700;line-height:1.3;margin-bottom:2px}
+  .resultado-sub{font-size:11px;color:var(--text2)}
+  .resultado-check{
+    width:22px;height:22px;border-radius:50%;background:var(--busca-cor,#06b6d4);
+    display:none;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;
+  }
+  .resultado-item.selecionado .resultado-check{display:flex}
+
+  /* Selecionado — só texto */
+  #selecionado-box{
+    background:rgba(6,182,212,.07);border:2px solid var(--busca-cor,#06b6d4);
+    border-radius:14px;padding:14px;margin-top:10px;display:none;
+  }
+  #selecionado-box.show{display:block}
+  .sel-label{font-size:10px;color:var(--busca-cor,#06b6d4);font-weight:900;text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px}
+  .sel-titulo{font-size:14px;font-weight:800;color:#f0f0ff;margin-bottom:2px}
+  .sel-sub{font-size:12px;color:var(--text2);margin-bottom:12px}
+  .btn-confirmar-busca{
+    background:linear-gradient(135deg,var(--busca-cor,#06b6d4),#0891b2);color:#fff;
+    border:none;border-radius:12px;padding:13px;font-size:14px;font-weight:800;
+    cursor:pointer;font-family:inherit;width:100%;-webkit-tap-highlight-color:transparent;
+  }
+  .btn-confirmar-busca:active{opacity:.85}
+
+  /* ── FORMULÁRIO ───────────────────────────────────────────────── */
+  .form-section{padding:0 20px;display:none}
+  .form-section.show{display:block}
+  .form-title{font-size:15px;font-weight:800;margin-bottom:16px;display:flex;align-items:center;gap:8px}
+
+  .musica-preview{
+    background:var(--surface2);border:1px solid rgba(6,182,212,.3);
+    border-radius:12px;padding:12px 14px;margin-bottom:14px;
+  }
+  .musica-preview-label{font-size:10px;color:#06b6d4;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+  .musica-preview-titulo{font-size:13px;font-weight:700;color:#67e8f9}
+  .musica-preview-sub{font-size:11px;color:var(--text2);margin-top:2px}
+
+  .form-group{margin-bottom:14px}
+  .form-group label{font-size:12px;font-weight:700;color:var(--text2);display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px}
+  .form-group input,.form-group textarea{
+    width:100%;background:var(--surface2);border:1px solid var(--border);
+    border-radius:10px;padding:12px 14px;color:var(--text);font-size:14px;
+    font-family:inherit;outline:none;resize:none;
+  }
+  .form-group input:focus,.form-group textarea:focus{border-color:var(--accent-cor,#ec4899)}
+
+  .pix-box{background:var(--surface2);border:1px solid #22c55e44;border-radius:14px;padding:18px;margin-bottom:16px}
+  .pix-title{font-size:12px;font-weight:700;color:#22c55e;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px}
+  .pix-valor{font-size:28px;font-weight:900;color:#4ade80;margin-bottom:6px}
+  .pix-chave{font-size:13px;color:var(--text2);margin-bottom:8px}
+  .pix-chave strong{color:var(--text);word-break:break-all}
+  .btn-copy{background:#22c55e20;border:1px solid #22c55e44;color:#4ade80;
+    border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;width:100%;font-family:inherit}
+  .btn-copy:active{opacity:.7}
+
+  .btn-confirmar{
+    display:block;width:100%;padding:16px;
+    background:linear-gradient(135deg,var(--accent-cor,#ec4899),var(--accent-cor2,#f97316));
+    color:#fff;font-size:16px;font-weight:800;border:none;border-radius:14px;
+    cursor:pointer;font-family:inherit;margin-top:12px;-webkit-tap-highlight-color:transparent;
+  }
+  .btn-confirmar:active{opacity:.85}
+  .btn-voltar{background:none;border:none;color:var(--text2);font-size:13px;cursor:pointer;padding:10px 0;display:block;margin:0 auto;font-family:inherit}
+  .aviso-pix{font-size:11px;color:var(--text2);text-align:center;margin-top:8px;line-height:1.5}
+
+  /* ── PIX PENDENTE ───────────────────────────────────────────────── */
+  .pix-screen{padding:20px;max-width:420px;margin:0 auto}
+  .pix-screen-title{font-size:18px;font-weight:900;text-align:center;margin-bottom:4px}
+  .pix-screen-sub{font-size:13px;color:var(--text2);text-align:center;margin-bottom:20px}
+  .pix-qr-wrap{background:#fff;border-radius:16px;padding:16px;display:flex;justify-content:center;margin-bottom:20px;box-shadow:0 0 40px rgba(34,197,94,.15)}
+  .pix-qr-wrap img{width:220px;height:220px;display:block}
+  .pix-valor-big{font-size:40px;font-weight:900;color:#4ade80;text-align:center;margin-bottom:4px}
+  .pix-recebedor{font-size:13px;color:var(--text2);text-align:center;margin-bottom:16px}
+  .pix-copiacola-box{background:var(--surface2);border:1px solid rgba(34,197,94,.25);border-radius:12px;padding:14px;margin-bottom:14px}
+  .pix-copiacola-label{font-size:10px;font-weight:800;color:#22c55e;text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px}
+  .pix-copiacola-val{font-size:10px;color:var(--text2);word-break:break-all;line-height:1.6;font-family:monospace}
+  .btn-copiar-pix{width:100%;background:rgba(34,197,94,.15);border:1px solid rgba(34,197,94,.3);color:#4ade80;border-radius:10px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:20px}
+  .btn-copiar-pix:active{opacity:.7}
+  .pix-status-box{text-align:center;padding:16px;border-radius:14px;background:var(--surface2);border:1px solid var(--border)}
+  .pix-status-icon{font-size:32px;margin-bottom:8px}
+  .pix-status-text{font-size:14px;font-weight:700;color:#fbbf24}
+  .pix-status-sub{font-size:12px;color:var(--text2);margin-top:6px}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .spinner{display:inline-block;width:18px;height:18px;border:2px solid rgba(251,191,36,.3);border-top-color:#fbbf24;border-radius:50%;animation:spin .8s linear infinite;vertical-align:middle;margin-right:6px}
+
+  /* ── Tutorial Carousel (inline, topo do jukebox) ───────────────── */
+  .tutorial-wrap{overflow:hidden;position:relative;margin:0;padding:10px 0 4px;width:100%}
+  .tutorial-track{display:flex;transition:transform .35s cubic-bezier(.4,0,.2,1);will-change:transform;cursor:grab;user-select:none;width:100%}
+  .tutorial-track:active{cursor:grabbing}
+  .tutorial-slide{min-width:100vw;width:100vw;padding:0 16px;box-sizing:border-box;flex-shrink:0}
+  .tutorial-slide img{width:100%;border-radius:14px;display:block;box-shadow:0 4px 20px rgba(0,0,0,.5);max-height:260px;object-fit:contain}
+  .tutorial-dots{display:flex;justify-content:center;gap:6px;padding:8px 0 2px}
+  .t-dot{height:4px;border-radius:2px;background:rgba(255,255,255,.2);transition:width .25s,background .25s;cursor:pointer}
+  .t-dot.on{background:#ef4444}
+
+  /* ── Onboarding Fullscreen ──────────────────────────────────────── */
+  #onboarding{
+    position:fixed;inset:0;z-index:9999;
+    background:#08080f;
+    display:flex;flex-direction:column;
+    overflow:hidden;
+    animation:fadeIn .3s ease;
+  }
+  #onboarding.hide{animation:fadeOut .35s ease forwards}
+  @keyframes fadeOut{to{opacity:0;pointer-events:none}}
+  /* wrapper de clip — necessário para iOS Safari não vazar conteúdo */
+  .ob-clip{flex:1;overflow:hidden;width:100%;position:relative}
+  .ob-track{display:flex;height:100%;transition:transform .4s cubic-bezier(.4,0,.2,1);will-change:transform}
+  .ob-slide{
+    min-width:100vw;width:100vw;flex-shrink:0;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    padding:40px 32px;text-align:center;overflow:hidden;box-sizing:border-box;
+  }
+  .ob-emoji{font-size:72px;margin-bottom:20px;line-height:1}
+  .ob-titulo{font-size:24px;font-weight:900;line-height:1.25;margin-bottom:12px;letter-spacing:-.3px;word-break:break-word}
+  .ob-sub{font-size:14px;color:#8888aa;line-height:1.65;max-width:280px}
+  .ob-step{
+    font-size:11px;font-weight:800;color:#ef4444;letter-spacing:1px;
+    text-transform:uppercase;margin-bottom:14px;
+  }
+  .ob-bottom{
+    padding:16px 28px 32px;display:flex;flex-direction:column;align-items:center;gap:12px;
+    flex-shrink:0;
+  }
+  .ob-dots{display:flex;gap:7px}
+  .ob-dot{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.2);transition:.25s;cursor:pointer}
+  .ob-dot.on{background:#ef4444;width:22px;border-radius:4px}
+  .ob-btn{
+    width:100%;max-width:320px;padding:15px;border:none;border-radius:16px;
+    background:linear-gradient(135deg,#ef4444,#f97316);
+    color:#fff;font-size:16px;font-weight:900;cursor:pointer;font-family:inherit;
+    box-shadow:0 4px 24px rgba(239,68,68,.4);
+    transition:.15s;display:none;
+  }
+  .ob-btn:active{transform:scale(.97)}
+  .ob-skip{
+    background:none;border:none;color:#8888aa;font-size:14px;cursor:pointer;
+    font-family:inherit;padding:8px 16px;
+  }
+</style>
+</head>
+<body>
+
+{% if not pix_pendente and not sucesso %}
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<!-- ONBOARDING FULLSCREEN — aparece na primeira visita, ensina como funciona  -->
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<div id="onboarding">
+  <!-- ob-clip: necessário para clip funcionar no iOS Safari com position:fixed -->
+  <div class="ob-clip">
+    <div class="ob-track" id="ob-track">
+
+      <!-- Slide 1 — Boas-vindas -->
+      <div class="ob-slide">
+        <div class="ob-step">Passo 1 de 4</div>
+        <div class="ob-emoji">🎵</div>
+        <div class="ob-titulo">Bem-vindo ao Jukebox do {{ b.nome }}!</div>
+        <div class="ob-sub">Aqui você controla a música da noite direto pelo celular, sem precisar falar com ninguém.</div>
+      </div>
+
+      <!-- Slide 2 — Escolha o pedido -->
+      <div class="ob-slide">
+        <div class="ob-step">Passo 2 de 4</div>
+        <div class="ob-emoji">🎯</div>
+        <div class="ob-titulo">Escolha o tipo de pedido</div>
+        <div class="ob-sub">Música aleatória, escolha a música, prioridade na fila, parabéns, dedicatória... cada um com um preço diferente.</div>
+      </div>
+
+      <!-- Slide 3 — Pague via PIX -->
+      <div class="ob-slide">
+        <div class="ob-step">Passo 3 de 4</div>
+        <div class="ob-emoji">💸</div>
+        <div class="ob-titulo">Pague via PIX em segundos</div>
+        <div class="ob-sub">Tudo pelo celular, sem maquininha. Escaneia o QR do PIX ou copia e cola o código.</div>
+      </div>
+
+      <!-- Slide 4 — Música na TV -->
+      <div class="ob-slide">
+        <div class="ob-step">Passo 4 de 4</div>
+        <div class="ob-emoji">📺</div>
+        <div class="ob-titulo">Sua música toca na TV!</div>
+        <div class="ob-sub">Depois do pagamento confirmado, seu pedido entra na fila e aparece na tela do bar. Aproveite! 🍺</div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="ob-bottom">
+    <div class="ob-dots" id="ob-dots">
+      <div class="ob-dot on" onclick="obGoTo(0)"></div>
+      <div class="ob-dot" onclick="obGoTo(1)"></div>
+      <div class="ob-dot" onclick="obGoTo(2)"></div>
+      <div class="ob-dot" onclick="obGoTo(3)"></div>
+    </div>
+    <button class="ob-btn" id="ob-btn" onclick="fecharOnboarding()">🎵 Vamos lá!</button>
+    <button class="ob-skip" id="ob-skip" onclick="obGoTo(obCur+1)">Próximo →</button>
+  </div>
+</div>
+{% endif %}
+
+{% if pix_pendente %}
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!-- TELA PIX PENDENTE                                                       -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<div class="header">
+  <div class="header-top">
+    <span class="canal-badge">{{ canal.emoji }} {{ canal.nome }}</span>
+    <span class="bar-nome">{{ b.nome }}</span>
+  </div>
+  <div class="tocando-agora"><span class="dot-live"></span>Pagamento via PIX</div>
+</div>
+
+<div class="pix-screen">
+  <div class="pix-screen-title">{{ pix_pendente.tipo_emoji }} {{ pix_pendente.tipo_nome }}</div>
+  <div class="pix-screen-sub">Escaneie o QR ou copie o código abaixo</div>
+
+  {% if pix_pendente.qr_b64 %}
+  <div class="pix-qr-wrap">
+    <img src="data:image/png;base64,{{ pix_pendente.qr_b64 }}" alt="QR PIX">
+  </div>
+  {% endif %}
+
+  <div class="pix-valor-big">R$ {{ '%.2f'|format(pix_pendente.valor)|replace('.',',') }}</div>
+  <div class="pix-recebedor">Recebedor: <strong>{{ pix_pendente.recebedor }}</strong></div>
+
+  <div class="pix-copiacola-box">
+    <div class="pix-copiacola-label">📋 Pix Copia e Cola</div>
+    <div class="pix-copiacola-val" id="copiacola-val">{{ pix_pendente.payload }}</div>
+  </div>
+
+  <button class="btn-copiar-pix" onclick="copiarPayload()">📋 Copiar código PIX</button>
+
+  <!-- Botão trust-based: entra direto na fila -->
+  <button class="btn-confirmar" id="btn-ja-paguei"
+          style="background:linear-gradient(135deg,#16a34a,#15803d);margin-bottom:16px"
+          onclick="jaPaguei()">
+    ✅ Já Paguei — Entrar na Fila
+  </button>
+
+  <div class="pix-status-box" id="pix-status-box" style="display:none">
+    <div class="pix-status-icon">⏳</div>
+    <div class="pix-status-text"><span class="spinner"></span><span id="pix-status-text">Confirmando...</span></div>
+    <div class="pix-status-sub" id="pix-status-sub">Verificando pagamento...</div>
+  </div>
+</div>
+
+<script>
+const PIX_TOKEN     = '{{ b.jukebox_token or b.code }}';
+const PIX_PEDIDO_ID = {{ pix_pendente.pedido_id }};
+let _posicaoTimer = null;
+
+function iniciarPollingPosicao() {
+  clearInterval(_posicaoTimer);
+  _atualizarPosicao();
+  _posicaoTimer = setInterval(_atualizarPosicao, 5000);
+}
+
+async function _atualizarPosicao() {
+  try {
+    const r = await fetch(`/pubshow-en/api/pedido-status/${PIX_TOKEN}/${PIX_PEDIDO_ID}`);
+    const d = await r.json();
+    const sub = document.getElementById('pix-status-sub');
+    if (!sub) { clearInterval(_posicaoTimer); return; }
+
+    if (d.status === 'exibido') {
+      clearInterval(_posicaoTimer);
+      sub.innerHTML = '🎵 <strong style="color:#4ade80">Sua música está tocando agora!</strong>';
+      document.getElementById('pix-status-text').innerHTML = 'Curtindo! 🎸';
+    } else if (d.status === 'pendente' && d.posicao) {
+      const pos = d.posicao;
+      const tempo = d.tempo_min;
+      const posLabel = pos === 1
+        ? '🟢 <strong style="color:#4ade80">Você é o próximo!</strong> Toca quando o vídeo atual acabar.'
+        : `📍 Você é o <strong style="color:#f0f0ff">${pos}º</strong> da fila`;
+      const tempoLabel = tempo ? ` · ⏱ ~${tempo} min` : (pos === 1 ? '' : '');
+      sub.innerHTML = `${posLabel}${tempoLabel}`;
+    } else if (d.status === 'aguardando_pix') {
+      sub.textContent = '⏳ Aguardando confirmação do pagamento...';
+    }
+  } catch(e) { /* silencioso */ }
+}
+
+function copiarPayload() {
+  const txt = document.getElementById('copiacola-val').textContent.trim();
+  const btn = document.querySelector('.btn-copiar-pix');
+  // Fallback para navegadores sem clipboard API (iOS HTTP, etc.) — Bug #9 fix
+  const _ok = () => { btn.textContent = '✅ Código copiado!'; setTimeout(() => btn.textContent = '📋 Copiar código PIX', 3000); };
+  const _fail = () => {
+    // Fallback: seleciona o texto para copiar manualmente
+    const el = document.getElementById('copiacola-val');
+    const range = document.createRange(); range.selectNodeContents(el);
+    const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(range);
+    btn.textContent = '📌 Selecione e copie (Ctrl+C)';
+    setTimeout(() => btn.textContent = '📋 Copiar código PIX', 4000);
+  };
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(txt).then(_ok).catch(_fail);
+  } else {
+    _fail();
+  }
+}
+
+async function jaPaguei() {
+  const btn = document.getElementById('btn-ja-paguei');
+  btn.disabled = true;
+  btn.textContent = '⏳ Confirmando...';
+
+  try {
+    const r = await fetch(`/pubshow-en/jukebox/${PIX_TOKEN}/ja-paguei/${PIX_PEDIDO_ID}`, {method: 'POST'});
+    const d = await r.json();
+
+    if (d.ok) {
+      btn.remove();
+      document.querySelector('.btn-copiar-pix').style.display = 'none';
+      const box  = document.getElementById('pix-status-box');
+      const icon = box.querySelector('.pix-status-icon');
+      box.style.display = 'block';
+      box.querySelector('.spinner')?.remove();
+
+      if (d.modo === 'aguardando_bar') {
+        // Bar exige confirmação manual — cliente avisou mas bar ainda não confirmou
+        icon.textContent = '⏳';
+        document.getElementById('pix-status-text').innerHTML = 'Pagamento enviado! Aguardando o bar confirmar.';
+        document.getElementById('pix-status-text').style.color = '#fbbf24';
+        document.getElementById('pix-status-sub').textContent = d.msg || 'O bar vai verificar seu PIX e confirmar em instantes.';
+        box.style.borderColor = 'rgba(251,191,36,.4)';
+      } else {
+        // Trust-based — entrou direto na fila
+        icon.textContent = '✅';
+        document.getElementById('pix-status-text').innerHTML = 'Pedido confirmado! Na fila 🎉';
+        document.getElementById('pix-status-text').style.color = '#4ade80';
+        document.getElementById('pix-status-sub').textContent = 'Buscando posição na fila...';
+        box.style.borderColor = 'rgba(34,197,94,.4)';
+
+        // Busca posição na fila em tempo real
+        iniciarPollingPosicao();
+      }
+    } else {
+      btn.disabled = false;
+      btn.textContent = '✅ Já Paguei — Entrar na Fila';
+      alert(d.error || 'Erro ao confirmar. Tente novamente.');
+    }
+  } catch(e) {
+    // Bug #8 fix — feedback ao usuário em falha de rede
+    btn.disabled = false;
+    btn.textContent = '✅ Já Paguei — Entrar na Fila';
+    const sub = document.getElementById('pix-status-sub');
+    if (sub) { sub.textContent = '⚠️ Erro de conexão. Tente novamente.'; sub.style.color = '#f87171'; }
+  }
+}
+</script>
+
+{% else %}
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!-- TELA NORMAL                                                             -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<div class="header">
+  <div class="header-top">
+    <span class="canal-badge">{{ canal.emoji }} {{ canal.nome }}</span>
+    <span class="bar-nome">{{ b.nome }}</span>
+    <!-- Language toggle -->
+    <div style="margin-left:auto;display:flex;gap:4px;flex-shrink:0">
+      <button id="btn-lang-pt" onclick="setLang('pt')"
+        style="background:rgba(255,255,255,.12);border:none;border-radius:6px;padding:4px 8px;font-size:14px;cursor:pointer;opacity:1;transition:.15s" title="Português">🇧🇷</button>
+      <button id="btn-lang-en" onclick="setLang('en')"
+        style="background:none;border:none;border-radius:6px;padding:4px 8px;font-size:14px;cursor:pointer;opacity:.45;transition:.15s" title="English">🇺🇸</button>
+    </div>
+  </div>
+  <div class="tocando-agora"><span class="dot-live"></span><span data-i18n="status">Jukebox ativo — escolha seu pedido abaixo</span></div>
+</div>
+
+{% if sucesso %}
+  {% set t = tipos[sucesso] %}
+  <div class="success-box">
+    <div class="emoji">{{ t.emoji }}</div>
+    <h3>Pedido enviado! {{ t.emoji }}</h3>
+    <p>
+      {% if sucesso == 'vip' %}
+        Sua música vai tocar agora! O vídeo atual será interrompido. 👑
+      {% elif sucesso == 'flash' %}
+        Seu pedido furou a fila — toca na próxima! ⚡
+      {% elif sucesso in ('musica_especifica','musica_externa') %}
+        Sua música entra na fila e toca quando o vídeo atual terminar!
+      {% elif sucesso == 'musica' %}
+        Pedido na fila! O próximo vídeo do canal vai tocar em breve.
+      {% elif sucesso == 'parabens' %}O Parabéns aparece na tela em breve. Prepara a câmera! 📸
+      {% elif sucesso == 'dedicatoria' %}Sua dedicatória aparece na tela em instantes! ❤️
+      {% elif sucesso == 'brinde' %}Brinde geral na tela! Levanta o copo! 🍻
+      {% elif sucesso == 'chegada' %}Sua chegada aparece agora! 🎉
+      {% elif sucesso == 'casamento' %}O pedido vai aparecer na tela! Boa sorte! 💕🥹
+      {% else %}Seu pedido está na fila! Aguarda um momento.
+      {% endif %}
+    </p>
+    {% if sucesso in ('musica','musica_especifica','musica_externa','flash') and pedido_id_sucesso %}
+    <div id="fila-posicao" style="margin-top:12px;font-size:13px;color:#86efac">⏳ Calculando posição...</div>
+    <script>
+    (function() {
+      const TOKEN = '{{ b.jukebox_token or b.code }}';
+      const PID   = {{ pedido_id_sucesso or 0 }};
+      if (!PID) return;
+      let _t = null;
+      async function updatePos() {
+        try {
+          const r = await fetch(`/pubshow-en/api/pedido-status/${TOKEN}/${PID}`);
+          const d = await r.json();
+          const el = document.getElementById('fila-posicao');
+          if (!el) { clearInterval(_t); return; }
+          if (d.status === 'exibido') {
+            clearInterval(_t);
+            el.innerHTML = '🎵 <strong>Sua música está tocando agora!</strong>';
+          } else if (d.posicao) {
+            const p = d.posicao;
+            const label = p === 1 ? '🟢 <strong>Você é o próximo!</strong>' : `📍 ${p}º da fila`;
+            const tempo = d.tempo_min ? ` · ⏱ ~${d.tempo_min} min` : '';
+            el.innerHTML = `${label}${tempo}`;
+          }
+        } catch(e) {}
+      }
+      updatePos();
+      _t = setInterval(updatePos, 5000);
+    })();
+    </script>
+    {% endif %}
+  </div>
+{% endif %}
+
+{% if erro %}<div class="erro-box">⚠️ {{ erro }}</div>{% endif %}
+
+<!-- ── Tutorial: Como funciona — carousel swipeable ─────────────────────── -->
+<div class="tutorial-wrap" id="tutorial-wrap">
+  <div class="tutorial-track" id="tutorial-track">
+    <div class="tutorial-slide">
+      <img src="/static/pubshow/slides/slide2.webp" alt="Tabela de preços" loading="lazy">
+    </div>
+    <div class="tutorial-slide">
+      <img src="/static/pubshow/slides/slide1.webp" alt="Como escanear" loading="lazy">
+    </div>
+  </div>
+  <div class="tutorial-dots" id="tutorial-dots">
+    <div class="t-dot on" style="width:20px" onclick="tutorialGoTo(0)"></div>
+    <div class="t-dot" style="width:8px" onclick="tutorialGoTo(1)"></div>
+  </div>
+</div>
+
+{% if fila %}
+<div class="fila-section">
+  <div class="fila-titulo"><span data-i18n="fila">📋 Fila agora</span> ({{ fila|length }})</div>
+  {% for p in fila[:4] %}{% set t = tipos.get(p.tipo, {}) %}
+  <div class="fila-item">
+    <span class="fila-emoji">{{ t.get('emoji','🎵') }}</span>
+    <div class="fila-info">
+      <div class="fila-nome">{{ p.nome_cliente }}</div>
+      <div class="fila-tipo">
+        {%- if p.titulo_pedido %}{{ t.get('emoji','🎵') }} {{ p.titulo_pedido[:40] }}
+        {%- else %}{{ t.get('nome', p.tipo) }}{% if p.mensagem %} · "{{ p.mensagem[:25] }}..."{% endif %}{% endif %}
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<!-- Grid principal — 5 opções em destaque -->
+<div class="pedidos-section" id="grid-section">
+  {% if hh_desconto > 0 %}
+  <div style="background:linear-gradient(135deg,#78350f,#92400e,#78350f);background-size:200% 100%;border:1px solid rgba(251,191,36,.5);border-radius:16px;padding:14px 18px;margin-bottom:16px;display:flex;align-items:center;gap:14px;box-shadow:0 0 30px rgba(251,191,36,.15);animation:hh-pulse 2s ease-in-out infinite">
+    <span style="font-size:32px;animation:hh-bounce .8s ease-in-out infinite alternate">🎉</span>
+    <div style="flex:1">
+      <div style="font-size:15px;font-weight:900;color:#fbbf24;margin-bottom:2px">HAPPY HOUR — {{ hh_desconto }}% OFF</div>
+      <div style="font-size:12px;color:#fcd34d">Preços já com desconto! Aproveite enquanto dura.</div>
+    </div>
+    <div style="background:rgba(251,191,36,.2);border-radius:10px;padding:6px 12px;font-size:18px;font-weight:900;color:#fbbf24">-{{ hh_desconto }}%</div>
+  </div>
+  <style>
+  @keyframes hh-pulse{0%,100%{box-shadow:0 0 20px rgba(251,191,36,.1)}50%{box-shadow:0 0 40px rgba(251,191,36,.3)}}
+  @keyframes hh-bounce{from{transform:scale(1)}to{transform:scale(1.15)}}
+  </style>
+  {% endif %}
+  <div class="pedidos-titulo" data-i18n="titulo_grid">🎰 O que você quer fazer?</div>
+  <div class="pedidos-grid">
+
+    {# Macro para mostrar preço com ou sem desconto #}
+    {% macro preco_card(t) %}
+      {% if t.get('happy_hour') %}
+        <div class="card-preco">R$ {{ '%.0f'|format(t.preco) }}</div>
+        <div style="font-size:9px;color:var(--text2);text-decoration:line-through;margin-top:-2px">R$ {{ '%.0f'|format(t.preco_original) }}</div>
+      {% else %}
+        <div class="card-preco">R$ {{ '%.0f'|format(t.preco) }}</div>
+      {% endif %}
+    {% endmacro %}
+
+    {# 1. Música aleatória #}
+    {% if 'musica' in tipos %}{% set t = tipos['musica'] %}
+    <div class="pedido-card" style="--card-cor:{{ t.cor }}"
+         onclick="selecionarTipo('musica','{{ t.nome }}','{{ t.emoji }}',{{ t.preco }},'{{ t.cor }}')">
+      <div class="card-emoji">{{ t.emoji }}</div>
+      <div class="card-nome" data-i18n="card_musica">Música<br>aleatória</div>
+      {{ preco_card(t) }}
+    </div>{% endif %}
+
+    {# 2. Furar a fila #}
+    {% if 'flash' in tipos %}{% set t = tipos['flash'] %}
+    <div class="pedido-card" style="--card-cor:{{ t.cor }}"
+         onclick="selecionarTipo('flash','{{ t.nome }}','{{ t.emoji }}',{{ t.preco }},'{{ t.cor }}')">
+      <div class="card-emoji">{{ t.emoji }}</div>
+      <div class="card-nome" data-i18n="card_flash">Furar<br>a fila</div>
+      {{ preco_card(t) }}
+    </div>{% endif %}
+
+    {# 3. Buscar na biblioteca #}
+    {% if 'musica_especifica' in tipos %}{% set t = tipos['musica_especifica'] %}
+    <div class="pedido-card lib" style="--card-cor:{{ t.cor }}" onclick="abrirBusca('biblioteca')">
+      <div class="badge-lib">CURADO</div>
+      <div class="card-emoji">{{ t.emoji }}</div>
+      <div class="card-nome" data-i18n="card_especifica">Escolher<br>a música</div>
+      {{ preco_card(t) }}
+      <div class="card-detalhe">{{ total_videos }} vídeos</div>
+    </div>{% endif %}
+
+    {# 4. Parabéns #}
+    {% if 'parabens' in tipos %}{% set t = tipos['parabens'] %}
+    <div class="pedido-card" style="--card-cor:{{ t.cor }}"
+         onclick="selecionarTipo('parabens','{{ t.nome }}','{{ t.emoji }}',{{ t.preco }},'{{ t.cor }}')">
+      <div class="card-emoji">{{ t.emoji }}</div>
+      <div class="card-nome" data-i18n="card_parabens">Parabéns<br>na tela! 🎂</div>
+      {{ preco_card(t) }}
+    </div>{% endif %}
+
+    {# 5. Dedicatória — ocupa linha inteira #}
+    {% if 'dedicatoria' in tipos %}{% set t = tipos['dedicatoria'] %}
+    <div class="pedido-card full" style="--card-cor:{{ t.cor }}"
+         onclick="selecionarTipo('dedicatoria','{{ t.nome }}','{{ t.emoji }}',{{ t.preco }},'{{ t.cor }}')">
+      <div class="card-emoji">{{ t.emoji }}</div>
+      <div class="card-nome" data-i18n="card_dedicatoria">Dedicatória — mensagem aparece na tela ❤️</div>
+      {{ preco_card(t) }}
+    </div>{% endif %}
+
+  </div>
+
+  {# Mais opções: VIP, brinde, chegada, casamento, YouTube #}
+  {% set extras = ['vip','brinde','chegada','casamento','musica_externa'] %}
+  {% if extras|select('in', tipos)|list %}
+  <button class="btn-mais-opcoes" onclick="toggleMaisOpcoes(this)" id="btn-mais">
+    <span data-i18n="mais_opcoes">⋯ Mais opções</span>
+  </button>
+  <div class="mais-opcoes-grid" id="mais-opcoes" style="display:none">
+    {% for key in extras %}{% if key in tipos %}{% set t = tipos[key] %}
+      {% if key == 'musica_externa' %}
+      <div class="pedido-card ext" style="--card-cor:{{ t.cor }}" onclick="abrirBusca('youtube')">
+        <div class="badge-ext">EXTERNO</div>
+        <div class="card-emoji">{{ t.emoji }}</div>
+        <div class="card-nome">{{ t.nome }}</div>
+        {{ preco_card(t) }}
+      </div>
+      {% else %}
+      <div class="pedido-card" style="--card-cor:{{ t.cor }}"
+           onclick="selecionarTipo('{{ key }}','{{ t.nome }}','{{ t.emoji }}',{{ t.preco }},'{{ t.cor }}')">
+        <div class="card-emoji">{{ t.emoji }}</div>
+        <div class="card-nome">{{ t.nome }}</div>
+        {{ preco_card(t) }}
+      </div>
+      {% endif %}
+    {% endif %}{% endfor %}
+  </div>
+  {% endif %}
+
+</div>
+
+<!-- Busca (biblioteca ou YouTube) -->
+<div id="busca-section">
+  <div class="busca-header">
+    <button class="btn-busca-back" onclick="voltarGrid()">←</button>
+    <div class="busca-title" id="busca-title">Buscar música</div>
+  </div>
+  <div class="busca-subtitle" id="busca-subtitle"></div>
+
+  <div class="busca-input-wrap">
+    <input type="text" class="busca-input" id="busca-input"
+           placeholder="Artista ou nome da música..."
+           oninput="onBuscaInput()" onkeydown="if(event.key==='Enter')buscar()">
+    <button class="busca-btn" onclick="buscar()">🔍</button>
+  </div>
+
+  <div class="busca-loading" id="busca-loading">🔍 Buscando...</div>
+  <div class="busca-count" id="busca-count" style="display:none"></div>
+  <div id="resultados-lista"></div>
+
+  <div id="selecionado-box">
+    <div class="sel-label">✅ Selecionado</div>
+    <div class="sel-titulo" id="sel-titulo"></div>
+    <div class="sel-sub" id="sel-sub"></div>
+    <button class="btn-confirmar-busca" onclick="confirmarMusica()">Confirmar →</button>
+  </div>
+</div>
+
+<!-- Formulário -->
+<div class="form-section" id="form-section">
+  <div class="form-title" id="form-title">🎵 Pedido</div>
+
+  <form method="POST" id="form-pedido" onsubmit="
+    const btn = document.getElementById('btn-confirmar');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Enviando...'; }
+  ">
+    <input type="hidden" name="tipo" id="inp-tipo">
+    <input type="hidden" name="categoria" value="{{ b.canal_atual or 'rock' }}">
+    <input type="hidden" name="youtube_id" id="inp-youtube-id">
+    <input type="hidden" name="titulo_pedido" id="inp-titulo-pedido">
+    <input type="hidden" name="thumb_url" id="inp-thumb-url">
+
+    <div class="musica-preview" id="musica-preview" style="display:none">
+      <div class="musica-preview-label">🎵 Música pedida</div>
+      <div class="musica-preview-titulo" id="prev-titulo"></div>
+      <div class="musica-preview-sub" id="prev-sub"></div>
+    </div>
+
+    <div class="form-group">
+      <label data-i18n="label_nome">Seu nome *</label>
+      <input type="text" name="nome_cliente" id="inp-nome"
+             placeholder="Como quer aparecer na tela?" maxlength="40" required
+             data-i18n-ph="placeholder_nome"
+             oninput="atualizarPixRef()">
+    </div>
+
+    <div class="form-group" id="msg-group" style="display:none">
+      <label id="msg-label" data-i18n="label_msg">Mensagem (opcional)</label>
+      <textarea name="mensagem" id="inp-msg" rows="2"
+        placeholder="Aparece na tela do bar..." maxlength="80"
+        data-i18n-ph="placeholder_msg"></textarea>
+    </div>
+
+    {% if b.requer_pix and b.pix_key %}
+    <div class="pix-box">
+      <div class="pix-title">💚 Pagamento via PIX</div>
+      <div class="pix-valor" id="pix-valor">R$ —</div>
+      <div style="font-size:12px;color:var(--text2);margin-top:6px;line-height:1.5">
+        Ao confirmar você verá o <strong style="color:#4ade80">QR code PIX</strong> para escanear com seu banco.
+        {% if b.pix_nome_recebedor %}<br>Recebedor: <strong style="color:var(--text)">{{ b.pix_nome_recebedor }}</strong>{% endif %}
+      </div>
+    </div>
+    <button type="submit" class="btn-confirmar" id="btn-confirmar"
+            style="background:linear-gradient(135deg,#16a34a,#15803d)">
+      📱 Ver QR para Pagar →
+    </button>
+    <p class="aviso-pix">Você verá o QR code PIX após confirmar. Só paga depois de ver o código.</p>
+    {% elif b.pix_key %}
+    <div class="pix-box">
+      <div class="pix-title">💚 Pague via PIX para o bar</div>
+      <div class="pix-valor" id="pix-valor">R$ —</div>
+      <div class="pix-chave">Chave PIX: <strong id="pix-chave-val">{{ b.pix_key }}</strong>
+        {% if b.pix_nome_recebedor %}<br>Recebedor: <strong>{{ b.pix_nome_recebedor }}</strong>{% endif %}
+      </div>
+      <!-- Referência que aparecerá no extrato bancário do bar -->
+      <div id="pix-ref-box" style="background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.2);border-radius:8px;padding:8px 12px;margin:8px 0;font-size:11px;color:#8888aa;display:none">
+        📄 No extrato do bar aparecerá:<br>
+        <strong id="pix-ref-txt" style="color:#4ade80;font-size:12px"></strong>
+      </div>
+      <button type="button" class="btn-copy" onclick="copiarPix()">📋 Copiar PIX (Copia e Cola)</button>
+    </div>
+    <button type="submit" class="btn-confirmar" id="btn-confirmar">✅ Paguei! Confirmar pedido</button>
+    <p class="aviso-pix">Ao confirmar, você declara que realizou o pagamento.</p>
+    {% else %}
+    <div class="pix-box" style="border-color:#f59e0b44">
+      <div class="pix-title" style="color:#f59e0b">💛 Pagamento no balcão</div>
+      <div class="pix-valor" id="pix-valor" style="color:#fbbf24">R$ —</div>
+      <div style="font-size:13px;color:var(--text2)">Pague o valor acima diretamente no caixa.</div>
+    </div>
+    <button type="submit" class="btn-confirmar" id="btn-confirmar">✅ Confirmar pedido</button>
+    <p class="aviso-pix">Seu pedido entra na fila imediatamente.</p>
+    {% endif %}
+    <button type="button" class="btn-voltar" onclick="voltarGrid()">← Voltar</button>
+  </form>
+</div>
+
+<script>
+const PRECOS     = {{ tipos | tojson }};
+const TOTAL_VIDS = {{ total_videos }};
+const BAR_TOKEN  = '{{ b.jukebox_token or b.code }}';
+// Offset de centavos do dia — identifica cada pedido no extrato PIX
+// Ex: pix_offset=3 → preço exibido = R$5,03 (3º pedido do dia)
+const PIX_OFFSET = {{ pix_offset | default(0) }};
+let tipoAtual    = '';
+let modosBusca   = 'biblioteca'; // 'biblioteca' | 'youtube'
+let buscaTimer   = null;
+let videoSel     = null;
+let _biblioCache = null; // cache da lista completa (carregada 1x)
+
+// ── Mais opções ───────────────────────────────────────────────────────────────
+function toggleMaisOpcoes(btn) {
+  const div = document.getElementById('mais-opcoes');
+  const aberto = div.style.display !== 'none';
+  div.style.display = aberto ? 'none' : 'grid';
+  btn.textContent = aberto ? '⋯ Mais opções' : '▲ Menos opções';
+}
+
+// ── Grid ──────────────────────────────────────────────────────────────────────
+function _precoComOffset(preco) {
+  // Adiciona centavos de identificação ao preço PIX (ex: R$5,00 → R$5,03)
+  return Math.round((preco + PIX_OFFSET * 0.01) * 100) / 100;
+}
+
+function selecionarTipo(key, nome, emoji, preco, cor) {
+  tipoAtual = key;
+  document.getElementById('inp-tipo').value  = key;
+  document.getElementById('form-title').innerHTML = `${emoji} ${nome}`;
+  const precoFinal = _precoComOffset(preco);
+  document.getElementById('pix-valor').textContent = 'R$ ' + precoFinal.toFixed(2).replace('.', ',');
+
+  const especiais = ['parabens','dedicatoria','brinde','chegada','casamento'];
+  const mgr = document.getElementById('msg-group');
+  const mgl = document.getElementById('msg-label');
+  if (especiais.includes(key)) {
+    mgr.style.display = 'block';
+    mgl.textContent = key === 'parabens' ? 'Recado (aparece na tela)'
+      : key === 'dedicatoria' ? 'Mensagem de amor ❤️'
+      : key === 'casamento'   ? 'Mensagem especial 💕'
+      : 'Mensagem (opcional)';
+  } else { mgr.style.display = 'none'; }
+
+  document.getElementById('musica-preview').style.display = 'none';
+  document.getElementById('inp-youtube-id').value = '';
+  document.getElementById('inp-titulo-pedido').value = '';
+  document.getElementById('inp-thumb-url').value = '';
+  document.getElementById('btn-confirmar').style.background = `linear-gradient(135deg,${cor},${cor}cc)`;
+  document.getElementById('form-section').style.setProperty('--accent-cor', cor);
+
+  esconderTudo();
+  document.getElementById('form-section').classList.add('show');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function voltarGrid() {
+  esconderTudo();
+  videoSel = null;
+  document.getElementById('grid-section').style.display = 'block';
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function esconderTudo() {
+  document.getElementById('grid-section').style.display  = 'none';
+  document.getElementById('busca-section').style.display = 'none';
+  document.getElementById('form-section').classList.remove('show');
+}
+
+// ── Busca ─────────────────────────────────────────────────────────────────────
+function abrirBusca(modo) {
+  modosBusca = modo;
+  videoSel   = null;
+
+  const cor = modo === 'youtube' ? '#dc2626' : '#06b6d4';
+  document.getElementById('busca-title').textContent = modo === 'youtube'
+    ? '🌐 Buscar no YouTube' : '🎵 Músicas disponíveis';
+  document.getElementById('busca-subtitle').textContent = modo === 'youtube'
+    ? `Qualquer música da internet — R$ ${PRECOS['musica_externa'].preco.toFixed(0)}`
+    : `${TOTAL_VIDS} músicas no acervo — R$ ${PRECOS['musica_especifica'].preco.toFixed(0)}`;
+
+  document.querySelector('.busca-input').style.setProperty('border-color', cor);
+  document.querySelector('.busca-btn').style.background = cor;
+  document.querySelector('#selecionado-box').style.setProperty('--busca-cor', cor);
+  document.querySelector('#selecionado-box .sel-label').style.color = cor;
+  document.querySelector('.btn-confirmar-busca').style.background = `linear-gradient(135deg,${cor},${cor}cc)`;
+
+  document.getElementById('busca-input').value = '';
+  document.getElementById('busca-input').placeholder =
+    modo === 'youtube' ? 'Artista ou nome da música...' : '🔍 Filtrar lista...';
+  document.getElementById('resultados-lista').innerHTML = '';
+  document.getElementById('selecionado-box').classList.remove('show');
+  document.getElementById('busca-loading').classList.remove('show');
+  document.getElementById('busca-count').style.display = 'none';
+
+  esconderTudo();
+  document.getElementById('busca-section').style.display = 'block';
+  window.scrollTo({top:0,behavior:'smooth'});
+
+  // Biblioteca: carrega lista completa imediatamente (com cache)
+  if (modo === 'biblioteca') {
+    if (_biblioCache) {
+      _renderLista(_biblioCache);   // usa cache — zero request
+    } else {
+      _carregarBibliotecaCompleta();
+    }
+  }
+}
+
+async function _carregarBibliotecaCompleta() {
+  const loading = document.getElementById('busca-loading');
+  loading.classList.add('show');
+  try {
+    const res  = await fetch(`/pubshow-en/api/buscar-biblioteca?bar=${encodeURIComponent(BAR_TOKEN)}`);
+    const data = await res.json();
+    loading.classList.remove('show');
+    _biblioCache = data.resultados || [];
+    _renderLista(_biblioCache);
+  } catch(e) {
+    loading.classList.remove('show');
+    document.getElementById('resultados-lista').innerHTML =
+      '<div style="text-align:center;padding:24px;color:#f87171;font-size:13px">Erro ao carregar lista. Tente novamente.</div>';
+  }
+}
+
+function _renderLista(lista) {
+  const countEl = document.getElementById('busca-count');
+  countEl.style.display = lista.length ? 'block' : 'none';
+  countEl.textContent   = `${lista.length} música${lista.length !== 1 ? 's' : ''}`;
+
+  if (!lista.length) {
+    document.getElementById('resultados-lista').innerHTML =
+      '<div style="text-align:center;padding:24px;color:#8888aa;font-size:13px">Nenhuma música encontrada.</div>';
+    return;
+  }
+  document.getElementById('resultados-lista').innerHTML = lista.map((v, i) => {
+    const id  = v.youtube_id || v.id || '';
+    const sub = `${v.artista || ''}${v.duracao_seg ? ' · ' + Math.floor(v.duracao_seg/60) + 'min' : ''}`;
+    return `<div class="resultado-item" id="res-${i}"
+             onclick='selecionarVideo(${i}, ${JSON.stringify({id, titulo:v.titulo, sub})})'>
+          <div class="resultado-info">
+            <div class="resultado-titulo">${v.titulo || ''}</div>
+            <div class="resultado-sub">${sub}</div>
+          </div>
+          <div class="resultado-check">✓</div>
+        </div>`;
+  }).join('');
+}
+
+function onBuscaInput() {
+  clearTimeout(buscaTimer);
+  const q = document.getElementById('busca-input').value.trim().toLowerCase();
+
+  if (modosBusca === 'biblioteca') {
+    // Filtro local — instantâneo, zero request
+    if (_biblioCache) {
+      const filtrado = q.length < 1
+        ? _biblioCache
+        : _biblioCache.filter(v =>
+            (v.titulo  || '').toLowerCase().includes(q) ||
+            (v.artista || '').toLowerCase().includes(q)
+          );
+      _renderLista(filtrado);
+    }
+  } else {
+    // YouTube — busca remota com debounce
+    if (q.length >= 2) buscaTimer = setTimeout(buscar, 500);
+  }
+}
+
+async function buscar() {
+  // Usado apenas para YouTube
+  if (modosBusca === 'biblioteca') { onBuscaInput(); return; }
+  const q = document.getElementById('busca-input').value.trim();
+  if (!q) return;
+  const loading = document.getElementById('busca-loading');
+  loading.classList.add('show');
+  document.getElementById('resultados-lista').innerHTML = '';
+  document.getElementById('selecionado-box').classList.remove('show');
+  videoSel = null;
+  try {
+    const res  = await fetch(`/pubshow-en/api/buscar?q=${encodeURIComponent(q)}`);
+    const data = await res.json();
+    loading.classList.remove('show');
+    if (!data.resultados?.length) {
+      document.getElementById('resultados-lista').innerHTML =
+        '<div style="text-align:center;padding:24px;color:#8888aa;font-size:13px">Nenhum resultado. Tente outra busca.</div>';
+      return;
+    }
+    document.getElementById('resultados-lista').innerHTML = data.resultados.map((v, i) => {
+      const id  = v.id || '';
+      const sub = `${v.canal || ''}${v.duracao ? ' · ' + v.duracao : ''}`;
+      return `<div class="resultado-item" id="res-${i}"
+               onclick='selecionarVideo(${i}, ${JSON.stringify({id, titulo:v.titulo, sub})})'>
+            <div class="resultado-info">
+              <div class="resultado-titulo">${v.titulo || ''}</div>
+              <div class="resultado-sub">${sub}</div>
+            </div>
+            <div class="resultado-check">✓</div>
+          </div>`;
+    }).join('');
+  } catch(e) {
+    loading.classList.remove('show');
+    document.getElementById('resultados-lista').innerHTML =
+      '<div style="text-align:center;padding:24px;color:#f87171;font-size:13px">Erro na busca. Tente novamente.</div>';
+  }
+}
+
+function selecionarVideo(idx, v) {
+  document.querySelectorAll('.resultado-item').forEach(el => el.classList.remove('selecionado'));
+  document.getElementById('res-' + idx).classList.add('selecionado');
+  videoSel = v;
+  document.getElementById('sel-titulo').textContent = v.titulo;
+  document.getElementById('sel-sub').textContent    = v.sub;
+  document.getElementById('selecionado-box').classList.add('show');
+  document.getElementById('selecionado-box').scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+function confirmarMusica() {
+  if (!videoSel) return;
+  const tipo  = modosBusca === 'youtube' ? 'musica_externa' : 'musica_especifica';
+  const preco = PRECOS[tipo].preco;
+  const cor   = modosBusca === 'youtube' ? '#dc2626' : '#06b6d4';
+
+  document.getElementById('inp-tipo').value          = tipo;
+  document.getElementById('inp-youtube-id').value    = videoSel.id;
+  document.getElementById('inp-titulo-pedido').value = videoSel.titulo;
+  atualizarPixRef();
+  document.getElementById('inp-thumb-url').value     = '';
+
+  document.getElementById('prev-titulo').textContent = videoSel.titulo;
+  document.getElementById('prev-sub').textContent    = videoSel.sub;
+  document.getElementById('musica-preview').style.display = 'block';
+
+  const precoFinalBusca = _precoComOffset(preco);
+  document.getElementById('pix-valor').textContent   = 'R$ ' + precoFinalBusca.toFixed(2).replace('.', ',');
+  document.getElementById('form-title').innerHTML    = PRECOS[tipo].emoji + ' ' + PRECOS[tipo].nome;
+  document.getElementById('msg-group').style.display = 'none';
+  document.getElementById('btn-confirmar').style.background = `linear-gradient(135deg,${cor},${cor}cc)`;
+  document.getElementById('form-section').style.setProperty('--accent-cor', cor);
+
+  esconderTudo();
+  document.getElementById('form-section').classList.add('show');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+// ── PIX Copia e Cola (payload EMV com música na descrição) ────────────────────
+function _pixTlv(id, val) {
+  const s = String(val);
+  return id + String(s.length).padStart(2,'0') + s;
+}
+function _pixCrc16(str) {
+  let crc = 0xFFFF;
+  for (let i = 0; i < str.length; i++) {
+    crc ^= str.charCodeAt(i) << 8;
+    for (let j = 0; j < 8; j++) {
+      crc = (crc & 0x8000) ? ((crc << 1) ^ 0x1021) : (crc << 1);
+      crc &= 0xFFFF;
+    }
+  }
+  return crc.toString(16).toUpperCase().padStart(4,'0');
+}
+
+function gerarPixCopiaECola(chave, nomeRecebedor, valorReais, descricao) {
+  // merchant account info (field 26)
+  // GUI deve ser minúsculo conforme spec BCB — Bug #7 fix
+  let mai = _pixTlv('00','br.gov.bcb.pix') + _pixTlv('01', chave);
+  if (descricao) mai += _pixTlv('02', descricao.substring(0,25));
+  // txid: só alfanumérico, max 25
+  const txid = (descricao||'PUBSHOW').replace(/[^a-zA-Z0-9]/g,'').substring(0,25) || 'PUBSHOW';
+  const payload = [
+    _pixTlv('00','01'),
+    _pixTlv('01','12'),  // 12 = QR único (one-time) — consistente com Python — Bug #7 fix
+    _pixTlv('26', mai),
+    _pixTlv('52','0000'),
+    _pixTlv('53','986'),
+    _pixTlv('54', valorReais.toFixed(2)),
+    _pixTlv('58','BR'),
+    _pixTlv('59', nomeRecebedor.replace(/[^\w\s]/gi,'').substring(0,25)),
+    _pixTlv('60','Brasil'),
+    _pixTlv('62', _pixTlv('05', txid)),
+    '6304'
+  ].join('');
+  return payload + _pixCrc16(payload);
+}
+
+function _pixDescricao() {
+  const titulo = (document.getElementById('inp-titulo-pedido')?.value || '').trim();
+  const nome   = (document.getElementById('inp-nome')?.value || '').trim();
+  // Monta referência: "SeeYouAgain-Shaggy" (max 25 chars)
+  let ref = titulo.replace(/[^a-zA-Z0-9 ]/g,'').substring(0,16);
+  if (nome) ref += '-' + nome.replace(/[^a-zA-Z0-9]/g,'').substring(0,8);
+  return ref.substring(0,25);
+}
+
+function atualizarPixRef() {
+  const box = document.getElementById('pix-ref-box');
+  const txt = document.getElementById('pix-ref-txt');
+  if (!box || !txt) return;
+  const titulo = (document.getElementById('inp-titulo-pedido')?.value || '').trim();
+  const nome   = (document.getElementById('inp-nome')?.value || '').trim();
+  if (titulo || nome) {
+    const ref = (titulo ? titulo.substring(0,20) : '') + (nome ? ' · ' + nome.substring(0,12) : '');
+    txt.textContent = ref;
+    box.style.display = 'block';
+  } else {
+    box.style.display = 'none';
+  }
+}
+
+function copiarPix() {
+  const chave   = document.getElementById('pix-chave-val')?.textContent?.trim();
+  const nome_r  = '{{ (b.pix_nome_recebedor or b.nome or "BAR")|replace("'","") }}';
+  const valorEl = document.getElementById('pix-valor');
+  const valorStr = valorEl ? valorEl.textContent.replace(/[^0-9,]/g,'').replace(',','.') : '0';
+  const valor   = parseFloat(valorStr) || 0;
+  const desc    = _pixDescricao();
+  if (!chave) return;
+
+  const payload = gerarPixCopiaECola(chave, nome_r, valor, desc);
+  const btn = document.querySelector('.btn-copy');
+
+  navigator.clipboard.writeText(payload).then(() => {
+    btn.textContent = '✅ PIX copiado!';
+    setTimeout(() => btn.textContent = '📋 Copiar PIX (Copia e Cola)', 2500);
+  }).catch(() => {
+    // fallback: copia só a chave
+    navigator.clipboard.writeText(chave).then(() => {
+      btn.textContent = '✅ Chave copiada!';
+      setTimeout(() => btn.textContent = '📋 Copiar PIX (Copia e Cola)', 2500);
+    });
+  });
+}
+
+// ── Onboarding Fullscreen ─────────────────────────────────────────────────────
+let obCur = 0;
+const OB_TOTAL = 4;
+
+function obGoTo(n) {
+  obCur = Math.max(0, Math.min(n, OB_TOTAL - 1));
+  const track = document.getElementById('ob-track');
+  if (!track) return;
+  track.style.transform = `translateX(-${obCur * 100}vw)`;
+
+  // Dots
+  document.querySelectorAll('.ob-dot').forEach((d, i) => d.classList.toggle('on', i === obCur));
+
+  // Botão final ou "próximo"
+  const btn  = document.getElementById('ob-btn');
+  const skip = document.getElementById('ob-skip');
+  if (obCur === OB_TOTAL - 1) {
+    btn.style.display  = 'block';
+    skip.style.display = 'none';
+  } else {
+    btn.style.display  = 'none';
+    skip.style.display = 'block';
+  }
+}
+
+function fecharOnboarding() {
+  const el = document.getElementById('onboarding');
+  if (!el) return;
+  el.classList.add('hide');
+  setTimeout(() => el.remove(), 380);
+  try { localStorage.setItem('ob_{{ b.code }}', '1'); } catch(e) {}
+}
+
+(function initOnboarding() {
+  const el = document.getElementById('onboarding');
+  if (!el) return;
+
+  // Se já viu, fecha imediatamente
+  try { if (localStorage.getItem('ob_{{ b.code }}')) { el.remove(); return; } } catch(e) {}
+
+  obGoTo(0);
+
+  // Swipe touch
+  let sx = 0;
+  el.addEventListener('touchstart', e => { sx = e.touches[0].clientX; }, {passive:true});
+  el.addEventListener('touchend',   e => {
+    const dx = e.changedTouches[0].clientX - sx;
+    if (dx < -50 && obCur < OB_TOTAL - 1) obGoTo(obCur + 1);
+    else if (dx > 50 && obCur > 0) obGoTo(obCur - 1);
+  }, {passive:true});
+})();
+
+// ── Tutorial Carousel ─────────────────────────────────────────────────────────
+(function() {
+  const wrap  = document.getElementById('tutorial-wrap');
+  const track = document.getElementById('tutorial-track');
+  const dots  = document.getElementById('tutorial-dots');
+  if (!wrap || !track || !dots) return;
+
+  const TOTAL = track.children.length;
+  let cur = 0, timer = null, startX = 0, dragging = false;
+
+  window.tutorialGoTo = function(n) {
+    cur = (n + TOTAL) % TOTAL;
+    track.style.transform = `translateX(-${cur * 100}vw)`;
+    Array.from(dots.children).forEach((d, i) => {
+      d.classList.toggle('on', i === cur);
+      d.style.width = i === cur ? '20px' : '8px';
+    });
+  };
+
+  function schedule() {
+    clearInterval(timer);
+    timer = setInterval(() => tutorialGoTo(cur + 1), 4500);
+  }
+
+  // Touch / swipe
+  track.addEventListener('touchstart', e => {
+    startX = e.touches[0].clientX;
+    clearInterval(timer);
+  }, {passive:true});
+  track.addEventListener('touchend', e => {
+    const dx = e.changedTouches[0].clientX - startX;
+    if (Math.abs(dx) > 40) tutorialGoTo(cur + (dx < 0 ? 1 : -1));
+    schedule();
+  }, {passive:true});
+
+  // Mouse drag
+  track.addEventListener('mousedown', e => { startX = e.clientX; dragging = true; clearInterval(timer); });
+  document.addEventListener('mouseup', e => {
+    if (!dragging) return;
+    dragging = false;
+    const dx = e.clientX - startX;
+    if (Math.abs(dx) > 40) tutorialGoTo(cur + (dx < 0 ? 1 : -1));
+    schedule();
+  });
+
+  tutorialGoTo(0);
+  schedule();
+})();
+</script>
+
+{% endif %}{# fim {% else %} pix_pendente #}
+
+<!-- ── Multi-idioma PT/EN ─────────────────────────────────────────────────── -->
+<script>
+const TRANS = {
+  pt: {
+    status:          'Jukebox ativo — escolha seu pedido abaixo',
+    fila:            '📋 Fila agora',
+    titulo_grid:     '🎰 O que você quer fazer?',
+    mais_opcoes:     '⋯ Mais opções',
+    card_musica:     'Música<br>aleatória',
+    card_flash:      'Furar<br>a fila',
+    card_especifica: 'Escolher<br>a música',
+    card_parabens:   'Parabéns<br>na tela! 🎂',
+    card_dedicatoria:'Dedicatória — mensagem aparece na tela ❤️',
+    label_nome:      'Seu nome *',
+    placeholder_nome:'Como quer aparecer na tela?',
+    label_msg:       'Mensagem (opcional)',
+    placeholder_msg: 'Aparece na tela do bar...',
+    ob1_step:'Passo 1 de 4',ob1_title:'Bem-vindo ao Jukebox do {{ b.nome }}!',
+    ob1_sub:'Aqui você controla a música da noite direto pelo celular, sem precisar falar com ninguém.',
+    ob2_step:'Passo 2 de 4',ob2_title:'Escolha o tipo de pedido',
+    ob2_sub:'Música aleatória, escolha a música, prioridade na fila, parabéns, dedicatória... cada um com um preço diferente.',
+    ob3_step:'Passo 3 de 4',ob3_title:'Pague via PIX em segundos',
+    ob3_sub:'Tudo pelo celular, sem maquininha. Escaneia o QR do PIX ou copia e cola o código.',
+    ob4_step:'Passo 4 de 4',ob4_title:'Sua música toca na TV!',
+    ob4_sub:'Depois do pagamento confirmado, seu pedido entra na fila e aparece na tela do bar. Aproveite! 🍺',
+    ob_proximo:'Próximo →',ob_btn:'🎵 Vamos lá!',
+  },
+  en: {
+    status:          'Jukebox active — choose your order below',
+    fila:            '📋 Queue now',
+    titulo_grid:     '🎰 What do you want?',
+    mais_opcoes:     '⋯ More options',
+    card_musica:     'Random<br>song',
+    card_flash:      'Skip<br>the queue',
+    card_especifica: 'Choose<br>the song',
+    card_parabens:   'Happy Birthday<br>on screen! 🎂',
+    card_dedicatoria:'Dedication — message on screen ❤️',
+    label_nome:      'Your name *',
+    placeholder_nome:'How do you want to appear on screen?',
+    label_msg:       'Message (optional)',
+    placeholder_msg: 'Appears on the bar screen...',
+    ob1_step:'Step 1 of 4',ob1_title:'Welcome to {{ b.nome }} Jukebox!',
+    ob1_sub:'Control the music of the night directly from your phone — no need to talk to anyone.',
+    ob2_step:'Step 2 of 4',ob2_title:'Choose your order type',
+    ob2_sub:'Random song, pick a song, skip the queue, happy birthday, dedication... each with a different price.',
+    ob3_step:'Step 3 of 4',ob3_title:'Pay via PIX in seconds',
+    ob3_sub:'Everything from your phone, no card machine. Scan the PIX QR code or copy & paste the code.',
+    ob4_step:'Step 4 of 4',ob4_title:'Your song plays on TV!',
+    ob4_sub:'After payment is confirmed, your order joins the queue and appears on the bar screen. Enjoy! 🍺',
+    ob_proximo:'Next →',ob_btn:'🎵 Let\'s go!',
+  }
+};
+
+let _currentLang = localStorage.getItem('jk_lang') || 'pt';
+
+function setLang(lang) {
+  _currentLang = lang;
+  localStorage.setItem('jk_lang', lang);
+  const T = TRANS[lang];
+
+  // Botões de idioma
+  ['pt','en'].forEach(l => {
+    const btn = document.getElementById('btn-lang-' + l);
+    if (!btn) return;
+    btn.style.opacity = l === lang ? '1' : '.35';
+    btn.style.background = l === lang ? 'rgba(255,255,255,.14)' : 'none';
+  });
+
+  // Elementos data-i18n (innerHTML para suportar <br>)
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.dataset.i18n;
+    if (T[key] !== undefined) el.innerHTML = T[key];
+  });
+
+  // Placeholders (data-i18n-ph)
+  document.querySelectorAll('[data-i18n-ph]').forEach(el => {
+    const key = el.dataset.i18nPh;
+    if (T[key] !== undefined) el.placeholder = T[key];
+  });
+
+  // Onboarding slides (se ainda visíveis)
+  const ob = document.getElementById('onboarding');
+  if (ob) {
+    const slides = ob.querySelectorAll('.ob-slide');
+    [[0,'ob1'],[1,'ob2'],[2,'ob3'],[3,'ob4']].forEach(([i,pref]) => {
+      if (!slides[i]) return;
+      slides[i].querySelector('.ob-step').textContent   = T[pref+'_step'];
+      slides[i].querySelector('.ob-titulo').textContent = T[pref+'_title'];
+      slides[i].querySelector('.ob-sub').textContent    = T[pref+'_sub'];
+    });
+    const skip = document.getElementById('ob-skip');
+    const btn  = document.getElementById('ob-btn');
+    if (skip) skip.textContent = T.ob_proximo;
+    if (btn)  btn.textContent  = T.ob_btn;
+  }
+}
+
+// Aplica idioma salvo ao carregar
+document.addEventListener('DOMContentLoaded', () => setLang(_currentLang));
+</script>
+
+<!-- ── Banner de instalação PWA ─────────────────────────────────────────────── -->
+<div id="pwa-banner" style="
+  display:none;position:fixed;bottom:0;left:0;right:0;z-index:999;
+  background:linear-gradient(135deg,#0d1f17,#0a1525);
+  border-top:1px solid rgba(74,222,128,.3);
+  padding:14px 18px 18px;
+  box-shadow:0 -4px 30px rgba(0,0,0,.6);
+  animation:slideUp .35s ease;
+">
+<style>
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+#pwa-banner .pwa-row{display:flex;align-items:center;gap:12px}
+#pwa-banner .pwa-icon{width:44px;height:44px;border-radius:10px;background:rgba(74,222,128,.15);border:1px solid rgba(74,222,128,.3);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0}
+#pwa-banner .pwa-text{flex:1;min-width:0}
+#pwa-banner .pwa-title{font-size:14px;font-weight:800;color:#f0f0ff;margin-bottom:2px}
+#pwa-banner .pwa-sub{font-size:11px;color:#8888aa;line-height:1.4}
+#pwa-banner .pwa-close{background:none;border:none;color:#8888aa;font-size:20px;cursor:pointer;padding:4px;flex-shrink:0}
+#pwa-banner .btn-instalar{display:block;width:100%;margin-top:12px;padding:13px;background:linear-gradient(135deg,#16a34a,#15803d);color:#fff;font-size:14px;font-weight:800;border:none;border-radius:12px;cursor:pointer;font-family:inherit;-webkit-tap-highlight-color:transparent}
+#pwa-banner .btn-instalar:active{opacity:.85}
+/* instrução iOS */
+#pwa-ios-tip{display:none;margin-top:10px;padding:10px 12px;background:rgba(255,255,255,.04);border-radius:10px;border:1px solid rgba(255,255,255,.08);font-size:12px;color:#aaa;line-height:1.6;text-align:center}
+</style>
+<div class="pwa-row">
+  <div class="pwa-icon">🎵</div>
+  <div class="pwa-text">
+    <div class="pwa-title">Instalar Jukebox</div>
+    <div class="pwa-sub">Abre direto, sem barra do browser — como um app!</div>
+  </div>
+  <button class="pwa-close" onclick="fecharBannerPwa()" aria-label="Fechar">✕</button>
+</div>
+<!-- Android: botão de instalação nativo -->
+<button class="btn-instalar" id="btn-pwa-instalar" style="display:none"
+        onclick="instalarPwa()">📲 Adicionar à tela inicial</button>
+<!-- iOS: instrução manual -->
+<div id="pwa-ios-tip">
+  Toque em <strong style="color:#fff">⬆️ Compartilhar</strong> e depois em
+  <strong style="color:#fff">Adicionar à Tela Inicial</strong>
+</div>
+</div>
+
+<script>
+// ── PWA Service Worker ────────────────────────────────────────────────────────
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/static/pubshow/sw.js', {scope: '/'})
+    .then(reg => console.log('[SW] registrado:', reg.scope))
+    .catch(err => console.warn('[SW] erro:', err));
+}
+
+// ── Banner de instalação ──────────────────────────────────────────────────────
+let _pwaPrompt = null;
+
+// Já instalado? Não mostra
+function _jaInstalado() {
+  return window.matchMedia('(display-mode: standalone)').matches
+    || window.navigator.standalone === true
+    || document.referrer.startsWith('android-app://');
+}
+
+function fecharBannerPwa() {
+  document.getElementById('pwa-banner').style.display = 'none';
+  try { sessionStorage.setItem('pwa_dismissed', '1'); } catch(e) {}
+}
+
+function instalarPwa() {
+  if (!_pwaPrompt) return;
+  _pwaPrompt.prompt();
+  _pwaPrompt.userChoice.then(r => {
+    if (r.outcome === 'accepted') fecharBannerPwa();
+    _pwaPrompt = null;
+  });
+}
+
+function _mostrarBannerPwa() {
+  if (_jaInstalado()) return;
+  try { if (sessionStorage.getItem('pwa_dismissed')) return; } catch(e) {}
+  document.getElementById('pwa-banner').style.display = 'block';
+}
+
+// Android Chrome: captura o prompt de instalação nativo
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  _pwaPrompt = e;
+  document.getElementById('btn-pwa-instalar').style.display = 'block';
+  // Mostra após 3s (não logo de cara)
+  setTimeout(_mostrarBannerPwa, 3000);
+});
+
+// iOS Safari: detecta e mostra instrução manual
+(function() {
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const isSafari = /safari/i.test(navigator.userAgent) && !/crios|fxios|opios/i.test(navigator.userAgent);
+  if (isIOS && isSafari && !_jaInstalado()) {
+    document.getElementById('pwa-ios-tip').style.display = 'block';
+    setTimeout(_mostrarBannerPwa, 3000);
+  }
+})();
+
+// Esconde após instalar
+window.addEventListener('appinstalled', () => fecharBannerPwa());
+</script>
+
+</body>
+</html>
