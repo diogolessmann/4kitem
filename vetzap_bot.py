@@ -184,13 +184,36 @@ def _db():
     for mig in ("ALTER TABLE vetzap_wa ADD COLUMN canal TEXT DEFAULT ''",
                 "ALTER TABLE vetzap_wa ADD COLUMN valor REAL DEFAULT 0",
                 "ALTER TABLE vetzap_wa ADD COLUMN cpf TEXT DEFAULT ''",
-                "ALTER TABLE vetzap_wa ADD COLUMN pix_payment_id TEXT DEFAULT ''"):
+                "ALTER TABLE vetzap_wa ADD COLUMN pix_payment_id TEXT DEFAULT ''",
+                "ALTER TABLE vetzap_wa ADD COLUMN day TEXT DEFAULT ''",
+                "ALTER TABLE vetzap_wa ADD COLUMN day_count INTEGER DEFAULT 0"):
         try:
             conn.execute(mig); conn.commit()
         except Exception:
             pass
     conn.commit()
     return conn
+
+
+# ── Anti-abuso: cap diário de mensagens por telefone (protege custo de IA) ──────
+RATE_LIMITE_DIA = int(os.environ.get('VETZAP_RATE_DIA', '40'))
+
+def _rate_ok(telefone):
+    """Conta mensagens/dia por telefone. Retorna False se passou do limite."""
+    hoje = datetime.now().strftime('%Y-%m-%d')
+    conn = _db()
+    row = conn.execute('SELECT day, day_count FROM vetzap_wa WHERE telefone=?', (telefone,)).fetchone()
+    if not row or (row['day'] or '') != hoje:
+        conn.execute('''INSERT INTO vetzap_wa (telefone, day, day_count, updated_at)
+                        VALUES (?,?,1,?)
+                        ON CONFLICT(telefone) DO UPDATE SET day=?, day_count=1, updated_at=?''',
+                     (telefone, hoje, _agora(), hoje, _agora()))
+        conn.commit(); conn.close()
+        return True
+    n = (row['day_count'] or 0) + 1
+    conn.execute('UPDATE vetzap_wa SET day_count=?, updated_at=? WHERE telefone=?', (n, _agora(), telefone))
+    conn.commit(); conn.close()
+    return n <= RATE_LIMITE_DIA
 
 
 def _carrega(telefone):
@@ -447,6 +470,12 @@ def wa_webhook():
         if vet and 'aceito' in (texto or '').lower():
             aceitar_corrida(vet)
             return jsonify({'ok': True, 'acao': 'corrida_aceita'}), 200
+
+        # Anti-abuso: cap diário de mensagens por telefone (protege custo de IA). Vets não contam.
+        if not vet and not _rate_ok(telefone):
+            wa_send(telefone, 'Você atingiu o limite de mensagens de hoje 🐾 Volte amanhã, ou se for '
+                              'urgente procure uma clínica veterinária próxima.')
+            return jsonify({'ignored': 'rate_limited'}), 200
 
         out = processar(telefone, texto=texto, media=media)
         for txt in out['mensagens']:
