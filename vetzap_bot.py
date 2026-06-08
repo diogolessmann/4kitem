@@ -15,7 +15,7 @@ import os
 import json
 import logging
 from datetime import datetime
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, render_template
 import requests as _req
 
 log = logging.getLogger('vetzap_bot')
@@ -359,6 +359,15 @@ def aceitar_corrida(vet):
         if v['telefone'] != vet['telefone']:
             wa_send(v['telefone'], 'Essa corrida já foi aceita por outro vet. 🏁')
     return tutor
+
+
+# ── Página de vendas (landing pública) ─────────────────────────────────────────
+@vetzap_bp.route('/')
+def vetzap_landing():
+    numero = ''.join(c for c in os.environ.get('VETZAP_WA_NUMERO', '') if c.isdigit())
+    p = preco_por_horario()
+    return render_template('vetzap/landing.html', numero=numero, preco=p,
+                           msg_pre='Preciso de ajuda com meu pet 🐾')
 
 
 # ── Mídia: baixa foto/áudio da Evolution → base64 pro Gemini ───────────────────

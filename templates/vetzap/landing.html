@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VetZap — Um veterinário no seu WhatsApp, na hora que você precisa 🐾</title>
+<meta name="description" content="Seu pet passou mal e você não tem pra quem ligar? Manda um WhatsApp: a IA te orienta na hora e um veterinário de verdade te atende por vídeo — bem mais barato que um pronto-socorro.">
+<meta property="og:title" content="VetZap — Um veterinário no seu WhatsApp, na hora">
+<meta property="og:description" content="Pet passou mal? Manda um zap. Orientação na hora + vet por vídeo, sem sair de casa.">
+<meta property="og:image" content="https://4kitem.com.br/static/vetzap/vetzap-hero-desktop.webp">
+<meta property="og:type" content="website">
+<link rel="icon" href="/static/vetzap/vetzap-logo-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root{--wa:#25D366;--wa2:#1ebe5a;--teal:#0ea5e9;--ink:#0b2030;--ink2:#475a6b;
+        --bg:#f0f9ff;--card:#fff;--line:#e0f2fe;--red:#ef4444;--amber:#f59e0b}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Inter',system-ui,Arial,sans-serif;background:var(--bg);color:var(--ink);line-height:1.6}
+  .wrap{max-width:880px;margin:0 auto;padding:0 20px}
+  a{text-decoration:none}
+  /* CTA WhatsApp */
+  .cta{display:inline-flex;align-items:center;gap:10px;background:var(--wa);color:#fff;
+       font-weight:800;font-size:18px;padding:16px 30px;border-radius:50px;
+       box-shadow:0 10px 30px rgba(37,211,102,.35);transition:.15s}
+  .cta:hover{background:var(--wa2);transform:translateY(-2px)}
+  .cta-lg{font-size:20px;padding:18px 38px}
+  .cta svg{width:24px;height:24px;fill:#fff}
+  /* topo */
+  .nav{display:flex;align-items:center;justify-content:space-between;padding:16px 0}
+  .logo{display:flex;align-items:center;gap:10px;font-weight:900;font-size:22px;color:var(--ink)}
+  .logo img{width:38px;height:38px;border-radius:9px}
+  .logo span{color:var(--wa)}
+  /* hero */
+  .hero{text-align:center;padding:30px 0 10px}
+  .pill{display:inline-block;background:#fee2e2;color:var(--red);font-weight:700;font-size:13px;
+        padding:6px 14px;border-radius:50px;margin-bottom:18px}
+  h1{font-size:clamp(30px,6vw,50px);font-weight:900;letter-spacing:-1px;line-height:1.08}
+  h1 b{color:var(--wa)}
+  .sub{font-size:clamp(16px,2.5vw,20px);color:var(--ink2);max-width:600px;margin:18px auto 26px}
+  .hero img.mascote{width:min(280px,70%);margin:24px auto 0;display:block;filter:drop-shadow(0 20px 40px rgba(14,165,233,.25))}
+  .mini{font-size:13px;color:var(--ink2);margin-top:12px}
+  /* seções */
+  section{padding:46px 0}
+  h2{font-size:clamp(24px,4vw,34px);font-weight:800;text-align:center;margin-bottom:8px}
+  .sec-sub{text-align:center;color:var(--ink2);max-width:560px;margin:0 auto 30px}
+  .grid{display:grid;gap:18px}
+  @media(min-width:720px){.cols-3{grid-template-columns:repeat(3,1fr)}}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:26px}
+  .card .ic{font-size:38px;margin-bottom:10px}
+  .card h3{font-size:18px;font-weight:800;margin-bottom:6px}
+  .card p{color:var(--ink2);font-size:15px}
+  .step-n{display:inline-flex;width:30px;height:30px;align-items:center;justify-content:center;
+          background:var(--wa);color:#fff;border-radius:50%;font-weight:800;font-size:15px;margin-bottom:10px}
+  /* preços */
+  .precos{background:var(--ink);color:#fff;border-radius:24px;padding:38px 26px;text-align:center}
+  .precos h2{color:#fff}
+  .precos .sec-sub{color:#9fb6c7}
+  .price-row{display:grid;gap:14px;max-width:560px;margin:24px auto 0}
+  .price{display:flex;align-items:center;justify-content:space-between;gap:12px;
+         background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:16px 20px;text-align:left}
+  .price .l b{display:block;font-size:16px}
+  .price .l span{font-size:13px;color:#9fb6c7}
+  .price .v{font-size:22px;font-weight:900;color:var(--wa);white-space:nowrap}
+  .anchor{margin-top:18px;font-size:14px;color:#9fb6c7}
+  .anchor b{color:#fff}
+  /* trust */
+  .trust{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-top:8px}
+  .badge{background:#fff;border:1px solid var(--line);border-radius:50px;padding:8px 16px;font-size:13px;font-weight:600;color:var(--ink2)}
+  /* vet */
+  .vet{background:linear-gradient(135deg,#0ea5e9,#22c55e);color:#fff;border-radius:24px;padding:38px 26px;text-align:center}
+  .vet h2{color:#fff}.vet p{color:rgba(255,255,255,.9);max-width:520px;margin:0 auto 22px}
+  .cta-ghost{background:#fff;color:#0ea5e9}
+  /* final */
+  .final{text-align:center;padding:56px 0}
+  footer{text-align:center;color:var(--ink2);font-size:12px;padding:28px 0 50px;border-top:1px solid var(--line)}
+  .disc{font-size:12px;color:var(--ink2);text-align:center;max-width:620px;margin:18px auto 0;line-height:1.5}
+  /* barra fixa mobile */
+  .sticky{position:fixed;left:0;right:0;bottom:0;background:rgba(255,255,255,.95);backdrop-filter:blur(8px);
+          border-top:1px solid var(--line);padding:12px 16px;display:flex;justify-content:center;z-index:50}
+  @media(min-width:720px){.sticky{display:none}}
+  .pad-bottom{height:86px}
+  @media(min-width:720px){.pad-bottom{display:none}}
+</style>
+</head>
+<body>
+{% set link = ('https://wa.me/' ~ numero ~ '?text=' ~ (msg_pre|urlencode)) if numero else '#precos' %}
+
+<div class="wrap">
+  <div class="nav">
+    <a class="logo" href="/vetzap"><img src="/static/vetzap/vetzap-logo-icon.png" alt="VetZap">Vet<span>Zap</span></a>
+    <a class="cta" href="{{ link }}">Falar agora</a>
+  </div>
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="pill">🚨 Emergência pet? A gente te atende AGORA</div>
+    <h1>Um <b>veterinário</b> no seu WhatsApp,<br>na hora que você precisa.</h1>
+    <p class="sub">Seu pet passou mal e você não tem pra quem ligar? Manda um zap.
+       A gente te orienta <b>na hora</b> e, se precisar, um <b>veterinário de verdade</b> te atende por vídeo — sem sair de casa.</p>
+    <a class="cta cta-lg" href="{{ link }}">
+      <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 0 0-8.5 15.3L2 22l4.8-1.5A10 10 0 1 0 12 2zm5.3 14.1c-.2.6-1.3 1.2-1.8 1.2-.5.1-1 .2-3.3-.7-2.8-1.1-4.5-3.9-4.7-4.1-.1-.2-1.1-1.4-1.1-2.7s.7-1.9 .9-2.1c.2-.2.5-.3.7-.3h.5c.2 0 .4 0 .6.5l.8 1.9c.1.2.1.4 0 .5l-.4.5c-.1.2-.3.3-.1.6.1.3.7 1.1 1.4 1.7.9.8 1.6 1 1.9 1.2.2.1.4.1.5-.1l.6-.7c.2-.2.3-.2.6-.1l1.8.9c.3.1.4.2.5.3.1.2.1.6-.1 1.1z"/></svg>
+      Chamar o VetZap no WhatsApp
+    </a>
+    <div class="mini">⚡ Resposta na hora · sem cadastro · você só paga se quiser falar com o vet</div>
+    <img class="mascote" src="/static/vetzap/vetzap-mascote.webp" alt="Mascote VetZap">
+  </div>
+</div>
+
+<!-- COMO FUNCIONA -->
+<section><div class="wrap">
+  <h2>Funciona em 3 passos</h2>
+  <p class="sec-sub">Tudo dentro do WhatsApp. Sem baixar app, sem aprender nada.</p>
+  <div class="grid cols-3">
+    <div class="card"><div class="step-n">1</div><h3>Manda um zap</h3>
+      <p>Escreve, manda um áudio ou até uma foto do que está acontecendo com seu pet.</p></div>
+    <div class="card"><div class="step-n">2</div><h3>Orientação na hora</h3>
+      <p>Nosso assistente te acalma e diz o que fazer agora — e se o caso é urgente.</p></div>
+    <div class="card"><div class="step-n">3</div><h3>Vet por vídeo</h3>
+      <p>Se precisar, um veterinário de verdade te liga em vídeo em minutos. Você paga só esse.</p></div>
+  </div>
+</div></section>
+
+<!-- PREÇOS -->
+<section id="precos"><div class="wrap"><div class="precos">
+  <h2>Preço justo, na hora do aperto</h2>
+  <p class="sec-sub">Sem mensalidade. Você paga só quando usar.</p>
+  <div class="price-row">
+    <div class="price"><div class="l"><b>🤖 Orientação na hora</b><span>assistente inteligente 24h</span></div><div class="v">Grátis</div></div>
+    <div class="price"><div class="l"><b>💬 Vet no chat</b><span>tira dúvida com um veterinário</span></div><div class="v">a partir de R$ 39</div></div>
+    <div class="price"><div class="l"><b>📹 Vet por vídeo</b><span>atendimento ao vivo, o "pronto-socorro"</span></div><div class="v">a partir de R$ 89</div></div>
+  </div>
+  <p class="anchor">Um pronto-socorro veterinário presencial custa <b>R$ 200 a R$ 400+</b>.<br>No VetZap você resolve por uma fração — sem sair de casa. 🏠</p>
+  <div style="margin-top:24px"><a class="cta cta-lg" href="{{ link }}">Chamar agora no WhatsApp</a></div>
+</div></div></section>
+
+<!-- TRUST -->
+<section><div class="wrap" style="text-align:center">
+  <h2>Pode confiar 🐾</h2>
+  <div class="trust">
+    <span class="badge">✅ Veterinários com CRMV</span>
+    <span class="badge">✅ Teleorientação (CFMV 1.465/2022)</span>
+    <span class="badge">✅ Pagamento PIX seguro</span>
+    <span class="badge">✅ Sem vet disponível? Devolvemos</span>
+  </div>
+  <p class="disc">⚠️ O VetZap oferece teleorientação e teletriagem — não substitui a avaliação veterinária presencial,
+     não faz diagnóstico definitivo nem prescreve medicamentos pelo assistente. Em emergências graves, procure
+     uma clínica imediatamente. A prescrição, quando necessária, é feita por um médico-veterinário.</p>
+</div></section>
+
+<!-- VET -->
+<section><div class="wrap"><div class="vet">
+  <h2>É veterinário(a)? 🩺</h2>
+  <p>Transforme suas horas livres em renda. Atenda pets pelo celular, de onde você estiver —
+     sem clínica, sem plantão, sem chefe. Você faz a sua agenda.</p>
+  <a class="cta cta-ghost cta-lg" href="{{ ('https://wa.me/' ~ numero ~ '?text=' ~ ('Quero ser veterinário parceiro do VetZap'|urlencode)) if numero else '#' }}">Quero atender no VetZap</a>
+</div></div></section>
+
+<!-- FINAL -->
+<div class="final"><div class="wrap">
+  <h2>Seu melhor amigo merece socorro rápido. 🐶🐱</h2>
+  <p class="sec-sub">Salve o número. Da próxima vez que o coração apertar, você já sabe pra onde correr.</p>
+  <a class="cta cta-lg" href="{{ link }}">Chamar o VetZap agora</a>
+</div></div>
+
+<footer>
+  🐾 <b>VetZap</b> — um produto 4KITEM · Teleorientação veterinária 24h<br>
+  Não substitui consulta veterinária presencial · © 2026
+</footer>
+
+<div class="pad-bottom"></div>
+<div class="sticky"><a class="cta" style="width:100%;justify-content:center" href="{{ link }}">🚨 Chamar o VetZap agora</a></div>
+</body>
+</html>
