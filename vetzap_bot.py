@@ -361,6 +361,38 @@ def aceitar_corrida(vet):
     return tutor
 
 
+# ── Mídia: baixa foto/áudio da Evolution → base64 pro Gemini ───────────────────
+def _evo_media(msg):
+    """Extrai foto/áudio de uma mensagem da Evolution → {mime, data_b64} ou None."""
+    m = msg.get('message', {}) or {}
+    obj, mime = None, None
+    if 'imageMessage' in m:
+        obj, mime = m['imageMessage'], m['imageMessage'].get('mimetype', 'image/jpeg')
+    elif 'audioMessage' in m:
+        obj, mime = m['audioMessage'], m['audioMessage'].get('mimetype', 'audio/ogg')
+    elif 'stickerMessage' in m:
+        obj, mime = m['stickerMessage'], m['stickerMessage'].get('mimetype', 'image/webp')
+    if obj is None:
+        return None
+    mime = (mime or 'application/octet-stream').split(';')[0].strip()
+    # 1) já veio base64 no payload? (depende da config do webhook da Evolution)
+    b64 = m.get('base64') or msg.get('base64') or obj.get('base64')
+    if b64:
+        return {'mime': mime, 'data_b64': b64}
+    # 2) busca via Evolution getBase64FromMediaMessage
+    if EVO_URL and EVO_KEY:
+        try:
+            r = _req.post(f'{EVO_URL}/chat/getBase64FromMediaMessage/{EVO_INST}',
+                          json={'message': {'key': msg.get('key', {})}},
+                          headers={'apikey': EVO_KEY}, timeout=25)
+            j = r.json()
+            if isinstance(j, dict) and j.get('base64'):
+                return {'mime': (j.get('mimetype') or mime).split(';')[0], 'data_b64': j['base64']}
+        except Exception as e:
+            log.warning('[vetzap_bot] media fetch falhou: %s', e)
+    return None
+
+
 # ── Webhook que recebe as mensagens da Evolution API ───────────────────────────
 @vetzap_bp.route('/wa/webhook', methods=['GET', 'POST'])
 def wa_webhook():
@@ -376,8 +408,9 @@ def wa_webhook():
         m = msg.get('message', {}) or {}
         texto = (m.get('conversation')
                  or (m.get('extendedTextMessage') or {}).get('text', '')
+                 or (m.get('imageMessage') or {}).get('caption', '')
                  or '')
-        media = None  # TODO: baixar imageMessage/audioMessage da Evolution e passar base64
+        media = _evo_media(msg)   # foto/áudio → {mime, data_b64} ou None
         if not telefone:
             return jsonify({'ignored': 'no-phone'}), 200
 
