@@ -47,6 +47,42 @@ def _gemini_call(system, contents, json_mode=False, max_tokens=2048, temperature
     return txt, int(um.get('promptTokenCount', 0)), int(um.get('candidatesTokenCount', 0))
 
 
+# ── O "cérebro jurídico" do DRZAP ─────────────────────────────────────────────────
+SYSTEM_JURIDICO = """Você é o DRZAP, um assistente que explica DIREITOS de forma SIMPLES para pessoas \
+leigas no Brasil. Fale como se explicasse para alguém que não entende nada de leis: linguagem do dia a dia, \
+frases curtas, ZERO juridiquês. Seja acolhedor e prático.
+
+SUA ÁREA: direito do consumidor (CDC), trabalhista (CLT), Procon, cobranças/contas abusivas, garantia, \
+negativação indevida, golpes, demissão, e dúvidas do dia a dia do cidadão. Se a pergunta for claramente de \
+OUTRA área (ex: saúde, programação, fofoca), responda gentilmente que seu foco é orientação sobre direitos \
+do consumidor e do trabalho, e convide a pessoa a perguntar sobre isso.
+
+RESPONDA SEMPRE NESTA ESTRUTURA (com os emojis):
+📌 EM RESUMO: 1 ou 2 frases diretas respondendo a dúvida.
+✅ O QUE FAZER: passo a passo curto e numerado, prático e específico.
+🏛️ ONDE RECLAMAR: órgãos certos (Procon, Reclame Aqui, ANATEL/ANEEL, Justiça/Juizado, sindicato...) quando fizer sentido.
+⚖️ SEUS DIREITOS: a base explicada de forma simples (pode mencionar o CDC ou a CLT em linguagem de leigo).
+
+REGRAS IMPORTANTES:
+- Dê o caminho REAL e prático. Nada de resposta vaga.
+- NÃO invente número de artigo de lei, valor ou prazo exato se não tiver certeza — oriente de forma geral.
+- Nunca prometa resultado ("você com certeza vai ganhar").
+- Use no máximo ~350 palavras.
+- Termine SEMPRE com esta linha: "⚠️ Orientação geral, não substitui um advogado. Para o seu caso, procure um profissional ou o Procon."
+"""
+
+
+def _registrar_uso(user_id, tipo, creditos, tin=0, tout=0):
+    try:
+        conn = get_drzap_db()
+        conn.execute('INSERT INTO drzap_uso_log (user_id,tipo,creditos,tokens_in,tokens_out,created_at) '
+                     'VALUES (?,?,?,?,?,?)',
+                     (user_id, tipo, creditos, int(tin), int(tout), datetime.now().isoformat()))
+        conn.commit(); conn.close()
+    except Exception:
+        pass
+
+
 # ── E-mail (Resend) ─────────────────────────────────────────────────────────────
 def _enviar_email(para: str, assunto: str, html: str) -> bool:
     api_key = os.environ.get('RESEND_API_KEY', '')
@@ -310,6 +346,35 @@ def app_home():
         session.clear()
         return redirect('/drzap/entrar')
     return render_template('drzap/app.html', u=u, creditos=get_creditos(u['id']))
+
+
+@drzap_bp.route('/perguntar', methods=['POST'])
+@drzap_login_required
+def perguntar():
+    u = _get_user()
+    data = request.get_json(silent=True) or {}
+    pergunta = (data.get('pergunta') or '').strip()[:1000]
+    if len(pergunta) < 5:
+        return jsonify({'erro': 'Escreva sua dúvida com um pouquinho mais de detalhe. 🙂'}), 400
+    # 1) Débito ATÔMICO antes de gastar IA (sem crédito = não roda)
+    if not debita_creditos(u['id'], 1):
+        return jsonify({'erro': 'sem_creditos',
+                        'msg': 'Você está sem créditos. Compre para continuar.'}), 402
+    # 2) Chama a IA — se falhar, ESTORNA o crédito (não cobra por nada)
+    try:
+        contents = [{'role': 'user', 'parts': [{'text': pergunta}]}]
+        resposta, tin, tout = _gemini_call(SYSTEM_JURIDICO, contents,
+                                           json_mode=False, max_tokens=1200, temperature=0.2)
+        if not resposta:
+            raise ValueError('resposta vazia')
+    except Exception as e:
+        add_creditos(u['id'], 1)   # devolve o crédito
+        log.warning(f'[DRZAP] IA falhou (crédito estornado): {e}')
+        return jsonify({'erro': 'Tivemos um problema ao consultar. Seu crédito foi devolvido. '
+                                'Tente novamente em instantes.'}), 502
+    # 3) Log de uso (SEM o conteúdo) + retorna
+    _registrar_uso(u['id'], 'pergunta', 1, tin, tout)
+    return jsonify({'ok': True, 'resposta': resposta, 'creditos': get_creditos(u['id'])})
 
 
 @drzap_bp.route('/comprar')

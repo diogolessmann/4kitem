@@ -13,31 +13,35 @@ body{font-family:'Inter',sans-serif;background:#0b1220;color:#eaf0ff;min-height:
 .saldo{display:flex;align-items:center;gap:8px}
 .saldo .c{background:rgba(59,130,246,.15);color:#7dabff;font-weight:800;font-size:13px;padding:6px 12px;border-radius:20px}
 .sair{color:#7b8aa8;text-decoration:none;font-size:13px}
-.wrap{max-width:520px;margin:0 auto;padding:18px}
+.wrap{max-width:560px;margin:0 auto;padding:18px}
 .ola{font-size:20px;font-weight:800;margin:6px 0 16px}
 .box{background:#121c30;border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:18px;margin-bottom:14px}
 .zero{background:linear-gradient(135deg,rgba(37,99,235,.18),rgba(59,130,246,.1));border:1px solid rgba(59,130,246,.35);text-align:center}
 .zero h3{font-size:17px;font-weight:800;margin-bottom:6px}
 .zero p{color:#9fb0cc;font-size:14px;margin-bottom:14px}
-.cta{display:inline-block;background:linear-gradient(135deg,#2563eb,#3b82f6);color:#fff;font-weight:800;
-     padding:13px 24px;border-radius:11px;text-decoration:none;font-size:15px}
+.cta{display:inline-block;background:linear-gradient(135deg,#2563eb,#3b82f6);color:#fff;font-weight:800;padding:13px 24px;border-radius:11px;text-decoration:none;font-size:15px}
 label{display:block;font-size:13px;font-weight:600;color:#c3d2ec;margin-bottom:8px}
-textarea{width:100%;background:#0b1220;border:1px solid rgba(255,255,255,.12);border-radius:11px;color:#fff;
-         padding:13px;font-size:15px;font-family:inherit;outline:none;resize:vertical;min-height:90px}
+textarea{width:100%;background:#0b1220;border:1px solid rgba(255,255,255,.12);border-radius:11px;color:#fff;padding:13px;font-size:15px;font-family:inherit;outline:none;resize:vertical;min-height:90px}
 textarea:focus{border-color:#3b82f6}
-.btns{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
-.b{flex:1;min-width:120px;padding:13px;border-radius:10px;border:none;font-family:inherit;font-weight:800;font-size:14px;cursor:pointer}
+.cont{font-size:11px;color:#7b8aa8;text-align:right;margin-top:4px}
+.btns{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
+.b{flex:1;min-width:130px;padding:14px;border-radius:10px;border:none;font-family:inherit;font-weight:800;font-size:14px;cursor:pointer}
 .b1{background:linear-gradient(135deg,#2563eb,#3b82f6);color:#fff}
+.b1:disabled{opacity:.6;cursor:not-allowed}
 .b2{background:rgba(255,255,255,.07);color:#cdd9ee;border:1px solid rgba(255,255,255,.12)}
 .soon{font-size:11px;color:#7b8aa8;text-align:center;margin-top:10px}
+#resposta{display:none;white-space:pre-wrap;line-height:1.65;font-size:15px;color:#eaf0ff}
+#resposta h4{color:#7dabff;font-size:13px;font-weight:700;margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px}
 .disc{font-size:11.5px;color:#8a7a3a;background:rgba(250,204,21,.07);border:1px solid rgba(250,204,21,.2);border-radius:10px;padding:10px 12px;margin-top:14px;line-height:1.5}
+.load{display:none;text-align:center;color:#9fb0cc;font-size:14px;padding:10px}
+.dot{display:inline-block;animation:bl 1.2s infinite}@keyframes bl{0%,100%{opacity:.3}50%{opacity:1}}
 </style>
 </head>
 <body>
 <div class="top">
   <div class="logo">⚖️ DR<b>ZAP</b></div>
   <div class="saldo">
-    <span class="c">💎 {{ creditos }} créditos</span>
+    <span class="c">💎 <span id="saldo">{{ creditos }}</span> créditos</span>
     <a href="/drzap/sair" class="sair">Sair</a>
   </div>
 </div>
@@ -45,25 +49,66 @@ textarea:focus{border-color:#3b82f6}
 <div class="wrap">
   <div class="ola">Olá, {{ (u['nome'] or '').split()[0] }}! 👋</div>
 
-  {% if creditos < 1 %}
-  <div class="box zero">
+  <div class="box zero" id="box-zero" style="{{ '' if creditos < 1 else 'display:none' }}">
     <h3>💎 Você está sem créditos</h3>
     <p>Compre créditos pra fazer suas perguntas. A partir de R$ 10.</p>
     <a href="/drzap/comprar" class="cta">Comprar créditos →</a>
   </div>
-  {% endif %}
 
   <div class="box">
     <label>📩 Qual é a sua dúvida?</label>
-    <textarea id="pergunta" maxlength="1000" placeholder="Ex: Recebi uma cobrança que não reconheço na fatura. O que eu faço?"></textarea>
+    <textarea id="pergunta" maxlength="1000" placeholder="Ex: Recebi uma cobrança que não reconheço na fatura do cartão. O que eu faço?"></textarea>
+    <div class="cont"><span id="cc">0</span>/1000</div>
     <div class="btns">
-      <button class="b b1" onclick="alert('Em breve! O motor de respostas entra no próximo lote. 🚀')">🗨️ Perguntar (1 crédito)</button>
-      <button class="b b2" onclick="alert('Em breve! 📄')">📄 Gerar documento</button>
+      <button class="b b1" id="btn-perguntar" onclick="perguntar()">🗨️ Perguntar (1 crédito)</button>
+      <button class="b b2" onclick="alert('Gerar documento entra no próximo lote! 📄🚀')">📄 Gerar documento</button>
     </div>
     <div class="soon">📸 Em breve: enviar foto de conta/documento (OCR)</div>
   </div>
 
+  <div class="load" id="load">⚖️ Analisando sua dúvida<span class="dot">...</span></div>
+
+  <div class="box" id="box-resp" style="display:none">
+    <h4 style="color:#7dabff;font-size:13px;font-weight:700;margin-bottom:10px">💬 Orientação DRZAP</h4>
+    <div id="resposta" style="display:block"></div>
+  </div>
+
   <div class="disc">⚖️ Orientação informativa, gerada por IA. <b>Não substitui um advogado</b>. Para o seu caso, procure um profissional.</div>
 </div>
+
+<script>
+const t = document.getElementById('pergunta');
+t.addEventListener('input', () => document.getElementById('cc').textContent = t.value.length);
+
+async function perguntar(){
+  const pergunta = t.value.trim();
+  if (pergunta.length < 5){ alert('Escreva sua dúvida com um pouco mais de detalhe. 🙂'); return; }
+  const btn = document.getElementById('btn-perguntar');
+  btn.disabled = true;
+  document.getElementById('box-resp').style.display = 'none';
+  document.getElementById('load').style.display = 'block';
+  try{
+    const r = await fetch('/drzap/perguntar', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({pergunta})
+    }).then(r=>r.json());
+    document.getElementById('load').style.display = 'none';
+    if (r.erro === 'sem_creditos'){
+      if (confirm('Você está sem créditos. Quer comprar agora?')) location.href = '/drzap/comprar';
+      btn.disabled = false; return;
+    }
+    if (r.erro){ alert(r.erro); btn.disabled = false; return; }
+    document.getElementById('resposta').textContent = r.resposta;
+    document.getElementById('box-resp').style.display = 'block';
+    document.getElementById('saldo').textContent = r.creditos;
+    if (r.creditos < 1) document.getElementById('box-zero').style.display = 'block';
+    document.getElementById('box-resp').scrollIntoView({behavior:'smooth', block:'start'});
+  }catch(e){
+    document.getElementById('load').style.display = 'none';
+    alert('Não foi possível consultar agora. Tente de novo.');
+  }
+  btn.disabled = false;
+}
+</script>
 </body>
 </html>
