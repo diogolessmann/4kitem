@@ -7,7 +7,7 @@
 <meta name="description" content="Seu pet passou mal e você não tem pra quem ligar? Manda um WhatsApp: a IA te orienta na hora e um veterinário de verdade te atende por vídeo — bem mais barato que um pronto-socorro.">
 <meta property="og:title" content="VetZap — Um veterinário no seu WhatsApp, na hora">
 <meta property="og:description" content="Pet passou mal? Manda um zap. Orientação na hora + vet por vídeo, sem sair de casa.">
-<meta property="og:image" content="https://4kitem.com.br/static/vetzap/vetzap-hero-desktop.webp">
+<meta property="og:image" content="https://4kitem.com.br/static/vetzap/vetzap-hero-real.webp">
 <meta property="og:type" content="website">
 <link rel="icon" href="/static/vetzap/vetzap-logo-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -39,6 +39,11 @@
   h1 b{color:var(--wa)}
   .sub{font-size:clamp(16px,2.5vw,20px);color:var(--ink2);max-width:600px;margin:18px auto 26px}
   .hero img.mascote{width:min(280px,70%);margin:24px auto 0;display:block;filter:drop-shadow(0 20px 40px rgba(14,165,233,.25))}
+  .hero img.heroimg{width:min(760px,100%);margin:30px auto 0;display:block;border-radius:24px;box-shadow:0 30px 70px rgba(11,32,48,.28)}
+  .split{display:grid;gap:26px;align-items:center}
+  .split img{width:min(340px,82%);margin:0 auto;display:block;border-radius:22px;box-shadow:0 22px 50px rgba(11,32,48,.20)}
+  @media(min-width:760px){.split{grid-template-columns:340px 1fr}.split.rev img{order:2}}
+  .como-img{width:min(300px,80%);margin:0 auto 30px;display:block;filter:drop-shadow(0 18px 40px rgba(11,32,48,.18))}
   .mini{font-size:13px;color:var(--ink2);margin-top:12px}
   /* seções */
   section{padding:46px 0}
@@ -103,7 +108,7 @@
       Chamar o VetZap no WhatsApp
     </a>
     <div class="mini">⚡ Resposta na hora · sem cadastro · você só paga se quiser falar com o vet</div>
-    <img class="mascote" src="/static/vetzap/vetzap-mascote.webp" alt="Mascote VetZap">
+    <img class="heroimg" src="/static/vetzap/vetzap-hero-real.webp" alt="Tutora falando com o VetZap à noite, com seu cão ao lado">
   </div>
 </div>
 
@@ -111,6 +116,7 @@
 <section><div class="wrap">
   <h2>Funciona em 3 passos</h2>
   <p class="sec-sub">Tudo dentro do WhatsApp. Sem baixar app, sem aprender nada.</p>
+  <img class="como-img" src="/static/vetzap/vetzap-chat-mockup.webp" alt="Conversa do VetZap no WhatsApp">
   <div class="grid cols-3">
     <div class="card"><div class="step-n">1</div><h3>Manda um zap</h3>
       <p>Escreve, manda um áudio ou até uma foto do que está acontecendo com seu pet.</p></div>
@@ -118,6 +124,19 @@
       <p>Nosso assistente te acalma e diz o que fazer agora — e se o caso é urgente.</p></div>
     <div class="card"><div class="step-n">3</div><h3>Vet por vídeo</h3>
       <p>Se precisar, um veterinário de verdade te liga em vídeo em minutos. Você paga só esse.</p></div>
+  </div>
+</div></section>
+
+<!-- VET POR VÍDEO -->
+<section><div class="wrap">
+  <div class="split">
+    <img src="/static/vetzap/vetzap-vet-video.webp" alt="Veterinária atendendo por videochamada">
+    <div>
+      <h2 style="text-align:left">Um veterinário <b style="color:var(--wa)">de verdade</b>, por vídeo</h2>
+      <p style="color:var(--ink2);font-size:17px">Quando o caso precisa de gente, um veterinário com <b>CRMV</b> te liga em vídeo em minutos.
+      Você mostra seu pet, tira suas dúvidas e recebe orientação na hora — sem sair de casa, sem fila, sem PS lotado.</p>
+      <div style="margin-top:18px"><a class="cta" href="{{ link }}">Falar com um vet agora</a></div>
+    </div>
   </div>
 </div></section>
 
@@ -158,6 +177,7 @@
 
 <!-- FINAL -->
 <div class="final"><div class="wrap">
+  <img src="/static/vetzap/vetzap-mascote.webp" alt="Mascote VetZap" style="width:min(260px,70%);margin:0 auto 18px;display:block">
   <h2>Seu melhor amigo merece socorro rápido. 🐶🐱</h2>
   <p class="sec-sub">Salve o número. Da próxima vez que o coração apertar, você já sabe pra onde correr.</p>
   <a class="cta cta-lg" href="{{ link }}">Chamar o VetZap agora</a>
