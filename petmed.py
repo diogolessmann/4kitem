@@ -1089,7 +1089,10 @@ SEMPRE JSON válido. Nunca mencione tecnologia, sistema ou processamento."""
 
 @petmed_bp.route('/')
 def index():
-    return render_template('petmed/index.html', planos=PLANOS, pacotes=PACOTES_CREDITO)
+    # /vetzap é a landing pública oficial agora. Logado vai pro app; visitante vê a landing.
+    if session.get('pm_user_id'):
+        return redirect('/petmed/dashboard')
+    return redirect('/vetzap')
 
 
 @petmed_bp.route('/planos')

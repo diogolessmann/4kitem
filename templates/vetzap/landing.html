@@ -89,7 +89,7 @@
 </style>
 </head>
 <body>
-{% set link = ('https://wa.me/' ~ numero ~ '?text=' ~ (msg_pre|urlencode)) if numero else '#precos' %}
+{% set link = ('https://wa.me/' ~ numero ~ '?text=' ~ (msg_pre|urlencode)) if numero else '/petmed/cadastrar' %}
 
 <div class="wrap">
   <div class="nav">
@@ -172,7 +172,7 @@
   <h2>É veterinário(a)? 🩺</h2>
   <p>Transforme suas horas livres em renda. Atenda pets pelo celular, de onde você estiver —
      sem clínica, sem plantão, sem chefe. Você faz a sua agenda.</p>
-  <a class="cta cta-ghost cta-lg" href="{{ ('https://wa.me/' ~ numero ~ '?text=' ~ ('Quero ser veterinário parceiro do VetZap'|urlencode)) if numero else '#' }}">Quero atender no VetZap</a>
+  <a class="cta cta-ghost cta-lg" href="{{ ('https://wa.me/' ~ numero ~ '?text=' ~ ('Quero ser veterinário parceiro do VetZap'|urlencode)) if numero else '/petmed/vet/cadastro' }}">Quero atender no VetZap</a>
 </div></div></section>
 
 <!-- FINAL -->
