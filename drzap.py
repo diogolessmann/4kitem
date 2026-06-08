@@ -72,6 +72,23 @@ REGRAS IMPORTANTES:
 """
 
 
+SYSTEM_DOCUMENTO = """Você é o DRZAP. Gere um DOCUMENTO formal PRONTO PARA USO com base na situação que a \
+pessoa descrever. Normalmente é uma CARTA DE RECLAMAÇÃO (para a empresa ou para o Procon), mas pode ser uma \
+notificação ou um pedido formal, conforme o caso.
+
+REGRAS:
+- Escreva o documento COMPLETO, pronto pra copiar, imprimir ou enviar.
+- Linguagem formal, porém clara. Estruture bem: local/data, destinatário, identificação, os FATOS, a \
+FUNDAMENTAÇÃO (direitos do consumidor de forma simples), o PEDIDO objetivo, e o fechamento com assinatura.
+- Onde faltar dado pessoal, use marcadores entre colchetes pra pessoa preencher: [SEU NOME COMPLETO], \
+[SEU CPF], [DATA], [Nº DO PEDIDO/CONTRATO], [NOME DA EMPRESA], [ENDEREÇO], etc.
+- Fundamente citando o direito (ex.: Código de Defesa do Consumidor) de forma acessível.
+- Seja firme e educado. Inclua um prazo razoável de resposta quando fizer sentido (ex.: 10 dias úteis).
+- No FINAL, depois do documento, acrescente em linha separada: \
+"— ⚠️ Modelo gerado por IA. Revise os campos [entre colchetes] antes de enviar. Não substitui um advogado."
+"""
+
+
 def _registrar_uso(user_id, tipo, creditos, tin=0, tout=0):
     try:
         conn = get_drzap_db()
@@ -375,6 +392,33 @@ def perguntar():
     # 3) Log de uso (SEM o conteúdo) + retorna
     _registrar_uso(u['id'], 'pergunta', 1, tin, tout)
     return jsonify({'ok': True, 'resposta': resposta, 'creditos': get_creditos(u['id'])})
+
+
+@drzap_bp.route('/documento', methods=['POST'])
+@drzap_login_required
+def documento():
+    u = _get_user()
+    data = request.get_json(silent=True) or {}
+    situacao = (data.get('pergunta') or data.get('situacao') or '').strip()[:1000]
+    if len(situacao) < 10:
+        return jsonify({'erro': 'Descreva a situação com mais detalhes pra eu montar o documento. 🙂'}), 400
+    # Débito ATÔMICO de 3 créditos (só roda se tiver os 3)
+    if not debita_creditos(u['id'], 3):
+        return jsonify({'erro': 'sem_creditos',
+                        'msg': 'Gerar documento custa 3 créditos. Compre mais para continuar.'}), 402
+    try:
+        contents = [{'role': 'user', 'parts': [{'text': situacao}]}]
+        doc, tin, tout = _gemini_call(SYSTEM_DOCUMENTO, contents,
+                                      json_mode=False, max_tokens=2500, temperature=0.3)
+        if not doc:
+            raise ValueError('resposta vazia')
+    except Exception as e:
+        add_creditos(u['id'], 3)   # estorna os 3
+        log.warning(f'[DRZAP] documento IA falhou (estornado): {e}')
+        return jsonify({'erro': 'Não consegui gerar agora. Seus 3 créditos foram devolvidos. '
+                                'Tente novamente.'}), 502
+    _registrar_uso(u['id'], 'documento', 3, tin, tout)
+    return jsonify({'ok': True, 'resposta': doc, 'creditos': get_creditos(u['id'])})
 
 
 @drzap_bp.route('/comprar')

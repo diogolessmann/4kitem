@@ -61,7 +61,7 @@ textarea:focus{border-color:#3b82f6}
     <div class="cont"><span id="cc">0</span>/1000</div>
     <div class="btns">
       <button class="b b1" id="btn-perguntar" onclick="perguntar()">🗨️ Perguntar (1 crédito)</button>
-      <button class="b b2" onclick="alert('Gerar documento entra no próximo lote! 📄🚀')">📄 Gerar documento</button>
+      <button class="b b2" id="btn-doc" onclick="documento()">📄 Gerar documento (3 créditos)</button>
     </div>
     <div class="soon">📸 Em breve: enviar foto de conta/documento (OCR)</div>
   </div>
@@ -69,7 +69,10 @@ textarea:focus{border-color:#3b82f6}
   <div class="load" id="load">⚖️ Analisando sua dúvida<span class="dot">...</span></div>
 
   <div class="box" id="box-resp" style="display:none">
-    <h4 style="color:#7dabff;font-size:13px;font-weight:700;margin-bottom:10px">💬 Orientação DRZAP</h4>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <h4 id="resp-titulo" style="color:#7dabff;font-size:13px;font-weight:700">💬 Orientação DRZAP</h4>
+      <button onclick="copiar()" style="background:rgba(255,255,255,.08);color:#cdd9ee;border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">📋 Copiar</button>
+    </div>
     <div id="resposta" style="display:block"></div>
   </div>
 
@@ -80,35 +83,42 @@ textarea:focus{border-color:#3b82f6}
 const t = document.getElementById('pergunta');
 t.addEventListener('input', () => document.getElementById('cc').textContent = t.value.length);
 
-async function perguntar(){
-  const pergunta = t.value.trim();
-  if (pergunta.length < 5){ alert('Escreva sua dúvida com um pouco mais de detalhe. 🙂'); return; }
-  const btn = document.getElementById('btn-perguntar');
-  btn.disabled = true;
+function copiar(){
+  const txt = document.getElementById('resposta').textContent;
+  navigator.clipboard.writeText(txt).then(()=>{ alert('✅ Copiado!'); });
+}
+async function _consultar(url, custo, titulo){
+  const texto = t.value.trim();
+  if (texto.length < 5){ alert('Escreva sua dúvida/situação com um pouco mais de detalhe. 🙂'); return; }
+  if (custo >= 3 && !confirm('Gerar o documento usa ' + custo + ' créditos. Continuar?')) return;
+  const b1 = document.getElementById('btn-perguntar'), b2 = document.getElementById('btn-doc');
+  b1.disabled = b2.disabled = true;
   document.getElementById('box-resp').style.display = 'none';
   document.getElementById('load').style.display = 'block';
   try{
-    const r = await fetch('/drzap/perguntar', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({pergunta})
-    }).then(r=>r.json());
+    const r = await fetch(url, {method:'POST', headers:{'Content-Type':'application/json'},
+                            body: JSON.stringify({pergunta: texto})}).then(r=>r.json());
     document.getElementById('load').style.display = 'none';
     if (r.erro === 'sem_creditos'){
-      if (confirm('Você está sem créditos. Quer comprar agora?')) location.href = '/drzap/comprar';
-      btn.disabled = false; return;
+      if (confirm((r.msg||'Você está sem créditos.') + ' Comprar agora?')) location.href = '/drzap/comprar';
+    } else if (r.erro){
+      alert(r.erro);
+    } else {
+      document.getElementById('resp-titulo').textContent = titulo;
+      document.getElementById('resposta').textContent = r.resposta;
+      document.getElementById('box-resp').style.display = 'block';
+      document.getElementById('saldo').textContent = r.creditos;
+      if (r.creditos < 1) document.getElementById('box-zero').style.display = 'block';
+      document.getElementById('box-resp').scrollIntoView({behavior:'smooth', block:'start'});
     }
-    if (r.erro){ alert(r.erro); btn.disabled = false; return; }
-    document.getElementById('resposta').textContent = r.resposta;
-    document.getElementById('box-resp').style.display = 'block';
-    document.getElementById('saldo').textContent = r.creditos;
-    if (r.creditos < 1) document.getElementById('box-zero').style.display = 'block';
-    document.getElementById('box-resp').scrollIntoView({behavior:'smooth', block:'start'});
   }catch(e){
     document.getElementById('load').style.display = 'none';
     alert('Não foi possível consultar agora. Tente de novo.');
   }
-  btn.disabled = false;
+  b1.disabled = b2.disabled = false;
 }
+function perguntar(){ _consultar('/drzap/perguntar', 1, '💬 Orientação DRZAP'); }
+function documento(){ _consultar('/drzap/documento', 3, '📄 Seu documento'); }
 </script>
 </body>
 </html>
