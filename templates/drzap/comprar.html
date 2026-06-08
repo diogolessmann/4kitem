@@ -16,12 +16,14 @@ h1{font-size:22px;font-weight:900;text-align:center;margin-bottom:4px}
 .sub{text-align:center;color:#9fb0cc;font-size:14px;margin-bottom:8px}
 .regras{background:#121c30;border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:13px 15px;font-size:13px;color:#a8b8d4;margin:14px 0;line-height:1.8}
 .regras b{color:#fff}
-.pack{display:block;background:#121c30;border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:18px;margin-bottom:12px;text-decoration:none;color:inherit;position:relative}
+.pack{display:flex;align-items:center;justify-content:space-between;background:#121c30;border:1px solid rgba(255,255,255,.1);
+      border-radius:14px;padding:18px;margin-bottom:12px;text-decoration:none;color:inherit;position:relative}
 .pack.top{border-color:#3b82f6;box-shadow:0 0 0 1px #3b82f6}
 .pack .tag{position:absolute;top:-10px;right:14px;background:#3b82f6;color:#fff;font-size:11px;font-weight:800;padding:3px 10px;border-radius:20px}
 .pack .v{font-size:22px;font-weight:900}
 .pack .cr{color:#7dabff;font-weight:700;font-size:15px;margin-top:2px}
 .pack .b{color:#86efac;font-size:12.5px;margin-top:3px}
+.pack .go{background:linear-gradient(135deg,#2563eb,#3b82f6);color:#fff;font-weight:800;padding:10px 16px;border-radius:10px;font-size:14px}
 .soon{text-align:center;font-size:12px;color:#7b8aa8;margin-top:16px}
 </style>
 </head>
@@ -40,19 +42,22 @@ h1{font-size:22px;font-weight:900;text-align:center;margin-bottom:4px}
     📸 Analisar foto/documento = <b>1 crédito por página</b>
   </div>
 
-  <a class="pack" onclick="alert('Em breve! O pagamento via PIX entra no próximo lote. 🚀');return false;" href="#">
-    <div class="v">R$ 10</div><div class="cr">10 créditos</div>
+  <a class="pack" href="/drzap/checkout/p10">
+    <div><div class="v">R$ 10</div><div class="cr">10 créditos</div></div>
+    <div class="go">Comprar</div>
   </a>
-  <a class="pack top" onclick="alert('Em breve! 🚀');return false;" href="#">
+  <a class="pack top" href="/drzap/checkout/p25">
     <span class="tag">MAIS POPULAR</span>
-    <div class="v">R$ 25</div><div class="cr">30 créditos</div><div class="b">+5 grátis 🎁</div>
+    <div><div class="v">R$ 25</div><div class="cr">30 créditos</div><div class="b">+5 grátis 🎁</div></div>
+    <div class="go">Comprar</div>
   </a>
-  <a class="pack" onclick="alert('Em breve! 🚀');return false;" href="#">
+  <a class="pack" href="/drzap/checkout/p50">
     <span class="tag">MELHOR</span>
-    <div class="v">R$ 50</div><div class="cr">65 créditos</div><div class="b">+15 grátis 🔥</div>
+    <div><div class="v">R$ 50</div><div class="cr">65 créditos</div><div class="b">+15 grátis 🔥</div></div>
+    <div class="go">Comprar</div>
   </a>
 
-  <div class="soon">🔒 Pagamento via PIX, confirmação automática (em construção)</div>
+  <div class="soon">🔒 Pagamento via PIX • confirmação automática na hora</div>
 </div>
 </body>
 </html>

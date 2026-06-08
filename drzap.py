@@ -4,8 +4,10 @@ Assistente jurídico por IA (orientação ao consumidor/trabalhista) — crédit
 ⚖️ Orientação informativa. NÃO substitui advogado.
 """
 import os
+import time
 import logging
 import secrets
+import threading
 import requests as _requests
 from datetime import datetime, timedelta
 from functools import wraps
@@ -93,6 +95,91 @@ def _inject_creditos():
 
 def _cpf_digits(cpf):
     return ''.join(c for c in (cpf or '') if c.isdigit())
+
+
+def _cpf_valido(cpf):
+    cpf = _cpf_digits(cpf)
+    if len(cpf) != 11 or cpf == cpf[0] * 11:
+        return False
+    for i in (9, 10):
+        soma = sum(int(cpf[j]) * ((i + 1) - j) for j in range(i))
+        dig = (soma * 10) % 11
+        if dig == 10:
+            dig = 0
+        if dig != int(cpf[i]):
+            return False
+    return True
+
+
+# ── Pacotes de crédito ─────────────────────────────────────────────────────────
+PACOTES = {
+    'p10': {'creditos': 10, 'preco': 10.0, 'rotulo': '10 créditos',            'bonus': ''},
+    'p25': {'creditos': 30, 'preco': 25.0, 'rotulo': '30 créditos',            'bonus': '+5 grátis'},
+    'p50': {'creditos': 65, 'preco': 50.0, 'rotulo': '65 créditos',            'bonus': '+15 grátis'},
+}
+
+# ── Asaas (PIX) ──────────────────────────────────────────────────────────────────
+_ASAAS_BASE = 'https://api.asaas.com/v3'
+
+def _asaas_req(method, endpoint, data=None):
+    try:
+        r = _requests.request(method, f'{_ASAAS_BASE}{endpoint}',
+            headers={'access_token': os.environ.get('ASAAS_API_KEY', ''), 'Content-Type': 'application/json'},
+            json=data, timeout=20)
+        return r.json() if r.content else {}
+    except Exception as e:
+        return {'error': str(e)}
+
+
+def _asaas_cliente(u, cpf):
+    """Cria/recupera cliente Asaas e salva o customer_id + cpf. Retorna customer_id ou ''."""
+    if u['asaas_customer_id']:
+        return u['asaas_customer_id']
+    cpf = _cpf_digits(cpf)
+    cid = None
+    if cpf:
+        busca = _asaas_req('GET', f'/customers?cpfCnpj={cpf}&limit=1')
+        if busca.get('data'):
+            cid = busca['data'][0].get('id')
+    if not cid:
+        resp = _asaas_req('POST', '/customers', {
+            'name': u['nome'], 'email': u['email'],
+            'mobilePhone': _cpf_digits(u['telefone']), 'cpfCnpj': cpf,
+            'notificationDisabled': True})
+        cid = resp.get('id')
+    if cid:
+        conn = get_drzap_db()
+        conn.execute('UPDATE drzap_users SET asaas_customer_id=?, cpf=? WHERE id=?', (cid, cpf, u['id']))
+        conn.commit(); conn.close()
+    return cid or ''
+
+
+def _drz_confirmar_compra(compra_id):
+    """Credita os créditos de uma compra de forma ATÔMICA e idempotente.
+    Retorna True só se creditou AGORA (1ª confirmação). Evita crédito em dobro."""
+    conn = get_drzap_db()
+    cur = conn.execute("UPDATE drzap_compras SET status='pago' WHERE id=? AND status='pendente'",
+                       (compra_id,))
+    conn.commit()
+    if cur.rowcount == 0:        # já confirmada por outra via (webhook/poll/reconciliador)
+        conn.close()
+        return False
+    row = conn.execute('SELECT user_id, creditos FROM drzap_compras WHERE id=?', (compra_id,)).fetchone()
+    conn.close()
+    if not row:
+        return False
+    add_creditos(row['user_id'], row['creditos'])
+    log.info(f'[DRZAP] Compra {compra_id} PAGA — +{row["creditos"]} créditos (user {row["user_id"]})')
+    return True
+
+
+def drz_webhook_confirmar(external_ref, payment_id=''):
+    """Chamado pelo webhook global (app.py) p/ refs 'drzap_<compra_id>'."""
+    try:
+        cid = int(str(external_ref).split('_')[1])
+    except (IndexError, ValueError):
+        return False
+    return _drz_confirmar_compra(cid)
 
 
 # ── Rotas: público ────────────────────────────────────────────────────────────────
@@ -228,6 +315,114 @@ def app_home():
 @drzap_bp.route('/comprar')
 @drzap_login_required
 def comprar():
-    # Lote 2: pacotes de crédito + PIX. Placeholder por enquanto.
     u = _get_user()
-    return render_template('drzap/comprar.html', u=u, creditos=get_creditos(u['id']))
+    return render_template('drzap/comprar.html', u=u, creditos=get_creditos(u['id']), pacotes=PACOTES)
+
+
+@drzap_bp.route('/checkout/<pacote>', methods=['GET', 'POST'])
+@drzap_login_required
+def checkout(pacote):
+    u = _get_user()
+    if pacote not in PACOTES:
+        return redirect('/drzap/comprar')
+    p = PACOTES[pacote]
+    erro = None
+    if request.method == 'POST':
+        cpf = _cpf_digits(request.form.get('cpf'))
+        if not _cpf_valido(cpf):
+            erro = 'CPF inválido. Confira os números.'
+        else:
+            customer_id = _asaas_cliente(u, cpf)
+            if not customer_id:
+                erro = 'Não foi possível iniciar o pagamento. Tente novamente.'
+            else:
+                # cria a compra (pendente) e a cobrança PIX
+                conn = get_drzap_db()
+                cur = conn.execute(
+                    'INSERT INTO drzap_compras (user_id,pacote,creditos,valor,status,billing_type,created_at) '
+                    'VALUES (?,?,?,?,"pendente","PIX",?)',
+                    (u['id'], pacote, p['creditos'], p['preco'], datetime.now().isoformat()))
+                compra_id = cur.lastrowid
+                conn.commit(); conn.close()
+                venc = (datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d')
+                pay = _asaas_req('POST', '/payments', {
+                    'customer': customer_id, 'billingType': 'PIX', 'value': p['preco'],
+                    'dueDate': venc, 'description': f'DRZAP — {p["rotulo"]}',
+                    'externalReference': f'drzap_{compra_id}'})
+                pid = pay.get('id')
+                if not pid:
+                    erro = (pay.get('errors') or [{}])[0].get('description', 'Erro ao gerar o PIX.')
+                else:
+                    conn = get_drzap_db()
+                    conn.execute('UPDATE drzap_compras SET asaas_payment_id=? WHERE id=?', (pid, compra_id))
+                    conn.commit(); conn.close()
+                    return redirect(f'/drzap/pix/{compra_id}')
+    return render_template('drzap/checkout.html', u=u, pacote=pacote, p=p, erro=erro)
+
+
+@drzap_bp.route('/pix/<int:compra_id>')
+@drzap_login_required
+def pix(compra_id):
+    u = _get_user()
+    conn = get_drzap_db()
+    compra = conn.execute('SELECT * FROM drzap_compras WHERE id=? AND user_id=?',
+                          (compra_id, u['id'])).fetchone()
+    conn.close()
+    if not compra:
+        return redirect('/drzap/comprar')
+    qr = copia = ''
+    if compra['status'] == 'pendente' and compra['asaas_payment_id']:
+        resp = _asaas_req('GET', f'/payments/{compra["asaas_payment_id"]}/pixQrCode')
+        qr    = resp.get('encodedImage', '')
+        copia = resp.get('payload', '')
+    return render_template('drzap/pix.html', u=u, compra=compra, qr=qr, copia=copia)
+
+
+@drzap_bp.route('/pix-status/<int:compra_id>', methods=['POST'])
+@drzap_login_required
+def pix_status(compra_id):
+    u = _get_user()
+    conn = get_drzap_db()
+    compra = conn.execute('SELECT * FROM drzap_compras WHERE id=? AND user_id=?',
+                          (compra_id, u['id'])).fetchone()
+    conn.close()
+    if not compra:
+        return jsonify({'erro': 'não encontrada'}), 404
+    if compra['status'] == 'pago':
+        return jsonify({'pago': True, 'creditos': get_creditos(u['id'])})
+    pid = compra['asaas_payment_id']
+    if not pid:
+        return jsonify({'pago': False})
+    pay = _asaas_req('GET', f'/payments/{pid}')
+    if (pay.get('status') or '').upper() in ('RECEIVED', 'CONFIRMED', 'RECEIVED_IN_CASH'):
+        _drz_confirmar_compra(compra_id)
+        return jsonify({'pago': True, 'creditos': get_creditos(u['id'])})
+    return jsonify({'pago': False})
+
+
+# ── Reconciliador 24/7 (rede de segurança independente do webhook) ──────────────
+def _drz_reconciliar_loop():
+    time.sleep(150)  # deixa o app subir
+    log.info('[DRZAP] Reconciliador de pagamentos ATIVO (verifica a cada 3 min)')
+    while True:
+        try:
+            conn = get_drzap_db()
+            limite = (datetime.now() - timedelta(seconds=90)).isoformat()
+            rows = conn.execute(
+                "SELECT id, asaas_payment_id FROM drzap_compras "
+                "WHERE status='pendente' AND asaas_payment_id IS NOT NULL AND asaas_payment_id<>'' "
+                "AND created_at < ?", (limite,)).fetchall()
+            conn.close()
+            for r in rows:
+                try:
+                    pay = _asaas_req('GET', f'/payments/{r["asaas_payment_id"]}')
+                    if (pay.get('status') or '').upper() in ('RECEIVED', 'CONFIRMED', 'RECEIVED_IN_CASH'):
+                        _drz_confirmar_compra(r['id'])
+                except Exception as _e:
+                    log.warning(f'[DRZAP] reconciliador compra {r["id"]}: {_e}')
+        except Exception as _e:
+            log.error(f'[DRZAP] reconciliador loop: {_e}')
+        time.sleep(180)  # a cada 3 minutos
+
+
+threading.Thread(target=_drz_reconciliar_loop, daemon=True, name='drzap-reconciliador').start()

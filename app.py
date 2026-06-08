@@ -2049,6 +2049,15 @@ def webhook_asaas_global():
                     log.error(f'[SlotZap] Webhook bg error: {_e}')
             threading.Thread(target=_sz_baixa_bg, daemon=True).start()
 
+    elif ref.startswith('drzap_'):
+        # DRZAP — compra de créditos paga: credita (idempotente/atômico)
+        if ativar:
+            try:
+                from drzap import drz_webhook_confirmar
+                drz_webhook_confirmar(ref, payload.get('payment', {}).get('id', ''))
+            except Exception as _drz_e:
+                log.error(f'[DRZAP] Webhook error: {_drz_e}')
+
     elif ref.startswith('alerta_'):
         if customer_id:
             conn = get_saas_db()
