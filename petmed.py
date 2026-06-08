@@ -1281,18 +1281,24 @@ def webhook_asaas():
 
         conn = get_petmed_db()
 
-        # ── Compra de CRÉDITOS (modelo atual) ────────────────────────────────────
+        # ── Compra de CRÉDITOS — CLAIM ATÔMICO (idempotente + sem dupla-creditação) ──
         if payment_id:
-            compra = conn.execute(
-                "SELECT * FROM petmed_compras WHERE asaas_payment_id=? AND status='pendente'",
+            # Reivindica o pagamento de forma atômica: só UMA execução "ganha" (rowcount=1).
+            # Reenvio do Asaas ou 2 webhooks simultâneos → os demais veem rowcount=0 e não creditam.
+            claim = conn.execute(
+                "UPDATE petmed_compras SET status='pago' "
+                "WHERE asaas_payment_id=? AND status='pendente'",
                 (payment_id,)
-            ).fetchone()
-            if compra:
+            )
+            conn.commit()
+            if claim.rowcount > 0:
+                compra = conn.execute(
+                    "SELECT * FROM petmed_compras WHERE asaas_payment_id=?", (payment_id,)
+                ).fetchone()
                 conn.execute(
                     'UPDATE petmed_users SET creditos = COALESCE(creditos,0) + ? WHERE id=?',
                     (compra['creditos'], compra['user_id'])
                 )
-                conn.execute("UPDATE petmed_compras SET status='pago' WHERE id=?", (compra['id'],))
                 conn.commit()
                 log.info('[PETmed] +%s créditos (compra %s) p/ user_id=%s',
                          compra['creditos'], compra['id'], compra['user_id'])

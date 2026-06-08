@@ -342,16 +342,23 @@ def _vet_por_numero(telefone):
 
 
 def aceitar_corrida(vet):
-    """Vet aceitou: assume a corrida aberta mais antiga (tutor em 'na_fila')."""
+    """Vet aceitou: assume a corrida aberta mais antiga (tutor em 'na_fila'), de forma atômica."""
     conn = _db()
-    row = conn.execute("SELECT * FROM vetzap_wa WHERE estado='na_fila' "
+    row = conn.execute("SELECT telefone FROM vetzap_wa WHERE estado='na_fila' "
                        "ORDER BY updated_at ASC LIMIT 1").fetchone()
-    conn.close()
     if not row:
+        conn.close()
         wa_send(vet['telefone'], 'Nenhuma corrida aberta agora. Te aviso quando aparecer! 🐾')
         return None
     tutor = row['telefone']
-    _salva(tutor, 'atendido', json.loads(row['historico'] or '[]'))
+    # CLAIM ATÔMICO: só UM vet ganha a corrida (evita aceite duplo em concorrência)
+    claim = conn.execute("UPDATE vetzap_wa SET estado='atendido', updated_at=? "
+                         "WHERE telefone=? AND estado='na_fila'", (_agora(), tutor))
+    conn.commit()
+    conn.close()
+    if claim.rowcount == 0:
+        wa_send(vet['telefone'], 'Essa corrida acabou de ser pega por outro vet. 🏁')
+        return None
     wa_send(tutor, f"🩺 {vet['nome']} vai te atender! Vai te *ligar em VÍDEO* aqui no "
                    f"WhatsApp em instantes. Pode atender! 📹")
     wa_send(vet['telefone'], f"✅ Corrida sua! Ligue em *vídeo* agora pro tutor 👉 wa.me/{tutor}")
@@ -410,6 +417,15 @@ def _evo_media(msg):
 def wa_webhook():
     if request.method == 'GET':
         return jsonify({'status': 'ok'}), 200
+    # ── AUTH: exige secret (configure na URL do webhook da Evolution: ...?key=SECRET) ──
+    # Só é exigido se VETZAP_WA_WEBHOOK_SECRET estiver setado (evita endpoint aberto = custo de IA).
+    secret = os.environ.get('VETZAP_WA_WEBHOOK_SECRET', '').strip()
+    if secret:
+        recv = (request.args.get('key', '') or request.headers.get('x-webhook-key', '')).strip()
+        if recv != secret:
+            return jsonify({'error': 'unauthorized'}), 401
+    else:
+        log.warning('[vetzap_bot] VETZAP_WA_WEBHOOK_SECRET não setado — webhook aberto!')
     data = request.get_json(silent=True) or {}
     try:
         msg = data.get('data', data)
@@ -453,11 +469,16 @@ def wa_asaas_webhook():
         pid = (d.get('payment') or {}).get('id', '')
         if pid:
             conn = _db()
-            row = conn.execute('SELECT * FROM vetzap_wa WHERE pix_payment_id=?', (pid,)).fetchone()
+            # CLAIM ATÔMICO: só o 1º evento (aguardando_pix→na_fila) dispara a corrida.
+            # Reenvio do Asaas vê estado já mudado (rowcount=0) e não re-notifica os vets.
+            claim = conn.execute("UPDATE vetzap_wa SET estado='na_fila', updated_at=? "
+                                 "WHERE pix_payment_id=? AND estado='aguardando_pix'", (_agora(), pid))
+            conn.commit()
+            row = conn.execute('SELECT telefone, canal, valor FROM vetzap_wa WHERE pix_payment_id=?',
+                               (pid,)).fetchone()
             conn.close()
-            if row:
+            if claim.rowcount > 0 and row:
                 tel = row['telefone']
-                _salva(tel, 'na_fila', json.loads(row['historico'] or '[]'))
                 wa_send(tel, '✅ Pagamento recebido! Procurando um veterinário disponível agora... ⏱️')
                 n = acionar_vets(tel, f"atendimento {row['canal']} pago (R$ {row['valor']})")
                 log.info('[vetzap_bot] corrida disparada p/ %s vets (tutor %s)', n, tel)
