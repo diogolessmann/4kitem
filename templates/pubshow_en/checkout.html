@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Assinar {{ p.nome }} — PUBSHOW</title>
+<title>Subscribe to {{ p.nome }} — PUBSHOW</title>
 <style>
   *{margin:0;padding:0;box-sizing:border-box}
   body{background:#08080f;color:#f0f0ff;font-family:'Segoe UI',sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
@@ -53,11 +53,11 @@
     <div class="plan-header">
       <div class="plan-emoji">{{ p.emoji }}</div>
       <div>
-        <div class="plan-nome">Plano {{ p.nome }}</div>
+        <div class="plan-nome">{{ p.nome }} plan</div>
         <div class="plan-sub">{{ p.descricao }}</div>
       </div>
     </div>
-    <div class="plan-preco">{{ p.preco_fmt }}<span style="font-size:14px;font-weight:400;color:#8888aa">/mês</span></div>
+    <div class="plan-preco">{{ p.preco_fmt }}<span style="font-size:14px;font-weight:400;color:#8888aa">/mo</span></div>
     <ul class="features">
       {% for f in p.features %}
       <li>{{ f }}</li>
@@ -67,54 +67,34 @@
 
   <!-- Forma de pagamento -->
   <div class="card">
-    <div class="section-title">💳 Forma de pagamento</div>
+    <div class="section-title">💳 Payment method</div>
     <form method="POST" class="billing-options" id="form-checkout">
       <div class="billing-opt">
-        <input type="radio" name="billing_type" value="PIX" id="pix" checked>
-        <label for="pix">
-          <span class="billing-icon">🟢</span>
-          <div class="billing-info">
-            <div class="billing-name">PIX</div>
-            <div class="billing-desc">Aprovação instantânea</div>
-          </div>
-          <span class="billing-badge">Recomendado</span>
-        </label>
-      </div>
-      <div class="billing-opt">
-        <input type="radio" name="billing_type" value="BOLETO" id="boleto">
-        <label for="boleto">
-          <span class="billing-icon">📄</span>
-          <div class="billing-info">
-            <div class="billing-name">Boleto Bancário</div>
-            <div class="billing-desc">Vence em 3 dias úteis</div>
-          </div>
-        </label>
-      </div>
-      <div class="billing-opt">
-        <input type="radio" name="billing_type" value="CREDIT_CARD" id="cartao">
+        <input type="radio" name="billing_type" value="CREDIT_CARD" id="cartao" checked>
         <label for="cartao">
           <span class="billing-icon">💳</span>
           <div class="billing-info">
-            <div class="billing-name">Cartão de crédito</div>
-            <div class="billing-desc">Débito automático mensal</div>
+            <div class="billing-name">Credit / Debit card</div>
+            <div class="billing-desc">Secure checkout · Visa, Mastercard, Amex</div>
           </div>
+          <span class="billing-badge">Stripe</span>
         </label>
       </div>
 
-      <button type="submit" class="btn">Confirmar assinatura →</button>
+      <button type="submit" class="btn">Confirm subscription →</button>
     </form>
 
     <div class="trial-note">
-      🎉 Você está no <strong>período gratuito de 7 dias</strong>. A cobrança só começa após o trial. Cancele quando quiser, sem multa.
+      🎉 You're on your <strong>7-day free trial</strong>. You're only charged after the trial ends. Cancel anytime, no penalty.
     </div>
 
     <div class="guarantee">
       <span>🔒</span>
-      <span>Pagamento processado com segurança. Seus dados nunca são armazenados em nossos servidores.</span>
+      <span>Payment processed securely. Your card details are never stored on our servers.</span>
     </div>
   </div>
 
-  <a href="/pubshow-en/painel" class="back">← Voltar ao painel</a>
+  <a href="/pubshow-en/painel" class="back">← Back to dashboard</a>
 </div>
 </body>
 </html>

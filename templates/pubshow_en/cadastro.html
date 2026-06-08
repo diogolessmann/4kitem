@@ -1,9 +1,9 @@
 ﻿<!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Criar conta — PUBSHOW</title>
+<title>Create account — PUBSHOW</title>
 <style>
   *{margin:0;padding:0;box-sizing:border-box}
   body{background:#08080f;color:#f0f0ff;font-family:'Segoe UI',sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
@@ -24,40 +24,40 @@
 <body>
 <div class="box">
   <div class="logo">📺 PUBSHOW</div>
-  <h1>Criar conta</h1>
-  <div class="trial-badge">🎉 7 dias grátis — sem cartão</div>
+  <h1>Create account</h1>
+  <div class="trial-badge">🎉 7 days free — no credit card</div>
   {% if erro %}<div class="erro">{{ erro }}</div>{% endif %}
   <form method="POST">
     <input type="hidden" name="plano" value="{{ plano_sel }}">
-    <label>Nome do estabelecimento *</label>
-    <input type="text" name="nome" placeholder="Ex: Bar do Toninho" required>
-    <label>Tipo de estabelecimento *</label>
+    <label>Venue name *</label>
+    <input type="text" name="nome" placeholder="e.g. Joe's Bar" required>
+    <label>Venue type *</label>
     <select name="tipo" required>
       {% for k, v in tipos.items() %}
       <option value="{{ k }}">{{ v }}</option>
       {% endfor %}
     </select>
-    <label>E-mail *</label>
-    <input type="email" name="email" placeholder="contato@seubarnome.com" required>
-    <label>WhatsApp *</label>
-    <input type="tel" name="telefone" placeholder="(47) 99960-6998" required>
-    <label>CPF ou CNPJ *</label>
-    <input type="text" name="cpf_cnpj" placeholder="000.000.000-00 ou 00.000.000/0001-00" required>
-    <label>Senha *</label>
-    <input type="password" name="senha" placeholder="Mínimo 6 caracteres" required>
+    <label>Email *</label>
+    <input type="email" name="email" placeholder="contact@yourbar.com" required>
+    <label>Phone / WhatsApp *</label>
+    <input type="tel" name="telefone" placeholder="+1 (555) 123-4567" required>
+    <label>Tax ID / Business number <span style="font-weight:400;text-transform:none;letter-spacing:0">(optional)</span></label>
+    <input type="text" name="cpf_cnpj" placeholder="Company / VAT / EIN">
+    <label>Password *</label>
+    <input type="password" name="senha" placeholder="At least 6 characters" required>
 
-    <!-- Campo de cupom -->
-    <label>Cupom de desconto <span style="font-weight:400;text-transform:none;letter-spacing:0">(opcional)</span></label>
+    <!-- Coupon field -->
+    <label>Discount coupon <span style="font-weight:400;text-transform:none;letter-spacing:0">(optional)</span></label>
     <div style="display:flex;gap:8px">
-      <input type="text" name="cupom" id="inp-cupom" placeholder="Ex: PUBSHOW30"
+      <input type="text" name="cupom" id="inp-cupom" placeholder="e.g. PUBSHOW30"
              maxlength="20" style="text-transform:uppercase;flex:1"
              oninput="this.value=this.value.toUpperCase();validarCupom(this.value)">
     </div>
     <div id="cupom-feedback" style="font-size:12px;margin-top:5px;min-height:18px"></div>
 
-    <button type="submit" class="btn" id="btn-submit">Criar conta e começar grátis →</button>
+    <button type="submit" class="btn" id="btn-submit">Create account & start free →</button>
   </form>
-  <a href="/pubshow-en/entrar" class="link">Já tem conta? Entrar →</a>
+  <a href="/pubshow-en/entrar" class="link">Already have an account? Log in →</a>
 
 <script>
 let _cupomTimer = null;
@@ -67,7 +67,7 @@ function validarCupom(val) {
   const fb = document.getElementById('cupom-feedback');
   clearTimeout(_cupomTimer);
   if (!val || val.length < 3) { fb.textContent = ''; _cupomValido = false; return; }
-  fb.innerHTML = '<span style="color:#8888aa">⏳ Verificando...</span>';
+  fb.innerHTML = '<span style="color:#8888aa">⏳ Checking...</span>';
   _cupomTimer = setTimeout(async () => {
     try {
       const r = await fetch('/pubshow-en/api/validar-cupom/' + encodeURIComponent(val));

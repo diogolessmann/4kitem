@@ -1327,10 +1327,10 @@ def cadastro():
         senha    = request.form.get('senha', '')
         plano_sel= request.form.get('plano', 'bar')
         cupom_cod= request.form.get('cupom', '').strip()
-        if not all([nome, email, telefone, senha, cpf_cnpj]):
-            erro = 'Preencha todos os campos obrigatórios.'
+        if not all([nome, email, telefone, senha]):
+            erro = 'Please fill in all required fields.'
         elif len(senha) < 6:
-            erro = 'A senha deve ter ao menos 6 caracteres.'
+            erro = 'Password must be at least 6 characters.'
         elif plano_sel not in PLANOS:
             plano_sel = 'bar'
             erro = ''
@@ -1341,7 +1341,7 @@ def cadastro():
                 conn_chk = get_pubshow_db()
                 dup_cpf = conn_chk.execute(
                     'SELECT id FROM pubshow_businesses WHERE cpf_cnpj=? LIMIT 1', (cpf_cnpj,)
-                ).fetchone()
+                ).fetchone() if cpf_cnpj else None
                 dup_ip = conn_chk.execute(
                     "SELECT id FROM pubshow_businesses WHERE signup_ip=? AND trial_ends IS NOT NULL AND trial_ends > ? LIMIT 1",
                     (ip_cliente, datetime.now().isoformat())
@@ -1350,9 +1350,9 @@ def cadastro():
             except Exception:
                 dup_cpf = dup_ip = None
             if dup_cpf:
-                erro = 'CPF/CNPJ já cadastrado. Faça login ou entre em contato.'
+                erro = 'This Tax ID is already registered. Log in or contact us.'
             elif dup_ip:
-                erro = 'Já existe um trial ativo neste dispositivo. Aguarde o período encerrar.'
+                erro = 'There is already an active trial on this device. Please wait for it to end.'
             else:
                 try:
                     code  = _gerar_code()
