@@ -1889,6 +1889,16 @@ def triagem_chat():
             historico = triagem['historico']
             historico.append({'role': 'user', 'content': resposta_tutor})
 
+            # Débito ATÔMICO 1x por atendimento (na 1ª resposta). Sem saldo → paywall.
+            # Evita rodar várias triagens com 1 crédito (corrige a brecha início vs fim).
+            if not triagem.get('debitado'):
+                if not _debita_credito(u['id']):
+                    return jsonify({'tipo': 'paywall',
+                                    'mensagem': 'Você está sem créditos. Compre um atendimento para continuar.',
+                                    'url': '/vetzap/creditos?msg=sem_credito'})
+                triagem['debitado'] = True
+                session.modified = True
+
             # Chama a IA
             resultado = _fazer_triagem(
                 triagem['pet_info'],
@@ -1926,8 +1936,6 @@ def triagem_chat():
                 )
                 conn.commit()
                 conn.close()
-                # Debita 1 crédito por atendimento concluído
-                _debita_credito(u['id'])
                 session.pop('pm_triagem', None)
                 resultado['creditos_restantes'] = _get_creditos(u['id'])
                 return jsonify(resultado)
