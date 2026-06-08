@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Planos e Preços — PUBSHOW Jukebox</title>
-<meta name="description" content="Transforme sua TV em jukebox e ganhe dinheiro extra com cada música pedida. Planos a partir de R$69,90/mês. 7 dias grátis, sem cartão.">
+<title>Pricing — PUBSHOW Jukebox</title>
+<meta name="description" content="Turn your TV into a jukebox and earn extra money on every song requested. Plans from $19/mo. 7 days free, no credit card.">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 :root{
@@ -173,34 +173,34 @@ input[type=range]{width:100%;accent-color:var(--green);height:6px;border-radius:
 <!-- NAV -->
 <nav>
   <a href="/pubshow-en" class="logo">📺 PUBSHOW</a>
-  <a href="/pubshow-en/cadastro" class="nav-cta">Testar grátis →</a>
+  <a href="/pubshow-en/cadastro" class="nav-cta">Try for free →</a>
 </nav>
 
 <!-- HERO -->
 <div class="hero">
-  <div class="hero-badge">💰 100% do Jukebox vai direto pra sua conta PIX</div>
-  <h1>Preços simples.<br><span>Lucro real desde o primeiro dia.</span></h1>
-  <p class="hero-sub">Seus clientes pagam a música. O dinheiro cai no seu PIX. O PUBSHOW se paga com o Jukebox — você fica só com o lucro.</p>
+  <div class="hero-badge">💰 100% of the Jukebox goes straight to your account</div>
+  <h1>Simple pricing.<br><span>Real profit from day one.</span></h1>
+  <p class="hero-sub">Your customers pay for the music. The money lands in your account. PUBSHOW pays for itself with the Jukebox — you just keep the profit.</p>
 
   <div class="trust-badges">
-    <div class="trust-badge">✅ <strong>7 dias grátis</strong></div>
+    <div class="trust-badge">✅ <strong>7 days free</strong></div>
     <span style="color:#333">·</span>
-    <div class="trust-badge">✅ <strong>Sem cartão</strong></div>
+    <div class="trust-badge">✅ <strong>No credit card</strong></div>
     <span style="color:#333">·</span>
-    <div class="trust-badge">✅ <strong>Cancela quando quiser</strong></div>
+    <div class="trust-badge">✅ <strong>Cancel anytime</strong></div>
     <span style="color:#333">·</span>
-    <div class="trust-badge">✅ <strong>Sem taxa de setup</strong></div>
+    <div class="trust-badge">✅ <strong>No setup fee</strong></div>
   </div>
 </div>
 
 <!-- TOGGLE MENSAL / ANUAL -->
 <div class="toggle-wrap">
-  <span style="font-weight:700;color:var(--text)">Mensal</span>
+  <span style="font-weight:700;color:var(--text)">Monthly</span>
   <button class="toggle" id="toggle-anual" onclick="toggleAnual()" aria-label="Alternar plano anual">
     <div class="toggle-knob"></div>
   </button>
-  <span style="font-weight:700;color:var(--text)">Anual</span>
-  <span class="desconto-badge" id="desconto-badge">💚 2 meses grátis — economize 17%</span>
+  <span style="font-weight:700;color:var(--text)">Annual</span>
+  <span class="desconto-badge" id="desconto-badge">💚 2 months free — save 17%</span>
 </div>
 
 <!-- PLANS -->
@@ -212,10 +212,10 @@ input[type=range]{width:100%;accent-color:var(--green);height:6px;border-radius:
     <div class="plan-nome">{{ p.nome }}</div>
     <div class="plan-desc">{{ p.descricao }}</div>
     <div class="plan-preco-wrap">
-      <div class="plan-cifrao">R$</div>
-      <div class="plan-preco" data-preco="{{ p.preco }}">{{ p.preco_fmt.replace('R$ ','') }}</div>
+      <div class="plan-cifrao">$</div>
+      <div class="plan-preco" data-preco="{{ p.preco }}">{{ '%.0f'|format(p.preco) }}</div>
     </div>
-    <div class="plan-ciclo">/mês · sem fidelidade</div>
+    <div class="plan-ciclo">/mo · no contract</div>
     <div class="plan-economia" id="eco-{{ key }}"></div>
     <ul class="features">
       {% for f in p.features %}
@@ -229,11 +229,11 @@ input[type=range]{width:100%;accent-color:var(--green);height:6px;border-radius:
     </ul>
     {% if session.pub_business_id %}
     <a href="/pubshow-en/assinar/{{ key }}" class="btn-plan {% if p.get('destaque') %}primary{% else %}secondary{% endif %}">
-      Assinar {{ p.nome }} →
+      Subscribe to {{ p.nome }} →
     </a>
     {% else %}
     <a href="/pubshow-en/cadastro?plano={{ key }}" class="btn-plan {% if p.get('destaque') %}primary{% else %}secondary{% endif %}">
-      Começar 7 dias grátis →
+      Start 7 days free →
     </a>
     {% endif %}
   </div>
@@ -243,128 +243,128 @@ input[type=range]{width:100%;accent-color:var(--green);height:6px;border-radius:
 <!-- ROI CALCULATOR -->
 <div class="roi-section">
   <div class="roi-box">
-    <div class="roi-title">🧮 Quanto você pode ganhar com o Jukebox?</div>
-    <div class="roi-sub">Arraste os sliders e veja o cálculo em tempo real</div>
+    <div class="roi-title">🧮 How much can you earn with the Jukebox?</div>
+    <div class="roi-sub">Drag the sliders and see the math in real time</div>
 
     <div class="roi-sliders">
       <div class="slider-group">
-        <label>Clientes por noite <span id="val-clientes">40</span></label>
+        <label>Customers per night <span id="val-clientes">40</span></label>
         <input type="range" id="sl-clientes" min="10" max="200" value="40" step="5" oninput="calcROI()">
       </div>
       <div class="slider-group">
-        <label>% que faz pedido <span id="val-pct">30%</span></label>
+        <label>% who request a song <span id="val-pct">30%</span></label>
         <input type="range" id="sl-pct" min="5" max="60" value="30" step="5" oninput="calcROI()">
       </div>
       <div class="slider-group">
-        <label>Ticket médio por pedido <span id="val-ticket">R$ 5</span></label>
+        <label>Average spend per request <span id="val-ticket">$5</span></label>
         <input type="range" id="sl-ticket" min="2" max="15" value="5" step="1" oninput="calcROI()">
       </div>
       <div class="slider-group">
-        <label>Noites abertas por mês <span id="val-noites">20</span></label>
+        <label>Open nights per month <span id="val-noites">20</span></label>
         <input type="range" id="sl-noites" min="4" max="30" value="20" step="1" oninput="calcROI()">
       </div>
     </div>
 
     <div class="roi-result">
       <div>
-        <div class="roi-num" id="roi-noite">R$ 60</div>
-        <div class="roi-label">por noite</div>
+        <div class="roi-num" id="roi-noite">$15</div>
+        <div class="roi-label">per night</div>
       </div>
       <div>
-        <div class="roi-num big" id="roi-mes">R$ 1.200</div>
-        <div class="roi-label">por mês com o Jukebox 🎵</div>
+        <div class="roi-num big" id="roi-mes">$300</div>
+        <div class="roi-label">per month with the Jukebox 🎵</div>
       </div>
       <div>
-        <div class="roi-num" id="roi-ano">R$ 14.400</div>
-        <div class="roi-label">por ano</div>
+        <div class="roi-num" id="roi-ano">$3,600</div>
+        <div class="roi-label">per year</div>
       </div>
     </div>
-    <div class="roi-vs">Investimento: R$129,90/mês · <strong id="roi-retorno">~2 noites para pagar o plano</strong></div>
+    <div class="roi-vs">Investment: $39/mo · <strong id="roi-retorno">~2 nights to cover the plan</strong></div>
   </div>
 </div>
 
 <!-- COMPARISON TABLE -->
 <div class="compare-section">
-  <h2>📊 Comparativo completo</h2>
+  <h2>📊 Full comparison</h2>
   <div style="overflow-x:auto">
   <table class="compare-table">
     <thead>
       <tr>
-        <th class="feat-col">Recurso</th>
-        <th>🍺 Starter<br><small>R$69,90</small></th>
-        <th class="hl-col">🎸 Bar<br><small>R$129,90</small></th>
-        <th>🏆 Pro<br><small>R$199,90</small></th>
+        <th class="feat-col">Feature</th>
+        <th>🍺 Starter<br><small>$19</small></th>
+        <th class="hl-col">🎸 Bar<br><small>$39</small></th>
+        <th>🏆 Pro<br><small>$59</small></th>
       </tr>
     </thead>
     <tbody>
       <tr>
-        <td class="feat-col">TV com clips 24/7</td>
+        <td class="feat-col">24/7 video clips on TV</td>
         <td><span class="check">✓</span></td>
         <td class="hl-col"><span class="check">✓</span></td>
         <td><span class="check">✓</span></td>
       </tr>
       <tr>
-        <td class="feat-col">Jukebox (100% seu PIX)</td>
+        <td class="feat-col">Jukebox (100% yours)</td>
         <td><span class="check">✓</span></td>
         <td class="hl-col"><span class="check">✓</span></td>
         <td><span class="check">✓</span></td>
       </tr>
       <tr>
-        <td class="feat-col">Tipos de pedido</td>
-        <td><span class="partial">3 tipos</span></td>
-        <td class="hl-col"><span class="check">Todos</span></td>
-        <td><span class="check">Todos</span></td>
+        <td class="feat-col">Request types</td>
+        <td><span class="partial">3 types</span></td>
+        <td class="hl-col"><span class="check">All</span></td>
+        <td><span class="check">All</span></td>
       </tr>
       <tr>
-        <td class="feat-col">QR Code de mesa</td>
+        <td class="feat-col">Table QR code</td>
         <td><span class="check">✓</span></td>
         <td class="hl-col"><span class="check">✓</span></td>
         <td><span class="check">✓</span></td>
       </tr>
       <tr>
-        <td class="feat-col">Slides de propaganda na TV</td>
+        <td class="feat-col">Ad slides on TV</td>
         <td><span class="partial">1 slide</span></td>
         <td class="hl-col"><span class="partial">3 slides</span></td>
         <td><span class="check">5 slides</span></td>
       </tr>
       <tr>
-        <td class="feat-col">Parabéns e Dedicatórias</td>
+        <td class="feat-col">Birthdays & dedications</td>
         <td><span class="cross">—</span></td>
         <td class="hl-col"><span class="check">✓</span></td>
         <td><span class="check">✓</span></td>
       </tr>
       <tr>
-        <td class="feat-col">Analytics de horários de pico</td>
+        <td class="feat-col">Peak-hours analytics</td>
         <td><span class="cross">—</span></td>
         <td class="hl-col"><span class="check">✓</span></td>
         <td><span class="check">✓</span></td>
       </tr>
       <tr>
-        <td class="feat-col">Promoção Relâmpago na TV</td>
+        <td class="feat-col">Flash Promo on TV</td>
         <td><span class="cross">—</span></td>
         <td class="hl-col"><span class="check">✓</span></td>
         <td><span class="check">✓</span></td>
       </tr>
       <tr>
-        <td class="feat-col">Happy Hour automático</td>
+        <td class="feat-col">Automatic Happy Hour</td>
         <td><span class="cross">—</span></td>
         <td class="hl-col"><span class="cross">—</span></td>
         <td><span class="check">✓</span></td>
       </tr>
       <tr>
-        <td class="feat-col">Notificação WhatsApp de pedido</td>
+        <td class="feat-col">WhatsApp request alerts</td>
         <td><span class="cross">—</span></td>
         <td class="hl-col"><span class="cross">—</span></td>
         <td><span class="check">✓</span></td>
       </tr>
       <tr>
-        <td class="feat-col">Ranking da noite na TV</td>
+        <td class="feat-col">Live Night Ranking on TV</td>
         <td><span class="cross">—</span></td>
         <td class="hl-col"><span class="cross">—</span></td>
         <td><span class="check">✓</span></td>
       </tr>
       <tr>
-        <td class="feat-col">Suporte via WhatsApp</td>
+        <td class="feat-col">Priority support</td>
         <td><span class="check">✓</span></td>
         <td class="hl-col"><span class="check">✓</span></td>
         <td><span class="check">✓</span></td>
@@ -376,38 +376,38 @@ input[type=range]{width:100%;accent-color:var(--green);height:6px;border-radius:
 
 <!-- TESTIMONIALS -->
 <div class="depos-section">
-  <h2>💬 Bares que já usam o PUBSHOW</h2>
+  <h2>💬 Bars already using PUBSHOW</h2>
   <div class="depos-grid">
     <div class="depo">
       <div class="depo-stars">★★★★★</div>
-      <div class="depo-texto">"Na primeira sexta-feira já paguei o plano do mês inteiro com os pedidos do Jukebox. Os clientes adoram."</div>
+      <div class="depo-texto">"On our first Friday the Jukebox requests already covered the entire monthly plan. Customers love it."</div>
       <div class="depo-autor">
         <div class="depo-avatar">🍺</div>
         <div>
-          <div class="depo-nome">Marcos R.</div>
-          <div class="depo-bar">Bar do Marcos — SC</div>
+          <div class="depo-nome">Mike R.</div>
+          <div class="depo-bar">The Anchor Pub — Austin, TX</div>
         </div>
       </div>
     </div>
     <div class="depo">
       <div class="depo-stars">★★★★★</div>
-      <div class="depo-texto">"Acabou a bagunça de alguém sempre querendo mudar de música. Agora quem paga escolhe, ponto final. E a grana extra é ótima."</div>
+      <div class="depo-texto">"No more arguing over who changes the music. Now whoever pays gets to pick, end of story. And the extra cash is great."</div>
       <div class="depo-autor">
         <div class="depo-avatar">🎸</div>
         <div>
-          <div class="depo-nome">Ana Paula S.</div>
-          <div class="depo-bar">Boteco da Ana — PR</div>
+          <div class="depo-nome">Dave T.</div>
+          <div class="depo-bar">Rock Tavern — Manchester, UK</div>
         </div>
       </div>
     </div>
     <div class="depo">
       <div class="depo-stars">★★★★★</div>
-      <div class="depo-texto">"Setup em 10 minutos, sem nenhum técnico. Hoje roda sozinho. O painel mostra tudo que tô precisando em tempo real."</div>
+      <div class="depo-texto">"Set up in 10 minutes, no technician. Now it runs itself. The dashboard shows everything I need in real time."</div>
       <div class="depo-autor">
         <div class="depo-avatar">🏆</div>
         <div>
-          <div class="depo-nome">Ricardo L.</div>
-          <div class="depo-bar">Pub Libertà — RS</div>
+          <div class="depo-nome">Sarah K.</div>
+          <div class="depo-bar">Sunset Bar — Miami, FL</div>
         </div>
       </div>
     </div>
@@ -416,45 +416,45 @@ input[type=range]{width:100%;accent-color:var(--green);height:6px;border-radius:
 
 <!-- FAQ -->
 <div class="faq">
-  <h2>Perguntas frequentes</h2>
+  <h2>Frequently asked questions</h2>
 
   <div class="faq-item">
-    <div class="faq-q">Preciso instalar algum aplicativo na TV?</div>
-    <div class="faq-a">Não. O PUBSHOW roda direto no navegador da TV. Abra o link TV Player em qualquer Smart TV, Chromecast ou notebook conectado à tela. Nenhum app, nenhuma instalação.</div>
+    <div class="faq-q">Do I need to install any app on the TV?</div>
+    <div class="faq-a">No. PUBSHOW runs right in the TV browser. Open the TV Player link on any Smart TV, Chromecast or laptop connected to the screen. No app, no installation.</div>
   </div>
   <div class="faq-item">
-    <div class="faq-q">O cliente precisa baixar algo para usar o Jukebox?</div>
-    <div class="faq-a">Não. O cliente escaneia o QR Code com a câmera do celular e abre direto no navegador — sem app, sem cadastro, sem senha.</div>
+    <div class="faq-q">Does the customer need to download anything to use the Jukebox?</div>
+    <div class="faq-a">No. The customer scans the QR code with their phone camera and it opens right in the browser — no app, no sign-up, no password.</div>
   </div>
   <div class="faq-item">
-    <div class="faq-q">Como recebo o dinheiro dos pedidos do Jukebox?</div>
-    <div class="faq-a">O cliente paga direto na sua chave PIX. O dinheiro cai na sua conta na hora. O PUBSHOW não intermedia e não fica com nenhuma porcentagem.</div>
+    <div class="faq-q">How do I get the money from Jukebox requests?</div>
+    <div class="faq-a">The customer pays straight to your account via Stripe. The money is yours — PUBSHOW takes no cut of the requests.</div>
   </div>
   <div class="faq-item">
-    <div class="faq-q">Posso cancelar quando quiser?</div>
-    <div class="faq-a">Sim. Sem fidelidade, sem multa, sem burocracia. Cancele pelo painel ou mande mensagem no WhatsApp do suporte.</div>
+    <div class="faq-q">Can I cancel anytime?</div>
+    <div class="faq-a">Yes. No contract, no penalty, no hassle. Cancel from the dashboard or message support.</div>
   </div>
   <div class="faq-item">
-    <div class="faq-q">Quantos canais de vídeo estão disponíveis?</div>
-    <div class="faq-a">São {{ canais|length }} canais temáticos com centenas de vídeos — rock, pagode, sertanejo, pop, futebol, F1, surf, radical e mais. A biblioteca é atualizada regularmente.</div>
+    <div class="faq-q">How many video channels are available?</div>
+    <div class="faq-a">There are {{ canais|length }} themed channels with hundreds of videos — rock, pop, country, sports, F1, surf, extreme and more. The library is updated regularly.</div>
   </div>
   <div class="faq-item">
-    <div class="faq-q">O trial de 7 dias é realmente grátis?</div>
-    <div class="faq-a">Sim. 7 dias grátis, sem cartão de crédito. A cobrança só começa após o trial, e você pode cancelar antes sem pagar nada.</div>
+    <div class="faq-q">Is the 7-day trial really free?</div>
+    <div class="faq-a">Yes. 7 days free, no credit card. Billing only starts after the trial, and you can cancel before then without paying anything.</div>
   </div>
 </div>
 
 <!-- BOTTOM CTA -->
 <div class="bottom-cta">
-  <h2>Pronto pra transformar sua TV<br>em fonte de renda extra?</h2>
-  <p>Comece agora, configure em 5 minutos e coloque o Jukebox rodando ainda hoje. Grátis por 7 dias.</p>
-  <a href="/pubshow-en/cadastro" class="cta-big">🎵 Criar conta grátis agora →</a>
-  <div class="cta-fine">Sem cartão · Sem contrato · Cancela quando quiser</div>
+  <h2>Ready to turn your TV<br>into extra income?</h2>
+  <p>Start now, set up in 5 minutes and get the Jukebox running today. Free for 7 days.</p>
+  <a href="/pubshow-en/cadastro" class="cta-big">🎵 Create your free account →</a>
+  <div class="cta-fine">No credit card · No contract · Cancel anytime</div>
 </div>
 
 <script>
 // ── ROI Calculator ────────────────────────────────────────────────────────────
-function fmtBRL(n){return 'R$ '+n.toLocaleString('pt-BR',{minimumFractionDigits:0,maximumFractionDigits:0})}
+function fmtUSD(n){return '$'+n.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0})}
 
 function calcROI(){
   const clientes = +document.getElementById('sl-clientes').value;
@@ -464,22 +464,22 @@ function calcROI(){
 
   document.getElementById('val-clientes').textContent = clientes;
   document.getElementById('val-pct').textContent      = document.getElementById('sl-pct').value + '%';
-  document.getElementById('val-ticket').textContent   = 'R$ ' + ticket;
+  document.getElementById('val-ticket').textContent   = '$' + ticket;
   document.getElementById('val-noites').textContent   = noites;
 
   const porNoite = Math.round(clientes * pct * ticket);
   const porMes   = porNoite * noites;
   const porAno   = porMes * 12;
 
-  document.getElementById('roi-noite').textContent = fmtBRL(porNoite);
-  document.getElementById('roi-mes').textContent   = fmtBRL(porMes);
-  document.getElementById('roi-ano').textContent   = fmtBRL(porAno);
+  document.getElementById('roi-noite').textContent = fmtUSD(porNoite);
+  document.getElementById('roi-mes').textContent   = fmtUSD(porMes);
+  document.getElementById('roi-ano').textContent   = fmtUSD(porAno);
 
-  const plano = 129.90;
+  const plano = 39;
   const noitesParaPagar = Math.ceil(plano / porNoite);
   document.getElementById('roi-retorno').textContent =
-    noitesParaPagar <= 1 ? '💚 plano pago na 1ª noite!' :
-    `~${noitesParaPagar} noites para pagar o plano`;
+    noitesParaPagar <= 1 ? '💚 plan paid on night one!' :
+    `~${noitesParaPagar} nights to cover the plan`;
 }
 calcROI();
 
@@ -494,7 +494,7 @@ document.querySelectorAll('.faq-q').forEach(q => {
 });
 
 // ── Toggle Anual/Mensal ───────────────────────────────────────────────────────
-const PRECOS_MENSAL = { starter: 69.90, bar: 129.90, pro: 199.90 };
+const PRECOS_MENSAL = { starter: 19, bar: 39, pro: 59 };
 const DESCONTO_ANUAL = 0.17; // 17% ≈ 2 meses grátis
 let _anual = false;
 
@@ -509,13 +509,13 @@ function toggleAnual() {
     const planoKey = el.closest('.plan')?.dataset.plano;
     if (!planoKey || !PRECOS_MENSAL[planoKey]) return;
     const base = PRECOS_MENSAL[planoKey];
-    const preco = _anual ? (base * (1 - DESCONTO_ANUAL)).toFixed(2) : base.toFixed(2);
-    el.textContent = preco.replace('.', ',').replace(/,00$/, '');
+    const preco = _anual ? Math.round(base * (1 - DESCONTO_ANUAL)) : base;
+    el.textContent = String(preco);
   });
 
   // Atualiza ciclo
   document.querySelectorAll('.plan-ciclo').forEach(el => {
-    el.textContent = _anual ? '/mês · cobrado anualmente' : '/mês · sem fidelidade';
+    el.textContent = _anual ? '/mo · billed annually' : '/mo · no contract';
   });
 
   // Mostra/esconde economia
@@ -523,7 +523,7 @@ function toggleAnual() {
     const planoKey = el.id.replace('eco-', '');
     if (!PRECOS_MENSAL[planoKey]) return;
     const economia = (PRECOS_MENSAL[planoKey] * DESCONTO_ANUAL * 12).toFixed(0);
-    el.textContent = `💚 Economize R$ ${economia}/ano`;
+    el.textContent = `💚 Save $${economia}/yr`;
     el.style.display = _anual ? 'block' : 'none';
   });
 
@@ -531,8 +531,8 @@ function toggleAnual() {
   document.querySelectorAll('[data-href-mensal]').forEach(el => {
     el.href = _anual ? el.dataset.hrefAnual : el.dataset.hrefMensal;
     el.textContent = _anual
-      ? el.textContent.replace('→', '— plano anual →')
-      : el.textContent.replace('— plano anual →', '→');
+      ? el.textContent.replace('→', '— annual →')
+      : el.textContent.replace('— annual →', '→');
   });
 }
 </script>
