@@ -12734,6 +12734,18 @@ try:
 except Exception as _vz_err:
     log.warning(f'[VetZap] Erro ao carregar bot blueprint: {_vz_err}')
 
+# ══════════════════════════════════════════════════════════════════════════════
+# DRZAP — Assistente Jurídico por IA (orientação ao consumidor) — créditos pré-pagos
+# ══════════════════════════════════════════════════════════════════════════════
+try:
+    from drzap import drzap_bp
+    from drzap_db import init_drzap_db
+    init_drzap_db()
+    app.register_blueprint(drzap_bp)
+    log.info('[DRZAP] Blueprint registrado em /drzap')
+except Exception as _drz_err:
+    log.warning(f'[DRZAP] Erro ao carregar blueprint: {_drz_err}')
+
 # Rebrand: redireciona URLs antigas /petmed/* -> /vetzap/* (links/e-mails/webhooks antigos)
 @app.route('/petmed', methods=['GET', 'POST'])
 @app.route('/petmed/', methods=['GET', 'POST'])

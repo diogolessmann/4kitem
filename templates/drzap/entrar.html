@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DRZAP — Entrar</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',sans-serif;background:#0b1220;color:#eaf0ff;min-height:100vh;padding:40px 18px}
+.wrap{max-width:420px;margin:0 auto}
+.logo{font-size:22px;font-weight:900;text-align:center;margin-bottom:6px}.logo b{color:#3b82f6}
+.sub{text-align:center;color:#9fb0cc;font-size:14px;margin-bottom:22px}
+.card{background:#121c30;border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:22px}
+label{display:block;font-size:13px;font-weight:600;color:#c3d2ec;margin:12px 0 5px}
+input{width:100%;background:#0b1220;border:1px solid rgba(255,255,255,.12);border-radius:10px;
+      color:#fff;padding:13px 14px;font-size:15px;font-family:inherit;outline:none}
+input:focus{border-color:#3b82f6}
+.btn{width:100%;padding:15px;border:none;border-radius:11px;margin-top:16px;cursor:pointer;font-family:inherit;
+     background:linear-gradient(135deg,#2563eb,#3b82f6);color:#fff;font-size:16px;font-weight:800}
+.erro{background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.35);color:#fca5a5;
+      padding:11px 14px;border-radius:9px;font-size:13px;margin-bottom:14px}
+.links{text-align:center;font-size:14px;color:#9fb0cc;margin-top:16px}
+.links a{color:#7dabff;text-decoration:none;font-weight:600}
+.esq{display:block;text-align:right;font-size:12.5px;color:#7b8aa8;margin-top:8px;text-decoration:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="logo">⚖️ DR<b>ZAP</b></div>
+  <div class="sub">Entre na sua conta</div>
+  <div class="card">
+    {% if erro %}<div class="erro">⚠️ {{ erro }}</div>{% endif %}
+    <form method="POST">
+      <label>E-mail</label>
+      <input type="email" name="email" placeholder="seu@email.com" autocomplete="email" required>
+      <label>Senha</label>
+      <input type="password" name="senha" placeholder="sua senha" required>
+      <a href="/drzap/esqueci-senha" class="esq">Esqueci minha senha</a>
+      <button type="submit" class="btn">Entrar →</button>
+    </form>
+  </div>
+  <div class="links">Não tem conta? <a href="/drzap/cadastrar">Criar conta</a></div>
+</div>
+</body>
+</html>

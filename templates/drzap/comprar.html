@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DRZAP — Comprar créditos</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',sans-serif;background:#0b1220;color:#eaf0ff;min-height:100vh}
+.top{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;background:#101a2e;border-bottom:1px solid rgba(255,255,255,.07)}
+.logo{font-size:18px;font-weight:900}.logo b{color:#3b82f6}
+.back{color:#7dabff;text-decoration:none;font-size:14px}
+.wrap{max-width:480px;margin:0 auto;padding:20px}
+h1{font-size:22px;font-weight:900;text-align:center;margin-bottom:4px}
+.sub{text-align:center;color:#9fb0cc;font-size:14px;margin-bottom:8px}
+.regras{background:#121c30;border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:13px 15px;font-size:13px;color:#a8b8d4;margin:14px 0;line-height:1.8}
+.regras b{color:#fff}
+.pack{display:block;background:#121c30;border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:18px;margin-bottom:12px;text-decoration:none;color:inherit;position:relative}
+.pack.top{border-color:#3b82f6;box-shadow:0 0 0 1px #3b82f6}
+.pack .tag{position:absolute;top:-10px;right:14px;background:#3b82f6;color:#fff;font-size:11px;font-weight:800;padding:3px 10px;border-radius:20px}
+.pack .v{font-size:22px;font-weight:900}
+.pack .cr{color:#7dabff;font-weight:700;font-size:15px;margin-top:2px}
+.pack .b{color:#86efac;font-size:12.5px;margin-top:3px}
+.soon{text-align:center;font-size:12px;color:#7b8aa8;margin-top:16px}
+</style>
+</head>
+<body>
+<div class="top">
+  <div class="logo">⚖️ DR<b>ZAP</b></div>
+  <a href="/drzap/app" class="back">← Voltar</a>
+</div>
+<div class="wrap">
+  <h1>💎 Comprar créditos</h1>
+  <div class="sub">Sem mensalidade. Paga, usa, e pronto.</div>
+
+  <div class="regras">
+    🗨️ Pergunta = <b>1 crédito</b><br>
+    📄 Documento pronto = <b>3 créditos</b><br>
+    📸 Analisar foto/documento = <b>1 crédito por página</b>
+  </div>
+
+  <a class="pack" onclick="alert('Em breve! O pagamento via PIX entra no próximo lote. 🚀');return false;" href="#">
+    <div class="v">R$ 10</div><div class="cr">10 créditos</div>
+  </a>
+  <a class="pack top" onclick="alert('Em breve! 🚀');return false;" href="#">
+    <span class="tag">MAIS POPULAR</span>
+    <div class="v">R$ 25</div><div class="cr">30 créditos</div><div class="b">+5 grátis 🎁</div>
+  </a>
+  <a class="pack" onclick="alert('Em breve! 🚀');return false;" href="#">
+    <span class="tag">MELHOR</span>
+    <div class="v">R$ 50</div><div class="cr">65 créditos</div><div class="b">+15 grátis 🔥</div>
+  </a>
+
+  <div class="soon">🔒 Pagamento via PIX, confirmação automática (em construção)</div>
+</div>
+</body>
+</html>
