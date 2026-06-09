@@ -63,7 +63,9 @@ textarea:focus{border-color:#3b82f6}
       <button class="b b1" id="btn-perguntar" onclick="perguntar()">🗨️ Perguntar (1 crédito)</button>
       <button class="b b2" id="btn-doc" onclick="documento()">📄 Gerar documento (3 créditos)</button>
     </div>
-    <div class="soon">📸 Em breve: enviar foto de conta/documento (OCR)</div>
+    <input type="file" id="arquivo" accept="image/*,application/pdf" capture="environment" style="display:none" onchange="ocr()">
+    <button class="b b2" style="width:100%;margin-top:8px" onclick="document.getElementById('arquivo').click()">📸 Enviar foto da conta/documento (1 crédito/página)</button>
+    <div class="soon">A IA lê o documento e te explica. Use uma foto nítida.</div>
   </div>
 
   <div class="load" id="load">⚖️ Analisando sua dúvida<span class="dot">...</span></div>
@@ -119,6 +121,41 @@ async function _consultar(url, custo, titulo){
 }
 function perguntar(){ _consultar('/drzap/perguntar', 1, '💬 Orientação DRZAP'); }
 function documento(){ _consultar('/drzap/documento', 3, '📄 Seu documento'); }
+
+async function ocr(){
+  const inp = document.getElementById('arquivo');
+  const file = inp.files[0];
+  if (!file) return;
+  if (file.size > 10*1024*1024){ alert('Arquivo muito grande (máx 10MB).'); inp.value=''; return; }
+  const b1 = document.getElementById('btn-perguntar'), b2 = document.getElementById('btn-doc');
+  b1.disabled = b2.disabled = true;
+  document.getElementById('box-resp').style.display = 'none';
+  document.getElementById('load').style.display = 'block';
+  try{
+    const fd = new FormData();
+    fd.append('arquivo', file);
+    fd.append('pergunta', t.value.trim());
+    const r = await fetch('/drzap/ocr', {method:'POST', body: fd}).then(r=>r.json());
+    document.getElementById('load').style.display = 'none';
+    if (r.erro === 'sem_creditos'){
+      if (confirm((r.msg||'Sem créditos.') + ' Comprar agora?')) location.href = '/drzap/comprar';
+    } else if (r.erro){
+      alert(r.erro);
+    } else {
+      document.getElementById('resp-titulo').textContent = '📄 Análise do documento';
+      document.getElementById('resposta').textContent = r.resposta;
+      document.getElementById('box-resp').style.display = 'block';
+      document.getElementById('saldo').textContent = r.creditos;
+      if (r.creditos < 1) document.getElementById('box-zero').style.display = 'block';
+      document.getElementById('box-resp').scrollIntoView({behavior:'smooth', block:'start'});
+    }
+  }catch(e){
+    document.getElementById('load').style.display = 'none';
+    alert('Não foi possível analisar agora. Tente de novo.');
+  }
+  inp.value = '';
+  b1.disabled = b2.disabled = false;
+}
 </script>
 </body>
 </html>

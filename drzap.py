@@ -89,6 +89,21 @@ FUNDAMENTAÇÃO (direitos do consumidor de forma simples), o PEDIDO objetivo, e 
 """
 
 
+SYSTEM_OCR = """Você é o DRZAP. A pessoa enviou a FOTO ou PDF de um documento (conta de luz/água/telefone, \
+boleto, fatura de cartão, contrato, cobrança). LEIA o documento e ajude de forma SIMPLES (linguagem de leigo).
+
+Responda nesta estrutura (com emojis):
+📄 O QUE É: o que é esse documento + os pontos principais (empresa, valores, datas, vencimento).
+🔎 PONTOS DE ATENÇÃO: cobranças estranhas, valores que parecem altos/abusivos, taxas que talvez sejam indevidas, multas, prazos.
+✅ O QUE FAZER: passo a passo prático.
+🏛️ ONDE RECLAMAR: o órgão certo, se houver problema (Procon, ANEEL/ANATEL, banco, etc.).
+
+Se a pessoa escreveu uma dúvida junto com o documento, responda essa dúvida também.
+Se a imagem estiver ilegível, diga isso com gentileza e peça uma foto mais nítida.
+Termine SEMPRE com: "⚠️ Orientação geral, não substitui um advogado. Para o seu caso, procure um profissional ou o Procon."
+"""
+
+
 def _registrar_uso(user_id, tipo, creditos, tin=0, tout=0):
     try:
         conn = get_drzap_db()
@@ -419,6 +434,58 @@ def documento():
                                 'Tente novamente.'}), 502
     _registrar_uso(u['id'], 'documento', 3, tin, tout)
     return jsonify({'ok': True, 'resposta': doc, 'creditos': get_creditos(u['id'])})
+
+
+@drzap_bp.route('/ocr', methods=['POST'])
+@drzap_login_required
+def ocr():
+    import base64, io
+    u = _get_user()
+    f = request.files.get('arquivo')
+    pergunta = (request.form.get('pergunta') or '').strip()[:1000]
+    if not f or not f.filename:
+        return jsonify({'erro': 'Envie uma foto ou PDF do documento.'}), 400
+    raw = f.read()
+    if len(raw) > 10 * 1024 * 1024:
+        return jsonify({'erro': 'Arquivo muito grande (máximo 10MB).'}), 400
+    if len(raw) < 50:
+        return jsonify({'erro': 'Arquivo vazio ou inválido.'}), 400
+    mime = (f.mimetype or '').lower()
+    paginas = 1
+    if mime == 'application/pdf' or f.filename.lower().endswith('.pdf'):
+        mime = 'application/pdf'
+        try:
+            import pdfplumber
+            with pdfplumber.open(io.BytesIO(raw)) as pdf:
+                paginas = len(pdf.pages)
+        except Exception:
+            return jsonify({'erro': 'Não consegui ler o PDF. Tente enviar como foto.'}), 400
+        if paginas > 5:
+            return jsonify({'erro': f'O PDF tem {paginas} páginas. Máximo de 5 por envio.'}), 400
+    elif not mime.startswith('image/'):
+        return jsonify({'erro': 'Formato não suportado. Envie uma foto (JPG/PNG) ou um PDF.'}), 400
+    custo = max(1, paginas)
+    # Débito ATÔMICO (por página)
+    if not debita_creditos(u['id'], custo):
+        return jsonify({'erro': 'sem_creditos',
+                        'msg': f'Analisar este documento custa {custo} crédito(s). Compre mais.'}), 402
+    try:
+        b64 = base64.b64encode(raw).decode('ascii')
+        instrucao = pergunta or 'Analise este documento e me oriente.'
+        contents = [{'role': 'user', 'parts': [
+            {'inlineData': {'mimeType': mime, 'data': b64}},
+            {'text': instrucao}]}]
+        resposta, tin, tout = _gemini_call(SYSTEM_OCR, contents,
+                                           json_mode=False, max_tokens=1500, temperature=0.2)
+        if not resposta:
+            raise ValueError('resposta vazia')
+    except Exception as e:
+        add_creditos(u['id'], custo)   # estorna
+        log.warning(f'[DRZAP] OCR IA falhou (estornado {custo}): {e}')
+        return jsonify({'erro': 'Não consegui analisar agora. Seus créditos foram devolvidos. '
+                                'Tente uma foto mais nítida.'}), 502
+    _registrar_uso(u['id'], 'ocr', custo, tin, tout)
+    return jsonify({'ok': True, 'resposta': resposta, 'creditos': get_creditos(u['id']), 'paginas': paginas})
 
 
 @drzap_bp.route('/comprar')
