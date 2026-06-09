@@ -3735,8 +3735,8 @@ def admin_import_playlist():
     for vid_id, titulo, artista, cat, subcat in videos:
         conn.execute(
             '''INSERT OR IGNORE INTO pubshow_videos
-               (youtube_id, titulo, artista, categoria, subcategoria, duracao_seg, qualidade)
-               VALUES (?,?,?,?,?,180,'HD')''',
+               (youtube_id, titulo, artista, categoria, subcategoria, duracao_seg, qualidade, ativo)
+               VALUES (?,?,?,?,?,180,'HD',1)''',
             (vid_id, titulo, artista, cat, subcat)
         )
         inseridos += conn.execute('SELECT changes()').fetchone()[0]

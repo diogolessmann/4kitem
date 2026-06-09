@@ -174,6 +174,10 @@ def init_pubshow_db():
         # Botão do dono "pular música agora" — contador incremental; a TV pula
         # quando vê que subiu (comando via polling do /api/status).
         'ALTER TABLE pubshow_businesses ADD COLUMN skip_seq INTEGER DEFAULT 0',
+        # Coluna qualidade dos vídeos — existia no CREATE TABLE mas faltava a
+        # migração; bancos antigos (produção) não tinham, e o import de playlist
+        # (que usa essa coluna) crashava com 500. Agora garante a coluna.
+        'ALTER TABLE pubshow_videos ADD COLUMN qualidade TEXT DEFAULT "HD"',
         # Assinaturas — campos adicionais para cobrança automática
         'ALTER TABLE pubshow_assinaturas ADD COLUMN proximo_vencimento TEXT',
         'ALTER TABLE pubshow_assinaturas ADD COLUMN inadimplente_desde TEXT',
