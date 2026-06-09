@@ -190,6 +190,16 @@ TIPOS_PEDIDO = {
     'casamento':        {'nome': 'Pedido de Namoro 💕',   'emoji': '💕', 'preco': 25.00, 'cor': '#a855f7'},
 }
 
+# Taxa que o Asaas DESCONTA por cobrança PIX recebida (custo do gateway).
+# Ajuste para o valor real do seu contrato Asaas via env PUBSHOW_TAXA_ASAAS.
+PIX_TAXA_ASAAS = float(os.environ.get('PUBSHOW_TAXA_ASAAS', '1.00'))
+
+# Taxa de conveniência cobrada do CLIENTE quando o pagamento é automático via
+# Asaas. Por padrão = a taxa do Asaas, então o bar recebe o valor cheio do item
+# (a taxa do gateway sai do bolso de quem pede). No PIX manual (chave do próprio
+# bar) não há taxa. Ajustável via env PUBSHOW_TAXA_CONVENIENCIA.
+PIX_TAXA_CONVENIENCIA = float(os.environ.get('PUBSHOW_TAXA_CONVENIENCIA', str(PIX_TAXA_ASAAS)))
+
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
 def _gerar_code(n=8):
@@ -1153,11 +1163,14 @@ def _videos_do_canal(canal_key, limit=500):
         random.shuffle(videos)
         videos = videos[:limit]
     else:
+        # Pega um pool dos mais populares e embaralha — a TV nunca começa
+        # sempre pelas mesmas músicas (pedido do dono: aleatório dentro do canal).
         videos = conn.execute(
             'SELECT * FROM pubshow_videos WHERE categoria=? AND ativo=1 ORDER BY ordem, views_milhoes DESC LIMIT ?',
             (cat, limit)
         ).fetchall()
         videos = [dict(v) for v in videos]
+        random.shuffle(videos)
 
     conn.close()
     return videos
@@ -1572,14 +1585,22 @@ def jukebox(token):
                     descricao_pedido = tipo_nome
                     if titulo_pedido:
                         descricao_pedido += f' — {titulo_pedido[:40]}'
-                    asaas_data = _asaas_criar_cobranca_pix_jukebox(b, pedido_id, preco_final, descricao_pedido)
+                    # Taxa de conveniência: só no caminho Asaas (que tem custo de
+                    # transação). O cliente paga +R$1 e o bar recebe o valor cheio
+                    # do pedido. No PIX manual (chave do próprio bar) não há taxa.
+                    _valor_cobranca = round(preco_final + PIX_TAXA_CONVENIENCIA, 2)
+                    asaas_data = _asaas_criar_cobranca_pix_jukebox(b, pedido_id, _valor_cobranca, descricao_pedido)
 
                     if asaas_data:
-                        # Asaas gerou QR — salva payment_id e usa payload do Asaas
+                        # Asaas gerou QR — salva payment_id e usa payload do Asaas.
+                        # Grava o valor LÍQUIDO do bar: cliente paga item + conveniência,
+                        # o Asaas desconta a taxa dele, e o bar recebe o que sobra.
+                        # Com os defaults (conveniência = taxa Asaas), o líquido = item cheio.
+                        _valor_liquido_bar = round(preco_final + PIX_TAXA_CONVENIENCIA - PIX_TAXA_ASAAS, 2)
                         conn3 = get_pubshow_db()
                         conn3.execute(
-                            'UPDATE pubshow_pedidos SET asaas_payment_id=?, pix_payload=? WHERE id=?',
-                            (asaas_data['payment_id'], asaas_data['payload'], pedido_id)
+                            'UPDATE pubshow_pedidos SET asaas_payment_id=?, pix_payload=?, valor=? WHERE id=?',
+                            (asaas_data['payment_id'], asaas_data['payload'], _valor_liquido_bar, pedido_id)
                         )
                         conn3.commit(); conn3.close()
                         pix_qr    = asaas_data['qr_b64']
@@ -1602,9 +1623,16 @@ def jukebox(token):
                     # ── Notificação WhatsApp + Push em background (não bloqueia resposta) ──
                     _hh_txt = f' 🎉 Happy Hour {hh_desconto}% off!' if hh_desconto else ''
                     _bid, _emoji, _tnome, _nome, _preco = b['id'], tipo_emoji, tipo_nome, nome_cliente, preco_final
+                    _via_asaas = bool(asaas_data)
                     _bd_copy = dict(b)
                     def _notif_pix():
-                        try: _pubshow_notify_bar(_bd_copy, f'🎵 *Novo pedido PIX aguardando!*{_hh_txt}\n{_emoji} {_tnome}\n👤 {_nome}\n💰 R$ {_preco:.2f}\n📋 Acesse o painel para confirmar.')
+                        if _via_asaas:
+                            # Confirmação automática — o dono não precisa fazer nada
+                            _msg = f'🎵 *Novo pedido no Jukebox!*{_hh_txt}\n{_emoji} {_tnome}\n👤 {_nome}\n💰 R$ {_preco:.2f}\n✅ Confirma sozinho assim que o PIX cair.'
+                        else:
+                            # PIX manual — o dono precisa confirmar no painel
+                            _msg = f'🎵 *Novo pedido PIX aguardando!*{_hh_txt}\n{_emoji} {_tnome}\n👤 {_nome}\n💰 R$ {_preco:.2f}\n📋 Acesse o painel para confirmar.'
+                        try: _pubshow_notify_bar(_bd_copy, _msg)
                         except: pass
                         try: _enviar_push_pedido(_bid, _emoji, _tnome, _nome, _preco)
                         except: pass
@@ -1614,7 +1642,10 @@ def jukebox(token):
                         'pedido_id':  pedido_id,
                         'payload':    pix_payload,
                         'qr_b64':     pix_qr,
-                        'valor':      preco_final,
+                        # valor = total que o cliente paga (com taxa, se via Asaas)
+                        'valor':      _valor_cobranca if asaas_data else preco_final,
+                        'valor_item': preco_final,
+                        'taxa_conv':  PIX_TAXA_CONVENIENCIA if asaas_data else 0.0,
                         'recebedor':  b['pix_nome_recebedor'] or b['nome'],
                         'tipo_nome':  tipo_nome,
                         'tipo_emoji': tipo_emoji,
@@ -1826,6 +1857,7 @@ def api_status(code):
         'total_fila':     total_fila,
         'aguardando_pix': aguardando_pix,
         'promo':          promo,
+        'skip_seq':       b['skip_seq'] or 0,
     }
     conn.close()
     return jsonify(result)
@@ -2938,6 +2970,23 @@ def painel_dispensar_pedido(pid):
     return redirect('/pubshow/painel?aba=fila')
 
 
+@pubshow_bp.route('/painel/pular-musica', methods=['POST'])
+@pubshow_login_required
+def painel_pular_musica():
+    """Botão do dono: pula a música/vídeo que está tocando na TV agora.
+    Incrementa skip_seq; a TV detecta no polling (~2,5s) e avança a fila."""
+    b = _get_business()
+    conn = get_pubshow_db()
+    conn.execute(
+        'UPDATE pubshow_businesses SET skip_seq = COALESCE(skip_seq,0) + 1 WHERE id=?',
+        (b['id'],)
+    )
+    conn.commit(); conn.close()
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return jsonify({'ok': True})
+    return redirect('/pubshow/painel')
+
+
 @pubshow_bp.route('/painel/pedido/<int:pid>/confirmar-pix', methods=['POST'])
 @pubshow_login_required
 def painel_confirmar_pix(pid):
@@ -3624,6 +3673,15 @@ def admin_import_playlist():
     m = re.search(r'[?&]list=([A-Za-z0-9_-]+)', url_input)
     playlist_id = m.group(1) if m else url_input
 
+    # Guarda anti-"lista toda": Mixes/Radios automáticos do YouTube têm list=RD…
+    # São listas infinitas geradas pelo algoritmo. Colar um link de vídeo comum
+    # (que vem com &list=RD…) importaria dezenas de vídeos aleatórios sem querer.
+    if playlist_id.startswith('RD'):
+        return jsonify({'ok': False, 'erro':
+            'Esse link é um Mix automático do YouTube (lista RD…), não uma playlist real. '
+            'Para um vídeo só, use "Importar em Lote". Para uma playlist de verdade, '
+            'cole a URL dela (o ID começa com PL…).'})
+
     videos     = []
     page_token = None
     paginas    = 0
@@ -3769,11 +3827,14 @@ def admin_videos_check_bulk():
                     'ok_count': ok_count})
 
 
-@pubshow_bp.route('/admin/videos/remover-quebrados', methods=['POST'])
-@_admin_required
-def admin_videos_remover_quebrados():
-    """Verifica TODOS os vídeos ativos em paralelo e remove os quebrados.
-    Endpoint de 1-click para limpeza automática da biblioteca."""
+def _limpar_videos_quebrados(max_videos=None):
+    """Checa todos os vídeos ativos via oEmbed (em paralelo) e desativa
+    (ativo=0) os comprovadamente quebrados — 404 (removido) ou 401 (embed
+    bloqueado). Timeouts são ignorados (dúvida não remove).
+
+    É o coração do faxineiro: usado tanto pelo botão 1-click do admin quanto
+    pelo agendador automático. Retorna (verificados, removidos, ids_removidos).
+    """
     from concurrent.futures import ThreadPoolExecutor, as_completed
 
     conn = get_pubshow_db()
@@ -3783,8 +3844,10 @@ def admin_videos_remover_quebrados():
     conn.close()
 
     ids = [r['youtube_id'] for r in todos]
+    if max_videos:
+        ids = ids[:max_videos]
     if not ids:
-        return jsonify({'ok': True, 'removidos': 0, 'msg': 'Nenhum vídeo na biblioteca'})
+        return 0, 0, []
 
     def _check(yid):
         try:
@@ -3814,8 +3877,50 @@ def admin_videos_remover_quebrados():
         conn2.commit()
         conn2.close()
 
-    log.info('[PUBSHOW admin] remover-quebrados: %d verificados, %d removidos', len(ids), removidos)
-    return jsonify({'ok': True, 'verificados': len(ids),
+    log.info('[PUBSHOW] faxineiro: %d verificados, %d desativados', len(ids), removidos)
+    return len(ids), removidos, quebrados
+
+
+# ── Faxineiro automático de vídeos ──────────────────────────────────────────
+_FAXINEIRO_INICIADO = False
+
+def iniciar_faxineiro_videos(intervalo_horas=12, delay_inicial_seg=300):
+    """Inicia uma thread daemon que limpa vídeos quebrados periodicamente,
+    sem o dono precisar abrir o admin. Idempotente — só inicia uma vez por
+    processo. Desligável via env PUBSHOW_FAXINEIRO=0.
+    """
+    global _FAXINEIRO_INICIADO
+    if _FAXINEIRO_INICIADO:
+        return
+    if os.environ.get('PUBSHOW_FAXINEIRO', '1') == '0':
+        log.info('[PUBSHOW] Faxineiro de vídeos desativado (PUBSHOW_FAXINEIRO=0)')
+        return
+    _FAXINEIRO_INICIADO = True
+
+    import time as _time
+    def _loop():
+        # Jitter no boot: evita que múltiplos workers batam no YouTube ao mesmo tempo
+        _time.sleep(delay_inicial_seg + random.randint(0, 120))
+        while True:
+            try:
+                _limpar_videos_quebrados()
+            except Exception as ex:
+                log.error('[PUBSHOW] faxineiro erro: %s', ex)
+            _time.sleep(intervalo_horas * 3600)
+
+    _threading.Thread(target=_loop, daemon=True, name='pubshow-faxineiro').start()
+    log.info('[PUBSHOW] Faxineiro de vídeos iniciado (a cada %dh)', intervalo_horas)
+
+
+@pubshow_bp.route('/admin/videos/remover-quebrados', methods=['POST'])
+@_admin_required
+def admin_videos_remover_quebrados():
+    """Verifica TODOS os vídeos ativos em paralelo e remove os quebrados.
+    Endpoint de 1-click para limpeza manual da biblioteca."""
+    verificados, removidos, quebrados = _limpar_videos_quebrados()
+    if not verificados:
+        return jsonify({'ok': True, 'removidos': 0, 'msg': 'Nenhum vídeo na biblioteca'})
+    return jsonify({'ok': True, 'verificados': verificados,
                     'quebrados': len(quebrados), 'removidos': removidos,
                     'ids_removidos': quebrados})
 
@@ -3861,14 +3966,18 @@ def admin_videos_add():
 @pubshow_bp.route('/admin/videos/add-batch', methods=['POST'])
 @_admin_required
 def admin_videos_add_batch():
-    """Insere vários vídeos de uma vez. Recebe lista de {youtube_id, titulo, artista, categoria}."""
+    """Insere vários vídeos de uma vez. Recebe lista de {youtube_id, titulo, artista, categoria}.
+    Respeita um teto de vídeos por categoria (padrão 50, via PUBSHOW_MAX_POR_CATEGORIA)."""
     items = request.json or []
     if not isinstance(items, list):
         return jsonify({'ok': False, 'erro': 'Esperado uma lista JSON'})
+    MAX_POR_CAT = int(os.environ.get('PUBSHOW_MAX_POR_CATEGORIA', '50'))
     conn = get_pubshow_db()
     inseridos = 0
     duplicados = 0
     erros = 0
+    limitados = 0
+    _cont_cat = {}  # cache da contagem atual por categoria
     for item in items:
         yid  = (item.get('youtube_id') or '').strip()
         tit  = (item.get('titulo') or '').strip()
@@ -3876,6 +3985,14 @@ def admin_videos_add_batch():
         cat  = (item.get('categoria') or '').strip()
         if not yid or not tit or not cat:
             erros += 1
+            continue
+        # Teto por categoria: não deixa passar de MAX_POR_CAT
+        if cat not in _cont_cat:
+            _cont_cat[cat] = conn.execute(
+                'SELECT COUNT(*) FROM pubshow_videos WHERE categoria=?', (cat,)
+            ).fetchone()[0]
+        if _cont_cat[cat] >= MAX_POR_CAT:
+            limitados += 1
             continue
         try:
             conn.execute(
@@ -3887,13 +4004,18 @@ def admin_videos_add_batch():
             changed = conn.execute('SELECT changes()').fetchone()[0]
             if changed:
                 inseridos += 1
+                _cont_cat[cat] += 1
             else:
                 duplicados += 1
         except Exception:
             erros += 1
     conn.commit()
     conn.close()
-    return jsonify({'ok': True, 'inseridos': inseridos, 'duplicados': duplicados, 'erros': erros})
+    resp = {'ok': True, 'inseridos': inseridos, 'duplicados': duplicados, 'erros': erros}
+    if limitados:
+        resp['limitados'] = limitados
+        resp['msg_limite'] = f'{limitados} barrados — categoria no limite de {MAX_POR_CAT}.'
+    return jsonify(resp)
 
 
 @pubshow_bp.route('/admin/videos/oembed', methods=['POST'])

@@ -495,10 +495,16 @@ async function adicionarVideo() {
 
 // ── Importar em lote ──────────────────────────────────────────────────────────
 function extrairYoutubeId(t) {
-  const ps=[/(?:youtu\.be\/)([A-Za-z0-9_-]{11})/,
-            /(?:youtube\.com\/(?:watch\?v=|shorts\/|embed\/))([A-Za-z0-9_-]{11})/,
-            /^([A-Za-z0-9_-]{11})$/];
-  for(const p of ps){const m=t.trim().match(p);if(m)return m[1]}return null;
+  if(!t) return null;
+  t=t.trim();
+  // ID puro (11 caracteres) colado sozinho
+  if(/^[A-Za-z0-9_-]{11}$/.test(t)) return t;
+  // Prioridade: parâmetro v= em qualquer posição — ignora list=, index=, si= etc.
+  // (assim um link de Mix "watch?list=RD...&v=VIDEO" traz só o vídeo, nunca a lista)
+  let m=t.match(/[?&]v=([A-Za-z0-9_-]{11})/); if(m) return m[1];
+  // Formatos curtos: youtu.be/ID, /shorts/ID, /embed/ID, /live/ID
+  m=t.match(/(?:youtu\.be\/|\/shorts\/|\/embed\/|\/live\/)([A-Za-z0-9_-]{11})/); if(m) return m[1];
+  return null; // URL de playlist pura (sem v=) cai aqui e é ignorada de propósito
 }
 let loteItens=[];
 
@@ -543,7 +549,7 @@ async function loteSalvar(){
   try{
     const r=await fetch('/pubshow/admin/videos/add-batch',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
     const d=await r.json();
-    if(d.ok){fecharModal('modal-lote');loteLimpar();toast(`✅ ${d.inseridos} adicionados${d.duplicados?' ('+d.duplicados+' já existiam)':''}!`);setTimeout(()=>location.reload(),2500);}
+    if(d.ok){fecharModal('modal-lote');loteLimpar();toast(`✅ ${d.inseridos} adicionados${d.duplicados?' ('+d.duplicados+' já existiam)':''}${d.limitados?' · ⛔ '+d.msg_limite:''}!`);setTimeout(()=>location.reload(),2500);}
     else{alert('Erro: '+d.erro)}
   }catch(e){alert('Erro de rede: '+e)}
   btn.disabled=false;btn.textContent='💾 Salvar Selecionados';

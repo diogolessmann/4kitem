@@ -12769,9 +12769,14 @@ def _vetzap_legacy_redirect(sub=''):
 # PUBSHOW — Jukebox digital para bares e pubs
 # ══════════════════════════════════════════════════════════════════════════════
 try:
-    from pubshow import pubshow_bp
+    from pubshow import pubshow_bp, iniciar_faxineiro_videos
     app.register_blueprint(pubshow_bp)
     log.info('[PUBSHOW] Blueprint registrado em /pubshow')
+    # Faxineiro automático: desativa vídeos quebrados sozinho, a cada 12h
+    try:
+        iniciar_faxineiro_videos()
+    except Exception as _fx_err:
+        log.warning(f'[PUBSHOW] Faxineiro não iniciou: {_fx_err}')
 except Exception as _ps_err:
     log.warning(f'[PUBSHOW] Erro ao carregar blueprint: {_ps_err}')
 

@@ -191,7 +191,7 @@
   /* ── CTA Fullscreen — vídeo loop + fallback imagem ──────────────────────── */
   #cta-fullscreen{
     position:fixed;inset:0;z-index:95;
-    background:url('/static/pubshow/cta-fallback.png') center/cover no-repeat;
+    background:url('/static/pubshow/cta-fallback.webp') center/cover no-repeat;
     display:none;flex-direction:column;align-items:center;justify-content:center;
     animation:ctaFadeIn .5s ease;
     cursor:pointer;overflow:hidden;
@@ -310,7 +310,7 @@
   /* ── Ranking da noite ───────────────────────────────────────────────────── */
   #ranking-overlay{
     position:fixed;inset:0;z-index:85;
-    background:url('/static/pubshow/ranking-bg.png') center/cover no-repeat;
+    background:url('/static/pubshow/ranking-bg.webp') center/cover no-repeat;
     display:none;align-items:center;justify-content:center;
     animation:rankingEntrar .5s ease;
   }
@@ -560,7 +560,7 @@ const JUKEBOX_URL = 'https://www.4kitem.com.br/pubshow/jukebox/{{ b.jukebox_toke
 const ANUNCIOS    = {{ anuncios | tojson }};  // slides de propaganda do bar
 // Slides padrão do sistema — cardápio de preços (sempre exibido junto aos do bar)
 const ANUNCIOS_DEFAULT = [
-  {tipo:'imagem', url:'/static/pubshow/slide-cardapio.png', titulo:''},
+  {tipo:'imagem', url:'/static/pubshow/slide-cardapio.webp', titulo:''},
 ];
 // Mescla slides do bar com o cardápio padrão (cardápio aparece a cada ciclo)
 const ANUNCIOS_EFETIVOS = [...ANUNCIOS, ...ANUNCIOS_DEFAULT];
@@ -573,7 +573,7 @@ const CANAIS_JS = {{ canais | tojson }};
 
 // ── Biblioteca de vídeos ──────────────────────────────────────────────────────
 const VIDEOS = {{ videos | tojson }};
-let videoIdx        = Math.floor(Math.random() * Math.min(VIDEOS.length, 5));
+let videoIdx        = Math.floor(Math.random() * VIDEOS.length);  // começa em qualquer ponto do acervo (não só nos 5 primeiros)
 let _videosPlayed   = 0;   // contador de vídeos tocados — trigger de propaganda
 let _pedidoYtId     = null; // youtube_id do pedido específico em carregamento (null = nenhum)
 let _anuncioIdx     = 0;   // qual slide mostrar agora
@@ -849,6 +849,16 @@ function _pularVideo() {
   _skipCount++;
   videoIdx = (videoIdx + 1) % VIDEOS.length;
   carregarVideo(videoIdx);
+}
+
+// ⏭️ Pular agora (comando do dono pelo painel) — interrompe o vídeo atual,
+// some o card "próxima" e avança considerando a fila de pedidos.
+function pularMusicaAgora() {
+  clearTimeout(stallTimer);
+  clearTimeout(proximoTimer);
+  const card = document.getElementById('proximo-card');
+  if (card) card.classList.remove('show');
+  avancarFila();
 }
 
 // ── Lógica de avanço com fila ─────────────────────────────────────────────────
@@ -1243,6 +1253,17 @@ async function pollStatus() {
 
     // Promoção Relâmpago
     atualizarPromo(data.promo || null);
+
+    // ⏭️ Pular música — comando do dono (botão no painel)
+    if (typeof data.skip_seq === 'number') {
+      if (window._lastSkipSeq === undefined) {
+        window._lastSkipSeq = data.skip_seq;   // 1ª leitura: sincroniza, não pula
+      } else if (data.skip_seq > window._lastSkipSeq) {
+        window._lastSkipSeq = data.skip_seq;
+        pularMusicaAgora();
+        return;                                 // não processa o resto neste tick
+      }
+    }
 
     // Troca de canal pelo dono do bar (sem reload)
     if (data.canal_atual && data.canal_atual !== window._canalAtual) {

@@ -171,6 +171,9 @@ def init_pubshow_db():
         'ALTER TABLE pubshow_businesses ADD COLUMN generos_jukebox TEXT DEFAULT NULL',
         # Slides do sistema — bar pode desativar os slides globais do admin
         'ALTER TABLE pubshow_businesses ADD COLUMN usar_slides_sistema INTEGER DEFAULT 1',
+        # Botão do dono "pular música agora" — contador incremental; a TV pula
+        # quando vê que subiu (comando via polling do /api/status).
+        'ALTER TABLE pubshow_businesses ADD COLUMN skip_seq INTEGER DEFAULT 0',
         # Assinaturas — campos adicionais para cobrança automática
         'ALTER TABLE pubshow_assinaturas ADD COLUMN proximo_vencimento TEXT',
         'ALTER TABLE pubshow_assinaturas ADD COLUMN inadimplente_desde TEXT',
@@ -267,11 +270,23 @@ def init_pubshow_db():
         try: conn.rollback()
         except: pass
 
-    # Seed da biblioteca de vídeos — INSERT OR IGNORE, seguro rodar sempre
-    _seed_videos(conn)
-
-    # Corrige vídeos que ficaram indisponíveis no YouTube (UPDATE por youtube_id)
-    _corrigir_videos_quebrados(conn)
+    # Seed da biblioteca de vídeos — roda UMA ÚNICA VEZ na vida do banco.
+    # Antes rodava em TODO restart com INSERT OR IGNORE, o que RESSUSCITAVA
+    # vídeos apagados (deletava sertanejo → voltava no próximo deploy). Agora,
+    # depois do primeiro seed, a biblioteca é 100% manual: o que o admin apaga
+    # fica apagado. Marcador persistente em pubshow_meta.
+    conn.execute('CREATE TABLE IF NOT EXISTS pubshow_meta (chave TEXT PRIMARY KEY, valor TEXT)')
+    _seed_done = conn.execute("SELECT 1 FROM pubshow_meta WHERE chave='seed_videos_done'").fetchone()
+    if not _seed_done:
+        _ja_tem = conn.execute('SELECT COUNT(*) FROM pubshow_videos').fetchone()[0]
+        if _ja_tem == 0:
+            # Instalação nova e vazia: semeia a biblioteca inicial uma vez.
+            _seed_videos(conn)
+            _corrigir_videos_quebrados(conn)
+        # Bancos já existentes (com vídeos): NÃO re-semeia — só marca, para que
+        # restarts futuros nunca mais ressuscitem o que foi apagado.
+        conn.execute("INSERT OR REPLACE INTO pubshow_meta (chave, valor) VALUES ('seed_videos_done', datetime('now'))")
+        conn.commit()
 
     # Seed dos slides do sistema — imagens de static/pubshow/slides/
     _seed_slides_sistema(conn)

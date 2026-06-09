@@ -386,6 +386,13 @@
   {% endif %}
 
   <div class="pix-valor-big">R$ {{ '%.2f'|format(pix_pendente.valor)|replace('.',',') }}</div>
+  {% if pix_pendente.taxa_conv and pix_pendente.taxa_conv > 0 %}
+  <div class="pix-taxa-breakdown" style="font-size:12px;color:#8888aa;margin:-4px 0 8px;line-height:1.6">
+    Pedido R$ {{ '%.2f'|format(pix_pendente.valor_item)|replace('.',',') }}
+    + taxa de conveniência R$ {{ '%.2f'|format(pix_pendente.taxa_conv)|replace('.',',') }}
+    <br><span style="color:#4ade80">✅ confirma sozinho — não precisa avisar ninguém</span>
+  </div>
+  {% endif %}
   <div class="pix-recebedor">Recebedor: <strong>{{ pix_pendente.recebedor }}</strong></div>
 
   <div class="pix-copiacola-box">
@@ -596,10 +603,10 @@ async function jaPaguei() {
 <div class="tutorial-wrap" id="tutorial-wrap">
   <div class="tutorial-track" id="tutorial-track">
     <div class="tutorial-slide">
-      <img src="/static/pubshow/slides/slide2.png" alt="Tabela de preços" loading="lazy">
+      <img src="/static/pubshow/slides/slide2.webp" alt="Tabela de preços" loading="lazy">
     </div>
     <div class="tutorial-slide">
-      <img src="/static/pubshow/slides/slide1.png" alt="Como escanear" loading="lazy">
+      <img src="/static/pubshow/slides/slide1.webp" alt="Como escanear" loading="lazy">
     </div>
   </div>
   <div class="tutorial-dots" id="tutorial-dots">
