@@ -26,6 +26,10 @@ h1{font-size:20px;font-weight:900;letter-spacing:-.3px}
 .btn-indigo{background:rgba(99,102,241,.15);border:1px solid rgba(99,102,241,.3);color:#a5b4fc}
 .btn:hover{opacity:.82}
 .btn:disabled{opacity:.35;cursor:not-allowed}
+/* Separador entre grupos de botões */
+.tb-sep{width:1px;height:24px;background:rgba(255,255,255,.12);margin:0 6px;flex-shrink:0}
+.tb-hint{font-size:11px;color:#64748b;padding:0 0 12px;display:flex;align-items:center;gap:6px}
+.tb-group-label{font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.6px;color:#475569;align-self:center;margin-right:2px}
 
 /* Tabs de nicho */
 .nicho-tabs{display:flex;gap:2px;overflow-x:auto;padding-bottom:0;scrollbar-width:none}
@@ -120,16 +124,31 @@ tr.hidden-search{display:none}
 <!-- ── TOPO FIXO ───────────────────────────────────────────────────────────── -->
 <div class="topbar">
   <div class="topbar-row1">
-    <a href="/pubshow/admin" class="btn btn-ghost">← Admin</a>
-    <h1>🎬 Vídeos</h1><span class="sub">{{ total }} cadastrados</span>
-    <button class="btn btn-primary" id="btn-verificar" onclick="iniciarVerificacao()">🔍 Verificar Todos</button>
+    <a href="/pubshow/admin" class="btn btn-ghost" title="Voltar ao admin">←</a>
+    <h1>🎬 Vídeos</h1><span class="sub">{{ total }} no acervo</span>
+
+    <span class="tb-sep"></span>
+
+    <!-- GRUPO 1 · Adicionar (ação principal) -->
+    <span class="tb-group-label">➕ Adicionar</span>
+    <button class="btn btn-primary" onclick="abrirModal('modal-lote')">📋 Em lote</button>
+    <button class="btn btn-indigo" onclick="abrirModal('modal-playlist')">🤖 Playlist</button>
+    <button class="btn btn-ghost" onclick="abrirModal('modal-add')">+ 1 vídeo</button>
+
+    <span class="tb-sep"></span>
+
+    <!-- GRUPO 2 · Limpeza -->
+    <span class="tb-group-label">🧹 Limpeza</span>
+    <button class="btn btn-ghost" id="btn-verificar" onclick="iniciarVerificacao()">🔍 Verificar</button>
+    <button class="btn" id="btn-autoremover" onclick="autoRemoverQuebrados()" style="background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.4);color:#f87171;font-weight:700">🔥 Remover quebrados</button>
     <button class="btn btn-danger" id="btn-apagar" onclick="apagarSelecionados()" disabled>🗑️ Apagar (<span id="sel-count">0</span>)</button>
-    <button class="btn" id="btn-autoremover" onclick="autoRemoverQuebrados()" style="background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.4);color:#f87171;font-weight:700">🔥 Auto-remover Quebrados</button>
-    <button class="btn btn-ghost" onclick="abrirModal('modal-add')">+ Vídeo</button>
-    <button class="btn btn-green" onclick="abrirModal('modal-lote')">📋 Lote</button>
-    <button class="btn btn-indigo" onclick="abrirModal('modal-playlist')">🤖 Playlist API</button>
-    <button class="btn" id="btn-seed" onclick="seedCategorias()" style="background:rgba(74,222,128,.15);border:1px solid rgba(74,222,128,.35);color:#4ade80">🌱 Seed Categorias Vazias</button>
+
+    <!-- Secundário/perigoso — discreto, à direita, com aviso -->
+    <button class="btn btn-ghost" id="btn-seed" onclick="seedCategorias()"
+            title="⚠️ Recoloca a lista curada padrão — pode trazer de volta vídeos antigos já removidos. Use com cuidado."
+            style="margin-left:auto;opacity:.55;font-size:11px">🌱 Seed padrão</button>
   </div>
+  <div class="tb-hint">💡 Adicione vídeos vivos e remova os quebrados — o sistema também limpa os mortos sozinho a cada 12h.</div>
 
   <!-- Tabs de nicho -->
   <div class="nicho-tabs">
