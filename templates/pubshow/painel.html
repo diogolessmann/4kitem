@@ -34,6 +34,11 @@
   .quick-nav a{flex:0 0 auto;font-size:12px;font-weight:700;color:var(--text2);text-decoration:none;background:var(--surface);border:1px solid rgba(255,255,255,.1);padding:8px 14px;border-radius:100px;white-space:nowrap;transition:.15s}
   .quick-nav a:hover{color:var(--text);border-color:rgba(255,255,255,.3)}
   [id^="sec-"],#pix-config{scroll-margin-top:64px}
+  /* Abas do painel: Hoje (uso diario) x Ajustes (configuracao) */
+  .painel-tabs{position:sticky;top:0;z-index:50;display:flex;gap:8px;padding:10px 0;margin-bottom:14px;background:rgba(8,8,15,.92);backdrop-filter:blur(12px)}
+  .painel-tab{flex:1;padding:13px;border:1px solid rgba(255,255,255,.1);border-radius:12px;background:var(--surface);color:var(--text2);font-size:14px;font-weight:800;font-family:inherit;cursor:pointer;transition:.15s}
+  .painel-tab.ativo{background:linear-gradient(135deg,#ef4444,#f97316);color:#fff;border-color:transparent}
+  .zona.oculta{display:none}
   .stat-val{font-size:32px;font-weight:900;letter-spacing:-1px}
   .stat-sub{font-size:12px;color:var(--text2);margin-top:2px}
 
@@ -195,14 +200,14 @@
   </div>
   {% endif %}
 
-  <!-- Menu de acesso rápido (fixo) -->
-  <div class="quick-nav">
-    <a href="#sec-promo">⚡ Promoção</a>
-    <a href="#sec-receita">📈 Receita</a>
-    <a href="#sec-fila">📋 Fila</a>
-    <a href="#pix-config">💚 PIX</a>
-    <a href="#sec-ajustes">⚙️ Ajustes</a>
+  <!-- Abas do painel: Hoje (uso diário) x Ajustes (configuração) -->
+  <div class="painel-tabs">
+    <button type="button" id="tab-hoje" class="painel-tab ativo" onclick="mostrarAba('hoje')">📊 Hoje</button>
+    <button type="button" id="tab-ajustes" class="painel-tab" onclick="mostrarAba('ajustes')">⚙️ Ajustes</button>
   </div>
+
+  <!-- ════════ ZONA HOJE (uso diário) ════════ -->
+  <div id="z-hoje" class="zona">
 
   <!-- Promoção Relâmpago -->
   <div class="card" id="sec-promo" style="margin-bottom:20px;border-color:{% if promo_ativa %}rgba(249,115,22,.5){% else %}rgba(255,255,255,.08){% endif %};background:{% if promo_ativa %}rgba(249,115,22,.06){% else %}var(--surface){% endif %}">
@@ -346,7 +351,6 @@
     </div>
   </div>
 
-  <div class="grid-2">
     <!-- Fila de pedidos -->
     <div class="card">
       <div class="card-title">📋 Fila de pedidos pendentes</div>
@@ -371,6 +375,11 @@
       {% endif %}
       </div>
     </div>
+
+  </div><!-- /z-hoje -->
+
+  <!-- ════════ ZONA AJUSTES (configuração) ════════ -->
+  <div id="z-ajustes" class="zona oculta">
 
     <!-- Configurar PIX -->
     <div class="card" id="pix-config">
@@ -427,7 +436,6 @@
       </div>
       {% endif %}
     </div>
-  </div>
 
   <!-- Aguardando confirmação PIX -->
   {% if aguardando_pix %}
@@ -963,6 +971,7 @@
     </div>
   </div>
   {% endif %}
+  </div><!-- /z-ajustes -->
 </div>
 
 <script>
@@ -982,6 +991,27 @@ function pularMusica(btn) {
     setTimeout(() => { btn.innerHTML = orig; btn.disabled = false; }, 3000);
   });
 }
+
+// 📊⚙️ Abas do painel: Hoje (uso diário) x Ajustes (configuração)
+function mostrarAba(qual) {
+  document.getElementById('z-hoje').classList.toggle('oculta', qual !== 'hoje');
+  document.getElementById('z-ajustes').classList.toggle('oculta', qual !== 'ajustes');
+  document.getElementById('tab-hoje').classList.toggle('ativo', qual === 'hoje');
+  document.getElementById('tab-ajustes').classList.toggle('ativo', qual === 'ajustes');
+  try { localStorage.setItem('ps_painel_aba', qual); } catch(e) {}
+  window.scrollTo({ top: 0 });
+}
+// Restaura a última aba usada (e respeita ?aba= vindo de redirects)
+(function() {
+  try {
+    const url = new URLSearchParams(location.search).get('aba');
+    const salvo = localStorage.getItem('ps_painel_aba');
+    const alvo = (url === 'ajustes' || url === 'config') ? 'ajustes'
+               : (url === 'fila' || url === 'hoje') ? 'hoje'
+               : (salvo || 'hoje');
+    if (alvo === 'ajustes') mostrarAba('ajustes');
+  } catch(e) {}
+})();
 
 function toggleHH(on) {
   document.getElementById('hh-config').style.display = on ? 'flex' : 'none';
