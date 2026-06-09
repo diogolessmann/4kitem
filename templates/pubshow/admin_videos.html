@@ -592,7 +592,18 @@ async function importarPlaylist(){
   btn.disabled=true;btn.textContent='⏳ Importando...';
   try{
     const r=await fetch('/pubshow/admin/import-playlist',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({playlist_url:url,categoria:cat})});
-    const d=await r.json();
+    const txt=await r.text();
+    let d;
+    try{ d=JSON.parse(txt); }
+    catch(_){
+      // Servidor devolveu HTML (erro 500, ou sessão expirou -> login)
+      if(r.status===401||r.status===302||r.status===403){
+        errEl.textContent='❌ Sessão do admin expirou. Recarregue a página e faça login de novo.';
+      } else {
+        errEl.textContent='❌ Erro no servidor (HTTP '+r.status+'). Tente de novo em 1 min (deploy pode estar subindo).';
+      }
+      errEl.style.display='block';btn.disabled=false;btn.textContent='📥 Importar';return;
+    }
     if(d.ok){okEl.textContent=d.msg+(d.duplicados>0?' ('+d.duplicados+' já existiam)':'');okEl.style.display='block';document.getElementById('pl-url').value='';setTimeout(()=>location.reload(),3000);}
     else{errEl.textContent='❌ '+d.erro;errEl.style.display='block';}
   }catch(e){errEl.textContent='❌ Rede: '+e;errEl.style.display='block'}

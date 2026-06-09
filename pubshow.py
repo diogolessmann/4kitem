@@ -3659,6 +3659,15 @@ def admin_videos():
 @_admin_required
 def admin_import_playlist():
     """Importa todos os vídeos de uma playlist do YouTube via Data API v3."""
+    try:
+        return _import_playlist_impl()
+    except Exception as _e:
+        import traceback as _tb
+        log.error('[PUBSHOW] import-playlist crash: %s', _tb.format_exc())
+        return jsonify({'ok': False, 'erro': f'{type(_e).__name__}: {str(_e)[:200]}'})
+
+
+def _import_playlist_impl():
     import os, re
     api_key = os.environ.get('YOUTUBE_API_KEY', '')
     if not api_key:
