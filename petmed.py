@@ -81,92 +81,7 @@ PACOTES_CREDITO = {
             'cada': 'R$ 19,90/atend.', 'emoji': '👑', 'economia': 'Economize R$ 91'},
 }
 
-# ── Consulta Avulsa (pagamento único, acesso por 24h) ──────────────────────────
-CONSULTA_AVULSA = {
-    'preco': 32.90,
-    'preco_fmt': 'R$ 32,90',
-    'horas': 24,
-    'nome': 'Consulta 24h',
-    'emoji': '🩺',
-    'descricao': 'Acesso imediato por 24 horas — sem compromisso',
-    'features': [
-        'Triagem completa 24/7',
-        '1 pet por atendimento',
-        'Classificação de urgência',
-        'Orientações pós-triagem',
-        'Identificação de raça por foto',
-        'Acesso por 24 horas após o pagamento',
-    ],
-}
-
-# ── Planos mensais ─────────────────────────────────────────────────────────────
-PLANOS = {
-    'start': {
-        'nome': 'PET Start',
-        'preco': 49.90,
-        'preco_fmt': 'R$ 49,90',
-        'cor': '#0ea5e9',
-        'emoji': '🐾',
-        'descricao': 'Para quem tem 1 pet',
-        'pets': 1,
-        'teleconsulta': False,
-        'lembretes': False,
-        'mapa': False,
-        'features': [
-            'Triagens ilimitadas 24/7',
-            '1 pet cadastrado',
-            'Identificação de raça por foto',
-            'Classificação de urgência',
-            'Orientações pós-triagem',
-            'Histórico completo',
-        ],
-    },
-    'familia': {
-        'nome': 'PET Família',
-        'preco': 79.90,
-        'preco_fmt': 'R$ 79,90',
-        'cor': '#f97316',
-        'emoji': '🐾🐾',
-        'descricao': 'Para famílias com mais pets',
-        'pets': 4,
-        'teleconsulta': False,
-        'lembretes': True,
-        'mapa': True,
-        'destaque': True,
-        'features': [
-            'Tudo do Start',
-            'Até 4 pets cadastrados',
-            'Histórico completo',
-            'Cartão de vacinas digital',
-            'Lembretes automáticos',
-            'Mapa de clínicas abertas',
-            'Prioridade no atendimento',
-        ],
-    },
-    'premium': {
-        'nome': 'PET Premium',
-        'preco': 119.90,
-        'preco_fmt': 'R$ 119,90',
-        'cor': '#8b5cf6',
-        'emoji': '👑',
-        'descricao': 'Proteção total',
-        'pets': 999,
-        'teleconsulta': True,
-        'lembretes': True,
-        'mapa': True,
-        'features': [
-            'Tudo do Família',
-            'Pets ilimitados',
-            '1 teleconsulta/mês incluída',
-            'Consultas adicionais com desconto',
-            'Relatório mensal de saúde',
-            'Suporte prioritário',
-            'Desconto em clínicas parceiras',
-        ],
-    },
-}
-
-LIMITE_PETS = {'start': 1, 'familia': 4, 'premium': 999}
+# [removido] CONSULTA_AVULSA, PLANOS, LIMITE_PETS (legado de planos/assinatura; modelo = créditos)
 
 # ── Categorias de sintomas ──────────────────────────────────────────────────────
 CATEGORIAS = {
@@ -188,17 +103,6 @@ def petmed_login_required(f):
     def decorated(*args, **kwargs):
         if not session.get('pm_user_id'):
             return redirect('/vetzap/entrar')
-        return f(*args, **kwargs)
-    return decorated
-
-
-def petmed_premium_required(f):
-    @wraps(f)
-    def decorated(*args, **kwargs):
-        if not session.get('pm_user_id'):
-            return redirect('/vetzap/entrar')
-        if session.get('pm_plano') != 'premium':
-            return redirect('/vetzap/planos?msg=premium')
         return f(*args, **kwargs)
     return decorated
 
@@ -290,19 +194,6 @@ def _asaas_criar_ou_buscar_cliente(u) -> str:
         conn.close()
     return cid
 
-def _asaas_criar_pagamento_avulso(customer_id: str, user_id: int, billing_type: str) -> dict:
-    """Cria cobrança única (não recorrente) para Consulta 24h no Asaas."""
-    import datetime as _dt
-    venc = (_dt.date.today() + _dt.timedelta(days=1)).strftime('%Y-%m-%d')
-    return _asaas_req('POST', '/payments', {
-        'customer': customer_id,
-        'billingType': billing_type,
-        'value': CONSULTA_AVULSA['preco'],
-        'dueDate': venc,
-        'description': 'VetZap — Consulta 24h (acesso imediato)',
-        'externalReference': f'vetzap_consulta_avulsa_{user_id}',
-    })
-
 def _asaas_criar_pagamento_creditos(customer_id: str, user_id: int, pacote: str, billing_type: str) -> dict:
     """Cria cobrança única (PIX/boleto/cartão) para compra de um pacote de créditos."""
     import datetime as _dt
@@ -318,20 +209,6 @@ def _asaas_criar_pagamento_creditos(customer_id: str, user_id: int, pacote: str,
     })
 
 
-def _asaas_criar_assinatura(customer_id: str, plano: str, billing_type: str) -> dict:
-    """Cria assinatura recorrente mensal no Asaas."""
-    p = PLANOS.get(plano, PLANOS['start'])
-    import datetime as _dt
-    prox_venc = (_dt.date.today() + _dt.timedelta(days=1)).strftime('%Y-%m-%d')
-    return _asaas_req('POST', '/subscriptions', {
-        'customer': customer_id,
-        'billingType': billing_type,      # PIX, BOLETO, CREDIT_CARD
-        'value': p['preco'],
-        'nextDueDate': prox_venc,
-        'cycle': 'MONTHLY',
-        'description': f'VetZap — {p["nome"]}',
-        'externalReference': f'vetzap_{customer_id}_{plano}',
-    })
 
 # ── E-mail transacional (Resend) ───────────────────────────────────────────────
 
@@ -356,46 +233,6 @@ def _enviar_email(para: str, assunto: str, html: str) -> bool:
         return False
 
 
-def _email_consulta_avulsa_ativada(primeiro_nome: str) -> str:
-    return f"""<!DOCTYPE html>
-<html lang="pt-BR"><head><meta charset="UTF-8"></head>
-<body style="margin:0;padding:0;background:#0a0a0a;font-family:'Segoe UI',Arial,sans-serif">
-<table width="100%" cellpadding="0" cellspacing="0" style="background:#0a0a0a;padding:40px 0">
-<tr><td align="center">
-<table width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#111;border:1px solid #222;border-radius:16px;overflow:hidden">
-<tr><td style="background:#10b981;height:4px"></td></tr>
-<tr><td style="padding:36px 40px 32px">
-  <div style="font-size:40px;margin-bottom:12px">🩺</div>
-  <h1 style="color:#fff;font-size:22px;font-weight:800;margin:0 0 8px">Consulta ativada, {primeiro_nome}!</h1>
-  <p style="color:#888;font-size:14px;line-height:1.7;margin:0 0 24px">
-    Sua Consulta 24h está ativa agora. Acesse o VetZap e inicie o atendimento do seu pet.
-  </p>
-  <div style="background:#1a1a1a;border:1px solid #2a2a2a;border-radius:12px;padding:20px;margin-bottom:24px">
-    <div style="font-size:12px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">Consulta ativa</div>
-    <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #222">
-      <span style="font-size:13px;color:#666">Tipo</span>
-      <span style="font-size:13px;color:#fff;font-weight:700">🩺 Consulta 24h</span>
-    </div>
-    <div style="display:flex;justify-content:space-between;padding:8px 0">
-      <span style="font-size:13px;color:#666">Validade</span>
-      <span style="font-size:13px;color:#10b981;font-weight:700">24 horas a partir de agora</span>
-    </div>
-  </div>
-  <a href="https://4kitem.com.br/vetzap/dashboard" style="display:block;text-align:center;padding:14px 28px;background:#10b981;color:#fff;font-size:15px;font-weight:700;border-radius:12px;text-decoration:none;margin-bottom:20px">
-    🐾 Iniciar atendimento agora
-  </a>
-  <hr style="border:none;border-top:1px solid #222;margin:28px 0">
-  <p style="font-size:11px;color:#555;margin:0;line-height:1.6">
-    4KITEM · VetZap · <a href="https://4kitem.com.br" style="color:#10b981">4kitem.com.br</a><br>
-    Dúvidas? WhatsApp: <a href="https://wa.me/5547999606998" style="color:#10b981">(47) 99960-6998</a>
-  </p>
-</td></tr>
-</table>
-</td></tr>
-</table>
-</body></html>"""
-
-
 def _email_creditos_liberados(primeiro_nome: str, qtd: int) -> str:
     plural = 'atendimentos' if qtd != 1 else 'atendimento'
     return f"""<!DOCTYPE html>
@@ -418,46 +255,6 @@ def _email_creditos_liberados(primeiro_nome: str, qtd: int) -> str:
   <p style="font-size:11px;color:#555;margin:0;line-height:1.6">
     4KITEM · VetZap · <a href="https://4kitem.com.br" style="color:#10b981">4kitem.com.br</a><br>
     Dúvidas? WhatsApp: <a href="https://wa.me/5547999606998" style="color:#10b981">(47) 99960-6998</a>
-  </p>
-</td></tr>
-</table>
-</td></tr>
-</table>
-</body></html>"""
-
-
-def _email_pagamento_confirmado_petmed(primeiro_nome: str, plano_nome: str, preco_fmt: str) -> str:
-    return f"""<!DOCTYPE html>
-<html lang="pt-BR"><head><meta charset="UTF-8"></head>
-<body style="margin:0;padding:0;background:#0a0a0a;font-family:'Segoe UI',Arial,sans-serif">
-<table width="100%" cellpadding="0" cellspacing="0" style="background:#0a0a0a;padding:40px 0">
-<tr><td align="center">
-<table width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#111;border:1px solid #222;border-radius:16px;overflow:hidden">
-<tr><td style="background:#0ea5e9;height:4px"></td></tr>
-<tr><td style="padding:36px 40px 32px">
-  <div style="font-size:40px;margin-bottom:12px">✅</div>
-  <h1 style="color:#fff;font-size:22px;font-weight:800;margin:0 0 8px">Pagamento confirmado!</h1>
-  <p style="color:#888;font-size:14px;line-height:1.7;margin:0 0 24px">
-    Sua assinatura do <strong style="color:#fff">VetZap</strong> está ativa, {primeiro_nome}. Seu pet está protegido 24h!
-  </p>
-  <div style="background:#1a1a1a;border:1px solid #2a2a2a;border-radius:12px;padding:20px;margin-bottom:24px">
-    <div style="font-size:12px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">Assinatura ativa</div>
-    <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #222">
-      <span style="font-size:13px;color:#666">Plano</span>
-      <span style="font-size:13px;color:#fff;font-weight:700">🐾 {plano_nome}</span>
-    </div>
-    <div style="display:flex;justify-content:space-between;padding:8px 0">
-      <span style="font-size:13px;color:#666">Valor mensal</span>
-      <span style="font-size:13px;color:#0ea5e9;font-weight:700">{preco_fmt}/mês</span>
-    </div>
-  </div>
-  <a href="https://4kitem.com.br/vetzap/dashboard" style="display:block;text-align:center;padding:14px 28px;background:#0ea5e9;color:#fff;font-size:15px;font-weight:700;border-radius:12px;text-decoration:none;margin-bottom:20px">
-    🐾 Acessar o VetZap
-  </a>
-  <hr style="border:none;border-top:1px solid #222;margin:28px 0">
-  <p style="font-size:11px;color:#555;margin:0;line-height:1.6">
-    4KITEM · VetZap · <a href="https://4kitem.com.br" style="color:#0ea5e9">4kitem.com.br</a><br>
-    Dúvidas? WhatsApp: <a href="https://wa.me/5547999606998" style="color:#0ea5e9">(47) 99960-6998</a>
   </p>
 </td></tr>
 </table>
@@ -1157,103 +954,7 @@ def comprar(pacote):
         return redirect('/vetzap/creditos?msg=erro_pagamento')
 
 
-@petmed_bp.route('/consulta-agora', methods=['GET', 'POST'])
-@petmed_login_required
-def consulta_agora():
-    """Checkout para Consulta Avulsa — pagamento único, libera 24h de acesso."""
-    u = _get_user()
-    # Se já tem assinatura ativa, vai direto pro dashboard
-    if u['plano_ativo']:
-        return redirect('/vetzap/dashboard')
-    erro = ''
-    if request.method == 'POST':
-        billing_type = request.form.get('billing_type', 'PIX')
-        if billing_type not in ('PIX', 'BOLETO', 'CREDIT_CARD'):
-            erro = 'Método de pagamento inválido.'
-        else:
-            try:
-                customer_id = _asaas_criar_ou_buscar_cliente(u)
-                if not customer_id:
-                    erro = 'Erro ao criar perfil de pagamento. Verifique seus dados cadastrais.'
-                else:
-                    pag = _asaas_criar_pagamento_avulso(customer_id, u['id'], billing_type)
-                    if pag.get('id'):
-                        # Salva payment_id pendente
-                        conn = get_petmed_db()
-                        conn.execute(
-                            '''INSERT OR REPLACE INTO petmed_assinaturas
-                               (user_id, plano, valor, status, asaas_payment_id, billing_type)
-                               VALUES (?,?,?,?,?,?)''',
-                            (u['id'], 'consulta_avulsa', CONSULTA_AVULSA['preco'],
-                             'pendente', pag['id'], billing_type)
-                        )
-                        conn.commit()
-                        conn.close()
-                        payment_url = pag.get('invoiceUrl') or pag.get('bankSlipUrl') or ''
-                        if payment_url:
-                            return redirect(payment_url)
-                        return redirect('/vetzap/aguardando-pagamento?tipo=avulsa')
-                    else:
-                        desc = pag.get('errors', [{}])
-                        erro = desc[0].get('description', 'Erro ao gerar pagamento.') if desc else 'Erro ao gerar pagamento.'
-            except Exception as ex:
-                log.error('[PETmed] Erro consulta avulsa: %s', ex, exc_info=True)
-                erro = 'Erro ao processar. Tente novamente ou contate (47) 99960-6998'
-    return render_template('petmed/consulta_checkout.html',
-                           u=u, c=CONSULTA_AVULSA, erro=erro)
-
-
-@petmed_bp.route('/assinar/<plano>', methods=['GET', 'POST'])
-@petmed_login_required
-def assinar(plano):
-    """Checkout: escolhe método de pagamento e cria assinatura no Asaas."""
-    if plano not in PLANOS:
-        return redirect('/vetzap/planos')
-    u = _get_user()
-    erro = ''
-    if request.method == 'POST':
-        billing_type = request.form.get('billing_type', 'PIX')
-        if billing_type not in ('PIX', 'BOLETO', 'CREDIT_CARD'):
-            erro = 'Método de pagamento inválido.'
-        else:
-            try:
-                customer_id = _asaas_criar_ou_buscar_cliente(u)
-                if not customer_id:
-                    erro = 'Erro ao criar perfil de pagamento. Verifique seus dados cadastrais.'
-                else:
-                    sub = _asaas_criar_assinatura(customer_id, plano, billing_type)
-                    if sub.get('id'):
-                        # Salva assinatura no banco (pendente — webhook ativa)
-                        conn = get_petmed_db()
-                        conn.execute(
-                            '''INSERT OR REPLACE INTO petmed_assinaturas
-                               (user_id, plano, valor, status, asaas_subscription_id, billing_type)
-                               VALUES (?,?,?,?,?,?)''',
-                            (u['id'], plano, PLANOS[plano]['preco'],
-                             'pendente', sub['id'], billing_type)
-                        )
-                        conn.commit()
-                        conn.close()
-                        # Redireciona para link de pagamento do Asaas
-                        payment_url = sub.get('invoiceUrl') or sub.get('bankSlipUrl') or ''
-                        if payment_url:
-                            return redirect(payment_url)
-                        return redirect('/vetzap/aguardando-pagamento?sub=' + sub['id'])
-                    else:
-                        erro = sub.get('errors', [{}])[0].get('description', 'Erro ao criar assinatura.')
-            except Exception as ex:
-                erro = 'Erro ao processar pagamento. Tente novamente.'
-    p = PLANOS[plano]
-    return render_template('petmed/checkout.html', u=u, plano=plano, p=p, erro=erro)
-
-
-@petmed_bp.route('/aguardando-pagamento')
-@petmed_login_required
-def aguardando_pagamento():
-    """Página de aguardo após criar assinatura."""
-    u = _get_user()
-    sub_id = request.args.get('sub', '')
-    return render_template('petmed/aguardando.html', u=u, sub_id=sub_id)
+# [removido] rotas legadas de planos/assinatura/consulta-avulsa (modelo atual = créditos)
 
 
 @petmed_bp.route('/webhook/asaas', methods=['GET', 'POST'])
@@ -1275,8 +976,6 @@ def webhook_asaas():
 
     # Eventos de pagamento confirmado
     if evento in ('PAYMENT_RECEIVED', 'PAYMENT_CONFIRMED', 'SUBSCRIPTION_ACTIVATED'):
-        ext_ref = pagamento.get('externalReference', '')       # vetzap_custid_plano ou vetzap_consulta_avulsa_USERID
-        subscription_id = pagamento.get('subscription', '')
         payment_id = pagamento.get('id', '')
 
         conn = get_petmed_db()
@@ -1314,82 +1013,7 @@ def webhook_asaas():
                 conn.close()
                 return jsonify({'status': 'ok'}), 200
 
-        # ── Consulta Avulsa: pagamento único (legado) ────────────────────────────
-        if ext_ref.startswith('vetzap_consulta_avulsa_'):
-            try:
-                uid = int(ext_ref.split('_')[-1])
-                exp = (datetime.now() + timedelta(hours=CONSULTA_AVULSA['horas'])).strftime('%Y-%m-%d %H:%M:%S')
-                conn.execute('UPDATE petmed_users SET consulta_expires=? WHERE id=?', (exp, uid))
-                conn.execute("UPDATE petmed_assinaturas SET status='ativo' WHERE user_id=? AND plano='consulta_avulsa'", (uid,))
-                conn.commit()
-                log.info('[PETmed] Consulta avulsa ativada para user_id=%s até %s', uid, exp)
-                u_row = conn.execute('SELECT nome, email FROM petmed_users WHERE id=?', (uid,)).fetchone()
-                if u_row and u_row['email']:
-                    _enviar_email(
-                        u_row['email'],
-                        '✅ VetZap — Consulta ativada! Seu pet tem 24h de atendimento',
-                        _email_consulta_avulsa_ativada(u_row['nome'].split()[0])
-                    )
-            except Exception as ex:
-                log.error('[PETmed] Webhook avulsa erro: %s', ex)
-            conn.close()
-            return jsonify({'status': 'ok'}), 200
-
-        # ── Assinatura mensal recorrente ──────────────────────────────────────────
-        plano_novo = None
-        if ext_ref.startswith('vetzap_'):
-            partes = ext_ref.split('_')
-            if len(partes) >= 3:
-                plano_novo = partes[-1]
-
-        if subscription_id or ext_ref:
-            # Busca assinatura pelo subscription_id
-            ass = conn.execute(
-                'SELECT * FROM petmed_assinaturas WHERE asaas_subscription_id=?',
-                (subscription_id,)
-            ).fetchone()
-            if ass and plano_novo in PLANOS:
-                conn.execute(
-                    '''UPDATE petmed_users
-                       SET plano=?, plano_ativo=1, consulta_expires=NULL
-                       WHERE id=?''',
-                    (plano_novo, ass['user_id'])
-                )
-                conn.execute(
-                    '''UPDATE petmed_assinaturas
-                       SET status="ativo", plano=?
-                       WHERE user_id=?''',
-                    (plano_novo, ass['user_id'])
-                )
-                conn.commit()
-                u_row = conn.execute('SELECT nome, email FROM petmed_users WHERE id=?',
-                                 (ass['user_id'],)).fetchone()
-                if u_row and u_row['email']:
-                    p = PLANOS[plano_novo]
-                    _enviar_email(u_row['email'], '✅ VetZap — Assinatura ativa!',
-                        _email_pagamento_confirmado_petmed(
-                            u_row['nome'].split()[0], p['nome'], p['preco_fmt']))
         conn.close()
-
-    elif evento in ('SUBSCRIPTION_CANCELLED', 'PAYMENT_OVERDUE'):
-        subscription_id = pagamento.get('subscription', '')
-        if subscription_id:
-            conn = get_petmed_db()
-            ass = conn.execute(
-                'SELECT * FROM petmed_assinaturas WHERE asaas_subscription_id=?',
-                (subscription_id,)
-            ).fetchone()
-            if ass:
-                conn.execute(
-                    'UPDATE petmed_users SET plano_ativo=0 WHERE id=?',
-                    (ass['user_id'],)
-                )
-                conn.execute(
-                    "UPDATE petmed_assinaturas SET status='cancelado' WHERE user_id=?",
-                    (ass['user_id'],)
-                )
-                conn.commit()
-            conn.close()
 
     return jsonify({'received': True}), 200
 
@@ -1428,7 +1052,6 @@ def cadastrar():
     if session.get('pm_user_id'):
         return redirect('/vetzap/dashboard')
     erro = ''
-    plano_sel = request.args.get('plano', 'start')
     if request.method == 'POST':
         email     = request.form.get('email', '').strip().lower()
         senha     = request.form.get('senha', '')
@@ -1517,8 +1140,7 @@ def cadastrar():
                 except Exception:
                     pass
                 return redirect('/vetzap/dashboard?novo=1')
-    return render_template('petmed/cadastrar.html', erro=erro,
-                           planos=PLANOS, plano_sel=plano_sel)
+    return render_template('petmed/cadastrar.html', erro=erro)
 
 
 @petmed_bp.route('/sair')
@@ -1652,7 +1274,6 @@ def dashboard():
                            pode_add=pode_add,
                            total_pets=total_pets,
                            limite_pets=limite_pets,
-                           planos=PLANOS,
                            bloqueado_paywall=bloqueado_paywall,
                            triagens_usadas=triagens_usadas,
                            creditos=(u['creditos'] if 'creditos' in u.keys() and u['creditos'] is not None else 0),
@@ -2094,28 +1715,7 @@ def adicionar_vacina():
     return redirect(f'/vetzap/vacinas?msg=vacina_adicionada&pet_id={pet_id or ""}')
 
 
-# ── Teleconsulta (Premium) ─────────────────────────────────────────────────────
-
-@petmed_bp.route('/teleconsulta')
-@petmed_premium_required
-def teleconsulta():
-    u = _get_user()
-    pets = _get_pets(u['id'])
-    conn = get_petmed_db()
-    vets = conn.execute(
-        'SELECT * FROM petmed_vets WHERE ativo=1 AND disponivel=1 ORDER BY avaliacao DESC'
-    ).fetchall()
-    minhas = conn.execute(
-        '''SELECT tc.*, v.nome as vet_nome, p.nome as pet_nome
-           FROM petmed_teleconsultas tc
-           LEFT JOIN petmed_vets v ON tc.vet_id=v.id
-           LEFT JOIN petmed_pets p ON tc.pet_id=p.id
-           WHERE tc.user_id=? ORDER BY tc.created_at DESC LIMIT 10''',
-        (u['id'],)
-    ).fetchall()
-    conn.close()
-    return render_template('petmed/teleconsulta.html',
-                           u=u, pets=pets, vets=vets, minhas=minhas)
+# [removido] rota /teleconsulta (Fase 2 = marketplace de vets com Asaas Split)
 
 
 # ── API: contagem para badge ───────────────────────────────────────────────────
