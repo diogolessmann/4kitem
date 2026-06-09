@@ -81,6 +81,7 @@
     <button class="tab-btn" onclick="showTab('vetzap',this)">🐾 VetZap ({{ vetzap_users|length }})</button>
     <button class="tab-btn" onclick="showTab('pubshow',this)">📺 PUBSHOW ({{ pubshow_bars|length }})</button>
     <button class="tab-btn" onclick="showTab('slotzap',this)">🎯 SlotZap ({{ sz_users|length }})</button>
+    <button class="tab-btn" onclick="showTab('drzap',this)">⚖️ DRZAP ({{ drz_users|length }})</button>
   </div>
 
   <!-- ═══════════════ ALERTA SC ═══════════════ -->
@@ -706,6 +707,41 @@
     </table>
     {% else %}
     <div class="empty">Nenhum usuário SlotZap ainda.</div>
+    {% endif %}
+  </div>
+
+  <!-- DRZAP -->
+  <div class="tab-content" id="tab-drzap">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+      <h2 style="margin:0">⚖️ Usuários — DRZAP</h2>
+      <div style="display:flex;gap:18px;font-size:13px;color:var(--text2)">
+        <span>👤 {{ drz_users|length }} usuários</span>
+        <span>💳 {{ drz_compras_total }} compras</span>
+        <span>💬 {{ drz_consultas }} consultas</span>
+        <span style="color:#22c55e;font-weight:700">💰 R$ {{ '%.2f'|format(drz_receita)|replace('.', ',') }}</span>
+      </div>
+    </div>
+    {% if drz_users %}
+    <table>
+      <thead><tr>
+        <th>#</th><th>Nome</th><th>Email</th><th>Telefone</th><th>Créditos</th><th>Criado em</th><th>Último acesso</th>
+      </tr></thead>
+      <tbody>
+      {% for u in drz_users %}
+      <tr>
+        <td>{{ u.id }}</td>
+        <td><strong>{{ u.nome }}</strong></td>
+        <td>{{ u.email }}</td>
+        <td>{{ u.telefone or '—' }}</td>
+        <td><span class="badge badge-active">💎 {{ u.creditos or 0 }}</span></td>
+        <td style="font-size:12px">{{ (u.created_at or '')[:10] }}</td>
+        <td style="font-size:12px">{{ (u.ultimo_acesso or '')[:16].replace('T',' ') or '—' }}</td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty">Nenhum usuário DRZAP ainda.</div>
     {% endif %}
   </div>
 

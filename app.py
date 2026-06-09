@@ -5750,6 +5750,19 @@ def saas_admin():
         conn_sz.close()
     except Exception:
         sz_users = []
+    # DRZAP users (banco próprio)
+    try:
+        from drzap_db import get_drzap_db as _get_drz_db
+        drzconn = _get_drz_db()
+        drz_users = [dict(r) for r in drzconn.execute(
+            'SELECT id, nome, email, telefone, creditos, created_at, ultimo_acesso FROM drzap_users ORDER BY id DESC'
+        ).fetchall()]
+        drz_compras_total = drzconn.execute("SELECT COUNT(*) FROM drzap_compras WHERE status='pago'").fetchone()[0]
+        drz_receita       = drzconn.execute("SELECT COALESCE(SUM(valor),0) FROM drzap_compras WHERE status='pago'").fetchone()[0]
+        drz_consultas     = drzconn.execute('SELECT COUNT(*) FROM drzap_uso_log').fetchone()[0]
+        drzconn.close()
+    except Exception:
+        drz_users = []; drz_compras_total = 0; drz_receita = 0; drz_consultas = 0
     return render_template('saas_admin.html',
                            subscribers=subscribers, businesses=businesses,
                            mz_users=mz_users, mz_plans=MANDAZAP_PLANS,
@@ -5766,7 +5779,9 @@ def saas_admin():
                            pubshow_total_pedidos=pubshow_total_pedidos,
                            pubshow_total_receita=pubshow_total_receita,
                            pubshow_total_videos=pubshow_total_videos,
-                           sz_users=sz_users)
+                           sz_users=sz_users,
+                           drz_users=drz_users, drz_compras_total=drz_compras_total,
+                           drz_receita=drz_receita, drz_consultas=drz_consultas)
 
 
 @app.route('/saas-admin/slotzap/reset-senha', methods=['POST'])
