@@ -52,7 +52,7 @@
   @media(max-width:768px) {
     .hero-video { display:none; }
     .hero-bg {
-      background:url('{{ url_for("static", filename="pubshow/hero.png") }}') center 30%/cover no-repeat;
+      background:url('{{ url_for("static", filename="pubshow/hero.webp") }}') center 30%/cover no-repeat;
     }
   }
   .hero {
@@ -189,7 +189,7 @@
 
 <!-- HERO -->
 <div class="hero-bg">
-<video class="hero-video" autoplay muted loop playsinline poster="{{ url_for('static', filename='pubshow/hero.png') }}">
+<video class="hero-video" autoplay muted loop playsinline poster="{{ url_for('static', filename='pubshow/hero.webp') }}">
   <source src="{{ url_for('static', filename='pubshow/pubshow-hero.mp4') }}" type="video/mp4">
 </video>
 <div class="hero" style="z-index:2;position:relative">
@@ -211,7 +211,7 @@
 
   <!-- Hero Image: TV no bar -->
   <div style="position:relative">
-    <img src="{{ url_for('static', filename='pubshow/hero.png') }}"
+    <img src="{{ url_for('static', filename='pubshow/hero.webp') }}"
          alt="TV PUBSHOW no bar"
          style="width:100%;border-radius:20px;box-shadow:0 40px 80px rgba(0,0,0,.6);display:block">
     <!-- Jukebox overlay flutuante -->
@@ -425,10 +425,10 @@
     </div>
   </div>
   <div style="display:flex;flex-direction:column;gap:20px">
-    <img src="/static/img/pubshow/pubshow-jukebox-celular.png"
+    <img src="/static/img/pubshow/pubshow-jukebox-celular.webp"
          alt="Cliente usando Jukebox no celular"
          style="width:100%;border-radius:16px;box-shadow:0 20px 40px rgba(0,0,0,.4)">
-    <img src="/static/img/pubshow/pubshow-qrcode-mesa.png"
+    <img src="/static/img/pubshow/pubshow-qrcode-mesa.webp"
          alt="QR Code nas mesas do bar"
          style="width:100%;border-radius:16px;box-shadow:0 20px 40px rgba(0,0,0,.4)">
   <div style="background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:28px">
@@ -444,8 +444,8 @@
       <span style="color:var(--green)">R$ 164</span>
     </div>
     <div style="margin-top:12px;background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.2);border-radius:10px;padding:12px;font-size:12px;color:#4ade80;text-align:center">
-      4 sextas = <strong>R$ 656/mês</strong> · Assinatura = <strong>R$ 129,90</strong><br>
-      <strong style="font-size:15px">Lucro líquido: R$ 526/mês</strong>
+      4 sextas = <strong>R$ 656/mês</strong> · Assinatura = <strong>R$ 49,90</strong><br>
+      <strong style="font-size:15px">Lucro líquido: R$ 606/mês</strong>
     </div>
     <div style="margin-top:8px;font-size:11px;color:var(--text2);text-align:center;font-style:italic">+ Sábados, feriados e eventos especiais</div>
   </div>
@@ -457,14 +457,14 @@
 <div style="padding:60px 5% 0;max-width:1100px;margin:0 auto">
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
     <div style="position:relative;border-radius:20px;overflow:hidden">
-      <img src="/static/img/pubshow/pubshow-parabens-tela.png"
+      <img src="/static/img/pubshow/pubshow-parabens-tela.webp"
            alt="Parabéns na tela do bar" style="width:100%;display:block">
       <div style="position:absolute;bottom:0;left:0;right:0;padding:16px;background:linear-gradient(transparent,rgba(0,0,0,.8));font-weight:800;font-size:14px">
         🎂 Parabéns na tela — R$ 15
       </div>
     </div>
     <div style="position:relative;border-radius:20px;overflow:hidden">
-      <img src="/static/img/pubshow/pubshow-casamento-tela.png"
+      <img src="/static/img/pubshow/pubshow-casamento-tela.webp"
            alt="Pedido de namoro na tela" style="width:100%;display:block">
       <div style="position:absolute;bottom:0;left:0;right:0;padding:16px;background:linear-gradient(transparent,rgba(0,0,0,.8));font-weight:800;font-size:14px">
         💕 Pedido de namoro — R$ 25

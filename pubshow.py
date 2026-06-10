@@ -76,8 +76,8 @@ PLANOS = {
     'starter': {
         'nome': 'Starter',
         'emoji': '🌱',
-        'preco': 69.90,
-        'preco_fmt': 'R$ 69,90',
+        'preco': 29.90,
+        'preco_fmt': 'R$ 29,90',
         'descricao': 'Para começar',
         'features': ['TV com clips 24/7', '3 tipos de pedido', '1 slide de propaganda', 'QR Code de mesa', 'Painel de gestão'],
         'max_tipos': ['musica', 'musica_especifica', 'dedicatoria'],
@@ -91,8 +91,8 @@ PLANOS = {
     'bar': {
         'nome': 'Bar',
         'emoji': '🍺',
-        'preco': 129.90,
-        'preco_fmt': 'R$ 129,90',
+        'preco': 49.90,
+        'preco_fmt': 'R$ 49,90',
         'descricao': 'Para bares e botecos',
         'destaque': True,
         'features': ['Tudo do Starter', 'Todos os tipos de pedido', '3 slides de propaganda', 'Analytics de horários', 'Parabéns e Dedicatórias', 'Promoção Relâmpago'],
@@ -107,8 +107,8 @@ PLANOS = {
     'pro': {
         'nome': 'Pro',
         'emoji': '🚀',
-        'preco': 199.90,
-        'preco_fmt': 'R$ 199,90',
+        'preco': 89.90,
+        'preco_fmt': 'R$ 89,90',
         'descricao': 'Para maximizar o lucro',
         'features': ['Tudo do Bar', 'Happy Hour automático', 'Notificação WhatsApp', 'Ranking da noite na TV', '5 slides de propaganda', 'Relatórios completos'],
         'max_tipos': None,
@@ -122,8 +122,8 @@ PLANOS = {
     'rede': {
         'nome': 'Rede',
         'emoji': '🏟️',
-        'preco': 349.90,
-        'preco_fmt': 'R$ 349,90',
+        'preco': 149.90,
+        'preco_fmt': 'R$ 149,90',
         'descricao': 'Para redes e múltiplos locais',
         'features': ['Tudo do Pro', 'Múltiplos locais', 'Painel unificado', 'Suporte prioritário', 'Slides ilimitados'],
         'max_tipos': None,
@@ -199,6 +199,15 @@ PIX_TAXA_ASAAS = float(os.environ.get('PUBSHOW_TAXA_ASAAS', '1.00'))
 # (a taxa do gateway sai do bolso de quem pede). No PIX manual (chave do próprio
 # bar) não há taxa. Ajustável via env PUBSHOW_TAXA_CONVENIENCIA.
 PIX_TAXA_CONVENIENCIA = float(os.environ.get('PUBSHOW_TAXA_CONVENIENCIA', str(PIX_TAXA_ASAAS)))
+
+# Comissão do PubShow sobre o jukebox (take-rate). Só entra em ação na Fase 2,
+# quando há split entre o pub (recebe a maior parte) e o PubShow (sua comissão).
+# Modelo: mensalidade reduzida + 15% do jukebox. Ajustável via env.
+PIX_TAKE_RATE = float(os.environ.get('PUBSHOW_TAKE_RATE', '0.15'))
+
+# Piso de preço por pedido quando há taxa de transação (Asaas): abaixo disso a
+# taxa fixa come o valor. Protege a economia do bar. Ajustável via env.
+PIX_PISO_PRECO = float(os.environ.get('PUBSHOW_PISO_PRECO', '5.00'))
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
