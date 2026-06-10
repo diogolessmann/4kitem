@@ -1784,8 +1784,18 @@ def jukebox_ja_paguei(token, pedido_id):
            WHERE id=? AND business_id=? AND status='aguardando_pix'""",
         (pedido_id, b['id'])
     ).rowcount
-    conn.commit(); conn.close()
     if updated:
+        conn.commit(); conn.close()
+        return jsonify({'ok': True, 'modo': 'direto'})
+    # Não estava mais 'aguardando_pix' — pode já ter sido confirmado (duplo
+    # clique, webhook Asaas, bar confirmou). Se o pedido existe e já está na
+    # fila/exibido, é sucesso de verdade — não mostra "erro" pro cliente.
+    ja = conn.execute(
+        'SELECT status FROM pubshow_pedidos WHERE id=? AND business_id=?',
+        (pedido_id, b['id'])
+    ).fetchone()
+    conn.commit(); conn.close()
+    if ja and ja['status'] in ('pendente', 'exibido'):
         return jsonify({'ok': True, 'modo': 'direto'})
     return jsonify({'ok': False, 'error': 'Pedido não encontrado ou já confirmado'})
 
