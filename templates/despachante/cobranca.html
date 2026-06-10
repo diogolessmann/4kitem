@@ -1,0 +1,251 @@
+{% extends 'despachante/base.html' %}
+
+{% block title %}Cobrança — Parcelas em aberto{% endblock %}
+
+{% block extra_style %}
+.count-bar {
+  display: flex; align-items: center; gap: 16px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 10px; padding: 10px 16px; margin-bottom: 14px;
+  font-size: 13px; flex-wrap: wrap;
+}
+.count-item { display: flex; align-items: center; gap: 6px; }
+.count-n { font-size: 20px; font-weight: 800; }
+.count-sep { color: var(--border2); }
+
+.filtros-tabs { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+.ftab {
+  padding: 7px 14px; border-radius: 20px; border: 1px solid var(--border2);
+  background: var(--surface2); color: var(--text2); cursor: pointer;
+  font-size: 13px; font-weight: 600; text-decoration: none; transition: all .15s;
+}
+.ftab.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+.placa-badge {
+  font-family: monospace; font-size: 12px; font-weight: 700;
+  background: var(--surface2); border: 1px solid var(--border2);
+  border-radius: 5px; padding: 2px 7px; letter-spacing: 1px; color: var(--text);
+}
+.atraso-badge { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 10px; }
+.atraso-vencida { background: rgba(239,68,68,.15); color: #f87171; }
+.atraso-hoje    { background: rgba(234,179,8,.15);  color: #facc15; }
+.atraso-futura  { background: rgba(99,102,241,.15); color: #a5b4fc; }
+.no-tel { color: var(--red); font-size: 11px; }
+{% endblock %}
+
+{% block topbar_title %}💸 Cobrança — Parcelas em aberto{% endblock %}
+
+{% block topbar_actions %}
+<button onclick="abrirDisparador()" class="btn btn-success btn-sm"
+        title="Disparar lembrete de cobrança no WhatsApp para todos da lista">
+  📱 Cobrar todos por WhatsApp
+</button>
+<a href="{{ url_for('desp_financeiro') }}" class="btn btn-secondary btn-sm">💰 Financeiro</a>
+{% endblock %}
+
+{% block content %}
+
+<div class="count-bar">
+  <div class="count-item">
+    <span class="count-n">{{ parcelas|length }}</span>
+    <span style="color:var(--text2)">parcela{{ 's' if parcelas|length != 1 }}</span>
+  </div>
+  <span class="count-sep">|</span>
+  <div class="count-item" style="color:#f87171">
+    <span class="count-n">R$ {{ "%.2f"|format(total_aberto) }}</span> em aberto
+  </div>
+  {% if sem_tel %}
+  <span class="count-sep">|</span>
+  <div class="count-item no-tel">⚠️ {{ sem_tel }} sem WhatsApp</div>
+  {% endif %}
+</div>
+
+<div class="filtros-tabs">
+  {% set tabs = [('vencidas','🔴 Vencidas'),('hoje','🟡 Vencem hoje'),('semana','📅 Próx. 7 dias'),('todas','📋 Todas em aberto')] %}
+  {% for key, lbl in tabs %}
+  <a href="?f={{ key }}" class="ftab {{ 'active' if filtro == key }}">{{ lbl }}</a>
+  {% endfor %}
+</div>
+
+{% if parcelas %}
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Cliente</th>
+        <th>Placa</th>
+        <th>O.S.</th>
+        <th>Parcela</th>
+        <th>Valor</th>
+        <th>Vencimento</th>
+        <th>Atraso</th>
+        <th>Telefone</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in parcelas %}
+      <tr>
+        <td style="color:var(--text3);font-size:11px">{{ loop.index }}</td>
+        <td><a href="/despachante/os/{{ p.os_id }}" style="font-weight:600">{{ p.cliente_nome or '—' }}</a></td>
+        <td><span class="placa-badge">{{ p.placa or '—' }}</span></td>
+        <td style="font-size:12px;color:var(--text3)">{{ p.os_numero or '—' }}</td>
+        <td style="font-size:12px">{{ p.parcela }}ª</td>
+        <td style="font-weight:700">R$ {{ "%.2f"|format(p.valor or 0) }}</td>
+        <td style="font-size:12px">{{ p.vencimento_br }}</td>
+        <td>
+          {% if p.dias_atraso > 0 %}
+            <span class="atraso-badge atraso-vencida">{{ p.dias_atraso }}d atraso</span>
+          {% elif p.dias_atraso == 0 and filtro in ('hoje','vencidas','todas') %}
+            <span class="atraso-badge atraso-hoje">vence hoje</span>
+          {% else %}
+            <span class="atraso-badge atraso-futura">a vencer</span>
+          {% endif %}
+        </td>
+        <td style="font-size:12px">
+          {% if p.telefone %}
+          <a href="https://wa.me/55{{ p.telefone|replace('(','')|replace(')','')|replace('-','')|replace(' ','') }}"
+             target="_blank" style="color:#25d366" title="Abrir WhatsApp">{{ p.telefone }}</a>
+          {% else %}<span class="no-tel">sem WhatsApp</span>{% endif %}
+        </td>
+        <td><a href="/despachante/os/{{ p.os_id }}" class="btn btn-ghost btn-sm" title="Ver O.S.">🔍</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div style="text-align:center;padding:60px;color:var(--text3)">
+  <div style="font-size:40px;margin-bottom:12px">🎉</div>
+  <div style="font-size:16px;font-weight:600;margin-bottom:6px">Nenhuma parcela nesse filtro</div>
+  <div style="font-size:13px">Tudo em dia por aqui!</div>
+</div>
+{% endif %}
+
+<!-- MODAL DISPARADOR -->
+<div id="disp-modal" style="display:none;position:fixed;inset:0;z-index:200;
+     background:rgba(0,0,0,.75);align-items:center;justify-content:center;">
+  <div style="background:var(--surface);border:1px solid var(--border2);border-radius:16px;
+              padding:24px;width:100%;max-width:600px;max-height:90vh;overflow-y:auto;margin:16px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+      <div>
+        <div style="font-size:16px;font-weight:800;">📱 Cobrar por WhatsApp</div>
+        <div style="font-size:12px;color:var(--text3);">
+          <strong>{{ parcelas|length }}</strong> parcela(s) neste filtro
+          {% if sem_tel %} · <span class="no-tel">{{ sem_tel }} sem telefone serão puladas</span>{% endif %}
+        </div>
+      </div>
+      <button onclick="fecharDisparador()" style="background:none;border:none;color:var(--text3);font-size:20px;cursor:pointer;">✕</button>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Intervalo entre mensagens</label>
+      <select id="disp-delay" class="select">
+        <option value="3">3 segundos (mais rápido)</option>
+        <option value="5" selected>5 segundos (recomendado)</option>
+        <option value="8">8 segundos (mais seguro)</option>
+        <option value="15">15 segundos (conservador)</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">
+        Mensagem
+        <span style="font-weight:400;color:var(--text3);">— use:
+          {% for v in ['nome','valor','vencimento','parcela','placa','despachante'] %}
+          <code style="background:var(--surface3);padding:1px 5px;border-radius:4px;">{{ '{' }}{{ v }}{{ '}' }}</code>
+          {% endfor %}
+        </span>
+      </label>
+      <textarea id="disp-msg" class="textarea" rows="9" oninput="atualizarPreview()" placeholder="Digite a mensagem..."></textarea>
+    </div>
+
+    <div style="margin-bottom:14px;">
+      <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">
+        Preview (exemplo)
+      </div>
+      <div style="background:#075e54;border-radius:10px;padding:12px 14px;">
+        <pre id="disp-preview" style="font-family:inherit;font-size:13px;color:#fff;white-space:pre-wrap;margin:0;line-height:1.6;"></pre>
+      </div>
+    </div>
+
+    <div id="disp-resultado" style="display:none;margin-bottom:14px;"></div>
+
+    <div style="display:flex;gap:8px;justify-content:flex-end;">
+      <button onclick="fecharDisparador()" class="btn btn-ghost">Fechar</button>
+      <button id="disp-btn" onclick="disparar()" class="btn btn-success">🚀 Disparar cobrança</button>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_script %}
+<script>
+const FILTRO = "{{ filtro }}";
+const MSG_PADRAO = {{ msg_padrao|tojson }};
+
+function abrirDisparador() {
+  document.getElementById('disp-modal').style.display = 'flex';
+  if (!document.getElementById('disp-msg').value)
+    document.getElementById('disp-msg').value = MSG_PADRAO;
+  atualizarPreview();
+}
+function fecharDisparador() {
+  document.getElementById('disp-modal').style.display = 'none';
+  document.getElementById('disp-resultado').style.display = 'none';
+}
+
+function atualizarPreview() {
+  const tpl  = document.getElementById('disp-msg').value;
+  const prev = document.getElementById('disp-preview');
+  const sample = {
+    nome: 'João', nome_completo: 'João da Silva',
+    valor: '150,00', vencimento: '10/07/2026', parcela: '2',
+    placa: 'ABC1D23', dias: '5',
+    despachante: '{{ desp.nome|title }}', whatsapp: '{{ desp.whatsapp_fmt }}', cidade: '{{ desp.cidade }}',
+  };
+  let txt = tpl;
+  for (const [k, v] of Object.entries(sample)) txt = txt.replaceAll(`{${k}}`, v);
+  prev.textContent = txt;
+}
+
+async function disparar() {
+  const btn   = document.getElementById('disp-btn');
+  const msg   = document.getElementById('disp-msg').value.trim();
+  const delay = parseInt(document.getElementById('disp-delay').value);
+  if (!msg) { alert('Digite a mensagem!'); return; }
+
+  btn.disabled = true; btn.textContent = '⏳ Enviando…';
+  document.getElementById('disp-resultado').style.display = 'none';
+  try {
+    const r = await fetch('/despachante/cobranca/disparar', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ filtro: FILTRO, mensagem: msg, delay }),
+    });
+    const d = await r.json();
+    if (!r.ok) { alert('❌ Erro: ' + (d.erro || 'Falha na requisição')); return; }
+    const res = document.getElementById('disp-resultado');
+    res.style.display = 'block';
+    res.innerHTML = `
+      <div style="display:flex;gap:16px;margin-bottom:12px;">
+        <div style="flex:1;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.25);border-radius:8px;padding:12px;text-align:center;">
+          <div style="font-size:28px;font-weight:900;color:#22c55e">${d.sent ?? 0}</div>
+          <div style="font-size:11px;color:#86efac">Enviados ✅</div>
+        </div>
+        <div style="flex:1;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);border-radius:8px;padding:12px;text-align:center;">
+          <div style="font-size:28px;font-weight:900;color:#ef4444">${d.failed ?? 0}</div>
+          <div style="font-size:11px;color:#fca5a5">Falhas ❌</div>
+        </div>
+      </div>
+      <div style="font-size:12px;color:var(--text3);">Disparo iniciado para ${d.total} contato(s). O envio roda em segundo plano.</div>`;
+  } catch (e) {
+    alert('Erro de conexão: ' + e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = '🚀 Disparar cobrança';
+  }
+}
+</script>
+{% endblock %}

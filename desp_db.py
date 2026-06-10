@@ -1220,32 +1220,70 @@ def get_historico_os(os_id: int) -> list:
 
 # ── Parcelas de pagamento ────────────────────────────────────────────────────
 
+def _add_months(d, n: int):
+    """Soma n meses a uma data, preservando o dia (ajusta p/ fim de mês quando preciso)."""
+    import calendar
+    from datetime import date
+    m = d.month - 1 + n
+    y = d.year + m // 12
+    m = m % 12 + 1
+    dia = min(d.day, calendar.monthrange(y, m)[1])
+    return date(y, m, dia)
+
+
 def criar_parcelas(os_id: int, total_parcelas: int, valor_total: float,
-                   vencimento_1: str = None, forma: str = "") -> list:
-    """Cria N parcelas iguais para uma O.S. Retorna lista das parcelas criadas."""
+                   vencimento_1: str = None, forma: str = "",
+                   parcelas_custom: list = None) -> list:
+    """Cria parcelas para uma O.S. Retorna lista das parcelas criadas.
+
+    Dois modos:
+    - Automático (padrão): `total_parcelas` parcelas iguais, vencendo de mês em mês
+      a partir de `vencimento_1` (ajuste de centavos na última).
+    - Manual: passe `parcelas_custom = [{'valor':, 'vencimento':'YYYY-MM-DD', 'forma':}, ...]`
+      para entrada à vista + saldo em datas livres (ex.: hoje + 10/07 + 10/08).
+    """
+    from datetime import date
     conn = get_conn()
-    # Remove parcelas antigas se existirem
+    # Remove parcelas antigas se existirem (rota deve impedir se houver pagas)
     conn.execute("DELETE FROM os_parcelas WHERE os_id=?", (os_id,))
-    valor_parc = round(valor_total / total_parcelas, 2)
-    # Ajuste de centavos na última parcela
-    resto = round(valor_total - valor_parc * total_parcelas, 2)
     criadas = []
-    from datetime import date, timedelta
-    try:
-        base = date.fromisoformat(vencimento_1) if vencimento_1 else date.today()
-    except Exception:
-        base = date.today()
-    for i in range(1, total_parcelas + 1):
-        venc = (base + timedelta(days=30 * (i - 1))).isoformat()
-        val  = valor_parc + (resto if i == total_parcelas else 0)
-        cur = conn.execute("""
-            INSERT INTO os_parcelas (os_id, numero, valor, vencimento, forma_pagamento)
-            VALUES (?,?,?,?,?)
-        """, (os_id, i, val, venc, forma))
-        criadas.append({"id": cur.lastrowid, "numero": i, "valor": val,
-                        "vencimento": venc, "pago_em": None})
+
+    if parcelas_custom:
+        for i, p in enumerate(parcelas_custom, start=1):
+            try:
+                val = round(float(p.get('valor') or 0), 2)
+            except (TypeError, ValueError):
+                val = 0.0
+            venc   = (p.get('vencimento') or '').strip() or None
+            pforma = (p.get('forma') or forma or '')
+            cur = conn.execute("""
+                INSERT INTO os_parcelas (os_id, numero, valor, vencimento, forma_pagamento)
+                VALUES (?,?,?,?,?)
+            """, (os_id, i, val, venc, pforma))
+            criadas.append({"id": cur.lastrowid, "numero": i, "valor": val,
+                            "vencimento": venc, "pago_em": None})
+        n_total = len(parcelas_custom)
+    else:
+        valor_parc = round(valor_total / total_parcelas, 2)
+        # Ajuste de centavos na última parcela
+        resto = round(valor_total - valor_parc * total_parcelas, 2)
+        try:
+            base = date.fromisoformat(vencimento_1) if vencimento_1 else date.today()
+        except Exception:
+            base = date.today()
+        for i in range(1, total_parcelas + 1):
+            venc = _add_months(base, i - 1).isoformat()
+            val  = valor_parc + (resto if i == total_parcelas else 0)
+            cur = conn.execute("""
+                INSERT INTO os_parcelas (os_id, numero, valor, vencimento, forma_pagamento)
+                VALUES (?,?,?,?,?)
+            """, (os_id, i, val, venc, forma))
+            criadas.append({"id": cur.lastrowid, "numero": i, "valor": val,
+                            "vencimento": venc, "pago_em": None})
+        n_total = total_parcelas
+
     conn.execute("UPDATE ordens_servico SET total_parcelas=? WHERE id=?",
-                 (total_parcelas, os_id))
+                 (n_total, os_id))
     conn.commit()
     conn.close()
     return criadas
@@ -1271,15 +1309,17 @@ def dar_baixa_parcela(parcela_id: int, forma: str, observacao: str = "") -> dict
     if not row:
         conn.close()
         return {"erro": "Parcela não encontrada"}
-    if row["pago_em"]:
-        conn.close()
-        return {"erro": "Parcela já está paga"}
 
     agora = datetime.now().isoformat()
-    conn.execute(
-        "UPDATE os_parcelas SET pago_em=?, forma_pagamento=?, observacao=? WHERE id=?",
+    # Baixa atômica: só marca se ainda estiver em aberto (evita dupla-baixa concorrente)
+    cur = conn.execute(
+        "UPDATE os_parcelas SET pago_em=?, forma_pagamento=?, observacao=? "
+        "WHERE id=? AND pago_em IS NULL",
         (agora, forma, observacao, parcela_id)
     )
+    if cur.rowcount == 0:
+        conn.close()
+        return {"erro": "Parcela já está paga"}
     # Recalcula total pago na OS
     total_pago = conn.execute(
         "SELECT COALESCE(SUM(valor),0) FROM os_parcelas WHERE os_id=? AND pago_em IS NOT NULL",

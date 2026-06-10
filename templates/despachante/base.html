@@ -264,7 +264,7 @@
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-brand">
       <div class="brand-icon">
-        <img src="/static/img/despachante/logo.png" alt="Amigo Despachante" onerror="this.style.display='none';this.parentElement.innerHTML='🚗';">
+        <img src="/static/img/despachante/logo.webp" alt="Amigo Despachante" onerror="this.style.display='none';this.parentElement.innerHTML='🚗';">
       </div>
       <div class="brand-text">
         <span class="brand-name">Lessmann</span>
@@ -309,6 +309,9 @@
         </a>
         <a href="{{ url_for('desp_financeiro') }}" class="nav-link {% if request.endpoint == 'desp_financeiro' %}active{% endif %}">
           <span class="icon">💰</span> Financeiro
+        </a>
+        <a href="{{ url_for('desp_cobranca') }}" class="nav-link {% if request.endpoint == 'desp_cobranca' %}active{% endif %}">
+          <span class="icon">💸</span> Cobrança
         </a>
         <a href="{{ url_for('desp_relatorio') }}" class="nav-link {% if request.endpoint in ('desp_relatorio','desp_relatorio_csv') %}active{% endif %}">
           <span class="icon">📊</span> Rel. Produção

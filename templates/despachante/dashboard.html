@@ -127,6 +127,47 @@
 
 {% block content %}
 
+<!-- ── CHECKLIST DE PRIMEIROS PASSOS ── -->
+{% if onboarding and not onboarding.completo %}
+<div id="onboarding-card" style="background:linear-gradient(135deg,rgba(99,102,241,.12),rgba(34,197,94,.08));
+     border:1px solid var(--border2);border-radius:12px;padding:16px 18px;margin-bottom:20px;">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+    <div style="font-size:15px;font-weight:800;">🚀 Primeiros passos</div>
+    <button onclick="document.getElementById('onboarding-card').style.display='none';localStorage.setItem('desp_onb_hide','1')"
+            style="background:none;border:none;color:var(--text3);font-size:18px;cursor:pointer;" title="Ocultar">✕</button>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:8px;">
+    {% set passos = [
+      ('whatsapp', onboarding.whatsapp, '💬 Conectar o WhatsApp', 'Configure a integração para disparar cobranças e avisos.', url_for('desp_configuracoes')),
+      ('precos',   onboarding.precos,   '💲 Definir tabela de preços', 'Cadastre os honorários por serviço (preenche a O.S. sozinho).', url_for('desp_precos')),
+      ('os',       onboarding.os,       '📋 Criar a 1ª Ordem de Serviço', 'Faça seu primeiro atendimento de balcão.', url_for('desp_nova_os')),
+    ] %}
+    {% for key, feito, titulo, desc, link in passos %}
+    <a href="{{ link }}" style="display:flex;align-items:center;gap:12px;padding:10px 12px;
+       background:var(--surface);border:1px solid var(--border);border-radius:9px;text-decoration:none;
+       {% if feito %}opacity:.6;{% endif %}">
+      <span style="font-size:20px;">{{ '✅' if feito else '⬜' }}</span>
+      <div style="flex:1;">
+        <div style="font-weight:600;font-size:13px;color:var(--text);{% if feito %}text-decoration:line-through;{% endif %}">{{ titulo }}</div>
+        <div style="font-size:11px;color:var(--text3);">{{ desc }}</div>
+      </div>
+      {% if not feito %}<span style="color:var(--accent);font-size:13px;">Fazer →</span>{% endif %}
+    </a>
+    {% endfor %}
+  </div>
+  <div style="margin-top:10px;text-align:right;">
+    <a href="{{ url_for('desp_tutorial') }}" style="font-size:12px;color:var(--text3);">📘 Ver guia completo</a>
+  </div>
+</div>
+<script>
+  // Respeita a opção de ocultar (mas reaparece se ainda houver passo pendente e não foi ocultado nesta sessão)
+  if (localStorage.getItem('desp_onb_hide') === '1') {
+    var _oc = document.getElementById('onboarding-card');
+    if (_oc) _oc.style.display = 'none';
+  }
+</script>
+{% endif %}
+
 {% set alertas_urgentes = stats.parcelas_vencidas | length %}
 {% set alertas_paradas  = stats.os_paradas | length %}
 
@@ -134,7 +175,7 @@
 {% if stats.parcelas_vencidas or stats.os_paradas %}
 <div class="alertas-wrap">
   {% if stats.parcelas_vencidas %}
-  <a href="{{ url_for('desp_lista_os') }}" class="alerta urgente">
+  <a href="{{ url_for('desp_cobranca') }}?f=vencidas" class="alerta urgente">
     <span class="alerta-icon">🔴</span>
     <div class="alerta-txt">
       <strong>{{ stats.parcelas_vencidas|length }} parcela{{ 's' if stats.parcelas_vencidas|length != 1 }} vencida{{ 's' if stats.parcelas_vencidas|length != 1 }}</strong>

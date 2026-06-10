@@ -536,6 +536,11 @@
       <div style="font-size:11px;margin-top:6px;">Suporta: PNG, JPG, screenshot de qualquer tela</div>
     </div>
     <input type="file" id="ocr-file" accept="image/*" style="display:none" onchange="handleFileInput(this)">
+    <input type="file" id="ocr-file-cam" accept="image/*" capture="environment" style="display:none" onchange="handleFileInput(this)">
+    <button type="button" class="btn btn-secondary btn-sm" style="width:100%;margin-bottom:14px;"
+            onclick="document.getElementById('ocr-file-cam').click()">
+      📷 Tirar foto agora (celular)
+    </button>
 
     <img id="ocr-img" class="ocr-preview" style="display:none;" alt="Preview">
 

@@ -9590,6 +9590,23 @@ def _desp_usuario_atual():
     return session.get('desp_usuario', DESP_CONFIG.get('nome', 'Sistema'))
 
 
+def _desp_money(v) -> float:
+    """Converte valor monetário em formato BR para float, tolerante a None/vazio/'R$'.
+    Aceita '1.500,00' (1500.0), '150,00' (150.0), '150' (150.0) e '150.50' (150.5)."""
+    import re as _re_m
+    s = _re_m.sub(r'[^\d,.\-]', '', str(v or '').strip())
+    if not s:
+        return 0.0
+    if ',' in s and '.' in s:        # 1.500,00 → '.' é milhar, ',' é decimal
+        s = s.replace('.', '').replace(',', '.')
+    elif ',' in s:                    # 150,00 → ',' é decimal
+        s = s.replace(',', '.')
+    try:
+        return round(float(s), 2)
+    except ValueError:
+        return 0.0
+
+
 def _desp_login_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
@@ -10051,7 +10068,23 @@ def desp_dashboard():
     stats    = desp_stats()
     recentes = desp_listar_os(limit=8)
     plano    = _desp_get_plan() if session.get('desp_saas_user_id') else None
-    return desp_render('dashboard.html', stats=stats, recentes=recentes, plano=plano)
+    # Checklist de primeiros passos (some quando tudo concluído)
+    try:
+        evo_ok = all(_desp_get_evo_config())
+    except Exception:
+        evo_ok = False
+    try:
+        precos_ok = bool(desp_get_precos())
+    except Exception:
+        precos_ok = False
+    onboarding = {
+        'whatsapp': evo_ok,
+        'precos':   precos_ok,
+        'os':       (stats.get('os_total', 0) or 0) > 0,
+    }
+    onboarding['completo'] = all(onboarding.values())
+    return desp_render('dashboard.html', stats=stats, recentes=recentes,
+                       plano=plano, onboarding=onboarding)
 
 
 # ── Ordens de Serviço ─────────────────────────────────────────────────────────
@@ -10112,9 +10145,9 @@ def desp_nova_os():
         dados_os = {
             'cliente_id': cliente_id, 'veiculo_id': veiculo_id,
             'servico': f.get('servico', 'outros'),
-            'honorarios': float(f.get('honorarios') or 0),
-            'custos': float(f.get('custos') or 0),
-            'pago': float(f.get('pago') or 0),
+            'honorarios': _desp_money(f.get('honorarios')),
+            'custos': _desp_money(f.get('custos')),
+            'pago': _desp_money(f.get('pago')),
             'forma_pagamento': f.get('forma_pagamento', ''),
             'observacoes': f.get('observacoes', ''),
             'exercicio': int(f.get('exercicio') or datetime.now().year),
@@ -10181,7 +10214,7 @@ def desp_atualizar_status(id):
     status = request.form.get('status', 'aberta')
     nota   = request.form.get('nota', '')
     pago   = request.form.get('pago')
-    desp_atualizar_os_status(id, status, float(pago) if pago else None)
+    desp_atualizar_os_status(id, status, _desp_money(pago) if pago else None)
     desp_reg_hist(id, status, nota, usuario=_desp_usuario_atual())
     return redirect(url_for('desp_detalhe_os', id=id))
 
@@ -10214,20 +10247,47 @@ def desp_marcar_entregue(id):
 @_desp_login_required
 def desp_api_criar_parcelas(os_id):
     data = request.get_json(silent=True) or {}
-    n    = int(data.get('total_parcelas', 1))
     os_  = desp_get_os(os_id)
     if not os_:
         return jsonify({'erro': 'OS não encontrada'}), 404
-    total = float(os_['honorarios']) + float(os_['custos'])
-    if total <= 0:
-        return jsonify({'erro': 'OS sem valor — defina honorários/custos primeiro'}), 400
-    parcelas = desp_criar_parcelas(
-        os_id, n, total,
-        vencimento_1=data.get('vencimento_1'),
-        forma=data.get('forma', '')
-    )
-    desp_reg_hist(os_id, os_['status'],
-                  f"Parcelamento em {n}x configurado (total R$ {total:.2f})")
+
+    # Trava de segurança: não reconfigurar se já há parcela paga (apagaria o pagamento)
+    conn  = get_desp_conn()
+    pagas = conn.execute(
+        "SELECT COUNT(*) FROM os_parcelas WHERE os_id=? AND pago_em IS NOT NULL", (os_id,)
+    ).fetchone()[0]
+    conn.close()
+    if pagas and not data.get('forcar'):
+        return jsonify({'erro': f'Já há {pagas} parcela(s) paga(s). Reconfigurar vai apagar os pagamentos registrados.',
+                        'precisa_forcar': True}), 409
+
+    total   = float(os_['honorarios']) + float(os_['custos'])
+    manuais = data.get('parcelas')  # modo manual: [{valor, vencimento, forma}, ...]
+
+    if manuais:
+        norm, soma = [], 0.0
+        for p in manuais:
+            v = _desp_money(p.get('valor'))
+            if v <= 0:
+                continue
+            norm.append({'valor': v, 'vencimento': p.get('vencimento'), 'forma': p.get('forma', '')})
+            soma += v
+        if not norm:
+            return jsonify({'erro': 'Informe ao menos uma parcela com valor.'}), 400
+        parcelas = desp_criar_parcelas(os_id, len(norm), soma, parcelas_custom=norm)
+        desp_reg_hist(os_id, os_['status'],
+                      f"Parcelamento manual em {len(norm)}x configurado (total R$ {soma:.2f})")
+    else:
+        n = int(data.get('total_parcelas', 1))
+        if total <= 0:
+            return jsonify({'erro': 'OS sem valor — defina honorários/custos primeiro'}), 400
+        parcelas = desp_criar_parcelas(
+            os_id, n, total,
+            vencimento_1=data.get('vencimento_1'),
+            forma=data.get('forma', '')
+        )
+        desp_reg_hist(os_id, os_['status'],
+                      f"Parcelamento em {n}x configurado (total R$ {total:.2f})")
     return jsonify({'ok': True, 'parcelas': parcelas})
 
 
@@ -10240,14 +10300,69 @@ def desp_api_baixa_parcela(pid):
     res   = desp_baixa_parcela(pid, forma, obs)
     if 'erro' in res:
         return jsonify(res), 400
-    # Registra histórico
+    # Dados completos da parcela + cliente + veículo (histórico e comprovante)
     c = get_desp_conn()
-    row = c.execute("SELECT os_id, numero, valor FROM os_parcelas WHERE id=?", (pid,)).fetchone()
+    row = c.execute("""
+        SELECT p.os_id, p.numero, p.valor, p.vencimento,
+               os.numero AS os_numero, os.servico,
+               os.honorarios, os.custos, os.pago,
+               cli.nome AS cliente_nome, cli.telefone,
+               v.placa
+        FROM os_parcelas p
+        JOIN ordens_servico os ON os.id = p.os_id
+        LEFT JOIN clientes cli ON cli.id = os.cliente_id
+        LEFT JOIN veiculos  v  ON v.id  = os.veiculo_id
+        WHERE p.id=?
+    """, (pid,)).fetchone()
     c.close()
+    res['whatsapp'] = None
     if row:
+        row = dict(row)
         desp_reg_hist(row['os_id'], None,
                       f"Parcela {row['numero']} paga — R$ {row['valor']:.2f} ({forma})")
+        if data.get('enviar_whatsapp') and (row.get('telefone') or '').strip():
+            res['whatsapp'] = _desp_enviar_comprovante(row, forma)
     return jsonify(res)
+
+
+def _desp_enviar_comprovante(row: dict, forma: str) -> str:
+    """Envia comprovante de pagamento de parcela ao WhatsApp do cliente.
+    Retorna: 'ok' | 'sem_config' | 'sem_tel' | 'erro'."""
+    import re as _re_cp
+    evo_url, evo_key, evo_instance = _desp_get_evo_config()
+    if not (evo_url and evo_key and evo_instance):
+        return 'sem_config'
+    tel = _re_cp.sub(r'\D', '', row.get('telefone') or '')
+    if not tel:
+        return 'sem_tel'
+    if not tel.startswith('55'):
+        tel = '55' + tel
+    cfg     = _desp_get_config()
+    total   = float(row.get('honorarios') or 0) + float(row.get('custos') or 0)
+    saldo   = max(total - float(row.get('pago') or 0), 0)
+    nome    = (row.get('cliente_nome') or 'Cliente').split()[0].title()
+    servico = DESP_SERVICOS.get(row.get('servico', ''), row.get('servico', ''))
+    brl     = lambda x: f"{float(x or 0):.2f}".replace('.', ',')
+    msg = (
+        "✅ *Comprovante de Pagamento*\n\n"
+        f"Olá {nome}! Recebemos o pagamento da *parcela {row.get('numero')}*.\n\n"
+        f"🧾 Serviço: {servico}\n"
+        f"🚗 Veículo: {(row.get('placa') or '—')}\n"
+        f"💰 Valor pago: R$ {brl(row.get('valor'))}\n"
+        f"💳 Forma: {forma}\n"
+        + (f"📌 Saldo restante: R$ {brl(saldo)}\n" if saldo > 0.01 else "🎉 *Quitado!* Sem saldo restante.\n")
+        + f"\nObrigado pela preferência! — {cfg['nome'].title()}"
+    )
+    try:
+        resp = requests.post(
+            f"{evo_url}/message/sendText/{evo_instance}",
+            headers={'apikey': evo_key, 'Content-Type': 'application/json'},
+            json={'number': tel, 'text': msg}, timeout=12,
+        )
+        return 'ok' if resp.status_code in (200, 201) else 'erro'
+    except Exception as e:
+        log.warning(f'comprovante whatsapp falhou: {e}')
+        return 'erro'
 
 
 @app.route('/despachante/api/parcela/<int:pid>/estornar', methods=['POST'])
@@ -10571,6 +10686,111 @@ def desp_financeiro():
         servicos=DESP_SERVICOS)
 
 
+# ── Cobrança / Inadimplência ──────────────────────────────────────────────────
+
+def _fmt_data_br(iso: str) -> str:
+    """'2026-07-10' → '10/07/2026'. Devolve o original se não der pra converter."""
+    try:
+        return datetime.strptime((iso or '')[:10], '%Y-%m-%d').strftime('%d/%m/%Y')
+    except Exception:
+        return iso or ''
+
+
+def _desp_cobranca_rows(filtro: str = 'vencidas') -> list:
+    """Parcelas em aberto (não pagas) com dados do cliente/veículo, por filtro.
+    filtro: vencidas | hoje | semana | todas. Usa o banco do tenant atual."""
+    conn = get_desp_conn()
+    sql = """
+        SELECT p.id AS parcela_id, p.os_id, p.numero AS parcela, p.valor, p.vencimento,
+               os.numero AS os_numero, os.servico,
+               c.id AS cliente_id, c.nome AS cliente_nome, c.telefone,
+               v.placa,
+               CAST(julianday('now') - julianday(p.vencimento) AS INTEGER) AS dias_atraso
+        FROM os_parcelas p
+        JOIN ordens_servico os ON os.id = p.os_id
+        LEFT JOIN clientes c ON c.id = os.cliente_id
+        LEFT JOIN veiculos v ON v.id = os.veiculo_id
+        WHERE p.pago_em IS NULL AND os.status != 'cancelada'
+          AND p.vencimento IS NOT NULL AND p.vencimento != ''
+    """
+    if filtro == 'vencidas':
+        sql += " AND p.vencimento < date('now')"
+    elif filtro == 'hoje':
+        sql += " AND p.vencimento = date('now')"
+    elif filtro == 'semana':
+        sql += " AND p.vencimento >= date('now') AND p.vencimento <= date('now','+7 day')"
+    sql += " ORDER BY p.vencimento ASC"
+    rows = [dict(r) for r in conn.execute(sql).fetchall()]
+    conn.close()
+    return rows
+
+
+_DESP_COBRANCA_MSG_PADRAO = (
+    "Olá {nome}! 👋\n\n"
+    "Passando pra lembrar da *parcela {parcela}* no valor de *R$ {valor}* "
+    "com vencimento em *{vencimento}*, referente ao serviço do veículo {placa}.\n\n"
+    "Se já pagou, pode desconsiderar. Qualquer dúvida, estou à disposição. 🙂\n"
+    "— {despachante}"
+)
+
+
+@app.route('/despachante/cobranca')
+@_desp_login_required
+def desp_cobranca():
+    filtro = request.args.get('f', 'vencidas')
+    if filtro not in ('vencidas', 'hoje', 'semana', 'todas'):
+        filtro = 'vencidas'
+    rows = _desp_cobranca_rows(filtro)
+    for r in rows:
+        r['vencimento_br'] = _fmt_data_br(r['vencimento'])
+        r['dias_atraso']   = max(int(r.get('dias_atraso') or 0), 0)
+    total_aberto = round(sum(float(r['valor'] or 0) for r in rows), 2)
+    sem_tel      = sum(1 for r in rows if not (r.get('telefone') or '').strip())
+    return desp_render('cobranca.html',
+        parcelas=rows, filtro=filtro, total_aberto=total_aberto,
+        sem_tel=sem_tel, msg_padrao=_DESP_COBRANCA_MSG_PADRAO,
+        servicos=DESP_SERVICOS)
+
+
+@app.route('/despachante/cobranca/disparar', methods=['POST'])
+@_desp_login_required
+def desp_cobranca_disparar():
+    """Dispara WhatsApp de cobrança para as parcelas em aberto do filtro — em background."""
+    data         = request.get_json(silent=True) or {}
+    filtro       = data.get('filtro', 'vencidas')
+    mensagem_tpl = data.get('mensagem', '').strip()
+    delay_s      = max(1, min(30, int(data.get('delay', 4))))
+    if not mensagem_tpl:
+        return jsonify({'erro': 'Mensagem não pode estar vazia'}), 400
+    ok_plano, msg_plano = _desp_check_limit('whatsapp')
+    if not ok_plano:
+        return jsonify({'erro': msg_plano}), 403
+    evo_url, evo_key, evo_instance = _desp_get_evo_config()
+    if not evo_url or not evo_key or not evo_instance:
+        return jsonify({'erro': 'WhatsApp não configurado. Configure em ⚙️ Configurações.'}), 400
+    rows = _desp_cobranca_rows(filtro if filtro in ('vencidas','hoje','semana','todas') else 'vencidas')
+    contatos = []
+    for r in rows:
+        contatos.append({
+            'cliente':    r['cliente_nome'],
+            'telefone':   r['telefone'],
+            'placa':      r['placa'],
+            'valor_fmt':  f"{float(r['valor'] or 0):.2f}".replace('.', ','),
+            'vencimento': _fmt_data_br(r['vencimento']),
+            'parcela':    r['parcela'],
+            'dias':       max(int(r.get('dias_atraso') or 0), 0),
+        })
+    vars_extra = dict(
+        despachante=_desp_get_config()['nome'].title(),
+        whatsapp=_desp_get_config()['whatsapp_fmt'],
+        cidade=_desp_get_config()['cidade'],
+    )
+    job_id = _desp_new_job(len(contatos))
+    threading.Thread(target=_desp_dispatch_worker, daemon=True,
+                     args=(job_id, contatos, mensagem_tpl, evo_url, evo_key, evo_instance, delay_s, vars_extra)).start()
+    return jsonify({'job_id': job_id, 'total': len(contatos)})
+
+
 @app.route('/despachante/precos', methods=['GET', 'POST'])
 @_desp_admin_required
 def desp_precos():
@@ -10766,12 +10986,18 @@ def _desp_dispatch_worker(job_id: str, contatos: list, mensagem_tpl: str,
             tel = '55' + tel
         nome_curto = (c.get('cliente') or c.get('nome') or 'Cliente').split()[0].title()
         try:
-            msg = mensagem_tpl.format(
-                nome=nome_curto,
-                nome_completo=(c.get('cliente') or c.get('nome') or '').title(),
-                placa=(c.get('placa') or '').upper(),
-                **vars_extra,
-            )
+            fmt = {
+                'nome':          nome_curto,
+                'nome_completo': (c.get('cliente') or c.get('nome') or '').title(),
+                'placa':         (c.get('placa') or '').upper(),
+                # Variáveis por contato (usadas na cobrança; vazias nas demais campanhas)
+                'valor':         c.get('valor_fmt', ''),
+                'vencimento':    c.get('vencimento', ''),
+                'parcela':       c.get('parcela', ''),
+                'dias':          c.get('dias', ''),
+            }
+            fmt.update(vars_extra)
+            msg = mensagem_tpl.format(**fmt)
         except KeyError as e:
             job['results'].append({'nome': nome_curto, 'tel': tel, 'status': 'erro', 'detalhe': f'Variável inválida: {e}'})
             job['failed'] += 1
@@ -10945,9 +11171,9 @@ def desp_editar_os(id):
     f = request.form
     desp_atualizar_os(id, {
         'servico': f.get('servico', 'outros'),
-        'honorarios': float(f.get('honorarios') or 0),
-        'custos': float(f.get('custos') or 0),
-        'pago': float(f.get('pago') or 0),
+        'honorarios': _desp_money(f.get('honorarios')),
+        'custos': _desp_money(f.get('custos')),
+        'pago': _desp_money(f.get('pago')),
         'forma_pagamento': f.get('forma_pagamento', ''),
         'observacoes': f.get('observacoes', ''),
         'corpo_req': f.get('corpo_req', ''),

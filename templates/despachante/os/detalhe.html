@@ -697,35 +697,68 @@
 
 <!-- ── MODAL PARCELAS ── -->
 <div class="modal-overlay" id="modal-parcelas" onclick="if(event.target===this)this.classList.remove('open')">
-  <div class="modal-box" style="max-width:420px;">
+  <div class="modal-box" style="max-width:480px;">
     <div class="modal-title">⚙️ Configurar Parcelamento</div>
-    <div style="font-size:13px;color:var(--text2);margin-bottom:16px;">
+    <div style="font-size:13px;color:var(--text2);margin-bottom:14px;">
       Total da O.S.: <strong>R$ {{ "%.2f"|format(os.honorarios + os.custos) }}</strong>
     </div>
-    <div class="form-group">
-      <label class="form-label">Número de parcelas</label>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;">
-        {% for n in [1,2,3,4,5,6,10,12] %}
-        <button type="button" onclick="selecionarNParcelas({{ n }})"
-                id="npb-{{ n }}"
-                style="padding:8px 16px;border-radius:8px;border:1px solid var(--border2);
-                       background:var(--surface2);color:var(--text2);cursor:pointer;
-                       font-size:13px;font-weight:600;font-family:inherit;transition:all .15s;">
-          {{ n }}x
-        </button>
-        {% endfor %}
+
+    <!-- Toggle de modo -->
+    <div style="display:flex;gap:8px;margin-bottom:16px;">
+      <button type="button" id="modo-iguais-btn" onclick="setModoParc('iguais')"
+              style="flex:1;padding:8px;border-radius:8px;border:1px solid var(--border2);
+                     background:var(--accent);color:#fff;cursor:pointer;font-size:13px;font-weight:600;font-family:inherit;">
+        Parcelas iguais
+      </button>
+      <button type="button" id="modo-custom-btn" onclick="setModoParc('custom')"
+              style="flex:1;padding:8px;border-radius:8px;border:1px solid var(--border2);
+                     background:var(--surface2);color:var(--text2);cursor:pointer;font-size:13px;font-weight:600;font-family:inherit;">
+        Entrada + saldo
+      </button>
+    </div>
+
+    <!-- MODO IGUAIS -->
+    <div id="modo-iguais">
+      <div class="form-group">
+        <label class="form-label">Número de parcelas</label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          {% for n in [1,2,3,4,5,6,10,12] %}
+          <button type="button" onclick="selecionarNParcelas({{ n }})"
+                  id="npb-{{ n }}"
+                  style="padding:8px 16px;border-radius:8px;border:1px solid var(--border2);
+                         background:var(--surface2);color:var(--text2);cursor:pointer;
+                         font-size:13px;font-weight:600;font-family:inherit;transition:all .15s;">
+            {{ n }}x
+          </button>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Valor de cada parcela</label>
+        <input id="parc-valor-preview" class="input" type="text" readonly
+               style="background:var(--surface3);font-size:16px;font-weight:700;text-align:center;">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Vencimento da 1ª parcela</label>
+        <input id="parc-venc1" class="input" type="date">
+        <div style="font-size:11px;color:var(--text3);margin-top:4px;">As demais vencem de mês em mês.</div>
       </div>
     </div>
-    <div class="form-group">
-      <label class="form-label">Valor de cada parcela</label>
-      <input id="parc-valor-preview" class="input" type="text" readonly
-             style="background:var(--surface3);font-size:16px;font-weight:700;text-align:center;">
+
+    <!-- MODO CUSTOM (entrada + saldo em datas livres) -->
+    <div id="modo-custom" style="display:none;">
+      <label class="form-label">Parcelas (valor + vencimento)</label>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:8px;">
+        Ex.: 1ª à vista hoje, saldo em 10/07 e 10/08.
+      </div>
+      <div id="parc-rows"></div>
+      <button type="button" class="btn btn-ghost btn-sm" onclick="addParcRow()" style="margin-top:4px;">
+        ＋ Adicionar parcela
+      </button>
+      <div id="parc-soma" style="font-size:12px;color:var(--text2);margin-top:10px;text-align:right;"></div>
     </div>
-    <div class="form-group">
-      <label class="form-label">Vencimento da 1ª parcela</label>
-      <input id="parc-venc1" class="input" type="date">
-    </div>
-    <div class="form-group">
+
+    <div class="form-group" style="margin-top:14px;">
       <label class="form-label">Forma de pagamento</label>
       <select id="parc-forma" class="select">
         {% for f in ['','Dinheiro','PIX','Cartão de Crédito','Cartão de Débito','Transferência','Cheque','A definir'] %}
@@ -733,6 +766,7 @@
         {% endfor %}
       </select>
     </div>
+
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px;">
       <button class="btn btn-ghost" onclick="document.getElementById('modal-parcelas').classList.remove('open')">Cancelar</button>
       <button class="btn btn-primary" onclick="salvarParcelas()">💾 Salvar Parcelamento</button>
@@ -770,6 +804,15 @@
         🖨️ Abrir recibo para impressão após confirmar
       </label>
     </div>
+    <div style="display:flex;align-items:center;gap:8px;padding:10px 14px;
+                background:var(--surface2);border-radius:8px;border:1px solid var(--border2);
+                margin-bottom:4px;">
+      <input type="checkbox" id="baixa-whatsapp"
+             style="width:15px;height:15px;cursor:pointer;accent-color:#25d366;">
+      <label for="baixa-whatsapp" style="font-size:12px;color:var(--text2);cursor:pointer;flex:1;">
+        💬 Enviar comprovante no WhatsApp do cliente
+      </label>
+    </div>
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px;">
       <button class="btn btn-ghost" onclick="document.getElementById('modal-baixa').classList.remove('open')">Cancelar</button>
       <button class="btn btn-primary" id="baixa-confirmar" onclick="confirmarBaixa()" style="flex:1;">
@@ -796,6 +839,12 @@
         <div style="font-weight:600;font-size:14px;margin-bottom:4px;">Clique ou arraste o print aqui</div>
         <div style="font-size:12px;color:var(--text3);">JPG, PNG, WEBP · Máx. 10 MB</div>
       </div>
+      <input type="file" id="deb-arquivo-cam" accept="image/*" capture="environment"
+             style="display:none" onchange="debOnFile(this)">
+      <button type="button" class="btn btn-secondary btn-sm" style="width:100%;margin-top:8px;"
+              onclick="document.getElementById('deb-arquivo-cam').click()">
+        📷 Tirar foto agora (celular)
+      </button>
       <div id="deb-file-info" style="display:none;margin-top:12px;">
         <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;
                     background:var(--surface2);border-radius:10px;border:1px solid var(--border2);">
@@ -931,12 +980,29 @@ const OS_TOTAL   = {{ (os.honorarios + os.custos) | round(2) }};
 let _nParcelas   = {{ parcelas|length if parcelas else 1 }};
 let _parcBaixaId = null;
 
+let _modoParc = 'iguais';
+
 function abrirModalParcelas() {
   document.getElementById('modal-parcelas').classList.add('open');
-  selecionarNParcelas(_nParcelas);
+  setModoParc('iguais');
+  selecionarNParcelas(_nParcelas || 1);
   // Pré-preenche vencimento com hoje
-  const hoje = new Date();
-  document.getElementById('parc-venc1').value = hoje.toISOString().slice(0,10);
+  document.getElementById('parc-venc1').value = new Date().toISOString().slice(0,10);
+  // Inicia o modo custom com 2 linhas (entrada + saldo) se ainda vazio
+  if (document.querySelectorAll('#parc-rows .parc-row').length === 0) {
+    addParcRow(); addParcRow();
+  }
+}
+
+function setModoParc(m) {
+  _modoParc = m;
+  document.getElementById('modo-iguais').style.display = (m === 'iguais') ? 'block' : 'none';
+  document.getElementById('modo-custom').style.display = (m === 'custom') ? 'block' : 'none';
+  const a = document.getElementById('modo-iguais-btn');
+  const b = document.getElementById('modo-custom-btn');
+  [a, b].forEach(x => { x.style.background = 'var(--surface2)'; x.style.color = 'var(--text2)'; });
+  const on = (m === 'iguais') ? a : b;
+  on.style.background = 'var(--accent)'; on.style.color = '#fff';
 }
 
 function selecionarNParcelas(n) {
@@ -957,24 +1023,87 @@ function selecionarNParcelas(n) {
     `R$ ${val}${n > 1 ? ` × ${n} = R$ ${OS_TOTAL.toFixed(2)}` : ''}`;
 }
 
-async function salvarParcelas() {
-  const btn = event.target;
+// Converte texto BR ('1.500,00') em número
+function _pmoney(v) {
+  v = (v || '').toString().replace(/[^\d,.-]/g, '');
+  if (v.includes(',') && v.includes('.')) v = v.replace(/\./g, '').replace(',', '.');
+  else if (v.includes(',')) v = v.replace(',', '.');
+  const n = parseFloat(v);
+  return isNaN(n) ? 0 : n;
+}
+
+function addParcRow() {
+  const wrap = document.getElementById('parc-rows');
+  const hoje = new Date().toISOString().slice(0,10);
+  const div  = document.createElement('div');
+  div.className = 'parc-row';
+  div.style.cssText = 'display:flex;gap:6px;align-items:center;margin-bottom:6px;';
+  div.innerHTML =
+    '<input class="input parc-valor" type="text" inputmode="decimal" placeholder="Valor R$" ' +
+    'style="width:120px;" oninput="atualizarSomaParc()">' +
+    '<input class="input parc-venc" type="date" value="' + hoje + '" style="flex:1;">' +
+    '<button type="button" class="btn btn-ghost btn-sm" title="Remover" ' +
+    'onclick="this.closest(\'.parc-row\').remove();atualizarSomaParc()">✕</button>';
+  wrap.appendChild(div);
+  atualizarSomaParc();
+}
+
+function atualizarSomaParc() {
+  let s = 0;
+  document.querySelectorAll('#parc-rows .parc-valor').forEach(i => { s += _pmoney(i.value); });
+  const el   = document.getElementById('parc-soma');
+  const diff = +(OS_TOTAL - s).toFixed(2);
+  let extra  = ' ✅';
+  if (Math.abs(diff) > 0.01) {
+    const cor = diff > 0 ? 'var(--yellow)' : 'var(--red)';
+    extra = ` · <span style="color:${cor}">${diff > 0 ? 'falta' : 'excede'} R$ ${Math.abs(diff).toFixed(2)}</span>`;
+  }
+  el.innerHTML = `Soma: <strong>R$ ${s.toFixed(2)}</strong> / Total R$ ${OS_TOTAL.toFixed(2)}${extra}`;
+}
+
+async function salvarParcelas(forcar) {
+  const btn = (typeof event !== 'undefined' && event.target)
+    ? event.target
+    : document.querySelector('#modal-parcelas .btn-primary');
   btn.disabled = true; btn.textContent = '⏳ Salvando...';
+  const restore = () => { btn.disabled = false; btn.textContent = '💾 Salvar Parcelamento'; };
+
+  let body;
+  if (_modoParc === 'custom') {
+    const parcelas = [];
+    document.querySelectorAll('#parc-rows .parc-row').forEach(r => {
+      const v = _pmoney(r.querySelector('.parc-valor').value);
+      const d = r.querySelector('.parc-venc').value;
+      if (v > 0) parcelas.push({ valor: v, vencimento: d, forma: document.getElementById('parc-forma').value });
+    });
+    if (!parcelas.length) { alert('Informe ao menos uma parcela com valor.'); restore(); return; }
+    body = { parcelas, forcar: !!forcar };
+  } else {
+    body = {
+      total_parcelas: _nParcelas,
+      vencimento_1:   document.getElementById('parc-venc1').value,
+      forma:          document.getElementById('parc-forma').value,
+      forcar:         !!forcar,
+    };
+  }
+
   try {
     const r = await fetch(`/despachante/api/os/${OS_ID}/parcelas`, {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({
-        total_parcelas: _nParcelas,
-        vencimento_1:   document.getElementById('parc-venc1').value,
-        forma:          document.getElementById('parc-forma').value,
-      })
+      body: JSON.stringify(body),
     });
     const d = await r.json();
-    if (d.ok) location.reload();
-    else { alert('Erro: ' + (d.erro || 'Falha')); btn.disabled = false; btn.textContent = '💾 Salvar'; }
+    if (d.ok) { location.reload(); return; }
+    if (r.status === 409 && d.precisa_forcar) {
+      if (confirm((d.erro || '') + '\n\nDeseja refazer o parcelamento mesmo assim?')) {
+        return salvarParcelas(true);
+      }
+      restore(); return;
+    }
+    alert('Erro: ' + (d.erro || 'Falha')); restore();
   } catch(e) {
-    alert('Erro: ' + e.message); btn.disabled = false; btn.textContent = '💾 Salvar';
+    alert('Erro: ' + e.message); restore();
   }
 }
 
@@ -991,19 +1120,30 @@ async function confirmarBaixa() {
   if (!_parcBaixaId) return;
   const btn = document.getElementById('baixa-confirmar');
   const imprimir = document.getElementById('baixa-imprimir').checked;
+  const enviarWpp = document.getElementById('baixa-whatsapp').checked;
   btn.disabled = true; btn.textContent = '⏳ Registrando...';
   try {
     const r = await fetch(`/despachante/api/parcela/${_parcBaixaId}/baixa`, {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
       body: JSON.stringify({
-        forma:      document.getElementById('baixa-forma').value,
-        observacao: document.getElementById('baixa-obs').value,
+        forma:           document.getElementById('baixa-forma').value,
+        observacao:      document.getElementById('baixa-obs').value,
+        enviar_whatsapp: enviarWpp,
       })
     });
     const d = await r.json();
     if (d.ok) {
       document.getElementById('modal-baixa').classList.remove('open');
+      // Feedback do envio de comprovante por WhatsApp
+      if (enviarWpp && d.whatsapp && d.whatsapp !== 'ok') {
+        const aviso = {
+          sem_config: 'Comprovante NÃO enviado: WhatsApp não configurado (⚙️ Configurações).',
+          sem_tel:    'Comprovante NÃO enviado: cliente sem telefone.',
+          erro:       'Comprovante NÃO enviado: falha no envio do WhatsApp.',
+        }[d.whatsapp] || 'Comprovante não enviado.';
+        alert('⚠️ ' + aviso);
+      }
       // Abre recibo em nova aba se marcado
       if (imprimir) {
         window.open(`/despachante/print/recibo/${_parcBaixaId}`, '_blank');
