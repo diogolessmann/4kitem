@@ -4498,6 +4498,31 @@ def _sync_assinaturas_asaas():
 
 # ── WEBHOOK ASAAS ─────────────────────────────────────────────────────────────
 
+def _confirmar_jukebox_por_ext_ref(ext_ref, pay_id=''):
+    """Confirma um pedido de jukebox a partir do externalReference 'jukebox_<id>'.
+    Idempotente. Chamada pelos DOIS webhooks (assinatura e jukebox) — assim um
+    único webhook configurado no Asaas (qualquer das duas URLs) confirma tudo.
+    No-op se o ext_ref não for de jukebox.
+    """
+    if not ext_ref or not ext_ref.startswith('jukebox_'):
+        return
+    _parts = ext_ref.split('_', 1)
+    if len(_parts) < 2 or not _parts[1].isdigit():
+        log.warning('[PUBSHOW] Webhook jukebox: ext_ref inválida: %s', ext_ref)
+        return
+    pedido_id = int(_parts[1])
+    try:
+        conn = get_pubshow_db()
+        conn.execute(
+            "UPDATE pubshow_pedidos SET status='pendente' WHERE id=? AND status='aguardando_pix'",
+            (pedido_id,)
+        )
+        conn.commit(); conn.close()
+        log.info('[PUBSHOW] Jukebox PIX confirmado — pedido #%s (Asaas %s)', pedido_id, pay_id)
+    except Exception as ex:
+        log.error('[PUBSHOW] Confirmar jukebox erro: %s', ex, exc_info=True)
+
+
 @pubshow_bp.route('/webhook/asaas', methods=['GET', 'POST'])
 def webhook_asaas():
     """Recebe eventos de assinatura do Asaas.
@@ -4530,6 +4555,8 @@ def webhook_asaas():
 
     # ── Pagamento confirmado / assinatura ativada ─────────────────────────────
     if evento in ('PAYMENT_RECEIVED', 'PAYMENT_CONFIRMED', 'SUBSCRIPTION_ACTIVATED'):
+        # Um único webhook serve assinatura E jukebox — confirma o jukebox se for o caso
+        _confirmar_jukebox_por_ext_ref(ext_ref, pagamento.get('id', ''))
         if ext_ref.startswith('pubshow_'):
             partes = ext_ref.split('_')
             if len(partes) >= 3:
@@ -4628,22 +4655,7 @@ def webhook_asaas_jukebox():
 
     log.info('[PUBSHOW] Webhook Jukebox: evento=%s ref=%s', evento, ext_ref)
 
-    if evento in ('PAYMENT_RECEIVED', 'PAYMENT_CONFIRMED') and ext_ref.startswith('jukebox_'):
-        try:
-            _parts = ext_ref.split('_', 1)
-            if len(_parts) < 2 or not _parts[1].isdigit():
-                log.warning('[PUBSHOW] Webhook jukebox: ext_ref inválida: %s', ext_ref)
-                return jsonify({'ok': False}), 200
-            pedido_id = int(_parts[1])
-            conn = get_pubshow_db()
-            conn.execute(
-                "UPDATE pubshow_pedidos SET status='pendente' WHERE id=? AND status='aguardando_pix'",
-                (pedido_id,)
-            )
-            conn.commit()
-            conn.close()
-            log.info('[PUBSHOW] Jukebox PIX confirmado — pedido #%s (Asaas %s)', pedido_id, pay_id)
-        except Exception as ex:
-            log.error('[PUBSHOW] Webhook Jukebox erro: %s', ex, exc_info=True)
+    if evento in ('PAYMENT_RECEIVED', 'PAYMENT_CONFIRMED'):
+        _confirmar_jukebox_por_ext_ref(ext_ref, pay_id)
 
     return jsonify({'status': 'ok'}), 200
