@@ -292,6 +292,9 @@
         <a href="{{ url_for('desp_kanban') }}" class="nav-link {% if request.endpoint == 'desp_kanban' %}active{% endif %}">
           <span class="icon">🗂️</span> Kanban
         </a>
+        <a href="{{ url_for('desp_os2_nova') }}" class="nav-link {% if request.endpoint in ('desp_os2_nova','desp_os2_editar') %}active{% endif %}">
+          <span class="icon">🆕</span> O.S. Bludata <span style="font-size:9px;background:var(--accent);color:#fff;padding:1px 5px;border-radius:6px;margin-left:2px;">beta</span>
+        </a>
         <a href="{{ url_for('desp_nova_os') }}" class="nav-link {% if request.endpoint == 'desp_nova_os' %}active{% endif %}">
           <span class="icon">➕</span> Nova O.S.
         </a>

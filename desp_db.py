@@ -467,6 +467,37 @@ def init_db():
         # ── Performance: índice em atualizado_em ──
         "CREATE INDEX IF NOT EXISTS idx_desp_os_atualizado ON ordens_servico(atualizado_em DESC)",
         "CREATE INDEX IF NOT EXISTS idx_desp_os_status ON ordens_servico(status)",
+        # ── Bludata-style: itens unificados da O.S. (serviços + débitos como linhas) ──
+        """CREATE TABLE IF NOT EXISTS os_itens (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            os_id       INTEGER NOT NULL REFERENCES ordens_servico(id) ON DELETE CASCADE,
+            codigo      TEXT,
+            descricao   TEXT    NOT NULL,
+            vencimento  TEXT,
+            valor       REAL    DEFAULT 0,
+            tipo        TEXT    DEFAULT 'servico',
+            ordem       INTEGER DEFAULT 0,
+            criado_em   TEXT    DEFAULT CURRENT_TIMESTAMP
+        )""",
+        "CREATE INDEX IF NOT EXISTS idx_os_itens_os ON os_itens(os_id)",
+        "ALTER TABLE ordens_servico ADD COLUMN acrescimo REAL DEFAULT 0",
+        "ALTER TABLE ordens_servico ADD COLUMN desconto  REAL DEFAULT 0",
+        # ── Trilha de processo (tela 'Situação Atual' estilo Bludata) ──
+        "ALTER TABLE ordens_servico ADD COLUMN proc_situacao   TEXT",
+        "ALTER TABLE ordens_servico ADD COLUMN ent_escritorio  TEXT",
+        "ALTER TABLE ordens_servico ADD COLUMN entr_detran     TEXT",
+        "ALTER TABLE ordens_servico ADD COLUMN lib_detran      TEXT",
+        "ALTER TABLE ordens_servico ADD COLUMN ret_problema    TEXT",
+        "ALTER TABLE ordens_servico ADD COLUMN entrega_cliente TEXT",
+        "ALTER TABLE ordens_servico ADD COLUMN postagem        TEXT",
+        "ALTER TABLE ordens_servico ADD COLUMN venc_vistoria   TEXT",
+        "ALTER TABLE ordens_servico ADD COLUMN venc_crv        TEXT",
+        "ALTER TABLE ordens_servico ADD COLUMN licenc_data     TEXT",
+        "ALTER TABLE ordens_servico ADD COLUMN protocolo_crlv     TEXT",
+        "ALTER TABLE ordens_servico ADD COLUMN protocolo_crlv_em  TEXT",
+        "ALTER TABLE ordens_servico ADD COLUMN protocolo_crv      TEXT",
+        "ALTER TABLE ordens_servico ADD COLUMN protocolo_crv_em   TEXT",
+        "ALTER TABLE ordens_servico ADD COLUMN num_seg_crv        TEXT",
     ]
     for sql in _migrations:
         try:
@@ -1194,6 +1225,107 @@ def total_debitos(os_id: int) -> float:
     ).fetchone()
     conn.close()
     return float(row[0])
+
+
+# ── Itens unificados da O.S. (estilo Bludata: serviços + débitos como linhas) ──
+
+def listar_itens_os(os_id: int) -> list:
+    """Itens persistidos da O.S. (grade Bludata)."""
+    conn = get_conn()
+    rows = conn.execute(
+        "SELECT id, codigo, descricao, vencimento, valor, tipo, ordem "
+        "FROM os_itens WHERE os_id=? ORDER BY ordem, id", (os_id,)
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def recalc_totais_os(os_id: int) -> dict:
+    """Recalcula honorarios/custos/total a partir dos os_itens — BRIDGE para os
+    relatórios/financeiro antigos que leem essas colunas.
+    honorarios = soma dos itens tipo 'servico'; custos = soma de 'debito'/'taxa';
+    total = soma de todos + acrescimo - desconto."""
+    conn = get_conn()
+    serv = float(conn.execute(
+        "SELECT COALESCE(SUM(valor),0) FROM os_itens WHERE os_id=? AND tipo='servico'", (os_id,)
+    ).fetchone()[0])
+    deb = float(conn.execute(
+        "SELECT COALESCE(SUM(valor),0) FROM os_itens WHERE os_id=? AND tipo IN ('debito','taxa')", (os_id,)
+    ).fetchone()[0])
+    row = conn.execute(
+        "SELECT COALESCE(acrescimo,0), COALESCE(desconto,0) FROM ordens_servico WHERE id=?", (os_id,)
+    ).fetchone()
+    acres, desc = (float(row[0]), float(row[1])) if row else (0.0, 0.0)
+    total = round(serv + deb + acres - desc, 2)
+    conn.execute(
+        "UPDATE ordens_servico SET honorarios=?, custos=?, total=?, atualizado_em=CURRENT_TIMESTAMP WHERE id=?",
+        (round(serv, 2), round(deb, 2), total, os_id)
+    )
+    conn.commit()
+    conn.close()
+    return {"honorarios": round(serv, 2), "custos": round(deb, 2),
+            "acrescimo": acres, "desconto": desc, "total": total}
+
+
+def salvar_itens_os(os_id: int, itens: list) -> dict:
+    """Substitui todos os itens da O.S. pela nova lista e recalcula os totais.
+    itens: [{codigo, descricao, vencimento, valor, tipo}]"""
+    conn = get_conn()
+    conn.execute("DELETE FROM os_itens WHERE os_id=?", (os_id,))
+    ordem = 0
+    for it in itens:
+        desc = (it.get("descricao") or "").strip()
+        if not desc:
+            continue
+        ordem += 1
+        conn.execute(
+            "INSERT INTO os_itens (os_id, codigo, descricao, vencimento, valor, tipo, ordem) "
+            "VALUES (?,?,?,?,?,?,?)",
+            (os_id, (it.get("codigo") or "").strip(), desc,
+             (it.get("vencimento") or "").strip() or None,
+             _parse_valor(it.get("valor")), (it.get("tipo") or "servico").strip(), ordem)
+        )
+    conn.commit()
+    conn.close()
+    return recalc_totais_os(os_id)
+
+
+def deletar_item_os(item_id: int):
+    conn = get_conn()
+    row = conn.execute("SELECT os_id FROM os_itens WHERE id=?", (item_id,)).fetchone()
+    conn.execute("DELETE FROM os_itens WHERE id=?", (item_id,))
+    conn.commit()
+    conn.close()
+    if row:
+        recalc_totais_os(row["os_id"])
+
+
+def itens_os_view(os_id: int) -> list:
+    """Itens para EXIBIR na tela nova: usa os_itens se houver; senão sintetiza EM MEMÓRIA
+    (sem gravar) a partir do modelo antigo (honorário + débitos). Só materializa no 1º save."""
+    itens = listar_itens_os(os_id)
+    if itens:
+        return itens
+    conn = get_conn()
+    os_row = conn.execute(
+        "SELECT servico, honorarios FROM ordens_servico WHERE id=?", (os_id,)
+    ).fetchone()
+    debs = conn.execute(
+        "SELECT descricao, tipo, valor, vencimento FROM debitos_veiculo "
+        "WHERE os_id=? ORDER BY tipo, vencimento", (os_id,)
+    ).fetchall()
+    conn.close()
+    out = []
+    if os_row and float(os_row["honorarios"] or 0) > 0:
+        label = SERVICOS.get(os_row["servico"], os_row["servico"] or "Serviço")
+        out.append({"id": None, "codigo": os_row["servico"], "descricao": label,
+                    "vencimento": "", "valor": float(os_row["honorarios"]),
+                    "tipo": "servico", "ordem": 0})
+    for d in debs:
+        out.append({"id": None, "codigo": "", "descricao": d["descricao"] or d["tipo"],
+                    "vencimento": d["vencimento"] or "", "valor": float(d["valor"] or 0),
+                    "tipo": "debito", "ordem": len(out)})
+    return out
 
 
 # ── Histórico da O.S. ────────────────────────────────────────────────────────

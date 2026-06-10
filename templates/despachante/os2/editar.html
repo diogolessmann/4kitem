@@ -1,0 +1,319 @@
+{% extends 'despachante/base.html' %}
+{% block title %}O.S. {{ os.numero if os else 'Nova' }} · Bludata{% endblock %}
+
+{% set placa   = (os.placa if os else (veiculo.placa if veiculo else '')) %}
+{% set renavam = (os.renavam if os else (veiculo.renavam if veiculo else '')) %}
+{% set chassi  = (os.chassi if os else (veiculo.chassi if veiculo else '')) %}
+{% set marca   = (os.marca if os else (veiculo.marca if veiculo else '')) %}
+{% set modelo  = (os.modelo if os else (veiculo.modelo if veiculo else '')) %}
+{% set cor     = (os.cor if os else (veiculo.cor if veiculo else '')) %}
+{% set anofab  = (os.ano_fab if os else (veiculo.ano_fab if veiculo else '')) %}
+{% set anomod  = (os.ano_mod if os else (veiculo.ano_mod if veiculo else '')) %}
+{% set categoria = (os.categoria if os else (veiculo.categoria if veiculo else '')) %}
+{% set combustivel = (os.combustivel if os else (veiculo.combustivel if veiculo else '')) %}
+{% set numcrv  = (os.num_crv if os else (veiculo.num_crv if veiculo else '')) %}
+{% set cli_nome = (os.cliente_nome if os else (cliente.nome if cliente else '')) %}
+{% set cli_cpf  = (os.cpf if os else (cliente.cpf if cliente else '')) %}
+{% set cli_rg   = (os.rg if os else (cliente.rg if cliente else '')) %}
+{% set cli_nasc = (os.nascimento if os else (cliente.nascimento if cliente else '')) %}
+{% set cli_mae  = (os.nome_mae if os else (cliente.nome_mae if cliente else '')) %}
+{% set cli_tel  = (os.telefone if os else (cliente.telefone if cliente else '')) %}
+{% set cli_email = (os.email if os else (cliente.email if cliente else '')) %}
+{% set cli_cep  = (os.cep if os else (cliente.cep if cliente else '')) %}
+{% set cli_rua  = (os.logradouro if os else (cliente.logradouro if cliente else '')) %}
+{% set cli_num  = (os.endereco_num if os else (cliente.numero if cliente else '')) %}
+{% set cli_bairro = (os.bairro if os else (cliente.bairro if cliente else '')) %}
+{% set cli_cidade = (os.cidade if os else (cliente.cidade if cliente else '')) %}
+{% set cli_uf   = (os.uf if os else (cliente.uf if cliente else 'SC')) %}
+{% set cli_id   = (os.cliente_id if os else (cliente.id if cliente else '')) %}
+{% set vei_id   = (os.veiculo_id if os else (veiculo.id if veiculo else '')) %}
+
+{% block extra_style %}
+.bx-grid { display:grid; gap:10px; }
+.bx-row  { display:grid; gap:8px; }
+.bx-card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:14px 16px; margin-bottom:12px; }
+.bx-card h3 { font-size:12px; text-transform:uppercase; letter-spacing:.5px; color:var(--text3); margin:0 0 10px; font-weight:700; }
+.bx-field { display:flex; flex-direction:column; gap:3px; }
+.bx-field label { font-size:10px; text-transform:uppercase; color:var(--text3); font-weight:600; }
+.bx-field input, .bx-field select { padding:7px 9px; background:var(--surface2); border:1px solid var(--border2); border-radius:6px; color:var(--text); font-size:13px; font-family:inherit; }
+.itens-table { width:100%; border-collapse:collapse; font-size:13px; }
+.itens-table th { font-size:10px; text-transform:uppercase; color:var(--text3); text-align:left; padding:6px 8px; border-bottom:1px solid var(--border2); }
+.itens-table td { padding:4px 6px; border-bottom:1px solid var(--border); }
+.itens-table input { width:100%; padding:6px 7px; background:var(--surface2); border:1px solid var(--border2); border-radius:5px; color:var(--text); font-size:13px; font-family:inherit; }
+.itens-table input.v-val { text-align:right; font-weight:600; }
+.fin-bar { display:flex; flex-wrap:wrap; gap:14px; background:var(--surface2); border:1px solid var(--border2); border-radius:10px; padding:12px 16px; margin-top:12px; }
+.fin-item { display:flex; flex-direction:column; gap:2px; min-width:110px; }
+.fin-item label { font-size:10px; text-transform:uppercase; color:var(--text3); font-weight:600; }
+.fin-item .v { font-size:18px; font-weight:800; }
+.fin-item input { width:110px; padding:5px 8px; background:var(--surface); border:1px solid var(--border2); border-radius:6px; color:var(--text); font-size:15px; font-weight:700; text-align:right; font-family:inherit; }
+.picker-modal { display:none; position:fixed; inset:0; z-index:300; background:rgba(0,0,0,.75); align-items:center; justify-content:center; }
+.picker-modal.open { display:flex; }
+.picker-box { background:var(--surface); border:1px solid var(--border2); border-radius:14px; padding:18px; width:100%; max-width:520px; max-height:80vh; overflow-y:auto; margin:16px; }
+.picker-item { padding:8px 10px; border-radius:7px; cursor:pointer; font-size:13px; display:flex; justify-content:space-between; gap:8px; }
+.picker-item:hover { background:var(--surface2); }
+{% endblock %}
+
+{% block topbar_title %}🧾 O.S. <strong>{{ os.numero if os else 'Nova' }}</strong> · estilo Bludata{% endblock %}
+{% block topbar_actions %}
+  {% if os %}<a href="/despachante/os2/{{ os.id }}/print" target="_blank" class="btn btn-secondary btn-sm">🖨️ Imprimir</a>{% endif %}
+  <button class="btn btn-secondary btn-sm" onclick="ocrPrint()">📸 Preencher com Print</button>
+  <button class="btn btn-primary btn-sm" id="btn-salvar" onclick="salvarOS()">💾 {{ 'Salvar' if os else 'Gerar O.S.' }}</button>
+  <a href="{{ url_for('desp_lista_os') }}" class="btn btn-ghost btn-sm">← Voltar</a>
+{% endblock %}
+
+{% block content %}
+<input type="hidden" id="os-id" value="{{ os.id if os else '' }}">
+<input type="hidden" id="cli-id" value="{{ cli_id }}">
+<input type="hidden" id="vei-id" value="{{ vei_id }}">
+
+<!-- Cabeçalho -->
+<div class="bx-card">
+  <h3>Ordem de Serviço</h3>
+  <div class="bx-row" style="grid-template-columns:repeat(5,1fr);">
+    <div class="bx-field"><label>Nº O.S.</label><input value="{{ os.numero if os else '(gerado ao salvar)' }}" readonly></div>
+    <div class="bx-field"><label>Placa</label><input id="v_placa" value="{{ placa }}" style="text-transform:uppercase;font-weight:700;"></div>
+    <div class="bx-field"><label>Chassi</label><input id="v_chassi" value="{{ chassi }}"></div>
+    <div class="bx-field"><label>RENAVAM</label><input id="v_renavam" value="{{ renavam }}"></div>
+    <div class="bx-field"><label>Exercício</label><input id="exercicio" type="number" value="{{ os.exercicio if os else hoje.year }}"></div>
+  </div>
+</div>
+
+<!-- Veículo -->
+<div class="bx-card">
+  <h3>🚗 Veículo</h3>
+  <div class="bx-row" style="grid-template-columns:2fr 2fr 1fr 1fr;">
+    <div class="bx-field"><label>Marca</label><input id="v_marca" value="{{ marca }}"></div>
+    <div class="bx-field"><label>Modelo</label><input id="v_modelo" value="{{ modelo }}"></div>
+    <div class="bx-field"><label>Ano Fab.</label><input id="v_anofab" value="{{ anofab }}"></div>
+    <div class="bx-field"><label>Ano Mod.</label><input id="v_anomod" value="{{ anomod }}"></div>
+  </div>
+  <div class="bx-row" style="grid-template-columns:1fr 1fr 1fr 1fr;margin-top:8px;">
+    <div class="bx-field"><label>Cor</label><input id="v_cor" value="{{ cor }}"></div>
+    <div class="bx-field"><label>Categoria</label><input id="v_categoria" value="{{ categoria }}"></div>
+    <div class="bx-field"><label>Combustível</label><input id="v_combustivel" value="{{ combustivel }}"></div>
+    <div class="bx-field"><label>Nº CRV</label><input id="v_crv" value="{{ numcrv }}"></div>
+  </div>
+</div>
+
+<!-- Cliente -->
+<div class="bx-card">
+  <h3>👤 Cliente / Proprietário</h3>
+  <div class="bx-row" style="grid-template-columns:3fr 1.3fr 1.3fr 1.3fr;">
+    <div class="bx-field"><label>Nome</label><input id="c_nome" value="{{ cli_nome }}"></div>
+    <div class="bx-field"><label>CPF/CNPJ</label><input id="c_cpf" value="{{ cli_cpf }}"></div>
+    <div class="bx-field"><label>RG</label><input id="c_rg" value="{{ cli_rg }}"></div>
+    <div class="bx-field"><label>Telefone</label><input id="c_tel" value="{{ cli_tel }}"></div>
+  </div>
+  <div class="bx-row" style="grid-template-columns:2fr 1fr 2fr 1.5fr 0.6fr;margin-top:8px;">
+    <div class="bx-field"><label>Endereço</label><input id="c_rua" value="{{ cli_rua }}"></div>
+    <div class="bx-field"><label>Nº</label><input id="c_num" value="{{ cli_num }}"></div>
+    <div class="bx-field"><label>Bairro</label><input id="c_bairro" value="{{ cli_bairro }}"></div>
+    <div class="bx-field"><label>Cidade</label><input id="c_cidade" value="{{ cli_cidade }}"></div>
+    <div class="bx-field"><label>UF</label><input id="c_uf" value="{{ cli_uf }}"></div>
+  </div>
+</div>
+
+<!-- Itens da O.S. -->
+<div class="bx-card">
+  <h3 style="display:flex;justify-content:space-between;align-items:center;">
+    <span>📋 Itens da Ordem de Serviço</span>
+    <span style="display:flex;gap:6px;">
+      <button class="btn btn-secondary btn-sm" onclick="abrirPicker()">➕ Serviço</button>
+      <button class="btn btn-ghost btn-sm" onclick="addItem('', '', 'servico')">➕ Linha</button>
+      <button class="btn btn-ghost btn-sm" onclick="importarDetranet()">🖥️ Importar DETRANET</button>
+    </span>
+  </h3>
+  <table class="itens-table">
+    <thead><tr>
+      <th style="width:80px;">Cód.</th><th>Descrição</th>
+      <th style="width:140px;">Vencimento</th><th style="width:120px;text-align:right;">Valor (R$)</th><th style="width:30px;"></th>
+    </tr></thead>
+    <tbody id="itens-body"></tbody>
+  </table>
+
+  <!-- Barra financeira (rótulos Bludata) -->
+  <div class="fin-bar">
+    <div class="fin-item"><label>Vlr Bruto</label><span class="v" id="fin-bruto" style="color:var(--text);">R$ 0,00</span></div>
+    <div class="fin-item"><label>Acréscimo</label><input id="fin-acres" type="text" inputmode="decimal" value="{{ '%.2f'|format(os.acrescimo or 0)|replace('.',',') if os else '0,00' }}" oninput="recalcBar()"></div>
+    <div class="fin-item"><label>Desconto</label><input id="fin-desc" type="text" inputmode="decimal" value="{{ '%.2f'|format(os.desconto or 0)|replace('.',',') if os else '0,00' }}" oninput="recalcBar()"></div>
+    <div class="fin-item"><label>Vlr Pago</label><input id="fin-pago" type="text" inputmode="decimal" value="{{ '%.2f'|format(os.pago or 0)|replace('.',',') if os else '0,00' }}" oninput="recalcBar()"></div>
+    <div class="fin-item"><label>Vlr Recebido</label><span class="v" id="fin-receb" style="color:var(--green);">R$ 0,00</span></div>
+    <div class="fin-item"><label>Vlr A Receber</label><span class="v" id="fin-areceber" style="color:var(--yellow);">R$ 0,00</span></div>
+  </div>
+</div>
+
+<!-- Observações -->
+<div class="bx-card">
+  <h3>📝 Observações</h3>
+  <textarea id="observacoes" rows="3" style="width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;color:var(--text);padding:8px;font-family:inherit;font-size:13px;">{{ os.observacoes if os else '' }}</textarea>
+</div>
+
+<!-- Picker de serviço -->
+<div class="picker-modal" id="picker" onclick="if(event.target===this)fecharPicker()">
+  <div class="picker-box">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+      <strong>Consulta de Serviços</strong>
+      <button onclick="fecharPicker()" style="background:none;border:none;color:var(--text3);font-size:18px;cursor:pointer;">✕</button>
+    </div>
+    <input id="picker-busca" placeholder="Digite as primeiras letras…" oninput="filtrarPicker()"
+           style="width:100%;padding:8px 10px;background:var(--surface2);border:1px solid var(--border2);border-radius:7px;color:var(--text);margin-bottom:10px;font-family:inherit;">
+    <div id="picker-list">
+      {% for gkey, grupo in servicos_grupos.items() %}
+        <div style="font-size:10px;text-transform:uppercase;color:var(--text3);font-weight:700;margin:8px 0 2px;">{{ grupo.icon }} {{ grupo.label }}</div>
+        {% for skey, slabel in grupo['items'].items() %}
+        <div class="picker-item" data-busca="{{ slabel|lower }}" onclick="escolherServico('{{ skey }}', {{ slabel|tojson }})">
+          <span>{{ slabel }}</span><span style="color:var(--text3);font-family:monospace;font-size:11px;">{{ skey }}</span>
+        </div>
+        {% endfor %}
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_script %}
+<script>
+const OS_ID    = document.getElementById('os-id').value || null;
+const ITENS_INI = {{ itens|tojson }};
+
+function brl(n){ return 'R$ ' + (Number(n)||0).toFixed(2).replace('.', ','); }
+function money(v){ v=(v||'').toString().replace(/[^\d,.-]/g,''); if(v.includes(',')&&v.includes('.'))v=v.replace(/\./g,'').replace(',','.'); else if(v.includes(','))v=v.replace(',','.'); const n=parseFloat(v); return isNaN(n)?0:n; }
+
+function addItem(codigo, descricao, tipo, valor, vencimento){
+  const tb = document.getElementById('itens-body');
+  const tr = document.createElement('tr');
+  tr.innerHTML =
+    `<td><input class="v-cod" value="${codigo||''}"></td>`+
+    `<td><input class="v-desc" value="${(descricao||'').replace(/"/g,'&quot;')}"></td>`+
+    `<td><input class="v-venc" type="date" value="${vencimento||''}"></td>`+
+    `<td><input class="v-val" type="text" inputmode="decimal" value="${valor!=null?Number(valor).toFixed(2).replace('.',','):''}" oninput="recalcBar()"></td>`+
+    `<td style="text-align:center;"><button onclick="this.closest('tr').remove();recalcBar()" style="background:none;border:none;color:var(--text3);cursor:pointer;">✕</button></td>`;
+  tr.dataset.tipo = tipo || 'servico';
+  tb.appendChild(tr);
+  recalcBar();
+}
+
+function recalcBar(){
+  let bruto = 0;
+  document.querySelectorAll('#itens-body .v-val').forEach(i => bruto += money(i.value));
+  const acres = money(document.getElementById('fin-acres').value);
+  const desc  = money(document.getElementById('fin-desc').value);
+  const pago  = money(document.getElementById('fin-pago').value);
+  const total = bruto + acres - desc;
+  document.getElementById('fin-bruto').textContent     = brl(bruto);
+  document.getElementById('fin-receb').textContent     = brl(pago);
+  document.getElementById('fin-areceber').textContent  = brl(Math.max(0, total - pago));
+}
+
+// Picker de serviço
+function abrirPicker(){ document.getElementById('picker').classList.add('open'); document.getElementById('picker-busca').focus(); }
+function fecharPicker(){ document.getElementById('picker').classList.remove('open'); }
+function filtrarPicker(){
+  const q = document.getElementById('picker-busca').value.toLowerCase();
+  document.querySelectorAll('#picker-list .picker-item').forEach(el => {
+    el.style.display = el.dataset.busca.includes(q) ? '' : 'none';
+  });
+}
+function escolherServico(codigo, label){ addItem(codigo, label, 'servico'); fecharPicker(); }
+
+// Importar débitos do DETRANET (reusa OCR de débitos)
+function importarDetranet(){
+  const inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = 'image/*';
+  inp.onchange = async () => {
+    if(!inp.files[0]) return;
+    const fd = new FormData(); fd.append('arquivo', inp.files[0]);
+    const btn = event ? null : null;
+    try{
+      const r = await fetch('/despachante/api/ocr/debitos', {method:'POST', body:fd});
+      const d = await r.json();
+      if(!r.ok){ alert('Erro: '+(d.erro||'falha')); return; }
+      (d.debitos||[]).forEach(db => {
+        const venc = (db.vencimento||'').split('/').reverse().join('-');  // dd/mm/aaaa -> aaaa-mm-dd
+        addItem('', db.descricao || db.tipo || 'Débito', 'debito', money(db.valor), /^\d{4}-\d{2}-\d{2}$/.test(venc)?venc:'');
+      });
+    }catch(e){ alert('Erro: '+e.message); }
+  };
+  inp.click();
+}
+
+// Preencher com print (OCR genérico) — preenche veículo/cliente
+async function ocrPrint(){
+  const inp = document.createElement('input');
+  inp.type='file'; inp.accept='image/*';
+  inp.onchange = () => {
+    const f = inp.files[0]; if(!f) return;
+    const rd = new FileReader();
+    rd.onload = async e => {
+      const b64 = e.target.result.split(',')[1];
+      try{
+        const r = await fetch('/despachante/api/ocr', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({imagem:b64, mime:f.type})});
+        const d = await r.json();
+        if(!r.ok || !d.dados){ alert('Erro no OCR: '+(d.erro||'falha')); return; }
+        const x = d.dados;
+        const set = (id,val) => { if(val){ const el=document.getElementById(id); if(el && !el.value) el.value = val; } };
+        set('v_placa', (x.placa||'').toUpperCase()); set('v_renavam', x.renavam); set('v_chassi', x.chassi);
+        set('v_marca', x.marca); set('v_modelo', x.modelo); set('v_anofab', x.ano_fab); set('v_anomod', x.ano_mod);
+        set('v_cor', x.cor); set('v_categoria', x.categoria); set('v_combustivel', x.combustivel); set('v_crv', x.num_crv);
+        set('c_nome', x.nome); set('c_cpf', x.cpf||x.cnpj); set('c_rg', x.rg); set('c_tel', x.telefone);
+        set('c_rua', x.logradouro); set('c_num', x.numero); set('c_bairro', x.bairro); set('c_cidade', x.cidade); set('c_uf', x.uf);
+        // débitos reais viram itens
+        if(x.ipva)          addItem('', 'IPVA', 'debito', x.ipva);
+        if(x.licenciamento) addItem('', 'Licenciamento', 'debito', x.licenciamento);
+        if(x.multas)        addItem('', 'Multas', 'debito', x.multas);
+      }catch(err){ alert('Erro: '+err.message); }
+    };
+    rd.readAsDataURL(f);
+  };
+  inp.click();
+}
+
+function coletarItens(){
+  const itens = [];
+  document.querySelectorAll('#itens-body tr').forEach(tr => {
+    const desc = tr.querySelector('.v-desc').value.trim();
+    if(!desc) return;
+    itens.push({
+      codigo: tr.querySelector('.v-cod').value.trim(),
+      descricao: desc,
+      vencimento: tr.querySelector('.v-venc').value,
+      valor: money(tr.querySelector('.v-val').value),
+      tipo: tr.dataset.tipo || 'servico',
+    });
+  });
+  return itens;
+}
+
+async function salvarOS(){
+  const btn = document.getElementById('btn-salvar');
+  const itens = coletarItens();
+  if(!itens.length){ alert('Adicione ao menos um item à O.S.'); return; }
+  btn.disabled = true; btn.textContent = '⏳ Salvando...';
+  const payload = {
+    cliente: { id: document.getElementById('cli-id').value||null, tipo: (document.getElementById('c_cpf').value.replace(/\D/g,'').length>11?'PJ':'PF'),
+      nome: c('c_nome'), cpf: c('c_cpf'), rg: c('c_rg'), telefone: c('c_tel'),
+      logradouro: c('c_rua'), numero: c('c_num'), bairro: c('c_bairro'), cidade: c('c_cidade'), uf: c('c_uf') },
+    veiculo: { id: document.getElementById('vei-id').value||null, placa: c('v_placa'), renavam: c('v_renavam'), chassi: c('v_chassi'),
+      marca: c('v_marca'), modelo: c('v_modelo'), ano_fab: c('v_anofab'), ano_mod: c('v_anomod'),
+      cor: c('v_cor'), categoria: c('v_categoria'), combustivel: c('v_combustivel'), num_crv: c('v_crv') },
+    itens: itens,
+    os: { acrescimo: document.getElementById('fin-acres').value, desconto: document.getElementById('fin-desc').value,
+      pago: document.getElementById('fin-pago').value, observacoes: document.getElementById('observacoes').value,
+      exercicio: document.getElementById('exercicio').value },
+  };
+  const url = OS_ID ? `/despachante/os2/${OS_ID}/salvar` : '/despachante/os2/salvar';
+  try{
+    const r = await fetch(url, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
+    const d = await r.json();
+    if(d.ok){ window.location = `/despachante/os2/${d.os_id}`; }
+    else { alert('Erro: '+(d.erro||'falha')); btn.disabled=false; btn.textContent='💾 Salvar'; }
+  }catch(e){ alert('Erro: '+e.message); btn.disabled=false; btn.textContent='💾 Salvar'; }
+}
+function c(id){ const el=document.getElementById(id); return el?el.value.trim():''; }
+
+// Carrega itens iniciais
+(ITENS_INI || []).forEach(it => addItem(it.codigo, it.descricao, it.tipo, it.valor, it.vencimento));
+recalcBar();
+</script>
+{% endblock %}

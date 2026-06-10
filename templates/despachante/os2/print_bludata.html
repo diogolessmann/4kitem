@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>O.S. {{ os.numero }} — {{ desp.nome|title }}</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: 'Courier New', monospace; font-size: 12px; color:#000; background:#fff; margin:0; padding:18px 26px; }
+  .hdr { display:flex; justify-content:space-between; border-bottom:2px solid #000; padding-bottom:6px; }
+  .hdr .empresa { font-size:13px; font-weight:bold; line-height:1.35; }
+  .hdr .meta { text-align:right; font-size:11px; }
+  .titulo { text-align:center; font-weight:bold; font-size:14px; margin:8px 0; border-bottom:1px solid #000; padding-bottom:4px; }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:2px 24px; margin:6px 0; }
+  .ln { display:flex; gap:6px; }
+  .ln b { white-space:nowrap; }
+  .dotfill { flex:1; border-bottom:1px dotted #999; }
+  .sec-tit { font-weight:bold; margin:10px 0 4px; border-bottom:1px solid #000; }
+  table.itens { width:100%; border-collapse:collapse; margin-top:4px; }
+  table.itens th { text-align:left; border-bottom:1px solid #000; font-size:11px; padding:2px 4px; }
+  table.itens td { padding:2px 4px; font-size:12px; }
+  table.itens td.r, table.itens th.r { text-align:right; }
+  .tot { display:flex; gap:18px; margin-top:6px; font-size:12px; flex-wrap:wrap; }
+  .tot b { font-weight:bold; }
+  .obs-chk span { margin-right:14px; white-space:nowrap; }
+  .legal { font-size:10px; margin-top:10px; text-align:justify; line-height:1.4; }
+  .assin { display:flex; justify-content:space-between; margin-top:34px; font-size:11px; }
+  .assin div { width:45%; border-top:1px solid #000; text-align:center; padding-top:3px; }
+  .recibo { border-top:2px dashed #000; margin-top:22px; padding-top:12px; }
+  .recibo .val { font-size:20px; font-weight:bold; text-align:right; }
+  @media print { body { padding:0 10px; } .noprint { display:none; } @page { margin:10mm; } }
+  .btnprint { position:fixed; top:8px; right:8px; padding:8px 14px; background:#2563eb; color:#fff; border:none; border-radius:6px; cursor:pointer; }
+</style>
+</head>
+<body>
+{% macro dbr(d) %}{% if d and d|length >= 10 %}{{ d[8:10] }}/{{ d[5:7] }}/{{ d[0:4] }}{% else %}{{ d or '' }}{% endif %}{% endmacro %}
+{% set vbruto = '%.2f'|format(bruto)|replace('.', ',') %}
+{% set vtotal = '%.2f'|format(total)|replace('.', ',') %}
+{% set vpago  = '%.2f'|format(pago)|replace('.', ',') %}
+{% set vrec   = '%.2f'|format(a_receber)|replace('.', ',') %}
+{% set vacr   = '%.2f'|format(os.acrescimo or 0)|replace('.', ',') %}
+{% set vdes   = '%.2f'|format(os.desconto or 0)|replace('.', ',') %}
+
+<button class="btnprint noprint" onclick="window.print()">🖨️ Imprimir</button>
+
+<div class="hdr">
+  <div class="empresa">
+    {{ desp.nome|upper }}<br>
+    <span style="font-weight:normal;font-size:11px;">
+      {{ desp.cidade }}{% if desp.credencial %} · Cred. {{ desp.credencial }}{% endif %}<br>
+      {% if desp.whatsapp_fmt %}{{ desp.whatsapp_fmt }}{% endif %}
+    </span>
+  </div>
+  <div class="meta">
+    {{ hoje.strftime('%d/%m/%Y %H:%M') }}<br>SGDW · Amigo Despachante
+  </div>
+</div>
+
+<div class="titulo">Ordem de Serviço Nº {{ os.numero }}</div>
+
+<div class="grid2">
+  <div class="ln"><b>Data.....:</b> {{ (os.criado_em or '')[8:10] }}/{{ (os.criado_em or '')[5:7] }}/{{ (os.criado_em or '')[0:4] }}</div>
+  <div class="ln"><b>Exercício:</b> {{ os.exercicio or '' }}</div>
+  <div class="ln"><b>Placa....:</b> {{ (os.placa or '')|upper }}</div>
+  <div class="ln"><b>RENAVAM..:</b> {{ os.renavam or '' }}</div>
+  <div class="ln"><b>Chassi...:</b> {{ os.chassi or '' }}</div>
+  <div class="ln"><b>Marca/Mod:</b> {{ os.marca or '' }} {{ os.modelo or '' }}</div>
+  <div class="ln"><b>Proprietário:</b> {{ (os.cliente_nome or '')|upper }}</div>
+  <div class="ln"><b>CPF/CNPJ.:</b> {{ os.cpf or os.cnpj or '' }}</div>
+  <div class="ln"><b>Endereço.:</b> {{ os.logradouro or '' }}{% if os.endereco_num %}, {{ os.endereco_num }}{% endif %}</div>
+  <div class="ln"><b>Bairro...:</b> {{ os.bairro or '' }}</div>
+  <div class="ln"><b>Município:</b> {{ os.cidade or '' }}/{{ os.uf or '' }}</div>
+  <div class="ln"><b>Telefone.:</b> {{ os.telefone or '' }}</div>
+</div>
+
+<div class="sec-tit">Observações</div>
+<div class="obs-chk">
+  <span>Recibo/ATPV ( )</span><span>CNH ( )</span><span>Comprovante de Residência ( )</span>
+  <span>Vistoria ( )</span><span>Contrato ( )</span><span>Outros ____________</span>
+</div>
+{% if os.observacoes %}<div style="margin-top:4px;">{{ os.observacoes }}</div>{% endif %}
+
+<div class="sec-tit">Descrição dos Itens da Ordem de Serviço</div>
+<table class="itens">
+  <thead><tr><th>Descrição</th><th>Vencimento</th><th class="r">Valor (R$)</th></tr></thead>
+  <tbody>
+    {% for i in itens %}
+    <tr>
+      <td>{{ i.descricao }}</td>
+      <td>{{ dbr(i.vencimento) }}</td>
+      <td class="r">{{ '%.2f'|format(i.valor or 0)|replace('.', ',') }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<div class="tot">
+  <span><b>Vlr Bruto:</b> {{ vbruto }}</span>
+  <span><b>Desc:</b> {{ vdes }}</span>
+  <span><b>Acrés:</b> {{ vacr }}</span>
+  <span><b>Vlr Recebido:</b> {{ vpago }}</span>
+  <span><b>Vlr A Receber:</b> {{ vrec }}</span>
+</div>
+
+{% if parcelas %}
+<div class="sec-tit">Condição de Pagamento</div>
+<table class="itens">
+  <thead><tr><th>Parc.</th><th>Vencimento</th><th class="r">Valor (R$)</th><th>Forma</th><th>Status</th></tr></thead>
+  <tbody>
+    {% for p in parcelas %}
+    <tr>
+      <td>{{ p.numero }}</td>
+      <td>{{ dbr(p.vencimento) }}</td>
+      <td class="r">{{ '%.2f'|format(p.valor or 0)|replace('.', ',') }}</td>
+      <td>{{ p.forma_pagamento or '—' }}</td>
+      <td>{{ 'PAGO' if p.pago_em else 'EM ABERTO' }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+
+<div class="legal">
+  Declaramos como verdadeiras as informações acima prestadas e assumimos toda responsabilidade civil e criminal
+  pelas mesmas, estando de acordo com o preço estipulado e cientes dos serviços a serem executados.
+  Por força do Decreto 2.867/98 e da Portaria Interministerial 4.044/98, o pagamento do seguro obrigatório deve
+  coincidir com a quitação da primeira parcela ou da quota única do IPVA.
+</div>
+
+<div class="assin">
+  <div>{{ (os.cliente_nome or '')|title }}</div>
+  <div>{{ desp.nome|upper }}</div>
+</div>
+
+<!-- Recibo destacável -->
+<div class="recibo">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+    <div class="empresa" style="font-size:12px;font-weight:bold;">
+      {{ desp.nome|upper }}<br>
+      <span style="font-weight:normal;font-size:11px;">{{ desp.cidade }}{% if desp.whatsapp_fmt %} · {{ desp.whatsapp_fmt }}{% endif %}</span>
+    </div>
+    <div style="text-align:right;">
+      <div style="font-size:16px;font-weight:bold;">RECIBO</div>
+      <div class="val">R$ {{ vpago if pago > 0 else vtotal }}</div>
+    </div>
+  </div>
+  <div style="margin-top:8px;">
+    Recebemos de <b>{{ (os.cliente_nome or '')|upper }}</b> a quantia de
+    <b>({{ extenso }})</b>, referente ao pagamento da Ordem de Serviço Nº {{ os.numero }},
+    do veículo placa {{ (os.placa or '')|upper }}.
+  </div>
+  <div style="margin-top:6px;">{{ desp.cidade }}, {{ hoje.strftime('%d/%m/%Y') }}.</div>
+  <div class="assin" style="margin-top:28px;">
+    <div></div>
+    <div>{{ desp.nome|upper }}</div>
+  </div>
+</div>
+
+<script>window.addEventListener('load',()=>{setTimeout(()=>{try{window.print();}catch(e){}},400);});</script>
+</body>
+</html>

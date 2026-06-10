@@ -9523,6 +9523,12 @@ from desp_db import (
     atualizar_senha_usuario as desp_atualizar_senha_usuario,
     registrar_ultimo_login as desp_reg_login,
     contar_usuarios as desp_contar_usuarios,
+    # Itens unificados da O.S. (estilo Bludata)
+    listar_itens_os as desp_listar_itens,
+    salvar_itens_os as desp_salvar_itens,
+    deletar_item_os as desp_deletar_item,
+    recalc_totais_os as desp_recalc_totais,
+    itens_os_view as desp_itens_view,
 )
 # ChromaDB desabilitado por padrão (evita OOM no Railway free tier)
 # Para habilitar: setar DESP_RAG_ENABLED=1 no ambiente
@@ -11181,6 +11187,185 @@ def desp_editar_os(id):
         'situacao_pag': f.get('situacao_pag', ''),
     })
     return redirect(url_for('desp_detalhe_os', id=id))
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  O.S. estilo BLUDATA — tela única, itens unificados (rota paralela /os2)
+# ══════════════════════════════════════════════════════════════════════════════
+
+def _desp_os2_extra(os_id):
+    """Lê acréscimo/desconto da O.S. (colunas que get_os não retorna)."""
+    conn = get_desp_conn()
+    row = conn.execute(
+        "SELECT COALESCE(acrescimo,0) ac, COALESCE(desconto,0) de FROM ordens_servico WHERE id=?",
+        (os_id,)
+    ).fetchone()
+    conn.close()
+    return (float(row['ac']), float(row['de'])) if row else (0.0, 0.0)
+
+
+@app.route('/despachante/os2/nova')
+@_desp_login_required
+def desp_os2_nova():
+    placa_pre = request.args.get('placa', '')
+    cpf_pre   = request.args.get('cpf', '').strip()
+    veiculo   = desp_buscar_placa(placa_pre) if placa_pre else None
+    cliente   = None
+    if veiculo and veiculo.get('proprietario_id'):
+        cliente = desp_get_cliente(veiculo['proprietario_id'])
+    elif cpf_pre:
+        cliente = desp_buscar_cpf(cpf_pre)
+    return desp_render('os2/editar.html', os=None, itens=[], parcelas=[],
+                       veiculo=veiculo, cliente=cliente)
+
+
+@app.route('/despachante/os2/<int:id>')
+@_desp_login_required
+def desp_os2_editar(id):
+    os_ = desp_get_os(id)
+    if not os_:
+        abort(404)
+    os_['acrescimo'], os_['desconto'] = _desp_os2_extra(id)
+    return desp_render('os2/editar.html', os=os_,
+                       itens=desp_itens_view(id),
+                       parcelas=desp_get_parcelas(id),
+                       veiculo=None, cliente=None)
+
+
+@app.route('/despachante/os2/salvar', methods=['POST'])
+@app.route('/despachante/os2/<int:id>/salvar', methods=['POST'])
+@_desp_login_required
+def desp_os2_salvar(id=None):
+    data  = request.get_json(silent=True) or {}
+    cli   = data.get('cliente') or {}
+    vei   = data.get('veiculo') or {}
+    itens = data.get('itens') or []
+    cab   = data.get('os') or {}
+
+    if not id:
+        ok, msg = _desp_check_limit('os_mes')
+        if not ok:
+            return jsonify({'erro': msg}), 403
+
+    # ── Cliente ──
+    cliente_id = cli.get('id') or None
+    if not cliente_id and (cli.get('nome') or '').strip():
+        dados_cli = {k: (cli.get(k) or '') for k in (
+            'tipo','nome','cpf','cnpj','rg','nascimento','nome_mae','telefone','email',
+            'cep','logradouro','numero','complemento','bairro','cidade','uf')}
+        dados_cli['tipo'] = dados_cli.get('tipo') or 'PF'
+        dados_cli['uf']   = dados_cli.get('uf') or 'SC'
+        existente = desp_buscar_cpf(dados_cli['cpf']) if dados_cli['cpf'] else None
+        if existente:
+            cliente_id = existente['id']; desp_atualizar_cliente(cliente_id, dados_cli)
+        else:
+            cliente_id = desp_criar_cliente(dados_cli)
+
+    # ── Veículo ──
+    veiculo_id = vei.get('id') or None
+    if not veiculo_id and (vei.get('placa') or '').strip():
+        veiculo_id = desp_criar_veiculo({
+            'placa': (vei.get('placa') or '').upper().replace('-',''),
+            'renavam': vei.get('renavam',''), 'chassi': vei.get('chassi',''),
+            'marca': vei.get('marca',''), 'modelo': vei.get('modelo',''),
+            'ano_fab': vei.get('ano_fab') or None, 'ano_mod': vei.get('ano_mod') or None,
+            'cor': vei.get('cor',''), 'especie': vei.get('especie','Automóvel'),
+            'tipo_veiculo': vei.get('tipo_veiculo',''), 'categoria': vei.get('categoria','Particular'),
+            'combustivel': vei.get('combustivel',''), 'num_crv': vei.get('num_crv',''),
+            'proprietario_id': cliente_id,
+        })
+
+    # Serviço principal = 1º item tipo serviço com código (p/ compat com docs/checklist)
+    servico = 'outros'
+    for it in itens:
+        if (it.get('tipo') or 'servico') == 'servico' and (it.get('codigo') or ''):
+            servico = it['codigo']; break
+
+    cab_comum = {
+        'servico': servico, 'honorarios': 0, 'custos': 0,
+        'pago': _desp_money(cab.get('pago')),
+        'forma_pagamento': cab.get('forma_pagamento',''),
+        'observacoes': cab.get('observacoes',''),
+        'exercicio': int(cab.get('exercicio') or datetime.now().year),
+        'situacao_pag': cab.get('situacao_pag',''),
+    }
+    if not id:
+        cab_comum['cliente_id'] = cliente_id
+        cab_comum['veiculo_id'] = veiculo_id
+        os_id = desp_criar_os(cab_comum)
+    else:
+        os_id = id
+        cab_comum['corpo_req'] = cab.get('corpo_req','')
+        desp_atualizar_os(os_id, cab_comum)
+
+    # Vínculo cliente/veículo + acréscimo/desconto (UPDATE direto: atualizar_os não cobre)
+    conn = get_desp_conn()
+    conn.execute(
+        "UPDATE ordens_servico SET cliente_id=COALESCE(?,cliente_id), "
+        "veiculo_id=COALESCE(?,veiculo_id), acrescimo=?, desconto=? WHERE id=?",
+        (cliente_id, veiculo_id, _desp_money(cab.get('acrescimo')),
+         _desp_money(cab.get('desconto')), os_id)
+    )
+    conn.commit(); conn.close()
+
+    # Itens unificados + recalc (bridge honorarios/custos/total)
+    totais = desp_salvar_itens(os_id, itens)
+    return jsonify({'ok': True, 'os_id': os_id, 'totais': totais})
+
+
+def _valor_extenso(valor) -> str:
+    """Valor em R$ por extenso (pt-BR). Cobre o intervalo típico de uma O.S."""
+    valor = round(float(valor or 0), 2)
+    inteiro  = int(valor)
+    centavos = int(round((valor - inteiro) * 100))
+    uni = ['', 'um','dois','três','quatro','cinco','seis','sete','oito','nove','dez',
+           'onze','doze','treze','quatorze','quinze','dezesseis','dezessete','dezoito','dezenove']
+    dez = ['', '', 'vinte','trinta','quarenta','cinquenta','sessenta','setenta','oitenta','noventa']
+    cen = ['', 'cento','duzentos','trezentos','quatrocentos','quinhentos','seiscentos','setecentos','oitocentos','novecentos']
+    def ate999(n):
+        if n == 0: return ''
+        if n == 100: return 'cem'
+        p = []
+        if n // 100: p.append(cen[n // 100])
+        r = n % 100
+        if r:
+            if r < 20: p.append(uni[r])
+            else:
+                u = r % 10
+                p.append(dez[r // 10] + (' e ' + uni[u] if u else ''))
+        return ' e '.join(p)
+    def ext(n):
+        if n == 0: return 'zero'
+        mi = n // 1000000; mil = (n % 1000000) // 1000; r = n % 1000
+        p = []
+        if mi:  p.append(ate999(mi) + (' milhão' if mi == 1 else ' milhões'))
+        if mil: p.append('mil' if mil == 1 else ate999(mil) + ' mil')
+        if r:   p.append(ate999(r))
+        return ' e '.join([x for x in p if x])
+    txt = ext(inteiro) + (' real' if inteiro == 1 else ' reais')
+    if centavos:
+        txt += ' e ' + ext(centavos) + (' centavo' if centavos == 1 else ' centavos')
+    return txt
+
+
+@app.route('/despachante/os2/<int:id>/print')
+@_desp_login_required
+def desp_os2_print(id):
+    os_ = desp_get_os(id)
+    if not os_:
+        abort(404)
+    os_['acrescimo'], os_['desconto'] = _desp_os2_extra(id)
+    itens     = desp_itens_view(id)
+    parcelas  = desp_get_parcelas(id)
+    bruto     = round(sum(float(i['valor'] or 0) for i in itens), 2)
+    total     = round(bruto + os_['acrescimo'] - os_['desconto'], 2)
+    pago      = float(os_.get('pago') or 0)
+    a_receber = max(round(total - pago, 2), 0)
+    docs_needed = DESP_DOCS_POR_SERVICO.get(os_.get('servico', ''), DESP_DOCS_PADRAO)
+    return desp_render('os2/print_bludata.html', os=os_, itens=itens, parcelas=parcelas,
+        bruto=bruto, total=total, pago=pago, a_receber=a_receber,
+        extenso=_valor_extenso(pago if pago > 0 else total),
+        docs_needed=docs_needed, hoje=datetime.now())
 
 
 # ── Lista final de placa ──────────────────────────────────────────────────────
