@@ -11735,13 +11735,14 @@ Retorne APENAS um objeto JSON válido com os campos (use null para não encontra
 "nome":null,"cpf":null,"cnpj":null,"rg":null,"nascimento":null,"nome_mae":null,
 "telefone":null,"email":null,"cep":null,"logradouro":null,"numero":null,
 "complemento":null,"bairro":null,"cidade":null,"uf":null,
-"total_debitos":null,"ipva":null,"licenciamento":null,"multas":null,"dpvat":null}
-Instruções para os campos de débitos (se houver uma "Listagem de Débitos" ou "Total dos Débitos" visível):
-- total_debitos: valor total a pagar (campo "Total dos Débitos" ou soma de todos os débitos), como número decimal
-- ipva: soma dos valores de IPVA, como número decimal
-- licenciamento: soma dos valores de Licenciamento/Taxa Detran, como número decimal
-- multas: soma dos valores de Multas, como número decimal
-- dpvat: valor do DPVAT, como número decimal
+"total_debitos":null,"ipva":null,"licenciamento":null,"multas":null}
+Instruções para os campos de débitos:
+- Extraia SOMENTE valores que apareçam EXPLICITAMENTE na imagem, com o número visível. NUNCA invente, estime, calcule ou complete valores que não estejam na tela. Se um débito não aparecer, deixe null.
+- Em Santa Catarina NÃO existe cobrança de DPVAT/seguro obrigatório. NÃO inclua DPVAT em hipótese alguma, mesmo que o modelo "ache" que deveria existir.
+- ipva: soma dos valores de IPVA visíveis, como número decimal
+- licenciamento: soma dos valores de Licenciamento/Taxa Detran visíveis, como número decimal
+- multas: soma dos valores de Multas visíveis, como número decimal
+- total_debitos: use null A MENOS QUE exista na tela um campo escrito "Total dos Débitos" (ou equivalente); nesse caso copie EXATAMENTE o valor mostrado. NÃO some você mesmo.
 IMPORTANTE: Retorne SOMENTE o JSON, nada mais.'''
     try:
         resp = requests.post(
