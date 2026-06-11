@@ -1,0 +1,112 @@
+{% extends 'despachante/base.html' %}
+{% block title %}Relatório de Títulos{% endblock %}
+
+{% block extra_style %}
+.tt-cards { display:flex; gap:12px; margin-bottom:14px; flex-wrap:wrap; }
+.tt-card { flex:1; min-width:160px; background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:14px 16px; }
+.tt-card .lbl { font-size:11px; text-transform:uppercase; color:var(--text3); font-weight:600; }
+.tt-card .val { font-size:24px; font-weight:800; margin-top:4px; }
+.tabs { display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap; }
+.tab { padding:7px 14px; border-radius:20px; border:1px solid var(--border2); background:var(--surface2); color:var(--text2); font-size:13px; font-weight:600; text-decoration:none; }
+.tab.active { background:var(--accent); color:#fff; border-color:var(--accent); }
+.filtros { display:flex; gap:8px; align-items:flex-end; flex-wrap:wrap; margin-bottom:14px; }
+.filtros .f { display:flex; flex-direction:column; gap:3px; }
+.filtros label { font-size:10px; text-transform:uppercase; color:var(--text3); font-weight:600; }
+.filtros input { padding:7px 9px; background:var(--surface2); border:1px solid var(--border2); border-radius:7px; color:var(--text); font-family:inherit; font-size:13px; }
+.tag { font-size:10px; font-weight:700; padding:2px 8px; border-radius:6px; }
+.tag.ar { background:rgba(234,179,8,.15); color:#facc15; }
+.tag.re { background:rgba(34,197,94,.15); color:#4ade80; }
+{% endblock %}
+
+{% block topbar_title %}📒 Relatório de Títulos{% endblock %}
+{% block topbar_actions %}
+  <a href="{{ url_for('desp_cobranca') }}" class="btn btn-secondary btn-sm">💸 Cobrança</a>
+  <a href="{{ url_for('desp_financeiro') }}" class="btn btn-secondary btn-sm">💰 Financeiro</a>
+{% endblock %}
+
+{% block content %}
+<div class="tt-cards">
+  <div class="tt-card"><div class="lbl">A Receber (AR)</div><div class="val" style="color:#facc15;">R$ {{ "%.2f"|format(total_ar) }}</div></div>
+  <div class="tt-card"><div class="lbl">Recebido (RE)</div><div class="val" style="color:#4ade80;">R$ {{ "%.2f"|format(total_re) }}</div></div>
+  <div class="tt-card"><div class="lbl">Títulos</div><div class="val">{{ titulos|length }}</div></div>
+</div>
+
+<div class="tabs">
+  {% for k, lbl in [('','Todos'),('AR','🟡 A Receber'),('RE','🟢 Recebidos')] %}
+  <a href="?tipo={{ k }}{% if busca %}&q={{ busca }}{% endif %}{% if ini %}&ini={{ ini }}{% endif %}{% if fim %}&fim={{ fim }}{% endif %}"
+     class="tab {{ 'active' if tipo == k }}">{{ lbl }}</a>
+  {% endfor %}
+</div>
+
+<form method="GET" class="filtros">
+  <input type="hidden" name="tipo" value="{{ tipo }}">
+  <div class="f"><label>Buscar (cliente/placa/O.S.)</label><input name="q" value="{{ busca }}" style="width:240px;"></div>
+  <div class="f"><label>Venc. de</label><input type="date" name="ini" value="{{ ini }}"></div>
+  <div class="f"><label>Venc. até</label><input type="date" name="fim" value="{{ fim }}"></div>
+  <button type="submit" class="btn btn-secondary btn-sm">Filtrar</button>
+</form>
+
+{% if titulos %}
+<div class="table-wrap">
+  <table style="width:100%;border-collapse:collapse;font-size:13px;">
+    <thead><tr>
+      <th style="text-align:left;padding:8px 10px;border-bottom:1px solid var(--border2);font-size:10px;text-transform:uppercase;color:var(--text3);">O.S.</th>
+      <th style="text-align:left;padding:8px 10px;border-bottom:1px solid var(--border2);font-size:10px;text-transform:uppercase;color:var(--text3);">Cliente</th>
+      <th style="text-align:left;padding:8px 10px;border-bottom:1px solid var(--border2);font-size:10px;text-transform:uppercase;color:var(--text3);">Placa</th>
+      <th style="text-align:center;padding:8px 10px;border-bottom:1px solid var(--border2);font-size:10px;text-transform:uppercase;color:var(--text3);">Parc.</th>
+      <th style="text-align:center;padding:8px 10px;border-bottom:1px solid var(--border2);font-size:10px;text-transform:uppercase;color:var(--text3);">Vencimento</th>
+      <th style="text-align:right;padding:8px 10px;border-bottom:1px solid var(--border2);font-size:10px;text-transform:uppercase;color:var(--text3);">Valor</th>
+      <th style="text-align:center;padding:8px 10px;border-bottom:1px solid var(--border2);font-size:10px;text-transform:uppercase;color:var(--text3);">Tipo</th>
+      <th style="padding:8px 10px;border-bottom:1px solid var(--border2);"></th>
+    </tr></thead>
+    <tbody>
+      {% for t in titulos %}
+      <tr style="border-bottom:1px solid var(--border);">
+        <td style="padding:8px 10px;"><a href="/despachante/os2/{{ t.os_id }}" style="color:var(--accent);">{{ t.os_numero }}</a></td>
+        <td style="padding:8px 10px;">{{ t.cliente_nome or '—' }}</td>
+        <td style="padding:8px 10px;font-family:monospace;">{{ (t.placa or '—')|upper }}</td>
+        <td style="padding:8px 10px;text-align:center;">{{ t.parcela }}</td>
+        <td style="padding:8px 10px;text-align:center;">{% if t.vencimento %}{{ t.vencimento[8:10] }}/{{ t.vencimento[5:7] }}/{{ t.vencimento[0:4] }}{% else %}—{% endif %}</td>
+        <td style="padding:8px 10px;text-align:right;font-weight:700;">R$ {{ "%.2f"|format(t.valor or 0) }}</td>
+        <td style="padding:8px 10px;text-align:center;">
+          {% if t.pago_em %}<span class="tag re">RE</span>{% else %}<span class="tag ar">AR</span>{% endif %}
+        </td>
+        <td style="padding:8px 10px;text-align:right;">
+          {% if not t.pago_em %}
+          <button class="btn btn-primary btn-sm" onclick="darBaixa({{ t.parcela_id }}, this)">✓ Baixar</button>
+          {% else %}
+          <span style="font-size:11px;color:var(--text3);">{{ t.pago_em[:10] }}{% if t.forma_pagamento %} · {{ t.forma_pagamento }}{% endif %}</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div style="text-align:center;padding:50px;color:var(--text3);">
+  <div style="font-size:36px;margin-bottom:10px;">📭</div>
+  <div>Nenhum título neste filtro.</div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_script %}
+<script>
+async function darBaixa(pid, btn){
+  const forma = prompt('Forma de pagamento? (Dinheiro, PIX, Cartão...)', 'PIX');
+  if(forma === null) return;
+  btn.disabled = true; btn.textContent = '⏳';
+  try{
+    const r = await fetch(`/despachante/api/parcela/${pid}/baixa`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({forma: forma || 'Dinheiro'})
+    });
+    const d = await r.json();
+    if(d.ok){ location.reload(); }
+    else { alert('Erro: ' + (d.erro||'falha')); btn.disabled=false; btn.textContent='✓ Baixar'; }
+  }catch(e){ alert('Erro: '+e.message); btn.disabled=false; btn.textContent='✓ Baixar'; }
+}
+</script>
+{% endblock %}

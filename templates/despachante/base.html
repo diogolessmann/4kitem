@@ -316,6 +316,9 @@
         <a href="{{ url_for('desp_cobranca') }}" class="nav-link {% if request.endpoint == 'desp_cobranca' %}active{% endif %}">
           <span class="icon">💸</span> Cobrança
         </a>
+        <a href="{{ url_for('desp_titulos') }}" class="nav-link {% if request.endpoint == 'desp_titulos' %}active{% endif %}">
+          <span class="icon">📒</span> Títulos
+        </a>
         <a href="{{ url_for('desp_relatorio') }}" class="nav-link {% if request.endpoint in ('desp_relatorio','desp_relatorio_csv') %}active{% endif %}">
           <span class="icon">📊</span> Rel. Produção
         </a>

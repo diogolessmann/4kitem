@@ -1,0 +1,90 @@
+{% extends 'despachante/base.html' %}
+{% block title %}Processo · O.S. {{ os.numero }}{% endblock %}
+
+{% block extra_style %}
+.pc-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:16px 18px; margin-bottom:14px; }
+.pc-card h3 { font-size:12px; text-transform:uppercase; letter-spacing:.5px; color:var(--text3); margin:0 0 12px; font-weight:700; }
+.pc-grid { display:grid; gap:10px; }
+.pc-f { display:flex; flex-direction:column; gap:3px; }
+.pc-f label { font-size:10px; text-transform:uppercase; color:var(--text3); font-weight:600; }
+.pc-f input, .pc-f select { padding:8px 10px; background:var(--surface2); border:1px solid var(--border2); border-radius:7px; color:var(--text); font-size:13px; font-family:inherit; }
+.timeline { border-left:2px solid var(--border2); margin-left:6px; padding-left:14px; }
+.tl-item { position:relative; padding:6px 0; font-size:12px; }
+.tl-item::before { content:''; position:absolute; left:-21px; top:10px; width:9px; height:9px; border-radius:50%; background:var(--accent); }
+.tl-item .when { color:var(--text3); font-size:11px; }
+{% endblock %}
+
+{% block topbar_title %}🔄 Processo · O.S. <strong>{{ os.numero }}</strong> · {{ (os.placa or '')|upper }}{% endblock %}
+{% block topbar_actions %}
+  <a href="{{ url_for('desp_os2_editar', id=os.id) }}" class="btn btn-secondary btn-sm">← Voltar à O.S.</a>
+{% endblock %}
+
+{% block content %}
+<form method="POST">
+  <!-- Situação -->
+  <div class="pc-card">
+    <h3>Situação Atual</h3>
+    <div class="pc-grid" style="grid-template-columns:2fr 1fr;">
+      <div class="pc-f">
+        <label>Situação do processo</label>
+        <input name="proc_situacao" list="sit-opts" value="{{ proc.proc_situacao or '' }}" placeholder="Ex.: Aguardando Recebimento">
+        <datalist id="sit-opts">
+          {% for s in ['Aguardando Documentos','Aguardando Recebimento','Em Processamento','No DETRAN','Aguardando Liberação','Liberado','Concluído','Entregue ao Cliente'] %}
+          <option value="{{ s }}">{% endfor %}
+        </datalist>
+      </div>
+      <div class="pc-f">
+        <label>Nº Segurança CRV</label>
+        <input name="num_seg_crv" value="{{ proc.num_seg_crv or '' }}">
+      </div>
+    </div>
+  </div>
+
+  <!-- Trilha de datas -->
+  <div class="pc-card">
+    <h3>📅 Trilha do Processo (datas)</h3>
+    <div class="pc-grid" style="grid-template-columns:repeat(3,1fr);">
+      {% set datas = [
+        ('ent_escritorio','Entrada no Escritório'),('entr_detran','Entrada no DETRAN'),('lib_detran','Liberação DETRAN'),
+        ('ret_problema','Retorno de Problema'),('entrega_cliente','Entrega ao Cliente'),('postagem','Postagem / Sedex'),
+        ('venc_vistoria','Venc. Vistoria'),('venc_crv','Venc. CRV'),('licenc_data','Data Licenciamento')] %}
+      {% for col, lbl in datas %}
+      <div class="pc-f"><label>{{ lbl }}</label><input type="date" name="{{ col }}" value="{{ proc[col] or '' }}"></div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Protocolos -->
+  <div class="pc-card">
+    <h3>🧾 Protocolos DETRAN</h3>
+    <div class="pc-grid" style="grid-template-columns:2fr 1fr;">
+      <div class="pc-f"><label>Protocolo CRLV</label><input name="protocolo_crlv" value="{{ proc.protocolo_crlv or '' }}" placeholder="Nº DetranNET"></div>
+      <div class="pc-f"><label>Emissão CRLV</label><input type="date" name="protocolo_crlv_em" value="{{ proc.protocolo_crlv_em or '' }}"></div>
+      <div class="pc-f"><label>Protocolo CRV</label><input name="protocolo_crv" value="{{ proc.protocolo_crv or '' }}" placeholder="Nº DetranNET"></div>
+      <div class="pc-f"><label>Emissão CRV</label><input type="date" name="protocolo_crv_em" value="{{ proc.protocolo_crv_em or '' }}"></div>
+    </div>
+  </div>
+
+  <div style="text-align:right;margin-bottom:18px;">
+    <button class="btn btn-primary" type="submit">💾 Salvar Processo</button>
+  </div>
+</form>
+
+<!-- Histórico -->
+<div class="pc-card">
+  <h3>🕓 Histórico</h3>
+  {% if historico %}
+  <div class="timeline">
+    {% for h in historico|reverse %}
+    <div class="tl-item">
+      {% if h.status %}<strong>{{ status_labels.get(h.status, [None, h.status])[1] if status_labels.get(h.status) else h.status }}</strong> · {% endif %}
+      {{ h.nota or '' }}
+      <div class="when">{{ h.criado_em[:16].replace('T',' ') }} · {{ h.usuario or '' }}</div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div style="color:var(--text3);font-size:13px;">Sem movimentações ainda.</div>
+  {% endif %}
+</div>
+{% endblock %}

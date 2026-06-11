@@ -55,6 +55,7 @@
 
 {% block topbar_title %}🧾 O.S. <strong>{{ os.numero if os else 'Nova' }}</strong> · estilo Bludata{% endblock %}
 {% block topbar_actions %}
+  {% if os %}<a href="{{ url_for('desp_os2_processo', id=os.id) }}" class="btn btn-secondary btn-sm">🔄 Processo</a>{% endif %}
   {% if os %}<a href="/despachante/os2/{{ os.id }}/print" target="_blank" class="btn btn-secondary btn-sm">🖨️ Imprimir</a>{% endif %}
   <button class="btn btn-secondary btn-sm" onclick="ocrPrint()">📸 Preencher com Print</button>
   <button class="btn btn-primary btn-sm" id="btn-salvar" onclick="salvarOS()">💾 {{ 'Salvar' if os else 'Gerar O.S.' }}</button>

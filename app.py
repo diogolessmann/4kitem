@@ -11368,6 +11368,90 @@ def desp_os2_print(id):
         docs_needed=docs_needed, hoje=datetime.now())
 
 
+# Colunas da trilha de processo (whitelist — evita SQL injection no UPDATE dinâmico)
+_OS2_PROC_COLS = [
+    'proc_situacao', 'ent_escritorio', 'entr_detran', 'lib_detran', 'ret_problema',
+    'entrega_cliente', 'postagem', 'venc_vistoria', 'venc_crv', 'licenc_data',
+    'protocolo_crlv', 'protocolo_crlv_em', 'protocolo_crv', 'protocolo_crv_em', 'num_seg_crv',
+]
+
+
+@app.route('/despachante/os2/<int:id>/processo', methods=['GET', 'POST'])
+@_desp_login_required
+def desp_os2_processo(id):
+    os_ = desp_get_os(id)
+    if not os_:
+        abort(404)
+    if request.method == 'POST':
+        f = request.form
+        sets, vals = [], []
+        for col in _OS2_PROC_COLS:                       # só colunas da whitelist
+            if col in f:
+                sets.append(f"{col}=?")
+                vals.append((f.get(col) or '').strip() or None)
+        if sets:
+            vals.append(id)
+            conn = get_desp_conn()
+            conn.execute(f"UPDATE ordens_servico SET {', '.join(sets)} WHERE id=?", vals)
+            conn.commit(); conn.close()
+        nova_sit = (f.get('proc_situacao') or '').strip()
+        if nova_sit:
+            desp_reg_hist(id, os_.get('status'),
+                          f"Situação do processo: {nova_sit}", usuario=_desp_usuario_atual())
+        from flask import flash
+        flash('Processo atualizado.', 'ok')
+        return redirect(url_for('desp_os2_processo', id=id))
+    conn = get_desp_conn()
+    proc = conn.execute(
+        f"SELECT {', '.join(_OS2_PROC_COLS)} FROM ordens_servico WHERE id=?", (id,)
+    ).fetchone()
+    conn.close()
+    return desp_render('os2/processo.html', os=os_, proc=dict(proc) if proc else {},
+                       historico=desp_get_historico(id))
+
+
+@app.route('/despachante/titulos')
+@_desp_login_required
+def desp_titulos():
+    """Relatório de Títulos (livro-caixa estilo Bludata): cada parcela é um título
+    AR (a receber, não paga) ou RE (recebido, paga). Baixa reusa /api/parcela/<id>/baixa."""
+    tipo  = request.args.get('tipo', '')          # '' | AR | RE
+    busca = request.args.get('q', '').strip()
+    ini   = request.args.get('ini', '')
+    fim   = request.args.get('fim', '')
+    where, params = ["os.status != 'cancelada'", "p.vencimento IS NOT NULL", "p.vencimento != ''"], []
+    if tipo == 'AR':
+        where.append("p.pago_em IS NULL")
+    elif tipo == 'RE':
+        where.append("p.pago_em IS NOT NULL")
+    if busca:
+        where.append("(c.nome LIKE ? OR v.placa LIKE ? OR os.numero LIKE ?)")
+        b = f"%{busca}%"; params += [b, b, b]
+    if ini:
+        where.append("date(p.vencimento) >= date(?)"); params.append(ini)
+    if fim:
+        where.append("date(p.vencimento) <= date(?)"); params.append(fim)
+    conn = get_desp_conn()
+    rows = conn.execute(f"""
+        SELECT p.id AS parcela_id, p.numero AS parcela, p.valor, p.vencimento,
+               p.pago_em, p.forma_pagamento,
+               os.id AS os_id, os.numero AS os_numero,
+               c.nome AS cliente_nome, c.telefone, v.placa
+        FROM os_parcelas p
+        JOIN ordens_servico os ON os.id = p.os_id
+        LEFT JOIN clientes c ON c.id = os.cliente_id
+        LEFT JOIN veiculos v ON v.id = os.veiculo_id
+        WHERE {' AND '.join(where)}
+        ORDER BY (p.pago_em IS NOT NULL), date(p.vencimento) ASC
+    """, params).fetchall()
+    conn.close()
+    titulos  = [dict(r) for r in rows]
+    total_ar = round(sum(float(t['valor'] or 0) for t in titulos if not t['pago_em']), 2)
+    total_re = round(sum(float(t['valor'] or 0) for t in titulos if t['pago_em']), 2)
+    return desp_render('titulos.html', titulos=titulos, tipo=tipo, busca=busca,
+                       ini=ini, fim=fim, total_ar=total_ar, total_re=total_re)
+
+
 # ── Lista final de placa ──────────────────────────────────────────────────────
 @app.route('/despachante/lista')
 @_desp_login_required
