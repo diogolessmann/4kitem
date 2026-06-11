@@ -1,0 +1,86 @@
+{% extends "pcd/base.html" %}
+{% block title %}Meus casos — PCD Fácil{% endblock %}
+{% block body %}
+{% set operador = pcd_user['perfil'] == 'operador' or pcd_admin %}
+
+<div class="card">
+  <h1>Olá, {{ pcd_user['nome'].split(' ')[0] }} 👋</h1>
+  <p class="muted">
+    {% if operador %}Painel do operador — acompanhe todos os seus casos.
+    {% else %}Vamos conseguir a sua isenção, passo a passo.{% endif %}
+    <br>Saldo: <b>{{ pcd_creditos }} créditos</b>
+  </p>
+  <a class="btn verde" href="/pcd/caso/novo">➕ Abrir novo caso</a>
+  {% if not pcd_admin and pcd_user['creditos'] < CUSTO_ABRIR_CASO %}
+    <p class="muted center" style="margin-top:10px">
+      Abrir um caso custa {{ CUSTO_ABRIR_CASO }} créditos.
+      <a href="/pcd/comprar">Comprar créditos</a>
+    </p>
+  {% endif %}
+</div>
+
+{% if operador %}
+<div style="display:flex;gap:10px;margin:14px 0">
+  {% set blocos = [('Total', stats['total'], 'var(--azul)'),
+                   ('Em andamento', stats['andamento'], 'var(--amarelo)'),
+                   ('Montados', stats['montados'], 'var(--verde)')] %}
+  {% for rotulo,valor,cor in blocos %}
+  <div class="card" style="flex:1;text-align:center;margin:0;padding:16px 8px">
+    <div style="font-size:1.8rem;font-weight:800;color:{{ cor }}">{{ valor }}</div>
+    <div class="muted" style="font-size:.82rem">{{ rotulo }}</div>
+  </div>
+  {% endfor %}
+</div>
+
+<div class="card">
+  <form method="get" action="/pcd/app" style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
+    <div style="flex:2;min-width:160px">
+      <label style="margin:0 0 4px">Buscar cliente</label>
+      <input name="q" value="{{ q }}" placeholder="Nome do cliente">
+    </div>
+    <div style="flex:1;min-width:110px">
+      <label style="margin:0 0 4px">Trilha</label>
+      <select name="trilha">
+        <option value="">Todas</option>
+        <option value="A" {{ 'selected' if ftrilha=='A' }}>Carro 0km</option>
+        <option value="B" {{ 'selected' if ftrilha=='B' }}>IPVA</option>
+      </select>
+    </div>
+    <div style="flex:1;min-width:110px">
+      <label style="margin:0 0 4px">Status</label>
+      <select name="status">
+        <option value="">Todos</option>
+        <option value="em_andamento" {{ 'selected' if fstatus=='em_andamento' }}>Em andamento</option>
+        <option value="montado" {{ 'selected' if fstatus=='montado' }}>Montado</option>
+      </select>
+    </div>
+    <button class="btn" style="flex:1;min-width:90px;margin:0">Filtrar</button>
+  </form>
+</div>
+{% endif %}
+
+<div class="card">
+  <h2>{% if operador %}Casos{% else %}Seus casos{% endif %}
+    {% if casos %}<span class="muted" style="font-weight:400">({{ casos|length }})</span>{% endif %}</h2>
+  {% if casos %}
+    <table>
+      <tr><th>#</th><th>Trilha</th>{% if operador %}<th>Cliente</th>{% endif %}
+        <th>Deficiência</th><th>Fase</th><th>Status</th></tr>
+      {% for c in casos %}
+      <tr onclick="location.href='/pcd/caso/{{ c['id'] }}'" style="cursor:pointer">
+        <td>{{ c['id'] }}</td>
+        <td>{{ TRILHAS[c['trilha']]['emoji'] }} {{ 'Carro 0km' if c['trilha']=='A' else 'IPVA' }}</td>
+        {% if operador %}<td>{{ c['nome_cliente'] or '—' }}</td>{% endif %}
+        <td>{{ DEFICIENCIAS.get(c['tipo_deficiencia'], '—') }}</td>
+        <td>{{ '✔' if c['status']=='montado' else c['fase_atual'] ~ '/' ~ (TRILHAS[c['trilha']]['fases']|length) }}</td>
+        <td><span class="tag {{ 'ok' if c['status']=='montado' else 'atencao' }}">
+          {{ 'montado' if c['status']=='montado' else 'em andamento' }}</span></td>
+      </tr>
+      {% endfor %}
+    </table>
+  {% else %}
+    <p class="muted">{% if q or fstatus or ftrilha %}Nenhum caso com esse filtro.
+      {% else %}Você ainda não tem casos. Clique em "Abrir novo caso" pra começar. 🚀{% endif %}</p>
+  {% endif %}
+</div>
+{% endblock %}

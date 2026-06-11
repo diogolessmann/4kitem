@@ -1,0 +1,37 @@
+{% extends "pcd/base.html" %}
+{% block title %}Abrir caso — PCD Fácil{% endblock %}
+{% block body %}
+<div class="card">
+  <h1>Abrir um novo caso</h1>
+  <p class="muted">Custa {{ CUSTO_ABRIR_CASO }} créditos e libera o passo a passo completo.</p>
+  <form method="post" action="/pcd/caso/novo">
+    <label>Qual é o caso?</label>
+    {% for k,t in TRILHAS.items() %}
+    <label style="display:flex;gap:10px;align-items:flex-start;border:1.5px solid var(--bord);
+                  border-radius:12px;padding:12px;margin:8px 0;font-weight:500;cursor:pointer">
+      <input type="radio" name="trilha" value="{{ k }}" {{ 'checked' if loop.first }} style="width:auto;margin-top:4px">
+      <span><b>{{ t['emoji'] }} {{ t['nome'] }}</b><br>
+        <span class="muted">{{ t['resumo'] }}</span></span>
+    </label>
+    {% endfor %}
+
+    {% if pcd_user['perfil'] == 'operador' %}
+    <label>Nome do cliente (quem você está atendendo)</label>
+    <input name="nome_cliente" placeholder="Ex: Maria Souza">
+    {% endif %}
+
+    <label>Tipo de deficiência</label>
+    <select name="tipo_deficiencia">
+      {% for k,v in DEFICIENCIAS.items() %}<option value="{{ k }}">{{ v }}</option>{% endfor %}
+    </select>
+
+    <label>O beneficiário vai dirigir o veículo?</label>
+    <select name="condutor">
+      <option value="sim">Sim — é o condutor (tem/terá CNH)</option>
+      <option value="nao">Não — indicará condutores autorizados</option>
+    </select>
+
+    <button class="btn verde">Abrir caso ({{ CUSTO_ABRIR_CASO }} créditos)</button>
+  </form>
+</div>
+{% endblock %}

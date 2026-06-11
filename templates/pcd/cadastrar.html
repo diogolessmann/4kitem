@@ -1,0 +1,25 @@
+{% extends "pcd/base.html" %}
+{% block title %}Criar conta — PCD Fácil{% endblock %}
+{% block body %}
+<div class="card">
+  <h1>Criar conta</h1>
+  <form method="post" action="/pcd/cadastrar">
+    <label>Seu nome</label>
+    <input name="nome" required autocomplete="name">
+    <label>E-mail</label>
+    <input name="email" type="email" required autocomplete="email">
+    <label>WhatsApp / telefone</label>
+    <input name="telefone" inputmode="tel" placeholder="(00) 00000-0000">
+    <label>Você é...</label>
+    <select name="perfil">
+      {% for k,v in PERFIS.items() %}<option value="{{ k }}">{{ v }}</option>{% endfor %}
+    </select>
+    <label>Senha (mín. 6 caracteres)</label>
+    <input name="senha" type="password" required minlength="6" autocomplete="new-password">
+    <button class="btn verde">Criar conta</button>
+  </form>
+  <p class="muted center" style="margin-top:14px">
+    Já tem conta? <a href="/pcd/entrar">Entrar</a>
+  </p>
+</div>
+{% endblock %}

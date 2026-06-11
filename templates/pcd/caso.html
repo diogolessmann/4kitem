@@ -1,0 +1,100 @@
+{% extends "pcd/base.html" %}
+{% block title %}Caso #{{ c['id'] }} — PCD Fácil{% endblock %}
+{% block body %}
+
+{% set trilha = TRILHAS[c['trilha']] %}
+<div class="card">
+  <p class="muted" style="margin:0">Caso #{{ c['id'] }}{% if c['nome_cliente'] %} · {{ c['nome_cliente'] }}{% endif %}</p>
+  <h1 style="margin:.1em 0">{{ trilha['emoji'] }} {{ trilha['nome'] }}</h1>
+
+  <div style="display:flex;gap:6px;margin:14px 0 6px">
+    {% for f in trilha['fases'] %}
+      {% set done = c['status']=='montado' or f['n'] < c['fase_atual'] %}
+      {% set atual = c['status']!='montado' and f['n']==c['fase_atual'] %}
+      <div style="flex:1;height:8px;border-radius:6px;
+        background:{{ 'var(--verde)' if done else ('var(--azul)' if atual else 'var(--bord)') }}"></div>
+    {% endfor %}
+  </div>
+  <p class="muted" style="margin:0">
+    {% if c['status']=='montado' %}✅ Processo montado{% else %}Você está na <b>Fase {{ c['fase_atual'] }} de {{ total }}</b>{% endif %}
+  </p>
+</div>
+
+{% if c['status']=='montado' %}
+  <div class="card center">
+    <h2>🏆 Processo montado!</h2>
+    <p class="muted">Todos os documentos das {{ total }} fases foram reunidos.
+      Agora é protocolar no órgão e acompanhar o deferimento.</p>
+  </div>
+  <div class="card">
+    <h2>📁 Dossiê do caso</h2>
+    {% for f in trilha['fases'] %}
+      <p><b>Fase {{ f['n'] }} — {{ f['titulo'] }}</b></p>
+      <table>
+        {% for d in f['docs'] %}
+          {% if not d.get('cond') or (d['cond']=='condutor' and c['condutor']=='sim') or (d['cond']=='nao_condutor' and c['condutor']=='nao') %}
+          <tr><td>{{ d['label'] }}</td><td style="text-align:right"><span class="tag ok">anexado</span></td></tr>
+          {% endif %}
+        {% endfor %}
+      </table>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="card">
+    <h2>Fase {{ c['fase_atual'] }} — {{ fase_def['titulo'] }}</h2>
+    <p class="muted">🎯 {{ fase_def['objetivo'] }}</p>
+
+    {% if c['trilha']=='A' and c['fase_atual']==2 %}
+      <div class="flash ok" style="background:#eef5ff;color:#0d4a99">
+        💡 <b>Calcule sua economia de ICMS</b> — digite o valor do carro:
+        <form method="get" action="/pcd/caso/{{ c['id'] }}" style="display:flex;gap:8px;margin-top:8px">
+          <input name="valor" inputmode="numeric" placeholder="Ex: 95000"
+                 value="{{ request.args.get('valor','') }}" style="flex:1">
+          <button class="btn" style="width:auto;margin:0;padding:11px 16px">Ver</button>
+        </form>
+        {% if icms %}<p style="margin:10px 0 0;font-weight:600">{{ icms['mensagem'] }}</p>{% endif %}
+      </div>
+    {% endif %}
+
+    {% for d in docs %}
+      <div style="border:1.5px solid var(--bord);border-radius:12px;padding:14px;margin:12px 0">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+          <b>{{ d['label'] }}</b>
+          <span class="tag {{ d['status'] }}">
+            {{ '✅ ok' if d['status']=='ok' else ('⚠️ atenção' if d['status']=='atencao' else '❌ falta') }}
+          </span>
+        </div>
+        <p class="muted" style="margin:6px 0 0">{{ d['ajuda'] }}</p>
+        {% if d['feedback'] %}
+        <p style="margin:8px 0 0;font-size:.92rem;font-weight:600;
+          color:{{ 'var(--verde)' if d['status']=='ok' else ('var(--amarelo)' if d['status']=='atencao' else 'var(--vermelho)') }}">
+          🧠 {{ d['feedback'] }}
+        </p>
+        {% endif %}
+        {% if d['status'] != 'ok' %}
+        <form method="post" action="/pcd/caso/{{ c['id'] }}/doc" enctype="multipart/form-data" style="margin-top:10px">
+          <input type="hidden" name="tipo_doc" value="{{ d['id'] }}">
+          <input type="file" name="arquivo" accept="image/*,application/pdf" required>
+          <button class="btn ghost" style="margin-top:8px">
+            {{ '🔄 Reenviar (reanálise)' if d['enviado'] else '📎 Anexar este documento' }}</button>
+        </form>
+        {% else %}
+        <p class="muted" style="margin:6px 0 0">📎 Documento anexado.</p>
+        {% endif %}
+      </div>
+    {% endfor %}
+  </div>
+
+  {% if completa %}
+  <form method="post" action="/pcd/caso/{{ c['id'] }}/avancar">
+    <button class="btn verde">
+      {% if c['fase_atual'] < total %}✅ Concluir Fase {{ c['fase_atual'] }} → próxima{% else %}🏆 Finalizar processo{% endif %}
+    </button>
+  </form>
+  {% else %}
+  <p class="muted center">Anexe todos os documentos acima pra destravar a próxima fase.</p>
+  {% endif %}
+{% endif %}
+
+<p class="center" style="margin-top:16px"><a href="/pcd/app">← Voltar aos meus casos</a></p>
+{% endblock %}

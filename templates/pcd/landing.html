@@ -1,0 +1,88 @@
+{% extends "pcd/base.html" %}
+{% block body %}
+<style>
+  .hero{background:linear-gradient(150deg,#1463c8,#0d4a99 70%);color:#fff;border-radius:20px;
+    padding:30px 22px;margin:6px 0 16px;box-shadow:0 8px 30px rgba(13,74,153,.25)}
+  .hero .badge{display:inline-block;background:rgba(255,255,255,.16);padding:6px 13px;
+    border-radius:999px;font-size:.82rem;font-weight:700;margin-bottom:12px}
+  .hero h1{font-size:2rem;line-height:1.15;margin:.1em 0 .35em}
+  .hero p{font-size:1.08rem;opacity:.95;margin:0 0 18px}
+  .hero .btn{background:#fff;color:var(--azul-esc)}
+  .hero .btn.g{background:var(--verde);color:#fff}
+  .mock{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);
+    border-radius:14px;padding:14px;margin-top:18px;font-size:.9rem}
+  .mock .bar{display:flex;gap:5px;margin:8px 0}
+  .mock .bar i{flex:1;height:7px;border-radius:5px;background:rgba(255,255,255,.3)}
+  .mock .bar i.on{background:#fff}
+  .mock .ok{color:#bff0cf;font-weight:700}
+  .grid2{display:flex;gap:12px;flex-wrap:wrap}
+  .grid2 .card{flex:1;min-width:230px}
+  .step{display:flex;gap:13px;align-items:flex-start;margin:14px 0}
+  .step .n{flex:none;width:34px;height:34px;border-radius:50%;background:var(--azul);color:#fff;
+    font-weight:800;display:flex;align-items:center;justify-content:center}
+  .why{display:flex;gap:10px;flex-wrap:wrap}
+  .why div{flex:1;min-width:130px;background:#eef5ff;border-radius:12px;padding:13px;text-align:center;font-weight:600}
+  .price{display:flex;gap:10px;flex-wrap:wrap}
+  .price .card{flex:1;min-width:150px;text-align:center;margin:0}
+  .price .v{font-size:1.5rem;font-weight:800;color:var(--azul-esc)}
+</style>
+
+<div class="hero">
+  <span class="badge">Para PCD · despachantes · concessionárias</span>
+  <h1>Isenção PCD sem se perder 🧭</h1>
+  <p>O sistema te diz <b>exatamente o próximo passo</b>, confere seus documentos por
+     inteligência artificial e monta o processo — do início à isenção.</p>
+  <a class="btn g" href="/pcd/cadastrar">Começar agora</a>
+  <a class="btn" href="/pcd/entrar">Já tenho conta</a>
+  <div class="mock">
+    📄 Caso #1 · IPVA &nbsp;—&nbsp; <b>Fase 2 de 3</b>
+    <div class="bar"><i class="on"></i><i class="on"></i><i></i></div>
+    <span class="ok">✅ Laudo conferido</span> · <span class="ok">✅ Documento do veículo</span> · ⚠️ Comprovante: reenvie mais nítido
+  </div>
+</div>
+
+<div class="card">
+  <h2 class="center">O que você resolve aqui</h2>
+  <div class="grid2">
+    <div class="card" style="border-color:#cfe0f6">
+      <h2>📗 Carro 0km</h2>
+      <p class="muted">Comprar um veículo novo com isenção de <b>IPI, IOF, ICMS e IPVA</b> —
+        com a dica do teto certo pra você economizar o máximo.</p>
+    </div>
+    <div class="card" style="border-color:#cfe0f6">
+      <h2>🚙 Já tenho carro</h2>
+      <p class="muted">Conseguir a isenção do <b>IPVA</b> do veículo que já está no seu nome,
+        com o passo a passo do pedido na SEFAZ.</p>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Como funciona</h2>
+  <div class="step"><div class="n">1</div><div><b>Abra o caso</b><br>
+    <span class="muted">Escolha a trilha e conte seu caso. A gente monta a jornada certa.</span></div></div>
+  <div class="step"><div class="n">2</div><div><b>Anexe os documentos</b><br>
+    <span class="muted">A IA lê cada um e diz ✅ ok / ⚠️ atenção / ❌ falta, em português claro.</span></div></div>
+  <div class="step"><div class="n">3</div><div><b>Monte o processo</b><br>
+    <span class="muted">Cada fase concluída destrava a próxima, até o dossiê pronto pra protocolar.</span></div></div>
+</div>
+
+<div class="card">
+  <h2 class="center">Por que usar</h2>
+  <div class="why">
+    <div>🗂️<br>Organização</div><div>✅<br>Checklist</div>
+    <div>⏱️<br>Economiza tempo</div><div>🧭<br>Passo a passo</div>
+  </div>
+</div>
+
+<div class="card">
+  <h2 class="center">Quanto custa</h2>
+  <p class="muted center">Despachante cobra R$300–900. Aqui você abre um caso por uma fração.</p>
+  <div class="price">
+    <div class="card"><div class="v">R$ 49</div><div class="muted">{{ PACOTES['avulso']['rotulo'] }}</div></div>
+    <div class="card"><div class="v">R$ 129</div><div class="muted">{{ PACOTES['profissional']['rotulo'] }}</div></div>
+    <div class="card"><div class="v">R$ 399</div><div class="muted">{{ PACOTES['escritorio']['rotulo'] }}</div></div>
+  </div>
+  <a class="btn verde" href="/pcd/cadastrar">Criar minha conta grátis</a>
+</div>
+{% endblock %}

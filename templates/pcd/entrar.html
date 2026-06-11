@@ -1,0 +1,17 @@
+{% extends "pcd/base.html" %}
+{% block title %}Entrar — PCD Fácil{% endblock %}
+{% block body %}
+<div class="card">
+  <h1>Entrar</h1>
+  <form method="post" action="/pcd/entrar">
+    <label>E-mail</label>
+    <input name="email" type="email" required autocomplete="email">
+    <label>Senha</label>
+    <input name="senha" type="password" required autocomplete="current-password">
+    <button class="btn">Entrar</button>
+  </form>
+  <p class="muted center" style="margin-top:14px">
+    Não tem conta? <a href="/pcd/cadastrar">Criar agora</a>
+  </p>
+</div>
+{% endblock %}

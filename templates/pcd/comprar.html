@@ -1,0 +1,30 @@
+{% extends "pcd/base.html" %}
+{% block title %}Comprar créditos — PCD Fácil{% endblock %}
+{% block body %}
+<div class="card">
+  <h1>Comprar créditos 💎</h1>
+  <p class="muted">Abrir um caso custa <b>{{ CUSTO_ABRIR_CASO }} créditos</b>;
+    documento ou reanálise extra, <b>{{ CUSTO_DOC_EXTRA }}</b>.</p>
+  <label>Seu CPF ou CNPJ (exigido pra emitir o PIX)</label>
+  <input id="cpf" inputmode="numeric" placeholder="Só números" value="{{ pcd_user['cpf'] or '' }}">
+</div>
+
+{% for k,p in pacotes.items() %}
+<div class="card">
+  <h2>{{ p['rotulo'] }} — R$ {{ '%.0f'|format(p['preco']) }}</h2>
+  <p class="muted">{{ p['creditos'] }} créditos</p>
+  <form method="post" action="/pcd/checkout/{{ k }}" onsubmit="return injCpf(this)">
+    <input type="hidden" name="cpf" class="cpf-h">
+    <button class="btn">Pagar com PIX</button>
+  </form>
+</div>
+{% endfor %}
+
+<script>
+function injCpf(form){
+  const cpf = (document.getElementById('cpf').value || '').replace(/\D/g,'');
+  if(cpf.length !== 11 && cpf.length !== 14){ alert('Informe um CPF (11) ou CNPJ (14) válido.'); return false; }
+  form.querySelector('.cpf-h').value = cpf; return true;
+}
+</script>
+{% endblock %}

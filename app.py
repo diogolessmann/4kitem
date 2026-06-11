@@ -2058,6 +2058,15 @@ def webhook_asaas_global():
             except Exception as _drz_e:
                 log.error(f'[DRZAP] Webhook error: {_drz_e}')
 
+    elif ref.startswith('pcd_'):
+        # PCD Fácil — compra de créditos paga: credita (idempotente/atômico)
+        if ativar:
+            try:
+                from pcd import pcd_webhook_confirmar
+                pcd_webhook_confirmar(ref, payload.get('payment', {}).get('id', ''))
+            except Exception as _pcd_e:
+                log.error(f'[PCD] Webhook error: {_pcd_e}')
+
     elif ref.startswith('alerta_'):
         if customer_id:
             conn = get_saas_db()
@@ -13245,6 +13254,18 @@ try:
     log.info('[PETmed] Blueprint registrado em /petmed')
 except Exception as _pm_err:
     log.warning(f'[PETmed] Erro ao carregar blueprint: {_pm_err}')
+
+# ══════════════════════════════════════════════════════════════════════════════
+# PCD Fácil — Isenção PCD guiada por IA (carro 0km / IPVA)
+# ══════════════════════════════════════════════════════════════════════════════
+try:
+    from pcd import pcd_bp
+    from pcd_db import init_pcd_db
+    init_pcd_db()
+    app.register_blueprint(pcd_bp)
+    log.info('[PCD] Blueprint registrado em /pcd')
+except Exception as _pcd_err:
+    log.warning(f'[PCD] Erro ao carregar blueprint: {_pcd_err}')
 
 # VetZap Bot — "Uber do Veterinário" no WhatsApp (Fase 1)
 try:

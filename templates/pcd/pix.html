@@ -1,0 +1,44 @@
+{% extends "pcd/base.html" %}
+{% block title %}Pagamento PIX — PCD Fácil{% endblock %}
+{% block body %}
+<div class="card center">
+  <h1>Pague com PIX</h1>
+  <p class="muted">{{ compra['creditos'] }} créditos · R$ {{ '%.2f'|format(compra['valor']) }}</p>
+  {% if compra['status'] == 'pago' %}
+    <div class="flash ok">✅ Pagamento confirmado! Seus créditos já entraram.</div>
+    <a class="btn verde" href="/pcd/app">Ir para meus casos</a>
+  {% else %}
+    {% if qr %}
+      <img src="data:image/png;base64,{{ qr }}" alt="QR Code PIX"
+           style="width:240px;height:240px;background:#fff;border-radius:12px;margin:16px auto;padding:8px;display:block">
+    {% endif %}
+    <label style="text-align:left">PIX copia e cola</label>
+    <textarea readonly onclick="this.select()" style="min-height:84px;font-size:12px">{{ copia }}</textarea>
+    <p class="muted" style="margin-top:12px">
+      Assim que o pagamento cair, seus <b>{{ compra['creditos'] }} créditos</b> entram sozinhos. 🎉
+    </p>
+    <button class="btn verde" onclick="checar()">✅ Já paguei</button>
+    <a class="btn ghost" href="/pcd/app">Voltar ao painel</a>
+    <p class="muted" id="aviso" style="margin-top:10px"></p>
+  {% endif %}
+</div>
+
+<script>
+const cid = {{ compra['id'] }};
+function poll(cb){
+  fetch('/pcd/pix-status/' + cid, {method:'POST'})
+    .then(r=>r.json()).then(cb).catch(()=>{});
+}
+function checar(){
+  document.getElementById('aviso').textContent = 'Conferindo o pagamento...';
+  poll(d=>{
+    if(d.pago){ document.getElementById('aviso').textContent = 'Confirmado! Redirecionando...';
+      setTimeout(()=>location.href='/pcd/app', 1200); }
+    else { document.getElementById('aviso').textContent = 'Ainda não identificamos o pagamento. Se já pagou, aguarde alguns segundos e tente de novo.'; }
+  });
+}
+{% if compra['status'] != 'pago' %}
+setInterval(()=>poll(d=>{ if(d.pago) location.href='/pcd/app'; }), 6000);
+{% endif %}
+</script>
+{% endblock %}
