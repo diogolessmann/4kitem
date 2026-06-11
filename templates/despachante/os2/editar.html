@@ -81,7 +81,10 @@
 
 <!-- Veículo -->
 <div class="bx-card">
-  <h3>🚗 Veículo</h3>
+  <h3 style="display:flex;justify-content:space-between;align-items:center;">
+    <span>🚗 Veículo</span>
+    <button class="btn btn-ghost btn-sm" onclick="abrirOcrModal('veiculo')" title="Cole o print da tela do veículo (Ctrl+V)">📸 Print do veículo</button>
+  </h3>
   <div class="bx-row" style="grid-template-columns:2fr 2fr 1fr 1fr;">
     <div class="bx-field"><label>Marca</label><input id="v_marca" value="{{ marca }}"></div>
     <div class="bx-field"><label>Modelo</label><input id="v_modelo" value="{{ modelo }}"></div>
@@ -98,7 +101,10 @@
 
 <!-- Cliente -->
 <div class="bx-card">
-  <h3>👤 Cliente / Proprietário</h3>
+  <h3 style="display:flex;justify-content:space-between;align-items:center;">
+    <span>👤 Cliente / Proprietário</span>
+    <button class="btn btn-ghost btn-sm" onclick="abrirOcrModal('cliente')" title="Cole o print da tela do CPF/cliente (Ctrl+V)">📸 Print do CPF/cliente</button>
+  </h3>
   <div class="bx-row" style="grid-template-columns:3fr 1.3fr 1.3fr 1.3fr;">
     <div class="bx-field"><label>Nome</label><input id="c_nome" value="{{ cli_nome }}"></div>
     <div class="bx-field"><label>CPF/CNPJ</label><input id="c_cpf" value="{{ cli_cpf }}"></div>
@@ -177,12 +183,12 @@
 <div class="picker-modal" id="ocr-modal" onclick="if(event.target===this)fecharOcrModal()">
   <div class="picker-box" style="max-width:620px;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-      <strong>📸 Preencher com Print</strong>
+      <strong id="ocr-title">📸 Preencher com Print</strong>
       <button onclick="fecharOcrModal()" style="background:none;border:none;color:var(--text3);font-size:18px;cursor:pointer;">✕</button>
     </div>
-    <div style="font-size:12px;color:var(--text3);margin-bottom:12px;">
+    <div id="ocr-sub" style="font-size:12px;color:var(--text3);margin-bottom:12px;">
       Dá um print da tela do <strong>veículo (DetranNet)</strong> e outro da tela do <strong>CPF do cliente</strong> e
-      <strong>cole com Ctrl+V</strong> aqui (pode colar os dois). A IA junta tudo no cadastro.
+      <strong>cole com Ctrl+V</strong> aqui (pode colar 1 ou 2). A IA junta tudo no cadastro.
     </div>
     <div id="ocr-drop" onclick="document.getElementById('ocr-file').click()"
          style="border:2px dashed var(--border2);border-radius:12px;padding:24px;text-align:center;color:var(--text3);cursor:pointer;font-size:13px;">
@@ -266,35 +272,56 @@ function importarDetranet(){
 }
 
 // ── OCR: cola/adiciona prints (veículo + CPF do cliente), com miniaturas ───────
-function abrirOcrModal(){ document.getElementById('ocr-modal').classList.add('open'); }
-function fecharOcrModal(){ document.getElementById('ocr-modal').classList.remove('open'); }
+let _ocrEscopo = 'ambos';   // 'veiculo' | 'cliente' | 'ambos'
+
+function abrirOcrModal(escopo){
+  _ocrEscopo = escopo || 'ambos';
+  const tits = {veiculo:'📸 Print do Veículo', cliente:'📸 Print do CPF / Cliente', ambos:'📸 Preencher com Print'};
+  const subs = {
+    veiculo: 'Cole o print da tela do <strong>veículo (DetranNet)</strong>. A IA extrai placa, RENAVAM, chassi, marca etc.',
+    cliente: 'Cole o print da tela do <strong>CPF / cliente</strong>. A IA extrai nome, CPF, endereço, telefone etc.',
+    ambos:   'Cole o print do <strong>veículo</strong> e o do <strong>CPF do cliente</strong> (1 ou 2). A IA junta tudo no cadastro.',
+  };
+  document.getElementById('ocr-title').textContent = tits[_ocrEscopo];
+  document.getElementById('ocr-sub').innerHTML = subs[_ocrEscopo];
+  document.getElementById('ocr-modal').classList.add('open');
+}
+function fecharOcrModal(){ document.getElementById('ocr-modal').classList.remove('open'); _ocrEscopo = 'ambos'; }
 
 function ocrFiles(files){
   for(const f of files){ if(f && (f.type||'').indexOf('image')===0) addOcrImage(f); }
 }
 
-// Aplica o JSON do OCR aos campos vazios (merge — não sobrescreve o que já tem). Retorna nº de campos preenchidos.
-function aplicarOcr(x){
+// Aplica o JSON do OCR aos campos vazios (merge), respeitando o escopo. Retorna nº de campos preenchidos.
+function aplicarOcr(x, escopo){
   let n = 0;
   const set = (id,val) => { if(val){ const el=document.getElementById(id); if(el && !el.value){ el.value = String(val); n++; } } };
-  set('v_placa', (x.placa||'').toUpperCase()); set('v_renavam', x.renavam); set('v_chassi', x.chassi);
-  set('v_marca', x.marca); set('v_modelo', x.modelo); set('v_anofab', x.ano_fab); set('v_anomod', x.ano_mod);
-  set('v_cor', x.cor); set('v_categoria', x.categoria); set('v_combustivel', x.combustivel); set('v_crv', x.num_crv);
-  set('c_nome', x.nome); set('c_cpf', x.cpf||x.cnpj); set('c_rg', x.rg); set('c_tel', x.telefone);
-  set('c_rua', x.logradouro); set('c_num', x.numero); set('c_bairro', x.bairro); set('c_cidade', x.cidade); set('c_uf', x.uf);
-  if(x.ipva)          { addItem('', 'IPVA', 'debito', x.ipva); n++; }
-  if(x.licenciamento) { addItem('', 'Licenciamento', 'debito', x.licenciamento); n++; }
-  if(x.multas)        { addItem('', 'Multas', 'debito', x.multas); n++; }
+  if(escopo === 'veiculo' || escopo === 'ambos'){
+    set('v_placa', (x.placa||'').toUpperCase()); set('v_renavam', x.renavam); set('v_chassi', x.chassi);
+    set('v_marca', x.marca); set('v_modelo', x.modelo); set('v_anofab', x.ano_fab); set('v_anomod', x.ano_mod);
+    set('v_cor', x.cor); set('v_categoria', x.categoria); set('v_combustivel', x.combustivel); set('v_crv', x.num_crv);
+    if(x.ipva)          { addItem('', 'IPVA', 'debito', x.ipva); n++; }
+    if(x.licenciamento) { addItem('', 'Licenciamento', 'debito', x.licenciamento); n++; }
+    if(x.multas)        { addItem('', 'Multas', 'debito', x.multas); n++; }
+  }
+  if(escopo === 'cliente' || escopo === 'ambos'){
+    set('c_nome', x.nome); set('c_cpf', x.cpf||x.cnpj); set('c_rg', x.rg); set('c_tel', x.telefone);
+    set('c_rua', x.logradouro); set('c_num', x.numero); set('c_bairro', x.bairro); set('c_cidade', x.cidade); set('c_uf', x.uf);
+  }
   return n;
 }
 
 async function addOcrImage(blob){
   if(!blob) return;
-  abrirOcrModal();
+  const escopo = _ocrEscopo;                       // congela o escopo desta imagem
+  document.getElementById('ocr-modal').classList.add('open');  // garante painel visível (sem resetar escopo)
   const url  = URL.createObjectURL(blob);
   const card = document.createElement('div');
   card.style.cssText = 'position:relative;width:130px;border:1px solid var(--border2);border-radius:8px;overflow:hidden;background:var(--surface2);';
   card.innerHTML = `<img src="${url}" style="width:100%;height:90px;object-fit:cover;display:block;">`+
+    `<button title="Remover miniatura" onclick="this.closest('div').remove()" `+
+      `style="position:absolute;top:4px;right:4px;width:20px;height:20px;border:none;border-radius:50%;`+
+      `background:rgba(0,0,0,.6);color:#fff;cursor:pointer;font-size:12px;line-height:1;">✕</button>`+
     `<div class="ocr-badge" style="font-size:11px;padding:5px 7px;color:var(--text2);">🔎 lendo...</div>`;
   document.getElementById('ocr-thumbs').appendChild(card);
   const badge = card.querySelector('.ocr-badge');
@@ -303,7 +330,7 @@ async function addOcrImage(blob){
     const r = await fetch('/despachante/api/ocr', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({imagem:b64, mime:blob.type||'image/png'})});
     const d = await r.json();
     if(!r.ok || !d.dados){ badge.textContent = '❌ '+(d.erro||'falhou'); badge.style.color='var(--red)'; return; }
-    const n = aplicarOcr(d.dados);
+    const n = aplicarOcr(d.dados, escopo);
     badge.textContent = `✅ ${n} campo(s)`; badge.style.color='var(--green)';
   }catch(err){ badge.textContent = '❌ '+err.message; badge.style.color='var(--red)'; }
 }
