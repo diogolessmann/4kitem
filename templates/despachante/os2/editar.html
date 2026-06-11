@@ -127,7 +127,7 @@
     <span style="display:flex;gap:6px;">
       <button class="btn btn-secondary btn-sm" onclick="abrirPicker()">➕ Serviço</button>
       <button class="btn btn-ghost btn-sm" onclick="addItem('', '', 'servico')">➕ Linha</button>
-      <button class="btn btn-ghost btn-sm" onclick="importarDetranet()">🖥️ Importar DETRANET</button>
+      <button class="btn btn-ghost btn-sm" onclick="abrirOcrModal('detranet')" title="Cole o print da tela de débitos do DetranNET (Ctrl+V)">📸 Print do DetranNET</button>
     </span>
   </h3>
   <table class="itens-table">
@@ -252,23 +252,19 @@ function filtrarPicker(){
 function escolherServico(codigo, label){ addItem(codigo, label, 'servico'); fecharPicker(); }
 
 // Importar débitos do DETRANET (reusa OCR de débitos)
-function importarDetranet(){
-  const inp = document.createElement('input');
-  inp.type = 'file'; inp.accept = 'image/*';
-  inp.onchange = async () => {
-    if(!inp.files[0]) return;
-    const fd = new FormData(); fd.append('arquivo', inp.files[0]);
-    try{
-      const r = await fetch('/despachante/api/ocr/debitos', {method:'POST', body:fd});
-      const d = await r.json();
-      if(!r.ok){ alert('Erro: '+(d.erro||'falha')); return; }
-      (d.debitos||[]).forEach(db => {
-        const venc = (db.vencimento||'').split('/').reverse().join('-');  // dd/mm/aaaa -> aaaa-mm-dd
-        addItem('', db.descricao || db.tipo || 'Débito', 'debito', money(db.valor), /^\d{4}-\d{2}-\d{2}$/.test(venc)?venc:'');
-      });
-    }catch(e){ alert('Erro: '+e.message); }
-  };
-  inp.click();
+// Lê o print de débitos do DetranNET (endpoint estruturado) e adiciona como itens. Retorna nº de itens.
+async function ocrDetranet(blob){
+  const fd = new FormData(); fd.append('arquivo', blob, 'detranet.png');
+  const r = await fetch('/despachante/api/ocr/debitos', {method:'POST', body:fd});
+  const d = await r.json();
+  if(!r.ok) throw new Error(d.erro || 'falha');
+  let n = 0;
+  (d.debitos||[]).forEach(db => {
+    const venc = (db.vencimento||'').split('/').reverse().join('-');  // dd/mm/aaaa -> aaaa-mm-dd
+    addItem('', db.descricao || db.tipo || 'Débito', 'debito', money(db.valor), /^\d{4}-\d{2}-\d{2}$/.test(venc)?venc:'');
+    n++;
+  });
+  return n;
 }
 
 // ── OCR: cola/adiciona prints (veículo + CPF do cliente), com miniaturas ───────
@@ -276,10 +272,11 @@ let _ocrEscopo = 'ambos';   // 'veiculo' | 'cliente' | 'ambos'
 
 function abrirOcrModal(escopo){
   _ocrEscopo = escopo || 'ambos';
-  const tits = {veiculo:'📸 Print do Veículo', cliente:'📸 Print do CPF / Cliente', ambos:'📸 Preencher com Print'};
+  const tits = {veiculo:'📸 Print do Veículo', cliente:'📸 Print do CPF / Cliente', detranet:'📸 Print do DetranNET (débitos)', ambos:'📸 Preencher com Print'};
   const subs = {
     veiculo: 'Cole o print da tela do <strong>veículo (DetranNet)</strong>. A IA extrai placa, RENAVAM, chassi, marca etc.',
     cliente: 'Cole o print da tela do <strong>CPF / cliente</strong>. A IA extrai nome, CPF, endereço, telefone etc.',
+    detranet:'Cole o print da tela de <strong>débitos do DetranNET</strong>. Cada débito (IPVA, licenciamento, multas) vira um item da O.S.',
     ambos:   'Cole o print do <strong>veículo</strong> e o do <strong>CPF do cliente</strong> (1 ou 2). A IA junta tudo no cadastro.',
   };
   document.getElementById('ocr-title').textContent = tits[_ocrEscopo];
@@ -326,12 +323,18 @@ async function addOcrImage(blob){
   document.getElementById('ocr-thumbs').appendChild(card);
   const badge = card.querySelector('.ocr-badge');
   try{
-    const b64 = await new Promise(res => { const rd=new FileReader(); rd.onload=e=>res(e.target.result.split(',')[1]); rd.readAsDataURL(blob); });
-    const r = await fetch('/despachante/api/ocr', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({imagem:b64, mime:blob.type||'image/png'})});
-    const d = await r.json();
-    if(!r.ok || !d.dados){ badge.textContent = '❌ '+(d.erro||'falhou'); badge.style.color='var(--red)'; return; }
-    const n = aplicarOcr(d.dados, escopo);
-    badge.textContent = `✅ ${n} campo(s)`; badge.style.color='var(--green)';
+    let n;
+    if(escopo === 'detranet'){
+      n = await ocrDetranet(blob);
+      badge.textContent = `✅ ${n} item(ns)`; badge.style.color='var(--green)';
+    } else {
+      const b64 = await new Promise(res => { const rd=new FileReader(); rd.onload=e=>res(e.target.result.split(',')[1]); rd.readAsDataURL(blob); });
+      const r = await fetch('/despachante/api/ocr', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({imagem:b64, mime:blob.type||'image/png'})});
+      const d = await r.json();
+      if(!r.ok || !d.dados){ badge.textContent = '❌ '+(d.erro||'falhou'); badge.style.color='var(--red)'; return; }
+      n = aplicarOcr(d.dados, escopo);
+      badge.textContent = `✅ ${n} campo(s)`; badge.style.color='var(--green)';
+    }
   }catch(err){ badge.textContent = '❌ '+err.message; badge.style.color='var(--red)'; }
 }
 
