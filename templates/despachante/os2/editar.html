@@ -297,9 +297,7 @@ function aplicarOcr(x, escopo){
     set('v_placa', (x.placa||'').toUpperCase()); set('v_renavam', x.renavam); set('v_chassi', x.chassi);
     set('v_marca', x.marca); set('v_modelo', x.modelo); set('v_anofab', x.ano_fab); set('v_anomod', x.ano_mod);
     set('v_cor', x.cor); set('v_categoria', x.categoria); set('v_combustivel', x.combustivel); set('v_crv', x.num_crv);
-    if(x.ipva)          { addItem('', 'IPVA', 'debito', x.ipva); n++; }
-    if(x.licenciamento) { addItem('', 'Licenciamento', 'debito', x.licenciamento); n++; }
-    if(x.multas)        { addItem('', 'Multas', 'debito', x.multas); n++; }
+    // Débitos NÃO entram aqui (vêm sem vencimento). Use "📸 Print do DetranNET" → traz cada débito COM data.
   }
   if(escopo === 'cliente' || escopo === 'ambos'){
     set('c_nome', x.nome); set('c_cpf', x.cpf||x.cnpj); set('c_rg', x.rg); set('c_tel', x.telefone);

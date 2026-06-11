@@ -12031,6 +12031,11 @@ Retorne APENAS um objeto JSON válido com os campos (use null para não encontra
 "telefone":null,"email":null,"cep":null,"logradouro":null,"numero":null,
 "complemento":null,"bairro":null,"cidade":null,"uf":null,
 "total_debitos":null,"ipva":null,"licenciamento":null,"multas":null}
+Instruções para o veículo (MUITO IMPORTANTE — não troque os campos):
+- marca: APENAS a marca/fabricante (ex.: "FORD", "VW", "FIAT", "CHEVROLET"). Num campo "Marca/Modelo: I/FORD FOCUS 2.0L", a marca é "FORD".
+- modelo: APENAS o modelo, sem a marca (ex.: "FOCUS 2.0L").
+- chassi: SOMENTE o número do chassi/VIN — 17 caracteres alfanuméricos (letras+dígitos), sem espaços, barras ou parênteses. Se não houver um chassi claramente identificável, use null. NUNCA coloque marca/modelo/código de tipo no chassi.
+- NUNCA use o nome/rótulo de um campo como valor. Se ler "RENAVAM", "CHASSI", "MARCA", "PLACA" como rótulo e não souber o valor real, use null.
 Instruções para os campos de débitos:
 - Extraia SOMENTE valores que apareçam EXPLICITAMENTE na imagem, com o número visível. NUNCA invente, estime, calcule ou complete valores que não estejam na tela. Se um débito não aparecer, deixe null.
 - Em Santa Catarina NÃO existe cobrança de DPVAT/seguro obrigatório. NÃO inclua DPVAT em hipótese alguma, mesmo que o modelo "ache" que deveria existir.
@@ -12060,6 +12065,17 @@ IMPORTANTE: Retorne SOMENTE o JSON, nada mais.'''
         if not match: return jsonify({'erro': 'IA não retornou JSON válido'}), 422
         dados = _json2.loads(match.group())
         dados = {k: v for k, v in dados.items() if v is not None and v != ''}
+        # ── Sanidade: rótulo não vira valor; marca/modelo não vira chassi ──
+        _LBL = {'renavam','chassi','marca','modelo','placa','cpf','cnpj','rg',
+                'cor','especie','categoria','combustivel','nome','telefone'}
+        for campo in ('marca', 'modelo', 'cor'):
+            if str(dados.get(campo, '')).strip().lower() in _LBL:
+                dados.pop(campo, None)
+        ch = str(dados.get('chassi', '') or '')
+        ch_clean = _re2.sub(r'[^A-Za-z0-9]', '', ch)
+        # chassi válido = 11–17 alfanuméricos, sem espaço/barra/parênteses (senão é marca/modelo/lixo)
+        if any(c in ch for c in ' /()') or not (11 <= len(ch_clean) <= 17):
+            dados.pop('chassi', None)
         return jsonify({'ok': True, 'dados': dados, 'campos': len(dados)})
     except Exception as e:
         log.error(f'OCR despachante error: {e}')
