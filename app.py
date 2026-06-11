@@ -11902,72 +11902,119 @@ def desp_api_debito_delete(debito_id):
     return jsonify({'ok': True})
 
 
+# ══ OCR multimodal: Gemini (melhor leitura de tabela/valores) com fallback Groq ══
+
+def _desp_gemini_ocr(prompt: str, img_b64: str, mime: str, max_tokens: int = 2048):
+    """Chama o Gemini (visão) com imagem + prompt em modo JSON. Retorna texto bruto, ou None se sem chave."""
+    key = os.environ.get('GEMINI_API_KEY', '')
+    if not key:
+        return None
+    model = os.environ.get('GEMINI_MODEL', 'gemini-2.5-flash')
+    url = f'https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent'
+    body = {
+        'contents': [{'role': 'user', 'parts': [
+            {'inlineData': {'mimeType': mime or 'image/png', 'data': img_b64}},
+            {'text': prompt},
+        ]}],
+        'generationConfig': {'temperature': 0.1, 'maxOutputTokens': max_tokens,
+                             'responseMimeType': 'application/json'},
+    }
+    r = requests.post(url, params={'key': key}, json=body, timeout=90)
+    r.raise_for_status()
+    return r.json()['candidates'][0]['content']['parts'][0]['text'].strip()
+
+
+def _desp_groq_ocr(prompt: str, img_b64: str, mime: str, max_tokens: int = 2048):
+    """Fallback: OCR via Groq (llama-4-scout). Retorna texto bruto, ou None se sem chave."""
+    key = os.environ.get('GROQ_API_KEY', '')
+    if not key:
+        return None
+    resp = requests.post(
+        'https://api.groq.com/openai/v1/chat/completions',
+        headers={'Authorization': f'Bearer {key}', 'Content-Type': 'application/json'},
+        json={'model': 'meta-llama/llama-4-scout-17b-16e-instruct',
+              'messages': [{'role': 'user', 'content': [
+                  {'type': 'image_url', 'image_url': {'url': f'data:{mime};base64,{img_b64}'}},
+                  {'type': 'text', 'text': prompt}]}],
+              'max_tokens': max_tokens, 'temperature': 0.1},
+        timeout=60,
+    )
+    resp.raise_for_status()
+    return resp.json()['choices'][0]['message']['content'].strip()
+
+
+def _desp_ocr_call(prompt: str, img_b64: str, mime: str, max_tokens: int = 2048):
+    """Prefere Gemini (melhor leitura de tabela); cai pro Groq se Gemini indisponível/falhar."""
+    try:
+        txt = _desp_gemini_ocr(prompt, img_b64, mime, max_tokens)
+        if txt:
+            return txt
+    except Exception as e:
+        log.warning(f'Gemini OCR falhou ({e}) — usando Groq')
+    return _desp_groq_ocr(prompt, img_b64, mime, max_tokens)
+
+
+def _desp_json_loads(texto: str):
+    """Parse tolerante: tira cercas markdown e extrai objeto/array JSON."""
+    import json as _j, re as _r
+    raw = (texto or '').strip()
+    if raw.startswith('```'):
+        raw = _r.sub(r'^```[a-zA-Z]*\n?', '', raw).rstrip('`').strip()
+    try:
+        return _j.loads(raw)
+    except Exception:
+        m = _r.search(r'\{[\s\S]*\}', raw) or _r.search(r'\[[\s\S]*\]', raw)
+        if m:
+            try:
+                return _j.loads(m.group())
+            except Exception:
+                return None
+    return None
+
+
+PROMPT_DEBITOS = (
+    'Você está vendo a tela "Listagem de Débitos" do DETRANET (DETRAN-SC) de um veículo.\n'
+    'Extraia os itens da tabela e devolva um objeto JSON: {"debitos":[{"tipo","descricao","numero_detran","valor","vencimento"}]}.\n'
+    'REGRAS (MUITO IMPORTANTES — é dinheiro):\n'
+    '- tipo: classifique pela coluna "Classe". "IPVA" se contiver IPVA (INCLUI "Cota Única" e "1ª/2ª/3ª Cota"); '
+    '"Licenciamento" se contiver Licenciamento; "Multa" SOMENTE se for infração/auto de multa; "Taxa DETRAN" para taxas; senão "Outros". '
+    'NUNCA classifique uma cota de IPVA como Multa.\n'
+    '- valor: use a coluna "Valor Atual(R$)" (o valor a pagar), número decimal.\n'
+    '- vencimento: coluna "Vencimento", no formato dd/mm/aaaa.\n'
+    '- descricao: o texto da coluna "Classe" exatamente como aparece.\n'
+    '- numero_detran: coluna "Número DetranNET".\n'
+    '- NÃO INCLUA itens marcados com "*" ou anotados como "Não contabilizado no total" '
+    '(ex.: a "IPVA Cota Única" quando o veículo paga parcelado). Traga apenas os itens que compõem o "Total dos Débitos".\n'
+    '- Em Santa Catarina NÃO existe DPVAT/seguro obrigatório — nunca inclua DPVAT.\n'
+    '- Extraia SOMENTE o que está visível na imagem; não invente nem calcule valores.\n'
+    'Responda SOMENTE o JSON.'
+)
+
+
 @app.route('/despachante/api/ocr/debitos', methods=['POST'])
 @_desp_login_required
 def desp_api_ocr_debitos():
-    """
-    Recebe print do DETRANET (imagem), extrai lista de débitos via IA.
-    Retorna JSON com array de débitos para preview antes de salvar.
-    """
-    import base64, mimetypes, re as _re4, json as _json4
-
-    groq_key = os.environ.get('GROQ_API_KEY', '')
-    if not groq_key:
-        return jsonify({'erro': 'GROQ_API_KEY não configurada'}), 500
-
+    """Recebe print do DETRANET (imagem) e extrai a lista de débitos via IA (Gemini→Groq)."""
+    import base64, mimetypes
+    if not (os.environ.get('GEMINI_API_KEY') or os.environ.get('GROQ_API_KEY')):
+        return jsonify({'erro': 'Nenhuma IA de OCR configurada (GEMINI_API_KEY ou GROQ_API_KEY)'}), 500
     f = request.files.get('arquivo')
     if not f:
         return jsonify({'erro': 'Nenhum arquivo enviado'}), 400
-
-    dados_bytes = f.read()
-    mime        = f.mimetype or mimetypes.guess_type(f.filename or '')[0] or 'image/jpeg'
-
-    PROMPT_DEBITOS = (
-        'Analise esta imagem do sistema DETRANET (DETRAN-SC) mostrando a Listagem de Débitos de um veículo.\n'
-        'Extraia TODOS os itens da tabela de débitos e retorne um array JSON:\n'
-        '[{"tipo":"","descricao":"","numero_detran":"","valor_nominal":"","valor_multa":"","valor_juros":"","valor":"","vencimento":"","situacao":"","auto_infracao":""}]\n'
-        'Instruções por campo:\n'
-        '- tipo: classifique como IPVA / Multa / Licenciamento / DPVAT / Taxa DETRAN / Outros\n'
-        '- descricao: texto da coluna "Classe" exatamente como aparece (ex: "Licenciamento Anual 2026", "IPVA (Cota Unica) 2026")\n'
-        '- numero_detran: número da coluna "Número DetranNET" (ex: "662.466.509")\n'
-        '- valor_nominal: valor da coluna "Valor Nominal(R$)"\n'
-        '- valor_multa: valor da coluna "Multa(R$)"\n'
-        '- valor_juros: valor da coluna "Juros(R$)"\n'
-        '- valor: valor da coluna "Valor Atual(R$)" — este é o valor a pagar\n'
-        '- vencimento: data de vencimento (formato dd/mm/aaaa)\n'
-        '- situacao: sempre "em aberto" a menos que claramente marcado como pago\n'
-        '- auto_infracao: se for multa, o código da coluna "Classe" (ex: "UF:DN-000300-S046548067-7455"); senão ""\n'
-        'Para multas: se a "Classe" contiver código de auto (ex: "UF:DN-...", "JARAGUA-..."), classifique tipo como "Multa".\n'
-        'RETORNE SOMENTE O ARRAY JSON, sem texto adicional, sem markdown.'
-    )
-
+    mime    = f.mimetype or mimetypes.guess_type(f.filename or '')[0] or 'image/jpeg'
+    img_b64 = base64.b64encode(f.read()).decode()
     try:
-        img_b64 = base64.b64encode(dados_bytes).decode()
-        resp = requests.post(
-            'https://api.groq.com/openai/v1/chat/completions',
-            headers={'Authorization': f'Bearer {groq_key}', 'Content-Type': 'application/json'},
-            json={
-                'model': 'meta-llama/llama-4-scout-17b-16e-instruct',
-                'messages': [{'role': 'user', 'content': [
-                    {'type': 'image_url', 'image_url': {'url': f'data:{mime};base64,{img_b64}'}},
-                    {'type': 'text', 'text': PROMPT_DEBITOS},
-                ]}],
-                'max_tokens': 2048,
-                'temperature': 0.1,
-            },
-            timeout=60,
-        )
-        resp.raise_for_status()
-        texto = resp.json()['choices'][0]['message']['content'].strip()
-
-        match = _re4.search(r'\[[\s\S]*\]', texto)
-        if not match:
-            return jsonify({'erro': 'IA não identificou débitos na imagem — verifique se é um print do DETRANET'}), 422
-
-        debitos = _json4.loads(match.group())
-        debitos = [d for d in debitos if d.get('tipo') or d.get('descricao')]
-        return jsonify({'ok': True, 'debitos': debitos, 'total': len(debitos)})
-
+        texto = _desp_ocr_call(PROMPT_DEBITOS, img_b64, mime, max_tokens=2048)
+        data  = _desp_json_loads(texto)
+        if isinstance(data, dict):
+            data = data.get('debitos') or data.get('itens') or []
+        if not isinstance(data, list):
+            return jsonify({'erro': 'IA não identificou débitos — verifique se é um print do DETRANET'}), 422
+        debitos = [d for d in data if isinstance(d, dict) and (d.get('tipo') or d.get('descricao'))]
+        if not debitos:
+            return jsonify({'erro': 'Nenhum débito encontrado na imagem'}), 422
+        return jsonify({'ok': True, 'debitos': debitos, 'total': len(debitos),
+                        'motor': 'gemini' if os.environ.get('GEMINI_API_KEY') else 'groq'})
     except Exception as e:
         log.error(f'OCR débitos error: {e}')
         return jsonify({'erro': str(e)}), 500
@@ -12015,13 +12062,13 @@ def desp_api_cpf(cpf):
 @app.route('/despachante/api/ocr', methods=['POST'])
 @_desp_login_required
 def desp_api_ocr():
-    import re as _re2, json as _json2
+    import re as _re2
     data    = request.get_json(silent=True) or {}
     img_b64 = (data.get('imagem') or '').strip()
     mime    = data.get('mime', 'image/png')
     if not img_b64: return jsonify({'erro': 'Nenhuma imagem recebida'}), 400
-    groq_key = os.environ.get('GROQ_API_KEY','')
-    if not groq_key: return jsonify({'erro': 'GROQ_API_KEY não configurada'}), 500
+    if not (os.environ.get('GEMINI_API_KEY') or os.environ.get('GROQ_API_KEY')):
+        return jsonify({'erro': 'Nenhuma IA de OCR configurada (GEMINI_API_KEY ou GROQ_API_KEY)'}), 500
     prompt = '''Analise esta imagem de documento ou tela de sistema de despachante/DETRAN.
 Extraia TODOS os dados visíveis de veículo, do proprietário/cliente e de débitos/taxas.
 Retorne APENAS um objeto JSON válido com os campos (use null para não encontrados):
@@ -12045,25 +12092,10 @@ Instruções para os campos de débitos:
 - total_debitos: use null A MENOS QUE exista na tela um campo escrito "Total dos Débitos" (ou equivalente); nesse caso copie EXATAMENTE o valor mostrado. NÃO some você mesmo.
 IMPORTANTE: Retorne SOMENTE o JSON, nada mais.'''
     try:
-        resp = requests.post(
-            'https://api.groq.com/openai/v1/chat/completions',
-            headers={'Authorization': f'Bearer {groq_key}', 'Content-Type': 'application/json'},
-            json={
-                'model': 'meta-llama/llama-4-scout-17b-16e-instruct',
-                'messages': [{'role': 'user', 'content': [
-                    {'type': 'image_url', 'image_url': {'url': f'data:{mime};base64,{img_b64}'}},
-                    {'type': 'text', 'text': prompt},
-                ]}],
-                'max_tokens': 1024,
-                'temperature': 0.1,
-            },
-            timeout=30,
-        )
-        resp.raise_for_status()
-        texto = resp.json()['choices'][0]['message']['content'].strip()
-        match = _re2.search(r'\{[\s\S]*\}', texto)
-        if not match: return jsonify({'erro': 'IA não retornou JSON válido'}), 422
-        dados = _json2.loads(match.group())
+        texto = _desp_ocr_call(prompt, img_b64, mime, max_tokens=1200)
+        dados = _desp_json_loads(texto)
+        if not isinstance(dados, dict):
+            return jsonify({'erro': 'IA não retornou JSON válido'}), 422
         dados = {k: v for k, v in dados.items() if v is not None and v != ''}
         # ── Sanidade: rótulo não vira valor; marca/modelo não vira chassi ──
         _LBL = {'renavam','chassi','marca','modelo','placa','cpf','cnpj','rg',
