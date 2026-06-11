@@ -143,17 +143,27 @@ def total_fases(trilha):
 # ── Modelos oficiais SEFAZ-SC (Portaria SEF 362/2019) p/ baixar dentro do app ──
 SEF_PAGINA = ('https://www.sef.sc.gov.br/servicos/'
               'solicitar-isencao-ou-imunidade-de-ipva-pessoa-com-deficiencia-ou-autista')
-_SEF_DL = 'https://www.sef.sc.gov.br/api/download?id={id}&nomeArquivo={nome}'
-# laudo conforme o tipo de deficiência do caso
+# Modelos ficam HOSPEDADOS no nosso /static/pcd_modelos/ se existirem (1 clique, confiável);
+# senão, link cai na página oficial da SEFAZ-SC (sempre funciona).
+_MODELOS_DIR = os.path.join(os.path.dirname(__file__), 'static', 'pcd_modelos')
+
+
+def _modelo_url(arquivo):
+    """Se o arquivo existir no static, serve local; senão manda pra página oficial."""
+    if arquivo and os.path.exists(os.path.join(_MODELOS_DIR, arquivo)):
+        return f'/static/pcd_modelos/{arquivo}'
+    return SEF_PAGINA
+
+
+# laudo conforme o tipo de deficiência do caso (nome, arquivo-local-se-houver)
 MODELOS_LAUDO = {
-    'fisica': ('Laudo de Deficiência Física', _SEF_DL.format(id=1133, nome='02._Laudo_Deficiencia_Fisica.pdf')),
-    'mental': ('Laudo de Deficiência Mental', _SEF_DL.format(id=1134, nome='01._Laudo_Deficiencia_Mental.docx')),
-    'down':   ('Laudo de Deficiência Mental', _SEF_DL.format(id=1134, nome='01._Laudo_Deficiencia_Mental.docx')),
-    'tea':    ('Laudo de Autismo',            _SEF_DL.format(id=1132, nome='03._Laudo_Autismo.docx')),
+    'fisica': ('Laudo de Deficiência Física', 'Laudo_Deficiencia_Fisica.pdf'),
+    'mental': ('Laudo de Deficiência Mental', 'Laudo_Deficiencia_Mental.docx'),
+    'down':   ('Laudo de Deficiência Mental', 'Laudo_Deficiencia_Mental.docx'),
+    'tea':    ('Laudo de Autismo',            'Laudo_Autismo.docx'),
 }
-MODELO_SUS = ('Declaração Integrante do SUS', _SEF_DL.format(id=1135, nome='Declaracao_Integrante_SUS.docx'))
-MODELO_DESTINACAO = ('Declaração de Destinação do Veículo',
-                     _SEF_DL.format(id=1131, nome='Declaracao_de_Destinacao_do_Veiculo_ao_Uso_do_Portador_de_Deficiencia_ou_Autista.doc'))
+MODELO_SUS = ('Declaração Integrante do SUS', 'Declaracao_Integrante_SUS.docx')
+MODELO_DESTINACAO = ('Declaração de Destinação do Veículo', 'Declaracao_Destinacao_Veiculo.doc')
 
 
 def modelos_do_doc(doc_id, caso):
@@ -161,17 +171,13 @@ def modelos_do_doc(doc_id, caso):
     Por ora aplicados à Trilha B (IPVA — SEF-SC)."""
     if caso['trilha'] != 'B':
         return []
+    itens = []  # (nome, arquivo-local-ou-None)
     if doc_id == 'laudo':
-        out = []
-        m = MODELOS_LAUDO.get(caso['tipo_deficiencia'])
-        if not m:  # tipo sem modelo específico (ex: visual) → manda pra página oficial
-            m = ('Laudo de avaliação (ver modelos)', SEF_PAGINA)
-        out.append(m)
-        out.append(MODELO_SUS)
-        return out
-    if doc_id == 'condutores':
-        return [MODELO_DESTINACAO]
-    return []
+        itens.append(MODELOS_LAUDO.get(caso['tipo_deficiencia']) or ('Laudo de avaliação (ver modelos)', None))
+        itens.append(MODELO_SUS)
+    elif doc_id == 'condutores':
+        itens.append(MODELO_DESTINACAO)
+    return [(nome, _modelo_url(arq)) for (nome, arq) in itens]
 
 
 # ── IA: Gemini (reaproveita a chave do 4kitem) ───────────────────────────────
