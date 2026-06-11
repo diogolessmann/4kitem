@@ -137,9 +137,11 @@
     <div class="fin-item"><label>Vlr Bruto</label><span class="v" id="fin-bruto" style="color:var(--text);">R$ 0,00</span></div>
     <div class="fin-item"><label>Acréscimo</label><input id="fin-acres" type="text" inputmode="decimal" value="{{ '%.2f'|format(os.acrescimo or 0)|replace('.',',') if os else '0,00' }}" oninput="recalcBar()"></div>
     <div class="fin-item"><label>Desconto</label><input id="fin-desc" type="text" inputmode="decimal" value="{{ '%.2f'|format(os.desconto or 0)|replace('.',',') if os else '0,00' }}" oninput="recalcBar()"></div>
-    <div class="fin-item"><label>Vlr Pago</label><input id="fin-pago" type="text" inputmode="decimal" value="{{ '%.2f'|format(os.pago or 0)|replace('.',',') if os else '0,00' }}" oninput="recalcBar()"></div>
     <div class="fin-item"><label>Vlr Recebido</label><span class="v" id="fin-receb" style="color:var(--green);">R$ 0,00</span></div>
     <div class="fin-item"><label>Vlr A Receber</label><span class="v" id="fin-areceber" style="color:var(--yellow);">R$ 0,00</span></div>
+  </div>
+  <div style="font-size:11px;color:var(--text3);margin-top:8px;">
+    💡 Ao salvar, cada item vira um título em <strong>📒 Títulos</strong>. Registre os pagamentos (baixas) lá ou na <strong>💸 Cobrança</strong>.
   </div>
 </div>
 
@@ -177,6 +179,7 @@
 <script>
 const OS_ID    = document.getElementById('os-id').value || null;
 const ITENS_INI = {{ itens|tojson }};
+const RECEBIDO_INI = {{ (os.pago or 0) if os else 0 }};
 
 function brl(n){ return 'R$ ' + (Number(n)||0).toFixed(2).replace('.', ','); }
 function money(v){ v=(v||'').toString().replace(/[^\d,.-]/g,''); if(v.includes(',')&&v.includes('.'))v=v.replace(/\./g,'').replace(',','.'); else if(v.includes(','))v=v.replace(',','.'); const n=parseFloat(v); return isNaN(n)?0:n; }
@@ -200,7 +203,7 @@ function recalcBar(){
   document.querySelectorAll('#itens-body .v-val').forEach(i => bruto += money(i.value));
   const acres = money(document.getElementById('fin-acres').value);
   const desc  = money(document.getElementById('fin-desc').value);
-  const pago  = money(document.getElementById('fin-pago').value);
+  const pago  = RECEBIDO_INI;
   const total = bruto + acres - desc;
   document.getElementById('fin-bruto').textContent     = brl(bruto);
   document.getElementById('fin-receb').textContent     = brl(pago);
@@ -299,7 +302,7 @@ async function salvarOS(){
       cor: c('v_cor'), categoria: c('v_categoria'), combustivel: c('v_combustivel'), num_crv: c('v_crv') },
     itens: itens,
     os: { acrescimo: document.getElementById('fin-acres').value, desconto: document.getElementById('fin-desc').value,
-      pago: document.getElementById('fin-pago').value, observacoes: document.getElementById('observacoes').value,
+      observacoes: document.getElementById('observacoes').value,
       exercicio: document.getElementById('exercicio').value },
   };
   const url = OS_ID ? `/despachante/os2/${OS_ID}/salvar` : '/despachante/os2/salvar';

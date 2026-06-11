@@ -1328,6 +1328,51 @@ def itens_os_view(os_id: int) -> list:
     return out
 
 
+def sincronizar_parcelas_de_itens(os_id: int) -> dict:
+    """Gera os títulos (os_parcelas) a partir dos os_itens — 1 parcela por item com
+    valor > 0, vencimento do próprio item (ou hoje), ajustando a última pelo
+    acréscimo/desconto para a soma das parcelas == total da O.S.
+    PROTEGE pagamentos: se já houver parcela paga, NÃO regenera (só recomputa o 'pago').
+    Mantém 'pago' sempre = soma das parcelas pagas (livro-caixa coerente)."""
+    from datetime import date
+    conn = get_conn()
+    pagas = conn.execute(
+        "SELECT COUNT(*) FROM os_parcelas WHERE os_id=? AND pago_em IS NOT NULL", (os_id,)
+    ).fetchone()[0]
+
+    if not pagas:
+        itens = conn.execute(
+            "SELECT valor, vencimento FROM os_itens WHERE os_id=? AND valor > 0 ORDER BY ordem, id",
+            (os_id,)
+        ).fetchall()
+        row = conn.execute(
+            "SELECT COALESCE(acrescimo,0), COALESCE(desconto,0) FROM ordens_servico WHERE id=?", (os_id,)
+        ).fetchone()
+        acres, desc = (float(row[0]), float(row[1])) if row else (0.0, 0.0)
+        conn.execute("DELETE FROM os_parcelas WHERE os_id=?", (os_id,))
+        hoje = date.today().isoformat()
+        n = len(itens)
+        for i, it in enumerate(itens, start=1):
+            val  = round(float(it["valor"] or 0), 2)
+            venc = (it["vencimento"] or "").strip() or hoje
+            if i == n:                       # ajuste de acréscimo/desconto na última
+                val = round(val + acres - desc, 2)
+            conn.execute(
+                "INSERT INTO os_parcelas (os_id, numero, valor, vencimento, forma_pagamento) "
+                "VALUES (?,?,?,?,?)", (os_id, i, val, venc, "")
+            )
+        conn.execute("UPDATE ordens_servico SET total_parcelas=? WHERE id=?", (max(n, 1), os_id))
+
+    # 'pago' sempre reflete as baixas (0 quando recém-gerado)
+    total_pago = conn.execute(
+        "SELECT COALESCE(SUM(valor),0) FROM os_parcelas WHERE os_id=? AND pago_em IS NOT NULL", (os_id,)
+    ).fetchone()[0]
+    conn.execute("UPDATE ordens_servico SET pago=? WHERE id=?", (round(float(total_pago), 2), os_id))
+    conn.commit()
+    conn.close()
+    return {"regenerou": not pagas, "pago": round(float(total_pago), 2)}
+
+
 # ── Histórico da O.S. ────────────────────────────────────────────────────────
 
 def registrar_historico(os_id: int, status: str, nota: str = "", usuario: str = "Diogo"):

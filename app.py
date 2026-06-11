@@ -9526,6 +9526,7 @@ from desp_db import (
     # Itens unificados da O.S. (estilo Bludata)
     salvar_itens_os as desp_salvar_itens,
     itens_os_view as desp_itens_view,
+    sincronizar_parcelas_de_itens as desp_sync_parcelas,
 )
 # ChromaDB desabilitado por padrão (evita OOM no Railway free tier)
 # Para habilitar: setar DESP_RAG_ENABLED=1 no ambiente
@@ -11280,7 +11281,7 @@ def desp_os2_salvar(id=None):
 
     cab_comum = {
         'servico': servico, 'honorarios': 0, 'custos': 0,
-        'pago': _desp_money(cab.get('pago')),
+        'pago': 0,  # 'pago' é dirigido pelas baixas das parcelas (sincronizar abaixo)
         'forma_pagamento': cab.get('forma_pagamento',''),
         'observacoes': cab.get('observacoes',''),
         'exercicio': int(cab.get('exercicio') or datetime.now().year),
@@ -11307,7 +11308,9 @@ def desp_os2_salvar(id=None):
 
     # Itens unificados + recalc (bridge honorarios/custos/total)
     totais = desp_salvar_itens(os_id, itens)
-    return jsonify({'ok': True, 'os_id': os_id, 'totais': totais})
+    # Gera os títulos (parcelas) a partir dos itens → aparece em Títulos/Cobrança
+    sync = desp_sync_parcelas(os_id)
+    return jsonify({'ok': True, 'os_id': os_id, 'totais': totais, 'parcelas': sync})
 
 
 def _valor_extenso(valor) -> str:
