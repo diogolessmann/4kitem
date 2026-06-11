@@ -207,14 +207,25 @@ def _gemini_call(system, contents, json_mode=False, max_tokens=1024, temperature
 
 
 SYSTEM_DOC = (
-    "Você é o assistente do PCD Fácil, que AJUDA a organizar o processo de isenção de "
-    "impostos para Pessoa com Deficiência. Olhe o documento anexado e confira se serve para a "
-    "etapa, em linguagem simples e acolhedora (usuário leigo, no celular). NÃO valide "
-    "autenticidade nem detecte fraude — isso é com o órgão. Confira: é o tipo certo de documento? "
-    "Está legível (sem corte/borrão/dedo na frente)? Os dados essenciais aparecem (nome, datas, "
-    "CID no laudo, placa/chassi quando do veículo)? Está vencido? Seja direto e gentil.\n\n"
-    'Responda APENAS em JSON: {"status":"ok|atencao|falta","mensagem":"1 a 2 frases simples"}. '
-    "status: 'ok' = serve e legível; 'atencao' = serve mas revise algo; 'falta' = não serve/ilegível."
+    "Você é o assistente do PCD Fácil, que AJUDA a organizar o processo de isenção de impostos "
+    "para Pessoa com Deficiência (PCD). Olhe o documento anexado e confira se serve para a etapa, "
+    "em linguagem simples e acolhedora (usuário leigo, no celular). NÃO valide autenticidade nem "
+    "detecte fraude — isso é com o órgão.\n\n"
+    "CONFIRA SEMPRE:\n"
+    "1) É o TIPO certo de documento pedido nesta etapa?\n"
+    "2) Está LEGÍVEL (sem corte, borrão, dedo na frente, foto torta)?\n"
+    "3) NOME — se o documento tem titular/proprietário, ele bate com o BENEFICIÁRIO informado na "
+    "etapa? Atenção: o DOCUMENTO DO VEÍCULO (CRLV) e o COMPROVANTE DE RESIDÊNCIA precisam estar no "
+    "NOME DO BENEFICIÁRIO. Se estiver no nome de outra pessoa (cônjuge, parente), marque 'atencao' e "
+    "diga claramente que precisa estar no nome do beneficiário (citando de quem está).\n"
+    "4) DATAS — comprovante de residência precisa ser RECENTE; documento com validade não pode estar vencido.\n"
+    "5) LAUDO — se a etapa pede um LAUDO DE AVALIAÇÃO para isenção, um simples ATESTADO médico (de "
+    "afastamento do trabalho, de comparecimento, ou só com diagnóstico/tratamento) NÃO serve: marque "
+    "'falta' e explique que é preciso o LAUDO no modelo do órgão (com CID e descrição da deficiência).\n\n"
+    "Seja direto e gentil; se estiver tudo certo, parabenize curtinho.\n\n"
+    'Responda APENAS em JSON: {"status":"ok|atencao|falta","mensagem":"1 a 2 frases simples e claras"}. '
+    "status: 'ok' = serve e está certo; 'atencao' = serve mas revise algo (nome de terceiro/data/legibilidade); "
+    "'falta' = não serve / é outro documento / é atestado no lugar de laudo / ilegível."
 )
 
 
@@ -524,7 +535,10 @@ def caso_doc(caso_id):
     if _ia_ativa():
         rotulo = next((d['label'] for d in docs_da_fase(c['trilha'], c['fase_atual'], c['condutor']) if d['id'] == tipo_doc), tipo_doc)
         ajuda  = next((d['ajuda'] for d in docs_da_fase(c['trilha'], c['fase_atual'], c['condutor']) if d['id'] == tipo_doc), '')
-        ctx = f"Trilha {c['trilha']} ({TRILHAS[c['trilha']]['nome']}), Fase {c['fase_atual']}."
+        ctx = (f"Trilha {c['trilha']} ({TRILHAS[c['trilha']]['nome']}), Fase {c['fase_atual']}. "
+               f"BENEFICIÁRIO da isenção (titular): {c['nome_cliente'] or '(não informado)'}. "
+               f"Deficiência informada: {DEFICIENCIAS.get(c['tipo_deficiencia'], '—')}. "
+               f"Beneficiário {'dirige (condutor)' if c['condutor'] == 'sim' else 'não dirige (não-condutor)'}.")
         res = _analisar_doc(rotulo, ajuda, ctx, file_bytes, mime)
         if 'erro' in res:
             if cobrar:
