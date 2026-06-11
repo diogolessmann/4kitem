@@ -65,6 +65,12 @@
           </span>
         </div>
         <p class="muted" style="margin:6px 0 0">{{ d['ajuda'] }}</p>
+        {% if d['modelos'] %}
+        <div style="margin:8px 0 0;font-size:.9rem;background:#eef5ff;border-radius:10px;padding:10px 12px">
+          📥 <b>Baixe o modelo oficial (SEFAZ-SC) pro médico preencher:</b><br>
+          {% for nome,url in d['modelos'] %}<a href="{{ url }}" target="_blank" rel="noopener">📄 {{ nome }}</a>{% if not loop.last %}<br>{% endif %}{% endfor %}
+        </div>
+        {% endif %}
         {% if d['feedback'] %}
         <p style="margin:8px 0 0;font-size:.92rem;font-weight:600;
           color:{{ 'var(--verde)' if d['status']=='ok' else ('var(--amarelo)' if d['status']=='atencao' else 'var(--vermelho)') }}">

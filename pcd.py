@@ -140,6 +140,40 @@ def total_fases(trilha):
     return len(TRILHAS[trilha]['fases'])
 
 
+# ── Modelos oficiais SEFAZ-SC (Portaria SEF 362/2019) p/ baixar dentro do app ──
+SEF_PAGINA = ('https://www.sef.sc.gov.br/servicos/'
+              'solicitar-isencao-ou-imunidade-de-ipva-pessoa-com-deficiencia-ou-autista')
+_SEF_DL = 'https://www.sef.sc.gov.br/api/download?id={id}&nomeArquivo={nome}'
+# laudo conforme o tipo de deficiência do caso
+MODELOS_LAUDO = {
+    'fisica': ('Laudo de Deficiência Física', _SEF_DL.format(id=1133, nome='02._Laudo_Deficiencia_Fisica.pdf')),
+    'mental': ('Laudo de Deficiência Mental', _SEF_DL.format(id=1134, nome='01._Laudo_Deficiencia_Mental.docx')),
+    'down':   ('Laudo de Deficiência Mental', _SEF_DL.format(id=1134, nome='01._Laudo_Deficiencia_Mental.docx')),
+    'tea':    ('Laudo de Autismo',            _SEF_DL.format(id=1132, nome='03._Laudo_Autismo.docx')),
+}
+MODELO_SUS = ('Declaração Integrante do SUS', _SEF_DL.format(id=1135, nome='Declaracao_Integrante_SUS.docx'))
+MODELO_DESTINACAO = ('Declaração de Destinação do Veículo',
+                     _SEF_DL.format(id=1131, nome='Declaracao_de_Destinacao_do_Veiculo_ao_Uso_do_Portador_de_Deficiencia_ou_Autista.doc'))
+
+
+def modelos_do_doc(doc_id, caso):
+    """Modelos oficiais (SEFAZ-SC) pra baixar conforme o documento e a deficiência.
+    Por ora aplicados à Trilha B (IPVA — SEF-SC)."""
+    if caso['trilha'] != 'B':
+        return []
+    if doc_id == 'laudo':
+        out = []
+        m = MODELOS_LAUDO.get(caso['tipo_deficiencia'])
+        if not m:  # tipo sem modelo específico (ex: visual) → manda pra página oficial
+            m = ('Laudo de avaliação (ver modelos)', SEF_PAGINA)
+        out.append(m)
+        out.append(MODELO_SUS)
+        return out
+    if doc_id == 'condutores':
+        return [MODELO_DESTINACAO]
+    return []
+
+
 # ── IA: Gemini (reaproveita a chave do 4kitem) ───────────────────────────────
 GEMINI_KEY   = os.environ.get('GEMINI_API_KEY', '')
 GEMINI_MODEL = os.environ.get('GEMINI_MODEL', 'gemini-2.5-flash')
@@ -305,7 +339,8 @@ def _fase_estado(caso):
         if status != 'ok':
             completa = False
         lista.append({**d, 'status': status, 'enviado': bool(env),
-                      'feedback': env['analise'] if env else ''})
+                      'feedback': env['analise'] if env else '',
+                      'modelos': modelos_do_doc(d['id'], caso)})
     return lista, completa
 
 
