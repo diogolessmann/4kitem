@@ -12077,7 +12077,8 @@ Retorne APENAS um objeto JSON válido com os campos (use null para não encontra
 "nome":null,"cpf":null,"cnpj":null,"rg":null,"nascimento":null,"nome_mae":null,
 "telefone":null,"email":null,"cep":null,"logradouro":null,"numero":null,
 "complemento":null,"bairro":null,"cidade":null,"uf":null,
-"total_debitos":null,"ipva":null,"licenciamento":null,"multas":null}
+"total_debitos":null,"ipva":null,"licenciamento":null,"multas":null,
+"debitos":[]}
 Instruções para o veículo (MUITO IMPORTANTE — não troque os campos):
 - marca: APENAS a marca/fabricante (ex.: "FORD", "VW", "FIAT", "CHEVROLET"). Num campo "Marca/Modelo: I/FORD FOCUS 2.0L", a marca é "FORD".
 - modelo: APENAS o modelo, sem a marca (ex.: "FOCUS 2.0L").
@@ -12090,6 +12091,11 @@ Instruções para os campos de débitos:
 - licenciamento: soma dos valores de Licenciamento/Taxa Detran visíveis, como número decimal
 - multas: soma dos valores de Multas visíveis, como número decimal
 - total_debitos: use null A MENOS QUE exista na tela um campo escrito "Total dos Débitos" (ou equivalente); nesse caso copie EXATAMENTE o valor mostrado. NÃO some você mesmo.
+- debitos: SE houver uma tabela "Listagem de Débitos", devolva um array com CADA linha que compõe o Total: [{"tipo","descricao","valor","vencimento"}].
+  • tipo: IPVA / Licenciamento / Multa / Taxa DETRAN / Outros. Uma cota de IPVA ("Cota Única", "1ª/2ª/3ª Cota") é SEMPRE "IPVA", NUNCA "Multa".
+  • valor: coluna "Valor Atual(R$)", número decimal. vencimento: coluna "Vencimento", dd/mm/aaaa. descricao: texto da coluna "Classe".
+  • NÃO inclua itens marcados com "*" ou "Não contabilizado no total" (ex.: a IPVA Cota Única quando o veículo paga parcelado). Traga só os que somam no Total dos Débitos.
+  Se não houver tabela de débitos visível, devolva "debitos":[].
 IMPORTANTE: Retorne SOMENTE o JSON, nada mais.'''
     try:
         texto = _desp_ocr_call(prompt, img_b64, mime, max_tokens=1200)

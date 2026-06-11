@@ -213,6 +213,16 @@ const RECEBIDO_INI = {{ (os.pago or 0) if os else 0 }};
 
 function brl(n){ return 'R$ ' + (Number(n)||0).toFixed(2).replace('.', ','); }
 function money(v){ v=(v||'').toString().replace(/[^\d,.-]/g,''); if(v.includes(',')&&v.includes('.'))v=v.replace(/\./g,'').replace(',','.'); else if(v.includes(','))v=v.replace(',','.'); const n=parseFloat(v); return isNaN(n)?0:n; }
+function _vencISO(s){ const v=(s||'').toString().trim().split('/').reverse().join('-'); return /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : ''; }
+// Adiciona um débito como item, sem duplicar (mesma descrição). Retorna true se adicionou.
+function addDebitoItem(db){
+  const desc = (db.descricao || db.tipo || 'Débito').toString().trim();
+  const jaTem = Array.from(document.querySelectorAll('#itens-body .v-desc'))
+                     .some(i => i.value.trim().toLowerCase() === desc.toLowerCase());
+  if(jaTem) return false;
+  addItem('', desc, 'debito', money(db.valor), _vencISO(db.vencimento));
+  return true;
+}
 
 function addItem(codigo, descricao, tipo, valor, vencimento){
   const tb = document.getElementById('itens-body');
@@ -259,11 +269,7 @@ async function ocrDetranet(blob){
   const d = await r.json();
   if(!r.ok) throw new Error(d.erro || 'falha');
   let n = 0;
-  (d.debitos||[]).forEach(db => {
-    const venc = (db.vencimento||'').split('/').reverse().join('-');  // dd/mm/aaaa -> aaaa-mm-dd
-    addItem('', db.descricao || db.tipo || 'Débito', 'debito', money(db.valor), /^\d{4}-\d{2}-\d{2}$/.test(venc)?venc:'');
-    n++;
-  });
+  (d.debitos||[]).forEach(db => { if(addDebitoItem(db)) n++; });
   return n;
 }
 
@@ -297,7 +303,8 @@ function aplicarOcr(x, escopo){
     set('v_placa', (x.placa||'').toUpperCase()); set('v_renavam', x.renavam); set('v_chassi', x.chassi);
     set('v_marca', x.marca); set('v_modelo', x.modelo); set('v_anofab', x.ano_fab); set('v_anomod', x.ano_mod);
     set('v_cor', x.cor); set('v_categoria', x.categoria); set('v_combustivel', x.combustivel); set('v_crv', x.num_crv);
-    // Débitos NÃO entram aqui (vêm sem vencimento). Use "📸 Print do DetranNET" → traz cada débito COM data.
+    // Débitos da "Listagem de Débitos" (mesma tela do veículo) viram itens, com vencimento e sem duplicar
+    (x.debitos || []).forEach(db => { if(addDebitoItem(db)) n++; });
   }
   if(escopo === 'cliente' || escopo === 'ambos'){
     set('c_nome', x.nome); set('c_cpf', x.cpf||x.cnpj); set('c_rg', x.rg); set('c_tel', x.telefone);
