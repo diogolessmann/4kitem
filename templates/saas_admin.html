@@ -82,6 +82,7 @@
     <button class="tab-btn" onclick="showTab('pubshow',this)">📺 PUBSHOW ({{ pubshow_bars|length }})</button>
     <button class="tab-btn" onclick="showTab('slotzap',this)">🎯 SlotZap ({{ sz_users|length }})</button>
     <button class="tab-btn" onclick="showTab('drzap',this)">⚖️ DRZAP ({{ drz_users|length }})</button>
+    <button class="tab-btn" onclick="showTab('pcd',this)">🧭 PCD Fácil ({{ pcd_users|length }})</button>
   </div>
 
   <!-- ═══════════════ ALERTA SC ═══════════════ -->
@@ -742,6 +743,42 @@
     </table>
     {% else %}
     <div class="empty">Nenhum usuário DRZAP ainda.</div>
+    {% endif %}
+  </div>
+
+  <!-- PCD Fácil -->
+  <div class="tab-content" id="tab-pcd">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+      <h2 style="margin:0">🧭 Usuários — PCD Fácil</h2>
+      <div style="display:flex;gap:18px;font-size:13px;color:var(--text2)">
+        <span>👤 {{ pcd_users|length }} usuários</span>
+        <span>📂 {{ pcd_casos_total }} casos</span>
+        <span>🏆 {{ pcd_montados }} montados</span>
+        <span>💳 {{ pcd_compras_total }} compras</span>
+        <span style="color:#22c55e;font-weight:700">💰 R$ {{ '%.2f'|format(pcd_receita)|replace('.', ',') }}</span>
+      </div>
+    </div>
+    {% if pcd_users %}
+    <table>
+      <thead><tr>
+        <th>#</th><th>Nome</th><th>Email</th><th>Telefone</th><th>Perfil</th><th>Créditos</th><th>Criado em</th>
+      </tr></thead>
+      <tbody>
+      {% for u in pcd_users %}
+      <tr>
+        <td>{{ u.id }}</td>
+        <td><strong>{{ u.nome }}</strong></td>
+        <td>{{ u.email }}</td>
+        <td>{{ u.telefone or '—' }}</td>
+        <td>{{ u.perfil or 'cliente' }}</td>
+        <td><span class="badge badge-active">💎 {{ u.creditos or 0 }}</span></td>
+        <td style="font-size:12px">{{ (u.created_at or '')[:10] }}</td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty">Nenhum usuário PCD Fácil ainda.</div>
     {% endif %}
   </div>
 

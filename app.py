@@ -5772,6 +5772,20 @@ def saas_admin():
         drzconn.close()
     except Exception:
         drz_users = []; drz_compras_total = 0; drz_receita = 0; drz_consultas = 0
+    # PCD Fácil (banco próprio)
+    try:
+        from pcd_db import get_pcd_db as _get_pcd_db
+        pcdconn = _get_pcd_db()
+        pcd_users = [dict(r) for r in pcdconn.execute(
+            'SELECT id, nome, email, telefone, perfil, creditos, created_at FROM pcd_users ORDER BY id DESC'
+        ).fetchall()]
+        pcd_casos_total   = pcdconn.execute('SELECT COUNT(*) FROM pcd_casos').fetchone()[0]
+        pcd_montados      = pcdconn.execute("SELECT COUNT(*) FROM pcd_casos WHERE status='montado'").fetchone()[0]
+        pcd_compras_total = pcdconn.execute("SELECT COUNT(*) FROM pcd_compras WHERE status='pago'").fetchone()[0]
+        pcd_receita       = pcdconn.execute("SELECT COALESCE(SUM(valor),0) FROM pcd_compras WHERE status='pago'").fetchone()[0]
+        pcdconn.close()
+    except Exception:
+        pcd_users = []; pcd_casos_total = 0; pcd_montados = 0; pcd_compras_total = 0; pcd_receita = 0
     return render_template('saas_admin.html',
                            subscribers=subscribers, businesses=businesses,
                            mz_users=mz_users, mz_plans=MANDAZAP_PLANS,
@@ -5790,7 +5804,10 @@ def saas_admin():
                            pubshow_total_videos=pubshow_total_videos,
                            sz_users=sz_users,
                            drz_users=drz_users, drz_compras_total=drz_compras_total,
-                           drz_receita=drz_receita, drz_consultas=drz_consultas)
+                           drz_receita=drz_receita, drz_consultas=drz_consultas,
+                           pcd_users=pcd_users, pcd_casos_total=pcd_casos_total,
+                           pcd_montados=pcd_montados, pcd_compras_total=pcd_compras_total,
+                           pcd_receita=pcd_receita)
 
 
 @app.route('/saas-admin/slotzap/reset-senha', methods=['POST'])
