@@ -180,7 +180,7 @@ SYSTEM_DOC = (
 
 def _analisar_doc(label, ajuda, contexto, file_bytes, mime):
     """Confere um documento via Gemini. Retorna {status, mensagem, tin, tout} ou {erro}."""
-    import json as _json
+    import json as _json, re as _re
     if not _ia_ativa():
         return {'erro': 'IA não configurada.'}
     b64 = base64.b64encode(file_bytes).decode('ascii')
@@ -188,15 +188,34 @@ def _analisar_doc(label, ajuda, contexto, file_bytes, mime):
     contents = [{'role': 'user', 'parts': [
         {'inlineData': {'mimeType': mime or 'image/jpeg', 'data': b64}},
         {'text': prompt}]}]
+    # max_tokens folgado: o gemini-2.5 "pensa" antes de responder e pode truncar o JSON
     try:
-        txt, tin, tout = _gemini_call(SYSTEM_DOC, contents, json_mode=True, max_tokens=400)
-        data = _json.loads(txt)
-        status = data.get('status', 'atencao')
-        if status not in ('ok', 'atencao', 'falta'):
-            status = 'atencao'
-        return {'status': status, 'mensagem': data.get('mensagem', ''), 'tin': tin, 'tout': tout}
+        txt, tin, tout = _gemini_call(SYSTEM_DOC, contents, json_mode=True, max_tokens=2048)
     except Exception as e:
-        return {'erro': f'Falha ao analisar: {e}'}
+        return {'erro': f'Falha ao consultar a IA: {e}'}
+    # parsing à prova de falha (tira cercas markdown, extrai o objeto, e degrada com elegância)
+    raw = (txt or '').strip()
+    if raw.startswith('```'):
+        raw = _re.sub(r'^```[a-zA-Z]*\n?', '', raw).rstrip('`').strip()
+    data = None
+    try:
+        data = _json.loads(raw)
+    except Exception:
+        m = _re.search(r'\{.*\}', raw, _re.DOTALL)
+        if m:
+            try:
+                data = _json.loads(m.group(0))
+            except Exception:
+                data = None
+    if not isinstance(data, dict):
+        return {'status': 'atencao',
+                'mensagem': 'Documento recebido. Não consegui analisar automaticamente agora — confira manualmente.',
+                'tin': tin, 'tout': tout}
+    status = data.get('status', 'atencao')
+    if status not in ('ok', 'atencao', 'falta'):
+        status = 'atencao'
+    return {'status': status, 'mensagem': data.get('mensagem') or 'Documento recebido.',
+            'tin': tin, 'tout': tout}
 
 
 # ── Helpers de auth / sessão ─────────────────────────────────────────────────
