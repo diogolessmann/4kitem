@@ -9524,10 +9524,7 @@ from desp_db import (
     registrar_ultimo_login as desp_reg_login,
     contar_usuarios as desp_contar_usuarios,
     # Itens unificados da O.S. (estilo Bludata)
-    listar_itens_os as desp_listar_itens,
     salvar_itens_os as desp_salvar_itens,
-    deletar_item_os as desp_deletar_item,
-    recalc_totais_os as desp_recalc_totais,
     itens_os_view as desp_itens_view,
 )
 # ChromaDB desabilitado por padrão (evita OOM no Railway free tier)

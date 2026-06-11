@@ -225,7 +225,6 @@ function importarDetranet(){
   inp.onchange = async () => {
     if(!inp.files[0]) return;
     const fd = new FormData(); fd.append('arquivo', inp.files[0]);
-    const btn = event ? null : null;
     try{
       const r = await fetch('/despachante/api/ocr/debitos', {method:'POST', body:fd});
       const d = await r.json();
