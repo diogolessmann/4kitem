@@ -1038,22 +1038,28 @@ def _asaas_req(method, endpoint, data=None):
         return {'error': str(e)}
 
 
-def _asaas_criar_ou_buscar_cliente(b) -> str:
-    if b['asaas_customer_id']:
+def _asaas_criar_ou_buscar_cliente(b, forcar_novo=False) -> str:
+    if not forcar_novo and b['asaas_customer_id']:
         return b['asaas_customer_id']
     cpf = re.sub(r'\D', '', b['cpf_cnpj'] or '')
-    busca = _asaas_req('GET', f'/customers?cpfCnpj={cpf}')
-    # Ignora clientes REMOVIDOS no Asaas — senão recria cobrança num cliente deletado (erro 400)
-    validos = [c for c in (busca.get('data') or []) if not c.get('deleted')]
-    if validos:
-        cid = validos[0]['id']
-    else:
+    cid = None
+    # Na recuperação (forcar_novo) pula a busca e cria um cliente NOVO direto —
+    # a busca pode devolver justamente o cliente deletado que causou o erro.
+    if not forcar_novo:
+        busca = _asaas_req('GET', f'/customers?cpfCnpj={cpf}')
+        # Ignora clientes REMOVIDOS — senão recria cobrança num cliente deletado (erro 400)
+        validos = [c for c in (busca.get('data') or []) if not c.get('deleted')]
+        if validos:
+            cid = validos[0]['id']
+    if not cid:
         resp = _asaas_req('POST', '/customers', {
             'name': b['nome'], 'email': b['email'],
             'mobilePhone': re.sub(r'\D', '', b['telefone'] or ''),
             'cpfCnpj': cpf,
         })
         cid = resp.get('id')
+        if not cid:
+            log.error('[PUBSHOW] Asaas criar customer falhou: %s', resp)
     if cid:
         conn = get_pubshow_db()
         conn.execute('UPDATE pubshow_businesses SET asaas_customer_id=? WHERE id=?', (cid, b['id']))
@@ -1118,7 +1124,7 @@ def _asaas_criar_cobranca_pix_jukebox(b, pedido_id: int, valor: float, descricao
         conn.execute('UPDATE pubshow_businesses SET asaas_customer_id=NULL WHERE id=?', (b['id'],))
         conn.commit(); conn.close()
         _b2 = dict(b); _b2['asaas_customer_id'] = None
-        novo_cust = _asaas_criar_ou_buscar_cliente(_b2)
+        novo_cust = _asaas_criar_ou_buscar_cliente(_b2, forcar_novo=True)
         if novo_cust:
             resp = _criar_cobranca(novo_cust)
             payment_id = resp.get('id')
