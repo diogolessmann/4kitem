@@ -427,6 +427,13 @@ function coletarItens(){
 
 async function salvarOS(){
   const btn = document.getElementById('btn-salvar');
+  // Telefone do cliente é OBRIGATÓRIO (pra cobrança/aviso/contato)
+  if(!c('c_tel')){
+    alert('⚠️ Telefone do cliente é obrigatório pra gerar a O.S.');
+    const t = document.getElementById('c_tel'); t.focus(); t.scrollIntoView({block:'center', behavior:'smooth'});
+    t.style.borderColor = 'var(--red)';
+    return;
+  }
   const itens = coletarItens();
   if(!itens.length){ alert('Adicione ao menos um item à O.S.'); return; }
   btn.disabled = true; btn.textContent = '⏳ Salvando...';

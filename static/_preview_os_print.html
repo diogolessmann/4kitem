@@ -7,52 +7,52 @@
 <style>
   * { box-sizing: border-box; margin:0; padding:0; }
   :root { --ac:#2563eb; --ink:#0f172a; --mut:#64748b; --line:#e2e8f0; --soft:#f8fafc; }
-  body { font-family:'Inter',system-ui,sans-serif; color:var(--ink); background:#eef2f7; padding:24px; }
-  .page { max-width:820px; margin:0 auto; background:#fff; border-radius:14px; box-shadow:0 6px 30px rgba(0,0,0,.08); overflow:hidden; }
-  .pad { padding:26px 30px; }
+  body { font-family:'Inter',system-ui,sans-serif; color:var(--ink); background:#eef2f7; padding:14px; font-size:12px; }
+  .page { max-width:820px; margin:0 auto; background:#fff; border-radius:12px; box-shadow:0 6px 30px rgba(0,0,0,.08); overflow:hidden; }
+  .pad { padding:12px 22px; }
   /* Header */
-  .hd { display:flex; justify-content:space-between; align-items:flex-start; gap:16px; padding:22px 30px; background:linear-gradient(135deg,#1e293b,#0f172a); color:#fff; }
-  .hd .logo { width:46px;height:46px;border-radius:11px;background:var(--ac);display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0; }
-  .hd .emp { font-size:17px; font-weight:800; line-height:1.2; }
-  .hd .emp small { display:block; font-weight:400; font-size:11px; color:#cbd5e1; margin-top:3px; }
-  .hd .meta { text-align:right; font-size:11px; color:#cbd5e1; white-space:nowrap; }
-  .hd .meta .os { font-size:15px; font-weight:800; color:#fff; }
+  .hd { display:flex; justify-content:space-between; align-items:flex-start; gap:14px; padding:12px 22px; background:linear-gradient(135deg,#1e293b,#0f172a); color:#fff; }
+  .hd .logo { width:36px;height:36px;border-radius:9px;background:var(--ac);display:flex;align-items:center;justify-content:center;font-size:19px;flex-shrink:0; }
+  .hd .emp { font-size:15px; font-weight:800; line-height:1.15; }
+  .hd .emp small { display:block; font-weight:400; font-size:10px; color:#cbd5e1; margin-top:2px; }
+  .hd .meta { text-align:right; font-size:10px; color:#cbd5e1; white-space:nowrap; }
+  .hd .meta .os { font-size:14px; font-weight:800; color:#fff; }
   /* Sections */
-  .sec-tit { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.6px; color:var(--ac); margin:18px 0 8px; }
-  .info { display:grid; grid-template-columns:1fr 1fr; gap:6px 26px; }
-  .info .f { display:flex; gap:6px; font-size:13px; border-bottom:1px solid var(--line); padding:3px 0; }
-  .info .f b { color:var(--mut); font-weight:600; min-width:96px; }
-  .chips { display:flex; flex-wrap:wrap; gap:7px; }
-  .chip { font-size:11px; border:1px solid var(--line); border-radius:20px; padding:4px 11px; color:var(--mut); }
+  .sec-tit { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:var(--ac); margin:10px 0 4px; }
+  .info { display:grid; grid-template-columns:1fr 1fr; gap:1px 24px; }
+  .info .f { display:flex; gap:6px; font-size:12px; border-bottom:1px solid var(--line); padding:2px 0; }
+  .info .f b { color:var(--mut); font-weight:600; min-width:92px; }
+  .chips { display:flex; flex-wrap:wrap; gap:6px; }
+  .chip { font-size:10px; border:1px solid var(--line); border-radius:20px; padding:2px 9px; color:var(--mut); }
   table { width:100%; border-collapse:collapse; }
-  thead th { background:var(--soft); font-size:10px; text-transform:uppercase; letter-spacing:.4px; color:var(--mut); text-align:left; padding:8px 10px; border-bottom:2px solid var(--line); }
-  tbody td { padding:8px 10px; font-size:13px; border-bottom:1px solid var(--line); }
+  thead th { background:var(--soft); font-size:9px; text-transform:uppercase; letter-spacing:.3px; color:var(--mut); text-align:left; padding:4px 8px; border-bottom:2px solid var(--line); }
+  tbody td { padding:4px 8px; font-size:12px; border-bottom:1px solid var(--line); }
   .r { text-align:right; } .c { text-align:center; }
-  .tag { font-size:10px; font-weight:600; padding:1px 7px; border-radius:6px; }
+  .tag { font-size:9px; font-weight:600; padding:1px 6px; border-radius:5px; }
   .tag.s { background:#eff6ff; color:#2563eb; } .tag.d { background:#fef2f2; color:#dc2626; }
-  /* Totais */
-  .tot { display:flex; justify-content:flex-end; margin-top:14px; }
-  .tot .box { min-width:280px; }
-  .tot .l { display:flex; justify-content:space-between; padding:5px 0; font-size:13px; color:var(--mut); }
-  .tot .l span:last-child { color:var(--ink); font-weight:600; }
-  .tot .l.big { border-top:2px solid var(--ink); margin-top:4px; padding-top:8px; font-size:16px; }
+  /* Total (só o total, a pedido) */
+  .tot { display:flex; justify-content:flex-end; margin-top:8px; }
+  .tot .box { min-width:260px; }
+  .tot .l.big { display:flex; justify-content:space-between; border-top:2px solid var(--ink); padding-top:6px; font-size:16px; }
   .tot .l.big span { color:var(--ink); font-weight:800; }
-  .tot .l.rec span:last-child { color:#16a34a; }
   /* Legal + assinatura */
-  .legal { font-size:10px; color:var(--mut); line-height:1.5; margin-top:18px; text-align:justify; }
-  .assin { display:flex; justify-content:space-between; margin-top:40px; gap:30px; }
-  .assin div { flex:1; border-top:1px solid var(--ink); text-align:center; padding-top:5px; font-size:12px; color:var(--mut); }
+  .legal { font-size:9px; color:var(--mut); line-height:1.4; margin-top:10px; text-align:justify; }
+  .assin { display:flex; justify-content:space-between; margin-top:22px; gap:30px; }
+  .assin div { flex:1; border-top:1px solid var(--ink); text-align:center; padding-top:4px; font-size:11px; color:var(--mut); }
   /* Recibo */
   .recibo { border-top:2px dashed var(--line); margin:0; }
   .recibo .top { display:flex; justify-content:space-between; align-items:center; }
-  .recibo .val { font-size:26px; font-weight:800; color:var(--ac); }
-  .recibo .txt { font-size:13px; line-height:1.6; margin-top:10px; color:var(--ink); }
+  .recibo .val { font-size:22px; font-weight:800; color:var(--ac); }
+  .recibo .txt { font-size:12px; line-height:1.5; margin-top:7px; color:var(--ink); }
   .btnprint { position:fixed; top:14px; right:14px; padding:9px 16px; background:var(--ac); color:#fff; border:none; border-radius:8px; cursor:pointer; font-weight:600; font-family:inherit; box-shadow:0 4px 14px rgba(37,99,235,.4); }
   @media print {
-    body { background:#fff; padding:0; }
+    body { background:#fff; padding:0; font-size:11px; }
     .page { box-shadow:none; border-radius:0; max-width:none; }
+    .pad { padding:6px 14px; }
+    .hd { padding:10px 14px; }
     .noprint { display:none; }
-    @page { margin:12mm; }
+    tr { page-break-inside:avoid; }
+    @page { size:A4; margin:8mm; }
   }
 </style>
 </head>
@@ -72,7 +72,7 @@
     </div>
     <div class="meta">
       <div class="os">O.S. Nº 260001</div>
-      12/06/2026 09:15<br>1ª Via
+      12/06/2026 09:33<br>1ª Via
     </div>
   </div>
 
@@ -88,7 +88,7 @@
       <div class="f"><b>CPF/CNPJ</b> 01234567890</div>
       <div class="f"><b>Endereço</b> </div>
       <div class="f"><b>Cidade/UF</b> Schroeder/SC</div>
-      <div class="f"><b>Telefone</b> —</div>
+      <div class="f"><b>Telefone</b> 47999999999</div>
       <div class="f"><b>Exercício</b> 2026</div>
     </div>
 
@@ -134,14 +134,9 @@
       </tbody>
     </table>
 
-    <!-- Totais -->
+    <!-- Total (somente o total, a pedido) -->
     <div class="tot"><div class="box">
-      <div class="l"><span>Valor Bruto</span><span>R$ 510,83</span></div>
-      <div class="l"><span>Acréscimo</span><span>R$ 4,17</span></div>
-      
       <div class="l big"><span>Total</span><span>R$ 515,00</span></div>
-      <div class="l rec"><span>Recebido</span><span>R$ 149,37</span></div>
-      <div class="l"><span>A Receber</span><span style="color:#d97706;font-weight:700;">R$ 365,63</span></div>
     </div></div>
 
     <!-- Parcelas -->
@@ -155,8 +150,8 @@
           <td class="c">1</td>
           <td class="c">30/09/2026</td>
           <td class="r">R$ 149,37</td>
-          <td>PIX</td>
-          <td class="c"><span class="tag s">PAGO</span></td>
+          <td>—</td>
+          <td class="c"><span class="tag d">EM ABERTO</span></td>
         </tr>
         
         <tr>
@@ -206,10 +201,10 @@
         <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--ac);">Recibo</div>
         <div style="font-size:11px;color:var(--mut);margin-top:2px;">Diogo Kaue Lessmann · SCHROEDER</div>
       </div>
-      <div class="val">R$ 149,37</div>
+      <div class="val">R$ 515,00</div>
     </div>
     <div class="txt">
-      Recebemos de <b>Gilberto Ribeiro</b> a quantia de <b>cento e quarenta e nove reais e trinta e sete centavos</b>,
+      Recebemos de <b>Gilberto Ribeiro</b> a quantia de <b>quinhentos e quinze reais</b>,
       referente ao pagamento da Ordem de Serviço Nº 260001, do veículo placa <b>MKM5G86</b>.
     </div>
     <div style="font-size:12px;color:var(--mut);margin-top:10px;">SCHROEDER, 12 de Junho de 2026.</div>
