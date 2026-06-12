@@ -262,7 +262,16 @@ function filtrarPicker(){
     el.style.display = el.dataset.busca.includes(q) ? '' : 'none';
   });
 }
-function escolherServico(codigo, label){ addItem(codigo, label, 'servico'); fecharPicker(); }
+async function escolherServico(codigo, label){
+  fecharPicker();
+  let valor = null;
+  try {
+    const r = await fetch('/despachante/api/preco/' + encodeURIComponent(codigo));
+    const d = await r.json();
+    if (d && d.preco) valor = d.preco;   // honorário da Tabela de Preços
+  } catch(e) {}
+  addItem(codigo, label, 'servico', valor);   // já vem com o valor; edite se precisar
+}
 
 // Importar débitos do DETRANET (reusa OCR de débitos)
 // Lê o print de débitos do DetranNET (endpoint estruturado) e adiciona como itens. Retorna nº de itens.
