@@ -11912,14 +11912,10 @@ def _desp_gemini_ocr(prompt: str, img_b64: str, mime: str, max_tokens: int = 409
     # OCR de tabela é difícil: usa o Pro por padrão (lê muito melhor). Override via DESP_OCR_MODEL.
     model = os.environ.get('DESP_OCR_MODEL') or 'gemini-2.5-pro'
     url = f'https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent'
-    gen = {'temperature': 0.1, 'responseMimeType': 'application/json'}
-    if 'flash' in model:
-        # flash: desliga o "thinking" (consome tokens e trunca o JSON)
-        gen['thinkingConfig'] = {'thinkingBudget': 0}
-        gen['maxOutputTokens'] = max_tokens
-    else:
-        # pro: deixa pensar (melhora a leitura da tabela), com folga de tokens p/ não truncar
-        gen['maxOutputTokens'] = max(max_tokens, 8192)
+    # Deixa o modelo "pensar" (melhora MUITO a leitura de tabela, inclusive no Flash);
+    # tokens com folga p/ não truncar (thinking + resposta). Fallback p/ Groq se ainda truncar.
+    gen = {'temperature': 0.1, 'responseMimeType': 'application/json',
+           'maxOutputTokens': max(max_tokens, 8192)}
     body = {
         'contents': [{'role': 'user', 'parts': [
             {'inlineData': {'mimeType': mime or 'image/png', 'data': img_b64}},
@@ -12004,6 +12000,22 @@ PROMPT_DEBITOS = (
     'NÃO exclua nenhuma linha — o despachante decide quais manter e apaga o resto. A "Cota Única" costuma ter "*" (não entra no total): traga mesmo assim.\n'
     '- Em Santa Catarina NÃO existe DPVAT — nunca inclua.\n'
     '- Extraia SOMENTE o que está visível; não invente nem calcule. Cada linha com seu próprio valor e vencimento.\n'
+    '\nEXEMPLO (só o FORMATO — use SEMPRE os dados REAIS da imagem):\n'
+    'Tabela:\n'
+    '  Licenciamento Anual 2026 | 30/09/2026 | (Valor Atual) 149,37\n'
+    '  IPVA (Cota Unica) 2026   | 31/07/2026 | (Valor Atual) 361,46\n'
+    '  IPVA (1a. Cota) 2026     | 10/07/2026 | (Valor Atual) 120,49\n'
+    '  IPVA (2a. Cota) 2026     | 10/08/2026 | (Valor Atual) 120,49\n'
+    '  IPVA (3a. Cota) 2026     | 10/09/2026 | (Valor Atual) 120,48\n'
+    'Resposta correta:\n'
+    '{"debitos":['
+    '{"tipo":"Licenciamento","descricao":"Licenciamento Anual 2026","valor":"149,37","vencimento":"30/09/2026"},'
+    '{"tipo":"IPVA","descricao":"IPVA (Cota Unica) 2026","valor":"361,46","vencimento":"31/07/2026"},'
+    '{"tipo":"IPVA","descricao":"IPVA (1a. Cota) 2026","valor":"120,49","vencimento":"10/07/2026"},'
+    '{"tipo":"IPVA","descricao":"IPVA (2a. Cota) 2026","valor":"120,49","vencimento":"10/08/2026"},'
+    '{"tipo":"IPVA","descricao":"IPVA (3a. Cota) 2026","valor":"120,48","vencimento":"10/09/2026"}'
+    ']}\n'
+    'REPARE: cada linha tem o SEU valor. A "1a. Cota" é 120,49 — NUNCA repita o valor da Cota Única (361,46) nas cotas parceladas.\n'
     'Responda SOMENTE o JSON.'
 )
 
