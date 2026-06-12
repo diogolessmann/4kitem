@@ -58,7 +58,7 @@
     {% endif %}
     <div class="plan-features">
       📱 {{ plano.numbers }} número{{ 's' if plano.numbers > 1 else '' }} ·
-      📩 {{ plano.daily_limit if plano.daily_limit < 9999 else '∞' }} disparos/dia ·
+      📩 até {{ plano.monthly_safe }} msgs/mês ·
       👥 {{ plano.contacts_limit if plano.contacts_limit < 9999 else '∞' }} contatos
     </div>
   </div>

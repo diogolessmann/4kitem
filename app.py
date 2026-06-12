@@ -9009,7 +9009,7 @@ def _mz_number_health(conn, number_id: int, days: int = None) -> dict:
     else:
         status = 'vermelho'
     return {'sent': sent, 'replies': repl, 'ratio': ratio,
-            'ratio_pct': (round(ratio * 100) if ratio is not None else None),
+            'ratio_pct': (min(100, round(ratio * 100)) if ratio is not None else None),
             'status': status}
 
 
