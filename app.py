@@ -11253,6 +11253,7 @@ def desp_os2_editar(id):
     return desp_render('os2/editar.html', os=os_,
                        itens=desp_itens_view(id),
                        parcelas=desp_get_parcelas(id),
+                       checklist=desp_get_checklist(id, os_.get('servico', '')),
                        veiculo=None, cliente=None)
 
 
