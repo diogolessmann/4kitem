@@ -11909,20 +11909,23 @@ def _desp_gemini_ocr(prompt: str, img_b64: str, mime: str, max_tokens: int = 409
     key = os.environ.get('GEMINI_API_KEY', '')
     if not key:
         return None
-    model = os.environ.get('GEMINI_MODEL', 'gemini-2.5-flash')
+    # OCR de tabela é difícil: usa o Pro por padrão (lê muito melhor). Override via DESP_OCR_MODEL.
+    model = os.environ.get('DESP_OCR_MODEL') or 'gemini-2.5-pro'
     url = f'https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent'
+    gen = {'temperature': 0.1, 'responseMimeType': 'application/json'}
+    if 'flash' in model:
+        # flash: desliga o "thinking" (consome tokens e trunca o JSON)
+        gen['thinkingConfig'] = {'thinkingBudget': 0}
+        gen['maxOutputTokens'] = max_tokens
+    else:
+        # pro: deixa pensar (melhora a leitura da tabela), com folga de tokens p/ não truncar
+        gen['maxOutputTokens'] = max(max_tokens, 8192)
     body = {
         'contents': [{'role': 'user', 'parts': [
             {'inlineData': {'mimeType': mime or 'image/png', 'data': img_b64}},
             {'text': prompt},
         ]}],
-        'generationConfig': {
-            'temperature': 0.1,
-            'maxOutputTokens': max_tokens,
-            'responseMimeType': 'application/json',
-            # gemini-2.5 "pensa" e consome tokens antes de responder → desliga p/ não truncar o JSON
-            'thinkingConfig': {'thinkingBudget': 0},
-        },
+        'generationConfig': gen,
     }
     r = requests.post(url, params={'key': key}, json=body, timeout=90)
     r.raise_for_status()
@@ -11986,22 +11989,38 @@ def _desp_json_loads(texto: str):
 
 
 PROMPT_DEBITOS = (
-    'Você está vendo a tela "Listagem de Débitos" do DETRANET (DETRAN-SC) de um veículo.\n'
-    'Extraia os itens da tabela e devolva um objeto JSON: {"debitos":[{"tipo","descricao","numero_detran","valor","vencimento"}]}.\n'
-    'REGRAS (MUITO IMPORTANTES — é dinheiro):\n'
-    '- tipo: classifique pela coluna "Classe". "IPVA" se contiver IPVA (INCLUI "Cota Única" e "1ª/2ª/3ª Cota"); '
-    '"Licenciamento" se contiver Licenciamento; "Multa" SOMENTE se for infração/auto de multa; "Taxa DETRAN" para taxas; senão "Outros". '
-    'NUNCA classifique uma cota de IPVA como Multa.\n'
-    '- valor: use a coluna "Valor Atual(R$)" (o valor a pagar), número decimal.\n'
-    '- vencimento: coluna "Vencimento", no formato dd/mm/aaaa.\n'
-    '- descricao: o texto da coluna "Classe" exatamente como aparece.\n'
-    '- numero_detran: coluna "Número DetranNET".\n'
-    '- NÃO INCLUA itens marcados com "*" ou anotados como "Não contabilizado no total" '
-    '(ex.: a "IPVA Cota Única" quando o veículo paga parcelado). Traga apenas os itens que compõem o "Total dos Débitos".\n'
-    '- Em Santa Catarina NÃO existe DPVAT/seguro obrigatório — nunca inclua DPVAT.\n'
-    '- Extraia SOMENTE o que está visível na imagem; não invente nem calcule valores.\n'
+    'Você está vendo a tabela "Listagem de Débitos" do DETRANET (DETRAN-SC).\n'
+    'Leia a tabela LINHA POR LINHA. Para CADA linha, mantenha JUNTOS os dados da MESMA linha: '
+    'a "Classe" (descrição), o "Vencimento" e o "Valor Atual(R$)". É PROIBIDO deslocar/misturar valor ou data entre linhas diferentes.\n'
+    'Devolva {"debitos":[{"tipo","descricao","numero_detran","valor","vencimento"}]} com TODAS as linhas que compõem o "Total dos Débitos".\n'
+    'REGRAS (é dinheiro — máxima atenção):\n'
+    '- descricao: copie o texto EXATO da coluna "Classe" (ex.: "Licenciamento Anual 2026", "IPVA (1a. Cota) 2026").\n'
+    '- tipo: pela palavra na Classe — se contém "Licenciamento" → "Licenciamento"; se contém "IPVA" → "IPVA"; auto/infração → "Multa"; taxa → "Taxa DETRAN"; senão "Outros". Uma cota de IPVA é SEMPRE "IPVA" (nunca Multa nem Licenciamento).\n'
+    '- valor: a coluna "Valor Atual(R$)" DAQUELA linha. vencimento: a coluna "Vencimento" DAQUELA linha (dd/mm/aaaa). numero_detran: coluna "Número DetranNET".\n'
+    '- INCLUA a linha de "Licenciamento" se ela existir na tabela.\n'
+    '- IPVA Cota Única vs parcelado: se existirem as cotas parceladas (1ª/2ª/3ª Cota), NÃO inclua a linha "Cota Única" (ela vem com "*"/"Não contabilizado no total"). Se SÓ existir Cota Única, inclua-a. Nunca inclua as duas formas ao mesmo tempo.\n'
+    '- Em Santa Catarina NÃO existe DPVAT — nunca inclua.\n'
+    '- Extraia SOMENTE o que está visível; não invente nem calcule.\n'
+    '- AUTOCONFERÊNCIA: a soma dos "valor" dos itens devolvidos DEVE ser igual ao "Total dos Débitos" mostrado na tela. Revise antes de responder.\n'
     'Responda SOMENTE o JSON.'
 )
+
+
+def _desp_dedup_debitos(debitos: list) -> list:
+    """Trava anti-duplicação do IPVA: se vierem cotas parceladas (1ª/2ª/3ª) E a Cota Única,
+    remove a Cota Única (a forma 'à vista' não soma junto com o parcelado)."""
+    import re as _r
+    def _ipva(d):
+        return 'ipva' in (str(d.get('tipo', '')) + ' ' + str(d.get('descricao', ''))).lower()
+    def _cota_unica(d):
+        s = str(d.get('descricao', '')).lower()
+        return _ipva(d) and ('única' in s or 'unica' in s)
+    def _parcela(d):
+        s = str(d.get('descricao', '')).lower()
+        return _ipva(d) and not _cota_unica(d) and bool(_r.search(r'\d\s*[ªa]\.?\s*cota', s))
+    if any(_parcela(d) for d in debitos):
+        return [d for d in debitos if not _cota_unica(d)]
+    return debitos
 
 
 @app.route('/despachante/api/ocr/debitos', methods=['POST'])
@@ -12025,6 +12044,7 @@ def desp_api_ocr_debitos():
             return jsonify({'erro': 'IA não identificou débitos — verifique se é um print do DETRANET',
                             'motor': motor, 'raw': (texto or '')[:200]}), 422
         debitos = [d for d in data if isinstance(d, dict) and (d.get('tipo') or d.get('descricao'))]
+        debitos = _desp_dedup_debitos(debitos)
         if not debitos:
             return jsonify({'erro': 'Nenhum débito encontrado na imagem', 'motor': motor}), 422
         return jsonify({'ok': True, 'debitos': debitos, 'total': len(debitos), 'motor': motor})
@@ -12128,6 +12148,8 @@ IMPORTANTE: Retorne SOMENTE o JSON, nada mais.'''
         # chassi válido = 11–17 alfanuméricos, sem espaço/barra/parênteses (senão é marca/modelo/lixo)
         if any(c in ch for c in ' /()') or not (11 <= len(ch_clean) <= 17):
             dados.pop('chassi', None)
+        if isinstance(dados.get('debitos'), list):
+            dados['debitos'] = _desp_dedup_debitos(dados['debitos'])
         return jsonify({'ok': True, 'dados': dados, 'campos': len(dados), 'motor': motor})
     except Exception as e:
         log.error(f'OCR despachante error: {e}')
