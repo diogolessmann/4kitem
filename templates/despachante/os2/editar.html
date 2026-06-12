@@ -243,7 +243,8 @@
 
 {% block extra_script %}
 <script>
-const OS_ID    = document.getElementById('os-id').value || null;
+let OS_ID      = document.getElementById('os-id').value || null;
+let _osSaving  = false;   // trava anti-duplicação (clique triplo não gera 3 O.S.)
 const ITENS_INI = {{ itens|tojson }};
 const RECEBIDO_INI = {{ (os.pago or 0) if os else 0 }};
 
@@ -448,6 +449,8 @@ async function salvarOS(){
   }
   const itens = coletarItens();
   if(!itens.length){ alert('Adicione ao menos um item à O.S.'); return; }
+  if(_osSaving) return;                 // já está salvando → ignora cliques repetidos
+  _osSaving = true;
   btn.disabled = true; btn.textContent = '⏳ Salvando...';
   const payload = {
     cliente: { id: document.getElementById('cli-id').value||null, tipo: (document.getElementById('c_cpf').value.replace(/\D/g,'').length>11?'PJ':'PF'),
@@ -465,9 +468,9 @@ async function salvarOS(){
   try{
     const r = await fetch(url, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
     const d = await r.json();
-    if(d.ok){ window.location = `/despachante/os2/${d.os_id}?salvo=1`; }
-    else { alert('Erro: '+(d.erro||'falha')); btn.disabled=false; btn.textContent='💾 Salvar'; }
-  }catch(e){ alert('Erro: '+e.message); btn.disabled=false; btn.textContent='💾 Salvar'; }
+    if(d.ok){ OS_ID = d.os_id; window.location = `/despachante/os2/${d.os_id}?salvo=1`; }   // OS_ID setado: re-salvar atualiza, não duplica
+    else { alert('Erro: '+(d.erro||'falha')); _osSaving=false; btn.disabled=false; btn.textContent='💾 Salvar'; }
+  }catch(e){ alert('Erro: '+e.message); _osSaving=false; btn.disabled=false; btn.textContent='💾 Salvar'; }
 }
 function c(id){ const el=document.getElementById(id); return el?el.value.trim():''; }
 
