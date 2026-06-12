@@ -1043,8 +1043,10 @@ def _asaas_criar_ou_buscar_cliente(b) -> str:
         return b['asaas_customer_id']
     cpf = re.sub(r'\D', '', b['cpf_cnpj'] or '')
     busca = _asaas_req('GET', f'/customers?cpfCnpj={cpf}')
-    if busca.get('data'):
-        cid = busca['data'][0]['id']
+    # Ignora clientes REMOVIDOS no Asaas — senão recria cobrança num cliente deletado (erro 400)
+    validos = [c for c in (busca.get('data') or []) if not c.get('deleted')]
+    if validos:
+        cid = validos[0]['id']
     else:
         resp = _asaas_req('POST', '/customers', {
             'name': b['nome'], 'email': b['email'],
@@ -1092,18 +1094,35 @@ def _asaas_criar_cobranca_pix_jukebox(b, pedido_id: int, valor: float, descricao
     import datetime as _dt
     venc = (_dt.date.today() + _dt.timedelta(days=1)).strftime('%Y-%m-%d')
 
-    # 1) Cria cobrança PIX avulsa
-    resp = _asaas_req('POST', '/payments', {
-        'customer':          customer_id,
-        'billingType':       'PIX',
-        'value':             round(valor, 2),
-        'dueDate':           venc,
-        'description':       f'Jukebox — {descricao} — {b["nome"]}',
-        'externalReference': f'jukebox_{pedido_id}',
-        'postalService':     False,
-    })
+    def _criar_cobranca(cust):
+        return _asaas_req('POST', '/payments', {
+            'customer':          cust,
+            'billingType':       'PIX',
+            'value':             round(valor, 2),
+            'dueDate':           venc,
+            'description':       f'Jukebox — {descricao} — {b["nome"]}',
+            'externalReference': f'jukebox_{pedido_id}',
+            'postalService':     False,
+        })
 
+    # 1) Cria cobrança PIX avulsa
+    resp = _criar_cobranca(customer_id)
     payment_id = resp.get('id')
+
+    # Recuperação automática: se o cliente foi REMOVIDO no Asaas, limpa o cache,
+    # recria o cliente e tenta a cobrança de novo (1x). Era isso que jogava no
+    # PIX manual sem auto-confirmar.
+    if not payment_id and any(e.get('code') == 'invalid_customer' for e in (resp.get('errors') or [])):
+        log.warning('[PUBSHOW] Asaas customer removido (bar %s) — recriando e tentando de novo', b['id'])
+        conn = get_pubshow_db()
+        conn.execute('UPDATE pubshow_businesses SET asaas_customer_id=NULL WHERE id=?', (b['id'],))
+        conn.commit(); conn.close()
+        _b2 = dict(b); _b2['asaas_customer_id'] = None
+        novo_cust = _asaas_criar_ou_buscar_cliente(_b2)
+        if novo_cust:
+            resp = _criar_cobranca(novo_cust)
+            payment_id = resp.get('id')
+
     if not payment_id:
         log.error('[PUBSHOW] Asaas criar cobrança falhou: %s', resp)
         return None
