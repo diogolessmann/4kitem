@@ -69,7 +69,12 @@
 
 <!-- Cabeçalho -->
 <div class="bx-card">
-  <h3>Ordem de Serviço</h3>
+  <h3 style="display:flex;justify-content:space-between;align-items:center;">
+    <span>Ordem de Serviço</span>
+    <span style="font-weight:400;font-size:11px;color:var(--text3);text-transform:none;letter-spacing:0;">
+      📅 {% if os and os.criado_em %}Criada em {{ (os.criado_em)[:16].replace('T',' ') }}{% else %}{{ hoje.strftime('%d/%m/%Y %H:%M') }}{% endif %}
+    </span>
+  </h3>
   <div class="bx-row" style="grid-template-columns:repeat(5,1fr);">
     <div class="bx-field"><label>Nº O.S.</label><input value="{{ os.numero if os else '(gerado ao salvar)' }}" readonly></div>
     <div class="bx-field"><label>Placa</label><input id="v_placa" value="{{ placa }}" style="text-transform:uppercase;font-weight:700;"></div>
