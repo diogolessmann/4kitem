@@ -311,6 +311,8 @@ def init_saas_db():
             sent      INTEGER DEFAULT 0,
             PRIMARY KEY (number_id, day)
         )''',
+        # MandaZap — Fase 3: reply-ratio (respostas recebidas por número/dia, via webhook)
+        "ALTER TABLE mandazap_number_daily ADD COLUMN replies INTEGER DEFAULT 0",
         # Amigo Despachante — autenticação
         "ALTER TABLE despachante_users ADD COLUMN password_hash TEXT DEFAULT ''",
         "ALTER TABLE despachante_users ADD COLUMN last_login TEXT DEFAULT ''",

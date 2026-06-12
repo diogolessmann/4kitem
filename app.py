@@ -7449,6 +7449,7 @@ def mandazap_painel():
         # Teto efetivo do dia = menor entre warm-up, cota do plano, teto conservador do plano e teto rígido
         _n['daily_cap']   = _mz_effective_daily_cap(_n, _per_num_pln, _plan_info.get('daily_safe_cap'))
         _n['sent_today']  = _mz_number_sent_today(conn, _n['id'])
+        _n['health']      = _mz_number_health(conn, _n['id'])   # Fase 3: saúde (reply-ratio)
         _n['in_cooldown'] = _mz_in_cooldown(_n)
         _n['cooldown_hm'] = ''
         if _n['in_cooldown']:
@@ -7792,6 +7793,7 @@ def mz_qr(num_id):
                                   'syncFullHistory': False}, timeout=20)
         cr_data = cr.json() if cr.content else {}
         log.info(f"Evo create [{instance}] HTTP {cr.status_code}: {str(cr_data)[:300]}")
+        _mz_set_instance_webhook(evo_url, evo_key, instance)  # Fase 3: recebe respostas p/ reply-ratio
         qr = _evo_extract_qr(cr_data)
         if qr:
             return _return_qr(qr)
@@ -7903,6 +7905,62 @@ def mz_check_status(num_id):
         conn.close()
         log.error(f"check-status error: {e}")
         return jsonify({'status': 'disconnected', 'reason': str(e)})
+
+
+# ── Webhook Evolution → conta respostas (Fase 3: reply-ratio) ──────────────────
+
+def _mz_webhook_url() -> str:
+    """URL pública do webhook do MandaZap (com token opcional)."""
+    base = os.environ.get('MZ_PUBLIC_URL', 'https://4kitem.com.br').rstrip('/')
+    tok  = os.environ.get('MZ_WEBHOOK_TOKEN', '')
+    return f"{base}/mandazap/webhook/evolution" + (f"?token={tok}" if tok else '')
+
+
+def _mz_set_instance_webhook(evo_url, evo_key, instance):
+    """Best-effort: aponta o webhook da instância p/ o MandaZap (evento messages.upsert).
+    Se falhar, o número só não terá reply-ratio — nada quebra.
+    """
+    try:
+        import requests as _req
+        _req.post(
+            f"{evo_url}/webhook/set/{instance}",
+            headers={'apikey': evo_key, 'Content-Type': 'application/json'},
+            json={'webhook': {'enabled': True, 'url': _mz_webhook_url(),
+                              'events': ['MESSAGES_UPSERT'],
+                              'webhookByEvents': False, 'webhookBase64': False}},
+            timeout=8,
+        )
+    except Exception as e:
+        log.warning(f"webhook set error [{instance}]: {e}")
+
+
+@app.route('/mandazap/webhook/evolution', methods=['POST'])
+def mz_webhook_evolution():
+    """Recebe eventos da Evolution. Conta mensagens RECEBIDAS (respostas dos clientes)
+    por número → alimenta o reply-ratio (saúde anti-ban). Best-effort: nunca derruba."""
+    try:
+        tok = os.environ.get('MZ_WEBHOOK_TOKEN', '')
+        if tok and request.args.get('token', '') != tok:
+            return jsonify({'ok': False}), 403
+        payload = request.get_json(silent=True) or {}
+        event   = str(payload.get('event', '')).lower().replace('_', '.')
+        if 'messages.upsert' not in event:
+            return jsonify({'ok': True, 'skip': 'event'}), 200
+        data = payload.get('data', {})
+        if isinstance(data, list):
+            data = data[0] if data else {}
+        key = (data.get('key') or {}) if isinstance(data, dict) else {}
+        if key.get('fromMe'):                       # enviada por nós — não conta como resposta
+            return jsonify({'ok': True, 'skip': 'fromMe'}), 200
+        instance = str(payload.get('instance') or (data.get('instance') if isinstance(data, dict) else '') or '')
+        m = _re.match(r'^mz(\d+)n(\d+)$', instance)
+        if not m:
+            return jsonify({'ok': True, 'skip': 'instance'}), 200
+        _mz_inc_number_replies(int(m.group(2)))
+        return jsonify({'ok': True}), 200
+    except Exception as e:
+        log.warning(f"mz_webhook error: {e}")
+        return jsonify({'ok': False}), 200          # 200 p/ a Evolution não reenviar em loop
 
 
 # ── Upload de mídia ────────────────────────────────────────────────────────────
@@ -8901,6 +8959,75 @@ def _mz_inc_number_sent(number_id: int, n: int = 1):
         log.warning(f"number_daily inc error: {e}")
 
 
+def _mz_inc_number_replies(number_id: int, n: int = 1):
+    """Incrementa o contador diário de RESPOSTAS recebidas deste número (via webhook).
+    reply-ratio = replies/sent é o sinal nº1 de saúde anti-ban (número que conversa não bana).
+    """
+    today = datetime.now().strftime('%Y-%m-%d')
+    try:
+        c = get_saas_db()
+        c.execute(
+            'INSERT INTO mandazap_number_daily (number_id, day, sent, replies) VALUES (?,?,0,?) '
+            'ON CONFLICT(number_id, day) DO UPDATE SET replies = replies + ?',
+            (number_id, today, n, n)
+        )
+        c.commit(); c.close()
+    except Exception as e:
+        log.warning(f"number_daily replies inc error: {e}")
+
+
+# ── Fase 3: saúde do número via reply-ratio ───────────────────────────────────
+# Limiares (pesquisa): >20% resposta = saudável; 8-20% = atenção; <8% com volume = risco de ban.
+MZ_HEALTH_MIN_VOL    = int(os.environ.get('MZ_HEALTH_MIN_VOL', '40'))      # envios mínimos na janela p/ avaliar
+MZ_HEALTH_GREEN      = float(os.environ.get('MZ_HEALTH_GREEN', '0.20'))    # >=20% = verde
+MZ_HEALTH_YELLOW     = float(os.environ.get('MZ_HEALTH_YELLOW', '0.08'))   # >=8% = amarelo; abaixo = vermelho
+MZ_HEALTH_WINDOW     = int(os.environ.get('MZ_HEALTH_WINDOW_DAYS', '7'))   # janela de avaliação (dias)
+MZ_AUTOBRAKE_ENABLED = os.environ.get('MZ_AUTOBRAKE_ENABLED', '1') not in ('0', 'false', 'False', '')
+MZ_AUTOBRAKE_FLOOR   = int(os.environ.get('MZ_AUTOBRAKE_FLOOR', '15'))     # teto de um número "vermelho"
+
+
+def _mz_number_health(conn, number_id: int, days: int = None) -> dict:
+    """Saúde do número na janela: soma sent/replies, calcula reply-ratio e status.
+    status: 'sem_dados' (volume baixo), 'verde', 'amarelo', 'vermelho'.
+    """
+    days  = days or MZ_HEALTH_WINDOW
+    since = (datetime.now() - timedelta(days=days)).strftime('%Y-%m-%d')
+    row = conn.execute(
+        'SELECT COALESCE(SUM(sent),0) AS s, COALESCE(SUM(replies),0) AS r '
+        'FROM mandazap_number_daily WHERE number_id=? AND day>=?',
+        (number_id, since)
+    ).fetchone()
+    sent  = (row['s'] if row else 0) or 0
+    repl  = (row['r'] if row else 0) or 0
+    ratio = (repl / sent) if sent > 0 else None
+    if sent < MZ_HEALTH_MIN_VOL:
+        status = 'sem_dados'
+    elif ratio is not None and ratio >= MZ_HEALTH_GREEN:
+        status = 'verde'
+    elif ratio is not None and ratio >= MZ_HEALTH_YELLOW:
+        status = 'amarelo'
+    else:
+        status = 'vermelho'
+    return {'sent': sent, 'replies': repl, 'ratio': ratio,
+            'ratio_pct': (round(ratio * 100) if ratio is not None else None),
+            'status': status}
+
+
+def _mz_user_has_engagement(conn, user_id: int, days: int = None) -> bool:
+    """True se ALGUM número do usuário recebeu resposta na janela — prova que o webhook
+    está entregando. Evita auto-freio falso quando o webhook ainda não foi configurado.
+    """
+    days  = days or MZ_HEALTH_WINDOW
+    since = (datetime.now() - timedelta(days=days)).strftime('%Y-%m-%d')
+    row = conn.execute(
+        'SELECT COALESCE(SUM(d.replies),0) AS r FROM mandazap_number_daily d '
+        'JOIN mandazap_numbers n ON n.id = d.number_id '
+        'WHERE n.user_id=? AND d.day>=?',
+        (user_id, since)
+    ).fetchone()
+    return bool(row and (row['r'] or 0) > 0)
+
+
 def _mz_effective_daily_cap(num_row: dict, plan_daily: int, plan_safe_cap: int = None) -> int:
     """Teto diário efetivo deste número = o MENOR entre warm-up, cota bruta do plano,
     o teto conservador do plano (daily_safe_cap) e o teto rígido global.
@@ -9081,6 +9208,19 @@ def _dispatch_campaign_inner(cid: int, user_id: int, delay_s: int = 3, continuar
         'sent': 0,
     } for nr in num_rows]
     instance = senders[0]['instance']  # usado na pré-validação de números
+
+    # ── Fase 3: AUTO-FREIO por reply-ratio ──────────────────────────────────
+    # Só freia se o webhook está entregando respostas (usuário tem engajamento) — assim
+    # nunca freia por engano quando o webhook ainda não foi configurado. Número "vermelho"
+    # (muito envio, quase nenhuma resposta = lista fria) tem o teto cortado p/ não queimar.
+    if MZ_AUTOBRAKE_ENABLED and _mz_user_has_engagement(conn, user_id):
+        for s in senders:
+            h = _mz_number_health(conn, s['id'])
+            if h['status'] == 'vermelho' and s['remaining'] > MZ_AUTOBRAKE_FLOOR:
+                log.warning(f"[MZ AutoFreio] campanha {cid}: número {s['id']} vermelho "
+                            f"({h['ratio_pct']}% resposta em {h['sent']} envios) — teto cortado "
+                            f"de {s['remaining']} p/ {MZ_AUTOBRAKE_FLOOR}")
+                s['remaining'] = MZ_AUTOBRAKE_FLOOR
 
     # ── Janela de horário humano: fora dela, agenda p/ retomar sozinho ──────
     if not _mz_in_send_window():

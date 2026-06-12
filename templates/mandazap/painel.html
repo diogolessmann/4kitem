@@ -333,6 +333,24 @@ select option{background:var(--surface2)}
           🔥 Aquecimento dia <strong>{{ n.warmup_day }}/25</strong> · hoje <strong>{{ n.sent_today }}/{{ n.daily_cap }}</strong> msgs
           {% endif %}
         </div>
+        {% if n.health and n.health.status != 'sem_dados' %}
+        {% if n.health.status == 'verde' %}
+        <div style="font-size:11px;margin-top:6px;padding:6px 9px;border-radius:7px;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.25);color:#22c55e;line-height:1.4"
+             title="% de pessoas que responderam suas mensagens. Número que conversa quase não é bloqueado.">
+          🟢 Saúde ótima · <strong>{{ n.health.ratio_pct }}%</strong> respondem
+        </div>
+        {% elif n.health.status == 'amarelo' %}
+        <div style="font-size:11px;margin-top:6px;padding:6px 9px;border-radius:7px;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.25);color:#fbbf24;line-height:1.4"
+             title="Poucas pessoas respondem. Peça resposta na mensagem (ex: 'responda SIM') e use lista mais quente.">
+          🟡 Atenção · só <strong>{{ n.health.ratio_pct }}%</strong> respondem — peça resposta na msg
+        </div>
+        {% else %}
+        <div style="font-size:11px;margin-top:6px;padding:6px 9px;border-radius:7px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);color:#f87171;line-height:1.4"
+             title="Quase ninguém responde = lista fria = risco alto de bloqueio. O sistema reduziu o ritmo deste número automaticamente.">
+          🔴 Risco de ban · só <strong>{{ n.health.ratio_pct }}%</strong> respondem — ritmo reduzido. Use lista quente e peça resposta!
+        </div>
+        {% endif %}
+        {% endif %}
         {% endif %}
         <div class="qr-placeholder" id="qr-wrap-{{ n.id }}">
           {% if n.status == 'connected' %}
