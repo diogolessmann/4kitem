@@ -142,6 +142,7 @@ tr.hidden-search{display:none}
     <button class="btn btn-ghost" id="btn-verificar" onclick="iniciarVerificacao()">🔍 Verificar</button>
     <button class="btn" id="btn-autoremover" onclick="autoRemoverQuebrados()" style="background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.4);color:#f87171;font-weight:700">🔥 Remover quebrados</button>
     <button class="btn btn-danger" id="btn-apagar" onclick="apagarSelecionados()" disabled>🗑️ Apagar (<span id="sel-count">0</span>)</button>
+    <button class="btn btn-green" id="btn-atualizar-tvs" onclick="atualizarTvs(this)" title="Manda todas as TVs recarregarem a lista (aplica o que você apagou/adicionou)">🔄 Atualizar TVs</button>
 
     <!-- Secundário/perigoso — discreto, à direita, com aviso -->
     <button class="btn btn-ghost" id="btn-seed" onclick="seedCategorias()"
@@ -510,6 +511,18 @@ async function adicionarVideo() {
   const d=await res.json();
   if(d.ok){fecharModal('modal-add');toast('✅ Vídeo adicionado! Recarregue para ver.');
   }else{alert('❌ Erro: '+d.erro)}
+}
+
+// ── Atualizar TVs (manda recarregar a lista de vídeos) ────────────────────────
+async function atualizarTvs(btn){
+  const orig = btn.textContent;
+  btn.disabled = true; btn.textContent = '🔄 Atualizando...';
+  try{
+    const r = await fetch('/pubshow/admin/videos/atualizar-tvs', {method:'POST'});
+    const d = await r.json();
+    btn.textContent = d.ok ? '✅ TVs avisadas!' : '❌ erro';
+  }catch(e){ btn.textContent = '❌ rede'; }
+  setTimeout(()=>{ btn.textContent = orig; btn.disabled = false; }, 3000);
 }
 
 // ── Importar em lote ──────────────────────────────────────────────────────────

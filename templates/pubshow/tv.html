@@ -1254,6 +1254,17 @@ async function pollStatus() {
     // Promoção Relâmpago
     atualizarPromo(data.promo || null);
 
+    // 🔄 Biblioteca mudou no admin (apagou/adicionou) → recarrega a lista nova
+    if (data.videos_version !== undefined) {
+      if (window._videosVersion === undefined) {
+        window._videosVersion = data.videos_version;   // 1ª leitura: sincroniza
+      } else if (data.videos_version !== window._videosVersion) {
+        window._videosVersion = data.videos_version;
+        location.reload();   // pega a lista atualizada (sem os vídeos apagados)
+        return;
+      }
+    }
+
     // ⏭️ Pular música — comando do dono (botão no painel)
     if (typeof data.skip_seq === 'number') {
       if (window._lastSkipSeq === undefined) {

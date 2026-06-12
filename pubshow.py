@@ -1897,6 +1897,7 @@ def api_status(code):
         'aguardando_pix': aguardando_pix,
         'promo':          promo,
         'skip_seq':       b['skip_seq'] or 0,
+        'videos_version': _videos_version(),
     }
     conn.close()
     return jsonify(result)
@@ -3790,6 +3791,8 @@ def _import_playlist_impl():
         inseridos += conn.execute('SELECT changes()').fetchone()[0]
     conn.commit()
     conn.close()
+    if inseridos:
+        _bump_videos_version()
 
     return jsonify({
         'ok':       True,
@@ -3875,6 +3878,39 @@ def admin_videos_check_bulk():
                     'ok_count': ok_count})
 
 
+def _videos_version() -> str:
+    """Versão atual da biblioteca de vídeos. Muda quando o admin apaga/adiciona.
+    A TV compara com a dela e recarrega a lista quando muda (sem F5 manual)."""
+    try:
+        conn = get_pubshow_db()
+        row = conn.execute("SELECT valor FROM pubshow_meta WHERE chave='videos_version'").fetchone()
+        conn.close()
+        return (row['valor'] if row else '0') or '0'
+    except Exception:
+        return '0'
+
+
+def _bump_videos_version():
+    """Marca que a biblioteca mudou — as TVs recarregam a lista no próximo poll."""
+    try:
+        import time as _t
+        conn = get_pubshow_db()
+        conn.execute("CREATE TABLE IF NOT EXISTS pubshow_meta (chave TEXT PRIMARY KEY, valor TEXT)")
+        conn.execute("INSERT OR REPLACE INTO pubshow_meta (chave, valor) VALUES ('videos_version', ?)",
+                     (str(int(_t.time())),))
+        conn.commit(); conn.close()
+    except Exception as ex:
+        log.error('[PUBSHOW] bump videos_version: %s', ex)
+
+
+@pubshow_bp.route('/admin/videos/atualizar-tvs', methods=['POST'])
+@_admin_required
+def admin_videos_atualizar_tvs():
+    """Botão 'Atualizar TVs': força todas as TVs a recarregarem a lista de vídeos."""
+    _bump_videos_version()
+    return jsonify({'ok': True})
+
+
 def _limpar_videos_quebrados(max_videos=None):
     """Checa todos os vídeos ativos via oEmbed (em paralelo) e desativa
     (ativo=0) os comprovadamente quebrados — 404 (removido) ou 401 (embed
@@ -3926,6 +3962,8 @@ def _limpar_videos_quebrados(max_videos=None):
         conn2.close()
 
     log.info('[PUBSHOW] faxineiro: %d verificados, %d desativados', len(ids), removidos)
+    if removidos:
+        _bump_videos_version()   # avisa as TVs pra recarregarem a lista
     return len(ids), removidos, quebrados
 
 
@@ -3985,6 +4023,8 @@ def admin_videos_deletar():
     deleted = conn.execute(f'DELETE FROM pubshow_videos WHERE youtube_id IN ({placeholders})', ids).rowcount
     conn.commit(); conn.close()
     log.info(f'[PUBSHOW ADMIN] Deletados {deleted} vídeos quebrados')
+    if deleted:
+        _bump_videos_version()   # avisa as TVs pra recarregarem a lista
     return jsonify({'ok': True, 'deleted': deleted})
 
 
@@ -4006,6 +4046,7 @@ def admin_videos_add():
             (yid, titulo, artista, categoria, '', 0, 0)
         )
         conn.commit(); conn.close()
+        _bump_videos_version()
         return jsonify({'ok': True})
     except Exception as e:
         return jsonify({'ok': False, 'erro': str(e)[:100]})
@@ -4059,6 +4100,8 @@ def admin_videos_add_batch():
             erros += 1
     conn.commit()
     conn.close()
+    if inseridos:
+        _bump_videos_version()
     resp = {'ok': True, 'inseridos': inseridos, 'duplicados': duplicados, 'erros': erros}
     if limitados:
         resp['limitados'] = limitados
