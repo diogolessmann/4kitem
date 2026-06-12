@@ -11904,8 +11904,8 @@ def desp_api_debito_delete(debito_id):
 
 # ══ OCR multimodal: Gemini (melhor leitura de tabela/valores) com fallback Groq ══
 
-def _desp_gemini_ocr(prompt: str, img_b64: str, mime: str, max_tokens: int = 2048):
-    """Chama o Gemini (visão) com imagem + prompt em modo JSON. Retorna texto bruto, ou None se sem chave."""
+def _desp_gemini_ocr(prompt: str, img_b64: str, mime: str, max_tokens: int = 4096):
+    """Chama o Gemini (visão) com imagem + prompt em modo JSON. Retorna texto bruto, ou None se sem chave/resposta."""
     key = os.environ.get('GEMINI_API_KEY', '')
     if not key:
         return None
@@ -11916,12 +11916,34 @@ def _desp_gemini_ocr(prompt: str, img_b64: str, mime: str, max_tokens: int = 204
             {'inlineData': {'mimeType': mime or 'image/png', 'data': img_b64}},
             {'text': prompt},
         ]}],
-        'generationConfig': {'temperature': 0.1, 'maxOutputTokens': max_tokens,
-                             'responseMimeType': 'application/json'},
+        'generationConfig': {
+            'temperature': 0.1,
+            'maxOutputTokens': max_tokens,
+            'responseMimeType': 'application/json',
+            # gemini-2.5 "pensa" e consome tokens antes de responder → desliga p/ não truncar o JSON
+            'thinkingConfig': {'thinkingBudget': 0},
+        },
     }
     r = requests.post(url, params={'key': key}, json=body, timeout=90)
     r.raise_for_status()
-    return r.json()['candidates'][0]['content']['parts'][0]['text'].strip()
+    cands = r.json().get('candidates') or []
+    if not cands:
+        return None
+    parts = (cands[0].get('content') or {}).get('parts') or []
+    txt = ''.join(p.get('text', '') for p in parts).strip()
+    return txt or None
+
+
+def _desp_ocr_call(prompt: str, img_b64: str, mime: str, max_tokens: int = 4096):
+    """Prefere Gemini (melhor leitura de tabela), MAS só aceita se vier JSON parseável;
+    senão cai pro Groq (que já funcionava). Garante que nunca volte 'nada' por JSON truncado."""
+    try:
+        txt = _desp_gemini_ocr(prompt, img_b64, mime, max_tokens)
+        if txt and _desp_json_loads(txt) is not None:
+            return txt
+    except Exception as e:
+        log.warning(f'Gemini OCR falhou ({e}) — usando Groq')
+    return _desp_groq_ocr(prompt, img_b64, mime, max_tokens)
 
 
 def _desp_groq_ocr(prompt: str, img_b64: str, mime: str, max_tokens: int = 2048):
@@ -11941,17 +11963,6 @@ def _desp_groq_ocr(prompt: str, img_b64: str, mime: str, max_tokens: int = 2048)
     )
     resp.raise_for_status()
     return resp.json()['choices'][0]['message']['content'].strip()
-
-
-def _desp_ocr_call(prompt: str, img_b64: str, mime: str, max_tokens: int = 2048):
-    """Prefere Gemini (melhor leitura de tabela); cai pro Groq se Gemini indisponível/falhar."""
-    try:
-        txt = _desp_gemini_ocr(prompt, img_b64, mime, max_tokens)
-        if txt:
-            return txt
-    except Exception as e:
-        log.warning(f'Gemini OCR falhou ({e}) — usando Groq')
-    return _desp_groq_ocr(prompt, img_b64, mime, max_tokens)
 
 
 def _desp_json_loads(texto: str):
@@ -12004,7 +12015,7 @@ def desp_api_ocr_debitos():
     mime    = f.mimetype or mimetypes.guess_type(f.filename or '')[0] or 'image/jpeg'
     img_b64 = base64.b64encode(f.read()).decode()
     try:
-        texto = _desp_ocr_call(PROMPT_DEBITOS, img_b64, mime, max_tokens=2048)
+        texto = _desp_ocr_call(PROMPT_DEBITOS, img_b64, mime, max_tokens=4096)
         data  = _desp_json_loads(texto)
         if isinstance(data, dict):
             data = data.get('debitos') or data.get('itens') or []
@@ -12098,7 +12109,7 @@ Instruções para os campos de débitos:
   Se não houver tabela de débitos visível, devolva "debitos":[].
 IMPORTANTE: Retorne SOMENTE o JSON, nada mais.'''
     try:
-        texto = _desp_ocr_call(prompt, img_b64, mime, max_tokens=1200)
+        texto = _desp_ocr_call(prompt, img_b64, mime, max_tokens=4096)
         dados = _desp_json_loads(texto)
         if not isinstance(dados, dict):
             return jsonify({'erro': 'IA não retornou JSON válido'}), 422
