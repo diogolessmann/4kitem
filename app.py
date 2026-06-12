@@ -12000,30 +12000,12 @@ PROMPT_DEBITOS = (
     '- descricao: copie o texto EXATO da coluna "Classe" (ex.: "Licenciamento Anual 2026", "IPVA (1a. Cota) 2026").\n'
     '- tipo: pela palavra na Classe — se contém "Licenciamento" → "Licenciamento"; se contém "IPVA" → "IPVA"; auto/infração → "Multa"; taxa → "Taxa DETRAN"; senão "Outros". Uma cota de IPVA é SEMPRE "IPVA" (nunca Multa nem Licenciamento).\n'
     '- valor: a coluna "Valor Atual(R$)" DAQUELA linha. vencimento: a coluna "Vencimento" DAQUELA linha (dd/mm/aaaa). numero_detran: coluna "Número DetranNET".\n'
-    '- INCLUA a linha de "Licenciamento" se ela existir na tabela.\n'
-    '- IPVA Cota Única vs parcelado: se existirem as cotas parceladas (1ª/2ª/3ª Cota), NÃO inclua a linha "Cota Única" (ela vem com "*"/"Não contabilizado no total"). Se SÓ existir Cota Única, inclua-a. Nunca inclua as duas formas ao mesmo tempo.\n'
+    '- Traga TODAS as linhas da tabela: Licenciamento, IPVA (Cota Única), CADA cota parcelada (1ª/2ª/3ª), Multas e Taxas. '
+    'NÃO exclua nenhuma linha — o despachante decide quais manter e apaga o resto. A "Cota Única" costuma ter "*" (não entra no total): traga mesmo assim.\n'
     '- Em Santa Catarina NÃO existe DPVAT — nunca inclua.\n'
-    '- Extraia SOMENTE o que está visível; não invente nem calcule.\n'
-    '- AUTOCONFERÊNCIA: a soma dos "valor" dos itens devolvidos DEVE ser igual ao "Total dos Débitos" mostrado na tela. Revise antes de responder.\n'
+    '- Extraia SOMENTE o que está visível; não invente nem calcule. Cada linha com seu próprio valor e vencimento.\n'
     'Responda SOMENTE o JSON.'
 )
-
-
-def _desp_dedup_debitos(debitos: list) -> list:
-    """Trava anti-duplicação do IPVA: se vierem cotas parceladas (1ª/2ª/3ª) E a Cota Única,
-    remove a Cota Única (a forma 'à vista' não soma junto com o parcelado)."""
-    import re as _r
-    def _ipva(d):
-        return 'ipva' in (str(d.get('tipo', '')) + ' ' + str(d.get('descricao', ''))).lower()
-    def _cota_unica(d):
-        s = str(d.get('descricao', '')).lower()
-        return _ipva(d) and ('única' in s or 'unica' in s)
-    def _parcela(d):
-        s = str(d.get('descricao', '')).lower()
-        return _ipva(d) and not _cota_unica(d) and bool(_r.search(r'\d\s*[ªa]\.?\s*cota', s))
-    if any(_parcela(d) for d in debitos):
-        return [d for d in debitos if not _cota_unica(d)]
-    return debitos
 
 
 @app.route('/despachante/api/ocr/debitos', methods=['POST'])
@@ -12051,15 +12033,11 @@ def desp_api_ocr_debitos():
             return jsonify({'erro': 'IA não identificou débitos — verifique se é um print do DETRANET',
                             'motor': motor, 'raw': (texto or '')[:200]}), 422
         debitos = [d for d in data if isinstance(d, dict) and (d.get('tipo') or d.get('descricao'))]
-        debitos = _desp_dedup_debitos(debitos)
         if not debitos:
             return jsonify({'erro': 'Nenhum débito encontrado na imagem', 'motor': motor}), 422
-        # Conferência: soma dos itens x "Total dos Débitos" lido da tela
-        soma = round(sum(_desp_money(d.get('valor')) for d in debitos), 2)
-        tot  = _desp_money(total_tela) if total_tela else None
-        confere = (tot is None) or (abs(soma - tot) <= 0.02)
+        # total_tela vai só como referência (a soma NÃO bate de propósito: cota única + parcelas etc.)
         return jsonify({'ok': True, 'debitos': debitos, 'total': len(debitos), 'motor': motor,
-                        'soma': soma, 'total_tela': tot, 'confere': confere})
+                        'total_tela': _desp_money(total_tela) if total_tela else None})
     except Exception as e:
         log.error(f'OCR débitos error: {e}')
         return jsonify({'erro': str(e)}), 500
@@ -12136,10 +12114,10 @@ Instruções para os campos de débitos:
 - licenciamento: soma dos valores de Licenciamento/Taxa Detran visíveis, como número decimal
 - multas: soma dos valores de Multas visíveis, como número decimal
 - total_debitos: use null A MENOS QUE exista na tela um campo escrito "Total dos Débitos" (ou equivalente); nesse caso copie EXATAMENTE o valor mostrado. NÃO some você mesmo.
-- debitos: SE houver uma tabela "Listagem de Débitos", devolva um array com CADA linha que compõe o Total: [{"tipo","descricao","valor","vencimento"}].
+- debitos: SE houver uma tabela "Listagem de Débitos", devolva um array com TODAS as linhas: [{"tipo","descricao","valor","vencimento"}].
+  • Colunas na ordem: Classe | Número DetranNET | Vencimento | Valor Nominal | Multa | Juros | Valor Atual. descricao=Classe; vencimento=Vencimento; valor=ÚLTIMA coluna "Valor Atual(R$)" (NÃO use Valor Nominal). Não pule a 1ª linha (geralmente "Licenciamento Anual", em azul/link).
   • tipo: IPVA / Licenciamento / Multa / Taxa DETRAN / Outros. Uma cota de IPVA ("Cota Única", "1ª/2ª/3ª Cota") é SEMPRE "IPVA", NUNCA "Multa".
-  • valor: coluna "Valor Atual(R$)", número decimal. vencimento: coluna "Vencimento", dd/mm/aaaa. descricao: texto da coluna "Classe".
-  • NÃO inclua itens marcados com "*" ou "Não contabilizado no total" (ex.: a IPVA Cota Única quando o veículo paga parcelado). Traga só os que somam no Total dos Débitos.
+  • Traga TODAS as linhas (Licenciamento, IPVA Cota Única, cada Cota, Multas, Taxas) — NÃO exclua nenhuma; o despachante apaga o que não usar. Cada linha com seu próprio valor e vencimento.
   Se não houver tabela de débitos visível, devolva "debitos":[].
 IMPORTANTE: Retorne SOMENTE o JSON, nada mais.'''
     try:
@@ -12160,8 +12138,6 @@ IMPORTANTE: Retorne SOMENTE o JSON, nada mais.'''
         # chassi válido = 11–17 alfanuméricos, sem espaço/barra/parênteses (senão é marca/modelo/lixo)
         if any(c in ch for c in ' /()') or not (11 <= len(ch_clean) <= 17):
             dados.pop('chassi', None)
-        if isinstance(dados.get('debitos'), list):
-            dados['debitos'] = _desp_dedup_debitos(dados['debitos'])
         return jsonify({'ok': True, 'dados': dados, 'campos': len(dados), 'motor': motor})
     except Exception as e:
         log.error(f'OCR despachante error: {e}')
