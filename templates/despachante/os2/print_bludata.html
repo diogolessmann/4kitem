@@ -116,29 +116,10 @@
       </tbody>
     </table>
 
-    <!-- Total (somente o total, a pedido) -->
+    <!-- Total (somente o total — menos é mais) -->
     <div class="tot"><div class="box">
       <div class="l big"><span>Total</span><span>R$ {{ money(total) }}</span></div>
     </div></div>
-
-    <!-- Parcelas -->
-    {% if parcelas %}
-    <div class="sec-tit">Condição de Pagamento</div>
-    <table>
-      <thead><tr><th class="c" style="width:50px;">Parc.</th><th class="c" style="width:130px;">Vencimento</th><th class="r" style="width:110px;">Valor</th><th>Forma</th><th class="c" style="width:110px;">Status</th></tr></thead>
-      <tbody>
-        {% for p in parcelas %}
-        <tr>
-          <td class="c">{{ p.numero }}</td>
-          <td class="c">{{ dbr(p.vencimento) }}</td>
-          <td class="r">R$ {{ money(p.valor) }}</td>
-          <td>{{ p.forma_pagamento or '—' }}</td>
-          <td class="c">{% if p.pago_em %}<span class="tag s">PAGO</span>{% else %}<span class="tag d">EM ABERTO</span>{% endif %}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-    {% endif %}
 
     <div class="legal">
       Declaramos como verdadeiras as informações acima prestadas e assumimos toda responsabilidade civil e criminal
