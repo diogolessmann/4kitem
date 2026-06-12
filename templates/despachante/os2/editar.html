@@ -141,7 +141,7 @@
   <!-- Barra financeira (rótulos Bludata) -->
   <div class="fin-bar">
     <div class="fin-item"><label>Vlr Bruto</label><span class="v" id="fin-bruto" style="color:var(--text);">R$ 0,00</span></div>
-    <div class="fin-item"><label>Acréscimo</label><input id="fin-acres" type="text" inputmode="decimal" value="{{ '%.2f'|format(os.acrescimo or 0)|replace('.',',') if os else '0,00' }}" oninput="recalcBar()"></div>
+    <div class="fin-item"><label>Acréscimo (chorinho)</label><input id="fin-acres" type="text" inputmode="decimal" value="{{ '%.2f'|format(os.acrescimo or 0)|replace('.',',') if os else '0,00' }}" oninput="recalcBar()"></div>
     <div class="fin-item"><label>Desconto</label><input id="fin-desc" type="text" inputmode="decimal" value="{{ '%.2f'|format(os.desconto or 0)|replace('.',',') if os else '0,00' }}" oninput="recalcBar()"></div>
     <div class="fin-item"><label>Vlr Recebido</label><span class="v" id="fin-receb" style="color:var(--green);">R$ 0,00</span></div>
     <div class="fin-item"><label>Vlr A Receber</label><span class="v" id="fin-areceber" style="color:var(--yellow);">R$ 0,00</span></div>
