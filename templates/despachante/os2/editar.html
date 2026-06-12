@@ -264,13 +264,19 @@ function filtrarPicker(){
 }
 async function escolherServico(codigo, label){
   fecharPicker();
-  let preco = null;
+  let preco = 0, custo = 0;
   try {
     const r = await fetch('/despachante/api/preco/' + encodeURIComponent(codigo));
     const d = await r.json();
-    if (d && d.preco) preco = d.preco;   // Honorário (total cobrado) da Tabela de Preços
+    if (d) { preco = Number(d.preco) || 0; custo = Number(d.custo) || 0; }
   } catch(e) {}
-  addItem(codigo, label, 'servico', preco || null);   // 1 linha = total cobrado; edite se precisar
+  if (custo > 0 && custo < preco) {
+    // Quebra em Honorário (margem) + Taxa — total continua = preço da tabela
+    addItem(codigo, label, 'servico', preco - custo);          // honorário (seu ganho)
+    addItem('', 'Taxa DETRAN — ' + label, 'taxa', custo);      // taxa (repasse)
+  } else {
+    addItem(codigo, label, 'servico', preco || null);          // 1 linha = total
+  }
 }
 
 // Importar débitos do DETRANET (reusa OCR de débitos)
