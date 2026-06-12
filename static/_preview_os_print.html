@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>O.S. 260001 — Diogo Kaue Lessmann</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin:0; padding:0; }
+  :root { --ac:#2563eb; --ink:#0f172a; --mut:#64748b; --line:#e2e8f0; --soft:#f8fafc; }
+  body { font-family:'Inter',system-ui,sans-serif; color:var(--ink); background:#eef2f7; padding:24px; }
+  .page { max-width:820px; margin:0 auto; background:#fff; border-radius:14px; box-shadow:0 6px 30px rgba(0,0,0,.08); overflow:hidden; }
+  .pad { padding:26px 30px; }
+  /* Header */
+  .hd { display:flex; justify-content:space-between; align-items:flex-start; gap:16px; padding:22px 30px; background:linear-gradient(135deg,#1e293b,#0f172a); color:#fff; }
+  .hd .logo { width:46px;height:46px;border-radius:11px;background:var(--ac);display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0; }
+  .hd .emp { font-size:17px; font-weight:800; line-height:1.2; }
+  .hd .emp small { display:block; font-weight:400; font-size:11px; color:#cbd5e1; margin-top:3px; }
+  .hd .meta { text-align:right; font-size:11px; color:#cbd5e1; white-space:nowrap; }
+  .hd .meta .os { font-size:15px; font-weight:800; color:#fff; }
+  /* Sections */
+  .sec-tit { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.6px; color:var(--ac); margin:18px 0 8px; }
+  .info { display:grid; grid-template-columns:1fr 1fr; gap:6px 26px; }
+  .info .f { display:flex; gap:6px; font-size:13px; border-bottom:1px solid var(--line); padding:3px 0; }
+  .info .f b { color:var(--mut); font-weight:600; min-width:96px; }
+  .chips { display:flex; flex-wrap:wrap; gap:7px; }
+  .chip { font-size:11px; border:1px solid var(--line); border-radius:20px; padding:4px 11px; color:var(--mut); }
+  table { width:100%; border-collapse:collapse; }
+  thead th { background:var(--soft); font-size:10px; text-transform:uppercase; letter-spacing:.4px; color:var(--mut); text-align:left; padding:8px 10px; border-bottom:2px solid var(--line); }
+  tbody td { padding:8px 10px; font-size:13px; border-bottom:1px solid var(--line); }
+  .r { text-align:right; } .c { text-align:center; }
+  .tag { font-size:10px; font-weight:600; padding:1px 7px; border-radius:6px; }
+  .tag.s { background:#eff6ff; color:#2563eb; } .tag.d { background:#fef2f2; color:#dc2626; }
+  /* Totais */
+  .tot { display:flex; justify-content:flex-end; margin-top:14px; }
+  .tot .box { min-width:280px; }
+  .tot .l { display:flex; justify-content:space-between; padding:5px 0; font-size:13px; color:var(--mut); }
+  .tot .l span:last-child { color:var(--ink); font-weight:600; }
+  .tot .l.big { border-top:2px solid var(--ink); margin-top:4px; padding-top:8px; font-size:16px; }
+  .tot .l.big span { color:var(--ink); font-weight:800; }
+  .tot .l.rec span:last-child { color:#16a34a; }
+  /* Legal + assinatura */
+  .legal { font-size:10px; color:var(--mut); line-height:1.5; margin-top:18px; text-align:justify; }
+  .assin { display:flex; justify-content:space-between; margin-top:40px; gap:30px; }
+  .assin div { flex:1; border-top:1px solid var(--ink); text-align:center; padding-top:5px; font-size:12px; color:var(--mut); }
+  /* Recibo */
+  .recibo { border-top:2px dashed var(--line); margin:0; }
+  .recibo .top { display:flex; justify-content:space-between; align-items:center; }
+  .recibo .val { font-size:26px; font-weight:800; color:var(--ac); }
+  .recibo .txt { font-size:13px; line-height:1.6; margin-top:10px; color:var(--ink); }
+  .btnprint { position:fixed; top:14px; right:14px; padding:9px 16px; background:var(--ac); color:#fff; border:none; border-radius:8px; cursor:pointer; font-weight:600; font-family:inherit; box-shadow:0 4px 14px rgba(37,99,235,.4); }
+  @media print {
+    body { background:#fff; padding:0; }
+    .page { box-shadow:none; border-radius:0; max-width:none; }
+    .noprint { display:none; }
+    @page { margin:12mm; }
+  }
+</style>
+</head>
+<body>
+
+
+
+<button class="btnprint noprint" onclick="void 0">🖨️ Imprimir</button>
+
+<div class="page">
+  <div class="hd">
+    <div style="display:flex;gap:14px;align-items:center;">
+      <div class="logo">🚗</div>
+      <div class="emp">Diogo Kaue Lessmann
+        <small>SCHROEDER · Credencial 2095 · (47) 99960-6998</small>
+      </div>
+    </div>
+    <div class="meta">
+      <div class="os">O.S. Nº 260001</div>
+      12/06/2026 09:15<br>1ª Via
+    </div>
+  </div>
+
+  <div class="pad">
+    <!-- Veículo / Cliente -->
+    <div class="sec-tit">Dados</div>
+    <div class="info">
+      <div class="f"><b>Placa</b> MKM5G86</div>
+      <div class="f"><b>RENAVAM</b> 487851501</div>
+      <div class="f"><b>Chassi</b> —</div>
+      <div class="f"><b>Marca/Mod.</b> VW Gol</div>
+      <div class="f"><b>Proprietário</b> Gilberto Ribeiro</div>
+      <div class="f"><b>CPF/CNPJ</b> 01234567890</div>
+      <div class="f"><b>Endereço</b> </div>
+      <div class="f"><b>Cidade/UF</b> Schroeder/SC</div>
+      <div class="f"><b>Telefone</b> —</div>
+      <div class="f"><b>Exercício</b> 2026</div>
+    </div>
+
+    <!-- Observações com checkboxes -->
+    <div class="sec-tit">Documentos / Observações</div>
+    <div class="chips">
+      <span class="chip">☐ Recibo / ATPV</span><span class="chip">☐ CNH</span>
+      <span class="chip">☐ Comprovante de Residência</span><span class="chip">☐ Vistoria</span>
+      <span class="chip">☐ Contrato</span><span class="chip">☐ Outros</span>
+    </div>
+    
+
+    <!-- Itens -->
+    <div class="sec-tit">Itens da Ordem de Serviço</div>
+    <table>
+      <thead><tr><th>Descrição</th><th class="c" style="width:130px;">Vencimento</th><th class="r" style="width:120px;">Valor</th></tr></thead>
+      <tbody>
+        
+        <tr>
+          <td>Licenciamento Anual 2026 <span class="tag s">serviço</span></td>
+          <td class="c">30/09/2026</td>
+          <td class="r">R$ 149,37</td>
+        </tr>
+        
+        <tr>
+          <td>IPVA (1a. Cota) 2026 <span class="tag d">débito</span></td>
+          <td class="c">10/07/2026</td>
+          <td class="r">R$ 120,49</td>
+        </tr>
+        
+        <tr>
+          <td>IPVA (2a. Cota) 2026 <span class="tag d">débito</span></td>
+          <td class="c">10/08/2026</td>
+          <td class="r">R$ 120,49</td>
+        </tr>
+        
+        <tr>
+          <td>IPVA (3a. Cota) 2026 <span class="tag d">débito</span></td>
+          <td class="c">10/09/2026</td>
+          <td class="r">R$ 120,48</td>
+        </tr>
+        
+      </tbody>
+    </table>
+
+    <!-- Totais -->
+    <div class="tot"><div class="box">
+      <div class="l"><span>Valor Bruto</span><span>R$ 510,83</span></div>
+      <div class="l"><span>Acréscimo</span><span>R$ 4,17</span></div>
+      
+      <div class="l big"><span>Total</span><span>R$ 515,00</span></div>
+      <div class="l rec"><span>Recebido</span><span>R$ 149,37</span></div>
+      <div class="l"><span>A Receber</span><span style="color:#d97706;font-weight:700;">R$ 365,63</span></div>
+    </div></div>
+
+    <!-- Parcelas -->
+    
+    <div class="sec-tit">Condição de Pagamento</div>
+    <table>
+      <thead><tr><th class="c" style="width:50px;">Parc.</th><th class="c" style="width:130px;">Vencimento</th><th class="r" style="width:110px;">Valor</th><th>Forma</th><th class="c" style="width:110px;">Status</th></tr></thead>
+      <tbody>
+        
+        <tr>
+          <td class="c">1</td>
+          <td class="c">30/09/2026</td>
+          <td class="r">R$ 149,37</td>
+          <td>PIX</td>
+          <td class="c"><span class="tag s">PAGO</span></td>
+        </tr>
+        
+        <tr>
+          <td class="c">2</td>
+          <td class="c">10/07/2026</td>
+          <td class="r">R$ 120,49</td>
+          <td>—</td>
+          <td class="c"><span class="tag d">EM ABERTO</span></td>
+        </tr>
+        
+        <tr>
+          <td class="c">3</td>
+          <td class="c">10/08/2026</td>
+          <td class="r">R$ 120,49</td>
+          <td>—</td>
+          <td class="c"><span class="tag d">EM ABERTO</span></td>
+        </tr>
+        
+        <tr>
+          <td class="c">4</td>
+          <td class="c">10/09/2026</td>
+          <td class="r">R$ 124,65</td>
+          <td>—</td>
+          <td class="c"><span class="tag d">EM ABERTO</span></td>
+        </tr>
+        
+      </tbody>
+    </table>
+    
+
+    <div class="legal">
+      Declaramos como verdadeiras as informações acima prestadas e assumimos toda responsabilidade civil e criminal
+      pelas mesmas, estando de acordo com o preço estipulado e cientes dos serviços a serem executados.
+      Por força do Decreto 2.867/98 e da Portaria Interministerial 4.044/98, o pagamento do seguro obrigatório deve
+      coincidir com a quitação da primeira parcela ou da quota única do IPVA.
+    </div>
+    <div class="assin">
+      <div>Gilberto Ribeiro</div>
+      <div>Diogo Kaue Lessmann</div>
+    </div>
+  </div>
+
+  <!-- Recibo destacável -->
+  <div class="pad recibo">
+    <div class="top">
+      <div>
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--ac);">Recibo</div>
+        <div style="font-size:11px;color:var(--mut);margin-top:2px;">Diogo Kaue Lessmann · SCHROEDER</div>
+      </div>
+      <div class="val">R$ 149,37</div>
+    </div>
+    <div class="txt">
+      Recebemos de <b>Gilberto Ribeiro</b> a quantia de <b>cento e quarenta e nove reais e trinta e sete centavos</b>,
+      referente ao pagamento da Ordem de Serviço Nº 260001, do veículo placa <b>MKM5G86</b>.
+    </div>
+    <div style="font-size:12px;color:var(--mut);margin-top:10px;">SCHROEDER, 12 de Junho de 2026.</div>
+    <div class="assin" style="margin-top:34px;"><div style="visibility:hidden;">.</div><div>Diogo Kaue Lessmann</div></div>
+  </div>
+</div>
+
+<script>window.addEventListener('load',()=>{setTimeout(()=>{try{void 0;}catch(e){}},500);});</script>
+</body>
+</html>
