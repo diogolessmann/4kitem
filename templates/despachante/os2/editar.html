@@ -264,13 +264,16 @@ function filtrarPicker(){
 }
 async function escolherServico(codigo, label){
   fecharPicker();
-  let valor = null;
+  let preco = null, custo = null;
   try {
     const r = await fetch('/despachante/api/preco/' + encodeURIComponent(codigo));
     const d = await r.json();
-    if (d && d.preco) valor = d.preco;   // honorário da Tabela de Preços
+    if (d) { preco = d.preco; custo = d.custo; }   // Honorário + Custo/Taxa da Tabela de Preços
   } catch(e) {}
-  addItem(codigo, label, 'servico', valor);   // já vem com o valor; edite se precisar
+  addItem(codigo, label, 'servico', preco || null);          // linha de serviço (honorário)
+  if (custo && Number(custo) > 0) {
+    addItem('', 'Taxa — ' + label, 'taxa', custo);           // linha de taxa (custo/taxa do serviço)
+  }
 }
 
 // Importar débitos do DETRANET (reusa OCR de débitos)
