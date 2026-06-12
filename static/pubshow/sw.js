@@ -1,6 +1,6 @@
 // PUBSHOW Jukebox — Service Worker
 // Requisito para PWA instalável. Estratégia: network-first com fallback offline simples.
-const CACHE_NAME = 'pubshow-jk-v1';
+const CACHE_NAME = 'pubshow-jk-v2';
 const OFFLINE_URLS = ['/static/pubshow/offline.html'];
 
 self.addEventListener('install', event => {
@@ -34,8 +34,11 @@ self.addEventListener('fetch', event => {
       caches.match(event.request).then(cached => {
         if (cached) return cached;
         return fetch(event.request).then(res => {
-          const clone = res.clone();
-          caches.open(CACHE_NAME).then(c => c.put(event.request, clone));
+          // Só cacheia resposta BOA (200) — evita 404/erro grudar no cache pra sempre
+          if (res && res.ok) {
+            const clone = res.clone();
+            caches.open(CACHE_NAME).then(c => c.put(event.request, clone));
+          }
           return res;
         });
       })

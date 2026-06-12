@@ -317,16 +317,11 @@ def _ts_to_brt(ts: str) -> str:
         ts_clean = ts[:19].replace('T', ' ')
         dt = datetime.strptime(ts_clean, '%Y-%m-%d %H:%M:%S')
 
-        # Detecta se o servidor já está rodando em BRT checando a hora do sistema
-        import time as _t
-        utc_offset_h = -(_t.timezone if not _t.daylight else _t.altzone) / 3600
-        if utc_offset_h <= -2.5:
-            # Servidor já em BRT (UTC-3) ou parecido — não ajusta
-            return ts_clean
-        # Servidor em UTC (offset=0) ou UTC-1, UTC+x: subtrai para chegar a UTC-3
-        # Ajuste = offset_servidor - (-3) = offset_servidor + 3
-        ajuste = -(utc_offset_h + 3)
-        dt_brt = dt + timedelta(hours=ajuste)
+        # created_at vem de CURRENT_TIMESTAMP do SQLite = SEMPRE UTC (o SQLite
+        # ignora o TZ do SO). Então converte sempre UTC→BRT (UTC-3), igual as
+        # queries SQL com '-3 hours'. (A detecção de "servidor BRT" quebrava
+        # justamente quando TZ=America/Sao_Paulo era setado no Railway.)
+        dt_brt = dt - timedelta(hours=3)
         return dt_brt.strftime('%Y-%m-%d %H:%M:%S')
     except Exception:
         return ts[:19].replace('T', ' ')
@@ -1591,7 +1586,7 @@ def jukebox(token):
                     # ── Incremento de centavos por pedido — facilita identificação no extrato ─
                     conn_off = get_pubshow_db()
                     _offset = conn_off.execute(
-                        "SELECT COUNT(*) FROM pubshow_pedidos WHERE business_id=? AND date(created_at)=date('now','-3 hours')",
+                        "SELECT COUNT(*) FROM pubshow_pedidos WHERE business_id=? AND date(created_at,'-3 hours')=date('now','-3 hours')",
                         (b['id'],)
                     ).fetchone()[0]
                     conn_off.close()
@@ -1708,7 +1703,7 @@ def jukebox(token):
                     if b.get('pix_key'):
                         conn_off2 = get_pubshow_db()
                         _offset2 = conn_off2.execute(
-                            "SELECT COUNT(*) FROM pubshow_pedidos WHERE business_id=? AND date(created_at)=date('now','-3 hours')",
+                            "SELECT COUNT(*) FROM pubshow_pedidos WHERE business_id=? AND date(created_at,'-3 hours')=date('now','-3 hours')",
                             (b['id'],)
                         ).fetchone()[0]
                         conn_off2.close()
@@ -1758,7 +1753,7 @@ def jukebox(token):
     if b.get('pix_key'):
         try:
             pix_offset = conn3.execute(
-                "SELECT COUNT(*) FROM pubshow_pedidos WHERE business_id=? AND date(created_at)=date('now','-3 hours')",
+                "SELECT COUNT(*) FROM pubshow_pedidos WHERE business_id=? AND date(created_at,'-3 hours')=date('now','-3 hours')",
                 (b['id'],)
             ).fetchone()[0]
         except Exception:
@@ -2293,7 +2288,7 @@ def painel_fila_json():
     pedidos_hoje = conn.execute(
         '''SELECT COALESCE(SUM(valor),0) FROM pubshow_pedidos
            WHERE business_id=? AND status!="aguardando_pix"
-           AND date(created_at)=date("now","-3 hours")''',
+           AND date(created_at,'-3 hours')=date("now","-3 hours")''',
         (b['id'],)
     ).fetchone()[0]
     conn.close()
@@ -3187,7 +3182,7 @@ def painel_relatorio():
     receita_hoje = conn.execute(
         '''SELECT COALESCE(SUM(valor),0) FROM pubshow_pedidos
            WHERE business_id=? AND status!="aguardando_pix"
-           AND date(created_at)=date("now","-3 hours")''', (b['id'],)
+           AND date(created_at,'-3 hours')=date("now","-3 hours")''', (b['id'],)
     ).fetchone()[0]
     receita_semana = conn.execute(
         '''SELECT COALESCE(SUM(valor),0) FROM pubshow_pedidos
@@ -3424,11 +3419,11 @@ def admin_dashboard():
     total_videos = conn.execute('SELECT COUNT(*) FROM pubshow_videos WHERE ativo=1').fetchone()[0]
     total_pedidos_hoje = conn.execute(
         '''SELECT COUNT(*) FROM pubshow_pedidos
-           WHERE date(created_at)=date("now","-3 hours")'''
+           WHERE date(created_at,'-3 hours')=date("now","-3 hours")'''
     ).fetchone()[0]
     receita_hoje = conn.execute(
         '''SELECT COALESCE(SUM(valor),0) FROM pubshow_pedidos
-           WHERE date(created_at)=date("now","-3 hours") AND status!="aguardando_pix"'''
+           WHERE date(created_at,'-3 hours')=date("now","-3 hours") AND status!="aguardando_pix"'''
     ).fetchone()[0]
     # Emails pendentes de enviar
     emails_pendentes = conn.execute(
