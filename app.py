@@ -11990,9 +11990,12 @@ def _desp_json_loads(texto: str):
 
 PROMPT_DEBITOS = (
     'Você está vendo a tabela "Listagem de Débitos" do DETRANET (DETRAN-SC).\n'
-    'Leia a tabela LINHA POR LINHA. Para CADA linha, mantenha JUNTOS os dados da MESMA linha: '
-    'a "Classe" (descrição), o "Vencimento" e o "Valor Atual(R$)". É PROIBIDO deslocar/misturar valor ou data entre linhas diferentes.\n'
-    'Devolva {"debitos":[{"tipo","descricao","numero_detran","valor","vencimento"}]} com TODAS as linhas que compõem o "Total dos Débitos".\n'
+    'As COLUNAS estão NESTA ordem (esquerda→direita): "Classe" | "Número DetranNET" | "Vencimento" | '
+    '"Valor Nominal(R$)" | "Multa(R$)" | "Juros(R$)" | "Valor Atual(R$)".\n'
+    'Para cada linha: descricao = coluna "Classe"; vencimento = coluna "Vencimento"; '
+    'valor = a ÚLTIMA coluna "Valor Atual(R$)" (NÃO use "Valor Nominal"). Mantenha os dados da MESMA linha juntos — é PROIBIDO deslocar valor/data entre linhas.\n'
+    'A 1ª linha geralmente é "Licenciamento Anual" (texto em azul/link) — NÃO pule a primeira linha.\n'
+    'Devolva {"debitos":[{"tipo","descricao","numero_detran","valor","vencimento"}], "total_tela":"valor do campo \\"Total dos Débitos\\" mostrado na tela"} com TODAS as linhas que compõem o Total.\n'
     'REGRAS (é dinheiro — máxima atenção):\n'
     '- descricao: copie o texto EXATO da coluna "Classe" (ex.: "Licenciamento Anual 2026", "IPVA (1a. Cota) 2026").\n'
     '- tipo: pela palavra na Classe — se contém "Licenciamento" → "Licenciamento"; se contém "IPVA" → "IPVA"; auto/infração → "Multa"; taxa → "Taxa DETRAN"; senão "Outros". Uma cota de IPVA é SEMPRE "IPVA" (nunca Multa nem Licenciamento).\n'
@@ -12037,9 +12040,13 @@ def desp_api_ocr_debitos():
     img_b64 = base64.b64encode(f.read()).decode()
     try:
         texto, motor = _desp_ocr_call(PROMPT_DEBITOS, img_b64, mime, max_tokens=4096)
-        data  = _desp_json_loads(texto)
-        if isinstance(data, dict):
-            data = data.get('debitos') or data.get('itens') or []
+        parsed = _desp_json_loads(texto)
+        total_tela = None
+        if isinstance(parsed, dict):
+            total_tela = parsed.get('total_tela') or parsed.get('total')
+            data = parsed.get('debitos') or parsed.get('itens') or []
+        else:
+            data = parsed
         if not isinstance(data, list):
             return jsonify({'erro': 'IA não identificou débitos — verifique se é um print do DETRANET',
                             'motor': motor, 'raw': (texto or '')[:200]}), 422
@@ -12047,7 +12054,12 @@ def desp_api_ocr_debitos():
         debitos = _desp_dedup_debitos(debitos)
         if not debitos:
             return jsonify({'erro': 'Nenhum débito encontrado na imagem', 'motor': motor}), 422
-        return jsonify({'ok': True, 'debitos': debitos, 'total': len(debitos), 'motor': motor})
+        # Conferência: soma dos itens x "Total dos Débitos" lido da tela
+        soma = round(sum(_desp_money(d.get('valor')) for d in debitos), 2)
+        tot  = _desp_money(total_tela) if total_tela else None
+        confere = (tot is None) or (abs(soma - tot) <= 0.02)
+        return jsonify({'ok': True, 'debitos': debitos, 'total': len(debitos), 'motor': motor,
+                        'soma': soma, 'total_tela': tot, 'confere': confere})
     except Exception as e:
         log.error(f'OCR débitos error: {e}')
         return jsonify({'erro': str(e)}), 500
