@@ -236,7 +236,7 @@ select option{background:var(--surface2)}
       <div class="stat-card">
         <div class="label">✅ Enviados hoje</div>
         <div class="value">{{ mz_stats.today_sent }}</div>
-        <div class="hint">de {{ plan_info.daily_limit if plan_info.daily_limit < 9999 else '∞' }} disponíveis</div>
+        <div class="hint">de {{ plan_info.daily_safe_cap * plan_info.numbers }} seguros/dia</div>
       </div>
       <div class="stat-card">
         <div class="label">📞 Números</div>
@@ -598,11 +598,9 @@ select option{background:var(--surface2)}
         </div>
         <div>
           <div style="font-size:11px;color:var(--text2);font-weight:700;margin-bottom:6px">ENVIOS HOJE</div>
-          <div style="font-size:22px;font-weight:900;color:var(--green)">{{ mz_stats.today_sent }}/{{ '{:,}'.format(plan_info.daily_limit).replace(',','.') if plan_info.daily_limit < 9999 else '∞' }}</div>
+          <div style="font-size:22px;font-weight:900;color:var(--green)">{{ mz_stats.today_sent }}/{{ plan_info.daily_safe_cap * plan_info.numbers }}</div>
           <div class="prog-bar" style="width:120px;margin-top:6px">
-            {% if plan_info.daily_limit < 9999 %}
-            <div class="prog-fill" style="width:{{ [100,(mz_stats.today_sent/plan_info.daily_limit*100)|int]|min if plan_info.daily_limit > 0 else 0 }}%"></div>
-            {% else %}<div class="prog-fill" style="width:5%"></div>{% endif %}
+            <div class="prog-fill" style="width:{{ [100,(mz_stats.today_sent/(plan_info.daily_safe_cap*plan_info.numbers)*100)|int]|min if (plan_info.daily_safe_cap*plan_info.numbers) > 0 else 0 }}%"></div>
           </div>
         </div>
         <div>
@@ -632,7 +630,7 @@ select option{background:var(--surface2)}
         <div class="plan-up-sub">/mês</div>
         <ul class="plan-up-feats">
           <li>{{ p.numbers }} número{{ 's' if p.numbers > 1 else '' }}</li>
-          <li>{{ '{:,}'.format(p.daily_limit).replace(',','.') if p.daily_limit < 9999 else 'Ilimitado' }} envios/dia</li>
+          <li>até {{ p.monthly_safe }} msgs/mês</li>
           <li>{{ '{:,}'.format(p.contacts_limit).replace(',','.') if p.contacts_limit < 9999 else 'Ilimitado' }} contatos</li>
         </ul>
         {% if key != plan %}

@@ -7776,10 +7776,20 @@ def mz_qr(num_id):
         _evo_delete_instance(evo_url, f"mz_{user_id}_{num_id}", headers)
         time.sleep(1.5)
 
-        # Cria instância limpa
+        # Cria instância limpa — settings "humanos" anti-ban (Fase 1):
+        # rejeita chamadas c/ mensagem automática, ignora grupos, fica online,
+        # marca msgs como lidas e NÃO sincroniza histórico (mais leve + menos cara de bot).
         cr      = _req.post(f"{evo_url}/instance/create", headers=headers,
                             json={'instanceName': instance, 'qrcode': True,
-                                  'integration': 'WHATSAPP-BAILEYS'}, timeout=20)
+                                  'integration': 'WHATSAPP-BAILEYS',
+                                  'rejectCall': True,
+                                  'msgCall': 'Olá! 🙂 No momento não consigo atender chamadas por aqui. '
+                                             'Me manda uma mensagem que eu te respondo!',
+                                  'groupsIgnore': True,
+                                  'alwaysOnline': True,
+                                  'readMessages': True,
+                                  'readStatus': False,
+                                  'syncFullHistory': False}, timeout=20)
         cr_data = cr.json() if cr.content else {}
         log.info(f"Evo create [{instance}] HTTP {cr.status_code}: {str(cr_data)[:300]}")
         qr = _evo_extract_qr(cr_data)
