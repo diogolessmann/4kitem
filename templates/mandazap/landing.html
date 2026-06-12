@@ -307,7 +307,7 @@
 <!-- NAV -->
 <nav>
   <div class="nav-logo">
-    <img loading="lazy" src="/static/img/mandazap/logo.png" alt="MandaZap"
+    <img loading="lazy" src="/static/img/mandazap/logo.webp" alt="MandaZap"
          onerror="this.style.display='none';">
     MandaZap
   </div>
@@ -355,7 +355,7 @@
 <!-- STATS BAR -->
 <div class="stats-bar">
   <div class="stat-pill">
-    <div><div class="stat-num">399+</div><div class="stat-label">envios/dia no plano básico</div></div>
+    <div><div class="stat-num">18 mil</div><div class="stat-label">msgs/mês no plano Agência</div></div>
   </div>
   <div class="stat-pill">
     <div><div class="stat-num">Anti-ban</div><div class="stat-label">intervalo randômico incluso</div></div>
@@ -597,11 +597,12 @@
       <div class="plan-price">R${{ p.price }}</div>
       <div class="plan-price-sub">/mês</div>
       <ul class="plan-feats">
-        <li>{{ p.numbers }} número{{ 's' if p.numbers > 1 else '' }}</li>
-        <li>{{ '{:,}'.format(p.daily_limit).replace(',','.') if p.daily_limit < 9999 else 'Ilimitado' }} envios/dia</li>
+        <li>{{ p.numbers }} número{{ 's' if p.numbers > 1 else '' }} de WhatsApp</li>
+        <li>até {{ p.monthly_safe }} msgs/mês</li>
         <li>{{ '{:,}'.format(p.contacts_limit).replace(',','.') if p.contacts_limit < 9999 else 'Ilimitado' }} contatos</li>
         <li>Todas as funcionalidades</li>
-        <li>Anti-ban incluído</li>
+        <li>🛡️ Proteção anti-bloqueio</li>
+        <li>Ritmo seguro — seu número não morre</li>
       </ul>
       <a href="/mandazap/cadastro"><button class="plan-btn {% if key != 'duplo' %}outline{% endif %}">Começar grátis</button></a>
     </div>

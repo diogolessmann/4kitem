@@ -662,12 +662,14 @@ def _bau_login_required(f):
 # É o limite que de fato vale no dia a dia — bem abaixo da zona de risco. Planos maiores
 # ganham mais NÚMEROS (mais volume total distribuído), não mais msgs por número.
 # Mensal aprox. (22 dias úteis): 45→~990 · 65→~1.430 · 85→~1.870 por número.
+# monthly_safe = capacidade mensal segura aprox. (daily_safe_cap × números × ~22 dias úteis),
+# arredondada — é o que a landing mostra ("até X msgs/mês"). Vende segurança, não volume bruto.
 MANDAZAP_PLANS = {
-    'solo':      {'label': 'Solo',      'numbers': 1,  'daily_limit': 399,   'daily_safe_cap': 45, 'contacts_limit': 500,   'price': 79},
-    'duplo':     {'label': 'Duplo',     'numbers': 2,  'daily_limit': 799,   'daily_safe_cap': 65, 'contacts_limit': 2000,  'price': 149},
-    'trio':      {'label': 'Trio',      'numbers': 3,  'daily_limit': 1199,  'daily_safe_cap': 85, 'contacts_limit': 5000,  'price': 219},
-    'quadruplo': {'label': 'Quádruplo', 'numbers': 4,  'daily_limit': 1599,  'daily_safe_cap': 85, 'contacts_limit': 10000, 'price': 289},
-    'agencia':   {'label': 'Agência',   'numbers': 10, 'daily_limit': 99999, 'daily_safe_cap': 85, 'contacts_limit': 99999, 'price': 499},
+    'solo':      {'label': 'Solo',      'numbers': 1,  'daily_limit': 399,   'daily_safe_cap': 45, 'monthly_safe': '1.000',  'contacts_limit': 500,   'price': 79},
+    'duplo':     {'label': 'Duplo',     'numbers': 2,  'daily_limit': 799,   'daily_safe_cap': 65, 'monthly_safe': '2.800',  'contacts_limit': 2000,  'price': 149},
+    'trio':      {'label': 'Trio',      'numbers': 3,  'daily_limit': 1199,  'daily_safe_cap': 85, 'monthly_safe': '5.500',  'contacts_limit': 5000,  'price': 397},
+    'quadruplo': {'label': 'Quádruplo', 'numbers': 4,  'daily_limit': 1599,  'daily_safe_cap': 85, 'monthly_safe': '7.400',  'contacts_limit': 10000, 'price': 597},
+    'agencia':   {'label': 'Agência',   'numbers': 10, 'daily_limit': 99999, 'daily_safe_cap': 85, 'monthly_safe': '18.000', 'contacts_limit': 99999, 'price': 1097},
 }
 
 # Planos do SlotZap (venda de slots numerados com PIX)
