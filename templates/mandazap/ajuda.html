@@ -54,6 +54,21 @@
   .faq-icon{color:#22c55e;font-size:16px;transition:.2s}
   .faq.open .faq-icon{transform:rotate(45deg)}
 
+  /* GUIA EM DESTAQUE (chip novo) */
+  .guide-hot{background:linear-gradient(180deg,rgba(245,158,11,.08),rgba(34,197,94,.02));border:1px solid rgba(245,158,11,.35);border-radius:16px;padding:24px 22px;margin-bottom:48px}
+  .guide-hot .section-title{color:#f59e0b;border-bottom-color:rgba(245,158,11,.25)}
+  .guide-hot .step-num{background:#f59e0b}
+  .guide-hot .step{border-color:rgba(245,158,11,.12)}
+  .guide-hot .lead{font-size:13px;color:#caa84a;line-height:1.6;margin-bottom:18px}
+  .pill{display:inline-block;background:#f59e0b;color:#000;font-size:11px;font-weight:900;padding:3px 10px;border-radius:20px;margin-bottom:12px;letter-spacing:.3px}
+
+  /* CARDS DE DICAS */
+  .tipcard{display:flex;gap:14px;background:#0d1a0d;border:1px solid rgba(34,197,94,.12);border-radius:12px;padding:16px 18px;margin-bottom:12px}
+  .tipcard .ico{flex-shrink:0;font-size:22px;line-height:1.2}
+  .tipcard h4{font-size:14px;font-weight:800;color:#e8f5e8;margin-bottom:4px}
+  .tipcard p{font-size:13px;color:#6b8f6b;line-height:1.6}
+  .tipcard strong{color:#22c55e}
+
   footer{text-align:center;padding:32px;font-size:12px;color:#2d4a2d}
 </style>
 </head>
@@ -70,6 +85,57 @@
   <div class="hero">
     <h1>📖 Como usar o MandaZap</h1>
     <p>Guia completo em 4 passos simples.<br>Do zero até disparar sua primeira campanha!</p>
+  </div>
+
+  <!-- GUIA EM DESTAQUE: PREPARAR CHIP NOVO -->
+  <div class="guide-hot">
+    <div class="pill">⭐ LEIA PRIMEIRO — ESSENCIAL</div>
+    <div class="section-title">🔥 Antes de conectar: prepare o chip novo</div>
+    <p class="lead">Chip novo (recém-comprado) conectado direto no sistema é <strong>bloqueado quase na hora</strong> pelo WhatsApp.
+       O segredo nº 1 contra bloqueio é <strong>"esquentar" o número como um humano por 24 a 48 horas ANTES</strong> de gerar o QR Code. Faça assim:</p>
+
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-body">
+        <h3>Use um chip exclusivo para disparos</h3>
+        <p>Nunca use seu número pessoal. Compre um chip barato só para isso. Coloque no celular e instale o <strong>WhatsApp</strong> (ou WhatsApp Business).</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-body">
+        <h3>Configure o perfil completo</h3>
+        <p>Coloque <strong>foto, nome e uma descrição</strong>. Perfil vazio tem "cara de robô" e é o primeiro sinal que o WhatsApp usa para desconfiar.</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-body">
+        <h3>Use como gente de verdade por 24 a 48 horas</h3>
+        <p>Pelo celular mesmo: <strong>mande e receba mensagens reais</strong> com familiares, amigos ou outro número seu. Troque <strong>áudios, fotos e figurinhas</strong>, entre em 1 ou 2 grupos.<br>
+        <strong>Nada de links e nada de mensagem em massa</strong> nessa fase.</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">4</div>
+      <div class="step-body">
+        <h3>Só DEPOIS de 24-48h, gere o QR Code</h3>
+        <p>Aí sim volte ao MandaZap, vá em <strong>Números</strong> e conecte normalmente. O número já chega "esquentado" e com muito menos risco.</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">5</div>
+      <div class="step-body">
+        <h3>Comece devagar — deixe o sistema te proteger</h3>
+        <p>O MandaZap <strong>segura o número novo em poucas mensagens nos primeiros dias</strong> (aquecimento automático) e aumenta sozinho ao longo de ~2 semanas, até o teto seguro. <strong>Não tente forçar.</strong></p>
+      </div>
+    </div>
+
+    <div class="alert">⚠️ <strong>Regra de ouro:</strong> nunca dispare uma campanha no primeiro dia de um número novo. Pressa = número bloqueado.</div>
   </div>
 
   <!-- PASSO 1: CONECTAR WHATSAPP -->
@@ -284,6 +350,61 @@
     <div class="alert">⚠️ <strong>Atenção:</strong> Evite enviar mensagens idênticas para muitas pessoas de uma vez. O WhatsApp pode bloquear o número. Varie o texto e use o campo <code>{nome}</code> para personalizar.</div>
   </div>
 
+  <!-- DICAS DE OURO ANTI-BLOQUEIO -->
+  <div class="section">
+    <div class="section-title">🛡️ Dicas de ouro: como NÃO ser bloqueado</div>
+
+    <div class="tipcard">
+      <div class="ico">💬</div>
+      <div>
+        <h4>Peça uma resposta na mensagem</h4>
+        <p>É a dica mais poderosa. Termine com <strong>"Responda SIM para saber mais"</strong> ou <strong>"Quer o cupom? Responda 1"</strong>. Quando as pessoas respondem, o WhatsApp enxerga <strong>conversa</strong> — e não spam. Número que recebe respostas quase não é bloqueado.</p>
+      </div>
+    </div>
+
+    <div class="tipcard">
+      <div class="ico">🔗</div>
+      <div>
+        <h4>Não mande link nem imagem na 1ª mensagem</h4>
+        <p>Para quem ainda não te conhece, comece com <strong>texto simples</strong>. Link ou foto logo de cara é um dos maiores gatilhos de bloqueio. Mande a mídia/link só <strong>depois</strong> que a pessoa responder.</p>
+      </div>
+    </div>
+
+    <div class="tipcard">
+      <div class="ico">🎲</div>
+      <div>
+        <h4>Varie o texto de cada mensagem</h4>
+        <p>Mensagem idêntica enviada para todo mundo é o gatilho nº 1. Use o botão <strong>"Otimizar mensagem"</strong> (cria variações automáticas) e sempre o <strong>{nome}</strong>. Assim cada envio sai diferente.</p>
+      </div>
+    </div>
+
+    <div class="tipcard">
+      <div class="ico">🎯</div>
+      <div>
+        <h4>Mande só para quem te conhece</h4>
+        <p>Liste apenas clientes e pessoas que já tiveram contato com você ou pediram. <strong>Lista fria ou comprada</strong> gera bloqueios e denúncias — e é o que mais derruba número.</p>
+      </div>
+    </div>
+
+    <div class="tipcard">
+      <div class="ico">🚪</div>
+      <div>
+        <h4>Dê uma saída fácil</h4>
+        <p>Inclua no fim: <strong>"Se não quiser mais receber, responda SAIR."</strong> Quem não quer mensagem sai sem te denunciar — e denúncia é o que mais machuca a reputação do número.</p>
+      </div>
+    </div>
+
+    <div class="tipcard">
+      <div class="ico">🐢</div>
+      <div>
+        <h4>Respeite o ritmo — não tente furar o limite</h4>
+        <p>O sistema envia devagar de propósito, em horário comercial (8h às 21h), com até <strong>150 mensagens por dia em cada número</strong>. Esse é o teto seguro. Querer mandar mais rápido só serve para queimar o chip.</p>
+      </div>
+    </div>
+
+    <div class="tip">💡 <strong>Resumo:</strong> número que <strong>conversa</strong> (recebe respostas), com <strong>lista quente</strong>, <strong>texto variado</strong> e <strong>ritmo calmo</strong>, dura muito. Número que <strong>só dispara link para estranhos</strong> é bloqueado rápido — não importa o sistema.</div>
+  </div>
+
   <!-- FAQ -->
   <div class="section">
     <div class="section-title">❓ Perguntas frequentes</div>
@@ -310,7 +431,12 @@
 
     <div class="faq" onclick="toggleFaq(this)">
       <div class="faq-q">Quantas mensagens posso enviar por dia? <span class="faq-icon">+</span></div>
-      <div class="faq-a">Depende do seu plano. O plano Solo permite até 399 mensagens por dia. O plano Agência é ilimitado. O limite existe para proteger seu número de bloqueio pelo WhatsApp.</div>
+      <div class="faq-a">Cada número envia com segurança até <strong>150 mensagens por dia</strong> (esse é o teto que protege o chip de bloqueio). Quem tem mais de um número soma essa capacidade. Além disso, <strong>número novo manda menos no começo</strong> e vai aumentando aos poucos ao longo de ~2 semanas (aquecimento automático). Seu plano define quantos números você pode conectar.</div>
+    </div>
+
+    <div class="faq" onclick="toggleFaq(this)">
+      <div class="faq-q">Conectei um chip novo e ele caiu / não conecta. Por quê? <span class="faq-icon">+</span></div>
+      <div class="faq-a">Quase sempre é porque o chip era <strong>novo demais</strong> e foi conectado cedo demais. O WhatsApp desconfia de número recém-ativado que já entra num sistema. A solução está no topo desta página (<strong>"Antes de conectar: prepare o chip novo"</strong>): use o chip como humano por 24-48h no celular, com perfil completo, ANTES de gerar o QR Code.</div>
     </div>
 
     <div class="faq" onclick="toggleFaq(this)">

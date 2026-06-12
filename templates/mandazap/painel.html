@@ -328,9 +328,9 @@ select option{background:var(--surface2)}
         <div style="font-size:11px;margin-top:7px;padding:6px 9px;border-radius:7px;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2);color:#fbbf24;line-height:1.4"
              title="Número novo manda pouco e vai aumentando até ~25 dias — é o que mais protege contra ban.">
           {% if n.warmup_done %}
-          🔥 Número aquecido · hoje: <strong>{{ n.sent_today }}</strong> enviados
+          🔥 Número aquecido · hoje <strong>{{ n.sent_today }}/{{ n.daily_cap }}</strong> msgs
           {% else %}
-          🔥 Aquecimento dia <strong>{{ n.warmup_day }}/25</strong> · hoje <strong>{{ n.sent_today }}/{{ n.warmup_cap }}</strong> msgs
+          🔥 Aquecimento dia <strong>{{ n.warmup_day }}/25</strong> · hoje <strong>{{ n.sent_today }}/{{ n.daily_cap }}</strong> msgs
           {% endif %}
         </div>
         {% endif %}

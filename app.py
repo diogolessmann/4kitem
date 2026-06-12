@@ -658,12 +658,16 @@ def _bau_login_required(f):
     return decorated
 
 
+# daily_safe_cap = teto CONSERVADOR de msgs/dia POR número (anti-ban, "número não morre").
+# É o limite que de fato vale no dia a dia — bem abaixo da zona de risco. Planos maiores
+# ganham mais NÚMEROS (mais volume total distribuído), não mais msgs por número.
+# Mensal aprox. (22 dias úteis): 45→~990 · 65→~1.430 · 85→~1.870 por número.
 MANDAZAP_PLANS = {
-    'solo':      {'label': 'Solo',      'numbers': 1,  'daily_limit': 399,   'contacts_limit': 500,   'price': 79},
-    'duplo':     {'label': 'Duplo',     'numbers': 2,  'daily_limit': 799,   'contacts_limit': 2000,  'price': 149},
-    'trio':      {'label': 'Trio',      'numbers': 3,  'daily_limit': 1199,  'contacts_limit': 5000,  'price': 219},
-    'quadruplo': {'label': 'Quádruplo', 'numbers': 4,  'daily_limit': 1599,  'contacts_limit': 10000, 'price': 289},
-    'agencia':   {'label': 'Agência',   'numbers': 10, 'daily_limit': 99999, 'contacts_limit': 99999, 'price': 499},
+    'solo':      {'label': 'Solo',      'numbers': 1,  'daily_limit': 399,   'daily_safe_cap': 45, 'contacts_limit': 500,   'price': 79},
+    'duplo':     {'label': 'Duplo',     'numbers': 2,  'daily_limit': 799,   'daily_safe_cap': 65, 'contacts_limit': 2000,  'price': 149},
+    'trio':      {'label': 'Trio',      'numbers': 3,  'daily_limit': 1199,  'daily_safe_cap': 85, 'contacts_limit': 5000,  'price': 219},
+    'quadruplo': {'label': 'Quádruplo', 'numbers': 4,  'daily_limit': 1599,  'daily_safe_cap': 85, 'contacts_limit': 10000, 'price': 289},
+    'agencia':   {'label': 'Agência',   'numbers': 10, 'daily_limit': 99999, 'daily_safe_cap': 85, 'contacts_limit': 99999, 'price': 499},
 }
 
 # Planos do SlotZap (venda de slots numerados com PIX)
@@ -7433,11 +7437,15 @@ def mandazap_painel():
         'SELECT * FROM mandazap_numbers WHERE user_id=? ORDER BY created_at DESC', (user_id,)
     ).fetchall()]
     # Info de aquecimento (warm-up) e cooldown por número, para exibir no painel
+    _plan_info   = MANDAZAP_PLANS.get(plan_key, MANDAZAP_PLANS['solo'])
+    _per_num_pln = max(1, _plan_info['daily_limit'] // max(1, _plan_info.get('numbers', 1)))
     for _n in numbers:
         _age = _mz_number_age_days(_n)
         _n['warmup_day']  = _age
         _n['warmup_done'] = _age >= 25
         _n['warmup_cap']  = _mz_warmup_cap(_age)
+        # Teto efetivo do dia = menor entre warm-up, cota do plano, teto conservador do plano e teto rígido
+        _n['daily_cap']   = _mz_effective_daily_cap(_n, _per_num_pln, _plan_info.get('daily_safe_cap'))
         _n['sent_today']  = _mz_number_sent_today(conn, _n['id'])
         _n['in_cooldown'] = _mz_in_cooldown(_n)
         _n['cooldown_hm'] = ''
@@ -8823,12 +8831,21 @@ MZ_WARMUP_CURVE = [
 MZ_SEND_HOUR_START = int(os.environ.get('MZ_SEND_HOUR_START', '8'))
 MZ_SEND_HOUR_END   = int(os.environ.get('MZ_SEND_HOUR_END', '21'))
 
+# Só dias úteis (seg-sex): negócio de verdade não dispara fim de semana — mais humano,
+# menos ban. Padrão LIGADO. Desligue (=0) p/ permitir sábado/domingo (varejo, etc).
+MZ_SEND_WEEKDAYS_ONLY = os.environ.get('MZ_SEND_WEEKDAYS_ONLY', '1') not in ('0', 'false', 'False', '')
+
 # Cooldown pós-ban: ao detectar ban, pausa TODOS os números do usuário por N horas
 # (o conteúdo/lista que banou um número vai banar os outros — circuit breaker).
 MZ_BAN_COOLDOWN_HOURS = float(os.environ.get('MZ_BAN_COOLDOWN_HOURS', '6'))
 
 # Lotes: envia em blocos e descansa bastante entre eles (mais humano, menos ban).
 MZ_BATCH_SIZE = int(os.environ.get('MZ_BATCH_SIZE', '30'))
+
+# Teto RÍGIDO de envios/dia POR número — proteção anti-ban acima do warm-up e do plano.
+# Mesmo número maduro em plano grande nunca passa disso (evita o "≈9999/dia" do Agência,
+# que é suicídio). A faixa segura de número aquecido é 80–200/dia; 150 é o ponto conservador.
+MZ_DAILY_HARD_CAP = int(os.environ.get('MZ_DAILY_HARD_CAP', '150'))
 
 
 def _mz_warmup_cap(days_active: int) -> int:
@@ -8872,15 +8889,30 @@ def _mz_inc_number_sent(number_id: int, n: int = 1):
         log.warning(f"number_daily inc error: {e}")
 
 
-def _mz_number_remaining(conn, num_row: dict, plan_daily: int) -> int:
-    """Quantas msgs este número ainda pode enviar HOJE (mínimo entre warm-up e plano)."""
-    cap_day = min(_mz_warmup_cap(_mz_number_age_days(num_row)), plan_daily)
+def _mz_effective_daily_cap(num_row: dict, plan_daily: int, plan_safe_cap: int = None) -> int:
+    """Teto diário efetivo deste número = o MENOR entre warm-up, cota bruta do plano,
+    o teto conservador do plano (daily_safe_cap) e o teto rígido global.
+    É o que de fato limita o envio do dia (e o que o painel mostra como 'hoje X/cap').
+    """
+    caps = [_mz_warmup_cap(_mz_number_age_days(num_row)), plan_daily, MZ_DAILY_HARD_CAP]
+    if plan_safe_cap:
+        caps.append(plan_safe_cap)
+    return min(caps)
+
+
+def _mz_number_remaining(conn, num_row: dict, plan_daily: int, plan_safe_cap: int = None) -> int:
+    """Quantas msgs este número ainda pode enviar HOJE (mínimo entre warm-up, plano,
+    teto conservador do plano e teto rígido)."""
+    cap_day = _mz_effective_daily_cap(num_row, plan_daily, plan_safe_cap)
     return max(0, cap_day - _mz_number_sent_today(conn, num_row['id']))
 
 
 def _mz_in_send_window(now=None) -> bool:
-    """True se o horário atual está dentro da janela de envio humano."""
+    """True se o momento atual está dentro da janela de envio humano (horário + dia útil)."""
     now = now or datetime.now()
+    # Dias úteis: sáb (5) e dom (6) fecham a janela — campanha pausa e retoma na segunda.
+    if MZ_SEND_WEEKDAYS_ONLY and now.weekday() >= 5:
+        return False
     if MZ_SEND_HOUR_START == MZ_SEND_HOUR_END:
         return True  # 24h
     h = now.hour
@@ -9033,7 +9065,7 @@ def _dispatch_campaign_inner(cid: int, user_id: int, delay_s: int = 3, continuar
         'id': nr['id'],
         'instance': f"mz{user_id}n{nr['id']}",
         'row': nr,
-        'remaining': _mz_number_remaining(conn, nr, per_num_plan),
+        'remaining': _mz_number_remaining(conn, nr, per_num_plan, plan_info.get('daily_safe_cap')),
         'sent': 0,
     } for nr in num_rows]
     instance = senders[0]['instance']  # usado na pré-validação de números
@@ -9042,7 +9074,7 @@ def _dispatch_campaign_inner(cid: int, user_id: int, delay_s: int = 3, continuar
     if not _mz_in_send_window():
         conn.execute(
             "UPDATE mandazap_campaigns SET status='agendada', error_log=? WHERE id=?",
-            (f'⏰ Fora do horário de envio ({MZ_SEND_HOUR_START}h–{MZ_SEND_HOUR_END}h). '
+            (f'⏰ Fora do horário de envio ({MZ_SEND_HOUR_START}h–{MZ_SEND_HOUR_END}h{", dias úteis" if MZ_SEND_WEEKDAYS_ONLY else ""}). '
              f'Retoma automaticamente quando abrir.', cid)
         )
         conn.commit(); conn.close()
@@ -9246,7 +9278,7 @@ def _dispatch_campaign_inner(cid: int, user_id: int, delay_s: int = 3, continuar
             conn.execute(
                 "UPDATE mandazap_campaigns SET status='agendada', sent=?, error_log=? WHERE id=?",
                 (sent_count,
-                 f'⏰ Pausada fora do horário ({MZ_SEND_HOUR_START}h–{MZ_SEND_HOUR_END}h). '
+                 f'⏰ Pausada fora do horário ({MZ_SEND_HOUR_START}h–{MZ_SEND_HOUR_END}h{", dias úteis" if MZ_SEND_WEEKDAYS_ONLY else ""}). '
                  f'{sent_count} enviados. Retoma automaticamente.', cid)
             )
             conn.commit(); conn.close()
