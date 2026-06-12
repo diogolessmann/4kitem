@@ -11936,14 +11936,16 @@ def _desp_gemini_ocr(prompt: str, img_b64: str, mime: str, max_tokens: int = 409
 
 def _desp_ocr_call(prompt: str, img_b64: str, mime: str, max_tokens: int = 4096):
     """Prefere Gemini (melhor leitura de tabela), MAS só aceita se vier JSON parseável;
-    senão cai pro Groq (que já funcionava). Garante que nunca volte 'nada' por JSON truncado."""
+    senão cai pro Groq. Retorna (texto, motor) — motor para diagnóstico."""
     try:
         txt = _desp_gemini_ocr(prompt, img_b64, mime, max_tokens)
         if txt and _desp_json_loads(txt) is not None:
-            return txt
+            return txt, 'gemini'
+        if txt:
+            log.warning(f'Gemini devolveu JSON inválido ({len(txt)} chars) — usando Groq')
     except Exception as e:
         log.warning(f'Gemini OCR falhou ({e}) — usando Groq')
-    return _desp_groq_ocr(prompt, img_b64, mime, max_tokens)
+    return _desp_groq_ocr(prompt, img_b64, mime, max_tokens), 'groq'
 
 
 def _desp_groq_ocr(prompt: str, img_b64: str, mime: str, max_tokens: int = 2048):
@@ -12015,17 +12017,17 @@ def desp_api_ocr_debitos():
     mime    = f.mimetype or mimetypes.guess_type(f.filename or '')[0] or 'image/jpeg'
     img_b64 = base64.b64encode(f.read()).decode()
     try:
-        texto = _desp_ocr_call(PROMPT_DEBITOS, img_b64, mime, max_tokens=4096)
+        texto, motor = _desp_ocr_call(PROMPT_DEBITOS, img_b64, mime, max_tokens=4096)
         data  = _desp_json_loads(texto)
         if isinstance(data, dict):
             data = data.get('debitos') or data.get('itens') or []
         if not isinstance(data, list):
-            return jsonify({'erro': 'IA não identificou débitos — verifique se é um print do DETRANET'}), 422
+            return jsonify({'erro': 'IA não identificou débitos — verifique se é um print do DETRANET',
+                            'motor': motor, 'raw': (texto or '')[:200]}), 422
         debitos = [d for d in data if isinstance(d, dict) and (d.get('tipo') or d.get('descricao'))]
         if not debitos:
-            return jsonify({'erro': 'Nenhum débito encontrado na imagem'}), 422
-        return jsonify({'ok': True, 'debitos': debitos, 'total': len(debitos),
-                        'motor': 'gemini' if os.environ.get('GEMINI_API_KEY') else 'groq'})
+            return jsonify({'erro': 'Nenhum débito encontrado na imagem', 'motor': motor}), 422
+        return jsonify({'ok': True, 'debitos': debitos, 'total': len(debitos), 'motor': motor})
     except Exception as e:
         log.error(f'OCR débitos error: {e}')
         return jsonify({'erro': str(e)}), 500
@@ -12109,10 +12111,11 @@ Instruções para os campos de débitos:
   Se não houver tabela de débitos visível, devolva "debitos":[].
 IMPORTANTE: Retorne SOMENTE o JSON, nada mais.'''
     try:
-        texto = _desp_ocr_call(prompt, img_b64, mime, max_tokens=4096)
+        texto, motor = _desp_ocr_call(prompt, img_b64, mime, max_tokens=4096)
         dados = _desp_json_loads(texto)
         if not isinstance(dados, dict):
-            return jsonify({'erro': 'IA não retornou JSON válido'}), 422
+            return jsonify({'erro': 'IA não retornou JSON válido',
+                            'motor': motor, 'raw': (texto or '')[:200]}), 422
         dados = {k: v for k, v in dados.items() if v is not None and v != ''}
         # ── Sanidade: rótulo não vira valor; marca/modelo não vira chassi ──
         _LBL = {'renavam','chassi','marca','modelo','placa','cpf','cnpj','rg',
@@ -12125,7 +12128,7 @@ IMPORTANTE: Retorne SOMENTE o JSON, nada mais.'''
         # chassi válido = 11–17 alfanuméricos, sem espaço/barra/parênteses (senão é marca/modelo/lixo)
         if any(c in ch for c in ' /()') or not (11 <= len(ch_clean) <= 17):
             dados.pop('chassi', None)
-        return jsonify({'ok': True, 'dados': dados, 'campos': len(dados)})
+        return jsonify({'ok': True, 'dados': dados, 'campos': len(dados), 'motor': motor})
     except Exception as e:
         log.error(f'OCR despachante error: {e}')
         return jsonify({'erro': str(e)}), 500

@@ -336,9 +336,14 @@ async function addOcrImage(blob){
       const b64 = await new Promise(res => { const rd=new FileReader(); rd.onload=e=>res(e.target.result.split(',')[1]); rd.readAsDataURL(blob); });
       const r = await fetch('/despachante/api/ocr', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({imagem:b64, mime:blob.type||'image/png'})});
       const d = await r.json();
-      if(!r.ok || !d.dados){ badge.textContent = '❌ '+(d.erro||'falhou'); badge.style.color='var(--red)'; return; }
+      if(!r.ok || !d.dados){
+        badge.textContent = '❌ '+(d.erro||'falhou')+(d.motor?(' ['+d.motor+']'):'');
+        badge.style.color='var(--red)';
+        if(d.raw) badge.title = 'Resposta crua: '+d.raw;
+        return;
+      }
       n = aplicarOcr(d.dados, escopo);
-      badge.textContent = `✅ ${n} campo(s)`; badge.style.color='var(--green)';
+      badge.textContent = `✅ ${n} campo(s)`+(d.motor?(' ['+d.motor+']'):''); badge.style.color='var(--green)';
     }
   }catch(err){ badge.textContent = '❌ '+err.message; badge.style.color='var(--red)'; }
 }
