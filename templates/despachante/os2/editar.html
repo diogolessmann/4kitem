@@ -217,10 +217,13 @@ function _vencISO(s){ const v=(s||'').toString().trim().split('/').reverse().joi
 // Adiciona um débito como item, sem duplicar (mesma descrição). Retorna true se adicionou.
 function addDebitoItem(db){
   const desc = (db.descricao || db.tipo || 'Débito').toString().trim();
+  const val  = money(db.valor);
+  // Ignora linhas sem valor a pagar (ex.: "Suspensão do Direito de Dirigir" da tela de CNH = R$ 0,00 — não é débito)
+  if(val <= 0) return false;
   const jaTem = Array.from(document.querySelectorAll('#itens-body .v-desc'))
                      .some(i => i.value.trim().toLowerCase() === desc.toLowerCase());
   if(jaTem) return false;
-  addItem('', desc, 'debito', money(db.valor), _vencISO(db.vencimento));
+  addItem('', desc, 'debito', val, _vencISO(db.vencimento));
   return true;
 }
 
