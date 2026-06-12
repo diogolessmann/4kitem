@@ -11272,24 +11272,27 @@ def desp_os2_salvar(id=None):
         if not ok:
             return jsonify({'erro': msg}), 403
 
-    # ── Cliente ──
+    # ── Cliente (cria OU atualiza — edição em O.S. existente também persiste) ──
     cliente_id = cli.get('id') or None
-    if not cliente_id and (cli.get('nome') or '').strip():
+    if (cli.get('nome') or '').strip():
         dados_cli = {k: (cli.get(k) or '') for k in (
             'tipo','nome','cpf','cnpj','rg','nascimento','nome_mae','telefone','email',
             'cep','logradouro','numero','complemento','bairro','cidade','uf')}
         dados_cli['tipo'] = dados_cli.get('tipo') or 'PF'
         dados_cli['uf']   = dados_cli.get('uf') or 'SC'
-        existente = desp_buscar_cpf(dados_cli['cpf']) if dados_cli['cpf'] else None
-        if existente:
-            cliente_id = existente['id']; desp_atualizar_cliente(cliente_id, dados_cli)
+        if cliente_id:
+            desp_atualizar_cliente(cliente_id, dados_cli)            # edição persiste
         else:
-            cliente_id = desp_criar_cliente(dados_cli)
+            existente = desp_buscar_cpf(dados_cli['cpf']) if dados_cli['cpf'] else None
+            if existente:
+                cliente_id = existente['id']; desp_atualizar_cliente(cliente_id, dados_cli)
+            else:
+                cliente_id = desp_criar_cliente(dados_cli)
 
-    # ── Veículo ──
+    # ── Veículo (cria OU atualiza) ──
     veiculo_id = vei.get('id') or None
-    if not veiculo_id and (vei.get('placa') or '').strip():
-        veiculo_id = desp_criar_veiculo({
+    if (vei.get('placa') or '').strip():
+        dados_vei = {
             'placa': (vei.get('placa') or '').upper().replace('-',''),
             'renavam': vei.get('renavam',''), 'chassi': vei.get('chassi',''),
             'marca': vei.get('marca',''), 'modelo': vei.get('modelo',''),
@@ -11297,8 +11300,22 @@ def desp_os2_salvar(id=None):
             'cor': vei.get('cor',''), 'especie': vei.get('especie','Automóvel'),
             'tipo_veiculo': vei.get('tipo_veiculo',''), 'categoria': vei.get('categoria','Particular'),
             'combustivel': vei.get('combustivel',''), 'num_crv': vei.get('num_crv',''),
-            'proprietario_id': cliente_id,
-        })
+        }
+        if veiculo_id:
+            conn = get_desp_conn()
+            conn.execute(
+                "UPDATE veiculos SET placa=?, renavam=?, chassi=?, marca=?, modelo=?, "
+                "ano_fab=?, ano_mod=?, cor=?, especie=?, tipo_veiculo=?, categoria=?, "
+                "combustivel=?, num_crv=? WHERE id=?",
+                (dados_vei['placa'], dados_vei['renavam'], dados_vei['chassi'], dados_vei['marca'],
+                 dados_vei['modelo'], dados_vei['ano_fab'], dados_vei['ano_mod'], dados_vei['cor'],
+                 dados_vei['especie'], dados_vei['tipo_veiculo'], dados_vei['categoria'],
+                 dados_vei['combustivel'], dados_vei['num_crv'], veiculo_id)
+            )
+            conn.commit(); conn.close()
+        else:
+            dados_vei['proprietario_id'] = cliente_id
+            veiculo_id = desp_criar_veiculo(dados_vei)
 
     # Serviço principal = 1º item tipo serviço com código (p/ compat com docs/checklist)
     servico = 'outros'

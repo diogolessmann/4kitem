@@ -67,6 +67,18 @@
 <input type="hidden" id="cli-id" value="{{ cli_id }}">
 <input type="hidden" id="vei-id" value="{{ vei_id }}">
 
+{% if request.args.get('salvo') %}
+<div id="salvo-banner" style="background:rgba(34,197,94,.15);border:1px solid rgba(34,197,94,.4);color:#16a34a;
+     border-radius:10px;padding:11px 16px;margin-bottom:14px;font-weight:600;display:flex;align-items:center;gap:8px;">
+  ✅ O.S. Nº {{ os.numero }} salva com sucesso!
+</div>
+<script>
+  // Limpa o ?salvo=1 da URL e some com o aviso depois de uns segundos
+  if (history.replaceState) history.replaceState(null, '', '/despachante/os2/{{ os.id }}');
+  setTimeout(function(){ var b=document.getElementById('salvo-banner'); if(b){ b.style.transition='opacity .5s'; b.style.opacity='0'; setTimeout(()=>b.remove(),500); } }, 4000);
+</script>
+{% endif %}
+
 <!-- Cabeçalho -->
 <div class="bx-card">
   <h3 style="display:flex;justify-content:space-between;align-items:center;">
@@ -453,7 +465,7 @@ async function salvarOS(){
   try{
     const r = await fetch(url, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
     const d = await r.json();
-    if(d.ok){ window.location = `/despachante/os2/${d.os_id}`; }
+    if(d.ok){ window.location = `/despachante/os2/${d.os_id}?salvo=1`; }
     else { alert('Erro: '+(d.erro||'falha')); btn.disabled=false; btn.textContent='💾 Salvar'; }
   }catch(e){ alert('Erro: '+e.message); btn.disabled=false; btn.textContent='💾 Salvar'; }
 }
