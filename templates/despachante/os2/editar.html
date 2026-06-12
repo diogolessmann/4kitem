@@ -244,6 +244,7 @@ function addItem(codigo, descricao, tipo, valor, vencimento){
   tr.dataset.tipo = tipo || 'servico';
   tb.appendChild(tr);
   recalcBar();
+  return tr;
 }
 
 function recalcBar(){
@@ -275,12 +276,18 @@ async function escolherServico(codigo, label){
     const d = await r.json();
     if (d) { preco = Number(d.preco) || 0; custo = Number(d.custo) || 0; }
   } catch(e) {}
+  let servTr;
   if (custo > 0 && custo < preco) {
     // Quebra em Honorário (margem) + Taxa — total continua = preço da tabela
-    addItem(codigo, label, 'servico', preco - custo);          // honorário (seu ganho)
+    servTr = addItem(codigo, label, 'servico', preco - custo); // honorário (seu ganho)
     addItem('', 'Taxa DETRAN — ' + label, 'taxa', custo);      // taxa (repasse)
   } else {
-    addItem(codigo, label, 'servico', preco || null);          // 1 linha = total
+    servTr = addItem(codigo, label, 'servico', preco || null); // 1 linha = total
+  }
+  // Transferência: leva o cursor pro Vencimento (prazo do recibo — aceita data futura)
+  if (servTr && /transfer|atpv/i.test(codigo)) {
+    const v = servTr.querySelector('.v-venc');
+    if (v) { v.focus(); v.scrollIntoView({block:'center', behavior:'smooth'}); }
   }
 }
 
