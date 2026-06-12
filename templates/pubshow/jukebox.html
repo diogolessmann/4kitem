@@ -674,7 +674,7 @@ async function jaPaguei() {
     {# 2. Furar a fila #}
     {% if 'flash' in tipos %}{% set t = tipos['flash'] %}
     <div class="pedido-card" style="--card-cor:{{ t.cor }}"
-         onclick="selecionarTipo('flash','{{ t.nome }}','{{ t.emoji }}',{{ t.preco }},'{{ t.cor }}')">
+         onclick="abrirBusca('biblioteca','flash')">
       <div class="card-emoji">{{ t.emoji }}</div>
       <div class="card-nome" data-i18n="card_flash">Furar<br>a fila</div>
       {{ preco_card(t) }}
@@ -721,6 +721,12 @@ async function jaPaguei() {
       {% if key == 'musica_externa' %}
       <div class="pedido-card ext" style="--card-cor:{{ t.cor }}" onclick="abrirBusca('youtube')">
         <div class="badge-ext">EXTERNO</div>
+        <div class="card-emoji">{{ t.emoji }}</div>
+        <div class="card-nome">{{ t.nome }}</div>
+        {{ preco_card(t) }}
+      </div>
+      {% elif key == 'vip' %}
+      <div class="pedido-card" style="--card-cor:{{ t.cor }}" onclick="abrirBusca('biblioteca','vip')">
         <div class="card-emoji">{{ t.emoji }}</div>
         <div class="card-nome">{{ t.nome }}</div>
         {{ preco_card(t) }}
@@ -856,6 +862,7 @@ let modosBusca   = 'biblioteca'; // 'biblioteca' | 'youtube'
 let buscaTimer   = null;
 let videoSel     = null;
 let _biblioCache = null; // cache da lista completa (carregada 1x)
+let tipoForcado  = null; // 'flash' | 'vip' | null — quando a busca cria pedido de prioridade
 
 // ── Mais opções ───────────────────────────────────────────────────────────────
 function toggleMaisOpcoes(btn) {
@@ -873,6 +880,7 @@ function _precoComOffset(preco) {
 
 function selecionarTipo(key, nome, emoji, preco, cor) {
   tipoAtual = key;
+  tipoForcado = null;   // limpa prioridade de uma busca anterior
   document.getElementById('inp-tipo').value  = key;
   document.getElementById('form-title').innerHTML = `${emoji} ${nome}`;
   const precoFinal = _precoComOffset(preco);
@@ -904,6 +912,7 @@ function selecionarTipo(key, nome, emoji, preco, cor) {
 function voltarGrid() {
   esconderTudo();
   videoSel = null;
+  tipoForcado = null;
   document.getElementById('grid-section').style.display = 'block';
   window.scrollTo({top:0,behavior:'smooth'});
 }
@@ -915,16 +924,23 @@ function esconderTudo() {
 }
 
 // ── Busca ─────────────────────────────────────────────────────────────────────
-function abrirBusca(modo) {
-  modosBusca = modo;
-  videoSel   = null;
+function abrirBusca(modo, forcado=null) {
+  modosBusca  = modo;
+  tipoForcado = forcado;   // 'flash' | 'vip' | null
+  videoSel    = null;
 
+  const tipoFinal  = forcado || (modo === 'youtube' ? 'musica_externa' : 'musica_especifica');
+  const precoFinal = (PRECOS[tipoFinal] && PRECOS[tipoFinal].preco) || 0;
   const cor = modo === 'youtube' ? '#dc2626' : '#06b6d4';
-  document.getElementById('busca-title').textContent = modo === 'youtube'
-    ? '🌐 Buscar no YouTube' : '🎵 Músicas disponíveis';
+
+  document.getElementById('busca-title').textContent =
+      forcado === 'flash' ? '⚡ Furar a fila — escolha a música'
+    : forcado === 'vip'   ? '👑 Tocar agora — escolha a música'
+    : modo === 'youtube'  ? '🌐 Buscar no YouTube'
+    : '🎵 Músicas disponíveis';
   document.getElementById('busca-subtitle').textContent = modo === 'youtube'
-    ? `Qualquer música da internet — R$ ${PRECOS['musica_externa'].preco.toFixed(0)}`
-    : `${TOTAL_VIDS} músicas no acervo — R$ ${PRECOS['musica_especifica'].preco.toFixed(0)}`;
+    ? `Qualquer música da internet — R$ ${precoFinal.toFixed(0)}`
+    : `${TOTAL_VIDS} músicas no acervo — R$ ${precoFinal.toFixed(0)}`;
 
   document.querySelector('.busca-input').style.setProperty('border-color', cor);
   document.querySelector('.busca-btn').style.background = cor;
@@ -1065,9 +1081,11 @@ function selecionarVideo(idx, v) {
 
 function confirmarMusica() {
   if (!videoSel) return;
-  const tipo  = modosBusca === 'youtube' ? 'musica_externa' : 'musica_especifica';
+  // Se veio de "Furar a fila" (flash) ou "Tocar agora" (vip), cria o pedido
+  // com esse tipo (prioridade) + a música escolhida.
+  const tipo  = tipoForcado || (modosBusca === 'youtube' ? 'musica_externa' : 'musica_especifica');
   const preco = PRECOS[tipo].preco;
-  const cor   = modosBusca === 'youtube' ? '#dc2626' : '#06b6d4';
+  const cor   = (PRECOS[tipo] && PRECOS[tipo].cor) || (modosBusca === 'youtube' ? '#dc2626' : '#06b6d4');
 
   document.getElementById('inp-tipo').value          = tipo;
   document.getElementById('inp-youtube-id').value    = videoSel.id;
