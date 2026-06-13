@@ -61,8 +61,12 @@
       function cp(){const i=document.getElementById('pixCode');i.select();
         navigator.clipboard.writeText(i.value).then(()=>{event.target.textContent='Copiado!';
         setTimeout(()=>event.target.textContent='Copiar',1500);});}
-      // Confere ativação a cada 5s
-      setInterval(()=>fetch('/mandaja/painel').then(r=>r.url.includes('painel')&&0),8000);
+      // Detecta o pagamento e reativa a loja na hora
+      setInterval(()=>{
+        fetch('/mandajr/assinatura-status').then(r=>r.json()).then(d=>{
+          if(d.ativo){ location.href='/mandaja/painel?assinou=1'; }
+        }).catch(()=>{});
+      }, 6000);
     </script>
   {% else %}
     <!-- Estado 1: formulário -->

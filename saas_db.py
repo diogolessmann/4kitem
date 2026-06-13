@@ -483,22 +483,10 @@ def init_saas_db():
             updated_at      TEXT DEFAULT ''
         );
 
-        CREATE TABLE IF NOT EXISTS mandaja_financial (
-            id          INTEGER PRIMARY KEY AUTOINCREMENT,
-            store_id    INTEGER NOT NULL,
-            order_id    INTEGER DEFAULT NULL,
-            type        TEXT DEFAULT 'receita',
-            description TEXT DEFAULT '',
-            amount      REAL NOT NULL DEFAULT 0,
-            date        TEXT DEFAULT '',
-            created_at  TEXT DEFAULT ''
-        );
-
         CREATE INDEX IF NOT EXISTS idx_mja_stores_slug     ON mandaja_stores(slug);
         CREATE INDEX IF NOT EXISTS idx_mja_products_store  ON mandaja_products(store_id);
         CREATE INDEX IF NOT EXISTS idx_mja_orders_store    ON mandaja_orders(store_id);
         CREATE INDEX IF NOT EXISTS idx_mja_orders_status   ON mandaja_orders(status);
-        CREATE INDEX IF NOT EXISTS idx_mja_financial_store ON mandaja_financial(store_id);
         CREATE INDEX IF NOT EXISTS idx_mja_hours_store     ON mandaja_hours(store_id);
         CREATE INDEX IF NOT EXISTS idx_mja_categories_store ON mandaja_categories(store_id);
     ''')

@@ -772,6 +772,25 @@ def _mandaja_bloqueado(store):
     return bool(te and te < datetime.now().isoformat())
 
 
+def _mandaja_loja_aberta(store, conn):
+    """True se a loja está recebendo pedidos agora.
+    Jr: interruptor manual (aberto). Pro: horário do dia."""
+    if store.get('mode') == 'jr':
+        return bool(store.get('aberto', 1))
+    now = datetime.now()
+    hour_row = conn.execute(
+        'SELECT * FROM mandaja_hours WHERE store_id=? AND weekday=? AND active=1',
+        (store['id'], now.weekday())).fetchone()
+    if not hour_row:
+        return False
+    try:
+        open_dt  = datetime.strptime(hour_row['open_time'],  '%H:%M').replace(year=now.year, month=now.month, day=now.day)
+        close_dt = datetime.strptime(hour_row['close_time'], '%H:%M').replace(year=now.year, month=now.month, day=now.day)
+        return open_dt <= now <= close_dt
+    except Exception:
+        return False
+
+
 def _pix_brcode(chave, nome, cidade='', valor=0.0, txid='***'):
     """Gera o PIX 'copia e cola' (BR Code EMV) com o valor já preenchido.
     PIX direto: dinheiro cai na chave do próprio dono, sem intermediário.
@@ -12833,6 +12852,14 @@ def mandajr_assinar():
     return render_template('mandaja/jr_assinar.html', store=store, p=p, erro=erro, pix=pix)
 
 
+@app.route('/mandajr/assinatura-status')
+@_mandaja_login_required
+def mandajr_assinatura_status():
+    """Polling pra tela de pagamento detectar a ativação na hora."""
+    store = _mandaja_get_store()
+    return jsonify({'ativo': bool(store and store.get('plan_active'))})
+
+
 @app.route('/mandajr/virar-pro', methods=['GET', 'POST'])
 @_mandaja_login_required
 def mandajr_virar_pro():
@@ -13633,24 +13660,8 @@ def mandaja_loja(slug):
     if _mandaja_bloqueado(store):
         conn.close()
         return render_template('mandaja/jr_indisponivel.html', store=store), 503
-    # Verifica se está aberto agora
-    now = datetime.now()
-    wd  = now.weekday()
-    if store.get('mode') == 'jr':
-        # MandaJr: o controle é o interruptor manual Aberto/Fechado
-        is_open = bool(store.get('aberto', 1))
-    else:
-        hour_row = conn.execute(
-            'SELECT * FROM mandaja_hours WHERE store_id=? AND weekday=? AND active=1', (store['id'], wd)
-        ).fetchone()
-        is_open = False
-        if hour_row:
-            try:
-                open_dt  = datetime.strptime(hour_row['open_time'],  '%H:%M').replace(year=now.year, month=now.month, day=now.day)
-                close_dt = datetime.strptime(hour_row['close_time'], '%H:%M').replace(year=now.year, month=now.month, day=now.day)
-                is_open  = open_dt <= now <= close_dt
-            except Exception:
-                pass
+    # Verifica se está aberto agora (Jr: interruptor; Pro: horário)
+    is_open = _mandaja_loja_aberta(store, conn)
     cats  = conn.execute(
         'SELECT * FROM mandaja_categories WHERE store_id=? AND active=1 ORDER BY sort_order, name', (store['id'],)
     ).fetchall()
@@ -13683,6 +13694,10 @@ def mandaja_fazer_pedido(slug):
     if _mandaja_bloqueado(store):
         conn.close()
         return jsonify({'error': 'Esta loja está temporariamente indisponível.'}), 503
+    # Loja fechada agora não aceita pedido (Jr: interruptor; Pro: horário)
+    if not _mandaja_loja_aberta(store, conn):
+        conn.close()
+        return jsonify({'error': 'A loja está fechada agora. Volte no horário de funcionamento. 😊'}), 409
     data  = request.json or {}
     customer_name   = data.get('customer_name', '').strip()
     customer_phone  = data.get('customer_phone', '').strip()

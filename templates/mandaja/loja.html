@@ -430,6 +430,7 @@
 const STORE_SLUG = '{{ store.slug }}';
 const DELIVERY_FEE = {{ store.delivery_fee }};
 const MIN_ORDER = {{ store.min_order }};
+const STORE_OPEN = {{ 'true' if is_open else 'false' }};
 
 // Mapa de opções por produto (injetado pelo servidor)
 const PROD_OPCOES = {};
@@ -655,6 +656,7 @@ async function fetchCep(cep) {
 }
 
 async function submitOrder() {
+  if (!STORE_OPEN) { alert('😴 A loja está fechada agora. Volte no horário de funcionamento!'); return; }
   const name = document.getElementById('custName').value.trim();
   const phone = document.getElementById('custPhone').value.trim();
   if (!name || !phone) { alert('Preencha nome e WhatsApp!'); return; }
