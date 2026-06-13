@@ -43,7 +43,7 @@
         <div class="code-label">Válido por 2 horas</div>
       </div>
     {% else %}
-      <div class="sucesso">📬 <strong>Código enviado!</strong><br>Verifique seu e-mail para continuar.</div>
+      <div class="sucesso">📬 <strong>Código enviado!</strong><br>Verifique seu e-mail ou WhatsApp para continuar.</div>
     {% endif %}
     <a href="/mandaja/redefinir-senha" class="btn" style="display:block;text-align:center;text-decoration:none;padding:13px;border-radius:10px">
       Inserir código →
@@ -55,8 +55,8 @@
 
     <form method="POST">
       <div class="field">
-        <label>E-mail cadastrado</label>
-        <input type="email" name="email" placeholder="seu@email.com" autofocus required>
+        <label>E-mail ou WhatsApp cadastrado</label>
+        <input type="text" name="email" placeholder="seu@email.com ou (47) 99999-9999" autofocus required>
       </div>
       <button type="submit" class="btn">🔑 Enviar código</button>
     </form>

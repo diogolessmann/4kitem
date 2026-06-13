@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Virar MandaJá Pro</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#0B0B12;color:#F4F4F8;font-family:'Segoe UI',system-ui,sans-serif;line-height:1.5;min-height:100vh}
+  a{text-decoration:none;color:inherit}
+  .wrap{max-width:440px;margin:0 auto;padding:0 18px 40px}
+  .topbar{display:flex;align-items:center;gap:12px;height:58px}
+  .back{font-size:20px;color:#cbd5e1}
+  .topbar b{font-size:17px;font-weight:800}
+  .head{text-align:center;padding:14px 0 22px}
+  .head .em{font-size:48px;margin-bottom:10px}
+  .head h1{font-size:24px;font-weight:900}
+  .head p{font-size:14px;color:#a0a0b2;margin-top:8px}
+  .box{background:#13131c;border:1px solid rgba(255,255,255,.07);border-radius:16px;padding:20px;margin-bottom:16px}
+  .box h3{font-size:13px;font-weight:800;color:#F97316;text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px}
+  ul{list-style:none}
+  ul li{padding:8px 0;font-size:14px;color:#dcdce6;border-bottom:1px solid rgba(255,255,255,.05);display:flex;gap:10px}
+  ul li:last-child{border:0}
+  .keep{background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.22);border-radius:14px;padding:14px 16px;font-size:13px;color:#86efac;margin-bottom:18px;text-align:center;line-height:1.5}
+  .btn{width:100%;background:linear-gradient(135deg,#ea580c,#f97316);color:#fff;font-size:16px;font-weight:800;border:none;border-radius:13px;padding:16px;cursor:pointer}
+  .cancel{display:block;text-align:center;font-size:13px;color:#8b8b9e;font-weight:600;margin-top:14px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <a href="/mandaja/painel" class="back">←</a>
+    <b>Virar MandaJá Pro</b>
+  </div>
+
+  <div class="head">
+    <div class="em">🚀</div>
+    <h1>Hora de crescer!</h1>
+    <p>O MandaJá Pro é pra quem já pegou o jeito e quer mais poder.</p>
+  </div>
+
+  <div class="box">
+    <h3>🔓 O que você destrava</h3>
+    <ul>
+      <li>👨‍🍳 <span>Tela de cozinha (KDS) pros pedidos</span></li>
+      <li>📊 <span>Relatórios e financeiro completo</span></li>
+      <li>🍔 <span>Adicionais e opções nos produtos</span></li>
+      <li>🕒 <span>Horários por dia da semana</span></li>
+      <li>🎨 <span>Mais personalização da loja</span></li>
+    </ul>
+  </div>
+
+  <div class="keep">
+    ✅ Sua loja, seus produtos e seus pedidos <b>continuam exatamente os mesmos</b>.<br>Você só ganha telas novas — não perde nada.
+  </div>
+
+  <form method="POST" action="/mandajr/virar-pro">
+    <button type="submit" class="btn">Virar MandaJá Pro agora →</button>
+  </form>
+  <a href="/mandaja/painel" class="cancel">Agora não, voltar</a>
+</div>
+</body>
+</html>

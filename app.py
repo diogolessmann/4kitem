@@ -5766,7 +5766,7 @@ def saas_admin():
     try:
         conn4 = get_saas_db()
         mandaja_stores = [dict(r) for r in conn4.execute(
-            'SELECT id, name, slug, owner_name, phone, email, city, plan, active, created_at FROM mandaja_stores ORDER BY id DESC'
+            'SELECT id, name, slug, owner_name, phone, email, city, plan, mode, active, plan_active, trial_ends, created_at FROM mandaja_stores ORDER BY id DESC'
         ).fetchall()]
         conn4.close()
     except Exception:
@@ -5860,6 +5860,7 @@ def saas_admin():
                            desp_users=desp_users, desp_plans=DESP_PLANS,
                            defesa_users=defesa_users,
                            mandaja_stores=mandaja_stores, mandaja_plans=MANDAJA_PLANS,
+                           now_iso=datetime.now().isoformat(),
                            vetzap_users=vetzap_users,
                            vetzap_pets_total=vetzap_pets_total,
                            vetzap_triagens_total=vetzap_triagens_total,
@@ -12832,6 +12833,24 @@ def mandajr_assinar():
     return render_template('mandaja/jr_assinar.html', store=store, p=p, erro=erro, pix=pix)
 
 
+@app.route('/mandajr/virar-pro', methods=['GET', 'POST'])
+@_mandaja_login_required
+def mandajr_virar_pro():
+    """Escada Jr → Pro: 1 clique, mesma loja/produtos/pedidos, só destrava as telas."""
+    store = _mandaja_get_store()
+    if not store:
+        return redirect('/mandaja/logout')
+    if store.get('mode') != 'jr':
+        return redirect('/mandaja/painel')
+    if request.method == 'POST':
+        conn = get_saas_db()
+        conn.execute("UPDATE mandaja_stores SET mode='pro', plan='micro' WHERE id=?", (store['id'],))
+        conn.commit(); conn.close()
+        session['mja_plan'] = 'micro'
+        return redirect('/mandaja/painel?virou_pro=1')
+    return render_template('mandaja/jr_virar_pro.html', store=store)
+
+
 @app.route('/mandaja/entrar', methods=['GET', 'POST'])
 def mandaja_entrar():
     msg = request.args.get('msg', '')
@@ -12984,33 +13003,52 @@ def mandaja_esqueci_senha():
     codigo_tela = None
     erro = None
     if request.method == 'POST':
-        email = request.form.get('email', '').strip().lower()
+        ident = request.form.get('email', '').strip().lower()
         conn = get_saas_db()
-        store = conn.execute('SELECT * FROM mandaja_stores WHERE LOWER(email)=?', (email,)).fetchone()
+        # Busca por e-mail OU por WhatsApp (loja Jr cadastra sem e-mail)
+        store = conn.execute('SELECT * FROM mandaja_stores WHERE LOWER(email)=? AND email!=""', (ident,)).fetchone()
         if not store:
-            erro = 'E-mail não encontrado.'
+            d = ''.join(c for c in ident if c.isdigit())
+            if len(d) >= 10:
+                store = conn.execute(
+                    "SELECT * FROM mandaja_stores WHERE replace(replace(replace(replace(replace(phone,'(',''),')',''),'-',''),' ',''),'+','') = ?",
+                    (d,)).fetchone()
+        if not store:
+            erro = 'E-mail ou WhatsApp não encontrado.'
             conn.close()
         else:
+            store = dict(store)
             codigo = str(random.randint(100000, 999999))
             expires = (datetime.now() + timedelta(hours=2)).isoformat()
             conn.execute('UPDATE mandaja_stores SET reset_token=?, reset_expires=? WHERE id=?',
                          (codigo, expires, store['id']))
             conn.commit(); conn.close()
-            html_email = f"""
-            <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px">
-              <div style="font-size:32px;margin-bottom:8px">🛵</div>
-              <h2 style="color:#f97316">Recuperação de senha — MandaJá</h2>
-              <p>Olá, <strong>{store['owner_name'].split()[0]}</strong>!</p>
-              <p>Seu código de recuperação é:</p>
-              <div style="font-size:36px;font-weight:900;letter-spacing:8px;color:#f97316;
-                          background:#fff7ed;padding:20px;border-radius:12px;text-align:center;
-                          margin:20px 0">{codigo}</div>
-              <p style="color:#666;font-size:13px">Válido por 2 horas.</p>
-            </div>"""
-            ok = _enviar_email(email, 'Código de recuperação — MandaJá', html_email)
+            primeiro = (store.get('owner_name') or store.get('name') or 'lojista').split()[0]
+            ok = False
+            # 1) Tenta por e-mail (se tiver)
+            if store.get('email'):
+                html_email = f"""
+                <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px">
+                  <div style="font-size:32px;margin-bottom:8px">🛵</div>
+                  <h2 style="color:#f97316">Recuperação de senha — MandaJá</h2>
+                  <p>Olá, <strong>{primeiro}</strong>!</p>
+                  <p>Seu código de recuperação é:</p>
+                  <div style="font-size:36px;font-weight:900;letter-spacing:8px;color:#f97316;
+                              background:#fff7ed;padding:20px;border-radius:12px;text-align:center;
+                              margin:20px 0">{codigo}</div>
+                  <p style="color:#666;font-size:13px">Válido por 2 horas.</p>
+                </div>"""
+                ok = _enviar_email(store['email'], 'Código de recuperação — MandaJá', html_email)
+            # 2) Sem e-mail (ou falhou): manda pelo WhatsApp
+            if not ok and store.get('phone'):
+                msg = (f"🔑 *MandaJr* — recuperação de senha\n\n"
+                       f"Olá, {primeiro}! Seu código é:\n\n*{codigo}*\n\n"
+                       f"Válido por 2 horas. Se não foi você, ignore.")
+                ok = _agenda_send_whatsapp(store['phone'], msg,
+                                           os.environ.get('MANDAJA_EVO_INSTANCE', ''))
             enviado = True
             if not ok:
-                codigo_tela = codigo
+                codigo_tela = codigo   # fallback: mostra na tela
     return render_template('mandaja/esqueci_senha.html',
                            enviado=enviado, codigo_tela=codigo_tela, erro=erro)
 
@@ -13020,16 +13058,23 @@ def mandaja_redefinir_senha():
     sucesso = False
     erro = None
     if request.method == 'POST':
-        email = request.form.get('email', '').strip().lower()
+        ident = request.form.get('email', '').strip().lower()
         codigo = request.form.get('codigo', '').strip()
         nova = request.form.get('nova_senha', '')
         if len(nova) < 6:
             erro = 'A senha deve ter pelo menos 6 caracteres.'
         else:
             conn = get_saas_db()
-            store = conn.execute('SELECT * FROM mandaja_stores WHERE LOWER(email)=?', (email,)).fetchone()
+            # Busca por e-mail OU WhatsApp (loja Jr cadastra sem e-mail)
+            store = conn.execute('SELECT * FROM mandaja_stores WHERE LOWER(email)=? AND email!=""', (ident,)).fetchone()
+            if not store:
+                d = ''.join(c for c in ident if c.isdigit())
+                if len(d) >= 10:
+                    store = conn.execute(
+                        "SELECT * FROM mandaja_stores WHERE replace(replace(replace(replace(replace(phone,'(',''),')',''),'-',''),' ',''),'+','') = ?",
+                        (d,)).fetchone()
             if not store or store['reset_token'] != codigo:
-                erro = 'Código inválido ou e-mail incorreto.'
+                erro = 'Código inválido ou e-mail/WhatsApp incorreto.'
                 conn.close()
             elif store['reset_expires'] and datetime.fromisoformat(store['reset_expires']) < datetime.now():
                 erro = 'Código expirado. Solicite um novo.'

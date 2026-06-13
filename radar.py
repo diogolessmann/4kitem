@@ -14,15 +14,20 @@ Validação ao vivo: rodar /radar/coletar numa máquina com internet.
 """
 import os
 import logging
+import secrets
 from datetime import datetime, timedelta
 from functools import wraps
 
 import requests
 from flask import Blueprint, request, jsonify, render_template_string, redirect
 
+from flask import session, flash
+from werkzeug.security import generate_password_hash, check_password_hash
 from radar_db import (init_radar_db, upsert_licitacao, listar_licitacoes,
                       estatisticas, registrar_coleta, obter_licitacao, salvar_analise,
-                      upsert_contrato, listar_contratos, stats_contratos)
+                      upsert_contrato, listar_contratos, stats_contratos,
+                      get_radar_user, get_radar_user_by_email, contar_radar_users,
+                      criar_radar_user, listar_radar_users, radar_exec)
 
 log = logging.getLogger('radar')
 
@@ -450,9 +455,162 @@ def _requer_token(f):
     return wrap
 
 
+# ══════════════════════════════════════════════════════════════════════════════
+# AUTENTICAÇÃO (SaaS: login / senha / redefinir senha) + ADMIN
+# ══════════════════════════════════════════════════════════════════════════════
+ADMIN_EMAIL = os.environ.get('ADMIN_EMAIL', '').strip().lower()
+
+
+def _enviar_email(para, assunto, html):
+    api_key = os.environ.get('RESEND_API_KEY', '')
+    if not api_key:
+        return False
+    from_addr = os.environ.get('EMAIL_FROM', 'Radar <onboarding@resend.dev>')
+    try:
+        resp = requests.post('https://api.resend.com/emails',
+            headers={'Authorization': f'Bearer {api_key}', 'Content-Type': 'application/json'},
+            json={'from': from_addr, 'to': [para], 'subject': assunto, 'html': html}, timeout=10)
+        return resp.status_code in (200, 201)
+    except Exception:
+        return False
+
+
+def _user():
+    uid = session.get('radar_user_id')
+    return get_radar_user(uid) if uid else None
+
+
+def _is_admin(u):
+    return bool(u and (u.get('is_admin') or (ADMIN_EMAIL and u.get('email') == ADMIN_EMAIL)))
+
+
+def radar_login_required(f):
+    @wraps(f)
+    def wrap(*a, **k):
+        if not session.get('radar_user_id'):
+            return redirect('/radar/entrar')
+        return f(*a, **k)
+    return wrap
+
+
+def radar_admin_required(f):
+    @wraps(f)
+    def wrap(*a, **k):
+        # admin logado OU token válido (p/ cron/externo)
+        if RADAR_TOKEN and (request.args.get('t') == RADAR_TOKEN
+                            or request.headers.get('X-Radar-Token') == RADAR_TOKEN):
+            return f(*a, **k)
+        u = _user()
+        if not _is_admin(u):
+            if not u:
+                return redirect('/radar/entrar')
+            return 'Acesso restrito ao admin.', 403
+        return f(*a, **k)
+    return wrap
+
+
+@radar_bp.context_processor
+def _inject_user():
+    u = _user()
+    return {'radar_nome': (u or {}).get('nome', ''), 'radar_is_admin': _is_admin(u)}
+
+
+# ── Rotas de auth ────────────────────────────────────────────────────────────
+@radar_bp.route('/cadastrar', methods=['GET', 'POST'])
+def rota_cadastrar():
+    if session.get('radar_user_id'):
+        return redirect('/radar/')
+    erro = None
+    if request.method == 'POST':
+        nome  = (request.form.get('nome') or '').strip()
+        email = (request.form.get('email') or '').strip().lower()
+        tel   = ''.join(c for c in (request.form.get('telefone') or '') if c.isdigit())
+        senha = request.form.get('senha') or ''
+        if not nome or not email or not senha:
+            erro = 'Preencha nome, e-mail e senha.'
+        elif len(senha) < 6:
+            erro = 'A senha precisa ter pelo menos 6 caracteres.'
+        elif get_radar_user_by_email(email):
+            erro = 'Já existe uma conta com esse e-mail. Faça login.'
+        else:
+            # 1º usuário (ou e-mail = ADMIN_EMAIL) vira admin automaticamente
+            admin = 1 if (contar_radar_users() == 0 or (ADMIN_EMAIL and email == ADMIN_EMAIL)) else 0
+            uid = criar_radar_user(nome, email, tel, generate_password_hash(senha), admin)
+            session['radar_user_id'] = uid
+            return redirect('/radar/')
+    return render_template_string(_AUTH, modo='cadastrar', erro=erro)
+
+
+@radar_bp.route('/entrar', methods=['GET', 'POST'])
+def rota_entrar():
+    if session.get('radar_user_id'):
+        return redirect('/radar/')
+    erro = None
+    if request.method == 'POST':
+        email = (request.form.get('email') or '').strip().lower()
+        senha = request.form.get('senha') or ''
+        u = get_radar_user_by_email(email)
+        if u and check_password_hash(u['password_hash'], senha):
+            session['radar_user_id'] = u['id']
+            radar_exec('UPDATE radar_users SET ultimo_acesso=CURRENT_TIMESTAMP WHERE id=?', (u['id'],))
+            return redirect('/radar/')
+        erro = 'E-mail ou senha incorretos.'
+    return render_template_string(_AUTH, modo='entrar', erro=erro)
+
+
+@radar_bp.route('/sair')
+def rota_sair():
+    session.pop('radar_user_id', None)
+    return redirect('/radar/entrar')
+
+
+@radar_bp.route('/esqueci-senha', methods=['GET', 'POST'])
+def rota_esqueci():
+    msg = None
+    if request.method == 'POST':
+        email = (request.form.get('email') or '').strip().lower()
+        u = get_radar_user_by_email(email)
+        if u:
+            token = secrets.token_urlsafe(32)
+            exp = (datetime.now() + timedelta(hours=2)).isoformat()
+            radar_exec('UPDATE radar_users SET reset_token=?, reset_expires=? WHERE id=?',
+                       (token, exp, u['id']))
+            base = os.environ.get('PUBLIC_BASE_URL', '').rstrip('/')
+            link = f"{base}/radar/redefinir-senha?token={token}"
+            _enviar_email(email, 'Redefinir senha — Radar de Licitações',
+                          f'<p>Olá! Clique para criar uma nova senha (vale 2h):</p>'
+                          f'<p><a href="{link}">{link}</a></p>')
+        msg = 'Se o e-mail existir, enviamos um link para redefinir a senha.'
+    return render_template_string(_AUTH, modo='esqueci', msg=msg, erro=None)
+
+
+@radar_bp.route('/redefinir-senha', methods=['GET', 'POST'])
+def rota_redefinir():
+    token = request.values.get('token', '')
+    erro = msg = None
+    from radar_db import get_radar_db as _grdb
+    db = _grdb()
+    u = db.execute("SELECT * FROM radar_users WHERE reset_token=? AND reset_token<>''",
+                   (token,)).fetchone()
+    db.close()
+    if not u or (u['reset_expires'] or '') < datetime.now().isoformat():
+        return render_template_string(_AUTH, modo='redefinir', erro='Link inválido ou expirado.',
+                                      token='', msg=None)
+    if request.method == 'POST':
+        nova = request.form.get('senha') or ''
+        if len(nova) < 6:
+            erro = 'A senha precisa ter pelo menos 6 caracteres.'
+        else:
+            radar_exec("UPDATE radar_users SET password_hash=?, reset_token='', reset_expires='' WHERE id=?",
+                       (generate_password_hash(nova), u['id']))
+            return render_template_string(_AUTH, modo='entrar', erro=None,
+                                          msg='Senha alterada! Faça login.')
+    return render_template_string(_AUTH, modo='redefinir', token=token, erro=erro, msg=msg)
+
+
 # ── Rotas ────────────────────────────────────────────────────────────────────
 @radar_bp.route('/coletar', methods=['GET', 'POST'])
-@_requer_token
+@radar_admin_required
 def rota_coletar():
     uf = request.args.get('uf', RADAR_UF) or None
     try:
@@ -464,7 +622,7 @@ def rota_coletar():
 
 
 @radar_bp.route('/api/licitacoes')
-@_requer_token
+@radar_login_required
 def rota_api():
     return jsonify(listar_licitacoes(
         uf=request.args.get('uf'),
@@ -477,13 +635,13 @@ def rota_api():
 
 
 @radar_bp.route('/stats')
-@_requer_token
+@radar_admin_required
 def rota_stats():
     return jsonify(estatisticas())
 
 
 @radar_bp.route('/coletar-precos', methods=['GET', 'POST'])
-@_requer_token
+@radar_admin_required
 def rota_coletar_precos():
     try:
         return jsonify({'ok': True, **coletar_contratos(uf=request.args.get('uf', RADAR_UF) or None)})
@@ -493,7 +651,7 @@ def rota_coletar_precos():
 
 
 @radar_bp.route('/precos')
-@_requer_token
+@radar_login_required
 def rota_precos():
     vencendo = request.args.get('vencendo', type=int)
     lst = listar_contratos(uf=request.args.get('uf'), busca=request.args.get('q'),
@@ -504,8 +662,16 @@ def rota_precos():
                                   token=request.args.get('t', ''))
 
 
+@radar_bp.route('/admin')
+@radar_admin_required
+def rota_admin():
+    st  = estatisticas()
+    stc = stats_contratos()
+    return render_template_string(_ADMIN, st=st, stc=stc, users=listar_radar_users())
+
+
 @radar_bp.route('/')
-@_requer_token
+@radar_login_required
 def rota_painel():
     uf   = request.args.get('uf')
     zona = request.args.get('zona')
@@ -517,7 +683,7 @@ def rota_painel():
 
 
 @radar_bp.route('/l/<path:pncp_id>')
-@_requer_token
+@radar_login_required
 def rota_detalhe(pncp_id):
     l = obter_licitacao(pncp_id)
     if not l:
@@ -530,7 +696,7 @@ def rota_detalhe(pncp_id):
 
 
 @radar_bp.route('/l/<path:pncp_id>/analisar', methods=['POST'])
-@_requer_token
+@radar_login_required
 def rota_analisar(pncp_id):
     l = obter_licitacao(pncp_id)
     if not l:
@@ -731,6 +897,117 @@ _PRECOS = '''<!doctype html><html lang="pt-br"><head><meta charset="utf-8">
 </body></html>'''
 
 
+# ── Login / Cadastro / Senha (1 template, vários modos) ─────────────────────
+_AUTH = '''<!doctype html><html lang="pt-br"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>📡 Radar de Licitações de TI — Acesso</title>
+<style>
+ body{font-family:system-ui,Segoe UI,Roboto,sans-serif;background:#0b1020;color:#e7ecf5;margin:0;
+   display:flex;min-height:100vh;align-items:center;justify-content:center;padding:20px}
+ .card{background:#0f1730;border:1px solid #21304f;border-radius:16px;padding:32px;max-width:380px;width:100%}
+ h1{font-size:22px;margin:0 0 4px} .sub{color:#8aa0c6;font-size:13px;margin-bottom:20px}
+ label{display:block;font-size:13px;color:#8aa0c6;margin:12px 0 4px}
+ input{width:100%;box-sizing:border-box;padding:11px 12px;border-radius:8px;border:1px solid #2a3c63;
+   background:#0b1020;color:#e7ecf5;font-size:15px}
+ button{width:100%;margin-top:18px;padding:12px;border:none;border-radius:8px;background:#2563eb;
+   color:#fff;font-size:15px;font-weight:700;cursor:pointer}
+ .erro{background:#2a0a0a;color:#ff8a8a;padding:10px;border-radius:8px;font-size:13px;margin-bottom:8px}
+ .ok{background:#062a17;color:#5ee0a0;padding:10px;border-radius:8px;font-size:13px;margin-bottom:8px}
+ .links{margin-top:16px;font-size:13px;text-align:center} a{color:#7cc0ff;text-decoration:none}
+</style></head><body>
+<div class="card">
+ <h1>📡 Radar de Licitações de TI</h1>
+ <div class="sub">Licitações de tecnologia do Brasil, filtradas pra você.</div>
+ {% if erro %}<div class="erro">⚠️ {{ erro }}</div>{% endif %}
+ {% if msg %}<div class="ok">✅ {{ msg }}</div>{% endif %}
+ {% if modo == 'cadastrar' %}
+ <form method="post" action="/radar/cadastrar">
+  <label>Nome</label><input name="nome" required>
+  <label>E-mail</label><input type="email" name="email" required>
+  <label>Telefone (opcional)</label><input name="telefone">
+  <label>Senha (mín. 6)</label><input type="password" name="senha" required>
+  <button>Criar conta grátis</button>
+ </form>
+ <div class="links">Já tem conta? <a href="/radar/entrar">Entrar</a></div>
+ {% elif modo == 'esqueci' %}
+ <form method="post" action="/radar/esqueci-senha">
+  <label>Seu e-mail</label><input type="email" name="email" required>
+  <button>Enviar link de redefinição</button>
+ </form>
+ <div class="links"><a href="/radar/entrar">← voltar ao login</a></div>
+ {% elif modo == 'redefinir' %}
+ <form method="post" action="/radar/redefinir-senha">
+  <input type="hidden" name="token" value="{{ token }}">
+  <label>Nova senha (mín. 6)</label><input type="password" name="senha" required>
+  <button>Salvar nova senha</button>
+ </form>
+ {% else %}
+ <form method="post" action="/radar/entrar">
+  <label>E-mail</label><input type="email" name="email" required>
+  <label>Senha</label><input type="password" name="senha" required>
+  <button>Entrar</button>
+ </form>
+ <div class="links"><a href="/radar/cadastrar">Criar conta</a> · <a href="/radar/esqueci-senha">Esqueci a senha</a></div>
+ {% endif %}
+</div>
+</body></html>'''
+
+
+# ── Tela ADMIN do Radar (confere tudo) ──────────────────────────────────────
+_ADMIN = '''<!doctype html><html lang="pt-br"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>🛠️ Admin — Radar de Licitações</title>
+<style>
+ body{font-family:system-ui,Segoe UI,Roboto,sans-serif;background:#0b1020;color:#e7ecf5;margin:0;padding:22px}
+ h1{font-size:20px} h2{font-size:16px;color:#8aa0c6;margin-top:26px}
+ .stats{display:flex;gap:12px;flex-wrap:wrap;margin:14px 0}
+ .card{background:#0f1730;border:1px solid #21304f;border-radius:10px;padding:12px 16px;min-width:120px}
+ .card b{font-size:22px;display:block} .card span{color:#8aa0c6;font-size:12px}
+ .btns{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 8px}
+ .btn{background:#1c3a2a;border:1px solid #2f5e44;color:#8ff0b8;padding:8px 14px;border-radius:8px;
+   text-decoration:none;font-size:13px} .btn.b2{background:#152042;border-color:#2a3c63;color:#cfe0ff}
+ table{width:100%;border-collapse:collapse;font-size:13px;margin-top:6px}
+ th,td{padding:8px 10px;text-align:left;border-bottom:1px solid #1b2742}
+ th{color:#8aa0c6} .adm{color:#ffd95e;font-weight:700} a{color:#7cc0ff;text-decoration:none}
+</style></head><body>
+<h1>🛠️ Admin — Radar de Licitações de TI</h1>
+<a href="/radar/" style="color:#8aa0c6;font-size:14px">← painel</a> ·
+<a href="/radar/precos" style="color:#8aa0c6;font-size:14px">inteligência de preço</a> ·
+<a href="/radar/sair" style="color:#8aa0c6;font-size:14px">sair</a>
+
+<h2>📊 Coleta</h2>
+<div class="stats">
+ <div class="card"><b>{{ st.total }}</b><span>licitações coletadas</span></div>
+ <div class="card"><b>{{ st.ti }}</b><span>são TI</span></div>
+ <div class="card"><b>{{ st.ouro }}</b><span>zona ouro ≤65k</span></div>
+ <div class="card"><b>{{ stc.total }}</b><span>contratos TI (preço)</span></div>
+ <div class="card"><b>{{ stc.vencendo90 }}</b><span>contratos vencendo 90d</span></div>
+</div>
+<div class="btns">
+ <a class="btn" href="/radar/coletar">▶ Coletar licitações</a>
+ <a class="btn" href="/radar/coletar-precos">▶ Coletar preços</a>
+ <a class="btn b2" href="/radar/stats">ver stats (JSON)</a>
+</div>
+{% if st.ultima_coleta %}<p style="color:#8aa0c6;font-size:13px">Última coleta: +{{ st.ultima_coleta.novos }} novos / {{ st.ultima_coleta.atualizados }} atualizados</p>{% endif %}
+
+<h2>👥 Usuários ({{ users|length }})</h2>
+<table>
+ <tr><th>#</th><th>Nome</th><th>E-mail</th><th>Telefone</th><th>Plano</th><th>Cadastro</th><th>Último acesso</th></tr>
+ {% for u in users %}
+ <tr>
+  <td>{{ u.id }}</td>
+  <td>{{ u.nome }}{% if u.is_admin %} <span class="adm">★admin</span>{% endif %}</td>
+  <td>{{ u.email }}</td>
+  <td>{{ u.telefone or '—' }}</td>
+  <td>{{ 'ativo' if u.plan_active else u.plano }}</td>
+  <td>{{ (u.created_at or '')[:10] }}</td>
+  <td>{{ (u.ultimo_acesso or '—')[:16] }}</td>
+ </tr>
+ {% endfor %}
+</table>
+</body></html>'''
+
+
 # ── Painel inline (Lote 3 vira template bonito; aqui é o dogfood funcional) ──
 _PAINEL = '''<!doctype html><html lang="pt-br"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -777,7 +1054,11 @@ _PAINEL = '''<!doctype html><html lang="pt-br"><head><meta charset="utf-8">
  <a href="/radar/{{ q }}&zona=boa">Zona Boa</a>
  <a href="/radar/{{ q }}&ordem=prazo">⏰ Por prazo</a>
  <a href="/radar/precos{{ q }}" style="background:#2a2300;border-color:#5e5230;color:#ffd95e">💰 Inteligência de Preço</a>
+ {% if radar_is_admin %}
  <a href="/radar/coletar{{ q }}" style="background:#1c3a2a;border-color:#2f5e44;color:#8ff0b8">▶ Coletar agora</a>
+ <a href="/radar/admin" style="background:#231a3a;border-color:#463a6e;color:#c7b3ff">🛠️ Admin</a>
+ {% endif %}
+ <span style="margin-left:auto;color:#8aa0c6;font-size:13px">👤 {{ radar_nome }} · <a href="/radar/sair" style="color:#8aa0c6">sair</a></span>
 </div>
 {% if lst %}
 <table>

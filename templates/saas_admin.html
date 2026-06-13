@@ -64,6 +64,7 @@
 <nav>
   <span class="nav-logo">🔐 4KITEM SaaS Admin</span>
   <a href="/saas-admin/unban"><button class="nav-link" style="border-color:#f59e0b;color:#f59e0b">🔓 Desbanir</button></a>
+  <a href="/radar/admin" target="_blank"><button class="nav-link" style="border-color:#2563eb;color:#7cc0ff">📡 Radar de Licitações</button></a>
   <a href="/saas-admin/logout"><button class="nav-link">Sair</button></a>
 </nav>
 
@@ -439,9 +440,18 @@
       {% for s in mandaja_stores %}
       <tr>
         <td>{{ s.id }}</td>
-        <td><strong>{{ s.name }}</strong><br><span style="font-size:11px;color:#555">{{ s.slug }}</span></td>
+        <td>
+          <strong>{{ s.name }}</strong>
+          {% if s.mode == 'jr' %}<span class="badge" style="background:#f97316;color:#fff">🍔 Jr</span>{% else %}<span class="badge badge-blue">🛵 Pro</span>{% endif %}
+          <br><span style="font-size:11px;color:#555">{{ s.slug }}</span>
+        </td>
         <td>{{ s.owner_name }}<br><span style="font-size:11px;color:#555">{{ s.phone }}</span></td>
-        <td><span class="badge badge-blue">{{ s.plan }}</span></td>
+        <td>
+          <span class="badge badge-blue">{{ s.plan }}</span><br>
+          {% if s.plan_active %}<span style="font-size:11px;color:#16a34a">✅ pago</span>
+          {% elif s.trial_ends and s.trial_ends < now_iso %}<span style="font-size:11px;color:#dc2626">⛔ trial vencido</span>
+          {% else %}<span style="font-size:11px;color:#d97706">🎁 em trial</span>{% endif %}
+        </td>
         <td>{{ s.city or '—' }}</td>
         <td>{{ s.created_at[:10] if s.created_at else '—' }}</td>
         <td>

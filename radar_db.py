@@ -107,6 +107,24 @@ def init_radar_db():
         CREATE INDEX IF NOT EXISTS idx_rc_uf    ON radar_contratos(uf);
         CREATE INDEX IF NOT EXISTS idx_rc_fim   ON radar_contratos(vigencia_fim);
         CREATE INDEX IF NOT EXISTS idx_rc_forn  ON radar_contratos(fornecedor_doc);
+
+        -- ── Usuários do Radar (SaaS: login/senha/reset) ──────────────────────
+        CREATE TABLE IF NOT EXISTS radar_users (
+            id                INTEGER PRIMARY KEY AUTOINCREMENT,
+            nome              TEXT NOT NULL,
+            email             TEXT NOT NULL UNIQUE,
+            telefone          TEXT DEFAULT '',
+            password_hash     TEXT NOT NULL,
+            plano             TEXT DEFAULT 'free',
+            plan_active       INTEGER DEFAULT 0,
+            is_admin          INTEGER DEFAULT 0,
+            reset_token       TEXT DEFAULT '',
+            reset_expires     TEXT DEFAULT '',
+            asaas_customer_id TEXT DEFAULT '',
+            created_at        TEXT DEFAULT CURRENT_TIMESTAMP,
+            ultimo_acesso     TEXT
+        );
+        CREATE INDEX IF NOT EXISTS idx_ru_email ON radar_users(email);
     ''')
     conn.commit()
 
@@ -306,3 +324,55 @@ def stats_contratos():
         "AND date(vigencia_fim) BETWEEN date('now') AND date('now','+90 days')").fetchone()[0]
     conn.close()
     return s
+
+
+# ── Usuários (SaaS: login/senha/reset) ───────────────────────────────────────
+def get_radar_user(uid):
+    conn = get_radar_db()
+    u = conn.execute('SELECT * FROM radar_users WHERE id=?', (uid,)).fetchone()
+    conn.close()
+    return dict(u) if u else None
+
+
+def get_radar_user_by_email(email):
+    conn = get_radar_db()
+    u = conn.execute('SELECT * FROM radar_users WHERE email=?', ((email or '').strip().lower(),)).fetchone()
+    conn.close()
+    return dict(u) if u else None
+
+
+def contar_radar_users():
+    conn = get_radar_db()
+    n = conn.execute('SELECT COUNT(*) FROM radar_users').fetchone()[0]
+    conn.close()
+    return n
+
+
+def criar_radar_user(nome, email, telefone, password_hash, is_admin=0):
+    conn = get_radar_db()
+    try:
+        cur = conn.execute(
+            'INSERT INTO radar_users (nome,email,telefone,password_hash,is_admin,created_at) '
+            'VALUES (?,?,?,?,?,CURRENT_TIMESTAMP)',
+            (nome, (email or '').strip().lower(), telefone, password_hash, is_admin))
+        conn.commit()
+        return cur.lastrowid
+    finally:
+        conn.close()
+
+
+def listar_radar_users():
+    conn = get_radar_db()
+    rows = conn.execute('SELECT id, nome, email, telefone, plano, plan_active, is_admin, '
+                        'created_at, ultimo_acesso FROM radar_users ORDER BY id DESC').fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def radar_exec(sql, params=()):
+    """Helper genérico p/ UPDATEs simples (reset token, ultimo_acesso, etc.)."""
+    conn = get_radar_db()
+    try:
+        conn.execute(sql, params); conn.commit()
+    finally:
+        conn.close()
