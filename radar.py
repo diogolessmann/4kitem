@@ -21,7 +21,7 @@ from functools import wraps
 import requests
 from flask import Blueprint, request, jsonify, render_template_string, redirect
 
-from flask import session, flash
+from flask import session
 from werkzeug.security import generate_password_hash, check_password_hash
 from radar_db import (init_radar_db, upsert_licitacao, listar_licitacoes,
                       estatisticas, registrar_coleta, obter_licitacao, salvar_analise,
@@ -130,7 +130,10 @@ def classificar(objeto, valor, modalidade_id=None):
         tier = 3  # marca como armadilha (fica fora do is_ti)
 
     # Eixo 2 — zona de porte
-    v = float(valor or 0)
+    try:
+        v = float(valor or 0)
+    except (TypeError, ValueError):
+        v = 0.0
     if v <= 0:
         zona = 'indef'
     elif v <= ZONA_OURO:
@@ -443,18 +446,6 @@ def analisar_edital(licitacao: dict, texto_edital: str = ''):
     return _ia_json(SYSTEM_EDITAL, ctx)
 
 
-# ── Gate simples por token (só exige se RADAR_TOKEN estiver setado) ──────────
-def _requer_token(f):
-    @wraps(f)
-    def wrap(*a, **kw):
-        if RADAR_TOKEN:
-            t = request.args.get('t') or request.headers.get('X-Radar-Token')
-            if t != RADAR_TOKEN:
-                return jsonify({'erro': 'token invalido'}), 401
-        return f(*a, **kw)
-    return wrap
-
-
 # ══════════════════════════════════════════════════════════════════════════════
 # AUTENTICAÇÃO (SaaS: login / senha / redefinir senha) + ADMIN
 # ══════════════════════════════════════════════════════════════════════════════
@@ -679,7 +670,7 @@ def rota_painel():
                              ordem=request.args.get('ordem', 'score'), limite=300)
     st   = estatisticas()
     return render_template_string(_PAINEL, lst=lst, st=st, uf=uf or '', zona=zona or '',
-                                  modalidades=MODALIDADES_FOCO, token=request.args.get('t', ''))
+                                  token=request.args.get('t', ''))
 
 
 @radar_bp.route('/l/<path:pncp_id>')
@@ -737,9 +728,12 @@ def iniciar_coletor_automatico(intervalo_horas=None, delay_inicial_seg=120):
 
     import time as _time
     import threading as _threading
+    import random as _random
 
     def _loop():
-        _time.sleep(delay_inicial_seg)        # deixa o app subir antes da 1ª coleta
+        # jitter no boot: com múltiplos workers no Railway, evita todos baterem
+        # no PNCP no mesmo segundo (a coleta é idempotente, mas poupa requisições)
+        _time.sleep(delay_inicial_seg + _random.randint(0, 120))
         while True:
             try:
                 res = coletar()
