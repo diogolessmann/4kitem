@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Criar meu cardápio — MandaJr</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#0B0B12;color:#F4F4F8;font-family:'Segoe UI',system-ui,sans-serif;line-height:1.5;min-height:100vh}
+  a{text-decoration:none;color:inherit}
+  .wrap{max-width:440px;margin:0 auto;padding:0 20px}
+  .topbar{display:flex;align-items:center;justify-content:space-between;height:60px}
+  .logo{font-size:20px;font-weight:900;color:#F97316}
+  .entrar{font-size:14px;font-weight:700;color:#cbd5e1}
+  .head{text-align:center;padding:18px 0 22px}
+  .head h1{font-size:26px;font-weight:900;margin-bottom:8px}
+  .head p{font-size:14px;color:#a0a0b2}
+  .steps{display:flex;justify-content:center;gap:6px;margin:14px 0 4px}
+  .steps span{width:7px;height:7px;border-radius:50%;background:rgba(249,115,22,.3)}
+  .steps span.on{background:#F97316;width:22px;border-radius:100px}
+  form{background:#13131c;border:1px solid rgba(255,255,255,.06);border-radius:18px;padding:22px}
+  label{display:block;font-size:13px;font-weight:700;color:#cbd5e1;margin:16px 0 7px}
+  label:first-child{margin-top:0}
+  label .hint{font-weight:500;color:#8b8b9e;font-size:12px}
+  input{width:100%;background:#0B0B12;border:1.5px solid rgba(255,255,255,.1);border-radius:11px;padding:13px 14px;color:#fff;font-size:15px;outline:none}
+  input:focus{border-color:#F97316}
+  .pix-note{font-size:12px;color:#86efac;background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.2);border-radius:10px;padding:10px 12px;margin-top:8px}
+  .btn{width:100%;background:linear-gradient(135deg,#ea580c,#f97316);color:#fff;font-size:16px;font-weight:800;border:none;border-radius:13px;padding:16px;margin-top:22px;cursor:pointer;box-shadow:0 10px 24px rgba(249,115,22,.28)}
+  .err{background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.4);color:#fca5a5;font-size:13px;font-weight:600;border-radius:10px;padding:11px 14px;margin-bottom:16px;text-align:center}
+  .foot{text-align:center;font-size:13px;color:#8b8b9e;padding:18px 0 40px}
+  .foot a{color:#F97316;font-weight:700}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <a href="/mandajr" class="logo">🍔 MandaJr</a>
+    <a href="/mandaja/entrar" class="entrar">Já tenho conta →</a>
+  </div>
+
+  <div class="head">
+    <h1>Vamos abrir sua loja 🚀</h1>
+    <p>Em 2 minutos seu cardápio tá no ar.</p>
+    <div class="steps"><span class="on"></span><span></span></div>
+  </div>
+
+  {% if error %}<div class="err">⚠️ {{ error }}</div>{% endif %}
+
+  <form method="POST" action="/mandajr/comecar">
+    <label>Nome do seu negócio <span class="hint">(o que o cliente vê)</span></label>
+    <input type="text" name="name" placeholder="Ex: Burgers Rike" value="{{ request.form.name or '' }}" required autofocus>
+
+    <label>Seu WhatsApp <span class="hint">(com DDD — é seu login)</span></label>
+    <input type="tel" name="phone" placeholder="(47) 99999-9999" value="{{ request.form.phone or '' }}" required>
+
+    <label>Crie uma senha <span class="hint">(mín. 6 caracteres)</span></label>
+    <input type="password" name="senha" placeholder="••••••" required>
+
+    <label>Sua chave PIX <span class="hint">(pra receber — opcional agora)</span></label>
+    <input type="text" name="pix_chave" placeholder="CPF, celular, e-mail ou aleatória" value="{{ request.form.pix_chave or '' }}">
+    <div class="pix-note">💳 É nessa chave que o dinheiro cai, <b>direto na sua conta</b>. Pode adicionar depois também.</div>
+
+    <button type="submit" class="btn">Criar minha loja grátis →</button>
+  </form>
+
+  <div class="foot">
+    7 dias grátis · sem cartão · depois R$29/mês<br>
+    <a href="/mandajr">← Voltar</a>
+  </div>
+</div>
+</body>
+</html>

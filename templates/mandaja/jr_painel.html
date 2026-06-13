@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Minha loja — MandaJr</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#0B0B12;color:#F4F4F8;font-family:'Segoe UI',system-ui,sans-serif;line-height:1.5;min-height:100vh}
+  a{text-decoration:none;color:inherit}
+  .wrap{max-width:460px;margin:0 auto;padding:0 18px 40px}
+  .topbar{display:flex;align-items:center;justify-content:space-between;height:58px}
+  .logo{font-size:19px;font-weight:900;color:#F97316}
+  .sair{font-size:13px;color:#8b8b9e;font-weight:600}
+
+  .welcome{font-size:22px;font-weight:900;margin:6px 0 2px}
+  .welcome small{display:block;font-size:13px;color:#a0a0b2;font-weight:500;margin-top:3px}
+
+  /* Aberto/Fechado */
+  .switch-card{display:flex;align-items:center;justify-content:space-between;background:#13131c;border:1px solid rgba(255,255,255,.07);border-radius:16px;padding:16px 18px;margin:18px 0}
+  .switch-card .st{font-size:15px;font-weight:800}
+  .switch-card .st small{display:block;font-size:12px;font-weight:500;color:#8b8b9e;margin-top:2px}
+  .toggle{position:relative;width:62px;height:34px;border-radius:100px;background:#3a3a48;cursor:pointer;transition:.2s;flex-shrink:0}
+  .toggle.on{background:#22c55e}
+  .toggle .knob{position:absolute;top:3px;left:3px;width:28px;height:28px;border-radius:50%;background:#fff;transition:.2s}
+  .toggle.on .knob{left:31px}
+
+  /* trial banner */
+  .trial{display:flex;align-items:center;gap:10px;background:rgba(249,115,22,.1);border:1px solid rgba(249,115,22,.3);border-radius:12px;padding:12px 14px;font-size:13px;margin-bottom:18px}
+  .trial.expired{background:rgba(239,68,68,.12);border-color:rgba(239,68,68,.4)}
+  .trial b{color:#F97316}
+  .trial a{margin-left:auto;background:linear-gradient(135deg,#ea580c,#f97316);color:#fff;font-weight:700;padding:7px 14px;border-radius:100px;font-size:12px;white-space:nowrap}
+
+  /* stats mini */
+  .stats{display:flex;gap:10px;margin-bottom:18px}
+  .stat{flex:1;background:#13131c;border:1px solid rgba(255,255,255,.06);border-radius:13px;padding:13px;text-align:center}
+  .stat .n{font-size:22px;font-weight:900;color:#F97316}
+  .stat .l{font-size:11px;color:#8b8b9e;margin-top:2px}
+
+  /* big buttons */
+  .menu{display:flex;flex-direction:column;gap:12px}
+  .mbtn{display:flex;align-items:center;gap:15px;background:#13131c;border:1px solid rgba(255,255,255,.07);border-radius:16px;padding:18px;transition:.15s}
+  .mbtn:active{transform:scale(.98)}
+  .mbtn .ic{width:46px;height:46px;border-radius:12px;background:rgba(249,115,22,.12);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0}
+  .mbtn .tx{flex:1}
+  .mbtn .tx b{font-size:16px;font-weight:800}
+  .mbtn .tx small{display:block;font-size:12px;color:#8b8b9e;margin-top:1px}
+  .mbtn .arrow{color:#5a5a6e;font-size:20px}
+  .mbtn .badge{background:#ef4444;color:#fff;font-size:12px;font-weight:800;border-radius:100px;padding:2px 9px}
+
+  .more{text-align:center;margin-top:24px}
+  .more a{font-size:13px;color:#8b8b9e;font-weight:600}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <span class="logo">🍔 MandaJr</span>
+    <a href="/mandaja/logout" class="sair">Sair</a>
+  </div>
+
+  <div class="welcome">
+    Olá, {{ store.name }} 👋
+    <small>Esta é a sua loja. Tudo que você precisa, num lugar só.</small>
+  </div>
+
+  {% if trial_expired and not plan_active %}
+  <div class="trial expired" style="margin-top:16px">
+    <span>🔒 Seu período grátis acabou.</span>
+    <a href="/mandajr/assinar">Assinar R$29/mês</a>
+  </div>
+  {% elif trial_ends and not trial_expired %}
+  <div class="trial" style="margin-top:16px">
+    <span>🎁 Você está no <b>período grátis</b>.</span>
+    <a href="/mandajr/assinar">Assinar</a>
+  </div>
+  {% endif %}
+
+  <!-- Aberto / Fechado -->
+  <div class="switch-card">
+    <div class="st" id="stLabel">
+      {{ '🟢 Loja aberta' if store.aberto else '🔴 Loja fechada' }}
+      <small id="stHint">{{ 'Recebendo pedidos agora' if store.aberto else 'Clientes não conseguem pedir' }}</small>
+    </div>
+    <div class="toggle {{ 'on' if store.aberto else '' }}" id="toggle" onclick="toggleAberto()">
+      <div class="knob"></div>
+    </div>
+  </div>
+
+  <!-- stats -->
+  <div class="stats">
+    <div class="stat"><div class="n">{{ stats.pedidos_hoje }}</div><div class="l">pedidos hoje</div></div>
+    <div class="stat"><div class="n">R${{ '%.0f'|format(stats.receita_hoje or 0) }}</div><div class="l">vendido hoje</div></div>
+    <div class="stat"><div class="n">{{ stats.total_produtos }}</div><div class="l">no cardápio</div></div>
+  </div>
+
+  <!-- menu -->
+  <div class="menu">
+    <a href="/mandaja/pedidos" class="mbtn">
+      <div class="ic">🛎️</div>
+      <div class="tx"><b>Pedidos</b><small>Veja e aceite os pedidos</small></div>
+      {% if stats.pedidos_abertos %}<span class="badge">{{ stats.pedidos_abertos }}</span>{% else %}<span class="arrow">›</span>{% endif %}
+    </a>
+    <a href="/mandaja/produtos" class="mbtn">
+      <div class="ic">📋</div>
+      <div class="tx"><b>Meu cardápio</b><small>Adicione e edite seus produtos</small></div>
+      <span class="arrow">›</span>
+    </a>
+    <a href="/mandajr/compartilhar" class="mbtn">
+      <div class="ic">🔗</div>
+      <div class="tx"><b>Minha loja</b><small>Link e QR Code pra divulgar</small></div>
+      <span class="arrow">›</span>
+    </a>
+  </div>
+
+  <div class="more">
+    <a href="/mandaja/configuracoes">⚙️ Mais ajustes</a>
+  </div>
+</div>
+
+<script>
+let aberto = {{ 'true' if store.aberto else 'false' }};
+function toggleAberto(){
+  aberto = !aberto;
+  const t = document.getElementById('toggle');
+  t.classList.toggle('on', aberto);
+  document.getElementById('stLabel').childNodes[0].textContent = aberto ? '🟢 Loja aberta ' : '🔴 Loja fechada ';
+  document.getElementById('stHint').textContent = aberto ? 'Recebendo pedidos agora' : 'Clientes não conseguem pedir';
+  fetch('/mandajr/aberto', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({aberto: aberto ? 1 : 0})
+  }).catch(()=>{});
+}
+</script>
+</body>
+</html>

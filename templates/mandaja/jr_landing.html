@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MandaJr — seu cardápio no WhatsApp, com PIX automático</title>
+<meta name="description" content="O catálogo do WhatsApp, mas que recebe PIX e organiza seu pedido sozinho. Sua loja no ar em 2 minutos, sem mensalidade pra começar.">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#0B0B12;color:#F4F4F8;font-family:'Segoe UI',system-ui,sans-serif;line-height:1.5}
+  a{text-decoration:none;color:inherit}
+  .wrap{max-width:480px;margin:0 auto;padding:0 20px}
+  .orange{color:#F97316}
+  .topbar{display:flex;align-items:center;justify-content:space-between;height:60px}
+  .logo{font-size:22px;font-weight:900;color:#F97316;display:flex;align-items:center;gap:6px}
+  .logo small{font-size:11px;font-weight:700;color:#94a3b8;background:rgba(249,115,22,.12);padding:2px 7px;border-radius:100px}
+  .entrar{font-size:14px;font-weight:700;color:#cbd5e1}
+  .hero{padding:32px 0 8px;text-align:center}
+  .badge{display:inline-block;font-size:12px;font-weight:700;color:#F97316;background:rgba(249,115,22,.12);padding:6px 14px;border-radius:100px;margin-bottom:18px}
+  h1{font-size:34px;font-weight:900;line-height:1.15;margin-bottom:14px}
+  .sub{font-size:16px;color:#b4b4c4;margin-bottom:26px}
+  .cta{display:block;background:linear-gradient(135deg,#ea580c,#f97316);color:#fff;font-size:17px;font-weight:800;text-align:center;padding:17px;border-radius:14px;box-shadow:0 10px 28px rgba(249,115,22,.32)}
+  .cta-sub{font-size:13px;color:#8b8b9e;margin-top:12px}
+  .phone{margin:34px auto 0;max-width:300px;background:#15151f;border:1px solid rgba(249,115,22,.16);border-radius:22px;padding:16px;text-align:left}
+  .phone-head{display:flex;align-items:center;gap:10px;padding-bottom:12px;border-bottom:1px solid rgba(255,255,255,.06)}
+  .phone-logo{width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#ea580c,#f97316);display:flex;align-items:center;justify-content:center;font-size:18px}
+  .phone-name{font-weight:800;font-size:14px}
+  .phone-name span{display:block;font-size:11px;color:#8b8b9e;font-weight:500}
+  .pitem{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid rgba(255,255,255,.05)}
+  .pitem .em{font-size:22px}
+  .pitem .nm{flex:1;font-size:13px;font-weight:600}
+  .pitem .pr{font-size:13px;font-weight:800;color:#F97316}
+  .pix{margin-top:12px;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.35);border-radius:10px;padding:10px;font-size:12px;color:#86efac;text-align:center;font-weight:700}
+  .section{padding:40px 0}
+  .section h2{font-size:24px;font-weight:900;text-align:center;margin-bottom:24px}
+  .feat{display:flex;gap:14px;align-items:flex-start;margin-bottom:20px;background:#13131c;border:1px solid rgba(255,255,255,.05);border-radius:14px;padding:16px}
+  .feat .ic{font-size:26px}
+  .feat b{font-size:15px}
+  .feat p{font-size:13px;color:#a0a0b2;margin-top:3px}
+  .vs{background:#13131c;border-radius:16px;padding:20px;margin-top:8px}
+  .vs-row{display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-bottom:1px solid rgba(255,255,255,.06);font-size:13px}
+  .vs-row:last-child{border:0}
+  .vs-row .lbl{flex:1;color:#cbd5e1}
+  .yes{color:#22c55e;font-weight:800}.no{color:#64748b}
+  .price{text-align:center;background:linear-gradient(135deg,rgba(249,115,22,.12),rgba(234,88,12,.06));border:1px solid rgba(249,115,22,.25);border-radius:18px;padding:28px 20px;margin-top:8px}
+  .price .big{font-size:40px;font-weight:900;color:#F97316}
+  .price .big small{font-size:16px;color:#b4b4c4;font-weight:600}
+  .price .free{font-size:14px;color:#86efac;font-weight:700;margin-top:6px}
+  footer{text-align:center;padding:30px 0 40px;color:#6b6b7e;font-size:12px}
+  footer a{color:#F97316;font-weight:700}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <div class="logo">🍔 MandaJr <small>by MandaJá</small></div>
+    <a href="/mandaja/entrar" class="entrar">Entrar →</a>
+  </div>
+
+  <div class="hero">
+    <span class="badge">🛵 O catálogo do Zap — só que melhor</span>
+    <h1>Seu cardápio no ar,<br><span class="orange">com PIX na hora.</span></h1>
+    <p class="sub">Igual ao catálogo do WhatsApp — mas o cliente <b>paga via PIX sozinho</b> e o pedido chega <b>organizado</b> no seu Zap. Sem print, sem "manda o pix aí".</p>
+    <a href="/mandajr/comecar" class="cta">🚀 Criar meu cardápio grátis</a>
+    <div class="cta-sub">Pronto em 2 minutos · sem cartão · 100% do dinheiro é seu</div>
+
+    <div class="phone">
+      <div class="phone-head">
+        <div class="phone-logo">🔥</div>
+        <div class="phone-name">Burgers Rike <span>Hamburgueria · Aberto agora</span></div>
+      </div>
+      <div class="pitem"><span class="em">🍔</span><span class="nm">X-Bacon Duplo</span><span class="pr">R$ 35,00</span></div>
+      <div class="pitem"><span class="em">🍟</span><span class="nm">Batata + lanche</span><span class="pr">R$ 7,00</span></div>
+      <div class="pitem"><span class="em">🥤</span><span class="nm">Coca lata</span><span class="pr">R$ 6,00</span></div>
+      <div class="pix">💳 PIX copia-e-cola · R$ 48,00 já preenchido ✅</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>Por que trocar o catálogo grátis?</h2>
+    <div class="feat"><div class="ic">💳</div><div><b>PIX automático com o valor pronto</b><p>O cliente copia, cola no banco e o valor já tá lá. Cai direto na sua conta.</p></div></div>
+    <div class="feat"><div class="ic">🛎️</div><div><b>Pedido organizado no seu WhatsApp</b><p>Chega bonitinho: itens, valor, endereço. Você só toca em "Aceitar".</p></div></div>
+    <div class="feat"><div class="ic">📲</div><div><b>O cliente acompanha sozinho</b><p>"Preparando" → "Saiu pra entrega" → "Chegou". Tudo automático.</p></div></div>
+    <div class="feat"><div class="ic">🔗</div><div><b>Seu link e QR Code prontos</b><p>Cola no Insta, na mesa, na embalagem. O cliente abre e já pede.</p></div></div>
+  </div>
+
+  <div class="section" style="padding-top:0">
+    <h2>MandaJr <span style="color:#64748b">vs</span> catálogo grátis</h2>
+    <div class="vs">
+      <div class="vs-row"><span class="lbl">Cardápio com foto e preço</span><span class="yes">ambos ✓</span></div>
+      <div class="vs-row"><span class="lbl">PIX com valor automático</span><span><span class="no">grátis: ✕</span> &nbsp; <span class="yes">Jr: ✓</span></span></div>
+      <div class="vs-row"><span class="lbl">Pedido organizado</span><span><span class="no">grátis: ✕</span> &nbsp; <span class="yes">Jr: ✓</span></span></div>
+      <div class="vs-row"><span class="lbl">Status pro cliente</span><span><span class="no">grátis: ✕</span> &nbsp; <span class="yes">Jr: ✓</span></span></div>
+      <div class="vs-row"><span class="lbl">Link e QR próprios</span><span><span class="no">grátis: ✕</span> &nbsp; <span class="yes">Jr: ✓</span></span></div>
+    </div>
+  </div>
+
+  <div class="section" style="padding-top:0">
+    <div class="price">
+      <div class="free">🎁 7 dias grátis pra testar</div>
+      <div class="big">R$29<small>/mês</small></div>
+      <div style="font-size:13px;color:#a0a0b2;margin-top:6px">Sem comissão por pedido. Cancela quando quiser.</div>
+      <a href="/mandajr/comecar" class="cta" style="margin-top:18px">Começar agora →</a>
+    </div>
+  </div>
+
+  <footer>
+    Cresceu? O <a href="/mandaja">MandaJá Pro</a> te espera com cozinha, relatórios e mais.<br>
+    © MandaJr · 4KITEM
+  </footer>
+</div>
+</body>
+</html>

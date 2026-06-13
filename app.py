@@ -706,6 +706,7 @@ def _combo_desconto_ativo(email, produto_atual) -> bool:
 
 # ── MandaJá — Planos ─────────────────────────────────────────────────────────
 MANDAJA_PLANS = {
+    'jr':       {'label': 'MandaJr',  'products': 50,  'price': 29,  'emoji': '🍔'},
     'micro':    {'label': 'Micro',    'products': 5,   'price': 59,  'emoji': '🌱'},
     'light':    {'label': 'Light',    'products': 10,  'price': 99,  'emoji': '⚡'},
     'plus':     {'label': 'Plus',     'products': 20,  'price': 159, 'emoji': '🚀'},
@@ -760,6 +761,65 @@ def _mandaja_next_order_number(store_id):
     ).fetchone()[0]
     conn.close()
     return f"#{count + 1:04d}"
+
+
+def _mandaja_bloqueado(store):
+    """True se a loja deve ser travada: trial vencido E não pagou.
+    Lojas Pro têm plan_active=1 por padrão → nunca travam por aqui."""
+    if not store or store.get('plan_active'):
+        return False
+    te = store.get('trial_ends') or ''
+    return bool(te and te < datetime.now().isoformat())
+
+
+def _pix_brcode(chave, nome, cidade='', valor=0.0, txid='***'):
+    """Gera o PIX 'copia e cola' (BR Code EMV) com o valor já preenchido.
+    PIX direto: dinheiro cai na chave do próprio dono, sem intermediário.
+    Retorna a string copia-e-cola, ou '' se faltar chave."""
+    chave = (chave or '').strip()
+    if not chave:
+        return ''
+
+    def _emv(_id, _val):
+        _val = str(_val)
+        return f"{_id}{len(_val):02d}{_val}"
+
+    # Sanitiza nome/cidade: ASCII, sem acento, maiúsculas (padrão do BR Code)
+    def _ascii(s, limite):
+        import unicodedata as _ud
+        s = _ud.normalize('NFKD', str(s or '')).encode('ascii', 'ignore').decode('ascii')
+        return s.upper()[:limite].strip() or 'N'
+
+    nome   = _ascii(nome, 25)
+    cidade = _ascii(cidade or 'BRASIL', 15)
+    txid   = (''.join(c for c in str(txid) if c.isalnum()) or '***')[:25]
+
+    # Merchant Account Information (GUI br.gov.bcb.pix + chave)
+    mai = _emv('00', 'br.gov.bcb.pix') + _emv('01', chave)
+    payload = (
+        _emv('00', '01')                # Payload Format Indicator
+        + _emv('26', mai)               # Merchant Account Information
+        + _emv('52', '0000')            # Merchant Category Code
+        + _emv('53', '986')             # Moeda: BRL
+    )
+    if valor and float(valor) > 0:
+        payload += _emv('54', f"{float(valor):.2f}")   # Valor da transação
+    payload += (
+        _emv('58', 'BR')                # País
+        + _emv('59', nome)              # Nome do recebedor
+        + _emv('60', cidade)            # Cidade
+        + _emv('62', _emv('05', txid))  # Additional Data (txid)
+    )
+    payload += '6304'                   # CRC16: id+len; valor calculado abaixo
+
+    # CRC16-CCITT (0xFFFF), polinômio 0x1021
+    crc = 0xFFFF
+    for ch in payload.encode('utf-8'):
+        crc ^= ch << 8
+        for _ in range(8):
+            crc = ((crc << 1) ^ 0x1021) if (crc & 0x8000) else (crc << 1)
+            crc &= 0xFFFF
+    return payload + f"{crc:04X}"
 
 BAU_CATEGORIES = {
     'trabalho': {'label': 'Trabalho',       'icon': '💼'},
@@ -12630,6 +12690,148 @@ def mandaja_landing():
     return render_template('mandaja/landing.html')
 
 
+# ── MandaJr — fachada "basicão" (mesma engine, mode='jr') ────────────────────
+@app.route('/mandajr')
+def mandajr_landing():
+    return render_template('mandaja/jr_landing.html')
+
+
+@app.route('/mandajr/comecar', methods=['GET', 'POST'])
+def mandajr_comecar():
+    """Onboarding enxuto: nome + WhatsApp + senha + chave PIX → loja no ar."""
+    if session.get('mja_store_id'):
+        return redirect('/mandaja/painel')
+    if request.method == 'POST':
+        name      = request.form.get('name', '').strip()
+        phone     = request.form.get('phone', '').strip()
+        senha     = request.form.get('senha', '')
+        pix_chave = request.form.get('pix_chave', '').strip()
+        if not all([name, phone, senha]):
+            return render_template('mandaja/jr_comecar.html',
+                                   error='Preencha o nome, o WhatsApp e a senha.')
+        if len(senha) < 6:
+            return render_template('mandaja/jr_comecar.html',
+                                   error='A senha precisa de pelo menos 6 caracteres.')
+        phone_digits = ''.join(c for c in phone if c.isdigit())
+        if len(phone_digits) < 10:
+            return render_template('mandaja/jr_comecar.html',
+                                   error='Digite um WhatsApp válido com DDD.')
+        conn = get_saas_db()
+        # WhatsApp único (anti-abuso, igual ao MandaJá)
+        existing = conn.execute(
+            "SELECT id FROM mandaja_stores WHERE replace(replace(replace(replace(replace(phone,'(',''),')',''),'-',''),' ',''),'+','') = ?",
+            (phone_digits,)).fetchone()
+        if existing:
+            conn.close()
+            return render_template('mandaja/jr_comecar.html',
+                                   error='Esse WhatsApp já tem uma loja. É só entrar com a sua senha.')
+        slug = _slugify(name); base = slug; i = 1
+        while conn.execute('SELECT id FROM mandaja_stores WHERE slug=?', (slug,)).fetchone():
+            slug = f"{base}-{i}"; i += 1
+        trial_ends = (datetime.now() + timedelta(days=7)).isoformat()
+        conn.execute('''
+            INSERT INTO mandaja_stores
+            (name, slug, owner_name, phone, whatsapp, email, password_hash, category, city,
+             pix_chave, pix_nome, plan, mode, aberto, plan_active, created_at, trial_ends)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,'jr','jr',1,0,?,?)
+        ''', (name, slug, name, phone, phone, '', generate_password_hash(senha),
+              'lanchonete', '', pix_chave, name, datetime.now().isoformat(), trial_ends))
+        conn.commit()
+        store = conn.execute('SELECT * FROM mandaja_stores WHERE slug=?', (slug,)).fetchone()
+        # Horários permissivos por padrão (o controle real é o botão Aberto/Fechado)
+        for wd in range(7):
+            conn.execute('''INSERT INTO mandaja_hours (store_id, weekday, open_time, close_time, active)
+                            VALUES (?,?,?,?,?)''', (store['id'], wd, '08:00', '23:59', 1))
+        conn.commit()
+        conn.close()
+        session['mja_store_id']   = store['id']
+        session['mja_store_name'] = store['name']
+        session['mja_store_slug'] = store['slug']
+        session['mja_plan']       = 'micro'
+        return redirect('/mandaja/painel?novo=1')
+    return render_template('mandaja/jr_comecar.html')
+
+
+@app.route('/mandajr/aberto', methods=['POST'])
+@_mandaja_login_required
+def mandajr_toggle_aberto():
+    """Interruptor Aberto/Fechado da loja Jr."""
+    aberto = 1 if (request.json or {}).get('aberto') else 0
+    conn = get_saas_db()
+    conn.execute('UPDATE mandaja_stores SET aberto=? WHERE id=?',
+                 (aberto, session['mja_store_id']))
+    conn.commit()
+    conn.close()
+    return jsonify({'ok': True, 'aberto': aberto})
+
+
+@app.route('/mandajr/compartilhar')
+@_mandaja_login_required
+def mandajr_compartilhar():
+    """Link limpo + QR Code da loja pra divulgar."""
+    store = _mandaja_get_store()
+    if not store:
+        return redirect('/mandaja/logout')
+    loja_url = f"{request.host_url}loja/{store['slug']}"
+    qr_b64 = ''
+    try:
+        import qrcode as _qr, io as _io, base64 as _b64
+        q = _qr.QRCode(error_correction=_qr.constants.ERROR_CORRECT_M, box_size=8, border=2)
+        q.add_data(loja_url); q.make(fit=True)
+        _buf = _io.BytesIO()
+        q.make_image(fill_color='#0B0B12', back_color='white').save(_buf, format='PNG')
+        qr_b64 = _b64.b64encode(_buf.getvalue()).decode()
+    except Exception as _qe:
+        log.warning(f'[MandaJr] QR error: {_qe}')
+    return render_template('mandaja/jr_compartilhar.html',
+                           store=store, loja_url=loja_url, qr_b64=qr_b64)
+
+
+@app.route('/mandajr/assinar', methods=['GET', 'POST'])
+@_mandaja_login_required
+def mandajr_assinar():
+    """Assinatura MandaJr R$29/mês via Asaas (PIX). Coleta CPF na hora."""
+    store = _mandaja_get_store()
+    if not store:
+        return redirect('/mandaja/logout')
+    p    = MANDAJA_PLANS['jr']
+    erro = None
+    pix  = None
+    if request.method == 'POST':
+        cpf   = ''.join(c for c in request.form.get('cpf_cnpj', '') if c.isdigit())
+        email = request.form.get('email', '').strip().lower()
+        if len(cpf) not in (11, 14):
+            erro = 'Digite um CPF (11 dígitos) ou CNPJ (14 dígitos).'
+        elif len(cpf) == 11 and not _cpf_valido(cpf):
+            erro = 'CPF inválido. Confira os números.'
+        else:
+            conn = get_saas_db()
+            conn.execute("UPDATE mandaja_stores SET cpf_cnpj=?, email=COALESCE(NULLIF(?,''), email) WHERE id=?",
+                         (cpf, email, store['id']))
+            conn.commit(); conn.close()
+            customer_id = _asaas_criar_ou_buscar_cliente_saas(
+                store.get('owner_name') or store['name'],
+                email or store.get('email', ''), store.get('phone', ''),
+                cpf, store['id'], 'mandaja_stores')
+            if not customer_id:
+                erro = 'Não foi possível iniciar o pagamento. Confira seu CPF e tente de novo.'
+            else:
+                conn = get_saas_db()
+                conn.execute('UPDATE mandaja_stores SET asaas_customer_id=? WHERE id=?',
+                             (customer_id, store['id']))
+                conn.commit(); conn.close()
+                sub = _asaas_criar_assinatura_saas(
+                    customer_id, 'mandaja', 'jr', float(p['price']),
+                    f"MandaJr — {store['name']}", 'PIX')
+                if sub.get('id'):
+                    pix = _asaas_get_pix_qr(sub['id'])
+                    if not pix:
+                        return redirect('/mandaja/painel?assinatura=processando')
+                else:
+                    erro = (sub.get('errors') or [{}])[0].get('description', 'Erro ao gerar a cobrança.')
+    return render_template('mandaja/jr_assinar.html', store=store, p=p, erro=erro, pix=pix)
+
+
 @app.route('/mandaja/entrar', methods=['GET', 'POST'])
 def mandaja_entrar():
     msg = request.args.get('msg', '')
@@ -12640,6 +12842,13 @@ def mandaja_entrar():
         store = conn.execute(
             'SELECT * FROM mandaja_stores WHERE LOWER(email)=? AND active=1', (email,)
         ).fetchone()
+        # MandaJr cadastra sem e-mail: deixa entrar pelo WhatsApp também
+        if not store:
+            login_digits = ''.join(c for c in email if c.isdigit())
+            if len(login_digits) >= 10:
+                store = conn.execute(
+                    "SELECT * FROM mandaja_stores WHERE replace(replace(replace(replace(replace(phone,'(',''),')',''),'-',''),' ',''),'+','') = ? AND active=1",
+                    (login_digits,)).fetchone()
         conn.close()
         if store and check_password_hash(store['password_hash'], senha):
             session['mja_store_id']   = store['id']
@@ -12647,7 +12856,7 @@ def mandaja_entrar():
             session['mja_store_slug'] = store['slug']
             session['mja_plan']       = store['plan']
             return redirect('/mandaja/painel')
-        return render_template('mandaja/entrar.html', error='E-mail ou senha incorretos.')
+        return render_template('mandaja/entrar.html', error='E-mail/WhatsApp ou senha incorretos.')
     return render_template('mandaja/entrar.html', msg=msg)
 
 
@@ -12867,7 +13076,9 @@ def mandaja_painel():
     trial_ends    = store.get('trial_ends') or ''
     plan_active   = store.get('plan_active', 1)
     trial_expired = bool(trial_ends and trial_ends < datetime.now().isoformat())
-    return render_template('mandaja/painel.html',
+    # MandaJr usa a casca simples (3 botões + Aberto/Fechado); Pro usa o painel completo
+    template = 'mandaja/jr_painel.html' if store.get('mode') == 'jr' else 'mandaja/painel.html'
+    return render_template(template,
                            store=store, stats=stats,
                            pedidos_recentes=pedidos_recentes,
                            plan=plan_info, plans=MANDAJA_PLANS,
@@ -12905,6 +13116,9 @@ def mandaja_produto_novo():
     store    = _mandaja_get_store()
     if not store:
         return redirect('/mandaja/logout')
+    # Paywall: trial vencido e não pagou → manda assinar
+    if _mandaja_bloqueado(store):
+        return redirect('/mandajr/assinar' if store.get('mode') == 'jr' else '/mandaja/painel')
     store_id = store['id']
     conn     = get_saas_db()
     plan_info = MANDAJA_PLANS.get(store['plan'], MANDAJA_PLANS['micro'])
@@ -13370,20 +13584,28 @@ def mandaja_loja(slug):
         conn.close()
         return render_template('mandaja/loja_404.html'), 404
     store = dict(store)
+    # Paywall: trial vencido e não pagou → loja indisponível
+    if _mandaja_bloqueado(store):
+        conn.close()
+        return render_template('mandaja/jr_indisponivel.html', store=store), 503
     # Verifica se está aberto agora
     now = datetime.now()
     wd  = now.weekday()
-    hour_row = conn.execute(
-        'SELECT * FROM mandaja_hours WHERE store_id=? AND weekday=? AND active=1', (store['id'], wd)
-    ).fetchone()
-    is_open = False
-    if hour_row:
-        try:
-            open_dt  = datetime.strptime(hour_row['open_time'],  '%H:%M').replace(year=now.year, month=now.month, day=now.day)
-            close_dt = datetime.strptime(hour_row['close_time'], '%H:%M').replace(year=now.year, month=now.month, day=now.day)
-            is_open  = open_dt <= now <= close_dt
-        except Exception:
-            pass
+    if store.get('mode') == 'jr':
+        # MandaJr: o controle é o interruptor manual Aberto/Fechado
+        is_open = bool(store.get('aberto', 1))
+    else:
+        hour_row = conn.execute(
+            'SELECT * FROM mandaja_hours WHERE store_id=? AND weekday=? AND active=1', (store['id'], wd)
+        ).fetchone()
+        is_open = False
+        if hour_row:
+            try:
+                open_dt  = datetime.strptime(hour_row['open_time'],  '%H:%M').replace(year=now.year, month=now.month, day=now.day)
+                close_dt = datetime.strptime(hour_row['close_time'], '%H:%M').replace(year=now.year, month=now.month, day=now.day)
+                is_open  = open_dt <= now <= close_dt
+            except Exception:
+                pass
     cats  = conn.execute(
         'SELECT * FROM mandaja_categories WHERE store_id=? AND active=1 ORDER BY sort_order, name', (store['id'],)
     ).fetchall()
@@ -13412,6 +13634,10 @@ def mandaja_fazer_pedido(slug):
         conn.close()
         return jsonify({'error': 'Loja não encontrada'}), 404
     store = dict(store)
+    # Paywall: loja com trial vencido e não paga não aceita pedido
+    if _mandaja_bloqueado(store):
+        conn.close()
+        return jsonify({'error': 'Esta loja está temporariamente indisponível.'}), 503
     data  = request.json or {}
     customer_name   = data.get('customer_name', '').strip()
     customer_phone  = data.get('customer_phone', '').strip()
@@ -13455,9 +13681,27 @@ def mandaja_fazer_pedido(slug):
         _notify_new_order_whatsapp(store, order_id, order_number, customer_name,
                                    customer_phone, items, total, delivery_type,
                                    address, neighborhood, payment_method)
+    # PIX direto: gera o copia-e-cola com o valor já preenchido + QR
+    pix_payload, pix_qr_b64 = '', ''
+    if store.get('pix_chave') and payment_method == 'pix':
+        pix_nome = store.get('pix_nome') or store.get('name', '')
+        txid     = ''.join(c for c in order_number if c.isalnum()) or 'PED'
+        pix_payload = _pix_brcode(store['pix_chave'], pix_nome,
+                                  store.get('city', ''), total, txid)
+        if pix_payload:
+            try:
+                import qrcode as _qr, io as _io, base64 as _b64
+                q = _qr.QRCode(error_correction=_qr.constants.ERROR_CORRECT_M, box_size=7, border=2)
+                q.add_data(pix_payload); q.make(fit=True)
+                _buf = _io.BytesIO()
+                q.make_image(fill_color='black', back_color='white').save(_buf, format='PNG')
+                pix_qr_b64 = _b64.b64encode(_buf.getvalue()).decode()
+            except Exception as _qe:
+                log.warning(f'[MandaJá] PIX QR error: {_qe}')
     return jsonify({'ok': True, 'order_id': order_id, 'order_number': order_number,
                     'total': total, 'pix_chave': store.get('pix_chave', ''),
-                    'pix_nome': store.get('pix_nome', '')})
+                    'pix_nome': store.get('pix_nome', ''),
+                    'pix_payload': pix_payload, 'pix_qr': pix_qr_b64})
 
 
 def _notify_new_order_whatsapp(store, order_id, order_number, customer_name,
@@ -13595,6 +13839,19 @@ try:
     log.info('[DRZAP] Blueprint registrado em /drzap')
 except Exception as _drz_err:
     log.warning(f'[DRZAP] Erro ao carregar blueprint: {_drz_err}')
+
+# ══════════════════════════════════════════════════════════════════════════════
+# RADAR — Monitor de Licitações de TI (PNCP) — Lote 0+1
+# ══════════════════════════════════════════════════════════════════════════════
+try:
+    from radar import radar_bp, iniciar_coletor_automatico
+    from radar_db import init_radar_db
+    init_radar_db()
+    app.register_blueprint(radar_bp)
+    iniciar_coletor_automatico()   # Lote 2: o Radar coleta sozinho (RADAR_AUTO_COLETA=0 desliga)
+    log.info('[RADAR] Blueprint registrado em /radar')
+except Exception as _radar_err:
+    log.warning(f'[RADAR] Erro ao carregar blueprint: {_radar_err}')
 
 # Rebrand: redireciona URLs antigas /petmed/* -> /vetzap/* (links/e-mails/webhooks antigos)
 @app.route('/petmed', methods=['GET', 'POST'])

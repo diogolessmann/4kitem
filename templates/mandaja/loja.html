@@ -398,12 +398,28 @@
       <h2>Pedido feito!</h2>
       <p>Seu pedido foi recebido com sucesso.<br>O estabelecimento vai preparar assim que confirmar.</p>
       <div id="pixInfo" style="display:none">
-        <div class="pix-box">
+        <!-- PIX copia-e-cola com valor já preenchido -->
+        <div id="pixCopiaBox" class="pix-box" style="display:none">
+          <div style="font-size:14px;font-weight:700;color:#16a34a;margin-bottom:4px">💳 Pague com PIX</div>
+          <div style="font-size:13px;color:#555;margin-bottom:12px">Valor: <strong id="pixValor" style="color:#16a34a"></strong> · Favorecido: <strong id="pixName"></strong></div>
+          <img id="pixQrImg" alt="QR Code PIX" style="display:none;width:190px;height:190px;margin:0 auto 12px;border-radius:10px">
+          <button id="pixCopyBtn" onclick="copiarPix()"
+                  style="width:100%;background:#16a34a;color:#fff;border:none;border-radius:10px;padding:13px;font-size:15px;font-weight:800;cursor:pointer">
+            📋 Copiar código PIX
+          </button>
+          <div style="font-size:12px;color:#777;margin-top:10px;line-height:1.5">
+            Copie o código, abra o app do seu banco em <strong>PIX › Copia e cola</strong>,
+            cole e confirme. O valor já vai estar certinho. ✅
+          </div>
+          <textarea id="pixPayload" readonly style="position:absolute;left:-9999px;opacity:0"></textarea>
+        </div>
+        <!-- Fallback: chave avulsa (loja sem PIX configurado direito) -->
+        <div id="pixKeyBox" class="pix-box" style="display:none">
           <div style="font-size:13px;color:#555;margin-bottom:8px">💳 Chave PIX para pagamento:</div>
           <div class="pix-key" id="pixKey"></div>
-          <div style="font-size:12px;color:#777;margin-top:6px">Favorecido: <strong id="pixName"></strong></div>
+          <div style="font-size:12px;color:#777;margin-top:6px">Favorecido: <strong id="pixNameFb"></strong></div>
+          <p style="font-size:13px;color:#777;margin-top:8px">Após o pagamento, guarde o comprovante.</p>
         </div>
-        <p style="font-size:13px;color:#777">Após o pagamento, guarde o comprovante.</p>
       </div>
       <button class="submit-btn" onclick="closeSuccess()" style="margin-top:16px">Fechar</button>
     </div>
@@ -690,10 +706,38 @@ async function submitOrder() {
 function showSuccess(data) {
   if (paymentMethod === 'pix' && data.pix_chave) {
     document.getElementById('pixInfo').style.display = '';
-    document.getElementById('pixKey').textContent = data.pix_chave;
-    document.getElementById('pixName').textContent = data.pix_nome || '';
+    if (data.pix_payload) {
+      // PIX copia-e-cola com valor já preenchido (o UP)
+      document.getElementById('pixCopiaBox').style.display = '';
+      document.getElementById('pixKeyBox').style.display = 'none';
+      document.getElementById('pixPayload').value = data.pix_payload;
+      document.getElementById('pixValor').textContent =
+        'R$ ' + Number(data.total || 0).toFixed(2).replace('.', ',');
+      document.getElementById('pixName').textContent = data.pix_nome || '';
+      if (data.pix_qr) {
+        const img = document.getElementById('pixQrImg');
+        img.src = 'data:image/png;base64,' + data.pix_qr;
+        img.style.display = 'block';
+      }
+    } else {
+      // Fallback: só a chave avulsa
+      document.getElementById('pixKeyBox').style.display = '';
+      document.getElementById('pixCopiaBox').style.display = 'none';
+      document.getElementById('pixKey').textContent = data.pix_chave;
+      document.getElementById('pixNameFb').textContent = data.pix_nome || '';
+    }
   }
   document.getElementById('successModal').classList.add('show');
+}
+
+function copiarPix() {
+  const ta = document.getElementById('pixPayload');
+  const btn = document.getElementById('pixCopyBtn');
+  ta.select(); ta.setSelectionRange(0, 99999);
+  const done = () => { btn.textContent = '✅ Código copiado!';
+    setTimeout(() => btn.textContent = '📋 Copiar código PIX', 1800); };
+  if (navigator.clipboard) navigator.clipboard.writeText(ta.value).then(done).catch(() => { document.execCommand('copy'); done(); });
+  else { document.execCommand('copy'); done(); }
 }
 
 function closeSuccess() {

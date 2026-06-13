@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{ store.name }}</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#0B0B12;color:#F4F4F8;font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;text-align:center}
+  .card{max-width:380px}
+  .em{font-size:56px;margin-bottom:16px}
+  h1{font-size:22px;font-weight:900;margin-bottom:10px}
+  p{font-size:15px;color:#a0a0b2;line-height:1.6}
+  .name{color:#F97316;font-weight:800}
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="em">🛵💤</div>
+    <h1>Loja temporariamente indisponível</h1>
+    <p>A <span class="name">{{ store.name }}</span> não está recebendo pedidos no momento.<br><br>Tente novamente mais tarde. 😊</p>
+  </div>
+</body>
+</html>

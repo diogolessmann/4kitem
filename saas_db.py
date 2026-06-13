@@ -523,6 +523,9 @@ def init_saas_db():
         "ALTER TABLE mandaja_stores ADD COLUMN tiktok TEXT DEFAULT ''",
         "ALTER TABLE mandaja_stores ADD COLUMN whatsapp_publico TEXT DEFAULT ''",
         "ALTER TABLE mandaja_stores ADD COLUMN msg_boas_vindas TEXT DEFAULT ''",
+        # MandaJr — fachada "basicão": mode separa Jr/Pro, aberto = interruptor manual
+        "ALTER TABLE mandaja_stores ADD COLUMN mode TEXT DEFAULT 'pro'",
+        "ALTER TABLE mandaja_stores ADD COLUMN aberto INTEGER DEFAULT 1",
     ]
     # ── DefesaPro / apps gerais — reset de senha e Asaas ────────────────────────
     _auth_migrations = [
