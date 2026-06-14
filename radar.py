@@ -62,7 +62,7 @@ KW_TIER1 = [
     'diario oficial eletronico', 'diário oficial eletrônico', 'nota fiscal eletronica',
     'nfs-e', 'nfse', 'nota fiscal de servico', 'pesquisa de satisfacao',
 ]
-# Tier 2 = software/dev sob encomenda (dá, mas é projeto a projeto)
+# Tier 2 = software/dev inequívoco (a palavra já indica que é software)
 KW_TIER2 = [
     'desenvolvimento de sistema', 'desenvolvimento de software', 'fabrica de software',
     'sistema de informacao', 'sistema de informação', 'sistema de gestao', 'sistema de gestão',
@@ -70,14 +70,24 @@ KW_TIER2 = [
     'aplicativo', 'aplicativo movel', 'aplicativo móvel', ' app ', 'plataforma digital',
     'plataforma web', 'solucao web', 'solução web', 'solucao tecnologica', 'solução tecnológica',
     'licenciamento de sistema', 'licenciamento de software', 'licenca de software de gestao',
-    'hospedagem', 'cloud', 'nuvem', 'sustentacao de sistema', 'sustentação de sistema',
+    'hospedagem de site', 'hospedagem de sistema', 'cloud', 'computacao em nuvem',
+    'sustentacao de sistema', 'sustentação de sistema',
     'manutencao de sistema', 'manutenção de sistema', 'manutencao de software',
     'dashboard', 'painel de indicadores', 'business intelligence', 'lgpd',
-    'sistema tributario', 'sistema tributário', 'gestao tributaria', 'arrecadacao',
-    'sistema de saude', 'sistema de educacao', 'gestao escolar', 'sistema escolar',
+    'sistema tributario', 'sistema tributário', 'sistema de saude', 'sistema de educacao',
+    'gestao escolar', 'sistema escolar', 'portal web', 'sitio eletronico',
+    'transformacao digital', 'modernizacao tecnologica', 'integracao de sistemas',
+]
+# DOMÍNIO ambíguo: só vira TI se houver INDÍCIO de software junto (senão pega
+# "prêmio do IPTU", "pallets do almoxarifado", "banco p/ folha de pagamento"...)
+KW_CONTEXTO = [
     'folha de pagamento', 'recursos humanos', 'ponto eletronico', 'almoxarifado',
-    'patrimonio', 'geoprocessamento', 'georreferenciamento', 'iptu', 'portal web',
-    'transformacao digital', 'modernizacao tecnologica', 'interoperabilidade', 'integracao de sistemas',
+    'patrimonio', 'geoprocessamento', 'georreferenciamento', 'iptu', 'arrecadacao',
+    'tributos', 'gestao tributaria', 'frota', 'contabilidade publica', 'nota fiscal',
+]
+KW_INDICIO = [
+    'sistema', 'software', 'plataforma', 'aplicativo', ' app ', 'digital', 'informatizad',
+    'modulo', 'módulo', 'licenciamento', ' web', 'online', 'tecnologia da informacao',
 ]
 # Armadilhas (Tier 3) — "parece TI" mas NÃO é nosso. Se dominar, descarta.
 KW_TRAP = [
@@ -94,6 +104,13 @@ KW_TRAP = [
     'aquisicao de equipamento', 'aquisição de equipamento', 'manutencao predial', 'reforma',
     'combustivel', 'pneu', 'veiculo',  # frota física
     'audesp',  # ERP contábil integrado ao TCE — monstro travado pelo incumbente
+    # ── armadilhas vistas no dado real (jun/2026) ──
+    'kaspersky', 'endpoint security', 'endpoint detection', 'fortinet',  # antivírus/segurança de marca = revenda
+    'premio', 'premios', 'prêmio', 'prêmios',  # "aquisição de prêmios p/ programa IPTU premiado"
+    'pallet', 'madeira',                         # almoxarifado físico
+    'instituicao financeira', 'instituição financeira',
+    'servicos bancarios', 'serviços bancários', 'banco central',  # contrato bancário ≠ sistema
+    'equipamentos de informatica', 'equipamentos de informática',  # manutenção de hardware
 ]
 
 # ── Eixo 2 (porte) — faixas de valor, AFINÁVEIS por env ──────────────────────
@@ -116,6 +133,10 @@ def classificar(objeto, valor, modalidade_id=None):
     trap = any(k in o for k in KW_TRAP)
     t1 = [k for k in KW_TIER1 if k in o]
     t2 = [k for k in KW_TIER2 if k in o]
+    # domínio ambíguo (folha, iptu, almoxarifado...) só vira TI com indício de software
+    ctx = [k for k in KW_CONTEXTO if k in o]
+    if ctx and any(ind in o for ind in KW_INDICIO):
+        t2 = t2 + ctx
     matched = (t1 + t2)[:6]
 
     if t1:
@@ -683,6 +704,29 @@ def rota_coletar_status():
     return jsonify(_bg)
 
 
+@radar_bp.route('/reclassificar', methods=['GET', 'POST'])
+@radar_admin_required
+def rota_reclassificar():
+    """Reprocessa a classificação do que JÁ está no banco com as regras atuais
+    (sem re-baixar do PNCP). Útil depois de afinar o dicionário de triagem."""
+    from radar_db import get_radar_db
+    conn = get_radar_db()
+    nl = nc = 0
+    for r in conn.execute('SELECT id, objeto, valor, modalidade_id FROM radar_licitacoes').fetchall():
+        c = classificar(r['objeto'], r['valor'], r['modalidade_id'])
+        conn.execute('UPDATE radar_licitacoes SET is_ti=?, tier=?, zona_valor=?, score=?, '
+                     'keywords_match=? WHERE id=?',
+                     (c['is_ti'], c['tier'], c['zona_valor'], c['score'], c['keywords_match'], r['id']))
+        nl += 1
+    for r in conn.execute('SELECT id, objeto, valor FROM radar_contratos').fetchall():
+        c = classificar(r['objeto'], r['valor'])
+        conn.execute('UPDATE radar_contratos SET is_ti=?, keywords_match=? WHERE id=?',
+                     (c['is_ti'], c['keywords_match'], r['id']))
+        nc += 1
+    conn.commit(); conn.close()
+    return jsonify({'ok': True, 'licitacoes_reclassificadas': nl, 'contratos_reclassificados': nc})
+
+
 @radar_bp.route('/precos')
 @radar_login_required
 def rota_precos():
@@ -1024,6 +1068,7 @@ _ADMIN = '''<!doctype html><html lang="pt-br"><head><meta charset="utf-8">
 <div class="btns">
  <a class="btn" href="/radar/coletar">▶ Coletar licitações</a>
  <a class="btn" href="/radar/coletar-precos">▶ Coletar preços</a>
+ <a class="btn b2" href="/radar/reclassificar">♻️ Reclassificar (regras novas)</a>
  <a class="btn b2" href="/radar/stats">ver stats (JSON)</a>
 </div>
 {% if st.ultima_coleta %}<p style="color:#8aa0c6;font-size:13px">Última coleta: +{{ st.ultima_coleta.novos }} novos / {{ st.ultima_coleta.atualizados }} atualizados</p>{% endif %}
