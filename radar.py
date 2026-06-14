@@ -536,6 +536,9 @@ def rota_cadastrar():
 def rota_entrar():
     if session.get('radar_user_id'):
         return redirect('/radar/')
+    # 1ª vez (nenhum usuário ainda): manda direto pro cadastro (vira admin)
+    if request.method == 'GET' and contar_radar_users() == 0:
+        return redirect('/radar/cadastrar')
     erro = None
     if request.method == 'POST':
         email = (request.form.get('email') or '').strip().lower()

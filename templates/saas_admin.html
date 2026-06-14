@@ -84,6 +84,7 @@
     <button class="tab-btn" onclick="showTab('slotzap',this)">🎯 SlotZap ({{ sz_users|length }})</button>
     <button class="tab-btn" onclick="showTab('drzap',this)">⚖️ DRZAP ({{ drz_users|length }})</button>
     <button class="tab-btn" onclick="showTab('pcd',this)">🧭 PCD Fácil ({{ pcd_users|length }})</button>
+    <button class="tab-btn" onclick="showTab('radar',this)">📡 Radar TI ({{ radar_users|length }})</button>
   </div>
 
   <!-- ═══════════════ ALERTA SC ═══════════════ -->
@@ -461,6 +462,8 @@
                     onclick="toggleMandajaStore({{ s.id }}, {{ s.active }})">
               {% if s.active %}🔴 Desativar{% else %}🟢 Ativar{% endif %}
             </button>
+            <button class="btn-sm" style="background:#dc2626;color:#fff"
+                    onclick="deleteMandajaStore({{ s.id }}, '{{ s.name|replace("'","") }}')">🗑️ Excluir</button>
             <div style="border-top:1px solid var(--border);margin:2px 0;font-size:10px;color:var(--text2);padding-top:2px">Plano:</div>
             {% for pk, pv in mandaja_plans.items() %}
             {% if pk != s.plan %}
@@ -789,6 +792,45 @@
     </table>
     {% else %}
     <div class="empty">Nenhum usuário PCD Fácil ainda.</div>
+    {% endif %}
+  </div>
+
+  <div class="tab-content" id="tab-radar">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+      <h2 style="margin:0">📡 Radar de Licitações de TI</h2>
+      <div style="display:flex;gap:16px;font-size:13px;color:var(--text2);align-items:center;flex-wrap:wrap">
+        <span>👤 {{ radar_users|length }} usuários</span>
+        <span>📋 {{ radar_total_lic }} licitações</span>
+        <span>💻 {{ radar_ti }} de TI</span>
+        <span>⭐ {{ radar_ouro }} zona ouro</span>
+        <span>💰 {{ radar_contratos }} contratos</span>
+        <span style="color:#f59e0b">⏰ {{ radar_vencendo }} vencendo 90d</span>
+        <a href="/radar/admin" target="_blank" style="color:var(--accent);font-weight:700">Abrir admin →</a>
+      </div>
+    </div>
+    {% if radar_users %}
+    <table>
+      <thead><tr>
+        <th>#</th><th>Nome</th><th>Email</th><th>Telefone</th><th>Tipo</th><th>Criado em</th><th>Último acesso</th>
+      </tr></thead>
+      <tbody>
+      {% for u in radar_users %}
+      <tr>
+        <td>{{ u.id }}</td>
+        <td><strong>{{ u.nome }}</strong>{% if u.is_admin %} <span class="badge badge-active">★ admin</span>{% endif %}</td>
+        <td>{{ u.email }}</td>
+        <td>{{ u.telefone or '—' }}</td>
+        <td>{{ 'ativo' if u.plan_active else (u.plano or 'free') }}</td>
+        <td style="font-size:12px">{{ (u.created_at or '')[:10] }}</td>
+        <td style="font-size:12px">{{ (u.ultimo_acesso or '—')[:16] }}</td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty">Nenhum usuário do Radar ainda.
+      <a href="/radar/cadastrar" target="_blank" style="color:var(--accent)">Criar a 1ª conta (vira admin) →</a>
+    </div>
     {% endif %}
   </div>
 

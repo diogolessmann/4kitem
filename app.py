@@ -5871,6 +5871,18 @@ def saas_admin():
         pcdconn.close()
     except Exception:
         pcd_users = []; pcd_casos_total = 0; pcd_montados = 0; pcd_compras_total = 0; pcd_receita = 0
+    # Radar de Licitações de TI (banco próprio)
+    try:
+        from radar_db import (listar_radar_users as _r_users, estatisticas as _r_st,
+                              stats_contratos as _r_stc)
+        radar_users = _r_users()
+        _rs = _r_st(); _rc = _r_stc()
+        radar_total_lic = _rs.get('total', 0); radar_ti = _rs.get('ti', 0)
+        radar_ouro = _rs.get('ouro', 0)
+        radar_contratos = _rc.get('total', 0); radar_vencendo = _rc.get('vencendo90', 0)
+    except Exception:
+        radar_users = []; radar_total_lic = 0; radar_ti = 0; radar_ouro = 0
+        radar_contratos = 0; radar_vencendo = 0
     return render_template('saas_admin.html',
                            subscribers=subscribers, businesses=businesses,
                            mz_users=mz_users, mz_plans=MANDAZAP_PLANS,
@@ -5893,7 +5905,10 @@ def saas_admin():
                            drz_receita=drz_receita, drz_consultas=drz_consultas,
                            pcd_users=pcd_users, pcd_casos_total=pcd_casos_total,
                            pcd_montados=pcd_montados, pcd_compras_total=pcd_compras_total,
-                           pcd_receita=pcd_receita)
+                           pcd_receita=pcd_receita,
+                           radar_users=radar_users, radar_total_lic=radar_total_lic,
+                           radar_ti=radar_ti, radar_ouro=radar_ouro,
+                           radar_contratos=radar_contratos, radar_vencendo=radar_vencendo)
 
 
 @app.route('/saas-admin/slotzap/reset-senha', methods=['POST'])
@@ -6495,6 +6510,22 @@ def saas_mandaja_toggle(store_id):
     conn.execute('UPDATE mandaja_stores SET active=? WHERE id=?', (new_active, store_id))
     conn.commit(); conn.close()
     return jsonify({'success': True, 'active': new_active})
+
+
+@app.route('/admin/mandaja/store/<int:store_id>/delete', methods=['POST'])
+@_saas_admin_required
+def saas_mandaja_delete(store_id):
+    """Exclui a loja e todos os dados ligados a ela (Jr ou Pro)."""
+    conn = get_saas_db()
+    row = conn.execute('SELECT id FROM mandaja_stores WHERE id=?', (store_id,)).fetchone()
+    if not row:
+        conn.close()
+        return jsonify({'success': False, 'error': 'Loja não encontrada'}), 404
+    for t in ('mandaja_hours', 'mandaja_products', 'mandaja_categories', 'mandaja_orders'):
+        conn.execute(f'DELETE FROM {t} WHERE store_id=?', (store_id,))
+    conn.execute('DELETE FROM mandaja_stores WHERE id=?', (store_id,))
+    conn.commit(); conn.close()
+    return jsonify({'success': True})
 
 
 # ── Admin AgendaJá ───────────────────────────────────────────────────────────
