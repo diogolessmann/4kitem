@@ -707,12 +707,12 @@ def _combo_desconto_ativo(email, produto_atual) -> bool:
 # ── MandaJá — Planos ─────────────────────────────────────────────────────────
 MANDAJA_PLANS = {
     'jr':       {'label': 'MandaJr',  'products': 25,  'price': 29,  'emoji': '🍔'},
-    'micro':    {'label': 'Micro',    'products': 5,   'price': 59,  'emoji': '🌱'},
-    'light':    {'label': 'Light',    'products': 10,  'price': 99,  'emoji': '⚡'},
-    'plus':     {'label': 'Plus',     'products': 20,  'price': 159, 'emoji': '🚀'},
-    'pro':      {'label': 'Pro',      'products': 40,  'price': 249, 'emoji': '💎'},
-    'king':     {'label': 'King',     'products': 100, 'price': 349, 'emoji': '👑'},
-    'ultra':    {'label': 'Ultra',    'products': 200, 'price': 499, 'emoji': '🔥'},
+    'micro':    {'label': 'Micro',    'products': 15,  'price': 59,  'emoji': '🌱'},
+    'light':    {'label': 'Light',    'products': 20,  'price': 99,  'emoji': '⚡'},
+    'plus':     {'label': 'Plus',     'products': 25,  'price': 159, 'emoji': '🚀'},
+    'pro':      {'label': 'Pro',      'products': 30,  'price': 249, 'emoji': '💎'},
+    'king':     {'label': 'King',     'products': 40,  'price': 349, 'emoji': '👑'},
+    'ultra':    {'label': 'Ultra',    'products': 100, 'price': 499, 'emoji': '🔥'},
 }
 
 MANDAJA_STORE_CATEGORIES = {
@@ -13049,8 +13049,8 @@ def mandaja_cadastro():
         try:
             conn.execute('''
                 INSERT INTO mandaja_stores
-                (name, slug, owner_name, phone, email, password_hash, category, city, plan, created_at, trial_ends, cpf_cnpj)
-                VALUES (?,?,?,?,?,?,?,?,'micro',?,?,?)
+                (name, slug, owner_name, phone, email, password_hash, category, city, plan, plan_active, created_at, trial_ends, cpf_cnpj)
+                VALUES (?,?,?,?,?,?,?,?,'micro',0,?,?,?)
             ''', (name, slug, owner_name, phone, email,
                   generate_password_hash(senha), category, city,
                   datetime.now().isoformat(), trial_ends, cpf_cnpj_digits))
@@ -13059,8 +13059,8 @@ def mandaja_cadastro():
             # Tenta sem cpf_cnpj — coluna pode ainda não existir no DB de produção
             conn.execute('''
                 INSERT INTO mandaja_stores
-                (name, slug, owner_name, phone, email, password_hash, category, city, plan, created_at, trial_ends)
-                VALUES (?,?,?,?,?,?,?,?,'micro',?,?)
+                (name, slug, owner_name, phone, email, password_hash, category, city, plan, plan_active, created_at, trial_ends)
+                VALUES (?,?,?,?,?,?,?,?,'micro',0,?,?)
             ''', (name, slug, owner_name, phone, email,
                   generate_password_hash(senha), category, city,
                   datetime.now().isoformat(), trial_ends))
@@ -13810,6 +13810,11 @@ def mandaja_fazer_pedido(slug):
     except (ValueError, TypeError):
         conn.close()
         return jsonify({'error': 'Itens com valores inválidos'}), 400
+    # Pedido mínimo (só para entrega) — validado no servidor, não só no JS
+    min_order = float(store.get('min_order') or 0)
+    if delivery_type == 'delivery' and min_order > 0 and subtotal < min_order:
+        conn.close()
+        return jsonify({'error': f'Pedido mínimo para entrega é R$ {min_order:.2f}.'.replace('.', ',')}), 400
     delivery_fee = float(store['delivery_fee'] or 0) if delivery_type == 'delivery' else 0
     total        = subtotal + delivery_fee
     order_number = _mandaja_next_order_number(store['id'])
