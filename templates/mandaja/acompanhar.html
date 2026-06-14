@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Acompanhe seu pedido — {{ store.name }}</title>
+<style>
+  :root{--cor: {{ store.cor_primaria or '#EA580C' }};}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#f5f5f7;color:#1a1a2e;font-family:'Segoe UI',system-ui,sans-serif;line-height:1.5;min-height:100vh}
+  .wrap{max-width:440px;margin:0 auto;padding:0 18px 40px}
+  .top{text-align:center;padding:26px 0 18px}
+  .top .store{font-size:13px;color:#888;font-weight:600}
+  .top h1{font-size:22px;font-weight:900;margin-top:4px}
+  .top .num{display:inline-block;margin-top:8px;background:var(--cor);color:#fff;font-weight:800;font-size:14px;padding:5px 14px;border-radius:100px}
+  .card{background:#fff;border-radius:16px;padding:20px;margin-bottom:14px;box-shadow:0 2px 12px rgba(0,0,0,.05)}
+  /* timeline */
+  .step{display:flex;gap:14px;position:relative;padding-bottom:22px}
+  .step:last-child{padding-bottom:0}
+  .step::before{content:'';position:absolute;left:17px;top:36px;bottom:0;width:2px;background:#e5e5ea}
+  .step:last-child::before{display:none}
+  .step .dot{width:36px;height:36px;border-radius:50%;background:#e5e5ea;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;z-index:1;transition:.3s}
+  .step .tx{padding-top:6px}
+  .step .tx b{font-size:15px;font-weight:700;color:#aaa;transition:.3s}
+  .step .tx small{display:block;font-size:12px;color:#bbb}
+  .step.done .dot{background:#d1fae5}
+  .step.done .tx b{color:#555}
+  .step.current .dot{background:var(--cor);box-shadow:0 0 0 6px color-mix(in srgb, var(--cor) 20%, transparent);animation:pulse 1.6s infinite}
+  .step.current .tx b{color:var(--cor)}
+  @keyframes pulse{0%,100%{box-shadow:0 0 0 6px rgba(0,0,0,.08)}50%{box-shadow:0 0 0 12px rgba(0,0,0,.02)}}
+  .cancel{background:#fee2e2;color:#b91c1c;text-align:center;font-weight:800;padding:16px;border-radius:14px;margin-bottom:14px}
+  .item{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #f0f0f0;font-size:14px}
+  .item:last-child{border:0}
+  .item .q{color:var(--cor);font-weight:800;margin-right:6px}
+  .tot{display:flex;justify-content:space-between;border-top:2px solid #f0f0f0;margin-top:8px;padding-top:10px;font-weight:900;font-size:16px}
+  .tot .v{color:var(--cor)}
+  .ftr{text-align:center;font-size:12px;color:#999;margin-top:18px}
+  .ftr a{color:var(--cor);font-weight:700;text-decoration:none}
+  .wa{display:flex;align-items:center;justify-content:center;gap:8px;background:#25d366;color:#fff;font-weight:800;border-radius:12px;padding:13px;text-decoration:none;margin-top:6px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div class="store">🛵 {{ store.name }}</div>
+    <h1>Acompanhe seu pedido</h1>
+    <div class="num">{{ order.order_number }}</div>
+  </div>
+
+  <div id="cancelBox" class="cancel" style="display:none">❌ Esse pedido foi cancelado.</div>
+
+  <div class="card" id="timeline"></div>
+
+  <div class="card">
+    <div style="font-size:12px;font-weight:800;color:#888;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">🛒 Seu pedido</div>
+    {% for it in order['items'] %}
+    <div class="item"><span><span class="q">{{ it.qty }}x</span>{{ it.name }}</span><span>R$ {{ '%.2f'|format((it.price|float) * (it.qty|int))|replace('.',',') }}</span></div>
+    {% endfor %}
+    <div class="tot"><span>Total</span><span class="v">R$ {{ '%.2f'|format(order.total)|replace('.',',') }}</span></div>
+  </div>
+
+  {% if store.whatsapp %}
+  <a class="wa" href="https://wa.me/55{{ store.whatsapp|replace('(','')|replace(')','')|replace('-','')|replace(' ','') }}" target="_blank">💬 Falar com {{ store.name }}</a>
+  {% endif %}
+
+  <div class="ftr">Feito com 🧡 no <a href="/mandajr">MandaJr</a></div>
+</div>
+
+<script>
+const TOKEN = '{{ order.track_token }}';
+const IS_DELIVERY = {{ 'true' if order.delivery_type == 'delivery' else 'false' }};
+const STEPS = [
+  {k:'new',       ic:'🛎️', label:'Pedido recebido'},
+  {k:'confirmed', ic:'✅', label:'Confirmado pela loja'},
+  {k:'preparing', ic:'👨‍🍳', label:'Preparando seu pedido'},
+  {k:'ready',     ic: IS_DELIVERY ? '🛵' : '📦', label: IS_DELIVERY ? 'Saiu para entrega' : 'Pronto pra retirar'},
+  {k:'delivered', ic:'🎉', label: IS_DELIVERY ? 'Entregue!' : 'Pode retirar!'},
+];
+function render(status){
+  if (status === 'cancelled'){
+    document.getElementById('cancelBox').style.display = 'block';
+    document.getElementById('timeline').style.display = 'none';
+    return;
+  }
+  const idx = STEPS.findIndex(s => s.k === status);
+  document.getElementById('timeline').innerHTML = STEPS.map((s, i) => {
+    const cls = i < idx ? 'done' : (i === idx ? 'current' : '');
+    const dot = i < idx ? '✓' : s.ic;
+    return `<div class="step ${cls}"><div class="dot">${dot}</div><div class="tx"><b>${s.label}</b></div></div>`;
+  }).join('');
+}
+render('{{ order.status }}');
+// Atualiza sozinho a cada 12s
+setInterval(() => {
+  fetch('/acompanhar/' + TOKEN + '/status').then(r => r.json()).then(d => { if (d.status) render(d.status); }).catch(()=>{});
+}, 12000);
+</script>
+</body>
+</html>

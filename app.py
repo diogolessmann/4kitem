@@ -13867,6 +13867,11 @@ def mandaja_fazer_pedido(slug):
           datetime.now().isoformat(), datetime.now().isoformat()))
     conn.commit()
     order_id = cur.lastrowid
+    # Token público pra página de acompanhamento (cliente não adivinha pedido alheio)
+    import secrets as _sec
+    track_token = _sec.token_urlsafe(8)
+    conn.execute('UPDATE mandaja_orders SET track_token=? WHERE id=?', (track_token, order_id))
+    conn.commit()
     conn.close()
     # Notificação WhatsApp (se loja tiver número configurado)
     if store.get('whatsapp'):
@@ -13895,7 +13900,8 @@ def mandaja_fazer_pedido(slug):
     return jsonify({'ok': True, 'order_id': order_id, 'order_number': order_number,
                     'total': total, 'pix_chave': store.get('pix_chave', ''),
                     'pix_nome': store.get('pix_nome', ''),
-                    'pix_payload': pix_payload, 'pix_qr': pix_qr_b64})
+                    'pix_payload': pix_payload, 'pix_qr': pix_qr_b64,
+                    'track_url': f"{request.host_url}acompanhar/{track_token}"})
 
 
 def _mandaja_endereco(address, number, complement, neighborhood, city, reference):
@@ -13948,6 +13954,35 @@ def _notify_new_order_whatsapp(store, order_id, order_number, customer_name,
         )
     except Exception as e:
         log.warning(f"[MandaJá] WhatsApp notify error: {e}")
+
+
+# ── Acompanhar pedido (público, via token) ───────────────────────────────────
+@app.route('/acompanhar/<token>')
+def mandaja_acompanhar(token):
+    conn  = get_saas_db()
+    order = conn.execute('SELECT * FROM mandaja_orders WHERE track_token=?', (token,)).fetchone()
+    if not order:
+        conn.close()
+        return render_template('mandaja/loja_404.html'), 404
+    order = dict(order)
+    store = conn.execute(
+        'SELECT name, slug, cor_primaria, whatsapp, delivery_time FROM mandaja_stores WHERE id=?',
+        (order['store_id'],)).fetchone()
+    conn.close()
+    order['items'] = _json.loads(order.get('items_json') or '[]')
+    return render_template('mandaja/acompanhar.html',
+                           order=order, store=dict(store) if store else {})
+
+
+@app.route('/acompanhar/<token>/status')
+def mandaja_acompanhar_status(token):
+    """Polling do status pro cliente (página de acompanhamento)."""
+    conn = get_saas_db()
+    row  = conn.execute('SELECT status FROM mandaja_orders WHERE track_token=?', (token,)).fetchone()
+    conn.close()
+    if not row:
+        return jsonify({'error': 'not found'}), 404
+    return jsonify({'status': row['status']})
 
 
 # ── Checkout / Asaas ─────────────────────────────────────────────────────────

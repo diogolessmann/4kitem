@@ -277,6 +277,9 @@
 </div>
 {% endif %}
 
+<!-- Pedir de novo (recompra) -->
+<div id="repeatBar" onclick="repeatLastOrder()" style="display:none;position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:101;background:#fff;color:var(--cor);border:1.5px solid var(--cor);border-radius:100px;padding:10px 18px;font-size:13px;font-weight:800;box-shadow:0 6px 20px rgba(0,0,0,.18);cursor:pointer;white-space:nowrap">🔁 Pedir o mesmo de antes</div>
+
 <!-- Cart bar -->
 <div class="cart-bar" id="cartBar" onclick="openCart()">
   <div style="display:flex;align-items:center;gap:10px">
@@ -443,7 +446,8 @@
           <p style="font-size:13px;color:#777;margin-top:8px">Após o pagamento, guarde o comprovante.</p>
         </div>
       </div>
-      <button class="submit-btn" onclick="closeSuccess()" style="margin-top:16px">Fechar</button>
+      <a id="trackBtn" href="#" target="_blank" style="display:none;align-items:center;justify-content:center;gap:8px;width:100%;background:var(--cor);color:#fff;font-weight:800;font-size:15px;border-radius:12px;padding:14px;margin-top:16px;text-decoration:none">🛵 Acompanhar meu pedido</a>
+      <button class="submit-btn" onclick="closeSuccess()" style="margin-top:10px;background:#eee;color:#555">Fechar</button>
     </div>
   </div>
 </div>
@@ -467,7 +471,27 @@ function saveCustomer(){
     localStorage.setItem('mja_customer', JSON.stringify(d));
   } catch(e){}
 }
-document.addEventListener('DOMContentLoaded', loadCustomer);
+// Pedir de novo (recompra do último pedido desta loja)
+function saveLastOrder(){
+  try { if (cart.length) localStorage.setItem('mja_last_'+STORE_SLUG, JSON.stringify(cart)); } catch(e){}
+}
+function repeatLastOrder(){
+  try {
+    const last = JSON.parse(localStorage.getItem('mja_last_'+STORE_SLUG) || '[]');
+    if (!last.length) return;
+    cart = last.map(i => ({...i}));
+    updateCartBar();
+    document.getElementById('repeatBar').style.display = 'none';
+    openCart();
+  } catch(e){}
+}
+function showRepeatBar(){
+  try {
+    const last = JSON.parse(localStorage.getItem('mja_last_'+STORE_SLUG) || '[]');
+    if (last.length && cart.length === 0) document.getElementById('repeatBar').style.display = 'block';
+  } catch(e){}
+}
+document.addEventListener('DOMContentLoaded', () => { loadCustomer(); showRepeatBar(); });
 
 // Mapa de opções por produto (injetado pelo servidor)
 const PROD_OPCOES = {};
@@ -750,6 +774,7 @@ async function submitOrder() {
     const d = await r.json();
     if (d.ok) {
       saveCustomer();
+      saveLastOrder();
       closeCart();
       showSuccess(d);
       cart = [];
@@ -764,6 +789,10 @@ async function submitOrder() {
 }
 
 function showSuccess(data) {
+  if (data.track_url) {
+    const tb = document.getElementById('trackBtn');
+    tb.href = data.track_url; tb.style.display = 'flex';
+  }
   if (paymentMethod === 'pix' && data.pix_chave) {
     document.getElementById('pixInfo').style.display = '';
     if (data.pix_payload) {
