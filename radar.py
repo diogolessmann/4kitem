@@ -944,7 +944,9 @@ _AUTH = '''<!doctype html><html lang="pt-br"><head><meta charset="utf-8">
   <label>Senha</label><input type="password" name="senha" required>
   <button>Entrar</button>
  </form>
- <div class="links"><a href="/radar/cadastrar">Criar conta</a> · <a href="/radar/esqueci-senha">Esqueci a senha</a></div>
+ <div style="text-align:center;margin:18px 0 6px;color:#8aa0c6;font-size:13px">— ainda não tem conta? —</div>
+ <a href="/radar/cadastrar"><button type="button" style="background:#152042;border:1px solid #2a3c63;color:#7cc0ff;margin-top:0">✨ Criar conta grátis</button></a>
+ <div class="links"><a href="/radar/esqueci-senha">Esqueci a senha</a></div>
  {% endif %}
 </div>
 </body></html>'''
