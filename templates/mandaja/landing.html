@@ -542,7 +542,9 @@
   </div>
 </section>
 
-<!-- DEPOIMENTOS -->
+<!-- DEPOIMENTOS — OCULTOS ate termos depoimentos REAIS (os antigos eram ficticios = risco de propaganda enganosa).
+     Para reativar: troque os cards por clientes reais e mude o "false" da linha abaixo para "true". -->
+{% if false %}
 <section style="background:var(--bg2);border-top:1px solid var(--border);border-bottom:1px solid var(--border);">
   <div class="section">
     <div class="section-tag">✦ O que dizem nossos clientes</div>
@@ -576,6 +578,7 @@
     </div>
   </div>
 </section>
+{% endif %}
 
 <!-- PRICING -->
 <section id="planos">
