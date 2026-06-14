@@ -706,7 +706,7 @@ def _combo_desconto_ativo(email, produto_atual) -> bool:
 
 # ── MandaJá — Planos ─────────────────────────────────────────────────────────
 MANDAJA_PLANS = {
-    'jr':       {'label': 'MandaJr',  'products': 50,  'price': 29,  'emoji': '🍔'},
+    'jr':       {'label': 'MandaJr',  'products': 25,  'price': 29,  'emoji': '🍔'},
     'micro':    {'label': 'Micro',    'products': 5,   'price': 59,  'emoji': '🌱'},
     'light':    {'label': 'Light',    'products': 10,  'price': 99,  'emoji': '⚡'},
     'plus':     {'label': 'Plus',     'products': 20,  'price': 159, 'emoji': '🚀'},
