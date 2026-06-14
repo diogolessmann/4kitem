@@ -1562,7 +1562,10 @@ def jukebox(token):
                 erro = 'Selecione uma música antes de confirmar.'
             else:
                 preco = precos_bar[tipo]['preco']
-                usar_pix = bool(b['requer_pix']) and bool(b['pix_key'])
+                # Asaas é o PADRÃO de pagamento: se está configurado, TODO pedido
+                # passa por ele (cobrança automática + confirmação sozinha). O modo
+                # manual (chave PIX do próprio bar) fica só como fallback p/ quem tem.
+                usar_pix = bool(os.environ.get('ASAAS_API_KEY')) or (bool(b['requer_pix']) and bool(b['pix_key']))
                 tipo_nome  = precos_bar[tipo]['nome']
                 tipo_emoji = precos_bar[tipo]['emoji']
 
@@ -1634,8 +1637,8 @@ def jukebox(token):
                         conn3.commit(); conn3.close()
                         pix_qr    = asaas_data['qr_b64']
                         pix_payload = asaas_data['payload']
-                    else:
-                        # Fallback: EMV manual (confirmar no painel)
+                    elif b['pix_key']:
+                        # Fallback: EMV manual (chave própria do bar — confirmar no painel)
                         pix_payload = _pix_emv(
                             b['pix_key'], b['pix_tipo'] or 'telefone',
                             b['pix_nome_recebedor'] or b['nome'],
@@ -1648,39 +1651,47 @@ def jukebox(token):
                             (pix_payload, pedido_id)
                         )
                         conn3.commit(); conn3.close()
+                    else:
+                        # Asaas falhou E o bar não tem chave PIX manual → não dá pra
+                        # cobrar. Cancela o pedido e mostra erro (nada de QR quebrado).
+                        conn3 = get_pubshow_db()
+                        conn3.execute("DELETE FROM pubshow_pedidos WHERE id=? AND status='aguardando_pix'", (pedido_id,))
+                        conn3.commit(); conn3.close()
+                        erro = 'Pagamento indisponível no momento. Tente de novo em instantes.'
 
-                    # ── Notificação WhatsApp + Push em background (não bloqueia resposta) ──
-                    _hh_txt = f' 🎉 Happy Hour {hh_desconto}% off!' if hh_desconto else ''
-                    _bid, _emoji, _tnome, _nome, _preco = b['id'], tipo_emoji, tipo_nome, nome_cliente, preco_final
-                    _via_asaas = bool(asaas_data)
-                    _bd_copy = dict(b)
-                    def _notif_pix():
-                        if _via_asaas:
-                            # Confirmação automática — o dono não precisa fazer nada
-                            _msg = f'🎵 *Novo pedido no Jukebox!*{_hh_txt}\n{_emoji} {_tnome}\n👤 {_nome}\n💰 R$ {_preco:.2f}\n✅ Confirma sozinho assim que o PIX cair.'
-                        else:
-                            # PIX manual — o dono precisa confirmar no painel
-                            _msg = f'🎵 *Novo pedido PIX aguardando!*{_hh_txt}\n{_emoji} {_tnome}\n👤 {_nome}\n💰 R$ {_preco:.2f}\n📋 Acesse o painel para confirmar.'
-                        try: _pubshow_notify_bar(_bd_copy, _msg)
-                        except: pass
-                        try: _enviar_push_pedido(_bid, _emoji, _tnome, _nome, _preco)
-                        except: pass
-                    _threading.Thread(target=_notif_pix, daemon=True).start()
+                    if not erro:
+                        # ── Notificação WhatsApp + Push em background (não bloqueia resposta) ──
+                        _hh_txt = f' 🎉 Happy Hour {hh_desconto}% off!' if hh_desconto else ''
+                        _bid, _emoji, _tnome, _nome, _preco = b['id'], tipo_emoji, tipo_nome, nome_cliente, preco_final
+                        _via_asaas = bool(asaas_data)
+                        _bd_copy = dict(b)
+                        def _notif_pix():
+                            if _via_asaas:
+                                # Confirmação automática — o dono não precisa fazer nada
+                                _msg = f'🎵 *Novo pedido no Jukebox!*{_hh_txt}\n{_emoji} {_tnome}\n👤 {_nome}\n💰 R$ {_preco:.2f}\n✅ Confirma sozinho assim que o PIX cair.'
+                            else:
+                                # PIX manual — o dono precisa confirmar no painel
+                                _msg = f'🎵 *Novo pedido PIX aguardando!*{_hh_txt}\n{_emoji} {_tnome}\n👤 {_nome}\n💰 R$ {_preco:.2f}\n📋 Acesse o painel para confirmar.'
+                            try: _pubshow_notify_bar(_bd_copy, _msg)
+                            except: pass
+                            try: _enviar_push_pedido(_bid, _emoji, _tnome, _nome, _preco)
+                            except: pass
+                        _threading.Thread(target=_notif_pix, daemon=True).start()
 
-                    pix_pendente = {
-                        'pedido_id':  pedido_id,
-                        'payload':    pix_payload,
-                        'qr_b64':     pix_qr,
-                        # valor = total que o cliente paga (com taxa, se via Asaas)
-                        'valor':      _valor_cobranca if asaas_data else preco_final,
-                        'valor_item': preco_final,
-                        'taxa_conv':  PIX_TAXA_CONVENIENCIA if asaas_data else 0.0,
-                        'recebedor':  b['pix_nome_recebedor'] or b['nome'],
-                        'tipo_nome':  tipo_nome,
-                        'tipo_emoji': tipo_emoji,
-                        'via_asaas':  bool(asaas_data),
-                    }
-                    sucesso = None
+                        pix_pendente = {
+                            'pedido_id':  pedido_id,
+                            'payload':    pix_payload,
+                            'qr_b64':     pix_qr,
+                            # valor = total que o cliente paga (com taxa, se via Asaas)
+                            'valor':      _valor_cobranca if asaas_data else preco_final,
+                            'valor_item': preco_final,
+                            'taxa_conv':  PIX_TAXA_CONVENIENCIA if asaas_data else 0.0,
+                            'recebedor':  b['pix_nome_recebedor'] or b['nome'],
+                            'tipo_nome':  tipo_nome,
+                            'tipo_emoji': tipo_emoji,
+                            'via_asaas':  bool(asaas_data),
+                        }
+                        sucesso = None
                 elif not erro:
                     # ── Fluxo direto (sem PIX ou PIX não exigido) ─────────────
                     # Anti-spam: bloqueia duplicata em 60s
