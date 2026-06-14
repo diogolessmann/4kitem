@@ -177,7 +177,7 @@ _SLIDES_DIR = os.path.join(
 
 
 TIPOS_PEDIDO = {
-    'musica':           {'nome': 'Música aleatória',       'emoji': '🎵', 'preco': 2.00,  'cor': '#3b82f6'},
+    'musica':           {'nome': 'Música aleatória',       'emoji': '🎵', 'preco': 3.00,  'cor': '#3b82f6'},
     'musica_especifica':{'nome': 'Buscar na biblioteca',   'emoji': '🎯', 'preco': 5.00,  'cor': '#06b6d4'},
     'musica_externa':   {'nome': 'Buscar no YouTube',      'emoji': '🌐', 'preco': 20.00, 'cor': '#dc2626'},
     'flash':            {'nome': 'Prioridade na fila',     'emoji': '⚡', 'preco': 5.00,  'cor': '#f59e0b'},
