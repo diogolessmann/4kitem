@@ -335,7 +335,15 @@
         <div class="grid2">
           <div class="field">
             <label>Bairro *</label>
+            {% if delivery_zones %}
+            <select id="custNeighborhood" onchange="updateSummary()" style="width:100%">
+              <option value="">Escolha seu bairro…</option>
+              {% for z in delivery_zones %}<option value="{{ z.bairro }}">{{ z.bairro }} — R$ {{ '%.2f'|format(z.taxa)|replace('.',',') }}</option>{% endfor %}
+              <option value="__fora__">Outro bairro (não atendido)</option>
+            </select>
+            {% else %}
             <input type="text" id="custNeighborhood" placeholder="Bairro">
+            {% endif %}
           </div>
           <div class="field">
             <label>Cidade</label>
@@ -637,14 +645,24 @@ function changeQty(idx, delta) {
   updateSummary();
 }
 
+const ZONES = {{ delivery_zones | tojson }};
+const HAS_ZONES = ZONES.length > 0;
+function zoneFee() {
+  if (!HAS_ZONES) return DELIVERY_FEE;
+  const sel = document.getElementById('custNeighborhood');
+  const z = ZONES.find(z => z.bairro === (sel ? sel.value : ''));
+  return z ? Number(z.taxa) : 0;
+}
 function updateSummary() {
   const sub = cart.reduce((s, i) => s + i.price * i.qty, 0);
-  const fee = deliveryType === 'delivery' ? DELIVERY_FEE : 0;
+  const fee = deliveryType === 'delivery' ? zoneFee() : 0;
   const total = sub + fee;
   document.getElementById('sumSubtotal').textContent = 'R$' + sub.toFixed(2).replace('.',',');
   document.getElementById('sumTotal').textContent = 'R$' + total.toFixed(2).replace('.',',');
   document.getElementById('cartTotal').textContent = 'R$' + total.toFixed(2).replace('.',',');
-  document.getElementById('deliveryRow').style.display = deliveryType === 'delivery' ? '' : 'none';
+  const dr = document.getElementById('deliveryRow');
+  dr.style.display = deliveryType === 'delivery' ? '' : 'none';
+  if (deliveryType === 'delivery') dr.querySelector('span:last-child').textContent = 'R$' + fee.toFixed(2).replace('.',',');
 }
 
 function setDelivery(type, btn) {
@@ -691,10 +709,13 @@ async function submitOrder() {
   if (!name || !phone) { alert('Preencha nome e WhatsApp!'); return; }
   if (cart.length === 0) { alert('Carrinho vazio!'); return; }
   if (deliveryType === 'delivery') {
+    const bairro = document.getElementById('custNeighborhood').value.trim();
     if (!document.getElementById('custAddress').value.trim() ||
-        !document.getElementById('custNumber').value.trim() ||
-        !document.getElementById('custNeighborhood').value.trim()) {
+        !document.getElementById('custNumber').value.trim() || !bairro) {
       alert('Preencha a rua, o número e o bairro da entrega!'); return;
+    }
+    if (HAS_ZONES && !ZONES.find(z => z.bairro === bairro)) {
+      alert('😕 Não entregamos nesse bairro. Escolha um bairro da lista ou marque "Retirada".'); return;
     }
   }
   const sub = cart.reduce((s, i) => s + i.price * i.qty, 0);

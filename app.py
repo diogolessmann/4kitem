@@ -13585,6 +13585,13 @@ def mandaja_config():
         set_clause = ', '.join(f'{k}=?' for k in updates)
         conn.execute(f'UPDATE mandaja_stores SET {set_clause} WHERE id=?',
                      (*updates.values(), store_id))
+        # Taxa por bairro (zonas de entrega)
+        bairros = request.form.getlist('zone_bairro')
+        taxas   = request.form.getlist('zone_taxa')
+        zones = [{'bairro': b.strip(), 'taxa': _mja_preco(t)}
+                 for b, t in zip(bairros, taxas) if b.strip()]
+        conn.execute('UPDATE mandaja_stores SET delivery_zones=? WHERE id=?',
+                     (_json.dumps(zones, ensure_ascii=False), store_id))
         conn.commit()
         conn.close()
         session['mja_store_name'] = updates['name']
@@ -13771,10 +13778,15 @@ def mandaja_loja(slug):
     cats_dict  = {c['id']: dict(c) for c in cats}
     prods_list = [dict(p) for p in prods]
     hours_list = [dict(h) for h in hours]
+    try:
+        delivery_zones = _json.loads(store.get('delivery_zones') or '[]')
+    except Exception:
+        delivery_zones = []
     return render_template('mandaja/loja.html',
                            store=store, cats=list(cats_dict.values()),
                            prods=prods_list, hours=hours_list,
-                           weekdays=MANDAJA_WEEKDAYS, is_open=is_open)
+                           weekdays=MANDAJA_WEEKDAYS, is_open=is_open,
+                           delivery_zones=delivery_zones)
 
 
 # ── Fazer pedido (POST da loja pública) ───────────────────────────────────────
@@ -13822,7 +13834,21 @@ def mandaja_fazer_pedido(slug):
     if delivery_type == 'delivery' and min_order > 0 and subtotal < min_order:
         conn.close()
         return jsonify({'error': f'Pedido mínimo para entrega é R$ {min_order:.2f}.'.replace('.', ',')}), 400
-    delivery_fee = float(store['delivery_fee'] or 0) if delivery_type == 'delivery' else 0
+    # Taxa de entrega: por bairro (se a loja tiver zonas) ou taxa fixa
+    delivery_fee = 0.0
+    if delivery_type == 'delivery':
+        try:
+            zones = _json.loads(store.get('delivery_zones') or '[]')
+        except Exception:
+            zones = []
+        if zones:
+            zona = next((z for z in zones if (z.get('bairro') or '').strip().lower() == neighborhood.lower()), None)
+            if not zona:
+                conn.close()
+                return jsonify({'error': 'Não entregamos nesse bairro. Escolha um bairro atendido ou retire no local.'}), 400
+            delivery_fee = float(zona.get('taxa') or 0)
+        else:
+            delivery_fee = float(store['delivery_fee'] or 0)
     total        = subtotal + delivery_fee
     order_number = _mandaja_next_order_number(store['id'])
     cur = conn.execute('''
