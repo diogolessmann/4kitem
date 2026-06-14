@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pedidos — MandaJr</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#0B0B12;color:#F4F4F8;font-family:'Segoe UI',system-ui,sans-serif;line-height:1.5;min-height:100vh}
+  a{text-decoration:none;color:inherit}
+  .wrap{max-width:460px;margin:0 auto;padding:0 18px 40px}
+  .topbar{display:flex;align-items:center;gap:12px;height:58px}
+  .back{font-size:22px;color:#cbd5e1}
+  .topbar b{font-size:17px;font-weight:800}
+  .filters{display:flex;gap:8px;overflow-x:auto;padding:6px 0 14px;-webkit-overflow-scrolling:touch}
+  .filters a{flex-shrink:0;font-size:13px;font-weight:700;padding:8px 14px;border-radius:100px;background:#13131c;border:1px solid rgba(255,255,255,.08);color:#a0a0b2;white-space:nowrap}
+  .filters a.on{background:#F97316;color:#fff;border-color:#F97316}
+  .order{display:flex;align-items:center;gap:12px;background:#13131c;border:1px solid rgba(255,255,255,.06);border-radius:14px;padding:14px;margin-bottom:11px}
+  .order.new{border-color:rgba(249,115,22,.5);background:rgba(249,115,22,.06)}
+  .order-main{flex:1;min-width:0}
+  .order-num{font-size:12px;color:#8b8b9e;font-weight:600}
+  .order-name{font-size:15px;font-weight:700}
+  .order-total{font-size:15px;font-weight:800;color:#16a34a}
+  .badge{font-size:11px;font-weight:800;padding:3px 9px;border-radius:100px;white-space:nowrap}
+  .b-new{background:#f97316;color:#fff}.b-confirmed{background:#3b82f6;color:#fff}
+  .b-preparing{background:#eab308;color:#000}.b-ready{background:#8b5cf6;color:#fff}
+  .b-delivered{background:#22c55e;color:#fff}.b-cancelled{background:#4b5563;color:#fff}
+  .empty{text-align:center;padding:50px 20px;color:#8b8b9e}
+  .empty .em{font-size:48px;margin-bottom:12px}
+  .empty b{display:block;font-size:16px;color:#e6e6ee;margin-bottom:6px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <a href="/mandaja/painel" class="back">←</a>
+    <b>Pedidos</b>
+  </div>
+
+  {% set labels = {'':'Todos','new':'🆕 Novos','preparing':'👨‍🍳 Preparando','ready':'📦 Prontos','delivered':'🎉 Entregues'} %}
+  <div class="filters">
+    {% for k, v in labels.items() %}
+    <a href="/mandaja/pedidos{{ '?status=' ~ k if k }}" class="{{ 'on' if status_filter == k }}">{{ v }}</a>
+    {% endfor %}
+  </div>
+
+  {% if pedidos %}
+    {% set names = {'new':'🆕 Novo','confirmed':'✅ Confirmado','preparing':'👨‍🍳 Preparando','ready':'📦 Pronto','delivered':'🎉 Entregue','cancelled':'❌ Cancelado'} %}
+    {% for p in pedidos %}
+    <a href="/mandaja/pedidos/{{ p.id }}" class="order {{ 'new' if p.status == 'new' }}">
+      <div class="order-main">
+        <div class="order-num">{{ p.order_number }} · {{ p.created_at[11:16] if p.created_at and p.created_at|length > 15 else '' }}</div>
+        <div class="order-name">{{ p.customer_name }}</div>
+        <div class="order-total">R$ {{ '%.2f'|format(p.total)|replace('.',',') }}</div>
+      </div>
+      <span class="badge b-{{ p.status }}">{{ names.get(p.status, p.status) }}</span>
+    </a>
+    {% endfor %}
+  {% else %}
+    <div class="empty">
+      <div class="em">🛎️</div>
+      <b>Nenhum pedido ainda</b>
+      Quando chegar um pedido,<br>ele aparece aqui na hora.
+    </div>
+  {% endif %}
+</div>
+
+<script>
+  // Recarrega sozinho pra pegar pedidos novos (a cada 25s)
+  setTimeout(() => location.reload(), 25000);
+</script>
+</body>
+</html>

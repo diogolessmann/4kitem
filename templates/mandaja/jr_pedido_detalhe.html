@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{ pedido.order_number }} — MandaJr</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#0B0B12;color:#F4F4F8;font-family:'Segoe UI',system-ui,sans-serif;line-height:1.5;min-height:100vh;padding-bottom:30px}
+  a{text-decoration:none;color:inherit}
+  .wrap{max-width:460px;margin:0 auto;padding:0 18px}
+  .topbar{display:flex;align-items:center;gap:12px;height:58px}
+  .back{font-size:22px;color:#cbd5e1}
+  .topbar b{font-size:17px;font-weight:800;flex:1}
+  .badge{font-size:12px;font-weight:800;padding:4px 11px;border-radius:100px}
+  .b-new{background:#f97316;color:#fff}.b-confirmed{background:#3b82f6;color:#fff}
+  .b-preparing{background:#eab308;color:#000}.b-ready{background:#8b5cf6;color:#fff}
+  .b-delivered{background:#22c55e;color:#fff}.b-cancelled{background:#4b5563;color:#fff}
+  .card{background:#13131c;border:1px solid rgba(255,255,255,.06);border-radius:14px;padding:16px;margin-bottom:13px}
+  .card h3{font-size:12px;font-weight:800;color:#8b8b9e;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px}
+  .row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;font-size:14px}
+  .row .nm{color:#dcdce6}.row .vl{font-weight:700}
+  .cliente b{font-size:16px}
+  .cliente .ph{color:#a0a0b2;font-size:14px;margin-top:2px}
+  .notes{background:rgba(249,115,22,.08);border-radius:9px;padding:10px;font-size:13px;color:#fdba74;margin-top:8px}
+  .item{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.05);font-size:14px}
+  .item:last-child{border:0}
+  .item .q{color:#F97316;font-weight:800;margin-right:6px}
+  .tot{border-top:1px solid rgba(255,255,255,.08);margin-top:8px;padding-top:10px}
+  .tot .grand{font-size:18px;font-weight:900;color:#16a34a}
+  .btn{display:block;width:100%;text-align:center;font-size:16px;font-weight:800;border:none;border-radius:13px;padding:16px;cursor:pointer;margin-bottom:11px}
+  .btn-main{background:linear-gradient(135deg,#16a34a,#22c55e);color:#fff}
+  .btn-wa{background:#13131c;border:1px solid rgba(255,255,255,.1);color:#25d366}
+  .btn-cancel{background:transparent;border:1px solid rgba(248,113,113,.3);color:#f87171;font-size:13px;padding:12px}
+  .done{text-align:center;color:#86efac;font-weight:700;padding:14px;background:rgba(34,197,94,.08);border-radius:12px;margin-bottom:12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <a href="/mandaja/pedidos" class="back">←</a>
+    <b>{{ pedido.order_number }}</b>
+    <span class="badge b-{{ pedido.status }}" id="statusBadge"></span>
+  </div>
+
+  <!-- Cliente -->
+  <div class="card cliente">
+    <h3>👤 Cliente</h3>
+    <b>{{ pedido.customer_name }}</b>
+    <div class="ph">{{ pedido.customer_phone }}</div>
+    {% if pedido.delivery_type == 'delivery' %}
+      <div class="notes" style="background:rgba(59,130,246,.1);color:#93c5fd">🚚 Entrega: {{ pedido.address }}{% if pedido.neighborhood %}, {{ pedido.neighborhood }}{% endif %}</div>
+    {% else %}
+      <div class="notes" style="background:rgba(139,92,246,.1);color:#c4b5fd">🏠 Retirada no local</div>
+    {% endif %}
+    {% if pedido.customer_notes %}<div class="notes">📝 {{ pedido.customer_notes }}</div>{% endif %}
+  </div>
+
+  <!-- Itens -->
+  <div class="card">
+    <h3>🛒 Pedido</h3>
+    {% for it in pedido['items'] %}
+    <div class="item">
+      <span><span class="q">{{ it.qty }}x</span>{{ it.name }}</span>
+      <span>R$ {{ '%.2f'|format((it.price|float) * (it.qty|int))|replace('.',',') }}</span>
+    </div>
+    {% endfor %}
+    <div class="tot">
+      <div class="row"><span class="nm">Subtotal</span><span class="vl">R$ {{ '%.2f'|format(pedido.subtotal)|replace('.',',') }}</span></div>
+      {% if pedido.delivery_fee %}<div class="row"><span class="nm">Entrega</span><span class="vl">R$ {{ '%.2f'|format(pedido.delivery_fee)|replace('.',',') }}</span></div>{% endif %}
+      <div class="row"><span class="nm">Total</span><span class="grand">R$ {{ '%.2f'|format(pedido.total)|replace('.',',') }}</span></div>
+      <div class="row"><span class="nm">Pagamento</span><span class="vl">{{ {'pix':'💳 PIX','dinheiro':'💵 Dinheiro','cartao':'💳 Cartão'}.get(pedido.payment_method, pedido.payment_method) }}</span></div>
+    </div>
+  </div>
+
+  <!-- Ações -->
+  <div id="actions"></div>
+
+  <a href="https://wa.me/55{{ pedido.customer_phone|replace('(','')|replace(')','')|replace('-','')|replace(' ','') }}" target="_blank" class="btn btn-wa">💬 Falar com o cliente</a>
+  {% if pedido.status not in ('delivered','cancelled') %}
+  <button class="btn btn-cancel" onclick="mudar('cancelled')">Cancelar pedido</button>
+  {% endif %}
+</div>
+
+<script>
+const ORDER_ID = {{ pedido.id }};
+const FLOW = {
+  new:      {label:'✅ Aceitar pedido',        next:'confirmed'},
+  confirmed:{label:'👨‍🍳 Começar a preparar',  next:'preparing'},
+  preparing:{label:'{{ "📦 Saiu pra entrega" if pedido.delivery_type == "delivery" else "📦 Pronto pra retirada" }}', next:'ready'},
+  ready:    {label:'🎉 Marcar como entregue',  next:'delivered'},
+};
+const NAMES = {new:'🆕 Novo',confirmed:'✅ Confirmado',preparing:'👨‍🍳 Preparando',ready:'📦 Pronto',delivered:'🎉 Entregue',cancelled:'❌ Cancelado'};
+let current = '{{ pedido.status }}';
+
+function render(){
+  document.getElementById('statusBadge').textContent = NAMES[current] || current;
+  document.getElementById('statusBadge').className = 'badge b-' + current;
+  const box = document.getElementById('actions');
+  if (current === 'delivered'){ box.innerHTML = '<div class="done">🎉 Pedido entregue! Boa venda 👏</div>'; return; }
+  if (current === 'cancelled'){ box.innerHTML = '<div class="done" style="background:rgba(75,85,99,.15);color:#9ca3af">❌ Pedido cancelado</div>'; return; }
+  const step = FLOW[current];
+  box.innerHTML = step ? `<button class="btn btn-main" onclick="mudar('${step.next}')">${step.label}</button>` : '';
+}
+async function mudar(novo){
+  if (novo === 'cancelled' && !confirm('Cancelar esse pedido?')) return;
+  try{
+    const r = await fetch(`/mandaja/pedidos/${ORDER_ID}/status`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({status: novo})
+    });
+    const d = await r.json();
+    if (d.ok){ current = novo; render(); }
+    else alert('Não consegui atualizar. Tente de novo.');
+  }catch(e){ alert('Erro de conexão.'); }
+}
+render();
+</script>
+</body>
+</html>

@@ -772,6 +772,24 @@ def _mandaja_bloqueado(store):
     return bool(te and te < datetime.now().isoformat())
 
 
+def _mja_tpl(store, name):
+    """Escolhe o template Jr (estilo app, simples) ou Pro pra mesma tela."""
+    if store and store.get('mode') == 'jr':
+        return f'mandaja/jr_{name}.html'
+    return f'mandaja/{name}.html'
+
+
+def _mja_preco(v):
+    """Parser de preço à prova de vírgula (BR): '35,90' e '1.234,56' viram float."""
+    v = (v or '').strip()
+    if ',' in v:
+        v = v.replace('.', '').replace(',', '.')
+    try:
+        return float(v or 0)
+    except (ValueError, TypeError):
+        return 0.0
+
+
 def _mandaja_loja_aberta(store, conn):
     """True se a loja está recebendo pedidos agora.
     Jr: interruptor manual (aberto). Pro: horário do dia."""
@@ -13208,7 +13226,7 @@ def mandaja_produtos():
     ''', (store_id,)).fetchall()
     conn.close()
     plan_info = MANDAJA_PLANS.get(store['plan'], MANDAJA_PLANS['micro'])
-    return render_template('mandaja/produtos.html',
+    return render_template(_mja_tpl(store, 'produtos'),
                            store=store, cats=[dict(c) for c in cats],
                            prods=[dict(p) for p in prods],
                            plan=plan_info)
@@ -13237,12 +13255,12 @@ def mandaja_produto_novo():
     if request.method == 'POST':
         name        = request.form.get('name', '').strip()
         description = request.form.get('description', '').strip()
+        price = _mja_preco(request.form.get('price'))
+        cost  = _mja_preco(request.form.get('cost'))
         try:
-            price = float(request.form.get('price', 0) or 0)
-            cost  = float(request.form.get('cost', 0) or 0)
             stock = int(request.form.get('stock', -1) or -1)
         except (ValueError, TypeError):
-            price, cost, stock = 0.0, 0.0, -1
+            stock = -1
         category_id  = request.form.get('category_id') or None
         photo_url    = request.form.get('photo_url', '').strip()
         options_raw  = request.form.get('options_json', '[]').strip()
@@ -13252,7 +13270,7 @@ def mandaja_produto_novo():
             options_raw = '[]'
         if not name:
             conn.close()
-            return render_template('mandaja/produto_form.html',
+            return render_template(_mja_tpl(store, 'produto_form'),
                                    store=store, cats=[dict(c) for c in cats],
                                    error='Nome é obrigatório.', prod=None)
         conn.execute('''
@@ -13263,7 +13281,7 @@ def mandaja_produto_novo():
         conn.close()
         return redirect('/mandaja/produtos?ok=criado')
     conn.close()
-    return render_template('mandaja/produto_form.html',
+    return render_template(_mja_tpl(store, 'produto_form'),
                            store=store, cats=[dict(c) for c in cats], prod=None, error=None)
 
 
@@ -13289,12 +13307,12 @@ def mandaja_produto_editar(prod_id):
             return redirect('/mandaja/produtos?ok=removido')
         name        = request.form.get('name', '').strip()
         description = request.form.get('description', '').strip()
+        price = _mja_preco(request.form.get('price'))
+        cost  = _mja_preco(request.form.get('cost'))
         try:
-            price = float(request.form.get('price', 0) or 0)
-            cost  = float(request.form.get('cost', 0) or 0)
             stock = int(request.form.get('stock', -1) or -1)
         except (ValueError, TypeError):
-            price, cost, stock = 0.0, 0.0, -1
+            stock = -1
         category_id  = request.form.get('category_id') or None
         photo_url    = request.form.get('photo_url', '').strip()
         active       = 1 if request.form.get('active') else 0
@@ -13311,7 +13329,7 @@ def mandaja_produto_editar(prod_id):
         conn.close()
         return redirect('/mandaja/produtos?ok=atualizado')
     conn.close()
-    return render_template('mandaja/produto_form.html',
+    return render_template(_mja_tpl(store, 'produto_form'),
                            store=store, cats=[dict(c) for c in cats],
                            prod=dict(prod), error=None)
 
@@ -13424,7 +13442,7 @@ def mandaja_pedidos():
             'SELECT * FROM mandaja_orders WHERE store_id=? ORDER BY id DESC LIMIT 100',
             (store_id,)).fetchall()
     conn.close()
-    return render_template('mandaja/pedidos.html',
+    return render_template(_mja_tpl(store, 'pedidos'),
                            store=store, pedidos=[dict(p) for p in pedidos],
                            status_filter=status)
 
@@ -13443,7 +13461,7 @@ def mandaja_pedido_detalhe(order_id):
         return redirect('/mandaja/pedidos')
     pedido = dict(pedido)
     pedido['items'] = _json.loads(pedido.get('items_json') or '[]')
-    return render_template('mandaja/pedido_detalhe.html', store=store, pedido=pedido)
+    return render_template(_mja_tpl(store, 'pedido_detalhe'), store=store, pedido=pedido)
 
 
 @app.route('/mandaja/pedidos/<int:order_id>/status', methods=['POST'])

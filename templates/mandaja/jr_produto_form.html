@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{ 'Editar' if prod else 'Novo' }} produto — MandaJr</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#0B0B12;color:#F4F4F8;font-family:'Segoe UI',system-ui,sans-serif;line-height:1.5;min-height:100vh}
+  a{text-decoration:none;color:inherit}
+  .wrap{max-width:440px;margin:0 auto;padding:0 18px 40px}
+  .topbar{display:flex;align-items:center;gap:12px;height:58px}
+  .back{font-size:22px;color:#cbd5e1}
+  .topbar b{font-size:17px;font-weight:800}
+  .head{text-align:center;padding:6px 0 18px}
+  .head h1{font-size:22px;font-weight:900}
+  .head p{font-size:13px;color:#a0a0b2;margin-top:3px}
+  form{background:#13131c;border:1px solid rgba(255,255,255,.06);border-radius:16px;padding:20px}
+  label{display:block;font-size:14px;font-weight:700;color:#e6e6ee;margin:16px 0 8px}
+  label:first-of-type{margin-top:0}
+  label .hint{font-weight:500;color:#8b8b9e;font-size:12px}
+  input,textarea{width:100%;background:#0B0B12;border:1.5px solid rgba(255,255,255,.1);border-radius:11px;padding:14px;color:#fff;font-size:16px;outline:none;font-family:inherit}
+  input:focus,textarea:focus{border-color:#F97316}
+  textarea{min-height:70px;resize:vertical}
+  .preco-wrap{position:relative}
+  .preco-wrap span{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:#16a34a;font-weight:800;font-size:16px}
+  .preco-wrap input{padding-left:42px;color:#16a34a;font-weight:800}
+  .foto-preview{width:100%;height:160px;border-radius:12px;background:#0B0B12;border:1.5px dashed rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;color:#5a5a6e;font-size:13px;overflow:hidden;margin-bottom:8px}
+  .foto-preview img{width:100%;height:100%;object-fit:cover}
+  .btn{width:100%;background:linear-gradient(135deg,#ea580c,#f97316);color:#fff;font-size:16px;font-weight:800;border:none;border-radius:13px;padding:16px;margin-top:22px;cursor:pointer}
+  .btn-del{width:100%;background:transparent;color:#f87171;border:1px solid rgba(248,113,113,.3);font-size:14px;font-weight:700;border-radius:12px;padding:13px;margin-top:12px;cursor:pointer}
+  .err{background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.4);color:#fca5a5;font-size:13px;font-weight:600;border-radius:10px;padding:11px 14px;margin-bottom:16px;text-align:center}
+  .opt{font-size:12px;color:#8b8b9e;font-weight:500}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <a href="/mandaja/produtos" class="back">←</a>
+    <b>{{ 'Editar produto' if prod else 'Novo produto' }}</b>
+  </div>
+
+  <div class="head">
+    <div style="font-size:40px">🍔</div>
+    <p>Foto, nome e preço. Só isso.</p>
+  </div>
+
+  {% if error %}<div class="err">⚠️ {{ error }}</div>{% endif %}
+
+  <form method="POST" id="prodForm"
+        action="{{ '/mandaja/produtos/' ~ prod.id ~ '/editar' if prod else '/mandaja/produtos/novo' }}">
+    {% if prod %}<input type="hidden" name="active" value="1">{% endif %}
+
+    <label>Nome do produto</label>
+    <input type="text" name="name" placeholder="Ex: X-Bacon Duplo" value="{{ prod.name if prod else '' }}" required autofocus>
+
+    <label>Preço</label>
+    <div class="preco-wrap">
+      <span>R$</span>
+      <input type="text" name="price" id="precoInput" inputmode="decimal"
+             placeholder="0,00" value="{{ '%.2f'|format(prod.price)|replace('.',',') if prod else '' }}" required>
+    </div>
+
+    <label>Descrição <span class="hint">(opcional)</span></label>
+    <textarea name="description" placeholder="Ex: 2 hambúrgueres, bacon, queijo...">{{ prod.description if prod else '' }}</textarea>
+
+    <label>Foto <span class="hint">(opcional — cole o link de uma imagem)</span></label>
+    <div class="foto-preview" id="fotoPreview">
+      {% if prod and prod.photo_url %}<img src="{{ prod.photo_url }}">{% else %}<span>📷 sem foto</span>{% endif %}
+    </div>
+    <input type="text" name="photo_url" id="fotoInput" placeholder="https://..."
+           value="{{ prod.photo_url if prod else '' }}" oninput="previewFoto()">
+
+    <button type="submit" class="btn">{{ '💾 Salvar' if prod else '✅ Adicionar ao cardápio' }}</button>
+  </form>
+
+  {% if prod %}
+  <form method="POST" action="/mandaja/produtos/{{ prod.id }}/editar"
+        onsubmit="return confirm('Remover esse produto do cardápio?')">
+    <input type="hidden" name="action" value="delete">
+    <button type="submit" class="btn-del">🗑️ Remover do cardápio</button>
+  </form>
+  {% endif %}
+</div>
+
+<script>
+  function previewFoto(){
+    const url=document.getElementById('fotoInput').value.trim();
+    const box=document.getElementById('fotoPreview');
+    box.innerHTML = url ? `<img src="${url}" onerror="this.parentElement.innerHTML='📷 link inválido'">` : '<span>📷 sem foto</span>';
+  }
+  // Brasileiro digita vírgula — converte pra ponto antes de enviar
+  document.getElementById('prodForm').addEventListener('submit', function(){
+    const p=document.getElementById('precoInput');
+    p.value = p.value.replace(/\./g,'').replace(',','.');
+  });
+</script>
+</body>
+</html>
