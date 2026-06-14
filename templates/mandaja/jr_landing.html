@@ -21,16 +21,11 @@
   .sub{font-size:16px;color:#b4b4c4;margin-bottom:26px}
   .cta{display:block;background:linear-gradient(135deg,#ea580c,#f97316);color:#fff;font-size:17px;font-weight:800;text-align:center;padding:17px;border-radius:14px;box-shadow:0 10px 28px rgba(249,115,22,.32)}
   .cta-sub{font-size:13px;color:#8b8b9e;margin-top:12px}
-  .phone{margin:34px auto 0;max-width:300px;background:#15151f;border:1px solid rgba(249,115,22,.16);border-radius:22px;padding:16px;text-align:left}
-  .phone-head{display:flex;align-items:center;gap:10px;padding-bottom:12px;border-bottom:1px solid rgba(255,255,255,.06)}
-  .phone-logo{width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#ea580c,#f97316);display:flex;align-items:center;justify-content:center;font-size:18px}
-  .phone-name{font-weight:800;font-size:14px}
-  .phone-name span{display:block;font-size:11px;color:#8b8b9e;font-weight:500}
-  .pitem{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid rgba(255,255,255,.05)}
-  .pitem .em{font-size:22px}
-  .pitem .nm{flex:1;font-size:13px;font-weight:600}
-  .pitem .pr{font-size:13px;font-weight:800;color:#F97316}
-  .pix{margin-top:12px;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.35);border-radius:10px;padding:10px;font-size:12px;color:#86efac;text-align:center;font-weight:700}
+  .hero-photo{position:relative;margin:30px auto 0;max-width:440px}
+  .hero-photo img{width:100%;height:auto;display:block;border-radius:18px;border:1px solid rgba(249,115,22,.2);box-shadow:0 22px 55px rgba(0,0,0,.55)}
+  .hero-photo-tag{position:absolute;left:50%;bottom:-14px;transform:translateX(-50%);white-space:nowrap;background:rgba(11,11,18,.92);border:1px solid rgba(34,197,94,.4);color:#86efac;font-size:12px;font-weight:700;padding:8px 14px;border-radius:100px;box-shadow:0 6px 18px rgba(0,0,0,.4)}
+  .band-photo{margin:34px auto 0;max-width:440px;border-radius:18px;overflow:hidden;border:1px solid rgba(255,255,255,.07);box-shadow:0 18px 44px rgba(0,0,0,.45)}
+  .band-photo img{width:100%;height:auto;display:block}
   .section{padding:40px 0}
   .section h2{font-size:24px;font-weight:900;text-align:center;margin-bottom:24px}
   .feat{display:flex;gap:14px;align-items:flex-start;margin-bottom:20px;background:#13131c;border:1px solid rgba(255,255,255,.05);border-radius:14px;padding:16px}
@@ -64,15 +59,9 @@
     <a href="/mandajr/comecar" class="cta">🚀 Criar meu cardápio grátis</a>
     <div class="cta-sub">Pronto em 2 minutos · sem cartão · 100% do dinheiro é seu</div>
 
-    <div class="phone">
-      <div class="phone-head">
-        <div class="phone-logo">🔥</div>
-        <div class="phone-name">Burgers Rike <span>Hamburgueria · Aberto agora</span></div>
-      </div>
-      <div class="pitem"><span class="em">🍔</span><span class="nm">X-Bacon Duplo</span><span class="pr">R$ 35,00</span></div>
-      <div class="pitem"><span class="em">🍟</span><span class="nm">Batata + lanche</span><span class="pr">R$ 7,00</span></div>
-      <div class="pitem"><span class="em">🥤</span><span class="nm">Coca lata</span><span class="pr">R$ 6,00</span></div>
-      <div class="pix">💳 PIX copia-e-cola · R$ 48,00 já preenchido ✅</div>
+    <div class="hero-photo">
+      <img src="/static/img/mandajr/mandajr-hero.webp" alt="Dono de foodtruck mostrando seu cardápio no MandaJr" width="1400" height="764" fetchpriority="high">
+      <div class="hero-photo-tag">💳 PIX copia-e-cola · valor já preenchido ✅</div>
     </div>
   </div>
 
@@ -82,6 +71,10 @@
     <div class="feat"><div class="ic">🛎️</div><div><b>Pedido organizado no seu WhatsApp</b><p>Chega bonitinho: itens, valor, endereço. Você só toca em "Aceitar".</p></div></div>
     <div class="feat"><div class="ic">📲</div><div><b>O cliente acompanha sozinho</b><p>"Preparando" → "Saiu pra entrega" → "Chegou". Tudo automático.</p></div></div>
     <div class="feat"><div class="ic">🔗</div><div><b>Seu link e QR Code prontos</b><p>Cola no Insta, na mesa, na embalagem. O cliente abre e já pede.</p></div></div>
+
+    <div class="band-photo" style="margin-top:26px">
+      <img src="/static/img/mandajr/mandajr-close.webp" alt="Lanche prensado na chapa" width="1400" height="764" loading="lazy">
+    </div>
   </div>
 
   <div class="section" style="padding-top:0">
@@ -95,7 +88,11 @@
     </div>
   </div>
 
-  <div class="section" style="padding-top:0">
+  <div class="band-photo" style="max-width:440px;margin-left:auto;margin-right:auto">
+    <img src="/static/img/mandajr/mandajr-cardapio.webp" alt="Cliente fazendo pedido pelo celular no MandaJr" width="1400" height="764" loading="lazy">
+  </div>
+
+  <div class="section" style="padding-top:24px">
     <div class="price">
       <div class="free">🎁 7 dias grátis pra testar</div>
       <div class="big">R$29<small>/mês</small></div>
