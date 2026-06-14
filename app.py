@@ -13532,6 +13532,8 @@ def mandaja_config():
     if not store:
         return redirect('/mandaja/logout')
     store_id = store['id']
+    is_jr    = store.get('mode') == 'jr'
+    tpl      = _mja_tpl(store, 'configuracoes')
     conn     = get_saas_db()
     if request.method == 'POST':
         action = request.form.get('action', 'save')
@@ -13540,12 +13542,12 @@ def mandaja_config():
             senha_nova  = request.form.get('senha_nova', '')
             if not check_password_hash(store['password_hash'], senha_atual):
                 conn.close()
-                return render_template('mandaja/configuracoes.html',
+                return render_template(tpl,
                                        store=store, cats=MANDAJA_STORE_CATEGORIES,
                                        error_pass='Senha atual incorreta.')
             if len(senha_nova) < 6:
                 conn.close()
-                return render_template('mandaja/configuracoes.html',
+                return render_template(tpl,
                                        store=store, cats=MANDAJA_STORE_CATEGORIES,
                                        error_pass='Nova senha deve ter pelo menos 6 caracteres.')
             conn.execute('UPDATE mandaja_stores SET password_hash=? WHERE id=?',
@@ -13553,6 +13555,16 @@ def mandaja_config():
             conn.commit()
             conn.close()
             return redirect('/mandaja/configuracoes?ok=senha')
+        if is_jr:
+            # MandaJr: salva só o essencial (não apaga os campos avançados)
+            name = request.form.get('name', '').strip() or store['name']
+            conn.execute('UPDATE mandaja_stores SET name=?, pix_chave=?, pix_nome=?, delivery_fee=? WHERE id=?',
+                         (name, request.form.get('pix_chave', '').strip(),
+                          request.form.get('pix_nome', '').strip() or name,
+                          _mja_preco(request.form.get('delivery_fee')), store_id))
+            conn.commit(); conn.close()
+            session['mja_store_name'] = name
+            return redirect('/mandaja/configuracoes?ok=1')
         # Salvar dados da loja
         fields = ['name', 'owner_name', 'phone', 'email', 'description', 'category',
                   'address', 'neighborhood', 'city', 'state', 'cep',
@@ -13574,8 +13586,7 @@ def mandaja_config():
         session['mja_store_name'] = updates['name']
         return redirect('/mandaja/configuracoes?ok=1')
     conn.close()
-    return render_template('mandaja/configuracoes.html',
-                           store=store, cats=MANDAJA_STORE_CATEGORIES)
+    return render_template(tpl, store=store, cats=MANDAJA_STORE_CATEGORIES)
 
 
 # ── WhatsApp automático para o CLIENTE (MandaJá) ─────────────────────────────
