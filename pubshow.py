@@ -2274,6 +2274,7 @@ def painel():
                            now_brt=datetime.utcnow() - timedelta(hours=3),
                            timedelta=timedelta,
                            assinatura=dict(assinatura) if assinatura else None,
+                           asaas_ativo=bool(os.environ.get('ASAAS_API_KEY')),
                            promo_ativa=bool(bd.get('promo_msg') and bd.get('promo_expira') and bd['promo_expira'] > datetime.now().strftime('%Y-%m-%dT%H:%M:%S')))
 
 
