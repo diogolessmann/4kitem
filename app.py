@@ -13946,6 +13946,8 @@ def _notify_new_order_whatsapp(store, order_id, order_number, customer_name,
                f"{delivery_text}\n\n"
                f"🔗 Ver pedido: {request.host_url}mandaja/pedidos/{order_id}")
         phone_clean = _re.sub(r'\D', '', store['whatsapp'])
+        if phone_clean and not phone_clean.startswith('55'):
+            phone_clean = '55' + phone_clean   # Evolution exige o código do país
         requests.post(
             f"{EVO_URL}/message/sendText/{INSTANCE}",
             headers={'apikey': EVO_KEY, 'Content-Type': 'application/json'},
