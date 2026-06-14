@@ -13079,7 +13079,7 @@ def mandaja_cadastro():
         session['mja_store_slug'] = store['slug']
         session['mja_plan']       = 'micro'
         # Email de boas-vindas
-        if store.get('email'):
+        if store['email']:
             _enviar_email(
                 store['email'],
                 '🛍️ Bem-vindo ao MandaJá — Sua loja digital está pronta!',
