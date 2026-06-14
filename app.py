@@ -711,8 +711,8 @@ MANDAJA_PLANS = {
     'light':    {'label': 'Light',    'products': 20,  'price': 99,  'emoji': '⚡'},
     'plus':     {'label': 'Plus',     'products': 25,  'price': 159, 'emoji': '🚀'},
     'pro':      {'label': 'Pro',      'products': 30,  'price': 249, 'emoji': '💎'},
-    'king':     {'label': 'King',     'products': 40,  'price': 349, 'emoji': '👑'},
-    'ultra':    {'label': 'Ultra',    'products': 100, 'price': 499, 'emoji': '🔥'},
+    'king':     {'label': 'King',     'products': 50,  'price': 349, 'emoji': '👑'},
+    'ultra':    {'label': 'Ultra',    'products': 200, 'price': 499, 'emoji': '🔥'},
 }
 
 MANDAJA_STORE_CATEGORIES = {
