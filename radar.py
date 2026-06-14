@@ -37,6 +37,8 @@ radar_bp = Blueprint('radar', __name__, url_prefix='/radar')
 # ── Config (tudo via env, com defaults sensatos) ─────────────────────────────
 PNCP_BASE      = os.environ.get('PNCP_BASE', 'https://pncp.gov.br/api/consulta')
 RADAR_TOKEN    = os.environ.get('RADAR_TOKEN', '').strip()      # se vazio = aberto (dev)
+RADAR_WHATSAPP = os.environ.get('RADAR_WHATSAPP', '').strip()   # nº p/ "assinar" (só dígitos, ex: 5547...)
+RADAR_PRECO    = os.environ.get('RADAR_PRECO', '97')            # preço exibido na tela de assinatura
 RADAR_UF       = os.environ.get('RADAR_UF', '').strip().upper()  # '' = Brasil todo
 RADAR_JANELA   = int(os.environ.get('RADAR_JANELA_DIAS', '20'))  # editais fechando em N dias
 RADAR_MAXPAG   = int(os.environ.get('RADAR_MAX_PAGINAS', '20'))  # teto por modalidade/rodada
@@ -545,6 +547,21 @@ def radar_login_required(f):
     return wrap
 
 
+def radar_pago_required(f):
+    """Exige login E plano ativo (ou admin). Sem teste grátis: conta nova fica
+    'aguardando ativação' até o admin liberar (ou o pagamento confirmar)."""
+    @wraps(f)
+    def wrap(*a, **k):
+        u = _user()
+        if not u:
+            return redirect('/radar/entrar')
+        if not _is_admin(u) and not u.get('plan_active'):
+            return render_template_string(_AGUARDANDO, nome=u.get('nome', ''),
+                                          whatsapp=RADAR_WHATSAPP, preco=RADAR_PRECO)
+        return f(*a, **k)
+    return wrap
+
+
 def radar_admin_required(f):
     @wraps(f)
     def wrap(*a, **k):
@@ -676,7 +693,7 @@ def rota_coletar():
 
 
 @radar_bp.route('/api/licitacoes')
-@radar_login_required
+@radar_pago_required
 def rota_api():
     return jsonify(listar_licitacoes(
         uf=request.args.get('uf'),
@@ -735,7 +752,7 @@ def rota_reclassificar():
 
 
 @radar_bp.route('/precos')
-@radar_login_required
+@radar_pago_required
 def rota_precos():
     vencendo = request.args.get('vencendo', type=int)
     lst = listar_contratos(uf=request.args.get('uf'), busca=request.args.get('q'),
@@ -754,8 +771,22 @@ def rota_admin():
     return render_template_string(_ADMIN, st=st, stc=stc, users=listar_radar_users())
 
 
+@radar_bp.route('/admin/ativar/<int:uid>')
+@radar_admin_required
+def rota_ativar(uid):
+    radar_exec('UPDATE radar_users SET plan_active=1 WHERE id=?', (uid,))
+    return redirect('/radar/admin')
+
+
+@radar_bp.route('/admin/desativar/<int:uid>')
+@radar_admin_required
+def rota_desativar(uid):
+    radar_exec('UPDATE radar_users SET plan_active=0 WHERE id=? AND is_admin=0', (uid,))
+    return redirect('/radar/admin')
+
+
 @radar_bp.route('/')
-@radar_login_required
+@radar_pago_required
 def rota_painel():
     uf   = request.args.get('uf')
     zona = request.args.get('zona')
@@ -767,7 +798,7 @@ def rota_painel():
 
 
 @radar_bp.route('/l/<path:pncp_id>')
-@radar_login_required
+@radar_pago_required
 def rota_detalhe(pncp_id):
     l = obter_licitacao(pncp_id)
     if not l:
@@ -780,7 +811,7 @@ def rota_detalhe(pncp_id):
 
 
 @radar_bp.route('/l/<path:pncp_id>/analisar', methods=['POST'])
-@radar_login_required
+@radar_pago_required
 def rota_analisar(pncp_id):
     l = obter_licitacao(pncp_id)
     if not l:
@@ -1013,8 +1044,9 @@ _AUTH = '''<!doctype html><html lang="pt-br"><head><meta charset="utf-8">
   <label>E-mail</label><input type="email" name="email" required>
   <label>Telefone (opcional)</label><input name="telefone">
   <label>Senha (mín. 6)</label><input type="password" name="senha" required>
-  <button>Criar conta grátis</button>
+  <button>Criar conta</button>
  </form>
+ <div class="links" style="margin-top:10px;color:#8aa0c6">Serviço por assinatura (R$ {{ preco|default('97') }}/mês) — após criar a conta, ative seu acesso.</div>
  <div class="links">Já tem conta? <a href="/radar/entrar">Entrar</a></div>
  {% elif modo == 'esqueci' %}
  <form method="post" action="/radar/esqueci-senha">
@@ -1035,9 +1067,46 @@ _AUTH = '''<!doctype html><html lang="pt-br"><head><meta charset="utf-8">
   <button>Entrar</button>
  </form>
  <div style="text-align:center;margin:18px 0 6px;color:#8aa0c6;font-size:13px">— ainda não tem conta? —</div>
- <a href="/radar/cadastrar"><button type="button" style="background:#152042;border:1px solid #2a3c63;color:#7cc0ff;margin-top:0">✨ Criar conta grátis</button></a>
+ <a href="/radar/cadastrar"><button type="button" style="background:#152042;border:1px solid #2a3c63;color:#7cc0ff;margin-top:0">✨ Criar conta</button></a>
  <div class="links"><a href="/radar/esqueci-senha">Esqueci a senha</a></div>
  {% endif %}
+</div>
+</body></html>'''
+
+
+# ── Tela "aguardando assinatura" (SaaS só pago, sem teste grátis) ───────────
+_AGUARDANDO = '''<!doctype html><html lang="pt-br"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Assine o Radar de Licitações de TI</title>
+<style>
+ body{font-family:system-ui,Segoe UI,Roboto,sans-serif;background:#0b1020;color:#e7ecf5;margin:0;
+   display:flex;min-height:100vh;align-items:center;justify-content:center;padding:20px}
+ .card{background:#0f1730;border:1px solid #21304f;border-radius:16px;padding:34px;max-width:440px;width:100%;text-align:center}
+ h1{font-size:22px;margin:0 0 6px} .ola{color:#8aa0c6;font-size:14px}
+ .preco{font-size:40px;font-weight:800;color:#5ee0a0;margin:18px 0 2px} .preco span{font-size:16px;color:#8aa0c6;font-weight:500}
+ ul{text-align:left;color:#cfe0ff;font-size:14px;line-height:1.9;margin:18px auto;max-width:320px}
+ .btn{display:block;background:#25D366;color:#06210f;font-weight:800;text-decoration:none;
+   padding:14px;border-radius:10px;margin-top:18px;font-size:16px}
+ .btn.alt{background:#152042;color:#cfe0ff;border:1px solid #2a3c63;font-weight:600}
+ a.sair{color:#8aa0c6;font-size:13px;display:inline-block;margin-top:16px}
+</style></head><body>
+<div class="card">
+ <h1>📡 Radar de Licitações de TI</h1>
+ <div class="ola">Olá, {{ nome }}! Sua conta foi criada. ✅</div>
+ <p>O Radar é um serviço <b>por assinatura</b> — sem teste grátis.</p>
+ <div class="preco">R$ {{ preco }}<span>/mês</span></div>
+ <ul>
+  <li>✅ Licitações de TI do Brasil, filtradas pra você</li>
+  <li>✅ Score de viabilidade + zona ouro (≤R$65k)</li>
+  <li>🤖 IA que lê o edital e diz se vale a pena</li>
+  <li>💰 Inteligência de preço: quem pagou quanto</li>
+ </ul>
+ {% if whatsapp %}
+ <a class="btn" href="https://wa.me/{{ whatsapp }}?text=Quero%20assinar%20o%20Radar%20de%20Licita%C3%A7%C3%B5es%20de%20TI" target="_blank">💬 Assinar pelo WhatsApp</a>
+ {% else %}
+ <p style="color:#ffd95e;font-size:14px">Fale com o administrador para liberar seu acesso.</p>
+ {% endif %}
+ <a class="sair" href="/radar/sair">sair</a>
 </div>
 </body></html>'''
 
@@ -1082,16 +1151,21 @@ _ADMIN = '''<!doctype html><html lang="pt-br"><head><meta charset="utf-8">
 
 <h2>👥 Usuários ({{ users|length }})</h2>
 <table>
- <tr><th>#</th><th>Nome</th><th>E-mail</th><th>Telefone</th><th>Plano</th><th>Cadastro</th><th>Último acesso</th></tr>
+ <tr><th>#</th><th>Nome</th><th>E-mail</th><th>Telefone</th><th>Status</th><th>Cadastro</th><th>Último acesso</th><th>Ação</th></tr>
  {% for u in users %}
  <tr>
   <td>{{ u.id }}</td>
   <td>{{ u.nome }}{% if u.is_admin %} <span class="adm">★admin</span>{% endif %}</td>
   <td>{{ u.email }}</td>
   <td>{{ u.telefone or '—' }}</td>
-  <td>{{ 'ativo' if u.plan_active else u.plano }}</td>
+  <td>{% if u.plan_active %}<span style="color:#5ee0a0">✅ ativo</span>{% else %}<span style="color:#ffd95e">⏳ aguardando</span>{% endif %}</td>
   <td>{{ (u.created_at or '')[:10] }}</td>
   <td>{{ (u.ultimo_acesso or '—')[:16] }}</td>
+  <td>
+   {% if u.is_admin %}—
+   {% elif u.plan_active %}<a href="/radar/admin/desativar/{{ u.id }}" style="color:#ff8a8a">desativar</a>
+   {% else %}<a href="/radar/admin/ativar/{{ u.id }}" style="color:#5ee0a0">✓ ativar (pago)</a>{% endif %}
+  </td>
  </tr>
  {% endfor %}
 </table>
