@@ -1019,10 +1019,10 @@ _PRECOS = '''<!doctype html><html lang="pt-br"><head><meta charset="utf-8">
 _AUTH = '''<!doctype html><html lang="pt-br"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>📡 Radar de Licitações de TI — Acesso</title>
-<link rel="icon" type="image/png" href="/static/img/radar/logo.png">
+<link rel="icon" type="image/png" href="/static/img/radar/logo.webp">
 <meta property="og:title" content="Radar de Licitações de TI">
 <meta property="og:description" content="Licitações de tecnologia do Brasil, filtradas pra você.">
-<meta property="og:image" content="https://4kitem.com.br/static/img/radar/og.png">
+<meta property="og:image" content="https://4kitem.com.br/static/img/radar/og.jpg">
 <meta name="twitter:card" content="summary_large_image">
 <style>
  body{font-family:system-ui,Segoe UI,Roboto,sans-serif;background:#0b1020;color:#e7ecf5;margin:0;
@@ -1039,7 +1039,7 @@ _AUTH = '''<!doctype html><html lang="pt-br"><head><meta charset="utf-8">
  .links{margin-top:16px;font-size:13px;text-align:center} a{color:#7cc0ff;text-decoration:none}
 </style></head><body>
 <div class="card">
- <img src="/static/img/radar/hero.png" alt="" style="width:100%;border-radius:12px;margin-bottom:18px;display:block" onerror="this.style.display='none'">
+ <img src="/static/img/radar/hero.webp" alt="" style="width:100%;border-radius:12px;margin-bottom:18px;display:block" onerror="this.style.display='none'">
  <h1>📡 Radar de Licitações de TI</h1>
  <div class="sub">Licitações de tecnologia do Brasil, filtradas pra você.</div>
  {% if erro %}<div class="erro">⚠️ {{ erro }}</div>{% endif %}
@@ -1182,7 +1182,7 @@ _ADMIN = '''<!doctype html><html lang="pt-br"><head><meta charset="utf-8">
 _PAINEL = '''<!doctype html><html lang="pt-br"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>📡 Radar de Licitações de TI</title>
-<link rel="icon" type="image/png" href="/static/img/radar/logo.png">
+<link rel="icon" type="image/png" href="/static/img/radar/logo.webp">
 <style>
  body{font-family:system-ui,Segoe UI,Roboto,sans-serif;background:#0b1020;color:#e7ecf5;margin:0}
  header{padding:18px 22px;background:#11182e;border-bottom:1px solid #21304f;position:sticky;top:0}
@@ -1208,7 +1208,7 @@ _PAINEL = '''<!doctype html><html lang="pt-br"><head><meta charset="utf-8">
  .empty{padding:60px;text-align:center;color:#8aa0c6}
 </style></head><body>
 <header>
- <h1><img src="/static/img/radar/logo.png" alt="" style="height:30px;width:30px;border-radius:7px;vertical-align:-6px;margin-right:8px" onerror="this.outerHTML='📡 '">Radar de Licitações de TI</h1>
+ <h1><img src="/static/img/radar/logo.webp" alt="" style="height:30px;width:30px;border-radius:7px;vertical-align:-6px;margin-right:8px" onerror="this.outerHTML='📡 '">Radar de Licitações de TI</h1>
  <div class="sub">Serviços médio/pequenos de TI — cauda longa municipal. Nada "Microsoft". 😉</div>
  <div class="stats">
   <div class="card"><b>{{ st.total }}</b><span>coletadas</span></div>
@@ -1252,7 +1252,7 @@ _PAINEL = '''<!doctype html><html lang="pt-br"><head><meta charset="utf-8">
 </table>
 {% else %}
 <div class="empty">
- <img src="/static/img/radar/vazio.png" alt="" style="max-width:240px;width:60%;opacity:.9;margin-bottom:14px" onerror="this.style.display='none'"><br>
+ <img src="/static/img/radar/vazio.webp" alt="" style="max-width:240px;width:60%;opacity:.9;margin-bottom:14px" onerror="this.style.display='none'"><br>
  Nenhuma licitação ainda.<br><br>
  Clique em <b>▶ Coletar agora</b> (precisa de internet) pra puxar do PNCP.</div>
 {% endif %}
