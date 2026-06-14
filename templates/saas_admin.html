@@ -78,7 +78,8 @@
     <button class="tab-btn" onclick="showTab('kids',this)">📺 SalaTV ({{ kids_clients|length }})</button>
     <button class="tab-btn" onclick="showTab('desp',this)">🚗 Despachante ({{ desp_users|length }})</button>
     <button class="tab-btn" onclick="showTab('defesa',this)">⚖️ DefesaPro ({{ defesa_users|length }})</button>
-    <button class="tab-btn" onclick="showTab('mandaja',this)">🛵 MandaJá ({{ mandaja_stores|length }})</button>
+    <button class="tab-btn" onclick="showTab('mandaja',this)">🛵 MandaJá ({{ mandaja_stores|rejectattr('mode','equalto','jr')|list|length }})</button>
+    <button class="tab-btn" onclick="showTab('mandajr',this)">🍔 MandaJr ({{ mandaja_stores|selectattr('mode','equalto','jr')|list|length }})</button>
     <button class="tab-btn" onclick="showTab('vetzap',this)">🐾 VetZap ({{ vetzap_users|length }})</button>
     <button class="tab-btn" onclick="showTab('pubshow',this)">📺 PUBSHOW ({{ pubshow_bars|length }})</button>
     <button class="tab-btn" onclick="showTab('slotzap',this)">🎯 SlotZap ({{ sz_users|length }})</button>
@@ -427,18 +428,7 @@
     {% endif %}
   </div>
 
-  <!-- ═══ TAB MANDAJÁ ═══ -->
-  <div class="tab-content" id="tab-mandaja">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
-      <h2 style="margin:0;">🛵 Lojas — MandaJá</h2>
-    </div>
-    {% if mandaja_stores %}
-    <table class="data-table">
-      <thead><tr>
-        <th>ID</th><th>Loja</th><th>Dono</th><th>Plano</th><th>Cidade</th><th>Criado</th><th>Ações</th>
-      </tr></thead>
-      <tbody>
-      {% for s in mandaja_stores %}
+  {% macro mja_row(s) %}
       <tr>
         <td>{{ s.id }}</td>
         <td>
@@ -473,12 +463,35 @@
           </div>
         </td>
       </tr>
-      {% endfor %}
-      </tbody>
+  {% endmacro %}
+
+  {% set mandaja_pro = mandaja_stores|rejectattr('mode','equalto','jr')|list %}
+  {% set mandaja_jr  = mandaja_stores|selectattr('mode','equalto','jr')|list %}
+
+  <!-- ═══ TAB MANDAJÁ (Pro) ═══ -->
+  <div class="tab-content" id="tab-mandaja">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+      <h2 style="margin:0;">🛵 Lojas — MandaJá Pro</h2>
+    </div>
+    {% if mandaja_pro %}
+    <table class="data-table">
+      <thead><tr><th>ID</th><th>Loja</th><th>Dono</th><th>Plano</th><th>Cidade</th><th>Criado</th><th>Ações</th></tr></thead>
+      <tbody>{% for s in mandaja_pro %}{{ mja_row(s) }}{% endfor %}</tbody>
     </table>
-    {% else %}
-    <div class="empty">Nenhuma loja MandaJá ainda.</div>
-    {% endif %}
+    {% else %}<div class="empty">Nenhuma loja MandaJá Pro ainda.</div>{% endif %}
+  </div>
+
+  <!-- ═══ TAB MANDAJR ═══ -->
+  <div class="tab-content" id="tab-mandajr">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+      <h2 style="margin:0;">🍔 Lojas — MandaJr</h2>
+    </div>
+    {% if mandaja_jr %}
+    <table class="data-table">
+      <thead><tr><th>ID</th><th>Loja</th><th>Dono</th><th>Plano</th><th>Cidade</th><th>Criado</th><th>Ações</th></tr></thead>
+      <tbody>{% for s in mandaja_jr %}{{ mja_row(s) }}{% endfor %}</tbody>
+    </table>
+    {% else %}<div class="empty">Nenhuma loja MandaJr ainda.</div>{% endif %}
   </div>
 
   <!-- ═══════════════ VETZAP ═══════════════ -->
@@ -1309,6 +1322,13 @@ async function toggleMandajaStore(id, currentActive) {
   const d = await r.json();
   if (d.success) location.reload();
   else alert('Erro ao atualizar loja');
+}
+async function deleteMandajaStore(id, name) {
+  if (!confirm(`⚠️ EXCLUIR a loja "${name}" e TODOS os dados (produtos, pedidos)?\n\nIsso não tem volta.`)) return;
+  const r = await fetch(`/admin/mandaja/store/${id}/delete`, {method:'POST'});
+  const d = await r.json();
+  if (d.success) location.reload();
+  else alert('Erro ao excluir: ' + (d.error || ''));
 }
 </script>
 </body>

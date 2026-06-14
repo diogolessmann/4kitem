@@ -12775,7 +12775,8 @@ def mandajr_comecar():
         if existing:
             conn.close()
             return render_template('mandaja/jr_comecar.html',
-                                   error='Esse WhatsApp já tem uma loja. É só entrar com a sua senha.')
+                                   error='Esse WhatsApp já tem uma loja. É só entrar com a sua senha.',
+                                   ja_existe=True)
         slug = _slugify(name); base = slug; i = 1
         while conn.execute('SELECT id FROM mandaja_stores WHERE slug=?', (slug,)).fetchone():
             slug = f"{base}-{i}"; i += 1
