@@ -12765,6 +12765,35 @@ def mandajr_landing():
     return render_template('mandaja/jr_landing.html')
 
 
+@app.route('/mandajr/entrar', methods=['GET', 'POST'])
+def mandajr_entrar():
+    """Login com cara do MandaJr (mesma base; aceita WhatsApp ou e-mail)."""
+    if session.get('mja_store_id'):
+        return redirect('/mandaja/painel')
+    erro = None
+    if request.method == 'POST':
+        ident = request.form.get('email', '').strip().lower()
+        senha = request.form.get('senha', '')
+        conn  = get_saas_db()
+        store = conn.execute('SELECT * FROM mandaja_stores WHERE LOWER(email)=? AND email!="" AND active=1',
+                             (ident,)).fetchone()
+        if not store:
+            d = ''.join(c for c in ident if c.isdigit())
+            if len(d) >= 10:
+                store = conn.execute(
+                    "SELECT * FROM mandaja_stores WHERE replace(replace(replace(replace(replace(phone,'(',''),')',''),'-',''),' ',''),'+','') = ? AND active=1",
+                    (d,)).fetchone()
+        conn.close()
+        if store and check_password_hash(store['password_hash'], senha):
+            session['mja_store_id']   = store['id']
+            session['mja_store_name'] = store['name']
+            session['mja_store_slug'] = store['slug']
+            session['mja_plan']       = store['plan']
+            return redirect('/mandaja/painel')
+        erro = 'WhatsApp/e-mail ou senha incorretos.'
+    return render_template('mandaja/jr_entrar.html', erro=erro)
+
+
 @app.route('/mandajr/comecar', methods=['GET', 'POST'])
 def mandajr_comecar():
     """Onboarding enxuto: nome + WhatsApp + senha + chave PIX → loja no ar."""
@@ -12817,7 +12846,7 @@ def mandajr_comecar():
         session['mja_store_id']   = store['id']
         session['mja_store_name'] = store['name']
         session['mja_store_slug'] = store['slug']
-        session['mja_plan']       = 'micro'
+        session['mja_plan']       = 'jr'
         return redirect('/mandaja/painel?novo=1')
     return render_template('mandaja/jr_comecar.html')
 
@@ -13068,9 +13097,11 @@ def mandaja_cadastro():
 
 @app.route('/mandaja/logout')
 def mandaja_logout():
+    # Volta pro site certo: loja Jr → MandaJr; Pro → MandaJá
+    destino = '/mandajr' if session.get('mja_plan') == 'jr' else '/mandaja'
     for k in ('mja_store_id', 'mja_store_name', 'mja_store_slug', 'mja_plan'):
         session.pop(k, None)
-    return redirect('/mandaja')
+    return redirect(destino)
 
 
 # ── MandaJá — Recuperação de senha ───────────────────────────────────────────

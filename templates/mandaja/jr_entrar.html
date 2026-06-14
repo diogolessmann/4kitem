@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Entrar — MandaJr</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#0B0B12;color:#F4F4F8;font-family:'Segoe UI',system-ui,sans-serif;line-height:1.5;min-height:100vh}
+  a{text-decoration:none;color:inherit}
+  .wrap{max-width:400px;margin:0 auto;padding:0 20px}
+  .topbar{display:flex;align-items:center;justify-content:space-between;height:60px}
+  .logo{font-size:20px;font-weight:900;color:#F97316}
+  .head{text-align:center;padding:26px 0 22px}
+  .head .em{font-size:44px;margin-bottom:10px}
+  .head h1{font-size:24px;font-weight:900}
+  .head p{font-size:14px;color:#a0a0b2;margin-top:4px}
+  form{background:#13131c;border:1px solid rgba(255,255,255,.06);border-radius:18px;padding:22px}
+  label{display:block;font-size:13px;font-weight:700;color:#cbd5e1;margin:14px 0 7px}
+  label:first-child{margin-top:0}
+  input{width:100%;background:#0B0B12;border:1.5px solid rgba(255,255,255,.1);border-radius:11px;padding:13px 14px;color:#fff;font-size:16px;outline:none}
+  input:focus{border-color:#F97316}
+  .btn{width:100%;background:linear-gradient(135deg,#ea580c,#f97316);color:#fff;font-size:16px;font-weight:800;border:none;border-radius:13px;padding:16px;margin-top:20px;cursor:pointer}
+  .err{background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.4);color:#fca5a5;font-size:13px;font-weight:600;border-radius:10px;padding:11px 14px;margin-bottom:16px;text-align:center}
+  .links{text-align:center;font-size:13px;color:#8b8b9e;padding:18px 0 40px}
+  .links a{color:#F97316;font-weight:700}
+  .links .sep{margin:8px 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <a href="/mandajr" class="logo">🍔 MandaJr</a>
+    <a href="/mandajr/comecar" style="font-size:14px;font-weight:700;color:#cbd5e1">Criar loja →</a>
+  </div>
+
+  <div class="head">
+    <div class="em">🍔</div>
+    <h1>Entrar na minha loja</h1>
+    <p>Use o WhatsApp que você cadastrou.</p>
+  </div>
+
+  {% if erro %}<div class="err">⚠️ {{ erro }}</div>{% endif %}
+
+  <form method="POST" action="/mandajr/entrar">
+    <label>WhatsApp ou e-mail</label>
+    <input type="text" name="email" placeholder="(47) 99999-9999" autofocus required>
+
+    <label>Senha</label>
+    <input type="password" name="senha" placeholder="••••••" required>
+
+    <button type="submit" class="btn">Entrar →</button>
+  </form>
+
+  <div class="links">
+    <div class="sep"><a href="/mandaja/esqueci-senha">Esqueci minha senha</a></div>
+    <div>Não tem loja? <a href="/mandajr/comecar">Criar grátis</a></div>
+  </div>
+</div>
+</body>
+</html>

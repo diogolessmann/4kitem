@@ -35,7 +35,7 @@
 <div class="wrap">
   <div class="topbar">
     <a href="/mandajr" class="logo">🍔 MandaJr</a>
-    <a href="/mandaja/entrar" class="entrar">Já tenho conta →</a>
+    <a href="/mandajr/entrar" class="entrar">Já tenho conta →</a>
   </div>
 
   <div class="head">
@@ -46,7 +46,7 @@
 
   {% if error %}<div class="err">⚠️ {{ error }}</div>{% endif %}
   {% if ja_existe %}
-  <a href="/mandaja/entrar" style="display:block;text-align:center;background:linear-gradient(135deg,#ea580c,#f97316);color:#fff;font-weight:800;padding:14px;border-radius:13px;margin-bottom:16px;text-decoration:none">🔑 Entrar na minha loja →</a>
+  <a href="/mandajr/entrar" style="display:block;text-align:center;background:linear-gradient(135deg,#ea580c,#f97316);color:#fff;font-weight:800;padding:14px;border-radius:13px;margin-bottom:16px;text-decoration:none">🔑 Entrar na minha loja →</a>
   {% endif %}
 
   <form method="POST" action="/mandajr/comecar">
