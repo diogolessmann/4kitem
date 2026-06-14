@@ -122,7 +122,11 @@ ZONA_DIFICIL = float(os.environ.get('RADAR_ZONA_DIFICIL', '1000000'))
 
 
 def _norm(s):
-    return (s or '').lower()
+    """Minúsculas + SEM acento (assim 'camera' casa 'câmeras', 'premios' casa
+    'prêmios' etc.) — a triagem fica imune a acento do texto do PNCP."""
+    import unicodedata
+    s = (s or '').lower()
+    return ''.join(c for c in unicodedata.normalize('NFKD', s) if not unicodedata.combining(c))
 
 
 def classificar(objeto, valor, modalidade_id=None):
@@ -135,7 +139,10 @@ def classificar(objeto, valor, modalidade_id=None):
     t2 = [k for k in KW_TIER2 if k in o]
     # domínio ambíguo (folha, iptu, almoxarifado...) só vira TI com indício de software
     ctx = [k for k in KW_CONTEXTO if k in o]
-    if ctx and any(ind in o for ind in KW_INDICIO):
+    # "Sistema de Registro de Preços" (SRP) é modalidade de compra, não software:
+    # remove antes de checar indício, senão o 'sistema' do SRP dá falso positivo
+    o_ind = o.replace('sistema de registro de preco', ' ').replace('registro de preco', ' ')
+    if ctx and any(ind in o_ind for ind in KW_INDICIO):
         t2 = t2 + ctx
     matched = (t1 + t2)[:6]
 
