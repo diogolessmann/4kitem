@@ -338,9 +338,12 @@
     </div>
 
     {% if pedido.delivery_type == 'delivery' and pedido.address %}
-    <div class="addr-box" style="margin-top:14px;padding:12px;background:#07070E;border-radius:10px;font-size:13px;color:#9090B0">
-      📍 {{ pedido.address }}{% if pedido.neighborhood %}, {{ pedido.neighborhood }}{% endif %}{% if pedido.city %} — {{ pedido.city }}{% endif %}{% if pedido.cep %} / {{ pedido.cep }}{% endif %}
+    <div class="addr-box" style="margin-top:14px;padding:12px;background:#07070E;border-radius:10px;font-size:13px;color:#9090B0;white-space:pre-line">
+      📍 {{ pedido.endereco_txt }}{% if pedido.cep %}<br>CEP {{ pedido.cep }}{% endif %}
     </div>
+    {% if pedido.maps_url %}
+    <a href="{{ pedido.maps_url }}" target="_blank" style="display:flex;align-items:center;justify-content:center;gap:8px;background:#1a73e8;color:#fff;font-weight:700;font-size:13px;border-radius:10px;padding:12px;margin-top:10px;text-decoration:none">📍 Abrir no Maps (rota pro motoboy)</a>
+    {% endif %}
     {% endif %}
 
     {% if pedido.customer_notes %}

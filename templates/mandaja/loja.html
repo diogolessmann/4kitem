@@ -316,21 +316,35 @@
       <div id="addressFields">
         <div class="field">
           <label>CEP</label>
-          <input type="text" id="custCep" placeholder="00000-000" oninput="fetchCep(this.value)">
+          <input type="text" id="custCep" placeholder="00000-000" inputmode="numeric" oninput="fetchCep(this.value)">
         </div>
         <div class="field">
-          <label>Endereço *</label>
-          <input type="text" id="custAddress" placeholder="Rua, número">
+          <label>Rua *</label>
+          <input type="text" id="custAddress" placeholder="Nome da rua">
         </div>
         <div class="grid2">
           <div class="field">
-            <label>Bairro</label>
+            <label>Número *</label>
+            <input type="text" id="custNumber" inputmode="numeric" placeholder="Ex: 123">
+          </div>
+          <div class="field">
+            <label>Complemento</label>
+            <input type="text" id="custComplement" placeholder="Apto, bloco...">
+          </div>
+        </div>
+        <div class="grid2">
+          <div class="field">
+            <label>Bairro *</label>
             <input type="text" id="custNeighborhood" placeholder="Bairro">
           </div>
           <div class="field">
             <label>Cidade</label>
             <input type="text" id="custCity" placeholder="Cidade">
           </div>
+        </div>
+        <div class="field">
+          <label>Ponto de referência <span style="color:#999;font-weight:400">(ajuda o entregador)</span></label>
+          <input type="text" id="custReference" placeholder="Ex: portão azul, ao lado do mercado">
         </div>
       </div>
 
@@ -431,6 +445,21 @@ const STORE_SLUG = '{{ store.slug }}';
 const DELIVERY_FEE = {{ store.delivery_fee }};
 const MIN_ORDER = {{ store.min_order }};
 const STORE_OPEN = {{ 'true' if is_open else 'false' }};
+
+// Lembrar dados do cliente (localStorage) — não redigita a cada pedido
+const _CUST_KEYS = ['custName','custPhone','custCep','custAddress','custNumber','custComplement','custNeighborhood','custCity','custReference'];
+function loadCustomer(){
+  try { const d = JSON.parse(localStorage.getItem('mja_customer') || '{}');
+    _CUST_KEYS.forEach(k => { const el = document.getElementById(k); if (el && d[k]) el.value = d[k]; });
+  } catch(e){}
+}
+function saveCustomer(){
+  try { const d = {};
+    _CUST_KEYS.forEach(k => { const el = document.getElementById(k); if (el) d[k] = el.value; });
+    localStorage.setItem('mja_customer', JSON.stringify(d));
+  } catch(e){}
+}
+document.addEventListener('DOMContentLoaded', loadCustomer);
 
 // Mapa de opções por produto (injetado pelo servidor)
 const PROD_OPCOES = {};
@@ -661,8 +690,12 @@ async function submitOrder() {
   const phone = document.getElementById('custPhone').value.trim();
   if (!name || !phone) { alert('Preencha nome e WhatsApp!'); return; }
   if (cart.length === 0) { alert('Carrinho vazio!'); return; }
-  if (deliveryType === 'delivery' && !document.getElementById('custAddress').value.trim()) {
-    alert('Preencha o endereço de entrega!'); return;
+  if (deliveryType === 'delivery') {
+    if (!document.getElementById('custAddress').value.trim() ||
+        !document.getElementById('custNumber').value.trim() ||
+        !document.getElementById('custNeighborhood').value.trim()) {
+      alert('Preencha a rua, o número e o bairro da entrega!'); return;
+    }
   }
   const sub = cart.reduce((s, i) => s + i.price * i.qty, 0);
   if (MIN_ORDER > 0 && sub < MIN_ORDER) {
@@ -678,6 +711,9 @@ async function submitOrder() {
       customer_notes: document.getElementById('custNotes').value.trim(),
       delivery_type: deliveryType,
       address: document.getElementById('custAddress')?.value.trim() || '',
+      number: document.getElementById('custNumber')?.value.trim() || '',
+      complement: document.getElementById('custComplement')?.value.trim() || '',
+      reference: document.getElementById('custReference')?.value.trim() || '',
       neighborhood: document.getElementById('custNeighborhood')?.value.trim() || '',
       city: document.getElementById('custCity')?.value.trim() || '',
       cep: document.getElementById('custCep')?.value.trim() || '',
@@ -692,6 +728,7 @@ async function submitOrder() {
     });
     const d = await r.json();
     if (d.ok) {
+      saveCustomer();
       closeCart();
       showSuccess(d);
       cart = [];

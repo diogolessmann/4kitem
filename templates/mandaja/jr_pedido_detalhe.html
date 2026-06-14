@@ -49,7 +49,10 @@
     <b>{{ pedido.customer_name }}</b>
     <div class="ph">{{ pedido.customer_phone }}</div>
     {% if pedido.delivery_type == 'delivery' %}
-      <div class="notes" style="background:rgba(59,130,246,.1);color:#93c5fd">🚚 Entrega: {{ pedido.address }}{% if pedido.neighborhood %}, {{ pedido.neighborhood }}{% endif %}</div>
+      <div class="notes" style="background:rgba(59,130,246,.1);color:#93c5fd;white-space:pre-line">🚚 {{ pedido.endereco_txt }}</div>
+      {% if pedido.maps_url %}
+      <a href="{{ pedido.maps_url }}" target="_blank" style="display:flex;align-items:center;justify-content:center;gap:8px;background:#1a73e8;color:#fff;font-weight:800;font-size:14px;border-radius:11px;padding:13px;margin-top:10px;text-decoration:none">📍 Abrir no Maps (rota pro motoboy)</a>
+      {% endif %}
     {% else %}
       <div class="notes" style="background:rgba(139,92,246,.1);color:#c4b5fd">🏠 Retirada no local</div>
     {% endif %}

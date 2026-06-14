@@ -514,6 +514,11 @@ def init_saas_db():
         # MandaJr — fachada "basicão": mode separa Jr/Pro, aberto = interruptor manual
         "ALTER TABLE mandaja_stores ADD COLUMN mode TEXT DEFAULT 'pro'",
         "ALTER TABLE mandaja_stores ADD COLUMN aberto INTEGER DEFAULT 1",
+        # Endereço completo do pedido (número/complemento/referência) + taxa por bairro
+        "ALTER TABLE mandaja_orders ADD COLUMN address_number TEXT DEFAULT ''",
+        "ALTER TABLE mandaja_orders ADD COLUMN address_complement TEXT DEFAULT ''",
+        "ALTER TABLE mandaja_orders ADD COLUMN address_reference TEXT DEFAULT ''",
+        "ALTER TABLE mandaja_stores ADD COLUMN delivery_zones TEXT DEFAULT ''",
     ]
     # ── DefesaPro / apps gerais — reset de senha e Asaas ────────────────────────
     _auth_migrations = [

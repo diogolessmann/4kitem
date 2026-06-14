@@ -13492,6 +13492,10 @@ def mandaja_pedido_detalhe(order_id):
         return redirect('/mandaja/pedidos')
     pedido = dict(pedido)
     pedido['items'] = _json.loads(pedido.get('items_json') or '[]')
+    pedido['endereco_txt'], pedido['maps_url'] = _mandaja_endereco(
+        pedido.get('address', ''), pedido.get('address_number', ''),
+        pedido.get('address_complement', ''), pedido.get('neighborhood', ''),
+        pedido.get('city', ''), pedido.get('address_reference', ''))
     return render_template(_mja_tpl(store, 'pedido_detalhe'), store=store, pedido=pedido)
 
 
@@ -13796,6 +13800,9 @@ def mandaja_fazer_pedido(slug):
     customer_notes  = data.get('customer_notes', '').strip()
     delivery_type   = data.get('delivery_type', 'delivery')
     address         = data.get('address', '').strip()
+    addr_number     = data.get('number', '').strip()
+    addr_complement = data.get('complement', '').strip()
+    addr_reference  = data.get('reference', '').strip()
     neighborhood    = data.get('neighborhood', '').strip()
     city            = data.get('city', '').strip()
     cep             = data.get('cep', '').strip()
@@ -13821,12 +13828,14 @@ def mandaja_fazer_pedido(slug):
     cur = conn.execute('''
         INSERT INTO mandaja_orders
         (store_id, order_number, customer_name, customer_phone, customer_notes,
-         delivery_type, address, neighborhood, city, cep,
+         delivery_type, address, address_number, address_complement, address_reference,
+         neighborhood, city, cep,
          payment_method, subtotal, delivery_fee, total, change_for,
          status, items_json, created_at, updated_at)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'new',?,?,?)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'new',?,?,?)
     ''', (store['id'], order_number, customer_name, customer_phone, customer_notes,
-          delivery_type, address, neighborhood, city, cep,
+          delivery_type, address, addr_number, addr_complement, addr_reference,
+          neighborhood, city, cep,
           payment_method, subtotal, delivery_fee, total, change_for,
           _json.dumps(items, ensure_ascii=False),
           datetime.now().isoformat(), datetime.now().isoformat()))
@@ -13835,9 +13844,11 @@ def mandaja_fazer_pedido(slug):
     conn.close()
     # Notificação WhatsApp (se loja tiver número configurado)
     if store.get('whatsapp'):
+        endereco_txt, maps_url = _mandaja_endereco(address, addr_number, addr_complement,
+                                                   neighborhood, city, addr_reference)
         _notify_new_order_whatsapp(store, order_id, order_number, customer_name,
                                    customer_phone, items, total, delivery_type,
-                                   address, neighborhood, payment_method)
+                                   endereco_txt, maps_url, payment_method)
     # PIX direto: gera o copia-e-cola com o valor já preenchido + QR
     pix_payload, pix_qr_b64 = '', ''
     if store.get('pix_chave') and payment_method == 'pix':
@@ -13861,9 +13872,22 @@ def mandaja_fazer_pedido(slug):
                     'pix_payload': pix_payload, 'pix_qr': pix_qr_b64})
 
 
+def _mandaja_endereco(address, number, complement, neighborhood, city, reference):
+    """Monta o endereço legível + o link do Google Maps pro motoboy (sem geocoding)."""
+    from urllib.parse import quote
+    linha = (address or '') + (f", {number}" if number else "")
+    extras = [x for x in [complement, neighborhood, city] if x]
+    texto = linha + ((" · " + " · ".join(extras)) if extras else "")
+    if reference:
+        texto += f"\n📌 Referência: {reference}"
+    q = ", ".join(x for x in [linha, neighborhood, city] if x).strip(', ')
+    maps = ('https://www.google.com/maps/search/?api=1&query=' + quote(q)) if q else ''
+    return texto, maps
+
+
 def _notify_new_order_whatsapp(store, order_id, order_number, customer_name,
                                 customer_phone, items, total, delivery_type,
-                                address, neighborhood, payment_method):
+                                endereco_txt, maps_url, payment_method):
     """Envia mensagem WhatsApp para o lojista via Evolution API."""
     try:
         EVO_URL = os.environ.get('EVOLUTION_API_URL', '')
@@ -13875,7 +13899,12 @@ def _notify_new_order_whatsapp(store, order_id, order_number, customer_name,
             f"  • {i.get('qty','1')}x {i.get('name','?')} — R${float(i.get('price',0)):.2f}"
             for i in items
         )
-        delivery_text = f"🚚 Entrega: {address}, {neighborhood}" if delivery_type == 'delivery' else "🏠 Retirada no local"
+        if delivery_type == 'delivery':
+            delivery_text = f"🚚 *Entrega:* {endereco_txt}"
+            if maps_url:
+                delivery_text += f"\n🗺️ Abrir no Maps: {maps_url}"
+        else:
+            delivery_text = "🏠 Retirada no local"
         pay_map = {'pix': '💳 PIX', 'dinheiro': '💵 Dinheiro', 'cartao': '💳 Cartão'}
         msg = (f"🛍️ *NOVO PEDIDO {order_number}*\n\n"
                f"👤 {customer_name} — {customer_phone}\n\n"
