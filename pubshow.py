@@ -2548,6 +2548,7 @@ def painel_toggle_slides_sistema():
     novo = 0 if (atual and atual[0]) else 1
     conn.execute('UPDATE pubshow_businesses SET usar_slides_sistema=? WHERE id=?', (novo, b['id']))
     conn.commit(); conn.close()
+    _bump_videos_version()   # TV recarrega e aplica o liga/desliga dos slides
     return redirect('/pubshow/painel')
 
 
@@ -2570,6 +2571,7 @@ def painel_anuncios():
     conn.execute('UPDATE pubshow_businesses SET anuncios_json=? WHERE id=?',
                  (_json.dumps(slides, ensure_ascii=False), b['id']))
     conn.commit(); conn.close()
+    _bump_videos_version()   # TV recarrega e aplica os anúncios novos do bar
     return redirect('/pubshow/painel')
 
 
@@ -2607,6 +2609,7 @@ def painel_upload_slide():
     conn.execute('UPDATE pubshow_businesses SET anuncios_json=? WHERE id=?',
                  (_json.dumps(anuncios, ensure_ascii=False), b['id']))
     conn.commit(); conn.close()
+    _bump_videos_version()   # TV recarrega e aplica o slide de imagem novo
     return redirect('/pubshow/painel')
 
 
@@ -3582,6 +3585,7 @@ def admin_slides_sistema_add():
             ('texto', titulo, subtitulo, emoji or '📺', cor)
         )
         conn.commit(); conn.close()
+        _bump_videos_version()
     return redirect('/pubshow/admin/slides-sistema')
 
 
@@ -3605,6 +3609,7 @@ def admin_slides_sistema_upload():
         ('imagem', url)
     )
     conn.commit(); conn.close()
+    _bump_videos_version()
     return redirect('/pubshow/admin/slides-sistema')
 
 
@@ -3624,6 +3629,7 @@ def admin_slides_sistema_toggle(sid):
         conn.execute('UPDATE pubshow_slides_sistema SET ativo=? WHERE id=?', (0 if row[0] else 1, sid))
         conn.commit()
     conn.close()
+    _bump_videos_version()   # avisa as TVs: recarregam e respeitam o ativo/OFF na hora
     return redirect('/pubshow/admin/slides-sistema')
 
 
@@ -3640,6 +3646,7 @@ def admin_slides_sistema_delete(sid):
             pass
     conn.execute('DELETE FROM pubshow_slides_sistema WHERE id=?', (sid,))
     conn.commit(); conn.close()
+    _bump_videos_version()
     return redirect('/pubshow/admin/slides-sistema')
 
 
