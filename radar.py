@@ -15,6 +15,7 @@ Validação ao vivo: rodar /radar/coletar numa máquina com internet.
 import os
 import logging
 import secrets
+import threading
 from datetime import datetime, timedelta
 from functools import wraps
 
@@ -335,6 +336,38 @@ def coletar_contratos(uf=None, dias=None, max_paginas=None):
             'atualizados': atualizados, 'pulados': pulados, 'erros': erros}
 
 
+# ── Coleta em segundo plano (evita travar a requisição web) ──────────────────
+_bg = {'rodando': False, 'msg': 'ainda não rodou', 'em': None}
+
+
+def _coleta_background(uf, licitacoes=True, precos=True):
+    try:
+        partes = []
+        if licitacoes:
+            r = coletar(uf=uf)
+            partes.append(f"licitações: +{r['novos']} novos, {r['atualizados']} atual.")
+        if precos:
+            r = coletar_contratos(uf=uf)
+            partes.append(f"preços: +{r['novos']} novos")
+        _bg['msg'] = ' | '.join(partes) or 'nada coletado'
+        _bg['em'] = datetime.now().strftime('%d/%m %H:%M')
+        log.info(f'[RADAR] coleta bg OK: {_bg["msg"]}')
+    except Exception as e:
+        _bg['msg'] = f'erro: {e}'
+        log.error(f'[RADAR] coleta bg erro: {e}', exc_info=True)
+    finally:
+        _bg['rodando'] = False
+
+
+def _disparar_bg(uf, licitacoes=True, precos=True):
+    if _bg['rodando']:
+        return False
+    _bg['rodando'] = True
+    threading.Thread(target=_coleta_background, kwargs={'uf': uf, 'licitacoes': licitacoes,
+                     'precos': precos}, daemon=True, name='radar-coleta-web').start()
+    return True
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 # LOTE 4 — Análise de Edital por IA (Gemini primário + Groq reserva)
 # ══════════════════════════════════════════════════════════════════════════════
@@ -607,12 +640,11 @@ def rota_redefinir():
 @radar_admin_required
 def rota_coletar():
     uf = request.args.get('uf', RADAR_UF) or None
-    try:
-        res = coletar(uf=uf)
-        return jsonify({'ok': True, **res})
-    except Exception as e:
-        log.error(f'[RADAR] coleta falhou: {e}', exc_info=True)
-        return jsonify({'ok': False, 'erro': str(e)}), 500
+    iniciou = _disparar_bg(uf, licitacoes=True, precos=False)
+    return jsonify({'ok': True,
+                    'status': ('🚀 Coleta iniciada em segundo plano! Atualize /radar/ em 1-3 min.'
+                               if iniciou else '⏳ Já existe uma coleta em andamento — aguarde terminar.'),
+                    'ultima_coleta': _bg['msg']})
 
 
 @radar_bp.route('/api/licitacoes')
@@ -637,11 +669,18 @@ def rota_stats():
 @radar_bp.route('/coletar-precos', methods=['GET', 'POST'])
 @radar_admin_required
 def rota_coletar_precos():
-    try:
-        return jsonify({'ok': True, **coletar_contratos(uf=request.args.get('uf', RADAR_UF) or None)})
-    except Exception as e:
-        log.error(f'[RADAR] coleta de preços falhou: {e}', exc_info=True)
-        return jsonify({'ok': False, 'erro': str(e)}), 500
+    uf = request.args.get('uf', RADAR_UF) or None
+    iniciou = _disparar_bg(uf, licitacoes=False, precos=True)
+    return jsonify({'ok': True,
+                    'status': ('🚀 Coleta de preços iniciada em segundo plano! Veja /radar/precos em 1-3 min.'
+                               if iniciou else '⏳ Já existe uma coleta em andamento — aguarde terminar.'),
+                    'ultima_coleta': _bg['msg']})
+
+
+@radar_bp.route('/coletar-status')
+@radar_admin_required
+def rota_coletar_status():
+    return jsonify(_bg)
 
 
 @radar_bp.route('/precos')
