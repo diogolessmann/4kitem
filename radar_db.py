@@ -145,6 +145,13 @@ def init_radar_db():
             try: conn.rollback()
             except Exception: pass
 
+    # admin é sempre PRO/ativo (dono não paga; futura paywall ignora admin)
+    try:
+        conn.execute('UPDATE radar_users SET plan_active=1 WHERE is_admin=1 AND plan_active=0')
+        conn.commit()
+    except Exception:
+        pass
+
     conn.close()
 
 
@@ -352,9 +359,10 @@ def criar_radar_user(nome, email, telefone, password_hash, is_admin=0):
     conn = get_radar_db()
     try:
         cur = conn.execute(
-            'INSERT INTO radar_users (nome,email,telefone,password_hash,is_admin,created_at) '
-            'VALUES (?,?,?,?,?,CURRENT_TIMESTAMP)',
-            (nome, (email or '').strip().lower(), telefone, password_hash, is_admin))
+            'INSERT INTO radar_users (nome,email,telefone,password_hash,is_admin,plan_active,created_at) '
+            'VALUES (?,?,?,?,?,?,CURRENT_TIMESTAMP)',
+            (nome, (email or '').strip().lower(), telefone, password_hash, is_admin,
+             1 if is_admin else 0))
         conn.commit()
         return cur.lastrowid
     finally:
