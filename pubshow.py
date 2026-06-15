@@ -1492,9 +1492,21 @@ def tv(code):
     except Exception:
         tv_qr_b64 = None
 
+    # Preços efetivos do bar p/ o slide de preço DINÂMICO (sempre atualizado,
+    # nunca fica com preço velho como imagem estática).
+    try:    _pc = _json.loads(b['precos_custom'] or '{}')
+    except: _pc = {}
+    def _preco_tv(k):
+        base = TIPOS_PEDIDO.get(k, {})
+        return {'emoji': base.get('emoji', '🎵'),
+                'nome':  base.get('nome', k),
+                'preco': float(_pc.get(k) or base.get('preco', 0))}
+    precos_tv = [_preco_tv(k) for k in ('musica', 'musica_especifica', 'flash', 'vip', 'parabens')]
+
     return render_template('pubshow/tv.html', b=dict(b), canal=canal,
                            canal_key=canal_key, videos=videos, canais=canais_tv,
                            anuncios=anuncios, slides_sistema=slides_sistema,
+                           precos_tv=precos_tv,
                            tv_qr_b64=tv_qr_b64, jukebox_url=_jk_url)
 
 

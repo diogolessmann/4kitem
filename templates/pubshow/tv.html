@@ -495,6 +495,19 @@
     </div>
     <div class="slide-bar" id="slide-bar-ranking" style="width:min(600px,90vw);margin-top:20px"></div>
   </div>
+  <!-- Slide de PREÇO dinâmico — sempre com o preço atual (nunca fica velho como imagem) -->
+  <div id="slide-precos-box" style="display:none;flex-direction:column;align-items:center;justify-content:center;width:100%;max-width:900px;padding:0 48px">
+    <div style="text-align:center;margin-bottom:22px">
+      <div style="font-size:50px;margin-bottom:4px">🎵</div>
+      <div style="font-size:52px;font-weight:900;letter-spacing:-2px;color:#f97316;text-shadow:0 0 40px rgba(249,115,22,.5)">PEÇA SUA MÚSICA!</div>
+    </div>
+    <div id="precos-lista" style="width:100%;display:flex;flex-direction:column;gap:11px"></div>
+    <div style="margin-top:26px;display:flex;align-items:center;gap:22px">
+      {% if tv_qr_b64 %}<img src="data:image/png;base64,{{ tv_qr_b64 }}" style="width:118px;height:118px;border-radius:12px;background:#fff;padding:6px" alt="QR">{% endif %}
+      <div style="font-size:26px;font-weight:800;color:#f0f0ff;line-height:1.3;text-align:left">Escaneie o QR<br><span style="font-size:18px;color:rgba(255,255,255,.6);font-weight:600">e peça do seu celular</span></div>
+    </div>
+    <div class="slide-bar" id="slide-bar-precos" style="width:min(600px,90vw);margin-top:18px"></div>
+  </div>
 </div>
 
 <!-- Ranking da noite — background fotográfico + lista dinâmica sobreposta -->
@@ -567,6 +580,9 @@ const ANUNCIOS_EFETIVOS = [...ANUNCIOS, ...ANUNCIOS_DEFAULT];
 
 // Slides do sistema — obrigatórios, exibidos a cada 10 minutos em todas as TVs
 const SLIDES_SISTEMA = {{ slides_sistema | tojson }};
+const PRECOS_TV = {{ precos_tv | tojson }};
+// Slide de preço dinâmico SEMPRE na rotação — preço sempre atual, nunca imagem velha
+if (PRECOS_TV && PRECOS_TV.length) SLIDES_SISTEMA.unshift({tipo:'precos'});
 
 // Info de canais disponível no JS para atualizar UI sem reload
 const CANAIS_JS = {{ canais | tojson }};
@@ -1057,6 +1073,8 @@ function mostrarSlide(slide, onEnd, duracaoMs) {
   const el     = document.getElementById('slide-propaganda');
   const box    = document.getElementById('slide-box');
   const imgBox = document.getElementById('slide-img-box');
+  const precosBox = document.getElementById('slide-precos-box');
+  if (precosBox) precosBox.style.display = 'none';
 
   if (slide.tipo === 'imagem' && slide.url && slide.url.includes('slide3')) {
     // ── Ranking dinâmico — busca dados reais e exibe HTML ────────────────
@@ -1108,6 +1126,22 @@ function mostrarSlide(slide, onEnd, duracaoMs) {
     document.getElementById('slide-ranking-box').style.display = 'none';
     document.getElementById('slide-img').src = slide.url;
     const bar = document.getElementById('slide-bar-img');
+    bar.style.animation = 'none';
+    bar.offsetHeight;
+    bar.style.animation = `shrink ${duracao/1000}s linear forwards`;
+  } else if (slide.tipo === 'precos') {
+    // ── Slide de PREÇO dinâmico (sempre o preço atual) ───────────────────
+    box.style.display = 'none';
+    imgBox.style.display = 'none';
+    document.getElementById('slide-ranking-box').style.display = 'none';
+    if (precosBox) precosBox.style.display = 'flex';
+    document.getElementById('precos-lista').innerHTML = (PRECOS_TV || []).map(p =>
+      `<div style="display:flex;align-items:center;gap:18px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:16px;padding:15px 28px">
+         <div style="font-size:34px;flex-shrink:0">${p.emoji}</div>
+         <div style="flex:1;font-size:29px;font-weight:800;color:#f0f0ff">${p.nome}</div>
+         <div style="font-size:33px;font-weight:900;color:#4ade80;flex-shrink:0">R$ ${Number(p.preco).toFixed(0)}</div>
+       </div>`).join('');
+    const bar = document.getElementById('slide-bar-precos');
     bar.style.animation = 'none';
     bar.offsetHeight;
     bar.style.animation = `shrink ${duracao/1000}s linear forwards`;
