@@ -79,6 +79,10 @@ KW_TIER2 = [
     'sistema tributario', 'sistema tributário', 'sistema de saude', 'sistema de educacao',
     'gestao escolar', 'sistema escolar', 'portal web', 'sitio eletronico',
     'transformacao digital', 'modernizacao tecnologica', 'integracao de sistemas',
+    # serviços de TI "soltos" (sem dizer software/sistema) — pegava 0 antes
+    'informatica', 'servicos de informatica', 'servico de informatica',
+    'tecnologia da informacao', 'tecnologia da informacao e comunicacao',
+    'servicos de ti', 'area de ti', 'suporte tecnico em informatica',
 ]
 # DOMÍNIO ambíguo: só vira TI se houver INDÍCIO de software junto (senão pega
 # "prêmio do IPTU", "pallets do almoxarifado", "banco p/ folha de pagamento"...)
@@ -113,6 +117,7 @@ KW_TRAP = [
     'instituicao financeira', 'instituição financeira',
     'servicos bancarios', 'serviços bancários', 'banco central',  # contrato bancário ≠ sistema
     'equipamentos de informatica', 'equipamentos de informática',  # manutenção de hardware
+    'material de informatica', 'suprimentos de informatica', 'pecas de informatica',  # hardware/consumível
 ]
 
 # ── Eixo 2 (porte) — faixas de valor, AFINÁVEIS por env ──────────────────────
