@@ -14102,6 +14102,18 @@ try:
 except Exception as _radar_err:
     log.warning(f'[RADAR] Erro ao carregar blueprint: {_radar_err}')
 
+# ══════════════════════════════════════════════════════════════════════════════
+# CONSULTA VEICULAR — débitos do veículo (IPVA/multas/licenciamento) via API Zapay
+# ══════════════════════════════════════════════════════════════════════════════
+try:
+    from consveic import consveic_bp
+    from consveic_db import init_consveic_db
+    init_consveic_db()
+    app.register_blueprint(consveic_bp)
+    log.info('[CONSVEIC] Blueprint registrado em /consulta-veicular')
+except Exception as _cv_err:
+    log.warning(f'[CONSVEIC] Erro ao carregar blueprint: {_cv_err}')
+
 # Rebrand: redireciona URLs antigas /petmed/* -> /vetzap/* (links/e-mails/webhooks antigos)
 @app.route('/petmed', methods=['GET', 'POST'])
 @app.route('/petmed/', methods=['GET', 'POST'])
