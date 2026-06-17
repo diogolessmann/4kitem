@@ -623,26 +623,22 @@ def _mandazap_login_required(f):
         # Atualiza plano na sessão sempre (evita sessão com plano desatualizado)
         conn = get_saas_db()
         user = conn.execute(
-            'SELECT plan, active, trial_ends FROM mandazap_users WHERE id=?', (uid,)
+            'SELECT plan, active, trial_ends, plan_active, email, phone FROM mandazap_users WHERE id=?', (uid,)
         ).fetchone()
         conn.close()
         if not user or not user['active']:
             for k in ('mz_user_id', 'mz_user_name', 'mz_plan'):
                 session.pop(k, None)
             return redirect('/mandazap/entrar?msg=conta_inativa')
-        # Verifica trial expirado (só bloqueia se plan == 'solo' sem pagamento)
+        # Paywall (A5): bloqueia trial VENCIDO sem plano ativo. Antes só pegava plan=='solo'
+        # com 0 envios → bastava mandar 1 msg p/ furar. Exceções: plano pago ativo ou whitelist.
         trial_ends = user['trial_ends']
-        if trial_ends and trial_ends < datetime.now().isoformat() and user['plan'] == 'solo':
-            # Conta quantos já enviou — se zero, provavelmente trial real
-            conn2 = get_saas_db()
-            total_sent = conn2.execute(
-                'SELECT COALESCE(SUM(sent),0) FROM mandazap_campaigns WHERE user_id=?', (uid,)
-            ).fetchone()[0]
-            conn2.close()
-            if total_sent == 0:  # nunca usou de verdade
-                for k in ('mz_user_id', 'mz_user_name', 'mz_plan'):
-                    session.pop(k, None)
-                return redirect('/mandazap/entrar?msg=trial_expirado')
+        expired    = bool(trial_ends and trial_ends < datetime.now().isoformat())
+        _wl_ok     = _is_whitelisted(user['email'], _re.sub(r'\D', '', user['phone'] or ''))
+        if expired and not user['plan_active'] and not _wl_ok:
+            for k in ('mz_user_id', 'mz_user_name', 'mz_plan'):
+                session.pop(k, None)
+            return redirect('/mandazap/entrar?msg=trial_expirado')
         # Sincroniza plano na sessão
         session['mz_plan'] = user['plan']
         return f(*args, **kwargs)
@@ -8085,7 +8081,15 @@ def mz_webhook_evolution():
         m = _re.match(r'^mz(\d+)n(\d+)$', instance)
         if not m:
             return jsonify({'ok': True, 'skip': 'instance'}), 200
-        _mz_inc_number_replies(int(m.group(2)))
+        # A2: só conta se a instância existir de verdade (evita inflar replies de número
+        # inexistente via POST forjado, já que o nome da instância é previsível).
+        _u, _n = int(m.group(1)), int(m.group(2))
+        _c = get_saas_db()
+        _ok = _c.execute('SELECT 1 FROM mandazap_numbers WHERE id=? AND user_id=?', (_n, _u)).fetchone()
+        _c.close()
+        if not _ok:
+            return jsonify({'ok': True, 'skip': 'unknown_instance'}), 200
+        _mz_inc_number_replies(_n)
         return jsonify({'ok': True}), 200
     except Exception as e:
         log.warning(f"mz_webhook error: {e}")
@@ -9293,9 +9297,17 @@ def _dispatch_campaign_inner(cid: int, user_id: int, delay_s: int = 3, continuar
         conn.close(); return
     camp = dict(camp)
 
-    if camp['status'] == 'enviando':
+    # Claim ATÔMICO contra disparo duplicado: só UMA thread consegue marcar 'enviando'.
+    # (Antes era ler-depois-checar, NÃO atômico → o botão "Disparar" + o agendador podiam
+    #  rodar a MESMA campanha 2x em paralelo, duplicando mensagens = gatilho de ban.)
+    claim = conn.execute(
+        "UPDATE mandazap_campaigns SET status='enviando' WHERE id=? AND user_id=? AND status != 'enviando'",
+        (cid, user_id)
+    )
+    conn.commit()
+    if claim.rowcount == 0:
         conn.close()
-        log.warning(f"Campanha {cid}: já está sendo enviada (race condition evitada)")
+        log.warning(f"Campanha {cid}: já está sendo enviada (claim atômico evitou disparo duplicado)")
         return
 
     # Plano do usuário
@@ -9538,6 +9550,14 @@ def _dispatch_campaign_inner(cid: int, user_id: int, delay_s: int = 3, continuar
                  f"envia {total_cap} hoje, resto amanhã")
         contacts = contacts[:total_cap]
 
+    # ── C2: não segurar a conexão do banco aberta durante o loop ──
+    # O loop tem pausas de até ~75min e a campanha roda horas; o saas.db é compartilhado
+    # por TODOS os SaaS. Fechamos a conexão principal e usamos conexões CURTAS (helper)
+    # só nas saídas/finalização — evita WAL inchado e contenção.
+    conn.close()
+    def _camp_set(sql, params):
+        c = get_saas_db(); c.execute(sql, params); c.commit(); c.close()
+
     rr = 0  # ponteiro de round-robin entre os números do pool
 
     for c in contacts:
@@ -9547,22 +9567,20 @@ def _dispatch_campaign_inner(cid: int, user_id: int, delay_s: int = 3, continuar
         chk.close()
         if st and st['status'] == 'cancelada':
             log.info(f"Campanha {cid} cancelada pelo usuário em {sent_count}/{total}")
-            conn.execute(
+            _camp_set(
                 "UPDATE mandazap_campaigns SET status='cancelada', sent=?, finished_at=?, error_log=? WHERE id=?",
                 (sent_count, datetime.now().isoformat(), f'Cancelada pelo usuário. {sent_count} enviados.', cid)
             )
-            conn.commit(); conn.close()
             return
 
         # Janela de horário: se fechou no meio, pausa e agenda retomada
         if not _mz_in_send_window():
-            conn.execute(
+            _camp_set(
                 "UPDATE mandazap_campaigns SET status='agendada', sent=?, error_log=? WHERE id=?",
                 (sent_count,
                  f'⏰ Pausada fora do horário ({MZ_SEND_HOUR_START}h–{MZ_SEND_HOUR_END}h{", dias úteis" if MZ_SEND_WEEKDAYS_ONLY else ""}). '
                  f'{sent_count} enviados. Retoma automaticamente.', cid)
             )
-            conn.commit(); conn.close()
             log.info(f"Campanha {cid}: janela fechou — pausada em {sent_count}")
             return
 
@@ -9620,14 +9638,13 @@ def _dispatch_campaign_inner(cid: int, user_id: int, delay_s: int = 3, continuar
                 # banou este vai banar os outros — então PARA tudo e poe todos em cooldown.
                 log.error(f"Campanha {cid}: número {sender['id']} desconectou (ban?) — circuit breaker — {err}")
                 _mz_set_cooldown(user_id)
-                conn.execute(
+                _camp_set(
                     "UPDATE mandazap_campaigns SET status='erro', sent=?, finished_at=?, error_log=? WHERE id=?",
                     (sent_count, datetime.now().isoformat(),
                      f'🛑 Possível ban detectado após {sent_count} envios. Por segurança, TODOS os seus '
                      f'números foram pausados por {MZ_BAN_COOLDOWN_HOURS:.0f}h. Reconecte o número banido e '
                      f'revise a lista/mensagem antes de retomar.', cid)
                 )
-                conn.commit(); conn.close()
                 return
 
             else:
@@ -9643,12 +9660,11 @@ def _dispatch_campaign_inner(cid: int, user_id: int, delay_s: int = 3, continuar
                     else:
                         motivo = f'API retornou {MAX_CONSEC} erros consecutivos. Verifique a conexão e tente novamente.'
                     log.error(f"Campanha {cid}: {MAX_CONSEC} falhas consecutivas ({'ban?' if is_ban else 'API error'}) — {err}")
-                    conn.execute(
+                    _camp_set(
                         "UPDATE mandazap_campaigns SET status='erro', sent=?, finished_at=?, error_log=? WHERE id=?",
                         (sent_count, datetime.now().isoformat(),
                          f'{motivo} | {first_err}', cid)
                     )
-                    conn.commit(); conn.close()
                     return
                 # Delay progressivo: quanto mais falhas, maior a espera
                 pausa_erro = random.uniform(20, 60) * consec_fails
@@ -9667,14 +9683,13 @@ def _dispatch_campaign_inner(cid: int, user_id: int, delay_s: int = 3, continuar
                 # CIRCUIT BREAKER: ban detectado na checagem periódica — para tudo e cooldown
                 log.error(f"Campanha {cid}: número {sender['id']} desconectou após {sender['sent']} envios — circuit breaker")
                 _mz_set_cooldown(user_id)
-                conn.execute(
+                _camp_set(
                     "UPDATE mandazap_campaigns SET status='erro', sent=?, finished_at=?, error_log=? WHERE id=?",
                     (sent_count, datetime.now().isoformat(),
                      f'🛑 Possível ban detectado após {sent_count} envios. Por segurança, TODOS os seus '
                      f'números foram pausados por {MZ_BAN_COOLDOWN_HOURS:.0f}h. Reconecte e revise a '
                      f'lista/mensagem antes de retomar.', cid)
                 )
-                conn.commit(); conn.close()
                 return
 
         # Delay anti-ban humanizado — baseado no contador DESTE número (pacing por número)
@@ -9683,21 +9698,19 @@ def _dispatch_campaign_inner(cid: int, user_id: int, delay_s: int = 3, continuar
 
     # Finaliza — se sobrou fila por causa do teto diário, agenda p/ amanhã
     if capped:
-        conn.execute(
+        _camp_set(
             "UPDATE mandazap_campaigns SET status='agendada', sent=?, error_log=? WHERE id=?",
             (sent_count,
              f'Limite diário/aquecimento atingido. {sent_count} enviados hoje. '
              f'O restante é enviado automaticamente amanhã.', cid)
         )
-        conn.commit(); conn.close()
         log.info(f"Campanha {cid}: parcial {sent_count} (teto diário) — agendada p/ amanhã")
         return
     error_log = f"{failed_count} falhas. {first_err}" if failed_count else ''
-    conn.execute(
+    _camp_set(
         "UPDATE mandazap_campaigns SET status='concluida', sent=?, finished_at=?, error_log=? WHERE id=?",
         (sent_count, datetime.now().isoformat(), error_log, cid)
     )
-    conn.commit(); conn.close()
     log.info(f"Campanha {cid} concluída: {sent_count} enviados")
 
 
