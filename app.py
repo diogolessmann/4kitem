@@ -2003,7 +2003,10 @@ def webhook_asaas_global():
           payload.get('subscription', {}).get('externalReference', '')
 
     ativar = event in ('PAYMENT_RECEIVED', 'PAYMENT_CONFIRMED', 'SUBSCRIPTION_ACTIVATED')
-    desativar = event in ('SUBSCRIPTION_CANCELLED', 'PAYMENT_OVERDUE', 'PAYMENT_DELETED')
+    # Corta o acesso em qualquer sinal de não-pagamento/cancelamento/estorno.
+    # (Asaas usa SUBSCRIPTION_DELETED/INACTIVATED p/ cancelamento; antes só pegava CANCELLED.)
+    desativar = event in ('SUBSCRIPTION_CANCELLED', 'SUBSCRIPTION_DELETED', 'SUBSCRIPTION_INACTIVATED',
+                          'PAYMENT_OVERDUE', 'PAYMENT_DELETED', 'PAYMENT_REFUNDED')
 
     if not (ativar or desativar):
         return jsonify({'status': 'ignored'}), 200
