@@ -32,11 +32,11 @@ log = logging.getLogger('licita_norte')
 licita_bp = Blueprint('licita_norte', __name__, url_prefix='/licita-norte')
 
 ADMIN_EMAIL    = os.environ.get('ADMIN_EMAIL', '').strip().lower()
-LICITA_VMIN    = int(os.environ.get('LICITA_VALOR_MIN', '1000'))
-LICITA_VMAX    = int(os.environ.get('LICITA_VALOR_MAX', '200000'))
+LICITA_VMIN    = 0          # faixa fixa (sem env): R$0 a R$500.000
+LICITA_VMAX    = 500000
 LICITA_PRECO   = os.environ.get('LICITA_PRECO', '67')
 LICITA_WHATS   = os.environ.get('LICITA_WHATSAPP', '').strip()
-CIDADES_TXT    = 'Schroeder · Guaramirim · Jaraguá do Sul · Joinville · Massaranduba · Corupá'
+CIDADES_TXT    = 'Norte de SC + Vale do Itajaí · raio ~70km · 26 cidades'
 
 
 # ── Auth ─────────────────────────────────────────────────────────────────────

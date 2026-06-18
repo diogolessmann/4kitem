@@ -452,9 +452,20 @@ def listar_licita_users():
     return [dict(r) for r in rows]
 
 
-# Cidades do Norte de SC (normalizadas: sem acento, maiúsculas)
-NORTE_CIDADES = {'SCHROEDER', 'GUARAMIRIM', 'JARAGUA DO SUL', 'JOINVILLE',
-                 'MASSARANDUBA', 'CORUPA'}
+# Cidades do Norte de SC + Vale do Itajaí, raio ~30-70km (normalizadas: sem acento, MAIÚSCULAS)
+NORTE_CIDADES = {
+    # Vale do Itapocu (núcleo)
+    'SCHROEDER', 'GUARAMIRIM', 'JARAGUA DO SUL', 'CORUPA', 'MASSARANDUBA',
+    # Norte / Joinville e litoral norte
+    'JOINVILLE', 'ARAQUARI', 'SAO FRANCISCO DO SUL', 'BARRA VELHA',
+    'BALNEARIO PICARRAS', 'PENHA', 'NAVEGANTES', 'GARUVA', 'ITAPOA',
+    # Planalto Norte
+    'SAO BENTO DO SUL', 'RIO NEGRINHO', 'CAMPO ALEGRE', 'MAFRA',
+    # Vale do Itajaí
+    'BLUMENAU', 'POMERODE', 'TIMBO', 'INDAIAL', 'GASPAR', 'BRUSQUE',
+    # Litoral central
+    'ITAJAI', 'BALNEARIO CAMBORIU',
+}
 # objeto que cheira a notícia/comunicação → selo 🗞️ (filé p/ Rádio SC News)
 _KW_NOTICIA = ['noticia', 'jornal', 'comunicacao', 'imprensa', 'publicidade',
                'divulgacao', 'midia', 'portal de noticia', 'assessoria de comunicacao',
@@ -467,8 +478,8 @@ def _sem_acento(s):
     return ''.join(c for c in unicodedata.normalize('NFKD', s) if not unicodedata.combining(c))
 
 
-def listar_licita_norte(valor_min=1000, valor_max=200000, busca=None,
-                        so_noticia=False, ordem='prazo', limite=300):
+def listar_licita_norte(valor_min=0, valor_max=500000, busca=None,
+                        so_noticia=False, ordem='prazo', limite=400):
     """Licitações das 6 cidades do Norte de SC, faixa de valor, TODAS as categorias.
     Lê o mesmo radar_licitacoes (preenchido pelo coletor nacional)."""
     conn = get_radar_db()
