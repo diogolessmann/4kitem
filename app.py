@@ -14119,6 +14119,16 @@ except Exception as _radar_err:
     log.warning(f'[RADAR] Erro ao carregar blueprint: {_radar_err}')
 
 # ══════════════════════════════════════════════════════════════════════════════
+# RADAR LICITA NORTE — versão regional (Norte de SC), reusa o motor do Radar
+# ══════════════════════════════════════════════════════════════════════════════
+try:
+    from licita_norte import licita_bp
+    app.register_blueprint(licita_bp)
+    log.info('[LICITA NORTE] Blueprint registrado em /licita-norte')
+except Exception as _lic_err:
+    log.warning(f'[LICITA NORTE] Erro ao carregar blueprint: {_lic_err}')
+
+# ══════════════════════════════════════════════════════════════════════════════
 # CONSULTA VEICULAR — débitos do veículo (IPVA/multas/licenciamento) via API Zapay
 # ══════════════════════════════════════════════════════════════════════════════
 try:

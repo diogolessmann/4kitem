@@ -125,6 +125,24 @@ def init_radar_db():
             ultimo_acesso     TEXT
         );
         CREATE INDEX IF NOT EXISTS idx_ru_email ON radar_users(email);
+
+        -- ── Usuários do Radar Licita Norte (módulo regional, marca própria) ──
+        CREATE TABLE IF NOT EXISTS licita_users (
+            id                INTEGER PRIMARY KEY AUTOINCREMENT,
+            nome              TEXT NOT NULL,
+            email             TEXT NOT NULL UNIQUE,
+            telefone          TEXT DEFAULT '',
+            password_hash     TEXT NOT NULL,
+            plano             TEXT DEFAULT 'free',
+            plan_active       INTEGER DEFAULT 0,
+            is_admin          INTEGER DEFAULT 0,
+            reset_token       TEXT DEFAULT '',
+            reset_expires     TEXT DEFAULT '',
+            asaas_customer_id TEXT DEFAULT '',
+            created_at        TEXT DEFAULT CURRENT_TIMESTAMP,
+            ultimo_acesso     TEXT
+        );
+        CREATE INDEX IF NOT EXISTS idx_lu_email ON licita_users(email);
     ''')
     conn.commit()
 
@@ -146,11 +164,12 @@ def init_radar_db():
             except Exception: pass
 
     # admin é sempre PRO/ativo (dono não paga; futura paywall ignora admin)
-    try:
-        conn.execute('UPDATE radar_users SET plan_active=1 WHERE is_admin=1 AND plan_active=0')
-        conn.commit()
-    except Exception:
-        pass
+    for _t in ('radar_users', 'licita_users'):
+        try:
+            conn.execute(f'UPDATE {_t} SET plan_active=1 WHERE is_admin=1 AND plan_active=0')
+            conn.commit()
+        except Exception:
+            pass
 
     conn.close()
 
@@ -384,3 +403,105 @@ def radar_exec(sql, params=()):
         conn.execute(sql, params); conn.commit()
     finally:
         conn.close()
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# RADAR LICITA NORTE — usuários próprios + consulta regional (lê radar_licitacoes)
+# ══════════════════════════════════════════════════════════════════════════════
+def get_licita_user(uid):
+    conn = get_radar_db()
+    u = conn.execute('SELECT * FROM licita_users WHERE id=?', (uid,)).fetchone()
+    conn.close()
+    return dict(u) if u else None
+
+
+def get_licita_user_by_email(email):
+    conn = get_radar_db()
+    u = conn.execute('SELECT * FROM licita_users WHERE email=?',
+                     ((email or '').strip().lower(),)).fetchone()
+    conn.close()
+    return dict(u) if u else None
+
+
+def contar_licita_users():
+    conn = get_radar_db()
+    n = conn.execute('SELECT COUNT(*) FROM licita_users').fetchone()[0]
+    conn.close()
+    return n
+
+
+def criar_licita_user(nome, email, telefone, password_hash, is_admin=0):
+    conn = get_radar_db()
+    try:
+        cur = conn.execute(
+            'INSERT INTO licita_users (nome,email,telefone,password_hash,is_admin,plan_active,created_at) '
+            'VALUES (?,?,?,?,?,?,CURRENT_TIMESTAMP)',
+            (nome, (email or '').strip().lower(), telefone, password_hash, is_admin,
+             1 if is_admin else 0))
+        conn.commit()
+        return cur.lastrowid
+    finally:
+        conn.close()
+
+
+def listar_licita_users():
+    conn = get_radar_db()
+    rows = conn.execute('SELECT id, nome, email, telefone, plano, plan_active, is_admin, '
+                        'created_at, ultimo_acesso FROM licita_users ORDER BY id DESC').fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+# Cidades do Norte de SC (normalizadas: sem acento, maiúsculas)
+NORTE_CIDADES = {'SCHROEDER', 'GUARAMIRIM', 'JARAGUA DO SUL', 'JOINVILLE',
+                 'MASSARANDUBA', 'CORUPA'}
+# objeto que cheira a notícia/comunicação → selo 🗞️ (filé p/ Rádio SC News)
+_KW_NOTICIA = ['noticia', 'jornal', 'comunicacao', 'imprensa', 'publicidade',
+               'divulgacao', 'midia', 'portal de noticia', 'assessoria de comunicacao',
+               'radiodifusao', 'jornalismo']
+
+
+def _sem_acento(s):
+    import unicodedata
+    s = (s or '').lower()
+    return ''.join(c for c in unicodedata.normalize('NFKD', s) if not unicodedata.combining(c))
+
+
+def listar_licita_norte(valor_min=1000, valor_max=200000, busca=None,
+                        so_noticia=False, ordem='prazo', limite=300):
+    """Licitações das 6 cidades do Norte de SC, faixa de valor, TODAS as categorias.
+    Lê o mesmo radar_licitacoes (preenchido pelo coletor nacional)."""
+    conn = get_radar_db()
+    rows = [dict(r) for r in conn.execute(
+        "SELECT * FROM radar_licitacoes WHERE uf='SC'").fetchall()]
+    conn.close()
+    out = []
+    for r in rows:
+        if _sem_acento(r.get('municipio')).upper() not in NORTE_CIDADES:
+            continue
+        v = r.get('valor') or 0
+        if v:  # valor 0/desconhecido sempre passa
+            if valor_min and v < valor_min: continue
+            if valor_max and v > valor_max: continue
+        o = _sem_acento(r.get('objeto'))
+        r['eh_noticia'] = any(k in o for k in _KW_NOTICIA)
+        if so_noticia and not r['eh_noticia']:
+            continue
+        if busca and _sem_acento(busca) not in o:
+            continue
+        out.append(r)
+    # ordena: notícia primeiro, depois pela ordem escolhida
+    if ordem == 'valor':
+        out.sort(key=lambda r: (not r['eh_noticia'], r.get('valor') or 1e12))
+    elif ordem == 'novo':
+        out.sort(key=lambda r: (not r['eh_noticia'], r.get('coletado_em') or ''), reverse=False)
+    else:  # prazo
+        out.sort(key=lambda r: (not r['eh_noticia'], r.get('data_encerramento') or '9999'))
+    return out[:limite]
+
+
+def stats_licita_norte():
+    lst = listar_licita_norte(limite=99999)
+    return {'total': len(lst),
+            'noticia': sum(1 for r in lst if r.get('eh_noticia')),
+            'cidades': len({r.get('municipio') for r in lst})}
