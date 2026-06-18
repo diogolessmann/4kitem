@@ -479,16 +479,21 @@ def _sem_acento(s):
 
 
 def listar_licita_norte(valor_min=0, valor_max=500000, busca=None,
-                        so_noticia=False, ordem='prazo', limite=400):
-    """Licitações das 6 cidades do Norte de SC, faixa de valor, TODAS as categorias.
-    Lê o mesmo radar_licitacoes (preenchido pelo coletor nacional)."""
+                        so_noticia=False, cidade=None, ordem='prazo', limite=400):
+    """Licitações das cidades do Norte de SC, faixa de valor, TODAS as categorias.
+    Lê o mesmo radar_licitacoes (preenchido pelo coletor nacional).
+    cidade=<nome> filtra só aquela cidade."""
     conn = get_radar_db()
     rows = [dict(r) for r in conn.execute(
         "SELECT * FROM radar_licitacoes WHERE uf='SC'").fetchall()]
     conn.close()
+    cidade_n = _sem_acento(cidade).upper() if cidade else None
     out = []
     for r in rows:
-        if _sem_acento(r.get('municipio')).upper() not in NORTE_CIDADES:
+        mn = _sem_acento(r.get('municipio')).upper()
+        if mn not in NORTE_CIDADES:
+            continue
+        if cidade_n and mn != cidade_n:
             continue
         v = r.get('valor') or 0
         if v:  # valor 0/desconhecido sempre passa
@@ -516,3 +521,10 @@ def stats_licita_norte():
     return {'total': len(lst),
             'noticia': sum(1 for r in lst if r.get('eh_noticia')),
             'cidades': len({r.get('municipio') for r in lst})}
+
+
+def contagem_cidades_norte():
+    """[(municipio, qtd), ...] das cidades COM oportunidade, ordenado por qtd desc."""
+    from collections import Counter
+    c = Counter(r.get('municipio') for r in listar_licita_norte(limite=99999) if r.get('municipio'))
+    return sorted(c.items(), key=lambda x: (-x[1], x[0]))

@@ -26,7 +26,7 @@ from radar import analisar_edital, _texto_de_pdf, _enviar_email, coletar, coleta
 from radar_db import (obter_licitacao, salvar_analise, radar_exec,
                       get_licita_user, get_licita_user_by_email, contar_licita_users,
                       criar_licita_user, listar_licita_users,
-                      listar_licita_norte, stats_licita_norte)
+                      listar_licita_norte, stats_licita_norte, contagem_cidades_norte)
 
 log = logging.getLogger('licita_norte')
 licita_bp = Blueprint('licita_norte', __name__, url_prefix='/licita-norte')
@@ -182,12 +182,15 @@ def rota_redefinir():
 @licita_bp.route('/')
 @pago_required
 def rota_painel():
+    cidade = request.args.get('cidade')
     lst = listar_licita_norte(LICITA_VMIN, LICITA_VMAX,
                               busca=request.args.get('q'),
                               so_noticia=request.args.get('noticia') == '1',
+                              cidade=cidade,
                               ordem=request.args.get('ordem', 'prazo'), limite=400)
     return render_template_string(_PAINEL, lst=lst, st=stats_licita_norte(),
-                                  cidades=CIDADES_TXT, vmin=LICITA_VMIN, vmax=LICITA_VMAX)
+                                  cidades=CIDADES_TXT, cidades_lista=contagem_cidades_norte(),
+                                  cidade_sel=cidade or '', vmin=LICITA_VMIN, vmax=LICITA_VMAX)
 
 
 @licita_bp.route('/l/<path:pncp_id>')
@@ -415,13 +418,20 @@ _PAINEL = '''<!doctype html><html lang="pt-br"><head><meta charset="utf-8">
  <a href="/licita-norte/admin" style="background:#231a3a;border-color:#463a6e;color:#c7b3ff">🛠️ Admin</a>{% endif %}
  <span style="margin-left:auto;color:#8ac0a0;font-size:13px">👤 {{ lic_nome }} · <a href="/licita-norte/sair" style="color:#8ac0a0">sair</a></span>
 </div>
+<div class="filtros" style="padding-top:0;padding-bottom:14px;border-bottom:1px solid #16261d">
+ <span style="color:#8ac0a0;font-size:12px;align-self:center">🏙️ Cidade:</span>
+ <a href="/licita-norte/"{% if not cidade_sel %} style="background:#16a34a;color:#fff;border-color:#16a34a"{% endif %}>Todas</a>
+ {% for cid, n in cidades_lista %}
+ <a href="/licita-norte/?cidade={{ cid }}"{% if cidade_sel|lower == cid|lower %} style="background:#16a34a;color:#fff;border-color:#16a34a"{% endif %}>{{ cid }} <b>{{ n }}</b></a>
+ {% endfor %}
+</div>
 {% if lst %}
 <table><tr><th>Porte</th><th class="obj">Objeto</th><th>Valor</th><th>Cidade / Órgão</th><th>Prazo</th></tr>
 {% for l in lst %}<tr>
  <td>{% if l.eh_noticia %}<span class="pill news">🗞️ NOTÍCIA</span><br>{% endif %}<span class="pill {{ l.zona_valor }}">{{ l.zona_valor }}</span></td>
  <td class="obj"><a href="/licita-norte/l/{{ l.pncp_id }}">{{ l.objeto[:150] }}</a></td>
  <td>{% if l.valor %}R$ {{ '{:,.0f}'.format(l.valor).replace(',','.') }}{% else %}—{% endif %}</td>
- <td><b>{{ l.municipio or '' }}</b><div class="muni" style="font-size:11px">{{ (l.orgao or '')[:46] }}</div></td>
+ <td><a href="/licita-norte/?cidade={{ l.municipio }}" style="color:#e7f5ec;font-weight:700;text-decoration:none">{{ l.municipio or '' }}</a><div class="muni" style="font-size:11px">{{ (l.orgao or '')[:46] }}</div></td>
  <td>{{ (l.data_encerramento or '')[:10] }}</td>
 </tr>{% endfor %}</table>
 {% else %}
