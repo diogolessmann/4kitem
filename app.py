@@ -5900,6 +5900,16 @@ def saas_admin():
     except Exception:
         radar_users = []; radar_total_lic = 0; radar_ti = 0; radar_ouro = 0
         radar_contratos = 0; radar_vencendo = 0
+    # Radar Licita Norte (regional)
+    try:
+        from radar_db import (listar_licita_users as _l_users,
+                              stats_licita_norte as _l_st)
+        licita_users = _l_users()
+        _ls = _l_st()
+        licita_total = _ls.get('total', 0); licita_noticia = _ls.get('noticia', 0)
+        licita_cidades = _ls.get('cidades', 0)
+    except Exception:
+        licita_users = []; licita_total = 0; licita_noticia = 0; licita_cidades = 0
     return render_template('saas_admin.html',
                            subscribers=subscribers, businesses=businesses,
                            mz_users=mz_users, mz_plans=MANDAZAP_PLANS,
@@ -5925,7 +5935,9 @@ def saas_admin():
                            pcd_receita=pcd_receita,
                            radar_users=radar_users, radar_total_lic=radar_total_lic,
                            radar_ti=radar_ti, radar_ouro=radar_ouro,
-                           radar_contratos=radar_contratos, radar_vencendo=radar_vencendo)
+                           radar_contratos=radar_contratos, radar_vencendo=radar_vencendo,
+                           licita_users=licita_users, licita_total=licita_total,
+                           licita_noticia=licita_noticia, licita_cidades=licita_cidades)
 
 
 @app.route('/saas-admin/slotzap/reset-senha', methods=['POST'])

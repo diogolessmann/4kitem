@@ -87,6 +87,7 @@
     <button class="tab-btn" onclick="showTab('drzap',this)">⚖️ DRZAP ({{ drz_users|length }})</button>
     <button class="tab-btn" onclick="showTab('pcd',this)">🧭 PCD Fácil ({{ pcd_users|length }})</button>
     <button class="tab-btn" onclick="showTab('radar',this)">📡 Radar TI ({{ radar_users|length }})</button>
+    <button class="tab-btn" onclick="showTab('licita',this)">🗞️ Licita Norte ({{ licita_users|length }})</button>
   </div>
 
   <!-- ═══════════════ ALERTA SC ═══════════════ -->
@@ -844,6 +845,43 @@
     {% else %}
     <div class="empty">Nenhum usuário do Radar ainda.
       <a href="/radar/cadastrar" target="_blank" style="color:var(--accent)">Criar a 1ª conta (vira admin) →</a>
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="tab-content" id="tab-licita">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+      <h2 style="margin:0">🗞️ Radar Licita Norte</h2>
+      <div style="display:flex;gap:16px;font-size:13px;color:var(--text2);align-items:center;flex-wrap:wrap">
+        <span>👤 {{ licita_users|length }} usuários</span>
+        <span>📋 {{ licita_total }} oportunidades</span>
+        <span>🗞️ {{ licita_noticia }} notícia</span>
+        <span>📍 {{ licita_cidades }} cidades</span>
+        <a href="/licita-norte/admin" target="_blank" style="color:var(--accent);font-weight:700">Abrir admin →</a>
+      </div>
+    </div>
+    {% if licita_users %}
+    <table>
+      <thead><tr>
+        <th>#</th><th>Nome</th><th>Email</th><th>Telefone</th><th>Status</th><th>Criado em</th><th>Último acesso</th>
+      </tr></thead>
+      <tbody>
+      {% for u in licita_users %}
+      <tr>
+        <td>{{ u.id }}</td>
+        <td><strong>{{ u.nome }}</strong>{% if u.is_admin %} <span class="badge badge-active">★ admin</span>{% endif %}</td>
+        <td>{{ u.email }}</td>
+        <td>{{ u.telefone or '—' }}</td>
+        <td>{% if u.plan_active %}✅ ativo{% else %}⏳ aguardando{% endif %}</td>
+        <td style="font-size:12px">{{ (u.created_at or '')[:10] }}</td>
+        <td style="font-size:12px">{{ (u.ultimo_acesso or '—')[:16] }}</td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty">Nenhum usuário do Licita Norte ainda.
+      <a href="/licita-norte/cadastrar" target="_blank" style="color:var(--accent)">Criar a 1ª conta (vira admin) →</a>
     </div>
     {% endif %}
   </div>
