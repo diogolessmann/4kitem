@@ -458,13 +458,13 @@ NORTE_CIDADES = {
     'SCHROEDER', 'GUARAMIRIM', 'JARAGUA DO SUL', 'CORUPA', 'MASSARANDUBA',
     # Norte / Joinville e litoral norte
     'JOINVILLE', 'ARAQUARI', 'SAO FRANCISCO DO SUL', 'BARRA VELHA',
-    'BALNEARIO PICARRAS', 'PENHA', 'NAVEGANTES', 'GARUVA', 'ITAPOA',
+    'BALNEARIO PICARRAS', 'BALNEARIO BARRA DO SUL', 'PENHA', 'NAVEGANTES',
+    'GARUVA', 'ITAPOA',
     # Planalto Norte
     'SAO BENTO DO SUL', 'RIO NEGRINHO', 'CAMPO ALEGRE', 'MAFRA',
     # Vale do Itajaí
     'BLUMENAU', 'POMERODE', 'TIMBO', 'INDAIAL', 'GASPAR', 'BRUSQUE',
-    # Litoral central
-    'ITAJAI', 'BALNEARIO CAMBORIU',
+    'LUIZ ALVES', 'BENEDITO NOVO', 'DOUTOR PEDRINHO', 'RIO DOS CEDROS',
 }
 # objeto que cheira a notícia/comunicação → selo 🗞️ (filé p/ Rádio SC News)
 _KW_NOTICIA = ['noticia', 'jornal', 'comunicacao', 'imprensa', 'publicidade',
