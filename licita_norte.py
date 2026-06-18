@@ -22,7 +22,7 @@ from flask import (Blueprint, request, jsonify, render_template_string,
 from werkzeug.security import generate_password_hash, check_password_hash
 
 # Reusa o motor do Radar (IA, coletor, e-mail)
-from radar import analisar_edital, _texto_de_pdf, _enviar_email, coletar, coletar_contratos, _ASSINAR
+from radar import analisar_edital, _texto_de_pdf, _enviar_email, coletar, coletar_contratos, _ASSINAR, _COMPRAR
 from radar_db import (obter_licitacao, salvar_analise, radar_exec,
                       get_licita_user, get_licita_user_by_email, contar_licita_users,
                       criar_licita_user, listar_licita_users,
@@ -106,6 +106,8 @@ def rota_cadastrar():
         else:
             admin = 1 if (contar_licita_users() == 0 or (ADMIN_EMAIL and email == ADMIN_EMAIL)) else 0
             uid = criar_licita_user(nome, email, tel, generate_password_hash(senha), admin)
+            from radar_db import set_area
+            set_area('licita_users', uid, request.form.get('area', ''))
             session['licita_user_id'] = uid
             return redirect('/licita-norte/')
     return render_template_string(_AUTH, modo='cadastrar', erro=erro, preco=LICITA_PRECO)
@@ -229,6 +231,68 @@ def rota_assinar_status():
     return jsonify({'ativo': bool(u and (_is_admin(u) or u.get('plan_active')))})
 
 
+LICITA_PACOTES = {
+    'p10':  {'creditos': 10,  'valor': 19.0,  'rotulo': '10 análises'},
+    'p30':  {'creditos': 30,  'valor': 49.0,  'rotulo': '30 análises'},
+    'p100': {'creditos': 100, 'valor': 129.0, 'rotulo': '100 análises'},
+}
+
+
+@licita_bp.route('/comprar', methods=['GET', 'POST'])
+@login_required
+def rota_comprar():
+    u = _user()
+    if not u:
+        return redirect('/licita-norte/entrar')
+    from radar_db import saldo_analises, criar_compra
+    from app import _asaas_req
+    erro = None
+    if request.method == 'POST':
+        pack = LICITA_PACOTES.get(request.form.get('pacote'))
+        cpf = ''.join(c for c in (request.form.get('cpf') or '') if c.isdigit())
+        if not pack or len(cpf) not in (11, 14):
+            erro = 'Escolha um pacote e informe um CPF/CNPJ válido.'
+        else:
+            cid = u.get('asaas_customer_id')
+            if not cid:
+                busca = _asaas_req('GET', f'/customers?cpfCnpj={cpf}')
+                if busca.get('data'):
+                    cid = busca['data'][0].get('id')
+                if not cid:
+                    cid = _asaas_req('POST', '/customers', {
+                        'name': u['nome'], 'email': u['email'],
+                        'mobilePhone': u.get('telefone') or '', 'cpfCnpj': cpf,
+                        'notificationDisabled': True}).get('id')
+                if cid:
+                    radar_exec('UPDATE licita_users SET asaas_customer_id=? WHERE id=?', (cid, u['id']))
+            if not cid:
+                erro = 'Não consegui criar o cadastro de pagamento.'
+            else:
+                compra_id = criar_compra('licita_users', u['id'], pack['creditos'], pack['valor'])
+                import datetime as _dt
+                pay = _asaas_req('POST', '/payments', {
+                    'customer': cid, 'billingType': 'PIX', 'value': pack['valor'],
+                    'dueDate': (_dt.date.today() + _dt.timedelta(days=1)).strftime('%Y-%m-%d'),
+                    'externalReference': f'licitacred_{compra_id}',
+                    'description': f"{pack['creditos']} créditos de análise — Radar Licita Norte"})
+                qr = _asaas_req('GET', f"/payments/{pay.get('id')}/pixQrCode") if pay.get('id') else {}
+                return render_template_string(_COMPRAR, modo='pix', qr=qr, pack=pack, base='/licita-norte',
+                                              marca='Radar Licita Norte',
+                                              saldo=saldo_analises('licita_users', u['id']), erro=None,
+                                              pacotes=LICITA_PACOTES)
+    return render_template_string(_COMPRAR, modo='packs', qr=None, pacotes=LICITA_PACOTES,
+                                  base='/licita-norte', marca='Radar Licita Norte',
+                                  saldo=saldo_analises('licita_users', u['id']), erro=erro, pack=None)
+
+
+@licita_bp.route('/saldo-status')
+@login_required
+def rota_saldo_status():
+    u = _user()
+    from radar_db import saldo_analises
+    return jsonify(saldo_analises('licita_users', u['id']) if u else {'gratis': 0, 'creditos': 0})
+
+
 # ── Painel / detalhe / admin ─────────────────────────────────────────────────
 @licita_bp.route('/')
 @pago_required
@@ -254,7 +318,10 @@ def rota_detalhe(pncp_id):
     if l.get('analise_json'):
         try: analise = _json.loads(l['analise_json'])
         except Exception: pass
-    return render_template_string(_DETALHE, l=l, analise=analise)
+    u = _user()
+    from radar_db import saldo_analises
+    saldo = None if (u and _is_admin(u)) else (saldo_analises('licita_users', u['id']) if u else None)
+    return render_template_string(_DETALHE, l=l, analise=analise, saldo=saldo)
 
 
 @licita_bp.route('/l/<path:pncp_id>/analisar', methods=['POST'])
@@ -263,14 +330,23 @@ def rota_analisar(pncp_id):
     l = obter_licitacao(pncp_id)
     if not l:
         return 'Licitação não encontrada', 404
+    u = _user()
+    admin = _is_admin(u)
+    from radar_db import saldo_analises, consumir_analise
+    if not admin:
+        s = saldo_analises('licita_users', u['id'])
+        if s['gratis'] <= 0 and s['creditos'] <= 0:
+            return redirect('/licita-norte/comprar')
     texto = ''
     f = request.files.get('edital')
     if f and f.filename:
         try: texto = _texto_de_pdf(f.read())
         except Exception: pass
     try:
-        analise, engine = analisar_edital(l, texto)
+        analise, engine = analisar_edital(l, texto, area=(u or {}).get('area', ''))
         salvar_analise(pncp_id, analise, engine)
+        if not admin:
+            consumir_analise('licita_users', u['id'])
     except Exception as e:
         log.error(f'[LICITA] análise falhou: {e}', exc_info=True)
         return render_template_string(_DETALHE, l=l, analise=None, erro=str(e))
@@ -389,6 +465,7 @@ _AUTH = '''<!doctype html><html lang="pt-br"><head><meta charset="utf-8">
   <label>Nome</label><input name="nome" required>
   <label>E-mail</label><input type="email" name="email" required>
   <label>Telefone (opcional)</label><input name="telefone">
+  <label>Sua área / o que você faz</label><input name="area" placeholder="ex: buffet, construção, uniformes, TI, notícias...">
   <label>Senha (mín. 6)</label><input type="password" name="senha" required>
   <button>Criar conta</button>
  </form>
@@ -528,6 +605,7 @@ _DETALHE = '''<!doctype html><html lang="pt-br"><head><meta charset="utf-8">
 {% else %}
 <h2 style="font-size:17px">🤖 Análise da IA</h2>
 <p style="color:#8ac0a0">Deixe a IA ler e dizer <b>se vale a pena</b>, atestado, prazo e plano. Anexe o PDF (completo) ou rode só com os metadados.</p>
+{% if saldo %}<p style="color:#5ee0a0;font-size:13px">💠 {{ saldo.gratis }} análises grátis este mês{% if saldo.creditos %} + {{ saldo.creditos }} créditos{% endif %}.{% if saldo.gratis <= 0 and saldo.creditos <= 0 %} Acabou — <a href="/licita-norte/comprar" style="color:#ffd95e">comprar créditos →</a>{% endif %}</p>{% endif %}
 <form method="post" action="/licita-norte/l/{{ l.pncp_id }}/analisar" enctype="multipart/form-data">
  <input type="file" name="edital" accept="application/pdf" style="color:#8ac0a0"><button class="btn" type="submit">🤖 Analisar este edital</button></form>
 {% endif %}

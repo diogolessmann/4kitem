@@ -417,10 +417,11 @@ _GROQ_URL     = 'https://api.groq.com/openai/v1/chat/completions'
 MAX_TEXTO_PDF = int(os.environ.get('RADAR_MAX_TEXTO_PDF', '40000'))  # corta p/ controlar tokens
 
 SYSTEM_EDITAL = """Você é o analista do RADAR, um assistente que avalia EDITAIS de licitação \
-do governo brasileiro para um FORNECEDOR PEQUENO de TI/software que entrega de forma REMOTA \
-(desenvolvimento de sistema/site, agendamento, ouvidoria, portal, gestão documental, telemedicina, \
-licenciamento de SaaS). Ele trabalha sozinho com ajuda de IA — NÃO tem equipe grande nem atestados \
-robustos no começo. Objetivo: dizer, sem juridiquês, SE VALE A PENA disputar e COMO.
+do governo brasileiro para um FORNECEDOR PEQUENO/MÉDIO. A ÁREA DE ATUAÇÃO do fornecedor vem no \
+contexto — avalie SEMPRE sob a ótica DELE: o objeto da licitação bate com o que ELE faz/entrega? \
+Ele trabalha enxuto, sem equipe grande nem atestados robustos no começo. Objetivo: dizer, sem \
+juridiquês, SE VALE A PENA PRA ELE disputar e COMO. Se o objeto for de OUTRA área (não a dele), \
+marque viavel='nao' e explique que está fora do ramo dele.
 
 Responda SOMENTE com um JSON válido nesta estrutura exata:
 {
@@ -499,9 +500,12 @@ def _texto_de_pdf(pdf_bytes):
         return ''
 
 
-def analisar_edital(licitacao: dict, texto_edital: str = ''):
-    """Monta o contexto e pede a leitura à IA. Retorna (analise_dict, engine)."""
-    ctx = (f"Objeto: {licitacao.get('objeto','')}\n"
+def analisar_edital(licitacao: dict, texto_edital: str = '', area=''):
+    """Monta o contexto e pede a leitura à IA. Retorna (analise_dict, engine).
+    `area` = ramo do fornecedor (pra IA dizer 'vale pra VOCÊ')."""
+    area = (area or '').strip() or 'TI/software (desenvolvimento de sistemas, sites, portais, SaaS)'
+    ctx = (f"ÁREA DE ATUAÇÃO DO FORNECEDOR (avalie sob a ótica dele): {area}\n\n"
+           f"Objeto: {licitacao.get('objeto','')}\n"
            f"Valor estimado: {licitacao.get('valor') or 'não informado'}\n"
            f"Modalidade: {licitacao.get('modalidade','')}\n"
            f"Órgão: {licitacao.get('orgao','')} — {licitacao.get('uf','')} {licitacao.get('municipio','')}\n"
@@ -610,6 +614,8 @@ def rota_cadastrar():
             # 1º usuário (ou e-mail = ADMIN_EMAIL) vira admin automaticamente
             admin = 1 if (contar_radar_users() == 0 or (ADMIN_EMAIL and email == ADMIN_EMAIL)) else 0
             uid = criar_radar_user(nome, email, tel, generate_password_hash(senha), admin)
+            from radar_db import set_area
+            set_area('radar_users', uid, request.form.get('area', ''))
             session['radar_user_id'] = uid
             return redirect('/radar/')
     return render_template_string(_AUTH, modo='cadastrar', erro=erro)
@@ -734,6 +740,70 @@ def rota_assinar():
 def rota_assinar_status():
     u = _user()
     return jsonify({'ativo': bool(u and (_is_admin(u) or u.get('plan_active')))})
+
+
+# ── Compra de créditos de análise (PIX avulso) ──────────────────────────────
+RADAR_PACOTES = {
+    'p10':  {'creditos': 10,  'valor': 19.0,  'rotulo': '10 análises'},
+    'p30':  {'creditos': 30,  'valor': 49.0,  'rotulo': '30 análises'},
+    'p100': {'creditos': 100, 'valor': 129.0, 'rotulo': '100 análises'},
+}
+
+
+@radar_bp.route('/comprar', methods=['GET', 'POST'])
+@radar_login_required
+def rota_comprar():
+    u = _user()
+    if not u:
+        return redirect('/radar/entrar')
+    from radar_db import saldo_analises, criar_compra
+    from app import _asaas_req
+    erro = None
+    if request.method == 'POST':
+        pack = RADAR_PACOTES.get(request.form.get('pacote'))
+        cpf = ''.join(c for c in (request.form.get('cpf') or '') if c.isdigit())
+        if not pack or len(cpf) not in (11, 14):
+            erro = 'Escolha um pacote e informe um CPF/CNPJ válido.'
+        else:
+            cid = u.get('asaas_customer_id')
+            if not cid:
+                busca = _asaas_req('GET', f'/customers?cpfCnpj={cpf}')
+                if busca.get('data'):
+                    cid = busca['data'][0].get('id')
+                if not cid:
+                    cid = _asaas_req('POST', '/customers', {
+                        'name': u['nome'], 'email': u['email'],
+                        'mobilePhone': u.get('telefone') or '', 'cpfCnpj': cpf,
+                        'notificationDisabled': True}).get('id')
+                if cid:
+                    radar_exec('UPDATE radar_users SET asaas_customer_id=? WHERE id=?', (cid, u['id']))
+            if not cid:
+                erro = 'Não consegui criar o cadastro de pagamento.'
+            else:
+                compra_id = criar_compra('radar_users', u['id'], pack['creditos'], pack['valor'])
+                import datetime as _dt
+                pay = _asaas_req('POST', '/payments', {
+                    'customer': cid, 'billingType': 'PIX', 'value': pack['valor'],
+                    'dueDate': (_dt.date.today() + _dt.timedelta(days=1)).strftime('%Y-%m-%d'),
+                    'externalReference': f'radarcred_{compra_id}',
+                    'description': f"{pack['creditos']} créditos de análise — Radar de Licitações de TI"})
+                qr = _asaas_req('GET', f"/payments/{pay.get('id')}/pixQrCode") if pay.get('id') else {}
+                return render_template_string(_COMPRAR, modo='pix', qr=qr, pack=pack, base='/radar',
+                                              marca='Radar de Licitações de TI',
+                                              saldo=saldo_analises('radar_users', u['id']), erro=None,
+                                              pacotes=RADAR_PACOTES)
+    return render_template_string(_COMPRAR, modo='packs', qr=None, pacotes=RADAR_PACOTES, base='/radar',
+                                  marca='Radar de Licitações de TI',
+                                  saldo=saldo_analises('radar_users', u['id']), erro=erro, pack=None)
+
+
+@radar_bp.route('/saldo-status')
+@radar_login_required
+def rota_saldo_status():
+    u = _user()
+    from radar_db import saldo_analises
+    s = saldo_analises('radar_users', u['id']) if u else {'gratis': 0, 'creditos': 0}
+    return jsonify(s)
 
 
 # ── Rotas ────────────────────────────────────────────────────────────────────
@@ -863,7 +933,10 @@ def rota_detalhe(pncp_id):
     if l.get('analise_json'):
         try: analise = _json.loads(l['analise_json'])
         except Exception: analise = None
-    return render_template_string(_DETALHE, l=l, analise=analise, token=request.args.get('t', ''))
+    u = _user()
+    from radar_db import saldo_analises
+    saldo = None if (u and _is_admin(u)) else (saldo_analises('radar_users', u['id']) if u else None)
+    return render_template_string(_DETALHE, l=l, analise=analise, saldo=saldo, token=request.args.get('t', ''))
 
 
 @radar_bp.route('/l/<path:pncp_id>/analisar', methods=['POST'])
@@ -872,6 +945,13 @@ def rota_analisar(pncp_id):
     l = obter_licitacao(pncp_id)
     if not l:
         return 'Licitação não encontrada', 404
+    u = _user()
+    admin = _is_admin(u)
+    from radar_db import saldo_analises, consumir_analise
+    if not admin:                      # cota: 10/mês grátis -> crédito -> bloqueia
+        s = saldo_analises('radar_users', u['id'])
+        if s['gratis'] <= 0 and s['creditos'] <= 0:
+            return redirect('/radar/comprar')
     tok = request.args.get('t', '')
     sufixo = f'?t={tok}' if tok else ''
     texto = ''
@@ -882,8 +962,10 @@ def rota_analisar(pncp_id):
         except Exception as e:
             log.warning(f'[RADAR] upload PDF falhou: {e}')
     try:
-        analise, engine = analisar_edital(l, texto)
+        analise, engine = analisar_edital(l, texto, area=(u or {}).get('area', ''))
         salvar_analise(pncp_id, analise, engine)
+        if not admin:
+            consumir_analise('radar_users', u['id'])   # consome só após sucesso
     except Exception as e:
         log.error(f'[RADAR] análise falhou: {e}', exc_info=True)
         return render_template_string(_DETALHE, l=l, analise=None,
@@ -996,6 +1078,7 @@ _DETALHE = '''<!doctype html><html lang="pt-br"><head><meta charset="utf-8">
 <h2 style="font-size:17px">🤖 Análise da IA</h2>
 <p style="color:#8aa0c6">Deixe a IA ler este edital e dizer <b>se vale a pena</b>, se exige atestado, o prazo e o plano de ação.
  Anexe o PDF do edital (leitura completa) ou rode só com os metadados (leitura preliminar).</p>
+{% if saldo %}<p style="color:#5ee0a0;font-size:13px">💠 {{ saldo.gratis }} análises grátis este mês{% if saldo.creditos %} + {{ saldo.creditos }} créditos{% endif %}.{% if saldo.gratis <= 0 and saldo.creditos <= 0 %} Acabou — <a href="/radar/comprar" style="color:#ffd95e">comprar créditos →</a>{% endif %}</p>{% endif %}
 <form method="post" action="/radar/l/{{ l.pncp_id }}/analisar{% if token %}?t={{ token }}{% endif %}" enctype="multipart/form-data">
  <input type="file" name="edital" accept="application/pdf" style="color:#8aa0c6">
  <button class="btn" type="submit">🤖 Analisar este edital</button>
@@ -1105,6 +1188,7 @@ _AUTH = '''<!doctype html><html lang="pt-br"><head><meta charset="utf-8">
   <label>Nome</label><input name="nome" required>
   <label>E-mail</label><input type="email" name="email" required>
   <label>Telefone (opcional)</label><input name="telefone">
+  <label>Sua área / o que você faz</label><input name="area" placeholder="ex: desenvolvimento de sites, sistemas, infra/TI">
   <label>Senha (mín. 6)</label><input type="password" name="senha" required>
   <button>Criar conta</button>
  </form>
@@ -1212,6 +1296,55 @@ _ASSINAR = '''<!doctype html><html lang="pt-br"><head><meta charset="utf-8">
  <a class="btn" href="{{ base }}/assinar">Tentar de novo</a>
  {% endif %}
  <a class="sair" href="{{ base }}/sair">sair</a>
+</div></body></html>'''
+
+
+# ── Loja de créditos de análise (PIX) — usada por Radar TI e Licita ─────────
+_COMPRAR = '''<!doctype html><html lang="pt-br"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Créditos — {{ marca }}</title>
+<style>
+ body{font-family:system-ui,Segoe UI,Roboto,sans-serif;background:#0b1020;color:#e7ecf5;margin:0;
+   display:flex;min-height:100vh;align-items:center;justify-content:center;padding:20px}
+ .card{background:#0f1730;border:1px solid #21304f;border-radius:16px;padding:30px;max-width:400px;width:100%;text-align:center}
+ h1{font-size:20px;margin:0 0 6px}
+ input{width:100%;box-sizing:border-box;padding:12px;border-radius:8px;border:1px solid #2a3c63;background:#0b1020;color:#e7ecf5;font-size:16px;margin-top:8px}
+ button,.btn{display:block;width:100%;margin-top:16px;padding:13px;border:none;border-radius:8px;background:#2563eb;color:#fff;font-size:15px;font-weight:700;cursor:pointer;text-decoration:none;box-sizing:border-box}
+ .erro{background:#2a0a0a;color:#ff8a8a;padding:10px;border-radius:8px;font-size:13px;margin-bottom:8px}
+ .qr{width:230px;height:230px;border-radius:12px;background:#fff;padding:8px;margin:14px auto;display:block}
+ .copia{word-break:break-all;font-size:11px;background:#0b1020;border:1px solid #2a3c63;border-radius:8px;padding:10px;color:#8aa0c6;margin-top:10px}
+ .ok{color:#5ee0a0;font-size:13px;margin-top:12px}
+ .pack{display:flex;align-items:center;gap:10px;justify-content:flex-start;margin-top:8px;background:#0b1020;border:1px solid #2a3c63;border-radius:8px;padding:11px;cursor:pointer;text-align:left}
+</style></head><body>
+<div class="card">
+ <h1>💠 Créditos de análise</h1>
+ <p style="color:#8aa0c6;font-size:13px">Você tem <b style="color:#5ee0a0">{{ saldo.gratis }}</b> grátis este mês + <b style="color:#5ee0a0">{{ saldo.creditos }}</b> créditos.</p>
+ {% if erro %}<div class="erro">⚠️ {{ erro }}</div>{% endif %}
+ {% if modo == 'packs' %}
+ <p style="color:#8aa0c6;font-size:14px">1 crédito = 1 análise de edital. Escolha um pacote:</p>
+ <form method="post" action="{{ base }}/comprar">
+  {% for k, p in pacotes.items() %}
+  <label class="pack"><input type="radio" name="pacote" value="{{ k }}"{% if loop.first %} checked{% endif %} style="width:auto;margin:0">
+   <span><b>{{ p.creditos }} análises</b> — R$ {{ '%.0f'|format(p.valor) }}</span></label>
+  {% endfor %}
+  <input name="cpf" placeholder="CPF ou CNPJ" required>
+  <button>Gerar PIX</button>
+ </form>
+ {% elif qr and qr.payload %}
+ <p style="color:#8aa0c6;font-size:14px"><b>{{ pack.creditos }} créditos</b> por R$ {{ '%.0f'|format(pack.valor) }}. Pague e eles entram <b>automático</b>.</p>
+ {% if qr.encodedImage %}<img class="qr" src="data:image/png;base64,{{ qr.encodedImage }}" alt="PIX">{% endif %}
+ <div class="copia" id="pix">{{ qr.payload }}</div>
+ <button onclick="navigator.clipboard.writeText(document.getElementById('pix').innerText);this.innerText='✅ Copiado!'">📋 Copiar código PIX</button>
+ <div class="ok" id="status">⏳ Aguardando pagamento…</div>
+ <script>
+  var antes={{ saldo.creditos }};
+  setInterval(function(){fetch('{{ base }}/saldo-status').then(r=>r.json()).then(d=>{if(d.creditos>antes){document.getElementById('status').innerText='✅ +'+(d.creditos-antes)+' créditos! Voltando…';setTimeout(function(){location.href='{{ base }}/';},1500);}}).catch(function(){});},5000);
+ </script>
+ {% else %}
+ <div class="erro">Não consegui gerar o PIX. Tente de novo.</div>
+ <a class="btn" href="{{ base }}/comprar">Voltar</a>
+ {% endif %}
+ <a href="{{ base }}/" style="color:#8aa0c6;font-size:13px;display:inline-block;margin-top:14px">← voltar ao radar</a>
 </div></body></html>'''
 
 

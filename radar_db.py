@@ -143,6 +143,18 @@ def init_radar_db():
             ultimo_acesso     TEXT
         );
         CREATE INDEX IF NOT EXISTS idx_lu_email ON licita_users(email);
+
+        -- ── Compras de crédito de análise (PIX Asaas) — Radar TI + Licita ───
+        CREATE TABLE IF NOT EXISTS radar_compras (
+            id               INTEGER PRIMARY KEY AUTOINCREMENT,
+            tabela           TEXT,        -- radar_users | licita_users
+            user_id          INTEGER,
+            creditos         INTEGER,
+            valor            REAL,
+            status           TEXT DEFAULT 'pendente',
+            asaas_payment_id TEXT DEFAULT '',
+            created_at       TEXT DEFAULT CURRENT_TIMESTAMP
+        );
     ''')
     conn.commit()
 
@@ -156,6 +168,15 @@ def init_radar_db():
         'ALTER TABLE radar_licitacoes ADD COLUMN analise_viavel TEXT',
         'ALTER TABLE radar_licitacoes ADD COLUMN analise_engine TEXT',
         'ALTER TABLE radar_licitacoes ADD COLUMN analisado_em TEXT',
+        # Cota de análises (10/mês grátis) + créditos comprados + área do cliente
+        'ALTER TABLE radar_users  ADD COLUMN creditos INTEGER DEFAULT 0',
+        'ALTER TABLE radar_users  ADD COLUMN analises_usadas INTEGER DEFAULT 0',
+        'ALTER TABLE radar_users  ADD COLUMN analises_mes TEXT DEFAULT ""',
+        'ALTER TABLE radar_users  ADD COLUMN area TEXT DEFAULT ""',
+        'ALTER TABLE licita_users ADD COLUMN creditos INTEGER DEFAULT 0',
+        'ALTER TABLE licita_users ADD COLUMN analises_usadas INTEGER DEFAULT 0',
+        'ALTER TABLE licita_users ADD COLUMN analises_mes TEXT DEFAULT ""',
+        'ALTER TABLE licita_users ADD COLUMN area TEXT DEFAULT ""',
     ]:
         try:
             conn.execute(migration); conn.commit()
@@ -528,3 +549,92 @@ def contagem_cidades_norte():
     from collections import Counter
     c = Counter(r.get('municipio') for r in listar_licita_norte(limite=99999) if r.get('municipio'))
     return sorted(c.items(), key=lambda x: (-x[1], x[0]))
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# COTA DE ANÁLISES (10/mês grátis) + CRÉDITOS (compra avulsa) — Radar TI + Licita
+# ══════════════════════════════════════════════════════════════════════════════
+FREE_MENSAL = 10   # análises grátis por mês (admin = ilimitado, tratado no app)
+
+
+def saldo_analises(tabela, uid):
+    """{'gratis': N grátis restantes este mês, 'creditos': comprados}."""
+    import datetime as _dt
+    conn = get_radar_db()
+    u = conn.execute(f'SELECT analises_usadas, analises_mes, creditos FROM {tabela} WHERE id=?',
+                     (uid,)).fetchone()
+    conn.close()
+    if not u:
+        return {'gratis': 0, 'creditos': 0}
+    mes = _dt.date.today().strftime('%Y-%m')
+    usadas = 0 if (u['analises_mes'] or '') != mes else (u['analises_usadas'] or 0)
+    return {'gratis': max(0, FREE_MENSAL - usadas), 'creditos': u['creditos'] or 0}
+
+
+def consumir_analise(tabela, uid):
+    """Consome 1 análise: grátis do mês primeiro, depois crédito. Reset mensal lazy.
+    Retorna True se conseguiu (tinha saldo), False se acabou."""
+    import datetime as _dt
+    conn = get_radar_db()
+    try:
+        u = conn.execute(f'SELECT analises_usadas, analises_mes, creditos FROM {tabela} WHERE id=?',
+                         (uid,)).fetchone()
+        if not u:
+            return False
+        mes = _dt.date.today().strftime('%Y-%m')
+        usadas = 0 if (u['analises_mes'] or '') != mes else (u['analises_usadas'] or 0)
+        if usadas < FREE_MENSAL:
+            conn.execute(f'UPDATE {tabela} SET analises_usadas=?, analises_mes=? WHERE id=?',
+                         (usadas + 1, mes, uid))
+            conn.commit(); return True
+        if (u['creditos'] or 0) > 0:
+            conn.execute(f'UPDATE {tabela} SET creditos=creditos-1, analises_mes=? WHERE id=?',
+                         (mes, uid))
+            conn.commit(); return True
+        return False
+    finally:
+        conn.close()
+
+
+def add_creditos(tabela, uid, n):
+    conn = get_radar_db()
+    try:
+        conn.execute(f'UPDATE {tabela} SET creditos=COALESCE(creditos,0)+? WHERE id=?', (n, uid))
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def set_area(tabela, uid, area):
+    radar_exec(f'UPDATE {tabela} SET area=? WHERE id=?', ((area or '').strip()[:120], uid))
+
+
+# ── Compra de crédito (PIX) — idempotente ────────────────────────────────────
+def criar_compra(tabela, user_id, creditos, valor):
+    conn = get_radar_db()
+    try:
+        cur = conn.execute('INSERT INTO radar_compras (tabela,user_id,creditos,valor) '
+                           'VALUES (?,?,?,?)', (tabela, user_id, creditos, valor))
+        conn.commit(); return cur.lastrowid
+    finally:
+        conn.close()
+
+
+def confirmar_compra(compra_id, payment_id=''):
+    """Marca a compra como paga (atômico) e credita uma única vez. Retorna True se creditou agora."""
+    conn = get_radar_db()
+    try:
+        cur = conn.execute("UPDATE radar_compras SET status='pago', asaas_payment_id=? "
+                           "WHERE id=? AND status='pendente'", (payment_id, compra_id))
+        conn.commit()
+        if cur.rowcount == 0:
+            return False
+        row = conn.execute('SELECT tabela, user_id, creditos FROM radar_compras WHERE id=?',
+                           (compra_id,)).fetchone()
+        if not row:
+            return False
+        conn.execute(f"UPDATE {row['tabela']} SET creditos=COALESCE(creditos,0)+? WHERE id=?",
+                     (row['creditos'], row['user_id']))
+        conn.commit(); return True
+    finally:
+        conn.close()

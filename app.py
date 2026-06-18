@@ -2195,6 +2195,15 @@ def webhook_asaas_global():
             except Exception as _rd_e:
                 log.error(f'[RADAR/LICITA] Webhook error: {_rd_e}')
 
+    elif ref.startswith('radarcred_') or ref.startswith('licitacred_'):
+        # Radar/Licita — compra de créditos de análise paga: credita (idempotente/atômico)
+        if ativar:
+            try:
+                from radar_db import confirmar_compra
+                confirmar_compra(int(ref.split('_')[1]), payload.get('payment', {}).get('id', ''))
+            except Exception as _cc_e:
+                log.error(f'[RADAR/LICITA cred] Webhook error: {_cc_e}')
+
     elif ref.startswith('alerta_'):
         if customer_id:
             conn = get_saas_db()
