@@ -240,6 +240,35 @@ def _coleta_sc():
         _bg['rodando'] = False
 
 
+# ── Auto-coleta SC (Licita Norte se atualiza sozinho) ───────────────────────
+_SC_INICIADO = False
+
+
+def iniciar_coletor_sc(intervalo_horas=None, delay_inicial=180):
+    """Thread daemon que coleta SC periodicamente. Independente do Radar nacional.
+    Desliga via env LICITA_AUTO_COLETA=0."""
+    global _SC_INICIADO
+    if _SC_INICIADO:
+        return
+    if os.environ.get('LICITA_AUTO_COLETA', '1') == '0':
+        log.info('[LICITA] auto-coleta SC desativada (LICITA_AUTO_COLETA=0)')
+        return
+    _SC_INICIADO = True
+    horas = intervalo_horas or int(os.environ.get('LICITA_COLETA_HORAS', '8'))
+    import time as _t, threading as _th, random as _r
+
+    def _loop():
+        _t.sleep(delay_inicial + _r.randint(0, 120))   # jitter (vários workers)
+        while True:
+            if not _bg['rodando']:
+                _bg['rodando'] = True
+                _coleta_sc()
+            _t.sleep(horas * 3600)
+
+    _th.Thread(target=_loop, daemon=True, name='licita-sc-auto').start()
+    log.info(f'[LICITA] auto-coleta SC iniciada (a cada {horas}h)')
+
+
 @licita_bp.route('/coletar', methods=['GET', 'POST'])
 @admin_required
 def rota_coletar():

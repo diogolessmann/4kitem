@@ -14122,8 +14122,9 @@ except Exception as _radar_err:
 # RADAR LICITA NORTE — versão regional (Norte de SC), reusa o motor do Radar
 # ══════════════════════════════════════════════════════════════════════════════
 try:
-    from licita_norte import licita_bp
+    from licita_norte import licita_bp, iniciar_coletor_sc
     app.register_blueprint(licita_bp)
+    iniciar_coletor_sc()   # coleta SC sozinho a cada 8h (LICITA_AUTO_COLETA=0 desliga)
     log.info('[LICITA NORTE] Blueprint registrado em /licita-norte')
 except Exception as _lic_err:
     log.warning(f'[LICITA NORTE] Erro ao carregar blueprint: {_lic_err}')
