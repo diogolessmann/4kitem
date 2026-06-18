@@ -685,6 +685,57 @@ def rota_redefinir():
     return render_template_string(_AUTH, modo='redefinir', token=token, erro=erro, msg=msg)
 
 
+# ── Assinatura (Asaas PIX mensal) — Lote B ──────────────────────────────────
+@radar_bp.route('/assinar', methods=['GET', 'POST'])
+@radar_login_required
+def rota_assinar():
+    u = _user()
+    if not u:
+        return redirect('/radar/entrar')
+    if _is_admin(u) or u.get('plan_active'):
+        return redirect('/radar/')
+    from app import _asaas_req, _asaas_criar_assinatura_saas, _asaas_get_pix_qr
+    erro = None
+    if request.method == 'POST':
+        cpf = ''.join(c for c in (request.form.get('cpf') or '') if c.isdigit())
+        if len(cpf) not in (11, 14):
+            erro = 'Informe um CPF ou CNPJ válido.'
+        else:
+            cid = u.get('asaas_customer_id')
+            if not cid:
+                busca = _asaas_req('GET', f'/customers?cpfCnpj={cpf}')
+                if busca.get('data'):
+                    cid = busca['data'][0].get('id')
+                if not cid:
+                    resp = _asaas_req('POST', '/customers', {
+                        'name': u['nome'], 'email': u['email'],
+                        'mobilePhone': u.get('telefone') or '', 'cpfCnpj': cpf,
+                        'notificationDisabled': True})
+                    cid = resp.get('id')
+                if cid:
+                    radar_exec('UPDATE radar_users SET asaas_customer_id=? WHERE id=?', (cid, u['id']))
+            if not cid:
+                erro = 'Não consegui criar o cadastro de pagamento. Tente de novo.'
+            else:
+                sub = _asaas_criar_assinatura_saas(cid, 'radar', 'mensal', float(RADAR_PRECO),
+                                                   'Assinatura Radar de Licitações de TI')
+                if not sub.get('id'):
+                    erro = 'Erro ao gerar a assinatura. Tente novamente.'
+                else:
+                    qr = _asaas_get_pix_qr(sub['id'])
+                    return render_template_string(_ASSINAR, modo='pix', qr=qr, preco=RADAR_PRECO,
+                                                  marca='Radar de Licitações de TI', base='/radar', erro=None)
+    return render_template_string(_ASSINAR, modo='cpf', qr=None, preco=RADAR_PRECO,
+                                  marca='Radar de Licitações de TI', base='/radar', erro=erro)
+
+
+@radar_bp.route('/assinar-status')
+@radar_login_required
+def rota_assinar_status():
+    u = _user()
+    return jsonify({'ativo': bool(u and (_is_admin(u) or u.get('plan_active')))})
+
+
 # ── Rotas ────────────────────────────────────────────────────────────────────
 @radar_bp.route('/coletar', methods=['GET', 'POST'])
 @radar_admin_required
@@ -1112,14 +1163,56 @@ _AGUARDANDO = '''<!doctype html><html lang="pt-br"><head><meta charset="utf-8">
   <li>🤖 IA que lê o edital e diz se vale a pena</li>
   <li>💰 Inteligência de preço: quem pagou quanto</li>
  </ul>
- {% if whatsapp %}
- <a class="btn" href="https://wa.me/{{ whatsapp }}?text=Quero%20assinar%20o%20Radar%20de%20Licita%C3%A7%C3%B5es%20de%20TI" target="_blank">💬 Assinar pelo WhatsApp</a>
- {% else %}
- <p style="color:#ffd95e;font-size:14px">Fale com o administrador para liberar seu acesso.</p>
- {% endif %}
+ <a class="btn" href="/radar/assinar" style="background:#2563eb;color:#fff">💠 Assinar com PIX</a>
+ {% if whatsapp %}<a class="btn" href="https://wa.me/{{ whatsapp }}?text=Quero%20assinar%20o%20Radar%20de%20Licita%C3%A7%C3%B5es%20de%20TI" target="_blank" style="background:#152042;color:#cfe0ff;border:1px solid #2a3c63">💬 Falar no WhatsApp</a>{% endif %}
  <a class="sair" href="/radar/sair">sair</a>
 </div>
 </body></html>'''
+
+
+# ── Tela de assinatura (Asaas PIX) — usada por Radar TI e (espelhada) Licita ──
+_ASSINAR = '''<!doctype html><html lang="pt-br"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Assinar — {{ marca }}</title>
+<style>
+ body{font-family:system-ui,Segoe UI,Roboto,sans-serif;background:#0b1020;color:#e7ecf5;margin:0;
+   display:flex;min-height:100vh;align-items:center;justify-content:center;padding:20px}
+ .card{background:#0f1730;border:1px solid #21304f;border-radius:16px;padding:30px;max-width:400px;width:100%;text-align:center}
+ h1{font-size:20px;margin:0 0 6px}
+ .preco{font-size:34px;font-weight:800;color:#5ee0a0;margin:8px 0}.preco span{font-size:15px;color:#8aa0c6;font-weight:500}
+ input{width:100%;box-sizing:border-box;padding:12px;border-radius:8px;border:1px solid #2a3c63;background:#0b1020;color:#e7ecf5;font-size:16px;margin-top:8px}
+ button,.btn{display:block;width:100%;margin-top:16px;padding:13px;border:none;border-radius:8px;background:#2563eb;color:#fff;font-size:15px;font-weight:700;cursor:pointer;text-decoration:none;box-sizing:border-box}
+ .erro{background:#2a0a0a;color:#ff8a8a;padding:10px;border-radius:8px;font-size:13px;margin-bottom:8px}
+ .qr{width:230px;height:230px;border-radius:12px;background:#fff;padding:8px;margin:14px auto;display:block}
+ .copia{word-break:break-all;font-size:11px;background:#0b1020;border:1px solid #2a3c63;border-radius:8px;padding:10px;color:#8aa0c6;margin-top:10px}
+ .ok{color:#5ee0a0;font-size:13px;margin-top:12px} a.sair{color:#8aa0c6;font-size:13px;display:inline-block;margin-top:14px}
+</style></head><body>
+<div class="card">
+ <h1>📡 {{ marca }}</h1>
+ {% if erro %}<div class="erro">⚠️ {{ erro }}</div>{% endif %}
+ {% if modo == 'cpf' %}
+ <div class="preco">R$ {{ preco }}<span>/mês</span></div>
+ <p style="color:#8aa0c6;font-size:14px">Assinatura mensal via PIX automático. Informe seu CPF/CNPJ pra gerar o pagamento.</p>
+ <form method="post" action="{{ base }}/assinar">
+  <input name="cpf" placeholder="CPF ou CNPJ" required>
+  <button>Gerar PIX</button>
+ </form>
+ {% elif qr and qr.payload %}
+ <div class="preco">R$ {{ preco }}<span>/mês</span></div>
+ <p style="color:#8aa0c6;font-size:14px">Escaneie o QR ou copie o código. Seu acesso libera <b>automático</b> quando o pagamento cair.</p>
+ {% if qr.encodedImage %}<img class="qr" src="data:image/png;base64,{{ qr.encodedImage }}" alt="PIX">{% endif %}
+ <div class="copia" id="pix">{{ qr.payload }}</div>
+ <button onclick="navigator.clipboard.writeText(document.getElementById('pix').innerText);this.innerText='✅ Copiado!'">📋 Copiar código PIX</button>
+ <div class="ok" id="status">⏳ Aguardando pagamento…</div>
+ <script>
+  setInterval(function(){fetch('{{ base }}/assinar-status').then(r=>r.json()).then(d=>{if(d.ativo){document.getElementById('status').innerText='✅ Pago! Entrando…';setTimeout(function(){location.href='{{ base }}/';},1200);}}).catch(function(){});},5000);
+ </script>
+ {% else %}
+ <div class="erro">Não consegui gerar o PIX agora. Tente de novo.</div>
+ <a class="btn" href="{{ base }}/assinar">Tentar de novo</a>
+ {% endif %}
+ <a class="sair" href="{{ base }}/sair">sair</a>
+</div></body></html>'''
 
 
 # ── Tela ADMIN do Radar (confere tudo) ──────────────────────────────────────

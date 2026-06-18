@@ -2169,6 +2169,32 @@ def webhook_asaas_global():
             except Exception as _pcd_e:
                 log.error(f'[PCD] Webhook error: {_pcd_e}')
 
+    elif ref.startswith('radar_') or ref.startswith('licita_'):
+        # Radar TI / Radar Licita Norte — assinatura mensal: paga=ativa, vence/cancela=corta
+        if customer_id:
+            _tab = 'radar_users' if ref.startswith('radar_') else 'licita_users'
+            try:
+                from radar_db import get_radar_db
+                conn = get_radar_db()
+                u = conn.execute(f'SELECT id, nome, email FROM {_tab} WHERE asaas_customer_id=?',
+                                 (customer_id,)).fetchone()
+                if u:
+                    conn.execute(f'UPDATE {_tab} SET plan_active=? WHERE id=?',
+                                 (1 if ativar else 0, u['id']))
+                    conn.commit()
+                    if ativar and u['email']:
+                        _nome = 'Radar de Licitações de TI' if _tab == 'radar_users' else 'Radar Licita Norte'
+                        _url = ('https://4kitem.com.br/radar/' if _tab == 'radar_users'
+                                else 'https://4kitem.com.br/licita-norte/')
+                        try:
+                            _enviar_email(u['email'], f'✅ {_nome} — Assinatura ativa!',
+                                _email_pagamento_confirmado(_nome, '📡', '#2563eb',
+                                    (u['nome'] or '').split()[0], 'Mensal', '', _url))
+                        except Exception: pass
+                conn.close()
+            except Exception as _rd_e:
+                log.error(f'[RADAR/LICITA] Webhook error: {_rd_e}')
+
     elif ref.startswith('alerta_'):
         if customer_id:
             conn = get_saas_db()

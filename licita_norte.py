@@ -22,7 +22,7 @@ from flask import (Blueprint, request, jsonify, render_template_string,
 from werkzeug.security import generate_password_hash, check_password_hash
 
 # Reusa o motor do Radar (IA, coletor, e-mail)
-from radar import analisar_edital, _texto_de_pdf, _enviar_email, coletar, coletar_contratos
+from radar import analisar_edital, _texto_de_pdf, _enviar_email, coletar, coletar_contratos, _ASSINAR
 from radar_db import (obter_licitacao, salvar_analise, radar_exec,
                       get_licita_user, get_licita_user_by_email, contar_licita_users,
                       criar_licita_user, listar_licita_users,
@@ -176,6 +176,57 @@ def rota_redefinir():
             return render_template_string(_AUTH, modo='entrar', erro=None,
                                           msg='Senha alterada! Faça login.', preco=LICITA_PRECO)
     return render_template_string(_AUTH, modo='redefinir', token=token, erro=erro, msg=None, preco=LICITA_PRECO)
+
+
+# ── Assinatura (Asaas PIX mensal) — Lote B, espelha o Radar ─────────────────
+@licita_bp.route('/assinar', methods=['GET', 'POST'])
+@login_required
+def rota_assinar():
+    u = _user()
+    if not u:
+        return redirect('/licita-norte/entrar')
+    if _is_admin(u) or u.get('plan_active'):
+        return redirect('/licita-norte/')
+    from app import _asaas_req, _asaas_criar_assinatura_saas, _asaas_get_pix_qr
+    erro = None
+    if request.method == 'POST':
+        cpf = ''.join(c for c in (request.form.get('cpf') or '') if c.isdigit())
+        if len(cpf) not in (11, 14):
+            erro = 'Informe um CPF ou CNPJ válido.'
+        else:
+            cid = u.get('asaas_customer_id')
+            if not cid:
+                busca = _asaas_req('GET', f'/customers?cpfCnpj={cpf}')
+                if busca.get('data'):
+                    cid = busca['data'][0].get('id')
+                if not cid:
+                    resp = _asaas_req('POST', '/customers', {
+                        'name': u['nome'], 'email': u['email'],
+                        'mobilePhone': u.get('telefone') or '', 'cpfCnpj': cpf,
+                        'notificationDisabled': True})
+                    cid = resp.get('id')
+                if cid:
+                    radar_exec('UPDATE licita_users SET asaas_customer_id=? WHERE id=?', (cid, u['id']))
+            if not cid:
+                erro = 'Não consegui criar o cadastro de pagamento. Tente de novo.'
+            else:
+                sub = _asaas_criar_assinatura_saas(cid, 'licita', 'mensal', float(LICITA_PRECO),
+                                                   'Assinatura Radar Licita Norte')
+                if not sub.get('id'):
+                    erro = 'Erro ao gerar a assinatura. Tente novamente.'
+                else:
+                    qr = _asaas_get_pix_qr(sub['id'])
+                    return render_template_string(_ASSINAR, modo='pix', qr=qr, preco=LICITA_PRECO,
+                                                  marca='Radar Licita Norte', base='/licita-norte', erro=None)
+    return render_template_string(_ASSINAR, modo='cpf', qr=None, preco=LICITA_PRECO,
+                                  marca='Radar Licita Norte', base='/licita-norte', erro=erro)
+
+
+@licita_bp.route('/assinar-status')
+@login_required
+def rota_assinar_status():
+    u = _user()
+    return jsonify({'ativo': bool(u and (_is_admin(u) or u.get('plan_active')))})
 
 
 # ── Painel / detalhe / admin ─────────────────────────────────────────────────
@@ -378,8 +429,8 @@ _AGUARDANDO = '''<!doctype html><html lang="pt-br"><head><meta charset="utf-8">
  <li>🗞️ Selo especial pras de notícia/comunicação</li>
  <li>🤖 IA que lê o edital e diz se vale a pena</li>
  <li>💰 Faixa R$1k–200k (o que dá pra ganhar)</li></ul>
- {% if whatsapp %}<a class="btn" href="https://wa.me/{{ whatsapp }}?text=Quero%20assinar%20o%20Radar%20Licita%20Norte" target="_blank">💬 Assinar pelo WhatsApp</a>
- {% else %}<p style="color:#ffd95e">Fale com o administrador para liberar.</p>{% endif %}
+ <a class="btn" href="/licita-norte/assinar" style="background:#16a34a">💠 Assinar com PIX</a>
+ {% if whatsapp %}<a class="btn" href="https://wa.me/{{ whatsapp }}?text=Quero%20assinar%20o%20Radar%20Licita%20Norte" target="_blank" style="background:#152b20;color:#cfeeda">💬 Falar no WhatsApp</a>{% endif %}
  <a class="sair" href="/licita-norte/sair">sair</a>
 </div></body></html>'''
 
