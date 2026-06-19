@@ -1462,6 +1462,12 @@ _PAINEL = '''<!doctype html><html lang="pt-br"><head><meta charset="utf-8">
  {% endif %}
  <span style="margin-left:auto;color:#8aa0c6;font-size:13px">👤 {{ radar_nome }} · <a href="/radar/sair" style="color:#8aa0c6">sair</a></span>
 </div>
+{% if st.por_uf %}
+<div class="filtros" style="margin-top:-4px">
+ <span style="align-self:center;color:#8aa0c6;font-size:12px">📍 Estado:</span>
+ {% for u in st.por_uf %}{% if u.uf %}<a href="/radar/{{ q }}&uf={{ u.uf }}{% if zona %}&zona={{ zona }}{% endif %}"{% if uf==u.uf %} style="background:#13324e;border-color:#2f6ea0;color:#bfe3ff"{% endif %}>{{ u.uf }} <b style="opacity:.55;font-weight:600">{{ u.n }}</b></a>{% endif %}{% endfor %}
+</div>
+{% endif %}
 {% if lst %}
 <table>
  <tr><th>Score</th><th>Porte</th><th>Tier</th><th class="obj">Objeto</th>

@@ -588,9 +588,10 @@ def consumir_analise(tabela, uid):
                          (usadas + 1, mes, uid))
             conn.commit(); return True
         if (u['creditos'] or 0) > 0:
-            conn.execute(f'UPDATE {tabela} SET creditos=creditos-1, analises_mes=? WHERE id=?',
-                         (mes, uid))
-            conn.commit(); return True
+            cur = conn.execute(f'UPDATE {tabela} SET creditos=creditos-1, analises_mes=? '
+                               f'WHERE id=? AND creditos>0', (mes, uid))
+            conn.commit()
+            return cur.rowcount > 0   # falso só se outra requisição zerou na corrida
         return False
     finally:
         conn.close()
