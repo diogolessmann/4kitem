@@ -594,6 +594,41 @@ def _inject_user():
 
 
 # ── Rotas de auth ────────────────────────────────────────────────────────────
+@radar_bp.route('/lp')
+@radar_bp.route('/sobre')
+def rota_lp():
+    if session.get('radar_user_id'):
+        return redirect('/radar/')
+    return render_template_string(
+        _LP, base='/radar', marca='Radar de Licitações de TI',
+        cor='#2f6ea0', cor2='#7cc0ff', selo='📡 Radar nacional de TI',
+        logo='/static/img/radar/logo.webp', hero='/static/img/radar/hero.webp',
+        titulo='O <span class="hl">radar de licitações de TI</span> do Brasil',
+        sub='Serviços de tecnologia médio/pequenos que VOCÊ entrega — sites, sistemas, '
+            'suporte, infra. A cauda longa municipal, sem disputar com gigante.',
+        cta='Começar agora', preco='R$ 97',
+        publico='Pra quem presta serviço de TI e quer vender pro governo sem se afogar em edital.',
+        dor_t='Você perde licitação porque não fica sabendo a tempo.',
+        dor='São centenas de editais novos por dia no PNCP. Achar o que é da SUA praia, no '
+            'prazo, é caça à agulha. O Radar faz isso por você — automático, o dia todo.',
+        beneficios=[
+            {'ico': '🛰️', 'tit': 'Radar automático',
+             'txt': 'Varre o PNCP (gov) o dia inteiro e entrega só o que é serviço de TI do seu porte. Filtro por estado.'},
+            {'ico': '🤖', 'tit': 'IA diz se vale PRA VOCÊ',
+             'txt': 'Lê o edital sob a ótica da sua área: prazo, atestado exigido, riscos e um plano de ataque.'},
+            {'ico': '💰', 'tit': 'Inteligência de preço',
+             'txt': 'Quanto o governo já pagou por serviço parecido — você precifica certo e não deixa dinheiro na mesa.'},
+        ],
+        passos=[
+            {'t': 'Cadastre-se', 'd': 'Conta em 1 minuto. Diga sua área pra IA acertar o alvo.'},
+            {'t': 'Ative o PIX', 'd': 'Assinatura mensal pelo Asaas. Sem fidelidade.'},
+            {'t': 'Receba o filé', 'd': 'Licitações de TI filtradas + análise da IA, prontas pra você dar o lance.'},
+        ],
+        inclui=['Radar automático do PNCP (Brasil todo)', 'Filtro por estado e zona de valor',
+                'Inteligência de preço', '10 análises de IA por mês inclusas',
+                'Créditos extras quando precisar (a partir de R$19)'])
+
+
 @radar_bp.route('/cadastrar', methods=['GET', 'POST'])
 def rota_cadastrar():
     if session.get('radar_user_id'):
@@ -1406,6 +1441,101 @@ _ADMIN = '''<!doctype html><html lang="pt-br"><head><meta charset="utf-8">
  </tr>
  {% endfor %}
 </table>
+</body></html>'''
+
+
+# ── Landing de vendas (público, compartilhada pelos 2 radares) ──
+_LP = '''<!doctype html><html lang="pt-br"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{{ marca }}</title>
+<meta name="description" content="{{ sub }}">
+<link rel="icon" href="{{ logo }}">
+<style>
+ *{box-sizing:border-box;margin:0;padding:0}
+ body{font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:#0a0e14;color:#e6edf6;line-height:1.55}
+ a{color:inherit}
+ .wrap{max-width:980px;margin:0 auto;padding:0 20px}
+ .btn{display:inline-block;background:{{ cor }};color:#fff;font-weight:700;padding:14px 26px;border-radius:11px;text-decoration:none;font-size:16px;box-shadow:0 8px 24px {{ cor }}55;transition:.15s}
+ .btn:hover{transform:translateY(-2px)}
+ .btn.ghost{background:transparent;border:1px solid #2a3850;color:#9fb4d4;box-shadow:none;font-weight:600}
+ header.hero{background:radial-gradient(1100px 480px at 70% -10%, {{ cor }}33, transparent 60%);padding:64px 0 40px;text-align:center}
+ .selo{display:inline-block;background:{{ cor }}22;border:1px solid {{ cor }}55;color:{{ cor2 }};font-size:13px;font-weight:700;padding:5px 13px;border-radius:999px;margin-bottom:18px}
+ .hero img.logo{height:64px;width:64px;border-radius:15px;vertical-align:-14px;margin-right:10px}
+ h1{font-size:38px;line-height:1.12;letter-spacing:-.5px;margin:8px 0 14px}
+ h1 .hl{color:{{ cor2 }}}
+ .lead{font-size:18px;color:#aab8cc;max-width:660px;margin:0 auto 26px}
+ .cta-row{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+ .heroart{margin:34px auto 0;max-width:560px;width:88%;border-radius:16px;display:block;box-shadow:0 24px 60px #0008}
+ section{padding:46px 0}
+ .pain{background:#0d131c;border-top:1px solid #161e2b;border-bottom:1px solid #161e2b;text-align:center}
+ .pain h2{font-size:24px;margin-bottom:8px}
+ .pain p{color:#9fb0c6;max-width:620px;margin:0 auto}
+ .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:8px}
+ .b{background:#0f1620;border:1px solid #1b2636;border-radius:14px;padding:22px}
+ .b .ico{font-size:26px}
+ .b h3{font-size:17px;margin:10px 0 6px}
+ .b p{color:#9fb0c6;font-size:14.5px}
+ h2.sec{font-size:26px;text-align:center;margin-bottom:6px;letter-spacing:-.3px}
+ .sub2{text-align:center;color:#8497ad;margin-bottom:26px}
+ .passos{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;counter-reset:p}
+ .passo{background:#0f1620;border:1px solid #1b2636;border-radius:14px;padding:20px;position:relative}
+ .passo:before{counter-increment:p;content:counter(p);position:absolute;top:-14px;left:18px;width:30px;height:30px;border-radius:50%;background:{{ cor }};color:#fff;font-weight:800;display:grid;place-items:center}
+ .preco{max-width:420px;margin:0 auto;background:linear-gradient(180deg,#11202f,#0f1620);border:1px solid {{ cor }}66;border-radius:18px;padding:30px;text-align:center}
+ .preco .v{font-size:42px;font-weight:800;color:#fff}
+ .preco .v small{font-size:16px;color:#8497ad;font-weight:600}
+ .preco ul{list-style:none;text-align:left;margin:18px 0;display:inline-block}
+ .preco li{padding:5px 0;color:#cdd9e8}.preco li:before{content:"✓ ";color:{{ cor2 }};font-weight:800}
+ footer{text-align:center;color:#5e6e84;font-size:13px;padding:36px 0 50px}
+ footer a{color:#8497ad}
+ @media(max-width:720px){h1{font-size:29px}.grid,.passos{grid-template-columns:1fr}}
+</style></head><body>
+<header class="hero"><div class="wrap">
+ <div class="selo">{{ selo }}</div>
+ <h1><img src="{{ logo }}" class="logo" alt="" onerror="this.style.display='none'">{{ titulo|safe }}</h1>
+ <p class="lead">{{ sub }}</p>
+ <div class="cta-row">
+  <a class="btn" href="{{ base }}/cadastrar">{{ cta }}</a>
+  <a class="btn ghost" href="{{ base }}/entrar">Já tenho conta</a>
+ </div>
+ <img class="heroart" src="{{ hero }}" alt="" onerror="this.style.display='none'">
+</div></header>
+
+<section class="pain"><div class="wrap">
+ <h2>{{ dor_t }}</h2><p>{{ dor }}</p>
+</div></section>
+
+<section><div class="wrap">
+ <h2 class="sec">Por que assinar</h2>
+ <p class="sub2">{{ publico }}</p>
+ <div class="grid">
+  {% for b in beneficios %}<div class="b"><div class="ico">{{ b.ico }}</div><h3>{{ b.tit }}</h3><p>{{ b.txt }}</p></div>{% endfor %}
+ </div>
+</div></section>
+
+<section style="background:#0d131c;border-top:1px solid #161e2b;border-bottom:1px solid #161e2b"><div class="wrap">
+ <h2 class="sec">Como funciona</h2>
+ <p class="sub2">Do cadastro à primeira licitação na mão, em minutos.</p>
+ <div class="passos">
+  {% for p in passos %}<div class="passo"><b>{{ p.t }}</b><p style="color:#9fb0c6;font-size:14px;margin-top:4px">{{ p.d }}</p></div>{% endfor %}
+ </div>
+</div></section>
+
+<section><div class="wrap">
+ <h2 class="sec">Preço sem pegadinha</h2>
+ <p class="sub2">Assinatura mensal. Cancele quando quiser.</p>
+ <div class="preco">
+  <div class="v">{{ preco }}<small>/mês</small></div>
+  <ul>
+   {% for it in inclui %}<li>{{ it }}</li>{% endfor %}
+  </ul>
+  <div><a class="btn" href="{{ base }}/cadastrar" style="width:100%;text-align:center">{{ cta }}</a></div>
+  <p style="color:#7c8ba0;font-size:12.5px;margin-top:12px">Pagamento via PIX (Asaas). Sem fidelidade.</p>
+ </div>
+</div></section>
+
+<footer>
+ {{ marca }} · um SaaS <a href="/">4kitem</a> · <a href="{{ base }}/entrar">entrar</a>
+</footer>
 </body></html>'''
 
 

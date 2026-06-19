@@ -22,7 +22,7 @@ from flask import (Blueprint, request, jsonify, render_template_string,
 from werkzeug.security import generate_password_hash, check_password_hash
 
 # Reusa o motor do Radar (IA, coletor, e-mail)
-from radar import analisar_edital, _texto_de_pdf, _enviar_email, coletar, coletar_contratos, _ASSINAR, _COMPRAR
+from radar import analisar_edital, _texto_de_pdf, _enviar_email, coletar, coletar_contratos, _ASSINAR, _COMPRAR, _LP
 from radar_db import (obter_licitacao, salvar_analise, radar_exec,
                       get_licita_user, get_licita_user_by_email, contar_licita_users,
                       criar_licita_user, listar_licita_users,
@@ -85,6 +85,41 @@ def admin_required(f):
 def _inject():
     u = _user()
     return {'lic_nome': (u or {}).get('nome', ''), 'lic_is_admin': _is_admin(u)}
+
+
+@licita_bp.route('/lp')
+@licita_bp.route('/sobre')
+def rota_lp():
+    if session.get('licita_user_id'):
+        return redirect('/licita-norte/')
+    return render_template_string(
+        _LP, base='/licita-norte', marca='Radar Licita Norte',
+        cor='#2f8f5e', cor2='#5ee0a0', selo='🗞️ Norte de SC + Vale do Itajaí',
+        logo='/static/img/radar/logo.webp', hero='/static/img/radar/hero.webp',
+        titulo='As licitações <span class="hl">perto de você</span>, num lugar só',
+        sub='Schroeder, Guaramirim, Jaraguá, Joinville, Massaranduba, Corupá e região — '
+            'todas as áreas, de R$ 1 mil a R$ 500 mil. As fáceis, do seu lado.',
+        cta='Quero começar', preco='R$ 67',
+        publico='Pra empresa e MEI da região que quer pegar licitação pequena e média perto de casa — qualquer ramo.',
+        dor_t='A prefeitura do seu lado abre licitação e você nem fica sabendo.',
+        dor='Cada cidade publica num canto. Olhar 29 portais todo dia é impossível. O Licita '
+            'Norte junta tudo num painel só, filtra por cidade e te avisa do que dá pra você.',
+        beneficios=[
+            {'ico': '🗺️', 'tit': '29 cidades, 1 painel',
+             'txt': 'Norte de SC e Vale do Itajaí reunidos. Filtre por cidade: todas de Joinville, todas de Schroeder, num clique.'},
+            {'ico': '🤖', 'tit': 'IA diz se vale PRA VOCÊ',
+             'txt': 'Buffet, obra, uniforme, TI, notícia... a IA lê o edital sob a ótica da SUA área e diz se compensa.'},
+            {'ico': '🗞️', 'tit': 'Selo de notícia',
+             'txt': 'Licitações que viram pauta ganham selo — ouro pra quem tem portal de notícia local.'},
+        ],
+        passos=[
+            {'t': 'Cadastre-se', 'd': 'Conta em 1 minuto. Diga o que sua empresa faz.'},
+            {'t': 'Ative o PIX', 'd': 'Assinatura mensal pelo Asaas. Sem fidelidade.'},
+            {'t': 'Receba o filé', 'd': 'Licitações da sua região filtradas + análise da IA.'},
+        ],
+        inclui=['29 cidades do Norte de SC e Vale do Itajaí', 'Filtro por cidade e por valor (R$1k–500k)',
+                'Selo de notícia 🗞️', '10 análises de IA por mês inclusas',
+                'Créditos extras quando precisar (a partir de R$19)'])
 
 
 @licita_bp.route('/cadastrar', methods=['GET', 'POST'])
