@@ -95,7 +95,8 @@ def rota_lp():
     return render_template_string(
         _LP, base='/licita-norte', marca='Radar Licita Norte',
         cor='#2f8f5e', cor2='#5ee0a0', selo='🗞️ Norte de SC + Vale do Itajaí',
-        logo='/static/img/radar/logo.webp', hero='/static/img/radar/hero.webp',
+        logo='/static/img/licita/logo.webp', hero='/static/img/licita/hero.webp',
+        og='/static/img/licita/og.jpg',
         titulo='As licitações <span class="hl">perto de você</span>, num lugar só',
         sub='Schroeder, Guaramirim, Jaraguá, Joinville, Massaranduba, Corupá e região — '
             'todas as áreas, de R$ 1 mil a R$ 500 mil. As fáceis, do seu lado.',
@@ -478,7 +479,7 @@ _BASE_CSS = '''
 _AUTH = '''<!doctype html><html lang="pt-br"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>📡 Radar Licita Norte — Acesso</title>
-<link rel="icon" type="image/png" href="/static/img/radar/logo.webp">
+<link rel="icon" type="image/png" href="/static/img/licita/logo.webp">
 <style>''' + _BASE_CSS + '''
  body{display:flex;min-height:100vh;align-items:center;justify-content:center;padding:20px}
  .card{background:#0e1c16;border:1px solid #21402f;border-radius:16px;padding:32px;max-width:380px;width:100%}
@@ -548,7 +549,7 @@ _AGUARDANDO = '''<!doctype html><html lang="pt-br"><head><meta charset="utf-8">
 
 _PAINEL = '''<!doctype html><html lang="pt-br"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>📡 Radar Licita Norte</title>
-<link rel="icon" type="image/png" href="/static/img/radar/logo.webp">
+<link rel="icon" type="image/png" href="/static/img/licita/logo.webp">
 <style>''' + _BASE_CSS + '''
  header{padding:18px 22px;background:#0e1c16;border-bottom:1px solid #21402f;position:sticky;top:0}
  h1{margin:0;font-size:20px}.sub{color:#8ac0a0;font-size:13px;margin-top:4px}
@@ -564,7 +565,7 @@ _PAINEL = '''<!doctype html><html lang="pt-br"><head><meta charset="utf-8">
  .empty{padding:60px;text-align:center;color:#8ac0a0}
 </style></head><body>
 <header>
- <h1>📡 Radar Licita Norte</h1>
+ <h1><img src="/static/img/licita/logo.webp" alt="" style="height:30px;width:30px;border-radius:7px;vertical-align:-6px;margin-right:8px" onerror="this.outerHTML='📡 '">Radar Licita Norte</h1>
  <div class="sub">{{ cidades }} — R$ {{ '{:,.0f}'.format(vmin).replace(',','.') }} a {{ '{:,.0f}'.format(vmax).replace(',','.') }}, todas as categorias.</div>
  <div class="stats">
   <div class="card"><b>{{ st.total }}</b><span>oportunidades</span></div>
@@ -598,7 +599,9 @@ _PAINEL = '''<!doctype html><html lang="pt-br"><head><meta charset="utf-8">
  <td>{{ (l.data_encerramento or '')[:10] }}</td>
 </tr>{% endfor %}</table>
 {% else %}
-<div class="empty">Nenhuma oportunidade nas 6 cidades ainda.<br><br>
+<div class="empty">
+ <img src="/static/img/licita/vazio.webp" alt="" style="max-width:240px;width:60%;opacity:.9;margin-bottom:14px" onerror="this.style.display='none'"><br>
+ Nenhuma oportunidade na região ainda.<br><br>
 {% if lic_is_admin %}Clique em <b>▶ Coletar SC</b> pra puxar do PNCP.{% else %}Volte em breve — o radar atualiza sozinho.{% endif %}</div>
 {% endif %}
 </body></html>'''

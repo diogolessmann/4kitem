@@ -603,6 +603,7 @@ def rota_lp():
         _LP, base='/radar', marca='Radar de Licitações de TI',
         cor='#2f6ea0', cor2='#7cc0ff', selo='📡 Radar nacional de TI',
         logo='/static/img/radar/logo.webp', hero='/static/img/radar/hero.webp',
+        og='/static/img/radar/og.jpg',
         titulo='O <span class="hl">radar de licitações de TI</span> do Brasil',
         sub='Serviços de tecnologia médio/pequenos que VOCÊ entrega — sites, sistemas, '
             'suporte, infra. A cauda longa municipal, sem disputar com gigante.',
@@ -1449,6 +1450,10 @@ _LP = '''<!doctype html><html lang="pt-br"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{{ marca }}</title>
 <meta name="description" content="{{ sub }}">
+<meta property="og:title" content="{{ marca }}">
+<meta property="og:description" content="{{ sub }}">
+<meta property="og:type" content="website">
+{% if og %}<meta property="og:image" content="{{ og }}">{% endif %}
 <link rel="icon" href="{{ logo }}">
 <style>
  *{box-sizing:border-box;margin:0;padding:0}
