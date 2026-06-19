@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Meu painel de vendedor — {{ camp.nome }}</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',sans-serif;background:#09090f;color:#f0f0ff;min-height:100vh;padding:0 0 40px}
+.wrap{max-width:480px;margin:0 auto;padding:0 18px}
+.header{background:#13131f;border-bottom:1px solid rgba(255,255,255,.07);padding:18px;text-align:center;margin-bottom:18px}
+.logo{font-size:13px;color:#6666aa;margin-bottom:6px}
+.camp-nome{font-size:18px;font-weight:800}
+.ola{font-size:15px;color:#a7b3c9;margin:2px 0 18px;text-align:center}
+.ola b{color:#f0f0ff}
+.stats{display:flex;gap:12px;margin-bottom:18px}
+.stat{flex:1;background:#13131f;border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:16px;text-align:center}
+.stat .v{font-size:26px;font-weight:800}
+.stat .l{font-size:11px;color:#6666aa;margin-top:3px}
+.green{color:#22c55e}.purple{color:#a5b4fc}.amber{color:#f59e0b}
+.card{background:#13131f;border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:20px;margin-bottom:16px}
+.card h3{font-size:15px;font-weight:800;margin-bottom:6px}
+.card p{font-size:13px;color:#9aa3bd;line-height:1.5;margin-bottom:12px}
+.link-box{background:#0a0a15;border:1px solid rgba(99,102,241,.3);border-radius:11px;
+          padding:13px;font-size:12px;color:#a5b4fc;word-break:break-all;cursor:pointer;margin-bottom:12px}
+.btn{width:100%;padding:16px;border-radius:13px;border:none;
+     background:linear-gradient(135deg,#22c55e,#16a34a);color:#04210f;
+     font-size:16px;font-weight:800;cursor:pointer;font-family:inherit;margin-bottom:10px}
+.btn-2{background:rgba(255,255,255,.06);color:#c9d6e2;font-weight:700}
+.info{font-size:12px;color:#6b7591;line-height:1.6;text-align:center}
+.info b{color:#22c55e}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">🎯 SlotZap · Painel do Vendedor</div>
+  <div class="camp-nome">{{ camp.nome }}</div>
+</div>
+
+<div class="wrap">
+  <div class="ola">Olá, <b>{{ af.nome.split()[0] if af.nome else 'vendedor' }}</b>! 👋 Bora vender?</div>
+
+  <div class="stats">
+    <div class="stat"><div class="v purple">{{ vendas }}</div><div class="l">Vendas</div></div>
+    <div class="stat"><div class="v green">R$ {{ '%.2f'|format(ganho_pago) }}</div><div class="l">Já recebido</div></div>
+    <div class="stat"><div class="v amber">R$ {{ '%.2f'|format(a_receber if a_receber > 0 else 0) }}</div><div class="l">A caminho</div></div>
+  </div>
+
+  <div class="card">
+    <h3>🔗 Seu link de vendas</h3>
+    <p>Toque no link pra copiar e mande pros seus contatos e grupos. Cada compra por ele = <b>R$ {{ '%.2f'|format(comissao) }}</b> no seu PIX na hora! 🍀</p>
+    <div class="link-box" id="link" onclick="copiar()">{{ link }}</div>
+    <button class="btn" onclick="compartilhar()">📲 Compartilhar no WhatsApp</button>
+    <button class="btn btn-2" onclick="copiar()">📋 Copiar meu link</button>
+  </div>
+
+  <div class="card">
+    <div class="info">
+      💸 Sua comissão é <b>R$ {{ '%.2f'|format(comissao) }} por número vendido</b>, paga direto no seu PIX assim que a pessoa paga.<br><br>
+      📌 Guarde este link nos favoritos pra acompanhar suas vendas sempre que quiser.
+    </div>
+  </div>
+</div>
+
+<script>
+const LINK = {{ link|tojson }};
+const CAMP = {{ camp.nome|tojson }};
+const COMI = {{ '%.2f'|format(comissao)|tojson }};
+function copiar(){
+  navigator.clipboard.writeText(LINK).then(()=>{
+    const el=document.getElementById('link');
+    const o=el.textContent; el.textContent='✅ Link copiado! Agora é só colar e mandar.';
+    setTimeout(()=>el.textContent=o,2200);
+  });
+}
+function compartilhar(){
+  const txt='🛵 Tá rolando a rifa *'+CAMP+'*! Garanta seu número da sorte pelo MEU link 👇\n'+LINK;
+  if(navigator.share){ navigator.share({text:txt}).catch(()=>{}); }
+  else { window.open('https://wa.me/?text='+encodeURIComponent(txt),'_blank'); }
+}
+</script>
+</body>
+</html>

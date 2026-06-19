@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Seja afiliado — {{ camp.nome }}</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',sans-serif;background:#09090f;color:#f0f0ff;min-height:100vh;padding:0 0 40px}
+.wrap{max-width:480px;margin:0 auto;padding:0 18px}
+.header{background:#13131f;border-bottom:1px solid rgba(255,255,255,.07);padding:18px;text-align:center;margin-bottom:18px}
+.logo{font-size:13px;color:#6666aa;margin-bottom:6px}
+.camp-nome{font-size:18px;font-weight:800}
+.hero{background:linear-gradient(135deg,rgba(34,197,94,.14),rgba(99,102,241,.12));
+      border:1px solid rgba(34,197,94,.35);border-radius:16px;padding:20px;text-align:center;margin-bottom:18px}
+.hero h1{font-size:21px;font-weight:800;line-height:1.25;margin-bottom:8px}
+.hero .valor{font-size:34px;font-weight:800;color:#22c55e;margin:6px 0}
+.hero p{font-size:13px;color:#a7b3c9;line-height:1.5}
+.card{background:#13131f;border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:20px}
+.passos{font-size:13px;color:#9aa3bd;line-height:1.9;margin-bottom:18px}
+.passos b{color:#f0f0ff}
+label{display:block;font-size:13px;font-weight:700;color:#c9d6e2;margin:14px 0 6px}
+label .hint{font-weight:400;color:#6b7591;font-size:11px}
+input,select{width:100%;background:#0a0a15;border:1px solid rgba(255,255,255,.12);border-radius:11px;
+      color:#f0f0ff;padding:14px 14px;font-size:16px;font-family:inherit;outline:none}
+input:focus,select:focus{border-color:#22c55e}
+select{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='none' stroke='%238888aa' stroke-width='2'><path d='M3 5l4 4 4-4'/></svg>");
+       background-repeat:no-repeat;background-position:right 14px center}
+.btn{width:100%;padding:17px;border-radius:13px;border:none;margin-top:22px;
+     background:linear-gradient(135deg,#22c55e,#16a34a);color:#04210f;
+     font-size:17px;font-weight:800;cursor:pointer;font-family:inherit}
+.erro{background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.35);color:#fca5a5;
+      border-radius:11px;padding:12px 14px;font-size:13px;margin-bottom:16px;line-height:1.5}
+.indisp{background:#13131f;border:1px solid rgba(255,255,255,.08);border-radius:16px;
+        padding:28px 20px;text-align:center;color:#8888aa;line-height:1.6}
+.opc{color:#6b7591;font-weight:400}
+.rodape{text-align:center;font-size:11px;color:#44447a;margin-top:18px}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">🎯 SlotZap · Programa de Vendedores</div>
+  <div class="camp-nome">{{ camp.nome }}</div>
+</div>
+
+<div class="wrap">
+
+{% if indisponivel %}
+  <div class="indisp">
+    <div style="font-size:34px;margin-bottom:10px">🔒</div>
+    As inscrições de vendedor desta rifa <b>não estão abertas</b> no momento.<br>
+    Fale com o organizador.
+  </div>
+{% else %}
+
+  <div class="hero">
+    <h1>💸 Ganhe dinheiro<br>divulgando esta rifa!</h1>
+    <div class="valor">R$ {{ '%.2f'|format(comissao) }}</div>
+    <p>por número que você vender — <b>cai no seu PIX na hora</b> de cada venda. 🚀</p>
+  </div>
+
+  <div class="card">
+    <div class="passos">
+      Como funciona:<br>
+      <b>1.</b> Você se cadastra aqui (1 minuto).<br>
+      <b>2.</b> Ganha um <b>link só seu</b> pra divulgar.<br>
+      <b>3.</b> Cada pessoa que comprar pelo seu link = <b>R$ {{ '%.2f'|format(comissao) }} no seu PIX</b>. 🍀
+    </div>
+
+    {% if erro %}<div class="erro">⚠️ {{ erro }}</div>{% endif %}
+
+    <form method="post" autocomplete="on">
+      <label>Seu nome *</label>
+      <input type="text" name="nome" placeholder="Ex: João Silva" autocomplete="name" required>
+
+      <label>Seu WhatsApp * <span class="hint">(com DDD — pra te avisar)</span></label>
+      <input type="tel" name="telefone" placeholder="Ex: 47991234567" autocomplete="tel"
+             inputmode="numeric" required>
+
+      <label>Tipo da sua chave PIX * <span class="hint">(onde você recebe o dinheiro)</span></label>
+      <select name="pix_tipo">
+        <option value="CPF">CPF</option>
+        <option value="CELULAR">Celular</option>
+        <option value="EMAIL">E-mail</option>
+        <option value="ALEATORIA">Chave aleatória</option>
+      </select>
+
+      <label>Sua chave PIX *</label>
+      <input type="text" name="pix_chave" placeholder="Cole ou digite sua chave PIX" required>
+
+      <label>CPF <span class="opc">(opcional)</span></label>
+      <input type="text" name="cpf" placeholder="Só números" inputmode="numeric">
+
+      <label>Endereço <span class="opc">(opcional)</span></label>
+      <input type="text" name="endereco" placeholder="Cidade / bairro">
+
+      <button class="btn" type="submit">QUERO SER VENDEDOR →</button>
+    </form>
+  </div>
+
+  <div class="rodape">🔒 Seus dados são usados só pra te pagar a comissão.</div>
+{% endif %}
+
+</div>
+</body>
+</html>

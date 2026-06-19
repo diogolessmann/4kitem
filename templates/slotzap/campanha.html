@@ -106,6 +106,7 @@ input:focus{border-color:#6366f1}
   <button class="nav-btn" style="border-color:#f59e0b;color:#fbbf24" onclick="abrirEnviarLista()">📋 <span class="nav-txt">Enviar lista</span></button>
   <a href="/slotzap/campanha/{{ camp.id }}/exportar" class="nav-btn" style="border-color:#38bdf8;color:#7dd3fc">⬇️ <span class="nav-txt">Exportar</span></a>
   <button class="nav-btn" style="border-color:#a855f7;color:#c4b5fd" onclick="abrirEditar()">✏️ <span class="nav-txt">Editar</span></button>
+  <a href="/slotzap/campanha/{{ camp.id }}/afiliados" class="nav-btn" style="border-color:#22c55e;color:#86efac">👥 <span class="nav-txt">Vendedores</span></a>
   <button class="btn-encerrar" onclick="encerrar()"><span class="nav-txt">Encerrar</span><span class="nav-ico" style="display:none">✕</span></button>
   {% elif camp.status == 'encerrada' %}
   <button class="nav-btn" style="border-color:#22c55e;color:#86efac" onclick="reabrir()">↩️ <span class="nav-txt">Reabrir campanha</span></button>

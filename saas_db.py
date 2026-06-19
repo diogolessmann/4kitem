@@ -813,6 +813,35 @@ def init_slotzap_db():
         # Travas do sorteio: só sortear quando esgotar (100% pago) + senha (anti-clique errado)
         "ALTER TABLE slotzap_campanhas ADD COLUMN sortear_so_esgotado INTEGER DEFAULT 0",
         "ALTER TABLE slotzap_campanhas ADD COLUMN sortear_senha TEXT DEFAULT ''",
+        # ── Programa de AFILIADOS/VENDEDORES (comissão em dinheiro, paga NA HORA) ──
+        # Por campanha: liga/desliga + valor da comissão por número vendido.
+        "ALTER TABLE slotzap_campanhas ADD COLUMN afiliados_ativo INTEGER DEFAULT 0",
+        "ALTER TABLE slotzap_campanhas ADD COLUMN afiliado_comissao REAL DEFAULT 3.0",
+        # Link de convite do grupo WhatsApp (chat.whatsapp.com/...) — usado no QR do totem
+        "ALTER TABLE slotzap_campanhas ADD COLUMN grupo_convite TEXT DEFAULT ''",
+        # Marca em cada slot QUEM (qual afiliado) trouxe a venda
+        "ALTER TABLE slotzap_slots ADD COLUMN afiliado_codigo TEXT DEFAULT ''",
+        # Cadastro de afiliados — POR CAMPANHA (rifa nova = cadastro novo)
+        ("CREATE TABLE IF NOT EXISTS slotzap_afiliados ("
+         "id INTEGER PRIMARY KEY AUTOINCREMENT, campanha_id INTEGER NOT NULL, "
+         "codigo TEXT NOT NULL, nome TEXT DEFAULT '', cpf TEXT DEFAULT '', "
+         "telefone TEXT DEFAULT '', endereco TEXT DEFAULT '', "
+         "pix_chave TEXT DEFAULT '', pix_tipo TEXT DEFAULT '', "
+         "vendas INTEGER DEFAULT 0, ganho_total REAL DEFAULT 0, "
+         "criado_em TEXT DEFAULT '')"),
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_sz_afil_codigo ON slotzap_afiliados(codigo)",
+        "CREATE INDEX IF NOT EXISTS idx_sz_afil_camp ON slotzap_afiliados(campanha_id)",
+        # Um afiliado por telefone POR campanha (evita cadastro duplicado da mesma pessoa)
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_sz_afil_camp_tel ON slotzap_afiliados(campanha_id, telefone)",
+        # Ledger de pagamentos — 1 linha por slot pago. O índice ÚNICO em slot_id é a
+        # GARANTIA de idempotência: jamais paga a comissão do mesmo número 2×.
+        ("CREATE TABLE IF NOT EXISTS slotzap_afiliado_pagamentos ("
+         "id INTEGER PRIMARY KEY AUTOINCREMENT, afiliado_id INTEGER NOT NULL, "
+         "campanha_id INTEGER NOT NULL, slot_id INTEGER NOT NULL, valor REAL DEFAULT 0, "
+         "asaas_transfer_id TEXT DEFAULT '', status TEXT DEFAULT 'pendente', "
+         "erro TEXT DEFAULT '', criado_em TEXT DEFAULT '')"),
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_sz_afilpag_slot ON slotzap_afiliado_pagamentos(slot_id)",
+        "CREATE INDEX IF NOT EXISTS idx_sz_afilpag_afil ON slotzap_afiliado_pagamentos(afiliado_id)",
     ]
     for sql in _sz_migrations:
         try:

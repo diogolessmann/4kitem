@@ -14908,6 +14908,12 @@ def slotzap_sortear(camp_id):
         net        = (1 - SZ_TAXA_VENDA) if tem_wallet else 1.0   # quanto VOCÊ recebe por número
         pagos_reais = sum(1 for p in pagos if not p.get('brinde'))   # brinde não é dinheiro
         arrecadado  = pagos_reais * float(camp['preco']) * net
+        # Desconta a comissão de afiliado JÁ comprometida (cada nº vendido por vendedor custa comissão)
+        if camp.get('afiliados_ativo'):
+            n_afil = conn.execute(
+                "SELECT COUNT(*) FROM slotzap_slots WHERE campanha_id=? AND status='pago' "
+                "AND IFNULL(afiliado_codigo,'')<>''", (camp_id,)).fetchone()[0]
+            arrecadado -= n_afil * float(camp.get('afiliado_comissao') or 0)
         forcar      = bool((request.get_json(silent=True) or {}).get('forcar'))
         if arrecadado < custo and not forcar:
             conn.close()
@@ -15267,6 +15273,86 @@ def _sz_marcar_pago(slot_id):
     return True
 
 
+def _sz_afiliado_transfer(pix_chave, pix_tipo, valor, descricao, ext_ref):
+    """Envia a comissão ao afiliado via PIX (Asaas /transfers — GRÁTIS e ilimitado).
+    Retorna (transfer_id, erro)."""
+    payload = {
+        'value':            round(float(valor), 2),
+        'operationType':    'PIX',
+        'pixAddressKey':    pix_chave,
+        'description':      (descricao or '')[:100],
+        'externalReference': ext_ref,
+    }
+    if pix_tipo:
+        payload['pixAddressKeyType'] = pix_tipo
+    resp = _asaas_req('POST', '/transfers', payload)
+    tid  = resp.get('id', '')
+    if tid:
+        return (tid, None)
+    errs = resp.get('errors') or []
+    msg  = (errs[0].get('description') if errs and errs[0].get('description')
+            else (resp.get('error') or 'Falha na transferência PIX.'))
+    return ('', str(msg)[:200])
+
+
+def _sz_pagar_afiliados(conn, camp, slots):
+    """Paga a comissão (PIX na hora) ao afiliado de CADA número pago.
+    Idempotente: o índice ÚNICO em slotzap_afiliado_pagamentos.slot_id garante que
+    a comissão de um número jamais é paga duas vezes. Falhas viram status='erro'
+    (NÃO re-tenta sozinho — anti-pagamento-duplo; o dono resolve no painel)."""
+    comissao = float(camp.get('afiliado_comissao') or 0)
+    if not camp.get('afiliados_ativo') or comissao <= 0:
+        return
+    agora = datetime.now().isoformat()
+    for s in slots:
+        cod = (s.get('afiliado_codigo') or '').strip()
+        if not cod:
+            continue
+        af = conn.execute('SELECT * FROM slotzap_afiliados WHERE campanha_id=? AND codigo=?',
+                          (camp['id'], cod)).fetchone()
+        if not af:
+            continue
+        af = dict(af)
+        # 1) RESERVA idempotente: "claim" do slot no ledger ANTES de mover dinheiro.
+        #    Se já existe linha p/ esse slot, outra via já pagou/tentou — pula.
+        try:
+            conn.execute(
+                'INSERT INTO slotzap_afiliado_pagamentos '
+                '(afiliado_id,campanha_id,slot_id,valor,status,criado_em) VALUES (?,?,?,?,?,?)',
+                (af['id'], camp['id'], s['id'], comissao, 'pendente', agora))
+            conn.commit()
+        except Exception:
+            continue   # slot já tem pagamento registrado — nunca paga 2×
+        # 2) Envia o PIX da comissão
+        desc = f"Comissao SlotZap - {camp.get('nome','')} - num {s['numero']}"
+        tid, erro = _sz_afiliado_transfer(af.get('pix_chave'), af.get('pix_tipo'),
+                                          comissao, desc, f"szaf_{s['id']}")
+        if tid:
+            conn.execute("UPDATE slotzap_afiliado_pagamentos SET status='pago', asaas_transfer_id=? WHERE slot_id=?",
+                         (tid, s['id']))
+            conn.execute("UPDATE slotzap_afiliados SET vendas=vendas+1, ganho_total=ganho_total+? WHERE id=?",
+                         (comissao, af['id']))
+            conn.commit()
+            log.info(f"[SlotZap] Comissao R${comissao:.2f} -> afiliado {af.get('nome')} (num {s['numero']}, t {tid})")
+        else:
+            conn.execute("UPDATE slotzap_afiliado_pagamentos SET status='erro', erro=? WHERE slot_id=?",
+                         (erro, s['id']))
+            conn.commit()
+            log.warning(f"[SlotZap] Falha comissao afiliado {af.get('nome')} (num {s['numero']}): {erro}")
+
+
+def _sz_pagar_afiliados_bg(camp, slots):
+    """Roda o pagamento de comissões em thread separada, com conexão própria —
+    não trava a baixa do número nem a resposta do 'Já paguei'. Idempotente via ledger."""
+    conn = get_saas_db()
+    try:
+        _sz_pagar_afiliados(conn, camp, slots)
+    except Exception as _e:
+        log.warning(f'[SlotZap] pagar afiliados (bg): {_e}')
+    finally:
+        conn.close()
+
+
 def _sz_marcar_pago_charge(charge_id):
     """Dá baixa em TODOS os slots reservados com este charge_id (suporta multi-compra).
     Notifica o grupo uma única vez e avisa o comprador. Idempotente. Retorna nº de slots."""
@@ -15274,7 +15360,7 @@ def _sz_marcar_pago_charge(charge_id):
         return 0
     conn  = get_saas_db()
     slots = [dict(r) for r in conn.execute(
-        "SELECT id, numero, cliente_nome, cliente_tel, campanha_id, indicado_por FROM slotzap_slots "
+        "SELECT id, numero, cliente_nome, cliente_tel, campanha_id, indicado_por, afiliado_codigo FROM slotzap_slots "
         "WHERE asaas_charge_id=? AND status='reservado'", (charge_id,)).fetchall()]
     if not slots:
         conn.close()
@@ -15292,7 +15378,7 @@ def _sz_marcar_pago_charge(charge_id):
         return 0   # já processado por outra via — não credita/avisa de novo
     camp = dict(conn.execute('''
         SELECT c.id, c.nome, c.grupo_wpp_id, c.evo_instance, c.token_publico, c.total_slots, c.preco,
-               c.indicacao_ativa, c.indicacao_meta,
+               c.indicacao_ativa, c.indicacao_meta, c.afiliados_ativo, c.afiliado_comissao,
                (SELECT COUNT(*) FROM slotzap_slots WHERE campanha_id=c.id AND status="pago") AS pagos
         FROM slotzap_campanhas c WHERE c.id=?''', (slots[0]['campanha_id'],)).fetchone())
 
@@ -15309,6 +15395,14 @@ def _sz_marcar_pago_charge(charge_id):
     else:
         premiados = []
     conn.close()
+
+    # ── Comissão do afiliado/vendedor: paga PIX na hora, em THREAD própria ──
+    # (não trava a baixa nem o "Já paguei"; idempotente via ledger; nunca quebra a baixa)
+    if camp.get('afiliados_ativo'):
+        _aff_slots = [s for s in slots if (s.get('afiliado_codigo') or '').strip()]
+        if _aff_slots:
+            threading.Thread(target=_sz_pagar_afiliados_bg, args=(camp, _aff_slots),
+                             daemon=True, name='sz-pagar-afiliado').start()
 
     numeros  = sorted(s['numero'] for s in slots)
     nums_str = ', '.join('#' + str(n) for n in numeros)
@@ -15713,6 +15807,7 @@ def slotzap_publico_reservar(token):
     cliente_cpf  = ''.join(c for c in (data.get('cpf') or '') if c.isdigit())
     cliente_tel  = ''.join(c for c in (data.get('tel') or '') if c.isdigit())
     ref_in       = (data.get('ref') or '').strip()[:32]   # código de quem indicou (opcional)
+    aff_in       = (data.get('aff') or '').strip()[:32]   # código do afiliado/vendedor (opcional)
     # Aceita 'numeros' (lista) ou 'numero' (único, compatibilidade)
     brutos = data.get('numeros') if data.get('numeros') is not None else [data.get('numero', 0)]
     try:
@@ -15769,10 +15864,16 @@ def slotzap_publico_reservar(token):
     agora = datetime.now().isoformat()
     indic_ativa = bool(camp.get('indicacao_ativa'))
     ref_save = ref_in if indic_ativa else ''
+    # Afiliado: só grava o código se a campanha tem afiliados ON e o código existe nela
+    aff_save = ''
+    if camp.get('afiliados_ativo') and aff_in and conn.execute(
+            'SELECT 1 FROM slotzap_afiliados WHERE campanha_id=? AND codigo=?',
+            (camp['id'], aff_in)).fetchone():
+        aff_save = aff_in
     conn.executemany(
         'UPDATE slotzap_slots SET status=?,cliente_nome=?,cliente_tel=?,'
-        'asaas_charge_id=?,pix_qr_code=?,pix_copia_cola=?,reservado_em=?,indicado_por=? WHERE id=?',
-        [('reservado', cliente_nome, cliente_tel, charge_id, pix_qr, pix_copia, agora, ref_save, s['id'])
+        'asaas_charge_id=?,pix_qr_code=?,pix_copia_cola=?,reservado_em=?,indicado_por=?,afiliado_codigo=? WHERE id=?',
+        [('reservado', cliente_nome, cliente_tel, charge_id, pix_qr, pix_copia, agora, ref_save, aff_save, s['id'])
          for s in slots])
     conn.commit()
     # Código de indicação do PRÓPRIO comprador (pra ele compartilhar) — só se a campanha permite e deu telefone
@@ -15785,6 +15886,229 @@ def slotzap_publico_reservar(token):
                     'meu_ref': meu_ref,
                     'indicacao_ativa': indic_ativa,
                     'indicacao_meta': camp.get('indicacao_meta') or 10})
+
+
+# ─────────────────────────── AFILIADOS / VENDEDORES ───────────────────────────
+# Programa de afiliados POR CAMPANHA: a pessoa se cadastra sozinha, ganha um link
+# pessoal e recebe comissão em dinheiro (PIX na hora) por cada número vendido.
+# Lote 1 = cadastro + painel (aditivo, nada toca o fluxo de venda/pagamento atual).
+
+def _sz_pix_normaliza(tipo, chave):
+    """Valida/normaliza a chave PIX conforme o tipo escolhido pelo afiliado.
+    Retorna (tipo_canonico_asaas, chave_limpa, erro). Tipos Asaas: CPF, CNPJ, EMAIL, PHONE, EVP."""
+    tipo  = (tipo or '').strip().upper()
+    chave = (chave or '').strip()
+    if tipo == 'CPF':
+        d = ''.join(c for c in chave if c.isdigit())
+        return ('CPF', d, None) if len(d) == 11 else ('CPF', '', 'A chave PIX tipo CPF precisa ter 11 dígitos.')
+    if tipo == 'CNPJ':
+        d = ''.join(c for c in chave if c.isdigit())
+        return ('CNPJ', d, None) if len(d) == 14 else ('CNPJ', '', 'A chave PIX tipo CNPJ precisa ter 14 dígitos.')
+    if tipo in ('CELULAR', 'PHONE', 'TELEFONE'):
+        d = ''.join(c for c in chave if c.isdigit())
+        if d.startswith('55') and len(d) > 11:
+            d = d[2:]
+        if len(d) not in (10, 11):
+            return ('PHONE', '', 'A chave PIX tipo Celular precisa do DDD + número.')
+        return ('PHONE', '+55' + d, None)
+    if tipo in ('EMAIL', 'E-MAIL'):
+        return ('EMAIL', chave.lower(), None) if ('@' in chave and '.' in chave) else ('EMAIL', '', 'E-mail da chave PIX inválido.')
+    if tipo in ('ALEATORIA', 'ALEATÓRIA', 'EVP'):
+        return ('EVP', chave, None) if len(chave) >= 32 else ('EVP', '', 'Chave aleatória inválida (copie do app do banco).')
+    return (tipo, '', 'Escolha o tipo da chave PIX.')
+
+
+def _sz_afil_codigo_novo(conn):
+    """Gera um código de link curto e único para o afiliado."""
+    import secrets as _sec
+    for _ in range(6):
+        c = _sec.token_urlsafe(6)
+        if not conn.execute('SELECT 1 FROM slotzap_afiliados WHERE codigo=?', (c,)).fetchone():
+            return c
+    return _sec.token_urlsafe(12)
+
+
+@app.route('/slotzap/p/<token>/afiliado', methods=['GET', 'POST'])
+def slotzap_afiliado_cadastro(token):
+    """Cadastro público de afiliado (super simples). Cria o vendedor e leva pro painel dele."""
+    conn = get_saas_db()
+    camp = conn.execute('SELECT * FROM slotzap_campanhas WHERE token_publico=? AND status="ativa"',
+                        (token,)).fetchone()
+    if not camp:
+        conn.close()
+        return render_template('slotzap/nao_encontrado.html'), 404
+    camp = dict(camp)
+    comissao = float(camp.get('afiliado_comissao') or 0)
+
+    def _form(erro=''):
+        return render_template('slotzap/afiliado_cadastro.html', token=token, camp=camp,
+                               comissao=comissao, indisponivel=not camp.get('afiliados_ativo'),
+                               erro=erro)
+
+    if not camp.get('afiliados_ativo'):
+        conn.close()
+        return _form()
+    if request.method == 'GET':
+        conn.close()
+        return _form()
+
+    # POST — cria o afiliado
+    ip = (request.headers.get('X-Forwarded-For') or request.remote_addr or '').split(',')[0].strip()
+    if not _sz_rate_ok(ip):
+        conn.close()
+        return _form('Muitas tentativas. Aguarde alguns minutos e tente de novo.')
+
+    f        = request.form
+    nome     = (f.get('nome') or '').strip()[:80]
+    tel      = ''.join(c for c in (f.get('telefone') or '') if c.isdigit())
+    cpf      = ''.join(c for c in (f.get('cpf') or '') if c.isdigit())
+    endereco = (f.get('endereco') or '').strip()[:160]
+    pix_tipo, pix_chave, perr = _sz_pix_normaliza(f.get('pix_tipo'), f.get('pix_chave'))
+
+    if not nome:
+        conn.close(); return _form('Digite seu nome.')
+    if len(tel) < 10:
+        conn.close(); return _form('Informe seu WhatsApp com DDD.')
+    if perr:
+        conn.close(); return _form(perr)
+    if cpf and not _cpf_valido(cpf):
+        conn.close(); return _form('CPF inválido. Confira os números (ou deixe em branco).')
+
+    # Já cadastrado nesta rifa (mesmo telefone)? Leva direto pro painel dele.
+    ja = conn.execute('SELECT codigo FROM slotzap_afiliados WHERE campanha_id=? AND telefone=?',
+                      (camp['id'], tel)).fetchone()
+    if ja:
+        codigo = dict(ja)['codigo']
+        conn.close()
+        return redirect(url_for('slotzap_afiliado_painel', token=token, codigo=codigo))
+
+    codigo = _sz_afil_codigo_novo(conn)
+    conn.execute(
+        'INSERT INTO slotzap_afiliados (campanha_id,codigo,nome,cpf,telefone,endereco,'
+        'pix_chave,pix_tipo,criado_em) VALUES (?,?,?,?,?,?,?,?,?)',
+        (camp['id'], codigo, nome, cpf, tel, endereco, pix_chave, pix_tipo,
+         datetime.now().isoformat()))
+    conn.commit(); conn.close()
+    log.info(f'[SlotZap] Novo afiliado "{nome}" na campanha {camp["id"]} (cod {codigo})')
+    return redirect(url_for('slotzap_afiliado_painel', token=token, codigo=codigo))
+
+
+@app.route('/slotzap/p/<token>/afiliado/<codigo>')
+def slotzap_afiliado_painel(token, codigo):
+    """Painel do afiliado: vê vendas, quanto já ganhou e o link pessoal pra divulgar."""
+    conn = get_saas_db()
+    camp = conn.execute('SELECT * FROM slotzap_campanhas WHERE token_publico=?', (token,)).fetchone()
+    if not camp:
+        conn.close()
+        return render_template('slotzap/nao_encontrado.html'), 404
+    camp = dict(camp)
+    af = conn.execute('SELECT * FROM slotzap_afiliados WHERE campanha_id=? AND codigo=?',
+                      (camp['id'], codigo)).fetchone()
+    if not af:
+        conn.close()
+        return render_template('slotzap/nao_encontrado.html'), 404
+    af = dict(af)
+    # Conta AO VIVO direto dos slots (mais confiável que o contador) + total já recebido (ledger)
+    vendas = conn.execute(
+        "SELECT COUNT(*) FROM slotzap_slots WHERE campanha_id=? AND afiliado_codigo=? AND status='pago'",
+        (camp['id'], codigo)).fetchone()[0]
+    ganho_pago = conn.execute(
+        "SELECT IFNULL(SUM(valor),0) FROM slotzap_afiliado_pagamentos WHERE afiliado_id=? AND status='pago'",
+        (af['id'],)).fetchone()[0]
+    conn.close()
+    comissao = float(camp.get('afiliado_comissao') or 0)
+    base = os.environ.get('BASE_URL', 'https://www.4kitem.com.br').rstrip('/')
+    link = f"{base}/slotzap/p/{token}?aff={codigo}"
+    return render_template('slotzap/afiliado_painel.html', token=token, camp=camp, af=af,
+                           link=link, vendas=vendas, ganho_pago=ganho_pago, comissao=comissao,
+                           a_receber=round(vendas * comissao - ganho_pago, 2))
+
+
+@app.route('/slotzap/p/<token>/afiliado/<codigo>/totem')
+def slotzap_afiliado_totem(token, codigo):
+    """Totem A4 pronto pra imprimir, JÁ com o QR do link pessoal (?aff=) do afiliado.
+    Marketing (título, valor do prêmio, banner do despachante) é editável no navegador."""
+    conn = get_saas_db()
+    camp = conn.execute('SELECT * FROM slotzap_campanhas WHERE token_publico=?', (token,)).fetchone()
+    if not camp:
+        conn.close()
+        return render_template('slotzap/nao_encontrado.html'), 404
+    camp = dict(camp)
+    af = conn.execute('SELECT * FROM slotzap_afiliados WHERE campanha_id=? AND codigo=?',
+                      (camp['id'], codigo)).fetchone()
+    conn.close()
+    if not af:
+        return render_template('slotzap/nao_encontrado.html'), 404
+    af = dict(af)
+    base = os.environ.get('BASE_URL', 'https://www.4kitem.com.br').rstrip('/')
+    link_compra = f"{base}/slotzap/p/{token}?aff={codigo}"
+    # Telefone do vendedor formatado pra exibir no totem (dúvidas dos clientes)
+    _d = ''.join(c for c in (af.get('telefone') or '') if c.isdigit())
+    if _d.startswith('55') and len(_d) > 11:
+        _d = _d[2:]
+    if len(_d) == 11:
+        tel_fmt = f"({_d[:2]}) {_d[2:7]}-{_d[7:]}"
+    elif len(_d) == 10:
+        tel_fmt = f"({_d[:2]}) {_d[2:6]}-{_d[6:]}"
+    else:
+        tel_fmt = af.get('telefone') or ''
+    return render_template('slotzap/afiliado_totem.html', camp=camp, af=af,
+                           link_compra=link_compra, tel_fmt=tel_fmt,
+                           grupo_convite=(camp.get('grupo_convite') or ''))
+
+
+@app.route('/slotzap/campanha/<int:camp_id>/afiliados')
+@_sz_login_required
+def slotzap_afiliados_admin(camp_id):
+    """Painel do DONO: liga/desliga afiliados, define comissão e vê a lista de vendedores."""
+    if not _sz_plan_active():
+        return redirect('/slotzap/assinar')
+    conn = get_saas_db()
+    camp = conn.execute('SELECT * FROM slotzap_campanhas WHERE id=? AND user_id=?',
+                        (camp_id, _sz_uid())).fetchone()
+    if not camp:
+        conn.close()
+        return redirect('/slotzap/app')
+    camp = dict(camp)
+    afs = [dict(r) for r in conn.execute('''
+        SELECT a.*,
+          (SELECT COUNT(*) FROM slotzap_slots s
+             WHERE s.campanha_id=a.campanha_id AND s.afiliado_codigo=a.codigo AND s.status='pago') AS vendas_pagas,
+          (SELECT IFNULL(SUM(p.valor),0) FROM slotzap_afiliado_pagamentos p
+             WHERE p.afiliado_id=a.id AND p.status='pago') AS pago_total,
+          (SELECT COUNT(*) FROM slotzap_afiliado_pagamentos p
+             WHERE p.afiliado_id=a.id AND p.status='erro') AS erros
+        FROM slotzap_afiliados a WHERE a.campanha_id=?
+        ORDER BY vendas_pagas DESC, a.criado_em''', (camp_id,)).fetchall()]
+    conn.close()
+    base  = os.environ.get('BASE_URL', 'https://www.4kitem.com.br').rstrip('/')
+    token = camp.get('token_publico') or ''
+    cad_link = f"{base}/slotzap/p/{token}/afiliado" if token else ''
+    return render_template('slotzap/afiliados_admin.html', camp=camp, afs=afs,
+                           token=token, cad_link=cad_link)
+
+
+@app.route('/slotzap/campanha/<int:camp_id>/afiliados/config', methods=['POST'])
+@_sz_login_required
+def slotzap_afiliados_config(camp_id):
+    """Salva ligar/desligar + comissão + link do grupo da campanha."""
+    data  = request.get_json(silent=True) or {}
+    ativo = 1 if str(data.get('ativo')) in ('1', 'true', 'on', 'True') else 0
+    try:
+        comissao = max(0.0, float(str(data.get('comissao') or '0').replace(',', '.')))
+    except (TypeError, ValueError):
+        comissao = 0.0
+    grupo = (data.get('grupo_convite') or '').strip()[:300]
+    conn  = get_saas_db()
+    camp  = conn.execute('SELECT id FROM slotzap_campanhas WHERE id=? AND user_id=?',
+                         (camp_id, _sz_uid())).fetchone()
+    if not camp:
+        conn.close()
+        return jsonify({'erro': 'Campanha não encontrada'}), 404
+    conn.execute('UPDATE slotzap_campanhas SET afiliados_ativo=?, afiliado_comissao=?, grupo_convite=? '
+                 'WHERE id=? AND user_id=?', (ativo, comissao, grupo, camp_id, _sz_uid()))
+    conn.commit(); conn.close()
+    return jsonify({'ok': True, 'ativo': ativo, 'comissao': comissao})
 
 
 def _sz_check_senha_conta(conn, senha):

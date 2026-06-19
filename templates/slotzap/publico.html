@@ -346,6 +346,7 @@ async function verificarSorteio(btn){
 const TOKEN = '{{ token }}';
 const PRECO = {{ camp.preco }};
 const REF   = new URLSearchParams(location.search).get('ref') || '';  // quem indicou (opcional)
+const AFF   = new URLSearchParams(location.search).get('aff') || '';  // vendedor/afiliado (opcional)
 let _meuRef = '';            // código de indicação do próprio comprador (após comprar)
 const _sel  = new Set();   // números selecionados
 let _slotSel = null;       // 1º número da compra atual (p/ confirmar pagamento)
@@ -469,7 +470,7 @@ async function gerarPix() {
   const r = await fetch(`/slotzap/p/${TOKEN}/reservar`, {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({numeros, nome, cpf, tel, ref: REF})
+    body: JSON.stringify({numeros, nome, cpf, tel, ref: REF, aff: AFF})
   }).then(r => r.json());
 
   if (r.erro) {
