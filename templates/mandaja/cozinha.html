@@ -270,6 +270,7 @@ function elapsed(createdAt) {
 }
 
 /* ─── Render pedido ──────────────────────────────────── */
+function esc(s){ return (s==null?'':String(s)).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
 function renderCard(p) {
   const el   = elapsed(p.created_at);
   const isUrgent = el.cls === 'late';
@@ -291,14 +292,14 @@ function renderCard(p) {
 
   const itemsHtml = (p.items || []).map(i => `
     <div class="item-line">
-      <span class="item-qty">${i.qty}x</span>
-      <span class="item-name">${i.name}</span>
+      <span class="item-qty">${esc(i.qty)}x</span>
+      <span class="item-name">${esc(i.name)}</span>
     </div>
-    ${i.notes ? `<div class="item-obs">↳ ${i.notes}</div>` : ''}
+    ${i.notes ? `<div class="item-obs">↳ ${esc(i.notes)}</div>` : ''}
   `).join('');
 
   const obsHtml = p.customer_notes
-    ? `<div class="obs-geral">⚠️ OBS: ${p.customer_notes}</div>`
+    ? `<div class="obs-geral">⚠️ OBS: ${esc(p.customer_notes)}</div>`
     : '';
 
   // Botões conforme status atual
@@ -330,7 +331,7 @@ function renderCard(p) {
         <div class="order-time">
           <span class="elapsed ${el.cls}">${el.text}</span>
           <span>${p.created_at ? p.created_at.substring(11,16) : ''}</span>
-          <span style="font-size:11px;color:#55557A;margin-top:2px;display:block">${p.customer_name}</span>
+          <span style="font-size:11px;color:#55557A;margin-top:2px;display:block">${esc(p.customer_name)}</span>
         </div>
       </div>
       ${obsHtml}

@@ -13784,7 +13784,8 @@ def _mandaja_wa_cliente(store, order, new_status):
         if not ativo or not instance:
             return
         phone = order.get('customer_phone', '')
-        nome  = order.get('customer_name', '').split()[0]
+        _np   = (order.get('customer_name') or '').strip().split()
+        nome  = _np[0] if _np else 'Cliente'
         loja  = store.get('name', '')
         num   = order.get('order_number', '')
         tipo  = order.get('delivery_type', 'delivery')
