@@ -15231,9 +15231,10 @@ def _sz_marcar_pago(slot_id):
                  (datetime.now().isoformat(), slot_id))
     conn.commit()
     row = conn.execute('''
-        SELECT s.numero, s.cliente_nome, s.cliente_tel,
+        SELECT s.numero, s.cliente_nome, s.cliente_tel, s.id AS slot_id, s.afiliado_codigo,
                c.nome AS camp_nome, c.preco, c.grupo_wpp_id,
                c.evo_instance, c.msg_pagamento, c.id AS camp_id, c.token_publico,
+               c.afiliados_ativo, c.afiliado_comissao,
                (SELECT COUNT(*) FROM slotzap_slots WHERE campanha_id=c.id AND status="pago")      AS pagos,
                (SELECT COUNT(*) FROM slotzap_slots WHERE campanha_id=c.id AND status="disponivel") AS livres,
                c.total_slots
@@ -15246,6 +15247,17 @@ def _sz_marcar_pago(slot_id):
         return True
     row = dict(row)
     log.info(f'[SlotZap] Slot #{row["numero"]} — {row["camp_nome"]} — PAGO ({row["cliente_nome"]})')
+
+    # Comissão do afiliado também pelo caminho SINGULAR (idempotente via ledger) —
+    # fecha o buraco em que o webhook caía no fallback e pulava a comissão.
+    if row.get('afiliados_ativo') and (row.get('afiliado_codigo') or '').strip():
+        _camp_a = {'id': row['camp_id'], 'nome': row['camp_nome'],
+                   'afiliados_ativo': row['afiliados_ativo'],
+                   'afiliado_comissao': row['afiliado_comissao']}
+        _slot_a = {'id': row['slot_id'], 'numero': row['numero'],
+                   'afiliado_codigo': row['afiliado_codigo']}
+        threading.Thread(target=_sz_pagar_afiliados_bg, args=(_camp_a, [_slot_a]),
+                         daemon=True, name='sz-pagar-afiliado-s').start()
 
     grupo_id = (row.get('grupo_wpp_id') or '').strip()
     instance = (row.get('evo_instance') or '').strip() or os.environ.get('EVO_INSTANCE', '')
