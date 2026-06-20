@@ -15542,6 +15542,47 @@ def _sz_reconciliar_loop():
 threading.Thread(target=_sz_reconciliar_loop, daemon=True, name='sz-reconciliador').start()
 
 
+def _sz_comissao_reconciliar_loop():
+    """Robô 24/7 (rede de segurança): paga comissões de vendas JÁ pagas e atribuídas
+    a um vendedor que ficaram SEM repasse (qualquer caminho que pulou o pagamento inline,
+    corrida, lock do banco, etc.). Idempotente: só processa slots sem NENHUMA linha no
+    ledger; o claim em slotzap_afiliado_pagamentos garante que não paga 2×."""
+    time.sleep(150)  # deixa o app subir
+    log.info('[SlotZap] Reconciliador de COMISSÕES ATIVO (verifica a cada 3 min)')
+    while True:
+        try:
+            conn = get_saas_db()
+            pend = [dict(r) for r in conn.execute('''
+                SELECT s.id AS slot_id, s.numero, s.afiliado_codigo, s.campanha_id,
+                       c.nome AS camp_nome, c.afiliados_ativo, c.afiliado_comissao
+                FROM slotzap_slots s
+                JOIN slotzap_campanhas c ON c.id = s.campanha_id
+                WHERE s.status='pago' AND IFNULL(s.afiliado_codigo,'') <> ''
+                  AND c.afiliados_ativo=1 AND IFNULL(c.afiliado_comissao,0) > 0
+                  AND NOT EXISTS (SELECT 1 FROM slotzap_afiliado_pagamentos p WHERE p.slot_id = s.id)
+            ''').fetchall()]
+            for s in pend:
+                camp = {'id': s['campanha_id'], 'nome': s['camp_nome'],
+                        'afiliados_ativo': s['afiliados_ativo'],
+                        'afiliado_comissao': s['afiliado_comissao']}
+                slot = {'id': s['slot_id'], 'numero': s['numero'],
+                        'afiliado_codigo': s['afiliado_codigo']}
+                try:
+                    _sz_pagar_afiliados(conn, camp, [slot])
+                    log.info(f"[SlotZap] Reconciliador comissão: processou slot {s['slot_id']} (nº {s['numero']})")
+                except Exception as _e:
+                    log.warning(f"[SlotZap] Reconciliador comissão slot {s['slot_id']}: {_e}")
+        except Exception as _e:
+            log.error(f'[SlotZap] reconciliador comissão loop: {_e}')
+        finally:
+            try: conn.close()
+            except Exception: pass
+        time.sleep(180)  # a cada 3 minutos
+
+
+threading.Thread(target=_sz_comissao_reconciliar_loop, daemon=True, name='sz-comissao-recon').start()
+
+
 SZ_RESERVA_EXPIRA_MIN = 30  # libera o número se a reserva não for paga neste tempo
 
 def _sz_expirar_reservas(camp_id):
