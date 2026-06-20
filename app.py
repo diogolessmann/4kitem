@@ -386,6 +386,45 @@ def _enviar_backup_email(dest: str = None, db_path: str = None):
         return False
 
 
+def _sz_backup_email():
+    """Backup diário do saas.db INTEIRO (SlotZap: rifas, números, vendedores, comissões —
+    + todos os outros SaaS) por e-mail. Snapshot consistente via API de backup do SQLite
+    (seguro com WAL). É a recuperação de desastre off-volume da operação de dinheiro."""
+    import zipfile, sqlite3 as _sq3, tempfile
+    dest = os.environ.get('BACKUP_EMAIL', 'diogolessmann@gmail.com')
+    if not dest:
+        log.warning('[Backup] saas.db: sem email de destino')
+        return False
+    tmp = os.path.join(tempfile.gettempdir(), 'saas_snapshot.db')
+    try:
+        from saas_db import DB_PATH as _SAAS_DB
+        src = _sq3.connect(_SAAS_DB)
+        dst = _sq3.connect(tmp)
+        with dst:
+            src.backup(dst)          # snapshot consistente (mesmo com escrita em andamento)
+        src.close(); dst.close()
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, 'w', zipfile.ZIP_DEFLATED) as zf:
+            zf.write(tmp, 'saas.db')
+        buf.seek(0)
+        fname = f'saas_backup_{date.today()}.zip'
+        ok = _enviar_email(
+            para=dest,
+            assunto=f'🗄️ Backup SlotZap/SaaS — {date.today()}',
+            html=(f'<p>Backup automático do <code>saas.db</code> (SlotZap + SaaS) em '
+                  f'<strong>{datetime.now().strftime("%d/%m/%Y %H:%M")}</strong>.</p>'
+                  f'<p>Guarde este arquivo — é a recuperação completa em caso de desastre.</p>'),
+            anexo_nome=fname, anexo_bytes=buf.read())
+        log.info(f'[Backup] saas.db email {"enviado" if ok else "FALHOU"} → {dest}')
+        return ok
+    except Exception as e:
+        log.error(f'[Backup] Erro backup saas.db: {e}')
+        return False
+    finally:
+        try: os.remove(tmp)
+        except Exception: pass
+
+
 def _backup_scheduler():
     """Thread que dispara backup diário às 7h (horário do servidor / Sao Paulo)."""
     log.info('[Backup] Agendador iniciado — backup diário às 07:00')
@@ -398,6 +437,7 @@ def _backup_scheduler():
         log.info(f'[Backup] Próximo backup em {espera/3600:.1f}h ({proximo.strftime("%d/%m %H:%M")})')
         time.sleep(espera)
         _enviar_backup_email()
+        _sz_backup_email()   # backup do saas.db (SlotZap + SaaS) — DR da operação de dinheiro
 
 
 threading.Thread(target=_backup_scheduler, daemon=True, name='backup-scheduler').start()
@@ -15366,7 +15406,10 @@ def _sz_pagar_afiliados(conn, camp, slots):
         try:
             chk = _asaas_req('GET', f'/transfers?externalReference={ext}')
             for t in (chk.get('data') or []):
-                if t.get('externalReference') == ext and t.get('id'):
+                st = (t.get('status') or '').upper()
+                # só conta como "já enviada" se NÃO foi cancelada/falhou (senão re-envia)
+                if (t.get('externalReference') == ext and t.get('id')
+                        and st not in ('CANCELLED', 'FAILED')):
                     ja_tid = t['id']; break
         except Exception:
             pass
@@ -16198,11 +16241,17 @@ def slotzap_afiliados_config(camp_id):
         comissao = 0.0
     grupo = (data.get('grupo_convite') or '').strip()[:300]
     conn  = get_saas_db()
-    camp  = conn.execute('SELECT id FROM slotzap_campanhas WHERE id=? AND user_id=?',
+    camp  = conn.execute('SELECT id, preco FROM slotzap_campanhas WHERE id=? AND user_id=?',
                          (camp_id, _sz_uid())).fetchone()
     if not camp:
         conn.close()
         return jsonify({'erro': 'Campanha não encontrada'}), 404
+    preco = float(dict(camp).get('preco') or 0)
+    # Anti-prejuízo/anti-farming: comissão nunca pode ser >= o preço do número
+    if ativo and preco > 0 and comissao >= preco:
+        conn.close()
+        return jsonify({'erro': f'A comissão (R$ {comissao:.2f}) não pode ser maior ou igual ao '
+                                f'preço do número (R$ {preco:.2f}) — daria prejuízo. Reduza a comissão.'}), 400
     conn.execute('UPDATE slotzap_campanhas SET afiliados_ativo=?, afiliado_comissao=?, grupo_convite=? '
                  'WHERE id=? AND user_id=?', (ativo, comissao, grupo, camp_id, _sz_uid()))
     conn.commit(); conn.close()
