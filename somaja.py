@@ -722,10 +722,18 @@ def wa_webhook():
             return jsonify({'error': 'unauthorized'}), 401
     else:
         log.warning('[SomaJá] SOMAJA_WA_WEBHOOK_SECRET não setado — webhook aberto!')
-    data = request.get_json(silent=True) or {}
+    return processar_wa_evento(request.get_json(silent=True) or {})
+
+
+def processar_wa_evento(data):
+    """Núcleo do processamento de uma mensagem do WhatsApp do SomaJá (sem auth).
+    Recebe o payload da Evolution. Usado pela rota /somaja/wa/webhook E pelo webhook
+    GLOBAL do Evolution (/mandazap/webhook/evolution), roteado por instância no app.py."""
     try:
         msg = data.get('data', data)
-        key = msg.get('key', {})
+        if isinstance(msg, list):
+            msg = msg[0] if msg else {}
+        key = (msg.get('key') or {}) if isinstance(msg, dict) else {}
         if key.get('fromMe'):
             return jsonify({'ignored': 'fromMe'}), 200
         remote = key.get('remoteJid', '') or ''

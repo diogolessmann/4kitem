@@ -8178,6 +8178,14 @@ def mz_webhook_evolution():
         if key.get('fromMe'):                       # enviada por nós — não conta como resposta
             return jsonify({'ok': True, 'skip': 'fromMe'}), 200
         instance = str(payload.get('instance') or (data.get('instance') if isinstance(data, dict) else '') or '')
+        # SomaJá — roteia eventos da instância do SomaJá pro módulo dele (webhook global do Evolution)
+        if instance and instance == os.environ.get('SOMAJA_WA_INSTANCE', 'somaja'):
+            try:
+                from somaja import processar_wa_evento as _soma_proc
+                _soma_proc(payload)
+            except Exception as _se:
+                log.warning(f'[SomaJá] webhook evolution: {_se}')
+            return jsonify({'ok': True, 'somaja': True}), 200
         m = _re.match(r'^mz(\d+)n(\d+)$', instance)
         if not m:
             return jsonify({'ok': True, 'skip': 'instance'}), 200
