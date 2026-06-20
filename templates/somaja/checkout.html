@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Checkout — SomaJá 🐗</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,Segoe UI,Roboto,sans-serif;background:#f0fdf4;color:#0f172a}
+  .box{max-width:420px;margin:40px auto;background:#fff;border:1px solid #dcfce7;border-radius:18px;padding:28px}
+  h1{font-size:20px;text-align:center;margin-bottom:4px}
+  .sub{text-align:center;color:#475569;margin-bottom:20px}
+  .val{text-align:center;font-size:28px;font-weight:800;color:#16a34a;margin-bottom:18px}
+  label{display:block;font-size:14px;font-weight:600;margin:10px 0 6px}
+  input{width:100%;padding:13px;border:1px solid #cbd5e1;border-radius:10px;font-size:16px}
+  .btn{width:100%;background:#16a34a;color:#fff;border:none;padding:14px;border-radius:12px;font-weight:700;font-size:16px;cursor:pointer;margin-top:18px}
+  .erro{background:#fef2f2;color:#b91c1c;padding:10px 12px;border-radius:10px;font-size:14px;margin-bottom:8px}
+  a.back{display:block;text-align:center;margin-top:14px;color:#475569;text-decoration:none;font-size:14px}
+</style>
+</head>
+<body>
+<form class="box" method="POST" action="/somaja/checkout/{{ plano }}">
+  <h1>🐗 {{ p.label }}</h1>
+  <div class="sub">Pagamento via PIX</div>
+  <div class="val">{{ p.rotulo }}</div>
+  {% if erro %}<div class="erro">{{ erro }}</div>{% endif %}
+  <label>Seu CPF (pra emitir a cobrança)</label>
+  <input name="cpf" required placeholder="000.000.000-00" inputmode="numeric">
+  <button class="btn" type="submit">Gerar PIX</button>
+  <a class="back" href="/somaja/assinar">← Trocar de plano</a>
+</form>
+</body>
+</html>

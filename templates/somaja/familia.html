@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Família — SomaJá 🐗</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,Segoe UI,Roboto,sans-serif;background:#f0fdf4;color:#0f172a}
+  .wrap{max-width:480px;margin:0 auto;padding:24px 18px}
+  h1{font-size:22px;text-align:center;margin-bottom:6px}
+  .sub{text-align:center;color:#475569;margin-bottom:20px;font-size:14px}
+  .card{background:#fff;border:1px solid #dcfce7;border-radius:16px;padding:20px;margin-bottom:16px}
+  .codigo{font-size:34px;font-weight:800;color:#16a34a;text-align:center;letter-spacing:3px}
+  .hint{color:#475569;font-size:13px;text-align:center;margin-top:6px}
+  ul{list-style:none;margin-top:8px}
+  li{padding:8px 0;border-bottom:1px solid #f1f5f9;font-size:15px}
+  li:last-child{border:none}
+  label{display:block;font-size:14px;font-weight:600;margin:6px 0}
+  input{width:100%;padding:12px;border:1px solid #cbd5e1;border-radius:10px;font-size:16px;text-transform:uppercase}
+  .btn{width:100%;background:#16a34a;color:#fff;border:none;padding:13px;border-radius:12px;font-weight:700;font-size:15px;cursor:pointer;margin-top:10px}
+  .btn.ghost{background:#fff;color:#b91c1c;border:1px solid #fecaca}
+  .msg{background:#dcfce7;color:#15803d;padding:10px 12px;border-radius:10px;font-size:14px;margin-bottom:12px}
+  .erro{background:#fef2f2;color:#b91c1c;padding:10px 12px;border-radius:10px;font-size:14px;margin-bottom:12px}
+  a.back{display:block;text-align:center;margin-top:14px;color:#475569;text-decoration:none;font-size:14px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>👨‍👩‍👧 Carteira família</h1>
+  <div class="sub">Junte marido, esposa e filhos no mesmo bolso. Todos somam juntos.</div>
+
+  {% if msg %}<div class="msg">{{ msg }}</div>{% endif %}
+  {% if erro %}<div class="erro">{{ erro }}</div>{% endif %}
+
+  <div class="card">
+    <p class="hint">Seu código de convite</p>
+    <div class="codigo">{{ codigo }}</div>
+    <p class="hint">Quem você quer juntar manda no SomaJá: <b>entrar {{ codigo }}</b><br>(ou usa o campo abaixo)</p>
+  </div>
+
+  <div class="card">
+    <b>No bolso agora ({{ membros|length }})</b>
+    <ul>{% for m in membros %}<li>🧑 {{ m }}</li>{% endfor %}</ul>
+  </div>
+
+  <div class="card">
+    <form method="POST">
+      <input type="hidden" name="acao" value="entrar">
+      <label>Entrar na carteira de alguém</label>
+      <input name="codigo" placeholder="CÓDIGO" maxlength="6" required>
+      <button class="btn" type="submit">Entrar nessa carteira</button>
+    </form>
+    <form method="POST" onsubmit="return confirm('Sair da carteira compartilhada?')">
+      <input type="hidden" name="acao" value="sair">
+      <button class="btn ghost" type="submit">Sair da carteira compartilhada</button>
+    </form>
+  </div>
+
+  <a class="back" href="/somaja/app">← Voltar</a>
+</div>
+</body>
+</html>

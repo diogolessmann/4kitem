@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Assinar — SomaJá 🐗</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,Segoe UI,Roboto,sans-serif;background:#f0fdf4;color:#0f172a}
+  .wrap{max-width:520px;margin:0 auto;padding:24px 18px}
+  h1{text-align:center;font-size:24px;margin-bottom:6px}
+  .sub{text-align:center;color:#475569;margin-bottom:22px;font-size:15px}
+  .plan{background:#fff;border:1px solid #dcfce7;border-radius:16px;padding:20px;margin-bottom:14px;
+        display:flex;justify-content:space-between;align-items:center;text-decoration:none;color:inherit}
+  .plan.dest{border:2px solid #16a34a;box-shadow:0 6px 20px rgba(22,163,74,.12)}
+  .plan h3{font-size:17px}.plan p{color:#475569;font-size:13px}
+  .tag{background:#16a34a;color:#fff;font-size:11px;padding:2px 8px;border-radius:20px;font-weight:700}
+  .val{font-size:20px;font-weight:800;color:#16a34a;white-space:nowrap}
+  a.back{display:block;text-align:center;margin-top:18px;color:#475569;text-decoration:none;font-size:14px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🐗 Escolha seu plano</h1>
+  <div class="sub">{% if trial_dias > 0 %}Seu teste grátis acaba em {{ trial_dias }} dia(s).{% else %}Seu teste grátis acabou — assine pra continuar somando.{% endif %}<br>
+  <small>Anual no PIX é o melhor custo. Família (até 5 pessoas) chega já já. 😉</small></div>
+
+  {% for key, p in planos.items() %}
+  <a class="plan {{ 'dest' if p.destaque }}" href="/somaja/checkout/{{ key }}">
+    <div>
+      <h3>{{ p.label }} {% if p.destaque %}<span class="tag">melhor custo</span>{% endif %}</h3>
+      <p>{{ 'Pra você' if 'pro' in key else 'Até 5 pessoas (em breve)' }}</p>
+    </div>
+    <div class="val">{{ p.rotulo }}</div>
+  </a>
+  {% endfor %}
+
+  <a class="back" href="/somaja/app">← Voltar</a>
+</div>
+</body>
+</html>

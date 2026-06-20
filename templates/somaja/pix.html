@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pague o PIX — SomaJá 🐗</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,Segoe UI,Roboto,sans-serif;background:#f0fdf4;color:#0f172a}
+  .box{max-width:420px;margin:30px auto;background:#fff;border:1px solid #dcfce7;border-radius:18px;padding:26px;text-align:center}
+  h1{font-size:20px;margin-bottom:4px}
+  .val{font-size:26px;font-weight:800;color:#16a34a;margin:6px 0 16px}
+  img{width:230px;height:230px;border:1px solid #e2e8f0;border-radius:12px}
+  .copia{word-break:break-all;background:#f1f5f9;padding:10px;border-radius:10px;font-size:12px;margin:14px 0}
+  .btn{width:100%;background:#16a34a;color:#fff;border:none;padding:13px;border-radius:12px;font-weight:700;font-size:15px;cursor:pointer}
+  .status{margin-top:14px;color:#475569;font-size:14px}
+  .ok{background:#dcfce7;color:#15803d;padding:14px;border-radius:12px;font-weight:700}
+  a{color:#16a34a;text-decoration:none;font-weight:600}
+</style>
+</head>
+<body>
+<div class="box">
+  <h1>🐗 Pague pra ativar</h1>
+  <div class="val">{{ p.rotulo }}</div>
+  {% if qr %}
+    <img src="data:image/png;base64,{{ qr }}" alt="QR Code PIX">
+    <div class="copia" id="copia">{{ copia }}</div>
+    <button class="btn" onclick="navigator.clipboard.writeText('{{ copia }}');this.textContent='Copiado! ✅'">Copiar código PIX</button>
+    <div class="status" id="status">⏳ Aguardando pagamento… (libera automático)</div>
+  {% else %}
+    <p>Não consegui gerar o PIX agora. <a href="/somaja/assinar">Tente de novo</a>.</p>
+  {% endif %}
+</div>
+<script>
+{% if qr %}
+const poll=setInterval(async()=>{
+  try{
+    const r=await fetch('/somaja/pix-status',{method:'POST'});
+    const j=await r.json();
+    if(j.pago){clearInterval(poll);
+      document.getElementById('status').outerHTML='<div class="ok">✅ Pagamento confirmado! <a href="/somaja/app">Abrir o SomaJá →</a></div>';}
+  }catch(e){}
+},4000);
+{% endif %}
+</script>
+</body>
+</html>
