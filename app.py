@@ -15327,10 +15327,11 @@ def _sz_afiliado_transfer(pix_chave, pix_tipo, valor, descricao, ext_ref):
 
 
 def _sz_pagar_afiliados(conn, camp, slots):
-    """Paga a comissão (PIX na hora) ao afiliado de CADA número pago.
-    Idempotente: o índice ÚNICO em slotzap_afiliado_pagamentos.slot_id garante que
-    a comissão de um número jamais é paga duas vezes. Falhas viram status='erro'
-    (NÃO re-tenta sozinho — anti-pagamento-duplo; o dono resolve no painel)."""
+    """Paga a comissão (PIX) ao afiliado de CADA número pago — AUTO-CURÁVEL e ANTI-DUPLO.
+    - Reusa o registro do ledger: 'pago' é pulado; 'pendente'/'erro' são RE-TENTADOS.
+    - ANTES de enviar, consulta o Asaas se já existe transferência com o mesmo
+      externalReference (szaf_<slot>): se já existe, só sincroniza (NUNCA paga 2×).
+    Seguro de chamar pelo fluxo inline E pelo reconciliador."""
     comissao = float(camp.get('afiliado_comissao') or 0)
     if not camp.get('afiliados_ativo') or comissao <= 0:
         return
@@ -15343,26 +15344,43 @@ def _sz_pagar_afiliados(conn, camp, slots):
                           (camp['id'], cod)).fetchone()
         if not af:
             continue
-        af = dict(af)
-        # 1) RESERVA idempotente: "claim" do slot no ledger ANTES de mover dinheiro.
-        #    Se já existe linha p/ esse slot, outra via já pagou/tentou — pula.
+        af  = dict(af)
+        ext = f"szaf_{s['id']}"
+        row = conn.execute("SELECT status FROM slotzap_afiliado_pagamentos WHERE slot_id=?",
+                           (s['id'],)).fetchone()
+        if row and dict(row)['status'] == 'pago':
+            continue  # já pago — nada a fazer
+        if not row:
+            # cria o registro (claim). Se outra via criar ao mesmo tempo, pula (corrida).
+            try:
+                conn.execute(
+                    'INSERT INTO slotzap_afiliado_pagamentos '
+                    '(afiliado_id,campanha_id,slot_id,valor,status,criado_em) VALUES (?,?,?,?,?,?)',
+                    (af['id'], camp['id'], s['id'], comissao, 'pendente', agora))
+                conn.commit()
+            except Exception:
+                continue
+        # ── ANTI-DUPLO: já existe transferência pra esse número no Asaas? ──
+        ja_tid = ''
         try:
-            conn.execute(
-                'INSERT INTO slotzap_afiliado_pagamentos '
-                '(afiliado_id,campanha_id,slot_id,valor,status,criado_em) VALUES (?,?,?,?,?,?)',
-                (af['id'], camp['id'], s['id'], comissao, 'pendente', agora))
-            conn.commit()
+            chk = _asaas_req('GET', f'/transfers?externalReference={ext}')
+            for t in (chk.get('data') or []):
+                if t.get('externalReference') == ext and t.get('id'):
+                    ja_tid = t['id']; break
         except Exception:
-            continue   # slot já tem pagamento registrado — nunca paga 2×
-        # 2) Envia o PIX da comissão
+            pass
+        if ja_tid:
+            conn.execute("UPDATE slotzap_afiliado_pagamentos SET status='pago', asaas_transfer_id=?, erro='' WHERE slot_id=?",
+                         (ja_tid, s['id']))
+            conn.commit()
+            log.info(f"[SlotZap] comissao num {s['numero']} ja transferida ({ja_tid}) — ledger sincronizado")
+            continue
+        # ── Envia o PIX da comissão ──
         desc = f"Comissao SlotZap - {camp.get('nome','')} - num {s['numero']}"
-        tid, erro = _sz_afiliado_transfer(af.get('pix_chave'), af.get('pix_tipo'),
-                                          comissao, desc, f"szaf_{s['id']}")
+        tid, erro = _sz_afiliado_transfer(af.get('pix_chave'), af.get('pix_tipo'), comissao, desc, ext)
         if tid:
-            conn.execute("UPDATE slotzap_afiliado_pagamentos SET status='pago', asaas_transfer_id=? WHERE slot_id=?",
+            conn.execute("UPDATE slotzap_afiliado_pagamentos SET status='pago', asaas_transfer_id=?, erro='' WHERE slot_id=?",
                          (tid, s['id']))
-            conn.execute("UPDATE slotzap_afiliados SET vendas=vendas+1, ganho_total=ganho_total+? WHERE id=?",
-                         (comissao, af['id']))
             conn.commit()
             log.info(f"[SlotZap] Comissao R${comissao:.2f} -> afiliado {af.get('nome')} (num {s['numero']}, t {tid})")
         else:
@@ -15559,7 +15577,8 @@ def _sz_comissao_reconciliar_loop():
                 JOIN slotzap_campanhas c ON c.id = s.campanha_id
                 WHERE s.status='pago' AND IFNULL(s.afiliado_codigo,'') <> ''
                   AND c.afiliados_ativo=1 AND IFNULL(c.afiliado_comissao,0) > 0
-                  AND NOT EXISTS (SELECT 1 FROM slotzap_afiliado_pagamentos p WHERE p.slot_id = s.id)
+                  AND NOT EXISTS (SELECT 1 FROM slotzap_afiliado_pagamentos p
+                                  WHERE p.slot_id = s.id AND p.status='pago')
             ''').fetchall()]
             for s in pend:
                 camp = {'id': s['campanha_id'], 'nome': s['camp_nome'],
