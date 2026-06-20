@@ -15385,7 +15385,8 @@ def _sz_pagar_afiliados(conn, camp, slots):
             conn.commit()
             log.info(f"[SlotZap] Comissao R${comissao:.2f} -> afiliado {af.get('nome')} (num {s['numero']}, t {tid})")
         else:
-            conn.execute("UPDATE slotzap_afiliado_pagamentos SET status='erro', erro=? WHERE slot_id=?",
+            conn.execute("UPDATE slotzap_afiliado_pagamentos SET status='erro', erro=?, "
+                         "tentativas=IFNULL(tentativas,0)+1 WHERE slot_id=?",
                          (erro, s['id']))
             conn.commit()
             log.warning(f"[SlotZap] Falha comissao afiliado {af.get('nome')} (num {s['numero']}): {erro}")
@@ -15580,7 +15581,8 @@ def _sz_comissao_reconciliar_loop():
                   AND IFNULL(s.brinde,0)=0
                   AND c.afiliados_ativo=1 AND IFNULL(c.afiliado_comissao,0) > 0
                   AND NOT EXISTS (SELECT 1 FROM slotzap_afiliado_pagamentos p
-                                  WHERE p.slot_id = s.id AND p.status='pago')
+                                  WHERE p.slot_id = s.id
+                                    AND (p.status='pago' OR IFNULL(p.tentativas,0) >= 8))
             ''').fetchall()]
             for s in pend:
                 camp = {'id': s['campanha_id'], 'nome': s['camp_nome'],
@@ -16186,7 +16188,9 @@ def slotzap_afiliados_admin(camp_id):
 @_sz_login_required
 def slotzap_afiliados_config(camp_id):
     """Salva ligar/desligar + comissão + link do grupo da campanha."""
-    data  = request.get_json(silent=True) or {}
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict) or 'ativo' not in data:
+        return jsonify({'erro': 'payload inválido'}), 400   # evita zerar config por engano
     ativo = 1 if str(data.get('ativo')) in ('1', 'true', 'on', 'True') else 0
     try:
         comissao = max(0.0, float(str(data.get('comissao') or '0').replace(',', '.')))

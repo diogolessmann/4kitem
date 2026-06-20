@@ -15,6 +15,7 @@ def get_db():
     conn.row_factory = sqlite3.Row
     conn.execute('PRAGMA journal_mode=WAL')
     conn.execute('PRAGMA foreign_keys=ON')
+    conn.execute('PRAGMA busy_timeout=15000')  # espera até 15s p/ lock em vez de falhar (escala: muitos afiliados vendendo junto)
     return conn
 
 
@@ -842,6 +843,8 @@ def init_slotzap_db():
          "erro TEXT DEFAULT '', criado_em TEXT DEFAULT '')"),
         "CREATE UNIQUE INDEX IF NOT EXISTS idx_sz_afilpag_slot ON slotzap_afiliado_pagamentos(slot_id)",
         "CREATE INDEX IF NOT EXISTS idx_sz_afilpag_afil ON slotzap_afiliado_pagamentos(afiliado_id)",
+        # Conta tentativas de pagamento — limita o retry do reconciliador (chave PIX inválida etc.)
+        "ALTER TABLE slotzap_afiliado_pagamentos ADD COLUMN tentativas INTEGER DEFAULT 0",
     ]
     for sql in _sz_migrations:
         try:
