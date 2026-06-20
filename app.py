@@ -838,7 +838,7 @@ def mandaja_upload_foto():
         img = Image.open(f.stream)
         img = ImageOps.exif_transpose(img)   # corrige foto de celular girada
         img = img.convert('RGB')
-        maxd = 800
+        maxd = 720
         w, h = img.size
         if max(w, h) > maxd:
             if w >= h:
@@ -847,7 +847,7 @@ def mandaja_upload_foto():
                 img = img.resize((round(w * maxd / h), maxd), Image.LANCZOS)
         os.makedirs(MANDAJA_UPLOAD_DIR, exist_ok=True)
         name = f"{session['mja_store_id']}_{_sec.token_urlsafe(6)}.webp"
-        img.save(os.path.join(MANDAJA_UPLOAD_DIR, name), 'WEBP', quality=78, method=6)
+        img.save(os.path.join(MANDAJA_UPLOAD_DIR, name), 'WEBP', quality=72, method=6)
         return jsonify({'ok': True, 'url': f'/uploads/mandaja/{name}'})
     except Exception as e:
         log.warning(f'[MandaJá] upload foto error: {e}')

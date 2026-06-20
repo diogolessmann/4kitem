@@ -71,19 +71,25 @@
 
       <!-- Preview -->
       <div class="field">
-        <label>Foto do produto (URL)</label>
-        <div class="img-preview" id="imgPreview">
+        <label>Foto do produto</label>
+        <div class="img-preview" id="imgPreview" onclick="document.getElementById('fotoFile').click()" style="cursor:pointer">
           {% if prod and prod.photo_url %}
           <img src="{{ prod.photo_url }}" id="previewImg" onerror="this.parentNode.innerHTML='📦'">
           {% else %}
           <span id="previewEmoji">📦</span>
           {% endif %}
         </div>
-        <input type="url" name="photo_url" id="photoUrl"
-               placeholder="https://... (link de imagem do produto)"
-               value="{{ prod.photo_url if prod else '' }}"
-               oninput="updatePreview(this.value)">
-        <div class="hint">Cole o link de uma imagem (ex: do Google Fotos, Imgur, etc.)</div>
+        <input type="file" id="fotoFile" accept="image/*" style="display:none" onchange="uploadFoto(this)">
+        <button type="button" onclick="document.getElementById('fotoFile').click()"
+                style="width:100%;background:rgba(249,115,22,.12);color:#F97316;border:1px solid rgba(249,115,22,.3);border-radius:10px;padding:12px;font-weight:700;cursor:pointer">📷 Tirar / escolher foto</button>
+        <div id="fotoStatus" class="hint"></div>
+        <details style="margin-top:8px">
+          <summary class="hint" style="cursor:pointer">ou colar link de uma imagem</summary>
+          <input type="url" name="photo_url" id="photoUrl" style="margin-top:6px"
+                 placeholder="https://..."
+                 value="{{ prod.photo_url if prod else '' }}"
+                 oninput="updatePreview(this.value)">
+        </details>
       </div>
 
       <!-- Nome e categoria -->
@@ -201,6 +207,20 @@ function updatePreview(url) {
   } else {
     box.innerHTML = '📦';
   }
+}
+function uploadFoto(input){
+  const f = input.files[0]; if(!f) return;
+  const st = document.getElementById('fotoStatus');
+  st.textContent = '⏳ Otimizando a foto...';
+  const fd = new FormData(); fd.append('foto', f);
+  fetch('/mandaja/upload-foto', {method:'POST', body:fd})
+    .then(r=>r.json()).then(d=>{
+      if(d.ok){
+        document.getElementById('photoUrl').value = d.url;
+        updatePreview(d.url);
+        st.textContent = '✅ Foto pronta!';
+      } else { st.textContent = '⚠️ ' + (d.error || 'Erro ao enviar.'); }
+    }).catch(()=>{ st.textContent = '⚠️ Erro de conexão.'; });
 }
 
 /* ─── Adicionais / Opções ─────────────────────────────── */

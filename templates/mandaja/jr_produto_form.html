@@ -64,12 +64,13 @@
     <label>Descrição <span class="hint">(opcional)</span></label>
     <textarea name="description" placeholder="Ex: 2 hambúrgueres, bacon, queijo...">{{ prod.description if prod else '' }}</textarea>
 
-    <label>Foto <span class="hint">(opcional — cole o link de uma imagem)</span></label>
-    <div class="foto-preview" id="fotoPreview">
-      {% if prod and prod.photo_url %}<img src="{{ prod.photo_url }}">{% else %}<span>📷 sem foto</span>{% endif %}
+    <label>Foto do produto <span class="hint">(opcional)</span></label>
+    <div class="foto-preview" id="fotoPreview" onclick="document.getElementById('fotoFile').click()" style="cursor:pointer">
+      {% if prod and prod.photo_url %}<img src="{{ prod.photo_url }}">{% else %}<span>📷 Toque pra tirar ou escolher uma foto</span>{% endif %}
     </div>
-    <input type="text" name="photo_url" id="fotoInput" placeholder="https://..."
-           value="{{ prod.photo_url if prod else '' }}" oninput="previewFoto()">
+    <input type="file" id="fotoFile" accept="image/*" style="display:none" onchange="uploadFoto(this)">
+    <input type="hidden" name="photo_url" id="fotoInput" value="{{ prod.photo_url if prod else '' }}">
+    <div id="fotoStatus" style="font-size:12px;color:#8b8b9e;margin-top:6px"></div>
 
     <button type="submit" class="btn">{{ '💾 Salvar' if prod else '✅ Adicionar ao cardápio' }}</button>
   </form>
@@ -84,6 +85,25 @@
 </div>
 
 <script>
+  function uploadFoto(input){
+    const f = input.files[0]; if(!f) return;
+    const box = document.getElementById('fotoPreview');
+    const st = document.getElementById('fotoStatus');
+    box.innerHTML = '<span>⏳ enviando...</span>';
+    st.textContent = '⏳ Otimizando a foto...';
+    const fd = new FormData(); fd.append('foto', f);
+    fetch('/mandaja/upload-foto', {method:'POST', body:fd})
+      .then(r=>r.json()).then(d=>{
+        if(d.ok){
+          document.getElementById('fotoInput').value = d.url;
+          box.innerHTML = '<img src="'+d.url+'">';
+          st.textContent = '✅ Foto pronta!';
+        } else {
+          box.innerHTML = '<span>📷 Toque pra tentar de novo</span>';
+          st.textContent = '⚠️ ' + (d.error || 'Erro ao enviar.');
+        }
+      }).catch(()=>{ box.innerHTML='<span>📷 Toque pra tentar de novo</span>'; st.textContent='⚠️ Erro de conexão.'; });
+  }
   function previewFoto(){
     const url=document.getElementById('fotoInput').value.trim();
     const box=document.getElementById('fotoPreview');
