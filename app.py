@@ -17,7 +17,7 @@ import requests
 from datetime import datetime, timedelta, date
 from functools import wraps
 from flask import (Flask, render_template, redirect, jsonify,
-                   request, abort, url_for, session, Response)
+                   request, abort, url_for, session, Response, send_from_directory)
 from werkzeug.security import generate_password_hash, check_password_hash
 
 logging.basicConfig(
@@ -813,6 +813,45 @@ def _mja_tpl(store, name):
     if store and store.get('mode') == 'jr':
         return f'mandaja/jr_{name}.html'
     return f'mandaja/{name}.html'
+
+
+# Fotos de produto: guardadas no volume persistente (DATA_DIR), não somem no redeploy
+MANDAJA_UPLOAD_DIR = os.path.join(
+    os.environ.get('DATA_DIR', os.path.dirname(__file__)), 'uploads', 'mandaja')
+
+
+@app.route('/uploads/mandaja/<path:filename>')
+def mandaja_uploaded_file(filename):
+    return send_from_directory(MANDAJA_UPLOAD_DIR, filename)
+
+
+@app.route('/mandaja/upload-foto', methods=['POST'])
+@_mandaja_login_required
+def mandaja_upload_foto():
+    """Recebe a foto do celular e comprime forte (6MB → ~40KB WebP)."""
+    f = request.files.get('foto')
+    if not f or not f.filename:
+        return jsonify({'error': 'Nenhuma imagem enviada.'}), 400
+    try:
+        from PIL import Image, ImageOps
+        import io, secrets as _sec
+        img = Image.open(f.stream)
+        img = ImageOps.exif_transpose(img)   # corrige foto de celular girada
+        img = img.convert('RGB')
+        maxd = 800
+        w, h = img.size
+        if max(w, h) > maxd:
+            if w >= h:
+                img = img.resize((maxd, round(h * maxd / w)), Image.LANCZOS)
+            else:
+                img = img.resize((round(w * maxd / h), maxd), Image.LANCZOS)
+        os.makedirs(MANDAJA_UPLOAD_DIR, exist_ok=True)
+        name = f"{session['mja_store_id']}_{_sec.token_urlsafe(6)}.webp"
+        img.save(os.path.join(MANDAJA_UPLOAD_DIR, name), 'WEBP', quality=78, method=6)
+        return jsonify({'ok': True, 'url': f'/uploads/mandaja/{name}'})
+    except Exception as e:
+        log.warning(f'[MandaJá] upload foto error: {e}')
+        return jsonify({'error': 'Não consegui processar essa imagem. Tente outra foto.'}), 400
 
 
 def _mja_preco(v):
@@ -15636,6 +15675,11 @@ threading.Thread(target=_sz_reconciliar_loop, daemon=True, name='sz-reconciliado
 #  reenviar, consulta o Asaas por aquele lote_ref (recupera envio que já saiu).
 # ════════════════════════════════════════════════════════════════════════════
 _SZ_LOTE_LOCK = threading.Lock()   # serializa os envios (evita rajada simultânea)
+# Cap de re-tentativas do reconciliador AUTOMÁTICO: alto o bastante p/ qualquer
+# bloqueio TRANSITÓRIO de duplicata do Asaas passar sozinho (25 × ~75s ≈ 30 min);
+# se uma chave PIX for de fato inválida, para depois disso. O botão MANUAL do dono
+# (force=True) ignora o cap — é ordem direta de pagar.
+_SZ_CAP_TENTATIVAS = 25
 
 
 def _sz_flush_lote(conn, ref):
@@ -15688,10 +15732,12 @@ def _sz_flush_lote(conn, ref):
     return 0.0
 
 
-def _sz_pagar_pendentes(conn, camp_id=None):
+def _sz_pagar_pendentes(conn, camp_id=None, force=False):
     """Paga TODAS as comissões pendentes/erro, AGRUPADAS POR VENDEDOR (1 PIX cada).
     Usado pelo reconciliador (24/7) e pelo botão 'Pagar pendentes agora' do dono.
     Fases: (A) recupera lotes 'enviando' presos por queda; (B) monta lotes novos.
+    force=True (botão do dono): ignora o cap de tentativas — paga até o que o
+    automático já desistiu (ex.: travou no limite por bloqueio transitório do Asaas).
     Serializado por trava global p/ não disparar PIX idênticos em paralelo."""
     pago_total = 0.0
     with _SZ_LOTE_LOCK:
@@ -15715,6 +15761,8 @@ def _sz_pagar_pendentes(conn, camp_id=None):
         # ── Fase B: monta lotes novos a partir das vendas sem repasse ──
         filtro_camp = ' AND s.campanha_id=? ' if camp_id else ''
         params = (camp_id,) if camp_id else ()
+        # cap de tentativas: o automático respeita; o botão do dono (force) ignora
+        cap_cond = '' if force else f'AND IFNULL(p.tentativas,0) < {_SZ_CAP_TENTATIVAS}'
         cand = [dict(r) for r in conn.execute(f'''
             SELECT s.id AS slot_id, s.campanha_id, a.id AS afiliado_id, c.afiliado_comissao AS comissao
             FROM slotzap_slots s
@@ -15723,7 +15771,7 @@ def _sz_pagar_pendentes(conn, camp_id=None):
             LEFT JOIN slotzap_afiliado_pagamentos p ON p.slot_id = s.id
             WHERE s.status='pago' AND IFNULL(s.afiliado_codigo,'')<>'' AND IFNULL(s.brinde,0)=0
               AND c.afiliados_ativo=1 AND IFNULL(c.afiliado_comissao,0) > 0
-              AND (p.id IS NULL OR (p.status IN ('pendente','erro') AND IFNULL(p.tentativas,0) < 8))
+              AND (p.id IS NULL OR (p.status IN ('pendente','erro') {cap_cond}))
               {filtro_camp}
         ''', params).fetchall()]
         # agrupa por vendedor
@@ -16407,7 +16455,7 @@ def slotzap_afiliados_pagar_pendentes(camp_id):
         conn.close()
         return jsonify({'erro': 'Campanha não encontrada'}), 404
     try:
-        pago = _sz_pagar_pendentes(conn, camp_id)
+        pago = _sz_pagar_pendentes(conn, camp_id, force=True)
     except Exception as _e:
         log.warning(f'[SlotZap] pagar-pendentes manual camp {camp_id}: {_e}')
         conn.close()
