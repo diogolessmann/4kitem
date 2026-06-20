@@ -14886,7 +14886,7 @@ def _sz_premiar_indicacao(conn, camp_id, codigo, meta, qtd=1):
             break  # sem estoque livre pra premiar agora
         livre = dict(livre)
         conn.execute("UPDATE slotzap_slots SET status='pago', cliente_nome=?, cliente_tel=?, "
-                     "pago_em=?, brinde=1 WHERE id=?",
+                     "pago_em=?, brinde=1, afiliado_codigo='' WHERE id=?",
                      ((ref['nome'] or 'Indicador'), ref['tel'], datetime.now().isoformat(), livre['id']))
         ref['premios_dados'] = (ref['premios_dados'] or 0) + 1
         conn.execute('UPDATE slotzap_indicadores SET premios_dados=? WHERE id=?',
@@ -14931,7 +14931,7 @@ def slotzap_sortear(camp_id):
         if camp.get('afiliados_ativo'):
             n_afil = conn.execute(
                 "SELECT COUNT(*) FROM slotzap_slots WHERE campanha_id=? AND status='pago' "
-                "AND IFNULL(afiliado_codigo,'')<>''", (camp_id,)).fetchone()[0]
+                "AND IFNULL(afiliado_codigo,'')<>'' AND IFNULL(brinde,0)=0", (camp_id,)).fetchone()[0]
             arrecadado -= n_afil * float(camp.get('afiliado_comissao') or 0)
         forcar      = bool((request.get_json(silent=True) or {}).get('forcar'))
         if arrecadado < custo and not forcar:
@@ -15077,7 +15077,8 @@ def slotzap_cancelar(slot_id):
         _asaas_req('DELETE', f'/payments/{charge}')
     conn.execute(
         "UPDATE slotzap_slots SET status='disponivel',cliente_nome='',cliente_tel='',"
-        "asaas_charge_id='',pix_qr_code='',pix_copia_cola='',reservado_em=NULL,pago_em=NULL WHERE id=?",
+        "asaas_charge_id='',pix_qr_code='',pix_copia_cola='',reservado_em=NULL,pago_em=NULL,"
+        "afiliado_codigo='',indicado_por='' WHERE id=?",
         (slot_id,)
     )
     conn.commit(); conn.close()
@@ -15576,6 +15577,7 @@ def _sz_comissao_reconciliar_loop():
                 FROM slotzap_slots s
                 JOIN slotzap_campanhas c ON c.id = s.campanha_id
                 WHERE s.status='pago' AND IFNULL(s.afiliado_codigo,'') <> ''
+                  AND IFNULL(s.brinde,0)=0
                   AND c.afiliados_ativo=1 AND IFNULL(c.afiliado_comissao,0) > 0
                   AND NOT EXISTS (SELECT 1 FROM slotzap_afiliado_pagamentos p
                                   WHERE p.slot_id = s.id AND p.status='pago')
@@ -15645,7 +15647,8 @@ def _sz_expirar_reservas(camp_id):
         for sid in a_liberar:
             conn.execute(
                 "UPDATE slotzap_slots SET status='disponivel',cliente_nome='',cliente_tel='',"
-                "asaas_charge_id='',pix_qr_code='',pix_copia_cola='',reservado_em='' WHERE id=?",
+                "asaas_charge_id='',pix_qr_code='',pix_copia_cola='',reservado_em='',"
+                "afiliado_codigo='',indicado_por='' WHERE id=?",
                 (sid,))
         conn.commit(); conn.close()
     return len(a_liberar)
