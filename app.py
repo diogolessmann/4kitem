@@ -5995,6 +5995,18 @@ def saas_admin():
         licita_cidades = _ls.get('cidades', 0)
     except Exception:
         licita_users = []; licita_total = 0; licita_noticia = 0; licita_cidades = 0
+    # SomaJá — coach financeiro no WhatsApp (banco próprio)
+    try:
+        from somaja_db import get_somaja_db as _get_soma_db
+        somaconn = _get_soma_db()
+        somaja_users = [dict(r) for r in somaconn.execute(
+            'SELECT id, nome, email, telefone, plano, plan_active, trial_until, created_at '
+            'FROM somaja_users ORDER BY id DESC').fetchall()]
+        somaja_lancamentos = somaconn.execute('SELECT COUNT(*) FROM somaja_tx').fetchone()[0]
+        somaja_ativos = somaconn.execute('SELECT COUNT(*) FROM somaja_users WHERE plan_active=1').fetchone()[0]
+        somaconn.close()
+    except Exception:
+        somaja_users = []; somaja_lancamentos = 0; somaja_ativos = 0
     return render_template('saas_admin.html',
                            subscribers=subscribers, businesses=businesses,
                            mz_users=mz_users, mz_plans=MANDAZAP_PLANS,
@@ -6022,7 +6034,9 @@ def saas_admin():
                            radar_ti=radar_ti, radar_ouro=radar_ouro,
                            radar_contratos=radar_contratos, radar_vencendo=radar_vencendo,
                            licita_users=licita_users, licita_total=licita_total,
-                           licita_noticia=licita_noticia, licita_cidades=licita_cidades)
+                           licita_noticia=licita_noticia, licita_cidades=licita_cidades,
+                           somaja_users=somaja_users, somaja_lancamentos=somaja_lancamentos,
+                           somaja_ativos=somaja_ativos)
 
 
 @app.route('/saas-admin/slotzap/reset-senha', methods=['POST'])
@@ -15397,8 +15411,8 @@ def _sz_pagar_afiliados(conn, camp, slots):
         ext = f"szaf_{s['id']}"
         row = conn.execute("SELECT status FROM slotzap_afiliado_pagamentos WHERE slot_id=?",
                            (s['id'],)).fetchone()
-        if row and dict(row)['status'] == 'pago':
-            continue  # já pago — nada a fazer
+        if row and dict(row)['status'] in ('pago', 'enviando'):
+            continue  # já pago (ou em envio por um lote) — nunca paga 2×
         if not row:
             # cria o registro (claim). Se outra via criar ao mesmo tempo, pula (corrida).
             try:
@@ -15613,45 +15627,158 @@ def _sz_reconciliar_loop():
 threading.Thread(target=_sz_reconciliar_loop, daemon=True, name='sz-reconciliador').start()
 
 
+# ════════════════════════════════════════════════════════════════════════════
+#  PAGAMENTO DE COMISSÕES EM LOTE (1 PIX por vendedor) — "Trimania-proof"
+#  O Asaas TRAVA transferências idênticas (mesmo valor + mesma chave) feitas
+#  juntas (janela anti-duplicata de vários minutos). Pagar N×R$4 separado = trava.
+#  Solução: somar tudo do vendedor e mandar UM PIX (valor único nunca trava).
+#  Idempotência à prova de queda: claim 'enviando' + lote_ref único; antes de
+#  reenviar, consulta o Asaas por aquele lote_ref (recupera envio que já saiu).
+# ════════════════════════════════════════════════════════════════════════════
+_SZ_LOTE_LOCK = threading.Lock()   # serializa os envios (evita rajada simultânea)
+
+
+def _sz_flush_lote(conn, ref):
+    """Resolve UM lote já reservado (status='enviando', lote_ref=ref):
+    confere no Asaas se já saiu; se não, manda 1 PIX com a SOMA e baixa tudo.
+    Retorna o valor pago (0 se nada). À prova de duplo via o próprio ref."""
+    rows = [dict(r) for r in conn.execute(
+        "SELECT slot_id, afiliado_id, valor FROM slotzap_afiliado_pagamentos "
+        "WHERE lote_ref=? AND status='enviando'", (ref,)).fetchall()]
+    if not rows:
+        return 0.0
+    total = round(sum(float(r['valor'] or 0) for r in rows), 2)
+    afid  = rows[0]['afiliado_id']
+    # ── 1) Já existe transferência com este lote_ref no Asaas? (recupera queda) ──
+    try:
+        chk = _asaas_req('GET', f'/transfers?externalReference={ref}')
+        for t in (chk.get('data') or []):
+            st = (t.get('status') or '').upper()
+            if (t.get('externalReference') == ref and t.get('id')
+                    and st not in ('CANCELLED', 'FAILED')):
+                conn.execute("UPDATE slotzap_afiliado_pagamentos SET status='pago', "
+                             "asaas_transfer_id=?, erro='' WHERE lote_ref=?", (t['id'], ref))
+                conn.commit()
+                log.info(f"[SlotZap] Lote {ref} já estava no Asaas ({t['id']}) — baixado R${total:.2f}")
+                return total
+    except Exception:
+        pass
+    # ── 2) Envia 1 PIX com a soma ──
+    af = conn.execute('SELECT nome, pix_chave, pix_tipo FROM slotzap_afiliados WHERE id=?',
+                      (afid,)).fetchone()
+    if not af:
+        conn.execute("UPDATE slotzap_afiliado_pagamentos SET status='erro', "
+                     "erro='afiliado sumiu' WHERE lote_ref=?", (ref,))
+        conn.commit()
+        return 0.0
+    af   = dict(af)
+    desc = f"Comissao SlotZap - {len(rows)} numero(s)"
+    tid, erro = _sz_afiliado_transfer(af.get('pix_chave'), af.get('pix_tipo'), total, desc, ref)
+    if tid:
+        conn.execute("UPDATE slotzap_afiliado_pagamentos SET status='pago', "
+                     "asaas_transfer_id=?, erro='' WHERE lote_ref=?", (tid, ref))
+        conn.commit()
+        log.info(f"[SlotZap] LOTE pago R${total:.2f} -> {af.get('nome')} "
+                 f"({len(rows)} num, t {tid}, ref {ref})")
+        return total
+    conn.execute("UPDATE slotzap_afiliado_pagamentos SET status='erro', erro=? WHERE lote_ref=?",
+                 (erro, ref))
+    conn.commit()
+    log.warning(f"[SlotZap] Falha LOTE {af.get('nome')} R${total:.2f} (ref {ref}): {erro}")
+    return 0.0
+
+
+def _sz_pagar_pendentes(conn, camp_id=None):
+    """Paga TODAS as comissões pendentes/erro, AGRUPADAS POR VENDEDOR (1 PIX cada).
+    Usado pelo reconciliador (24/7) e pelo botão 'Pagar pendentes agora' do dono.
+    Fases: (A) recupera lotes 'enviando' presos por queda; (B) monta lotes novos.
+    Serializado por trava global p/ não disparar PIX idênticos em paralelo."""
+    pago_total = 0.0
+    with _SZ_LOTE_LOCK:
+        # ── Fase A: recupera lotes 'enviando' antigos (>90s) — queda no meio do envio ──
+        try:
+            refs = [dict(r)['lote_ref'] for r in conn.execute(
+                "SELECT DISTINCT lote_ref FROM slotzap_afiliado_pagamentos "
+                "WHERE status='enviando' AND IFNULL(lote_ref,'')<>''").fetchall()]
+            for ref in refs:
+                # o timestamp vai no próprio ref (szaf_l<afid>_<ts>): só mexe se >90s
+                try:
+                    ts = int(ref.rsplit('_', 1)[-1])
+                    if (time.time() - ts) < 90:
+                        continue   # provavelmente um envio em andamento — não atropela
+                except Exception:
+                    pass
+                pago_total += _sz_flush_lote(conn, ref)
+        except Exception as _e:
+            log.warning(f'[SlotZap] recuperar lotes enviando: {_e}')
+
+        # ── Fase B: monta lotes novos a partir das vendas sem repasse ──
+        filtro_camp = ' AND s.campanha_id=? ' if camp_id else ''
+        params = (camp_id,) if camp_id else ()
+        cand = [dict(r) for r in conn.execute(f'''
+            SELECT s.id AS slot_id, s.campanha_id, a.id AS afiliado_id, c.afiliado_comissao AS comissao
+            FROM slotzap_slots s
+            JOIN slotzap_campanhas c ON c.id = s.campanha_id
+            JOIN slotzap_afiliados  a ON a.campanha_id = s.campanha_id AND a.codigo = s.afiliado_codigo
+            LEFT JOIN slotzap_afiliado_pagamentos p ON p.slot_id = s.id
+            WHERE s.status='pago' AND IFNULL(s.afiliado_codigo,'')<>'' AND IFNULL(s.brinde,0)=0
+              AND c.afiliados_ativo=1 AND IFNULL(c.afiliado_comissao,0) > 0
+              AND (p.id IS NULL OR (p.status IN ('pendente','erro') AND IFNULL(p.tentativas,0) < 8))
+              {filtro_camp}
+        ''', params).fetchall()]
+        # agrupa por vendedor
+        por_af = {}
+        for r in cand:
+            por_af.setdefault(r['afiliado_id'], []).append(r)
+        for afid, slots in por_af.items():
+            # ref ÚNICO (random + timestamp no fim): random evita colisão entre workers
+            # do Railway (impede 2 lotes iguais p/ o mesmo número); ts no fim é lido na Fase A.
+            ref = f"szaf_l{afid}_{os.urandom(3).hex()}_{int(time.time())}"
+            try:
+                # garante 1 linha no ledger por slot (cria 'pendente' se faltar)
+                for r in slots:
+                    conn.execute(
+                        "INSERT OR IGNORE INTO slotzap_afiliado_pagamentos "
+                        "(afiliado_id,campanha_id,slot_id,valor,status,criado_em) "
+                        "SELECT ?,?,?,?,?,? WHERE NOT EXISTS "
+                        "(SELECT 1 FROM slotzap_afiliado_pagamentos WHERE slot_id=?)",
+                        (afid, r['campanha_id'], r['slot_id'], float(r['comissao'] or 0), 'pendente',
+                         datetime.now().isoformat(), r['slot_id']))
+                conn.commit()
+                ids = [r['slot_id'] for r in slots]
+                # claim ATÔMICO: só pega as que ainda estão livres (pendente/erro)
+                qs = ','.join('?' * len(ids))
+                conn.execute(
+                    f"UPDATE slotzap_afiliado_pagamentos "
+                    f"SET status='enviando', lote_ref=?, tentativas=IFNULL(tentativas,0)+1 "
+                    f"WHERE slot_id IN ({qs}) AND status IN ('pendente','erro')",
+                    (ref, *ids))
+                conn.commit()
+                pago_total += _sz_flush_lote(conn, ref)
+            except Exception as _e:
+                log.warning(f'[SlotZap] lote afiliado {afid}: {_e}')
+    return round(pago_total, 2)
+
+
 def _sz_comissao_reconciliar_loop():
     """Robô 24/7 (rede de segurança): paga comissões de vendas JÁ pagas e atribuídas
     a um vendedor que ficaram SEM repasse (qualquer caminho que pulou o pagamento inline,
-    corrida, lock do banco, etc.). Idempotente: só processa slots sem NENHUMA linha no
-    ledger; o claim em slotzap_afiliado_pagamentos garante que não paga 2×."""
-    time.sleep(150)  # deixa o app subir
-    log.info('[SlotZap] Reconciliador de COMISSÕES ATIVO (verifica a cada 3 min)')
+    corrida, trava anti-duplicata do Asaas, lock do banco, etc.). Agora paga EM LOTE
+    (1 PIX por vendedor) via _sz_pagar_pendentes — idempotente e à prova de queda."""
+    time.sleep(120)  # deixa o app subir
+    log.info('[SlotZap] Reconciliador de COMISSÕES ATIVO (lote, verifica a cada ~75s)')
     while True:
         try:
             conn = get_saas_db()
-            pend = [dict(r) for r in conn.execute('''
-                SELECT s.id AS slot_id, s.numero, s.afiliado_codigo, s.campanha_id,
-                       c.nome AS camp_nome, c.afiliados_ativo, c.afiliado_comissao
-                FROM slotzap_slots s
-                JOIN slotzap_campanhas c ON c.id = s.campanha_id
-                WHERE s.status='pago' AND IFNULL(s.afiliado_codigo,'') <> ''
-                  AND IFNULL(s.brinde,0)=0
-                  AND c.afiliados_ativo=1 AND IFNULL(c.afiliado_comissao,0) > 0
-                  AND NOT EXISTS (SELECT 1 FROM slotzap_afiliado_pagamentos p
-                                  WHERE p.slot_id = s.id
-                                    AND (p.status='pago' OR IFNULL(p.tentativas,0) >= 8))
-            ''').fetchall()]
-            for s in pend:
-                camp = {'id': s['campanha_id'], 'nome': s['camp_nome'],
-                        'afiliados_ativo': s['afiliados_ativo'],
-                        'afiliado_comissao': s['afiliado_comissao']}
-                slot = {'id': s['slot_id'], 'numero': s['numero'],
-                        'afiliado_codigo': s['afiliado_codigo']}
-                try:
-                    _sz_pagar_afiliados(conn, camp, [slot])
-                    log.info(f"[SlotZap] Reconciliador comissão: processou slot {s['slot_id']} (nº {s['numero']})")
-                except Exception as _e:
-                    log.warning(f"[SlotZap] Reconciliador comissão slot {s['slot_id']}: {_e}")
+            pago = _sz_pagar_pendentes(conn)
+            if pago:
+                log.info(f'[SlotZap] Reconciliador comissão: liquidou R${pago:.2f} em lote(s)')
         except Exception as _e:
             log.error(f'[SlotZap] reconciliador comissão loop: {_e}')
         finally:
             try: conn.close()
             except Exception: pass
-        time.sleep(180)  # a cada 3 minutos
+        time.sleep(75)  # rede de segurança rápida
 
 
 threading.Thread(target=_sz_comissao_reconciliar_loop, daemon=True, name='sz-comissao-recon').start()
@@ -16264,6 +16391,29 @@ def slotzap_afiliados_config(camp_id):
                  'WHERE id=? AND user_id=?', (ativo, comissao, grupo, camp_id, _sz_uid()))
     conn.commit(); conn.close()
     return jsonify({'ok': True, 'ativo': ativo, 'comissao': comissao})
+
+
+@app.route('/slotzap/campanha/<int:camp_id>/afiliados/pagar-pendentes', methods=['POST'])
+@_sz_login_required
+def slotzap_afiliados_pagar_pendentes(camp_id):
+    """Botão do dono: paga AGORA todas as comissões pendentes/erro desta campanha,
+    agrupadas por vendedor (1 PIX cada). Mesma engine do reconciliador, idempotente."""
+    if not _sz_plan_active():
+        return jsonify({'erro': 'assinatura inativa'}), 403
+    conn = get_saas_db()
+    camp = conn.execute('SELECT id FROM slotzap_campanhas WHERE id=? AND user_id=?',
+                        (camp_id, _sz_uid())).fetchone()
+    if not camp:
+        conn.close()
+        return jsonify({'erro': 'Campanha não encontrada'}), 404
+    try:
+        pago = _sz_pagar_pendentes(conn, camp_id)
+    except Exception as _e:
+        log.warning(f'[SlotZap] pagar-pendentes manual camp {camp_id}: {_e}')
+        conn.close()
+        return jsonify({'erro': 'Falha ao processar — tente de novo.'}), 500
+    conn.close()
+    return jsonify({'ok': True, 'pago': pago})
 
 
 @app.route('/webhook/asaas/saque-validacao', methods=['POST'])

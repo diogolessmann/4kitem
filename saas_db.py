@@ -845,6 +845,10 @@ def init_slotzap_db():
         "CREATE INDEX IF NOT EXISTS idx_sz_afilpag_afil ON slotzap_afiliado_pagamentos(afiliado_id)",
         # Conta tentativas de pagamento — limita o retry do reconciliador (chave PIX inválida etc.)
         "ALTER TABLE slotzap_afiliado_pagamentos ADD COLUMN tentativas INTEGER DEFAULT 0",
+        # Ref do LOTE: agrupa comissões do mesmo vendedor num único PIX (foge da trava
+        # anti-duplicata do Asaas p/ valores iguais). 'enviando' + lote_ref = claim atômico
+        # (impossível pagar 2×, mesmo se o servidor cair no meio do envio).
+        "ALTER TABLE slotzap_afiliado_pagamentos ADD COLUMN lote_ref TEXT DEFAULT ''",
     ]
     for sql in _sz_migrations:
         try:

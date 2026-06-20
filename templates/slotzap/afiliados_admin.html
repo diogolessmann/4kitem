@@ -84,7 +84,7 @@ input:focus{border-color:#6366f1}
     <button class="btn btn-save" onclick="salvar()">💾 Salvar configuração</button>
     <div class="msg" id="msg"></div>
 
-    <div class="aviso">⚡ Comissão é paga <b>na hora</b>, por PIX, a cada número que o vendedor vende. Pagamentos com falha aparecem com 🔴 na lista abaixo (resolva manualmente).</div>
+    <div class="aviso">⚡ Comissão é paga <b>na hora</b>, por PIX. Quando um vendedor vende vários números juntos, o sistema junta tudo num <b>único PIX</b> (mais rápido e sem travar). Se algo ficar com 🔴 falha, é só clicar em <b>Pagar pendentes agora</b>.</div>
   </div>
 
   <!-- Recrutar -->
@@ -101,6 +101,10 @@ input:focus{border-color:#6366f1}
   <!-- Lista -->
   <div class="card">
     <h2>🏆 Vendedores ({{ afs|length }})</h2>
+    {% if afs %}
+    <button class="btn" style="width:100%;margin-bottom:14px;background:linear-gradient(135deg,#16a34a,#22c55e)" onclick="pagarPendentes()">💸 Pagar pendentes agora</button>
+    <div class="msg" id="msgpag"></div>
+    {% endif %}
     {% if afs %}
     <table class="tabela">
       <thead><tr><th>Vendedor</th><th>Vendas</th><th>Pago</th><th>Ações</th></tr></thead>
@@ -150,6 +154,19 @@ function copiar(el, txt){
     const o=el.textContent; el.textContent='✅ Copiado!';
     setTimeout(()=>el.textContent=o, 1800);
   });
+}
+function pagarPendentes(){
+  const m = document.getElementById('msgpag');
+  m.style.color = '#8888aa'; m.textContent = '⏳ Pagando comissões pendentes...';
+  fetch(`/slotzap/campanha/${CAMP_ID}/afiliados/pagar-pendentes`, {method:'POST'})
+    .then(r=>r.json()).then(r=>{
+      if(r.ok){
+        m.style.color='#22c55e';
+        m.textContent = r.pago>0 ? `✅ Pago R$ ${r.pago.toFixed(2)} em comissões! Atualizando...`
+                                 : '✅ Nada pendente — tudo já está pago!';
+        if(r.pago>0) setTimeout(()=>location.reload(), 1800);
+      } else { m.style.color='#fca5a5'; m.textContent='⚠️ '+(r.erro||'Erro'); }
+    }).catch(()=>{ m.style.color='#fca5a5'; m.textContent='⚠️ Erro de conexão'; });
 }
 </script>
 </body>

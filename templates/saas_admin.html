@@ -88,6 +88,7 @@
     <button class="tab-btn" onclick="showTab('pcd',this)">🧭 PCD Fácil ({{ pcd_users|length }})</button>
     <button class="tab-btn" onclick="showTab('radar',this)">📡 Radar TI ({{ radar_users|length }})</button>
     <button class="tab-btn" onclick="showTab('licita',this)">🗞️ Licita Norte ({{ licita_users|length }})</button>
+    <button class="tab-btn" onclick="showTab('somaja',this)">🐗 SomaJá ({{ somaja_users|length }})</button>
   </div>
 
   <!-- ═══════════════ ALERTA SC ═══════════════ -->
@@ -771,6 +772,43 @@
     </table>
     {% else %}
     <div class="empty">Nenhum usuário DRZAP ainda.</div>
+    {% endif %}
+  </div>
+
+  <!-- SomaJá -->
+  <div class="tab-content" id="tab-somaja">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+      <h2 style="margin:0">🐗 Usuários — SomaJá</h2>
+      <div style="display:flex;gap:18px;font-size:13px;color:var(--text2)">
+        <span>👤 {{ somaja_users|length }} usuários</span>
+        <span style="color:#22c55e;font-weight:700">✅ {{ somaja_ativos }} ativos</span>
+        <span>🧾 {{ somaja_lancamentos }} lançamentos</span>
+      </div>
+    </div>
+    {% if somaja_users %}
+    <table>
+      <thead><tr>
+        <th>#</th><th>Nome</th><th>Email</th><th>Telefone</th><th>Plano</th><th>Status</th><th>Criado em</th>
+      </tr></thead>
+      <tbody>
+      {% for u in somaja_users %}
+      <tr>
+        <td>{{ u.id }}</td>
+        <td><strong>{{ u.nome }}</strong></td>
+        <td>{{ u.email }}</td>
+        <td>{{ u.telefone or '—' }}</td>
+        <td>{{ u.plano or '—' }}</td>
+        <td>
+          {% if u.plan_active %}<span class="badge badge-active">✅ Ativo</span>
+          {% else %}<span style="color:var(--text2);font-size:12px">🎁 trial {{ (u.trial_until or '')[:10] or '—' }}</span>{% endif %}
+        </td>
+        <td style="font-size:12px">{{ (u.created_at or '')[:10] }}</td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty">Nenhum usuário SomaJá ainda.</div>
     {% endif %}
   </div>
 
