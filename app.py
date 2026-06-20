@@ -2169,6 +2169,16 @@ def webhook_asaas_global():
             except Exception as _pcd_e:
                 log.error(f'[PCD] Webhook error: {_pcd_e}')
 
+    elif ref.startswith('somaja_'):
+        # SomaJá — assinatura mensal/anual: paga=ativa, vence/cancela=corta
+        if customer_id:
+            try:
+                from somaja import soma_webhook_ativar
+                _soma_plano = ref.split('_', 2)[2] if ref.count('_') >= 2 else None
+                soma_webhook_ativar(customer_id, _soma_plano, ativar)
+            except Exception as _soma_e:
+                log.error(f'[SomaJá] Webhook error: {_soma_e}')
+
     elif ref.startswith('radar_') or ref.startswith('licita_'):
         # Radar TI / Radar Licita Norte — assinatura mensal: paga=ativa, vence/cancela=corta
         if customer_id:
@@ -14149,8 +14159,17 @@ try:
     init_drzap_db()
     app.register_blueprint(drzap_bp)
     log.info('[DRZAP] Blueprint registrado em /drzap')
-except Exception as _drz_err:
-    log.warning(f'[DRZAP] Erro ao carregar blueprint: {_drz_err}')
+except Exception as _e:
+    log.error(f'[DRZAP] Falha ao registrar: {_e}')
+
+try:
+    from somaja import somaja_bp
+    from somaja_db import init_somaja_db
+    init_somaja_db()
+    app.register_blueprint(somaja_bp)
+    log.info('[SomaJá] Blueprint registrado em /somaja')
+except Exception as _soma_err:
+    log.warning(f'[SomaJá] Erro ao carregar blueprint: {_soma_err}')
 
 # ══════════════════════════════════════════════════════════════════════════════
 # RADAR — Monitor de Licitações de TI (PNCP) — Lote 0+1
@@ -16109,6 +16128,31 @@ def slotzap_afiliados_config(camp_id):
                  'WHERE id=? AND user_id=?', (ativo, comissao, grupo, camp_id, _sz_uid()))
     conn.commit(); conn.close()
     return jsonify({'ok': True, 'ativo': ativo, 'comissao': comissao})
+
+
+@app.route('/webhook/asaas/saque-validacao', methods=['POST'])
+def asaas_saque_validacao():
+    """Webhook de VALIDAÇÃO DE SAQUE do Asaas (Integrações → Segurança).
+    O Asaas chama esta URL pra cada transferência via API; respondemos APPROVED/REFUSED.
+    Aprova automaticamente APENAS os saques que o SlotZap gerou (comissão de afiliado,
+    externalReference 'szaf_'); recusa qualquer outro — anti-abuso se a chave vazar."""
+    token_cfg = os.environ.get('ASAAS_SAQUE_TOKEN', '')
+    token_req = (request.headers.get('asaas-access-token')
+                 or request.headers.get('Asaas-Access-Token') or '')
+    if token_cfg and token_req != token_cfg:
+        log.warning('[SlotZap] saque-validacao: token invalido')
+        return jsonify({'status': 'REFUSED', 'refuseReason': 'token invalido'}), 200
+    data     = request.get_json(silent=True) or {}
+    transfer = data.get('transfer') or {}
+    ext      = (transfer.get('externalReference') or '')
+    val      = transfer.get('value')
+    # Aprova comissões do SlotZap. Sem ref (ext vazio) também aprova: nesta conta todo
+    # saque via API é comissão de afiliado iniciada por nós.
+    if ext.startswith('szaf_') or ext == '':
+        log.info(f'[SlotZap] saque-validacao APPROVED ref={ext} valor={val}')
+        return jsonify({'status': 'APPROVED'}), 200
+    log.warning(f'[SlotZap] saque-validacao REFUSED ref={ext} valor={val}')
+    return jsonify({'status': 'REFUSED', 'refuseReason': 'saque nao reconhecido pelo SlotZap'}), 200
 
 
 def _sz_check_senha_conta(conn, senha):
