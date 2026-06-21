@@ -76,6 +76,32 @@
   </div>
   {% endif %}
 
+  {% set tem_produto = stats.total_produtos > 0 %}
+  {% set tem_pix = store.pix_chave %}
+  {% if not (tem_produto and tem_pix) %}
+  <!-- Checklist de ativação (some quando a loja está pronta pra vender) -->
+  <div style="background:linear-gradient(135deg,rgba(249,115,22,.12),rgba(234,88,12,.05));border:1px solid rgba(249,115,22,.25);border-radius:16px;padding:16px 18px;margin-top:18px">
+    <b style="font-size:15px;color:#F97316">🚀 Falta pouco pra vender!</b>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-top:12px">
+      <a href="/mandaja/produtos/novo" style="display:flex;align-items:center;gap:10px;font-size:14px;color:{{ '#86efac' if tem_produto else '#e6e6ee' }}">
+        <span style="font-size:18px">{{ '✅' if tem_produto else '1️⃣' }}</span>
+        <span style="flex:1;{{ 'text-decoration:line-through;opacity:.6' if tem_produto else '' }}">Adicione seu primeiro produto</span>
+        {% if not tem_produto %}<span style="color:#F97316;font-weight:700">›</span>{% endif %}
+      </a>
+      <a href="/mandaja/configuracoes" style="display:flex;align-items:center;gap:10px;font-size:14px;color:{{ '#86efac' if tem_pix else '#e6e6ee' }}">
+        <span style="font-size:18px">{{ '✅' if tem_pix else '2️⃣' }}</span>
+        <span style="flex:1;{{ 'text-decoration:line-through;opacity:.6' if tem_pix else '' }}">Configure sua chave PIX (pra receber)</span>
+        {% if not tem_pix %}<span style="color:#F97316;font-weight:700">›</span>{% endif %}
+      </a>
+      <a href="/mandajr/compartilhar" style="display:flex;align-items:center;gap:10px;font-size:14px;color:#e6e6ee">
+        <span style="font-size:18px">3️⃣</span>
+        <span style="flex:1">Compartilhe o link da sua loja</span>
+        <span style="color:#F97316;font-weight:700">›</span>
+      </a>
+    </div>
+  </div>
+  {% endif %}
+
   <!-- Aberto / Fechado -->
   <div class="switch-card">
     <div class="st" id="stLabel">
