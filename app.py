@@ -9293,6 +9293,12 @@ MZ_BATCH_SIZE = int(os.environ.get('MZ_BATCH_SIZE', '30'))
 # que é suicídio). A faixa segura de número aquecido é 80–200/dia; 150 é o ponto conservador.
 MZ_DAILY_HARD_CAP = int(os.environ.get('MZ_DAILY_HARD_CAP', '150'))
 
+# R1 anti-ban: a pré-validação em massa (/chat/whatsappNumbers) é um gatilho de ban,
+# sobretudo em chip novo. Só pré-valida quando o número mais novo do pool já estiver
+# maduro (>= dias abaixo). MZ_PREVALIDATE=0 desliga a pré-validação de vez.
+MZ_PREVALIDATE         = os.environ.get('MZ_PREVALIDATE', '1') not in ('0', 'false', 'False', '')
+MZ_PREVALIDATE_MIN_AGE = int(os.environ.get('MZ_PREVALIDATE_MIN_AGE', '7'))
+
 
 def _mz_warmup_cap(days_active: int) -> int:
     """Teto diário de mensagens conforme a idade do número (curva de aquecimento)."""
@@ -9737,38 +9743,40 @@ def _dispatch_campaign_inner(cid: int, user_id: int, delay_s: int = 3, continuar
     instance  = senders[0]['instance']  # número conectado p/ a pré-validação em lote
     log.info(f"Campanha {cid}: pool de {len(senders)} número(s), capacidade hoje={total_cap} (multi={multi})")
 
-    # ── Pré-validação de números ─────────────────────────────────────────────
-    # Verifica em lote quais phones existem no WhatsApp ANTES de enviar.
-    # Elimina os inválidos da fila — evita HTTP 400 "exists:false" confundidos
-    # com ban e reduz API calls desnecessários.
+    # ── Pré-validação de números (R1: só com número MADURO) ─────────────────
+    # Checar centenas de números no /chat/whatsappNumbers ANTES de enviar é um GATILHO
+    # de ban (Evolution #2228), principalmente com CHIP NOVO. Então só pré-validamos
+    # quando o número mais novo do pool já está maduro (>= MZ_PREVALIDATE_MIN_AGE dias)
+    # e a feature está ligada. Senão, PULA: inválidos são filtrados INLINE no envio
+    # (_is_invalid_number → 'exists:false' já é tratado como pular, não como ban).
     def _norm(p):
         p = (p or '').replace(' ','').replace('-','').replace('+','').replace('(','').replace(')','')
         return ('55' + p) if p and not p.startswith('55') else p
 
-    raw_phones = [_norm(c.get('phone','')) for c in contacts if c.get('phone')]
-    raw_phones = [p for p in raw_phones if p]
-
-    log.info(f"Campanha {cid}: pré-validando {len(raw_phones)} números no WhatsApp...")
-    conn.execute("UPDATE mandazap_campaigns SET error_log=? WHERE id=?",
-                 (f'Validando {len(raw_phones)} números... aguarde.', cid))
-    conn.commit()
-
-    valid_keys = _validate_numbers_batch(evo_url, evo_key, instance, raw_phones)
-
-    # Filtra mantendo só os válidos (casando pela chave canônica do 9º dígito)
-    contacts_valid = [c for c in contacts if _mz_phone_key(_norm(c.get('phone',''))) in valid_keys]
-
-    # Rede de segurança: se a validação derrubou mais da metade de uma lista grande,
-    # provavelmente foi falha de matching/API — confia na lista completa em vez de furar tudo.
-    if len(contacts) >= 20 and len(contacts_valid) < 0.5 * len(contacts):
-        log.warning(f"Campanha {cid}: validação suspeita ({len(contacts_valid)}/{len(contacts)} válidos) "
-                    f"— usando a lista completa (provável falha de validação)")
-        invalid_count = 0
+    _youngest_age   = min((_mz_number_age_days(s['row']) for s in senders), default=999)
+    _do_prevalidate = MZ_PREVALIDATE and _youngest_age >= MZ_PREVALIDATE_MIN_AGE
+    invalid_count   = 0
+    if _do_prevalidate:
+        raw_phones = [_norm(c.get('phone','')) for c in contacts if c.get('phone')]
+        raw_phones = [p for p in raw_phones if p]
+        log.info(f"Campanha {cid}: pré-validando {len(raw_phones)} números no WhatsApp...")
+        conn.execute("UPDATE mandazap_campaigns SET error_log=? WHERE id=?",
+                     (f'Validando {len(raw_phones)} números... aguarde.', cid))
+        conn.commit()
+        valid_keys     = _validate_numbers_batch(evo_url, evo_key, instance, raw_phones)
+        contacts_valid = [c for c in contacts if _mz_phone_key(_norm(c.get('phone',''))) in valid_keys]
+        # Rede de segurança: se derrubou >50% de lista grande, usa a lista completa.
+        if len(contacts) >= 20 and len(contacts_valid) < 0.5 * len(contacts):
+            log.warning(f"Campanha {cid}: validação suspeita ({len(contacts_valid)}/{len(contacts)} válidos) "
+                        f"— usando a lista completa (provável falha de validação)")
+        else:
+            invalid_count = len(contacts) - len(contacts_valid)
+            contacts = contacts_valid
+        log.info(f"Campanha {cid}: {len(contacts)} na fila, {invalid_count} sem WhatsApp removidos")
     else:
-        invalid_count = len(contacts) - len(contacts_valid)
-        contacts = contacts_valid
+        log.info(f"Campanha {cid}: pré-validação PULADA (nº mais novo={_youngest_age}d / feature off) "
+                 f"— inválidos filtrados no envio. {len(contacts)} na fila.")
 
-    log.info(f"Campanha {cid}: {len(contacts)} na fila, {invalid_count} sem WhatsApp removidos")
     total_real = prev_sent + len(contacts)
     conn.execute("UPDATE mandazap_campaigns SET total=?, error_log=? WHERE id=?",
                  (total_real,
