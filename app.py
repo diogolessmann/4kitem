@@ -9594,6 +9594,7 @@ def _dispatch_campaign_inner(cid: int, user_id: int, delay_s: int = 3, continuar
         'id': nr['id'],
         'instance': f"mz{user_id}n{nr['id']}",
         'row': nr,
+        'cap': _mz_effective_daily_cap(nr, per_num_plan, plan_info.get('daily_safe_cap')),  # C2: teto real do dia
         'remaining': _mz_number_remaining(conn, nr, per_num_plan, plan_info.get('daily_safe_cap')),
         'sent': 0,
     } for nr in num_rows]
@@ -9863,6 +9864,17 @@ def _dispatch_campaign_inner(cid: int, user_id: int, delay_s: int = 3, continuar
             sender['sent']      += 1
             sender['remaining'] -= 1
             _mz_inc_number_sent(sender['id'])  # contador diário deste número
+            # C2: a cada 10 envios, re-sincroniza o teto real do banco. Protege contra DUAS
+            # campanhas do mesmo usuário no mesmo número (cada uma tinha o snapshot inteiro →
+            # mandaria 2× o cap = ban). Só APERTA o remaining; nunca aumenta além do cap.
+            if sent_count % 10 == 0:
+                try:
+                    _rc = get_saas_db()
+                    for _s in senders:
+                        _s['remaining'] = min(_s['remaining'], max(0, _s['cap'] - _mz_number_sent_today(_rc, _s['id'])))
+                    _rc.close()
+                except Exception as _re_sync:
+                    log.warning(f"C2 re-sync error: {_re_sync}")
             # Registra no log de enviados para poder continuar de onde parou
             try:
                 _log = get_saas_db()
