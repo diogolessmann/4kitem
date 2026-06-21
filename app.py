@@ -7519,7 +7519,7 @@ def mandazap_cadastro():
                 conn.close()
             else:
                 now   = datetime.now()
-                trial = (now + timedelta(days=7)).isoformat()
+                trial = (now + timedelta(days=2)).isoformat()   # trial curto = força a compra (decisão do Diogo)
                 conn.execute(
                     'INSERT INTO mandazap_users (name, email, password_hash, phone, cpf_cnpj, plan, created_at, trial_ends) VALUES (?,?,?,?,?,?,?,?)',
                     (name, email, generate_password_hash(password), phone, cpf_cnpj, 'solo', now.isoformat(), trial)
@@ -7534,7 +7534,7 @@ def mandazap_cadastro():
                 if email:
                     _enviar_email(
                         email,
-                        '📲 Bem-vindo ao MandaZap — 7 dias grátis!',
+                        '📲 Bem-vindo ao MandaZap — 2 dias grátis!',
                         _email_boas_vindas(
                             'MandaZap', '📲', '#22c55e',
                             name.split()[0],
