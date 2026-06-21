@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cozinha — {{ store.name }}</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#07070E;color:#EEEEF5;font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+  .card{max-width:360px;width:100%;text-align:center}
+  .em{font-size:48px;margin-bottom:12px}
+  h1{font-size:22px;font-weight:900;margin-bottom:4px}
+  .store{font-size:14px;color:#8888aa;margin-bottom:24px}
+  form{display:flex;flex-direction:column;gap:14px}
+  input{background:#13131f;border:1.5px solid rgba(249,115,22,.3);border-radius:14px;padding:18px;color:#fff;font-size:32px;font-weight:900;text-align:center;letter-spacing:12px;outline:none;font-family:inherit}
+  input:focus{border-color:#F97316}
+  button{background:linear-gradient(135deg,#ea580c,#f97316);color:#fff;font-size:16px;font-weight:800;border:none;border-radius:13px;padding:16px;cursor:pointer}
+  .err{background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.4);color:#fca5a5;font-size:13px;font-weight:600;border-radius:10px;padding:11px;margin-bottom:14px}
+  .hint{font-size:12px;color:#666;margin-top:16px;line-height:1.5}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="em">👨‍🍳</div>
+  <h1>Tela da Cozinha</h1>
+  <div class="store">{{ store.name }}</div>
+  {% if erro %}<div class="err">⚠️ PIN incorreto. Tente de novo.</div>{% endif %}
+  <form method="GET" action="/cozinha/{{ store.slug }}">
+    <input type="tel" name="pin" inputmode="numeric" maxlength="4" placeholder="••••" autofocus required pattern="[0-9]{4}">
+    <button type="submit">Entrar →</button>
+  </form>
+  <div class="hint">O PIN aparece no painel do dono, no botão "Tela cozinha".<br>É só digitar uma vez neste aparelho.</div>
+</div>
+</body>
+</html>

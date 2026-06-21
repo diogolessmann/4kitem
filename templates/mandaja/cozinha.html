@@ -187,6 +187,14 @@
   </div>
 </div>
 
+{% if is_owner and store.kitchen_pin %}
+<!-- PIN da cozinha (só o dono vê) -->
+<div style="background:rgba(249,115,22,.12);border-bottom:1px solid rgba(249,115,22,.25);padding:10px 16px;text-align:center;font-size:13px;color:#fdba74">
+  🔑 PIN desta cozinha: <strong style="font-size:18px;letter-spacing:3px;color:#F97316">{{ store.kitchen_pin }}</strong>
+  — digite no tablet/celular da cozinha pra abrir sem login.
+</div>
+{% endif %}
+
 <!-- Status bar -->
 <div class="status-bar">
   <div class="stat-chip chip-new">🆕 <span id="countNew">0</span> novos</div>

@@ -17,7 +17,8 @@ import requests
 from datetime import datetime, timedelta, date
 from functools import wraps
 from flask import (Flask, render_template, redirect, jsonify,
-                   request, abort, url_for, session, Response, send_from_directory)
+                   request, abort, url_for, session, Response, send_from_directory,
+                   make_response)
 from werkzeug.security import generate_password_hash, check_password_hash
 
 logging.basicConfig(
@@ -13853,25 +13854,59 @@ def mandaja_financeiro():
                            pedidos=[dict(p) for p in pedidos_list])
 
 
-# ── Tela da Cozinha (sem login — acesso via slug) ────────────────────────────
+# ── Tela da Cozinha (protegida por PIN — acesso via slug público) ────────────
+def _cozinha_autorizado(store):
+    """Pode ver a cozinha: dono logado OU PIN certo (na URL ou no cookie)."""
+    if session.get('mja_store_id') == store['id']:
+        return True
+    pin = store.get('kitchen_pin') or ''
+    if not pin:
+        return False
+    return request.args.get('pin') == pin or request.cookies.get(f"coz_{store['id']}") == pin
+
+
+def _cozinha_ensure_pin(store, conn):
+    """Gera o PIN de 4 dígitos na primeira vez que o dono abre a cozinha."""
+    if not store.get('kitchen_pin'):
+        pin = f"{random.randint(1000, 9999)}"
+        conn.execute('UPDATE mandaja_stores SET kitchen_pin=? WHERE id=?', (pin, store['id']))
+        conn.commit()
+        store['kitchen_pin'] = pin
+    return store['kitchen_pin']
+
+
 @app.route('/cozinha/<slug>')
 def mandaja_cozinha(slug):
     conn  = get_saas_db()
     store = conn.execute('SELECT * FROM mandaja_stores WHERE slug=? AND active=1', (slug,)).fetchone()
-    conn.close()
     if not store:
+        conn.close()
         return 'Loja não encontrada', 404
-    return render_template('mandaja/cozinha.html', store=dict(store))
+    store = dict(store)
+    is_owner = session.get('mja_store_id') == store['id']
+    if is_owner:
+        _cozinha_ensure_pin(store, conn)   # dono logado gera o PIN na 1ª vez
+    conn.close()
+    if not _cozinha_autorizado(store):
+        return render_template('mandaja/cozinha_pin.html', store=store,
+                               erro=bool(request.args.get('pin')))
+    resp = make_response(render_template('mandaja/cozinha.html', store=store, is_owner=is_owner))
+    resp.set_cookie(f"coz_{store['id']}", store['kitchen_pin'] or '',
+                    max_age=60 * 60 * 24 * 30, samesite='Lax')
+    return resp
 
 
 @app.route('/cozinha/<slug>/api')
 def mandaja_cozinha_api(slug):
     """API de polling para a tela da cozinha — retorna pedidos ativos."""
     conn  = get_saas_db()
-    store = conn.execute('SELECT id FROM mandaja_stores WHERE slug=? AND active=1', (slug,)).fetchone()
+    store = conn.execute('SELECT id, kitchen_pin FROM mandaja_stores WHERE slug=? AND active=1', (slug,)).fetchone()
     if not store:
         conn.close()
         return jsonify({'error': 'not found'}), 404
+    if not _cozinha_autorizado(dict(store)):
+        conn.close()
+        return jsonify({'error': 'auth'}), 401
     rows = conn.execute(
         "SELECT id, order_number, customer_name, delivery_type, customer_notes, "
         "items_json, status, created_at, updated_at "
@@ -13898,6 +13933,9 @@ def mandaja_cozinha_status(slug):
         conn.close()
         return jsonify({'error': 'not found'}), 404
     store      = dict(store)
+    if not _cozinha_autorizado(store):
+        conn.close()
+        return jsonify({'error': 'auth'}), 401
     data       = request.json or {}
     order_id   = data.get('order_id')
     new_status = data.get('status')

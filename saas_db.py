@@ -522,6 +522,8 @@ def init_saas_db():
         "ALTER TABLE mandaja_stores ADD COLUMN delivery_zones TEXT DEFAULT ''",
         # Token público pra página "acompanhe seu pedido"
         "ALTER TABLE mandaja_orders ADD COLUMN track_token TEXT DEFAULT ''",
+        # PIN da tela da cozinha (protege o acesso via slug público)
+        "ALTER TABLE mandaja_stores ADD COLUMN kitchen_pin TEXT DEFAULT ''",
     ]
     # ── DefesaPro / apps gerais — reset de senha e Asaas ────────────────────────
     _auth_migrations = [
