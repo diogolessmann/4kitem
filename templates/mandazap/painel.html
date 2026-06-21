@@ -903,7 +903,13 @@ select option{background:var(--surface2)}
             oninput="mzRenderRisk()"
             style="width:100%;min-height:200px;background:rgba(34,197,94,.04);border:1px solid rgba(34,197,94,.25);border-radius:10px;padding:10px 12px;color:#f0f0ff;font-size:13px;font-family:inherit;outline:none;resize:vertical;line-height:1.6"
             required></textarea>
-          <div style="font-size:11px;color:var(--text2);margin-top:4px">
+          <div style="margin-top:7px">
+            <button type="button" onclick="mzPedirResposta()" title="Adiciona uma chamada pedindo resposta — o que mais protege seu número de bloqueio"
+              style="background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.35);border-radius:8px;padding:7px 13px;font-size:12px;font-weight:800;color:#22c55e;cursor:pointer;font-family:inherit">
+              💬 Pedir resposta <span style="font-weight:400;opacity:.8">(protege o número)</span>
+            </button>
+          </div>
+          <div style="font-size:11px;color:var(--text2);margin-top:6px">
             ↑ Revise e edite se quiser. Use <code style="background:rgba(255,255,255,.07);padding:1px 5px;border-radius:4px">{nome}</code> para personalizar por contato.
           </div>
         </div>
@@ -1151,6 +1157,14 @@ function mzAnalyzeRisk(text) {
     items.push({lvl:'ok', t:'Tem opção de sair (reduz denúncia)'});
   else { score -= 12; items.push({lvl:'warn', t:'Sem saída. Adicione "responda SAIR pra não receber".'}); }
 
+  // PEDIR RESPOSTA — o sinal Nº1 anti-ban. Número que CONVERSA (recebe resposta)
+  // quase não é bloqueado. É o fator que mais protege o chip — por isso pesa muito.
+  const pedeResposta = /\b(responda|me\s+responde|me\s+chama|me\s+avisa|me\s+diz\w*|me\s+conta|tem\s+interesse|quer\s+(saber|conhecer|ver|garantir|receber|um))\b/i.test(text)
+                       || /\bmanda\s+(um|a[íi])\b/i.test(text)
+                       || /\?\s*$/.test(text.trim());
+  if (pedeResposta) items.push({lvl:'ok', t:'💬 Pede resposta — é o que MAIS protege o número'});
+  else { score -= 18; items.push({lvl:'bad', t:'Não pede resposta! Termine com uma pergunta ou "responda SIM" — é o Nº1 contra bloqueio.'}); }
+
   // Spintax
   if (/\{[^{}]*\|[^{}]*\}/.test(text)) items.push({lvl:'ok', t:'Tem variações {a|b} — cada envio sai único'});
   else { score -= 15; items.push({lvl:'warn', t:'Sem variações. Use o botão "Otimizar Anti-Spam".'}); }
@@ -1178,6 +1192,26 @@ function mzAnalyzeRisk(text) {
 
   score = Math.max(0, Math.min(100, score));
   return { score, items };
+}
+
+// Insere uma chamada pedindo resposta (o sinal nº1 anti-ban) na mensagem final
+function mzPedirResposta() {
+  const b = document.getElementById('campanha-message');
+  if (!b) return;
+  const st = document.getElementById('otimizar-status');
+  if (/responda|me\s+responde|me\s+chama|tem\s+interesse|quer\s+saber|manda\s+um/i.test(b.value) || /\?\s*$/.test(b.value.trim())) {
+    if (st) st.textContent = '✅ Sua mensagem já pede resposta!';
+    mzRenderRisk(); return;
+  }
+  const ctas = [
+    '\n\nResponda *SIM* que eu te passo todos os detalhes! 😊',
+    '\n\nQuer saber mais? Me responde aqui que eu te explico! 👇',
+    '\n\nTem interesse? Manda um *oi* que eu te conto tudo! 🙌',
+    '\n\nPosso te passar os detalhes? É só responder! 🙂'
+  ];
+  b.value = b.value.replace(/\s+$/, '') + ctas[Math.floor(Math.random() * ctas.length)];
+  b.focus();
+  mzRenderRisk();
 }
 
 function mzRenderRisk() {
