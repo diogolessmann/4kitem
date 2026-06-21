@@ -2313,7 +2313,8 @@ def webhook_asaas_global():
             try:
                 from somaja import soma_webhook_ativar
                 _soma_plano = ref.split('_', 2)[2] if ref.count('_') >= 2 else None
-                soma_webhook_ativar(customer_id, _soma_plano, ativar)
+                soma_webhook_ativar(customer_id, _soma_plano, ativar,
+                                    payload.get('payment', {}).get('id', ''))
             except Exception as _soma_e:
                 log.error(f'[SomaJá] Webhook error: {_soma_e}')
 
@@ -8358,7 +8359,18 @@ def mz_webhook_evolution():
         return jsonify({'ok': False}), 200          # 200 p/ a Evolution não reenviar em loop
 
 
-# ── Upload de mídia ────────────────────────────────────────────────────────────
+# ── Upload de mídia (motor do MandaJá: volume persistente + compressão) ─────────
+# Hospeda local (sem Imgur), no DATA_DIR (não some no redeploy). Comprime forte:
+# imagem pesada (até 15MB) → JPEG 1280px q80 (ex.: 10MB → ~150KB). URL pública completa
+# (MZ_PUBLIC_URL) porque a Evolution busca a imagem de FORA do app.
+MANDAZAP_UPLOAD_DIR = os.path.join(
+    os.environ.get('DATA_DIR', os.path.dirname(__file__)), 'uploads', 'mandazap')
+
+
+@app.route('/uploads/mandazap/<path:filename>')
+def mandazap_uploaded_file(filename):
+    return send_from_directory(MANDAZAP_UPLOAD_DIR, filename)
+
 
 @app.route('/mandazap/upload', methods=['POST'])
 def mz_upload():
@@ -8371,28 +8383,43 @@ def mz_upload():
     if not f or not f.filename:
         return jsonify({'erro': 'Nenhum arquivo enviado'}), 400
 
-    import uuid
     ext = f.filename.rsplit('.', 1)[-1].lower() if '.' in f.filename else 'jpg'
-    allowed = {'jpg', 'jpeg', 'png', 'gif', 'webp'}
-    if ext not in allowed:
-        return jsonify({'erro': 'Tipo não permitido. Use: JPG, PNG, GIF ou WEBP'}), 400
+    f.seek(0, 2); size = f.tell(); f.seek(0)
+    if size > 15 * 1024 * 1024:                       # entrada generosa — vamos comprimir
+        return jsonify({'erro': f'Arquivo muito grande ({size//1024//1024}MB). Limite: 15MB'}), 400
 
-    # Limite de 3 MB
-    f.seek(0, 2)
-    size = f.tell()
-    f.seek(0)
-    if size > 3 * 1024 * 1024:
-        return jsonify({'erro': f'Arquivo muito grande ({size//1024}KB). Limite: 3MB'}), 400
+    os.makedirs(MANDAZAP_UPLOAD_DIR, exist_ok=True)
+    import secrets as _sec
+    base = os.environ.get('MZ_PUBLIC_URL', 'https://4kitem.com.br').rstrip('/')
 
-    upload_dir = os.path.join(os.path.dirname(__file__), 'static', 'mz_uploads')
-    os.makedirs(upload_dir, exist_ok=True)
-    filename = f"u{user_id}_{uuid.uuid4().hex[:10]}.{ext}"
-    f.save(os.path.join(upload_dir, filename))
+    # ── Imagem: comprime forte (PIL → JPEG, redimensiona p/ 1280px) ──
+    if ext in ('jpg', 'jpeg', 'png', 'webp', 'bmp', 'heic', 'heif'):
+        try:
+            from PIL import Image, ImageOps
+            img = Image.open(f.stream)
+            img = ImageOps.exif_transpose(img)        # corrige rotação de foto de celular
+            img = img.convert('RGB')
+            maxd = 1280
+            w, h = img.size
+            if max(w, h) > maxd:
+                if w >= h:
+                    img = img.resize((maxd, round(h * maxd / w)), Image.LANCZOS)
+                else:
+                    img = img.resize((round(w * maxd / h), maxd), Image.LANCZOS)
+            name = f"u{user_id}_{_sec.token_urlsafe(8)}.jpg"
+            img.save(os.path.join(MANDAZAP_UPLOAD_DIR, name), 'JPEG', quality=80, optimize=True)
+            return jsonify({'ok': True, 'url': f"{base}/uploads/mandazap/{name}", 'tipo': 'image'})
+        except Exception as e:
+            log.warning(f'[MandaZap] upload imagem error: {e}')
+            return jsonify({'erro': 'Não consegui processar essa imagem. Tente outra.'}), 400
 
-    # URL pública
-    base = request.host_url.rstrip('/')
-    url  = f"{base}/static/mz_uploads/{filename}"
-    return jsonify({'ok': True, 'url': url})
+    # ── GIF: mantém animado (sem recompressão) ──
+    if ext == 'gif':
+        name = f"u{user_id}_{_sec.token_urlsafe(8)}.gif"
+        f.save(os.path.join(MANDAZAP_UPLOAD_DIR, name))
+        return jsonify({'ok': True, 'url': f"{base}/uploads/mandazap/{name}", 'tipo': 'image'})
+
+    return jsonify({'erro': 'Tipo não permitido. Use JPG, PNG ou GIF. (Vídeo em breve.)'}), 400
 
 
 # ── Contatos ──────────────────────────────────────────────────────────────────
@@ -10175,6 +10202,8 @@ from desp_db import (
     criar_usuario as desp_criar_usuario,
     get_usuario_por_login as desp_get_usuario,
     listar_usuarios as desp_listar_usuarios,
+    listar_usuarios_picker as desp_listar_usuarios_picker,
+    atualizar_foto_usuario as desp_atualizar_foto_usuario,
     toggle_usuario as desp_toggle_usuario,
     atualizar_senha_usuario as desp_atualizar_senha_usuario,
     deletar_usuario as desp_deletar_usuario,
@@ -10249,6 +10278,29 @@ def _desp_is_logged() -> bool:
 def _desp_usuario_atual():
     """Retorna o nome do usuário logado no despachante (para log de movimentações)."""
     return session.get('desp_usuario', DESP_CONFIG.get('nome', 'Sistema'))
+
+
+def _desp_avatar_data_uri(file_storage):
+    """Comprime a foto do usuário (até ~12MB tirada no celular) num avatar
+    quadrado 256px WebP (~15-30KB) e devolve como data URI. Guardado no próprio
+    banco do tenant — não depende de arquivo/volume no Railway. Mesmo motor do
+    MandaJá/MandaJr (PIL + EXIF-transpose + LANCZOS)."""
+    if not file_storage or not getattr(file_storage, 'filename', ''):
+        return None
+    try:
+        from PIL import Image, ImageOps
+        import io, base64
+        img = Image.open(file_storage.stream)
+        img = ImageOps.exif_transpose(img)             # corrige foto girada do celular
+        img = img.convert('RGB')
+        img = ImageOps.fit(img, (256, 256), Image.LANCZOS)  # corta no centro → quadrado
+        buf = io.BytesIO()
+        img.save(buf, 'WEBP', quality=72, method=6)
+        b64 = base64.b64encode(buf.getvalue()).decode('ascii')
+        return f'data:image/webp;base64,{b64}'
+    except Exception as e:
+        log.warning(f'[Desp] avatar compress error: {e}')
+        return None
 
 
 def _desp_money(v) -> float:
@@ -10479,6 +10531,15 @@ def desp_login():
             else:
                 erro = 'Senha incorreta.'
 
+    # Multi-usuário → tela de seleção de rostos (estilo Google/Chrome "Quem está usando?")
+    if desp_contar_usuarios() > 0:
+        return render_template(
+            'despachante/login_picker.html',
+            erro=erro,
+            usuarios=desp_listar_usuarios_picker(),
+            tentou=(request.form.get('usuario') or '').strip().lower(),
+        )
+    # Modo legado (0 usuários): login clássico por senha única
     return render_template('despachante/login.html', erro=erro)
 
 
@@ -10635,8 +10696,9 @@ def desp_usuario_novo():
         from flask import flash
         [flash(e, 'erro') for e in erros]
         return redirect(url_for('desp_usuarios'))
+    foto = _desp_avatar_data_uri(request.files.get('foto'))
     try:
-        desp_criar_usuario(nome, login, generate_password_hash(senha), role)
+        desp_criar_usuario(nome, login, generate_password_hash(senha), role, foto)
     except Exception:
         from flask import flash
         flash('Usuário já existe com esse login.', 'erro')
@@ -10670,6 +10732,21 @@ def desp_usuario_deletar(uid):
         return jsonify({'erro': 'Você não pode deletar a sua própria conta'}), 400
     desp_deletar_usuario(uid)
     return jsonify({'ok': True})
+
+
+@app.route('/despachante/usuarios/<int:uid>/foto', methods=['POST'])
+@_desp_admin_required
+def desp_usuario_foto(uid):
+    """Define/troca o avatar do usuário (comprime a foto enviada do celular).
+    Envie 'foto' (multipart) para definir, ou campo 'remover' p/ tirar a foto."""
+    if (request.form.get('remover') or '').strip():
+        desp_atualizar_foto_usuario(uid, None)
+        return jsonify({'ok': True, 'foto': None})
+    foto = _desp_avatar_data_uri(request.files.get('foto'))
+    if not foto:
+        return jsonify({'erro': 'Não consegui processar essa imagem. Tente outra foto.'}), 400
+    desp_atualizar_foto_usuario(uid, foto)
+    return jsonify({'ok': True, 'foto': foto})
 
 
 # ── Tutorial ──────────────────────────────────────────────────────────────────
@@ -14462,6 +14539,15 @@ try:
     log.info('[SomaJá] Blueprint registrado em /somaja')
 except Exception as _soma_err:
     log.warning(f'[SomaJá] Erro ao carregar blueprint: {_soma_err}')
+
+try:
+    from afiliados import afiliados_bp
+    from afiliados_db import init_afil_db
+    init_afil_db()
+    app.register_blueprint(afiliados_bp)
+    log.info('[Afiliados] Blueprint registrado em /afiliados')
+except Exception as _afil_err:
+    log.warning(f'[Afiliados] Erro ao carregar blueprint: {_afil_err}')
 
 # ══════════════════════════════════════════════════════════════════════════════
 # RADAR — Monitor de Licitações de TI (PNCP) — Lote 0+1

@@ -857,8 +857,17 @@ select option{background:var(--surface2)}
         🔒 <strong>Proteção anti-ban automática:</strong> envios só no horário comercial (8h–21h),
         aquecimento gradual de número novo e ritmo humanizado. Campanhas grandes podem levar horas/dias — é proposital, pra proteger seu número.
       </div>
-      <input type="hidden" name="media_type" value="text">
-      <input type="hidden" name="media_url" value="">
+      <input type="hidden" name="media_type" id="camp-media-type" value="text">
+      <input type="hidden" name="media_url"  id="camp-media-url"  value="">
+
+      <!-- Anexar imagem (opcional) — hospeda local + comprime automático -->
+      <div style="margin-bottom:12px">
+        <label style="font-size:12px;font-weight:700;color:var(--text2);display:block;margin-bottom:5px">🖼️ Imagem (opcional)</label>
+        <input type="file" id="camp-img-input" accept="image/*" onchange="mzUploadCampImg()" style="font-size:12px;color:var(--text2)">
+        <div id="camp-img-preview" style="display:none;margin-top:6px"></div>
+        <button type="button" id="camp-img-remove" onclick="mzRemoveCampImg()" style="display:none;margin-top:6px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:7px;padding:5px 11px;font-size:11px;color:#f87171;cursor:pointer;font-family:inherit">✕ Remover imagem</button>
+        <div style="font-size:11px;color:#fbbf24;margin-top:6px;line-height:1.4">⚠️ Imagem aumenta o risco de bloqueio. Use só com número <strong>aquecido</strong> e <strong>lista quente</strong> — e evite link junto. A imagem é comprimida e hospedada automaticamente.</div>
+      </div>
 
       <!-- Painel duplo: Tela A + Tela B -->
       <div id="campanha-paineis" style="display:grid;grid-template-columns:1fr;gap:12px">
@@ -1438,6 +1447,36 @@ async function uploadMidia(inputId, urlFieldId, previewId) {
     alert('Erro no upload: ' + e.message);
     if (btn) { btn.disabled = false; btn.textContent = '📎 Upload'; }
   }
+}
+
+// ── Imagem da campanha: upload (comprime no servidor) + remover ───────────────
+async function mzUploadCampImg() {
+  const input = document.getElementById('camp-img-input');
+  if (!input || !input.files.length) return;
+  const fd = new FormData(); fd.append('file', input.files[0]);
+  const prev = document.getElementById('camp-img-preview');
+  if (prev) { prev.innerHTML = '<span style="font-size:11px;color:var(--text2)">⏳ Comprimindo e enviando…</span>'; prev.style.display = 'block'; }
+  try {
+    const r = await fetch('/mandazap/upload', { method: 'POST', body: fd });
+    const d = await r.json();
+    if (d.ok) {
+      document.getElementById('camp-media-url').value  = d.url;
+      document.getElementById('camp-media-type').value = 'image';
+      if (prev) prev.innerHTML = `<img src="${d.url}" style="max-width:100%;max-height:140px;border-radius:8px">`;
+      document.getElementById('camp-img-remove').style.display = 'inline-block';
+    } else if (prev) {
+      prev.innerHTML = `<span style="font-size:11px;color:#f87171">❌ ${d.erro || 'Falhou'}</span>`;
+    }
+  } catch (e) {
+    if (prev) prev.innerHTML = `<span style="font-size:11px;color:#f87171">❌ ${e.message}</span>`;
+  }
+}
+function mzRemoveCampImg() {
+  document.getElementById('camp-media-url').value  = '';
+  document.getElementById('camp-media-type').value = 'text';
+  const inp = document.getElementById('camp-img-input'); if (inp) inp.value = '';
+  const prev = document.getElementById('camp-img-preview'); if (prev) { prev.style.display = 'none'; prev.innerHTML = ''; }
+  document.getElementById('camp-img-remove').style.display = 'none';
 }
 
 // ── Disparar campanha agora ───────────────────────────────────────────────────
