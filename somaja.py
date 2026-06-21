@@ -774,12 +774,12 @@ def wa_webhook():
     if request.method == 'GET':
         return jsonify({'status': 'ok'}), 200
     secret = os.environ.get('SOMAJA_WA_WEBHOOK_SECRET', '').strip()
-    if secret:
-        recv = (request.args.get('key', '') or request.headers.get('x-webhook-key', '')).strip()
-        if recv != secret:
-            return jsonify({'error': 'unauthorized'}), 401
-    else:
-        log.warning('[SomaJá] SOMAJA_WA_WEBHOOK_SECRET não setado — webhook aberto!')
+    if not secret:
+        log.error('[SomaJá] SOMAJA_WA_WEBHOOK_SECRET nao configurado — webhook bloqueado.')
+        return jsonify({'error': 'not configured'}), 503
+    recv = (request.args.get('key', '') or request.headers.get('x-webhook-key', '')).strip()
+    if recv != secret:
+        return jsonify({'error': 'unauthorized'}), 401
     return processar_wa_evento(request.get_json(silent=True) or {})
 
 

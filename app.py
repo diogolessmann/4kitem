@@ -20,6 +20,7 @@ from flask import (Flask, render_template, redirect, jsonify,
                    request, abort, url_for, session, Response, send_from_directory,
                    make_response)
 from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.utils import secure_filename
 
 logging.basicConfig(
     level=logging.INFO,
@@ -29,8 +30,62 @@ logging.basicConfig(
 log = logging.getLogger('4kitem')
 
 app = Flask(__name__)
-app.secret_key = os.environ.get('SECRET_KEY', '4kitem-secret-2024-xk91')
+# SECRET_KEY: sem fallback fixo. Sem a env, gera chave aleatória por boot
+# (sessões caem a cada restart, mas NUNCA há chave pública no código-fonte).
+_sk = os.environ.get('SECRET_KEY')
+if not _sk:
+    _sk = os.urandom(32).hex()
+    log.warning('[SECRET_KEY] nao configurada — usando chave aleatoria temporaria. '
+                'Defina SECRET_KEY no ambiente para manter sessoes entre deploys.')
+app.secret_key = _sk
 app.config['TEMPLATES_AUTO_RELOAD'] = True  # templates sempre relidos do disco
+
+
+# ── Headers de segurança (aplicados a todas as respostas) ──────────────────────
+@app.after_request
+def _security_headers(resp):
+    resp.headers.setdefault('X-Content-Type-Options', 'nosniff')
+    resp.headers.setdefault('X-Frame-Options', 'SAMEORIGIN')
+    resp.headers.setdefault('Referrer-Policy', 'strict-origin-when-cross-origin')
+    resp.headers.setdefault('Strict-Transport-Security', 'max-age=31536000')
+    resp.headers.setdefault('Permissions-Policy', 'geolocation=(), microphone=(), camera=()')
+    # Cache de assets estáticos: hoje vinham sem cache (re-download a cada visita).
+    # 7 dias é seguro mesmo sem versionamento de URL; p/ cache imutável de 1 ano,
+    # seria preciso versionar os nomes dos arquivos (polimento futuro).
+    if request.path.startswith('/static/'):
+        resp.headers['Cache-Control'] = 'public, max-age=604800'
+    return resp
+
+
+# ── SEO técnico + páginas legais ───────────────────────────────────────────────
+@app.route('/robots.txt')
+def _robots():
+    body = ('User-agent: *\nAllow: /\nDisallow: /saas-admin\n'
+            'Sitemap: https://4kitem.com.br/sitemap.xml\n')
+    return Response(body, mimetype='text/plain')
+
+
+@app.route('/sitemap.xml')
+def _sitemap():
+    urls = ['/', '/agenda', '/alerta', '/bau', '/mandazap', '/mandaja',
+            '/pubshow', '/slotzap', '/drzap', '/radar/', '/licita-norte/',
+            '/privacidade', '/termos']
+    items = ''.join(
+        '<url><loc>https://4kitem.com.br%s</loc></url>' % u for u in urls)
+    xml = ('<?xml version="1.0" encoding="UTF-8"?>'
+           '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+           + items + '</urlset>')
+    return Response(xml, mimetype='application/xml')
+
+
+@app.route('/privacidade')
+def _privacidade():
+    return render_template('legal/privacidade.html')
+
+
+@app.route('/termos')
+def _termos():
+    return render_template('legal/termos.html')
 
 # ── Sentry — monitoramento de erros em produção ────────────────────────────────
 _SENTRY_DSN = os.environ.get('SENTRY_DSN', '')
@@ -61,12 +116,15 @@ else:
     log.info('[Sentry] SENTRY_DSN não configurado — monitoramento desabilitado')
 
 # ── SaaS admin password ────────────────────────────────────────────────────────
-SAAS_ADMIN_PW = os.environ.get('SAAS_ADMIN_PASSWORD', 'admin4kitem2024')
+SAAS_ADMIN_PW = os.environ.get('SAAS_ADMIN_PASSWORD') or os.urandom(24).hex()
+if not os.environ.get('SAAS_ADMIN_PASSWORD'):
+    log.warning('[SAAS_ADMIN] SAAS_ADMIN_PASSWORD nao configurada — painel admin '
+                'inacessivel ate definir a env (sem senha publica no codigo).')
 
 # ── DEV_WHITELIST — nunca bloqueados pelo anti-golpe (re-cadastro livre) ───────
 # Adicione telefones (apenas dígitos) ou e-mails separados por vírgula na env:
-#   DEV_WHITELIST=47997766831,diogolessmann@gmail.com
-_wl_raw = os.environ.get('DEV_WHITELIST', '47997766831,diogolessmann@gmail.com')
+#   DEV_WHITELIST=5511999999999,voce@exemplo.com
+_wl_raw = os.environ.get('DEV_WHITELIST', '')
 DEV_WHITELIST: set = {x.strip().lower() for x in _wl_raw.split(',') if x.strip()}
 
 # Token de admin/dev por URL — FAIL-CLOSED: só autoriza se DEV_TOKEN estiver
@@ -2069,9 +2127,9 @@ def webhook_asaas_global():
     # no valor da env — causa comum de 401 ao colar o token no Railway)
     token = os.environ.get('ASAAS_WEBHOOK_TOKEN', '').strip().strip('"').strip("'")
     recebido = (request.headers.get('asaas-access-token') or '').strip().strip('"').strip("'")
-    if token and recebido != token:
-        log.warning('[Webhook Asaas] 401 — token nao confere (len env=%d, len recebido=%d)',
-                    len(token), len(recebido))
+    if (not token) or recebido != token:
+        log.warning('[Webhook Asaas] 401 — token ausente/incorreto (len env=%d, len recebido=%d). '
+                    'Configure ASAAS_WEBHOOK_TOKEN no ambiente.', len(token), len(recebido))
         return jsonify({'error': 'unauthorized'}), 401
     try:
         payload = request.get_json(force=True) or {}
@@ -5734,6 +5792,11 @@ def saas_admin_unban():
                 conn = get_kids_conn()
                 conn.execute('DELETE FROM clients WHERE id=?', (registro_id,))
             else:
+                # Anti-SQLi: nome de tabela vem do form; exige identificador SQL válido
+                # (sem espaços/aspas/;/parênteses) — bloqueia injeção sem quebrar tabelas reais.
+                if not _re.match(r'^[A-Za-z_][A-Za-z0-9_]*$', tabela):
+                    return render_template('saas_admin_unban.html', resultado=None,
+                                           mensagem='❌ Nome de tabela inválido.', busca='')
                 conn = get_saas_db()
                 conn.execute(f'DELETE FROM {tabela} WHERE id=?', (registro_id,))
             conn.commit(); conn.close()
@@ -10053,6 +10116,7 @@ from desp_db import (
     listar_usuarios as desp_listar_usuarios,
     toggle_usuario as desp_toggle_usuario,
     atualizar_senha_usuario as desp_atualizar_senha_usuario,
+    deletar_usuario as desp_deletar_usuario,
     registrar_ultimo_login as desp_reg_login,
     contar_usuarios as desp_contar_usuarios,
     # Itens unificados da O.S. (estilo Bludata)
@@ -10535,6 +10599,15 @@ def desp_usuario_reset_senha(uid):
     if len(nova) < 6:
         return jsonify({'erro': 'Senha deve ter pelo menos 6 caracteres'}), 400
     desp_atualizar_senha_usuario(uid, generate_password_hash(nova))
+    return jsonify({'ok': True})
+
+
+@app.route('/despachante/usuarios/<int:uid>/deletar', methods=['POST'])
+@_desp_admin_required
+def desp_usuario_deletar(uid):
+    if uid == session.get('desp_user_id'):
+        return jsonify({'erro': 'Você não pode deletar a sua própria conta'}), 400
+    desp_deletar_usuario(uid)
     return jsonify({'ok': True})
 
 
@@ -12786,7 +12859,7 @@ def desp_rag_upload():
         return jsonify({'erro': 'Formato não suportado. Use PDF, DOC ou DOCX'}), 400
 
     os.makedirs(dest_dir, exist_ok=True)
-    safe_name = f.filename.replace('/', '_').replace('\\', '_')
+    safe_name = secure_filename(f.filename) or 'arquivo'
     dest_path = os.path.join(dest_dir, safe_name)
     f.save(dest_path)
 

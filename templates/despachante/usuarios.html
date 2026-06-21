@@ -54,6 +54,12 @@
                     onclick="resetSenha({{ u.id }}, '{{ u.nome }}')">
               🔒 Nova Senha
             </button>
+            {% if u.id != session.get('desp_user_id') %}
+            <button class="btn btn-sm btn-danger"
+                    onclick="deletarUsuario({{ u.id }}, {{ u.nome|tojson }})">
+              🗑️ Deletar
+            </button>
+            {% endif %}
           </div>
         </td>
       </tr>
@@ -147,6 +153,22 @@ function confirmarSenha() {
       alert('Senha redefinida com sucesso!');
     } else {
       alert(d.erro || 'Erro ao redefinir senha');
+    }
+  });
+}
+
+function deletarUsuario(uid, nome) {
+  if (!confirm('Deletar o usuário "' + nome + '"?\n\nIsso é PERMANENTE — ele perde o acesso ao sistema. As O.S. já feitas por ele continuam registradas.')) return;
+  fetch(`/despachante/usuarios/${uid}/deletar`, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({})
+  }).then(r => r.json()).then(d => {
+    if (d.ok) {
+      const row = document.getElementById('row-' + uid);
+      if (row) row.remove();
+    } else {
+      alert(d.erro || 'Erro ao deletar');
     }
   });
 }

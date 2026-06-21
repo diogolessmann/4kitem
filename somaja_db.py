@@ -88,8 +88,6 @@ def init_somaja_db():
 
         CREATE INDEX IF NOT EXISTS idx_somaja_tx_user  ON somaja_tx(user_id);
         CREATE INDEX IF NOT EXISTS idx_somaja_tx_data  ON somaja_tx(data);
-        CREATE INDEX IF NOT EXISTS idx_somaja_users_cust ON somaja_users(asaas_customer_id);
-        CREATE INDEX IF NOT EXISTS idx_somaja_users_cart ON somaja_users(carteira_id);
     ''')
     conn.commit()
 
@@ -110,6 +108,19 @@ def init_somaja_db():
     ]:
         try:
             conn.execute(migration); conn.commit()
+        except Exception:
+            try: conn.rollback()
+            except Exception: pass
+
+    # Índices que dependem de colunas adicionadas por migração: criar SÓ DEPOIS
+    # de garantir que as colunas existem (senão quebra em bancos antigos — era
+    # o bug que derrubava o blueprint do SomaJá com "no such column: carteira_id").
+    for idx in [
+        'CREATE INDEX IF NOT EXISTS idx_somaja_users_cust ON somaja_users(asaas_customer_id)',
+        'CREATE INDEX IF NOT EXISTS idx_somaja_users_cart ON somaja_users(carteira_id)',
+    ]:
+        try:
+            conn.execute(idx); conn.commit()
         except Exception:
             try: conn.rollback()
             except Exception: pass

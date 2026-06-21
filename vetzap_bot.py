@@ -443,12 +443,12 @@ def wa_webhook():
     # ── AUTH: exige secret (configure na URL do webhook da Evolution: ...?key=SECRET) ──
     # Só é exigido se VETZAP_WA_WEBHOOK_SECRET estiver setado (evita endpoint aberto = custo de IA).
     secret = os.environ.get('VETZAP_WA_WEBHOOK_SECRET', '').strip()
-    if secret:
-        recv = (request.args.get('key', '') or request.headers.get('x-webhook-key', '')).strip()
-        if recv != secret:
-            return jsonify({'error': 'unauthorized'}), 401
-    else:
-        log.warning('[vetzap_bot] VETZAP_WA_WEBHOOK_SECRET não setado — webhook aberto!')
+    if not secret:
+        log.error('[vetzap_bot] VETZAP_WA_WEBHOOK_SECRET nao configurado — webhook bloqueado.')
+        return jsonify({'error': 'not configured'}), 503
+    recv = (request.args.get('key', '') or request.headers.get('x-webhook-key', '')).strip()
+    if recv != secret:
+        return jsonify({'error': 'unauthorized'}), 401
     data = request.get_json(silent=True) or {}
     try:
         msg = data.get('data', data)
@@ -491,7 +491,7 @@ def wa_webhook():
 def wa_asaas_webhook():
     tok = os.environ.get('ASAAS_WEBHOOK_TOKEN', '').strip().strip('"').strip("'")
     rec = (request.headers.get('asaas-access-token', '') or '').strip().strip('"').strip("'")
-    if tok and rec != tok:
+    if (not tok) or rec != tok:
         return jsonify({'error': 'unauthorized'}), 401
     d = request.get_json(silent=True) or {}
     if d.get('event') in ('PAYMENT_RECEIVED', 'PAYMENT_CONFIRMED'):

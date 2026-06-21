@@ -54,7 +54,7 @@ ZAPAY_WEBHOOK_URL = os.environ.get('ZAPAY_WEBHOOK_URL', '').strip()
 
 MARKUP_PCT   = float(os.environ.get('CONSVEIC_MARKUP_PCT', '8') or 0)
 MARKUP_FIXO  = float(os.environ.get('CONSVEIC_MARKUP_FIXO', '0') or 0)
-ADMIN_PW     = os.environ.get('CONSVEIC_ADMIN_PW', os.environ.get('SAAS_ADMIN_PASSWORD', 'admin4kitem2024'))
+ADMIN_PW     = os.environ.get('CONSVEIC_ADMIN_PW') or os.environ.get('SAAS_ADMIN_PASSWORD') or os.urandom(24).hex()
 
 # URLs base por ambiente (cravadas na doc /docs/preparacao-de-ambientes)
 _HOST = 'api.b2b.sandbox.usezapay.com.br' if ZAPAY_ENV != 'production' else 'api.b2b.usezapay.com.br'
@@ -324,9 +324,9 @@ def webhook():
     ref = body.get('request_id') or body.get('order_id') or '-'
     registrar_evento(tipo, ref, body, ok_assinatura, event_id)
 
-    # rejeita assinatura inválida quando há secret configurada (segurança)
-    if ZAPAY_SECRET and not ok_assinatura:
-        log.warning('[Zapay webhook] assinatura HMAC inválida (ref=%s)', ref)
+    # fail-closed: rejeita quando não há secret configurada OU assinatura inválida
+    if (not ZAPAY_SECRET) or (not ok_assinatura):
+        log.warning('[Zapay webhook] bloqueado — secret ausente ou HMAC inválido (ref=%s)', ref)
         return jsonify({'ok': False, 'erro': 'assinatura inválida'}), 401
 
     # ── evento de DÉBITOS VEICULARES (resultado da consulta) ──

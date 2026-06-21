@@ -2286,6 +2286,14 @@ def atualizar_senha_usuario(user_id: int, senha_hash: str):
     conn.close()
 
 
+def deletar_usuario(user_id: int):
+    """Remove um usuário (operador) do escritório."""
+    conn = get_conn()
+    conn.execute("DELETE FROM desp_usuarios WHERE id=?", (user_id,))
+    conn.commit()
+    conn.close()
+
+
 def registrar_ultimo_login(user_id: int):
     conn = get_conn()
     conn.execute("UPDATE desp_usuarios SET ultimo_login=CURRENT_TIMESTAMP WHERE id=?", (user_id,))
