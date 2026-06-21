@@ -8074,11 +8074,30 @@ def _evo_extract_qr(data):
     return qr or ''
 
 
+def _mz_trial_blocked(user_id) -> bool:
+    """A1: True se a conta tem trial vencido SEM plano ativo (e não é whitelist).
+    Para rotas JSON (qr/status/upload) que não passam pelo decorator de redirect."""
+    try:
+        c = get_saas_db()
+        u = c.execute('SELECT trial_ends, plan_active, email, phone FROM mandazap_users WHERE id=?', (user_id,)).fetchone()
+        c.close()
+        if not u:
+            return True
+        expired = bool(u['trial_ends'] and u['trial_ends'] < datetime.now().isoformat())
+        if not expired or u['plan_active']:
+            return False
+        return not _is_whitelisted(u['email'], _re.sub(r'\D', '', u['phone'] or ''))
+    except Exception:
+        return False  # na dúvida, não bloqueia (fail-open)
+
+
 @app.route('/mandazap/numeros/<int:num_id>/qr')
 def mz_qr(num_id):
     user_id = session.get('mz_user_id')
     if not user_id:
         return jsonify({'erro': 'Não autenticado'}), 401
+    if _mz_trial_blocked(user_id):
+        return jsonify({'erro': 'Período de teste encerrado. Assine para conectar números.', 'paywall': True}), 402
     conn = get_saas_db()
     num  = conn.execute(
         'SELECT * FROM mandazap_numbers WHERE id=? AND user_id=?', (num_id, user_id)
@@ -8346,6 +8365,8 @@ def mz_upload():
     user_id = session.get('mz_user_id')
     if not user_id:
         return jsonify({'erro': 'Não autenticado'}), 401
+    if _mz_trial_blocked(user_id):
+        return jsonify({'erro': 'Período de teste encerrado. Assine para enviar mídia.', 'paywall': True}), 402
     f = request.files.get('file')
     if not f or not f.filename:
         return jsonify({'erro': 'Nenhum arquivo enviado'}), 400
