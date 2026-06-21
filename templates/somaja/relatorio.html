@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Relatório {{ nome_mes }} — SomaJá</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,Segoe UI,Roboto,sans-serif;color:#0f172a;background:#e5e7eb;padding:20px}
+  .page{max-width:780px;margin:0 auto;background:#fff;padding:40px;border-radius:8px}
+  .head{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #16a34a;padding-bottom:16px;margin-bottom:24px}
+  .head .logo{font-size:26px;font-weight:800;color:#16a34a}
+  .head .sub{font-size:13px;color:#64748b;margin-top:2px}
+  .head .right{text-align:right;font-size:12px;color:#64748b}
+  .head .right .mes{font-size:18px;font-weight:700;color:#0f172a;text-transform:capitalize}
+  .resumo{display:flex;gap:14px;margin-bottom:28px}
+  .rc{flex:1;border:1px solid #e2e8f0;border-radius:10px;padding:14px;text-align:center}
+  .rc .l{font-size:12px;color:#64748b}
+  .rc .v{font-size:20px;font-weight:800;margin-top:4px}
+  .pos{color:#16a34a}.neg{color:#dc2626}
+  h2{font-size:15px;margin:0 0 12px;color:#16a34a}
+  .bar-row{margin-bottom:10px}
+  .bar-head{display:flex;justify-content:space-between;font-size:13px;margin-bottom:3px}
+  .bar-head .cat{text-transform:capitalize}
+  .bar-track{height:9px;background:#f1f5f9;border-radius:5px;overflow:hidden}
+  .bar-fill{height:100%;background:#16a34a}
+  table{width:100%;border-collapse:collapse;font-size:13px;margin-top:6px}
+  th{text-align:left;color:#64748b;font-weight:600;border-bottom:2px solid #e2e8f0;padding:7px 6px}
+  td{padding:7px 6px;border-bottom:1px solid #f1f5f9}
+  td.cat{text-transform:capitalize;color:#64748b}
+  td.val{text-align:right;white-space:nowrap;font-weight:600}
+  .s{color:#dc2626}.e{color:#16a34a}
+  .foot{margin-top:28px;text-align:center;font-size:11px;color:#94a3b8;border-top:1px solid #e2e8f0;padding-top:14px}
+  .bar-actions{max-width:780px;margin:0 auto 14px;display:flex;gap:10px;justify-content:flex-end}
+  .btn{background:#16a34a;color:#fff;border:none;padding:11px 22px;border-radius:10px;font-weight:700;font-size:14px;cursor:pointer;text-decoration:none}
+  .btn.alt{background:#fff;color:#16a34a;border:1px solid #16a34a}
+  @media print{
+    body{background:#fff;padding:0}
+    .page{box-shadow:none;border-radius:0;max-width:100%;padding:24px}
+    .bar-actions{display:none}
+  }
+</style>
+</head>
+<body>
+<div class="bar-actions">
+  <a class="btn alt" href="/somaja/painel?mes={{ mes }}">← Voltar</a>
+  <button class="btn" onclick="window.print()">📄 Baixar PDF</button>
+</div>
+
+<div class="page">
+  <div class="head">
+    <div>
+      <div class="logo">🐗 SomaJá</div>
+      <div class="sub">Relatório financeiro mensal{% if membros|length > 1 %} · família ({{ membros|join(', ') }}){% endif %}</div>
+    </div>
+    <div class="right">
+      <div class="mes">{{ nome_mes }}</div>
+      <div>{{ u.nome }}</div>
+    </div>
+  </div>
+
+  <div class="resumo">
+    <div class="rc"><div class="l">Entrou</div><div class="v pos">{{ _brl(saldo.entradas) }}</div></div>
+    <div class="rc"><div class="l">Saiu</div><div class="v neg">{{ _brl(saldo.saidas) }}</div></div>
+    <div class="rc"><div class="l">Saldo</div><div class="v {{ 'pos' if saldo.saldo>=0 else 'neg' }}">{{ _brl(saldo.saldo) }}</div></div>
+  </div>
+
+  {% if cats %}
+  <h2>Pra onde foi o dinheiro</h2>
+  {% for c in cats %}
+  <div class="bar-row">
+    <div class="bar-head"><span class="cat">{{ c.cat }}</span><span>{{ c.fmt }} · {{ c.pct }}%</span></div>
+    <div class="bar-track"><div class="bar-fill" style="width:{{ c.pct }}%"></div></div>
+  </div>
+  {% endfor %}
+  {% endif %}
+
+  <h2 style="margin-top:26px">Lançamentos do mês ({{ txs|length }})</h2>
+  {% if txs %}
+  <table>
+    <thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th style="text-align:right">Valor</th></tr></thead>
+    <tbody>
+    {% for t in txs %}
+    <tr>
+      <td>{{ (t['data'] or '')[8:10] }}/{{ (t['data'] or '')[5:7] }}</td>
+      <td>{{ t['descricao'] }}</td>
+      <td class="cat">{{ t['categoria'] }}</td>
+      <td class="val {{ 's' if t['tipo']=='saida' else 'e' }}">{{ '-' if t['tipo']=='saida' else '+' }}{{ _brl(t['valor']) }}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p style="color:#94a3b8;font-size:14px">Nenhum lançamento neste mês.</p>
+  {% endif %}
+
+  <div class="foot">Gerado pelo SomaJá em {{ gerado }} · 4kitem.com.br/somaja</div>
+</div>
+</body>
+</html>

@@ -20,7 +20,8 @@ from somaja_db import (get_somaja_db, init_somaja_db, CATEGORIAS,
                        tem_acesso, dias_de_trial_restantes,
                        add_tx, ultimos_tx, saldo_mes, resumo_categorias,
                        registrar_conselho,
-                       garantir_carteira, entrar_carteira, sair_carteira, membros_carteira)
+                       garantir_carteira, entrar_carteira, sair_carteira, membros_carteira,
+                       tx_do_mes)
 
 log = logging.getLogger('somaja')
 
@@ -506,6 +507,63 @@ def familia():
     _cid, codigo = garantir_carteira(u['id'], u['nome'])
     return render_template('somaja/familia.html', codigo=codigo,
                            membros=membros_carteira(u['id']), msg=msg, erro=erro)
+
+
+# ── Painel + Relatório PDF (Lote 4) ─────────────────────────────────────────────
+_MESES = ['', 'janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho',
+          'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro']
+
+
+def _nome_mes(ym):
+    try:
+        y, m = ym.split('-')
+        return f'{_MESES[int(m)]} de {y}'
+    except Exception:
+        return ym
+
+
+def _mes_param():
+    return (request.args.get('mes') or datetime.now().strftime('%Y-%m'))[:7]
+
+
+def _vizinhos_mes(mes):
+    y, m = int(mes[:4]), int(mes[5:7])
+    prev = f'{y-1}-12' if m == 1 else f'{y}-{m-1:02d}'
+    nxt  = f'{y+1}-01' if m == 12 else f'{y}-{m+1:02d}'
+    return prev, nxt
+
+
+def _dados_mes(user_id, mes):
+    s = saldo_mes(user_id, mes)
+    cats = resumo_categorias(user_id, mes, tipo='saida')
+    total = s['saidas'] or 1
+    catlist = [{'cat': c, 'total': t, 'fmt': _brl(t), 'pct': round(100 * t / total)}
+               for c, t in cats]
+    return s, catlist, tx_do_mes(user_id, mes)
+
+
+@somaja_bp.route('/painel')
+@somaja_acesso_required
+def painel():
+    u = _get_user()
+    mes = _mes_param()
+    s, cats, txs = _dados_mes(u['id'], mes)
+    prev, nxt = _vizinhos_mes(mes)
+    return render_template('somaja/painel.html', u=u, mes=mes, nome_mes=_nome_mes(mes),
+                           saldo=s, cats=cats, txs=txs, prev=prev, nxt=nxt, _brl=_brl,
+                           assinante=bool(u['plan_active']))
+
+
+@somaja_bp.route('/relatorio')
+@somaja_acesso_required
+def relatorio():
+    u = _get_user()
+    mes = _mes_param()
+    s, cats, txs = _dados_mes(u['id'], mes)
+    return render_template('somaja/relatorio.html', u=u, mes=mes, nome_mes=_nome_mes(mes),
+                           saldo=s, cats=cats, txs=txs, _brl=_brl,
+                           membros=membros_carteira(u['id']),
+                           gerado=datetime.now().strftime('%d/%m/%Y às %H:%M'))
 
 
 # ── Rotas: assinatura (paywall) ─────────────────────────────────────────────────

@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Painel — SomaJá 🐗</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,Segoe UI,Roboto,sans-serif;background:#f0fdf4;color:#0f172a}
+  .top{background:#16a34a;color:#fff;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:5}
+  .top .logo{font-weight:800;font-size:18px}
+  .top a{color:#dcfce7;text-decoration:none;font-size:13px;margin-left:12px}
+  .wrap{max-width:680px;margin:0 auto;padding:18px}
+  .mesnav{display:flex;align-items:center;justify-content:center;gap:18px;margin:6px 0 18px}
+  .mesnav a{text-decoration:none;color:#16a34a;font-weight:700;font-size:22px;line-height:1}
+  .mesnav h1{font-size:18px;font-weight:700;text-transform:capitalize}
+  .cards{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:18px}
+  .card{background:#fff;border:1px solid #dcfce7;border-radius:14px;padding:14px;text-align:center}
+  .card .l{font-size:12px;color:#64748b}
+  .card .v{font-size:18px;font-weight:800;margin-top:4px}
+  .saldo-pos{color:#16a34a}.saldo-neg{color:#dc2626}
+  .box{background:#fff;border:1px solid #dcfce7;border-radius:16px;padding:18px;margin-bottom:16px}
+  .box h2{font-size:16px;margin-bottom:14px}
+  .bar-row{margin-bottom:12px}
+  .bar-head{display:flex;justify-content:space-between;font-size:14px;margin-bottom:4px}
+  .bar-head .cat{text-transform:capitalize;font-weight:500}
+  .bar-track{height:10px;background:#f1f5f9;border-radius:6px;overflow:hidden}
+  .bar-fill{height:100%;background:#16a34a;border-radius:6px}
+  .tx{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #f1f5f9;font-size:14px}
+  .tx:last-child{border:none}
+  .tx .desc{text-transform:capitalize}
+  .tx .cat{font-size:12px;color:#94a3b8}
+  .tx .val-s{color:#dc2626;font-weight:600;white-space:nowrap}
+  .tx .val-e{color:#16a34a;font-weight:600;white-space:nowrap}
+  .empty{text-align:center;color:#94a3b8;padding:20px;font-size:14px}
+  .btn-pdf{display:block;text-align:center;background:#16a34a;color:#fff;text-decoration:none;padding:13px;border-radius:12px;font-weight:700;margin-bottom:16px}
+  @media(max-width:520px){.cards{grid-template-columns:1fr}.card{display:flex;justify-content:space-between;text-align:left}.card .v{margin:0}}
+</style>
+</head>
+<body>
+<div class="top">
+  <span class="logo">🐗 SomaJá</span>
+  <span><a href="/somaja/app">💬 Lançar</a><a href="/somaja/familia">👨‍👩‍👧 Família</a>{% if not assinante %}<a href="/somaja/assinar">Assinar</a>{% endif %}<a href="/somaja/sair">Sair</a></span>
+</div>
+
+<div class="wrap">
+  <div class="mesnav">
+    <a href="/somaja/painel?mes={{ prev }}" title="Mês anterior">‹</a>
+    <h1>{{ nome_mes }}</h1>
+    <a href="/somaja/painel?mes={{ nxt }}" title="Próximo mês">›</a>
+  </div>
+
+  <div class="cards">
+    <div class="card"><div class="l">📥 Entrou</div><div class="v saldo-pos">{{ _brl(saldo.entradas) }}</div></div>
+    <div class="card"><div class="l">📤 Saiu</div><div class="v saldo-neg">{{ _brl(saldo.saidas) }}</div></div>
+    <div class="card"><div class="l">💰 Saldo</div><div class="v {{ 'saldo-pos' if saldo.saldo>=0 else 'saldo-neg' }}">{{ _brl(saldo.saldo) }}</div></div>
+  </div>
+
+  <a class="btn-pdf" href="/somaja/relatorio?mes={{ mes }}" target="_blank">📄 Baixar relatório PDF do mês</a>
+
+  <div class="box">
+    <h2>📊 Pra onde foi seu dinheiro</h2>
+    {% if cats %}
+      {% for c in cats %}
+      <div class="bar-row">
+        <div class="bar-head"><span class="cat">{{ c.cat }}</span><span>{{ c.fmt }} · {{ c.pct }}%</span></div>
+        <div class="bar-track"><div class="bar-fill" style="width:{{ c.pct }}%"></div></div>
+      </div>
+      {% endfor %}
+    {% else %}
+      <div class="empty">Nenhum gasto registrado neste mês.</div>
+    {% endif %}
+  </div>
+
+  <div class="box">
+    <h2>🧾 Lançamentos ({{ txs|length }})</h2>
+    {% if txs %}
+      {% for t in txs %}
+      <div class="tx">
+        <div>
+          <div class="desc">{{ '💸' if t['tipo']=='saida' else '💰' }} {{ t['descricao'] }}</div>
+          <div class="cat">{{ t['categoria'] }} · {{ (t['data'] or '')[8:10] }}/{{ (t['data'] or '')[5:7] }}{% if t['fonte'] and t['fonte']!='texto' %} · {{ t['fonte'] }}{% endif %}</div>
+        </div>
+        <div class="{{ 'val-s' if t['tipo']=='saida' else 'val-e' }}">{{ '-' if t['tipo']=='saida' else '+' }}{{ _brl(t['valor']) }}</div>
+      </div>
+      {% endfor %}
+    {% else %}
+      <div class="empty">Nada lançado neste mês ainda. Manda seus gastos no <a href="/somaja/app" style="color:#16a34a">app</a>!</div>
+    {% endif %}
+  </div>
+</div>
+</body>
+</html>

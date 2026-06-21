@@ -218,6 +218,19 @@ def resumo_categorias(user_id, ano_mes=None, tipo='saida'):
     return [(r['categoria'] or 'outros', r['total'] or 0.0) for r in rows]
 
 
+def tx_do_mes(user_id, ano_mes=None):
+    """Todos os lançamentos do mês (carteira inteira), mais recentes primeiro. P/ painel e relatório."""
+    ym = _ym(ano_mes)
+    conn = get_somaja_db()
+    ids = _membros_ids(conn, user_id)
+    ph = ','.join('?' * len(ids))
+    rows = conn.execute(
+        f"SELECT * FROM somaja_tx WHERE user_id IN ({ph}) AND substr(data,1,7)=? "
+        "ORDER BY data DESC, id DESC", (*ids, ym)).fetchall()
+    conn.close()
+    return rows
+
+
 # ── Carteira família (Lote 3) ───────────────────────────────────────────────────
 def _gen_codigo(conn):
     while True:
