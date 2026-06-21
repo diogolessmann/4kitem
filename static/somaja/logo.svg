@@ -1,0 +1,22 @@
+<svg width="120" height="120" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="SomaJá">
+  <rect x="0" y="0" width="120" height="120" rx="26" fill="#16a34a"/>
+  <!-- moeda com + (soma) caindo no cofrinho -->
+  <circle cx="57" cy="24" r="12" fill="#fbbf24"/>
+  <rect x="55.4" y="18" width="3.2" height="12" rx="1.4" fill="#ffffff"/>
+  <rect x="51" y="22.4" width="12" height="3.2" rx="1.4" fill="#ffffff"/>
+  <!-- orelha -->
+  <path d="M70 45 L83 34 L85 51 Z" fill="#ffffff"/>
+  <!-- corpo do porquinho -->
+  <ellipse cx="56" cy="67" rx="34" ry="25" fill="#ffffff"/>
+  <!-- pernas -->
+  <rect x="42" y="86" width="7" height="12" rx="2.5" fill="#ffffff"/>
+  <rect x="64" y="86" width="7" height="12" rx="2.5" fill="#ffffff"/>
+  <!-- fenda da moeda -->
+  <rect x="47" y="43" width="19" height="4.6" rx="2.3" fill="#16a34a"/>
+  <!-- olho -->
+  <circle cx="72" cy="59" r="3.3" fill="#16a34a"/>
+  <!-- focinho -->
+  <ellipse cx="87" cy="69" rx="9" ry="11" fill="#bbf7d0"/>
+  <ellipse cx="84" cy="69" rx="1.7" ry="2.7" fill="#16a34a"/>
+  <ellipse cx="90" cy="69" rx="1.7" ry="2.7" fill="#16a34a"/>
+</svg>
