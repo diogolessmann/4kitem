@@ -8205,7 +8205,7 @@ def _mz_set_instance_webhook(evo_url, evo_key, instance):
             f"{evo_url}/webhook/set/{instance}",
             headers={'apikey': evo_key, 'Content-Type': 'application/json'},
             json={'webhook': {'enabled': True, 'url': _mz_webhook_url(),
-                              'events': ['MESSAGES_UPSERT'],
+                              'events': ['MESSAGES_UPSERT', 'CONNECTION_UPDATE'],
                               'webhookByEvents': False, 'webhookBase64': False}},
             timeout=8,
         )
@@ -8223,6 +8223,24 @@ def mz_webhook_evolution():
             return jsonify({'ok': False}), 403
         payload = request.get_json(silent=True) or {}
         event   = str(payload.get('event', '')).lower().replace('_', '.')
+        # R2: desconexão/logout do número → marca 'disconnected' (detecta queda/ban em
+        # SEGUNDOS; antes só percebia a cada 25 envios ou 3 falhas). Self-contained.
+        if 'connection.update' in event or 'logout' in event:
+            _d = payload.get('data', {})
+            if isinstance(_d, list): _d = _d[0] if _d else {}
+            _inst = str(payload.get('instance') or (_d.get('instance') if isinstance(_d, dict) else '') or '')
+            _mm = _re.match(r'^mz(\d+)n(\d+)$', _inst)
+            _state = str((_d.get('state') or _d.get('connection') or '') if isinstance(_d, dict) else '').lower()
+            if _mm and ('close' in _state or 'disconnect' in _state or 'logout' in event):
+                try:
+                    _c = get_saas_db()
+                    _c.execute("UPDATE mandazap_numbers SET status='disconnected' WHERE id=? AND user_id=?",
+                               (int(_mm.group(2)), int(_mm.group(1))))
+                    _c.commit(); _c.close()
+                    log.warning(f"[MZ webhook] {_inst} desconectou (state={_state or 'logout'}) — marcado disconnected")
+                except Exception as _ce:
+                    log.warning(f"mz_webhook conn.update error: {_ce}")
+            return jsonify({'ok': True}), 200
         if 'messages.upsert' not in event:
             return jsonify({'ok': True, 'skip': 'event'}), 200
         data = payload.get('data', {})
@@ -8269,7 +8287,7 @@ def mz_upload():
     if not f or not f.filename:
         return jsonify({'erro': 'Nenhum arquivo enviado'}), 400
 
-    import uuid, re as _re2
+    import uuid
     ext = f.filename.rsplit('.', 1)[-1].lower() if '.' in f.filename else 'jpg'
     allowed = {'jpg', 'jpeg', 'png', 'gif', 'webp'}
     if ext not in allowed:
@@ -8901,7 +8919,7 @@ def health():
 #  DEV — Página privada de roadmap e anotações
 # ══════════════════════════════════════════════════════════════════════════
 
-DEV_TOKEN = os.environ.get('DEV_TOKEN', 'diogo4kitem')
+DEV_TOKEN = os.environ.get('DEV_TOKEN', '')  # sem default adivinhável (auth real é via _dev_token_ok, fail-closed)
 
 @app.route('/dev/<token>')
 def dev_page(token):
@@ -9463,8 +9481,8 @@ def _dispatch_campaign_inner(cid: int, user_id: int, delay_s: int = 3, continuar
     # (Antes era ler-depois-checar, NÃO atômico → o botão "Disparar" + o agendador podiam
     #  rodar a MESMA campanha 2x em paralelo, duplicando mensagens = gatilho de ban.)
     claim = conn.execute(
-        "UPDATE mandazap_campaigns SET status='enviando' WHERE id=? AND user_id=? AND status != 'enviando'",
-        (cid, user_id)
+        "UPDATE mandazap_campaigns SET status='enviando', updated_at=? WHERE id=? AND user_id=? AND status != 'enviando'",
+        (datetime.now().isoformat(), cid, user_id)
     )
     conn.commit()
     if claim.rowcount == 0:
