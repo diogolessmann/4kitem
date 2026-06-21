@@ -105,6 +105,7 @@ def init_somaja_db():
         'ALTER TABLE somaja_users ADD COLUMN wa_day TEXT',           # WhatsApp: dia do último cap
         'ALTER TABLE somaja_users ADD COLUMN wa_count INTEGER DEFAULT 0',   # msgs no dia (anti-abuso)
         'ALTER TABLE somaja_users ADD COLUMN carteira_id INTEGER',   # carteira família (Lote 3)
+        'ALTER TABLE somaja_users ADD COLUMN afiliado_ref TEXT',     # código do afiliado que trouxe (Lote afiliados)
     ]:
         try:
             conn.execute(migration); conn.commit()

@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Meu painel — Afiliados 4kitem</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,Segoe UI,Roboto,sans-serif;background:#f0fdf4;color:#0f172a}
+  .top{background:#16a34a;color:#fff;padding:12px 16px;display:flex;justify-content:space-between;align-items:center}
+  .top .logo{font-weight:800}
+  .top a{color:#dcfce7;text-decoration:none;font-size:13px}
+  .wrap{max-width:680px;margin:0 auto;padding:18px}
+  .cards{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px}
+  .card{background:#fff;border:1px solid #dcfce7;border-radius:14px;padding:14px;text-align:center}
+  .card .l{font-size:12px;color:#64748b}.card .v{font-size:20px;font-weight:800;margin-top:4px}
+  .green{color:#16a34a}
+  .box{background:#fff;border:1px solid #dcfce7;border-radius:16px;padding:18px;margin-bottom:16px}
+  .box h2{font-size:16px;margin-bottom:12px}
+  .alerta{background:#fef9c3;color:#854d0e;border-radius:12px;padding:12px 14px;margin-bottom:16px;font-size:14px}
+  .applink{border:1px solid #e2e8f0;border-radius:12px;padding:14px;margin-bottom:12px}
+  .applink .h{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+  .applink img{width:34px;height:34px;border-radius:8px}
+  .applink .nome{font-weight:700}.applink .com{font-size:13px;color:#16a34a;font-weight:600}
+  .linkrow{display:flex;gap:8px}
+  .linkrow input{flex:1;padding:10px;border:1px solid #cbd5e1;border-radius:9px;font-size:13px;background:#f8fafc;color:#334155}
+  .copybtn{background:#16a34a;color:#fff;border:none;border-radius:9px;padding:0 16px;font-weight:700;cursor:pointer;white-space:nowrap}
+  .share{display:inline-block;margin-top:8px;font-size:13px;color:#16a34a;text-decoration:none;font-weight:600}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{text-align:left;color:#64748b;font-weight:600;border-bottom:1px solid #e2e8f0;padding:7px 4px}
+  td{padding:7px 4px;border-bottom:1px solid #f1f5f9}
+  .badge{font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px}
+  .b-pago{background:#dcfce7;color:#15803d}.b-pend{background:#fef9c3;color:#854d0e}.b-erro{background:#fef2f2;color:#b91c1c}
+  .pixform{display:flex;gap:8px;flex-wrap:wrap}
+  .pixform input{flex:2;min-width:160px;padding:11px;border:1px solid #cbd5e1;border-radius:9px}
+  .pixform select{flex:1;padding:11px;border:1px solid #cbd5e1;border-radius:9px}
+  .pixform button{background:#16a34a;color:#fff;border:none;border-radius:9px;padding:0 18px;font-weight:700;cursor:pointer}
+  .empty{color:#94a3b8;font-size:14px;text-align:center;padding:14px}
+  @media(max-width:520px){.cards{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="top"><span class="logo">💸 Afiliados 4kitem</span><a href="/afiliados/sair">Sair</a></div>
+<div class="wrap">
+  <p style="margin-bottom:14px">Olá, <b>{{ af.nome.split(' ')[0] }}</b>! Seu código: <b style="color:#16a34a">{{ af.codigo }}</b></p>
+
+  {% if sem_pix %}
+  <div class="alerta">⚠️ Você ainda não cadastrou sua <b>chave PIX</b> — sem ela, suas comissões ficam esperando. Cadastre abaixo. 👇</div>
+  {% endif %}
+
+  <div class="cards">
+    <div class="card"><div class="l">💰 Recebido</div><div class="v green">{{ _brl(stats.pago) }}</div></div>
+    <div class="card"><div class="l">⏳ A receber</div><div class="v">{{ _brl(stats.pendente) }}</div></div>
+    <div class="card"><div class="l">👥 Clientes</div><div class="v">{{ stats.n_clientes }}</div></div>
+  </div>
+
+  <div class="box">
+    <h2>🔗 Seus links pra divulgar</h2>
+    {% for l in links %}
+    <div class="applink">
+      <div class="h">
+        {% if l.icone %}<img src="{{ l.icone }}" alt="{{ l.nome }}">{% endif %}
+        <div><div class="nome">{{ l.nome }}</div><div class="com">{{ l.comissao }} por cliente/mês</div></div>
+      </div>
+      <div class="linkrow">
+        <input value="{{ l.link }}" readonly id="lk_{{ l.app }}">
+        <button class="copybtn" onclick="copiar('lk_{{ l.app }}',this)">Copiar</button>
+      </div>
+      <a class="share" target="_blank" href="https://wa.me/?text={{ ('Organize seu dinheiro no WhatsApp com o ' ~ l.nome ~ '! ' ~ l.link)|urlencode }}">📲 Compartilhar no WhatsApp</a>
+    </div>
+    {% endfor %}
+  </div>
+
+  <div class="box">
+    <h2>💳 Sua chave PIX</h2>
+    <form class="pixform" method="POST" action="/afiliados/pix">
+      <input name="pix_chave" placeholder="sua chave PIX" value="{{ af.pix_chave or '' }}">
+      <select name="pix_tipo">
+        <option value="">tipo</option>
+        {% for t in ['CPF','EMAIL','PHONE','EVP','CNPJ'] %}
+        <option value="{{ t }}" {{ 'selected' if af.pix_tipo==t }}>{{ t }}</option>
+        {% endfor %}
+      </select>
+      <button type="submit">Salvar</button>
+    </form>
+  </div>
+
+  <div class="box">
+    <h2>🧾 Suas comissões</h2>
+    {% if conversoes %}
+    <table>
+      <thead><tr><th>Data</th><th>App</th><th>Cliente</th><th>Valor</th><th>Status</th></tr></thead>
+      <tbody>
+      {% for c in conversoes %}
+      <tr>
+        <td>{{ (c['created_at'] or '')[8:10] }}/{{ (c['created_at'] or '')[5:7] }}</td>
+        <td>{{ apps.get(c['app'],{}).get('nome', c['app']) }}</td>
+        <td>{{ c['cliente_nome'] or '—' }}</td>
+        <td>{{ _brl(c['valor']) }}</td>
+        <td>
+          {% if c['status']=='pago' %}<span class="badge b-pago">pago ✅</span>
+          {% elif c['status']=='erro' %}<span class="badge b-erro">erro</span>
+          {% else %}<span class="badge b-pend">pendente</span>{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty">Ainda não há comissões. Divulgue seus links e elas começam a cair aqui! 🚀</div>
+    {% endif %}
+  </div>
+</div>
+<script>
+function copiar(id,btn){
+  const i=document.getElementById(id); i.select(); i.setSelectionRange(0,99999);
+  navigator.clipboard.writeText(i.value).then(()=>{const t=btn.textContent;btn.textContent='Copiado!';setTimeout(()=>btn.textContent=t,1500);});
+}
+</script>
+</body>
+</html>

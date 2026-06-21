@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Criar conta de afiliado — 4kitem</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,Segoe UI,Roboto,sans-serif;background:#f0fdf4;color:#0f172a}
+  .box{max-width:430px;margin:34px auto;background:#fff;border:1px solid #dcfce7;border-radius:18px;padding:28px}
+  .logo{font-size:22px;font-weight:800;text-align:center;margin-bottom:4px}
+  .sub{text-align:center;color:#475569;margin-bottom:20px;font-size:14px}
+  label{display:block;font-size:14px;font-weight:600;margin:13px 0 6px}
+  input,select{width:100%;padding:13px;border:1px solid #cbd5e1;border-radius:10px;font-size:16px;background:#fff}
+  .row{display:flex;gap:10px}.row .pixk{flex:2}.row .pixt{flex:1}
+  .hint{font-size:12px;color:#94a3b8;margin-top:4px}
+  .btn{width:100%;background:#16a34a;color:#fff;border:none;padding:14px;border-radius:12px;font-weight:700;font-size:16px;cursor:pointer;margin-top:20px}
+  .erro{background:#fef2f2;color:#b91c1c;padding:10px 12px;border-radius:10px;font-size:14px;margin-bottom:8px}
+  .link{text-align:center;margin-top:16px;font-size:14px;color:#475569}
+  a{color:#16a34a;font-weight:600;text-decoration:none}
+</style>
+</head>
+<body>
+<form class="box" method="POST" action="/afiliados/cadastrar">
+  <div class="logo">💸 Vire afiliado 4kitem</div>
+  <div class="sub">Cadastro grátis · receba comissão no PIX</div>
+  {% if erro %}<div class="erro">{{ erro }}</div>{% endif %}
+  <label>Seu nome</label><input name="nome" required placeholder="Nome completo">
+  <label>WhatsApp</label><input name="telefone" placeholder="(47) 99999-9999">
+  <label>E-mail</label><input name="email" type="email" required placeholder="voce@email.com">
+  <label>Senha</label><input name="senha" type="password" required placeholder="mínimo 6 caracteres">
+  <label>Sua chave PIX (pra receber as comissões)</label>
+  <div class="row">
+    <input class="pixk" name="pix_chave" placeholder="chave PIX">
+    <select class="pixt" name="pix_tipo">
+      <option value="">tipo</option>
+      <option value="CPF">CPF</option>
+      <option value="EMAIL">E-mail</option>
+      <option value="PHONE">Telefone</option>
+      <option value="EVP">Aleatória</option>
+      <option value="CNPJ">CNPJ</option>
+    </select>
+  </div>
+  <div class="hint">Pode preencher depois no painel — mas sem a chave, a comissão fica esperando.</div>
+  <button class="btn" type="submit">Criar conta e pegar meu link</button>
+  <div class="link">Já tem conta? <a href="/afiliados/entrar">Entrar</a></div>
+</form>
+</body>
+</html>

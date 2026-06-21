@@ -212,13 +212,14 @@ def _asaas_cliente(u, cpf):
     return cid or ''
 
 
-def soma_webhook_ativar(customer_id, plano_key, ativar):
+def soma_webhook_ativar(customer_id, plano_key, ativar, payment_id=''):
     """Chamado pelo webhook global (app.py) p/ refs 'somaja_<customer_id>_<plano>'.
-    Ativa/desativa a assinatura do usuário casado pelo asaas_customer_id."""
+    Ativa/desativa a assinatura do usuário casado pelo asaas_customer_id.
+    Se o cliente foi indicado por um afiliado, credita a comissão a cada pagamento."""
     if not customer_id:
         return False
     conn = get_somaja_db()
-    u = conn.execute('SELECT id, email, nome FROM somaja_users WHERE asaas_customer_id=?',
+    u = conn.execute('SELECT id, email, nome, afiliado_ref FROM somaja_users WHERE asaas_customer_id=?',
                      (customer_id,)).fetchone()
     if not u:
         conn.close()
@@ -234,6 +235,18 @@ def soma_webhook_ativar(customer_id, plano_key, ativar):
                 f'<p><a href="https://4kitem.com.br/somaja/app">Abrir o SomaJá</a></p>')
         except Exception:
             pass
+    # Afiliados: cliente pagou → credita+paga a comissão do afiliado que o trouxe (idempotente por payment_id)
+    if ativar and payment_id:
+        try:
+            ref_af = u['afiliado_ref']
+        except (KeyError, IndexError):
+            ref_af = None
+        if ref_af:
+            try:
+                from afiliados import registrar_comissao
+                registrar_comissao(ref_af, 'somaja', payment_id, u['nome'])
+            except Exception as _e:
+                log.warning(f'[SomaJá] comissão afiliado: {_e}')
     log.info(f'[SomaJá] Assinatura {"ATIVADA" if ativar else "cortada"} (customer {customer_id})')
     return True
 
@@ -330,6 +343,9 @@ def gerar_conselho(user_id):
 # ── Rotas: público / auth ───────────────────────────────────────────────────────
 @somaja_bp.route('/')
 def landing():
+    ref = (request.args.get('ref') or '').strip().upper()[:12]
+    if ref:
+        session['soma_ref'] = ref   # guarda o afiliado que trouxe (Lote afiliados)
     return render_template('somaja/landing.html')
 
 
@@ -359,11 +375,12 @@ def cadastrar():
                 erro = 'Já existe uma conta com esse e-mail. Faça login.'
             else:
                 trial_until = (datetime.now() + timedelta(days=TRIAL_DIAS)).strftime('%Y-%m-%d')
+                ref_af = (session.get('soma_ref') or request.args.get('ref') or '').strip().upper()[:12]
                 cur = conn.execute(
-                    'INSERT INTO somaja_users (nome,email,telefone,renda,password_hash,trial_until,created_at) '
-                    'VALUES (?,?,?,?,?,?,?)',
+                    'INSERT INTO somaja_users (nome,email,telefone,renda,password_hash,trial_until,afiliado_ref,created_at) '
+                    'VALUES (?,?,?,?,?,?,?,?)',
                     (nome, email, telefone, renda, generate_password_hash(senha),
-                     trial_until, datetime.now().isoformat()))
+                     trial_until, (ref_af or None), datetime.now().isoformat()))
                 conn.commit()
                 uid = cur.lastrowid
                 conn.close()
