@@ -8376,6 +8376,15 @@ def mz_upload():
 
 # ── Contatos ──────────────────────────────────────────────────────────────────
 
+def _mz_contacts_room(conn, user_id) -> int:
+    """A6: vagas de contato restantes no plano (limite - atuais). ≥9999 = ilimitado."""
+    lim = MANDAZAP_PLANS.get(session.get('mz_plan', 'solo'), MANDAZAP_PLANS['solo']).get('contacts_limit', 500)
+    if lim >= 9999:
+        return 10**9
+    cur = conn.execute('SELECT COUNT(*) FROM mandazap_contacts WHERE user_id=?', (user_id,)).fetchone()[0]
+    return max(0, lim - cur)
+
+
 @app.route('/mandazap/contatos/add', methods=['POST'])
 @_mandazap_login_required
 def mz_contact_add():
@@ -8388,6 +8397,9 @@ def mz_contact_add():
     if name and phone:
         phone = _re.sub(r'[^\d+]', '', phone)
         conn = get_saas_db()
+        if _mz_contacts_room(conn, user_id) <= 0:   # A6: limite do plano atingido
+            conn.close()
+            return redirect('/mandazap/painel?section=contatos&erro=limite_contatos')
         conn.execute(
             'INSERT INTO mandazap_contacts (user_id, name, phone, email, tag, notes, created_at) VALUES (?,?,?,?,?,?,?)',
             (user_id, name, phone, email, tag, notes, datetime.now().isoformat())
@@ -8469,7 +8481,8 @@ def mz_contact_import_csv():
                 if name and phone:
                     contacts.append({'name': name, 'phone': phone, 'email': email, 'tag': tag})
         conn  = get_saas_db()
-        count = 0
+        room  = _mz_contacts_room(conn, user_id)   # A6: limite de contatos do plano
+        count = 0; bloqueados = 0
         for c in contacts:
             phone = _re.sub(r'[^\d+]', '', c.get('phone', ''))
             if not phone:
@@ -8479,6 +8492,9 @@ def mz_contact_import_csv():
                 phone = '55' + phone[1:]
             elif len(phone) <= 11 and not phone.startswith('+'):
                 phone = '55' + phone
+            if count >= room:        # A6: respeita o limite de contatos do plano
+                bloqueados += 1
+                continue
             conn.execute(
                 'INSERT OR IGNORE INTO mandazap_contacts (user_id, name, phone, email, tag, created_at) VALUES (?,?,?,?,?,?)',
                 (user_id, c.get('name',''), phone, c.get('email',''), c.get('tag',''), datetime.now().isoformat())
@@ -8486,7 +8502,7 @@ def mz_contact_import_csv():
             count += 1
         conn.commit()
         conn.close()
-        log.info(f'Importados {count} contatos para user {user_id}')
+        log.info(f'Importados {count} contatos para user {user_id}' + (f' — {bloqueados} bloqueados (limite do plano)' if bloqueados else ''))
     except Exception as e:
         log.error(f'import error: {e}')
     return redirect('/mandazap/painel?section=contatos')
@@ -8673,11 +8689,15 @@ def mz_contact_import_json():
     if not items:
         return jsonify({'erro': 'Nenhum contato para importar'}), 400
     conn  = get_saas_db()
-    count = 0
+    room  = _mz_contacts_room(conn, user_id)   # A6: limite de contatos do plano
+    count = 0; bloqueados = 0
     for c in items:
         name  = str(c.get('name', '')).strip()[:120] or 'Contato'
         phone = _mz_normalize_phone(str(c.get('phone', '')))
         if not phone:
+            continue
+        if count >= room:        # A6: respeita o limite do plano
+            bloqueados += 1
             continue
         conn.execute(
             'INSERT OR IGNORE INTO mandazap_contacts (user_id, name, phone, email, tag, created_at) VALUES (?,?,?,?,?,?)',
@@ -8686,8 +8706,8 @@ def mz_contact_import_json():
         count += 1
     conn.commit()
     conn.close()
-    log.info(f'Import JSON: {count} contatos para user {user_id}')
-    return jsonify({'ok': True, 'count': count})
+    log.info(f'Import JSON: {count} contatos para user {user_id}' + (f' — {bloqueados} bloqueados (limite do plano)' if bloqueados else ''))
+    return jsonify({'ok': True, 'count': count, 'bloqueados': bloqueados})
 
 
 # ── Listas ────────────────────────────────────────────────────────────────────
