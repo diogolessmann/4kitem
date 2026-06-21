@@ -2233,20 +2233,28 @@ def init_usuarios_table():
             senha_hash   TEXT    NOT NULL,
             role         TEXT    DEFAULT 'operador',
             ativo        INTEGER DEFAULT 1,
+            foto         TEXT,
             criado_em    TEXT    DEFAULT CURRENT_TIMESTAMP,
             ultimo_login TEXT
         );
         CREATE INDEX IF NOT EXISTS idx_desp_usuarios_login ON desp_usuarios(usuario);
     """)
+    # Migration p/ tabelas antigas: adiciona a coluna foto (avatar) se faltar
+    try:
+        cols = [r[1] for r in conn.execute("PRAGMA table_info(desp_usuarios)").fetchall()]
+        if 'foto' not in cols:
+            conn.execute("ALTER TABLE desp_usuarios ADD COLUMN foto TEXT")
+    except Exception:
+        pass
     conn.commit()
     conn.close()
 
 
-def criar_usuario(nome: str, usuario: str, senha_hash: str, role: str = 'operador') -> int:
+def criar_usuario(nome: str, usuario: str, senha_hash: str, role: str = 'operador', foto: str = None) -> int:
     conn = get_conn()
     cur  = conn.execute(
-        "INSERT INTO desp_usuarios (nome, usuario, senha_hash, role) VALUES (?,?,?,?)",
-        (nome, usuario.lower().strip(), senha_hash, role)
+        "INSERT INTO desp_usuarios (nome, usuario, senha_hash, role, foto) VALUES (?,?,?,?,?)",
+        (nome, usuario.lower().strip(), senha_hash, role, foto)
     )
     conn.commit()
     id_ = cur.lastrowid
@@ -2266,10 +2274,29 @@ def get_usuario_por_login(usuario: str) -> dict | None:
 def listar_usuarios() -> list:
     conn = get_conn()
     rows = conn.execute(
-        "SELECT id, nome, usuario, role, ativo, criado_em, ultimo_login FROM desp_usuarios ORDER BY id"
+        "SELECT id, nome, usuario, role, ativo, foto, criado_em, ultimo_login FROM desp_usuarios ORDER BY id"
     ).fetchall()
     conn.close()
     return [dict(r) for r in rows]
+
+
+def listar_usuarios_picker() -> list:
+    """Usuários ativos (id, nome, login, role, foto) para a tela de seleção
+    estilo Google/Chrome ('Quem está usando?')."""
+    conn = get_conn()
+    rows = conn.execute(
+        "SELECT id, nome, usuario, role, foto FROM desp_usuarios WHERE ativo=1 ORDER BY id"
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def atualizar_foto_usuario(user_id: int, foto: str):
+    """Atualiza (ou remove, se foto=None) o avatar do usuário."""
+    conn = get_conn()
+    conn.execute("UPDATE desp_usuarios SET foto=? WHERE id=?", (foto, user_id))
+    conn.commit()
+    conn.close()
 
 
 def toggle_usuario(user_id: int, ativo: bool):

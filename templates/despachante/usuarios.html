@@ -1,10 +1,35 @@
 {% extends "despachante/base.html" %}
 {% block title %}Usuários — Despachante Lessmann{% endblock %}
 {% block content %}
+<style>
+  .uav { width:40px; height:40px; border-radius:50%; flex-shrink:0;
+         display:inline-flex; align-items:center; justify-content:center;
+         font-size:17px; font-weight:700; color:#fff; overflow:hidden;
+         background-size:cover; background-position:center;
+         box-shadow:0 2px 8px rgba(0,0,0,.18); }
+  .uav-prev { width:84px; height:84px; border-radius:50%; margin:0 auto 4px;
+              display:flex; align-items:center; justify-content:center;
+              font-size:34px; font-weight:700; color:#fff;
+              background:linear-gradient(135deg,#6366F1,#4F46E5);
+              background-size:cover; background-position:center; cursor:pointer; }
+</style>
+{% set _pal = [['#6366F1','#4F46E5'],['#0ea5e9','#0369a1'],['#10b981','#047857'],['#f59e0b','#b45309'],
+               ['#ef4444','#b91c1c'],['#ec4899','#be185d'],['#8b5cf6','#6d28d9'],['#14b8a6','#0f766e']] %}
+{% macro av(u) %}
+  {% set p = _pal[u.id % 8] %}
+  {% if u.foto %}
+    <span class="uav" id="av-{{ u.id }}" style="background-image:url('{{ u.foto }}')"></span>
+  {% else %}
+    <span class="uav" id="av-{{ u.id }}" style="background:linear-gradient(135deg,{{ p[0] }},{{ p[1] }})">{{ (u.nome or '?')[0]|upper }}</span>
+  {% endif %}
+{% endmacro %}
 <div class="page-header">
   <h1>👥 Usuários do Sistema</h1>
   <button class="btn btn-primary" onclick="document.getElementById('modal-novo').style.display='flex'">+ Novo Usuário</button>
 </div>
+<p style="color:var(--text-muted);font-size:13px;margin:-8px 0 16px">
+  Cada operador entra com o próprio rosto e senha na tela de login — assim toda O.S. fica amarrada a quem realmente fez. 📸 A foto é tirada/enviada aqui e o sistema já comprime (12&nbsp;MB → ~25&nbsp;KB).
+</p>
 
 {% with msgs = get_flashed_messages(with_categories=true) %}
   {% for cat, msg in msgs %}
@@ -27,7 +52,12 @@
     <tbody>
       {% for u in usuarios %}
       <tr id="row-{{ u.id }}" {% if not u.ativo %}style="opacity:.5"{% endif %}>
-        <td><strong>{{ u.nome }}</strong></td>
+        <td>
+          <div style="display:flex;align-items:center;gap:10px">
+            {{ av(u) }}
+            <strong>{{ u.nome }}</strong>
+          </div>
+        </td>
         <td><code>{{ u.usuario }}</code></td>
         <td>
           <span class="badge {% if u.role == 'admin' %}badge-purple{% else %}badge-blue{% endif %}">
@@ -50,6 +80,12 @@
               {{ 'Desativar' if u.ativo else 'Ativar' }}
             </button>
             {% endif %}
+            <button class="btn btn-sm btn-secondary"
+                    onclick="document.getElementById('foto-input-{{ u.id }}').click()">
+              📷 Foto
+            </button>
+            <input type="file" id="foto-input-{{ u.id }}" accept="image/*" capture="user"
+                   style="display:none" onchange="trocarFoto({{ u.id }}, this)">
             <button class="btn btn-sm btn-secondary"
                     onclick="resetSenha({{ u.id }}, '{{ u.nome }}')">
               🔒 Nova Senha
@@ -74,7 +110,13 @@
 <div id="modal-novo" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:999;align-items:center;justify-content:center">
   <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:28px;width:360px;max-width:95vw">
     <h3 style="margin-bottom:20px">Novo Usuário</h3>
-    <form method="POST" action="/despachante/usuarios/novo">
+    <form method="POST" action="/despachante/usuarios/novo" enctype="multipart/form-data">
+      <div style="text-align:center;margin-bottom:18px">
+        <div class="uav-prev" id="novo-prev" onclick="document.getElementById('novo-foto').click()">📷</div>
+        <input type="file" id="novo-foto" name="foto" accept="image/*" capture="user"
+               style="display:none" onchange="previewNovaFoto(this)">
+        <div style="font-size:12px;color:var(--text-muted)">Toque para tirar/escolher a foto</div>
+      </div>
       <div class="form-group">
         <label>Nome completo</label>
         <input type="text" name="nome" class="form-control" placeholder="Ex: Thalia Souza" required>
@@ -155,6 +197,36 @@ function confirmarSenha() {
       alert(d.erro || 'Erro ao redefinir senha');
     }
   });
+}
+
+function previewNovaFoto(input) {
+  const f = input.files && input.files[0];
+  if (!f) return;
+  const prev = document.getElementById('novo-prev');
+  const url = URL.createObjectURL(f);
+  prev.style.backgroundImage = "url('" + url + "')";
+  prev.textContent = '';
+}
+
+function trocarFoto(uid, input) {
+  const f = input.files && input.files[0];
+  if (!f) return;
+  const fd = new FormData();
+  fd.append('foto', f);
+  const av = document.getElementById('av-' + uid);
+  if (av) av.style.opacity = '.4';
+  fetch(`/despachante/usuarios/${uid}/foto`, { method: 'POST', body: fd })
+    .then(r => r.json()).then(d => {
+      if (d.ok && d.foto && av) {
+        av.style.backgroundImage = "url('" + d.foto + "')";
+        av.textContent = '';
+        av.style.opacity = '1';
+      } else {
+        if (av) av.style.opacity = '1';
+        alert(d.erro || 'Erro ao enviar a foto');
+      }
+    }).catch(() => { if (av) av.style.opacity = '1'; alert('Erro ao enviar a foto'); });
+  input.value = '';
 }
 
 function deletarUsuario(uid, nome) {
