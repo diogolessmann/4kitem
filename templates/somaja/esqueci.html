@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Entrar — SomaJá 🐗</title>
+<title>Esqueci minha senha — SomaJá 🐗</title>
+<link rel="icon" type="image/svg+xml" href="/static/somaja/logo.svg">
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
   body{font-family:-apple-system,Segoe UI,Roboto,sans-serif;background:#f0fdf4;color:#0f172a}
@@ -12,23 +13,20 @@
   .sub{text-align:center;color:#475569;margin-bottom:22px;font-size:14px}
   label{display:block;font-size:14px;font-weight:600;margin:14px 0 6px}
   input{width:100%;padding:13px;border:1px solid #cbd5e1;border-radius:10px;font-size:16px}
-  .btn{width:100%;background:#16a34a;color:#fff;border:none;padding:14px;border-radius:12px;
-       font-weight:700;font-size:16px;cursor:pointer;margin-top:20px}
-  .erro{background:#fef2f2;color:#b91c1c;padding:10px 12px;border-radius:10px;font-size:14px;margin-bottom:8px}
+  .btn{width:100%;background:#16a34a;color:#fff;border:none;padding:14px;border-radius:12px;font-weight:700;font-size:16px;cursor:pointer;margin-top:20px}
+  .msg{background:#dcfce7;color:#15803d;padding:12px;border-radius:10px;font-size:14px;margin-bottom:8px}
   .link{text-align:center;margin-top:16px;font-size:14px;color:#475569}
   a{color:#16a34a;font-weight:600;text-decoration:none}
 </style>
 </head>
 <body>
-<form class="box" method="POST" action="/somaja/entrar">
+<form class="box" method="POST" action="/somaja/esqueci">
   <div class="logo">🐗 SomaJá</div>
-  <div class="sub">Bem-vindo de volta!</div>
-  {% if erro %}<div class="erro">{{ erro }}</div>{% endif %}
-  <label>E-mail</label><input name="email" type="email" required>
-  <label>Senha</label><input name="senha" type="password" required>
-  <button class="btn" type="submit">Entrar</button>
-  <div class="link"><a href="/somaja/esqueci">Esqueci minha senha</a></div>
-  <div class="link">Não tem conta? <a href="/somaja/cadastrar">Criar grátis</a></div>
+  <div class="sub">Esqueceu a senha? A gente te manda um link.</div>
+  {% if msg %}<div class="msg">{{ msg }}</div>{% endif %}
+  <label>Seu e-mail</label><input name="email" type="email" required placeholder="voce@email.com">
+  <button class="btn" type="submit">Enviar link de redefinição</button>
+  <div class="link"><a href="/somaja/entrar">← Voltar pro login</a></div>
 </form>
 </body>
 </html>

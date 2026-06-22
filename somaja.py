@@ -419,6 +419,57 @@ def sair():
     return redirect('/somaja')
 
 
+@somaja_bp.route('/esqueci', methods=['GET', 'POST'])
+def esqueci():
+    msg = None
+    if request.method == 'POST':
+        email = (request.form.get('email') or '').strip().lower()
+        conn = get_somaja_db()
+        u = conn.execute('SELECT id, nome FROM somaja_users WHERE email=?', (email,)).fetchone()
+        if u:
+            token = secrets.token_urlsafe(32)
+            exp = (datetime.now() + timedelta(hours=2)).isoformat()
+            conn.execute('UPDATE somaja_users SET reset_token=?, reset_expires=? WHERE id=?',
+                         (token, exp, u['id']))
+            conn.commit()
+            link = os.environ.get('BASE_URL', 'https://www.4kitem.com.br').rstrip('/') + '/somaja/redefinir?token=' + token
+            try:
+                _enviar_email(email, '🔑 SomaJá — redefinir sua senha',
+                    f'<p>Oi, {(u["nome"] or "").split()[0]}! Pra criar uma nova senha do SomaJá, '
+                    f'clica no link abaixo (vale 2 horas):</p>'
+                    f'<p><a href="{link}">Redefinir minha senha</a></p>'
+                    f'<p style="color:#888;font-size:13px">Se não foi você que pediu, é só ignorar este e-mail.</p>')
+            except Exception:
+                pass
+        conn.close()
+        # Sempre mostra sucesso (não revela se o e-mail tem conta — anti-enumeração)
+        msg = 'Se esse e-mail tiver conta, enviamos o link de redefinição. Confira sua caixa (e o spam).'
+    return render_template('somaja/esqueci.html', msg=msg)
+
+
+@somaja_bp.route('/redefinir', methods=['GET', 'POST'])
+def redefinir():
+    token = (request.args.get('token') or request.form.get('token') or '').strip()
+    conn = get_somaja_db()
+    u = conn.execute('SELECT id, reset_expires FROM somaja_users WHERE reset_token=?', (token,)).fetchone() if token else None
+    valido = bool(u and u['reset_expires'] and u['reset_expires'] >= datetime.now().isoformat())
+    if not valido:
+        conn.close()
+        return render_template('somaja/redefinir.html', valido=False, token=token, erro=None, ok=False)
+    erro = None
+    if request.method == 'POST':
+        senha = request.form.get('senha') or ''
+        if len(senha) < 6:
+            erro = 'A senha precisa de pelo menos 6 caracteres.'
+        else:
+            conn.execute('UPDATE somaja_users SET password_hash=?, reset_token=NULL, reset_expires=NULL WHERE id=?',
+                         (generate_password_hash(senha), u['id']))
+            conn.commit(); conn.close()
+            return render_template('somaja/redefinir.html', valido=True, token=token, ok=True, erro=None)
+    conn.close()
+    return render_template('somaja/redefinir.html', valido=True, token=token, ok=False, erro=erro)
+
+
 # ── Rotas: área logada (precisa de acesso) ──────────────────────────────────────
 @somaja_bp.route('/app')
 @somaja_login_required
