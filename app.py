@@ -9490,6 +9490,10 @@ MZ_DAILY_HARD_CAP = int(os.environ.get('MZ_DAILY_HARD_CAP', '150'))
 MZ_PREVALIDATE         = os.environ.get('MZ_PREVALIDATE', '1') not in ('0', 'false', 'False', '')
 MZ_PREVALIDATE_MIN_AGE = int(os.environ.get('MZ_PREVALIDATE_MIN_AGE', '7'))
 
+# Imagem só sai de número AQUECIDO (>= dias). Chip novo mandando foto é gatilho forte
+# de ban — abaixo disso a campanha manda só o texto (legenda).
+MZ_IMAGE_MIN_AGE = int(os.environ.get('MZ_IMAGE_MIN_AGE', '14'))
+
 
 def _mz_warmup_cap(days_active: int) -> int:
     """Teto diário de mensagens conforme a idade do número (curva de aquecimento)."""
