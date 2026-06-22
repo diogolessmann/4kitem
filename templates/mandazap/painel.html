@@ -217,6 +217,31 @@ select option{background:var(--surface2)}
       <div class="page-sub">Visão geral da sua conta MandaZap</div>
     </div>
 
+    {% if mz_stats.numbers_connected == 0 or mz_stats.contacts == 0 or mz_stats.campaigns == 0 %}
+    <div style="background:linear-gradient(180deg,rgba(245,158,11,.08),rgba(34,197,94,.03));border:1px solid rgba(245,158,11,.3);border-radius:14px;padding:18px 20px;margin-bottom:20px">
+      <div style="font-size:15px;font-weight:800;color:#fbbf24;margin-bottom:3px">🚀 Primeiros passos</div>
+      <div style="font-size:12px;color:var(--text2);margin-bottom:14px">Siga a ordem pra disparar sua 1ª campanha <strong>sem queimar o número</strong>.</div>
+      <div style="display:flex;flex-direction:column;gap:10px;font-size:12.5px;line-height:1.5">
+        <div style="display:flex;gap:10px;align-items:flex-start">
+          <span style="flex-shrink:0">🔥</span>
+          <div><strong>Prepare o chip ANTES de conectar</strong> — chip novo conectado direto é bloqueado. Use 24-48h como humano primeiro. <a href="/mandazap/ajuda" target="_blank" style="color:#fbbf24;text-decoration:underline">ver o guia →</a></div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:flex-start">
+          <span style="flex-shrink:0">{{ '✅' if mz_stats.numbers_connected > 0 else '2️⃣' }}</span>
+          <div>Conectar um número{% if mz_stats.numbers_connected == 0 %} — <a href="#" onclick="showSection('numeros');return false" style="color:var(--green);text-decoration:underline">conectar agora</a>{% endif %}</div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:flex-start">
+          <span style="flex-shrink:0">{{ '✅' if mz_stats.contacts > 0 else '3️⃣' }}</span>
+          <div>Importar seus contatos{% if mz_stats.contacts == 0 %} — <a href="#" onclick="showSection('contatos');return false" style="color:var(--green);text-decoration:underline">importar agora</a>{% endif %}</div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:flex-start">
+          <span style="flex-shrink:0">{{ '✅' if mz_stats.campaigns > 0 else '4️⃣' }}</span>
+          <div>Criar e disparar a 1ª campanha{% if mz_stats.campaigns == 0 %} — <a href="#" onclick="openModal('modal-campanha');return false" style="color:var(--green);text-decoration:underline">criar agora</a>{% endif %}</div>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
     <div class="stats-grid">
       <div class="stat-card">
         <div class="label">👥 Contatos</div>
@@ -803,8 +828,11 @@ select option{background:var(--surface2)}
 <div class="modal-overlay" id="modal-numero">
   <div class="modal">
     <h3>📞 Adicionar Número</h3>
+    <div style="font-size:12.5px;color:#fbbf24;margin-bottom:12px;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.3);border-radius:10px;padding:12px;line-height:1.6">
+      🔥 <strong>Chip NOVO? NÃO conecte ainda!</strong> Chip recém-comprado conectado direto é bloqueado quase na hora. Use ele como humano por <strong>24-48h</strong> (mande/receba mensagens reais, foto, áudio) ANTES de gerar o QR. <a href="/mandazap/ajuda" target="_blank" style="color:#fbbf24;text-decoration:underline;font-weight:700">Ver o passo a passo →</a>
+    </div>
     <div style="font-size:13px;color:var(--text2);margin-bottom:16px;background:rgba(34,197,94,.06);border:1px solid var(--border2);border-radius:10px;padding:12px;line-height:1.6">
-      📱 Após cadastrar, você precisará conectar via QR Code escaneando com o WhatsApp Business.
+      📱 Depois de cadastrar, conecte via QR Code escaneando com o WhatsApp Business.
     </div>
     <form method="POST" action="/mandazap/numeros/add">
       <div class="form-group"><label>Identificação (apelido) *</label><input type="text" name="label" placeholder="Ex: Número principal, Vendas, Suporte..." required maxlength="60"></div>
@@ -1505,7 +1533,7 @@ async function pararCampanha(cid, nome) {
 async function dispararCampanha(cid, nome, continuar = false) {
   const continMsg = continuar
     ? `▶ Continuar a campanha "${nome}" de onde parou?\n\nOs contatos que já receberam serão ignorados automaticamente.`
-    : `🚀 Disparar a campanha "${nome}" AGORA?\n\nAs mensagens serão enviadas para todos os contatos da lista.`;
+    : `🚀 Disparar a campanha "${nome}"?\n\nO envio é no RITMO SEGURO (horário comercial, devagar) — pode levar horas ou dias. É proposital: é o que protege seu número de bloqueio.`;
   if (!confirm(continMsg)) return;
 
   const btn = document.getElementById('camp-btn-' + cid);
