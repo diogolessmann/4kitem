@@ -6293,6 +6293,46 @@ def saas_sz_set_plan():
     return jsonify({'ok': True})
 
 
+@app.route('/saas-admin/somaja/set-plan', methods=['POST'])
+@_saas_admin_required
+def saas_somaja_set_plan():
+    """Ativa/corta a assinatura e (opcional) define o plano do usuário SomaJá."""
+    data  = request.get_json() or {}
+    uid   = data.get('user_id')
+    ativo = 1 if data.get('ativo') else 0
+    plano = (data.get('plano') or '').strip() or None
+    if not uid:
+        return jsonify({'erro': 'user_id obrigatório'}), 400
+    try:
+        from somaja_db import get_somaja_db as _gsoma
+        conn = _gsoma()
+        conn.execute('UPDATE somaja_users SET plan_active=?, plano=COALESCE(?,plano) WHERE id=?',
+                     (ativo, plano, uid))
+        conn.commit(); conn.close()
+        return jsonify({'ok': True})
+    except Exception as e:
+        return jsonify({'erro': str(e)[:120]}), 500
+
+
+@app.route('/saas-admin/somaja/reset-senha', methods=['POST'])
+@_saas_admin_required
+def saas_somaja_reset_senha():
+    data  = request.get_json() or {}
+    uid   = data.get('user_id')
+    senha = (data.get('senha') or '').strip()
+    if not uid or len(senha) < 6:
+        return jsonify({'erro': 'user_id e senha (mín. 6 caracteres) obrigatórios'}), 400
+    try:
+        from somaja_db import get_somaja_db as _gsoma
+        conn = _gsoma()
+        conn.execute('UPDATE somaja_users SET password_hash=? WHERE id=?',
+                     (generate_password_hash(senha), uid))
+        conn.commit(); conn.close()
+        return jsonify({'ok': True})
+    except Exception as e:
+        return jsonify({'erro': str(e)[:120]}), 500
+
+
 @app.route('/saas-admin/pubshow/bar/<int:bid>/status', methods=['POST'])
 @_saas_admin_required
 def saas_pubshow_bar_status(bid):

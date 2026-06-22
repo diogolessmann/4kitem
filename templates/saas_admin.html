@@ -790,7 +790,7 @@
     {% if somaja_users %}
     <table>
       <thead><tr>
-        <th>#</th><th>Nome</th><th>Email</th><th>Telefone</th><th>Plano</th><th>Status</th><th>Criado em</th>
+        <th>#</th><th>Nome</th><th>Email</th><th>Telefone</th><th>Plano</th><th>Status</th><th>Criado em</th><th>Ações</th>
       </tr></thead>
       <tbody>
       {% for u in somaja_users %}
@@ -805,6 +805,14 @@
           {% else %}<span style="color:var(--text2);font-size:12px">🎁 trial {{ (u.trial_until or '')[:10] or '—' }}</span>{% endif %}
         </td>
         <td style="font-size:12px">{{ (u.created_at or '')[:10] }}</td>
+        <td style="white-space:nowrap">
+          {% if u.plan_active %}
+          <button onclick="somaSetPlan({{ u.id }},false)" style="font-size:12px;padding:4px 10px;border-radius:7px;border:none;cursor:pointer;background:#fee2e2;color:#b91c1c">Cortar</button>
+          {% else %}
+          <button onclick="somaSetPlan({{ u.id }},true)" style="font-size:12px;padding:4px 10px;border-radius:7px;border:none;cursor:pointer;background:#dcfce7;color:#15803d">Ativar</button>
+          {% endif %}
+          <button onclick="somaResetSenha({{ u.id }})" style="font-size:12px;padding:4px 10px;border-radius:7px;border:none;cursor:pointer;background:#e2e8f0;color:#334155">Senha</button>
+        </td>
       </tr>
       {% endfor %}
       </tbody>
@@ -813,6 +821,20 @@
     <div class="empty">Nenhum usuário SomaJá ainda.</div>
     {% endif %}
   </div>
+  <script>
+  async function somaSetPlan(uid, ativo){
+    let plano = null;
+    if(ativo){ plano = prompt('Plano (opcional): pro_mensal · pro_anual · familia_mensal · familia_anual', 'pro_anual') || null; }
+    if(!confirm(ativo ? 'Ativar a assinatura deste usuário?' : 'Cortar o acesso deste usuário?')) return;
+    const r = await fetch('/saas-admin/somaja/set-plan', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({user_id:uid, ativo:ativo, plano:plano})});
+    const j = await r.json(); if(j.ok){ location.reload(); } else { alert(j.erro || 'Erro'); }
+  }
+  async function somaResetSenha(uid){
+    const senha = prompt('Nova senha (mín. 6 caracteres):'); if(!senha) return;
+    const r = await fetch('/saas-admin/somaja/reset-senha', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({user_id:uid, senha:senha})});
+    const j = await r.json(); alert(j.ok ? 'Senha alterada! ✅' : (j.erro || 'Erro'));
+  }
+  </script>
 
   <!-- PCD Fácil -->
   <div class="tab-content" id="tab-pcd">
