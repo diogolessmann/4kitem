@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Afiliados — SaaS Admin 4KITEM</title>
+<style>
+  :root{--bg:#0b0b12;--card:#15151f;--bd:rgba(255,255,255,.08);--txt:#e8e8f5;--mut:#8a8aa8;--green:#22c55e;--orange:#f59e0b}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--txt);font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;padding:0 0 60px}
+  .top{display:flex;align-items:center;justify-content:space-between;padding:18px 28px;border-bottom:1px solid var(--bd);background:#0f0f17}
+  .top h1{font-size:19px;font-weight:800}
+  .top a{color:var(--mut);text-decoration:none;font-size:14px;border:1px solid var(--bd);padding:8px 14px;border-radius:9px}
+  .wrap{max-width:1180px;margin:0 auto;padding:24px 24px 0}
+  .cards{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:26px}
+  .c{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:18px}
+  .c .lbl{font-size:12px;color:var(--mut);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+  .c .val{font-size:26px;font-weight:900}
+  .c.g .val{color:var(--green)} .c.o .val{color:var(--orange)}
+  h2{font-size:15px;font-weight:800;margin:24px 0 12px;color:var(--mut);text-transform:uppercase;letter-spacing:.5px}
+  table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--bd);border-radius:14px;overflow:hidden;font-size:13.5px}
+  th{text-align:left;padding:11px 14px;background:#1c1c28;color:var(--mut);font-weight:700;font-size:12px;text-transform:uppercase}
+  td{padding:11px 14px;border-top:1px solid var(--bd)}
+  .cod{font-family:monospace;background:rgba(34,197,94,.12);color:var(--green);padding:2px 8px;border-radius:6px;font-weight:700}
+  .pago{color:var(--green);font-weight:700} .pend{color:var(--orange);font-weight:700} .erro{color:#ef4444;font-weight:700}
+  .empty{text-align:center;color:var(--mut);padding:34px}
+  @media(max-width:760px){.cards{grid-template-columns:repeat(2,1fr)}table{font-size:12px}}
+</style>
+</head>
+<body>
+<div class="top">
+  <h1>💸 Afiliados — Programa de Indicação</h1>
+  <a href="/saas-admin">← Voltar ao Admin</a>
+</div>
+<div class="wrap">
+
+  <div class="cards">
+    <div class="c"><div class="lbl">Afiliados</div><div class="val">{{ resumo.afiliados }}</div></div>
+    <div class="c g"><div class="lbl">Pago (PIX)</div><div class="val">{{ brl(resumo.pago) }}</div></div>
+    <div class="c o"><div class="lbl">A pagar</div><div class="val">{{ brl(resumo.pendente) }}</div></div>
+    <div class="c"><div class="lbl">Comissão total</div><div class="val">{{ brl(resumo.total) }}</div></div>
+  </div>
+
+  <h2>Afiliados cadastrados</h2>
+  {% if afs %}
+  <table>
+    <tr><th>Nome</th><th>Código</th><th>WhatsApp</th><th>Chave PIX</th><th>Clientes</th><th>Pago</th><th>A pagar</th></tr>
+    {% for a in afs %}
+    <tr>
+      <td><b>{{ a.nome }}</b><br><span style="color:var(--mut);font-size:12px">{{ a.email }}</span></td>
+      <td><span class="cod">{{ a.codigo }}</span></td>
+      <td>{{ a.telefone or '—' }}</td>
+      <td>{{ a.pix_chave or '⚠️ sem chave' }} {% if a.pix_tipo %}<span style="color:var(--mut)">({{ a.pix_tipo }})</span>{% endif %}</td>
+      <td>{{ a.clientes }}</td>
+      <td class="pago">{{ brl(a.pago) }}</td>
+      <td class="pend">{{ brl(a.pendente) }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}<div class="empty">Nenhum afiliado cadastrado ainda.</div>{% endif %}
+
+  <h2>Comissões recentes (últimas 100)</h2>
+  {% if convs %}
+  <table>
+    <tr><th>Data</th><th>Afiliado</th><th>App</th><th>Cliente</th><th>Valor</th><th>Status</th></tr>
+    {% for c in convs %}
+    <tr>
+      <td>{{ (c.created_at or '')[:16].replace('T',' ') }}</td>
+      <td>{{ c.af_nome }} <span class="cod">{{ c.af_codigo }}</span></td>
+      <td>{{ c.app }}</td>
+      <td>{{ c.cliente_nome or '—' }}</td>
+      <td><b>{{ brl(c.valor) }}</b></td>
+      <td>
+        {% if c.status == 'pago' %}<span class="pago">✅ pago</span>
+        {% elif c.status == 'erro' %}<span class="erro">⚠️ erro</span>
+        {% else %}<span class="pend">⏳ pendente</span>{% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}<div class="empty">Nenhuma comissão registrada ainda. Quando um cliente indicado pagar, aparece aqui.</div>{% endif %}
+
+</div>
+</body>
+</html>

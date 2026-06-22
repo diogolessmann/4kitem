@@ -333,14 +333,26 @@ def init_saas_db():
         "ALTER TABLE defesapro_users ADD COLUMN password_hash TEXT DEFAULT ''",
         "ALTER TABLE defesapro_users ADD COLUMN last_login TEXT DEFAULT ''",
         "ALTER TABLE defesapro_users ADD COLUMN cpf_cnpj TEXT DEFAULT ''",
+        # DefesaPro — afiliados (quem indicou)
+        "ALTER TABLE defesapro_users ADD COLUMN afiliado_ref TEXT DEFAULT ''",
         # Baú — anti-golpe (telefone + CPF/CNPJ únicos)
         "ALTER TABLE bau_users ADD COLUMN phone TEXT DEFAULT ''",
         "ALTER TABLE bau_users ADD COLUMN cpf_cnpj TEXT DEFAULT ''",
         # MandaZap — anti-golpe
         "ALTER TABLE mandazap_users ADD COLUMN phone TEXT DEFAULT ''",
         "ALTER TABLE mandazap_users ADD COLUMN cpf_cnpj TEXT DEFAULT ''",
+        # MandaZap — afiliados (quem indicou)
+        "ALTER TABLE mandazap_users ADD COLUMN afiliado_ref TEXT DEFAULT ''",
         # AgendaJá — CPF do responsável
         "ALTER TABLE agenda_businesses ADD COLUMN cpf_cnpj TEXT DEFAULT ''",
+        # AgendaJá — afiliados (quem indicou)
+        "ALTER TABLE agenda_businesses ADD COLUMN afiliado_ref TEXT DEFAULT ''",
+        # AlertaJá — afiliados
+        "ALTER TABLE alerta_subscribers ADD COLUMN afiliado_ref TEXT DEFAULT ''",
+        # MandaJá/MandaJr — afiliados
+        "ALTER TABLE mandaja_stores ADD COLUMN afiliado_ref TEXT DEFAULT ''",
+        # Amigo Despachante — afiliados (venda assistida: admin grava quem indicou)
+        "ALTER TABLE despachante_users ADD COLUMN afiliado_ref TEXT DEFAULT ''",
         # AgendaJá — Multi-profissional
         "ALTER TABLE agenda_appointments ADD COLUMN professional_id INTEGER",
         "ALTER TABLE agenda_appointments ADD COLUMN professional_name TEXT DEFAULT ''",

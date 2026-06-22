@@ -269,6 +269,7 @@ def init_db():
         "ALTER TABLE clients ADD COLUMN plan_active INTEGER DEFAULT 0",
         "ALTER TABLE clients ADD COLUMN trial_ends TEXT DEFAULT ''",
         "ALTER TABLE clients ADD COLUMN asaas_customer_id TEXT DEFAULT ''",
+        "ALTER TABLE clients ADD COLUMN afiliado_ref TEXT DEFAULT ''",
     ]
     for sql in _kids_migrations:
         try:

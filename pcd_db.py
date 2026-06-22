@@ -108,6 +108,7 @@ def init_pcd_db():
         'ALTER TABLE pcd_users ADD COLUMN reset_expires TEXT',
         'ALTER TABLE pcd_users ADD COLUMN ultimo_acesso TEXT',
         'ALTER TABLE pcd_users ADD COLUMN cpf TEXT',
+        'ALTER TABLE pcd_users ADD COLUMN afiliado_ref TEXT',
     ]:
         try:
             conn.execute(migration); conn.commit()

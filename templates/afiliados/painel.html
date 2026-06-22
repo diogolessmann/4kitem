@@ -66,7 +66,7 @@
         <input value="{{ l.link }}" readonly id="lk_{{ l.app }}">
         <button class="copybtn" onclick="copiar('lk_{{ l.app }}',this)">Copiar</button>
       </div>
-      <a class="share" target="_blank" href="https://wa.me/?text={{ ('Organize seu dinheiro no WhatsApp com o ' ~ l.nome ~ '! ' ~ l.link)|urlencode }}">📲 Compartilhar no WhatsApp</a>
+      <a class="share" target="_blank" href="https://wa.me/?text={{ ('Conhece o ' ~ l.nome ~ '? ' ~ l.desc ~ '. Garanta o seu aqui: ' ~ l.link)|urlencode }}">📲 Compartilhar no WhatsApp</a>
     </div>
     {% endfor %}
   </div>

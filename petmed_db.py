@@ -209,6 +209,8 @@ def init_petmed_db():
         'ALTER TABLE petmed_assinaturas ADD COLUMN billing_type TEXT',
         # ── Modelo de CRÉDITOS (pago por atendimento) ──────────────────────────
         'ALTER TABLE petmed_users ADD COLUMN creditos INTEGER DEFAULT 0',
+        # Afiliados (quem indicou)
+        'ALTER TABLE petmed_users ADD COLUMN afiliado_ref TEXT',
     ]:
         try:
             conn.execute(migration)

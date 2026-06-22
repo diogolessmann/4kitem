@@ -64,6 +64,7 @@
 <nav>
   <span class="nav-logo">🔐 4KITEM SaaS Admin</span>
   <a href="/saas-admin/unban"><button class="nav-link" style="border-color:#f59e0b;color:#f59e0b">🔓 Desbanir</button></a>
+  <a href="/saas-admin/afiliados"><button class="nav-link" style="border-color:#16a34a;color:#5ee0a0">💸 Afiliados</button></a>
   <a href="/radar/admin" target="_blank"><button class="nav-link" style="border-color:#2563eb;color:#7cc0ff">📡 Radar de Licitações</button></a>
   <a href="/licita-norte/admin" target="_blank"><button class="nav-link" style="border-color:#16a34a;color:#5ee0a0">🗞️ Radar Licita Norte</button></a>
   <a href="/saas-admin/logout"><button class="nav-link">Sair</button></a>
@@ -577,6 +578,7 @@
       <input id="nd-phone"   type="text"   placeholder="Telefone / WhatsApp *" class="modal-input" style="margin-bottom:8px;">
       <input id="nd-email"   type="email"  placeholder="E-mail" class="modal-input" style="margin-bottom:8px;">
       <input id="nd-cidade"  type="text"   placeholder="Cidade" class="modal-input" style="margin-bottom:8px;">
+      <input id="nd-afiliado" type="text"  placeholder="Código do afiliado (quem indicou — opcional)" class="modal-input" style="margin-bottom:8px;">
       <select id="nd-plan" class="modal-input" style="margin-bottom:12px;">
         <option value="basico">Básico</option>
         <option value="profissional">Profissional</option>
@@ -1114,7 +1116,7 @@ function openNovoDesp() {
 }
 function closeNovoDespModal() {
   document.getElementById('novoDespModal').style.display = 'none';
-  ['nd-name','nd-empresa','nd-phone','nd-email','nd-cidade'].forEach(id => document.getElementById(id).value = '');
+  ['nd-name','nd-empresa','nd-phone','nd-email','nd-cidade','nd-afiliado'].forEach(id => document.getElementById(id).value = '');
 }
 async function salvarNovoDesp() {
   const name    = document.getElementById('nd-name').value.trim();
@@ -1123,10 +1125,11 @@ async function salvarNovoDesp() {
   const empresa = document.getElementById('nd-empresa').value.trim();
   const cidade  = document.getElementById('nd-cidade').value.trim();
   const plan    = document.getElementById('nd-plan').value;
+  const afiliado_ref = document.getElementById('nd-afiliado').value.trim();
   if (!name || !phone) { alert('Nome e telefone são obrigatórios.'); return; }
   const r = await fetch('/admin/despachante/user/novo', {
     method: 'POST', headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({ name, phone, email, empresa, cidade, plan })
+    body: JSON.stringify({ name, phone, email, empresa, cidade, plan, afiliado_ref })
   });
   const d = await r.json();
   if (d.success) { closeNovoDespModal(); location.reload(); }

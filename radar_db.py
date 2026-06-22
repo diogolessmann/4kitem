@@ -177,6 +177,9 @@ def init_radar_db():
         'ALTER TABLE licita_users ADD COLUMN analises_usadas INTEGER DEFAULT 0',
         'ALTER TABLE licita_users ADD COLUMN analises_mes TEXT DEFAULT ""',
         'ALTER TABLE licita_users ADD COLUMN area TEXT DEFAULT ""',
+        # Afiliados (quem indicou)
+        'ALTER TABLE radar_users  ADD COLUMN afiliado_ref TEXT DEFAULT ""',
+        'ALTER TABLE licita_users ADD COLUMN afiliado_ref TEXT DEFAULT ""',
     ]:
         try:
             conn.execute(migration); conn.commit()

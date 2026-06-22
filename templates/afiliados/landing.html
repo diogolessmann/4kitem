@@ -3,67 +3,123 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Seja Afiliado 4kitem — indique e ganhe todo mês 💸</title>
+<title>Seja Afiliado 4KITEM — Venda e Ganhe Dinheiro 💸</title>
+<meta name="description" content="Indique os apps do 4KITEM e ganhe comissão recorrente, todo mês, direto no seu PIX. Cadastro grátis.">
+<meta property="og:title" content="Seja Afiliado 4KITEM — Venda e Ganhe Dinheiro">
+<meta property="og:description" content="Indique, a pessoa assina, e você ganha todo mês — direto no PIX. Cadastro grátis.">
+<meta property="og:image" content="https://4kitem.com.br/static/img/afiliados/card.jpg">
+<meta property="og:image:width" content="1080">
+<meta property="og:image:height" content="1080">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://4kitem.com.br/static/img/afiliados/card.jpg">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
 <style>
+  :root{--bg:#08080f;--surface:#13131f;--border:rgba(255,255,255,.08);--text:#f0f0ff;--text2:#9a9ac0;--green:#22c55e;--green2:#16a34a;--accent:#8b5cf6}
   *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:-apple-system,Segoe UI,Roboto,sans-serif;color:#0f172a;background:#f0fdf4;line-height:1.6}
-  .wrap{max-width:760px;margin:0 auto;padding:0 20px}
-  header{background:#16a34a;color:#fff;padding:14px 0}
-  header .wrap{display:flex;justify-content:space-between;align-items:center}
-  .logo{font-size:20px;font-weight:800}
-  .btn{display:inline-block;background:#16a34a;color:#fff;padding:15px 30px;border-radius:12px;text-decoration:none;font-weight:700;font-size:17px;border:none;cursor:pointer}
-  .btn.alt{background:#fff;color:#16a34a;border:2px solid #16a34a;padding:8px 18px;font-size:14px}
-  .hero{text-align:center;padding:56px 0 36px}
-  .hero h1{font-size:38px;line-height:1.15;margin-bottom:16px}
-  .hero .hl{color:#16a34a}
-  .hero p{font-size:19px;color:#475569;max-width:560px;margin:0 auto 28px}
-  .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;padding:20px 0 40px}
-  .step{background:#fff;border:1px solid #dcfce7;border-radius:16px;padding:22px;text-align:center}
-  .step .n{width:38px;height:38px;border-radius:50%;background:#dcfce7;color:#16a34a;font-weight:800;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;font-size:18px}
-  .step h3{font-size:16px;margin-bottom:6px}
-  .step p{font-size:14px;color:#475569}
-  .comissao{background:#fff;border:2px solid #16a34a;border-radius:18px;padding:28px;max-width:520px;margin:0 auto 44px;text-align:center}
-  .comissao h2{font-size:20px;margin-bottom:6px}
-  .comissao .ex{font-size:15px;color:#475569;margin-bottom:18px}
-  .big{font-size:34px;font-weight:800;color:#16a34a}
-  .destaque{background:#dcfce7;border-radius:12px;padding:14px;margin-top:16px;font-size:15px;color:#15803d;font-weight:600}
-  footer{text-align:center;color:#94a3b8;padding:30px;font-size:13px}
-  @media(max-width:640px){.steps{grid-template-columns:1fr}.hero h1{font-size:29px}}
+  body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);line-height:1.6;overflow-x:hidden}
+  .wrap{max-width:1000px;margin:0 auto;padding:0 20px}
+  a{text-decoration:none}
+  .btn{display:inline-block;background:linear-gradient(135deg,var(--green),var(--green2));color:#fff;padding:17px 38px;border-radius:14px;font-weight:800;font-size:18px;box-shadow:0 8px 30px rgba(34,197,94,.35);transition:transform .15s,box-shadow .15s}
+  .btn:hover{transform:translateY(-2px);box-shadow:0 12px 38px rgba(34,197,94,.5)}
+  .btn.ghost{background:transparent;color:var(--green);border:2px solid var(--green);box-shadow:none;padding:9px 20px;font-size:14px}
+  header{position:sticky;top:0;z-index:50;background:rgba(8,8,15,.85);backdrop-filter:blur(14px);border-bottom:1px solid var(--border)}
+  header .wrap{display:flex;justify-content:space-between;align-items:center;height:64px}
+  .logo{font-size:19px;font-weight:900;letter-spacing:-.5px}
+  .logo b{background:linear-gradient(135deg,var(--accent),#a78bfa);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+  /* hero */
+  .hero{text-align:center;padding:70px 0 40px;position:relative}
+  .hero .selo{display:inline-flex;gap:8px;align-items:center;background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.3);color:var(--green);padding:7px 16px;border-radius:100px;font-size:13px;font-weight:700;margin-bottom:26px}
+  .hero h1{font-size:clamp(40px,8vw,76px);font-weight:900;letter-spacing:-2.5px;line-height:1.02;margin-bottom:20px}
+  .hero h1 .money{background:linear-gradient(135deg,var(--green),#4ade80);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+  .hero p{font-size:20px;color:var(--text2);max-width:600px;margin:0 auto 32px}
+  .hero .sub{font-size:14px;color:var(--text2);margin-top:16px}
+  /* steps */
+  .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;padding:30px 0}
+  .step{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:26px;text-align:center}
+  .step .n{width:42px;height:42px;border-radius:12px;background:rgba(34,197,94,.15);color:var(--green);font-weight:900;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;font-size:20px}
+  .step h3{font-size:17px;margin-bottom:6px}
+  .step p{font-size:14.5px;color:var(--text2)}
+  /* apps grid */
+  .sec-title{text-align:center;font-size:30px;font-weight:900;letter-spacing:-1px;margin:54px 0 8px}
+  .sec-sub{text-align:center;color:var(--text2);font-size:16px;margin-bottom:34px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:16px}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:22px;display:flex;flex-direction:column;gap:8px;transition:border-color .2s,transform .2s}
+  .card:hover{border-color:rgba(34,197,94,.4);transform:translateY(-3px)}
+  .card .top{display:flex;align-items:center;gap:12px}
+  .card .ic{width:48px;height:48px;border-radius:12px;object-fit:cover;background:rgba(255,255,255,.05);display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0}
+  .card h4{font-size:17px;font-weight:800}
+  .card .desc{font-size:13.5px;color:var(--text2);min-height:38px}
+  .card .pay{margin-top:8px;padding-top:14px;border-top:1px solid var(--border);display:flex;align-items:baseline;justify-content:space-between}
+  .card .val{font-size:28px;font-weight:900;color:var(--green)}
+  .card .un{font-size:13px;color:var(--text2);font-weight:600}
+  .card .rec{font-size:11px;color:var(--green);font-weight:700;text-transform:uppercase;letter-spacing:.5px}
+  /* destaque */
+  .band{background:linear-gradient(135deg,rgba(34,197,94,.12),rgba(139,92,246,.1));border:1px solid rgba(34,197,94,.25);border-radius:22px;padding:38px;text-align:center;margin:50px 0}
+  .band h2{font-size:26px;font-weight:900;margin-bottom:10px}
+  .band p{color:var(--text2);max-width:560px;margin:0 auto 24px}
+  footer{text-align:center;color:var(--text2);padding:40px 20px;font-size:13px;border-top:1px solid var(--border);margin-top:30px}
+  @media(max-width:640px){.steps{grid-template-columns:1fr}.hero{padding:48px 0 30px}}
 </style>
 </head>
 <body>
 <header><div class="wrap">
-  <div class="logo">4KITEM · Afiliados</div>
-  <a href="/afiliados/entrar" class="btn alt">Entrar</a>
+  <div class="logo"><b>4K</b>ITEM · Afiliados</div>
+  <a href="/afiliados/entrar" class="btn ghost">Entrar</a>
 </div></header>
 
 <section class="hero"><div class="wrap">
-  <h1>Indique os apps do 4kitem e <span class="hl">ganhe todo mês</span>.</h1>
-  <p>Você indica, a pessoa assina, e você recebe comissão <b>todo mês que ela pagar</b> — direto no seu PIX. Renda que <b>se acumula</b>: quanto mais você indica, mais cai sem parar.</p>
-  <a href="/afiliados/cadastrar" class="btn">Quero ser afiliado (grátis)</a>
+  <div class="selo">💸 Renda recorrente · cai no seu PIX automático</div>
+  <h1>Indique. Venda.<br><span class="money">Ganhe dinheiro.</span></h1>
+  <p>Você indica os apps do 4KITEM, a pessoa assina, e você recebe comissão <b style="color:var(--text)">todo mês que ela pagar</b> — pra sempre, direto no seu PIX.</p>
+  <a href="/afiliados/cadastrar" class="btn">QUERO SER AFILIADO (grátis) →</a>
+  <div class="sub">Cadastro em 1 minuto · sem custo · sem pegadinha</div>
+  <img src="/static/img/afiliados/hero.webp" alt="Pessoa recebendo dinheiro no PIX em casa" loading="lazy"
+       style="display:block;max-width:300px;width:100%;margin:34px auto 0;border-radius:22px;box-shadow:0 24px 60px rgba(0,0,0,.55);">
 </div></section>
 
 <section><div class="wrap">
-  <div class="steps">
-    <div class="step"><div class="n">1</div><h3>Cadastre-se grátis</h3><p>Leva 1 minuto. Você ganha um link só seu.</p></div>
-    <div class="step"><div class="n">2</div><h3>Compartilhe o link</h3><p>Manda no WhatsApp, Instagram, pros amigos, pra empresas.</p></div>
-    <div class="step"><div class="n">3</div><h3>Receba no PIX</h3><p>Toda mensalidade que o cliente pagar, sua comissão cai automática.</p></div>
+  <img src="/static/img/afiliados/passos.webp" alt="Cadastre grátis, mande seu link, ganhe no PIX" loading="lazy"
+       style="display:block;width:100%;border-radius:18px;border:1px solid var(--border);">
+</div></section>
+
+<section><div class="wrap">
+  <h2 class="sec-title">Quanto você ganha em cada app 💰</h2>
+  <p class="sec-sub">Comissão recorrente — enquanto o cliente pagar, você ganha.</p>
+  <div class="grid">
+    {% for key, a in apps.items() %}
+    <div class="card">
+      <div class="top">
+        {% if a.icone %}<img class="ic" src="{{ a.icone }}" alt="{{ a.nome }}" onerror="this.outerHTML='<div class=ic>🎯</div>'">{% else %}<div class="ic">🎯</div>{% endif %}
+        <h4>{{ a.nome }}</h4>
+      </div>
+      <div class="desc">{{ a.desc }}</div>
+      <div class="pay">
+        <div>
+          <div class="val">{{ _brl(a.comissao) }}</div>
+          <div class="rec">recorrente</div>
+        </div>
+        <div class="un">{{ a.unidade }}</div>
+      </div>
+    </div>
+    {% endfor %}
   </div>
 </div></section>
 
 <section><div class="wrap">
-  <div class="comissao">
-    <h2>💸 Quanto você ganha</h2>
-    <p class="ex">Exemplo com o <b>SomaJá</b> (coach financeiro no WhatsApp):</p>
-    <div class="big">R$ 4,00<span style="font-size:16px;color:#475569;font-weight:500"> por cliente / mês</span></div>
-    <div class="destaque">100 clientes ativos = <b>R$ 400/mês</b> caindo no seu PIX, sem parar 🤑</div>
-    <p style="font-size:13px;color:#94a3b8;margin-top:14px">Recorrente: enquanto o cliente pagar, você ganha. Mais apps em breve, cada um com sua comissão.</p>
-  </div>
-  <div style="text-align:center;padding-bottom:50px">
+  <h2 class="sec-title">O dinheiro cai sozinho no seu PIX 💸</h2>
+  <p class="sec-sub">Toda vez que alguém que você indicou paga, você recebe — automático.</p>
+  <img src="/static/img/afiliados/prova.webp" alt="Celular recebendo vários PIX num bar" loading="lazy"
+       style="display:block;width:100%;border-radius:18px;border:1px solid var(--border);">
+</div></section>
+
+<section><div class="wrap">
+  <div class="band">
+    <h2>Renda que se acumula 📈</h2>
+    <p>Cada cliente que você traz paga <b style="color:var(--text)">todo mês</b>. Traga 30 clientes do DefesaPro (R$50 cada) = <b style="color:var(--green)">R$1.500/mês</b> caindo no seu PIX, sem você fazer mais nada.</p>
     <a href="/afiliados/cadastrar" class="btn">Começar agora →</a>
   </div>
 </div></section>
 
-<footer>4KITEM · Programa de Afiliados · pagamento via PIX automático</footer>
+<footer>4KITEM · Programa de Afiliados · pagamento via PIX automático · <a href="/" style="color:var(--text2)">voltar ao 4kitem</a></footer>
 </body>
 </html>

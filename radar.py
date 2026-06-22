@@ -597,6 +597,9 @@ def _inject_user():
 @radar_bp.route('/lp')
 @radar_bp.route('/sobre')
 def rota_lp():
+    _r = (request.args.get('ref') or '').strip().upper()[:12]
+    if _r:
+        session['radar_ref'] = _r   # afiliado (programa de afiliados)
     if session.get('radar_user_id'):
         return redirect('/radar/')
     return render_template_string(
@@ -632,6 +635,9 @@ def rota_lp():
 
 @radar_bp.route('/cadastrar', methods=['GET', 'POST'])
 def rota_cadastrar():
+    _r = (request.args.get('ref') or '').strip().upper()[:12]
+    if _r:
+        session['radar_ref'] = _r   # afiliado (programa de afiliados)
     if session.get('radar_user_id'):
         return redirect('/radar/')
     erro = None
@@ -652,6 +658,9 @@ def rota_cadastrar():
             uid = criar_radar_user(nome, email, tel, generate_password_hash(senha), admin)
             from radar_db import set_area
             set_area('radar_users', uid, request.form.get('area', ''))
+            _aref = (session.get('radar_ref') or '').strip().upper()[:12]
+            if _aref:
+                radar_exec('UPDATE radar_users SET afiliado_ref=? WHERE id=?', (_aref, uid))
             session['radar_user_id'] = uid
             return redirect('/radar/')
     return render_template_string(_AUTH, modo='cadastrar', erro=erro)
@@ -1541,6 +1550,16 @@ _LP = '''<!doctype html><html lang="pt-br"><head><meta charset="utf-8">
 <footer>
  {{ marca }} · um SaaS <a href="/">4kitem</a> · <a href="{{ base }}/entrar">entrar</a>
 </footer>
+<!-- AFILIADO-CTA -->
+<div style="background:linear-gradient(135deg,#16a34a,#22c55e);padding:36px 20px;text-align:center;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;">
+  <div style="max-width:680px;margin:0 auto;">
+    <div style="font-size:13px;font-weight:800;letter-spacing:.5px;color:rgba(255,255,255,.85);margin-bottom:8px;">&#128184; PROGRAMA DE AFILIADOS 4KITEM</div>
+    <div style="font-size:28px;font-weight:900;color:#fff;line-height:1.15;margin-bottom:10px;">Indique este app e ganhe dinheiro todo m&ecirc;s</div>
+    <div style="font-size:16px;color:rgba(255,255,255,.92);margin-bottom:22px;">Voc&ecirc; indica, a pessoa assina, e a comiss&atilde;o cai no seu PIX &mdash; recorrente, pra sempre.</div>
+    <a href="/afiliados" style="display:inline-block;background:#fff;color:#16a34a;padding:15px 38px;border-radius:12px;font-weight:800;font-size:17px;text-decoration:none;box-shadow:0 8px 24px rgba(0,0,0,.25);">QUERO SER AFILIADO &rarr;</a>
+  </div>
+</div>
+<!-- /AFILIADO-CTA -->
 </body></html>'''
 
 

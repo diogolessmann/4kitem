@@ -1001,7 +1001,7 @@ def webhook_asaas():
                 conn.commit()
                 log.info('[PETmed] +%s créditos (compra %s) p/ user_id=%s',
                          compra['creditos'], compra['id'], compra['user_id'])
-                u_row = conn.execute('SELECT nome, email FROM petmed_users WHERE id=?',
+                u_row = conn.execute('SELECT nome, email, afiliado_ref FROM petmed_users WHERE id=?',
                                      (compra['user_id'],)).fetchone()
                 if u_row and u_row['email']:
                     _enviar_email(
@@ -1010,6 +1010,13 @@ def webhook_asaas():
                         _email_creditos_liberados(u_row['nome'].split()[0] if u_row['nome'] else 'tutor',
                                                   compra['creditos'])
                     )
+                if u_row and u_row['afiliado_ref']:
+                    try:
+                        from afiliados import registrar_comissao
+                        registrar_comissao(u_row['afiliado_ref'], 'vetzap', payment_id,
+                                           u_row['nome'] or '', cliente_email=u_row['email'])
+                    except Exception as _eaf:
+                        log.warning('[Afiliados] vetzap: %s', _eaf)
                 conn.close()
                 return jsonify({'status': 'ok'}), 200
 
@@ -1049,6 +1056,9 @@ def entrar():
 
 @petmed_bp.route('/cadastrar', methods=['GET', 'POST'])
 def cadastrar():
+    _ref = (request.args.get('ref') or '').strip().upper()[:12]
+    if _ref:
+        session['vetzap_ref'] = _ref   # afiliado que trouxe (programa de afiliados)
     if session.get('pm_user_id'):
         return redirect('/vetzap/dashboard')
     erro = ''
@@ -1083,9 +1093,10 @@ def cadastrar():
                         log.info('[PETmed] Whitelist: registro antigo de %s removido para re-cadastro', email)
                 conn.execute(
                     '''INSERT INTO petmed_users
-                       (nome, email, telefone, password_hash, plano_ativo, creditos)
-                       VALUES (?,?,?,?,0,0)''',
-                    (nome, email, telefone, generate_password_hash(senha))
+                       (nome, email, telefone, password_hash, plano_ativo, creditos, afiliado_ref)
+                       VALUES (?,?,?,?,0,0,?)''',
+                    (nome, email, telefone, generate_password_hash(senha),
+                     ((session.get('vetzap_ref') or request.args.get('ref') or '').strip().upper()[:12] or None))
                 )
                 conn.commit()
                 u = conn.execute(

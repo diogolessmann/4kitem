@@ -22,8 +22,20 @@ BASE_URL = os.environ.get('BASE_URL', 'https://www.4kitem.com.br').rstrip('/')
 # ── Registro de apps: comissão (R$ recorrente) por app ──────────────────────────
 # Adicionar um app aqui já o disponibiliza pros afiliados venderem.
 APPS = {
-    'somaja': {'nome': 'SomaJá', 'comissao': 4.00, 'url': '/somaja',
-               'desc': 'Coach financeiro no WhatsApp', 'icone': '/static/somaja/logo.png'},
+    'somaja':      {'nome': 'SomaJá',                'comissao': 4.00,  'unidade': 'por mês',    'url': '/somaja',            'desc': 'Coach financeiro no WhatsApp',          'icone': '/static/somaja/logo.png'},
+    'salatv':      {'nome': 'SalaTV',                'comissao': 15.98, 'unidade': 'por mês',    'url': '/kids',              'desc': 'TV curada pra salas de espera',         'icone': '/static/img/kidscurator/logo.webp'},
+    'agenda':      {'nome': 'AgendaJá',              'comissao': 15.98, 'unidade': 'por mês',    'url': '/agenda',            'desc': 'Agendamento online sem app',            'icone': '/static/img/agenda/logo.webp'},
+    'alerta':      {'nome': 'AlertaJá',              'comissao': 6.23,  'unidade': 'por mês',    'url': '/alerta',            'desc': 'Monitor de CNH e veículo (DETRAN-SC)',  'icone': '/static/img/alerta/logo.webp'},
+    'mandazap':    {'nome': 'MandaZap',              'comissao': 16.18, 'unidade': 'por mês',    'url': '/mandazap',          'desc': 'Marketing no WhatsApp com anti-ban',    'icone': '/static/img/mandazap/logo.webp'},
+    'despachante': {'nome': 'Amigo Despachante',     'comissao': 32.25, 'unidade': 'por mês',    'url': '/amigo-despachante', 'desc': 'Sistema completo pra despachantes',     'icone': '/static/img/despachante/logo.webp'},
+    'defesapro':   {'nome': 'DefesaPro',             'comissao': 50.00, 'unidade': 'por mês',    'url': '/defesapro',         'desc': 'Gestão de defesas de multas com IA',    'icone': '/static/img/defesapro/logo.png'},
+    'vetzap':      {'nome': 'VetZap',                'comissao': 10.00, 'unidade': 'por compra', 'url': '/vetzap',            'desc': 'Triagem veterinária 24h por IA',        'icone': '/static/vetzap/vetzap-logo-icon.png'},
+    'pcd':         {'nome': 'PCD Fácil',             'comissao': 10.00, 'unidade': 'por compra', 'url': '/pcd',               'desc': 'Isenção de impostos pra PCD',           'icone': ''},
+    'radar':       {'nome': 'Radar de Licitações TI','comissao': 15.00, 'unidade': 'por mês',    'url': '/radar/',            'desc': 'Licitações de TI filtradas por IA',     'icone': '/static/img/radar/logo.webp'},
+    'licita_norte':{'nome': 'Radar Licita Norte',   'comissao': 10.00, 'unidade': 'por mês',    'url': '/licita-norte/',     'desc': 'Licitações do Norte de SC',             'icone': '/static/img/licita/logo.webp'},
+    'mandaja':     {'nome': 'MandaJá',               'comissao': 10.00, 'unidade': 'por mês',    'url': '/mandaja',           'desc': 'Delivery sem comissão com PIX',         'icone': '/static/img/mandaja/logo.png'},
+    'mandajr':     {'nome': 'MandaJr',               'comissao': 7.00,  'unidade': 'por mês',    'url': '/mandajr',           'desc': 'Catálogo no WhatsApp simplificado',     'icone': '/static/img/mandajr/mandajr-icon.webp'},
+    'pubshow':     {'nome': 'PubShow',               'comissao': 15.00, 'unidade': 'por mês',    'url': '/pubshow',           'desc': 'Jukebox digital pra bares',             'icone': '/static/pubshow/pubshow-logo-concept.png'},
 }
 
 
@@ -59,7 +71,7 @@ def _pix_transfer(pix_chave, pix_tipo, valor, descricao, ext_ref):
 
 
 # ── O CORAÇÃO: creditar comissão quando o cliente paga ──────────────────────────
-def registrar_comissao(codigo, app, payment_id, cliente_nome=''):
+def registrar_comissao(codigo, app, payment_id, cliente_nome='', cliente_email='', cliente_cpf=''):
     """Chamado pelo webhook do Asaas quando um cliente (indicado pelo afiliado) paga.
     Credita a comissão do app (idempotente) e paga o afiliado via PIX na hora.
     Best-effort: nunca levanta exceção (não pode derrubar o webhook)."""
@@ -69,6 +81,14 @@ def registrar_comissao(codigo, app, payment_id, cliente_nome=''):
             return False
         af = get_por_codigo(codigo)
         if not af:
+            return False
+        # Anti-autoindicação: o afiliado NÃO ganha indicando a si mesmo.
+        _ae = (af['email'] or '').strip().lower()
+        _ce = (cliente_email or '').strip().lower()
+        _acpf = ''.join(c for c in (af['cpf'] or '') if c.isdigit())
+        _ccpf = ''.join(c for c in (cliente_cpf or '') if c.isdigit())
+        if (_ce and _ce == _ae) or (_ccpf and _acpf and _ccpf == _acpf):
+            log.info(f'[Afiliados] autoindicacao bloqueada — afiliado {af["codigo"]}')
             return False
         comissao = float(APPS[app]['comissao'])
         conv_id = registrar_conversao(af['id'], app, payment_id, cliente_nome, comissao)

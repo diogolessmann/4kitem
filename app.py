@@ -1191,10 +1191,11 @@ def kids_assinar(plano):
                         if not kconn.execute('SELECT id FROM clients WHERE code=?', (code,)).fetchone():
                             break
                     now = datetime.now().isoformat()
+                    _ref_af = (session.get('kids_ref') or request.args.get('ref') or '').strip().upper()[:12]
                     kconn.execute('''INSERT INTO clients
-                        (code, name, email, phone, cpf_cnpj, plan, plan_active, active, created_at, city)
-                        VALUES (?,?,?,?,?,?,0,0,?,?)''',
-                        (code, empresa, email, phone, cpf_cnpj, plano, now, 'SC'))
+                        (code, name, email, phone, cpf_cnpj, plan, plan_active, active, created_at, city, afiliado_ref)
+                        VALUES (?,?,?,?,?,?,0,0,?,?,?)''',
+                        (code, empresa, email, phone, cpf_cnpj, plano, now, 'SC', (_ref_af or None)))
                     kconn.commit()
                     client = kconn.execute('SELECT * FROM clients WHERE code=?', (code,)).fetchone()
                     kconn.close()
@@ -1862,6 +1863,9 @@ def desp_api_stats():
 
 @app.route('/defesapro')
 def defesapro_landing():
+    _ref = (request.args.get('ref') or '').strip().upper()[:12]
+    if _ref:
+        session['defesa_ref'] = _ref   # afiliado que trouxe (programa de afiliados)
     return render_template('defesapro/landing.html')
 
 
@@ -1961,13 +1965,14 @@ def defesa_cadastro():
                 conn.close()
             else:
                 now = datetime.now().isoformat()
+                _ref_af = (session.get('defesa_ref') or request.args.get('ref') or '').strip().upper()[:12]
                 conn.execute(
                     '''INSERT INTO defesapro_users
                        (name, email, phone, cpf_cnpj, escritorio, cidade, plan,
-                        active, password_hash, created_at)
-                       VALUES (?,?,?,?,?,?,?,0,?,?)''',
+                        active, password_hash, created_at, afiliado_ref)
+                       VALUES (?,?,?,?,?,?,?,0,?,?,?)''',
                     (name, email, phone, cpf_cnpj, escritorio, cidade, plan,
-                     generate_password_hash(password), now)
+                     generate_password_hash(password), now, (_ref_af or None))
                 )
                 conn.commit(); conn.close()
                 sucesso = True
@@ -2174,7 +2179,7 @@ def webhook_asaas_global():
     elif ref.startswith('defesapro_'):
         if customer_id:
             conn = get_saas_db()
-            u = conn.execute('SELECT id, name, email FROM defesapro_users WHERE asaas_customer_id=?',
+            u = conn.execute('SELECT id, name, email, cpf_cnpj, afiliado_ref FROM defesapro_users WHERE asaas_customer_id=?',
                              (customer_id,)).fetchone()
             if u:
                 conn.execute('UPDATE defesapro_users SET active=?, plan_active=? WHERE id=?',
@@ -2186,12 +2191,23 @@ def webhook_asaas_global():
                         _email_pagamento_confirmado('DefesaPro', '⚖️', '#7c3aed',
                             u['name'].split()[0], p.get('nome', plano_key),
                             p.get('preco_fmt', ''), 'https://4kitem.com.br/defesapro/app'))
+                # Comissão de afiliado — só em ativação (PAYMENT_CONFIRMED/RECEIVED),
+                # recorrente, com anti-autoindicação central no registrar_comissao.
+                if ativar and u['afiliado_ref']:
+                    try:
+                        from afiliados import registrar_comissao
+                        registrar_comissao(u['afiliado_ref'], 'defesapro',
+                                           (payload.get('payment') or {}).get('id', ''),
+                                           u['name'], cliente_email=u['email'],
+                                           cliente_cpf=u['cpf_cnpj'])
+                    except Exception as _eaf:
+                        log.warning(f'[Afiliados] defesapro: {_eaf}')
             conn.close()
 
     elif ref.startswith('agenda_'):
         if customer_id:
             conn = get_saas_db()
-            b = conn.execute('SELECT id, name, email, owner_name FROM agenda_businesses WHERE asaas_customer_id=?',
+            b = conn.execute('SELECT id, name, email, owner_name, cpf_cnpj, afiliado_ref FROM agenda_businesses WHERE asaas_customer_id=?',
                              (customer_id,)).fetchone()
             if b:
                 conn.execute('UPDATE agenda_businesses SET active=?, plan_active=? WHERE id=?',
@@ -2203,12 +2219,21 @@ def webhook_asaas_global():
                         _email_pagamento_confirmado('AgendaJá', '📅', '#22c55e',
                             b['owner_name'].split()[0], p['label'],
                             p['price'], 'https://4kitem.com.br/agenda/painel'))
+                if ativar and b['afiliado_ref']:
+                    try:
+                        from afiliados import registrar_comissao
+                        registrar_comissao(b['afiliado_ref'], 'agenda',
+                                           (payload.get('payment') or {}).get('id', ''),
+                                           b['owner_name'], cliente_email=b['email'],
+                                           cliente_cpf=b['cpf_cnpj'])
+                    except Exception as _eaf:
+                        log.warning(f'[Afiliados] agenda: {_eaf}')
             conn.close()
 
     elif ref.startswith('mandaja_'):
         if customer_id:
             conn = get_saas_db()
-            s = conn.execute('SELECT id, name, email, owner_name, plan FROM mandaja_stores WHERE asaas_customer_id=?',
+            s = conn.execute('SELECT id, name, email, owner_name, plan, mode, cpf_cnpj, afiliado_ref FROM mandaja_stores WHERE asaas_customer_id=?',
                              (customer_id,)).fetchone()
             if s:
                 conn.execute('UPDATE mandaja_stores SET plan_active=? WHERE id=?',
@@ -2220,12 +2245,21 @@ def webhook_asaas_global():
                         _email_pagamento_confirmado('MandaJá', '🛍️', '#f97316',
                             s['owner_name'].split()[0], p['label'],
                             f"R$ {p['price']}/mês", 'https://4kitem.com.br/mandaja/painel'))
+                if ativar and s['afiliado_ref']:
+                    try:
+                        from afiliados import registrar_comissao
+                        _appkey = 'mandajr' if (s['mode'] == 'jr') else 'mandaja'
+                        registrar_comissao(s['afiliado_ref'], _appkey,
+                                           (payload.get('payment') or {}).get('id', ''),
+                                           s['owner_name'], cliente_email=s['email'], cliente_cpf=s['cpf_cnpj'])
+                    except Exception as _eaf:
+                        log.warning(f'[Afiliados] mandaja: {_eaf}')
             conn.close()
 
     elif ref.startswith('mandazap_'):
         if customer_id:
             conn = get_saas_db()
-            u = conn.execute('SELECT id, name, email FROM mandazap_users WHERE asaas_customer_id=?',
+            u = conn.execute('SELECT id, name, email, cpf_cnpj, afiliado_ref FROM mandazap_users WHERE asaas_customer_id=?',
                              (customer_id,)).fetchone()
             if u:
                 conn.execute('UPDATE mandazap_users SET active=?, plan_active=? WHERE id=?',
@@ -2237,12 +2271,22 @@ def webhook_asaas_global():
                         _email_pagamento_confirmado('MandaZap', '📲', '#22c55e',
                             u['name'].split()[0], p.get('label', plano_key),
                             f"R$ {p.get('price','')}/mês", 'https://4kitem.com.br/mandazap/painel'))
+                # Comissão de afiliado (recorrente, anti-autoindicação central)
+                if ativar and u['afiliado_ref']:
+                    try:
+                        from afiliados import registrar_comissao
+                        registrar_comissao(u['afiliado_ref'], 'mandazap',
+                                           (payload.get('payment') or {}).get('id', ''),
+                                           u['name'], cliente_email=u['email'],
+                                           cliente_cpf=u['cpf_cnpj'])
+                    except Exception as _eaf:
+                        log.warning(f'[Afiliados] mandazap: {_eaf}')
             conn.close()
 
     elif ref.startswith('despachante_'):
         if customer_id:
             conn = get_saas_db()
-            u = conn.execute('SELECT id, name, email FROM despachante_users WHERE asaas_customer_id=?',
+            u = conn.execute('SELECT id, name, email, afiliado_ref FROM despachante_users WHERE asaas_customer_id=?',
                              (customer_id,)).fetchone()
             if u:
                 conn.execute('UPDATE despachante_users SET active=?, plan_active=? WHERE id=?',
@@ -2254,6 +2298,14 @@ def webhook_asaas_global():
                         _email_pagamento_confirmado('Amigo Despachante', '🚗', '#3b82f6',
                             u['name'].split()[0], p.get('label', plano_key),
                             p.get('price', ''), 'https://4kitem.com.br/amigo-despachante/app'))
+                if ativar and u['afiliado_ref']:
+                    try:
+                        from afiliados import registrar_comissao
+                        registrar_comissao(u['afiliado_ref'], 'despachante',
+                                           (payload.get('payment') or {}).get('id', ''),
+                                           u['name'], cliente_email=u['email'])
+                    except Exception as _eaf:
+                        log.warning(f'[Afiliados] despachante: {_eaf}')
             conn.close()
 
     elif ref.startswith('slotzap_'):
@@ -2325,7 +2377,7 @@ def webhook_asaas_global():
             try:
                 from radar_db import get_radar_db
                 conn = get_radar_db()
-                u = conn.execute(f'SELECT id, nome, email FROM {_tab} WHERE asaas_customer_id=?',
+                u = conn.execute(f'SELECT id, nome, email, afiliado_ref FROM {_tab} WHERE asaas_customer_id=?',
                                  (customer_id,)).fetchone()
                 if u:
                     conn.execute(f'UPDATE {_tab} SET plan_active=? WHERE id=?',
@@ -2340,6 +2392,15 @@ def webhook_asaas_global():
                                 _email_pagamento_confirmado(_nome, '📡', '#2563eb',
                                     (u['nome'] or '').split()[0], 'Mensal', '', _url))
                         except Exception: pass
+                    if ativar and u['afiliado_ref']:
+                        try:
+                            from afiliados import registrar_comissao
+                            _appkey = 'radar' if _tab == 'radar_users' else 'licita_norte'
+                            registrar_comissao(u['afiliado_ref'], _appkey,
+                                               (payload.get('payment') or {}).get('id', ''),
+                                               (u['nome'] or ''), cliente_email=u['email'])
+                        except Exception as _eaf:
+                            log.warning(f'[Afiliados] radar/licita: {_eaf}')
                 conn.close()
             except Exception as _rd_e:
                 log.error(f'[RADAR/LICITA] Webhook error: {_rd_e}')
@@ -2356,19 +2417,27 @@ def webhook_asaas_global():
     elif ref.startswith('alerta_'):
         if customer_id:
             conn = get_saas_db()
-            s = conn.execute('SELECT id, name, email, plano FROM alerta_subscribers WHERE asaas_customer_id=?',
+            s = conn.execute('SELECT id, name, email, plano, cpf, afiliado_ref FROM alerta_subscribers WHERE asaas_customer_id=?',
                              (customer_id,)).fetchone()
             if s:
                 novo_status = 'ativo' if ativar else 'suspenso'
                 conn.execute("UPDATE alerta_subscribers SET status=?, payment_status=? WHERE id=?",
                              (novo_status, 'paid' if ativar else 'overdue', s['id']))
                 conn.commit()
-                if ativar and s.get('email'):
+                if ativar and s['email']:
                     p = ALERTA_PLANS.get(plano_key or s['plano'], {})
                     _enviar_email(s['email'], '✅ AlertaSC — Monitoramento ativado!',
                         _email_pagamento_confirmado('AlertaSC', '🚨', '#ef4444',
                             s['name'].split()[0], p.get('label', plano_key or s['plano']),
                             p.get('price', ''), 'https://4kitem.com.br/alerta/minha-conta'))
+                if ativar and s['afiliado_ref']:
+                    try:
+                        from afiliados import registrar_comissao
+                        registrar_comissao(s['afiliado_ref'], 'alerta',
+                                           (payload.get('payment') or {}).get('id', ''),
+                                           s['name'], cliente_email=s['email'], cliente_cpf=s['cpf'])
+                    except Exception as _eaf:
+                        log.warning(f'[Afiliados] alerta: {_eaf}')
             conn.close()
 
     elif ref.startswith('bau_'):
@@ -2398,8 +2467,8 @@ def webhook_asaas_global():
                     kconn.execute('UPDATE clients SET active=?, plan_active=? WHERE id=?',
                                   (1 if ativar else 0, 1 if ativar else 0, c['id']))
                     kconn.commit()
-                    if ativar and c.get('email'):
-                        p = KIDS_PLANS.get(plano_key or c.get('plan', 'mensal'), KIDS_PLANS['mensal'])
+                    if ativar and c['email']:
+                        p = KIDS_PLANS.get(plano_key or (c['plan'] or 'mensal'), KIDS_PLANS['mensal'])
                         _enviar_email(c['email'], '✅ SalaTV — Acesso liberado!',
                             _email_pagamento_confirmado('SalaTV', '📺', '#3b82f6',
                                 c['name'].split()[0], p['label'],
@@ -2409,6 +2478,14 @@ def webhook_asaas_global():
                             f'<p style="background:#1e3a5f;border-radius:10px;padding:16px;color:#93c5fd;font-size:15px">'
                             f'🔑 Seu código de acesso: <strong style="font-size:20px;color:#60a5fa">{c["code"]}</strong><br>'
                             f'<small>Use em: 4kitem.com.br/kids/entrar</small></p></div>')
+                    if ativar and c['afiliado_ref']:
+                        try:
+                            from afiliados import registrar_comissao
+                            registrar_comissao(c['afiliado_ref'], 'salatv',
+                                               (payload.get('payment') or {}).get('id', ''),
+                                               c['name'], cliente_email=c['email'], cliente_cpf=c['cpf_cnpj'])
+                        except Exception as _eaf:
+                            log.warning(f'[Afiliados] salatv: {_eaf}')
                 kconn.close()
             except Exception:
                 log.exception('[Webhook] Erro ao ativar SalaTV')
@@ -3700,6 +3777,9 @@ def despachante_landing():
 
 @app.route('/kids')
 def kids():
+    _ref = (request.args.get('ref') or '').strip().upper()[:12]
+    if _ref:
+        session['kids_ref'] = _ref   # afiliado que trouxe (programa de afiliados)
     return render_template('kids/landing.html', stats=stats())
 
 @app.route('/sala')
@@ -3708,10 +3788,16 @@ def sala():
 
 @app.route('/agenda')
 def agenda():
+    _ref = (request.args.get('ref') or '').strip().upper()[:12]
+    if _ref:
+        session['agenda_ref'] = _ref   # afiliado que trouxe (programa de afiliados)
     return render_template('agenda/landing.html')
 
 @app.route('/alerta')
 def alerta():
+    _ref = (request.args.get('ref') or '').strip().upper()[:12]
+    if _ref:
+        session['alerta_ref'] = _ref   # afiliado que trouxe (programa de afiliados)
     return render_template('alerta/landing.html', plans=ALERTA_PLANS)
 
 
@@ -3799,12 +3885,13 @@ def agenda_cadastro():
                     slug = f'{base_slug}-{counter}'; counter += 1
                 trial_ends = (datetime.now() + timedelta(days=7)).isoformat()
                 try:
+                    _ref_af = (session.get('agenda_ref') or request.args.get('ref') or '').strip().upper()[:12]
                     conn.execute('''
                         INSERT INTO agenda_businesses
-                        (name, slug, owner_name, phone, email, business_type, password_hash, cpf_cnpj, active, created_at, trial_ends)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
+                        (name, slug, owner_name, phone, email, business_type, password_hash, cpf_cnpj, active, created_at, trial_ends, afiliado_ref)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)
                     ''', (name, slug, owner_name, phone, email, business_type,
-                          generate_password_hash(password), cpf_cnpj, datetime.now().isoformat(), trial_ends))
+                          generate_password_hash(password), cpf_cnpj, datetime.now().isoformat(), trial_ends, (_ref_af or None)))
                     conn.commit()
                     biz = conn.execute('SELECT * FROM agenda_businesses WHERE slug=?', (slug,)).fetchone()
                     # Semeia serviços-modelo de acordo com o ramo escolhido
@@ -5727,9 +5814,10 @@ def alerta_cadastro():
             conn = get_saas_db()
             conn.execute('''
                 INSERT INTO alerta_subscribers
-                (name, cpf, plates_json, phone, email, plano, status, payment_status, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, 'pending', 'pending', ?)
-            ''', (name, cpf, _json.dumps(plates), phone, email, plano, datetime.now().isoformat()))
+                (name, cpf, plates_json, phone, email, plano, status, payment_status, created_at, afiliado_ref)
+                VALUES (?, ?, ?, ?, ?, ?, 'pending', 'pending', ?, ?)
+            ''', (name, cpf, _json.dumps(plates), phone, email, plano, datetime.now().isoformat(),
+                  ((session.get('alerta_ref') or request.args.get('ref') or '').strip().upper()[:12] or None)))
             conn.commit()
             conn.close()
             success = True
@@ -5928,6 +6016,36 @@ def saas_asaas_test():
             'notificationDisabled': True,
         })
     return jsonify(resultado)
+
+
+@app.route('/saas-admin/afiliados')
+@_saas_admin_required
+def saas_admin_afiliados():
+    """Painel admin do programa de afiliados: quem está vendendo + comissões."""
+    from afiliados_db import get_afil_db
+    _brl = lambda v: ('R$ %.2f' % float(v or 0)).replace('.', ',')
+    conn = get_afil_db()
+    afs = conn.execute('''
+        SELECT a.id, a.nome, a.email, a.telefone, a.codigo, a.pix_chave, a.pix_tipo,
+               COALESCE(SUM(c.valor),0) AS total,
+               COALESCE(SUM(CASE WHEN c.status='pago' THEN c.valor ELSE 0 END),0) AS pago,
+               COALESCE(SUM(CASE WHEN c.status<>'pago' THEN c.valor ELSE 0 END),0) AS pendente,
+               COUNT(DISTINCT c.cliente_nome) AS clientes
+        FROM afiliados a LEFT JOIN afiliado_conversoes c ON c.afiliado_id=a.id
+        GROUP BY a.id ORDER BY pago DESC, a.id DESC''').fetchall()
+    convs = conn.execute('''
+        SELECT c.app, c.cliente_nome, c.valor, c.status, c.created_at,
+               a.nome AS af_nome, a.codigo AS af_codigo
+        FROM afiliado_conversoes c JOIN afiliados a ON a.id=c.afiliado_id
+        ORDER BY c.id DESC LIMIT 100''').fetchall()
+    tot = conn.execute('SELECT COUNT(*) FROM afiliados').fetchone()[0]
+    sm = conn.execute("SELECT COALESCE(SUM(valor),0), "
+                      "COALESCE(SUM(CASE WHEN status='pago' THEN valor ELSE 0 END),0), "
+                      "COALESCE(SUM(CASE WHEN status<>'pago' THEN valor ELSE 0 END),0) "
+                      "FROM afiliado_conversoes").fetchone()
+    conn.close()
+    resumo = {'afiliados': tot, 'total': sm[0], 'pago': sm[1], 'pendente': sm[2]}
+    return render_template('saas_admin_afiliados.html', afs=afs, convs=convs, resumo=resumo, brl=_brl)
 
 
 @app.route('/saas-admin')
@@ -6618,13 +6736,14 @@ def saas_desp_novo_user():
     empresa = data.get('empresa', '').strip()
     cidade  = data.get('cidade', '').strip()
     plan    = data.get('plan', 'basico')
+    afiliado_ref = (data.get('afiliado_ref') or '').strip().upper()[:12]
     if not name or not phone:
         return jsonify({'success': False, 'error': 'Nome e telefone obrigatórios'})
     conn = get_saas_db()
     try:
         cur = conn.execute(
-            'INSERT INTO despachante_users (name, email, phone, empresa, cidade, plan, active, created_at) VALUES (?,?,?,?,?,?,1,?)',
-            (name, email, phone, empresa, cidade, plan, datetime.now().isoformat())
+            'INSERT INTO despachante_users (name, email, phone, empresa, cidade, plan, active, created_at, afiliado_ref) VALUES (?,?,?,?,?,?,1,?,?)',
+            (name, email, phone, empresa, cidade, plan, datetime.now().isoformat(), (afiliado_ref or None))
         )
         conn.commit()
         new_id = cur.lastrowid
@@ -7543,6 +7662,9 @@ def bau_delete(entry_id):
 
 @app.route('/mandazap')
 def mandazap():
+    _ref = (request.args.get('ref') or '').strip().upper()[:12]
+    if _ref:
+        session['mz_ref'] = _ref   # afiliado que trouxe (programa de afiliados)
     return render_template('mandazap/landing.html', plans=MANDAZAP_PLANS)
 
 
@@ -7584,9 +7706,10 @@ def mandazap_cadastro():
             else:
                 now   = datetime.now()
                 trial = (now + timedelta(days=2)).isoformat()   # trial curto = força a compra (decisão do Diogo)
+                _ref_af = (session.get('mz_ref') or request.args.get('ref') or '').strip().upper()[:12]
                 conn.execute(
-                    'INSERT INTO mandazap_users (name, email, password_hash, phone, cpf_cnpj, plan, created_at, trial_ends) VALUES (?,?,?,?,?,?,?,?)',
-                    (name, email, generate_password_hash(password), phone, cpf_cnpj, 'solo', now.isoformat(), trial)
+                    'INSERT INTO mandazap_users (name, email, password_hash, phone, cpf_cnpj, plan, created_at, trial_ends, afiliado_ref) VALUES (?,?,?,?,?,?,?,?,?)',
+                    (name, email, generate_password_hash(password), phone, cpf_cnpj, 'solo', now.isoformat(), trial, (_ref_af or None))
                 )
                 conn.commit()
                 user = conn.execute('SELECT * FROM mandazap_users WHERE email=?', (email,)).fetchone()
@@ -9921,7 +10044,9 @@ def _dispatch_campaign_inner(cid: int, user_id: int, delay_s: int = 3, continuar
         # Personaliza + spintax + URLs únicas — cada mensagem sai diferente
         msg = _mz_personalize(message, c)
 
-        if is_image:
+        # Segurança imagem: foto só sai de número AQUECIDO (>= MZ_IMAGE_MIN_AGE dias).
+        # Chip novo manda só o TEXTO (legenda) — imagem em chip novo é gatilho forte de ban.
+        if is_image and _mz_number_age_days(sender['row']) >= MZ_IMAGE_MIN_AGE:
             ok, err, invalido = _send_image(evo_url, evo_key, instance, phone, media_url, msg)
         else:
             ok, err, invalido = _send_text(evo_url, evo_key, instance, phone, msg)
@@ -13160,12 +13285,18 @@ def _startup():
 
 @app.route('/mandaja')
 def mandaja_landing():
+    _ref = (request.args.get('ref') or '').strip().upper()[:12]
+    if _ref:
+        session['mja_ref'] = _ref   # afiliado que trouxe (programa de afiliados)
     return render_template('mandaja/landing.html')
 
 
 # ── MandaJr — fachada "basicão" (mesma engine, mode='jr') ────────────────────
 @app.route('/mandajr')
 def mandajr_landing():
+    _ref = (request.args.get('ref') or '').strip().upper()[:12]
+    if _ref:
+        session['mja_ref'] = _ref   # afiliado que trouxe (programa de afiliados)
     return render_template('mandaja/jr_landing.html')
 
 
@@ -13235,10 +13366,11 @@ def mandajr_comecar():
         conn.execute('''
             INSERT INTO mandaja_stores
             (name, slug, owner_name, phone, whatsapp, email, password_hash, category, city,
-             pix_chave, pix_nome, plan, mode, aberto, plan_active, created_at, trial_ends)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,'jr','jr',1,0,?,?)
+             pix_chave, pix_nome, plan, mode, aberto, plan_active, created_at, trial_ends, afiliado_ref)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,'jr','jr',1,0,?,?,?)
         ''', (name, slug, name, phone, phone, '', generate_password_hash(senha),
-              'lanchonete', '', pix_chave, name, datetime.now().isoformat(), trial_ends))
+              'lanchonete', '', pix_chave, name, datetime.now().isoformat(), trial_ends,
+              ((session.get('mja_ref') or request.args.get('ref') or '').strip().upper()[:12] or None)))
         conn.commit()
         store = conn.execute('SELECT * FROM mandaja_stores WHERE slug=?', (slug,)).fetchone()
         # Horários permissivos por padrão (o controle real é o botão Aberto/Fechado)
@@ -13453,21 +13585,23 @@ def mandaja_cadastro():
         try:
             conn.execute('''
                 INSERT INTO mandaja_stores
-                (name, slug, owner_name, phone, email, password_hash, category, city, plan, plan_active, created_at, trial_ends, cpf_cnpj)
-                VALUES (?,?,?,?,?,?,?,?,'micro',0,?,?,?)
+                (name, slug, owner_name, phone, email, password_hash, category, city, plan, plan_active, created_at, trial_ends, cpf_cnpj, afiliado_ref)
+                VALUES (?,?,?,?,?,?,?,?,'micro',0,?,?,?,?)
             ''', (name, slug, owner_name, phone, email,
                   generate_password_hash(senha), category, city,
-                  datetime.now().isoformat(), trial_ends, cpf_cnpj_digits))
+                  datetime.now().isoformat(), trial_ends, cpf_cnpj_digits,
+                  ((session.get('mja_ref') or request.args.get('ref') or '').strip().upper()[:12] or None)))
         except Exception as _mja_err:
             log.error('[MandaJá] Erro no INSERT (possível coluna faltando): %s', _mja_err)
             # Tenta sem cpf_cnpj — coluna pode ainda não existir no DB de produção
             conn.execute('''
                 INSERT INTO mandaja_stores
-                (name, slug, owner_name, phone, email, password_hash, category, city, plan, plan_active, created_at, trial_ends)
-                VALUES (?,?,?,?,?,?,?,?,'micro',0,?,?)
+                (name, slug, owner_name, phone, email, password_hash, category, city, plan, plan_active, created_at, trial_ends, afiliado_ref)
+                VALUES (?,?,?,?,?,?,?,?,'micro',0,?,?,?)
             ''', (name, slug, owner_name, phone, email,
                   generate_password_hash(senha), category, city,
-                  datetime.now().isoformat(), trial_ends))
+                  datetime.now().isoformat(), trial_ends,
+                  ((session.get('mja_ref') or request.args.get('ref') or '').strip().upper()[:12] or None)))
         conn.commit()
         store = conn.execute('SELECT * FROM mandaja_stores WHERE email=?', (email,)).fetchone()
         # Cria horários padrão (Seg-Sex 08-22, Sab 08-20)

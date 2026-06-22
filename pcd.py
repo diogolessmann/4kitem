@@ -364,6 +364,9 @@ def _fase_estado(caso):
 # ── Rotas: público / auth ────────────────────────────────────────────────────
 @pcd_bp.route('/')
 def landing():
+    _ref = (request.args.get('ref') or '').strip().upper()[:12]
+    if _ref:
+        session['pcd_ref'] = _ref   # afiliado que trouxe (programa de afiliados)
     return render_template('pcd/landing.html')
 
 
@@ -386,10 +389,11 @@ def cadastrar():
             flash('Esse e-mail já tem conta. Faça login.', 'erro')
             return redirect('/pcd/entrar')
         cur = conn.execute(
-            'INSERT INTO pcd_users (nome,email,telefone,password_hash,perfil,creditos,created_at) '
-            'VALUES (?,?,?,?,?,?,?)',
+            'INSERT INTO pcd_users (nome,email,telefone,password_hash,perfil,creditos,created_at,afiliado_ref) '
+            'VALUES (?,?,?,?,?,?,?,?)',
             (nome, email, telefone, generate_password_hash(senha), perfil, FREE_CREDITS,
-             datetime.now().isoformat()))
+             datetime.now().isoformat(),
+             ((session.get('pcd_ref') or request.args.get('ref') or '').strip().upper()[:12] or None)))
         conn.commit()
         session['pcd_user_id'] = cur.lastrowid
         conn.close()
@@ -654,7 +658,21 @@ def pcd_webhook_confirmar(external_ref, payment_id=''):
         cid = int(str(external_ref).split('_')[1])
     except (IndexError, ValueError):
         return False
-    return _pcd_confirmar_compra(cid)
+    ok = _pcd_confirmar_compra(cid)
+    if ok:
+        # crédito de afiliado (programa de afiliados) — só na 1ª confirmação
+        try:
+            conn = get_pcd_db()
+            row = conn.execute('SELECT u.afiliado_ref AS ref, u.nome AS nome, u.email AS email, u.cpf AS cpf '
+                               'FROM pcd_compras c JOIN pcd_users u ON u.id=c.user_id WHERE c.id=?', (cid,)).fetchone()
+            conn.close()
+            if row and row['ref']:
+                from afiliados import registrar_comissao
+                registrar_comissao(row['ref'], 'pcd', payment_id, row['nome'],
+                                   cliente_email=row['email'], cliente_cpf=(row['cpf'] or ''))
+        except Exception as _eaf:
+            log.warning(f'[Afiliados] pcd: {_eaf}')
+    return ok
 
 
 @pcd_bp.route('/comprar')

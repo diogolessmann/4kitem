@@ -90,6 +90,9 @@ def _inject():
 @licita_bp.route('/lp')
 @licita_bp.route('/sobre')
 def rota_lp():
+    _r = (request.args.get('ref') or '').strip().upper()[:12]
+    if _r:
+        session['licita_ref'] = _r   # afiliado (programa de afiliados)
     if session.get('licita_user_id'):
         return redirect('/licita-norte/')
     return render_template_string(
@@ -125,6 +128,9 @@ def rota_lp():
 
 @licita_bp.route('/cadastrar', methods=['GET', 'POST'])
 def rota_cadastrar():
+    _r = (request.args.get('ref') or '').strip().upper()[:12]
+    if _r:
+        session['licita_ref'] = _r   # afiliado (programa de afiliados)
     if session.get('licita_user_id'):
         return redirect('/licita-norte/')
     erro = None
@@ -144,6 +150,10 @@ def rota_cadastrar():
             uid = criar_licita_user(nome, email, tel, generate_password_hash(senha), admin)
             from radar_db import set_area
             set_area('licita_users', uid, request.form.get('area', ''))
+            from radar_db import radar_exec
+            _aref = (session.get('licita_ref') or '').strip().upper()[:12]
+            if _aref:
+                radar_exec('UPDATE licita_users SET afiliado_ref=? WHERE id=?', (_aref, uid))
             session['licita_user_id'] = uid
             return redirect('/licita-norte/')
     return render_template_string(_AUTH, modo='cadastrar', erro=erro, preco=LICITA_PRECO)
