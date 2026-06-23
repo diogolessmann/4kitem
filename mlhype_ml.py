@@ -237,3 +237,13 @@ def trends():
 def buscar_produtos(q, limit=20):
     """Busca no catálogo de produtos (substitui a /search antiga)."""
     return ml_get('/products/search', {'site_id': SITE, 'status': 'active', 'q': q, 'limit': limit})
+
+
+def item(item_id):
+    """Detalhe de um anúncio específico (título, fotos, atributos, garantia…).
+    Usado pelo Dissecador p/ ler o anúncio do líder. Degrada se o endpoint barrar."""
+    try:
+        return ml_get(f'/items/{item_id}')
+    except MLApiError as e:
+        log.info(f'[MLhype] /items/{item_id} indisponível ({e.status})')
+        return None

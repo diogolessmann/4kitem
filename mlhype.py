@@ -10,7 +10,7 @@ no app.py para não precisar mexer nele a cada passo.
 import os
 import logging
 
-from flask import Blueprint, jsonify, request, render_template_string
+from flask import Blueprint, jsonify, request, render_template_string, redirect
 
 from mlhype_db import (init_mlhype_db, estatisticas,
                        radar_top, radar_trends, radar_categorias_com_dados)
@@ -115,6 +115,7 @@ _RADAR_HTML = '''<!doctype html><html lang=pt-br><head><meta charset=utf-8>
  .pos{font-weight:800;font-size:16px;width:58px} .up{color:#5ee0a0}.down{color:#ff8a8a}.flat{color:var(--mut)}
  .prod{font-weight:600;line-height:1.3} .preco{white-space:nowrap;font-weight:700}
  .brecha{display:inline-block;background:#062a17;color:#5ee0a0;border:1px solid #155a38;padding:2px 8px;border-radius:20px;font-size:12px;font-weight:700}
+ .analisar{display:inline-block;background:linear-gradient(135deg,#2f6bff,#7c3aed);color:#fff;padding:6px 12px;border-radius:8px;font-size:13px;font-weight:700;white-space:nowrap}
  aside{width:240px;min-width:220px;background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:14px}
  aside h3{margin:0 0 10px;font-size:13px;text-transform:uppercase;letter-spacing:.4px;color:var(--mut)}
  .trend{display:flex;gap:8px;padding:6px 0;border-bottom:1px solid var(--bd);font-size:14px} .trend:last-child{border:none} .trend b{color:var(--ac);width:22px;text-align:right}
@@ -132,13 +133,14 @@ _RADAR_HTML = '''<!doctype html><html lang=pt-br><head><meta charset=utf-8>
 <div class=layout>
  <div class=main>
  {% if linhas %}
- <table><tr><th>#</th><th>Produto</th><th>Preço líder</th><th>Concorrentes</th></tr>
+ <table><tr><th>#</th><th>Produto</th><th>Preço líder</th><th>Concorrentes</th><th></th></tr>
  {% for r in linhas %}
  <tr>
   <td class=pos>{{r.pos}}{% if r.delta_pos and r.delta_pos>0 %} <span class=up title="subiu {{r.delta_pos}}">▲</span>{% elif r.delta_pos and r.delta_pos<0 %} <span class=down title="caiu">▼</span>{% endif %}</td>
   <td class=prod>{{r.titulo or r.mlb_item_id}}</td>
   <td class=preco>{{fmt(r.preco)}}{% if r.delta_preco and r.delta_preco<0 %} <span class=up>↓</span>{% elif r.delta_preco and r.delta_preco>0 %} <span class=down>↑</span>{% endif %}</td>
   <td><b>{{r.num_ofertas if r.num_ofertas is not none else '—'}}</b>{% if r.brecha %} <span class=brecha>🎯 brecha</span>{% endif %}</td>
+  <td><a class=analisar href="/mlhype/analisar/{{r.mlb_item_id}}{{ '?cat=' ~ cat if cat else '' }}">⚡ Analisar</a></td>
  </tr>
  {% endfor %}
  </table>
@@ -174,6 +176,293 @@ def mlhype_radar():
     return render_template_string(
         _RADAR_HTML, cat=cat, cat_nome=_nome_cat(cat) if cat else '',
         data=data, linhas=linhas, seletor=seletor, trends=radar_trends(25), fmt=_fmt_brl)
+
+
+# ── A ESTEIRA: orquestrador dos agentes (Passos 6, 7, 9) ──────────────────────
+def rodar_esteira(pid, cat_id=None):
+    """Encadeia: produto+ofertas → Dissecador → Fornecedor BR → Avaliador →
+    Ficha de Ataque. Degradação graciosa: se um agente falha, segue com o resto."""
+    import mlhype_ml as ml
+    import mlhype_ia as ia
+    import mlhype_db as db
+
+    res = {'pid': pid, 'cat_id': cat_id, 'erros': [], 'ia_ok': ia.ia_disponivel()}
+
+    prod = ml.produto(pid) or {}
+    nome = prod.get('name') or pid
+    res['produto'] = nome
+
+    ofertas, num_conc = [], None
+    try:
+        of = ml.ofertas_produto(pid, limit=50)
+        ofertas = of.get('results') or []
+        num_conc = (of.get('paging') or {}).get('total') or len(ofertas)
+    except Exception:
+        res['erros'].append('ofertas indisponíveis')
+    lider = ofertas[0] if ofertas else {}
+    preco_lider = lider.get('price')
+    res['num_concorrentes'] = num_conc
+
+    # anúncio do líder (p/ o Dissecador)
+    anuncio = {'titulo': nome, 'preco': preco_lider, 'descricao': '', 'fotos_qtd': None,
+               'atributos': [], 'garantia': lider.get('warranty'), 'frete_gratis': None}
+    if lider.get('item_id'):
+        it = ml.item(lider['item_id'])
+        if it:
+            anuncio['titulo'] = it.get('title') or nome
+            anuncio['preco'] = it.get('price') or preco_lider
+            anuncio['fotos_qtd'] = len(it.get('pictures') or [])
+            anuncio['atributos'] = [a.get('name') for a in (it.get('attributes') or [])
+                                    if a.get('value_name')][:15]
+            anuncio['frete_gratis'] = (it.get('shipping') or {}).get('free_shipping')
+    res['anuncio_lider'] = anuncio
+
+    # Agente 2 — Dissecador
+    fraquezas = []
+    if ia.ia_disponivel():
+        try:
+            fraquezas = ia.dissecar_lider(anuncio).get('fraquezas', [])
+        except Exception as e:
+            res['erros'].append(f'dissecador: {e}')
+    res['fraquezas'] = fraquezas
+
+    # Agente 3 — Caçador de Fornecedor BR (o MOAT)
+    cat_nome = _nome_cat(cat_id) if cat_id else ''
+    fornecedores = db.match_fornecedores(cat_id or prod.get('category_id') or '',
+                                         cat_nome, nome, limit=5)
+    res['fornecedores'] = fornecedores
+    menor_custo = None
+    for f in fornecedores:
+        p = f.get('menor_preco')
+        if p is not None:
+            menor_custo = p if menor_custo is None else min(menor_custo, p)
+    res['menor_custo_br'] = menor_custo
+
+    # Agente 4 — Avaliador
+    tend = db.tendencia_produto(pid)
+    res['tendencia'] = tend
+    avaliacao = {}
+    if ia.ia_disponivel():
+        try:
+            avaliacao = ia.avaliar_oportunidade({
+                'nome_produto': nome, 'ranking_lider': None, 'preco_lider': preco_lider,
+                'num_concorrentes': num_conc, 'tendencia': tend,
+                'menor_preco_fornecedor_br': menor_custo})
+        except Exception as e:
+            res['erros'].append(f'avaliador: {e}')
+    res['avaliacao'] = avaliacao
+
+    # Agente 5 — Ficha de Ataque (curto-circuito se veredito = "evite")
+    ficha = {}
+    if ia.ia_disponivel() and avaliacao.get('veredito') != 'evite':
+        try:
+            ficha = ia.gerar_ficha_ataque({
+                'produto': nome,
+                'anuncio_lider': {'titulo': anuncio['titulo'], 'preco': preco_lider,
+                                  'fraquezas': fraquezas},
+                'custo_fornecedor_br': menor_custo})
+        except Exception as e:
+            res['erros'].append(f'ficha: {e}')
+    res['ficha'] = ficha
+
+    # persiste a oportunidade + ficha
+    try:
+        oid = db.salvar_oportunidade(nome, cat_id, avaliacao.get('score'),
+                                     avaliacao.get('margem_pct'), avaliacao.get('veredito'), res)
+        if ficha:
+            db.salvar_ficha(oid, ficha)
+    except Exception as e:
+        res['erros'].append(f'persist: {e}')
+    return res
+
+
+_FICHA_HTML = '''<!doctype html><html lang=pt-br><head><meta charset=utf-8>
+<meta name=viewport content="width=device-width,initial-scale=1">
+<title>MLhype · Ficha de Ataque</title>
+<style>
+ :root{--bg:#0b1020;--card:#0f1730;--bd:#21304f;--mut:#8aa0c6;--txt:#e7ecf5;--ac:#7cc0ff}
+ *{box-sizing:border-box} body{font-family:system-ui,Segoe UI,sans-serif;background:var(--bg);color:var(--txt);margin:0;padding:18px}
+ .wrap{max-width:760px;margin:0 auto} a{color:var(--ac);text-decoration:none}
+ h1{font-size:20px;margin:6px 0 2px} .prod{color:var(--mut);font-size:14px;margin-bottom:16px}
+ .card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:16px 18px;margin:14px 0}
+ .card h3{margin:0 0 10px;font-size:13px;text-transform:uppercase;letter-spacing:.4px;color:var(--mut)}
+ .score{display:flex;align-items:center;gap:16px}
+ .scoreN{font-size:42px;font-weight:800;line-height:1}
+ .vd{padding:4px 12px;border-radius:20px;font-weight:800;font-size:14px}
+ .ataque{background:#062a17;color:#5ee0a0;border:1px solid #155a38}
+ .observe{background:#2a2206;color:#ffd35e;border:1px solid #5a4a15}
+ .evite{background:#2a0a0a;color:#ff8a8a;border:1px solid #5a1a1a}
+ ul{margin:8px 0 0;padding-left:18px;line-height:1.6} li{margin:3px 0}
+ .meta{color:var(--mut);font-size:13px;margin-top:8px}
+ .ataque-card{border:2px solid #7c3aed;background:#120f24}
+ .titulo-ot{font-size:18px;font-weight:800;color:#fff;line-height:1.3;margin:0 0 4px}
+ .chars{color:var(--mut);font-size:12px;margin-bottom:12px}
+ .preco-row{display:flex;gap:16px;flex-wrap:wrap;margin:10px 0}
+ .pbox{background:#0f1730;border:1px solid #21304f;border-radius:8px;padding:8px 14px} .pbox span{display:block;color:var(--mut);font-size:11px} .pbox b{font-size:18px;color:#5ee0a0}
+ .dif{background:#1c1340;border:1px solid #4a2da0;border-radius:8px;padding:10px 14px;margin-top:8px;color:#cbbaf5;font-weight:600}
+ .forn{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid var(--bd);font-size:14px} .forn:last-child{border:none}
+ .warn{background:#2a2206;color:#ffd35e;border:1px solid #5a4a15;border-radius:8px;padding:10px 14px;font-size:13px}
+ .empty{color:var(--mut);font-size:14px}
+</style></head><body><div class=wrap>
+<a href="/mlhype/radar{{ '?cat=' ~ r.cat_id if r.cat_id else '' }}">← voltar ao Radar</a>
+<h1>⚡ Ficha de Ataque</h1>
+<div class=prod>{{r.produto}}</div>
+
+{% if not r.ia_ok %}<div class=warn>⚙️ A IA (GEMINI_API_KEY) não está configurada neste ambiente — o Dissecador, o Avaliador e a Ficha rodam no Railway. Aqui aparecem os dados de mercado e o fornecedor.</div>{% endif %}
+
+{% if r.avaliacao and r.avaliacao.veredito %}
+<div class=card>
+ <h3>Avaliador de Oportunidade</h3>
+ <div class=score>
+  <div class=scoreN>{{r.avaliacao.score}}<span style="font-size:18px;color:#8aa0c6">/100</span></div>
+  <span class="vd {{r.avaliacao.veredito}}">{{r.avaliacao.veredito|upper}}</span>
+  {% if r.avaliacao.margem_pct is not none %}<span class=meta>margem ~{{r.avaliacao.margem_pct}}%</span>{% endif %}
+ </div>
+ {% if r.avaliacao.porque %}<div class=meta>{{r.avaliacao.porque}}</div>{% endif %}
+ {% if r.avaliacao.como_melhorar %}<ul>{% for c in r.avaliacao.como_melhorar %}<li>{{c}}</li>{% endfor %}</ul>{% endif %}
+ <div class=meta>{{r.num_concorrentes or '—'}} concorrentes · tendência: {{r.tendencia}}</div>
+</div>
+{% endif %}
+
+<div class=card>
+ <h3>Dissecador do Líder — fraquezas a explorar</h3>
+ <div class=meta>Líder: {{r.anuncio_lider.titulo}} · {{fmt(r.anuncio_lider.preco)}}{% if r.anuncio_lider.fotos_qtd is not none %} · {{r.anuncio_lider.fotos_qtd}} fotos{% endif %}</div>
+ {% if r.fraquezas %}<ul>{% for f in r.fraquezas %}<li>{{f}}</li>{% endfor %}</ul>
+ {% else %}<div class=empty>— (a IA aponta as fraquezas quando o GEMINI_API_KEY estiver ativo)</div>{% endif %}
+</div>
+
+<div class=card>
+ <h3>🎯 Caçador de Fornecedor BR (o diferencial)</h3>
+ {% if r.fornecedores %}
+  {% for f in r.fornecedores %}
+  <div class=forn><span><b>{{f.nome}}</b>{% if f.uf %} · {{f.uf}}{% endif %}{% if f.contato %} · {{f.contato}}{% endif %}{% if f.whatsapp %} · {{f.whatsapp}}{% endif %}</span><span>{{fmt(f.menor_preco)}}</span></div>
+  {% endfor %}
+ {% else %}<div class=empty>Nenhum fornecedor cadastrado p/ esta categoria ainda. Cadastre os seus em <b>/mlhype/admin/fornecedores</b> — é aqui que mora o moat.</div>{% endif %}
+</div>
+
+{% if r.ficha and r.ficha.titulo_otimizado %}
+<div class="card ataque-card">
+ <h3 style="color:#b9a6ff">🔥 Ficha de Ataque — anúncio pronto pra publicar</h3>
+ <p class=titulo-ot>{{r.ficha.titulo_otimizado}}</p>
+ <div class=chars>{{r.ficha.titulo_otimizado|length}}/60 caracteres</div>
+ {% if r.ficha.bullets %}<ul>{% for b in r.ficha.bullets %}<li>{{b}}</li>{% endfor %}</ul>{% endif %}
+ <div class=preco-row>
+  <div class=pbox><span>Preço de venda sugerido</span><b>{{fmt(r.ficha.preco_venda_sugerido)}}</b></div>
+  {% if r.ficha.margem_pct is not none %}<div class=pbox><span>Margem</span><b>{{r.ficha.margem_pct}}%</b></div>{% endif %}
+ </div>
+ {% if r.ficha.diferencial_ataque %}<div class=dif>⚔️ Diferencial de ataque: {{r.ficha.diferencial_ataque}}</div>{% endif %}
+</div>
+{% elif r.avaliacao.veredito == 'evite' %}
+<div class=card><div class=warn>O Avaliador marcou <b>EVITE</b> — a esteira parou aqui pra te poupar de uma cilada (não gastou IA gerando a Ficha).</div></div>
+{% endif %}
+
+{% if r.erros %}<div class=meta>obs: {{r.erros|join(' · ')}}</div>{% endif %}
+</div></body></html>'''
+
+
+@mlhype_bp.route('/analisar/<pid>')
+def mlhype_analisar(pid):
+    """Roda a esteira de 5 agentes num produto e entrega a Ficha de Ataque."""
+    cat = request.args.get('cat')
+    try:
+        r = rodar_esteira(pid, cat)
+    except Exception as e:
+        log.error(f'[MLhype] esteira {pid} erro: {e}')
+        return f'Erro ao analisar este produto: {e}', 500
+    return render_template_string(_FICHA_HTML, r=r, fmt=_fmt_brl)
+
+
+# ── Admin de Fornecedores (Passo 8) — gate simples por ML_SECRET ──────────────
+_ADMIN_FORN_HTML = '''<!doctype html><html lang=pt-br><head><meta charset=utf-8>
+<meta name=viewport content="width=device-width,initial-scale=1"><title>MLhype · Fornecedores</title>
+<style>
+ :root{--bg:#0b1020;--card:#0f1730;--bd:#21304f;--mut:#8aa0c6;--txt:#e7ecf5;--ac:#7cc0ff}
+ body{font-family:system-ui,Segoe UI,sans-serif;background:var(--bg);color:var(--txt);margin:0;padding:18px}
+ .wrap{max-width:820px;margin:0 auto} a{color:var(--ac);text-decoration:none} h1{font-size:20px}
+ .card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:16px;margin:14px 0}
+ label{display:block;font-size:12px;color:var(--mut);margin:8px 0 3px}
+ input{width:100%;background:#0b1020;color:var(--txt);border:1px solid var(--bd);border-radius:8px;padding:9px 11px;font-size:14px}
+ .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+ button{margin-top:12px;background:linear-gradient(135deg,#2f6bff,#7c3aed);color:#fff;border:0;border-radius:8px;padding:11px 20px;font-weight:700;font-size:15px;cursor:pointer}
+ table{width:100%;border-collapse:collapse;font-size:14px} td,th{padding:8px;border-bottom:1px solid var(--bd);text-align:left} th{color:var(--mut);font-size:12px}
+ .hint{color:var(--mut);font-size:12px}
+</style></head><body><div class=wrap>
+<a href="/mlhype/radar">← Radar</a>
+<h1>🎯 Fornecedores nacionais — o moat</h1>
+<p class=hint>Cada fornecedor cadastrado aqui aparece nas Fichas de Ataque das categorias que ele atende. Em <b>categorias</b>, liste IDs (ex.: MLB1051) e palavras-chave separadas por espaço.</p>
+<div class=card>
+ <form method=post action="/mlhype/admin/fornecedores?k={{k}}">
+  <div class=grid>
+   <div><label>Nome *</label><input name=nome required></div>
+   <div><label>Categorias atendidas (IDs + palavras)</label><input name=categorias placeholder="MLB1051 celular fone capa"></div>
+   <div><label>Contato (email/site)</label><input name=contato></div>
+   <div><label>WhatsApp</label><input name=whatsapp></div>
+   <div><label>UF</label><input name=uf placeholder=SP></div>
+   <div><label>Palavra-chave do preço</label><input name=keyword placeholder=celular></div>
+   <div><label>Preço de custo (R$)</label><input name=preco placeholder=450,00></div>
+   <div><label>Prazo (dias)</label><input name=prazo placeholder=7></div>
+   <div><label>Garantia</label><input name=garantia placeholder="3 meses"></div>
+   <div><label>Obs</label><input name=obs></div>
+  </div>
+  <button type=submit>+ Cadastrar fornecedor</button>
+ </form>
+</div>
+<div class=card>
+ <h3 style="color:var(--mut);font-size:13px;text-transform:uppercase">Cadastrados ({{fornes|length}})</h3>
+ <table><tr><th>Nome</th><th>Categorias</th><th>UF</th><th>Menor custo</th><th>Contato</th></tr>
+ {% for f in fornes %}<tr><td><b>{{f.nome}}</b></td><td class=hint>{{f.categorias}}</td><td>{{f.uf}}</td><td>{{fmt(f.menor_preco)}}</td><td class=hint>{{f.contato}}{% if f.whatsapp %} · {{f.whatsapp}}{% endif %}</td></tr>{% endfor %}
+ </table>
+</div>
+</div></body></html>'''
+
+
+@mlhype_bp.route('/admin/fornecedores', methods=['GET', 'POST'])
+def mlhype_admin_fornecedores():
+    if request.args.get('k') != os.environ.get('ML_SECRET'):
+        return 'acesso negado — use ?k=<ML_SECRET>', 403
+    import mlhype_db as db
+    if request.method == 'POST':
+        nome = (request.form.get('nome') or '').strip()
+        if nome:
+            sid = db.add_fornecedor(
+                nome, categorias=request.form.get('categorias', ''),
+                contato=request.form.get('contato', ''), whatsapp=request.form.get('whatsapp', ''),
+                uf=request.form.get('uf', ''), obs=request.form.get('obs', ''))
+            preco = (request.form.get('preco') or '').strip().replace('.', '').replace(',', '.')
+            if preco:
+                try:
+                    db.add_fornecedor_preco(
+                        sid, request.form.get('keyword') or nome, float(preco),
+                        prazo_entrega_dias=int(request.form.get('prazo') or 0) or None,
+                        garantia=request.form.get('garantia', ''))
+                except Exception:
+                    pass
+        return redirect(f"/mlhype/admin/fornecedores?k={request.args.get('k')}")
+    return render_template_string(_ADMIN_FORN_HTML, fornes=db.listar_fornecedores(),
+                                  k=request.args.get('k'), fmt=_fmt_brl)
+
+
+def _seed_fornecedores_exemplo():
+    """Semeia 2 fornecedores de EXEMPLO (claramente marcados) só pra a Ficha
+    mostrar o formato do moat. Diogo substitui pelos reais no /admin."""
+    try:
+        import mlhype_db as db
+        if db.listar_fornecedores():
+            return
+        s1 = db.add_fornecedor('Fornecedor Exemplo — Eletrônicos (edite no admin)',
+                               categorias='MLB1051 MLB1000 celular fone carregador capa eletronicos',
+                               uf='SP', contato='exemplo@fornecedor.com.br', fonte='exemplo',
+                               obs='EXEMPLO — apague e cadastre os reais')
+        db.add_fornecedor_preco(s1, 'celular', 480.0, prazo_entrega_dias=7, garantia='3 meses')
+        db.add_fornecedor_preco(s1, 'fone', 16.0, prazo_entrega_dias=7)
+        s2 = db.add_fornecedor('Fornecedor Exemplo — Casa & Eletro (edite no admin)',
+                               categorias='MLB5726 MLB1574 liquidificador chaleira fritadeira eletrodomestico casa',
+                               uf='SC', contato='exemplo2@fornecedor.com.br', fonte='exemplo',
+                               obs='EXEMPLO — apague e cadastre os reais')
+        db.add_fornecedor_preco(s2, 'eletrodomestico', 42.0, prazo_entrega_dias=5)
+        log.info('[MLhype] fornecedores de exemplo semeados')
+    except Exception as e:
+        log.warning(f'[MLhype] seed fornecedores falhou: {e}')
 
 
 # ── Coletor diário multi-categoria (Passo 3) ──────────────────────────────────
@@ -325,5 +614,6 @@ def iniciar_coletor_mlhype():
 # Garante que o banco exista mesmo se o módulo for importado isoladamente.
 try:
     init_mlhype_db()
+    _seed_fornecedores_exemplo()
 except Exception as _e:  # pragma: no cover
     log.warning(f'[MLHYPE] init_mlhype_db no import falhou: {_e}')

@@ -418,3 +418,110 @@ def radar_trends(limit=30):
                         "ORDER BY posicao LIMIT ?", (ult['d'], limit)).fetchall()
     conn.close()
     return [dict(r) for r in rows]
+
+
+# ── Tendência de um produto pelo histórico (sinal do Avaliador) ────────────────
+def tendencia_produto(mlb_item_id):
+    """Compara a posição mais recente com a mais antiga registrada: a onda está
+    subindo, estável ou caindo? 'desconhecida' se só houver 1 dia de histórico."""
+    conn = get_mlhype_db()
+    rows = conn.execute("""
+        SELECT s.posicao_ranking AS pos FROM mlhype_snapshots s
+        JOIN mlhype_listings l ON l.id = s.listing_id
+        WHERE l.mlb_item_id=? AND s.posicao_ranking IS NOT NULL
+        ORDER BY s.collected_at""", (mlb_item_id,)).fetchall()
+    conn.close()
+    if len(rows) < 2:
+        return 'desconhecida'
+    primeiro, ultimo = rows[0]['pos'], rows[-1]['pos']
+    if ultimo < primeiro - 1:      # posição menor = mais perto do topo = subindo
+        return 'subindo'
+    if ultimo > primeiro + 1:
+        return 'caindo'
+    return 'estavel'
+
+
+# ── Base curada de FORNECEDORES NACIONAIS — o MOAT (Passo 8) ───────────────────
+def add_fornecedor(nome, categorias='', contato='', whatsapp='', uf='', site='',
+                   cnpj='', confiabilidade=3, obs='', fonte='manual', curado_por='admin'):
+    conn = get_mlhype_db()
+    cur = conn.execute("""INSERT INTO mlhype_suppliers
+        (nome, cnpj, site, contato, whatsapp, categorias, uf, fonte, confiabilidade, curado_por, obs, ativo)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,1)""",
+        (nome, cnpj, site, contato, whatsapp, categorias, uf, fonte, confiabilidade, curado_por, obs))
+    sid = cur.lastrowid
+    conn.commit(); conn.close()
+    return sid
+
+
+def add_fornecedor_preco(supplier_id, produto_keyword, preco_unitario,
+                         qtd_minima=1, prazo_entrega_dias=None, garantia=''):
+    from datetime import datetime
+    conn = get_mlhype_db()
+    conn.execute("""INSERT INTO mlhype_supplier_prices
+        (supplier_id, produto_keyword, preco_unitario, qtd_minima, prazo_entrega_dias, garantia, collected_at)
+        VALUES (?,?,?,?,?,?,?)""",
+        (supplier_id, produto_keyword, preco_unitario, qtd_minima, prazo_entrega_dias,
+         garantia, datetime.utcnow().strftime('%Y-%m-%d')))
+    conn.commit(); conn.close()
+
+
+def listar_fornecedores():
+    conn = get_mlhype_db()
+    rows = conn.execute("""
+        SELECT f.*, (SELECT MIN(preco_unitario) FROM mlhype_supplier_prices p
+                     WHERE p.supplier_id=f.id) AS menor_preco
+        FROM mlhype_suppliers f ORDER BY f.ativo DESC, f.created_at DESC""").fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def match_fornecedores(categoria_id, categoria_nome='', titulo='', limit=5):
+    """Caçador de Fornecedor BR: acha fornecedores que atendem a categoria/produto
+    e o MENOR preço de custo deles. Match fuzzy por categoria_id, nome da categoria
+    ou palavras do título contra o campo `categorias` (csv) do fornecedor."""
+    termos = [categoria_id, categoria_nome] + [w for w in (titulo or '').split() if len(w) > 3][:4]
+    termos = [t.lower() for t in termos if t]
+    if not termos:
+        return []
+    conn = get_mlhype_db()
+    where = ' OR '.join(["LOWER(categorias) LIKE ?"] * len(termos))
+    params = [f'%{t}%' for t in termos]
+    rows = conn.execute(f"""
+        SELECT f.id, f.nome, f.contato, f.whatsapp, f.uf, f.confiabilidade, f.categorias,
+               (SELECT MIN(preco_unitario) FROM mlhype_supplier_prices p WHERE p.supplier_id=f.id) AS menor_preco,
+               (SELECT prazo_entrega_dias FROM mlhype_supplier_prices p WHERE p.supplier_id=f.id
+                ORDER BY preco_unitario LIMIT 1) AS prazo
+        FROM mlhype_suppliers f
+        WHERE f.ativo=1 AND ({where})
+        ORDER BY f.confiabilidade DESC, menor_preco ASC LIMIT ?""",
+        (*params, limit)).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+# ── Persistência da esteira (oportunidade + Ficha de Ataque) ───────────────────
+def salvar_oportunidade(produto, categoria_id, score, margem_pct, veredito, payload, user_id=None):
+    import json as _json
+    conn = get_mlhype_db()
+    cur = conn.execute("""INSERT INTO mlhype_opportunities
+        (user_id, produto, categoria_id, score, margem_pct, veredito, payload_json)
+        VALUES (?,?,?,?,?,?,?)""",
+        (user_id, produto, categoria_id, score, margem_pct, veredito,
+         _json.dumps(payload, ensure_ascii=False)))
+    oid = cur.lastrowid
+    conn.commit(); conn.close()
+    return oid
+
+
+def salvar_ficha(opportunity_id, ficha):
+    import json as _json
+    conn = get_mlhype_db()
+    conn.execute("""INSERT INTO mlhype_attack_sheets
+        (opportunity_id, titulo_otimizado, bullets_json, preco_sugerido, margem_pct, diferencial_ataque)
+        VALUES (?,?,?,?,?,?)""",
+        (opportunity_id, ficha.get('titulo_otimizado'),
+         _json.dumps(ficha.get('bullets', []), ensure_ascii=False),
+         ficha.get('preco_venda_sugerido'), ficha.get('margem_pct'),
+         ficha.get('diferencial_ataque')))
+    conn.commit(); conn.close()
