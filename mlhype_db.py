@@ -218,6 +218,12 @@ def init_mlhype_db():
         acao         TEXT,        -- vendi | ataquei | nao_rolou
         created_at   TEXT DEFAULT CURRENT_TIMESTAMP)''')
     conn.execute('CREATE INDEX IF NOT EXISTS idx_mlhype_fb_user ON mlhype_feedback(user_id, categoria_id)')
+    # ── Nomes de categoria (Lote C — pra subcategorias, além das 32 raízes) ────
+    conn.execute('''CREATE TABLE IF NOT EXISTS mlhype_categories (
+        id         TEXT PRIMARY KEY,
+        nome       TEXT,
+        parent_id  TEXT,
+        updated_at TEXT DEFAULT CURRENT_TIMESTAMP)''')
     conn.commit()
 
     # ── Migrações seguras (ADD COLUMN se a tabela já existia sem a coluna) ──────
@@ -594,6 +600,33 @@ def categorias_quentes_usuario(user_id):
         "GROUP BY categoria_id", (user_id,)).fetchall()
     conn.close()
     return {r['categoria_id']: r['n'] for r in rows}
+
+
+# ── Nomes de categoria (Lote C — roots + subcategorias) ────────────────────────
+_CAT_NOME_CACHE = {}
+
+
+def salvar_categoria(cat_id, nome, parent_id=None):
+    if not cat_id or not nome:
+        return
+    conn = get_mlhype_db()
+    conn.execute('INSERT INTO mlhype_categories (id, nome, parent_id) VALUES (?,?,?) '
+                 'ON CONFLICT(id) DO UPDATE SET nome=excluded.nome, parent_id=excluded.parent_id',
+                 (cat_id, nome, parent_id))
+    conn.commit(); conn.close()
+    _CAT_NOME_CACHE[cat_id] = nome
+
+
+def nome_categoria(cat_id):
+    if cat_id in _CAT_NOME_CACHE:
+        return _CAT_NOME_CACHE[cat_id]
+    conn = get_mlhype_db()
+    r = conn.execute('SELECT nome FROM mlhype_categories WHERE id=?', (cat_id,)).fetchone()
+    conn.close()
+    nome = r['nome'] if r else None
+    if nome and len(_CAT_NOME_CACHE) < 3000:
+        _CAT_NOME_CACHE[cat_id] = nome
+    return nome
 
 
 # ── PENTE FINO: Índice de Oportunidade (o motor que sabe o que vale a pena) ────

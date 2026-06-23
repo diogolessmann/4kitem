@@ -46,7 +46,15 @@ CATEGORIAS_ML = {
 
 
 def _nome_cat(cid):
-    return CATEGORIAS_ML.get(cid, cid)
+    if cid in CATEGORIAS_ML:
+        return CATEGORIAS_ML[cid]
+    if not cid:
+        return cid
+    try:
+        import mlhype_db as _db
+        return _db.nome_categoria(cid) or cid
+    except Exception:
+        return cid
 
 
 # ── Sessão / login (Passo 5 — auth) ────────────────────────────────────────────
@@ -1046,18 +1054,46 @@ def _data_brt():
 # Categorias-raiz que NÃO têm "mais vendidos"/highlights (não são catálogo de
 # best-seller): Carros/Motos, Imóveis, Ingressos, Serviços. Pulamos no scan.
 _CAT_SEM_HIGHLIGHTS = {'MLB1743', 'MLB1459', 'MLB218519', 'MLB1540'}
+# Lote C: raízes a APROFUNDAR em subcategorias (os nichos de ouro). Configurável
+# via MLHYPE_SUBCAT_ROOTS; default = 2 raízes de alto valor p/ revenda.
+_SUBCAT_DEFAULT = 'MLB1051,MLB1000'
 
 
 def _categorias_alvo(ml):
-    """Categorias a varrer: TARGET_CATEGORIES (lista CSV) ou TODAS as raízes do ML."""
+    """Categorias a varrer: TARGET_CATEGORIES (CSV) ou TODAS as raízes do ML, +
+    as subcategorias das raízes configuradas em MLHYPE_SUBCAT_ROOTS (Lote C)."""
+    import mlhype_db as db
     cfg = os.environ.get('TARGET_CATEGORIES', '').strip()
     if cfg and cfg.lower() not in ('todas', 'all', '*'):
         return [c.strip() for c in cfg.split(',') if c.strip()]
     try:
-        return [c['id'] for c in ml.categorias() if c['id'] not in _CAT_SEM_HIGHLIGHTS]
+        roots = ml.categorias()
     except Exception as e:
         log.error(f'[MLhype] não consegui listar categorias-raiz: {e}')
         return []
+    alvo = []
+    for c in roots:
+        try:
+            db.salvar_categoria(c['id'], c['name'])
+        except Exception:
+            pass
+        if c['id'] not in _CAT_SEM_HIGHLIGHTS:
+            alvo.append(c['id'])
+    # aprofundar nas subcategorias das raízes configuradas (controla o volume)
+    sub_cfg = os.environ.get('MLHYPE_SUBCAT_ROOTS', _SUBCAT_DEFAULT).strip()
+    sub_roots = [s.strip() for s in sub_cfg.split(',') if s.strip()] if sub_cfg else []
+    top_sub = int(os.environ.get('MLHYPE_SUBCAT_TOP', '8'))
+    for root in sub_roots:
+        if root in _CAT_SEM_HIGHLIGHTS:
+            continue
+        try:
+            det = ml.categoria(root) or {}
+            for ch in (det.get('children_categories') or [])[:top_sub]:
+                db.salvar_categoria(ch['id'], ch['name'], parent_id=root)
+                alvo.append(ch['id'])
+        except Exception as ex:
+            log.warning(f'[MLhype] subcategorias de {root} falharam: {ex}')
+    return alvo
 
 
 def _coletar_produto(ml, db, pid, cat_id, posicao, hoje):
