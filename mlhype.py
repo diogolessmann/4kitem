@@ -15,7 +15,9 @@ from werkzeug.security import generate_password_hash, check_password_hash
 
 from mlhype_db import (init_mlhype_db, estatisticas,
                        radar_top, radar_trends, radar_categorias_com_dados,
-                       criar_usuario, usuario_por_email, usuario_por_id, marcar_acesso)
+                       criar_usuario, usuario_por_email, usuario_por_id, marcar_acesso,
+                       plano_efetivo, plano_libera, contar_buscas_hoje, registrar_uso,
+                       FREE_BUSCAS_DIA, get_mlhype_db)
 
 log = logging.getLogger(__name__)
 
@@ -63,6 +65,23 @@ def _exige_login():
     if not session.get('mlhype_user_id'):
         return redirect('/mlhype/entrar?next=' + request.path)
     return None
+
+
+# ── Planos (preços ancorados no valor; cobrança Asaas é o último fio a ligar) ──
+PLANOS = {
+    'free':     {'nome': 'Grátis', 'preco': 0, 'preco_fmt': 'R$ 0',
+                 'desc': f'Prove o valor: {FREE_BUSCAS_DIA} Fichas de Ataque por dia.',
+                 'features': ['Radar de Demanda', f'{FREE_BUSCAS_DIA} Fichas de Ataque/dia', 'Trends do dia']},
+    'starter':  {'nome': 'Starter', 'preco': 47, 'preco_fmt': 'R$ 47',
+                 'desc': 'O Radar completo, sem limite de consulta.',
+                 'features': ['Radar completo das 32 categorias', 'Tendência e brechas', 'Trends do dia']},
+    'pro':      {'nome': 'Pro', 'preco': 97, 'preco_fmt': 'R$ 97',
+                 'desc': 'A Ficha de Ataque por IA, ilimitada + histórico.',
+                 'features': ['Tudo do Starter', 'Ficha de Ataque ILIMITADA', 'Histórico de tendências']},
+    'business': {'nome': 'Business', 'preco': 197, 'preco_fmt': 'R$ 197',
+                 'desc': 'O moat: fornecedor nacional + alertas.',
+                 'features': ['Tudo do Pro', '🎯 Caçador de Fornecedor BR', 'Alertas de oportunidade']},
+}
 
 
 @mlhype_bp.route('/')
@@ -239,7 +258,7 @@ _RADAR_HTML = '''<!doctype html><html lang=pt-br><head><meta charset=utf-8>
 </style></head><body><div class=wrap>
 <header>
  <h1>MLhype <span class=fire>🔥</span> · Radar de Demanda</h1>
- <span style="font-size:13px;color:var(--mut)">{% if nome %}{{nome.split()[0]}} · {% endif %}<a href="/mlhype/sair">sair</a></span>
+ <span style="font-size:13px;color:var(--mut)"><a href="/mlhype/planos" style="color:#b9a6ff;font-weight:700">planos</a> · {% if nome %}{{nome.split()[0]}} · {% endif %}<a href="/mlhype/sair">sair</a></span>
 </header>
 {% if seletor %}
 <form method=get><select name=cat onchange="this.form.submit()">
@@ -453,7 +472,9 @@ _FICHA_HTML = '''<!doctype html><html lang=pt-br><head><meta charset=utf-8>
 
 <div class=card>
  <h3>🎯 Caçador de Fornecedor BR (o diferencial)</h3>
- {% if r.fornecedores %}
+ {% if not r.pode_fornecedor %}
+   <div class=warn>🔒 O Caçador de Fornecedor BR é exclusivo do plano <b>Business</b> — é o moat que ninguém mais tem. <a href="/mlhype/planos" style="color:#7cc0ff;font-weight:700">Ver planos →</a></div>
+ {% elif r.fornecedores %}
   {% for f in r.fornecedores %}
   <div class=forn><span><b>{{f.nome}}</b>{% if f.uf %} · {{f.uf}}{% endif %}{% if f.contato %} · {{f.contato}}{% endif %}{% if f.whatsapp %} · {{f.whatsapp}}{% endif %}</span><span>{{fmt(f.menor_preco)}}</span></div>
   {% endfor %}
@@ -486,12 +507,19 @@ def mlhype_analisar(pid):
     _r = _exige_login()
     if _r:
         return _r
+    u = _usuario_atual()
+    plano = plano_efetivo(u)
     cat = request.args.get('cat')
+    # Gate: a Ficha é Pro+. Grátis/Starter PODEM provar (FREE_BUSCAS_DIA por dia).
+    if not plano_libera(plano, 'ficha') and contar_buscas_hoje(u['id']) >= FREE_BUSCAS_DIA:
+        return render_template_string(_LIMITE_HTML, limite=FREE_BUSCAS_DIA, plano=plano)
+    registrar_uso(u['id'], 'busca', categoria=cat)
     try:
         r = rodar_esteira(pid, cat)
     except Exception as e:
         log.error(f'[MLhype] esteira {pid} erro: {e}')
         return f'Erro ao analisar este produto: {e}', 500
+    r['pode_fornecedor'] = plano_libera(plano, 'fornecedor')
     return render_template_string(_FICHA_HTML, r=r, fmt=_fmt_brl)
 
 
@@ -563,6 +591,109 @@ def mlhype_admin_fornecedores():
         return redirect(f"/mlhype/admin/fornecedores?k={request.args.get('k')}")
     return render_template_string(_ADMIN_FORN_HTML, fornes=db.listar_fornecedores(),
                                   k=request.args.get('k'), fmt=_fmt_brl)
+
+
+# ── Planos / upsell / admin de plano (Passo 5 — sem o PIX ao vivo ainda) ──────
+_PLANOS_HTML = '''<!doctype html><html lang=pt-br><head><meta charset=utf-8>
+<meta name=viewport content="width=device-width,initial-scale=1"><title>MLhype · Planos</title>
+<style>
+ :root{--bg:#0b1020;--card:#0f1730;--bd:#21304f;--mut:#8aa0c6;--txt:#e7ecf5}
+ body{font-family:system-ui,Segoe UI,sans-serif;background:var(--bg);color:var(--txt);margin:0;padding:18px}
+ .wrap{max-width:920px;margin:0 auto} a{color:#7cc0ff;text-decoration:none}
+ h1{font-size:22px;text-align:center;margin:8px 0 2px} .sub{text-align:center;color:var(--mut);margin:0 0 20px;font-size:14px}
+ .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px}
+ .p{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:18px;display:flex;flex-direction:column}
+ .p.cur{border:2px solid #7c3aed}
+ .pn{font-weight:800;font-size:18px} .pp{font-size:30px;font-weight:800;margin:6px 0} .pp small{font-size:13px;color:var(--mut);font-weight:400}
+ .pd{color:var(--mut);font-size:13px;min-height:34px}
+ ul{list-style:none;padding:0;margin:12px 0;font-size:14px} li{padding:4px 0;color:#cfe0ff} li::before{content:"✓ ";color:#5ee0a0;font-weight:800}
+ .btn{margin-top:auto;display:block;text-align:center;background:linear-gradient(135deg,#2f6bff,#7c3aed);color:#fff;padding:11px;border-radius:8px;font-weight:700}
+ .btn.cur{background:#0b1020;border:1px solid #2f5e44;color:#5ee0a0} .badge{font-size:11px;color:#5ee0a0}
+</style></head><body><div class=wrap>
+<div style="text-align:center"><a href="/mlhype/radar">← Radar</a></div>
+<h1>Planos do MLhype 🔥</h1>
+<p class=sub>O custo da assinatura é uma fração do lucro de um único produto vencedor.</p>
+<div class=grid>
+{% for c in cards %}
+ <div class="p {{'cur' if c.key==atual else ''}}">
+  <div class=pn>{{c.nome}}{% if c.key==atual %} <span class=badge>· seu plano</span>{% endif %}</div>
+  <div class=pp>{{c.preco_fmt}}<small>{% if c.preco %}/mês{% endif %}</small></div>
+  <div class=pd>{{c.desc}}</div>
+  <ul>{% for f in c.features %}<li>{{f}}</li>{% endfor %}</ul>
+  {% if c.key==atual %}<span class="btn cur">Plano atual</span>
+  {% elif c.key=='free' %}<a class=btn href="/mlhype/cadastrar">Começar grátis</a>
+  {% elif not logado %}<a class=btn href="/mlhype/cadastrar">Criar conta</a>
+  {% else %}<a class=btn href="/mlhype/assinar/{{c.key}}">Assinar</a>{% endif %}
+ </div>
+{% endfor %}
+</div></div></body></html>'''
+
+_ORDEM_PLANOS = ['free', 'starter', 'pro', 'business']
+
+
+@mlhype_bp.route('/planos')
+def mlhype_planos():
+    u = _usuario_atual()
+    atual = plano_efetivo(u) if u else None
+    cards = [{'key': k, **PLANOS[k]} for k in _ORDEM_PLANOS]
+    return render_template_string(_PLANOS_HTML, cards=cards, atual=atual, logado=bool(u))
+
+
+_MINI_HTML = '''<!doctype html><html lang=pt-br><head><meta charset=utf-8>
+<meta name=viewport content="width=device-width,initial-scale=1"><title>MLhype</title>
+<style>body{font-family:system-ui,Segoe UI,sans-serif;background:#0b1020;color:#e7ecf5;margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;text-align:center}
+ .box{max-width:460px} h1{font-size:22px} p{color:#9fb0d0;line-height:1.6} a{color:#7cc0ff;text-decoration:none}
+ .btn{display:inline-block;margin-top:14px;background:linear-gradient(135deg,#2f6bff,#7c3aed);color:#fff;padding:12px 24px;border-radius:8px;font-weight:700}
+ .card{background:#0f1730;border:1px solid #21304f;border-radius:12px;padding:18px;margin:16px 0}</style>
+</head><body><div class=box>{{corpo|safe}}</div></body></html>'''
+
+
+@mlhype_bp.route('/assinar/<plano>')
+def mlhype_assinar(plano):
+    _r = _exige_login()
+    if _r:
+        return _r
+    if plano not in PLANOS or plano == 'free':
+        return redirect('/mlhype/planos')
+    p = PLANOS[plano]
+    corpo = (f'<a href="/mlhype/planos">← planos</a><h1>Assinar {p["nome"]} · {p["preco_fmt"]}/mês</h1>'
+             '<div class=card><p>O pagamento automático via <b>PIX</b> está em ativação final '
+             '(último fio: ligar o Asaas no webhook compartilhado, com teste real).</p>'
+             '<p style="color:#9fb0d0">Enquanto isso, dá pra liberar tua conta de teste pelo admin.</p></div>'
+             '<a class=btn href="/mlhype/radar">voltar ao Radar</a>')
+    return render_template_string(_MINI_HTML, corpo=corpo)
+
+
+_LIMITE_HTML = '''<!doctype html><html lang=pt-br><head><meta charset=utf-8>
+<meta name=viewport content="width=device-width,initial-scale=1"><title>MLhype · Limite</title>
+<style>body{font-family:system-ui,Segoe UI,sans-serif;background:#0b1020;color:#e7ecf5;margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;text-align:center}
+ .box{max-width:460px} h1{font-size:22px} p{color:#9fb0d0;line-height:1.6} a{color:#7cc0ff;text-decoration:none}
+ .btn{display:inline-block;margin-top:14px;background:linear-gradient(135deg,#2f6bff,#7c3aed);color:#fff;padding:12px 24px;border-radius:8px;font-weight:700}</style>
+</head><body><div class=box>
+<h1>Você usou suas {{limite}} análises grátis de hoje 🚀</h1>
+<p>Gostou? No <b>Pro</b> a Ficha de Ataque é ilimitada — e no <b>Business</b> você ainda recebe o <b>fornecedor nacional</b> pra desbancar o líder.</p>
+<a class=btn href="/mlhype/planos">Ver planos →</a>
+<div style="margin-top:12px"><a href="/mlhype/radar">voltar ao Radar</a></div>
+</div></body></html>'''
+
+
+@mlhype_bp.route('/admin/plano')
+def mlhype_admin_plano():
+    """Define o plano de uma conta (p/ TESTE de cada tier). Gate por ML_SECRET."""
+    if request.args.get('k') != os.environ.get('ML_SECRET'):
+        return 'acesso negado — use ?k=<ML_SECRET>&email=<email>&plano=<free|starter|pro|business>', 403
+    email = (request.args.get('email') or '').strip().lower()
+    plano = (request.args.get('plano') or '').strip()
+    if plano not in PLANOS:
+        return 'plano inválido — use free | starter | pro | business', 400
+    u = usuario_por_email(email)
+    if not u:
+        return f'conta não encontrada: {email}', 404
+    conn = get_mlhype_db()
+    conn.execute('UPDATE mlhype_users SET plano=?, plan_active=? WHERE id=?',
+                 (plano, 0 if plano == 'free' else 1, u['id']))
+    conn.commit(); conn.close()
+    return f'✅ {email} agora é plano <b>{plano}</b>. <a href="/mlhype/radar">ir pro Radar →</a>'
 
 
 def _seed_fornecedores_exemplo():
