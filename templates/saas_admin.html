@@ -865,7 +865,12 @@
         </td>
         <td style="font-size:12px">{{ (u.created_at or '')[:10] }}</td>
         <td style="white-space:nowrap">
-          <button onclick="mlhypeSetPlan({{ u.id }})" style="font-size:12px;padding:4px 10px;border-radius:7px;border:none;cursor:pointer;background:#ddd6fe;color:#5b21b6">Plano</button>
+          <select onchange="mlhypeSetPlan({{ u.id }}, this)" title="Mudar plano" style="font-size:12px;padding:5px 8px;border-radius:7px;border:1px solid #c4b5fd;cursor:pointer;background:#ddd6fe;color:#5b21b6;font-weight:700">
+            <option value="free" {{ 'selected' if (u.plano or 'free')=='free' else '' }}>free</option>
+            <option value="starter" {{ 'selected' if u.plano=='starter' else '' }}>starter</option>
+            <option value="pro" {{ 'selected' if u.plano=='pro' else '' }}>pro</option>
+            <option value="business" {{ 'selected' if u.plano=='business' else '' }}>business</option>
+          </select>
           <button onclick="mlhypeResetSenha({{ u.id }})" style="font-size:12px;padding:4px 10px;border-radius:7px;border:none;cursor:pointer;background:#e2e8f0;color:#334155">Senha</button>
         </td>
       </tr>
@@ -877,10 +882,9 @@
     {% endif %}
   </div>
   <script>
-  async function mlhypeSetPlan(uid){
-    const plano = prompt('Plano do usuário: free · starter · pro · business', 'pro');
-    if(!plano) return;
-    const r = await fetch('/saas-admin/mlhype/set-plan', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({user_id:uid, plano:plano.trim()})});
+  async function mlhypeSetPlan(uid, sel){
+    const plano = sel.value; if(!plano) return;
+    const r = await fetch('/saas-admin/mlhype/set-plan', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({user_id:uid, plano:plano})});
     const j = await r.json(); if(j.ok){ location.reload(); } else { alert(j.erro || 'Erro'); }
   }
   async function mlhypeResetSenha(uid){
