@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Instalar o SomaJá no celular 🐗</title>
+<link rel="icon" type="image/svg+xml" href="/static/somaja/logo.svg">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,Segoe UI,Roboto,sans-serif;background:#f0fdf4;color:#0f172a;line-height:1.6}
+  .top{background:#16a34a;color:#fff;padding:12px 16px;display:flex;justify-content:space-between;align-items:center}
+  .top .logo{font-weight:800}
+  .top a{color:#dcfce7;text-decoration:none;font-size:13px}
+  .wrap{max-width:460px;margin:0 auto;padding:24px 18px}
+  .hero{text-align:center;margin-bottom:24px}
+  .hero img{width:96px;height:96px;border-radius:22px;box-shadow:0 10px 30px rgba(22,163,74,.25)}
+  .hero h1{font-size:22px;margin:14px 0 6px}
+  .hero p{color:#475569;font-size:15px}
+  .box{background:#fff;border:1px solid #dcfce7;border-radius:16px;padding:20px;margin-bottom:16px}
+  .box h2{font-size:16px;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+  .step{display:flex;gap:12px;align-items:flex-start;margin-bottom:14px}
+  .step:last-child{margin-bottom:0}
+  .step .n{flex-shrink:0;width:28px;height:28px;border-radius:50%;background:#16a34a;color:#fff;font-weight:800;display:flex;align-items:center;justify-content:center;font-size:14px}
+  .step .t{font-size:15px}
+  .step .t b{color:#15803d}
+  .aviso{background:#fef9c3;color:#854d0e;border-radius:10px;padding:12px;font-size:14px;margin-bottom:16px}
+  .btn{display:block;width:100%;text-align:center;background:#16a34a;color:#fff;border:none;padding:15px;border-radius:12px;font-weight:700;font-size:16px;cursor:pointer;text-decoration:none;margin-bottom:10px}
+  .ok{background:#dcfce7;color:#15803d;border-radius:12px;padding:18px;text-align:center;font-weight:600}
+  .icone-share{display:inline-block;width:20px;height:20px;vertical-align:-4px}
+  .back{display:block;text-align:center;margin-top:18px;color:#16a34a;text-decoration:none;font-weight:600}
+</style>
+</head>
+<body>
+<div class="top"><span class="logo">🐗 SomaJá</span><a href="/somaja/app">Abrir o app</a></div>
+<div class="wrap">
+  <div class="hero">
+    <img src="/static/somaja/logo.png" alt="SomaJá">
+    <h1>Tenha o SomaJá na tela do celular</h1>
+    <p>Fica com ícone próprio e abre em tela cheia, igual um app instalado — de graça, sem baixar nada.</p>
+  </div>
+
+  <div id="conteudo"></div>
+
+  <a class="back" href="/somaja/app">← Voltar pro app</a>
+</div>
+
+<script>
+(function(){
+  var ua = navigator.userAgent || '';
+  var isIOS = /iPhone|iPad|iPod/.test(ua);
+  var isAndroid = /Android/.test(ua);
+  var isSafari = isIOS && !/CriOS|FxiOS|EdgiOS|OPiOS/.test(ua);
+  var standalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+  var el = document.getElementById('conteudo');
+
+  function steps(arr){
+    return arr.map(function(s,i){
+      return '<div class="step"><div class="n">'+(i+1)+'</div><div class="t">'+s+'</div></div>';
+    }).join('');
+  }
+
+  if (standalone){
+    el.innerHTML = '<div class="ok">🎉 Você já está usando o SomaJá como app instalado! Aproveite.</div>';
+    return;
+  }
+
+  if (isIOS){
+    if (!isSafari){
+      el.innerHTML = '<div class="aviso">⚠️ No iPhone, pra instalar o ícone você precisa abrir esta página no <b>Safari</b> (não funciona no Chrome). Copie o endereço e abra no Safari.</div>';
+    }
+    el.innerHTML += '<div class="box"><h2>📱 No iPhone (Safari)</h2>' + steps([
+      'Toque no botão <b>Compartilhar</b> <span>⬆️</span> (o quadradinho com a seta pra cima, na barra de baixo)',
+      'Role e toque em <b>"Adicionar à Tela de Início"</b>',
+      'Toque em <b>"Adicionar"</b> no canto',
+      'Pronto! 🐗 O ícone do SomaJá aparece na sua tela'
+    ]) + '</div>';
+  } else if (isAndroid){
+    el.innerHTML = '<button class="btn" id="instalarBtn" style="display:none">📲 Instalar o SomaJá agora</button>' +
+      '<div class="box"><h2>🤖 No Android (Chrome)</h2>' + steps([
+        'Toque no menu <b>⋮</b> (3 pontinhos, canto superior direito)',
+        'Toque em <b>"Adicionar à tela inicial"</b> ou <b>"Instalar app"</b>',
+        'Confirme em <b>"Instalar"</b>',
+        'Pronto! 🐗 O ícone aparece na sua tela'
+      ]) + '</div>';
+  } else {
+    el.innerHTML = '<div class="box"><h2>💻 No navegador</h2>' + steps([
+      'Abra esta página no <b>celular</b> (Safari no iPhone, Chrome no Android)',
+      'No menu do navegador, escolha <b>"Adicionar à tela de início"</b>',
+      'Pronto! O ícone do SomaJá fica na tela'
+    ]) + '</div>';
+  }
+
+  var deferred=null;
+  window.addEventListener('beforeinstallprompt', function(e){
+    e.preventDefault(); deferred=e;
+    var b=document.getElementById('instalarBtn');
+    if(b){ b.style.display='block'; b.onclick=function(){ deferred.prompt(); deferred=null; b.style.display='none'; }; }
+  });
+})();
+</script>
+</body>
+</html>

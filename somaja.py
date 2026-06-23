@@ -363,6 +363,12 @@ def sw_js():
                     headers={'Service-Worker-Allowed': '/somaja/'})
 
 
+@somaja_bp.route('/instalar')
+def instalar():
+    """Página que ensina o cliente a instalar o SomaJá como app (ícone na tela)."""
+    return render_template('somaja/instalar.html')
+
+
 @somaja_bp.route('/cadastrar', methods=['GET', 'POST'])
 def cadastrar():
     if session.get('soma_user_id'):

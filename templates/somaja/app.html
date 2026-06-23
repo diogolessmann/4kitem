@@ -52,6 +52,9 @@
 <div class="trial">🎁 Teste grátis: <b>{{ trial_dias }} dia(s)</b> restantes · <a href="/somaja/assinar" style="color:#854d0e">assine pra não perder</a></div>
 {% endif %}
 
+<div class="trial" id="installBar" style="background:#dcfce7;color:#15803d;display:none">📲 <a href="/somaja/instalar" style="color:#15803d;font-weight:700">Tenha o SomaJá como app no seu celular →</a></div>
+<script>if(!(window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone)){var _ib=document.getElementById('installBar');if(_ib)_ib.style.display='block';}</script>
+
 <div class="wrap">
   <div class="chat" id="chat">
     <div class="bubble bot">Oi, {{ soma_nome.split(' ')[0] if soma_nome else 'tudo certo' }}! 🐗 Sou o SomaJá.
