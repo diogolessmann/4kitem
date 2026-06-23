@@ -67,8 +67,9 @@ Me conta seus gastos que eu somo tudo. Ex: <b>"mercado 130"</b>, manda um <b>áu
   </div>
 
   <div class="composer">
-    <button class="icon sec" title="Foto ou áudio" onclick="document.getElementById('arq').click()">📎</button>
+    <button class="icon sec" title="Foto da notinha" onclick="document.getElementById('arq').click()">📷</button>
     <input type="file" id="arq" accept="image/*,audio/*" style="display:none" onchange="enviarArquivo()">
+    <button class="icon sec" id="micBtn" title="Gravar áudio" onclick="toggleMic(this)">🎤</button>
     <input type="text" id="msg" placeholder='Ex: "almoço 35"' onkeydown="if(event.key==='Enter')enviar()">
     <button class="icon" onclick="enviar()">➤</button>
   </div>
@@ -103,6 +104,40 @@ async function enviarArquivo(){
     else add(j.erro||'Não consegui ler.','bot');
   }catch(e){w.remove();add('Sem conexão. Tenta de novo.','bot');}
   document.getElementById('arq').value='';
+}
+
+let _mr=null,_chunks=[],_rec=false;
+async function toggleMic(btn){
+  if(_rec){ try{_mr.stop();}catch(e){} return; }
+  if(!navigator.mediaDevices || !window.MediaRecorder){ alert('Seu navegador não grava áudio aqui. Use o 📷 pra anexar um áudio salvo, ou escreve o gasto.'); return; }
+  try{
+    const stream=await navigator.mediaDevices.getUserMedia({audio:true});
+    let mime='';
+    if(MediaRecorder.isTypeSupported('audio/mp4')) mime='audio/mp4';
+    else if(MediaRecorder.isTypeSupported('audio/webm')) mime='audio/webm';
+    _mr = mime ? new MediaRecorder(stream,{mimeType:mime}) : new MediaRecorder(stream);
+    _chunks=[];
+    _mr.ondataavailable=e=>{ if(e.data&&e.data.size)_chunks.push(e.data); };
+    _mr.onstop=()=>{
+      stream.getTracks().forEach(t=>t.stop());
+      _rec=false; btn.textContent='🎤'; btn.style.background=''; btn.style.color='';
+      const blob=new Blob(_chunks,{type:(_mr.mimeType||'audio/webm')});
+      if(blob.size>800) enviarAudioBlob(blob);
+    };
+    _mr.start(); _rec=true; btn.textContent='⏹'; btn.style.background='#dc2626'; btn.style.color='#fff'; btn.title='Toque pra parar';
+  }catch(e){ alert('Não consegui acessar o microfone. Permita o acesso ao microfone no navegador.'); }
+}
+async function enviarAudioBlob(blob){
+  add('🎙️ áudio enviado','me');
+  const w=document.createElement('div');w.className='bubble bot';w.textContent='ouvindo…';chat.appendChild(w);
+  const ext=(blob.type.indexOf('mp4')>=0)?'m4a':'webm';
+  const fd=new FormData(); fd.append('arquivo',blob,'audio.'+ext);
+  try{
+    const r=await fetch('/somaja/lancar-arquivo',{method:'POST',body:fd});
+    const j=await r.json(); w.remove();
+    if(j.ok){add(j.resposta.replace(/\n/g,'<br>'),'bot');setSaldo(j.saldo_fmt);}
+    else add(j.erro||'Não consegui entender o áudio. Tenta por texto.','bot');
+  }catch(e){w.remove();add('Sem conexão. Tenta de novo.','bot');}
 }
 
 async function verResumo(){
