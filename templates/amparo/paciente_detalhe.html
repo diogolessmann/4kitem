@@ -1,0 +1,109 @@
+{% extends "amparo/base.html" %}
+{% block title %}{{ pac['nome'] }} — Amparo{% endblock %}
+{% block content %}
+
+<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+  <h1 style="font-size:24px;margin:0">{{ pac['nome'] }}</h1>
+  <a href="/amparo/pacientes" class="btn ghost">← Pacientes</a>
+</div>
+<p class="muted">{{ pac['telefone'] }}</p>
+
+{% if erro == 'consentimento' %}
+<div class="erro">O paciente ainda não consentiu (ou optou por sair). O motor só funciona com consentimento aceito.</div>
+{% elif erro == 'limite' %}
+<div class="erro">Você atingiu o limite de pacientes do seu plano. <a href="/amparo/planos">Fazer upgrade</a>.</div>
+{% endif %}
+
+<!-- Status + motor -->
+<div class="card" style="margin-top:14px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
+  <div>
+    {% if pac['consentimento'] == 'aceito' %}<span class="pill">consentimento ✅</span>
+    {% elif pac['consentimento'] == 'revogado' %}<span class="pill" style="background:#fdece7;color:var(--warn)">opt-out</span>
+    {% else %}<span class="pill" style="background:#fff3d6;color:#9a6b16">aguardando consentimento</span>{% endif %}
+    <span style="margin-left:8px">Motor: <strong>{{ 'ligado 💙' if pac['motor_ativo'] else 'desligado' }}</strong></span>
+  </div>
+  <form method="post" action="/amparo/pacientes/{{ pac['id'] }}/motor">
+    <input type="hidden" name="ativo" value="{{ 0 if pac['motor_ativo'] else 1 }}">
+    <button class="btn {{ 'ghost' if pac['motor_ativo'] else '' }}">
+      {{ 'Desligar motor' if pac['motor_ativo'] else 'Ligar motor' }}
+    </button>
+  </form>
+</div>
+
+<!-- Enviar interação -->
+<div class="card" style="margin-top:14px">
+  <strong>Enviar agora (WhatsApp)</strong>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+    <form method="post" action="/amparo/pacientes/{{ pac['id'] }}/enviar">
+      <input type="hidden" name="tipo" value="checkin">
+      <button class="btn ghost">💙 Check-in de humor</button>
+    </form>
+    <form method="post" action="/amparo/pacientes/{{ pac['id'] }}/enviar">
+      <input type="hidden" name="tipo" value="PHQ-9">
+      <button class="btn ghost">📋 Escala PHQ-9</button>
+    </form>
+    <form method="post" action="/amparo/pacientes/{{ pac['id'] }}/enviar">
+      <input type="hidden" name="tipo" value="GAD-7">
+      <button class="btn ghost">📋 Escala GAD-7</button>
+    </form>
+  </div>
+  <form method="post" action="/amparo/pacientes/{{ pac['id'] }}/enviar" style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+    <input type="hidden" name="tipo" value="tarefa">
+    <input type="text" name="descricao" placeholder="Tarefa terapêutica (ex: respirar 5 min/dia)" required style="flex:1;min-width:200px">
+    <button class="btn ghost">🌱 Enviar tarefa</button>
+  </form>
+  {% if not pac['motor_ativo'] or pac['consentimento'] != 'aceito' %}
+  <p class="muted" style="font-size:12px;margin-bottom:0">Ligue o motor (com consentimento) para enviar.</p>
+  {% endif %}
+</div>
+
+<!-- Sinais -->
+<div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:14px">
+  <div class="card" style="flex:1;min-width:150px;text-align:center">
+    <div style="font-size:26px;font-weight:800;color:var(--teal)">{{ adesao_resp }}/{{ adesao_env }}</div>
+    <div class="muted" style="font-size:13px">respondidas</div>
+  </div>
+  <div class="card" style="flex:1;min-width:150px;text-align:center">
+    <div style="font-size:26px;font-weight:800;color:var(--teal)">{{ humor|map(attribute='humor')|list|last if humor else '—' }}</div>
+    <div class="muted" style="font-size:13px">último humor (1-5)</div>
+  </div>
+  <div class="card" style="flex:1;min-width:150px;text-align:center">
+    <div style="font-size:26px;font-weight:800;color:var(--teal)">R$ {{ '%.2f'|format(cashback)|replace('.', ',') }}</div>
+    <div class="muted" style="font-size:13px">cashback de adesão</div>
+  </div>
+</div>
+
+<!-- Tarefas -->
+{% if tarefas %}
+<div class="card" style="margin-top:14px">
+  <strong>Tarefas combinadas</strong>
+  {% for t in tarefas %}
+  <div style="border-top:1px solid var(--line);padding:8px 0;font-size:14px">🌱 {{ t['descricao'] }}</div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<!-- Histórico de interações -->
+<div class="card" style="margin-top:14px">
+  <strong>Histórico</strong>
+  {% if not interacoes %}
+    <p class="muted" style="font-size:14px">Nenhuma interação ainda.</p>
+  {% else %}
+    {% for i in interacoes %}
+    <div style="border-top:1px solid var(--line);padding:10px 0;font-size:14px">
+      <span class="muted">{{ i['created_at'][:16] }}</span> ·
+      <strong>{{ i['tipo'] }}{{ ' (' ~ i['escala_nome'] ~ ')' if i['escala_nome'] else '' }}</strong>
+      {% if i['risco'] %}<span class="pill" style="background:#fdece7;color:var(--warn)">risco</span>{% endif %}
+      {% if i['status'] == 'respondida' %}
+        <div style="margin-top:4px">↳ <em>“{{ i['resposta'] }}”</em>
+          {% if i['humor'] %}<span class="pill">humor {{ i['humor'] }}/5</span>{% endif %}
+        </div>
+      {% else %}
+        <span class="muted">· aguardando resposta</span>
+      {% endif %}
+    </div>
+    {% endfor %}
+  {% endif %}
+</div>
+
+{% endblock %}

@@ -137,12 +137,59 @@ def init_amparo_db():
             FOREIGN KEY (psicologo_id) REFERENCES amparo_psicologos(id)
         );
 
+        -- ── Interações do motor (Lote 3) — o feed de sinais ────────────────────
+        -- NÃO guarda "conversa terapêutica": só a pergunta enviada e a resposta
+        -- estruturada (humor/escala/tarefa). Conteúdo livre fica fora.
+        CREATE TABLE IF NOT EXISTS amparo_interacoes (
+            id            INTEGER PRIMARY KEY AUTOINCREMENT,
+            paciente_id   INTEGER NOT NULL,
+            psicologo_id  INTEGER NOT NULL,
+            tipo          TEXT,                  -- checkin | escala | tarefa | psicoedu
+            status        TEXT DEFAULT 'enviada',-- enviada | respondida | ignorada
+            pergunta      TEXT,
+            resposta      TEXT,                  -- resposta curta/estruturada do paciente
+            escala_nome   TEXT,                  -- ex: PHQ-9 | GAD-7 (quando tipo=escala)
+            escala_score  INTEGER,
+            humor         INTEGER,               -- 1..5 (quando tipo=checkin)
+            risco         INTEGER DEFAULT 0,     -- 1 se a resposta acionou o protocolo de crise
+            created_at    TEXT DEFAULT CURRENT_TIMESTAMP,
+            respondida_at TEXT,
+            FOREIGN KEY (paciente_id)  REFERENCES amparo_pacientes(id),
+            FOREIGN KEY (psicologo_id) REFERENCES amparo_psicologos(id)
+        );
+
+        -- ── Tarefas terapêuticas (configuradas PELO psicólogo) ─────────────────
+        CREATE TABLE IF NOT EXISTS amparo_tarefas (
+            id            INTEGER PRIMARY KEY AUTOINCREMENT,
+            paciente_id   INTEGER NOT NULL,
+            psicologo_id  INTEGER NOT NULL,
+            descricao     TEXT NOT NULL,
+            ativa         INTEGER DEFAULT 1,
+            created_at    TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (paciente_id)  REFERENCES amparo_pacientes(id)
+        );
+
+        -- ── Log de crise (auditoria + alerta ao psicólogo) — guard-rail CFP ────
+        CREATE TABLE IF NOT EXISTS amparo_crise_log (
+            id               INTEGER PRIMARY KEY AUTOINCREMENT,
+            paciente_id      INTEGER NOT NULL,
+            psicologo_id     INTEGER,
+            trecho           TEXT,                 -- trecho que disparou (p/ o psicólogo avaliar)
+            psicologo_avisado INTEGER DEFAULT 0,
+            created_at       TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (paciente_id) REFERENCES amparo_pacientes(id)
+        );
+
         CREATE INDEX IF NOT EXISTS idx_amparo_pac_psi   ON amparo_pacientes(psicologo_id);
         CREATE INDEX IF NOT EXISTS idx_amparo_pac_token ON amparo_pacientes(consent_token);
         CREATE INDEX IF NOT EXISTS idx_amparo_consent   ON amparo_consent_log(paciente_id);
         CREATE INDEX IF NOT EXISTS idx_amparo_hor_psi   ON amparo_horarios(psicologo_id);
         CREATE INDEX IF NOT EXISTS idx_amparo_ag_psi    ON amparo_agendamentos(psicologo_id, data);
         CREATE INDEX IF NOT EXISTS idx_amparo_ag_pac    ON amparo_agendamentos(paciente_id);
+        CREATE INDEX IF NOT EXISTS idx_amparo_int_pac   ON amparo_interacoes(paciente_id);
+        CREATE INDEX IF NOT EXISTS idx_amparo_int_psi   ON amparo_interacoes(psicologo_id, created_at);
+        CREATE INDEX IF NOT EXISTS idx_amparo_tar_pac   ON amparo_tarefas(paciente_id);
+        CREATE INDEX IF NOT EXISTS idx_amparo_crise_psi ON amparo_crise_log(psicologo_id);
     ''')
     conn.commit()
 
@@ -411,3 +458,142 @@ def debita_cashback(paciente_id, valor):
                        'WHERE id=? AND cashback >= ?', (valor, paciente_id, valor))
     conn.commit(); ok = cur.rowcount > 0; conn.close()
     return ok
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# MOTOR (Lote 3) — pacientes, interações, tarefas, crise
+# ══════════════════════════════════════════════════════════════════════════════
+def listar_pacientes(psi_id):
+    conn = get_amparo_db()
+    rows = conn.execute('SELECT * FROM amparo_pacientes WHERE psicologo_id=? ORDER BY nome',
+                        (psi_id,)).fetchall()
+    conn.close()
+    return rows
+
+
+def get_paciente(psi_id, pac_id):
+    conn = get_amparo_db()
+    row = conn.execute('SELECT * FROM amparo_pacientes WHERE id=? AND psicologo_id=?',
+                       (pac_id, psi_id)).fetchone()
+    conn.close()
+    return row
+
+
+def get_paciente_por_fone(telefone):
+    """Acha o paciente pelo WhatsApp (E.164) — usado pelo webhook de entrada."""
+    fone = norm_fone(telefone)
+    if not fone:
+        return None
+    conn = get_amparo_db()
+    row = conn.execute('SELECT * FROM amparo_pacientes WHERE telefone=? ORDER BY id DESC LIMIT 1',
+                       (fone,)).fetchone()
+    conn.close()
+    return row
+
+
+def set_motor_paciente(psi_id, pac_id, ativo):
+    conn = get_amparo_db()
+    conn.execute('UPDATE amparo_pacientes SET motor_ativo=? WHERE id=? AND psicologo_id=?',
+                 (1 if ativo else 0, pac_id, psi_id))
+    conn.commit(); conn.close()
+
+
+# ── Interações ─────────────────────────────────────────────────────────────────
+def criar_interacao(paciente_id, psicologo_id, tipo, pergunta, escala_nome=None):
+    conn = get_amparo_db()
+    cur = conn.execute('''INSERT INTO amparo_interacoes
+                          (paciente_id, psicologo_id, tipo, pergunta, escala_nome)
+                          VALUES (?,?,?,?,?)''',
+                       (paciente_id, psicologo_id, tipo, pergunta, escala_nome))
+    conn.commit(); iid = cur.lastrowid; conn.close()
+    return iid
+
+
+def interacao_aberta(paciente_id):
+    """Última interação 'enviada' aguardando resposta (p/ casar a resposta do paciente)."""
+    conn = get_amparo_db()
+    row = conn.execute("SELECT * FROM amparo_interacoes WHERE paciente_id=? AND status='enviada' "
+                       "ORDER BY id DESC LIMIT 1", (paciente_id,)).fetchone()
+    conn.close()
+    return row
+
+
+def registrar_resposta(interacao_id, resposta, humor=None, escala_score=None, risco=0):
+    conn = get_amparo_db()
+    conn.execute('''UPDATE amparo_interacoes SET status='respondida', resposta=?, humor=?,
+                    escala_score=?, risco=?, respondida_at=CURRENT_TIMESTAMP WHERE id=?''',
+                 (resposta, humor, escala_score, 1 if risco else 0, interacao_id))
+    conn.commit(); conn.close()
+
+
+def feed_interacoes(psi_id, limit=50):
+    """Feed do painel: interações recentes com nome do paciente."""
+    conn = get_amparo_db()
+    rows = conn.execute('''SELECT i.*, p.nome AS paciente_nome FROM amparo_interacoes i
+                           JOIN amparo_pacientes p ON p.id = i.paciente_id
+                           WHERE i.psicologo_id=? ORDER BY i.created_at DESC LIMIT ?''',
+                        (psi_id, limit)).fetchall()
+    conn.close()
+    return rows
+
+
+def humor_serie(paciente_id, limit=30):
+    """Série de humor do paciente (p/ o gráfico de evolução — Lote 4)."""
+    conn = get_amparo_db()
+    rows = conn.execute("SELECT humor, respondida_at FROM amparo_interacoes WHERE paciente_id=? "
+                        "AND humor IS NOT NULL ORDER BY respondida_at DESC LIMIT ?",
+                        (paciente_id, limit)).fetchall()
+    conn.close()
+    return list(reversed(rows))
+
+
+def stats_adesao(paciente_id):
+    """(respondidas, enviadas) — base do cashback de adesão e do painel."""
+    conn = get_amparo_db()
+    row = conn.execute("SELECT COUNT(*) AS env, SUM(status='respondida') AS resp "
+                       "FROM amparo_interacoes WHERE paciente_id=?", (paciente_id,)).fetchone()
+    conn.close()
+    return (row['resp'] or 0, row['env'] or 0)
+
+
+# ── Tarefas ────────────────────────────────────────────────────────────────────
+def criar_tarefa(paciente_id, psicologo_id, descricao):
+    conn = get_amparo_db()
+    conn.execute('INSERT INTO amparo_tarefas (paciente_id, psicologo_id, descricao) VALUES (?,?,?)',
+                 (paciente_id, psicologo_id, descricao.strip()))
+    conn.commit(); conn.close()
+
+
+def listar_tarefas(paciente_id, ativas=True):
+    conn = get_amparo_db()
+    q = 'SELECT * FROM amparo_tarefas WHERE paciente_id=?'
+    if ativas:
+        q += ' AND ativa=1'
+    rows = conn.execute(q + ' ORDER BY created_at DESC', (paciente_id,)).fetchall()
+    conn.close()
+    return rows
+
+
+# ── Crise (guard-rail CFP) ─────────────────────────────────────────────────────
+def log_crise(paciente_id, psicologo_id, trecho):
+    conn = get_amparo_db()
+    cur = conn.execute('INSERT INTO amparo_crise_log (paciente_id, psicologo_id, trecho) VALUES (?,?,?)',
+                       (paciente_id, psicologo_id, (trecho or '')[:300]))
+    conn.commit(); cid = cur.lastrowid; conn.close()
+    return cid
+
+
+def crises_recentes(psi_id, limit=20):
+    conn = get_amparo_db()
+    rows = conn.execute('''SELECT c.*, p.nome AS paciente_nome, p.telefone AS paciente_fone
+                           FROM amparo_crise_log c JOIN amparo_pacientes p ON p.id = c.paciente_id
+                           WHERE c.psicologo_id=? ORDER BY c.created_at DESC LIMIT ?''',
+                        (psi_id, limit)).fetchall()
+    conn.close()
+    return rows
+
+
+def marcar_crise_avisada(crise_id):
+    conn = get_amparo_db()
+    conn.execute('UPDATE amparo_crise_log SET psicologo_avisado=1 WHERE id=?', (crise_id,))
+    conn.commit(); conn.close()

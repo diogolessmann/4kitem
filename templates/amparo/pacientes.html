@@ -1,0 +1,59 @@
+{% extends "amparo/base.html" %}
+{% block title %}Pacientes — Amparo{% endblock %}
+{% block content %}
+
+<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+  <h1 style="font-size:26px;margin:0">Seus pacientes</h1>
+  <a href="/amparo/painel" class="btn ghost">← Painel</a>
+</div>
+<p class="muted">{{ ativos }}/{{ limite if limite < 9999 else '∞' }} com o motor de cuidado ligado.</p>
+
+{% if crises %}
+<div class="card" style="background:#fdece7;border-color:#f3c9bd">
+  <strong style="color:var(--warn)">🆘 Alertas de risco recentes</strong>
+  {% for c in crises %}
+  <div style="border-top:1px solid #f3c9bd;padding:8px 0;font-size:14px">
+    <strong>{{ c['paciente_nome'] }}</strong> — “{{ c['trecho'] }}”
+    <span class="muted">· {{ c['created_at'][:16] }}</span>
+    {% if c['psicologo_avisado'] %}<span class="pill">você foi avisado</span>{% endif %}
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<form method="post" action="/amparo/pacientes/novo" class="card" style="margin-top:16px">
+  <strong>Adicionar paciente</strong>
+  <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px">
+    <input type="text" name="nome" placeholder="Nome" required style="flex:2;min-width:160px">
+    <input type="tel" name="telefone" placeholder="WhatsApp" required style="flex:1;min-width:140px">
+    <button type="submit" class="btn">Adicionar</button>
+  </div>
+  <p class="muted" style="font-size:12px;margin-bottom:0">Enviaremos um link de consentimento ao paciente. O motor só liga após ele aceitar.</p>
+</form>
+
+<div class="card" style="margin-top:16px">
+  {% if not pacientes %}
+    <p class="muted">Nenhum paciente ainda. Adicione o primeiro acima.</p>
+  {% else %}
+    {% for p in pacientes %}
+    <a href="/amparo/pacientes/{{ p['id'] }}" style="display:flex;justify-content:space-between;
+       align-items:center;gap:10px;border-top:1px solid var(--line);padding:12px 0;color:inherit">
+      <div>
+        <strong>{{ p['nome'] }}</strong>
+        <span class="muted" style="font-size:13px">· {{ p['telefone'] }}</span>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center">
+        {% if p['consentimento'] == 'aceito' %}
+          {% if p['motor_ativo'] %}<span class="pill">motor ligado 💙</span>
+          {% else %}<span class="pill" style="background:#eee;color:#777">consentiu</span>{% endif %}
+        {% elif p['consentimento'] == 'revogado' %}
+          <span class="pill" style="background:#fdece7;color:var(--warn)">opt-out</span>
+        {% else %}
+          <span class="pill" style="background:#fff3d6;color:#9a6b16">aguardando consentimento</span>
+        {% endif %}
+      </div>
+    </a>
+    {% endfor %}
+  {% endif %}
+</div>
+{% endblock %}

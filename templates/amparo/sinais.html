@@ -1,0 +1,43 @@
+{% extends "amparo/base.html" %}
+{% block title %}Sinais — Amparo{% endblock %}
+{% block content %}
+
+<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+  <h1 style="font-size:24px;margin:0">Painel de sinais</h1>
+  <a href="/amparo/painel" class="btn ghost">← Painel</a>
+</div>
+<p class="muted">O que seus pacientes responderam entre as sessões.</p>
+
+{% if crises %}
+<div class="card" style="background:#fdece7;border-color:#f3c9bd">
+  <strong style="color:var(--warn)">🆘 Alertas de risco</strong>
+  {% for c in crises %}
+  <div style="border-top:1px solid #f3c9bd;padding:8px 0;font-size:14px">
+    <a href="/amparo/pacientes/{{ c['paciente_id'] }}"><strong>{{ c['paciente_nome'] }}</strong></a>
+    — “{{ c['trecho'] }}” <span class="muted">· {{ c['created_at'][:16] }}</span>
+    {% if c['psicologo_avisado'] %}<span class="pill">avisado</span>{% endif %}
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<div class="card" style="margin-top:14px">
+  <strong>Atividade recente</strong>
+  {% if not feed %}
+    <p class="muted" style="font-size:14px">Nada ainda. Ligue o motor de um paciente e envie um check-in.</p>
+  {% else %}
+    {% for f in feed %}
+    <div style="border-top:1px solid var(--line);padding:10px 0;font-size:14px">
+      <span class="muted">{{ f['created_at'][:16] }}</span> ·
+      <a href="/amparo/pacientes/{{ f['paciente_id'] }}"><strong>{{ f['paciente_nome'] }}</strong></a> ·
+      {{ f['tipo'] }}
+      {% if f['status'] == 'respondida' %}
+        ↳ <em>“{{ f['resposta'] }}”</em>
+        {% if f['humor'] %}<span class="pill">humor {{ f['humor'] }}/5</span>{% endif %}
+        {% if f['risco'] %}<span class="pill" style="background:#fdece7;color:var(--warn)">risco</span>{% endif %}
+      {% else %}<span class="muted">· enviado, aguardando</span>{% endif %}
+    </div>
+    {% endfor %}
+  {% endif %}
+</div>
+{% endblock %}

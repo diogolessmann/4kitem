@@ -29,7 +29,12 @@ from amparo_db import (get_amparo_db, init_amparo_db, get_psicologo,
                        get_or_create_paciente, criar_agendamento,
                        listar_agendamentos, set_status_agendamento,
                        set_assinatura_pendente, atualiza_assinatura_por_customer,
-                       registra_pagamento, pode_ativar_paciente)
+                       registra_pagamento, pode_ativar_paciente,
+                       listar_pacientes, get_paciente, get_paciente_por_fone,
+                       set_motor_paciente, criar_interacao, interacao_aberta,
+                       registrar_resposta, feed_interacoes, humor_serie, stats_adesao,
+                       criar_tarefa, listar_tarefas, log_crise, crises_recentes,
+                       marcar_crise_avisada, add_cashback, get_cashback)
 import amparo_wa
 
 log = logging.getLogger('amparo')
@@ -595,3 +600,201 @@ def amparo_webhook_assinatura(asaas_customer_id, plano_key, ativar):
                      ('suspenso', asaas_customer_id))
         conn.commit(); conn.close()
         log.info(f'[Amparo] Assinatura SUSPENSA (customer {asaas_customer_id})')
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# MOTOR DE ENGAJAMENTO (Lote 3) — interações no WhatsApp + painel + crise
+# Mensagens ROTEIRIZADAS (escopo fechado). A camada de calor com IA (Gemini) é o L4.
+# ══════════════════════════════════════════════════════════════════════════════
+import re as _re2
+
+CASHBACK_POR_RESPOSTA = float(os.environ.get('AMPARO_CASHBACK_RESPOSTA', '0.50'))
+
+MSG_CHECKIN = ("Oi, {nome}! 💙 Como você está se sentindo hoje, numa escala de 1 a 5? "
+               "(1 = bem difícil · 5 = muito bem). Se quiser, me conta em uma palavra também.")
+MSG_TAREFA  = ("Oi, {nome}! 🌱 Passando pra lembrar de algo combinado com {psi}: {tarefa}. "
+               "Como está indo?")
+MSG_ESCALA  = ("Oi, {nome}. {psi} pediu um check-in rápido pra entender como você tem estado. "
+               "Quando puder, me conta como foram seus últimos dias — pode ser uma frase curta. 💙")
+MSG_RECEBIDO   = "Obrigado por compartilhar comigo 💙 Anotei aqui pra você levar pra sua sessão. Cuide-se!"
+MSG_FORA_FLUXO = ("Eu sou o assistente de acompanhamento do seu psicólogo(a) e fico por aqui só pro "
+                  "combinado entre as sessões 💙 Se precisar conversar, fale com ele(a). "
+                  "Em emergência: CVV 188 (24h) ou SAMU 192.")
+
+
+def _extrai_humor(texto):
+    """Extrai um humor 1..5 de uma resposta de check-in (dígito isolado)."""
+    m = _re2.search(r'\b([1-5])\b', texto or '')
+    return int(m.group(1)) if m else None
+
+
+# ── Pacientes (psicólogo) ──────────────────────────────────────────────────────
+@amparo_bp.route('/pacientes')
+@_login_required
+def pacientes():
+    psi = _psi_atual()
+    return render_template('amparo/pacientes.html', psi=psi,
+                           pacientes=listar_pacientes(psi['id']),
+                           ativos=conta_pacientes_ativos(psi['id']),
+                           limite=psi['pacientes_limite'],
+                           crises=crises_recentes(psi['id'], 5))
+
+
+@amparo_bp.route('/pacientes/novo', methods=['POST'])
+@_login_required
+def paciente_novo():
+    psi = _psi_atual()
+    nome = (request.form.get('nome') or '').strip()
+    fone = (request.form.get('telefone') or '').strip()
+    if nome and fone:
+        pid, tok, _ = get_or_create_paciente(psi['id'], nome, fone, request.form.get('email', ''))
+        link = url_for('amparo.consentimento_paciente', token=tok, _external=True)
+        msg = (f"Olá, {nome.split(' ')[0]}! {psi['nome']} usa o Amparo para te acompanhar entre as "
+               f"sessões pelo WhatsApp. Veja como funciona e autorize (é opcional): {link}")
+        amparo_wa.enviar(fone, msg, template=os.environ.get('WHATSAPP_TMPL_CONVITE'))
+    return redirect('/amparo/pacientes')
+
+
+@amparo_bp.route('/pacientes/<int:pid>')
+@_login_required
+def paciente_detalhe(pid):
+    psi = _psi_atual()
+    pac = get_paciente(psi['id'], pid)
+    if not pac:
+        abort(404)
+    conn = get_amparo_db()
+    inter = conn.execute('SELECT * FROM amparo_interacoes WHERE paciente_id=? '
+                         'ORDER BY created_at DESC LIMIT 30', (pid,)).fetchall()
+    conn.close()
+    resp, env = stats_adesao(pid)
+    return render_template('amparo/paciente_detalhe.html', psi=psi, pac=pac,
+                           interacoes=inter, humor=humor_serie(pid), tarefas=listar_tarefas(pid),
+                           adesao_resp=resp, adesao_env=env, cashback=get_cashback(pid),
+                           erro=request.args.get('erro'))
+
+
+@amparo_bp.route('/pacientes/<int:pid>/motor', methods=['POST'])
+@_login_required
+def paciente_motor(pid):
+    psi = _psi_atual()
+    pac = get_paciente(psi['id'], pid)
+    if not pac:
+        abort(404)
+    ligar = request.form.get('ativo') == '1'
+    if ligar:
+        if pac['consentimento'] != 'aceito':
+            return redirect(f'/amparo/pacientes/{pid}?erro=consentimento')
+        if not pode_ativar_paciente(psi['id'], psi['pacientes_limite']):
+            return redirect(f'/amparo/pacientes/{pid}?erro=limite')
+    set_motor_paciente(psi['id'], pid, ligar)
+    return redirect(f'/amparo/pacientes/{pid}')
+
+
+@amparo_bp.route('/pacientes/<int:pid>/enviar', methods=['POST'])
+@_login_required
+def paciente_enviar(pid):
+    psi = _psi_atual()
+    pac = get_paciente(psi['id'], pid)
+    if not pac:
+        abort(404)
+    # Só dispara com consentimento aceito E motor ligado (guard-rail).
+    if pac['consentimento'] != 'aceito' or not pac['motor_ativo']:
+        return redirect(f'/amparo/pacientes/{pid}?erro=consentimento')
+
+    tipo = request.form.get('tipo')
+    nome1 = pac['nome'].split(' ')[0]
+    psi1 = psi['nome'].split(' ')[0]
+
+    if tipo == 'checkin':
+        msg = MSG_CHECKIN.format(nome=nome1)
+        criar_interacao(pid, psi['id'], 'checkin', msg)
+    elif tipo == 'tarefa':
+        desc = (request.form.get('descricao') or '').strip()
+        if not desc:
+            return redirect(f'/amparo/pacientes/{pid}')
+        criar_tarefa(pid, psi['id'], desc)
+        msg = MSG_TAREFA.format(nome=nome1, psi=psi1, tarefa=desc)
+        criar_interacao(pid, psi['id'], 'tarefa', msg)
+    elif tipo in ('PHQ-9', 'GAD-7'):
+        msg = MSG_ESCALA.format(nome=nome1, psi=psi1)
+        criar_interacao(pid, psi['id'], 'escala', msg, escala_nome=tipo)
+    else:
+        return redirect(f'/amparo/pacientes/{pid}')
+
+    amparo_wa.enviar(pac['telefone'], msg, template=os.environ.get('WHATSAPP_TMPL_MOTOR'))
+    return redirect(f'/amparo/pacientes/{pid}')
+
+
+# ── Painel de sinais ───────────────────────────────────────────────────────────
+@amparo_bp.route('/sinais')
+@_login_required
+def sinais():
+    psi = _psi_atual()
+    return render_template('amparo/sinais.html', psi=psi,
+                           feed=feed_interacoes(psi['id'], 50),
+                           crises=crises_recentes(psi['id'], 20))
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# WEBHOOK DE ENTRADA (WhatsApp Cloud API) — onde o paciente responde
+# 🆘 O protocolo de crise roda ANTES de tudo e é HARD-CODED.
+# ══════════════════════════════════════════════════════════════════════════════
+@amparo_bp.route('/wa/webhook', methods=['GET', 'POST'])
+def wa_webhook():
+    # Verificação inicial da Meta (handshake)
+    if request.method == 'GET':
+        if request.args.get('hub.verify_token') == os.environ.get('WHATSAPP_VERIFY_TOKEN', ''):
+            return request.args.get('hub.challenge', ''), 200
+        return 'forbidden', 403
+    try:
+        data = request.get_json(force=True) or {}
+        _processa_entrada_wa(data)
+    except Exception as e:
+        log.warning(f'[Amparo] webhook entrada erro: {e}')
+    # Sempre 200 — senão a Meta re-tenta em loop.
+    return jsonify({'ok': True}), 200
+
+
+def _processa_entrada_wa(data):
+    for entry in data.get('entry', []):
+        for ch in entry.get('changes', []):
+            for m in (ch.get('value', {}) or {}).get('messages', []):
+                if m.get('type') != 'text':
+                    continue
+                frm = m.get('from', '')
+                texto = ((m.get('text') or {}).get('body') or '')
+                _trata_resposta_paciente(frm, texto)
+
+
+def _trata_resposta_paciente(fone, texto):
+    pac = get_paciente_por_fone(fone)
+    if not pac:
+        return  # número desconhecido — ignora (não é chat aberto)
+    psi_id = pac['psicologo_id']
+
+    # (1) 🆘 CRISE — vem ANTES de qualquer outra coisa. NÃO conversa, encaminha.
+    if detecta_crise(texto):
+        cid = log_crise(pac['id'], psi_id, texto)
+        amparo_wa.enviar(fone, MSG_CRISE)               # CVV 188 / SAMU 192 / CAPS
+        psi = get_psicologo(psi_id)
+        if psi and psi['telefone']:
+            alerta = (f"⚠️ Amparo: {pac['nome']} enviou algo que pode indicar risco. "
+                      f"Entre em contato. (Trecho: \"{texto[:80]}\")")
+            if amparo_wa.enviar(psi['telefone'], alerta).get('ok'):
+                marcar_crise_avisada(cid)
+        ab = interacao_aberta(pac['id'])
+        if ab:
+            registrar_resposta(ab['id'], '[risco — encaminhado a ajuda humana]', risco=1)
+        log.info(f'[Amparo] 🆘 CRISE detectada (paciente {pac["id"]}) — encaminhado + psicólogo avisado')
+        return
+
+    # (2) resposta normal: só processa se houver interação aberta (sem chat terapêutico livre)
+    ab = interacao_aberta(pac['id'])
+    if not ab:
+        amparo_wa.enviar(fone, MSG_FORA_FLUXO)
+        return
+    humor = _extrai_humor(texto) if ab['tipo'] == 'checkin' else None
+    registrar_resposta(ab['id'], texto[:500], humor=humor)
+    if CASHBACK_POR_RESPOSTA > 0:
+        add_cashback(pac['id'], CASHBACK_POR_RESPOSTA)   # cashback de adesão
+    amparo_wa.enviar(fone, MSG_RECEBIDO)

@@ -36,20 +36,18 @@
     <p class="muted" style="font-size:14px;margin:0">Configure seus horários, compartilhe seu link
       e receba agendamentos. Lembrete por WhatsApp ~24h antes. <strong>Abrir →</strong></p>
   </a>
-  <div class="card" style="flex:1;min-width:240px">
-    <div class="pill">Próximo: Lote 3</div>
+  <a class="card" href="/amparo/pacientes" style="flex:1;min-width:240px;color:inherit">
+    <div class="pill">Pronto</div>
     <h2 style="margin:10px 0 4px;font-size:19px">💙 Motor de cuidado</h2>
-    <p class="muted" style="font-size:14px;margin:0">Check-in de humor, escalas e tarefas no WhatsApp,
-      com seu painel de sinais. <em>Em construção.</em></p>
-  </div>
+    <p class="muted" style="font-size:14px;margin:0">Cadastre pacientes, ligue o motor e envie check-in
+      de humor, escalas e tarefas no WhatsApp. <strong>Abrir →</strong></p>
+  </a>
 </div>
 
-<div class="card" style="margin-top:18px">
-  <h2 style="margin-top:0;font-size:18px">Seus pacientes</h2>
-  <p class="muted" style="font-size:14px">
-    O cadastro de pacientes e o disparo do motor chegam nos próximos lotes. Por enquanto,
-    sua fundação está pronta: conta criada, consentimento/LGPD e os guard-rails do CFP ativos. 🛡️
-  </p>
+<div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:18px">
+  <a href="/amparo/pacientes" class="btn">👥 Meus pacientes</a>
+  <a href="/amparo/sinais" class="btn ghost">📊 Painel de sinais</a>
+  <a href="/amparo/agenda" class="btn ghost">📅 Agenda</a>
 </div>
 
 {% endblock %}
