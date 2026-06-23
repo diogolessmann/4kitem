@@ -36,6 +36,7 @@ APPS = {
     'mandaja':     {'nome': 'MandaJá',               'comissao': 10.00, 'unidade': 'por mês',    'url': '/mandaja',           'desc': 'Delivery sem comissão com PIX',         'icone': '/static/img/mandaja/logo.png'},
     'mandajr':     {'nome': 'MandaJr',               'comissao': 7.00,  'unidade': 'por mês',    'url': '/mandajr',           'desc': 'Catálogo no WhatsApp simplificado',     'icone': '/static/img/mandajr/mandajr-icon.webp'},
     'pubshow':     {'nome': 'PubShow',               'comissao': 15.00, 'unidade': 'por mês',    'url': '/pubshow',           'desc': 'Jukebox digital pra bares',             'icone': '/static/pubshow/pubshow-logo-concept.png'},
+    'amparo':      {'nome': 'Amparo',                'comissao': 29.90, 'unidade': 'por mês',    'url': '/amparo',            'desc': 'Cuidado entre as sessões pra psicólogos','icone': ''},
 }
 
 

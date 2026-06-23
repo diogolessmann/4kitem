@@ -154,11 +154,15 @@ def _psi_atual():
 
 @amparo_bp.route('/')
 def landing():
+    if request.args.get('ref'):                       # indicação de afiliado
+        session['amparo_ref'] = request.args.get('ref')
     return render_template('amparo/landing.html', planos=PLANOS)
 
 
 @amparo_bp.route('/cadastro', methods=['GET', 'POST'])
 def cadastro():
+    if request.args.get('ref'):
+        session['amparo_ref'] = request.args.get('ref')
     if request.method == 'POST':
         nome  = (request.form.get('nome') or '').strip()
         email = (request.form.get('email') or '').strip().lower()
@@ -179,10 +183,11 @@ def cadastro():
         conn = get_amparo_db()
         cur = conn.execute(
             'INSERT INTO amparo_psicologos (nome, email, crp, telefone, password_hash, '
-            'plano, pacientes_limite, trial_expires, termo_aceito, ultimo_acesso) '
-            'VALUES (?,?,?,?,?,?,?,?,1,CURRENT_TIMESTAMP)',
+            'plano, pacientes_limite, trial_expires, afiliado_ref, termo_aceito, ultimo_acesso) '
+            'VALUES (?,?,?,?,?,?,?,?,?,1,CURRENT_TIMESTAMP)',
             (nome, email, crp, tel, generate_password_hash(senha),
-             'trial', TRIAL_LIMITE, (datetime.utcnow() + timedelta(days=TRIAL_DIAS)).isoformat()))
+             'trial', TRIAL_LIMITE, (datetime.utcnow() + timedelta(days=TRIAL_DIAS)).isoformat(),
+             session.get('amparo_ref')))
         conn.commit()
         psi_id = cur.lastrowid
         conn.close()
@@ -585,7 +590,7 @@ def assinatura():
     return render_template('amparo/assinatura.html', psi=psi, plano=plano)
 
 
-def amparo_webhook_assinatura(asaas_customer_id, plano_key, ativar):
+def amparo_webhook_assinatura(asaas_customer_id, plano_key, ativar, payment_id=''):
     """Chamado pelo webhook global (app.py) p/ refs 'amparo_<customer_id>_<plano>'.
     ativar=True → libera o plano; False → suspende (corta acesso)."""
     if ativar:
@@ -594,6 +599,18 @@ def amparo_webhook_assinatura(asaas_customer_id, plano_key, ativar):
             return
         n = atualiza_assinatura_por_customer(asaas_customer_id, plano_key, plano['limite'], 'ativo')
         log.info(f'[Amparo] Assinatura ATIVA (customer {asaas_customer_id}, plano {plano_key}, {n} linha)')
+        # Comissão de afiliado (recorrente, idempotente + anti-autoindicação na própria função)
+        try:
+            conn = get_amparo_db()
+            p = conn.execute('SELECT nome, email, cpf, afiliado_ref FROM amparo_psicologos '
+                             'WHERE asaas_customer_id=?', (asaas_customer_id,)).fetchone()
+            conn.close()
+            if p and p['afiliado_ref'] and payment_id:
+                from afiliados import registrar_comissao
+                registrar_comissao(p['afiliado_ref'], 'amparo', payment_id, p['nome'],
+                                   cliente_email=p['email'], cliente_cpf=p['cpf'])
+        except Exception as _eaf:
+            log.warning(f'[Amparo] comissão afiliado: {_eaf}')
     else:
         conn = get_amparo_db()
         conn.execute('UPDATE amparo_psicologos SET status=? WHERE asaas_customer_id=?',

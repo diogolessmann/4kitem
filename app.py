@@ -69,7 +69,7 @@ def _robots():
 def _sitemap():
     urls = ['/', '/agenda', '/alerta', '/bau', '/mandazap', '/mandaja',
             '/pubshow', '/slotzap', '/drzap', '/radar/', '/licita-norte/',
-            '/privacidade', '/termos']
+            '/amparo', '/privacidade', '/termos']
     items = ''.join(
         '<url><loc>https://4kitem.com.br%s</loc></url>' % u for u in urls)
     xml = ('<?xml version="1.0" encoding="UTF-8"?>'
@@ -2364,7 +2364,8 @@ def webhook_asaas_global():
         if customer_id:
             try:
                 from amparo import amparo_webhook_assinatura
-                amparo_webhook_assinatura(customer_id, plano_key, ativar)
+                amparo_webhook_assinatura(customer_id, plano_key, ativar,
+                                          payload.get('payment', {}).get('id', ''))
             except Exception as _amp_e:
                 log.error(f'[Amparo] Webhook error: {_amp_e}')
 

@@ -205,6 +205,7 @@ def init_amparo_db():
         "ALTER TABLE amparo_pacientes ADD COLUMN responsavel_consent INTEGER DEFAULT 0",
         "ALTER TABLE amparo_pacientes ADD COLUMN cashback REAL DEFAULT 0",
         "ALTER TABLE amparo_psicologos ADD COLUMN cpf TEXT",
+        "ALTER TABLE amparo_psicologos ADD COLUMN afiliado_ref TEXT",
     ]:
         try:
             conn.execute(migration); conn.commit()
