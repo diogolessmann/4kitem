@@ -57,6 +57,23 @@
   {% endif %}
 </div>
 
+<!-- Gráfico de evolução do humor -->
+{% if chart %}
+<div class="card" style="margin-top:14px">
+  <strong>Evolução do humor</strong>
+  <svg viewBox="0 0 {{ chart.W }} {{ chart.H }}" style="width:100%;max-width:360px;height:auto;margin-top:8px" role="img" aria-label="Evolução do humor do paciente">
+    {% for g in [1,2,3,4,5] %}
+    {% set gy = 12 + 66*(1-(g-1)/4) %}
+    <line x1="12" y1="{{ gy }}" x2="{{ chart.W-12 }}" y2="{{ gy }}" stroke="#e4e1da" stroke-width="1"/>
+    <text x="0" y="{{ gy+3 }}" font-size="9" fill="#9aa8a6">{{ g }}</text>
+    {% endfor %}
+    <polyline points="{{ chart.poly }}" fill="none" stroke="#2f7d77" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+    {% for p in chart.pts %}<circle cx="{{ p[0] }}" cy="{{ p[1] }}" r="3.5" fill="#2f7d77"/>{% endfor %}
+  </svg>
+  <p class="muted" style="font-size:12px;margin:4px 0 0">1 = bem difícil · 5 = muito bem · {{ chart.n }} registro(s)</p>
+</div>
+{% endif %}
+
 <!-- Sinais -->
 <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:14px">
   <div class="card" style="flex:1;min-width:150px;text-align:center">

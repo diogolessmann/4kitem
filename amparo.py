@@ -44,11 +44,11 @@ amparo_bp = Blueprint('amparo', __name__, url_prefix='/amparo')
 # ── Planos (B2B — quem paga é o psicólogo) ─────────────────────────────────────
 # Custo variável real ~R$1/paciente ativo/mês (WhatsApp é o driver; IA = centavos).
 PLANOS = {
-    'essencial': {'nome': 'Essencial', 'preco': 49.90, 'limite': 10,
-                  'desc': 'Agenda + lembrete + motor para até 10 pacientes'},
-    'pro':       {'nome': 'Pro',       'preco': 89.90, 'limite': 30,
-                  'desc': 'Tudo do Essencial + motor para até 30 pacientes + planos/cashback'},
-    'clinica':   {'nome': 'Clínica',   'preco': 199.00, 'limite': 9999,
+    'essencial': {'nome': 'Essencial', 'preco': 149.90, 'limite': 20,
+                  'desc': 'Agenda + lembrete + motor de cuidado para até 20 pacientes'},
+    'pro':       {'nome': 'Pro',       'preco': 249.90, 'limite': 50,
+                  'desc': 'Tudo do Essencial + até 50 pacientes + planos e cashback de adesão'},
+    'clinica':   {'nome': 'Clínica',   'preco': 449.90, 'limite': 9999,
                   'desc': 'Pacientes ilimitados + multi-psicólogo'},
 }
 TRIAL_DIAS = 14
@@ -628,6 +628,72 @@ def _extrai_humor(texto):
     return int(m.group(1)) if m else None
 
 
+# ── Camada de calor com IA (Lote 4) — Gemini, SEMPRE dentro das regras do CFP ──
+# Liga só se houver GEMINI_API_KEY e AMPARO_IA_CALOR!=0. Cai pro texto fixo em
+# qualquer falha. A IA NUNCA faz terapia: só dá calor a uma mensagem de escopo fechado.
+def _ia_ligada():
+    return bool(GEMINI_KEY) and os.environ.get('AMPARO_IA_CALOR', '1') == '1'
+
+
+def _mensagem_calorosa(base, nome, psi_nome):
+    """Reescreve uma mensagem-base (já de escopo fechado) de forma mais calorosa.
+    Mantém o objetivo, sem adicionar conselho/diagnóstico. Fallback = a própria base."""
+    if not _ia_ligada():
+        return base
+    instr = ("Reescreva a MENSAGEM BASE de forma calorosa, curta e natural, em português do "
+             "Brasil, mantendo EXATAMENTE o mesmo objetivo e a mesma pergunta/recado. "
+             "Máximo 2 frases. NÃO acrescente conselho, interpretação, diagnóstico ou opinião. "
+             "Use o primeiro nome do paciente. Pode usar 1 emoji.")
+    contents = [{'role': 'user', 'parts': [{'text':
+        f"Paciente: {nome}\nPsicólogo(a): {psi_nome}\nMENSAGEM BASE: {base}"}]}]
+    try:
+        txt, _, _ = _gemini_call(SYSTEM_MOTOR_BASE + '\n\n' + instr, contents,
+                                 max_tokens=160, temperature=0.7)
+        return (txt or base).strip() or base
+    except Exception as e:
+        log.warning(f'[Amparo] IA calor falhou (usando texto fixo): {e}')
+        return base
+
+
+def _acolhe_resposta_ia(nome, resposta):
+    """Resposta calorosa ao que o paciente respondeu — APENAS acolhe e devolve ao humano.
+    NUNCA aconselha/interpreta. Fallback = MSG_RECEBIDO. (A crise já foi tratada antes.)"""
+    if not _ia_ligada():
+        return MSG_RECEBIDO
+    instr = ("O paciente respondeu a um check-in do acompanhamento. Escreva uma resposta MUITO "
+             "curta (1 a 2 frases), calorosa e em pt-BR, que APENAS acolhe o sentimento e diz "
+             "que você anotou para ele(a) levar à sessão com o psicólogo(a). É PROIBIDO dar "
+             "conselho, interpretação, diagnóstico, opinião ou fazer nova pergunta sobre o "
+             "problema. Termine devolvendo ao profissional humano. Pode usar 1 emoji.")
+    contents = [{'role': 'user', 'parts': [{'text':
+        f"O paciente {nome} respondeu: \"{(resposta or '')[:300]}\""}]}]
+    try:
+        txt, _, _ = _gemini_call(SYSTEM_MOTOR_BASE + '\n\n' + instr, contents,
+                                 max_tokens=120, temperature=0.7)
+        return (txt or MSG_RECEBIDO).strip() or MSG_RECEBIDO
+    except Exception as e:
+        log.warning(f'[Amparo] IA acolhimento falhou (usando texto fixo): {e}')
+        return MSG_RECEBIDO
+
+
+def _humor_chart(serie):
+    """Pontos de um gráfico de linha do humor (1-5) p/ render inline em SVG. None se vazio."""
+    vals = [r['humor'] for r in serie if r['humor']]
+    if not vals:
+        return None
+    W, H, pad = 320, 90, 12
+    n = len(vals)
+    span = (W - 2 * pad)
+    pts = []
+    for i, v in enumerate(vals):
+        x = pad + (span * (i / (n - 1)) if n > 1 else span / 2)
+        y = pad + (H - 2 * pad) * (1 - (v - 1) / 4.0)   # humor 5 = topo
+        pts.append((round(x, 1), round(y, 1)))
+    return {'W': W, 'H': H, 'pts': pts,
+            'poly': ' '.join(f'{x},{y}' for x, y in pts),
+            'last': vals[-1], 'n': n}
+
+
 # ── Pacientes (psicólogo) ──────────────────────────────────────────────────────
 @amparo_bp.route('/pacientes')
 @_login_required
@@ -667,8 +733,10 @@ def paciente_detalhe(pid):
                          'ORDER BY created_at DESC LIMIT 30', (pid,)).fetchall()
     conn.close()
     resp, env = stats_adesao(pid)
+    serie = humor_serie(pid)
     return render_template('amparo/paciente_detalhe.html', psi=psi, pac=pac,
-                           interacoes=inter, humor=humor_serie(pid), tarefas=listar_tarefas(pid),
+                           interacoes=inter, humor=serie, chart=_humor_chart(serie),
+                           tarefas=listar_tarefas(pid),
                            adesao_resp=resp, adesao_env=env, cashback=get_cashback(pid),
                            erro=request.args.get('erro'))
 
@@ -705,22 +773,23 @@ def paciente_enviar(pid):
     nome1 = pac['nome'].split(' ')[0]
     psi1 = psi['nome'].split(' ')[0]
 
+    escala = None
     if tipo == 'checkin':
-        msg = MSG_CHECKIN.format(nome=nome1)
-        criar_interacao(pid, psi['id'], 'checkin', msg)
+        base = MSG_CHECKIN.format(nome=nome1); tipo_db = 'checkin'
     elif tipo == 'tarefa':
         desc = (request.form.get('descricao') or '').strip()
         if not desc:
             return redirect(f'/amparo/pacientes/{pid}')
         criar_tarefa(pid, psi['id'], desc)
-        msg = MSG_TAREFA.format(nome=nome1, psi=psi1, tarefa=desc)
-        criar_interacao(pid, psi['id'], 'tarefa', msg)
+        base = MSG_TAREFA.format(nome=nome1, psi=psi1, tarefa=desc); tipo_db = 'tarefa'
     elif tipo in ('PHQ-9', 'GAD-7'):
-        msg = MSG_ESCALA.format(nome=nome1, psi=psi1)
-        criar_interacao(pid, psi['id'], 'escala', msg, escala_nome=tipo)
+        base = MSG_ESCALA.format(nome=nome1, psi=psi1); tipo_db = 'escala'; escala = tipo
     else:
         return redirect(f'/amparo/pacientes/{pid}')
 
+    # Camada de calor (IA) — reescreve a mensagem-base de escopo fechado. Registra o que foi enviado.
+    msg = _mensagem_calorosa(base, nome1, psi1)
+    criar_interacao(pid, psi['id'], tipo_db, msg, escala_nome=escala)
     amparo_wa.enviar(pac['telefone'], msg, template=os.environ.get('WHATSAPP_TMPL_MOTOR'))
     return redirect(f'/amparo/pacientes/{pid}')
 
@@ -797,4 +866,5 @@ def _trata_resposta_paciente(fone, texto):
     registrar_resposta(ab['id'], texto[:500], humor=humor)
     if CASHBACK_POR_RESPOSTA > 0:
         add_cashback(pac['id'], CASHBACK_POR_RESPOSTA)   # cashback de adesão
-    amparo_wa.enviar(fone, MSG_RECEBIDO)
+    # Acolhimento caloroso (IA) que SEMPRE devolve ao humano — fallback p/ texto fixo.
+    amparo_wa.enviar(fone, _acolhe_resposta_ia(pac['nome'].split(' ')[0], texto))
