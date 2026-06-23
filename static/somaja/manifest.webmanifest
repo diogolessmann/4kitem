@@ -1,0 +1,16 @@
+{
+  "name": "SomaJá — coach financeiro",
+  "short_name": "SomaJá",
+  "description": "Anote seus gastos, veja seu saldo e receba conselhos — no WhatsApp.",
+  "start_url": "/somaja/app",
+  "scope": "/somaja/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#16a34a",
+  "theme_color": "#16a34a",
+  "lang": "pt-BR",
+  "icons": [
+    { "src": "/static/somaja/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/static/somaja/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}

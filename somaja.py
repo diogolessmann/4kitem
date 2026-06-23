@@ -14,7 +14,7 @@ import requests as _requests
 from datetime import datetime, timedelta
 from functools import wraps
 from flask import (Blueprint, render_template, redirect, request,
-                   session, jsonify)
+                   session, jsonify, Response)
 from werkzeug.security import generate_password_hash, check_password_hash
 from somaja_db import (get_somaja_db, init_somaja_db, CATEGORIAS,
                        tem_acesso, dias_de_trial_restantes,
@@ -347,6 +347,20 @@ def landing():
     if ref:
         session['soma_ref'] = ref   # guarda o afiliado que trouxe (Lote afiliados)
     return render_template('somaja/landing.html')
+
+
+# ── PWA: service worker (instalável "como app" na tela do celular) ──────────────
+_SW_JS = """const CACHE='somaja-v1';
+self.addEventListener('install', e => self.skipWaiting());
+self.addEventListener('activate', e => self.clients.claim());
+self.addEventListener('fetch', e => {});
+"""
+
+
+@somaja_bp.route('/sw.js')
+def sw_js():
+    return Response(_SW_JS, mimetype='application/javascript',
+                    headers={'Service-Worker-Allowed': '/somaja/'})
 
 
 @somaja_bp.route('/cadastrar', methods=['GET', 'POST'])
