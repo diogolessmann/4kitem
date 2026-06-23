@@ -10,10 +10,12 @@ no app.py para não precisar mexer nele a cada passo.
 import os
 import logging
 
-from flask import Blueprint, jsonify, request, render_template_string, redirect
+from flask import Blueprint, jsonify, request, render_template_string, redirect, session
+from werkzeug.security import generate_password_hash, check_password_hash
 
 from mlhype_db import (init_mlhype_db, estatisticas,
-                       radar_top, radar_trends, radar_categorias_com_dados)
+                       radar_top, radar_trends, radar_categorias_com_dados,
+                       criar_usuario, usuario_por_email, usuario_por_id, marcar_acesso)
 
 log = logging.getLogger(__name__)
 
@@ -45,9 +47,35 @@ def _nome_cat(cid):
     return CATEGORIAS_ML.get(cid, cid)
 
 
+# ── Sessão / login (Passo 5 — auth) ────────────────────────────────────────────
+def _usuario_atual():
+    uid = session.get('mlhype_user_id')
+    if not uid:
+        return None
+    try:
+        return usuario_por_id(uid)
+    except Exception:
+        return None
+
+
+def _exige_login():
+    """Retorna um redirect p/ a tela de entrar se não estiver logado; senão None."""
+    if not session.get('mlhype_user_id'):
+        return redirect('/mlhype/entrar?next=' + request.path)
+    return None
+
+
 @mlhype_bp.route('/')
 def mlhype_home():
-    """Landing provisória do MVP (substituída pelo painel real no Passo 4)."""
+    """Landing pública do MLhype (ciente de login)."""
+    u = _usuario_atual()
+    if u:
+        primeiro = ((u.get('nome') or '').split() or ['você'])[0]
+        botoes = ('<a class="btn" href="/mlhype/radar">📡 Abrir o Radar →</a>'
+                  f'<div class="sub2">Logado como {primeiro} · <a class="link" href="/mlhype/sair">sair</a></div>')
+    else:
+        botoes = ('<a class="btn" href="/mlhype/cadastrar">Criar conta grátis →</a>'
+                  '<div class="sub2"><a class="link" href="/mlhype/entrar">já tenho conta · entrar</a></div>')
     return f'''<!doctype html><html lang="pt-br"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>MLhype — Inteligência para vendedores do Mercado Livre</title>
@@ -63,13 +91,14 @@ def mlhype_home():
  .btn{{display:inline-block;background:linear-gradient(135deg,#2f6bff,#7c3aed);color:#fff;
    padding:13px 26px;border-radius:10px;text-decoration:none;font-weight:700;font-size:16px;
    box-shadow:0 6px 20px rgba(124,58,237,.35)}}
+ .sub2{{margin-top:14px;color:#9fb0d0;font-size:14px}} .link{{color:#7cc0ff;text-decoration:none}}
 </style></head><body>
 <div class="card">
  <h1>MLhype <span class="tag">🔥</span></h1>
  <p>Inteligência para quem vende no <b>Mercado Livre</b>.</p>
  <div class="bussola">"Descubra o que bomba, ache o fornecedor NO BRASIL e roube a
    venda do líder — anunciando melhor e mais barato."</div>
- <a class="btn" href="/mlhype/radar">📡 Abrir o Radar de Demanda →</a>
+ {botoes}
 </div>
 </body></html>'''
 
@@ -83,6 +112,93 @@ def mlhype_health():
     except Exception as e:
         log.error(f'[MLHYPE] health erro: {e}')
         return jsonify({'ok': False, 'erro': str(e)}), 500
+
+
+# ── Auth: cadastrar / entrar / sair (Passo 5) ─────────────────────────────────
+_AUTH_HTML = '''<!doctype html><html lang=pt-br><head><meta charset=utf-8>
+<meta name=viewport content="width=device-width,initial-scale=1"><title>MLhype · {{titulo}}</title>
+<style>
+ body{font-family:system-ui,Segoe UI,sans-serif;background:#0b1020;color:#e7ecf5;margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+ .box{width:100%;max-width:380px} h1{font-size:24px;margin:0 0 4px;text-align:center}
+ .fire{background:linear-gradient(135deg,#2f6bff,#7c3aed);-webkit-background-clip:text;background-clip:text;color:transparent}
+ p.sub{color:#9fb0d0;margin:0 0 18px;font-size:14px;text-align:center}
+ form{background:#0f1730;border:1px solid #21304f;border-radius:12px;padding:20px}
+ label{display:block;font-size:12px;color:#8aa0c6;margin:10px 0 4px}
+ input{width:100%;box-sizing:border-box;background:#0b1020;color:#e7ecf5;border:1px solid #21304f;border-radius:8px;padding:11px;font-size:15px}
+ button{width:100%;margin-top:16px;background:linear-gradient(135deg,#2f6bff,#7c3aed);color:#fff;border:0;border-radius:8px;padding:12px;font-weight:700;font-size:16px;cursor:pointer}
+ .erro{background:#2a0a0a;color:#ff8a8a;border:1px solid #5a1a1a;border-radius:8px;padding:9px 12px;font-size:13px;margin-bottom:12px}
+ .alt{text-align:center;margin-top:14px;font-size:14px;color:#9fb0d0} a{color:#7cc0ff;text-decoration:none}
+</style></head><body><div class=box>
+<h1>MLhype <span class=fire>🔥</span></h1>
+<p class=sub>{{sub}}</p>
+<form method=post>
+ {% if erro %}<div class=erro>{{erro}}</div>{% endif %}
+ {% if next %}<input type=hidden name=next value="{{next}}">{% endif %}
+ {% if cadastro %}<label>Nome</label><input name=nome required>{% endif %}
+ <label>E-mail</label><input name=email type=email required autocomplete=email>
+ <label>Senha</label><input name=senha type=password required minlength=6>
+ <button type=submit>{{titulo}}</button>
+</form>
+<div class=alt>{{alt|safe}}</div>
+</div></body></html>'''
+
+
+@mlhype_bp.route('/cadastrar', methods=['GET', 'POST'])
+def mlhype_cadastrar():
+    if session.get('mlhype_user_id'):
+        return redirect('/mlhype/radar')
+    erro = None
+    if request.method == 'POST':
+        nome = (request.form.get('nome') or '').strip()
+        email = (request.form.get('email') or '').strip().lower()
+        senha = request.form.get('senha') or ''
+        if not (nome and email and senha):
+            erro = 'Preencha nome, e-mail e senha.'
+        elif len(senha) < 6:
+            erro = 'A senha precisa de ao menos 6 caracteres.'
+        elif usuario_por_email(email):
+            erro = 'Já existe uma conta com esse e-mail. Faça login.'
+        else:
+            uid = criar_usuario(nome, email, '', generate_password_hash(senha))
+            session['mlhype_user_id'] = uid
+            session['mlhype_user_nome'] = nome
+            return redirect('/mlhype/radar')
+    return render_template_string(
+        _AUTH_HTML, titulo='Criar conta', cadastro=True, next='',
+        sub='Crie sua conta grátis e descubra o que bomba no Mercado Livre.', erro=erro,
+        alt='Já tem conta? <a href="/mlhype/entrar">Entrar</a>')
+
+
+@mlhype_bp.route('/entrar', methods=['GET', 'POST'])
+def mlhype_entrar():
+    if session.get('mlhype_user_id'):
+        return redirect('/mlhype/radar')
+    erro = None
+    nxt = request.values.get('next') or '/mlhype/radar'
+    if request.method == 'POST':
+        email = (request.form.get('email') or '').strip().lower()
+        senha = request.form.get('senha') or ''
+        u = usuario_por_email(email)
+        if u and u.get('password_hash') and check_password_hash(u['password_hash'], senha):
+            session['mlhype_user_id'] = u['id']
+            session['mlhype_user_nome'] = u['nome']
+            try:
+                marcar_acesso(u['id'])
+            except Exception:
+                pass
+            return redirect(nxt if nxt.startswith('/mlhype') else '/mlhype/radar')
+        erro = 'E-mail ou senha incorretos.'
+    return render_template_string(
+        _AUTH_HTML, titulo='Entrar', cadastro=False, next=nxt,
+        sub='Bem-vindo de volta.', erro=erro,
+        alt='Não tem conta? <a href="/mlhype/cadastrar">Criar grátis</a>')
+
+
+@mlhype_bp.route('/sair')
+def mlhype_sair():
+    for k in ('mlhype_user_id', 'mlhype_user_nome'):
+        session.pop(k, None)
+    return redirect('/mlhype/')
 
 
 # ── Painel do Radar de Demanda (Passo 4) ──────────────────────────────────────
@@ -123,7 +239,7 @@ _RADAR_HTML = '''<!doctype html><html lang=pt-br><head><meta charset=utf-8>
 </style></head><body><div class=wrap>
 <header>
  <h1>MLhype <span class=fire>🔥</span> · Radar de Demanda</h1>
- <a href="/mlhype/">← início</a>
+ <span style="font-size:13px;color:var(--mut)">{% if nome %}{{nome.split()[0]}} · {% endif %}<a href="/mlhype/sair">sair</a></span>
 </header>
 {% if seletor %}
 <form method=get><select name=cat onchange="this.form.submit()">
@@ -159,6 +275,9 @@ _RADAR_HTML = '''<!doctype html><html lang=pt-br><head><meta charset=utf-8>
 @mlhype_bp.route('/radar')
 def mlhype_radar():
     """Radar de Demanda — Top por categoria + tendência (lê do banco/histórico)."""
+    _r = _exige_login()
+    if _r:
+        return _r
     cats_dados = radar_categorias_com_dados()
     cat = request.args.get('cat') or (cats_dados[0]['categoria_id'] if cats_dados else None)
     linhas, data = [], None
@@ -175,7 +294,8 @@ def mlhype_radar():
                for c in cats_dados]
     return render_template_string(
         _RADAR_HTML, cat=cat, cat_nome=_nome_cat(cat) if cat else '',
-        data=data, linhas=linhas, seletor=seletor, trends=radar_trends(25), fmt=_fmt_brl)
+        data=data, linhas=linhas, seletor=seletor, trends=radar_trends(25), fmt=_fmt_brl,
+        nome=session.get('mlhype_user_nome', ''))
 
 
 # ── A ESTEIRA: orquestrador dos agentes (Passos 6, 7, 9) ──────────────────────
@@ -363,6 +483,9 @@ _FICHA_HTML = '''<!doctype html><html lang=pt-br><head><meta charset=utf-8>
 @mlhype_bp.route('/analisar/<pid>')
 def mlhype_analisar(pid):
     """Roda a esteira de 5 agentes num produto e entrega a Ficha de Ataque."""
+    _r = _exige_login()
+    if _r:
+        return _r
     cat = request.args.get('cat')
     try:
         r = rodar_esteira(pid, cat)

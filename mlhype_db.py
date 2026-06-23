@@ -525,3 +525,36 @@ def salvar_ficha(opportunity_id, ficha):
          ficha.get('preco_venda_sugerido'), ficha.get('margem_pct'),
          ficha.get('diferencial_ataque')))
     conn.commit(); conn.close()
+
+
+# ── Usuários / autenticação (Passo 5 — auth; billing fica p/ depois) ───────────
+def criar_usuario(nome, email, telefone, senha_hash):
+    conn = get_mlhype_db()
+    cur = conn.execute(
+        "INSERT INTO mlhype_users (nome, email, telefone, password_hash, plano, created_at) "
+        "VALUES (?,?,?,?, 'free', CURRENT_TIMESTAMP)", (nome, email, telefone, senha_hash))
+    uid = cur.lastrowid
+    conn.commit(); conn.close()
+    return uid
+
+
+def usuario_por_email(email):
+    conn = get_mlhype_db()
+    r = conn.execute('SELECT * FROM mlhype_users WHERE email=?', (email,)).fetchone()
+    conn.close()
+    return dict(r) if r else None
+
+
+def usuario_por_id(uid):
+    conn = get_mlhype_db()
+    r = conn.execute('SELECT * FROM mlhype_users WHERE id=?', (uid,)).fetchone()
+    conn.close()
+    return dict(r) if r else None
+
+
+def marcar_acesso(uid):
+    from datetime import datetime
+    conn = get_mlhype_db()
+    conn.execute('UPDATE mlhype_users SET ultimo_acesso=? WHERE id=?',
+                 (datetime.utcnow().isoformat(), uid))
+    conn.commit(); conn.close()
