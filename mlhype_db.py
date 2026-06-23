@@ -231,6 +231,7 @@ def init_mlhype_db():
         'ALTER TABLE mlhype_snapshots ADD COLUMN categoria_id TEXT',
         'ALTER TABLE mlhype_snapshots ADD COLUMN visitas INTEGER',
         'ALTER TABLE mlhype_snapshots ADD COLUMN num_ofertas INTEGER',
+        'ALTER TABLE mlhype_listings ADD COLUMN date_created TEXT',
         'ALTER TABLE mlhype_suppliers ADD COLUMN whatsapp TEXT',
         'ALTER TABLE mlhype_suppliers ADD COLUMN ativo INTEGER DEFAULT 1',
     ]:
@@ -611,13 +612,25 @@ def _facilidade_score(num_ofertas):
     return max(3, round(100 / (1 + int(num_ofertas) * 0.15)))
 
 
+def _dias_desde(iso):
+    """Dias desde uma data ISO do ML (ex.: '2025-09-08T19:23:35Z'). None se inválida."""
+    if not iso:
+        return None
+    try:
+        from datetime import datetime
+        base = iso.replace('Z', '').split('.')[0].split('+')[0]
+        return max(0, (datetime.utcnow() - datetime.fromisoformat(base)).days)
+    except Exception:
+        return None
+
+
 def oportunidades(limit=20, categoria=None, user_id=None):
     """Varre o último snapshot de cada produto, pontua a oportunidade e devolve
     as melhores rankeadas. base = média geométrica(demanda, facilidade) — exige
     as DUAS coisas decentes (vende E dá pra atacar); + bônus tendência/fornecedor
     + boost PERSONALIZADO (nichos onde o usuário marcou vendi/ataquei)."""
     conn = get_mlhype_db()
-    q = '''SELECT l.id AS lid, l.mlb_item_id, l.titulo, l.categoria_id,
+    q = '''SELECT l.id AS lid, l.mlb_item_id, l.titulo, l.categoria_id, l.date_created,
                   s.posicao_ranking AS pos, s.num_ofertas, s.preco
            FROM mlhype_listings l
            JOIN mlhype_snapshots s ON s.listing_id = l.id
@@ -652,6 +665,11 @@ def oportunidades(limit=20, categoria=None, user_id=None):
         r['tendencia'] = tend
         r['tem_fornecedor'] = tem_forn
         r['brecha'] = (r['num_ofertas'] is not None and r['num_ofertas'] <= 3)
+        dias = _dias_desde(r.get('date_created'))
+        r['dias_catalogo'] = dias
+        r['novo'] = (dias is not None and dias <= 90)   # catálogo novo = alvo fácil
+        if r['novo']:
+            bonus += 6
         r['score'] = max(0, min(100, r['base'] + bonus))
     cand.sort(key=lambda x: x['score'], reverse=True)
     return cand[:limit]

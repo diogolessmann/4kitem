@@ -382,6 +382,7 @@ _OPS_HTML = '''<!doctype html><html lang=pt-br><head><meta charset=utf-8>
    <div class=tags>
     <span class="tag t-cat">{{o.cat_nome}}</span>
     {% if o.brecha %}<span class="tag t-brecha">🎯 brecha</span>{% endif %}
+    {% if o.novo %}<span class="tag t-sobe">🌱 novo</span>{% endif %}
     {% if o.tendencia=='subindo' %}<span class="tag t-sobe">📈 subindo</span>{% endif %}
     {% if o.tem_fornecedor %}<span class="tag t-forn">🏷️ tem fornecedor</span>{% endif %}
     {% if o.personalizado %}<span class="tag t-brecha">🎯 seu nicho</span>{% endif %}
@@ -499,6 +500,14 @@ def rodar_esteira(pid, cat_id=None):
     prod = ml.produto(pid) or {}
     nome = prod.get('name') or pid
     res['produto'] = nome
+    # idade do catálogo (Lote S): novo = ganhador não consolidado = alvo mais fácil
+    res['dias_catalogo'] = db._dias_desde(prod.get('date_created'))
+    res['novo'] = (res['dias_catalogo'] is not None and res['dias_catalogo'] <= 90)
+    if prod.get('date_created'):
+        try:
+            db.upsert_listing(pid, date_created=prod['date_created'])
+        except Exception:
+            pass
 
     ofertas, num_conc = [], None
     try:
@@ -636,7 +645,7 @@ _FICHA_HTML = '''<!doctype html><html lang=pt-br><head><meta charset=utf-8>
  </div>
  {% if r.avaliacao.porque %}<div class=meta>{{r.avaliacao.porque}}</div>{% endif %}
  {% if r.avaliacao.como_melhorar %}<ul>{% for c in r.avaliacao.como_melhorar %}<li>{{c}}</li>{% endfor %}</ul>{% endif %}
- <div class=meta>{{r.num_concorrentes or '—'}} concorrentes · tendência: {{r.tendencia}}{% if r.comissao_ml_pct %} · taxa ML ~{{r.comissao_ml_pct}}%{% endif %}</div>
+ <div class=meta>{{r.num_concorrentes or '—'}} concorrentes · tendência: {{r.tendencia}}{% if r.comissao_ml_pct %} · taxa ML ~{{r.comissao_ml_pct}}%{% endif %}{% if r.novo %} · 🌱 catálogo novo ({{r.dias_catalogo}}d — alvo fácil){% endif %}</div>
  {% if r.comissao_ml_pct and not r.menor_custo_br %}<div class=meta>💡 Cadastre o custo do fornecedor pra ver o <b>lucro líquido real</b> (a taxa do ML já está descontada).</div>{% endif %}
 </div>
 {% endif %}
@@ -1053,17 +1062,25 @@ def _categorias_alvo(ml):
 
 def _coletar_produto(ml, db, pid, cat_id, posicao, hoje):
     """Grava o snapshot do dia de UM produto de catálogo (idempotente)."""
-    # nome: só busca /products/{id} se ainda não temos o título do produto
+    # nome + date_created: busca /products/{id} se ainda faltar algum
     conn = db.get_mlhype_db()
-    row = conn.execute('SELECT titulo FROM mlhype_listings WHERE mlb_item_id=?', (pid,)).fetchone()
+    row = conn.execute('SELECT titulo, date_created FROM mlhype_listings WHERE mlb_item_id=?',
+                       (pid,)).fetchone()
     conn.close()
     nome = row['titulo'] if (row and row['titulo']) else None
-    if not nome:
+    dt = (row['date_created'] if (row and 'date_created' in row.keys()) else None)
+    campos = {'categoria_id': cat_id}
+    if not nome or not dt:
         try:
-            nome = (ml.produto(pid) or {}).get('name')
+            p = ml.produto(pid) or {}
+            nome = nome or p.get('name')
+            if p.get('date_created'):
+                campos['date_created'] = p['date_created']
         except Exception:
-            nome = None
-    lid = db.upsert_listing(pid, titulo=nome, categoria_id=cat_id)
+            pass
+    if nome:
+        campos['titulo'] = nome
+    lid = db.upsert_listing(pid, **campos)
 
     # preço do líder (1ª oferta = vencedora do Buy Box) + nº de concorrentes
     preco = None
