@@ -749,7 +749,7 @@ _ADMIN_FORN_HTML = '''<!doctype html><html lang=pt-br><head><meta charset=utf-8>
  table{width:100%;border-collapse:collapse;font-size:14px} td,th{padding:8px;border-bottom:1px solid var(--bd);text-align:left} th{color:var(--mut);font-size:12px}
  .hint{color:var(--mut);font-size:12px}
 </style></head><body><div class=wrap>
-<a href="/mlhype/radar">← Radar</a>
+<a href="/mlhype/radar">← Radar</a> · <a href="/mlhype/admin/descobrir?k={{k}}">🔍 Descobrir fornecedores (IA)</a>
 <h1>🎯 Fornecedores nacionais — o moat</h1>
 <p class=hint>Cada fornecedor cadastrado aqui aparece nas Fichas de Ataque das categorias que ele atende. Em <b>categorias</b>, liste IDs (ex.: MLB1051) e palavras-chave separadas por espaço.</p>
 <div class=card>
@@ -905,6 +905,73 @@ def mlhype_admin_plano():
                  (plano, 0 if plano == 'free' else 1, u['id']))
     conn.commit(); conn.close()
     return f'✅ {email} agora é plano <b>{plano}</b>. <a href="/mlhype/radar">ir pro Radar →</a>'
+
+
+# ── Caçador de Fornecedor 2.0 (Lote F): briefing de descoberta ────────────────
+_DESCOBRIR_HTML = '''<!doctype html><html lang=pt-br><head><meta charset=utf-8>
+<meta name=viewport content="width=device-width,initial-scale=1"><title>MLhype · Caçador de Fornecedor</title>
+<style>
+ :root{--bg:#0b1020;--card:#0f1730;--bd:#21304f;--mut:#8aa0c6;--txt:#e7ecf5;--ac:#7cc0ff}
+ body{font-family:system-ui,Segoe UI,sans-serif;background:var(--bg);color:var(--txt);margin:0;padding:18px}
+ .wrap{max-width:680px;margin:0 auto} a{color:var(--ac);text-decoration:none} h1{font-size:21px;margin:6px 0 2px}
+ .sub{color:var(--mut);font-size:13px;margin:0 0 14px}
+ .card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:16px;margin:12px 0}
+ .card h3{margin:0 0 10px;font-size:14px}
+ label{display:block;font-size:12px;color:var(--mut);margin:8px 0 4px}
+ input,select{width:100%;box-sizing:border-box;background:#0b1020;color:var(--txt);border:1px solid var(--bd);border-radius:8px;padding:10px;font-size:15px}
+ button,.btn{display:inline-block;margin-top:12px;background:linear-gradient(135deg,#2f6bff,#7c3aed);color:#fff;border:0;border-radius:8px;padding:11px 18px;font-weight:700;font-size:15px;cursor:pointer;text-decoration:none}
+ ul{margin:6px 0 0;padding-left:18px;line-height:1.6} li{margin:3px 0}
+ .termo{display:block;background:#0b1020;border:1px solid #21304f;border-radius:8px;padding:9px 12px;margin:6px 0;color:#7cc0ff;font-size:14px}
+ .dica{background:#1c1340;border:1px solid #4a2da0;border-radius:8px;padding:11px 14px;color:#cbbaf5;margin:12px 0}
+ .warn{background:#2a2206;color:#ffd35e;border:1px solid #5a4a15;border-radius:8px;padding:10px 14px}
+</style></head><body><div class=wrap>
+<a href="/mlhype/admin/fornecedores?k={{k}}">← fornecedores cadastrados</a>
+<h1>🔍 Caçador de Fornecedor BR</h1>
+<p class=sub>O caminho das pedras pra achar fornecedor nacional dessa categoria. Os leads são pra você <b>verificar e cadastrar</b> (o motor não inventa contato).</p>
+<div class=card>
+ <form method=get>
+  <input type=hidden name=k value="{{k}}">
+  <label>Categoria</label>
+  <select name=cat>{% for c in cats %}<option value="{{c.id}}" {{'selected' if c.id==cat else ''}}>{{c.nome}}</option>{% endfor %}</select>
+  <label>Produto específico (opcional)</label>
+  <input name=produto value="{{produto}}" placeholder="ex.: fone bluetooth, chaleira elétrica">
+  <button type=submit>🔍 Montar briefing de pesquisa</button>
+ </form>
+</div>
+{% if erro %}<div class=warn>{{erro}}</div>{% endif %}
+{% if brief %}
+<div class=card><h3>🏭 Tipos de fornecedor pra mirar</h3><ul>{% for t in brief.tipos_fornecedor %}<li>{{t}}</li>{% endfor %}</ul></div>
+<div class=card><h3>🔎 Termos de busca (clica e já pesquisa)</h3>
+ {% for t in brief.termos_busca %}<a class=termo href="https://www.google.com/search?q={{t|urlencode}}" target=_blank>{{t}} ↗</a>{% endfor %}</div>
+<div class=card><h3>📍 Onde procurar</h3><ul>{% for f in brief.fontes %}<li>{{f}}</li>{% endfor %}</ul></div>
+<div class=card><h3>🤝 O que perguntar na negociação</h3><ul>{% for p in brief.perguntas_negociacao %}<li>{{p}}</li>{% endfor %}</ul></div>
+{% if brief.dica %}<div class=dica>💡 {{brief.dica}}</div>{% endif %}
+<a class=btn href="/mlhype/admin/fornecedores?k={{k}}">+ Achou um? Cadastrar fornecedor</a>
+{% endif %}
+</div></body></html>'''
+
+
+@mlhype_bp.route('/admin/descobrir')
+def mlhype_admin_descobrir():
+    """Caçador de Fornecedor 2.0 — briefing de pesquisa por categoria. Gate ML_SECRET."""
+    if request.args.get('k') != os.environ.get('ML_SECRET'):
+        return 'acesso negado — use ?k=<ML_SECRET>', 403
+    import mlhype_ia as ia
+    cat = request.args.get('cat')
+    produto = request.args.get('produto', '')
+    brief = None
+    erro = None
+    if cat:
+        if not ia.ia_disponivel():
+            erro = '⚙️ IA não configurada (GEMINI_API_KEY / GROQ_API_KEY).'
+        else:
+            try:
+                brief = ia.descobrir_fornecedores(_nome_cat(cat), produto)
+            except Exception:
+                erro = '⚙️ A IA está sobrecarregada — tente de novo em instantes.'
+    cats = [{'id': k, 'nome': v} for k, v in sorted(CATEGORIAS_ML.items(), key=lambda x: x[1])]
+    return render_template_string(_DESCOBRIR_HTML, brief=brief, erro=erro, cats=cats,
+                                  cat=cat or '', produto=produto, k=request.args.get('k'))
 
 
 def _seed_fornecedores_exemplo():

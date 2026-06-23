@@ -149,3 +149,33 @@ def analisar_esteira(dados):
     fi.setdefault('diferencial_ataque', '')
 
     return {'fraquezas': fraquezas, 'avaliacao': av, 'ficha': fi}
+
+
+# ── Caçador de Fornecedor 2.0 (Lote F): briefing de pesquisa de fornecedor BR ──
+_SYS_DESCOBRIR = '''Você é um caçador de fornecedores NACIONAIS (Brasil) para quem
+revende no Mercado Livre. Dada uma categoria/produto, monte um BRIEFING DE
+PESQUISA pro vendedor achar fornecedor barato e confiável.
+REGRA DE OURO: NÃO invente nomes de empresas, CNPJs nem contatos (não alucine).
+Dê TIPOS de fornecedor, TERMOS DE BUSCA prontos e FONTES reais de onde procurar,
+mais o que perguntar na negociação.
+ENTRADA (JSON): categoria, produto (pode ser vazio).
+SAÍDA: responda SOMENTE com JSON válido:
+{"tipos_fornecedor": ["<ex.: distribuidor regional, indústria, importador, atacadista do polo X>", "..."],
+ "termos_busca": ["<termo pronto p/ Google: ex. 'atacado <produto> CNPJ distribuidor'>", "..."],
+ "fontes": ["<onde procurar: ex. feiras do setor, marketplaces B2B, polos atacadistas (Brás, 25 de Março...), associações, catálogos de indústria>", "..."],
+ "perguntas_negociacao": ["<ex.: preço por volume? pedido mínimo (MOQ)? prazo de entrega? emite NF? garantia?>", "..."],
+ "dica": "<1 frase estratégica pra esse nicho>"}
+Seja ESPECÍFICO pra a categoria. 4 a 6 itens em cada lista.'''
+
+
+def descobrir_fornecedores(categoria, produto=''):
+    """Briefing de pesquisa de fornecedor BR (leads pra curar, não contatos fixos)."""
+    out = _ia_json(_SYS_DESCOBRIR, {'categoria': categoria, 'produto': produto},
+                   max_tokens=1200, temperature=0.5)
+    if not isinstance(out, dict):
+        out = {}
+    for k in ('tipos_fornecedor', 'termos_busca', 'fontes', 'perguntas_negociacao'):
+        v = out.get(k)
+        out[k] = [str(x) for x in v][:6] if isinstance(v, list) else []
+    out['dica'] = out.get('dica') or ''
+    return out
