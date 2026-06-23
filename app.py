@@ -2365,7 +2365,8 @@ def webhook_asaas_global():
             try:
                 from amparo import amparo_webhook_assinatura
                 amparo_webhook_assinatura(customer_id, plano_key, ativar,
-                                          payload.get('payment', {}).get('id', ''))
+                                          payload.get('payment', {}).get('id', ''),
+                                          payload.get('payment', {}).get('value', 0))
             except Exception as _amp_e:
                 log.error(f'[Amparo] Webhook error: {_amp_e}')
 

@@ -36,7 +36,7 @@ APPS = {
     'mandaja':     {'nome': 'MandaJá',               'comissao': 10.00, 'unidade': 'por mês',    'url': '/mandaja',           'desc': 'Delivery sem comissão com PIX',         'icone': '/static/img/mandaja/logo.png'},
     'mandajr':     {'nome': 'MandaJr',               'comissao': 7.00,  'unidade': 'por mês',    'url': '/mandajr',           'desc': 'Catálogo no WhatsApp simplificado',     'icone': '/static/img/mandajr/mandajr-icon.webp'},
     'pubshow':     {'nome': 'PubShow',               'comissao': 15.00, 'unidade': 'por mês',    'url': '/pubshow',           'desc': 'Jukebox digital pra bares',             'icone': '/static/pubshow/pubshow-logo-concept.png'},
-    'amparo':      {'nome': 'Amparo',                'comissao': 29.90, 'unidade': 'por mês',    'url': '/amparo',            'desc': 'Cuidado entre as sessões pra psicólogos','icone': ''},
+    'amparo':      {'nome': 'Amparo',                'comissao': 29.90, 'comissao_pct': 20, 'unidade': 'por mês (20% recorrente)', 'url': '/amparo',            'desc': 'Cuidado entre as sessões pra psicólogos','icone': ''},
 }
 
 
@@ -72,9 +72,10 @@ def _pix_transfer(pix_chave, pix_tipo, valor, descricao, ext_ref):
 
 
 # ── O CORAÇÃO: creditar comissão quando o cliente paga ──────────────────────────
-def registrar_comissao(codigo, app, payment_id, cliente_nome='', cliente_email='', cliente_cpf=''):
+def registrar_comissao(codigo, app, payment_id, cliente_nome='', cliente_email='', cliente_cpf='', valor_pago=0):
     """Chamado pelo webhook do Asaas quando um cliente (indicado pelo afiliado) paga.
     Credita a comissão do app (idempotente) e paga o afiliado via PIX na hora.
+    Comissão = % do valor pago se o app tiver 'comissao_pct' (e valor_pago>0); senão, o fixo.
     Best-effort: nunca levanta exceção (não pode derrubar o webhook)."""
     try:
         codigo = (codigo or '').strip().upper()
@@ -91,7 +92,10 @@ def registrar_comissao(codigo, app, payment_id, cliente_nome='', cliente_email='
         if (_ce and _ce == _ae) or (_ccpf and _acpf and _ccpf == _acpf):
             log.info(f'[Afiliados] autoindicacao bloqueada — afiliado {af["codigo"]}')
             return False
-        comissao = float(APPS[app]['comissao'])
+        _pct = APPS[app].get('comissao_pct')
+        comissao = (round(float(valor_pago) * _pct / 100.0, 2)
+                    if (_pct and float(valor_pago or 0) > 0)
+                    else float(APPS[app]['comissao']))
         conv_id = registrar_conversao(af['id'], app, payment_id, cliente_nome, comissao)
         if not conv_id:
             return False  # já creditado (reenvio de webhook) — não paga 2×

@@ -591,7 +591,7 @@ def assinatura():
     return render_template('amparo/assinatura.html', psi=psi, plano=plano)
 
 
-def amparo_webhook_assinatura(asaas_customer_id, plano_key, ativar, payment_id=''):
+def amparo_webhook_assinatura(asaas_customer_id, plano_key, ativar, payment_id='', valor_pago=0):
     """Chamado pelo webhook global (app.py) p/ refs 'amparo_<customer_id>_<plano>'.
     ativar=True → libera o plano; False → suspende (corta acesso)."""
     if ativar:
@@ -609,7 +609,8 @@ def amparo_webhook_assinatura(asaas_customer_id, plano_key, ativar, payment_id='
             if p and p['afiliado_ref'] and payment_id:
                 from afiliados import registrar_comissao
                 registrar_comissao(p['afiliado_ref'], 'amparo', payment_id, p['nome'],
-                                   cliente_email=p['email'], cliente_cpf=p['cpf'])
+                                   cliente_email=p['email'], cliente_cpf=p['cpf'],
+                                   valor_pago=valor_pago)   # 20% recorrente do que o cliente pagou
         except Exception as _eaf:
             log.warning(f'[Amparo] comissão afiliado: {_eaf}')
     else:
