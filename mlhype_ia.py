@@ -32,17 +32,22 @@ def _gemini_json(system, payload, max_tokens=2048, temperature=0.3, _retry=True)
     se a IA não estiver configurada ou a resposta não for JSON válido (após 1 retry)."""
     if not GEMINI_KEY:
         raise RuntimeError('IA não configurada (defina GEMINI_API_KEY)')
+    gen = {
+        'temperature': temperature,
+        'maxOutputTokens': max_tokens,
+        'responseMimeType': 'application/json',
+    }
+    # gemini-2.5-* "pensa" por padrão e fica LENTO; p/ tarefas estruturadas (JSON)
+    # desligamos o thinking — corta o tempo de ~20s p/ ~3s por chamada.
+    if '2.5' in GEMINI_MODEL:
+        gen['thinkingConfig'] = {'thinkingBudget': 0}
     body = {
         'system_instruction': {'parts': [{'text': system}]},
         'contents': [{'role': 'user', 'parts': [{'text': json.dumps(payload, ensure_ascii=False)}]}],
-        'generationConfig': {
-            'temperature': temperature,
-            'maxOutputTokens': max_tokens,
-            'responseMimeType': 'application/json',
-        },
+        'generationConfig': gen,
     }
     r = requests.post(_GEMINI_URL.format(model=GEMINI_MODEL),
-                      params={'key': GEMINI_KEY}, json=body, timeout=90)
+                      params={'key': GEMINI_KEY}, json=body, timeout=35)
     if r.status_code != 200:
         if _retry:
             return _gemini_json(system, payload, max_tokens, temperature, _retry=False)

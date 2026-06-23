@@ -342,18 +342,17 @@ def rodar_esteira(pid, cat_id=None):
     preco_lider = lider.get('price')
     res['num_concorrentes'] = num_conc
 
-    # anúncio do líder (p/ o Dissecador)
-    anuncio = {'titulo': nome, 'preco': preco_lider, 'descricao': '', 'fotos_qtd': None,
-               'atributos': [], 'garantia': lider.get('warranty'), 'frete_gratis': None}
-    if lider.get('item_id'):
-        it = ml.item(lider['item_id'])
-        if it:
-            anuncio['titulo'] = it.get('title') or nome
-            anuncio['preco'] = it.get('price') or preco_lider
-            anuncio['fotos_qtd'] = len(it.get('pictures') or [])
-            anuncio['atributos'] = [a.get('name') for a in (it.get('attributes') or [])
-                                    if a.get('value_name')][:15]
-            anuncio['frete_gratis'] = (it.get('shipping') or {}).get('free_shipping')
+    # anúncio do líder p/ o Dissecador — usa os dados do PRÓPRIO produto de
+    # catálogo (mais ricos que /items, que hoje dá 403): fotos, atributos, descrição.
+    sd = prod.get('short_description')
+    descricao = sd.get('content', '') if isinstance(sd, dict) else (sd or '')
+    anuncio = {
+        'titulo': nome, 'preco': preco_lider, 'descricao': descricao[:500],
+        'fotos_qtd': len(prod.get('pictures') or []),
+        'atributos': [a.get('name') for a in (prod.get('attributes') or [])
+                      if a.get('value_name')][:15],
+        'garantia': lider.get('warranty'), 'frete_gratis': None,
+    }
     res['anuncio_lider'] = anuncio
 
     # Agente 2 — Dissecador
@@ -501,16 +500,49 @@ _FICHA_HTML = '''<!doctype html><html lang=pt-br><head><meta charset=utf-8>
 </div></body></html>'''
 
 
+_ANALISANDO_HTML = '''<!doctype html><html lang=pt-br><head><meta charset=utf-8>
+<meta name=viewport content="width=device-width,initial-scale=1"><title>MLhype · Analisando…</title>
+<style>
+ body{font-family:system-ui,Segoe UI,sans-serif;background:#0b1020;color:#e7ecf5;margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;text-align:center}
+ .box{max-width:420px} .sp{width:54px;height:54px;border:4px solid #21304f;border-top-color:#7c3aed;border-radius:50%;margin:0 auto 18px;animation:spin 1s linear infinite}
+ @keyframes spin{to{transform:rotate(360deg)}}
+ h1{font-size:19px;margin:0 0 6px} p{color:#9fb0d0;font-size:14px;line-height:1.5} .step{color:#7cc0ff;font-weight:600} a{color:#7cc0ff;text-decoration:none}
+</style></head><body><div class=box id=box>
+ <div class=sp></div>
+ <h1>🔍 Analisando…</h1>
+ <p>Rodando os 5 agentes: <span class=step id=step>dissecando o líder</span><br>pode levar alguns segundos.</p>
+</div>
+<script>
+ var steps=['dissecando o líder','caçando fornecedor BR','avaliando a oportunidade','montando a Ficha de Ataque'];
+ var i=0; setInterval(function(){i=(i+1)%steps.length;var s=document.getElementById('step');if(s){s.textContent=steps[i];}},2200);
+ var ctrl=new AbortController(); var to=setTimeout(function(){ctrl.abort();},75000);
+ fetch('/mlhype/analisar/{{pid}}/run{{q|safe}}',{signal:ctrl.signal})
+  .then(function(r){return r.text();})
+  .then(function(html){clearTimeout(to);document.open();document.write(html);document.close();})
+  .catch(function(e){document.getElementById('box').innerHTML='<h1>Ops…</h1><p>A análise demorou demais ou falhou. <a href="/mlhype/radar">voltar ao Radar</a> e tentar de novo.</p>';});
+</script></body></html>'''
+
+
 @mlhype_bp.route('/analisar/<pid>')
 def mlhype_analisar(pid):
-    """Roda a esteira de 5 agentes num produto e entrega a Ficha de Ataque."""
+    """Tela de 'analisando…' instantânea; o trabalho pesado roda no /run via fetch."""
+    _r = _exige_login()
+    if _r:
+        return _r
+    cat = request.args.get('cat')
+    q = ('?cat=' + cat) if cat else ''
+    return render_template_string(_ANALISANDO_HTML, pid=pid, q=q)
+
+
+@mlhype_bp.route('/analisar/<pid>/run')
+def mlhype_analisar_run(pid):
+    """Roda a esteira de fato e devolve o HTML da Ficha (chamado via fetch)."""
     _r = _exige_login()
     if _r:
         return _r
     u = _usuario_atual()
     plano = plano_efetivo(u)
     cat = request.args.get('cat')
-    # Gate: a Ficha é Pro+. Grátis/Starter PODEM provar (FREE_BUSCAS_DIA por dia).
     if not plano_libera(plano, 'ficha') and contar_buscas_hoje(u['id']) >= FREE_BUSCAS_DIA:
         return render_template_string(_LIMITE_HTML, limite=FREE_BUSCAS_DIA, plano=plano)
     registrar_uso(u['id'], 'busca', categoria=cat)
@@ -518,7 +550,9 @@ def mlhype_analisar(pid):
         r = rodar_esteira(pid, cat)
     except Exception as e:
         log.error(f'[MLhype] esteira {pid} erro: {e}')
-        return f'Erro ao analisar este produto: {e}', 500
+        return ('<div style="font-family:system-ui;color:#e7ecf5;background:#0b1020;min-height:100vh;'
+                'padding:40px;text-align:center">Erro ao analisar este produto.<br><br>'
+                f'<a href="/mlhype/radar" style="color:#7cc0ff">← voltar ao Radar</a></div>'), 500
     r['pode_fornecedor'] = plano_libera(plano, 'fornecedor')
     return render_template_string(_FICHA_HTML, r=r, fmt=_fmt_brl)
 
