@@ -169,6 +169,21 @@ def init_amparo_db():
             FOREIGN KEY (paciente_id)  REFERENCES amparo_pacientes(id)
         );
 
+        -- ── Evoluções clínicas assistidas por IA (Lote 6 — AI Scribe) ─────────
+        -- A IA só ORGANIZA o que o psicólogo forneceu, num rascunho que ELE revisa.
+        -- Guardamos apenas a evolução final (prontuário do psicólogo); não o áudio.
+        CREATE TABLE IF NOT EXISTS amparo_evolucoes (
+            id            INTEGER PRIMARY KEY AUTOINCREMENT,
+            paciente_id   INTEGER NOT NULL,
+            psicologo_id  INTEGER NOT NULL,
+            origem        TEXT DEFAULT 'texto',  -- texto | audio
+            conteudo      TEXT,                  -- a evolução (rascunho/revisada)
+            revisado      INTEGER DEFAULT 0,     -- o psicólogo já revisou/salvou?
+            created_at    TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (paciente_id)  REFERENCES amparo_pacientes(id),
+            FOREIGN KEY (psicologo_id) REFERENCES amparo_psicologos(id)
+        );
+
         -- ── Log de crise (auditoria + alerta ao psicólogo) — guard-rail CFP ────
         CREATE TABLE IF NOT EXISTS amparo_crise_log (
             id               INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -190,6 +205,7 @@ def init_amparo_db():
         CREATE INDEX IF NOT EXISTS idx_amparo_int_psi   ON amparo_interacoes(psicologo_id, created_at);
         CREATE INDEX IF NOT EXISTS idx_amparo_tar_pac   ON amparo_tarefas(paciente_id);
         CREATE INDEX IF NOT EXISTS idx_amparo_crise_psi ON amparo_crise_log(psicologo_id);
+        CREATE INDEX IF NOT EXISTS idx_amparo_evo_pac   ON amparo_evolucoes(paciente_id);
     ''')
     conn.commit()
 
@@ -597,4 +613,36 @@ def crises_recentes(psi_id, limit=20):
 def marcar_crise_avisada(crise_id):
     conn = get_amparo_db()
     conn.execute('UPDATE amparo_crise_log SET psicologo_avisado=1 WHERE id=?', (crise_id,))
+    conn.commit(); conn.close()
+
+
+# ── Evoluções clínicas assistidas por IA (Lote 6) ──────────────────────────────
+def criar_evolucao(paciente_id, psicologo_id, origem, conteudo):
+    conn = get_amparo_db()
+    cur = conn.execute('INSERT INTO amparo_evolucoes (paciente_id, psicologo_id, origem, conteudo) '
+                       'VALUES (?,?,?,?)', (paciente_id, psicologo_id, origem, conteudo))
+    conn.commit(); eid = cur.lastrowid; conn.close()
+    return eid
+
+
+def listar_evolucoes(paciente_id):
+    conn = get_amparo_db()
+    rows = conn.execute('SELECT * FROM amparo_evolucoes WHERE paciente_id=? ORDER BY created_at DESC',
+                        (paciente_id,)).fetchall()
+    conn.close()
+    return rows
+
+
+def get_evolucao(psicologo_id, eid):
+    conn = get_amparo_db()
+    row = conn.execute('SELECT * FROM amparo_evolucoes WHERE id=? AND psicologo_id=?',
+                       (eid, psicologo_id)).fetchone()
+    conn.close()
+    return row
+
+
+def update_evolucao(psicologo_id, eid, conteudo):
+    conn = get_amparo_db()
+    conn.execute('UPDATE amparo_evolucoes SET conteudo=?, revisado=1 WHERE id=? AND psicologo_id=?',
+                 (conteudo, eid, psicologo_id))
     conn.commit(); conn.close()

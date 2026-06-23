@@ -12,6 +12,14 @@
 <div class="erro">O paciente ainda não consentiu (ou optou por sair). O motor só funciona com consentimento aceito.</div>
 {% elif erro == 'limite' %}
 <div class="erro">Você atingiu o limite de pacientes do seu plano. <a href="/amparo/planos">Fazer upgrade</a>.</div>
+{% elif erro == 'evo_consent' %}
+<div class="erro">Para gerar a evolução, confirme que você tem o consentimento do paciente para registrar a sessão.</div>
+{% elif erro == 'evo_vazio' %}
+<div class="erro">Escreva suas anotações ou anexe um áudio para gerar a evolução.</div>
+{% elif erro == 'evo_audio' %}
+<div class="erro">O áudio é muito grande (máx. ~18 MB). Tente um trecho menor.</div>
+{% elif erro == 'evo_ia' %}
+<div class="erro">Não foi possível gerar a evolução agora (IA indisponível). Tente novamente.</div>
 {% endif %}
 
 <!-- Status + motor -->
@@ -99,6 +107,45 @@
   {% endfor %}
 </div>
 {% endif %}
+
+<!-- Evolução clínica assistida por IA (AI Scribe) -->
+<div class="card" style="margin-top:14px">
+  <strong>📝 Evolução com IA</strong>
+  <p class="muted" style="font-size:13px;margin-top:4px">
+    A IA organiza <em>suas</em> anotações numa evolução estruturada. É um rascunho —
+    você revisa e edita. A IA não inventa nem diagnostica.
+  </p>
+  {% if not gemini_ok %}
+    <p class="muted" style="font-size:13px">⚙️ Recurso disponível quando a IA estiver configurada (GEMINI_API_KEY).</p>
+  {% else %}
+  <form method="post" action="/amparo/pacientes/{{ pac['id'] }}/evolucao" enctype="multipart/form-data">
+    <textarea name="notas" rows="4" placeholder="Cole aqui suas anotações da sessão (tópicos, frases soltas)…"
+      style="width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;font-size:14px;font-family:inherit"></textarea>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:8px">
+      <label class="muted" style="font-size:13px;font-weight:500">🎙️ ou áudio:
+        <input type="file" name="audio" accept="audio/*" style="font-size:13px"></label>
+    </div>
+    <label style="display:flex;gap:8px;align-items:flex-start;font-weight:500;margin-top:12px">
+      <input type="checkbox" name="consentimento" value="1" required style="width:auto;margin-top:4px">
+      <span class="muted" style="font-size:13px">Confirmo que tenho o consentimento do paciente para registrar esta sessão.</span>
+    </label>
+    <button type="submit" class="btn" style="margin-top:12px">Gerar rascunho de evolução</button>
+  </form>
+  {% endif %}
+
+  {% if evolucoes %}
+  <div style="margin-top:14px">
+    {% for e in evolucoes %}
+    <div style="border-top:1px solid var(--line);padding:8px 0;font-size:14px;display:flex;justify-content:space-between;gap:8px">
+      <span><span class="muted">{{ e['created_at'][:16] }}</span> · {{ e['origem'] }}
+        {% if e['revisado'] %}<span class="pill">revisada ✅</span>{% else %}<span class="pill" style="background:#fff3d6;color:#9a6b16">rascunho</span>{% endif %}
+      </span>
+      <a href="/amparo/evolucao/{{ e['id'] }}">abrir →</a>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+</div>
 
 <!-- Histórico de interações -->
 <div class="card" style="margin-top:14px">

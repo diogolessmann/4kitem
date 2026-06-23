@@ -34,7 +34,8 @@ from amparo_db import (get_amparo_db, init_amparo_db, get_psicologo,
                        set_motor_paciente, criar_interacao, interacao_aberta,
                        registrar_resposta, feed_interacoes, humor_serie, stats_adesao,
                        criar_tarefa, listar_tarefas, log_crise, crises_recentes,
-                       marcar_crise_avisada, add_cashback, get_cashback)
+                       marcar_crise_avisada, add_cashback, get_cashback,
+                       criar_evolucao, listar_evolucoes, get_evolucao, update_evolucao)
 import amparo_wa
 
 log = logging.getLogger('amparo')
@@ -753,7 +754,8 @@ def paciente_detalhe(pid):
     serie = humor_serie(pid)
     return render_template('amparo/paciente_detalhe.html', psi=psi, pac=pac,
                            interacoes=inter, humor=serie, chart=_humor_chart(serie),
-                           tarefas=listar_tarefas(pid),
+                           tarefas=listar_tarefas(pid), evolucoes=listar_evolucoes(pid),
+                           gemini_ok=bool(GEMINI_KEY),
                            adesao_resp=resp, adesao_env=env, cashback=get_cashback(pid),
                            erro=request.args.get('erro'))
 
@@ -885,3 +887,101 @@ def _trata_resposta_paciente(fone, texto):
         add_cashback(pac['id'], CASHBACK_POR_RESPOSTA)   # cashback de adesão
     # Acolhimento caloroso (IA) que SEMPRE devolve ao humano — fallback p/ texto fixo.
     amparo_wa.enviar(fone, _acolhe_resposta_ia(pac['nome'].split(' ')[0], texto))
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# AI SCRIBE (Lote 6) — evolução clínica assistida. 🟡 CFP: permitido COM
+# consentimento + supervisão. A IA ORGANIZA o que o psicólogo deu; ele revisa.
+# ══════════════════════════════════════════════════════════════════════════════
+SYSTEM_EVOLUCAO = """Você organiza ANOTAÇÕES de uma sessão de psicoterapia (fornecidas pelo \
+próprio psicólogo) em uma EVOLUÇÃO CLÍNICA estruturada e profissional, em português do Brasil.
+
+REGRAS (Conselho Federal de Psicologia) — INEGOCIÁVEIS:
+- Você é ferramenta de APOIO. NÃO invente fatos, sintomas, hipóteses ou diagnósticos que o \
+psicólogo não tenha registrado. Apenas organize e redija melhor o que foi fornecido.
+- NÃO dê diagnóstico (CID/DSM), conduta ou prescrição por conta própria. Se o psicólogo registrou, \
+mantenha; nunca acrescente o que ele não disse.
+- O resultado é um RASCUNHO para o psicólogo revisar e editar. Ele é o responsável técnico.
+
+ESTRUTURE assim (omita seções sem informação):
+📋 QUEIXA/DEMANDA DA SESSÃO
+🗣️ RELATO / CONTEÚDO TRABALHADO
+🔍 OBSERVAÇÕES CLÍNICAS (apenas as registradas pelo profissional)
+🎯 CONDUTA / ENCAMINHAMENTOS / TAREFAS (apenas as registradas)
+
+Seja conciso, técnico e fiel. Ao final, em linha separada, escreva:
+"— Rascunho gerado por IA a partir das suas anotações. Revise e edite antes de salvar no prontuário."
+"""
+
+
+def _gera_evolucao(notas, audio_b64=None, mime=None):
+    """Gera um rascunho de evolução clínica (texto e/ou áudio). Requer GEMINI_API_KEY.
+    Retorna o texto, ou None se sem chave / sem entrada / falha."""
+    if not GEMINI_KEY:
+        return None
+    parts = []
+    if notas:
+        parts.append({'text': f'ANOTAÇÕES DO PSICÓLOGO:\n{notas}'})
+    if audio_b64 and mime:
+        parts.append({'inline_data': {'mime_type': mime, 'data': audio_b64}})
+        parts.append({'text': 'Transcreva o áudio da sessão e organize na evolução estruturada acima.'})
+    if not parts:
+        return None
+    try:
+        txt, _, _ = _gemini_call(SYSTEM_EVOLUCAO, [{'role': 'user', 'parts': parts}],
+                                 max_tokens=1200, temperature=0.3)
+        return txt
+    except Exception as e:
+        log.warning(f'[Amparo] geração de evolução falhou: {e}')
+        return None
+
+
+@amparo_bp.route('/pacientes/<int:pid>/evolucao', methods=['POST'])
+@_login_required
+def evolucao_gerar(pid):
+    psi = _psi_atual()
+    pac = get_paciente(psi['id'], pid)
+    if not pac:
+        abort(404)
+    # Consentimento do paciente p/ registrar a sessão — exigência do CFP.
+    if not request.form.get('consentimento'):
+        return redirect(f'/amparo/pacientes/{pid}?erro=evo_consent')
+    notas = (request.form.get('notas') or '').strip()
+    audio_b64 = mime = None
+    f = request.files.get('audio')
+    if f and f.filename:
+        import base64
+        raw = f.read()
+        if len(raw) > 18 * 1024 * 1024:        # ~18MB = limite do envio inline ao Gemini
+            return redirect(f'/amparo/pacientes/{pid}?erro=evo_audio')
+        audio_b64 = base64.b64encode(raw).decode()
+        mime = f.mimetype or 'audio/ogg'
+    if not (notas or audio_b64):
+        return redirect(f'/amparo/pacientes/{pid}?erro=evo_vazio')
+    texto = _gera_evolucao(notas, audio_b64, mime)
+    if not texto:
+        return redirect(f'/amparo/pacientes/{pid}?erro=evo_ia')
+    eid = criar_evolucao(pid, psi['id'], 'audio' if audio_b64 else 'texto', texto)
+    return redirect(f'/amparo/evolucao/{eid}')
+
+
+@amparo_bp.route('/evolucao/<int:eid>')
+@_login_required
+def evolucao_ver(eid):
+    psi = _psi_atual()
+    evo = get_evolucao(psi['id'], eid)
+    if not evo:
+        abort(404)
+    pac = get_paciente(psi['id'], evo['paciente_id'])
+    return render_template('amparo/evolucao.html', psi=psi, evo=evo, pac=pac)
+
+
+@amparo_bp.route('/evolucao/<int:eid>/salvar', methods=['POST'])
+@_login_required
+def evolucao_salvar(eid):
+    psi = _psi_atual()
+    evo = get_evolucao(psi['id'], eid)
+    if not evo:
+        abort(404)
+    update_evolucao(psi['id'], eid, (request.form.get('conteudo') or '').strip())
+    return redirect(f'/amparo/pacientes/{evo["paciente_id"]}')

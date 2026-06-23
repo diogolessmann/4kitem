@@ -1,0 +1,28 @@
+{% extends "amparo/base.html" %}
+{% block title %}Evolução — Amparo{% endblock %}
+{% block content %}
+
+<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+  <h1 style="font-size:22px;margin:0">Evolução da sessão</h1>
+  <a href="/amparo/pacientes/{{ pac['id'] }}" class="btn ghost">← {{ pac['nome'] }}</a>
+</div>
+<p class="muted">{{ pac['nome'] }} · {{ evo['created_at'][:16] }} · origem: {{ evo['origem'] }}</p>
+
+<div class="card" style="background:var(--sage);border-color:#cfe0db;margin-top:10px">
+  <p style="margin:0;font-size:13px">
+    🛡️ <strong>Este é um rascunho gerado por IA</strong> a partir das suas anotações. A IA não
+    diagnostica nem inventa. <strong>Revise, edite e salve</strong> — a responsabilidade técnica é sua.
+  </p>
+</div>
+
+<form method="post" action="/amparo/evolucao/{{ evo['id'] }}/salvar" class="card" style="margin-top:14px">
+  <textarea name="conteudo" rows="18"
+    style="width:100%;padding:14px;border:1px solid var(--line);border-radius:10px;font-size:14px;font-family:inherit;line-height:1.6">{{ evo['conteudo'] }}</textarea>
+  <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+    <button type="submit" class="btn">Salvar evolução revisada</button>
+    <a href="/amparo/pacientes/{{ pac['id'] }}" class="btn ghost">Cancelar</a>
+  </div>
+  {% if evo['revisado'] %}<p class="muted" style="font-size:12px;margin:8px 0 0">✅ Já revisada por você.</p>{% endif %}
+</form>
+
+{% endblock %}
