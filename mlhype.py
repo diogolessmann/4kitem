@@ -545,6 +545,11 @@ def rodar_esteira(pid, cat_id=None):
     cat_nome = _nome_cat(cat_id) if cat_id else ''
     fornecedores = db.match_fornecedores(cat_id or prod.get('category_id') or '',
                                          cat_nome, nome, limit=5)
+    # FREIO anti-absurdo: descarta custo IMPLAUSÍVEL (mismatch de keyword — ex.:
+    # fornecedor de "fone" R$16 casando num celular de R$800). < 8% do preço = lixo.
+    if preco_lider:
+        fornecedores = [f for f in fornecedores
+                        if not (f.get('menor_preco') and f['menor_preco'] < preco_lider * 0.08)]
     res['fornecedores'] = fornecedores
     menor_custo = None
     for f in fornecedores:
@@ -576,7 +581,10 @@ def rodar_esteira(pid, cat_id=None):
                 'menor_preco_fornecedor_br': menor_custo, 'comissao_ml_pct': comissao_pct})
             fraquezas = out['fraquezas']
             avaliacao = out['avaliacao']
-            if avaliacao.get('veredito') != 'evite':
+            # veredito SEMPRE coerente com o score (acaba o "45/100 mas ATAQUE")
+            _sc = avaliacao.get('score') or 0
+            avaliacao['veredito'] = 'ataque' if _sc >= 65 else ('observe' if _sc >= 40 else 'evite')
+            if avaliacao['veredito'] != 'evite':
                 ficha = out['ficha']
         except Exception as e:
             res['ia_falhou'] = True
@@ -651,6 +659,7 @@ _FICHA_HTML = '''<!doctype html><html lang=pt-br><head><meta charset=utf-8>
   <span class="vd {{r.avaliacao.veredito}}">{{r.avaliacao.veredito|upper}}</span>
   {% if r.avaliacao.margem_pct is not none %}<span class=meta>margem ~{{r.avaliacao.margem_pct}}%</span>{% endif %}
  </div>
+ <div class=meta style="font-size:11px">Score 0-100: quanto maior, melhor a brecha (muita procura × pouca concorrência × margem boa). <b>65+</b> ataca · <b>40-64</b> observa · abaixo evita. <b>100</b> = bombando e quase sem concorrente.</div>
  {% if r.avaliacao.porque %}<div class=meta>{{r.avaliacao.porque}}</div>{% endif %}
  {% if r.avaliacao.como_melhorar %}<ul>{% for c in r.avaliacao.como_melhorar %}<li>{{c}}</li>{% endfor %}</ul>{% endif %}
  <div class=meta>{{r.num_concorrentes or '—'}} concorrentes · tendência: {{r.tendencia}}{% if r.comissao_ml_pct %} · taxa ML ~{{r.comissao_ml_pct}}%{% endif %}{% if r.novo %} · 🌱 catálogo novo ({{r.dias_catalogo}}d — alvo fácil){% endif %}</div>
@@ -1019,26 +1028,22 @@ def mlhype_admin_descobrir():
 
 
 def _seed_fornecedores_exemplo():
-    """Semeia 2 fornecedores de EXEMPLO (claramente marcados) só pra a Ficha
-    mostrar o formato do moat. Diogo substitui pelos reais no /admin."""
+    """LIMPEZA: remove os fornecedores de EXEMPLO antigos (davam custo FALSO — ex.:
+    R$16 num celular, gerando margem fake). A base agora é só real, curada pelo
+    Diogo via o Caçador. (Mantém o nome p/ não mexer no ponto de chamada do boot.)"""
     try:
         import mlhype_db as db
-        if db.listar_fornecedores():
-            return
-        s1 = db.add_fornecedor('Fornecedor Exemplo — Eletrônicos (edite no admin)',
-                               categorias='MLB1051 MLB1000 celular fone carregador capa eletronicos',
-                               uf='SP', contato='exemplo@fornecedor.com.br', fonte='exemplo',
-                               obs='EXEMPLO — apague e cadastre os reais')
-        db.add_fornecedor_preco(s1, 'celular', 480.0, prazo_entrega_dias=7, garantia='3 meses')
-        db.add_fornecedor_preco(s1, 'fone', 16.0, prazo_entrega_dias=7)
-        s2 = db.add_fornecedor('Fornecedor Exemplo — Casa & Eletro (edite no admin)',
-                               categorias='MLB5726 MLB1574 liquidificador chaleira fritadeira eletrodomestico casa',
-                               uf='SC', contato='exemplo2@fornecedor.com.br', fonte='exemplo',
-                               obs='EXEMPLO — apague e cadastre os reais')
-        db.add_fornecedor_preco(s2, 'eletrodomestico', 42.0, prazo_entrega_dias=5)
-        log.info('[MLhype] fornecedores de exemplo semeados')
+        conn = db.get_mlhype_db()
+        ids = [r['id'] for r in conn.execute(
+            "SELECT id FROM mlhype_suppliers WHERE fonte='exemplo'").fetchall()]
+        for sid in ids:
+            conn.execute('DELETE FROM mlhype_supplier_prices WHERE supplier_id=?', (sid,))
+        conn.execute("DELETE FROM mlhype_suppliers WHERE fonte='exemplo'")
+        conn.commit(); conn.close()
+        if ids:
+            log.info(f'[MLhype] removidos {len(ids)} fornecedores de exemplo (dado falso)')
     except Exception as e:
-        log.warning(f'[MLhype] seed fornecedores falhou: {e}')
+        log.warning(f'[MLhype] limpeza de exemplos falhou: {e}')
 
 
 # ── Coletor diário multi-categoria (Passo 3) ──────────────────────────────────
