@@ -17,7 +17,7 @@ from mlhype_db import (init_mlhype_db, estatisticas,
                        radar_top, radar_trends, radar_categorias_com_dados,
                        criar_usuario, usuario_por_email, usuario_por_id, marcar_acesso,
                        plano_efetivo, plano_libera, contar_buscas_hoje, registrar_uso,
-                       FREE_BUSCAS_DIA, get_mlhype_db)
+                       FREE_BUSCAS_DIA, get_mlhype_db, oportunidades)
 
 log = logging.getLogger(__name__)
 
@@ -90,8 +90,8 @@ def mlhype_home():
     u = _usuario_atual()
     if u:
         primeiro = ((u.get('nome') or '').split() or ['você'])[0]
-        botoes = ('<a class="btn" href="/mlhype/radar">📡 Abrir o Radar →</a>'
-                  f'<div class="sub2">Logado como {primeiro} · <a class="link" href="/mlhype/sair">sair</a></div>')
+        botoes = ('<a class="btn" href="/mlhype/oportunidades">💡 Ver dicas do que vender →</a>'
+                  f'<div class="sub2"><a class="link" href="/mlhype/radar">explorar o Radar</a> · {primeiro} · <a class="link" href="/mlhype/sair">sair</a></div>')
     else:
         botoes = ('<a class="btn" href="/mlhype/cadastrar">Criar conta grátis →</a>'
                   '<div class="sub2"><a class="link" href="/mlhype/entrar">já tenho conta · entrar</a></div>')
@@ -258,7 +258,7 @@ _RADAR_HTML = '''<!doctype html><html lang=pt-br><head><meta charset=utf-8>
 </style></head><body><div class=wrap>
 <header>
  <h1>MLhype <span class=fire>🔥</span> · Radar de Demanda</h1>
- <span style="font-size:13px;color:var(--mut)"><a href="/mlhype/planos" style="color:#b9a6ff;font-weight:700">planos</a> · {% if nome %}{{nome.split()[0]}} · {% endif %}<a href="/mlhype/sair">sair</a></span>
+ <span style="font-size:13px;color:var(--mut)"><a href="/mlhype/oportunidades" style="color:#5ee0a0;font-weight:700">💡 Dicas</a> · <a href="/mlhype/planos" style="color:#b9a6ff;font-weight:700">planos</a> · {% if nome %}{{nome.split()[0]}} · {% endif %}<a href="/mlhype/sair">sair</a></span>
 </header>
 {% if seletor %}
 <form method=get><select name=cat onchange="this.form.submit()">
@@ -315,6 +315,69 @@ def mlhype_radar():
         _RADAR_HTML, cat=cat, cat_nome=_nome_cat(cat) if cat else '',
         data=data, linhas=linhas, seletor=seletor, trends=radar_trends(25), fmt=_fmt_brl,
         nome=session.get('mlhype_user_nome', ''))
+
+
+# ── PENTE FINO: "Dicas do que vender" — feed proativo de oportunidades ─────────
+_OPS_HTML = '''<!doctype html><html lang=pt-br><head><meta charset=utf-8>
+<meta name=viewport content="width=device-width,initial-scale=1"><title>MLhype · Dicas do que vender</title>
+<style>
+ :root{--bg:#0b1020;--card:#0f1730;--bd:#21304f;--mut:#8aa0c6;--txt:#e7ecf5;--ac:#7cc0ff}
+ *{box-sizing:border-box} body{font-family:system-ui,Segoe UI,sans-serif;background:var(--bg);color:var(--txt);margin:0;padding:18px}
+ .wrap{max-width:980px;margin:0 auto} a{color:var(--ac);text-decoration:none}
+ header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:6px}
+ h1{font-size:21px;margin:0} .fire{background:linear-gradient(135deg,#2f6bff,#7c3aed);-webkit-background-clip:text;background-clip:text;color:transparent}
+ .sub{color:var(--mut);font-size:13px;margin:0 0 16px}
+ .op{display:flex;align-items:center;gap:14px;background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:12px 14px;margin:9px 0}
+ .sc{flex:0 0 64px;text-align:center} .scn{font-size:26px;font-weight:800;line-height:1} .scl{font-size:10px;color:var(--mut);text-transform:uppercase;letter-spacing:.4px}
+ .sc-hi .scn{color:#5ee0a0} .sc-mid .scn{color:#ffd35e} .sc-lo .scn{color:#9fb0d0}
+ .info{flex:1;min-width:0} .pn{font-weight:600;line-height:1.3} .meta{color:var(--mut);font-size:12px;margin-top:2px}
+ .tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+ .tag{font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px}
+ .t-brecha{background:#062a17;color:#5ee0a0;border:1px solid #155a38} .t-sobe{background:#0a1f3a;color:#7cc0ff;border:1px solid #1c3a5e}
+ .t-forn{background:#1c1340;color:#cbbaf5;border:1px solid #4a2da0} .t-cat{background:#11182e;color:#8aa0c6;border:1px solid #21304f}
+ .go{flex:0 0 auto;background:linear-gradient(135deg,#2f6bff,#7c3aed);color:#fff;padding:9px 14px;border-radius:8px;font-weight:700;font-size:13px;white-space:nowrap}
+ .empty{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:30px;text-align:center;color:var(--mut)}
+</style></head><body><div class=wrap>
+<header>
+ <h1>MLhype <span class=fire>🔥</span> · Dicas do que vender</h1>
+ <span style="font-size:13px;color:var(--mut)"><a href="/mlhype/radar">Radar</a> · <a href="/mlhype/planos" style="color:#b9a6ff;font-weight:700">planos</a> · {% if nome %}{{nome.split()[0]}} · {% endif %}<a href="/mlhype/sair">sair</a></span>
+</header>
+<p class=sub>O motor varreu <b>{{cat_nome}}</b> e rankeou onde mais vale a pena atacar: <b>muita procura × pouca concorrência</b>. Quanto maior o Score, melhor a brecha.</p>
+{% if ops %}
+{% for o in ops %}
+ {% set cls = 'sc-hi' if o.score>=70 else ('sc-mid' if o.score>=50 else 'sc-lo') %}
+ <div class="op {{cls}}">
+  <div class=sc><div class=scn>{{o.score}}</div><div class=scl>oportun.</div></div>
+  <div class=info>
+   <div class=pn>{{o.titulo or o.mlb_item_id}}</div>
+   <div class=meta>#{{o.pos}} no Top · {{o.num_ofertas if o.num_ofertas is not none else '—'}} concorrentes · líder {{fmt(o.preco)}}</div>
+   <div class=tags>
+    <span class="tag t-cat">{{o.cat_nome}}</span>
+    {% if o.brecha %}<span class="tag t-brecha">🎯 brecha</span>{% endif %}
+    {% if o.tendencia=='subindo' %}<span class="tag t-sobe">📈 subindo</span>{% endif %}
+    {% if o.tem_fornecedor %}<span class="tag t-forn">🏷️ tem fornecedor</span>{% endif %}
+   </div>
+  </div>
+  <a class=go href="/mlhype/analisar/{{o.mlb_item_id}}?cat={{o.categoria_id}}">⚡ Analisar</a>
+ </div>
+{% endfor %}
+{% else %}<div class=empty>O coletor ainda está enchendo o mercado — volte em alguns minutos pras dicas aparecerem.</div>{% endif %}
+</div></body></html>'''
+
+
+@mlhype_bp.route('/oportunidades')
+def mlhype_oportunidades():
+    """Pente fino: as melhores oportunidades do mercado, rankeadas pelo motor."""
+    _r = _exige_login()
+    if _r:
+        return _r
+    cat = request.args.get('cat')
+    ops = oportunidades(limit=30, categoria=cat)
+    for o in ops:
+        o['cat_nome'] = _nome_cat(o['categoria_id'])
+    return render_template_string(
+        _OPS_HTML, ops=ops, fmt=_fmt_brl, nome=session.get('mlhype_user_nome', ''),
+        cat=cat, cat_nome=_nome_cat(cat) if cat else 'todo o mercado')
 
 
 # ── A ESTEIRA: orquestrador dos agentes (Passos 6, 7, 9) ──────────────────────

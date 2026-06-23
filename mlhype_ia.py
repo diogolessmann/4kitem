@@ -75,6 +75,16 @@ def _ia_json(system, payload, max_tokens=2048, temperature=0.4):
     raise RuntimeError('IA indisponível — ' + ' | '.join(erros or ['sem chave configurada']))
 
 
+def _cap60(t):
+    """Limita o título a 60 chars cortando na ÚLTIMA palavra inteira (não no meio)."""
+    t = (t or '').strip()
+    if len(t) <= 60:
+        return t
+    corte = t[:60]
+    sp = corte.rfind(' ')
+    return (corte[:sp] if sp > 40 else corte).rstrip(' ,-+')
+
+
 # ── A esteira inteira numa tacada (Dissecador + Avaliador + Ficha) ─────────────
 _SYS_ESTEIRA = '''Você é o cérebro do MLhype, analista frio de oportunidades de
 venda no Mercado Livre Brasil. Recebe o produto LÍDER de uma categoria e faz 3
@@ -131,7 +141,7 @@ def analisar_esteira(dados):
         av['como_melhorar'] = []
 
     fi = out.get('ficha') if isinstance(out.get('ficha'), dict) else {}
-    fi['titulo_otimizado'] = (fi.get('titulo_otimizado') or '')[:60]
+    fi['titulo_otimizado'] = _cap60(fi.get('titulo_otimizado'))
     fi['bullets'] = [str(b) for b in fi.get('bullets', [])][:5] if isinstance(fi.get('bullets'), list) else []
     fi.setdefault('preco_venda_sugerido', None)
     fi.setdefault('margem_pct', None)

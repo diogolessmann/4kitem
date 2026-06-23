@@ -558,3 +558,60 @@ def marcar_acesso(uid):
     conn.execute('UPDATE mlhype_users SET ultimo_acesso=? WHERE id=?',
                  (datetime.utcnow().isoformat(), uid))
     conn.commit(); conn.close()
+
+
+# ── PENTE FINO: Índice de Oportunidade (o motor que sabe o que vale a pena) ────
+# Heurística determinística (sem IA, roda sobre TODO o mercado coletado):
+# o ouro = ALTA demanda (posição no Top) × BAIXA concorrência (poucas ofertas),
+# com bônus pra tendência subindo e pra ter fornecedor (margem garantida).
+def _demanda_score(pos):
+    """Posição no Top → demanda. pos 1 = 100; cai ~4 pts por posição."""
+    return max(5, 100 - (int(pos) - 1) * 4) if pos else 30
+
+
+def _facilidade_score(num_ofertas):
+    """Menos concorrentes = mais fácil atacar. 1 oferta≈87, 10≈40, 100≈6."""
+    if not num_ofertas:
+        return 55
+    return max(3, round(100 / (1 + int(num_ofertas) * 0.15)))
+
+
+def oportunidades(limit=20, categoria=None):
+    """Varre o último snapshot de cada produto, pontua a oportunidade e devolve
+    as melhores rankeadas. base = média geométrica(demanda, facilidade) — exige
+    as DUAS coisas decentes (vende E dá pra atacar); + bônus tendência/fornecedor."""
+    conn = get_mlhype_db()
+    q = '''SELECT l.id AS lid, l.mlb_item_id, l.titulo, l.categoria_id,
+                  s.posicao_ranking AS pos, s.num_ofertas, s.preco
+           FROM mlhype_listings l
+           JOIN mlhype_snapshots s ON s.listing_id = l.id
+           WHERE s.collected_at = (SELECT MAX(collected_at) FROM mlhype_snapshots
+                                   WHERE listing_id = l.id)
+             AND s.posicao_ranking IS NOT NULL'''
+    params = []
+    if categoria:
+        q += ' AND l.categoria_id = ?'
+        params.append(categoria)
+    rows = [dict(r) for r in conn.execute(q, params).fetchall()]
+    conn.close()
+
+    for r in rows:
+        d = _demanda_score(r['pos'])
+        f = _facilidade_score(r['num_ofertas'])
+        r['base'] = round((d * f) ** 0.5)            # média geométrica
+    rows.sort(key=lambda x: x['base'], reverse=True)
+
+    # Trabalho mais caro (tendência + fornecedor) só nos finalistas
+    cand = rows[:max(limit * 2, 40)]
+    for r in cand:
+        tend = tendencia_produto(r['mlb_item_id'])
+        bonus = 10 if tend == 'subindo' else (-8 if tend == 'caindo' else 0)
+        tem_forn = bool(match_fornecedores(r['categoria_id'] or '', '', r['titulo'] or '', limit=1))
+        if tem_forn:
+            bonus += 8
+        r['tendencia'] = tend
+        r['tem_fornecedor'] = tem_forn
+        r['brecha'] = (r['num_ofertas'] is not None and r['num_ofertas'] <= 3)
+        r['score'] = max(0, min(100, r['base'] + bonus))
+    cand.sort(key=lambda x: x['score'], reverse=True)
+    return cand[:limit]
