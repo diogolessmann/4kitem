@@ -209,6 +209,17 @@ def init_mlhype_db():
     ''')
     conn.commit()
 
+    # ── Feedback do vendedor (Lote A — o motor aprende) ────────────────────────
+    conn.execute('''CREATE TABLE IF NOT EXISTS mlhype_feedback (
+        id           INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id      INTEGER,
+        mlb_item_id  TEXT,
+        categoria_id TEXT,
+        acao         TEXT,        -- vendi | ataquei | nao_rolou
+        created_at   TEXT DEFAULT CURRENT_TIMESTAMP)''')
+    conn.execute('CREATE INDEX IF NOT EXISTS idx_mlhype_fb_user ON mlhype_feedback(user_id, categoria_id)')
+    conn.commit()
+
     # ── Migrações seguras (ADD COLUMN se a tabela já existia sem a coluna) ──────
     for migration in [
         "ALTER TABLE mlhype_users ADD COLUMN plano TEXT DEFAULT 'free'",
@@ -560,6 +571,30 @@ def marcar_acesso(uid):
     conn.commit(); conn.close()
 
 
+# ── Feedback / aprendizado (Lote A — o motor aprende o que vale pra cada um) ───
+def registrar_feedback(user_id, mlb_item_id, categoria_id, acao):
+    if acao not in ('vendi', 'ataquei', 'nao_rolou'):
+        return
+    conn = get_mlhype_db()
+    conn.execute('INSERT INTO mlhype_feedback (user_id, mlb_item_id, categoria_id, acao) '
+                 'VALUES (?,?,?,?)', (user_id, mlb_item_id, categoria_id, acao))
+    conn.commit(); conn.close()
+
+
+def categorias_quentes_usuario(user_id):
+    """Categorias onde o usuário marcou 'vendi'/'ataquei' → recebem boost no feed
+    DELE (personalização: o nicho que ele toca sobe). Retorna {categoria: peso}."""
+    if not user_id:
+        return {}
+    conn = get_mlhype_db()
+    rows = conn.execute(
+        "SELECT categoria_id, COUNT(*) AS n FROM mlhype_feedback "
+        "WHERE user_id=? AND acao IN ('vendi','ataquei') AND categoria_id IS NOT NULL "
+        "GROUP BY categoria_id", (user_id,)).fetchall()
+    conn.close()
+    return {r['categoria_id']: r['n'] for r in rows}
+
+
 # ── PENTE FINO: Índice de Oportunidade (o motor que sabe o que vale a pena) ────
 # Heurística determinística (sem IA, roda sobre TODO o mercado coletado):
 # o ouro = ALTA demanda (posição no Top) × BAIXA concorrência (poucas ofertas),
@@ -576,10 +611,11 @@ def _facilidade_score(num_ofertas):
     return max(3, round(100 / (1 + int(num_ofertas) * 0.15)))
 
 
-def oportunidades(limit=20, categoria=None):
+def oportunidades(limit=20, categoria=None, user_id=None):
     """Varre o último snapshot de cada produto, pontua a oportunidade e devolve
     as melhores rankeadas. base = média geométrica(demanda, facilidade) — exige
-    as DUAS coisas decentes (vende E dá pra atacar); + bônus tendência/fornecedor."""
+    as DUAS coisas decentes (vende E dá pra atacar); + bônus tendência/fornecedor
+    + boost PERSONALIZADO (nichos onde o usuário marcou vendi/ataquei)."""
     conn = get_mlhype_db()
     q = '''SELECT l.id AS lid, l.mlb_item_id, l.titulo, l.categoria_id,
                   s.posicao_ranking AS pos, s.num_ofertas, s.preco
@@ -603,12 +639,16 @@ def oportunidades(limit=20, categoria=None):
 
     # Trabalho mais caro (tendência + fornecedor) só nos finalistas
     cand = rows[:max(limit * 2, 40)]
+    quentes = categorias_quentes_usuario(user_id)
     for r in cand:
         tend = tendencia_produto(r['mlb_item_id'])
         bonus = 10 if tend == 'subindo' else (-8 if tend == 'caindo' else 0)
         tem_forn = bool(match_fornecedores(r['categoria_id'] or '', '', r['titulo'] or '', limit=1))
         if tem_forn:
             bonus += 8
+        r['personalizado'] = r['categoria_id'] in quentes
+        if r['personalizado']:
+            bonus += min(15, 8 + quentes[r['categoria_id']] * 2)   # boost do nicho do usuário
         r['tendencia'] = tend
         r['tem_fornecedor'] = tem_forn
         r['brecha'] = (r['num_ofertas'] is not None and r['num_ofertas'] <= 3)

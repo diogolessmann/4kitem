@@ -17,7 +17,7 @@ from mlhype_db import (init_mlhype_db, estatisticas,
                        radar_top, radar_trends, radar_categorias_com_dados,
                        criar_usuario, usuario_por_email, usuario_por_id, marcar_acesso,
                        plano_efetivo, plano_libera, contar_buscas_hoje, registrar_uso,
-                       FREE_BUSCAS_DIA, get_mlhype_db, oportunidades)
+                       FREE_BUSCAS_DIA, get_mlhype_db, oportunidades, registrar_feedback)
 
 log = logging.getLogger(__name__)
 
@@ -384,6 +384,7 @@ _OPS_HTML = '''<!doctype html><html lang=pt-br><head><meta charset=utf-8>
     {% if o.brecha %}<span class="tag t-brecha">🎯 brecha</span>{% endif %}
     {% if o.tendencia=='subindo' %}<span class="tag t-sobe">📈 subindo</span>{% endif %}
     {% if o.tem_fornecedor %}<span class="tag t-forn">🏷️ tem fornecedor</span>{% endif %}
+    {% if o.personalizado %}<span class="tag t-brecha">🎯 seu nicho</span>{% endif %}
    </div>
   </div>
   <a class=go href="/mlhype/analisar/{{o.mlb_item_id}}?cat={{o.categoria_id}}">⚡ Analisar</a>
@@ -400,7 +401,7 @@ def mlhype_oportunidades():
     if _r:
         return _r
     cat = request.args.get('cat')
-    ops = oportunidades(limit=30, categoria=cat)
+    ops = oportunidades(limit=30, categoria=cat, user_id=session.get('mlhype_user_id'))
     for o in ops:
         o['cat_nome'] = _nome_cat(o['categoria_id'])
     return render_template_string(
@@ -674,6 +675,16 @@ _FICHA_HTML = '''<!doctype html><html lang=pt-br><head><meta charset=utf-8>
 {% elif r.avaliacao.veredito == 'evite' %}
 <div class=card><div class=warn>O Avaliador marcou <b>EVITE</b> — a esteira parou aqui pra te poupar de uma cilada.</div></div>
 {% endif %}
+
+<div class=card>
+ <h3>🧠 Conta pro motor: o que rolou com esse?</h3>
+ <div id=fbrow style="display:flex;gap:8px;flex-wrap:wrap">
+  <button onclick="fetch('/mlhype/feedback',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pid:'{{r.pid}}',cat:'{{r.cat_id}}',acao:'vendi'})});document.getElementById('fbrow').innerHTML='&#9989; Anotado! O motor vai priorizar esse nicho pra voce.'" style="flex:1;min-width:108px;background:#062a17;color:#5ee0a0;border:1px solid #155a38;border-radius:8px;padding:11px;font-weight:700;cursor:pointer">&#9989; Ja vendi</button>
+  <button onclick="fetch('/mlhype/feedback',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pid:'{{r.pid}}',cat:'{{r.cat_id}}',acao:'ataquei'})});document.getElementById('fbrow').innerHTML='&#9989; Anotado! O motor vai priorizar esse nicho pra voce.'" style="flex:1;min-width:108px;background:#1c1340;color:#cbbaf5;border:1px solid #4a2da0;border-radius:8px;padding:11px;font-weight:700;cursor:pointer">&#9876; Vou atacar</button>
+  <button onclick="fetch('/mlhype/feedback',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pid:'{{r.pid}}',cat:'{{r.cat_id}}',acao:'nao_rolou'})});document.getElementById('fbrow').innerHTML='&#9989; Anotado! O motor vai priorizar esse nicho pra voce.'" style="flex:1;min-width:108px;background:#2a1a06;color:#ffb267;border:1px solid #5a3a15;border-radius:8px;padding:11px;font-weight:700;cursor:pointer">&#10006; Nao rolou</button>
+ </div>
+ <div class=meta style="margin-top:8px">Suas marcações ensinam o motor a priorizar o teu nicho nas Dicas. 🧠</div>
+</div>
 </div></body></html>'''
 
 
@@ -732,6 +743,22 @@ def mlhype_analisar_run(pid):
                 f'<a href="/mlhype/radar" style="color:#7cc0ff">← voltar ao Radar</a></div>'), 500
     r['pode_fornecedor'] = plano_libera(plano, 'fornecedor')
     return render_template_string(_FICHA_HTML, r=r, fmt=_fmt_brl)
+
+
+@mlhype_bp.route('/feedback', methods=['POST'])
+def mlhype_feedback():
+    """O vendedor marca vendi/ataquei/não rolou → o motor aprende o nicho dele."""
+    if not session.get('mlhype_user_id'):
+        return jsonify({'erro': 'login'}), 401
+    d = request.get_json(silent=True) or {}
+    acao = (d.get('acao') or '').strip()
+    if acao not in ('vendi', 'ataquei', 'nao_rolou'):
+        return jsonify({'erro': 'acao inválida'}), 400
+    try:
+        registrar_feedback(session['mlhype_user_id'], d.get('pid'), d.get('cat'), acao)
+        return jsonify({'ok': True})
+    except Exception as e:
+        return jsonify({'erro': str(e)}), 500
 
 
 # ── Admin de Fornecedores (Passo 8) — gate simples por ML_SECRET ──────────────
