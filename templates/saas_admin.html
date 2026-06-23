@@ -90,6 +90,7 @@
     <button class="tab-btn" onclick="showTab('radar',this)">📡 Radar TI ({{ radar_users|length }})</button>
     <button class="tab-btn" onclick="showTab('licita',this)">🗞️ Licita Norte ({{ licita_users|length }})</button>
     <button class="tab-btn" onclick="showTab('somaja',this)">🐗 SomaJá ({{ somaja_users|length }})</button>
+    <button class="tab-btn" onclick="showTab('mlhype',this)">🔥 MLhype ({{ mlhype_users|length }})</button>
   </div>
 
   <!-- ═══════════════ ALERTA SC ═══════════════ -->
@@ -832,6 +833,59 @@
   async function somaResetSenha(uid){
     const senha = prompt('Nova senha (mín. 6 caracteres):'); if(!senha) return;
     const r = await fetch('/saas-admin/somaja/reset-senha', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({user_id:uid, senha:senha})});
+    const j = await r.json(); alert(j.ok ? 'Senha alterada! ✅' : (j.erro || 'Erro'));
+  }
+  </script>
+
+  <!-- MLhype -->
+  <div class="tab-content" id="tab-mlhype">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+      <h2 style="margin:0">🔥 Usuários — MLhype</h2>
+      <div style="display:flex;gap:18px;font-size:13px;color:var(--text2)">
+        <span>👤 {{ mlhype_users|length }} usuários</span>
+        <span style="color:#22c55e;font-weight:700">✅ {{ mlhype_ativos }} pagantes</span>
+      </div>
+    </div>
+    {% if mlhype_users %}
+    <table>
+      <thead><tr>
+        <th>#</th><th>Nome</th><th>Email</th><th>Telefone</th><th>Plano</th><th>Status</th><th>Criado em</th><th>Ações</th>
+      </tr></thead>
+      <tbody>
+      {% for u in mlhype_users %}
+      <tr>
+        <td>{{ u.id }}</td>
+        <td><strong>{{ u.nome }}</strong></td>
+        <td>{{ u.email }}</td>
+        <td>{{ u.telefone or '—' }}</td>
+        <td><strong>{{ u.plano or 'free' }}</strong></td>
+        <td>
+          {% if u.plan_active %}<span class="badge badge-active">✅ Pagante</span>
+          {% else %}<span style="color:var(--text2);font-size:12px">grátis</span>{% endif %}
+        </td>
+        <td style="font-size:12px">{{ (u.created_at or '')[:10] }}</td>
+        <td style="white-space:nowrap">
+          <button onclick="mlhypeSetPlan({{ u.id }})" style="font-size:12px;padding:4px 10px;border-radius:7px;border:none;cursor:pointer;background:#ddd6fe;color:#5b21b6">Plano</button>
+          <button onclick="mlhypeResetSenha({{ u.id }})" style="font-size:12px;padding:4px 10px;border-radius:7px;border:none;cursor:pointer;background:#e2e8f0;color:#334155">Senha</button>
+        </td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty">Nenhum usuário MLhype ainda.</div>
+    {% endif %}
+  </div>
+  <script>
+  async function mlhypeSetPlan(uid){
+    const plano = prompt('Plano do usuário: free · starter · pro · business', 'pro');
+    if(!plano) return;
+    const r = await fetch('/saas-admin/mlhype/set-plan', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({user_id:uid, plano:plano.trim()})});
+    const j = await r.json(); if(j.ok){ location.reload(); } else { alert(j.erro || 'Erro'); }
+  }
+  async function mlhypeResetSenha(uid){
+    const senha = prompt('Nova senha (mín. 6 caracteres):'); if(!senha) return;
+    const r = await fetch('/saas-admin/mlhype/reset-senha', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({user_id:uid, senha:senha})});
     const j = await r.json(); alert(j.ok ? 'Senha alterada! ✅' : (j.erro || 'Erro'));
   }
   </script>

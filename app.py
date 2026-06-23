@@ -6240,6 +6240,17 @@ def saas_admin():
         somaconn.close()
     except Exception:
         somaja_users = []; somaja_lancamentos = 0; somaja_ativos = 0
+    # MLhype — inteligência p/ vendedores do Mercado Livre (banco próprio)
+    try:
+        from mlhype_db import get_mlhype_db as _get_mlhype_db
+        mlconn = _get_mlhype_db()
+        mlhype_users = [dict(r) for r in mlconn.execute(
+            'SELECT id, nome, email, telefone, plano, plan_active, created_at, ultimo_acesso '
+            'FROM mlhype_users ORDER BY id DESC').fetchall()]
+        mlhype_ativos = mlconn.execute('SELECT COUNT(*) FROM mlhype_users WHERE plan_active=1').fetchone()[0]
+        mlconn.close()
+    except Exception:
+        mlhype_users = []; mlhype_ativos = 0
     return render_template('saas_admin.html',
                            subscribers=subscribers, businesses=businesses,
                            mz_users=mz_users, mz_plans=MANDAZAP_PLANS,
@@ -6269,7 +6280,8 @@ def saas_admin():
                            licita_users=licita_users, licita_total=licita_total,
                            licita_noticia=licita_noticia, licita_cidades=licita_cidades,
                            somaja_users=somaja_users, somaja_lancamentos=somaja_lancamentos,
-                           somaja_ativos=somaja_ativos)
+                           somaja_ativos=somaja_ativos,
+                           mlhype_users=mlhype_users, mlhype_ativos=mlhype_ativos)
 
 
 @app.route('/saas-admin/slotzap/reset-senha', methods=['POST'])
@@ -6302,6 +6314,47 @@ def saas_sz_set_plan():
     conn.execute('UPDATE slotzap_users SET plan=?, plan_active=1, active=1 WHERE id=?', (plan, uid))
     conn.commit(); conn.close()
     return jsonify({'ok': True})
+
+
+@app.route('/saas-admin/mlhype/set-plan', methods=['POST'])
+@_saas_admin_required
+def saas_mlhype_set_plan():
+    """Define o plano (free/starter/pro/business) do usuário MLhype."""
+    data  = request.get_json() or {}
+    uid   = data.get('user_id')
+    plano = (data.get('plano') or 'free').strip()
+    if plano not in ('free', 'starter', 'pro', 'business'):
+        plano = 'free'
+    if not uid:
+        return jsonify({'erro': 'user_id obrigatório'}), 400
+    try:
+        from mlhype_db import get_mlhype_db as _gml
+        conn = _gml()
+        conn.execute('UPDATE mlhype_users SET plano=?, plan_active=? WHERE id=?',
+                     (plano, 0 if plano == 'free' else 1, uid))
+        conn.commit(); conn.close()
+        return jsonify({'ok': True})
+    except Exception as e:
+        return jsonify({'erro': str(e)}), 500
+
+
+@app.route('/saas-admin/mlhype/reset-senha', methods=['POST'])
+@_saas_admin_required
+def saas_mlhype_reset_senha():
+    data  = request.get_json() or {}
+    uid   = data.get('user_id')
+    senha = (data.get('senha') or '').strip()
+    if not uid or len(senha) < 6:
+        return jsonify({'erro': 'user_id e senha (mín. 6 chars) obrigatórios'}), 400
+    try:
+        from mlhype_db import get_mlhype_db as _gml
+        conn = _gml()
+        conn.execute('UPDATE mlhype_users SET password_hash=? WHERE id=?',
+                     (generate_password_hash(senha), uid))
+        conn.commit(); conn.close()
+        return jsonify({'ok': True})
+    except Exception as e:
+        return jsonify({'erro': str(e)}), 500
 
 
 @app.route('/saas-admin/somaja/set-plan', methods=['POST'])
