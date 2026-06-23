@@ -247,3 +247,40 @@ def item(item_id):
     except MLApiError as e:
         log.info(f'[MLhype] /items/{item_id} indisponível ({e.status})')
         return None
+
+
+_TAXA_CACHE = {}
+
+
+def taxas_ml(preco, categoria_id):
+    """Taxa de venda REAL do ML p/ um preço+categoria (endpoint oficial
+    /sites/MLB/listing_prices). Devolve {'classico': {pct, fixed, fee},
+    'premium': {...}} ou None. Cacheado por faixa de R$25 (a comissão muda pouco
+    com o preço; os custos fixos mudam por faixa)."""
+    try:
+        preco = float(preco)
+    except (TypeError, ValueError):
+        return None
+    if preco <= 0 or not categoria_id:
+        return None
+    chave = (categoria_id, int(preco // 25))
+    if chave in _TAXA_CACHE:
+        return _TAXA_CACHE[chave]
+    try:
+        data = ml_get('/sites/MLB/listing_prices',
+                      {'price': round(preco, 2), 'category_id': categoria_id})
+    except MLApiError:
+        return None
+    mapa = {'gold_special': 'classico', 'gold_pro': 'premium'}
+    out = {}
+    for lt in (data or []):
+        key = mapa.get(lt.get('listing_type_id'))
+        if key:
+            det = lt.get('sale_fee_details') or {}
+            out[key] = {'pct': det.get('percentage_fee'),
+                        'fixed': det.get('fixed_fee', 0) or 0,
+                        'fee': lt.get('sale_fee_amount')}
+    resultado = out or None
+    if len(_TAXA_CACHE) < 5000:
+        _TAXA_CACHE[chave] = resultado
+    return resultado

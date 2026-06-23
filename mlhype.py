@@ -230,6 +230,34 @@ def _fmt_brl(v):
         return '—'
 
 
+def calcular_margem(preco_venda, custo, categoria, frete=0, tipo='classico'):
+    """Lucro líquido REAL: preço − comissão (taxa oficial do ML) − frete − custo.
+    Usa a taxa real do endpoint listing_prices; cai p/ ~14% só se ele falhar."""
+    import mlhype_ml as ml
+    try:
+        preco_venda = float(preco_venda)
+    except (TypeError, ValueError):
+        return None
+    custo = float(custo or 0)
+    frete = float(frete or 0)
+    t = (ml.taxas_ml(preco_venda, categoria) or {})
+    t = t.get(tipo) or t.get('classico') or t.get('premium') or {}
+    comissao = t.get('fee')
+    estimado = comissao is None
+    if estimado:
+        comissao = round(preco_venda * 0.14, 2)
+        pct = 14
+    else:
+        comissao = round(float(comissao), 2)
+        pct = t.get('pct')
+    lucro = round(preco_venda - comissao - frete - custo, 2)
+    margem = round(lucro / preco_venda * 100, 1) if preco_venda else 0
+    markup = round(lucro / custo * 100, 1) if custo else None
+    return {'preco': preco_venda, 'comissao': comissao, 'comissao_pct': pct,
+            'frete': frete, 'custo': custo, 'lucro': lucro, 'margem_pct': margem,
+            'markup_pct': markup, 'estimado': estimado, 'tipo': tipo}
+
+
 _RADAR_HTML = '''<!doctype html><html lang=pt-br><head><meta charset=utf-8>
 <meta name=viewport content="width=device-width,initial-scale=1">
 <title>MLhype · Radar de Demanda</title>
@@ -258,7 +286,7 @@ _RADAR_HTML = '''<!doctype html><html lang=pt-br><head><meta charset=utf-8>
 </style></head><body><div class=wrap>
 <header>
  <h1>MLhype <span class=fire>🔥</span> · Radar de Demanda</h1>
- <span style="font-size:13px;color:var(--mut)"><a href="/mlhype/oportunidades" style="color:#5ee0a0;font-weight:700">💡 Dicas</a> · <a href="/mlhype/planos" style="color:#b9a6ff;font-weight:700">planos</a> · {% if nome %}{{nome.split()[0]}} · {% endif %}<a href="/mlhype/sair">sair</a></span>
+ <span style="font-size:13px;color:var(--mut)"><a href="/mlhype/oportunidades" style="color:#5ee0a0;font-weight:700">💡 Dicas</a> · <a href="/mlhype/calculadora">🧮 Calculadora</a> · <a href="/mlhype/planos" style="color:#b9a6ff;font-weight:700">planos</a> · {% if nome %}{{nome.split()[0]}} · {% endif %}<a href="/mlhype/sair">sair</a></span>
 </header>
 {% if seletor %}
 <form method=get><select name=cat onchange="this.form.submit()">
@@ -340,7 +368,7 @@ _OPS_HTML = '''<!doctype html><html lang=pt-br><head><meta charset=utf-8>
 </style></head><body><div class=wrap>
 <header>
  <h1>MLhype <span class=fire>🔥</span> · Dicas do que vender</h1>
- <span style="font-size:13px;color:var(--mut)"><a href="/mlhype/radar">Radar</a> · <a href="/mlhype/planos" style="color:#b9a6ff;font-weight:700">planos</a> · {% if nome %}{{nome.split()[0]}} · {% endif %}<a href="/mlhype/sair">sair</a></span>
+ <span style="font-size:13px;color:var(--mut)"><a href="/mlhype/radar">Radar</a> · <a href="/mlhype/calculadora">🧮 Calculadora</a> · <a href="/mlhype/planos" style="color:#b9a6ff;font-weight:700">planos</a> · {% if nome %}{{nome.split()[0]}} · {% endif %}<a href="/mlhype/sair">sair</a></span>
 </header>
 <p class=sub>O motor varreu <b>{{cat_nome}}</b> e rankeou onde mais vale a pena atacar: <b>muita procura × pouca concorrência</b>. Quanto maior o Score, melhor a brecha.</p>
 {% if ops %}
@@ -378,6 +406,83 @@ def mlhype_oportunidades():
     return render_template_string(
         _OPS_HTML, ops=ops, fmt=_fmt_brl, nome=session.get('mlhype_user_nome', ''),
         cat=cat, cat_nome=_nome_cat(cat) if cat else 'todo o mercado')
+
+
+# ── Calculadora de Margem REAL (Lote M — ataca a dor #1: "vou ter lucro?") ─────
+_CALC_HTML = '''<!doctype html><html lang=pt-br><head><meta charset=utf-8>
+<meta name=viewport content="width=device-width,initial-scale=1"><title>MLhype · Calculadora de Margem</title>
+<style>
+ :root{--bg:#0b1020;--card:#0f1730;--bd:#21304f;--mut:#8aa0c6;--txt:#e7ecf5;--ac:#7cc0ff}
+ body{font-family:system-ui,Segoe UI,sans-serif;background:var(--bg);color:var(--txt);margin:0;padding:18px}
+ .wrap{max-width:560px;margin:0 auto} a{color:var(--ac);text-decoration:none}
+ header{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+ h1{font-size:20px;margin:0} .fire{background:linear-gradient(135deg,#2f6bff,#7c3aed);-webkit-background-clip:text;background-clip:text;color:transparent}
+ .sub{color:var(--mut);font-size:13px;margin:4px 0 16px}
+ .card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:18px;margin:12px 0}
+ label{display:block;font-size:12px;color:var(--mut);margin:10px 0 4px}
+ input,select{width:100%;box-sizing:border-box;background:#0b1020;color:var(--txt);border:1px solid var(--bd);border-radius:8px;padding:11px;font-size:15px}
+ .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+ button{width:100%;margin-top:14px;background:linear-gradient(135deg,#2f6bff,#7c3aed);color:#fff;border:0;border-radius:8px;padding:12px;font-weight:700;font-size:16px;cursor:pointer}
+ .bk{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--bd);font-size:15px} .bk:last-of-type{border:none}
+ .bk .neg{color:#ff8a8a} .lucro{font-size:30px;font-weight:800;margin-top:8px} .ok{color:#5ee0a0} .ruim{color:#ff8a8a}
+ .mut{color:var(--mut);font-size:12px}
+</style></head><body><div class=wrap>
+<header><h1>MLhype <span class=fire>🔥</span> · Calculadora</h1>
+ <span class=mut><a href="/mlhype/oportunidades">💡 Dicas</a> · <a href="/mlhype/radar">Radar</a> · <a href="/mlhype/sair">sair</a></span></header>
+<p class=sub>O lucro <b>de verdade</b>, com a taxa REAL do Mercado Livre — pra você nunca mais ser surpreendido pelo que cai na conta.</p>
+<div class=card>
+ <form method=get>
+  <div class=row>
+   <div><label>Preço de venda (R$)</label><input name=preco value="{{preco}}" placeholder="149,90" required></div>
+   <div><label>Custo do produto (R$)</label><input name=custo value="{{custo}}" placeholder="80,00"></div>
+  </div>
+  <label>Categoria</label>
+  <select name=cat>{% for c in cats %}<option value="{{c.id}}" {{'selected' if c.id==cat else ''}}>{{c.nome}}</option>{% endfor %}</select>
+  <div class=row>
+   <div><label>Frete que você paga (R$)</label><input name=frete value="{{frete}}" placeholder="0,00"></div>
+   <div><label>Tipo de anúncio</label><select name=tipo><option value=classico {{'selected' if tipo=='classico' else ''}}>Clássico</option><option value=premium {{'selected' if tipo=='premium' else ''}}>Premium (parcela s/ juros)</option></select></div>
+  </div>
+  <button type=submit>Calcular lucro real</button>
+ </form>
+</div>
+{% if res %}
+<div class=card>
+ <div class=bk><span>Preço de venda</span><span>{{fmt(res.preco)}}</span></div>
+ <div class=bk><span>− Comissão do ML{% if res.comissao_pct %} ({{res.comissao_pct}}%){% endif %}{% if res.estimado %} <span class=mut>estimada</span>{% endif %}</span><span class=neg>− {{fmt(res.comissao)}}</span></div>
+ {% if res.frete %}<div class=bk><span>− Frete</span><span class=neg>− {{fmt(res.frete)}}</span></div>{% endif %}
+ {% if res.custo %}<div class=bk><span>− Custo do produto</span><span class=neg>− {{fmt(res.custo)}}</span></div>{% endif %}
+ <div class="lucro {{'ok' if res.lucro>0 else 'ruim'}}">= {{fmt(res.lucro)}} de lucro</div>
+ <div class=mut>margem {{res.margem_pct}}% sobre a venda{% if res.markup_pct is not none %} · markup {{res.markup_pct}}% sobre o custo{% endif %}{% if res.tipo=='premium' %} · anúncio Premium{% endif %}</div>
+ {% if res.lucro <= 0 %}<div class=mut style="color:#ff8a8a;margin-top:8px">⚠️ No vermelho — esse preço não fecha com esse custo. Renegocie o fornecedor ou suba o preço.</div>{% endif %}
+</div>
+{% endif %}
+</div></body></html>'''
+
+
+@mlhype_bp.route('/calculadora')
+def mlhype_calculadora():
+    """Calculadora de Margem REAL — ataca a dor #1 (taxas comem o lucro)."""
+    _r = _exige_login()
+    if _r:
+        return _r
+    preco = request.args.get('preco')
+    res = None
+    if preco:
+        def _num(v):
+            return float((v or '0').replace('.', '').replace(',', '.')) if v else 0.0
+        try:
+            res = calcular_margem(_num(preco), _num(request.args.get('custo')),
+                                  request.args.get('cat') or 'MLB1051',
+                                  _num(request.args.get('frete')),
+                                  request.args.get('tipo', 'classico'))
+        except Exception:
+            res = None
+    cats = [{'id': k, 'nome': v} for k, v in sorted(CATEGORIAS_ML.items(), key=lambda x: x[1])]
+    return render_template_string(
+        _CALC_HTML, res=res, fmt=_fmt_brl, cats=cats,
+        preco=preco or '', custo=request.args.get('custo') or '',
+        cat=request.args.get('cat') or 'MLB1051', frete=request.args.get('frete') or '',
+        tipo=request.args.get('tipo', 'classico'))
 
 
 # ── A ESTEIRA: orquestrador dos agentes (Passos 6, 7, 9) ──────────────────────
@@ -432,6 +537,12 @@ def rodar_esteira(pid, cat_id=None):
     tend = db.tendencia_produto(pid)
     res['tendencia'] = tend
 
+    # Taxa REAL do ML p/ esse produto (margem precisa, não chute) — Lote M
+    cat_taxa = cat_id or prod.get('category_id')
+    taxas = ml.taxas_ml(preco_lider, cat_taxa) if preco_lider else None
+    comissao_pct = (taxas.get('classico') or {}).get('pct') if taxas else None
+    res['comissao_ml_pct'] = comissao_pct
+
     # Esteira de IA: Dissecador + Avaliador + Ficha numa ÚNICA chamada
     # (3x menos cota; Gemini com fallback p/ Groq lá dentro)
     fraquezas, avaliacao, ficha = [], {}, {}
@@ -444,7 +555,7 @@ def rodar_esteira(pid, cat_id=None):
                                   'fotos_qtd': anuncio['fotos_qtd'],
                                   'atributos': anuncio['atributos'], 'garantia': anuncio['garantia']},
                 'num_concorrentes': num_conc, 'tendencia': tend,
-                'menor_preco_fornecedor_br': menor_custo})
+                'menor_preco_fornecedor_br': menor_custo, 'comissao_ml_pct': comissao_pct})
             fraquezas = out['fraquezas']
             avaliacao = out['avaliacao']
             if avaliacao.get('veredito') != 'evite':
@@ -452,6 +563,18 @@ def rodar_esteira(pid, cat_id=None):
         except Exception as e:
             res['ia_falhou'] = True
             log.warning(f'[MLhype] IA esteira falhou: {e}')
+
+    # Margem REAL (substitui a estimativa da IA) quando há custo de fornecedor
+    if menor_custo and preco_lider and avaliacao:
+        m_lider = calcular_margem(preco_lider, menor_custo, cat_taxa)
+        if m_lider:
+            avaliacao['margem_pct'] = m_lider['margem_pct']
+    if ficha and ficha.get('preco_venda_sugerido') and menor_custo:
+        m_ficha = calcular_margem(ficha['preco_venda_sugerido'], menor_custo, cat_taxa)
+        if m_ficha:
+            ficha['margem_pct'] = m_ficha['margem_pct']
+            ficha['lucro_liquido'] = m_ficha['lucro']
+
     res['fraquezas'] = fraquezas
     res['avaliacao'] = avaliacao
     res['ficha'] = ficha
@@ -512,7 +635,8 @@ _FICHA_HTML = '''<!doctype html><html lang=pt-br><head><meta charset=utf-8>
  </div>
  {% if r.avaliacao.porque %}<div class=meta>{{r.avaliacao.porque}}</div>{% endif %}
  {% if r.avaliacao.como_melhorar %}<ul>{% for c in r.avaliacao.como_melhorar %}<li>{{c}}</li>{% endfor %}</ul>{% endif %}
- <div class=meta>{{r.num_concorrentes or '—'}} concorrentes · tendência: {{r.tendencia}}</div>
+ <div class=meta>{{r.num_concorrentes or '—'}} concorrentes · tendência: {{r.tendencia}}{% if r.comissao_ml_pct %} · taxa ML ~{{r.comissao_ml_pct}}%{% endif %}</div>
+ {% if r.comissao_ml_pct and not r.menor_custo_br %}<div class=meta>💡 Cadastre o custo do fornecedor pra ver o <b>lucro líquido real</b> (a taxa do ML já está descontada).</div>{% endif %}
 </div>
 {% endif %}
 
@@ -542,7 +666,8 @@ _FICHA_HTML = '''<!doctype html><html lang=pt-br><head><meta charset=utf-8>
  {% if r.ficha.bullets %}<ul>{% for b in r.ficha.bullets %}<li>{{b}}</li>{% endfor %}</ul>{% endif %}
  <div class=preco-row>
   <div class=pbox><span>Preço de venda sugerido</span><b>{{fmt(r.ficha.preco_venda_sugerido)}}</b></div>
-  {% if r.ficha.margem_pct is not none %}<div class=pbox><span>Margem</span><b>{{r.ficha.margem_pct}}%</b></div>{% endif %}
+  {% if r.ficha.lucro_liquido is not none %}<div class=pbox><span>Lucro líquido/un.</span><b>{{fmt(r.ficha.lucro_liquido)}}</b></div>{% endif %}
+  {% if r.ficha.margem_pct is not none %}<div class=pbox><span>Margem real</span><b>{{r.ficha.margem_pct}}%</b></div>{% endif %}
  </div>
  {% if r.ficha.diferencial_ataque %}<div class=dif>⚔️ Diferencial de ataque: {{r.ficha.diferencial_ataque}}</div>{% endif %}
 </div>

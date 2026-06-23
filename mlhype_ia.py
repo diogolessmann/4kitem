@@ -94,11 +94,11 @@ trabalhos de uma vez:
    fraco, poucas fotos, sem garantia/kit, preço com gordura, descrição pobre,
    atributos faltando).
 2) AVALIADOR: nota 0-100 + veredito. Considere demanda (tendência), margem
-   (preco_lider vs menor_preco_fornecedor_br, descontando ~15% de taxas do ML +
-   uma estimativa de frete — diga a premissa no "porque") e concorrência
-   (num_concorrentes; muitos = guerra de preço). Penalize margem fina, tendência
-   caindo, mercado lotado, ausência de fornecedor. Sem dado crítico → reduza o
-   score e explique.
+   (preco_lider vs menor_preco_fornecedor_br, descontando a comissao_ml_pct REAL
+   do ML se ela vier — senão ~15% — mais uma estimativa de frete; diga a premissa
+   no "porque") e concorrência (num_concorrentes; muitos = guerra de preço).
+   Penalize margem fina, tendência caindo, mercado lotado, ausência de fornecedor.
+   Sem dado crítico → reduza o score e explique.
 3) FICHA DE ATAQUE: um anúncio MELHOR pra roubar a venda — título ATÉ 60
    caracteres com as palavras mais buscadas, 5 bullets vencendo objeções e
    explorando as fraquezas, preço de venda competitivo vs o líder preservando
@@ -106,7 +106,8 @@ trabalhos de uma vez:
    (kit/brinde/frete/garantia) que o líder NÃO oferece.
 
 ENTRADA (JSON): nome_produto, anuncio_lider{titulo,preco,fotos_qtd,atributos,
-garantia}, num_concorrentes, tendencia, menor_preco_fornecedor_br (pode ser null).
+garantia}, num_concorrentes, tendencia, menor_preco_fornecedor_br (pode ser null),
+comissao_ml_pct (a comissão REAL do ML p/ esse produto; pode ser null).
 
 SAÍDA: responda SOMENTE com JSON válido, exatamente neste formato:
 {"fraquezas":["...","..."],
