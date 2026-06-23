@@ -2,3 +2,7 @@
 __pycache__/
 static/mz_uploads/*
 !static/mz_uploads/.gitkeep
+
+# segredos locais (nunca commitar)
+.env
+.env.*
