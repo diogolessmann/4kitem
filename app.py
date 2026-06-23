@@ -8515,6 +8515,14 @@ def mz_webhook_evolution():
             except Exception as _se:
                 log.warning(f'[SomaJá] webhook evolution: {_se}')
             return jsonify({'ok': True, 'somaja': True}), 200
+        # Amparo — roteia a instância do Amparo pro módulo dele (mesmo padrão do SomaJá)
+        if instance and instance == os.environ.get('AMPARO_WA_INSTANCE', 'amparo'):
+            try:
+                from amparo import processar_wa_evento as _amp_proc
+                _amp_proc(payload)
+            except Exception as _ae:
+                log.warning(f'[Amparo] webhook evolution: {_ae}')
+            return jsonify({'ok': True, 'amparo': True}), 200
         m = _re.match(r'^mz(\d+)n(\d+)$', instance)
         if not m:
             return jsonify({'ok': True, 'skip': 'instance'}), 200

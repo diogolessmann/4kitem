@@ -825,34 +825,32 @@ def sinais():
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# WEBHOOK DE ENTRADA (WhatsApp Cloud API) — onde o paciente responde
-# 🆘 O protocolo de crise roda ANTES de tudo e é HARD-CODED.
+# ENTRADA (Evolution API) — onde o paciente responde
+# Chega pelo webhook GLOBAL da Evolution (/mandazap/webhook/evolution), roteado por
+# instância no app.py → processar_wa_evento(payload).
+# 🆘 O protocolo de crise roda ANTES de tudo e é HARD-CODED (em _trata_resposta_paciente).
 # ══════════════════════════════════════════════════════════════════════════════
-@amparo_bp.route('/wa/webhook', methods=['GET', 'POST'])
-def wa_webhook():
-    # Verificação inicial da Meta (handshake)
-    if request.method == 'GET':
-        if request.args.get('hub.verify_token') == os.environ.get('WHATSAPP_VERIFY_TOKEN', ''):
-            return request.args.get('hub.challenge', ''), 200
-        return 'forbidden', 403
+def processar_wa_evento(payload):
+    """Recebe um evento 'messages.upsert' da Evolution e despacha a resposta do paciente.
+    Best-effort: nunca levanta exceção (não pode derrubar o webhook global)."""
     try:
-        data = request.get_json(force=True) or {}
-        _processa_entrada_wa(data)
+        data = payload.get('data', {})
+        if isinstance(data, list):
+            data = data[0] if data else {}
+        if not isinstance(data, dict):
+            return
+        key = data.get('key') or {}
+        if key.get('fromMe'):                       # mensagem enviada por nós — ignora
+            return
+        fone = str(key.get('remoteJid') or '').split('@')[0]
+        msg = data.get('message') or {}
+        texto = (msg.get('conversation')
+                 or (msg.get('extendedTextMessage') or {}).get('text')
+                 or '')
+        if fone and texto:
+            _trata_resposta_paciente(fone, texto)
     except Exception as e:
-        log.warning(f'[Amparo] webhook entrada erro: {e}')
-    # Sempre 200 — senão a Meta re-tenta em loop.
-    return jsonify({'ok': True}), 200
-
-
-def _processa_entrada_wa(data):
-    for entry in data.get('entry', []):
-        for ch in entry.get('changes', []):
-            for m in (ch.get('value', {}) or {}).get('messages', []):
-                if m.get('type') != 'text':
-                    continue
-                frm = m.get('from', '')
-                texto = ((m.get('text') or {}).get('body') or '')
-                _trata_resposta_paciente(frm, texto)
+        log.warning(f'[Amparo] processar_wa_evento erro: {e}')
 
 
 def _trata_resposta_paciente(fone, texto):
