@@ -1,14 +1,11 @@
 """
-mlhype_ia.py — A esteira de agentes de IA do MLhype (Passos 6, 7, 9).
+mlhype_ia.py — O cérebro de IA do MLhype (Dissecador + Avaliador + Ficha).
 
-3 agentes em sequência, coordenados pelo orquestrador (em mlhype.py):
-  2. Dissecador do Líder      — IA: acha as fraquezas do anúncio campeão.
-  4. Avaliador de Oportunidade — IA+cálculo: nota 0-100 + veredito (atacar/evitar).
-  5. Gerador da Ficha de Ataque — IA/copy: o anúncio pronto pra roubar a venda.
-
-IA = API do Gemini (mesmo padrão REST do drzap/radar). Degrada graciosamente
-se GEMINI_API_KEY não estiver setada (retorna erro claro, não quebra).
-Toda saída de IA é validada (schema mínimo) com 1 retry se vier malformada.
+Resiliência: tenta a API do **Gemini** e, se ela falhar (ex.: 429 cota
+estourada — comum no free tier compartilhado), cai pro **Groq** (llama, que o
+4kitem já usa). E faz os 3 agentes numa ÚNICA chamada (3x menos cota, 3x mais
+rápido). Degrada sem quebrar: se as duas IAs falharem, devolve vazio e o
+orquestrador marca `ia_falhou` (a tela mostra os dados de mercado mesmo assim).
 """
 import os
 import json
@@ -22,138 +19,122 @@ GEMINI_KEY   = os.environ.get('GEMINI_API_KEY', '')
 GEMINI_MODEL = os.environ.get('GEMINI_MODEL', 'gemini-2.5-flash')
 _GEMINI_URL  = 'https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent'
 
+GROQ_KEY   = os.environ.get('GROQ_API_KEY', '')
+GROQ_MODEL = os.environ.get('GROQ_MODEL', 'llama-3.3-70b-versatile')
+_GROQ_URL  = 'https://api.groq.com/openai/v1/chat/completions'
+
 
 def ia_disponivel():
-    return bool(GEMINI_KEY)
+    return bool(GEMINI_KEY or GROQ_KEY)
 
 
-def _gemini_json(system, payload, max_tokens=2048, temperature=0.3, _retry=True):
-    """Chama o Gemini forçando saída JSON e devolve um dict. Levanta RuntimeError
-    se a IA não estiver configurada ou a resposta não for JSON válido (após 1 retry)."""
-    if not GEMINI_KEY:
-        raise RuntimeError('IA não configurada (defina GEMINI_API_KEY)')
-    gen = {
-        'temperature': temperature,
-        'maxOutputTokens': max_tokens,
-        'responseMimeType': 'application/json',
-    }
-    # gemini-2.5-* "pensa" por padrão e fica LENTO; p/ tarefas estruturadas (JSON)
-    # desligamos o thinking — corta o tempo de ~20s p/ ~3s por chamada.
-    if '2.5' in GEMINI_MODEL:
+# ── Chamadas de baixo nível (cada uma devolve TEXTO ou levanta) ────────────────
+def _gemini_call(system, payload, max_tokens, temperature):
+    gen = {'temperature': temperature, 'maxOutputTokens': max_tokens,
+           'responseMimeType': 'application/json'}
+    if '2.5' in GEMINI_MODEL:                     # desliga o "thinking" lento
         gen['thinkingConfig'] = {'thinkingBudget': 0}
-    body = {
-        'system_instruction': {'parts': [{'text': system}]},
-        'contents': [{'role': 'user', 'parts': [{'text': json.dumps(payload, ensure_ascii=False)}]}],
-        'generationConfig': gen,
-    }
     r = requests.post(_GEMINI_URL.format(model=GEMINI_MODEL),
-                      params={'key': GEMINI_KEY}, json=body, timeout=35)
+                      params={'key': GEMINI_KEY},
+                      json={'system_instruction': {'parts': [{'text': system}]},
+                            'contents': [{'role': 'user',
+                                          'parts': [{'text': json.dumps(payload, ensure_ascii=False)}]}],
+                            'generationConfig': gen},
+                      timeout=35)
     if r.status_code != 200:
-        if _retry:
-            return _gemini_json(system, payload, max_tokens, temperature, _retry=False)
-        raise RuntimeError(f'Gemini HTTP {r.status_code}: {r.text[:200]}')
-    try:
-        txt = r.json()['candidates'][0]['content']['parts'][0]['text']
-        return json.loads(txt)
-    except (KeyError, IndexError, ValueError) as e:
-        if _retry:
-            return _gemini_json(system, payload, max_tokens, temperature, _retry=False)
-        raise RuntimeError(f'Gemini devolveu JSON inválido: {e}')
+        raise RuntimeError(f'Gemini HTTP {r.status_code}')
+    return r.json()['candidates'][0]['content']['parts'][0]['text']
 
 
-# ── Agente 2 — Dissecador do Líder ─────────────────────────────────────────────
-_SYS_DISSECADOR = '''Você é um analista de anúncios do Mercado Livre Brasil. Recebe
-o anúncio campeão de uma categoria e identifica as fraquezas que um concorrente
-pode explorar para vender mais.
-ENTRADA (JSON): titulo, preco, descricao, fotos_qtd, atributos, garantia, frete_gratis.
-TAREFA: aponte de 3 a 6 fraquezas CONCRETAS e ACIONÁVEIS (título mal otimizado /
-poucas fotos / falta de garantia ou kit / preço com gordura / descrição pobre /
-atributos faltando / sem frete grátis, etc.).
-SAÍDA: responda SOMENTE com JSON válido: {"fraquezas": ["<fraqueza acionável 1>", "..."]}
-Não invente dados que não recebeu. Cada fraqueza deve ser específica, não genérica.'''
+def _groq_call(system, payload, max_tokens, temperature):
+    r = requests.post(_GROQ_URL,
+                      headers={'Authorization': f'Bearer {GROQ_KEY}', 'Content-Type': 'application/json'},
+                      json={'model': GROQ_MODEL, 'temperature': temperature, 'max_tokens': max_tokens,
+                            'response_format': {'type': 'json_object'},
+                            'messages': [{'role': 'system', 'content': system},
+                                         {'role': 'user', 'content': json.dumps(payload, ensure_ascii=False)}]},
+                      timeout=35)
+    if r.status_code != 200:
+        raise RuntimeError(f'Groq HTTP {r.status_code}')
+    return r.json()['choices'][0]['message']['content']
 
 
-def dissecar_lider(anuncio):
-    """anuncio: dict com titulo, preco, descricao, fotos_qtd, atributos, garantia,
-    frete_gratis. Retorna {'fraquezas': [...]}."""
-    out = _gemini_json(_SYS_DISSECADOR, anuncio, max_tokens=1024, temperature=0.4)
-    fr = out.get('fraquezas') if isinstance(out, dict) else None
-    if not isinstance(fr, list) or not fr:
-        return {'fraquezas': []}
-    return {'fraquezas': [str(x) for x in fr][:6]}
+def _ia_json(system, payload, max_tokens=2048, temperature=0.4):
+    """Tenta Gemini; se falhar (cota/erro), cai pro Groq. Devolve dict."""
+    erros = []
+    for nome, fn, tem_key in (('gemini', _gemini_call, GEMINI_KEY),
+                              ('groq', _groq_call, GROQ_KEY)):
+        if not tem_key:
+            continue
+        try:
+            txt = fn(system, payload, max_tokens, temperature)
+            return json.loads(txt)
+        except Exception as e:
+            erros.append(f'{nome}: {e}')
+            log.warning(f'[MLhype IA] {nome} falhou: {e}')
+    raise RuntimeError('IA indisponível — ' + ' | '.join(erros or ['sem chave configurada']))
 
 
-# ── Agente 4 — Avaliador de Oportunidade ───────────────────────────────────────
-_SYS_AVALIADOR = '''Você é um analista FRIO de oportunidades de venda no Mercado
-Livre Brasil. Sua função é dar uma nota de viabilidade e impedir que o vendedor
-entre numa cilada.
-ENTRADA (JSON): nome_produto, ranking_lider (posição no Top da categoria, 1=topo),
-preco_lider, num_concorrentes, tendencia (subindo|estavel|caindo|desconhecida),
-menor_preco_fornecedor_br (pode ser null se não houver fornecedor cadastrado).
-CRITÉRIOS: demanda real e onda subindo? margem possível? (preco_lider vs custo do
-fornecedor, descontando ~15% de taxas do ML e uma estimativa de frete — informe a
-premissa) concorrência batível? (muitos concorrentes = guerra de preço).
-Penalize forte: margem fina, tendência caindo, mercado lotado, ausência de fornecedor.
-Se faltar dado crítico (ex.: sem fornecedor), REDUZA o score e diga no "porque".
-SAÍDA: responda SOMENTE com JSON válido:
-{"score": <0-100>, "margem_pct": <número>, "veredito": "ataque"|"observe"|"evite",
- "porque": "<1 frase objetiva>", "como_melhorar": ["<ação 1>","<ação 2>","<ação 3>"]}'''
+# ── A esteira inteira numa tacada (Dissecador + Avaliador + Ficha) ─────────────
+_SYS_ESTEIRA = '''Você é o cérebro do MLhype, analista frio de oportunidades de
+venda no Mercado Livre Brasil. Recebe o produto LÍDER de uma categoria e faz 3
+trabalhos de uma vez:
+
+1) DISSECADOR: 3 a 6 fraquezas CONCRETAS e ACIONÁVEIS do anúncio líder (título
+   fraco, poucas fotos, sem garantia/kit, preço com gordura, descrição pobre,
+   atributos faltando).
+2) AVALIADOR: nota 0-100 + veredito. Considere demanda (tendência), margem
+   (preco_lider vs menor_preco_fornecedor_br, descontando ~15% de taxas do ML +
+   uma estimativa de frete — diga a premissa no "porque") e concorrência
+   (num_concorrentes; muitos = guerra de preço). Penalize margem fina, tendência
+   caindo, mercado lotado, ausência de fornecedor. Sem dado crítico → reduza o
+   score e explique.
+3) FICHA DE ATAQUE: um anúncio MELHOR pra roubar a venda — título ATÉ 60
+   caracteres com as palavras mais buscadas, 5 bullets vencendo objeções e
+   explorando as fraquezas, preço de venda competitivo vs o líder preservando
+   margem sobre o custo do fornecedor (se houver), e 1 diferencial de ataque
+   (kit/brinde/frete/garantia) que o líder NÃO oferece.
+
+ENTRADA (JSON): nome_produto, anuncio_lider{titulo,preco,fotos_qtd,atributos,
+garantia}, num_concorrentes, tendencia, menor_preco_fornecedor_br (pode ser null).
+
+SAÍDA: responda SOMENTE com JSON válido, exatamente neste formato:
+{"fraquezas":["...","..."],
+ "avaliacao":{"score":<0-100>,"margem_pct":<número>,"veredito":"ataque|observe|evite",
+   "porque":"<1 frase>","como_melhorar":["...","...","..."]},
+ "ficha":{"titulo_otimizado":"<=60 chars","bullets":["b1","b2","b3","b4","b5"],
+   "preco_venda_sugerido":<número>,"margem_pct":<número>,
+   "diferencial_ataque":"<kit|brinde|frete|garantia: descrição curta>"}}
+Não invente dados que não recebeu.'''
 
 
-def avaliar_oportunidade(dados):
-    """dados: nome_produto, ranking_lider, preco_lider, num_concorrentes,
-    tendencia, menor_preco_fornecedor_br. Retorna o JSON do veredito."""
-    out = _gemini_json(_SYS_AVALIADOR, dados, max_tokens=1024, temperature=0.2)
+def analisar_esteira(dados):
+    """Roda os 3 agentes numa chamada só. Devolve {fraquezas, avaliacao, ficha}
+    já normalizados. Levanta se as duas IAs falharem."""
+    out = _ia_json(_SYS_ESTEIRA, dados, max_tokens=2048, temperature=0.45)
     if not isinstance(out, dict):
         out = {}
-    veredito = out.get('veredito')
-    if veredito not in ('ataque', 'observe', 'evite'):
-        out['veredito'] = 'observe'
+
+    fr = out.get('fraquezas')
+    fraquezas = [str(x) for x in fr][:6] if isinstance(fr, list) else []
+
+    av = out.get('avaliacao') if isinstance(out.get('avaliacao'), dict) else {}
+    if av.get('veredito') not in ('ataque', 'observe', 'evite'):
+        av['veredito'] = 'observe'
     try:
-        out['score'] = max(0, min(100, int(out.get('score', 0))))
+        av['score'] = max(0, min(100, int(av.get('score', 0))))
     except Exception:
-        out['score'] = 0
-    out.setdefault('margem_pct', None)
-    out.setdefault('porque', '')
-    if not isinstance(out.get('como_melhorar'), list):
-        out['como_melhorar'] = []
-    return out
+        av['score'] = 0
+    av.setdefault('margem_pct', None)
+    av.setdefault('porque', '')
+    if not isinstance(av.get('como_melhorar'), list):
+        av['como_melhorar'] = []
 
+    fi = out.get('ficha') if isinstance(out.get('ficha'), dict) else {}
+    fi['titulo_otimizado'] = (fi.get('titulo_otimizado') or '')[:60]
+    fi['bullets'] = [str(b) for b in fi.get('bullets', [])][:5] if isinstance(fi.get('bullets'), list) else []
+    fi.setdefault('preco_venda_sugerido', None)
+    fi.setdefault('margem_pct', None)
+    fi.setdefault('diferencial_ataque', '')
 
-# ── Agente 5 — Gerador da Ficha de Ataque ──────────────────────────────────────
-_SYS_FICHA = '''Você é um copywriter especialista em anúncios campeões do Mercado
-Livre Brasil. Sua missão: pegar o produto líder e entregar um anúncio MELHOR e
-mais competitivo para roubar a venda dele, explorando as fraquezas apontadas.
-ENTRADA (JSON): produto, anuncio_lider {titulo, preco, fraquezas:[...]},
-custo_fornecedor_br (pode ser null).
-REGRAS:
-- titulo_otimizado: ATÉ 60 caracteres, usando as palavras mais buscadas do nicho,
-  superando o título do líder.
-- bullets: EXATAMENTE 5, cada um vencendo uma objeção de compra e explorando uma
-  fraqueza do líder.
-- preco_venda_sugerido: competitivo vs. o líder, mas preservando margem saudável
-  sobre o custo do fornecedor (se houver). Mostre a margem_pct.
-- diferencial_ataque: 1 único, concreto, que o líder NÃO oferece (kit, brinde,
-  frete grátis ou garantia estendida).
-SAÍDA: responda SOMENTE com JSON válido:
-{"titulo_otimizado": "<=60 chars", "bullets": ["b1","b2","b3","b4","b5"],
- "preco_venda_sugerido": <número>, "margem_pct": <número>,
- "diferencial_ataque": "<kit|brinde|frete|garantia: descrição curta>"}'''
-
-
-def gerar_ficha_ataque(dados):
-    """dados: produto, anuncio_lider {titulo, preco, fraquezas}, custo_fornecedor_br.
-    Retorna o JSON da Ficha de Ataque."""
-    out = _gemini_json(_SYS_FICHA, dados, max_tokens=1536, temperature=0.6)
-    if not isinstance(out, dict):
-        out = {}
-    titulo = (out.get('titulo_otimizado') or '')[:60]
-    out['titulo_otimizado'] = titulo
-    bullets = out.get('bullets')
-    if not isinstance(bullets, list):
-        bullets = []
-    out['bullets'] = [str(b) for b in bullets][:5]
-    out.setdefault('preco_venda_sugerido', None)
-    out.setdefault('margem_pct', None)
-    out.setdefault('diferencial_ataque', '')
-    return out
+    return {'fraquezas': fraquezas, 'avaliacao': av, 'ficha': fi}

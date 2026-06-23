@@ -355,16 +355,7 @@ def rodar_esteira(pid, cat_id=None):
     }
     res['anuncio_lider'] = anuncio
 
-    # Agente 2 — Dissecador
-    fraquezas = []
-    if ia.ia_disponivel():
-        try:
-            fraquezas = ia.dissecar_lider(anuncio).get('fraquezas', [])
-        except Exception as e:
-            res['erros'].append(f'dissecador: {e}')
-    res['fraquezas'] = fraquezas
-
-    # Agente 3 — Caçador de Fornecedor BR (o MOAT)
+    # Caçador de Fornecedor BR (o MOAT) — ANTES da IA, p/ a IA usar o custo
     cat_nome = _nome_cat(cat_id) if cat_id else ''
     fornecedores = db.match_fornecedores(cat_id or prod.get('category_id') or '',
                                          cat_nome, nome, limit=5)
@@ -375,32 +366,31 @@ def rodar_esteira(pid, cat_id=None):
         if p is not None:
             menor_custo = p if menor_custo is None else min(menor_custo, p)
     res['menor_custo_br'] = menor_custo
-
-    # Agente 4 — Avaliador
     tend = db.tendencia_produto(pid)
     res['tendencia'] = tend
-    avaliacao = {}
+
+    # Esteira de IA: Dissecador + Avaliador + Ficha numa ÚNICA chamada
+    # (3x menos cota; Gemini com fallback p/ Groq lá dentro)
+    fraquezas, avaliacao, ficha = [], {}, {}
+    res['ia_falhou'] = False
     if ia.ia_disponivel():
         try:
-            avaliacao = ia.avaliar_oportunidade({
-                'nome_produto': nome, 'ranking_lider': None, 'preco_lider': preco_lider,
+            out = ia.analisar_esteira({
+                'nome_produto': nome,
+                'anuncio_lider': {'titulo': anuncio['titulo'], 'preco': preco_lider,
+                                  'fotos_qtd': anuncio['fotos_qtd'],
+                                  'atributos': anuncio['atributos'], 'garantia': anuncio['garantia']},
                 'num_concorrentes': num_conc, 'tendencia': tend,
                 'menor_preco_fornecedor_br': menor_custo})
+            fraquezas = out['fraquezas']
+            avaliacao = out['avaliacao']
+            if avaliacao.get('veredito') != 'evite':
+                ficha = out['ficha']
         except Exception as e:
-            res['erros'].append(f'avaliador: {e}')
+            res['ia_falhou'] = True
+            log.warning(f'[MLhype] IA esteira falhou: {e}')
+    res['fraquezas'] = fraquezas
     res['avaliacao'] = avaliacao
-
-    # Agente 5 — Ficha de Ataque (curto-circuito se veredito = "evite")
-    ficha = {}
-    if ia.ia_disponivel() and avaliacao.get('veredito') != 'evite':
-        try:
-            ficha = ia.gerar_ficha_ataque({
-                'produto': nome,
-                'anuncio_lider': {'titulo': anuncio['titulo'], 'preco': preco_lider,
-                                  'fraquezas': fraquezas},
-                'custo_fornecedor_br': menor_custo})
-        except Exception as e:
-            res['erros'].append(f'ficha: {e}')
     res['ficha'] = ficha
 
     # persiste a oportunidade + ficha
@@ -446,7 +436,8 @@ _FICHA_HTML = '''<!doctype html><html lang=pt-br><head><meta charset=utf-8>
 <h1>⚡ Ficha de Ataque</h1>
 <div class=prod>{{r.produto}}</div>
 
-{% if not r.ia_ok %}<div class=warn>⚙️ A IA (GEMINI_API_KEY) não está configurada neste ambiente — o Dissecador, o Avaliador e a Ficha rodam no Railway. Aqui aparecem os dados de mercado e o fornecedor.</div>{% endif %}
+{% if not r.ia_ok %}<div class=warn>⚙️ A IA não está configurada neste ambiente — aqui aparecem os dados de mercado e o fornecedor.</div>{% endif %}
+{% if r.ia_falhou %}<div class=warn>⚙️ A IA está sobrecarregada agora (cota estourada) — os dados de mercado e o fornecedor abaixo já estão prontos. Tente gerar a Ficha de novo em alguns minutos.</div>{% endif %}
 
 {% if r.avaliacao and r.avaliacao.veredito %}
 <div class=card>
@@ -466,7 +457,7 @@ _FICHA_HTML = '''<!doctype html><html lang=pt-br><head><meta charset=utf-8>
  <h3>Dissecador do Líder — fraquezas a explorar</h3>
  <div class=meta>Líder: {{r.anuncio_lider.titulo}} · {{fmt(r.anuncio_lider.preco)}}{% if r.anuncio_lider.fotos_qtd is not none %} · {{r.anuncio_lider.fotos_qtd}} fotos{% endif %}</div>
  {% if r.fraquezas %}<ul>{% for f in r.fraquezas %}<li>{{f}}</li>{% endfor %}</ul>
- {% else %}<div class=empty>— (a IA aponta as fraquezas quando o GEMINI_API_KEY estiver ativo)</div>{% endif %}
+ {% else %}<div class=empty>{% if r.ia_falhou %}A IA está sobrecarregada — tente de novo em instantes.{% else %}—{% endif %}</div>{% endif %}
 </div>
 
 <div class=card>
@@ -493,10 +484,8 @@ _FICHA_HTML = '''<!doctype html><html lang=pt-br><head><meta charset=utf-8>
  {% if r.ficha.diferencial_ataque %}<div class=dif>⚔️ Diferencial de ataque: {{r.ficha.diferencial_ataque}}</div>{% endif %}
 </div>
 {% elif r.avaliacao.veredito == 'evite' %}
-<div class=card><div class=warn>O Avaliador marcou <b>EVITE</b> — a esteira parou aqui pra te poupar de uma cilada (não gastou IA gerando a Ficha).</div></div>
+<div class=card><div class=warn>O Avaliador marcou <b>EVITE</b> — a esteira parou aqui pra te poupar de uma cilada.</div></div>
 {% endif %}
-
-{% if r.erros %}<div class=meta>obs: {{r.erros|join(' · ')}}</div>{% endif %}
 </div></body></html>'''
 
 
