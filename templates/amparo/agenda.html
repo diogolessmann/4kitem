@@ -1,0 +1,88 @@
+{% extends "amparo/base.html" %}
+{% block title %}Agenda — Amparo{% endblock %}
+{% block content %}
+
+<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+  <h1 style="font-size:26px;margin:0">📅 Sua agenda</h1>
+  <a href="/amparo/painel" class="btn ghost">← Painel</a>
+</div>
+
+{% if not wa_ok %}
+<div class="card" style="margin-top:14px;background:#fff8ed;border-color:#f0dcae">
+  <strong>WhatsApp ainda não conectado.</strong>
+  <span class="muted">Os agendamentos já funcionam; as confirmações/lembretes começam a sair
+  assim que as credenciais da Meta (Cloud API) forem configuradas.</span>
+</div>
+{% endif %}
+
+<!-- Link público -->
+<div class="card" style="margin-top:16px">
+  <label style="margin-top:0">Seu link de autoagendamento</label>
+  <input type="text" readonly value="{{ link_publico }}" onclick="this.select()">
+  <p class="muted" style="font-size:13px;margin-bottom:0">
+    {% if cfg['booking_ativo'] %}Compartilhe com seus pacientes — eles marcam sozinhos.
+    {% else %}⚠️ O autoagendamento está <strong>desligado</strong>. Ative no formulário abaixo.{% endif %}
+  </p>
+</div>
+
+<!-- Configuração -->
+<form method="post" action="/amparo/agenda/salvar" class="card" style="margin-top:16px">
+  <h2 style="margin-top:0;font-size:19px">Configuração</h2>
+  <div style="display:flex;gap:14px;flex-wrap:wrap">
+    <div style="flex:1;min-width:120px"><label>Duração (min)</label>
+      <input type="text" name="duracao_min" value="{{ cfg['duracao_min'] }}"></div>
+    <div style="flex:1;min-width:120px"><label>Folga entre sessões (min)</label>
+      <input type="text" name="intervalo_min" value="{{ cfg['intervalo_min'] }}"></div>
+    <div style="flex:1;min-width:120px"><label>Antecedência mín. (horas)</label>
+      <input type="text" name="antecedencia_horas" value="{{ cfg['antecedencia_horas'] }}"></div>
+    <div style="flex:1;min-width:120px"><label>Valor da sessão (R$)</label>
+      <input type="text" name="valor_sessao" value="{{ cfg['valor_sessao'] or '' }}" placeholder="opcional"></div>
+  </div>
+
+  <label style="margin-top:18px">Horários de atendimento</label>
+  <p class="muted" style="font-size:13px;margin-top:0">Deixe em branco os dias que você não atende.</p>
+  {% for d, nome in weekdays %}
+  <div style="display:flex;gap:10px;align-items:center;margin-bottom:8px">
+    <span style="width:90px;font-size:14px">{{ nome }}</span>
+    <input type="time" name="inicio_{{ d }}" value="{{ horarios[d]['inicio'] if d in horarios else '' }}" style="max-width:140px">
+    <span class="muted">às</span>
+    <input type="time" name="fim_{{ d }}" value="{{ horarios[d]['fim'] if d in horarios else '' }}" style="max-width:140px">
+  </div>
+  {% endfor %}
+
+  <label style="display:flex;gap:8px;align-items:center;font-weight:600;margin-top:16px">
+    <input type="checkbox" name="booking_ativo" value="1" style="width:auto" {{ 'checked' if cfg['booking_ativo'] else '' }}>
+    Ativar autoagendamento (link público)
+  </label>
+
+  <button type="submit" class="btn" style="margin-top:16px">Salvar agenda</button>
+</form>
+
+<!-- Próximos agendamentos -->
+<div class="card" style="margin-top:16px">
+  <h2 style="margin-top:0;font-size:19px">Próximas sessões</h2>
+  {% if not proximos %}
+    <p class="muted">Nenhuma sessão marcada ainda.</p>
+  {% else %}
+    {% for ag in proximos %}
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;
+                border-top:1px solid var(--line);padding:12px 0;flex-wrap:wrap">
+      <div>
+        <strong>{{ ag['data'][8:10] }}/{{ ag['data'][5:7] }} · {{ ag['hora'] }}</strong>
+        — {{ ag['paciente_nome'] or 'Paciente' }}
+        <span class="pill" style="margin-left:6px">{{ ag['status'] }}</span>
+      </div>
+      <form method="post" action="/amparo/agenda/{{ ag['id'] }}/status" style="display:flex;gap:6px">
+        <select name="status" style="padding:6px;border:1px solid var(--line);border-radius:8px">
+          {% for s in ['agendado','confirmado','realizado','faltou','cancelado'] %}
+          <option value="{{ s }}" {{ 'selected' if ag['status']==s else '' }}>{{ s }}</option>
+          {% endfor %}
+        </select>
+        <button class="btn ghost" style="padding:6px 12px">Atualizar</button>
+      </form>
+    </div>
+    {% endfor %}
+  {% endif %}
+</div>
+
+{% endblock %}

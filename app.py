@@ -2359,6 +2359,15 @@ def webhook_asaas_global():
             except Exception as _pcd_e:
                 log.error(f'[PCD] Webhook error: {_pcd_e}')
 
+    elif ref.startswith('amparo_'):
+        # Amparo — assinatura do psicólogo: paga=ativa o plano, vence/cancela=suspende
+        if customer_id:
+            try:
+                from amparo import amparo_webhook_assinatura
+                amparo_webhook_assinatura(customer_id, plano_key, ativar)
+            except Exception as _amp_e:
+                log.error(f'[Amparo] Webhook error: {_amp_e}')
+
     elif ref.startswith('somaja_'):
         # SomaJá — assinatura mensal/anual: paga=ativa, vence/cancela=corta
         if customer_id:
@@ -14795,6 +14804,32 @@ try:
     log.info('[PUBSHOW EN] Blueprint registrado em /pubshow-en')
 except Exception as _ps_en_err:
     log.warning(f'[PUBSHOW EN] Erro ao carregar blueprint: {_ps_en_err}')
+
+# ══════════════════════════════════════════════════════════════════════════════
+# MLhype — Inteligência para vendedores do Mercado Livre — Passo 1 (fundação)
+# ══════════════════════════════════════════════════════════════════════════════
+try:
+    from mlhype import mlhype_bp, iniciar_coletor_mlhype
+    from mlhype_db import init_mlhype_db
+    init_mlhype_db()
+    app.register_blueprint(mlhype_bp)
+    iniciar_coletor_mlhype()   # Passo 3: coletor diário do ML (MLHYPE_AUTO_COLETA=0 desliga)
+    log.info('[MLhype] Blueprint registrado em /mlhype')
+except Exception as _mlhype_err:
+    log.warning(f'[MLhype] Erro ao carregar blueprint: {_mlhype_err}')
+
+# ══════════════════════════════════════════════════════════════════════════════
+# AMPARO — Engajamento entre sessões para psicólogos — Lote 0 (Fundação)
+# ══════════════════════════════════════════════════════════════════════════════
+try:
+    from amparo import amparo_bp, iniciar_lembretes_amparo
+    from amparo_db import init_amparo_db
+    init_amparo_db()
+    app.register_blueprint(amparo_bp)
+    iniciar_lembretes_amparo()   # lembrete de sessão ~24h antes (AMPARO_LEMBRETES=0 desliga)
+    log.info('[Amparo] Blueprint registrado em /amparo')
+except Exception as _amparo_err:
+    log.warning(f'[Amparo] Erro ao carregar blueprint: {_amparo_err}')
 
 # ══════════════════════════════════════════════════════════════════════════════
 

@@ -1,0 +1,35 @@
+{% extends "amparo/base.html" %}
+{% block title %}Criar conta — Amparo{% endblock %}
+{% block content %}
+<div style="max-width:460px;margin:0 auto">
+  <h1 style="font-size:28px">Criar sua conta</h1>
+  <p class="muted">14 dias grátis para acompanhar seus pacientes. Sem cartão.</p>
+
+  {% if erro %}<div class="erro">{{ erro }}</div>{% endif %}
+
+  <form method="post" class="card" style="margin-top:16px">
+    <label>Seu nome</label>
+    <input type="text" name="nome" required autofocus>
+    <label>CRP (registro profissional)</label>
+    <input type="text" name="crp" placeholder="ex: 12/34567">
+    <label>E-mail</label>
+    <input type="email" name="email" required>
+    <label>WhatsApp</label>
+    <input type="tel" name="telefone" placeholder="(47) 99999-9999">
+    <label>Senha</label>
+    <input type="password" name="senha" minlength="6" required>
+
+    <label style="display:flex;gap:8px;align-items:flex-start;font-weight:500;margin-top:16px">
+      <input type="checkbox" name="termo" value="1" style="width:auto;margin-top:4px">
+      <span class="muted" style="font-size:13px">Li e aceito os
+        <a href="/amparo/termos" target="_blank">Termos de Uso</a> e a
+        <a href="/amparo/privacidade" target="_blank">Política de Privacidade</a>.</span>
+    </label>
+
+    <button type="submit" class="btn" style="width:100%;margin-top:18px">Criar conta</button>
+  </form>
+  <p class="center muted" style="margin-top:14px;font-size:14px">
+    Já tem conta? <a href="/amparo/entrar">Entrar</a>
+  </p>
+</div>
+{% endblock %}

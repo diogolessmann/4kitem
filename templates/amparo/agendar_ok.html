@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agendamento confirmado — Amparo</title>
+<style>
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+       background:#f7f5f1;color:#20302f;line-height:1.55}
+  .wrap{max-width:480px;margin:0 auto;padding:48px 18px;text-align:center}
+  .card{background:#fff;border:1px solid #e4e1da;border-radius:14px;padding:30px;margin-top:18px}
+  .big{font-size:46px}
+  h1{font-size:24px}
+  .muted{color:#6b7c7a}
+  .box{background:#e7efec;border-radius:12px;padding:16px;margin-top:16px;font-size:18px;font-weight:700;color:#256460}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="big">💙</div>
+  <h1>Sessão confirmada, {{ nome.split(' ')[0] }}!</h1>
+  <div class="card">
+    <p class="muted" style="margin-top:0">Sua sessão com {{ cfg['psi_nome'] }} está marcada para:</p>
+    <div class="box">{{ data_br }} às {{ hora }}</div>
+    <p class="muted" style="margin-bottom:0">Enviamos os detalhes para o seu WhatsApp. Até lá!</p>
+  </div>
+  <p class="muted" style="font-size:12px;margin-top:20px">
+    Precisa remarcar? Fale com {{ cfg['psi_nome'] }}. · Em emergência: CVV 188 · SAMU 192.
+  </p>
+</div>
+</body>
+</html>

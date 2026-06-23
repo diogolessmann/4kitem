@@ -1,0 +1,33 @@
+{% extends "amparo/base.html" %}
+{% block title %}Termos de Uso — Amparo{% endblock %}
+{% block content %}
+<div style="max-width:720px;margin:0 auto">
+  <h1 style="font-size:28px">Termos de Uso</h1>
+  <p class="muted">Versão preliminar · atualizado em junho/2026 · {{ '{{CNPJ}}' }}</p>
+
+  <div class="card" style="margin-top:16px">
+    <h2 style="font-size:18px">1. O que é o Amparo</h2>
+    <p>O Amparo é uma ferramenta de apoio à prática de psicólogos: agenda, lembretes e um
+    motor de acompanhamento do paciente entre as sessões via WhatsApp. <strong>O Amparo não
+    presta serviço psicológico</strong> e não substitui o profissional.</p>
+
+    <h2 style="font-size:18px">2. Papel do psicólogo</h2>
+    <p>O psicólogo é o responsável técnico pelo acompanhamento dos seus pacientes. Ele configura,
+    supervisiona e responde por todo conteúdo enviado pelo motor, conforme o Código de Ética
+    Profissional do Psicólogo e as orientações do CFP sobre uso de IA.</p>
+
+    <h2 style="font-size:18px">3. A inteligência artificial</h2>
+    <p>As mensagens podem ser geradas com apoio de IA. A IA <strong>não realiza diagnóstico,
+    avaliação ou terapia</strong>, identifica-se sempre como IA e, diante de sinais de risco,
+    aciona ajuda humana qualificada (CVV 188 / SAMU 192) e alerta o psicólogo.</p>
+
+    <h2 style="font-size:18px">4. Pagamento</h2>
+    <p>A assinatura é cobrada do psicólogo. O paciente nunca paga a plataforma. Planos e
+    valores estão na página inicial; o cancelamento pode ser feito a qualquer momento.</p>
+
+    <h2 style="font-size:18px">5. Limitações</h2>
+    <p>O Amparo é um apoio operacional e de engajamento, não um serviço de emergência. Em crise,
+    procure imediatamente CVV 188, SAMU 192 ou o CAPS mais próximo.</p>
+  </div>
+</div>
+{% endblock %}

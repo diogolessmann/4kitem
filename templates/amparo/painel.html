@@ -1,0 +1,55 @@
+{% extends "amparo/base.html" %}
+{% block title %}Painel — Amparo{% endblock %}
+{% block content %}
+
+<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+  <div>
+    <h1 style="font-size:26px;margin-bottom:2px">Olá, {{ psi['nome'].split(' ')[0] }} 👋</h1>
+    <p class="muted" style="margin-top:0"><a href="/amparo/assinatura">Plano <strong>{{ plano.nome }}</strong></a> ·
+      {{ pacientes_ativos }}/{{ limite if limite < 9999 else '∞' }} pacientes no motor</p>
+  </div>
+  <a href="/amparo/sair" class="btn ghost">Sair</a>
+</div>
+
+{% if psi['plano'] == 'trial' %}
+<div class="card" style="margin-top:8px;background:var(--sage);border-color:#cfe0db;
+     display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+  <div>
+    <strong>Você está no período de avaliação (14 dias).</strong>
+    <span class="muted">Escolha um plano para não perder o acompanhamento dos seus pacientes.</span>
+  </div>
+  <a href="/amparo/planos" class="btn">Ver planos</a>
+</div>
+{% elif psi['status'] == 'suspenso' %}
+<div class="card" style="margin-top:8px;background:#fdece7;border-color:#f3c9bd;
+     display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+  <div><strong>Assinatura suspensa.</strong>
+    <span class="muted">Regularize para reativar o cuidado.</span></div>
+  <a href="/amparo/planos" class="btn">Reativar</a>
+</div>
+{% endif %}
+
+<div style="display:flex;gap:18px;flex-wrap:wrap;margin-top:22px">
+  <a class="card" href="/amparo/agenda" style="flex:1;min-width:240px;color:inherit">
+    <div class="pill">Pronto</div>
+    <h2 style="margin:10px 0 4px;font-size:19px">📅 Agenda & lembretes</h2>
+    <p class="muted" style="font-size:14px;margin:0">Configure seus horários, compartilhe seu link
+      e receba agendamentos. Lembrete por WhatsApp ~24h antes. <strong>Abrir →</strong></p>
+  </a>
+  <div class="card" style="flex:1;min-width:240px">
+    <div class="pill">Próximo: Lote 3</div>
+    <h2 style="margin:10px 0 4px;font-size:19px">💙 Motor de cuidado</h2>
+    <p class="muted" style="font-size:14px;margin:0">Check-in de humor, escalas e tarefas no WhatsApp,
+      com seu painel de sinais. <em>Em construção.</em></p>
+  </div>
+</div>
+
+<div class="card" style="margin-top:18px">
+  <h2 style="margin-top:0;font-size:18px">Seus pacientes</h2>
+  <p class="muted" style="font-size:14px">
+    O cadastro de pacientes e o disparo do motor chegam nos próximos lotes. Por enquanto,
+    sua fundação está pronta: conta criada, consentimento/LGPD e os guard-rails do CFP ativos. 🛡️
+  </p>
+</div>
+
+{% endblock %}

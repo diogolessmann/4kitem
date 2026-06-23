@@ -1,0 +1,36 @@
+{% extends "amparo/base.html" %}
+{% block title %}Assinatura — Amparo{% endblock %}
+{% block content %}
+<div style="max-width:520px;margin:0 auto">
+  <div style="display:flex;justify-content:space-between;align-items:center">
+    <h1 style="font-size:24px;margin:0">Sua assinatura</h1>
+    <a href="/amparo/painel" class="btn ghost">← Painel</a>
+  </div>
+
+  <div class="card" style="margin-top:16px">
+    {% if psi['status'] == 'ativo' and plano %}
+      <span class="pill">Ativa ✅</span>
+      <h2 style="margin:10px 0 2px">Plano {{ plano.nome }}</h2>
+      <p class="muted">Até {{ plano.limite if plano.limite < 9999 else '∞' }} pacientes no motor de cuidado.</p>
+    {% elif psi['status'] == 'pendente' %}
+      <span class="pill" style="background:#fff3d6;color:#9a6b16">Aguardando pagamento ⏳</span>
+      <p class="muted" style="margin-top:10px">Assim que o pagamento for confirmado, seu plano é liberado
+      automaticamente. Pode levar alguns minutos no PIX.</p>
+    {% elif psi['status'] == 'suspenso' %}
+      <span class="pill" style="background:#fdece7;color:var(--warn)">Suspensa</span>
+      <p class="muted" style="margin-top:10px">Sua assinatura está suspensa (pagamento em aberto ou cancelado).
+      Regularize para reativar o cuidado dos seus pacientes.</p>
+      <a href="/amparo/planos" class="btn" style="margin-top:8px">Reativar</a>
+    {% else %}
+      <span class="pill">Avaliação (trial)</span>
+      <p class="muted" style="margin-top:10px">Você está no período de teste. Escolha um plano para
+      continuar acompanhando seus pacientes sem interrupção.</p>
+      <a href="/amparo/planos" class="btn" style="margin-top:8px">Ver planos</a>
+    {% endif %}
+  </div>
+
+  <p class="center muted" style="font-size:12px;margin-top:14px">
+    Pagamentos processados pelo Asaas. Dúvidas sobre cobrança? Fale com a gente.
+  </p>
+</div>
+{% endblock %}

@@ -1,0 +1,63 @@
+{% extends "amparo/base.html" %}
+{% block content %}
+
+<div class="center" style="padding:20px 0 10px">
+  <span class="pill">Para psicólogos · cuidado entre as sessões</span>
+  <h1>O paciente vive 167 horas por semana<br>fora do seu divã.</h1>
+  <p class="muted" style="font-size:18px;max-width:620px;margin:14px auto 0">
+    O Amparo mantém seu paciente no processo entre as sessões — com mensagens de cuidado no
+    WhatsApp — e te mostra como ele está. Menos faltas, menos desistências.
+    <strong>Pare de perder paciente.</strong>
+  </p>
+  <div style="margin:26px 0">
+    <a href="/amparo/cadastro" class="btn">Começar grátis (14 dias)</a>
+    <a href="/amparo/entrar" class="btn ghost" style="margin-left:8px">Já tenho conta</a>
+  </div>
+  <p class="muted" style="font-size:13px">Sem cartão para testar · cancele quando quiser</p>
+</div>
+
+<div class="card" style="margin-top:30px">
+  <h2 class="center" style="margin-top:0">Como o cuidado continua entre as sessões</h2>
+  <div style="display:flex;gap:18px;flex-wrap:wrap;margin-top:18px">
+    <div style="flex:1;min-width:180px">
+      <div class="pill">1</div>
+      <p><strong>O Amparo pergunta</strong><br><span class="muted">um “como foi sua semana?”, uma tarefa combinada ou uma escala — no WhatsApp do paciente.</span></p>
+    </div>
+    <div style="flex:1;min-width:180px">
+      <div class="pill">2</div>
+      <p><strong>O paciente responde</strong><br><span class="muted">por texto ou áudio, no lugar onde ele já vive. Sem baixar app nenhum.</span></p>
+    </div>
+    <div style="flex:1;min-width:180px">
+      <div class="pill">3</div>
+      <p><strong>Você vê e acolhe</strong><br><span class="muted">humor, adesão e sinais de alerta chegam no seu painel. O paciente sente que você se importa.</span></p>
+    </div>
+  </div>
+</div>
+
+<h2 class="center" style="margin-top:48px">Planos</h2>
+<div style="display:flex;gap:18px;flex-wrap:wrap;margin-top:18px">
+  {% for key, p in planos.items() %}
+  <div class="card" style="flex:1;min-width:230px">
+    <div class="pill">{{ p.nome }}</div>
+    <p style="font-size:28px;font-weight:800;margin:12px 0 2px">
+      R$ {{ '%.2f'|format(p.preco)|replace('.', ',') }}<span class="muted" style="font-size:14px;font-weight:500">/mês</span>
+    </p>
+    <p class="muted" style="font-size:14px;min-height:42px">{{ p.desc }}</p>
+    <a href="/amparo/cadastro" class="btn ghost" style="width:100%;text-align:center">Escolher</a>
+  </div>
+  {% endfor %}
+</div>
+<p class="center muted" style="font-size:13px;margin-top:12px">
+  Anual no PIX com desconto · o paciente nunca paga a plataforma.
+</p>
+
+<div class="card" style="margin-top:40px;background:var(--sage);border-color:#cfe0db">
+  <p style="margin:0;font-size:14px">
+    🛡️ <strong>Feito dentro das regras do Conselho Federal de Psicologia.</strong>
+    O Amparo é uma ferramenta <strong>supervisionada por você</strong> — a IA nunca faz terapia,
+    nunca dá diagnóstico, e em qualquer sinal de risco aciona ajuda humana (CVV 188) e te avisa.
+    O cuidado é humano; a tecnologia só apoia.
+  </p>
+</div>
+
+{% endblock %}

@@ -1,0 +1,18 @@
+{% extends "amparo/base.html" %}
+{% block title %}Entrar — Amparo{% endblock %}
+{% block content %}
+<div style="max-width:420px;margin:0 auto">
+  <h1 style="font-size:28px">Entrar</h1>
+  {% if erro %}<div class="erro">{{ erro }}</div>{% endif %}
+  <form method="post" class="card" style="margin-top:16px">
+    <label>E-mail</label>
+    <input type="email" name="email" required autofocus>
+    <label>Senha</label>
+    <input type="password" name="senha" required>
+    <button type="submit" class="btn" style="width:100%;margin-top:18px">Entrar</button>
+  </form>
+  <p class="center muted" style="margin-top:14px;font-size:14px">
+    Não tem conta? <a href="/amparo/cadastro">Começar grátis</a>
+  </p>
+</div>
+{% endblock %}

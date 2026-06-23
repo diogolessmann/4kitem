@@ -1,0 +1,47 @@
+{% extends "amparo/base.html" %}
+{% block title %}Seu acompanhamento — Amparo{% endblock %}
+{% block content %}
+<div style="max-width:520px;margin:0 auto">
+
+  <h1 style="font-size:26px">Olá, {{ pac['nome'].split(' ')[0] }} 💙</h1>
+  <p class="muted">Seu psicólogo(a) quer te acompanhar entre as sessões pelo WhatsApp, com o Amparo.</p>
+
+  {% if pac['consentimento'] == 'aceito' %}
+    <div class="card" style="background:var(--sage);border-color:#cfe0db;margin-top:14px">
+      <strong>Tudo certo! ✅</strong>
+      <p style="margin:8px 0 0">Você vai receber mensagens de cuidado no seu WhatsApp.
+      Pode parar quando quiser — é só tocar no botão abaixo.</p>
+      <form method="post" style="margin-top:14px">
+        <button name="acao" value="opt_out" class="btn ghost" style="border-color:var(--warn);color:var(--warn)">
+          Não quero mais receber
+        </button>
+      </form>
+    </div>
+  {% elif pac['consentimento'] == 'revogado' %}
+    <div class="card" style="margin-top:14px">
+      <strong>Você saiu do acompanhamento.</strong>
+      <p class="muted" style="margin:8px 0 0">Não vamos mais te enviar mensagens. Isso não afeta
+      em nada o seu atendimento com o psicólogo(a). Mudou de ideia?</p>
+      <form method="post" style="margin-top:14px">
+        <button name="acao" value="aceite" class="btn">Quero voltar a receber</button>
+      </form>
+    </div>
+  {% else %}
+    <div class="card" style="margin-top:14px">
+      <p>{{ consent_texto }}</p>
+      <p class="muted" style="font-size:13px">
+        🤖 As mensagens são geradas com apoio de IA, que <strong>não é um profissional</strong> e
+        <strong>não faz terapia</strong>. Em emergência: <strong>CVV 188 · SAMU 192</strong>.
+      </p>
+      <form method="post" style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap">
+        <button name="acao" value="aceite" class="btn">Aceito receber o cuidado</button>
+        <button name="acao" value="opt_out" class="btn ghost">Agora não</button>
+      </form>
+    </div>
+  {% endif %}
+
+  <p class="center muted" style="font-size:12px;margin-top:18px">
+    Aceitar é livre e não obrigatório. Recusar não traz nenhum prejuízo ao seu atendimento.
+  </p>
+</div>
+{% endblock %}

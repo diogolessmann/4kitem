@@ -1,0 +1,58 @@
+{% extends "amparo/base.html" %}
+{% block title %}Planos — Amparo{% endblock %}
+{% block content %}
+
+<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+  <h1 style="font-size:26px;margin:0">Escolha seu plano</h1>
+  <a href="/amparo/painel" class="btn ghost">← Painel</a>
+</div>
+<p class="muted">O paciente nunca paga a plataforma. Anual no PIX = 2 meses grátis.</p>
+
+{% if erro %}<div class="erro">{{ erro }}</div>{% endif %}
+{% if not asaas_ok %}
+<div class="card" style="background:#fff8ed;border-color:#f0dcae">
+  ⚠️ <strong>Cobrança ainda não configurada</strong> (falta a chave do Asaas no ambiente).
+  Você pode escolher o plano, mas a fatura só será gerada após configurar.
+</div>
+{% endif %}
+
+<form method="post" action="/amparo/assinar">
+  <div class="card" style="margin-top:16px">
+    <div style="display:flex;gap:20px;flex-wrap:wrap;align-items:center">
+      <div>
+        <label style="margin-top:0">Cobrança</label>
+        <label style="font-weight:500"><input type="radio" name="ciclo" value="anual" checked style="width:auto"> Anual (PIX, -2 meses)</label>
+        <label style="font-weight:500"><input type="radio" name="ciclo" value="mensal" style="width:auto"> Mensal (cartão)</label>
+      </div>
+      <div style="flex:1;min-width:200px">
+        <label style="margin-top:0">CPF/CNPJ para a nota</label>
+        <input type="text" name="cpf" placeholder="somente números" required>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:18px;flex-wrap:wrap;margin-top:16px">
+    {% for key, p in planos.items() %}
+    <div class="card" style="flex:1;min-width:230px;{{ 'border-color:var(--teal);border-width:2px' if key=='pro' else '' }}">
+      {% if key=='pro' %}<div class="pill">Mais escolhido</div>{% endif %}
+      <h2 style="margin:8px 0 2px">{{ p.nome }}</h2>
+      <p style="font-size:26px;font-weight:800;margin:6px 0 0">
+        R$ {{ '%.2f'|format(p.preco)|replace('.', ',') }}<span class="muted" style="font-size:14px;font-weight:500">/mês</span>
+      </p>
+      <p class="muted" style="font-size:13px;margin:4px 0 0">
+        ou R$ {{ '%.2f'|format(p.preco*10)|replace('.', ',') }}/ano no PIX
+      </p>
+      <p class="muted" style="font-size:14px;min-height:46px;margin-top:10px">{{ p.desc }}</p>
+      <button type="submit" name="plano" value="{{ key }}" class="btn"
+              style="width:100%;{{ '' if key=='pro' else 'background:transparent;color:var(--teal);border:1.5px solid var(--teal)' }}">
+        Assinar {{ p.nome }}
+      </button>
+    </div>
+    {% endfor %}
+  </div>
+</form>
+
+<p class="center muted" style="font-size:12px;margin-top:14px">
+  🔒 Pagamento processado pelo Asaas. Cancele quando quiser.
+</p>
+{% endblock %}

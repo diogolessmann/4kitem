@@ -1,0 +1,36 @@
+{% extends "amparo/base.html" %}
+{% block title %}Política de Privacidade — Amparo{% endblock %}
+{% block content %}
+<div style="max-width:720px;margin:0 auto">
+  <h1 style="font-size:28px">Política de Privacidade</h1>
+  <p class="muted">Versão preliminar · atualizado em junho/2026 · {{ '{{CNPJ}}' }}</p>
+
+  <div class="card" style="margin-top:16px">
+    <h2 style="font-size:18px">Dados de saúde são sensíveis (LGPD)</h2>
+    <p>Tratamos dados de saúde como <strong>dados sensíveis</strong> nos termos da Lei nº
+    13.709/2018 (LGPD). Eles só são tratados com <strong>consentimento explícito, específico e
+    informado</strong> do paciente, e exclusivamente para o acompanhamento conduzido pelo seu
+    psicólogo.</p>
+
+    <h2 style="font-size:18px">O que guardamos — e o que não guardamos</h2>
+    <p>Guardamos apenas sinais estruturados do acompanhamento (ex.: humor, respostas de escalas,
+    adesão a tarefas) e dados de cadastro. <strong>Não usamos as conversas para treinar IA nem as
+    vendemos a terceiros.</strong></p>
+
+    <h2 style="font-size:18px">Consentimento e opt-out</h2>
+    <p>{{ consent_texto }}</p>
+    <p>O paciente pode <strong>recusar a ferramenta sem qualquer prejuízo</strong> ao seu
+    atendimento e <strong>revogar o consentimento a qualquer momento</strong>, de forma fácil e
+    gratuita, pelo próprio WhatsApp ou pelo link recebido.</p>
+
+    <h2 style="font-size:18px">Seus direitos</h2>
+    <p>Você pode solicitar acesso, correção e <strong>exclusão definitiva</strong> dos seus dados.
+    Basta falar com seu psicólogo ou usar os contatos abaixo.</p>
+
+    <h2 style="font-size:18px">Em crise</h2>
+    <p>O Amparo não é serviço de emergência. Se você ou alguém estiver em sofrimento intenso ou
+    com pensamentos de morte, procure ajuda humana agora: <strong>CVV 188</strong> (24h, gratuito,
+    sigiloso), <strong>SAMU 192</strong> ou o <strong>CAPS</strong> mais próximo.</p>
+  </div>
+</div>
+{% endblock %}
