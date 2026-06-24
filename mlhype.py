@@ -362,7 +362,11 @@ _OPS_HTML = '''<!doctype html><html lang=pt-br><head><meta charset=utf-8>
  .wrap{max-width:980px;margin:0 auto} a{color:var(--ac);text-decoration:none}
  header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:6px}
  h1{font-size:21px;margin:0} .fire{background:linear-gradient(135deg,#2f6bff,#7c3aed);-webkit-background-clip:text;background-clip:text;color:transparent}
- .sub{color:var(--mut);font-size:13px;margin:0 0 16px}
+ .sub{color:var(--mut);font-size:13px;margin:0 0 14px}
+ .tabs{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 16px}
+ .tab{font-size:13px;font-weight:700;padding:7px 13px;border-radius:20px;border:1px solid var(--bd);color:var(--mut);background:var(--card)}
+ .tab.on{background:linear-gradient(135deg,#2f6bff,#7c3aed);color:#fff;border-color:transparent}
+ .nichohead{font-size:16px;font-weight:800;margin:22px 0 8px;color:var(--txt)} .nichohead span{color:var(--mut);font-weight:600;font-size:13px}
  .op{display:flex;align-items:center;gap:14px;background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:12px 14px;margin:9px 0}
  .sc{flex:0 0 64px;text-align:center} .scn{font-size:26px;font-weight:800;line-height:1} .scl{font-size:10px;color:var(--mut);text-transform:uppercase;letter-spacing:.4px}
  .sc-hi .scn{color:#5ee0a0} .sc-mid .scn{color:#ffd35e} .sc-lo .scn{color:#9fb0d0}
@@ -378,9 +382,13 @@ _OPS_HTML = '''<!doctype html><html lang=pt-br><head><meta charset=utf-8>
  <h1>MLhype <span class=fire>🔥</span> · Dicas do que vender</h1>
  <span style="font-size:13px;color:var(--mut)"><a href="/mlhype/radar">Radar</a> · <a href="/mlhype/calculadora">🧮 Calculadora</a> · <a href="/mlhype/planos" style="color:#b9a6ff;font-weight:700">planos</a> · {% if nome %}{{nome.split()[0]}} · {% endif %}<a href="/mlhype/sair">sair</a></span>
 </header>
-<p class=sub>O motor varreu <b>{{cat_nome}}</b> e rankeou onde mais vale a pena atacar: <b>muita procura × pouca concorrência</b>. Quanto maior o Score, melhor a brecha.</p>
-{% if ops %}
-{% for o in ops %}
+<p class=sub>As <b>brechas</b> dos nichos do dinheiro — muita procura × pouca concorrência. Escolha um nicho pra focar. Quanto maior o Score, melhor a brecha.</p>
+<div class=tabs>
+ <a class="tab {{ 'on' if not nicho_sel else '' }}" href="/mlhype/oportunidades">Todos</a>
+ {% for root, emoji, label in nichos %}<a class="tab {{ 'on' if nicho_sel==root else '' }}" href="/mlhype/oportunidades?nicho={{root}}">{{emoji}} {{label}}</a>{% endfor %}
+</div>
+
+{% macro op_row(o) %}
  {% set cls = 'sc-hi' if o.score>=70 else ('sc-mid' if o.score>=50 else 'sc-lo') %}
  <div class="op {{cls}}">
   <div class=sc><div class=scn>{{o.score}}</div><div class=scl>oportun.</div></div>
@@ -398,24 +406,59 @@ _OPS_HTML = '''<!doctype html><html lang=pt-br><head><meta charset=utf-8>
   </div>
   <a class=go href="/mlhype/analisar/{{o.mlb_item_id}}?cat={{o.categoria_id}}">⚡ Analisar</a>
  </div>
-{% endfor %}
-{% else %}<div class=empty>O coletor ainda está enchendo o mercado — volte em alguns minutos pras dicas aparecerem.</div>{% endif %}
+{% endmacro %}
+
+{% if grupos %}
+ {% for g in grupos %}
+ <div class=nichohead>{{g.emoji}} {{g.label}} <span>· {{g.ops|length}} brechas</span></div>
+ {% for o in g.ops %}{{ op_row(o) }}{% endfor %}
+ {% endfor %}
+{% elif ops %}
+ {% for o in ops %}{{ op_row(o) }}{% endfor %}
+{% else %}<div class=empty>O coletor ainda está enchendo esse nicho — volte em alguns minutos.</div>{% endif %}
 </div></body></html>'''
+
+
+# Os 5 nichos do foco p/ as abas das Dicas (id, emoji, rótulo curto)
+NICHOS_FOCO = [
+    ('MLB1000', '🎧', 'Eletrônicos'),
+    ('MLB1051', '📱', 'Celulares'),
+    ('MLB1276', '💪', 'Esportes'),
+    ('MLB1648', '🖥️', 'Informática'),
+    ('MLB1246', '💄', 'Beleza'),
+]
 
 
 @mlhype_bp.route('/oportunidades')
 def mlhype_oportunidades():
-    """Pente fino: as melhores oportunidades do mercado, rankeadas pelo motor."""
+    """Pente fino: as brechas ARRUMADAS POR NICHO. Sem aba = agrupado nos 5
+    nichos; com ?nicho=<raiz> = só aquele nicho (raiz + subcategorias)."""
     _r = _exige_login()
     if _r:
         return _r
-    cat = request.args.get('cat')
-    ops = oportunidades(limit=30, categoria=cat, user_id=session.get('mlhype_user_id'))
-    for o in ops:
-        o['cat_nome'] = _nome_cat(o['categoria_id'])
+    import mlhype_db as db
+    nicho = request.args.get('nicho')
+    if nicho not in db._CAT_FOCO:
+        nicho = None
+    uid = session.get('mlhype_user_id')
+    ops, grupos = None, None
+    if nicho:                                    # uma aba só → lista plana do nicho
+        ops = oportunidades(limit=30, nicho=nicho, user_id=uid)
+        for o in ops:
+            o['cat_nome'] = _nome_cat(o['categoria_id'])
+    else:                                        # "Todos" → agrupado por nicho
+        todas = oportunidades(limit=60, user_id=uid)
+        for o in todas:
+            o['cat_nome'] = _nome_cat(o['categoria_id'])
+        mapa = db.mapa_nicho_raiz()
+        grupos = []
+        for root, emoji, label in NICHOS_FOCO:
+            its = [o for o in todas if mapa.get(o['categoria_id']) == root][:8]
+            if its:
+                grupos.append({'root': root, 'emoji': emoji, 'label': label, 'ops': its})
     return render_template_string(
-        _OPS_HTML, ops=ops, fmt=_fmt_brl, nome=session.get('mlhype_user_nome', ''),
-        cat=cat, cat_nome=_nome_cat(cat) if cat else 'todo o mercado')
+        _OPS_HTML, ops=ops, grupos=grupos, nichos=NICHOS_FOCO, nicho_sel=nicho,
+        fmt=_fmt_brl, nome=session.get('mlhype_user_nome', ''))
 
 
 # ── Calculadora de Margem REAL (Lote M — ataca a dor #1: "vou ter lucro?") ─────

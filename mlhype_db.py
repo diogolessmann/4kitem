@@ -668,6 +668,31 @@ def _categorias_permitidas():
     return _CAT_FOCO | set(subs)
 
 
+def mapa_nicho_raiz():
+    """Mapa {categoria_id -> nicho-raiz do foco} p/ agrupar as Dicas por nicho
+    (uma subcategoria como 'Cabos' mapeia pro nicho-raiz 'Eletrônicos')."""
+    if not _CAT_FOCO:
+        return {}
+    conn = get_mlhype_db()
+    ph = ','.join('?' * len(_CAT_FOCO))
+    rows = conn.execute(f'SELECT id, parent_id FROM mlhype_categories WHERE parent_id IN ({ph})',
+                        tuple(_CAT_FOCO)).fetchall()
+    conn.close()
+    m = {root: root for root in _CAT_FOCO}
+    for r in rows:
+        m[r['id']] = r['parent_id']
+    return m
+
+
+def subs_do_nicho(root):
+    """{raiz + subcategorias dela} — pra filtrar as Dicas a UM nicho só."""
+    conn = get_mlhype_db()
+    subs = [x['id'] for x in conn.execute(
+        'SELECT id FROM mlhype_categories WHERE parent_id=?', (root,)).fetchall()]
+    conn.close()
+    return {root} | set(subs)
+
+
 # ── PENTE FINO: Índice de Oportunidade (o motor que sabe o que vale a pena) ────
 # Heurística determinística (sem IA, roda sobre TODO o mercado coletado):
 # o ouro = ALTA demanda (posição no Top) × BAIXA concorrência (poucas ofertas),
@@ -696,7 +721,7 @@ def _dias_desde(iso):
         return None
 
 
-def oportunidades(limit=20, categoria=None, user_id=None):
+def oportunidades(limit=20, categoria=None, user_id=None, nicho=None):
     """Varre o último snapshot de cada produto, pontua a oportunidade e devolve
     as melhores rankeadas. base = média geométrica(demanda, facilidade) — exige
     as DUAS coisas decentes (vende E dá pra atacar); + bônus tendência/fornecedor
@@ -715,9 +740,13 @@ def oportunidades(limit=20, categoria=None, user_id=None):
         params.append(categoria)
     rows = [dict(r) for r in conn.execute(q, params).fetchall()]
     conn.close()
-    permitidas = _categorias_permitidas()
-    if permitidas is not None:
-        rows = [r for r in rows if r['categoria_id'] in permitidas]
+    if nicho:                                    # filtra a UM nicho (raiz + subs)
+        alvo = subs_do_nicho(nicho)
+        rows = [r for r in rows if r['categoria_id'] in alvo]
+    else:
+        permitidas = _categorias_permitidas()
+        if permitidas is not None:
+            rows = [r for r in rows if r['categoria_id'] in permitidas]
 
     for r in rows:
         d = _demanda_score(r['pos'])
