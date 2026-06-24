@@ -92,17 +92,71 @@ PLANOS = {
 }
 
 
+_HOME_LOGADO = '''<!doctype html><html lang=pt-br><head><meta charset=utf-8>
+<meta name=viewport content="width=device-width,initial-scale=1"><title>MLhype · Início</title>
+<style>
+ :root{--bg:#0b1020;--card:#0f1730;--bd:#21304f;--mut:#8aa0c6;--txt:#e7ecf5;--ac:#7cc0ff}
+ *{box-sizing:border-box} body{font-family:system-ui,Segoe UI,sans-serif;background:var(--bg);color:var(--txt);margin:0;padding:18px}
+ .wrap{max-width:760px;margin:0 auto} a{color:var(--ac);text-decoration:none}
+ header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+ .lg{font-size:20px;font-weight:800} .fire{background:linear-gradient(135deg,#2f6bff,#7c3aed);-webkit-background-clip:text;background-clip:text;color:transparent}
+ h1{font-size:22px;margin:0 0 2px} .sub{color:var(--mut);font-size:14px;margin:0 0 18px}
+ .trilha{display:grid;gap:10px;margin-bottom:18px}
+ .step{display:flex;gap:12px;align-items:flex-start;background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:13px 15px}
+ .num{flex:0 0 28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#2f6bff,#7c3aed);color:#fff;font-weight:800;display:flex;align-items:center;justify-content:center;font-size:14px}
+ .step b{display:block;font-size:15px} .step span{display:block;color:var(--mut);font-size:13px;margin-top:2px;line-height:1.4}
+ .hot{border:2px solid #1f7a4d;background:#06291a;border-radius:12px;padding:14px 16px;margin-bottom:16px}
+ .hottag{font-size:11px;font-weight:800;letter-spacing:.5px;color:#5ee0a0;margin-bottom:10px}
+ .hotrow{display:flex;align-items:center;gap:14px}
+ .hotsc{font-size:30px;font-weight:800;color:#5ee0a0;line-height:1} .hotsc span{font-size:14px;color:var(--mut)}
+ .hotinfo{flex:1;min-width:0} .hotpn{font-weight:600;line-height:1.3} .hotmeta{color:var(--mut);font-size:12px;margin-top:2px}
+ .hotgo{flex:0 0 auto;background:linear-gradient(135deg,#2f6bff,#7c3aed);color:#fff;padding:9px 14px;border-radius:8px;font-weight:700;font-size:13px;white-space:nowrap}
+ .cta{display:block;text-align:center;background:linear-gradient(135deg,#2f6bff,#7c3aed);color:#fff;padding:14px;border-radius:10px;font-weight:800;font-size:16px}
+</style></head><body><div class=wrap>
+<header>
+ <span class=lg>MLhype <span class=fire>🔥</span></span>
+ <span style="font-size:13px;color:var(--mut)"><a href="/mlhype/oportunidades">💡 Dicas</a> · <a href="/mlhype/radar">Radar</a> · <a href="/mlhype/calculadora">🧮 Calculadora</a> · <a href="/mlhype/planos" style="color:#b9a6ff;font-weight:700">planos</a> · <a href="/mlhype/sair">sair</a></span>
+</header>
+<h1>Bom te ver, {{primeiro}}! 👋</h1>
+<p class=sub>O caminho pra achar o que vender, comprar barato e lucrar — em 4 passos:</p>
+<div class=trilha>
+ <div class=step><div class=num>1</div><div><b>🔥 O que vender</b><span>O motor varre o Mercado Livre e acha as brechas: muita procura, pouca concorrência.</span></div></div>
+ <div class=step><div class=num>2</div><div><b>💰 Quanto você ganha</b><span>Lucro por venda + a projeção: "vendeu 10.000? São R$X no bolso."</span></div></div>
+ <div class=step><div class=num>3</div><div><b>📍 Onde comprar barato</b><span>O fornecedor BR e as plataformas certas pra cada nicho — com link pronto.</span></div></div>
+ <div class=step><div class=num>4</div><div><b>📋 Publica e vende</b><span>Anúncio pronto e otimizado: copia, cola no ML e rouba a venda do líder.</span></div></div>
+</div>
+{% if top %}
+<div class=hot>
+ <div class=hottag>🔥 A BRECHA MAIS QUENTE AGORA</div>
+ <div class=hotrow>
+  <div class=hotsc>{{top.score}}<span>/100</span></div>
+  <div class=hotinfo>
+   <div class=hotpn>{{top.titulo or top.mlb_item_id}}</div>
+   <div class=hotmeta>{{top.cat_nome}} · {{top.num_ofertas if top.num_ofertas is not none else '—'}} concorrentes · líder {{fmt(top.preco)}}</div>
+  </div>
+  <a class=hotgo href="/mlhype/analisar/{{top.mlb_item_id}}?cat={{top.categoria_id}}">⚡ Analisar</a>
+ </div>
+</div>
+{% endif %}
+<a class=cta href="/mlhype/oportunidades">Começar agora → ver as dicas do que vender</a>
+</div></body></html>'''
+
+
 @mlhype_bp.route('/')
 def mlhype_home():
-    """Landing pública do MLhype (ciente de login)."""
+    """Home: trilha guiada do vendedor (logado) ou landing pública."""
     u = _usuario_atual()
     if u:
         primeiro = ((u.get('nome') or '').split() or ['você'])[0]
-        botoes = ('<a class="btn" href="/mlhype/oportunidades">💡 Ver dicas do que vender →</a>'
-                  f'<div class="sub2"><a class="link" href="/mlhype/radar">explorar o Radar</a> · {primeiro} · <a class="link" href="/mlhype/sair">sair</a></div>')
-    else:
-        botoes = ('<a class="btn" href="/mlhype/cadastrar">Criar conta grátis →</a>'
-                  '<div class="sub2"><a class="link" href="/mlhype/entrar">já tenho conta · entrar</a></div>')
+        top = None
+        try:
+            ops = oportunidades(limit=1, user_id=session.get('mlhype_user_id'))
+            if ops:
+                top = ops[0]
+                top['cat_nome'] = _nome_cat(top['categoria_id'])
+        except Exception:
+            top = None
+        return render_template_string(_HOME_LOGADO, primeiro=primeiro, top=top, fmt=_fmt_brl)
     return f'''<!doctype html><html lang="pt-br"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>MLhype — Inteligência para vendedores do Mercado Livre</title>
@@ -125,7 +179,8 @@ def mlhype_home():
  <p>Inteligência para quem vende no <b>Mercado Livre</b>.</p>
  <div class="bussola">"Descubra o que bomba, ache o fornecedor NO BRASIL e roube a
    venda do líder — anunciando melhor e mais barato."</div>
- {botoes}
+ <a class="btn" href="/mlhype/cadastrar">Criar conta grátis →</a>
+ <div class="sub2"><a class="link" href="/mlhype/entrar">já tenho conta · entrar</a></div>
 </div>
 </body></html>'''
 
