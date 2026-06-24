@@ -171,7 +171,7 @@ def _brl(v):
 # Anual = PIX (taxa Asaas R$1,99 fixa vira ~1%). Carteira família vem no Lote 3.
 PLANOS = {
     'pro_anual':     {'label': 'Pro anual',     'valor': 149.00, 'cycle': 'YEARLY',  'rotulo': 'R$ 149/ano',   'destaque': True},
-    'pro_mensal':    {'label': 'Pro mensal',    'valor': 14.90,  'cycle': 'MONTHLY', 'rotulo': 'R$ 14,90/mês', 'destaque': False},
+    'pro_mensal':    {'label': 'Pro mensal',    'valor': 19.90,  'cycle': 'MONTHLY', 'rotulo': 'R$ 19,90/mês', 'destaque': False},
     'familia_anual': {'label': 'Família anual', 'valor': 249.00, 'cycle': 'YEARLY',  'rotulo': 'R$ 249/ano',   'destaque': False},
     'familia_mensal':{'label': 'Família mensal','valor': 29.90,  'cycle': 'MONTHLY', 'rotulo': 'R$ 29,90/mês', 'destaque': False},
 }
