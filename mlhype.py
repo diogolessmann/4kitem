@@ -300,7 +300,7 @@ _RADAR_HTML = '''<!doctype html><html lang=pt-br><head><meta charset=utf-8>
 <form method=get><select name=cat onchange="this.form.submit()">
  {% for c in seletor %}<option value="{{c.id}}" {{'selected' if c.id==cat else ''}}>{{c.nome}} ({{c.n}})</option>{% endfor %}
 </select></form>
-<div class=sub>Top de <b>{{cat_nome}}</b>{% if data %} · coletado em {{data}}{% endif %} · {{linhas|length}} produtos no radar</div>
+<div class=sub>🎯 As <b>brechas</b> de {{cat_nome}} — muita procura, pouca concorrência (não mostro o mercado todo, só o que vale a pena){% if data %} · {{data}}{% endif %} · {{linhas|length}} oportunidades</div>
 <div class=layout>
  <div class=main>
  {% if linhas %}

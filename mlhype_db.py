@@ -398,9 +398,10 @@ def radar_categorias_com_dados():
     return [dict(r) for r in rows]
 
 
-def radar_top(cat_id, limit=20):
-    """Top da categoria no dia mais recente coletado, com a posição/preço do dia
-    ANTERIOR (p/ calcular tendência ▲▼ quando houver histórico)."""
+def radar_top(cat_id, limit=20, so_brechas=True):
+    """Top da categoria no dia mais recente. Por padrão mostra SÓ AS BRECHAS
+    (pouca concorrência = onde vale a pena atacar), não o mercado todo — corta o
+    ruído. Brechas primeiro. Inclui posição/preço do dia anterior p/ tendência."""
     conn = get_mlhype_db()
     ult = conn.execute("SELECT MAX(collected_at) AS d FROM mlhype_snapshots WHERE categoria_id=?",
                        (cat_id,)).fetchone()
@@ -418,9 +419,17 @@ def radar_top(cat_id, limit=20):
              ORDER BY p.collected_at DESC LIMIT 1) AS preco_ant
         FROM mlhype_snapshots s JOIN mlhype_listings l ON l.id = s.listing_id
         WHERE s.categoria_id=? AND s.collected_at=?
-        ORDER BY s.posicao_ranking LIMIT ?""", (cat_id, data, limit)).fetchall()
+        ORDER BY s.posicao_ranking LIMIT ?""", (cat_id, data, max(limit * 4, 60))).fetchall()
     conn.close()
-    return [dict(r) for r in rows], data
+    rows = [dict(r) for r in rows]
+    if so_brechas:
+        limiar = int(os.environ.get('MLHYPE_BRECHA_MAX', '12'))
+        brechas = [r for r in rows if r['num_ofertas'] is not None and r['num_ofertas'] <= limiar]
+        # SÓ brechas (mesmo que poucas). Se a categoria não tiver NENHUMA, mostra
+        # as de menor concorrência pra não ficar vazio.
+        rows = brechas if brechas else rows
+        rows.sort(key=lambda r: (r['num_ofertas'] if r['num_ofertas'] is not None else 9999))
+    return rows[:limit], data
 
 
 def radar_trends(limit=30):
@@ -705,4 +714,7 @@ def oportunidades(limit=20, categoria=None, user_id=None):
             bonus += 6
         r['score'] = max(0, min(100, r['base'] + bonus))
     cand.sort(key=lambda x: x['score'], reverse=True)
-    return cand[:limit]
+    # só mostra oportunidade DE VERDADE — corta o que não vale a pena (foco, não ruído)
+    minimo = int(os.environ.get('MLHYPE_OPS_MIN', '45'))
+    boas = [c for c in cand if c['score'] >= minimo]
+    return (boas or cand)[:limit]
