@@ -169,11 +169,10 @@ def _brl(v):
 
 # ── Planos (assinatura) ─────────────────────────────────────────────────────────
 # Anual = PIX (taxa Asaas R$1,99 fixa vira ~1%). Carteira família vem no Lote 3.
+# Menos é mais: UM plano só (família incluída), em 2 ciclos.
 PLANOS = {
-    'pro_anual':     {'label': 'Pro anual',     'valor': 149.00, 'cycle': 'YEARLY',  'rotulo': 'R$ 149/ano',   'destaque': True},
-    'pro_mensal':    {'label': 'Pro mensal',    'valor': 19.90,  'cycle': 'MONTHLY', 'rotulo': 'R$ 19,90/mês', 'destaque': False},
-    'familia_anual': {'label': 'Família anual', 'valor': 249.00, 'cycle': 'YEARLY',  'rotulo': 'R$ 249/ano',   'destaque': False},
-    'familia_mensal':{'label': 'Família mensal','valor': 29.90,  'cycle': 'MONTHLY', 'rotulo': 'R$ 29,90/mês', 'destaque': False},
+    'pro_anual':  {'label': 'Plano anual',  'valor': 149.00, 'cycle': 'YEARLY',  'rotulo': 'R$ 149/ano',   'destaque': True},
+    'pro_mensal': {'label': 'Plano mensal', 'valor': 19.90,  'cycle': 'MONTHLY', 'rotulo': 'R$ 19,90/mês', 'destaque': False},
 }
 
 # ── Asaas ──────────────────────────────────────────────────────────────────────
@@ -586,8 +585,12 @@ def familia():
         acao = request.form.get('acao')
         if acao == 'entrar':
             nome_cart = entrar_carteira(u['id'], request.form.get('codigo'))
-            msg = f'Você entrou na {nome_cart}!' if nome_cart else None
-            erro = None if nome_cart else 'Código não encontrado. Confira e tente de novo.'
+            if nome_cart == 'LIMITE':
+                erro = 'Essa família já está cheia (máximo de 5 pessoas).'
+            elif nome_cart:
+                msg = f'Você entrou na {nome_cart}!'
+            else:
+                erro = 'Código não encontrado. Confira e tente de novo.'
         elif acao == 'sair':
             sair_carteira(u['id'])
             msg = 'Você saiu da carteira compartilhada.'
@@ -932,7 +935,9 @@ def processar_wa_evento(data):
             return jsonify({'ok': True}), 200
         if low.startswith('entrar ') and len(texto.split(None, 1)) > 1:
             nome_cart = entrar_carteira(u['id'], texto.split(None, 1)[1])
-            if nome_cart:
+            if nome_cart == 'LIMITE':
+                wa_send(telefone, 'Essa família já está cheia 👨‍👩‍👧 (máximo de 5 pessoas por carteira).')
+            elif nome_cart:
                 membros = membros_carteira(u['id'])
                 wa_send(telefone, f'✅ Você entrou na *{nome_cart}*!\nA partir de agora vocês somam juntos. '
                                   f'👨‍👩‍👧\nQuem está: {", ".join(membros)}')

@@ -131,7 +131,8 @@ def init_somaja_db():
 
 # ── Acesso (assinatura ativa OU trial válido) ──────────────────────────────────
 def tem_acesso(u) -> bool:
-    """True se o usuário pode usar o app (assinatura paga OU dentro do trial)."""
+    """True se o usuário pode usar o app: assinatura paga, OU trial válido, OU alguém
+    da MESMA carteira (família) tem assinatura ativa — 1 plano cobre a família inteira."""
     if not u:
         return False
     try:
@@ -144,7 +145,21 @@ def tem_acesso(u) -> bool:
         tu = u['trial_until']
     except (KeyError, IndexError):
         tu = None
-    return bool(tu and tu >= datetime.now().strftime('%Y-%m-%d'))
+    if tu and tu >= datetime.now().strftime('%Y-%m-%d'):
+        return True
+    # Família: 1 assinatura cobre todos os membros da carteira
+    try:
+        cid = u['carteira_id']
+    except (KeyError, IndexError):
+        cid = None
+    if cid:
+        conn = get_somaja_db()
+        r = conn.execute('SELECT 1 FROM somaja_users WHERE carteira_id=? AND plan_active=1 LIMIT 1',
+                         (cid,)).fetchone()
+        conn.close()
+        if r:
+            return True
+    return False
 
 
 def dias_de_trial_restantes(u) -> int:
@@ -271,8 +286,12 @@ def garantir_carteira(user_id, nome_user=''):
     return cid, codigo
 
 
+FAMILIA_MAX = 5   # 1 assinatura cobre a família até este nº de pessoas (anti-abuso)
+
+
 def entrar_carteira(user_id, codigo):
-    """Entra na carteira de outra pessoa pelo código. Retorna o nome da carteira ou None."""
+    """Entra na carteira de outra pessoa pelo código.
+    Retorna: nome da carteira (ok), None (código não existe) ou 'LIMITE' (família cheia)."""
     codigo = (codigo or '').strip().upper()
     if not codigo:
         return None
@@ -281,6 +300,12 @@ def entrar_carteira(user_id, codigo):
     if not c:
         conn.close()
         return None
+    n = conn.execute('SELECT COUNT(*) AS n FROM somaja_users WHERE carteira_id=?', (c['id'],)).fetchone()['n']
+    ja = conn.execute('SELECT carteira_id FROM somaja_users WHERE id=?', (user_id,)).fetchone()
+    ja_dentro = ja and ja['carteira_id'] == c['id']
+    if not ja_dentro and n >= FAMILIA_MAX:
+        conn.close()
+        return 'LIMITE'
     conn.execute('UPDATE somaja_users SET carteira_id=? WHERE id=?', (c['id'], user_id))
     conn.commit(); conn.close()
     return c['nome']
