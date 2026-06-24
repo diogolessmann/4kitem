@@ -440,7 +440,7 @@ _OPS_HTML = '''<!doctype html><html lang=pt-br><head><meta charset=utf-8>
 <p class=sub>As <b>brechas</b> dos nichos do dinheiro — muita procura × pouca concorrência. Escolha um nicho pra focar. Quanto maior o Score, melhor a brecha.</p>
 <div class=tabs>
  <a class="tab {{ 'on' if not nicho_sel else '' }}" href="/mlhype/oportunidades">Todos</a>
- {% for root, emoji, label in nichos %}<a class="tab {{ 'on' if nicho_sel==root else '' }}" href="/mlhype/oportunidades?nicho={{root}}">{{emoji}} {{label}}</a>{% endfor %}
+ {% for n in nichos %}<a class="tab {{ 'on' if nicho_sel==n.slug else '' }}" href="/mlhype/oportunidades?nicho={{n.slug}}">{{n.emoji}} {{n.label}}</a>{% endfor %}
 </div>
 
 {% macro op_row(o) %}
@@ -476,43 +476,47 @@ _OPS_HTML = '''<!doctype html><html lang=pt-br><head><meta charset=utf-8>
 
 # Os 5 nichos do foco p/ as abas das Dicas (id, emoji, rótulo curto)
 NICHOS_FOCO = [
-    ('MLB1000', '🎧', 'Eletrônicos'),
-    ('MLB1051', '📱', 'Celulares'),
-    ('MLB1276', '💪', 'Esportes'),
-    ('MLB1648', '🖥️', 'Informática'),
-    ('MLB1246', '💄', 'Beleza'),
+    {'slug': 'eletronicos', 'emoji': '🎧', 'label': 'Eletrônicos',  'roots': ['MLB1000']},
+    {'slug': 'celulares',   'emoji': '📱', 'label': 'Celulares',    'roots': ['MLB1051']},
+    {'slug': 'esportes',    'emoji': '💪', 'label': 'Esportes',     'roots': ['MLB1276']},
+    {'slug': 'informatica', 'emoji': '🖥️', 'label': 'Informática',  'roots': ['MLB1648']},
+    {'slug': 'beleza',      'emoji': '💄', 'label': 'Beleza',       'roots': ['MLB1246']},
+    # nicho abrangente: ferramentas + construção (lâmpada/LED, material elétrico)
+    {'slug': 'construcao',  'emoji': '🔧', 'label': 'Ferramentas & Construção',
+     'roots': ['MLB263532', 'MLB1500']},
 ]
 
 
 @mlhype_bp.route('/oportunidades')
 def mlhype_oportunidades():
-    """Pente fino: as brechas ARRUMADAS POR NICHO. Sem aba = agrupado nos 5
-    nichos; com ?nicho=<raiz> = só aquele nicho (raiz + subcategorias)."""
+    """Pente fino: as brechas ARRUMADAS POR NICHO. Sem aba = agrupado por nicho;
+    com ?nicho=<slug> = só aquele nicho (suas raízes + subcategorias)."""
     _r = _exige_login()
     if _r:
         return _r
     import mlhype_db as db
-    nicho = request.args.get('nicho')
-    if nicho not in db._CAT_FOCO:
-        nicho = None
+    slug = request.args.get('nicho')
+    nic = next((n for n in NICHOS_FOCO if n['slug'] == slug), None)
     uid = session.get('mlhype_user_id')
     ops, grupos = None, None
-    if nicho:                                    # uma aba só → lista plana do nicho
-        ops = oportunidades(limit=30, nicho=nicho, user_id=uid)
+    if nic:                                      # uma aba só → lista plana do nicho
+        ops = oportunidades(limit=30, nicho_roots=nic['roots'], user_id=uid)
         for o in ops:
             o['cat_nome'] = _nome_cat(o['categoria_id'])
     else:                                        # "Todos" → agrupado por nicho
-        todas = oportunidades(limit=60, user_id=uid)
+        todas = oportunidades(limit=80, user_id=uid)
         for o in todas:
             o['cat_nome'] = _nome_cat(o['categoria_id'])
         mapa = db.mapa_nicho_raiz()
         grupos = []
-        for root, emoji, label in NICHOS_FOCO:
-            its = [o for o in todas if mapa.get(o['categoria_id']) == root][:8]
+        for n in NICHOS_FOCO:
+            rootset = set(n['roots'])
+            its = [o for o in todas if mapa.get(o['categoria_id']) in rootset][:8]
             if its:
-                grupos.append({'root': root, 'emoji': emoji, 'label': label, 'ops': its})
+                grupos.append({'emoji': n['emoji'], 'label': n['label'], 'ops': its})
     return render_template_string(
-        _OPS_HTML, ops=ops, grupos=grupos, nichos=NICHOS_FOCO, nicho_sel=nicho,
+        _OPS_HTML, ops=ops, grupos=grupos, nichos=NICHOS_FOCO,
+        nicho_sel=(nic['slug'] if nic else None),
         fmt=_fmt_brl, nome=session.get('mlhype_user_nome', ''))
 
 
@@ -763,6 +767,12 @@ def fontes_fornecedor(cat_id, produto=''):
         'MLB1648': [{'nome': 'Distribuidores de TI nacionais', 'tag': '🇧🇷',
                      'url': g('distribuidor TI informática atacado revenda ' + t),
                      'nota': 'Garantia + NF, essencial em informática. Vários grandes no BR.'}],
+        'MLB263532': [{'nome': 'Atacado de ferramentas / Santa Ifigênia', 'tag': '🇧🇷',
+                       'url': g('distribuidor ferramentas atacado revenda CNPJ ' + t),
+                       'nota': 'Distribuidor de ferramentas e elétrica — pronta entrega + NF.'}],
+        'MLB1500': [{'nome': 'Atacado de material elétrico / LED', 'tag': '🇧🇷',
+                     'url': g('distribuidor material elétrico lâmpada LED atacado revenda ' + t),
+                     'nota': 'LED/iluminação/elétrica = leve e alta rotação. Polo elétrico + 1688.'}],
     }
     fontes = (extra.get(cat_id) or []) + base
     fontes.append({'nome': 'Alibaba (sourcing internacional)', 'tag': '🇨🇳',
@@ -1270,8 +1280,8 @@ def _data_brt():
 # best-seller): Carros/Motos, Imóveis, Ingressos, Serviços. Pulamos no scan.
 _CAT_SEM_HIGHLIGHTS = {'MLB1743', 'MLB1459', 'MLB218519', 'MLB1540'}
 # Lote C: raízes a APROFUNDAR em subcategorias (os nichos de ouro). Configurável
-# via MLHYPE_SUBCAT_ROOTS; default = os 5 nichos do foco (coleta vai fundo neles).
-_SUBCAT_DEFAULT = 'MLB1000,MLB1051,MLB1276,MLB1648,MLB1246'
+# via MLHYPE_SUBCAT_ROOTS; default = os nichos do foco (coleta vai fundo neles).
+_SUBCAT_DEFAULT = 'MLB1000,MLB1051,MLB1276,MLB1648,MLB1246,MLB263532,MLB1500'
 
 
 def _categorias_alvo(ml):

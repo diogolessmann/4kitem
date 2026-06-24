@@ -642,15 +642,16 @@ def nome_categoria(cat_id):
     return nome
 
 
-# ── FOCO: os TOP 5 nichos do dinheiro (leve + importável + hype + recompra) ────
-# Estratégia "nicho primeiro": dominar 5 antes de expandir. Curadoria de
-# fornecedor vira viável. Ajustável — é só editar o set.
+# ── FOCO: os nichos do dinheiro (leve + importável + hype + recompra) ──────────
+# Estratégia "nicho primeiro": dominar poucos antes de expandir. Ajustável.
 _CAT_FOCO = {
     'MLB1000',   # Eletrônicos, Áudio e Vídeo (fone, antena, starlink, gadget)
     'MLB1051',   # Celulares e Telefones (capa, película, fone, carregador)
     'MLB1276',   # Esportes e Fitness (suplementos — RECOMPRA)
     'MLB1648',   # Informática (cadeira gamer, periférico)
     'MLB1246',   # Beleza e Cuidado Pessoal (alta rotação, recompra)
+    'MLB263532', # Ferramentas (furadeira, parafusadeira — importável)
+    'MLB1500',   # Construção (lâmpada/LED, material elétrico, iluminação)
 }
 
 
@@ -721,7 +722,7 @@ def _dias_desde(iso):
         return None
 
 
-def oportunidades(limit=20, categoria=None, user_id=None, nicho=None):
+def oportunidades(limit=20, categoria=None, user_id=None, nicho_roots=None):
     """Varre o último snapshot de cada produto, pontua a oportunidade e devolve
     as melhores rankeadas. base = média geométrica(demanda, facilidade) — exige
     as DUAS coisas decentes (vende E dá pra atacar); + bônus tendência/fornecedor
@@ -740,8 +741,10 @@ def oportunidades(limit=20, categoria=None, user_id=None, nicho=None):
         params.append(categoria)
     rows = [dict(r) for r in conn.execute(q, params).fetchall()]
     conn.close()
-    if nicho:                                    # filtra a UM nicho (raiz + subs)
-        alvo = subs_do_nicho(nicho)
+    if nicho_roots:                              # filtra a UM nicho (1+ raízes + subs)
+        alvo = set()
+        for root in nicho_roots:
+            alvo |= subs_do_nicho(root)
         rows = [r for r in rows if r['categoria_id'] in alvo]
     else:
         permitidas = _categorias_permitidas()
