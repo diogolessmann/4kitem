@@ -358,6 +358,18 @@ select option{background:var(--surface2)}
           🔥 Aquecimento dia <strong>{{ n.warmup_day }}/25</strong> · hoje <strong>{{ n.sent_today }}/{{ n.daily_cap }}</strong> msgs
           {% endif %}
         </div>
+        {% if n.prewarmed %}
+        <form method="POST" action="/mandazap/numeros/{{ n.id }}/aquecido" style="margin-top:6px">
+          <input type="hidden" name="prewarmed" value="0">
+          <button type="submit" title="Volta a aplicar a curva de aquecimento" style="width:100%;background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.25);border-radius:7px;padding:6px;font-size:11px;color:#22c55e;cursor:pointer;font-family:inherit">✅ Marcado como já aquecido — clique para desfazer</button>
+        </form>
+        {% elif not n.warmup_done %}
+        <form method="POST" action="/mandazap/numeros/{{ n.id }}/aquecido" style="margin-top:6px"
+              onsubmit="return confirm('Marque SÓ se este número já é ANTIGO e bastante usado no WhatsApp.\n\nSe for chip novo, pular o aquecimento pode causar BLOQUEIO.')">
+          <input type="hidden" name="prewarmed" value="1">
+          <button type="submit" title="Pula a curva de aquecimento — só para chip antigo/já usado" style="width:100%;background:rgba(255,255,255,.04);border:1px dashed rgba(255,255,255,.22);border-radius:7px;padding:6px;font-size:11px;color:var(--text2);cursor:pointer;font-family:inherit">⚡ Esse número já é aquecido? Pular o aquecimento →</button>
+        </form>
+        {% endif %}
         {% if n.health and n.health.status != 'sem_dados' %}
         {% if n.health.status == 'verde' %}
         <div style="font-size:11px;margin-top:6px;padding:6px 9px;border-radius:7px;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.25);color:#22c55e;line-height:1.4"

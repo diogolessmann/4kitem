@@ -9056,6 +9056,19 @@ def mz_number_add():
     return redirect('/mandazap/painel?section=numeros')
 
 
+@app.route('/mandazap/numeros/<int:nid>/aquecido', methods=['POST'])
+@_mandazap_login_required
+def mz_number_prewarm(nid):
+    """Marca/desmarca o número como JÁ AQUECIDO (chip antigo/usado) — pula a curva de
+    warm-up e vai direto ao teto cheio do plano. Use só em número realmente velho."""
+    user_id = session['mz_user_id']
+    val     = 1 if request.form.get('prewarmed') == '1' else 0
+    conn    = get_saas_db()
+    conn.execute('UPDATE mandazap_numbers SET prewarmed=? WHERE id=? AND user_id=?', (val, nid, user_id))
+    conn.commit(); conn.close()
+    return redirect('/mandazap/painel?section=numeros')
+
+
 @app.route('/mandazap/numeros/<int:nid>/delete', methods=['POST'])
 @_mandazap_login_required
 def mz_number_delete(nid):
@@ -9617,6 +9630,9 @@ def _mz_warmup_cap(days_active: int) -> int:
 
 
 def _mz_number_age_days(num_row: dict) -> int:
+    # Dono marcou como "já aquecido" (chip antigo/usado) → pula a curva de warm-up
+    if num_row.get('prewarmed'):
+        return 999
     ref = (num_row.get('warmup_start') or num_row.get('created_at') or '')
     try:
         return max(0, (datetime.now() - datetime.fromisoformat(ref)).days)
