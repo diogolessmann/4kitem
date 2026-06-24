@@ -19,7 +19,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from somaja_db import (get_somaja_db, init_somaja_db, CATEGORIAS,
                        tem_acesso, dias_de_trial_restantes,
                        add_tx, ultimos_tx, saldo_mes, resumo_categorias,
-                       registrar_conselho,
+                       faturamento_ano, registrar_conselho,
                        garantir_carteira, entrar_carteira, sair_carteira, membros_carteira,
                        tx_do_mes,
                        set_modo, set_mei_onboard, set_mei_perfil)
@@ -128,6 +128,57 @@ REGRAS:
 - Sem valor claro (ex: só uma pergunta ou "oi"), retorne {"lancamentos":[]}.
 - NUNCA invente valor. Responda APENAS o JSON.
 """.replace('%CATS%', ', '.join(CATEGORIAS_MEI))
+
+
+SYSTEM_COACH_MEI = """Você é o SomaJá Negócio, o "contador de bolso" de um MICROEMPREENDEDOR (MEI) brasileiro. \
+Fala como um parceiro esperto e direto — ZERO economês, frases curtas — mas que MANJA das regras do MEI.
+
+Vou te dar os números do negócio da pessoa no ano e no mês (faturamento do ano, teto, quanto falta pro teto, \
+DAS mensal, receita e despesas do mês). Sua tarefa: dar UM conselho prático e específico (máximo 4 frases) com AÇÃO CONCRETA.
+
+REGRAS:
+- Use SEMPRE número exato + prazo + o que fazer. Nada vago.
+- Se estiver perto do teto (≥80%), avise com clareza e diga a saída (segurar nota, se preparar pra virar ME).
+- Lembre do DAS (vence dia 20) e da DASN (até 31/maio) quando fizer sentido.
+- Se as despesas estiverem altas vs a receita, aponte onde.
+- Você ORGANIZA e LEMBRA — NÃO é o contador oficial nem dá parecer fiscal. Em caso sério, mande procurar o contador.
+- Não invente números fora do que te dei. Use no máximo 1 ou 2 emojis.
+"""
+
+
+def vigia_teto(user_id):
+    """Vigia do Teto (Lote 1): estado do faturamento do MEI no ano vs o teto.
+    Retorna dict com faturado, teto, pct, restante, faixa e a 'linha' de alerta com AÇÃO."""
+    fat  = faturamento_ano(user_id)
+    teto = MEI_TETO
+    pct  = (fat / teto * 100.0) if teto else 0.0
+    restante = teto - fat
+    ano = datetime.now().year
+    if fat <= 0:
+        linha = f'📈 Faturamento {ano}: {_brl(fat)} de {_brl(teto)}. Manda suas vendas que eu vou somando. 🟢'
+        faixa = 'ok'
+    elif pct < 80:
+        linha = (f'📈 Faturado em {ano}: {_brl(fat)} de {_brl(teto)} ({pct:.0f}%). '
+                 f'🟢 Faltam {_brl(restante)} pro teto.')
+        faixa = 'ok'
+    elif pct < 90:
+        linha = (f'⚠️ Você já usou *{pct:.0f}%* do teto ({_brl(fat)} de {_brl(teto)}). '
+                 f'Faltam {_brl(restante)} — fica de olho no ritmo das notas.')
+        faixa = '80'
+    elif pct < 100:
+        linha = (f'🟠 *ATENÇÃO: {pct:.0f}% do teto!* ({_brl(fat)} de {_brl(teto)}). '
+                 f'Faltam só {_brl(restante)}. Segura NF pro ano que vem ou já se prepara pra virar ME.')
+        faixa = '90'
+    elif fat <= MEI_TOLERANCIA:
+        linha = (f'🔴 *Você passou o teto de {_brl(teto)}!* (está em {_brl(fat)}). '
+                 f'Ainda dá: até {_brl(MEI_TOLERANCIA)} você paga um DAS complementar e vira ME em janeiro. '
+                 f'Fala com seu contador.')
+        faixa = '100'
+    else:
+        linha = (f'🔴🔴 *Passou de {_brl(MEI_TOLERANCIA)}* (está em {_brl(fat)})! '
+                 f'Isso é desenquadramento RETROATIVO ao início do ano — procure seu contador URGENTE.')
+        faixa = 'estouro'
+    return {'faturado': fat, 'teto': teto, 'pct': pct, 'restante': restante, 'faixa': faixa, 'linha': linha}
 
 
 # ── E-mail (Resend) ─────────────────────────────────────────────────────────────
@@ -352,9 +403,9 @@ def registrar_lancamento(user_id, texto=None, file_bytes=None, mime=None, fonte=
         linhas.append(f'{emoji} {verbo}: {_brl(s["valor"])} — {s["descricao"]} ({s["categoria"]})')
     s = saldo_mes(user_id)
     if negocio:
-        # A vigia do teto (% do ano) entra no Lote 1; aqui já mostramos o faturamento do mês.
-        resposta = ('✅ Anotei!\n' + '\n'.join(linhas) +
-                    f'\n\nFaturou esse mês: {_brl(s["entradas"])} 🧾')
+        # Vigia do Teto (Lote 1): mostra o faturamento do ANO vs o teto, com ação.
+        v = vigia_teto(user_id)
+        resposta = ('✅ Anotei!\n' + '\n'.join(linhas) + '\n\n' + v['linha'])
     else:
         bola = '🟢' if s['saldo'] >= 0 else '🔴'
         resposta = ('✅ Anotei!\n' + '\n'.join(linhas) +
@@ -363,30 +414,56 @@ def registrar_lancamento(user_id, texto=None, file_bytes=None, mime=None, fonte=
 
 
 def gerar_conselho(user_id):
-    """Monta o resumo do mês e pede 1 conselho ao coach. Busca o usuário por ID
-    (funciona no web, no webhook do WhatsApp e no coach automático em background)."""
+    """Monta o resumo e pede 1 conselho ao coach (mode-aware: pessoal x negócio/MEI).
+    Funciona no web, no webhook do WhatsApp e no coach automático em background."""
     conn = get_somaja_db()
     u = conn.execute('SELECT * FROM somaja_users WHERE id=?', (user_id,)).fetchone()
     conn.close()
-    s = saldo_mes(user_id)
-    cats = resumo_categorias(user_id, tipo='saida')[:5]
-    if not cats and s['entradas'] == 0:
-        return ('Ainda não tenho gastos seus esse mês pra analisar. '
-                'Manda alguns lançamentos que eu te dou um conselho certeiro! 😉')
-    renda = 0
     try:
-        renda = float(u['renda'] or 0)
-    except (TypeError, ValueError, KeyError):
+        negocio = bool(u and u['modo'] == 'negocio')
+    except (KeyError, IndexError):
+        negocio = False
+    s = saldo_mes(user_id)
+
+    if negocio:
+        v = vigia_teto(user_id)
+        if v['faturado'] <= 0 and s['saidas'] == 0:
+            return ('Ainda não tenho lançamentos do teu negócio esse ano. '
+                    'Manda suas vendas e despesas que eu te dou um raio-x certeiro do MEI! 🧾')
+        cats = resumo_categorias(user_id, tipo='saida')[:5]
+        atv = (u['mei_atividade'] or '') if u else ''
+        das = (u['mei_das_valor'] or 0) if u else 0
+        atv_label = MEI_ATIVIDADES.get(atv, {}).get('label', 'MEI')
+        resumo = (f'Atividade: {atv_label}\n'
+                  f'DAS mensal: {_brl(das)} (vence dia 20)\n'
+                  f'Faturado no ano: {_brl(v["faturado"])} de {_brl(v["teto"])} ({v["pct"]:.0f}%)\n'
+                  f'Falta pro teto: {_brl(v["restante"])}\n'
+                  f'Receita do mês: {_brl(s["entradas"])}\n'
+                  f'Despesas do mês: {_brl(s["saidas"])}\n'
+                  'Maiores despesas:\n' +
+                  ('\n'.join(f'- {c}: {_brl(t)}' for c, t in cats) or '- (nenhuma)'))
+        prompt = SYSTEM_COACH_MEI
+    else:
+        cats = resumo_categorias(user_id, tipo='saida')[:5]
+        if not cats and s['entradas'] == 0:
+            return ('Ainda não tenho gastos seus esse mês pra analisar. '
+                    'Manda alguns lançamentos que eu te dou um conselho certeiro! 😉')
         renda = 0
-    resumo = (f'Renda informada: {_brl(renda)}\n'
-              f'Entrou no mês: {_brl(s["entradas"])}\n'
-              f'Saiu no mês: {_brl(s["saidas"])}\n'
-              f'Saldo: {_brl(s["saldo"])}\n'
-              f'Maiores gastos por categoria:\n' +
-              '\n'.join(f'- {c}: {_brl(t)}' for c, t in cats))
+        try:
+            renda = float(u['renda'] or 0)
+        except (TypeError, ValueError, KeyError):
+            renda = 0
+        resumo = (f'Renda informada: {_brl(renda)}\n'
+                  f'Entrou no mês: {_brl(s["entradas"])}\n'
+                  f'Saiu no mês: {_brl(s["saidas"])}\n'
+                  f'Saldo: {_brl(s["saldo"])}\n'
+                  f'Maiores gastos por categoria:\n' +
+                  '\n'.join(f'- {c}: {_brl(t)}' for c, t in cats))
+        prompt = SYSTEM_COACH
+
     try:
         texto, _tin, _tout = _gemini_call(
-            SYSTEM_COACH, [{'role': 'user', 'parts': [{'text': resumo}]}],
+            prompt, [{'role': 'user', 'parts': [{'text': resumo}]}],
             json_mode=False, max_tokens=400, temperature=0.5)
     except Exception as e:
         log.warning(f'[SomaJá] coach falhou: {e}')
@@ -616,9 +693,19 @@ def resumo():
     total = s['saidas'] or 1
     linhas = [{'categoria': c, 'total': t, 'total_fmt': _brl(t),
                'pct': round(100 * t / total)} for c, t in cats]
-    return jsonify({'ok': True, 'saldo': s,
-                    'entradas_fmt': _brl(s['entradas']), 'saidas_fmt': _brl(s['saidas']),
-                    'saldo_fmt': _brl(s['saldo']), 'categorias': linhas})
+    out = {'ok': True, 'saldo': s,
+           'entradas_fmt': _brl(s['entradas']), 'saidas_fmt': _brl(s['saidas']),
+           'saldo_fmt': _brl(s['saldo']), 'categorias': linhas}
+    try:
+        if u['modo'] == 'negocio':
+            v = vigia_teto(u['id'])
+            out['negocio'] = True
+            out['teto'] = {'faturado_fmt': _brl(v['faturado']), 'teto_fmt': _brl(v['teto']),
+                           'pct': round(v['pct']), 'restante_fmt': _brl(v['restante']),
+                           'linha': v['linha'], 'faixa': v['faixa']}
+    except (KeyError, IndexError):
+        pass
+    return jsonify(out)
 
 
 @somaja_bp.route('/coach', methods=['POST'])
@@ -1079,12 +1166,24 @@ def processar_wa_evento(data):
             return jsonify({'ok': True}), 200
 
         # Comandos
-        if low in ('resumo', 'saldo', 'extrato'):
+        if low in ('resumo', 'saldo', 'extrato', 'teto', 'faturamento'):
             s = saldo_mes(u['id']); cats = resumo_categorias(u['id'], tipo='saida')[:5]
-            txt = (f'📊 *Resumo do mês*\n📥 Entrou: {_brl(s["entradas"])}\n'
-                   f'📤 Saiu: {_brl(s["saidas"])}\n💰 Saldo: {_brl(s["saldo"])}')
-            if cats:
-                txt += '\n\n*Pra onde foi:*\n' + '\n'.join(f'• {c}: {_brl(t)}' for c, t in cats)
+            try:
+                _neg = (u['modo'] == 'negocio')
+            except (KeyError, IndexError):
+                _neg = False
+            if _neg:
+                v = vigia_teto(u['id'])
+                txt = (f'📊 *Resumo do mês*\n💰 Receita: {_brl(s["entradas"])}\n'
+                       f'🧾 Despesas: {_brl(s["saidas"])}\n📦 Sobrou: {_brl(s["saldo"])}\n\n'
+                       f'{v["linha"]}')
+                if cats:
+                    txt += '\n\n*Maiores despesas:*\n' + '\n'.join(f'• {c}: {_brl(t)}' for c, t in cats)
+            else:
+                txt = (f'📊 *Resumo do mês*\n📥 Entrou: {_brl(s["entradas"])}\n'
+                       f'📤 Saiu: {_brl(s["saidas"])}\n💰 Saldo: {_brl(s["saldo"])}')
+                if cats:
+                    txt += '\n\n*Pra onde foi:*\n' + '\n'.join(f'• {c}: {_brl(t)}' for c, t in cats)
             wa_send(telefone, txt)
             return jsonify({'ok': True}), 200
         if low in ('conselho', 'coach', 'dica', 'analise', 'análise'):

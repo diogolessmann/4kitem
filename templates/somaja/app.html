@@ -148,8 +148,14 @@ async function verResumo(){
   try{
     const r=await fetch('/somaja/resumo'); const j=await r.json(); w.remove();
     if(!j.ok){add('Não consegui agora.','bot');return;}
-    let h='📊 <b>Resumo do mês</b><br>📥 Entrou: '+j.entradas_fmt+'<br>📤 Saiu: '+j.saidas_fmt+'<br>💰 Saldo: '+j.saldo_fmt;
-    if(j.categorias.length){h+='<br><br><b>Pra onde foi:</b>';j.categorias.forEach(c=>{h+='<br>• '+c.categoria+': '+c.total_fmt+' ('+c.pct+'%)';});}
+    let h;
+    if(j.negocio){
+      h='📊 <b>Resumo do mês</b><br>💰 Receita: '+j.entradas_fmt+'<br>🧾 Despesas: '+j.saidas_fmt+'<br>📦 Sobrou: '+j.saldo_fmt;
+      if(j.teto){h+='<br><br>'+j.teto.linha.replace(/\*/g,'');}
+    } else {
+      h='📊 <b>Resumo do mês</b><br>📥 Entrou: '+j.entradas_fmt+'<br>📤 Saiu: '+j.saidas_fmt+'<br>💰 Saldo: '+j.saldo_fmt;
+    }
+    if(j.categorias.length){h+='<br><br><b>'+(j.negocio?'Maiores despesas:':'Pra onde foi:')+'</b>';j.categorias.forEach(c=>{h+='<br>• '+c.categoria+': '+c.total_fmt+' ('+c.pct+'%)';});}
     add(h,'bot');
   }catch(e){w.remove();add('Sem conexão.','bot');}
 }

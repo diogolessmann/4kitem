@@ -242,6 +242,19 @@ def saldo_mes(user_id, ano_mes=None):
     return {'entradas': ent, 'saidas': sai, 'saldo': ent - sai, 'ano_mes': ym}
 
 
+def faturamento_ano(user_id, ano=None):
+    """Receita (entradas) acumulada do ANO — base da Vigia do Teto do MEI.
+    É do PRÓPRIO usuário (o teto é por CNPJ; NÃO soma a carteira/família)."""
+    ano = str(ano or datetime.now().strftime('%Y'))
+    conn = get_somaja_db()
+    row = conn.execute(
+        "SELECT COALESCE(SUM(valor),0) AS total FROM somaja_tx "
+        "WHERE user_id=? AND tipo='entrada' AND substr(data,1,4)=?",
+        (user_id, ano)).fetchone()
+    conn.close()
+    return float(row['total'] or 0.0)
+
+
 def resumo_categorias(user_id, ano_mes=None, tipo='saida'):
     """[(categoria, total)] do mês p/ a carteira inteira, do maior gasto pro menor."""
     ym = _ym(ano_mes)
