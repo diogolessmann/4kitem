@@ -1079,10 +1079,11 @@ def _categorias_alvo(ml):
     alvo = []
     for c in roots:
         try:
-            db.salvar_categoria(c['id'], c['name'])
+            db.salvar_categoria(c['id'], c['name'])   # salva o nome de todas (p/ resolver)
         except Exception:
             pass
-        if c['id'] not in _CAT_SEM_HIGHLIGHTS:
+        # FOCO: só varre as categorias com dinheiro/hype (não as mortas)
+        if c['id'] in db._CAT_FOCO and c['id'] not in _CAT_SEM_HIGHLIGHTS:
             alvo.append(c['id'])
     # aprofundar nas subcategorias das raízes configuradas (controla o volume)
     sub_cfg = os.environ.get('MLHYPE_SUBCAT_ROOTS', _SUBCAT_DEFAULT).strip()

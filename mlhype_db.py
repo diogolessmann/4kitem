@@ -395,7 +395,11 @@ def radar_categorias_com_dados():
         "FROM mlhype_snapshots WHERE categoria_id IS NOT NULL "
         "GROUP BY categoria_id ORDER BY n DESC").fetchall()
     conn.close()
-    return [dict(r) for r in rows]
+    out = [dict(r) for r in rows]
+    permitidas = _categorias_permitidas()
+    if permitidas is not None:
+        out = [r for r in out if r['categoria_id'] in permitidas]
+    return out
 
 
 def radar_top(cat_id, limit=20, so_brechas=True):
@@ -638,6 +642,46 @@ def nome_categoria(cat_id):
     return nome
 
 
+# ── FOCO no dinheiro: só as categorias com hype + boas pra revenda ─────────────
+# (cortadas: Livros, Papelaria, Música/Filmes, Instrumentos, Alimentos,
+#  Antiguidades, Agro, Festas, Indústria, Mais Categorias — pouco acessadas /
+#  baixa margem / não revendíveis). Ajustável.
+_CAT_FOCO = {
+    'MLB5672',   # Acessórios para Veículos
+    'MLB1574',   # Casa, Móveis e Decoração
+    'MLB1430',   # Calçados, Roupas e Bolsas
+    'MLB263532', # Ferramentas
+    'MLB1276',   # Esportes e Fitness (suplementos)
+    'MLB1132',   # Brinquedos e Hobbies
+    'MLB1246',   # Beleza e Cuidado Pessoal
+    'MLB1648',   # Informática (gamer)
+    'MLB1051',   # Celulares e Telefones
+    'MLB1000',   # Eletrônicos, Áudio e Vídeo (fone, antena, starlink)
+    'MLB5726',   # Eletrodomésticos
+    'MLB1500',   # Construção
+    'MLB1384',   # Bebês
+    'MLB1071',   # Animais (Pet)
+    'MLB264586', # Saúde
+    'MLB1039',   # Câmeras e Acessórios
+    'MLB1144',   # Games
+    'MLB3937',   # Joias e Relógios
+}
+
+
+def _categorias_permitidas():
+    """Conjunto de categorias do FOCO + suas subcategorias (pra não cortar os
+    nichos que vivem 1 nível abaixo de uma categoria do foco)."""
+    if not _CAT_FOCO:
+        return None  # sem filtro
+    conn = get_mlhype_db()
+    ph = ','.join('?' * len(_CAT_FOCO))
+    subs = [r['id'] for r in conn.execute(
+        f'SELECT id FROM mlhype_categories WHERE parent_id IN ({ph})',
+        tuple(_CAT_FOCO)).fetchall()]
+    conn.close()
+    return _CAT_FOCO | set(subs)
+
+
 # ── PENTE FINO: Índice de Oportunidade (o motor que sabe o que vale a pena) ────
 # Heurística determinística (sem IA, roda sobre TODO o mercado coletado):
 # o ouro = ALTA demanda (posição no Top) × BAIXA concorrência (poucas ofertas),
@@ -685,6 +729,9 @@ def oportunidades(limit=20, categoria=None, user_id=None):
         params.append(categoria)
     rows = [dict(r) for r in conn.execute(q, params).fetchall()]
     conn.close()
+    permitidas = _categorias_permitidas()
+    if permitidas is not None:
+        rows = [r for r in rows if r['categoria_id'] in permitidas]
 
     for r in rows:
         d = _demanda_score(r['pos'])
