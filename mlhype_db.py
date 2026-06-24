@@ -642,29 +642,15 @@ def nome_categoria(cat_id):
     return nome
 
 
-# ── FOCO no dinheiro: só as categorias com hype + boas pra revenda ─────────────
-# (cortadas: Livros, Papelaria, Música/Filmes, Instrumentos, Alimentos,
-#  Antiguidades, Agro, Festas, Indústria, Mais Categorias — pouco acessadas /
-#  baixa margem / não revendíveis). Ajustável.
+# ── FOCO: os TOP 5 nichos do dinheiro (leve + importável + hype + recompra) ────
+# Estratégia "nicho primeiro": dominar 5 antes de expandir. Curadoria de
+# fornecedor vira viável. Ajustável — é só editar o set.
 _CAT_FOCO = {
-    'MLB5672',   # Acessórios para Veículos
-    'MLB1574',   # Casa, Móveis e Decoração
-    'MLB1430',   # Calçados, Roupas e Bolsas
-    'MLB263532', # Ferramentas
-    'MLB1276',   # Esportes e Fitness (suplementos)
-    'MLB1132',   # Brinquedos e Hobbies
-    'MLB1246',   # Beleza e Cuidado Pessoal
-    'MLB1648',   # Informática (gamer)
-    'MLB1051',   # Celulares e Telefones
-    'MLB1000',   # Eletrônicos, Áudio e Vídeo (fone, antena, starlink)
-    'MLB5726',   # Eletrodomésticos
-    'MLB1500',   # Construção
-    'MLB1384',   # Bebês
-    'MLB1071',   # Animais (Pet)
-    'MLB264586', # Saúde
-    'MLB1039',   # Câmeras e Acessórios
-    'MLB1144',   # Games
-    'MLB3937',   # Joias e Relógios
+    'MLB1000',   # Eletrônicos, Áudio e Vídeo (fone, antena, starlink, gadget)
+    'MLB1051',   # Celulares e Telefones (capa, película, fone, carregador)
+    'MLB1276',   # Esportes e Fitness (suplementos — RECOMPRA)
+    'MLB1648',   # Informática (cadeira gamer, periférico)
+    'MLB1246',   # Beleza e Cuidado Pessoal (alta rotação, recompra)
 }
 
 

@@ -1060,8 +1060,8 @@ def _data_brt():
 # best-seller): Carros/Motos, Imóveis, Ingressos, Serviços. Pulamos no scan.
 _CAT_SEM_HIGHLIGHTS = {'MLB1743', 'MLB1459', 'MLB218519', 'MLB1540'}
 # Lote C: raízes a APROFUNDAR em subcategorias (os nichos de ouro). Configurável
-# via MLHYPE_SUBCAT_ROOTS; default = 2 raízes de alto valor p/ revenda.
-_SUBCAT_DEFAULT = 'MLB1051,MLB1000'
+# via MLHYPE_SUBCAT_ROOTS; default = os 5 nichos do foco (coleta vai fundo neles).
+_SUBCAT_DEFAULT = 'MLB1000,MLB1051,MLB1276,MLB1648,MLB1246'
 
 
 def _categorias_alvo(ml):
