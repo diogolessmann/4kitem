@@ -115,8 +115,9 @@ SAÍDA: responda SOMENTE com JSON válido, exatamente neste formato:
    "porque":"<1 frase>","como_melhorar":["...","...","..."]},
  "ficha":{"titulo_otimizado":"<=60 chars","bullets":["b1","b2","b3","b4","b5"],
    "preco_venda_sugerido":<número>,"margem_pct":<número>,
+   "custo_estimado_br":<número: estimativa CONSERVADORA do custo de atacado/importado típico desse tipo de produto no Brasil, em R$, pra estimar o lucro enquanto o vendedor não cadastrou fornecedor>,
    "diferencial_ataque":"<kit|brinde|frete|garantia: descrição curta>"}}
-Não invente dados que não recebeu.'''
+Não invente dados de MERCADO que não recebeu (concorrência, preço do líder). O custo_estimado_br é a ÚNICA estimativa permitida: baseie no tipo de produto e seja CONSERVADOR (nunca otimista) — é só um norte até o vendedor achar o fornecedor real.'''
 
 
 def analisar_esteira(dados):
@@ -147,6 +148,10 @@ def analisar_esteira(dados):
     fi.setdefault('preco_venda_sugerido', None)
     fi.setdefault('margem_pct', None)
     fi.setdefault('diferencial_ataque', '')
+    try:
+        fi['custo_estimado_br'] = round(float(fi.get('custo_estimado_br')), 2) if fi.get('custo_estimado_br') else None
+    except Exception:
+        fi['custo_estimado_br'] = None
 
     return {'fraquezas': fraquezas, 'avaliacao': av, 'ficha': fi}
 

@@ -644,6 +644,13 @@ def rodar_esteira(pid, cat_id=None):
         if m_ficha:
             ficha['margem_pct'] = m_ficha['margem_pct']
             ficha['lucro_liquido'] = m_ficha['lucro']
+    # Lucro ESTIMADO quando ainda NÃO há fornecedor real (a IA chuta o custo de
+    # atacado) — pra já mostrar "ganho ~R$X/venda" em vez de "—". É o gancho.
+    if ficha and not menor_custo and ficha.get('preco_venda_sugerido') and ficha.get('custo_estimado_br'):
+        m_est = calcular_margem(ficha['preco_venda_sugerido'], ficha['custo_estimado_br'], cat_taxa)
+        if m_est and m_est['lucro'] > 0:
+            ficha['lucro_estimado'] = m_est['lucro']
+            ficha['margem_estimada_pct'] = m_est['margem_pct']
 
     res['fraquezas'] = fraquezas
     res['avaliacao'] = avaliacao
@@ -750,6 +757,11 @@ _FICHA_HTML = '''<!doctype html><html lang=pt-br><head><meta charset=utf-8>
  .fhead{font-size:12px;color:var(--mut);text-transform:uppercase;letter-spacing:.4px;margin:14px 0 8px;border-top:1px solid var(--bd);padding-top:12px}
  .fonte{display:flex;justify-content:space-between;align-items:center;gap:10px;background:#0b1020;border:1px solid var(--bd);border-radius:8px;padding:9px 12px;margin-bottom:7px;text-decoration:none}
  .fonte:hover{border-color:var(--ac)} .fonte b{color:var(--txt);font-size:14px} .fonte-n{color:var(--mut);font-size:12px;margin-top:2px;line-height:1.35} .fonte .arr{color:var(--ac);font-size:18px;flex-shrink:0}
+ .proj{border:2px solid #1f7a4d;background:#06291a}
+ .projgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:10px;margin:10px 0}
+ .projbox{background:#0b1020;border:1px solid #155a38;border-radius:10px;padding:11px 13px}
+ .projbox span{display:block;color:var(--mut);font-size:12px} .projbox b{font-size:19px;color:#5ee0a0;display:block;margin:2px 0} .projbox i{color:var(--mut);font-size:11px;font-style:normal}
+ .projbig{background:#0b1020;border:1px solid #155a38;border-radius:10px;padding:11px 14px;font-size:15px;color:var(--txt);margin-top:4px} .projbig b{color:#5ee0a0}
 </style></head><body><div class=wrap>
 <a href="/mlhype/radar{{ '?cat=' ~ r.cat_id if r.cat_id else '' }}">← voltar ao Radar</a>
 <h1>⚡ Análise</h1>
@@ -760,6 +772,8 @@ _FICHA_HTML = '''<!doctype html><html lang=pt-br><head><meta charset=utf-8>
 
 {% set v = r.avaliacao.veredito if r.avaliacao else None %}
 {% set tem_lucro = r.ficha and r.ficha.lucro_liquido is defined and r.ficha.lucro_liquido is not none %}
+{% set lucro_est = r.ficha and r.ficha.lucro_estimado is defined and r.ficha.lucro_estimado is not none %}
+{% set L = (r.ficha.lucro_liquido if tem_lucro else (r.ficha.lucro_estimado if lucro_est else None)) %}
 {% if v %}
 <div class="hero {{v}}">
  <div class=ico>{% if v=='ataque' %}✅{% elif v=='observe' %}🤔{% else %}🛑{% endif %}</div>
@@ -775,11 +789,22 @@ _FICHA_HTML = '''<!doctype html><html lang=pt-br><head><meta charset=utf-8>
  <div class=stat><span>📊 Procura</span><b>{% if r.tendencia=='subindo' %}📈 subindo{% elif r.tendencia=='caindo' %}📉 caindo{% elif r.tendencia=='estavel' %}estável{% else %}—{% endif %}</b></div>
  <div class="stat {{ 'good' if r.num_concorrentes is not none and r.num_concorrentes<=3 else '' }}"><span>🎯 Concorrentes</span><b>{% if r.num_concorrentes is not none %}{{r.num_concorrentes}}{% if r.num_concorrentes<=3 %} ✓{% endif %}{% else %}—{% endif %}</b></div>
  <div class=stat><span>🏷️ Preço do líder</span><b>{{fmt(r.anuncio_lider.preco)}}</b></div>
- <div class="stat {{ 'good' if tem_lucro else '' }}"><span>💰 Lucro/un</span><b>{% if tem_lucro %}{{fmt(r.ficha.lucro_liquido)}}{% else %}—{% endif %}</b></div>
+ <div class="stat {{ 'good' if tem_lucro or lucro_est else '' }}"><span>💰 Lucro/un</span><b>{% if tem_lucro %}{{fmt(r.ficha.lucro_liquido)}}{% elif lucro_est %}≈{{fmt(r.ficha.lucro_estimado)}}{% else %}—{% endif %}</b></div>
  {% if r.novo %}<div class="stat good"><span>🌱 Catálogo</span><b>novo ({{r.dias_catalogo}}d)</b></div>{% endif %}
 </div>
 
-{% if not tem_lucro %}
+{% if L and L > 0 %}
+<div class="card proj">
+ <h3 style="color:#5ee0a0">💰 Quanto isso vira no seu bolso</h3>
+ <p class=sub>Lucro {% if not tem_lucro %}<b>estimado</b> de ≈{% else %}de <b>{% endif %}{{fmt(L)}}{% if tem_lucro %}</b>{% endif %} por venda{% if not tem_lucro %} — a IA chutou o custo de atacado; cadastre o fornecedor pra cravar o número.{% endif %}</p>
+ <div class=projgrid>
+  <div class=projbox><span>5 vendas/dia</span><b>{{fmt(L*150)}}</b><i>por mês</i></div>
+  <div class=projbox><span>20 vendas/dia</span><b>{{fmt(L*600)}}</b><i>por mês</i></div>
+  <div class=projbox><span>50 vendas/dia</span><b>{{fmt(L*1500)}}</b><i>por mês</i></div>
+ </div>
+ <div class=projbig>🔥 Vendeu <b>10.000</b>? São <b>{{fmt(L*10000)}}</b> no bolso. <span style="color:#8aa0c6;font-size:12px">OLHA o jogo.</span></div>
+</div>
+{% elif not tem_lucro %}
 <div class=warn style="margin:-2px 0 14px">💡 Falta o <b>custo do fornecedor</b> pra cravar o lucro em R$ (a taxa do ML{% if r.comissao_ml_pct %} ~{{r.comissao_ml_pct}}%{% endif %} já entra na conta).{% if r.pode_fornecedor %} <a href="/mlhype/admin/fornecedores" style="color:#7cc0ff;font-weight:700">cadastrar →</a>{% endif %}</div>
 {% endif %}
 
