@@ -643,73 +643,101 @@ _FICHA_HTML = '''<!doctype html><html lang=pt-br><head><meta charset=utf-8>
  .forn{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid var(--bd);font-size:14px} .forn:last-child{border:none}
  .warn{background:#2a2206;color:#ffd35e;border:1px solid #5a4a15;border-radius:8px;padding:10px 14px;font-size:13px}
  .empty{color:var(--mut);font-size:14px}
+ .hero{display:flex;align-items:center;gap:14px;border-radius:14px;padding:16px;margin:14px 0;border:1px solid}
+ .hero.ataque{background:#06291a;border-color:#1f7a4d} .hero.observe{background:#2a2206;border-color:#6b5713} .hero.evite{background:#2a0d0d;border-color:#7a2020}
+ .hero .ico{font-size:38px;line-height:1} .hero .htxt{flex:1}
+ .hero .htit{font-size:19px;font-weight:800} .hero.ataque .htit{color:#5ee0a0} .hero.observe .htit{color:#ffd35e} .hero.evite .htit{color:#ff8a8a}
+ .hero .hwhy{color:#cfe0ff;font-size:14px;line-height:1.4;margin-top:3px} .hero .hsc{font-size:12px;color:var(--mut);margin-top:4px}
+ .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:10px;margin:14px 0}
+ .stat{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:11px 13px} .stat span{display:block;color:var(--mut);font-size:12px;margin-bottom:3px} .stat b{font-size:16px} .stat.good b{color:#5ee0a0}
+ .sub{color:var(--mut);font-size:12px;margin:0 0 10px}
+ .btn{display:block;width:100%;text-align:center;background:linear-gradient(135deg,#2f6bff,#7c3aed);color:#fff;border:0;border-radius:8px;padding:12px;font-weight:700;font-size:15px;cursor:pointer;margin-top:12px}
+ .cbtn{background:#0b1020;border:1px solid #4a2da0;color:#b9a6ff;border-radius:7px;padding:4px 10px;font-size:12px;font-weight:700;cursor:pointer}
+ .fbb{flex:1;min-width:104px;border-radius:8px;padding:11px;font-weight:700;cursor:pointer;font-size:14px}
 </style></head><body><div class=wrap>
 <a href="/mlhype/radar{{ '?cat=' ~ r.cat_id if r.cat_id else '' }}">← voltar ao Radar</a>
-<h1>⚡ Ficha de Ataque</h1>
+<h1>⚡ Análise</h1>
 <div class=prod>{{r.produto}}</div>
 
-{% if not r.ia_ok %}<div class=warn>⚙️ A IA não está configurada neste ambiente — aqui aparecem os dados de mercado e o fornecedor.</div>{% endif %}
-{% if r.ia_falhou %}<div class=warn>⚙️ A IA está sobrecarregada agora (cota estourada) — os dados de mercado e o fornecedor abaixo já estão prontos. Tente gerar a Ficha de novo em alguns minutos.</div>{% endif %}
+{% if r.ia_falhou %}<div class=warn style="margin-bottom:14px">⚙️ A IA está sobrecarregada agora — os números e o fornecedor já estão prontos; gere o anúncio de novo em instantes.</div>{% endif %}
+{% if not r.ia_ok %}<div class=warn style="margin-bottom:14px">⚙️ IA não configurada — mostrando só os dados de mercado.</div>{% endif %}
 
-{% if r.avaliacao and r.avaliacao.veredito %}
-<div class=card>
- <h3>Avaliador de Oportunidade</h3>
- <div class=score>
-  <div class=scoreN>{{r.avaliacao.score}}<span style="font-size:18px;color:#8aa0c6">/100</span></div>
-  <span class="vd {{r.avaliacao.veredito}}">{{r.avaliacao.veredito|upper}}</span>
-  {% if r.avaliacao.margem_pct is not none %}<span class=meta>margem ~{{r.avaliacao.margem_pct}}%</span>{% endif %}
+{% set v = r.avaliacao.veredito if r.avaliacao else None %}
+{% set tem_lucro = r.ficha and r.ficha.lucro_liquido is defined and r.ficha.lucro_liquido is not none %}
+{% if v %}
+<div class="hero {{v}}">
+ <div class=ico>{% if v=='ataque' %}✅{% elif v=='observe' %}🤔{% else %}🛑{% endif %}</div>
+ <div class=htxt>
+  <div class=htit>{% if v=='ataque' %}VALE A PENA ATACAR{% elif v=='observe' %}OBSERVE COM CUIDADO{% else %}NÃO VALE A PENA{% endif %}</div>
+  {% if r.avaliacao.porque %}<div class=hwhy>{{r.avaliacao.porque}}</div>{% endif %}
+  <div class=hsc>nota {{r.avaliacao.score}}/100 — quanto maior, melhor a brecha</div>
  </div>
- <div class=meta style="font-size:11px">Score 0-100: quanto maior, melhor a brecha (muita procura × pouca concorrência × margem boa). <b>65+</b> ataca · <b>40-64</b> observa · abaixo evita. <b>100</b> = bombando e quase sem concorrente.</div>
- {% if r.avaliacao.porque %}<div class=meta>{{r.avaliacao.porque}}</div>{% endif %}
- {% if r.avaliacao.como_melhorar %}<ul>{% for c in r.avaliacao.como_melhorar %}<li>{{c}}</li>{% endfor %}</ul>{% endif %}
- <div class=meta>{{r.num_concorrentes or '—'}} concorrentes · tendência: {{r.tendencia}}{% if r.comissao_ml_pct %} · taxa ML ~{{r.comissao_ml_pct}}%{% endif %}{% if r.novo %} · 🌱 catálogo novo ({{r.dias_catalogo}}d — alvo fácil){% endif %}</div>
- {% if r.comissao_ml_pct and not r.menor_custo_br %}<div class=meta>💡 Cadastre o custo do fornecedor pra ver o <b>lucro líquido real</b> (a taxa do ML já está descontada).</div>{% endif %}
 </div>
 {% endif %}
 
-<div class=card>
- <h3>Dissecador do Líder — fraquezas a explorar</h3>
- <div class=meta>Líder: {{r.anuncio_lider.titulo}} · {{fmt(r.anuncio_lider.preco)}}{% if r.anuncio_lider.fotos_qtd is not none %} · {{r.anuncio_lider.fotos_qtd}} fotos{% endif %}</div>
- {% if r.fraquezas %}<ul>{% for f in r.fraquezas %}<li>{{f}}</li>{% endfor %}</ul>
- {% else %}<div class=empty>{% if r.ia_falhou %}A IA está sobrecarregada — tente de novo em instantes.{% else %}—{% endif %}</div>{% endif %}
+<div class=stats>
+ <div class=stat><span>📊 Procura</span><b>{% if r.tendencia=='subindo' %}📈 subindo{% elif r.tendencia=='caindo' %}📉 caindo{% elif r.tendencia=='estavel' %}estável{% else %}—{% endif %}</b></div>
+ <div class="stat {{ 'good' if r.num_concorrentes is not none and r.num_concorrentes<=3 else '' }}"><span>🎯 Concorrentes</span><b>{% if r.num_concorrentes is not none %}{{r.num_concorrentes}}{% if r.num_concorrentes<=3 %} ✓{% endif %}{% else %}—{% endif %}</b></div>
+ <div class=stat><span>🏷️ Preço do líder</span><b>{{fmt(r.anuncio_lider.preco)}}</b></div>
+ <div class="stat {{ 'good' if tem_lucro else '' }}"><span>💰 Lucro/un</span><b>{% if tem_lucro %}{{fmt(r.ficha.lucro_liquido)}}{% else %}—{% endif %}</b></div>
+ {% if r.novo %}<div class="stat good"><span>🌱 Catálogo</span><b>novo ({{r.dias_catalogo}}d)</b></div>{% endif %}
 </div>
 
+{% if not tem_lucro %}
+<div class=warn style="margin:-2px 0 14px">💡 Falta o <b>custo do fornecedor</b> pra cravar o lucro em R$ (a taxa do ML{% if r.comissao_ml_pct %} ~{{r.comissao_ml_pct}}%{% endif %} já entra na conta).{% if r.pode_fornecedor %} <a href="/mlhype/admin/fornecedores" style="color:#7cc0ff;font-weight:700">cadastrar →</a>{% endif %}</div>
+{% endif %}
+
+{% if r.fraquezas %}
 <div class=card>
- <h3>🎯 Caçador de Fornecedor BR (o diferencial)</h3>
- {% if not r.pode_fornecedor %}
-   <div class=warn>🔒 O Caçador de Fornecedor BR é exclusivo do plano <b>Business</b> — é o moat que ninguém mais tem. <a href="/mlhype/planos" style="color:#7cc0ff;font-weight:700">Ver planos →</a></div>
- {% elif r.fornecedores %}
-  {% for f in r.fornecedores %}
-  <div class=forn><span><b>{{f.nome}}</b>{% if f.uf %} · {{f.uf}}{% endif %}{% if f.contato %} · {{f.contato}}{% endif %}{% if f.whatsapp %} · {{f.whatsapp}}{% endif %}</span><span>{{fmt(f.menor_preco)}}</span></div>
-  {% endfor %}
- {% else %}<div class=empty>Nenhum fornecedor cadastrado p/ esta categoria ainda. Cadastre os seus em <b>/mlhype/admin/fornecedores</b> — é aqui que mora o moat.</div>{% endif %}
+ <h3>🔍 Onde o líder é fraco</h3>
+ <p class=sub>Líder: {{r.anuncio_lider.titulo}} · {{fmt(r.anuncio_lider.preco)}}{% if r.anuncio_lider.fotos_qtd is not none %} · {{r.anuncio_lider.fotos_qtd}} fotos{% endif %}</p>
+ <ul>{% for f in r.fraquezas %}<li>{{f}}</li>{% endfor %}</ul>
 </div>
+{% elif r.ia_falhou %}
+<div class=card><div class=empty>A IA está sobrecarregada — gere de novo em instantes pra ver onde o líder é fraco.</div></div>
+{% endif %}
 
 {% if r.ficha and r.ficha.titulo_otimizado %}
 <div class="card ataque-card">
- <h3 style="color:#b9a6ff">🔥 Ficha de Ataque — anúncio pronto pra publicar</h3>
+ <h3 style="color:#b9a6ff">🔥 Seu anúncio pronto pra publicar</h3>
+ <p class=sub>Copie e cole no Mercado Livre — já vem otimizado pra roubar a venda.</p>
  <p class=titulo-ot>{{r.ficha.titulo_otimizado}}</p>
- <div class=chars>{{r.ficha.titulo_otimizado|length}}/60 caracteres</div>
+ <div class=chars>{{r.ficha.titulo_otimizado|length}}/60 caracteres · <button class=cbtn onclick="navigator.clipboard.writeText(document.getElementById('tit').value);this.textContent='✅ copiado'">📋 copiar título</button></div>
  {% if r.ficha.bullets %}<ul>{% for b in r.ficha.bullets %}<li>{{b}}</li>{% endfor %}</ul>{% endif %}
  <div class=preco-row>
-  <div class=pbox><span>Preço de venda sugerido</span><b>{{fmt(r.ficha.preco_venda_sugerido)}}</b></div>
-  {% if r.ficha.lucro_liquido is not none %}<div class=pbox><span>Lucro líquido/un.</span><b>{{fmt(r.ficha.lucro_liquido)}}</b></div>{% endif %}
-  {% if r.ficha.margem_pct is not none %}<div class=pbox><span>Margem real</span><b>{{r.ficha.margem_pct}}%</b></div>{% endif %}
+  <div class=pbox><span>Preço de venda</span><b>{{fmt(r.ficha.preco_venda_sugerido)}}</b></div>
+  {% if tem_lucro %}<div class=pbox><span>Lucro líquido/un.</span><b>{{fmt(r.ficha.lucro_liquido)}}</b></div>{% endif %}
+  {% if r.ficha.margem_pct is not none %}<div class=pbox><span>Margem</span><b>{{r.ficha.margem_pct}}%</b></div>{% endif %}
  </div>
- {% if r.ficha.diferencial_ataque %}<div class=dif>⚔️ Diferencial de ataque: {{r.ficha.diferencial_ataque}}</div>{% endif %}
+ {% if r.ficha.diferencial_ataque %}<div class=dif>⚔️ Diferencial: {{r.ficha.diferencial_ataque}}</div>{% endif %}
+ <textarea id=tit style="position:absolute;left:-9999px" readonly>{{r.ficha.titulo_otimizado}}</textarea>
+ <textarea id=anun style="position:absolute;left:-9999px" readonly>{{r.ficha.titulo_otimizado}}
+{% for b in r.ficha.bullets %}- {{b}}
+{% endfor %}Preco sugerido: {{fmt(r.ficha.preco_venda_sugerido)}}{% if r.ficha.diferencial_ataque %}
+Diferencial: {{r.ficha.diferencial_ataque}}{% endif %}</textarea>
+ <button class=btn onclick="navigator.clipboard.writeText(document.getElementById('anun').value);this.textContent='✅ Anúncio copiado! Agora é só colar no ML'">📋 Copiar anúncio inteiro</button>
 </div>
-{% elif r.avaliacao.veredito == 'evite' %}
-<div class=card><div class=warn>O Avaliador marcou <b>EVITE</b> — a esteira parou aqui pra te poupar de uma cilada.</div></div>
+{% elif v == 'evite' %}
+<div class=card><div class=warn>🛑 Marcado como EVITE — não vale gastar energia nesse. Volta pras <a href="/mlhype/oportunidades" style="color:#7cc0ff;font-weight:700">Dicas</a> e pega uma brecha melhor.</div></div>
 {% endif %}
 
 <div class=card>
- <h3>🧠 Conta pro motor: o que rolou com esse?</h3>
+ <h3>🎯 De quem comprar (fornecedor BR)</h3>
+ {% if not r.pode_fornecedor %}
+   <div class=warn>🔒 Exclusivo do plano <b>Business</b> — é o moat que ninguém tem. <a href="/mlhype/planos" style="color:#7cc0ff;font-weight:700">Ver planos →</a></div>
+ {% elif r.fornecedores %}
+  {% for f in r.fornecedores %}<div class=forn><span><b>{{f.nome}}</b>{% if f.uf %} · {{f.uf}}{% endif %}{% if f.contato %} · {{f.contato}}{% endif %}{% if f.whatsapp %} · {{f.whatsapp}}{% endif %}</span><span>{{fmt(f.menor_preco)}}</span></div>{% endfor %}
+ {% else %}<div class=empty>Nenhum fornecedor cadastrado nesse nicho ainda. <a href="/mlhype/admin/fornecedores" style="color:#7cc0ff;font-weight:700">Cadastre →</a> e o lucro real aparece aqui.</div>{% endif %}
+</div>
+
+<div class=card>
+ <h3>🧠 O que rolou com esse?</h3>
+ <p class=sub>Marca pra o motor aprender e priorizar o teu nicho nas Dicas.</p>
  <div id=fbrow style="display:flex;gap:8px;flex-wrap:wrap">
-  <button onclick="fetch('/mlhype/feedback',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pid:'{{r.pid}}',cat:'{{r.cat_id}}',acao:'vendi'})});document.getElementById('fbrow').innerHTML='&#9989; Anotado! O motor vai priorizar esse nicho pra voce.'" style="flex:1;min-width:108px;background:#062a17;color:#5ee0a0;border:1px solid #155a38;border-radius:8px;padding:11px;font-weight:700;cursor:pointer">&#9989; Ja vendi</button>
-  <button onclick="fetch('/mlhype/feedback',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pid:'{{r.pid}}',cat:'{{r.cat_id}}',acao:'ataquei'})});document.getElementById('fbrow').innerHTML='&#9989; Anotado! O motor vai priorizar esse nicho pra voce.'" style="flex:1;min-width:108px;background:#1c1340;color:#cbbaf5;border:1px solid #4a2da0;border-radius:8px;padding:11px;font-weight:700;cursor:pointer">&#9876; Vou atacar</button>
-  <button onclick="fetch('/mlhype/feedback',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pid:'{{r.pid}}',cat:'{{r.cat_id}}',acao:'nao_rolou'})});document.getElementById('fbrow').innerHTML='&#9989; Anotado! O motor vai priorizar esse nicho pra voce.'" style="flex:1;min-width:108px;background:#2a1a06;color:#ffb267;border:1px solid #5a3a15;border-radius:8px;padding:11px;font-weight:700;cursor:pointer">&#10006; Nao rolou</button>
+  <button class=fbb style="background:#062a17;color:#5ee0a0;border:1px solid #155a38" onclick="fetch('/mlhype/feedback',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pid:'{{r.pid}}',cat:'{{r.cat_id}}',acao:'vendi'})});document.getElementById('fbrow').innerHTML='&#9989; Anotado! O motor vai priorizar esse nicho pra voce.'">&#9989; Ja vendi</button>
+  <button class=fbb style="background:#1c1340;color:#cbbaf5;border:1px solid #4a2da0" onclick="fetch('/mlhype/feedback',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pid:'{{r.pid}}',cat:'{{r.cat_id}}',acao:'ataquei'})});document.getElementById('fbrow').innerHTML='&#9989; Anotado! O motor vai priorizar esse nicho pra voce.'">&#9876; Vou atacar</button>
+  <button class=fbb style="background:#2a1a06;color:#ffb267;border:1px solid #5a3a15" onclick="fetch('/mlhype/feedback',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pid:'{{r.pid}}',cat:'{{r.cat_id}}',acao:'nao_rolou'})});document.getElementById('fbrow').innerHTML='&#9989; Anotado! O motor vai priorizar esse nicho pra voce.'">&#10006; Nao rolou</button>
  </div>
- <div class=meta style="margin-top:8px">Suas marcações ensinam o motor a priorizar o teu nicho nas Dicas. 🧠</div>
 </div>
 </div></body></html>'''
 
