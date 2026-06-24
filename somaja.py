@@ -21,7 +21,8 @@ from somaja_db import (get_somaja_db, init_somaja_db, CATEGORIAS,
                        add_tx, ultimos_tx, saldo_mes, resumo_categorias,
                        registrar_conselho,
                        garantir_carteira, entrar_carteira, sair_carteira, membros_carteira,
-                       tx_do_mes)
+                       tx_do_mes,
+                       set_modo, set_mei_onboard, set_mei_perfil)
 
 log = logging.getLogger('somaja')
 
@@ -87,6 +88,46 @@ REGRAS:
 - Não invente números que não estão no resumo. Use só o que te dei.
 - Termine com uma frase de incentivo. Use no máximo 1 ou 2 emojis.
 """
+
+
+# ── Modo Negócio (MEI) — fundação do SomaJá Negócio (Lote 0) ─────────────────────
+# Teto CONFIGURÁVEL: PLPs 108/60/67 querem subir p/ 130–150k, mas em jun/2026 segue
+# R$81k (nenhum sancionado). Dá pra trocar via env quando aprovarem.
+MEI_TETO       = float(os.environ.get('SOMAJA_MEI_TETO', '81000'))
+MEI_TOLERANCIA = round(MEI_TETO * 1.2, 2)   # tolerância de 20% (R$ 97.200)
+
+# DAS mensal 2026 por atividade (vence dia 20). Fonte: Sebrae/Receita Federal.
+MEI_ATIVIDADES = {
+    'comercio':   {'label': 'Comércio ou Indústria',          'das': 82.05},
+    'servico':    {'label': 'Serviços',                       'das': 86.05},
+    'ambos':      {'label': 'Comércio + Serviços',            'das': 87.05},
+    'transporte': {'label': 'Transporte (MEI Caminhoneiro)',  'das': 199.52},
+}
+
+# Categorias do modo Negócio — separam RECEITA (conta pro teto) das DESPESAS.
+CATEGORIAS_MEI = [
+    'venda', 'serviço prestado', 'outra receita',            # entradas (receita)
+    'fornecedor', 'material', 'mercadoria', 'taxa', 'transporte',
+    'aluguel', 'ferramenta', 'imposto', 'salário', 'outros',  # saídas (despesa)
+]
+
+SYSTEM_PARSER_MEI = """Você é o motor de extração financeira do SomaJá Negócio, usado por um \
+MICROEMPREENDEDOR (MEI). A pessoa envia (texto, ÁUDIO transcrito ou FOTO de nota/comprovante) \
+contando vendas, recebimentos ou despesas DO NEGÓCIO dela.
+
+Extraia os lançamentos e devolva SOMENTE um JSON válido:
+{"lancamentos":[{"tipo":"entrada","valor":150.0,"categoria":"venda","descricao":"venda de bolo"}]}
+
+REGRAS:
+- "tipo": "entrada" quando ENTROU dinheiro do negócio (venda, serviço prestado, recebimento de cliente) — isso conta pro FATURAMENTO.
+  "saida" quando foi DESPESA do negócio (material, fornecedor, taxa, aluguel, ferramenta).
+- "valor": número em reais (ponto decimal). Em foto de nota, use o valor total.
+- "categoria": escolha UMA desta lista exata: %CATS%. Se não encaixar, use "outros".
+- "descricao": curta (ex: "venda no balcão", "compra de farinha").
+- Pode haver VÁRIOS lançamentos numa mensagem — retorne todos.
+- Sem valor claro (ex: só uma pergunta ou "oi"), retorne {"lancamentos":[]}.
+- NUNCA invente valor. Responda APENAS o JSON.
+""".replace('%CATS%', ', '.join(CATEGORIAS_MEI))
 
 
 # ── E-mail (Resend) ─────────────────────────────────────────────────────────────
@@ -256,6 +297,13 @@ def registrar_lancamento(user_id, texto=None, file_bytes=None, mime=None, fonte=
     um dict com a confirmação amigável + saldo atualizado.
     Retorna (resposta:str, lancamentos:list, tokens_in, tokens_out)."""
     import base64
+    # O modo do usuário decide o "cérebro": pessoal x negócio (MEI).
+    _c = get_somaja_db()
+    _r = _c.execute('SELECT modo FROM somaja_users WHERE id=?', (user_id,)).fetchone()
+    _c.close()
+    negocio = bool(_r and (_r['modo'] == 'negocio'))
+    parser  = SYSTEM_PARSER_MEI if negocio else SYSTEM_PARSER
+    cats_ok = CATEGORIAS_MEI if negocio else CATEGORIAS
     parts = []
     if file_bytes and mime:
         parts.append({'inlineData': {'mimeType': mime, 'data': base64.b64encode(file_bytes).decode('ascii')}})
@@ -264,7 +312,7 @@ def registrar_lancamento(user_id, texto=None, file_bytes=None, mime=None, fonte=
     if not parts:
         return 'Manda o gasto que eu anoto! Ex: "almoço 35" 😉', [], 0, 0
     contents = [{'role': 'user', 'parts': parts}]
-    raw, tin, tout = _gemini_call(SYSTEM_PARSER, contents, json_mode=True,
+    raw, tin, tout = _gemini_call(parser, contents, json_mode=True,
                                   max_tokens=1024, temperature=0.1)
     try:
         dados = json.loads(raw)
@@ -282,7 +330,7 @@ def registrar_lancamento(user_id, texto=None, file_bytes=None, mime=None, fonte=
             continue
         tipo = 'entrada' if (l.get('tipo') == 'entrada') else 'saida'
         cat  = (l.get('categoria') or 'outros').lower().strip()
-        if cat not in CATEGORIAS:
+        if cat not in cats_ok:
             cat = 'outros'
         desc = (l.get('descricao') or cat)[:120]
         add_tx(user_id, tipo, valor, cat, desc, fonte=fonte)
@@ -292,16 +340,25 @@ def registrar_lancamento(user_id, texto=None, file_bytes=None, mime=None, fonte=
         return ('Não achei nenhum valor nessa mensagem. 🤔 Tenta assim: '
                 '"mercado 130" ou manda a foto da notinha.'), [], tin, tout
 
-    # Confirmação amigável + saldo do mês
+    # Confirmação amigável + saldo (pessoal) ou faturamento do mês (negócio)
     linhas = []
     for s in salvos:
-        emoji = '💸' if s['tipo'] == 'saida' else '💰'
-        verbo = 'Saída' if s['tipo'] == 'saida' else 'Entrada'
+        if negocio:
+            emoji = '💰' if s['tipo'] == 'entrada' else '🧾'
+            verbo = 'Receita' if s['tipo'] == 'entrada' else 'Despesa'
+        else:
+            emoji = '💸' if s['tipo'] == 'saida' else '💰'
+            verbo = 'Saída' if s['tipo'] == 'saida' else 'Entrada'
         linhas.append(f'{emoji} {verbo}: {_brl(s["valor"])} — {s["descricao"]} ({s["categoria"]})')
     s = saldo_mes(user_id)
-    bola = '🟢' if s['saldo'] >= 0 else '🔴'
-    resposta = ('✅ Anotei!\n' + '\n'.join(linhas) +
-                f'\n\nSaldo do mês: {_brl(s["saldo"])} {bola}')
+    if negocio:
+        # A vigia do teto (% do ano) entra no Lote 1; aqui já mostramos o faturamento do mês.
+        resposta = ('✅ Anotei!\n' + '\n'.join(linhas) +
+                    f'\n\nFaturou esse mês: {_brl(s["entradas"])} 🧾')
+    else:
+        bola = '🟢' if s['saldo'] >= 0 else '🔴'
+        resposta = ('✅ Anotei!\n' + '\n'.join(linhas) +
+                    f'\n\nSaldo do mês: {_brl(s["saldo"])} {bola}')
     return resposta, salvos, tin, tout
 
 
@@ -600,6 +657,26 @@ def familia():
                            membros=membros_carteira(u['id']), msg=msg, erro=erro)
 
 
+@somaja_bp.route('/negocio', methods=['GET', 'POST'])
+@somaja_acesso_required
+def negocio():
+    """SomaJá Negócio (MEI) — ativar o modo Negócio pela web (Lote 0)."""
+    u = _get_user()
+    msg = None
+    if request.method == 'POST':
+        if request.form.get('acao') == 'pessoal':
+            set_modo(u['id'], 'pessoal')
+            return redirect('/somaja/app')
+        atv = (request.form.get('atividade') or '').strip()
+        if atv in MEI_ATIVIDADES:
+            set_mei_perfil(u['id'], atv, MEI_ATIVIDADES[atv]['das'])
+            return redirect('/somaja/app')
+        msg = 'Escolha sua atividade pra ativar o modo Negócio.'
+        u = _get_user()
+    return render_template('somaja/negocio.html', u=u, atividades=MEI_ATIVIDADES,
+                           teto=MEI_TETO, _brl=_brl, msg=msg)
+
+
 # ── Painel + Relatório PDF (Lote 4) ─────────────────────────────────────────────
 _MESES = ['', 'janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho',
           'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro']
@@ -846,15 +923,30 @@ def _wa_rate_ok(user_id):
 
 def _wa_ajuda(u):
     dias = dias_de_trial_restantes(u)
-    base = ('🐗 *Oi! Eu sou o SomaJá*, seu coach financeiro.\n\n'
-            'É só me mandar seus gastos que eu somo tudo:\n'
-            '• Escreve: *"mercado 130"*\n'
-            '• Manda um *áudio* falando o gasto\n'
-            '• Tira *foto da notinha*\n\n'
-            'Comandos:\n'
-            '📊 *resumo* — saldo do mês\n'
-            '🧠 *conselho* — dica do coach\n'
-            '👨‍👩‍👧 *família* — juntar o bolso de todos\n')
+    try:
+        negocio = (u['modo'] == 'negocio')
+    except (KeyError, IndexError):
+        negocio = False
+    if negocio:
+        base = ('🧾 *SomaJá Negócio* — seu contador de bolso (MEI).\n\n'
+                'Me manda as *vendas* e *despesas* do negócio:\n'
+                '• Escreve: *"vendi 200"* / *"material 80"*\n'
+                '• Manda um *áudio* ou a *foto da nota*\n\n'
+                'Comandos:\n'
+                '📊 *resumo* — faturamento do mês\n'
+                '🧠 *conselho* — dica do coach\n'
+                '🐗 *modo pessoal* — voltar pras contas de casa\n')
+    else:
+        base = ('🐗 *Oi! Eu sou o SomaJá*, seu coach financeiro.\n\n'
+                'É só me mandar seus gastos que eu somo tudo:\n'
+                '• Escreve: *"mercado 130"*\n'
+                '• Manda um *áudio* falando o gasto\n'
+                '• Tira *foto da notinha*\n\n'
+                'Comandos:\n'
+                '📊 *resumo* — saldo do mês\n'
+                '🧠 *conselho* — dica do coach\n'
+                '👨‍👩‍👧 *família* — juntar o bolso de todos\n'
+                '🧾 *sou mei* — virar o modo Negócio (pro MEI)\n')
     if not u['plan_active'] and dias >= 0:
         base += f'\n🎁 Você está no teste grátis ({dias} dia(s)).'
     return base
@@ -920,6 +1012,43 @@ def processar_wa_evento(data):
             return jsonify({'ignored': 'rate_limited'}), 200
 
         low = (texto or '').strip().lower()
+
+        # ── Modo Negócio (MEI) — onboarding e troca de modo ──────────────────
+        try:
+            _onb = u['mei_onboard']
+        except (KeyError, IndexError):
+            _onb = None
+        if _onb == 'atividade':
+            _mapa = {'1': 'comercio', '2': 'servico', '3': 'ambos', '4': 'transporte',
+                     'comercio': 'comercio', 'comércio': 'comercio', 'servico': 'servico',
+                     'serviço': 'servico', 'servicos': 'servico', 'serviços': 'servico',
+                     'ambos': 'ambos', 'os dois': 'ambos', 'transporte': 'transporte',
+                     'caminhoneiro': 'transporte'}
+            _atv = _mapa.get(low)
+            if not _atv:
+                wa_send(telefone, 'Só o número 😉  *1* Comércio/Indústria · *2* Serviços · *3* os dois · *4* Transporte')
+                return jsonify({'ok': True}), 200
+            _das = MEI_ATIVIDADES[_atv]['das']
+            set_mei_perfil(u['id'], _atv, _das)
+            wa_send(telefone,
+                    f'✅ Pronto! Ativei o *modo Negócio (MEI)* — {MEI_ATIVIDADES[_atv]["label"]}.\n\n'
+                    f'Seu DAS é *{_brl(_das)}* (vence dia 20).\n'
+                    f'Agora me manda suas *vendas* e *despesas* que eu separo o que conta pro seu '
+                    f'teto de {_brl(MEI_TETO)}/ano. 🧾\n\n'
+                    'Ex: *"vendi 200"*, *"material 80"* ou a foto da nota.')
+            return jsonify({'ok': True}), 200
+        if low in ('sou mei', 'modo negocio', 'modo negócio', 'negocio', 'negócio', 'virar mei', 'mei'):
+            set_mei_onboard(u['id'], 'atividade')
+            wa_send(telefone,
+                    '🧾 *Modo Negócio (MEI)* — vou virar seu contador de bolso.\n\n'
+                    'Qual a sua atividade?\n'
+                    '*1* Comércio ou Indústria\n*2* Serviços\n*3* os dois\n*4* Transporte (caminhoneiro)\n\n'
+                    'Responde só o número.')
+            return jsonify({'ok': True}), 200
+        if low in ('modo pessoal', 'sair do negocio', 'sair do negócio', 'voltar pessoal'):
+            set_modo(u['id'], 'pessoal')
+            wa_send(telefone, 'Pronto, voltei pro *modo pessoal* 🐗 (suas contas de casa).')
+            return jsonify({'ok': True}), 200
 
         # Família (Lote 3) — vários no mesmo bolso
         if low in ('familia', 'família', 'convidar', 'convite'):

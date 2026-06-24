@@ -50,6 +50,12 @@ def init_somaja_db():
             carteira_id           INTEGER,            -- carteira (casal/família) que ele divide
             wa_day                TEXT,
             wa_count              INTEGER DEFAULT 0,
+            modo                  TEXT DEFAULT 'pessoal',  -- 'pessoal' | 'negocio' (MEI)
+            mei_atividade         TEXT,                    -- comercio|servico|ambos|transporte
+            mei_das_valor         REAL,                    -- valor do DAS mensal da atividade
+            mei_abertura          TEXT,                    -- data de abertura do MEI (p/ DASN)
+            cnpj                  TEXT,
+            mei_onboard           TEXT,                    -- estado do onboarding MEI no Zap
             created_at            TEXT DEFAULT CURRENT_TIMESTAMP,
             ultimo_acesso         TEXT
         );
@@ -106,6 +112,12 @@ def init_somaja_db():
         'ALTER TABLE somaja_users ADD COLUMN wa_count INTEGER DEFAULT 0',   # msgs no dia (anti-abuso)
         'ALTER TABLE somaja_users ADD COLUMN carteira_id INTEGER',   # carteira família (Lote 3)
         'ALTER TABLE somaja_users ADD COLUMN afiliado_ref TEXT',     # código do afiliado que trouxe (Lote afiliados)
+        "ALTER TABLE somaja_users ADD COLUMN modo TEXT DEFAULT 'pessoal'",  # SomaJá Negócio (MEI)
+        'ALTER TABLE somaja_users ADD COLUMN mei_atividade TEXT',
+        'ALTER TABLE somaja_users ADD COLUMN mei_das_valor REAL',
+        'ALTER TABLE somaja_users ADD COLUMN mei_abertura TEXT',
+        'ALTER TABLE somaja_users ADD COLUMN cnpj TEXT',
+        'ALTER TABLE somaja_users ADD COLUMN mei_onboard TEXT',
     ]:
         try:
             conn.execute(migration); conn.commit()
@@ -315,6 +327,33 @@ def sair_carteira(user_id):
     """Sai da carteira compartilhada — volta a ser solo (carteira própria sob demanda)."""
     conn = get_somaja_db()
     conn.execute('UPDATE somaja_users SET carteira_id=NULL WHERE id=?', (user_id,))
+    conn.commit(); conn.close()
+
+
+# ── Modo Negócio (MEI) — SomaJá Negócio (Lote 0) ───────────────────────────────
+def set_modo(user_id, modo):
+    """Troca o modo do usuário ('pessoal' | 'negocio')."""
+    conn = get_somaja_db()
+    conn.execute('UPDATE somaja_users SET modo=? WHERE id=?', (modo, user_id))
+    conn.commit(); conn.close()
+
+
+def set_mei_onboard(user_id, estado):
+    """Marca em que passo do onboarding MEI o usuário está (ou None pra limpar)."""
+    conn = get_somaja_db()
+    conn.execute('UPDATE somaja_users SET mei_onboard=? WHERE id=?', (estado, user_id))
+    conn.commit(); conn.close()
+
+
+def set_mei_perfil(user_id, atividade, das_valor, abertura=None, cnpj=None):
+    """Ativa o modo Negócio (MEI) e grava o perfil fiscal. Limpa o estado de onboarding."""
+    conn = get_somaja_db()
+    conn.execute('''UPDATE somaja_users
+                       SET modo='negocio', mei_atividade=?, mei_das_valor=?,
+                           mei_abertura=COALESCE(?, mei_abertura), cnpj=COALESCE(?, cnpj),
+                           mei_onboard=NULL
+                     WHERE id=?''',
+                 (atividade, das_valor, abertura, cnpj, user_id))
     conn.commit(); conn.close()
 
 
