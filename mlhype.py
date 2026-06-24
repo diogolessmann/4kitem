@@ -557,6 +557,7 @@ def rodar_esteira(pid, cat_id=None):
         if p is not None:
             menor_custo = p if menor_custo is None else min(menor_custo, p)
     res['menor_custo_br'] = menor_custo
+    res['fontes'] = fontes_fornecedor(cat_id or prod.get('category_id') or '', nome)
     tend = db.tendencia_produto(pid)
     res['tendencia'] = tend
 
@@ -616,6 +617,55 @@ def rodar_esteira(pid, cat_id=None):
     return res
 
 
+def _termo_busca(produto):
+    """3-4 palavras úteis do nome (sem códigos/números) p/ montar as buscas."""
+    import re as _re
+    palavras = _re.findall(r'[A-Za-zÀ-ÿ]{3,}', produto or '')
+    return ' '.join(palavras[:4]).strip() or (produto or '').strip()
+
+
+# ── MOTOR "Onde achar fornecedor": plataformas curadas por nicho, link pronto ──
+def fontes_fornecedor(cat_id, produto=''):
+    """As melhores plataformas pra caçar fornecedor DAQUELE nicho, já com a busca
+    pré-preenchida. 3 melhores p/ o modelo China 2.0 + bônus específico do nicho."""
+    from urllib.parse import quote_plus
+    t = _termo_busca(produto)
+    g  = lambda q: 'https://www.google.com/search?q=' + quote_plus(q)
+    ml = 'https://lista.mercadolivre.com.br/' + quote_plus((t + ' atacado').strip())
+    base = [
+        {'nome': 'Mercado Livre (modo atacado)', 'tag': '🇧🇷', 'url': ml,
+         'nota': 'Ache quem JÁ revende isso e chame no privado. Começa hoje, de graça.'},
+        {'nome': 'Polos atacadistas BR', 'tag': '🇧🇷',
+         'url': g(t + ' atacado distribuidor CNPJ nota fiscal pronta entrega'),
+         'nota': 'Santa Ifigênia, 25 de Março, Brás — pronta entrega + NF, sem importar.'},
+        {'nome': '1688.com (a fonte da China)', 'tag': '🇨🇳',
+         'url': g('1688.com ' + t + ' atacado importar'),
+         'nota': 'Onde os distribuidores BR compram. Maior margem; precisa agente e ~30-60 dias.'},
+    ]
+    extra = {
+        'MLB1276': [{'nome': '"Seja revendedor" das marcas', 'tag': '🇧🇷',
+                     'url': g('seja revendedor suplemento Growth Max Titanium atacado autorizado'),
+                     'nota': 'Distribuidor AUTORIZADO (foge de falsificado) — o caminho seguro em suplemento.'}],
+        'MLB1246': [{'nome': 'Atacado de perfumaria / marca autorizada', 'tag': '🇧🇷',
+                     'url': g('distribuidor cosméticos perfumaria atacado revenda autorizado ' + t),
+                     'nota': 'Marca autorizada + atacado de beleza. Cuidado com validade e ANVISA.'}],
+        'MLB1000': [{'nome': 'Global Sources (eletrônicos)', 'tag': '🌏',
+                     'url': 'https://www.globalsources.com/searchList/products?keyWord=' + quote_plus(t),
+                     'nota': 'Fornecedor de eletrônico verificado — bom pra achar fábrica séria.'}],
+        'MLB1051': [{'nome': 'Santa Ifigênia (acessório de celular)', 'tag': '🇧🇷',
+                     'url': g('santa ifigenia atacado ' + t + ' distribuidor'),
+                     'nota': 'O polo de acessório de celular do BR — capa, película, fone, carregador.'}],
+        'MLB1648': [{'nome': 'Distribuidores de TI nacionais', 'tag': '🇧🇷',
+                     'url': g('distribuidor TI informática atacado revenda ' + t),
+                     'nota': 'Garantia + NF, essencial em informática. Vários grandes no BR.'}],
+    }
+    fontes = (extra.get(cat_id) or []) + base
+    fontes.append({'nome': 'Alibaba (sourcing internacional)', 'tag': '🇨🇳',
+                   'url': 'https://www.alibaba.com/trade/search?SearchText=' + quote_plus(t),
+                   'nota': 'Em inglês, com Trade Assurance (proteção). Pra quando escalar a importação.'})
+    return fontes[:5]
+
+
 _FICHA_HTML = '''<!doctype html><html lang=pt-br><head><meta charset=utf-8>
 <meta name=viewport content="width=device-width,initial-scale=1">
 <title>MLhype · Ficha de Ataque</title>
@@ -654,6 +704,9 @@ _FICHA_HTML = '''<!doctype html><html lang=pt-br><head><meta charset=utf-8>
  .btn{display:block;width:100%;text-align:center;background:linear-gradient(135deg,#2f6bff,#7c3aed);color:#fff;border:0;border-radius:8px;padding:12px;font-weight:700;font-size:15px;cursor:pointer;margin-top:12px}
  .cbtn{background:#0b1020;border:1px solid #4a2da0;color:#b9a6ff;border-radius:7px;padding:4px 10px;font-size:12px;font-weight:700;cursor:pointer}
  .fbb{flex:1;min-width:104px;border-radius:8px;padding:11px;font-weight:700;cursor:pointer;font-size:14px}
+ .fhead{font-size:12px;color:var(--mut);text-transform:uppercase;letter-spacing:.4px;margin:14px 0 8px;border-top:1px solid var(--bd);padding-top:12px}
+ .fonte{display:flex;justify-content:space-between;align-items:center;gap:10px;background:#0b1020;border:1px solid var(--bd);border-radius:8px;padding:9px 12px;margin-bottom:7px;text-decoration:none}
+ .fonte:hover{border-color:var(--ac)} .fonte b{color:var(--txt);font-size:14px} .fonte-n{color:var(--mut);font-size:12px;margin-top:2px;line-height:1.35} .fonte .arr{color:var(--ac);font-size:18px;flex-shrink:0}
 </style></head><body><div class=wrap>
 <a href="/mlhype/radar{{ '?cat=' ~ r.cat_id if r.cat_id else '' }}">← voltar ao Radar</a>
 <h1>⚡ Análise</h1>
@@ -723,11 +776,17 @@ Diferencial: {{r.ficha.diferencial_ataque}}{% endif %}</textarea>
 
 <div class=card>
  <h3>🎯 De quem comprar (fornecedor BR)</h3>
- {% if not r.pode_fornecedor %}
-   <div class=warn>🔒 Exclusivo do plano <b>Business</b> — é o moat que ninguém tem. <a href="/mlhype/planos" style="color:#7cc0ff;font-weight:700">Ver planos →</a></div>
- {% elif r.fornecedores %}
+ {% if r.fornecedores %}
   {% for f in r.fornecedores %}<div class=forn><span><b>{{f.nome}}</b>{% if f.uf %} · {{f.uf}}{% endif %}{% if f.contato %} · {{f.contato}}{% endif %}{% if f.whatsapp %} · {{f.whatsapp}}{% endif %}</span><span>{{fmt(f.menor_preco)}}</span></div>{% endfor %}
- {% else %}<div class=empty>Nenhum fornecedor cadastrado nesse nicho ainda. <a href="/mlhype/admin/fornecedores" style="color:#7cc0ff;font-weight:700">Cadastre →</a> e o lucro real aparece aqui.</div>{% endif %}
+ {% elif not r.pode_fornecedor %}
+  <div class=warn>🔒 O match automático do <b>seu</b> fornecedor (com preço + lucro) é do plano <b>Business</b>. Mas as fontes abaixo são pra todo mundo 👇 <a href="/mlhype/planos" style="color:#7cc0ff;font-weight:700">Ver planos →</a></div>
+ {% else %}
+  <div class=empty>Você ainda não cadastrou fornecedor nesse nicho. <a href="/mlhype/admin/fornecedores" style="color:#7cc0ff;font-weight:700">Cadastre →</a> e o lucro real aparece. Pra achar um, usa as fontes 👇</div>
+ {% endif %}
+ {% if r.fontes %}
+ <div class=fhead>📍 Onde achar fornecedor pra esse nicho</div>
+ {% for s in r.fontes %}<a href="{{s.url}}" target="_blank" rel="noopener" class=fonte><div><b>{{s.tag}} {{s.nome}}</b><div class=fonte-n>{{s.nota}}</div></div><div class=arr>→</div></a>{% endfor %}
+ {% endif %}
 </div>
 
 <div class=card>
