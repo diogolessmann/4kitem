@@ -23,13 +23,13 @@
 <div class="wrap">
   <h1>🐗 Escolha seu plano</h1>
   <div class="sub">{% if trial_dias > 0 %}Seu teste grátis acaba em {{ trial_dias }} dia(s).{% else %}Seu teste grátis acabou — assine pra continuar somando.{% endif %}<br>
-  <small>Anual no PIX é o melhor custo. Família (até 5 pessoas) chega já já. 😉</small></div>
+  <small>Anual no PIX é o melhor custo — pague o ano de uma vez e economize. 😉</small></div>
 
   {% for key, p in planos.items() %}
   <a class="plan {{ 'dest' if p.destaque }}" href="/somaja/checkout/{{ key }}">
     <div>
       <h3>{{ p.label }} {% if p.destaque %}<span class="tag">melhor custo</span>{% endif %}</h3>
-      <p>{{ 'Pra você' if 'pro' in key else 'Até 5 pessoas (em breve)' }}</p>
+      <p>{{ 'Pague o ano de uma vez — mais barato' if p.cycle == 'YEARLY' else 'Cobrado todo mês' }}</p>
     </div>
     <div class="val">{{ p.rotulo }}</div>
   </a>

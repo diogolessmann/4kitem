@@ -142,9 +142,10 @@ def init_somaja_db():
 
 
 # ── Acesso (assinatura ativa OU trial válido) ──────────────────────────────────
+# Menos é mais: 1 login = 1 conta. Quem divide em casa usa o MESMO login (mesma conta),
+# então o acesso é simplesmente o do próprio usuário. Sem carteira/família.
 def tem_acesso(u) -> bool:
-    """True se o usuário pode usar o app: assinatura paga, OU trial válido, OU alguém
-    da MESMA carteira (família) tem assinatura ativa — 1 plano cobre a família inteira."""
+    """True se o usuário pode usar o app (assinatura paga OU dentro do trial)."""
     if not u:
         return False
     try:
@@ -157,21 +158,7 @@ def tem_acesso(u) -> bool:
         tu = u['trial_until']
     except (KeyError, IndexError):
         tu = None
-    if tu and tu >= datetime.now().strftime('%Y-%m-%d'):
-        return True
-    # Família: 1 assinatura cobre todos os membros da carteira
-    try:
-        cid = u['carteira_id']
-    except (KeyError, IndexError):
-        cid = None
-    if cid:
-        conn = get_somaja_db()
-        r = conn.execute('SELECT 1 FROM somaja_users WHERE carteira_id=? AND plan_active=1 LIMIT 1',
-                         (cid,)).fetchone()
-        conn.close()
-        if r:
-            return True
-    return False
+    return bool(tu and tu >= datetime.now().strftime('%Y-%m-%d'))
 
 
 def dias_de_trial_restantes(u) -> int:
@@ -214,14 +201,9 @@ def _ym(ano_mes=None):
 
 
 def _membros_ids(conn, user_id):
-    """IDs dos usuários que dividem a MESMA carteira do user (inclui ele).
-    Sem carteira (solo) = só o próprio. É o que faz a família somar junto."""
-    u = conn.execute('SELECT carteira_id FROM somaja_users WHERE id=?', (user_id,)).fetchone()
-    cid = u['carteira_id'] if u else None
-    if not cid:
-        return [user_id]
-    rows = conn.execute('SELECT id FROM somaja_users WHERE carteira_id=?', (cid,)).fetchall()
-    return [r['id'] for r in rows] or [user_id]
+    """1 login = 1 conta: as somas são sempre do próprio usuário.
+    (Mantido como função p/ não mexer nas queries de saldo/resumo/relatório.)"""
+    return [user_id]
 
 
 def saldo_mes(user_id, ano_mes=None):

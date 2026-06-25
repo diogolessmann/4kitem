@@ -19,9 +19,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from somaja_db import (get_somaja_db, init_somaja_db, CATEGORIAS,
                        tem_acesso, dias_de_trial_restantes,
                        add_tx, ultimos_tx, saldo_mes, resumo_categorias,
-                       faturamento_ano, registrar_conselho,
-                       garantir_carteira, entrar_carteira, sair_carteira, membros_carteira,
-                       tx_do_mes,
+                       faturamento_ano, registrar_conselho, tx_do_mes,
                        set_modo, set_mei_onboard, set_mei_perfil)
 
 log = logging.getLogger('somaja')
@@ -260,8 +258,8 @@ def _brl(v):
 
 
 # ── Planos (assinatura) ─────────────────────────────────────────────────────────
-# Anual = PIX (taxa Asaas R$1,99 fixa vira ~1%). Carteira família vem no Lote 3.
-# Menos é mais: UM plano só (família incluída), em 2 ciclos.
+# Menos é mais: UM plano só, 2 ciclos (anual no PIX = melhor custo). 1 login = 1 conta;
+# quem divide em casa usa o MESMO login (sem carteira/família).
 PLANOS = {
     'pro_anual':  {'label': 'Plano anual',  'valor': 149.00, 'cycle': 'YEARLY',  'rotulo': 'R$ 149/ano',   'destaque': True},
     'pro_mensal': {'label': 'Plano mensal', 'valor': 19.90,  'cycle': 'MONTHLY', 'rotulo': 'R$ 19,90/mês', 'destaque': False},
@@ -720,30 +718,6 @@ def coach():
     return jsonify({'ok': True, 'conselho': texto})
 
 
-@somaja_bp.route('/familia', methods=['GET', 'POST'])
-@somaja_acesso_required
-def familia():
-    u = _get_user()
-    msg = erro = None
-    if request.method == 'POST':
-        acao = request.form.get('acao')
-        if acao == 'entrar':
-            nome_cart = entrar_carteira(u['id'], request.form.get('codigo'))
-            if nome_cart == 'LIMITE':
-                erro = 'Essa família já está cheia (máximo de 5 pessoas).'
-            elif nome_cart:
-                msg = f'Você entrou na {nome_cart}!'
-            else:
-                erro = 'Código não encontrado. Confira e tente de novo.'
-        elif acao == 'sair':
-            sair_carteira(u['id'])
-            msg = 'Você saiu da carteira compartilhada.'
-        u = _get_user()
-    _cid, codigo = garantir_carteira(u['id'], u['nome'])
-    return render_template('somaja/familia.html', codigo=codigo,
-                           membros=membros_carteira(u['id']), msg=msg, erro=erro)
-
-
 @somaja_bp.route('/negocio', methods=['GET', 'POST'])
 @somaja_acesso_required
 def negocio():
@@ -817,7 +791,6 @@ def relatorio():
     s, cats, txs = _dados_mes(u['id'], mes)
     return render_template('somaja/relatorio.html', u=u, mes=mes, nome_mes=_nome_mes(mes),
                            saldo=s, cats=cats, txs=txs, _brl=_brl,
-                           membros=membros_carteira(u['id']),
                            gerado=datetime.now().strftime('%d/%m/%Y às %H:%M'))
 
 
@@ -1032,7 +1005,6 @@ def _wa_ajuda(u):
                 'Comandos:\n'
                 '📊 *resumo* — saldo do mês\n'
                 '🧠 *conselho* — dica do coach\n'
-                '👨‍👩‍👧 *família* — juntar o bolso de todos\n'
                 '🧾 *sou mei* — virar o modo Negócio (pro MEI)\n')
     if not u['plan_active'] and dias >= 0:
         base += f'\n🎁 Você está no teste grátis ({dias} dia(s)).'
@@ -1135,34 +1107,6 @@ def processar_wa_evento(data):
         if low in ('modo pessoal', 'sair do negocio', 'sair do negócio', 'voltar pessoal'):
             set_modo(u['id'], 'pessoal')
             wa_send(telefone, 'Pronto, voltei pro *modo pessoal* 🐗 (suas contas de casa).')
-            return jsonify({'ok': True}), 200
-
-        # Família (Lote 3) — vários no mesmo bolso
-        if low in ('familia', 'família', 'convidar', 'convite'):
-            _cid, codigo = garantir_carteira(u['id'], u['nome'])
-            membros = membros_carteira(u['id'])
-            wa_send(telefone,
-                    '👨‍👩‍👧 *Carteira família*\n\n'
-                    f'Seu código de convite: *{codigo}*\n\n'
-                    'Peça pra quem você quer juntar mandar aqui:\n'
-                    f'*entrar {codigo}*\n\n'
-                    f'Já no bolso: {", ".join(membros)}\n'
-                    'Todo mundo soma junto. 💰')
-            return jsonify({'ok': True}), 200
-        if low.startswith('entrar ') and len(texto.split(None, 1)) > 1:
-            nome_cart = entrar_carteira(u['id'], texto.split(None, 1)[1])
-            if nome_cart == 'LIMITE':
-                wa_send(telefone, 'Essa família já está cheia 👨‍👩‍👧 (máximo de 5 pessoas por carteira).')
-            elif nome_cart:
-                membros = membros_carteira(u['id'])
-                wa_send(telefone, f'✅ Você entrou na *{nome_cart}*!\nA partir de agora vocês somam juntos. '
-                                  f'👨‍👩‍👧\nQuem está: {", ".join(membros)}')
-            else:
-                wa_send(telefone, 'Código não encontrado 🤔 Confere com quem te convidou e tenta: *entrar CODIGO*')
-            return jsonify({'ok': True}), 200
-        if low in ('sair familia', 'sair família', 'sair da familia', 'sair da família'):
-            sair_carteira(u['id'])
-            wa_send(telefone, 'Pronto, você saiu da carteira compartilhada. Agora suas contas voltam a ser só suas. 👍')
             return jsonify({'ok': True}), 200
 
         # Comandos
