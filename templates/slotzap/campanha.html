@@ -380,8 +380,10 @@ input:focus{border-color:#6366f1}
       <input type="text" id="ed-nome" value="{{ camp.nome }}">
     </div>
     <div class="form-group">
-      <label>Descrição</label>
-      <input type="text" id="ed-descr" value="{{ camp.descricao or '' }}">
+      <label>Descrição <span style="font-weight:400;color:#6666aa">(curta e direta — máx. 180)</span></label>
+      <input type="text" id="ed-descr" maxlength="180" value="{{ camp.descricao or '' }}"
+             oninput="document.getElementById('ed-descr-cont').textContent=this.value.length">
+      <div style="text-align:right;font-size:11px;color:#8888aa;margin-top:3px"><span id="ed-descr-cont">{{ (camp.descricao or '')|length }}</span>/180</div>
     </div>
     <div class="form-group">
       <label>Preço por número (R$)</label>

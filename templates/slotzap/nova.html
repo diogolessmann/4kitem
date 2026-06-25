@@ -51,9 +51,12 @@ input:focus,textarea:focus,select:focus{border-color:#6366f1}
                oninput="atualizar()">
       </div>
       <div class="form-group">
-        <label>Descrição (opcional)</label>
-        <textarea name="descricao" rows="2" placeholder="Detalhes do produto ou campanha"
-                  style="resize:vertical"></textarea>
+        <label>Descrição <span style="font-weight:400;color:#6b7591">(curta e direta — máx. 180)</span></label>
+        <textarea name="descricao" id="descr" rows="2" maxlength="180"
+                  placeholder="Ex: 🛵 Concorra a uma Scooter, sem CNH. Compre o e-book e garanta seu número da sorte."
+                  style="resize:vertical"
+                  oninput="document.getElementById('descr-cont').textContent=this.value.length"></textarea>
+        <div style="text-align:right;font-size:11px;color:#8888aa;margin-top:3px"><span id="descr-cont">0</span>/180</div>
       </div>
       <div class="grid2">
         <div class="form-group">

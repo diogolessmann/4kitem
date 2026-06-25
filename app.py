@@ -2381,6 +2381,17 @@ def webhook_asaas_global():
             except Exception as _soma_e:
                 log.error(f'[SomaJá] Webhook error: {_soma_e}')
 
+    elif ref.startswith('atendezap_'):
+        # AtendeZap — assinatura do negócio: paga=ativa o bot, vence/cancela=corta.
+        # ref = 'atendezap_<biz_id>_<plano>' (plano sem '_': anual|mensal) → customer_id=parts[1]=biz_id
+        if customer_id:
+            try:
+                from atendezap import atende_webhook_ativar
+                atende_webhook_ativar(customer_id, ativar,
+                                      (payload.get('payment') or {}).get('id', ''))
+            except Exception as _ate:
+                log.error(f'[AtendeZap] Webhook error: {_ate}')
+
     elif ref.startswith('radar_') or ref.startswith('licita_'):
         # Radar TI / Radar Licita Norte — assinatura mensal: paga=ativa, vence/cancela=corta
         if customer_id:
@@ -8576,6 +8587,14 @@ def mz_webhook_evolution():
             except Exception as _ae:
                 log.warning(f'[Amparo] webhook evolution: {_ae}')
             return jsonify({'ok': True, 'amparo': True}), 200
+        # AtendeZap — instâncias 'atende{id}' (bot de atendimento por negócio)
+        if instance.startswith('atende'):
+            try:
+                from atendezap import processar_wa_evento as _at_proc
+                _at_proc(payload)
+            except Exception as _ate:
+                log.warning(f'[AtendeZap] webhook evolution: {_ate}')
+            return jsonify({'ok': True, 'atendezap': True}), 200
         m = _re.match(r'^mz(\d+)n(\d+)$', instance)
         if not m:
             return jsonify({'ok': True, 'skip': 'instance'}), 200
@@ -14911,6 +14930,18 @@ except Exception as _amparo_err:
     log.warning(f'[Amparo] Erro ao carregar blueprint: {_amparo_err}')
 
 # ══════════════════════════════════════════════════════════════════════════════
+# ATENDEZAP — Bot de atendimento no WhatsApp (B2B, pronto-por-nicho) — Lote 0
+# ══════════════════════════════════════════════════════════════════════════════
+try:
+    from atendezap import atendezap_bp
+    from atendezap_db import init_atende_db
+    init_atende_db()
+    app.register_blueprint(atendezap_bp)
+    log.info('[AtendeZap] Blueprint registrado em /atendezap')
+except Exception as _atende_err:
+    log.warning(f'[AtendeZap] Erro ao carregar blueprint: {_atende_err}')
+
+# ══════════════════════════════════════════════════════════════════════════════
 
 with app.app_context():
     _startup()
@@ -15267,7 +15298,7 @@ def slotzap_nova():
     erro = None
     if request.method == 'POST':
         nome    = request.form.get('nome', '').strip()
-        descr   = request.form.get('descricao', '').strip()
+        descr   = request.form.get('descricao', '').strip()[:180]  # "menos é mais": descrição curta
         # Preço aceita vírgula (34,90) e ponto de milhar (1.234,56)
         preco_raw = (request.form.get('preco') or '0').strip()
         if ',' in preco_raw:
@@ -15374,7 +15405,7 @@ def slotzap_editar(camp_id):
         return jsonify({'erro': 'Assinatura inativa.'}), 402
     data  = request.get_json() or {}
     nome  = (data.get('nome') or '').strip()
-    descr = (data.get('descricao') or '').strip()
+    descr = (data.get('descricao') or '').strip()[:180]  # "menos é mais": descrição curta
     try:    preco = float(data.get('preco') or 0)
     except (TypeError, ValueError): preco = 0
     try:    novo_total = int(data.get('total_slots') or 0)
