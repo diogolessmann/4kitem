@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SomaJá Negócio — o contador de bolso do MEI 🧾</title>
+<meta name="description" content="O SomaJá Negócio vigia seu teto de MEI, te lembra do DAS e separa venda de despesa — tudo no WhatsApp. Não tome multa nem perca seu CNPJ.">
+<meta property="og:title" content="SomaJá Negócio — o contador de bolso do MEI">
+<meta property="og:description" content="Vigia seu teto, lembra do DAS e organiza seu negócio no WhatsApp. 7 dias grátis.">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,Segoe UI,Roboto,sans-serif;background:#f0fdf4;color:#0f172a;line-height:1.6}
+  a{text-decoration:none}
+  .wrap{max-width:680px;margin:0 auto;padding:0 18px}
+  .top{background:#15803d;color:#fff;padding:12px 18px;display:flex;justify-content:space-between;align-items:center}
+  .top .logo{font-weight:800}
+  .top a{color:#dcfce7;font-size:13px}
+  .btn{display:inline-block;background:#16a34a;color:#fff;padding:15px 30px;border-radius:14px;font-weight:800;font-size:17px;box-shadow:0 8px 24px rgba(22,163,74,.3)}
+  .hero{text-align:center;padding:42px 0 26px}
+  .hero .selo{display:inline-block;background:#dcfce7;color:#15803d;font-size:13px;font-weight:700;padding:5px 14px;border-radius:100px;margin-bottom:18px}
+  .hero h1{font-size:30px;line-height:1.15;margin-bottom:12px}
+  .hero h1 b{color:#16a34a}
+  .hero p{font-size:17px;color:#475569;max-width:520px;margin:0 auto 24px}
+  .sub{font-size:13px;color:#64748b;margin-top:12px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:30px 0}
+  .card{background:#fff;border:1px solid #dcfce7;border-radius:14px;padding:16px}
+  .card h3{font-size:15px;margin-bottom:5px}
+  .card p{font-size:13.5px;color:#475569}
+  .anchor{background:#fff7ed;border:1px solid #fed7aa;border-radius:16px;padding:20px;margin:26px 0}
+  .anchor h2{font-size:18px;color:#9a3412;margin-bottom:10px}
+  .anchor li{font-size:14px;color:#7c2d12;margin:6px 0 6px 18px}
+  .price{background:#fff;border:2px solid #16a34a;border-radius:20px;padding:26px;text-align:center;margin:26px 0;box-shadow:0 10px 30px rgba(22,163,74,.12)}
+  .price .tag{display:inline-block;background:#dcfce7;color:#15803d;font-size:12px;font-weight:700;padding:3px 12px;border-radius:20px;margin-bottom:10px}
+  .price .big{font-size:40px;font-weight:800;color:#16a34a}
+  .price .big span{font-size:17px;color:#475569}
+  .price .eq{color:#475569;margin:8px 0 18px;font-size:14px}
+  .price s{color:#94a3b8}
+  footer{text-align:center;color:#64748b;padding:30px 18px;font-size:13px}
+</style>
+</head>
+<body>
+<div class="top"><span class="logo">🧾 SomaJá Negócio</span><a href="/somaja/entrar">Entrar</a></div>
+
+<section class="hero"><div class="wrap">
+  <div class="selo">🧾 Pro MEI · no WhatsApp · sem planilha</div>
+  <h1>Não tome multa.<br><b>Não perca seu CNPJ.</b></h1>
+  <p>O <b>SomaJá Negócio</b> é seu contador de bolso: vigia seu teto, te lembra do DAS e separa venda de despesa — você só conversa no WhatsApp.</p>
+  <a href="/somaja/cadastrar" class="btn">Testar 7 dias grátis →</a>
+  <div class="sub">Sem cartão pra testar · sem instalar nada · cancela quando quiser</div>
+</div></section>
+
+<section><div class="wrap">
+  <div class="grid">
+    <div class="card"><h3>📈 Vigia do teto</h3><p>Soma seu faturamento do ano e avisa <b>antes</b> de você estourar os {{ _brl(teto) }} e virar ME.</p></div>
+    <div class="card"><h3>🔔 Lembra do DAS</h3><p>Todo mês te lembra do imposto (vence dia 20) e da declaração anual em maio. CNPJ sempre em dia.</p></div>
+    <div class="card"><h3>🧠 Contador de bolso</h3><p>Dica de verdade com número e prazo: "faltam R$ X pro teto, segura as notas".</p></div>
+    <div class="card"><h3>🧾 Venda × despesa</h3><p>Manda "vendi 200" ou a foto da nota — ele separa o que é receita do que é gasto.</p></div>
+  </div>
+</div></section>
+
+<section><div class="wrap">
+  <div class="anchor">
+    <h2>O que custa esquecer 👇</h2>
+    <ul>
+      <li>Esqueceu o <b>DAS</b> → perde INSS e aposentadoria</li>
+      <li>Esqueceu a <b>DASN</b> → CNPJ cancelado</li>
+      <li>Estourou o <b>teto</b> sem ver → vira ME e os impostos explodem</li>
+    </ul>
+    <p style="font-size:14px;color:#7c2d12;margin-top:6px"><b>R$ 49,90 te protege de prejuízo de centenas a milhares.</b></p>
+  </div>
+</div></section>
+
+<section><div class="wrap">
+  <div class="price">
+    <div class="tag">💚 Economize 50% no anual</div>
+    <div class="big">R$ 299<span>/ano</span></div>
+    <div class="eq">equivale a <b>R$ 24,90/mês</b> · no mensal sai <s>R$ 49,90/mês</s></div>
+    <a href="/somaja/cadastrar" class="btn">Testar 7 dias grátis</a>
+    <div class="sub">Menos de R$ 0,70 por dia — menos da metade de um DAS.</div>
+  </div>
+</div></section>
+
+<footer>SomaJá Negócio · um produto 4kitem · organize seu MEI sem dor de cabeça 🐗</footer>
+</body>
+</html>

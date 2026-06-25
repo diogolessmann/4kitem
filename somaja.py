@@ -501,7 +501,18 @@ def landing():
     ref = (request.args.get('ref') or '').strip().upper()[:12]
     if ref:
         session['soma_ref'] = ref   # guarda o afiliado que trouxe (Lote afiliados)
+    session.pop('soma_modo', None)  # entrou pela porta pessoal
     return render_template('somaja/landing.html')
+
+
+@somaja_bp.route('/mei')
+def mei_landing():
+    """Landing pública do SomaJá Negócio (MEI) — quem vem por aqui já entra no modo Negócio."""
+    ref = (request.args.get('ref') or '').strip().upper()[:12]
+    if ref:
+        session['soma_ref'] = ref
+    session['soma_modo'] = 'negocio'
+    return render_template('somaja/mei.html', planos=PLANOS_MEI, teto=MEI_TETO, _brl=_brl)
 
 
 # ── PWA: service worker (instalável "como app" na tela do celular) ──────────────
@@ -558,10 +569,16 @@ def cadastrar():
                      trial_until, (ref_af or None), datetime.now().isoformat()))
                 conn.commit()
                 uid = cur.lastrowid
+                # Veio da landing do MEI? já entra no modo Negócio (vai escolher a atividade).
+                quer_mei = (session.get('soma_modo') == 'negocio')
+                if quer_mei:
+                    conn.execute('UPDATE somaja_users SET modo=? WHERE id=?', ('negocio', uid))
+                    conn.commit()
                 conn.close()
+                session.pop('soma_modo', None)
                 session['soma_user_id']   = uid
                 session['soma_user_nome'] = nome
-                return redirect('/somaja/app')
+                return redirect('/somaja/negocio' if quer_mei else '/somaja/app')
     return render_template('somaja/cadastrar.html', erro=erro)
 
 
