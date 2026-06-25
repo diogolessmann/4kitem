@@ -23,6 +23,7 @@ BASE_URL = os.environ.get('BASE_URL', 'https://www.4kitem.com.br').rstrip('/')
 # Adicionar um app aqui já o disponibiliza pros afiliados venderem.
 APPS = {
     'somaja':      {'nome': 'SomaJá',                'comissao': 4.00,  'unidade': 'por mês',    'url': '/somaja',            'desc': 'Coach financeiro no WhatsApp',          'icone': '/static/somaja/logo.png'},
+    'somaja_mei':  {'nome': 'SomaJá Negócio (MEI)',  'comissao': 8.00,  'unidade': 'por mês',    'url': '/somaja/negocio',    'desc': 'Contador de bolso pro MEI no WhatsApp', 'icone': '/static/somaja/logo.png'},
     'salatv':      {'nome': 'SalaTV',                'comissao': 15.98, 'unidade': 'por mês',    'url': '/kids',              'desc': 'TV curada pra salas de espera',         'icone': '/static/img/kidscurator/logo.webp'},
     'agenda':      {'nome': 'AgendaJá',              'comissao': 15.98, 'unidade': 'por mês',    'url': '/agenda',            'desc': 'Agendamento online sem app',            'icone': '/static/img/agenda/logo.webp'},
     'alerta':      {'nome': 'AlertaJá',              'comissao': 6.23,  'unidade': 'por mês',    'url': '/alerta',            'desc': 'Monitor de CNH e veículo (DETRAN-SC)',  'icone': '/static/img/alerta/logo.webp'},
@@ -37,6 +38,7 @@ APPS = {
     'mandajr':     {'nome': 'MandaJr',               'comissao': 7.00,  'unidade': 'por mês',    'url': '/mandajr',           'desc': 'Catálogo no WhatsApp simplificado',     'icone': '/static/img/mandajr/mandajr-icon.webp'},
     'pubshow':     {'nome': 'PubShow',               'comissao': 15.00, 'unidade': 'por mês',    'url': '/pubshow',           'desc': 'Jukebox digital pra bares',             'icone': '/static/pubshow/pubshow-logo-concept.png'},
     'amparo':      {'nome': 'Amparo',                'comissao': 29.90, 'comissao_pct': 20, 'unidade': 'por mês (20% recorrente)', 'url': '/amparo',            'desc': 'Cuidado entre as sessões pra psicólogos','icone': ''},
+    'atendezap':   {'nome': 'AtendeZap',             'comissao': 25.00, 'unidade': 'por cliente',  'url': '/atendezap',        'desc': 'Bot de atendimento no WhatsApp, pronto por nicho', 'icone': ''},
 }
 
 

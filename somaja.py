@@ -265,6 +265,25 @@ PLANOS = {
     'pro_mensal': {'label': 'Plano mensal', 'valor': 19.90,  'cycle': 'MONTHLY', 'rotulo': 'R$ 19,90/mês', 'destaque': False},
 }
 
+# SomaJá Negócio (MEI): mensal R$49,90 / anual R$299 à vista (50% off — âncora forte).
+PLANOS_MEI = {
+    'mei_anual':  {'label': 'Plano anual',  'valor': 299.00, 'cycle': 'YEARLY',  'rotulo': 'R$ 299/ano',   'destaque': True},
+    'mei_mensal': {'label': 'Plano mensal', 'valor': 49.90,  'cycle': 'MONTHLY', 'rotulo': 'R$ 49,90/mês', 'destaque': False},
+}
+
+# Lookup único p/ checkout/pix (aceita plano pessoal OU MEI).
+TODOS_PLANOS = {**PLANOS, **PLANOS_MEI}
+
+
+def _planos_do_user(u):
+    """Plano que aparece pro usuário: MEI (R$49,90/R$299) se modo negócio, senão o pessoal."""
+    try:
+        if u and u['modo'] == 'negocio':
+            return PLANOS_MEI
+    except (KeyError, IndexError):
+        pass
+    return PLANOS
+
 # ── Asaas ──────────────────────────────────────────────────────────────────────
 _ASAAS_BASE = 'https://api.asaas.com/v3'
 
@@ -308,7 +327,7 @@ def soma_webhook_ativar(customer_id, plano_key, ativar, payment_id=''):
     if not customer_id:
         return False
     conn = get_somaja_db()
-    u = conn.execute('SELECT id, email, nome, afiliado_ref FROM somaja_users WHERE asaas_customer_id=?',
+    u = conn.execute('SELECT id, email, nome, afiliado_ref, modo FROM somaja_users WHERE asaas_customer_id=?',
                      (customer_id,)).fetchone()
     if not u:
         conn.close()
@@ -333,7 +352,12 @@ def soma_webhook_ativar(customer_id, plano_key, ativar, payment_id=''):
         if ref_af:
             try:
                 from afiliados import registrar_comissao
-                registrar_comissao(ref_af, 'somaja', payment_id, u['nome'])
+                try:
+                    _neg = (u['modo'] == 'negocio')
+                except (KeyError, IndexError):
+                    _neg = False
+                _app_af = 'somaja_mei' if _neg else 'somaja'
+                registrar_comissao(ref_af, _app_af, payment_id, u['nome'])
             except Exception as _e:
                 log.warning(f'[SomaJá] comissão afiliado: {_e}')
     log.info(f'[SomaJá] Assinatura {"ATIVADA" if ativar else "cortada"} (customer {customer_id})')
@@ -799,7 +823,7 @@ def relatorio():
 @somaja_login_required
 def assinar():
     u = _get_user()
-    return render_template('somaja/assinar.html', u=u, planos=PLANOS,
+    return render_template('somaja/assinar.html', u=u, planos=_planos_do_user(u),
                            trial_dias=dias_de_trial_restantes(u))
 
 
@@ -807,9 +831,10 @@ def assinar():
 @somaja_login_required
 def checkout(plano):
     u = _get_user()
-    if plano not in PLANOS:
+    if plano not in TODOS_PLANOS:
         return redirect('/somaja/assinar')
-    p = PLANOS[plano]
+    p = TODOS_PLANOS[plano]
+    desc_prod = 'SomaJá Negócio' if plano.startswith('mei_') else 'SomaJá'
     erro = None
     if request.method == 'POST':
         cpf = _cpf_digits(request.form.get('cpf'))
@@ -824,7 +849,7 @@ def checkout(plano):
                 sub = _asaas_req('POST', '/subscriptions', {
                     'customer': customer_id, 'billingType': billing, 'value': p['valor'],
                     'nextDueDate': (datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d'),
-                    'cycle': p['cycle'], 'description': f'SomaJá — {p["label"]}',
+                    'cycle': p['cycle'], 'description': f'{desc_prod} — {p["label"]}',
                     'externalReference': f'somaja_{customer_id}_{plano}'})
                 sub_id = sub.get('id')
                 if not sub_id:
@@ -842,7 +867,7 @@ def checkout(plano):
 @somaja_login_required
 def pix(plano):
     u = _get_user()
-    if plano not in PLANOS or not u['asaas_subscription_id']:
+    if plano not in TODOS_PLANOS or not u['asaas_subscription_id']:
         return redirect('/somaja/assinar')
     qr = copia = ''
     payments = _asaas_req('GET', f'/subscriptions/{u["asaas_subscription_id"]}/payments?limit=1')
@@ -852,7 +877,7 @@ def pix(plano):
             resp = _asaas_req('GET', f'/payments/{pid}/pixQrCode')
             qr    = resp.get('encodedImage', '')
             copia = resp.get('payload', '')
-    return render_template('somaja/pix.html', u=u, plano=plano, p=PLANOS[plano], qr=qr, copia=copia)
+    return render_template('somaja/pix.html', u=u, plano=plano, p=TODOS_PLANOS[plano], qr=qr, copia=copia)
 
 
 @somaja_bp.route('/pix-status', methods=['POST'])
