@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Assinar — AtendeZap</title>
+<style>
+  :root{--zap:#25D366;--zap2:#128C7E;--ink:#0f172a;--mut:#475569;--line:#e2e8f0}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:var(--ink);background:#f1f5f9}
+  .wrap{max-width:680px;margin:0 auto;padding:28px 20px 60px}
+  .back{color:var(--mut);text-decoration:none;font-size:14px}
+  h1{font-size:24px;margin:10px 0 4px}
+  .sub{color:var(--mut);margin:0 0 22px}
+  .trial{background:#fffbeb;border:1px solid #fde68a;color:#92400e;border-radius:12px;padding:10px 14px;font-size:14px;margin-bottom:18px}
+  .plans{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .plan{background:#fff;border:2px solid var(--line);border-radius:18px;padding:22px;text-align:center;position:relative}
+  .plan.hot{border-color:var(--zap)}
+  .tag{position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:var(--zap);color:#fff;font-size:12px;font-weight:700;padding:3px 12px;border-radius:20px}
+  .plan .nm{font-weight:700;color:var(--mut);margin-bottom:6px}
+  .plan .pr{font-size:26px;font-weight:800}
+  .plan .ds{color:var(--mut);font-size:13px;margin:6px 0 16px;min-height:32px}
+  .btn{display:block;background:var(--zap);color:#fff;text-decoration:none;font-weight:700;padding:13px;border-radius:11px}
+  .btn.sec{background:#fff;color:var(--zap2);border:2px solid var(--zap)}
+  .feats{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 20px;margin-top:20px;color:var(--mut);font-size:14px}
+  .feats li{margin:6px 0}
+  @media(max-width:560px){.plans{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="/atendezap/painel">← Voltar ao painel</a>
+  <h1>Assine o AtendeZap</h1>
+  <p class="sub">Seu atendente no WhatsApp trabalhando 24h. Plano único, sem pegadinha.</p>
+
+  {% if acesso and trial_dias > 0 %}
+    <div class="trial">🎁 Você ainda tem <b>{{ trial_dias }} dia(s)</b> de teste grátis — assine quando quiser.</div>
+  {% endif %}
+
+  <div class="plans">
+    {% for key, p in planos.items() %}
+      <div class="plan {{ 'hot' if p.destaque else '' }}">
+        {% if p.destaque %}<div class="tag">Mais econômico</div>{% endif %}
+        <div class="nm">{{ p.label }}</div>
+        <div class="pr">{{ p.rotulo }}</div>
+        <div class="ds">{{ p.sub }}</div>
+        <a class="btn {{ '' if p.destaque else 'sec' }}" href="/atendezap/checkout/{{ key }}">Assinar no PIX</a>
+      </div>
+    {% endfor %}
+  </div>
+
+  <ul class="feats">
+    <li>🤖 Responde os clientes 24h, pronto pro seu ramo</li>
+    <li>🙋 Escape pro humano: te avisa quando o cliente precisa de você</li>
+    <li>🧠 Nunca inventa preço ou horário — só o que você cadastrou</li>
+    <li>📵 Usa o seu número, só responde quem chama (anti-bloqueio)</li>
+  </ul>
+</div>
+</body>
+</html>

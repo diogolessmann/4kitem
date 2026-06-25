@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PIX — AtendeZap</title>
+<style>
+  :root{--zap:#25D366;--zap2:#128C7E;--ink:#0f172a;--mut:#475569;--line:#e2e8f0}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:var(--ink);background:#f1f5f9}
+  .wrap{max-width:440px;margin:0 auto;padding:28px 20px;text-align:center}
+  h1{font-size:22px;margin:6px 0}
+  .val{color:var(--zap2);font-weight:800;font-size:20px;margin-bottom:14px}
+  .card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:22px}
+  .card img{width:240px;height:240px;border:1px solid var(--line);border-radius:12px}
+  .copia{width:100%;margin-top:14px;padding:10px;border:1px solid #cbd5e1;border-radius:10px;font-size:12px;word-break:break-all;background:#f8fafc}
+  .btn{margin-top:10px;background:var(--zap);color:#fff;border:0;font-weight:700;padding:11px 18px;border-radius:11px;cursor:pointer}
+  .status{margin-top:16px;color:var(--mut);font-size:14px}
+  .ok{display:none;color:#065f46;font-weight:700}
+  .hint{color:#94a3b8;font-size:13px;margin-top:10px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>📲 Pague no PIX</h1>
+  <div class="val">{{ p.rotulo }}</div>
+  <div class="card">
+    {% if qr %}
+      <img src="data:image/png;base64,{{ qr }}" alt="QR Code PIX">
+      {% if copia %}
+        <input class="copia" id="copia" value="{{ copia }}" readonly>
+        <button class="btn" onclick="navigator.clipboard.writeText(document.getElementById('copia').value);this.textContent='Copiado!'">Copiar código</button>
+      {% endif %}
+    {% else %}
+      <p>Gerando o PIX… atualize a página em alguns segundos.</p>
+    {% endif %}
+    <div class="status" id="status">⏳ Aguardando o pagamento…</div>
+    <div class="status ok" id="ok">✅ Pagamento confirmado! Redirecionando…</div>
+  </div>
+  <p class="hint">Assim que o PIX cair, seu bot é liberado automaticamente.</p>
+</div>
+<script>
+async function check(){
+  try{
+    const r = await fetch('/atendezap/pix-status', {method:'POST'});
+    const d = await r.json();
+    if(d.pago){
+      document.getElementById('status').style.display='none';
+      document.getElementById('ok').style.display='block';
+      clearInterval(t);
+      setTimeout(()=>location.href='/atendezap/painel', 1800);
+    }
+  }catch(e){}
+}
+const t = setInterval(check, 4000);
+</script>
+</body>
+</html>

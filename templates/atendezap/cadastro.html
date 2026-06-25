@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Criar conta — AtendeZap</title>
+<style>
+  :root{--zap:#25D366;--zap2:#128C7E;--ink:#0f172a;--mut:#475569}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:var(--ink);background:#f8fafc}
+  .wrap{max-width:480px;margin:0 auto;padding:28px 20px}
+  h1{font-size:24px;margin:.2em 0 .1em}
+  .sub{color:var(--mut);margin:0 0 20px}
+  form{background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:20px}
+  label{display:block;font-weight:600;font-size:14px;margin:14px 0 5px}
+  input,select{width:100%;padding:12px;border:1px solid #cbd5e1;border-radius:10px;font-size:16px;font-family:inherit}
+  .hint{color:#94a3b8;font-size:12px;margin-top:4px}
+  .btn{width:100%;margin-top:20px;background:var(--zap);color:#fff;border:0;font-weight:700;
+       padding:14px;border-radius:12px;font-size:17px;cursor:pointer}
+  .erro{background:#fef2f2;color:#b91c1c;border:1px solid #fecaca;border-radius:10px;padding:10px 12px;font-size:14px;margin-bottom:14px}
+  .alt{text-align:center;color:var(--mut);margin-top:16px;font-size:14px}
+  a{color:var(--zap2)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🤖 Criar conta</h1>
+  <p class="sub">Seu atendente no WhatsApp em 5 minutos. 7 dias grátis.</p>
+  <form method="post" action="/atendezap/cadastro">
+    {% if erro %}<div class="erro">{{ erro }}</div>{% endif %}
+
+    <label>Nome do negócio</label>
+    <input name="nome" placeholder="Ex.: Salão da Maria" required>
+
+    <label>Ramo do negócio</label>
+    <select name="nicho" required>
+      <option value="" disabled selected>Escolha o seu ramo…</option>
+      {% for key, n in nichos.items() %}
+        {% if key != 'outros' %}<option value="{{ key }}">{{ n.nome }}</option>{% endif %}
+      {% endfor %}
+      <option value="outros">{{ nichos['outros'].nome }}</option>
+    </select>
+    <div class="hint">Já vem pronto pro seu ramo — você só ajusta depois.</div>
+
+    <label>Seu nome</label>
+    <input name="owner_name" placeholder="Quem cuida do atendimento">
+
+    <label>WhatsApp / telefone</label>
+    <input name="phone" placeholder="(47) 9 9999-9999" inputmode="tel">
+
+    <label>E-mail</label>
+    <input type="email" name="email" placeholder="voce@email.com" required>
+
+    <label>Senha</label>
+    <input type="password" name="senha" placeholder="mínimo 6 caracteres" required>
+
+    <button class="btn" type="submit">Criar conta grátis</button>
+  </form>
+  <p class="alt">Já tem conta? <a href="/atendezap/entrar">Entrar</a></p>
+</div>
+</body>
+</html>

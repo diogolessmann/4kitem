@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Painel — AtendeZap</title>
+<style>
+  :root{--zap:#25D366;--zap2:#128C7E;--ink:#0f172a;--mut:#475569;--line:#e2e8f0}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:var(--ink);background:#f1f5f9}
+  .top{background:#fff;border-bottom:1px solid var(--line)}
+  .top .in{max-width:760px;margin:0 auto;padding:14px 20px;display:flex;align-items:center;justify-content:space-between}
+  .top b{font-size:17px}
+  .top small{color:var(--mut);display:block}
+  .top a{color:var(--mut);text-decoration:none;font-size:14px}
+  .wrap{max-width:760px;margin:0 auto;padding:18px 20px 60px}
+  .card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:18px;margin-bottom:16px}
+  .card h2{font-size:16px;margin:0 0 12px;display:flex;align-items:center;gap:8px}
+  .banner{border-radius:12px;padding:12px 14px;font-size:14px;margin-bottom:16px}
+  .banner.trial{background:#fffbeb;border:1px solid #fde68a;color:#92400e}
+  .banner.ok{background:#ecfdf5;border:1px solid #a7f3d0;color:#065f46}
+  .banner.warn{background:#fef2f2;border:1px solid #fecaca;color:#b91c1c}
+  label{display:block;font-weight:600;font-size:14px;margin:12px 0 5px}
+  input,textarea{width:100%;padding:11px;border:1px solid #cbd5e1;border-radius:10px;font-size:15px;font-family:inherit}
+  textarea{min-height:64px;resize:vertical}
+  .hint{color:#94a3b8;font-size:12px;margin-top:4px}
+  .btn{background:var(--zap);color:#fff;border:0;font-weight:700;padding:12px 18px;border-radius:11px;font-size:15px;cursor:pointer}
+  .btn.sec{background:#fff;color:var(--zap2);border:2px solid var(--zap)}
+  /* toggle */
+  .row{display:flex;align-items:center;justify-content:space-between;gap:12px}
+  .sw{position:relative;width:54px;height:30px;flex:0 0 auto}
+  .sw input{opacity:0;width:0;height:0}
+  .sl{position:absolute;inset:0;background:#cbd5e1;border-radius:30px;transition:.2s;cursor:pointer}
+  .sl:before{content:"";position:absolute;height:24px;width:24px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s}
+  .sw input:checked + .sl{background:var(--zap)}
+  .sw input:checked + .sl:before{transform:translateX(24px)}
+  .pill{display:inline-block;font-size:12px;font-weight:700;padding:3px 10px;border-radius:20px}
+  .pill.on{background:#ecfdf5;color:#065f46}.pill.off{background:#f1f5f9;color:#64748b}
+  .qrbox{text-align:center}
+  .qrbox img{width:230px;height:230px;border:1px solid var(--line);border-radius:12px;margin:10px auto}
+  ul.faq{margin:0;padding-left:18px;color:var(--mut)}ul.faq li{margin:4px 0}
+  .muted{color:var(--mut);font-size:14px}
+</style>
+</head>
+<body>
+<div class="top"><div class="in">
+  <div><b>{{ neg['nome'] }}</b><small>{{ cfg.nome }}</small></div>
+  <div style="display:flex;align-items:center;gap:18px">
+    <a href="/atendezap/conversas">Conversas{% if escaladas %}
+      <span style="background:#ef4444;color:#fff;border-radius:20px;padding:1px 8px;font-size:12px;font-weight:700">{{ escaladas }}</span>{% endif %}</a>
+    <a href="/atendezap/sair">Sair</a>
+  </div>
+</div></div>
+
+<div class="wrap">
+
+  {% if salvo %}<div class="banner ok">✅ Informações salvas! O bot já está usando elas.</div>{% endif %}
+  {% if acesso %}
+    {% if trial_dias > 0 %}
+      <div class="banner trial">🎁 Teste grátis — faltam <b>{{ trial_dias }} dia(s)</b>.</div>
+    {% endif %}
+  {% else %}
+    <div class="banner warn">⚠️ Seu acesso expirou. O bot está pausado até a assinatura.
+      <a href="/atendezap/assinar">Assinar</a></div>
+  {% endif %}
+
+  <!-- Status do bot -->
+  <div class="card">
+    <h2>🤖 Status do bot</h2>
+    <div class="row">
+      <div>
+        <span class="pill {{ 'on' if neg['bot_ativo'] else 'off' }}" id="botPill">
+          {{ 'Ligado' if neg['bot_ativo'] else 'Desligado' }}</span>
+        <div class="hint">Quando ligado, responde os clientes automaticamente.</div>
+      </div>
+      <label class="sw">
+        <input type="checkbox" id="botToggle" {{ 'checked' if neg['bot_ativo'] else '' }}>
+        <span class="sl"></span>
+      </label>
+    </div>
+  </div>
+
+  <!-- Conectar WhatsApp -->
+  <div class="card">
+    <h2>📱 Conectar seu WhatsApp</h2>
+    <div id="waState" class="muted">Verificando conexão…</div>
+    <div class="qrbox" id="qrBox" style="display:none">
+      <p class="muted">Abra o WhatsApp → <b>Aparelhos conectados</b> → <b>Conectar aparelho</b> e aponte pro código:</p>
+      <img id="qrImg" alt="QR Code">
+    </div>
+    <div style="margin-top:10px">
+      <button class="btn sec" id="btnQr">Conectar / gerar QR</button>
+    </div>
+    <div class="hint">Use o número que você já usa no negócio (mais seguro contra bloqueio).</div>
+  </div>
+
+  <!-- Informações do bot -->
+  <form class="card" method="post" action="/atendezap/painel/config">
+    <h2>📝 O que o bot precisa saber</h2>
+    <label>Serviços e preços</label>
+    <textarea name="servicos" placeholder="Ex.: Corte R$40 · Escova R$45 · Coloração a partir de R$150">{{ neg['servicos'] or '' }}</textarea>
+    <div class="hint">O bot responde preço SÓ com o que estiver aqui — nunca inventa.</div>
+
+    <label>Horário de funcionamento</label>
+    <input name="horario" value="{{ neg['horario'] or '' }}" placeholder="Seg a Sex 9h–19h · Sáb 9h–13h">
+
+    <label>Endereço</label>
+    <input name="endereco" value="{{ neg['endereco'] or '' }}" placeholder="Rua tal, 100 — ponto de referência / estacionamento">
+
+    <label>Formas de pagamento</label>
+    <input name="pagamentos" value="{{ neg['pagamentos'] or '' }}" placeholder="PIX, cartão, dinheiro">
+
+    <label>Observações (opcional)</label>
+    <textarea name="obs" placeholder="Qualquer coisa que os clientes costumam perguntar…">{{ neg['obs'] or '' }}</textarea>
+
+    <label>Seu celular pessoal para avisos (opcional)</label>
+    <input name="alert_phone" value="{{ neg['alert_phone'] or '' }}" placeholder="(47) 9 9999-9999" inputmode="tel">
+    <div class="hint">Quando o bot precisar te chamar (cliente quer atendente), avisa nesse número.</div>
+
+    <div style="margin-top:18px"><button class="btn" type="submit">Salvar</button></div>
+  </form>
+
+  <!-- O que ele já responde -->
+  <div class="card">
+    <h2>💬 O que seu bot já responde</h2>
+    <ul class="faq">
+      {% for p in cfg.perguntas %}<li>{{ p }}</li>{% endfor %}
+    </ul>
+    <div class="hint">Pediu atendente, reclamou ou perguntou algo que você não cadastrou? O bot para e te avisa.</div>
+  </div>
+
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+
+// Liga/desliga o bot
+$('#botToggle').addEventListener('change', async () => {
+  try {
+    const r = await fetch('/atendezap/painel/bot', {method:'POST'});
+    const d = await r.json();
+    const on = !!d.bot_ativo;
+    $('#botToggle').checked = on;
+    const pill = $('#botPill');
+    pill.textContent = on ? 'Ligado' : 'Desligado';
+    pill.className = 'pill ' + (on ? 'on' : 'off');
+  } catch(e){ alert('Não consegui mudar agora. Tente de novo.'); }
+});
+
+// Status da conexão
+let polling = null;
+async function checkStatus(){
+  try {
+    const r = await fetch('/atendezap/whatsapp/status');
+    const d = await r.json();
+    if (d.connected){
+      $('#waState').innerHTML = '✅ <b>Conectado</b> — seu bot está no ar.';
+      $('#qrBox').style.display = 'none';
+      if (polling){ clearInterval(polling); polling = null; }
+      return true;
+    } else {
+      $('#waState').textContent = 'Ainda não conectado. Toque em "Conectar / gerar QR".';
+    }
+  } catch(e){ $('#waState').textContent = 'Não consegui verificar a conexão.'; }
+  return false;
+}
+
+$('#btnQr').addEventListener('click', async () => {
+  $('#btnQr').disabled = true; $('#btnQr').textContent = 'Gerando…';
+  try {
+    const r = await fetch('/atendezap/whatsapp/qr');
+    const d = await r.json();
+    if (d.qr){
+      $('#qrImg').src = d.qr;
+      $('#qrBox').style.display = 'block';
+      $('#waState').textContent = 'Escaneie o código abaixo no seu WhatsApp.';
+      if (!polling) polling = setInterval(checkStatus, 3000);
+    } else {
+      $('#waState').textContent = d.erro || 'Não foi possível gerar o QR agora.';
+    }
+  } catch(e){ $('#waState').textContent = 'Erro ao gerar o QR.'; }
+  $('#btnQr').disabled = false; $('#btnQr').textContent = 'Conectar / gerar QR';
+});
+
+checkStatus();
+</script>
+</body>
+</html>

@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Conversas — AtendeZap</title>
+<style>
+  :root{--zap:#25D366;--zap2:#128C7E;--ink:#0f172a;--mut:#475569;--line:#e2e8f0;--red:#ef4444}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:var(--ink);background:#f1f5f9}
+  .top{background:#fff;border-bottom:1px solid var(--line)}
+  .top .in{max-width:760px;margin:0 auto;padding:14px 20px;display:flex;align-items:center;justify-content:space-between}
+  .top b{font-size:17px}.top a{color:var(--mut);text-decoration:none;font-size:14px}
+  .wrap{max-width:760px;margin:0 auto;padding:18px 20px 60px}
+  .item{display:block;text-decoration:none;color:inherit;background:#fff;border:1px solid var(--line);
+        border-radius:14px;padding:14px 16px;margin-bottom:10px;border-left:4px solid transparent}
+  .item.esc{border-left-color:var(--red);background:#fff7f7}
+  .item .hd{display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .item .nm{font-weight:700}
+  .item .tm{color:#94a3b8;font-size:12px;white-space:nowrap}
+  .prev{color:var(--mut);font-size:14px;margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .pill{display:inline-block;font-size:11px;font-weight:700;padding:2px 9px;border-radius:20px;margin-top:6px}
+  .pill.bot{background:#ecfdf5;color:#065f46}.pill.hum{background:#fef2f2;color:#b91c1c}
+  .empty{text-align:center;color:var(--mut);background:#fff;border:1px dashed var(--line);border-radius:14px;padding:40px 20px}
+  h1{font-size:20px;margin:4px 0 16px}
+</style>
+</head>
+<body>
+<div class="top"><div class="in">
+  <div><b>💬 Conversas</b></div>
+  <a href="/atendezap/painel">← Voltar ao painel</a>
+</div></div>
+
+<div class="wrap">
+  {% if escaladas %}
+    <h1 style="color:#b91c1c">🔔 {{ escaladas }} aguardando você</h1>
+  {% endif %}
+
+  {% if not convs %}
+    <div class="empty">Ainda não há conversas. Quando um cliente chamar seu WhatsApp, ela aparece aqui.</div>
+  {% endif %}
+
+  {% for c in convs %}
+    <a class="item {{ 'esc' if c['status']=='humano' else '' }}" href="/atendezap/conversas/{{ c['id'] }}">
+      <div class="hd">
+        <span class="nm">{{ c['cliente_nome'] or c['cliente_phone'] }}</span>
+        <span class="tm">{{ (c['ultima_msg_em'] or '')[:16]|replace('T',' ') }}</span>
+      </div>
+      <div class="prev">{{ c['ultima_texto'] or '—' }}</div>
+      {% if c['status']=='humano' %}
+        <span class="pill hum">🙋 Aguardando você{% if c['escalado_motivo'] %} · {{ c['escalado_motivo'] }}{% endif %}</span>
+      {% else %}
+        <span class="pill bot">🤖 Bot atendendo</span>
+      {% endif %}
+    </a>
+  {% endfor %}
+</div>
+</body>
+</html>
