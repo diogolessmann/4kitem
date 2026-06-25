@@ -218,17 +218,34 @@ async function verificarSorteio(btn){
   </div>
 </div>
 
-<div style="max-width:480px;margin:14px auto 0;padding:0 16px;display:flex;gap:8px">
-  <button onclick="numeroAleatorio()" style="flex:1;padding:14px;border-radius:12px;
-      border:1px solid rgba(99,102,241,.45);background:rgba(99,102,241,.12);color:#a5b4fc;
-      font-size:14px;font-weight:800;cursor:pointer;font-family:inherit">
-    🎲 Número da sorte
-  </button>
-  <button onclick="compartilhar()" style="flex:1;padding:14px;border-radius:12px;
-      border:1px solid rgba(34,197,94,.4);background:rgba(34,197,94,.1);color:#86efac;
-      font-size:14px;font-weight:800;cursor:pointer;font-family:inherit">
-    📲 Chamar amigos
-  </button>
+<div style="max-width:480px;margin:16px auto 0;padding:0 16px">
+  <div style="background:linear-gradient(135deg,rgba(99,102,241,.16),rgba(34,197,94,.12));
+       border:1px solid rgba(34,197,94,.38);border-radius:16px;padding:16px">
+    <div style="display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:12px">
+      <span style="font-size:13px;color:#c9d6e2;font-weight:700">Quantos números?</span>
+      <div style="display:flex;align-items:center;background:rgba(0,0,0,.25);
+           border:1px solid rgba(255,255,255,.12);border-radius:10px;overflow:hidden">
+        <button onclick="qtdRapido(-1)" aria-label="menos" style="width:38px;height:42px;border:none;
+            background:transparent;color:#a5b4fc;font-size:22px;font-weight:800;cursor:pointer">−</button>
+        <input id="qtd-rapido" type="number" min="1" value="1" inputmode="numeric"
+               style="width:46px;height:42px;background:transparent;border:none;outline:none;color:#fff;
+               font-size:18px;font-weight:800;text-align:center;font-family:inherit">
+        <button onclick="qtdRapido(1)" aria-label="mais" style="width:38px;height:42px;border:none;
+            background:transparent;color:#a5b4fc;font-size:22px;font-weight:800;cursor:pointer">+</button>
+      </div>
+    </div>
+    <button onclick="participarRapido()" style="width:100%;padding:16px;border-radius:12px;border:none;
+        background:#22c55e;color:#06280f;font-size:16px;font-weight:800;cursor:pointer;font-family:inherit">
+      🎟️ Garantir meu número da sorte
+    </button>
+    <div style="text-align:center;font-size:12px;color:#86efac;margin-top:9px;line-height:1.5">
+      🍀 A gente sorteia um número disponível pra você — é só pagar o PIX
+    </div>
+  </div>
+  <div id="box-escolher" style="text-align:center;margin-top:11px">
+    <a id="link-escolher" onclick="abrirGrade()" style="font-size:13px;color:#a5b4fc;
+       font-weight:700;cursor:pointer">Prefiro escolher meu número →</a>
+  </div>
 </div>
 
 {% if camp.afiliados_ativo %}
@@ -278,13 +295,13 @@ async function verificarSorteio(btn){
   </div>
 </div>
 
-<div class="legenda">
+<div class="legenda" id="legenda-grade" style="display:none">
   <div class="leg"><div class="leg-box" style="background:rgba(99,102,241,.2);border:2px solid rgba(99,102,241,.4)"></div> Disponível — toque para selecionar</div>
   <div class="leg"><div class="leg-box" style="background:rgba(245,158,11,.2);border:2px solid rgba(245,158,11,.4)"></div> Reservado</div>
   <div class="leg"><div class="leg-box" style="background:rgba(34,197,94,.2);border:2px solid rgba(34,197,94,.4)"></div> Pago ✓</div>
 </div>
 
-<div class="grid-wrap">
+<div class="grid-wrap" id="grid-wrap" style="display:none">
   <div class="grid" id="grid">
     {% for s in slots %}
     <div class="slot slot-{{ s.status }}" id="slot-{{ s.numero }}"
@@ -437,6 +454,42 @@ function numeroAleatorio(){
     el.style.transform = 'scale(1.25)';
     setTimeout(() => { el.style.transform = ''; }, 350);
   }
+}
+function qtdRapido(d){
+  const inp = document.getElementById('qtd-rapido');
+  let v = (parseInt(inp.value) || 1) + d;
+  if (v < 1) v = 1;
+  inp.value = v;
+}
+function participarRapido(){
+  let q = parseInt(document.getElementById('qtd-rapido').value) || 1;
+  if (q < 1) q = 1;
+  const livres = [...document.querySelectorAll('.slot-disponivel')]
+                 .map(el => parseInt(el.id.replace('slot-','')));
+  if (!livres.length){ alert('Todos os números já foram garantidos! 🎉'); return; }
+  if (q > livres.length) q = livres.length;
+  // limpa seleção anterior e sorteia q números distintos
+  _sel.forEach(n => { const e = document.getElementById('slot-'+n); if (e) e.classList.remove('slot-sel'); });
+  _sel.clear();
+  for (let i = livres.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    const t = livres[i]; livres[i] = livres[j]; livres[j] = t;
+  }
+  livres.slice(0, q).forEach(n => {
+    _sel.add(n);
+    const e = document.getElementById('slot-'+n); if (e) e.classList.add('slot-sel');
+  });
+  atualizarBarra();
+  abrirCheckout();
+}
+function abrirGrade(){
+  const lg = document.getElementById('legenda-grade');
+  const gr = document.getElementById('grid-wrap');
+  const bx = document.getElementById('box-escolher');
+  if (lg) lg.style.display = '';
+  if (gr) gr.style.display = '';
+  if (bx) bx.style.display = 'none';
+  if (lg) lg.scrollIntoView({behavior:'smooth', block:'start'});
 }
 function abrirCheckout(){
   if (_sel.size === 0) return;
