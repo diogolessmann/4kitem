@@ -16739,8 +16739,13 @@ def slotzap_enviar_lista(camp_id):
             if r.status_code in (200, 201):
                 enviados += 1
             else:
-                ultimo_erro = f'Evolution HTTP {r.status_code}: {(r.text or "")[:180]}'
-                log.warning(f'[SlotZap] enviar-lista falhou {r.status_code}: {(r.text or "")[:400]}')
+                _resp = (r.text or '')
+                if r.status_code == 404 and 'does not exist' in _resp:
+                    ultimo_erro = ('O número do bot (WhatsApp) está desconectado. Abra o botão '
+                                   '💬 WhatsApp, selecione um número conectado e clique em Buscar grupos.')
+                else:
+                    ultimo_erro = f'Evolution HTTP {r.status_code}: {_resp[:180]}'
+                log.warning(f'[SlotZap] enviar-lista falhou {r.status_code}: {_resp[:400]}')
         except Exception as _e:
             ultimo_erro = str(_e)[:180]
             log.warning(f'[SlotZap] Erro ao enviar lista: {_e}')
