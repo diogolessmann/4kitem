@@ -17167,7 +17167,11 @@ def slotzap_afiliados_admin(camp_id):
           (SELECT IFNULL(SUM(p.valor),0) FROM slotzap_afiliado_pagamentos p
              WHERE p.afiliado_id=a.id AND p.status='pago') AS pago_total,
           (SELECT COUNT(*) FROM slotzap_afiliado_pagamentos p
-             WHERE p.afiliado_id=a.id AND p.status='erro') AS erros
+             WHERE p.afiliado_id=a.id AND p.status='erro') AS erros,
+          (SELECT COUNT(*) FROM slotzap_afiliado_pagamentos p
+             WHERE p.afiliado_id=a.id AND p.status IN ('pendente','erro')) AS a_pagar,
+          (SELECT p.erro FROM slotzap_afiliado_pagamentos p
+             WHERE p.afiliado_id=a.id AND IFNULL(p.erro,'')<>'' ORDER BY p.id DESC LIMIT 1) AS ultimo_erro
         FROM slotzap_afiliados a WHERE a.campanha_id=?
         ORDER BY vendas_pagas DESC, a.criado_em''', (camp_id,)).fetchall()]
     conn.close()

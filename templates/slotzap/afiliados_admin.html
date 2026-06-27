@@ -114,6 +114,7 @@ input:focus{border-color:#6366f1}
           <td>
             <div class="nome">{{ a.nome }} {% if a.erros %}<span class="badge-erro">🔴 {{ a.erros }} falha(s)</span>{% endif %}</div>
             <div class="tel">{{ a.telefone }}</div>
+            {% if a.ultimo_erro %}<div style="font-size:11px;color:#fca5a5;margin-top:4px;line-height:1.4;max-width:280px;word-break:break-word">⚠️ {{ a.ultimo_erro }}</div>{% endif %}
           </td>
           <td><span class="v">{{ a.vendas_pagas }}</span></td>
           <td><span class="g">R$ {{ '%.2f'|format(a.pago_total or 0) }}</span></td>
