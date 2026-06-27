@@ -15020,6 +15020,12 @@ def _sz_rate_ok(ip, limite=20, janela=900) -> bool:
     return True
 
 
+@app.route('/rifaja')
+def rifaja_landing():
+    """Landing da RifaJá (fachada própria sobre o motor SlotZap, gateway Efí)."""
+    return render_template('rifaja/landing.html')
+
+
 @app.route('/slotzap')
 def slotzap_landing():
     return redirect('/slotzap/planos')
