@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SlotZap — Nova Campanha</title>
+<title>{{ 'RifaJá — Nova Rifa' if brand == 'rifaja' else 'SlotZap — Nova Campanha' }}</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -37,11 +37,11 @@ input:focus,textarea:focus,select:focus{border-color:#6366f1}
 </head>
 <body>
 <nav>
-  <span class="nav-logo">🎯 SlotZap</span>
+  <span class="nav-logo">{{ '🎟️ RifaJá' if brand == 'rifaja' else '🎯 SlotZap' }}</span>
   <a href="/slotzap/app" class="nav-btn">← Voltar</a>
 </nav>
 <div class="container">
-  <h1>Nova Campanha</h1>
+  <h1>{{ 'Nova Rifa' if brand == 'rifaja' else 'Nova Campanha' }}</h1>
   <div class="card">
     {% if erro %}<div class="err">{{ erro }}</div>{% endif %}
     <form method="POST" id="form">
@@ -76,20 +76,11 @@ input:focus,textarea:focus,select:focus{border-color:#6366f1}
         <div class="hint">Normalmente 1. Use 0 se quiser começar do zero.</div>
       </div>
 
-      <div class="form-group">
-        <label>💳 Pagamento</label>
-        <select name="gateway" style="width:100%;padding:12px;border-radius:10px;background:#0a0a15;border:1px solid rgba(255,255,255,.12);color:#f0f0ff;font-size:15px;font-family:inherit;outline:none">
-          <option value="asaas">Asaas — padrão (SlotZap)</option>
-          <option value="efi">Efí / RifaJá — taxa 0,9% (ideal p/ rifa R$5–10)</option>
-        </select>
-        <div class="hint">Efí = taxa baixa por % (melhor p/ ticket baixo) e paga o afiliado em qualquer chave.</div>
-      </div>
-
       <div class="preview" id="preview">
         Preencha os campos acima para ver o resumo.
       </div>
 
-      <button type="submit" class="btn-submit">🚀 Criar Campanha</button>
+      <button type="submit" class="btn-submit">🚀 Criar {{ 'Rifa' if brand == 'rifaja' else 'Campanha' }}</button>
     </form>
   </div>
 </div>

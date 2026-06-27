@@ -15290,9 +15290,10 @@ def slotzap_guia():
                            taxa=int(SZ_TAXA_VENDA * 100), plan=u.get('plan', 'start'))
 
 
-@app.route('/slotzap/nova', methods=['GET', 'POST'])
+@app.route('/slotzap/nova', methods=['GET', 'POST'], defaults={'brand': 'slotzap'})
+@app.route('/rifaja/nova', methods=['GET', 'POST'], defaults={'brand': 'rifaja'})
 @_sz_login_required
-def slotzap_nova():
+def slotzap_nova(brand='slotzap'):
     if not _sz_plan_active():
         return redirect('/slotzap/assinar')
     erro = None
@@ -15324,8 +15325,7 @@ def slotzap_nova():
         else:
             import secrets as _sec
             token_pub = _sec.token_urlsafe(16)
-            gw = request.form.get('gateway', 'asaas')
-            gw = gw if gw in ('asaas', 'efi') else 'asaas'
+            gw = 'efi' if brand == 'rifaja' else 'asaas'
             conn = get_saas_db()
             cur  = conn.execute(
                 'INSERT INTO slotzap_campanhas (user_id,nome,descricao,preco,total_slots,slots_inicio,status,created_at,token_publico,gateway) '
@@ -15338,7 +15338,7 @@ def slotzap_nova():
                              (camp_id, n, 'disponivel'))
             conn.commit(); conn.close()
             return redirect(f'/slotzap/campanha/{camp_id}')
-    return render_template('slotzap/nova.html', erro=erro)
+    return render_template('slotzap/nova.html', erro=erro, brand=brand)
 
 
 @app.route('/slotzap/campanha/<int:camp_id>')
@@ -16695,6 +16695,9 @@ def slotzap_publico(token):
         if dono.get('plan') == 'pro' and dono.get('plan_active'):
             marca = (dono.get('marca') or '').strip()
             cor   = (dono.get('cor') or '').strip()
+    # RifaJá: campanha no gateway Efí usa a marca própria (se o dono não tem white-label)
+    if not marca and camp.get('gateway') == 'efi':
+        marca = '🎟️ RifaJá'
     pagos      = sum(1 for s in slots if s['status'] == 'pago')
     reservados = sum(1 for s in slots if s['status'] == 'reservado')
     disponiveis= sum(1 for s in slots if s['status'] == 'disponivel')
