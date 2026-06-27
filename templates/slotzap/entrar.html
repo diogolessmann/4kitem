@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SlotZap — Entrar</title>
+<title>{{ 'RifaJá' if brand == 'rifaja' else 'SlotZap' }} — Entrar</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -32,9 +32,9 @@ input:focus{border-color:#6366f1}
 <body>
 <div class="card">
   <div class="logo">
-    <div class="logo-icon">🎯</div>
-    <h1>SlotZap</h1>
-    <p>Venda de slots numerados com PIX automático</p>
+    <div class="logo-icon">{{ '🎟️' if brand == 'rifaja' else '🎯' }}</div>
+    <h1{% if brand == 'rifaja' %} style="background:#22c55e;-webkit-text-fill-color:#22c55e"{% endif %}>{{ 'RifaJá' if brand == 'rifaja' else 'SlotZap' }}</h1>
+    <p>{{ 'Sua rifa baratinha no WhatsApp' if brand == 'rifaja' else 'Venda de slots numerados com PIX automático' }}</p>
   </div>
   {% if erro %}<div class="err">{{ erro }}</div>{% endif %}
   <form method="POST">
@@ -46,13 +46,13 @@ input:focus{border-color:#6366f1}
       <label>Senha</label>
       <input type="password" name="senha" placeholder="••••••••" required autocomplete="current-password">
     </div>
-    <button type="submit" class="btn">Entrar →</button>
+    <button type="submit" class="btn"{% if brand == 'rifaja' %} style="background:#22c55e;color:#06280f"{% endif %}>Entrar →</button>
   </form>
   <div style="text-align:center;margin-top:14px;font-size:13px">
     <a href="/slotzap/recuperar-senha" style="color:#8888aa;text-decoration:none">Esqueci minha senha</a>
   </div>
   <div style="text-align:center;margin-top:10px;font-size:13px;color:#8888aa">
-    Ainda não tem conta? <a href="/slotzap/planos" style="color:#a5b4fc;text-decoration:none;font-weight:600">Ver planos</a>
+    Ainda não tem conta? <a href="{{ '/rifaja' if brand == 'rifaja' else '/slotzap/planos' }}" style="color:#a5b4fc;text-decoration:none;font-weight:600">{{ 'Conhecer a RifaJá' if brand == 'rifaja' else 'Ver planos' }}</a>
   </div>
 </div>
 </body>

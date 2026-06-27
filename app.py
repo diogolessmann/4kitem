@@ -14975,7 +14975,8 @@ def _sz_login_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
         if not session.get('sz_user_id'):
-            return redirect('/slotzap/entrar')
+            base = '/rifaja' if request.path.startswith('/rifaja') else '/slotzap'
+            return redirect(f'{base}/entrar')
         return f(*args, **kwargs)
     return decorated
 
@@ -15133,8 +15134,9 @@ def slotzap_assinatura_status():
     return jsonify({'ativo': _sz_plan_active()})
 
 
-@app.route('/slotzap/entrar', methods=['GET', 'POST'])
-def slotzap_entrar():
+@app.route('/slotzap/entrar', methods=['GET', 'POST'], defaults={'brand': 'slotzap'})
+@app.route('/rifaja/entrar', methods=['GET', 'POST'], defaults={'brand': 'rifaja'})
+def slotzap_entrar(brand='slotzap'):
     erro = None
     if request.method == 'POST':
         email = (request.form.get('email') or '').strip().lower()
@@ -15153,8 +15155,8 @@ def slotzap_entrar():
             conn2.execute('UPDATE slotzap_users SET last_login=? WHERE id=?',
                           (datetime.now().isoformat(), u['id']))
             conn2.commit(); conn2.close()
-            return redirect('/slotzap/app')
-    return render_template('slotzap/entrar.html', erro=erro)
+            return redirect('/rifaja/nova' if brand == 'rifaja' else '/slotzap/app')
+    return render_template('slotzap/entrar.html', erro=erro, brand=brand)
 
 
 @app.route('/slotzap/sair')
