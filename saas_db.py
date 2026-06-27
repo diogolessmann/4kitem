@@ -884,6 +884,18 @@ def init_slotzap_db():
         conn.commit()
     except Exception:
         pass
+    # Backfill ÚNICO: rifas RifaJá (gateway efi) criadas ANTES do "afiliado automático" passam
+    # a ter Vendedores LIGADO + comissão 40% do preço. O ALTER da coluna-sentinela gateia o UPDATE:
+    # roda só na 1ª vez; depois o ALTER falha (coluna já existe) e o UPDATE é pulado — não briga
+    # com a escolha futura do dono. Só toca efi com afiliado OFF (rifas Asaas/Jaya intocadas).
+    try:
+        conn.execute("ALTER TABLE slotzap_campanhas ADD COLUMN _afil_backfill INTEGER DEFAULT 0")
+        conn.execute("UPDATE slotzap_campanhas SET afiliados_ativo=1, "
+                     "afiliado_comissao=ROUND(preco*0.40, 2) "
+                     "WHERE gateway='efi' AND afiliados_ativo=0")
+        conn.commit()
+    except Exception:
+        pass
     conn.close()
 
 
