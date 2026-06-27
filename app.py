@@ -15358,11 +15358,15 @@ def slotzap_nova(brand='slotzap'):
             import secrets as _sec
             token_pub = _sec.token_urlsafe(16)
             gw = 'efi' if brand == 'rifaja' else 'asaas'
+            # RifaJá = estratégia de exército de afiliados → já nasce com Vendedores LIGADO
+            # e comissão default de ~40% do preço (editável depois em Vendedores). "menos é mais".
+            afil_ativo    = 1 if brand == 'rifaja' else 0
+            afil_comissao = round(preco * 0.40, 2) if brand == 'rifaja' else 3.0
             conn = get_saas_db()
             cur  = conn.execute(
-                'INSERT INTO slotzap_campanhas (user_id,nome,descricao,preco,total_slots,slots_inicio,status,created_at,token_publico,gateway,imagem) '
-                'VALUES (?,?,?,?,?,?,?,?,?,?,?)',
-                (_sz_uid(), nome, descr, preco, total, inicio, 'ativa', datetime.now().isoformat(), token_pub, gw, imagem)
+                'INSERT INTO slotzap_campanhas (user_id,nome,descricao,preco,total_slots,slots_inicio,status,created_at,token_publico,gateway,imagem,afiliados_ativo,afiliado_comissao) '
+                'VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)',
+                (_sz_uid(), nome, descr, preco, total, inicio, 'ativa', datetime.now().isoformat(), token_pub, gw, imagem, afil_ativo, afil_comissao)
             )
             camp_id = cur.lastrowid
             for n in range(inicio, inicio + total):
