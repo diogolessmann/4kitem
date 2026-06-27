@@ -16056,7 +16056,7 @@ def _sz_marcar_pago(slot_id):
         SELECT s.numero, s.cliente_nome, s.cliente_tel, s.id AS slot_id, s.afiliado_codigo,
                c.nome AS camp_nome, c.preco, c.grupo_wpp_id,
                c.evo_instance, c.msg_pagamento, c.id AS camp_id, c.token_publico,
-               c.afiliados_ativo, c.afiliado_comissao,
+               c.afiliados_ativo, c.afiliado_comissao, c.gateway,
                (SELECT COUNT(*) FROM slotzap_slots WHERE campanha_id=c.id AND status="pago")      AS pagos,
                (SELECT COUNT(*) FROM slotzap_slots WHERE campanha_id=c.id AND status="disponivel") AS livres,
                c.total_slots
@@ -16075,7 +16075,8 @@ def _sz_marcar_pago(slot_id):
     if row.get('afiliados_ativo') and (row.get('afiliado_codigo') or '').strip():
         _camp_a = {'id': row['camp_id'], 'nome': row['camp_nome'],
                    'afiliados_ativo': row['afiliados_ativo'],
-                   'afiliado_comissao': row['afiliado_comissao']}
+                   'afiliado_comissao': row['afiliado_comissao'],
+                   'gateway': row.get('gateway', 'asaas')}
         _slot_a = {'id': row['slot_id'], 'numero': row['numero'],
                    'afiliado_codigo': row['afiliado_codigo']}
         threading.Thread(target=_sz_pagar_afiliados_bg, args=(_camp_a, [_slot_a]),
@@ -16168,6 +16169,8 @@ def _sz_pagar_afiliados(conn, camp, slots):
     comissao = float(camp.get('afiliado_comissao') or 0)
     if not camp.get('afiliados_ativo') or comissao <= 0:
         return
+    gateway = camp.get('gateway', 'asaas')   # paga a comissão pelo MESMO gateway que recebeu
+    marca   = 'RifaJa' if gateway == 'efi' else 'SlotZap'
     agora = datetime.now().isoformat()
     for s in slots:
         cod = (s.get('afiliado_codigo') or '').strip()
@@ -16193,27 +16196,28 @@ def _sz_pagar_afiliados(conn, camp, slots):
                 conn.commit()
             except Exception:
                 continue
-        # ── ANTI-DUPLO: já existe transferência pra esse número no Asaas? ──
-        ja_tid = ''
-        try:
-            chk = _asaas_req('GET', f'/transfers?externalReference={ext}')
-            for t in (chk.get('data') or []):
-                st = (t.get('status') or '').upper()
-                # só conta como "já enviada" se NÃO foi cancelada/falhou (senão re-envia)
-                if (t.get('externalReference') == ext and t.get('id')
-                        and st not in ('CANCELLED', 'FAILED')):
-                    ja_tid = t['id']; break
-        except Exception:
-            pass
-        if ja_tid:
-            conn.execute("UPDATE slotzap_afiliado_pagamentos SET status='pago', asaas_transfer_id=?, erro='' WHERE slot_id=?",
-                         (ja_tid, s['id']))
-            conn.commit()
-            log.info(f"[SlotZap] comissao num {s['numero']} ja transferida ({ja_tid}) — ledger sincronizado")
-            continue
-        # ── Envia o PIX da comissão ──
-        desc = f"Comissao SlotZap - {camp.get('nome','')} - num {s['numero']}"
-        tid, erro = _sz_afiliado_transfer(af.get('pix_chave'), af.get('pix_tipo'), comissao, desc, ext)
+        # ── ANTI-DUPLO via Asaas: SÓ no Asaas. No Efí a idempotência é o idEnvio determinístico ──
+        if gateway != 'efi':
+            ja_tid = ''
+            try:
+                chk = _asaas_req('GET', f'/transfers?externalReference={ext}')
+                for t in (chk.get('data') or []):
+                    st = (t.get('status') or '').upper()
+                    # só conta como "já enviada" se NÃO foi cancelada/falhou (senão re-envia)
+                    if (t.get('externalReference') == ext and t.get('id')
+                            and st not in ('CANCELLED', 'FAILED')):
+                        ja_tid = t['id']; break
+            except Exception:
+                pass
+            if ja_tid:
+                conn.execute("UPDATE slotzap_afiliado_pagamentos SET status='pago', asaas_transfer_id=?, erro='' WHERE slot_id=?",
+                             (ja_tid, s['id']))
+                conn.commit()
+                log.info(f"[SlotZap] comissao num {s['numero']} ja transferida ({ja_tid}) — ledger sincronizado")
+                continue
+        # ── Envia o PIX da comissão PELO GATEWAY CERTO (efi=RifaJá / asaas=SlotZap) ──
+        desc = f"Comissao {marca} - {camp.get('nome','')} - num {s['numero']}"
+        tid, erro = _sz_afiliado_transfer(af.get('pix_chave'), af.get('pix_tipo'), comissao, desc, ext, gateway=gateway)
         if tid:
             conn.execute("UPDATE slotzap_afiliado_pagamentos SET status='pago', asaas_transfer_id=?, erro='' WHERE slot_id=?",
                          (tid, s['id']))
@@ -16264,7 +16268,7 @@ def _sz_marcar_pago_charge(charge_id):
         return 0   # já processado por outra via — não credita/avisa de novo
     camp = dict(conn.execute('''
         SELECT c.id, c.nome, c.grupo_wpp_id, c.evo_instance, c.token_publico, c.total_slots, c.preco,
-               c.indicacao_ativa, c.indicacao_meta, c.afiliados_ativo, c.afiliado_comissao,
+               c.indicacao_ativa, c.indicacao_meta, c.afiliados_ativo, c.afiliado_comissao, c.gateway,
                (SELECT COUNT(*) FROM slotzap_slots WHERE campanha_id=c.id AND status="pago") AS pagos
         FROM slotzap_campanhas c WHERE c.id=?''', (slots[0]['campanha_id'],)).fetchone())
 
