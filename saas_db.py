@@ -838,6 +838,8 @@ def init_slotzap_db():
         # Gateway de pagamento da campanha: 'asaas' (default — Jaya/SlotZap) ou 'efi' (RifaJá).
         # Default 'asaas' garante que TODAS as campanhas existentes seguem idênticas.
         "ALTER TABLE slotzap_campanhas ADD COLUMN gateway TEXT DEFAULT 'asaas'",
+        # Foto do prêmio (URL /uploads/slotzap/...) — aparece na página pública/afiliado. Vende a rifa.
+        "ALTER TABLE slotzap_campanhas ADD COLUMN imagem TEXT DEFAULT ''",
         # Marca em cada slot QUEM (qual afiliado) trouxe a venda
         "ALTER TABLE slotzap_slots ADD COLUMN afiliado_codigo TEXT DEFAULT ''",
         # Cadastro de afiliados — POR CAMPANHA (rifa nova = cadastro novo)

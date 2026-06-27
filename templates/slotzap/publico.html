@@ -119,6 +119,13 @@ input:focus{border-color:#6366f1}
   <div class="camp-preco">R$ {{ '%.2f'|format(camp.preco) }}</div>
 </div>
 
+{% if camp.imagem %}
+<div style="max-width:480px;margin:16px auto 0;padding:0 20px">
+  <img src="{{ camp.imagem }}" alt="{{ camp.nome }}"
+       style="width:100%;border-radius:16px;border:1px solid rgba(255,255,255,.1);box-shadow:0 12px 32px rgba(0,0,0,.45);display:block">
+</div>
+{% endif %}
+
 {% if camp.ganhador_numero %}
 <div style="max-width:480px;margin:14px auto 0;padding:0 20px">
   <div style="background:linear-gradient(135deg,rgba(250,204,21,.18),rgba(99,102,241,.18));

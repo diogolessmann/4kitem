@@ -15331,6 +15331,7 @@ def slotzap_nova(brand='slotzap'):
     if request.method == 'POST':
         nome    = request.form.get('nome', '').strip()
         descr   = request.form.get('descricao', '').strip()[:180]  # "menos é mais": descrição curta
+        imagem  = request.form.get('imagem', '').strip()[:300]      # foto do prêmio (URL do upload AJAX)
         # Preço aceita vírgula (34,90) e ponto de milhar (1.234,56)
         preco_raw = (request.form.get('preco') or '0').strip()
         if ',' in preco_raw:
@@ -15359,9 +15360,9 @@ def slotzap_nova(brand='slotzap'):
             gw = 'efi' if brand == 'rifaja' else 'asaas'
             conn = get_saas_db()
             cur  = conn.execute(
-                'INSERT INTO slotzap_campanhas (user_id,nome,descricao,preco,total_slots,slots_inicio,status,created_at,token_publico,gateway) '
-                'VALUES (?,?,?,?,?,?,?,?,?,?)',
-                (_sz_uid(), nome, descr, preco, total, inicio, 'ativa', datetime.now().isoformat(), token_pub, gw)
+                'INSERT INTO slotzap_campanhas (user_id,nome,descricao,preco,total_slots,slots_inicio,status,created_at,token_publico,gateway,imagem) '
+                'VALUES (?,?,?,?,?,?,?,?,?,?,?)',
+                (_sz_uid(), nome, descr, preco, total, inicio, 'ativa', datetime.now().isoformat(), token_pub, gw, imagem)
             )
             camp_id = cur.lastrowid
             for n in range(inicio, inicio + total):
@@ -15370,6 +15371,45 @@ def slotzap_nova(brand='slotzap'):
             conn.commit(); conn.close()
             return redirect(f'/slotzap/campanha/{camp_id}')
     return render_template('slotzap/nova.html', erro=erro, brand=brand)
+
+
+# Foto do prêmio: guardada no volume persistente (DATA_DIR), não some no redeploy
+SLOTZAP_UPLOAD_DIR = os.path.join(
+    os.environ.get('DATA_DIR', os.path.dirname(__file__)), 'uploads', 'slotzap')
+
+
+@app.route('/uploads/slotzap/<path:filename>')
+def slotzap_uploaded_file(filename):
+    return send_from_directory(SLOTZAP_UPLOAD_DIR, filename)
+
+
+@app.route('/slotzap/upload-imagem', methods=['POST'])
+@_sz_login_required
+def slotzap_upload_imagem():
+    """Recebe a foto do prêmio e comprime forte (foto do celular → ~60KB WebP)."""
+    f = request.files.get('imagem')
+    if not f or not f.filename:
+        return jsonify({'error': 'Nenhuma imagem enviada.'}), 400
+    try:
+        from PIL import Image, ImageOps
+        import secrets as _sec
+        img = Image.open(f.stream)
+        img = ImageOps.exif_transpose(img)   # corrige foto de celular girada
+        img = img.convert('RGB')
+        maxd = 900
+        w, h = img.size
+        if max(w, h) > maxd:
+            if w >= h:
+                img = img.resize((maxd, round(h * maxd / w)), Image.LANCZOS)
+            else:
+                img = img.resize((round(w * maxd / h), maxd), Image.LANCZOS)
+        os.makedirs(SLOTZAP_UPLOAD_DIR, exist_ok=True)
+        name = f"{_sz_uid()}_{_sec.token_urlsafe(6)}.webp"
+        img.save(os.path.join(SLOTZAP_UPLOAD_DIR, name), 'WEBP', quality=78, method=6)
+        return jsonify({'ok': True, 'url': f'/uploads/slotzap/{name}'})
+    except Exception as e:
+        log.warning(f'[SlotZap] upload imagem error: {e}')
+        return jsonify({'error': 'Não consegui processar essa imagem. Tente outra foto.'}), 400
 
 
 @app.route('/slotzap/campanha/<int:camp_id>')
@@ -15440,6 +15480,7 @@ def slotzap_editar(camp_id):
     data  = request.get_json() or {}
     nome  = (data.get('nome') or '').strip()
     descr = (data.get('descricao') or '').strip()[:180]  # "menos é mais": descrição curta
+    imagem = (data.get('imagem') or '').strip()[:300]    # foto do prêmio (URL do upload AJAX)
     try:    preco = float(data.get('preco') or 0)
     except (TypeError, ValueError): preco = 0
     try:    novo_total = int(data.get('total_slots') or 0)
@@ -15472,9 +15513,9 @@ def slotzap_editar(camp_id):
         return jsonify({'erro': 'Campanha não encontrada'}), 404
     camp = dict(camp)
     conn.execute('UPDATE slotzap_campanhas SET nome=?, descricao=?, preco=?, data_sorteio=?, '
-                 'indicacao_ativa=?, indicacao_meta=?, custo_premio=?, '
+                 'indicacao_ativa=?, indicacao_meta=?, custo_premio=?, imagem=?, '
                  'sortear_so_esgotado=? WHERE id=?',
-                 (nome, descr, preco, data_sorteio, indic_ativa, indic_meta, custo_premio,
+                 (nome, descr, preco, data_sorteio, indic_ativa, indic_meta, custo_premio, imagem,
                   so_esgotado, camp_id))
     add = 0
     if novo_total and novo_total > camp['total_slots']:

@@ -386,6 +386,16 @@ input:focus{border-color:#6366f1}
       <div style="text-align:right;font-size:11px;color:#8888aa;margin-top:3px"><span id="ed-descr-cont">{{ (camp.descricao or '')|length }}</span>/180</div>
     </div>
     <div class="form-group">
+      <label>🏆 Foto do prêmio <span style="font-weight:400;color:#6666aa">(aparece na página pública — é o que vende!)</span></label>
+      <input type="hidden" id="ed-imagem" value="{{ camp.imagem or '' }}">
+      <div id="ed-img-preview" style="margin-bottom:8px;{{ '' if camp.imagem else 'display:none' }}">
+        <img src="{{ camp.imagem or '' }}" style="width:100%;max-height:200px;object-fit:cover;border-radius:10px;border:1px solid rgba(255,255,255,.1)">
+      </div>
+      <input type="file" id="ed-img-file" accept="image/*" style="display:none" onchange="uploadImagemPremio(this)">
+      <button type="button" class="btn btn-secondary" style="width:100%" onclick="document.getElementById('ed-img-file').click()">📷 <span id="ed-img-btn-txt">{{ 'Trocar foto' if camp.imagem else 'Escolher foto do prêmio' }}</span></button>
+      <div id="ed-img-status" style="font-size:12px;color:#8888aa;margin-top:6px"></div>
+    </div>
+    <div class="form-group">
       <label>Preço por número (R$)</label>
       <input type="number" id="ed-preco" step="0.01" min="5" value="{{ '%.2f'|format(camp.preco) }}">
     </div>
@@ -499,6 +509,22 @@ async function cancelarEstornar() {
 }
 
 function abrirEditar() { abrirModal('modal-editar'); }
+async function uploadImagemPremio(input) {
+  const f = input.files[0]; if (!f) return;
+  const st = document.getElementById('ed-img-status');
+  st.textContent = '⏳ Enviando foto...';
+  const fd = new FormData(); fd.append('imagem', f);
+  try {
+    const j = await fetch('/slotzap/upload-imagem', {method:'POST', body:fd}).then(r=>r.json());
+    if (j.ok) {
+      document.getElementById('ed-imagem').value = j.url;
+      const pv = document.getElementById('ed-img-preview');
+      pv.querySelector('img').src = j.url; pv.style.display = '';
+      document.getElementById('ed-img-btn-txt').textContent = 'Trocar foto';
+      st.innerHTML = '<span style="color:#22c55e">✅ Foto pronta! Clique em 💾 Salvar.</span>';
+    } else { st.innerHTML = '<span style="color:#fca5a5">❌ ' + (j.error || 'Erro ao enviar.') + '</span>'; }
+  } catch (e) { st.innerHTML = '<span style="color:#fca5a5">❌ Erro ao enviar a foto.</span>'; }
+}
 async function salvarEditar() {
   const nome = document.getElementById('ed-nome').value.trim();
   const descricao = document.getElementById('ed-descr').value.trim();
@@ -509,11 +535,12 @@ async function salvarEditar() {
   const indicacao_meta = parseInt(document.getElementById('ed-indic-meta').value || 10);
   const custo_premio = document.getElementById('ed-custo').value || '';
   const sortear_so_esgotado = document.getElementById('ed-soesgotado').checked;
+  const imagem = document.getElementById('ed-imagem').value || '';
   if (!nome) { alert('Informe o nome.'); return; }
   if (!(preco >= 5)) { alert('O preço mínimo por número é R$ 5,00.'); return; }
   const r = await fetch(`/slotzap/campanha/${CAMP_ID}/editar`, {
     method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({nome, descricao, preco, total_slots, data_sorteio, indicacao_ativa, indicacao_meta, custo_premio, sortear_so_esgotado})
+    body: JSON.stringify({nome, descricao, preco, total_slots, data_sorteio, indicacao_ativa, indicacao_meta, custo_premio, sortear_so_esgotado, imagem})
   }).then(r=>r.json());
   if (r.ok) {
     alert('✅ Campanha atualizada!' + (r.numeros_adicionados ? (' +' + r.numeros_adicionados + ' números') : ''));
