@@ -351,6 +351,7 @@ async function verificarSorteio(btn){
     <h3>💰 Pague agora e o número é seu!</h3>
     <div class="preco-label" id="pix-preco">R$ {{ '%.2f'|format(camp.preco) }}</div>
     <img id="qr-img" class="qr-img" src="" alt="QR Code PIX">
+    <div id="qr-gen" style="display:none;background:#fff;padding:10px;border-radius:12px;margin:0 auto;width:200px;height:200px"></div>
     <div class="instrucao">Escaneie com o app do seu banco<br>ou copie o código Pix abaixo:</div>
     <div style="font-size:12px;font-weight:600;color:#a5b4fc;margin:10px 0 4px">📋 Pix Copia e Cola</div>
     <div class="copia-cola" id="qr-copia" onclick="copiar()">Carregando...</div>
@@ -372,6 +373,7 @@ async function verificarSorteio(btn){
   </div>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script>
 const TOKEN = '{{ token }}';
 const PRECO = {{ camp.preco }};
@@ -555,11 +557,16 @@ async function gerarPix() {
 
   if (r.pix_qr || r.pix_copia) {
     const img = document.getElementById('qr-img');
+    const gen = document.getElementById('qr-gen');
+    gen.innerHTML = ''; gen.style.display = 'none'; img.style.display = 'none';
     if (r.pix_qr) {
-      img.src = 'data:image/png;base64,' + r.pix_qr;
+      img.src = 'data:image/png;base64,' + r.pix_qr;   // Asaas: imagem pronta
       img.style.display = 'block';
-    } else {
-      img.style.display = 'none';
+    } else if (r.pix_copia && window.QRCode) {
+      try {                                              // Efí: gera o QR do copia-e-cola
+        new QRCode(gen, {text: r.pix_copia, width: 200, height: 200, correctLevel: QRCode.CorrectLevel.M});
+        gen.style.display = 'block';
+      } catch(e) {}
     }
     document.getElementById('qr-copia').textContent = r.pix_copia || '';
     if (r.valor != null) document.getElementById('pix-preco').textContent = fmtBRL(r.valor);

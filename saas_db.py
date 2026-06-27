@@ -835,6 +835,9 @@ def init_slotzap_db():
         "ALTER TABLE slotzap_campanhas ADD COLUMN afiliado_comissao REAL DEFAULT 3.0",
         # Link de convite do grupo WhatsApp (chat.whatsapp.com/...) — usado no QR do totem
         "ALTER TABLE slotzap_campanhas ADD COLUMN grupo_convite TEXT DEFAULT ''",
+        # Gateway de pagamento da campanha: 'asaas' (default — Jaya/SlotZap) ou 'efi' (RifaJá).
+        # Default 'asaas' garante que TODAS as campanhas existentes seguem idênticas.
+        "ALTER TABLE slotzap_campanhas ADD COLUMN gateway TEXT DEFAULT 'asaas'",
         # Marca em cada slot QUEM (qual afiliado) trouxe a venda
         "ALTER TABLE slotzap_slots ADD COLUMN afiliado_codigo TEXT DEFAULT ''",
         # Cadastro de afiliados — POR CAMPANHA (rifa nova = cadastro novo)

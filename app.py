@@ -15324,11 +15324,13 @@ def slotzap_nova():
         else:
             import secrets as _sec
             token_pub = _sec.token_urlsafe(16)
+            gw = request.form.get('gateway', 'asaas')
+            gw = gw if gw in ('asaas', 'efi') else 'asaas'
             conn = get_saas_db()
             cur  = conn.execute(
-                'INSERT INTO slotzap_campanhas (user_id,nome,descricao,preco,total_slots,slots_inicio,status,created_at,token_publico) '
-                'VALUES (?,?,?,?,?,?,?,?,?)',
-                (_sz_uid(), nome, descr, preco, total, inicio, 'ativa', datetime.now().isoformat(), token_pub)
+                'INSERT INTO slotzap_campanhas (user_id,nome,descricao,preco,total_slots,slots_inicio,status,created_at,token_publico,gateway) '
+                'VALUES (?,?,?,?,?,?,?,?,?,?)',
+                (_sz_uid(), nome, descr, preco, total, inicio, 'ativa', datetime.now().isoformat(), token_pub, gw)
             )
             camp_id = cur.lastrowid
             for n in range(inicio, inicio + total):
@@ -15730,7 +15732,8 @@ def slotzap_reservar(camp_id):
     # Cria cliente + cobrança PIX no Asaas — só reserva se o PIX for gerado
     erro_msg, charge_id, pix_qr, pix_copia = _sz_gerar_pix(
         cliente_nome, cliente_tel, cliente_cpf, preco,
-        f"SlotZap — {dict(camp)['nome']} — Slot #{numero}", f'sz_{slot_id}', owner_wallet)
+        f"SlotZap — {dict(camp)['nome']} — Slot #{numero}", f'sz_{slot_id}', owner_wallet,
+        gateway=dict(camp).get('gateway', 'asaas'))
     if erro_msg:
         conn.close()
         return jsonify({'erro': erro_msg}), 502
@@ -15876,10 +15879,24 @@ def _sz_criar_cliente_asaas(nome, tel, cpf=''):
     return customer_id
 
 
-def _sz_gerar_pix(nome, tel, cpf, valor, descricao, ext_ref, split_wallet=''):
-    """Cria cliente + cobrança PIX no Asaas e busca o QR.
-    Se split_wallet for informado, repassa (100 - taxa)% ao cliente via Asaas Split.
-    Retorna (erro_msg, charge_id, pix_qr, pix_copia)."""
+def _sz_gerar_pix(nome, tel, cpf, valor, descricao, ext_ref, split_wallet='', gateway='asaas'):
+    """Cria cobrança PIX e retorna (erro_msg, charge_id, pix_qr, pix_copia).
+    gateway='efi' (RifaJá): usa a Efí — charge_id=txid, pix_qr='' (QR gerado no front
+    a partir do copia-e-cola). gateway='asaas' (default — SlotZap/Jaya): INALTERADO."""
+    # ── Gateway Efí (RifaJá) — aditivo, só roda quando gateway='efi' ──
+    if gateway == 'efi':
+        try:
+            import efi_pix
+            cob = efi_pix.criar_cobranca(valor, descricao)
+        except Exception as _e:
+            log.error('[RifaJá] efi_pix indisponível: %s', _e)
+            return ('Pagamento indisponível no momento. Tente novamente.', '', '', '')
+        if cob.get('erro') or not cob.get('txid'):
+            log.error('[RifaJá] Falha cobrança Efí: %s', cob.get('erro'))
+            return ('Não foi possível gerar a cobrança PIX. Tente novamente.', '', '', '')
+        return (None, cob['txid'], '', cob.get('copia_cola', ''))
+
+    # ── Gateway Asaas (default — SlotZap/Jaya): código original, inalterado ──
     customer_id = _sz_criar_cliente_asaas(nome, tel, cpf)
     if not customer_id:
         log.error('[SlotZap] Falha ao criar cliente Asaas (nome=%s)', nome)
@@ -15919,6 +15936,32 @@ def _sz_gerar_pix(nome, tel, cpf, valor, descricao, ext_ref, split_wallet=''):
                 charge_id, '', '')
 
     return (None, charge_id, pix_qr, pix_copia)
+
+
+def _sz_pagamento_confirmado(gateway, cid):
+    """True se a cobrança foi PAGA, no gateway certo.
+    asaas: GET /payments/{cid} (RECEIVED/CONFIRMED). efi: consultar_cobranca (CONCLUIDA)."""
+    if not cid:
+        return False
+    if gateway == 'efi':
+        try:
+            import efi_pix
+            return bool(efi_pix.consultar_cobranca(cid).get('pago'))
+        except Exception as _e:
+            log.warning(f'[RifaJá] consultar cobrança Efí ({cid}): {_e}')
+            return False
+    pay = _asaas_req('GET', f'/payments/{cid}')
+    return (pay.get('status') or '').upper() in ('RECEIVED', 'CONFIRMED', 'RECEIVED_IN_CASH')
+
+
+def _sz_cancelar_cobranca(gateway, cid):
+    """Cancela cobrança não paga. asaas: DELETE. efi: cob expira sozinha (nada a fazer)."""
+    if gateway == 'efi' or not cid:
+        return
+    try:
+        _asaas_req('DELETE', f'/payments/{cid}')
+    except Exception:
+        pass
 
 
 def _sz_marcar_pago(slot_id):
@@ -16006,9 +16049,20 @@ def _sz_marcar_pago(slot_id):
     return True
 
 
-def _sz_afiliado_transfer(pix_chave, pix_tipo, valor, descricao, ext_ref):
-    """Envia a comissão ao afiliado via PIX (Asaas /transfers — GRÁTIS e ilimitado).
-    Retorna (transfer_id, erro)."""
+def _sz_afiliado_transfer(pix_chave, pix_tipo, valor, descricao, ext_ref, gateway='asaas'):
+    """Envia a comissão ao afiliado via PIX. Retorna (transfer_id, erro).
+    asaas: /transfers (grátis). efi: efi_pix.enviar_pix com idEnvio determinístico
+    (= idempotente: reenviar o mesmo ext_ref NÃO paga 2×)."""
+    if gateway == 'efi':
+        try:
+            import efi_pix
+            idenv = ''.join(c for c in ext_ref if c.isalnum())[:35]
+            r = efi_pix.enviar_pix(valor, pix_chave, info=descricao, id_envio=idenv)
+        except Exception as _e:
+            return ('', f'efi enviar_pix: {_e}'[:200])
+        if r.get('erro'):
+            return ('', str(r['erro'])[:200])
+        return (r.get('e2eId') or r.get('idEnvio') or 'efi_ok', None)
     payload = {
         'value':            round(float(valor), 2),
         'operationType':    'PIX',
@@ -16244,15 +16298,16 @@ def _sz_reconciliar_loop():
         try:
             conn = get_saas_db()
             limite = (datetime.now() - timedelta(seconds=90)).isoformat()
-            charges = [dict(r)['asaas_charge_id'] for r in conn.execute(
-                "SELECT DISTINCT asaas_charge_id FROM slotzap_slots "
-                "WHERE status='reservado' AND asaas_charge_id<>'' AND reservado_em<>'' "
-                "AND reservado_em < ?", (limite,)).fetchall()]
+            charges = [dict(r) for r in conn.execute(
+                "SELECT DISTINCT s.asaas_charge_id AS cid, IFNULL(c.gateway,'asaas') AS gw "
+                "FROM slotzap_slots s JOIN slotzap_campanhas c ON c.id=s.campanha_id "
+                "WHERE s.status='reservado' AND s.asaas_charge_id<>'' AND s.reservado_em<>'' "
+                "AND s.reservado_em < ?", (limite,)).fetchall()]
             conn.close()
-            for cid in charges:
+            for ch in charges:
+                cid, gw = ch['cid'], ch['gw']
                 try:
-                    pay = _asaas_req('GET', f'/payments/{cid}')
-                    if (pay.get('status') or '').upper() in ('RECEIVED', 'CONFIRMED', 'RECEIVED_IN_CASH'):
+                    if _sz_pagamento_confirmado(gw, cid):
                         n = _sz_marcar_pago_charge(cid)
                         if n:
                             log.info(f'[SlotZap] Reconciliador creditou {cid} ({n} slot(s)) — webhook nao pegou')
@@ -16287,26 +16342,31 @@ def _sz_flush_lote(conn, ref):
     confere no Asaas se já saiu; se não, manda 1 PIX com a SOMA e baixa tudo.
     Retorna o valor pago (0 se nada). À prova de duplo via o próprio ref."""
     rows = [dict(r) for r in conn.execute(
-        "SELECT slot_id, afiliado_id, valor FROM slotzap_afiliado_pagamentos "
+        "SELECT slot_id, afiliado_id, valor, campanha_id FROM slotzap_afiliado_pagamentos "
         "WHERE lote_ref=? AND status='enviando'", (ref,)).fetchall()]
     if not rows:
         return 0.0
     total = round(sum(float(r['valor'] or 0) for r in rows), 2)
     afid  = rows[0]['afiliado_id']
-    # ── 1) Já existe transferência com este lote_ref no Asaas? (recupera queda) ──
-    try:
-        chk = _asaas_req('GET', f'/transfers?externalReference={ref}')
-        for t in (chk.get('data') or []):
-            st = (t.get('status') or '').upper()
-            if (t.get('externalReference') == ref and t.get('id')
-                    and st not in ('CANCELLED', 'FAILED')):
-                conn.execute("UPDATE slotzap_afiliado_pagamentos SET status='pago', "
-                             "asaas_transfer_id=?, erro='' WHERE lote_ref=?", (t['id'], ref))
-                conn.commit()
-                log.info(f"[SlotZap] Lote {ref} já estava no Asaas ({t['id']}) — baixado R${total:.2f}")
-                return total
-    except Exception:
-        pass
+    _gwr  = conn.execute("SELECT IFNULL(gateway,'asaas') AS gw FROM slotzap_campanhas WHERE id=?",
+                         (rows[0].get('campanha_id'),)).fetchone()
+    gateway = dict(_gwr)['gw'] if _gwr else 'asaas'
+    # ── 1) (Asaas) Já existe transferência com este lote_ref? (recupera queda). ──
+    #     efi pula: o idEnvio determinístico já garante idempotência.
+    if gateway != 'efi':
+        try:
+            chk = _asaas_req('GET', f'/transfers?externalReference={ref}')
+            for t in (chk.get('data') or []):
+                st = (t.get('status') or '').upper()
+                if (t.get('externalReference') == ref and t.get('id')
+                        and st not in ('CANCELLED', 'FAILED')):
+                    conn.execute("UPDATE slotzap_afiliado_pagamentos SET status='pago', "
+                                 "asaas_transfer_id=?, erro='' WHERE lote_ref=?", (t['id'], ref))
+                    conn.commit()
+                    log.info(f"[SlotZap] Lote {ref} já estava no Asaas ({t['id']}) — baixado R${total:.2f}")
+                    return total
+        except Exception:
+            pass
     # ── 2) Envia 1 PIX com a soma ──
     af = conn.execute('SELECT nome, pix_chave, pix_tipo FROM slotzap_afiliados WHERE id=?',
                       (afid,)).fetchone()
@@ -16317,7 +16377,8 @@ def _sz_flush_lote(conn, ref):
         return 0.0
     af   = dict(af)
     desc = f"Comissao SlotZap - {len(rows)} numero(s)"
-    tid, erro = _sz_afiliado_transfer(af.get('pix_chave'), af.get('pix_tipo'), total, desc, ref)
+    tid, erro = _sz_afiliado_transfer(af.get('pix_chave'), af.get('pix_tipo'), total, desc, ref,
+                                      gateway=gateway)
     if tid:
         conn.execute("UPDATE slotzap_afiliado_pagamentos SET status='pago', "
                      "asaas_transfer_id=?, erro='' WHERE lote_ref=?", (tid, ref))
@@ -16440,6 +16501,9 @@ def _sz_expirar_reservas(camp_id):
     em vez de liberar (evita 'pagou atrasado e ficou sem número')."""
     limite = (datetime.now() - timedelta(minutes=SZ_RESERVA_EXPIRA_MIN)).isoformat()
     conn = get_saas_db()
+    _gwrow = conn.execute("SELECT IFNULL(gateway,'asaas') AS gw FROM slotzap_campanhas WHERE id=?",
+                          (camp_id,)).fetchone()
+    gw = dict(_gwrow)['gw'] if _gwrow else 'asaas'
     expirados = [dict(r) for r in conn.execute(
         "SELECT id, asaas_charge_id FROM slotzap_slots "
         "WHERE campanha_id=? AND status='reservado' AND reservado_em!='' AND reservado_em < ?",
@@ -16450,20 +16514,11 @@ def _sz_expirar_reservas(camp_id):
     pagos_recuperar, a_liberar = [], []
     for s in expirados:
         cid = (s.get('asaas_charge_id') or '').strip()
-        pago = False
-        if cid:
-            try:
-                pay = _asaas_req('GET', f'/payments/{cid}')
-                if (pay.get('status') or '').upper() in ('RECEIVED', 'CONFIRMED', 'RECEIVED_IN_CASH'):
-                    pago = True
-            except Exception:
-                pass
+        pago = _sz_pagamento_confirmado(gw, cid) if cid else False
         if pago:
             pagos_recuperar.append(cid)          # estava paga! credita
         else:
-            if cid:
-                try: _asaas_req('DELETE', f"/payments/{cid}")   # cancela p/ não pagarem depois
-                except Exception: pass
+            _sz_cancelar_cobranca(gw, cid)        # cancela p/ não pagarem (asaas DELETE; efi expira só)
             a_liberar.append(s['id'])
     # Credita as que estavam pagas (cada uma abre/fecha sua conexão — slot ainda 'reservado')
     for cid in pagos_recuperar:
@@ -16694,13 +16749,14 @@ def slotzap_publico_confirmar(token):
     data   = request.get_json() or {}
     numero = int(data.get('numero', 0))
     conn = get_saas_db()
-    camp = conn.execute('SELECT id FROM slotzap_campanhas WHERE token_publico=?',
-                        (token,)).fetchone()
+    camp = conn.execute("SELECT id, IFNULL(gateway,'asaas') AS gateway "
+                        "FROM slotzap_campanhas WHERE token_publico=?", (token,)).fetchone()
     if not camp:
         conn.close()
         return jsonify({'erro': 'not found'}), 404
+    camp = dict(camp)
     slot = conn.execute('SELECT * FROM slotzap_slots WHERE campanha_id=? AND numero=?',
-                        (dict(camp)['id'], numero)).fetchone()
+                        (camp['id'], numero)).fetchone()
     conn.close()
     if not slot:
         return jsonify({'erro': 'slot não encontrado'}), 404
@@ -16710,12 +16766,10 @@ def slotzap_publico_confirmar(token):
     charge_id = (slot.get('asaas_charge_id') or '').strip()
     if not charge_id:
         return jsonify({'pago': False})
-    pay    = _asaas_req('GET', f'/payments/{charge_id}')
-    status = (pay.get('status') or '').upper()
-    if status in ('RECEIVED', 'CONFIRMED', 'RECEIVED_IN_CASH'):
+    if _sz_pagamento_confirmado(camp['gateway'], charge_id):
         _sz_marcar_pago_charge(charge_id)
         return jsonify({'pago': True})
-    return jsonify({'pago': False, 'status': status})
+    return jsonify({'pago': False})
 
 
 @app.route('/slotzap/p/<token>/reservar', methods=['POST'])
@@ -16778,7 +16832,8 @@ def slotzap_publico_reservar(token):
 
     # Uma única cobrança PIX cobre todos os números — só reserva se gerar o PIX
     erro_msg, charge_id, pix_qr, pix_copia = _sz_gerar_pix(
-        cliente_nome, cliente_tel, cliente_cpf, total, desc, f'sz_{first_id}', owner_wallet)
+        cliente_nome, cliente_tel, cliente_cpf, total, desc, f'sz_{first_id}', owner_wallet,
+        gateway=camp.get('gateway', 'asaas'))
     if erro_msg:
         conn.close()
         return jsonify({'erro': erro_msg}), 502
