@@ -15562,23 +15562,41 @@ def slotzap_cancelar_estornar(camp_id):
         "AND status='reservado' AND asaas_charge_id<>''", (camp_id,)).fetchall()]
     conn.close()
 
+    gateway = camp.get('gateway', 'asaas')   # estorna pelo MESMO gateway que recebeu
     estornados, falhas = 0, 0
     for cid in pagos_ch:
         try:
-            resp = _asaas_req('POST', f'/payments/{cid}/refund')
-            if resp.get('id') or (resp.get('status', '').upper() in ('REFUNDED', 'REFUND_REQUESTED', 'PENDING')):
-                estornados += 1
+            if gateway == 'efi':
+                import efi_pix
+                info = efi_pix.consultar_e2e(cid)
+                if info.get('e2eid'):
+                    rr = efi_pix.devolver_pix(info['e2eid'],
+                                              info.get('valor') or camp['preco'], 'dev' + cid)
+                    if not rr.get('erro'):
+                        estornados += 1
+                    else:
+                        falhas += 1
+                        log.warning(f'[RifaJá] estorno efi falhou {cid}: {rr.get("erro")}')
+                else:
+                    falhas += 1
+                    log.warning(f'[RifaJá] estorno efi sem e2e {cid}: {info.get("erro")}')
             else:
-                falhas += 1
-                log.warning(f'[SlotZap] estorno falhou {cid}: {resp}')
+                resp = _asaas_req('POST', f'/payments/{cid}/refund')
+                if resp.get('id') or (resp.get('status', '').upper() in ('REFUNDED', 'REFUND_REQUESTED', 'PENDING')):
+                    estornados += 1
+                else:
+                    falhas += 1
+                    log.warning(f'[SlotZap] estorno falhou {cid}: {resp}')
         except Exception as _e:
             falhas += 1
             log.warning(f'[SlotZap] estorno erro {cid}: {_e}')
-    for cid in pend_ch:
-        try:
-            _asaas_req('DELETE', f'/payments/{cid}')
-        except Exception:
-            pass
+    # Cobranças PENDENTES: Asaas precisa cancelar; Efí expira sozinho (nada a fazer)
+    if gateway != 'efi':
+        for cid in pend_ch:
+            try:
+                _asaas_req('DELETE', f'/payments/{cid}')
+            except Exception:
+                pass
 
     conn = get_saas_db()
     conn.execute("UPDATE slotzap_campanhas SET status='cancelada' WHERE id=?", (camp_id,))
@@ -15847,15 +15865,16 @@ def slotzap_pagar(slot_id):
 @_sz_login_required
 def slotzap_cancelar(slot_id):
     conn = get_saas_db()
-    slot = conn.execute('''SELECT s.* FROM slotzap_slots s
+    slot = conn.execute('''SELECT s.*, c.gateway AS gateway FROM slotzap_slots s
         JOIN slotzap_campanhas c ON c.id=s.campanha_id
         WHERE s.id=? AND c.user_id=?''', (slot_id, _sz_uid())).fetchone()
     if not slot:
         conn.close()
         return jsonify({'erro': 'Slot não encontrado'}), 404
-    charge = dict(slot).get('asaas_charge_id', '')
+    _slotd = dict(slot)
+    charge = _slotd.get('asaas_charge_id', '')
     if charge:
-        _asaas_req('DELETE', f'/payments/{charge}')
+        _sz_cancelar_cobranca(_slotd.get('gateway', 'asaas'), charge)  # efi: cob expira sozinha
     conn.execute(
         "UPDATE slotzap_slots SET status='disponivel',cliente_nome='',cliente_tel='',"
         "asaas_charge_id='',pix_qr_code='',pix_copia_cola='',reservado_em=NULL,pago_em=NULL,"

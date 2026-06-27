@@ -80,6 +80,33 @@ def consultar_cobranca(txid):
     except Exception as e:
         return {'erro': str(e)[:200]}
 
+def consultar_e2e(txid):
+    """Pega o endToEndId + valor do PIX recebido nessa cobrança (pra poder estornar)."""
+    c = consultar_cobranca(txid)
+    if c.get('erro'):
+        return {'erro': c['erro']}
+    pix = c.get('pix') or []
+    if not pix:
+        return {'erro': 'sem PIX recebido nessa cobrança (nada a estornar)'}
+    return {'e2eid': pix[0].get('endToEndId', ''), 'valor': pix[0].get('valor', '')}
+
+def devolver_pix(e2eid, valor, id_devolucao=None):
+    """Estorna (devolve) um PIX recebido. id_devolucao = idempotência (alfanumérico ≤35:
+    reusar o mesmo NÃO devolve 2×). PUT /v2/pix/:e2eId/devolucao/:id."""
+    if not e2eid:
+        return {'erro': 'e2eId vazio'}
+    idd = ''.join(ch for ch in (id_devolucao or '') if ch.isalnum())[:35] or uuid.uuid4().hex[:35]
+    body = {'valor': f'{float(valor):.2f}'}
+    try:
+        r = requests.put(f'{EFI_BASE}/v2/pix/{e2eid}/devolucao/{idd}',
+                         headers=_h(), cert=_cert_pem(), json=body, timeout=20)
+        j = r.json()
+        if r.status_code in (200, 201) and (j.get('id') or j.get('status')):
+            return {'id': j.get('id', idd), 'status': j.get('status'), 'rtrId': j.get('rtrId', '')}
+        return {'erro': str(j)[:300]}
+    except Exception as e:
+        return {'erro': str(e)[:200]}
+
 def enviar_pix(valor, chave_destino, info='', id_envio=None):
     """Envia PIX (paga afiliado). id_envio = idempotência (reusar o mesmo p/ não pagar 2×).
     Retorna {idEnvio, e2eId, status} ou {erro, idEnvio}."""
