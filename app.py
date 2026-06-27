@@ -17232,8 +17232,12 @@ def slotzap_afiliados_pagar_pendentes(camp_id):
         log.warning(f'[SlotZap] pagar-pendentes manual camp {camp_id}: {_e}')
         conn.close()
         return jsonify({'erro': 'Falha ao processar — tente de novo.'}), 500
+    err_row = conn.execute(
+        "SELECT erro FROM slotzap_afiliado_pagamentos WHERE campanha_id=? AND status='erro' "
+        "AND IFNULL(erro,'')<>'' ORDER BY id DESC LIMIT 1", (camp_id,)).fetchone()
+    ultimo_erro = dict(err_row)['erro'] if err_row else ''
     conn.close()
-    return jsonify({'ok': True, 'pago': pago})
+    return jsonify({'ok': True, 'pago': pago, 'ultimo_erro': ultimo_erro})
 
 
 @app.route('/webhook/asaas/saque-validacao', methods=['POST'])

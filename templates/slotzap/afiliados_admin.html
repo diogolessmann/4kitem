@@ -161,11 +161,15 @@ function pagarPendentes(){
   m.style.color = '#8888aa'; m.textContent = '⏳ Pagando comissões pendentes...';
   fetch(`/slotzap/campanha/${CAMP_ID}/afiliados/pagar-pendentes`, {method:'POST'})
     .then(r=>r.json()).then(r=>{
-      if(r.ok){
+      if(r.ok && r.pago>0){
         m.style.color='#22c55e';
-        m.textContent = r.pago>0 ? `✅ Pago R$ ${r.pago.toFixed(2)} em comissões! Atualizando...`
-                                 : '✅ Nada pendente — tudo já está pago!';
-        if(r.pago>0) setTimeout(()=>location.reload(), 1800);
+        m.textContent = `✅ Pago R$ ${r.pago.toFixed(2)} em comissões! Atualizando...`;
+        setTimeout(()=>location.reload(), 1800);
+      } else if(r.ok && r.ultimo_erro){
+        m.style.color='#fca5a5';
+        m.innerHTML = '⚠️ Não consegui pagar. Erro do banco:<br><b style="word-break:break-word">'+r.ultimo_erro+'</b>';
+      } else if(r.ok){
+        m.style.color='#22c55e'; m.textContent='✅ Nada pendente — tudo já está pago!';
       } else { m.style.color='#fca5a5'; m.textContent='⚠️ '+(r.erro||'Erro'); }
     }).catch(()=>{ m.style.color='#fca5a5'; m.textContent='⚠️ Erro de conexão'; });
 }
