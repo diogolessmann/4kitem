@@ -16729,6 +16729,7 @@ def slotzap_enviar_lista(camp_id):
         blocos.append(atual)
 
     enviados = 0
+    ultimo_erro = ''
     for txt in blocos:
         try:
             r = requests.post(
@@ -16737,11 +16738,15 @@ def slotzap_enviar_lista(camp_id):
                 json={'number': grupo_id, 'text': txt}, timeout=20)
             if r.status_code in (200, 201):
                 enviados += 1
+            else:
+                ultimo_erro = f'Evolution HTTP {r.status_code}: {(r.text or "")[:180]}'
+                log.warning(f'[SlotZap] enviar-lista falhou {r.status_code}: {(r.text or "")[:400]}')
         except Exception as _e:
+            ultimo_erro = str(_e)[:180]
             log.warning(f'[SlotZap] Erro ao enviar lista: {_e}')
     if enviados:
         return jsonify({'ok': True, 'mensagens': enviados})
-    return jsonify({'erro': 'Não foi possível enviar a lista. Verifique o número/grupo.'}), 502
+    return jsonify({'erro': f'Não foi possível enviar. {ultimo_erro or "Verifique o grupo/instância."}'}), 502
 
 
 # ── Página pública (sem login) ─────────────────────────────────────────────────
