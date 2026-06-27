@@ -16735,7 +16735,7 @@ def slotzap_enviar_lista(camp_id):
             r = requests.post(
                 f"{evo_url}/message/sendText/{instance}",
                 headers={'apikey': evo_key, 'Content-Type': 'application/json'},
-                json={'number': grupo_id, 'text': txt}, timeout=20)
+                json={'number': grupo_id, 'text': txt}, timeout=(10, 60))
             if r.status_code in (200, 201):
                 enviados += 1
             else:
