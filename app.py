@@ -6262,6 +6262,27 @@ def saas_admin():
         mlconn.close()
     except Exception:
         mlhype_users = []; mlhype_ativos = 0
+    # RifaJá — rifas baratinhas (campanhas com gateway Efí)
+    try:
+        conn_rj = get_saas_db()
+        rifaja_rifas = [dict(r) for r in conn_rj.execute('''
+            SELECT c.id, c.nome, c.preco, c.total_slots, c.status, c.created_at,
+                   u.name AS dono_nome, u.email AS dono_email,
+                   (SELECT COUNT(*) FROM slotzap_slots s WHERE s.campanha_id=c.id AND s.status="pago") AS pagos
+            FROM slotzap_campanhas c
+            LEFT JOIN slotzap_users u ON u.id=c.user_id
+            WHERE c.gateway='efi'
+            ORDER BY c.id DESC
+        ''').fetchall()]
+        conn_rj.close()
+        for r in rifaja_rifas:
+            r['receita'] = (r['pagos'] or 0) * float(r['preco'] or 0)
+            r['pct'] = round(100 * (r['pagos'] or 0) / (r['total_slots'] or 1))
+        rifaja_total_rifas = len(rifaja_rifas)
+        rifaja_vendidos    = sum((r['pagos'] or 0) for r in rifaja_rifas)
+        rifaja_receita     = sum(r['receita'] for r in rifaja_rifas)
+    except Exception:
+        rifaja_rifas = []; rifaja_total_rifas = 0; rifaja_vendidos = 0; rifaja_receita = 0
     return render_template('saas_admin.html',
                            subscribers=subscribers, businesses=businesses,
                            mz_users=mz_users, mz_plans=MANDAZAP_PLANS,
@@ -6292,7 +6313,9 @@ def saas_admin():
                            licita_noticia=licita_noticia, licita_cidades=licita_cidades,
                            somaja_users=somaja_users, somaja_lancamentos=somaja_lancamentos,
                            somaja_ativos=somaja_ativos,
-                           mlhype_users=mlhype_users, mlhype_ativos=mlhype_ativos)
+                           mlhype_users=mlhype_users, mlhype_ativos=mlhype_ativos,
+                           rifaja_rifas=rifaja_rifas, rifaja_total_rifas=rifaja_total_rifas,
+                           rifaja_vendidos=rifaja_vendidos, rifaja_receita=rifaja_receita)
 
 
 @app.route('/saas-admin/slotzap/reset-senha', methods=['POST'])

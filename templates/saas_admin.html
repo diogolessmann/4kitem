@@ -91,6 +91,7 @@
     <button class="tab-btn" onclick="showTab('licita',this)">🗞️ Licita Norte ({{ licita_users|length }})</button>
     <button class="tab-btn" onclick="showTab('somaja',this)">🐗 SomaJá ({{ somaja_users|length }})</button>
     <button class="tab-btn" onclick="showTab('mlhype',this)">🔥 MLhype ({{ mlhype_users|length }})</button>
+    <button class="tab-btn" onclick="showTab('rifaja',this)">🎟️ RifaJá ({{ rifaja_total_rifas }})</button>
   </div>
 
   <!-- ═══════════════ ALERTA SC ═══════════════ -->
@@ -893,6 +894,47 @@
     const j = await r.json(); alert(j.ok ? 'Senha alterada! ✅' : (j.erro || 'Erro'));
   }
   </script>
+
+  <!-- RifaJá -->
+  <div class="tab-content" id="tab-rifaja">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+      <h2 style="margin:0">🎟️ Rifas — RifaJá</h2>
+      <div style="display:flex;gap:18px;font-size:13px;color:var(--text2)">
+        <span>🎟️ {{ rifaja_total_rifas }} rifas</span>
+        <span>🔢 {{ rifaja_vendidos }} números vendidos</span>
+        <span style="color:#22c55e;font-weight:700">💰 R$ {{ '%.2f'|format(rifaja_receita) }}</span>
+      </div>
+    </div>
+    {% if rifaja_rifas %}
+    <table>
+      <thead><tr>
+        <th>#</th><th>Rifa</th><th>Dono</th><th>Preço</th><th>Vendidos</th><th>Receita</th><th>Status</th><th>Criada</th><th>Ações</th>
+      </tr></thead>
+      <tbody>
+      {% for r in rifaja_rifas %}
+      <tr>
+        <td>{{ r.id }}</td>
+        <td><strong>{{ r.nome }}</strong></td>
+        <td style="font-size:12px">{{ r.dono_nome or '—' }}<br><span style="color:var(--text2)">{{ r.dono_email or '' }}</span></td>
+        <td>R$ {{ '%.2f'|format(r.preco or 0) }}</td>
+        <td>{{ r.pagos }}/{{ r.total_slots }} <span style="color:#22c55e;font-weight:700">({{ r.pct }}%)</span></td>
+        <td style="color:#22c55e;font-weight:700">R$ {{ '%.2f'|format(r.receita) }}</td>
+        <td>
+          {% if r.status == 'ativa' %}<span class="badge badge-active">🟢 Ativa</span>
+          {% else %}<span style="color:var(--text2);font-size:12px">{{ r.status or '—' }}</span>{% endif %}
+        </td>
+        <td style="font-size:12px">{{ (r.created_at or '')[:10] }}</td>
+        <td style="white-space:nowrap">
+          <a href="/slotzap/campanha/{{ r.id }}" target="_blank" style="font-size:12px;padding:4px 10px;border-radius:7px;border:none;cursor:pointer;background:#dcfce7;color:#15803d;text-decoration:none;font-weight:700">Abrir</a>
+        </td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty">Nenhuma rifa RifaJá ainda. Crie em <strong>/rifaja/nova</strong>.</div>
+    {% endif %}
+  </div>
 
   <!-- PCD Fácil -->
   <div class="tab-content" id="tab-pcd">
