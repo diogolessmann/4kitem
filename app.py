@@ -15393,10 +15393,11 @@ def slotzap_campanha(camp_id):
     reservados = sum(1 for s in slots if s['status'] == 'reservado')
     disponiveis= sum(1 for s in slots if s['status'] == 'disponivel')
     receita    = pagos * float(camp['preco'])
+    brand = 'rifaja' if camp.get('gateway') == 'efi' else 'slotzap'
     return render_template('slotzap/campanha.html',
                            camp=camp, slots=slots,
                            pagos=pagos, reservados=reservados,
-                           disponiveis=disponiveis, receita=receita)
+                           disponiveis=disponiveis, receita=receita, brand=brand)
 
 
 @app.route('/slotzap/campanha/<int:camp_id>/exportar')

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>{{ camp.nome }} — SlotZap</title>
+<title>{{ camp.nome }} — {{ 'RifaJá' if brand == 'rifaja' else 'SlotZap' }}</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -98,8 +98,8 @@ input:focus{border-color:#6366f1}
 </head>
 <body>
 <nav>
-  <span class="nav-logo">🎯 SlotZap</span>
-  <a href="/slotzap/app" class="nav-btn">← <span class="nav-txt">Campanhas</span></a>
+  <span class="nav-logo"{% if brand == 'rifaja' %} style="background:#22c55e;-webkit-text-fill-color:#22c55e"{% endif %}>{{ '🎟️ RifaJá' if brand == 'rifaja' else '🎯 SlotZap' }}</span>
+  <a href="/slotzap/app" class="nav-btn">← <span class="nav-txt">{{ 'Rifas' if brand == 'rifaja' else 'Campanhas' }}</span></a>
   {% if camp.status == 'ativa' %}
   <button class="nav-btn" style="border-color:#6366f1;color:#a5b4fc" onclick="gerarLink()">🔗 <span class="nav-txt">Link público</span></button>
   <button class="nav-btn" style="border-color:#22c55e;color:#86efac" onclick="abrirConfigWpp()">💬 <span class="nav-txt">WhatsApp</span></button>
