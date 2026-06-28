@@ -6040,6 +6040,30 @@ def saas_asaas_test():
     return jsonify(resultado)
 
 
+@app.route('/webhook/efi', methods=['GET', 'POST'])
+@app.route('/webhook/efi/pix', methods=['GET', 'POST'])
+def efi_webhook():
+    """Webhook da Efí. O Efí EXIGE um webhook na chave PIX recebedora pra liberar o Pix Envio
+    (comissão). Só precisa responder 200 — a confirmação de pagamento roda pelo reconciliador."""
+    return jsonify({'ok': True}), 200
+
+
+@app.route('/saas-admin/efi-webhook')
+@_saas_admin_required
+def saas_efi_webhook():
+    """Cadastra/re-cadastra o webhook na chave Efí — destrava o Pix Envio (pagamento de comissão).
+    Roda 1× e resolve o 'conta_chave_sem_webhook'."""
+    try:
+        import efi_pix
+        if not efi_pix.configurado():
+            return jsonify({'erro': 'Efí não configurada (faltam env vars).'}), 400
+        base = os.environ.get('BASE_URL', 'https://www.4kitem.com.br').rstrip('/')
+        res  = efi_pix.configurar_webhook(f'{base}/webhook/efi')
+        return jsonify({'cadastrar': res, 'webhook_atual': efi_pix.consultar_webhook()})
+    except Exception as _e:
+        return jsonify({'erro': str(_e)[:300]}), 500
+
+
 @app.route('/saas-admin/afiliados')
 @_saas_admin_required
 def saas_admin_afiliados():

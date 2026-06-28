@@ -80,6 +80,29 @@ def consultar_cobranca(txid):
     except Exception as e:
         return {'erro': str(e)[:200]}
 
+def configurar_webhook(webhook_url):
+    """Cadastra um webhook na chave PIX recebedora. EXIGIDO pelo Efí pra liberar o Pix Envio
+    (sem webhook na chave, enviar_pix dá 'conta_chave_sem_webhook'). Header x-skip-mtls-checking
+    dispensa mTLS no nosso endpoint (basta responder 200). PUT /v2/webhook/:chave."""
+    try:
+        h = _h(); h['x-skip-mtls-checking'] = 'true'
+        r = requests.put(f'{EFI_BASE}/v2/webhook/{EFI_PIX_KEY}',
+                         headers=h, cert=_cert_pem(),
+                         json={'webhookUrl': webhook_url}, timeout=20)
+        if r.status_code in (200, 201):
+            return {'ok': True, 'url': webhook_url}
+        return {'erro': f'HTTP {r.status_code}: {(r.text or "")[:300]}'}
+    except Exception as e:
+        return {'erro': str(e)[:200]}
+
+def consultar_webhook():
+    """Consulta o webhook cadastrado na chave (diagnóstico)."""
+    try:
+        r = requests.get(f'{EFI_BASE}/v2/webhook/{EFI_PIX_KEY}', headers=_h(), cert=_cert_pem(), timeout=20)
+        return r.json()
+    except Exception as e:
+        return {'erro': str(e)[:200]}
+
 def consultar_e2e(txid):
     """Pega o endToEndId + valor do PIX recebido nessa cobrança (pra poder estornar)."""
     c = consultar_cobranca(txid)
