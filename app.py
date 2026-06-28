@@ -6057,10 +6057,11 @@ def saas_efi_webhook():
         import efi_pix
         if not efi_pix.configurado():
             return jsonify({'erro': 'Efí não configurada (faltam env vars).'}), 400
-        # Usa o domínio que o admin acessou AGORA (ex: 4kitem.com.br sem www) — o webhook do Efí
-        # precisa de uma URL que ele consiga ALCANÇAR; www quebrado dá ECONNRESET na validação.
-        base = f"https://{request.host}"
-        url  = f'{base}/webhook/efi'
+        # Doc Efí (setup nuvem SEM mTLS): a URL PRECISA terminar com '?ignorar=' — isso impede o
+        # Efí de anexar '/pix' e destrava a validação (sem isso dá ECONNRESET). '?host=' permite
+        # testar outro domínio (ex: o *.up.railway.app) sem precisar de novo deploy.
+        host = request.args.get('host', request.host)
+        url  = f"https://{host}/webhook/efi?ignorar="
         res  = efi_pix.configurar_webhook(url)
         return jsonify({'url_usada': url, 'cadastrar': res,
                         'webhook_atual': efi_pix.consultar_webhook()})
