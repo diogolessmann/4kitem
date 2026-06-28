@@ -6060,8 +6060,17 @@ def saas_efi_webhook():
         # Doc Efí (setup nuvem SEM mTLS): a URL PRECISA terminar com '?ignorar=' — isso impede o
         # Efí de anexar '/pix' e destrava a validação (sem isso dá ECONNRESET). '?host=' permite
         # testar outro domínio (ex: o *.up.railway.app) sem precisar de novo deploy.
-        host = request.args.get('host', request.host)
-        url  = f"https://{host}/webhook/efi?ignorar="
+        # O Railway RESETA a conexão de validação da Efí (ECONNRESET) — confirmado: o endpoint
+        # responde 200 pra qualquer outro cliente, só a Efí toma reset. Então o webhook precisa
+        # ficar FORA do Railway. ?wurl= permite apontar pra uma URL externa (ex: webhook.site).
+        # O webhook só precisa EXISTIR + responder 200 (a baixa roda pelo reconciliador, não por ele).
+        url = (request.args.get('wurl') or '').strip()
+        if url:
+            if 'ignorar' not in url:
+                url += ('&' if '?' in url else '?') + 'ignorar='
+        else:
+            host = request.args.get('host', request.host).strip().rstrip('/')
+            url  = f"https://{host}/webhook/efi?ignorar="
         res  = efi_pix.configurar_webhook(url)
         return jsonify({'url_usada': url, 'cadastrar': res,
                         'webhook_atual': efi_pix.consultar_webhook()})
