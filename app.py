@@ -6057,9 +6057,13 @@ def saas_efi_webhook():
         import efi_pix
         if not efi_pix.configurado():
             return jsonify({'erro': 'Efí não configurada (faltam env vars).'}), 400
-        base = os.environ.get('BASE_URL', 'https://www.4kitem.com.br').rstrip('/')
-        res  = efi_pix.configurar_webhook(f'{base}/webhook/efi')
-        return jsonify({'cadastrar': res, 'webhook_atual': efi_pix.consultar_webhook()})
+        # Usa o domínio que o admin acessou AGORA (ex: 4kitem.com.br sem www) — o webhook do Efí
+        # precisa de uma URL que ele consiga ALCANÇAR; www quebrado dá ECONNRESET na validação.
+        base = f"https://{request.host}"
+        url  = f'{base}/webhook/efi'
+        res  = efi_pix.configurar_webhook(url)
+        return jsonify({'url_usada': url, 'cadastrar': res,
+                        'webhook_atual': efi_pix.consultar_webhook()})
     except Exception as _e:
         return jsonify({'erro': str(_e)[:300]}), 500
 
