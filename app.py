@@ -15644,7 +15644,7 @@ def camponline_print(camp_id):
         conn.close()
         return jsonify({'erro': 'Torneio não encontrado.'}), 404
     camp = dict(camp)
-    if (camp.get('premio_status') or '') in ('confirmado', 'em_disputa', 'pago'):
+    if (camp.get('premio_status') or '') in ('confirmado', 'em_disputa', 'pago', 'pago_parcial'):
         conn.close()
         return jsonify({'erro': 'Esse torneio já tem vencedor confirmado.'}), 409
     f = request.files.get('print')
@@ -15826,19 +15826,21 @@ def _camp_pagar_um(conn, camp, slot_id, membro_id, valor, chave, tipo, gateway, 
     atômico + idempotente + anti-duplo. Mexe SÓ na própria linha do ledger (ext_ref por membro);
     quem marca a campanha 'pago' é _camp_pagar_premio quando TODAS as cotas saem. (status, msg)."""
     valor = round(float(valor or 0), 2)
-    if valor <= 0:
-        return ('pago', 'Sem cota (arredondamento).')   # nada a pagar nesta cota → não trava o resto
     if not chave:
         return ('erro', 'Sem chave PIX do recebedor.')
     ext   = f"camp_premio_{camp['id']}_{slot_id}_{membro_id}"
     agora = datetime.now().isoformat()
-    row   = conn.execute("SELECT status, tentativas FROM camponline_premio_pagamentos WHERE ext_ref=?",
+    row   = conn.execute("SELECT status, tentativas, valor FROM camponline_premio_pagamentos WHERE ext_ref=?",
                          (ext,)).fetchone()
     row   = dict(row) if row else None
     if row and row['status'] == 'pago':
         return ('pago', 'Cota já paga.')
     if (row['tentativas'] if row else 0) >= CAMP_CAP_TENTATIVAS:
         return ('erro', 'Limite de tentativas — confira a chave PIX.')
+    if row:   # valor IMUTÁVEL após o 1º insert: na retry paga a cota CONGELADA (anti-drift/overpay)
+        valor = round(float(row['valor'] or 0), 2)
+    if valor <= 0:
+        return ('pago', 'Sem cota (arredondamento).')   # nada a pagar nesta cota → não trava o resto
     # ── LEASE ATÔMICO (fecha o double-pay): só UM worker — botão OU reconciliador — envia esta cota.
     if not row:
         try:
@@ -15868,8 +15870,8 @@ def _camp_pagar_um(conn, camp, slot_id, membro_id, valor, chave, tipo, gateway, 
     desc = f"Premio CAMPonline - {camp.get('nome','')}"[:100]
     if via_efi:
         try:
-            import efi_pix
-            idenv = ''.join(c for c in ext if c.isalnum())[:35]   # idEnvio determinístico = anti-duplo
+            import efi_pix, hashlib as _hl
+            idenv = ('c' + _hl.sha1(ext.encode()).hexdigest())[:35]   # idEnvio determinístico, sem colisão entre cotas
             r = efi_pix.enviar_pix(valor, chave, info=desc, id_envio=idenv)
             erro = r.get('erro')
             tid  = '' if erro else (r.get('e2eId') or r.get('idEnvio') or 'efi_ok')
@@ -15943,8 +15945,15 @@ def _camp_pagar_premio(conn, camp, force=False):
         conn.execute("UPDATE slotzap_campanhas SET premio_status='pago' WHERE id=?", (camp['id'],))
         conn.commit()
         return ('pago', 'Prêmio pago no PIX! 💸')
-    if any(s == 'erro' for s in sts):
-        return ('erro', 'Parte do prêmio falhou — vai retentar.')
+    # Nada mais retentável (cotas pendentes bateram o teto)? trava num estado TERMINAL pra não
+    # girar no reconciliador pra sempre — 'pago_parcial' (quem deu chave PIX válida já recebeu).
+    retentaveis = conn.execute(
+        "SELECT COUNT(*) FROM camponline_premio_pagamentos WHERE slot_id=? AND status!='pago' AND tentativas < ?",
+        (slot['id'], CAMP_CAP_TENTATIVAS)).fetchone()[0]
+    if retentaveis == 0:
+        conn.execute("UPDATE slotzap_campanhas SET premio_status='pago_parcial' WHERE id=?", (camp['id'],))
+        conn.commit()
+        return ('erro', 'Parte do prêmio não saiu (chave PIX?). Confira no painel.')
     return ('escrow', 'Pagamento em curso.')
 
 
@@ -17753,7 +17762,7 @@ def camponline_squad(squad_token):
     conn = get_saas_db()
     row = conn.execute(
         "SELECT s.id AS slot_id, s.campanha_id, s.nick AS cap_nick, s.cliente_nome AS cap_nome, "
-        "s.membros AS nicks, c.nome AS camp_nome, c.jogo, c.modo "
+        "s.membros AS nicks, c.nome AS camp_nome, c.jogo, c.modo, c.premio_status "
         "FROM slotzap_slots s JOIN slotzap_campanhas c ON c.id=s.campanha_id "
         "WHERE s.squad_token=? AND c.tipo='torneio'", (squad_token,)).fetchone()
     if not row:
@@ -17765,6 +17774,10 @@ def camponline_squad(squad_token):
         ip = (request.headers.get('X-Forwarded-For') or request.remote_addr or '').split(',')[0].strip()
         if not _sz_rate_ok(ip):
             conn.close(); return jsonify({'erro': 'Muitas tentativas. Aguarde um pouco.'}), 429
+        # ROSTER CONGELADO: depois que o vencedor é definido, ninguém entra (senão muda o rateio
+        # de um prêmio já travado = overpay). Tem que completar o PIX ANTES de declarar o vencedor.
+        if (row.get('premio_status') or '') in ('confirmado', 'em_disputa', 'pago', 'pago_parcial'):
+            conn.close(); return jsonify({'erro': 'O vencedor já foi definido — o time está fechado.'}), 409
         data = request.get_json() or {}
         nome = (data.get('nome') or '').strip()[:80]
         nick = (data.get('nick') or '').strip()[:40]

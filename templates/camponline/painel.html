@@ -93,9 +93,10 @@ select{width:100%;background:#0d0d1a;border:1px solid rgba(255,255,255,.1);borde
   <div class="card">
     <h3>🏆 Declarar vencedor</h3>
     {% set vn = (vencedor.nick or vencedor.cliente_nome) if vencedor else '—' %}
-    {% if camp.premio_status == 'pago' %}
-      <div class="won">💸 <b>Prêmio pago!</b><br>
+    {% if camp.premio_status in ['pago','pago_parcial'] %}
+      <div class="won">💸 <b>{{ 'Prêmio pago!' if camp.premio_status == 'pago' else 'Prêmio pago (parcial)' }}</b><br>
         Campeão: <span class="nick">{{ vn }}</span> · <b>R$ {{ '%.2f'|format(camp.premio_valor or 0) }}</b>
+        {% if camp.premio_status == 'pago_parcial' %}<br><span class="hint">⚠️ Uma ou mais chaves PIX do time falharam — confira os membros / suporte.</span>{% endif %}
         {% if camp.print_url %}<br><a href="{{ camp.print_url }}" target="_blank" style="color:#22d3ee">ver print</a>{% endif %}
       </div>
     {% elif camp.premio_status in ['confirmado','em_disputa'] %}
