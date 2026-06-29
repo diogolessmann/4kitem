@@ -16184,11 +16184,20 @@ def _sz_marcar_pago(slot_id):
     return True
 
 
+def _sz_efi_comissao_via_asaas():
+    """Por padrão a comissão de rifa EFÍ sai pelo ASAAS (transferência GRÁTIS), porque o
+    Pix Envio do Efí exige webhook mTLS que o Railway não termina (Cloudflare BYO-CA é
+    Enterprise-only). Pra voltar ao Efí-puro quando houver proxy mTLS: EFI_COMISSAO_VIA_ASAAS=0.
+    NÃO afeta a Jaya/Asaas — campanha gateway='asaas' nunca entra nesse ramo."""
+    return os.environ.get('EFI_COMISSAO_VIA_ASAAS', '1').strip().lower() in ('1', 'true', 'yes', 'sim', 'on')
+
+
 def _sz_afiliado_transfer(pix_chave, pix_tipo, valor, descricao, ext_ref, gateway='asaas'):
     """Envia a comissão ao afiliado via PIX. Retorna (transfer_id, erro).
-    asaas: /transfers (grátis). efi: efi_pix.enviar_pix com idEnvio determinístico
-    (= idempotente: reenviar o mesmo ext_ref NÃO paga 2×)."""
-    if gateway == 'efi':
+    asaas: /transfers (grátis). efi-puro: efi_pix.enviar_pix com idEnvio determinístico.
+    FALLBACK (padrão): comissão de rifa EFÍ também sai via Asaas (Pix Envio do Efí bloqueado
+    por falta de webhook mTLS); ver _sz_efi_comissao_via_asaas()."""
+    if gateway == 'efi' and not _sz_efi_comissao_via_asaas():
         try:
             import efi_pix
             idenv = ''.join(c for c in ext_ref if c.isalnum())[:35]
@@ -16253,8 +16262,9 @@ def _sz_pagar_afiliados(conn, camp, slots):
                 conn.commit()
             except Exception:
                 continue
-        # ── ANTI-DUPLO via Asaas: SÓ no Asaas. No Efí a idempotência é o idEnvio determinístico ──
-        if gateway != 'efi':
+        # ── ANTI-DUPLO via Asaas: roda sempre que o PIX sai pelo Asaas (asaas OU efi-fallback).
+        #     No Efí-puro pula (idempotência = idEnvio determinístico). ──
+        if gateway != 'efi' or _sz_efi_comissao_via_asaas():
             ja_tid = ''
             try:
                 chk = _asaas_req('GET', f'/transfers?externalReference={ext}')
@@ -16490,8 +16500,9 @@ def _sz_flush_lote(conn, ref):
                          (rows[0].get('campanha_id'),)).fetchone()
     gateway = dict(_gwr)['gw'] if _gwr else 'asaas'
     # ── 1) (Asaas) Já existe transferência com este lote_ref? (recupera queda). ──
-    #     efi pula: o idEnvio determinístico já garante idempotência.
-    if gateway != 'efi':
+    #     Roda sempre que o PIX sai pelo Asaas (asaas OU efi-fallback); Efí-puro pula
+    #     (idempotência = idEnvio determinístico). ──
+    if gateway != 'efi' or _sz_efi_comissao_via_asaas():
         try:
             chk = _asaas_req('GET', f'/transfers?externalReference={ref}')
             for t in (chk.get('data') or []):
