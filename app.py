@@ -13004,13 +13004,13 @@ def desp_api_debito_delete(debito_id):
 
 # ══ OCR multimodal: Gemini (melhor leitura de tabela/valores) com fallback Groq ══
 
-def _desp_gemini_ocr(prompt: str, img_b64: str, mime: str, max_tokens: int = 4096):
+def _desp_gemini_ocr(prompt: str, img_b64: str, mime: str, max_tokens: int = 4096, model: str = None):
     """Chama o Gemini (visão) com imagem + prompt em modo JSON. Retorna texto bruto, ou None se sem chave/resposta."""
     key = os.environ.get('GEMINI_API_KEY', '')
     if not key:
         return None
     # OCR de tabela é difícil: usa o Pro por padrão (lê muito melhor). Override via DESP_OCR_MODEL.
-    model = os.environ.get('DESP_OCR_MODEL') or 'gemini-2.5-pro'
+    model = model or os.environ.get('DESP_OCR_MODEL') or 'gemini-2.5-pro'
     url = f'https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent'
     # Deixa o modelo "pensar" (melhora MUITO a leitura de tabela, inclusive no Flash);
     # tokens com folga p/ não truncar (thinking + resposta). Fallback p/ Groq se ainda truncar.
@@ -15667,7 +15667,7 @@ def camponline_print(camp_id):
     # ── IA lê o print (assist, não trava) ──
     ia = None
     try:
-        raw = _desp_gemini_ocr(PROMPT_CAMP_PRINT, _b64.b64encode(img_bytes).decode(), mime, max_tokens=2048)
+        raw = _desp_gemini_ocr(PROMPT_CAMP_PRINT, _b64.b64encode(img_bytes).decode(), mime, max_tokens=2048, model='gemini-2.5-flash')
         ia = _desp_json_loads(raw) if raw else None
     except Exception as e:
         log.warning(f'[CAMPonline] IA print: {e}')
