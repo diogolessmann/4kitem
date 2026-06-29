@@ -15814,7 +15814,6 @@ def _camp_premio_sync_asaas(conn, camp, ext, gateway):
             if t.get('externalReference') == ext and t.get('id') and st not in ('CANCELLED', 'FAILED'):
                 conn.execute("UPDATE camponline_premio_pagamentos SET status='pago', transfer_id=?, erro='' WHERE ext_ref=?",
                              (t['id'], ext))
-                conn.execute("UPDATE slotzap_campanhas SET premio_status='pago' WHERE id=?", (camp['id'],))
                 conn.commit()
                 return True
     except Exception:
@@ -15822,59 +15821,36 @@ def _camp_premio_sync_asaas(conn, camp, ext, gateway):
     return False
 
 
-def _camp_pagar_premio(conn, camp, force=False):
-    """Paga o prêmio ao CAPITÃO (MVP) via PIX no CPF — idempotente e anti-duplo.
-    Só roda com premio_status='confirmado' E (janela de disputa vencida OU force).
-    PIX no CPF = sempre cai no dono daquele CPF (sem misroute). Devolve (status, msg):
-    'pago' | 'escrow' | 'erro' | 'nada'."""
-    if (camp.get('premio_status') or '') != 'confirmado':
-        return ('nada', 'Sem vencedor confirmado.')
-    if not force:
-        try:
-            if camp.get('disputa_ate') and datetime.now() < datetime.fromisoformat(camp['disputa_ate']):
-                return ('escrow', 'Ainda na janela de disputa.')
-        except Exception:
-            pass
-    # status='pago' trava o DESTINATÁRIO no pagamento (não só no confirmar): se a vaga do
-    # vencedor for revertida/cancelada depois, não paga PIX pra inscrição que não existe mais.
-    slot = conn.execute("SELECT id, numero, cliente_nome, cpf, nick FROM slotzap_slots "
-                        "WHERE id=? AND campanha_id=? AND status='pago'",
-                        (camp.get('vencedor_slot_id'), camp['id'])).fetchone()
-    if not slot:
-        return ('erro', 'Vencedor não está pago (inscrição revertida?).')
-    slot  = dict(slot)
-    valor = round(float(camp.get('premio_valor') or 0), 2)
+def _camp_pagar_um(conn, camp, slot_id, membro_id, valor, chave, tipo, gateway, via_efi):
+    """Paga UMA cota do prêmio (capitão = membro_id 0, ou um membro do squad) via PIX — lease
+    atômico + idempotente + anti-duplo. Mexe SÓ na própria linha do ledger (ext_ref por membro);
+    quem marca a campanha 'pago' é _camp_pagar_premio quando TODAS as cotas saem. (status, msg)."""
+    valor = round(float(valor or 0), 2)
     if valor <= 0:
-        return ('erro', 'Prêmio zerado.')
-    tipo, chave, perr = _sz_pix_normaliza('CPF', slot.get('cpf'))
-    if perr or not chave:
-        return ('erro', 'CPF do vencedor inválido pra PIX.')
-    ext     = f"camp_premio_{camp['id']}_{slot['id']}_0"   # _0 = capitão (membro_id 0)
-    gateway = camp.get('gateway', 'efi')
-    via_efi = _camp_payout_via_efi()   # paga do caixa Efí (sem depender de saldo Asaas) se ligado
-    agora   = datetime.now().isoformat()
-    row  = conn.execute("SELECT status, tentativas FROM camponline_premio_pagamentos WHERE ext_ref=?",
-                        (ext,)).fetchone()
-    row  = dict(row) if row else None
+        return ('pago', 'Sem cota (arredondamento).')   # nada a pagar nesta cota → não trava o resto
+    if not chave:
+        return ('erro', 'Sem chave PIX do recebedor.')
+    ext   = f"camp_premio_{camp['id']}_{slot_id}_{membro_id}"
+    agora = datetime.now().isoformat()
+    row   = conn.execute("SELECT status, tentativas FROM camponline_premio_pagamentos WHERE ext_ref=?",
+                         (ext,)).fetchone()
+    row   = dict(row) if row else None
     if row and row['status'] == 'pago':
-        return ('pago', 'Prêmio já pago.')
+        return ('pago', 'Cota já paga.')
     if (row['tentativas'] if row else 0) >= CAMP_CAP_TENTATIVAS:
-        return ('erro', 'Limite de tentativas atingido — confira a chave PIX.')
-    # ── LEASE ATÔMICO (fecha o double-pay): só UM worker — botão OU reconciliador — ganha o
-    #    direito de enviar. Sem isto, 2 chamadas com uma linha 'erro'/'enviando' pré-existente
-    #    pulavam o INSERT e davam 2 POST no Asaas (que NÃO deduplica externalReference) = paga 2×.
+        return ('erro', 'Limite de tentativas — confira a chave PIX.')
+    # ── LEASE ATÔMICO (fecha o double-pay): só UM worker — botão OU reconciliador — envia esta cota.
     if not row:
         try:
             conn.execute("INSERT INTO camponline_premio_pagamentos "
                          "(campanha_id,slot_id,membro_id,valor,pix_chave,pix_tipo,ext_ref,status,tentativas,lote_ref,criado_em) "
                          "VALUES (?,?,?,?,?,?,?,?,?,?,?)",
-                         (camp['id'], slot['id'], 0, valor, chave, tipo, ext, 'enviando', 1, ext, agora))
+                         (camp['id'], slot_id, membro_id, valor, chave, tipo, ext, 'enviando', 1, ext, agora))
             conn.commit()
         except Exception:
             return ('escrow', 'Pagamento em curso.')   # corrida no UNIQUE(ext_ref) = outro worker pegou
     else:
-        # retry: reivindica o lease só se retentável (erro/pendente) OU 'enviando' VELHO (crash).
-        # rowcount 0 = outro worker tem um lease fresco → sincroniza e sai SEM reenviar.
+        # retry: reivindica só se retentável (erro/pendente) OU 'enviando' VELHO (crash, > TTL).
         lease_velho = (datetime.now() - timedelta(minutes=CAMP_LEASE_TTL_MIN)).isoformat()
         cur = conn.execute(
             "UPDATE camponline_premio_pagamentos SET status='enviando', tentativas=tentativas+1, criado_em=? "
@@ -15883,15 +15859,14 @@ def _camp_pagar_premio(conn, camp, force=False):
         conn.commit()
         if cur.rowcount == 0:
             if (not via_efi) and _camp_premio_sync_asaas(conn, camp, ext, gateway):
-                return ('pago', 'Prêmio já transferido (sincronizado).')
+                return ('pago', 'Cota já transferida (sincronizada).')
             return ('escrow', 'Pagamento em curso.')
-    # ── este worker tem o lease. ANTI-DUPLO final: no Asaas confere antes de enviar; no Efí-nativo
-    #    a idempotência é o idEnvio determinístico (checar o Asaas não adianta). ──
+    # este worker tem o lease. Anti-duplo final: no Asaas confere antes de enviar; no Efí-nativo
+    # a idempotência é o idEnvio determinístico (checar o Asaas não adianta).
     if (not via_efi) and _camp_premio_sync_asaas(conn, camp, ext, gateway):
-        return ('pago', 'Prêmio já transferido (sincronizado).')
-    desc = f"Premio CAMPonline - {camp.get('nome','')} - campeao {slot.get('nick') or slot.get('cliente_nome')}"[:100]
+        return ('pago', 'Cota já transferida (sincronizada).')
+    desc = f"Premio CAMPonline - {camp.get('nome','')}"[:100]
     if via_efi:
-        # paga do MESMO caixa que recebeu as inscrições (Efí), sem depender do saldo Asaas.
         try:
             import efi_pix
             idenv = ''.join(c for c in ext if c.isalnum())[:35]   # idEnvio determinístico = anti-duplo
@@ -15905,16 +15880,72 @@ def _camp_pagar_premio(conn, camp, force=False):
     if tid:
         conn.execute("UPDATE camponline_premio_pagamentos SET status='pago', transfer_id=?, erro='' WHERE ext_ref=?",
                      (tid, ext))
-        conn.execute("UPDATE slotzap_campanhas SET premio_status='pago' WHERE id=?", (camp['id'],))
         conn.commit()
-        log.info(f"[CAMPonline] prêmio PAGO — camp {camp['id']} slot {slot['id']} R${valor:.2f} ({tid})")
-        return ('pago', 'Prêmio pago no PIX! 💸')
+        log.info(f"[CAMPonline] cota PAGA — camp {camp['id']} slot {slot_id} membro {membro_id} R${valor:.2f} ({tid})")
+        return ('pago', 'Cota paga.')
     conn.execute("UPDATE camponline_premio_pagamentos SET status='erro', erro=? WHERE ext_ref=?",
                  (str(erro)[:200], ext))
     conn.commit()
-    log.error(f"[CAMPonline] FALHA ao pagar prêmio — camp {camp['id']} slot {slot['id']} "
-              f"R${valor:.2f}: {erro} (conferir saldo Asaas / chave PIX)")
+    log.error(f"[CAMPonline] FALHA cota — camp {camp['id']} slot {slot_id} membro {membro_id} "
+              f"R${valor:.2f}: {erro} (saldo Asaas / chave PIX?)")
     return ('erro', f'Falha no PIX: {erro}')
+
+
+def _camp_pagar_premio(conn, camp, force=False):
+    """Paga o prêmio do torneio: RATEIA entre os membros do squad que têm chave PIX (sobra→capitão);
+    sem squad (solo), paga o capitão no PIX do CPF. Idempotente e anti-duplo (1 cota por membro).
+    Só roda com premio_status='confirmado' E (janela de disputa vencida OU force). (status, msg):
+    'pago' | 'escrow' | 'erro' | 'nada'."""
+    if (camp.get('premio_status') or '') != 'confirmado':
+        return ('nada', 'Sem vencedor confirmado.')
+    if not force:
+        try:
+            if camp.get('disputa_ate') and datetime.now() < datetime.fromisoformat(camp['disputa_ate']):
+                return ('escrow', 'Ainda na janela de disputa.')
+        except Exception:
+            pass
+    # status='pago' trava o DESTINATÁRIO no pagamento (não só no confirmar): se a vaga do vencedor
+    # for revertida/cancelada depois, não paga PIX pra inscrição que não existe mais.
+    slot = conn.execute("SELECT id, numero, cliente_nome, cpf, nick FROM slotzap_slots "
+                        "WHERE id=? AND campanha_id=? AND status='pago'",
+                        (camp.get('vencedor_slot_id'), camp['id'])).fetchone()
+    if not slot:
+        return ('erro', 'Vencedor não está pago (inscrição revertida?).')
+    slot  = dict(slot)
+    valor = round(float(camp.get('premio_valor') or 0), 2)
+    if valor <= 0:
+        return ('erro', 'Prêmio zerado.')
+    gateway = camp.get('gateway', 'efi')
+    via_efi = _camp_payout_via_efi()   # paga do caixa Efí (sem depender de saldo Asaas) se ligado
+    # ── recebedores: membros do squad COM chave PIX (rateio L1c); senão paga o capitão no CPF (MVP) ──
+    membros = [dict(m) for m in conn.execute(
+        "SELECT id, is_capitao, pix_chave, pix_tipo FROM camponline_membros "
+        "WHERE slot_id=? AND IFNULL(pix_chave,'')!='' ORDER BY is_capitao DESC, id",
+        (slot['id'],)).fetchall()]
+    cotas = []   # (membro_id, chave, tipo, valor)
+    if membros:
+        qtd   = len(membros)
+        por   = round(valor / qtd, 2)
+        sobra = round(valor - por * qtd, 2)   # centavos do arredondamento → vão pro capitão
+        for m in membros:
+            v = por + (sobra if m['is_capitao'] else 0)
+            cotas.append((m['id'], m['pix_chave'], (m['pix_tipo'] or 'CPF'), round(v, 2)))
+        if sobra and not any(m['is_capitao'] for m in membros):   # squad sem capitão marcado: sobra no 1º
+            m0, c0, t0, v0 = cotas[0]; cotas[0] = (m0, c0, t0, round(v0 + sobra, 2))
+    else:
+        tipo, chave, perr = _sz_pix_normaliza('CPF', slot.get('cpf'))   # solo / sem squad: paga o CPF
+        if perr or not chave:
+            return ('erro', 'CPF do vencedor inválido pra PIX.')
+        cotas = [(0, chave, tipo, valor)]   # _0 = capitão no CPF
+    sts = [_camp_pagar_um(conn, camp, slot['id'], mid, v, ch, tp, gateway, via_efi)[0]
+           for (mid, ch, tp, v) in cotas]
+    if all(s == 'pago' for s in sts):
+        conn.execute("UPDATE slotzap_campanhas SET premio_status='pago' WHERE id=?", (camp['id'],))
+        conn.commit()
+        return ('pago', 'Prêmio pago no PIX! 💸')
+    if any(s == 'erro' for s in sts):
+        return ('erro', 'Parte do prêmio falhou — vai retentar.')
+    return ('escrow', 'Pagamento em curso.')
 
 
 @app.route('/camponline/painel/<int:camp_id>/pagar-premio', methods=['POST'])
@@ -17681,18 +17712,90 @@ def camponline_inscrever(token):
             (camp['id'], aff_in)).fetchone():
         aff_save = aff_in
     agora = datetime.now().isoformat()
+    # Squad (dupla/squad): token do convite-de-squad pros colegas completarem CPF/PIX (rateio L1c).
+    squad_token = ''
+    if tam > 1:
+        import secrets as _sec
+        squad_token = _sec.token_urlsafe(10)
     cur = conn.execute(
         "UPDATE slotzap_slots SET status='reservado',cliente_nome=?,cliente_tel=?,cpf=?,nick=?,"
-        "membros=?,asaas_charge_id=?,pix_qr_code=?,pix_copia_cola=?,reservado_em=?,afiliado_codigo=? "
+        "membros=?,asaas_charge_id=?,pix_qr_code=?,pix_copia_cola=?,reservado_em=?,afiliado_codigo=?,squad_token=? "
         "WHERE id=? AND status='disponivel'",
-        (nome, tel, cpf, nick, membros, charge_id, pix_qr, pix_copia, agora, aff_save, slot['id']))
+        (nome, tel, cpf, nick, membros, charge_id, pix_qr, pix_copia, agora, aff_save, squad_token, slot['id']))
     conn.commit()
-    conn.close()
     if cur.rowcount == 0:
+        conn.close()
         # corrida: outra pessoa pegou essa vaga no mesmo instante — front tenta de novo
         return jsonify({'erro': 'Essa vaga acabou de ser preenchida. Tente de novo.'}), 409
-    return jsonify({'ok': True, 'pix_qr': pix_qr, 'pix_copia': pix_copia,
-                    'valor': valor, 'numero': slot['numero']})
+    # Linha do CAPITÃO no rateio (PIX no CPF dele); os colegas entram pelo convite-de-squad.
+    if squad_token:
+        try:
+            conn.execute("INSERT INTO camponline_membros "
+                         "(slot_id,campanha_id,nick,nome,cpf,tel,pix_chave,pix_tipo,is_capitao,criado_em) "
+                         "VALUES (?,?,?,?,?,?,?,?,?,?)",
+                         (slot['id'], camp['id'], nick, nome, cpf, tel, cpf, 'CPF', 1, agora))
+            conn.commit()
+        except Exception as _e:
+            log.warning(f'[CAMPonline] membro capitão: {_e}')
+    conn.close()
+    resp = {'ok': True, 'pix_qr': pix_qr, 'pix_copia': pix_copia,
+            'valor': valor, 'numero': slot['numero']}
+    if squad_token:
+        resp['squad_link'] = f"{request.url_root[:-1]}/camponline/squad/{squad_token}"
+        resp['squad_tam']  = tam
+    return jsonify(resp)
+
+
+@app.route('/camponline/squad/<squad_token>', methods=['GET', 'POST'])
+def camponline_squad(squad_token):
+    """Convite-de-squad: o colega abre o link, vê o time e completa NICK + CPF + chave PIX pra
+    receber a SUA parte do prêmio direto. Público (sem login), com rate-limit. Fecha quando enche."""
+    conn = get_saas_db()
+    row = conn.execute(
+        "SELECT s.id AS slot_id, s.campanha_id, s.nick AS cap_nick, s.cliente_nome AS cap_nome, "
+        "s.membros AS nicks, c.nome AS camp_nome, c.jogo, c.modo "
+        "FROM slotzap_slots s JOIN slotzap_campanhas c ON c.id=s.campanha_id "
+        "WHERE s.squad_token=? AND c.tipo='torneio'", (squad_token,)).fetchone()
+    if not row:
+        conn.close()
+        return render_template('slotzap/nao_encontrado.html'), 404
+    row = dict(row)
+    tam = {'solo': 1, 'dupla': 2, 'squad': 4}.get(row['modo'], 1)
+    if request.method == 'POST':
+        ip = (request.headers.get('X-Forwarded-For') or request.remote_addr or '').split(',')[0].strip()
+        if not _sz_rate_ok(ip):
+            conn.close(); return jsonify({'erro': 'Muitas tentativas. Aguarde um pouco.'}), 429
+        data = request.get_json() or {}
+        nome = (data.get('nome') or '').strip()[:80]
+        nick = (data.get('nick') or '').strip()[:40]
+        cpf  = ''.join(c for c in (data.get('cpf') or '') if c.isdigit())
+        tel  = ''.join(c for c in (data.get('tel') or '') if c.isdigit())
+        if not nick or not nome:
+            conn.close(); return jsonify({'erro': 'Informe seu nome e seu NICK.'}), 400
+        if not _cpf_valido(cpf):
+            conn.close(); return jsonify({'erro': 'CPF inválido. Confira os números.'}), 400
+        tipo, chave, perr = _sz_pix_normaliza(data.get('pix_tipo'), data.get('pix_chave'))
+        if perr or not chave:
+            conn.close(); return jsonify({'erro': perr or 'Informe sua chave PIX.'}), 400
+        # re-checa lotação + CPF duplicado dentro da conexão (corrida leve é aceitável no MVP)
+        cnt = conn.execute("SELECT COUNT(*) FROM camponline_membros WHERE slot_id=?", (row['slot_id'],)).fetchone()[0]
+        if cnt >= tam:
+            conn.close(); return jsonify({'erro': 'Time já está completo. 🏁'}), 409
+        if conn.execute("SELECT 1 FROM camponline_membros WHERE slot_id=? AND cpf=?", (row['slot_id'], cpf)).fetchone():
+            conn.close(); return jsonify({'erro': 'Esse CPF já está no time.'}), 409
+        conn.execute("INSERT INTO camponline_membros "
+                     "(slot_id,campanha_id,nick,nome,cpf,tel,pix_chave,pix_tipo,is_capitao,criado_em) "
+                     "VALUES (?,?,?,?,?,?,?,?,0,?)",
+                     (row['slot_id'], row['campanha_id'], nick, nome, cpf, tel, chave, tipo, datetime.now().isoformat()))
+        conn.commit(); conn.close()
+        return jsonify({'ok': True})
+    membros = [dict(m) for m in conn.execute(
+        "SELECT nick, nome, is_capitao, (IFNULL(pix_chave,'')!='') AS tem_pix FROM camponline_membros "
+        "WHERE slot_id=? ORDER BY is_capitao DESC, id", (row['slot_id'],)).fetchall()]
+    conn.close()
+    faltam = max(0, tam - len(membros))
+    return render_template('camponline/squad.html', row=row, tam=tam, membros=membros,
+                           faltam=faltam, token=squad_token)
 
 
 # ─────────────────────────── AFILIADOS / VENDEDORES ───────────────────────────

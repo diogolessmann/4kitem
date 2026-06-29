@@ -152,6 +152,7 @@ input:focus{border-color:#a855f7}
       Fica de olho no WhatsApp — o lobby e o horário chegam por lá. Boa sorte! 🍗</div>
   </div>
 
+  <div style="text-align:center;margin-top:20px"><a href="/camponline/ranking" style="color:#22d3ee;text-decoration:none;font-size:14px;font-weight:700">🏆 Ver o ranking dos players →</a></div>
   <div class="foot">CAMPonline · competição de habilidade · premiação por desempenho</div>
 </div>
 
@@ -185,6 +186,14 @@ async function inscrever(){
     $('qr').innerHTML='';
     if(j.pix_qr){ const img=new Image(); img.src='data:image/png;base64,'+j.pix_qr; img.style.width='200px'; $('qr').appendChild(img); }
     else if(j.pix_copia){ new QRCode($('qr'),{text:j.pix_copia,width:200,height:200}); }
+    if(j.squad_link){
+      const sb=document.createElement('div');
+      sb.style.cssText='background:#13131f;border:1px solid rgba(168,85,247,.3);border-radius:12px;padding:14px;margin-top:14px;font-size:13px;text-align:left';
+      sb.innerHTML='👥 <b>Time de '+(j.squad_tam||0)+'</b> — mande este link pros colegas completarem o PIX deles (cada um recebe a SUA parte do prêmio se vencerem):'+
+        '<div style="word-break:break-all;background:#0d0d1a;border:1px dashed rgba(255,255,255,.2);border-radius:8px;padding:9px;margin:8px 0;font-size:11px;color:#9aa3bd" id="squad-link">'+j.squad_link+'</div>'+
+        '<button onclick="navigator.clipboard.writeText(document.getElementById(\'squad-link\').textContent);this.textContent=\'✓ Copiado!\'" style="background:rgba(168,85,247,.15);border:1px solid rgba(168,85,247,.3);color:#c084fc;border-radius:8px;padding:9px 14px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">📋 Copiar link do time</button>';
+      $('pix-card').appendChild(sb);
+    }
     poll();
   }catch(e){ b.disabled=false; b.textContent='Gerar PIX da inscrição →'; showErr(err,'Erro de conexão. Tente de novo.'); }
 }
