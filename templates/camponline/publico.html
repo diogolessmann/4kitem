@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{ camp.nome }} — CAMPonline</title>
+<meta property="og:title" content="{{ camp.nome }} — campeonato de {{ camp.jogo }}">
+<meta property="og:description" content="Inscrição R$ {{ '%.2f'|format(taxa) }} no PIX. Vencedor leva o prêmio na hora. Bora?">
+{% if camp.imagem %}<meta property="og:image" content="{{ camp.imagem }}">{% endif %}
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',sans-serif;background:#07060f;color:#f0f0ff;line-height:1.55;padding-bottom:60px}
+.wrap{max-width:520px;margin:0 auto;padding:18px 16px}
+.brand{font-size:15px;font-weight:900;background:linear-gradient(135deg,#22d3ee,#a855f7);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;text-align:center;margin-bottom:10px}
+.hero-img{width:100%;height:200px;border-radius:16px;object-fit:cover;border:1px solid rgba(168,85,247,.25);margin-bottom:14px;cursor:zoom-in}
+h1{font-size:24px;font-weight:900;line-height:1.15;margin-bottom:6px}
+.game{display:inline-block;font-size:12px;font-weight:800;color:#a5b4fc;background:rgba(99,102,241,.15);
+  border:1px solid rgba(99,102,241,.3);border-radius:999px;padding:3px 12px;margin-bottom:10px}
+.desc{font-size:14px;color:#c9d6e2;margin-bottom:14px}
+.chips{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+.chip{background:#13131f;border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:12px 14px}
+.chip .k{font-size:11px;color:#8888aa;font-weight:600}
+.chip .v{font-size:17px;font-weight:800;margin-top:2px}
+.prize{background:linear-gradient(135deg,#13131f,#1a1030);border:1px solid rgba(168,85,247,.3);
+  border-radius:14px;padding:16px;text-align:center;margin-bottom:16px}
+.prize .k{font-size:12px;color:#8888aa;font-weight:600}
+.prize .v{font-size:30px;font-weight:900;background:linear-gradient(135deg,#22d3ee,#a855f7);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.bar{height:8px;background:#13131f;border-radius:999px;overflow:hidden;margin:10px 0 4px}
+.bar>i{display:block;height:100%;background:linear-gradient(90deg,#22d3ee,#a855f7)}
+.barlbl{font-size:12px;color:#8888aa;text-align:center}
+.cta{display:block;width:100%;text-align:center;background:linear-gradient(135deg,#22d3ee,#7c3aed);
+  color:#fff;padding:16px;border-radius:14px;border:none;font-weight:900;font-size:18px;cursor:pointer;
+  font-family:inherit;margin-top:18px}
+.cta:disabled{opacity:.5;cursor:not-allowed}
+.card{background:#13131f;border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:20px;margin-top:16px}
+label{display:block;font-size:12px;font-weight:600;color:#8888aa;margin:12px 0 5px}
+input{width:100%;background:#0d0d1a;border:1px solid rgba(255,255,255,.1);border-radius:9px;
+  color:#f0f0ff;padding:12px 13px;font-size:15px;font-family:inherit;outline:none}
+input:focus{border-color:#a855f7}
+.chk{display:flex;align-items:center;gap:8px;margin-top:14px;font-size:13px;color:#c9d6e2}
+.chk input{width:auto}
+.hint{font-size:11px;color:#6b7591;margin-top:4px}
+.err{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);color:#fca5a5;
+  padding:11px 14px;border-radius:9px;font-size:13px;margin-top:12px;display:none}
+.hidden{display:none}
+#qrbox{text-align:center}
+#qr{display:inline-block;background:#fff;padding:12px;border-radius:12px;margin:8px 0}
+.copia{word-break:break-all;background:#0d0d1a;border:1px dashed rgba(255,255,255,.2);border-radius:9px;
+  padding:10px;font-size:11px;color:#9aa3bd;margin:8px 0}
+.copybtn{background:rgba(99,102,241,.15);border:1px solid rgba(99,102,241,.3);color:#a5b4fc;
+  border-radius:8px;padding:9px 14px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit}
+.ok{text-align:center;padding:24px 0}
+.ok .big{font-size:46px}
+.foot{text-align:center;font-size:11px;color:#44445a;margin-top:22px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand">🎮 CAMPonline</div>
+
+  {% if camp.imagem %}<img class="hero-img" src="{{ camp.imagem }}" alt="{{ camp.nome }}" onclick="window.open(this.src)">{% endif %}
+  <span class="game">🎯 {{ camp.jogo }}{% if camp.modo %} · {{ camp.modo|capitalize }}{% endif %}</span>
+  <h1>{{ camp.nome }}</h1>
+  {% if camp.descricao %}<div class="desc">{{ camp.descricao }}</div>{% endif %}
+
+  <div class="prize">
+    <div class="k">🏆 PRÊMIO ESTIMADO SE ESGOTAR</div>
+    <div class="v">R$ {{ '%.2f'|format(premio_est) }}</div>
+  </div>
+
+  <div style="display:flex;gap:8px;margin-bottom:16px">
+    <div style="flex:1;background:#13131f;border:1px solid rgba(34,197,94,.22);border-radius:12px;padding:11px 6px;text-align:center">
+      <div style="font-size:20px">🛡️</div>
+      <div style="font-size:11px;font-weight:800;color:#4ade80;margin-top:3px">Prêmio protegido</div>
+      <div style="font-size:10px;color:#8888aa;line-height:1.3">a plataforma guarda o arrecadado e paga o campeão</div>
+    </div>
+    <div style="flex:1;background:#13131f;border:1px solid rgba(34,211,238,.22);border-radius:12px;padding:11px 6px;text-align:center">
+      <div style="font-size:20px">🤖</div>
+      <div style="font-size:11px;font-weight:800;color:#22d3ee;margin-top:3px">Resultado confirmado</div>
+      <div style="font-size:10px;color:#8888aa;line-height:1.3">por IA + organizador</div>
+    </div>
+    <div style="flex:1;background:#13131f;border:1px solid rgba(168,85,247,.22);border-radius:12px;padding:11px 6px;text-align:center">
+      <div style="font-size:20px">⚡</div>
+      <div style="font-size:11px;font-weight:800;color:#c084fc;margin-top:3px">PIX na hora</div>
+      <div style="font-size:10px;color:#8888aa;line-height:1.3">o campeão recebe rápido</div>
+    </div>
+  </div>
+
+  <div class="chips">
+    <div class="chip"><div class="k">Inscrição</div><div class="v">R$ {{ '%.2f'|format(taxa) }}<span style="font-size:11px;color:#8888aa">/jogador</span></div></div>
+    <div class="chip"><div class="k">Vagas restantes</div><div class="v">{{ restam }}/{{ total }}</div></div>
+    {% if camp.data_sorteio %}<div class="chip"><div class="k">Quando</div><div class="v" id="quando" style="font-size:14px">{{ camp.data_sorteio }}</div></div>{% endif %}
+    <div class="chip"><div class="k">Inscritos</div><div class="v">{{ inscritos }}</div></div>
+  </div>
+  <div class="bar"><i style="width:{{ (inscritos/total*100)|round if total else 0 }}%"></i></div>
+  <div class="barlbl">{{ inscritos }} de {{ total }} vagas preenchidas</div>
+
+  <button class="cta" id="btn-abrir" onclick="abrir()" {% if restam<=0 %}disabled{% endif %}>
+    {% if restam>0 %}🚀 GARANTIR MINHA VAGA{% else %}🏁 VAGAS ESGOTADAS{% endif %}
+  </button>
+
+  <!-- FORM -->
+  <div class="card hidden" id="form-card">
+    <div id="volta" style="display:none;background:rgba(34,211,238,.1);border:1px solid rgba(34,211,238,.25);color:#67e8f9;border-radius:9px;padding:9px 12px;font-size:13px;margin-bottom:8px"></div>
+    <label>Seu nome *</label>
+    <input id="f-nome" placeholder="Como você se chama">
+    <label>WhatsApp (com DDD) *</label>
+    <input id="f-tel" inputmode="numeric" placeholder="47 99999-9999">
+    <label>CPF *</label>
+    <input id="f-cpf" inputmode="numeric" placeholder="000.000.000-00">
+    <label>Seu NICK no jogo *</label>
+    <input id="f-nick" placeholder="exatamente como aparece no {{ camp.jogo }}">
+    <div class="hint">É por ele que a gente confirma o vencedor no print da partida.</div>
+    {% if tam > 1 %}
+    <label>NICKs do seu time — {{ tam }} jogadores no total</label>
+    {% for i in range(tam - 1) %}
+    <input class="f-membro" placeholder="NICK do colega {{ i + 1 }}" style="margin-bottom:8px">
+    {% endfor %}
+    <div class="hint">Você (capitão) + {{ tam - 1 }} colega(s). Você paga a inscrição do time inteiro.</div>
+    {% endif %}
+    <div class="chk"><input type="checkbox" id="f-18"> <label for="f-18" style="margin:0;color:#c9d6e2;font-weight:400">Tenho 18 anos ou mais e li as regras.</label></div>
+    <div class="err" id="err"></div>
+    <div style="text-align:center;margin-top:14px;font-size:14px;color:#c9d6e2">
+      {% if tam > 1 %}Inscrição do time: <b style="color:#22d3ee">R$ {{ '%.2f'|format(valor_insc) }}</b> <span style="color:#8888aa">({{ tam }} × R$ {{ '%.2f'|format(taxa) }})</span>{% else %}Inscrição: <b style="color:#22d3ee">R$ {{ '%.2f'|format(valor_insc) }}</b>{% endif %}
+    </div>
+    <button class="cta" id="btn-pagar" onclick="inscrever()">Gerar PIX da inscrição →</button>
+  </div>
+
+  <!-- PIX -->
+  <div class="card hidden" id="pix-card">
+    <div id="qrbox">
+      <div style="font-weight:800;font-size:16px;margin-bottom:4px">Pague a inscrição no PIX</div>
+      <div style="font-size:13px;color:#8888aa">Vaga <b id="pix-num"></b> · R$ <b id="pix-val"></b></div>
+      <div id="qr"></div>
+      <div class="copia" id="pix-copia"></div>
+      <button class="copybtn" onclick="copiar()">📋 Copiar código PIX</button>
+    </div>
+    <button class="cta" id="btn-japaguei" onclick="japaguei()" style="margin-top:16px">✅ Já paguei</button>
+    <div class="hint" style="text-align:center">A confirmação é automática — pode levar alguns segundos.</div>
+    <div class="err" id="err2"></div>
+  </div>
+
+  <!-- SUCESSO -->
+  <div class="card hidden ok" id="ok-card">
+    <div class="big">🎉</div>
+    <div style="font-size:20px;font-weight:900;margin:8px 0">Inscrição confirmada!</div>
+    <div style="font-size:14px;color:#c9d6e2">Você está dentro do <b>{{ camp.nome }}</b>.<br>
+      Fica de olho no WhatsApp — o lobby e o horário chegam por lá. Boa sorte! 🍗</div>
+  </div>
+
+  <div class="foot">CAMPonline · competição de habilidade · premiação por desempenho</div>
+</div>
+
+<script>
+const TOKEN = {{ token|tojson }};
+const params = new URLSearchParams(location.search);
+const AFF = (params.get('aff')||'').slice(0,32);
+let NUMERO = null;
+function $(id){return document.getElementById(id);}
+const PERFIL_KEY='camp_perfil';
+function salvarPerfil(){ try{ localStorage.setItem(PERFIL_KEY, JSON.stringify({nome:$('f-nome').value.trim(), tel:$('f-tel').value.trim(), nick:$('f-nick').value.trim()})); }catch(e){} }  // só nick/nome/tel — NUNCA CPF (LGPD)
+function preencherPerfil(){ try{ const p=JSON.parse(localStorage.getItem(PERFIL_KEY)||'{}'); if(p.nome)$('f-nome').value=p.nome; if(p.tel)$('f-tel').value=p.tel; if(p.nick)$('f-nick').value=p.nick; const h=$('volta'); if(h&&p.nick){ h.textContent='👋 Bem-vindo de volta, '+(p.nome||p.nick)+'! Confere e bora.'; h.style.display='block'; } }catch(e){} }
+function abrir(){ $('btn-abrir').classList.add('hidden'); $('form-card').classList.remove('hidden'); preencherPerfil(); $('f-nome').focus(); }
+function showErr(el,msg){ el.textContent=msg; el.style.display='block'; }
+async function inscrever(){
+  const err=$('err'); err.style.display='none';
+  if(!$('f-18').checked){ return showErr(err,'Confirme que tem 18+ e leu as regras.'); }
+  const body={ nome:$('f-nome').value.trim(), tel:$('f-tel').value, cpf:$('f-cpf').value,
+    nick:$('f-nick').value.trim(),
+    membros:Array.from(document.querySelectorAll('.f-membro')).map(x=>x.value.trim()).filter(Boolean).join(','), aff:AFF };
+  salvarPerfil();
+  const b=$('btn-pagar'); b.disabled=true; b.textContent='Gerando...';
+  try{
+    const r=await fetch(`/camponline/t/${TOKEN}/inscrever`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const j=await r.json();
+    if(!r.ok||j.erro){ b.disabled=false; b.textContent='Gerar PIX da inscrição →'; return showErr(err,j.erro||'Erro. Tente de novo.'); }
+    NUMERO=j.numero;
+    $('form-card').classList.add('hidden'); $('pix-card').classList.remove('hidden');
+    $('pix-num').textContent='#'+j.numero; $('pix-val').textContent=Number(j.valor).toFixed(2);
+    $('pix-copia').textContent=j.pix_copia;
+    $('qr').innerHTML='';
+    if(j.pix_qr){ const img=new Image(); img.src='data:image/png;base64,'+j.pix_qr; img.style.width='200px'; $('qr').appendChild(img); }
+    else if(j.pix_copia){ new QRCode($('qr'),{text:j.pix_copia,width:200,height:200}); }
+    poll();
+  }catch(e){ b.disabled=false; b.textContent='Gerar PIX da inscrição →'; showErr(err,'Erro de conexão. Tente de novo.'); }
+}
+function copiar(){ navigator.clipboard.writeText($('pix-copia').textContent); }
+async function checar(){
+  try{
+    const r=await fetch(`/slotzap/p/${TOKEN}/confirmar`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({numero:NUMERO})});
+    const j=await r.json();
+    if(j.pago){ $('pix-card').classList.add('hidden'); $('ok-card').classList.remove('hidden'); return true; }
+  }catch(e){}
+  return false;
+}
+async function japaguei(){
+  const b=$('btn-japaguei'); b.disabled=true; b.textContent='Conferindo...';
+  const ok=await checar();
+  if(!ok){ b.disabled=false; b.textContent='✅ Já paguei'; showErr($('err2'),'Ainda não caiu. Se já pagou, espere alguns segundos e clique de novo.'); }
+}
+let polls=0;
+function poll(){ const t=setInterval(async()=>{ polls++; if(polls>40){clearInterval(t);return;} if(await checar()) clearInterval(t); },4000); }
+</script>
+</body>
+</html>

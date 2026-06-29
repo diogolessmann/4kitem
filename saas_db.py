@@ -869,6 +869,49 @@ def init_slotzap_db():
         # anti-duplicata do Asaas p/ valores iguais). 'enviando' + lote_ref = claim atômico
         # (impossível pagar 2×, mesmo se o servidor cair no meio do envio).
         "ALTER TABLE slotzap_afiliado_pagamentos ADD COLUMN lote_ref TEXT DEFAULT ''",
+        # ── CAMPonline (torneios pagos de games) — MESMO motor, eixo novo `tipo` ──
+        # tipo='rifa' (DEFAULT → TODAS as campanhas existentes/Jaya intocadas) ou 'torneio'.
+        "ALTER TABLE slotzap_campanhas ADD COLUMN tipo TEXT DEFAULT 'rifa'",
+        # Metadados do torneio (só usados quando tipo='torneio'):
+        "ALTER TABLE slotzap_campanhas ADD COLUMN jogo TEXT DEFAULT ''",         # PUBG, EA FC, Free Fire...
+        "ALTER TABLE slotzap_campanhas ADD COLUMN modo TEXT DEFAULT ''",         # solo/dupla/squad
+        "ALTER TABLE slotzap_campanhas ADD COLUMN formato TEXT DEFAULT ''",      # br_pontos / mata-mata / liga
+        "ALTER TABLE slotzap_campanhas ADD COLUMN org_comissao REAL DEFAULT 0",  # fatia % do organizador
+        "ALTER TABLE slotzap_campanhas ADD COLUMN lobby_info TEXT DEFAULT ''",   # ID+senha da sala custom (T-menos)
+        # Inscrição de torneio nos slots (cada slot = uma vaga). Aditivo → rifas ignoram (ficam '').
+        "ALTER TABLE slotzap_slots ADD COLUMN nick TEXT DEFAULT ''",       # NICK no jogo (casa com o print do vencedor)
+        "ALTER TABLE slotzap_slots ADD COLUMN cpf TEXT DEFAULT ''",        # CPF do inscrito (p/ IRRF/PIX depois)
+        "ALTER TABLE slotzap_slots ADD COLUMN membros TEXT DEFAULT ''",    # NICKs do squad/dupla (CSV) p/ a IA achar
+        # ── CAMPonline L1b: declarar vencedor + escrow + payout do prêmio (só tipo='torneio') ──
+        # Estado do prêmio guardado na própria campanha (1 vencedor por torneio):
+        "ALTER TABLE slotzap_campanhas ADD COLUMN vencedor_slot_id INTEGER DEFAULT 0",  # slot (vaga) campeão
+        "ALTER TABLE slotzap_campanhas ADD COLUMN vencedor_em TEXT DEFAULT ''",         # quando foi confirmado
+        "ALTER TABLE slotzap_campanhas ADD COLUMN disputa_ate TEXT DEFAULT ''",         # fim da janela de contestação (escrow)
+        "ALTER TABLE slotzap_campanhas ADD COLUMN premio_valor REAL DEFAULT 0",         # snapshot do valor travado do prêmio
+        "ALTER TABLE slotzap_campanhas ADD COLUMN premio_status TEXT DEFAULT ''",       # ''|proposto|confirmado|em_disputa|pago|erro
+        "ALTER TABLE slotzap_campanhas ADD COLUMN print_hash TEXT DEFAULT ''",          # sha256 do print (anti-reuso)
+        "ALTER TABLE slotzap_campanhas ADD COLUMN print_url TEXT DEFAULT ''",           # print salvo (trilha de auditoria)
+        "ALTER TABLE slotzap_campanhas ADD COLUMN ia_colocacao TEXT DEFAULT ''",        # colocação que a IA leu
+        "ALTER TABLE slotzap_campanhas ADD COLUMN ia_nicks TEXT DEFAULT ''",            # nicks que a IA leu (CSV)
+        # Convite-de-squad: token p/ os colegas completarem CPF/PIX:
+        "ALTER TABLE slotzap_slots ADD COLUMN squad_token TEXT DEFAULT ''",
+        # Membros do time COM CPF/PIX por pessoa (slots.membros é só CSV de nicks; sem isto o split não fecha):
+        ("CREATE TABLE IF NOT EXISTS camponline_membros ("
+         "id INTEGER PRIMARY KEY AUTOINCREMENT, slot_id INTEGER NOT NULL, campanha_id INTEGER NOT NULL, "
+         "nick TEXT DEFAULT '', nome TEXT DEFAULT '', cpf TEXT DEFAULT '', tel TEXT DEFAULT '', "
+         "pix_chave TEXT DEFAULT '', pix_tipo TEXT DEFAULT '', is_capitao INTEGER DEFAULT 0, "
+         "criado_em TEXT DEFAULT '')"),
+        "CREATE INDEX IF NOT EXISTS idx_camp_membros_slot ON camponline_membros(slot_id)",
+        "CREATE INDEX IF NOT EXISTS idx_camp_membros_camp ON camponline_membros(campanha_id)",
+        # Ledger do prêmio — 1 linha por pagamento (capitão no MVP; por membro no L1c).
+        # UNIQUE(ext_ref) = idempotência: jamais paga o mesmo prêmio 2×, mesmo se o server cair no meio.
+        ("CREATE TABLE IF NOT EXISTS camponline_premio_pagamentos ("
+         "id INTEGER PRIMARY KEY AUTOINCREMENT, campanha_id INTEGER NOT NULL, slot_id INTEGER NOT NULL, "
+         "membro_id INTEGER DEFAULT 0, valor REAL DEFAULT 0, pix_chave TEXT DEFAULT '', pix_tipo TEXT DEFAULT '', "
+         "ext_ref TEXT DEFAULT '', transfer_id TEXT DEFAULT '', status TEXT DEFAULT 'pendente', "
+         "erro TEXT DEFAULT '', tentativas INTEGER DEFAULT 0, lote_ref TEXT DEFAULT '', criado_em TEXT DEFAULT '')"),
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_camp_premiopag_ext ON camponline_premio_pagamentos(ext_ref)",
+        "CREATE INDEX IF NOT EXISTS idx_camp_premiopag_camp ON camponline_premio_pagamentos(campanha_id)",
     ]
     for sql in _sz_migrations:
         try:
@@ -892,7 +935,8 @@ def init_slotzap_db():
         conn.execute("ALTER TABLE slotzap_campanhas ADD COLUMN _afil_backfill INTEGER DEFAULT 0")
         conn.execute("UPDATE slotzap_campanhas SET afiliados_ativo=1, "
                      "afiliado_comissao=ROUND(preco*0.40, 2) "
-                     "WHERE gateway='efi' AND afiliados_ativo=0")
+                     "WHERE gateway='efi' AND afiliados_ativo=0 "
+                     "AND IFNULL(tipo,'rifa')<>'torneio'")   # torneio NUNCA tem afiliado
         conn.commit()
     except Exception:
         pass

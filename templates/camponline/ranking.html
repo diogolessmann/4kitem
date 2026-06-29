@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🏆 Ranking — CAMPonline</title>
+<meta property="og:title" content="Ranking CAMPonline — os feras de cada jogo">
+<meta property="og:description" content="Jogou, pontuou. Ganhou, subiu. Veja os melhores players de cada jogo.">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',sans-serif;background:#07060f;color:#f0f0ff;line-height:1.5;padding-bottom:60px}
+.wrap{max-width:620px;margin:0 auto;padding:20px 16px}
+.brand{font-size:15px;font-weight:900;background:linear-gradient(135deg,#22d3ee,#a855f7);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;text-align:center;margin-bottom:12px}
+h1{font-size:30px;font-weight:900;text-align:center}
+.sub{text-align:center;color:#8888aa;font-size:14px;margin:4px 0 22px}
+.game-block{background:#0d0d18;border:1px solid rgba(255,255,255,.07);border-radius:16px;padding:16px 14px;margin-bottom:16px}
+.game-block h2{font-size:16px;font-weight:800;color:#a5b4fc;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.game-block h2 .tag{font-size:11px;font-weight:700;color:#8888aa;background:rgba(99,102,241,.12);border:1px solid rgba(99,102,241,.25);border-radius:999px;padding:2px 10px}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{text-align:left;color:#8888aa;font-size:10px;text-transform:uppercase;letter-spacing:.04em;padding:7px 6px;border-bottom:1px solid rgba(255,255,255,.08)}
+td{padding:10px 6px;border-bottom:1px solid rgba(255,255,255,.05)}
+td.pos{font-weight:900;width:34px;text-align:center;font-size:15px}
+.nick{font-weight:800;color:#f0f0ff}
+.pts{font-weight:900;background:linear-gradient(135deg,#22d3ee,#a855f7);-webkit-background-clip:text;-webkit-text-fill-color:transparent;text-align:right}
+.ganho{color:#4ade80;font-weight:700}
+tr.top td{background:rgba(168,85,247,.06)}
+.num{text-align:center;color:#c9d6e2}
+.empty{text-align:center;color:#8888aa;font-size:14px;padding:30px 10px}
+.voltar{display:block;text-align:center;color:#6b7591;font-size:13px;padding:18px 0;text-decoration:none}
+.regra{text-align:center;font-size:11px;color:#44445a;margin-top:6px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand">🎮 CAMPonline</div>
+  <h1>🏆 Ranking</h1>
+  <p class="sub">Os feras de cada jogo. Jogou, pontuou. Ganhou, subiu. 📈</p>
+
+  {% if not jogos %}
+    <div class="empty">Ainda não tem ninguém no ranking.<br>Seja o primeiro: <a href="/camponline" style="color:#22d3ee;font-weight:700">jogue um torneio</a> e apareça aqui! 🎯</div>
+  {% endif %}
+
+  {% for jogo, players in jogos.items() %}
+    <div class="game-block">
+      <h2>🎯 {{ jogo }} <span class="tag">{{ players|length }} player{{ 's' if players|length != 1 }}</span></h2>
+      {% if players %}
+      <table>
+        <tr><th>#</th><th>Player</th><th class="num">Vit.</th><th class="num">Jogos</th><th style="text-align:right">R$ ganho</th><th style="text-align:right">Pontos</th></tr>
+        {% for p in players %}
+        <tr class="{{ 'top' if loop.index <= 3 }}">
+          <td class="pos">{% if loop.index==1 %}🥇{% elif loop.index==2 %}🥈{% elif loop.index==3 %}🥉{% else %}{{ loop.index }}{% endif %}</td>
+          <td class="nick">{{ p.nick }}</td>
+          <td class="num">{{ p.vitorias }}</td>
+          <td class="num">{{ p.torneios }}</td>
+          <td class="ganho" style="text-align:right">R$ {{ '%.0f'|format(p.ganho or 0) }}</td>
+          <td class="pts">{{ p.pontos }}</td>
+        </tr>
+        {% endfor %}
+      </table>
+      {% else %}
+      <div class="empty">Sem resultados pra {{ jogo }} ainda.</div>
+      {% endif %}
+    </div>
+  {% endfor %}
+
+  <div class="regra">Pontos = vitória ×10 + participação ×1 · ranking por jogo, identificado pelo NICK</div>
+  <a class="voltar" href="/camponline">← Voltar pro CAMPonline</a>
+</div>
+</body>
+</html>
