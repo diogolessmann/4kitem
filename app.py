@@ -15792,6 +15792,15 @@ def camponline_confirmar(camp_id):
                     'vencedor': slot['nick'] or slot['cliente_nome']})
 
 
+def _camp_payout_via_efi():
+    """CAMPonline paga o prêmio via Efí-NATIVO (mesmo caixa que recebeu as inscrições) em vez do
+    fallback Asaas — tira a dependência de saldo na Asaas. DEFAULT OFF: ligar (CAMP_PAYOUT_VIA_EFI=1)
+    só depois de confirmar que o Pix-Envio do Efí funciona (webhook cadastrado na chave via
+    efi_pix.configurar_webhook + x-skip-mtls-checking). NÃO mexe na RifaJá/Jaya — chama efi_pix
+    direto, sem tocar no fallback Asaas global (_sz_efi_comissao_via_asaas/EFI_COMISSAO_VIA_ASAAS)."""
+    return os.environ.get('CAMP_PAYOUT_VIA_EFI', '0').strip().lower() in ('1', 'true', 'yes', 'sim', 'on')
+
+
 def _camp_premio_sync_asaas(conn, camp, ext, gateway):
     """Anti-duplo: confere no Asaas se a transferência do prêmio (externalReference=ext) já saiu.
     Se saiu, marca 'pago' e sincroniza o ledger — nunca reenvia em cima de um PIX que já caiu. No
@@ -15842,6 +15851,7 @@ def _camp_pagar_premio(conn, camp, force=False):
         return ('erro', 'CPF do vencedor inválido pra PIX.')
     ext     = f"camp_premio_{camp['id']}_{slot['id']}_0"   # _0 = capitão (membro_id 0)
     gateway = camp.get('gateway', 'efi')
+    via_efi = _camp_payout_via_efi()   # paga do caixa Efí (sem depender de saldo Asaas) se ligado
     agora   = datetime.now().isoformat()
     row  = conn.execute("SELECT status, tentativas FROM camponline_premio_pagamentos WHERE ext_ref=?",
                         (ext,)).fetchone()
@@ -15872,14 +15882,26 @@ def _camp_pagar_premio(conn, camp, force=False):
             (agora, ext, lease_velho))
         conn.commit()
         if cur.rowcount == 0:
-            if _camp_premio_sync_asaas(conn, camp, ext, gateway):
+            if (not via_efi) and _camp_premio_sync_asaas(conn, camp, ext, gateway):
                 return ('pago', 'Prêmio já transferido (sincronizado).')
             return ('escrow', 'Pagamento em curso.')
-    # ── este worker tem o lease. ANTI-DUPLO final: confere no Asaas se já caiu antes de enviar. ──
-    if _camp_premio_sync_asaas(conn, camp, ext, gateway):
+    # ── este worker tem o lease. ANTI-DUPLO final: no Asaas confere antes de enviar; no Efí-nativo
+    #    a idempotência é o idEnvio determinístico (checar o Asaas não adianta). ──
+    if (not via_efi) and _camp_premio_sync_asaas(conn, camp, ext, gateway):
         return ('pago', 'Prêmio já transferido (sincronizado).')
     desc = f"Premio CAMPonline - {camp.get('nome','')} - campeao {slot.get('nick') or slot.get('cliente_nome')}"[:100]
-    tid, erro = _sz_afiliado_transfer(chave, tipo, valor, desc, ext, gateway=gateway)
+    if via_efi:
+        # paga do MESMO caixa que recebeu as inscrições (Efí), sem depender do saldo Asaas.
+        try:
+            import efi_pix
+            idenv = ''.join(c for c in ext if c.isalnum())[:35]   # idEnvio determinístico = anti-duplo
+            r = efi_pix.enviar_pix(valor, chave, info=desc, id_envio=idenv)
+            erro = r.get('erro')
+            tid  = '' if erro else (r.get('e2eId') or r.get('idEnvio') or 'efi_ok')
+        except Exception as _e:
+            tid, erro = '', f'efi enviar_pix: {_e}'[:200]
+    else:
+        tid, erro = _sz_afiliado_transfer(chave, tipo, valor, desc, ext, gateway=gateway)
     if tid:
         conn.execute("UPDATE camponline_premio_pagamentos SET status='pago', transfer_id=?, erro='' WHERE ext_ref=?",
                      (tid, ext))
