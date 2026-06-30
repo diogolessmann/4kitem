@@ -149,8 +149,16 @@ input:focus{border-color:#a855f7}
     <div class="big">🎉</div>
     <div style="font-size:20px;font-weight:900;margin:8px 0">Inscrição confirmada!</div>
     <div style="font-size:14px;color:#c9d6e2">Você está dentro do <b>{{ camp.nome }}</b>.<br>
-      Fica de olho no WhatsApp — o lobby e o horário chegam por lá. Boa sorte! 🍗</div>
+      {% if camp.lobby_info %}👇 A sala do jogo apareceu aqui embaixo.{% else %}Fica de olho no WhatsApp — o lobby e o horário chegam por lá.{% endif %} Boa sorte! 🍗</div>
   </div>
+
+  {% if camp.lobby_info %}
+  <div class="card hidden" id="lobby-card" style="border-color:rgba(34,197,94,.4)">
+    <div style="font-size:13px;font-weight:800;color:#4ade80;text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px">🎟️ Sala do jogo — você tá dentro</div>
+    <div style="font-size:15px;color:#f0f0ff;white-space:pre-wrap;background:#0d0d1a;border:1px dashed rgba(255,255,255,.25);border-radius:9px;padding:12px">{{ camp.lobby_info }}</div>
+    <div class="hint">Entra com esses dados no {{ camp.jogo }} na hora do jogo. 🔒 É só pra quem se inscreveu — não repassa pra fora.</div>
+  </div>
+  {% endif %}
 
   <div style="text-align:center;margin-top:20px"><a href="/camponline/ranking" style="color:#22d3ee;text-decoration:none;font-size:14px;font-weight:700">🏆 Ver o ranking dos players →</a></div>
   <div class="foot">CAMPonline · competição de habilidade · premiação por desempenho</div>
@@ -202,7 +210,7 @@ async function checar(){
   try{
     const r=await fetch(`/slotzap/p/${TOKEN}/confirmar`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({numero:NUMERO})});
     const j=await r.json();
-    if(j.pago){ $('pix-card').classList.add('hidden'); $('ok-card').classList.remove('hidden'); return true; }
+    if(j.pago){ $('pix-card').classList.add('hidden'); $('ok-card').classList.remove('hidden'); try{localStorage.setItem('camp_paid_'+TOKEN,'1')}catch(e){} revelarLobby(); return true; }
   }catch(e){}
   return false;
 }
@@ -213,6 +221,9 @@ async function japaguei(){
 }
 let polls=0;
 function poll(){ const t=setInterval(async()=>{ polls++; if(polls>40){clearInterval(t);return;} if(await checar()) clearInterval(t); },4000); }
+function revelarLobby(){ const l=$('lobby-card'); if(l){ l.classList.remove('hidden'); l.scrollIntoView({block:'center'}); } }
+// jogador que JÁ pagou (voltou na página) vê a sala na hora
+try{ if(localStorage.getItem('camp_paid_'+TOKEN)==='1') revelarLobby(); }catch(e){}
 </script>
 </body>
 </html>
