@@ -7,6 +7,10 @@
 <meta name="description" content="A arena onde o jogador anônimo vira lenda. Cria o campeonato de PUBG, EA FC, Free Fire, CS e mais, a galera paga a inscrição no PIX, a plataforma segura o bolo e o campeão recebe o prêmio na hora.">
 <meta property="og:title" content="CAMPonline — chegou a sua hora">
 <meta property="og:description" content="Joga valendo PIX, prova que é o melhor e leva o prêmio na hora. A arena dos campeonatos de games.">
+<meta property="og:image" content="/static/camponline/og.jpg">
+<meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" type="image/png" href="/static/camponline/favicon.png">
 <link href="https://fonts.googleapis.com/css2?family=Oxanium:wght@500;700;800&family=Inter:wght@400;600;800;900&display=swap" rel="stylesheet">
 <script>document.documentElement.classList.add('js')</script>
 <style>
@@ -19,6 +23,25 @@
     background:radial-gradient(60% 45% at 50% -5%,rgba(124,58,237,.28),transparent 70%),
                radial-gradient(45% 40% at 85% 20%,rgba(34,211,238,.16),transparent 70%),
                radial-gradient(50% 50% at 10% 60%,rgba(168,85,247,.12),transparent 70%)}
+  /* HERO de fundo (a arte do anonimo no quarto) */
+  #herobg{position:fixed;top:0;left:0;right:0;height:108vh;z-index:0;pointer-events:none;
+    background:url('/static/camponline/hero.jpg') center top/cover no-repeat;opacity:.45;
+    -webkit-mask-image:linear-gradient(#000 28%,rgba(0,0,0,.35) 62%,transparent 95%);
+            mask-image:linear-gradient(#000 28%,rgba(0,0,0,.35) 62%,transparent 95%)}
+  #herobg::after{content:'';position:absolute;inset:0;
+    background:linear-gradient(180deg,rgba(7,6,15,.4),rgba(7,6,15,.55) 55%,rgba(7,6,15,.92))}
+  /* banda "O SONHO" (do quarto a arena) */
+  .dreamband{position:relative;margin:34px 0;border-radius:20px;overflow:hidden;min-height:320px;display:flex;align-items:flex-end;border:1px solid rgba(168,85,247,.25)}
+  .dreamband img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0}
+  .dreamband::after{content:'';position:absolute;inset:0;z-index:1;background:linear-gradient(180deg,rgba(7,6,15,.05),rgba(7,6,15,.9)),linear-gradient(90deg,rgba(7,6,15,.55),transparent 55%)}
+  .dreamband .db-txt{position:relative;z-index:2;padding:26px 28px}
+  .dreamband .db-k{font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--n1);font-weight:700;margin-bottom:6px}
+  .dreamband .db-h{font-family:'Oxanium',sans-serif;font-size:clamp(22px,4vw,36px);font-weight:800;line-height:1.05;max-width:560px}
+  /* arena atras do CTA final */
+  .final{position:relative;overflow:hidden;border-radius:24px;margin-top:18px}
+  .final>img.finalbg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0;opacity:.4}
+  .final::before{content:'';position:absolute;inset:0;z-index:1;background:radial-gradient(75% 95% at 50% 45%,rgba(7,6,15,.45),rgba(7,6,15,.93))}
+  .final>h2,.final>p,.final>a{position:relative;z-index:2}
   /* NAV */
   .nav{display:flex;align-items:center;justify-content:space-between;padding:18px 0}
   .logo{font-size:24px;font-weight:800;letter-spacing:-.5px;background:linear-gradient(135deg,var(--n1),var(--n2));
@@ -138,6 +161,7 @@
 </head>
 <body>
 
+<div id="herobg"></div>
 <div class="stars"></div>
 <div id="crt-flash"></div>
 
@@ -206,6 +230,14 @@
     </div>
   </section>
 
+  <section class="dreamband reveal" aria-label="De anônimo a lenda">
+    <img src="/static/camponline/sonho.jpg" alt="Do quarto à arena — de anônimo a lenda">
+    <div class="db-txt">
+      <div class="db-k">O sonho</div>
+      <div class="db-h">De anônimo no quarto a <span style="color:#22d3ee">lenda no palco</span>. A virada começa num clique.</div>
+    </div>
+  </section>
+
   <section class="sec">
     <h2 class="sec-h reveal">Por que é diferente</h2>
     <div class="feats">
@@ -230,6 +262,7 @@
   </section>
 
   <section class="final">
+    <img class="finalbg" src="/static/camponline/arena.jpg" alt="">
     <h2 class="reveal">A arena tá aberta.</h2>
     <p class="reveal" style="animation-delay:.06s">Vai assistir o grupo jogar… ou vai ser <strong>você</strong> levando o PIX?</p>
     <a class="cta big reveal" href="/camponline/nova" style="animation-delay:.12s">🚀 Criar meu campeonato agora</a>
