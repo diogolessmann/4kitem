@@ -123,6 +123,16 @@
   @keyframes stardrift{to{background-position:0 -120px}}
   #crt-flash{position:fixed;inset:0;z-index:150;background:#eafcff;opacity:0;pointer-events:none}
   body.entered #crt-flash{animation:crton .55s ease forwards}
+  /* INTRO VIDEO (YouTube, skippavel) */
+  #intro-screen{position:fixed;inset:0;z-index:260;background:#000;display:flex;align-items:center;justify-content:center;transition:opacity .55s ease}
+  #intro-screen.gone{opacity:0;visibility:hidden}
+  #intro-yt{width:100%;max-width:177.78vh;aspect-ratio:16/9;max-height:100vh}
+  #intro-yt iframe{width:100%;height:100%;display:block;border:0}
+  #intro-controls{position:fixed;bottom:22px;right:22px;z-index:2;display:flex;gap:10px}
+  #intro-controls button{font-family:inherit;font-weight:800;font-size:14px;cursor:pointer;border-radius:999px;padding:11px 18px;color:#fff;background:rgba(20,20,30,.72);border:1px solid rgba(255,255,255,.28)}
+  #intro-controls button:hover{background:rgba(40,40,60,.92)}
+  #intro-skip{background:rgba(168,85,247,.28);border-color:rgba(168,85,247,.55)}
+  @media(max-width:640px){ #intro-controls{bottom:14px;right:14px} #intro-controls button{padding:9px 13px;font-size:12px} }
   @keyframes crton{0%{opacity:0}8%{opacity:.85}30%{opacity:.05}45%{opacity:.45}100%{opacity:0}}
 </style>
 </head>
@@ -130,6 +140,14 @@
 
 <div class="stars"></div>
 <div id="crt-flash"></div>
+
+<div id="intro-screen">
+  <div id="intro-yt"></div>
+  <div id="intro-controls">
+    <button id="intro-som" onclick="introSom()">🔊 Ligar som</button>
+    <button id="intro-skip" onclick="fecharIntro()">PULAR INTRO ▶</button>
+  </div>
+</div>
 
 <div id="start-screen" role="button" tabindex="0" aria-label="Entrar na arena">
   <div class="ss-inner">
@@ -245,6 +263,31 @@
     startScreen.addEventListener('click', entrar);
     startScreen.addEventListener('keydown', e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); entrar(); } });
   }
+
+  /* ===== INTRO VIDEO (YouTube, skippavel) — toca, acaba/pula -> PRESS START -> musica ===== */
+  const INTRO_VIDEO_ID='4lVvDw-mz2M';
+  const introScreen=document.getElementById('intro-screen');
+  let introPlayer=null, introDone=false, introPlaying=false;
+  function fecharIntro(){
+    if(introDone) return; introDone=true;
+    try{ localStorage.setItem('camp_intro_seen','1'); }catch(e){}
+    try{ if(introPlayer&&introPlayer.stopVideo) introPlayer.stopVideo(); }catch(e){}
+    if(introScreen){ introScreen.classList.add('gone'); setTimeout(()=>{ if(introScreen&&introScreen.remove) introScreen.remove(); },600); }
+  }
+  function introSom(){ try{ introPlayer.unMute(); introPlayer.setVolume(100); const b=document.getElementById('intro-som'); if(b) b.style.display='none'; }catch(e){} }
+  window.onYouTubeIframeAPIReady=function(){
+    try{
+      introPlayer=new YT.Player('intro-yt',{ videoId:INTRO_VIDEO_ID,
+        playerVars:{autoplay:1,mute:1,controls:0,rel:0,modestbranding:1,playsinline:1,fs:0,disablekb:1,iv_load_policy:3},
+        events:{ onStateChange:function(e){ if(e.data===YT.PlayerState.PLAYING) introPlaying=true; if(e.data===YT.PlayerState.ENDED) fecharIntro(); } } });
+    }catch(e){ fecharIntro(); }
+    setTimeout(()=>{ if(!introPlaying) fecharIntro(); }, 12000);   // seguranca: embed travado nao prende ninguem
+  };
+  (function(){
+    let seen=false; try{ seen=localStorage.getItem('camp_intro_seen')==='1'; }catch(e){}
+    if(!INTRO_VIDEO_ID || seen){ if(introScreen&&introScreen.remove) introScreen.remove(); return; }  // quem ja viu -> direto pro PRESS START
+    const tag=document.createElement('script'); tag.src='https://www.youtube.com/iframe_api'; document.head.appendChild(tag);
+  })();
 </script>
 </body>
 </html>
