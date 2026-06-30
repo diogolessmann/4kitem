@@ -18,8 +18,25 @@
   .nav a.btn{background:linear-gradient(135deg,#22d3ee,#7c3aed);color:#fff;padding:10px 18px;
         border-radius:10px;text-decoration:none;font-weight:800;font-size:14px}
   .hero{text-align:center;padding:36px 0 24px}
-  .hero h1{font-size:40px;font-weight:900;line-height:1.1;margin-bottom:14px}
+  .hero h1{font-size:clamp(42px,8.5vw,66px);font-weight:900;line-height:1.04;margin-bottom:14px;letter-spacing:-1px}
   .hero h1 .g{background:linear-gradient(135deg,#22d3ee,#a855f7);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+  .kicker{display:inline-block;font-size:12px;font-weight:800;letter-spacing:1.5px;color:#22d3ee;
+    border:1px solid rgba(34,211,238,.35);border-radius:999px;padding:6px 15px;margin-bottom:20px;text-transform:uppercase}
+  /* Tela "PRESS START" de fliperama (abertura) */
+  #start-screen{position:fixed;inset:0;z-index:200;cursor:pointer;text-align:center;
+    background:radial-gradient(circle at 50% 38%,#1b1033,#07060f 72%);
+    display:flex;align-items:center;justify-content:center;transition:opacity .6s ease,visibility .6s}
+  #start-screen.gone{opacity:0;visibility:hidden}
+  #start-screen::after{content:'';position:absolute;inset:0;pointer-events:none;
+    background:repeating-linear-gradient(0deg,rgba(0,0,0,.16) 0 1px,transparent 1px 3px)}
+  .ss-inner{position:relative;z-index:1;padding:20px}
+  .ss-logo{font-size:clamp(36px,9vw,72px);font-weight:900;letter-spacing:-1px;
+    background:linear-gradient(135deg,#22d3ee,#a855f7);-webkit-background-clip:text;-webkit-text-fill-color:transparent;
+    filter:drop-shadow(0 0 26px rgba(124,58,237,.55))}
+  .ss-sub{color:#9aa3bd;font-size:clamp(13px,3.4vw,17px);font-weight:600;margin:12px 0 42px}
+  .ss-press{font-size:clamp(20px,5vw,30px);font-weight:900;color:#fff;letter-spacing:4px;animation:blink 1.1s steps(1) infinite}
+  .ss-hint{color:#6b7591;font-size:12px;margin-top:18px}
+  @keyframes blink{50%{opacity:.12}}
   .hero p{font-size:18px;color:#c9d6e2;max-width:640px;margin:0 auto 24px}
   .hero-img{width:100%;max-width:560px;height:280px;margin:0 auto 26px;border-radius:20px;
     background:linear-gradient(135deg,#13131f,#1a1030);border:1px solid rgba(168,85,247,.25);
@@ -39,6 +56,14 @@
 </style>
 </head>
 <body>
+<div id="start-screen" role="button" tabindex="0" aria-label="Entrar na arena">
+  <div class="ss-inner">
+    <div class="ss-logo">🎮 CAMPonline</div>
+    <div class="ss-sub">a arena onde o jogador de fim de semana vira lenda</div>
+    <div class="ss-press">▶ PRESS&nbsp;START</div>
+    <div class="ss-hint">toque pra entrar · 🔊 com som</div>
+  </div>
+</div>
 <div class="wrap">
   <div class="nav">
     <span class="logo">🎮 CAMPonline</span>
@@ -50,16 +75,13 @@
   </div>
 
   <section class="hero">
-    <div class="hero-img">
-      <img src="/static/camponline/hero.webp" alt="CAMPonline"
-           onerror="this.parentNode.innerHTML='🎮'">
-    </div>
-    <h1>Seu campeonato de games<br><span class="g">valendo PIX</span>, em 1 clique</h1>
-    <p>Crie o rachão de PUBG, EA FC, Free Fire ou CS. A galera paga a inscrição no PIX,
-       <strong>a gente cuida do dinheiro e do chaveamento</strong>, e o vencedor recebe o prêmio
-       <strong>na hora</strong> — antes de sair do lobby.</p>
+    <div class="kicker">Você não precisa ser pro — precisa de uma arena</div>
+    <h1>CHEGOU A <span class="g">SUA HORA</span>.</h1>
+    <p>O dia em que o jogador anônimo do grupo entra na arena, joga <strong>valendo PIX</strong>,
+       prova que é o melhor e leva o prêmio <strong>na hora</strong> — antes de sair do lobby.
+       PUBG, EA FC, Free Fire, CS… escolhe o jogo e chama a galera.</p>
     <a class="cta" href="/camponline/nova">🚀 Criar meu campeonato</a>
-    <div class="cta-sub">Leva 1 minuto · sem mensalidade · você ainda ganha uma fatia</div>
+    <div class="cta-sub">Leva 1 minuto · sem mensalidade · você organiza e ainda ganha uma fatia</div>
     <div style="margin-top:14px;font-size:14px;color:#9aa3bd">
       Já tem conta? <a href="/camponline/entrar" style="color:#22d3ee;text-decoration:none;font-weight:700">Entrar →</a>
     </div>
@@ -108,10 +130,17 @@
     } else { bgm.pause(); bgmBtn.textContent='🔇'; bgmBtn.classList.remove('on'); localStorage.setItem('camp_bgm','0'); }
   }
   function toggleBGM(){ setBGM(bgm.paused); }
-  // Se o usuário JÁ tinha ligado, retoma — mas só após a 1ª interação (política de autoplay).
-  if(localStorage.getItem('camp_bgm')==='1'){
-    const once=()=>{ setBGM(true); document.removeEventListener('click',once); document.removeEventListener('keydown',once); };
-    document.addEventListener('click',once); document.addEventListener('keydown',once);
+  // Tela "PRESS START": o 1º toque libera o som (política de autoplay) e revela a arena.
+  const startScreen=document.getElementById('start-screen');
+  function entrar(){
+    if(!startScreen || startScreen.classList.contains('gone')) return;
+    startScreen.classList.add('gone');
+    if(localStorage.getItem('camp_bgm')!=='0') setBGM(true);   // toca o tema (respeita quem mutou antes)
+    setTimeout(()=>{ if(startScreen) startScreen.remove(); }, 650);
+  }
+  if(startScreen){
+    startScreen.addEventListener('click', entrar);
+    startScreen.addEventListener('keydown', e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); entrar(); } });
   }
 </script>
 </body>
