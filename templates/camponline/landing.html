@@ -84,5 +84,35 @@
   </section>
   <a class="voltar" href="/">← Voltar pro 4kitem</a>
 </div>
+
+<!-- 🎵 Música de fundo (clima 16-bit de luta). OFF por padrão — o navegador bloqueia autoplay
+     com som, então toca só após o 1º clique. Troque /static/camponline/theme.mp3 por uma trilha
+     ROYALTY-FREE (NÃO a original do SF2 — é da Capcom). Loop, volume baixo. -->
+<audio id="bgm" loop preload="none" src="/static/camponline/theme.mp3"></audio>
+<button id="bgm-btn" onclick="toggleBGM()" title="Música" aria-label="Música de fundo">🔇</button>
+<style>
+  #bgm-btn{position:fixed;bottom:16px;right:16px;z-index:60;width:46px;height:46px;border-radius:50%;
+    background:linear-gradient(135deg,#22d3ee,#7c3aed);border:none;color:#fff;font-size:20px;cursor:pointer;
+    box-shadow:0 4px 14px rgba(124,58,237,.45);transition:transform .15s}
+  #bgm-btn:hover{transform:scale(1.08)}
+  #bgm-btn.on{animation:bgmpulse 1.4s ease-in-out infinite}
+  @keyframes bgmpulse{0%,100%{box-shadow:0 4px 14px rgba(124,58,237,.45)}50%{box-shadow:0 4px 22px rgba(34,211,238,.8)}}
+</style>
+<script>
+  const bgm=document.getElementById('bgm'), bgmBtn=document.getElementById('bgm-btn');
+  function setBGM(on){
+    if(on){
+      bgm.volume=0.35;
+      bgm.play().then(()=>{bgmBtn.textContent='🔊';bgmBtn.classList.add('on');localStorage.setItem('camp_bgm','1');})
+                .catch(()=>{bgmBtn.textContent='🔇';bgmBtn.classList.remove('on');});
+    } else { bgm.pause(); bgmBtn.textContent='🔇'; bgmBtn.classList.remove('on'); localStorage.setItem('camp_bgm','0'); }
+  }
+  function toggleBGM(){ setBGM(bgm.paused); }
+  // Se o usuário JÁ tinha ligado, retoma — mas só após a 1ª interação (política de autoplay).
+  if(localStorage.getItem('camp_bgm')==='1'){
+    const once=()=>{ setBGM(true); document.removeEventListener('click',once); document.removeEventListener('keydown',once); };
+    document.addEventListener('click',once); document.addEventListener('keydown',once);
+  }
+</script>
 </body>
 </html>
