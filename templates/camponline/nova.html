@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CAMPonline — Novo Campeonato</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',sans-serif;background:#07060f;color:#f0f0ff;min-height:100vh}
+nav{background:#13131f;border-bottom:1px solid rgba(255,255,255,.07);
+    padding:0 24px;height:56px;display:flex;align-items:center;gap:12px}
+.nav-logo{font-size:18px;font-weight:800;background:linear-gradient(135deg,#22d3ee,#a855f7);
+          -webkit-background-clip:text;-webkit-text-fill-color:transparent;flex:1}
+.nav-btn{background:none;border:1px solid rgba(255,255,255,.1);border-radius:7px;
+         color:#8888aa;padding:5px 12px;font-size:12px;cursor:pointer;font-family:inherit;text-decoration:none}
+.container{max-width:560px;margin:36px auto;padding:0 20px}
+h1{font-size:20px;font-weight:800;margin-bottom:6px}
+.sub{font-size:13px;color:#8888aa;margin-bottom:22px}
+.card{background:#13131f;border:1px solid rgba(255,255,255,.07);border-radius:16px;padding:28px}
+.form-group{margin-bottom:18px}
+label{display:block;font-size:12px;font-weight:600;color:#8888aa;margin-bottom:6px}
+input,textarea,select{width:100%;background:#0d0d1a;border:1px solid rgba(255,255,255,.1);
+  border-radius:8px;color:#f0f0ff;padding:11px 13px;font-size:14px;font-family:inherit;outline:none;transition:.15s}
+input:focus,textarea:focus,select:focus{border-color:#a855f7}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.hint{font-size:11px;color:#44447a;margin-top:5px}
+.preview{background:#0d0d1a;border:1px solid rgba(168,85,247,.2);border-radius:10px;
+          padding:14px 16px;margin-top:16px;font-size:13px;color:#9aa3bd;line-height:1.7}
+.preview .big{font-size:22px;font-weight:900;background:linear-gradient(135deg,#22d3ee,#a855f7);
+          -webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.preview strong{color:#a5b4fc}
+.btn-submit{width:100%;padding:13px;border-radius:9px;border:none;margin-top:20px;
+             background:linear-gradient(135deg,#22d3ee,#7c3aed);color:#fff;
+             font-size:15px;font-weight:700;cursor:pointer;font-family:inherit}
+.btn-submit:hover{opacity:.9}
+.err{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);color:#fca5a5;
+     padding:11px 14px;border-radius:8px;font-size:13px;margin-bottom:16px}
+</style>
+</head>
+<body>
+<nav>
+  <span class="nav-logo">🎮 CAMPonline</span>
+  <a href="/camponline" class="nav-btn">← Voltar</a>
+</nav>
+<div class="container">
+  <h1>Novo Campeonato</h1>
+  <div class="sub">Sem mensalidade. A casa fica com {{ (camp_rake*100)|round|int }}% de taxa de serviço; você define a sua fatia.</div>
+  <div class="card">
+    {% if erro %}<div class="err">{{ erro }}</div>{% endif %}
+    <form method="POST" id="form">
+      <div class="form-group">
+        <label>Nome do campeonato *</label>
+        <input type="text" name="nome" id="nome" placeholder="Ex: Rachão de PUBG — Sexta 21h" required oninput="calc()">
+      </div>
+      <div class="grid2">
+        <div class="form-group">
+          <label>Jogo *</label>
+          <select name="jogo" id="jogo">
+            <option>PUBG</option>
+            <option>EA FC / FIFA</option>
+            <option>Free Fire</option>
+            <option>CS2</option>
+            <option>Valorant</option>
+            <option>Rocket League</option>
+            <option>Outro</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Modo</label>
+          <select name="modo" id="modo" onchange="modoMudou()">
+            <option value="squad">Squad (4)</option>
+            <option value="dupla">Dupla (2)</option>
+            <option value="solo">Solo (1)</option>
+          </select>
+        </div>
+      </div>
+      <div class="grid2">
+        <div class="form-group">
+          <label>Formato</label>
+          <select name="formato" id="formato">
+            <option value="br_pontos">Battle Royale (por colocação)</option>
+            <option value="mata_mata">Mata-mata</option>
+            <option value="liga">Liga / pontos corridos</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Data e hora do jogo</label>
+          <input type="datetime-local" name="horario" id="horario">
+        </div>
+      </div>
+      <div class="grid2">
+        <div class="form-group">
+          <label>Inscrição por jogador (R$) *</label>
+          <input type="number" name="taxa" id="taxa" placeholder="7.90" step="0.01" min="5" required oninput="calc()">
+        </div>
+        <div class="form-group">
+          <label>Vagas (inscrições) *</label>
+          <input type="number" name="vagas" id="vagas" placeholder="25" min="2" max="5000" required value="25" oninput="calc()">
+          <div class="hint" id="vagas-hint">25 squads (4 jogadores cada)</div>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Sua fatia, organizador (%)</label>
+        <input type="number" name="org_comissao" id="org" value="10" min="0" max="50" step="1" oninput="calc()">
+        <div class="hint">Quanto você ganha de cada inscrição. O resto vira prêmio do vencedor.</div>
+      </div>
+      <div class="form-group">
+        <label>Descrição <span style="font-weight:400;color:#6b7591">(curta — máx. 180)</span></label>
+        <textarea name="descricao" id="descr" rows="2" maxlength="180"
+                  placeholder="Ex: Squad de PUBG, mapa Erangel. Vencedor leva o bolo no PIX na hora." style="resize:vertical"></textarea>
+      </div>
+      <div class="form-group">
+        <label>🏆 Foto do prêmio / arte <span style="font-weight:400;color:#6b7591">(opcional)</span></label>
+        <input type="hidden" name="imagem" id="imagem">
+        <div id="img-preview" style="margin-bottom:8px;display:none">
+          <img id="img-preview-tag" src="" style="width:100%;max-height:200px;object-fit:cover;border-radius:10px;border:1px solid rgba(255,255,255,.1)">
+        </div>
+        <input type="file" id="img-file" accept="image/*" style="display:none" onchange="uploadImg(this)">
+        <button type="button" onclick="document.getElementById('img-file').click()"
+                style="width:100%;padding:11px;border-radius:8px;border:1px dashed rgba(255,255,255,.2);background:#0d0d1a;color:#8888aa;cursor:pointer;font-family:inherit;font-size:14px">📷 <span id="img-btn-txt">Escolher foto</span></button>
+        <div id="img-status" style="font-size:12px;color:#8888aa;margin-top:6px"></div>
+      </div>
+
+      <div class="preview" id="preview">Preencha inscrição e vagas pra ver a conta.</div>
+
+      <button type="submit" class="btn-submit">🚀 Criar campeonato</button>
+    </form>
+  </div>
+</div>
+<script>
+async function uploadImg(input){
+  const f=input.files[0]; if(!f) return;
+  const st=document.getElementById('img-status'); st.textContent='⏳ Enviando...';
+  const fd=new FormData(); fd.append('imagem',f);
+  try{
+    const j=await fetch('/slotzap/upload-imagem',{method:'POST',body:fd}).then(r=>r.json());
+    if(j.ok){
+      document.getElementById('imagem').value=j.url;
+      document.getElementById('img-preview-tag').src=j.url;
+      document.getElementById('img-preview').style.display='';
+      document.getElementById('img-btn-txt').textContent='Trocar foto';
+      st.innerHTML='<span style="color:#22c55e">✅ Foto pronta!</span>';
+    }else{st.innerHTML='<span style="color:#fca5a5">❌ '+(j.error||'Erro')+'</span>';}
+  }catch(e){st.innerHTML='<span style="color:#fca5a5">❌ Erro ao enviar.</span>';}
+}
+function brl(v){return v.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});}
+// Fonte única: rake e taxa de gateway vêm de CAMP_RAKE/CAMP_GW_TAXA no servidor (app.py),
+// pra este preview nunca divergir do prêmio que a página pública anuncia.
+const RAKE={{ camp_rake|tojson }}, GW={{ camp_gw_taxa|tojson }};
+function calc(){
+  const taxa=parseFloat(document.getElementById('taxa').value)||0;
+  const vagas=parseInt(document.getElementById('vagas').value)||0;
+  const orgPct=parseFloat(document.getElementById('org').value)||0;
+  const el=document.getElementById('preview');
+  if(!taxa||!vagas){el.innerHTML='Preencha inscrição e vagas pra ver a conta.';return;}
+  const TAM={solo:1,dupla:2,squad:4};
+  const size=TAM[document.getElementById('modo').value]||1;
+  const jogadores=vagas*size;
+  const bruto=taxa*jogadores;       // inscrição é POR JOGADOR
+  const efi=bruto*GW;               // taxa do gateway (~0,99%)
+  const plat=bruto*RAKE;            // taxa de serviço da casa
+  const org=bruto*(orgPct/100);    // sua fatia
+  const premio=Math.max(0, bruto-efi-plat-org);
+  el.innerHTML=
+    `Se encher (${vagas} ${size>1?'times':'jogadores'} = ${jogadores} jogadores × ${brl(taxa)}):<br>`+
+    `🏆 Prêmio do vencedor: <span class="big">${brl(premio)}</span><br>`+
+    `💰 Sua fatia (organizador, ${orgPct}%): <strong>${brl(org)}</strong><br>`+
+    `<span style="color:#6b7591">Arrecadação ${brl(bruto)} · casa ${(RAKE*100).toFixed(0)}% ${brl(plat)} · gateway ${brl(efi)}</span>`;
+}
+function modoMudou(){
+  const m=document.getElementById('modo').value;
+  const cap={solo:100,dupla:50,squad:25}[m]||100;
+  document.getElementById('vagas').value=cap;
+  document.getElementById('vagas-hint').textContent =
+    m==='solo' ? '100 jogadores (1 por vaga)' :
+    (m==='dupla' ? '50 duplas (2 jogadores cada)' : '25 squads (4 jogadores cada)');
+  calc();
+}
+modoMudou(); calc();
+</script>
+</body>
+</html>

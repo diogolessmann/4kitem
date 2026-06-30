@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{ camp.nome }} — Painel CAMPonline</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',sans-serif;background:#07060f;color:#f0f0ff;min-height:100vh}
+nav{background:#13131f;border-bottom:1px solid rgba(255,255,255,.07);padding:0 20px;height:56px;display:flex;align-items:center;gap:12px}
+.nav-logo{font-size:18px;font-weight:800;background:linear-gradient(135deg,#22d3ee,#a855f7);-webkit-background-clip:text;-webkit-text-fill-color:transparent;flex:1}
+.nav-btn{background:none;border:1px solid rgba(255,255,255,.1);border-radius:7px;color:#8888aa;padding:5px 12px;font-size:12px;text-decoration:none}
+.container{max-width:680px;margin:28px auto;padding:0 16px}
+h1{font-size:22px;font-weight:900;margin-bottom:2px}
+.game{display:inline-block;font-size:12px;font-weight:800;color:#a5b4fc;background:rgba(99,102,241,.15);border:1px solid rgba(99,102,241,.3);border-radius:999px;padding:3px 12px;margin:8px 0 16px}
+.card{background:#13131f;border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:18px;margin-bottom:14px}
+.card h3{font-size:13px;font-weight:800;color:#8888aa;text-transform:uppercase;letter-spacing:.04em;margin-bottom:12px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
+.stat{background:#13131f;border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:12px;text-align:center}
+.stat .v{font-size:22px;font-weight:900}.stat .k{font-size:11px;color:#8888aa}
+.link-row{display:flex;gap:8px;align-items:center}
+input,textarea{width:100%;background:#0d0d1a;border:1px solid rgba(255,255,255,.1);border-radius:9px;color:#f0f0ff;padding:11px 13px;font-size:14px;font-family:inherit;outline:none}
+input:focus,textarea:focus{border-color:#a855f7}
+.btn{background:linear-gradient(135deg,#22d3ee,#7c3aed);color:#fff;border:none;border-radius:9px;padding:11px 16px;font-weight:800;font-size:14px;cursor:pointer;font-family:inherit;white-space:nowrap}
+.btn-ghost{background:rgba(99,102,241,.15);border:1px solid rgba(99,102,241,.3);color:#a5b4fc;border-radius:8px;padding:11px 14px;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit;text-decoration:none;white-space:nowrap}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;color:#8888aa;font-size:11px;text-transform:uppercase;padding:8px 6px;border-bottom:1px solid rgba(255,255,255,.08)}
+td{padding:9px 6px;border-bottom:1px solid rgba(255,255,255,.05)}
+.nick{font-weight:800;color:#a5b4fc}
+.tag{font-size:10px;font-weight:800;padding:2px 8px;border-radius:999px}
+.tag.pago{background:rgba(34,197,94,.15);color:#4ade80}
+.tag.reservado{background:rgba(234,179,8,.15);color:#fbbf24}
+.soon{background:linear-gradient(135deg,#13131f,#1a1030);border:1px dashed rgba(168,85,247,.35);border-radius:14px;padding:18px;text-align:center;color:#9aa3bd;font-size:14px}
+.hint{font-size:11px;color:#6b7591;margin-top:6px}
+.won{background:linear-gradient(135deg,#0c1f16,#10231a);border:1px solid rgba(34,197,94,.35);border-radius:12px;padding:14px;font-size:14px;color:#d7ffe9}
+select{width:100%;background:#0d0d1a;border:1px solid rgba(255,255,255,.1);border-radius:9px;color:#f0f0ff;padding:11px 13px;font-size:14px;font-family:inherit;outline:none}
+</style>
+</head>
+<body>
+<nav>
+  <span class="nav-logo">🎮 CAMPonline</span>
+  <a href="/camponline/nova" class="nav-btn">+ Novo</a>
+</nav>
+<div class="container">
+  <h1>{{ camp.nome }}</h1>
+  <span class="game">🎯 {{ camp.jogo }}{% if camp.modo %} · {{ camp.modo|capitalize }}{% endif %}{% if camp.data_sorteio %} · ⏰ {{ camp.data_sorteio }}{% endif %}</span>
+
+  <div class="stats">
+    <div class="stat"><div class="v" style="color:#4ade80">{{ pagos }}</div><div class="k">Pagos</div></div>
+    <div class="stat"><div class="v">{{ inscritos|length }}</div><div class="k">Inscritos</div></div>
+    <div class="stat"><div class="v">{{ total }}</div><div class="k">Vagas</div></div>
+  </div>
+
+  <div class="card">
+    <h3>🔗 Link público (mande pra galera)</h3>
+    <div class="link-row">
+      <input id="link" readonly value="{{ request.url_root[:-1] }}/camponline/t/{{ camp.token_publico }}">
+      <button class="btn" onclick="navigator.clipboard.writeText(document.getElementById('link').value);this.textContent='Copiado!'">Copiar</button>
+    </div>
+    <div class="hint">É esse link que enche o lobby. Cola no grupo / Discord / story.</div>
+  </div>
+
+  <div class="card">
+    <h3>🎟️ Lobby da sala custom (ID + senha)</h3>
+    <form method="POST" action="/camponline/painel/{{ camp.id }}/lobby">
+      <textarea name="lobby_info" rows="2" placeholder="Ex: Sala: RACHAO21H · Senha: 1234">{{ camp.lobby_info or '' }}</textarea>
+      <div style="margin-top:10px"><button class="btn" type="submit">Salvar lobby</button></div>
+    </form>
+    <div class="hint">Salve aqui as credenciais — no T-menos elas vão pro WhatsApp dos inscritos (em breve, automático).</div>
+  </div>
+
+  <div class="card">
+    <h3>👥 Inscritos ({{ inscritos|length }})</h3>
+    {% if inscritos %}
+    <table>
+      <tr><th>#</th><th>NICK</th><th>Nome</th><th>Time</th><th>Status</th></tr>
+      {% for s in inscritos %}
+      <tr>
+        <td>{{ s.numero }}</td>
+        <td class="nick">{{ s.nick or '—' }}</td>
+        <td>{{ s.cliente_nome }}</td>
+        <td style="color:#8888aa">{{ s.membros or '—' }}</td>
+        <td><span class="tag {{ s.status }}">{{ 'PAGO' if s.status=='pago' else 'aguardando' }}</span></td>
+      </tr>
+      {% endfor %}
+    </table>
+    {% else %}
+    <div style="color:#8888aa;font-size:14px">Ninguém inscrito ainda. Manda o link! 👆</div>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <h3>🏆 Declarar vencedor</h3>
+    {% set vn = (vencedor.nick or vencedor.cliente_nome) if vencedor else '—' %}
+    {% if camp.premio_status in ['pago','pago_parcial'] %}
+      <div class="won">💸 <b>{{ 'Prêmio pago!' if camp.premio_status == 'pago' else 'Prêmio pago (parcial)' }}</b><br>
+        Campeão: <span class="nick">{{ vn }}</span> · <b>R$ {{ '%.2f'|format(camp.premio_valor or 0) }}</b>
+        {% if camp.premio_status == 'pago_parcial' %}<br><span class="hint">⚠️ Uma ou mais chaves PIX do time falharam — confira os membros / suporte.</span>{% endif %}
+        {% if camp.print_url %}<br><a href="{{ camp.print_url }}" target="_blank" style="color:#22d3ee">ver print</a>{% endif %}
+      </div>
+    {% elif camp.premio_status in ['confirmado','em_disputa'] %}
+      <div class="won" style="border-color:rgba(234,179,8,.4)">
+        ✅ Vencedor confirmado: <span class="nick">{{ vn }}</span> · prêmio <b>R$ {{ '%.2f'|format(camp.premio_valor or 0) }}</b><br>
+        <span class="hint">O PIX cai automático ao fim da janela de disputa{% if camp.disputa_ate %} (~{{ camp.disputa_ate[11:16] }}){% endif %}. Ou pague agora:</span>
+      </div>
+      <button class="btn" style="margin-top:10px" onclick="pagarPremio(true)">💸 Pagar prêmio agora</button>
+      <div id="pay-msg" class="hint"></div>
+    {% else %}
+      <div class="hint" style="margin-bottom:10px">📸 Acabou a partida? Suba o print da tela de <b>resultado</b> (com a colocação). A IA lê o NICK do campeão e te mostra pra confirmar — o PIX do prêmio sai depois.</div>
+      {% if pagos > 0 %}<div style="font-size:13px;color:#8888aa;margin-bottom:10px">Prêmio com {{ pagos }} pago(s): <b style="color:#4ade80">R$ {{ '%.2f'|format(premio_now) }}</b></div>{% endif %}
+      <input type="file" id="print-file" accept="image/*" style="margin-bottom:10px">
+      <button class="btn" onclick="subirPrint()">📤 Ler print com a IA</button>
+      <div id="print-out" style="margin-top:12px"></div>
+    {% endif %}
+  </div>
+</div>
+<script>
+const CID = {{ camp.id }};
+const $ = id => document.getElementById(id);
+async function subirPrint(){
+  const f = $('print-file').files[0];
+  if(!f){ alert('Escolha o print primeiro.'); return; }
+  const out = $('print-out'); out.innerHTML = '⏳ Lendo o print com a IA...';
+  const fd = new FormData(); fd.append('print', f);
+  let j;
+  try { const r = await fetch(`/camponline/painel/${CID}/print`, {method:'POST', body:fd}); j = await r.json(); }
+  catch(e){ out.innerHTML = '❌ Erro de conexão.'; return; }
+  if(!j.ok){ out.innerHTML = '❌ ' + (j.erro || 'Não consegui ler.'); return; }
+  let head = j.ia
+    ? `<div class="hint">IA leu: colocação <b>${j.colocacao ?? '—'}</b> · confiança ${((j.confianca||0)*100).toFixed(0)}% · nicks: ${(j.nicks_lidos||[]).join(', ')||'—'}</div>`
+    : `<div class="hint">${j.msg || 'Escolha o vencedor na lista.'}</div>`;
+  const opts = (j.slots||[]).map(s =>
+    `<option value="${s.slot_id}" ${j.proposto && j.proposto.slot_id===s.slot_id?'selected':''}>#${s.numero} — ${s.nick||s.nome||'—'}${s.membros?' ('+s.membros+')':''}</option>`).join('');
+  out.innerHTML = head +
+    `<div style="margin-top:10px">Vencedor (o capitão recebe o PIX):</div>
+     <select id="win-slot" style="margin:6px 0">${opts}</select>
+     <div style="font-size:13px;color:#8888aa;margin:6px 0">Prêmio: <b style="color:#4ade80">R$ ${Number(j.premio).toFixed(2)}</b> · cai no PIX do CPF do campeão</div>
+     <input type="password" id="win-senha" placeholder="Sua senha (confirmação)" style="margin:6px 0">
+     <button class="btn" onclick="confirmar()">✅ Confirmar vencedor</button>
+     <div id="conf-msg" class="hint"></div>`;
+}
+async function confirmar(){
+  const slot_id = $('win-slot').value, senha = $('win-senha').value;
+  if(!senha){ alert('Digite sua senha pra confirmar.'); return; }
+  const m = $('conf-msg'); m.textContent = '⏳ Confirmando...';
+  let j;
+  try { const r = await fetch(`/camponline/painel/${CID}/confirmar-vencedor`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({slot_id, senha})}); j = await r.json(); }
+  catch(e){ m.textContent = '❌ Erro de conexão.'; return; }
+  if(j.ok){ m.textContent = '✅ Confirmado! Recarregando...'; setTimeout(()=>location.reload(), 900); }
+  else { m.textContent = '❌ ' + (j.erro || 'Falhou.'); }
+}
+async function pagarPremio(forcar){
+  const m = $('pay-msg'); m.textContent = '⏳ Enviando PIX...';
+  let j;
+  try { const r = await fetch(`/camponline/painel/${CID}/pagar-premio`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({forcar: !!forcar})}); j = await r.json(); }
+  catch(e){ m.textContent = '❌ Erro de conexão.'; return; }
+  m.textContent = (j.ok?'✅ ':'⚠️ ') + (j.msg || '');
+  if(j.ok){ setTimeout(()=>location.reload(), 1200); }
+}
+</script>
+</body>
+</html>

@@ -781,6 +781,34 @@ COMBO_DESCONTO = 0.25
 # Taxa da plataforma por venda (Asaas Split): você retém 10%, cliente recebe o resto
 SZ_TAXA_VENDA = 0.10
 
+# Rake da plataforma no CAMPonline (torneio): a casa retém 15% do bolo de inscrições.
+# É a ÚNICA fonte de verdade do rake do torneio. HOJE alimenta só o prêmio ESTIMADO:
+# a página pública (camponline_publico) e o preview da página de criação (nova.html, que
+# recebe camp_rake no render). O payout do vencedor (L1b) AINDA NÃO existe — quando for
+# construído DEVE reusar CAMP_RAKE (de preferência via um helper único de cálculo do
+# prêmio), senão a página anuncia um valor e o payout paga outro. Difere de SZ_TAXA_VENDA
+# (rifas = 10%) de propósito; NÃO trocar um pelo outro.
+CAMP_RAKE = 0.15
+# Taxa do gateway (Efí ~0,99%) usada SÓ no cálculo do prêmio estimado do torneio — NÃO é a
+# cobrança real (essa vive na camada de PIX). Fonte única p/ o estimador + preview nova.html.
+CAMP_GW_TAXA = 0.0099
+# Janela de disputa (escrow): minutos após CONFIRMAR o vencedor antes de liberar o PIX do
+# prêmio — protege contra resultado contestado. Default 20 min (env CAMP_DISPUTA_MIN).
+CAMP_DISPUTA_MIN = max(0, int(os.environ.get('CAMP_DISPUTA_MIN', '20') or 20))
+# Teto de tentativas de pagar o prêmio (chave PIX inválida etc.) antes de parar e exigir ação.
+CAMP_CAP_TENTATIVAS = 25
+# TTL do lease de pagamento: uma linha presa em 'enviando' (crash no meio do envio) só pode ser
+# reivindicada por outro worker depois disto — evita 2 envios concorrentes do mesmo prêmio.
+CAMP_LEASE_TTL_MIN = 5
+
+def _camp_premio(bruto, org_pct):
+    """Prêmio do torneio = arrecadação − gateway − rake da casa − fatia do organizador.
+    FONTE ÚNICA do cálculo do prêmio do CAMPonline: usar AQUI tanto no prêmio estimado
+    (página pública / preview) quanto no payout do vencedor (L1b), pra o valor anunciado e o
+    valor pago NUNCA divergirem. org_pct vem em fração (0..0.50). Nunca negativo (max 0)."""
+    return max(0.0, bruto - bruto * CAMP_GW_TAXA - bruto * CAMP_RAKE - bruto * org_pct)
+
+
 def _combo_desconto_ativo(email, produto_atual) -> bool:
     """True se o e-mail já tem assinatura ATIVA do outro produto (MandaZap <-> SlotZap)."""
     if not email:
@@ -12976,13 +13004,13 @@ def desp_api_debito_delete(debito_id):
 
 # ══ OCR multimodal: Gemini (melhor leitura de tabela/valores) com fallback Groq ══
 
-def _desp_gemini_ocr(prompt: str, img_b64: str, mime: str, max_tokens: int = 4096):
+def _desp_gemini_ocr(prompt: str, img_b64: str, mime: str, max_tokens: int = 4096, model: str = None):
     """Chama o Gemini (visão) com imagem + prompt em modo JSON. Retorna texto bruto, ou None se sem chave/resposta."""
     key = os.environ.get('GEMINI_API_KEY', '')
     if not key:
         return None
     # OCR de tabela é difícil: usa o Pro por padrão (lê muito melhor). Override via DESP_OCR_MODEL.
-    model = os.environ.get('DESP_OCR_MODEL') or 'gemini-2.5-pro'
+    model = model or os.environ.get('DESP_OCR_MODEL') or 'gemini-2.5-pro'
     url = f'https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent'
     # Deixa o modelo "pensar" (melhora MUITO a leitura de tabela, inclusive no Flash);
     # tokens com folga p/ não truncar (thinking + resposta). Fallback p/ Groq se ainda truncar.
@@ -15088,6 +15116,42 @@ def rifaja_landing():
     return render_template('rifaja/landing.html')
 
 
+@app.route('/camponline')
+def camponline_landing():
+    """Landing do CAMPonline (fachada de TORNEIOS sobre o motor SlotZap, gateway Efí).
+    Mesmo motor das rifas; o eixo novo é tipo='torneio'."""
+    return render_template('camponline/landing.html')
+
+
+@app.route('/camponline/ranking')
+@app.route('/camponline/ranking/<jogo>')
+def camponline_ranking(jogo=None):
+    """Ranking PÚBLICO de players por jogo — read-only, montado dos resultados que JÁ
+    existem (slots pagos + vencedor do torneio). Aditivo, ZERO dinheiro. É o gancho de
+    retenção (status/mestria) da tese: transforma jogador de-uma-vez em caçador-de-rank."""
+    conn = get_saas_db()
+    rows = [dict(r) for r in conn.execute(
+        "SELECT s.nick AS nick, c.jogo AS jogo, COUNT(*) AS torneios, "
+        "SUM(CASE WHEN c.vencedor_slot_id = s.id THEN 1 ELSE 0 END) AS vitorias, "
+        "SUM(CASE WHEN c.vencedor_slot_id = s.id AND c.premio_status='pago' "
+        "         THEN IFNULL(c.premio_valor,0) ELSE 0 END) AS ganho "
+        "FROM slotzap_slots s JOIN slotzap_campanhas c ON c.id = s.campanha_id "
+        "WHERE c.tipo='torneio' AND s.status='pago' AND IFNULL(s.nick,'') <> '' "
+        "GROUP BY s.nick, c.jogo").fetchall()]
+    conn.close()
+    for r in rows:
+        r['pontos'] = (r['vitorias'] or 0) * 10 + (r['torneios'] or 0)   # vitória=10, participação=1
+    jogos = {}
+    for r in rows:
+        jogos.setdefault(r['jogo'], []).append(r)
+    for g in jogos:
+        jogos[g].sort(key=lambda x: (x['pontos'], x['vitorias'], x['ganho']), reverse=True)
+        jogos[g] = jogos[g][:50]
+    if jogo:
+        jogos = {jogo: jogos.get(jogo, [])}
+    return render_template('camponline/ranking.html', jogos=jogos, jogo_sel=jogo)
+
+
 @app.route('/slotzap')
 def slotzap_landing():
     return redirect('/slotzap/planos')
@@ -15197,6 +15261,7 @@ def slotzap_assinatura_status():
 
 @app.route('/slotzap/entrar', methods=['GET', 'POST'], defaults={'brand': 'slotzap'})
 @app.route('/rifaja/entrar', methods=['GET', 'POST'], defaults={'brand': 'rifaja'})
+@app.route('/camponline/entrar', methods=['GET', 'POST'], defaults={'brand': 'camponline'})
 def slotzap_entrar(brand='slotzap'):
     erro = None
     if request.method == 'POST':
@@ -15216,7 +15281,8 @@ def slotzap_entrar(brand='slotzap'):
             conn2.execute('UPDATE slotzap_users SET last_login=? WHERE id=?',
                           (datetime.now().isoformat(), u['id']))
             conn2.commit(); conn2.close()
-            return redirect('/rifaja/nova' if brand == 'rifaja' else '/slotzap/app')
+            _dest = {'rifaja': '/rifaja/nova', 'camponline': '/camponline/nova'}.get(brand, '/slotzap/app')
+            return redirect(_dest)
     return render_template('slotzap/entrar.html', erro=erro, brand=brand)
 
 
@@ -15415,6 +15481,498 @@ def slotzap_nova(brand='slotzap'):
     return render_template('slotzap/nova.html', erro=erro, brand=brand)
 
 
+@app.route('/camponline/nova', methods=['GET', 'POST'])
+@_sz_login_required
+def camponline_nova():
+    """Cria um TORNEIO (tipo='torneio', gateway Efí) reusando o motor das rifas.
+    Organizador cria DE GRAÇA — a casa ganha no rake (15%), não em mensalidade →
+    por isso NÃO exige plano ativo (diferente de slotzap_nova). Cada 'slot' = uma vaga
+    de jogador; quando paga, vira inscrito. Jaya/rifas intocadas (tipo default 'rifa')."""
+    erro = None
+    if request.method == 'POST':
+        nome    = request.form.get('nome', '').strip()
+        jogo    = request.form.get('jogo', '').strip()[:40]
+        modo    = request.form.get('modo', '').strip()[:20]
+        formato = request.form.get('formato', '').strip()[:20] or 'br_pontos'
+        horario = request.form.get('horario', '').strip()[:20]   # 'YYYY-MM-DDTHH:MM' (reusa data_sorteio)
+        descr   = request.form.get('descricao', '').strip()[:180]
+        imagem  = request.form.get('imagem', '').strip()[:300]
+        # Taxa de inscrição (aceita vírgula 7,90 e milhar 1.234,56)
+        taxa_raw = (request.form.get('taxa') or '0').strip()
+        if ',' in taxa_raw:
+            taxa_raw = taxa_raw.replace('.', '').replace(',', '.')
+        try:
+            taxa = float(taxa_raw or 0)
+        except ValueError:
+            taxa = 0
+        try:
+            vagas = int(float((request.form.get('vagas') or '0').replace(',', '.')))
+        except ValueError:
+            vagas = 0
+        try:
+            org_com = float((request.form.get('org_comissao') or '0').replace(',', '.'))
+        except ValueError:
+            org_com = 0
+        if not nome or not jogo or taxa <= 0 or vagas < 2:
+            erro = 'Nome, jogo, inscrição e nº de vagas são obrigatórios.'
+        elif vagas > 5000:
+            erro = 'Máximo de 5.000 vagas por torneio.'
+        elif taxa < 5:
+            erro = 'A inscrição mínima é R$ 5,00 (exigência do PIX para gerar a cobrança).'
+        elif org_com < 0 or org_com > 50:
+            erro = 'A sua fatia (organizador) deve ficar entre 0% e 50%.'
+        else:
+            import secrets as _sec
+            token_pub = _sec.token_urlsafe(16)
+            # Torneio NÃO tem afiliado: sem mensalidade, o próprio organizador é o promotor
+            # e já fica com a fatia dele (org_comissao). Afiliado por cima comeria a margem da
+            # casa (comissão 30% > rake 15% no solo = prejuízo). Por isso nasce com afiliado OFF.
+            conn = get_saas_db()
+            cur  = conn.execute(
+                'INSERT INTO slotzap_campanhas '
+                '(user_id,nome,descricao,preco,total_slots,slots_inicio,status,created_at,'
+                'token_publico,gateway,imagem,afiliados_ativo,afiliado_comissao,'
+                'tipo,jogo,modo,formato,org_comissao,data_sorteio) '
+                'VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+                (_sz_uid(), nome, descr, taxa, vagas, 1, 'ativa', datetime.now().isoformat(),
+                 token_pub, 'efi', imagem, 0, 0,
+                 'torneio', jogo, modo, formato, org_com, horario)
+            )
+            camp_id = cur.lastrowid
+            for n in range(1, 1 + vagas):
+                conn.execute('INSERT OR IGNORE INTO slotzap_slots (campanha_id,numero,status) VALUES (?,?,?)',
+                             (camp_id, n, 'disponivel'))
+            conn.commit(); conn.close()
+            return redirect(f'/camponline/painel/{camp_id}')
+    return render_template('camponline/nova.html', erro=erro,
+                           camp_rake=CAMP_RAKE, camp_gw_taxa=CAMP_GW_TAXA)
+
+
+@app.route('/camponline/painel/<int:camp_id>')
+@_sz_login_required
+def camponline_painel(camp_id):
+    """Painel do organizador do torneio: link público, lobby (ID/senha), lista de inscritos
+    (com NICK), e o ponto de declarar o vencedor (L1b)."""
+    conn = get_saas_db()
+    camp = conn.execute("SELECT * FROM slotzap_campanhas WHERE id=? AND user_id=? AND tipo='torneio'",
+                        (camp_id, _sz_uid())).fetchone()
+    if not camp:
+        conn.close()
+        return redirect('/camponline/nova')
+    camp = dict(camp)
+    inscritos = [dict(r) for r in conn.execute(
+        "SELECT numero,status,cliente_nome,cliente_tel,nick,membros,pago_em "
+        "FROM slotzap_slots WHERE campanha_id=? AND status IN ('pago','reservado') ORDER BY numero",
+        (camp_id,)).fetchall()]
+    total = conn.execute("SELECT COUNT(*) c FROM slotzap_slots WHERE campanha_id=?",
+                         (camp_id,)).fetchone()['c']
+    vencedor = None
+    if camp.get('vencedor_slot_id'):
+        vrow = conn.execute("SELECT numero, nick, cliente_nome FROM slotzap_slots WHERE id=?",
+                            (camp['vencedor_slot_id'],)).fetchone()
+        vencedor = dict(vrow) if vrow else None
+    premio_now = _camp_premio_real(conn, camp)[0]
+    conn.close()
+    pagos = sum(1 for s in inscritos if s['status'] == 'pago')
+    return render_template('camponline/painel.html', camp=camp, inscritos=inscritos,
+                           total=total, pagos=pagos, vencedor=vencedor,
+                           premio_now=premio_now, disputa_min=CAMP_DISPUTA_MIN)
+
+
+@app.route('/camponline/painel/<int:camp_id>/lobby', methods=['POST'])
+@_sz_login_required
+def camponline_lobby(camp_id):
+    """Salva as credenciais da sala custom (ID/senha) — vão pro grupo no T-menos."""
+    info = (request.form.get('lobby_info') or '').strip()[:300]
+    conn = get_saas_db()
+    conn.execute("UPDATE slotzap_campanhas SET lobby_info=? WHERE id=? AND user_id=? AND tipo='torneio'",
+                 (info, camp_id, _sz_uid()))
+    conn.commit(); conn.close()
+    return redirect(f'/camponline/painel/{camp_id}')
+
+
+# ───────────────────── CAMPonline L1b — declarar vencedor + payout ─────────────────────
+# Prompt do juiz de e-sports: lê a tela de RESULTADO e devolve SÓ JSON (a IA é PROPOSTA,
+# quem confirma é o organizador). Copia os NICKs como estão — o match é no backend.
+PROMPT_CAMP_PRINT = (
+    "Você é um juiz de e-sports. A imagem é um PRINT da tela de RESULTADO de uma partida de "
+    "battle royale (PUBG, Free Fire, Warzone, Fortnite, EA FC etc.). Leia a tela e devolva "
+    "APENAS um JSON, sem nenhum texto fora dele, no formato:\n"
+    '{"eh_tela_de_resultado": true/false, "jogo_detectado": "nome ou \\"\\"", '
+    '"colocacao": inteiro da colocacao do time em destaque (1=campeao) ou null, '
+    '"venceu": true/false, "nicks": ["copie os NICKs do time campeao/destaque EXATAMENTE como '
+    'aparecem, sem traduzir nem corrigir"], "confianca": 0.0 a 1.0, "observacao": "curto, opcional"}\n'
+    "Regras: se a imagem NAO for uma tela de resultado de partida, eh_tela_de_resultado=false e o "
+    "resto vazio/null. Se nao der pra ter CERTEZA que foi 1o lugar, venceu=false. Na duvida, BAIXE a "
+    "confianca (melhor errar pra menos). Copie os NICKs caractere por caractere."
+)
+
+
+def _camp_norm_nick(s):
+    """Normaliza nick p/ casar (minúsculo, só alfanumérico) — tolera espaço/clan tag/emoji."""
+    return ''.join(ch for ch in (s or '').lower() if ch.isalnum())
+
+
+def _camp_premio_real(conn, camp):
+    """Prêmio REAL agora = calculado sobre as inscrições JÁ pagas (não a estimativa de esgotar).
+    Mesma fonte única _camp_premio(). Devolve (premio, qtd_pagos, bruto)."""
+    tam = {'solo': 1, 'dupla': 2, 'squad': 4}.get(camp.get('modo'), 1)
+    pagos = conn.execute("SELECT COUNT(*) FROM slotzap_slots WHERE campanha_id=? AND status='pago'",
+                         (camp['id'],)).fetchone()[0]
+    bruto = pagos * float(camp['preco']) * tam
+    org_pct = float(camp.get('org_comissao') or 0) / 100
+    return round(_camp_premio(bruto, org_pct), 2), pagos, round(bruto, 2)
+
+
+def _camp_slots_pagos(conn, camp_id):
+    """Slots pagos do torneio (com NICK e membros) — base do match e da lista de escolha manual."""
+    return [dict(r) for r in conn.execute(
+        "SELECT id, numero, nick, membros, cliente_nome FROM slotzap_slots "
+        "WHERE campanha_id=? AND status='pago' ORDER BY numero", (camp_id,)).fetchall()]
+
+
+@app.route('/camponline/painel/<int:camp_id>/print', methods=['POST'])
+@_sz_login_required
+def camponline_print(camp_id):
+    """L1b — o dono sobe o print da tela de resultado; a IA lê os NICKs do campeão e PROPÕE o
+    slot vencedor. NÃO confirma, NÃO paga. Se a IA estiver fora do ar, devolve a lista pra
+    escolha manual. Idempotência anti-reuso via sha256 do print."""
+    conn = get_saas_db()
+    camp = conn.execute("SELECT * FROM slotzap_campanhas WHERE id=? AND user_id=? AND tipo='torneio'",
+                        (camp_id, _sz_uid())).fetchone()
+    if not camp:
+        conn.close()
+        return jsonify({'erro': 'Torneio não encontrado.'}), 404
+    camp = dict(camp)
+    if (camp.get('premio_status') or '') in ('confirmado', 'em_disputa', 'pago', 'pago_parcial'):
+        conn.close()
+        return jsonify({'erro': 'Esse torneio já tem vencedor confirmado.'}), 409
+    f = request.files.get('print')
+    if not f or not f.filename:
+        conn.close()
+        return jsonify({'erro': 'Suba o print da tela de resultado.'}), 400
+    try:
+        img_bytes, mime = _camp_comprimir(f.stream)
+    except Exception as e:
+        conn.close()
+        log.warning(f'[CAMPonline] print comprimir: {e}')
+        return jsonify({'erro': 'Não consegui ler essa imagem. Tente outro print.'}), 400
+    import hashlib as _hl, base64 as _b64, secrets as _sec, difflib as _dl
+    print_hash = _hl.sha256(img_bytes).hexdigest()
+    dup = conn.execute("SELECT id FROM slotzap_campanhas WHERE print_hash=? AND id<>?",
+                       (print_hash, camp_id)).fetchone()
+    if dup:
+        conn.close()
+        return jsonify({'erro': 'Esse print já foi usado em outro torneio.'}), 409
+    # ── IA lê o print (assist, não trava) ──
+    ia = None
+    try:
+        raw = _desp_gemini_ocr(PROMPT_CAMP_PRINT, _b64.b64encode(img_bytes).decode(), mime, max_tokens=2048, model='gemini-2.5-flash')
+        ia = _desp_json_loads(raw) if raw else None
+    except Exception as e:
+        log.warning(f'[CAMPonline] IA print: {e}')
+        ia = None
+    # IA leu e disse que NÃO é tela de resultado → recusa, não grava nada (deixa tentar outro print)
+    if ia is not None and not ia.get('eh_tela_de_resultado'):
+        conn.close()
+        return jsonify({'ok': False, 'ia': True,
+                        'erro': 'Esse print não parece a tela de RESULTADO (fim de partida com a colocação). Suba a tela certa.'}), 422
+    # salva o print no volume (trilha de auditoria) + snapshot do prêmio real
+    os.makedirs(SLOTZAP_UPLOAD_DIR, exist_ok=True)
+    pname = f"camp_{camp_id}_{_sec.token_urlsafe(6)}.webp"
+    try:
+        with open(os.path.join(SLOTZAP_UPLOAD_DIR, pname), 'wb') as _fp:
+            _fp.write(img_bytes)
+        print_url = f'/uploads/slotzap/{pname}'
+    except Exception:
+        print_url = ''
+    premio, pagos, _bruto = _camp_premio_real(conn, camp)
+    pagos_rows = _camp_slots_pagos(conn, camp_id)
+    ia_nicks = (','.join((ia or {}).get('nicks') or []))[:300]
+    ia_coloc = str((ia or {}).get('colocacao') or '')
+    conn.execute("UPDATE slotzap_campanhas SET print_hash=?, print_url=?, ia_nicks=?, ia_colocacao=?, "
+                 "premio_valor=?, premio_status='proposto' WHERE id=?",
+                 (print_hash, print_url, ia_nicks, ia_coloc, premio, camp_id))
+    conn.commit()
+    lista = [{'slot_id': p['id'], 'numero': p['numero'], 'nick': p['nick'],
+              'membros': p['membros'], 'nome': p['cliente_nome']} for p in pagos_rows]
+    # IA fora do ar / sem chave → escolha manual
+    if ia is None:
+        conn.close()
+        return jsonify({'ok': True, 'ia': False, 'premio': premio, 'pagos': pagos,
+                        'slots': lista, 'msg': 'IA indisponível — escolha o vencedor na lista.'})
+    # ── casa NICKs lidos × NICKs pagos (normalizado + score) ──
+    lidos = [_camp_norm_nick(n) for n in (ia.get('nicks') or []) if _camp_norm_nick(n)]
+    melhor = None
+    for p in pagos_rows:
+        cand = [_camp_norm_nick(c) for c in ([p['nick']] + (p['membros'] or '').split(',')) if _camp_norm_nick(c)]
+        score = 0.0
+        for c in cand:
+            for ln in lidos:
+                r = 1.0 if c == ln else _dl.SequenceMatcher(None, c, ln).ratio()
+                if r > score:
+                    score = r
+        if melhor is None or score > melhor['score']:
+            melhor = {'slot_id': p['id'], 'numero': p['numero'], 'nick': p['nick'],
+                      'membros': p['membros'], 'nome': p['cliente_nome'], 'score': round(score, 2)}
+    conf = float(ia.get('confianca') or 0)
+    venceu = bool(ia.get('venceu'))
+    auto = bool(venceu and conf >= 0.6 and melhor and melhor['score'] >= 0.6)
+    conn.close()
+    return jsonify({'ok': True, 'ia': True, 'eh_resultado': True, 'venceu': venceu,
+                    'colocacao': ia.get('colocacao'), 'confianca': conf,
+                    'nicks_lidos': ia.get('nicks') or [], 'observacao': ia.get('observacao') or '',
+                    'premio': premio, 'pagos': pagos, 'proposto': (melhor if auto else None),
+                    'slots': lista})
+
+
+def _camp_notifica_vencedor(camp, slot, premio):
+    """Avisa o campeão no WhatsApp que ganhou; o prêmio cai no PIX do CPF dele. Best-effort."""
+    try:
+        tel = ''.join(c for c in (slot.get('cliente_tel') or '') if c.isdigit())
+        instance = (camp.get('evo_instance') or '').strip() or os.environ.get('EVO_INSTANCE', '')
+        evo_url, evo_key = _evo_cfg()
+        if not (tel and instance and evo_url):
+            return
+        numero   = tel if tel.startswith('55') else ('55' + tel)
+        primeiro = (slot.get('cliente_nome') or '').split()[0] if slot.get('cliente_nome') else ''
+        msg = (f"🏆 *VOCÊ É O CAMPEÃO!* — {camp.get('nome','')}\n\n"
+               f"Parabéns{(', ' + primeiro) if primeiro else ''}! Seu prêmio de "
+               f"*R$ {float(premio):.2f}* cai no *PIX do seu CPF* em até {CAMP_DISPUTA_MIN} min. 💸")
+        requests.post(f"{evo_url}/message/sendText/{instance}",
+                      headers={'apikey': evo_key, 'Content-Type': 'application/json'},
+                      json={'number': numero, 'text': msg}, timeout=10)
+    except Exception as _e:
+        log.warning(f'[CAMPonline] notifica vencedor: {_e}')
+
+
+@app.route('/camponline/painel/<int:camp_id>/confirmar-vencedor', methods=['POST'])
+@_sz_login_required
+def camponline_confirmar(camp_id):
+    """L1b — trava o vencedor (escrow). Exige SENHA de login (ação de dinheiro). Claim atômico
+    = 1 vencedor por torneio. NÃO paga; o PIX sai depois (botão/reconciliador) após a disputa."""
+    data    = request.get_json(silent=True) or request.form
+    try:    slot_id = int(data.get('slot_id') or 0)
+    except (TypeError, ValueError): slot_id = 0
+    senha   = (data.get('senha') or '').strip()
+    conn = get_saas_db()
+    camp = conn.execute("SELECT * FROM slotzap_campanhas WHERE id=? AND user_id=? AND tipo='torneio'",
+                        (camp_id, _sz_uid())).fetchone()
+    if not camp:
+        conn.close(); return jsonify({'erro': 'Torneio não encontrado.'}), 404
+    camp = dict(camp)
+    # re-auth: senha de login p/ ação de dinheiro
+    u = conn.execute("SELECT password_hash FROM slotzap_users WHERE id=?", (_sz_uid(),)).fetchone()
+    if not u or not u['password_hash'] or not check_password_hash(u['password_hash'], senha):
+        conn.close(); return jsonify({'erro': 'Senha incorreta.'}), 403
+    if (camp.get('premio_status') or '') in ('confirmado', 'em_disputa', 'pago'):
+        conn.close(); return jsonify({'erro': 'Esse torneio já tem vencedor.'}), 409
+    slot = conn.execute("SELECT id, numero, cliente_nome, cliente_tel, cpf, nick FROM slotzap_slots "
+                        "WHERE id=? AND campanha_id=? AND status='pago'", (slot_id, camp_id)).fetchone()
+    if not slot:
+        conn.close(); return jsonify({'erro': 'Escolha um inscrito PAGO como vencedor.'}), 400
+    slot = dict(slot)
+    premio, _pg, _br = _camp_premio_real(conn, camp)
+    if premio <= 0:
+        conn.close(); return jsonify({'erro': 'Ainda não há arrecadação pra premiar.'}), 400
+    agora       = datetime.now()
+    disputa_ate = (agora + timedelta(minutes=CAMP_DISPUTA_MIN)).isoformat()
+    # claim atômico: só trava se ainda NÃO há vencedor (rowcount 0 = corrida / já confirmado)
+    cur = conn.execute(
+        "UPDATE slotzap_campanhas SET vencedor_slot_id=?, vencedor_em=?, premio_status='confirmado', "
+        "disputa_ate=?, premio_valor=? WHERE id=? AND IFNULL(vencedor_slot_id,0)=0",
+        (slot_id, agora.isoformat(), disputa_ate, premio, camp_id))
+    conn.commit()
+    if cur.rowcount == 0:
+        conn.close(); return jsonify({'erro': 'Vencedor já foi confirmado.'}), 409
+    _camp_notifica_vencedor(camp, slot, premio)
+    conn.close()
+    return jsonify({'ok': True, 'premio': premio, 'disputa_ate': disputa_ate,
+                    'disputa_min': CAMP_DISPUTA_MIN,
+                    'vencedor': slot['nick'] or slot['cliente_nome']})
+
+
+def _camp_payout_via_efi():
+    """CAMPonline paga o prêmio via Efí-NATIVO (mesmo caixa que recebeu as inscrições) em vez do
+    fallback Asaas — tira a dependência de saldo na Asaas. DEFAULT OFF: ligar (CAMP_PAYOUT_VIA_EFI=1)
+    só depois de confirmar que o Pix-Envio do Efí funciona (webhook cadastrado na chave via
+    efi_pix.configurar_webhook + x-skip-mtls-checking). NÃO mexe na RifaJá/Jaya — chama efi_pix
+    direto, sem tocar no fallback Asaas global (_sz_efi_comissao_via_asaas/EFI_COMISSAO_VIA_ASAAS)."""
+    return os.environ.get('CAMP_PAYOUT_VIA_EFI', '0').strip().lower() in ('1', 'true', 'yes', 'sim', 'on')
+
+
+def _camp_premio_sync_asaas(conn, camp, ext, gateway):
+    """Anti-duplo: confere no Asaas se a transferência do prêmio (externalReference=ext) já saiu.
+    Se saiu, marca 'pago' e sincroniza o ledger — nunca reenvia em cima de um PIX que já caiu. No
+    Efí-puro pula (idEnvio determinístico já garante a idempotência). True = já estava paga."""
+    if gateway == 'efi' and not _sz_efi_comissao_via_asaas():
+        return False
+    try:
+        chk = _asaas_req('GET', f'/transfers?externalReference={ext}')
+        for t in (chk.get('data') or []):
+            st = (t.get('status') or '').upper()
+            if t.get('externalReference') == ext and t.get('id') and st not in ('CANCELLED', 'FAILED'):
+                conn.execute("UPDATE camponline_premio_pagamentos SET status='pago', transfer_id=?, erro='' WHERE ext_ref=?",
+                             (t['id'], ext))
+                conn.commit()
+                return True
+    except Exception:
+        pass
+    return False
+
+
+def _camp_pagar_um(conn, camp, slot_id, membro_id, valor, chave, tipo, gateway, via_efi):
+    """Paga UMA cota do prêmio (capitão = membro_id 0, ou um membro do squad) via PIX — lease
+    atômico + idempotente + anti-duplo. Mexe SÓ na própria linha do ledger (ext_ref por membro);
+    quem marca a campanha 'pago' é _camp_pagar_premio quando TODAS as cotas saem. (status, msg)."""
+    valor = round(float(valor or 0), 2)
+    if not chave:
+        return ('erro', 'Sem chave PIX do recebedor.')
+    ext   = f"camp_premio_{camp['id']}_{slot_id}_{membro_id}"
+    agora = datetime.now().isoformat()
+    row   = conn.execute("SELECT status, tentativas, valor FROM camponline_premio_pagamentos WHERE ext_ref=?",
+                         (ext,)).fetchone()
+    row   = dict(row) if row else None
+    if row and row['status'] == 'pago':
+        return ('pago', 'Cota já paga.')
+    if (row['tentativas'] if row else 0) >= CAMP_CAP_TENTATIVAS:
+        return ('erro', 'Limite de tentativas — confira a chave PIX.')
+    if row:   # valor IMUTÁVEL após o 1º insert: na retry paga a cota CONGELADA (anti-drift/overpay)
+        valor = round(float(row['valor'] or 0), 2)
+    if valor <= 0:
+        return ('pago', 'Sem cota (arredondamento).')   # nada a pagar nesta cota → não trava o resto
+    # ── LEASE ATÔMICO (fecha o double-pay): só UM worker — botão OU reconciliador — envia esta cota.
+    if not row:
+        try:
+            conn.execute("INSERT INTO camponline_premio_pagamentos "
+                         "(campanha_id,slot_id,membro_id,valor,pix_chave,pix_tipo,ext_ref,status,tentativas,lote_ref,criado_em) "
+                         "VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+                         (camp['id'], slot_id, membro_id, valor, chave, tipo, ext, 'enviando', 1, ext, agora))
+            conn.commit()
+        except Exception:
+            return ('escrow', 'Pagamento em curso.')   # corrida no UNIQUE(ext_ref) = outro worker pegou
+    else:
+        # retry: reivindica só se retentável (erro/pendente) OU 'enviando' VELHO (crash, > TTL).
+        lease_velho = (datetime.now() - timedelta(minutes=CAMP_LEASE_TTL_MIN)).isoformat()
+        cur = conn.execute(
+            "UPDATE camponline_premio_pagamentos SET status='enviando', tentativas=tentativas+1, criado_em=? "
+            "WHERE ext_ref=? AND (status IN ('pendente','erro') OR (status='enviando' AND criado_em < ?))",
+            (agora, ext, lease_velho))
+        conn.commit()
+        if cur.rowcount == 0:
+            if (not via_efi) and _camp_premio_sync_asaas(conn, camp, ext, gateway):
+                return ('pago', 'Cota já transferida (sincronizada).')
+            return ('escrow', 'Pagamento em curso.')
+    # este worker tem o lease. Anti-duplo final: no Asaas confere antes de enviar; no Efí-nativo
+    # a idempotência é o idEnvio determinístico (checar o Asaas não adianta).
+    if (not via_efi) and _camp_premio_sync_asaas(conn, camp, ext, gateway):
+        return ('pago', 'Cota já transferida (sincronizada).')
+    desc = f"Premio CAMPonline - {camp.get('nome','')}"[:100]
+    if via_efi:
+        try:
+            import efi_pix, hashlib as _hl
+            idenv = ('c' + _hl.sha1(ext.encode()).hexdigest())[:35]   # idEnvio determinístico, sem colisão entre cotas
+            r = efi_pix.enviar_pix(valor, chave, info=desc, id_envio=idenv)
+            erro = r.get('erro')
+            tid  = '' if erro else (r.get('e2eId') or r.get('idEnvio') or 'efi_ok')
+        except Exception as _e:
+            tid, erro = '', f'efi enviar_pix: {_e}'[:200]
+    else:
+        tid, erro = _sz_afiliado_transfer(chave, tipo, valor, desc, ext, gateway=gateway)
+    if tid:
+        conn.execute("UPDATE camponline_premio_pagamentos SET status='pago', transfer_id=?, erro='' WHERE ext_ref=?",
+                     (tid, ext))
+        conn.commit()
+        log.info(f"[CAMPonline] cota PAGA — camp {camp['id']} slot {slot_id} membro {membro_id} R${valor:.2f} ({tid})")
+        return ('pago', 'Cota paga.')
+    conn.execute("UPDATE camponline_premio_pagamentos SET status='erro', erro=? WHERE ext_ref=?",
+                 (str(erro)[:200], ext))
+    conn.commit()
+    log.error(f"[CAMPonline] FALHA cota — camp {camp['id']} slot {slot_id} membro {membro_id} "
+              f"R${valor:.2f}: {erro} (saldo Asaas / chave PIX?)")
+    return ('erro', f'Falha no PIX: {erro}')
+
+
+def _camp_pagar_premio(conn, camp, force=False):
+    """Paga o prêmio do torneio: RATEIA entre os membros do squad que têm chave PIX (sobra→capitão);
+    sem squad (solo), paga o capitão no PIX do CPF. Idempotente e anti-duplo (1 cota por membro).
+    Só roda com premio_status='confirmado' E (janela de disputa vencida OU force). (status, msg):
+    'pago' | 'escrow' | 'erro' | 'nada'."""
+    if (camp.get('premio_status') or '') != 'confirmado':
+        return ('nada', 'Sem vencedor confirmado.')
+    if not force:
+        try:
+            if camp.get('disputa_ate') and datetime.now() < datetime.fromisoformat(camp['disputa_ate']):
+                return ('escrow', 'Ainda na janela de disputa.')
+        except Exception:
+            pass
+    # status='pago' trava o DESTINATÁRIO no pagamento (não só no confirmar): se a vaga do vencedor
+    # for revertida/cancelada depois, não paga PIX pra inscrição que não existe mais.
+    slot = conn.execute("SELECT id, numero, cliente_nome, cpf, nick FROM slotzap_slots "
+                        "WHERE id=? AND campanha_id=? AND status='pago'",
+                        (camp.get('vencedor_slot_id'), camp['id'])).fetchone()
+    if not slot:
+        return ('erro', 'Vencedor não está pago (inscrição revertida?).')
+    slot  = dict(slot)
+    valor = round(float(camp.get('premio_valor') or 0), 2)
+    if valor <= 0:
+        return ('erro', 'Prêmio zerado.')
+    gateway = camp.get('gateway', 'efi')
+    via_efi = _camp_payout_via_efi()   # paga do caixa Efí (sem depender de saldo Asaas) se ligado
+    # ── recebedores: membros do squad COM chave PIX (rateio L1c); senão paga o capitão no CPF (MVP) ──
+    membros = [dict(m) for m in conn.execute(
+        "SELECT id, is_capitao, pix_chave, pix_tipo FROM camponline_membros "
+        "WHERE slot_id=? AND IFNULL(pix_chave,'')!='' ORDER BY is_capitao DESC, id",
+        (slot['id'],)).fetchall()]
+    cotas = []   # (membro_id, chave, tipo, valor)
+    if membros:
+        qtd   = len(membros)
+        por   = round(valor / qtd, 2)
+        sobra = round(valor - por * qtd, 2)   # centavos do arredondamento → vão pro capitão
+        for m in membros:
+            v = por + (sobra if m['is_capitao'] else 0)
+            cotas.append((m['id'], m['pix_chave'], (m['pix_tipo'] or 'CPF'), round(v, 2)))
+        if sobra and not any(m['is_capitao'] for m in membros):   # squad sem capitão marcado: sobra no 1º
+            m0, c0, t0, v0 = cotas[0]; cotas[0] = (m0, c0, t0, round(v0 + sobra, 2))
+    else:
+        tipo, chave, perr = _sz_pix_normaliza('CPF', slot.get('cpf'))   # solo / sem squad: paga o CPF
+        if perr or not chave:
+            return ('erro', 'CPF do vencedor inválido pra PIX.')
+        cotas = [(0, chave, tipo, valor)]   # _0 = capitão no CPF
+    sts = [_camp_pagar_um(conn, camp, slot['id'], mid, v, ch, tp, gateway, via_efi)[0]
+           for (mid, ch, tp, v) in cotas]
+    if all(s == 'pago' for s in sts):
+        conn.execute("UPDATE slotzap_campanhas SET premio_status='pago' WHERE id=?", (camp['id'],))
+        conn.commit()
+        return ('pago', 'Prêmio pago no PIX! 💸')
+    # Nada mais retentável (cotas pendentes bateram o teto)? trava num estado TERMINAL pra não
+    # girar no reconciliador pra sempre — 'pago_parcial' (quem deu chave PIX válida já recebeu).
+    retentaveis = conn.execute(
+        "SELECT COUNT(*) FROM camponline_premio_pagamentos WHERE slot_id=? AND status!='pago' AND tentativas < ?",
+        (slot['id'], CAMP_CAP_TENTATIVAS)).fetchone()[0]
+    if retentaveis == 0:
+        conn.execute("UPDATE slotzap_campanhas SET premio_status='pago_parcial' WHERE id=?", (camp['id'],))
+        conn.commit()
+        return ('erro', 'Parte do prêmio não saiu (chave PIX?). Confira no painel.')
+    return ('escrow', 'Pagamento em curso.')
+
+
+@app.route('/camponline/painel/<int:camp_id>/pagar-premio', methods=['POST'])
+@_sz_login_required
+def camponline_pagar_premio(camp_id):
+    """Dispara o PIX do prêmio pro campeão. Respeita a janela de disputa, salvo 'forcar'."""
+    data   = request.get_json(silent=True) or request.form
+    forcar = str(data.get('forcar') or '').lower() in ('1', 'true', 'on', 'sim')
+    conn = get_saas_db()
+    camp = conn.execute("SELECT * FROM slotzap_campanhas WHERE id=? AND user_id=? AND tipo='torneio'",
+                        (camp_id, _sz_uid())).fetchone()
+    if not camp:
+        conn.close(); return jsonify({'erro': 'Torneio não encontrado.'}), 404
+    status, msg = _camp_pagar_premio(conn, dict(camp), force=forcar)
+    conn.close()
+    return jsonify({'ok': status == 'pago', 'status': status, 'msg': msg}), (200 if status in ('pago', 'escrow') else 400)
+
+
 # Foto do prêmio: guardada no volume persistente (DATA_DIR), não some no redeploy
 SLOTZAP_UPLOAD_DIR = os.path.join(
     os.environ.get('DATA_DIR', os.path.dirname(__file__)), 'uploads', 'slotzap')
@@ -15454,6 +16012,26 @@ def slotzap_upload_imagem():
         return jsonify({'error': 'Não consegui processar essa imagem. Tente outra foto.'}), 400
 
 
+def _camp_comprimir(stream, maxd=1280):
+    """Comprime o PRINT do resultado (foto do celular) e devolve (bytes_webp, mime).
+    Difere do upload do prêmio (devolve BYTES, não salva/URL) porque a IA precisa dos bytes
+    p/ ler E p/ tirar o sha256 anti-reuso. maxd=1280 (> 900 do prêmio): nick em tela de
+    battle royale é pequeno, downscale agressivo borra o texto e a IA erra a leitura."""
+    from PIL import Image, ImageOps
+    img = Image.open(stream)
+    img = ImageOps.exif_transpose(img)   # corrige foto girada
+    img = img.convert('RGB')
+    w, h = img.size
+    if max(w, h) > maxd:
+        if w >= h:
+            img = img.resize((maxd, round(h * maxd / w)), Image.LANCZOS)
+        else:
+            img = img.resize((round(w * maxd / h), maxd), Image.LANCZOS)
+    buf = io.BytesIO()
+    img.save(buf, 'WEBP', quality=80, method=6)
+    return buf.getvalue(), 'image/webp'
+
+
 @app.route('/slotzap/campanha/<int:camp_id>')
 @_sz_login_required
 def slotzap_campanha(camp_id):
@@ -15475,7 +16053,7 @@ def slotzap_campanha(camp_id):
     reservados = sum(1 for s in slots if s['status'] == 'reservado')
     disponiveis= sum(1 for s in slots if s['status'] == 'disponivel')
     receita    = pagos * float(camp['preco'])
-    brand = 'rifaja' if camp.get('gateway') == 'efi' else 'slotzap'
+    brand = 'camponline' if camp.get('tipo') == 'torneio' else ('rifaja' if camp.get('gateway') == 'efi' else 'slotzap')
     return render_template('slotzap/campanha.html',
                            camp=camp, slots=slots,
                            pagos=pagos, reservados=reservados,
@@ -16618,6 +17196,24 @@ def _sz_pagar_pendentes(conn, camp_id=None, force=False):
     return round(pago_total, 2)
 
 
+def _camp_reconciliar_premios(conn):
+    """Rede de segurança do CAMPonline: paga o prêmio de torneios CONFIRMADOS cuja janela de
+    disputa já venceu e que ainda não foram pagos. Idempotente (via _camp_pagar_premio)."""
+    agora = datetime.now().isoformat()
+    pend = [dict(r) for r in conn.execute(
+        "SELECT * FROM slotzap_campanhas WHERE tipo='torneio' AND premio_status='confirmado' "
+        "AND IFNULL(disputa_ate,'')!='' AND disputa_ate <= ?", (agora,)).fetchall()]
+    n = 0
+    for camp in pend:
+        try:
+            st, _msg = _camp_pagar_premio(conn, camp, force=False)
+            if st == 'pago':
+                n += 1
+        except Exception as _e:
+            log.warning(f'[CAMPonline] reconciliar prêmio camp {camp.get("id")}: {_e}')
+    return n
+
+
 def _sz_comissao_reconciliar_loop():
     """Robô 24/7 (rede de segurança): paga comissões de vendas JÁ pagas e atribuídas
     a um vendedor que ficaram SEM repasse (qualquer caminho que pulou o pagamento inline,
@@ -16631,6 +17227,9 @@ def _sz_comissao_reconciliar_loop():
             pago = _sz_pagar_pendentes(conn)
             if pago:
                 log.info(f'[SlotZap] Reconciliador comissão: liquidou R${pago:.2f} em lote(s)')
+            ncamp = _camp_reconciliar_premios(conn)
+            if ncamp:
+                log.info(f'[CAMPonline] Reconciliador: pagou {ncamp} prêmio(s) de torneio')
         except Exception as _e:
             log.error(f'[SlotZap] reconciliador comissão loop: {_e}')
         finally:
@@ -17025,6 +17624,191 @@ def slotzap_publico_reservar(token):
                     'meu_ref': meu_ref,
                     'indicacao_ativa': indic_ativa,
                     'indicacao_meta': camp.get('indicacao_meta') or 10})
+
+
+# ─────────────────────────── CAMPonline — PÁGINA PÚBLICA DO TORNEIO ───────────────────────────
+# Inscrição de torneio: rota DEDICADA (não toca o reservar das rifas/Jaya). Reusa os mesmos
+# helpers de dinheiro: _sz_gerar_pix(gateway='efi'), e a confirmação genérica (/confirmar +
+# reconciliador 24/7 já cobrem efi). Cada slot = 1 vaga; quando paga, vira inscrito.
+
+@app.route('/camponline/t/<token>')
+def camponline_publico(token):
+    conn = get_saas_db()
+    camp = conn.execute("SELECT * FROM slotzap_campanhas WHERE token_publico=? "
+                        "AND status='ativa' AND tipo='torneio'", (token,)).fetchone()
+    if not camp:
+        conn.close()
+        return render_template('slotzap/nao_encontrado.html'), 404
+    camp = dict(camp)
+    conn.close()
+    _sz_expirar_reservas(camp['id'])
+    conn  = get_saas_db()
+    slots = [dict(s) for s in conn.execute(
+        "SELECT status FROM slotzap_slots WHERE campanha_id=?", (camp['id'],)).fetchall()]
+    conn.close()
+    total     = len(slots)
+    pagos     = sum(1 for s in slots if s['status'] == 'pago')
+    inscritos = sum(1 for s in slots if s['status'] in ('pago', 'reservado'))
+    restam    = sum(1 for s in slots if s['status'] == 'disponivel')
+    taxa      = float(camp['preco'])
+    # Inscrição é POR JOGADOR; o capitão paga pelo time todo (solo 1 / dupla 2 / squad 4).
+    tam        = {'solo': 1, 'dupla': 2, 'squad': 4}.get(camp.get('modo'), 1)
+    valor_insc = round(taxa * tam, 2)
+    # Prêmio estimado se ESGOTAR: bruto = taxa × total de JOGADORES (vagas × tamanho do time)
+    bruto      = taxa * total * tam
+    org_pct    = float(camp.get('org_comissao') or 0) / 100
+    premio_est = _camp_premio(bruto, org_pct)
+    return render_template('camponline/publico.html', camp=camp, token=token,
+                           total=total, pagos=pagos, inscritos=inscritos, restam=restam,
+                           taxa=taxa, tam=tam, valor_insc=valor_insc, premio_est=premio_est)
+
+
+@app.route('/camponline/t/<token>/inscrever', methods=['POST'])
+def camponline_inscrever(token):
+    """Inscreve um jogador/time no torneio: pega uma vaga livre, gera o PIX (Efí) e reserva.
+    Claim atômico (WHERE status='disponivel') = à prova de corrida (nunca vende a mesma vaga 2×)."""
+    ip = (request.headers.get('X-Forwarded-For') or request.remote_addr or '').split(',')[0].strip()
+    if not _sz_rate_ok(ip):
+        return jsonify({'erro': 'Muitas tentativas. Aguarde alguns minutos e tente de novo.'}), 429
+    data    = request.get_json() or {}
+    nome    = (data.get('nome') or '').strip()[:80]
+    cpf     = ''.join(c for c in (data.get('cpf') or '') if c.isdigit())
+    tel     = ''.join(c for c in (data.get('tel') or '') if c.isdigit())
+    nick    = (data.get('nick') or '').strip()[:40]
+    membros = (data.get('membros') or '').strip()[:200]
+    aff_in  = (data.get('aff') or '').strip()[:32]
+    if not nome:
+        return jsonify({'erro': 'Informe seu nome.'}), 400
+    if not nick:
+        return jsonify({'erro': 'Informe seu NICK no jogo — é como te achamos no resultado.'}), 400
+    if not _cpf_valido(cpf):
+        return jsonify({'erro': 'CPF inválido. Confira os números.'}), 400
+    if len(tel) < 10:
+        return jsonify({'erro': 'Informe seu WhatsApp com DDD — é por ele que você recebe o lobby e o aviso se ganhar.'}), 400
+
+    conn = get_saas_db()
+    camp = conn.execute("SELECT * FROM slotzap_campanhas WHERE token_publico=? "
+                        "AND status='ativa' AND tipo='torneio'", (token,)).fetchone()
+    if not camp:
+        conn.close()
+        return jsonify({'erro': 'Torneio não encontrado.'}), 404
+    camp = dict(camp)
+    # Inscrição POR JOGADOR: o capitão paga pelo time todo (solo 1 / dupla 2 / squad 4).
+    tam = {'solo': 1, 'dupla': 2, 'squad': 4}.get(camp.get('modo'), 1)
+    membros_lista = [m.strip()[:40] for m in membros.split(',') if m.strip()]
+    if tam > 1 and len(membros_lista) < tam - 1:
+        conn.close()
+        return jsonify({'erro': f'Informe os NICKs do time todo — além do seu, faltam {tam - 1 - len(membros_lista)} colega(s).'}), 400
+    membros = ','.join(membros_lista[:tam - 1])
+    slot = conn.execute("SELECT * FROM slotzap_slots WHERE campanha_id=? AND status='disponivel' "
+                        "ORDER BY numero LIMIT 1", (camp['id'],)).fetchone()
+    if not slot:
+        conn.close()
+        return jsonify({'erro': 'Vagas esgotadas! 🏁'}), 400
+    slot = dict(slot)
+
+    valor = round(float(camp['preco']) * tam, 2)   # paga pelo time todo
+    desc  = f"CAMPonline — {camp['nome']} — inscrição {nick} (x{tam})"[:120]
+    erro_msg, charge_id, pix_qr, pix_copia = _sz_gerar_pix(
+        nome, tel, cpf, valor, desc, f"sz_{slot['id']}", '', gateway='efi')
+    if erro_msg:
+        conn.close()
+        return jsonify({'erro': erro_msg}), 502
+
+    aff_save = ''
+    if camp.get('afiliados_ativo') and aff_in and conn.execute(
+            'SELECT 1 FROM slotzap_afiliados WHERE campanha_id=? AND codigo=?',
+            (camp['id'], aff_in)).fetchone():
+        aff_save = aff_in
+    agora = datetime.now().isoformat()
+    # Squad (dupla/squad): token do convite-de-squad pros colegas completarem CPF/PIX (rateio L1c).
+    squad_token = ''
+    if tam > 1:
+        import secrets as _sec
+        squad_token = _sec.token_urlsafe(10)
+    cur = conn.execute(
+        "UPDATE slotzap_slots SET status='reservado',cliente_nome=?,cliente_tel=?,cpf=?,nick=?,"
+        "membros=?,asaas_charge_id=?,pix_qr_code=?,pix_copia_cola=?,reservado_em=?,afiliado_codigo=?,squad_token=? "
+        "WHERE id=? AND status='disponivel'",
+        (nome, tel, cpf, nick, membros, charge_id, pix_qr, pix_copia, agora, aff_save, squad_token, slot['id']))
+    conn.commit()
+    if cur.rowcount == 0:
+        conn.close()
+        # corrida: outra pessoa pegou essa vaga no mesmo instante — front tenta de novo
+        return jsonify({'erro': 'Essa vaga acabou de ser preenchida. Tente de novo.'}), 409
+    # Linha do CAPITÃO no rateio (PIX no CPF dele); os colegas entram pelo convite-de-squad.
+    if squad_token:
+        try:
+            conn.execute("INSERT INTO camponline_membros "
+                         "(slot_id,campanha_id,nick,nome,cpf,tel,pix_chave,pix_tipo,is_capitao,criado_em) "
+                         "VALUES (?,?,?,?,?,?,?,?,?,?)",
+                         (slot['id'], camp['id'], nick, nome, cpf, tel, cpf, 'CPF', 1, agora))
+            conn.commit()
+        except Exception as _e:
+            log.warning(f'[CAMPonline] membro capitão: {_e}')
+    conn.close()
+    resp = {'ok': True, 'pix_qr': pix_qr, 'pix_copia': pix_copia,
+            'valor': valor, 'numero': slot['numero']}
+    if squad_token:
+        resp['squad_link'] = f"{request.url_root[:-1]}/camponline/squad/{squad_token}"
+        resp['squad_tam']  = tam
+    return jsonify(resp)
+
+
+@app.route('/camponline/squad/<squad_token>', methods=['GET', 'POST'])
+def camponline_squad(squad_token):
+    """Convite-de-squad: o colega abre o link, vê o time e completa NICK + CPF + chave PIX pra
+    receber a SUA parte do prêmio direto. Público (sem login), com rate-limit. Fecha quando enche."""
+    conn = get_saas_db()
+    row = conn.execute(
+        "SELECT s.id AS slot_id, s.campanha_id, s.nick AS cap_nick, s.cliente_nome AS cap_nome, "
+        "s.membros AS nicks, c.nome AS camp_nome, c.jogo, c.modo, c.premio_status "
+        "FROM slotzap_slots s JOIN slotzap_campanhas c ON c.id=s.campanha_id "
+        "WHERE s.squad_token=? AND c.tipo='torneio'", (squad_token,)).fetchone()
+    if not row:
+        conn.close()
+        return render_template('slotzap/nao_encontrado.html'), 404
+    row = dict(row)
+    tam = {'solo': 1, 'dupla': 2, 'squad': 4}.get(row['modo'], 1)
+    if request.method == 'POST':
+        ip = (request.headers.get('X-Forwarded-For') or request.remote_addr or '').split(',')[0].strip()
+        if not _sz_rate_ok(ip):
+            conn.close(); return jsonify({'erro': 'Muitas tentativas. Aguarde um pouco.'}), 429
+        # ROSTER CONGELADO: depois que o vencedor é definido, ninguém entra (senão muda o rateio
+        # de um prêmio já travado = overpay). Tem que completar o PIX ANTES de declarar o vencedor.
+        if (row.get('premio_status') or '') in ('confirmado', 'em_disputa', 'pago', 'pago_parcial'):
+            conn.close(); return jsonify({'erro': 'O vencedor já foi definido — o time está fechado.'}), 409
+        data = request.get_json() or {}
+        nome = (data.get('nome') or '').strip()[:80]
+        nick = (data.get('nick') or '').strip()[:40]
+        cpf  = ''.join(c for c in (data.get('cpf') or '') if c.isdigit())
+        tel  = ''.join(c for c in (data.get('tel') or '') if c.isdigit())
+        if not nick or not nome:
+            conn.close(); return jsonify({'erro': 'Informe seu nome e seu NICK.'}), 400
+        if not _cpf_valido(cpf):
+            conn.close(); return jsonify({'erro': 'CPF inválido. Confira os números.'}), 400
+        tipo, chave, perr = _sz_pix_normaliza(data.get('pix_tipo'), data.get('pix_chave'))
+        if perr or not chave:
+            conn.close(); return jsonify({'erro': perr or 'Informe sua chave PIX.'}), 400
+        # re-checa lotação + CPF duplicado dentro da conexão (corrida leve é aceitável no MVP)
+        cnt = conn.execute("SELECT COUNT(*) FROM camponline_membros WHERE slot_id=?", (row['slot_id'],)).fetchone()[0]
+        if cnt >= tam:
+            conn.close(); return jsonify({'erro': 'Time já está completo. 🏁'}), 409
+        if conn.execute("SELECT 1 FROM camponline_membros WHERE slot_id=? AND cpf=?", (row['slot_id'], cpf)).fetchone():
+            conn.close(); return jsonify({'erro': 'Esse CPF já está no time.'}), 409
+        conn.execute("INSERT INTO camponline_membros "
+                     "(slot_id,campanha_id,nick,nome,cpf,tel,pix_chave,pix_tipo,is_capitao,criado_em) "
+                     "VALUES (?,?,?,?,?,?,?,?,0,?)",
+                     (row['slot_id'], row['campanha_id'], nick, nome, cpf, tel, chave, tipo, datetime.now().isoformat()))
+        conn.commit(); conn.close()
+        return jsonify({'ok': True})
+    membros = [dict(m) for m in conn.execute(
+        "SELECT nick, nome, is_capitao, (IFNULL(pix_chave,'')!='') AS tem_pix FROM camponline_membros "
+        "WHERE slot_id=? ORDER BY is_capitao DESC, id", (row['slot_id'],)).fetchall()]
+    conn.close()
+    faltam = max(0, tam - len(membros))
+    return render_template('camponline/squad.html', row=row, tam=tam, membros=membros,
+                           faltam=faltam, token=squad_token)
 
 
 # ─────────────────────────── AFILIADOS / VENDEDORES ───────────────────────────

@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Entrar no time — {{ row.camp_nome }} · CAMPonline</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',sans-serif;background:#07060f;color:#f0f0ff;line-height:1.55;padding-bottom:50px}
+.wrap{max-width:460px;margin:0 auto;padding:18px 16px}
+.brand{font-size:15px;font-weight:900;background:linear-gradient(135deg,#22d3ee,#a855f7);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;text-align:center;margin-bottom:12px}
+h1{font-size:21px;font-weight:900;line-height:1.15;margin-bottom:4px}
+.game{display:inline-block;font-size:12px;font-weight:800;color:#a5b4fc;background:rgba(99,102,241,.15);
+  border:1px solid rgba(99,102,241,.3);border-radius:999px;padding:3px 12px;margin-bottom:14px}
+.card{background:#13131f;border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:18px;margin-bottom:14px}
+.card h3{font-size:12px;font-weight:800;color:#8888aa;text-transform:uppercase;letter-spacing:.04em;margin-bottom:10px}
+.mem{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.05);font-size:14px}
+.mem:last-child{border-bottom:none}
+.mem .nick{font-weight:800;color:#a5b4fc;flex:1}
+.tag{font-size:10px;font-weight:800;padding:2px 8px;border-radius:999px}
+.tag.ok{background:rgba(34,197,94,.15);color:#4ade80}
+.tag.cap{background:rgba(168,85,247,.15);color:#c084fc}
+.tag.wait{background:rgba(234,179,8,.12);color:#fbbf24}
+label{display:block;font-size:12px;font-weight:600;color:#8888aa;margin:12px 0 5px}
+input,select{width:100%;background:#0d0d1a;border:1px solid rgba(255,255,255,.1);border-radius:9px;
+  color:#f0f0ff;padding:12px 13px;font-size:15px;font-family:inherit;outline:none}
+input:focus,select:focus{border-color:#a855f7}
+.row2{display:flex;gap:8px}.row2>div{flex:1}
+.btn{display:block;width:100%;text-align:center;background:linear-gradient(135deg,#22d3ee,#7c3aed);
+  color:#fff;padding:15px;border-radius:13px;border:none;font-weight:900;font-size:16px;cursor:pointer;
+  font-family:inherit;margin-top:16px}
+.btn:disabled{opacity:.5}
+.hint{font-size:11px;color:#6b7591;margin-top:5px}
+.msg{font-size:13px;margin-top:10px}
+.done{text-align:center;padding:20px 0}.done .big{font-size:44px}
+.full{background:linear-gradient(135deg,#0c1f16,#10231a);border:1px solid rgba(34,197,94,.3);
+  border-radius:12px;padding:14px;text-align:center;color:#d7ffe9;font-size:14px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand">🎮 CAMPonline</div>
+  <span class="game">🎯 {{ row.jogo }} · {{ row.modo|capitalize }}</span>
+  <h1>Entrar no time de {{ row.cap_nick }}</h1>
+  <p style="color:#9aa3bd;font-size:14px;margin:6px 0 14px">No <strong>{{ row.camp_nome }}</strong>.
+     Complete seus dados pra receber a <strong>sua parte do prêmio direto no seu PIX</strong> se o time ganhar.</p>
+
+  <div class="card">
+    <h3>👥 Time ({{ membros|length }}/{{ tam }})</h3>
+    {% for m in membros %}
+    <div class="mem">
+      <span class="nick">{{ m.nick or '—' }}</span>
+      {% if m.is_capitao %}<span class="tag cap">CAPITÃO</span>{% endif %}
+      {% if m.tem_pix %}<span class="tag ok">✓ PIX ok</span>{% else %}<span class="tag wait">sem PIX</span>{% endif %}
+    </div>
+    {% endfor %}
+    {% for _ in range(faltam) %}<div class="mem"><span class="nick" style="color:#44445a">vaga livre…</span></div>{% endfor %}
+  </div>
+
+  {% if faltam > 0 %}
+  <div class="card" id="form-card">
+    <h3>✍️ Seus dados</h3>
+    <label>Seu nome *</label>
+    <input id="f-nome" placeholder="Como você se chama">
+    <label>Seu NICK no jogo *</label>
+    <input id="f-nick" placeholder="exatamente como aparece no {{ row.jogo }}">
+    <div class="row2">
+      <div><label>CPF *</label><input id="f-cpf" inputmode="numeric" placeholder="000.000.000-00"></div>
+      <div><label>WhatsApp</label><input id="f-tel" inputmode="numeric" placeholder="DDD + número"></div>
+    </div>
+    <label>Sua chave PIX (pra receber o prêmio) *</label>
+    <div class="row2">
+      <div style="flex:0 0 38%"><select id="f-pixtipo">
+        <option value="CPF">CPF</option><option value="CELULAR">Celular</option>
+        <option value="EMAIL">E-mail</option><option value="ALEATORIA">Aleatória</option>
+      </select></div>
+      <div><input id="f-pix" placeholder="sua chave PIX"></div>
+    </div>
+    <div class="hint">É nessa chave que cai a sua fatia do prêmio. Confira direitinho.</div>
+    <button class="btn" id="btn" onclick="entrar()">✅ Entrar no time</button>
+    <div class="msg" id="msg"></div>
+  </div>
+  {% else %}
+  <div class="full">🏁 <b>Time completo!</b> Todo mundo já preencheu. Boa sorte no {{ row.jogo }}! 🏆</div>
+  {% endif %}
+
+  <div id="ok-card" class="card done" style="display:none">
+    <div class="big">🎉</div>
+    <div style="font-weight:800;margin-top:6px">Você está no time!</div>
+    <div style="color:#9aa3bd;font-size:13px;margin-top:4px">Se vocês ganharem, sua parte cai no seu PIX automático.</div>
+  </div>
+</div>
+<script>
+const TOKEN = {{ token|tojson }};
+const $ = id => document.getElementById(id);
+async function entrar(){
+  const body = {
+    nome: $('f-nome').value, nick: $('f-nick').value, cpf: $('f-cpf').value,
+    tel: $('f-tel').value, pix_tipo: $('f-pixtipo').value, pix_chave: $('f-pix').value
+  };
+  if(!body.nome || !body.nick || !body.cpf || !body.pix_chave){ alert('Preencha nome, NICK, CPF e a chave PIX.'); return; }
+  const b = $('btn'); b.disabled = true; $('msg').textContent = '⏳ Entrando...';
+  let j;
+  try { const r = await fetch(`/camponline/squad/${TOKEN}`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)}); j = await r.json(); }
+  catch(e){ $('msg').textContent='❌ Erro de conexão.'; b.disabled=false; return; }
+  if(j.ok){ $('form-card').style.display='none'; $('ok-card').style.display='block'; }
+  else { $('msg').textContent = '❌ ' + (j.erro || 'Falhou.'); b.disabled=false; }
+}
+</script>
+</body>
+</html>
