@@ -56,6 +56,8 @@ def init_somaja_db():
             mei_abertura          TEXT,                    -- data de abertura do MEI (p/ DASN)
             cnpj                  TEXT,
             mei_onboard           TEXT,                    -- estado do onboarding MEI no Zap
+            mei_das_lembrete      TEXT,                    -- 'YYYY-MM' do último lembrete de DAS enviado
+            mei_dasn_lembrete     TEXT,                    -- 'YYYY' do último lembrete de DASN enviado
             created_at            TEXT DEFAULT CURRENT_TIMESTAMP,
             ultimo_acesso         TEXT
         );
@@ -118,6 +120,8 @@ def init_somaja_db():
         'ALTER TABLE somaja_users ADD COLUMN mei_abertura TEXT',
         'ALTER TABLE somaja_users ADD COLUMN cnpj TEXT',
         'ALTER TABLE somaja_users ADD COLUMN mei_onboard TEXT',
+        'ALTER TABLE somaja_users ADD COLUMN mei_das_lembrete TEXT',
+        'ALTER TABLE somaja_users ADD COLUMN mei_dasn_lembrete TEXT',
     ]:
         try:
             conn.execute(migration); conn.commit()

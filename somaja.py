@@ -986,10 +986,12 @@ def _wa_get_or_create_user(telefone, push_name=''):
     """Acha o usuário pelo telefone (últimos 10 dígitos) ou cria um 'lite' com trial.
     Permite onboarding 100% no WhatsApp, sem cadastro web."""
     digits = ''.join(c for c in str(telefone) if c.isdigit())
-    d10 = digits[-10:] if len(digits) >= 10 else digits
+    # Casa pelos 11 dígitos nacionais (DDD+nº), por IGUALDADE — sem LIKE '%...'
+    # (o LIKE de 10 dígitos podia casar números diferentes que terminam igual).
+    d11 = digits[-11:] if len(digits) >= 11 else digits
     conn = get_somaja_db()
-    u = conn.execute("SELECT * FROM somaja_users WHERE telefone LIKE ? ORDER BY id LIMIT 1",
-                     ('%' + d10,)).fetchone()
+    u = conn.execute("SELECT * FROM somaja_users WHERE substr(telefone,-11)=? ORDER BY id LIMIT 1",
+                     (d11,)).fetchone()
     if u:
         conn.close()
         return u, False
@@ -1013,18 +1015,17 @@ def _wa_get_or_create_user(telefone, push_name=''):
 
 
 def _wa_rate_ok(user_id):
-    """Cap diário de mensagens por usuário (protege o custo de IA)."""
+    """Cap diário de mensagens por usuário (protege o custo de IA).
+    Atômico: a contagem é recalculada numa única instrução (sem read-then-write)."""
     hoje = datetime.now().strftime('%Y-%m-%d')
     conn = get_somaja_db()
-    row = conn.execute('SELECT wa_day, wa_count FROM somaja_users WHERE id=?', (user_id,)).fetchone()
-    if not row or (row['wa_day'] or '') != hoje:
-        conn.execute('UPDATE somaja_users SET wa_day=?, wa_count=1 WHERE id=?', (hoje, user_id))
-        conn.commit(); conn.close()
-        return True
-    n = (row['wa_count'] or 0) + 1
-    conn.execute('UPDATE somaja_users SET wa_count=? WHERE id=?', (n, user_id))
-    conn.commit(); conn.close()
-    return n <= WA_RATE_DIA
+    conn.execute('UPDATE somaja_users SET '
+                 'wa_count = CASE WHEN wa_day=? THEN COALESCE(wa_count,0)+1 ELSE 1 END, '
+                 'wa_day = ? WHERE id=?', (hoje, hoje, user_id))
+    conn.commit()
+    row = conn.execute('SELECT wa_count FROM somaja_users WHERE id=?', (user_id,)).fetchone()
+    conn.close()
+    return (row['wa_count'] if row else 1) <= WA_RATE_DIA
 
 
 def _wa_ajuda(u):
@@ -1239,3 +1240,73 @@ def _coach_proativo_loop():
 
 
 threading.Thread(target=_coach_proativo_loop, daemon=True, name='somaja-coach').start()
+
+
+# ── Lote 2: Lembretes de DAS/DASN no WhatsApp (o "avisa sozinho" do MEI) ─────────
+# OPT-IN (anti-ban): só dispara com SOMAJA_LEMBRETES=1 — ligar só com o chip aquecido.
+def _lembrete_devido(u, now):
+    """Decide qual lembrete o MEI deve receber hoje: 'das', 'dasn' ou None.
+    Idempotente por mês/ano (colunas mei_das_lembrete='YYYY-MM' / mei_dasn_lembrete='YYYY')."""
+    def g(k):
+        try: return u[k]
+        except (KeyError, IndexError): return None
+    dia, mes, ano = now.day, now.strftime('%Y-%m'), now.strftime('%Y')
+    try:
+        das_valor = float(g('mei_das_valor') or 0)
+    except (TypeError, ValueError):
+        das_valor = 0
+    # DAS vence dia 20 → lembra entre 16 e 19, 1x no mês (só quem tem atividade/DAS definido)
+    if 16 <= dia <= 19 and das_valor > 0 and (g('mei_das_lembrete') or '') != mes:
+        return 'das'
+    # DASN vence 31/05 → lembra em maio (18 a 28), 1x no ano
+    if now.month == 5 and 18 <= dia <= 28 and (g('mei_dasn_lembrete') or '') != ano:
+        return 'dasn'
+    return None
+
+
+def _lembretes_loop():
+    import time as _t
+    if os.environ.get('SOMAJA_LEMBRETES', '0') != '1':
+        log.info('[SomaJá] Lembretes MEI DESLIGADOS (set SOMAJA_LEMBRETES=1 — só com chip aquecido)')
+        return
+    _t.sleep(240)  # deixa o app subir
+    log.info('[SomaJá] Lembretes MEI ATIVOS (DAS dia ~17 + DASN em maio)')
+    while True:
+        try:
+            now = datetime.now()
+            mes, ano = now.strftime('%Y-%m'), now.strftime('%Y')
+            conn = get_somaja_db()
+            negs = conn.execute(
+                "SELECT id, telefone, plan_active, trial_until, mei_das_valor, "
+                "mei_das_lembrete, mei_dasn_lembrete FROM somaja_users "
+                "WHERE modo='negocio' AND telefone IS NOT NULL AND telefone<>''").fetchall()
+            conn.close()
+            for u in negs:
+                if not tem_acesso(u):
+                    continue
+                tipo = _lembrete_devido(u, now)
+                if not tipo:
+                    continue
+                if tipo == 'das':
+                    msg = (f'🧾 *Lembrete do DAS* — seu imposto de {_brl(u["mei_das_valor"] or 0)} '
+                           f'vence *dia 20*. Paga pelo app MEI ou no gov.br que tá tudo certo. 👍')
+                    col, val = 'mei_das_lembrete', mes
+                else:
+                    msg = ('📋 *Declaração anual do MEI (DASN)* vence *31/05*. '
+                           'Não esquece — esquecer deixa seu CNPJ irregular! '
+                           'Faz no gov.br (Portal do Simples), leva 2 minutos. 🗓️')
+                    col, val = 'mei_dasn_lembrete', ano
+                try:
+                    wa_send(u['telefone'], msg)
+                    _c = get_somaja_db()
+                    _c.execute(f'UPDATE somaja_users SET {col}=? WHERE id=?', (val, u['id']))
+                    _c.commit(); _c.close()
+                    _t.sleep(3)  # respira entre envios (anti-ban)
+                except Exception as _e:
+                    log.warning(f'[SomaJá] lembrete {tipo} user {u["id"]}: {_e}')
+        except Exception as e:
+            log.error(f'[SomaJá] lembretes loop: {e}')
+        _t.sleep(43200)  # checa 2x/dia
+
+
+threading.Thread(target=_lembretes_loop, daemon=True, name='somaja-lembretes').start()
