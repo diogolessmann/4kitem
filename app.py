@@ -2399,12 +2399,18 @@ def webhook_asaas_global():
                 log.error(f'[Amparo] Webhook error: {_amp_e}')
 
     elif ref.startswith('somaja_'):
-        # SomaJá — assinatura mensal/anual: paga=ativa, vence/cancela=corta
-        if customer_id:
+        # SomaJá — assinatura mensal/anual: paga=ativa, vence/cancela=corta.
+        # ATENÇÃO: o customer_id do Asaas é 'cus_XXX' (TEM underscore), então o parse
+        # genérico acima (parts[1]='cus') quebra. Pegamos o customer direto do PAYLOAD
+        # e o plano (sempre 2 segmentos, ex: mei_anual / pro_anual) do FIM da ref.
+        soma_cust = (payload.get('payment', {}).get('customer')
+                     or payload.get('subscription', {}).get('customer') or '')
+        _segs = ref[len('somaja_'):].rsplit('_', 2)
+        _soma_plano = '_'.join(_segs[-2:]) if len(_segs) >= 2 else None
+        if soma_cust:
             try:
                 from somaja import soma_webhook_ativar
-                _soma_plano = ref.split('_', 2)[2] if ref.count('_') >= 2 else None
-                soma_webhook_ativar(customer_id, _soma_plano, ativar,
+                soma_webhook_ativar(soma_cust, _soma_plano, ativar,
                                     payload.get('payment', {}).get('id', ''))
             except Exception as _soma_e:
                 log.error(f'[SomaJá] Webhook error: {_soma_e}')
@@ -6310,7 +6316,7 @@ def saas_admin():
         from somaja_db import get_somaja_db as _get_soma_db
         somaconn = _get_soma_db()
         somaja_users = [dict(r) for r in somaconn.execute(
-            'SELECT id, nome, email, telefone, plano, plan_active, trial_until, created_at '
+            'SELECT id, nome, email, telefone, plano, plan_active, trial_until, created_at, modo, mei_atividade '
             'FROM somaja_users ORDER BY id DESC').fetchall()]
         somaja_lancamentos = somaconn.execute('SELECT COUNT(*) FROM somaja_tx').fetchone()[0]
         somaja_ativos = somaconn.execute('SELECT COUNT(*) FROM somaja_users WHERE plan_active=1').fetchone()[0]

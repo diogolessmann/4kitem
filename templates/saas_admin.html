@@ -798,7 +798,9 @@
       {% for u in somaja_users %}
       <tr>
         <td>{{ u.id }}</td>
-        <td><strong>{{ u.nome }}</strong></td>
+        <td><strong>{{ u.nome }}</strong>
+          {% if u.modo == 'negocio' %}<span class="badge" style="background:#dcfce7;color:#15803d">🧾 MEI{% if u.mei_atividade %} · {{ u.mei_atividade }}{% endif %}</span>{% else %}<span style="color:var(--text2);font-size:11px">🐗 pessoal</span>{% endif %}
+        </td>
         <td>{{ u.email }}</td>
         <td>{{ u.telefone or '—' }}</td>
         <td>{{ u.plano or '—' }}</td>
@@ -826,7 +828,7 @@
   <script>
   async function somaSetPlan(uid, ativo){
     let plano = null;
-    if(ativo){ plano = prompt('Plano (opcional): pro_mensal · pro_anual · familia_mensal · familia_anual', 'pro_anual') || null; }
+    if(ativo){ plano = prompt('Plano: pro_mensal · pro_anual · mei_mensal · mei_anual', 'pro_anual') || null; }
     if(!confirm(ativo ? 'Ativar a assinatura deste usuário?' : 'Cortar o acesso deste usuário?')) return;
     const r = await fetch('/saas-admin/somaja/set-plan', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({user_id:uid, ativo:ativo, plano:plano})});
     const j = await r.json(); if(j.ok){ location.reload(); } else { alert(j.erro || 'Erro'); }

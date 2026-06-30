@@ -327,7 +327,7 @@ def soma_webhook_ativar(customer_id, plano_key, ativar, payment_id=''):
     if not customer_id:
         return False
     conn = get_somaja_db()
-    u = conn.execute('SELECT id, email, nome, afiliado_ref, modo FROM somaja_users WHERE asaas_customer_id=?',
+    u = conn.execute('SELECT id, email, nome, cpf, afiliado_ref, modo FROM somaja_users WHERE asaas_customer_id=?',
                      (customer_id,)).fetchone()
     if not u:
         conn.close()
@@ -357,7 +357,9 @@ def soma_webhook_ativar(customer_id, plano_key, ativar, payment_id=''):
                 except (KeyError, IndexError):
                     _neg = False
                 _app_af = 'somaja_mei' if _neg else 'somaja'
-                registrar_comissao(ref_af, _app_af, payment_id, u['nome'])
+                _ccpf = (u['cpf'] if 'cpf' in u.keys() else '') or ''
+                registrar_comissao(ref_af, _app_af, payment_id, u['nome'],
+                                   cliente_email=(u['email'] or ''), cliente_cpf=_ccpf)
             except Exception as _e:
                 log.warning(f'[SomaJá] comissão afiliado: {_e}')
     log.info(f'[SomaJá] Assinatura {"ATIVADA" if ativar else "cortada"} (customer {customer_id})')
@@ -848,7 +850,7 @@ def assinar():
 @somaja_login_required
 def checkout(plano):
     u = _get_user()
-    if plano not in TODOS_PLANOS:
+    if plano not in _planos_do_user(u):   # negócio só assina MEI; pessoal só assina pessoal
         return redirect('/somaja/assinar')
     p = TODOS_PLANOS[plano]
     desc_prod = 'SomaJá Negócio' if plano.startswith('mei_') else 'SomaJá'
@@ -907,9 +909,11 @@ def pix_status():
         return jsonify({'pago': True})
     payments = _asaas_req('GET', f'/subscriptions/{u["asaas_subscription_id"]}/payments?limit=1')
     if payments.get('data'):
-        st = (payments['data'][0].get('status') or '').upper()
+        pay0 = payments['data'][0]
+        st = (pay0.get('status') or '').upper()
         if st in ('RECEIVED', 'CONFIRMED', 'RECEIVED_IN_CASH'):
-            soma_webhook_ativar(u['asaas_customer_id'], u['plano'], True)
+            soma_webhook_ativar(u['asaas_customer_id'], u['plano'], True,
+                                payment_id=pay0.get('id', ''))
             return jsonify({'pago': True})
     return jsonify({'pago': False})
 
