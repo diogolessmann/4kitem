@@ -38,9 +38,9 @@ h1{font-size:24px;font-weight:900;line-height:1.15;margin-bottom:6px}
 .cta:disabled{opacity:.5;cursor:not-allowed}
 .card{background:#13131f;border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:20px;margin-top:16px}
 label{display:block;font-size:12px;font-weight:600;color:#8888aa;margin:12px 0 5px}
-input{width:100%;background:#0d0d1a;border:1px solid rgba(255,255,255,.1);border-radius:9px;
+input,select{width:100%;background:#0d0d1a;border:1px solid rgba(255,255,255,.1);border-radius:9px;
   color:#f0f0ff;padding:12px 13px;font-size:15px;font-family:inherit;outline:none}
-input:focus{border-color:#a855f7}
+input:focus,select:focus{border-color:#a855f7}
 .chk{display:flex;align-items:center;gap:8px;margin-top:14px;font-size:13px;color:#c9d6e2}
 .chk input{width:auto}
 .hint{font-size:11px;color:#6b7591;margin-top:4px}
@@ -112,6 +112,17 @@ input:focus{border-color:#a855f7}
     <input id="f-tel" inputmode="numeric" placeholder="47 99999-9999">
     <label>CPF *</label>
     <input id="f-cpf" inputmode="numeric" placeholder="000.000.000-00">
+    <label>Chave PIX pra receber o prêmio *</label>
+    <div style="display:flex;gap:8px">
+      <select id="f-pixtipo" style="flex:0 0 44%;width:auto" onchange="pixTipoMudou()">
+        <option value="CPF">Meu CPF (acima)</option>
+        <option value="CELULAR">Celular</option>
+        <option value="EMAIL">E-mail</option>
+        <option value="ALEATORIA">Aleatória</option>
+      </select>
+      <input id="f-pix" placeholder="sua chave PIX" style="display:none;flex:1;width:auto">
+    </div>
+    <div class="hint">Se você vencer, o prêmio cai automático <b>nessa chave</b>. Confere direitinho.</div>
     <label>Seu NICK no jogo *</label>
     <input id="f-nick" placeholder="exatamente como aparece no {{ camp.jogo }}">
     <div class="hint">É por ele que a gente confirma o vencedor no print da partida.</div>
@@ -174,12 +185,17 @@ const PERFIL_KEY='camp_perfil';
 function salvarPerfil(){ try{ localStorage.setItem(PERFIL_KEY, JSON.stringify({nome:$('f-nome').value.trim(), tel:$('f-tel').value.trim(), nick:$('f-nick').value.trim()})); }catch(e){} }  // só nick/nome/tel — NUNCA CPF (LGPD)
 function preencherPerfil(){ try{ const p=JSON.parse(localStorage.getItem(PERFIL_KEY)||'{}'); if(p.nome)$('f-nome').value=p.nome; if(p.tel)$('f-tel').value=p.tel; if(p.nick)$('f-nick').value=p.nick; const h=$('volta'); if(h&&p.nick){ h.textContent='👋 Bem-vindo de volta, '+(p.nome||p.nick)+'! Confere e bora.'; h.style.display='block'; } }catch(e){} }
 function abrir(){ $('btn-abrir').classList.add('hidden'); $('form-card').classList.remove('hidden'); preencherPerfil(); $('f-nome').focus(); }
+function pixTipoMudou(){ const t=$('f-pixtipo').value, i=$('f-pix');
+  i.style.display = (t==='CPF') ? 'none' : 'block';
+  i.placeholder = t==='CELULAR' ? 'DDD + número' : (t==='EMAIL' ? 'seu@email.com' : 'chave aleatória');
+  if(t!=='CPF') i.focus(); }
 function showErr(el,msg){ el.textContent=msg; el.style.display='block'; }
 async function inscrever(){
   const err=$('err'); err.style.display='none';
   if(!$('f-18').checked){ return showErr(err,'Confirme que tem 18+ e leu as regras.'); }
   const body={ nome:$('f-nome').value.trim(), tel:$('f-tel').value, cpf:$('f-cpf').value,
     nick:$('f-nick').value.trim(),
+    pix_tipo:$('f-pixtipo').value, pix_chave:$('f-pix').value.trim(),
     membros:Array.from(document.querySelectorAll('.f-membro')).map(x=>x.value.trim()).filter(Boolean).join(','), aff:AFF };
   salvarPerfil();
   const b=$('btn-pagar'); b.disabled=true; b.textContent='Gerando...';

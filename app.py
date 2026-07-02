@@ -17202,9 +17202,50 @@ def _sz_pagar_pendentes(conn, camp_id=None, force=False):
     return round(pago_total, 2)
 
 
+def _camp_repara_premio_falso(conn):
+    """Cura o 'falso pago' do Asaas: com a validação externa de saque, o POST /transfers CRIA a
+    transferência (e o ledger marca 'pago') mas ela pode FALHAR depois (guarda recusou, saldo,
+    banco). Confere UMA vez cada cota paga recente: se TODAS as transferências do ext_ref
+    morreram (FAILED/CANCELLED), reabre a cota ('erro') e devolve a campanha pra 'confirmado' —
+    o reconciliador re-envia. Cota saudável ganha erro='ok_verificado' e sai da fila de checagem."""
+    if _camp_payout_via_efi():
+        return 0
+    corte = (datetime.now() - timedelta(days=7)).isoformat()
+    rows = [dict(r) for r in conn.execute(
+        "SELECT ext_ref, campanha_id FROM camponline_premio_pagamentos "
+        "WHERE status='pago' AND IFNULL(erro,'')='' AND IFNULL(transfer_id,'') NOT IN ('','efi_ok') "
+        "AND criado_em >= ? LIMIT 20", (corte,)).fetchall()]
+    n = 0
+    for r in rows:
+        try:
+            chk  = _asaas_req('GET', f"/transfers?externalReference={r['ext_ref']}")
+            data = chk.get('data') or []
+            sts  = [(t.get('status') or '').upper() for t in data]
+            if data and all(s in ('FAILED', 'CANCELLED') for s in sts):
+                conn.execute("UPDATE camponline_premio_pagamentos SET status='erro', transfer_id='', "
+                             "erro='transferencia falhou no Asaas (validacao/saldo) — reenviando' "
+                             "WHERE ext_ref=? AND status='pago'", (r['ext_ref'],))
+                conn.execute("UPDATE slotzap_campanhas SET premio_status='confirmado' "
+                             "WHERE id=? AND premio_status IN ('pago','pago_parcial')", (r['campanha_id'],))
+                conn.commit()
+                log.warning(f"[CAMPonline] cota {r['ext_ref']}: transferencia FALHOU no Asaas — reaberta pra reenvio")
+                n += 1
+            elif data:
+                conn.execute("UPDATE camponline_premio_pagamentos SET erro='ok_verificado' "
+                             "WHERE ext_ref=? AND status='pago'", (r['ext_ref'],))
+                conn.commit()
+        except Exception as _e:
+            log.warning(f"[CAMPonline] repara premio {r.get('ext_ref')}: {_e}")
+    return n
+
+
 def _camp_reconciliar_premios(conn):
     """Rede de segurança do CAMPonline: paga o prêmio de torneios CONFIRMADOS cuja janela de
     disputa já venceu e que ainda não foram pagos. Idempotente (via _camp_pagar_premio)."""
+    try:
+        _camp_repara_premio_falso(conn)   # falso-pago (transferência criada que falhou) volta pra fila
+    except Exception as _e:
+        log.warning(f'[CAMPonline] repara falso-pago: {_e}')
     agora = datetime.now().isoformat()
     pend = [dict(r) for r in conn.execute(
         "SELECT * FROM slotzap_campanhas WHERE tipo='torneio' AND premio_status='confirmado' "
@@ -17691,6 +17732,14 @@ def camponline_inscrever(token):
         return jsonify({'erro': 'CPF inválido. Confira os números.'}), 400
     if len(tel) < 10:
         return jsonify({'erro': 'Informe seu WhatsApp com DDD — é por ele que você recebe o lobby e o aviso se ganhar.'}), 400
+    # Chave PIX do prêmio (default = o próprio CPF): é NELA que a premiação cai se ele vencer.
+    pix_tipo  = (data.get('pix_tipo') or 'CPF').strip().upper()[:12]
+    pix_chave = (data.get('pix_chave') or '').strip()[:120]
+    if pix_tipo == 'CPF' and not pix_chave:
+        pix_chave = cpf
+    pix_tipo, pix_chave, perr = _sz_pix_normaliza(pix_tipo, pix_chave)
+    if perr:
+        return jsonify({'erro': f'Chave PIX do prêmio: {perr}'}), 400
 
     conn = get_saas_db()
     camp = conn.execute("SELECT * FROM slotzap_campanhas WHERE token_publico=? "
@@ -17742,16 +17791,16 @@ def camponline_inscrever(token):
         conn.close()
         # corrida: outra pessoa pegou essa vaga no mesmo instante — front tenta de novo
         return jsonify({'erro': 'Essa vaga acabou de ser preenchida. Tente de novo.'}), 409
-    # Linha do CAPITÃO no rateio (PIX no CPF dele); os colegas entram pelo convite-de-squad.
-    if squad_token:
-        try:
-            conn.execute("INSERT INTO camponline_membros "
-                         "(slot_id,campanha_id,nick,nome,cpf,tel,pix_chave,pix_tipo,is_capitao,criado_em) "
-                         "VALUES (?,?,?,?,?,?,?,?,?,?)",
-                         (slot['id'], camp['id'], nick, nome, cpf, tel, cpf, 'CPF', 1, agora))
-            conn.commit()
-        except Exception as _e:
-            log.warning(f'[CAMPonline] membro capitão: {_e}')
+    # Linha do CAPITÃO no rateio — TODO inscrito (solo incluso) guarda a chave PIX escolhida
+    # pro prêmio; os colegas de squad entram pelo convite-de-squad.
+    try:
+        conn.execute("INSERT INTO camponline_membros "
+                     "(slot_id,campanha_id,nick,nome,cpf,tel,pix_chave,pix_tipo,is_capitao,criado_em) "
+                     "VALUES (?,?,?,?,?,?,?,?,?,?)",
+                     (slot['id'], camp['id'], nick, nome, cpf, tel, pix_chave, pix_tipo, 1, agora))
+        conn.commit()
+    except Exception as _e:
+        log.warning(f'[CAMPonline] membro capitão: {_e}')
     conn.close()
     resp = {'ok': True, 'pix_qr': pix_qr, 'pix_copia': pix_copia,
             'valor': valor, 'numero': slot['numero']}
@@ -18085,23 +18134,36 @@ def asaas_saque_validacao():
     O Asaas chama esta URL pra cada transferência via API; respondemos APPROVED/REFUSED.
     Aprova automaticamente APENAS os saques que o SlotZap gerou (comissão de afiliado,
     externalReference 'szaf_'); recusa qualquer outro — anti-abuso se a chave vazar."""
-    token_cfg = os.environ.get('ASAAS_SAQUE_TOKEN', '')
-    token_req = (request.headers.get('asaas-access-token')
-                 or request.headers.get('Asaas-Access-Token') or '')
-    if token_cfg and token_req != token_cfg:
-        log.warning('[SlotZap] saque-validacao: token invalido')
+    # FAIL-CLOSED: sem ASAAS_SAQUE_TOKEN configurada, recusa tudo (última barreira se a
+    # API key vazar — recusar é o lado seguro; comissão recusada fica 'erro' e o
+    # reconciliador re-tenta depois).
+    token_cfg = (os.environ.get('ASAAS_SAQUE_TOKEN', '') or '').strip()
+    token_req = ((request.headers.get('asaas-access-token')
+                 or request.headers.get('Asaas-Access-Token') or '')).strip()
+    if (not token_cfg) or token_req != token_cfg:
+        log.warning('[Saque] validacao: token ausente/invalido — REFUSED (fail-closed)')
         return jsonify({'status': 'REFUSED', 'refuseReason': 'token invalido'}), 200
     data     = request.get_json(silent=True) or {}
     transfer = data.get('transfer') or {}
     ext      = (transfer.get('externalReference') or '')
     val      = transfer.get('value')
-    # Aprova comissões do SlotZap. Sem ref (ext vazio) também aprova: nesta conta todo
-    # saque via API é comissão de afiliado iniciada por nós.
-    if ext.startswith('szaf_') or ext == '':
-        log.info(f'[SlotZap] saque-validacao APPROVED ref={ext} valor={val}')
+    # Saques gerados pelo SISTEMA (prefixos conhecidos): comissão SlotZap (szaf_),
+    # motor central de afiliados (afil_) e prêmio CAMPonline (camp_premio_).
+    if ext.startswith(('szaf_', 'afil_', 'camp_premio_')):
+        log.info(f'[Saque] validacao APPROVED ref={ext} valor={val}')
         return jsonify({'status': 'APPROVED'}), 200
-    log.warning(f'[SlotZap] saque-validacao REFUSED ref={ext} valor={val}')
-    return jsonify({'status': 'REFUSED', 'refuseReason': 'saque nao reconhecido pelo SlotZap'}), 200
+    # Sem ref = possível saque MANUAL (painel). Só aprova se o DESTINO estiver na
+    # whitelist (env SAQUE_DESTINO_LIBERADO = chaves PIX/CPF do dono, separadas por
+    # vírgula). Sem whitelist ou destino desconhecido = REFUSED — se a API key vazar,
+    # transferência pra conta de atacante morre aqui.
+    destinos = {d.strip().lower() for d in os.environ.get('SAQUE_DESTINO_LIBERADO', '').split(',') if d.strip()}
+    pix_key  = str(transfer.get('pixAddressKey') or '').strip().lower()
+    cpf_dest = ''.join(c for c in str((transfer.get('bankAccount') or {}).get('cpfCnpj') or '') if c.isdigit())
+    if ext == '' and destinos and (pix_key in destinos or (cpf_dest and cpf_dest in destinos)):
+        log.info(f'[Saque] validacao APPROVED (manual, destino liberado) valor={val}')
+        return jsonify({'status': 'APPROVED'}), 200
+    log.warning(f'[Saque] validacao REFUSED ref={ext!r} destino={pix_key or cpf_dest!r} valor={val}')
+    return jsonify({'status': 'REFUSED', 'refuseReason': 'saque nao reconhecido'}), 200
 
 
 def _sz_check_senha_conta(conn, senha):
