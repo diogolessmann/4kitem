@@ -67,9 +67,12 @@ def _robots():
 
 @app.route('/sitemap.xml')
 def _sitemap():
-    urls = ['/', '/agenda', '/alerta', '/bau', '/mandazap', '/mandaja',
-            '/pubshow', '/slotzap', '/drzap', '/radar/', '/licita-norte/',
-            '/amparo', '/privacidade', '/termos']
+    urls = ['/', '/atendezap', '/somaja', '/somaja/mei', '/mandazap',
+            '/agenda', '/alerta', '/kids', '/despachante-info', '/defesapro',
+            '/vetzap', '/pcd', '/mandaja', '/mandajr', '/bau', '/amparo',
+            '/radar/', '/licita-norte/', '/mlhype', '/pubshow', '/slotzap',
+            '/rifaja', '/camponline', '/drzap', '/afiliados',
+            '/privacidade', '/termos']
     items = ''.join(
         '<url><loc>https://4kitem.com.br%s</loc></url>' % u for u in urls)
     xml = ('<?xml version="1.0" encoding="UTF-8"?>'
