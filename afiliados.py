@@ -36,7 +36,9 @@ APPS = {
     'licita_norte':{'nome': 'Radar Licita Norte',   'comissao': 10.00, 'unidade': 'por mês',    'url': '/licita-norte/',     'desc': 'Licitações do Norte de SC',             'icone': '/static/img/licita/logo.webp'},
     'mandaja':     {'nome': 'MandaJá',               'comissao': 10.00, 'unidade': 'por mês',    'url': '/mandaja',           'desc': 'Delivery sem comissão com PIX',         'icone': '/static/img/mandaja/logo.png'},
     'mandajr':     {'nome': 'MandaJr',               'comissao': 7.00,  'unidade': 'por mês',    'url': '/mandajr',           'desc': 'Catálogo no WhatsApp simplificado',     'icone': '/static/img/mandajr/mandajr-icon.webp'},
-    'pubshow':     {'nome': 'PubShow',               'comissao': 15.00, 'unidade': 'por mês',    'url': '/pubshow',           'desc': 'Jukebox digital pra bares',             'icone': '/static/pubshow/pubshow-logo-concept.png'},
+    # 'pubshow' REMOVIDO do programa (jul/2026): o pubshow.py nunca teve a fiacao de
+    # comissao (captura ?ref + registrar_comissao) — prometia R$15 que nunca creditava.
+    # Recolocar SO junto com a fiacao, na reforma pos-Asaas-Split.
     'amparo':      {'nome': 'Amparo',                'comissao': 29.90, 'comissao_pct': 20, 'unidade': 'por mês (20% recorrente)', 'url': '/amparo',            'desc': 'Cuidado entre as sessões pra psicólogos','icone': ''},
     'atendezap':   {'nome': 'AtendeZap',             'comissao': 25.00, 'unidade': 'por cliente',  'url': '/atendezap',        'desc': 'Bot de atendimento no WhatsApp, pronto por nicho', 'icone': ''},
 }

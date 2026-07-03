@@ -43,11 +43,24 @@
 
   <div class="plan-box">
     <div class="plan-name">{{ plano.label }}</div>
-    <div class="plan-price">R$ 49,90<span>/mês</span></div>
+    <div class="plan-price">R$ 63,90<span>/mês</span></div>
     <div class="plan-desc">Agendamentos ilimitados · Link próprio · WhatsApp automático</div>
   </div>
 
   <form method="POST">
+    <div class="section-title">Período</div>
+    <div class="billing-options">
+      <label class="billing-opt">
+        <input type="radio" name="ciclo" value="mensal" checked>
+        <span class="opt-icon">📅</span>
+        <div><div class="opt-name">Mensal — R$ 63,90/mês</div><div class="opt-sub">Renova todo mês, cancela quando quiser</div></div>
+      </label>
+      <label class="billing-opt">
+        <input type="radio" name="ciclo" value="anual">
+        <span class="opt-icon">🏆</span>
+        <div><div class="opt-name">Anual — R$ 639,00</div><div class="opt-sub">2 meses grátis · preço travado 12 meses</div></div>
+      </label>
+    </div>
     <div class="section-title">Forma de pagamento</div>
     <div class="billing-options">
       <label class="billing-opt">

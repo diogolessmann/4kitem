@@ -964,10 +964,11 @@ def webhook_asaas():
     if request.method == 'GET':
         return jsonify({'status': 'ok'}), 200
 
-    # Valida token de autenticação do Asaas
+    # Valida token de autenticação do Asaas (FAIL-CLOSED: sem env configurada = recusa,
+    # igual ao webhook global — este endpoint credita créditos/comissão).
     token_esperado = os.environ.get('ASAAS_WEBHOOK_TOKEN', '').strip().strip('"').strip("'")
     token_recebido = (request.headers.get('asaas-access-token', '') or '').strip().strip('"').strip("'")
-    if token_esperado and token_recebido != token_esperado:
+    if (not token_esperado) or token_recebido != token_esperado:
         return jsonify({'error': 'unauthorized'}), 401
 
     dados = request.get_json(silent=True) or {}

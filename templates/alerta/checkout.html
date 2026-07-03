@@ -48,6 +48,19 @@
   </div>
 
   <form method="POST">
+    <div class="section-title">Período</div>
+    <div class="billing-options">
+      <label class="billing-opt">
+        <input type="radio" name="ciclo" value="mensal" checked>
+        <span class="opt-icon">📅</span>
+        <div><div class="opt-name">Mensal — {{ plano.price }}/mês</div><div class="opt-sub">Renova todo mês, cancela quando quiser</div></div>
+      </label>
+      <label class="billing-opt">
+        <input type="radio" name="ciclo" value="anual">
+        <span class="opt-icon">🏆</span>
+        <div><div class="opt-name">Anual — R$ {{ '%.2f'|format(plano.preco * 10)|replace('.', ',') }}</div><div class="opt-sub">2 meses grátis · preço travado 12 meses</div></div>
+      </label>
+    </div>
     <div class="section-title">Forma de pagamento</div>
     <div class="billing-options">
       <label class="billing-opt">

@@ -34,7 +34,7 @@ licita_bp = Blueprint('licita_norte', __name__, url_prefix='/licita-norte')
 ADMIN_EMAIL    = os.environ.get('ADMIN_EMAIL', '').strip().lower()
 LICITA_VMIN    = 0          # faixa fixa (sem env): R$0 a R$500.000
 LICITA_VMAX    = 500000
-LICITA_PRECO   = os.environ.get('LICITA_PRECO', '67')
+LICITA_PRECO   = os.environ.get('LICITA_PRECO', '79')
 LICITA_WHATS   = os.environ.get('LICITA_WHATSAPP', '').strip()
 CIDADES_TXT    = 'Norte de SC + Vale do Itajaí · raio ~70km · 29 cidades'
 
@@ -103,7 +103,7 @@ def rota_lp():
         titulo='As licitações <span class="hl">perto de você</span>, num lugar só',
         sub='Schroeder, Guaramirim, Jaraguá, Joinville, Massaranduba, Corupá e região — '
             'todas as áreas, de R$ 1 mil a R$ 500 mil. As fáceis, do seu lado.',
-        cta='Quero começar', preco='R$ 67',
+        cta='Quero começar', preco='R$ 79',
         publico='Pra empresa e MEI da região que quer pegar licitação pequena e média perto de casa — qualquer ramo.',
         dor_t='A prefeitura do seu lado abre licitação e você nem fica sabendo.',
         dor='Cada cidade publica num canto. Olhar 29 portais todo dia é impossível. O Licita '

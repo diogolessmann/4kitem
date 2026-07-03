@@ -51,10 +51,10 @@
   <div class="plan-box">
     <div class="plan-name">Plano {{ plano.label }}</div>
     {% if combo %}
-    <div class="plan-price"><s style="opacity:.5;font-size:.6em">R$ {{ plano.price }}</s> R$ {{ '%.2f'|format(preco_final) }}<span>/mês</span></div>
+    <div class="plan-price"><s style="opacity:.5;font-size:.6em">R$ {{ '%.2f'|format(plano.price)|replace('.', ',') }}</s> R$ {{ '%.2f'|format(preco_final)|replace('.', ',') }}<span>/mês</span></div>
     <div style="color:#22c55e;font-weight:700;font-size:13px;margin-top:4px">🔗 Desconto combo -25% (você já é SlotZap!)</div>
     {% else %}
-    <div class="plan-price">R$ {{ plano.price }}<span>/mês</span></div>
+    <div class="plan-price">R$ {{ '%.2f'|format(plano.price)|replace('.', ',') }}<span>/mês</span></div>
     {% endif %}
     <div class="plan-features">
       📱 {{ plano.numbers }} número{{ 's' if plano.numbers > 1 else '' }} ·
@@ -70,6 +70,19 @@
   </div>
 
   <form method="POST">
+    <div class="section-title">Período</div>
+    <div class="billing-options">
+      <label class="billing-opt">
+        <input type="radio" name="ciclo" value="mensal" checked>
+        <span class="opt-icon">📅</span>
+        <div><div class="opt-name">Mensal — R$ {{ '%.2f'|format(preco_final)|replace('.', ',') }}/mês</div><div class="opt-sub">Renova todo mês, cancela quando quiser</div></div>
+      </label>
+      <label class="billing-opt">
+        <input type="radio" name="ciclo" value="anual">
+        <span class="opt-icon">🏆</span>
+        <div><div class="opt-name">Anual — R$ {{ '%.2f'|format(preco_final * 10)|replace('.', ',') }}</div><div class="opt-sub">2 meses grátis · preço travado 12 meses</div></div>
+      </label>
+    </div>
     <div class="section-title">Forma de pagamento</div>
     <div class="billing-options">
       <label class="billing-opt">

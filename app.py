@@ -330,7 +330,7 @@ WEEKDAY_NAMES = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'D
 
 # ── AlertaSC constants ────────────────────────────────────────────────────────
 ALERTA_PLANS = {
-    'basico':        {'label': '👤 Individual',     'price': 'R$ 19,90', 'preco': 19.90,  'vehicles': 1},
+    'basico':        {'label': '👤 Individual',     'price': 'R$ 24,90', 'preco': 24.90,  'vehicles': 1},
     'familia':       {'label': '👨‍👩‍👧 Família',      'price': 'R$ 39,00', 'preco': 39.00,  'vehicles': 4},
     'pequena_frota': {'label': '🚐 Pequena Frota',  'price': 'R$ 99,00', 'preco': 99.00,  'vehicles': 9},
     'frota_media':   {'label': '🚛 Frota Média',    'price': 'R$149,00', 'preco': 149.00, 'vehicles': 20},
@@ -760,7 +760,7 @@ def _bau_login_required(f):
 # monthly_safe = capacidade mensal segura aprox. (daily_safe_cap × números × ~22 dias úteis),
 # arredondada — é o que a landing mostra ("até X msgs/mês"). Vende segurança, não volume bruto.
 MANDAZAP_PLANS = {
-    'solo':      {'label': 'Solo',      'numbers': 1,  'daily_limit': 399,   'daily_safe_cap': 45, 'monthly_safe': '1.000',  'contacts_limit': 500,   'price': 79},
+    'solo':      {'label': 'Solo',      'numbers': 1,  'daily_limit': 399,   'daily_safe_cap': 45, 'monthly_safe': '1.000',  'contacts_limit': 500,   'price': 89.90},
     'duplo':     {'label': 'Duplo',     'numbers': 2,  'daily_limit': 799,   'daily_safe_cap': 65, 'monthly_safe': '2.800',  'contacts_limit': 2000,  'price': 149},
     'trio':      {'label': 'Trio',      'numbers': 3,  'daily_limit': 1199,  'daily_safe_cap': 85, 'monthly_safe': '5.500',  'contacts_limit': 5000,  'price': 397},
     'quadruplo': {'label': 'Quádruplo', 'numbers': 4,  'daily_limit': 1599,  'daily_safe_cap': 85, 'monthly_safe': '7.400',  'contacts_limit': 10000, 'price': 597},
@@ -831,10 +831,10 @@ def _combo_desconto_ativo(email, produto_atual) -> bool:
 MANDAJA_PLANS = {
     'jr':       {'label': 'MandaJr',  'products': 10,  'price': 29,  'emoji': '🍔'},
     'micro':    {'label': 'Micro',    'products': 15,  'price': 59,  'emoji': '🌱'},
-    'light':    {'label': 'Light',    'products': 20,  'price': 99,  'emoji': '⚡'},
-    'plus':     {'label': 'Plus',     'products': 25,  'price': 159, 'emoji': '🚀'},
-    'pro':      {'label': 'Pro',      'products': 30,  'price': 249, 'emoji': '💎'},
-    'king':     {'label': 'King',     'products': 50,  'price': 349, 'emoji': '👑'},
+    'light':    {'label': 'Light',    'products': 20,  'price': 79,  'emoji': '⚡'},
+    'plus':     {'label': 'Plus',     'products': 25,  'price': 99,  'emoji': '🚀'},
+    'pro':      {'label': 'Pro',      'products': 30,  'price': 159, 'emoji': '💎'},
+    'king':     {'label': 'King',     'products': 50,  'price': 239, 'emoji': '👑'},
     'ultra':    {'label': 'Ultra',    'products': 200, 'price': 499, 'emoji': '🔥'},
 }
 
@@ -1048,13 +1048,13 @@ BAU_PLANS = {
 
 KIDS_PLANS = {
     'mensal': {
-        'label': 'SalaTV Mensal', 'price': 'R$ 49,90/mês',
-        'preco': 49.90, 'cycle': 'MONTHLY',
+        'label': 'SalaTV Mensal', 'price': 'R$ 63,90/mês',
+        'preco': 63.90, 'cycle': 'MONTHLY',
         'features': ['6 categorias de conteúdo', '1 código de acesso', 'Atualização automática de conteúdo', 'Suporte via WhatsApp'],
     },
     'anual': {
-        'label': 'SalaTV Anual', 'price': 'R$ 39,90/mês (R$ 478,80/ano)',
-        'preco': 478.80, 'cycle': 'YEARLY',
+        'label': 'SalaTV Anual', 'price': 'R$ 54,90/mês (R$ 658,80/ano)',
+        'preco': 658.80, 'cycle': 'YEARLY',
         'features': ['Tudo do Mensal', '20% de desconto', '2 códigos de acesso'],
     },
 }
@@ -1384,10 +1384,12 @@ def alerta_assinar(plano):
             conn2.execute('UPDATE alerta_subscribers SET asaas_customer_id=? WHERE id=?',
                           (customer_id, sub_id))
             conn2.commit(); conn2.close()
+            anual = request.form.get('ciclo') == 'anual'
+            valor = round(p['preco'] * 10, 2) if anual else p['preco']
             resp = _asaas_criar_assinatura_saas(
-                customer_id, 'alerta', plano, p['preco'],
-                f'AlertaSC {p["label"]} — Assinatura Mensal',
-                billing_type
+                customer_id, 'alerta', plano, valor,
+                f'AlertaSC {p["label"]} — Assinatura ' + ('Anual (2 meses grátis)' if anual else 'Mensal'),
+                billing_type, 'YEARLY' if anual else 'MONTHLY'
             )
             if resp.get('id'):
                 return redirect('/alerta/aguardando-pagamento')
@@ -1407,9 +1409,9 @@ def alerta_aguardando():
 # ══════════════════════════════════════════════════════════════════════════
 
 DESP_PLANS = {
-    'basico':        {'label': '🥉 Básico',        'price': 'R$ 79,90/mês',  'preco': 79.90},
-    'profissional':  {'label': '🥈 Profissional',   'price': 'R$149,90/mês', 'preco': 149.90},
-    'premium':       {'label': '🥇 Premium',        'price': 'R$249,90/mês', 'preco': 249.90},
+    'basico':        {'label': '🥉 Básico',        'price': 'R$ 129/mês',  'preco': 129.00},
+    'profissional':  {'label': '🥈 Profissional',   'price': 'R$ 179/mês', 'preco': 179.00},
+    'premium':       {'label': '🥇 Premium',        'price': 'R$ 249/mês', 'preco': 249.00},
 }
 
 # Limites por plano — None = ilimitado
@@ -1419,7 +1421,7 @@ DESP_PLAN_LIMITS = {
     'premium':      {'os_mes': None, 'clientes': None,  'whatsapp': True},
 }
 
-AGENDA_PLAN = {'label': 'AgendaJá Pro', 'preco': 49.90, 'price': 'R$ 49,90/mês'}
+AGENDA_PLAN = {'label': 'AgendaJá Pro', 'preco': 63.90, 'price': 'R$ 63,90/mês'}
 
 # ── DefesaPro — CTB constants ─────────────────────────────────────────────────
 CTB_ARTIGOS = {
@@ -4597,10 +4599,12 @@ def agenda_assinar():
             conn2.execute('UPDATE agenda_businesses SET asaas_customer_id=? WHERE id=?',
                           (customer_id, biz_id))
             conn2.commit(); conn2.close()
+            anual = request.form.get('ciclo') == 'anual'
+            valor = round(p['preco'] * 10, 2) if anual else p['preco']
             resp = _asaas_criar_assinatura_saas(
-                customer_id, 'agenda', 'pro', p['preco'],
-                'AgendaJá Pro — Assinatura Mensal',
-                billing_type
+                customer_id, 'agenda', 'pro', valor,
+                'AgendaJá Pro — Assinatura ' + ('Anual (2 meses grátis)' if anual else 'Mensal'),
+                billing_type, 'YEARLY' if anual else 'MONTHLY'
             )
             if resp.get('id'):
                 if billing_type == 'PIX':
@@ -8063,7 +8067,7 @@ def mandazap_assinar(plano=None):
         if not u:
             return redirect('/mandazap/entrar')
         customer_id = _asaas_criar_ou_buscar_cliente_saas(
-            u['name'], u['email'], u.get('phone', ''), u.get('cpf_cnpj', ''), u['id'], 'mandazap_users'
+            u['name'], u['email'], u['phone'] or '', u['cpf_cnpj'] or '', u['id'], 'mandazap_users'
         )
         if not customer_id:
             erro = 'Erro ao processar pagamento. Tente novamente ou entre em contato.'
@@ -8072,9 +8076,14 @@ def mandazap_assinar(plano=None):
             conn2.execute('UPDATE mandazap_users SET asaas_customer_id=?, plan=? WHERE id=?',
                           (customer_id, plano, user_id))
             conn2.commit(); conn2.close()
-            desc = f'MandaZap {p["label"]} — Assinatura Mensal' + (' (combo -25%)' if combo else '')
+            anual = request.form.get('ciclo') == 'anual'
+            valor = round(preco_final * 10, 2) if anual else preco_final
+            desc = (f'MandaZap {p["label"]} — Assinatura '
+                    + ('Anual (2 meses grátis)' if anual else 'Mensal')
+                    + (' (combo -25%)' if combo else ''))
             resp = _asaas_criar_assinatura_saas(
-                customer_id, 'mandazap', plano, preco_final, desc, billing_type)
+                customer_id, 'mandazap', plano, valor, desc, billing_type,
+                'YEARLY' if anual else 'MONTHLY')
             if resp.get('id'):
                 return redirect('/mandazap/aguardando-pagamento')
             else:
@@ -14839,9 +14848,13 @@ def mandaja_assinar(plano):
                                  (customer_id, store['id']))
                     conn.commit()
                     conn.close()
+                    anual = request.form.get('ciclo') == 'anual'
+                    valor = round(float(p['price']) * 10, 2) if anual else float(p['price'])
                     sub = _asaas_criar_assinatura_saas(
-                        customer_id, 'mandaja', plano, float(p['price']),
-                        f"MandaJá {p['label']} — {store['name']}", billing_type
+                        customer_id, 'mandaja', plano, valor,
+                        f"MandaJá {p['label']} — {store['name']}"
+                        + (' (anual, 2 meses grátis)' if anual else ''),
+                        billing_type, 'YEARLY' if anual else 'MONTHLY'
                     )
                     if sub.get('id'):
                         payment_url = sub.get('invoiceUrl') or sub.get('bankSlipUrl') or ''
@@ -14990,13 +15003,14 @@ try:
 except Exception as _ps_err:
     log.warning(f'[PUBSHOW] Erro ao carregar blueprint: {_ps_err}')
 
-# PUBSHOW EN — versão internacional (inglês / USD)
-try:
-    from pubshow_en import pubshow_en_bp
-    app.register_blueprint(pubshow_en_bp)
-    log.info('[PUBSHOW EN] Blueprint registrado em /pubshow-en')
-except Exception as _ps_en_err:
-    log.warning(f'[PUBSHOW EN] Erro ao carregar blueprint: {_ps_en_err}')
+# PUBSHOW EN — DESATIVADO (jun/2026): sem gateway internacional (cobrava BRL via Asaas).
+# O código pubshow_en.py fica no repo; reativar = descomentar quando houver Stripe/USD.
+# try:
+#     from pubshow_en import pubshow_en_bp
+#     app.register_blueprint(pubshow_en_bp)
+#     log.info('[PUBSHOW EN] Blueprint registrado em /pubshow-en')
+# except Exception as _ps_en_err:
+#     log.warning(f'[PUBSHOW EN] Erro ao carregar blueprint: {_ps_en_err}')
 
 # ══════════════════════════════════════════════════════════════════════════════
 # MLhype — Inteligência para vendedores do Mercado Livre — Passo 1 (fundação)
@@ -15054,13 +15068,13 @@ with app.app_context():
         log.info('[PUBSHOW] Banco inicializado com sucesso')
     except Exception as _e:
         log.error(f'[PUBSHOW] ERRO ao inicializar banco: {_e}', exc_info=True)
-    # Inicializa banco PUBSHOW EN (internacional)
-    try:
-        from pubshow_en_db import init_pubshow_db as _init_pubshow_en_db
-        _init_pubshow_en_db()
-        log.info('[PUBSHOW EN] Banco inicializado com sucesso')
-    except Exception as _e:
-        log.error(f'[PUBSHOW EN] ERRO ao inicializar banco: {_e}', exc_info=True)
+    # Banco PUBSHOW EN — desativado junto com o blueprint (jun/2026)
+    # try:
+    #     from pubshow_en_db import init_pubshow_db as _init_pubshow_en_db
+    #     _init_pubshow_en_db()
+    #     log.info('[PUBSHOW EN] Banco inicializado com sucesso')
+    # except Exception as _e:
+    #     log.error(f'[PUBSHOW EN] ERRO ao inicializar banco: {_e}', exc_info=True)
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  SLOTZAP — Venda de slots numerados com PIX automático via Asaas
