@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RecebaJá — {{ c.cliente }}</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',system-ui,sans-serif;background:#F4F7F3;color:#12201C;min-height:100vh;-webkit-tap-highlight-color:transparent}
+.top{display:flex;align-items:center;gap:12px;padding:14px 18px;background:#0B7A5A;color:#fff;position:sticky;top:0;z-index:10}
+.top a{color:#fff;text-decoration:none;font-size:22px;line-height:1}.top b{font-size:16px;font-weight:700}
+.wrap{max-width:520px;margin:0 auto;padding:16px 16px 40px}
+.head{display:flex;flex-direction:column;gap:8px;margin-bottom:8px}
+.big{font-size:30px;font-weight:800;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.pill{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;padding:4px 10px;border-radius:999px;align-self:flex-start}
+.pill i{width:6px;height:6px;border-radius:50%}
+.pill.vence{background:#FBF0D8;color:#B57C0E}.pill.vence i{background:#B57C0E}
+.pill.atraso{background:#FBE6DF;color:#CC4A31}.pill.atraso i{background:#CC4A31}
+.pill.pago{background:#E2F4EC;color:#1F9D6B}.pill.pago i{background:#1F9D6B}
+.pill.canc{background:#EDEFEE;color:#5F6F68}.pill.canc i{background:#5F6F68}
+.card{background:#fff;border:1px solid #E1E8E2;border-radius:15px;padding:15px;margin-top:16px}
+.klabel{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:#5F6F68;font-weight:700;margin-bottom:8px}
+.code{font-size:12.5px;font-weight:600;word-break:break-all;line-height:1.5;color:#12201C}
+.copy{margin-top:10px;width:100%;background:#E4F1EA;color:#075C43;border:none;border-radius:10px;padding:11px;
+      font-family:inherit;font-weight:700;font-size:13px;cursor:pointer}
+.sect{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#5F6F68;font-weight:700;margin:20px 2px 12px}
+.rail{display:flex;flex-direction:column}
+.step{display:flex;gap:12px}
+.mk{display:flex;flex-direction:column;align-items:center;flex:0 0 auto}
+.knob{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#fff;background:#0B7A5A}
+.step.todo .knob{background:#fff;border:2px solid #DCE5DE}
+.line{width:2px;flex:1;background:#DCE5DE;min-height:22px}
+.step:last-child .line{display:none}
+.lb{padding-bottom:18px}.lb b{font-size:13.5px;display:block}.lb small{font-size:11.5px;color:#5F6F68}
+.step.todo .lb b{color:#84948C;font-weight:600}
+.actions{display:flex;gap:10px;margin-top:8px}
+.btn{flex:1;border-radius:13px;padding:14px 8px;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;
+     display:flex;align-items:center;justify-content:center;gap:6px;border:1.5px solid #0B7A5A}
+.btn.ghost{background:#fff;color:#075C43}
+.btn.solid{background:#0B7A5A;color:#fff}
+.btn:disabled{opacity:.55}
+.paid{background:#E2F4EC;border:1px solid #B7E3CE;border-radius:14px;padding:16px;text-align:center;color:#1F7A55;
+      font-weight:700;margin-top:18px}
+.pro{display:flex;gap:10px;align-items:center;background:#182A44;color:#fff;border-radius:14px;padding:13px 14px;
+     margin-top:20px;text-decoration:none}
+.pro .ic{font-size:20px}.pro .tx{flex:1;font-size:12.5px;line-height:1.35}.pro .tx b{font-size:13.5px}
+.pro .go{color:#C9A24A;font-weight:800;font-size:18px}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#12201C;color:#fff;
+       padding:12px 18px;border-radius:12px;font-size:13.5px;font-weight:600;opacity:0;transition:opacity .25s;pointer-events:none;max-width:90%;text-align:center}
+.toast.on{opacity:1}
+</style>
+</head>
+<body>
+<div class="top"><a href="/recebaja/app">‹</a><b>{{ c.cliente }}</b></div>
+<div class="wrap">
+  <div class="head">
+    <div class="big">{{ c.valor }}</div>
+    {% set cor = 'atraso' if c.status=='atrasado' else 'vence' if c.status=='a_vencer' else 'pago' if c.status=='pago' else 'canc' %}
+    <span class="pill {{ cor }}"><i></i>{{ c.rotulo }}</span>
+  </div>
+
+  {% if c.linha %}
+  <div class="card">
+    <div class="klabel">Código do boleto</div>
+    <div class="code" id="code">{{ c.linha }}</div>
+    <button class="copy" onclick="copiar()">📋 Copiar código</button>
+  </div>
+  {% endif %}
+
+  <div class="sect">A régua de cobrança</div>
+  <div class="rail">
+    {% for e in etapas %}
+    <div class="step {{ '' if e.feito else 'todo' }}">
+      <div class="mk"><div class="knob">{{ '✓' if e.feito else '' }}</div><div class="line"></div></div>
+      <div class="lb"><b>{{ e.rotulo }}</b><small>{{ 'enviado' if e.feito else 'agendado' }}</small></div>
+    </div>
+    {% endfor %}
+  </div>
+
+  {% if c.status == 'pago' %}
+    <div class="paid">✓ Recebido — cobrança encerrada</div>
+  {% elif c.status == 'cancelado' %}
+    <div class="paid" style="background:#EDEFEE;color:#5F6F68;border-color:#DCE5DE">Cobrança cancelada</div>
+  {% else %}
+    <div class="actions">
+      <button class="btn ghost" id="b-pago" onclick="marcarPago()">✓ Recebi</button>
+      <button class="btn solid" id="b-cobrar" onclick="cobrarAgora()">Cobrar agora</button>
+    </div>
+  {% endif %}
+
+  <a class="pro" href="/recebaja/pro">
+    <span class="ic">🔒</span>
+    <span class="tx"><b>Não pagou mesmo?</b><br>Protesto e Serasa em 2 cliques — em breve (Pro)</span>
+    <span class="go">›</span>
+  </a>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+const CID = {{ c.id }};
+function toast(m){ const t=document.getElementById('toast'); t.textContent=m; t.classList.add('on'); setTimeout(()=>t.classList.remove('on'),2600); }
+function copiar(){ navigator.clipboard.writeText(document.getElementById('code').textContent.trim()).then(()=>toast('Código copiado ✅')); }
+async function marcarPago(){
+  if(!confirm('Confirmar que este boleto FOI PAGO? A cobrança para na hora.')) return;
+  const b=document.getElementById('b-pago'); b.disabled=true;
+  try{ const r=await fetch('/recebaja/cobranca/'+CID+'/pago',{method:'POST'}).then(r=>r.json());
+    if(r.ok){ location.reload(); } else { alert(r.erro||'Erro'); b.disabled=false; }
+  }catch(e){ alert('Tente de novo.'); b.disabled=false; }
+}
+async function cobrarAgora(){
+  const b=document.getElementById('b-cobrar'); b.disabled=true; b.textContent='Enviando...';
+  try{ const r=await fetch('/recebaja/cobranca/'+CID+'/cobrar',{method:'POST'}).then(r=>r.json());
+    if(r.ok){ toast(r.msg||'Enviado ✅'); } else { alert(r.erro||'Erro'); }
+  }catch(e){ alert('Tente de novo.'); }
+  b.disabled=false; b.textContent='Cobrar agora';
+}
+</script>
+</body>
+</html>

@@ -14946,6 +14946,18 @@ except Exception as _afil_err:
     log.warning(f'[Afiliados] Erro ao carregar blueprint: {_afil_err}')
 
 # ══════════════════════════════════════════════════════════════════════════════
+# RECEBAJÁ — Cobrança de boleto no WhatsApp (a régua de lembrete) — v1
+# ══════════════════════════════════════════════════════════════════════════════
+try:
+    from recebaja import recebaja_bp
+    from recebaja_db import init_recebaja_db
+    init_recebaja_db()
+    app.register_blueprint(recebaja_bp)
+    log.info('[RecebaJá] Blueprint registrado em /recebaja')
+except Exception as _rj_err:
+    log.warning(f'[RecebaJá] Erro ao carregar blueprint: {_rj_err}')
+
+# ══════════════════════════════════════════════════════════════════════════════
 # RADAR — Monitor de Licitações de TI (PNCP) — Lote 0+1
 # ══════════════════════════════════════════════════════════════════════════════
 try:

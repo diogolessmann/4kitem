@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RecebaJá — Nova cobrança</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',system-ui,sans-serif;background:#F4F7F3;color:#12201C;min-height:100vh;-webkit-tap-highlight-color:transparent}
+.top{display:flex;align-items:center;gap:12px;padding:14px 18px;background:#0B7A5A;color:#fff;position:sticky;top:0;z-index:10}
+.top a{color:#fff;text-decoration:none;font-size:22px;line-height:1}
+.top b{font-size:16px;font-weight:700}
+.wrap{max-width:520px;margin:0 auto;padding:16px}
+.shoot{border:2px dashed #B9CABB;border-radius:16px;background:#fff;padding:24px 16px;text-align:center;
+       display:flex;flex-direction:column;align-items:center;gap:8px;cursor:pointer}
+.shoot .lens{width:52px;height:52px;border-radius:15px;background:#E4F1EA;display:flex;align-items:center;justify-content:center;font-size:26px}
+.shoot b{font-size:15px}.shoot small{font-size:12px;color:#5F6F68}
+.load{display:none;text-align:center;color:#5F6F68;font-size:14px;padding:14px}
+.dot{animation:bl 1.2s infinite}@keyframes bl{0%,100%{opacity:.3}50%{opacity:1}}
+.card{background:#fff;border:1px solid #E1E8E2;border-radius:15px;padding:16px;margin-top:14px;display:none}
+.card.on{display:block}
+.rl{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:#0B7A5A;font-weight:800;margin-bottom:12px}
+label{display:block;font-size:12px;font-weight:600;color:#3E4B45;margin:12px 0 6px}
+label:first-of-type{margin-top:0}
+input{width:100%;background:#F7FAF8;border:1px solid #DCE5DE;border-radius:10px;color:#12201C;
+      padding:12px;font-size:15px;font-family:inherit;outline:none}
+input:focus{border-color:#0B7A5A;background:#fff}
+.optin{display:flex;gap:10px;align-items:flex-start;background:#E4F1EA;border-radius:12px;padding:12px;margin-top:16px;
+       font-size:12.5px;line-height:1.4;cursor:pointer}
+.optin input{width:20px;height:20px;flex:0 0 auto;accent-color:#0B7A5A;margin-top:1px}
+.save{width:100%;margin-top:16px;background:#0B7A5A;color:#fff;border:none;border-radius:13px;padding:15px;
+      font-family:inherit;font-size:15px;font-weight:700;cursor:pointer}
+.save:disabled{opacity:.6}
+.hint{font-size:11.5px;color:#5F6F68;text-align:center;margin-top:12px;line-height:1.5}
+.manual{display:block;text-align:center;margin-top:14px;color:#0B7A5A;font-size:13px;font-weight:600;
+        text-decoration:underline;cursor:pointer}
+</style>
+</head>
+<body>
+<div class="top"><a href="/recebaja/app">‹</a><b>Nova cobrança</b></div>
+<div class="wrap">
+
+  <div class="shoot" id="shoot" onclick="document.getElementById('arquivo').click()">
+    <div class="lens">📷</div>
+    <b>Tirar foto do boleto</b>
+    <small>a gente lê tudo pra você</small>
+  </div>
+  <input type="file" id="arquivo" accept="image/*,application/pdf" capture="environment" style="display:none" onchange="ler()">
+  <div class="manual" id="manual" onclick="abrir()">ou preencher à mão</div>
+
+  <div class="load" id="load">📖 Lendo o boleto<span class="dot">...</span></div>
+
+  <form class="card" id="form" onsubmit="salvar(event)">
+    <div class="rl" id="rl">✓ Confira os dados</div>
+    <label>Nome do cliente</label>
+    <input id="cliente" name="cliente" placeholder="Quem vai pagar" required>
+    <label>WhatsApp do cliente</label>
+    <input id="whatsapp" name="whatsapp" inputmode="numeric" placeholder="(47) 9 9999-9999" required>
+    <label>Valor</label>
+    <input id="valor" name="valor" inputmode="decimal" placeholder="450,00" required>
+    <label>Vencimento</label>
+    <input id="vencimento" name="vencimento" type="date" required>
+    <label>Código do boleto (linha digitável)</label>
+    <input id="linha_digitavel" name="linha_digitavel" inputmode="numeric" placeholder="34191790010...">
+    <label class="optin">
+      <input type="checkbox" id="opt_in" name="opt_in" checked>
+      <span>Avisei o cliente que vou mandar o lembrete pelo WhatsApp <b>(recomendado)</b></span>
+    </label>
+    <button class="save" id="btn-save" type="submit">Salvar e ativar cobrança</button>
+  </form>
+
+  <div class="hint">O RecebaJá manda os lembretes sozinho, no horário certo. Você só marca quando o cliente pagar.</div>
+</div>
+<script>
+function abrir(){ document.getElementById('form').classList.add('on'); document.getElementById('rl').textContent='Preencher à mão'; }
+async function ler(){
+  const inp = document.getElementById('arquivo');
+  const file = inp.files[0];
+  if (!file) return;
+  if (file.size > 10*1024*1024){ alert('Arquivo muito grande (máx 10MB).'); inp.value=''; return; }
+  document.getElementById('load').style.display='block';
+  document.getElementById('form').classList.remove('on');
+  try{
+    const fd = new FormData(); fd.append('arquivo', file);
+    const r = await fetch('/recebaja/ocr', {method:'POST', body:fd}).then(r=>r.json());
+    document.getElementById('load').style.display='none';
+    if (r.erro){ alert(r.erro); abrir(); return; }
+    if (r.cliente) document.getElementById('cliente').value = r.cliente;
+    if (r.valor) document.getElementById('valor').value = r.valor.replace('.', ',');
+    if (r.vencimento) document.getElementById('vencimento').value = r.vencimento;
+    if (r.linha_digitavel) document.getElementById('linha_digitavel').value = r.linha_digitavel;
+    document.getElementById('form').classList.add('on');
+    document.getElementById('rl').textContent = '✓ Li o boleto — confira';
+    document.getElementById('cliente').focus();
+  }catch(e){
+    document.getElementById('load').style.display='none';
+    alert('Não consegui ler agora. Preencha à mão.'); abrir();
+  }
+  inp.value='';
+}
+async function salvar(ev){
+  ev.preventDefault();
+  const btn = document.getElementById('btn-save'); btn.disabled = true; btn.textContent = 'Salvando...';
+  try{
+    const fd = new FormData(document.getElementById('form'));
+    const r = await fetch('/recebaja/nova', {method:'POST', body:fd}).then(r=>r.json());
+    if (r.erro){ alert(r.erro); btn.disabled=false; btn.textContent='Salvar e ativar cobrança'; return; }
+    location.href = r.redirect || '/recebaja/app';
+  }catch(e){
+    alert('Não consegui salvar. Tente de novo.'); btn.disabled=false; btn.textContent='Salvar e ativar cobrança';
+  }
+}
+</script>
+</body>
+</html>

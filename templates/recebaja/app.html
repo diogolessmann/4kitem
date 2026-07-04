@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RecebaJá — Meus recebimentos</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',system-ui,sans-serif;background:#F4F7F3;color:#12201C;min-height:100vh;-webkit-tap-highlight-color:transparent}
+.top{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;background:#0B7A5A;color:#fff;position:sticky;top:0;z-index:10}
+.logo{font-size:18px;font-weight:800;letter-spacing:-.02em}.logo span{opacity:.85;font-weight:600}
+.top a{color:rgba(255,255,255,.92);text-decoration:none;font-size:13px;font-weight:600}
+.wrap{max-width:520px;margin:0 auto;padding:16px 16px 96px}
+.ola{font-size:19px;font-weight:800;margin:4px 2px 14px}
+.stats{display:flex;gap:8px;margin-bottom:18px}
+.stat{flex:1;background:#fff;border:1px solid #E1E8E2;border-radius:14px;padding:10px}
+.stat .l{font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:#5F6F68;font-weight:700}
+.stat .v{font-size:14px;font-weight:800;margin-top:3px;font-variant-numeric:tabular-nums}
+.stat.a .v{color:#0B7A5A}.stat.b .v{color:#CC4A31}.stat.c .v{color:#1F9D6B}
+.sect{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#5F6F68;font-weight:700;margin:2px 2px 10px}
+.list{display:flex;flex-direction:column;gap:10px}
+.card{display:flex;gap:11px;background:#fff;border:1px solid #E1E8E2;border-radius:15px;padding:12px;text-decoration:none;color:inherit}
+.stripe{width:4px;border-radius:4px;flex:0 0 auto}
+.card .body{flex:1;min-width:0}
+.card .r1{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.name{font-weight:700;font-size:14.5px;letter-spacing:-.01em}
+.amt{font-weight:800;font-size:14.5px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.r2{margin-top:6px}
+.pill{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:999px}
+.pill i{width:6px;height:6px;border-radius:50%}
+.pill.vence{background:#FBF0D8;color:#B57C0E}.pill.vence i{background:#B57C0E}
+.pill.atraso{background:#FBE6DF;color:#CC4A31}.pill.atraso i{background:#CC4A31}
+.pill.pago{background:#E2F4EC;color:#1F9D6B}.pill.pago i{background:#1F9D6B}
+.pill.canc{background:#EDEFEE;color:#5F6F68}.pill.canc i{background:#5F6F68}
+.empty{text-align:center;color:#5F6F68;padding:48px 20px;background:#fff;border:1px dashed #C9D6CD;border-radius:16px}
+.empty b{display:block;font-size:16px;color:#12201C;margin-bottom:6px}
+.fab{position:fixed;left:50%;transform:translateX(-50%);bottom:18px;width:calc(100% - 32px);max-width:488px;
+     background:#0B7A5A;color:#fff;border:none;border-radius:14px;padding:15px;font-family:inherit;font-size:15px;
+     font-weight:700;display:flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;
+     box-shadow:0 10px 22px -8px rgba(11,122,90,.6)}
+.fab .p{font-size:20px;line-height:1;font-weight:400}
+</style>
+</head>
+<body>
+<div class="top">
+  <div class="logo">Receba<span>Já</span></div>
+  <a href="/recebaja/sair">Sair</a>
+</div>
+<div class="wrap">
+  <div class="ola">Olá, {{ (u['nome'] or '').split()[0] if u['nome'] else '' }}! 👋</div>
+
+  <div class="stats">
+    <div class="stat a"><div class="l">A receber</div><div class="v">{{ a_receber }}</div></div>
+    <div class="stat b"><div class="l">Atrasado</div><div class="v">{{ atrasado }}</div></div>
+    <div class="stat c"><div class="l">Recebido</div><div class="v">{{ recebido }}</div></div>
+  </div>
+
+  <div class="sect">Meus recebimentos</div>
+  {% if cobrancas %}
+  <div class="list">
+    {% for c in cobrancas %}
+    {% set cor = 'atraso' if c.status=='atrasado' else 'vence' if c.status=='a_vencer' else 'pago' if c.status=='pago' else 'canc' %}
+    {% set barra = '#CC4A31' if c.status=='atrasado' else '#B57C0E' if c.status=='a_vencer' else '#1F9D6B' if c.status=='pago' else '#5F6F68' %}
+    <a class="card" href="/recebaja/cobranca/{{ c.id }}">
+      <span class="stripe" style="background:{{ barra }}"></span>
+      <div class="body">
+        <div class="r1"><span class="name">{{ c.cliente }}</span><span class="amt">{{ c.valor }}</span></div>
+        <div class="r2"><span class="pill {{ cor }}"><i></i>{{ c.rotulo }}</span></div>
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty">
+    <b>Nenhuma cobrança ainda</b>
+    Toque em <strong>Nova cobrança</strong>, tire a foto do boleto e o RecebaJá cobra sozinho no WhatsApp.
+  </div>
+  {% endif %}
+</div>
+<a class="fab" href="/recebaja/nova"><span class="p">＋</span> Nova cobrança</a>
+</body>
+</html>

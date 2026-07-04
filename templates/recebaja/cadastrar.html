@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RecebaJá — Criar conta</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',system-ui,sans-serif;background:#F4F7F3;color:#12201C;min-height:100vh;display:flex;flex-direction:column;justify-content:center;padding:24px}
+.box{max-width:400px;width:100%;margin:0 auto}
+.brand{font-size:30px;font-weight:800;letter-spacing:-.02em;text-align:center;margin-bottom:6px}
+.brand span{color:#0B7A5A}
+.sub{text-align:center;color:#5F6F68;font-size:14px;margin-bottom:24px}
+.card{background:#fff;border:1px solid #E1E8E2;border-radius:18px;padding:22px}
+label{display:block;font-size:12px;font-weight:600;color:#3E4B45;margin:14px 0 6px}
+label:first-child{margin-top:0}
+input{width:100%;background:#F7FAF8;border:1px solid #DCE5DE;border-radius:10px;padding:12px;font-size:15px;font-family:inherit;outline:none}
+input:focus{border-color:#0B7A5A;background:#fff}
+.btn{width:100%;margin-top:20px;background:#0B7A5A;color:#fff;border:none;border-radius:12px;padding:14px;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer}
+.err{background:#FBE6DF;color:#CC4A31;border-radius:10px;padding:11px;font-size:13px;margin-bottom:16px;font-weight:600}
+.alt{text-align:center;margin-top:18px;font-size:14px;color:#5F6F68}
+.alt a{color:#0B7A5A;font-weight:700;text-decoration:none}
+</style>
+</head>
+<body>
+<div class="box">
+  <div class="brand">Receba<span>Já</span></div>
+  <div class="sub">Crie sua conta grátis em 1 minuto</div>
+  <div class="card">
+    {% if erro %}<div class="err">{{ erro }}</div>{% endif %}
+    <form method="POST" action="/recebaja/cadastrar">
+      <label>Seu nome</label>
+      <input name="nome" required autofocus>
+      <label>Nome do seu negócio <span style="color:#9AA7A0;font-weight:400">(assina a cobrança)</span></label>
+      <input name="negocio" placeholder="Ex: Loja do Diego">
+      <label>E-mail</label>
+      <input name="email" type="email" required>
+      <label>Seu WhatsApp</label>
+      <input name="telefone" inputmode="numeric" placeholder="(47) 9 9999-9999">
+      <label>Senha <span style="color:#9AA7A0;font-weight:400">(mín. 6)</span></label>
+      <input name="senha" type="password" required>
+      <button class="btn" type="submit">Criar conta grátis</button>
+    </form>
+  </div>
+  <div class="alt">Já tem conta? <a href="/recebaja/entrar">Entrar</a></div>
+</div>
+</body>
+</html>
