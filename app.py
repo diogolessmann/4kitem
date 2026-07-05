@@ -18234,6 +18234,44 @@ def slotzap_reabrir(camp_id):
     return jsonify({'ok': True})
 
 
+@app.route('/slotzap/campanha/<int:camp_id>/excluir', methods=['POST'])
+@_sz_login_required
+def slotzap_excluir(camp_id):
+    """Exclui PERMANENTEMENTE a campanha e TODOS os dados dela (números, vendedores,
+    indicadores, pagamentos de comissão). Protegido por senha da conta + dono.
+    GUARDA: se houver número(s) PAGO(S), exige confirmar_pagos=true — blinda a Jaya/RifaJá
+    reais de clique errado (o front mostra o aviso com a contagem antes de reenviar)."""
+    data  = request.get_json(silent=True) or {}
+    senha = data.get('senha') or ''
+    conn  = get_saas_db()
+    if not _sz_check_senha_conta(conn, senha):
+        conn.close()
+        return jsonify({'erro': 'senha_errada', 'msg': 'Senha da conta incorreta.'}), 403
+    uid  = _sz_uid()
+    camp = conn.execute('SELECT id, nome FROM slotzap_campanhas WHERE id=? AND user_id=?',
+                        (camp_id, uid)).fetchone()
+    if not camp:
+        conn.close()
+        return jsonify({'erro': 'Campanha não encontrada.'}), 404
+    prow  = conn.execute("SELECT COUNT(*) AS c FROM slotzap_slots WHERE campanha_id=? AND status='pago'",
+                         (camp_id,)).fetchone()
+    pagos = dict(prow)['c'] if prow else 0
+    if pagos > 0 and not data.get('confirmar_pagos'):
+        conn.close()
+        return jsonify({'erro': 'tem_pagos', 'pagos': pagos, 'nome': dict(camp)['nome']}), 409
+    # apaga os dados-filhos (todos por campanha_id) e depois a campanha (só do dono)
+    for tbl in ('slotzap_afiliado_pagamentos', 'slotzap_afiliados',
+                'slotzap_indicadores', 'slotzap_slots'):
+        try:
+            conn.execute(f'DELETE FROM {tbl} WHERE campanha_id=?', (camp_id,))
+        except Exception as _e:
+            log.warning(f'[SlotZap] excluir {tbl} camp {camp_id}: {_e}')
+    conn.execute('DELETE FROM slotzap_campanhas WHERE id=? AND user_id=?', (camp_id, uid))
+    conn.commit(); conn.close()
+    log.info(f'[SlotZap] Campanha {camp_id} EXCLUIDA (user {uid}, {pagos} pagos)')
+    return jsonify({'ok': True})
+
+
 @app.route('/slotzap/campanha/<int:camp_id>/marcar-pago-manual', methods=['POST'])
 @_sz_login_required
 def slotzap_marcar_pago_manual(camp_id):

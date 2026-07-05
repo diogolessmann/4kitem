@@ -112,6 +112,7 @@ input:focus{border-color:#6366f1}
   <button class="nav-btn" style="border-color:#22c55e;color:#86efac" onclick="reabrir()">↩️ <span class="nav-txt">Reabrir campanha</span></button>
   {% endif %}
   <button class="nav-btn" style="border-color:#facc15;color:#fde047" onclick="sortear()">🎲 <span class="nav-txt">Sortear</span></button>
+  <button class="btn-encerrar" onclick="excluir()" title="Apaga a campanha e todos os dados dela — não tem volta">🗑️ <span class="nav-txt">Excluir</span></button>
 </nav>
 
 {% if camp.ganhador_numero %}
@@ -675,6 +676,27 @@ async function reabrir() {
   }).then(r=>r.json());
   if (r.erro === 'senha_errada') { alert('🔑 Senha da conta incorreta.'); return; }
   if (r.ok) location.reload();
+  else alert('Erro: ' + (r.erro || 'tente novamente'));
+}
+async function excluir() {
+  if (!confirm('⚠️ APAGAR esta campanha PERMANENTEMENTE?\n\nRemove a campanha e TODOS os dados dela (números, vendedores, pagamentos). NÃO tem volta.')) return;
+  const senha = prompt('🔑 Digite a SENHA DA SUA CONTA para EXCLUIR:') || '';
+  if (!senha) return;
+  await _excluirReq(senha, false);
+}
+async function _excluirReq(senha, confirmarPagos) {
+  const r = await fetch(`/slotzap/campanha/${CAMP_ID}/excluir`, {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({senha, confirmar_pagos: !!confirmarPagos})
+  }).then(r=>r.json());
+  if (r.erro === 'senha_errada') { alert('🔑 Senha da conta incorreta.'); return; }
+  if (r.erro === 'tem_pagos') {
+    if (confirm(`🚨 ATENÇÃO: "${r.nome}" tem ${r.pagos} número(s) PAGO(S) (dinheiro real)!\n\nApagar mesmo assim? Isso destrói o registro dessas vendas e NÃO tem volta.`)) {
+      return _excluirReq(senha, true);
+    }
+    return;
+  }
+  if (r.ok) { alert('🗑️ Campanha excluída.'); location.href = '/slotzap/app'; }
   else alert('Erro: ' + (r.erro || 'tente novamente'));
 }
 
