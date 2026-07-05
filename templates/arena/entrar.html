@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#07060f">
+<title>Entrar — Arena · AmbitiON</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#07060f;color:#f0f0ff;
+  min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+.card{width:100%;max-width:380px}
+.brand{text-align:center;font-size:24px;font-weight:800;margin-bottom:4px}
+.brand span{background:linear-gradient(135deg,#22d3ee,#a855f7);-webkit-background-clip:text;
+  background-clip:text;-webkit-text-fill-color:transparent}
+.sub{text-align:center;font-size:13px;color:#8b8aa8;margin-bottom:24px}
+label{display:block;font-size:12px;font-weight:600;color:#8888aa;margin:14px 0 6px}
+input{width:100%;background:#0d0d1a;border:1px solid rgba(255,255,255,.1);border-radius:11px;
+  color:#f0f0ff;padding:14px;font-size:16px;font-family:inherit;outline:none}
+input:focus{border-color:#a855f7}
+.btn{width:100%;background:linear-gradient(135deg,#22d3ee,#7c3aed);color:#fff;border:none;
+  border-radius:13px;padding:15px;font-size:16px;font-weight:800;cursor:pointer;margin-top:20px}
+.err{background:rgba(244,63,94,.12);border:1px solid rgba(244,63,94,.3);color:#fda4af;
+  border-radius:10px;padding:11px;font-size:13px;margin-top:14px;text-align:center}
+.alt{text-align:center;font-size:13px;color:#8b8aa8;margin-top:20px}
+.alt a{color:#22d3ee;text-decoration:none;font-weight:700}
+</style>
+</head>
+<body>
+<form class="card" method="POST" action="/arena/entrar">
+  <div class="brand">🎮 <span>Arena</span></div>
+  <div class="sub">Bem-vindo de volta</div>
+  {% if erro %}<div class="err">{{ erro }}</div>{% endif %}
+  <label>E-mail</label>
+  <input type="email" name="email" placeholder="seu@email.com" required autofocus>
+  <label>Senha</label>
+  <input type="password" name="senha" placeholder="sua senha" required>
+  <button class="btn" type="submit">Entrar</button>
+  <div class="alt">Não tem conta? <a href="/arena/cadastrar">Criar agora</a></div>
+</form>
+</body>
+</html>

@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#07060f">
+<title>Comprar fichas — Arena · AmbitiON</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#07060f;color:#f0f0ff;min-height:100vh;padding:16px 14px 40px}
+.wrap{max-width:480px;margin:0 auto}
+.nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+.nav a{color:#8b8aa8;text-decoration:none;font-size:13px;font-weight:700}
+.saldo{font-size:13px;color:#9fb8d6}.saldo b{color:#22d3ee}
+h1{font-size:22px;font-weight:800;margin-bottom:4px}
+.sub{font-size:13px;color:#9aa3bd;margin-bottom:22px}
+.pack{display:block;text-decoration:none;color:#f0f0ff;background:#100f22;
+  border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:18px;margin-bottom:14px;
+  display:flex;align-items:center;justify-content:space-between}
+.pack.hi{border-color:rgba(168,85,247,.5);background:linear-gradient(135deg,rgba(34,211,238,.08),rgba(168,85,247,.1))}
+.pack .em{font-size:30px;margin-right:14px}
+.pack .info{flex:1}
+.pack .nm{font-size:17px;font-weight:800}
+.pack .bn{font-size:12px;font-weight:700;color:#4ade80;margin-top:2px}
+.pack .pr{font-size:20px;font-weight:800;color:#22d3ee;white-space:nowrap}
+.pack .pr small{display:block;font-size:10px;color:#7d7ca6;font-weight:600;text-align:right}
+.foot{text-align:center;font-size:11px;color:#6b6a8f;margin-top:20px;line-height:1.6}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="nav">
+    <a href="/arena">← voltar</a>
+    <span class="saldo">Você tem <b>{{ creditos }}</b> fichas</span>
+  </div>
+  <h1>Comprar fichas 🎟️</h1>
+  <p class="sub">Cada ficha é uma entrada em partida valendo prêmio. Pagamento no PIX, na hora.</p>
+
+  {% for key, p in pacotes.items() %}
+  <a class="pack {{ 'hi' if key == 'turbo' else '' }}" href="/arena/checkout/{{ key }}">
+    <span class="em">{{ '🎟️' if key == 'inicio' else ('⚡' if key == 'turbo' else '👑') }}</span>
+    <span class="info">
+      <span class="nm">{{ p.rotulo }}</span>
+      {% if p.bonus %}<span class="bn">{{ p.bonus }} 🎁</span>{% endif %}
+    </span>
+    <span class="pr">R$ {{ '%.0f'|format(p.preco) }}<small>no PIX</small></span>
+  </a>
+  {% endfor %}
+
+  <div class="foot">
+    Competição de habilidade · premiação por desempenho.<br>
+    Ganhou uma partida? O prêmio cai no seu saldo. Você pode sacar no PIX.
+  </div>
+</div>
+</body>
+</html>

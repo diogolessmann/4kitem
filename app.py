@@ -2439,6 +2439,17 @@ def webhook_asaas_global():
             except Exception as _pcd_e:
                 log.error(f'[PCD] Webhook error: {_pcd_e}')
 
+    elif ref.startswith('arena_'):
+        # Arena — compra de fichas paga: credita (idempotente/atômico).
+        # Refs de payout 'arena_premio_' não chegam aqui (não geram PAYMENT_RECEIVED);
+        # se chegasse, arena_webhook_confirmar ignora (split vira não-int).
+        if ativar:
+            try:
+                from arena import arena_webhook_confirmar
+                arena_webhook_confirmar(ref, payload.get('payment', {}).get('id', ''))
+            except Exception as _arena_e:
+                log.error(f'[Arena] Webhook error: {_arena_e}')
+
     elif ref.startswith('amparo_'):
         # Amparo — assinatura do psicólogo: paga=ativa o plano, vence/cancela=suspende
         if customer_id:
@@ -15003,6 +15014,18 @@ try:
     log.info('[RecebaJá] Blueprint registrado em /recebaja')
 except Exception as _rj_err:
     log.warning(f'[RecebaJá] Erro ao carregar blueprint: {_rj_err}')
+
+# ══════════════════════════════════════════════════════════════════════════════
+# ARENA — Jogos casuais valendo prêmio no PIX (marca AmbitiON) — L0 fundação
+# ══════════════════════════════════════════════════════════════════════════════
+try:
+    from arena import arena_bp
+    from arena_db import init_arena_db
+    init_arena_db()
+    app.register_blueprint(arena_bp)
+    log.info('[Arena] Blueprint registrado em /arena')
+except Exception as _arena_err:
+    log.warning(f'[Arena] Erro ao carregar blueprint: {_arena_err}')
 
 # ══════════════════════════════════════════════════════════════════════════════
 # RADAR — Monitor de Licitações de TI (PNCP) — Lote 0+1

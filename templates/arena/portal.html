@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#07060f">
+<title>Arena — AmbitiON · joga, vence, recebe no PIX</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,-apple-system,Roboto,sans-serif;background:#07060f;color:#f0f0ff;
+  min-height:100vh;padding:16px 14px 40px}
+.wrap{max-width:480px;margin:0 auto}
+.top{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+.brand{font-size:22px;font-weight:800;letter-spacing:.5px}
+.brand span{background:linear-gradient(135deg,#22d3ee,#a855f7);-webkit-background-clip:text;
+  background-clip:text;-webkit-text-fill-color:transparent}
+.brand small{display:block;font-size:9.5px;font-weight:700;letter-spacing:3px;color:#6b6a8f;margin-top:1px}
+.acct{font-size:12px;text-align:right}
+.acct a{color:#22d3ee;text-decoration:none;font-weight:700}
+.acct .muted{color:#7d7ca6}
+.wallet{display:flex;align-items:center;justify-content:space-between;
+  background:linear-gradient(135deg,rgba(34,211,238,.12),rgba(168,85,247,.12));
+  border:1px solid rgba(168,85,247,.28);border-radius:16px;padding:14px 16px;margin-bottom:20px}
+.wallet .lab{font-size:10px;font-weight:800;letter-spacing:1.5px;color:#9fb8d6}
+.wallet .val{font-size:26px;font-weight:800;color:#f4f3ff;line-height:1.1}
+.wallet .val small{font-size:13px;color:#8b8aa8;font-weight:600}
+.wallet a{background:#22d3ee;color:#052a30;font-weight:800;font-size:13px;text-decoration:none;
+  padding:10px 16px;border-radius:12px;white-space:nowrap}
+.hero{background:#0f0e20;border:1px solid rgba(255,255,255,.06);border-radius:18px;padding:20px;
+  text-align:center;margin-bottom:22px}
+.hero h1{font-size:21px;font-weight:800;line-height:1.2;margin-bottom:6px}
+.hero p{font-size:13px;color:#9aa3bd;margin-bottom:16px}
+.cta{display:block;background:linear-gradient(135deg,#22d3ee,#7c3aed);color:#fff;text-decoration:none;
+  font-weight:800;font-size:17px;padding:16px;border-radius:14px;box-shadow:0 6px 22px rgba(124,58,237,.4)}
+.sec{font-size:11px;font-weight:800;letter-spacing:1.5px;color:#7d7ca6;margin:0 4px 12px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.game{background:#100f22;border:1px solid rgba(255,255,255,.07);border-radius:16px;padding:18px 12px;
+  text-align:center;text-decoration:none;color:#f0f0ff;position:relative}
+.game.on{border-color:rgba(168,85,247,.4)}
+.game.off{opacity:.5}
+.game .em{font-size:34px;display:block;margin-bottom:8px}
+.game .nm{font-size:13px;font-weight:700}
+.game .tag{font-size:9px;font-weight:800;letter-spacing:.5px;margin-top:5px;display:block}
+.game.on .tag{color:#4ade80}
+.game.off .tag{color:#6b6a8f}
+.foot{text-align:center;font-size:11px;color:#6b6a8f;margin-top:26px;line-height:1.6}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div class="brand">🎮 <span>Arena</span><small>AMBITION</small></div>
+    <div class="acct">
+      {% if user %}
+        <div class="muted">Olá, {{ user.nome.split(' ')[0] }}</div>
+        <a href="/arena/sair">sair</a>
+      {% else %}
+        <a href="/arena/entrar">entrar</a> <span class="muted">·</span> <a href="/arena/cadastrar">criar conta</a>
+      {% endif %}
+    </div>
+  </div>
+
+  {% if user %}
+  <div class="wallet">
+    <div>
+      <div class="lab">SEUS CRÉDITOS</div>
+      <div class="val">{{ creditos }} <small>{{ 'partida' if creditos == 1 else 'partidas' }}</small></div>
+    </div>
+    <a href="/arena/comprar">+ Comprar</a>
+  </div>
+  {% endif %}
+
+  <div class="hero">
+    <h1>Joga, vence, recebe no PIX 💸</h1>
+    <p>Mesma partida pra todo mundo. Quem faz mais pontos leva. Habilidade, não sorte.</p>
+    <a class="cta" href="/arena/jogar">▶ Jogar grátis pra treinar</a>
+  </div>
+
+  <div class="sec">OS JOGOS</div>
+  <div class="grid">
+    {% for j in jogos %}
+      {% if j.ativo %}
+      <a class="game on" href="/arena/jogar">
+        <span class="em">{{ j.emoji }}</span>
+        <span class="nm">{{ j.nome }}</span>
+        <span class="tag">JOGAR ▶</span>
+      </a>
+      {% else %}
+      <div class="game off">
+        <span class="em">{{ j.emoji }}</span>
+        <span class="nm">{{ j.nome }}</span>
+        <span class="tag">EM BREVE</span>
+      </div>
+      {% endif %}
+    {% endfor %}
+  </div>
+
+  <div class="foot">
+    Competição de habilidade · premiação por desempenho.<br>
+    Prêmios em dinheiro chegam em breve — por enquanto, treine de graça.
+  </div>
+</div>
+</body>
+</html>

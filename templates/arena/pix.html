@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#07060f">
+<title>PIX — Arena · AmbitiON</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#07060f;color:#f0f0ff;min-height:100vh;
+  display:flex;align-items:center;justify-content:center;padding:20px}
+.card{width:100%;max-width:400px;background:#100f22;border:1px solid rgba(255,255,255,.08);
+  border-radius:18px;padding:24px;text-align:center}
+h1{font-size:19px;font-weight:800;margin-bottom:4px}
+.val{font-size:13px;color:#9aa3bd;margin-bottom:18px}.val b{color:#22d3ee}
+.qr{background:#fff;border-radius:14px;padding:12px;display:inline-block;margin-bottom:16px}
+.qr img{width:210px;height:210px;display:block}
+.copia{background:#0d0d1a;border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:11px;
+  font-size:11px;color:#c9d6e2;word-break:break-all;margin-bottom:10px;line-height:1.5}
+.cbtn{width:100%;background:#171533;color:#d7d6f0;border:1px solid rgba(168,85,247,.3);
+  border-radius:12px;padding:13px;font-size:14px;font-weight:800;cursor:pointer}
+.wait{margin-top:18px;font-size:13px;color:#fbbf24;font-weight:600}
+.wait .dot{display:inline-block;animation:b 1.2s infinite}
+@keyframes b{0%,100%{opacity:.3}50%{opacity:1}}
+.ok{display:none;margin-top:16px}
+.ok .big{font-size:48px}
+.ok .t{font-size:18px;font-weight:800;color:#4ade80;margin-top:4px}
+.ok .s{font-size:13px;color:#9aa3bd;margin-top:2px}
+.back{display:block;color:#8b8aa8;text-decoration:none;font-size:12px;margin-top:18px}
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>Pague no PIX pra liberar as fichas 🎟️</h1>
+  <div class="val">Valor: <b>R$ {{ '%.2f'|format(compra.valor) }}</b> · {{ compra.creditos }} fichas</div>
+
+  <div id="wait-box">
+    {% if qr %}<div class="qr"><img src="data:image/png;base64,{{ qr }}" alt="QR Code PIX"></div>{% endif %}
+    {% if copia %}
+    <div class="copia" id="copia">{{ copia }}</div>
+    <button class="cbtn" id="cbtn" onclick="copiar()">📋 Copiar código PIX</button>
+    {% endif %}
+    <div class="wait" id="wait">Aguardando o pagamento<span class="dot">.</span><span class="dot">.</span><span class="dot">.</span></div>
+  </div>
+
+  <div class="ok" id="ok">
+    <div class="big">🎉</div>
+    <div class="t">Pagamento confirmado!</div>
+    <div class="s">Suas fichas já estão na conta. Bora jogar…</div>
+  </div>
+
+  <a class="back" href="/arena">← voltar ao portal</a>
+</div>
+<script>
+var CID={{ compra.id }};
+function copiar(){ var t=document.getElementById('copia').textContent.trim();
+  try{ navigator.clipboard.writeText(t); }catch(e){}
+  var b=document.getElementById('cbtn'); b.textContent='✅ Copiado!';
+  setTimeout(function(){ b.textContent='📋 Copiar código PIX'; },1600); }
+function check(){
+  fetch('/arena/pix-status/'+CID,{method:'POST'}).then(function(r){return r.json();}).then(function(j){
+    if(j&&j.pago){ document.getElementById('wait-box').style.display='none';
+      document.getElementById('ok').style.display='block';
+      setTimeout(function(){ location.href='/arena'; },2000); }
+  }).catch(function(){});
+}
+setInterval(check,3500); check();
+</script>
+</body>
+</html>

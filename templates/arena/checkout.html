@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#07060f">
+<title>Pagamento — Arena · AmbitiON</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#07060f;color:#f0f0ff;min-height:100vh;
+  display:flex;align-items:center;justify-content:center;padding:20px}
+.card{width:100%;max-width:400px;background:#100f22;border:1px solid rgba(255,255,255,.08);
+  border-radius:18px;padding:24px}
+.back{color:#8b8aa8;text-decoration:none;font-size:13px;font-weight:700}
+.res{background:linear-gradient(135deg,rgba(34,211,238,.1),rgba(168,85,247,.1));
+  border:1px solid rgba(168,85,247,.28);border-radius:14px;padding:16px;margin:16px 0 4px;
+  display:flex;align-items:center;justify-content:space-between}
+.res .nm{font-size:17px;font-weight:800}
+.res .bn{font-size:12px;color:#4ade80;font-weight:700;margin-top:2px}
+.res .pr{font-size:24px;font-weight:800;color:#22d3ee}
+label{display:block;font-size:12px;font-weight:600;color:#8888aa;margin:18px 0 6px}
+input{width:100%;background:#0d0d1a;border:1px solid rgba(255,255,255,.1);border-radius:11px;
+  color:#f0f0ff;padding:14px;font-size:16px;font-family:inherit;outline:none}
+input:focus{border-color:#a855f7}
+.hint{font-size:11px;color:#6b6a8f;margin-top:6px}
+.btn{width:100%;background:linear-gradient(135deg,#22d3ee,#7c3aed);color:#fff;border:none;
+  border-radius:13px;padding:15px;font-size:16px;font-weight:800;cursor:pointer;margin-top:20px}
+.err{background:rgba(244,63,94,.12);border:1px solid rgba(244,63,94,.3);color:#fda4af;
+  border-radius:10px;padding:11px;font-size:13px;margin-top:14px;text-align:center}
+</style>
+</head>
+<body>
+<form class="card" method="POST" action="/arena/checkout/{{ pacote }}">
+  <a class="back" href="/arena/comprar">← trocar pacote</a>
+  <div class="res">
+    <div>
+      <div class="nm">{{ p.rotulo }}</div>
+      {% if p.bonus %}<div class="bn">{{ p.bonus }} 🎁</div>{% endif %}
+    </div>
+    <div class="pr">R$ {{ '%.0f'|format(p.preco) }}</div>
+  </div>
+  {% if erro %}<div class="err">{{ erro }}</div>{% endif %}
+  <label>Seu CPF (pra emitir o PIX)</label>
+  <input name="cpf" inputmode="numeric" placeholder="000.000.000-00" required autofocus>
+  <div class="hint">O CPF vai só na cobrança do Asaas. Nada é publicado.</div>
+  <button class="btn" type="submit">Gerar PIX →</button>
+</form>
+</body>
+</html>
