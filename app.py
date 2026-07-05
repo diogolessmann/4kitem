@@ -67,10 +67,16 @@ def _security_headers(resp):
     try:
         p = request.path
         _segs = [s for s in p.split('/') if s]
+        _internal = any(s in _WA_DENY_SEG for s in _segs)
+        # SEO: páginas funcionais (login/cadastro/painel/checkout…) saem do índice do
+        # Google e concentram a força de ranqueamento nas landings de venda. 'follow'
+        # deixa o link equity fluir. Landings públicas NÃO são tocadas.
+        if _internal:
+            resp.headers.setdefault('X-Robots-Tag', 'noindex, follow')
         if (request.method == 'GET' and resp.status_code == 200
                 and 'text/html' in resp.headers.get('Content-Type', '')
                 and not p.startswith('/static/')
-                and not any(s in _WA_DENY_SEG for s in _segs)):
+                and not _internal):
             body = resp.get_data(as_text=True)
             if '</body>' in body and 'wa-float-4k' not in body:
                 bubble = (
