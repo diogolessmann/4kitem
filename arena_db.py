@@ -97,9 +97,39 @@ def init_arena_db():
         criado_em TEXT,
         apurado_em TEXT
     );
+    CREATE TABLE IF NOT EXISTS arena_mesas(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        token TEXT UNIQUE,
+        jogo TEXT DEFAULT 'blocos',
+        seed INTEGER,
+        entrada INTEGER DEFAULT 5,
+        max_vagas INTEGER DEFAULT 30,
+        criador_id INTEGER,
+        status TEXT DEFAULT 'aberta',
+        rake REAL DEFAULT 0,
+        premio REAL DEFAULT 0,
+        vencedor_id INTEGER,
+        criado_em TEXT,
+        fecha_em TEXT,
+        apurado_em TEXT
+    );
+    CREATE TABLE IF NOT EXISTS arena_mesa_jogadores(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        mesa_id INTEGER NOT NULL,
+        user_id INTEGER NOT NULL,
+        pontos INTEGER,
+        moves TEXT,
+        entrou_em TEXT,
+        jogou_em TEXT,
+        posicao INTEGER,
+        premio REAL DEFAULT 0,
+        UNIQUE(mesa_id, user_id)
+    );
     CREATE INDEX IF NOT EXISTS idx_arena_compras_user ON arena_compras(user_id);
     CREATE UNIQUE INDEX IF NOT EXISTS idx_arena_pag_ext ON arena_pagamentos(ext_ref);
     CREATE UNIQUE INDEX IF NOT EXISTS idx_arena_salas_token ON arena_salas(token);
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_arena_mesas_token ON arena_mesas(token);
+    CREATE INDEX IF NOT EXISTS idx_arena_mesa_jog ON arena_mesa_jogadores(mesa_id);
     ''')
     conn.commit()
     for m in [

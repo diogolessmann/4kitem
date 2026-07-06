@@ -672,6 +672,178 @@ def sala_cancelar(token, user_id):
     return ok
 
 
+# ══════════════════════════════════════════════════════════════════════════════
+# MESAS FREE-FOR-ALL (N jogadores, "mesa do dia"). Mesma semente pra todos, assíncrono:
+# entra e joga quando quiser dentro da janela; fecha -> ranqueia -> VENCEDOR LEVA TUDO (−rake).
+# Reusa o motor de placar + anti-cheat de tempo do duelo. Pagamento atômico/idempotente.
+# ══════════════════════════════════════════════════════════════════════════════
+MESA_JANELA_H = 24        # janela padrão ("mesa do dia"). Longa de propósito: resolve cold-start.
+MESA_MIN_JOGADORES = 2    # menos que isso ao fechar = ninguém ganha, devolve as entradas.
+MESA_MAX_VAGAS = 30       # teto de vagas padrão.
+
+
+def mesa_criar(user_id, entrada, jogo='blocos', janela_h=MESA_JANELA_H, max_vagas=MESA_MAX_VAGAS):
+    """Cria a mesa e JÁ inscreve o criador (paga a entrada). Servidor sorteia a semente."""
+    entrada = int(entrada) if int(entrada) in STAKES else 5
+    if jogo not in JOGOS_VALENDO:
+        jogo = 'blocos'
+    if not debita_creditos(user_id, entrada):
+        return (None, 'Você não tem fichas. Compre pra criar a mesa.')
+    token = secrets.token_urlsafe(9)
+    seed = random.randint(0, 0xFFFFFFFF)
+    agora = datetime.now()
+    conn = get_arena_db()
+    cur = conn.execute('INSERT INTO arena_mesas(token,jogo,seed,entrada,max_vagas,criador_id,status,criado_em,fecha_em) '
+                       'VALUES(?,?,?,?,?,?,?,?,?)',
+                       (token, jogo, seed, entrada, int(max_vagas), user_id, 'aberta',
+                        agora.isoformat(), (agora + timedelta(hours=janela_h)).isoformat()))
+    mesa_id = cur.lastrowid
+    conn.execute('INSERT INTO arena_mesa_jogadores(mesa_id,user_id,entrou_em) VALUES(?,?,?)',
+                 (mesa_id, user_id, agora.isoformat()))
+    conn.commit(); conn.close()
+    return (token, seed)
+
+
+def mesa_entrar(token, user_id):
+    """Entra na mesa (paga a entrada, pega a semente). Reentrada não re-cobra. Corrida (UNIQUE) estorna."""
+    conn = get_arena_db()
+    m = conn.execute('SELECT * FROM arena_mesas WHERE token=?', (token,)).fetchone()
+    if not m:
+        conn.close(); return {'erro': 'Mesa não encontrada.'}
+    m = dict(m)
+    ja = conn.execute('SELECT id FROM arena_mesa_jogadores WHERE mesa_id=? AND user_id=?',
+                      (m['id'], user_id)).fetchone()
+    if ja:
+        conn.close(); return {'ok': True, 'seed': m['seed'], 'entrada': m['entrada']}   # já dentro
+    if m['status'] != 'aberta':
+        conn.close(); return {'erro': 'Essa mesa já fechou.'}
+    if m['max_vagas'] and m['max_vagas'] > 0:
+        n = conn.execute('SELECT COUNT(*) c FROM arena_mesa_jogadores WHERE mesa_id=?', (m['id'],)).fetchone()['c']
+        if n >= m['max_vagas']:
+            conn.close(); return {'erro': 'Mesa lotada.'}
+    conn.close()
+    if not debita_creditos(user_id, m['entrada']):
+        return {'erro': 'Você não tem fichas. Compre pra entrar.'}
+    conn = get_arena_db()
+    try:
+        conn.execute('INSERT INTO arena_mesa_jogadores(mesa_id,user_id,entrou_em) VALUES(?,?,?)',
+                     (m['id'], user_id, datetime.now().isoformat()))
+        conn.commit(); conn.close()
+    except Exception:
+        conn.close(); add_creditos(user_id, m['entrada'])   # corrida: já entrou -> estorna esta cobrança
+    return {'ok': True, 'seed': m['seed'], 'entrada': m['entrada']}
+
+
+def mesa_registrar_jogada(token, user_id, moves, cliente_score=None):
+    """Jogador da mesa envia as jogadas (UM tiro). Servidor pontua + confere a janela de tempo."""
+    conn = get_arena_db()
+    m = conn.execute('SELECT * FROM arena_mesas WHERE token=?', (token,)).fetchone()
+    if not m:
+        conn.close(); return {'erro': 'Mesa não encontrada.'}
+    m = dict(m)
+    j = conn.execute('SELECT * FROM arena_mesa_jogadores WHERE mesa_id=? AND user_id=?',
+                     (m['id'], user_id)).fetchone()
+    if not j:
+        conn.close(); return {'erro': 'Você não está nessa mesa.'}
+    j = dict(j)
+    if j['jogou_em'] is not None or j['pontos'] is not None:
+        conn.close(); return {'erro': 'Você já jogou essa mesa.'}
+    if m['status'] != 'aberta':
+        conn.close(); return {'erro': 'Essa mesa já fechou.'}
+    conn.close()
+    pontos = _pontuar(m['jogo'], m['seed'], moves)
+    if pontos is None:
+        pontos = 0
+        log.warning(f'[Arena] Mesa {token}: jogada invalida -> 0 (poss. bug/tamper)')
+    if not _dentro_da_janela(j.get('entrou_em')):
+        pontos = 0
+        log.warning(f'[Arena] Mesa {token}: envio fora da janela ({JOGO_JANELA_S}s) -> forfeit (poss. solver)')
+    _crosscheck(token, 'mesa', pontos, cliente_score)
+    conn = get_arena_db()
+    conn.execute("UPDATE arena_mesa_jogadores SET pontos=?, moves=?, jogou_em=? "
+                 "WHERE mesa_id=? AND user_id=? AND jogou_em IS NULL",
+                 (pontos, json.dumps(moves)[:20000], datetime.now().isoformat(), m['id'], user_id))
+    conn.commit(); conn.close()
+    return {'ok': True, 'pontos': pontos}
+
+
+def mesa_apurar(token):
+    """Fecha a mesa: ranqueia e paga o TOPO (winner-take-all). ATÔMICO (flip+crédito na mesma
+    transação) + IDEMPOTENTE (rowcount). <MIN jogadores = devolve entradas. Empate no 1º = divide."""
+    conn = get_arena_db()
+    m = conn.execute('SELECT * FROM arena_mesas WHERE token=?', (token,)).fetchone()
+    if not m:
+        conn.close(); return {'erro': 'Mesa sumiu.'}
+    m = dict(m)
+    if m['status'] in ('paga', 'cancelada'):
+        conn.close(); return _mesa_resultado(token)
+    if m['status'] != 'aberta':
+        conn.close(); return {'erro': 'Mesa em processamento.'}
+    jogs = [dict(r) for r in conn.execute('SELECT * FROM arena_mesa_jogadores WHERE mesa_id=?', (m['id'],)).fetchall()]
+    n = len(jogs)
+    agora = datetime.now().isoformat()
+    # poucos jogadores -> cancela e devolve as entradas (na mesma transação do flip)
+    if n < MESA_MIN_JOGADORES:
+        cur = conn.execute("UPDATE arena_mesas SET status='cancelada', apurado_em=? WHERE token=? AND status='aberta'",
+                           (agora, token))
+        if cur.rowcount == 1:
+            for j in jogs:
+                conn.execute('UPDATE arena_users SET creditos=COALESCE(creditos,0)+? WHERE id=?', (m['entrada'], j['user_id']))
+            log.info(f'[Arena] Mesa {token} cancelada (poucos jogadores) — entradas devolvidas')
+        conn.commit(); conn.close(); return _mesa_resultado(token)
+    # ranking: quem não jogou conta 0. empate no topo divide o prêmio.
+    def sc(j): return j['pontos'] if j['pontos'] is not None else 0
+    topo = max(sc(j) for j in jogs)
+    vencedores = [j for j in jogs if sc(j) == topo]
+    pote = n * m['entrada'] * FICHA_VALOR
+    premio_total = round(pote * (1 - ARENA_RAKE), 2)
+    premio_cada = round(premio_total / len(vencedores), 2)
+    venc_id = vencedores[0]['user_id'] if len(vencedores) == 1 else None
+    cur = conn.execute("UPDATE arena_mesas SET status='paga', premio=?, rake=?, vencedor_id=?, apurado_em=? "
+                       "WHERE token=? AND status='aberta'",
+                       (premio_total, round(pote * ARENA_RAKE, 2), venc_id, agora, token))
+    if cur.rowcount == 1:
+        for jv in vencedores:
+            conn.execute('UPDATE arena_users SET saldo=ROUND(COALESCE(saldo,0)+?,2) WHERE id=?', (premio_cada, jv['user_id']))
+            conn.execute('UPDATE arena_mesa_jogadores SET premio=?, posicao=1 WHERE mesa_id=? AND user_id=?',
+                         (premio_cada, m['id'], jv['user_id']))
+        log.info(f'[Arena] Mesa {token} PAGA — {len(vencedores)} vencedor(es) R${premio_cada:.2f} cada (pote R${pote:.2f})')
+    conn.commit(); conn.close()
+    return _mesa_resultado(token)
+
+
+def _reap_mesa_se_preciso(token):
+    """Lazy (ao abrir a página): se a janela fechou, apura a mesa."""
+    conn = get_arena_db()
+    m = conn.execute('SELECT status, fecha_em FROM arena_mesas WHERE token=?', (token,)).fetchone()
+    conn.close()
+    if not m:
+        return
+    m = dict(m)
+    if m['status'] == 'aberta' and m.get('fecha_em'):
+        try:
+            if datetime.fromisoformat(m['fecha_em']) < datetime.now():
+                mesa_apurar(token)
+        except Exception:
+            pass
+
+
+def _mesa_resultado(token):
+    """Estado + ranking da mesa (pro placar/leaderboard)."""
+    conn = get_arena_db()
+    m = conn.execute('SELECT * FROM arena_mesas WHERE token=?', (token,)).fetchone()
+    if not m:
+        conn.close(); return {'erro': 'Mesa sumiu.'}
+    m = dict(m)
+    jogs = [dict(r) for r in conn.execute(
+        'SELECT j.user_id, j.pontos, j.jogou_em, j.premio, u.nome FROM arena_mesa_jogadores j '
+        'JOIN arena_users u ON u.id=j.user_id WHERE j.mesa_id=? '
+        'ORDER BY (j.pontos IS NULL), j.pontos DESC, j.jogou_em', (m['id'],)).fetchall()]
+    conn.close()
+    return {'status': m['status'], 'entrada': m['entrada'], 'premio': m['premio'],
+            'vencedor_id': m['vencedor_id'], 'jogadores': jogs, 'total': len(jogs)}
+
+
 # ── rotas (finas — auth + chama o miolo) ──────────────────────────────────────
 @arena_bp.route('/valendo')
 @arena_login_required
