@@ -12,14 +12,22 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#07060f;color:#f0f0f
 .card{width:100%;max-width:400px;background:#100f22;border:1px solid rgba(255,255,255,.08);
   border-radius:18px;padding:24px;text-align:center}
 h1{font-size:19px;font-weight:800;margin-bottom:4px}
-.val{font-size:13px;color:#9aa3bd;margin-bottom:18px}.val b{color:#22d3ee}
-.qr{background:#fff;border-radius:14px;padding:12px;display:inline-block;margin-bottom:16px}
-.qr img{width:210px;height:210px;display:block}
+.val{font-size:13px;color:#9aa3bd;margin-bottom:20px}.val b{color:#22d3ee}
+.cbtn{width:100%;background:linear-gradient(135deg,#22d3ee,#7c3aed);color:#fff;border:none;
+  border-radius:14px;padding:18px;font-size:18px;font-weight:800;cursor:pointer;
+  box-shadow:0 6px 22px rgba(124,58,237,.4);font-family:inherit}
+.cbtn:active{transform:scale(.98)}
+.step{font-size:13px;color:#c9d6e2;margin-top:14px;line-height:1.5}
+.step b{color:#22d3ee}
+details{margin-top:18px;text-align:left}
+summary{font-size:12px;color:#8b8aa8;cursor:pointer;text-align:center;list-style:none}
+summary::-webkit-details-marker{display:none}
+.qr{background:#fff;border-radius:14px;padding:12px;display:inline-block;margin:14px 0 8px}
+.qr img{width:190px;height:190px;display:block}
+.qrbox{text-align:center}
 .copia{background:#0d0d1a;border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:11px;
-  font-size:11px;color:#c9d6e2;word-break:break-all;margin-bottom:10px;line-height:1.5}
-.cbtn{width:100%;background:#171533;color:#d7d6f0;border:1px solid rgba(168,85,247,.3);
-  border-radius:12px;padding:13px;font-size:14px;font-weight:800;cursor:pointer}
-.wait{margin-top:18px;font-size:13px;color:#fbbf24;font-weight:600}
+  font-size:10px;color:#9aa3bd;word-break:break-all;line-height:1.5}
+.wait{margin-top:20px;font-size:13px;color:#fbbf24;font-weight:600}
 .wait .dot{display:inline-block;animation:b 1.2s infinite}
 @keyframes b{0%,100%{opacity:.3}50%{opacity:1}}
 .ok{display:none;margin-top:16px}
@@ -35,10 +43,14 @@ h1{font-size:19px;font-weight:800;margin-bottom:4px}
   <div class="val">Valor: <b>R$ {{ '%.2f'|format(compra.valor) }}</b> · {{ compra.creditos }} fichas</div>
 
   <div id="wait-box">
-    {% if qr %}<div class="qr"><img src="data:image/png;base64,{{ qr }}" alt="QR Code PIX"></div>{% endif %}
     {% if copia %}
-    <div class="copia" id="copia">{{ copia }}</div>
     <button class="cbtn" id="cbtn" onclick="copiar()">📋 Copiar código PIX</button>
+    <div class="step">Abra o app do seu banco → <b>PIX</b> → <b>Pix Copia e Cola</b> → colar → pagar. Suas fichas caem na hora. 💸</div>
+    <details>
+      <summary>▸ pagar de outro aparelho (QR / código)</summary>
+      {% if qr %}<div class="qrbox"><div class="qr"><img src="data:image/png;base64,{{ qr }}" alt="QR Code PIX"></div></div>{% endif %}
+      <div class="copia" id="copia">{{ copia }}</div>
+    </details>
     {% endif %}
     <div class="wait" id="wait">Aguardando o pagamento<span class="dot">.</span><span class="dot">.</span><span class="dot">.</span></div>
   </div>
@@ -53,10 +65,12 @@ h1{font-size:19px;font-weight:800;margin-bottom:4px}
 </div>
 <script>
 var CID={{ compra.id }};
-function copiar(){ var t=document.getElementById('copia').textContent.trim();
-  try{ navigator.clipboard.writeText(t); }catch(e){}
-  var b=document.getElementById('cbtn'); b.textContent='✅ Copiado!';
-  setTimeout(function(){ b.textContent='📋 Copiar código PIX'; },1600); }
+var PIX={{ copia|tojson }};
+function copiar(){
+  try{ navigator.clipboard.writeText(PIX); }catch(e){}
+  var b=document.getElementById('cbtn'); b.textContent='✅ Copiado! Cole no seu banco';
+  setTimeout(function(){ b.textContent='📋 Copiar código PIX'; },1800);
+}
 function check(){
   fetch('/arena/pix-status/'+CID,{method:'POST'}).then(function(r){return r.json();}).then(function(j){
     if(j&&j.pago){ document.getElementById('wait-box').style.display='none';

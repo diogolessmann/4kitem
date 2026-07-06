@@ -17,7 +17,6 @@ from flask import Blueprint, render_template, redirect, request, session, jsonif
 from werkzeug.security import generate_password_hash, check_password_hash
 
 import arena_game
-import arena_game_cobrinha
 try:
     import efi_pix   # RECEBER PIX pela Efí (barato no ticket baixo). Payout continua no Asaas.
 except Exception:
@@ -33,7 +32,6 @@ arena_bp = Blueprint('arena', __name__, url_prefix='/arena')
 # Catálogo de jogos do portal (MODOS x JOGOS). Só 'blocos' ativo no L0.
 JOGOS = [
     {'id': 'blocos',   'nome': 'Quebra-Blocos', 'emoji': '🧱', 'ativo': True,  'url': '/arena/jogar'},
-    {'id': 'cobrinha', 'nome': 'Cobrinha',      'emoji': '🐍', 'ativo': True,  'url': '/arena/cobrinha'},
     {'id': 'bolhas',   'nome': 'Tiro de Bolhas','emoji': '🎯', 'ativo': False, 'url': ''},
     {'id': 'combina',  'nome': 'Combina-3',     'emoji': '🍬', 'ativo': False, 'url': ''},
     {'id': 'labirinto','nome': 'Labirinto',     'emoji': '🧩', 'ativo': False, 'url': ''},
@@ -69,12 +67,6 @@ def portal():
 def jogar():
     """Jogo GRÁTIS de treino (público, sem login) — porta de entrada e viralização."""
     return render_template('arena/jogo.html', user=_cur())
-
-
-@arena_bp.route('/cobrinha')
-def cobrinha():
-    """Cobrinha GRÁTIS de treino (público). Valendo vem depois (precisa do motor server-side)."""
-    return render_template('arena/cobrinha.html', user=_cur())
 
 
 @arena_bp.route('/cadastrar', methods=['GET', 'POST'])
@@ -401,13 +393,11 @@ STAKES = [2, 5, 10, 20, 50]   # entradas de duelo permitidas (em fichas = R$)
 JOGOS_VALENDO = {
     'blocos':   {'motor': arena_game,          'tpl': 'arena/jogo_valendo.html',
                  'nome': 'Quebra-Blocos', 'emoji': '🧱'},
-    'cobrinha': {'motor': arena_game_cobrinha, 'tpl': 'arena/jogo_cobrinha_valendo.html',
-                 'nome': 'Cobrinha',      'emoji': '🐍'},
 }
 
 
 def _pontuar(jogo, seed, moves):
-    """Despacha pro motor server-side certo (blocos/cobrinha). Fallback = blocos."""
+    """Despacha pro motor server-side do jogo. Fallback = blocos."""
     cfg = JOGOS_VALENDO.get(jogo) or JOGOS_VALENDO['blocos']
     return cfg['motor'].pontuar(seed, moves)
 

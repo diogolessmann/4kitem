@@ -54,12 +54,14 @@ h1{font-size:22px;font-weight:800;margin-bottom:10px}
     <div class="rule"><span class="e">🎲</span><span>Você e o adversário jogam a <b>MESMA partida</b> (mesmas peças). Habilidade, não sorte.</span></div>
     <div class="rule"><span class="e">⏱️</span><span><b>90 segundos.</b> Quem fizer <b>mais pontos</b> leva.</span></div>
 
+    {% if jogos|length > 1 %}
     <div class="lab">ESCOLHA O JOGO</div>
     <div class="games" id="games">
       {% for j in jogos %}
       <button class="gm" data-id="{{ j.id }}" onclick="selJogo('{{ j.id }}')"><span class="ge">{{ j.emoji }}</span>{{ j.nome }}</button>
       {% endfor %}
     </div>
+    {% endif %}
 
     <div class="lab">ESCOLHA A ENTRADA</div>
     <div class="stakes" id="stakes">
