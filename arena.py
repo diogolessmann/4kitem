@@ -86,6 +86,16 @@ def cadastrar():
     uid = criar_user(nome, email, tel, generate_password_hash(senha))
     if not uid:
         return render_template('arena/cadastrar.html', erro='Não deu pra criar a conta. Tente de novo.')
+    # PIX opcional no cadastro (pra pagar o prêmio depois). Se vier inválido, NÃO bloqueia o
+    # cadastro — a gente pede de novo (com validação) na hora do saque.
+    pchave_raw = (request.form.get('pix_chave') or '').strip()
+    if pchave_raw:
+        _t, _c, _e = _pix_normaliza(request.form.get('pix_tipo'), pchave_raw)
+        if not _e and _c:
+            conn = get_arena_db()
+            conn.execute('UPDATE arena_users SET pix_chave=?, pix_tipo=? WHERE id=?',
+                         (_c, (request.form.get('pix_tipo') or '').strip().upper(), uid))
+            conn.commit(); conn.close()
     session['arena_user_id'] = uid
     session['arena_user_nome'] = nome
     return redirect('/arena')
@@ -886,7 +896,8 @@ def sacar(user_id, valor, pix_tipo, pix_chave):
 def sacar_rt():
     u = _cur()
     if request.method == 'GET':
-        return render_template('arena/sacar.html', user=u, saldo=get_saldo(u['id']), minimo=MIN_SAQUE)
+        return render_template('arena/sacar.html', user=u, saldo=get_saldo(u['id']), minimo=MIN_SAQUE,
+                               pix_chave=u.get('pix_chave') or '', pix_tipo=(u.get('pix_tipo') or 'CPF'))
     body = request.get_json(silent=True) or request.form
     r = sacar(u['id'], body.get('valor'), body.get('pix_tipo'), body.get('pix_chave'))
     return jsonify(r), (200 if r.get('ok') else 400)

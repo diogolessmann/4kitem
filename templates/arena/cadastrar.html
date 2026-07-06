@@ -40,8 +40,18 @@ input:focus{border-color:#a855f7}
   <input type="tel" name="tel" inputmode="numeric" placeholder="47 99999-9999">
   <label>Crie uma senha</label>
   <input type="password" name="senha" placeholder="mínimo 4 caracteres" required>
+  <label>Chave PIX pra receber prêmios <span style="color:#6b6a8f;font-weight:400">(opcional)</span></label>
+  <div style="display:flex;gap:8px">
+    <select name="pix_tipo" style="flex:0 0 40%;background:#0d0d1a;border:1px solid rgba(255,255,255,.1);border-radius:11px;color:#f0f0ff;padding:14px;font-size:15px;font-family:inherit;outline:none">
+      <option value="CPF">CPF</option>
+      <option value="CELULAR">Celular</option>
+      <option value="EMAIL">E-mail</option>
+      <option value="ALEATORIA">Aleatória</option>
+    </select>
+    <input type="text" name="pix_chave" placeholder="sua chave PIX" style="flex:1">
+  </div>
+  <div class="hint" style="text-align:left">É onde cai seu prêmio quando você ganhar. Pode deixar em branco e preencher na hora de sacar. 💸</div>
   <button class="btn" type="submit">Criar conta e jogar</button>
-  <div class="hint">Pedimos CPF e chave PIX só quando você for <b>sacar</b> um prêmio.</div>
   <div class="alt">Já tem conta? <a href="/arena/entrar">Entrar</a></div>
 </form>
 </body>

@@ -54,14 +54,14 @@ input:focus,select:focus{border-color:#34d399}
     <label>Onde você quer receber seu prêmio? 🎉 (sua chave PIX)</label>
     <div class="row">
       <select id="tipo" class="t">
-        <option value="CPF">CPF</option>
-        <option value="CELULAR">Celular</option>
-        <option value="EMAIL">E-mail</option>
-        <option value="ALEATORIA">Aleatória</option>
+        <option value="CPF" {% if pix_tipo=='CPF' %}selected{% endif %}>CPF</option>
+        <option value="CELULAR" {% if pix_tipo=='CELULAR' %}selected{% endif %}>Celular</option>
+        <option value="EMAIL" {% if pix_tipo=='EMAIL' %}selected{% endif %}>E-mail</option>
+        <option value="ALEATORIA" {% if pix_tipo=='ALEATORIA' %}selected{% endif %}>Aleatória</option>
       </select>
-      <input id="chave" placeholder="sua chave PIX">
+      <input id="chave" placeholder="sua chave PIX" value="{{ pix_chave }}">
     </div>
-    <div class="hint">Confira direitinho — é pra essa chave que o dinheiro vai.</div>
+    <div class="hint">{% if pix_chave %}Já preenchemos com o PIX do seu cadastro — é só conferir. 👍{% else %}Confira direitinho — é pra essa chave que o dinheiro vai.{% endif %}</div>
 
     <button class="btn" id="btn" onclick="sacar()">💸 Sacar agora</button>
     <div class="msg" id="msg"></div>
