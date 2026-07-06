@@ -22,9 +22,9 @@ Contrato do cliente (o jogo_cobrinha valendo DEVE seguir isto pra bater com o se
 import arena_game as _ag   # reusa _Rng (mulberry32) — mesma base do blocos
 
 N = 17
-SPEED_BASE = 140
-SPEED_MIN = 70
-SPEED_STEP = 3
+SPEED_BASE = 200
+SPEED_MIN = 130
+SPEED_STEP = 2
 TIME_LIMIT_MS = 90000
 MAX_TICKS = 6000
 MAX_MOVES = 3000

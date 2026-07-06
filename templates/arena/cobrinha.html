@@ -92,7 +92,7 @@
   function iniciar(){
     var m=Math.floor(N/2);
     snake=[{r:m,co:m},{r:m,co:m-1},{r:m,co:m-2}];
-    dir={dr:0,dc:1}; nextDir=dir; score=0; over=false; speed=140; acc=0; last=now(); grow=0;
+    dir={dr:0,dc:1}; nextDir=dir; score=0; over=false; speed=200; acc=0; last=now(); grow=0;
     document.getElementById('score').textContent=0;
     document.getElementById('over').classList.add('hidden');
     novaComida();
@@ -109,7 +109,7 @@
       score++; document.getElementById('score').textContent=score;
       if(score>best){ best=score; localStorage.setItem('cobrinha_best',best); document.getElementById('bestv').textContent=best; }
       pop={r:food.r,co:food.co,t0:now()}; sfx('eat');
-      novaComida(); speed=Math.max(70,140-score*3);
+      novaComida(); speed=Math.max(130,200-score*2);
     } else { snake.pop(); }
   }
   function fim(){ over=true; sfx('over');
@@ -126,7 +126,7 @@
   var anchor=null;
   cv.addEventListener('pointerdown',function(e){ unlock(); anchor={x:e.clientX,y:e.clientY}; e.preventDefault(); });
   cv.addEventListener('pointermove',function(e){ if(!anchor) return;
-    var dx=e.clientX-anchor.x, dy=e.clientY-anchor.y, th=Math.max(18,cell*0.7);
+    var dx=e.clientX-anchor.x, dy=e.clientY-anchor.y, th=Math.max(12,cell*0.45);
     if(Math.abs(dx)<th&&Math.abs(dy)<th) return;
     if(Math.abs(dx)>Math.abs(dy)) vira(0,dx>0?1:-1); else vira(dy>0?1:-1,0);
     anchor={x:e.clientX,y:e.clientY}; e.preventDefault(); });

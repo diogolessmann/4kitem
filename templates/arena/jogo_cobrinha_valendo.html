@@ -128,7 +128,7 @@ var CFG = {
       score++; document.getElementById('score').textContent=score;
       pop={r:food.r,c:food.c,t0:now()}; sfx('eat'); food=makeFood();
     } else { snake.pop(); }
-    simElapsed += Math.max(70,140-score*3); tk++;
+    simElapsed += Math.max(130,200-score*2); tk++;
     if(simElapsed>=90000){ return finalizar(); }                       // 90s (servidor corta igual)
   }
 
@@ -137,8 +137,8 @@ var CFG = {
   function loop(){
     if(started && !over){
       var t=now(); acc += (t-last); last=t; if(acc>300) acc=300;   // sem burst após travar/minimizar
-      var guard=0, spd=Math.max(70,140-score*3);
-      while(!over && acc>=spd && simElapsed<90000){ acc-=spd; step(); spd=Math.max(70,140-score*3); if(++guard>10) break; }
+      var guard=0, spd=Math.max(130,200-score*2);
+      while(!over && acc>=spd && simElapsed<90000){ acc-=spd; step(); spd=Math.max(130,200-score*2); if(++guard>10) break; }
       var rem=Math.max(0,90000-simElapsed), seg=Math.ceil(rem/1000);
       var tv=document.getElementById('tval'); if(tv) tv.textContent=seg;
       var tb=document.getElementById('tempo'); if(tb){ if(seg<=15) tb.classList.add('baixo'); else tb.classList.remove('baixo'); }
@@ -152,7 +152,7 @@ var CFG = {
   var anchor=null;
   cv.addEventListener('pointerdown',function(e){ unlock(); anchor={x:e.clientX,y:e.clientY}; e.preventDefault(); });
   cv.addEventListener('pointermove',function(e){ if(!anchor) return;
-    var dx=e.clientX-anchor.x, dy=e.clientY-anchor.y, th=Math.max(16,cell*0.6);
+    var dx=e.clientX-anchor.x, dy=e.clientY-anchor.y, th=Math.max(12,cell*0.45);
     if(Math.abs(dx)<th&&Math.abs(dy)<th) return;
     if(Math.abs(dx)>Math.abs(dy)) vira(0,dx>0?1:-1); else vira(dy>0?1:-1,0);
     anchor={x:e.clientX,y:e.clientY}; e.preventDefault(); });
