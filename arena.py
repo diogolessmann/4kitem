@@ -426,6 +426,20 @@ def sala_criar(user_id, aposta=1, jogo='blocos'):
     return (token, seed)
 
 
+def sala_confirmar_compartilhar(token, user_id):
+    """DESAFIAR: o criador confirma que compartilhou e SE COMPROMETE a jogar
+    ('criada' -> 'esperando_criador'). Daí em diante o placar é UM TIRO SÓ, sem reroll
+    (não dá mais pra jogar, ver placar ruim e cancelar). Atômico via rowcount."""
+    conn = get_arena_db()
+    cur = conn.execute("UPDATE arena_salas SET status='esperando_criador', criador_em=? "
+                       "WHERE token=? AND criador_id=? AND status='criada' AND oponente_id IS NULL",
+                       (datetime.now().isoformat(), token, user_id))
+    conn.commit(); ok = cur.rowcount == 1; conn.close()
+    if not ok:
+        return {'erro': 'Não deu pra começar (a sala já está em andamento ou não é sua).'}
+    return {'ok': True}
+
+
 def _crosscheck(token, quem, servidor, cliente):
     """Compara o placar que o servidor recalculou com o que o cliente diz ter feito.
     Divergência = possível bug de porte JS/Python OU tentativa de fraude — loga alto pra
@@ -447,15 +461,15 @@ def sala_registrar_jogada_criador(token, user_id, moves, cliente_score=None):
     s = dict(row)
     if s['criador_id'] != user_id:
         conn.close(); return {'erro': 'Essa sala não é sua.'}
-    if s['status'] != 'criada' or s['criador_pontos'] is not None:
-        conn.close(); return {'erro': 'Você já jogou essa sala.'}
+    if s['status'] != 'esperando_criador' or s['criador_pontos'] is not None:
+        conn.close(); return {'erro': 'A partida ainda não começou ou você já jogou.'}
     pontos = _pontuar(s['jogo'], s['seed'], moves)
     if pontos is None:
         pontos = 0   # jogada inválida = forfeit (uma chance só, sem re-scan da semente)
         log.warning(f'[Arena] Sala {token}: jogada do criador invalida -> 0 (poss. bug/tamper)')
     _crosscheck(token, 'criador', pontos, cliente_score)
     conn.execute("UPDATE arena_salas SET criador_pontos=?, criador_moves=?, status='aguardando' "
-                 "WHERE token=? AND status='criada'",
+                 "WHERE token=? AND status='esperando_criador'",
                  (pontos, json.dumps(moves)[:20000], token))
     conn.commit(); conn.close()
     return {'ok': True, 'pontos': pontos, 'token': token}
@@ -551,18 +565,23 @@ def _apurar_sala(token):
     return _resultado_dict(dict(row2))
 
 
-REAP_MIN = 5   # min sem enviar depois de entrar/pagar = oponente perde por WO
+REAP_MIN = 5          # min sem enviar depois de entrar/pagar = oponente perde por WO
+CRIADOR_REAP_MIN = 30 # criador criou/compartilhou e sumiu sem jogar (sem oponente) = devolve a ficha
 
 
 def _reap_sala_se_preciso(token):
-    """Reaper LAZY: oponente que ENTROU (pagou) e não enviou em REAP_MIN min = forfeit (pontos 0),
-    o criador leva. Resolve a sala presa em 'apurando' pra sempre (bug do red-team). Chamado ao abrir
-    a página da sala (o criador vê a sala se atualizar via meta-refresh), sem precisar de scheduler."""
+    """Reaper LAZY (roda ao abrir a página da sala, sem scheduler). Duas limpezas:
+    (a) oponente que ENTROU (pagou) e não enviou em REAP_MIN = forfeit, o criador leva;
+    (b) criador que criou/compartilhou e sumiu SEM jogar (sem oponente) em CRIADOR_REAP_MIN =
+        devolve a ficha e cancela (senão a ficha fica presa pra sempre)."""
     conn = get_arena_db()
-    s = conn.execute('SELECT status, oponente_pontos, oponente_em FROM arena_salas WHERE token=?', (token,)).fetchone()
+    s = conn.execute('SELECT status, criador_id, criador_pontos, criador_em, oponente_id, '
+                     'oponente_pontos, oponente_em, aposta, criado_em FROM arena_salas WHERE token=?',
+                     (token,)).fetchone()
     if not s:
         conn.close(); return
     s = dict(s)
+    # (a) oponente entrou e não enviou -> WO
     if s['status'] == 'apurando' and s['oponente_pontos'] is None and s.get('oponente_em'):
         try:
             velho = datetime.fromisoformat(s['oponente_em']) < (datetime.now() - timedelta(minutes=REAP_MIN))
@@ -574,11 +593,29 @@ def _reap_sala_se_preciso(token):
             log.info(f'[Arena] Sala {token}: oponente abandonou (WO) -> forfeit, apurando')
             _apurar_sala(token)
             return
+    # (b) criador criou/compartilhou e sumiu sem jogar -> devolve a ficha
+    if s['status'] in ('criada', 'esperando_criador') and s['criador_pontos'] is None and s['oponente_id'] is None:
+        base = s.get('criador_em') or s.get('criado_em')
+        try:
+            velho = bool(base) and datetime.fromisoformat(base) < (datetime.now() - timedelta(minutes=CRIADOR_REAP_MIN))
+        except Exception:
+            velho = False
+        if velho:
+            cur = conn.execute("UPDATE arena_salas SET status='cancelada' WHERE token=? AND "
+                               "status IN ('criada','esperando_criador') AND criador_pontos IS NULL "
+                               "AND oponente_id IS NULL", (token,))
+            conn.commit(); ok = cur.rowcount == 1; conn.close()
+            if ok:
+                add_creditos(s['criador_id'], s['aposta'] or 1)
+                log.info(f'[Arena] Sala {token}: criador sumiu sem jogar -> ficha devolvida')
+            return
     conn.close()
 
 
 def sala_cancelar(token, user_id):
-    """Criador cancela sala ainda sem oponente -> devolve a ficha (atômico)."""
+    """Criador cancela e recupera a ficha — SÓ ANTES DE JOGAR (criador_pontos IS NULL) e sem
+    oponente. Depois de jogar NÃO cancela: é o que mata o reroll (jogar, ver placar ruim, cancelar
+    e tentar de novo). Atômico via rowcount."""
     conn = get_arena_db()
     row = conn.execute('SELECT aposta FROM arena_salas WHERE token=? AND criador_id=?',
                        (token, user_id)).fetchone()
@@ -586,7 +623,8 @@ def sala_cancelar(token, user_id):
         conn.close(); return False
     aposta = row['aposta'] or 1
     cur = conn.execute("UPDATE arena_salas SET status='cancelada' "
-                       "WHERE token=? AND criador_id=? AND status IN ('criada','aguardando')",
+                       "WHERE token=? AND criador_id=? AND status IN ('criada','esperando_criador') "
+                       "AND criador_pontos IS NULL AND oponente_id IS NULL",
                        (token, user_id))
     conn.commit(); ok = cur.rowcount == 1; conn.close()
     if ok:
@@ -640,8 +678,9 @@ def sala_page(token):
     ehcriador = (s['criador_id'] == u['id'])
     ehoponente = (s['oponente_id'] == u['id'])
     # ── é a vez de JOGAR? serve o jogo valendo (template conforme o jogo da sala) ──
+    # Criador só joga DEPOIS de compartilhar/comprometer (status 'esperando_criador') — sem reroll.
     _tpl = (JOGOS_VALENDO.get(s['jogo']) or JOGOS_VALENDO['blocos'])['tpl']
-    if ehcriador and s['status'] == 'criada' and s['criador_pontos'] is None:
+    if ehcriador and s['status'] == 'esperando_criador' and s['criador_pontos'] is None:
         return render_template(_tpl, token=token, seed=s['seed'],
                                aposta=s['aposta'], endpoint='/arena/sala/' + token + '/jogar', alvo=None)
     if ehoponente and s['status'] == 'apurando' and s['oponente_pontos'] is None:
@@ -653,7 +692,11 @@ def sala_page(token):
         estado = 'cancelada'
     elif s['status'] == 'paga':
         estado = 'resultado'
-    elif s['status'] in ('aguardando', 'criada'):
+    elif s['status'] == 'criada':
+        estado = 'criar_compartilhar' if ehcriador else 'criador_preparando'
+    elif s['status'] == 'esperando_criador':
+        estado = 'criador_preparando'   # o criador cai no serve-jogo acima; aqui é o oponente esperando
+    elif s['status'] == 'aguardando':
         estado = 'aguardando' if ehcriador else 'aceitar'
     else:   # apurando, mas não é a vez desse usuário
         estado = 'processando'
@@ -673,6 +716,14 @@ def sala_jogar_rt(token):
     u = _cur()
     body = request.get_json(silent=True) or {}
     r = sala_registrar_jogada_criador(token, u['id'], body.get('moves'), body.get('score'))
+    return jsonify(r), (200 if r.get('ok') else 400)
+
+
+@arena_bp.route('/sala/<token>/confirmar-compartilhar', methods=['POST'])
+@arena_login_required
+def sala_confirmar_compartilhar_rt(token):
+    u = _cur()
+    r = sala_confirmar_compartilhar(token, u['id'])
     return jsonify(r), (200 if r.get('ok') else 400)
 
 

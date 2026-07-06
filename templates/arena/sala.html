@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#07060f">
 <title>Duelo — Arena · AmbitiON</title>
-{% if estado in ('aguardando', 'processando') %}<meta http-equiv="refresh" content="6">{% endif %}
+{% if estado in ('aguardando', 'processando', 'criador_preparando') %}<meta http-equiv="refresh" content="6">{% endif %}
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',system-ui,sans-serif;background:#07060f;color:#f0f0ff;min-height:100vh;
@@ -49,26 +49,43 @@ h1{font-size:22px;font-weight:800;margin-bottom:6px}
   <div class="sub">Esse link não existe ou expirou.</div>
   <a class="cta" href="/arena/valendo">⚔️ Começar um duelo</a>
 
-{% elif estado == 'aguardando' %}
-  <div class="big">⏳</div>
-  <h1>Você fez {{ sala.criador_pontos }} pontos!</h1>
-  <div class="sub">Agora mande o desafio pra um amigo. Ele joga a MESMA partida — quem fizer mais, leva.</div>
+{% elif estado == 'criar_compartilhar' %}
+  <div class="big">🎯</div>
+  <h1>Desafio criado!</h1>
+  <div class="sub">Entrada <b>R$ {{ sala.aposta }}</b> · vencedor leva <b>R$ {{ '%.2f'|format(2*sala.aposta*0.85) }}</b>.<br>Mande pro seu amigo — <b>depois</b> é a sua vez de jogar.</div>
   <div class="linkbox">
     <input id="link" readonly value="">
     <button class="cta" style="width:auto;padding:11px 16px;font-size:14px;margin:0" onclick="copiar()">Copiar</button>
   </div>
   <button class="cta" id="wpp" onclick="zap()">📲 Mandar no WhatsApp</button>
+  <button class="cta" id="jogar" onclick="comecar()" style="background:linear-gradient(135deg,#34d399,#22d3ee);color:#04241a">▶️ Já mandei — começar a jogar</button>
   <button class="ghost" onclick="cancelar()">Cancelar e recuperar a ficha</button>
-  <div class="small">Assim que alguém aceitar e jogar, o resultado aparece aqui sozinho. 🔄</div>
+  <div class="small">Você joga <b>no escuro</b>, sem ver o placar de ninguém — igual pro seu amigo. Justo. ⚖️</div>
   <div class="err" id="err"></div>
+
+{% elif estado == 'aguardando' %}
+  <div class="big">✅</div>
+  <h1>Você fez {{ sala.criador_pontos }} pontos!</h1>
+  <div class="sub">Pronto. Agora é só o seu amigo aceitar e jogar a MESMA partida — o resultado aparece aqui sozinho. 🔄</div>
+  <div class="linkbox">
+    <input id="link" readonly value="">
+    <button class="cta" style="width:auto;padding:11px 16px;font-size:14px;margin:0" onclick="copiar()">Copiar</button>
+  </div>
+  <button class="cta" id="wpp" onclick="zap()">📲 Mandar no WhatsApp de novo</button>
+  <div class="small">Você já jogou — sem cancelar agora, é o que deixa justo pro adversário. ⚖️</div>
+
+{% elif estado == 'criador_preparando' %}
+  <div class="big">⏳</div>
+  <h1>Duelo chegando!</h1>
+  <div class="sub">O desafiante tá preparando a partida. Assim que ele jogar, a <b>sua vez</b> aparece aqui sozinho — sem você precisar fazer nada. 🔄</div>
+  <a class="ghost" href="/arena">Voltar ao portal</a>
 
 {% elif estado == 'aceitar' %}
   <div class="big">⚔️</div>
   <h1>Você foi desafiado!</h1>
   <div class="desafio">
-    O adversário fez <b>{{ sala.criador_pontos }} pontos</b>.<br>
     Entrada: <b>R$ {{ sala.aposta }}</b> · vencedor leva <b>o prêmio no saldo</b>.<br>
-    Você joga a <b>mesma partida</b>. Bata o placar dele!
+    Vocês jogam a <b>MESMA partida</b>. Você joga <b>no escuro</b> — sem ver o placar dele. Quem fizer mais, leva! ⚖️
   </div>
   {% if creditos >= sala.aposta %}
     <button class="cta" id="btn" onclick="aceitar()">✅ Aceitar e jogar (R$ {{ sala.aposta }})</button>
@@ -122,8 +139,15 @@ var TOKEN = {{ token|tojson }};
 function copiar(){ var l=document.getElementById('link'); l.select();
   try{ navigator.clipboard.writeText(location.href); }catch(e){ try{document.execCommand('copy');}catch(_){} }
   var b=event.target; b.textContent='Copiado!'; setTimeout(function(){b.textContent='Copiar';},1500); }
-function zap(){ var t=encodeURIComponent('⚔️ Te desafiei no Quebra-Blocos da Arena! Bate meu placar na MESMA partida 👉 '+location.href);
+function zap(){ var t=encodeURIComponent('⚔️ Te desafiei no Quebra-Blocos da Arena! Mesma partida, quem fizer mais pontos leva 👉 '+location.href);
   location.href='https://wa.me/?text='+t; }
+function comecar(){ var b=document.getElementById('jogar'); if(!b) return; b.disabled=true; b.textContent='Preparando...';
+  fetch('/arena/sala/'+TOKEN+'/confirmar-compartilhar',{method:'POST'}).then(function(r){return r.json();}).then(function(j){
+    if(j&&j.ok){ location.href='/arena/sala/'+TOKEN; }
+    else{ b.disabled=false; b.textContent='▶️ Já mandei — começar a jogar';
+      var e=document.getElementById('err'); if(e) e.textContent=(j&&j.erro)||'Não deu. Tente de novo.'; }
+  }).catch(function(){ b.disabled=false; b.textContent='▶️ Já mandei — começar a jogar';
+    var e=document.getElementById('err'); if(e) e.textContent='Sem conexão.'; }); }
 function aceitar(){ var b=document.getElementById('btn'); b.disabled=true; b.textContent='Entrando...';
   fetch('/arena/sala/'+TOKEN+'/entrar',{method:'POST'}).then(function(r){return r.json();}).then(function(j){
     if(j&&j.ok){ location.reload(); }
