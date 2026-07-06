@@ -111,13 +111,12 @@ def sair():
 # LOTE 2 — Comprar FICHAS (crédito) no PIX (molde DRZAP, autossuficiente no Asaas).
 # Cada ficha = uma entrada de partida valendo prêmio. Confirma-compra idempotente.
 # ══════════════════════════════════════════════════════════════════════════════
-# ATENÇÃO ECONOMIA: a ficha DEVE custar >= FICHA_VALOR em TODO pacote, senão o prêmio
-# (calculado sobre FICHA_VALOR) fica maior que o arrecadado e a casa PERDE. Por isso, flat
-# R$4/ficha (sem desconto de volume). Se um dia der desconto, ancorar o prêmio no menor preço/ficha.
+# ECONOMIA: 1 ficha = R$1 (FICHA_VALOR). Preço/ficha = R$1 em TODO pacote, então o prêmio
+# (2*aposta*FICHA_VALOR*(1-rake)) nunca supera o arrecadado — a casa sempre fica com o rake.
 PACOTES = {
-    'inicio': {'creditos': 5,  'preco': 20.0,  'rotulo': '5 fichas',  'bonus': ''},
-    'turbo':  {'creditos': 15, 'preco': 60.0,  'rotulo': '15 fichas', 'bonus': ''},
-    'mestre': {'creditos': 40, 'preco': 160.0, 'rotulo': '40 fichas', 'bonus': ''},
+    'inicio': {'creditos': 5,  'preco': 5.0,   'rotulo': '5 fichas',  'bonus': ''},
+    'turbo':  {'creditos': 20, 'preco': 20.0,  'rotulo': '20 fichas', 'bonus': ''},
+    'mestre': {'creditos': 50, 'preco': 50.0,  'rotulo': '50 fichas', 'bonus': ''},
 }
 
 _ASAAS_BASE = 'https://api.asaas.com/v3'
@@ -305,8 +304,9 @@ def pix_status(compra_id):
 # A ficha entra, o SERVIDOR sorteia a semente e re-simula as jogadas (arena_game),
 # maior pontuação leva o PRÊMIO pro SALDO (R$). Tudo atômico e idempotente.
 # ══════════════════════════════════════════════════════════════════════════════
-FICHA_VALOR = 4.0      # R$ por ficha (pacote base: 5 fichas = R$20)
+FICHA_VALOR = 1.0      # 1 ficha = R$1 (crédito em reais). Deve ser <= menor preço/ficha dos pacotes.
 ARENA_RAKE = 0.15      # taxa de serviço da casa
+STAKES = [2, 5, 10, 20, 50]   # entradas de duelo permitidas (em fichas = R$)
 
 
 def _resultado_dict(s):
@@ -505,14 +505,21 @@ def sala_cancelar(token, user_id):
 def valendo_page():
     u = _cur()
     return render_template('arena/valendo.html', user=u, creditos=get_creditos(u['id']),
-                           premio=round(2 * FICHA_VALOR * (1 - ARENA_RAKE), 2))
+                           stakes=STAKES, rake=ARENA_RAKE, ficha=FICHA_VALOR)
 
 
 @arena_bp.route('/valendo/criar', methods=['POST'])
 @arena_login_required
 def valendo_criar():
     u = _cur()
-    token, seed = sala_criar(u['id'], 1)
+    body = request.get_json(silent=True) or {}
+    try:
+        aposta = int(body.get('aposta') or 5)
+    except Exception:
+        aposta = 5
+    if aposta not in STAKES:
+        return jsonify({'erro': 'Valor de entrada inválido.'}), 400
+    token, seed = sala_criar(u['id'], aposta)
     if token is None:
         return jsonify({'erro': seed}), 400
     return jsonify({'ok': True, 'token': token, 'seed': seed})

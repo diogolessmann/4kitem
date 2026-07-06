@@ -12,23 +12,29 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#07060f;color:#f0f0f
 .nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
 .nav a{color:#8b8aa8;text-decoration:none;font-size:13px;font-weight:700}
 .saldo{font-size:13px;color:#9fb8d6}.saldo b{color:#22d3ee}
-.card{background:#0f0e20;border:1px solid rgba(168,85,247,.25);border-radius:20px;padding:26px 22px;text-align:center}
-.card .big{font-size:44px;margin-bottom:6px}
+.card{background:#0f0e20;border:1px solid rgba(168,85,247,.25);border-radius:20px;padding:24px 22px;text-align:center}
+.card .big{font-size:40px;margin-bottom:4px}
 h1{font-size:22px;font-weight:800;margin-bottom:10px}
-.rule{display:flex;align-items:flex-start;gap:10px;text-align:left;font-size:13.5px;color:#c9d6e2;
-  background:#141327;border-radius:12px;padding:12px 14px;margin-bottom:10px;line-height:1.4}
-.rule .e{font-size:18px}
+.rule{display:flex;align-items:flex-start;gap:10px;text-align:left;font-size:13px;color:#c9d6e2;
+  background:#141327;border-radius:12px;padding:11px 13px;margin-bottom:9px;line-height:1.4}
+.rule .e{font-size:17px}
+.lab{font-size:11px;font-weight:800;letter-spacing:1.5px;color:#8b8aa8;text-align:left;margin:20px 0 10px}
+.stakes{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.stake{background:#141327;border:1.5px solid rgba(255,255,255,.08);border-radius:13px;padding:14px 6px;
+  cursor:pointer;font-size:18px;font-weight:800;color:#e9e8ff;transition:.12s;font-family:inherit}
+.stake.sel{border-color:#22d3ee;background:rgba(34,211,238,.14);color:#67e8f9}
+.stake:disabled{opacity:.35;cursor:not-allowed}
 .premio{background:linear-gradient(135deg,rgba(34,211,238,.12),rgba(168,85,247,.12));
-  border:1px solid rgba(34,211,238,.3);border-radius:14px;padding:14px;margin:16px 0 6px}
+  border:1px solid rgba(34,211,238,.3);border-radius:14px;padding:14px;margin:16px 0 4px}
 .premio .l{font-size:11px;font-weight:800;letter-spacing:1.5px;color:#9fb8d6}
 .premio .v{font-size:30px;font-weight:800;color:#22d3ee}
 .cta{display:block;width:100%;background:linear-gradient(135deg,#22d3ee,#7c3aed);color:#fff;border:none;
-  border-radius:14px;padding:16px;font-size:17px;font-weight:800;cursor:pointer;margin-top:16px;
+  border-radius:14px;padding:16px;font-size:17px;font-weight:800;cursor:pointer;margin-top:14px;
   box-shadow:0 6px 22px rgba(124,58,237,.4);font-family:inherit}
-.cta:disabled{opacity:.6}
+.cta:disabled{opacity:.55}
 .buy{display:block;background:#171533;color:#d7d6f0;border:1px solid rgba(168,85,247,.3);border-radius:14px;
-  padding:15px;font-size:15px;font-weight:800;text-decoration:none;margin-top:12px;text-align:center}
-.err{color:#fda4af;font-size:13px;margin-top:12px;min-height:18px}
+  padding:13px;font-size:14px;font-weight:800;text-decoration:none;margin-top:12px;text-align:center}
+.err{color:#fda4af;font-size:13px;margin-top:10px;min-height:18px}
 </style>
 </head>
 <body>
@@ -40,31 +46,49 @@ h1{font-size:22px;font-weight:800;margin-bottom:10px}
   <div class="card">
     <div class="big">⚔️</div>
     <h1>Duelo valendo</h1>
-    <div class="rule"><span class="e">🎲</span><span>Você e seu adversário jogam a <b>MESMA partida</b> (mesmas peças). Habilidade, não sorte.</span></div>
-    <div class="rule"><span class="e">⏱️</span><span>São <b>90 segundos</b>. Quem fizer <b>mais pontos</b> leva.</span></div>
-    <div class="rule"><span class="e">💸</span><span>Custa <b>1 ficha</b> pra entrar. O prêmio cai no seu <b>saldo</b> na hora.</span></div>
+    <div class="rule"><span class="e">🎲</span><span>Você e o adversário jogam a <b>MESMA partida</b> (mesmas peças). Habilidade, não sorte.</span></div>
+    <div class="rule"><span class="e">⏱️</span><span><b>90 segundos.</b> Quem fizer <b>mais pontos</b> leva.</span></div>
+
+    <div class="lab">ESCOLHA A ENTRADA</div>
+    <div class="stakes" id="stakes">
+      {% for s in stakes %}
+      <button class="stake" data-v="{{ s }}" onclick="sel({{ s }})">R$ {{ s }}</button>
+      {% endfor %}
+    </div>
+
     <div class="premio">
       <div class="l">O VENCEDOR LEVA</div>
-      <div class="v">R$ {{ '%.2f'|format(premio) }}</div>
+      <div class="v" id="premio">R$ 0,00</div>
     </div>
-    {% if creditos >= 1 %}
-      <button class="cta" id="btn" onclick="comecar()">⚔️ Começar duelo (1 ficha)</button>
-      <div class="err" id="err"></div>
-    {% else %}
-      <a class="buy" href="/arena/comprar">Você precisa de fichas — comprar 🎟️</a>
-    {% endif %}
+
+    <button class="cta" id="btn" onclick="comecar()">Escolha a entrada ↑</button>
+    <a class="buy" href="/arena/comprar">Comprar mais fichas 🎟️</a>
+    <div class="err" id="err"></div>
   </div>
 </div>
 <script>
-function comecar(){
-  var b=document.getElementById('btn'); b.disabled=true; b.textContent='Preparando...';
-  fetch('/arena/valendo/criar',{method:'POST'}).then(function(r){return r.json();}).then(function(j){
-    if(j&&j.ok&&j.token){ location.href='/arena/sala/'+j.token; }
-    else { b.disabled=false; b.textContent='⚔️ Começar duelo (1 ficha)';
-      document.getElementById('err').textContent=(j&&j.erro)||'Não deu. Tente de novo.'; }
-  }).catch(function(){ b.disabled=false; b.textContent='⚔️ Começar duelo (1 ficha)';
-    document.getElementById('err').textContent='Sem conexão.'; });
+var FICHA={{ ficha }}, RAKE={{ rake }}, CRED={{ creditos }}, STAKE=0;
+function fmt(n){ return 'R$ '+n.toFixed(2).replace('.',','); }
+function sel(v){
+  STAKE=v;
+  document.querySelectorAll('.stake').forEach(function(b){ b.classList.toggle('sel', +b.dataset.v===v); });
+  var premio = 2*v*FICHA*(1-RAKE);
+  document.getElementById('premio').textContent = fmt(premio);
+  var btn=document.getElementById('btn');
+  if(CRED < v){ btn.disabled=true; btn.textContent='Fichas insuficientes (tem '+CRED+', precisa '+v+')'; }
+  else { btn.disabled=false; btn.textContent='⚔️ Começar duelo (R$ '+v+')'; }
 }
+function comecar(){
+  if(!STAKE) return;
+  var b=document.getElementById('btn'); b.disabled=true; b.textContent='Preparando...';
+  fetch('/arena/valendo/criar',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({aposta:STAKE})}).then(function(r){return r.json();}).then(function(j){
+    if(j&&j.ok&&j.token){ location.href='/arena/sala/'+j.token; }
+    else { sel(STAKE); document.getElementById('err').textContent=(j&&j.erro)||'Não deu. Tente de novo.'; }
+  }).catch(function(){ sel(STAKE); document.getElementById('err').textContent='Sem conexão.'; });
+}
+// pré-seleciona a menor que o jogador consegue pagar
+(function(){ var vs={{ stakes|tojson }}; var esc=vs[0]; for(var i=0;i<vs.length;i++){ if(CRED>=vs[i]){esc=vs[i];break;} } sel(esc); })();
 </script>
 </body>
 </html>

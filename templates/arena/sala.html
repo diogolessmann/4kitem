@@ -67,11 +67,11 @@ h1{font-size:22px;font-weight:800;margin-bottom:6px}
   <h1>Você foi desafiado!</h1>
   <div class="desafio">
     O adversário fez <b>{{ sala.criador_pontos }} pontos</b>.<br>
-    Entrada: <b>{{ sala.aposta }} ficha</b> · vencedor leva <b>o prêmio no saldo</b>.<br>
+    Entrada: <b>R$ {{ sala.aposta }}</b> · vencedor leva <b>o prêmio no saldo</b>.<br>
     Você joga a <b>mesma partida</b>. Bata o placar dele!
   </div>
   {% if creditos >= sala.aposta %}
-    <button class="cta" id="btn" onclick="aceitar()">✅ Aceitar e jogar ({{ sala.aposta }} ficha)</button>
+    <button class="cta" id="btn" onclick="aceitar()">✅ Aceitar e jogar (R$ {{ sala.aposta }})</button>
     <div class="small">Você tem {{ creditos }} fichas.</div>
     <div class="err" id="err"></div>
   {% else %}

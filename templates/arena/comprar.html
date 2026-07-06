@@ -34,7 +34,7 @@ h1{font-size:22px;font-weight:800;margin-bottom:4px}
     <span class="saldo">Você tem <b>{{ creditos }}</b> fichas</span>
   </div>
   <h1>Comprar fichas 🎟️</h1>
-  <p class="sub">Cada ficha é uma entrada em partida valendo prêmio. Pagamento no PIX, na hora.</p>
+  <p class="sub"><b>1 ficha = R$1.</b> Use pra entrar nos duelos (de R$2 a R$50). Pagamento no PIX, na hora.</p>
 
   {% for key, p in pacotes.items() %}
   <a class="pack {{ 'hi' if key == 'turbo' else '' }}" href="/arena/checkout/{{ key }}">
