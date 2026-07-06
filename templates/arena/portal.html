@@ -64,16 +64,26 @@ body{font-family:'Segoe UI',system-ui,-apple-system,Roboto,sans-serif;background
   <div class="wallet">
     <div>
       <div class="lab">SEUS CRÉDITOS</div>
-      <div class="val">{{ creditos }} <small>{{ 'partida' if creditos == 1 else 'partidas' }}</small></div>
+      <div class="val">{{ creditos }} <small>{{ 'ficha' if creditos == 1 else 'fichas' }}</small></div>
     </div>
     <a href="/arena/comprar">+ Comprar</a>
   </div>
+  {% if saldo and saldo > 0 %}
+  <div class="wallet" style="background:linear-gradient(135deg,rgba(52,211,153,.12),rgba(34,211,238,.1));border-color:rgba(52,211,153,.35)">
+    <div>
+      <div class="lab" style="color:#8ef0d0">SEU SALDO (PRÊMIOS)</div>
+      <div class="val" style="color:#34d399">R$ {{ '%.2f'|format(saldo) }}</div>
+    </div>
+    <a href="/arena/sacar" style="background:#34d399;color:#04241a">Sacar 💸</a>
+  </div>
+  {% endif %}
   {% endif %}
 
   <div class="hero">
     <h1>Joga, vence, recebe no PIX 💸</h1>
     <p>Mesma partida pra todo mundo. Quem faz mais pontos leva. Habilidade, não sorte.</p>
-    <a class="cta" href="/arena/jogar">▶ Jogar grátis pra treinar</a>
+    <a class="cta" href="/arena/valendo">⚔️ Jogar valendo</a>
+    <a class="cta" href="/arena/jogar" style="background:#171533;box-shadow:none;border:1px solid rgba(168,85,247,.3);margin-top:10px">▶ Treinar de graça</a>
   </div>
 
   <div class="sec">OS JOGOS</div>

@@ -77,8 +77,29 @@ def init_arena_db():
         tentativas INTEGER DEFAULT 0,
         criado_em TEXT
     );
+    CREATE TABLE IF NOT EXISTS arena_salas(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        token TEXT UNIQUE,
+        jogo TEXT DEFAULT 'blocos',
+        seed INTEGER,
+        aposta INTEGER DEFAULT 1,
+        criador_id INTEGER,
+        criador_pontos INTEGER,
+        criador_moves TEXT,
+        oponente_id INTEGER,
+        oponente_pontos INTEGER,
+        oponente_moves TEXT,
+        oponente_em TEXT,
+        vencedor_id INTEGER,
+        premio REAL DEFAULT 0,
+        rake REAL DEFAULT 0,
+        status TEXT DEFAULT 'criada',
+        criado_em TEXT,
+        apurado_em TEXT
+    );
     CREATE INDEX IF NOT EXISTS idx_arena_compras_user ON arena_compras(user_id);
     CREATE UNIQUE INDEX IF NOT EXISTS idx_arena_pag_ext ON arena_pagamentos(ext_ref);
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_arena_salas_token ON arena_salas(token);
     ''')
     conn.commit()
     for m in [
@@ -86,6 +107,7 @@ def init_arena_db():
         'ALTER TABLE arena_users ADD COLUMN pix_chave TEXT',
         'ALTER TABLE arena_users ADD COLUMN pix_tipo TEXT',
         'ALTER TABLE arena_users ADD COLUMN asaas_customer_id TEXT',
+        'ALTER TABLE arena_salas ADD COLUMN oponente_em TEXT',
     ]:
         try:
             conn.execute(m); conn.commit()
@@ -150,6 +172,37 @@ def debita_creditos(uid, qtd):
     conn = get_arena_db()
     cur = conn.execute('UPDATE arena_users SET creditos=creditos-? WHERE id=? AND creditos>=?',
                        (qtd, uid, qtd))
+    conn.commit()
+    ok = cur.rowcount > 0
+    conn.close()
+    return ok
+
+
+# ---- saldo em R$ (prêmio ganho; é o que vira saque no Lote 4) ----
+def get_saldo(uid):
+    conn = get_arena_db()
+    r = conn.execute('SELECT saldo FROM arena_users WHERE id=?', (uid,)).fetchone()
+    conn.close()
+    return round((r['saldo'] or 0.0), 2) if r else 0.0
+
+
+def add_saldo(uid, valor):
+    conn = get_arena_db()
+    # ROUND no VALOR ARMAZENADO (não só na leitura) — evita drift de float IEEE754 no saldo.
+    conn.execute('UPDATE arena_users SET saldo=ROUND(COALESCE(saldo,0)+?,2) WHERE id=?', (round(float(valor), 2), uid))
+    conn.commit()
+    conn.close()
+
+
+def debita_saldo(uid, valor):
+    """Debita R$ do saldo SÓ se houver (atômico) — retorna True/False. Blinda saque a descoberto.
+    ROUND no armazenado E na comparação (WHERE) pra não travar por 6.7999999 vs 6.80."""
+    valor = round(float(valor), 2)
+    if valor <= 0:
+        return False
+    conn = get_arena_db()
+    cur = conn.execute('UPDATE arena_users SET saldo=ROUND(saldo-?,2) WHERE id=? AND ROUND(saldo,2)>=?',
+                       (valor, uid, valor))
     conn.commit()
     ok = cur.rowcount > 0
     conn.close()

@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#07060f">
+<title>Duelo — Arena · AmbitiON</title>
+{% if estado in ('aguardando', 'processando') %}<meta http-equiv="refresh" content="6">{% endif %}
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#07060f;color:#f0f0ff;min-height:100vh;
+  display:flex;align-items:center;justify-content:center;padding:20px}
+.card{width:100%;max-width:420px;background:#0f0e20;border:1px solid rgba(168,85,247,.25);
+  border-radius:20px;padding:28px 22px;text-align:center}
+.big{font-size:52px;line-height:1;margin-bottom:8px}
+h1{font-size:22px;font-weight:800;margin-bottom:6px}
+.sub{font-size:14px;color:#9aa3bd;line-height:1.5;margin-bottom:6px}
+.placar{display:flex;gap:10px;margin:18px 0}
+.placar .p{flex:1;background:#141327;border-radius:14px;padding:14px}
+.placar .p.win{background:linear-gradient(135deg,rgba(52,211,153,.16),rgba(34,211,238,.12));border:1px solid rgba(52,211,153,.4)}
+.placar .l{font-size:11px;font-weight:800;letter-spacing:1px;color:#8b8aa8}
+.placar .v{font-size:30px;font-weight:800;color:#f4f3ff}
+.premio{background:linear-gradient(135deg,rgba(52,211,153,.16),rgba(34,211,238,.12));
+  border:1px solid rgba(52,211,153,.4);border-radius:14px;padding:16px;margin:16px 0}
+.premio .l{font-size:11px;font-weight:800;letter-spacing:1.5px;color:#8ef0d0}
+.premio .v{font-size:32px;font-weight:800;color:#34d399}
+.desafio{background:#141327;border-radius:14px;padding:16px;margin:16px 0;font-size:14px;color:#c9d6e2;line-height:1.5}
+.desafio b{color:#22d3ee}
+.linkbox{display:flex;gap:8px;margin:14px 0}
+.linkbox input{flex:1;background:#0d0d1a;border:1px solid rgba(255,255,255,.1);border-radius:10px;
+  color:#c9d6e2;padding:11px;font-size:12px;font-family:inherit}
+.cta{display:block;width:100%;background:linear-gradient(135deg,#22d3ee,#7c3aed);color:#fff;border:none;
+  border-radius:14px;padding:15px;font-size:16px;font-weight:800;cursor:pointer;margin-top:8px;
+  text-decoration:none;font-family:inherit;box-shadow:0 6px 22px rgba(124,58,237,.35)}
+.cta:disabled{opacity:.6}
+.ghost{display:block;width:100%;background:#171533;color:#d7d6f0;border:1px solid rgba(168,85,247,.3);
+  border-radius:14px;padding:13px;font-size:14px;font-weight:800;cursor:pointer;margin-top:10px;
+  text-decoration:none;font-family:inherit}
+.small{font-size:12px;color:#6b6a8f;margin-top:12px}
+.err{color:#fda4af;font-size:13px;margin-top:10px;min-height:16px}
+.dots{display:inline-block;animation:b 1.2s infinite}@keyframes b{0%,100%{opacity:.3}50%{opacity:1}}
+</style>
+</head>
+<body>
+<div class="card">
+{% if estado == 'inexistente' %}
+  <div class="big">🤔</div>
+  <h1>Duelo não encontrado</h1>
+  <div class="sub">Esse link não existe ou expirou.</div>
+  <a class="cta" href="/arena/valendo">⚔️ Começar um duelo</a>
+
+{% elif estado == 'aguardando' %}
+  <div class="big">⏳</div>
+  <h1>Você fez {{ sala.criador_pontos }} pontos!</h1>
+  <div class="sub">Agora mande o desafio pra um amigo. Ele joga a MESMA partida — quem fizer mais, leva.</div>
+  <div class="linkbox">
+    <input id="link" readonly value="">
+    <button class="cta" style="width:auto;padding:11px 16px;font-size:14px;margin:0" onclick="copiar()">Copiar</button>
+  </div>
+  <button class="cta" id="wpp" onclick="zap()">📲 Mandar no WhatsApp</button>
+  <button class="ghost" onclick="cancelar()">Cancelar e recuperar a ficha</button>
+  <div class="small">Assim que alguém aceitar e jogar, o resultado aparece aqui sozinho. 🔄</div>
+  <div class="err" id="err"></div>
+
+{% elif estado == 'aceitar' %}
+  <div class="big">⚔️</div>
+  <h1>Você foi desafiado!</h1>
+  <div class="desafio">
+    O adversário fez <b>{{ sala.criador_pontos }} pontos</b>.<br>
+    Aposta: <b>{{ sala.aposta }} ficha</b> · vencedor leva <b>o prêmio no saldo</b>.<br>
+    Você joga a <b>mesma partida</b>. Bata o placar dele!
+  </div>
+  {% if creditos >= sala.aposta %}
+    <button class="cta" id="btn" onclick="aceitar()">✅ Aceitar e jogar ({{ sala.aposta }} ficha)</button>
+    <div class="small">Você tem {{ creditos }} fichas.</div>
+    <div class="err" id="err"></div>
+  {% else %}
+    <div class="desafio">Você tem {{ creditos }} fichas — precisa de {{ sala.aposta }}.</div>
+    <a class="cta" href="/arena/comprar">🎟️ Comprar fichas</a>
+  {% endif %}
+
+{% elif estado == 'resultado' %}
+  {% set meu = sala.criador_pontos if ehcriador else sala.oponente_pontos %}
+  {% set dele = sala.oponente_pontos if ehcriador else sala.criador_pontos %}
+  {% if venceu == 'ganhou' %}
+    <div class="big">🏆</div>
+    <h1>VOCÊ VENCEU!</h1>
+    <div class="premio"><div class="l">CAIU NO SEU SALDO</div><div class="v">+ R$ {{ '%.2f'|format(sala.premio) }}</div></div>
+  {% elif venceu == 'empate' %}
+    <div class="big">🤝</div>
+    <h1>Empate!</h1>
+    <div class="sub">Ninguém levou — a ficha voltou pra cada um.</div>
+  {% else %}
+    <div class="big">😤</div>
+    <h1>Dessa vez, não.</h1>
+    <div class="sub">O adversário fez mais pontos. Bora a revanche!</div>
+  {% endif %}
+  <div class="placar">
+    <div class="p {{ 'win' if meu > dele else '' }}"><div class="l">VOCÊ</div><div class="v">{{ meu }}</div></div>
+    <div class="p {{ 'win' if dele > meu else '' }}"><div class="l">ADVERSÁRIO</div><div class="v">{{ dele }}</div></div>
+  </div>
+  <a class="cta" href="/arena/valendo">⚔️ Jogar outro duelo</a>
+  <a class="ghost" href="/arena">Voltar ao portal</a>
+
+{% elif estado == 'cancelada' %}
+  <div class="big">↩️</div>
+  <h1>Duelo cancelado</h1>
+  <div class="sub">A ficha voltou pra sua conta.</div>
+  <a class="cta" href="/arena/valendo">⚔️ Começar de novo</a>
+  <a class="ghost" href="/arena">Voltar ao portal</a>
+
+{% else %}
+  <div class="big">🎲</div>
+  <h1>Apurando o duelo<span class="dots">...</span></h1>
+  <div class="sub">Só um instante — o resultado aparece aqui sozinho.</div>
+{% endif %}
+</div>
+
+<script>
+var TOKEN = {{ token|tojson }};
+(function(){ var l=document.getElementById('link'); if(l) l.value=location.href; })();
+function copiar(){ var l=document.getElementById('link'); l.select();
+  try{ navigator.clipboard.writeText(location.href); }catch(e){ try{document.execCommand('copy');}catch(_){} }
+  var b=event.target; b.textContent='Copiado!'; setTimeout(function(){b.textContent='Copiar';},1500); }
+function zap(){ var t=encodeURIComponent('⚔️ Te desafiei no Quebra-Blocos da Arena! Bate meu placar na MESMA partida 👉 '+location.href);
+  location.href='https://wa.me/?text='+t; }
+function aceitar(){ var b=document.getElementById('btn'); b.disabled=true; b.textContent='Entrando...';
+  fetch('/arena/sala/'+TOKEN+'/entrar',{method:'POST'}).then(function(r){return r.json();}).then(function(j){
+    if(j&&j.ok){ location.reload(); }
+    else{ b.disabled=false; b.textContent='✅ Aceitar e jogar'; document.getElementById('err').textContent=(j&&j.erro)||'Não deu.'; }
+  }).catch(function(){ b.disabled=false; b.textContent='✅ Aceitar e jogar'; document.getElementById('err').textContent='Sem conexão.'; }); }
+function cancelar(){ if(!confirm('Cancelar o duelo e recuperar a ficha?')) return;
+  fetch('/arena/sala/'+TOKEN+'/cancelar',{method:'POST'}).then(function(r){return r.json();}).then(function(){ location.reload(); }).catch(function(){}); }
+</script>
+</body>
+</html>

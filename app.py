@@ -18247,10 +18247,31 @@ def asaas_saque_validacao():
     ext      = (transfer.get('externalReference') or '')
     val      = transfer.get('value')
     # Saques gerados pelo SISTEMA (prefixos conhecidos): comissão SlotZap (szaf_),
-    # motor central de afiliados (afil_) e prêmio CAMPonline (camp_premio_).
+    # motor central de afiliados (afil_) e prêmio CAMPonline (camp_premio_) — aprovados por prefixo.
     if ext.startswith(('szaf_', 'afil_', 'camp_premio_')):
         log.info(f'[Saque] validacao APPROVED ref={ext} valor={val}')
         return jsonify({'status': 'APPROVED'}), 200
+    # Saque da ARENA (arena_premio_): NÃO aprova só pelo prefixo — confere o LEDGER (arena_pagamentos)
+    # com status 'enviando'/'pago', valor batendo e destino batendo. Se a API key vazar, um ext forjado
+    # sem linha no ledger (ou com destino diferente) morre aqui.
+    if ext.startswith('arena_premio_'):
+        try:
+            from arena_db import get_arena_db as _get_arena_db
+            _ac = _get_arena_db()
+            _ar = _ac.execute("SELECT valor, pix_chave FROM arena_pagamentos "
+                              "WHERE ext_ref=? AND status IN ('enviando','pago')", (ext,)).fetchone()
+            _ac.close()
+            if _ar:
+                _vled = round(float(_ar['valor'] or 0), 2)
+                _vtr  = round(float(val or 0), 2)
+                _pix  = str(transfer.get('pixAddressKey') or '').strip()
+                if abs(_vled - _vtr) <= 0.01 and (not _pix or _pix == (_ar['pix_chave'] or '')):
+                    log.info(f'[Saque] validacao APPROVED (arena ledger ok) ref={ext} valor={val}')
+                    return jsonify({'status': 'APPROVED'}), 200
+        except Exception as _ae:
+            log.warning(f'[Saque] arena ledger check erro: {_ae}')
+        log.warning(f'[Saque] validacao REFUSED (arena sem ledger/valor) ref={ext} valor={val}')
+        return jsonify({'status': 'REFUSED', 'refuseReason': 'arena saque nao confere no ledger'}), 200
     # Sem ref = possível saque MANUAL (painel). Só aprova se o DESTINO estiver na
     # whitelist (env SAQUE_DESTINO_LIBERADO = chaves PIX/CPF do dono, separadas por
     # vírgula). Sem whitelist ou destino desconhecido = REFUSED — se a API key vazar,

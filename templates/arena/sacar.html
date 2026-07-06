@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#07060f">
+<title>Sacar — Arena · AmbitiON</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#07060f;color:#f0f0ff;min-height:100vh;padding:16px 14px 40px}
+.wrap{max-width:420px;margin:0 auto}
+.nav a{color:#8b8aa8;text-decoration:none;font-size:13px;font-weight:700}
+.saldo-box{background:linear-gradient(135deg,rgba(52,211,153,.14),rgba(34,211,238,.1));
+  border:1px solid rgba(52,211,153,.4);border-radius:18px;padding:22px;text-align:center;margin:18px 0}
+.saldo-box .l{font-size:11px;font-weight:800;letter-spacing:1.5px;color:#8ef0d0}
+.saldo-box .v{font-size:38px;font-weight:800;color:#34d399;line-height:1.1}
+h1{font-size:20px;font-weight:800;margin-bottom:4px}
+.sub{font-size:13px;color:#9aa3bd;margin-bottom:4px}
+label{display:block;font-size:12px;font-weight:600;color:#8888aa;margin:14px 0 6px}
+input,select{width:100%;background:#0d0d1a;border:1px solid rgba(255,255,255,.1);border-radius:11px;
+  color:#f0f0ff;padding:14px;font-size:16px;font-family:inherit;outline:none}
+input:focus,select:focus{border-color:#34d399}
+.row{display:flex;gap:8px}
+.row .t{flex:0 0 40%}
+.tudo{font-size:12px;color:#22d3ee;font-weight:700;cursor:pointer;text-align:right;margin-top:6px}
+.hint{font-size:11px;color:#6b6a8f;margin-top:6px}
+.btn{width:100%;background:linear-gradient(135deg,#34d399,#22d3ee);color:#04241a;border:none;border-radius:13px;
+  padding:16px;font-size:16px;font-weight:800;cursor:pointer;margin-top:20px;font-family:inherit}
+.btn:disabled{opacity:.6}
+.msg{font-size:13px;margin-top:14px;text-align:center;min-height:18px}
+.msg.err{color:#fda4af}.msg.ok{color:#6ee7b7}
+.ok-card{display:none;text-align:center;padding:20px 0}.ok-card .big{font-size:52px}
+.low{background:#141327;border-radius:14px;padding:18px;text-align:center;font-size:14px;color:#c9d6e2;margin-top:8px}
+.low a{color:#22d3ee;text-decoration:none;font-weight:700}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="nav"><a href="/arena">← voltar ao portal</a></div>
+  <div class="saldo-box">
+    <div class="l">SEU SALDO</div>
+    <div class="v">R$ {{ '%.2f'|format(saldo) }}</div>
+  </div>
+
+  {% if saldo >= minimo %}
+  <div id="form">
+    <h1>Sacar pro seu PIX 💸</h1>
+    <div class="sub">Cai na sua chave em minutos. Saque mínimo R$ {{ '%.2f'|format(minimo) }}.</div>
+
+    <label>Quanto sacar</label>
+    <input id="valor" inputmode="decimal" placeholder="0,00" value="{{ '%.2f'|format(saldo) }}">
+    <div class="tudo" onclick="tudo()">sacar tudo (R$ {{ '%.2f'|format(saldo) }})</div>
+
+    <label>Sua chave PIX (onde cai o dinheiro)</label>
+    <div class="row">
+      <select id="tipo" class="t">
+        <option value="CPF">CPF</option>
+        <option value="CELULAR">Celular</option>
+        <option value="EMAIL">E-mail</option>
+        <option value="ALEATORIA">Aleatória</option>
+      </select>
+      <input id="chave" placeholder="sua chave PIX">
+    </div>
+    <div class="hint">Confira direitinho — é pra essa chave que o dinheiro vai.</div>
+
+    <button class="btn" id="btn" onclick="sacar()">💸 Sacar agora</button>
+    <div class="msg" id="msg"></div>
+  </div>
+  <div class="ok-card" id="okcard">
+    <div class="big">🎉</div>
+    <h1 style="color:#34d399">PIX enviado!</h1>
+    <div class="sub" id="oktxt">Já tá a caminho da sua chave.</div>
+    <div style="margin-top:16px"><a class="nav" href="/arena">← voltar ao portal</a></div>
+  </div>
+  {% else %}
+  <div class="low">
+    Você precisa de <b>R$ {{ '%.2f'|format(minimo) }}</b> pra sacar.<br>
+    Ganhe mais duelos e volte aqui! ⚔️<br><br>
+    <a href="/arena/valendo">Jogar valendo →</a>
+  </div>
+  {% endif %}
+</div>
+<script>
+var SALDO={{ saldo }};
+function tudo(){ document.getElementById('valor').value = SALDO.toFixed(2); }
+function sacar(){
+  var valor=(document.getElementById('valor').value||'').replace(',', '.');
+  var tipo=document.getElementById('tipo').value, chave=document.getElementById('chave').value.trim();
+  var msg=document.getElementById('msg'); msg.className='msg';
+  if(!chave){ msg.className='msg err'; msg.textContent='Informe sua chave PIX.'; return; }
+  var b=document.getElementById('btn'); b.disabled=true; b.textContent='Enviando...';
+  fetch('/arena/sacar',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({valor:valor,pix_tipo:tipo,pix_chave:chave})})
+    .then(function(r){return r.json();}).then(function(j){
+      if(j&&j.ok){ document.getElementById('form').style.display='none';
+        document.getElementById('okcard').style.display='block';
+        document.getElementById('oktxt').textContent='R$ '+Number(j.valor).toFixed(2)+' a caminho da sua chave.'; }
+      else{ b.disabled=false; b.textContent='💸 Sacar agora'; msg.className='msg err'; msg.textContent=(j&&j.erro)||'Não deu. Tente de novo.'; }
+    }).catch(function(){ b.disabled=false; b.textContent='💸 Sacar agora'; msg.className='msg err'; msg.textContent='Sem conexão.'; });
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#07060f">
+<title>Jogar valendo — Arena · AmbitiON</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#07060f;color:#f0f0ff;min-height:100vh;padding:16px 14px 40px}
+.wrap{max-width:440px;margin:0 auto}
+.nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+.nav a{color:#8b8aa8;text-decoration:none;font-size:13px;font-weight:700}
+.saldo{font-size:13px;color:#9fb8d6}.saldo b{color:#22d3ee}
+.card{background:#0f0e20;border:1px solid rgba(168,85,247,.25);border-radius:20px;padding:26px 22px;text-align:center}
+.card .big{font-size:44px;margin-bottom:6px}
+h1{font-size:22px;font-weight:800;margin-bottom:10px}
+.rule{display:flex;align-items:flex-start;gap:10px;text-align:left;font-size:13.5px;color:#c9d6e2;
+  background:#141327;border-radius:12px;padding:12px 14px;margin-bottom:10px;line-height:1.4}
+.rule .e{font-size:18px}
+.premio{background:linear-gradient(135deg,rgba(34,211,238,.12),rgba(168,85,247,.12));
+  border:1px solid rgba(34,211,238,.3);border-radius:14px;padding:14px;margin:16px 0 6px}
+.premio .l{font-size:11px;font-weight:800;letter-spacing:1.5px;color:#9fb8d6}
+.premio .v{font-size:30px;font-weight:800;color:#22d3ee}
+.cta{display:block;width:100%;background:linear-gradient(135deg,#22d3ee,#7c3aed);color:#fff;border:none;
+  border-radius:14px;padding:16px;font-size:17px;font-weight:800;cursor:pointer;margin-top:16px;
+  box-shadow:0 6px 22px rgba(124,58,237,.4);font-family:inherit}
+.cta:disabled{opacity:.6}
+.buy{display:block;background:#171533;color:#d7d6f0;border:1px solid rgba(168,85,247,.3);border-radius:14px;
+  padding:15px;font-size:15px;font-weight:800;text-decoration:none;margin-top:12px;text-align:center}
+.err{color:#fda4af;font-size:13px;margin-top:12px;min-height:18px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="nav">
+    <a href="/arena">← voltar</a>
+    <span class="saldo">Você tem <b>{{ creditos }}</b> fichas</span>
+  </div>
+  <div class="card">
+    <div class="big">⚔️</div>
+    <h1>Duelo valendo</h1>
+    <div class="rule"><span class="e">🎲</span><span>Você e seu adversário jogam a <b>MESMA partida</b> (mesmas peças). Habilidade, não sorte.</span></div>
+    <div class="rule"><span class="e">⏱️</span><span>São <b>90 segundos</b>. Quem fizer <b>mais pontos</b> leva.</span></div>
+    <div class="rule"><span class="e">💸</span><span>Custa <b>1 ficha</b> pra entrar. O prêmio cai no seu <b>saldo</b> na hora.</span></div>
+    <div class="premio">
+      <div class="l">O VENCEDOR LEVA</div>
+      <div class="v">R$ {{ '%.2f'|format(premio) }}</div>
+    </div>
+    {% if creditos >= 1 %}
+      <button class="cta" id="btn" onclick="comecar()">⚔️ Começar duelo (1 ficha)</button>
+      <div class="err" id="err"></div>
+    {% else %}
+      <a class="buy" href="/arena/comprar">Você precisa de fichas — comprar 🎟️</a>
+    {% endif %}
+  </div>
+</div>
+<script>
+function comecar(){
+  var b=document.getElementById('btn'); b.disabled=true; b.textContent='Preparando...';
+  fetch('/arena/valendo/criar',{method:'POST'}).then(function(r){return r.json();}).then(function(j){
+    if(j&&j.ok&&j.token){ location.href='/arena/sala/'+j.token; }
+    else { b.disabled=false; b.textContent='⚔️ Começar duelo (1 ficha)';
+      document.getElementById('err').textContent=(j&&j.erro)||'Não deu. Tente de novo.'; }
+  }).catch(function(){ b.disabled=false; b.textContent='⚔️ Começar duelo (1 ficha)';
+    document.getElementById('err').textContent='Sem conexão.'; });
+}
+</script>
+</body>
+</html>

@@ -6,6 +6,9 @@ Próximos lotes: comprar crédito no PIX (_sz_gerar_pix), sala x1 valendo (debit
 prêmio->saldo, saque (_sz_afiliado_transfer + ledger arena_pagamentos + guarda arena_premio_).
 """
 import os
+import json
+import random
+import secrets
 import logging
 from datetime import datetime, timedelta
 from functools import wraps
@@ -13,8 +16,10 @@ import requests as _requests
 from flask import Blueprint, render_template, redirect, request, session, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
 
+import arena_game
 from arena_db import (get_arena_db, get_user, get_user_by_email, criar_user,
-                      get_creditos, add_creditos)
+                      get_creditos, add_creditos, debita_creditos,
+                      get_saldo, add_saldo, debita_saldo)
 
 log = logging.getLogger('arena')
 
@@ -49,7 +54,8 @@ def _cur():
 def portal():
     u = _cur()
     cred = get_creditos(u['id']) if u else 0
-    return render_template('arena/portal.html', user=u, creditos=cred, jogos=JOGOS)
+    sal = get_saldo(u['id']) if u else 0.0
+    return render_template('arena/portal.html', user=u, creditos=cred, saldo=sal, jogos=JOGOS)
 
 
 @arena_bp.route('/jogar')
@@ -105,10 +111,13 @@ def sair():
 # LOTE 2 — Comprar FICHAS (crédito) no PIX (molde DRZAP, autossuficiente no Asaas).
 # Cada ficha = uma entrada de partida valendo prêmio. Confirma-compra idempotente.
 # ══════════════════════════════════════════════════════════════════════════════
+# ATENÇÃO ECONOMIA: a ficha DEVE custar >= FICHA_VALOR em TODO pacote, senão o prêmio
+# (calculado sobre FICHA_VALOR) fica maior que o arrecadado e a casa PERDE. Por isso, flat
+# R$4/ficha (sem desconto de volume). Se um dia der desconto, ancorar o prêmio no menor preço/ficha.
 PACOTES = {
     'inicio': {'creditos': 5,  'preco': 20.0,  'rotulo': '5 fichas',  'bonus': ''},
-    'turbo':  {'creditos': 15, 'preco': 50.0,  'rotulo': '15 fichas', 'bonus': '+3 grátis'},
-    'mestre': {'creditos': 35, 'preco': 100.0, 'rotulo': '35 fichas', 'bonus': '+10 grátis'},
+    'turbo':  {'creditos': 15, 'preco': 60.0,  'rotulo': '15 fichas', 'bonus': ''},
+    'mestre': {'creditos': 40, 'preco': 160.0, 'rotulo': '40 fichas', 'bonus': ''},
 }
 
 _ASAAS_BASE = 'https://api.asaas.com/v3'
@@ -120,9 +129,14 @@ def _asaas_req(method, endpoint, data=None):
             headers={'access_token': os.environ.get('ASAAS_API_KEY', ''),
                      'Content-Type': 'application/json'},
             json=data, timeout=20)
-        return r.json() if r.content else {}
+        out = r.json() if r.content else {}
+        # 5xx = a operação PODE ter sido processada (ambíguo) — marca pra não estornar às cegas
+        if r.status_code >= 500:
+            out['_neterr'] = True
+        return out
     except Exception as e:
-        return {'error': str(e)}
+        # timeout / conexão caiu = AMBÍGUO: o PIX pode ter saído. NUNCA estornar automático nisso.
+        return {'error': str(e), '_neterr': True}
 
 
 def _cpf_digits(s):
@@ -166,21 +180,22 @@ def _asaas_cliente(u, cpf):
 
 
 def _arena_confirmar_compra(compra_id):
-    """Credita as fichas de UMA compra de forma ATÔMICA e idempotente.
-    Retorna True só se creditou AGORA (1ª confirmação) — nunca em dobro (webhook+poll+recon)."""
+    """Credita as fichas de UMA compra ATÔMICO + idempotente: o flip de status='pago' E o
+    crédito das fichas acontecem na MESMA transação (1 conexão, 1 commit). Assim um crash no
+    meio nunca deixa a compra 'pago' com 0 fichas (bug irrecuperável que o red-team pegou)."""
     conn = get_arena_db()
     cur = conn.execute("UPDATE arena_compras SET status='pago' WHERE id=? AND status='pendente'",
                        (compra_id,))
-    conn.commit()
-    if cur.rowcount == 0:          # já confirmada por outra via
-        conn.close()
+    if cur.rowcount == 0:          # já confirmada por outra via (idempotente)
+        conn.commit(); conn.close()
         return False
+    conn.execute("UPDATE arena_users SET creditos=COALESCE(creditos,0)+"
+                 "(SELECT creditos FROM arena_compras WHERE id=?) "
+                 "WHERE id=(SELECT user_id FROM arena_compras WHERE id=?)", (compra_id, compra_id))
+    conn.commit()   # status + crédito juntos
     row = conn.execute('SELECT user_id, creditos FROM arena_compras WHERE id=?', (compra_id,)).fetchone()
     conn.close()
-    if not row:
-        return False
-    add_creditos(row['user_id'], row['creditos'])
-    log.info(f'[Arena] Compra {compra_id} PAGA — +{row["creditos"]} fichas (user {row["user_id"]})')
+    log.info(f'[Arena] Compra {compra_id} PAGA — +{row["creditos"] if row else "?"} fichas')
     return True
 
 
@@ -283,3 +298,423 @@ def pix_status(compra_id):
         _arena_confirmar_compra(compra_id)
         return jsonify({'pago': True, 'creditos': get_creditos(u['id'])})
     return jsonify({'pago': False})
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# LOTE 3 — Sala VALENDO (duelo assíncrono por mesma semente).
+# A ficha entra, o SERVIDOR sorteia a semente e re-simula as jogadas (arena_game),
+# maior pontuação leva o PRÊMIO pro SALDO (R$). Tudo atômico e idempotente.
+# ══════════════════════════════════════════════════════════════════════════════
+FICHA_VALOR = 4.0      # R$ por ficha (pacote base: 5 fichas = R$20)
+ARENA_RAKE = 0.15      # taxa de serviço da casa
+
+
+def _resultado_dict(s):
+    return {'status': s['status'], 'criador_pontos': s['criador_pontos'],
+            'oponente_pontos': s['oponente_pontos'], 'vencedor_id': s['vencedor_id'],
+            'premio': s['premio'], 'aposta': s['aposta']}
+
+
+def sala_criar(user_id, aposta=1):
+    """Cria sala valendo: debita a ficha e o SERVIDOR sorteia a semente (ninguém pré-escaneia).
+    Retorna (token, seed) ou (None, erro)."""
+    aposta = int(aposta) if int(aposta) >= 1 else 1
+    if not debita_creditos(user_id, aposta):
+        return (None, 'Você não tem fichas. Compre pra jogar valendo.')
+    token = secrets.token_urlsafe(9)
+    seed = random.randint(0, 0xFFFFFFFF)
+    conn = get_arena_db()
+    conn.execute('INSERT INTO arena_salas(token,jogo,seed,aposta,criador_id,status,criado_em) '
+                 'VALUES(?,?,?,?,?,?,?)',
+                 (token, 'blocos', seed, aposta, user_id, 'criada', datetime.now().isoformat()))
+    conn.commit(); conn.close()
+    return (token, seed)
+
+
+def _crosscheck(token, quem, servidor, cliente):
+    """Compara o placar que o servidor recalculou com o que o cliente diz ter feito.
+    Divergência = possível bug de porte JS/Python OU tentativa de fraude — loga alto pra
+    a gente pegar ANTES de mover dinheiro (o que vale é sempre o do SERVIDOR)."""
+    try:
+        if cliente is not None and int(cliente) != int(servidor):
+            log.warning(f'[Arena] PLACAR DIVERGE sala {token} {quem}: '
+                        f'servidor={servidor} cliente={cliente} — investigar!')
+    except Exception:
+        pass
+
+
+def sala_registrar_jogada_criador(token, user_id, moves, cliente_score=None):
+    """Criador submete as JOGADAS. Servidor pontua (uma chance só) e abre a sala p/ desafio."""
+    conn = get_arena_db()
+    row = conn.execute('SELECT * FROM arena_salas WHERE token=?', (token,)).fetchone()
+    if not row:
+        conn.close(); return {'erro': 'Sala não encontrada.'}
+    s = dict(row)
+    if s['criador_id'] != user_id:
+        conn.close(); return {'erro': 'Essa sala não é sua.'}
+    if s['status'] != 'criada' or s['criador_pontos'] is not None:
+        conn.close(); return {'erro': 'Você já jogou essa sala.'}
+    pontos = arena_game.pontuar(s['seed'], moves)
+    if pontos is None:
+        pontos = 0   # jogada inválida = forfeit (uma chance só, sem re-scan da semente)
+        log.warning(f'[Arena] Sala {token}: jogada do criador invalida -> 0 (poss. bug/tamper)')
+    _crosscheck(token, 'criador', pontos, cliente_score)
+    conn.execute("UPDATE arena_salas SET criador_pontos=?, criador_moves=?, status='aguardando' "
+                 "WHERE token=? AND status='criada'",
+                 (pontos, json.dumps(moves)[:20000], token))
+    conn.commit(); conn.close()
+    return {'ok': True, 'pontos': pontos, 'token': token}
+
+
+def sala_entrar(token, user_id):
+    """Oponente ENTRA (paga ANTES de jogar, pra não poder enviar só as vitórias):
+    claim atômico -> debita ficha. Retorna {seed, aposta} ou {erro}. Sem-ficha libera a sala.
+    Reentrada (refresh) devolve a semente sem cobrar de novo."""
+    conn = get_arena_db()
+    row = conn.execute('SELECT * FROM arena_salas WHERE token=?', (token,)).fetchone()
+    if not row:
+        conn.close(); return {'erro': 'Sala não encontrada.'}
+    s = dict(row)
+    # já entrou (pagou) e ainda não enviou -> reabre a MESMA partida, sem cobrar de novo
+    if s['status'] == 'apurando' and s['oponente_id'] == user_id and s['oponente_pontos'] is None:
+        conn.close(); return {'ok': True, 'seed': s['seed'], 'aposta': s['aposta']}
+    # claim atômico: só se aguardando, sem oponente, e NÃO é a sua própria sala
+    cur = conn.execute("UPDATE arena_salas SET status='apurando', oponente_id=?, oponente_em=? "
+                       "WHERE token=? AND status='aguardando' AND oponente_id IS NULL AND criador_id<>?",
+                       (user_id, datetime.now().isoformat(), token, user_id))
+    conn.commit(); claimed = cur.rowcount == 1; conn.close()
+    if not claimed:
+        return {'erro': 'Essa sala não está disponível (já tem oponente, é sua, ou já foi jogada).'}
+    if not debita_creditos(user_id, s['aposta']):
+        conn = get_arena_db()
+        conn.execute("UPDATE arena_salas SET status='aguardando', oponente_id=NULL "
+                     "WHERE token=? AND status='apurando' AND oponente_id=?", (token, user_id))
+        conn.commit(); conn.close()
+        return {'erro': 'Você não tem fichas. Compre pra entrar.'}
+    return {'ok': True, 'seed': s['seed'], 'aposta': s['aposta']}
+
+
+def sala_enviar(token, user_id, moves, cliente_score=None):
+    """Oponente ENVIA as jogadas (depois de já ter entrado/pago): pontua e apura."""
+    conn = get_arena_db()
+    row = conn.execute('SELECT * FROM arena_salas WHERE token=?', (token,)).fetchone()
+    if not row:
+        conn.close(); return {'erro': 'Sala não encontrada.'}
+    s = dict(row)
+    if s['oponente_id'] != user_id or s['status'] not in ('apurando', 'paga'):
+        conn.close(); return {'erro': 'Você não está nessa partida.'}
+    if s['oponente_pontos'] is not None:
+        conn.close(); return _apurar_sala(token)   # já enviou -> devolve o resultado (idempotente)
+    conn.close()
+    pontos = arena_game.pontuar(s['seed'], moves)
+    if pontos is None:
+        pontos = 0
+        log.warning(f'[Arena] Sala {token}: jogada do oponente invalida -> 0 (poss. bug/tamper)')
+    _crosscheck(token, 'oponente', pontos, cliente_score)
+    conn = get_arena_db()
+    conn.execute("UPDATE arena_salas SET oponente_pontos=?, oponente_moves=? "
+                 "WHERE token=? AND oponente_pontos IS NULL", (pontos, json.dumps(moves)[:20000], token))
+    conn.commit(); conn.close()
+    return _apurar_sala(token)
+
+
+def _apurar_sala(token):
+    """Compara e paga o vencedor (SALDO) — ou devolve fichas no empate. IDEMPOTENTE:
+    a transição 'apurando'->'paga' com guarda de rowcount credita EXATAMENTE 1 vez."""
+    conn = get_arena_db()
+    row = conn.execute('SELECT * FROM arena_salas WHERE token=?', (token,)).fetchone()
+    if not row:
+        conn.close(); return {'erro': 'Sala sumiu.'}
+    s = dict(row)
+    if s['status'] == 'paga':          # já apurada — devolve o resultado (idempotente)
+        conn.close(); return _resultado_dict(s)
+    if s['status'] != 'apurando' or s['criador_pontos'] is None or s['oponente_pontos'] is None:
+        conn.close(); return {'erro': 'Ainda não dá pra apurar.'}
+    cp, op = s['criador_pontos'], s['oponente_pontos']
+    agora = datetime.now().isoformat()
+    if cp == op:
+        cur = conn.execute("UPDATE arena_salas SET status='paga', vencedor_id=NULL, premio=0, apurado_em=? "
+                           "WHERE token=? AND status='apurando'", (agora, token))
+        conn.commit()
+        if cur.rowcount == 1:
+            add_creditos(s['criador_id'], s['aposta'])
+            add_creditos(s['oponente_id'], s['aposta'])
+            log.info(f'[Arena] Sala {token} EMPATE — fichas devolvidas aos dois')
+    else:
+        venc = s['criador_id'] if cp > op else s['oponente_id']
+        pote = 2 * s['aposta'] * FICHA_VALOR
+        premio = round(pote * (1 - ARENA_RAKE), 2)
+        cur = conn.execute("UPDATE arena_salas SET status='paga', vencedor_id=?, premio=?, rake=?, apurado_em=? "
+                           "WHERE token=? AND status='apurando'",
+                           (venc, premio, round(pote * ARENA_RAKE, 2), agora, token))
+        conn.commit()
+        if cur.rowcount == 1:
+            add_saldo(venc, premio)
+            log.info(f'[Arena] Sala {token} vencedor={venc} +R${premio:.2f} saldo')
+    row2 = conn.execute('SELECT * FROM arena_salas WHERE token=?', (token,)).fetchone()
+    conn.close()
+    return _resultado_dict(dict(row2))
+
+
+REAP_MIN = 5   # min sem enviar depois de entrar/pagar = oponente perde por WO
+
+
+def _reap_sala_se_preciso(token):
+    """Reaper LAZY: oponente que ENTROU (pagou) e não enviou em REAP_MIN min = forfeit (pontos 0),
+    o criador leva. Resolve a sala presa em 'apurando' pra sempre (bug do red-team). Chamado ao abrir
+    a página da sala (o criador vê a sala se atualizar via meta-refresh), sem precisar de scheduler."""
+    conn = get_arena_db()
+    s = conn.execute('SELECT status, oponente_pontos, oponente_em FROM arena_salas WHERE token=?', (token,)).fetchone()
+    if not s:
+        conn.close(); return
+    s = dict(s)
+    if s['status'] == 'apurando' and s['oponente_pontos'] is None and s.get('oponente_em'):
+        try:
+            velho = datetime.fromisoformat(s['oponente_em']) < (datetime.now() - timedelta(minutes=REAP_MIN))
+        except Exception:
+            velho = False
+        if velho:
+            conn.execute("UPDATE arena_salas SET oponente_pontos=0 WHERE token=? AND oponente_pontos IS NULL", (token,))
+            conn.commit(); conn.close()
+            log.info(f'[Arena] Sala {token}: oponente abandonou (WO) -> forfeit, apurando')
+            _apurar_sala(token)
+            return
+    conn.close()
+
+
+def sala_cancelar(token, user_id):
+    """Criador cancela sala ainda sem oponente -> devolve a ficha (atômico)."""
+    conn = get_arena_db()
+    row = conn.execute('SELECT aposta FROM arena_salas WHERE token=? AND criador_id=?',
+                       (token, user_id)).fetchone()
+    if not row:
+        conn.close(); return False
+    aposta = row['aposta'] or 1
+    cur = conn.execute("UPDATE arena_salas SET status='cancelada' "
+                       "WHERE token=? AND criador_id=? AND status IN ('criada','aguardando')",
+                       (token, user_id))
+    conn.commit(); ok = cur.rowcount == 1; conn.close()
+    if ok:
+        add_creditos(user_id, aposta)
+    return ok
+
+
+# ── rotas (finas — auth + chama o miolo) ──────────────────────────────────────
+@arena_bp.route('/valendo')
+@arena_login_required
+def valendo_page():
+    u = _cur()
+    return render_template('arena/valendo.html', user=u, creditos=get_creditos(u['id']),
+                           premio=round(2 * FICHA_VALOR * (1 - ARENA_RAKE), 2))
+
+
+@arena_bp.route('/valendo/criar', methods=['POST'])
+@arena_login_required
+def valendo_criar():
+    u = _cur()
+    token, seed = sala_criar(u['id'], 1)
+    if token is None:
+        return jsonify({'erro': seed}), 400
+    return jsonify({'ok': True, 'token': token, 'seed': seed})
+
+
+@arena_bp.route('/sala/<token>')
+@arena_login_required
+def sala_page(token):
+    """Roteador de estado da sala: serve o JOGO quando é a vez de jogar, senão a casca
+    (aceitar desafio / aguardando / resultado)."""
+    u = _cur()
+    _reap_sala_se_preciso(token)   # se o oponente abandonou, resolve por WO antes de renderizar
+    conn = get_arena_db()
+    row = conn.execute('SELECT * FROM arena_salas WHERE token=?', (token,)).fetchone()
+    conn.close()
+    if not row:
+        return render_template('arena/sala.html', estado='inexistente', sala=None, user=u, token=token)
+    s = dict(row)
+    ehcriador = (s['criador_id'] == u['id'])
+    ehoponente = (s['oponente_id'] == u['id'])
+    # ── é a vez de JOGAR? serve o jogo valendo ──
+    if ehcriador and s['status'] == 'criada' and s['criador_pontos'] is None:
+        return render_template('arena/jogo_valendo.html', token=token, seed=s['seed'],
+                               aposta=s['aposta'], endpoint='/arena/sala/' + token + '/jogar', alvo=None)
+    if ehoponente and s['status'] == 'apurando' and s['oponente_pontos'] is None:
+        # alvo=None: NÃO revela o placar do criador antes do oponente jogar (vantagem de info)
+        return render_template('arena/jogo_valendo.html', token=token, seed=s['seed'],
+                               aposta=s['aposta'], endpoint='/arena/sala/' + token + '/enviar', alvo=None)
+    # ── casca de estado ──
+    if s['status'] == 'cancelada':
+        estado = 'cancelada'
+    elif s['status'] == 'paga':
+        estado = 'resultado'
+    elif s['status'] in ('aguardando', 'criada'):
+        estado = 'aguardando' if ehcriador else 'aceitar'
+    else:   # apurando, mas não é a vez desse usuário
+        estado = 'processando'
+    venceu = None
+    if s['status'] == 'paga':
+        venceu = 'empate' if s['vencedor_id'] is None else ('ganhou' if s['vencedor_id'] == u['id'] else 'perdeu')
+    return render_template('arena/sala.html', estado=estado, sala=s, user=u,
+                           ehcriador=ehcriador, venceu=venceu, token=token,
+                           creditos=get_creditos(u['id']))
+
+
+@arena_bp.route('/sala/<token>/jogar', methods=['POST'])
+@arena_login_required
+def sala_jogar_rt(token):
+    if request.content_length and request.content_length > 300000:
+        return jsonify({'erro': 'Requisição grande demais.'}), 413
+    u = _cur()
+    body = request.get_json(silent=True) or {}
+    r = sala_registrar_jogada_criador(token, u['id'], body.get('moves'), body.get('score'))
+    return jsonify(r), (200 if r.get('ok') else 400)
+
+
+@arena_bp.route('/sala/<token>/entrar', methods=['POST'])
+@arena_login_required
+def sala_entrar_rt(token):
+    u = _cur()
+    r = sala_entrar(token, u['id'])
+    return jsonify(r), (200 if not r.get('erro') else 400)
+
+
+@arena_bp.route('/sala/<token>/enviar', methods=['POST'])
+@arena_login_required
+def sala_enviar_rt(token):
+    if request.content_length and request.content_length > 300000:
+        return jsonify({'erro': 'Requisição grande demais.'}), 413
+    u = _cur()
+    body = request.get_json(silent=True) or {}
+    r = sala_enviar(token, u['id'], body.get('moves'), body.get('score'))
+    return jsonify(r), (200 if not r.get('erro') else 400)
+
+
+@arena_bp.route('/sala/<token>/cancelar', methods=['POST'])
+@arena_login_required
+def sala_cancelar_rt(token):
+    u = _cur()
+    return jsonify({'ok': sala_cancelar(token, u['id'])})
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# LOTE 4 — SAQUE do saldo (R$) pro PIX. Reusa o motor de payout do CAMPonline:
+# POST /transfers no Asaas (autossuficiente) + ledger arena_pagamentos UNIQUE(ext_ref)
+# + guarda de saque (prefixo arena_premio_). Débito atômico + estorno se o PIX falhar.
+# ══════════════════════════════════════════════════════════════════════════════
+MIN_SAQUE = 20.0
+
+
+def _pix_normaliza(tipo, chave):
+    """Valida/normaliza a chave PIX. Retorna (tipo_asaas, chave, erro). Tipos: CPF/PHONE/EMAIL/EVP."""
+    tipo = (tipo or '').strip().upper()
+    chave = (chave or '').strip()
+    if tipo == 'CPF':
+        d = _cpf_digits(chave)
+        return ('CPF', d, None) if _cpf_valido(d) else ('CPF', '', 'CPF inválido.')
+    if tipo in ('CELULAR', 'PHONE', 'TELEFONE'):
+        d = _cpf_digits(chave)
+        if d.startswith('55') and len(d) > 11:
+            d = d[2:]
+        if len(d) not in (10, 11):
+            return ('PHONE', '', 'Celular precisa de DDD + número.')
+        return ('PHONE', '+55' + d, None)
+    if tipo in ('EMAIL', 'E-MAIL'):
+        return ('EMAIL', chave.lower(), None) if ('@' in chave and '.' in chave) else ('EMAIL', '', 'E-mail inválido.')
+    if tipo in ('ALEATORIA', 'ALEATÓRIA', 'EVP'):
+        return ('EVP', chave, None) if len(chave) >= 32 else ('EVP', '', 'Chave aleatória inválida (copie do banco).')
+    return (tipo, '', 'Escolha o tipo da chave PIX.')
+
+
+def _asaas_transfer(chave, tipo, valor, desc, ext_ref):
+    """Envia PIX (saída) via Asaas /transfers. Retorna (transfer_id, erro, ambiguo).
+    ambiguo=True => falha de REDE/5xx (o PIX PODE ter saído) => NÃO estornar automático.
+    ambiguo=False => rejeição EXPLÍCITA do Asaas (chave/saldo) => seguro estornar."""
+    payload = {'value': round(float(valor), 2), 'operationType': 'PIX',
+               'pixAddressKey': chave, 'description': (desc or '')[:100],
+               'externalReference': ext_ref}
+    if tipo:
+        payload['pixAddressKeyType'] = tipo
+    resp = _asaas_req('POST', '/transfers', payload)
+    tid = resp.get('id', '')
+    if tid:
+        return (tid, None, False)
+    if resp.get('_neterr'):
+        return ('', str(resp.get('error') or 'instabilidade de rede'), True)
+    errs = resp.get('errors') or []
+    if errs:
+        return ('', str(errs[0].get('description') or 'rejeitado')[:200], False)
+    return ('', str(resp.get('error') or 'resposta inesperada')[:200], True)   # desconhecido -> seguro=ambíguo
+
+
+def _asaas_transfer_ja_saiu(ext_ref):
+    """Anti-duplo: confere no Asaas se a transferência com esse ext já existe (não estornar em cima)."""
+    try:
+        chk = _asaas_req('GET', f'/transfers?externalReference={ext_ref}')
+        for t in (chk.get('data') or []):
+            st = (t.get('status') or '').upper()
+            if t.get('externalReference') == ext_ref and t.get('id') and st not in ('CANCELLED', 'FAILED'):
+                return t['id']
+    except Exception:
+        pass
+    return ''
+
+
+def _saque_debita_e_registra(user_id, valor, ext, chave, tipo):
+    """Débito de saldo + INSERT do ledger na MESMA transação — um crash nunca deixa saldo
+    debitado sem registro (o red-team pegou essa janela). True se debitou+registrou; False sem saldo."""
+    conn = get_arena_db()
+    cur = conn.execute('UPDATE arena_users SET saldo=ROUND(saldo-?,2) WHERE id=? AND ROUND(saldo,2)>=?',
+                       (valor, user_id, valor))
+    if cur.rowcount != 1:
+        conn.commit(); conn.close(); return False
+    conn.execute("INSERT INTO arena_pagamentos(user_id,pix_chave,pix_tipo,valor,ext_ref,status,criado_em) "
+                 "VALUES(?,?,?,?,?,?,?)", (user_id, chave, tipo, valor, ext, 'enviando', datetime.now().isoformat()))
+    conn.commit(); conn.close(); return True
+
+
+def sacar(user_id, valor, pix_tipo, pix_chave):
+    """Saca R$ do saldo pro PIX. Débito+ledger ATÔMICO -> transfere. Só ESTORNA em rejeição
+    EXPLÍCITA do Asaas; em falha AMBÍGUA (rede/timeout/5xx) marca 'incerto' e NÃO estorna — o
+    PIX pode ter saído (evita duplo prejuízo). Anti-duplo via ext_ref UNIQUE + pré-check."""
+    try:
+        valor = round(float(valor or 0), 2)
+    except Exception:
+        return {'erro': 'Valor inválido.'}
+    if valor < MIN_SAQUE:
+        return {'erro': f'O saque mínimo é R$ {MIN_SAQUE:.2f}.'}
+    tipo, chave, perr = _pix_normaliza(pix_tipo, pix_chave)
+    if perr:
+        return {'erro': perr}
+    ext = 'arena_premio_saque_' + secrets.token_hex(8)
+    if not _saque_debita_e_registra(user_id, valor, ext, chave, tipo):
+        return {'erro': 'Saldo insuficiente pra esse valor.'}
+    tid, erro, ambiguo = _asaas_transfer(chave, tipo, valor, 'Saque Arena - premio', ext)
+    if not tid:                       # apesar do erro, confere se por acaso saiu (anti-duplo)
+        tid = _asaas_transfer_ja_saiu(ext)
+    conn = get_arena_db()
+    if tid:
+        conn.execute("UPDATE arena_pagamentos SET status='pago', transfer_id=?, erro='' WHERE ext_ref=?", (tid, ext))
+        conn.commit(); conn.close()
+        log.info(f'[Arena] SAQUE pago user {user_id} R${valor:.2f} ({tid})')
+        return {'ok': True, 'valor': valor}
+    if ambiguo:                        # AMBÍGUO: pode ter saído -> NÃO estorna, marca p/ conferência
+        conn.execute("UPDATE arena_pagamentos SET status='incerto', erro=? WHERE ext_ref=?", (str(erro)[:200], ext))
+        conn.commit(); conn.close()
+        log.error(f'[Arena] SAQUE INCERTO user {user_id} R${valor:.2f} ext={ext}: {erro} — NAO estornado, conferir manual')
+        return {'erro': 'Deu uma instabilidade no envio. Seu saque está EM ANÁLISE — se não cair em minutos, o valor volta pro saldo. Não repita agora.'}
+    # rejeição EXPLÍCITA do Asaas (chave/saldo) -> seguro estornar
+    conn.execute("UPDATE arena_pagamentos SET status='erro', erro=? WHERE ext_ref=?", (str(erro)[:200], ext))
+    conn.commit(); conn.close()
+    add_saldo(user_id, valor)
+    log.warning(f'[Arena] SAQUE rejeitado user {user_id} R${valor:.2f}: {erro} — saldo devolvido')
+    return {'erro': f'Não deu pra enviar o PIX ({erro}). Seu saldo foi devolvido — confira a chave e tente de novo.'}
+
+
+@arena_bp.route('/sacar', methods=['GET', 'POST'])
+@arena_login_required
+def sacar_rt():
+    u = _cur()
+    if request.method == 'GET':
+        return render_template('arena/sacar.html', user=u, saldo=get_saldo(u['id']), minimo=MIN_SAQUE)
+    body = request.get_json(silent=True) or request.form
+    r = sacar(u['id'], body.get('valor'), body.get('pix_tipo'), body.get('pix_chave'))
+    return jsonify(r), (200 if r.get('ok') else 400)
