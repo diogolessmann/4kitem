@@ -18,6 +18,10 @@ from werkzeug.security import generate_password_hash, check_password_hash
 
 import arena_game
 import arena_game_cobrinha
+try:
+    import efi_pix   # RECEBER PIX pela Efí (barato no ticket baixo). Payout continua no Asaas.
+except Exception:
+    efi_pix = None
 from arena_db import (get_arena_db, get_user, get_user_by_email, criar_user,
                       get_creditos, add_creditos, debita_creditos,
                       get_saldo, add_saldo, debita_saldo)
@@ -54,6 +58,8 @@ def _cur():
 @arena_bp.route('/')
 def portal():
     u = _cur()
+    if u:
+        _arena_reconciliar_efi(u['id'])   # confirma compra Efí que ficou pendente (pagou e fechou)
     cred = get_creditos(u['id']) if u else 0
     sal = get_saldo(u['id']) if u else 0.0
     return render_template('arena/portal.html', user=u, creditos=cred, saldo=sal, jogos=JOGOS)
@@ -206,13 +212,55 @@ def _arena_confirmar_compra(compra_id):
 
 
 def arena_webhook_confirmar(external_ref, payment_id=''):
-    """Chamado pelo webhook global (app.py) p/ refs 'arena_<compra_id>' (compra de fichas).
+    """Chamado pelo webhook global (app.py) p/ refs 'arena_<compra_id>' (compra de fichas Asaas).
     Refs de PAYOUT ('arena_premio_...') caem no split e viram não-int → ignorados aqui (seguro)."""
     try:
         cid = int(str(external_ref).split('_')[1])
     except (IndexError, ValueError):
         return False
     return _arena_confirmar_compra(cid)
+
+
+# ── Efí: dinheiro que ENTRA (compra de ficha). Reusa efi_pix.py (mesma cobrança do SlotZap,
+#    sem tocar na rifa da Jaya). Payout (saque do prêmio) continua no Asaas. ──
+def _efi_ok():
+    """True se a Efí está configurada em produção (Railway). Local sem cert → cai no Asaas."""
+    try:
+        return bool(efi_pix and efi_pix.configurado())
+    except Exception:
+        return False
+
+
+def _qr_png_b64(texto):
+    """Gera o QR do copia-e-cola no SERVIDOR (a Efí só devolve o texto, não a imagem)."""
+    if not texto:
+        return ''
+    try:
+        import qrcode, io, base64
+        buf = io.BytesIO()
+        qrcode.make(texto).save(buf, format='PNG')
+        return base64.b64encode(buf.getvalue()).decode()
+    except Exception as e:
+        log.warning(f'[Arena] QR falhou: {e}')
+        return ''
+
+
+def _arena_reconciliar_efi(user_id):
+    """Confirma compras Efí pendentes desse usuário (rede de segurança: pagou e fechou a página).
+    Chamado ao abrir o portal — barato (só consulta se houver pendência Efí)."""
+    if not _efi_ok():
+        return
+    try:
+        conn = get_arena_db()
+        rows = conn.execute("SELECT id, charge_id FROM arena_compras WHERE user_id=? "
+                            "AND status='pendente' AND gateway='efi' AND charge_id IS NOT NULL "
+                            "AND charge_id<>'' ORDER BY id DESC LIMIT 3", (user_id,)).fetchall()
+        conn.close()
+        for r in rows:
+            if efi_pix.consultar_cobranca(r['charge_id']).get('pago'):
+                _arena_confirmar_compra(r['id'])
+    except Exception as e:
+        log.warning(f'[Arena] reconciliar Efí: {e}')
 
 
 @arena_bp.route('/comprar')
@@ -231,37 +279,58 @@ def checkout(pacote):
     p = PACOTES[pacote]
     erro = None
     if request.method == 'POST':
-        cpf = _cpf_digits(request.form.get('cpf'))
-        if not _cpf_valido(cpf):
-            erro = 'CPF inválido. Confira os números.'
-        else:
-            customer_id = _asaas_cliente(u, cpf)
-            if not customer_id:
-                erro = 'Não foi possível iniciar o pagamento. Tente de novo.'
+        if _efi_ok():
+            # dinheiro ENTRA pela Efí (1,19% no R$5 vs R$0,99-1,99 fixo do Asaas). Sem CPF.
+            conn = get_arena_db()
+            cur = conn.execute(
+                'INSERT INTO arena_compras(user_id,pacote,creditos,valor,status,gateway,ext_ref,criado_em) '
+                'VALUES(?,?,?,?,?,?,?,?)',
+                (u['id'], pacote, p['creditos'], p['preco'], 'pendente', 'efi', '', datetime.now().isoformat()))
+            compra_id = cur.lastrowid
+            conn.commit(); conn.close()
+            cob = efi_pix.criar_cobranca(p['preco'], f'Arena — {p["rotulo"]}')
+            if cob.get('erro') or not cob.get('txid'):
+                erro = 'Não foi possível gerar o PIX agora. Tente de novo.'
+                log.error(f'[Arena] Efí cobrança falhou: {cob.get("erro")}')
             else:
                 conn = get_arena_db()
-                cur = conn.execute(
-                    'INSERT INTO arena_compras(user_id,pacote,creditos,valor,status,ext_ref,criado_em) '
-                    'VALUES(?,?,?,?,?,?,?)',
-                    (u['id'], pacote, p['creditos'], p['preco'], 'pendente', '', datetime.now().isoformat()))
-                compra_id = cur.lastrowid
+                conn.execute('UPDATE arena_compras SET charge_id=?, copia_cola=?, ext_ref=? WHERE id=?',
+                             (cob['txid'], cob.get('copia_cola', ''), f'arena_{compra_id}', compra_id))
                 conn.commit(); conn.close()
-                ext = f'arena_{compra_id}'
-                venc = (datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d')
-                pay = _asaas_req('POST', '/payments', {
-                    'customer': customer_id, 'billingType': 'PIX', 'value': p['preco'],
-                    'dueDate': venc, 'description': f'Arena — {p["rotulo"]}',
-                    'externalReference': ext})
-                pid = pay.get('id')
-                if not pid:
-                    erro = (pay.get('errors') or [{}])[0].get('description', 'Erro ao gerar o PIX.')
+                return redirect(f'/arena/pix/{compra_id}')
+        else:
+            # fallback Asaas (exige CPF) — só se a Efí não estiver configurada
+            cpf = _cpf_digits(request.form.get('cpf'))
+            if not _cpf_valido(cpf):
+                erro = 'CPF inválido. Confira os números.'
+            else:
+                customer_id = _asaas_cliente(u, cpf)
+                if not customer_id:
+                    erro = 'Não foi possível iniciar o pagamento. Tente de novo.'
                 else:
                     conn = get_arena_db()
-                    conn.execute('UPDATE arena_compras SET charge_id=?, ext_ref=? WHERE id=?',
-                                 (pid, ext, compra_id))
+                    cur = conn.execute(
+                        'INSERT INTO arena_compras(user_id,pacote,creditos,valor,status,gateway,ext_ref,criado_em) '
+                        'VALUES(?,?,?,?,?,?,?,?)',
+                        (u['id'], pacote, p['creditos'], p['preco'], 'pendente', 'asaas', '', datetime.now().isoformat()))
+                    compra_id = cur.lastrowid
                     conn.commit(); conn.close()
-                    return redirect(f'/arena/pix/{compra_id}')
-    return render_template('arena/checkout.html', user=u, pacote=pacote, p=p, erro=erro)
+                    ext = f'arena_{compra_id}'
+                    venc = (datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d')
+                    pay = _asaas_req('POST', '/payments', {
+                        'customer': customer_id, 'billingType': 'PIX', 'value': p['preco'],
+                        'dueDate': venc, 'description': f'Arena — {p["rotulo"]}',
+                        'externalReference': ext})
+                    pid = pay.get('id')
+                    if not pid:
+                        erro = (pay.get('errors') or [{}])[0].get('description', 'Erro ao gerar o PIX.')
+                    else:
+                        conn = get_arena_db()
+                        conn.execute('UPDATE arena_compras SET charge_id=?, ext_ref=? WHERE id=?',
+                                     (pid, ext, compra_id))
+                        conn.commit(); conn.close()
+                        return redirect(f'/arena/pix/{compra_id}')
+    return render_template('arena/checkout.html', user=u, pacote=pacote, p=p, erro=erro, efi=_efi_ok())
 
 
 @arena_bp.route('/pix/<int:compra_id>')
@@ -276,10 +345,14 @@ def pix(compra_id):
         return redirect('/arena/comprar')
     compra = dict(row)
     qr = copia = ''
-    if compra['status'] == 'pendente' and compra['charge_id']:
-        resp = _asaas_req('GET', f'/payments/{compra["charge_id"]}/pixQrCode')
-        qr = resp.get('encodedImage', '')
-        copia = resp.get('payload', '')
+    if compra['status'] == 'pendente':
+        if compra.get('gateway') == 'efi':
+            copia = compra.get('copia_cola') or ''
+            qr = _qr_png_b64(copia)                       # QR gerado no servidor
+        elif compra['charge_id']:
+            resp = _asaas_req('GET', f'/payments/{compra["charge_id"]}/pixQrCode')
+            qr = resp.get('encodedImage', '')
+            copia = resp.get('payload', '')
     return render_template('arena/pix.html', user=u, compra=compra, qr=qr, copia=copia)
 
 
@@ -296,11 +369,20 @@ def pix_status(compra_id):
     compra = dict(row)
     if compra['status'] == 'pago':
         return jsonify({'pago': True, 'creditos': get_creditos(u['id'])})
-    pid = compra['charge_id']
-    if not pid:
+    cid = compra['charge_id']
+    if not cid:
         return jsonify({'pago': False})
-    pay = _asaas_req('GET', f'/payments/{pid}')
-    if (pay.get('status') or '').upper() in ('RECEIVED', 'CONFIRMED', 'RECEIVED_IN_CASH'):
+    pago = False
+    if compra.get('gateway') == 'efi':
+        if _efi_ok():
+            try:
+                pago = bool(efi_pix.consultar_cobranca(cid).get('pago'))
+            except Exception:
+                pago = False
+    else:
+        pay = _asaas_req('GET', f'/payments/{cid}')
+        pago = (pay.get('status') or '').upper() in ('RECEIVED', 'CONFIRMED', 'RECEIVED_IN_CASH')
+    if pago:
         _arena_confirmar_compra(compra_id)
         return jsonify({'pago': True, 'creditos': get_creditos(u['id'])})
     return jsonify({'pago': False})

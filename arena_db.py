@@ -108,6 +108,9 @@ def init_arena_db():
         'ALTER TABLE arena_users ADD COLUMN pix_tipo TEXT',
         'ALTER TABLE arena_users ADD COLUMN asaas_customer_id TEXT',
         'ALTER TABLE arena_salas ADD COLUMN oponente_em TEXT',
+        'ALTER TABLE arena_salas ADD COLUMN criador_em TEXT',
+        "ALTER TABLE arena_compras ADD COLUMN gateway TEXT DEFAULT 'asaas'",
+        'ALTER TABLE arena_compras ADD COLUMN copia_cola TEXT',
     ]:
         try:
             conn.execute(m); conn.commit()

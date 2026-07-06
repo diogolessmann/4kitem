@@ -40,9 +40,13 @@ input:focus{border-color:#a855f7}
     <div class="pr">R$ {{ '%.0f'|format(p.preco) }}</div>
   </div>
   {% if erro %}<div class="err">{{ erro }}</div>{% endif %}
+  {% if not efi %}
   <label>Seu CPF (pra emitir o PIX)</label>
   <input name="cpf" inputmode="numeric" placeholder="000.000.000-00" required autofocus>
-  <div class="hint">O CPF vai só na cobrança do Asaas. Nada é publicado.</div>
+  <div class="hint">O CPF vai só na cobrança. Nada é publicado.</div>
+  {% else %}
+  <div class="hint" style="margin-top:16px;text-align:center">Pagamento no PIX, na hora. Suas fichas caem assim que você paga. 🎟️</div>
+  {% endif %}
   <button class="btn" type="submit">Gerar PIX →</button>
 </form>
 </body>
