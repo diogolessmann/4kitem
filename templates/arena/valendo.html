@@ -24,6 +24,11 @@ h1{font-size:22px;font-weight:800;margin-bottom:10px}
   cursor:pointer;font-size:18px;font-weight:800;color:#e9e8ff;transition:.12s;font-family:inherit}
 .stake.sel{border-color:#22d3ee;background:rgba(34,211,238,.14);color:#67e8f9}
 .stake:disabled{opacity:.35;cursor:not-allowed}
+.games{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.gm{background:#141327;border:1.5px solid rgba(255,255,255,.08);border-radius:13px;padding:13px 6px;
+  cursor:pointer;color:#e9e8ff;font-family:inherit;font-weight:800;font-size:13px;transition:.12s}
+.gm .ge{font-size:25px;display:block;margin-bottom:3px}
+.gm.sel{border-color:#a855f7;background:rgba(168,85,247,.14);color:#d8b4fe}
 .premio{background:linear-gradient(135deg,rgba(34,211,238,.12),rgba(168,85,247,.12));
   border:1px solid rgba(34,211,238,.3);border-radius:14px;padding:14px;margin:16px 0 4px}
 .premio .l{font-size:11px;font-weight:800;letter-spacing:1.5px;color:#9fb8d6}
@@ -49,6 +54,13 @@ h1{font-size:22px;font-weight:800;margin-bottom:10px}
     <div class="rule"><span class="e">🎲</span><span>Você e o adversário jogam a <b>MESMA partida</b> (mesmas peças). Habilidade, não sorte.</span></div>
     <div class="rule"><span class="e">⏱️</span><span><b>90 segundos.</b> Quem fizer <b>mais pontos</b> leva.</span></div>
 
+    <div class="lab">ESCOLHA O JOGO</div>
+    <div class="games" id="games">
+      {% for j in jogos %}
+      <button class="gm" data-id="{{ j.id }}" onclick="selJogo('{{ j.id }}')"><span class="ge">{{ j.emoji }}</span>{{ j.nome }}</button>
+      {% endfor %}
+    </div>
+
     <div class="lab">ESCOLHA A ENTRADA</div>
     <div class="stakes" id="stakes">
       {% for s in stakes %}
@@ -67,8 +79,9 @@ h1{font-size:22px;font-weight:800;margin-bottom:10px}
   </div>
 </div>
 <script>
-var FICHA={{ ficha }}, RAKE={{ rake }}, CRED={{ creditos }}, STAKE=0;
+var FICHA={{ ficha }}, RAKE={{ rake }}, CRED={{ creditos }}, STAKE=0, JOGO='blocos';
 function fmt(n){ return 'R$ '+n.toFixed(2).replace('.',','); }
+function selJogo(id){ JOGO=id; document.querySelectorAll('.gm').forEach(function(b){ b.classList.toggle('sel', b.dataset.id===id); }); }
 function sel(v){
   STAKE=v;
   document.querySelectorAll('.stake').forEach(function(b){ b.classList.toggle('sel', +b.dataset.v===v); });
@@ -82,13 +95,14 @@ function comecar(){
   if(!STAKE) return;
   var b=document.getElementById('btn'); b.disabled=true; b.textContent='Preparando...';
   fetch('/arena/valendo/criar',{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({aposta:STAKE})}).then(function(r){return r.json();}).then(function(j){
+    body:JSON.stringify({aposta:STAKE, jogo:JOGO})}).then(function(r){return r.json();}).then(function(j){
     if(j&&j.ok&&j.token){ location.href='/arena/sala/'+j.token; }
     else { sel(STAKE); document.getElementById('err').textContent=(j&&j.erro)||'Não deu. Tente de novo.'; }
   }).catch(function(){ sel(STAKE); document.getElementById('err').textContent='Sem conexão.'; });
 }
-// pré-seleciona a menor que o jogador consegue pagar
-(function(){ var vs={{ stakes|tojson }}; var esc=vs[0]; for(var i=0;i<vs.length;i++){ if(CRED>=vs[i]){esc=vs[i];break;} } sel(esc); })();
+// pré-seleciona o 1º jogo + a menor entrada que o jogador consegue pagar
+(function(){ var g=document.querySelector('.gm'); if(g) selJogo(g.dataset.id);
+  var vs={{ stakes|tojson }}; var esc=vs[0]; for(var i=0;i<vs.length;i++){ if(CRED>=vs[i]){esc=vs[i];break;} } sel(esc); })();
 </script>
 </body>
 </html>

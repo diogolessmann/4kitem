@@ -17,6 +17,7 @@ from flask import Blueprint, render_template, redirect, request, session, jsonif
 from werkzeug.security import generate_password_hash, check_password_hash
 
 import arena_game
+import arena_game_cobrinha
 from arena_db import (get_arena_db, get_user, get_user_by_email, criar_user,
                       get_creditos, add_creditos, debita_creditos,
                       get_saldo, add_saldo, debita_saldo)
@@ -314,6 +315,20 @@ FICHA_VALOR = 1.0      # 1 ficha = R$1 (crédito em reais). Deve ser <= menor pr
 ARENA_RAKE = 0.15      # taxa de serviço da casa
 STAKES = [2, 5, 10, 20, 50]   # entradas de duelo permitidas (em fichas = R$)
 
+# Jogos que rodam VALENDO (têm motor server-side de placar). Cada um: motor + template + rótulo.
+JOGOS_VALENDO = {
+    'blocos':   {'motor': arena_game,          'tpl': 'arena/jogo_valendo.html',
+                 'nome': 'Quebra-Blocos', 'emoji': '🧱'},
+    'cobrinha': {'motor': arena_game_cobrinha, 'tpl': 'arena/jogo_cobrinha_valendo.html',
+                 'nome': 'Cobrinha',      'emoji': '🐍'},
+}
+
+
+def _pontuar(jogo, seed, moves):
+    """Despacha pro motor server-side certo (blocos/cobrinha). Fallback = blocos."""
+    cfg = JOGOS_VALENDO.get(jogo) or JOGOS_VALENDO['blocos']
+    return cfg['motor'].pontuar(seed, moves)
+
 
 def _resultado_dict(s):
     return {'status': s['status'], 'criador_pontos': s['criador_pontos'],
@@ -321,10 +336,12 @@ def _resultado_dict(s):
             'premio': s['premio'], 'aposta': s['aposta']}
 
 
-def sala_criar(user_id, aposta=1):
+def sala_criar(user_id, aposta=1, jogo='blocos'):
     """Cria sala valendo: debita a ficha e o SERVIDOR sorteia a semente (ninguém pré-escaneia).
     Retorna (token, seed) ou (None, erro)."""
     aposta = int(aposta) if int(aposta) >= 1 else 1
+    if jogo not in JOGOS_VALENDO:
+        jogo = 'blocos'
     if not debita_creditos(user_id, aposta):
         return (None, 'Você não tem fichas. Compre pra jogar valendo.')
     token = secrets.token_urlsafe(9)
@@ -332,7 +349,7 @@ def sala_criar(user_id, aposta=1):
     conn = get_arena_db()
     conn.execute('INSERT INTO arena_salas(token,jogo,seed,aposta,criador_id,status,criado_em) '
                  'VALUES(?,?,?,?,?,?,?)',
-                 (token, 'blocos', seed, aposta, user_id, 'criada', datetime.now().isoformat()))
+                 (token, jogo, seed, aposta, user_id, 'criada', datetime.now().isoformat()))
     conn.commit(); conn.close()
     return (token, seed)
 
@@ -360,7 +377,7 @@ def sala_registrar_jogada_criador(token, user_id, moves, cliente_score=None):
         conn.close(); return {'erro': 'Essa sala não é sua.'}
     if s['status'] != 'criada' or s['criador_pontos'] is not None:
         conn.close(); return {'erro': 'Você já jogou essa sala.'}
-    pontos = arena_game.pontuar(s['seed'], moves)
+    pontos = _pontuar(s['jogo'], s['seed'], moves)
     if pontos is None:
         pontos = 0   # jogada inválida = forfeit (uma chance só, sem re-scan da semente)
         log.warning(f'[Arena] Sala {token}: jogada do criador invalida -> 0 (poss. bug/tamper)')
@@ -412,7 +429,7 @@ def sala_enviar(token, user_id, moves, cliente_score=None):
     if s['oponente_pontos'] is not None:
         conn.close(); return _apurar_sala(token)   # já enviou -> devolve o resultado (idempotente)
     conn.close()
-    pontos = arena_game.pontuar(s['seed'], moves)
+    pontos = _pontuar(s['jogo'], s['seed'], moves)
     if pontos is None:
         pontos = 0
         log.warning(f'[Arena] Sala {token}: jogada do oponente invalida -> 0 (poss. bug/tamper)')
@@ -510,8 +527,9 @@ def sala_cancelar(token, user_id):
 @arena_login_required
 def valendo_page():
     u = _cur()
+    jogos = [{'id': k, 'nome': v['nome'], 'emoji': v['emoji']} for k, v in JOGOS_VALENDO.items()]
     return render_template('arena/valendo.html', user=u, creditos=get_creditos(u['id']),
-                           stakes=STAKES, rake=ARENA_RAKE, ficha=FICHA_VALOR)
+                           stakes=STAKES, rake=ARENA_RAKE, ficha=FICHA_VALOR, jogos=jogos)
 
 
 @arena_bp.route('/valendo/criar', methods=['POST'])
@@ -525,7 +543,10 @@ def valendo_criar():
         aposta = 5
     if aposta not in STAKES:
         return jsonify({'erro': 'Valor de entrada inválido.'}), 400
-    token, seed = sala_criar(u['id'], aposta)
+    jogo = body.get('jogo') or 'blocos'
+    if jogo not in JOGOS_VALENDO:
+        return jsonify({'erro': 'Jogo inválido.'}), 400
+    token, seed = sala_criar(u['id'], aposta, jogo)
     if token is None:
         return jsonify({'erro': seed}), 400
     return jsonify({'ok': True, 'token': token, 'seed': seed})
@@ -546,13 +567,14 @@ def sala_page(token):
     s = dict(row)
     ehcriador = (s['criador_id'] == u['id'])
     ehoponente = (s['oponente_id'] == u['id'])
-    # ── é a vez de JOGAR? serve o jogo valendo ──
+    # ── é a vez de JOGAR? serve o jogo valendo (template conforme o jogo da sala) ──
+    _tpl = (JOGOS_VALENDO.get(s['jogo']) or JOGOS_VALENDO['blocos'])['tpl']
     if ehcriador and s['status'] == 'criada' and s['criador_pontos'] is None:
-        return render_template('arena/jogo_valendo.html', token=token, seed=s['seed'],
+        return render_template(_tpl, token=token, seed=s['seed'],
                                aposta=s['aposta'], endpoint='/arena/sala/' + token + '/jogar', alvo=None)
     if ehoponente and s['status'] == 'apurando' and s['oponente_pontos'] is None:
         # alvo=None: NÃO revela o placar do criador antes do oponente jogar (vantagem de info)
-        return render_template('arena/jogo_valendo.html', token=token, seed=s['seed'],
+        return render_template(_tpl, token=token, seed=s['seed'],
                                aposta=s['aposta'], endpoint='/arena/sala/' + token + '/enviar', alvo=None)
     # ── casca de estado ──
     if s['status'] == 'cancelada':
