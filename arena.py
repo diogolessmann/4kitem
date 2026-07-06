@@ -768,19 +768,20 @@ def sala_cancelar_rt(token):
 # POST /transfers no Asaas (autossuficiente) + ledger arena_pagamentos UNIQUE(ext_ref)
 # + guarda de saque (prefixo arena_premio_). Débito atômico + estorno se o PIX falhar.
 # ══════════════════════════════════════════════════════════════════════════════
-MIN_SAQUE = 5.0        # TESTE: baixo pra R$5 pra testar o saque com 1 duelo. Voltar p/ 20 antes do público.
-MAX_SAQUE_DIA = 200.0  # limite de saque por usuário por dia (anti-fraude: reduz o estrago se algo vazar)
+MIN_SAQUE = 10.0       # saque mínimo por vez
+MAX_SAQUE_DIA = 50.0   # teto de saque por dia
+SAQUES_DIA = 1         # nº de saques por dia (1x/dia — anti-hacker: janela curtíssima de estrago)
 
 
 def _saque_hoje(user_id):
-    """Soma o que o usuário já sacou HOJE (enviando/pago/incerto) — pro limite diário."""
+    """(soma, quantidade) de saques HOJE (enviando/pago/incerto) — pros limites diários."""
     conn = get_arena_db()
     hoje = datetime.now().strftime('%Y-%m-%d')
-    r = conn.execute("SELECT COALESCE(SUM(valor),0) FROM arena_pagamentos "
+    r = conn.execute("SELECT COALESCE(SUM(valor),0), COUNT(*) FROM arena_pagamentos "
                      "WHERE user_id=? AND status IN ('enviando','pago','incerto') AND substr(criado_em,1,10)=?",
                      (user_id, hoje)).fetchone()
     conn.close()
-    return round(float(r[0] or 0), 2)
+    return (round(float(r[0] or 0), 2), int(r[1] or 0))
 
 
 def _pix_normaliza(tipo, chave):
@@ -861,11 +862,16 @@ def sacar(user_id, valor, pix_tipo, pix_chave):
         return {'erro': 'Valor inválido.'}
     if valor < MIN_SAQUE:
         return {'erro': f'O saque mínimo é R$ {MIN_SAQUE:.2f}.'}
+    if valor > MAX_SAQUE_DIA:
+        return {'erro': f'O saque máximo é R$ {MAX_SAQUE_DIA:.0f} por dia.'}
     tipo, chave, perr = _pix_normaliza(pix_tipo, pix_chave)
     if perr:
         return {'erro': perr}
-    if _saque_hoje(user_id) + valor > MAX_SAQUE_DIA:
-        return {'erro': f'Limite de saque de hoje é R$ {MAX_SAQUE_DIA:.0f}. O resto você saca amanhã.'}
+    soma_hoje, qtd_hoje = _saque_hoje(user_id)
+    if qtd_hoje >= SAQUES_DIA:
+        return {'erro': 'Você já sacou hoje. Pode sacar de novo amanhã! 🌙'}
+    if soma_hoje + valor > MAX_SAQUE_DIA:
+        return {'erro': f'Limite de R$ {MAX_SAQUE_DIA:.0f} por dia. O resto você saca amanhã.'}
     ext = 'arena_premio_saque_' + secrets.token_hex(8)
     if not _saque_debita_e_registra(user_id, valor, ext, chave, tipo):
         return {'erro': 'Saldo insuficiente pra esse valor.'}

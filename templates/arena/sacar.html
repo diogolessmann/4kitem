@@ -45,7 +45,7 @@ input:focus,select:focus{border-color:#34d399}
   {% if saldo >= minimo %}
   <div id="form">
     <h1>Receber meu prêmio 🏆</h1>
-    <div class="sub">Cai na sua chave em minutos. Mínimo R$ {{ '%.2f'|format(minimo) }}.</div>
+    <div class="sub">Cai na sua chave em minutos. Mín R$ {{ '%.0f'|format(minimo) }} · máx R$ 50 · 1 saque por dia.</div>
 
     <label>Quanto sacar</label>
     <input id="valor" inputmode="decimal" placeholder="0,00" value="{{ '%.2f'|format(saldo) }}">
