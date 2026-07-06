@@ -600,7 +600,7 @@ def sala_cancelar_rt(token):
 # POST /transfers no Asaas (autossuficiente) + ledger arena_pagamentos UNIQUE(ext_ref)
 # + guarda de saque (prefixo arena_premio_). Débito atômico + estorno se o PIX falhar.
 # ══════════════════════════════════════════════════════════════════════════════
-MIN_SAQUE = 20.0
+MIN_SAQUE = 5.0    # TESTE: baixo pra R$5 pra testar o saque com 1 duelo. Voltar p/ 20 antes do público.
 
 
 def _pix_normaliza(tipo, chave):
