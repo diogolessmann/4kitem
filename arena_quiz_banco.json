@@ -1,0 +1,3306 @@
+{
+ "anime": [
+  {
+   "q": "Quem é o autor do mangá Naruto?",
+   "ops": [
+    "Eiichiro Oda",
+    "Masashi Kishimoto",
+    "Akira Toriyama",
+    "Tite Kubo"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual é o nome do capitão do bando dos Chapéus de Palha em One Piece?",
+   "ops": [
+    "Monkey D. Luffy",
+    "Roronoa Zoro",
+    "Sanji",
+    "Nami"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Em Dragon Ball, qual é a transformação alcançada por Goku pela primeira vez contra Freeza em Namekusei?",
+   "ops": [
+    "Super Saiyajin Blue",
+    "Super Saiyajin",
+    "Ultra Instinto",
+    "Super Saiyajin Deus"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual respiração Tanjiro usa no início de Demon Slayer (Kimetsu no Yaiba)?",
+   "ops": [
+    "Respiração da Chama",
+    "Respiração da Água",
+    "Respiração do Trovão",
+    "Respiração da Fera"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Em Attack on Titan, qual é o sobrenome do protagonista Eren?",
+   "ops": [
+    "Ackerman",
+    "Yeager",
+    "Arlert",
+    "Braun"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual é o Pokémon inicial do tipo Fogo na região de Kanto?",
+   "ops": [
+    "Bulbasaur",
+    "Squirtle",
+    "Charmander",
+    "Pikachu"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual estúdio produziu o anime Demon Slayer (Kimetsu no Yaiba)?",
+   "ops": [
+    "Studio Ghibli",
+    "Ufotable",
+    "Madhouse",
+    "Bones"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Em Death Note, qual é o nome do Shinigami que deixa cair o caderno na Terra?",
+   "ops": [
+    "Rem",
+    "Ryuk",
+    "Gelus",
+    "Sidoh"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual é o nome do irmão mais novo em Fullmetal Alchemist que tem a alma presa em uma armadura?",
+   "ops": [
+    "Edward Elric",
+    "Alphonse Elric",
+    "Roy Mustang",
+    "Maes Hughes"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Em My Hero Academia, qual é o nome do poder (Individualidade) que All Might transmite a Deku?",
+   "ops": [
+    "Explosion",
+    "One For All",
+    "All For One",
+    "Half-Cold Half-Hot"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual é o nome da vila natal de Naruto?",
+   "ops": [
+    "Vila da Areia",
+    "Vila da Folha",
+    "Vila da Névoa",
+    "Vila da Nuvem"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Quem é o autor do mangá One Piece?",
+   "ops": [
+    "Masashi Kishimoto",
+    "Eiichiro Oda",
+    "Hajime Isayama",
+    "Yoshihiro Togashi"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Em Dragon Ball, quantas Esferas do Dragão é preciso reunir para invocar Shenlong?",
+   "ops": [
+    "Cinco",
+    "Seis",
+    "Sete",
+    "Oito"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual é o nome do caderno da morte no anime Death Note?",
+   "ops": [
+    "Death Note",
+    "Kill List",
+    "Shinigami Book",
+    "Soul Ledger"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Em Sailor Moon, qual é o nome civil da protagonista Sailor Moon?",
+   "ops": [
+    "Ami Mizuno",
+    "Rei Hino",
+    "Usagi Tsukino",
+    "Makoto Kino"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual é o nome do gato-robô azul vindo do futuro no anime clássico da dupla com Nobita?",
+   "ops": [
+    "Doraemon",
+    "Hello Kitty",
+    "Jibanyan",
+    "Meowth"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Em Hunter x Hunter, qual é o nome do melhor amigo de Gon Freecss?",
+   "ops": [
+    "Killua Zoldyck",
+    "Kurapika",
+    "Leorio",
+    "Hisoka"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Qual é a fruta do diabo que Luffy comeu em One Piece?",
+   "ops": [
+    "Mera Mera no Mi",
+    "Gomu Gomu no Mi",
+    "Hito Hito no Mi",
+    "Ope Ope no Mi"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Em Bleach, qual é o nome da espada espiritual usada pelos Shinigami?",
+   "ops": [
+    "Zanpakuto",
+    "Katana",
+    "Nodachi",
+    "Wakizashi"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Qual estúdio de animação foi cofundado por Hayao Miyazaki?",
+   "ops": [
+    "Toei Animation",
+    "Studio Ghibli",
+    "Kyoto Animation",
+    "Sunrise"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Em Jujutsu Kaisen, qual objeto amaldiçoado Yuji Itadori engole?",
+   "ops": [
+    "Um olho de Sukuna",
+    "Um dedo de Sukuna",
+    "Uma unha de Sukuna",
+    "Um dente de Sukuna"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Em Pokémon, qual é a evolução final de Charmander?",
+   "ops": [
+    "Charmeleon",
+    "Charizard",
+    "Blastoise",
+    "Venusaur"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Quem é o autor do mangá Dragon Ball?",
+   "ops": [
+    "Akira Toriyama",
+    "Osamu Tezuka",
+    "Go Nagai",
+    "Rumiko Takahashi"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Em Naruto, qual é o nome da técnica de bola de energia giratória de Naruto?",
+   "ops": [
+    "Chidori",
+    "Rasengan",
+    "Amaterasu",
+    "Kamehameha"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual é o nome do protagonista de Fullmetal Alchemist conhecido como o Alquimista de Aço?",
+   "ops": [
+    "Alphonse Elric",
+    "Edward Elric",
+    "Roy Mustang",
+    "Van Hohenheim"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Em Demon Slayer, qual é o nome da irmã de Tanjiro que virou um demônio?",
+   "ops": [
+    "Nezuko",
+    "Kanao",
+    "Shinobu",
+    "Mitsuri"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Em Yu-Gi-Oh!, qual é o nome do faraó que habita o corpo de Yugi?",
+   "ops": [
+    "Kaiba",
+    "Atem",
+    "Bakura",
+    "Marik"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual é o objetivo principal de Luffy em One Piece?",
+   "ops": [
+    "Se tornar Hokage",
+    "Se tornar o Rei dos Piratas",
+    "Derrotar todos os demônios",
+    "Encontrar sua irmã"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Em Cavaleiros do Zodíaco, a armadura de Seiya é de qual constelação?",
+   "ops": [
+    "Dragão",
+    "Cisne",
+    "Pégaso",
+    "Fênix"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual é o nome da técnica assinatura de Goku em Dragon Ball?",
+   "ops": [
+    "Rasengan",
+    "Kamehameha",
+    "Getsuga Tensho",
+    "Genkidama"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Em Fairy Tail, qual é a magia principal de Natsu Dragneel?",
+   "ops": [
+    "Magia de Gelo",
+    "Magia do Dragão de Fogo",
+    "Magia Estelar",
+    "Magia de Ferro"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Quem é o autor do mangá Bleach?",
+   "ops": [
+    "Tite Kubo",
+    "Eiichiro Oda",
+    "Masashi Kishimoto",
+    "Kentaro Miura"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Em Pokémon, quem é o eterno rival de Ash na primeira temporada em Kanto?",
+   "ops": [
+    "Brock",
+    "Gary Oak",
+    "Misty",
+    "Tracey"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Em Jujutsu Kaisen, qual é o nome do feiticeiro mais forte, professor de Yuji?",
+   "ops": [
+    "Suguru Geto",
+    "Satoru Gojo",
+    "Kento Nanami",
+    "Aoi Todo"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Em Cowboy Bebop, qual é o nome do caçador de recompensas protagonista?",
+   "ops": [
+    "Spike Spiegel",
+    "Jet Black",
+    "Vicious",
+    "Faye Valentine"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Qual é o nome do maior tesouro procurado pelos piratas em One Piece?",
+   "ops": [
+    "Rio Poneglyph",
+    "One Piece",
+    "Ponelith",
+    "Log Pose"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Em Dragon Ball Z, qual guerreiro do espaço destrói o planeta Vegeta?",
+   "ops": [
+    "Cell",
+    "Freeza",
+    "Majin Boo",
+    "Broly"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual estúdio produziu Neon Genesis Evangelion?",
+   "ops": [
+    "Gainax",
+    "Toei Animation",
+    "Pierrot",
+    "Trigger"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Em Naruto, qual é o nome do professor da equipe 7 que usa uma máscara?",
+   "ops": [
+    "Iruka",
+    "Kakashi Hatake",
+    "Jiraiya",
+    "Asuma"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual é o nome do robô gigante pilotado por Shinji em Neon Genesis Evangelion?",
+   "ops": [
+    "Gundam",
+    "EVA-01",
+    "Mazinger",
+    "Voltron"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Em My Hero Academia, qual é o codinome de herói de Katsuki Bakugo?",
+   "ops": [
+    "Deku",
+    "Dynamight",
+    "Red Riot",
+    "Shoto"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Quem é o autor do mangá Hunter x Hunter?",
+   "ops": [
+    "Yoshihiro Togashi",
+    "Eiichiro Oda",
+    "Tite Kubo",
+    "Hirohiko Araki"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Em Jojo's Bizarre Adventure, como se chamam os poderes espirituais dos personagens?",
+   "ops": [
+    "Nen",
+    "Stands",
+    "Haki",
+    "Quirks"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual é o nome do protagonista de Death Note que usa o caderno para matar criminosos?",
+   "ops": [
+    "L Lawliet",
+    "Light Yagami",
+    "Near",
+    "Mello"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Em Demon Slayer, qual é o título dado aos espadachins mais poderosos do Esquadrão de Extermínio?",
+   "ops": [
+    "Hashira (Pilares)",
+    "Kage",
+    "Espadas Reais",
+    "Capitães"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Qual clã de Sasuke em Naruto é famoso pelo poder ocular Sharingan?",
+   "ops": [
+    "Clã Hyuga",
+    "Clã Uchiha",
+    "Clã Senju",
+    "Clã Uzumaki"
+   ],
+   "c": 1
+  }
+ ],
+ "geografia": [
+  {
+   "q": "Qual é a capital da França?",
+   "ops": [
+    "Lyon",
+    "Paris",
+    "Marselha",
+    "Nice"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual é o maior oceano do mundo?",
+   "ops": [
+    "Atlântico",
+    "Índico",
+    "Ártico",
+    "Pacífico"
+   ],
+   "c": 3
+  },
+  {
+   "q": "Em que continente fica o Egito?",
+   "ops": [
+    "Ásia",
+    "Europa",
+    "África",
+    "Oceania"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual é a capital do Japão?",
+   "ops": [
+    "Osaka",
+    "Quioto",
+    "Tóquio",
+    "Nagoia"
+   ],
+   "c": 2
+  },
+  {
+   "q": "A montanha Everest fica em qual cordilheira?",
+   "ops": [
+    "Andes",
+    "Alpes",
+    "Himalaia",
+    "Montanhas Rochosas"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual é o menor país do mundo em área?",
+   "ops": [
+    "Mônaco",
+    "Vaticano",
+    "San Marino",
+    "Liechtenstein"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual é a capital da Austrália?",
+   "ops": [
+    "Sydney",
+    "Melbourne",
+    "Canberra",
+    "Perth"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual país tem o formato de uma bota?",
+   "ops": [
+    "Grécia",
+    "Itália",
+    "Espanha",
+    "Portugal"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual é o maior deserto quente do mundo?",
+   "ops": [
+    "Kalahari",
+    "Gobi",
+    "Saara",
+    "Atacama"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual é a capital do Canadá?",
+   "ops": [
+    "Toronto",
+    "Vancouver",
+    "Montreal",
+    "Ottawa"
+   ],
+   "c": 3
+  },
+  {
+   "q": "Qual é o continente mais populoso do mundo?",
+   "ops": [
+    "África",
+    "Europa",
+    "Ásia",
+    "América"
+   ],
+   "c": 2
+  },
+  {
+   "q": "O rio Amazonas deságua em qual oceano?",
+   "ops": [
+    "Pacífico",
+    "Atlântico",
+    "Índico",
+    "Ártico"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual é a capital da Rússia?",
+   "ops": [
+    "São Petersburgo",
+    "Moscou",
+    "Kiev",
+    "Minsk"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual país é conhecido como Terra do Sol Nascente?",
+   "ops": [
+    "China",
+    "Coreia do Sul",
+    "Japão",
+    "Tailândia"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual é a capital da Argentina?",
+   "ops": [
+    "Córdoba",
+    "Rosário",
+    "Buenos Aires",
+    "Mendoza"
+   ],
+   "c": 2
+  },
+  {
+   "q": "A bandeira do Japão tem um círculo de qual cor?",
+   "ops": [
+    "Azul",
+    "Vermelho",
+    "Verde",
+    "Amarelo"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual é o país mais extenso do mundo em área?",
+   "ops": [
+    "Canadá",
+    "China",
+    "Estados Unidos",
+    "Rússia"
+   ],
+   "c": 3
+  },
+  {
+   "q": "Qual é a capital da Alemanha?",
+   "ops": [
+    "Munique",
+    "Hamburgo",
+    "Berlim",
+    "Frankfurt"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Em que continente ficam os Andes?",
+   "ops": [
+    "América do Norte",
+    "América do Sul",
+    "Ásia",
+    "África"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual é o maior país da América do Sul em área?",
+   "ops": [
+    "Argentina",
+    "Brasil",
+    "Peru",
+    "Colômbia"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual estreito separa a Europa da África?",
+   "ops": [
+    "Bósforo",
+    "Gibraltar",
+    "Bering",
+    "Ormuz"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual é a capital do Egito?",
+   "ops": [
+    "Alexandria",
+    "Cairo",
+    "Luxor",
+    "Gizé"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual é o oceano mais frio do planeta?",
+   "ops": [
+    "Índico",
+    "Atlântico",
+    "Ártico",
+    "Pacífico"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual é a capital da Espanha?",
+   "ops": [
+    "Barcelona",
+    "Sevilha",
+    "Madri",
+    "Valência"
+   ],
+   "c": 2
+  },
+  {
+   "q": "O Monte Kilimanjaro fica em qual país?",
+   "ops": [
+    "Quênia",
+    "Tanzânia",
+    "Uganda",
+    "Etiópia"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual é a capital de Portugal?",
+   "ops": [
+    "Porto",
+    "Lisboa",
+    "Braga",
+    "Coimbra"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual é a capital dos Estados Unidos?",
+   "ops": [
+    "Nova York",
+    "Los Angeles",
+    "Washington, D.C.",
+    "Chicago"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual mar fica entre a Europa e a África?",
+   "ops": [
+    "Mar Vermelho",
+    "Mar Cáspio",
+    "Mar Mediterrâneo",
+    "Mar Negro"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual é a capital da China?",
+   "ops": [
+    "Xangai",
+    "Pequim",
+    "Cantão",
+    "Shenzhen"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual país está localizado em dois continentes: Europa e Ásia?",
+   "ops": [
+    "Grécia",
+    "Turquia",
+    "Egito",
+    "Itália"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual é a capital da Índia?",
+   "ops": [
+    "Mumbai",
+    "Calcutá",
+    "Nova Déli",
+    "Bangalore"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual é o maior continente em área?",
+   "ops": [
+    "África",
+    "Ásia",
+    "América",
+    "Antártida"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual rio passa pela cidade de Londres?",
+   "ops": [
+    "Sena",
+    "Reno",
+    "Tâmisa",
+    "Danúbio"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual é a capital da Itália?",
+   "ops": [
+    "Milão",
+    "Roma",
+    "Nápoles",
+    "Turim"
+   ],
+   "c": 1
+  },
+  {
+   "q": "A bandeira do Canadá tem uma folha de qual árvore?",
+   "ops": [
+    "Carvalho",
+    "Bordo (maple)",
+    "Pinheiro",
+    "Bétula"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual é a capital do México?",
+   "ops": [
+    "Guadalajara",
+    "Monterrey",
+    "Cidade do México",
+    "Cancún"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual é a capital da Grécia?",
+   "ops": [
+    "Esparta",
+    "Tessalônica",
+    "Atenas",
+    "Patras"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual é a capital da Coreia do Sul?",
+   "ops": [
+    "Busan",
+    "Seul",
+    "Incheon",
+    "Daegu"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O Grand Canyon fica em qual país?",
+   "ops": [
+    "Canadá",
+    "México",
+    "Estados Unidos",
+    "Brasil"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual é a capital do Chile?",
+   "ops": [
+    "Valparaíso",
+    "Santiago",
+    "Concepción",
+    "Antofagasta"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual é a capital da Holanda (Países Baixos)?",
+   "ops": [
+    "Roterdã",
+    "Haia",
+    "Amsterdã",
+    "Utrecht"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual cordilheira separa a Europa da Ásia no lado da Rússia?",
+   "ops": [
+    "Cárpatos",
+    "Cáucaso",
+    "Montes Urais",
+    "Alpes"
+   ],
+   "c": 2
+  }
+ ],
+ "brasil": [
+  {
+   "q": "Qual é a capital do Brasil?",
+   "ops": [
+    "Rio de Janeiro",
+    "São Paulo",
+    "Brasília",
+    "Salvador"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual é a capital do estado da Bahia?",
+   "ops": [
+    "Salvador",
+    "Recife",
+    "Fortaleza",
+    "Maceió"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Qual rio é o mais extenso do Brasil?",
+   "ops": [
+    "Rio São Francisco",
+    "Rio Amazonas",
+    "Rio Paraná",
+    "Rio Tietê"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Em que ano o Brasil proclamou sua independência de Portugal?",
+   "ops": [
+    "1808",
+    "1822",
+    "1889",
+    "1500"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual é a moeda oficial do Brasil?",
+   "ops": [
+    "Cruzeiro",
+    "Peso",
+    "Real",
+    "Dólar"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Quantas estrelas há na bandeira do Brasil?",
+   "ops": [
+    "21",
+    "27",
+    "13",
+    "1"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual é a capital do estado do Amazonas?",
+   "ops": [
+    "Belém",
+    "Manaus",
+    "Boa Vista",
+    "Porto Velho"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual ritmo musical nasceu no Rio de Janeiro e é símbolo do carnaval?",
+   "ops": [
+    "Frevo",
+    "Samba",
+    "Forró",
+    "Maracatu"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual prato é feito com feijão-preto e carnes de porco?",
+   "ops": [
+    "Feijoada",
+    "Vatapá",
+    "Acarajé",
+    "Baião de dois"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Quem foi o primeiro presidente do Brasil?",
+   "ops": [
+    "Getúlio Vargas",
+    "Deodoro da Fonseca",
+    "Prudente de Morais",
+    "Floriano Peixoto"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual é a capital do estado de Minas Gerais?",
+   "ops": [
+    "Belo Horizonte",
+    "Uberlândia",
+    "Ouro Preto",
+    "Contagem"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Qual é o maior estado do Brasil em área?",
+   "ops": [
+    "Pará",
+    "Mato Grosso",
+    "Amazonas",
+    "Bahia"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Em que cidade fica o Cristo Redentor?",
+   "ops": [
+    "São Paulo",
+    "Rio de Janeiro",
+    "Belo Horizonte",
+    "Salvador"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual é o gênero musical típico do Nordeste associado a Luiz Gonzaga?",
+   "ops": [
+    "Bossa nova",
+    "Forró",
+    "Sertanejo",
+    "Axé"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual é a capital do estado do Rio Grande do Sul?",
+   "ops": [
+    "Curitiba",
+    "Florianópolis",
+    "Porto Alegre",
+    "Caxias do Sul"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Quantas vezes a seleção brasileira venceu a Copa do Mundo de futebol?",
+   "ops": [
+    "Quatro",
+    "Cinco",
+    "Seis",
+    "Três"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual bebida é feita a partir da cana-de-açúcar e usada na caipirinha?",
+   "ops": [
+    "Rum",
+    "Cachaça",
+    "Tequila",
+    "Vodca"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual é o idioma oficial do Brasil?",
+   "ops": [
+    "Espanhol",
+    "Português",
+    "Inglês",
+    "Guarani"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual bioma cobre a maior parte do território brasileiro?",
+   "ops": [
+    "Cerrado",
+    "Caatinga",
+    "Amazônia",
+    "Pantanal"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual é a capital do estado do Ceará?",
+   "ops": [
+    "Natal",
+    "Fortaleza",
+    "Teresina",
+    "João Pessoa"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Quem escreveu o romance 'Dom Casmurro'?",
+   "ops": [
+    "José de Alencar",
+    "Machado de Assis",
+    "Jorge Amado",
+    "Guimarães Rosa"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual é o ponto culminante do Brasil?",
+   "ops": [
+    "Pico da Neblina",
+    "Pico da Bandeira",
+    "Monte Roraima",
+    "Pico das Agulhas Negras"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Qual estado brasileiro é conhecido pelo acarajé e pelo axé?",
+   "ops": [
+    "Pernambuco",
+    "Bahia",
+    "Ceará",
+    "Maranhão"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual jogador é apelidado de 'O Rei do Futebol'?",
+   "ops": [
+    "Garrincha",
+    "Pelé",
+    "Zico",
+    "Romário"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual é a capital do estado do Paraná?",
+   "ops": [
+    "Londrina",
+    "Curitiba",
+    "Maringá",
+    "Joinville"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual foi a primeira capital do Brasil?",
+   "ops": [
+    "Rio de Janeiro",
+    "Salvador",
+    "Recife",
+    "São Vicente"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual árvore deu origem ao nome do país Brasil?",
+   "ops": [
+    "Ipê",
+    "Pau-brasil",
+    "Jatobá",
+    "Mogno"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual estilo musical surgiu no fim dos anos 1950 com João Gilberto e Tom Jobim?",
+   "ops": [
+    "Tropicália",
+    "Bossa nova",
+    "MPB",
+    "Choro"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual é a capital do estado de Pernambuco?",
+   "ops": [
+    "Maceió",
+    "Recife",
+    "Aracaju",
+    "Natal"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual das aves abaixo é uma ave nativa símbolo da fauna brasileira?",
+   "ops": [
+    "Avestruz",
+    "Arara-azul",
+    "Pinguim",
+    "Falcão-peregrino"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual dança de roda com movimentos de luta tem origem afro-brasileira?",
+   "ops": [
+    "Capoeira",
+    "Frevo",
+    "Maracatu",
+    "Carimbó"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Qual é a capital do estado de Santa Catarina?",
+   "ops": [
+    "Blumenau",
+    "Joinville",
+    "Florianópolis",
+    "Criciúma"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Em que ano a família real portuguesa transferiu a corte para o Brasil?",
+   "ops": [
+    "1808",
+    "1750",
+    "1889",
+    "1930"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Qual doce típico brasileiro é feito com leite condensado e chocolate?",
+   "ops": [
+    "Brigadeiro",
+    "Pé de moleque",
+    "Cocada",
+    "Paçoca"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Qual é a capital do estado do Pará?",
+   "ops": [
+    "Macapá",
+    "Belém",
+    "São Luís",
+    "Palmas"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual arquiteto projetou muitos dos edifícios monumentais de Brasília?",
+   "ops": [
+    "Lúcio Costa",
+    "Oscar Niemeyer",
+    "Burle Marx",
+    "Ruy Ohtake"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Quantos estados tem o Brasil?",
+   "ops": [
+    "25",
+    "26",
+    "27",
+    "24"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual região semiárida caracteriza o interior do Nordeste?",
+   "ops": [
+    "Cerrado",
+    "Sertão",
+    "Pampa",
+    "Zona da Mata"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual foi o navegador português que chegou ao Brasil em 1500?",
+   "ops": [
+    "Vasco da Gama",
+    "Pedro Álvares Cabral",
+    "Bartolomeu Dias",
+    "Cristóvão Colombo"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual é a capital do estado do Maranhão?",
+   "ops": [
+    "Teresina",
+    "São Luís",
+    "Belém",
+    "Fortaleza"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual é a maior cidade do Brasil em população?",
+   "ops": [
+    "Rio de Janeiro",
+    "São Paulo",
+    "Brasília",
+    "Salvador"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual instrumento de percussão é fundamental no samba de roda?",
+   "ops": [
+    "Berimbau",
+    "Pandeiro",
+    "Sanfona",
+    "Viola caipira"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual é a capital do estado de Goiás?",
+   "ops": [
+    "Goiânia",
+    "Anápolis",
+    "Palmas",
+    "Cuiabá"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Qual escritor baiano escreveu 'Capitães da Areia' e 'Gabriela'?",
+   "ops": [
+    "Machado de Assis",
+    "Jorge Amado",
+    "Érico Veríssimo",
+    "Graciliano Ramos"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual é o maior bioma úmido de planície inundável do Brasil, conhecido pela biodiversidade?",
+   "ops": [
+    "Pantanal",
+    "Cerrado",
+    "Caatinga",
+    "Mata Atlântica"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Qual é a capital do estado do Espírito Santo?",
+   "ops": [
+    "Vila Velha",
+    "Vitória",
+    "Cariacica",
+    "Colatina"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual festa popular junina celebra santos como São João em junho?",
+   "ops": [
+    "Festa Junina",
+    "Carnaval",
+    "Círio de Nazaré",
+    "Folia de Reis"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Qual é a capital do estado do Espírito Santo? (confirmação)",
+   "ops": [
+    "Vitória",
+    "Vila Velha",
+    "Serra",
+    "Guarapari"
+   ],
+   "c": 0
+  }
+ ],
+ "carros": [
+  {
+   "q": "De que país é originária a marca Ferrari?",
+   "ops": [
+    "Alemanha",
+    "Itália",
+    "França",
+    "Espanha"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual marca de carros tem como símbolo quatro anéis entrelaçados?",
+   "ops": [
+    "BMW",
+    "Mercedes-Benz",
+    "Audi",
+    "Volkswagen"
+   ],
+   "c": 2
+  },
+  {
+   "q": "De que país é originária a marca Toyota?",
+   "ops": [
+    "China",
+    "Coreia do Sul",
+    "Japão",
+    "Tailândia"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual país é a terra de origem da marca Volvo?",
+   "ops": [
+    "Suécia",
+    "Noruega",
+    "Alemanha",
+    "Holanda"
+   ],
+   "c": 0
+  },
+  {
+   "q": "O logo da Mercedes-Benz é uma estrela de quantas pontas?",
+   "ops": [
+    "Três pontas",
+    "Quatro pontas",
+    "Cinco pontas",
+    "Seis pontas"
+   ],
+   "c": 0
+  },
+  {
+   "q": "De qual país é a montadora Hyundai?",
+   "ops": [
+    "Japão",
+    "China",
+    "Coreia do Sul",
+    "Malásia"
+   ],
+   "c": 2
+  },
+  {
+   "q": "A marca Fiat é originária de qual país?",
+   "ops": [
+    "França",
+    "Itália",
+    "Espanha",
+    "Portugal"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual marca é conhecida pelo logo do cavalo empinado (cavallino rampante)?",
+   "ops": [
+    "Lamborghini",
+    "Porsche",
+    "Ferrari",
+    "Maserati"
+   ],
+   "c": 2
+  },
+  {
+   "q": "De que país é a marca Peugeot?",
+   "ops": [
+    "Bélgica",
+    "França",
+    "Itália",
+    "Suíça"
+   ],
+   "c": 1
+  },
+  {
+   "q": "A marca de superesportivos Lamborghini tem qual animal no logo?",
+   "ops": [
+    "Cavalo",
+    "Touro",
+    "Leão",
+    "Águia"
+   ],
+   "c": 1
+  },
+  {
+   "q": "De que país é originária a marca Rolls-Royce?",
+   "ops": [
+    "Estados Unidos",
+    "Alemanha",
+    "Reino Unido",
+    "França"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual marca americana é dona do modelo Mustang?",
+   "ops": [
+    "Chevrolet",
+    "Dodge",
+    "Ford",
+    "Chrysler"
+   ],
+   "c": 2
+  },
+  {
+   "q": "O modelo 'Fusca' foi fabricado por qual montadora?",
+   "ops": [
+    "Volkswagen",
+    "Opel",
+    "BMW",
+    "Audi"
+   ],
+   "c": 0
+  },
+  {
+   "q": "De que país é a marca Škoda?",
+   "ops": [
+    "Polônia",
+    "República Tcheca",
+    "Hungria",
+    "Áustria"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual marca japonesa fabrica o modelo esportivo Civic?",
+   "ops": [
+    "Nissan",
+    "Mazda",
+    "Honda",
+    "Subaru"
+   ],
+   "c": 2
+  },
+  {
+   "q": "A marca Bugatti foi fundada e tem raízes em qual país?",
+   "ops": [
+    "Alemanha",
+    "Itália",
+    "França",
+    "Suíça"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual marca de luxo britânica é conhecida pelo modelo DB5, famoso nos filmes de James Bond?",
+   "ops": [
+    "Jaguar",
+    "Aston Martin",
+    "Bentley",
+    "Lotus"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O modelo 911 é um clássico esportivo de qual marca?",
+   "ops": [
+    "Porsche",
+    "Ferrari",
+    "Audi",
+    "BMW"
+   ],
+   "c": 0
+  },
+  {
+   "q": "De que país é originária a montadora Kia?",
+   "ops": [
+    "Japão",
+    "China",
+    "Coreia do Sul",
+    "Vietnã"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual marca tem como símbolo uma hélice azul e branca, inspirada em motores de avião?",
+   "ops": [
+    "Mercedes-Benz",
+    "BMW",
+    "Audi",
+    "Volkswagen"
+   ],
+   "c": 1
+  },
+  {
+   "q": "A marca de picapes RAM é originária de qual país?",
+   "ops": [
+    "Estados Unidos",
+    "Alemanha",
+    "Japão",
+    "Canadá"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Qual montadora produz o modelo Corolla?",
+   "ops": [
+    "Honda",
+    "Toyota",
+    "Nissan",
+    "Mitsubishi"
+   ],
+   "c": 1
+  },
+  {
+   "q": "De que país é a marca de carros SEAT?",
+   "ops": [
+    "Portugal",
+    "Itália",
+    "Espanha",
+    "França"
+   ],
+   "c": 2
+  },
+  {
+   "q": "O modelo Beetle é a versão internacional de qual carro popular?",
+   "ops": [
+    "Fusca",
+    "Gol",
+    "Uno",
+    "Corcel"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Qual marca de luxo é conhecida pelo logo do 'B' alado?",
+   "ops": [
+    "Bugatti",
+    "Bentley",
+    "Buick",
+    "BMW"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Na Fórmula 1, quantas rodas tem um carro?",
+   "ops": [
+    "Duas",
+    "Quatro",
+    "Seis",
+    "Oito"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual piloto brasileiro conquistou três títulos mundiais de Fórmula 1?",
+   "ops": [
+    "Rubens Barrichello",
+    "Emerson Fittipaldi",
+    "Ayrton Senna",
+    "Felipe Massa"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Quantos títulos mundiais de Fórmula 1 Ayrton Senna conquistou?",
+   "ops": [
+    "Dois",
+    "Três",
+    "Quatro",
+    "Cinco"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual equipe de Fórmula 1 é associada à cor vermelha e à Itália?",
+   "ops": [
+    "McLaren",
+    "Ferrari",
+    "Williams",
+    "Renault"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O piloto alemão Michael Schumacher é heptacampeão de qual categoria?",
+   "ops": [
+    "MotoGP",
+    "Rali Dakar",
+    "Fórmula 1",
+    "Fórmula Indy"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Em qual país acontece o Grande Prêmio de Mônaco de Fórmula 1?",
+   "ops": [
+    "França",
+    "Itália",
+    "Mônaco",
+    "Suíça"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual bandeira é usada para indicar o fim de uma corrida?",
+   "ops": [
+    "Bandeira amarela",
+    "Bandeira vermelha",
+    "Bandeira quadriculada",
+    "Bandeira verde"
+   ],
+   "c": 2
+  },
+  {
+   "q": "O que a bandeira amarela sinaliza aos pilotos em uma corrida?",
+   "ops": [
+    "Fim da prova",
+    "Perigo na pista, proibido ultrapassar",
+    "Início da corrida",
+    "Punição ao piloto"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual desses pilotos brasileiros foi campeão mundial de Fórmula 1 em 1972 e 1974?",
+   "ops": [
+    "Nelson Piquet",
+    "Emerson Fittipaldi",
+    "Ayrton Senna",
+    "José Carlos Pace"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Quantos títulos mundiais de Fórmula 1 tem Nelson Piquet?",
+   "ops": [
+    "Um",
+    "Dois",
+    "Três",
+    "Quatro"
+   ],
+   "c": 2
+  },
+  {
+   "q": "O que significa a sigla F1 no automobilismo?",
+   "ops": [
+    "Força 1",
+    "Fórmula 1",
+    "Ferrari 1",
+    "Final 1"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual é a função do motor em um carro?",
+   "ops": [
+    "Armazenar combustível",
+    "Converter combustível em movimento",
+    "Refrigerar o interior",
+    "Controlar a direção"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Para que serve o câmbio (transmissão) de um carro?",
+   "ops": [
+    "Frear o veículo",
+    "Transferir a força do motor às rodas ajustando a marcha",
+    "Iluminar a pista",
+    "Filtrar o óleo"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O que faz o sistema de freios a disco?",
+   "ops": [
+    "Aumenta a potência do motor",
+    "Reduz a velocidade pressionando pastilhas contra o disco",
+    "Aquece o motor",
+    "Injeta combustível"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual componente é responsável por dar a partida no motor do carro?",
+   "ops": [
+    "Alternador",
+    "Motor de arranque",
+    "Radiador",
+    "Velas de ignição"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Para que serve o radiador em um automóvel?",
+   "ops": [
+    "Filtrar o ar",
+    "Resfriar o motor",
+    "Carregar a bateria",
+    "Amortecer impactos"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O que a sigla ABS representa em freios de carro?",
+   "ops": [
+    "Sistema antibloqueio das rodas",
+    "Ar-condicionado do banco",
+    "Sistema de bateria",
+    "Airbag de segurança"
+   ],
+   "c": 0
+  },
+  {
+   "q": "O que fazem as velas de ignição em um motor a gasolina?",
+   "ops": [
+    "Resfriam o motor",
+    "Geram a faísca que inflama a mistura",
+    "Bombeiam o óleo",
+    "Filtram o ar"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual peça mantém o motor lubrificado?",
+   "ops": [
+    "Água",
+    "Óleo do motor",
+    "Fluido de freio",
+    "Aditivo do radiador"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O que é um carro 'flex' no Brasil?",
+   "ops": [
+    "Que anda só a diesel",
+    "Que roda com gasolina e etanol",
+    "Que é totalmente elétrico",
+    "Que usa apenas gás"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual montadora fabrica o modelo Golf?",
+   "ops": [
+    "Opel",
+    "Volkswagen",
+    "Renault",
+    "Fiat"
+   ],
+   "c": 1
+  },
+  {
+   "q": "De que país é originária a marca de carros esportivos McLaren?",
+   "ops": [
+    "Reino Unido",
+    "Alemanha",
+    "Itália",
+    "França"
+   ],
+   "c": 0
+  },
+  {
+   "q": "O modelo Civic e o modelo Accord pertencem a qual montadora?",
+   "ops": [
+    "Toyota",
+    "Honda",
+    "Nissan",
+    "Hyundai"
+   ],
+   "c": 1
+  }
+ ],
+ "comida": [
+  {
+   "q": "De qual país é originário o prato sushi?",
+   "ops": [
+    "China",
+    "Japão",
+    "Coreia do Sul",
+    "Tailândia"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual é o ingrediente principal do guacamole?",
+   "ops": [
+    "Tomate",
+    "Abacate",
+    "Pimentão",
+    "Pepino"
+   ],
+   "c": 1
+  },
+  {
+   "q": "A feijoada é um prato tradicional de qual país?",
+   "ops": [
+    "Portugal",
+    "Brasil",
+    "México",
+    "Angola"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual massa italiana tem formato de fitas longas e finas?",
+   "ops": [
+    "Penne",
+    "Fusilli",
+    "Espaguete",
+    "Rigatoni"
+   ],
+   "c": 2
+  },
+  {
+   "q": "De onde é originária a pizza?",
+   "ops": [
+    "Grécia",
+    "França",
+    "Itália",
+    "Espanha"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual bebida é feita a partir da fermentação da uva?",
+   "ops": [
+    "Cerveja",
+    "Vinho",
+    "Saquê",
+    "Cachaça"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O curry é um tempero muito associado à culinária de qual país?",
+   "ops": [
+    "Índia",
+    "Japão",
+    "Marrocos",
+    "Peru"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Qual é o principal ingrediente do hummus?",
+   "ops": [
+    "Lentilha",
+    "Grão-de-bico",
+    "Feijão preto",
+    "Ervilha"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O taco é um prato típico de qual país?",
+   "ops": [
+    "Espanha",
+    "México",
+    "Argentina",
+    "Colômbia"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual doce brasileiro é feito com leite condensado e chocolate?",
+   "ops": [
+    "Brigadeiro",
+    "Beijinho",
+    "Cajuzinho",
+    "Pé de moleque"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Qual peixe é tradicionalmente usado no fish and chips britânico?",
+   "ops": [
+    "Salmão",
+    "Bacalhau",
+    "Atum",
+    "Sardinha"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O ceviche é um prato típico de qual país?",
+   "ops": [
+    "Peru",
+    "Brasil",
+    "Chile",
+    "Equador"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Qual é o ingrediente base do tofu?",
+   "ops": [
+    "Arroz",
+    "Soja",
+    "Trigo",
+    "Milho"
+   ],
+   "c": 1
+  },
+  {
+   "q": "A paella é um prato tradicional de qual país?",
+   "ops": [
+    "Portugal",
+    "Itália",
+    "Espanha",
+    "Grécia"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual é a base da bebida caipirinha?",
+   "ops": [
+    "Rum",
+    "Cachaça",
+    "Vodca",
+    "Tequila"
+   ],
+   "c": 1
+  },
+  {
+   "q": "De qual país é originário o kimchi?",
+   "ops": [
+    "China",
+    "Japão",
+    "Coreia do Sul",
+    "Vietnã"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual fruta é a base do doce de goiabada?",
+   "ops": [
+    "Manga",
+    "Goiaba",
+    "Marmelo",
+    "Pêssego"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O strogonoff tem origem em qual país?",
+   "ops": [
+    "Alemanha",
+    "Rússia",
+    "Polônia",
+    "Hungria"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual queijo italiano é tradicionalmente usado na pizza margherita?",
+   "ops": [
+    "Parmesão",
+    "Gorgonzola",
+    "Mussarela",
+    "Provolone"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual prato brasileiro é típico do estado da Bahia e leva dendê?",
+   "ops": [
+    "Baião de dois",
+    "Acarajé",
+    "Escondidinho",
+    "Barreado"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O tempero açafrão é obtido de qual parte da planta?",
+   "ops": [
+    "Raiz",
+    "Semente",
+    "Estigma da flor",
+    "Casca"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual é a bebida nacional do Japão feita de arroz fermentado?",
+   "ops": [
+    "Soju",
+    "Saquê",
+    "Baijiu",
+    "Makgeolli"
+   ],
+   "c": 1
+  },
+  {
+   "q": "De qual país vem o prato goulash?",
+   "ops": [
+    "Hungria",
+    "Áustria",
+    "República Tcheca",
+    "Romênia"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Qual leguminosa é a base do prato indiano dal?",
+   "ops": [
+    "Feijão",
+    "Lentilha",
+    "Grão-de-bico",
+    "Ervilha"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O chocolate é feito a partir das sementes de qual planta?",
+   "ops": [
+    "Café",
+    "Cacau",
+    "Baunilha",
+    "Guaraná"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual é a origem do prato hambúrguer, segundo seu nome?",
+   "ops": [
+    "Frankfurt",
+    "Hamburgo",
+    "Berlim",
+    "Munique"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O molho pesto tradicional italiano leva qual erva como base?",
+   "ops": [
+    "Salsa",
+    "Manjericão",
+    "Coentro",
+    "Hortelã"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual fruta cítrica é a base da limonada?",
+   "ops": [
+    "Laranja",
+    "Limão",
+    "Toranja",
+    "Tangerina"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O prato pad thai é típico de qual país?",
+   "ops": [
+    "Vietnã",
+    "Tailândia",
+    "Camboja",
+    "Malásia"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual grão é a base da farinha usada no cuscuz nordestino brasileiro?",
+   "ops": [
+    "Trigo",
+    "Milho",
+    "Arroz",
+    "Cevada"
+   ],
+   "c": 1
+  },
+  {
+   "q": "De qual país é originário o pão naan?",
+   "ops": [
+    "Índia",
+    "Turquia",
+    "Irã",
+    "Egito"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Qual bebida quente é feita das folhas da planta Camellia sinensis?",
+   "ops": [
+    "Café",
+    "Chá",
+    "Chocolate quente",
+    "Mate"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O prato risoto é típico de qual culinária?",
+   "ops": [
+    "Francesa",
+    "Italiana",
+    "Espanhola",
+    "Grega"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual doce típico português é uma tortinha de creme com massa folhada?",
+   "ops": [
+    "Pastel de nata",
+    "Pão de ló",
+    "Queijadinha",
+    "Toucinho do céu"
+   ],
+   "c": 0
+  },
+  {
+   "q": "A pimenta caiena é usada principalmente para dar qual sabor?",
+   "ops": [
+    "Doce",
+    "Ardido/picante",
+    "Azedo",
+    "Amargo"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual é o principal ingrediente da manteiga?",
+   "ops": [
+    "Óleo vegetal",
+    "Gordura do leite",
+    "Ovo",
+    "Amido"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O prato moqueca é típico de qual região do Brasil?",
+   "ops": [
+    "Sul",
+    "Litoral (Bahia e Espírito Santo)",
+    "Centro-Oeste",
+    "Pantanal"
+   ],
+   "c": 1
+  },
+  {
+   "q": "De qual país é originário o prato waffle?",
+   "ops": [
+    "França",
+    "Bélgica",
+    "Holanda",
+    "Alemanha"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O queijo azul roquefort é originário de qual país?",
+   "ops": [
+    "Itália",
+    "França",
+    "Inglaterra",
+    "Holanda"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual é a bebida destilada tradicional do México feita da agave?",
+   "ops": [
+    "Mezcal",
+    "Pisco",
+    "Cachaça",
+    "Grappa"
+   ],
+   "c": 0
+  },
+  {
+   "q": "O prato dim sum faz parte da tradição culinária de qual país?",
+   "ops": [
+    "Japão",
+    "China",
+    "Coreia do Sul",
+    "Vietnã"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual é o ingrediente que dá a cor amarela ao molho curry e à mostarda?",
+   "ops": [
+    "Páprica",
+    "Cúrcuma (açafrão-da-terra)",
+    "Colorau",
+    "Gengibre"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O prato pão de queijo é tradicionalmente associado a qual estado brasileiro?",
+   "ops": [
+    "Rio de Janeiro",
+    "Minas Gerais",
+    "São Paulo",
+    "Bahia"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual fruta é usada para fazer a bebida vinho do Porto?",
+   "ops": [
+    "Maçã",
+    "Uva",
+    "Pera",
+    "Ameixa"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O prato falafel, feito de bolinhos fritos de grão-de-bico, é típico de qual região?",
+   "ops": [
+    "Escandinávia",
+    "Oriente Médio",
+    "Sudeste Asiático",
+    "América Central"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual cereal é o principal ingrediente da cerveja tradicional?",
+   "ops": [
+    "Arroz",
+    "Cevada",
+    "Aveia",
+    "Centeio"
+   ],
+   "c": 1
+  }
+ ],
+ "ingles": [
+  {
+   "q": "O que significa a palavra \"house\" em português?",
+   "ops": [
+    "Casa",
+    "Cavalo",
+    "Chuva",
+    "Céu"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Como se diz \"cachorro\" em inglês?",
+   "ops": [
+    "Cat",
+    "Dog",
+    "Bird",
+    "Fish"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Complete: \"I ___ a student.\" (Eu sou um estudante)",
+   "ops": [
+    "am",
+    "is",
+    "are",
+    "be"
+   ],
+   "c": 0
+  },
+  {
+   "q": "O que significa \"apple\"?",
+   "ops": [
+    "Uva",
+    "Banana",
+    "Maçã",
+    "Laranja"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Como se diz \"água\" em inglês?",
+   "ops": [
+    "Wine",
+    "Milk",
+    "Juice",
+    "Water"
+   ],
+   "c": 3
+  },
+  {
+   "q": "Qual é o plural de \"child\" em inglês?",
+   "ops": [
+    "Childs",
+    "Children",
+    "Childes",
+    "Childrens"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O que significa \"happy\"?",
+   "ops": [
+    "Triste",
+    "Feliz",
+    "Cansado",
+    "Bravo"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Complete: \"She ___ to school every day.\"",
+   "ops": [
+    "go",
+    "goes",
+    "going",
+    "gone"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Como se diz \"livro\" em inglês?",
+   "ops": [
+    "Book",
+    "Pen",
+    "Table",
+    "Door"
+   ],
+   "c": 0
+  },
+  {
+   "q": "O que significa \"friend\"?",
+   "ops": [
+    "Inimigo",
+    "Amigo",
+    "Vizinho",
+    "Chefe"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual o passado do verbo \"go\"?",
+   "ops": [
+    "Goed",
+    "Gone",
+    "Went",
+    "Goes"
+   ],
+   "c": 2
+  },
+  {
+   "q": "O que significa \"blue\"?",
+   "ops": [
+    "Vermelho",
+    "Verde",
+    "Azul",
+    "Amarelo"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Como se diz \"mãe\" em inglês?",
+   "ops": [
+    "Father",
+    "Mother",
+    "Sister",
+    "Brother"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Complete: \"There ___ many books on the table.\"",
+   "ops": [
+    "is",
+    "am",
+    "are",
+    "be"
+   ],
+   "c": 2
+  },
+  {
+   "q": "O que significa \"to eat\"?",
+   "ops": [
+    "Beber",
+    "Dormir",
+    "Comer",
+    "Correr"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual é o oposto de \"big\" em inglês?",
+   "ops": [
+    "Tall",
+    "Small",
+    "Long",
+    "Wide"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Como se diz \"segunda-feira\" em inglês?",
+   "ops": [
+    "Sunday",
+    "Monday",
+    "Tuesday",
+    "Friday"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O que significa \"beautiful\"?",
+   "ops": [
+    "Feio",
+    "Bonito",
+    "Rápido",
+    "Barato"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Complete: \"I have lived here ___ 2010.\"",
+   "ops": [
+    "for",
+    "since",
+    "during",
+    "by"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O que significa \"car\"?",
+   "ops": [
+    "Carro",
+    "Trem",
+    "Avião",
+    "Barco"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Qual o comparativo de \"good\" em inglês?",
+   "ops": [
+    "Gooder",
+    "More good",
+    "Better",
+    "Best"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Como se diz \"amarelo\" em inglês?",
+   "ops": [
+    "Yellow",
+    "Purple",
+    "Orange",
+    "Pink"
+   ],
+   "c": 0
+  },
+  {
+   "q": "O que significa \"to sleep\"?",
+   "ops": [
+    "Acordar",
+    "Dormir",
+    "Andar",
+    "Falar"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Complete: \"He doesn't ___ coffee.\"",
+   "ops": [
+    "likes",
+    "like",
+    "liked",
+    "liking"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O que significa \"cold\"?",
+   "ops": [
+    "Quente",
+    "Frio",
+    "Morno",
+    "Seco"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Como se diz \"escola\" em inglês?",
+   "ops": [
+    "Church",
+    "Hospital",
+    "School",
+    "Store"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual é o superlativo de \"tall\" em inglês?",
+   "ops": [
+    "Taller",
+    "Tallest",
+    "More tall",
+    "Most tall"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O que significa \"window\"?",
+   "ops": [
+    "Porta",
+    "Parede",
+    "Janela",
+    "Teto"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Complete: \"They ___ playing football now.\"",
+   "ops": [
+    "is",
+    "am",
+    "are",
+    "be"
+   ],
+   "c": 2
+  },
+  {
+   "q": "O que significa \"money\"?",
+   "ops": [
+    "Tempo",
+    "Dinheiro",
+    "Trabalho",
+    "Sorte"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Como se diz \"gato\" em inglês?",
+   "ops": [
+    "Dog",
+    "Cat",
+    "Cow",
+    "Horse"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual o passado de \"buy\" em inglês?",
+   "ops": [
+    "Buyed",
+    "Bought",
+    "Buy",
+    "Buys"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O que significa \"tomorrow\"?",
+   "ops": [
+    "Ontem",
+    "Hoje",
+    "Amanhã",
+    "Agora"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Complete: \"I would travel if I ___ rich.\"",
+   "ops": [
+    "am",
+    "was",
+    "were",
+    "be"
+   ],
+   "c": 2
+  },
+  {
+   "q": "O que significa \"to drink\"?",
+   "ops": [
+    "Comer",
+    "Beber",
+    "Cozinhar",
+    "Limpar"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Como se diz \"vermelho\" em inglês?",
+   "ops": [
+    "Green",
+    "Red",
+    "Black",
+    "White"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual palavra completa: \"A ___ is used to write.\"",
+   "ops": [
+    "cup",
+    "pen",
+    "fork",
+    "shoe"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O que significa \"morning\"?",
+   "ops": [
+    "Noite",
+    "Tarde",
+    "Manhã",
+    "Madrugada"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Complete: \"This is the man ___ helped me.\"",
+   "ops": [
+    "which",
+    "who",
+    "whom",
+    "whose"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O que significa \"to work\"?",
+   "ops": [
+    "Brincar",
+    "Trabalhar",
+    "Descansar",
+    "Viajar"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Como se diz \"pão\" em inglês?",
+   "ops": [
+    "Rice",
+    "Bread",
+    "Meat",
+    "Cheese"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual o past participle de \"eat\" em inglês?",
+   "ops": [
+    "Eated",
+    "Ate",
+    "Eaten",
+    "Eating"
+   ],
+   "c": 2
+  },
+  {
+   "q": "O que significa \"expensive\"?",
+   "ops": [
+    "Barato",
+    "Caro",
+    "Grátis",
+    "Novo"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Complete: \"I'm interested ___ music.\"",
+   "ops": [
+    "on",
+    "at",
+    "in",
+    "of"
+   ],
+   "c": 2
+  },
+  {
+   "q": "O que significa \"to open\"?",
+   "ops": [
+    "Fechar",
+    "Abrir",
+    "Quebrar",
+    "Empurrar"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Como se diz \"cabeça\" em inglês?",
+   "ops": [
+    "Hand",
+    "Foot",
+    "Head",
+    "Arm"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual a forma correta: \"How ___ money do you have?\"",
+   "ops": [
+    "many",
+    "much",
+    "some",
+    "any"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O que significa \"never\"?",
+   "ops": [
+    "Sempre",
+    "Nunca",
+    "Às vezes",
+    "Talvez"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Complete: \"If it rains, I ___ stay home.\"",
+   "ops": [
+    "will",
+    "would",
+    "was",
+    "am"
+   ],
+   "c": 0
+  },
+  {
+   "q": "O que significa a expressão \"to make up one's mind\"?",
+   "ops": [
+    "Mudar de roupa",
+    "Tomar uma decisão",
+    "Esquecer algo",
+    "Ficar bravo"
+   ],
+   "c": 1
+  }
+ ],
+ "filmes": [
+  {
+   "q": "Quem dirigiu o filme 'Titanic' (1997)?",
+   "ops": [
+    "Steven Spielberg",
+    "James Cameron",
+    "Ridley Scott",
+    "Martin Scorsese"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual ator interpreta o Homem de Ferro no Universo Cinematográfico da Marvel?",
+   "ops": [
+    "Chris Evans",
+    "Robert Downey Jr.",
+    "Mark Ruffalo",
+    "Chris Hemsworth"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Em 'Star Wars', quem é o pai de Luke Skywalker?",
+   "ops": [
+    "Obi-Wan Kenobi",
+    "Darth Vader",
+    "Imperador Palpatine",
+    "Han Solo"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual é a escola de bruxaria frequentada por Harry Potter?",
+   "ops": [
+    "Beauxbatons",
+    "Durmstrang",
+    "Hogwarts",
+    "Ilvermorny"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Quem dirigiu a trilogia 'O Senhor dos Anéis'?",
+   "ops": [
+    "Peter Jackson",
+    "Guillermo del Toro",
+    "George Lucas",
+    "Christopher Nolan"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Qual filme de animação da Disney tem a canção 'Let It Go'?",
+   "ops": [
+    "Enrolados",
+    "Moana",
+    "Frozen",
+    "Valente"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual ator interpreta o Coringa em 'Coringa' (2019), papel que lhe rendeu o Oscar?",
+   "ops": [
+    "Heath Ledger",
+    "Jared Leto",
+    "Joaquin Phoenix",
+    "Jack Nicholson"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Na série 'Breaking Bad', qual é a profissão de Walter White antes de virar fabricante de drogas?",
+   "ops": [
+    "Médico",
+    "Professor de química",
+    "Advogado",
+    "Policial"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual filme dirigido por Bong Joon-ho ganhou o Oscar de Melhor Filme em 2020?",
+   "ops": [
+    "1917",
+    "Parasita",
+    "Coringa",
+    "Era Uma Vez em Hollywood"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual personagem diz a frase 'Que a Força esteja com você'?",
+   "ops": [
+    "Personagens de Star Wars",
+    "Personagens de Star Trek",
+    "Personagens de Matrix",
+    "Personagens de Guardiões da Galáxia"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Quem dirigiu 'A Origem' (Inception) e 'Interestelar'?",
+   "ops": [
+    "Denis Villeneuve",
+    "Christopher Nolan",
+    "David Fincher",
+    "Alfonso Cuarón"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Na série 'Game of Thrones', qual é a casa cujo lema é 'O Inverno está chegando'?",
+   "ops": [
+    "Lannister",
+    "Targaryen",
+    "Stark",
+    "Baratheon"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual ator interpreta Jack Sparrow na franquia 'Piratas do Caribe'?",
+   "ops": [
+    "Orlando Bloom",
+    "Johnny Depp",
+    "Geoffrey Rush",
+    "Javier Bardem"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual estúdio produziu os filmes 'Toy Story'?",
+   "ops": [
+    "DreamWorks",
+    "Pixar",
+    "Illumination",
+    "Blue Sky"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Em 'O Poderoso Chefão', qual é o sobrenome da família da máfia?",
+   "ops": [
+    "Soprano",
+    "Corleone",
+    "Montana",
+    "Gambino"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Quem interpreta Neo no filme 'Matrix'?",
+   "ops": [
+    "Keanu Reeves",
+    "Laurence Fishburne",
+    "Hugo Weaving",
+    "Brad Pitt"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Qual super-herói é conhecido como 'O Cavaleiro das Trevas'?",
+   "ops": [
+    "Superman",
+    "Batman",
+    "Homem-Aranha",
+    "Flash"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual filme tem a frase célebre 'Vou fazer uma oferta que ele não poderá recusar'?",
+   "ops": [
+    "Scarface",
+    "O Poderoso Chefão",
+    "Os Bons Companheiros",
+    "Cassino"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Na série 'Friends', qual personagem é paleontólogo?",
+   "ops": [
+    "Chandler",
+    "Joey",
+    "Ross",
+    "Monica"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Quem dirigiu 'Pulp Fiction' e 'Kill Bill'?",
+   "ops": [
+    "Quentin Tarantino",
+    "Robert Rodriguez",
+    "Guy Ritchie",
+    "Coen Brothers"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Qual ator interpreta Wolverine nos filmes dos X-Men por quase duas décadas?",
+   "ops": [
+    "Ryan Reynolds",
+    "Hugh Jackman",
+    "Patrick Stewart",
+    "Michael Fassbender"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual filme de animação da Pixar se passa dentro da mente de uma menina chamada Riley?",
+   "ops": [
+    "Up: Altas Aventuras",
+    "Divertida Mente",
+    "Wall-E",
+    "Procurando Nemo"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Na série 'Stranger Things', qual é o nome da garota com poderes telecinéticos?",
+   "ops": [
+    "Max",
+    "Nancy",
+    "Eleven (Onze)",
+    "Robin"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Quem interpreta Forrest Gump no filme de mesmo nome?",
+   "ops": [
+    "Tom Cruise",
+    "Tom Hanks",
+    "Kevin Costner",
+    "Robin Williams"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual diretor é conhecido pelos filmes de suspense e pela participação em suas próprias obras, apelidado 'Mestre do Suspense'?",
+   "ops": [
+    "Alfred Hitchcock",
+    "Stanley Kubrick",
+    "Orson Welles",
+    "Billy Wilder"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Qual é o nome do reino congelado governado pela rainha Elsa em 'Frozen'?",
+   "ops": [
+    "Corona",
+    "Arendelle",
+    "Far Far Away",
+    "Motunui"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual filme ganhou o Oscar de Melhor Filme em 1994 e é estrelado por Tom Hanks?",
+   "ops": [
+    "Pulp Fiction",
+    "Forrest Gump",
+    "O Rei Leão",
+    "Quatro Casamentos e um Funeral"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Na franquia Marvel, qual é o nome verdadeiro do Capitão América?",
+   "ops": [
+    "Steve Rogers",
+    "Bucky Barnes",
+    "Sam Wilson",
+    "Bruce Banner"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Quem dirigiu 'E.T. - O Extraterrestre' e 'Jurassic Park'?",
+   "ops": [
+    "George Lucas",
+    "Steven Spielberg",
+    "James Cameron",
+    "Robert Zemeckis"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual ator interpreta o mago Gandalf em 'O Senhor dos Anéis'?",
+   "ops": [
+    "Ian McKellen",
+    "Christopher Lee",
+    "Patrick Stewart",
+    "Michael Gambon"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Na série 'The Office' (versão americana), qual é o cargo de Michael Scott?",
+   "ops": [
+    "Vendedor",
+    "Gerente regional",
+    "Recepcionista",
+    "Contador"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual filme tem o tubarão como principal ameaça e trilha sonora de John Williams?",
+   "ops": [
+    "Piranha",
+    "Tubarão",
+    "O Grande Azul",
+    "Águas Profundas"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual personagem da Marvel usa um martelo chamado Mjolnir?",
+   "ops": [
+    "Hulk",
+    "Thor",
+    "Loki",
+    "Hawkeye"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Quem interpreta Katniss Everdeen na franquia 'Jogos Vorazes'?",
+   "ops": [
+    "Emma Stone",
+    "Jennifer Lawrence",
+    "Shailene Woodley",
+    "Kristen Stewart"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual é o nome do palhaço vilão da obra 'It: A Coisa', de Stephen King?",
+   "ops": [
+    "Chucky",
+    "Pennywise",
+    "Jigsaw",
+    "Freddy"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual filme animado do Studio Ghibli, dirigido por Hayao Miyazaki, ganhou o Oscar de Melhor Animação?",
+   "ops": [
+    "Meu Amigo Totoro",
+    "A Viagem de Chihiro",
+    "O Castelo Animado",
+    "Princesa Mononoke"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Na série 'La Casa de Papel', qual é o codinome do líder do grupo?",
+   "ops": [
+    "Berlim",
+    "Tóquio",
+    "O Professor",
+    "Rio"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Quem interpreta o personagem-título em 'Doutor Estranho' da Marvel?",
+   "ops": [
+    "Benedict Cumberbatch",
+    "Tom Hiddleston",
+    "Paul Bettany",
+    "Chiwetel Ejiofor"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Qual filme de 1985 apresenta o carro DeLorean como máquina do tempo?",
+   "ops": [
+    "Exterminador do Futuro",
+    "De Volta para o Futuro",
+    "Contato",
+    "Cocoon"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual atriz interpreta Hermione Granger nos filmes de Harry Potter?",
+   "ops": [
+    "Emma Watson",
+    "Bonnie Wright",
+    "Evanna Lynch",
+    "Emma Stone"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Na série 'The Walking Dead', que tipo de criatura é a principal ameaça?",
+   "ops": [
+    "Vampiros",
+    "Zumbis",
+    "Lobisomens",
+    "Alienígenas"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Quem dirigiu 'Cidade de Deus' (2002)?",
+   "ops": [
+    "Walter Salles",
+    "Fernando Meirelles",
+    "José Padilha",
+    "Kleber Mendonça Filho"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual filme tem a frase 'Life is like a box of chocolates' (A vida é como uma caixa de chocolates)?",
+   "ops": [
+    "Náufrago",
+    "Forrest Gump",
+    "Uma Mente Brilhante",
+    "O Curioso Caso de Benjamin Button"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual é o nome do leão protagonista de 'O Rei Leão'?",
+   "ops": [
+    "Mufasa",
+    "Simba",
+    "Scar",
+    "Nala"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Quem interpreta Tony Soprano na série 'Família Soprano'?",
+   "ops": [
+    "James Gandolfini",
+    "Robert De Niro",
+    "Al Pacino",
+    "Ray Liotta"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Qual franquia de filmes tem os personagens Dominic Toretto e Brian O'Conner?",
+   "ops": [
+    "Velozes e Furiosos",
+    "Missão Impossível",
+    "John Wick",
+    "Transformers"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Qual diretor dirigiu 'O Labirinto do Fauno' e 'A Forma da Água'?",
+   "ops": [
+    "Alejandro González Iñárritu",
+    "Guillermo del Toro",
+    "Alfonso Cuarón",
+    "Pedro Almodóvar"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Na série 'Sherlock' da BBC, qual ator interpreta Sherlock Holmes?",
+   "ops": [
+    "Martin Freeman",
+    "Benedict Cumberbatch",
+    "Andrew Scott",
+    "Rupert Graves"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual filme da Pixar mostra um velho que amarra balões em sua casa para voar até a América do Sul?",
+   "ops": [
+    "Wall-E",
+    "Up: Altas Aventuras",
+    "Ratatouille",
+    "Os Incríveis"
+   ],
+   "c": 1
+  }
+ ]
+}

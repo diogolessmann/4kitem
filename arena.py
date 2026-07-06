@@ -69,6 +69,19 @@ def jogar():
     return render_template('arena/jogo.html', user=_cur())
 
 
+@arena_bp.route('/quiz')
+def quiz():
+    """Quiz GRÁTIS (público, vários temas) — isca viral. Não é valendo (não dá pra impedir o Google)."""
+    import arena_quiz
+    return render_template('arena/quiz.html', user=_cur(), temas=arena_quiz.TEMAS)
+
+
+@arena_bp.route('/quiz/banco/<tema>')
+def quiz_banco(tema):
+    import arena_quiz
+    return jsonify(arena_quiz.sortear(tema, 10))
+
+
 @arena_bp.route('/cadastrar', methods=['GET', 'POST'])
 def cadastrar():
     if request.method == 'GET':
