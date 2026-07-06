@@ -48,7 +48,7 @@
     <div class="brand">🧱 Quebra<span>Blocos</span><small>💸 VALENDO · R$ {{ aposta }}</small></div>
     <div class="stats">
       <div class="stat"><span class="lab">PONTOS</span><span class="val" id="score">0</span></div>
-      <div class="stat" id="tempo"><span class="lab">TEMPO</span><span class="val" id="tval">90</span></div>
+      <div class="stat" id="tempo"><span class="lab">TEMPO</span><span class="val" id="tval">150</span></div>
     </div>
   </div>
   {% if alvo is not none %}
@@ -63,7 +63,7 @@
       <button class="btn hidden" id="retry" onclick="enviar()">Tentar de novo</button>
     </div>
   </div>
-  <div class="hint">⏱️ Você tem <b>90 segundos</b>. Faça o máximo de pontos — o servidor confere e o maior leva. 💸</div>
+  <div class="hint">⏱️ Você tem <b>150 segundos</b>. Faça o máximo de pontos — o servidor confere e o maior leva. 💸</div>
 </div>
 
 <script>
@@ -125,7 +125,7 @@ var CFG = {
     score=0; streak=0; over=false; pops=[]; floats=[]; combo=null; drag=null; MOVES=[];
     tray=[novaPeca(),novaPeca(),novaPeca()];
     document.getElementById('score').textContent=0;
-    tEnd=now()+90000;
+    tEnd=now()+150000;
   }
 
   function canPlace(p,r,c){ for(var i=0;i<p.offs.length;i++){ var rr=r+p.offs[i][0],cc=c+p.offs[i][1];

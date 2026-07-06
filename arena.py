@@ -462,7 +462,7 @@ def _crosscheck(token, quem, servidor, cliente):
         pass
 
 
-JOGO_JANELA_S = 150   # segundos do carimbo (semente entregue) até o envio. > 90s do jogo + folga de
+JOGO_JANELA_S = 210   # segundos do carimbo (semente entregue) até o envio. > 150s do jogo + folga de
                       # carregamento/rede. Fecha o solver-offline: quem "pensa" além disso = forfeit.
 
 
