@@ -67,12 +67,14 @@ def _gen_piece(rng):
     return shape
 
 
-def pontuar(seed, moves, max_moves=2000):
+def pontuar(seed, moves, max_moves=120):
     """Re-simula a partida (seed + jogadas) e devolve o placar AUTORITATIVO.
 
     moves: lista de [slot, linha, coluna] na ordem em que o jogador encaixou.
     Retorna int (placar) se toda jogada for válida; None se qualquer jogada for inválida
     (fora do tabuleiro, célula ocupada, slot vazio/já usado) — submissão rejeitada.
+    max_moves=120: teto humano de 90s (honesto ~45-60 encaixes). Barra o solver que manda
+    centenas de jogadas — anti-cheat junto com a janela de tempo no servidor (ver arena.py).
     """
     try:
         seed = int(seed) & _MASK

@@ -462,6 +462,23 @@ def _crosscheck(token, quem, servidor, cliente):
         pass
 
 
+JOGO_JANELA_S = 150   # segundos do carimbo (semente entregue) até o envio. > 90s do jogo + folga de
+                      # carregamento/rede. Fecha o solver-offline: quem "pensa" além disso = forfeit.
+
+
+def _dentro_da_janela(base_iso):
+    """True se o envio chegou dentro da janela de jogo, a partir do carimbo do SERVIDOR (criador_em/
+    oponente_em). O relógio de 90s do cliente não vale nada sozinho — isto amarra o placar ao tempo
+    real: sem isto, dá pra ler a semente, rodar um solver com tempo infinito e mandar o placar ótimo.
+    Sem carimbo confiável, não pune (raro)."""
+    if not base_iso:
+        return True
+    try:
+        return (datetime.now() - datetime.fromisoformat(base_iso)).total_seconds() <= JOGO_JANELA_S
+    except Exception:
+        return True
+
+
 def sala_registrar_jogada_criador(token, user_id, moves, cliente_score=None):
     """Criador submete as JOGADAS. Servidor pontua (uma chance só) e abre a sala p/ desafio."""
     conn = get_arena_db()
@@ -475,8 +492,11 @@ def sala_registrar_jogada_criador(token, user_id, moves, cliente_score=None):
         conn.close(); return {'erro': 'A partida ainda não começou ou você já jogou.'}
     pontos = _pontuar(s['jogo'], s['seed'], moves)
     if pontos is None:
-        pontos = 0   # jogada inválida = forfeit (uma chance só, sem re-scan da semente)
+        pontos = 0   # jogada inválida OU acima do teto de jogadas = forfeit (uma chance só)
         log.warning(f'[Arena] Sala {token}: jogada do criador invalida -> 0 (poss. bug/tamper)')
+    if not _dentro_da_janela(s.get('criador_em')):
+        pontos = 0   # enviou fora dos ~90s reais = forfeit (poss. solver offline)
+        log.warning(f'[Arena] Sala {token}: criador enviou fora da janela ({JOGO_JANELA_S}s) -> forfeit')
     _crosscheck(token, 'criador', pontos, cliente_score)
     conn.execute("UPDATE arena_salas SET criador_pontos=?, criador_moves=?, status='aguardando' "
                  "WHERE token=? AND status='esperando_criador'",
@@ -529,6 +549,9 @@ def sala_enviar(token, user_id, moves, cliente_score=None):
     if pontos is None:
         pontos = 0
         log.warning(f'[Arena] Sala {token}: jogada do oponente invalida -> 0 (poss. bug/tamper)')
+    if not _dentro_da_janela(s.get('oponente_em')):
+        pontos = 0   # enviou fora dos ~90s reais = forfeit (poss. solver offline)
+        log.warning(f'[Arena] Sala {token}: oponente enviou fora da janela ({JOGO_JANELA_S}s) -> forfeit')
     _crosscheck(token, 'oponente', pontos, cliente_score)
     conn = get_arena_db()
     conn.execute("UPDATE arena_salas SET oponente_pontos=?, oponente_moves=? "
@@ -551,14 +574,19 @@ def _apurar_sala(token):
         conn.close(); return {'erro': 'Ainda não dá pra apurar.'}
     cp, op = s['criador_pontos'], s['oponente_pontos']
     agora = datetime.now().isoformat()
+    # ATÔMICO: o flip 'apurando'->'paga' E o crédito do dinheiro na MESMA transação/commit.
+    # Se cair no meio (deploy/OOM Railway), ou os dois acontecem ou nenhum — nunca 'paga' com R$0
+    # no saldo do vencedor (bug irrecuperável que o red-team pegou; mesmo padrão de _arena_confirmar_compra).
     if cp == op:
         cur = conn.execute("UPDATE arena_salas SET status='paga', vencedor_id=NULL, premio=0, apurado_em=? "
                            "WHERE token=? AND status='apurando'", (agora, token))
-        conn.commit()
         if cur.rowcount == 1:
-            add_creditos(s['criador_id'], s['aposta'])
-            add_creditos(s['oponente_id'], s['aposta'])
+            conn.execute('UPDATE arena_users SET creditos=COALESCE(creditos,0)+? WHERE id=?', (s['aposta'], s['criador_id']))
+            conn.execute('UPDATE arena_users SET creditos=COALESCE(creditos,0)+? WHERE id=?', (s['aposta'], s['oponente_id']))
+            conn.commit()
             log.info(f'[Arena] Sala {token} EMPATE — fichas devolvidas aos dois')
+        else:
+            conn.commit()
     else:
         venc = s['criador_id'] if cp > op else s['oponente_id']
         pote = 2 * s['aposta'] * FICHA_VALOR
@@ -566,10 +594,12 @@ def _apurar_sala(token):
         cur = conn.execute("UPDATE arena_salas SET status='paga', vencedor_id=?, premio=?, rake=?, apurado_em=? "
                            "WHERE token=? AND status='apurando'",
                            (venc, premio, round(pote * ARENA_RAKE, 2), agora, token))
-        conn.commit()
         if cur.rowcount == 1:
-            add_saldo(venc, premio)
+            conn.execute('UPDATE arena_users SET saldo=ROUND(COALESCE(saldo,0)+?,2) WHERE id=?', (premio, venc))
+            conn.commit()
             log.info(f'[Arena] Sala {token} vencedor={venc} +R${premio:.2f} saldo')
+        else:
+            conn.commit()
     row2 = conn.execute('SELECT * FROM arena_salas WHERE token=?', (token,)).fetchone()
     conn.close()
     return _resultado_dict(dict(row2))
