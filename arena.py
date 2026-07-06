@@ -812,6 +812,18 @@ def mesa_apurar(token):
     return _mesa_resultado(token)
 
 
+def mesa_encerrar(token, user_id):
+    """O DONO encerra a mesa na hora (fecha o balcão e apura). Só o criador pode."""
+    conn = get_arena_db()
+    m = conn.execute('SELECT criador_id, status FROM arena_mesas WHERE token=?', (token,)).fetchone()
+    conn.close()
+    if not m or m['criador_id'] != user_id:
+        return {'erro': 'Só quem criou a mesa pode encerrar.'}
+    if m['status'] != 'aberta':
+        return _mesa_resultado(token)
+    return mesa_apurar(token)
+
+
 def _reap_mesa_se_preciso(token):
     """Lazy (ao abrir a página): se a janela fechou, apura a mesa."""
     conn = get_arena_db()
@@ -1040,6 +1052,14 @@ def mesa_jogar_rt(token):
     body = request.get_json(silent=True) or {}
     r = mesa_registrar_jogada(token, u['id'], body.get('moves'), body.get('score'))
     return jsonify(r), (200 if r.get('ok') else 400)
+
+
+@arena_bp.route('/mesa/<token>/encerrar', methods=['POST'])
+@arena_login_required
+def mesa_encerrar_rt(token):
+    u = _cur()
+    r = mesa_encerrar(token, u['id'])
+    return jsonify(r), (200 if not r.get('erro') else 400)
 
 
 # ══════════════════════════════════════════════════════════════════════════════

@@ -87,6 +87,10 @@ h1{font-size:22px;font-weight:800;margin-bottom:6px}
     <button class="cta" style="width:auto;padding:11px 16px;font-size:14px;margin:0" onclick="copiar()">Copiar</button>
   </div>
   <button class="cta roxo" onclick="zap()">📲 Chamar no WhatsApp</button>
+  {% if mesa.criador_id == user.id %}
+  <button class="ghost" onclick="encerrar()">🏁 Encerrar a mesa agora</button>
+  <div class="small">Você criou a mesa — pode fechar quando quiser (ou espera os 24h).</div>
+  {% endif %}
 
 {% elif estado == 'resultado' %}
   {% if res.status == 'cancelada' %}
@@ -125,6 +129,8 @@ function copiar(){ try{ navigator.clipboard.writeText(location.href); }catch(e){
   var b=event.target; b.textContent='Copiado!'; setTimeout(function(){b.textContent='Copiar';},1500); }
 function zap(){ var t=encodeURIComponent('🏆 Entra na minha Mesa do dia do Quebra-Blocos! Mesma partida, quem fizer mais pontos leva o pote 👉 '+location.href);
   location.href='https://wa.me/?text='+t; }
+function encerrar(){ if(!confirm('Encerrar a mesa agora e ver o resultado?')) return;
+  fetch('/arena/mesa/'+TOKEN+'/encerrar',{method:'POST'}).then(function(r){return r.json();}).then(function(){ location.reload(); }).catch(function(){}); }
 function entrar(){ var b=document.getElementById('btn'); b.disabled=true; b.textContent='Entrando...';
   fetch('/arena/mesa/'+TOKEN+'/entrar',{method:'POST'}).then(function(r){return r.json();}).then(function(j){
     if(j&&j.ok){ location.reload(); }
