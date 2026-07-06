@@ -44,14 +44,14 @@ input:focus,select:focus{border-color:#34d399}
 
   {% if saldo >= minimo %}
   <div id="form">
-    <h1>Sacar pro seu PIX 💸</h1>
-    <div class="sub">Cai na sua chave em minutos. Saque mínimo R$ {{ '%.2f'|format(minimo) }}.</div>
+    <h1>Receber meu prêmio 🏆</h1>
+    <div class="sub">Cai na sua chave em minutos. Mínimo R$ {{ '%.2f'|format(minimo) }}.</div>
 
     <label>Quanto sacar</label>
     <input id="valor" inputmode="decimal" placeholder="0,00" value="{{ '%.2f'|format(saldo) }}">
     <div class="tudo" onclick="tudo()">sacar tudo (R$ {{ '%.2f'|format(saldo) }})</div>
 
-    <label>Sua chave PIX (onde cai o dinheiro)</label>
+    <label>Onde você quer receber seu prêmio? 🎉 (sua chave PIX)</label>
     <div class="row">
       <select id="tipo" class="t">
         <option value="CPF">CPF</option>

@@ -607,7 +607,19 @@ def sala_cancelar_rt(token):
 # POST /transfers no Asaas (autossuficiente) + ledger arena_pagamentos UNIQUE(ext_ref)
 # + guarda de saque (prefixo arena_premio_). Débito atômico + estorno se o PIX falhar.
 # ══════════════════════════════════════════════════════════════════════════════
-MIN_SAQUE = 5.0    # TESTE: baixo pra R$5 pra testar o saque com 1 duelo. Voltar p/ 20 antes do público.
+MIN_SAQUE = 5.0        # TESTE: baixo pra R$5 pra testar o saque com 1 duelo. Voltar p/ 20 antes do público.
+MAX_SAQUE_DIA = 200.0  # limite de saque por usuário por dia (anti-fraude: reduz o estrago se algo vazar)
+
+
+def _saque_hoje(user_id):
+    """Soma o que o usuário já sacou HOJE (enviando/pago/incerto) — pro limite diário."""
+    conn = get_arena_db()
+    hoje = datetime.now().strftime('%Y-%m-%d')
+    r = conn.execute("SELECT COALESCE(SUM(valor),0) FROM arena_pagamentos "
+                     "WHERE user_id=? AND status IN ('enviando','pago','incerto') AND substr(criado_em,1,10)=?",
+                     (user_id, hoje)).fetchone()
+    conn.close()
+    return round(float(r[0] or 0), 2)
 
 
 def _pix_normaliza(tipo, chave):
@@ -691,6 +703,8 @@ def sacar(user_id, valor, pix_tipo, pix_chave):
     tipo, chave, perr = _pix_normaliza(pix_tipo, pix_chave)
     if perr:
         return {'erro': perr}
+    if _saque_hoje(user_id) + valor > MAX_SAQUE_DIA:
+        return {'erro': f'Limite de saque de hoje é R$ {MAX_SAQUE_DIA:.0f}. O resto você saca amanhã.'}
     ext = 'arena_premio_saque_' + secrets.token_hex(8)
     if not _saque_debita_e_registra(user_id, valor, ext, chave, tipo):
         return {'erro': 'Saldo insuficiente pra esse valor.'}
