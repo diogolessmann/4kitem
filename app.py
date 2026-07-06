@@ -17571,6 +17571,59 @@ def slotzap_enviar_lista(camp_id):
     return jsonify({'erro': f'Não foi possível enviar. {ultimo_erro or "Verifique o grupo/instância."}'}), 502
 
 
+@app.route('/slotzap/campanha/<int:camp_id>/enviar-atualizacao', methods=['POST'])
+@_sz_login_required
+def slotzap_enviar_atualizacao(camp_id):
+    """Manda uma ATUALIZAÇÃO CURTA no grupo: só o progresso (X/Y vendidos, %, faltam W + link).
+    Muito mais leve que a lista completa → evita o bug 'aguardando mensagem' da Baileys E cria
+    FOMO ('tá acabando, corre'). Vale SlotZap e RifaJá (mesmo motor)."""
+    if not _sz_plan_active():
+        return jsonify({'erro': 'Assinatura inativa.'}), 402
+    conn = get_saas_db()
+    camp = conn.execute('SELECT * FROM slotzap_campanhas WHERE id=? AND user_id=?',
+                        (camp_id, _sz_uid())).fetchone()
+    if not camp:
+        conn.close()
+        return jsonify({'erro': 'Campanha não encontrada'}), 404
+    camp  = dict(camp)
+    prow  = conn.execute("SELECT COUNT(*) AS c FROM slotzap_slots WHERE campanha_id=? AND status='pago'",
+                         (camp_id,)).fetchone()
+    conn.close()
+    pagos  = dict(prow)['c'] if prow else 0
+    total  = int(camp.get('total_slots') or 0)
+    pct    = round(pagos / total * 100) if total else 0
+    faltam = max(0, total - pagos)
+
+    grupo_id = (camp.get('grupo_wpp_id') or '').strip()
+    if not grupo_id:
+        return jsonify({'erro': 'Configure o grupo do WhatsApp primeiro (botão 💬 WhatsApp).'}), 400
+    instance = (camp.get('evo_instance') or '').strip() or os.environ.get('EVO_INSTANCE', '')
+    evo_url, evo_key = _evo_cfg()
+    if not evo_url or not instance:
+        return jsonify({'erro': 'WhatsApp não configurado.'}), 400
+
+    base_url = os.environ.get('BASE_URL', 'https://www.4kitem.com.br').rstrip('/')
+    token    = camp.get('token_publico') or ''
+    link     = f"\n👉 Garanta o seu: {base_url}/slotzap/p/{token}" if token else ''
+    msg = (f"🔥 *{camp['nome']}* — corre que tá acabando!\n"
+           f"📊 Já foram *{pagos} de {total}* ({pct}%)\n"
+           f"⏳ Faltam só *{faltam}* números!{link}")
+    try:
+        r = requests.post(f"{evo_url}/message/sendText/{instance}",
+            headers={'apikey': evo_key, 'Content-Type': 'application/json'},
+            json={'number': grupo_id, 'text': msg}, timeout=(10, 60))
+        if r.status_code in (200, 201):
+            return jsonify({'ok': True})
+        _resp = (r.text or '')
+        if r.status_code == 404 and 'does not exist' in _resp:
+            return jsonify({'erro': 'O número do bot está desconectado. Reconecte no botão 💬 WhatsApp.'}), 502
+        log.warning(f'[SlotZap] enviar-atualizacao falhou {r.status_code}: {_resp[:300]}')
+        return jsonify({'erro': f'Evolution HTTP {r.status_code}. Tente de novo.'}), 502
+    except Exception as _e:
+        log.warning(f'[SlotZap] Erro enviar-atualizacao: {_e}')
+        return jsonify({'erro': str(_e)[:150]}), 502
+
+
 # ── Página pública (sem login) ─────────────────────────────────────────────────
 
 @app.route('/slotzap/p/<token>')

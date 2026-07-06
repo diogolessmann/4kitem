@@ -104,6 +104,7 @@ input:focus{border-color:#6366f1}
   <button class="nav-btn" style="border-color:#6366f1;color:#a5b4fc" onclick="gerarLink()">🔗 <span class="nav-txt">Link público</span></button>
   <button class="nav-btn" style="border-color:#22c55e;color:#86efac" onclick="abrirConfigWpp()">💬 <span class="nav-txt">WhatsApp</span></button>
   <button class="nav-btn" style="border-color:#f59e0b;color:#fbbf24" onclick="abrirEnviarLista()">📋 <span class="nav-txt">Enviar lista</span></button>
+  <button class="nav-btn" style="border-color:#22d3ee;color:#67e8f9" onclick="enviarAtualizacao(this)">📊 <span class="nav-txt">Atualização</span></button>
   <a href="/slotzap/campanha/{{ camp.id }}/exportar" class="nav-btn" style="border-color:#38bdf8;color:#7dd3fc">⬇️ <span class="nav-txt">Exportar</span></a>
   <button class="nav-btn" style="border-color:#a855f7;color:#c4b5fd" onclick="abrirEditar()">✏️ <span class="nav-txt">Editar</span></button>
   <a href="/slotzap/campanha/{{ camp.id }}/afiliados" class="nav-btn" style="border-color:#22c55e;color:#86efac">👥 <span class="nav-txt">Vendedores</span></a>
@@ -698,6 +699,20 @@ async function _excluirReq(senha, confirmarPagos) {
   }
   if (r.ok) { alert('🗑️ Campanha excluída.'); location.href = '/slotzap/app'; }
   else alert('Erro: ' + (r.erro || 'tente novamente'));
+}
+async function enviarAtualizacao(btn) {
+  if (!confirm('Enviar uma ATUALIZAÇÃO curta no grupo? (quanto vendeu, %, quanto falta + link)')) return;
+  const txt = btn ? btn.querySelector('.nav-txt') : null;
+  const orig = txt ? txt.textContent : '';
+  if (txt) txt.textContent = 'Enviando...';
+  if (btn) btn.disabled = true;
+  const r = await fetch(`/slotzap/campanha/${CAMP_ID}/enviar-atualizacao`, {
+    method:'POST', headers:{'Content-Type':'application/json'}
+  }).then(r=>r.json()).catch(()=>({erro:'erro de conexão'}));
+  if (txt) txt.textContent = orig;
+  if (btn) btn.disabled = false;
+  if (r.ok) alert('📊 Atualização enviada no grupo! 🔥');
+  else alert('⚠️ ' + (r.erro || 'não foi enviada'));
 }
 
 let _linkUrl = '';
