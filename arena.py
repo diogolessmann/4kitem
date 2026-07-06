@@ -27,12 +27,12 @@ arena_bp = Blueprint('arena', __name__, url_prefix='/arena')
 
 # Catálogo de jogos do portal (MODOS x JOGOS). Só 'blocos' ativo no L0.
 JOGOS = [
-    {'id': 'blocos',   'nome': 'Quebra-Blocos', 'emoji': '🧱', 'ativo': True},
-    {'id': 'cobrinha', 'nome': 'Cobrinha',      'emoji': '🐍', 'ativo': False},
-    {'id': 'bolhas',   'nome': 'Tiro de Bolhas','emoji': '🎯', 'ativo': False},
-    {'id': 'combina',  'nome': 'Combina-3',     'emoji': '🍬', 'ativo': False},
-    {'id': 'labirinto','nome': 'Labirinto',     'emoji': '🧩', 'ativo': False},
-    {'id': 'quiz',     'nome': 'Quiz Relâmpago','emoji': '❓', 'ativo': False},
+    {'id': 'blocos',   'nome': 'Quebra-Blocos', 'emoji': '🧱', 'ativo': True,  'url': '/arena/jogar'},
+    {'id': 'cobrinha', 'nome': 'Cobrinha',      'emoji': '🐍', 'ativo': True,  'url': '/arena/cobrinha'},
+    {'id': 'bolhas',   'nome': 'Tiro de Bolhas','emoji': '🎯', 'ativo': False, 'url': ''},
+    {'id': 'combina',  'nome': 'Combina-3',     'emoji': '🍬', 'ativo': False, 'url': ''},
+    {'id': 'labirinto','nome': 'Labirinto',     'emoji': '🧩', 'ativo': False, 'url': ''},
+    {'id': 'quiz',     'nome': 'Quiz Relâmpago','emoji': '❓', 'ativo': False, 'url': ''},
 ]
 
 
@@ -62,6 +62,12 @@ def portal():
 def jogar():
     """Jogo GRÁTIS de treino (público, sem login) — porta de entrada e viralização."""
     return render_template('arena/jogo.html', user=_cur())
+
+
+@arena_bp.route('/cobrinha')
+def cobrinha():
+    """Cobrinha GRÁTIS de treino (público). Valendo vem depois (precisa do motor server-side)."""
+    return render_template('arena/cobrinha.html', user=_cur())
 
 
 @arena_bp.route('/cadastrar', methods=['GET', 'POST'])

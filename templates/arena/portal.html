@@ -90,7 +90,7 @@ body{font-family:'Segoe UI',system-ui,-apple-system,Roboto,sans-serif;background
   <div class="grid">
     {% for j in jogos %}
       {% if j.ativo %}
-      <a class="game on" href="/arena/jogar">
+      <a class="game on" href="{{ j.url }}">
         <span class="em">{{ j.emoji }}</span>
         <span class="nm">{{ j.nome }}</span>
         <span class="tag">JOGAR ▶</span>
