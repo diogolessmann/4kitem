@@ -965,6 +965,83 @@ def sala_cancelar_rt(token):
     return jsonify({'ok': sala_cancelar(token, u['id'])})
 
 
+# ── rotas das MESAS free-for-all ──
+@arena_bp.route('/mesa/criar', methods=['GET', 'POST'])
+@arena_login_required
+def mesa_criar_rt():
+    u = _cur()
+    if request.method == 'GET':
+        return render_template('arena/mesa_criar.html', user=u, creditos=get_creditos(u['id']),
+                               stakes=STAKES, rake=ARENA_RAKE, ficha=FICHA_VALOR, maxvagas=MESA_MAX_VAGAS)
+    body = request.get_json(silent=True) or {}
+    try:
+        entrada = int(body.get('entrada') or 5)
+    except Exception:
+        entrada = 5
+    if entrada not in STAKES:
+        return jsonify({'erro': 'Valor de entrada inválido.'}), 400
+    token, seed = mesa_criar(u['id'], entrada)
+    if token is None:
+        return jsonify({'erro': seed}), 400
+    return jsonify({'ok': True, 'token': token})
+
+
+@arena_bp.route('/mesa/<token>')
+@arena_login_required
+def mesa_page(token):
+    """Roteador da mesa: serve o JOGO quando é a vez de jogar, senão a casca (entrar/aguardando/resultado)."""
+    u = _cur()
+    _reap_mesa_se_preciso(token)   # fecha a mesa se a janela passou
+    conn = get_arena_db()
+    m = conn.execute('SELECT * FROM arena_mesas WHERE token=?', (token,)).fetchone()
+    if not m:
+        conn.close(); return render_template('arena/mesa.html', estado='inexistente', token=token, user=u)
+    m = dict(m)
+    j = conn.execute('SELECT * FROM arena_mesa_jogadores WHERE mesa_id=? AND user_id=?',
+                     (m['id'], u['id'])).fetchone()
+    n = conn.execute('SELECT COUNT(*) c FROM arena_mesa_jogadores WHERE mesa_id=?', (m['id'],)).fetchone()['c']
+    conn.close()
+    j = dict(j) if j else None
+    # é a vez de JOGAR? (inscrito, ainda não jogou, mesa aberta) — serve o mesmo jogo do duelo
+    if j and j['jogou_em'] is None and j['pontos'] is None and m['status'] == 'aberta':
+        _tpl = (JOGOS_VALENDO.get(m['jogo']) or JOGOS_VALENDO['blocos'])['tpl']
+        return render_template(_tpl, token=token, seed=m['seed'], aposta=m['entrada'],
+                               endpoint='/arena/mesa/' + token + '/jogar', alvo=None)
+    pote = round(n * m['entrada'] * FICHA_VALOR, 2)
+    premio = round(pote * (1 - ARENA_RAKE), 2)
+    if m['status'] in ('paga', 'cancelada'):
+        res = _mesa_resultado(token)
+        minha = next((x for x in res['jogadores'] if x['user_id'] == u['id']), None)
+        venceu = bool(minha and minha.get('premio') and minha['premio'] > 0)
+        return render_template('arena/mesa.html', estado='resultado', token=token, user=u, mesa=m,
+                               res=res, venceu=venceu, meu_premio=(minha['premio'] if minha else 0),
+                               creditos=get_creditos(u['id']))
+    if j:   # já jogou, aguardando a mesa fechar
+        return render_template('arena/mesa.html', estado='aguardando', token=token, user=u, mesa=m,
+                               jogadores=n, pote=pote, premio=premio, meu=j, creditos=get_creditos(u['id']))
+    return render_template('arena/mesa.html', estado='entrar', token=token, user=u, mesa=m,
+                           jogadores=n, pote=pote, premio=premio, creditos=get_creditos(u['id']))
+
+
+@arena_bp.route('/mesa/<token>/entrar', methods=['POST'])
+@arena_login_required
+def mesa_entrar_rt(token):
+    u = _cur()
+    r = mesa_entrar(token, u['id'])
+    return jsonify(r), (200 if not r.get('erro') else 400)
+
+
+@arena_bp.route('/mesa/<token>/jogar', methods=['POST'])
+@arena_login_required
+def mesa_jogar_rt(token):
+    if request.content_length and request.content_length > 300000:
+        return jsonify({'erro': 'Requisição grande demais.'}), 413
+    u = _cur()
+    body = request.get_json(silent=True) or {}
+    r = mesa_registrar_jogada(token, u['id'], body.get('moves'), body.get('score'))
+    return jsonify(r), (200 if r.get('ok') else 400)
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 # LOTE 4 — SAQUE do saldo (R$) pro PIX. Reusa o motor de payout do CAMPonline:
 # POST /transfers no Asaas (autossuficiente) + ledger arena_pagamentos UNIQUE(ext_ref)
