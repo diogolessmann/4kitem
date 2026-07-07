@@ -1076,6 +1076,86 @@ def mesa_encerrar_rt(token):
 
 
 # ══════════════════════════════════════════════════════════════════════════════
+# STREAM — motor COM ESTADO no servidor (blindagem anti-cheat definitiva).
+# O servidor guarda a semente e entrega a bandeja por vez; crava o TEMPO real. O cliente
+# nunca tem as peças futuras nem controla o placar. Fim do solver offline. [passo 2/3]
+# ══════════════════════════════════════════════════════════════════════════════
+STREAM_BUDGET_S = 150   # tempo total da partida — cravado no SERVIDOR (não no relógio do cliente)
+
+
+def _stream_finalizar(token):
+    """[3/3] grava o placar final no duelo/mesa conforme o contexto da sessão. (Costura no passo 3.)"""
+    pass
+
+
+def stream_iniciar(user_id, seed, contexto='treino'):
+    """Abre uma sessão de jogo no servidor. Retorna token + PRIMEIRA bandeja (sem a semente!)."""
+    import arena_game_stream as GS
+    st = GS.iniciar(seed)
+    token = secrets.token_urlsafe(9)
+    agora = datetime.now().isoformat()
+    conn = get_arena_db()
+    conn.execute('INSERT INTO arena_stream_sessoes(token,user_id,contexto,estado,status,placar,started_em,ultima_em) '
+                 'VALUES(?,?,?,?,?,?,?,?)', (token, user_id, contexto, json.dumps(st), 'jogando', 0, agora, agora))
+    conn.commit(); conn.close()
+    out = GS.cliente_bandeja(st)
+    out['token'] = token
+    out['budget'] = STREAM_BUDGET_S
+    return out
+
+
+def stream_jogar(token, user_id, slot, r, c):
+    """Aplica UMA jogada no servidor (peça da bandeja atual). Devolve a bandeja/placar atualizados
+    ou o fim. Cronômetro do servidor: fora do orçamento = encerra no placar atual."""
+    import arena_game_stream as GS
+    conn = get_arena_db()
+    row = conn.execute('SELECT * FROM arena_stream_sessoes WHERE token=?', (token,)).fetchone()
+    if not row or row['user_id'] != user_id:
+        conn.close(); return {'erro': 'Sessão não encontrada.', 'over': True}
+    s = dict(row)
+    if s['status'] != 'jogando':
+        conn.close(); return {'over': True, 'fim': True, 'score': s['placar']}
+    st = json.loads(s['estado'])
+    try:
+        estourou = (datetime.now() - datetime.fromisoformat(s['started_em'])).total_seconds() > STREAM_BUDGET_S
+    except Exception:
+        estourou = False
+    if estourou:
+        conn.execute("UPDATE arena_stream_sessoes SET status='fim', placar=?, ultima_em=? "
+                     "WHERE token=? AND status='jogando'", (st['score'], datetime.now().isoformat(), token))
+        conn.commit(); conn.close()
+        _stream_finalizar(token)
+        return {'over': True, 'fim': True, 'tempo': True, 'score': st['score']}
+    res = GS.jogar(st, slot, r, c)
+    if res.get('erro'):
+        conn.close(); return res   # jogada rejeitada — sessão intacta, cliente pode reenviar
+    novo_status = 'fim' if res.get('over') else 'jogando'
+    conn.execute("UPDATE arena_stream_sessoes SET estado=?, status=?, placar=?, ultima_em=? "
+                 "WHERE token=? AND status='jogando'",
+                 (json.dumps(st), novo_status, res['score'], datetime.now().isoformat(), token))
+    conn.commit(); conn.close()
+    if res.get('over'):
+        _stream_finalizar(token)
+    return res
+
+
+@arena_bp.route('/stream/iniciar', methods=['POST'])
+@arena_login_required
+def stream_iniciar_rt():
+    u = _cur()
+    seed = random.randint(0, 0xFFFFFFFF)   # [passo 3] virá do sala/mesa (mesma semente pros dois)
+    return jsonify(stream_iniciar(u['id'], seed, 'treino'))
+
+
+@arena_bp.route('/stream/<token>/jogar', methods=['POST'])
+@arena_login_required
+def stream_jogar_rt(token):
+    u = _cur()
+    body = request.get_json(silent=True) or {}
+    return jsonify(stream_jogar(token, u['id'], body.get('slot'), body.get('r'), body.get('c')))
+
+
+# ══════════════════════════════════════════════════════════════════════════════
 # LOTE 4 — SAQUE do saldo (R$) pro PIX. Reusa o motor de payout do CAMPonline:
 # POST /transfers no Asaas (autossuficiente) + ledger arena_pagamentos UNIQUE(ext_ref)
 # + guarda de saque (prefixo arena_premio_). Débito atômico + estorno se o PIX falhar.

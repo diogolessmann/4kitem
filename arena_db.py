@@ -125,11 +125,23 @@ def init_arena_db():
         premio REAL DEFAULT 0,
         UNIQUE(mesa_id, user_id)
     );
+    CREATE TABLE IF NOT EXISTS arena_stream_sessoes(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        token TEXT UNIQUE,
+        user_id INTEGER,
+        contexto TEXT,
+        estado TEXT,
+        status TEXT DEFAULT 'jogando',
+        placar INTEGER DEFAULT 0,
+        started_em TEXT,
+        ultima_em TEXT
+    );
     CREATE INDEX IF NOT EXISTS idx_arena_compras_user ON arena_compras(user_id);
     CREATE UNIQUE INDEX IF NOT EXISTS idx_arena_pag_ext ON arena_pagamentos(ext_ref);
     CREATE UNIQUE INDEX IF NOT EXISTS idx_arena_salas_token ON arena_salas(token);
     CREATE UNIQUE INDEX IF NOT EXISTS idx_arena_mesas_token ON arena_mesas(token);
     CREATE INDEX IF NOT EXISTS idx_arena_mesa_jog ON arena_mesa_jogadores(mesa_id);
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_arena_stream_token ON arena_stream_sessoes(token);
     ''')
     conn.commit()
     for m in [
