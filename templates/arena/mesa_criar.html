@@ -24,6 +24,11 @@ h1{font-size:22px;font-weight:800;margin-bottom:10px}
   cursor:pointer;font-size:18px;font-weight:800;color:#e9e8ff;transition:.12s;font-family:inherit}
 .stake.sel{border-color:#fbbf24;background:rgba(251,191,36,.14);color:#fcd34d}
 .stake:disabled{opacity:.35;cursor:not-allowed}
+.games{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.gm{background:#141327;border:1.5px solid rgba(255,255,255,.08);border-radius:13px;padding:13px 6px;
+  cursor:pointer;color:#e9e8ff;font-family:inherit;font-weight:800;font-size:13px}
+.gm .ge{font-size:24px;display:block;margin-bottom:3px}
+.gm.sel{border-color:#a855f7;background:rgba(168,85,247,.14);color:#d8b4fe}
 .premio{background:linear-gradient(135deg,rgba(251,191,36,.12),rgba(168,85,247,.12));
   border:1px solid rgba(251,191,36,.3);border-radius:14px;padding:16px;margin:16px 0 4px}
 .premio .l{font-size:11px;font-weight:800;letter-spacing:1.5px;color:#fcd34d}
@@ -51,6 +56,12 @@ h1{font-size:22px;font-weight:800;margin-bottom:10px}
     <div class="rule"><span class="e">👥</span><span>Todo mundo joga a <b>MESMA partida</b>. Até <b>{{ maxvagas }} jogadores</b>. Quanto mais gente, maior o prêmio.</span></div>
     <div class="rule"><span class="e">🕐</span><span>Joga <b>quando quiser</b> nas próximas 24h. Quando a mesa fecha, <b>quem fez mais pontos leva TUDO.</b></span></div>
 
+    <div class="lab">O JOGO DA MESA</div>
+    <div class="games">
+      <button class="gm sel" data-j="blocos" onclick="selJogo('blocos')"><span class="ge">🧱</span>Quebra-Blocos</button>
+      <button class="gm" data-j="quiz" onclick="selJogo('quiz')"><span class="ge">🧠</span>Quiz Torneio</button>
+    </div>
+
     <div class="lab">ESCOLHA A ENTRADA</div>
     <div class="stakes" id="stakes">
       {% for s in stakes %}
@@ -72,8 +83,9 @@ h1{font-size:22px;font-weight:800;margin-bottom:10px}
   </div>
 </div>
 <script>
-var FICHA={{ ficha }}, RAKE={{ rake }}, CRED={{ creditos }}, MAXV={{ maxvagas }}, ENT=0;
+var FICHA={{ ficha }}, RAKE={{ rake }}, CRED={{ creditos }}, MAXV={{ maxvagas }}, ENT=0, JOGO='blocos';
 function fmt(n){ return 'R$ '+(Math.round(n*100)/100).toFixed(2).replace('.',','); }
+function selJogo(j){ JOGO=j; document.querySelectorAll('.gm').forEach(function(b){ b.classList.toggle('sel', b.dataset.j===j); }); }
 function sel(v){
   ENT=v;
   document.querySelectorAll('.stake').forEach(function(b){ b.classList.toggle('sel', +b.dataset.v===v); });
@@ -87,7 +99,7 @@ function criar(){
   if(!ENT) return;
   var b=document.getElementById('btn'); b.disabled=true; b.textContent='Criando...';
   fetch('/arena/mesa/criar',{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({entrada:ENT})}).then(function(r){return r.json();}).then(function(j){
+    body:JSON.stringify({entrada:ENT, jogo:JOGO})}).then(function(r){return r.json();}).then(function(j){
     if(j&&j.ok&&j.token){ location.href='/arena/mesa/'+j.token; }
     else { sel(ENT); document.getElementById('err').textContent=(j&&j.erro)||'Não deu. Tente de novo.'; }
   }).catch(function(){ sel(ENT); document.getElementById('err').textContent='Sem conexão.'; });

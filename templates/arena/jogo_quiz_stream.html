@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#07060f">
+<title>Quiz Torneio — Arena · AmbitiON</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Segoe UI',system-ui,-apple-system,Roboto,sans-serif;background:#07060f;color:#f0f0ff;
+    min-height:100vh;padding:16px 14px 40px;-webkit-user-select:none;user-select:none}
+  .wrap{max-width:460px;margin:0 auto}
+  .bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+  .brand{font-size:15px;font-weight:800}.brand span{color:#a855f7}
+  .brand small{display:block;font-size:9px;font-weight:800;letter-spacing:1.5px;color:#34d399;margin-top:1px}
+  .stats{display:flex;gap:8px}
+  .stat{background:#100f22;border:1px solid rgba(168,85,247,.16);border-radius:12px;padding:6px 12px;text-align:center;min-width:60px}
+  .lab{display:block;font-size:9px;font-weight:800;letter-spacing:1.2px;color:#7d7ca6}
+  .val{display:block;font-size:20px;font-weight:800;line-height:1.05;color:#f4f3ff}
+  #tempo .val{color:#22d3ee}#tempo.baixo .val{color:#f43f5e}
+  .hd{display:flex;align-items:center;justify-content:space-between;margin:10px 0 6px;font-size:12px;font-weight:800;color:#a855f7}
+  .barra{height:7px;background:#1a1930;border-radius:6px;overflow:hidden;margin-bottom:18px}
+  .barra>i{display:block;height:100%;width:100%;background:linear-gradient(90deg,#34d399,#22d3ee);transition:width .1s linear}
+  .barra.low>i{background:linear-gradient(90deg,#f43f5e,#fb923c)}
+  .perg{background:#100f22;border:1px solid rgba(255,255,255,.07);border-radius:16px;padding:22px 18px;
+    font-size:19px;font-weight:800;line-height:1.35;text-align:center;min-height:100px;display:flex;
+    align-items:center;justify-content:center;margin-bottom:16px}
+  .op{display:block;width:100%;background:#141327;border:1.5px solid rgba(255,255,255,.08);border-radius:13px;
+    padding:15px;font-size:16px;font-weight:700;color:#e9e8ff;text-align:left;cursor:pointer;margin-bottom:10px;font-family:inherit;transition:.1s}
+  .op:active{transform:scale(.99)}
+  .op.certo{border-color:#34d399;background:rgba(52,211,153,.18);color:#6ee7b7}
+  .op.errado{border-color:#f43f5e;background:rgba(244,63,94,.16);color:#fda4af}
+  .op.dim{opacity:.45}
+  .over{text-align:center;padding:30px 0}
+  .over .sp{width:38px;height:38px;border:4px solid rgba(168,85,247,.25);border-top-color:#a855f7;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 14px}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .over .t{font-size:17px;font-weight:800}.over .s{font-size:13px;color:#9c9bc4;margin-top:4px}
+  .over .btn{margin-top:14px;background:#171533;color:#d7d6f0;border:1px solid rgba(168,85,247,.3);border-radius:12px;padding:12px 22px;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit}
+  .loading{text-align:center;color:#8b8aa8;padding:40px 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="bar">
+    <div class="brand">🧠 Quiz <span>Torneio</span><small>🔒 VALENDO</small></div>
+    <div class="stats">
+      <div class="stat"><span class="lab">ACERTOS</span><span class="val" id="score">0</span></div>
+      <div class="stat" id="tempo"><span class="lab">TEMPO</span><span class="val" id="tval">…</span></div>
+    </div>
+  </div>
+  <div id="game">
+    <div class="hd"><span id="prog">…</span><span>rápido! ⚡</span></div>
+    <div class="barra" id="barra"><i id="bfill"></i></div>
+    <div class="perg" id="perg">Conectando ao torneio…</div>
+    <div id="ops"></div>
+  </div>
+  <div id="fim" class="over" style="display:none">
+    <div class="sp"></div>
+    <div class="t">Torneio enviado! ✅</div>
+    <div class="s">Seu resultado entra no ranking. Vendo…</div>
+  </div>
+  <div id="erro" class="over" style="display:none">
+    <div class="t">Ops 😕</div><div class="s" id="emsg"></div>
+    <button class="btn" onclick="location.href='/arena'">← Voltar</button>
+  </div>
+</div>
+<script>
+var CFG = { mesa: {{ token|tojson }}, redirect: {{ redirect|tojson }} };
+(function(){
+  "use strict";
+  var stk='', over=false, travado=false, tEnd=0, TEMPO=12, raf=0;
+  var actx=null;
+  function beep(ok){ try{ if(!actx)actx=new(window.AudioContext||window.webkitAudioContext)();
+    var o=actx.createOscillator(),g=actx.createGain(),t=actx.currentTime; o.type=ok?'triangle':'sawtooth';
+    o.frequency.setValueAtTime(ok?660:180,t); if(ok)o.frequency.exponentialRampToValueAtTime(990,t+0.1);
+    g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(0.13,t+0.01); g.gain.exponentialRampToValueAtTime(0.0001,t+0.2);
+    o.connect(g);g.connect(actx.destination);o.start(t);o.stop(t+0.22);}catch(e){} }
+
+  function conectar(){
+    fetch('/arena/quiz-torneio/iniciar',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({token:CFG.mesa})}).then(function(r){return r.json();}).then(function(j){
+        if(j&&j.erro){ falhou(j.erro); return; }
+        stk=j.token; if(j.tempo) TEMPO=j.tempo;
+        if(j.over){ fim(); return; }
+        mostrar(j);
+      }).catch(function(){ falhou('Sem conexão.'); });
+  }
+  function mostrar(j){
+    travado=false;
+    document.getElementById('score').textContent=j.score;
+    document.getElementById('prog').textContent='Pergunta '+(j.idx+1)+'/'+j.total;
+    document.getElementById('perg').textContent=j.q;
+    var box=document.getElementById('ops'); box.innerHTML='';
+    j.ops.forEach(function(txt,i){ var b=document.createElement('button'); b.className='op'; b.textContent=txt;
+      b.onclick=function(){ responder(i); }; box.appendChild(b); });
+    tEnd=performance.now()+(j.restante!=null?j.restante:TEMPO)*1000;
+  }
+  function responder(escolha){
+    if(travado||over) return; travado=true;
+    fetch('/arena/quiz-torneio/'+stk+'/responder',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({escolha:escolha})}).then(function(r){return r.json();}).then(function(r){
+        var ops=document.getElementById('ops').children;
+        if(r.correta!=null){ for(var i=0;i<ops.length;i++){ if(i===r.correta) ops[i].classList.add('certo');
+          else if(i===escolha) ops[i].classList.add('errado'); else ops[i].classList.add('dim'); ops[i].onclick=null; } }
+        if(r.score!=null) document.getElementById('score').textContent=r.score;
+        beep(!!r.correto);
+        setTimeout(function(){ if(r.over){ fim(); } else if(r.proxima){ mostrar(r.proxima); } else { fim(); } }, 850);
+      }).catch(function(){ travado=false; });
+  }
+  function fim(){ over=true; document.getElementById('game').style.display='none';
+    document.getElementById('fim').style.display='block';
+    setTimeout(function(){ location.href=CFG.redirect; }, 1100); }
+  function falhou(msg){ over=true; document.getElementById('game').style.display='none';
+    document.getElementById('erro').style.display='block'; document.getElementById('emsg').textContent=msg; }
+
+  function tick(){
+    if(!over && tEnd){ var rem=Math.max(0,tEnd-performance.now()), seg=Math.ceil(rem/1000), pct=rem/(TEMPO*1000)*100;
+      var tv=document.getElementById('tval'); if(tv) tv.textContent=seg;
+      var bf=document.getElementById('bfill'); if(bf) bf.style.width=Math.max(0,Math.min(100,pct))+'%';
+      var bt=document.getElementById('barra'); if(bt){ if(pct<=30) bt.classList.add('low'); else bt.classList.remove('low'); }
+      var te=document.getElementById('tempo'); if(te){ if(seg<=4) te.classList.add('baixo'); else te.classList.remove('baixo'); }
+      if(rem<=0 && !travado){ responder(-1); }   // estourou o tempo -> passa (erra)
+    }
+    raf=requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick); conectar();
+})();
+</script>
+</body>
+</html>

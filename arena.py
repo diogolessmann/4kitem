@@ -708,7 +708,7 @@ MESA_MAX_VAGAS = 30       # teto de vagas padrão.
 def mesa_criar(user_id, entrada, jogo='blocos', janela_h=MESA_JANELA_H, max_vagas=MESA_MAX_VAGAS):
     """Cria a mesa e JÁ inscreve o criador (paga a entrada). Servidor sorteia a semente."""
     entrada = int(entrada) if int(entrada) in STAKES else 5
-    if jogo not in JOGOS_VALENDO:
+    if jogo not in ('blocos', 'quiz'):
         jogo = 'blocos'
     if not debita_creditos(user_id, entrada):
         return (None, 'Você não tem fichas. Compre pra criar a mesa.')
@@ -992,7 +992,8 @@ def mesa_criar_rt():
         entrada = 5
     if entrada not in STAKES:
         return jsonify({'erro': 'Valor de entrada inválido.'}), 400
-    token, seed = mesa_criar(u['id'], entrada)
+    jogo = body.get('jogo') if body.get('jogo') in ('blocos', 'quiz') else 'blocos'
+    token, seed = mesa_criar(u['id'], entrada, jogo)
     if token is None:
         return jsonify({'erro': seed}), 400
     return jsonify({'ok': True, 'token': token})
@@ -1017,6 +1018,8 @@ def mesa_page(token):
     j = dict(j) if j else None
     # é a vez de JOGAR? (inscrito, ainda não jogou, mesa aberta) — serve o cliente STREAMING (anti-cheat)
     if j and j['jogou_em'] is None and j['pontos'] is None and m['status'] == 'aberta':
+        if m.get('jogo') == 'quiz':
+            return render_template('arena/jogo_quiz_stream.html', token=token, redirect='/arena/mesa/' + token)
         return render_template('arena/jogo_stream.html', tipo='mesa', token=token,
                                aposta=m['entrada'], redirect='/arena/mesa/' + token)
     pote = round(n * m['entrada'] * FICHA_VALOR, 2)
@@ -1238,6 +1241,97 @@ def stream_jogar_rt(token):
     u = _cur()
     body = request.get_json(silent=True) or {}
     return jsonify(stream_jogar(token, u['id'], body.get('slot'), body.get('r'), body.get('c')))
+
+
+# ── QUIZ streamado (torneio valendo) — reusa a mesa (jogo='quiz') + a finalização da sessão ──
+QUIZ_GRACE_S = 3   # folga de rede no cronômetro por pergunta
+
+
+def _quiz_restante(st):
+    import arena_quiz_stream as QS
+    try:
+        passou = (datetime.now() - datetime.fromisoformat(st.get('q_started'))).total_seconds()
+    except Exception:
+        passou = 0
+    return max(0, int(QS.TEMPO_POR_PERGUNTA - passou))
+
+
+def quiz_stream_abrir(user_id, mesa_token):
+    """Abre (ou resume) o quiz streamado do torneio (mesa jogo='quiz'). Valida que é a vez do jogador."""
+    import arena_quiz_stream as QS
+    conn = get_arena_db()
+    row = conn.execute('SELECT * FROM arena_mesas WHERE token=?', (mesa_token,)).fetchone()
+    m = dict(row) if row else None
+    if not m or m.get('jogo') != 'quiz':
+        conn.close(); return {'erro': 'Torneio não encontrado.'}
+    j = conn.execute('SELECT jogou_em FROM arena_mesa_jogadores WHERE mesa_id=? AND user_id=?',
+                     (m['id'], user_id)).fetchone()
+    if not j or j['jogou_em'] is not None or m['status'] != 'aberta':
+        conn.close(); return {'erro': 'Você não pode jogar esse torneio agora.'}
+    contexto = 'mesa:' + mesa_token
+    ex = conn.execute("SELECT * FROM arena_stream_sessoes WHERE user_id=? AND contexto=? AND status='jogando' "
+                      "ORDER BY id DESC LIMIT 1", (user_id, contexto)).fetchone()
+    conn.close()
+    if ex:
+        ex = dict(ex); st = json.loads(ex['estado'])
+        out = QS.cliente_pergunta(st); out['token'] = ex['token']; out['restante'] = _quiz_restante(st)
+        return out
+    st = QS.iniciar(); st['q_started'] = datetime.now().isoformat()
+    token = secrets.token_urlsafe(9); agora = datetime.now().isoformat()
+    conn = get_arena_db()
+    conn.execute('INSERT INTO arena_stream_sessoes(token,user_id,contexto,estado,status,placar,started_em,ultima_em) '
+                 'VALUES(?,?,?,?,?,?,?,?)', (token, user_id, contexto, json.dumps(st), 'jogando', 0, agora, agora))
+    conn.commit(); conn.close()
+    out = QS.cliente_pergunta(st); out['token'] = token; out['restante'] = QS.TEMPO_POR_PERGUNTA
+    return out
+
+
+def quiz_stream_responder(token, user_id, escolha):
+    """Corrige UMA resposta no servidor + cronômetro por pergunta. Devolve feedback + próxima ou fim."""
+    import arena_quiz_stream as QS
+    conn = get_arena_db()
+    row = conn.execute('SELECT * FROM arena_stream_sessoes WHERE token=?', (token,)).fetchone()
+    if not row or row['user_id'] != user_id:
+        conn.close(); return {'erro': 'Sessão não encontrada.', 'over': True}
+    s = dict(row)
+    if s['status'] != 'jogando':
+        conn.close(); return {'over': True, 'fim': True, 'score': s['placar']}
+    st = json.loads(s['estado'])
+    try:
+        passou = (datetime.now() - datetime.fromisoformat(st.get('q_started'))).total_seconds()
+    except Exception:
+        passou = 0
+    dentro = passou <= QS.TEMPO_POR_PERGUNTA + QUIZ_GRACE_S
+    res = QS.responder(st, escolha, dentro)
+    st['q_started'] = datetime.now().isoformat()   # relógio da PRÓXIMA pergunta
+    novo_status = 'fim' if res.get('over') else 'jogando'
+    conn.execute("UPDATE arena_stream_sessoes SET estado=?, status=?, placar=?, ultima_em=? "
+                 "WHERE token=? AND status='jogando'",
+                 (json.dumps(st), novo_status, res['score'], datetime.now().isoformat(), token))
+    conn.commit(); conn.close()
+    if res.get('over'):
+        _stream_finalizar(token)   # grava o placar no mesa_jogador (mesma costura do torneio)
+    else:
+        res['proxima'] = QS.cliente_pergunta(st)
+        res['restante'] = QS.TEMPO_POR_PERGUNTA
+    return res
+
+
+@arena_bp.route('/quiz-torneio/iniciar', methods=['POST'])
+@arena_login_required
+def quiz_torneio_iniciar_rt():
+    u = _cur()
+    body = request.get_json(silent=True) or {}
+    r = quiz_stream_abrir(u['id'], body.get('token'))
+    return jsonify(r), (200 if not r.get('erro') else 400)
+
+
+@arena_bp.route('/quiz-torneio/<token>/responder', methods=['POST'])
+@arena_login_required
+def quiz_torneio_responder_rt(token):
+    u = _cur()
+    body = request.get_json(silent=True) or {}
+    return jsonify(quiz_stream_responder(token, u['id'], body.get('escolha')))
 
 
 # ══════════════════════════════════════════════════════════════════════════════
