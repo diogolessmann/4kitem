@@ -16431,7 +16431,8 @@ def slotzap_sortear(camp_id):
         return jsonify({'erro': 'Campanha não encontrada'}), 404
     camp  = dict(camp)
     pagos = sorted([dict(r) for r in conn.execute(
-        "SELECT numero, cliente_nome, IFNULL(brinde,0) AS brinde FROM slotzap_slots "
+        "SELECT numero, cliente_nome, IFNULL(brinde,0) AS brinde, "
+        "IFNULL(afiliado_codigo,'') AS afiliado_codigo FROM slotzap_slots "
         "WHERE campanha_id=? AND status='pago'",
         (camp_id,)).fetchall()], key=lambda x: x['numero'])
     if not pagos:
@@ -16492,6 +16493,17 @@ def slotzap_sortear(camp_id):
                   resultado, pagos_str, camp_id))
     conn.commit(); conn.close()
 
+    # ── BÔNUS DO VENDEDOR: se o nº vencedor foi vendido por afiliado, paga o bônus (1x, idempotente) ──
+    bonus     = float(camp.get('bonus_vendedor') or 0)
+    cod_afil  = (ganhador.get('afiliado_codigo') or '').strip()
+    bonus_msg = ''
+    if bonus > 0 and cod_afil:
+        threading.Thread(target=_sz_pagar_bonus_vendedor_bg,
+                         args=(camp_id, ganhador['numero'], cod_afil, bonus, camp.get('gateway', 'asaas')),
+                         daemon=True, name='sz-bonus-vendedor').start()
+        bonus_msg = (f"\n\n🤑 *BÔNUS DO VENDEDOR!* Quem vendeu o número vencedor "
+                     f"acaba de faturar *R$ {bonus:.2f}* no PIX! 🎉 Vender compensa!")
+
     # Anuncia no grupo (se configurado)
     grupo_id = (camp.get('grupo_wpp_id') or '').strip()
     instance = (camp.get('evo_instance') or '').strip() or os.environ.get('EVO_INSTANCE', '')
@@ -16499,7 +16511,7 @@ def slotzap_sortear(camp_id):
     grupo_enviado = False
     if grupo_id and instance and evo_url:
         msg = (f"🎉🏆 *RESULTADO DO SORTEIO* 🏆🎉\n\n🎯 {camp['nome']}\n\n"
-               f"🥇 Número *#{ganhador['numero']}*\n👤 {ganhador['cliente_nome'] or '—'}\n\nParabéns! 🎊")
+               f"🥇 Número *#{ganhador['numero']}*\n👤 {ganhador['cliente_nome'] or '—'}\n\nParabéns! 🎊{bonus_msg}")
         try:
             r = requests.post(f"{evo_url}/message/sendText/{instance}",
                 headers={'apikey': evo_key, 'Content-Type': 'application/json'},
@@ -16989,6 +17001,44 @@ def _sz_pagar_afiliados_bg(camp, slots):
         _sz_pagar_afiliados(conn, camp, slots)
     except Exception as _e:
         log.warning(f'[SlotZap] pagar afiliados (bg): {_e}')
+    finally:
+        conn.close()
+
+
+def _sz_pagar_bonus_vendedor_bg(camp_id, numero, cod, valor, gateway):
+    """Paga o BÔNUS ao vendedor cujo número foi SORTEADO. IDEMPOTENTE: claim atômico na
+    coluna bonus_vendedor_pago → paga 1× mesmo se o sorteio rodar 2×. PIX pelo MESMO motor
+    da comissão (Asaas /transfers grátis; efi via fallback). Roda em thread própria."""
+    conn = get_saas_db()
+    try:
+        # claim ATÔMICO: só paga se ainda não pagou ('') ou se falhou antes ('erro') — nunca 2×
+        cur = conn.execute("UPDATE slotzap_campanhas SET bonus_vendedor_pago='enviando' "
+                           "WHERE id=? AND IFNULL(bonus_vendedor_pago,'') IN ('', 'erro')", (camp_id,))
+        conn.commit()
+        if cur.rowcount == 0:
+            return  # já pago ou em envio por outra via
+        af = conn.execute('SELECT nome, pix_chave, pix_tipo FROM slotzap_afiliados '
+                          'WHERE campanha_id=? AND codigo=?', (camp_id, cod)).fetchone()
+        if not af or not (dict(af).get('pix_chave') or '').strip():
+            conn.execute("UPDATE slotzap_campanhas SET bonus_vendedor_pago='erro' WHERE id=?", (camp_id,))
+            conn.commit()
+            log.warning(f'[SlotZap] bônus vendedor camp {camp_id}: afiliado {cod} sem chave PIX')
+            return
+        af   = dict(af)
+        cnome = dict(conn.execute('SELECT nome FROM slotzap_campanhas WHERE id=?', (camp_id,)).fetchone())['nome']
+        desc = f"Bonus vendedor - numero vencedor #{numero} - {cnome}"[:100]
+        tid, erro = _sz_afiliado_transfer(af.get('pix_chave'), af.get('pix_tipo'), valor, desc,
+                                          f'szbonus{camp_id}', gateway=gateway)
+        if tid:
+            conn.execute("UPDATE slotzap_campanhas SET bonus_vendedor_pago=? WHERE id=?",
+                         (str(tid)[:60], camp_id))
+            log.info(f"[SlotZap] BÔNUS vendedor R${valor:.2f} -> {af.get('nome')} (num vencedor #{numero}, camp {camp_id}, t {tid})")
+        else:
+            conn.execute("UPDATE slotzap_campanhas SET bonus_vendedor_pago='erro' WHERE id=?", (camp_id,))
+            log.warning(f"[SlotZap] Falha bônus vendedor camp {camp_id}: {erro}")
+        conn.commit()
+    except Exception as _e:
+        log.warning(f'[SlotZap] bônus vendedor bg: {_e}')
     finally:
         conn.close()
 
@@ -18235,6 +18285,12 @@ def slotzap_afiliados_config(camp_id):
     except (TypeError, ValueError):
         comissao = 0.0
     grupo = (data.get('grupo_convite') or '').strip()[:300]
+    # Bônus do vendedor do número vencedor — só mexe se veio no payload (não zera sem querer)
+    set_bonus = 'bonus_vendedor' in data
+    try:
+        bonus_vend = max(0.0, float(str(data.get('bonus_vendedor') or '0').replace(',', '.')))
+    except (TypeError, ValueError):
+        bonus_vend = 0.0
     conn  = get_saas_db()
     camp  = conn.execute('SELECT id, preco FROM slotzap_campanhas WHERE id=? AND user_id=?',
                          (camp_id, _sz_uid())).fetchone()
@@ -18247,10 +18303,14 @@ def slotzap_afiliados_config(camp_id):
         conn.close()
         return jsonify({'erro': f'A comissão (R$ {comissao:.2f}) não pode ser maior ou igual ao '
                                 f'preço do número (R$ {preco:.2f}) — daria prejuízo. Reduza a comissão.'}), 400
-    conn.execute('UPDATE slotzap_campanhas SET afiliados_ativo=?, afiliado_comissao=?, grupo_convite=? '
-                 'WHERE id=? AND user_id=?', (ativo, comissao, grupo, camp_id, _sz_uid()))
+    if set_bonus:
+        conn.execute('UPDATE slotzap_campanhas SET afiliados_ativo=?, afiliado_comissao=?, grupo_convite=?, bonus_vendedor=? '
+                     'WHERE id=? AND user_id=?', (ativo, comissao, grupo, bonus_vend, camp_id, _sz_uid()))
+    else:
+        conn.execute('UPDATE slotzap_campanhas SET afiliados_ativo=?, afiliado_comissao=?, grupo_convite=? '
+                     'WHERE id=? AND user_id=?', (ativo, comissao, grupo, camp_id, _sz_uid()))
     conn.commit(); conn.close()
-    return jsonify({'ok': True, 'ativo': ativo, 'comissao': comissao})
+    return jsonify({'ok': True, 'ativo': ativo, 'comissao': comissao, 'bonus_vendedor': bonus_vend})
 
 
 @app.route('/slotzap/campanha/<int:camp_id>/afiliados/pagar-pendentes', methods=['POST'])

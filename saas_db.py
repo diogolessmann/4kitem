@@ -833,6 +833,10 @@ def init_slotzap_db():
         # Por campanha: liga/desliga + valor da comissão por número vendido.
         "ALTER TABLE slotzap_campanhas ADD COLUMN afiliados_ativo INTEGER DEFAULT 0",
         "ALTER TABLE slotzap_campanhas ADD COLUMN afiliado_comissao REAL DEFAULT 3.0",
+        # BÔNUS do vendedor cujo número for SORTEADO (0 = desligado). bonus_vendedor_pago
+        # = idempotência do pagamento ('' pendente / 'enviando' / '<transfer_id>' pago / 'erro').
+        "ALTER TABLE slotzap_campanhas ADD COLUMN bonus_vendedor REAL DEFAULT 0",
+        "ALTER TABLE slotzap_campanhas ADD COLUMN bonus_vendedor_pago TEXT DEFAULT ''",
         # Link de convite do grupo WhatsApp (chat.whatsapp.com/...) — usado no QR do totem
         "ALTER TABLE slotzap_campanhas ADD COLUMN grupo_convite TEXT DEFAULT ''",
         # Gateway de pagamento da campanha: 'asaas' (default — Jaya/SlotZap) ou 'efi' (RifaJá).
