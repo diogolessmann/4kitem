@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Corridao</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body { height:100%; }
+  body {
+    background:#07060f; color:#f0f0ff;
+    font-family:system-ui,-apple-system,sans-serif;
+    display:flex; justify-content:center; align-items:flex-start;
+    min-height:100vh; overflow:hidden;
+    touch-action:none; user-select:none;
+  }
+  #app {
+    width:100%; max-width:460px; min-height:100vh;
+    display:flex; flex-direction:column;
+    position:relative;
+    background:radial-gradient(circle at 50% 0%, rgba(168,85,247,0.10), transparent 60%);
+  }
+  /* Barra de topo */
+  #topbar {
+    display:flex; align-items:center; gap:8px;
+    padding:10px 12px;
+    background:rgba(255,255,255,0.03);
+    border-bottom:1px solid rgba(34,211,238,0.15);
+  }
+  #back {
+    color:#22d3ee; text-decoration:none; font-weight:600;
+    font-size:14px; padding:6px 10px; border-radius:12px;
+    background:rgba(34,211,238,0.08);
+    border:1px solid rgba(34,211,238,0.25);
+    white-space:nowrap;
+  }
+  #back:active { background:rgba(34,211,238,0.18); }
+  #gname {
+    font-weight:800; font-size:15px; letter-spacing:.3px;
+    flex:1; text-align:center;
+    background:linear-gradient(90deg,#22d3ee,#a855f7);
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+    white-space:nowrap;
+  }
+  .stat {
+    display:flex; flex-direction:column; align-items:center;
+    line-height:1.05; min-width:52px;
+  }
+  .stat .lbl { font-size:9px; letter-spacing:1px; color:#8b8ba7; }
+  .stat .val { font-size:16px; font-weight:800; }
+  #scoreVal { color:#34d399; }
+  #bestVal { color:#a855f7; }
+  /* Area de jogo */
+  #stage {
+    position:relative; flex:1;
+    display:flex; align-items:center; justify-content:center;
+    overflow:hidden;
+  }
+  #game {
+    display:block; width:100%; height:100%;
+    background:linear-gradient(180deg,#0a0918 0%, #07060f 70%);
+    touch-action:none;
+  }
+  /* Overlays */
+  .overlay {
+    position:absolute; inset:0;
+    display:flex; flex-direction:column;
+    align-items:center; justify-content:center;
+    text-align:center; padding:24px; gap:14px;
+    background:rgba(7,6,15,0.82);
+    backdrop-filter:blur(3px);
+    z-index:5;
+  }
+  .hidden { display:none !important; }
+  .big { font-size:40px; }
+  .title {
+    font-size:26px; font-weight:800;
+    background:linear-gradient(90deg,#22d3ee,#34d399);
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+  }
+  .sub { font-size:14px; color:#b8b8d0; max-width:280px; line-height:1.45; }
+  .finalScore { font-size:44px; font-weight:900; color:#34d399; }
+  .finalBest { font-size:14px; color:#a855f7; font-weight:700; }
+  .newrec {
+    font-size:13px; font-weight:800; color:#07060f;
+    background:linear-gradient(90deg,#34d399,#22d3ee);
+    padding:5px 14px; border-radius:20px; letter-spacing:.5px;
+  }
+  .btn {
+    border:none; cursor:pointer; font-family:inherit;
+    font-weight:800; font-size:16px;
+    padding:14px 22px; border-radius:16px;
+    width:100%; max-width:300px;
+  }
+  .btn-primary {
+    color:#07060f;
+    background:linear-gradient(90deg,#34d399,#22d3ee);
+    box-shadow:0 6px 24px rgba(52,211,153,0.28);
+  }
+  .btn-primary:active { transform:translateY(1px); }
+  .btn-share {
+    color:#f0f0ff;
+    background:rgba(168,85,247,0.15);
+    border:1px solid rgba(168,85,247,0.5);
+  }
+  .btn-share:active { background:rgba(168,85,247,0.28); }
+  .hint {
+    font-size:12px; color:#6f6f8e; margin-top:2px;
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="topbar">
+    <a id="back" href="/arena">&larr; Arena</a>
+    <div id="gname">🏃 Corridao</div>
+    <div class="stat">
+      <span class="lbl">PONTOS</span>
+      <span class="val" id="scoreVal">0</span>
+    </div>
+    <div class="stat">
+      <span class="lbl">RECORDE</span>
+      <span class="val" id="bestVal">0</span>
+    </div>
+  </div>
+
+  <div id="stage">
+    <canvas id="game"></canvas>
+
+    <!-- Tela inicial -->
+    <div class="overlay" id="startScreen">
+      <div class="big">🏃💨</div>
+      <div class="title">Corridao</div>
+      <div class="sub">Corra o maximo que der! TOQUE na tela pra pular por cima dos obstaculos. A velocidade so aumenta.</div>
+      <button class="btn btn-primary" id="startBtn">▶️ Comecar</button>
+      <div class="hint">Toque em qualquer lugar = pular</div>
+    </div>
+
+    <!-- Tela de fim -->
+    <div class="overlay hidden" id="overScreen">
+      <div class="big">💥</div>
+      <div class="title" style="background:linear-gradient(90deg,#a855f7,#22d3ee);-webkit-background-clip:text;background-clip:text;color:transparent;">Fim de jogo</div>
+      <div class="newrec hidden" id="newRec">🏆 NOVO RECORDE!</div>
+      <div class="finalScore" id="finalScore">0</div>
+      <div class="finalBest" id="finalBest">Recorde: 0</div>
+      <button class="btn btn-share" id="shareBtn">📲 Bata meu recorde!</button>
+      <button class="btn btn-primary" id="againBtn">🔄 Jogar de novo</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var BEST_KEY = "corridao_best_v1";
+
+  var canvas = document.getElementById("game");
+  var ctx = canvas.getContext("2d");
+  var stage = document.getElementById("stage");
+
+  var scoreVal = document.getElementById("scoreVal");
+  var bestVal = document.getElementById("bestVal");
+  var startScreen = document.getElementById("startScreen");
+  var overScreen = document.getElementById("overScreen");
+  var finalScoreEl = document.getElementById("finalScore");
+  var finalBestEl = document.getElementById("finalBest");
+  var newRecEl = document.getElementById("newRec");
+
+  var W = 0, H = 0, DPR = 1;
+  var GROUND_Y = 0; // y do chao (base dos personagens)
+
+  // Estado do jogo
+  var STATE = { MENU:0, PLAY:1, OVER:2 };
+  var state = STATE.MENU;
+
+  var best = 0;
+  try { best = parseInt(localStorage.getItem(BEST_KEY) || "0", 10) || 0; } catch(e){ best = 0; }
+  bestVal.textContent = best;
+
+  // Player
+  var player = {
+    x: 0, y: 0, w: 34, h: 40,
+    vy: 0, onGround: true, runPhase: 0
+  };
+  var GRAVITY = 0;      // por segundo^2 (setado no resize)
+  var JUMP_V = 0;       // velocidade inicial do pulo (setado no resize)
+
+  var obstacles = [];
+  var groundOffset = 0;
+  var speed = 0;        // px/seg do cenario
+  var baseSpeed = 0;
+  var spawnTimer = 0;
+  var nextSpawn = 0;
+  var score = 0;        // distancia acumulada -> pontos
+  var distAccum = 0;
+  var lastTime = 0;
+  var running = false;
+
+  function resize(){
+    var rect = stage.getBoundingClientRect();
+    W = Math.max(240, rect.width);
+    H = Math.max(240, rect.height);
+    DPR = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = Math.round(W * DPR);
+    canvas.height = Math.round(H * DPR);
+    canvas.style.width = W + "px";
+    canvas.style.height = H + "px";
+    ctx.setTransform(DPR,0,0,DPR,0,0);
+
+    GROUND_Y = H - Math.max(46, H*0.14);
+
+    // Escala das forcas com a altura pra sensacao consistente
+    baseSpeed = W * 0.55;               // px/s inicial
+    JUMP_V = -Math.min(H*1.05, 720);    // pulo proporcional
+    GRAVITY = Math.min(H*3.4, 2100);    // gravidade
+
+    // Reposiciona player no chao
+    player.h = Math.max(34, H*0.085);
+    player.w = player.h * 0.85;
+    player.x = W * 0.18;
+    if (state !== STATE.PLAY) {
+      player.y = GROUND_Y - player.h;
+      player.vy = 0;
+      player.onGround = true;
+    }
+  }
+
+  function reset(){
+    obstacles.length = 0;
+    groundOffset = 0;
+    speed = baseSpeed;
+    spawnTimer = 0;
+    nextSpawn = 0.9;
+    score = 0;
+    distAccum = 0;
+    player.h = Math.max(34, H*0.085);
+    player.w = player.h * 0.85;
+    player.x = W * 0.18;
+    player.y = GROUND_Y - player.h;
+    player.vy = 0;
+    player.onGround = true;
+    player.runPhase = 0;
+    scoreVal.textContent = "0";
+  }
+
+  function startGame(){
+    resize();
+    reset();
+    state = STATE.PLAY;
+    startScreen.classList.add("hidden");
+    overScreen.classList.add("hidden");
+    lastTime = 0;
+    if (!running){
+      running = true;
+      requestAnimationFrame(loop);
+    }
+  }
+
+  function jump(){
+    if (state !== STATE.PLAY) return;
+    if (player.onGround){
+      player.vy = JUMP_V;
+      player.onGround = false;
+    }
+  }
+
+  function spawnObstacle(){
+    // Variedade: cacto simples, bloco largo, bloco alto
+    var typeR = Math.random();
+    var h, w;
+    if (typeR < 0.5){        // cacto medio
+      h = player.h * (0.7 + Math.random()*0.35);
+      w = player.w * (0.55 + Math.random()*0.25);
+    } else if (typeR < 0.8){ // bloco baixo largo
+      h = player.h * 0.55;
+      w = player.w * (1.0 + Math.random()*0.6);
+    } else {                 // bloco alto fino
+      h = player.h * (1.0 + Math.random()*0.25);
+      w = player.w * 0.6;
+    }
+    obstacles.push({
+      x: W + 10,
+      w: w,
+      h: h,
+      passed: false,
+      hue: Math.random() < 0.5 ? "#22d3ee" : "#a855f7"
+    });
+  }
+
+  function endGame(){
+    state = STATE.OVER;
+    var isRec = false;
+    if (score > best){
+      best = score;
+      isRec = true;
+      try { localStorage.setItem(BEST_KEY, String(best)); } catch(e){}
+    }
+    bestVal.textContent = best;
+    finalScoreEl.textContent = score + " m";
+    finalBestEl.textContent = "Recorde: " + best + " m";
+    if (isRec) newRecEl.classList.remove("hidden");
+    else newRecEl.classList.add("hidden");
+    overScreen.classList.remove("hidden");
+  }
+
+  function rectsOverlap(ax,ay,aw,ah, bx,by,bw,bh){
+    return ax < bx+bw && ax+aw > bx && ay < by+bh && ay+ah > by;
+  }
+
+  function update(dt){
+    // Acelera gradualmente
+    speed += dt * (W*0.05); // acelera ~5% da largura por seg
+    var maxSpeed = W * 2.2;
+    if (speed > maxSpeed) speed = maxSpeed;
+
+    // Pontuacao = distancia (metros)
+    distAccum += speed * dt;
+    var newScore = Math.floor(distAccum / 14);
+    if (newScore !== score){
+      score = newScore;
+      scoreVal.textContent = score;
+    }
+
+    // Chao rolando
+    groundOffset = (groundOffset + speed*dt) % 40;
+
+    // Fisica do player
+    player.vy += GRAVITY * dt;
+    player.y += player.vy * dt;
+    var floor = GROUND_Y - player.h;
+    if (player.y >= floor){
+      player.y = floor;
+      player.vy = 0;
+      player.onGround = true;
+    }
+    // fase da corrida (pernas) so quando no chao
+    if (player.onGround) player.runPhase += dt * 12;
+
+    // Spawns
+    spawnTimer += dt;
+    if (spawnTimer >= nextSpawn){
+      spawnTimer = 0;
+      spawnObstacle();
+      // proximo spawn: mais rapido conforme velocidade, com aleatoriedade e piso
+      var spd = speed / W; // ~ em larguras/seg
+      var base = Math.max(0.62, 1.35 - spd*0.35);
+      nextSpawn = base + Math.random()*0.6;
+    }
+
+    // Move obstaculos
+    for (var i=obstacles.length-1; i>=0; i--){
+      var o = obstacles[i];
+      o.x -= speed * dt;
+      if (o.x + o.w < -20){
+        obstacles.splice(i,1);
+        continue;
+      }
+      // Colisao (com margem pra ser justo)
+      var pad = player.w*0.16;
+      var px = player.x + pad;
+      var pw = player.w - pad*2;
+      var py = player.y + player.h*0.08;
+      var ph = player.h - player.h*0.08;
+      var oy = GROUND_Y - o.h;
+      if (rectsOverlap(px,py,pw,ph, o.x, oy, o.w, o.h)){
+        endGame();
+        return;
+      }
+    }
+  }
+
+  function drawPlayer(){
+    var px = player.x, py = player.y, pw = player.w, ph = player.h;
+    ctx.save();
+    // sombra/glow
+    ctx.shadowColor = "#34d399";
+    ctx.shadowBlur = 14;
+    // corpo
+    ctx.fillStyle = "#34d399";
+    roundRect(px, py+ph*0.28, pw, ph*0.55, 7);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    // cabeca
+    ctx.fillStyle = "#eafff6";
+    ctx.beginPath();
+    ctx.arc(px+pw*0.5, py+ph*0.20, ph*0.20, 0, Math.PI*2);
+    ctx.fill();
+    // olho ciano
+    ctx.fillStyle = "#07060f";
+    ctx.beginPath();
+    ctx.arc(px+pw*0.62, py+ph*0.19, ph*0.045, 0, Math.PI*2);
+    ctx.fill();
+
+    // pernas animadas
+    var swing = Math.sin(player.runPhase) * (player.onGround ? ph*0.16 : ph*0.05);
+    ctx.strokeStyle = "#22d3ee";
+    ctx.lineWidth = Math.max(3, pw*0.16);
+    ctx.lineCap = "round";
+    var hipY = py+ph*0.80;
+    var hipX = px+pw*0.5;
+    ctx.beginPath();
+    ctx.moveTo(hipX, hipY);
+    ctx.lineTo(hipX - pw*0.22 + swing, py+ph);
+    ctx.moveTo(hipX, hipY);
+    ctx.lineTo(hipX + pw*0.22 - swing, py+ph);
+    ctx.stroke();
+
+    // braco
+    ctx.strokeStyle = "#a855f7";
+    ctx.beginPath();
+    ctx.moveTo(px+pw*0.45, py+ph*0.42);
+    ctx.lineTo(px+pw*0.72 - swing*0.6, py+ph*0.55);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawObstacle(o){
+    var oy = GROUND_Y - o.h;
+    ctx.save();
+    ctx.shadowColor = o.hue;
+    ctx.shadowBlur = 12;
+    ctx.fillStyle = o.hue;
+    roundRect(o.x, oy, o.w, o.h, 6);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    // brilho interno
+    ctx.globalAlpha = 0.25;
+    ctx.fillStyle = "#ffffff";
+    roundRect(o.x+o.w*0.18, oy+4, o.w*0.22, o.h-8, 4);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function drawGround(){
+    // linha neon do chao
+    ctx.save();
+    ctx.strokeStyle = "rgba(34,211,238,0.9)";
+    ctx.lineWidth = 3;
+    ctx.shadowColor = "#22d3ee";
+    ctx.shadowBlur = 10;
+    ctx.beginPath();
+    ctx.moveTo(0, GROUND_Y);
+    ctx.lineTo(W, GROUND_Y);
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    // tracinhos rolando
+    ctx.strokeStyle = "rgba(168,85,247,0.5)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    for (var x = -groundOffset; x < W; x += 40){
+      ctx.moveTo(x, GROUND_Y+10);
+      ctx.lineTo(x+16, GROUND_Y+10);
+    }
+    ctx.stroke();
+
+    // preenchimento sutil abaixo do chao
+    var grad = ctx.createLinearGradient(0, GROUND_Y, 0, H);
+    grad.addColorStop(0, "rgba(34,211,238,0.10)");
+    grad.addColorStop(1, "rgba(7,6,15,0)");
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, GROUND_Y, W, H-GROUND_Y);
+    ctx.restore();
+  }
+
+  function drawStars(){
+    // estrelinhas paralax fixas simples
+    ctx.save();
+    ctx.fillStyle = "rgba(240,240,255,0.12)";
+    var offset = (distAccum*0.05) % 60;
+    for (var i=0;i<6;i++){
+      var sx = ((i*97 + 20) - offset) ;
+      sx = ((sx % (W+60)) + (W+60)) % (W+60) - 30;
+      var sy = 30 + (i*i*13 % (GROUND_Y*0.55));
+      ctx.fillRect(sx, sy, 2, 2);
+    }
+    ctx.restore();
+  }
+
+  function render(){
+    ctx.clearRect(0,0,W,H);
+    drawStars();
+    drawGround();
+    for (var i=0;i<obstacles.length;i++) drawObstacle(obstacles[i]);
+    drawPlayer();
+  }
+
+  function roundRect(x,y,w,h,r){
+    if (w<0){ x+=w; w=-w; }
+    if (h<0){ y+=h; h=-h; }
+    var rr = Math.min(r, w/2, h/2);
+    ctx.beginPath();
+    ctx.moveTo(x+rr, y);
+    ctx.arcTo(x+w, y,   x+w, y+h, rr);
+    ctx.arcTo(x+w, y+h, x,   y+h, rr);
+    ctx.arcTo(x,   y+h, x,   y,   rr);
+    ctx.arcTo(x,   y,   x+w, y,   rr);
+    ctx.closePath();
+  }
+
+  function loop(ts){
+    if (state !== STATE.PLAY){ running = false; return; } // para o loop fora do jogo
+    if (!lastTime) lastTime = ts;
+    var dt = (ts - lastTime) / 1000;
+    lastTime = ts;
+    // clamp dt (aba em background / lag)
+    if (dt > 0.05) dt = 0.05;
+    if (dt < 0) dt = 0;
+
+    update(dt);
+    render();
+
+    if (state === STATE.PLAY){
+      requestAnimationFrame(loop);
+    } else {
+      running = false; // endGame mudou o estado -> encerra o loop
+    }
+  }
+
+  // ---- Input ----
+  function onTap(e){
+    // Ignora toques nos botoes/overlays de menu (deixa o clique nativo agir)
+    if (state === STATE.PLAY){
+      if (e.cancelable) e.preventDefault();
+      jump();
+    }
+  }
+  stage.addEventListener("pointerdown", onTap, { passive:false });
+  // Fallback teclado (desktop testando)
+  window.addEventListener("keydown", function(e){
+    if (e.code === "Space" || e.code === "ArrowUp"){
+      if (state === STATE.PLAY){ e.preventDefault(); jump(); }
+      else if (state === STATE.MENU){ startGame(); }
+      else if (state === STATE.OVER){ startGame(); }
+    }
+  });
+
+  document.getElementById("startBtn").addEventListener("click", function(e){
+    e.preventDefault(); startGame();
+  });
+  document.getElementById("againBtn").addEventListener("click", function(e){
+    e.preventDefault(); startGame();
+  });
+  document.getElementById("shareBtn").addEventListener("click", function(e){
+    e.preventDefault();
+    var txt = "🏃 Corri " + score + "m no Corridao e bati meu recorde! Bora tentar me superar?";
+    location.href = "https://wa.me/?text=" + encodeURIComponent(txt + " " + location.href);
+  });
+
+  window.addEventListener("resize", function(){ resize(); render(); });
+  window.addEventListener("orientationchange", function(){
+    setTimeout(function(){ resize(); render(); }, 150);
+  });
+
+  // Init: desenha um quadro estatico do cenario atras do menu.
+  // O loop de animacao so roda durante o jogo (economia de bateria no celular).
+  resize();
+  render();
+})();
+</script>
+</body>
+</html>

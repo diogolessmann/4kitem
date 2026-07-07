@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>🍬 Combina-3 — Arena</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  :root{
+    --bg:#07060f; --ink:#f0f0ff; --cyan:#22d3ee; --purple:#a855f7; --green:#34d399;
+    --panel:rgba(255,255,255,.04); --stroke:rgba(168,85,247,.28);
+  }
+  html,body{ background:var(--bg); color:var(--ink); font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
+  body{
+    min-height:100vh; min-height:100dvh; display:flex; justify-content:center;
+    align-items:flex-start; padding:10px; overflow-x:hidden;
+    background:
+      radial-gradient(900px 500px at 50% -10%, rgba(168,85,247,.16), transparent 60%),
+      radial-gradient(700px 500px at 100% 110%, rgba(34,211,238,.12), transparent 55%),
+      var(--bg);
+  }
+  #app{ width:100%; max-width:460px; display:flex; flex-direction:column; gap:12px; }
+
+  .topbar{
+    display:flex; align-items:center; gap:10px; padding:10px 12px;
+    background:var(--panel); border:1px solid var(--stroke); border-radius:16px;
+    backdrop-filter:blur(6px);
+  }
+  .back{
+    color:var(--cyan); text-decoration:none; font-weight:700; font-size:14px;
+    padding:6px 10px; border:1px solid rgba(34,211,238,.35); border-radius:10px;
+    white-space:nowrap; transition:background .15s;
+  }
+  .back:active{ background:rgba(34,211,238,.15); }
+  .title{ font-weight:800; font-size:15px; letter-spacing:.3px; flex:1; text-align:center;
+    background:linear-gradient(90deg,var(--cyan),var(--purple)); -webkit-background-clip:text;
+    background-clip:text; color:transparent; white-space:nowrap; }
+
+  .stats{ display:flex; gap:10px; }
+  .stat{
+    flex:1; text-align:center; padding:8px 6px; border-radius:14px;
+    background:var(--panel); border:1px solid var(--stroke);
+  }
+  .stat .lbl{ font-size:10px; letter-spacing:1.5px; text-transform:uppercase; color:rgba(240,240,255,.55); }
+  .stat .val{ font-size:22px; font-weight:800; font-variant-numeric:tabular-nums; margin-top:2px; }
+  #scoreVal{ color:var(--green); }
+  #bestVal{ color:var(--purple); }
+  #timeStat.low .val{ color:#f87171; }
+  #timeVal{ color:var(--cyan); }
+
+  .stage{ position:relative; }
+  #board{
+    display:block; width:100%; height:auto; touch-action:none;
+    border-radius:18px; border:1px solid var(--stroke);
+    background:rgba(255,255,255,.02);
+    box-shadow:0 10px 40px rgba(0,0,0,.5), inset 0 0 40px rgba(168,85,247,.05);
+  }
+  #combo{
+    position:absolute; left:50%; top:14px; transform:translateX(-50%) scale(.6);
+    font-weight:800; font-size:20px; color:var(--green); opacity:0; pointer-events:none;
+    text-shadow:0 0 14px rgba(52,211,153,.8); transition:opacity .1s;
+  }
+  #combo.show{ animation:pop .7s ease-out; }
+  @keyframes pop{
+    0%{ opacity:0; transform:translateX(-50%) scale(.5); }
+    25%{ opacity:1; transform:translateX(-50%) scale(1.15); }
+    100%{ opacity:0; transform:translateX(-50%) translateY(-26px) scale(1); }
+  }
+
+  .hint{ text-align:center; font-size:12px; color:rgba(240,240,255,.45); }
+
+  .overlay{
+    position:absolute; inset:0; display:none; flex-direction:column;
+    align-items:center; justify-content:center; gap:16px; text-align:center;
+    background:rgba(7,6,15,.86); backdrop-filter:blur(8px); border-radius:18px; padding:22px;
+  }
+  .overlay.show{ display:flex; }
+  .overlay h2{ font-size:26px; font-weight:800;
+    background:linear-gradient(90deg,var(--cyan),var(--purple)); -webkit-background-clip:text;
+    background-clip:text; color:transparent; }
+  .final{ font-size:16px; color:rgba(240,240,255,.85); }
+  .final b{ color:var(--green); font-size:30px; font-variant-numeric:tabular-nums; display:block; margin-top:4px; }
+  .newrec{ color:var(--purple); font-weight:800; font-size:14px; letter-spacing:1px;
+    text-transform:uppercase; animation:blink 1s infinite; }
+  @keyframes blink{ 50%{ opacity:.4; } }
+
+  .btns{ display:flex; flex-direction:column; gap:10px; width:100%; max-width:280px; }
+  button{ font-family:inherit; cursor:pointer; border:none; }
+  .btn{
+    padding:14px; border-radius:14px; font-size:16px; font-weight:800; color:#07060f;
+    background:linear-gradient(90deg,var(--green),var(--cyan));
+    box-shadow:0 6px 20px rgba(52,211,153,.3);
+    transition:transform .1s;
+  }
+  .btn:active{ transform:scale(.97); }
+  .btn.ghost{ background:transparent; color:var(--ink);
+    border:1px solid var(--stroke); box-shadow:none; }
+  .foot{ text-align:center; font-size:11px; color:rgba(240,240,255,.35); }
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="topbar">
+    <a class="back" href="/arena">← Arena</a>
+    <div class="title">🍬 Combina-3</div>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><div class="lbl">Pontos</div><div class="val" id="scoreVal">0</div></div>
+    <div class="stat" id="timeStat"><div class="lbl">Tempo</div><div class="val" id="timeVal">60</div></div>
+    <div class="stat"><div class="lbl">Recorde</div><div class="val" id="bestVal">0</div></div>
+  </div>
+
+  <div class="stage">
+    <canvas id="board" width="480" height="480"></canvas>
+    <div id="combo"></div>
+    <div class="overlay" id="over">
+      <h2>Tempo esgotado!</h2>
+      <div class="newrec" id="newrec" style="display:none">★ Novo recorde! ★</div>
+      <div class="final">Sua pontuação<b id="finalScore">0</b></div>
+      <div class="btns">
+        <button class="btn" id="shareBtn">📲 Bata meu recorde!</button>
+        <button class="btn ghost" id="againBtn">Jogar de novo</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="hint" id="hint">Toque numa peça e depois numa vizinha para trocar</div>
+  <div class="foot">100% grátis • sem servidor • jogue offline</div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var N = 8, COLORS = 6;
+  var EMOJI = ["🍬","🍭","🍇","🍊","🍏","🫐"];
+  var GLOW = ["#f472b6","#f87171","#a855f7","#fb923c","#34d399","#22d3ee"];
+  var BEST_KEY = "arena_combina3_best_v1";
+
+  var canvas = document.getElementById("board");
+  var ctx = canvas.getContext("2d");
+  var scoreEl = document.getElementById("scoreVal");
+  var timeEl  = document.getElementById("timeVal");
+  var timeStat= document.getElementById("timeStat");
+  var bestEl  = document.getElementById("bestVal");
+  var comboEl = document.getElementById("combo");
+  var over    = document.getElementById("over");
+  var finalEl = document.getElementById("finalScore");
+  var newrec  = document.getElementById("newrec");
+  var hintEl  = document.getElementById("hint");
+
+  var DPR = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+  var SIZE = 480;          // logical board size
+  var CELL = SIZE / N;
+
+  function fitCanvas(){
+    var cssW = canvas.clientWidth || 460;
+    canvas.width  = Math.round(cssW * DPR);
+    canvas.height = Math.round(cssW * DPR);
+    SIZE = cssW;
+    CELL = SIZE / N;
+    ctx.setTransform(DPR,0,0,DPR,0,0);
+  }
+
+  var grid = [];           // grid[r][c] = {color, x, y, ...} — cells are objects
+  var state = "idle";      // idle | swapping | resolving | over
+  var score = 0, best = 0, timeLeft = 60;
+  var sel = null;          // {r,c}
+  var animating = false;
+  var running = false;
+  var lastTs = 0, timerAcc = 0;
+
+  // ---- grid model -------------------------------------------------
+  function rand(){ return Math.floor(Math.random()*COLORS); }
+
+  function makeCell(color, r, c){
+    return { color:color, r:r, c:c, x:c*CELL, y:r*CELL, offY:0, scale:1, alpha:1 };
+  }
+
+  function newGrid(){
+    grid = [];
+    for(var r=0;r<N;r++){
+      var row=[];
+      for(var c=0;c<N;c++){
+        var color;
+        do { color = rand(); }
+        while(
+          (c>=2 && row[c-1].color===color && row[c-2].color===color) ||
+          (r>=2 && grid[r-1][c].color===color && grid[r-2][c].color===color)
+        );
+        row.push(makeCell(color,r,c));
+      }
+      grid.push(row);
+    }
+    // safety: ensure at least one valid move exists
+    if(!hasMove()) newGrid();
+  }
+
+  function inBounds(r,c){ return r>=0 && r<N && c>=0 && c<N; }
+
+  // find all matched cells; returns array of {r,c}
+  function findMatches(){
+    var matched = {};
+    // horizontal
+    for(var r=0;r<N;r++){
+      var run=1;
+      for(var c=1;c<=N;c++){
+        var same = c<N && grid[r][c] && grid[r][c-1] &&
+                   grid[r][c].color===grid[r][c-1].color;
+        if(same){ run++; }
+        else {
+          if(run>=3){ for(var k=c-run;k<c;k++) matched[r+"_"+k]=true; }
+          run=1;
+        }
+      }
+    }
+    // vertical
+    for(var c2=0;c2<N;c2++){
+      var run2=1;
+      for(var r2=1;r2<=N;r2++){
+        var same2 = r2<N && grid[r2][c2] && grid[r2-1][c2] &&
+                    grid[r2][c2].color===grid[r2-1][c2].color;
+        if(same2){ run2++; }
+        else {
+          if(run2>=3){ for(var k2=r2-run2;k2<r2;k2++) matched[k2+"_"+c2]=true; }
+          run2=1;
+        }
+      }
+    }
+    var list=[];
+    for(var key in matched){
+      var p=key.split("_");
+      list.push({r:+p[0], c:+p[1]});
+    }
+    return list;
+  }
+
+  // does swapping (r,c)<->(r2,c2) create a match? (model-only test)
+  function swapCreatesMatch(r,c,r2,c2){
+    var t = grid[r][c].color;
+    grid[r][c].color = grid[r2][c2].color;
+    grid[r2][c2].color = t;
+    var m = findMatches().length>0;
+    var t2 = grid[r][c].color;
+    grid[r][c].color = grid[r2][c2].color;
+    grid[r2][c2].color = t2;
+    return m;
+  }
+
+  function hasMove(){
+    for(var r=0;r<N;r++) for(var c=0;c<N;c++){
+      if(c+1<N && swapCreatesMatch(r,c,r,c+1)) return true;
+      if(r+1<N && swapCreatesMatch(r,c,r+1,c)) return true;
+    }
+    return false;
+  }
+
+  // ---- drawing ----------------------------------------------------
+  function roundRect(x,y,w,h,rad){
+    ctx.beginPath();
+    ctx.moveTo(x+rad,y);
+    ctx.arcTo(x+w,y,x+w,y+h,rad);
+    ctx.arcTo(x+w,y+h,x,y+h,rad);
+    ctx.arcTo(x,y+h,x,y,rad);
+    ctx.arcTo(x,y,x+w,y,rad);
+    ctx.closePath();
+  }
+
+  function draw(){
+    ctx.clearRect(0,0,SIZE,SIZE);
+    for(var r=0;r<N;r++){
+      for(var c=0;c<N;c++){
+        var cell = grid[r][c];
+        if(!cell) continue;
+        var pad = CELL*0.09;
+        var sz  = CELL - pad*2;
+        var cx  = cell.x + pad;
+        var cy  = cell.y + cell.offY + pad;
+        var scale = cell.scale;
+        var isSel = sel && sel.r===r && sel.c===c;
+
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, cell.alpha);
+        // scale from center
+        var midx = cx + sz/2, midy = cy + sz/2;
+        ctx.translate(midx, midy);
+        ctx.scale(scale, scale);
+        ctx.translate(-midx, -midy);
+
+        // tile body
+        var g = ctx.createLinearGradient(cx,cy,cx,cy+sz);
+        g.addColorStop(0, "rgba(255,255,255,.10)");
+        g.addColorStop(1, "rgba(255,255,255,.02)");
+        ctx.fillStyle = g;
+        ctx.shadowColor = GLOW[cell.color];
+        ctx.shadowBlur = isSel ? 24 : 12;
+        roundRect(cx,cy,sz,sz,sz*0.26);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+
+        // neon ring
+        ctx.lineWidth = isSel ? 3 : 1.5;
+        ctx.strokeStyle = isSel ? "#ffffff" : GLOW[cell.color];
+        roundRect(cx,cy,sz,sz,sz*0.26);
+        ctx.stroke();
+
+        // emoji
+        ctx.globalAlpha = Math.max(0, cell.alpha);
+        ctx.font = Math.floor(sz*0.62)+"px system-ui,'Segoe UI Emoji'";
+        ctx.textAlign="center";
+        ctx.textBaseline="middle";
+        ctx.fillText(EMOJI[cell.color], cx+sz/2, cy+sz/2+sz*0.02);
+
+        ctx.restore();
+      }
+    }
+  }
+
+  // ---- animations (promise-ish via callbacks) ---------------------
+  function animate(duration, onStep, done){
+    var start = performance.now();
+    animating = true;
+    function step(now){
+      var t = Math.min(1, (now-start)/duration);
+      onStep(t);
+      draw();
+      if(t<1){ requestAnimationFrame(step); }
+      else { animating=false; if(done) done(); }
+    }
+    requestAnimationFrame(step);
+  }
+  function ease(t){ return t<.5 ? 2*t*t : 1-Math.pow(-2*t+2,2)/2; }
+
+  // swap two cells visually (positions), then callback
+  function animateSwap(a,b,done){
+    var ca=grid[a.r][a.c], cb=grid[b.r][b.c];
+    var ax=ca.x, ay=ca.y, bx=cb.x, by=cb.y;
+    animate(150, function(t){
+      var e=ease(t);
+      ca.x = ax + (bx-ax)*e; ca.y = ay + (by-ay)*e;
+      cb.x = bx + (ax-bx)*e; cb.y = by + (ay-by)*e;
+    }, function(){
+      // swap in model
+      grid[a.r][a.c]=cb; grid[b.r][b.c]=ca;
+      cb.r=a.r; cb.c=a.c; ca.r=b.r; ca.c=b.c;
+      cb.x=a.c*CELL; cb.y=a.r*CELL; ca.x=b.c*CELL; ca.y=b.r*CELL;
+      cb.offY=0; ca.offY=0;
+      if(done) done();
+    });
+  }
+
+  // pop matched cells (shrink+fade), then callback
+  function animatePop(list, done){
+    var map={};
+    for(var i=0;i<list.length;i++) map[list[i].r+"_"+list[i].c]=true;
+    animate(180, function(t){
+      for(var r=0;r<N;r++) for(var c=0;c<N;c++){
+        if(map[r+"_"+c] && grid[r][c]){
+          grid[r][c].scale = 1-t;
+          grid[r][c].alpha = 1-t;
+        }
+      }
+    }, done);
+  }
+
+  // remove matched, apply gravity + refill, animate falling
+  function collapseAndRefill(list, done){
+    var map={};
+    for(var i=0;i<list.length;i++){ map[list[i].r+"_"+list[i].c]=true; grid[list[i].r][list[i].c]=null; }
+
+    // per column: compact existing downward, spawn new above
+    var falls=[]; // {cell, fromY}
+    for(var c=0;c<N;c++){
+      var stack=[];
+      for(var r=N-1;r>=0;r--){ if(grid[r][c]) stack.push(grid[r][c]); }
+      // stack[0] is bottom-most existing
+      var newColumn = new Array(N).fill(null);
+      var idx=N-1;
+      for(var s=0;s<stack.length;s++){
+        var cell=stack[s];
+        var oldY=cell.y;
+        cell.r=idx; cell.c=c; cell.x=c*CELL;
+        cell.scale=1; cell.alpha=1;
+        newColumn[idx]=cell;
+        // will animate from oldY to idx*CELL
+        cell.__from = oldY;
+        cell.__to = idx*CELL;
+        idx--;
+      }
+      var spawnOrder=0;
+      for(var rr=idx; rr>=0; rr--){
+        var nc = makeCell(rand(), rr, c);
+        nc.x=c*CELL; nc.scale=1; nc.alpha=1;
+        // spawn above the board, stacked
+        nc.__from = -CELL*(spawnOrder+1);
+        nc.__to = rr*CELL;
+        newColumn[rr]=nc;
+        spawnOrder++;
+      }
+      for(var w=0;w<N;w++){
+        grid[w][c]=newColumn[w];
+        if(grid[w][c]){
+          grid[w][c].r=w; grid[w][c].c=c;
+          if(grid[w][c].__from!==undefined){ falls.push(grid[w][c]); }
+        }
+      }
+    }
+    for(var f=0; f<falls.length; f++){ falls[f].y = falls[f].__from; }
+
+    animate(240, function(t){
+      var e=ease(t);
+      for(var k=0;k<falls.length;k++){
+        var cell=falls[k];
+        cell.y = cell.__from + (cell.__to - cell.__from)*e;
+      }
+    }, function(){
+      for(var k=0;k<falls.length;k++){
+        falls[k].y = falls[k].__to;
+        delete falls[k].__from; delete falls[k].__to;
+      }
+      if(done) done();
+    });
+  }
+
+  // ---- game loop of resolving cascades ----------------------------
+  function showCombo(n){
+    if(n<2) return;
+    comboEl.textContent = "COMBO x"+n+"!";
+    comboEl.classList.remove("show"); void comboEl.offsetWidth;
+    comboEl.classList.add("show");
+  }
+
+  function resolveBoard(comboCount){
+    var matches = findMatches();
+    if(matches.length===0){
+      // done cascading
+      state="idle";
+      // if no moves left, reshuffle
+      if(!hasMove()){ reshuffle(); }
+      return;
+    }
+    comboCount = comboCount||1;
+    // score: base 10 per tile, x combo multiplier
+    var gained = matches.length*10*comboCount;
+    setScore(score+gained);
+    showCombo(comboCount);
+    animatePop(matches, function(){
+      collapseAndRefill(matches, function(){
+        resolveBoard(comboCount+1);
+      });
+    });
+  }
+
+  function reshuffle(){
+    // collect colors, shuffle until a move exists & no immediate match
+    var colors=[];
+    for(var r=0;r<N;r++) for(var c=0;c<N;c++) colors.push(grid[r][c].color);
+    var tries=0;
+    do{
+      for(var i=colors.length-1;i>0;i--){
+        var j=Math.floor(Math.random()*(i+1));
+        var tmp=colors[i]; colors[i]=colors[j]; colors[j]=tmp;
+      }
+      var idx=0;
+      for(var r2=0;r2<N;r2++) for(var c2=0;c2<N;c2++){ grid[r2][c2].color=colors[idx++]; }
+      tries++;
+    } while((findMatches().length>0 || !hasMove()) && tries<200);
+    draw();
+    state="idle";
+  }
+
+  // ---- input ------------------------------------------------------
+  function cellAt(px,py){
+    var c = Math.floor(px/CELL), r = Math.floor(py/CELL);
+    if(!inBounds(r,c)) return null;
+    return {r:r,c:c};
+  }
+
+  function pointerPos(ev){
+    var rect = canvas.getBoundingClientRect();
+    var clientX, clientY;
+    if(ev.touches && ev.touches.length){ clientX=ev.touches[0].clientX; clientY=ev.touches[0].clientY; }
+    else if(ev.changedTouches && ev.changedTouches.length){ clientX=ev.changedTouches[0].clientX; clientY=ev.changedTouches[0].clientY; }
+    else { clientX=ev.clientX; clientY=ev.clientY; }
+    var scaleX = SIZE/rect.width, scaleY = SIZE/rect.height;
+    return { x:(clientX-rect.left)*scaleX, y:(clientY-rect.top)*scaleY };
+  }
+
+  function tryPlayerSwap(a,b){
+    // only orthogonal neighbors
+    var dr=Math.abs(a.r-b.r), dc=Math.abs(a.c-b.c);
+    if(dr+dc!==1) { sel = {r:b.r,c:b.c}; draw(); return; }
+    state="swapping";
+    var creates = swapCreatesMatch(a.r,a.c,b.r,b.c);
+    animateSwap(a,b,function(){
+      if(creates){
+        state="resolving";
+        resolveBoard(1);
+      } else {
+        // swap back
+        animateSwap(a,b,function(){ state="idle"; });
+      }
+    });
+  }
+
+  // Unified pointer model — supports BOTH tap-then-tap and press-drag-to-neighbor.
+  // Works with touch and mouse; touch suppresses the emulated mouse events to avoid double firing.
+  var pressCell=null;      // cell where the press started
+  var touchActive=false;   // ignore emulated mouse events right after a touch
+
+  function commitPick(cell){
+    // Given a chosen cell, apply the tap-select / swap logic.
+    if(hintEl){ hintEl.style.visibility="hidden"; }
+    if(!sel){
+      sel = cell; draw();
+    } else if(sel.r===cell.r && sel.c===cell.c){
+      sel=null; draw();                       // tapping the same tile deselects
+    } else {
+      var a={r:sel.r,c:sel.c};
+      var dr=Math.abs(a.r-cell.r), dc=Math.abs(a.c-cell.c);
+      if(dr+dc===1){ sel=null; tryPlayerSwap(a,cell); }  // neighbor → swap
+      else { sel=cell; draw(); }                          // far tile → reselect
+    }
+  }
+
+  function pressStart(p){
+    if(!running || state!=="idle" || animating) return;
+    pressCell = cellAt(p.x,p.y);
+  }
+  function pressEnd(p){
+    if(!running || state!=="idle" || animating){ pressCell=null; return; }
+    if(!pressCell){ return; }
+    var up = cellAt(p.x,p.y);
+    var start = pressCell; pressCell=null;
+    if(!up){ return; }                         // released outside board: keep current sel
+    var dr=Math.abs(start.r-up.r), dc=Math.abs(start.c-up.c);
+    if(dr+dc===1){
+      // dragged to a neighbor → direct swap regardless of prior selection
+      sel=null;
+      if(hintEl){ hintEl.style.visibility="hidden"; }
+      tryPlayerSwap(start, up);
+    } else {
+      // tap (released on same tile) or long drag: treat the START tile as a pick
+      commitPick(start);
+    }
+  }
+
+  canvas.addEventListener("touchstart", function(ev){
+    touchActive=true;
+    ev.preventDefault();
+    pressStart(pointerPos(ev));
+  }, {passive:false});
+  canvas.addEventListener("touchend", function(ev){
+    ev.preventDefault();
+    pressEnd(pointerPos(ev));
+    // release the mouse-suppression shortly after the touch sequence
+    setTimeout(function(){ touchActive=false; }, 400);
+  }, {passive:false});
+  canvas.addEventListener("touchcancel", function(){ pressCell=null; }, {passive:false});
+
+  canvas.addEventListener("mousedown", function(ev){
+    if(touchActive) return;
+    ev.preventDefault();
+    pressStart(pointerPos(ev));
+  });
+  canvas.addEventListener("mouseup", function(ev){
+    if(touchActive) return;
+    ev.preventDefault();
+    pressEnd(pointerPos(ev));
+  });
+
+  // ---- HUD --------------------------------------------------------
+  function setScore(v){ score=v; scoreEl.textContent=v; }
+  function setTime(v){
+    timeLeft=v; timeEl.textContent=Math.ceil(v);
+    if(v<=10) timeStat.classList.add("low"); else timeStat.classList.remove("low");
+  }
+
+  function loadBest(){
+    try{ best = parseInt(localStorage.getItem(BEST_KEY),10)||0; }catch(e){ best=0; }
+    bestEl.textContent = best;
+  }
+  function saveBest(v){
+    best=v; bestEl.textContent=v;
+    try{ localStorage.setItem(BEST_KEY, String(v)); }catch(e){}
+  }
+
+  // ---- main loop --------------------------------------------------
+  function loop(ts){
+    if(!lastTs) lastTs=ts;
+    var dt=(ts-lastTs)/1000; lastTs=ts;
+    if(running && state!=="over"){
+      timerAcc += dt;
+      if(timerAcc>=0.1){
+        setTime(Math.max(0, timeLeft - timerAcc));
+        timerAcc=0;
+        if(timeLeft<=0){ endGame(); }
+      }
+    }
+    // Board is static when idle; interaction handlers and animate() redraw on change.
+    // No per-frame idle redraw — keeps the canvas cheap and the renderer responsive.
+    requestAnimationFrame(loop);
+  }
+
+  function endGame(){
+    running=false; state="over"; sel=null;
+    var isNew = score>best;
+    if(isNew) saveBest(score);
+    finalEl.textContent = score;
+    newrec.style.display = isNew ? "block" : "none";
+    over.classList.add("show");
+  }
+
+  function startGame(){
+    fitCanvas();
+    newGrid();
+    setScore(0);
+    setTime(60);
+    timerAcc=0; lastTs=0;
+    state="idle"; running=true; sel=null; pressCell=null;
+    over.classList.remove("show");
+    if(hintEl){ hintEl.style.visibility="visible"; }
+    draw();
+  }
+
+  // ---- share ------------------------------------------------------
+  document.getElementById("shareBtn").addEventListener("click", function(){
+    var txt = "🍬 Combina-3 na Arena! Fiz "+score+" pontos. Bate meu recorde!";
+    location.href = "https://wa.me/?text=" + encodeURIComponent(txt + " " + location.href);
+  });
+  document.getElementById("againBtn").addEventListener("click", function(){
+    startGame();
+  });
+
+  // resize handling (keep board crisp; grid coords are relative so re-place)
+  var resizeTO=null;
+  window.addEventListener("resize", function(){
+    clearTimeout(resizeTO);
+    resizeTO=setTimeout(function(){
+      fitCanvas();
+      // re-snap all cells to their grid slots
+      for(var r=0;r<N;r++) for(var c=0;c<N;c++){
+        var cell=grid[r][c];
+        if(cell){ cell.x=c*CELL; cell.y=r*CELL; cell.offY=0; }
+      }
+      draw();
+    },120);
+  });
+
+  // boot
+  loadBest();
+  fitCanvas();
+  startGame();
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

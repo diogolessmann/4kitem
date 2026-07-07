@@ -31,11 +31,12 @@ arena_bp = Blueprint('arena', __name__, url_prefix='/arena')
 
 # Catálogo de jogos do portal (MODOS x JOGOS). Só 'blocos' ativo no L0.
 JOGOS = [
-    {'id': 'blocos',   'nome': 'Quebra-Blocos', 'emoji': '🧱', 'ativo': True,  'url': '/arena/jogar'},
-    {'id': 'bolhas',   'nome': 'Tiro de Bolhas','emoji': '🎯', 'ativo': False, 'url': ''},
-    {'id': 'combina',  'nome': 'Combina-3',     'emoji': '🍬', 'ativo': False, 'url': ''},
-    {'id': 'labirinto','nome': 'Labirinto',     'emoji': '🧩', 'ativo': False, 'url': ''},
-    {'id': 'quiz',     'nome': 'Quiz Relâmpago','emoji': '❓', 'ativo': False, 'url': ''},
+    {'id': 'blocos',   'nome': 'Quebra-Blocos', 'emoji': '🧱', 'ativo': True, 'url': '/arena/jogar'},
+    {'id': 'bolhas',   'nome': 'Tiro de Bolhas','emoji': '🎯', 'ativo': True, 'url': '/arena/bolhas'},
+    {'id': 'combina',  'nome': 'Combina-3',     'emoji': '🍬', 'ativo': True, 'url': '/arena/combina'},
+    {'id': 'labirinto','nome': 'Labirinto',     'emoji': '🧩', 'ativo': True, 'url': '/arena/labirinto'},
+    {'id': 'corridao', 'nome': 'Corridão',      'emoji': '🏃', 'ativo': True, 'url': '/arena/corridao'},
+    {'id': 'quiz',     'nome': 'Quiz Relâmpago','emoji': '❓', 'ativo': True, 'url': '/arena/quiz'},
 ]
 
 
@@ -80,6 +81,27 @@ def quiz():
 def quiz_banco(tema):
     import arena_quiz
     return jsonify(arena_quiz.sortear(tema, 10))
+
+
+# ── jogos GRÁTIS de variedade (isca/diversão, sem valendo) ──
+@arena_bp.route('/bolhas')
+def bolhas():
+    return render_template('arena/bolhas.html', user=_cur())
+
+
+@arena_bp.route('/combina')
+def combina():
+    return render_template('arena/combina.html', user=_cur())
+
+
+@arena_bp.route('/labirinto')
+def labirinto():
+    return render_template('arena/labirinto.html', user=_cur())
+
+
+@arena_bp.route('/corridao')
+def corridao():
+    return render_template('arena/corridao.html', user=_cur())
 
 
 @arena_bp.route('/cadastrar', methods=['GET', 'POST'])

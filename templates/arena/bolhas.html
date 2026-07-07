@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>🎯 Tiro de Bolhas</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body {
+    background:#07060f; color:#f0f0ff;
+    font-family:system-ui,-apple-system,sans-serif;
+    overflow:hidden; overscroll-behavior:none;
+  }
+  body { display:flex; justify-content:center; }
+  #wrap {
+    width:100%; max-width:460px; height:100dvh;
+    display:flex; flex-direction:column;
+    position:relative; background:#07060f;
+  }
+  #topbar {
+    display:flex; align-items:center; gap:8px;
+    padding:10px 12px; flex-wrap:nowrap;
+    border-bottom:1px solid rgba(168,85,247,.25);
+    background:rgba(13,11,26,.6);
+  }
+  #topbar a {
+    color:#22d3ee; text-decoration:none; font-weight:600;
+    font-size:14px; padding:6px 10px; border-radius:10px;
+    background:rgba(34,211,238,.1); white-space:nowrap;
+  }
+  #gameName {
+    font-weight:800; font-size:15px; white-space:nowrap;
+    background:linear-gradient(90deg,#22d3ee,#a855f7);
+    -webkit-background-clip:text; background-clip:text;
+    -webkit-text-fill-color:transparent; margin-right:auto;
+  }
+  .stat {
+    text-align:center; line-height:1.1; min-width:52px;
+  }
+  .stat .lbl { font-size:9px; color:#8b8ba7; letter-spacing:.5px; }
+  .stat .val { font-size:16px; font-weight:800; }
+  #pontos .val { color:#34d399; }
+  #recorde .val { color:#a855f7; }
+  #stage {
+    flex:1; position:relative; touch-action:none;
+    display:flex; align-items:center; justify-content:center;
+  }
+  canvas { display:block; touch-action:none; }
+  #over {
+    position:absolute; inset:0; z-index:20;
+    display:none; flex-direction:column;
+    align-items:center; justify-content:center;
+    gap:14px; padding:24px; text-align:center;
+    background:rgba(7,6,15,.92);
+    backdrop-filter:blur(4px);
+  }
+  #over.show { display:flex; }
+  #over h2 {
+    font-size:30px; font-weight:900;
+    background:linear-gradient(90deg,#22d3ee,#a855f7,#34d399);
+    -webkit-background-clip:text; background-clip:text;
+    -webkit-text-fill-color:transparent;
+  }
+  #over .fscore { font-size:52px; font-weight:900; color:#34d399; }
+  #over .frec { font-size:15px; color:#a855f7; font-weight:700; }
+  #over .newrec {
+    font-size:13px; color:#22d3ee; font-weight:800;
+    display:none; letter-spacing:.5px;
+  }
+  #over .newrec.show { display:block; }
+  .btn {
+    width:100%; max-width:280px; padding:15px;
+    border:none; border-radius:14px; cursor:pointer;
+    font-size:16px; font-weight:800; font-family:inherit;
+    color:#07060f;
+  }
+  #shareBtn { background:linear-gradient(90deg,#34d399,#22d3ee); }
+  #againBtn {
+    background:transparent; color:#f0f0ff;
+    border:1.5px solid rgba(168,85,247,.5);
+  }
+  #hint {
+    position:absolute; bottom:12px; left:0; right:0;
+    text-align:center; font-size:11px; color:#6b6b8a;
+    pointer-events:none; z-index:5;
+  }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="topbar">
+    <a href="/arena">← Arena</a>
+    <span id="gameName">🎯 Tiro de Bolhas</span>
+    <div class="stat" id="pontos"><div class="lbl">PONTOS</div><div class="val" id="scoreVal">0</div></div>
+    <div class="stat" id="recorde"><div class="lbl">RECORDE</div><div class="val" id="recVal">0</div></div>
+  </div>
+  <div id="stage">
+    <canvas id="cv"></canvas>
+    <div id="hint">Arraste para mirar, solte para atirar</div>
+    <div id="over">
+      <h2>Fim de Jogo</h2>
+      <div class="newrec" id="newRec">🏆 NOVO RECORDE!</div>
+      <div class="fscore" id="finalScore">0</div>
+      <div class="frec">Recorde: <span id="recFinal">0</span></div>
+      <button class="btn" id="shareBtn">📲 Bata meu recorde!</button>
+      <button class="btn" id="againBtn">Jogar de novo</button>
+    </div>
+  </div>
+</div>
+<script>
+(function(){
+  "use strict";
+  var REC_KEY = "tiro_bolhas_recorde_v1";
+
+  var canvas = document.getElementById("cv");
+  var ctx = canvas.getContext("2d");
+  var stage = document.getElementById("stage");
+  var scoreEl = document.getElementById("scoreVal");
+  var recEl = document.getElementById("recVal");
+  var overEl = document.getElementById("over");
+  var finalScoreEl = document.getElementById("finalScore");
+  var recFinalEl = document.getElementById("recFinal");
+  var newRecEl = document.getElementById("newRec");
+  var hintEl = document.getElementById("hint");
+
+  var COLORS = ["#22d3ee","#a855f7","#34d399","#fbbf24","#f472b6"];
+  var COLS = 9;            // colunas por fileira
+  var SHOTS_PER_DROP = 6;  // tiros até descer fileira nova
+  var R = 0;               // raio da bolha (calculado)
+  var W = 0, H = 0, DPR = 1;
+  var offsetX = 0;         // margem lateral pra centralizar grade
+  var rowH = 0;            // altura de uma fileira (hexagonal)
+  var shooterY = 0;        // y do atirador
+  var deathY = 0;          // linha de morte
+
+  var grid = [];           // grid[row][col] = {color} ou null
+  var topOffset = 0;       // deslocamento vertical (fileiras que desceram)
+  var score = 0;
+  var record = 0;
+  var shots = 0;
+  var running = false;
+
+  var current = null;      // bolha carregada
+  var next = null;         // próxima cor
+  var flying = null;       // bolha em voo {x,y,dx,dy,color}
+  var aiming = false;
+  var aimAngle = -Math.PI/2; // apontando pra cima
+  var pops = [];           // partículas de estouro
+
+  function loadRecord(){
+    try { var v = parseInt(localStorage.getItem(REC_KEY),10); if(!isNaN(v)) record = v; }
+    catch(e){ record = 0; }
+    recEl.textContent = record;
+  }
+  function saveRecord(){
+    try { localStorage.setItem(REC_KEY, String(record)); } catch(e){}
+  }
+
+  function resize(){
+    var rect = stage.getBoundingClientRect();
+    W = Math.max(200, Math.floor(rect.width));
+    H = Math.max(300, Math.floor(rect.height));
+    DPR = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = W * DPR;
+    canvas.height = H * DPR;
+    canvas.style.width = W + "px";
+    canvas.style.height = H + "px";
+    ctx.setTransform(DPR,0,0,DPR,0,0);
+
+    R = Math.floor((W - 6) / (COLS * 2));
+    if(R < 12) R = 12;
+    offsetX = (W - (COLS * 2 * R)) / 2 + R;
+    rowH = R * 1.732;
+    shooterY = H - R - 14;
+    deathY = shooterY - R * 2.2;
+  }
+
+  function rowCols(row){
+    // linhas pares = COLS, linhas ímpares (deslocadas) = COLS-1
+    return (row % 2 === 0) ? COLS : COLS - 1;
+  }
+
+  function bubbleXY(row, col){
+    var odd = (row % 2 !== 0);
+    var x = offsetX + col * 2 * R + (odd ? R : 0);
+    var y = R + 8 + topOffset + row * rowH;
+    return {x:x, y:y};
+  }
+
+  function pickColorFromGrid(){
+    // escolhe cor existente pra jogo sempre ser vencível
+    var present = {};
+    for(var r=0;r<grid.length;r++){
+      if(!grid[r]) continue;
+      for(var c=0;c<grid[r].length;c++){
+        if(grid[r][c]) present[grid[r][c].color] = true;
+      }
+    }
+    var list = [];
+    for(var i=0;i<COLORS.length;i++){ if(present[COLORS[i]]) list.push(COLORS[i]); }
+    if(list.length === 0) return COLORS[(Math.random()*COLORS.length)|0];
+    return list[(Math.random()*list.length)|0];
+  }
+
+  function newGrid(){
+    grid = [];
+    topOffset = 0;
+    var startRows = 5;
+    for(var r=0;r<startRows;r++){
+      var arr = [];
+      var n = rowCols(r);
+      for(var c=0;c<n;c++){
+        arr.push({ color: COLORS[(Math.random()*4)|0] });
+      }
+      grid.push(arr);
+    }
+    // garante fileiras vazias abaixo para crescer
+    for(var k=0;k<4;k++){ grid.push(makeEmptyRow(grid.length)); }
+  }
+
+  function makeEmptyRow(row){
+    var n = rowCols(row);
+    var a = [];
+    for(var c=0;c<n;c++) a.push(null);
+    return a;
+  }
+
+  function loadShooter(){
+    if(next === null){ next = pickColorFromGrid(); }
+    current = next;
+    next = pickColorFromGrid();
+  }
+
+  function reset(){
+    score = 0; shots = 0; flying = null; pops = [];
+    aimAngle = -Math.PI/2; aiming = false;
+    next = null;
+    newGrid();
+    loadShooter();
+    scoreEl.textContent = "0";
+    overEl.classList.remove("show");
+    hintEl.style.display = "block";
+    running = true;
+  }
+
+  // ---- física do tiro ----
+  function shoot(){
+    if(flying || !running || current === null) return;
+    var speed = R * 0.75; // px por frame (proporcional ao tamanho)
+    if(speed < 6) speed = 6;
+    flying = {
+      x: W/2,
+      y: shooterY,
+      dx: Math.cos(aimAngle) * speed,
+      dy: Math.sin(aimAngle) * speed,
+      color: current
+    };
+    current = null;
+    hintEl.style.display = "none";
+  }
+
+  function nearestFreeCell(bx, by){
+    // encontra célula livre mais próxima do ponto de colisão
+    var best = null, bestD = Infinity;
+    for(var r=0;r<grid.length;r++){
+      if(!grid[r]) continue;
+      for(var c=0;c<grid[r].length;c++){
+        if(grid[r][c]) continue;
+        var p = bubbleXY(r,c);
+        // célula precisa estar dentro da área
+        if(p.y < R + 4) continue;
+        var d = (p.x-bx)*(p.x-bx) + (p.y-by)*(p.y-by);
+        if(d < bestD){ bestD = d; best = {r:r,c:c,x:p.x,y:p.y}; }
+      }
+    }
+    return best;
+  }
+
+  function ensureRowExists(row){
+    while(grid.length <= row){
+      grid.push(makeEmptyRow(grid.length));
+    }
+  }
+
+  function collidesWithGrid(bx, by){
+    for(var r=0;r<grid.length;r++){
+      if(!grid[r]) continue;
+      for(var c=0;c<grid[r].length;c++){
+        if(!grid[r][c]) continue;
+        var p = bubbleXY(r,c);
+        var dx = p.x-bx, dy = p.y-by;
+        if(dx*dx + dy*dy <= (2*R)*(2*R) * 0.9){
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  function neighbors(r, c){
+    var odd = (r % 2 !== 0);
+    var res = [];
+    // esquerda / direita
+    res.push([r, c-1]); res.push([r, c+1]);
+    if(odd){
+      res.push([r-1, c]); res.push([r-1, c+1]);
+      res.push([r+1, c]); res.push([r+1, c+1]);
+    } else {
+      res.push([r-1, c-1]); res.push([r-1, c]);
+      res.push([r+1, c-1]); res.push([r+1, c]);
+    }
+    return res;
+  }
+
+  function cellAt(r,c){
+    if(r<0 || r>=grid.length) return null;
+    if(!grid[r]) return null;
+    if(c<0 || c>=grid[r].length) return null;
+    return grid[r][c];
+  }
+
+  function findMatchGroup(sr, sc, color){
+    var seen = {};
+    var stack = [[sr,sc]];
+    var group = [];
+    while(stack.length){
+      var cur = stack.pop();
+      var r = cur[0], c = cur[1];
+      var key = r+","+c;
+      if(seen[key]) continue;
+      var cell = cellAt(r,c);
+      if(!cell || cell.color !== color) continue;
+      seen[key] = true;
+      group.push([r,c]);
+      var nb = neighbors(r,c);
+      for(var i=0;i<nb.length;i++){ stack.push(nb[i]); }
+    }
+    return group;
+  }
+
+  function dropFloating(){
+    // qualquer bolha não conectada ao teto (row 0) cai
+    var connected = {};
+    var stack = [];
+    if(grid[0]){
+      for(var c=0;c<grid[0].length;c++){
+        if(grid[0][c]) stack.push([0,c]);
+      }
+    }
+    while(stack.length){
+      var cur = stack.pop();
+      var r = cur[0], cc = cur[1];
+      var key = r+","+cc;
+      if(connected[key]) continue;
+      if(!cellAt(r,cc)) continue;
+      connected[key] = true;
+      var nb = neighbors(r,cc);
+      for(var i=0;i<nb.length;i++){
+        if(cellAt(nb[i][0], nb[i][1])) stack.push(nb[i]);
+      }
+    }
+    var dropped = 0;
+    for(var r2=0;r2<grid.length;r2++){
+      if(!grid[r2]) continue;
+      for(var c2=0;c2<grid[r2].length;c2++){
+        if(grid[r2][c2] && !connected[r2+","+c2]){
+          var p = bubbleXY(r2,c2);
+          spawnPop(p.x, p.y, grid[r2][c2].color);
+          grid[r2][c2] = null;
+          dropped++;
+        }
+      }
+    }
+    return dropped;
+  }
+
+  function spawnPop(x, y, color){
+    for(var i=0;i<6;i++){
+      var a = Math.random()*Math.PI*2;
+      var sp = 1 + Math.random()*2.5;
+      pops.push({
+        x:x, y:y,
+        dx:Math.cos(a)*sp, dy:Math.sin(a)*sp - 1,
+        life:1, color:color, r: R*0.4
+      });
+    }
+  }
+
+  function settleFlying(){
+    var bx = flying.x, by = flying.y, color = flying.color;
+    var cell = nearestFreeCell(bx, by);
+    flying = null;
+    if(!cell){
+      // fallback: gruda no topo aproximado
+      cell = { r:0, c:0 };
+    }
+    ensureRowExists(cell.r);
+    if(cell.c < 0) cell.c = 0;
+    if(grid[cell.r] && cell.c < grid[cell.r].length && !grid[cell.r][cell.c]){
+      grid[cell.r][cell.c] = { color: color };
+    } else {
+      // procura outra livre próxima
+      var alt = nearestFreeCell(bx, by);
+      if(alt){ ensureRowExists(alt.r); grid[alt.r][alt.c] = { color: color }; cell = alt; }
+    }
+
+    // checa match
+    var group = findMatchGroup(cell.r, cell.c, color);
+    if(group.length >= 3){
+      for(var i=0;i<group.length;i++){
+        var gr = group[i][0], gc = group[i][1];
+        var p = bubbleXY(gr, gc);
+        spawnPop(p.x, p.y, color);
+        grid[gr][gc] = null;
+      }
+      score += group.length * 10;
+    }
+    // solta flutuantes
+    var dropped = dropFloating();
+    if(dropped > 0) score += dropped * 10;
+
+    scoreEl.textContent = score;
+
+    // conta tiro e possivelmente desce fileira
+    shots++;
+    if(shots % SHOTS_PER_DROP === 0){
+      addTopRow();
+    }
+
+    if(checkDeath()){
+      endGame();
+      return;
+    }
+    loadShooter();
+  }
+
+  function addTopRow(){
+    // empurra tudo pra baixo inserindo nova fileira no topo
+    var newRow = [];
+    var n = rowCols(0);
+    for(var c=0;c<n;c++){ newRow.push({ color: COLORS[(Math.random()*4)|0] }); }
+    grid.unshift(newRow);
+    // reindexar paridade: como inserimos no índice 0, todas as fileiras
+    // trocam de paridade. Reconstrói contagens ajustando comprimento das linhas.
+    for(var r=0;r<grid.length;r++){
+      var want = rowCols(r);
+      if(!grid[r]) grid[r] = makeEmptyRow(r);
+      while(grid[r].length < want) grid[r].push(null);
+      while(grid[r].length > want) grid[r].pop();
+    }
+  }
+
+  function checkDeath(){
+    for(var r=0;r<grid.length;r++){
+      if(!grid[r]) continue;
+      for(var c=0;c<grid[r].length;c++){
+        if(grid[r][c]){
+          var p = bubbleXY(r,c);
+          if(p.y + R >= deathY) return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  function endGame(){
+    running = false;
+    flying = null;
+    finalScoreEl.textContent = score;
+    var isNew = score > record;
+    if(isNew){ record = score; saveRecord(); }
+    recEl.textContent = record;
+    recFinalEl.textContent = record;
+    newRecEl.classList.toggle("show", isNew);
+    overEl.classList.add("show");
+  }
+
+  // ---- loop ----
+  function update(){
+    if(flying){
+      // sub-passos pra não atravessar bolhas
+      var steps = 3;
+      for(var s=0;s<steps && flying;s++){
+        flying.x += flying.dx/steps;
+        flying.y += flying.dy/steps;
+        // paredes
+        if(flying.x - R <= 0){ flying.x = R; flying.dx = Math.abs(flying.dx); }
+        if(flying.x + R >= W){ flying.x = W - R; flying.dx = -Math.abs(flying.dx); }
+        // teto
+        if(flying.y - R <= 8){
+          flying.y = R + 8;
+          settleFlying();
+          break;
+        }
+        // colisão com grade
+        if(flying && collidesWithGrid(flying.x, flying.y)){
+          settleFlying();
+          break;
+        }
+      }
+    }
+    // partículas
+    for(var i=pops.length-1;i>=0;i--){
+      var pp = pops[i];
+      pp.x += pp.dx; pp.y += pp.dy; pp.dy += 0.18;
+      pp.life -= 0.04;
+      if(pp.life <= 0) pops.splice(i,1);
+    }
+  }
+
+  function drawBubble(x, y, color, alpha){
+    ctx.save();
+    if(alpha !== undefined) ctx.globalAlpha = alpha;
+    var g = ctx.createRadialGradient(x - R*0.35, y - R*0.35, R*0.1, x, y, R);
+    g.addColorStop(0, "#ffffff");
+    g.addColorStop(0.25, color);
+    g.addColorStop(1, shade(color, -0.35));
+    ctx.beginPath();
+    ctx.arc(x, y, R-1, 0, Math.PI*2);
+    ctx.fillStyle = g;
+    ctx.fill();
+    ctx.strokeStyle = "rgba(255,255,255,.15)";
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    // brilho
+    ctx.beginPath();
+    ctx.arc(x - R*0.32, y - R*0.32, R*0.22, 0, Math.PI*2);
+    ctx.fillStyle = "rgba(255,255,255,.45)";
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function shade(hex, amt){
+    var c = hex.replace("#","");
+    var r = parseInt(c.substr(0,2),16);
+    var g = parseInt(c.substr(2,2),16);
+    var b = parseInt(c.substr(4,2),16);
+    r = Math.max(0,Math.min(255, Math.round(r + r*amt)));
+    g = Math.max(0,Math.min(255, Math.round(g + g*amt)));
+    b = Math.max(0,Math.min(255, Math.round(b + b*amt)));
+    return "rgb("+r+","+g+","+b+")";
+  }
+
+  function draw(){
+    ctx.clearRect(0,0,W,H);
+
+    // linha de morte
+    ctx.save();
+    ctx.strokeStyle = "rgba(244,63,94,.4)";
+    ctx.setLineDash([6,6]);
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(0, deathY);
+    ctx.lineTo(W, deathY);
+    ctx.stroke();
+    ctx.restore();
+
+    // grade
+    for(var r=0;r<grid.length;r++){
+      if(!grid[r]) continue;
+      for(var c=0;c<grid[r].length;c++){
+        if(grid[r][c]){
+          var p = bubbleXY(r,c);
+          if(p.y - R < H + R) drawBubble(p.x, p.y, grid[r][c].color);
+        }
+      }
+    }
+
+    // partículas
+    for(var i=0;i<pops.length;i++){
+      var pp = pops[i];
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, pp.life);
+      ctx.beginPath();
+      ctx.arc(pp.x, pp.y, pp.r, 0, Math.PI*2);
+      ctx.fillStyle = pp.color;
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // mira
+    if(running && current !== null && !flying){
+      drawAim();
+    }
+
+    // bolha em voo
+    if(flying){
+      drawBubble(flying.x, flying.y, flying.color);
+    }
+
+    // atirador
+    if(running){
+      // base
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(W/2, shooterY, R+4, 0, Math.PI*2);
+      ctx.fillStyle = "rgba(168,85,247,.15)";
+      ctx.fill();
+      ctx.strokeStyle = "rgba(168,85,247,.5)";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.restore();
+      if(current !== null && !flying){
+        drawBubble(W/2, shooterY, current);
+      }
+      // próxima
+      if(next !== null){
+        ctx.save();
+        var nx = W - R - 8, ny = shooterY;
+        ctx.globalAlpha = 0.8;
+        drawBubble(nx, ny, next);
+        ctx.globalAlpha = 1;
+        ctx.font = "9px system-ui";
+        ctx.fillStyle = "#8b8ba7";
+        ctx.textAlign = "center";
+        ctx.fillText("próx", nx, ny - R - 4);
+        ctx.restore();
+      }
+    }
+  }
+
+  function drawAim(){
+    // traça linha pontilhada com 1 quique
+    var x = W/2, y = shooterY;
+    var dx = Math.cos(aimAngle), dy = Math.sin(aimAngle);
+    var step = R * 0.9;
+    ctx.save();
+    ctx.strokeStyle = "rgba(34,211,238,.55)";
+    ctx.lineWidth = 2;
+    ctx.setLineDash([4,6]);
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    var bounces = 0;
+    for(var i=0;i<200;i++){
+      x += dx*step; y += dy*step;
+      if(x - R <= 0){ x = R; dx = Math.abs(dx); bounces++; }
+      else if(x + R >= W){ x = W - R; dx = -Math.abs(dx); bounces++; }
+      if(y - R <= 8 || collidesWithGrid(x, y) || bounces > 2){
+        ctx.lineTo(x, y);
+        break;
+      }
+      ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+    ctx.restore();
+    // ponto alvo
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(x, y, 4, 0, Math.PI*2);
+    ctx.fillStyle = "#22d3ee";
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function frame(){
+    if(running || pops.length){
+      update();
+    }
+    draw();
+    requestAnimationFrame(frame);
+  }
+
+  // ---- input ----
+  function pointFromEvent(e){
+    var rect = canvas.getBoundingClientRect();
+    var cx, cy;
+    if(e.touches && e.touches.length){
+      cx = e.touches[0].clientX; cy = e.touches[0].clientY;
+    } else if(e.changedTouches && e.changedTouches.length){
+      cx = e.changedTouches[0].clientX; cy = e.changedTouches[0].clientY;
+    } else {
+      cx = e.clientX; cy = e.clientY;
+    }
+    return { x: cx - rect.left, y: cy - rect.top };
+  }
+
+  function updateAim(px, py){
+    var ang = Math.atan2(py - shooterY, px - W/2);
+    // limita: só pra cima, entre -170° e -10°
+    var minA = -Math.PI + 0.18; // ~ -169°
+    var maxA = -0.18;           // ~ -10°
+    if(ang > 0) ang = (px < W/2) ? minA : maxA; // impede mirar pra baixo
+    if(ang < minA) ang = minA;
+    if(ang > maxA) ang = maxA;
+    aimAngle = ang;
+  }
+
+  function onDown(e){
+    if(!running || flying || current === null) return;
+    e.preventDefault();
+    aiming = true;
+    var p = pointFromEvent(e);
+    updateAim(p.x, p.y);
+  }
+  function onMove(e){
+    if(!aiming) return;
+    e.preventDefault();
+    var p = pointFromEvent(e);
+    updateAim(p.x, p.y);
+  }
+  function onUp(e){
+    if(!aiming) return;
+    e.preventDefault();
+    aiming = false;
+    shoot();
+  }
+
+  canvas.addEventListener("touchstart", onDown, {passive:false});
+  canvas.addEventListener("touchmove", onMove, {passive:false});
+  canvas.addEventListener("touchend", onUp, {passive:false});
+  canvas.addEventListener("touchcancel", function(){ aiming=false; }, {passive:false});
+  canvas.addEventListener("mousedown", onDown);
+  window.addEventListener("mousemove", onMove);
+  window.addEventListener("mouseup", onUp);
+
+  // ---- botões ----
+  document.getElementById("shareBtn").addEventListener("click", function(){
+    var txt = "🎯 Fiz " + score + " pontos no Tiro de Bolhas! Bate meu recorde:";
+    location.href = "https://wa.me/?text=" + encodeURIComponent(txt + " " + location.href);
+  });
+  document.getElementById("againBtn").addEventListener("click", function(){
+    reset();
+  });
+
+  window.addEventListener("resize", function(){
+    resize();
+  });
+
+  // ---- start ----
+  loadRecord();
+  resize();
+  reset();
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
