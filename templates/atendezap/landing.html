@@ -22,6 +22,10 @@
   .card b{display:block;margin-bottom:4px}
   .card p{color:var(--mut);margin:0;font-size:15px}
   .foot{text-align:center;color:#94a3b8;font-size:13px;margin:30px 0}
+  .demo{text-align:center;margin:26px 0 8px}
+  .demo h2{font-size:22px;margin:0 0 14px}
+  .demo video{width:100%;max-width:330px;border-radius:16px;border:1px solid #e2e8f0;
+    box-shadow:0 12px 30px rgba(15,23,42,.14);background:#000;display:block;margin:0 auto}
   @media(max-width:560px){.cards{grid-template-columns:1fr}.cta.ghost{margin:10px 0 0}}
 </style>
 </head>
@@ -34,6 +38,15 @@
       <b>chama você</b> quando o cliente precisa de gente de verdade. Sem montar fluxo, sem complicação.</p>
     <a class="cta" href="/atendezap/cadastro">Começar grátis (7 dias)</a>
     <a class="cta ghost" href="/atendezap/entrar">Entrar</a>
+  </div>
+
+  <div class="demo">
+    <h2>Veja o AtendeZap em ação</h2>
+    <video controls preload="metadata" playsinline
+      poster="{{ url_for('static', filename='atendezap/demo-poster.jpg') }}">
+      <source src="{{ url_for('static', filename='atendezap/demo.mp4') }}" type="video/mp4">
+      Seu navegador não suporta vídeo.
+    </video>
   </div>
 
   <div class="cards">
