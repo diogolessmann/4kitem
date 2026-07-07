@@ -906,6 +906,7 @@ def sala_page(token):
     (aceitar desafio / aguardando / resultado)."""
     u = _cur()
     _reap_sala_se_preciso(token)   # se o oponente abandonou, resolve por WO antes de renderizar
+    _stream_reap('duelo:' + token + ':')   # finaliza stream abandonado (rede de segurança)
     conn = get_arena_db()
     row = conn.execute('SELECT * FROM arena_salas WHERE token=?', (token,)).fetchone()
     conn.close()
@@ -914,16 +915,14 @@ def sala_page(token):
     s = dict(row)
     ehcriador = (s['criador_id'] == u['id'])
     ehoponente = (s['oponente_id'] == u['id'])
-    # ── é a vez de JOGAR? serve o jogo valendo (template conforme o jogo da sala) ──
+    # ── é a vez de JOGAR? serve o cliente STREAMING (servidor entrega peça por peça, anti-cheat) ──
     # Criador só joga DEPOIS de compartilhar/comprometer (status 'esperando_criador') — sem reroll.
-    _tpl = (JOGOS_VALENDO.get(s['jogo']) or JOGOS_VALENDO['blocos'])['tpl']
     if ehcriador and s['status'] == 'esperando_criador' and s['criador_pontos'] is None:
-        return render_template(_tpl, token=token, seed=s['seed'],
-                               aposta=s['aposta'], endpoint='/arena/sala/' + token + '/jogar', alvo=None)
+        return render_template('arena/jogo_stream.html', tipo='duelo', token=token,
+                               aposta=s['aposta'], redirect='/arena/sala/' + token)
     if ehoponente and s['status'] == 'apurando' and s['oponente_pontos'] is None:
-        # alvo=None: NÃO revela o placar do criador antes do oponente jogar (vantagem de info)
-        return render_template(_tpl, token=token, seed=s['seed'],
-                               aposta=s['aposta'], endpoint='/arena/sala/' + token + '/enviar', alvo=None)
+        return render_template('arena/jogo_stream.html', tipo='duelo', token=token,
+                               aposta=s['aposta'], redirect='/arena/sala/' + token)
     # ── casca de estado ──
     if s['status'] == 'cancelada':
         estado = 'cancelada'
@@ -945,17 +944,6 @@ def sala_page(token):
                            creditos=get_creditos(u['id']))
 
 
-@arena_bp.route('/sala/<token>/jogar', methods=['POST'])
-@arena_login_required
-def sala_jogar_rt(token):
-    if request.content_length and request.content_length > 300000:
-        return jsonify({'erro': 'Requisição grande demais.'}), 413
-    u = _cur()
-    body = request.get_json(silent=True) or {}
-    r = sala_registrar_jogada_criador(token, u['id'], body.get('moves'), body.get('score'))
-    return jsonify(r), (200 if r.get('ok') else 400)
-
-
 @arena_bp.route('/sala/<token>/confirmar-compartilhar', methods=['POST'])
 @arena_login_required
 def sala_confirmar_compartilhar_rt(token):
@@ -969,17 +957,6 @@ def sala_confirmar_compartilhar_rt(token):
 def sala_entrar_rt(token):
     u = _cur()
     r = sala_entrar(token, u['id'])
-    return jsonify(r), (200 if not r.get('erro') else 400)
-
-
-@arena_bp.route('/sala/<token>/enviar', methods=['POST'])
-@arena_login_required
-def sala_enviar_rt(token):
-    if request.content_length and request.content_length > 300000:
-        return jsonify({'erro': 'Requisição grande demais.'}), 413
-    u = _cur()
-    body = request.get_json(silent=True) or {}
-    r = sala_enviar(token, u['id'], body.get('moves'), body.get('score'))
     return jsonify(r), (200 if not r.get('erro') else 400)
 
 
@@ -1017,6 +994,7 @@ def mesa_page(token):
     """Roteador da mesa: serve o JOGO quando é a vez de jogar, senão a casca (entrar/aguardando/resultado)."""
     u = _cur()
     _reap_mesa_se_preciso(token)   # fecha a mesa se a janela passou
+    _stream_reap('mesa:' + token)  # finaliza stream abandonado (rede de segurança)
     conn = get_arena_db()
     m = conn.execute('SELECT * FROM arena_mesas WHERE token=?', (token,)).fetchone()
     if not m:
@@ -1027,11 +1005,10 @@ def mesa_page(token):
     n = conn.execute('SELECT COUNT(*) c FROM arena_mesa_jogadores WHERE mesa_id=?', (m['id'],)).fetchone()['c']
     conn.close()
     j = dict(j) if j else None
-    # é a vez de JOGAR? (inscrito, ainda não jogou, mesa aberta) — serve o mesmo jogo do duelo
+    # é a vez de JOGAR? (inscrito, ainda não jogou, mesa aberta) — serve o cliente STREAMING (anti-cheat)
     if j and j['jogou_em'] is None and j['pontos'] is None and m['status'] == 'aberta':
-        _tpl = (JOGOS_VALENDO.get(m['jogo']) or JOGOS_VALENDO['blocos'])['tpl']
-        return render_template(_tpl, token=token, seed=m['seed'], aposta=m['entrada'],
-                               endpoint='/arena/mesa/' + token + '/jogar', alvo=None)
+        return render_template('arena/jogo_stream.html', tipo='mesa', token=token,
+                               aposta=m['entrada'], redirect='/arena/mesa/' + token)
     pote = round(n * m['entrada'] * FICHA_VALOR, 2)
     premio = round(pote * (1 - ARENA_RAKE), 2)
     if m['status'] in ('paga', 'cancelada'):
@@ -1056,17 +1033,6 @@ def mesa_entrar_rt(token):
     return jsonify(r), (200 if not r.get('erro') else 400)
 
 
-@arena_bp.route('/mesa/<token>/jogar', methods=['POST'])
-@arena_login_required
-def mesa_jogar_rt(token):
-    if request.content_length and request.content_length > 300000:
-        return jsonify({'erro': 'Requisição grande demais.'}), 413
-    u = _cur()
-    body = request.get_json(silent=True) or {}
-    r = mesa_registrar_jogada(token, u['id'], body.get('moves'), body.get('score'))
-    return jsonify(r), (200 if r.get('ok') else 400)
-
-
 @arena_bp.route('/mesa/<token>/encerrar', methods=['POST'])
 @arena_login_required
 def mesa_encerrar_rt(token):
@@ -1083,9 +1049,72 @@ def mesa_encerrar_rt(token):
 STREAM_BUDGET_S = 150   # tempo total da partida — cravado no SERVIDOR (não no relógio do cliente)
 
 
+def _duelo_criador_score(sala_token, user_id, score):
+    conn = get_arena_db()
+    conn.execute("UPDATE arena_salas SET criador_pontos=?, status='aguardando' "
+                 "WHERE token=? AND criador_id=? AND status='esperando_criador' AND criador_pontos IS NULL",
+                 (int(score), sala_token, user_id))
+    conn.commit(); conn.close()
+
+
+def _duelo_oponente_score(sala_token, user_id, score):
+    conn = get_arena_db()
+    cur = conn.execute("UPDATE arena_salas SET oponente_pontos=? "
+                       "WHERE token=? AND oponente_id=? AND oponente_pontos IS NULL AND status IN ('apurando','paga')",
+                       (int(score), sala_token, user_id))
+    conn.commit(); ok = cur.rowcount == 1; conn.close()
+    if ok:
+        _apurar_sala(sala_token)
+
+
+def _mesa_jogador_score(mesa_token, user_id, score):
+    conn = get_arena_db()
+    conn.execute("UPDATE arena_mesa_jogadores SET pontos=?, jogou_em=? "
+                 "WHERE user_id=? AND jogou_em IS NULL AND mesa_id=(SELECT id FROM arena_mesas WHERE token=?)",
+                 (int(score), datetime.now().isoformat(), user_id, mesa_token))
+    conn.commit(); conn.close()
+
+
 def _stream_finalizar(token):
-    """[3/3] grava o placar final no duelo/mesa conforme o contexto da sessão. (Costura no passo 3.)"""
-    pass
+    """Grava o placar final (calculado no SERVIDOR = confiável) no duelo/mesa conforme o contexto.
+    Guardado/idempotente pelos WHERE ...IS NULL das funções de score."""
+    conn = get_arena_db()
+    s = conn.execute('SELECT contexto, placar, user_id FROM arena_stream_sessoes WHERE token=?', (token,)).fetchone()
+    conn.close()
+    if not s:
+        return
+    s = dict(s); ctx = (s['contexto'] or '').split(':')
+    try:
+        if ctx[0] == 'duelo' and len(ctx) == 3:
+            if ctx[2] == 'criador':
+                _duelo_criador_score(ctx[1], s['user_id'], s['placar'])
+            elif ctx[2] == 'oponente':
+                _duelo_oponente_score(ctx[1], s['user_id'], s['placar'])
+        elif ctx[0] == 'mesa' and len(ctx) >= 2:
+            _mesa_jogador_score(ctx[1], s['user_id'], s['placar'])
+    except Exception as e:
+        log.warning(f'[Arena] finalizar stream {token}: {e}')
+
+
+def _stream_reap(prefixo):
+    """Rede de segurança: sessões que estouraram o tempo mas não fecharam (jogador fechou a aba) —
+    finaliza no placar parcial. Chamado ao abrir a página do duelo/mesa."""
+    conn = get_arena_db()
+    limite = (datetime.now() - timedelta(seconds=STREAM_BUDGET_S + 15)).isoformat()
+    pend = [(r['token'], r['estado']) for r in conn.execute(
+        "SELECT token, estado FROM arena_stream_sessoes WHERE status='jogando' AND contexto LIKE ? "
+        "AND started_em < ?", (prefixo + '%', limite)).fetchall()]
+    conn.close()
+    for tk, estado in pend:
+        try:
+            st = json.loads(estado)
+            conn = get_arena_db()
+            conn.execute("UPDATE arena_stream_sessoes SET status='fim', placar=? WHERE token=? AND status='jogando'",
+                         (st.get('score', 0), tk))
+            conn.commit(); conn.close()
+            _stream_finalizar(tk)
+        except Exception:
+            pass
 
 
 def stream_iniciar(user_id, seed, contexto='treino'):
@@ -1101,6 +1130,7 @@ def stream_iniciar(user_id, seed, contexto='treino'):
     out = GS.cliente_bandeja(st)
     out['token'] = token
     out['budget'] = STREAM_BUDGET_S
+    out['restante'] = STREAM_BUDGET_S
     return out
 
 
@@ -1139,12 +1169,57 @@ def stream_jogar(token, user_id, slot, r, c):
     return res
 
 
+def stream_abrir(user_id, tipo, alvo_token):
+    """Abre (ou RESUME) a sessão de stream do duelo/mesa. A semente e o contexto vêm do SERVIDOR
+    (o cliente NÃO escolhe — senão trapaceava o alvo/papel). Valida que é a vez do jogador."""
+    conn = get_arena_db()
+    if tipo == 'duelo':
+        row = conn.execute('SELECT * FROM arena_salas WHERE token=?', (alvo_token,)).fetchone()
+        m = dict(row) if row else None
+        if not m:
+            conn.close(); return {'erro': 'Duelo não encontrado.'}
+        if m['criador_id'] == user_id and m['status'] == 'esperando_criador' and m['criador_pontos'] is None:
+            contexto, seed = 'duelo:' + alvo_token + ':criador', m['seed']
+        elif m['oponente_id'] == user_id and m['status'] == 'apurando' and m['oponente_pontos'] is None:
+            contexto, seed = 'duelo:' + alvo_token + ':oponente', m['seed']
+        else:
+            conn.close(); return {'erro': 'Não é a sua vez nesse duelo.'}
+    elif tipo == 'mesa':
+        row = conn.execute('SELECT * FROM arena_mesas WHERE token=?', (alvo_token,)).fetchone()
+        m = dict(row) if row else None
+        if not m:
+            conn.close(); return {'erro': 'Mesa não encontrada.'}
+        j = conn.execute('SELECT jogou_em FROM arena_mesa_jogadores WHERE mesa_id=? AND user_id=?',
+                         (m['id'], user_id)).fetchone()
+        if not j or j['jogou_em'] is not None or m['status'] != 'aberta':
+            conn.close(); return {'erro': 'Você não pode jogar essa mesa agora.'}
+        contexto, seed = 'mesa:' + alvo_token, m['seed']
+    else:
+        conn.close(); return {'erro': 'Tipo inválido.'}
+    # RESUME: já existe sessão em andamento desse usuário nesse contexto? (refresh não reinicia o relógio)
+    ex = conn.execute("SELECT * FROM arena_stream_sessoes WHERE user_id=? AND contexto=? AND status='jogando' "
+                      "ORDER BY id DESC LIMIT 1", (user_id, contexto)).fetchone()
+    conn.close()
+    if ex:
+        import arena_game_stream as GS
+        ex = dict(ex); st = json.loads(ex['estado'])
+        out = GS.cliente_bandeja(st); out['token'] = ex['token']; out['budget'] = STREAM_BUDGET_S
+        try:
+            passou = (datetime.now() - datetime.fromisoformat(ex['started_em'])).total_seconds()
+        except Exception:
+            passou = 0
+        out['restante'] = max(0, int(STREAM_BUDGET_S - passou))
+        return out
+    return stream_iniciar(user_id, seed, contexto)
+
+
 @arena_bp.route('/stream/iniciar', methods=['POST'])
 @arena_login_required
 def stream_iniciar_rt():
     u = _cur()
-    seed = random.randint(0, 0xFFFFFFFF)   # [passo 3] virá do sala/mesa (mesma semente pros dois)
-    return jsonify(stream_iniciar(u['id'], seed, 'treino'))
+    body = request.get_json(silent=True) or {}
+    r = stream_abrir(u['id'], body.get('tipo'), body.get('token'))
+    return jsonify(r), (200 if not r.get('erro') else 400)
 
 
 @arena_bp.route('/stream/<token>/jogar', methods=['POST'])

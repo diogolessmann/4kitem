@@ -61,8 +61,9 @@ def iniciar(seed):
 
 
 def cliente_bandeja(st):
-    """O que o cliente pode VER: só a bandeja atual (peças + usadas) + placar. NUNCA a semente."""
-    return {'tray': st['tray'], 'used': st['used'], 'score': st['score'],
+    """O que o cliente pode VER: bandeja atual + tabuleiro (server é a verdade) + placar.
+    NUNCA a semente nem as peças futuras."""
+    return {'tray': st['tray'], 'used': st['used'], 'score': st['score'], 'board': st['board'],
             'over': not _algum_cabe(st['board'], st['tray'], st['used'])}
 
 
@@ -104,5 +105,5 @@ def jogar(st, slot, r, c):
         _nova_bandeja(st)                     # revela a PRÓXIMA leva só agora
         novo = True
     over = not _algum_cabe(st['board'], st['tray'], st['used'])
-    return {'ok': True, 'over': over, 'score': st['score'],
+    return {'ok': True, 'over': over, 'score': st['score'], 'board': st['board'],
             'tray': st['tray'], 'used': st['used'], 'novo_tray': novo}

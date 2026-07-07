@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1">
+<meta name="theme-color" content="#07060f">
+<title>Partida valendo — Arena · AmbitiON</title>
+<style>
+  html,body{margin:0;background:#07060f;color:#f0f0ff;font-family:'Segoe UI',system-ui,-apple-system,Roboto,sans-serif;
+    -webkit-user-select:none;user-select:none;overscroll-behavior:none;touch-action:manipulation;}
+  *{box-sizing:border-box;}
+  .wrap{max-width:462px;margin:0 auto;padding:8px 12px 24px;}
+  .bar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;}
+  .brand{font-size:15px;font-weight:800;letter-spacing:.4px;}
+  .brand span{color:#22d3ee;}
+  .brand small{display:block;font-size:9px;font-weight:800;letter-spacing:1.5px;color:#34d399;margin-top:1px;}
+  .stats{display:flex;align-items:center;gap:8px;}
+  .stat{background:#100f22;border:1px solid rgba(168,85,247,.16);border-radius:12px;padding:6px 12px;text-align:center;min-width:66px;}
+  .lab{display:block;font-size:9px;font-weight:800;letter-spacing:1.2px;color:#7d7ca6;}
+  .val{display:block;font-size:20px;font-weight:800;line-height:1.05;font-variant-numeric:tabular-nums;color:#f4f3ff;}
+  #tempo .val{color:#22d3ee;}
+  #tempo.baixo .val{color:#f43f5e;}
+  .stage{position:relative;line-height:0;}
+  canvas{width:100%;display:block;border-radius:16px;touch-action:none;}
+  .hint{text-align:center;font-size:12px;color:#8786ab;margin-top:12px;line-height:1.5;}
+  .hint b{color:#34d399;}
+  .over{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;
+    background:rgba(7,6,15,.92);border-radius:16px;backdrop-filter:blur(3px);text-align:center;padding:24px;}
+  .over.hidden{display:none;}
+  .over .sp{width:38px;height:38px;border:4px solid rgba(168,85,247,.25);border-top-color:#a855f7;border-radius:50%;animation:spin .8s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .over .t{font-size:16px;font-weight:800;color:#e9e8ff;}
+  .over .s{font-size:12.5px;color:#9c9bc4;}
+  .over .btn{margin-top:8px;background:linear-gradient(135deg,#22d3ee,#7c3aed);color:#fff;border:none;border-radius:12px;padding:12px 22px;font-size:14px;font-weight:800;cursor:pointer;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="bar">
+    <div class="brand">🧱 Quebra<span>Blocos</span><small>🔒 VALENDO · R$ {{ aposta }}</small></div>
+    <div class="stats">
+      <div class="stat"><span class="lab">PONTOS</span><span class="val" id="score">0</span></div>
+      <div class="stat" id="tempo"><span class="lab">TEMPO</span><span class="val" id="tval">…</span></div>
+    </div>
+  </div>
+  <div class="stage">
+    <canvas id="cv"></canvas>
+    <div class="over" id="over">
+      <div class="sp" id="sp"></div>
+      <div class="t" id="ot">Conectando à partida…</div>
+      <div class="s" id="os">O servidor entrega as peças.</div>
+      <button class="btn hidden" id="retry" onclick="conectar()">Tentar de novo</button>
+    </div>
+  </div>
+  <div class="hint">🔒 O servidor entrega <b>uma leva por vez</b> e confere cada peça. Faça o máximo em <b>{{ '%.0f'|format(0) }}</b><span id="hbudget"></span>s.</div>
+</div>
+
+<script>
+var CFG = { tipo: {{ tipo|tojson }}, token: {{ token|tojson }}, redirect: {{ redirect|tojson }} };
+(function(){
+  "use strict";
+  var cv=document.getElementById('cv'), ctx=cv.getContext('2d');
+  var N=8, cell, board_px, trayGap, trayY, slotW, cssW, cssH;
+  var COLORS=['#22d3ee','#a855f7','#34d399'];   // cor por slot (cosmético)
+  var stk='', board=null, tray=[], used=[false,false,false], score=0;
+  var enviando=false, over=false, drag=null, tEnd=0, raf=0, terminou=false;
+
+  function layout(){
+    cssW=Math.min((window.innerWidth||400)-24,462);
+    cell=Math.floor(cssW/N); board_px=cell*N;
+    trayGap=Math.max(8,Math.round(cell*0.42)); slotW=(board_px-2*trayGap)/3;
+    trayY=board_px+Math.round(cell*0.55)+6; cssH=Math.round(trayY+slotW+6);
+    var dpr=Math.min(window.devicePixelRatio||1,2.5);
+    cv.style.width=board_px+'px'; cv.style.height=cssH+'px';
+    cv.width=Math.round(board_px*dpr); cv.height=Math.round(cssH*dpr); ctx.setTransform(dpr,0,0,dpr,0,0);
+  }
+  function now(){ return performance.now(); }
+
+  // ── conexão / round-trips com o servidor ──
+  window.conectar=function(){
+    document.getElementById('retry').classList.add('hidden');
+    document.getElementById('sp').style.display='block';
+    document.getElementById('ot').textContent='Conectando à partida…';
+    document.getElementById('os').textContent='O servidor entrega as peças.';
+    document.getElementById('over').classList.remove('hidden');
+    fetch('/arena/stream/iniciar',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({tipo:CFG.tipo, token:CFG.token})})
+      .then(function(r){return r.json();}).then(function(j){
+        if(j&&j.erro){ falhou(j.erro); return; }
+        stk=j.token; aplicar(j); tEnd=now()+ (j.restante!=null?j.restante:j.budget)*1000;
+        document.getElementById('over').classList.add('hidden');
+        if(j.over){ finalizar(); }
+      }).catch(function(){ falhou('Sem conexão.'); });
+  };
+  function aplicar(j){ if(j.board) board=j.board; if(j.tray) tray=j.tray; if(j.used) used=j.used; if(j.score!=null) score=j.score;
+    document.getElementById('score').textContent=score; }
+  function place(slot,r,c){
+    if(enviando||over||terminou) return; enviando=true;
+    fetch('/arena/stream/'+stk+'/jogar',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({slot:slot,r:r,c:c})}).then(function(r){return r.json();}).then(function(j){
+        enviando=false;
+        if(j&&j.erro && !j.over){ return; }        // jogada recusada (raro) — ignora, continua
+        aplicar(j);
+        if(j.over){ finalizar(); }
+      }).catch(function(){ enviando=false; });
+  }
+  function finalizar(){
+    if(terminou) return; terminou=true; over=true; drag=null;
+    document.getElementById('over').classList.remove('hidden');
+    document.getElementById('sp').style.display='block';
+    document.getElementById('ot').textContent='Partida enviada! ✅';
+    document.getElementById('os').textContent='Calculando o resultado…';
+    setTimeout(function(){ location.href=CFG.redirect; }, 900);
+  }
+  function falhou(msg){
+    document.getElementById('sp').style.display='none';
+    document.getElementById('ot').textContent='Ops 😕';
+    document.getElementById('os').textContent=msg;
+    document.getElementById('retry').classList.remove('hidden');
+  }
+
+  // ── drag (arrasta peça da bandeja pro tabuleiro) ──
+  function pos(e){ var rc=cv.getBoundingClientRect(); var s=rc.width?board_px/rc.width:1; return {x:(e.clientX-rc.left)*s, y:(e.clientY-rc.top)*s}; }
+  function slotX(i){ return i*(slotW+trayGap); }
+  function pieceAt(x,y){ if(y<trayY) return -1; for(var i=0;i<3;i++){ if(used[i]||!tray[i]) continue; var sx=slotX(i); if(x>=sx&&x<=sx+slotW&&y>=trayY&&y<=trayY+slotW) return i; } return -1; }
+  function fits(offs,r,c){ if(!board) return false; for(var i=0;i<offs.length;i++){ var rr=r+offs[i][0],cc=c+offs[i][1]; if(rr<0||rr>=N||cc<0||cc>=N||board[rr][cc]) return false; } return true; }
+  function landing(){ if(!drag) return null; var offs=tray[drag.idx]; var mr=0,mc=0; offs.forEach(function(p){mr=Math.max(mr,p[0]);mc=Math.max(mc,p[1]);});
+    var pw=(mc+1)*cell, ph=(mr+1)*cell; var tlx=drag.px-pw/2, tly=drag.py-ph/2-cell*0.95; var c=Math.round(tlx/cell), r=Math.round(tly/cell); return {r:r,c:c,ok:fits(offs,r,c)}; }
+  cv.addEventListener('pointerdown',function(e){ if(over||enviando||!board) return; var p=pos(e), i=pieceAt(p.x,p.y); if(i<0) return;
+    drag={idx:i,px:p.x,py:p.y,land:null}; drag.land=landing(); try{cv.setPointerCapture(e.pointerId);}catch(_){} e.preventDefault(); });
+  cv.addEventListener('pointermove',function(e){ if(!drag) return; var p=pos(e); drag.px=p.x; drag.py=p.y; drag.land=landing(); e.preventDefault(); });
+  cv.addEventListener('pointerup',function(){ if(!drag) return; var d=drag; drag=null; if(d.land&&d.land.ok) place(d.idx,d.land.r,d.land.c); });
+  cv.addEventListener('pointercancel',function(){drag=null;});
+
+  // ── desenho ──
+  function rr(x,y,w,h,rad){ rad=Math.min(rad,w/2,h/2); ctx.beginPath(); ctx.moveTo(x+rad,y); ctx.arcTo(x+w,y,x+w,y+h,rad); ctx.arcTo(x+w,y+h,x,y+h,rad); ctx.arcTo(x,y+h,x,y,rad); ctx.arcTo(x,y,x+w,y,rad); ctx.closePath(); }
+  function blk(x,y,s,color,a){ var ins=Math.max(1,s*0.055), rad=s*0.2; ctx.globalAlpha=a==null?1:a; rr(x+ins,y+ins,s-2*ins,s-2*ins,rad); ctx.fillStyle=color; ctx.fill();
+    var g=ctx.createLinearGradient(x,y,x,y+s); g.addColorStop(0,'rgba(255,255,255,.28)'); g.addColorStop(.5,'rgba(255,255,255,0)'); g.addColorStop(1,'rgba(0,0,0,.22)');
+    rr(x+ins,y+ins,s-2*ins,s-2*ins,rad); ctx.fillStyle=g; ctx.fill(); ctx.globalAlpha=1; }
+  function emptyc(x,y,s){ var ins=Math.max(1,s*0.055); rr(x+ins,y+ins,s-2*ins,s-2*ins,s*0.18); ctx.fillStyle='#16152b'; ctx.fill(); }
+  function frame(){
+    if(!over){ var rem=Math.max(0,tEnd-now()); var seg=Math.ceil(rem/1000);
+      var tv=document.getElementById('tval'); if(tv&&tEnd) tv.textContent=seg;
+      var tb=document.getElementById('tempo'); if(tb){ if(seg<=15) tb.classList.add('baixo'); else tb.classList.remove('baixo'); }
+      if(tEnd && rem<=0 && !terminou && stk){ over=true; place(0,0,0); }   // tempo: cutuca o servidor -> timeout finaliza
+    }
+    ctx.clearRect(0,0,cssW,cssH);
+    rr(0,0,board_px,board_px,16); ctx.fillStyle='#0c0b1c'; ctx.fill();
+    ctx.lineWidth=1.5; ctx.strokeStyle='rgba(34,211,238,.2)'; rr(0.75,0.75,board_px-1.5,board_px-1.5,15); ctx.stroke();
+    if(board){ for(var r=0;r<N;r++) for(var c=0;c<N;c++){ var x=c*cell,y=r*cell; if(board[r][c]) blk(x,y,cell,'#22d3ee'); else emptyc(x,y,cell); } }
+    if(drag&&drag.land){ var offs=tray[drag.idx], L=drag.land;
+      for(var k=0;k<offs.length;k++){ var gr=L.r+offs[k][0], gc=L.c+offs[k][1]; if(gr<0||gr>=N||gc<0||gc>=N) continue;
+        rr(gc*cell+cell*0.09,gr*cell+cell*0.09,cell*0.82,cell*0.82,cell*0.2); ctx.fillStyle=L.ok?'rgba(52,211,153,.32)':'rgba(244,63,94,.28)'; ctx.fill();
+        ctx.lineWidth=2; ctx.strokeStyle=L.ok?'rgba(52,211,153,.85)':'rgba(244,63,94,.7)'; ctx.stroke(); } }
+    for(var t=0;t<3;t++){ var sxx=slotX(t); rr(sxx,trayY,slotW,slotW,14); ctx.fillStyle='#0b0a19'; ctx.fill();
+      var pc=tray[t]; if(!pc||used[t]||(drag&&drag.idx===t)) continue;
+      var mr=0,mc=0; pc.forEach(function(p){mr=Math.max(mr,p[0]);mc=Math.max(mc,p[1]);});
+      var tc=Math.min((slotW*0.78)/Math.max(mc+1,mr+1),cell*0.86); var px0=sxx+(slotW-(mc+1)*tc)/2, py0=trayY+(slotW-(mr+1)*tc)/2;
+      for(var q=0;q<pc.length;q++) blk(px0+pc[q][1]*tc,py0+pc[q][0]*tc,tc,COLORS[t]); }
+    if(drag){ var dp=tray[drag.idx]; var mr2=0,mc2=0; dp.forEach(function(p){mr2=Math.max(mr2,p[0]);mc2=Math.max(mc2,p[1]);});
+      var pw=(mc2+1)*cell, ph=(mr2+1)*cell; var ox=drag.px-pw/2, oy=drag.py-ph/2-cell*0.95;
+      ctx.save(); ctx.shadowColor='rgba(0,0,0,.5)'; ctx.shadowBlur=14; ctx.shadowOffsetY=6;
+      for(var m=0;m<dp.length;m++) blk(ox+dp[m][1]*cell,oy+dp[m][0]*cell,cell,COLORS[drag.idx]); ctx.restore(); }
+    raf=requestAnimationFrame(frame);
+  }
+  window.addEventListener('resize',function(){ layout(); });
+  layout(); requestAnimationFrame(frame); conectar();
+})();
+</script>
+</body>
+</html>
