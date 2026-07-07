@@ -19,6 +19,9 @@ TEMAS = [
     {'id': 'carros',    'nome': 'Carros',           'emoji': '🚗'},
     {'id': 'comida',    'nome': 'Comida',           'emoji': '🍔'},
     {'id': 'ingles',    'nome': 'Inglês',           'emoji': '🔤'},
+    {'id': 'ciencia',   'nome': 'Ciência',          'emoji': '🔬'},
+    {'id': 'historia',  'nome': 'História',         'emoji': '📜'},
+    {'id': 'esportes',  'nome': 'Esportes',         'emoji': '⚽'},
 ]
 
 # {tema: [{'q': pergunta, 'ops': [4 alternativas], 'c': índice da correta}]}

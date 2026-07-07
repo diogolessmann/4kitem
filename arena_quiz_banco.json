@@ -459,6 +459,886 @@
     "Clã Uzumaki"
    ],
    "c": 1
+  },
+  {
+   "q": "Qual é o nome do Nove Caudas selado dentro de Naruto Uzumaki?",
+   "ops": [
+    "Kurama",
+    "Shukaku",
+    "Gyuki",
+    "Matatabi"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Em Dragon Ball, qual é a raça de Goku?",
+   "ops": [
+    "Namekuseijin",
+    "Saiyajin",
+    "Majin",
+    "Tsufuru"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual é o sonho do protagonista Monkey D. Luffy em One Piece?",
+   "ops": [
+    "Encontrar o All Blue",
+    "Tornar-se o Rei dos Piratas",
+    "Desenhar o mapa do mundo",
+    "Curar todas as doenças"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Em Bleach, qual é o nome da zanpakuto de Ichigo Kurosaki?",
+   "ops": [
+    "Zangetsu",
+    "Senbonzakura",
+    "Hyorinmaru",
+    "Zabimaru"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Nos Cavaleiros do Zodíaco, qual constelação corresponde à armadura de Seiya?",
+   "ops": [
+    "Cisne",
+    "Dragão",
+    "Pégaso",
+    "Fênix"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Em Yu-Gi-Oh!, qual é o nome do espírito antigo que habita o Enigma do Milênio de Yugi?",
+   "ops": [
+    "Faraó Atem",
+    "Seto Kaiba",
+    "Bakura",
+    "Marik"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Qual foi o primeiro Pokémon obtido por Ash Ketchum na série animada?",
+   "ops": [
+    "Charmander",
+    "Squirtle",
+    "Bulbasaur",
+    "Pikachu"
+   ],
+   "c": 3
+  },
+  {
+   "q": "Em Naruto, qual é o nome do time liderado por Kakashi Hatake?",
+   "ops": [
+    "Time 7",
+    "Time 8",
+    "Time 10",
+    "Time Gai"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Em One Piece, qual fruta do diabo Luffy comeu?",
+   "ops": [
+    "Mera Mera no Mi",
+    "Gomu Gomu no Mi",
+    "Bara Bara no Mi",
+    "Hana Hana no Mi"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual é o objetivo do Akatsuki em Naruto Shippuden?",
+   "ops": [
+    "Proteger a Vila da Folha",
+    "Capturar os Jinchuriki e as Bestas com Cauda",
+    "Restaurar o clã Uchiha",
+    "Encontrar tesouros"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Em Dragon Ball, qual é o primeiro estágio que Goku alcança ao se transformar contra Frieza em Namekusei?",
+   "ops": [
+    "Super Saiyajin Blue",
+    "Super Saiyajin",
+    "Ultra Instinto",
+    "Super Saiyajin 2"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Nos Cavaleiros do Zodíaco, quem é a deusa que os cavaleiros protegem?",
+   "ops": [
+    "Atena",
+    "Ártemis",
+    "Afrodite",
+    "Hera"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Em Pokémon, qual é o tipo do Pokémon Charizard?",
+   "ops": [
+    "Fogo e Voador",
+    "Fogo e Dragão",
+    "Somente Fogo",
+    "Fogo e Terra"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Qual clã ninja é conhecido pelo dojutsu Byakugan em Naruto?",
+   "ops": [
+    "Uchiha",
+    "Hyuga",
+    "Nara",
+    "Aburame"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Em Yu-Gi-Oh!, qual é o monstro favorito de Seto Kaiba?",
+   "ops": [
+    "Mago Negro",
+    "Exodia",
+    "Dragão Branco de Olhos Azuis",
+    "Slifer o Dragão do Céu"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Em Bleach, como se chama a organização de Ceifadores de Almas à qual Ichigo se junta?",
+   "ops": [
+    "Espada",
+    "Gotei 13",
+    "Vandenreich",
+    "Xcution"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual é o nome do rival de infância de Goku que também é um lutador de artes marciais e ex-ladrão do deserto?",
+   "ops": [
+    "Kuririn",
+    "Yamcha",
+    "Tenshinhan",
+    "Chaos"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Em One Piece, qual é a profissão do tripulante Tony Tony Chopper?",
+   "ops": [
+    "Cozinheiro",
+    "Médico",
+    "Navegador",
+    "Músico"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Nos Cavaleiros do Zodíaco, quantos Cavaleiros de Ouro existem, correspondendo aos signos?",
+   "ops": [
+    "Doze",
+    "Dez",
+    "Oito",
+    "Quatorze"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Qual é o nome do professor que entrega o primeiro Pokémon aos treinadores na região de Kanto?",
+   "ops": [
+    "Professor Elm",
+    "Professor Carvalho",
+    "Professor Bétula",
+    "Professor Rowan"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Em Naruto, qual técnica assinada foi ensinada a Naruto por seu mestre Jiraiya, originalmente criada pelo Quarto Hokage?",
+   "ops": [
+    "Rasengan",
+    "Chidori",
+    "Kagebunshin",
+    "Amaterasu"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Em Dragon Ball Z, qual personagem derrota Cell definitivamente no Cell Games com um Kamehameha?",
+   "ops": [
+    "Vegeta",
+    "Piccolo",
+    "Son Goku",
+    "Gohan"
+   ],
+   "c": 3
+  },
+  {
+   "q": "Em One Piece, como é chamada a primeira metade da Grand Line, dividida pela Red Line e pela Calm Belt?",
+   "ops": [
+    "Paraíso (Paradise)",
+    "New World",
+    "East Blue",
+    "Reverie"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Em Yu-Gi-Oh!, quantas partes do corpo de Exodia é preciso reunir na mão para vencer o duelo automaticamente?",
+   "ops": [
+    "Três partes",
+    "Cinco partes",
+    "Sete partes",
+    "Duas partes"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Em Bleach, qual é o nome do grupo de arrancars de elite comandado por Aizen?",
+   "ops": [
+    "Espada",
+    "Bount",
+    "Fullbringers",
+    "Quincy"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Qual é o nome do irmão mais velho de Sasuke Uchiha em Naruto?",
+   "ops": [
+    "Madara",
+    "Obito",
+    "Itachi",
+    "Shisui"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Em Pokémon, qual item é usado para capturar Pokémon selvagens?",
+   "ops": [
+    "Poção",
+    "Pokébola",
+    "Repelente",
+    "Amuleto"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Em Dragon Ball, quem é o pai de Trunks?",
+   "ops": [
+    "Goku",
+    "Piccolo",
+    "Vegeta",
+    "Yamcha"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Em One Piece, qual é o nome do navio que a tripulação dos Chapéus de Palha usa antes do Thousand Sunny?",
+   "ops": [
+    "Moby Dick",
+    "Going Merry",
+    "Red Force",
+    "Oro Jackson"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Em Naruto, qual é o nome da vila oculta onde a história principal se passa?",
+   "ops": [
+    "Vila Oculta da Areia",
+    "Vila Oculta da Névoa",
+    "Vila Oculta da Folha",
+    "Vila Oculta da Nuvem"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Em Yu-Gi-Oh!, qual carta mágica clássica destrói todos os monstros no campo?",
+   "ops": [
+    "Buraco Negro (Dark Hole)",
+    "Espadas da Luz Reveladora",
+    "Jarra do Trovão",
+    "Espelho Mágico"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Em Bleach, o que é uma Hollow?",
+   "ops": [
+    "Um tipo de Ceifador de Almas",
+    "Uma alma corrompida que perdeu seu coração",
+    "Um humano com poderes",
+    "Um espírito guardião"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Em Dragon Ball, qual é o nome da esposa de Goku?",
+   "ops": [
+    "Bulma",
+    "Chichi",
+    "Videl",
+    "Lunch"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Nos Cavaleiros do Zodíaco, qual é a armadura do personagem Hyoga?",
+   "ops": [
+    "Dragão",
+    "Cisne",
+    "Andrômeda",
+    "Fênix"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Em One Piece, qual pirata famoso deu a Luffy o chapéu de palha que ele usa?",
+   "ops": [
+    "Gol D. Roger",
+    "Shanks",
+    "Whitebeard",
+    "Rayleigh"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Em Dragon Ball, qual objeto Goku carrega para viajar quando criança, sendo uma nuvem voadora?",
+   "ops": [
+    "Bastão Mágico",
+    "Nuvem Voadora (Kinton)",
+    "Báculo Sagrado",
+    "Radar do Dragão"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Em Yu-Gi-Oh!, qual é o nome do melhor amigo de Yugi que usa um baralho com o monstro Red-Eyes Black Dragon?",
+   "ops": [
+    "Tristan",
+    "Joey (Katsuya Jonouchi)",
+    "Duke",
+    "Bakura"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Nos Cavaleiros do Zodíaco, qual personagem é conhecido por já ter morrido e revivido, ligado à constelação de Fênix?",
+   "ops": [
+    "Seiya",
+    "Ikki",
+    "Shun",
+    "Shiryu"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Em One Piece, qual é o nome do espadachim da tripulação dos Chapéus de Palha que sonha ser o maior espadachim do mundo?",
+   "ops": [
+    "Sanji",
+    "Roronoa Zoro",
+    "Usopp",
+    "Franky"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Em Naruto, qual é o nome da técnica ocular herdada pelo clã Uchiha?",
+   "ops": [
+    "Byakugan",
+    "Sharingan",
+    "Rinnegan",
+    "Tenseigan"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Em Dragon Ball, quem treinou Goku nas artes marciais quando ele era criança, sendo um velho mestre?",
+   "ops": [
+    "Kami-sama",
+    "Mestre Kame (Muten Roshi)",
+    "Rei Kai",
+    "Piccolo Daimao"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Em Yu-Gi-Oh!, qual é o monstro assinatura de Yugi, um feiticeiro vestido de roxo?",
+   "ops": [
+    "Mago Negro",
+    "Kuriboh",
+    "Gaia o Cavaleiro Feroz",
+    "Summoned Skull"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Em Bleach, qual é o nome da Ceifadora de Almas que dá seus poderes a Ichigo no início da história?",
+   "ops": [
+    "Orihime",
+    "Rukia Kuchiki",
+    "Yoruichi",
+    "Rangiku"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Em One Piece, qual é o nome do cozinheiro dos Chapéus de Palha que luta apenas com chutes?",
+   "ops": [
+    "Sanji",
+    "Zoro",
+    "Brook",
+    "Jinbe"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Qual estúdio produziu a aclamada adaptação em anime de Demon Slayer (Kimetsu no Yaiba)?",
+   "ops": [
+    "Ufotable",
+    "MAPPA",
+    "Wit Studio",
+    "Bones"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Quem é o autor do mangá Jujutsu Kaisen?",
+   "ops": [
+    "Gege Akutami",
+    "Koyoharu Gotouge",
+    "Tatsuki Fujimoto",
+    "Kohei Horikoshi"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Qual é o poder do protagonista Denji em Chainsaw Man?",
+   "ops": [
+    "Fundir-se ao demônio-motosserra",
+    "Controlar o fogo",
+    "Ler mentes",
+    "Regeneração pelo sangue apenas"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Em My Hero Academia, como se chama a habilidade especial que Izuku Midoriya herda de All Might?",
+   "ops": [
+    "One For All",
+    "All For One",
+    "Explosão",
+    "Half-Cold Half-Hot"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Qual estúdio produziu a primeira temporada de Attack on Titan em 2013?",
+   "ops": [
+    "Wit Studio",
+    "MAPPA",
+    "Ufotable",
+    "Madhouse"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Quem é o autor original do mangá Attack on Titan (Shingeki no Kyojin)?",
+   "ops": [
+    "Hajime Isayama",
+    "Sui Ishida",
+    "ONE",
+    "Yusuke Murata"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Em Demon Slayer, qual é o nome da irmã de Tanjiro que foi transformada em demônio?",
+   "ops": [
+    "Nezuko",
+    "Kanao",
+    "Shinobu",
+    "Mitsuri"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Qual é o nome do vilão principal e rei dos demônios em Demon Slayer?",
+   "ops": [
+    "Muzan Kibutsuji",
+    "Kokushibo",
+    "Akaza",
+    "Douma"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Em Jujutsu Kaisen, qual objeto amaldiçoado Yuji Itadori engole no início da história?",
+   "ops": [
+    "Um dedo de Sukuna",
+    "Um olho de Gojo",
+    "Uma ferramenta amaldiçoada",
+    "Um coração selado"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Qual estúdio ficou responsável pela produção do anime Jujutsu Kaisen?",
+   "ops": [
+    "MAPPA",
+    "Ufotable",
+    "A-1 Pictures",
+    "Trigger"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Quem é o autor de Chainsaw Man e também de Fire Punch?",
+   "ops": [
+    "Tatsuki Fujimoto",
+    "Gege Akutami",
+    "Koyoharu Gotouge",
+    "Kentaro Miura"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Em My Hero Academia, qual é o nome do amigo de infância explosivo de Midoriya?",
+   "ops": [
+    "Katsuki Bakugo",
+    "Shoto Todoroki",
+    "Tenya Iida",
+    "Eijiro Kirishima"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Qual é o nome da técnica amaldiçoada característica de Satoru Gojo em Jujutsu Kaisen?",
+   "ops": [
+    "Ilimitado (Infinito)",
+    "Ten Shadows",
+    "Espírito Desmontado",
+    "Chama Sagrada"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Qual respiração Tanjiro usa como base predominante no início de Demon Slayer?",
+   "ops": [
+    "Respiração da Água",
+    "Respiração do Trovão",
+    "Respiração do Fogo",
+    "Respiração da Fera"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Em My Hero Academia, qual é o nome verdadeiro do vilão líder da Liga dos Vilões?",
+   "ops": [
+    "Tomura Shigaraki",
+    "Dabi",
+    "Stain",
+    "Overhaul"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Qual é a idade prometida em que as crianças 'se formam' no orfanato de The Promised Neverland?",
+   "ops": [
+    "12 anos",
+    "10 anos",
+    "15 anos",
+    "8 anos"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Qual estúdio produziu o anime de The Promised Neverland em sua primeira temporada?",
+   "ops": [
+    "CloverWorks",
+    "MAPPA",
+    "Ufotable",
+    "Kyoto Animation"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Em Demon Slayer, os demônios mais fortes servindo diretamente a Muzan são conhecidos como quê?",
+   "ops": [
+    "Doze Luas Demoníacas",
+    "Os Nove Pilares",
+    "A Guarda Sombria",
+    "Os Doze Selos"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Qual autor criou a série Naruto?",
+   "ops": [
+    "Masashi Kishimoto",
+    "Eiichiro Oda",
+    "Tite Kubo",
+    "Akira Toriyama"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Qual é o nome do grupo de elite de soldados focado em combater titãs fora dos muros em Attack on Titan?",
+   "ops": [
+    "Tropa de Exploração",
+    "Tropa Estacionária",
+    "Polícia Militar",
+    "Guarda Real"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Em Chainsaw Man, qual é o nome do Demônio do Sangue que atua como aliada e superior de Denji?",
+   "ops": [
+    "Power",
+    "Makima",
+    "Kobeni",
+    "Himeno"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Qual estúdio é famoso por produzir a franquia de Fate e também Demon Slayer?",
+   "ops": [
+    "Ufotable",
+    "A-1 Pictures",
+    "Studio Pierrot",
+    "Toei Animation"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Em My Hero Academia, qual é o nome da escola de heróis onde a história se passa?",
+   "ops": [
+    "U.A.",
+    "Shiketsu",
+    "Ketsubutsu",
+    "Seijin"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Quem é o autor de My Hero Academia?",
+   "ops": [
+    "Kohei Horikoshi",
+    "Gege Akutami",
+    "Hajime Isayama",
+    "Yuki Tabata"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Em Demon Slayer, qual é o nome do companheiro covarde de Tanjiro que luta melhor quando adormecido?",
+   "ops": [
+    "Zenitsu Agatsuma",
+    "Inosuke Hashibira",
+    "Genya",
+    "Giyu"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Qual é o nome do usuário do Titã Colossal revelado no final da 1ª temporada de Attack on Titan?",
+   "ops": [
+    "Bertholdt Hoover",
+    "Reiner Braun",
+    "Annie Leonhart",
+    "Zeke Yeager"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Em Jujutsu Kaisen, qual personagem é conhecida por sua técnica de martelo e pregos amaldiçoados?",
+   "ops": [
+    "Nobara Kugisaki",
+    "Maki Zenin",
+    "Miwa",
+    "Momo"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Em Attack on Titan, qual é o nome do poder que permite controlar todos os titãs?",
+   "ops": [
+    "Titã Fundador",
+    "Titã de Ataque",
+    "Titã Bestial",
+    "Titã Feminino"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Qual estúdio assumiu a produção das temporadas finais de Attack on Titan após a Wit Studio?",
+   "ops": [
+    "MAPPA",
+    "Bones",
+    "Madhouse",
+    "Production I.G"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Em Demon Slayer, qual é o nome do Hashira da Chama que aparece no arco do Trem Infinito?",
+   "ops": [
+    "Kyojuro Rengoku",
+    "Tengen Uzui",
+    "Giyu Tomioka",
+    "Sanemi Shinazugawa"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Qual é o nome do professor herói e mentor da Classe 1-A em My Hero Academia?",
+   "ops": [
+    "Shota Aizawa",
+    "All Might",
+    "Present Mic",
+    "Endeavor"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Qual autor é conhecido pela série Berserk?",
+   "ops": [
+    "Kentaro Miura",
+    "Hirohiko Araki",
+    "Naoki Urasawa",
+    "Takehiko Inoue"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Em Chainsaw Man, qual é o nome do demônio superior manipulador ligado à Segurança Pública?",
+   "ops": [
+    "Makima",
+    "Reze",
+    "Santa Claus",
+    "Katana Man"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Qual respiração é derivada da Respiração da Água e usada por Tanjiro relacionada à sua família?",
+   "ops": [
+    "Respiração do Sol (Dança do Deus do Fogo)",
+    "Respiração do Vento",
+    "Respiração da Neblina",
+    "Respiração da Pedra"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Em My Hero Academia, qual é o Quirk de Shoto Todoroki?",
+   "ops": [
+    "Meio Gelo Meio Fogo",
+    "Explosão",
+    "Zero Gravidade",
+    "Endurecimento"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Qual é o nome do meio-irmão mais velho de Eren em Attack on Titan?",
+   "ops": [
+    "Zeke Yeager",
+    "Grisha Yeager",
+    "Reiner Braun",
+    "Levi Ackerman"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Em Jujutsu Kaisen, o que é uma 'Expansão de Domínio' (Domain Expansion)?",
+   "ops": [
+    "Um espaço interno que garante acerto certeiro da técnica",
+    "Uma invocação de shikigami",
+    "Um selo de barreira defensivo",
+    "Uma técnica de cura"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Qual estúdio produz a série Spy x Family em conjunto com a CloverWorks?",
+   "ops": [
+    "Wit Studio",
+    "Ufotable",
+    "MAPPA",
+    "Bones"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Em Demon Slayer, qual é o nome do fundador da técnica de respiração original que dá origem a todas as outras?",
+   "ops": [
+    "Yoriichi Tsugikuni",
+    "Kokushibo",
+    "Sakonji Urokodaki",
+    "Kagaya Ubuyashiki"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Qual capitão baixinho e poderoso é considerado o soldado mais forte da humanidade em Attack on Titan?",
+   "ops": [
+    "Levi Ackerman",
+    "Erwin Smith",
+    "Mike Zacharias",
+    "Hange Zoe"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Qual é o nome do vilão que absorve Quirks e é a origem de todos os poderes maléficos em My Hero Academia?",
+   "ops": [
+    "All For One",
+    "One For All",
+    "Overhaul",
+    "Stain"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Em Jujutsu Kaisen, qual personagem é conhecido como o feiticeiro mais forte e usa venda ou óculos escuros?",
+   "ops": [
+    "Satoru Gojo",
+    "Suguru Geto",
+    "Kento Nanami",
+    "Aoi Todo"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Qual mangaká criou One Piece?",
+   "ops": [
+    "Eiichiro Oda",
+    "Masashi Kishimoto",
+    "Tite Kubo",
+    "Yoshihiro Togashi"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Em Demon Slayer, qual é o sobrenome da família que lidera o Esquadrão de Caçadores de Demônios por gerações?",
+   "ops": [
+    "Ubuyashiki",
+    "Kamado",
+    "Rengoku",
+    "Tomioka"
+   ],
+   "c": 0
   }
  ],
  "geografia": [
@@ -879,6 +1759,816 @@
     "Cáucaso",
     "Montes Urais",
     "Alpes"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Ancara é a capital de qual país?",
+   "ops": [
+    "Grécia",
+    "Turquia",
+    "Irã",
+    "Síria"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual é a capital da Nova Zelândia?",
+   "ops": [
+    "Auckland",
+    "Christchurch",
+    "Wellington",
+    "Hamilton"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Berna é a capital de qual país?",
+   "ops": [
+    "Áustria",
+    "Bélgica",
+    "Suíça",
+    "Holanda"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual é a capital da África do Sul que abriga o poder executivo?",
+   "ops": [
+    "Cidade do Cabo",
+    "Joanesburgo",
+    "Durban",
+    "Pretória"
+   ],
+   "c": 3
+  },
+  {
+   "q": "Qual é a capital do Marrocos?",
+   "ops": [
+    "Casablanca",
+    "Rabat",
+    "Marrakech",
+    "Fez"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Astana é a capital de qual país?",
+   "ops": [
+    "Uzbequistão",
+    "Cazaquistão",
+    "Mongólia",
+    "Quirguistão"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual é a capital da Noruega?",
+   "ops": [
+    "Bergen",
+    "Oslo",
+    "Estocolmo",
+    "Trondheim"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Nairóbi é a capital de qual país?",
+   "ops": [
+    "Tanzânia",
+    "Uganda",
+    "Quênia",
+    "Etiópia"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Hanói é a capital de qual país?",
+   "ops": [
+    "Tailândia",
+    "Camboja",
+    "Vietnã",
+    "Laos"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual é a capital da Suécia?",
+   "ops": [
+    "Gotemburgo",
+    "Malmö",
+    "Estocolmo",
+    "Uppsala"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual é a capital do Peru?",
+   "ops": [
+    "Cusco",
+    "Arequipa",
+    "Lima",
+    "Trujillo"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Bagdá é a capital de qual país?",
+   "ops": [
+    "Irã",
+    "Iraque",
+    "Jordânia",
+    "Kuwait"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual é a capital da Irlanda?",
+   "ops": [
+    "Cork",
+    "Dublin",
+    "Galway",
+    "Belfast"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual é a capital da Polônia?",
+   "ops": [
+    "Cracóvia",
+    "Gdansk",
+    "Varsóvia",
+    "Wroclaw"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual é a capital de Cuba?",
+   "ops": [
+    "Santiago de Cuba",
+    "Havana",
+    "Camagüey",
+    "Holguín"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Islamabad é a capital de qual país?",
+   "ops": [
+    "Bangladesh",
+    "Afeganistão",
+    "Paquistão",
+    "Nepal"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual é a capital da Colômbia?",
+   "ops": [
+    "Medellín",
+    "Cáli",
+    "Bogotá",
+    "Cartagena"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual é a capital da Finlândia?",
+   "ops": [
+    "Turku",
+    "Helsinque",
+    "Tampere",
+    "Espoo"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual é a capital da Tailândia?",
+   "ops": [
+    "Chiang Mai",
+    "Phuket",
+    "Bangkok",
+    "Pattaya"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Adis Abeba é a capital de qual país?",
+   "ops": [
+    "Sudão",
+    "Somália",
+    "Etiópia",
+    "Eritreia"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual é a capital da Hungria?",
+   "ops": [
+    "Debrecen",
+    "Budapeste",
+    "Szeged",
+    "Miskolc"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual é a capital da Bélgica?",
+   "ops": [
+    "Antuérpia",
+    "Bruxelas",
+    "Gante",
+    "Bruges"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Wellington fica em qual continente?",
+   "ops": [
+    "Europa",
+    "América do Sul",
+    "Oceania",
+    "Ásia"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual é a capital da Dinamarca?",
+   "ops": [
+    "Aarhus",
+    "Odense",
+    "Copenhague",
+    "Aalborg"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Kiev é a capital de qual país?",
+   "ops": [
+    "Bielorrússia",
+    "Ucrânia",
+    "Moldávia",
+    "Romênia"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual é a capital da Arábia Saudita?",
+   "ops": [
+    "Jidá",
+    "Meca",
+    "Riad",
+    "Medina"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual é a capital da Indonésia?",
+   "ops": [
+    "Surabaia",
+    "Jacarta",
+    "Bandung",
+    "Medan"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual é a capital da Áustria?",
+   "ops": [
+    "Salzburgo",
+    "Graz",
+    "Viena",
+    "Innsbruck"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual é a capital do Irã?",
+   "ops": [
+    "Isfahã",
+    "Teerã",
+    "Mashhad",
+    "Shiraz"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual é a capital da Nigéria?",
+   "ops": [
+    "Lagos",
+    "Kano",
+    "Abuja",
+    "Ibadan"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual é a capital dos Países Baixos, sede do governo?",
+   "ops": [
+    "Amsterdã",
+    "Roterdã",
+    "Haia",
+    "Utrecht"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual é a capital da Bolívia, sede do governo?",
+   "ops": [
+    "Sucre",
+    "Santa Cruz",
+    "La Paz",
+    "Cochabamba"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual é a capital da Croácia?",
+   "ops": [
+    "Split",
+    "Zagreb",
+    "Rijeka",
+    "Dubrovnik"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual país tem Brasília como capital?",
+   "ops": [
+    "Argentina",
+    "Brasil",
+    "Paraguai",
+    "Uruguai"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual é a capital do Uruguai?",
+   "ops": [
+    "Punta del Este",
+    "Salto",
+    "Montevidéu",
+    "Paysandú"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual rio atravessa a capital do Egito, o Cairo?",
+   "ops": [
+    "Rio Congo",
+    "Rio Nilo",
+    "Rio Zambeze",
+    "Rio Níger"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O deserto do Atacama está localizado principalmente em qual país?",
+   "ops": [
+    "Peru",
+    "Argentina",
+    "Chile",
+    "Bolívia"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual é o oceano que banha a costa oeste da América do Sul?",
+   "ops": [
+    "Oceano Atlântico",
+    "Oceano Índico",
+    "Oceano Ártico",
+    "Oceano Pacífico"
+   ],
+   "c": 3
+  },
+  {
+   "q": "A cordilheira dos Andes se estende ao longo de qual continente?",
+   "ops": [
+    "América do Norte",
+    "América do Sul",
+    "Ásia",
+    "Europa"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual é o maior deserto quente do mundo em área?",
+   "ops": [
+    "Deserto de Gobi",
+    "Deserto do Saara",
+    "Deserto de Kalahari",
+    "Deserto da Arábia"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Em qual continente fica o rio Danúbio?",
+   "ops": [
+    "Ásia",
+    "África",
+    "Europa",
+    "Oceania"
+   ],
+   "c": 2
+  },
+  {
+   "q": "A bandeira do Japão apresenta qual figura em seu centro?",
+   "ops": [
+    "Uma estrela branca",
+    "Um círculo vermelho",
+    "Um crescente amarelo",
+    "Uma cruz azul"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual estreito separa a Europa da África no ponto mais próximo entre os dois continentes?",
+   "ops": [
+    "Estreito de Bering",
+    "Estreito de Ormuz",
+    "Estreito de Gibraltar",
+    "Estreito de Malaca"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual é o maior lago de água doce do mundo em área de superfície?",
+   "ops": [
+    "Lago Vitória",
+    "Lago Baikal",
+    "Lago Superior",
+    "Mar Cáspio"
+   ],
+   "c": 2
+  },
+  {
+   "q": "O rio Volga, o mais longo da Europa, deságua em qual mar?",
+   "ops": [
+    "Mar Negro",
+    "Mar Báltico",
+    "Mar Cáspio",
+    "Mar Mediterrâneo"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual país é atravessado pela linha do Equador e possui esse nome por causa dela?",
+   "ops": [
+    "Colômbia",
+    "Equador",
+    "Peru",
+    "Venezuela"
+   ],
+   "c": 1
+  },
+  {
+   "q": "A Grande Barreira de Corais fica na costa de qual país?",
+   "ops": [
+    "Indonésia",
+    "Filipinas",
+    "Austrália",
+    "Nova Zelândia"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual cordilheira separa a Europa da Ásia no leste da Rússia?",
+   "ops": [
+    "Alpes",
+    "Cárpatos",
+    "Montes Urais",
+    "Cáucaso"
+   ],
+   "c": 2
+  },
+  {
+   "q": "O Deserto de Gobi está localizado entre quais dois países?",
+   "ops": [
+    "Índia e Paquistão",
+    "China e Mongólia",
+    "Irã e Afeganistão",
+    "Cazaquistão e Rússia"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual é o segundo maior oceano do mundo em extensão?",
+   "ops": [
+    "Oceano Índico",
+    "Oceano Ártico",
+    "Oceano Atlântico",
+    "Oceano Antártico"
+   ],
+   "c": 2
+  },
+  {
+   "q": "A bandeira do Canadá exibe qual folha em seu centro?",
+   "ops": [
+    "Folha de carvalho",
+    "Folha de bordo",
+    "Folha de plátano",
+    "Folha de figueira"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual rio forma grande parte da fronteira entre os Estados Unidos e o México?",
+   "ops": [
+    "Rio Colorado",
+    "Rio Grande",
+    "Rio Mississippi",
+    "Rio Missouri"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O ponto mais alto da Europa, o Monte Elbrus, fica em qual cadeia de montanhas?",
+   "ops": [
+    "Alpes",
+    "Pirineus",
+    "Cáucaso",
+    "Apeninos"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual país africano tem o formato geográfico que lhe rende o apelido de estar no 'chifre da África'?",
+   "ops": [
+    "Nigéria",
+    "Somália",
+    "Marrocos",
+    "Angola"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O rio Mekong percorre o Sudeste Asiático e nasce em qual região?",
+   "ops": [
+    "Planalto do Deccan",
+    "Planalto do Tibete",
+    "Montes Altai",
+    "Cordilheira Anamita"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual deserto cobre grande parte do sul da África, incluindo Botsuana e Namíbia?",
+   "ops": [
+    "Deserto do Saara",
+    "Deserto de Kalahari",
+    "Deserto de Thar",
+    "Deserto de Sonora"
+   ],
+   "c": 1
+  },
+  {
+   "q": "A península Ibérica é compartilhada principalmente por quais dois países?",
+   "ops": [
+    "França e Itália",
+    "Espanha e Portugal",
+    "Grécia e Turquia",
+    "Croácia e Sérvia"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual é o país mais ao sul do continente africano?",
+   "ops": [
+    "Namíbia",
+    "Moçambique",
+    "África do Sul",
+    "Zimbábue"
+   ],
+   "c": 2
+  },
+  {
+   "q": "O Lago Titicaca, o lago navegável mais alto do mundo, fica na fronteira entre quais países?",
+   "ops": [
+    "Chile e Argentina",
+    "Peru e Bolívia",
+    "Equador e Colômbia",
+    "Brasil e Paraguai"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual estreito liga o Oceano Atlântico ao Oceano Pacífico na ponta sul da América do Sul?",
+   "ops": [
+    "Estreito de Bering",
+    "Estreito de Magalhães",
+    "Estreito de Dover",
+    "Estreito de Bass"
+   ],
+   "c": 1
+  },
+  {
+   "q": "A bandeira da Grécia é composta por listras nas cores azul e qual outra cor?",
+   "ops": [
+    "Vermelho",
+    "Branco",
+    "Amarelo",
+    "Verde"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual país da América Central é o único que não tem forças armadas permanentes e é conhecido por isso?",
+   "ops": [
+    "Panamá",
+    "Honduras",
+    "Costa Rica",
+    "Nicarágua"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual é a maior ilha do mundo?",
+   "ops": [
+    "Nova Guiné",
+    "Bornéu",
+    "Groenlândia",
+    "Madagascar"
+   ],
+   "c": 2
+  },
+  {
+   "q": "A cadeia montanhosa do Himalaia abriga o ponto mais alto da Terra, situado na fronteira entre o Nepal e qual outra região?",
+   "ops": [
+    "Índia",
+    "Butão",
+    "Tibete (China)",
+    "Paquistão"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual país europeu tem a maior parte de seu território abaixo do nível do mar, sendo protegido por diques?",
+   "ops": [
+    "Bélgica",
+    "Dinamarca",
+    "Países Baixos",
+    "Suíça"
+   ],
+   "c": 2
+  },
+  {
+   "q": "O Deserto de Mojave, com árvores de Josué características, fica em qual país?",
+   "ops": [
+    "México",
+    "Estados Unidos",
+    "Austrália",
+    "Argentina"
+   ],
+   "c": 1
+  },
+  {
+   "q": "A bandeira do Brasil possui a inscrição de qual lema no centro?",
+   "ops": [
+    "Liberdade e Justiça",
+    "Ordem e Progresso",
+    "União e Trabalho",
+    "Paz e Prosperidade"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual rio da Ásia é conhecido como 'rio Amarelo' devido à cor de seus sedimentos?",
+   "ops": [
+    "Yangtzé",
+    "Huang He",
+    "Indo",
+    "Ganges"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual é a capital naturalmente mais alta do mundo, situada a mais de 3.600 metros de altitude?",
+   "ops": [
+    "Quito",
+    "La Paz",
+    "Bogotá",
+    "Kathmandu"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O Mar Morto, o ponto mais baixo em terra firme, faz fronteira com Israel, a Cisjordânia e qual país?",
+   "ops": [
+    "Egito",
+    "Líbano",
+    "Jordânia",
+    "Síria"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual arquipélago pertencente ao Equador é famoso pelos estudos de Charles Darwin?",
+   "ops": [
+    "Ilhas Canárias",
+    "Ilhas Galápagos",
+    "Ilhas Maldivas",
+    "Ilhas Seychelles"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual país tem território tanto na Europa quanto na Ásia, com sua maior cidade dividida entre os dois continentes?",
+   "ops": [
+    "Grécia",
+    "Rússia",
+    "Turquia",
+    "Geórgia"
+   ],
+   "c": 2
+  },
+  {
+   "q": "O rio Murray, o mais longo de seu continente, fica em qual país?",
+   "ops": [
+    "Nova Zelândia",
+    "Austrália",
+    "África do Sul",
+    "Argentina"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual deserto ocupa grande parte do território da Mongólia e do norte da China e é conhecido por invernos frios?",
+   "ops": [
+    "Deserto de Karakum",
+    "Deserto de Taklamakan",
+    "Deserto de Gobi",
+    "Deserto de Ordos"
+   ],
+   "c": 2
+  },
+  {
+   "q": "A bandeira da Suíça é quadrada e apresenta uma cruz branca sobre fundo de qual cor?",
+   "ops": [
+    "Azul",
+    "Vermelho",
+    "Verde",
+    "Preto"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual país insular do Oceano Índico é a quarta maior ilha do mundo?",
+   "ops": [
+    "Sri Lanka",
+    "Madagascar",
+    "Maurício",
+    "Comores"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O Canal do Panamá liga o Oceano Atlântico a qual outro oceano?",
+   "ops": [
+    "Oceano Índico",
+    "Oceano Ártico",
+    "Oceano Pacífico",
+    "Oceano Antártico"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual é o país mais setentrional da América do Sul, banhado pelo Mar do Caribe?",
+   "ops": [
+    "Colômbia",
+    "Venezuela",
+    "Guiana",
+    "Suriname"
+   ],
+   "c": 1
+  },
+  {
+   "q": "As Cataratas Vitória, uma das maiores do mundo, ficam no rio Zambeze, na fronteira entre a Zâmbia e qual país?",
+   "ops": [
+    "Moçambique",
+    "Zimbábue",
+    "Botsuana",
+    "Angola"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual país do sul da Ásia tem a bandeira com formato não retangular, composta por dois triângulos sobrepostos?",
+   "ops": [
+    "Butão",
+    "Nepal",
+    "Bangladesh",
+    "Sri Lanka"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O fiorde, um vale glacial invadido pelo mar, é uma formação típica da costa de qual país europeu?",
+   "ops": [
+    "Itália",
+    "Portugal",
+    "Noruega",
+    "Grécia"
    ],
    "c": 2
   }
@@ -1363,6 +3053,816 @@
     "Guarapari"
    ],
    "c": 0
+  },
+  {
+   "q": "Quem foi o primeiro presidente civil eleito pelo voto direto após a ditadura militar?",
+   "ops": [
+    "Tancredo Neves",
+    "José Sarney",
+    "Fernando Collor de Mello",
+    "Itamar Franco"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual estado brasileiro tem Cuiabá como capital?",
+   "ops": [
+    "Mato Grosso do Sul",
+    "Goiás",
+    "Mato Grosso",
+    "Rondônia"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Em que ano foi proclamada a República no Brasil?",
+   "ops": [
+    "1889",
+    "1822",
+    "1891",
+    "1930"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Quem comandou a Coluna Prestes na década de 1920?",
+   "ops": [
+    "Getúlio Vargas",
+    "Luís Carlos Prestes",
+    "Juarez Távora",
+    "Miguel Costa"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual foi a primeira capital do Brasil colonial?",
+   "ops": [
+    "Rio de Janeiro",
+    "São Vicente",
+    "Salvador",
+    "Olinda"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual estado brasileiro tem a menor área territorial?",
+   "ops": [
+    "Alagoas",
+    "Sergipe",
+    "Espírito Santo",
+    "Rio de Janeiro"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Em que ano a capital do Brasil foi transferida para Brasília?",
+   "ops": [
+    "1960",
+    "1955",
+    "1964",
+    "1950"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Quem era o imperador do Brasil durante a Guerra do Paraguai?",
+   "ops": [
+    "Dom Pedro I",
+    "Dom João VI",
+    "Dom Pedro II",
+    "Marechal Deodoro"
+   ],
+   "c": 2
+  },
+  {
+   "q": "O movimento da Inconfidência Mineira ocorreu em qual século?",
+   "ops": [
+    "Século XVI",
+    "Século XVII",
+    "Século XVIII",
+    "Século XIX"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual estado brasileiro faz fronteira com o maior número de países vizinhos?",
+   "ops": [
+    "Acre",
+    "Amazonas",
+    "Roraima",
+    "Pará"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Quem foi conhecido como 'Tiradentes'?",
+   "ops": [
+    "Joaquim José da Silva Xavier",
+    "Frei Caneca",
+    "Cláudio Manuel da Costa",
+    "Tomás Antônio Gonzaga"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Em que ano ocorreu a abolição da escravatura no Brasil com a Lei Áurea?",
+   "ops": [
+    "1871",
+    "1885",
+    "1888",
+    "1889"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual região do Brasil concentra o maior número de estados?",
+   "ops": [
+    "Sudeste",
+    "Nordeste",
+    "Norte",
+    "Centro-Oeste"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Quem assinou a Lei Áurea que aboliu a escravidão?",
+   "ops": [
+    "Dom Pedro II",
+    "Princesa Isabel",
+    "José do Patrocínio",
+    "Rui Barbosa"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O período conhecido como Estado Novo foi liderado por qual presidente?",
+   "ops": [
+    "Washington Luís",
+    "Getúlio Vargas",
+    "Eurico Gaspar Dutra",
+    "Juscelino Kubitschek"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual estado brasileiro tem Palmas como capital?",
+   "ops": [
+    "Tocantins",
+    "Piauí",
+    "Maranhão",
+    "Goiás"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Em que ano começou o período conhecido como Regime Militar no Brasil?",
+   "ops": [
+    "1961",
+    "1964",
+    "1968",
+    "1985"
+   ],
+   "c": 1
+  },
+  {
+   "q": "A Revolta da Chibata, ocorrida em 1910, foi liderada por qual marinheiro?",
+   "ops": [
+    "João Cândido",
+    "Antônio Conselheiro",
+    "Zumbi",
+    "Lampião"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Qual estado brasileiro tem a maior extensão territorial?",
+   "ops": [
+    "Pará",
+    "Mato Grosso",
+    "Amazonas",
+    "Bahia"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Quem foi o presidente que renunciou ao cargo em 1961?",
+   "ops": [
+    "Juscelino Kubitschek",
+    "Jânio Quadros",
+    "João Goulart",
+    "Café Filho"
+   ],
+   "c": 1
+  },
+  {
+   "q": "A cidade de Palmares, ligada a Zumbi, foi um importante:",
+   "ops": [
+    "Quilombo",
+    "Engenho de açúcar",
+    "Porto negreiro",
+    "Forte militar"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Qual estado brasileiro tem Vitória como capital?",
+   "ops": [
+    "Espírito Santo",
+    "Rio de Janeiro",
+    "Minas Gerais",
+    "Bahia"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Em que ano Dom João VI e a corte portuguesa chegaram ao Brasil fugindo de Napoleão?",
+   "ops": [
+    "1789",
+    "1808",
+    "1815",
+    "1822"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual foi o presidente eleito com o slogan de construir Brasília em '50 anos em 5'?",
+   "ops": [
+    "Getúlio Vargas",
+    "Juscelino Kubitschek",
+    "Jânio Quadros",
+    "Eurico Dutra"
+   ],
+   "c": 1
+  },
+  {
+   "q": "A Guerra dos Farrapos ocorreu principalmente em qual estado?",
+   "ops": [
+    "Santa Catarina",
+    "Paraná",
+    "Rio Grande do Sul",
+    "São Paulo"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual estado brasileiro tem Aracaju como capital?",
+   "ops": [
+    "Alagoas",
+    "Sergipe",
+    "Paraíba",
+    "Rio Grande do Norte"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Quem proclamou a República do Brasil em 1889?",
+   "ops": [
+    "Floriano Peixoto",
+    "Benjamin Constant",
+    "Marechal Deodoro da Fonseca",
+    "Prudente de Morais"
+   ],
+   "c": 2
+  },
+  {
+   "q": "A Guerra de Canudos, liderada por Antônio Conselheiro, ocorreu em qual estado?",
+   "ops": [
+    "Ceará",
+    "Pernambuco",
+    "Bahia",
+    "Piauí"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual estado brasileiro tem Campo Grande como capital?",
+   "ops": [
+    "Mato Grosso",
+    "Mato Grosso do Sul",
+    "Goiás",
+    "Rondônia"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Em que ano foi promulgada a Constituição atual do Brasil, conhecida como 'Constituição Cidadã'?",
+   "ops": [
+    "1985",
+    "1988",
+    "1990",
+    "1994"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O ciclo econômico do ouro no Brasil colonial teve seu auge em qual capitania?",
+   "ops": [
+    "Bahia",
+    "Minas Gerais",
+    "Pernambuco",
+    "São Paulo"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual estado brasileiro tem Boa Vista como capital?",
+   "ops": [
+    "Amapá",
+    "Roraima",
+    "Rondônia",
+    "Acre"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Quem foi o líder do movimento abolicionista conhecido por suas campanhas de imprensa e discursos?",
+   "ops": [
+    "José do Patrocínio",
+    "Marechal Deodoro",
+    "Barão de Cotegipe",
+    "Visconde de Ouro Preto"
+   ],
+   "c": 0
+  },
+  {
+   "q": "A Semana de Arte Moderna, marco cultural do Brasil, aconteceu em 1922 em qual cidade?",
+   "ops": [
+    "Rio de Janeiro",
+    "São Paulo",
+    "Recife",
+    "Belo Horizonte"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual estado brasileiro tem Porto Velho como capital?",
+   "ops": [
+    "Acre",
+    "Roraima",
+    "Rondônia",
+    "Amapá"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Quem foi o primeiro imperador do Brasil?",
+   "ops": [
+    "Dom João VI",
+    "Dom Pedro I",
+    "Dom Pedro II",
+    "Marechal Deodoro"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual é a capital do estado do Rio Grande do Norte?",
+   "ops": [
+    "Mossoró",
+    "Natal",
+    "João Pessoa",
+    "Fortaleza"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Quantos estados compõem a Federação brasileira, além do Distrito Federal?",
+   "ops": [
+    "24",
+    "25",
+    "26",
+    "27"
+   ],
+   "c": 2
+  },
+  {
+   "q": "O 'acarajé' tem origem em qual estado brasileiro?",
+   "ops": [
+    "Bahia",
+    "Pernambuco",
+    "Ceará",
+    "Maranhão"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Qual instrumento de corda é fundamental na roda de capoeira e marca o ritmo do jogo?",
+   "ops": [
+    "Cavaquinho",
+    "Berimbau",
+    "Viola caipira",
+    "Rabeca"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O boto cor-de-rosa que seduz mulheres em festas faz parte do folclore de qual região?",
+   "ops": [
+    "Sul",
+    "Nordeste",
+    "Amazônia",
+    "Sudeste"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual prato típico gaúcho consiste em carne assada na brasa espetada em ferro?",
+   "ops": [
+    "Barreado",
+    "Churrasco",
+    "Baião de dois",
+    "Vatapá"
+   ],
+   "c": 1
+  },
+  {
+   "q": "A 'Festa do Divino Espírito Santo' é uma tradição religiosa herdada de qual país colonizador?",
+   "ops": [
+    "Espanha",
+    "Itália",
+    "Portugal",
+    "Holanda"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual fruta amazônica é a base de uma tigela gelada popular consumida com granola e banana?",
+   "ops": [
+    "Cupuaçu",
+    "Açaí",
+    "Graviola",
+    "Bacuri"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O compositor Heitor Villa-Lobos é conhecido por qual série de obras que funde Bach com o Brasil?",
+   "ops": [
+    "Choros",
+    "Bachianas Brasileiras",
+    "Sinfonias Amazônicas",
+    "Modinhas"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual cidade brasileira é famosa pelo festival de Parintins e a disputa entre os bois Garantido e Caprichoso?",
+   "ops": [
+    "Manaus",
+    "Parintins",
+    "Belém",
+    "Santarém"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O 'baião' e o 'xote' foram popularizados nacionalmente por qual músico nordestino?",
+   "ops": [
+    "Jackson do Pandeiro",
+    "Luiz Gonzaga",
+    "Dominguinhos",
+    "Zé Ramalho"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual é o nome do personagem do folclore brasileiro que tem uma perna só e usa um gorro vermelho?",
+   "ops": [
+    "Curupira",
+    "Saci-Pererê",
+    "Boitatá",
+    "Mula-sem-cabeça"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O prato 'barreado' é uma tradição culinária típica de qual estado?",
+   "ops": [
+    "Santa Catarina",
+    "Paraná",
+    "São Paulo",
+    "Rio Grande do Sul"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual ave é o símbolo oficial do Brasil segundo decreto de 1968?",
+   "ops": [
+    "Sabiá-laranjeira",
+    "Tucano",
+    "Arara-azul",
+    "João-de-barro"
+   ],
+   "c": 0
+  },
+  {
+   "q": "O ritmo 'frevo', patrimônio cultural imaterial da humanidade, nasceu em qual cidade?",
+   "ops": [
+    "Salvador",
+    "Recife",
+    "Olinda",
+    "Maceió"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual doce brasileiro é feito de leite condensado, chocolate e coberto com granulado?",
+   "ops": [
+    "Brigadeiro",
+    "Beijinho",
+    "Cajuzinho",
+    "Olho de sogra"
+   ],
+   "c": 0
+  },
+  {
+   "q": "A dança do 'maracatu' está tradicionalmente associada a qual estado?",
+   "ops": [
+    "Bahia",
+    "Pernambuco",
+    "Alagoas",
+    "Ceará"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O 'tacacá', caldo servido quente em cuia, leva um ingrediente que causa dormência na boca chamado?",
+   "ops": [
+    "Pimenta-de-cheiro",
+    "Jambu",
+    "Chicória",
+    "Coentro"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual rio é considerado o mais extenso inteiramente dentro do território brasileiro?",
+   "ops": [
+    "Rio São Francisco",
+    "Rio Paraná",
+    "Rio Amazonas",
+    "Rio Tocantins"
+   ],
+   "c": 0
+  },
+  {
+   "q": "O gênero musical 'chorinho' (choro) surgiu em qual cidade no século XIX?",
+   "ops": [
+    "Rio de Janeiro",
+    "São Paulo",
+    "Salvador",
+    "Recife"
+   ],
+   "c": 0
+  },
+  {
+   "q": "O 'pão de queijo' é um quitute tradicionalmente associado a qual estado?",
+   "ops": [
+    "Goiás",
+    "Minas Gerais",
+    "Bahia",
+    "Espírito Santo"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual escritor brasileiro criou o personagem Macunaíma, 'herói sem nenhum caráter'?",
+   "ops": [
+    "Jorge Amado",
+    "Mário de Andrade",
+    "Guimarães Rosa",
+    "Graciliano Ramos"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O 'vatapá' é um prato à base de pão, camarão e qual óleo típico da culinária baiana?",
+   "ops": [
+    "Óleo de coco",
+    "Azeite de dendê",
+    "Óleo de babaçu",
+    "Óleo de buriti"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual seleção o Brasil venceu na final da Copa do Mundo de 1970, no México?",
+   "ops": [
+    "Alemanha",
+    "Itália",
+    "Argentina",
+    "Uruguai"
+   ],
+   "c": 1
+  },
+  {
+   "q": "A festa junina no Brasil homenageia três santos católicos: Santo Antônio, São Pedro e quem mais?",
+   "ops": [
+    "São José",
+    "São João",
+    "São Jorge",
+    "São Sebastião"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual dança de roda do Recôncavo Baiano é reconhecida como patrimônio da humanidade pela Unesco?",
+   "ops": [
+    "Frevo",
+    "Samba de Roda",
+    "Jongo",
+    "Coco"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O 'guaraná', usado em refrigerantes brasileiros, é um fruto originário de qual bioma?",
+   "ops": [
+    "Cerrado",
+    "Mata Atlântica",
+    "Amazônia",
+    "Pantanal"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual estado é o berço do 'bumba meu boi', tradição forte especialmente em São Luís?",
+   "ops": [
+    "Piauí",
+    "Maranhão",
+    "Ceará",
+    "Pará"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O jogador Garrincha, ídolo do futebol brasileiro, era apelidado também de?",
+   "ops": [
+    "Anjo das Pernas Tortas",
+    "Rei do Drible",
+    "Menino da Vila",
+    "Pé de Anjo"
+   ],
+   "c": 0
+  },
+  {
+   "q": "A 'cuíca', instrumento de fricção que faz som agudo, é típica de qual gênero musical?",
+   "ops": [
+    "Forró",
+    "Samba",
+    "Sertanejo",
+    "Axé"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual cidade histórica de Minas Gerais foi a primeira do Brasil a ser tombada como patrimônio mundial?",
+   "ops": [
+    "Tiradentes",
+    "Ouro Preto",
+    "Mariana",
+    "Diamantina"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O 'caruru', prato de origem afro-brasileira, tem como ingrediente principal qual vegetal?",
+   "ops": [
+    "Jiló",
+    "Quiabo",
+    "Maxixe",
+    "Chuchu"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual ritmo eletrônico nascido no Rio de Janeiro nas favelas ganhou reconhecimento mundial?",
+   "ops": [
+    "Funk carioca",
+    "Tecnobrega",
+    "Brega-funk",
+    "Piseiro"
+   ],
+   "c": 0
+  },
+  {
+   "q": "O Cristo Redentor, no Rio de Janeiro, está localizado no topo de qual morro?",
+   "ops": [
+    "Pão de Açúcar",
+    "Morro da Urca",
+    "Corcovado",
+    "Dois Irmãos"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual bebida destilada de cana-de-açúcar é a base da caipirinha?",
+   "ops": [
+    "Rum",
+    "Cachaça",
+    "Aguardente de mandioca",
+    "Licor de jenipapo"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O escritor Machado de Assis foi o fundador e primeiro presidente de qual instituição?",
+   "ops": [
+    "Instituto Histórico Brasileiro",
+    "Academia Brasileira de Letras",
+    "Biblioteca Nacional",
+    "Real Gabinete Português"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual maestro e compositor é autor da música 'Aquarela do Brasil', clássico do samba-exaltação?",
+   "ops": [
+    "Pixinguinha",
+    "Ary Barroso",
+    "Noel Rosa",
+    "Cartola"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O 'pequi', fruto de polpa amarela e espinhos internos, é típico da culinária de qual região?",
+   "ops": [
+    "Norte",
+    "Centro-Oeste",
+    "Sul",
+    "Sudeste litorâneo"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual estádio, inaugurado para a Copa de 1950, ficou marcado pela derrota do Brasil para o Uruguai?",
+   "ops": [
+    "Pacaembu",
+    "Mineirão",
+    "Maracanã",
+    "Beira-Rio"
+   ],
+   "c": 2
+  },
+  {
+   "q": "A 'moqueca capixaba' difere da baiana principalmente por não levar qual ingrediente?",
+   "ops": [
+    "Tomate",
+    "Leite de coco e azeite de dendê",
+    "Coentro",
+    "Cebola"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual dupla de irmãos compositores é lendária na música sertaneja raiz brasileira?",
+   "ops": [
+    "Tonico e Tinoco",
+    "Zezé e Luciano",
+    "Chitãozinho e Xororó",
+    "Bruno e Marrone"
+   ],
+   "c": 0
+  },
+  {
+   "q": "O 'tereré', bebida gelada de erva-mate, é uma tradição forte em qual estado?",
+   "ops": [
+    "Rio Grande do Sul",
+    "Mato Grosso do Sul",
+    "Paraná",
+    "Santa Catarina"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual peixe amazônico gigante, um dos maiores de água doce do mundo, é prato típico da região Norte?",
+   "ops": [
+    "Tucunaré",
+    "Pirarucu",
+    "Tambaqui",
+    "Dourado"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual gênero de dança e música afro-brasileira do Sudeste rural está ligado às comunidades quilombolas?",
+   "ops": [
+    "Jongo",
+    "Maxixe",
+    "Lundu",
+    "Ciranda"
+   ],
+   "c": 0
+  },
+  {
+   "q": "O 'cuscuz' nordestino brasileiro é tradicionalmente feito a partir de qual ingrediente?",
+   "ops": [
+    "Sêmola de trigo",
+    "Flocos de milho",
+    "Arroz",
+    "Farinha de mandioca"
+   ],
+   "c": 1
   }
  ],
  "carros": [
@@ -1845,6 +4345,946 @@
     "Hyundai"
    ],
    "c": 1
+  },
+  {
+   "q": "De qual país é originária a marca Ferrari?",
+   "ops": [
+    "Itália",
+    "Alemanha",
+    "França",
+    "Espanha"
+   ],
+   "c": 0
+  },
+  {
+   "q": "A marca Volvo tem origem em qual país?",
+   "ops": [
+    "Noruega",
+    "Suécia",
+    "Dinamarca",
+    "Finlândia"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O modelo Beetle (Fusca) foi fabricado por qual montadora?",
+   "ops": [
+    "Opel",
+    "BMW",
+    "Volkswagen",
+    "Audi"
+   ],
+   "c": 2
+  },
+  {
+   "q": "De qual país é originária a fabricante Toyota?",
+   "ops": [
+    "Coreia do Sul",
+    "China",
+    "Japão",
+    "Tailândia"
+   ],
+   "c": 2
+  },
+  {
+   "q": "A marca de luxo Rolls-Royce tem origem em qual país?",
+   "ops": [
+    "Reino Unido",
+    "Alemanha",
+    "França",
+    "Estados Unidos"
+   ],
+   "c": 0
+  },
+  {
+   "q": "O icônico esportivo Corvette pertence a qual marca?",
+   "ops": [
+    "Ford",
+    "Chevrolet",
+    "Dodge",
+    "Pontiac"
+   ],
+   "c": 1
+  },
+  {
+   "q": "De qual país é originária a montadora Hyundai?",
+   "ops": [
+    "Japão",
+    "China",
+    "Coreia do Sul",
+    "Malásia"
+   ],
+   "c": 2
+  },
+  {
+   "q": "O modelo 911 é um clássico esportivo de qual fabricante?",
+   "ops": [
+    "Porsche",
+    "Ferrari",
+    "Lamborghini",
+    "Maserati"
+   ],
+   "c": 0
+  },
+  {
+   "q": "A marca Peugeot tem origem em qual país?",
+   "ops": [
+    "Itália",
+    "França",
+    "Bélgica",
+    "Suíça"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O modelo Mustang é fabricado por qual montadora?",
+   "ops": [
+    "Chevrolet",
+    "Dodge",
+    "Ford",
+    "Buick"
+   ],
+   "c": 2
+  },
+  {
+   "q": "De qual país é originária a fabricante SEAT?",
+   "ops": [
+    "Portugal",
+    "Itália",
+    "Espanha",
+    "Grécia"
+   ],
+   "c": 2
+  },
+  {
+   "q": "A marca Lamborghini pertence a qual país de origem?",
+   "ops": [
+    "Itália",
+    "Alemanha",
+    "França",
+    "Áustria"
+   ],
+   "c": 0
+  },
+  {
+   "q": "O modelo Civic é um dos carros mais conhecidos de qual marca?",
+   "ops": [
+    "Nissan",
+    "Honda",
+    "Mazda",
+    "Subaru"
+   ],
+   "c": 1
+  },
+  {
+   "q": "De qual país é originária a montadora Škoda?",
+   "ops": [
+    "Polônia",
+    "Hungria",
+    "República Tcheca",
+    "Eslováquia"
+   ],
+   "c": 2
+  },
+  {
+   "q": "A marca Bentley tem origem em qual país?",
+   "ops": [
+    "Reino Unido",
+    "Alemanha",
+    "Itália",
+    "França"
+   ],
+   "c": 0
+  },
+  {
+   "q": "O modelo Golf é um hatch icônico de qual fabricante?",
+   "ops": [
+    "Opel",
+    "Volkswagen",
+    "Renault",
+    "Fiat"
+   ],
+   "c": 1
+  },
+  {
+   "q": "De qual país é originária a fabricante Kia?",
+   "ops": [
+    "Japão",
+    "Coreia do Sul",
+    "China",
+    "Vietnã"
+   ],
+   "c": 1
+  },
+  {
+   "q": "A marca Aston Martin, famosa nos filmes de James Bond, é de qual país?",
+   "ops": [
+    "Estados Unidos",
+    "França",
+    "Reino Unido",
+    "Itália"
+   ],
+   "c": 2
+  },
+  {
+   "q": "O modelo Camaro pertence a qual montadora?",
+   "ops": [
+    "Chevrolet",
+    "Ford",
+    "Dodge",
+    "Chrysler"
+   ],
+   "c": 0
+  },
+  {
+   "q": "De qual país é originária a montadora Renault?",
+   "ops": [
+    "Bélgica",
+    "Itália",
+    "França",
+    "Alemanha"
+   ],
+   "c": 2
+  },
+  {
+   "q": "A marca Lexus é a divisão de luxo de qual fabricante?",
+   "ops": [
+    "Nissan",
+    "Toyota",
+    "Honda",
+    "Mitsubishi"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O modelo Countach é um clássico esportivo de qual marca?",
+   "ops": [
+    "Ferrari",
+    "Maserati",
+    "Lamborghini",
+    "Pagani"
+   ],
+   "c": 2
+  },
+  {
+   "q": "A Škoda é controlada por qual grupo automotivo?",
+   "ops": [
+    "Grupo Stellantis",
+    "Grupo Volkswagen",
+    "Grupo BMW",
+    "Grupo Toyota"
+   ],
+   "c": 1
+  },
+  {
+   "q": "A marca Saab tinha origem em qual país?",
+   "ops": [
+    "Suécia",
+    "Alemanha",
+    "Finlândia",
+    "Noruega"
+   ],
+   "c": 0
+  },
+  {
+   "q": "O modelo Jeep Willys ficou famoso por seu uso em qual contexto histórico?",
+   "ops": [
+    "Corridas de Fórmula 1",
+    "Segunda Guerra Mundial",
+    "Rali Paris-Dakar apenas",
+    "Jogos Olímpicos"
+   ],
+   "c": 1
+  },
+  {
+   "q": "De qual país é originária a montadora Mazda?",
+   "ops": [
+    "Coreia do Sul",
+    "China",
+    "Japão",
+    "Taiwan"
+   ],
+   "c": 2
+  },
+  {
+   "q": "A marca Bugatti tem sede e origem histórica em qual país?",
+   "ops": [
+    "França",
+    "Itália",
+    "Alemanha",
+    "Suíça"
+   ],
+   "c": 0
+  },
+  {
+   "q": "O modelo Impreza, conhecido por versões esportivas WRX, é de qual marca?",
+   "ops": [
+    "Mitsubishi",
+    "Subaru",
+    "Suzuki",
+    "Daihatsu"
+   ],
+   "c": 1
+  },
+  {
+   "q": "De qual país é originária a fabricante de luxo Maserati?",
+   "ops": [
+    "Espanha",
+    "Itália",
+    "França",
+    "Portugal"
+   ],
+   "c": 1
+  },
+  {
+   "q": "A marca Chevrolet tem origem em qual país?",
+   "ops": [
+    "Estados Unidos",
+    "Canadá",
+    "México",
+    "Reino Unido"
+   ],
+   "c": 0
+  },
+  {
+   "q": "O modelo Miura é considerado um dos primeiros superesportivos e pertence a qual marca?",
+   "ops": [
+    "Ferrari",
+    "Lamborghini",
+    "De Tomaso",
+    "Alfa Romeo"
+   ],
+   "c": 1
+  },
+  {
+   "q": "De qual país é originária a montadora Citroën?",
+   "ops": [
+    "Bélgica",
+    "França",
+    "Suíça",
+    "Itália"
+   ],
+   "c": 1
+  },
+  {
+   "q": "A marca Jaguar tem origem em qual país?",
+   "ops": [
+    "Estados Unidos",
+    "Alemanha",
+    "Reino Unido",
+    "Itália"
+   ],
+   "c": 2
+  },
+  {
+   "q": "O modelo NSX foi o supercarro de qual fabricante japonesa?",
+   "ops": [
+    "Honda",
+    "Toyota",
+    "Nissan",
+    "Mazda"
+   ],
+   "c": 0
+  },
+  {
+   "q": "De qual país é originária a fabricante Alfa Romeo?",
+   "ops": [
+    "Espanha",
+    "Itália",
+    "França",
+    "Romênia"
+   ],
+   "c": 1
+  },
+  {
+   "q": "A marca Cadillac é tradicionalmente associada ao luxo de qual país?",
+   "ops": [
+    "Reino Unido",
+    "Alemanha",
+    "Estados Unidos",
+    "França"
+   ],
+   "c": 2
+  },
+  {
+   "q": "O modelo Land Cruiser é um utilitário robusto de qual marca?",
+   "ops": [
+    "Toyota",
+    "Nissan",
+    "Mitsubishi",
+    "Isuzu"
+   ],
+   "c": 0
+  },
+  {
+   "q": "De qual país é originária a montadora Mini na sua concepção original?",
+   "ops": [
+    "Alemanha",
+    "Reino Unido",
+    "Itália",
+    "França"
+   ],
+   "c": 1
+  },
+  {
+   "q": "A marca Pagani, fabricante de hipercarros, tem origem em qual país?",
+   "ops": [
+    "Suíça",
+    "Itália",
+    "Alemanha",
+    "Argentina"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O modelo Skyline GT-R é um esportivo lendário de qual fabricante?",
+   "ops": [
+    "Toyota",
+    "Honda",
+    "Nissan",
+    "Mazda"
+   ],
+   "c": 2
+  },
+  {
+   "q": "De qual país é originária a marca Opel?",
+   "ops": [
+    "Alemanha",
+    "Áustria",
+    "Holanda",
+    "Suíça"
+   ],
+   "c": 0
+  },
+  {
+   "q": "O modelo 300 SL 'Asa de Gaivota' é um clássico de qual fabricante?",
+   "ops": [
+    "BMW",
+    "Mercedes-Benz",
+    "Audi",
+    "Porsche"
+   ],
+   "c": 1
+  },
+  {
+   "q": "De qual país é originária a montadora Mitsubishi?",
+   "ops": [
+    "China",
+    "Coreia do Sul",
+    "Japão",
+    "Cingapura"
+   ],
+   "c": 2
+  },
+  {
+   "q": "A marca Lancia tem origem em qual país?",
+   "ops": [
+    "França",
+    "Itália",
+    "Espanha",
+    "Bélgica"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O modelo Defender é um utilitário todo-terreno clássico de qual marca?",
+   "ops": [
+    "Jeep",
+    "Land Rover",
+    "Suzuki",
+    "Ford"
+   ],
+   "c": 1
+  },
+  {
+   "q": "De qual país é originária a fabricante Dacia?",
+   "ops": [
+    "Bulgária",
+    "Hungria",
+    "Romênia",
+    "Sérvia"
+   ],
+   "c": 2
+  },
+  {
+   "q": "O modelo DeLorean DMC-12, famoso no cinema, tinha portas com qual característica marcante?",
+   "ops": [
+    "Portas suicidas",
+    "Portas em asa de gaivota",
+    "Portas deslizantes",
+    "Portas removíveis"
+   ],
+   "c": 1
+  },
+  {
+   "q": "A marca Acura é a divisão de luxo de qual fabricante japonesa?",
+   "ops": [
+    "Toyota",
+    "Honda",
+    "Nissan",
+    "Subaru"
+   ],
+   "c": 1
+  },
+  {
+   "q": "De qual país é originária a montadora Fiat?",
+   "ops": [
+    "Itália",
+    "França",
+    "Espanha",
+    "Suíça"
+   ],
+   "c": 0
+  },
+  {
+   "q": "O modelo Testarossa é um esportivo clássico dos anos 80 de qual marca?",
+   "ops": [
+    "Lamborghini",
+    "Ferrari",
+    "Maserati",
+    "De Tomaso"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O que significa a sigla 'DRS' na Fórmula 1?",
+   "ops": [
+    "Sistema de Redução de Arrasto",
+    "Sistema de Recuperação de Dados",
+    "Direção com Regulagem de Suspensão",
+    "Dispositivo de Refrigeração Superior"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Qual componente do motor transforma o movimento alternativo dos pistões em movimento rotativo?",
+   "ops": [
+    "Virabrequim",
+    "Cabeçote",
+    "Radiador",
+    "Alternador"
+   ],
+   "c": 0
+  },
+  {
+   "q": "O logo com quatro anéis entrelaçados pertence a qual marca?",
+   "ops": [
+    "Audi",
+    "Toyota",
+    "Mazda",
+    "Opel"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Quais rodas recebem tração em um veículo com tração dianteira?",
+   "ops": [
+    "As duas traseiras",
+    "As duas dianteiras",
+    "Apenas uma",
+    "As quatro"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual é a função básica do diferencial em um automóvel?",
+   "ops": [
+    "Filtrar o óleo do motor",
+    "Permitir que as rodas girem em velocidades diferentes nas curvas",
+    "Controlar a temperatura do motor",
+    "Amplificar o som do escapamento"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Em que década ocorreu a primeira corrida do Campeonato Mundial de Fórmula 1?",
+   "ops": [
+    "Anos 1930",
+    "Anos 1950",
+    "Anos 1960",
+    "Anos 1970"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O cavalo empinado (Cavallino Rampante) é símbolo de qual fabricante?",
+   "ops": [
+    "Lamborghini",
+    "Ferrari",
+    "Maserati",
+    "Porsche"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O que a sigla 'ABS' representa em um sistema de freios?",
+   "ops": [
+    "Sistema Antibloqueio de Freios",
+    "Ajuste de Balanço de Suspensão",
+    "Amortecimento Básico de Segurança",
+    "Acelerador de Bloqueio Simples"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Qual marca de automóveis tem como símbolo uma estrela de três pontas?",
+   "ops": [
+    "BMW",
+    "Mercedes-Benz",
+    "Volvo",
+    "Subaru"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Na mecânica, qual peça é responsável por gerar a faísca que inicia a combustão em motores a gasolina?",
+   "ops": [
+    "Bomba de combustível",
+    "Vela de ignição",
+    "Bico injetor",
+    "Correia dentada"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Quantos pilotos formam normalmente uma equipe na largada de um Grande Prêmio de Fórmula 1?",
+   "ops": [
+    "Um",
+    "Dois",
+    "Três",
+    "Quatro"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O modelo 'Fusca' é um clássico de qual montadora?",
+   "ops": [
+    "Fiat",
+    "Volkswagen",
+    "Renault",
+    "Ford"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual é a função do radiador em um carro?",
+   "ops": [
+    "Dissipar o calor do líquido de arrefecimento",
+    "Armazenar combustível",
+    "Gerar energia elétrica",
+    "Amortecer impactos"
+   ],
+   "c": 0
+  },
+  {
+   "q": "A bandeira quadriculada em uma corrida sinaliza o quê?",
+   "ops": [
+    "Perigo na pista",
+    "O fim da corrida ou da volta líder",
+    "Entrada obrigatória nos boxes",
+    "Ultrapassagem proibida"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O que é medido em 'cavalos de potência' (cv) em um carro?",
+   "ops": [
+    "O consumo de combustível",
+    "A potência do motor",
+    "O peso do veículo",
+    "A capacidade do porta-malas"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Na Fórmula 1, o que significa a expressão 'pole position'?",
+   "ops": [
+    "A última posição do grid",
+    "A primeira posição do grid de largada",
+    "A posição no pit stop",
+    "O centro da pista"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual componente do carro converte energia química da bateria em movimento para dar a partida?",
+   "ops": [
+    "Motor de arranque",
+    "Compressor",
+    "Turbina",
+    "Bomba d'água"
+   ],
+   "c": 0
+  },
+  {
+   "q": "O logo em forma de touro pertence a qual marca de superesportivos?",
+   "ops": [
+    "Ferrari",
+    "Lamborghini",
+    "Aston Martin",
+    "Bugatti"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual é a função da caixa de câmbio (transmissão) em um veículo?",
+   "ops": [
+    "Ajustar a relação entre rotação do motor e velocidade das rodas",
+    "Filtrar o ar do motor",
+    "Controlar os faróis",
+    "Recarregar a bateria"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Em que país surgiu a montadora Rolls-Royce?",
+   "ops": [
+    "Estados Unidos",
+    "Reino Unido",
+    "Alemanha",
+    "Itália"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O que significa 'pit stop' durante uma corrida?",
+   "ops": [
+    "Uma parada nos boxes para manutenção ou pneus",
+    "Uma volta de reconhecimento",
+    "A largada da corrida",
+    "Uma penalidade de tempo"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Qual líquido é fundamental para lubrificar as peças internas do motor?",
+   "ops": [
+    "Água destilada",
+    "Óleo lubrificante",
+    "Fluido de freio",
+    "Aditivo do radiador"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Na Fórmula 1, uma bandeira amarela agitada indica o quê?",
+   "ops": [
+    "Fim da corrida",
+    "Perigo na pista, reduza a velocidade e proibido ultrapassar",
+    "Largada liberada",
+    "Chuva forte"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual peça é responsável por transmitir a força do motor para a caixa de câmbio, permitindo trocar marchas em carros manuais?",
+   "ops": [
+    "Embreagem",
+    "Diferencial",
+    "Cardã",
+    "Alternador"
+   ],
+   "c": 0
+  },
+  {
+   "q": "O símbolo de uma hélice azul e branca em círculo pertence a qual marca?",
+   "ops": [
+    "BMW",
+    "Mazda",
+    "Volkswagen",
+    "Peugeot"
+   ],
+   "c": 0
+  },
+  {
+   "q": "O que faz o alternador em um automóvel?",
+   "ops": [
+    "Gera eletricidade e recarrega a bateria com o motor ligado",
+    "Resfria o motor",
+    "Filtra o combustível",
+    "Aumenta a compressão"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Qual é o nome do circuito de rua mais famoso da Fórmula 1, disputado num principado?",
+   "ops": [
+    "Silverstone",
+    "Mônaco",
+    "Interlagos",
+    "Monza"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O modelo Mustang é um ícone de qual fabricante americana?",
+   "ops": [
+    "Chevrolet",
+    "Ford",
+    "Dodge",
+    "Chrysler"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual a função do amortecedor na suspensão de um carro?",
+   "ops": [
+    "Controlar as oscilações das molas e absorver impactos",
+    "Gerar tração",
+    "Reduzir o consumo",
+    "Aumentar a potência"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Em qual cidade brasileira fica o autódromo de Interlagos?",
+   "ops": [
+    "Rio de Janeiro",
+    "São Paulo",
+    "Curitiba",
+    "Belo Horizonte"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O que significa a sigla 'SUV' comumente usada para classificar veículos?",
+   "ops": [
+    "Veículo Utilitário Esportivo",
+    "Sistema Universal de Válvulas",
+    "Veículo Urbano Veloz",
+    "Suspensão de Uso Variável"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Qual componente filtra as impurezas do ar antes de ele entrar no motor?",
+   "ops": [
+    "Filtro de ar",
+    "Filtro de óleo",
+    "Catalisador",
+    "Silencioso"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Quantas marchas 'à frente' costuma ter um câmbio manual tradicional de carro popular?",
+   "ops": [
+    "Três ou quatro",
+    "Cinco ou seis",
+    "Oito ou nove",
+    "Doze"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O catalisador do escapamento serve principalmente para o quê?",
+   "ops": [
+    "Reduzir a emissão de gases poluentes",
+    "Aumentar a velocidade máxima",
+    "Economizar bateria",
+    "Silenciar o rádio"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Qual marca japonesa tem um logo com um 'H' estilizado dentro de um retângulo?",
+   "ops": [
+    "Hyundai",
+    "Honda",
+    "Suzuki",
+    "Nissan"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O que é o 'ponto morto' (neutro) em um câmbio?",
+   "ops": [
+    "Uma marcha que trava as rodas",
+    "A posição em que o motor não transmite força às rodas",
+    "A marcha mais rápida",
+    "Um sistema de freio de emergência"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual desses foi um dos primeiros carros produzidos em larga escala numa linha de montagem, no início do século XX?",
+   "ops": [
+    "Ford Modelo T",
+    "Chevrolet Corvette",
+    "Volkswagen Golf",
+    "Toyota Corolla"
+   ],
+   "c": 0
+  },
+  {
+   "q": "A correia dentada tem qual função principal no motor?",
+   "ops": [
+    "Sincronizar a rotação do virabrequim com o comando de válvulas",
+    "Gerar energia elétrica",
+    "Bombear combustível",
+    "Refrigerar os pneus"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Qual fabricante italiano é conhecido pelo tridente em seu logotipo?",
+   "ops": [
+    "Alfa Romeo",
+    "Maserati",
+    "Fiat",
+    "Lancia"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Na Fórmula 1, o que caracteriza o formato de um carro 'monoposto'?",
+   "ops": [
+    "Ter dois assentos lado a lado",
+    "Ter um único assento para o piloto",
+    "Ter tração nas quatro rodas",
+    "Ter motor traseiro duplo"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O que indica a luz de 'check engine' (injeção eletrônica) acesa no painel?",
+   "ops": [
+    "Que os faróis estão ligados",
+    "Uma possível falha detectada no motor ou emissões",
+    "Que o tanque está cheio",
+    "Que a porta está aberta"
+   ],
+   "c": 1
+  },
+  {
+   "q": "A marca Peugeot, com um leão no logo, é de qual país?",
+   "ops": [
+    "Itália",
+    "França",
+    "Bélgica",
+    "Portugal"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O que é o turbocompressor (turbo) em um motor?",
+   "ops": [
+    "Um dispositivo que comprime o ar de admissão para aumentar a potência",
+    "Um freio adicional",
+    "Um tipo de câmbio automático",
+    "Um sistema de som"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Qual escuderia italiana é a mais tradicional e antiga ainda ativa na Fórmula 1?",
+   "ops": [
+    "McLaren",
+    "Ferrari",
+    "Williams",
+    "Renault"
+   ],
+   "c": 1
   }
  ],
  "comida": [
@@ -2305,6 +5745,906 @@
     "Cevada",
     "Aveia",
     "Centeio"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O prato paella é típico de qual país?",
+   "ops": [
+    "Portugal",
+    "Itália",
+    "Espanha",
+    "México"
+   ],
+   "c": 2
+  },
+  {
+   "q": "De onde vem o prato risoto (risotto)?",
+   "ops": [
+    "Itália",
+    "França",
+    "Grécia",
+    "Suíça"
+   ],
+   "c": 0
+  },
+  {
+   "q": "A moussaka é um prato tradicional de qual país?",
+   "ops": [
+    "Turquia",
+    "Líbano",
+    "Grécia",
+    "Egito"
+   ],
+   "c": 2
+  },
+  {
+   "q": "O prato goulash tem origem em qual país?",
+   "ops": [
+    "Polônia",
+    "Hungria",
+    "Áustria",
+    "Romênia"
+   ],
+   "c": 1
+  },
+  {
+   "q": "De qual país é originário o ceviche?",
+   "ops": [
+    "Peru",
+    "Brasil",
+    "Cuba",
+    "Colômbia"
+   ],
+   "c": 0
+  },
+  {
+   "q": "De onde vem o prato couscous (cuscuz marroquino)?",
+   "ops": [
+    "Marrocos",
+    "Turquia",
+    "Grécia",
+    "Irã"
+   ],
+   "c": 0
+  },
+  {
+   "q": "O prato tikka masala é associado à culinária de qual país?",
+   "ops": [
+    "Paquistão",
+    "Índia",
+    "Bangladesh",
+    "Sri Lanka"
+   ],
+   "c": 1
+  },
+  {
+   "q": "A pizza margherita tem origem em qual país?",
+   "ops": [
+    "Grécia",
+    "Espanha",
+    "Itália",
+    "França"
+   ],
+   "c": 2
+  },
+  {
+   "q": "De qual país é originário o prato pho (sopa de macarrão)?",
+   "ops": [
+    "Vietnã",
+    "Tailândia",
+    "Laos",
+    "China"
+   ],
+   "c": 0
+  },
+  {
+   "q": "O prato bibimbap é típico de qual país?",
+   "ops": [
+    "Japão",
+    "China",
+    "Coreia do Sul",
+    "Filipinas"
+   ],
+   "c": 2
+  },
+  {
+   "q": "A tortilla espanhola (omelete de batata) é de qual país?",
+   "ops": [
+    "México",
+    "Argentina",
+    "Espanha",
+    "Chile"
+   ],
+   "c": 2
+  },
+  {
+   "q": "De onde vem o prato hummus?",
+   "ops": [
+    "Oriente Médio",
+    "Índia",
+    "Etiópia",
+    "Nigéria"
+   ],
+   "c": 0
+  },
+  {
+   "q": "O prato ramen é tradicionalmente associado a qual país?",
+   "ops": [
+    "Coreia do Sul",
+    "China",
+    "Japão",
+    "Vietnã"
+   ],
+   "c": 2
+  },
+  {
+   "q": "A tarte tatin é uma sobremesa de qual país?",
+   "ops": [
+    "Bélgica",
+    "França",
+    "Suíça",
+    "Áustria"
+   ],
+   "c": 1
+  },
+  {
+   "q": "De qual país é originário o prato borscht (sopa de beterraba)?",
+   "ops": [
+    "Ucrânia",
+    "Alemanha",
+    "Finlândia",
+    "Turquia"
+   ],
+   "c": 0
+  },
+  {
+   "q": "O prato empanada é muito difundido em qual país?",
+   "ops": [
+    "Itália",
+    "Argentina",
+    "Grécia",
+    "Índia"
+   ],
+   "c": 1
+  },
+  {
+   "q": "A fondue de queijo é um prato típico de qual país?",
+   "ops": [
+    "Suíça",
+    "Holanda",
+    "Dinamarca",
+    "Bélgica"
+   ],
+   "c": 0
+  },
+  {
+   "q": "De onde vem o prato falafel?",
+   "ops": [
+    "Grécia",
+    "Oriente Médio",
+    "Índia",
+    "México"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O prato tacos é tradicional de qual país?",
+   "ops": [
+    "Espanha",
+    "Peru",
+    "México",
+    "Guatemala"
+   ],
+   "c": 2
+  },
+  {
+   "q": "A wiener schnitzel (escalope empanado) é típica de qual país?",
+   "ops": [
+    "Alemanha",
+    "Áustria",
+    "Suíça",
+    "Polônia"
+   ],
+   "c": 1
+  },
+  {
+   "q": "De qual país é originário o prato biryani?",
+   "ops": [
+    "Índia",
+    "Turquia",
+    "Marrocos",
+    "Irã"
+   ],
+   "c": 0
+  },
+  {
+   "q": "O prato pierogi é tradicional de qual país?",
+   "ops": [
+    "Rússia",
+    "Polônia",
+    "República Tcheca",
+    "Hungria"
+   ],
+   "c": 1
+  },
+  {
+   "q": "A baklava é uma sobremesa associada a qual região?",
+   "ops": [
+    "Escandinávia",
+    "Oriente Médio e Balcãs",
+    "Sudeste Asiático",
+    "América Central"
+   ],
+   "c": 1
+  },
+  {
+   "q": "De onde vem o prato gyros?",
+   "ops": [
+    "Turquia",
+    "Grécia",
+    "Líbano",
+    "Chipre"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O prato tandoori é típico da culinária de qual país?",
+   "ops": [
+    "Tailândia",
+    "Índia",
+    "Indonésia",
+    "Nepal"
+   ],
+   "c": 1
+  },
+  {
+   "q": "A crepe (panqueca fina) é tradicionalmente associada a qual país?",
+   "ops": [
+    "Bélgica",
+    "França",
+    "Holanda",
+    "Suíça"
+   ],
+   "c": 1
+  },
+  {
+   "q": "De qual país é originário o prato nasi goreng (arroz frito)?",
+   "ops": [
+    "Malásia",
+    "Indonésia",
+    "Tailândia",
+    "Filipinas"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O prato haggis é típico de qual país?",
+   "ops": [
+    "Irlanda",
+    "País de Gales",
+    "Escócia",
+    "Inglaterra"
+   ],
+   "c": 2
+  },
+  {
+   "q": "A sacher torte (bolo de chocolate) é originária de qual país?",
+   "ops": [
+    "Alemanha",
+    "Suíça",
+    "Áustria",
+    "Bélgica"
+   ],
+   "c": 2
+  },
+  {
+   "q": "De onde vem o prato jollof rice?",
+   "ops": [
+    "África Ocidental",
+    "Caribe",
+    "Índia",
+    "Brasil"
+   ],
+   "c": 0
+  },
+  {
+   "q": "O prato dim sum é tradicional de qual país?",
+   "ops": [
+    "Japão",
+    "China",
+    "Vietnã",
+    "Coreia do Sul"
+   ],
+   "c": 1
+  },
+  {
+   "q": "A carbonara é um molho de massa originário de qual país?",
+   "ops": [
+    "França",
+    "Itália",
+    "Espanha",
+    "Grécia"
+   ],
+   "c": 1
+  },
+  {
+   "q": "De qual país é originário o prato bratwurst (salsicha)?",
+   "ops": [
+    "Áustria",
+    "Alemanha",
+    "Suíça",
+    "Holanda"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O prato tom yum (sopa apimentada) é típico de qual país?",
+   "ops": [
+    "Vietnã",
+    "Camboja",
+    "Tailândia",
+    "Laos"
+   ],
+   "c": 2
+  },
+  {
+   "q": "A bruschetta é um aperitivo originário de qual país?",
+   "ops": [
+    "Grécia",
+    "Espanha",
+    "Itália",
+    "Portugal"
+   ],
+   "c": 2
+  },
+  {
+   "q": "De onde vem o prato bacalhau à brás?",
+   "ops": [
+    "Espanha",
+    "Portugal",
+    "Itália",
+    "França"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O prato peking duck (pato à Pequim) é de qual país?",
+   "ops": [
+    "Japão",
+    "Coreia do Sul",
+    "China",
+    "Vietnã"
+   ],
+   "c": 2
+  },
+  {
+   "q": "A quiche lorraine é uma torta salgada de qual país?",
+   "ops": [
+    "Alemanha",
+    "França",
+    "Bélgica",
+    "Suíça"
+   ],
+   "c": 1
+  },
+  {
+   "q": "De qual país é originário o prato asado (churrasco)?",
+   "ops": [
+    "Uruguai",
+    "Argentina",
+    "Chile",
+    "Paraguai"
+   ],
+   "c": 1
+  },
+  {
+   "q": "A tiramisu é uma sobremesa originária de qual país?",
+   "ops": [
+    "França",
+    "Áustria",
+    "Itália",
+    "Grécia"
+   ],
+   "c": 2
+  },
+  {
+   "q": "De onde vem o prato injera (pão achatado esponjoso)?",
+   "ops": [
+    "Marrocos",
+    "Etiópia",
+    "Egito",
+    "Quênia"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O prato kimchi é típico de qual país?",
+   "ops": [
+    "China",
+    "Japão",
+    "Coreia do Sul",
+    "Vietnã"
+   ],
+   "c": 2
+  },
+  {
+   "q": "A gazpacho (sopa fria de tomate) é originária de qual país?",
+   "ops": [
+    "Itália",
+    "Portugal",
+    "Espanha",
+    "Grécia"
+   ],
+   "c": 2
+  },
+  {
+   "q": "De qual país é originário o prato waterzooi (ensopado)?",
+   "ops": [
+    "Holanda",
+    "Bélgica",
+    "Alemanha",
+    "Dinamarca"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O prato pastel de nata é tradicional de qual país?",
+   "ops": [
+    "Espanha",
+    "Portugal",
+    "Brasil",
+    "França"
+   ],
+   "c": 1
+  },
+  {
+   "q": "A satay (espetinho com molho de amendoim) é originária de qual região?",
+   "ops": [
+    "Sudeste Asiático",
+    "Oriente Médio",
+    "África Ocidental",
+    "Caribe"
+   ],
+   "c": 0
+  },
+  {
+   "q": "O ácido que dá o sabor azedo característico ao limão é o ácido:",
+   "ops": [
+    "Acético",
+    "Cítrico",
+    "Láctico",
+    "Málico"
+   ],
+   "c": 1
+  },
+  {
+   "q": "A tapioca, o polvilho e a farinha usados no Brasil são todos extraídos de qual planta?",
+   "ops": [
+    "Milho",
+    "Batata",
+    "Mandioca",
+    "Inhame"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual queijo italiano é o ingrediente tradicional do molho para o macarrão cacio e pepe?",
+   "ops": [
+    "Mozzarella",
+    "Pecorino romano",
+    "Gorgonzola",
+    "Provolone"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O tucupi, líquido amarelo típico da culinária paraense, vem de qual origem?",
+   "ops": [
+    "Fermentação do milho",
+    "Sumo da mandioca-brava",
+    "Extrato do dendê",
+    "Caldo de peixe"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual bebida destilada é a base tradicional do coquetel Margarita?",
+   "ops": [
+    "Rum",
+    "Tequila",
+    "Gim",
+    "Vodca"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O 'umami' é reconhecido como o quinto sabor básico. Ele é frequentemente descrito como:",
+   "ops": [
+    "Adstringente",
+    "Picante",
+    "Saboroso/carne",
+    "Metálico"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual fruta é o ingrediente principal do doce baiano conhecido como 'cocada'?",
+   "ops": [
+    "Banana",
+    "Coco",
+    "Abacaxi",
+    "Goiaba"
+   ],
+   "c": 1
+  },
+  {
+   "q": "A brigadeiro brasileira tradicional leva leite condensado, manteiga e:",
+   "ops": [
+    "Chocolate em barra",
+    "Cacau ou chocolate em pó",
+    "Nutella",
+    "Doce de leite"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual grão é fermentado e prensado para produzir o tofu?",
+   "ops": [
+    "Grão-de-bico",
+    "Soja",
+    "Lentilha",
+    "Feijão-branco"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O prato português 'bacalhau' é feito tradicionalmente com o peixe:",
+   "ops": [
+    "Fresco e grelhado",
+    "Salgado e seco",
+    "Defumado",
+    "Cru marinado"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual desses é um tipo de massa de macarrão em formato de tubo curto e estriado?",
+   "ops": [
+    "Farfalle",
+    "Penne",
+    "Fusilli",
+    "Orecchiette"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O vinagre balsâmico tradicional é originário de qual região da Itália?",
+   "ops": [
+    "Toscana",
+    "Sicília",
+    "Módena",
+    "Nápoles"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual parte do animal é usada para fazer o tradicional 'buchada de bode' nordestina?",
+   "ops": [
+    "O fígado",
+    "As vísceras e o estômago",
+    "O rabo",
+    "A língua"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual leguminosa é a base do húmus, prato típico do Oriente Médio?",
+   "ops": [
+    "Feijão-preto",
+    "Grão-de-bico",
+    "Ervilha",
+    "Fava"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O 'ponto de bala mole' e 'ponto de fio' são termos usados no preparo de:",
+   "ops": [
+    "Massa de pão",
+    "Caldas de açúcar",
+    "Molhos de tomate",
+    "Maioneses"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual fruta seca é a uva-passa?",
+   "ops": [
+    "Ameixa",
+    "Uva",
+    "Tâmara",
+    "Figo"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O prato indiano 'biryani' tem como base qual ingrediente?",
+   "ops": [
+    "Trigo",
+    "Arroz",
+    "Lentilha",
+    "Milho"
+   ],
+   "c": 1
+  },
+  {
+   "q": "A cachaça é um destilado brasileiro produzido a partir de:",
+   "ops": [
+    "Uva fermentada",
+    "Caldo de cana fermentado",
+    "Milho",
+    "Batata"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual erva é o ingrediente aromático principal do molho pesto genovês?",
+   "ops": [
+    "Salsa",
+    "Manjericão",
+    "Coentro",
+    "Hortelã"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O 'ceviche', prato típico do Peru, cozinha o peixe cru por meio de:",
+   "ops": [
+    "Calor do sol",
+    "Acidez do limão",
+    "Sal grosso",
+    "Fumaça"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual desses cortes bovinos fica na região traseira, próximo ao lombo, e é macio?",
+   "ops": [
+    "Músculo",
+    "Filé mignon",
+    "Peito",
+    "Acém"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O molho de soja (shoyu) é produzido pela fermentação de soja e:",
+   "ops": [
+    "Arroz",
+    "Trigo",
+    "Milho",
+    "Cevada"
+   ],
+   "c": 1
+  },
+  {
+   "q": "A 'paçoca' de amendoim, doce junino brasileiro, é feita com amendoim moído e:",
+   "ops": [
+    "Mel",
+    "Açúcar e farinha",
+    "Leite condensado",
+    "Chocolate"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O 'kimchi' é um acompanhamento fermentado tradicional de qual país?",
+   "ops": [
+    "Japão",
+    "China",
+    "Coreia",
+    "Tailândia"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual queijo é tradicionalmente usado por cima do prato italiano 'risoto'?",
+   "ops": [
+    "Parmesão",
+    "Cheddar",
+    "Brie",
+    "Feta"
+   ],
+   "c": 0
+  },
+  {
+   "q": "A 'moqueca capixaba' se diferencia da baiana principalmente por não levar:",
+   "ops": [
+    "Tomate",
+    "Dendê e leite de coco",
+    "Cebola",
+    "Coentro"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual fruta cítrica é um cruzamento natural entre laranja e pomelo, de casca grossa?",
+   "ops": [
+    "Tangerina",
+    "Toranja (grapefruit)",
+    "Lima",
+    "Cidra"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O 'guaraná' usado em refrigerantes brasileiros é uma fruta nativa de qual região?",
+   "ops": [
+    "Mata Atlântica",
+    "Amazônia",
+    "Pampa",
+    "Cerrado"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual técnica culinária consiste em cozinhar alimentos em banho de gordura a baixa temperatura?",
+   "ops": [
+    "Escaldar",
+    "Confitar",
+    "Grelhar",
+    "Braisear"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O 'garam masala' é uma mistura de especiarias característica da culinária:",
+   "ops": [
+    "Mexicana",
+    "Indiana",
+    "Marroquina",
+    "Chinesa"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual é o principal ingrediente do 'guacamole' mexicano?",
+   "ops": [
+    "Tomate",
+    "Abacate",
+    "Pimentão",
+    "Milho"
+   ],
+   "c": 1
+  },
+  {
+   "q": "A 'feijoada' brasileira tradicional é preparada com qual tipo de feijão?",
+   "ops": [
+    "Feijão-carioca",
+    "Feijão-preto",
+    "Feijão-branco",
+    "Feijão-fradinho"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual composto químico é o responsável pela ardência das pimentas?",
+   "ops": [
+    "Piperina",
+    "Capsaicina",
+    "Alicina",
+    "Mentol"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O 'pão de queijo' mineiro leva qual amido característico na massa?",
+   "ops": [
+    "Farinha de trigo",
+    "Polvilho",
+    "Fubá",
+    "Farinha de arroz"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual dessas é uma variedade de arroz de grão curto e amiláceo, ideal para risoto?",
+   "ops": [
+    "Basmati",
+    "Jasmim",
+    "Arbóreo",
+    "Parboilizado"
+   ],
+   "c": 2
+  },
+  {
+   "q": "O 'miso', pasta fermentada japonesa, é feito principalmente de soja e:",
+   "ops": [
+    "Sal e fungo koji",
+    "Vinagre",
+    "Açúcar",
+    "Alga"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Qual fruta é usada tradicionalmente na sobremesa francesa 'tarte Tatin'?",
+   "ops": [
+    "Pera",
+    "Maçã",
+    "Pêssego",
+    "Figo"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O 'chimichurri', molho para carnes, é típico de qual país?",
+   "ops": [
+    "México",
+    "Argentina",
+    "Espanha",
+    "Chile"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual parte da baunilha é usada como especiaria aromática?",
+   "ops": [
+    "A folha",
+    "A vagem (fava)",
+    "A raiz",
+    "A casca"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O 'acarajé' baiano é frito em qual gordura tradicionalmente?",
+   "ops": [
+    "Banha de porco",
+    "Azeite de dendê",
+    "Óleo de soja",
+    "Manteiga"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual bebida quente é feita a partir das folhas fermentadas da planta Camellia sinensis?",
+   "ops": [
+    "Café",
+    "Chá-preto",
+    "Mate",
+    "Cacau"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O 'roux', base de molhos franceses, é feito com gordura e:",
+   "ops": [
+    "Ovos",
+    "Farinha",
+    "Leite",
+    "Amido de milho"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O 'gengibre' é utilizado na culinária a partir de qual parte da planta?",
+   "ops": [
+    "Folha",
+    "Rizoma (caule subterrâneo)",
+    "Semente",
+    "Flor"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual queijo azul italiano é tradicionalmente usado em molhos cremosos e no risoto?",
+   "ops": [
+    "Grana padano",
+    "Gorgonzola",
+    "Taleggio",
+    "Burrata"
    ],
    "c": 1
   }
@@ -2809,6 +7149,966 @@
     "Ficar bravo"
    ],
    "c": 1
+  },
+  {
+   "q": "Qual a tradução de \"apple\" em português?",
+   "ops": [
+    "Uva",
+    "Maçã",
+    "Pêra",
+    "Laranja"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O que significa \"blue\" em português?",
+   "ops": [
+    "Verde",
+    "Amarelo",
+    "Azul",
+    "Vermelho"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Como se traduz \"livro\" para o inglês?",
+   "ops": [
+    "Table",
+    "Book",
+    "Pen",
+    "Paper"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual o significado de \"water\" em português?",
+   "ops": [
+    "Fogo",
+    "Água",
+    "Terra",
+    "Ar"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Como se diz \"casa\" em inglês?",
+   "ops": [
+    "Home",
+    "House",
+    "Room",
+    "Door"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O que quer dizer \"friend\" em português?",
+   "ops": [
+    "Inimigo",
+    "Amigo",
+    "Vizinho",
+    "Parente"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Como se traduz \"gato\" para o inglês?",
+   "ops": [
+    "Cat",
+    "Cow",
+    "Goat",
+    "Rat"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Qual a tradução de \"tree\" em português?",
+   "ops": [
+    "Flor",
+    "Árvore",
+    "Folha",
+    "Grama"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Como se diz \"sol\" em inglês?",
+   "ops": [
+    "Moon",
+    "Star",
+    "Sun",
+    "Sky"
+   ],
+   "c": 2
+  },
+  {
+   "q": "O que significa \"night\" em português?",
+   "ops": [
+    "Dia",
+    "Tarde",
+    "Manhã",
+    "Noite"
+   ],
+   "c": 3
+  },
+  {
+   "q": "Como se traduz \"pão\" para o inglês?",
+   "ops": [
+    "Bread",
+    "Butter",
+    "Cheese",
+    "Milk"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Qual o significado de \"green\" em português?",
+   "ops": [
+    "Verde",
+    "Roxo",
+    "Preto",
+    "Branco"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Como se diz \"chuva\" em inglês?",
+   "ops": [
+    "Snow",
+    "Wind",
+    "Rain",
+    "Cloud"
+   ],
+   "c": 2
+  },
+  {
+   "q": "O que quer dizer \"child\" em português?",
+   "ops": [
+    "Adulto",
+    "Criança",
+    "Idoso",
+    "Bebê"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Como se traduz \"leite\" para o inglês?",
+   "ops": [
+    "Water",
+    "Juice",
+    "Milk",
+    "Coffee"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual a tradução de \"car\" em português?",
+   "ops": [
+    "Ônibus",
+    "Carro",
+    "Moto",
+    "Bicicleta"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Como se diz \"branco\" em inglês?",
+   "ops": [
+    "Black",
+    "White",
+    "Brown",
+    "Gray"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O que significa \"table\" em português?",
+   "ops": [
+    "Cadeira",
+    "Mesa",
+    "Cama",
+    "Armário"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Como se traduz \"porta\" para o inglês?",
+   "ops": [
+    "Window",
+    "Wall",
+    "Door",
+    "Floor"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual o significado de \"hand\" em português?",
+   "ops": [
+    "Pé",
+    "Mão",
+    "Braço",
+    "Perna"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Como se diz \"peixe\" em inglês?",
+   "ops": [
+    "Fish",
+    "Bird",
+    "Frog",
+    "Snake"
+   ],
+   "c": 0
+  },
+  {
+   "q": "O que quer dizer \"black\" em português?",
+   "ops": [
+    "Cinza",
+    "Marrom",
+    "Preto",
+    "Azul"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Como se traduz \"amarelo\" para o inglês?",
+   "ops": [
+    "Orange",
+    "Yellow",
+    "Pink",
+    "Purple"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual a tradução de \"school\" em português?",
+   "ops": [
+    "Igreja",
+    "Escola",
+    "Hospital",
+    "Loja"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Como se diz \"comida\" em inglês?",
+   "ops": [
+    "Drink",
+    "Food",
+    "Meal",
+    "Dish"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O que significa \"cold\" em português?",
+   "ops": [
+    "Quente",
+    "Morno",
+    "Frio",
+    "Gelado"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Como se traduz \"quente\" para o inglês?",
+   "ops": [
+    "Cool",
+    "Warm",
+    "Hot",
+    "Cold"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual o significado de \"bird\" em português?",
+   "ops": [
+    "Pássaro",
+    "Inseto",
+    "Peixe",
+    "Rato"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Como se diz \"janela\" em inglês?",
+   "ops": [
+    "Door",
+    "Window",
+    "Wall",
+    "Roof"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O que quer dizer \"happy\" em português?",
+   "ops": [
+    "Triste",
+    "Feliz",
+    "Bravo",
+    "Cansado"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Como se traduz \"triste\" para o inglês?",
+   "ops": [
+    "Angry",
+    "Tired",
+    "Sad",
+    "Bored"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual a tradução de \"money\" em português?",
+   "ops": [
+    "Cartão",
+    "Dinheiro",
+    "Moeda",
+    "Banco"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O que significa \"door\" em português?",
+   "ops": [
+    "Parede",
+    "Chão",
+    "Porta",
+    "Teto"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Como se traduz \"vermelho\" para o inglês?",
+   "ops": [
+    "Red",
+    "Rose",
+    "Wine",
+    "Blood"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Qual o significado de \"morning\" em português?",
+   "ops": [
+    "Noite",
+    "Manhã",
+    "Tarde",
+    "Meia-noite"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Como se diz \"trabalho\" em inglês?",
+   "ops": [
+    "Play",
+    "Rest",
+    "Work",
+    "Job"
+   ],
+   "c": 2
+  },
+  {
+   "q": "O que quer dizer \"open\" em português?",
+   "ops": [
+    "Fechado",
+    "Aberto",
+    "Trancado",
+    "Quebrado"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Como se traduz \"fechar\" para o inglês?",
+   "ops": [
+    "Open",
+    "Close",
+    "Lock",
+    "Break"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual a tradução de \"love\" em português?",
+   "ops": [
+    "Ódio",
+    "Amor",
+    "Medo",
+    "Sono"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Como se diz \"tempo\" (clima) em inglês?",
+   "ops": [
+    "Time",
+    "Weather",
+    "Season",
+    "Hour"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O que significa \"fast\" em português?",
+   "ops": [
+    "Lento",
+    "Rápido",
+    "Parado",
+    "Devagar"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Como se traduz \"pequeno\" para o inglês?",
+   "ops": [
+    "Big",
+    "Tall",
+    "Small",
+    "Short"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual o significado de \"big\" em português?",
+   "ops": [
+    "Pequeno",
+    "Grande",
+    "Curto",
+    "Estreito"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Como se diz \"comprar\" em inglês?",
+   "ops": [
+    "Sell",
+    "Pay",
+    "Buy",
+    "Give"
+   ],
+   "c": 2
+  },
+  {
+   "q": "O que quer dizer \"read\" em português?",
+   "ops": [
+    "Escrever",
+    "Ler",
+    "Falar",
+    "Ouvir"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Como se traduz \"beber\" para o inglês?",
+   "ops": [
+    "Eat",
+    "Drink",
+    "Cook",
+    "Taste"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual a tradução de \"key\" em português?",
+   "ops": [
+    "Fechadura",
+    "Chave",
+    "Porta",
+    "Cadeado"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Como se diz \"ontem\" em inglês?",
+   "ops": [
+    "Today",
+    "Tomorrow",
+    "Yesterday",
+    "Now"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual palavra completa: \"She ___ to school every day.\"",
+   "ops": [
+    "go",
+    "goes",
+    "going",
+    "gone"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O que significa o phrasal verb \"give up\"?",
+   "ops": [
+    "Desistir",
+    "Devolver",
+    "Distribuir",
+    "Levantar"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Complete: \"I ___ a book right now.\"",
+   "ops": [
+    "read",
+    "reads",
+    "am reading",
+    "reading"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual o plural correto de \"child\"?",
+   "ops": [
+    "childs",
+    "childes",
+    "children",
+    "childrens"
+   ],
+   "c": 2
+  },
+  {
+   "q": "O que significa \"look for\"?",
+   "ops": [
+    "Olhar para cima",
+    "Procurar",
+    "Cuidar de",
+    "Parecer"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Complete: \"There ___ two apples on the table.\"",
+   "ops": [
+    "is",
+    "am",
+    "are",
+    "be"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual o passado de \"go\"?",
+   "ops": [
+    "goed",
+    "gone",
+    "went",
+    "going"
+   ],
+   "c": 2
+  },
+  {
+   "q": "O que significa a expressão \"break the ice\"?",
+   "ops": [
+    "Quebrar o gelo (iniciar conversa)",
+    "Ficar com frio",
+    "Cancelar um plano",
+    "Fazer sorvete"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Qual pronome substitui \"Maria and I\"?",
+   "ops": [
+    "They",
+    "Us",
+    "We",
+    "Them"
+   ],
+   "c": 2
+  },
+  {
+   "q": "O que significa \"turn off\"?",
+   "ops": [
+    "Ligar",
+    "Desligar",
+    "Virar à esquerda",
+    "Aumentar"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Complete: \"This is ___ apple.\"",
+   "ops": [
+    "a",
+    "an",
+    "the",
+    "some"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual o comparativo de \"good\"?",
+   "ops": [
+    "gooder",
+    "more good",
+    "better",
+    "best"
+   ],
+   "c": 2
+  },
+  {
+   "q": "O que significa \"wake up\"?",
+   "ops": [
+    "Adormecer",
+    "Acordar",
+    "Cansar",
+    "Levantar peso"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Complete: \"They ___ playing football yesterday.\"",
+   "ops": [
+    "was",
+    "is",
+    "were",
+    "are"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual palavra completa: \"I have lived here ___ 2010.\"",
+   "ops": [
+    "for",
+    "since",
+    "ago",
+    "during"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O que significa \"put on\" (roupas)?",
+   "ops": [
+    "Tirar",
+    "Vestir",
+    "Lavar",
+    "Comprar"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Complete: \"How ___ money do you have?\"",
+   "ops": [
+    "many",
+    "much",
+    "few",
+    "lot"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual o passado de \"buy\"?",
+   "ops": [
+    "buyed",
+    "bought",
+    "buied",
+    "buy"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O que significa a expressão \"piece of cake\"?",
+   "ops": [
+    "Muito difícil",
+    "Muito fácil",
+    "Um pedaço de bolo real",
+    "Uma surpresa"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Complete: \"She is ___ than her sister.\"",
+   "ops": [
+    "tall",
+    "taller",
+    "tallest",
+    "more tall"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual artigo usar: \"___ sun is bright.\"",
+   "ops": [
+    "A",
+    "An",
+    "The",
+    "No article"
+   ],
+   "c": 2
+  },
+  {
+   "q": "O que significa \"find out\"?",
+   "ops": [
+    "Esconder",
+    "Descobrir",
+    "Perder",
+    "Sair"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual o plural de \"foot\"?",
+   "ops": [
+    "foots",
+    "feets",
+    "feet",
+    "footes"
+   ],
+   "c": 2
+  },
+  {
+   "q": "O que significa \"run out of\"?",
+   "ops": [
+    "Ficar sem (algo)",
+    "Correr para fora",
+    "Ultrapassar",
+    "Encher"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Complete: \"I ___ never been to Paris.\"",
+   "ops": [
+    "has",
+    "have",
+    "had",
+    "having"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual palavra é um advérbio?",
+   "ops": [
+    "quick",
+    "quickly",
+    "quicker",
+    "quickness"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O que significa a expressão \"once in a blue moon\"?",
+   "ops": [
+    "Toda noite",
+    "Muito raramente",
+    "No feriado",
+    "Ao amanhecer"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Complete: \"There isn't ___ milk in the fridge.\"",
+   "ops": [
+    "some",
+    "any",
+    "many",
+    "a"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual o superlativo de \"big\"?",
+   "ops": [
+    "biger",
+    "bigger",
+    "biggest",
+    "most big"
+   ],
+   "c": 2
+  },
+  {
+   "q": "O que significa \"get up\"?",
+   "ops": [
+    "Deitar",
+    "Levantar-se",
+    "Chegar",
+    "Desistir"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Complete: \"Whose book is this? It's ___.\"",
+   "ops": [
+    "my",
+    "mine",
+    "me",
+    "I"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual o passado de \"see\"?",
+   "ops": [
+    "seed",
+    "saw",
+    "seen",
+    "sawed"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O que significa \"call off\"?",
+   "ops": [
+    "Ligar de novo",
+    "Cancelar",
+    "Gritar",
+    "Chamar alguém"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Complete: \"He works ___ a hospital.\"",
+   "ops": [
+    "in",
+    "at",
+    "on",
+    "to"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual palavra completa: \"I'm interested ___ music.\"",
+   "ops": [
+    "on",
+    "at",
+    "in",
+    "for"
+   ],
+   "c": 2
+  },
+  {
+   "q": "O que significa a expressão \"hit the books\"?",
+   "ops": [
+    "Bater nos livros com raiva",
+    "Estudar bastante",
+    "Jogar livros fora",
+    "Comprar livros"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Complete: \"She can ___ very well.\"",
+   "ops": [
+    "sings",
+    "sing",
+    "singing",
+    "sang"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual o plural de \"man\"?",
+   "ops": [
+    "mans",
+    "mens",
+    "men",
+    "manes"
+   ],
+   "c": 2
+  },
+  {
+   "q": "O que significa \"look after\"?",
+   "ops": [
+    "Procurar",
+    "Cuidar de",
+    "Olhar para trás",
+    "Imitar"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Complete: \"We ___ dinner when you called.\"",
+   "ops": [
+    "have",
+    "were having",
+    "has",
+    "having"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual preposição completa: \"The cat is ___ the table.\" (embaixo)",
+   "ops": [
+    "on",
+    "over",
+    "under",
+    "above"
+   ],
+   "c": 2
+  },
+  {
+   "q": "O que significa \"take off\" (avião)?",
+   "ops": [
+    "Pousar",
+    "Decolar",
+    "Atrasar",
+    "Cancelar"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Complete: \"You ___ smoke here. It's forbidden.\"",
+   "ops": [
+    "must",
+    "mustn't",
+    "should",
+    "can"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual o passado de \"eat\"?",
+   "ops": [
+    "eated",
+    "ate",
+    "eaten",
+    "eat"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O que significa a expressão \"under the weather\"?",
+   "ops": [
+    "Sentindo-se mal/doente",
+    "Debaixo de chuva",
+    "Muito animado",
+    "Com pressa"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Complete: \"There are ___ people at the party.\"",
+   "ops": [
+    "much",
+    "a lot of",
+    "a little",
+    "any"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O que significa \"come back\"?",
+   "ops": [
+    "Chegar",
+    "Voltar",
+    "Entrar",
+    "Sair"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Complete: \"This car is ___ expensive one in the shop.\"",
+   "ops": [
+    "more",
+    "the most",
+    "most",
+    "much"
+   ],
+   "c": 1
   }
  ],
  "filmes": [
@@ -3299,6 +8599,3752 @@
     "Up: Altas Aventuras",
     "Ratatouille",
     "Os Incríveis"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual é o nome do planeta natal de Luke Skywalker em Star Wars?",
+   "ops": [
+    "Tatooine",
+    "Alderaan",
+    "Naboo",
+    "Hoth"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Em O Senhor dos Anéis, qual criatura era originalmente um hobbit chamado Sméagol?",
+   "ops": [
+    "Saruman",
+    "Gollum",
+    "Grima",
+    "Tom Bombadil"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual é o verdadeiro nome do Homem de Ferro no Universo Marvel?",
+   "ops": [
+    "Steve Rogers",
+    "Bruce Banner",
+    "Tony Stark",
+    "Peter Parker"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Em Harry Potter, qual é a casa de Hogwarts cujo símbolo é o texugo?",
+   "ops": [
+    "Grifinória",
+    "Sonserina",
+    "Corvinal",
+    "Lufa-Lufa"
+   ],
+   "c": 3
+  },
+  {
+   "q": "Quem dirigiu o filme Star Wars original de 1977?",
+   "ops": [
+    "Steven Spielberg",
+    "George Lucas",
+    "Irvin Kershner",
+    "Richard Marquand"
+   ],
+   "c": 1
+  },
+  {
+   "q": "No universo DC, qual é a cidade protegida pelo Superman?",
+   "ops": [
+    "Gotham City",
+    "Central City",
+    "Metropolis",
+    "Star City"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual metal fictício compõe o escudo do Capitão América?",
+   "ops": [
+    "Adamantium",
+    "Vibranium",
+    "Titânio",
+    "Uru"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Em O Senhor dos Anéis, quantos Anéis de Poder foram dados aos Reis dos Homens?",
+   "ops": [
+    "Três",
+    "Sete",
+    "Nove",
+    "Um"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual ator interpretou Voldemort na maioria dos filmes de Harry Potter?",
+   "ops": [
+    "Ralph Fiennes",
+    "Gary Oldman",
+    "Alan Rickman",
+    "Jason Isaacs"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Qual é o nome do martelo de Thor no Universo Marvel?",
+   "ops": [
+    "Stormbreaker",
+    "Gungnir",
+    "Mjolnir",
+    "Hofund"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Em Star Wars, qual é a relação entre Darth Vader e Luke Skywalker?",
+   "ops": [
+    "Irmãos",
+    "Pai e filho",
+    "Tio e sobrinho",
+    "Primos"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual vilão da DC é conhecido como o arqui-inimigo do Batman e ri constantemente?",
+   "ops": [
+    "Charada",
+    "Pinguim",
+    "Coringa",
+    "Duas-Caras"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Em O Hobbit, qual é o nome do dragão que guarda o tesouro de Erebor?",
+   "ops": [
+    "Smaug",
+    "Glaurung",
+    "Ancalagon",
+    "Scatha"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Qual é o nome da escola de magia frequentada por Harry Potter?",
+   "ops": [
+    "Beauxbatons",
+    "Durmstrang",
+    "Hogwarts",
+    "Ilvermorny"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual é a joia verde do Manopla do Infinito nos filmes da Marvel?",
+   "ops": [
+    "Tempo",
+    "Realidade",
+    "Alma",
+    "Espaço"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Em Star Wars, que arma é característica dos cavaleiros Jedi?",
+   "ops": [
+    "Blaster",
+    "Sabre de luz",
+    "Bastão de força",
+    "Vibro-lâmina"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual é a identidade secreta do Homem-Aranha na trilogia de Sam Raimi?",
+   "ops": [
+    "Miles Morales",
+    "Peter Parker",
+    "Ben Reilly",
+    "Harry Osborn"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Em O Senhor dos Anéis, qual personagem é interpretado por Ian McKellen?",
+   "ops": [
+    "Aragorn",
+    "Legolas",
+    "Gandalf",
+    "Boromir"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual super-herói da DC é conhecido como a Mulher-Maravilha e vem de Themyscira?",
+   "ops": [
+    "Diana Prince",
+    "Barbara Gordon",
+    "Selina Kyle",
+    "Kara Zor-El"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Qual é o nome do robô dourado que fala em Star Wars ao lado do R2-D2?",
+   "ops": [
+    "BB-8",
+    "C-3PO",
+    "IG-88",
+    "K-2SO"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Em Harry Potter, qual esporte é jogado montado em vassouras?",
+   "ops": [
+    "Xadrez de Bruxo",
+    "Quadribol",
+    "Gobstones",
+    "Duelo"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual personagem verde e sábio treina Luke Skywalker na Força?",
+   "ops": [
+    "Mace Windu",
+    "Yoda",
+    "Qui-Gon Jinn",
+    "Obi-Wan Kenobi"
+   ],
+   "c": 1
+  },
+  {
+   "q": "No Universo Marvel, qual é o nome civil do Hulk?",
+   "ops": [
+    "Bruce Banner",
+    "Hank Pym",
+    "Reed Richards",
+    "Stephen Strange"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Em O Senhor dos Anéis, onde o Um Anel deve ser destruído?",
+   "ops": [
+    "Isengard",
+    "Monte da Perdição",
+    "Minas Tirith",
+    "Valfenda"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual ator interpretou o Batman na trilogia dirigida por Christopher Nolan?",
+   "ops": [
+    "Ben Affleck",
+    "Michael Keaton",
+    "Christian Bale",
+    "Val Kilmer"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual é o nome da organização vilã comandada por Palpatine em Star Wars?",
+   "ops": [
+    "A Rebelião",
+    "O Império Galáctico",
+    "A Nova República",
+    "A Ordem Jedi"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Em Harry Potter, qual é o nome da coruja de estimação de Harry?",
+   "ops": [
+    "Edwiges",
+    "Errol",
+    "Bicuço",
+    "Pichitinho"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Qual grupo de super-heróis inclui Homem de Ferro, Thor e Capitão América?",
+   "ops": [
+    "Liga da Justiça",
+    "Os Vingadores",
+    "X-Men",
+    "Guardiões da Galáxia"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Em O Senhor dos Anéis, qual raça inclui Gimli, um dos membros da Sociedade do Anel?",
+   "ops": [
+    "Elfo",
+    "Anão",
+    "Hobbit",
+    "Mago"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Em Star Wars, qual é o nome da nave pilotada por Han Solo?",
+   "ops": [
+    "Estrela da Morte",
+    "Millennium Falcon",
+    "X-Wing",
+    "Slave I"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual é o nome do personagem elfo interpretado por Orlando Bloom em O Senhor dos Anéis?",
+   "ops": [
+    "Elrond",
+    "Legolas",
+    "Haldir",
+    "Celeborn"
+   ],
+   "c": 1
+  },
+  {
+   "q": "No universo DC, qual herói usa um anel de poder alimentado por força de vontade?",
+   "ops": [
+    "Flash",
+    "Aquaman",
+    "Lanterna Verde",
+    "Ciborgue"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Em Harry Potter, qual objeto permite viajar rapidamente ao pronunciar um destino com pó?",
+   "ops": [
+    "Chave de Portal",
+    "Rede de Flu",
+    "Aparatação",
+    "Vassoura"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual é o nome do reino subterrâneo dos anões em O Senhor dos Anéis, também chamado Moria?",
+   "ops": [
+    "Khazad-dûm",
+    "Erebor",
+    "Ferro Duro",
+    "Nogrod"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Qual ator vestiu o corpo de Darth Vader nos filmes clássicos de Star Wars?",
+   "ops": [
+    "James Earl Jones",
+    "David Prowse",
+    "Sebastian Shaw",
+    "Hayden Christensen"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Em Vingadores, qual personagem é o irmão adotivo de Thor e deus da trapaça?",
+   "ops": [
+    "Heimdall",
+    "Loki",
+    "Baldur",
+    "Odin"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual é o vilão que assassinou os pais de Harry Potter?",
+   "ops": [
+    "Lúcio Malfoy",
+    "Severo Snape",
+    "Voldemort",
+    "Bellatrix"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Em Star Wars, qual é o nome da irmã gêmea de Luke Skywalker?",
+   "ops": [
+    "Padmé",
+    "Leia",
+    "Rey",
+    "Mon Mothma"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual raça peluda de baixa estatura vive no Condado em O Senhor dos Anéis?",
+   "ops": [
+    "Anões",
+    "Hobbits",
+    "Ents",
+    "Orcs"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual super-herói da Marvel encolhe de tamanho usando um traje especial?",
+   "ops": [
+    "Gavião Arqueiro",
+    "Homem-Formiga",
+    "Máquina de Combate",
+    "Falcão"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Em Harry Potter, qual professor de Poções chefia a casa Sonserina?",
+   "ops": [
+    "Minerva McGonagall",
+    "Severo Snape",
+    "Filius Flitwick",
+    "Rúbeo Hagrid"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual estação espacial capaz de destruir planetas aparece em Star Wars?",
+   "ops": [
+    "Starkiller",
+    "Estrela da Morte",
+    "Citadel",
+    "Death Watch"
+   ],
+   "c": 1
+  },
+  {
+   "q": "No universo DC, qual é a fraqueza clássica do Superman?",
+   "ops": [
+    "Fogo",
+    "Kryptonita",
+    "Água",
+    "Eletricidade"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Em O Senhor dos Anéis, qual personagem carrega o Um Anel até a Montanha da Perdição?",
+   "ops": [
+    "Aragorn",
+    "Frodo",
+    "Sam",
+    "Boromir"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual feiticeiro supremo da Marvel protege a realidade e é interpretado por Benedict Cumberbatch?",
+   "ops": [
+    "Homem de Ferro",
+    "Doutor Estranho",
+    "Visão",
+    "Pantera Negra"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Em Harry Potter, qual é o nome do banco dos bruxos administrado por duendes?",
+   "ops": [
+    "Gringotes",
+    "Beco Diagonal",
+    "Ministério",
+    "Travessa do Tranco"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Qual é o nome do mestre Jedi que treina Anakin Skywalker nos episódios prequela?",
+   "ops": [
+    "Yoda",
+    "Obi-Wan Kenobi",
+    "Mace Windu",
+    "Ki-Adi-Mundi"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual grupo de heróis da DC reúne Superman, Batman e Mulher-Maravilha?",
+   "ops": [
+    "Os Vingadores",
+    "Liga da Justiça",
+    "Esquadrão Suicida",
+    "Titãs"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Em O Senhor dos Anéis, qual é o nome do herdeiro do trono de Gondor interpretado por Viggo Mortensen?",
+   "ops": [
+    "Faramir",
+    "Aragorn",
+    "Denethor",
+    "Théoden"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual diretor comandou os filmes 'A Origem' e 'Interestelar'?",
+   "ops": [
+    "Denis Villeneuve",
+    "Christopher Nolan",
+    "Ridley Scott",
+    "James Cameron"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual foi o primeiro longa-metragem de animação totalmente feito em computação gráfica?",
+   "ops": [
+    "Shrek",
+    "A Bela e a Fera",
+    "Toy Story",
+    "O Rei Leão"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Na série 'Breaking Bad', qual é a profissão original de Walter White?",
+   "ops": [
+    "Advogado",
+    "Professor de química",
+    "Médico",
+    "Contador"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual ator interpretou o Coringa no filme 'Coringa' (2019), papel que lhe rendeu o Oscar?",
+   "ops": [
+    "Heath Ledger",
+    "Jared Leto",
+    "Joaquin Phoenix",
+    "Jack Nicholson"
+   ],
+   "c": 2
+  },
+  {
+   "q": "De qual filme é a frase 'Que a Força esteja com você'?",
+   "ops": [
+    "Jornada nas Estrelas",
+    "Star Wars",
+    "O Guia do Mochileiro das Galáxias",
+    "Duna"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual diretor é conhecido por filmes como 'Cães de Aluguel', 'Pulp Fiction' e 'Kill Bill'?",
+   "ops": [
+    "Martin Scorsese",
+    "Quentin Tarantino",
+    "David Fincher",
+    "Guy Ritchie"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual animação da Pixar se passa na mente de uma menina chamada Riley?",
+   "ops": [
+    "Up: Altas Aventuras",
+    "Divertida Mente",
+    "Valente",
+    "Viva: A Vida é uma Festa"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Na série 'Game of Thrones', qual é o lema da Casa Stark?",
+   "ops": [
+    "Ouça-me Rugir",
+    "O Inverno Está Chegando",
+    "Fogo e Sangue",
+    "Sempre Fiéis"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual atriz interpretou a personagem Clarice Starling em 'O Silêncio dos Inocentes'?",
+   "ops": [
+    "Meryl Streep",
+    "Jodie Foster",
+    "Sigourney Weaver",
+    "Michelle Pfeiffer"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual filme brasileiro venceu o Oscar de Melhor Filme Internacional em 2025?",
+   "ops": [
+    "Central do Brasil",
+    "Cidade de Deus",
+    "Ainda Estou Aqui",
+    "Tropa de Elite"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual é o nome do vilão principal da franquia 'Vingadores' em 'Guerra Infinita' e 'Ultimato'?",
+   "ops": [
+    "Loki",
+    "Ultron",
+    "Thanos",
+    "Kang"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual diretor japonês fundou o Studio Ghibli e dirigiu 'A Viagem de Chihiro'?",
+   "ops": [
+    "Akira Kurosawa",
+    "Hayao Miyazaki",
+    "Makoto Shinkai",
+    "Satoshi Kon"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Na sitcom 'Friends', qual é o sobrenome dos irmãos Ross e Monica?",
+   "ops": [
+    "Bing",
+    "Green",
+    "Geller",
+    "Tribbiani"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual ator interpretou Forrest Gump no filme homônimo?",
+   "ops": [
+    "Tom Hanks",
+    "Kevin Costner",
+    "Robin Williams",
+    "Tom Cruise"
+   ],
+   "c": 0
+  },
+  {
+   "q": "De qual filme é a frase 'Vou fazer uma oferta que ele não poderá recusar'?",
+   "ops": [
+    "Os Bons Companheiros",
+    "O Poderoso Chefão",
+    "Scarface",
+    "Cassino"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual foi a primeira animação a ser indicada ao Oscar de Melhor Filme?",
+   "ops": [
+    "Shrek",
+    "Up: Altas Aventuras",
+    "A Bela e a Fera",
+    "Toy Story 3"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual diretor mexicano dirigiu 'A Forma da Água' e 'O Labirinto do Fauno'?",
+   "ops": [
+    "Alejandro González Iñárritu",
+    "Alfonso Cuarón",
+    "Guillermo del Toro",
+    "Robert Rodriguez"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual atriz venceu o Oscar de Melhor Atriz por 'A Escolha de Sofia'?",
+   "ops": [
+    "Meryl Streep",
+    "Katharine Hepburn",
+    "Jessica Lange",
+    "Sissy Spacek"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Qual filme de 1999 tem a famosa frase 'A primeira regra do Clube da Luta é: não fale sobre o Clube da Luta'?",
+   "ops": [
+    "Matrix",
+    "Clube da Luta",
+    "Seven",
+    "Beleza Americana"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual estúdio de animação produziu 'Meu Malvado Favorito' e os Minions?",
+   "ops": [
+    "Pixar",
+    "DreamWorks",
+    "Illumination",
+    "Blue Sky"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Na série 'Stranger Things', em qual estado americano fica a cidade fictícia de Hawkins?",
+   "ops": [
+    "Ohio",
+    "Indiana",
+    "Illinois",
+    "Michigan"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual ator interpretou o personagem Tony Montana no filme 'Scarface' (1983)?",
+   "ops": [
+    "Robert De Niro",
+    "Al Pacino",
+    "Andy García",
+    "Ray Liotta"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual diretor sul-coreano dirigiu 'Parasita', primeiro filme não-inglês a vencer o Oscar de Melhor Filme?",
+   "ops": [
+    "Park Chan-wook",
+    "Bong Joon-ho",
+    "Lee Chang-dong",
+    "Kim Ki-duk"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Na animação 'Shrek', qual é a espécie do personagem Burro?",
+   "ops": [
+    "Cavalo",
+    "Mula",
+    "Jumento",
+    "Pônei"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual atriz interpretou a Rainha Daenerys Targaryen em 'Game of Thrones'?",
+   "ops": [
+    "Lena Headey",
+    "Emilia Clarke",
+    "Sophie Turner",
+    "Maisie Williams"
+   ],
+   "c": 1
+  },
+  {
+   "q": "De qual filme é a frase 'Você não pode lidar com a verdade'?",
+   "ops": [
+    "O Poderoso Chefão",
+    "Questão de Honra",
+    "12 Homens e uma Sentença",
+    "Filadélfia"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual diretor dirigiu a trilogia 'O Senhor dos Anéis'?",
+   "ops": [
+    "Peter Jackson",
+    "Guillermo del Toro",
+    "Steven Spielberg",
+    "George Lucas"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Na série 'La Casa de Papel', os assaltantes usam máscaras inspiradas em qual artista?",
+   "ops": [
+    "Picasso",
+    "Salvador Dalí",
+    "Frida Kahlo",
+    "Andy Warhol"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual ator deu voz ao personagem Buzz Lightyear na versão original de 'Toy Story'?",
+   "ops": [
+    "Tom Hanks",
+    "Tim Allen",
+    "Billy Crystal",
+    "John Goodman"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual filme dirigido por Steven Spielberg venceu o Oscar de Melhor Filme em 1994?",
+   "ops": [
+    "Jurassic Park",
+    "A Lista de Schindler",
+    "O Resgate do Soldado Ryan",
+    "E.T."
+   ],
+   "c": 1
+  },
+  {
+   "q": "Na sitcom 'Seinfeld', qual é o nome do vizinho excêntrico de Jerry?",
+   "ops": [
+    "George",
+    "Newman",
+    "Kramer",
+    "Elaine"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual atriz interpretou Katniss Everdeen na saga 'Jogos Vorazes'?",
+   "ops": [
+    "Shailene Woodley",
+    "Jennifer Lawrence",
+    "Kristen Stewart",
+    "Emma Watson"
+   ],
+   "c": 1
+  },
+  {
+   "q": "De qual filme é a frase 'Diga olá pro meu amiguinho'?",
+   "ops": [
+    "O Exterminador do Futuro",
+    "Scarface",
+    "Rambo",
+    "Duro de Matar"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual diretor dirigiu 'Cidadão Kane', frequentemente citado como um dos maiores filmes de todos os tempos?",
+   "ops": [
+    "Alfred Hitchcock",
+    "Orson Welles",
+    "Stanley Kubrick",
+    "John Ford"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Na série 'The Walking Dead', qual é a profissão de Rick Grimes antes do apocalipse?",
+   "ops": [
+    "Bombeiro",
+    "Xerife",
+    "Médico",
+    "Soldado"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual ator interpretou Neo no filme 'Matrix'?",
+   "ops": [
+    "Brad Pitt",
+    "Keanu Reeves",
+    "Will Smith",
+    "Tom Cruise"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual animação da Pixar apresenta um robô compactador de lixo na Terra abandonada?",
+   "ops": [
+    "Robôs",
+    "WALL-E",
+    "Big Hero 6",
+    "O Gigante de Ferro"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual diretor dirigiu 'Psicose', 'Um Corpo que Cai' e 'Janela Indiscreta'?",
+   "ops": [
+    "Billy Wilder",
+    "Alfred Hitchcock",
+    "Fritz Lang",
+    "Roman Polanski"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Na série 'Better Call Saul', qual é o nome verdadeiro do advogado Saul Goodman?",
+   "ops": [
+    "Chuck McGill",
+    "Jimmy McGill",
+    "Howard Hamlin",
+    "Mike Ehrmantraut"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual ator venceu o Oscar de Melhor Ator por interpretar Freddie Mercury em 'Bohemian Rhapsody'?",
+   "ops": [
+    "Rami Malek",
+    "Christian Bale",
+    "Bradley Cooper",
+    "Willem Dafoe"
+   ],
+   "c": 0
+  },
+  {
+   "q": "De qual filme é a frase 'A vida é como uma caixa de bombons: você nunca sabe o que vai encontrar'?",
+   "ops": [
+    "Náufrago",
+    "Forrest Gump",
+    "O Curioso Caso de Benjamin Button",
+    "Chocolate"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual diretor dirigiu 'O Iluminado', 'Laranja Mecânica' e '2001: Uma Odisseia no Espaço'?",
+   "ops": [
+    "Stanley Kubrick",
+    "David Lynch",
+    "Ridley Scott",
+    "Terrence Malick"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Na animação 'O Rei Leão', qual é o nome do irmão de Mufasa que o trai?",
+   "ops": [
+    "Zazu",
+    "Scar",
+    "Timão",
+    "Rafiki"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual atriz interpretou a personagem Ellen Ripley na franquia 'Alien'?",
+   "ops": [
+    "Linda Hamilton",
+    "Sigourney Weaver",
+    "Jamie Lee Curtis",
+    "Geena Davis"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual filme de faroeste dirigido por Sergio Leone estrelou Clint Eastwood como 'O Bom'?",
+   "ops": [
+    "Por um Punhado de Dólares",
+    "Três Homens em Conflito",
+    "Era Uma Vez no Oeste",
+    "Quando Explode a Vingança"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Na sitcom 'How I Met Your Mother', qual personagem é famoso pelo bordão 'Legen... dary'?",
+   "ops": [
+    "Ted",
+    "Marshall",
+    "Barney",
+    "Ranjit"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual ator interpretou Jack Sparrow na franquia 'Piratas do Caribe'?",
+   "ops": [
+    "Orlando Bloom",
+    "Johnny Depp",
+    "Geoffrey Rush",
+    "Javier Bardem"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual foi o primeiro filme a ganhar os cinco principais Oscars (Filme, Diretor, Ator, Atriz e Roteiro)?",
+   "ops": [
+    "E o Vento Levou",
+    "Aconteceu Naquela Noite",
+    "Ben-Hur",
+    "Casablanca"
+   ],
+   "c": 1
+  }
+ ],
+ "ciencia": [
+  {
+   "q": "Qual órgão do corpo humano é o principal responsável por filtrar o sangue e produzir urina?",
+   "ops": [
+    "Fígado",
+    "Rim",
+    "Baço",
+    "Pâncreas"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual gás as plantas absorvem do ar durante a fotossíntese?",
+   "ops": [
+    "Oxigênio",
+    "Nitrogênio",
+    "Gás carbônico",
+    "Hidrogênio"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual é o elemento químico mais abundante no corpo humano em massa?",
+   "ops": [
+    "Carbono",
+    "Hidrogênio",
+    "Oxigênio",
+    "Nitrogênio"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Como se chama a parte colorida do olho humano que controla a entrada de luz?",
+   "ops": [
+    "Córnea",
+    "Íris",
+    "Retina",
+    "Pupila"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual substância dá a cor vermelha ao sangue humano?",
+   "ops": [
+    "Melanina",
+    "Hemoglobina",
+    "Clorofila",
+    "Queratina"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O bicarbonato de sódio, usado em receitas, tem que tipo de caráter químico?",
+   "ops": [
+    "Ácido",
+    "Neutro",
+    "Básico (alcalino)",
+    "Oxidante"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual é o maior órgão do corpo humano?",
+   "ops": [
+    "Fígado",
+    "Pele",
+    "Intestino",
+    "Pulmão"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Quantos ossos, aproximadamente, tem o corpo de um adulto humano?",
+   "ops": [
+    "106",
+    "206",
+    "306",
+    "406"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual parte da célula é responsável por produzir energia?",
+   "ops": [
+    "Núcleo",
+    "Ribossomo",
+    "Mitocôndria",
+    "Membrana"
+   ],
+   "c": 2
+  },
+  {
+   "q": "O que o sabão faz para remover gordura da louça?",
+   "ops": [
+    "Aumenta a acidez da água",
+    "Envolve a gordura permitindo que ela se misture com a água",
+    "Congela a gordura",
+    "Evapora a gordura"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual vitamina é produzida pela pele quando exposta à luz solar?",
+   "ops": [
+    "Vitamina A",
+    "Vitamina C",
+    "Vitamina D",
+    "Vitamina K"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual é a fórmula química da água?",
+   "ops": [
+    "CO2",
+    "H2O",
+    "O2",
+    "NaCl"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual tecido conecta os músculos aos ossos?",
+   "ops": [
+    "Ligamento",
+    "Tendão",
+    "Cartilagem",
+    "Vaso"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O sal de cozinha comum é formado por sódio e qual outro elemento?",
+   "ops": [
+    "Cloro",
+    "Flúor",
+    "Iodo",
+    "Potássio"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Qual órgão do sistema digestório libera a bile?",
+   "ops": [
+    "Estômago",
+    "Fígado",
+    "Rim",
+    "Baço"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual é o processo pelo qual a água passa do estado líquido para o gasoso?",
+   "ops": [
+    "Condensação",
+    "Solidificação",
+    "Evaporação",
+    "Fusão"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual célula do sangue é a principal responsável pela defesa contra infecções?",
+   "ops": [
+    "Hemácia",
+    "Plaqueta",
+    "Glóbulo branco",
+    "Plasma"
+   ],
+   "c": 2
+  },
+  {
+   "q": "O vinagre tem sabor azedo porque contém qual tipo de substância?",
+   "ops": [
+    "Base",
+    "Ácido",
+    "Sal neutro",
+    "Álcool"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual é a unidade básica da vida?",
+   "ops": [
+    "Átomo",
+    "Célula",
+    "Tecido",
+    "Molécula"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual gás nós liberamos ao expirar em maior quantidade do que inspiramos?",
+   "ops": [
+    "Oxigênio",
+    "Nitrogênio",
+    "Gás carbônico",
+    "Hélio"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual estrutura do corpo humano transporta impulsos nervosos?",
+   "ops": [
+    "Neurônio",
+    "Hemácia",
+    "Osteócito",
+    "Melanócito"
+   ],
+   "c": 0
+  },
+  {
+   "q": "O que acontece com o leite quando ele 'talha' e fica azedo?",
+   "ops": [
+    "Ele congela",
+    "Bactérias produzem ácido que coagula a proteína",
+    "Ele evapora a gordura",
+    "O açúcar cristaliza"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual órgão bombeia o sangue pelo corpo?",
+   "ops": [
+    "Pulmão",
+    "Coração",
+    "Fígado",
+    "Rim"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual metal é líquido à temperatura ambiente?",
+   "ops": [
+    "Ferro",
+    "Mercúrio",
+    "Alumínio",
+    "Cobre"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual parte da planta normalmente absorve água e nutrientes do solo?",
+   "ops": [
+    "Folha",
+    "Flor",
+    "Raiz",
+    "Fruto"
+   ],
+   "c": 2
+  },
+  {
+   "q": "O que dá o gás às bebidas gaseificadas como refrigerantes?",
+   "ops": [
+    "Oxigênio dissolvido",
+    "Gás carbônico dissolvido",
+    "Nitrogênio dissolvido",
+    "Vapor de água"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual é o pigmento que dá cor à pele, ao cabelo e aos olhos?",
+   "ops": [
+    "Hemoglobina",
+    "Clorofila",
+    "Melanina",
+    "Caroteno"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Quantas câmaras (cavidades) tem o coração humano?",
+   "ops": [
+    "Duas",
+    "Três",
+    "Quatro",
+    "Cinco"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual gás é essencial para a combustão (para o fogo queimar)?",
+   "ops": [
+    "Gás carbônico",
+    "Nitrogênio",
+    "Oxigênio",
+    "Hidrogênio"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Onde ocorre a maior parte da absorção dos nutrientes dos alimentos?",
+   "ops": [
+    "Estômago",
+    "Intestino delgado",
+    "Intestino grosso",
+    "Esôfago"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual é o principal componente do ar que respiramos?",
+   "ops": [
+    "Oxigênio",
+    "Gás carbônico",
+    "Nitrogênio",
+    "Vapor de água"
+   ],
+   "c": 2
+  },
+  {
+   "q": "O que a levedura (fermento biológico) produz que faz o pão crescer?",
+   "ops": [
+    "Oxigênio",
+    "Gás carbônico",
+    "Água",
+    "Sal"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual órgão do sistema respiratório realiza a troca de gases com o sangue?",
+   "ops": [
+    "Traqueia",
+    "Pulmão",
+    "Laringe",
+    "Brônquio"
+   ],
+   "c": 1
+  },
+  {
+   "q": "A ferrugem no ferro é resultado de uma reação com quais elementos?",
+   "ops": [
+    "Oxigênio e água",
+    "Nitrogênio e calor",
+    "Carbono e luz",
+    "Sódio e cloro"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Qual molécula carrega a informação genética nas células?",
+   "ops": [
+    "Proteína",
+    "DNA",
+    "Glicose",
+    "Colesterol"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual é a função das plaquetas no sangue?",
+   "ops": [
+    "Transportar oxigênio",
+    "Combater infecções",
+    "Ajudar na coagulação",
+    "Produzir hormônios"
+   ],
+   "c": 2
+  },
+  {
+   "q": "O que torna a água do mar salgada?",
+   "ops": [
+    "Areia dissolvida",
+    "Sais minerais dissolvidos",
+    "Algas",
+    "Poluição industrial"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual parte do cérebro é responsável pelo equilíbrio e coordenação motora?",
+   "ops": [
+    "Cérebro",
+    "Cerebelo",
+    "Bulbo",
+    "Hipotálamo"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual grupo sanguíneo é conhecido como 'doador universal'?",
+   "ops": [
+    "AB positivo",
+    "A negativo",
+    "O negativo",
+    "B positivo"
+   ],
+   "c": 2
+  },
+  {
+   "q": "O que é o pH?",
+   "ops": [
+    "Uma medida de temperatura",
+    "Uma medida de acidez ou alcalinidade",
+    "Uma medida de peso",
+    "Uma medida de pressão"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual estrutura protege o cérebro humano?",
+   "ops": [
+    "Coluna vertebral",
+    "Caixa torácica",
+    "Crânio",
+    "Bacia"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual açúcar é o principal combustível usado pelas células do corpo?",
+   "ops": [
+    "Frutose",
+    "Sacarose",
+    "Glicose",
+    "Lactose"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Por que uma maçã cortada escurece quando exposta ao ar?",
+   "ops": [
+    "Perde água",
+    "Reage com o oxigênio (oxidação)",
+    "Absorve luz",
+    "Ganha bactérias imediatamente"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual sistema do corpo inclui o estômago e os intestinos?",
+   "ops": [
+    "Sistema nervoso",
+    "Sistema digestório",
+    "Sistema circulatório",
+    "Sistema respiratório"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual é o estado físico da água a 0 grau Celsius ou abaixo (à pressão normal)?",
+   "ops": [
+    "Gasoso",
+    "Líquido",
+    "Sólido",
+    "Plasma"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual órgão produz a insulina, hormônio que regula o açúcar no sangue?",
+   "ops": [
+    "Fígado",
+    "Pâncreas",
+    "Rim",
+    "Tireoide"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O que são anticorpos?",
+   "ops": [
+    "Células que carregam oxigênio",
+    "Proteínas de defesa contra invasores",
+    "Enzimas da digestão",
+    "Hormônios do crescimento"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual gás nobre é usado para encher balões que flutuam no ar?",
+   "ops": [
+    "Oxigênio",
+    "Hélio",
+    "Gás carbônico",
+    "Argônio"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual músculo separa o tórax do abdômen e ajuda na respiração?",
+   "ops": [
+    "Bíceps",
+    "Diafragma",
+    "Trapézio",
+    "Panturrilha"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O que a clorofila faz nas plantas?",
+   "ops": [
+    "Absorve luz para a fotossíntese",
+    "Armazena água",
+    "Transporta seiva",
+    "Protege contra insetos"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Qual gás é o mais abundante na atmosfera da Terra?",
+   "ops": [
+    "Oxigênio",
+    "Nitrogênio",
+    "Dióxido de carbono",
+    "Argônio"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O que estuda a ciência chamada de reologia?",
+   "ops": [
+    "O escoamento e a deformação da matéria",
+    "O movimento dos astros",
+    "A composição das rochas",
+    "As reações químicas do sangue"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Qual partícula subatômica tem carga elétrica negativa?",
+   "ops": [
+    "Próton",
+    "Nêutron",
+    "Elétron",
+    "Fóton"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual planeta do Sistema Solar gira 'deitado', com o eixo quase paralelo à sua órbita?",
+   "ops": [
+    "Netuno",
+    "Saturno",
+    "Urano",
+    "Marte"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Quem formulou as três leis do movimento planetário sobre órbitas elípticas?",
+   "ops": [
+    "Galileu Galilei",
+    "Johannes Kepler",
+    "Tycho Brahe",
+    "Nicolau Copérnico"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O efeito que faz um som ficar mais agudo quando a fonte se aproxima chama-se efeito:",
+   "ops": [
+    "Doppler",
+    "Coriolis",
+    "Joule",
+    "Faraday"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Qual é a unidade de medida da resistência elétrica no Sistema Internacional?",
+   "ops": [
+    "Volt",
+    "Ampère",
+    "Ohm",
+    "Watt"
+   ],
+   "c": 2
+  },
+  {
+   "q": "A tabela periódica moderna foi organizada principalmente por qual cientista?",
+   "ops": [
+    "Antoine Lavoisier",
+    "Dmitri Mendeleiev",
+    "John Dalton",
+    "Marie Curie"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual fenômeno explica por que o céu diurno é azul?",
+   "ops": [
+    "Refração total",
+    "Espalhamento de Rayleigh",
+    "Efeito fotoelétrico",
+    "Difração de Bragg"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O que é uma estrela de nêutrons?",
+   "ops": [
+    "Uma estrela em formação numa nebulosa",
+    "O núcleo colapsado e muito denso de uma estrela massiva",
+    "Uma estrela feita de antimatéria",
+    "Uma estrela que ainda não iniciou fusão"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Quem inventou o primeiro para-raios funcional?",
+   "ops": [
+    "Thomas Edison",
+    "Benjamin Franklin",
+    "Alessandro Volta",
+    "Nikola Tesla"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual é o estado da matéria mais abundante no universo visível?",
+   "ops": [
+    "Sólido",
+    "Líquido",
+    "Gasoso",
+    "Plasma"
+   ],
+   "c": 3
+  },
+  {
+   "q": "A velocidade da luz no vácuo é de aproximadamente:",
+   "ops": [
+    "30 mil km/s",
+    "300 mil km/s",
+    "3 milhões km/s",
+    "300 km/s"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O que mede a escala Kelvin?",
+   "ops": [
+    "Pressão",
+    "Temperatura absoluta",
+    "Intensidade sonora",
+    "Massa"
+   ],
+   "c": 1
+  },
+  {
+   "q": "A força que mantém prótons unidos no núcleo atômico apesar da repulsão elétrica é a força:",
+   "ops": [
+    "Gravitacional",
+    "Nuclear forte",
+    "Eletromagnética",
+    "Centrífuga"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual é o maior satélite natural do Sistema Solar?",
+   "ops": [
+    "A Lua da Terra",
+    "Titã, de Saturno",
+    "Ganimedes, de Júpiter",
+    "Europa, de Júpiter"
+   ],
+   "c": 2
+  },
+  {
+   "q": "O processo pelo qual um sólido passa diretamente ao estado gasoso chama-se:",
+   "ops": [
+    "Fusão",
+    "Sublimação",
+    "Condensação",
+    "Solidificação"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Quem propôs a teoria da relatividade geral?",
+   "ops": [
+    "Isaac Newton",
+    "Albert Einstein",
+    "Niels Bohr",
+    "Max Planck"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O que são raios cósmicos?",
+   "ops": [
+    "Ondas de rádio das galáxias",
+    "Partículas de alta energia que chegam do espaço",
+    "Feixes de luz ultravioleta solar",
+    "Explosões de raios gama na atmosfera"
+   ],
+   "c": 1
+  },
+  {
+   "q": "A distância que a luz percorre em um ano é chamada de:",
+   "ops": [
+    "Parsec",
+    "Unidade astronômica",
+    "Ano-luz",
+    "Léguas siderais"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual princípio da física afirma que um corpo imerso em fluido sofre empuxo igual ao peso do fluido deslocado?",
+   "ops": [
+    "Princípio de Pascal",
+    "Princípio de Arquimedes",
+    "Princípio de Bernoulli",
+    "Princípio de Torricelli"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O que é o cinturão de Kuiper?",
+   "ops": [
+    "Um anel de gás ao redor do Sol",
+    "Uma região de corpos gelados além da órbita de Netuno",
+    "Um campo magnético da Terra",
+    "Uma faixa de asteroides entre Marte e Júpiter"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Quem desenvolveu a primeira vacina, contra a varíola?",
+   "ops": [
+    "Louis Pasteur",
+    "Edward Jenner",
+    "Robert Koch",
+    "Alexander Fleming"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual é a partícula responsável por transmitir a força eletromagnética?",
+   "ops": [
+    "Glúon",
+    "Fóton",
+    "Bóson de Higgs",
+    "Neutrino"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O fenômeno das marés na Terra é causado principalmente pela atração gravitacional de:",
+   "ops": [
+    "Apenas o Sol",
+    "Apenas a Lua",
+    "A Lua e o Sol",
+    "Os planetas vizinhos"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual cientista descobriu que a corrente elétrica gera campo magnético?",
+   "ops": [
+    "Hans Christian Ørsted",
+    "Georg Ohm",
+    "Michael Faraday",
+    "André-Marie Ampère"
+   ],
+   "c": 0
+  },
+  {
+   "q": "O que é a antimatéria?",
+   "ops": [
+    "Matéria sem massa",
+    "Partículas com carga oposta às da matéria comum",
+    "Energia pura sem partículas",
+    "Matéria invisível que só interage por gravidade"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual é a camada da atmosfera onde ocorrem os fenômenos meteorológicos como chuva e nuvens?",
+   "ops": [
+    "Estratosfera",
+    "Troposfera",
+    "Mesosfera",
+    "Termosfera"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Quem foi a primeira pessoa a ganhar dois Prêmios Nobel em ciências distintas?",
+   "ops": [
+    "Marie Curie",
+    "Linus Pauling",
+    "Albert Einstein",
+    "Dorothy Hodgkin"
+   ],
+   "c": 0
+  },
+  {
+   "q": "O que caracteriza um buraco negro?",
+   "ops": [
+    "Ausência total de matéria",
+    "Região de onde nem a luz consegue escapar",
+    "Uma estrela que parou de brilhar",
+    "Um vácuo perfeito no espaço"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual invenção de Guglielmo Marconi revolucionou as comunicações à distância?",
+   "ops": [
+    "O telefone",
+    "O telégrafo sem fio (rádio)",
+    "A televisão",
+    "O radar"
+   ],
+   "c": 1
+  },
+  {
+   "q": "A pressão atmosférica ao nível do mar equivale a aproximadamente:",
+   "ops": [
+    "1 atmosfera",
+    "10 atmosferas",
+    "0,1 atmosfera",
+    "100 atmosferas"
+   ],
+   "c": 0
+  },
+  {
+   "q": "O que são exoplanetas?",
+   "ops": [
+    "Planetas anões do Sistema Solar",
+    "Planetas que orbitam estrelas fora do nosso Sistema Solar",
+    "Luas grandes de gigantes gasosos",
+    "Planetas que já foram estrelas"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual é o elemento químico mais leve da tabela periódica?",
+   "ops": [
+    "Hélio",
+    "Hidrogênio",
+    "Lítio",
+    "Carbono"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O calor transmitido sem contato direto, como o do Sol chegando à Terra, ocorre por:",
+   "ops": [
+    "Condução",
+    "Convecção",
+    "Radiação",
+    "Evaporação"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Quem enunciou o princípio da incerteza na mecânica quântica?",
+   "ops": [
+    "Erwin Schrödinger",
+    "Werner Heisenberg",
+    "Paul Dirac",
+    "Wolfgang Pauli"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O Sol é uma estrela classificada, quanto à cor, como:",
+   "ops": [
+    "Anã vermelha",
+    "Anã amarela",
+    "Gigante azul",
+    "Supergigante vermelha"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual instrumento mede a pressão atmosférica?",
+   "ops": [
+    "Higrômetro",
+    "Barômetro",
+    "Anemômetro",
+    "Manômetro"
+   ],
+   "c": 1
+  },
+  {
+   "q": "A reação que faz o Sol gerar energia é a fusão de hidrogênio em:",
+   "ops": [
+    "Carbono",
+    "Hélio",
+    "Oxigênio",
+    "Ferro"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual cientista propôs o modelo atômico com elétrons em órbitas de energia definida?",
+   "ops": [
+    "J.J. Thomson",
+    "Niels Bohr",
+    "Ernest Rutherford",
+    "John Dalton"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O fenômeno da supercondutividade envolve a perda total de:",
+   "ops": [
+    "Massa do material",
+    "Resistência elétrica",
+    "Calor específico",
+    "Densidade"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual é o planeta com a maior tempestade conhecida, a Grande Mancha Vermelha?",
+   "ops": [
+    "Saturno",
+    "Júpiter",
+    "Netuno",
+    "Marte"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Quem inventou o pêndulo aplicado à medição precisa do tempo em relógios?",
+   "ops": [
+    "Galileu Galilei",
+    "Christiaan Huygens",
+    "Isaac Newton",
+    "Robert Hooke"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O eco é resultado de qual comportamento das ondas sonoras?",
+   "ops": [
+    "Refração",
+    "Reflexão",
+    "Difração",
+    "Interferência"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O que é uma supernova?",
+   "ops": [
+    "O nascimento de uma nova galáxia",
+    "A explosão violenta de uma estrela no fim de sua vida",
+    "A colisão de dois cometas",
+    "Uma erupção na superfície do Sol"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual grandeza física é medida em joules?",
+   "ops": [
+    "Força",
+    "Energia",
+    "Potência",
+    "Aceleração"
+   ],
+   "c": 1
+  },
+  {
+   "q": "A teoria de que os continentes se movem ao longo do tempo é chamada de:",
+   "ops": [
+    "Deriva continental",
+    "Rotação axial",
+    "Subducção térmica",
+    "Convecção crustal"
+   ],
+   "c": 0
+  }
+ ],
+ "historia": [
+  {
+   "q": "Qual rio foi essencial para o desenvolvimento da civilização do Antigo Egito?",
+   "ops": [
+    "Tigre",
+    "Nilo",
+    "Indo",
+    "Amarelo"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Que povo antigo é creditado por inventar o primeiro sistema de escrita conhecido, o cuneiforme?",
+   "ops": [
+    "Egípcios",
+    "Sumérios",
+    "Fenícios",
+    "Hititas"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual imperador romano tornou o cristianismo tolerado no Império com o Édito de Milão em 313 d.C.?",
+   "ops": [
+    "Nero",
+    "Constantino",
+    "Diocleciano",
+    "Augusto"
+   ],
+   "c": 1
+  },
+  {
+   "q": "A Guerra do Peloponeso foi travada entre quais duas cidades-Estado gregas?",
+   "ops": [
+    "Atenas e Esparta",
+    "Tebas e Corinto",
+    "Argos e Micenas",
+    "Atenas e Tebas"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Quem foi o primeiro imperador de Roma?",
+   "ops": [
+    "Júlio César",
+    "Marco Antônio",
+    "Augusto",
+    "Tibério"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual civilização construiu a cidade de Machu Picchu nos Andes?",
+   "ops": [
+    "Maia",
+    "Asteca",
+    "Inca",
+    "Olmeca"
+   ],
+   "c": 2
+  },
+  {
+   "q": "O Código de Hamurabi é um conjunto de leis de qual civilização antiga?",
+   "ops": [
+    "Egípcia",
+    "Babilônica",
+    "Persa",
+    "Grega"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual general cartaginês cruzou os Alpes com elefantes para atacar Roma?",
+   "ops": [
+    "Cipião",
+    "Aníbal",
+    "Amílcar",
+    "Asdrúbal"
+   ],
+   "c": 1
+  },
+  {
+   "q": "As Guerras Púnicas foram travadas entre Roma e qual cidade?",
+   "ops": [
+    "Atenas",
+    "Cartago",
+    "Alexandria",
+    "Corinto"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Quem conquistou o Império Persa e criou um vasto império no século IV a.C.?",
+   "ops": [
+    "Alexandre, o Grande",
+    "Filipe II",
+    "Dario",
+    "Xerxes"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Qual civilização é conhecida por ter construído a Grande Muralha ao longo dos séculos?",
+   "ops": [
+    "Japonesa",
+    "Chinesa",
+    "Mongol",
+    "Coreana"
+   ],
+   "c": 1
+  },
+  {
+   "q": "A escrita hieroglífica era usada por qual povo antigo?",
+   "ops": [
+    "Fenícios",
+    "Egípcios",
+    "Persas",
+    "Assírios"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual batalha de 490 a.C. marcou a vitória grega sobre os persas na planície homônima?",
+   "ops": [
+    "Termópilas",
+    "Maratona",
+    "Salamina",
+    "Plateia"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Quem liderou os 300 espartanos na Batalha das Termópilas?",
+   "ops": [
+    "Péricles",
+    "Temístocles",
+    "Leônidas",
+    "Milcíades"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual povo antigo desenvolveu o alfabeto que serviu de base para o grego e o latino?",
+   "ops": [
+    "Fenícios",
+    "Etruscos",
+    "Lídios",
+    "Medos"
+   ],
+   "c": 0
+  },
+  {
+   "q": "O Império Bizantino tinha como capital qual cidade?",
+   "ops": [
+    "Roma",
+    "Constantinopla",
+    "Atenas",
+    "Antioquia"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual foi a primeira dinastia imperial a unificar a China em 221 a.C.?",
+   "ops": [
+    "Han",
+    "Qin",
+    "Tang",
+    "Zhou"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Quem foi a última faraó do Egito, aliada de Júlio César e Marco Antônio?",
+   "ops": [
+    "Nefertiti",
+    "Hatshepsut",
+    "Cleópatra",
+    "Nefertari"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual civilização mesoamericana era dominante quando os espanhóis chegaram ao vale do México?",
+   "ops": [
+    "Maia",
+    "Asteca",
+    "Tolteca",
+    "Zapoteca"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O Coliseu, anfiteatro famoso por combates de gladiadores, fica em qual cidade?",
+   "ops": [
+    "Atenas",
+    "Roma",
+    "Alexandria",
+    "Pompeia"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual líder mongol fundou um dos maiores impérios da história no século XIII?",
+   "ops": [
+    "Kublai Khan",
+    "Gengis Khan",
+    "Tamerlão",
+    "Átila"
+   ],
+   "c": 1
+  },
+  {
+   "q": "As pirâmides de Gizé foram construídas principalmente como o quê?",
+   "ops": [
+    "Templos",
+    "Túmulos de faraós",
+    "Fortalezas",
+    "Observatórios"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual guerra lendária foi narrada por Homero na obra 'Ilíada'?",
+   "ops": [
+    "Guerra do Peloponeso",
+    "Guerra de Troia",
+    "Guerras Médicas",
+    "Guerra Sagrada"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual povo antigo é famoso por sua civilização marítima e comercial no Mediterrâneo oriental, na região do atual Líbano?",
+   "ops": [
+    "Fenícios",
+    "Micênicos",
+    "Minoicos",
+    "Etruscos"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Quem foi o rei da Macedônia, pai de Alexandre, o Grande?",
+   "ops": [
+    "Perseu",
+    "Filipe II",
+    "Antígono",
+    "Ptolomeu"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O Partenon, templo dedicado à deusa Atena, situa-se em qual cidade?",
+   "ops": [
+    "Esparta",
+    "Atenas",
+    "Delfos",
+    "Olímpia"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual império antigo foi governado por Ciro, o Grande, e Dario I?",
+   "ops": [
+    "Assírio",
+    "Persa",
+    "Babilônico",
+    "Hitita"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Em que ano tradicionalmente se marca a queda do Império Romano do Ocidente?",
+   "ops": [
+    "410 d.C.",
+    "476 d.C.",
+    "527 d.C.",
+    "622 d.C."
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual civilização do Vale do Indo tinha cidades planejadas como Mohenjo-daro e Harappa?",
+   "ops": [
+    "Védica",
+    "Harappã",
+    "Mauria",
+    "Gupta"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Quem foi o general e ditador romano assassinado nos Idos de Março de 44 a.C.?",
+   "ops": [
+    "Pompeu",
+    "Júlio César",
+    "Crasso",
+    "Sula"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual rainha do Egito assumiu o poder como faraó e é conhecida por seu longo reinado pacífico e templo em Deir el-Bahari?",
+   "ops": [
+    "Cleópatra",
+    "Hatshepsut",
+    "Nefertiti",
+    "Merneith"
+   ],
+   "c": 1
+  },
+  {
+   "q": "A Batalha de Actium, em 31 a.C., consolidou o poder de qual futuro imperador?",
+   "ops": [
+    "Júlio César",
+    "Otávio (Augusto)",
+    "Marco Antônio",
+    "Tibério"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual povo germânico saqueou Roma em 410 d.C. sob o comando de Alarico?",
+   "ops": [
+    "Vândalos",
+    "Visigodos",
+    "Ostrogodos",
+    "Francos"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual sistema de numeração e o conceito do zero foram desenvolvidos na Índia antiga?",
+   "ops": [
+    "Romano",
+    "Arábico-indiano",
+    "Grego",
+    "Maia"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O imperador Ashoka, que promoveu o budismo, governou qual império indiano?",
+   "ops": [
+    "Gupta",
+    "Mauria",
+    "Chola",
+    "Mogol"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual cidade grega era famosa por sua sociedade militarizada e disciplina rígida?",
+   "ops": [
+    "Atenas",
+    "Esparta",
+    "Corinto",
+    "Tebas"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Quem foi o filósofo grego mestre de Alexandre, o Grande?",
+   "ops": [
+    "Sócrates",
+    "Platão",
+    "Aristóteles",
+    "Pitágoras"
+   ],
+   "c": 2
+  },
+  {
+   "q": "As Cruzadas medievais tinham como objetivo principal a reconquista de qual cidade?",
+   "ops": [
+    "Constantinopla",
+    "Jerusalém",
+    "Alexandria",
+    "Damasco"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual civilização antiga desenvolveu um calendário preciso e observatórios astronômicos na América Central?",
+   "ops": [
+    "Inca",
+    "Maia",
+    "Asteca",
+    "Nazca"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O rei babilônico Nabucodonosor II é associado à construção de qual das maravilhas antigas?",
+   "ops": [
+    "Colosso de Rodes",
+    "Jardins Suspensos",
+    "Farol de Alexandria",
+    "Templo de Ártemis"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual guerra entre gregos e persas incluiu as batalhas de Salamina e Plateia?",
+   "ops": [
+    "Guerra de Troia",
+    "Guerras Médicas",
+    "Guerra do Peloponeso",
+    "Guerra Sagrada"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Quem foi o líder dos hunos que ameaçou o Império Romano no século V?",
+   "ops": [
+    "Odoacro",
+    "Átila",
+    "Teodorico",
+    "Genserico"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual antiga cidade foi soterrada pela erupção do Vesúvio em 79 d.C.?",
+   "ops": [
+    "Óstia",
+    "Pompeia",
+    "Cápua",
+    "Ravena"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O Império Otomano conquistou Constantinopla em qual ano, encerrando o Império Bizantino?",
+   "ops": [
+    "1291",
+    "1453",
+    "1492",
+    "1517"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual povo antigo da Mesopotâmia foi famoso por seu poderio militar e pela capital Nínive?",
+   "ops": [
+    "Sumérios",
+    "Assírios",
+    "Elamitas",
+    "Amoritas"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual imperador dividiu administrativamente o Império Romano com a Tetrarquia?",
+   "ops": [
+    "Constantino",
+    "Diocleciano",
+    "Aureliano",
+    "Teodósio"
+   ],
+   "c": 1
+  },
+  {
+   "q": "A civilização minoica floresceu principalmente em qual ilha do Mediterrâneo?",
+   "ops": [
+    "Chipre",
+    "Creta",
+    "Rodes",
+    "Sicília"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual documento inglês de 1215 limitou os poderes do rei João Sem-Terra?",
+   "ops": [
+    "Bill of Rights",
+    "Magna Carta",
+    "Habeas Corpus",
+    "Petição de Direitos"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Quem foi o imperador romano associado à perseguição de cristãos e ao grande incêndio de Roma em 64 d.C.?",
+   "ops": [
+    "Calígula",
+    "Nero",
+    "Domiciano",
+    "Cômodo"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual antiga rota comercial ligava a China ao Ocidente, transportando seda e especiarias?",
+   "ops": [
+    "Rota do Âmbar",
+    "Rota da Seda",
+    "Rota do Sal",
+    "Rota das Especiarias marítima"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Quem foi o navegador português que liderou a primeira expedição a circum-navegar o globo, embora tenha morrido durante a viagem?",
+   "ops": [
+    "Vasco da Gama",
+    "Fernão de Magalhães",
+    "Bartolomeu Dias",
+    "Pedro Álvares Cabral"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Em que país nasceu o líder revolucionário Ernesto 'Che' Guevara?",
+   "ops": [
+    "Cuba",
+    "Bolívia",
+    "México",
+    "Argentina"
+   ],
+   "c": 3
+  },
+  {
+   "q": "Que tratado, assinado em 1494, dividiu as terras 'descobertas' entre Portugal e Espanha?",
+   "ops": [
+    "Tratado de Madri",
+    "Tratado de Utrecht",
+    "Tratado de Tordesilhas",
+    "Tratado de Versalhes"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Quem foi a primeira mulher a ganhar um Prêmio Nobel?",
+   "ops": [
+    "Marie Curie",
+    "Rosalind Franklin",
+    "Ada Lovelace",
+    "Lise Meitner"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Qual líder indiano é conhecido pela filosofia da não violência na luta pela independência?",
+   "ops": [
+    "Jawaharlal Nehru",
+    "Mahatma Gandhi",
+    "Subhas Chandra Bose",
+    "Rabindranath Tagore"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Em que ano caiu o Muro de Berlim?",
+   "ops": [
+    "1985",
+    "1989",
+    "1991",
+    "1993"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual navegador genovês chegou às Américas em 1492 a serviço da Coroa espanhola?",
+   "ops": [
+    "Américo Vespúcio",
+    "Cristóvão Colombo",
+    "João Caboto",
+    "Fernão de Magalhães"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Quem foi o imperador francês derrotado definitivamente na Batalha de Waterloo?",
+   "ops": [
+    "Luís XIV",
+    "Napoleão Bonaparte",
+    "Carlos Magno",
+    "Luís XVI"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual foi o primeiro animal a orbitar a Terra a bordo de uma nave espacial?",
+   "ops": [
+    "O chimpanzé Ham",
+    "A cadela Laika",
+    "A cadela Belka",
+    "O macaco Albert"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Quem comandou a expedição que primeiro alcançou o Polo Sul, em 1911?",
+   "ops": [
+    "Robert Scott",
+    "Roald Amundsen",
+    "Ernest Shackleton",
+    "Richard Byrd"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual líder soviético implementou as políticas de glasnost e perestroika?",
+   "ops": [
+    "Nikita Khrushchev",
+    "Leonid Brejnev",
+    "Mikhail Gorbatchev",
+    "Boris Iéltsin"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Quem foi o líder da unificação da Alemanha no século XIX, conhecido como 'Chanceler de Ferro'?",
+   "ops": [
+    "Guilherme I",
+    "Otto von Bismarck",
+    "Wilhelm II",
+    "Klemens von Metternich"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual explorador português foi o primeiro europeu a contornar o Cabo da Boa Esperança?",
+   "ops": [
+    "Vasco da Gama",
+    "Bartolomeu Dias",
+    "Pedro Álvares Cabral",
+    "Diogo Cão"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Em que cidade japonesa foi lançada a primeira bomba atômica usada em guerra?",
+   "ops": [
+    "Nagasaki",
+    "Tóquio",
+    "Hiroshima",
+    "Kyoto"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Quem escreveu a teoria da evolução por seleção natural apresentada em 'A Origem das Espécies'?",
+   "ops": [
+    "Gregor Mendel",
+    "Jean-Baptiste Lamarck",
+    "Charles Darwin",
+    "Alfred Wallace"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual foi o primeiro país a conceder o direito de voto às mulheres em eleições nacionais, em 1893?",
+   "ops": [
+    "Estados Unidos",
+    "Nova Zelândia",
+    "Reino Unido",
+    "Finlândia"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual foi o pseudônimo do líder revolucionário russo nascido Vladímir Ulianov?",
+   "ops": [
+    "Stálin",
+    "Trótski",
+    "Lênin",
+    "Molotov"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Quem foi a jovem francesa que liderou tropas durante a Guerra dos Cem Anos e foi queimada como herege?",
+   "ops": [
+    "Catarina de Médici",
+    "Joana d'Arc",
+    "Maria Antonieta",
+    "Leonor da Aquitânia"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Quem foi o líder anti-apartheid preso por 27 anos que depois se tornou presidente da África do Sul?",
+   "ops": [
+    "Desmond Tutu",
+    "Steve Biko",
+    "Nelson Mandela",
+    "Oliver Tambo"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual conquistador espanhol liderou a queda do Império Asteca?",
+   "ops": [
+    "Francisco Pizarro",
+    "Hernán Cortés",
+    "Vasco Núñez de Balboa",
+    "Pedro de Alvarado"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Que evento em Sarajevo, em 1914, é apontado como estopim da Primeira Guerra Mundial?",
+   "ops": [
+    "O assassinato do arquiduque Francisco Ferdinando",
+    "A invasão da Bélgica",
+    "O afundamento do Lusitânia",
+    "A Revolução Russa"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Quem foi o faraó egípcio cuja tumba quase intacta foi descoberta por Howard Carter em 1922?",
+   "ops": [
+    "Ramsés II",
+    "Tutancâmon",
+    "Quéops",
+    "Akhenaton"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual matemático e cientista grego formulou o princípio do empuxo dos corpos na água?",
+   "ops": [
+    "Pitágoras",
+    "Euclides",
+    "Arquimedes",
+    "Tales de Mileto"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Que conflito, entre 1950 e 1953, dividiu a península coreana em dois países?",
+   "ops": [
+    "Guerra do Vietnã",
+    "Guerra da Coreia",
+    "Guerra Sino-Japonesa",
+    "Guerra Fria"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual foi a primeira pessoa a pisar na Lua, em 1969?",
+   "ops": [
+    "Buzz Aldrin",
+    "Neil Armstrong",
+    "Michael Collins",
+    "Yuri Gagarin"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Quem pintou o teto da Capela Sistina, no Vaticano?",
+   "ops": [
+    "Leonardo da Vinci",
+    "Rafael",
+    "Michelangelo",
+    "Donatello"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual líder francês vendeu o território da Luisiana aos Estados Unidos em 1803?",
+   "ops": [
+    "Luís XVI",
+    "Napoleão Bonaparte",
+    "Robespierre",
+    "Luís XVIII"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Quem foi o primeiro ser humano a viajar ao espaço, em 1961?",
+   "ops": [
+    "Alan Shepard",
+    "Yuri Gagarin",
+    "John Glenn",
+    "Guerman Titov"
+   ],
+   "c": 1
+  },
+  {
+   "q": "A que dinastia pertencia o faraó Quéops, que mandou construir a Grande Pirâmide de Gizé?",
+   "ops": [
+    "Décima oitava",
+    "Quarta",
+    "Décima nona",
+    "Vigésima"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Que líder chinês proclamou a República Popular da China em 1949?",
+   "ops": [
+    "Chiang Kai-shek",
+    "Deng Xiaoping",
+    "Mao Tsé-Tung",
+    "Sun Yat-sen"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Que instrumento de navegação, aperfeiçoado na Idade Média, permitiu determinar a direção no mar?",
+   "ops": [
+    "Astrolábio",
+    "Bússola",
+    "Sextante",
+    "Quadrante"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Quem foi o médico britânico que descobriu a penicilina em 1928?",
+   "ops": [
+    "Louis Pasteur",
+    "Alexander Fleming",
+    "Robert Koch",
+    "Edward Jenner"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual movimento cultural europeu, iniciado na Itália, marcou a retomada dos valores clássicos entre os séculos XIV e XVI?",
+   "ops": [
+    "Iluminismo",
+    "Renascimento",
+    "Romantismo",
+    "Barroco"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Que general norte-americano comandou as forças aliadas no desembarque da Normandia, em 1944?",
+   "ops": [
+    "George Patton",
+    "Douglas MacArthur",
+    "Dwight Eisenhower",
+    "Omar Bradley"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual rei francês era chamado de 'Rei Sol' e construiu o Palácio de Versalhes?",
+   "ops": [
+    "Luís XIII",
+    "Luís XIV",
+    "Luís XV",
+    "Luís XVI"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Que povo guerreiro escandinavo navegou e colonizou terras distantes entre os séculos VIII e XI?",
+   "ops": [
+    "Godos",
+    "Vikings",
+    "Saxões",
+    "Francos"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Quem foi a enfermeira britânica considerada fundadora da enfermagem moderna durante a Guerra da Crimeia?",
+   "ops": [
+    "Clara Barton",
+    "Florence Nightingale",
+    "Edith Cavell",
+    "Mary Seacole"
+   ],
+   "c": 1
+  }
+ ],
+ "esportes": [
+  {
+   "q": "Em que ano o Brasil conquistou seu primeiro título de Copa do Mundo?",
+   "ops": [
+    "1950",
+    "1958",
+    "1962",
+    "1970"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual seleção sediou e venceu a primeira Copa do Mundo, em 1930?",
+   "ops": [
+    "Brasil",
+    "Argentina",
+    "Uruguai",
+    "Itália"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Quantos títulos de Copa do Mundo a seleção brasileira possui?",
+   "ops": [
+    "Quatro",
+    "Cinco",
+    "Seis",
+    "Três"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual jogador é o maior artilheiro da história das Copas do Mundo com 16 gols?",
+   "ops": [
+    "Ronaldo",
+    "Pelé",
+    "Miroslav Klose",
+    "Gerd Müller"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Em qual país foi realizada a Copa do Mundo conhecida como 'Maracanaço', em 1950?",
+   "ops": [
+    "Uruguai",
+    "Brasil",
+    "Suíça",
+    "Suécia"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual clube espanhol é historicamente conhecido como 'Los Blancos'?",
+   "ops": [
+    "Barcelona",
+    "Atlético de Madrid",
+    "Real Madrid",
+    "Valencia"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Diego Maradona marcou o gol conhecido como 'La Mano de Dios' contra qual seleção?",
+   "ops": [
+    "Inglaterra",
+    "Alemanha",
+    "Bélgica",
+    "Itália"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Qual é o estádio do clube Boca Juniors, na Argentina?",
+   "ops": [
+    "El Monumental",
+    "La Bombonera",
+    "Estádio Centenário",
+    "Camp Nou"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Pelé fez a maior parte de sua carreira profissional em qual clube brasileiro?",
+   "ops": [
+    "Corinthians",
+    "Palmeiras",
+    "Santos",
+    "São Paulo"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual seleção venceu a Copa do Mundo de 2014, realizada no Brasil?",
+   "ops": [
+    "Argentina",
+    "Holanda",
+    "Brasil",
+    "Alemanha"
+   ],
+   "c": 3
+  },
+  {
+   "q": "Em que cidade fica o estádio Maracanã?",
+   "ops": [
+    "São Paulo",
+    "Rio de Janeiro",
+    "Belo Horizonte",
+    "Salvador"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual jogador francês marcou dois gols na final da Copa do Mundo de 1998 contra o Brasil?",
+   "ops": [
+    "Thierry Henry",
+    "Zinedine Zidane",
+    "David Trezeguet",
+    "Emmanuel Petit"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O troféu original da Copa do Mundo, entregue até 1970, tinha qual nome?",
+   "ops": [
+    "Taça FIFA",
+    "Taça Jules Rimet",
+    "Taça Henri Delaunay",
+    "Taça das Nações"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual clube italiano é apelidado de 'La Vecchia Signora' (A Velha Senhora)?",
+   "ops": [
+    "Milan",
+    "Inter de Milão",
+    "Juventus",
+    "Roma"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Quem foi o capitão da seleção brasileira campeã do mundo em 1994?",
+   "ops": [
+    "Dunga",
+    "Romário",
+    "Bebeto",
+    "Taffarel"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Em qual final de Copa do Mundo Zinedine Zidane foi expulso por uma cabeçada em Materazzi?",
+   "ops": [
+    "2002",
+    "2006",
+    "2010",
+    "1998"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual é o principal torneio de clubes da Europa organizado pela UEFA?",
+   "ops": [
+    "Copa Libertadores",
+    "Liga dos Campeões",
+    "Copa Sul-Americana",
+    "Recopa"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual clube brasileiro é conhecido como 'Timão'?",
+   "ops": [
+    "Flamengo",
+    "Corinthians",
+    "Vasco da Gama",
+    "Grêmio"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Garrincha, ídolo do futebol brasileiro, atuava principalmente em qual posição?",
+   "ops": [
+    "Zagueiro",
+    "Goleiro",
+    "Ponta-direita",
+    "Centroavante"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual seleção derrotou o Brasil por 7 a 1 na semifinal da Copa do Mundo de 2014?",
+   "ops": [
+    "Argentina",
+    "Holanda",
+    "Alemanha",
+    "França"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual craque português venceu diversas vezes o prêmio de melhor jogador do mundo jogando por Manchester United e Real Madrid?",
+   "ops": [
+    "Luís Figo",
+    "Cristiano Ronaldo",
+    "Eusébio",
+    "Rui Costa"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O clássico 'El Clásico' no futebol espanhol é disputado entre Real Madrid e qual outro clube?",
+   "ops": [
+    "Atlético de Madrid",
+    "Barcelona",
+    "Sevilla",
+    "Athletic Bilbao"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual país sediou a primeira Copa do Mundo disputada na Ásia, em 2002, junto com a Coreia do Sul?",
+   "ops": [
+    "China",
+    "Japão",
+    "Catar",
+    "Índia"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Quem marcou o gol do título da seleção brasileira na final da Copa do Mundo de 2002?",
+   "ops": [
+    "Rivaldo",
+    "Ronaldinho Gaúcho",
+    "Ronaldo",
+    "Cafu"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual clube inglês é apelidado de 'The Red Devils' (Os Diabos Vermelhos)?",
+   "ops": [
+    "Liverpool",
+    "Arsenal",
+    "Manchester United",
+    "Chelsea"
+   ],
+   "c": 2
+  },
+  {
+   "q": "O jogador argentino Lionel Messi construiu grande parte de sua carreira em qual clube?",
+   "ops": [
+    "Real Madrid",
+    "Barcelona",
+    "Boca Juniors",
+    "River Plate"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual é o principal torneio de clubes da América do Sul?",
+   "ops": [
+    "Copa do Brasil",
+    "Liga dos Campeões",
+    "Copa Libertadores",
+    "Copa América"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Em que ano a seleção brasileira conquistou o tricampeonato mundial, no México?",
+   "ops": [
+    "1966",
+    "1970",
+    "1974",
+    "1962"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual jogador brasileiro ficou conhecido como 'O Fenômeno'?",
+   "ops": [
+    "Ronaldinho Gaúcho",
+    "Ronaldo Nazário",
+    "Rivaldo",
+    "Romário"
+   ],
+   "c": 1
+  },
+  {
+   "q": "A Copa América é a competição de seleções de qual continente?",
+   "ops": [
+    "Europa",
+    "África",
+    "América do Sul",
+    "Ásia"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual clube alemão é o maior vencedor da Bundesliga e é sediado em Munique?",
+   "ops": [
+    "Borussia Dortmund",
+    "Bayern de Munique",
+    "Schalke 04",
+    "Hamburgo"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Franz Beckenbauer, lenda do futebol, era natural de qual país?",
+   "ops": [
+    "Holanda",
+    "Alemanha",
+    "Áustria",
+    "Suíça"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual seleção venceu a Copa do Mundo de 1998, sediada em seu próprio país?",
+   "ops": [
+    "Brasil",
+    "Itália",
+    "França",
+    "Alemanha"
+   ],
+   "c": 2
+  },
+  {
+   "q": "O apelido 'La Pulga' (A Pulga) é associado a qual jogador?",
+   "ops": [
+    "Sergio Agüero",
+    "Lionel Messi",
+    "Diego Maradona",
+    "Ángel Di María"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual estádio de Barcelona é a casa histórica do FC Barcelona?",
+   "ops": [
+    "Santiago Bernabéu",
+    "Camp Nou",
+    "San Siro",
+    "Wanda Metropolitano"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Quantos jogadores de cada time ficam em campo em uma partida oficial de futebol de campo?",
+   "ops": [
+    "Dez",
+    "Onze",
+    "Doze",
+    "Nove"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual seleção africana chegou às quartas de final da Copa do Mundo de 1990, surpreendendo o mundo?",
+   "ops": [
+    "Nigéria",
+    "Camarões",
+    "Senegal",
+    "Gana"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O jogador holandês Johan Cruyff é associado a qual estilo de jogo revolucionário dos anos 1970?",
+   "ops": [
+    "Catenaccio",
+    "Futebol Total",
+    "Tiki-taka",
+    "Bola longa"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual clube carioca é conhecido como 'Mengão'?",
+   "ops": [
+    "Vasco da Gama",
+    "Botafogo",
+    "Flamengo",
+    "Fluminense"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Em qual Copa do Mundo a seleção brasileira conquistou o bicampeonato, no Chile?",
+   "ops": [
+    "1958",
+    "1962",
+    "1966",
+    "1970"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual jogador é frequentemente chamado de 'O Rei do Futebol'?",
+   "ops": [
+    "Diego Maradona",
+    "Pelé",
+    "Garrincha",
+    "Zico"
+   ],
+   "c": 1
+  },
+  {
+   "q": "A final da Copa do Mundo é decidida, em caso de empate na prorrogação, por qual método?",
+   "ops": [
+    "Gol de ouro",
+    "Cobranças de pênalti",
+    "Sorteio",
+    "Nova partida"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual clube inglês tem como hino a canção 'You'll Never Walk Alone'?",
+   "ops": [
+    "Manchester City",
+    "Liverpool",
+    "Everton",
+    "Tottenham"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Ronaldinho Gaúcho conquistou a Copa do Mundo de 2002 e depois brilhou por qual clube europeu?",
+   "ops": [
+    "Real Madrid",
+    "Barcelona",
+    "Bayern de Munique",
+    "Juventus"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual seleção sul-americana é a maior rival histórica do Brasil no futebol?",
+   "ops": [
+    "Uruguai",
+    "Chile",
+    "Argentina",
+    "Colômbia"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual jogador português é considerado uma das maiores lendas e ficou conhecido como 'Pantera Negra'?",
+   "ops": [
+    "Luís Figo",
+    "Eusébio",
+    "Deco",
+    "Fernando Couto"
+   ],
+   "c": 1
+  },
+  {
+   "q": "O time apelidado de 'Verdão' no futebol brasileiro é o:",
+   "ops": [
+    "Palmeiras",
+    "Sporting",
+    "Coritiba",
+    "Chapecoense"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Qual seleção venceu a Copa do Mundo de 2010, realizada na África do Sul?",
+   "ops": [
+    "Holanda",
+    "Alemanha",
+    "Espanha",
+    "Uruguai"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Zico, ídolo do futebol brasileiro, é o maior ídolo histórico de qual clube?",
+   "ops": [
+    "Fluminense",
+    "Flamengo",
+    "Vasco da Gama",
+    "Botafogo"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual país foi o primeiro campeão mundial na Europa, vencendo as Copas de 1934 e 1938?",
+   "ops": [
+    "Alemanha",
+    "Itália",
+    "França",
+    "Hungria"
+   ],
+   "c": 1
+  },
+  {
+   "q": "No formato tradicional, de quantos em quantos anos ocorrem os Jogos Olímpicos de Verão?",
+   "ops": [
+    "A cada 2 anos",
+    "A cada 3 anos",
+    "A cada 4 anos",
+    "A cada 5 anos"
+   ],
+   "c": 2
+  },
+  {
+   "q": "No vôlei, quantos toques no máximo uma equipe pode dar na bola antes de mandá-la para o outro lado da rede?",
+   "ops": [
+    "2",
+    "3",
+    "4",
+    "5"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual país sediou os primeiros Jogos Olímpicos da Era Moderna, em 1896?",
+   "ops": [
+    "França",
+    "Grécia",
+    "Inglaterra",
+    "Estados Unidos"
+   ],
+   "c": 1
+  },
+  {
+   "q": "No boxe, o que é um golpe classificado como 'jab'?",
+   "ops": [
+    "Um golpe cruzado forte",
+    "Um soco reto e rápido com o braço da frente",
+    "Um gancho ascendente",
+    "Um golpe no fígado"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Quantos jogadores de uma equipe ficam em quadra simultaneamente no basquete?",
+   "ops": [
+    "4",
+    "5",
+    "6",
+    "7"
+   ],
+   "c": 1
+  },
+  {
+   "q": "No tênis, qual é o termo usado quando o placar de um game está empatado em 40 a 40?",
+   "ops": [
+    "Match point",
+    "Deuce",
+    "Tie-break",
+    "Ace"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Na natação, qual estilo é o único nadado de barriga para cima?",
+   "ops": [
+    "Borboleta",
+    "Peito",
+    "Costas",
+    "Livre"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Quantos anéis compõem o símbolo olímpico?",
+   "ops": [
+    "4",
+    "5",
+    "6",
+    "7"
+   ],
+   "c": 1
+  },
+  {
+   "q": "No xadrez, qual peça só pode se mover na diagonal?",
+   "ops": [
+    "Torre",
+    "Cavalo",
+    "Bispo",
+    "Rei"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual atleta jamaicano ficou mundialmente famoso por recordes nas provas de 100m e 200m rasos?",
+   "ops": [
+    "Usain Bolt",
+    "Carl Lewis",
+    "Yohan Blake",
+    "Justin Gatlin"
+   ],
+   "c": 0
+  },
+  {
+   "q": "No rugby, quantos pontos vale um 'try'?",
+   "ops": [
+    "3",
+    "5",
+    "6",
+    "7"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual esporte olímpico combina esgrima, natação, hipismo, corrida e tiro?",
+   "ops": [
+    "Triatlo",
+    "Decatlo",
+    "Pentatlo moderno",
+    "Heptatlo"
+   ],
+   "c": 2
+  },
+  {
+   "q": "No golfe, como se chama fazer o buraco com uma tacada abaixo do par?",
+   "ops": [
+    "Bogey",
+    "Eagle",
+    "Birdie",
+    "Albatross"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual país é considerado o berço do judô?",
+   "ops": [
+    "China",
+    "Coreia do Sul",
+    "Japão",
+    "Tailândia"
+   ],
+   "c": 2
+  },
+  {
+   "q": "No futebol americano, quantos pontos vale um 'touchdown'?",
+   "ops": [
+    "3",
+    "6",
+    "7",
+    "2"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual é a distância oficial de uma maratona?",
+   "ops": [
+    "40,000 km",
+    "42,195 km",
+    "44,500 km",
+    "38,600 km"
+   ],
+   "c": 1
+  },
+  {
+   "q": "No handebol, quantos jogadores de cada time ficam em quadra, incluindo o goleiro?",
+   "ops": [
+    "6",
+    "7",
+    "8",
+    "5"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual esporte tem posições chamadas 'pivô', 'ala' e 'armador'?",
+   "ops": [
+    "Vôlei",
+    "Basquete",
+    "Handebol",
+    "Futsal"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Na Fórmula 1, o que significa a bandeira xadrez preta e branca?",
+   "ops": [
+    "Advertência ao piloto",
+    "Fim da corrida ou treino",
+    "Perigo na pista",
+    "Ultrapassagem proibida"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual esporte de inverno envolve deslizar uma pedra em direção a um alvo enquanto colegas esfregam o gelo com vassouras?",
+   "ops": [
+    "Hóquei no gelo",
+    "Curling",
+    "Patinação de velocidade",
+    "Biatlo"
+   ],
+   "c": 1
+  },
+  {
+   "q": "No beisebol, quantas bases um jogador precisa percorrer para completar uma corrida?",
+   "ops": [
+    "3",
+    "4",
+    "5",
+    "2"
+   ],
+   "c": 1
+  },
+  {
+   "q": "No atletismo, a prova de salto com vara pertence a qual categoria?",
+   "ops": [
+    "Provas de corrida",
+    "Provas de arremesso",
+    "Provas de salto",
+    "Provas combinadas"
+   ],
+   "c": 2
+  },
+  {
+   "q": "Qual é o número máximo de tacos que um jogador de golfe pode carregar em uma partida oficial?",
+   "ops": [
+    "12",
+    "14",
+    "16",
+    "18"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual esporte é disputado em uma mesa dividida por uma pequena rede, com raquetes e uma bola leve?",
+   "ops": [
+    "Squash",
+    "Tênis de mesa",
+    "Badminton",
+    "Padel"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Na esgrima, quais são as três armas oficiais?",
+   "ops": [
+    "Florete, sabre e espada",
+    "Foil, adaga e lança",
+    "Espada, punhal e florete",
+    "Sabre, catana e florete"
+   ],
+   "c": 0
+  },
+  {
+   "q": "No vôlei de praia, quantos jogadores compõem cada equipe?",
+   "ops": [
+    "2",
+    "3",
+    "4",
+    "6"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Qual é o objetivo do esporte conhecido como 'tiro com arco'?",
+   "ops": [
+    "Acertar alvos móveis com dardos",
+    "Acertar o centro de um alvo com flechas",
+    "Derrubar pinos à distância",
+    "Lançar a flecha o mais longe possível"
+   ],
+   "c": 1
+  },
+  {
+   "q": "No basquete, quantos pontos vale uma cesta convertida de fora da linha de três?",
+   "ops": [
+    "2",
+    "3",
+    "4",
+    "1"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual esporte olímpico é praticado sobre cavalos e inclui provas de saltos e adestramento?",
+   "ops": [
+    "Polo",
+    "Hipismo",
+    "Rodeio",
+    "Turfe"
+   ],
+   "c": 1
+  },
+  {
+   "q": "No tênis, o que é um 'ace'?",
+   "ops": [
+    "Um ponto de saque em que o adversário não toca na bola",
+    "Uma bola na rede",
+    "Um erro duplo",
+    "Uma devolução vencedora"
+   ],
+   "c": 0
+  },
+  {
+   "q": "Qual é o nome da luta olímpica que permite golpes apenas acima da cintura?",
+   "ops": [
+    "Luta livre",
+    "Luta greco-romana",
+    "Sambo",
+    "Jiu-jítsu"
+   ],
+   "c": 1
+  },
+  {
+   "q": "No ciclismo de estrada, como se chama o pelotão principal de ciclistas?",
+   "ops": [
+    "Sprint",
+    "Peloton",
+    "Contra-relógio",
+    "Escalada"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual desses é um golpe fundamental do tênis executado do lado dominante do corpo?",
+   "ops": [
+    "Backhand",
+    "Forehand",
+    "Voleio",
+    "Smash"
+   ],
+   "c": 1
+  },
+  {
+   "q": "No futebol, quantos jogadores de linha, além do goleiro, cada time coloca em campo no início da partida?",
+   "ops": [
+    "9",
+    "10",
+    "11",
+    "12"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual esporte usa uma bola oval e tem o objetivo de levá-la até a área de pontuação do adversário sem passes para frente com a mão?",
+   "ops": [
+    "Futebol americano",
+    "Rugby",
+    "Futebol australiano",
+    "Handebol"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Na ginástica artística feminina, quais são os quatro aparelhos oficiais?",
+   "ops": [
+    "Solo, trave, argolas e cavalo",
+    "Solo, trave, barras assimétricas e salto",
+    "Barra fixa, argolas, salto e solo",
+    "Trave, cavalo com alças, solo e salto"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual país é a origem do esporte conhecido como 'sumô'?",
+   "ops": [
+    "China",
+    "Mongólia",
+    "Japão",
+    "Coreia do Sul"
+   ],
+   "c": 2
+  },
+  {
+   "q": "No pódio olímpico, qual medalha recebe o segundo colocado?",
+   "ops": [
+    "Ouro",
+    "Prata",
+    "Bronze",
+    "Platina"
+   ],
+   "c": 1
+  },
+  {
+   "q": "No tênis, uma partida de nível masculino em Grand Slam é disputada em melhor de quantos sets?",
+   "ops": [
+    "3",
+    "5",
+    "7",
+    "4"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual esporte aquático combina natação, corrida na água e uma bola disputada por dois times em uma piscina?",
+   "ops": [
+    "Nado sincronizado",
+    "Polo aquático",
+    "Salto ornamental",
+    "Maratona aquática"
+   ],
+   "c": 1
+  },
+  {
+   "q": "No automobilismo, o que é o 'pit stop'?",
+   "ops": [
+    "A largada da corrida",
+    "A parada nos boxes para trocas e reparos",
+    "A volta mais rápida",
+    "A linha de chegada"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual esporte é jogado em uma quadra fechada, rebatendo a bola contra uma parede frontal com raquete?",
+   "ops": [
+    "Padel",
+    "Squash",
+    "Frescobol",
+    "Tênis de mesa"
+   ],
+   "c": 1
+  },
+  {
+   "q": "Qual atleta norte-americano é considerado por muitos o maior jogador da história da NBA, tendo atuado principalmente pelo Chicago Bulls?",
+   "ops": [
+    "Kobe Bryant",
+    "Michael Jordan",
+    "LeBron James",
+    "Magic Johnson"
    ],
    "c": 1
   }
