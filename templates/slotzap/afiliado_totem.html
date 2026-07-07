@@ -138,6 +138,14 @@
         <div class="qrbox" id="qrCompra"></div>
         <div class="cta">São apenas {{ camp.total_slots }} vagas — corra! 🏁</div>
       </div>
+      {% if qr_pix_direto %}
+      <div class="card comprar" style="border:3px solid #22c55e">
+        <h2>💳 PAGAR DIRETO NO BANCO</h2>
+        <div class="desc">Não sabe mexer no site? Escaneie no <b>app do seu banco</b>, pague o PIX e <b>ganhe um número na hora</b>! 🎲</div>
+        <div class="qrbox" id="qrPixDireto"></div>
+        <div class="cta">R$ {{ '%.2f'|format(camp.preco or 0) }} — número da sorte automático! 🍀</div>
+      </div>
+      {% endif %}
       <div class="card whats">
         <h2><span class="emoji">📱</span> ENTRAR NO GRUPO</h2>
         <div class="desc">Entre no grupo do WhatsApp e acompanhe a rifa e o sorteio.</div>
@@ -164,6 +172,7 @@
 
 <script>
   var LINK_COMPRA = {{ link_compra|tojson }};
+  var QR_PIX_DIRETO = {{ (qr_pix_direto or '')|tojson }};
 
   function gerarQR(id, texto){
     var el = document.getElementById(id);
@@ -181,6 +190,7 @@
 
   window.addEventListener("load", function(){
     gerarQR("qrCompra", LINK_COMPRA);
+    if(QR_PIX_DIRETO){ gerarQR("qrPixDireto", QR_PIX_DIRETO); }
     gerarQR("qrWhats", document.getElementById("inputGrupo").value.trim());
   });
 

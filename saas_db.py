@@ -858,6 +858,10 @@ def init_slotzap_db():
         "CREATE INDEX IF NOT EXISTS idx_sz_afil_camp ON slotzap_afiliados(campanha_id)",
         # Um afiliado por telefone POR campanha (evita cadastro duplicado da mesma pessoa)
         "CREATE UNIQUE INDEX IF NOT EXISTS idx_sz_afil_camp_tel ON slotzap_afiliados(campanha_id, telefone)",
+        # QR PIX ESTÁTICO de COMPRA DIRETA do afiliado (totem): id do QR no Asaas + copia-e-cola.
+        # Pessoa paga no banco e recebe um número ALEATÓRIO; o qr_pix_id liga o pagamento ao afiliado.
+        "ALTER TABLE slotzap_afiliados ADD COLUMN qr_pix_id TEXT DEFAULT ''",
+        "ALTER TABLE slotzap_afiliados ADD COLUMN qr_pix_payload TEXT DEFAULT ''",
         # Ledger de pagamentos — 1 linha por slot pago. O índice ÚNICO em slot_id é a
         # GARANTIA de idempotência: jamais paga a comissão do mesmo número 2×.
         ("CREATE TABLE IF NOT EXISTS slotzap_afiliado_pagamentos ("
@@ -873,6 +877,13 @@ def init_slotzap_db():
         # anti-duplicata do Asaas p/ valores iguais). 'enviando' + lote_ref = claim atômico
         # (impossível pagar 2×, mesmo se o servidor cair no meio do envio).
         "ALTER TABLE slotzap_afiliado_pagamentos ADD COLUMN lote_ref TEXT DEFAULT ''",
+        # Estornos de COMPRA DIRETA que não puderam virar número (esgotou/subpagou/campanha sumiu).
+        # UNIQUE(pid) = idempotência do estorno; 'pendente'/'erro' é re-tentado no reconciliador
+        # (ex: refund que falhou por falta de saldo Asaas na hora). Nunca perde dinheiro em silêncio.
+        ("CREATE TABLE IF NOT EXISTS slotzap_estornos_dir ("
+         "pid TEXT PRIMARY KEY, campanha_id INTEGER, valor REAL DEFAULT 0, "
+         "status TEXT DEFAULT 'pendente', erro TEXT DEFAULT '', tentativas INTEGER DEFAULT 0, "
+         "criado_em TEXT DEFAULT '')"),
         # ── CAMPonline (torneios pagos de games) — MESMO motor, eixo novo `tipo` ──
         # tipo='rifa' (DEFAULT → TODAS as campanhas existentes/Jaya intocadas) ou 'torneio'.
         "ALTER TABLE slotzap_campanhas ADD COLUMN tipo TEXT DEFAULT 'rifa'",

@@ -2234,6 +2234,15 @@ def webhook_asaas_global():
     if not (ativar or desativar):
         return jsonify({'status': 'ignored'}), 200
 
+    # ── COMPRA DIRETA via QR estático do totem (pagamento tem pixQrCodeId; NUNCA é assinatura) ──
+    if ativar and (payload.get('payment') or {}).get('pixQrCodeId'):
+        try:
+            _sz_processar_compra_direta(payload.get('payment') or {})
+        except Exception as _ecd:
+            log.error(f'[SlotZap] compra direta webhook FALHOU (Asaas vai reentregar): {_ecd}')
+            return jsonify({'error': 'retry'}), 500   # 500 → Asaas re-entrega (idempotente)
+        return jsonify({'status': 'ok'}), 200          # QR estático nunca cai no roteamento por prefixo
+
     # Roteamento por prefixo
     parts       = ref.split('_')
     customer_id = parts[1] if len(parts) > 1 else None
@@ -17043,6 +17052,196 @@ def _sz_pagar_bonus_vendedor_bg(camp_id, numero, cod, valor, gateway):
         conn.close()
 
 
+# ══════════════════════════════════════════════════════════════════════════════
+#  COMPRA DIRETA via QR PIX ESTÁTICO (totem do afiliado) — a pessoa paga no app do
+#  banco e recebe um número ALEATÓRIO. Só Asaas (Efí não gera QR estático via API).
+# ══════════════════════════════════════════════════════════════════════════════
+_ASAAS_PIX_KEY_CACHE = {'v': ''}
+def _asaas_pix_key():
+    """Chave PIX ATIVA da conta Asaas (vira o addressKey do QR estático). Cacheia; cria EVP se faltar."""
+    if _ASAAS_PIX_KEY_CACHE['v']:
+        return _ASAAS_PIX_KEY_CACHE['v']
+    r = _asaas_req('GET', '/pix/addressKeys')
+    for k in (r.get('data') or []):
+        if (k.get('status') or '').upper() == 'ACTIVE' and k.get('key'):
+            _ASAAS_PIX_KEY_CACHE['v'] = k['key']; return k['key']
+    c = _asaas_req('POST', '/pix/addressKeys', {'type': 'EVP'})
+    if c.get('key'):
+        _ASAAS_PIX_KEY_CACHE['v'] = c['key']; return c['key']
+    return ''
+
+
+def _sz_criar_qr_direto(camp, af, conn):
+    """Cria (ou recupera) o QR PIX ESTÁTICO de compra direta do afiliado — valor fixo = preço do
+    número, reutilizável. Retorna o copia-e-cola (payload) ou '' se não der. SÓ Asaas."""
+    if (camp.get('gateway') or 'asaas') == 'efi':
+        return ''
+    if (af.get('qr_pix_payload') or '').strip():
+        return af['qr_pix_payload']
+    key   = _asaas_pix_key()
+    preco = float(camp.get('preco') or 0)
+    if not key or preco <= 0:
+        return ''
+    body = {'addressKey': key, 'value': round(preco, 2),
+            'description': f"{(camp.get('nome') or 'Rifa')} - numero"[:37],
+            'allowsMultiplePayments': True,
+            'externalReference': f"szdir_{camp['id']}_{af['codigo']}"}
+    r = _asaas_req('POST', '/pix/qrCodes/static', body)
+    payload, qid = r.get('payload', ''), r.get('id', '')
+    if payload:
+        try:
+            conn.execute('UPDATE slotzap_afiliados SET qr_pix_id=?, qr_pix_payload=? WHERE id=?',
+                         (qid, payload, af['id']))
+            conn.commit()
+        except Exception as _e:
+            log.warning(f'[SlotZap] salvar qr direto af {af.get("id")}: {_e}')
+        return payload
+    log.warning(f"[SlotZap] criar QR direto af {af.get('codigo')}: {str(r)[:200]}")
+    return ''
+
+
+def _sz_anuncia_venda_direta(camp, numero, nome):
+    """Anuncia no grupo uma venda por COMPRA DIRETA (FOMO + confirma o número — como não temos
+    o telefone de quem pagou no PIX estático, o grupo é a confirmação)."""
+    grupo_id = (camp.get('grupo_wpp_id') or '').strip()
+    instance = (camp.get('evo_instance') or '').strip() or os.environ.get('EVO_INSTANCE', '')
+    evo_url, evo_key = _evo_cfg()
+    if not (grupo_id and instance and evo_url):
+        return
+    base = os.environ.get('BASE_URL', 'https://www.4kitem.com.br').rstrip('/')
+    tok  = camp.get('token_publico') or ''
+    link = f"\n🔗 {base}/slotzap/p/{tok}" if tok else ''
+    prim = (nome or '').split()[0] if nome else ''
+    msg = (f"🔥 *MAIS UM VENDIDO!* — *{camp.get('nome','')}*\n"
+           f"🎟️ Número *#{numero}*{(' — ' + prim) if prim else ''} garantido!\n"
+           f"Corra e garanta o seu antes que acabe! 🏃💨{link}")
+    try:
+        requests.post(f"{evo_url}/message/sendText/{instance}",
+            headers={'apikey': evo_key, 'Content-Type': 'application/json'},
+            json={'number': grupo_id, 'text': msg}, timeout=12)
+    except Exception as _e:
+        log.warning(f'[SlotZap] anuncia venda direta: {_e}')
+
+
+def _sz_estornar_compra_direta(pid, camp_id, valor, motivo=''):
+    """Estorna, de forma ROBUSTA, um pagamento de compra direta que não pôde virar número
+    (esgotou / subpagou / campanha sumiu). Idempotente (UNIQUE pid), confere o status no Asaas
+    antes (não estorna 2×) e, se o refund falhar (ex: sem saldo na hora), deixa 'erro' pro
+    reconciliador re-tentar. NUNCA descarta o pid em silêncio — é dinheiro."""
+    conn = get_saas_db()
+    try:
+        try:
+            conn.execute("INSERT INTO slotzap_estornos_dir (pid, campanha_id, valor, status, criado_em) "
+                         "VALUES (?,?,?,'pendente',?)",
+                         (pid, camp_id, float(valor or 0), datetime.now().isoformat()))
+            conn.commit()
+        except Exception:
+            row = conn.execute("SELECT status FROM slotzap_estornos_dir WHERE pid=?", (pid,)).fetchone()
+            if row and dict(row)['status'] == 'estornado':
+                conn.close(); return   # já estornado — não repete
+        pay = _asaas_req('GET', f'/payments/{pid}')
+        if (pay.get('status') or '').upper() in ('REFUNDED', 'REFUND_REQUESTED', 'REFUND_IN_PROGRESS'):
+            conn.execute("UPDATE slotzap_estornos_dir SET status='estornado' WHERE pid=?", (pid,))
+            conn.commit(); conn.close(); return
+        r  = _asaas_req('POST', f'/payments/{pid}/refund', {})
+        ok = (r.get('status') or '').upper() in ('REFUNDED', 'REFUND_REQUESTED', 'REFUND_IN_PROGRESS') and not r.get('errors')
+        if ok:
+            conn.execute("UPDATE slotzap_estornos_dir SET status='estornado' WHERE pid=?", (pid,))
+            log.info(f'[SlotZap] estorno compra direta {pid} OK ({motivo})')
+        else:
+            conn.execute("UPDATE slotzap_estornos_dir SET status='erro', erro=?, "
+                         "tentativas=IFNULL(tentativas,0)+1 WHERE pid=?", (str(r)[:200], pid))
+            log.error(f'[SlotZap] 🚨 ESTORNO FALHOU compra direta {pid} (camp {camp_id}, R${valor}, {motivo}): '
+                      f'{str(r)[:200]} — DINHEIRO PRESO, confira o saldo Asaas')
+        conn.commit()
+    except Exception as _e:
+        log.error(f'[SlotZap] estorno compra direta {pid}: {_e}')
+    finally:
+        conn.close()
+
+
+def _sz_retentar_estornos_dir(conn):
+    """Re-tenta estornos de compra direta 'pendente'/'erro' (ex: refund falhou por falta de saldo
+    na hora). Roda no reconciliador. Cap de 30 tentativas por pid."""
+    try:
+        pend = [dict(r) for r in conn.execute(
+            "SELECT pid, campanha_id, valor FROM slotzap_estornos_dir "
+            "WHERE status IN ('pendente','erro') AND IFNULL(tentativas,0) < 30").fetchall()]
+    except Exception:
+        return
+    for e in pend:
+        _sz_estornar_compra_direta(e['pid'], e['campanha_id'], e['valor'], 'retry')
+
+
+def _sz_processar_compra_direta(payment):
+    """Webhook Asaas de um pagamento de QR ESTÁTICO (compra direta pelo totem): acha o afiliado
+    pelo pixQrCodeId, ATRIBUI um número aleatório DISPONÍVEL (atômico + à prova de corrida),
+    credita a comissão e anuncia. Idempotente (dedup pelo id do pagamento). Se NÃO pôde virar
+    número (esgotou / subpagou / campanha sumiu) → ESTORNA de forma robusta. Erro real → raise
+    (o webhook devolve 500 e o Asaas re-entrega). Retorna True se era um QR nosso / tratado."""
+    qid = (payment.get('pixQrCodeId') or '').strip()
+    pid = (payment.get('id') or '').strip()
+    if not qid or not pid:
+        return False
+    conn = get_saas_db()
+    af = conn.execute('SELECT * FROM slotzap_afiliados WHERE qr_pix_id=?', (qid,)).fetchone()
+    if not af:
+        conn.close(); return False   # não é um QR de compra direta nosso
+    af = dict(af); camp_id = af['campanha_id']
+    _c = conn.execute('SELECT * FROM slotzap_campanhas WHERE id=?', (camp_id,)).fetchone()
+    conn.close()
+    valor = float(payment.get('value') or 0)
+    if not _c:
+        # campanha apagada — NÃO engole: estorna e registra
+        _sz_estornar_compra_direta(pid, camp_id, valor, 'campanha inexistente')
+        return True
+    camp = dict(_c)
+    # BUG#2: varre reservas MORTAS antes (checkout abandonado não pode fazer parecer esgotado)
+    try:
+        _sz_expirar_reservas(camp_id)
+    except Exception as _e:
+        log.warning(f'[SlotZap] compra direta expirar reservas: {_e}')
+    # BUG#3: valida o valor pago (banco deixa editar o QR estático) — subpagou NÃO vira número
+    preco = float(camp.get('preco') or 0)
+    if preco > 0 and valor < round(preco * 0.99, 2):
+        _sz_estornar_compra_direta(pid, camp_id, valor, f'subpagamento R${valor:.2f} < R${preco:.2f}')
+        return True
+    nome_pagador = (payment.get('clientName') or 'Comprador')[:60]
+    agora = datetime.now().isoformat()
+    conn = get_saas_db()
+    # ATRIBUIÇÃO ATÔMICA à prova de corrida: só atribui se NENHUM slot já tem esse pagamento
+    cur = conn.execute(
+        "UPDATE slotzap_slots SET status='pago', cliente_nome=?, afiliado_codigo=?, "
+        "asaas_charge_id=?, pago_em=? "
+        "WHERE id=(SELECT id FROM slotzap_slots WHERE campanha_id=? AND status='disponivel' "
+        "ORDER BY RANDOM() LIMIT 1) "
+        "AND NOT EXISTS(SELECT 1 FROM slotzap_slots WHERE campanha_id=? AND asaas_charge_id=?)",
+        (nome_pagador, af['codigo'], pid, agora, camp_id, camp_id, pid))
+    conn.commit()
+    if cur.rowcount == 0:
+        # já processado (corrida/webhook repetido) OU rifa esgotada
+        ja = conn.execute("SELECT numero FROM slotzap_slots WHERE campanha_id=? AND asaas_charge_id=?",
+                          (camp_id, pid)).fetchone()
+        conn.close()
+        if ja:
+            return True   # idempotente — esse pagamento já virou número
+        _sz_estornar_compra_direta(pid, camp_id, valor, 'rifa esgotada')
+        return True
+    slot = dict(conn.execute("SELECT id, numero FROM slotzap_slots WHERE campanha_id=? AND asaas_charge_id=?",
+                             (camp_id, pid)).fetchone())
+    conn.close()
+    log.info(f"[SlotZap] COMPRA DIRETA: #{slot['numero']} p/ {nome_pagador} (af {af['codigo']}, camp {camp_id}, pay {pid}, R${valor:.2f})")
+    # Comissão do afiliado (motor existente, idempotente via ledger)
+    if camp.get('afiliados_ativo'):
+        _camp_a = {'id': camp_id, 'nome': camp.get('nome'), 'afiliados_ativo': camp.get('afiliados_ativo'),
+                   'afiliado_comissao': camp.get('afiliado_comissao'), 'gateway': camp.get('gateway', 'asaas')}
+        _slot_a = {'id': slot['id'], 'numero': slot['numero'], 'afiliado_codigo': af['codigo']}
+        threading.Thread(target=_sz_pagar_afiliados_bg, args=(_camp_a, [_slot_a]),
+                         daemon=True, name='sz-comissao-direta').start()
+    _sz_anuncia_venda_direta(camp, slot['numero'], nome_pagador)
+    return True
+
+
 def _sz_marcar_pago_charge(charge_id):
     """Dá baixa em TODOS os slots reservados com este charge_id (suporta multi-compra).
     Notifica o grupo uma única vez e avisa o comprador. Idempotente. Retorna nº de slots."""
@@ -17423,6 +17622,7 @@ def _sz_comissao_reconciliar_loop():
             pago = _sz_pagar_pendentes(conn)
             if pago:
                 log.info(f'[SlotZap] Reconciliador comissão: liquidou R${pago:.2f} em lote(s)')
+            _sz_retentar_estornos_dir(conn)   # re-tenta estornos de compra direta que falharam
             ncamp = _camp_reconciliar_premios(conn)
             if ncamp:
                 log.info(f'[CAMPonline] Reconciliador: pagou {ncamp} prêmio(s) de torneio')
@@ -18220,6 +18420,10 @@ def slotzap_afiliado_totem(token, codigo):
     if not af:
         return render_template('slotzap/nao_encontrado.html'), 404
     af = dict(af)
+    # QR PIX de COMPRA DIRETA (número aleatório) — cria/recupera (só Asaas)
+    _c2 = get_saas_db()
+    qr_pix_direto = _sz_criar_qr_direto(camp, af, _c2)
+    _c2.close()
     base = os.environ.get('BASE_URL', 'https://www.4kitem.com.br').rstrip('/')
     link_compra = f"{base}/slotzap/p/{token}?aff={codigo}"
     # Telefone do vendedor formatado pra exibir no totem (dúvidas dos clientes)
@@ -18234,7 +18438,8 @@ def slotzap_afiliado_totem(token, codigo):
         tel_fmt = af.get('telefone') or ''
     return render_template('slotzap/afiliado_totem.html', camp=camp, af=af,
                            link_compra=link_compra, tel_fmt=tel_fmt,
-                           grupo_convite=(camp.get('grupo_convite') or ''))
+                           grupo_convite=(camp.get('grupo_convite') or ''),
+                           qr_pix_direto=qr_pix_direto)
 
 
 @app.route('/slotzap/campanha/<int:camp_id>/afiliados')
