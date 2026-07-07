@@ -419,7 +419,7 @@ def pix_status(compra_id):
 # maior pontuação leva o PRÊMIO pro SALDO (R$). Tudo atômico e idempotente.
 # ══════════════════════════════════════════════════════════════════════════════
 FICHA_VALOR = 1.0      # 1 ficha = R$1 (crédito em reais). Deve ser <= menor preço/ficha dos pacotes.
-ARENA_RAKE = 0.15      # taxa de serviço da casa
+ARENA_RAKE = 0.20      # taxa de serviço da casa
 STAKES = [2, 5, 10, 20, 50]   # entradas de duelo permitidas (em fichas = R$)
 
 # Jogos que rodam VALENDO (têm motor server-side de placar). Cada um: motor + template + rótulo.
