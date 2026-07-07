@@ -33,8 +33,6 @@ arena_bp = Blueprint('arena', __name__, url_prefix='/arena')
 JOGOS = [
     {'id': 'blocos',   'nome': 'Quebra-Blocos', 'emoji': '🧱', 'ativo': True, 'url': '/arena/jogar'},
     {'id': 'bolhas',   'nome': 'Tiro de Bolhas','emoji': '🎯', 'ativo': True, 'url': '/arena/bolhas'},
-    {'id': 'combina',  'nome': 'Combina-3',     'emoji': '🍬', 'ativo': True, 'url': '/arena/combina'},
-    {'id': 'labirinto','nome': 'Labirinto',     'emoji': '🧩', 'ativo': True, 'url': '/arena/labirinto'},
     {'id': 'corridao', 'nome': 'Corridão',      'emoji': '🏃', 'ativo': True, 'url': '/arena/corridao'},
     {'id': 'quiz',     'nome': 'Quiz Relâmpago','emoji': '❓', 'ativo': True, 'url': '/arena/quiz'},
 ]
@@ -87,16 +85,6 @@ def quiz_banco(tema):
 @arena_bp.route('/bolhas')
 def bolhas():
     return render_template('arena/bolhas.html', user=_cur())
-
-
-@arena_bp.route('/combina')
-def combina():
-    return render_template('arena/combina.html', user=_cur())
-
-
-@arena_bp.route('/labirinto')
-def labirinto():
-    return render_template('arena/labirinto.html', user=_cur())
 
 
 @arena_bp.route('/corridao')
