@@ -37,12 +37,10 @@ JOGOS = [
     {'id': 'quiz',      'nome': 'Quiz Relâmpago','emoji': '❓', 'ativo': True, 'url': '/arena/quiz'},
     {'id': 'memoria',   'nome': 'Jogo da Memória','emoji': '🃏', 'ativo': True, 'url': '/arena/memoria'},
     {'id': 'baloes',    'nome': 'Estoura Balões','emoji': '🎈', 'ativo': True, 'url': '/arena/baloes'},
-    {'id': 'pegafrutas','nome': 'Pega-Frutas',   'emoji': '🧺', 'ativo': True, 'url': '/arena/pegafrutas'},
     {'id': 'genius',    'nome': 'Genius',        'emoji': '🎨', 'ativo': True, 'url': '/arena/genius'},
     {'id': 'achou',     'nome': 'Achou!',        'emoji': '🔍', 'ativo': True, 'url': '/arena/achou'},
     {'id': 'velha',     'nome': 'Jogo da Velha', 'emoji': '⭕', 'ativo': True, 'url': '/arena/velha'},
     {'id': 'voar',      'nome': 'Toque pra Voar','emoji': '🐤', 'ativo': True, 'url': '/arena/voar'},
-    {'id': 'num2048',   'nome': '2048',          'emoji': '🔢', 'ativo': True, 'url': '/arena/num2048'},
 ]
 
 
@@ -111,11 +109,6 @@ def baloes():
     return render_template('arena/baloes.html', user=_cur())
 
 
-@arena_bp.route('/pegafrutas')
-def pegafrutas():
-    return render_template('arena/pegafrutas.html', user=_cur())
-
-
 @arena_bp.route('/genius')
 def genius():
     return render_template('arena/genius.html', user=_cur())
@@ -134,11 +127,6 @@ def velha():
 @arena_bp.route('/voar')
 def voar():
     return render_template('arena/voar.html', user=_cur())
-
-
-@arena_bp.route('/num2048')
-def num2048():
-    return render_template('arena/num2048.html', user=_cur())
 
 
 @arena_bp.route('/cadastrar', methods=['GET', 'POST'])
