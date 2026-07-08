@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Damas ⚫ | Arena</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body { height:100%; }
+  body {
+    background:#07060f; color:#f0f0ff;
+    font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+    display:flex; justify-content:center;
+    min-height:100%;
+    overflow-x:hidden;
+  }
+  #app {
+    width:100%; max-width:460px; min-height:100%;
+    display:flex; flex-direction:column;
+    padding:10px 12px 24px;
+  }
+  /* Topbar */
+  .topbar {
+    display:flex; align-items:center; gap:8px;
+    padding:10px 12px; margin-bottom:10px;
+    background:rgba(255,255,255,.03);
+    border:1px solid rgba(255,255,255,.06);
+    border-radius:16px;
+  }
+  .topbar a.back {
+    color:#22d3ee; text-decoration:none; font-weight:600;
+    font-size:14px; white-space:nowrap;
+    padding:6px 10px; border-radius:10px;
+    background:rgba(34,211,238,.08);
+    transition:background .15s;
+  }
+  .topbar a.back:active { background:rgba(34,211,238,.2); }
+  .title {
+    flex:1; text-align:center; font-weight:700; font-size:16px;
+    letter-spacing:.5px;
+    background:linear-gradient(90deg,#22d3ee,#a855f7);
+    -webkit-background-clip:text; background-clip:text;
+    -webkit-text-fill-color:transparent;
+  }
+  .stats {
+    display:flex; gap:14px; margin-bottom:12px;
+    padding:2px 4px;
+  }
+  .stat {
+    flex:1; text-align:center;
+    background:rgba(255,255,255,.03);
+    border:1px solid rgba(255,255,255,.06);
+    border-radius:14px; padding:8px 4px;
+  }
+  .stat .lbl { font-size:10px; letter-spacing:1px; color:#8a8aa8; text-transform:uppercase; }
+  .stat .val { font-size:20px; font-weight:700; margin-top:2px; }
+  .stat.wins .val { color:#34d399; }
+  .stat.rec .val { color:#a855f7; }
+  .stat.turn .val { color:#22d3ee; font-size:15px; }
+
+  /* Board */
+  .board-wrap {
+    position:relative;
+    width:100%; aspect-ratio:1/1;
+    border-radius:18px; overflow:hidden;
+    border:1px solid rgba(255,255,255,.08);
+    box-shadow:0 0 30px rgba(34,211,238,.06);
+    touch-action:none;
+  }
+  #board {
+    display:block; width:100%; height:100%;
+    touch-action:none;
+  }
+  .msg {
+    text-align:center; margin-top:12px; font-size:13px;
+    color:#b8b8d8; min-height:18px;
+  }
+
+  /* Overlay */
+  .overlay {
+    position:absolute; inset:0;
+    display:none; flex-direction:column;
+    align-items:center; justify-content:center;
+    background:rgba(7,6,15,.9); backdrop-filter:blur(6px);
+    text-align:center; padding:20px; gap:14px;
+  }
+  .overlay.show { display:flex; }
+  .overlay h2 { font-size:26px; }
+  .overlay .sub { font-size:14px; color:#b8b8d8; max-width:280px; }
+  .overlay .big { font-size:44px; }
+  .btnrow { display:flex; flex-direction:column; gap:10px; width:100%; max-width:260px; }
+  .btn {
+    border:none; cursor:pointer; font-family:inherit;
+    padding:14px 18px; border-radius:14px; font-size:15px; font-weight:700;
+    color:#07060f;
+    transition:transform .1s, filter .15s;
+  }
+  .btn:active { transform:scale(.97); }
+  .btn.wa { background:linear-gradient(90deg,#34d399,#22d3ee); }
+  .btn.again { background:rgba(255,255,255,.1); color:#f0f0ff; border:1px solid rgba(255,255,255,.15); }
+  .win-txt { color:#34d399; }
+  .lose-txt { color:#f472b6; }
+  .draw-txt { color:#22d3ee; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="topbar">
+    <a class="back" href="/arena">← Arena</a>
+    <div class="title">⚫ Damas</div>
+    <div style="width:56px"></div>
+  </div>
+
+  <div class="stats">
+    <div class="stat wins"><div class="lbl">Vitórias</div><div class="val" id="wins">0</div></div>
+    <div class="stat turn"><div class="lbl">Vez de</div><div class="val" id="turn">Você</div></div>
+    <div class="stat rec"><div class="lbl">Recorde</div><div class="val" id="rec">0</div></div>
+  </div>
+
+  <div class="board-wrap">
+    <canvas id="board" width="480" height="480"></canvas>
+    <div class="overlay" id="overlay">
+      <div class="big" id="ovBig">🏆</div>
+      <h2 id="ovTitle">Você venceu!</h2>
+      <div class="sub" id="ovSub"></div>
+      <div class="btnrow">
+        <button class="btn wa" id="waBtn">📲 Bata meu recorde!</button>
+        <button class="btn again" id="againBtn">🔄 Jogar de novo</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="msg" id="msg">Toque numa peça clara para começar.</div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var REC_KEY = "arena_damas_recorde_v1";
+  var N = 8;
+  // peça: 0 vazio; 1 = jogador (claras); 2 = robô (escuras); 3 = dama jogador; 4 = dama robô
+  var EMPTY=0, P=1, R=2, PK=3, RK=4;
+
+  var canvas = document.getElementById("board");
+  var ctx = canvas.getContext("2d");
+  var overlay = document.getElementById("overlay");
+  var msgEl = document.getElementById("msg");
+  var winsEl = document.getElementById("wins");
+  var recEl = document.getElementById("rec");
+  var turnEl = document.getElementById("turn");
+
+  var CELL = canvas.width / N; // recalculado em setupCanvas
+
+  function safeGet(k){ try { return localStorage.getItem(k); } catch(e){ return null; } }
+  function safeSet(k,v){ try { localStorage.setItem(k,v); } catch(e){} }
+
+  var board = [];
+  var wins = 0;
+  var record = parseInt(safeGet(REC_KEY) || "0", 10) || 0;
+  var selected = null;      // {r,c}
+  var legalForSelected = []; // lista de movimentos para a peça selecionada
+  var playerTurn = true;
+  var gameOver = false;
+  var mustCaptureChain = null; // {r,c} peça travada em cadeia de captura
+
+  recEl.textContent = record;
+
+  // ---------- setup DPR para nitidez ----------
+  function setupCanvas(){
+    var wrap = canvas.parentElement;
+    var size = wrap.clientWidth;
+    if (!size || size<=0) size = 320;
+    var dpr = window.devicePixelRatio || 1;
+    canvas.style.width = size + "px";
+    canvas.style.height = size + "px";
+    canvas.width = Math.round(size * dpr);
+    canvas.height = Math.round(size * dpr);
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    CELL = size / N;
+    draw();
+  }
+
+  // ---------- board init ----------
+  function initBoard(){
+    board = [];
+    for (var r=0;r<N;r++){
+      var row=[];
+      for (var c=0;c<N;c++){
+        var dark = (r+c)%2===1;
+        if (dark && r<3) row.push(R);
+        else if (dark && r>4) row.push(P);
+        else row.push(EMPTY);
+      }
+      board.push(row);
+    }
+  }
+
+  function isPlayer(v){ return v===P || v===PK; }
+  function isRobot(v){ return v===R || v===RK; }
+  function isKing(v){ return v===PK || v===RK; }
+  function inBounds(r,c){ return r>=0 && r<N && c>=0 && c<N; }
+
+  // ---------- geração de movimentos ----------
+  // Retorna { simple:[...], caps:[...] } para a peça em (r,c).
+  // Cada movimento: {fr,fc,tr,tc, cap:{r,c}|null}
+  // Homem: anda 1 casa nas diagonais de avanço; captura 1 casa nas 4 direções (inclui para trás).
+  // Dama (voadora): desliza qualquer distância nas 4 diagonais; captura à distância
+  //                 (uma peça inimiga com casas vazias antes e pousa em qualquer vazia depois).
+  function pieceMoves(r,c){
+    var v = board[r][c];
+    if (v===EMPTY) return {simple:[], caps:[]};
+    var king = isKing(v);
+    var player = isPlayer(v);
+    var ALL=[[-1,-1],[-1,1],[1,-1],[1,1]];
+    var simple=[], caps=[];
+
+    if (king){
+      // ---- DAMA VOADORA ----
+      for (var d=0; d<ALL.length; d++){
+        var dr=ALL[d][0], dc=ALL[d][1];
+        var rr=r+dr, cc=c+dc;
+        // desliza sobre casas vazias => lances simples
+        while (inBounds(rr,cc) && board[rr][cc]===EMPTY){
+          simple.push({fr:r,fc:c,tr:rr,tc:cc,cap:null});
+          rr+=dr; cc+=dc;
+        }
+        // parou numa peça: se inimiga e houver vazio depois => captura à distância
+        if (inBounds(rr,cc)){
+          var mid=board[rr][cc];
+          var enemy = player ? isRobot(mid) : isPlayer(mid);
+          if (enemy){
+            var mr=rr, mc=cc;               // peça capturada
+            var lr=rr+dr, lc=cc+dc;         // possíveis casas de pouso
+            while (inBounds(lr,lc) && board[lr][lc]===EMPTY){
+              caps.push({fr:r,fc:c,tr:lr,tc:lc,cap:{r:mr,c:mc}});
+              lr+=dr; lc+=dc;
+            }
+          }
+        }
+      }
+    } else {
+      // ---- HOMEM ----
+      var moveDirs = player ? [[-1,-1],[-1,1]] : [[1,-1],[1,1]]; // avanço
+      for (var i=0;i<moveDirs.length;i++){
+        var mdr=moveDirs[i][0], mdc=moveDirs[i][1];
+        var r1=r+mdr, c1=c+mdc;
+        if (inBounds(r1,c1) && board[r1][c1]===EMPTY){
+          simple.push({fr:r,fc:c,tr:r1,tc:c1,cap:null});
+        }
+      }
+      // captura em TODAS as 4 direções (para trás permitida)
+      for (var j=0;j<ALL.length;j++){
+        var cdr=ALL[j][0], cdc=ALL[j][1];
+        var m1r=r+cdr, m1c=c+cdc;
+        if (!inBounds(m1r,m1c)) continue;
+        var midp=board[m1r][m1c];
+        if (midp===EMPTY) continue;
+        var en = player ? isRobot(midp) : isPlayer(midp);
+        if (!en) continue;
+        var r2=r+2*cdr, c2=c+2*cdc;
+        if (inBounds(r2,c2) && board[r2][c2]===EMPTY){
+          caps.push({fr:r,fc:c,tr:r2,tc:c2,cap:{r:m1r,c:m1c}});
+        }
+      }
+    }
+    return {simple:simple, caps:caps};
+  }
+
+  // Todos os movimentos de um lado. Se houver captura, só retorna capturas (obrigatória).
+  function allMoves(forPlayer){
+    var allSimple=[], allCaps=[];
+    for (var r=0;r<N;r++){
+      for (var c=0;c<N;c++){
+        var v=board[r][c];
+        if (v===EMPTY) continue;
+        if (forPlayer && !isPlayer(v)) continue;
+        if (!forPlayer && !isRobot(v)) continue;
+        var m=pieceMoves(r,c);
+        allSimple=allSimple.concat(m.simple);
+        allCaps=allCaps.concat(m.caps);
+      }
+    }
+    if (allCaps.length>0) return {list:allCaps, capture:true};
+    return {list:allSimple, capture:false};
+  }
+
+  // aplica um movimento; retorna true se virou dama nesta jogada
+  function applyMove(mv){
+    var v = board[mv.fr][mv.fc];
+    board[mv.fr][mv.fc]=EMPTY;
+    if (mv.cap){ board[mv.cap.r][mv.cap.c]=EMPTY; }
+    board[mv.tr][mv.tc]=v;
+    var promoted=false;
+    if (v===P && mv.tr===0){ board[mv.tr][mv.tc]=PK; promoted=true; }
+    if (v===R && mv.tr===N-1){ board[mv.tr][mv.tc]=RK; promoted=true; }
+    return promoted;
+  }
+
+  // Após captura, verifica se a mesma peça pode capturar de novo
+  function furtherCaptures(r,c){
+    return pieceMoves(r,c).caps;
+  }
+
+  // ---------- desenho ----------
+  function draw(){
+    var size = CELL*N;
+    ctx.clearRect(0,0,size,size);
+    for (var r=0;r<N;r++){
+      for (var c=0;c<N;c++){
+        var dark=(r+c)%2===1;
+        ctx.fillStyle = dark ? "#141024" : "#221b3a";
+        ctx.fillRect(c*CELL, r*CELL, CELL, CELL);
+      }
+    }
+
+    // destaques dos movimentos legais da peça selecionada
+    if (selected && legalForSelected.length){
+      for (var k=0;k<legalForSelected.length;k++){
+        var mv=legalForSelected[k];
+        var cx=(mv.tc+0.5)*CELL, cy=(mv.tr+0.5)*CELL;
+        ctx.beginPath();
+        ctx.arc(cx,cy,CELL*0.16,0,Math.PI*2);
+        ctx.fillStyle = mv.cap ? "rgba(244,114,182,.55)" : "rgba(52,211,153,.5)";
+        ctx.fill();
+        ctx.lineWidth=2;
+        ctx.strokeStyle = mv.cap ? "#f472b6" : "#34d399";
+        ctx.stroke();
+      }
+      // moldura na casa selecionada
+      ctx.lineWidth=3;
+      ctx.strokeStyle="#22d3ee";
+      ctx.strokeRect(selected.c*CELL+2, selected.r*CELL+2, CELL-4, CELL-4);
+    }
+
+    // peças
+    for (var rr=0;rr<N;rr++){
+      for (var cc=0;cc<N;cc++){
+        var v=board[rr][cc];
+        if (v===EMPTY) continue;
+        drawPiece(rr,cc,v);
+      }
+    }
+  }
+
+  function drawPiece(r,c,v){
+    var cx=(c+0.5)*CELL, cy=(r+0.5)*CELL;
+    var rad=CELL*0.36;
+    // sombra
+    ctx.beginPath();
+    ctx.arc(cx,cy+2,rad,0,Math.PI*2);
+    ctx.fillStyle="rgba(0,0,0,.4)";
+    ctx.fill();
+
+    var grad=ctx.createRadialGradient(cx-rad*0.3,cy-rad*0.3,rad*0.2,cx,cy,rad);
+    if (isPlayer(v)){
+      grad.addColorStop(0,"#eafcff");
+      grad.addColorStop(1,"#7fd8e6");
+    } else {
+      grad.addColorStop(0,"#4a3f66");
+      grad.addColorStop(1,"#1b1430");
+    }
+    ctx.beginPath();
+    ctx.arc(cx,cy,rad,0,Math.PI*2);
+    ctx.fillStyle=grad;
+    ctx.fill();
+    ctx.lineWidth=2;
+    ctx.strokeStyle = isPlayer(v) ? "#22d3ee" : "#a855f7";
+    ctx.stroke();
+
+    // anel interno
+    ctx.beginPath();
+    ctx.arc(cx,cy,rad*0.6,0,Math.PI*2);
+    ctx.strokeStyle = isPlayer(v) ? "rgba(34,211,238,.5)" : "rgba(168,85,247,.5)";
+    ctx.lineWidth=1.5;
+    ctx.stroke();
+
+    if (isKing(v)){
+      ctx.font = (rad*1.1)+"px system-ui";
+      ctx.textAlign="center";
+      ctx.textBaseline="middle";
+      ctx.fillText("👑", cx, cy+1);
+    }
+  }
+
+  // ---------- interação ----------
+  function cellFromEvent(e){
+    var rect = canvas.getBoundingClientRect();
+    var px = (e.clientX - rect.left);
+    var py = (e.clientY - rect.top);
+    var c = Math.floor(px / (rect.width / N));
+    var r = Math.floor(py / (rect.height / N));
+    if (!inBounds(r,c)) return null;
+    return {r:r,c:c};
+  }
+
+  function onTap(e){
+    if (gameOver || !playerTurn) return;
+    if (e.preventDefault) e.preventDefault();
+    var cell = cellFromEvent(e);
+    if (!cell) return;
+    var v = board[cell.r][cell.c];
+
+    // se está em cadeia de captura obrigatória, só a peça travada joga
+    var lockR=null, lockC=null;
+    if (mustCaptureChain){ lockR=mustCaptureChain.r; lockC=mustCaptureChain.c; }
+
+    // clicou num destino válido?
+    if (selected){
+      var chosen=null;
+      for (var i=0;i<legalForSelected.length;i++){
+        if (legalForSelected[i].tr===cell.r && legalForSelected[i].tc===cell.c){ chosen=legalForSelected[i]; break; }
+      }
+      if (chosen){
+        doPlayerMove(chosen);
+        return;
+      }
+    }
+
+    // seleção de peça própria
+    if (isPlayer(v)){
+      if (mustCaptureChain && (cell.r!==lockR || cell.c!==lockC)){
+        // não pode trocar de peça no meio da cadeia
+        return;
+      }
+      selectPiece(cell.r,cell.c);
+    } else {
+      // clicou em vazio/inimigo: desmarca (se não estiver travado)
+      if (!mustCaptureChain){
+        selected=null; legalForSelected=[];
+        draw();
+      }
+    }
+  }
+
+  function selectPiece(r,c){
+    // filtra pelos movimentos legais globais (captura obrigatória)
+    var global = allMoves(true);
+    var pm = pieceMoves(r,c);
+    var opts;
+    if (global.capture){
+      opts = pm.caps; // só capturas
+    } else {
+      opts = pm.simple;
+    }
+    if (mustCaptureChain){
+      // em cadeia: só capturas desta peça
+      opts = pm.caps;
+    }
+    if (opts.length===0){
+      // peça sem jogada válida
+      if (!mustCaptureChain){ selected={r:r,c:c}; legalForSelected=[]; draw(); }
+      msgEl.textContent = global.capture ? "Captura obrigatória! Escolha uma peça que pode capturar." : "Essa peça não tem movimento.";
+      return;
+    }
+    selected={r:r,c:c};
+    legalForSelected=opts;
+    draw();
+    msgEl.textContent = global.capture ? "Captura obrigatória! Toque no alvo destacado." : "Sua vez.";
+  }
+
+  function doPlayerMove(mv){
+    var wasCap = !!mv.cap;
+    var promoted = applyMove(mv);
+    selected=null; legalForSelected=[];
+
+    if (wasCap && !promoted){
+      // checa cadeia
+      var more = furtherCaptures(mv.tr, mv.tc);
+      if (more.length>0){
+        mustCaptureChain={r:mv.tr, c:mv.tc};
+        selected={r:mv.tr, c:mv.tc};
+        legalForSelected=more;
+        draw();
+        msgEl.textContent="Continue capturando!";
+        return;
+      }
+    }
+    mustCaptureChain=null;
+    draw();
+    // fim do turno do jogador -> a seguir joga o robô
+    if (checkEnd(false)) return;
+    playerTurn=false;
+    turnEl.textContent="Robô";
+    msgEl.textContent="Robô pensando...";
+    setTimeout(robotTurn, 480);
+  }
+
+  // ---------- IA do robô ----------
+  function robotTurn(){
+    if (gameOver) return;
+    var safety=0;
+    function step(){
+      safety++;
+      if (safety>60){ finishRobot(); return; }
+      var mvs = allMoves(false);
+      if (mvs.list.length===0){ // robô sem jogada -> jogador venceu
+        endGame("win"); return;
+      }
+      var mv = chooseRobotMove(mvs);
+      var wasCap=!!mv.cap;
+      var promoted=applyMove(mv);
+      draw();
+      if (wasCap && !promoted){
+        var more=furtherCaptures(mv.tr,mv.tc);
+        if (more.length>0){
+          // continua cadeia com a mesma peça
+          setTimeout(function(){
+            if (gameOver) return;
+            chainRobot(mv.tr,mv.tc,safety);
+          },380);
+          return;
+        }
+      }
+      finishRobot();
+    }
+    step();
+  }
+
+  function chainRobot(r,c,safety){
+    if (gameOver) return;
+    if (safety>60){ finishRobot(); return; }
+    var caps = furtherCaptures(r,c);
+    if (caps.length===0){ finishRobot(); return; }
+    var mv = caps[Math.floor(Math.random()*caps.length)];
+    var promoted=applyMove(mv);
+    draw();
+    if (!promoted){
+      var more=furtherCaptures(mv.tr,mv.tc);
+      if (more.length>0){
+        setTimeout(function(){ chainRobot(mv.tr,mv.tc,safety+1); },380);
+        return;
+      }
+    }
+    finishRobot();
+  }
+
+  function finishRobot(){
+    if (gameOver) return;
+    // fim do turno do robô -> a seguir joga o jogador
+    if (checkEnd(true)) return;
+    playerTurn=true;
+    turnEl.textContent="Você";
+    msgEl.textContent="Sua vez. Toque numa peça.";
+    // avisa captura obrigatória
+    var g=allMoves(true);
+    if (g.capture) msgEl.textContent="Captura obrigatória! Toque numa peça que captura.";
+    draw();
+  }
+
+  function chooseRobotMove(mvs){
+    var list = mvs.list;
+    if (mvs.capture){
+      // prioriza captura; entre elas, prefere a que promove ou avança mais
+      var best=[], bestScore=-1e9;
+      for (var i=0;i<list.length;i++){
+        var mv=list[i];
+        var sc=10; // captura base
+        // promoção (só homem do robô ao chegar na última fileira)
+        if (board[mv.fr][mv.fc]===R && mv.tr===N-1) sc+=5;
+        // avançar (robô desce = tr maior é bom)
+        sc += mv.tr*0.3;
+        // leve aleatório
+        sc += Math.random()*0.5;
+        if (sc>bestScore){ bestScore=sc; best=[mv]; }
+        else if (sc===bestScore){ best.push(mv); }
+      }
+      return best[Math.floor(Math.random()*best.length)];
+    }
+    // sem captura: prefere avançar; senão aleatório
+    var adv=[], other=[];
+    for (var j=0;j<list.length;j++){
+      var m=list[j];
+      // robô avança quando tr > fr
+      if (m.tr>m.fr) adv.push(m); else other.push(m);
+    }
+    var pool = adv.length? adv : list;
+    // leve preferência por promover
+    var promo=[];
+    for (var k=0;k<pool.length;k++){
+      if (board[pool[k].fr][pool[k].fc]===R && pool[k].tr===N-1) promo.push(pool[k]);
+    }
+    if (promo.length) return promo[Math.floor(Math.random()*promo.length)];
+    return pool[Math.floor(Math.random()*pool.length)];
+  }
+
+  // ---------- fim de jogo ----------
+  function countPieces(){
+    var p=0,rb=0;
+    for (var r=0;r<N;r++) for (var c=0;c<N;c++){
+      var v=board[r][c];
+      if (isPlayer(v)) p++;
+      else if (isRobot(v)) rb++;
+    }
+    return {p:p,r:rb};
+  }
+
+  // nextPlayerToMove: true se, ao final deste turno, a vez passa a ser do JOGADOR.
+  // Sem peças => derrota do lado zerado. Sem jogada do lado que vai jogar => esse lado perde.
+  function checkEnd(nextPlayerToMove){
+    var cnt=countPieces();
+    if (cnt.p===0){ endGame("lose"); return true; }
+    if (cnt.r===0){ endGame("win"); return true; }
+    // Quem está prestes a jogar não tem lance legal => perde (não pode travar).
+    if (nextPlayerToMove){
+      if (allMoves(true).list.length===0){ endGame("lose"); return true; }
+    } else {
+      if (allMoves(false).list.length===0){ endGame("win"); return true; }
+    }
+    return false;
+  }
+
+  function endGame(result){
+    if (gameOver) return;
+    gameOver=true;
+    playerTurn=false;
+    selected=null; legalForSelected=[]; mustCaptureChain=null;
+    draw();
+
+    var big=document.getElementById("ovBig");
+    var title=document.getElementById("ovTitle");
+    var sub=document.getElementById("ovSub");
+
+    if (result==="win"){
+      wins++;
+      winsEl.textContent=wins;
+      if (wins>record){ record=wins; safeSet(REC_KEY, String(record)); recEl.textContent=record; }
+      big.textContent="🏆";
+      title.textContent="Você venceu!";
+      title.className="win-txt";
+      sub.textContent="Vitória sobre o robô! Sequência atual: "+wins+". Recorde: "+record+".";
+    } else if (result==="lose"){
+      big.textContent="💀";
+      title.textContent="O robô venceu";
+      title.className="lose-txt";
+      sub.textContent="Sua sequência era de "+wins+" vitória(s). Recorde: "+record+". Bora de novo?";
+      wins=0; winsEl.textContent=wins;
+    } else {
+      big.textContent="🤝";
+      title.textContent="Empate";
+      title.className="draw-txt";
+      sub.textContent="Ninguém tem jogada. Sequência: "+wins+". Recorde: "+record+".";
+    }
+    overlay.classList.add("show");
+  }
+
+  // ---------- botões ----------
+  document.getElementById("againBtn").addEventListener("click", function(){
+    startGame();
+  });
+
+  document.getElementById("waBtn").addEventListener("click", function(){
+    var texto = "⚫ Fiz "+record+" vitória(s) seguidas no Damas da Arena! Bate meu recorde 👑";
+    location.href = "https://wa.me/?text=" + encodeURIComponent(texto + " " + location.href);
+  });
+
+  function startGame(){
+    initBoard();
+    selected=null; legalForSelected=[]; mustCaptureChain=null;
+    playerTurn=true; gameOver=false;
+    turnEl.textContent="Você";
+    overlay.classList.remove("show");
+    msgEl.textContent="Toque numa peça clara para começar.";
+    var g=allMoves(true);
+    if (g.capture) msgEl.textContent="Captura obrigatória! Toque numa peça que captura.";
+    setupCanvas();
+    draw();
+  }
+
+  // eventos de toque/ponteiro
+  if (window.PointerEvent){
+    canvas.addEventListener("pointerdown", onTap, {passive:false});
+  } else {
+    canvas.addEventListener("touchstart", function(e){
+      if (e.touches && e.touches[0]){
+        var t=e.touches[0];
+        onTap({clientX:t.clientX, clientY:t.clientY, preventDefault:function(){ if(e.preventDefault) e.preventDefault(); }});
+      }
+    }, {passive:false});
+    canvas.addEventListener("mousedown", onTap, {passive:false});
+  }
+  window.addEventListener("resize", setupCanvas);
+
+  // start
+  wins=0; winsEl.textContent=wins;
+  startGame();
+})();
+</script>
+</body>
+</html>

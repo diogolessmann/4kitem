@@ -41,6 +41,13 @@ JOGOS = [
     {'id': 'achou',     'nome': 'Achou!',        'emoji': '🔍', 'ativo': True, 'url': '/arena/achou'},
     {'id': 'velha',     'nome': 'Jogo da Velha', 'emoji': '⭕', 'ativo': True, 'url': '/arena/velha'},
     {'id': 'voar',      'nome': 'Toque pra Voar','emoji': '🐤', 'ativo': True, 'url': '/arena/voar'},
+    {'id': 'termo',     'nome': 'Termo',         'emoji': '🟩', 'ativo': True, 'url': '/arena/termo'},
+    {'id': 'sudoku',    'nome': 'Sudoku',        'emoji': '🔢', 'ativo': True, 'url': '/arena/sudoku'},
+    {'id': 'minado',    'nome': 'Campo Minado',  'emoji': '💣', 'ativo': True, 'url': '/arena/minado'},
+    {'id': 'watersort', 'nome': 'Tubos de Cor',  'emoji': '🧪', 'ativo': True, 'url': '/arena/watersort'},
+    {'id': 'hanoi',     'nome': 'Torre de Hanói','emoji': '🗼', 'ativo': True, 'url': '/arena/hanoi'},
+    {'id': 'damas',     'nome': 'Damas',         'emoji': '⚫', 'ativo': True, 'url': '/arena/damas'},
+    {'id': 'reversi',   'nome': 'Reversi',       'emoji': '⚪', 'ativo': True, 'url': '/arena/reversi'},
 ]
 
 
@@ -127,6 +134,42 @@ def velha():
 @arena_bp.route('/voar')
 def voar():
     return render_template('arena/voar.html', user=_cur())
+
+
+# ── jogos GRÁTIS de raciocínio (público adulto) ──
+@arena_bp.route('/termo')
+def termo():
+    return render_template('arena/termo.html', user=_cur())
+
+
+@arena_bp.route('/sudoku')
+def sudoku():
+    return render_template('arena/sudoku.html', user=_cur())
+
+
+@arena_bp.route('/minado')
+def minado():
+    return render_template('arena/minado.html', user=_cur())
+
+
+@arena_bp.route('/watersort')
+def watersort():
+    return render_template('arena/watersort.html', user=_cur())
+
+
+@arena_bp.route('/hanoi')
+def hanoi():
+    return render_template('arena/hanoi.html', user=_cur())
+
+
+@arena_bp.route('/damas')
+def damas():
+    return render_template('arena/damas.html', user=_cur())
+
+
+@arena_bp.route('/reversi')
+def reversi():
+    return render_template('arena/reversi.html', user=_cur())
 
 
 @arena_bp.route('/cadastrar', methods=['GET', 'POST'])
