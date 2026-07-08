@@ -31,10 +31,18 @@ arena_bp = Blueprint('arena', __name__, url_prefix='/arena')
 
 # Catálogo de jogos do portal (MODOS x JOGOS). Só 'blocos' ativo no L0.
 JOGOS = [
-    {'id': 'blocos',   'nome': 'Quebra-Blocos', 'emoji': '🧱', 'ativo': True, 'url': '/arena/jogar'},
-    {'id': 'bolhas',   'nome': 'Tiro de Bolhas','emoji': '🎯', 'ativo': True, 'url': '/arena/bolhas'},
-    {'id': 'corridao', 'nome': 'Corridão',      'emoji': '🏃', 'ativo': True, 'url': '/arena/corridao'},
-    {'id': 'quiz',     'nome': 'Quiz Relâmpago','emoji': '❓', 'ativo': True, 'url': '/arena/quiz'},
+    {'id': 'blocos',    'nome': 'Quebra-Blocos', 'emoji': '🧱', 'ativo': True, 'url': '/arena/jogar'},
+    {'id': 'bolhas',    'nome': 'Tiro de Bolhas','emoji': '🎯', 'ativo': True, 'url': '/arena/bolhas'},
+    {'id': 'corridao',  'nome': 'Corridão',      'emoji': '🏃', 'ativo': True, 'url': '/arena/corridao'},
+    {'id': 'quiz',      'nome': 'Quiz Relâmpago','emoji': '❓', 'ativo': True, 'url': '/arena/quiz'},
+    {'id': 'memoria',   'nome': 'Jogo da Memória','emoji': '🃏', 'ativo': True, 'url': '/arena/memoria'},
+    {'id': 'baloes',    'nome': 'Estoura Balões','emoji': '🎈', 'ativo': True, 'url': '/arena/baloes'},
+    {'id': 'pegafrutas','nome': 'Pega-Frutas',   'emoji': '🧺', 'ativo': True, 'url': '/arena/pegafrutas'},
+    {'id': 'genius',    'nome': 'Genius',        'emoji': '🎨', 'ativo': True, 'url': '/arena/genius'},
+    {'id': 'achou',     'nome': 'Achou!',        'emoji': '🔍', 'ativo': True, 'url': '/arena/achou'},
+    {'id': 'velha',     'nome': 'Jogo da Velha', 'emoji': '⭕', 'ativo': True, 'url': '/arena/velha'},
+    {'id': 'voar',      'nome': 'Toque pra Voar','emoji': '🐤', 'ativo': True, 'url': '/arena/voar'},
+    {'id': 'num2048',   'nome': '2048',          'emoji': '🔢', 'ativo': True, 'url': '/arena/num2048'},
 ]
 
 
@@ -90,6 +98,47 @@ def bolhas():
 @arena_bp.route('/corridao')
 def corridao():
     return render_template('arena/corridao.html', user=_cur())
+
+
+# ── jogos GRÁTIS pra criançada ──
+@arena_bp.route('/memoria')
+def memoria():
+    return render_template('arena/memoria.html', user=_cur())
+
+
+@arena_bp.route('/baloes')
+def baloes():
+    return render_template('arena/baloes.html', user=_cur())
+
+
+@arena_bp.route('/pegafrutas')
+def pegafrutas():
+    return render_template('arena/pegafrutas.html', user=_cur())
+
+
+@arena_bp.route('/genius')
+def genius():
+    return render_template('arena/genius.html', user=_cur())
+
+
+@arena_bp.route('/achou')
+def achou():
+    return render_template('arena/achou.html', user=_cur())
+
+
+@arena_bp.route('/velha')
+def velha():
+    return render_template('arena/velha.html', user=_cur())
+
+
+@arena_bp.route('/voar')
+def voar():
+    return render_template('arena/voar.html', user=_cur())
+
+
+@arena_bp.route('/num2048')
+def num2048():
+    return render_template('arena/num2048.html', user=_cur())
 
 
 @arena_bp.route('/cadastrar', methods=['GET', 'POST'])

@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>🎈 Estoura Balões</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body { height:100%; }
+  body{
+    background:#07060f;
+    color:#f0f0ff;
+    font-family:'Comic Sans MS','Baloo 2',system-ui,'Segoe UI',sans-serif;
+    display:flex; justify-content:center;
+    overflow:hidden;
+    user-select:none; -webkit-user-select:none;
+    touch-action:none;
+  }
+  #app{
+    position:relative;
+    width:100%; max-width:460px; height:100%;
+    display:flex; flex-direction:column;
+    background:radial-gradient(120% 80% at 50% 0%, #14102b 0%, #07060f 70%);
+    overflow:hidden;
+  }
+  /* Topbar */
+  #topbar{
+    flex:0 0 auto;
+    display:flex; align-items:center; gap:8px;
+    padding:10px 12px;
+    background:rgba(168,85,247,0.12);
+    border-bottom:2px solid rgba(168,85,247,0.35);
+    z-index:20;
+  }
+  #backlink{
+    text-decoration:none;
+    color:#22d3ee;
+    font-weight:bold;
+    font-size:15px;
+    background:rgba(34,211,238,0.14);
+    padding:7px 12px; border-radius:16px;
+    white-space:nowrap;
+    border:2px solid rgba(34,211,238,0.4);
+  }
+  #backlink:active{ transform:scale(0.94); }
+  #gametitle{
+    flex:1 1 auto; text-align:center;
+    font-size:17px; font-weight:bold;
+    color:#fbbf24;
+    text-shadow:0 0 10px rgba(251,191,36,0.5);
+    white-space:nowrap;
+  }
+  #scorebox{ display:flex; flex-direction:column; align-items:flex-end; line-height:1.15; }
+  #scorebox .pts{ font-size:18px; font-weight:bold; color:#34d399; }
+  #scorebox .rec{ font-size:11px; color:#f472b6; font-weight:bold; }
+  /* Lives */
+  #lives{
+    position:absolute; top:58px; left:12px;
+    font-size:22px; z-index:15;
+    letter-spacing:2px;
+    filter:drop-shadow(0 0 6px rgba(244,114,182,0.6));
+    pointer-events:none;
+  }
+  /* Play area */
+  #playwrap{ position:relative; flex:1 1 auto; }
+  canvas{ display:block; width:100%; height:100%; touch-action:none; }
+  /* Overlays */
+  .overlay{
+    position:absolute; inset:0; z-index:30;
+    display:flex; flex-direction:column;
+    align-items:center; justify-content:center;
+    text-align:center; padding:24px;
+    background:rgba(7,6,15,0.82);
+    backdrop-filter:blur(3px);
+  }
+  .hidden{ display:none !important; }
+  .bigtitle{ font-size:42px; margin-bottom:6px; }
+  .card{
+    background:linear-gradient(160deg, rgba(168,85,247,0.22), rgba(34,211,238,0.12));
+    border:3px solid rgba(168,85,247,0.55);
+    border-radius:32px;
+    padding:26px 22px;
+    width:100%; max-width:340px;
+    box-shadow:0 8px 40px rgba(168,85,247,0.35);
+  }
+  .card h1{ font-size:26px; color:#fbbf24; margin-bottom:4px; text-shadow:0 0 14px rgba(251,191,36,0.6); }
+  .card h2{ font-size:30px; color:#34d399; margin:10px 0 2px; }
+  .card p{ font-size:15px; color:#c9c9e8; margin:8px 0; line-height:1.4; }
+  .bigscore{ font-size:56px; font-weight:bold; color:#22d3ee; text-shadow:0 0 18px rgba(34,211,238,0.6); line-height:1; margin:6px 0; }
+  .reclabel{ font-size:15px; color:#f472b6; font-weight:bold; margin-bottom:6px; }
+  .newrec{
+    display:inline-block; font-size:15px; font-weight:bold;
+    color:#07060f; background:#fbbf24; border-radius:14px;
+    padding:5px 14px; margin:8px 0 4px;
+    box-shadow:0 0 18px rgba(251,191,36,0.7);
+    animation:pulse 0.8s ease-in-out infinite;
+  }
+  @keyframes pulse{ 0%,100%{ transform:scale(1); } 50%{ transform:scale(1.08); } }
+  .btn{
+    display:block; width:100%;
+    border:none; border-radius:22px;
+    padding:16px; margin-top:12px;
+    font-size:18px; font-weight:bold;
+    font-family:inherit;
+    cursor:pointer;
+    transition:transform .08s;
+  }
+  .btn:active{ transform:scale(0.96); }
+  .btn-wa{ background:linear-gradient(135deg,#34d399,#22d3ee); color:#07060f; box-shadow:0 6px 22px rgba(52,211,153,0.5); }
+  .btn-play{ background:linear-gradient(135deg,#a855f7,#f472b6); color:#fff; box-shadow:0 6px 22px rgba(168,85,247,0.5); }
+  .btn-start{ background:linear-gradient(135deg,#fbbf24,#f472b6); color:#07060f; box-shadow:0 6px 22px rgba(251,191,36,0.55); font-size:22px; padding:18px; }
+  .hint{ font-size:13px; color:#9a9ac0; margin-top:14px; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="topbar">
+    <a id="backlink" href="/arena">← Arena</a>
+    <div id="gametitle">🎈 Estoura Balões</div>
+    <div id="scorebox">
+      <span class="pts" id="ptsTop">0</span>
+      <span class="rec" id="recTop">🏆 0</span>
+    </div>
+  </div>
+
+  <div id="playwrap">
+    <div id="lives">❤️❤️❤️</div>
+    <canvas id="cv"></canvas>
+
+    <!-- Start -->
+    <div class="overlay" id="startScreen">
+      <div class="bigtitle">🎈🎉🎈</div>
+      <div class="card">
+        <h1>Estoura Balões</h1>
+        <p>Toque nos balões pra estourar!<br>Não deixe fugir pelo topo 🚀</p>
+        <p style="font-size:13px;color:#9a9ac0">Você tem 3 vidas ❤️❤️❤️</p>
+        <button class="btn btn-start" id="startBtn">▶️ Jogar</button>
+      </div>
+    </div>
+
+    <!-- Game Over -->
+    <div class="overlay hidden" id="overScreen">
+      <div class="bigtitle">💥</div>
+      <div class="card">
+        <h1 id="overTitle">Fim de jogo!</h1>
+        <p class="reclabel" id="newRecLine"></p>
+        <p style="margin-top:10px">Você estourou</p>
+        <div class="bigscore" id="finalScore">0</div>
+        <p>balões 🎈</p>
+        <div class="reclabel" id="recLine">🏆 Recorde: 0</div>
+        <button class="btn btn-wa" id="waBtn">📲 Bata meu recorde!</button>
+        <button class="btn btn-play" id="againBtn">🔄 Jogar de novo</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var REC_KEY = "estoura_baloes_recorde_v1";
+
+  var cv = document.getElementById("cv");
+  var ctx = cv.getContext("2d");
+  var wrap = document.getElementById("playwrap");
+
+  var ptsTop = document.getElementById("ptsTop");
+  var recTop = document.getElementById("recTop");
+  var livesEl = document.getElementById("lives");
+  var startScreen = document.getElementById("startScreen");
+  var overScreen = document.getElementById("overScreen");
+  var finalScore = document.getElementById("finalScore");
+  var recLine = document.getElementById("recLine");
+  var newRecLine = document.getElementById("newRecLine");
+  var overTitle = document.getElementById("overTitle");
+
+  // --- state ---
+  var W=0, H=0, DPR=1;
+  var running=false;
+  var score=0, lives=3, record=0;
+  var balloons=[];
+  var pops=[];      // particle/burst effects
+  var floaters=[];  // floating "+1" texts
+  var spawnTimer=0;
+  var spawnInterval=1100; // ms
+  var elapsed=0;
+  var lastT=0;
+  var rafId=null;
+
+  var COLORS = ["#22d3ee","#a855f7","#34d399","#f472b6","#fbbf24"];
+
+  // load record
+  try {
+    var r = parseInt(localStorage.getItem(REC_KEY),10);
+    if(!isNaN(r) && r>0) record=r;
+  } catch(e){}
+  recTop.textContent = "🏆 "+record;
+
+  // --- resize ---
+  function resize(){
+    var rect = wrap.getBoundingClientRect();
+    W = Math.max(1, rect.width);
+    H = Math.max(1, rect.height);
+    DPR = Math.min(window.devicePixelRatio||1, 2);
+    cv.width = Math.round(W*DPR);
+    cv.height = Math.round(H*DPR);
+    ctx.setTransform(DPR,0,0,DPR,0,0);
+  }
+  window.addEventListener("resize", resize);
+
+  // --- audio (WebAudio, optional / safe) ---
+  var actx=null;
+  function ensureAudio(){
+    if(actx) return;
+    try{
+      var AC = window.AudioContext||window.webkitAudioContext;
+      if(AC) actx = new AC();
+    }catch(e){ actx=null; }
+  }
+  function pop(freq){
+    if(!actx) return;
+    try{
+      var t = actx.currentTime;
+      var o = actx.createOscillator();
+      var g = actx.createGain();
+      o.type="triangle";
+      o.frequency.setValueAtTime(freq, t);
+      o.frequency.exponentialRampToValueAtTime(freq*0.5, t+0.12);
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.25, t+0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, t+0.16);
+      o.connect(g); g.connect(actx.destination);
+      o.start(t); o.stop(t+0.18);
+    }catch(e){}
+  }
+  function buzz(){
+    if(!actx) return;
+    try{
+      var t=actx.currentTime;
+      var o=actx.createOscillator(); var g=actx.createGain();
+      o.type="sawtooth"; o.frequency.setValueAtTime(140,t);
+      o.frequency.exponentialRampToValueAtTime(70,t+0.25);
+      g.gain.setValueAtTime(0.0001,t);
+      g.gain.exponentialRampToValueAtTime(0.2,t+0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001,t+0.3);
+      o.connect(g); g.connect(actx.destination);
+      o.start(t); o.stop(t+0.32);
+    }catch(e){}
+  }
+
+  // --- helpers ---
+  function rand(a,b){ return a + Math.random()*(b-a); }
+
+  function spawnBalloon(){
+    var r = rand(26, 38);
+    var x = rand(r+6, W-r-6);
+    // difficulty ramp: base speed grows with elapsed time
+    var diff = Math.min(elapsed/45000, 1); // 0..1 over 45s
+    var baseSpeed = rand(55, 85) * (1 + diff*1.1);
+    balloons.push({
+      x:x, y:H+r+10, r:r,
+      vx: rand(-14,14),
+      speed: baseSpeed,
+      color: COLORS[(Math.random()*COLORS.length)|0],
+      wobble: rand(0, Math.PI*2),
+      wobbleSpeed: rand(1.5, 3.0),
+      amp: rand(6, 16)
+    });
+  }
+
+  function makeBurst(x,y,color){
+    var n=10;
+    for(var i=0;i<n;i++){
+      var ang = (Math.PI*2)*(i/n) + rand(-0.3,0.3);
+      var sp = rand(80,190);
+      pops.push({
+        x:x, y:y,
+        vx:Math.cos(ang)*sp, vy:Math.sin(ang)*sp,
+        life:0, max:rand(0.35,0.6),
+        color:color, size:rand(3,6)
+      });
+    }
+    floaters.push({ x:x, y:y, life:0, max:0.8, txt:"+1" });
+  }
+
+  function setLives(n){
+    lives=n;
+    var s="";
+    for(var i=0;i<3;i++) s += (i<lives ? "❤️" : "🖤");
+    livesEl.textContent = s;
+  }
+
+  function updateScore(){
+    ptsTop.textContent = score;
+  }
+
+  // --- input ---
+  function pointerHit(cx, cy){
+    if(!running) return;
+    // hit test topmost (last drawn / smallest y wins) — iterate from end
+    for(var i=balloons.length-1;i>=0;i--){
+      var b=balloons[i];
+      var dx=cx-b.x, dy=cy-b.y;
+      var hitR = b.r+12; // generous for kids/touch
+      if(dx*dx+dy*dy <= hitR*hitR){
+        // pop!
+        balloons.splice(i,1);
+        score++;
+        updateScore();
+        makeBurst(b.x, b.y, b.color);
+        pop(rand(520,760));
+        return;
+      }
+    }
+  }
+
+  function onPointer(e){
+    ensureAudio();
+    if(actx && actx.state==="suspended"){ try{actx.resume();}catch(err){} }
+    var rect = cv.getBoundingClientRect();
+    var pts = (e.changedTouches && e.changedTouches.length) ? e.changedTouches : [e];
+    for(var i=0;i<pts.length;i++){
+      var p=pts[i];
+      var x=(p.clientX-rect.left);
+      var y=(p.clientY-rect.top);
+      pointerHit(x,y);
+    }
+    if(e.cancelable) e.preventDefault();
+  }
+  // Use pointer events if available, else touch+mouse fallback
+  if(window.PointerEvent){
+    cv.addEventListener("pointerdown", onPointer, {passive:false});
+  } else {
+    cv.addEventListener("touchstart", onPointer, {passive:false});
+    cv.addEventListener("mousedown", onPointer, {passive:false});
+  }
+
+  // --- draw ---
+  function drawBalloon(b){
+    ctx.save();
+    // string
+    ctx.strokeStyle="rgba(255,255,255,0.35)";
+    ctx.lineWidth=1.5;
+    ctx.beginPath();
+    ctx.moveTo(b.x, b.y+b.r);
+    ctx.quadraticCurveTo(b.x+6, b.y+b.r+14, b.x, b.y+b.r+26);
+    ctx.stroke();
+
+    // body
+    var grad = ctx.createRadialGradient(b.x-b.r*0.35, b.y-b.r*0.4, b.r*0.15, b.x, b.y, b.r*1.15);
+    grad.addColorStop(0, "#ffffff");
+    grad.addColorStop(0.25, b.color);
+    grad.addColorStop(1, shade(b.color,-0.25));
+    ctx.fillStyle=grad;
+    ctx.beginPath();
+    ctx.ellipse(b.x, b.y, b.r*0.86, b.r, 0, 0, Math.PI*2);
+    ctx.fill();
+
+    // knot
+    ctx.fillStyle=shade(b.color,-0.2);
+    ctx.beginPath();
+    ctx.moveTo(b.x-4, b.y+b.r-1);
+    ctx.lineTo(b.x+4, b.y+b.r-1);
+    ctx.lineTo(b.x, b.y+b.r+6);
+    ctx.closePath();
+    ctx.fill();
+
+    // shine
+    ctx.fillStyle="rgba(255,255,255,0.55)";
+    ctx.beginPath();
+    ctx.ellipse(b.x-b.r*0.3, b.y-b.r*0.35, b.r*0.16, b.r*0.28, -0.5, 0, Math.PI*2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function shade(hex, amt){
+    // hex like #rrggbb, amt -1..1
+    var c = hex.replace("#","");
+    var r=parseInt(c.substr(0,2),16),
+        g=parseInt(c.substr(2,2),16),
+        b=parseInt(c.substr(4,2),16);
+    if(amt<0){ r=r*(1+amt); g=g*(1+amt); b=b*(1+amt); }
+    else { r=r+(255-r)*amt; g=g+(255-g)*amt; b=b+(255-b)*amt; }
+    return "rgb("+(r|0)+","+(g|0)+","+(b|0)+")";
+  }
+
+  function render(){
+    ctx.clearRect(0,0,W,H);
+
+    // balloons
+    for(var i=0;i<balloons.length;i++) drawBalloon(balloons[i]);
+
+    // bursts
+    for(var j=0;j<pops.length;j++){
+      var p=pops[j];
+      var a=1-(p.life/p.max);
+      if(a<0)a=0;
+      ctx.globalAlpha=a;
+      ctx.fillStyle=p.color;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size, 0, Math.PI*2);
+      ctx.fill();
+    }
+    ctx.globalAlpha=1;
+
+    // floaters
+    for(var k=0;k<floaters.length;k++){
+      var f=floaters[k];
+      var a2=1-(f.life/f.max); if(a2<0)a2=0;
+      ctx.globalAlpha=a2;
+      ctx.fillStyle="#fbbf24";
+      ctx.font="bold 26px 'Comic Sans MS',sans-serif";
+      ctx.textAlign="center";
+      ctx.fillText(f.txt, f.x, f.y);
+    }
+    ctx.globalAlpha=1;
+  }
+
+  // --- update ---
+  function update(dt){
+    elapsed += dt*1000;
+
+    // difficulty: interval shrinks over time
+    var diff = Math.min(elapsed/45000, 1);
+    spawnInterval = 1100 - diff*700; // 1100ms -> 400ms
+    if(spawnInterval<380) spawnInterval=380;
+
+    spawnTimer += dt*1000;
+    if(spawnTimer >= spawnInterval){
+      spawnTimer=0;
+      spawnBalloon();
+      // occasionally spawn an extra when it gets hard
+      if(diff>0.6 && Math.random()<0.35) spawnBalloon();
+    }
+
+    // move balloons
+    for(var i=balloons.length-1;i>=0;i--){
+      var b=balloons[i];
+      b.y -= b.speed*dt;
+      b.wobble += b.wobbleSpeed*dt;
+      b.x += (b.vx + Math.sin(b.wobble)*b.amp*0.6)*dt;
+      // clamp x
+      if(b.x < b.r+4){ b.x=b.r+4; b.vx=Math.abs(b.vx); }
+      if(b.x > W-b.r-4){ b.x=W-b.r-4; b.vx=-Math.abs(b.vx); }
+      // escaped top
+      if(b.y + b.r < 0){
+        balloons.splice(i,1);
+        buzz();
+        setLives(lives-1);
+        flashDamage();
+        if(lives<=0){ gameOver(); return; }
+      }
+    }
+
+    // update bursts
+    for(var j=pops.length-1;j>=0;j--){
+      var p=pops[j];
+      p.life+=dt;
+      p.x+=p.vx*dt; p.y+=p.vy*dt;
+      p.vy+=260*dt; // gravity
+      p.vx*=0.96;
+      if(p.life>=p.max) pops.splice(j,1);
+    }
+    // update floaters
+    for(var k=floaters.length-1;k>=0;k--){
+      var f=floaters[k];
+      f.life+=dt; f.y-=40*dt;
+      if(f.life>=f.max) floaters.splice(k,1);
+    }
+  }
+
+  var damageFlash=0;
+  function flashDamage(){
+    damageFlash=1;
+    wrap.style.transition="none";
+    wrap.style.boxShadow="inset 0 0 60px rgba(244,63,94,0.7)";
+    setTimeout(function(){
+      wrap.style.transition="box-shadow .35s";
+      wrap.style.boxShadow="inset 0 0 0 rgba(244,63,94,0)";
+    }, 30);
+  }
+
+  // --- loop ---
+  function frame(t){
+    if(!running) return;
+    if(!lastT) lastT=t;
+    var dt=(t-lastT)/1000;
+    lastT=t;
+    if(dt>0.05) dt=0.05; // clamp big gaps (tab switch)
+    update(dt);
+    render();
+    if(running) rafId=requestAnimationFrame(frame);
+  }
+
+  // --- game flow ---
+  function startGame(){
+    ensureAudio();
+    if(actx && actx.state==="suspended"){ try{actx.resume();}catch(e){} }
+    resize();
+    balloons=[]; pops=[]; floaters=[];
+    score=0; elapsed=0; spawnTimer=0; spawnInterval=1100; lastT=0;
+    setLives(3);
+    updateScore();
+    startScreen.classList.add("hidden");
+    overScreen.classList.add("hidden");
+    running=true;
+    // seed a couple balloons so it starts alive
+    spawnBalloon();
+    rafId=requestAnimationFrame(frame);
+  }
+
+  function gameOver(){
+    running=false;
+    if(rafId) cancelAnimationFrame(rafId);
+    var isNew=false;
+    if(score>record){
+      record=score; isNew=true;
+      try{ localStorage.setItem(REC_KEY, String(record)); }catch(e){}
+    }
+    recTop.textContent="🏆 "+record;
+    finalScore.textContent=score;
+    recLine.textContent="🏆 Recorde: "+record;
+    if(isNew){
+      newRecLine.innerHTML='<span class="newrec">✨ NOVO RECORDE! ✨</span>';
+      overTitle.textContent="Uau! 🎉";
+    } else {
+      newRecLine.innerHTML="";
+      overTitle.textContent="Fim de jogo!";
+    }
+    overScreen.classList.remove("hidden");
+  }
+
+  // buttons
+  document.getElementById("startBtn").addEventListener("click", startGame);
+  document.getElementById("againBtn").addEventListener("click", startGame);
+  document.getElementById("waBtn").addEventListener("click", function(){
+    var txt = "🎈 Estourei "+score+" balões no Estoura Balões da Arena! Bora ver se você me supera? 😜";
+    location.href = "https://wa.me/?text="+encodeURIComponent(txt+" "+location.href);
+  });
+
+  // init
+  resize();
+  // in case layout settles after fonts/paint
+  setTimeout(resize, 80);
+  window.addEventListener("orientationchange", function(){ setTimeout(resize,200); });
+
+})();
+</script>
+</body>
+</html>

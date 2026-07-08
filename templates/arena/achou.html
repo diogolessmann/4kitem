@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>🔍 Achou!</title>
+<style>
+  :root{
+    --bg:#07060f; --fg:#f0f0ff;
+    --ciano:#22d3ee; --roxo:#a855f7; --verde:#34d399;
+    --rosa:#f472b6; --amarelo:#fbbf24;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0; padding:0; height:100%;}
+  body{
+    background:var(--bg); color:var(--fg);
+    font-family:-apple-system,"Segoe UI",Roboto,system-ui,sans-serif;
+    display:flex; justify-content:center; align-items:flex-start;
+    min-height:100%; overscroll-behavior:none;
+  }
+  #app{
+    width:100%; max-width:460px; min-height:100vh;
+    display:flex; flex-direction:column;
+    padding:10px 12px 20px; position:relative;
+    background:radial-gradient(circle at 50% -10%, rgba(168,85,247,.22), transparent 55%);
+  }
+  /* Top bar */
+  .topbar{
+    display:flex; align-items:center; gap:8px;
+    background:rgba(255,255,255,.05);
+    border:1px solid rgba(255,255,255,.08);
+    border-radius:22px; padding:8px 12px;
+  }
+  .back{
+    color:var(--ciano); text-decoration:none; font-weight:800;
+    font-size:14px; padding:6px 10px; border-radius:16px;
+    background:rgba(34,211,238,.12); white-space:nowrap;
+  }
+  .back:active{transform:scale(.94);}
+  .gname{
+    flex:1; text-align:center; font-weight:900; font-size:16px;
+    letter-spacing:.3px;
+  }
+  .stats{display:flex; flex-direction:column; align-items:flex-end; line-height:1.15;}
+  .stats .row{font-size:11px; font-weight:800; white-space:nowrap;}
+  .stats .pts{color:var(--verde);}
+  .stats .rec{color:var(--amarelo);}
+
+  /* Sub bar: lives + timer */
+  .subbar{
+    display:flex; align-items:center; justify-content:space-between;
+    margin-top:12px; gap:10px;
+  }
+  .lives{font-size:22px; letter-spacing:2px; filter:drop-shadow(0 0 6px rgba(244,114,182,.6));}
+  .round-lbl{font-weight:900; font-size:14px; color:var(--roxo);}
+  .timerwrap{
+    flex:1; height:14px; background:rgba(255,255,255,.08);
+    border-radius:10px; overflow:hidden; margin-left:4px;
+  }
+  .timerbar{
+    height:100%; width:100%;
+    background:linear-gradient(90deg,var(--verde),var(--amarelo),var(--rosa));
+    border-radius:10px; transition:width .1s linear;
+  }
+
+  /* Game area */
+  #board{
+    margin-top:16px; flex:1;
+    display:grid; gap:6px;
+    touch-action:manipulation; user-select:none;
+    align-content:start;
+  }
+  .cell{
+    aspect-ratio:1/1; display:flex; align-items:center; justify-content:center;
+    background:rgba(255,255,255,.05);
+    border:1px solid rgba(255,255,255,.06);
+    border-radius:16px; cursor:pointer;
+    line-height:1; user-select:none;
+    transition:transform .08s, background .15s;
+  }
+  .cell:active{transform:scale(.9);}
+  .cell.wrong{animation:shake .35s;}
+  .cell.right{animation:pop .35s;}
+  @keyframes shake{
+    0%,100%{transform:translateX(0);}
+    20%{transform:translateX(-6px);} 40%{transform:translateX(6px);}
+    60%{transform:translateX(-4px);} 80%{transform:translateX(4px);}
+  }
+  @keyframes pop{
+    0%{transform:scale(1);} 50%{transform:scale(1.4);} 100%{transform:scale(1);}
+  }
+
+  /* Toast / floating feedback */
+  #toast{
+    position:absolute; top:45%; left:50%; transform:translate(-50%,-50%);
+    font-size:48px; font-weight:900; pointer-events:none;
+    opacity:0; z-index:20; text-shadow:0 4px 18px rgba(0,0,0,.5);
+  }
+  #toast.show{animation:toastAnim .7s ease-out;}
+  @keyframes toastAnim{
+    0%{opacity:0; transform:translate(-50%,-30%) scale(.5);}
+    30%{opacity:1; transform:translate(-50%,-50%) scale(1.2);}
+    100%{opacity:0; transform:translate(-50%,-70%) scale(1);}
+  }
+
+  /* End screen */
+  #overlay{
+    position:fixed; inset:0; display:none;
+    align-items:center; justify-content:center; padding:20px;
+    background:rgba(7,6,15,.88); backdrop-filter:blur(6px); z-index:50;
+  }
+  #overlay.show{display:flex;}
+  .card{
+    width:100%; max-width:380px; text-align:center;
+    background:linear-gradient(160deg, rgba(168,85,247,.18), rgba(34,211,238,.10));
+    border:1px solid rgba(255,255,255,.12);
+    border-radius:30px; padding:28px 22px;
+    box-shadow:0 20px 60px rgba(0,0,0,.5);
+  }
+  .card h1{margin:0 0 6px; font-size:30px;}
+  .card .sub{margin:0 0 18px; font-size:15px; opacity:.85;}
+  .scorebox{
+    display:flex; gap:12px; justify-content:center; margin-bottom:22px;
+  }
+  .scorebox .b{
+    flex:1; background:rgba(255,255,255,.06); border-radius:20px; padding:14px 6px;
+  }
+  .scorebox .b .n{font-size:30px; font-weight:900;}
+  .scorebox .b .l{font-size:11px; opacity:.8; font-weight:700; text-transform:uppercase; letter-spacing:.5px;}
+  .b.pts .n{color:var(--verde);}
+  .b.rec .n{color:var(--amarelo);}
+  .newrec{
+    color:var(--amarelo); font-weight:900; font-size:16px; margin-bottom:14px;
+    animation:blink 1s infinite;
+  }
+  @keyframes blink{50%{opacity:.4;}}
+  .btn{
+    display:block; width:100%; margin:10px 0 0; padding:16px;
+    border:none; border-radius:22px; font-size:17px; font-weight:900;
+    cursor:pointer; color:#07060f; transition:transform .08s;
+  }
+  .btn:active{transform:scale(.96);}
+  .btn.wa{background:linear-gradient(90deg,var(--verde),var(--ciano));}
+  .btn.again{background:linear-gradient(90deg,var(--roxo),var(--rosa)); color:#fff;}
+
+  /* Start screen */
+  #start{
+    position:fixed; inset:0; display:flex; z-index:60;
+    align-items:center; justify-content:center; padding:20px;
+    background:radial-gradient(circle at 50% 30%, rgba(168,85,247,.25), var(--bg) 60%);
+  }
+  #start.hide{display:none;}
+  #start .card h1{font-size:34px;}
+  #start .big{font-size:64px; margin-bottom:6px;}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="topbar">
+    <a class="back" href="/arena">← Arena</a>
+    <div class="gname">🔍 Achou!</div>
+    <div class="stats">
+      <div class="row pts">⭐ <span id="pts">0</span></div>
+      <div class="row rec">🏆 <span id="rec">0</span></div>
+    </div>
+  </div>
+
+  <div class="subbar">
+    <div class="lives" id="lives">❤️❤️❤️</div>
+    <div class="round-lbl">Rodada <span id="roundN">1</span></div>
+    <div class="timerwrap"><div class="timerbar" id="timerbar"></div></div>
+  </div>
+
+  <div id="board"></div>
+  <div id="toast"></div>
+</div>
+
+<!-- Start screen -->
+<div id="start">
+  <div class="card">
+    <div class="big">🔍</div>
+    <h1>Achou!</h1>
+    <p class="sub">Acha o emoji <b>diferente</b> antes do tempo acabar!<br>Cada acerto = mais pontos. 3 vidas. 🍀</p>
+    <button class="btn again" id="startBtn">▶️ Começar</button>
+  </div>
+</div>
+
+<!-- End screen -->
+<div id="overlay">
+  <div class="card">
+    <h1>Fim de jogo! 🎈</h1>
+    <p class="sub">Mandou bem, campeão!</p>
+    <div class="newrec" id="newrec" style="display:none;">✨ NOVO RECORDE! ✨</div>
+    <div class="scorebox">
+      <div class="b pts"><div class="n" id="finalPts">0</div><div class="l">Rodadas</div></div>
+      <div class="b rec"><div class="n" id="finalRec">0</div><div class="l">Recorde</div></div>
+    </div>
+    <button class="btn wa" id="waBtn">📲 Bata meu recorde!</button>
+    <button class="btn again" id="againBtn">🔄 Jogar de novo</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var REC_KEY = "achou_diferente_recorde_v1";
+
+  var board   = document.getElementById("board");
+  var ptsEl   = document.getElementById("pts");
+  var recEl   = document.getElementById("rec");
+  var livesEl = document.getElementById("lives");
+  var roundEl = document.getElementById("roundN");
+  var timerBar= document.getElementById("timerbar");
+  var toast   = document.getElementById("toast");
+  var overlay = document.getElementById("overlay");
+  var startScr= document.getElementById("start");
+
+  // Pares de emoji parecidos (base, diferente). Fáceis primeiro, sutis depois.
+  var PAIRS = [
+    ["🐶","🐺"], ["😀","😄"], ["🍎","🍏"], ["🐱","🐯"],
+    ["🌕","🌝"], ["🐸","🐢"], ["⭐","🌟"], ["🐷","🐗"],
+    ["🌸","🌺"], ["🐔","🐤"], ["🍊","🍋"], ["🐰","🐹"],
+    ["😺","😸"], ["🦊","🐶"], ["🌚","🌑"], ["🥎","⚾"],
+    ["🟢","🟩"], ["💙","💚"], ["🔵","🟣"], ["🍓","🍒"]
+  ];
+
+  var score, lives, round, timerId, deadline, roundDur, locked;
+  var recorde = parseInt(localStorage.getItem(REC_KEY) || "0", 10) || 0;
+  recEl.textContent = recorde;
+
+  // ---- Áudio curtinho (WebAudio) ----
+  var actx = null;
+  function beep(freq, dur, type){
+    try{
+      if(!actx){ var AC = window.AudioContext || window.webkitAudioContext; if(!AC) return; actx = new AC(); }
+      if(actx.state === "suspended") actx.resume();
+      var o = actx.createOscillator(), g = actx.createGain();
+      o.type = type || "sine"; o.frequency.value = freq;
+      o.connect(g); g.connect(actx.destination);
+      g.gain.setValueAtTime(0.0001, actx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.25, actx.currentTime + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, actx.currentTime + dur);
+      o.start(); o.stop(actx.currentTime + dur + 0.02);
+    }catch(e){}
+  }
+  function sfxRight(){ beep(660,0.09,"triangle"); setTimeout(function(){beep(990,0.12,"triangle");},80); }
+  function sfxWrong(){ beep(180,0.18,"sawtooth"); }
+  function sfxOver(){ beep(300,0.15,"square"); setTimeout(function(){beep(200,0.2,"square");},130); setTimeout(function(){beep(120,0.3,"square");},280); }
+
+  function showToast(txt){
+    toast.textContent = txt;
+    toast.classList.remove("show");
+    void toast.offsetWidth; // reflow
+    toast.classList.add("show");
+  }
+
+  function updateHUD(){
+    ptsEl.textContent = score;
+    recEl.textContent = Math.max(recorde, score);
+    roundEl.textContent = round;
+    var hearts = "";
+    for(var i=0;i<3;i++){ hearts += (i<lives) ? "❤️" : "🖤"; }
+    livesEl.textContent = hearts;
+  }
+
+  // Grade cresce com as rodadas: dá dificuldade progressiva.
+  function gridSizeFor(r){
+    if(r <= 2) return 2;      // 2x2
+    if(r <= 4) return 3;      // 3x3
+    if(r <= 7) return 4;      // 4x4
+    if(r <= 11) return 5;     // 5x5
+    return 6;                 // 6x6 (teto)
+  }
+
+  function clearTimer(){
+    if(timerId){ cancelAnimationFrame(timerId); timerId = null; }
+  }
+
+  function startTimer(){
+    clearTimer();
+    // tempo diminui suavemente a cada rodada, com piso.
+    roundDur = Math.max(3.2, 8 - (round-1)*0.35) * 1000;
+    deadline = performance.now() + roundDur;
+    function tick(now){
+      var left = deadline - now;
+      var frac = Math.max(0, left / roundDur);
+      timerBar.style.width = (frac*100).toFixed(1) + "%";
+      if(left <= 0){
+        timerId = null;
+        onTimeout();
+        return;
+      }
+      timerId = requestAnimationFrame(tick);
+    }
+    timerId = requestAnimationFrame(tick);
+  }
+
+  function buildRound(){
+    locked = false;
+    board.innerHTML = "";
+    var n = gridSizeFor(round);
+    board.style.gridTemplateColumns = "repeat("+n+",1fr)";
+    var total = n*n;
+
+    var pair = PAIRS[Math.floor(Math.random()*PAIRS.length)];
+    // aleatoriza qual é base e qual é o "diferente"
+    var base = pair[0], diff = pair[1];
+    if(Math.random() < 0.5){ base = pair[1]; diff = pair[0]; }
+
+    var oddIndex = Math.floor(Math.random()*total);
+
+    // tamanho da fonte proporcional à célula
+    var fs = Math.max(20, Math.min(56, Math.floor(360/n * 0.62)));
+
+    for(var i=0;i<total;i++){
+      var c = document.createElement("div");
+      c.className = "cell";
+      c.style.fontSize = fs + "px";
+      c.textContent = (i === oddIndex) ? diff : base;
+      c.dataset.odd = (i === oddIndex) ? "1" : "0";
+      c.addEventListener("pointerdown", onPick, {passive:true});
+      board.appendChild(c);
+    }
+    updateHUD();
+    startTimer();
+  }
+
+  function onPick(e){
+    if(locked) return;
+    var cell = e.currentTarget;
+    if(cell.dataset.odd === "1"){
+      // ACERTOU
+      locked = true;
+      clearTimer();
+      cell.classList.add("right");
+      score++;
+      showToast("+1 ✅");
+      sfxRight();
+      updateHUD();
+      setTimeout(function(){
+        round++;
+        buildRound();
+      }, 420);
+    }else{
+      // ERROU
+      cell.classList.add("wrong");
+      sfxWrong();
+      loseLife("❌");
+    }
+  }
+
+  function onTimeout(){
+    if(locked) return;
+    sfxWrong();
+    loseLife("⏰");
+  }
+
+  function loseLife(mark){
+    lives--;
+    showToast(mark);
+    updateHUD();
+    if(lives <= 0){
+      locked = true;
+      clearTimer();
+      setTimeout(gameOver, 500);
+    }else{
+      // penalidade leve: reinicia o cronômetro da mesma rodada
+      startTimer();
+    }
+  }
+
+  function gameOver(){
+    clearTimer();
+    var isNew = score > recorde;
+    if(isNew){ recorde = score; localStorage.setItem(REC_KEY, String(recorde)); }
+    document.getElementById("finalPts").textContent = score;
+    document.getElementById("finalRec").textContent = recorde;
+    document.getElementById("newrec").style.display = isNew ? "block" : "none";
+    recEl.textContent = recorde;
+    sfxOver();
+    overlay.classList.add("show");
+  }
+
+  function newGame(){
+    score = 0; lives = 3; round = 1; locked = false;
+    overlay.classList.remove("show");
+    startScr.classList.add("hide");
+    updateHUD();
+    buildRound();
+  }
+
+  // Botões
+  document.getElementById("startBtn").addEventListener("click", function(){ beep(880,0.08,"triangle"); newGame(); });
+  document.getElementById("againBtn").addEventListener("click", newGame);
+  document.getElementById("waBtn").addEventListener("click", function(){
+    var txt = "🔍 Fiz " + score + " rodadas no Achou! (recorde " + recorde + "). Bora ver se você me passa? 😏";
+    location.href = "https://wa.me/?text=" + encodeURIComponent(txt + " " + location.href);
+  });
+
+  updateHUD();
+})();
+</script>
+</body>
+</html>

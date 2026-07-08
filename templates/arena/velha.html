@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>⭕ Jogo da Velha vs Robô</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  :root{
+    --bg:#07060f; --txt:#f0f0ff; --ciano:#22d3ee; --roxo:#a855f7;
+    --verde:#34d399; --rosa:#f472b6; --amarelo:#fbbf24;
+    --card:#141127;
+  }
+  html,body{ height:100%; }
+  body{
+    background:var(--bg); color:var(--txt);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    display:flex; justify-content:center;
+    touch-action:manipulation; overflow-x:hidden;
+    min-height:100vh;
+  }
+  #app{
+    width:100%; max-width:460px; min-height:100vh;
+    display:flex; flex-direction:column;
+    padding:12px 14px 24px; gap:14px;
+    position:relative;
+  }
+
+  /* Topbar */
+  .topbar{
+    display:flex; align-items:center; justify-content:space-between;
+    background:var(--card); border-radius:24px; padding:10px 14px;
+    box-shadow:0 6px 20px rgba(168,85,247,.18);
+    gap:8px;
+  }
+  .back{
+    color:var(--ciano); text-decoration:none; font-weight:800; font-size:15px;
+    background:rgba(34,211,238,.12); padding:8px 12px; border-radius:16px;
+    white-space:nowrap;
+  }
+  .back:active{ transform:scale(.94); }
+  .gname{
+    font-weight:900; font-size:16px; text-align:center; flex:1;
+    background:linear-gradient(90deg,var(--rosa),var(--amarelo));
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+    letter-spacing:.5px;
+  }
+  .scores{ display:flex; gap:6px; }
+  .pill{
+    background:rgba(255,255,255,.06); border-radius:16px; padding:6px 10px;
+    text-align:center; min-width:52px;
+  }
+  .pill .lbl{ font-size:9px; opacity:.7; font-weight:700; letter-spacing:.5px; display:block; }
+  .pill .val{ font-size:18px; font-weight:900; line-height:1.1; }
+  .pill.pts .val{ color:var(--verde); }
+  .pill.rec .val{ color:var(--amarelo); }
+
+  /* Status */
+  .status{
+    text-align:center; font-size:19px; font-weight:900; min-height:28px;
+    background:linear-gradient(90deg,var(--ciano),var(--roxo));
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+    transition:transform .15s;
+  }
+  .status.pop{ transform:scale(1.12); }
+
+  /* Board */
+  .board-wrap{
+    display:flex; align-items:center; justify-content:center; flex:1;
+  }
+  .board{
+    display:grid; grid-template-columns:repeat(3,1fr); grid-template-rows:repeat(3,1fr);
+    gap:10px; width:100%; aspect-ratio:1/1;
+    background:linear-gradient(135deg,rgba(168,85,247,.15),rgba(34,211,238,.12));
+    padding:12px; border-radius:32px;
+    box-shadow:0 10px 30px rgba(0,0,0,.4), inset 0 0 0 2px rgba(255,255,255,.05);
+  }
+  .cell{
+    background:var(--card); border-radius:22px;
+    display:flex; align-items:center; justify-content:center;
+    font-size:min(15vw,58px); cursor:pointer; user-select:none;
+    transition:transform .1s, box-shadow .2s;
+    box-shadow:inset 0 0 0 2px rgba(255,255,255,.04);
+  }
+  .cell:active{ transform:scale(.93); }
+  .cell.filled{ cursor:default; }
+  .cell .mark{ display:inline-block; animation:pop .28s cubic-bezier(.2,1.4,.5,1); }
+  @keyframes pop{ 0%{ transform:scale(0) rotate(-40deg); opacity:0; } 100%{ transform:scale(1) rotate(0); opacity:1; } }
+  .cell.win{
+    animation:winPulse .6s ease infinite alternate;
+    box-shadow:inset 0 0 0 3px var(--amarelo), 0 0 22px var(--amarelo);
+  }
+  @keyframes winPulse{ from{ transform:scale(1); } to{ transform:scale(1.06); } }
+
+  /* Confetti */
+  .confetti{ position:fixed; top:0; left:0; pointer-events:none; z-index:50; font-size:22px; will-change:transform; }
+
+  /* End screen overlay */
+  .overlay{
+    position:fixed; inset:0; background:rgba(7,6,15,.86); backdrop-filter:blur(6px);
+    display:flex; align-items:center; justify-content:center; padding:20px; z-index:80;
+    opacity:0; pointer-events:none; transition:opacity .25s;
+  }
+  .overlay.show{ opacity:1; pointer-events:auto; }
+  .panel{
+    background:var(--card); border-radius:32px; padding:26px 22px; width:100%; max-width:420px;
+    text-align:center; box-shadow:0 20px 60px rgba(168,85,247,.35);
+    animation:rise .35s cubic-bezier(.2,1.2,.4,1);
+  }
+  @keyframes rise{ from{ transform:translateY(30px) scale(.9); opacity:0; } to{ transform:translateY(0) scale(1); opacity:1; } }
+  .panel .big{ font-size:52px; margin-bottom:6px; animation:pop .4s; }
+  .panel h2{ font-size:26px; font-weight:900; margin-bottom:4px; }
+  .panel .sub{ font-size:15px; opacity:.85; margin-bottom:18px; }
+  .panel .scorebox{
+    display:flex; gap:12px; justify-content:center; margin-bottom:22px;
+  }
+  .scorebox .b{ background:rgba(255,255,255,.05); border-radius:20px; padding:12px 16px; min-width:90px; }
+  .scorebox .b .l{ font-size:11px; opacity:.7; font-weight:700; }
+  .scorebox .b .v{ font-size:28px; font-weight:900; }
+  .scorebox .b.pts .v{ color:var(--verde); }
+  .scorebox .b.rec .v{ color:var(--amarelo); }
+  .newrec{
+    color:var(--amarelo); font-weight:900; font-size:16px; margin-bottom:16px;
+    animation:winPulse .5s ease infinite alternate;
+  }
+  .btn{
+    display:block; width:100%; border:none; border-radius:20px; padding:16px;
+    font-size:18px; font-weight:900; cursor:pointer; margin-top:12px;
+    color:#07060f; transition:transform .1s; font-family:inherit;
+  }
+  .btn:active{ transform:scale(.96); }
+  .btn.wa{ background:linear-gradient(90deg,var(--verde),var(--ciano)); }
+  .btn.again{ background:linear-gradient(90deg,var(--rosa),var(--amarelo)); }
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="topbar">
+    <a class="back" href="/arena">← Arena</a>
+    <div class="gname">⭕ Velha</div>
+    <div class="scores">
+      <div class="pill pts"><span class="lbl">PONTOS</span><span class="val" id="pts">0</span></div>
+      <div class="pill rec"><span class="lbl">RECORDE</span><span class="val" id="rec">0</span></div>
+    </div>
+  </div>
+
+  <div class="status" id="status">Sua vez! Toque num quadrado ❌</div>
+
+  <div class="board-wrap">
+    <div class="board" id="board"></div>
+  </div>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="panel">
+    <div class="big" id="endEmoji">🎉</div>
+    <h2 id="endTitle">Você venceu!</h2>
+    <div class="sub" id="endSub">Mandou bem!</div>
+    <div class="newrec" id="newrec" style="display:none">🏆 NOVO RECORDE!</div>
+    <div class="scorebox">
+      <div class="b pts"><div class="l">SEUS PONTOS</div><div class="v" id="endPts">0</div></div>
+      <div class="b rec"><div class="l">RECORDE</div><div class="v" id="endRec">0</div></div>
+    </div>
+    <button class="btn wa" id="waBtn">📲 Bata meu recorde!</button>
+    <button class="btn again" id="againBtn">🔄 Jogar de novo</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var REC_KEY = "velha_robo_recorde_v1";
+
+  var board = document.getElementById("board");
+  var statusEl = document.getElementById("status");
+  var ptsEl = document.getElementById("pts");
+  var recEl = document.getElementById("rec");
+  var overlay = document.getElementById("overlay");
+
+  var HUMAN = "X", BOT = "O";
+  var cells = [];        // DOM
+  var grid = [];         // "X" | "O" | ""
+  var locked = false;    // trava durante jogada do bot / fim
+  var points = 0;        // vitórias acumuladas (sessão)
+  var record = 0;
+
+  var WINS = [
+    [0,1,2],[3,4,5],[6,7,8],
+    [0,3,6],[1,4,7],[2,5,8],
+    [0,2,4] && [0,4,8],[2,4,6]
+  ];
+  // fix diagonals cleanly
+  WINS = [
+    [0,1,2],[3,4,5],[6,7,8],
+    [0,3,6],[1,4,7],[2,5,8],
+    [0,4,8],[2,4,6]
+  ];
+
+  /* ---------- Audio (curto, opcional) ---------- */
+  var actx = null;
+  function beep(freq, dur, type){
+    try{
+      if(!actx) actx = new (window.AudioContext||window.webkitAudioContext)();
+      if(actx.state === "suspended") actx.resume();
+      var o = actx.createOscillator();
+      var g = actx.createGain();
+      o.type = type || "sine";
+      o.frequency.value = freq;
+      g.gain.setValueAtTime(0.0001, actx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.18, actx.currentTime + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, actx.currentTime + dur);
+      o.connect(g); g.connect(actx.destination);
+      o.start(); o.stop(actx.currentTime + dur + 0.02);
+    }catch(e){}
+  }
+  function sfxPlace(){ beep(520, 0.09, "triangle"); }
+  function sfxBot(){ beep(300, 0.10, "sine"); }
+  function sfxWin(){ beep(660,0.12,"square"); setTimeout(function(){beep(880,0.14,"square");},110); setTimeout(function(){beep(1046,0.18,"square");},240); }
+  function sfxLose(){ beep(220,0.18,"sawtooth"); setTimeout(function(){beep(160,0.22,"sawtooth");},150); }
+  function sfxDraw(){ beep(400,0.14,"triangle"); }
+
+  /* ---------- Setup ---------- */
+  function loadRecord(){
+    try{
+      var v = parseInt(localStorage.getItem(REC_KEY), 10);
+      record = isNaN(v) ? 0 : v;
+    }catch(e){ record = 0; }
+    recEl.textContent = record;
+  }
+  function saveRecord(){
+    try{ localStorage.setItem(REC_KEY, String(record)); }catch(e){}
+  }
+
+  function buildBoard(){
+    board.innerHTML = "";
+    cells = [];
+    for(var i=0;i<9;i++){
+      var c = document.createElement("div");
+      c.className = "cell";
+      c.setAttribute("data-i", i);
+      c.addEventListener("pointerdown", onCellDown);
+      board.appendChild(c);
+      cells.push(c);
+    }
+  }
+
+  function newGame(){
+    grid = ["","","","","","","","",""];
+    locked = false;
+    for(var i=0;i<9;i++){
+      cells[i].className = "cell";
+      cells[i].innerHTML = "";
+    }
+    setStatus("Sua vez! Toque num quadrado ❌", false);
+    hideOverlay();
+  }
+
+  function setStatus(txt, pop){
+    statusEl.textContent = txt;
+    if(pop){
+      statusEl.classList.remove("pop");
+      void statusEl.offsetWidth;
+      statusEl.classList.add("pop");
+    }
+  }
+
+  /* ---------- Play ---------- */
+  function onCellDown(e){
+    e.preventDefault();
+    if(locked) return;
+    var i = parseInt(this.getAttribute("data-i"), 10);
+    if(grid[i] !== "") return;
+    place(i, HUMAN);
+    sfxPlace();
+
+    var res = evaluate();
+    if(res){ endGame(res); return; }
+
+    // Vez do robô
+    locked = true;
+    setStatus("O robô está pensando...", false);
+    setTimeout(botMove, 420);
+  }
+
+  function place(i, who){
+    grid[i] = who;
+    var mark = who === HUMAN ? "❌" : "⭕";
+    cells[i].innerHTML = '<span class="mark">' + mark + '</span>';
+    cells[i].classList.add("filled");
+  }
+
+  function botMove(){
+    var i = chooseBotMove();
+    if(i === -1){ // não deveria acontecer, mas segura
+      var res0 = evaluate();
+      if(res0) endGame(res0); else { locked=false; setStatus("Sua vez! ❌", false); }
+      return;
+    }
+    place(i, BOT);
+    sfxBot();
+    var res = evaluate();
+    if(res){ endGame(res); return; }
+    locked = false;
+    setStatus("Sua vez! ❌", true);
+  }
+
+  /* ---------- IA: vencer > bloquear > centro > canto > lado ---------- */
+  function findWinningMove(who){
+    for(var w=0; w<WINS.length; w++){
+      var line = WINS[w];
+      var a=grid[line[0]], b=grid[line[1]], c=grid[line[2]];
+      var vals=[a,b,c];
+      var countWho=0, countEmpty=0, emptyIdx=-1;
+      for(var k=0;k<3;k++){
+        if(vals[k]===who) countWho++;
+        else if(vals[k]===""){ countEmpty++; emptyIdx=line[k]; }
+      }
+      if(countWho===2 && countEmpty===1) return emptyIdx;
+    }
+    return -1;
+  }
+  function emptyCells(){
+    var arr=[];
+    for(var i=0;i<9;i++){ if(grid[i]==="") arr.push(i); }
+    return arr;
+  }
+  function chooseBotMove(){
+    // 1) vencer
+    var m = findWinningMove(BOT);
+    if(m !== -1) return m;
+    // 2) bloquear
+    m = findWinningMove(HUMAN);
+    if(m !== -1) return m;
+    // 3) centro
+    if(grid[4]==="") return 4;
+    // 4) canto (aleatório entre livres)
+    var corners = shuffle([0,2,6,8].filter(function(i){return grid[i]==="";}));
+    if(corners.length) return corners[0];
+    // 5) lado / qualquer livre
+    var rest = shuffle(emptyCells());
+    return rest.length ? rest[0] : -1;
+  }
+  function shuffle(a){
+    for(var i=a.length-1;i>0;i--){
+      var j=Math.floor(Math.random()*(i+1));
+      var t=a[i]; a[i]=a[j]; a[j]=t;
+    }
+    return a;
+  }
+
+  /* ---------- Resultado ---------- */
+  function evaluate(){
+    for(var w=0; w<WINS.length; w++){
+      var line = WINS[w];
+      var a=grid[line[0]];
+      if(a!=="" && a===grid[line[1]] && a===grid[line[2]]){
+        return { winner:a, line:line };
+      }
+    }
+    // empate?
+    if(emptyCells().length === 0) return { winner:"draw", line:null };
+    return null;
+  }
+
+  function highlight(line){
+    if(!line) return;
+    for(var k=0;k<line.length;k++){ cells[line[k]].classList.add("win"); }
+  }
+
+  function endGame(res){
+    locked = true;
+    var title, sub, emoji, won=false;
+
+    if(res.winner === HUMAN){
+      won = true;
+      points += 1;
+      title = "Você venceu!";
+      sub = "Mandou muito bem! 🎯";
+      emoji = "🎉";
+      highlight(res.line);
+      sfxWin();
+      launchConfetti();
+      setStatus("🎉 Você venceu!", true);
+    } else if(res.winner === BOT){
+      // partida perdida encerra a série -> zera pontos
+      points = 0;
+      title = "O robô venceu 😅";
+      sub = "Quase! Tenta de novo.";
+      emoji = "🤖";
+      highlight(res.line);
+      sfxLose();
+      setStatus("🤖 O robô venceu!", true);
+    } else {
+      title = "Empate!";
+      sub = "Ninguém levou. Bora de novo!";
+      emoji = "🤝";
+      sfxDraw();
+      setStatus("🤝 Empate!", true);
+    }
+
+    // recorde
+    var isNewRec = false;
+    if(points > record){
+      record = points;
+      saveRecord();
+      isNewRec = true;
+    }
+
+    ptsEl.textContent = points;
+    recEl.textContent = record;
+
+    // preencher overlay
+    document.getElementById("endEmoji").textContent = emoji;
+    document.getElementById("endTitle").textContent = title;
+    document.getElementById("endSub").textContent = sub;
+    document.getElementById("endPts").textContent = points;
+    document.getElementById("endRec").textContent = record;
+    document.getElementById("newrec").style.display = (isNewRec && won) ? "block" : "none";
+
+    setTimeout(showOverlay, 750);
+  }
+
+  function showOverlay(){ overlay.classList.add("show"); }
+  function hideOverlay(){ overlay.classList.remove("show"); }
+
+  /* ---------- Confetti ---------- */
+  function launchConfetti(){
+    var emojis = ["🎉","⭐","💚","💜","💛","🩷","✨","🎊"];
+    var n = 26;
+    for(var i=0;i<n;i++){
+      (function(){
+        var el = document.createElement("div");
+        el.className = "confetti";
+        el.textContent = emojis[Math.floor(Math.random()*emojis.length)];
+        var startX = Math.random()*window.innerWidth;
+        el.style.left = startX + "px";
+        el.style.top = "-30px";
+        document.body.appendChild(el);
+        var dur = 1400 + Math.random()*1200;
+        var drift = (Math.random()-0.5)*160;
+        var rot = (Math.random()-0.5)*720;
+        var start = null;
+        function step(ts){
+          if(!start) start = ts;
+          var t = (ts - start)/dur;
+          if(t >= 1){ el.remove(); return; }
+          var y = t*(window.innerHeight+60);
+          var x = drift*t;
+          el.style.transform = "translate("+x+"px,"+y+"px) rotate("+(rot*t)+"deg)";
+          el.style.opacity = String(1 - t*0.9);
+          requestAnimationFrame(step);
+        }
+        requestAnimationFrame(step);
+      })();
+    }
+  }
+
+  /* ---------- Botões fim ---------- */
+  document.getElementById("againBtn").addEventListener("click", function(){
+    newGame();
+  });
+  document.getElementById("waBtn").addEventListener("click", function(){
+    var texto = "🕹️ Fiz " + record + " vitória(s) seguida(s) no Jogo da Velha vs Robô da Arena! Bate meu recorde se conseguir 😏";
+    location.href = "https://wa.me/?text=" + encodeURIComponent(texto + " " + location.href);
+  });
+
+  /* ---------- Init ---------- */
+  loadRecord();
+  buildBoard();
+  newGame();
+})();
+</script>
+</body>
+</html>
