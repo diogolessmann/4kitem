@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#07060f">
+<title>🦎 Camaleão — Arena · AmbitiON</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%;background:#07060f;color:#f5f3ff;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    overflow:hidden;-webkit-user-select:none;user-select:none;overscroll-behavior:none}
+  #cam-canvas{position:fixed;inset:0;display:block;touch-action:none;z-index:1}
+  .cam-scan{position:fixed;inset:0;z-index:2;pointer-events:none;opacity:.35;
+    background:repeating-linear-gradient(0deg,rgba(34,211,238,.05) 0 1px,transparent 1px 3px)}
+  /* ── overlays ── */
+  .cam-ov{position:fixed;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;padding:22px;
+    background:rgba(7,6,15,.82);backdrop-filter:blur(3px)}
+  .cam-ov.dark{background:rgba(7,6,15,.94)}
+  .cam-card{width:100%;max-width:380px;text-align:center;background:linear-gradient(180deg,#12101f,#0c0a17);
+    border:1px solid #2a2450;border-radius:22px;padding:26px 22px;box-shadow:0 0 44px rgba(168,85,247,.18)}
+  .cam-logo{font-size:30px;font-weight:900;letter-spacing:.5px;
+    background:linear-gradient(90deg,#22d3ee,#a855f7,#f472b6);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+  .cam-logo.sm{font-size:22px}
+  .cam-sub{font-size:14px;color:#b8b4d6;margin:8px 0 4px;line-height:1.5}
+  .cam-fine{font-size:12px;color:#7d789e;margin-top:12px}
+  .cam-input{width:100%;margin:16px 0 4px;background:#0d0b18;border:2px solid #2a2450;border-radius:14px;
+    color:#f5f3ff;padding:14px;font-size:16px;font-family:inherit;text-align:center}
+  .cam-input:focus{outline:none;border-color:#22d3ee}
+  .cam-btn{display:block;width:100%;border:none;border-radius:14px;padding:15px;font-size:15px;font-weight:800;
+    font-family:inherit;cursor:pointer;margin-top:10px;color:#07060f}
+  .cam-btn.big{background:linear-gradient(90deg,#a855f7,#f472b6);color:#fff;box-shadow:0 5px 20px rgba(168,85,247,.4);font-size:17px}
+  .cam-btn.wa{background:linear-gradient(90deg,#34d399,#22d3ee)}
+  .cam-btn.ghost{background:transparent;color:#b8b4d6;border:1px solid #2a2450;box-shadow:none;font-size:13px;padding:11px}
+  .cam-btn:disabled{opacity:.5}
+  .cam-btn:active{transform:translateY(1px)}
+  .cam-count{font-size:14px;color:#22d3ee;font-weight:800;margin:14px 0 8px}
+  .cam-players{display:flex;flex-direction:column;gap:6px;margin:6px 0 14px;max-height:38vh;overflow:auto}
+  .cam-pl{background:#171335;border-radius:10px;padding:9px 12px;font-size:14px;font-weight:700;text-align:left}
+  .cam-res-row{display:flex;justify-content:space-between;align-items:center;background:#171335;border-radius:10px;
+    padding:9px 12px;font-size:14px}
+  .cam-res-row.top{background:linear-gradient(90deg,rgba(251,191,36,.18),rgba(168,85,247,.14));border:1px solid rgba(251,191,36,.4)}
+  .cam-res-row b{color:#fbbf24;font-size:16px}
+  .cam-big-timer{font-size:56px;font-weight:900;color:#fbbf24;margin:14px 0 6px;
+    text-shadow:0 0 22px rgba(251,191,36,.5)}
+  /* ── HUD ── */
+  .cam-hud{position:fixed;top:0;left:0;right:0;z-index:15;display:flex;align-items:center;justify-content:space-between;
+    padding:calc(env(safe-area-inset-top,0px) + 10px) 14px 10px;font-weight:900;
+    background:linear-gradient(180deg,rgba(7,6,15,.85),transparent)}
+  .cam-hud .hud-l{color:#a855f7;font-size:14px;letter-spacing:1px}
+  .cam-hud .hud-c{color:#fbbf24;font-size:20px;text-shadow:0 0 14px rgba(251,191,36,.5)}
+  .cam-hud .hud-r{color:#22d3ee;font-size:14px;display:flex;gap:12px}
+  .cam-hud.urg .hud-c{color:#ff3b6b;animation:pulse .6s infinite}
+  @keyframes pulse{50%{opacity:.4}}
+  /* ── crosshair hint ── */
+  #cam-crosshair{position:fixed;bottom:calc(env(safe-area-inset-bottom,0px) + 16px);left:0;right:0;z-index:15;
+    text-align:center;font-size:13px;color:#22d3ee;font-weight:700;pointer-events:none;
+    text-shadow:0 0 10px rgba(0,0,0,.9)}
+  /* ── skinbar ── */
+  #cam-skinbar{position:fixed;bottom:0;left:0;right:0;z-index:16;padding:10px 10px calc(env(safe-area-inset-bottom,0px) + 10px);
+    background:linear-gradient(0deg,rgba(7,6,15,.92),transparent)}
+  .sb-lab{font-size:11px;color:#b8b4d6;text-align:center;letter-spacing:1px;font-weight:800;margin-bottom:6px}
+  #cam-skins{display:flex;gap:8px;justify-content:center;overflow-x:auto;padding-bottom:6px}
+  .cam-skin{flex:0 0 auto;width:56px;height:56px;border-radius:14px;border:2px solid #2a2450;background:#0d0b18;
+    cursor:pointer;padding:0;display:flex;align-items:center;justify-content:center}
+  .cam-skin.sel{border-color:#f472b6;box-shadow:0 0 16px rgba(244,114,182,.5)}
+  .cam-lock{display:block;width:100%;max-width:340px;margin:8px auto 0;border:none;border-radius:14px;padding:13px;
+    font-size:15px;font-weight:800;font-family:inherit;cursor:pointer;color:#07060f;
+    background:linear-gradient(90deg,#22d3ee,#34d399)}
+  .cam-lock.on{background:linear-gradient(90deg,#34d399,#a855f7);color:#fff}
+  /* ── toast ── */
+  .cam-toast{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) scale(.9);z-index:30;
+    background:rgba(12,10,23,.95);border:1px solid #2a2450;border-radius:14px;padding:12px 20px;font-weight:800;
+    font-size:15px;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;max-width:80vw;text-align:center}
+  .cam-toast.on{opacity:1;transform:translate(-50%,-50%) scale(1)}
+</style>
+</head>
+<body>
+  <canvas id="cam-canvas"></canvas>
+  <div class="cam-scan"></div>
+
+  <div id="cam-hud" class="cam-hud" style="display:none">
+    <div class="hud-l"><span id="cam-hud-phase">—</span></div>
+    <div class="hud-c"><span id="cam-hud-timer">—</span></div>
+    <div class="hud-r"><span id="cam-hud-left">🦎 0</span><span id="cam-hud-score">0</span></div>
+  </div>
+
+  <div id="cam-crosshair" style="display:none">👆 toque no objeto suspeito pra cutucar</div>
+
+  <div id="cam-skinbar" style="display:none">
+    <div class="sb-lab">VIRE UM OBJETO E FIQUE PARADO</div>
+    <div id="cam-skins"></div>
+    <button id="cam-btn-lock" class="cam-lock">🫥 CAMUFLAR AGORA</button>
+  </div>
+
+  <!-- criar -->
+  <div id="cam-create" class="cam-ov" style="display:none">
+    <div class="cam-card">
+      <div class="cam-logo">🦎 CAMALEÃO</div>
+      <div class="cam-sub">Esconde-esconde de camuflagem.<br>Vire um objeto e some no cenário.</div>
+      <input id="cam-nick" class="cam-input" maxlength="24" placeholder="Seu apelido">
+      <button id="cam-btn-create" class="cam-btn big">CRIAR SALA</button>
+      <div class="cam-fine">grátis · sem cadastro · 2 a 10 jogadores</div>
+    </div>
+  </div>
+
+  <!-- lobby -->
+  <div id="cam-lobby" class="cam-ov" style="display:none">
+    <div class="cam-card">
+      <div class="cam-logo sm">🦎 CAMALEÃO</div>
+      <div class="cam-count" id="cam-lobby-count">—</div>
+      <div id="cam-lobby-players" class="cam-players"></div>
+      <button id="cam-btn-share" class="cam-btn wa">📲 CHAMAR NO WHATSAPP</button>
+      <button id="cam-copy" class="cam-btn ghost">Copiar link</button>
+      <button id="cam-btn-start" class="cam-btn big" style="display:none">▶ COMEÇAR</button>
+      <div id="cam-hint-nohost" class="cam-fine">esperando o anfitrião começar…</div>
+    </div>
+  </div>
+
+  <!-- blindfold (caçador no hiding) -->
+  <div id="cam-blind" class="cam-ov dark" style="display:none">
+    <div class="cam-card">
+      <div class="cam-logo">🙈</div>
+      <div class="cam-sub">Os camaleões estão se escondendo…<br>sem espiar!</div>
+      <div class="cam-big-timer" id="cam-blind-timer">—</div>
+      <div class="cam-fine">prepare-se pra caçar 🔦</div>
+    </div>
+  </div>
+
+  <!-- resultado -->
+  <div id="cam-result" class="cam-ov" style="display:none">
+    <div class="cam-card">
+      <div class="cam-logo sm" id="cam-res-title">Fim!</div>
+      <div id="cam-res-list" class="cam-players"></div>
+      <button id="cam-btn-share2" class="cam-btn wa">📲 Chamar de novo</button>
+      <button id="cam-btn-again" class="cam-btn big">🔄 Revanche</button>
+    </div>
+  </div>
+
+  <!-- erro fatal -->
+  <div id="cam-fatal" class="cam-ov dark" style="display:none">
+    <div class="cam-card">
+      <div class="cam-logo">🦎</div>
+      <div class="cam-sub" id="cam-fatal-txt"></div>
+      <a class="cam-btn big" href="/arena/camaleao">Criar nova sala</a>
+    </div>
+  </div>
+
+  <div id="cam-toast" class="cam-toast"></div>
+
+<script>window.CAM_TOKEN = {{ token|tojson }};</script>
+<script src="/static/arena/camaleao/camaleao.js?v=1"></script>
+</body>
+</html>

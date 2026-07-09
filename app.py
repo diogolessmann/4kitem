@@ -15037,6 +15037,18 @@ except Exception as _arena_err:
     log.warning(f'[Arena] Erro ao carregar blueprint: {_arena_err}')
 
 # ══════════════════════════════════════════════════════════════════════════════
+# CAMALEÃO — Esconde-esconde de camuflagem 2D multiplayer (Arena/AmbitiON) — GRÁTIS
+# ══════════════════════════════════════════════════════════════════════════════
+try:
+    from arena_camaleao import arena_camaleao_bp
+    import camaleao_db as _camaleao_db
+    _camaleao_db.init_schema()
+    app.register_blueprint(arena_camaleao_bp)
+    log.info('[Camaleão] Blueprint registrado em /arena/camaleao')
+except Exception as _cam_err:
+    log.warning(f'[Camaleão] Erro ao carregar blueprint: {_cam_err}')
+
+# ══════════════════════════════════════════════════════════════════════════════
 # RADAR — Monitor de Licitações de TI (PNCP) — Lote 0+1
 # ══════════════════════════════════════════════════════════════════════════════
 try:
