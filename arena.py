@@ -17,6 +17,7 @@ from flask import Blueprint, render_template, redirect, request, session, jsonif
 from werkzeug.security import generate_password_hash, check_password_hash
 
 import arena_game
+import arena_seguranca as seg
 try:
     import efi_pix   # RECEBER PIX pela Efí (barato no ticket baixo). Payout continua no Asaas.
 except Exception:
@@ -146,6 +147,11 @@ def minado():
 def cadastrar():
     if request.method == 'GET':
         return render_template('arena/cadastrar.html', erro=None)
+    ip = seg.client_ip()
+    if seg.honeypot_falhou(request.form):                    # bot preencheu o campo-armadilha
+        return render_template('arena/cadastrar.html', erro='Não deu pra criar a conta. Tente de novo.')
+    if not seg.rate_ok('cad:' + ip, 5, 900):                 # máx 5 contas por IP a cada 15 min
+        return render_template('arena/cadastrar.html', erro='Muitas tentativas. Espere uns minutos e tente de novo.')
     nome = (request.form.get('nome') or '').strip()[:80]
     email = (request.form.get('email') or '').strip().lower()[:120]
     tel = ''.join(c for c in (request.form.get('tel') or '') if c.isdigit())[:15]
@@ -178,11 +184,20 @@ def cadastrar():
 def entrar():
     if request.method == 'GET':
         return render_template('arena/entrar.html', erro=None)
+    ip = seg.client_ip()
+    if not seg.rate_ok('log:' + ip, 12, 300):               # anti-flood de tentativas por IP
+        return render_template('arena/entrar.html', erro='Muitas tentativas. Espere um pouco e tente de novo.')
     email = (request.form.get('email') or '').strip().lower()
     senha = request.form.get('senha') or ''
+    bfk = 'bf:' + email + '|' + ip
+    _bl = seg.login_bloqueado_seg(bfk)
+    if _bl:                                                  # trava de força-bruta por email+IP
+        return render_template('arena/entrar.html', erro='Muitos erros seguidos. Tente de novo em %d min.' % (_bl // 60 + 1))
     u = get_user_by_email(email)
     if not u or not check_password_hash(u['password_hash'], senha):
+        seg.login_falhou(bfk)
         return render_template('arena/entrar.html', erro='E-mail ou senha errados.')
+    seg.login_ok(bfk)
     session['arena_user_id'] = u['id']
     session['arena_user_nome'] = u['nome']
     return redirect('/arena')
@@ -354,7 +369,9 @@ def checkout(pacote):
     p = PACOTES[pacote]
     erro = None
     if request.method == 'POST':
-        if _efi_ok():
+        if not seg.rate_ok('chk:' + seg.client_ip(), 15, 600):   # anti-spam de cobrança PIX
+            erro = 'Muitas tentativas. Espere um pouco e tente de novo.'
+        elif _efi_ok():
             # dinheiro ENTRA pela Efí (1,19% no R$5 vs R$0,99-1,99 fixo do Asaas). Sem CPF.
             conn = get_arena_db()
             cur = conn.execute(
@@ -941,6 +958,7 @@ def valendo_page():
 
 @arena_bp.route('/valendo/criar', methods=['POST'])
 @arena_login_required
+@seg.limite_json(30, 300)
 def valendo_criar():
     u = _cur()
     body = request.get_json(silent=True) or {}
@@ -1090,6 +1108,7 @@ def mesa_page(token):
 
 @arena_bp.route('/mesa/<token>/entrar', methods=['POST'])
 @arena_login_required
+@seg.limite_json(30, 300)
 def mesa_entrar_rt(token):
     u = _cur()
     r = mesa_entrar(token, u['id'])
