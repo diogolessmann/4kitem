@@ -67,6 +67,17 @@
     font-size:15px;font-weight:800;font-family:inherit;cursor:pointer;color:#07060f;
     background:linear-gradient(90deg,#22d3ee,#34d399)}
   .cam-lock.on{background:linear-gradient(90deg,#34d399,#a855f7);color:#fff}
+  /* ── fita de tintas (pintura) ── */
+  #cam-tints{display:flex;gap:9px;justify-content:center;overflow-x:auto;padding-bottom:9px}
+  .cam-tint{flex:0 0 auto;width:40px;height:40px;border-radius:50%;border:3px solid rgba(255,255,255,.14);cursor:pointer;padding:0}
+  .cam-tint.sel{border-color:#f5f3ff;transform:scale(1.14)}
+  .cam-tint.dica{box-shadow:0 0 0 3px rgba(52,211,153,.95);animation:tintpulse 1s infinite}
+  @keyframes tintpulse{50%{box-shadow:0 0 0 8px rgba(52,211,153,.25)}}
+  /* ── medidor de camuflagem (só o hider vê) ── */
+  #cam-camo{position:fixed;top:46px;left:0;right:0;z-index:15;display:flex;flex-direction:column;align-items:center;gap:3px;pointer-events:none}
+  #cam-camo-lbl{font-size:12px;font-weight:800;color:#f5f3ff;text-shadow:0 0 8px rgba(0,0,0,.95)}
+  .camo-track{width:64%;max-width:250px;height:7px;background:rgba(255,255,255,.14);border-radius:5px;overflow:hidden}
+  #cam-camo-fill{height:100%;width:0;background:#34d399;transition:width .25s,background .25s}
   /* ── toast ── */
   .cam-toast{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) scale(.9);z-index:30;
     background:rgba(12,10,23,.95);border:1px solid #2a2450;border-radius:14px;padding:12px 20px;font-weight:800;
@@ -86,8 +97,14 @@
 
   <div id="cam-crosshair" style="display:none">👆 toque no objeto suspeito pra cutucar</div>
 
+  <div id="cam-camo" style="display:none">
+    <div id="cam-camo-lbl">—</div>
+    <div class="camo-track"><div id="cam-camo-fill"></div></div>
+  </div>
+
   <div id="cam-skinbar" style="display:none">
-    <div class="sb-lab">VIRE UM OBJETO E FIQUE PARADO</div>
+    <div class="sb-lab">VIRE UM OBJETO · PINTE PRA SUMIR 🎨</div>
+    <div id="cam-tints"></div>
     <div id="cam-skins"></div>
     <button id="cam-btn-lock" class="cam-lock">🫥 CAMUFLAR AGORA</button>
   </div>
@@ -148,6 +165,6 @@
   <div id="cam-toast" class="cam-toast"></div>
 
 <script>window.CAM_TOKEN = {{ token|tojson }};</script>
-<script src="/static/arena/camaleao/camaleao.js?v=2"></script>
+<script src="/static/arena/camaleao/camaleao.js?v=3"></script>
 </body>
 </html>

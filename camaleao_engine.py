@@ -48,6 +48,7 @@ def scene_backdrop(scene_id):
         'id': sc['id'], 'nome': sc.get('nome', ''),
         'w': sc['w'], 'h': sc['h'],
         'skins': sc.get('skins', []),
+        'palette': sc.get('palette', []),
         'walls': sc.get('walls', []),
     }
 
@@ -88,7 +89,7 @@ def criar_sala(mode_id, host_identity, host_nick):
 def _novo_player(pid, identity, nick, now):
     return {
         'pid': pid, 'identity': identity, 'nick': (nick or 'Anônimo')[:24],
-        'role': 'lobby', 'x': 0.0, 'y': 0.0, 'skin': None, 'locked': False,
+        'role': 'lobby', 'x': 0.0, 'y': 0.0, 'skin': None, 'tint': None, 'locked': False,
         'alive': 1, 'score': 0.0, 'last_seen': now, 'cooldown_ate': 0.0,
         'prop_id': None, 'achado_por': None, 'achado_em': None,
     }
@@ -151,6 +152,8 @@ def start(room, pid):
             p['prop_id'] = _prop_id()
         p['x'] = float(sp['x'])
         p['y'] = float(sp['y'])
+        # hider nasce com a cor do decoy mais próximo (valor que JÁ existe nos decoys → nunca exclusivo de hider)
+        p['tint'] = _tint_perto(scene, p['x'], p['y']) if p['role'] == 'hider' else None
     room['phase'] = 'hiding'
     room['phase_started_at'] = now
     room['gravado'] = False
@@ -277,11 +280,15 @@ def sync(room, pid, inp):
         elif d > 0:
             p['x'] += (dx - p['x']) * (maxstep / d)
             p['y'] += (dy - p['y']) * (maxstep / d)
-        # skin / trava só valem pro hider
+        # skin / tint / trava só valem pro hider
         if p['role'] == 'hider':
+            sc = load_scene(room['scene_id'])
             skin = inp.get('skin')
-            if skin in load_scene(room['scene_id'])['skins']:
+            if skin in sc['skins']:
                 p['skin'] = skin
+            t = inp.get('tint')
+            if isinstance(t, int) and 0 <= t < len(sc.get('palette', [])):   # clampa ao domínio: nunca cor-outlier no fio
+                p['tint'] = t
             p['locked'] = bool(inp.get('locked'))
     p['last_seen'] = now
     return snapshot(room, pid)
@@ -347,19 +354,47 @@ def _t_left_ms(room, now=None):
 
 def _props_seeker(room):
     """hiders vivos + decoys, MESMO schema, ids opacos estáveis, ORDEM EMBARALHADA, sem flag."""
-    props = [{'id': d['id'], 'x': d['x'], 'y': d['y'], 'sprite': d['sprite']}
+    props = [{'id': d['id'], 'x': d['x'], 'y': d['y'], 'sprite': d['sprite'], 'tint': d.get('tint', 0)}
              for d in load_scene(room['scene_id'])['decoys']]
     for p in room['players'].values():
         if p['role'] == 'hider' and p['alive'] and p.get('prop_id'):
             props.append({'id': p['prop_id'], 'x': round(p['x'], 1), 'y': round(p['y'], 1),
-                          'sprite': p['skin'] or 'barril'})
+                          'sprite': p['skin'] or 'barril', 'tint': p['tint'] if p.get('tint') is not None else 0})
     random.shuffle(props)
     return props
 
 
 def _decoys_cliente(room):
-    return [{'id': d['id'], 'x': d['x'], 'y': d['y'], 'sprite': d['sprite']}
+    return [{'id': d['id'], 'x': d['x'], 'y': d['y'], 'sprite': d['sprite'], 'tint': d.get('tint', 0)}
             for d in load_scene(room['scene_id'])['decoys']]
+
+
+def _tint_perto(scene, x, y):
+    """Tint do decoy mais próximo (pro spawn do hider nascer com cor que já existe no mundo)."""
+    ds = scene.get('decoys') or []
+    if not ds:
+        return 0
+    d = min(ds, key=lambda d: _dist(x, y, d['x'], d['y']))
+    return d.get('tint', 0)
+
+
+def _camo_dica(room, p):
+    """(camo 0..100, dica_tint) do hider — SÓ vai no bloco `you` do hider, NUNCA no seeker."""
+    sc = load_scene(room['scene_id'])
+    decoys = sc['decoys']
+    R = 180.0
+    same = [d for d in decoys if d['sprite'] == p['skin'] and _dist(p['x'], p['y'], d['x'], d['y']) <= R]
+    if same:
+        tints = [d.get('tint', 0) for d in same]
+        dom = max(set(tints), key=tints.count)
+        mt = p.get('tint')
+        if mt is None:
+            return 20, dom
+        dt = min(abs(mt - t) for t in tints)          # 0 = casou; erro grande = estoura
+        return int(max(0, min(100, 100 - dt * 34))), dom
+    # sem cacho do mesmo objeto por perto = exposto; dica = cor do decoy mais próximo
+    near = min(decoys, key=lambda d: _dist(p['x'], p['y'], d['x'], d['y']))
+    return 12, near.get('tint', 0)
 
 
 def snapshot(room, pid):
@@ -378,7 +413,7 @@ def snapshot(room, pid):
             'score': round(p['score']),
             'cooldown_ms': max(0, round(p['cooldown_ate'] - now)),
             'x': round(p['x'], 1), 'y': round(p['y'], 1),
-            'skin': p['skin'], 'locked': p['locked'],
+            'skin': p['skin'], 'tint': p.get('tint'), 'locked': p['locked'],
         },
     }
     if phase == 'lobby':
@@ -398,6 +433,7 @@ def snapshot(room, pid):
         base['decoys'] = _decoys_cliente(room)             # hider vê os decoys pra se esconder
         base['seekers'] = [{'x': round(q['x'], 1), 'y': round(q['y'], 1)}
                            for q in room['players'].values() if q['role'] == 'seeker']
+        base['you']['camo'], base['you']['dica_tint'] = _camo_dica(room, p)
         return base
     # seeking
     if p['role'] == 'seeker':
@@ -408,6 +444,7 @@ def snapshot(room, pid):
     base['decoys'] = _decoys_cliente(room)
     base['seekers'] = [{'x': round(q['x'], 1), 'y': round(q['y'], 1)}
                        for q in room['players'].values() if q['role'] == 'seeker']
+    base['you']['camo'], base['you']['dica_tint'] = _camo_dica(room, p)
     return base
 
 
