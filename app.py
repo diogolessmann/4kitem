@@ -17185,6 +17185,31 @@ def _sz_retentar_estornos_dir(conn):
         _sz_estornar_compra_direta(e['pid'], e['campanha_id'], e['valor'], 'retry')
 
 
+def _sz_nome_pagador_asaas(payment):
+    """Nome REAL de quem pagou o QR estático de compra direta. No PIX estático o campo
+    'clientName' quase sempre vem VAZIO no webhook — mas o Asaas cria/associa um cliente
+    com o nome real do pagador (o mesmo que aparece na aba Clientes). Então, se faltar o
+    nome, busca o cadastro do cliente pelo id. Fallback seguro: 'Comprador' (comportamento
+    antigo, ZERO regressão — se a busca falhar por qualquer motivo, fica igual a hoje)."""
+    nome = (payment.get('clientName') or '').strip()
+    if nome:
+        return nome[:60]
+    try:
+        cust = (payment.get('customer') or '').strip()
+        if not cust and payment.get('id'):
+            # webhook sem o id do cliente — busca o pagamento pra descobri-lo
+            pay  = _asaas_req('GET', f"/payments/{payment['id']}")
+            cust = (pay.get('customer') or '').strip()
+        if cust:
+            c = _asaas_req('GET', f'/customers/{cust}')
+            n = (c.get('name') or '').strip()
+            if n:
+                return n[:60]
+    except Exception as _e:
+        log.warning(f'[SlotZap] nome pagador (Asaas customer): {_e}')
+    return 'Comprador'
+
+
 def _sz_processar_compra_direta(payment):
     """Webhook Asaas de um pagamento de QR ESTÁTICO (compra direta pelo totem): acha o afiliado
     pelo pixQrCodeId, ATRIBUI um número aleatório DISPONÍVEL (atômico + à prova de corrida),
@@ -17218,7 +17243,7 @@ def _sz_processar_compra_direta(payment):
     if preco > 0 and valor < round(preco * 0.99, 2):
         _sz_estornar_compra_direta(pid, camp_id, valor, f'subpagamento R${valor:.2f} < R${preco:.2f}')
         return True
-    nome_pagador = (payment.get('clientName') or 'Comprador')[:60]
+    nome_pagador = _sz_nome_pagador_asaas(payment)   # nome real do Asaas (fallback 'Comprador')
     agora = datetime.now().isoformat()
     conn = get_saas_db()
     # ATRIBUIÇÃO ATÔMICA à prova de corrida: só atribui se NENHUM slot já tem esse pagamento
