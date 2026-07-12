@@ -92,6 +92,11 @@
     <button class="tab-btn" onclick="showTab('somaja',this)">🐗 SomaJá ({{ somaja_users|length }})</button>
     <button class="tab-btn" onclick="showTab('mlhype',this)">🔥 MLhype ({{ mlhype_users|length }})</button>
     <button class="tab-btn" onclick="showTab('rifaja',this)">🎟️ RifaJá ({{ rifaja_total_rifas }})</button>
+    <button class="tab-btn" onclick="showTab('atendezap',this)">🤖 AtendeZap ({{ atendezap_negocios|length }})</button>
+    <button class="tab-btn" onclick="showTab('recebaja',this)">📥 RecebaJá ({{ recebaja_users|length }})</button>
+    <button class="tab-btn" onclick="showTab('camponline',this)">🎮 CAMPonline ({{ camponline_total }})</button>
+    <button class="tab-btn" onclick="showTab('arena',this)">🕹️ Arena ({{ arena_users|length }})</button>
+    <button class="tab-btn" onclick="showTab('amparo',this)">🫂 Amparo ({{ amparo_psicologos|length }})</button>
   </div>
 
   <!-- ═══════════════ ALERTA SC ═══════════════ -->
@@ -935,6 +940,185 @@
     </table>
     {% else %}
     <div class="empty">Nenhuma rifa RifaJá ainda. Crie em <strong>/rifaja/nova</strong>.</div>
+    {% endif %}
+  </div>
+
+  <!-- AtendeZap -->
+  <div class="tab-content" id="tab-atendezap">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+      <h2 style="margin:0">🤖 Negócios — AtendeZap</h2>
+      <div style="display:flex;gap:18px;font-size:13px;color:var(--text2)">
+        <span>🏪 {{ atendezap_negocios|length }} negócios</span>
+        <span style="color:#22c55e;font-weight:700">✅ {{ atendezap_ativos }} pagantes</span>
+      </div>
+    </div>
+    {% if atendezap_negocios %}
+    <table>
+      <thead><tr>
+        <th>#</th><th>Negócio</th><th>Nicho</th><th>Dono</th><th>WhatsApp</th><th>Bot</th><th>Plano</th><th>Status</th><th>Criado</th>
+      </tr></thead>
+      <tbody>
+      {% for n in atendezap_negocios %}
+      <tr>
+        <td>{{ n.id }}</td>
+        <td><strong>{{ n.nome }}</strong></td>
+        <td style="font-size:12px">{{ n.nicho or '—' }}</td>
+        <td style="font-size:12px">{{ n.owner_name or '—' }}</td>
+        <td style="font-size:12px">{{ n.phone or '—' }}</td>
+        <td>{% if n.evo_ativo and n.bot_ativo %}<span class="badge badge-active">🟢 No ar</span>{% else %}<span style="color:var(--text2);font-size:12px">off</span>{% endif %}</td>
+        <td><strong>{{ n.plano or '—' }}</strong></td>
+        <td>{% if n.plan_active %}<span class="badge badge-active">✅ Pagante</span>{% elif n.trial_until and n.trial_until > now_iso %}<span style="color:#d97706;font-size:12px">🕐 trial</span>{% else %}<span style="color:var(--text2);font-size:12px">inativo</span>{% endif %}</td>
+        <td style="font-size:12px">{{ (n.created_at or '')[:10] }}</td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty">Nenhum negócio AtendeZap ainda.</div>
+    {% endif %}
+  </div>
+
+  <!-- RecebaJá -->
+  <div class="tab-content" id="tab-recebaja">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+      <h2 style="margin:0">📥 Usuários — RecebaJá</h2>
+      <div style="display:flex;gap:18px;font-size:13px;color:var(--text2)">
+        <span>👤 {{ recebaja_users|length }} usuários</span>
+        <span>📄 {{ recebaja_cobrancas_total }} cobranças</span>
+        <span style="color:#22c55e;font-weight:700">✅ {{ recebaja_pagas }} pagas</span>
+      </div>
+    </div>
+    {% if recebaja_users %}
+    <table>
+      <thead><tr>
+        <th>#</th><th>Nome</th><th>Email</th><th>Telefone</th><th>Negócio</th><th>CNPJ</th><th>Criado</th>
+      </tr></thead>
+      <tbody>
+      {% for u in recebaja_users %}
+      <tr>
+        <td>{{ u.id }}</td>
+        <td><strong>{{ u.nome }}</strong></td>
+        <td style="font-size:12px">{{ u.email }}</td>
+        <td style="font-size:12px">{{ u.telefone or '—' }}</td>
+        <td style="font-size:12px">{{ u.negocio or '—' }}</td>
+        <td>{% if u.cnpj_ok %}<span class="badge badge-active">✅</span>{% else %}<span style="color:var(--text2);font-size:12px">—</span>{% endif %}</td>
+        <td style="font-size:12px">{{ (u.created_at or '')[:10] }}</td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty">Nenhum usuário RecebaJá ainda.</div>
+    {% endif %}
+  </div>
+
+  <!-- CAMPonline -->
+  <div class="tab-content" id="tab-camponline">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+      <h2 style="margin:0">🎮 Torneios — CAMPonline</h2>
+      <div style="display:flex;gap:18px;font-size:13px;color:var(--text2)">
+        <span>🎮 {{ camponline_total }} torneios</span>
+        <span>🎫 {{ camponline_inscritos }} inscritos</span>
+        <span style="color:#22c55e;font-weight:700">💰 R$ {{ '%.2f'|format(camponline_receita) }}</span>
+      </div>
+    </div>
+    {% if camponline_torneios %}
+    <table>
+      <thead><tr>
+        <th>#</th><th>Torneio</th><th>Inscrição</th><th>Inscritos</th><th>Receita</th><th>Status</th><th>Criado</th><th>Ações</th>
+      </tr></thead>
+      <tbody>
+      {% for t in camponline_torneios %}
+      <tr>
+        <td>{{ t.id }}</td>
+        <td><strong>{{ t.nome }}</strong></td>
+        <td>R$ {{ '%.2f'|format(t.preco or 0) }}</td>
+        <td>{{ t.pagos }}/{{ t.total_slots }}</td>
+        <td style="color:#22c55e;font-weight:700">R$ {{ '%.2f'|format(t.receita) }}</td>
+        <td>{% if t.status == 'ativa' %}<span class="badge badge-active">🟢 Ativo</span>{% else %}<span style="color:var(--text2);font-size:12px">{{ t.status or '—' }}</span>{% endif %}</td>
+        <td style="font-size:12px">{{ (t.created_at or '')[:10] }}</td>
+        <td style="white-space:nowrap"><a href="/camponline/painel/{{ t.id }}" target="_blank" style="font-size:12px;padding:4px 10px;border-radius:7px;border:none;cursor:pointer;background:#dcfce7;color:#15803d;text-decoration:none;font-weight:700">Abrir</a></td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty">Nenhum torneio CAMPonline ainda. Crie em <strong>/camponline/nova</strong>.</div>
+    {% endif %}
+  </div>
+
+  <!-- Arena -->
+  <div class="tab-content" id="tab-arena">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+      <h2 style="margin:0">🕹️ Jogadores — Arena</h2>
+      <div style="display:flex;gap:18px;font-size:13px;color:var(--text2)">
+        <span>👤 {{ arena_users|length }} jogadores</span>
+        <span>🎲 {{ arena_partidas_total }} partidas</span>
+        <span style="color:#22c55e;font-weight:700">💰 saldo R$ {{ '%.2f'|format(arena_saldo_total) }}</span>
+      </div>
+    </div>
+    {% if arena_users %}
+    <table>
+      <thead><tr>
+        <th>#</th><th>Nome</th><th>Email</th><th>Telefone</th><th>Créditos</th><th>Saldo</th><th>Criado</th><th>Último acesso</th>
+      </tr></thead>
+      <tbody>
+      {% for u in arena_users %}
+      <tr>
+        <td>{{ u.id }}</td>
+        <td><strong>{{ u.nome or '—' }}</strong></td>
+        <td style="font-size:12px">{{ u.email or '—' }}</td>
+        <td style="font-size:12px">{{ u.tel or '—' }}</td>
+        <td>{{ u.creditos or 0 }}</td>
+        <td style="color:#22c55e;font-weight:700">R$ {{ '%.2f'|format(u.saldo or 0) }}</td>
+        <td style="font-size:12px">{{ (u.criado_em or '')[:10] }}</td>
+        <td style="font-size:12px">{{ (u.ultimo_acesso or '')[:10] or '—' }}</td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty">Nenhum jogador Arena ainda.</div>
+    {% endif %}
+  </div>
+
+  <!-- Amparo -->
+  <div class="tab-content" id="tab-amparo">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+      <h2 style="margin:0">🫂 Psicólogos — Amparo</h2>
+      <div style="display:flex;gap:18px;font-size:13px;color:var(--text2)">
+        <span>👤 {{ amparo_psicologos|length }} psicólogos</span>
+        <span style="color:#22c55e;font-weight:700">✅ {{ amparo_ativos }} ativos</span>
+        <span>🧑‍🤝‍🧑 {{ amparo_pacientes_total }} pacientes</span>
+      </div>
+    </div>
+    {% if amparo_psicologos %}
+    <table>
+      <thead><tr>
+        <th>#</th><th>Nome</th><th>CRP</th><th>Email</th><th>Telefone</th><th>Plano</th><th>Status</th><th>Limite</th><th>Criado</th>
+      </tr></thead>
+      <tbody>
+      {% for p in amparo_psicologos %}
+      <tr>
+        <td>{{ p.id }}</td>
+        <td><strong>{{ p.nome }}</strong></td>
+        <td style="font-size:12px">{{ p.crp or '—' }}</td>
+        <td style="font-size:12px">{{ p.email }}</td>
+        <td style="font-size:12px">{{ p.telefone or '—' }}</td>
+        <td><strong>{{ p.plano or '—' }}</strong></td>
+        <td>
+          {% if p.status == 'ativo' %}<span class="badge badge-active">✅ Ativo</span>
+          {% elif p.trial_expires and p.trial_expires > now_iso %}<span style="color:#d97706;font-size:12px">🕐 trial</span>
+          {% else %}<span style="color:var(--text2);font-size:12px">{{ p.status or 'inativo' }}</span>{% endif %}
+        </td>
+        <td style="font-size:12px">{{ p.pacientes_limite or '—' }}</td>
+        <td style="font-size:12px">{{ (p.created_at or '')[:10] }}</td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty">Nenhum psicólogo Amparo ainda.</div>
     {% endif %}
   </div>
 

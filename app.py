@@ -6429,6 +6429,71 @@ def saas_admin():
         rifaja_receita     = sum(r['receita'] for r in rifaja_rifas)
     except Exception:
         rifaja_rifas = []; rifaja_total_rifas = 0; rifaja_vendidos = 0; rifaja_receita = 0
+    # AtendeZap — negócios (bot de atendimento)
+    try:
+        from atendezap_db import get_atende_db as _get_at_db
+        atconn = _get_at_db()
+        atendezap_negocios = [dict(r) for r in atconn.execute(
+            'SELECT id, nome, nicho, owner_name, phone, plano, plan_active, trial_until, '
+            'evo_ativo, bot_ativo, created_at FROM atende_negocios ORDER BY id DESC'
+        ).fetchall()]
+        atendezap_ativos = sum(1 for n in atendezap_negocios if n.get('plan_active'))
+        atconn.close()
+    except Exception:
+        atendezap_negocios = []; atendezap_ativos = 0
+    # RecebaJá — usuários (régua de cobrança de boleto)
+    try:
+        from recebaja_db import get_recebaja_db as _get_rb_db
+        rbconn = _get_rb_db()
+        recebaja_users = [dict(r) for r in rbconn.execute(
+            'SELECT id, nome, email, telefone, negocio, cnpj_ok, created_at FROM recebaja_users ORDER BY id DESC'
+        ).fetchall()]
+        recebaja_cobrancas_total = rbconn.execute('SELECT COUNT(*) FROM recebaja_cobrancas').fetchone()[0]
+        recebaja_pagas = rbconn.execute("SELECT COUNT(*) FROM recebaja_cobrancas WHERE status='pago'").fetchone()[0]
+        rbconn.close()
+    except Exception:
+        recebaja_users = []; recebaja_cobrancas_total = 0; recebaja_pagas = 0
+    # Arena — jogadores (jogos casuais valendo prêmio)
+    try:
+        from arena_db import get_arena_db as _get_ar_db
+        arconn = _get_ar_db()
+        arena_users = [dict(r) for r in arconn.execute(
+            'SELECT id, nome, email, tel, creditos, saldo, criado_em, ultimo_acesso FROM arena_users ORDER BY id DESC'
+        ).fetchall()]
+        arena_partidas_total = arconn.execute('SELECT COUNT(*) FROM arena_partidas').fetchone()[0]
+        arena_saldo_total = arconn.execute('SELECT COALESCE(SUM(saldo),0) FROM arena_users').fetchone()[0]
+        arconn.close()
+    except Exception:
+        arena_users = []; arena_partidas_total = 0; arena_saldo_total = 0
+    # CAMPonline — torneios (motor SlotZap, tipo='torneio')
+    try:
+        conn_cp = get_saas_db()
+        camponline_torneios = [dict(r) for r in conn_cp.execute(
+            "SELECT c.id, c.nome, c.preco, c.total_slots, c.status, c.created_at, "
+            "(SELECT COUNT(*) FROM slotzap_slots s WHERE s.campanha_id=c.id AND s.status='pago') AS pagos "
+            "FROM slotzap_campanhas c WHERE c.tipo='torneio' ORDER BY c.id DESC"
+        ).fetchall()]
+        conn_cp.close()
+        for t in camponline_torneios:
+            t['receita'] = (t.get('pagos') or 0) * float(t.get('preco') or 0)
+        camponline_total = len(camponline_torneios)
+        camponline_inscritos = sum((t.get('pagos') or 0) for t in camponline_torneios)
+        camponline_receita = sum(t['receita'] for t in camponline_torneios)
+    except Exception:
+        camponline_torneios = []; camponline_total = 0; camponline_inscritos = 0; camponline_receita = 0
+    # Amparo — psicólogos (cuidado entre sessões)
+    try:
+        from amparo_db import get_amparo_db as _get_amp_db
+        ampconn = _get_amp_db()
+        amparo_psicologos = [dict(r) for r in ampconn.execute(
+            'SELECT id, nome, email, crp, telefone, plano, status, pacientes_limite, '
+            'trial_expires, created_at FROM amparo_psicologos ORDER BY id DESC'
+        ).fetchall()]
+        amparo_ativos = sum(1 for p in amparo_psicologos if (p.get('status') or '') == 'ativo')
+        amparo_pacientes_total = ampconn.execute('SELECT COUNT(*) FROM amparo_pacientes').fetchone()[0]
+        ampconn.close()
+    except Exception:
+        amparo_psicologos = []; amparo_ativos = 0; amparo_pacientes_total = 0
     return render_template('saas_admin.html',
                            subscribers=subscribers, businesses=businesses,
                            mz_users=mz_users, mz_plans=MANDAZAP_PLANS,
@@ -6461,7 +6526,16 @@ def saas_admin():
                            somaja_ativos=somaja_ativos,
                            mlhype_users=mlhype_users, mlhype_ativos=mlhype_ativos,
                            rifaja_rifas=rifaja_rifas, rifaja_total_rifas=rifaja_total_rifas,
-                           rifaja_vendidos=rifaja_vendidos, rifaja_receita=rifaja_receita)
+                           rifaja_vendidos=rifaja_vendidos, rifaja_receita=rifaja_receita,
+                           atendezap_negocios=atendezap_negocios, atendezap_ativos=atendezap_ativos,
+                           recebaja_users=recebaja_users, recebaja_cobrancas_total=recebaja_cobrancas_total,
+                           recebaja_pagas=recebaja_pagas,
+                           arena_users=arena_users, arena_partidas_total=arena_partidas_total,
+                           arena_saldo_total=arena_saldo_total,
+                           camponline_torneios=camponline_torneios, camponline_total=camponline_total,
+                           camponline_inscritos=camponline_inscritos, camponline_receita=camponline_receita,
+                           amparo_psicologos=amparo_psicologos, amparo_ativos=amparo_ativos,
+                           amparo_pacientes_total=amparo_pacientes_total)
 
 
 @app.route('/saas-admin/slotzap/reset-senha', methods=['POST'])
