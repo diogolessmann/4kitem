@@ -126,8 +126,9 @@
   function aplicar(r){
     if(!scene || scene.id!==r.scene_id){ carregarCena(r.scene_id); }
     me.role = r.you.role;
-    if(typeof r.you.skin==='string') skinSel = r.you.skin;
-    if(typeof r.you.tint==='number') meuTint = r.you.tint;
+    // eco do servidor só PREENCHE quando o local ainda não escolheu — senão o poll reverte o toque do jogador
+    if(!skinSel && typeof r.you.skin==='string') skinSel = r.you.skin;
+    if(meuTint==null && typeof r.you.tint==='number'){ meuTint = r.you.tint; marcarTinta(); }
     meuCamo = r.you.camo||0; dicaTint = (typeof r.you.dica_tint==='number')?r.you.dica_tint:-1;
     if(dist(me.x,me.y,r.you.x,r.you.y) > 60){ me.x=r.you.x; me.y=r.you.y; me.tx=me.x; me.ty=me.y; }
     var vistos={};
@@ -148,8 +149,11 @@
     }).catch(function(){});
   }
   function trocouFase(de, para){
-    if(para==='hiding'){ sfxStart(); cam.x=me.x; cam.y=me.y; toast('Escondam-se! 🦎'); }
-    if(para==='seeking'){ sfxStart(); cam.x=me.x; cam.y=me.y; toast(me.role==='seeker'?'CAÇAR! 🔦':'Fiquem quietos… 🤫'); }
+    var pc = window.matchMedia && matchMedia('(pointer:fine)').matches;
+    if(para==='hiding'){ sfxStart(); cam.x=me.x; cam.y=me.y; me.tx=me.x; me.ty=me.y;
+      meuTint=null; camoTravado=false; var bl=$('cam-btn-lock'); if(bl) bl.classList.remove('on');   // re-adota a cor do spawn da rodada nova
+      toast('Escondam-se! 🦎'+(pc?' · WASD anda':'')); }
+    if(para==='seeking'){ sfxStart(); cam.x=me.x; cam.y=me.y; toast(me.role==='seeker'?('CAÇAR! 🔦'+(pc?' · WASD anda':'')):'Fiquem quietos… 🤫'); }
     if(para==='result'){ vibra(30); }
   }
 
@@ -258,6 +262,29 @@
       me.tx=wx; me.ty=wy; lastMoveAt=Date.now(); camoTravado=false; var bl=$('cam-btn-lock'); if(bl) bl.classList.remove('on'); sfxTap();
     }
   });
+  // ── movimento fluido: arrastar guia (mouse/dedo) + WASD/setas no PC ──
+  canvas.style.touchAction='none';
+  var dragging=false;
+  canvas.addEventListener('pointerdown', function(e){ dragging=true; try{ canvas.setPointerCapture(e.pointerId); }catch(_){}; });
+  canvas.addEventListener('pointermove', function(e){
+    if(!dragging || !scene || phase==='lobby' || phase==='result') return;
+    if(me.role==='seeker' && phase!=='seeking') return;
+    if(me.role==='hider' && snap && snap.you && !snap.you.alive) return;
+    me.tx = clamp(s2wx(e.clientX), 24, scene.w-24); me.ty = clamp(s2wy(e.clientY), 24, scene.h-24);
+    if(me.role==='hider'){ camoTravado=false; var bl=$('cam-btn-lock'); if(bl) bl.classList.remove('on'); }
+  });
+  addEventListener('pointerup', function(){ dragging=false; });
+  addEventListener('pointercancel', function(){ dragging=false; });
+  var KEYS={};
+  function kdir(k){ k=(k||'').toLowerCase(); return {w:'u',arrowup:'u',s:'d',arrowdown:'d',a:'l',arrowleft:'l',d:'r',arrowright:'r'}[k]; }
+  addEventListener('keydown', function(e){
+    if(e.target && /INPUT|TEXTAREA/.test(e.target.tagName||'')) return;
+    var d=kdir(e.key); if(!d) return; e.preventDefault(); KEYS[d]=1;
+    if(actx&&actx.state==='suspended') actx.resume();
+    if(me.role==='hider'){ camoTravado=false; var bl=$('cam-btn-lock'); if(bl) bl.classList.remove('on'); }
+  });
+  addEventListener('keyup', function(e){ var d=kdir(e.key); if(!d) return; delete KEYS[d];
+    if(!KEYS.u&&!KEYS.d&&!KEYS.l&&!KEYS.r){ me.tx=me.x; me.ty=me.y; } });   // soltou = para seco (sem deslizar)
   function cutucar(id){
     if(Date.now()<cooldownUntil){ toast('Recarregando… ⏳'); return; }
     api('/room/'+TOKEN+'/tag', {pid:PID, target_id:id}, function(r){
@@ -282,6 +309,10 @@
   }
   function passo(dt){
     if(!scene) return;
+    // teclado: segurar = renovar o alvo um passo à frente (anda contínuo na velocidade cheia)
+    var kx=(KEYS.r?1:0)-(KEYS.l?1:0), ky=(KEYS.d?1:0)-(KEYS.u?1:0);
+    if(kx||ky){ var kn=Math.hypot(kx,ky)||1;
+      me.tx=clamp(me.x+kx/kn*48, 24, scene.w-24); me.ty=clamp(me.y+ky/kn*48, 24, scene.h-24); }
     var pode = (me.role==='hider'&&snap&&snap.you&&snap.you.alive&&(phase==='hiding'||phase==='seeking')) || (me.role==='seeker'&&phase==='seeking');
     if(pode){ var spd=(me.role==='seeker'?280:250), d=dist(me.x,me.y,me.tx,me.ty);
       if(d>1){ var step=Math.min(d, spd*dt); me.x+=(me.tx-me.x)*(step/d); me.y+=(me.ty-me.y)*(step/d); lastMoveAt=Date.now(); } }
@@ -315,8 +346,9 @@
     var mx=w2sx(me.x), my=w2sy(me.y);
     if(me.role==='seeker'){ desenhaCacador(mx,my,R*ZOOM,true); }
     else if(snap&&snap.you&&snap.you.alive){
-      if(camoAtivo() && phase==='seeking'){ blitSprite(skinSel||'barril', meuTint, mx, my, R*ZOOM, true); }
-      else { desenhaCamaleao(mx,my,R*ZOOM,camoAtivo()); }
+      // ESCONDER: você se vê como o item+cor o tempo todo (provador de fantasia); CAÇAR: item só camuflado, andando = camaleão exposto
+      if(phase==='hiding' || camoAtivo()){ blitSprite(skinSel||'barril', meuTint, mx, my, R*ZOOM, true); }
+      else { desenhaCamaleao(mx,my,R*ZOOM,false); }
     }
     // particulas
     parts.forEach(function(f){ var a=1-f.t/f.life; ctx.save(); ctx.globalAlpha=Math.max(0,a);

@@ -369,6 +369,15 @@ def _decoys_cliente(room):
             for d in load_scene(room['scene_id'])['decoys']]
 
 
+def _amigos_hider(room, p):
+    """Outros hiders vivos como props — SÓ pro cliente de hider (se fantasiar juntos, igual o original).
+    Nunca entra em payload de seeker."""
+    return [{'id': q['prop_id'], 'x': round(q['x'], 1), 'y': round(q['y'], 1),
+             'sprite': q['skin'] or 'barril', 'tint': q['tint'] if q.get('tint') is not None else 0}
+            for q in room['players'].values()
+            if q['role'] == 'hider' and q['alive'] and q.get('prop_id') and q['pid'] != p['pid']]
+
+
 def _tint_perto(scene, x, y):
     """Tint do decoy mais próximo (pro spawn do hider nascer com cor que já existe no mundo)."""
     ds = scene.get('decoys') or []
@@ -430,7 +439,7 @@ def snapshot(room, pid):
         if p['role'] == 'seeker':
             base['blindfold'] = True                       # ZERO dado espacial
             return base
-        base['decoys'] = _decoys_cliente(room)             # hider vê os decoys pra se esconder
+        base['decoys'] = _decoys_cliente(room) + _amigos_hider(room, p)   # decoys + colegas escondidos (dress-up juntos)
         base['seekers'] = [{'x': round(q['x'], 1), 'y': round(q['y'], 1)}
                            for q in room['players'].values() if q['role'] == 'seeker']
         base['you']['camo'], base['you']['dica_tint'] = _camo_dica(room, p)
@@ -441,7 +450,7 @@ def snapshot(room, pid):
                            for q in room['players'].values() if q['role'] == 'seeker']
         base['props'] = _props_seeker(room)                # decoys+hiders indistinguíveis
         return base
-    base['decoys'] = _decoys_cliente(room)
+    base['decoys'] = _decoys_cliente(room) + _amigos_hider(room, p)
     base['seekers'] = [{'x': round(q['x'], 1), 'y': round(q['y'], 1)}
                        for q in room['players'].values() if q['role'] == 'seeker']
     base['you']['camo'], base['you']['dica_tint'] = _camo_dica(room, p)
