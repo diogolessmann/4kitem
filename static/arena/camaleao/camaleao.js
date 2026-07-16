@@ -196,7 +196,7 @@
   }
   function montarSkinbar(){
     var bar=$('cam-skins'); if(!bar||!scene) return; bar.innerHTML='';
-    scene.skins.forEach(function(s){ var b=document.createElement('button'); b.className='cam-skin'; b.dataset.s=s;
+    ['camaleao'].concat(scene.skins).forEach(function(s){ var b=document.createElement('button'); b.className='cam-skin'; b.dataset.s=s;
       var cv=document.createElement('canvas'); cv.width=52; cv.height=52; var cc=cv.getContext('2d'); cc.translate(26,27); desenhaForma(cc,s,19);
       b.appendChild(cv);
       b.onclick=function(){ skinSel=s; lastMoveAt=Date.now(); marcarSkin(); sfxTap(); };
@@ -338,7 +338,9 @@
     // objetos (com culling)
     var lista = (me.role==='seeker' && phase==='seeking') ? render.props : render.props;
     for(var id in lista){ var d=lista[id]; var sx=w2sx(d.x), sy=w2sy(d.y);
-      if(sx<-80||sx>WC+80||sy<-80||sy>HC+80) continue; blitSprite(d.sprite||'barril', d.tint, sx, sy, R*ZOOM, false); }
+      if(sx<-80||sx>WC+80||sy<-80||sy>HC+80) continue;
+      var al = d.sprite==='camaleao' ? alphaCam(d.tint, d.x, d.y) : 1;
+      blitSprite(d.sprite||'barril', d.tint, sx, sy, R*ZOOM, false, al); }
     // outros caçadores
     for(var sid in render.seekers){ var s=render.seekers[sid]; var ssx=w2sx(s.x),ssy=w2sy(s.y);
       if(ssx>-70&&ssx<WC+70&&ssy>-70&&ssy<HC+70) desenhaCacador(ssx,ssy,R*ZOOM,false); }
@@ -347,8 +349,10 @@
     if(me.role==='seeker'){ desenhaCacador(mx,my,R*ZOOM,true); }
     else if(snap&&snap.you&&snap.you.alive){
       // ESCONDER: você se vê como o item+cor o tempo todo (provador de fantasia); CAÇAR: item só camuflado, andando = camaleão exposto
-      if(phase==='hiding' || camoAtivo()){ blitSprite(skinSel||'barril', meuTint, mx, my, R*ZOOM, true); }
-      else { desenhaCamaleao(mx,my,R*ZOOM,false); }
+      if(phase==='hiding' || camoAtivo()){
+        var mal = skinSel==='camaleao' ? alphaCam(meuTint, me.x, me.y) : 1;
+        blitSprite(skinSel||'barril', meuTint, mx, my, R*ZOOM, true, mal);
+      } else { desenhaCamaleao(mx,my,R*ZOOM,false); }
     }
     // particulas
     parts.forEach(function(f){ var a=1-f.t/f.life; ctx.save(); ctx.globalAlpha=Math.max(0,a);
@@ -374,6 +378,12 @@
     var sy0=Math.floor(cam.y/68)*68;
     for(var wy=sy0-68; wy<cam.y+HC/ZOOM; wy+=68){ var py=w2sy(wy); ctx.moveTo(x0,py); ctx.lineTo(x1,py); }
     ctx.stroke(); ctx.globalAlpha=1; ctx.restore();
+    // zonas de cor (muros grafitados/faixas/tapetes — onde o camaleão pintado some)
+    (scene.zones||[]).forEach(function(z){ var c=PALETTE[z.tint]; if(!c) return;
+      var zx=w2sx(z.x), zy=w2sy(z.y), zw=z.w*ZOOM, zh=z.h*ZOOM;
+      if(zx>WC||zy>HC||zx+zw<0||zy+zh<0) return;
+      ctx.fillStyle='rgba('+c[0]+','+c[1]+','+c[2]+',0.30)'; rr(ctx,zx,zy,zw,zh,6*ZOOM); ctx.fill();
+      ctx.strokeStyle='rgba('+c[0]+','+c[1]+','+c[2]+',0.55)'; ctx.lineWidth=2; ctx.stroke(); });
     // paredes / conteineres
     (scene.walls||[]).forEach(function(w){ var wx=w2sx(w.x),wy=w2sy(w.y),ww=w.w*ZOOM,wh=w.h*ZOOM;
       if(wx>WC||wy>HC||wx+ww<0||wy+wh<0) return;
@@ -425,9 +435,24 @@
       c.shadowBlur=0; c.strokeStyle='rgba(0,0,0,.25)'; c.lineWidth=r*0.06; for(var v=-2;v<=2;v++){ c.beginPath(); c.moveTo(v*r*0.18,-r*0.4); c.lineTo(v*r*0.16,r*0.85); c.stroke(); }
       c.fillStyle='#9aa0ac'; rr(c,-r*0.62,-r*0.72,r*1.24,r*0.26,r*0.06); c.fill(); c.strokeStyle='#6a707c'; c.lineWidth=1.4; c.strokeRect(-r*0.62,-r*0.72,r*1.24,r*0.26);
       c.fillStyle='#7a808c'; rr(c,-r*0.1,-r*0.9,r*0.2,r*0.2,r*0.05); c.fill();
+    } else if(type==='camaleao'){                              // camaleão parado (jogadores pintados E estátuas do beco)
+      c.shadowBlur=0;
+      c.strokeStyle='#6a7a6e'; c.lineWidth=r*0.2; c.lineCap='round'; c.beginPath(); c.arc(r*0.68,r*0.22,r*0.46,-1.0,2.4); c.stroke();
+      c.fillStyle='#7c8c80'; c.beginPath(); c.ellipse(-r*0.38,r*0.55,r*0.17,r*0.11,0,0,7); c.ellipse(r*0.3,r*0.58,r*0.17,r*0.11,0,0,7); c.fill();
+      c.fillStyle=lin(c,0,-r*0.7,0,r*0.7,'#96a89a','#5e6e62'); c.strokeStyle='#43503f';
+      c.beginPath(); c.ellipse(0,0,r*0.95,r*0.68,0,0,7); c.fill(); c.stroke();
+      c.fillStyle='#8a9a8e'; for(var ci=-1;ci<=1;ci++){ c.beginPath(); c.moveTo(ci*r*0.3-r*0.13,-r*0.58); c.lineTo(ci*r*0.3,-r*0.94); c.lineTo(ci*r*0.3+r*0.13,-r*0.58); c.closePath(); c.fill(); }
+      c.fillStyle='#e8ece6'; c.beginPath(); c.arc(-r*0.46,-r*0.14,r*0.3,0,7); c.fill();
+      c.fillStyle='#20261e'; c.beginPath(); c.arc(-r*0.46,-r*0.14,r*0.13,0,7); c.fill();
+      c.strokeStyle='#20261e'; c.lineWidth=1.6; c.beginPath(); c.arc(-r*0.1,r*0.12,r*0.3,0.15,1.2); c.stroke();
     } else { c.fillStyle=COL.ro; c.beginPath(); c.arc(0,0,r*0.8,0,7); c.fill(); }
     c.shadowBlur=0;
   }
+  // fade do camaleão pintado: cor casa com a ZONA sob ele = derrete no fundo (determinístico e público — seeker e hider calculam igual)
+  function zonaTintEm(x,y){ var zs=scene&&scene.zones; if(!zs) return -1;
+    for(var i=0;i<zs.length;i++){ var z=zs[i]; if(x>=z.x&&x<=z.x+z.w&&y>=z.y&&y<=z.y+z.h) return z.tint; } return -1; }
+  function alphaCam(tint,x,y){ var zt=zonaTintEm(x,y); if(zt<0||tint==null||tint<0) return 1;
+    var d=Math.abs(tint-zt); return d===0?0.3:(d===1?0.62:1); }
   // cache offscreen por (type,tint): desenha a forma UMA vez, recorta a tinta na silhueta (source-atop, preserva o volume) -> no loop vira blit
   function spriteBmp(type, tint){
     var key = type+'|'+(tint==null||tint<0?'x':tint), cv=sprCache[key];
@@ -441,11 +466,13 @@
     }
     sprCache[key]=cv; return cv;
   }
-  function blitSprite(type, tint, sx, sy, r, glow){
-    ctx.save(); ctx.globalAlpha=0.3; ctx.fillStyle='#000'; ctx.beginPath(); ctx.ellipse(sx,sy+r*0.82,r*0.8,r*0.26,0,0,7); ctx.fill(); ctx.restore();
+  function blitSprite(type, tint, sx, sy, r, glow, alpha){
+    if(alpha==null) alpha=1;
+    ctx.save(); ctx.globalAlpha=0.3*alpha; ctx.fillStyle='#000'; ctx.beginPath(); ctx.ellipse(sx,sy+r*0.82,r*0.8,r*0.26,0,0,7); ctx.fill(); ctx.restore();
     var bmp=spriteBmp(type,tint), sz=(r/CR)*CS;
-    if(glow){ ctx.save(); ctx.shadowColor=COL.gr; ctx.shadowBlur=14; ctx.drawImage(bmp, sx-sz/2, sy-sz/2, sz, sz); ctx.restore(); }
-    else { ctx.drawImage(bmp, sx-sz/2, sy-sz/2, sz, sz); }
+    ctx.save(); ctx.globalAlpha=alpha;
+    if(glow){ ctx.shadowColor=COL.gr; ctx.shadowBlur=(alpha<0.7?5:14); }   // fundido = quase sem brilho (senão o glow entrega)
+    ctx.drawImage(bmp, sx-sz/2, sy-sz/2, sz, sz); ctx.restore();
   }
   function lin(c,x0,y0,x1,y1,a,b){ var g=c.createLinearGradient(x0,y0,x1,y1); g.addColorStop(0,a); g.addColorStop(1,b); return g; }
   function rr(c,x,y,w,h,rad){ rad=Math.min(rad,w/2,h/2); c.beginPath(); c.moveTo(x+rad,y); c.arcTo(x+w,y,x+w,y+h,rad); c.arcTo(x+w,y+h,x,y+h,rad); c.arcTo(x,y+h,x,y,rad); c.arcTo(x,y,x+w,y,rad); c.closePath(); }
@@ -496,6 +523,8 @@
     ctx.fillStyle='rgba(7,6,15,.7)'; rr(ctx,px-4,py-4,mw+8,mh+8,8); ctx.fill();
     ctx.strokeStyle=COL.ro; ctx.lineWidth=1.5; ctx.stroke();
     var sxr=mw/scene.w, syr=mh/scene.h;
+    (scene.zones||[]).forEach(function(z){ var c=PALETTE[z.tint]; if(!c) return;
+      ctx.fillStyle='rgba('+c[0]+','+c[1]+','+c[2]+',.55)'; ctx.fillRect(px+z.x*sxr,py+z.y*syr,Math.max(1,z.w*sxr),Math.max(1,z.h*syr)); });
     (scene.walls||[]).forEach(function(w){ ctx.fillStyle='rgba(168,85,247,.4)'; ctx.fillRect(px+w.x*sxr,py+w.y*syr,Math.max(1,w.w*sxr),Math.max(1,w.h*syr)); });
     // caçadores (perigo p/ o hider; posicao dos colegas p/ o seeker)
     for(var sid in render.seekers){ var s=render.seekers[sid]; ctx.fillStyle=COL.ci; ctx.beginPath(); ctx.arc(px+s.x*sxr,py+s.y*syr,2.5,0,7); ctx.fill(); }

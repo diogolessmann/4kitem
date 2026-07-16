@@ -50,6 +50,7 @@ def scene_backdrop(scene_id):
         'skins': sc.get('skins', []),
         'palette': sc.get('palette', []),
         'walls': sc.get('walls', []),
+        'zones': sc.get('zones', []),      # zonas de cor = cenário estático público (pintar-pra-sumir)
     }
 
 
@@ -284,7 +285,7 @@ def sync(room, pid, inp):
         if p['role'] == 'hider':
             sc = load_scene(room['scene_id'])
             skin = inp.get('skin')
-            if skin in sc['skins']:
+            if skin in sc['skins'] or skin == 'camaleao':   # 'camaleao' = ficar de corpo pintado (não vira objeto)
                 p['skin'] = skin
             t = inp.get('tint')
             if isinstance(t, int) and 0 <= t < len(sc.get('palette', [])):   # clampa ao domínio: nunca cor-outlier no fio
@@ -387,9 +388,35 @@ def _tint_perto(scene, x, y):
     return d.get('tint', 0)
 
 
+def _zona_tint(scene, x, y):
+    """Tint da zona de cor que contém (x,y), ou None se fora de qualquer zona."""
+    for z in scene.get('zones') or []:
+        if z['x'] <= x <= z['x'] + z['w'] and z['y'] <= y <= z['y'] + z['h']:
+            return z['tint']
+    return None
+
+
+def _zona_perto(scene, x, y):
+    """Tint da zona mais próxima (dica quando o camaleão está fora de zona)."""
+    zs = scene.get('zones') or []
+    if not zs:
+        return 0
+    z = min(zs, key=lambda z: _dist(x, y, z['x'] + z['w'] / 2, z['y'] + z['h'] / 2))
+    return z['tint']
+
+
 def _camo_dica(room, p):
     """(camo 0..100, dica_tint) do hider — SÓ vai no bloco `you` do hider, NUNCA no seeker."""
     sc = load_scene(room['scene_id'])
+    # modo CAMALEÃO (corpo pintado): o match é contra a COR DA ZONA sob o jogador, não contra cacho de objetos
+    if p['skin'] == 'camaleao':
+        zt = _zona_tint(sc, p['x'], p['y'])
+        mt = p.get('tint')
+        if zt is None:
+            return 10, _zona_perto(sc, p['x'], p['y'])     # fora de zona = exposto; dica aponta a zona mais próxima
+        if mt is None:
+            return 25, zt
+        return int(max(0, min(100, 100 - abs(mt - zt) * 34))), zt
     decoys = sc['decoys']
     R = 180.0
     same = [d for d in decoys if d['sprite'] == p['skin'] and _dist(p['x'], p['y'], d['x'], d['y']) <= R]
