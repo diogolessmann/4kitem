@@ -43,6 +43,7 @@ input:focus{border-color:#6366f1}
 .acoes a{display:inline-block;font-size:11px;font-weight:700;text-decoration:none;padding:5px 9px;border-radius:8px;margin:2px 2px 2px 0}
 .a-totem{background:rgba(99,102,241,.15);color:#a5b4fc;border:1px solid rgba(99,102,241,.35)}
 .a-painel{background:rgba(255,255,255,.06);color:#c9d6e2}
+.a-pix{background:rgba(245,158,11,.15);color:#fcd34d;border:1px solid rgba(245,158,11,.4);cursor:pointer}
 .badge-erro{background:rgba(239,68,68,.15);color:#fca5a5;border:1px solid rgba(239,68,68,.35);font-size:10px;font-weight:800;padding:2px 7px;border-radius:20px}
 .vazio{text-align:center;color:#8888aa;padding:26px 14px;line-height:1.6;font-size:14px}
 .aviso{background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);color:#fcd34d;border-radius:10px;padding:11px 13px;font-size:12px;line-height:1.5;margin-top:10px}
@@ -125,6 +126,8 @@ input:focus{border-color:#6366f1}
           <td class="acoes">
             <a class="a-totem" href="/slotzap/p/{{ token }}/afiliado/{{ a.codigo }}/totem" target="_blank">🖨️ Totem</a>
             <a class="a-painel" href="/slotzap/p/{{ token }}/afiliado/{{ a.codigo }}" target="_blank">Painel</a>
+            <a class="a-pix" href="javascript:void(0)" data-cod="{{ a.codigo }}"
+               data-nome="{{ a.nome or 'vendedor' }}" data-apagar="{{ a.a_pagar or 0 }}">🔑 PIX</a>
           </td>
         </tr>
       {% endfor %}
@@ -154,6 +157,42 @@ function salvar(){
     if(r.ok){ msg.style.color='#22c55e'; msg.textContent='✅ Salvo! '+(r.ativo?'Vendedores LIGADO':'Vendedores desligado'); }
     else { msg.style.color='#fca5a5'; msg.textContent='⚠️ '+(r.erro||'Erro ao salvar'); }
   }).catch(()=>{ msg.style.color='#fca5a5'; msg.textContent='⚠️ Erro de conexão'; });
+}
+// Liga os botões 🔑 PIX (via data-attributes — nome com aspas não quebra o HTML)
+document.querySelectorAll('.a-pix').forEach(function(b){
+  b.addEventListener('click', function(){
+    corrigirPix(b.dataset.cod, b.dataset.nome, parseInt(b.dataset.apagar || '0', 10));
+  });
+});
+
+// Corrige a chave PIX de um vendedor que errou/esqueceu no cadastro.
+// A pergunta do "já paguei por fora" NÃO é firula: o robô de comissões roda a cada ~75s
+// e pagaria tudo de novo assim que a chave ficasse válida.
+function corrigirPix(codigo, nome, aPagar){
+  var chave = prompt('🔑 Chave PIX de ' + nome + '\n\nCole a chave (celular com DDD, CPF, e-mail ou chave aleatória):');
+  if(!chave) return;
+  var tipo = prompt('Que TIPO é essa chave?\n\nDigite uma delas:\nCELULAR · CPF · CNPJ · EMAIL · ALEATORIA', 'CELULAR');
+  if(!tipo) return;
+  var quitar = false;
+  if(aPagar > 0){
+    quitar = confirm(
+      '⚠️ ATENÇÃO — ' + nome + ' tem ' + aPagar + ' comissão(ões) que o sistema NÃO conseguiu pagar.\n\n' +
+      'Você JÁ pagou essas comissões POR FORA (na mão)?\n\n' +
+      '✅ OK  = SIM, já paguei → o sistema NÃO vai pagar de novo\n' +
+      '❌ Cancelar = NÃO → o sistema paga assim que a chave for corrigida'
+    );
+  }
+  fetch(`/slotzap/campanha/${CAMP_ID}/afiliados/${codigo}/corrigir-pix`, {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({pix_tipo: tipo, pix_chave: chave, quitar: quitar})
+  }).then(r=>r.json()).then(r=>{
+    if(r.ok){
+      alert('✅ Chave PIX de ' + nome + ' salva (' + r.tipo + ')!' +
+            (r.quitadas ? '\n\n' + r.quitadas + ' comissão(ões) marcada(s) como JÁ PAGA(S) — o sistema não vai pagar de novo.'
+                        : (aPagar > 0 ? '\n\n💸 O sistema vai pagar as comissões pendentes em instantes.' : '')));
+      location.reload();
+    } else { alert('⚠️ ' + (r.erro || 'Erro ao salvar')); }
+  }).catch(()=>alert('⚠️ Erro de conexão'));
 }
 function copiar(el, txt){
   navigator.clipboard.writeText(txt).then(()=>{

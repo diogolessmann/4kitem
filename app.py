@@ -18657,6 +18657,54 @@ def slotzap_afiliados_config(camp_id):
     return jsonify({'ok': True, 'ativo': ativo, 'comissao': comissao, 'bonus_vendedor': bonus_vend})
 
 
+@app.route('/slotzap/campanha/<int:camp_id>/afiliados/<codigo>/corrigir-pix', methods=['POST'])
+@_sz_login_required
+def slotzap_afiliado_corrigir_pix(camp_id, codigo):
+    """Corrige a chave PIX de um vendedor que errou/esqueceu no cadastro. Não havia como
+    consertar isso: o cadastro público, quando o telefone já existe, só redireciona pro
+    painel — nunca atualiza os dados. Vendedor com chave inválida = comissão em 'erro'.
+
+    ⚠️ A ORDEM AQUI É QUESTÃO DE DINHEIRO. Se o dono já pagou esse vendedor POR FORA, as
+    comissões continuam 'erro'/'pendente' no ledger — e o reconciliador roda a cada ~75s
+    pagando tudo que estiver nesse estado. Corrigir a chave SEM quitar antes faria o robô
+    repassar tudo DE NOVO (pagamento em dobro). Por isso: quita PRIMEIRO, na mesma conexão,
+    e só depois a chave válida entra em vigor."""
+    if not _sz_plan_active():
+        return jsonify({'erro': 'Assinatura inativa.'}), 402
+    data = request.get_json(silent=True) or {}
+    tipo, chave, perr = _sz_pix_normaliza(data.get('pix_tipo'), data.get('pix_chave'))
+    if perr:
+        return jsonify({'erro': perr}), 400
+    conn = get_saas_db()
+    af = conn.execute(
+        'SELECT a.id, a.nome FROM slotzap_afiliados a '
+        'JOIN slotzap_campanhas c ON c.id = a.campanha_id '
+        'WHERE a.campanha_id=? AND a.codigo=? AND c.user_id=?',
+        (camp_id, codigo, _sz_uid())).fetchone()
+    if not af:
+        conn.close()
+        return jsonify({'erro': 'Vendedor não encontrado nesta campanha.'}), 404
+    af = dict(af)
+    quitadas = 0
+    if data.get('quitar'):
+        # PRIMEIRO quita (senão o robô paga de novo assim que a chave ficar válida).
+        # Marca como 'pago' e limpa o erro; guarda a origem pra auditoria.
+        cur = conn.execute(
+            "UPDATE slotzap_afiliado_pagamentos "
+            "SET status='pago', erro='', asaas_transfer_id='PAGO-POR-FORA' "
+            "WHERE afiliado_id=? AND campanha_id=? AND status IN ('pendente','erro')",
+            (af['id'], camp_id))
+        quitadas = cur.rowcount or 0
+        conn.commit()
+    conn.execute('UPDATE slotzap_afiliados SET pix_chave=?, pix_tipo=? WHERE id=?',
+                 (chave, tipo, af['id']))
+    conn.commit()
+    conn.close()
+    log.info(f'[SlotZap] PIX do vendedor {codigo} ({af.get("nome")}) corrigido na camp {camp_id} '
+             f'— tipo {tipo}, {quitadas} comissão(ões) quitada(s) como paga(s) por fora')
+    return jsonify({'ok': True, 'quitadas': quitadas, 'tipo': tipo})
+
+
 @app.route('/slotzap/campanha/<int:camp_id>/afiliados/pagar-pendentes', methods=['POST'])
 @_sz_login_required
 def slotzap_afiliados_pagar_pendentes(camp_id):
