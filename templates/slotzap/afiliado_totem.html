@@ -4,86 +4,128 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Totem do vendedor — {{ camp.nome }}</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
-  :root{--azul:#0b5cab;--azul-claro:#1e88e5;--amarelo:#ffd60a;--verde:#25D366;--escuro:#0a2540;}
+  /* ───────────────────────────────────────────────────────────────────────────
+     TOTEM MEIA-FOLHA — dois por folha (A4 ou Ofício), corte único na horizontal.
+     Cada totem: 210 x 148 mm (A5 paisagem). Dois = 296 mm.
+     Cabe na A4 (210x297), no Ofício II (216x330) e no Legal (216x356).
+     Dimensionado na LARGURA DA A4 (210mm, a menor) => cabe em todos os papéis,
+     e o totem sai do MESMO tamanho físico em qualquer um deles.
+     @page size:A4 portrait é OBRIGATÓRIO (não use "auto"): com "auto" o Chrome cai no
+     padrão do sistema, que em várias instalações é LETTER (279,4mm) — aí 296mm de totens
+     ESTOURAM pra uma 2ª página e o vendedor imprime 1 totem por folha em vez de 2.
+     Testado com Chrome headless: "auto" => 2 páginas Letter; "A4 portrait" => 1 página A4.
+     No Ofício (330mm) os mesmos 296mm cabem sobrando uma tira branca embaixo.
+     QRs vêm do SERVIDOR em base64 (zero dependência de internet na hora de imprimir).
+     ─────────────────────────────────────────────────────────────────────────── */
+  @page { size: A4 portrait; margin: 0; }
+
+  :root{--azul:#0b5cab;--azul-claro:#1e88e5;--amarelo:#ffd60a;--verde:#16a34a;--zap:#25D366;--escuro:#0a2540;}
   *{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important;color-adjust:exact !important;}
-  body{font-family:'Segoe UI',Arial,sans-serif;background:#e9eef3;color:var(--escuro);display:flex;flex-direction:column;align-items:center;padding:20px;}
+  body{font-family:'Segoe UI',Arial,Helvetica,sans-serif;background:#e9eef3;color:var(--escuro);display:flex;flex-direction:column;align-items:center;padding:16px;}
 
-  .toolbar{width:210mm;max-width:100%;display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin-bottom:18px;}
-  .toolbar button,.toolbar label{cursor:pointer;border:none;border-radius:10px;padding:12px 20px;font-size:15px;font-weight:700;color:#fff;background:var(--azul);box-shadow:0 2px 6px rgba(0,0,0,.2);}
-  .toolbar label{background:var(--verde);}
-  .toolbar .campo{display:flex;align-items:center;gap:8px;background:#fff;border-radius:10px;padding:6px 12px;box-shadow:0 2px 6px rgba(0,0,0,.12);}
-  .toolbar .campo input{border:none;outline:none;font-size:14px;width:240px;}
-  .toolbar button:hover{filter:brightness(1.08);}
-  .toolbar .hint{flex-basis:100%;text-align:center;font-size:13px;color:#555;margin-top:4px;}
+  /* ── Barra de ferramentas (some na impressão) ── */
+  .toolbar{width:210mm;max-width:100%;display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-bottom:16px;}
+  .toolbar button,.toolbar label{cursor:pointer;border:none;border-radius:10px;padding:11px 18px;font-size:14px;font-weight:700;color:#fff;background:var(--azul);box-shadow:0 2px 6px rgba(0,0,0,.2);}
+  .toolbar label{background:var(--zap);}
+  .toolbar button:hover,.toolbar label:hover{filter:brightness(1.08);}
+  .toolbar .hint{flex-basis:100%;text-align:center;font-size:12.5px;color:#40506b;margin-top:4px;line-height:1.6;}
   .toolbar .hint b{color:var(--azul);}
+  .toolbar .aviso{flex-basis:100%;text-align:center;font-size:12.5px;background:#fff6d6;border:1px solid #f0c800;color:#7a5c00;border-radius:8px;padding:8px 12px;margin-top:2px;}
 
-  .folha{width:210mm;height:297mm;background:linear-gradient(160deg,#ffffff 0%,#eaf3ff 100%);box-shadow:0 8px 30px rgba(0,0,0,.18);display:flex;flex-direction:column;overflow:hidden;position:relative;border:8px solid var(--azul);}
+  /* ── A FOLHA (contém os 2 totens) ── */
+  .folha{width:210mm;background:#fff;box-shadow:0 8px 30px rgba(0,0,0,.18);}
 
-  .topo{background:linear-gradient(135deg,var(--azul) 0%,var(--azul-claro) 100%);color:#fff;text-align:center;padding:20px 20px 16px;}
-  .badge-rifa{display:inline-block;background:var(--amarelo);color:var(--escuro);font-weight:900;letter-spacing:4px;font-size:20px;padding:6px 26px;border-radius:40px;margin-bottom:10px;box-shadow:0 3px 0 rgba(0,0,0,.15);}
-  .topo h1{font-size:36px;line-height:1.05;font-weight:900;text-shadow:0 2px 4px rgba(0,0,0,.25);}
-  .topo h1 .destaque{color:var(--amarelo);}
-  .topo .sub{font-size:16px;margin-top:6px;opacity:.95;}
+  /* ── UM TOTEM = meia folha ── */
+  .totem{width:210mm;height:148mm;padding:10mm;overflow:hidden;display:flex;flex-direction:column;
+         background:linear-gradient(160deg,#ffffff 0%,#eef5ff 100%);position:relative;}
+  /* Guia de corte: BORDA + tesoura como TEXTO (foreground) — imprime mesmo com
+     "gráficos de plano de fundo" DESLIGADO. Linha desenhada com background sumiria. */
+  .totem + .totem{border-top:1px dashed #8b97a8;}
+  .totem + .totem::before{content:"\2702";position:absolute;top:-3.4mm;left:2mm;font-size:11px;color:#8b97a8;background:#fff;padding:0 3px;}
 
-  .palco{flex:0 0 auto;text-align:center;padding:14px 20px 4px;}
-  .foto-wrap{width:250px;height:250px;margin:0 auto;border-radius:18px;border:3px dashed #b9c6d6;background:#f6f9fc;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative;}
-  .foto-wrap img{width:100%;height:100%;object-fit:contain;display:none;}
+  /* ── CABEÇALHO (13mm) ── */
+  .cab{height:13mm;background:linear-gradient(135deg,var(--azul) 0%,var(--azul-claro) 100%);
+       border-radius:2mm;display:flex;align-items:center;gap:3mm;padding:0 3mm;flex:0 0 auto;}
+  .pilula{background:var(--amarelo);color:var(--escuro);font-weight:900;letter-spacing:2px;
+          font-size:8.5pt;padding:1mm 3mm;border-radius:10mm;flex:0 0 auto;white-space:nowrap;}
+  .cab h1{flex:1;color:#fff;font-size:14.5pt;font-weight:900;line-height:1;text-align:center;
+          white-space:nowrap;overflow:hidden;text-shadow:0 1px 2px rgba(0,0,0,.25);}
+  .cab h1 .destaque{color:var(--amarelo);}
+  .chip{background:var(--amarelo);color:var(--escuro);font-weight:900;font-size:8pt;
+        padding:1mm 2.5mm;border-radius:10mm;flex:0 0 auto;white-space:nowrap;}
+
+  /* ── CORPO: foto (desejo) | ação (preço + QRs) ── */
+  .corpo{height:78mm;display:flex;gap:4mm;margin-top:2mm;flex:0 0 auto;}
+
+  .foto-wrap{width:84mm;height:78mm;border-radius:3mm;border:0.8mm dashed #b9c6d6;background:#fff;
+             display:flex;align-items:center;justify-content:center;overflow:hidden;flex:0 0 auto;}
   .foto-wrap.tem-foto{border-style:solid;border-color:var(--azul);}
-  .foto-wrap.tem-foto img{display:block;}
-  .foto-placeholder{color:#8aa0b8;font-size:14px;padding:0 24px;}
-  .foto-placeholder .icone{font-size:56px;display:block;margin-bottom:8px;}
+  .foto-produto{width:100%;height:100%;object-fit:contain;display:none;}
+  .foto-wrap.tem-foto .foto-produto{display:block;}
+  .foto-vazia{color:#8aa0b8;font-size:9pt;text-align:center;padding:0 6mm;line-height:1.4;}
+  .foto-vazia .icone{font-size:30pt;display:block;margin-bottom:2mm;}
 
-  .precos{display:flex;justify-content:center;gap:14px;margin-top:12px;flex-wrap:wrap;}
-  .pbloco{font-size:14px;color:#444;font-weight:600;}
-  .pbloco .valor{display:inline-block;background:var(--escuro);color:#fff;font-weight:900;font-size:20px;padding:4px 16px;border-radius:10px;margin-left:6px;}
-  .pbloco.numero .valor{background:var(--verde);}
+  .acao{flex:1;display:flex;flex-direction:column;min-width:0;}
 
-  .faixa-destaque{background:var(--amarelo);color:var(--escuro);text-align:center;font-weight:900;font-size:16px;letter-spacing:1px;padding:8px 10px;margin:8px 0 2px;}
+  /* PREÇO — texto ESCURO sobre BRANCO com borda verde: sobrevive mesmo se o usuário
+     não marcar "gráficos de plano de fundo" (fundo chapado sumiria e levaria o preço junto). */
+  .preco{height:14mm;border:0.8mm solid var(--verde);border-radius:2mm;background:#fff;
+         display:flex;flex-direction:column;align-items:center;justify-content:center;flex:0 0 auto;}
+  .preco .grande{font-size:19pt;font-weight:900;color:var(--escuro);line-height:1;}
+  .preco .grande b{color:var(--verde);}
+  .preco .micro{font-size:6.5pt;color:#5a6b82;margin-top:0.8mm;font-weight:600;}
 
-  .passos{display:flex;justify-content:center;gap:22px;padding:10px 20px 4px;flex-wrap:wrap;}
-  .passo{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--escuro);}
-  .passo .n{background:var(--azul);color:#fff;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:13px;}
+  .cards{height:62mm;display:flex;gap:2mm;margin-top:2mm;flex:0 0 auto;}
+  .card{flex:1;background:#fff;border-radius:2mm;padding:2mm 1mm;display:flex;flex-direction:column;
+        align-items:center;justify-content:space-between;min-width:0;}
+  .card.banco{border:0.8mm solid var(--verde);}
+  .card.escolher{border:0.8mm solid var(--azul);}
+  .card .selo{background:var(--amarelo);color:var(--escuro);font-size:6.5pt;font-weight:900;
+              padding:0.5mm 2mm;border-radius:6mm;margin-bottom:0.6mm;}
+  .card .titulo{font-size:8pt;font-weight:900;line-height:1.1;text-align:center;padding:0 1mm;}
+  .card.banco .titulo{color:var(--verde);}
+  .card.escolher .titulo{color:var(--azul);}
+  .card .qr{width:42mm;height:42mm;display:block;}
+  .card .qr-vazio{width:42mm;height:42mm;border:0.5mm dashed #c3ccd8;border-radius:2mm;display:flex;
+                  align-items:center;justify-content:center;text-align:center;font-size:7pt;color:#98a5b5;padding:2mm;}
+  /* Rótulo de DECISÃO: o leigo não precisa entender nada além desta linha. */
+  .card .rotulo{font-size:7pt;font-weight:800;color:var(--escuro);text-align:center;line-height:1.15;padding:0 1mm;}
+  .card .rotulo b{text-transform:uppercase;}
 
-  .qrs{flex:1;display:flex;gap:16px;padding:6px 24px 8px;align-items:stretch;}
-  .card{flex:1;border-radius:16px;padding:14px 12px;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;border:2px solid #e1e9f2;background:#fff;}
-  .card.comprar{border-color:var(--azul);background:linear-gradient(180deg,#eaf3ff 0%,#ffffff 60%);}
-  .card.whats{border-color:var(--verde);background:linear-gradient(180deg,#e7f9ef 0%,#ffffff 60%);}
-  .card h2{font-size:18px;margin-bottom:3px;}
-  .card.comprar h2{color:var(--azul);}
-  .card.whats h2{color:var(--verde);}
-  .card .desc{font-size:12px;color:#555;margin-bottom:10px;min-height:30px;}
-  .qrbox{background:#fff;padding:8px;border-radius:10px;display:inline-block;min-height:170px;}
-  .qrbox img,.qrbox canvas{display:block;}
-  .qrbox .vazio{font-size:12px;color:#999;width:160px;padding:60px 10px;line-height:1.4;}
-  .card .cta{margin-top:10px;font-weight:800;font-size:14px;}
-  .card.comprar .cta{color:var(--azul);}
-  .card.whats .cta{color:var(--verde);}
-  .emoji{font-size:28px;}
-  .vendedor{margin-top:8px;font-size:13px;font-weight:800;color:var(--escuro);background:var(--amarelo);padding:3px 14px;border-radius:30px;}
+  /* ── RODAPÉ: grupo | vendedor | banner ── */
+  .rodape{height:28mm;display:flex;gap:2mm;margin-top:2mm;flex:0 0 auto;}
+  .cel{border-radius:2mm;overflow:hidden;}
 
-  /* Faixa do vendedor (nome + telefone p/ dúvidas) */
-  .vendedor-strip{background:#fff;border-top:2px solid var(--amarelo);color:var(--escuro);text-align:center;padding:9px 20px;font-size:14px;font-weight:700;}
-  .vendedor-strip b{color:var(--azul);}
+  .cel.grupo{width:46mm;background:#fff;border:0.5mm solid #cfd8e3;display:flex;align-items:center;gap:2mm;padding:2mm;flex:0 0 auto;}
+  .cel.grupo .qr{width:24mm;height:24mm;display:block;flex:0 0 auto;}
+  .cel.grupo .qr-vazio{width:24mm;height:24mm;border:0.4mm dashed #c3ccd8;border-radius:1mm;display:flex;align-items:center;justify-content:center;font-size:6pt;color:#98a5b5;text-align:center;padding:1mm;flex:0 0 auto;}
+  .cel.grupo .txt{font-size:7pt;color:#44536b;line-height:1.3;}
+  .cel.grupo .txt b{display:block;font-size:8pt;color:var(--escuro);font-weight:900;}
 
-  /* Banner do despachante — EDITÁVEL */
-  .banner{background:var(--escuro);color:#fff;padding:14px 20px;display:flex;align-items:center;justify-content:center;gap:14px;text-align:center;min-height:74px;}
-  .banner .marca{font-size:22px;font-weight:900;color:var(--amarelo);white-space:nowrap;}
-  .banner .txt{font-size:14px;line-height:1.4;font-weight:600;}
-  .banner .txt b{color:var(--amarelo);}
+  .cel.vendedor{width:46mm;background:#fff;border:0.5mm solid #cfd8e3;border-top:1mm solid var(--amarelo);
+                display:flex;flex-direction:column;align-items:center;justify-content:center;padding:1mm;flex:0 0 auto;text-align:center;}
+  .cel.vendedor .lbl{font-size:6.5pt;color:#6b7a90;font-weight:700;letter-spacing:.5px;}
+  .cel.vendedor .nome{font-size:9pt;font-weight:900;color:var(--azul);line-height:1.15;}
+  /* Telefone SEMPRE escuro sobre branco — nunca pode depender de fundo colorido imprimir. */
+  .cel.vendedor .tel{font-size:11pt;font-weight:900;color:var(--escuro);margin-top:0.5mm;}
 
-  .rodape{background:var(--azul);color:#fff;text-align:center;padding:7px 20px;font-size:12px;font-weight:700;letter-spacing:.5px;}
+  .cel.banner{flex:1;background:var(--escuro);color:#fff;display:flex;flex-direction:column;
+              align-items:center;justify-content:center;padding:2mm;text-align:center;min-width:0;}
+  .cel.banner .marca{font-size:10.5pt;font-weight:900;color:var(--amarelo);line-height:1.1;}
+  .cel.banner .txt{font-size:6.8pt;line-height:1.35;margin-top:0.8mm;font-weight:600;}
 
-  /* Marca elementos editáveis na tela (some na impressão) */
-  .editavel{outline:2px dashed rgba(11,92,171,.45);outline-offset:3px;border-radius:4px;}
+  /* ── LINHA LEGAL (não é decoração: é o invólucro jurídico da operação) ── */
+  .legal{font-size:6pt;color:#6b7a90;text-align:center;margin-top:1.5mm;flex:0 0 auto;}
+
+  /* Marca editáveis na tela (some na impressão) */
+  .editavel{outline:1.5px dashed rgba(11,92,171,.4);outline-offset:2px;border-radius:2px;}
   .editavel:focus{outline:2px solid var(--azul);}
 
   @media print{
-    @page{size:A4 portrait;margin:0;}
-    body{background:#fff;padding:0;}
-    .toolbar{display:none;}
-    .folha{box-shadow:none;width:210mm;height:297mm;border-width:8px;}
+    body{background:#fff;padding:0;display:block;}
+    .toolbar{display:none !important;}
+    .folha{box-shadow:none;width:210mm;}
     .editavel{outline:none !important;}
   }
 </style>
@@ -93,121 +135,120 @@
   <div class="toolbar">
     <label for="inputFoto">📷 Foto do prêmio</label>
     <input id="inputFoto" type="file" accept="image/*" style="display:none">
-    <div class="campo">🔗 Grupo WhatsApp:
-      <input id="inputGrupo" type="text" placeholder="cole o link do grupo aqui"
-             value="{{ grupo_convite }}">
-    </div>
     <button onclick="window.print()">🖨️ Imprimir / Salvar PDF</button>
-    <div class="hint">✏️ <b>Clique nos textos pra editar</b> (título, valor, banner do despachante). Depois clique em Imprimir — em "Margens" escolha <b>Nenhuma</b>.</div>
+    <div class="hint">
+      ✏️ <b>Clique nos textos pra editar</b> (título, preço do prêmio, banner) — o de baixo copia o de cima sozinho.<br>
+      🖨️ Na hora de imprimir: <b>Papel A4 ou Ofício</b> &nbsp;•&nbsp; <b>Margens: Nenhuma</b> &nbsp;•&nbsp;
+      <b>Escala: Padrão</b> (nunca "Ajustar à página") &nbsp;•&nbsp; marque <b>Gráficos de plano de fundo</b>.
+    </div>
+    <div class="aviso">✂️ Sai <b>2 totens por folha</b> — corte na linha tracejada do meio. No papel Ofício sobra uma tira branca embaixo: é só cortar fora.</div>
   </div>
 
   <div class="folha">
+  {% for _t in [1, 2] %}
+    <div class="totem">
 
-    <div class="topo">
-      <span class="badge-rifa editavel" contenteditable="true">★ R I F A ★</span>
-      <h1 class="editavel" contenteditable="true">Já pensou em ganhar uma<br><span class="destaque">SCOOTER ELÉTRICA?</span></h1>
-      <div class="sub editavel" contenteditable="true">Adquira o e-book e garanta seu número da sorte!</div>
-    </div>
+      <div class="cab">
+        <span class="pilula editavel" contenteditable="true" data-sync="pilula">RIFA</span>
+        <h1 class="editavel" contenteditable="true" data-sync="titulo">GANHE UMA <span class="destaque">SCOOTER ELÉTRICA</span></h1>
+        <span class="chip">SÓ {{ camp.total_slots }} NÚMEROS</span>
+      </div>
 
-    <div class="palco">
-      <div class="foto-wrap" id="fotoWrap">
-        <img id="fotoProduto" alt="Prêmio">
-        <div class="foto-placeholder" id="placeholder">
-          <span class="icone">🛵</span>
-          Clique em <b>"Foto do prêmio"</b> acima<br>para colocar a foto aqui
+      <div class="corpo">
+        <div class="foto-wrap">
+          <img class="foto-produto" alt="Prêmio">
+          <div class="foto-vazia">
+            <span class="icone">🛵</span>
+            Clique em <b>"Foto do prêmio"</b><br>lá em cima
+          </div>
+        </div>
+
+        <div class="acao">
+          <div class="preco">
+            <div class="grande"><b>R$ {{ '%.2f'|format(camp.preco or 0)|replace('.', ',') }}</b> O NÚMERO</div>
+            <div class="micro">Prêmio <span class="editavel" contenteditable="true" data-sync="premio">R$ 6.690,00</span>
+              &nbsp;•&nbsp; confirmação na hora via PIX</div>
+          </div>
+
+          <div class="cards">
+            {% if qr_pix_direto %}
+            <div class="card banco">
+              <span class="selo">MAIS FÁCIL ✓</span>
+              <div class="titulo">PAGUE E GANHE<br>SEU NÚMERO</div>
+              {% if qr_img_direta %}
+                <img class="qr" src="{{ qr_img_direta }}" alt="QR PIX compra direta">
+              {% else %}
+                <div class="qr-vazio">QR indisponível</div>
+              {% endif %}
+              <div class="rotulo">Escaneie com o<br><b>app do seu banco</b></div>
+            </div>
+            {% endif %}
+
+            <div class="card escolher">
+              <div class="titulo">QUERO ESCOLHER<br>MEU NÚMERO</div>
+              {% if qr_img_compra %}
+                <img class="qr" src="{{ qr_img_compra }}" alt="QR comprar número">
+              {% else %}
+                <div class="qr-vazio">QR indisponível</div>
+              {% endif %}
+              <div class="rotulo">Escaneie com a<br><b>câmera do celular</b></div>
+            </div>
+          </div>
         </div>
       </div>
-      <div class="precos">
-        <div class="pbloco">Prêmio: <span class="valor editavel" contenteditable="true">R$ 6.690,00</span></div>
-        <div class="pbloco numero">Cada número: <span class="valor">R$ {{ '%.2f'|format(camp.preco)|replace('.', ',') }}</span></div>
+
+      <div class="rodape">
+        <div class="cel grupo">
+          {% if qr_img_grupo %}
+            <img class="qr" src="{{ qr_img_grupo }}" alt="QR grupo WhatsApp">
+          {% else %}
+            <div class="qr-vazio">configure o link do grupo</div>
+          {% endif %}
+          <div class="txt"><b>GRUPO DO SORTEIO</b>acompanhe ao vivo<br>e veja o resultado</div>
+        </div>
+
+        {% if af.nome %}
+        <div class="cel vendedor">
+          <div class="lbl">FALE COMIGO</div>
+          <div class="nome">{{ af.nome }}</div>
+          {% if tel_fmt %}<div class="tel">{{ tel_fmt }}</div>{% endif %}
+        </div>
+        {% endif %}
+
+        <div class="cel banner">
+          <div class="marca editavel" contenteditable="true" data-sync="marca">DESPACHANTE LESSMANN</div>
+          <div class="txt editavel" contenteditable="true" data-sync="bannertxt">
+            Licenciamento, transferência, CNH — resolvemos tudo pra você!<br>
+            (47) 99716-2967 &nbsp;•&nbsp; R. Mal. Castelo Branco, 2838 — Schroeder/SC
+          </div>
+        </div>
       </div>
+
+      <div class="legal editavel" contenteditable="true" data-sync="legal">Você adquire o e-book e concorre ao prêmio.</div>
+
     </div>
-
-    <div class="faixa-destaque editavel" contenteditable="true">🔥 APENAS {{ camp.total_slots }} NÚMEROS &nbsp;•&nbsp; CONFIRMAÇÃO NA HORA VIA PIX 🔥</div>
-
-    <div class="passos">
-      <div class="passo"><span class="n">1</span> Escaneie o QR Code</div>
-      <div class="passo"><span class="n">2</span> Escolha seus números</div>
-      <div class="passo"><span class="n">3</span> Pague via PIX</div>
-    </div>
-
-    <div class="qrs">
-      <div class="card comprar">
-        <h2>🎟️ COMPRAR MEU NÚMERO</h2>
-        <div class="desc">Aponte a câmera, escolha seus números e pague no PIX. Confirmação automática!</div>
-        <div class="qrbox" id="qrCompra"></div>
-        <div class="cta">São apenas {{ camp.total_slots }} vagas — corra! 🏁</div>
-      </div>
-      {% if qr_pix_direto %}
-      <div class="card comprar" style="border:3px solid #22c55e">
-        <h2>💳 PAGAR DIRETO NO BANCO</h2>
-        <div class="desc">Não sabe mexer no site? Escaneie no <b>app do seu banco</b>, pague o PIX e <b>ganhe um número na hora</b>! 🎲</div>
-        <div class="qrbox" id="qrPixDireto"></div>
-        <div class="cta">R$ {{ '%.2f'|format(camp.preco or 0) }} — número da sorte automático! 🍀</div>
-      </div>
-      {% endif %}
-      <div class="card whats">
-        <h2><span class="emoji">📱</span> ENTRAR NO GRUPO</h2>
-        <div class="desc">Entre no grupo do WhatsApp e acompanhe a rifa e o sorteio.</div>
-        <div class="qrbox" id="qrWhats"></div>
-        <div class="cta">Grupo oficial no WhatsApp 💬</div>
-      </div>
-    </div>
-
-    {% if af.nome %}<div class="vendedor-strip">🧑 Vendedor: <b>{{ af.nome }}</b>{% if tel_fmt %} &nbsp;•&nbsp; 📲 Dúvidas? Chame no WhatsApp: <b>{{ tel_fmt }}</b>{% endif %}</div>{% endif %}
-
-    <!-- BANNER EDITÁVEL — sua propaganda -->
-    <div class="banner">
-      <div class="marca editavel" contenteditable="true">DESPACHANTE LESSMANN</div>
-      <div class="txt editavel" contenteditable="true">
-        Licenciamento, transferência, CNH e muito mais — <b>resolvemos tudo pra você!</b><br>
-        📞 (47) 99716-2967 &nbsp;•&nbsp; 🌐 dldespachante.com.br<br>
-        📍 R. Marechal Castelo Branco, 2838 — Centro, Schroeder/SC
-      </div>
-    </div>
-
-    <div class="rodape">🔓 Entre agora &nbsp;•&nbsp; Pague via PIX &nbsp;•&nbsp; Corra antes que os melhores números acabem!</div>
-
+  {% endfor %}
   </div>
 
 <script>
-  var LINK_COMPRA = {{ link_compra|tojson }};
-  var QR_PIX_DIRETO = {{ (qr_pix_direto or '')|tojson }};
-
-  function gerarQR(id, texto){
-    var el = document.getElementById(id);
-    el.innerHTML = "";
-    if(!texto){ el.innerHTML = '<div class="vazio">Cole o link do grupo na barra de cima para gerar o QR</div>'; return; }
-    try{
-      new QRCode(el, {text: texto, width: 160, height: 160, colorDark: "#0a2540", colorLight: "#ffffff", correctLevel: QRCode.CorrectLevel.M});
-    }catch(e){
-      var img = document.createElement("img");
-      img.width = 160; img.height = 160;
-      img.src = "https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=" + encodeURIComponent(texto);
-      el.appendChild(img);
-    }
-  }
-
-  window.addEventListener("load", function(){
-    gerarQR("qrCompra", LINK_COMPRA);
-    if(QR_PIX_DIRETO){ gerarQR("qrPixDireto", QR_PIX_DIRETO); }
-    gerarQR("qrWhats", document.getElementById("inputGrupo").value.trim());
+  // Os dois totens são cópias. Ao editar um, o outro acompanha (o vendedor imprime 2 iguais).
+  document.querySelectorAll('[data-sync]').forEach(function(el){
+    el.addEventListener('input', function(){
+      var chave = el.getAttribute('data-sync');
+      document.querySelectorAll('[data-sync="' + chave + '"]').forEach(function(outro){
+        if (outro !== el) outro.innerHTML = el.innerHTML;
+      });
+    });
   });
 
-  // Atualiza o QR do grupo conforme você cola o link
-  document.getElementById("inputGrupo").addEventListener("input", function(e){
-    gerarQR("qrWhats", e.target.value.trim());
-  });
-
-  // Foto do prêmio
-  document.getElementById("inputFoto").addEventListener("change", function(e){
+  // Foto do prêmio entra nos DOIS totens de uma vez
+  document.getElementById('inputFoto').addEventListener('change', function(e){
     var arquivo = e.target.files[0];
-    if(!arquivo) return;
+    if (!arquivo) return;
     var leitor = new FileReader();
     leitor.onload = function(ev){
-      document.getElementById("fotoProduto").src = ev.target.result;
-      document.getElementById("fotoWrap").classList.add("tem-foto");
-      document.getElementById("placeholder").style.display = "none";
+      document.querySelectorAll('.foto-produto').forEach(function(img){ img.src = ev.target.result; });
+      document.querySelectorAll('.foto-wrap').forEach(function(w){ w.classList.add('tem-foto'); });
     };
     leitor.readAsDataURL(arquivo);
   });

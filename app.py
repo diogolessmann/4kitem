@@ -17157,6 +17157,29 @@ def _asaas_pix_key():
     return ''
 
 
+def _qr_data_uri(texto, escala=10, borda=4):
+    """Gera um QR como data-URI PNG (base64) NO SERVIDOR. Peça IMPRESSA não pode depender de
+    CDN/internet na hora de imprimir — se o CDN cair ou a rede da loja bloquear, o vendedor
+    imprimia quadrado VAZIO e só descobria depois de 50 folhas. borda=4 respeita a zona de
+    silêncio da ISO/IEC 18004 (a lib de JS desenhava os módulos na borda, sem zona de silêncio).
+    Preto puro de propósito: contraste máximo em impressora jato/laser vagabunda."""
+    if not (texto or '').strip():
+        return ''
+    try:
+        import qrcode, io as _io, base64 as _b64
+        qr = qrcode.QRCode(error_correction=qrcode.constants.ERROR_CORRECT_M,
+                           box_size=escala, border=borda)
+        qr.add_data(texto)
+        qr.make(fit=True)
+        img = qr.make_image(fill_color='black', back_color='white')
+        buf = _io.BytesIO()
+        img.save(buf, format='PNG')
+        return 'data:image/png;base64,' + _b64.b64encode(buf.getvalue()).decode('ascii')
+    except Exception as _e:
+        log.warning(f'[SlotZap] QR data-uri: {_e}')
+        return ''
+
+
 def _sz_criar_qr_direto(camp, af, conn):
     """Cria (ou recupera) o QR PIX ESTÁTICO de compra direta do afiliado — valor fixo = preço do
     número, reutilizável. Retorna o copia-e-cola (payload) ou '' se não der. SÓ Asaas."""
@@ -18547,10 +18570,15 @@ def slotzap_afiliado_totem(token, codigo):
         tel_fmt = f"({_d[:2]}) {_d[2:6]}-{_d[6:]}"
     else:
         tel_fmt = af.get('telefone') or ''
+    # QRs gerados NO SERVIDOR (data-URI): totem impresso não pode depender de CDN/internet
+    _grupo = (camp.get('grupo_convite') or '').strip()
     return render_template('slotzap/afiliado_totem.html', camp=camp, af=af,
                            link_compra=link_compra, tel_fmt=tel_fmt,
-                           grupo_convite=(camp.get('grupo_convite') or ''),
-                           qr_pix_direto=qr_pix_direto)
+                           grupo_convite=_grupo,
+                           qr_pix_direto=qr_pix_direto,
+                           qr_img_compra=_qr_data_uri(link_compra),
+                           qr_img_direta=_qr_data_uri(qr_pix_direto),
+                           qr_img_grupo=_qr_data_uri(_grupo))
 
 
 @app.route('/slotzap/campanha/<int:camp_id>/afiliados')
