@@ -96,7 +96,12 @@
                   align-items:center;justify-content:center;text-align:center;font-size:7pt;color:#98a5b5;padding:2mm;}
   /* Rótulo de DECISÃO: o leigo não precisa entender nada além desta linha. */
   .card .rotulo{font-size:7pt;font-weight:800;color:var(--escuro);text-align:center;line-height:1.15;padding:0 1mm;}
-  .card .rotulo b{text-transform:uppercase;}
+  /* A palavra-chave em VERMELHO: é a linha que decide "qual QR eu escaneio?".
+     Vermelho ESCURO de propósito (#c1121f, não vermelho vivo): quem imprime em escala de
+     cinza pra poupar toner converte vermelho vivo num cinza claro ILEGÍVEL — o escuro vira
+     cinza escuro e continua forte. Cor de TEXTO é foreground: imprime mesmo com
+     "gráficos de plano de fundo" desligado. */
+  .card .rotulo b{text-transform:uppercase;color:#c1121f;font-weight:900;}
 
   /* ── RODAPÉ: grupo | vendedor | banner ── */
   .rodape{height:28mm;display:flex;gap:2mm;margin-top:2mm;flex:0 0 auto;}
