@@ -61,8 +61,13 @@
   .foto-wrap{width:84mm;height:78mm;border-radius:3mm;border:0.8mm dashed #b9c6d6;background:#fff;
              display:flex;align-items:center;justify-content:center;overflow:hidden;flex:0 0 auto;}
   .foto-wrap.tem-foto{border-style:solid;border-color:var(--azul);}
-  .foto-produto{width:100%;height:100%;object-fit:contain;display:none;}
+  /* cover (não contain): a foto PREENCHE a caixa inteira, sem tarja branca. */
+  .foto-produto{width:100%;height:100%;object-fit:cover;display:none;}
   .foto-wrap.tem-foto .foto-produto{display:block;}
+  /* Com foto, o texto de instrução SOME — em CSS, não em JS. Sem isto ele continuava
+     visível e, como .foto-wrap é flex, ficava LADO A LADO com a imagem: espremia a foto
+     pra esquerda e o texto saía impresso na folha. */
+  .foto-wrap.tem-foto .foto-vazia{display:none;}
   .foto-vazia{color:#8aa0b8;font-size:9pt;text-align:center;padding:0 6mm;line-height:1.4;}
   .foto-vazia .icone{font-size:30pt;display:block;margin-bottom:2mm;}
 

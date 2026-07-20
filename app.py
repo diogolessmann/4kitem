@@ -18560,8 +18560,13 @@ def slotzap_afiliado_totem(token, codigo):
     _c2.close()
     base = os.environ.get('BASE_URL', 'https://www.4kitem.com.br').rstrip('/')
     link_compra = f"{base}/slotzap/p/{token}?aff={codigo}"
-    # Telefone do vendedor formatado pra exibir no totem (dúvidas dos clientes)
-    _d = ''.join(c for c in (af.get('telefone') or '') if c.isdigit())
+    # Telefone do vendedor pro totem (cliente tirar dúvida). PREFERE a chave PIX quando ela é
+    # CELULAR: essa chave foi VALIDADA pra receber dinheiro, enquanto a coluna 'telefone' é a
+    # trava anti-duplicado (UNIQUE campanha_id+telefone) — se o vendedor digitou errado no
+    # cadastro, não dá pra corrigir sem colidir com o cadastro gêmeo. Cai pro 'telefone'
+    # quando a chave não é de celular (CPF/e-mail/aleatória).
+    _fonte = af.get('pix_chave') if (af.get('pix_tipo') or '').upper() == 'PHONE' else ''
+    _d = ''.join(c for c in (_fonte or af.get('telefone') or '') if c.isdigit())
     if _d.startswith('55') and len(_d) > 11:
         _d = _d[2:]
     if len(_d) == 11:
@@ -18569,7 +18574,7 @@ def slotzap_afiliado_totem(token, codigo):
     elif len(_d) == 10:
         tel_fmt = f"({_d[:2]}) {_d[2:6]}-{_d[6:]}"
     else:
-        tel_fmt = af.get('telefone') or ''
+        tel_fmt = ''   # malformado NÃO vai impresso: cliente ligar pra número errado é pior que sem telefone
     # QRs gerados NO SERVIDOR (data-URI): totem impresso não pode depender de CDN/internet
     _grupo = (camp.get('grupo_convite') or '').strip()
     return render_template('slotzap/afiliado_totem.html', camp=camp, af=af,
