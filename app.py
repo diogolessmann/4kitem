@@ -10042,18 +10042,24 @@ def _mz_store_reply(user_id: int, number_id: int, phone: str, push_name: str, te
                   (user_id, number_id, phone, (push_name or '')[:80], (text or '')[:1000], intent, now))
         tail = phone[-8:] if len(phone) >= 8 else phone   # casa pelo final (tolera 9º dígito BR)
         if tail:
+            like = '%' + tail
+            # Dono da relação: quem respondeu ESTE número é dono dele (+ última resposta). Sempre.
+            if number_id:
+                c.execute("UPDATE mandazap_contacts SET owner_number_id=?, last_reply_at=? "
+                          "WHERE user_id=? AND phone LIKE ?", (number_id, now, user_id, like))
+            # Semáforo por intenção
             if intent in ('optout', 'wrongnum'):   # ambos blindam: some do disparo
-                c.execute("UPDATE mandazap_contacts SET status='optout', optout_at=?, last_reply_at=? "
-                          "WHERE user_id=? AND phone LIKE ?", (now, now, user_id, '%' + tail))
+                c.execute("UPDATE mandazap_contacts SET status='optout', optout_at=? "
+                          "WHERE user_id=? AND phone LIKE ?", (now, user_id, like))
             elif intent == 'optin':
-                c.execute("UPDATE mandazap_contacts SET status='quente', last_reply_at=?, "
+                c.execute("UPDATE mandazap_contacts SET status='quente', "
                           "consent_at=CASE WHEN consent_at IS NULL OR consent_at='' THEN ? ELSE consent_at END "
                           "WHERE user_id=? AND phone LIKE ? AND (status IS NULL OR status != 'optout')",
-                          (now, now, user_id, '%' + tail))
+                          (now, user_id, like))
             else:
-                c.execute("UPDATE mandazap_contacts SET status='quente', last_reply_at=? "
+                c.execute("UPDATE mandazap_contacts SET status='quente' "
                           "WHERE user_id=? AND phone LIKE ? AND (status IS NULL OR status != 'optout')",
-                          (now, user_id, '%' + tail))
+                          (user_id, like))
         c.commit(); c.close()
     except Exception as e:
         log.warning(f"mz_store_reply error: {e}")
@@ -10330,14 +10336,14 @@ def _dispatch_campaign_inner(cid: int, user_id: int, delay_s: int = 3, continuar
     list_id = camp.get('list_id')
     if list_id:
         rows = conn.execute('''
-            SELECT c.name, c.phone FROM mandazap_list_contacts lc
+            SELECT c.name, c.phone, c.owner_number_id FROM mandazap_list_contacts lc
             JOIN mandazap_contacts c ON c.id = lc.contact_id
             WHERE lc.list_id = ? AND c.user_id = ?
               AND (c.status IS NULL OR c.status != 'optout')
         ''', (list_id, user_id)).fetchall()
     else:
         rows = conn.execute(
-            "SELECT name, phone FROM mandazap_contacts WHERE user_id=? "
+            "SELECT name, phone, owner_number_id FROM mandazap_contacts WHERE user_id=? "
             "AND (status IS NULL OR status != 'optout')", (user_id,)
         ).fetchall()
 
@@ -10540,12 +10546,19 @@ def _dispatch_campaign_inner(cid: int, user_id: int, delay_s: int = 3, continuar
             log.info(f"Campanha {cid}: janela fechou — pausada em {sent_count}")
             return
 
-        # Seleciona o próximo número do pool com capacidade (round-robin)
+        # Seleciona o número que envia. DONO PRIMEIRO: se o contato já falou com um número
+        # (owner_number_id) e ele tem capacidade, envia DELE — o cliente reconhece o número,
+        # não parece golpe. Senão, round-robin normal (fallback = comportamento de sempre).
         active = [s for s in senders if s['remaining'] > 0]
         if not active:
             break  # capacidade esgotada no meio → finaliza (resto fica p/ amanhã)
-        sender   = active[rr % len(active)]
-        rr      += 1
+        owner_id = c.get('owner_number_id')
+        sender   = None
+        if owner_id:
+            sender = next((s for s in active if s['id'] == owner_id), None)
+        if sender is None:
+            sender = active[rr % len(active)]
+            rr    += 1
         instance = sender['instance']
 
         phone = (c.get('phone') or '').replace(' ','').replace('-','').replace('+','').replace('(','').replace(')','')
