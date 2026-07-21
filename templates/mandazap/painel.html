@@ -179,6 +179,7 @@ select option{background:var(--surface2)}
     <button class="sb-link" onclick="showSection('contatos')"><span>👥</span> <span>Contatos</span> {% if mz_stats.contacts > 0 %}<span class="badge">{{ mz_stats.contacts }}</span>{% endif %}</button>
     <button class="sb-link" onclick="showSection('listas')"><span>📋</span> <span>Listas</span></button>
     <button class="sb-link" onclick="showSection('campanhas')"><span>📢</span> <span>Campanhas</span></button>
+    <button class="sb-link" onclick="showSection('respostas')"><span>💬</span> <span>Respostas</span> {% if mz_stats.replies_unread > 0 %}<span class="badge" style="background:#ef4444;color:#fff">{{ mz_stats.replies_unread }}</span>{% endif %}</button>
     <button class="sb-link" onclick="showSection('templates')"><span>📝</span> <span>Templates</span></button>
     <div class="sb-divider"></div>
     <button class="sb-link" onclick="showSection('plano')"><span>⚙️</span> <span>Plano</span></button>
@@ -348,6 +349,10 @@ select option{background:var(--surface2)}
         <div style="font-size:11px;margin-top:7px;padding:6px 9px;border-radius:7px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);color:#fca5a5;line-height:1.4"
              title="Proteção pós-ban: após um possível ban, todos os números ficam pausados por algumas horas para não queimar os outros.">
           🛑 Em cooldown de segurança até <strong>{{ n.cooldown_hm }}</strong>
+          <form method="POST" action="/mandazap/numeros/{{ n.id }}/liberar-cooldown" style="margin-top:7px"
+                onsubmit="return confirm('Libere SÓ se você tem certeza que NÃO foi ban (o número só caiu / era infra).\n\nSe o chip foi realmente banido, mandar de novo pode piorar. Na dúvida, reconecte o número primeiro (Gerar QR).')">
+            <button type="submit" style="width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.25);border-radius:6px;padding:5px;font-size:11px;color:#fca5a5;cursor:pointer;font-family:inherit">🔓 Não foi ban — liberar agora</button>
+          </form>
         </div>
         {% elif n.status == 'connected' %}
         <div style="font-size:11px;margin-top:7px;padding:6px 9px;border-radius:7px;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2);color:#fbbf24;line-height:1.4"
@@ -598,6 +603,46 @@ select option{background:var(--surface2)}
     </div>
     {% else %}
     <div class="empty"><div class="empty-icon">📢</div><h4>Nenhuma campanha ainda</h4><p>Crie sua primeira campanha e comece a enviar mensagens para sua lista de clientes.</p></div>
+    {% endif %}
+  </div>
+
+  <!-- ═══════════════ RESPOSTAS (Caixa de Resposta) ═══════════════ -->
+  <div class="section" id="sec-respostas">
+    <div class="page-header">
+      <div class="page-title">💬 Respostas</div>
+      <div class="page-sub">O que seus clientes responderam — e o que o sistema fez com isso</div>
+    </div>
+
+    <div style="font-size:12.5px;background:rgba(39,174,96,.06);border:1px solid rgba(39,174,96,.2);border-radius:10px;padding:12px 14px;margin-bottom:16px;line-height:1.6;color:var(--text2)">
+      <strong>O sistema lê as respostas sozinho:</strong><br>
+      🚫 Quem responde <strong>SAIR / PARAR / CANCELAR</strong> é <strong>blindado na hora</strong> — nunca mais recebe disparo (fica o registro pra LGPD).<br>
+      ⚠️ Quem responde <strong>"quem é você?" / "não conheço" / "número errado"</strong> (chip trocado de dono) entra em <strong>quarentena automática</strong> — antes de virar denúncia.<br>
+      ✅ Quem responde <strong>SIM / QUERO</strong> vira <strong>contato quente</strong> com consentimento.<br>
+      💬 Qualquer resposta já deixa o contato <strong>quente</strong> — quem conversa não queima o número.
+    </div>
+
+    {% if replies %}
+    <div class="card-box">
+      {% for r in replies %}
+      <div style="display:flex;gap:12px;align-items:flex-start;padding:12px 4px;border-bottom:1px solid var(--border)">
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:3px">
+            <strong style="font-size:13px">{{ r.push_name or r.phone }}</strong>
+            {% if r.intent == 'optout' %}<span style="font-size:10.5px;font-weight:700;background:rgba(239,68,68,.15);color:#f87171;border:1px solid rgba(239,68,68,.3);padding:1px 7px;border-radius:20px">🚫 pediu p/ sair</span>
+            {% elif r.intent == 'wrongnum' %}<span style="font-size:10.5px;font-weight:700;background:rgba(245,158,11,.15);color:#fbbf24;border:1px solid rgba(245,158,11,.3);padding:1px 7px;border-radius:20px">⚠️ não te conhece</span>
+            {% elif r.intent == 'optin' %}<span style="font-size:10.5px;font-weight:700;background:rgba(34,197,94,.15);color:#22c55e;border:1px solid rgba(34,197,94,.3);padding:1px 7px;border-radius:20px">✅ topou receber</span>
+            {% else %}<span style="font-size:10.5px;font-weight:700;background:rgba(255,255,255,.06);color:var(--text3);border:1px solid var(--border2);padding:1px 7px;border-radius:20px">💬 respondeu</span>{% endif %}
+            {% if not r.is_read %}<span style="width:7px;height:7px;border-radius:50%;background:#ef4444;display:inline-block" title="não lida"></span>{% endif %}
+          </div>
+          <div style="font-size:13px;color:var(--text);word-break:break-word">{{ r.text or '—' }}</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:3px">{{ (r.created_at or '')[:16].replace('T',' ') }} · {{ r.phone }}</div>
+        </div>
+        <a href="https://wa.me/{{ r.phone }}" target="_blank" class="btn btn-sm" style="background:rgba(39,174,96,.1);border:1px solid rgba(39,174,96,.3);color:#27ae60;white-space:nowrap">↩ Responder</a>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty"><div class="empty-icon">💬</div><h4>Nenhuma resposta ainda</h4><p>Quando seus clientes responderem, aparece aqui — e o sistema classifica SAIR e SIM sozinho. (Precisa do webhook da Evolution ligado.)</p></div>
     {% endif %}
   </div>
 
@@ -1009,7 +1054,7 @@ select option{background:var(--surface2)}
 
 <script>
 // ── Seções ──────────────────────────────────────────────────────────────────
-const SECTIONS = ['dashboard','numeros','contatos','listas','campanhas','templates','plano'];
+const SECTIONS = ['dashboard','numeros','contatos','listas','campanhas','respostas','templates','plano'];
 function showSection(name) {
   SECTIONS.forEach(s => {
     document.getElementById('sec-'+s)?.classList.remove('active');
@@ -1018,6 +1063,11 @@ function showSection(name) {
   document.getElementById('sec-'+name)?.classList.add('active');
   document.querySelector(`.sb-link[onclick*="${name}"]`)?.classList.add('active');
   history.replaceState(null,'','/mandazap/painel?section='+name);
+  if (name === 'respostas') {
+    fetch('/mandazap/respostas/lidas', {method:'POST'}).then(() => {
+      document.querySelectorAll('.sb-link[onclick*="respostas"] .badge').forEach(b => b.remove());
+    }).catch(()=>{});
+  }
 }
 
 // ── Modais ───────────────────────────────────────────────────────────────────

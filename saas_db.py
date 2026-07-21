@@ -402,6 +402,26 @@ def init_saas_db():
             created_at  TEXT DEFAULT ''
         )''',
         "CREATE INDEX IF NOT EXISTS idx_defesa_notif_user ON defesapro_notificacoes(user_id, lida)",
+        # ── MandaZap — Caixa de Resposta (inbox) + status do contato ──────────
+        # As respostas dos clientes (webhook) deixam de ser descartadas: viram inbox.
+        # SAIR/PARAR → contato 'optout' (blindado, some do disparo). SIM/QUERO → 'quente'.
+        '''CREATE TABLE IF NOT EXISTS mandazap_replies (
+            id         INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id    INTEGER NOT NULL,
+            number_id  INTEGER,
+            phone      TEXT NOT NULL,
+            push_name  TEXT DEFAULT '',
+            text       TEXT DEFAULT '',
+            intent     TEXT DEFAULT 'other',
+            is_read    INTEGER DEFAULT 0,
+            created_at TEXT
+        )''',
+        "CREATE INDEX IF NOT EXISTS idx_mz_replies_user ON mandazap_replies(user_id, created_at)",
+        # Status do contato (semáforo da lista quente): '', 'quente', 'morno', 'optout', 'morto'
+        "ALTER TABLE mandazap_contacts ADD COLUMN status TEXT DEFAULT ''",
+        "ALTER TABLE mandazap_contacts ADD COLUMN consent_at TEXT DEFAULT ''",
+        "ALTER TABLE mandazap_contacts ADD COLUMN optout_at TEXT DEFAULT ''",
+        "ALTER TABLE mandazap_contacts ADD COLUMN last_reply_at TEXT DEFAULT ''",
     ]
     for sql in _saas_migrations:
         try:

@@ -8296,6 +8296,13 @@ def mandazap_painel():
     templates = [dict(r) for r in conn.execute(
         'SELECT * FROM mandazap_templates WHERE user_id=? ORDER BY created_at DESC', (user_id,)
     ).fetchall()]
+    # Caixa de Resposta (inbox): últimas respostas dos clientes + não lidas
+    replies = [dict(r) for r in conn.execute(
+        'SELECT * FROM mandazap_replies WHERE user_id=? ORDER BY created_at DESC LIMIT 200', (user_id,)
+    ).fetchall()]
+    replies_unread = conn.execute(
+        'SELECT COUNT(*) FROM mandazap_replies WHERE user_id=? AND is_read=0', (user_id,)
+    ).fetchone()[0]
     conn.close()
 
     today      = datetime.now().strftime('%Y-%m-%d')
@@ -8307,11 +8314,13 @@ def mandazap_painel():
         'today_sent': today_sent,
         'numbers':   len(numbers),
         'numbers_connected': sum(1 for n in numbers if n.get('status') == 'connected'),
+        'replies':   len(replies),
+        'replies_unread': replies_unread,
     }
 
     return render_template('mandazap/painel.html',
                            contacts=contacts, lists=lists, numbers=numbers,
-                           campaigns=campaigns, templates=templates,
+                           campaigns=campaigns, templates=templates, replies=replies,
                            mz_stats=mz_stats, plan=plan_key,
                            plan_info=MANDAZAP_PLANS.get(plan_key, MANDAZAP_PLANS['solo']),
                            plans=MANDAZAP_PLANS,
@@ -8320,6 +8329,17 @@ def mandazap_painel():
                            trial_ends=trial_ends, trial_expired=trial_expired,
                            plan_active=plan_active,
                            section=request.args.get('section', 'dashboard'))
+
+
+@app.route('/mandazap/respostas/lidas', methods=['POST'])
+@_mandazap_login_required
+def mz_replies_mark_read():
+    """Marca todas as respostas do usuário como lidas (chamado ao abrir a Caixa de Resposta)."""
+    user_id = session['mz_user_id']
+    conn = get_saas_db()
+    conn.execute('UPDATE mandazap_replies SET is_read=1 WHERE user_id=? AND is_read=0', (user_id,))
+    conn.commit(); conn.close()
+    return jsonify({'ok': True})
 
 
 # ── Admin rápido por URL ───────────────────────────────────────────────────────
@@ -8855,6 +8875,20 @@ def mz_webhook_evolution():
         if not _ok:
             return jsonify({'ok': True, 'skip': 'unknown_instance'}), 200
         _mz_inc_number_replies(_n)
+        # Caixa de Resposta: guarda o TEXTO + classifica (SAIR/SIM) — só pessoa, não grupo
+        try:
+            _jid = str(key.get('remoteJid') or '')
+            if '@g.us' not in _jid:
+                _msg = (data.get('message') or {}) if isinstance(data, dict) else {}
+                _txt = (_msg.get('conversation')
+                        or (_msg.get('extendedTextMessage') or {}).get('text')
+                        or (_msg.get('buttonsResponseMessage') or {}).get('selectedDisplayText')
+                        or (_msg.get('listResponseMessage') or {}).get('title') or '')
+                _from = _jid.split('@')[0].split(':')[0]
+                if _from:
+                    _mz_store_reply(_u, _n, _from, str(data.get('pushName') or ''), str(_txt))
+        except Exception as _ie:
+            log.warning(f"mz inbox store error: {_ie}")
         return jsonify({'ok': True}), 200
     except Exception as e:
         log.warning(f"mz_webhook error: {e}")
@@ -9333,6 +9367,19 @@ def mz_number_prewarm(nid):
     conn    = get_saas_db()
     conn.execute('UPDATE mandazap_numbers SET prewarmed=? WHERE id=? AND user_id=?', (val, nid, user_id))
     conn.commit(); conn.close()
+    return redirect('/mandazap/painel?section=numeros')
+
+
+@app.route('/mandazap/numeros/<int:nid>/liberar-cooldown', methods=['POST'])
+@_mandazap_login_required
+def mz_number_release_cooldown(nid):
+    """Libera o cooldown de segurança pós-ban. Como o circuit breaker pausa TODOS os
+    números do usuário juntos, um clique libera todos. Usar só quando NÃO foi ban real."""
+    user_id = session['mz_user_id']
+    conn    = get_saas_db()
+    conn.execute("UPDATE mandazap_numbers SET cooldown_until='' WHERE user_id=?", (user_id,))
+    conn.commit(); conn.close()
+    log.info(f"[MZ Cooldown] user {user_id}: cooldown liberado manualmente (via número {nid})")
     return redirect('/mandazap/painel?section=numeros')
 
 
@@ -9948,6 +9995,71 @@ def _mz_inc_number_replies(number_id: int, n: int = 1):
         log.warning(f"number_daily replies inc error: {e}")
 
 
+# ── Caixa de Resposta: grava a resposta do cliente e classifica o contato ──────
+def _mz_classify_reply(text: str) -> str:
+    """Classifica a resposta: 'optout' (pediu p/ sair), 'wrongnum' (número trocado / 'quem é você'),
+    'optin' (topou receber) ou 'other'. Viés PRO blindagem — na dúvida, tira da lista
+    (errar removendo é seguro; errar mandando gera ban/denúncia)."""
+    t = unicodedata.normalize('NFKD', (text or '')).encode('ascii', 'ignore').decode('ascii').lower().strip()
+    if not t:
+        return 'other'
+    for kw in ('sair', 'parar', 'cancel', 'descadastr', 'desinscrev', 'remover', 'remova',
+               'stop', 'nao quero', 'nao envie', 'nao manda', 'para de mandar', 'sem mensagem',
+               'nao perturbe', 'me tira', 'me remove', 'nao receber'):
+        if kw in t:
+            return 'optout'
+    # Detector de número trocado / "quem é você" → também blinda (quarentena)
+    for kw in ('quem e voce', 'quem e vc', 'quem e essa', 'quem e esse', 'quem fala', 'quem eh',
+               'nao conhec', 'nao te conhec', 'numero errado', 'pessoa errada', 'engano',
+               'nao sei quem', 'nao e comigo', 'nao conheco'):
+        if kw in t:
+            return 'wrongnum'
+    words = t.split()
+    if len(words) <= 4:
+        for kw in ('sim', 'quero', 'aceito', 'aceita', 'pode', 'claro', 'bora', 'positivo',
+                   'confirmo', 'confirmado', 'manda', 'ok', 'topo', 'avisa', 'quero!'):
+            if kw in words or t == kw:
+                return 'optin'
+    else:
+        for kw in ('quero sim', 'pode sim', 'pode mandar', 'pode avisar', 'me avisa',
+                   'quero receber', 'aceito receber', 'pode me avisar'):
+            if kw in t:
+                return 'optin'
+    return 'other'
+
+
+def _mz_store_reply(user_id: int, number_id: int, phone: str, push_name: str, text: str) -> str:
+    """Grava a resposta na Caixa de Resposta e atualiza o semáforo do contato.
+    optout → contato blindado (some do disparo). Qualquer outra resposta → 'quente'
+    (respondeu = sinal nº1 de saúde). optin também carimba consentimento datado (LGPD)."""
+    phone  = _re.sub(r'[^\d]', '', phone or '')
+    intent = _mz_classify_reply(text)
+    now    = datetime.now().isoformat()
+    try:
+        c = get_saas_db()
+        c.execute('INSERT INTO mandazap_replies (user_id, number_id, phone, push_name, text, intent, created_at) '
+                  'VALUES (?,?,?,?,?,?,?)',
+                  (user_id, number_id, phone, (push_name or '')[:80], (text or '')[:1000], intent, now))
+        tail = phone[-8:] if len(phone) >= 8 else phone   # casa pelo final (tolera 9º dígito BR)
+        if tail:
+            if intent in ('optout', 'wrongnum'):   # ambos blindam: some do disparo
+                c.execute("UPDATE mandazap_contacts SET status='optout', optout_at=?, last_reply_at=? "
+                          "WHERE user_id=? AND phone LIKE ?", (now, now, user_id, '%' + tail))
+            elif intent == 'optin':
+                c.execute("UPDATE mandazap_contacts SET status='quente', last_reply_at=?, "
+                          "consent_at=CASE WHEN consent_at IS NULL OR consent_at='' THEN ? ELSE consent_at END "
+                          "WHERE user_id=? AND phone LIKE ? AND (status IS NULL OR status != 'optout')",
+                          (now, now, user_id, '%' + tail))
+            else:
+                c.execute("UPDATE mandazap_contacts SET status='quente', last_reply_at=? "
+                          "WHERE user_id=? AND phone LIKE ? AND (status IS NULL OR status != 'optout')",
+                          (now, user_id, '%' + tail))
+        c.commit(); c.close()
+    except Exception as e:
+        log.warning(f"mz_store_reply error: {e}")
+    return intent
+
+
 # ── Fase 3: saúde do número via reply-ratio ───────────────────────────────────
 # Limiares (pesquisa): >20% resposta = saudável; 8-20% = atenção; <8% com volume = risco de ban.
 MZ_HEALTH_MIN_VOL    = int(os.environ.get('MZ_HEALTH_MIN_VOL', '40'))      # envios mínimos na janela p/ avaliar
@@ -10214,17 +10326,19 @@ def _dispatch_campaign_inner(cid: int, user_id: int, delay_s: int = 3, continuar
         log.info(f"Campanha {cid}: fora da janela de horário — agendada")
         return
 
-    # Carrega contatos da lista
+    # Carrega contatos da lista — NUNCA envia p/ quem pediu SAIR (status='optout')
     list_id = camp.get('list_id')
     if list_id:
         rows = conn.execute('''
             SELECT c.name, c.phone FROM mandazap_list_contacts lc
             JOIN mandazap_contacts c ON c.id = lc.contact_id
             WHERE lc.list_id = ? AND c.user_id = ?
+              AND (c.status IS NULL OR c.status != 'optout')
         ''', (list_id, user_id)).fetchall()
     else:
         rows = conn.execute(
-            'SELECT name, phone FROM mandazap_contacts WHERE user_id=?', (user_id,)
+            "SELECT name, phone FROM mandazap_contacts WHERE user_id=? "
+            "AND (status IS NULL OR status != 'optout')", (user_id,)
         ).fetchall()
 
     contacts = [dict(r) for r in rows]
