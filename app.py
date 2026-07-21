@@ -8259,9 +8259,12 @@ def mandazap_painel():
         'SELECT * FROM mandazap_contacts WHERE user_id=? ORDER BY name', (user_id,)
     ).fetchall()]
     lists     = [dict(r) for r in conn.execute('''
-        SELECT l.*, COUNT(lc.contact_id) as contact_count
+        SELECT l.*, COUNT(lc.contact_id) as contact_count,
+               SUM(CASE WHEN c.status='quente'  THEN 1 ELSE 0 END) as quente_count,
+               SUM(CASE WHEN c.status='optout'  THEN 1 ELSE 0 END) as optout_count
         FROM mandazap_lists l
         LEFT JOIN mandazap_list_contacts lc ON l.id = lc.list_id
+        LEFT JOIN mandazap_contacts c ON c.id = lc.contact_id
         WHERE l.user_id=? GROUP BY l.id ORDER BY l.created_at DESC
     ''', (user_id,)).fetchall()]
     numbers   = [dict(r) for r in conn.execute(

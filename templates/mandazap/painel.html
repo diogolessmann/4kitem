@@ -911,10 +911,11 @@ select option{background:var(--surface2)}
       <div class="form-group"><label>Nome da Campanha *</label><input type="text" name="name" placeholder="Ex: Promoção Verão, Lembrete CRLV..." required maxlength="120"></div>
       <div class="form-group">
         <label>Lista de Contatos</label>
-        <select name="list_id">
-          <option value="">— Sem lista (envio manual) —</option>
-          {% for l in lists %}<option value="{{ l.id }}">{{ l.name }} ({{ l.contact_count }} contatos)</option>{% endfor %}
+        <select name="list_id" id="camp-list-select" onchange="mzListaGuard()">
+          <option value="" data-total="0" data-quente="0">— Sem lista (envio manual) —</option>
+          {% for l in lists %}<option value="{{ l.id }}" data-total="{{ l.contact_count }}" data-quente="{{ l.quente_count or 0 }}">{{ l.name }} ({{ l.contact_count }} contatos{% if (l.quente_count or 0) > 0 %} · {{ l.quente_count }} 🟢{% endif %})</option>{% endfor %}
         </select>
+        <div id="camp-lista-guard" style="display:none;font-size:11.5px;margin-top:7px;padding:8px 11px;border-radius:8px;line-height:1.5"></div>
       </div>
       <div class="form-group">
         <label>Número de Envio</label>
@@ -975,6 +976,11 @@ select option{background:var(--surface2)}
             placeholder="Cole aqui sua mensagem como ela está, texto simples, sem variações.&#10;&#10;Exemplo:&#10;Olá! Temos novidades incríveis pra você..."
             style="width:100%;min-height:160px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:10px 12px;color:#f0f0ff;font-size:13px;font-family:inherit;outline:none;resize:vertical;line-height:1.6"
             oninput="campanhaMsgAlterada()"></textarea>
+
+          <div style="text-align:right;margin-top:5px">
+            <button type="button" onclick="usarApresentacao()" title="Modelo pronto p/ o PRIMEIRO contato: se apresenta, lembra o vínculo e dá saída fácil — o que evita denúncia."
+              style="background:rgba(96,165,250,.1);border:1px solid rgba(96,165,250,.3);border-radius:7px;padding:5px 11px;font-size:11px;color:#93c5fd;cursor:pointer;font-family:inherit">📇 Usar modelo de Apresentação</button>
+          </div>
 
           <!-- Botão central de otimização -->
           <div style="text-align:center;margin:10px 0 2px">
@@ -1311,6 +1317,43 @@ function mzPedirResposta() {
   b.value = b.value.replace(/\s+$/, '') + ctas[Math.floor(Math.random() * ctas.length)];
   b.focus();
   mzRenderRisk();
+}
+
+// Modelo de Apresentação — 1ª mensagem anti-denúncia (quem sou / vínculo / saída fácil)
+function usarApresentacao() {
+  const a = document.getElementById('campanha-texto-original');
+  if (!a) return;
+  if (a.value.trim() && !confirm('Isso substitui o texto atual da Tela A. Continuar?')) return;
+  a.value =
+    'Oi {nome}! Aqui é o [SEU NOME], do [SEU NEGÓCIO] em [SUA CIDADE].\n' +
+    'A gente [O QUE VOCÊ FEZ PRA ELE — ex: cuidou do seu licenciamento].\n\n' +
+    '[SUA NOVIDADE OU OFERTA — algo útil de verdade pra ele]\n\n' +
+    'Quer que eu te avise sobre isso? Responde *SIM* que eu te explico! 😊\n' +
+    '(Se preferir não receber, responde *SAIR* que eu removo na hora.)';
+  a.focus();
+  if (typeof campanhaMsgAlterada === 'function') campanhaMsgAlterada();
+}
+
+// Guardrail de lista fria — avisa antes de disparar pra lista grande sem 🟢
+function mzListaGuard() {
+  const sel = document.getElementById('camp-list-select');
+  const box = document.getElementById('camp-lista-guard');
+  if (!sel || !box) return;
+  const opt    = sel.options[sel.selectedIndex];
+  const total  = parseInt((opt && opt.getAttribute('data-total'))  || '0', 10);
+  const quente = parseInt((opt && opt.getAttribute('data-quente')) || '0', 10);
+  if (!sel.value || total < 30) { box.style.display = 'none'; return; }
+  box.style.display = 'block';
+  if (quente === 0) {
+    box.style.background = 'rgba(239,68,68,.1)'; box.style.border = '1px solid rgba(239,68,68,.3)'; box.style.color = '#fca5a5';
+    box.innerHTML = '⚠️ <strong>Lista fria:</strong> ' + total + ' contatos e <strong>nenhum ainda respondeu</strong>. Risco ALTO de bloqueio. Mande primeiro o <strong>modelo de Apresentação</strong> (pedindo resposta) ou quebre em lista menor — quem responder vira 🟢.';
+  } else if (quente / total < 0.1) {
+    box.style.background = 'rgba(245,158,11,.1)'; box.style.border = '1px solid rgba(245,158,11,.3)'; box.style.color = '#fbbf24';
+    box.innerHTML = '🟡 <strong>Lista morna:</strong> só ' + quente + ' de ' + total + ' já responderam. Peça resposta na mensagem pra esquentar antes de vender.';
+  } else {
+    box.style.background = 'rgba(34,197,94,.1)'; box.style.border = '1px solid rgba(34,197,94,.25)'; box.style.color = '#22c55e';
+    box.innerHTML = '🟢 <strong>Lista quente:</strong> ' + quente + ' de ' + total + ' já responderam. Pode mandar!';
+  }
 }
 
 function mzRenderRisk() {
