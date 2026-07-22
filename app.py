@@ -8319,6 +8319,8 @@ def mandazap_painel():
         'numbers_connected': sum(1 for n in numbers if n.get('status') == 'connected'),
         'replies':   len(replies),
         'replies_unread': replies_unread,
+        'quentes':   sum(1 for c in contacts if c.get('status') == 'quente'),
+        'blindados': sum(1 for c in contacts if c.get('status') == 'optout'),
     }
 
     return render_template('mandazap/painel.html',
@@ -8343,6 +8345,31 @@ def mz_replies_mark_read():
     conn.execute('UPDATE mandazap_replies SET is_read=1 WHERE user_id=? AND is_read=0', (user_id,))
     conn.commit(); conn.close()
     return jsonify({'ok': True})
+
+
+@app.route('/mandazap/contatos/lista-quentes', methods=['POST'])
+@_mandazap_login_required
+def mz_create_hot_list():
+    """Garimpo: cria uma lista nova só com os contatos QUENTES (que já responderam).
+    É o que transforma o semáforo em ação — a lista segura pra mandar promoção."""
+    user_id = session['mz_user_id']
+    conn = get_saas_db()
+    hot = [r['id'] for r in conn.execute(
+        "SELECT id FROM mandazap_contacts WHERE user_id=? AND status='quente'", (user_id,)).fetchall()]
+    if not hot:
+        conn.close()
+        return redirect('/mandazap/painel?section=contatos')
+    name = '🟢 Quentes ' + datetime.now().strftime('%d/%m/%y %H:%M')
+    cur  = conn.execute(
+        "INSERT INTO mandazap_lists (user_id, name, description, created_at) VALUES (?,?,?,?)",
+        (user_id, name, 'Contatos que já responderam (garimpo automático — seguro p/ promoção).',
+         datetime.now().isoformat()))
+    lid = cur.lastrowid
+    for cid in hot:
+        conn.execute("INSERT OR IGNORE INTO mandazap_list_contacts (list_id, contact_id) VALUES (?,?)", (lid, cid))
+    conn.commit(); conn.close()
+    log.info(f"[MZ] user {user_id}: lista de quentes criada ({len(hot)} contatos)")
+    return redirect('/mandazap/painel?section=listas')
 
 
 # ── Admin rápido por URL ───────────────────────────────────────────────────────

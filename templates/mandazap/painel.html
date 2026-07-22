@@ -434,9 +434,21 @@ select option{background:var(--surface2)}
       <button class="btn btn-green" onclick="openModal('modal-contato')">+ Adicionar</button>
       <button class="btn btn-outline" onclick="openModal('modal-import-csv')">📁 Importar CSV / VCF</button>
       <button class="btn btn-outline" onclick="mzOpenPdfModal()">🤖 Importar PDF (IA)</button>
+      {% if mz_stats.quentes > 0 %}
+      <form method="POST" action="/mandazap/contatos/lista-quentes" style="display:inline"
+            onsubmit="return confirm('Criar uma lista nova só com os {{ mz_stats.quentes }} contatos que já responderam?\n\nÉ a lista SEGURA pra mandar promoção — quem respondeu não bloqueia.')">
+        <button type="submit" class="btn" style="background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.35);color:#22c55e">🟢 Criar lista dos quentes ({{ mz_stats.quentes }})</button>
+      </form>
+      {% endif %}
     </div>
 
     {% if contacts %}
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
+      <button type="button" class="mz-fchip" onclick="mzFilterStatus('all',this)" style="background:var(--surface2);border:1px solid var(--green);border-radius:20px;padding:4px 12px;font-size:12px;color:var(--text);cursor:pointer">Todos ({{ mz_stats.contacts }})</button>
+      <button type="button" class="mz-fchip" onclick="mzFilterStatus('quente',this)" style="background:var(--surface2);border:1px solid var(--border2);border-radius:20px;padding:4px 12px;font-size:12px;color:var(--text2);cursor:pointer">🟢 Quentes ({{ mz_stats.quentes }})</button>
+      <button type="button" class="mz-fchip" onclick="mzFilterStatus('optout',this)" style="background:var(--surface2);border:1px solid var(--border2);border-radius:20px;padding:4px 12px;font-size:12px;color:var(--text2);cursor:pointer">🚫 Blindados ({{ mz_stats.blindados }})</button>
+      <button type="button" class="mz-fchip" onclick="mzFilterStatus('novo',this)" style="background:var(--surface2);border:1px solid var(--border2);border-radius:20px;padding:4px 12px;font-size:12px;color:var(--text2);cursor:pointer">⚪ Novos ({{ mz_stats.contacts - mz_stats.quentes - mz_stats.blindados }})</button>
+    </div>
     <div id="contacts-bulk-bar" style="display:none;align-items:center;gap:12px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin-bottom:12px">
       <strong><span id="contacts-bulk-count">0</span> selecionado(s)</strong>
       <button type="button" class="btn btn-outline" style="margin-left:auto" onclick="mzToggleAll(false)">Limpar seleção</button>
@@ -448,10 +460,13 @@ select option{background:var(--surface2)}
         <thead><tr><th style="width:36px"><input type="checkbox" id="contacts-select-all" onclick="mzToggleAll(this.checked)" title="Selecionar todos"></th><th>Nome</th><th>WhatsApp</th><th>Tag</th><th style="width:40px"></th></tr></thead>
         <tbody>
         {% for c in contacts %}
-        <tr data-search="{{ c.name|lower }} {{ c.phone }} {{ (c.tag or '')|lower }} {{ (c.notes or '')|lower }}">
+        <tr data-search="{{ c.name|lower }} {{ c.phone }} {{ (c.tag or '')|lower }} {{ (c.notes or '')|lower }}" data-status="{{ c.status or 'novo' }}">
           <td><input type="checkbox" class="c-check" name="ids" value="{{ c.id }}" onclick="mzUpdateBulkBar()"></td>
           <td>
-            <div style="font-weight:700">{{ c.name }}</div>
+            <div style="font-weight:700">{{ c.name }}
+              {% if c.status == 'quente' %}<span title="Já respondeu — quente" style="font-size:11px">🟢</span>
+              {% elif c.status == 'optout' %}<span title="Blindado — pediu sair ou número trocado" style="font-size:11px">🚫</span>{% endif %}
+            </div>
             {% if c.notes %}<div style="font-size:11px;color:var(--text3);margin-top:2px">📝 {{ c.notes[:60] }}{% if c.notes|length > 60 %}…{% endif %}</div>{% endif %}
           </td>
           <td>
@@ -1114,6 +1129,19 @@ function filterContacts(q) {
   const lq = q.toLowerCase();
   document.querySelectorAll('#contacts-table tbody tr').forEach(tr => {
     tr.style.display = tr.dataset.search?.includes(lq) ? '' : 'none';
+  });
+  mzUpdateBulkBar();
+}
+
+// ── Filtro por semáforo (quente / blindado / novo) ───────────────────────────
+function mzFilterStatus(f, chip) {
+  document.querySelectorAll('.mz-fchip').forEach(b => { b.style.borderColor = 'var(--border2)'; b.style.color = 'var(--text2)'; });
+  if (chip) { chip.style.borderColor = 'var(--green)'; chip.style.color = 'var(--text)'; }
+  const search = document.getElementById('contact-search'); if (search) search.value = '';
+  document.querySelectorAll('#contacts-table tbody tr').forEach(tr => {
+    const st = tr.dataset.status || 'novo';
+    const show = (f === 'all') || (f === 'novo' ? (st !== 'quente' && st !== 'optout') : st === f);
+    tr.style.display = show ? '' : 'none';
   });
   mzUpdateBulkBar();
 }
