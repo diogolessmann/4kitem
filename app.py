@@ -8372,6 +8372,41 @@ def mz_create_hot_list():
     return redirect('/mandazap/painel?section=listas')
 
 
+@app.route('/mandazap/contatos/vencimentos', methods=['POST'])
+@_mandazap_login_required
+def mz_create_due_list():
+    """Gatilho (manual): cria uma lista com quem vence nos próximos N dias — não blindados.
+    Reusa toda a infra de campanha/anti-ban; o usuário revisa a lista e dispara a campanha."""
+    user_id = session['mz_user_id']
+    try:
+        days = max(1, min(120, int(request.form.get('days', 7))))
+    except Exception:
+        days = 7
+    from datetime import date as _date, timedelta as _td
+    hoje = _date.today().isoformat()
+    ate  = (_date.today() + _td(days=days)).isoformat()
+    conn = get_saas_db()
+    due = [r['id'] for r in conn.execute(
+        "SELECT id FROM mandazap_contacts WHERE user_id=? AND important_date != '' "
+        "AND important_date >= ? AND important_date <= ? "
+        "AND (status IS NULL OR status != 'optout')",
+        (user_id, hoje, ate)).fetchall()]
+    if not due:
+        conn.close()
+        return redirect('/mandazap/painel?section=contatos')
+    name = f'📅 Vencem em {days} dias ' + datetime.now().strftime('%d/%m %H:%M')
+    cur  = conn.execute(
+        "INSERT INTO mandazap_lists (user_id, name, description, created_at) VALUES (?,?,?,?)",
+        (user_id, name, f'Clientes com vencimento nos próximos {days} dias (gatilho manual).',
+         datetime.now().isoformat()))
+    lid = cur.lastrowid
+    for cid in due:
+        conn.execute("INSERT OR IGNORE INTO mandazap_list_contacts (list_id, contact_id) VALUES (?,?)", (lid, cid))
+    conn.commit(); conn.close()
+    log.info(f"[MZ] user {user_id}: lista de vencimentos criada ({len(due)} em {days}d)")
+    return redirect('/mandazap/painel?section=listas')
+
+
 # ── Admin rápido por URL ───────────────────────────────────────────────────────
 
 @app.route('/admin/mz-set-plan-email')
@@ -9073,13 +9108,16 @@ def mz_contact_import_csv():
                          row_dict.get('phone 1') or '').strip()
                 email = (row_dict.get('email') or row_dict.get('e-mail') or row_dict.get('email 1 - value') or '').strip()
                 tag   = (row_dict.get('tag') or row_dict.get('categoria') or row_dict.get('group') or row_dict.get('grupo') or '').strip()
+                vdate = (row_dict.get('vencimento') or row_dict.get('data') or row_dict.get('validade') or
+                         row_dict.get('data_vencimento') or row_dict.get('vence') or row_dict.get('data de vencimento') or '').strip()
+                dlabel= (row_dict.get('tipo') or row_dict.get('label') or row_dict.get('referencia') or '').strip()
                 # Fallback: se não achou por nome de coluna, pega primeira e segunda coluna
                 if not name and len(row) > 0 and row[0]:
                     name = str(row[0]).strip()
                 if not phone and len(row) > 1 and row[1]:
                     phone = str(row[1]).strip()
                 if name and phone:
-                    contacts.append({'name': name, 'phone': phone, 'email': email, 'tag': tag})
+                    contacts.append({'name': name, 'phone': phone, 'email': email, 'tag': tag, 'vdate': vdate, 'dlabel': dlabel})
             wb.close()
 
         else:
@@ -9092,8 +9130,11 @@ def mz_contact_import_csv():
                 phone = (row.get('telefone') or row.get('phone') or row.get('Telefone') or row.get('whatsapp') or '').strip()
                 email = (row.get('email') or row.get('Email') or '').strip()
                 tag   = (row.get('tag') or row.get('Tag') or row.get('categoria') or '').strip()
+                vdate = (row.get('vencimento') or row.get('Vencimento') or row.get('data') or row.get('Data') or
+                         row.get('validade') or row.get('Validade') or '').strip()
+                dlabel= (row.get('tipo') or row.get('Tipo') or row.get('referencia') or '').strip()
                 if name and phone:
-                    contacts.append({'name': name, 'phone': phone, 'email': email, 'tag': tag})
+                    contacts.append({'name': name, 'phone': phone, 'email': email, 'tag': tag, 'vdate': vdate, 'dlabel': dlabel})
         conn  = get_saas_db()
         room  = _mz_contacts_room(conn, user_id)   # A6: limite de contatos do plano
         count = 0; bloqueados = 0
@@ -9110,8 +9151,10 @@ def mz_contact_import_csv():
                 bloqueados += 1
                 continue
             conn.execute(
-                'INSERT OR IGNORE INTO mandazap_contacts (user_id, name, phone, email, tag, created_at) VALUES (?,?,?,?,?,?)',
-                (user_id, c.get('name',''), phone, c.get('email',''), c.get('tag',''), datetime.now().isoformat())
+                'INSERT OR IGNORE INTO mandazap_contacts (user_id, name, phone, email, tag, important_date, date_label, created_at) '
+                'VALUES (?,?,?,?,?,?,?,?)',
+                (user_id, c.get('name',''), phone, c.get('email',''), c.get('tag',''),
+                 _mz_parse_date(c.get('vdate','')), (c.get('dlabel','') or '')[:40], datetime.now().isoformat())
             )
             count += 1
         conn.commit()
@@ -9161,6 +9204,28 @@ def _mz_normalize_phone(phone: str) -> str:
     elif len(phone) <= 11 and not phone.startswith('+'):
         phone = '55' + phone
     return phone
+
+
+def _mz_parse_date(s: str) -> str:
+    """Normaliza uma data de vencimento p/ ISO 'YYYY-MM-DD'. Aceita DD/MM/AAAA,
+    DD-MM-AAAA, DD/MM/AA e o próprio ISO. Retorna '' se não reconhecer."""
+    s = (s or '').strip()[:10] if (s or '').strip() else ''
+    if not s:
+        return ''
+    m = _re.match(r'^(\d{4})-(\d{2})-(\d{2})$', s)      # já ISO
+    if m:
+        return s
+    m = _re.match(r'^(\d{1,2})[/\-](\d{1,2})[/\-](\d{2,4})$', s)   # DD/MM/AAAA(AA)
+    if m:
+        d, mo, y = m.group(1), m.group(2), m.group(3)
+        if len(y) == 2:
+            y = '20' + y
+        try:
+            from datetime import date as _date
+            return _date(int(y), int(mo), int(d)).isoformat()
+        except Exception:
+            return ''
+    return ''
 
 
 @app.route('/mandazap/contatos/delete-bulk', methods=['POST'])

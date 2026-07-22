@@ -425,6 +425,9 @@ def init_saas_db():
         # Dono do número: o contato "pertence" ao número com quem ele já falou.
         # Campanha envia DELE (não de um número estranho que o cliente não conhece).
         "ALTER TABLE mandazap_contacts ADD COLUMN owner_number_id INTEGER",
+        # Gatilhos por data: vencimento (IPVA/CNH/licenciamento...) p/ disparar N dias antes.
+        "ALTER TABLE mandazap_contacts ADD COLUMN important_date TEXT DEFAULT ''",
+        "ALTER TABLE mandazap_contacts ADD COLUMN date_label TEXT DEFAULT ''",
     ]
     for sql in _saas_migrations:
         try:
