@@ -10073,23 +10073,39 @@ def _mz_store_reply(user_id: int, number_id: int, phone: str, push_name: str, te
         tail = phone[-8:] if len(phone) >= 8 else phone   # casa pelo final (tolera 9º dígito BR)
         if tail:
             like = '%' + tail
-            # Dono da relação: quem respondeu ESTE número é dono dele (+ última resposta). Sempre.
-            if number_id:
-                c.execute("UPDATE mandazap_contacts SET owner_number_id=?, last_reply_at=? "
-                          "WHERE user_id=? AND phone LIKE ?", (number_id, now, user_id, like))
-            # Semáforo por intenção
-            if intent in ('optout', 'wrongnum'):   # ambos blindam: some do disparo
-                c.execute("UPDATE mandazap_contacts SET status='optout', optout_at=? "
-                          "WHERE user_id=? AND phone LIKE ?", (now, user_id, like))
-            elif intent == 'optin':
-                c.execute("UPDATE mandazap_contacts SET status='quente', "
-                          "consent_at=CASE WHEN consent_at IS NULL OR consent_at='' THEN ? ELSE consent_at END "
-                          "WHERE user_id=? AND phone LIKE ? AND (status IS NULL OR status != 'optout')",
-                          (now, user_id, like))
+            existing = c.execute("SELECT id FROM mandazap_contacts WHERE user_id=? AND phone LIKE ? LIMIT 1",
+                                 (user_id, like)).fetchone()
+            if existing:
+                # Contato conhecido: atualiza dono (quem ele respondeu) + semáforo
+                if number_id:
+                    c.execute("UPDATE mandazap_contacts SET owner_number_id=?, last_reply_at=? "
+                              "WHERE user_id=? AND phone LIKE ?", (number_id, now, user_id, like))
+                if intent in ('optout', 'wrongnum'):   # ambos blindam: some do disparo
+                    c.execute("UPDATE mandazap_contacts SET status='optout', optout_at=? "
+                              "WHERE user_id=? AND phone LIKE ?", (now, user_id, like))
+                elif intent == 'optin':
+                    c.execute("UPDATE mandazap_contacts SET status='quente', "
+                              "consent_at=CASE WHEN consent_at IS NULL OR consent_at='' THEN ? ELSE consent_at END "
+                              "WHERE user_id=? AND phone LIKE ? AND (status IS NULL OR status != 'optout')",
+                              (now, user_id, like))
+                else:
+                    c.execute("UPDATE mandazap_contacts SET status='quente' "
+                              "WHERE user_id=? AND phone LIKE ? AND (status IS NULL OR status != 'optout')",
+                              (user_id, like))
             else:
-                c.execute("UPDATE mandazap_contacts SET status='quente' "
-                          "WHERE user_id=? AND phone LIKE ? AND (status IS NULL OR status != 'optout')",
-                          (user_id, like))
+                # 📥 CAPTADOR: quem te CHAMA primeiro (link/QR) e ainda não é contato vira lead
+                # QUENTE automático — dono = número que ele chamou. Inbound = risco ZERO de ban.
+                prow = c.execute('SELECT plan FROM mandazap_users WHERE id=?', (user_id,)).fetchone()
+                plan_key = (prow['plan'] if prow else 'solo') or 'solo'
+                lim = MANDAZAP_PLANS.get(plan_key, MANDAZAP_PLANS['solo']).get('contacts_limit', 500)
+                cur = c.execute('SELECT COUNT(*) FROM mandazap_contacts WHERE user_id=?', (user_id,)).fetchone()[0]
+                if lim >= 9999 or cur < lim:
+                    st = 'optout' if intent in ('optout', 'wrongnum') else 'quente'
+                    c.execute("INSERT OR IGNORE INTO mandazap_contacts "
+                              "(user_id, name, phone, status, owner_number_id, consent_at, optout_at, last_reply_at, created_at) "
+                              "VALUES (?,?,?,?,?,?,?,?,?)",
+                              (user_id, (push_name or phone)[:80], phone, st, number_id,
+                               now if intent == 'optin' else '', now if st == 'optout' else '', now, now))
         c.commit(); c.close()
     except Exception as e:
         log.warning(f"mz_store_reply error: {e}")

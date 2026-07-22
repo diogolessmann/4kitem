@@ -434,6 +434,7 @@ select option{background:var(--surface2)}
       <button class="btn btn-green" onclick="openModal('modal-contato')">+ Adicionar</button>
       <button class="btn btn-outline" onclick="openModal('modal-import-csv')">📁 Importar CSV / VCF</button>
       <button class="btn btn-outline" onclick="mzOpenPdfModal()">🤖 Importar PDF (IA)</button>
+      <button class="btn btn-outline" style="border-color:rgba(96,165,250,.4);color:#93c5fd" onclick="openModal('modal-captar')">📥 Captar contatos</button>
       {% if mz_stats.quentes > 0 %}
       <form method="POST" action="/mandazap/contatos/lista-quentes" style="display:inline"
             onsubmit="return confirm('Criar uma lista nova só com os {{ mz_stats.quentes }} contatos que já responderam?\n\nÉ a lista SEGURA pra mandar promoção — quem respondeu não bloqueia.')">
@@ -1070,6 +1071,35 @@ select option{background:var(--surface2)}
   </div>
 </div>
 
+<!-- Modal Captar contatos (risco zero) -->
+<div class="modal-overlay" id="modal-captar">
+  <div class="modal" style="max-width:560px;width:96vw">
+    <h3>📥 Captar contatos <span style="font-size:12px;color:#22c55e;font-weight:700">· risco zero de ban</span></h3>
+    <p style="font-size:12.5px;color:var(--text2);line-height:1.6;margin-bottom:14px">
+      Compartilhe seu link. Quem <strong>clicar e te mandar mensagem</strong> vira contato <strong>🟢 quente automático</strong> — e como <strong>ele</strong> te chamou primeiro, <strong>não existe risco de bloqueio</strong>.<br>
+      Cole no Instagram, no story, no adesivo da moto, no cartão, na assinatura de e-mail.
+    </p>
+    {% for n in numbers %}
+    {% if n.phone %}
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:10px">
+      <div style="font-weight:700;font-size:13px;margin-bottom:7px">{{ n.label }} <span style="color:var(--text3);font-weight:400">— {{ n.phone }}</span></div>
+      <div style="display:flex;gap:6px;align-items:center">
+        <input type="text" readonly id="capt-link-{{ n.id }}" value="https://wa.me/{{ n.phone }}?text=Oi!%20Quero%20receber%20as%20novidades%20e%20promo%C3%A7%C3%B5es"
+               style="flex:1;min-width:0;background:#0d1117;border:1px solid var(--border2);border-radius:7px;padding:7px 9px;font-size:11px;color:var(--text);font-family:monospace">
+        <button type="button" class="btn btn-sm btn-green" style="white-space:nowrap" onclick="mzCopyLink('capt-link-{{ n.id }}',this)">Copiar</button>
+      </div>
+      <a href="https://wa.me/{{ n.phone }}?text=Oi!%20Quero%20receber%20as%20novidades%20e%20promo%C3%A7%C3%B5es" target="_blank"
+         style="display:inline-block;margin-top:7px;font-size:11px;color:#93c5fd">↗ Testar o link</a>
+    </div>
+    {% endif %}
+    {% endfor %}
+    {% if numbers|selectattr('phone')|list|length == 0 %}
+    <p style="color:var(--text3);font-size:12.5px">Conecte um número primeiro (aba Números) pra gerar seu link de captação.</p>
+    {% endif %}
+    <div style="text-align:right;margin-top:8px"><button type="button" class="btn btn-outline" onclick="closeModal('modal-captar')">Fechar</button></div>
+  </div>
+</div>
+
 <!-- Toast -->
 <div class="toast" id="toast"></div>
 
@@ -1144,6 +1174,15 @@ function mzFilterStatus(f, chip) {
     tr.style.display = show ? '' : 'none';
   });
   mzUpdateBulkBar();
+}
+
+// Copiar link de captação
+function mzCopyLink(id, btn) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.select(); el.setSelectionRange(0, 99999);
+  try { navigator.clipboard.writeText(el.value); } catch(e) { document.execCommand('copy'); }
+  const t = btn.textContent; btn.textContent = '✓ Copiado'; setTimeout(() => btn.textContent = t, 1500);
 }
 
 // ── Seleção em massa de contatos ─────────────────────────────────────────────
