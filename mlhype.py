@@ -293,9 +293,10 @@ def _fmt_brl(v):
         return '—'
 
 
-def calcular_margem(preco_venda, custo, categoria, frete=0, tipo='classico'):
-    """Lucro líquido REAL: preço − comissão (taxa oficial do ML) − frete − custo.
-    Usa a taxa real do endpoint listing_prices; cai p/ ~14% só se ele falhar."""
+def calcular_margem(preco_venda, custo, categoria, frete=0, tipo='classico',
+                    imposto_pct=0):
+    """Lucro líquido REAL: preço − comissão (taxa oficial do ML) − imposto do
+    vendedor − frete − custo. Taxa real do listing_prices; ~14% só se falhar."""
     import mlhype_ml as ml
     try:
         preco_venda = float(preco_venda)
@@ -303,6 +304,7 @@ def calcular_margem(preco_venda, custo, categoria, frete=0, tipo='classico'):
         return None
     custo = float(custo or 0)
     frete = float(frete or 0)
+    imposto_pct = float(imposto_pct or 0)
     t = (ml.taxas_ml(preco_venda, categoria) or {})
     t = t.get(tipo) or t.get('classico') or t.get('premium') or {}
     comissao = t.get('fee')
@@ -313,10 +315,12 @@ def calcular_margem(preco_venda, custo, categoria, frete=0, tipo='classico'):
     else:
         comissao = round(float(comissao), 2)
         pct = t.get('pct')
-    lucro = round(preco_venda - comissao - frete - custo, 2)
+    imposto = round(preco_venda * imposto_pct / 100.0, 2)
+    lucro = round(preco_venda - comissao - imposto - frete - custo, 2)
     margem = round(lucro / preco_venda * 100, 1) if preco_venda else 0
     markup = round(lucro / custo * 100, 1) if custo else None
     return {'preco': preco_venda, 'comissao': comissao, 'comissao_pct': pct,
+            'imposto': imposto, 'imposto_pct': imposto_pct,
             'frete': frete, 'custo': custo, 'lucro': lucro, 'margem_pct': margem,
             'markup_pct': markup, 'estimado': estimado, 'tipo': tipo}
 
@@ -437,19 +441,35 @@ _OPS_HTML = '''<!doctype html><html lang=pt-br><head><meta charset=utf-8>
  <h1>MLhype <span class=fire>🔥</span> · Dicas do que vender</h1>
  <span style="font-size:13px;color:var(--mut)"><a href="/mlhype/radar">Radar</a> · <a href="/mlhype/calculadora">🧮 Calculadora</a> · <a href="/mlhype/planos" style="color:#b9a6ff;font-weight:700">planos</a> · {% if nome %}{{nome.split()[0]}} · {% endif %}<a href="/mlhype/sair">sair</a></span>
 </header>
-<p class=sub>As <b>brechas</b> dos nichos do dinheiro — muita procura × pouca concorrência. Escolha um nicho pra focar. Quanto maior o Score, melhor a brecha.</p>
+<p class=sub>As <b>brechas</b> dos nichos do dinheiro — e quanto <b>sobra no teu bolso</b> em cada uma (taxa do ML e teu imposto já descontados).</p>
 <div class=tabs>
- <a class="tab {{ 'on' if not nicho_sel else '' }}" href="/mlhype/oportunidades">Todos</a>
- {% for n in nichos %}<a class="tab {{ 'on' if nicho_sel==n.slug else '' }}" href="/mlhype/oportunidades?nicho={{n.slug}}">{{n.emoji}} {{n.label}}</a>{% endfor %}
+ <a class="tab {{ 'on' if not nicho_sel else '' }}" href="/mlhype/oportunidades{{ '?ordenar=brecha' if ordenar=='brecha' else '' }}">Todos</a>
+ {% for n in nichos %}<a class="tab {{ 'on' if nicho_sel==n.slug else '' }}" href="/mlhype/oportunidades?nicho={{n.slug}}{{ '&ordenar=brecha' if ordenar=='brecha' else '' }}">{{n.emoji}} {{n.label}}</a>{% endfor %}
+</div>
+{% set qn = ('nicho=' ~ nicho_sel ~ '&') if nicho_sel else '' %}
+<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 14px">
+ <div class=tabs style="margin:0">
+  <a class="tab {{ 'on' if ordenar=='lucro' else '' }}" href="/mlhype/oportunidades?{{qn}}ordenar=lucro">💰 Mais lucro</a>
+  <a class="tab {{ 'on' if ordenar=='brecha' else '' }}" href="/mlhype/oportunidades?{{qn}}ordenar=brecha">🎯 Mais fácil de entrar</a>
+ </div>
+ <a href="/mlhype/imposto" style="font-size:13px;color:#8aa0c6;border:1px solid #21304f;border-radius:20px;padding:6px 12px">🧾 Seu imposto: <b style="color:#e7ecf5">{{'%g' % imposto}}%</b> · mudar</a>
 </div>
 
 {% macro op_row(o) %}
  {% set cls = 'sc-hi' if o.score>=70 else ('sc-mid' if o.score>=50 else 'sc-lo') %}
  <div class="op {{cls}}">
-  <div class=sc><div class=scn>{{o.score}}</div><div class=scl>oportun.</div></div>
+  <div class=sc>
+   {% if o.lucro_potencial is not none and o.lucro_potencial > 0 %}
+    <div class=scn style="font-size:19px">{{ '≈' if not o.custo_real }}{{fmt(o.lucro_potencial)}}</div><div class=scl>sobra/un{{ ' ✓' if o.custo_real }}</div>
+   {% elif o.lucro_potencial is not none %}
+    <div class=scn style="font-size:15px;color:#ff8a8a">apertada</div><div class=scl>margem ⚠️</div>
+   {% else %}
+    <div class=scn>{{o.score}}</div><div class=scl>oportun.</div>
+   {% endif %}
+  </div>
   <div class=info>
    <div class=pn>{{o.titulo or o.mlb_item_id}}</div>
-   <div class=meta>#{{o.pos}} no Top · {{o.num_ofertas if o.num_ofertas is not none else '—'}} concorrentes · líder {{fmt(o.preco)}}</div>
+   <div class=meta>#{{o.pos}} no Top · {{o.num_ofertas if o.num_ofertas is not none else '—'}} concorrentes · líder {{fmt(o.preco)}} · brecha {{o.score}}/100</div>
    <div class=tags>
     <span class="tag t-cat">{{o.cat_nome}}</span>
     {% if o.brecha %}<span class="tag t-brecha">🎯 brecha</span>{% endif %}
@@ -498,13 +518,16 @@ def mlhype_oportunidades():
     slug = request.args.get('nicho')
     nic = next((n for n in NICHOS_FOCO if n['slug'] == slug), None)
     uid = session.get('mlhype_user_id')
+    imposto = db.get_imposto(uid)
+    ordenar = 'brecha' if request.args.get('ordenar') == 'brecha' else 'lucro'
     ops, grupos = None, None
     if nic:                                      # uma aba só → lista plana do nicho
-        ops = oportunidades(limit=30, nicho_roots=nic['roots'], user_id=uid)
+        ops = oportunidades(limit=30, nicho_roots=nic['roots'], user_id=uid,
+                            imposto_pct=imposto, ordenar=ordenar)
         for o in ops:
             o['cat_nome'] = _nome_cat(o['categoria_id'])
     else:                                        # "Todos" → agrupado por nicho
-        todas = oportunidades(limit=80, user_id=uid)
+        todas = oportunidades(limit=80, user_id=uid, imposto_pct=imposto, ordenar=ordenar)
         for o in todas:
             o['cat_nome'] = _nome_cat(o['categoria_id'])
         mapa = db.mapa_nicho_raiz()
@@ -516,8 +539,54 @@ def mlhype_oportunidades():
                 grupos.append({'emoji': n['emoji'], 'label': n['label'], 'ops': its})
     return render_template_string(
         _OPS_HTML, ops=ops, grupos=grupos, nichos=NICHOS_FOCO,
-        nicho_sel=(nic['slug'] if nic else None),
+        nicho_sel=(nic['slug'] if nic else None), ordenar=ordenar, imposto=imposto,
         fmt=_fmt_brl, nome=session.get('mlhype_user_nome', ''))
+
+
+_IMPOSTO_HTML = '''<!doctype html><html lang=pt-br><head><meta charset=utf-8>
+<meta name=viewport content="width=device-width,initial-scale=1"><title>MLhype · Seu imposto</title>
+<style>
+ body{font-family:system-ui,Segoe UI,sans-serif;background:#0b1020;color:#e7ecf5;margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+ .box{width:100%;max-width:430px} h1{font-size:22px;margin:0 0 6px} p{color:#8aa0c6;font-size:14px;line-height:1.5}
+ form{background:#0f1730;border:1px solid #21304f;border-radius:12px;padding:20px;margin-top:12px}
+ .opt{display:flex;align-items:flex-start;gap:10px;background:#0b1020;border:1px solid #21304f;border-radius:10px;padding:12px;margin-bottom:9px;cursor:pointer}
+ .opt input{margin-top:3px} .opt b{display:block;font-size:15px} .opt span{color:#8aa0c6;font-size:12px;line-height:1.4}
+ .custom{display:flex;align-items:center;gap:8px;margin-top:4px} .custom input[type=text]{width:70px;background:#0b1020;color:#e7ecf5;border:1px solid #21304f;border-radius:8px;padding:9px;font-size:15px;text-align:center}
+ button{width:100%;margin-top:14px;background:linear-gradient(135deg,#2f6bff,#7c3aed);color:#fff;border:0;border-radius:8px;padding:12px;font-weight:700;font-size:15px;cursor:pointer}
+ a{color:#7cc0ff;text-decoration:none} .volta{display:block;text-align:center;margin-top:14px;font-size:14px}
+</style></head><body><div class=box>
+<h1>🧾 Seu imposto</h1>
+<p>Quanto de imposto você paga sobre cada venda? Com isso o MLhype mostra o lucro <b>de verdade</b> — depois da taxa do ML <b>e</b> do teu imposto.</p>
+<form method=post>
+ <label class=opt><input type=radio name=modo value="0" {{'checked' if imposto==0 else ''}}><span><b>Sou MEI</b><span>Você paga o DAS fixo por mês (não é % por venda) → usamos 0% por unidade.</span></span></label>
+ <label class=opt><input type=radio name=modo value="4" {{'checked' if imposto==4 else ''}}><span><b>Simples Nacional — comércio</b><span>Alíquota típica de quem revende produto (1ª faixa): ~4% sobre a venda.</span></span></label>
+ <label class=opt><input type=radio name=modo value="custom" {{'checked' if imposto not in (0, 4) else ''}}><span><b>Sei minha alíquota</b><span class=custom>uso <input type=text name=pct value="{{'%g' % imposto if imposto not in (0,4) else ''}}" placeholder="7,5"> % por venda</span></span></label>
+ <button type=submit>Salvar</button>
+</form>
+<a class=volta href="/mlhype/oportunidades">← voltar pras Dicas</a>
+</div></body></html>'''
+
+
+@mlhype_bp.route('/imposto', methods=['GET', 'POST'])
+def mlhype_imposto():
+    """Config do imposto do vendedor — feito pro leigo (MEI / Simples / %)."""
+    _r = _exige_login()
+    if _r:
+        return _r
+    import mlhype_db as db
+    uid = session.get('mlhype_user_id')
+    if request.method == 'POST':
+        modo = request.form.get('modo', '4')
+        if modo == 'custom':
+            try:
+                pct = float((request.form.get('pct') or '4').replace(',', '.'))
+            except ValueError:
+                pct = db.IMPOSTO_DEFAULT
+        else:
+            pct = float(modo)
+        db.set_imposto(uid, pct)
+        return redirect('/mlhype/oportunidades')
+    return render_template_string(_IMPOSTO_HTML, imposto=db.get_imposto(uid))
 
 
 # ── Calculadora de Margem REAL (Lote M — ataca a dor #1: "vou ter lucro?") ─────
@@ -554,6 +623,8 @@ _CALC_HTML = '''<!doctype html><html lang=pt-br><head><meta charset=utf-8>
    <div><label>Frete que você paga (R$)</label><input name=frete value="{{frete}}" placeholder="0,00"></div>
    <div><label>Tipo de anúncio</label><select name=tipo><option value=classico {{'selected' if tipo=='classico' else ''}}>Clássico</option><option value=premium {{'selected' if tipo=='premium' else ''}}>Premium (parcela s/ juros)</option></select></div>
   </div>
+  <label>Seu imposto (% sobre a venda) <a href="/mlhype/imposto" style="color:#7cc0ff;font-size:12px">o que é isso?</a></label>
+  <input name=imposto value="{{imposto}}" placeholder="4">
   <button type=submit>Calcular lucro real</button>
  </form>
 </div>
@@ -561,6 +632,7 @@ _CALC_HTML = '''<!doctype html><html lang=pt-br><head><meta charset=utf-8>
 <div class=card>
  <div class=bk><span>Preço de venda</span><span>{{fmt(res.preco)}}</span></div>
  <div class=bk><span>− Comissão do ML{% if res.comissao_pct %} ({{res.comissao_pct}}%){% endif %}{% if res.estimado %} <span class=mut>estimada</span>{% endif %}</span><span class=neg>− {{fmt(res.comissao)}}</span></div>
+ {% if res.imposto %}<div class=bk><span>− Seu imposto ({{res.imposto_pct}}%)</span><span class=neg>− {{fmt(res.imposto)}}</span></div>{% endif %}
  {% if res.frete %}<div class=bk><span>− Frete</span><span class=neg>− {{fmt(res.frete)}}</span></div>{% endif %}
  {% if res.custo %}<div class=bk><span>− Custo do produto</span><span class=neg>− {{fmt(res.custo)}}</span></div>{% endif %}
  <div class="lucro {{'ok' if res.lucro>0 else 'ruim'}}">= {{fmt(res.lucro)}} de lucro</div>
@@ -577,7 +649,10 @@ def mlhype_calculadora():
     _r = _exige_login()
     if _r:
         return _r
+    import mlhype_db as db
     preco = request.args.get('preco')
+    imposto_perfil = db.get_imposto(session.get('mlhype_user_id'))
+    imposto_arg = request.args.get('imposto')
     res = None
     if preco:
         def _num(v):
@@ -586,7 +661,8 @@ def mlhype_calculadora():
             res = calcular_margem(_num(preco), _num(request.args.get('custo')),
                                   request.args.get('cat') or 'MLB1051',
                                   _num(request.args.get('frete')),
-                                  request.args.get('tipo', 'classico'))
+                                  request.args.get('tipo', 'classico'),
+                                  imposto_pct=_num(imposto_arg) if imposto_arg else imposto_perfil)
         except Exception:
             res = None
     cats = [{'id': k, 'nome': v} for k, v in sorted(CATEGORIAS_ML.items(), key=lambda x: x[1])]
@@ -594,13 +670,15 @@ def mlhype_calculadora():
         _CALC_HTML, res=res, fmt=_fmt_brl, cats=cats,
         preco=preco or '', custo=request.args.get('custo') or '',
         cat=request.args.get('cat') or 'MLB1051', frete=request.args.get('frete') or '',
-        tipo=request.args.get('tipo', 'classico'))
+        tipo=request.args.get('tipo', 'classico'),
+        imposto=imposto_arg if imposto_arg is not None else ('%g' % imposto_perfil))
 
 
 # ── A ESTEIRA: orquestrador dos agentes (Passos 6, 7, 9) ──────────────────────
-def rodar_esteira(pid, cat_id=None):
+def rodar_esteira(pid, cat_id=None, imposto_pct=0):
     """Encadeia: produto+ofertas → Dissecador → Fornecedor BR → Avaliador →
-    Ficha de Ataque. Degradação graciosa: se um agente falha, segue com o resto."""
+    Ficha de Ataque. Degradação graciosa: se um agente falha, segue com o resto.
+    imposto_pct = imposto do PRÓPRIO vendedor — o lucro sai depois dele."""
     import mlhype_ml as ml
     import mlhype_ia as ia
     import mlhype_db as db
@@ -694,19 +772,23 @@ def rodar_esteira(pid, cat_id=None):
             log.warning(f'[MLhype] IA esteira falhou: {e}')
 
     # Margem REAL (substitui a estimativa da IA) quando há custo de fornecedor
+    # — sempre já descontando o IMPOSTO do próprio vendedor
+    res['imposto_pct'] = imposto_pct
     if menor_custo and preco_lider and avaliacao:
-        m_lider = calcular_margem(preco_lider, menor_custo, cat_taxa)
+        m_lider = calcular_margem(preco_lider, menor_custo, cat_taxa, imposto_pct=imposto_pct)
         if m_lider:
             avaliacao['margem_pct'] = m_lider['margem_pct']
     if ficha and ficha.get('preco_venda_sugerido') and menor_custo:
-        m_ficha = calcular_margem(ficha['preco_venda_sugerido'], menor_custo, cat_taxa)
+        m_ficha = calcular_margem(ficha['preco_venda_sugerido'], menor_custo, cat_taxa,
+                                  imposto_pct=imposto_pct)
         if m_ficha:
             ficha['margem_pct'] = m_ficha['margem_pct']
             ficha['lucro_liquido'] = m_ficha['lucro']
     # Lucro ESTIMADO quando ainda NÃO há fornecedor real (a IA chuta o custo de
     # atacado) — pra já mostrar "ganho ~R$X/venda" em vez de "—". É o gancho.
     if ficha and not menor_custo and ficha.get('preco_venda_sugerido') and ficha.get('custo_estimado_br'):
-        m_est = calcular_margem(ficha['preco_venda_sugerido'], ficha['custo_estimado_br'], cat_taxa)
+        m_est = calcular_margem(ficha['preco_venda_sugerido'], ficha['custo_estimado_br'], cat_taxa,
+                                imposto_pct=imposto_pct)
         if m_est and m_est['lucro'] > 0:
             ficha['lucro_estimado'] = m_est['lucro']
             ficha['margem_estimada_pct'] = m_est['margem_pct']
@@ -861,7 +943,7 @@ _FICHA_HTML = '''<!doctype html><html lang=pt-br><head><meta charset=utf-8>
 {% if L and L > 0 %}
 <div class="card proj">
  <h3 style="color:#5ee0a0">💰 Quanto isso vira no seu bolso</h3>
- <p class=sub>Lucro {% if not tem_lucro %}<b>estimado</b> de ≈{% else %}de <b>{% endif %}{{fmt(L)}}{% if tem_lucro %}</b>{% endif %} por venda{% if not tem_lucro %} — a IA chutou o custo de atacado; cadastre o fornecedor pra cravar o número.{% endif %}</p>
+ <p class=sub>Lucro {% if not tem_lucro %}<b>estimado</b> de ≈{% else %}de <b>{% endif %}{{fmt(L)}}{% if tem_lucro %}</b>{% endif %} por venda — taxa do ML{% if r.imposto_pct %} e teu imposto ({{'%g' % r.imposto_pct}}%){% endif %} já descontados.{% if not tem_lucro %} A IA chutou o custo de atacado; cadastre o fornecedor pra cravar o número.{% endif %}</p>
  <div class=projgrid>
   <div class=projbox><span>5 vendas/dia</span><b>{{fmt(L*150)}}</b><i>por mês</i></div>
   <div class=projbox><span>20 vendas/dia</span><b>{{fmt(L*600)}}</b><i>por mês</i></div>
@@ -980,8 +1062,9 @@ def mlhype_analisar_run(pid):
     if not plano_libera(plano, 'ficha') and contar_buscas_hoje(u['id']) >= FREE_BUSCAS_DIA:
         return render_template_string(_LIMITE_HTML, limite=FREE_BUSCAS_DIA, plano=plano)
     registrar_uso(u['id'], 'busca', categoria=cat)
+    import mlhype_db as db
     try:
-        r = rodar_esteira(pid, cat)
+        r = rodar_esteira(pid, cat, imposto_pct=db.get_imposto(u['id']))
     except Exception as e:
         log.error(f'[MLhype] esteira {pid} erro: {e}')
         return ('<div style="font-family:system-ui;color:#e7ecf5;background:#0b1020;min-height:100vh;'

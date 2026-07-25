@@ -234,6 +234,7 @@ def init_mlhype_db():
         'ALTER TABLE mlhype_users ADD COLUMN asaas_customer_id TEXT',
         'ALTER TABLE mlhype_users ADD COLUMN afiliado_ref TEXT',
         'ALTER TABLE mlhype_users ADD COLUMN termo_aceito INTEGER DEFAULT 0',
+        'ALTER TABLE mlhype_users ADD COLUMN imposto_pct REAL',
         'ALTER TABLE mlhype_snapshots ADD COLUMN categoria_id TEXT',
         'ALTER TABLE mlhype_snapshots ADD COLUMN visitas INTEGER',
         'ALTER TABLE mlhype_snapshots ADD COLUMN num_ofertas INTEGER',
@@ -591,6 +592,29 @@ def marcar_acesso(uid):
     conn.commit(); conn.close()
 
 
+# ── Imposto do vendedor (Fase 1 — o lucro de verdade é DEPOIS do imposto) ──────
+IMPOSTO_DEFAULT = 4.0     # Simples Nacional comércio (Anexo I, 1ª faixa) — editável
+
+
+def get_imposto(uid):
+    """% de imposto do usuário (sobre o preço de venda). Default = Simples 4%."""
+    if not uid:
+        return IMPOSTO_DEFAULT
+    conn = get_mlhype_db()
+    r = conn.execute('SELECT imposto_pct FROM mlhype_users WHERE id=?', (uid,)).fetchone()
+    conn.close()
+    v = r['imposto_pct'] if r else None
+    return float(v) if v is not None else IMPOSTO_DEFAULT
+
+
+def set_imposto(uid, pct):
+    pct = max(0.0, min(35.0, float(pct)))   # trava anti-dedo-gordo
+    conn = get_mlhype_db()
+    conn.execute('UPDATE mlhype_users SET imposto_pct=? WHERE id=?', (pct, uid))
+    conn.commit(); conn.close()
+    return pct
+
+
 # ── Feedback / aprendizado (Lote A — o motor aprende o que vale pra cada um) ───
 def registrar_feedback(user_id, mlb_item_id, categoria_id, acao):
     if acao not in ('vendi', 'ataquei', 'nao_rolou'):
@@ -722,11 +746,47 @@ def _dias_desde(iso):
         return None
 
 
-def oportunidades(limit=20, categoria=None, user_id=None, nicho_roots=None):
+def _taxa_ml_estimada(preco):
+    """Taxa do ML SEM chamar API (p/ ordenar listas grandes): comissão Clássico
+    ~13% + taxa fixa por faixa (itens < R$79). A análise individual usa a REAL."""
+    if not preco or preco <= 0:
+        return 0.0
+    comissao = preco * 0.13
+    if preco < 12.5:
+        fixa = preco * 0.5
+    elif preco < 29:
+        fixa = 6.25
+    elif preco < 50:
+        fixa = 6.50
+    elif preco < 79:
+        fixa = 6.75
+    else:
+        fixa = 0.0
+    return comissao + fixa
+
+
+def lucro_potencial(preco, imposto_pct=None, custo=None):
+    """Quanto SOBRA por unidade (≈): preço − taxa ML − imposto − custo.
+    custo real do fornecedor quando há; senão ~50% do preço (típico de revenda).
+    Serve pra RANKEAR o que deixa mais dinheiro — o nº exato sai na análise."""
+    if not preco or preco <= 0:
+        return None
+    if imposto_pct is None:
+        imposto_pct = IMPOSTO_DEFAULT
+    if custo is None:
+        custo = preco * 0.5
+    sobra = preco - _taxa_ml_estimada(preco) - preco * (imposto_pct / 100.0) - custo
+    return round(sobra, 2)
+
+
+def oportunidades(limit=20, categoria=None, user_id=None, nicho_roots=None,
+                  imposto_pct=None, ordenar='lucro'):
     """Varre o último snapshot de cada produto, pontua a oportunidade e devolve
     as melhores rankeadas. base = média geométrica(demanda, facilidade) — exige
     as DUAS coisas decentes (vende E dá pra atacar); + bônus tendência/fornecedor
-    + boost PERSONALIZADO (nichos onde o usuário marcou vendi/ataquei)."""
+    + boost PERSONALIZADO (nichos onde o usuário marcou vendi/ataquei).
+    Cada item sai com lucro_potencial (pós-taxa ML + imposto); default ordena
+    por 💰 lucro — o mar de oportunidades POR MARGEM."""
     conn = get_mlhype_db()
     q = '''SELECT l.id AS lid, l.mlb_item_id, l.titulo, l.categoria_id, l.date_created,
                   s.posicao_ranking AS pos, s.num_ofertas, s.preco
@@ -763,9 +823,16 @@ def oportunidades(limit=20, categoria=None, user_id=None, nicho_roots=None):
     for r in cand:
         tend = tendencia_produto(r['mlb_item_id'])
         bonus = 10 if tend == 'subindo' else (-8 if tend == 'caindo' else 0)
-        tem_forn = bool(match_fornecedores(r['categoria_id'] or '', '', r['titulo'] or '', limit=1))
+        forn = match_fornecedores(r['categoria_id'] or '', '', r['titulo'] or '', limit=1)
+        tem_forn = bool(forn)
         if tem_forn:
             bonus += 8
+        # custo REAL do fornecedor cadastrado (com freio anti-absurdo); senão ~50%
+        custo_real = None
+        if forn and forn[0].get('menor_preco') and r.get('preco'):
+            mp = forn[0]['menor_preco']
+            if mp >= r['preco'] * 0.08:
+                custo_real = mp
         r['personalizado'] = r['categoria_id'] in quentes
         if r['personalizado']:
             bonus += min(15, 8 + quentes[r['categoria_id']] * 2)   # boost do nicho do usuário
@@ -778,8 +845,15 @@ def oportunidades(limit=20, categoria=None, user_id=None, nicho_roots=None):
         if r['novo']:
             bonus += 6
         r['score'] = max(0, min(100, r['base'] + bonus))
-    cand.sort(key=lambda x: x['score'], reverse=True)
+        r['lucro_potencial'] = lucro_potencial(r.get('preco'), imposto_pct, custo_real)
+        r['custo_real'] = custo_real is not None
     # só mostra oportunidade DE VERDADE — corta o que não vale a pena (foco, não ruído)
     minimo = int(os.environ.get('MLHYPE_OPS_MIN', '45'))
-    boas = [c for c in cand if c['score'] >= minimo]
-    return (boas or cand)[:limit]
+    boas = [c for c in cand if c['score'] >= minimo] or cand
+    # ordenar: 💰 lucro (default — onde sobra mais dinheiro) ou 🎯 brecha (score)
+    if ordenar == 'lucro':
+        boas.sort(key=lambda x: x['lucro_potencial'] if x['lucro_potencial'] is not None else -9999,
+                  reverse=True)
+    else:
+        boas.sort(key=lambda x: x['score'], reverse=True)
+    return boas[:limit]
