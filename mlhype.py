@@ -187,10 +187,19 @@ def mlhype_home():
 
 @mlhype_bp.route('/health')
 def mlhype_health():
-    """Health-check + termômetro do histórico acumulado (o tesouro)."""
+    """Health-check + termômetro do histórico acumulado (o tesouro).
+    ?ml=1 → testa 1 chamada real à API do ML daqui de dentro (diagnóstico 401)."""
     try:
         st = estatisticas()
-        return jsonify({'ok': True, 'versao': VERSAO, 'modulo': 'mlhype', 'stats': st})
+        out = {'ok': True, 'versao': VERSAO, 'modulo': 'mlhype', 'stats': st}
+        if request.args.get('ml'):
+            import mlhype_ml as ml
+            try:
+                cats = ml.categorias()
+                out['ml_api'] = f'OK ({len(cats or [])} categorias)'
+            except Exception as e:
+                out['ml_api'] = f'ERRO: {e}'[:180]
+        return jsonify(out)
     except Exception as e:
         log.error(f'[MLHYPE] health erro: {e}')
         return jsonify({'ok': False, 'erro': str(e)}), 500
