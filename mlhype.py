@@ -192,7 +192,39 @@ def mlhype_health():
     try:
         st = estatisticas()
         out = {'ok': True, 'versao': VERSAO, 'modulo': 'mlhype', 'stats': st}
-        if request.args.get('ml'):
+        if request.args.get('ml') == 'full':
+            # bateria: mapeia o que o token atual (user grant > app) libera
+            import mlhype_ml as ml
+            out['ml_grant_usuario'] = ml.tem_grant_usuario()
+            pid = None
+            try:
+                conn = get_mlhype_db()
+                r_ = conn.execute("SELECT mlb_item_id FROM mlhype_listings WHERE mlb_item_id LIKE 'MLB%' ORDER BY id DESC LIMIT 1").fetchone()
+                conn.close()
+                pid = r_['mlb_item_id'] if r_ else None
+            except Exception:
+                pass
+            testes = [
+                ('users_me', '/users/me', None),
+                ('categorias', '/sites/MLB/categories', None),
+                ('categoria_detalhe', '/categories/MLB1000', None),
+                ('highlights', '/highlights/MLB/category/MLB1000', None),
+                ('trends', '/trends/MLB', None),
+                ('listing_prices', '/sites/MLB/listing_prices', {'price': 100, 'category_id': 'MLB1000'}),
+            ]
+            if pid:
+                testes.append(('produto', f'/products/{pid}', None))
+                testes.append(('ofertas', f'/products/{pid}/items', None))
+            mapa = {}
+            for nome_t, path, params in testes:
+                try:
+                    ml.ml_get(path, params, _max_tentativas=1)
+                    mapa[nome_t] = 'OK'
+                except Exception as e:
+                    s = getattr(e, 'status', None)
+                    mapa[nome_t] = f'HTTP {s}' if s else str(e)[:60]
+            out['ml_endpoints'] = mapa
+        elif request.args.get('ml'):
             import mlhype_ml as ml
             try:
                 cats = ml.categorias()
