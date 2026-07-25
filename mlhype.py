@@ -1417,9 +1417,13 @@ _SUBCAT_DEFAULT = 'MLB1000,MLB1051,MLB1276,MLB1648,MLB1246,MLB263532,MLB1500'
 
 
 def _categorias_alvo(ml):
-    """Categorias a varrer: TARGET_CATEGORIES (CSV) ou TODAS as raízes do ML, +
-    as subcategorias das raízes configuradas em MLHYPE_SUBCAT_ROOTS (Lote C)."""
+    """Categorias a varrer HOJE — FREIO DE MÃO pós-bloqueio (25/jun, motivo
+    INTEGRATORS_DATA_INFRACTION): em vez de varrer TODOS os nichos + subs num
+    ciclo (milhares de chamadas read-only = a infração), rotaciona: a cada dia
+    varre só MLHYPE_NICHOS_POR_DIA raízes do foco (round-robin) + as subs delas.
+    Cobertura completa continua — só que espalhada pela semana."""
     import mlhype_db as db
+    from datetime import date
     cfg = os.environ.get('TARGET_CATEGORIES', '').strip()
     if cfg and cfg.lower() not in ('todas', 'all', '*'):
         return [c.strip() for c in cfg.split(',') if c.strip()]
@@ -1428,22 +1432,23 @@ def _categorias_alvo(ml):
     except Exception as e:
         log.error(f'[MLhype] não consegui listar categorias-raiz: {e}')
         return []
-    alvo = []
     for c in roots:
         try:
             db.salvar_categoria(c['id'], c['name'])   # salva o nome de todas (p/ resolver)
         except Exception:
             pass
-        # FOCO: só varre as categorias com dinheiro/hype (não as mortas)
-        if c['id'] in db._CAT_FOCO and c['id'] not in _CAT_SEM_HIGHLIGHTS:
-            alvo.append(c['id'])
-    # aprofundar nas subcategorias das raízes configuradas (controla o volume)
-    sub_cfg = os.environ.get('MLHYPE_SUBCAT_ROOTS', _SUBCAT_DEFAULT).strip()
-    sub_roots = [s.strip() for s in sub_cfg.split(',') if s.strip()] if sub_cfg else []
+    foco = [c['id'] for c in roots
+            if c['id'] in db._CAT_FOCO and c['id'] not in _CAT_SEM_HIGHLIGHTS]
+    if not foco:
+        return []
+    # rotação: N raízes por dia (round-robin pelo dia do ano)
+    por_dia = max(1, int(os.environ.get('MLHYPE_NICHOS_POR_DIA', '2')))
+    ini = (date.today().toordinal() * por_dia) % len(foco)
+    do_dia = [foco[(ini + i) % len(foco)] for i in range(min(por_dia, len(foco)))]
+    alvo = list(do_dia)
+    # aprofunda nas subcategorias SÓ das raízes do dia
     top_sub = int(os.environ.get('MLHYPE_SUBCAT_TOP', '8'))
-    for root in sub_roots:
-        if root in _CAT_SEM_HIGHLIGHTS:
-            continue
+    for root in do_dia:
         try:
             det = ml.categoria(root) or {}
             for ch in (det.get('children_categories') or [])[:top_sub]:
@@ -1451,6 +1456,7 @@ def _categorias_alvo(ml):
                 alvo.append(ch['id'])
         except Exception as ex:
             log.warning(f'[MLhype] subcategorias de {root} falharam: {ex}')
+    log.info(f'[MLhype] coleta do dia (freio de mão): {do_dia} + {len(alvo)-len(do_dia)} subs')
     return alvo
 
 
@@ -1508,19 +1514,31 @@ def _coletar_trends(ml, db, hoje):
 
 def coletar(categorias=None, top_n=None):
     """Uma varredura: para cada categoria-alvo pega o Top (highlights), o
-    preço/concorrência dos líderes e grava snapshot datado. Idempotente."""
+    preço/concorrência dos líderes e grava snapshot datado. Idempotente.
+    FREIO DE MÃO: pausas educadas entre chamadas + teto duro de chamadas por
+    ciclo (MLHYPE_MAX_CALLS) — tráfego de integração, não de colheita."""
+    import time as _t
+    import random as _rand
     import mlhype_ml as ml
     import mlhype_db as db
     if not ml.credenciais_ok():
         log.warning('[MLhype] coleta abortada: sem ML_APP_ID/ML_SECRET')
         return {'erro': 'sem credenciais'}
-    top_n = top_n or int(os.environ.get('MLHYPE_TOP_N', '20'))
+    top_n = top_n or int(os.environ.get('MLHYPE_TOP_N', '12'))
+    max_calls = int(os.environ.get('MLHYPE_MAX_CALLS', '350'))
+    calls = 0
     cats = categorias or _categorias_alvo(ml)
     hoje = _data_brt()
     res = {'data': hoje, 'categorias': 0, 'produtos': 0, 'erros': 0}
     for cat_id in cats:
+        if calls >= max_calls:
+            log.info(f'[MLhype] teto de {max_calls} chamadas atingido — paro por hoje')
+            res['teto'] = True
+            break
+        _t.sleep(1.5 + _rand.uniform(0, 1.5))       # pausa educada entre categorias
         try:
             content = (ml.highlights(cat_id).get('content') or [])[:top_n]
+            calls += 1
         except Exception as e:
             log.warning(f'[MLhype] highlights {cat_id} falhou: {e}')
             res['erros'] += 1
@@ -1529,6 +1547,10 @@ def coletar(categorias=None, top_n=None):
         for item in content:
             if item.get('type') != 'PRODUCT':
                 continue
+            if calls >= max_calls:
+                break
+            _t.sleep(0.4 + _rand.uniform(0, 0.5))   # pausa educada entre produtos
+            calls += 2                               # ~produto+ofertas
             try:
                 _coletar_produto(ml, db, item['id'], cat_id, item.get('position'), hoje)
                 res['produtos'] += 1
