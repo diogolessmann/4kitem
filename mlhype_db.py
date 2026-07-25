@@ -382,6 +382,7 @@ def estatisticas():
         'dias_hist':  _c('SELECT COUNT(DISTINCT collected_at) FROM mlhype_snapshots'),
         'fornecedor': _c('SELECT COUNT(*) FROM mlhype_suppliers WHERE ativo=1'),
         'oport':      _c('SELECT COUNT(*) FROM mlhype_opportunities'),
+        'ultima_coleta': _c('SELECT MAX(collected_at) FROM mlhype_snapshots'),
     }
     conn.close()
     return st
