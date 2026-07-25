@@ -1253,6 +1253,46 @@ _LIMITE_HTML = '''<!doctype html><html lang=pt-br><head><meta charset=utf-8>
 </div></body></html>'''
 
 
+@mlhype_bp.route('/oauth/entrar')
+def mlhype_oauth_entrar():
+    """Dono autoriza o app com a conta ML dele (1 clique). Gate por ML_SECRET."""
+    if request.args.get('k') != os.environ.get('ML_SECRET'):
+        return 'acesso negado — use ?k=<ML_SECRET>', 403
+    import mlhype_ml as ml
+    import secrets as _secrets
+    state = _secrets.token_urlsafe(24)
+    session['mlhype_oauth_state'] = state
+    return redirect(ml.url_autorizacao(state))
+
+
+@mlhype_bp.route('/oauth/callback')
+def mlhype_oauth_callback():
+    """Volta do ML: troca o code pelo token de USUÁRIO (com refresh) e salva."""
+    import mlhype_ml as ml
+    erro = request.args.get('error')
+    if erro:
+        return f'<h3>ML recusou: {erro}</h3><p>{request.args.get("error_description","")}</p>', 400
+    state = request.args.get('state', '')
+    if not state or state != session.pop('mlhype_oauth_state', None):
+        return '<h3>state inválido — abre o link /mlhype/oauth/entrar de novo.</h3>', 400
+    code = request.args.get('code')
+    if not code:
+        return '<h3>sem code na volta do ML.</h3>', 400
+    try:
+        uid_ml = ml.trocar_code_por_token(code)
+    except Exception as e:
+        return f'<h3>falha ao trocar o code: {e}</h3>', 500
+    # teste imediato: a API voltou a responder?
+    try:
+        cats = ml.categorias()
+        teste = f'✅ API respondendo — {len(cats or [])} categorias.'
+    except Exception as e:
+        teste = f'⚠️ grant salvo, mas o teste falhou: {e}'
+    return (f'<div style="font-family:system-ui;background:#0b1020;color:#e7ecf5;min-height:100vh;'
+            f'padding:40px"><h2>🔓 Grant do ML salvo! (user {uid_ml})</h2><p>{teste}</p>'
+            f'<p><a href="/mlhype/health?ml=1" style="color:#7cc0ff">ver health</a></p></div>')
+
+
 @mlhype_bp.route('/admin/plano')
 def mlhype_admin_plano():
     """Define o plano de uma conta (p/ TESTE de cada tier). Gate por ML_SECRET."""

@@ -103,7 +103,14 @@ def _dec(texto):
         return None
 
 
-# ── Token de app (client_credentials) ──────────────────────────────────────────
+# ── Tokens (app via client_credentials + USUÁRIO via authorization_code) ───────
+# 25/jun: o ML cortou o acesso do token de app puro ("access not granted by
+# applications" — enforcement do PolicyAgent). O caminho oficial é o GRANT de
+# usuário: o dono autoriza 1x no navegador e usamos o token DELE (com refresh).
+REDIRECT_URI = os.environ.get('ML_REDIRECT_URI', 'https://4kitem.com.br/mlhype/oauth/callback')
+AUTH_URL     = 'https://auth.mercadolivre.com.br/authorization'
+
+
 def _solicitar_token_app():
     r = requests.post(f'{API_BASE}/oauth/token',
                       headers={'accept': 'application/json'},
@@ -116,38 +123,115 @@ def _solicitar_token_app():
     return j['access_token'], int(j.get('expires_in', 21600))
 
 
-def _salvar_token(access_token, expires_in):
+def _salvar_token(access_token, expires_in, escopo='ml_app', refresh_token=None,
+                  ml_user_id=None):
     expira = (datetime.utcnow() + timedelta(seconds=expires_in)).isoformat()
     agora = datetime.utcnow().isoformat()
     conn = get_mlhype_db()
-    row = conn.execute("SELECT id FROM mlhype_ml_tokens WHERE escopo='ml_app'").fetchone()
+    row = conn.execute("SELECT id FROM mlhype_ml_tokens WHERE escopo=?", (escopo,)).fetchone()
+    campos = {'access_token': _enc(access_token), 'expires_at': expira, 'updated_at': agora}
+    if refresh_token is not None:
+        campos['refresh_token'] = _enc(refresh_token)
+    if ml_user_id is not None:
+        campos['ml_user_id'] = str(ml_user_id)
     if row:
-        conn.execute("UPDATE mlhype_ml_tokens SET access_token=?, expires_at=?, updated_at=? WHERE id=?",
-                     (_enc(access_token), expira, agora, row['id']))
+        sets = ', '.join(f'{k}=?' for k in campos)
+        conn.execute(f"UPDATE mlhype_ml_tokens SET {sets} WHERE id=?",
+                     (*campos.values(), row['id']))
     else:
-        conn.execute("INSERT INTO mlhype_ml_tokens (escopo, access_token, expires_at, updated_at) "
-                     "VALUES ('ml_app',?,?,?)", (_enc(access_token), expira, agora))
+        cols = ', '.join(['escopo', *campos.keys()])
+        ph = ', '.join(['?'] * (1 + len(campos)))
+        conn.execute(f"INSERT INTO mlhype_ml_tokens ({cols}) VALUES ({ph})",
+                     (escopo, *campos.values()))
     conn.commit()
     conn.close()
     return expira
 
 
-def _ler_token():
+def _ler_token(escopo='ml_app'):
     conn = get_mlhype_db()
-    row = conn.execute("SELECT access_token, expires_at FROM mlhype_ml_tokens "
-                       "WHERE escopo='ml_app'").fetchone()
+    row = conn.execute("SELECT access_token, refresh_token, expires_at FROM mlhype_ml_tokens "
+                       "WHERE escopo=?", (escopo,)).fetchone()
     conn.close()
     if not row:
-        return None, None
-    return _dec(row['access_token']), row['expires_at']
+        return None, None, None
+    return _dec(row['access_token']), _dec(row['refresh_token']), row['expires_at']
+
+
+# ── OAuth de USUÁRIO (authorization_code + refresh) ────────────────────────────
+def url_autorizacao(state=''):
+    """Link que o dono abre 1x pra autorizar o app com a conta ML dele."""
+    from urllib.parse import urlencode
+    return AUTH_URL + '?' + urlencode({
+        'response_type': 'code', 'client_id': APP_ID,
+        'redirect_uri': REDIRECT_URI, 'state': state})
+
+
+def trocar_code_por_token(code):
+    """Callback do OAuth: troca o code pelo par access+refresh e salva (ml_user)."""
+    r = requests.post(f'{API_BASE}/oauth/token',
+                      headers={'accept': 'application/json'},
+                      data={'grant_type': 'authorization_code',
+                            'client_id': APP_ID, 'client_secret': APP_SECRET,
+                            'code': code, 'redirect_uri': REDIRECT_URI},
+                      timeout=HTTP_TIMEOUT)
+    if r.status_code != 200:
+        raise MLApiError(r.status_code, _safe_json(r), '/oauth/token(code)')
+    j = r.json()
+    _salvar_token(j['access_token'], int(j.get('expires_in', 21600)),
+                  escopo='ml_user', refresh_token=j.get('refresh_token'),
+                  ml_user_id=j.get('user_id'))
+    return j.get('user_id')
+
+
+def _renovar_token_user(refresh):
+    """refresh_token do ML é de USO ÚNICO — a resposta traz um novo par; salvamos."""
+    r = requests.post(f'{API_BASE}/oauth/token',
+                      headers={'accept': 'application/json'},
+                      data={'grant_type': 'refresh_token',
+                            'client_id': APP_ID, 'client_secret': APP_SECRET,
+                            'refresh_token': refresh},
+                      timeout=HTTP_TIMEOUT)
+    if r.status_code != 200:
+        raise MLApiError(r.status_code, _safe_json(r), '/oauth/token(refresh)')
+    j = r.json()
+    _salvar_token(j['access_token'], int(j.get('expires_in', 21600)),
+                  escopo='ml_user', refresh_token=j.get('refresh_token'),
+                  ml_user_id=j.get('user_id'))
+    return j['access_token']
+
+
+def tem_grant_usuario():
+    tok, refresh, _ = _ler_token('ml_user')
+    return bool(tok or refresh)
 
 
 def obter_token(forcar=False):
-    """Token de app válido. Cacheia no banco e renova ao expirar (margem 5 min)."""
+    """Token válido pra chamar a API. PREFERE o token de USUÁRIO (grant — o que
+    o ML aceita hoje); cai pro token de app se não houver grant. Margem 5 min."""
     if not credenciais_ok():
         raise MLApiError(0, 'sem ML_APP_ID/ML_SECRET no ambiente', '/oauth/token')
+
+    # 1) token de USUÁRIO (se o dono já autorizou)
+    tok, refresh, expira = _ler_token('ml_user')
+    if tok or refresh:
+        if tok and expira and not forcar:
+            try:
+                if datetime.fromisoformat(expira) - timedelta(minutes=5) > datetime.utcnow():
+                    return tok
+            except Exception:
+                pass
+        if refresh:
+            try:
+                return _renovar_token_user(refresh)
+            except Exception as e:
+                log.warning(f'[MLhype] refresh do token de usuário falhou: {e}')
+        if tok and not forcar:
+            return tok                      # tenta com o que tem; 401 força refresh
+
+    # 2) fallback: token de app (client_credentials)
     if not forcar:
-        tok, expira = _ler_token()
+        tok, _, expira = _ler_token('ml_app')
         if tok and expira:
             try:
                 if datetime.fromisoformat(expira) - timedelta(minutes=5) > datetime.utcnow():
@@ -155,7 +239,7 @@ def obter_token(forcar=False):
             except Exception:
                 pass
     access_token, expires_in = _solicitar_token_app()
-    _salvar_token(access_token, expires_in)
+    _salvar_token(access_token, expires_in, escopo='ml_app')
     return access_token
 
 
