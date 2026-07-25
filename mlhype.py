@@ -211,18 +211,29 @@ def mlhype_health():
                 ('highlights', '/highlights/MLB/category/MLB1000', None),
                 ('trends', '/trends/MLB', None),
                 ('listing_prices', '/sites/MLB/listing_prices', {'price': 100, 'category_id': 'MLB1000'}),
+                ('search_publico', '/sites/MLB/search', {'q': 'cabo hdmi', 'limit': 1}),
             ]
             if pid:
                 testes.append(('produto', f'/products/{pid}', None))
                 testes.append(('ofertas', f'/products/{pid}/items', None))
             mapa = {}
+            uid_ml = None
             for nome_t, path, params in testes:
                 try:
-                    ml.ml_get(path, params, _max_tentativas=1)
+                    r_js = ml.ml_get(path, params, _max_tentativas=2)
                     mapa[nome_t] = 'OK'
+                    if nome_t == 'users_me' and isinstance(r_js, dict):
+                        uid_ml = r_js.get('id')
                 except Exception as e:
                     s = getattr(e, 'status', None)
                     mapa[nome_t] = f'HTTP {s}' if s else str(e)[:60]
+            if uid_ml:
+                try:
+                    ml.ml_get(f'/users/{uid_ml}/items/search', {'limit': 1}, _max_tentativas=2)
+                    mapa['meus_anuncios'] = 'OK'
+                except Exception as e:
+                    s = getattr(e, 'status', None)
+                    mapa['meus_anuncios'] = f'HTTP {s}' if s else str(e)[:60]
             out['ml_endpoints'] = mapa
         elif request.args.get('ml'):
             import mlhype_ml as ml

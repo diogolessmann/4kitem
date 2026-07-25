@@ -275,7 +275,9 @@ def ml_get(path, params=None, _max_tentativas=5):
 
         if r.status_code == 200:
             return r.json()
-        if r.status_code in (401, 403) and not renovou:
+        # só 401 renova token (403 é policy, não credencial — renovar desperdiça
+        # o refresh single-use do grant de usuário)
+        if r.status_code == 401 and not renovou:
             token = obter_token(forcar=True)
             renovou = True
             continue
