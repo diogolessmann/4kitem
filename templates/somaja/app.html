@@ -69,6 +69,11 @@ Me conta seus gastos que eu somo tudo. Ex: <b>"mercado 130"</b>, manda um <b>áu
     <button class="tool" onclick="verBalanco()">🧮 Balanço</button>
     <button class="tool" onclick="pedirCoach()">🧠 Coach</button>
   </div>
+  <div style="text-align:center;padding:0 14px 8px;font-size:13px">
+    <a onclick="definirMeta()" style="color:#16a34a;cursor:pointer;font-weight:600">🎯 Meta de gasto</a>
+    &nbsp;·&nbsp;
+    <a href="/somaja/exportar" style="color:#16a34a;font-weight:600">📄 Baixar planilha (CSV)</a>
+  </div>
 
   <div class="composer">
     <button class="icon sec" title="Foto da notinha" onclick="document.getElementById('arq').click()">📷</button>
@@ -184,6 +189,15 @@ async function apagarTx(id){
     const j=await r.json();
     if(j.ok){const el=document.getElementById('tx'+id);if(el)el.remove();setSaldo(j.saldo_fmt);}
     else add('Não consegui apagar. Tenta de novo.','bot');
+  }catch(e){add('Sem conexão.','bot');}
+}
+async function definirMeta(){
+  const v=prompt('Qual sua meta de gasto do mês? (só o número, ex: 2000)\\nDeixe 0 pra tirar a meta.');
+  if(v===null)return;
+  const val=parseFloat(String(v).replace(/[^0-9,.]/g,'').replace(/\./g,'').replace(',','.'))||0;
+  try{
+    await fetch('/somaja/meta',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({valor:val})});
+    add(val>0? ('🎯 Meta definida: R$ '+val.toFixed(2).replace('.',',')+'. Te aviso quando chegar perto.') : 'Meta removida.','bot');
   }catch(e){add('Sem conexão.','bot');}
 }
 </script>

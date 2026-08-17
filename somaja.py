@@ -19,8 +19,8 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from somaja_db import (get_somaja_db, init_somaja_db, CATEGORIAS,
                        tem_acesso, dias_de_trial_restantes,
                        add_tx, ultimos_tx, del_tx, saldo_mes, resumo_categorias,
-                       faturamento_ano, registrar_conselho, tx_do_mes,
-                       set_modo, set_mei_onboard, set_mei_perfil)
+                       faturamento_ano, registrar_conselho, tx_do_mes, tx_do_ano,
+                       set_meta, set_modo, set_mei_onboard, set_mei_perfil)
 
 log = logging.getLogger('somaja')
 
@@ -433,7 +433,7 @@ def registrar_lancamento(user_id, texto=None, file_bytes=None, mime=None, fonte=
     else:
         bola = '🟢' if s['saldo'] >= 0 else '🔴'
         resposta = ('✅ Anotei!\n' + '\n'.join(linhas) +
-                    f'\n\nSaldo do mês: {_brl(s["saldo"])} {bola}')
+                    f'\n\nSaldo do mês: {_brl(s["saldo"])} {bola}' + _meta_alerta(user_id))
     return resposta, salvos, tin, tout
 
 
@@ -534,9 +534,38 @@ def _balanco_texto(user_id, negocio=False):
         else:
             comp = 'igualzinho'
         txt += f'\n\n*vs mês passado:* seus {rotulo_gasto} ficaram {comp}.'
+    if not negocio:
+        meta = _get_meta(user_id)
+        if meta > 0:
+            _pct = (a['saidas'] / meta * 100) if meta else 0
+            txt += f'\n🎯 Meta: {_brl(meta)} — usou {_pct:.0f}%'
     if cats:
         txt += '\n\n*Maiores gastos:*\n' + '\n'.join(f'• {c}: {_brl(t)}' for c, t in cats)
     return txt
+
+
+def _get_meta(user_id):
+    conn = get_somaja_db()
+    r = conn.execute('SELECT meta_mensal FROM somaja_users WHERE id=?', (user_id,)).fetchone()
+    conn.close()
+    try:
+        return float(r['meta_mensal'] or 0) if r else 0.0
+    except (TypeError, ValueError, KeyError):
+        return 0.0
+
+
+def _meta_alerta(user_id):
+    """Linha de alerta se o gasto do mês passou de 80% da meta de gasto (ou '')."""
+    meta = _get_meta(user_id)
+    if meta <= 0:
+        return ''
+    gasto = saldo_mes(user_id)['saidas']
+    pct = gasto / meta * 100 if meta else 0
+    if pct < 80:
+        return ''
+    if pct < 100:
+        return f'\n⚠️ Você já usou *{pct:.0f}%* da meta de gasto ({_brl(gasto)} de {_brl(meta)}).'
+    return f'\n🔴 Você *passou* da meta de gasto! ({_brl(gasto)} de {_brl(meta)}).'
 
 
 # ── Rotas: público / auth ───────────────────────────────────────────────────────
@@ -824,6 +853,48 @@ def balanco():
     except (KeyError, IndexError):
         neg = False
     return jsonify({'ok': True, 'texto': _balanco_texto(u['id'], neg)})
+
+
+@somaja_bp.route('/meta', methods=['POST'])
+@somaja_acesso_required
+def meta_set():
+    """Define a meta de gasto do mês (web)."""
+    u = _get_user()
+    data = request.get_json(silent=True) or {}
+    set_meta(u['id'], data.get('valor'))
+    return jsonify({'ok': True})
+
+
+@somaja_bp.route('/exportar')
+@somaja_acesso_required
+def exportar():
+    """Baixa os lançamentos em CSV (mês atual, ?mes=YYYY-MM, ou ?ano=YYYY p/ o ano todo)."""
+    import io, csv
+    u = _get_user()
+    ano = (request.args.get('ano') or '').strip()
+    if ano.isdigit():
+        rows = tx_do_ano(u['id'], ano); nome = f'somaja_{ano}.csv'
+    else:
+        mes = (request.args.get('mes') or datetime.now().strftime('%Y-%m'))[:7]
+        rows = tx_do_mes(u['id'], mes); nome = f'somaja_{mes}.csv'
+    buf = io.StringIO()
+    buf.write('﻿')  # BOM p/ o Excel abrir os acentos certo
+    w = csv.writer(buf, delimiter=';')
+    w.writerow(['Data', 'Tipo', 'Categoria', 'Descrição', 'Valor'])
+    tot_e = tot_s = 0.0
+    for t in rows:
+        val = float(t['valor'] or 0)
+        if t['tipo'] == 'entrada':
+            tot_e += val
+        else:
+            tot_s += val
+        w.writerow([t['data'] or '', 'Entrada' if t['tipo'] == 'entrada' else 'Saída',
+                    t['categoria'] or '', t['descricao'] or '', f'{val:.2f}'.replace('.', ',')])
+    w.writerow([]); w.writerow(['', '', '', 'Total entradas', f'{tot_e:.2f}'.replace('.', ',')])
+    w.writerow(['', '', '', 'Total saídas', f'{tot_s:.2f}'.replace('.', ',')])
+    w.writerow(['', '', '', 'Saldo', f'{tot_e - tot_s:.2f}'.replace('.', ',')])
+    return Response(buf.getvalue(), mimetype='text/csv; charset=utf-8',
+                    headers={'Content-Disposition': f'attachment; filename="{nome}"'})
 
 
 @somaja_bp.route('/negocio', methods=['GET', 'POST'])
@@ -1278,6 +1349,24 @@ def processar_wa_evento(data):
                 emoji = '💸' if t['tipo'] == 'saida' else '💰'
                 linhas.append(f'*{i}.* {emoji} {t["descricao"]} — {_brl(t["valor"])}')
             wa_send(telefone, 'Qual apagar? Manda *apagar N* (ex: *apagar 2*):\n\n' + '\n'.join(linhas))
+            return jsonify({'ok': True}), 200
+        if low.startswith('meta ') and len(low.split(None, 1)) > 1:
+            raw = low.split(None, 1)[1].strip().replace('r$', '').replace(' ', '')
+            try:
+                val = float(raw.replace('.', '').replace(',', '.'))
+            except ValueError:
+                val = None
+            if val is not None and val >= 0:
+                set_meta(u['id'], val)
+                wa_send(telefone, f'🎯 Meta de gasto do mês: *{_brl(val)}*. Te aviso quando chegar perto. 👍')
+                return jsonify({'ok': True}), 200
+        if low in ('meta', 'metas', 'minha meta'):
+            meta = _get_meta(u['id'])
+            if meta <= 0:
+                wa_send(telefone, 'Você ainda não tem meta. Manda *meta 2000* (o máximo que quer gastar no mês). 🎯')
+            else:
+                g = saldo_mes(u['id'])['saidas']; pct = (g / meta * 100) if meta else 0
+                wa_send(telefone, f'🎯 *Sua meta:* {_brl(meta)}/mês\nJá gastou: {_brl(g)} (*{pct:.0f}%*)')
             return jsonify({'ok': True}), 200
         if low in ('conselho', 'coach', 'dica', 'analise', 'análise'):
             wa_send(telefone, '🧠 ' + gerar_conselho(u['id']))

@@ -58,6 +58,7 @@ def init_somaja_db():
             mei_onboard           TEXT,                    -- estado do onboarding MEI no Zap
             mei_das_lembrete      TEXT,                    -- 'YYYY-MM' do último lembrete de DAS enviado
             mei_dasn_lembrete     TEXT,                    -- 'YYYY' do último lembrete de DASN enviado
+            meta_mensal           REAL DEFAULT 0,          -- meta de gasto do mês (0 = sem meta)
             created_at            TEXT DEFAULT CURRENT_TIMESTAMP,
             ultimo_acesso         TEXT
         );
@@ -122,6 +123,7 @@ def init_somaja_db():
         'ALTER TABLE somaja_users ADD COLUMN mei_onboard TEXT',
         'ALTER TABLE somaja_users ADD COLUMN mei_das_lembrete TEXT',
         'ALTER TABLE somaja_users ADD COLUMN mei_dasn_lembrete TEXT',
+        'ALTER TABLE somaja_users ADD COLUMN meta_mensal REAL DEFAULT 0',
     ]:
         try:
             conn.execute(migration); conn.commit()
@@ -281,6 +283,31 @@ def tx_do_mes(user_id, ano_mes=None):
         "ORDER BY data DESC, id DESC", (*ids, ym)).fetchall()
     conn.close()
     return rows
+
+
+def tx_do_ano(user_id, ano=None):
+    """Todos os lançamentos do ANO (p/ exportar planilha / relatório do contador)."""
+    ano = str(ano or datetime.now().strftime('%Y'))
+    conn = get_somaja_db()
+    ids = _membros_ids(conn, user_id)
+    ph = ','.join('?' * len(ids))
+    rows = conn.execute(
+        f"SELECT * FROM somaja_tx WHERE user_id IN ({ph}) AND substr(data,1,4)=? "
+        "ORDER BY data ASC, id ASC", (*ids, str(ano))).fetchall()
+    conn.close()
+    return rows
+
+
+def set_meta(user_id, valor):
+    """Define a meta de gasto mensal (0 = sem meta). Retorna True se salvou."""
+    try:
+        valor = max(0.0, float(valor))
+    except (TypeError, ValueError):
+        return False
+    conn = get_somaja_db()
+    conn.execute('UPDATE somaja_users SET meta_mensal=? WHERE id=?', (valor, user_id))
+    conn.commit(); conn.close()
+    return True
 
 
 # ── Carteira família (Lote 3) ───────────────────────────────────────────────────
