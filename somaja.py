@@ -18,7 +18,7 @@ from flask import (Blueprint, render_template, redirect, request,
 from werkzeug.security import generate_password_hash, check_password_hash
 from somaja_db import (get_somaja_db, init_somaja_db, CATEGORIAS,
                        tem_acesso, dias_de_trial_restantes,
-                       add_tx, ultimos_tx, saldo_mes, resumo_categorias,
+                       add_tx, ultimos_tx, del_tx, saldo_mes, resumo_categorias,
                        faturamento_ano, registrar_conselho, tx_do_mes,
                        set_modo, set_mei_onboard, set_mei_perfil)
 
@@ -497,6 +497,48 @@ def gerar_conselho(user_id):
     return texto or 'Continua firme nos registros que semana que vem eu te trago um panorama! 💪'
 
 
+# ── Balanço / fechamento do mês (atual vs mês anterior + veredito) ──────────────
+def _prev_ym():
+    now = datetime.now()
+    y, m = now.year, now.month
+    return f'{y-1}-12' if m == 1 else f'{y}-{m-1:02d}'
+
+
+def _balanco_texto(user_id, negocio=False):
+    """Fechamento do mês em texto (WhatsApp e web). Compara com o mês anterior."""
+    a = saldo_mes(user_id)                       # mês atual
+    b = saldo_mes(user_id, _prev_ym())           # mês anterior
+    cats = resumo_categorias(user_id, tipo='saida')[:5]
+    if negocio:
+        v = vigia_teto(user_id)
+        txt = ('🧮 *Balanço do mês*\n'
+               f'💰 Receita: {_brl(a["entradas"])}\n'
+               f'🧾 Despesas: {_brl(a["saidas"])}\n'
+               f'📦 Sobrou: {_brl(a["saldo"])}\n\n{v["linha"]}')
+        rotulo_gasto = 'despesas'
+    else:
+        bola = '🟢' if a['saldo'] >= 0 else '🔴'
+        vered = ('Sobrou' if a['saldo'] >= 0 else 'Faltou') + f' {_brl(abs(a["saldo"]))} {bola}'
+        txt = ('🧮 *Balanço do mês*\n'
+               f'📥 Entrou: {_brl(a["entradas"])}\n'
+               f'📤 Saiu: {_brl(a["saidas"])}\n'
+               f'💰 {vered}')
+        rotulo_gasto = 'gastos'
+    # Comparação com o mês anterior (só se houver histórico)
+    if b['saidas'] > 0 or b['entradas'] > 0:
+        dif = a['saidas'] - b['saidas']
+        if dif > 0:
+            comp = f'🔺 {_brl(dif)} a mais'
+        elif dif < 0:
+            comp = f'🔻 {_brl(abs(dif))} a menos'
+        else:
+            comp = 'igualzinho'
+        txt += f'\n\n*vs mês passado:* seus {rotulo_gasto} ficaram {comp}.'
+    if cats:
+        txt += '\n\n*Maiores gastos:*\n' + '\n'.join(f'• {c}: {_brl(t)}' for c, t in cats)
+    return txt
+
+
 # ── Rotas: público / auth ───────────────────────────────────────────────────────
 @somaja_bp.route('/')
 def landing():
@@ -759,6 +801,29 @@ def coach():
         log.warning(f'[SomaJá] coach rota falhou: {e}')
         return jsonify({'erro': 'O coach tirou um cochilo. Tenta de novo. 😴'}), 502
     return jsonify({'ok': True, 'conselho': texto})
+
+
+@somaja_bp.route('/apagar', methods=['POST'])
+@somaja_acesso_required
+def apagar():
+    """Apaga um lançamento do próprio usuário (correção de erro)."""
+    u = _get_user()
+    data = request.get_json(silent=True) or {}
+    ok = del_tx(u['id'], data.get('id'))
+    s = saldo_mes(u['id'])
+    return jsonify({'ok': ok, 'saldo_fmt': _brl(s['saldo'])})
+
+
+@somaja_bp.route('/balanco')
+@somaja_acesso_required
+def balanco():
+    """Fechamento do mês (atual vs anterior)."""
+    u = _get_user()
+    try:
+        neg = (u['modo'] == 'negocio')
+    except (KeyError, IndexError):
+        neg = False
+    return jsonify({'ok': True, 'texto': _balanco_texto(u['id'], neg)})
 
 
 @somaja_bp.route('/negocio', methods=['GET', 'POST'])
@@ -1041,7 +1106,9 @@ def _wa_ajuda(u):
                 '• Manda um *áudio* ou a *foto da nota*\n\n'
                 'Comandos:\n'
                 '📊 *resumo* — faturamento do mês\n'
+                '🧮 *balanço* — fechamento do mês\n'
                 '🧠 *conselho* — dica do coach\n'
+                '🗑️ *apagar* — corrigir um lançamento\n'
                 '🐗 *modo pessoal* — voltar pras contas de casa\n')
     else:
         base = ('🐗 *Oi! Eu sou o SomaJá*, seu coach financeiro.\n\n'
@@ -1051,7 +1118,9 @@ def _wa_ajuda(u):
                 '• Tira *foto da notinha*\n\n'
                 'Comandos:\n'
                 '📊 *resumo* — saldo do mês\n'
+                '🧮 *balanço* — fechamento do mês\n'
                 '🧠 *conselho* — dica do coach\n'
+                '🗑️ *apagar* — corrigir um lançamento\n'
                 '🧾 *sou mei* — virar o modo Negócio (pro MEI)\n')
     if not u['plan_active'] and dias >= 0:
         base += f'\n🎁 Você está no teste grátis ({dias} dia(s)).'
@@ -1176,6 +1245,39 @@ def processar_wa_evento(data):
                 if cats:
                     txt += '\n\n*Pra onde foi:*\n' + '\n'.join(f'• {c}: {_brl(t)}' for c, t in cats)
             wa_send(telefone, txt)
+            return jsonify({'ok': True}), 200
+        if low in ('balanço', 'balanco', 'fechar mes', 'fechar mês', 'fechamento', 'fecha o mes', 'fecha o mês'):
+            try:
+                _neg = (u['modo'] == 'negocio')
+            except (KeyError, IndexError):
+                _neg = False
+            wa_send(telefone, _balanco_texto(u['id'], _neg))
+            return jsonify({'ok': True}), 200
+        # Apagar lançamento (correção de erro) — 'apagar' lista, 'apagar N' apaga
+        if low.startswith('apagar ') and low.split()[1].isdigit():
+            n = int(low.split()[1])
+            ult = ultimos_tx(u['id'], 5)
+            if 1 <= n <= len(ult):
+                t = ult[n - 1]
+                if del_tx(u['id'], t['id']):
+                    s = saldo_mes(u['id'])
+                    wa_send(telefone, f'🗑️ Apaguei: {t["descricao"]} — {_brl(t["valor"])}.\n'
+                                      f'Saldo do mês agora: {_brl(s["saldo"])}')
+                else:
+                    wa_send(telefone, 'Não consegui apagar esse. Tenta *apagar* de novo.')
+            else:
+                wa_send(telefone, f'Só achei {len(ult)} lançamento(s). Manda *apagar* pra ver a lista.')
+            return jsonify({'ok': True}), 200
+        if low in ('apagar', 'corrigir', 'excluir', 'remover', 'deletar'):
+            ult = ultimos_tx(u['id'], 5)
+            if not ult:
+                wa_send(telefone, 'Você ainda não tem lançamentos pra apagar. 🤔')
+                return jsonify({'ok': True}), 200
+            linhas = []
+            for i, t in enumerate(ult, 1):
+                emoji = '💸' if t['tipo'] == 'saida' else '💰'
+                linhas.append(f'*{i}.* {emoji} {t["descricao"]} — {_brl(t["valor"])}')
+            wa_send(telefone, 'Qual apagar? Manda *apagar N* (ex: *apagar 2*):\n\n' + '\n'.join(linhas))
             return jsonify({'ok': True}), 200
         if low in ('conselho', 'coach', 'dica', 'analise', 'análise'):
             wa_send(telefone, '🧠 ' + gerar_conselho(u['id']))

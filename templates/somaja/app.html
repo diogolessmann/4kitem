@@ -60,13 +60,14 @@
     <div class="bubble bot">Oi, {{ soma_nome.split(' ')[0] if soma_nome else 'tudo certo' }}! 🐗 Sou o SomaJá.
 Me conta seus gastos que eu somo tudo. Ex: <b>"mercado 130"</b>, manda um <b>áudio</b> ou a <b>foto da notinha</b>.</div>
     {% for t in ultimos|reverse %}
-    <div class="bubble bot">{{ '💸' if t['tipo']=='saida' else '💰' }} {{ t['descricao'] }} — {{ _brl(t['valor']) }} <small style="color:#94a3b8">({{ t['categoria'] }})</small></div>
+    <div class="bubble bot" id="tx{{ t['id'] }}">{{ '💸' if t['tipo']=='saida' else '💰' }} {{ t['descricao'] }} — {{ _brl(t['valor']) }} <small style="color:#94a3b8">({{ t['categoria'] }})</small> <a onclick="apagarTx({{ t['id'] }})" title="Apagar lançamento" style="cursor:pointer;margin-left:4px">🗑️</a></div>
     {% endfor %}
   </div>
 
   <div class="tools">
-    <button class="tool" onclick="verResumo()">📊 Resumo do mês</button>
-    <button class="tool" onclick="pedirCoach()">🧠 Conselho do coach</button>
+    <button class="tool" onclick="verResumo()">📊 Resumo</button>
+    <button class="tool" onclick="verBalanco()">🧮 Balanço</button>
+    <button class="tool" onclick="pedirCoach()">🧠 Coach</button>
   </div>
 
   <div class="composer">
@@ -166,6 +167,24 @@ async function pedirCoach(){
     const r=await fetch('/somaja/coach',{method:'POST'}); const j=await r.json(); w.remove();
     add(j.ok? '🧠 '+j.conselho.replace(/\n/g,'<br>') : (j.erro||'Tenta de novo.'),'bot');
   }catch(e){w.remove();add('Sem conexão.','bot');}
+}
+
+function _fmt(t){return t.replace(/\*(.+?)\*/g,'<b>$1</b>').replace(/\n/g,'<br>');}
+async function verBalanco(){
+  const w=document.createElement('div');w.className='bubble bot';w.textContent='fechando o mês… 🧮';chat.appendChild(w);
+  try{
+    const r=await fetch('/somaja/balanco'); const j=await r.json(); w.remove();
+    add(j.ok? _fmt(j.texto) : 'Não consegui agora.','bot');
+  }catch(e){w.remove();add('Sem conexão.','bot');}
+}
+async function apagarTx(id){
+  if(!confirm('Apagar esse lançamento?'))return;
+  try{
+    const r=await fetch('/somaja/apagar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:id})});
+    const j=await r.json();
+    if(j.ok){const el=document.getElementById('tx'+id);if(el)el.remove();setSaldo(j.saldo_fmt);}
+    else add('Não consegui apagar. Tenta de novo.','bot');
+  }catch(e){add('Sem conexão.','bot');}
 }
 </script>
 </body>

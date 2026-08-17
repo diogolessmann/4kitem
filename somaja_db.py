@@ -200,6 +200,20 @@ def ultimos_tx(user_id, limite=10):
     return rows
 
 
+def del_tx(user_id, tx_id):
+    """Apaga UM lançamento — só se for do próprio usuário (nunca de outro). Retorna True se apagou."""
+    try:
+        tx_id = int(tx_id)
+    except (TypeError, ValueError):
+        return False
+    conn = get_somaja_db()
+    cur = conn.execute('DELETE FROM somaja_tx WHERE id=? AND user_id=?', (tx_id, user_id))
+    conn.commit()
+    ok = cur.rowcount > 0
+    conn.close()
+    return ok
+
+
 def _ym(ano_mes=None):
     return ano_mes or datetime.now().strftime('%Y-%m')
 
