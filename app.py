@@ -19110,5 +19110,167 @@ def saas_sz_criar_usuario():
         return jsonify({'erro': str(e)}), 400
 
 
+
+
+# ============================================================================
+# 🗂️ CENTRAL DL — midiateca das marcas Lessmann (migrada da Rádio, 01/set/2026)
+# Publica SÓ no IG do Despachante. Módulo: dlcentral.py
+# ============================================================================
+
+@app.route('/dlmedia/<marca>/<path:arquivo>')
+def dlcentral_media(marca, arquivo):
+    """Serve a mídia da Central DL (público — o Instagram baixa por esta URL)."""
+    import dlcentral as dlc
+    if marca not in dlc.MARCAS:
+        abort(404)
+    for pasta in (dlc.upload_dir(marca), dlc.repo_dir(marca)):
+        p = os.path.join(pasta, arquivo)
+        if os.path.exists(p):
+            return send_from_directory(pasta, arquivo)
+    abort(404)
+
+
+@app.route('/saas-admin/dlcentral')
+@_saas_admin_required
+def dlcentral_grid():
+    import dlcentral as dlc
+    marca = request.args.get('marca', 'dlmob')
+    if marca not in dlc.MARCAS:
+        marca = 'dlmob'
+    cfg = dlc.MARCAS[marca]
+    itens = dlc.listar(marca)
+    aviso = request.args.get('ok', '')
+    abas = ''.join(
+        '<a href="/saas-admin/dlcentral?marca=%s" style="padding:8px 16px;border-radius:99px;'
+        'text-decoration:none;font-weight:700;font-size:13px;%s">%s</a>' % (
+            m, ('background:#6366f1;color:#fff' if m == marca else
+                'background:#1a1a2e;color:#9aa'), c['label'])
+        for m, c in dlc.MARCAS.items())
+    tok_aviso = '' if dlc.tokens_ok() else (
+        '<div style="background:#3a1a1a;border:1px solid #f43;color:#faa;border-radius:10px;'
+        'padding:10px 14px;margin:10px 0;font-size:13px">⚠️ Tokens do IG do Despachante '
+        'ausentes — colar <b>DESP_PAGE_TOKEN</b> e <b>DESP_IG_USER_ID</b> no Railway do '
+        '4kitem (copiar do Railway da Rádio). Upload e legendas já funcionam.</div>')
+    cards = []
+    for it in itens:
+        a = it['arquivo']
+        m = it['meta']
+        if it['tipo'] == 'video':
+            midia = ('<video src="%s" controls muted preload="metadata" '
+                     'style="width:100%%;border-radius:10px;background:#000;'
+                     'max-height:320px"></video>' % it['url'])
+        else:
+            midia = ('<img src="%s" loading="lazy" style="width:100%%;border-radius:10px;'
+                     'object-fit:cover;max-height:320px">' % it['url'])
+        pubs = ''.join(
+            '<span style="background:#132;color:#7f7;border-radius:99px;padding:2px 10px;'
+            'font-size:11px;margin-right:6px">✅ %s</span>' % p.get('quando', '')
+            for p in m.get('publicados', []))
+        leg = (m.get('legenda_venda') or '').replace('<', '&lt;')
+        cards.append(
+            '<div style="background:#12121f;border:1px solid #262640;border-radius:14px;'
+            'padding:14px">' + midia +
+            '<div style="font-size:12px;color:#889;margin:8px 0 4px">%s · %s</div>' % (a, it['origem']) +
+            '<div>%s</div>' % pubs +
+            '<form method="post" action="/saas-admin/dlcentral/legenda">'
+            '<input type="hidden" name="marca" value="%s">'
+            '<input type="hidden" name="arquivo" value="%s">' % (marca, a) +
+            '<textarea name="legenda" rows="6" style="width:100%%;background:#0a0a15;'
+            'color:#eee;border:1px solid #334;border-radius:8px;padding:8px;font-size:13px;'
+            'margin:6px 0">%s</textarea>' % leg +
+            '<div style="display:flex;gap:6px;flex-wrap:wrap">'
+            '<button name="acao" value="ia" style="background:#333;color:#fff;border:0;'
+            'border-radius:99px;padding:7px 14px;cursor:pointer">🤖 Legenda IA</button>'
+            '<button name="acao" value="salvar" style="background:#248;color:#fff;border:0;'
+            'border-radius:99px;padding:7px 14px;cursor:pointer">💾 Salvar</button>'
+            '<button name="acao" value="publicar" '
+            'onclick="return confirm(\'Publicar %s no IG do DESPACHANTE?\')" '
+            'style="background:#25d366;color:#000;font-weight:800;border:0;'
+            'border-radius:99px;padding:7px 14px;cursor:pointer">🚀 Publicar</button>'
+            '<button name="acao" value="excluir" '
+            'onclick="return confirm(\'Excluir %s do grid?\')" '
+            'style="background:#611;color:#faa;border:0;border-radius:99px;'
+            'padding:7px 14px;cursor:pointer">🗑️</button>'
+            '</div></form></div>' % (a, a))
+    logs = ''.join('<div style="color:#9aa;font-size:12px">%s — %s</div>'
+                   % (e['quando'], e['msg']) for e in dlc.log_recente())
+    return ('<!doctype html><html><head><meta charset="utf-8">'
+            '<meta name="viewport" content="width=device-width,initial-scale=1">'
+            '<title>Central DL — 4KITEM</title></head>'
+            '<body style="background:#0a0a12;color:#eee;font-family:system-ui,sans-serif;'
+            'margin:0;padding:20px">'
+            '<div style="max-width:1100px;margin:0 auto">'
+            '<div style="display:flex;justify-content:space-between;align-items:center;'
+            'flex-wrap:wrap;gap:10px">'
+            '<h2 style="margin:0">🗂️ Central DL <span style="font-size:13px;color:#889">'
+            'publica no IG do Despachante</span></h2>'
+            '<a href="/saas-admin" style="color:#88f">← SaaS Admin</a></div>'
+            '<div style="display:flex;gap:8px;margin:14px 0;flex-wrap:wrap">' + abas + '</div>'
+            + tok_aviso +
+            ('<div style="background:#132;color:#7f7;border-radius:10px;padding:10px 14px;'
+             'margin:10px 0;font-size:13px">%s</div>' % aviso if aviso else '') +
+            '<form method="post" action="/saas-admin/dlcentral/upload" '
+            'enctype="multipart/form-data" style="background:#12121f;border:1px dashed #445;'
+            'border-radius:14px;padding:14px;margin-bottom:16px">'
+            '<input type="hidden" name="marca" value="' + marca + '">'
+            '<b>⬆️ Enviar fotos/vídeos</b> '
+            '<span style="color:#889;font-size:12px">(foto é comprimida sozinha: 5 MB '
+            'viram ~100-200 KB)</span><br><br>'
+            '<input type="file" name="arquivos" multiple accept="image/*,video/mp4" '
+            'style="color:#ccc"> '
+            '<button style="background:#6366f1;color:#fff;border:0;border-radius:99px;'
+            'padding:8px 18px;cursor:pointer">Enviar</button></form>'
+            '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));'
+            'gap:14px">' + ''.join(cards) + '</div>'
+            '<h3 style="margin-top:22px">📜 Últimas ações</h3>' + logs +
+            '</div></body></html>')
+
+
+@app.route('/saas-admin/dlcentral/upload', methods=['POST'])
+@_saas_admin_required
+def dlcentral_upload():
+    import dlcentral as dlc
+    marca = request.form.get('marca', 'dlmob')
+    if marca not in dlc.MARCAS:
+        marca = 'dlmob'
+    n = 0
+    for f in request.files.getlist('arquivos'):
+        if not f or not f.filename:
+            continue
+        try:
+            dlc.salvar_upload(marca, f.filename, f.read())
+            n += 1
+        except Exception as e:
+            log.warning('[dlcentral] upload falhou %s: %s', f.filename, e)
+    return redirect('/saas-admin/dlcentral?marca=%s&ok=%d arquivo(s) no cofre' % (marca, n))
+
+
+@app.route('/saas-admin/dlcentral/legenda', methods=['POST'])
+@_saas_admin_required
+def dlcentral_legenda():
+    import dlcentral as dlc
+    marca = request.form.get('marca', 'dlmob')
+    arquivo = request.form.get('arquivo', '')
+    acao = request.form.get('acao', 'salvar')
+    legenda = (request.form.get('legenda') or '').strip()
+    if marca not in dlc.MARCAS or not arquivo:
+        return redirect('/saas-admin/dlcentral')
+    if acao == 'excluir':
+        dlc.excluir(marca, arquivo)
+        return redirect('/saas-admin/dlcentral?marca=%s&ok=excluído' % marca)
+    if acao == 'ia':
+        dlc.gerar_legenda(marca, arquivo)
+        return redirect('/saas-admin/dlcentral?marca=%s&ok=legenda gerada pela IA' % marca)
+    if acao == 'publicar':
+        if not legenda:
+            return redirect('/saas-admin/dlcentral?marca=%s&ok=escreve ou gera a legenda antes' % marca)
+        dlc.meta_set(marca, arquivo, legenda_venda=legenda)
+        dlc.publicar(marca, arquivo, legenda)
+        return redirect('/saas-admin/dlcentral?marca=%s&ok=publicando %s — acompanha no log'
+                        % (marca, arquivo))
+    dlc.meta_set(marca, arquivo, legenda_venda=legenda)
+    return redirect('/saas-admin/dlcentral?marca=%s&ok=legenda salva' % marca)
+
+
 if __name__ == '__main__':
     app.run(debug=True, port=5001)
