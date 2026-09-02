@@ -19272,5 +19272,96 @@ def dlcentral_legenda():
     return redirect('/saas-admin/dlcentral?marca=%s&ok=legenda salva' % marca)
 
 
+# ============================================================================
+# 💾 DISCO — o que está ocupando o volume do Railway (02/set/2026)
+# Volume cheio = SQLite não escreve = plataforma inteira para. Só leitura.
+# ============================================================================
+
+@app.route('/saas-admin/disco')
+@_saas_admin_required
+def saas_disco():
+    """Mostra o que ocupa o volume, por pasta e por arquivo. Não apaga nada."""
+    import shutil
+    raiz = os.environ.get('DATA_DIR', os.path.dirname(os.path.abspath(__file__)))
+
+    def humano(n):
+        for u in ('B', 'KB', 'MB', 'GB'):
+            if n < 1024 or u == 'GB':
+                return '%.1f %s' % (n, u)
+            n /= 1024.0
+
+    pastas, arquivos, total = [], [], 0
+    try:
+        for nome in sorted(os.listdir(raiz)):
+            caminho = os.path.join(raiz, nome)
+            tam = 0
+            if os.path.isdir(caminho):
+                for base, _, fs in os.walk(caminho):
+                    for f in fs:
+                        try:
+                            t = os.path.getsize(os.path.join(base, f))
+                            tam += t
+                            arquivos.append((t, os.path.join(base, f)[len(raiz) + 1:]))
+                        except OSError:
+                            pass
+            else:
+                try:
+                    tam = os.path.getsize(caminho)
+                    arquivos.append((tam, nome))
+                except OSError:
+                    pass
+            total += tam
+            pastas.append((tam, nome, os.path.isdir(caminho)))
+    except OSError as e:
+        return 'Não consegui ler %s: %s' % (raiz, e), 500
+
+    pastas.sort(reverse=True)
+    arquivos.sort(reverse=True)
+    try:
+        du = shutil.disk_usage(raiz)
+        livre = ('<b>%s livres</b> de %s no volume' % (humano(du.free), humano(du.total)))
+        alerta = du.used / du.total if du.total else 0
+    except Exception:
+        livre, alerta = 'espaço livre indisponível', 0
+
+    # regeneráveis: somem e voltam sozinhos — é aqui que dá pra cortar sem dor
+    REGEN = {'.cache': 'modelo de IA do DefesaPro — volta a baixar sozinho no próximo uso',
+             'desp_chroma': 'índice do Dr. Lex — reindexa a partir de desp_docs/desp_pdfs'}
+
+    linhas = ''.join(
+        '<tr><td>%s %s</td><td style="text-align:right;font-variant-numeric:tabular-nums">%s</td>'
+        '<td style="color:#8a9;font-size:12px">%s</td></tr>'
+        % ('📁' if d else '📄', n, humano(t), REGEN.get(n, ''))
+        for t, n, d in pastas)
+    tops = ''.join(
+        '<tr><td style="font-size:12px;color:#aab">%s</td>'
+        '<td style="text-align:right;font-variant-numeric:tabular-nums">%s</td></tr>'
+        % (n, humano(t)) for t, n in arquivos[:15])
+
+    cor = '#f43' if alerta > .85 else ('#fa3' if alerta > .7 else '#2c8')
+    return ('<!doctype html><html><head><meta charset="utf-8">'
+            '<meta name="viewport" content="width=device-width,initial-scale=1">'
+            '<title>Disco — 4KITEM</title></head>'
+            '<body style="background:#0a0a12;color:#eee;font-family:system-ui,sans-serif;'
+            'margin:0;padding:20px"><div style="max-width:900px;margin:0 auto">'
+            '<div style="display:flex;justify-content:space-between;align-items:center">'
+            '<h2 style="margin:0">💾 Uso do volume</h2>'
+            '<a href="/saas-admin" style="color:#88f">← SaaS Admin</a></div>'
+            '<p style="color:#9aa;font-size:13px">DATA_DIR: <code>%s</code></p>'
+            '<div style="background:#12121f;border-left:4px solid %s;border-radius:10px;'
+            'padding:12px 16px;margin:14px 0">Somando <b>%s</b> em conteúdo · %s</div>'
+            '<table style="width:100%%;border-collapse:collapse">'
+            '<tr><th style="text-align:left;color:#889;font-size:12px">Pasta</th>'
+            '<th style="text-align:right;color:#889;font-size:12px">Tamanho</th>'
+            '<th style="text-align:left;color:#889;font-size:12px">Dá pra apagar?</th></tr>'
+            '%s</table>'
+            '<h3 style="margin-top:24px">15 maiores arquivos</h3>'
+            '<table style="width:100%%;border-collapse:collapse">%s</table>'
+            '<p style="color:#889;font-size:12px;margin-top:20px">Esta tela só lê. '
+            'Apagar é decisão tua, pelo shell do Railway.</p>'
+            '</div></body></html>'
+            % (raiz, cor, humano(total), livre, linhas, tops))
+
+
 if __name__ == '__main__':
     app.run(debug=True, port=5001)
