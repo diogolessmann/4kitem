@@ -19291,6 +19291,21 @@ def saas_disco():
             n /= 1024.0
 
     pastas, arquivos, total = [], [], 0
+    vistos = set()          # (device, inode) — nao conta o mesmo arquivo 2x
+
+    def medir(caminho, rotulo):
+        """Tamanho real no disco. lstat: symlink vale o link, nao o alvo."""
+        try:
+            st = os.lstat(caminho)
+        except OSError:
+            return 0
+        chave = (st.st_dev, st.st_ino)
+        if chave in vistos:
+            return 0
+        vistos.add(chave)
+        arquivos.append((st.st_size, rotulo))
+        return st.st_size
+
     try:
         for nome in sorted(os.listdir(raiz)):
             caminho = os.path.join(raiz, nome)
@@ -19298,18 +19313,10 @@ def saas_disco():
             if os.path.isdir(caminho):
                 for base, _, fs in os.walk(caminho):
                     for f in fs:
-                        try:
-                            t = os.path.getsize(os.path.join(base, f))
-                            tam += t
-                            arquivos.append((t, os.path.join(base, f)[len(raiz) + 1:]))
-                        except OSError:
-                            pass
+                        p = os.path.join(base, f)
+                        tam += medir(p, p[len(raiz) + 1:])
             else:
-                try:
-                    tam = os.path.getsize(caminho)
-                    arquivos.append((tam, nome))
-                except OSError:
-                    pass
+                tam = medir(caminho, nome)
             total += tam
             pastas.append((tam, nome, os.path.isdir(caminho)))
     except OSError as e:
