@@ -19298,5 +19298,18 @@ def saas_disco_baixar():
     return send_file(caminho, as_attachment=True, download_name=nome)
 
 
+# ══════════════════════════════════════════════════════════════════════════════
+# 🤖 DL MOTOR — publica as marcas do grupo sozinho (substitui o marca_job da Rádio)
+# Começa em preview (não publica). DLMOTOR_MODO=live liga pra valer.
+# ══════════════════════════════════════════════════════════════════════════════
+try:
+    import dlmotor
+    dlmotor.iniciar()
+    log.info('[DL Motor] Agendador iniciado — modo %s',
+             'AO VIVO' if dlmotor.ao_vivo() else 'preview (não publica)')
+except Exception as _dlm_err:
+    log.warning(f'[DL Motor] Erro ao iniciar: {_dlm_err}')
+
+
 if __name__ == '__main__':
     app.run(debug=True, port=5001)
