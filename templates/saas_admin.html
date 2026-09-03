@@ -67,8 +67,6 @@
   <a href="/saas-admin/dlcentral"><button class="nav-link" style="border-color:#25d366;color:#5ee0a0">🗂️ Central DL</button></a>
   <a href="/saas-admin/unban"><button class="nav-link" style="border-color:#f59e0b;color:#f59e0b">🔓 Desbanir</button></a>
   <a href="/saas-admin/afiliados"><button class="nav-link" style="border-color:#16a34a;color:#5ee0a0">💸 Afiliados</button></a>
-  <a href="/radar/admin" target="_blank"><button class="nav-link" style="border-color:#2563eb;color:#7cc0ff">📡 Radar de Licitações</button></a>
-  <a href="/licita-norte/admin" target="_blank"><button class="nav-link" style="border-color:#16a34a;color:#5ee0a0">🗞️ Radar Licita Norte</button></a>
   <a href="/saas-admin/logout"><button class="nav-link">Sair</button></a>
 </nav>
 
@@ -89,8 +87,6 @@
     <button class="tab-btn" onclick="showTab('slotzap',this)">🎯 SlotZap ({{ sz_users|length }})</button>
     <button class="tab-btn" onclick="showTab('drzap',this)">⚖️ DRZAP ({{ drz_users|length }})</button>
     <button class="tab-btn" onclick="showTab('pcd',this)">🧭 PCD Fácil ({{ pcd_users|length }})</button>
-    <button class="tab-btn" onclick="showTab('radar',this)">📡 Radar TI ({{ radar_users|length }})</button>
-    <button class="tab-btn" onclick="showTab('licita',this)">🗞️ Licita Norte ({{ licita_users|length }})</button>
     <button class="tab-btn" onclick="showTab('somaja',this)">🐗 SomaJá ({{ somaja_users|length }})</button>
     <button class="tab-btn" onclick="showTab('rifaja',this)">🎟️ RifaJá ({{ rifaja_total_rifas }})</button>
     <button class="tab-btn" onclick="showTab('atendezap',this)">🤖 AtendeZap ({{ atendezap_negocios|length }})</button>
@@ -1099,82 +1095,6 @@
     </table>
     {% else %}
     <div class="empty">Nenhum usuário PCD Fácil ainda.</div>
-    {% endif %}
-  </div>
-
-  <div class="tab-content" id="tab-radar">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px">
-      <h2 style="margin:0">📡 Radar de Licitações de TI</h2>
-      <div style="display:flex;gap:16px;font-size:13px;color:var(--text2);align-items:center;flex-wrap:wrap">
-        <span>👤 {{ radar_users|length }} usuários</span>
-        <span>📋 {{ radar_total_lic }} licitações</span>
-        <span>💻 {{ radar_ti }} de TI</span>
-        <span>⭐ {{ radar_ouro }} zona ouro</span>
-        <span>💰 {{ radar_contratos }} contratos</span>
-        <span style="color:#f59e0b">⏰ {{ radar_vencendo }} vencendo 90d</span>
-        <a href="/radar/admin" target="_blank" style="color:var(--accent);font-weight:700">Abrir admin →</a>
-      </div>
-    </div>
-    {% if radar_users %}
-    <table>
-      <thead><tr>
-        <th>#</th><th>Nome</th><th>Email</th><th>Telefone</th><th>Tipo</th><th>Criado em</th><th>Último acesso</th>
-      </tr></thead>
-      <tbody>
-      {% for u in radar_users %}
-      <tr>
-        <td>{{ u.id }}</td>
-        <td><strong>{{ u.nome }}</strong>{% if u.is_admin %} <span class="badge badge-active">★ admin</span>{% endif %}</td>
-        <td>{{ u.email }}</td>
-        <td>{{ u.telefone or '—' }}</td>
-        <td>{{ 'ativo' if u.plan_active else (u.plano or 'free') }}</td>
-        <td style="font-size:12px">{{ (u.created_at or '')[:10] }}</td>
-        <td style="font-size:12px">{{ (u.ultimo_acesso or '—')[:16] }}</td>
-      </tr>
-      {% endfor %}
-      </tbody>
-    </table>
-    {% else %}
-    <div class="empty">Nenhum usuário do Radar ainda.
-      <a href="/radar/cadastrar" target="_blank" style="color:var(--accent)">Criar a 1ª conta (vira admin) →</a>
-    </div>
-    {% endif %}
-  </div>
-
-  <div class="tab-content" id="tab-licita">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px">
-      <h2 style="margin:0">🗞️ Radar Licita Norte</h2>
-      <div style="display:flex;gap:16px;font-size:13px;color:var(--text2);align-items:center;flex-wrap:wrap">
-        <span>👤 {{ licita_users|length }} usuários</span>
-        <span>📋 {{ licita_total }} oportunidades</span>
-        <span>🗞️ {{ licita_noticia }} notícia</span>
-        <span>📍 {{ licita_cidades }} cidades</span>
-        <a href="/licita-norte/admin" target="_blank" style="color:var(--accent);font-weight:700">Abrir admin →</a>
-      </div>
-    </div>
-    {% if licita_users %}
-    <table>
-      <thead><tr>
-        <th>#</th><th>Nome</th><th>Email</th><th>Telefone</th><th>Status</th><th>Criado em</th><th>Último acesso</th>
-      </tr></thead>
-      <tbody>
-      {% for u in licita_users %}
-      <tr>
-        <td>{{ u.id }}</td>
-        <td><strong>{{ u.nome }}</strong>{% if u.is_admin %} <span class="badge badge-active">★ admin</span>{% endif %}</td>
-        <td>{{ u.email }}</td>
-        <td>{{ u.telefone or '—' }}</td>
-        <td>{% if u.plan_active %}✅ ativo{% else %}⏳ aguardando{% endif %}</td>
-        <td style="font-size:12px">{{ (u.created_at or '')[:10] }}</td>
-        <td style="font-size:12px">{{ (u.ultimo_acesso or '—')[:16] }}</td>
-      </tr>
-      {% endfor %}
-      </tbody>
-    </table>
-    {% else %}
-    <div class="empty">Nenhum usuário do Licita Norte ainda.
-      <a href="/licita-norte/cadastrar" target="_blank" style="color:var(--accent)">Criar a 1ª conta (vira admin) →</a>
-    </div>
     {% endif %}
   </div>
 

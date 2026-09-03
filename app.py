@@ -117,7 +117,7 @@ def _sitemap():
     urls = ['/', '/atendezap', '/somaja', '/somaja/mei', '/mandazap',
             '/agenda', '/alerta', '/kids', '/despachante-info', '/defesapro',
             '/vetzap', '/pcd', '/mandaja', '/mandajr', '/bau', '/amparo',
-            '/radar/', '/licita-norte/', '/pubshow', '/slotzap',
+            '/pubshow', '/slotzap',
             '/rifaja', '/camponline', '/drzap', '/afiliados',
             '/privacidade', '/termos']
     items = ''.join(
@@ -2497,50 +2497,6 @@ def webhook_asaas_global():
                                       (payload.get('payment') or {}).get('id', ''))
             except Exception as _ate:
                 log.error(f'[AtendeZap] Webhook error: {_ate}')
-
-    elif ref.startswith('radar_') or ref.startswith('licita_'):
-        # Radar TI / Radar Licita Norte — assinatura mensal: paga=ativa, vence/cancela=corta
-        if customer_id:
-            _tab = 'radar_users' if ref.startswith('radar_') else 'licita_users'
-            try:
-                from radar_db import get_radar_db
-                conn = get_radar_db()
-                u = conn.execute(f'SELECT id, nome, email, afiliado_ref FROM {_tab} WHERE asaas_customer_id=?',
-                                 (customer_id,)).fetchone()
-                if u:
-                    conn.execute(f'UPDATE {_tab} SET plan_active=? WHERE id=?',
-                                 (1 if ativar else 0, u['id']))
-                    conn.commit()
-                    if ativar and u['email']:
-                        _nome = 'Radar de Licitações de TI' if _tab == 'radar_users' else 'Radar Licita Norte'
-                        _url = ('https://4kitem.com.br/radar/' if _tab == 'radar_users'
-                                else 'https://4kitem.com.br/licita-norte/')
-                        try:
-                            _enviar_email(u['email'], f'✅ {_nome} — Assinatura ativa!',
-                                _email_pagamento_confirmado(_nome, '📡', '#2563eb',
-                                    (u['nome'] or '').split()[0], 'Mensal', '', _url))
-                        except Exception: pass
-                    if ativar and u['afiliado_ref']:
-                        try:
-                            from afiliados import registrar_comissao
-                            _appkey = 'radar' if _tab == 'radar_users' else 'licita_norte'
-                            registrar_comissao(u['afiliado_ref'], _appkey,
-                                               (payload.get('payment') or {}).get('id', ''),
-                                               (u['nome'] or ''), cliente_email=u['email'])
-                        except Exception as _eaf:
-                            log.warning(f'[Afiliados] radar/licita: {_eaf}')
-                conn.close()
-            except Exception as _rd_e:
-                log.error(f'[RADAR/LICITA] Webhook error: {_rd_e}')
-
-    elif ref.startswith('radarcred_') or ref.startswith('licitacred_'):
-        # Radar/Licita — compra de créditos de análise paga: credita (idempotente/atômico)
-        if ativar:
-            try:
-                from radar_db import confirmar_compra
-                confirmar_compra(int(ref.split('_')[1]), payload.get('payment', {}).get('id', ''))
-            except Exception as _cc_e:
-                log.error(f'[RADAR/LICITA cred] Webhook error: {_cc_e}')
 
     elif ref.startswith('alerta_'):
         if customer_id:
@@ -6363,28 +6319,6 @@ def saas_admin():
         pcdconn.close()
     except Exception:
         pcd_users = []; pcd_casos_total = 0; pcd_montados = 0; pcd_compras_total = 0; pcd_receita = 0
-    # Radar de Licitações de TI (banco próprio)
-    try:
-        from radar_db import (listar_radar_users as _r_users, estatisticas as _r_st,
-                              stats_contratos as _r_stc)
-        radar_users = _r_users()
-        _rs = _r_st(); _rc = _r_stc()
-        radar_total_lic = _rs.get('total', 0); radar_ti = _rs.get('ti', 0)
-        radar_ouro = _rs.get('ouro', 0)
-        radar_contratos = _rc.get('total', 0); radar_vencendo = _rc.get('vencendo90', 0)
-    except Exception:
-        radar_users = []; radar_total_lic = 0; radar_ti = 0; radar_ouro = 0
-        radar_contratos = 0; radar_vencendo = 0
-    # Radar Licita Norte (regional)
-    try:
-        from radar_db import (listar_licita_users as _l_users,
-                              stats_licita_norte as _l_st)
-        licita_users = _l_users()
-        _ls = _l_st()
-        licita_total = _ls.get('total', 0); licita_noticia = _ls.get('noticia', 0)
-        licita_cidades = _ls.get('cidades', 0)
-    except Exception:
-        licita_users = []; licita_total = 0; licita_noticia = 0; licita_cidades = 0
     # SomaJá — coach financeiro no WhatsApp (banco próprio)
     try:
         from somaja_db import get_somaja_db as _get_soma_db
@@ -15308,30 +15242,6 @@ except Exception as _cam_err:
     log.warning(f'[Camaleão] Erro ao carregar blueprint: {_cam_err}')
 
 # ══════════════════════════════════════════════════════════════════════════════
-# RADAR — Monitor de Licitações de TI (PNCP) — Lote 0+1
-# ══════════════════════════════════════════════════════════════════════════════
-try:
-    from radar import radar_bp, iniciar_coletor_automatico
-    from radar_db import init_radar_db
-    init_radar_db()
-    app.register_blueprint(radar_bp)
-    iniciar_coletor_automatico()   # Lote 2: o Radar coleta sozinho (RADAR_AUTO_COLETA=0 desliga)
-    log.info('[RADAR] Blueprint registrado em /radar')
-except Exception as _radar_err:
-    log.warning(f'[RADAR] Erro ao carregar blueprint: {_radar_err}')
-
-# ══════════════════════════════════════════════════════════════════════════════
-# RADAR LICITA NORTE — versão regional (Norte de SC), reusa o motor do Radar
-# ══════════════════════════════════════════════════════════════════════════════
-try:
-    from licita_norte import licita_bp, iniciar_coletor_sc
-    app.register_blueprint(licita_bp)
-    iniciar_coletor_sc()   # coleta SC sozinho a cada 8h (LICITA_AUTO_COLETA=0 desliga)
-    log.info('[LICITA NORTE] Blueprint registrado em /licita-norte')
-except Exception as _lic_err:
-    log.warning(f'[LICITA NORTE] Erro ao carregar blueprint: {_lic_err}')
-
-# ══════════════════════════════════════════════════════════════════════════════
 # CONSULTA VEICULAR — débitos do veículo (IPVA/multas/licenciamento) via API Zapay
 # ══════════════════════════════════════════════════════════════════════════════
 try:
@@ -19336,9 +19246,12 @@ def saas_disco():
              'desp_chroma': 'índice do Dr. Lex — reindexa a partir de desp_docs/desp_pdfs'}
 
     linhas = ''.join(
-        '<tr><td>%s %s</td><td style="text-align:right;font-variant-numeric:tabular-nums">%s</td>'
+        '<tr><td>%s %s%s</td><td style="text-align:right;font-variant-numeric:tabular-nums">%s</td>'
         '<td style="color:#8a9;font-size:12px">%s</td></tr>'
-        % ('📁' if d else '📄', n, humano(t), REGEN.get(n, ''))
+        % ('📁' if d else '📄', n,
+           ('' if d or not n.endswith('.db') else
+            ' <a href="/saas-admin/disco/baixar?f=%s" style="color:#6cf;font-size:12px">baixar</a>' % n),
+           humano(t), REGEN.get(n, ''))
         for t, n, d in pastas)
     tops = ''.join(
         '<tr><td style="font-size:12px;color:#aab">%s</td>'
@@ -19368,6 +19281,21 @@ def saas_disco():
             'Apagar é decisão tua, pelo shell do Railway.</p>'
             '</div></body></html>'
             % (raiz, cor, humano(total), livre, linhas, tops))
+
+
+@app.route('/saas-admin/disco/baixar')
+@_saas_admin_required
+def saas_disco_baixar():
+    """Baixa um .db do volume pro PC. Só arquivos .db na raiz do DATA_DIR."""
+    from flask import send_file
+    raiz = os.environ.get('DATA_DIR', os.path.dirname(os.path.abspath(__file__)))
+    nome = os.path.basename(request.args.get('f', ''))
+    if not nome.endswith('.db'):
+        abort(400)
+    caminho = os.path.join(raiz, nome)
+    if not os.path.isfile(caminho):
+        abort(404)
+    return send_file(caminho, as_attachment=True, download_name=nome)
 
 
 if __name__ == '__main__':
