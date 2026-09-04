@@ -19306,5 +19306,16 @@ except Exception as _dlm_err:
     log.warning(f'[DL Motor] Erro ao iniciar: {_dlm_err}')
 
 
+@app.route('/build')
+def build_marker():
+    """Qual commit está no ar. Público de propósito: serve pra conferir deploy
+    sem precisar logar. Não expõe nada além do hash e da hora de subida."""
+    sha = (os.environ.get('RAILWAY_GIT_COMMIT_SHA') or 'desconhecido')[:7]
+    msg = (os.environ.get('RAILWAY_GIT_COMMIT_MESSAGE') or '')[:120]
+    subiu = os.environ.get('RAILWAY_DEPLOYMENT_ID', '')[:8]
+    return ('%s | %s | deploy %s' % (sha, msg, subiu)), 200, {
+        'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store'}
+
+
 if __name__ == '__main__':
     app.run(debug=True, port=5001)
