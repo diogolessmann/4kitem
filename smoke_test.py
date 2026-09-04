@@ -111,6 +111,28 @@ for url in rotas:
 if erros_rota == 0:
     ok(f'{len(rotas)} rotas GET responderam < 500')
 
+
+# ── 4. Rotas de admin COM sessão ──────────────────────────────────────────────
+# Deslogado, /saas-admin* devolve 302 e a tela nunca renderiza — foi assim que um
+# NameError na view do painel chegou em produção. Aqui a sessão é forjada para a
+# view rodar de verdade.
+print('\n[4] Testando rotas de admin COM sessao...')
+admin = [r for r in rotas if r.startswith('/saas-admin')]
+erros_admin = 0
+with client.session_transaction() as sess:
+    sess['saas_admin'] = True
+for url in admin:
+    try:
+        resp = client.get(url)
+        if resp.status_code >= 500:
+            erros_admin += 1
+            fail(f'GET {url} (logado) -> {resp.status_code}')
+    except Exception as e:
+        erros_admin += 1
+        fail(f'GET {url} (logado) -> EXCECAO {type(e).__name__}: {e}')
+if erros_admin == 0:
+    ok(f'{len(admin)} rotas de admin renderizaram logado')
+
 # ── Resultado ─────────────────────────────────────────────────────────────────
 print('\n' + '─' * 50)
 if failures:
