@@ -80,7 +80,7 @@ PLANOS = {
         'preco_fmt': 'R$ 29,90',
         'descricao': 'Para começar',
         'features': ['TV com clips 24/7', '3 tipos de pedido', '1 slide de propaganda', 'QR Code de mesa', 'Painel de gestão'],
-        'max_tipos': ['musica', 'musica_especifica', 'dedicatoria'],
+        'max_tipos': ['musica', 'musica_especifica', 'dedicatoria', 'gorjeta'],
         'max_anuncios': 1,
         'analytics': False,
         'whatsapp': False,
@@ -176,11 +176,13 @@ _SLIDES_DIR = os.path.join(
 )
 
 
+GORJETA_VALORES = (5.0, 10.0, 20.0, 50.0)   # opções de gorjeta no celular do cliente
+
 TIPOS_PEDIDO = {
-    'musica':           {'nome': 'Música aleatória',       'emoji': '🎵', 'preco': 3.00,  'cor': '#3b82f6'},
-    'musica_especifica':{'nome': 'Buscar na biblioteca',   'emoji': '🎯', 'preco': 5.00,  'cor': '#06b6d4'},
+    'musica':           {'nome': 'Música aleatória',       'emoji': '🎵', 'preco': 0.00,  'cor': '#3b82f6'},   # GRÁTIS (decisão 11/09/26)
+    'musica_especifica':{'nome': 'Escolher a música',      'emoji': '🎯', 'preco': 0.00,  'cor': '#06b6d4'},   # GRÁTIS (decisão 11/09/26)
     'musica_externa':   {'nome': 'Buscar no YouTube',      'emoji': '🌐', 'preco': 20.00, 'cor': '#dc2626'},
-    'flash':            {'nome': 'Prioridade na fila',     'emoji': '⚡', 'preco': 5.00,  'cor': '#f59e0b'},
+    'flash':            {'nome': 'Furar a fila',           'emoji': '⚡', 'preco': 7.00,  'cor': '#f59e0b'},   # R$7 (decisão 11/09/26)
     'vip':              {'nome': 'Tocar AGORA',            'emoji': '👑', 'preco': 10.00, 'cor': '#8b5cf6'},
     'parabens':         {'nome': 'Parabéns! 🎂',           'emoji': '🎂', 'preco': 15.00, 'cor': '#ec4899'},
     'dedicatoria':      {'nome': 'Dedicatória ❤️',        'emoji': '💌', 'preco': 10.00, 'cor': '#ef4444'},
@@ -188,6 +190,8 @@ TIPOS_PEDIDO = {
     'chegada':          {'nome': 'Chegamos! 🎉',           'emoji': '🎉', 'preco': 5.00,  'cor': '#f97316'},
     # chave 'casamento' mantida por compatibilidade com o banco; rótulo agora é "Namoro"
     'casamento':        {'nome': 'Pedido de Namoro 💕',   'emoji': '💕', 'preco': 25.00, 'cor': '#a855f7'},
+    # Gorjeta pra casa (11/09/26): valor escolhido pelo cliente entre GORJETA_VALORES; 5 é só o mínimo exibido
+    'gorjeta':          {'nome': 'Gorjeta pra casa 🙏',   'emoji': '🙏', 'preco': 5.00,  'cor': '#22c55e'},
 }
 
 # Taxa que o Asaas DESCONTA por cobrança PIX recebida (custo do gateway).
@@ -1469,7 +1473,8 @@ def tv(code):
         _ss_rows = conn.execute(
             'SELECT * FROM pubshow_slides_sistema WHERE ativo=1 ORDER BY ordem, id'
         ).fetchall()
-        slides_sistema = [dict(s) for s in _ss_rows]
+        slides_sistema = []   # DESLIGADO 11/09/26: só propaganda que o gerente do bar lançar aparece na TV
+        _ = _ss_rows
     except Exception:
         slides_sistema = []
 
@@ -1574,10 +1579,19 @@ def jukebox(token):
                 erro = 'Selecione uma música antes de confirmar.'
             else:
                 preco = precos_bar[tipo]['preco']
+                if tipo == 'gorjeta':
+                    # valor escolhido pelo cliente (5/10/20/50); happy hour não desconta gorjeta
+                    try:    _vg = float(request.form.get('valor_gorjeta') or 0)
+                    except (TypeError, ValueError): _vg = 0.0
+                    preco = _vg if _vg in GORJETA_VALORES else max(GORJETA_VALORES[0], float(TIPOS_PEDIDO['gorjeta']['preco']))
+                    if not mensagem:
+                        mensagem = f'Mandou R$ {preco:.0f} pra casa. Obrigado! 🙏'
                 # Asaas é o PADRÃO de pagamento: se está configurado, TODO pedido
                 # passa por ele (cobrança automática + confirmação sozinha). O modo
                 # manual (chave PIX do próprio bar) fica só como fallback p/ quem tem.
                 usar_pix = bool(os.environ.get('ASAAS_API_KEY')) or (bool(b['requer_pix']) and bool(b['pix_key']))
+                if preco <= 0:
+                    usar_pix = False   # pedido GRÁTIS: entra direto na fila, sem cobrança
                 tipo_nome  = precos_bar[tipo]['nome']
                 tipo_emoji = precos_bar[tipo]['emoji']
 
@@ -1733,9 +1747,11 @@ def jukebox(token):
                         preco_direto = round(preco + _offset2 * 0.01, 2)
                     else:
                         preco_direto = preco
+                    if preco <= 0:
+                        preco_direto = 0.0   # grátis não leva centavos de identificação
 
                     conn2 = get_pubshow_db()
-                    conn2.execute(
+                    _cur2 = conn2.execute(
                         '''INSERT INTO pubshow_pedidos
                            (business_id, tipo, nome_cliente, mensagem, categoria, status, valor,
                             youtube_id, titulo_pedido, thumb_url, ip_cliente)
@@ -1743,7 +1759,9 @@ def jukebox(token):
                         (b['id'], tipo, nome_cliente, mensagem, categoria, 'pendente', preco_direto,
                          youtube_id or None, titulo_pedido or None, thumb_url or None, ip_cliente)
                     )
-                    pedido_id_sucesso = conn2.lastrowid
+                    # BUG antigo (corrigido 11/09/26): Connection não tem lastrowid — todo pedido
+                    # sem PIX dava 500 e deixava a transação aberta (database is locked).
+                    pedido_id_sucesso = _cur2.lastrowid
                     conn2.commit(); conn2.close()
                     sucesso = tipo
 
@@ -1867,7 +1885,7 @@ def api_status(code):
     pedido_especial = conn.execute(
         '''SELECT * FROM pubshow_pedidos
            WHERE business_id=? AND status="pendente"
-           AND tipo IN ("parabens","dedicatoria","brinde","chegada","casamento")
+           AND tipo IN ("parabens","dedicatoria","brinde","chegada","casamento","gorjeta")
            ORDER BY created_at ASC LIMIT 1''',
         (b['id'],)
     ).fetchone()
@@ -1920,6 +1938,7 @@ def api_status(code):
         'aguardando_pix': aguardando_pix,
         'promo':          promo,
         'skip_seq':       b['skip_seq'] or 0,
+        'tv_volume':      b['tv_volume'] if b['tv_volume'] is not None else 100,
         'videos_version': _videos_version(),
     }
     conn.close()
@@ -3051,6 +3070,25 @@ def painel_pular_musica():
     conn.commit(); conn.close()
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
         return jsonify({'ok': True})
+    return redirect('/pubshow/painel')
+
+
+@pubshow_bp.route('/painel/volume', methods=['POST'])
+@pubshow_login_required
+def painel_volume():
+    """Controle remoto de volume da TV (0-100). A TV lê tv_volume no polling
+    de /api/status e aplica no player — o gerente ajusta pelo celular."""
+    b = _get_business()
+    try:
+        vol = int(request.form.get('volume') or (request.get_json(silent=True) or {}).get('volume') or 100)
+    except (TypeError, ValueError):
+        vol = 100
+    vol = max(0, min(100, vol))
+    conn = get_pubshow_db()
+    conn.execute('UPDATE pubshow_businesses SET tv_volume=? WHERE id=?', (vol, b['id']))
+    conn.commit(); conn.close()
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return jsonify({'ok': True, 'volume': vol})
     return redirect('/pubshow/painel')
 
 

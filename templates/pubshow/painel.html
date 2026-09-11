@@ -319,6 +319,21 @@
                      background:linear-gradient(135deg,#8b5cf6,#6366f1);box-shadow:0 4px 16px rgba(139,92,246,.35)">
         ⏭️ Pular música agora
       </button>
+      <!-- 🔊 Volume da TV (controle remoto) — 11/09/26 -->
+      <div style="margin-bottom:16px;padding:14px;border-radius:12px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08)">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <span style="font-size:14px;font-weight:800">🔊 Volume da TV</span>
+          <span id="vol-tv-val" style="font-size:14px;font-weight:900;color:#4ade80">{{ b.tv_volume if b.tv_volume is not none else 100 }}%</span>
+        </div>
+        <input type="range" id="vol-tv" min="0" max="100" step="5" value="{{ b.tv_volume if b.tv_volume is not none else 100 }}"
+               style="width:100%;accent-color:#8b5cf6" oninput="document.getElementById('vol-tv-val').textContent=this.value+'%'" onchange="ajustarVolumeTV(this.value)">
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <button type="button" onclick="setVolTV(0)" style="flex:1;padding:8px;border:none;border-radius:8px;cursor:pointer;font-family:inherit;font-weight:700;background:rgba(239,68,68,.18);color:#fca5a5">🔇 Mudo</button>
+          <button type="button" onclick="setVolTV(50)" style="flex:1;padding:8px;border:none;border-radius:8px;cursor:pointer;font-family:inherit;font-weight:700;background:rgba(255,255,255,.08);color:#fff">50%</button>
+          <button type="button" onclick="setVolTV(100)" style="flex:1;padding:8px;border:none;border-radius:8px;cursor:pointer;font-family:inherit;font-weight:700;background:rgba(74,222,128,.18);color:#4ade80">100%</button>
+        </div>
+        <div id="vol-tv-msg" style="font-size:11px;color:var(--text2);margin-top:6px">A TV aplica em até 3 segundos.</div>
+      </div>
       <div class="card-title">🎬 Trocar tema agora</div>
       <form method="POST" action="/pubshow/painel/canal">
         <div class="canais-grid" style="margin-bottom:16px">
@@ -983,6 +998,20 @@
 
 <script>
 // ⏭️ Botão do dono: pula a música tocando na TV agora
+function setVolTV(v) {
+  const s = document.getElementById('vol-tv'); s.value = v;
+  document.getElementById('vol-tv-val').textContent = v + '%';
+  ajustarVolumeTV(v);
+}
+function ajustarVolumeTV(v) {
+  const msg = document.getElementById('vol-tv-msg');
+  msg.textContent = 'Enviando…';
+  const fd = new FormData(); fd.append('volume', v);
+  fetch('/pubshow/painel/volume', { method: 'POST', headers: { 'X-Requested-With': 'XMLHttpRequest' }, body: fd })
+    .then(r => r.json()).then(d => { msg.textContent = d.ok ? '✅ Volume ' + d.volume + '% — a TV aplica em até 3 s.' : '❌ Erro'; })
+    .catch(() => { msg.textContent = '❌ Erro — tente de novo'; });
+}
+
 function pularMusica(btn) {
   const orig = btn.innerHTML;
   btn.disabled = true;

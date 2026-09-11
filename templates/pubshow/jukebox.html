@@ -578,6 +578,7 @@ async function jaPaguei() {
       {% elif sucesso == 'brinde' %}Brinde geral na tela! Levanta o copo! 🍻
       {% elif sucesso == 'chegada' %}Sua chegada aparece agora! 🎉
       {% elif sucesso == 'casamento' %}O pedido vai aparecer na tela! Boa sorte! 💕🥹
+      {% elif sucesso == 'gorjeta' %}Valeu demais! Sua gorjeta aparece na tela e a casa agradece. 🙏
       {% else %}Seu pedido está na fila! Aguarda um momento.
       {% endif %}
     </p>
@@ -671,7 +672,9 @@ async function jaPaguei() {
 
     {# Macro para mostrar preço com ou sem desconto #}
     {% macro preco_card(t) %}
-      {% if t.get('happy_hour') %}
+      {% if t.preco <= 0 %}
+        <div class="card-preco" style="color:#4ade80;text-shadow:0 0 20px #4ade8066">GRÁTIS</div>
+      {% elif t.get('happy_hour') %}
         <div class="card-preco">R$ {{ '%.0f'|format(t.preco) }}</div>
         <div style="font-size:9px;color:var(--text2);text-decoration:line-through;margin-top:-2px">R$ {{ '%.0f'|format(t.preco_original) }}</div>
       {% else %}
@@ -723,6 +726,14 @@ async function jaPaguei() {
       <div class="card-emoji">{{ t.emoji }}</div>
       <div class="card-nome" data-i18n="card_dedicatoria">Dedicatória — mensagem aparece na tela ❤️</div>
       {{ preco_card(t) }}
+    </div>{% endif %}
+
+    {# 6. Gorjeta pra casa — linha inteira; valor escolhido no próximo passo #}
+    {% if 'gorjeta' in tipos %}{% set t = tipos['gorjeta'] %}
+    <div class="pedido-card full" style="--card-cor:{{ t.cor }}" onclick="abrirGorjeta()">
+      <div class="card-emoji">{{ t.emoji }}</div>
+      <div class="card-nome">Gorjeta pra casa — agradece a equipe e aparece na tela 🙏</div>
+      <div class="card-preco" style="color:#4ade80;text-shadow:0 0 20px #4ade8066">R$ 5 · 10 · 20 · 50</div>
     </div>{% endif %}
 
   </div>
@@ -818,6 +829,16 @@ async function jaPaguei() {
     </div>
 
     <div class="form-group" id="msg-group" style="display:none">
+      <input type="hidden" name="valor_gorjeta" id="inp-valor-gorjeta" value="">
+      <div id="gorjeta-valores" style="display:none;margin-bottom:14px">
+        <div style="font-size:12px;color:var(--text2);margin-bottom:8px;font-weight:700">Quanto você quer mandar pra casa?</div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+          <button type="button" class="gorjeta-opt" onclick="escolherGorjeta(5,this)" style="padding:12px 0;border-radius:12px;border:2px solid #22c55e55;background:rgba(34,197,94,.08);color:#4ade80;font-weight:900;font-size:16px;font-family:inherit;cursor:pointer">R$ 5</button>
+          <button type="button" class="gorjeta-opt" onclick="escolherGorjeta(10,this)" style="padding:12px 0;border-radius:12px;border:2px solid #22c55e55;background:rgba(34,197,94,.08);color:#4ade80;font-weight:900;font-size:16px;font-family:inherit;cursor:pointer">R$ 10</button>
+          <button type="button" class="gorjeta-opt" onclick="escolherGorjeta(20,this)" style="padding:12px 0;border-radius:12px;border:2px solid #22c55e55;background:rgba(34,197,94,.08);color:#4ade80;font-weight:900;font-size:16px;font-family:inherit;cursor:pointer">R$ 20</button>
+          <button type="button" class="gorjeta-opt" onclick="escolherGorjeta(50,this)" style="padding:12px 0;border-radius:12px;border:2px solid #22c55e55;background:rgba(34,197,94,.08);color:#4ade80;font-weight:900;font-size:16px;font-family:inherit;cursor:pointer">R$ 50</button>
+        </div>
+      </div>
       <label id="msg-label" data-i18n="label_msg">Mensagem (opcional)</label>
       <textarea name="mensagem" id="inp-msg" rows="2"
         placeholder="Aparece na tela do bar..." maxlength="80"
@@ -892,24 +913,56 @@ function toggleMaisOpcoes(btn) {
 // ── Grid ──────────────────────────────────────────────────────────────────────
 function _precoComOffset(preco) {
   // Adiciona centavos de identificação ao preço PIX (ex: R$5,00 → R$5,03)
+  if (!(preco > 0)) return 0;   // grátis não leva centavos
   return Math.round((preco + PIX_OFFSET * 0.01) * 100) / 100;
 }
 
+// Pedido GRÁTIS (música = R$0 desde 11/09/26): esconde a caixa de pagamento e
+// troca o botão. Preço > 0 (furar fila, VIP...) restaura o fluxo de PIX.
+function aplicarModoGratis(preco) {
+  const gratis = !(preco > 0);
+  document.querySelectorAll('.pix-box, .aviso-pix').forEach(el => { el.style.display = gratis ? 'none' : ''; });
+  const btn = document.getElementById('btn-confirmar');
+  if (btn) {
+    if (gratis) { btn.dataset.origHtml = btn.dataset.origHtml || btn.innerHTML; btn.innerHTML = '🎵 Pedir grátis →'; }
+    else if (btn.dataset.origHtml) { btn.innerHTML = btn.dataset.origHtml; }
+  }
+}
+
+function abrirGorjeta() {
+  const t = (PRECOS && PRECOS['gorjeta']) || {nome:'Gorjeta pra casa 🙏', emoji:'🙏', cor:'#22c55e', preco:5};
+  selecionarTipo('gorjeta', t.nome, t.emoji, 10, t.cor);   // 10 pré-selecionado
+  document.getElementById('gorjeta-valores').style.display = 'block';
+  const b10 = document.querySelectorAll('.gorjeta-opt')[1];
+  if (b10) escolherGorjeta(10, b10);
+}
+function escolherGorjeta(v, btn) {
+  document.getElementById('inp-valor-gorjeta').value = v;
+  document.querySelectorAll('.gorjeta-opt').forEach(b => { b.style.background = 'rgba(34,197,94,.08)'; b.style.borderColor = '#22c55e55'; b.style.color = '#4ade80'; });
+  if (btn) { btn.style.background = '#22c55e'; btn.style.borderColor = '#22c55e'; btn.style.color = '#052e16'; }
+  document.getElementById('pix-valor').textContent = 'R$ ' + _precoComOffset(v).toFixed(2).replace('.', ',');
+  aplicarModoGratis(v);
+}
+
 function selecionarTipo(key, nome, emoji, preco, cor) {
+  const gv = document.getElementById('gorjeta-valores');
+  if (gv && key !== 'gorjeta') { gv.style.display = 'none'; document.getElementById('inp-valor-gorjeta').value = ''; }
   tipoAtual = key;
   tipoForcado = null;   // limpa prioridade de uma busca anterior
   document.getElementById('inp-tipo').value  = key;
   document.getElementById('form-title').innerHTML = `${emoji} ${nome}`;
   const precoFinal = _precoComOffset(preco);
-  document.getElementById('pix-valor').textContent = 'R$ ' + precoFinal.toFixed(2).replace('.', ',');
+  document.getElementById('pix-valor').textContent = precoFinal > 0 ? 'R$ ' + precoFinal.toFixed(2).replace('.', ',') : 'Grátis';
+  aplicarModoGratis(preco);
 
-  const especiais = ['parabens','dedicatoria','brinde','chegada','casamento'];
+  const especiais = ['parabens','dedicatoria','brinde','chegada','casamento','gorjeta'];
   const mgr = document.getElementById('msg-group');
   const mgl = document.getElementById('msg-label');
   if (especiais.includes(key)) {
     mgr.style.display = 'block';
     mgl.textContent = key === 'parabens' ? 'Recado (aparece na tela)'
       : key === 'dedicatoria' ? 'Mensagem de amor ❤️'
+      : key === 'gorjeta' ? 'Recado pra equipe (opcional) 🙏'
       : key === 'casamento'   ? 'Mensagem especial 💕'
       : 'Mensagem (opcional)';
   } else { mgr.style.display = 'none'; }
