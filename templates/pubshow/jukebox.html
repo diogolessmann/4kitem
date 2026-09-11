@@ -303,6 +303,8 @@
     font-family:inherit;padding:8px 16px;
   }
 </style>
+<!-- celular do cliente do bar: sem balão global do WhatsApp do 4kitem (a marca 'wa-float-4k' impede a injeção) -->
+<style>#wa-float-4k{display:none !important}</style>
 </head>
 <body>
 
@@ -568,7 +570,7 @@ async function jaPaguei() {
       {% if sucesso == 'vip' %}
         Sua música vai tocar agora! O vídeo atual será interrompido. 👑
       {% elif sucesso == 'flash' %}
-        Seu pedido furou a fila — toca na próxima! ⚡
+        Furou a fila! Assim que o PIX cair, sua música corta a atual e toca na hora. ⚡
       {% elif sucesso in ('musica_especifica','musica_externa') %}
         Sua música entra na fila e toca quando o vídeo atual terminar!
       {% elif sucesso == 'musica' %}

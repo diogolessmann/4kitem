@@ -177,6 +177,7 @@ _SLIDES_DIR = os.path.join(
 
 
 GORJETA_VALORES = (5.0, 10.0, 20.0, 50.0)   # opções de gorjeta no celular do cliente
+TIPOS_SEMPRE_GRATIS = ('musica', 'musica_especifica')   # nunca cobrados, mesmo com precos_custom
 
 TIPOS_PEDIDO = {
     'musica':           {'nome': 'Música aleatória',       'emoji': '🎵', 'preco': 0.00,  'cor': '#3b82f6'},   # GRÁTIS (decisão 11/09/26)
@@ -963,6 +964,10 @@ def _precos_do_bar(b):
         t = dict(v)
         if k in custom:
             t['preco'] = float(custom[k])
+        if k in TIPOS_SEMPRE_GRATIS:
+            t['preco'] = 0.0          # decisão 11/09/26: pedir música é grátis em TODO bar, custom não sobrepõe
+            tipos[k] = t
+            continue
         if desconto_pct > 0:
             preco_original = t['preco']
             t['preco'] = round(preco_original * (1 - desconto_pct / 100), 2)
@@ -3037,7 +3042,7 @@ def painel_qrcode():
         log.error('QR error: %s', ex)
         qr_b64 = None
 
-    return render_template('pubshow/qrcode.html',
+    return render_template('pubshow/qrcode.html', precos=_precos_do_bar(b)[0],
                            b=dict(b),
                            jukebox_url=jukebox_url,
                            qr_b64=qr_b64)

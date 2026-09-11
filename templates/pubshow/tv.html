@@ -627,7 +627,7 @@ const TIPO_CONFIG = {
 
 const TIPOS_MUSICA = {
   vip:              {emoji:'👑', label:'VIP — Tocar AGORA'},
-  flash:            {emoji:'⚡', label:'Prioridade na fila'},
+  flash:            {emoji:'⚡', label:'Furou a fila — tocando AGORA'},
   musica:           {emoji:'🎵', label:'Pedido de música'},
   musica_especifica:{emoji:'🎯', label:'Da biblioteca'},
   musica_externa:   {emoji:'🌐', label:'Do YouTube'},
@@ -1353,8 +1353,9 @@ async function pollStatus() {
       pedidoMusica = data.pedido_musica;
       mostrarBadgeFila(data.total_fila);
 
-      // 👑 VIP "Tocar AGORA" — interrompe o vídeo atual imediatamente
-      if (data.pedido_musica.tipo === 'vip' && player) {
+      // 👑 VIP e ⚡ FURAR A FILA — interrompem o vídeo atual imediatamente
+      // (11/09/26: pagou furar a fila = corta a música e muda na hora)
+      if ((data.pedido_musica.tipo === 'vip' || data.pedido_musica.tipo === 'flash') && player) {
         clearTimeout(stallTimer);
         clearTimeout(proximoTimer);
         document.getElementById('proximo-card').classList.remove('show');
