@@ -1108,7 +1108,7 @@
           <span class="solution-cta">Conhecer →</span>
         </a>
 
-        <a href="/pubshow" class="solution-card reveal" style="--card-color: rgba(168,85,247,0.08);display:none;"><!-- OCULTO POR ENQUANTO (PubShow): remova 'display:none;' para reativar -->
+        <div class="solution-card reveal" style="--card-color: rgba(168,85,247,0.08);" onclick="if(!event.target.closest('a'))location.href='/pubshow'"><!-- PubShow REATIVADO 11/09/2026 (cliente ativo) -->
           <span class="solution-badge badge-new">Novo</span>
           <div class="solution-icon" style="width:80px;height:80px;padding:0;overflow:hidden;background:transparent;">
             <img src="/static/img/pubshow/pubshow-logo-concept.png" alt="PUBSHOW"
@@ -1127,8 +1127,11 @@
             <span class="price-from">a partir de</span>
             <span class="price-value">R$69<span style="font-size:14px;font-weight:500">,90/mês</span></span>
           </div>
-          <span class="solution-cta">Começar grátis →</span>
-        </a>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+            <a href="/pubshow/cadastro" class="solution-cta" style="background:var(--accent3);color:#0b0b12;padding:11px 18px;border-radius:12px;font-weight:700">🎰 Testar 7 dias grátis →</a>
+            <a href="/pubshow/entrar" class="solution-cta" style="border:1px solid var(--border2);padding:10px 16px;border-radius:12px">Entrar</a>
+          </div>
+        </div>
 
         <a href="/camponline" class="solution-card reveal" style="--card-color: rgba(168,85,247,0.08);display:none;"><!-- OCULTO POR ENQUANTO (CAMPonline) -->
           <span class="solution-badge badge-new">Novo</span>
