@@ -330,7 +330,7 @@
         <div class="ob-step">Passo 2 de 4</div>
         <div class="ob-emoji">🎯</div>
         <div class="ob-titulo">Escolha o tipo de pedido</div>
-        <div class="ob-sub">Música aleatória, escolha a música, prioridade na fila, parabéns, dedicatória... cada um com um preço diferente.</div>
+        <div class="ob-sub">Pedir música é GRÁTIS. Furar a fila, parabéns, dedicatória e gorjeta pra casa têm um valor — você escolhe.</div>
       </div>
 
       <!-- Slide 3 — Pague via PIX -->
@@ -338,7 +338,7 @@
         <div class="ob-step">Passo 3 de 4</div>
         <div class="ob-emoji">💸</div>
         <div class="ob-titulo">Pague via PIX em segundos</div>
-        <div class="ob-sub">Tudo pelo celular, sem maquininha. Escaneia o QR do PIX ou copia e cola o código.</div>
+        <div class="ob-sub">Só nos pedidos com valor. Tudo pelo celular, sem maquininha: escaneia o QR do PIX ou copia e cola o código.</div>
       </div>
 
       <!-- Slide 4 — Música na TV -->
@@ -346,7 +346,7 @@
         <div class="ob-step">Passo 4 de 4</div>
         <div class="ob-emoji">📺</div>
         <div class="ob-titulo">Sua música toca na TV!</div>
-        <div class="ob-sub">Depois do pagamento confirmado, seu pedido entra na fila e aparece na tela do bar. Aproveite! 🍺</div>
+        <div class="ob-sub">Pedido grátis entra na fila na hora. Furou a fila? Assim que o PIX cair, corta a música e toca a sua. Aproveite! 🍺</div>
       </div>
 
     </div>
@@ -619,21 +619,7 @@ async function jaPaguei() {
 
 {% if erro %}<div class="erro-box">⚠️ {{ erro }}</div>{% endif %}
 
-<!-- ── Tutorial: Como funciona — carousel swipeable ─────────────────────── -->
-<div class="tutorial-wrap" id="tutorial-wrap">
-  <div class="tutorial-track" id="tutorial-track">
-    <div class="tutorial-slide">
-      <img src="/static/pubshow/slides/slide2.webp" alt="Tabela de preços" loading="lazy">
-    </div>
-    <div class="tutorial-slide">
-      <img src="/static/pubshow/slides/slide1.webp" alt="Como escanear" loading="lazy">
-    </div>
-  </div>
-  <div class="tutorial-dots" id="tutorial-dots">
-    <div class="t-dot on" style="width:20px" onclick="tutorialGoTo(0)"></div>
-    <div class="t-dot" style="width:8px" onclick="tutorialGoTo(1)"></div>
-  </div>
-</div>
+<!-- carrossel de tutorial removido 11/09/26: trazia a tabela de preços antiga (slide2.webp) -->
 
 {% if fila %}
 <div class="fila-section">
@@ -1393,11 +1379,11 @@ const TRANS = {
     ob1_step:'Passo 1 de 4',ob1_title:'Bem-vindo ao Jukebox do {{ b.nome }}!',
     ob1_sub:'Aqui você controla a música da noite direto pelo celular, sem precisar falar com ninguém.',
     ob2_step:'Passo 2 de 4',ob2_title:'Escolha o tipo de pedido',
-    ob2_sub:'Música aleatória, escolha a música, prioridade na fila, parabéns, dedicatória... cada um com um preço diferente.',
+    ob2_sub:'Pedir música é GRÁTIS. Furar a fila, parabéns, dedicatória e gorjeta pra casa têm um valor — você escolhe.',
     ob3_step:'Passo 3 de 4',ob3_title:'Pague via PIX em segundos',
-    ob3_sub:'Tudo pelo celular, sem maquininha. Escaneia o QR do PIX ou copia e cola o código.',
+    ob3_sub:'Só nos pedidos com valor. Tudo pelo celular, sem maquininha: escaneia o QR do PIX ou copia e cola o código.',
     ob4_step:'Passo 4 de 4',ob4_title:'Sua música toca na TV!',
-    ob4_sub:'Depois do pagamento confirmado, seu pedido entra na fila e aparece na tela do bar. Aproveite! 🍺',
+    ob4_sub:'Pedido grátis entra na fila na hora. Furou a fila? Assim que o PIX cair, corta a música e toca a sua. Aproveite! 🍺',
     ob_proximo:'Próximo →',ob_btn:'🎵 Vamos lá!',
   },
   en: {
