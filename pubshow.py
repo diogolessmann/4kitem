@@ -1603,6 +1603,12 @@ def jukebox(token):
     erro         = ''
     pix_pendente = None
     ip_cliente   = request.headers.get('X-Forwarded-For', request.remote_addr or '').split(',')[0].strip()
+    # Identidade por CELULAR (11/09/26): no Wi-Fi do bar todos os clientes saem com o mesmo IP, então
+    # limite/hora e dedup de 60 s por IP barravam o 2º cliente. O celular manda um client_id
+    # (localStorage) e ele vira parte da chave; sem JS/localStorage cai no IP puro como antes.
+    _cid = (request.form.get('client_id') or '').strip()
+    if re.fullmatch(r'[A-Za-z0-9_-]{8,40}', _cid):
+        ip_cliente = f'{ip_cliente}#{_cid}'
 
     # Aviso temporário
     aviso = None

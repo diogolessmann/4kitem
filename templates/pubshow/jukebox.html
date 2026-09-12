@@ -814,6 +814,19 @@ async function jaPaguei() {
     <input type="hidden" name="youtube_id" id="inp-youtube-id">
     <input type="hidden" name="titulo_pedido" id="inp-titulo-pedido">
     <input type="hidden" name="thumb_url" id="inp-thumb-url">
+    <input type="hidden" name="client_id" id="inp-client-id" value="">
+    <script>
+      // id do celular (anti-spam por aparelho, não por IP do Wi-Fi do bar)
+      (function(){
+        let cid = '';
+        try { cid = localStorage.getItem('jk_cid') || ''; } catch(e) {}
+        if (!/^[A-Za-z0-9_-]{8,40}$/.test(cid)) {
+          cid = (self.crypto && crypto.randomUUID) ? crypto.randomUUID().replace(/-/g,'') : ('c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 12));
+          try { localStorage.setItem('jk_cid', cid); } catch(e) {}
+        }
+        document.getElementById('inp-client-id').value = cid;
+      })();
+    </script>
 
     <div class="musica-preview" id="musica-preview" style="display:none">
       <div class="musica-preview-label">🎵 Música pedida</div>
