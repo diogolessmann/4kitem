@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Planos e Preços — PUBSHOW Jukebox</title>
-<meta name="description" content="Transforme sua TV em jukebox e ganhe dinheiro extra com cada música pedida. Planos a partir de R$69,90/mês. 7 dias grátis, sem cartão.">
+<title>Planos e Preços — PubShow Jukebox para bar</title>
+<meta name="description" content="Jukebox digital para bar: música grátis pelo QR, o cliente paga no PIX só pelos momentos (furar a fila, parabéns, pedido de namoro). Planos a partir de {{ planos.starter.preco_fmt }}/mês. 7 dias grátis, sem cartão.">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 :root{
@@ -47,15 +47,6 @@ nav{background:rgba(8,8,15,.95);backdrop-filter:blur(12px);border-bottom:1px sol
 .trust-badge{display:flex;align-items:center;gap:6px}
 .trust-badge strong{color:var(--text);font-weight:700}
 
-/* ── TOGGLE (anual/mensal) ── */
-.toggle-wrap{display:flex;justify-content:center;align-items:center;gap:12px;padding:32px 0 24px;font-size:14px}
-.toggle{width:48px;height:26px;background:#333;border-radius:13px;position:relative;cursor:pointer;border:none;transition:.3s}
-.toggle.on{background:var(--green)}
-.toggle-knob{position:absolute;left:2px;top:2px;width:22px;height:22px;background:#fff;border-radius:50%;transition:.3s}
-.toggle.on .toggle-knob{left:24px}
-.desconto-badge{background:rgba(34,197,94,.15);border:1px solid rgba(34,197,94,.3);
-  color:var(--green);font-size:11px;font-weight:800;padding:2px 8px;border-radius:20px}
-
 /* ── PLANS ── */
 .plans-wrap{max-width:1100px;margin:0 auto;padding:0 24px;display:grid;
   grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:20px}
@@ -76,7 +67,6 @@ nav{background:rgba(8,8,15,.95);backdrop-filter:blur(12px);border-bottom:1px sol
 .plan.destaque .plan-preco{background:linear-gradient(135deg,var(--red),var(--orange));
   -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
 .plan-ciclo{font-size:12px;color:var(--text2);margin-bottom:26px}
-.plan-economia{font-size:11px;font-weight:700;color:var(--green);display:none;margin-top:-20px;margin-bottom:22px}
 .features{list-style:none;display:flex;flex-direction:column;gap:11px;margin-bottom:28px;flex:1}
 .features li{font-size:13px;color:#c8c8e8;display:flex;align-items:flex-start;gap:9px;line-height:1.4}
 .feat-icon{width:18px;height:18px;border-radius:5px;display:flex;align-items:center;justify-content:center;
@@ -125,19 +115,6 @@ input[type=range]{width:100%;accent-color:var(--green);height:6px;border-radius:
 .cross{color:#444;font-size:16px}
 .partial{color:#f59e0b;font-size:12px;font-weight:700}
 
-/* ── SOCIAL PROOF ── */
-.depos-section{max-width:900px;margin:64px auto 0;padding:0 24px}
-.depos-section h2{font-size:22px;font-weight:900;text-align:center;margin-bottom:24px}
-.depos-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
-.depo{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:22px}
-.depo-stars{color:#f59e0b;font-size:14px;margin-bottom:10px}
-.depo-texto{font-size:14px;color:#c8c8e8;line-height:1.6;margin-bottom:14px}
-.depo-autor{display:flex;align-items:center;gap:10px}
-.depo-avatar{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--red),var(--orange));
-  display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
-.depo-nome{font-size:13px;font-weight:700}
-.depo-bar{font-size:11px;color:var(--text2)}
-
 /* ── FAQ ── */
 .faq{max-width:660px;margin:64px auto 0;padding:0 24px}
 .faq h2{font-size:22px;font-weight:900;margin-bottom:24px;text-align:center}
@@ -178,9 +155,9 @@ input[type=range]{width:100%;accent-color:var(--green);height:6px;border-radius:
 
 <!-- HERO -->
 <div class="hero">
-  <div class="hero-badge">💰 100% do Jukebox vai direto pra sua conta PIX</div>
-  <h1>Preços simples.<br><span>Lucro real desde o primeiro dia.</span></h1>
-  <p class="hero-sub">Seus clientes pagam a música. O dinheiro cai no seu PIX. O PUBSHOW se paga com o Jukebox — você fica só com o lucro.</p>
+  <div class="hero-badge">💰 O valor cheio do pedido é do bar</div>
+  <h1>Preços simples.<br><span>Música grátis, momentos pagos.</span></h1>
+  <p class="hero-sub">Pedir música é grátis. O cliente paga só pelos momentos — furar a fila, parabéns, pedido de namoro na TV. O valor cheio do pedido é do bar — o cliente paga R$ 1 de taxa do PIX. Repasse acertado com o PubShow.</p>
 
   <div class="trust-badges">
     <div class="trust-badge">✅ <strong>7 dias grátis</strong></div>
@@ -191,16 +168,6 @@ input[type=range]{width:100%;accent-color:var(--green);height:6px;border-radius:
     <span style="color:#333">·</span>
     <div class="trust-badge">✅ <strong>Sem taxa de setup</strong></div>
   </div>
-</div>
-
-<!-- TOGGLE MENSAL / ANUAL -->
-<div class="toggle-wrap">
-  <span style="font-weight:700;color:var(--text)">Mensal</span>
-  <button class="toggle" id="toggle-anual" onclick="toggleAnual()" aria-label="Alternar plano anual">
-    <div class="toggle-knob"></div>
-  </button>
-  <span style="font-weight:700;color:var(--text)">Anual</span>
-  <span class="desconto-badge" id="desconto-badge">💚 2 meses grátis — economize 17%</span>
 </div>
 
 <!-- PLANS -->
@@ -216,7 +183,6 @@ input[type=range]{width:100%;accent-color:var(--green);height:6px;border-radius:
       <div class="plan-preco" data-preco="{{ p.preco }}">{{ p.preco_fmt.replace('R$ ','') }}</div>
     </div>
     <div class="plan-ciclo">/mês · sem fidelidade</div>
-    <div class="plan-economia" id="eco-{{ key }}"></div>
     <ul class="features">
       {% for f in p.features %}
       <li {% if 'Jukebox' in f or '100%' in f or 'Tudo' in f %}class="hl"{% endif %}>
@@ -243,8 +209,8 @@ input[type=range]{width:100%;accent-color:var(--green);height:6px;border-radius:
 <!-- ROI CALCULATOR -->
 <div class="roi-section">
   <div class="roi-box">
-    <div class="roi-title">🧮 Quanto você pode ganhar com o Jukebox?</div>
-    <div class="roi-sub">Arraste os sliders e veja o cálculo em tempo real</div>
+    <div class="roi-title">🧮 Quanto seu bar pode ganhar com os momentos pagos?</div>
+    <div class="roi-sub">Arraste os sliders e veja o cálculo em tempo real — é simulação, não promessa</div>
 
     <div class="roi-sliders">
       <div class="slider-group">
@@ -252,12 +218,12 @@ input[type=range]{width:100%;accent-color:var(--green);height:6px;border-radius:
         <input type="range" id="sl-clientes" min="10" max="200" value="40" step="5" oninput="calcROI()">
       </div>
       <div class="slider-group">
-        <label>% que faz pedido <span id="val-pct">30%</span></label>
-        <input type="range" id="sl-pct" min="5" max="60" value="30" step="5" oninput="calcROI()">
+        <label>% que faz pedido pago <span id="val-pct">15%</span></label>
+        <input type="range" id="sl-pct" min="5" max="60" value="15" step="5" oninput="calcROI()">
       </div>
       <div class="slider-group">
-        <label>Ticket médio por pedido <span id="val-ticket">R$ 5</span></label>
-        <input type="range" id="sl-ticket" min="2" max="15" value="5" step="1" oninput="calcROI()">
+        <label>Ticket médio por pedido pago <span id="val-ticket">R$ 10</span></label>
+        <input type="range" id="sl-ticket" min="5" max="25" value="10" step="1" oninput="calcROI()">
       </div>
       <div class="slider-group">
         <label>Noites abertas por mês <span id="val-noites">20</span></label>
@@ -272,14 +238,14 @@ input[type=range]{width:100%;accent-color:var(--green);height:6px;border-radius:
       </div>
       <div>
         <div class="roi-num big" id="roi-mes">R$ 1.200</div>
-        <div class="roi-label">por mês com o Jukebox 🎵</div>
+        <div class="roi-label">por mês em pedidos pagos 🎵</div>
       </div>
       <div>
         <div class="roi-num" id="roi-ano">R$ 14.400</div>
         <div class="roi-label">por ano</div>
       </div>
     </div>
-    <div class="roi-vs">Investimento: R$129,90/mês · <strong id="roi-retorno">~2 noites para pagar o plano</strong></div>
+    <div class="roi-vs">Plano Bar: {{ planos.bar.preco_fmt }}/mês · <strong id="roi-retorno">~1 noite para pagar o plano</strong></div>
   </div>
 </div>
 
@@ -291,9 +257,9 @@ input[type=range]{width:100%;accent-color:var(--green);height:6px;border-radius:
     <thead>
       <tr>
         <th class="feat-col">Recurso</th>
-        <th>🍺 Starter<br><small>R$69,90</small></th>
-        <th class="hl-col">🎸 Bar<br><small>R$129,90</small></th>
-        <th>🏆 Pro<br><small>R$199,90</small></th>
+        <th>{{ planos.starter.emoji }} {{ planos.starter.nome }}<br><small>{{ planos.starter.preco_fmt }}</small></th>
+        <th class="hl-col">{{ planos.bar.emoji }} {{ planos.bar.nome }}<br><small>{{ planos.bar.preco_fmt }}</small></th>
+        <th>{{ planos.pro.emoji }} {{ planos.pro.nome }}<br><small>{{ planos.pro.preco_fmt }}</small></th>
       </tr>
     </thead>
     <tbody>
@@ -304,7 +270,7 @@ input[type=range]{width:100%;accent-color:var(--green);height:6px;border-radius:
         <td><span class="check">✓</span></td>
       </tr>
       <tr>
-        <td class="feat-col">Jukebox (100% seu PIX)</td>
+        <td class="feat-col">Pedir música grátis pelo QR</td>
         <td><span class="check">✓</span></td>
         <td class="hl-col"><span class="check">✓</span></td>
         <td><span class="check">✓</span></td>
@@ -374,46 +340,6 @@ input[type=range]{width:100%;accent-color:var(--green);height:6px;border-radius:
   </div>
 </div>
 
-<!-- TESTIMONIALS -->
-<div class="depos-section">
-  <h2>💬 Bares que já usam o PUBSHOW</h2>
-  <div class="depos-grid">
-    <div class="depo">
-      <div class="depo-stars">★★★★★</div>
-      <div class="depo-texto">"Na primeira sexta-feira já paguei o plano do mês inteiro com os pedidos do Jukebox. Os clientes adoram."</div>
-      <div class="depo-autor">
-        <div class="depo-avatar">🍺</div>
-        <div>
-          <div class="depo-nome">Marcos R.</div>
-          <div class="depo-bar">Bar do Marcos — SC</div>
-        </div>
-      </div>
-    </div>
-    <div class="depo">
-      <div class="depo-stars">★★★★★</div>
-      <div class="depo-texto">"Acabou a bagunça de alguém sempre querendo mudar de música. Agora quem paga escolhe, ponto final. E a grana extra é ótima."</div>
-      <div class="depo-autor">
-        <div class="depo-avatar">🎸</div>
-        <div>
-          <div class="depo-nome">Ana Paula S.</div>
-          <div class="depo-bar">Boteco da Ana — PR</div>
-        </div>
-      </div>
-    </div>
-    <div class="depo">
-      <div class="depo-stars">★★★★★</div>
-      <div class="depo-texto">"Setup em 10 minutos, sem nenhum técnico. Hoje roda sozinho. O painel mostra tudo que tô precisando em tempo real."</div>
-      <div class="depo-autor">
-        <div class="depo-avatar">🏆</div>
-        <div>
-          <div class="depo-nome">Ricardo L.</div>
-          <div class="depo-bar">Pub Libertà — RS</div>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
 <!-- FAQ -->
 <div class="faq">
   <h2>Perguntas frequentes</h2>
@@ -427,8 +353,12 @@ input[type=range]{width:100%;accent-color:var(--green);height:6px;border-radius:
     <div class="faq-a">Não. O cliente escaneia o QR Code com a câmera do celular e abre direto no navegador — sem app, sem cadastro, sem senha.</div>
   </div>
   <div class="faq-item">
-    <div class="faq-q">Como recebo o dinheiro dos pedidos do Jukebox?</div>
-    <div class="faq-a">O cliente paga direto na sua chave PIX. O dinheiro cai na sua conta na hora. O PUBSHOW não intermedia e não fica com nenhuma porcentagem.</div>
+    <div class="faq-q">Pedir música é pago?</div>
+    <div class="faq-a">Não. O cliente pede música de graça — aleatória, escolhendo no acervo ou buscando no YouTube. Ele paga só pelos momentos: furar a fila (R$ 7), parabéns (R$ 15), dedicatória (R$ 10), pedido de namoro (R$ 25), cantada, brinde, chegada e gorjeta pra equipe.</div>
+  </div>
+  <div class="faq-item">
+    <div class="faq-q">Como recebo o dinheiro dos pedidos pagos?</div>
+    <div class="faq-a">O valor cheio do pedido é do bar — o cliente paga R$ 1 de taxa do PIX. Repasse acertado com o PubShow. Cantada e pedido de namoro passam pelo OK do gerente antes de ir pra TV.</div>
   </div>
   <div class="faq-item">
     <div class="faq-q">Posso cancelar quando quiser?</div>
@@ -475,7 +405,7 @@ function calcROI(){
   document.getElementById('roi-mes').textContent   = fmtBRL(porMes);
   document.getElementById('roi-ano').textContent   = fmtBRL(porAno);
 
-  const plano = 129.90;
+  const plano = {{ planos.bar.preco }};
   const noitesParaPagar = Math.ceil(plano / porNoite);
   document.getElementById('roi-retorno').textContent =
     noitesParaPagar <= 1 ? '💚 plano pago na 1ª noite!' :
@@ -493,48 +423,6 @@ document.querySelectorAll('.faq-q').forEach(q => {
   });
 });
 
-// ── Toggle Anual/Mensal ───────────────────────────────────────────────────────
-const PRECOS_MENSAL = { starter: 69.90, bar: 129.90, pro: 199.90 };
-const DESCONTO_ANUAL = 0.17; // 17% ≈ 2 meses grátis
-let _anual = false;
-
-function toggleAnual() {
-  _anual = !_anual;
-  const toggle = document.getElementById('toggle-anual');
-  toggle.classList.toggle('on', _anual);
-  toggle.querySelector('.toggle-knob').style.left = _anual ? '24px' : '2px';
-
-  // Atualiza cada plano
-  document.querySelectorAll('[data-preco]').forEach(el => {
-    const planoKey = el.closest('.plan')?.dataset.plano;
-    if (!planoKey || !PRECOS_MENSAL[planoKey]) return;
-    const base = PRECOS_MENSAL[planoKey];
-    const preco = _anual ? (base * (1 - DESCONTO_ANUAL)).toFixed(2) : base.toFixed(2);
-    el.textContent = preco.replace('.', ',').replace(/,00$/, '');
-  });
-
-  // Atualiza ciclo
-  document.querySelectorAll('.plan-ciclo').forEach(el => {
-    el.textContent = _anual ? '/mês · cobrado anualmente' : '/mês · sem fidelidade';
-  });
-
-  // Mostra/esconde economia
-  document.querySelectorAll('[id^="eco-"]').forEach(el => {
-    const planoKey = el.id.replace('eco-', '');
-    if (!PRECOS_MENSAL[planoKey]) return;
-    const economia = (PRECOS_MENSAL[planoKey] * DESCONTO_ANUAL * 12).toFixed(0);
-    el.textContent = `💚 Economize R$ ${economia}/ano`;
-    el.style.display = _anual ? 'block' : 'none';
-  });
-
-  // Atualiza CTA dos planos
-  document.querySelectorAll('[data-href-mensal]').forEach(el => {
-    el.href = _anual ? el.dataset.hrefAnual : el.dataset.hrefMensal;
-    el.textContent = _anual
-      ? el.textContent.replace('→', '— plano anual →')
-      : el.textContent.replace('— plano anual →', '→');
-  });
-}
 </script>
 </body>
 </html>

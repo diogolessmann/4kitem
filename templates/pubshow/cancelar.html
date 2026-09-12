@@ -47,7 +47,7 @@
   <!-- Alternativas ao cancelamento -->
   <div class="alternativas">
     <h3>💡 Antes de cancelar, você sabia que pode:</h3>
-    <div class="alt-item">⬇️ Fazer downgrade para o plano Starter (R$ 69,90/mês)</div>
+    <div class="alt-item">⬇️ Fazer downgrade para o plano Starter ({% if planos %}{{ planos.starter.preco_fmt }}{% else %}R$ 29,90{% endif %}/mês)</div>
     <div class="alt-item">⏸️ Deixar o Jukebox pausado sem perder a conta</div>
     <div class="alt-item">💬 Falar com o suporte — podemos ajudar: <a href="https://wa.me/5547999606998" target="_blank" style="color:#4ade80">(47) 99960-6998</a></div>
   </div>

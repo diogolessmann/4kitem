@@ -79,7 +79,7 @@ PLANOS = {
         'preco': 29.90,
         'preco_fmt': 'R$ 29,90',
         'descricao': 'Para começar',
-        'features': ['TV com clips 24/7', '3 tipos de pedido', '1 slide de propaganda', 'QR Code de mesa', 'Painel de gestão'],
+        'features': ['TV com clips 24/7', 'Pedir música grátis', 'Dedicatória e gorjeta pra equipe', '1 slide de propaganda', 'QR Code de mesa', 'Painel de gestão'],
         'max_tipos': ['musica', 'musica_especifica', 'dedicatoria', 'gorjeta'],
         'max_anuncios': 1,
         'analytics': False,
@@ -110,7 +110,7 @@ PLANOS = {
         'preco': 89.90,
         'preco_fmt': 'R$ 89,90',
         'descricao': 'Para maximizar o lucro',
-        'features': ['Tudo do Bar', 'Happy Hour automático', 'Notificação WhatsApp', 'Ranking da noite na TV', '5 slides de propaganda', 'Relatórios completos'],
+        'features': ['Tudo do Bar', 'Happy Hour com desconto programado', 'Notificação WhatsApp', 'Ranking da noite (quando você lançar)', '5 slides de propaganda', 'Relatórios completos'],
         'max_tipos': None,
         'max_anuncios': 5,
         'analytics': True,
@@ -4636,7 +4636,7 @@ def painel_cancelar():
     if request.method == 'POST':
         confirmacao = request.form.get('confirmar', '').strip().upper()
         if confirmacao != 'CANCELAR':
-            return render_template('pubshow/cancelar.html', b=bd, ass=dict(ass) if ass else None,
+            return render_template('pubshow/cancelar.html', planos=PLANOS, b=bd, ass=dict(ass) if ass else None,
                                    erro='Digite CANCELAR para confirmar.')
         # Tenta cancelar no Asaas
         if ass and ass.get('asaas_subscription_id'):
@@ -4666,7 +4666,7 @@ def painel_cancelar():
         )
         return redirect('/pubshow/painel?ok=cancelamento')
 
-    return render_template('pubshow/cancelar.html', b=bd, ass=dict(ass) if ass else None, erro='')
+    return render_template('pubshow/cancelar.html', planos=PLANOS, b=bd, ass=dict(ass) if ass else None, erro='')
 
 
 @pubshow_bp.route('/planos')
