@@ -192,9 +192,9 @@ TIPOS_PEDIDO = {
     'brinde':           {'nome': 'Brinde Geral! 🍻',       'emoji': '🍻', 'preco': 5.00,  'cor': '#22c55e'},
     'chegada':          {'nome': 'Chegamos! 🎉',           'emoji': '🎉', 'preco': 5.00,  'cor': '#f97316'},
     # Cantada (11/09/26): o cliente escreve a cantada e ela aparece na tela — o "esquenta" do pedido de namoro
-    'cantada':          {'nome': 'Mandar uma cantada 😏',  'emoji': '😏', 'preco': 5.00,  'cor': '#f472b6'},
+    'cantada':          {'nome': 'Mandar uma cantada 😏',  'emoji': '😏', 'preco': 5.00,  'cor': '#f472b6', 'ok': True},   # 'ok': passa pelo gerente antes da TV
     # chave 'casamento' mantida por compatibilidade com o banco; rótulo agora é "Namoro"
-    'casamento':        {'nome': 'Pedido de Namoro 💕',   'emoji': '💕', 'preco': 25.00, 'cor': '#a855f7'},
+    'casamento':        {'nome': 'Pedido de Namoro 💕',   'emoji': '💕', 'preco': 25.00, 'cor': '#a855f7', 'ok': True},
     # Gorjeta pra EQUIPE (11/09/26): valor escolhido pelo cliente entre GORJETA_VALORES; 5 é só o mínimo exibido.
     # É dinheiro dos funcionários, não do caixa — contado à parte no painel (TIPOS_EQUIPE).
     'gorjeta':          {'nome': 'Gorjeta pra equipe 🙏', 'emoji': '🙏', 'preco': 5.00,  'cor': '#22c55e'},
@@ -979,6 +979,27 @@ def _validar_video_pedido(b, youtube_id):
     return ''
 
 
+def _precisa_ok(b, tipo):
+    """Texto livre de risco (cantada, pedido de namoro) espera o OK do gerente antes de ir pra TV —
+    se o bar deixou a moderação ligada (moderar_ok, default 1)."""
+    if not TIPOS_PEDIDO.get(tipo, {}).get('ok'):
+        return False
+    try:
+        v = b['moderar_ok'] if 'moderar_ok' in b.keys() else 1
+    except Exception:
+        v = 1
+    return bool(1 if v is None else v)
+
+
+def _status_apos_pix(conn, pedido_id):
+    """Pedido pago: vai direto pra fila ('pendente') ou pra fila de OK do gerente ('aguardando_ok')."""
+    row = conn.execute('SELECT tipo, business_id FROM pubshow_pedidos WHERE id=?', (pedido_id,)).fetchone()
+    if not row:
+        return 'pendente'
+    b = conn.execute('SELECT moderar_ok FROM pubshow_businesses WHERE id=?', (row['business_id'],)).fetchone()
+    return 'aguardando_ok' if (b and _precisa_ok(b, row['tipo'])) else 'pendente'
+
+
 def _tipos_config():
     """Tipos que o gerente vê nas configurações (sem os ocultos do cliente)."""
     return {k: v for k, v in TIPOS_PEDIDO.items() if k not in TIPOS_OCULTOS}
@@ -1634,8 +1655,8 @@ def jukebox(token):
             erro = 'Muitos pedidos em pouco tempo. Aguarde um momento.'
         else:
             tipo          = request.form.get('tipo', '')
-            nome_cliente  = request.form.get('nome_cliente', '').strip()
-            mensagem      = request.form.get('mensagem', '').strip()
+            nome_cliente  = request.form.get('nome_cliente', '').strip()[:40]
+            mensagem      = request.form.get('mensagem', '').strip()[:80]
             categoria     = request.form.get('categoria', b['canal_atual'])
             youtube_id    = request.form.get('youtube_id', '').strip()[:20]
             titulo_pedido = request.form.get('titulo_pedido', '').strip()[:80]
@@ -1693,7 +1714,8 @@ def jukebox(token):
                         (b['id'],)
                     ).fetchone()[0]
                     conn_off.close()
-                    preco_final = round(preco + _offset * 0.01, 2)
+                    # centavos de identificação só no PIX manual — no Asaas o payment_id identifica e o cliente vê o preço cheio
+                    preco_final = preco if os.environ.get('ASAAS_API_KEY') else round(preco + _offset * 0.01, 2)
 
                     # ── Cria pedido como aguardando_pix (sem asaas_payment_id ainda) ─
                     txid = f'P{b["id"]}T{int(datetime.now().timestamp())}'
@@ -1830,7 +1852,7 @@ def jukebox(token):
                            (business_id, tipo, nome_cliente, mensagem, categoria, status, valor,
                             youtube_id, titulo_pedido, thumb_url, ip_cliente)
                            VALUES (?,?,?,?,?,?,?,?,?,?,?)''',
-                        (b['id'], tipo, nome_cliente, mensagem, categoria, 'pendente', preco_direto,
+                        (b['id'], tipo, nome_cliente, mensagem, categoria, ('aguardando_ok' if _precisa_ok(b, tipo) else 'pendente'), preco_direto,
                          youtube_id or None, titulo_pedido or None, thumb_url or None, ip_cliente)
                     )
                     # BUG antigo (corrigido 11/09/26): Connection não tem lastrowid — todo pedido
@@ -1860,12 +1882,21 @@ def jukebox(token):
         (b['id'],)
     ).fetchall()
     canal        = CANAIS.get(b['canal_atual'], CANAIS['rock'])
-    total_videos = conn3.execute('SELECT COUNT(*) FROM pubshow_videos WHERE ativo=1').fetchone()[0]
+    try:
+        import json as _jsn
+        _gj = _jsn.loads(b.get('generos_jukebox') or 'null')
+    except Exception:
+        _gj = None
+    if _gj:
+        _ph = ','.join('?' * len(_gj))
+        total_videos = conn3.execute(f'SELECT COUNT(*) FROM pubshow_videos WHERE ativo=1 AND categoria IN ({_ph})', tuple(_gj)).fetchone()[0]
+    else:
+        total_videos = conn3.execute('SELECT COUNT(*) FROM pubshow_videos WHERE ativo=1').fetchone()[0]
 
     # PIX cent offset — cada pedido do dia recebe +N centavos para identificação no extrato
     # Ex: 1º pedido = R$5,00 / 2º = R$5,01 / 3º = R$5,02 ...
     pix_offset = 0
-    if b.get('pix_key'):
+    if b.get('pix_key') and not os.environ.get('ASAAS_API_KEY'):
         try:
             pix_offset = conn3.execute(
                 "SELECT COUNT(*) FROM pubshow_pedidos WHERE business_id=? AND date(created_at,'-3 hours')=date('now','-3 hours')",
@@ -1891,6 +1922,8 @@ def jukebox(token):
                            aberto=aberto, motivo_fechado=motivo_fechado,
                            aviso=aviso, token=token,
                            pix_offset=pix_offset,
+                           asaas_ativo=bool(os.environ.get('ASAAS_API_KEY')),
+                           pix_conv=(PIX_TAXA_CONVENIENCIA if os.environ.get('ASAAS_API_KEY') else 0.0),
                            pedido_id_sucesso=locals().get('pedido_id_sucesso'))
 
 
@@ -1927,9 +1960,9 @@ def jukebox_ja_paguei(token, pedido_id):
 
     # Trust-based: sem exigência de PIX — entra direto na fila
     updated = conn.execute(
-        """UPDATE pubshow_pedidos SET status='pendente'
-           WHERE id=? AND business_id=? AND status='aguardando_pix'""",
-        (pedido_id, b['id'])
+        """UPDATE pubshow_pedidos SET status=?
+           WHERE id=? AND business_id=? AND status='aguardando_pix' AND asaas_payment_id IS NULL""",
+        (_status_apos_pix(conn, pedido_id), pedido_id, b['id'])
     ).rowcount
     if updated:
         conn.commit(); conn.close()
@@ -2317,9 +2350,9 @@ def painel():
     ).fetchall()
     # Caixa da CASA hoje: só pedidos confirmados e SEM a gorjeta (que é da equipe)
     total_hoje = sum(float(p['valor'] or 0) for p in pedidos_hoje
-                     if p['status'] != 'aguardando_pix' and p['tipo'] not in TIPOS_EQUIPE)
+                     if p['status'] not in ('aguardando_pix', 'recusado') and p['tipo'] not in TIPOS_EQUIPE)
     # Caixinha da EQUIPE: gorjetas pagas — 'valor' já é o líquido (taxa do PIX/Asaas descontada na cobrança).
-    _gorj = [p for p in pedidos_hoje if p['tipo'] in TIPOS_EQUIPE and p['status'] not in ('aguardando_pix', 'dispensado')]
+    _gorj = [p for p in pedidos_hoje if p['tipo'] in TIPOS_EQUIPE and p['status'] not in ('aguardando_pix', 'dispensado', 'recusado')]
     gorjeta_hoje   = sum(float(p['valor'] or 0) for p in _gorj)
     gorjeta_hoje_n = len(_gorj)
     gorjeta_7dias = conn.execute(
@@ -2336,7 +2369,14 @@ def painel():
     ).fetchall()
     aguardando_pix = conn.execute(
         '''SELECT * FROM pubshow_pedidos WHERE business_id=? AND status="aguardando_pix"
+           AND created_at >= datetime('now','-30 minutes')
            ORDER BY created_at DESC LIMIT 20''',
+        (b['id'],)
+    ).fetchall()
+    # 🛡️ mensagens pagas esperando o OK do gerente (cantada / pedido de namoro)
+    aguardando_ok = conn.execute(
+        '''SELECT * FROM pubshow_pedidos WHERE business_id=? AND status="aguardando_ok"
+           ORDER BY created_at ASC LIMIT 20''',
         (b['id'],)
     ).fetchall()
     total_pedidos_bar = conn.execute(
@@ -2344,7 +2384,7 @@ def painel():
     ).fetchone()[0]
 
     # ── Receita acumulada ─────────────────────────────────────────────────────
-    _base_q = "SELECT COALESCE(SUM(valor),0) FROM pubshow_pedidos WHERE business_id=? AND status NOT IN ('aguardando_pix') AND tipo!='gorjeta'"
+    _base_q = "SELECT COALESCE(SUM(valor),0) FROM pubshow_pedidos WHERE business_id=? AND status NOT IN ('aguardando_pix','recusado') AND tipo!='gorjeta'"
     receita_semana = float(conn.execute(
         _base_q + " AND date(created_at,'-3 hours') >= date('now','-3 hours','-6 days')", (b['id'],)
     ).fetchone()[0])
@@ -2356,7 +2396,7 @@ def painel():
     dias_raw = conn.execute(
         """SELECT date(created_at,'-3 hours') as dia, COALESCE(SUM(valor),0) as tot
            FROM pubshow_pedidos WHERE business_id=?
-           AND status NOT IN ('aguardando_pix') AND tipo!='gorjeta'
+           AND status NOT IN ('aguardando_pix','recusado') AND tipo!='gorjeta'
            AND date(created_at,'-3 hours') >= date('now','-3 hours','-6 days')
            GROUP BY dia ORDER BY dia""",
         (b['id'],)
@@ -2394,6 +2434,7 @@ def painel():
                            tipos_config=_tipos_config(),
                            fila=_pedidos_com_hora_local([dict(f) for f in fila]),
                            aguardando_pix=_pedidos_com_hora_local([dict(p) for p in aguardando_pix]),
+                           aguardando_ok=_pedidos_com_hora_local([dict(p) for p in aguardando_ok]),
                            tipos=TIPOS_PEDIDO,
                            planos=PLANOS,
                            bloqueados_parsed=bloqueados_parsed,
@@ -2436,18 +2477,22 @@ def painel_fila_json():
     aguardando = conn.execute(
         '''SELECT id, nome_cliente, tipo, mensagem, valor, created_at, youtube_id, titulo_pedido
            FROM pubshow_pedidos WHERE business_id=? AND status="aguardando_pix"
+           AND created_at >= datetime('now','-30 minutes')
            ORDER BY created_at DESC LIMIT 20''',
         (b['id'],)
     ).fetchall()
+    aguardando_ok_n = conn.execute(
+        'SELECT COUNT(*) FROM pubshow_pedidos WHERE business_id=? AND status="aguardando_ok"', (b['id'],)
+    ).fetchone()[0]
     pedidos_hoje = conn.execute(
         '''SELECT COALESCE(SUM(valor),0) FROM pubshow_pedidos
-           WHERE business_id=? AND status!="aguardando_pix" AND tipo!='gorjeta'
+           WHERE business_id=? AND status NOT IN ('aguardando_pix','recusado') AND tipo!='gorjeta'
            AND date(created_at,'-3 hours')=date("now","-3 hours")''',
         (b['id'],)
     ).fetchone()[0]
     gorjeta_hoje = conn.execute(
         '''SELECT COALESCE(SUM(valor),0) FROM pubshow_pedidos
-           WHERE business_id=? AND tipo='gorjeta' AND status NOT IN ('aguardando_pix','dispensado')
+           WHERE business_id=? AND tipo='gorjeta' AND status NOT IN ('aguardando_pix','dispensado','recusado')
            AND date(created_at,'-3 hours')=date("now","-3 hours")''',
         (b['id'],)
     ).fetchone()[0]
@@ -2457,6 +2502,7 @@ def painel_fila_json():
         'aguardando_pix': [dict(r) for r in aguardando],
         'total_hoje': float(pedidos_hoje),
         'gorjeta_hoje': float(gorjeta_hoje),
+        'aguardando_ok': int(aguardando_ok_n),
         'fila_count': len(fila),
     })
 
@@ -3248,22 +3294,44 @@ def painel_confirmar_pix(pid):
     b = _get_business()
     conn = get_pubshow_db()
     conn.execute(
-        """UPDATE pubshow_pedidos SET status='pendente'
+        """UPDATE pubshow_pedidos SET status=?
            WHERE id=? AND business_id=? AND status='aguardando_pix'""",
-        (pid, b['id'])
+        (_status_apos_pix(conn, pid), pid, b['id'])
     )
     conn.commit(); conn.close()
     return redirect('/pubshow/painel?aba=fila')
 
 
+@pubshow_bp.route('/painel/pedido/<int:pid>/aprovar', methods=['POST'])
+@pubshow_login_required
+def painel_aprovar(pid):
+    """🛡️ Gerente liberou a mensagem → entra na fila da TV."""
+    b = _get_business()
+    conn = get_pubshow_db()
+    conn.execute("UPDATE pubshow_pedidos SET status='pendente' WHERE id=? AND business_id=? AND status='aguardando_ok'", (pid, b['id']))
+    conn.commit(); conn.close()
+    return redirect('/pubshow/painel')
+
+
+@pubshow_bp.route('/painel/pedido/<int:pid>/recusar', methods=['POST'])
+@pubshow_login_required
+def painel_recusar(pid):
+    """🛡️ Gerente NÃO liberou a mensagem → 'recusado' (não vai pra TV, fora do caixa; estorno é manual)."""
+    b = _get_business()
+    conn = get_pubshow_db()
+    conn.execute("UPDATE pubshow_pedidos SET status='recusado' WHERE id=? AND business_id=? AND status='aguardando_ok'", (pid, b['id']))
+    conn.commit(); conn.close()
+    return redirect('/pubshow/painel')
+
+
 @pubshow_bp.route('/painel/pedido/<int:pid>/recusar-pix', methods=['POST'])
 @pubshow_login_required
 def painel_recusar_pix(pid):
-    """Bar recusa o pedido PIX (não recebeu pagamento)."""
+    """Bar recusa o pedido PIX (não recebeu pagamento) → 'recusado' (fora do caixa)."""
     b = _get_business()
     conn = get_pubshow_db()
     conn.execute(
-        """UPDATE pubshow_pedidos SET status='dispensado'
+        """UPDATE pubshow_pedidos SET status='recusado'
            WHERE id=? AND business_id=? AND status='aguardando_pix'""",
         (pid, b['id'])
     )
@@ -3337,7 +3405,8 @@ def painel_config():
             except Exception:
                 pass
 
-    requer_pix = 1 if request.form.get('requer_pix') else 0
+    # requer_pix NÃO é deste form (só /painel/toggle-pix) — salvar config zerava e o celular passava a mostrar a chave PIX do bar
+    moderar_ok = 1 if request.form.get('moderar_ok') else 0
 
     # Gêneros do Jukebox (quais categorias o cliente pode buscar na biblioteca)
     todos_generos = set(CANAIS.keys())
@@ -3351,12 +3420,12 @@ def painel_config():
            jukebox_ativo=?, jukebox_hora_ini=?, jukebox_hora_fim=?,
            mensagem_jukebox=?, aviso_jukebox=?, aviso_expira=?,
            limite_pedidos_hora=?, tipos_bloqueados=?, precos_custom=?,
-           requer_pix=?, generos_jukebox=?
+           moderar_ok=?, generos_jukebox=?
            WHERE id=?''',
         (jukebox_ativo, hora_ini, hora_fim,
          mensagem or None, aviso or None, aviso_expira,
          limite, json.dumps(bloqueados), json.dumps(precos),
-         requer_pix, generos_json, b['id'])
+         moderar_ok, generos_json, b['id'])
     )
     conn.commit(); conn.close()
     return redirect('/pubshow/painel?aba=config')
@@ -3396,22 +3465,22 @@ def painel_relatorio():
     # Receita por período (exclui pedidos aguardando PIX — ainda não pagos)
     receita_hoje = conn.execute(
         '''SELECT COALESCE(SUM(valor),0) FROM pubshow_pedidos
-           WHERE business_id=? AND status!="aguardando_pix"
+           WHERE business_id=? AND status NOT IN ('aguardando_pix','recusado') AND tipo!='gorjeta'
            AND date(created_at,'-3 hours')=date("now","-3 hours")''', (b['id'],)
     ).fetchone()[0]
     receita_semana = conn.execute(
         '''SELECT COALESCE(SUM(valor),0) FROM pubshow_pedidos
-           WHERE business_id=? AND status!="aguardando_pix"
+           WHERE business_id=? AND status NOT IN ('aguardando_pix','recusado') AND tipo!='gorjeta'
            AND created_at>=datetime("now", "-7 days")''', (b['id'],)
     ).fetchone()[0]
     receita_mes = conn.execute(
         '''SELECT COALESCE(SUM(valor),0) FROM pubshow_pedidos
-           WHERE business_id=? AND status!="aguardando_pix"
+           WHERE business_id=? AND status NOT IN ('aguardando_pix','recusado') AND tipo!='gorjeta'
            AND strftime("%Y-%m",datetime(created_at,"-3 hours"))=strftime("%Y-%m",date("now","-3 hours"))''', (b['id'],)
     ).fetchone()[0]
     receita_total = conn.execute(
         '''SELECT COALESCE(SUM(valor),0) FROM pubshow_pedidos
-           WHERE business_id=? AND status!="aguardando_pix"''', (b['id'],)
+           WHERE business_id=? AND status NOT IN ('aguardando_pix','recusado') AND tipo!="gorjeta"''', (b['id'],)
     ).fetchone()[0]
 
     # Top tipos pedidos (último mês — apenas pagos)
@@ -3683,6 +3752,7 @@ def admin_bar(bid):
                            b=dict(b), pedidos=[dict(p) for p in pedidos],
                            ass=dict(ass) if ass else None,
                            canais=CANAIS, planos=PLANOS, tipos=TIPOS_PEDIDO,
+                           asaas_ativo=bool(os.environ.get('ASAAS_API_KEY')),
                            anuncios_list=anuncios_list)
 
 
@@ -3718,6 +3788,17 @@ def admin_bar_acao(bid):
             "UPDATE pubshow_pedidos SET status='dispensado' WHERE business_id=? AND status='pendente'",
             (bid,)
         )
+        # QR abandonado há mais de 2 h vira 'recusado' (some do painel do gerente)
+        conn.execute(
+            "UPDATE pubshow_pedidos SET status='recusado' WHERE business_id=? AND status='aguardando_pix' AND created_at < datetime('now','-2 hours')",
+            (bid,)
+        )
+    elif acao == 'confirmar_pix':
+        # suporte: webhook não chegou mas o PIX caiu no Asaas → libera na mão
+        _pid = request.form.get('pedido_id', '')
+        if _pid.isdigit():
+            conn.execute("UPDATE pubshow_pedidos SET status=? WHERE id=? AND business_id=? AND status='aguardando_pix'",
+                         (_status_apos_pix(conn, int(_pid)), int(_pid), bid))
     conn.commit(); conn.close()
     return redirect(f'/pubshow/admin/bar/{bid}')
 
@@ -4794,12 +4875,13 @@ def _confirmar_jukebox_por_ext_ref(ext_ref, pay_id=''):
     pedido_id = int(_parts[1])
     try:
         conn = get_pubshow_db()
+        _novo = _status_apos_pix(conn, pedido_id)
         conn.execute(
-            "UPDATE pubshow_pedidos SET status='pendente' WHERE id=? AND status='aguardando_pix'",
-            (pedido_id,)
+            "UPDATE pubshow_pedidos SET status=? WHERE id=? AND status='aguardando_pix'",
+            (_novo, pedido_id)
         )
         conn.commit(); conn.close()
-        log.info('[PUBSHOW] Jukebox PIX confirmado — pedido #%s (Asaas %s)', pedido_id, pay_id)
+        log.info('[PUBSHOW] Jukebox PIX confirmado — pedido #%s (Asaas %s) → %s', pedido_id, pay_id, _novo)
     except Exception as ex:
         log.error('[PUBSHOW] Confirmar jukebox erro: %s', ex, exc_info=True)
 

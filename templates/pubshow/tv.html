@@ -621,7 +621,7 @@ const TIPO_CONFIG = {
   dedicatoria: {emoji:'💌', titulo:'DEDICATÓRIA ❤️',      cor:'#ef4444', duracao:9000,  confetes:false},
   brinde:      {emoji:'🍻', titulo:'BRINDE GERAL!',        cor:'#22c55e', duracao:6000,  confetes:true},
   chegada:     {emoji:'🎉', titulo:'CHEGARAM!',            cor:'#f97316', duracao:7000,  confetes:true},
-  casamento:   {emoji:'💕', titulo:'ELA DISSE SIM! 💕',    cor:'#a855f7', duracao:14000, confetes:true},
+  casamento:   {emoji:'💕', titulo:'PEDIDO DE NAMORO 💕',  cor:'#a855f7', duracao:14000, confetes:true},
   gorjeta:     {emoji:'🙏', titulo:'GORJETA PRA EQUIPE! 🙏', cor:'#22c55e', duracao:7000,  confetes:true},
   cantada:     {emoji:'😏', titulo:'CANTADA! 😏',           cor:'#f472b6', duracao:9000,  confetes:false},
 };
@@ -1526,13 +1526,15 @@ carregarRanking();
 setInterval(carregarRanking, 5 * 60 * 1000);
 
 // Intercepta proximoVideoOuSlide para injetar ranking a cada 7 vídeos
+const RANKING_AUTOMATICO = false;
 const _proximoVideoOriginal = proximoVideoOuSlide;
 (function(){
   let _contadorRanking = 0;
   window.proximoVideoOuSlide = function() {
     _contadorRanking++;
     // A cada 7 vídeos, se ranking tiver dados e não houver overlay ativo, mostra ranking
-    if (_contadorRanking % 7 === 0 && _rankingDados.length >= 2 && !overlayAtivo) {
+    // 11/09/26: ranking automático DESLIGADO (TV só mostra o que o gerente lança)
+    if (RANKING_AUTOMATICO && _contadorRanking % 7 === 0 && _rankingDados.length >= 2 && !overlayAtivo) {
       mostrarRanking();
       // Continua passando para o próximo vídeo/slide após o ranking
       setTimeout(() => {

@@ -212,6 +212,163 @@
   <!-- ════════ ZONA HOJE (uso diário) ════════ -->
   <div id="z-hoje" class="zona">
 
+  <!-- 🛡️ Precisa do seu OK — cantada / pedido de namoro pagos, antes de ir pra TV (11/09/26) -->
+  {% if aguardando_ok %}
+  <div class="card" id="sec-ok" style="margin-bottom:20px;border-color:rgba(251,191,36,.5);background:linear-gradient(135deg,#13131f,#1a1500)">
+    <div class="card-title" style="color:#fbbf24">🛡️ Precisa do seu OK ({{ aguardando_ok|length }})</div>
+    <p style="font-size:12px;color:var(--text2);margin-bottom:12px">Já está pago. Leia e decida se vai pra TV.</p>
+    {% for p in aguardando_ok %}
+    {% set t = tipos.get(p.tipo, {}) %}
+    <div class="ok-pedido-row" style="display:flex;align-items:center;gap:12px;padding:12px;margin-bottom:8px;border-radius:12px;background:rgba(255,255,255,.04);border:1px solid rgba(251,191,36,.25)">
+      <span style="font-size:22px">{{ t.get('emoji','💬') }}</span>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:14px;font-weight:700">{{ p.nome_cliente }} <span style="font-size:11px;color:var(--text2);font-weight:600">· {{ t.get('nome', p.tipo) }} · R$ {{ '%.0f'|format(p.valor or 0) }}</span></div>
+        <div style="font-size:14px;color:#fde68a;margin-top:2px;word-break:break-word">“{{ p.mensagem }}”</div>
+      </div>
+      <div style="display:flex;gap:6px;flex-shrink:0">
+        <form method="POST" action="/pubshow/painel/pedido/{{ p.id }}/aprovar" style="margin:0">
+          <button type="submit" style="background:linear-gradient(135deg,rgba(34,197,94,.25),rgba(34,197,94,.12));border:1px solid rgba(34,197,94,.5);color:#4ade80;padding:10px 14px;border-radius:10px;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">✅ Mostrar</button>
+        </form>
+        <form method="POST" action="/pubshow/painel/pedido/{{ p.id }}/recusar" style="margin:0" onsubmit="return confirm('Não mostrar na TV? O cliente vai ver que o bar não liberou.')">
+          <button type="submit" style="background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);color:#f87171;padding:10px 12px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">🚫</button>
+        </form>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <!-- Stats -->
+  <div class="grid-3" id="sec-fila">
+    <div class="card">
+      <div class="card-title">💰 Jukebox hoje</div>
+      <div class="stat-val" style="color:var(--green)" id="total-hoje">R$ {{ '%.2f'|format(total_hoje)|replace('.',',') }}</div>
+      <div class="stat-sub">{{ pedidos_hoje|rejectattr('status','in',['aguardando_pix','recusado'])|list|length }} pedidos · caixa da casa (gorjetas à parte)</div>
+    </div>
+    <div class="card">
+      <div class="card-title">📋 Fila agora</div>
+      <div class="stat-val" id="fila-count">{{ fila|length }}</div>
+      <div class="stat-sub">pedidos aguardando</div>
+    </div>
+    <div class="card">
+      <div class="card-title">🎬 Tema ativo</div>
+      {% set c = canais.get(b.canal_atual, {}) %}
+      <div class="stat-val" style="font-size:28px">{{ c.get('emoji','📺') }} {{ c.get('nome','—') }}</div>
+      <div class="stat-sub">
+        {% if b.plano_ativo %}✅ Assinatura ativa{% else %}⚠️ Trial / sem assinatura{% endif %}
+      </div>
+    </div>
+  </div>
+
+    <!-- Fila de pedidos -->
+    <div class="card">
+      <div class="card-title">📋 Fila de pedidos pendentes</div>
+      <div id="fila-pedidos">
+      {% if fila %}
+        {% for p in fila %}
+        {% set t = tipos.get(p.tipo, {}) %}
+        <div class="pedido-row">
+          <span class="pedido-emoji">{{ t.get('emoji','🎵') }}</span>
+          <div class="pedido-info">
+            <div class="pedido-nome">{{ p.nome_cliente }}</div>
+            <div class="pedido-tipo">{{ t.get('nome', p.tipo) }}{% if p.mensagem %} · "{{ p.mensagem[:40] }}"{% endif %}</div>
+          </div>
+          <span class="pedido-valor">R$ {{ '%.0f'|format(p.valor or 0) }}</span>
+          <form method="POST" action="/pubshow/painel/pedido/{{ p.id }}/dispensar" style="margin:0" onsubmit="return confirm('Tirar este pedido da fila? A TV NÃO vai mostrar.')">
+            <button type="submit" class="pedido-dispensar" title="Tirar da fila (a TV toca/mostra sozinha — só use pra remover)">🗑️</button>
+          </form>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div class="empty-state">Nenhum pedido na fila agora.<br>Os pedidos aparecem aqui em tempo real. 🎉</div>
+      {% endif %}
+      </div>
+    </div>
+
+  <div class="grid-2">
+    <!-- Trocar tema -->
+    <div class="card">
+      <button type="button" id="btn-pular-musica" onclick="pularMusica(this)"
+              style="width:100%;padding:14px;margin-bottom:16px;border:none;border-radius:12px;cursor:pointer;
+                     font-size:15px;font-weight:800;font-family:inherit;color:#fff;
+                     background:linear-gradient(135deg,#8b5cf6,#6366f1);box-shadow:0 4px 16px rgba(139,92,246,.35)">
+        ⏭️ Pular música agora
+      </button>
+      <!-- 🔊 Volume da TV (controle remoto) — 11/09/26 -->
+      <div style="margin-bottom:16px;padding:14px;border-radius:12px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08)">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <span style="font-size:14px;font-weight:800">🔊 Volume da TV</span>
+          <span id="vol-tv-val" style="font-size:14px;font-weight:900;color:#4ade80">{{ b.tv_volume if b.tv_volume is not none else 100 }}%</span>
+        </div>
+        <input type="range" id="vol-tv" min="0" max="100" step="5" value="{{ b.tv_volume if b.tv_volume is not none else 100 }}"
+               style="width:100%;accent-color:#8b5cf6" oninput="document.getElementById('vol-tv-val').textContent=this.value+'%'" onchange="ajustarVolumeTV(this.value)">
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <button type="button" onclick="setVolTV(0)" style="flex:1;padding:8px;border:none;border-radius:8px;cursor:pointer;font-family:inherit;font-weight:700;background:rgba(239,68,68,.18);color:#fca5a5">🔇 Mudo</button>
+          <button type="button" onclick="setVolTV(50)" style="flex:1;padding:8px;border:none;border-radius:8px;cursor:pointer;font-family:inherit;font-weight:700;background:rgba(255,255,255,.08);color:#fff">50%</button>
+          <button type="button" onclick="setVolTV(100)" style="flex:1;padding:8px;border:none;border-radius:8px;cursor:pointer;font-family:inherit;font-weight:700;background:rgba(74,222,128,.18);color:#4ade80">100%</button>
+        </div>
+        <div id="vol-tv-msg" style="font-size:11px;color:var(--text2);margin-top:6px">A TV aplica em até 3 segundos.</div>
+      </div>
+      <div class="card-title">🎬 Trocar tema agora</div>
+      <form method="POST" action="/pubshow/painel/canal">
+        <div class="canais-grid" style="margin-bottom:16px">
+          {% for key, c in canais.items() %}
+          <button type="submit" name="canal" value="{{ key }}"
+                  class="canal-btn {% if b.canal_atual == key %}ativo{% endif %}"
+                  {% if b.canal_atual == key %}style="background:{{ c.cor }};border-color:{{ c.cor }}"{% endif %}>
+            {{ c.emoji }} {{ c.nome }}
+          </button>
+          {% endfor %}
+        </div>
+      </form>
+    </div>
+
+    <!-- TV Link + QR -->
+    <div class="card">
+      <div class="card-title">📺 TV Player — abra este link na tela do bar</div>
+      <div class="tv-link-box">
+        <div style="font-size:12px;color:#a78bfa;font-weight:700">TV PLAYER</div>
+        <div class="tv-link-url">www.4kitem.com.br/pubshow/tv/{{ b.code }}</div>
+        <button class="btn-sm" onclick="copiar('https://www.4kitem.com.br/pubshow/tv/{{ b.code }}', this)">📋 Copiar link da TV</button>
+      </div>
+      <div style="margin-top:14px"></div>
+      <div class="card-title">📱 QR Code do Jukebox (cole nas mesas)</div>
+      <div class="tv-link-box" style="border-color:rgba(34,197,94,.3)">
+        <div style="font-size:12px;color:#22c55e;font-weight:700">JUKEBOX (clientes)</div>
+        <div class="tv-link-url" style="color:#4ade80;font-size:11px">https://www.4kitem.com.br/pubshow/jukebox/{{ b.jukebox_token or b.code }}</div>
+        <a href="/pubshow/painel/qrcode" class="btn-sm" style="text-decoration:none;background:linear-gradient(135deg,#ef4444,#f97316);color:#fff;border:none">🖨️ Imprimir QR Code</a>
+        <form method="POST" action="/pubshow/painel/novo-qr" style="display:inline" onsubmit="return confirm('Gerar novo QR invalida todos os QR codes anteriores. Continuar?')">
+          <button type="submit" class="btn-sm" style="border-color:rgba(245,158,11,.4);color:#f59e0b">🔄 Novo QR (invalidar antigos)</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- 🙏 Caixinha da EQUIPE (gorjetas) — isolada do caixa da casa (11/09/26) -->
+  <div class="card" id="sec-gorjeta" style="margin-bottom:20px;border-color:rgba(34,197,94,.35)">
+    <div class="card-title">🙏 Caixinha da equipe (gorjetas)</div>
+    <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap">
+      <div class="stat-val" style="color:#4ade80" id="gorjeta-hoje">R$ {{ '%.2f'|format(gorjeta_hoje)|replace('.',',') }}</div>
+      <div class="stat-sub">{{ gorjeta_hoje_n }} gorjeta(s) hoje</div>
+    </div>
+    <div style="font-size:11px;color:var(--text2);margin:6px 0 10px">Valor líquido — a taxa do PIX já está descontada. <strong style="color:var(--text)">Não entra no caixa da casa</strong>: é pra dividir entre os funcionários.</div>
+    {% if gorjeta_7dias %}
+    <table style="width:100%;border-collapse:collapse;font-size:12px">
+      {% for g in gorjeta_7dias %}
+      <tr style="border-top:1px solid var(--border)">
+        <td style="padding:6px 0;color:var(--text2)">{{ g.dia[8:10] }}/{{ g.dia[5:7] }}</td>
+        <td style="padding:6px 0">{{ g.n }} gorjeta(s)</td>
+        <td style="padding:6px 0;text-align:right;color:#4ade80;font-weight:800">R$ {{ '%.2f'|format(g.tot)|replace('.',',') }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+    {% else %}
+    <div style="font-size:12px;color:var(--text2)">Nenhuma gorjeta nos últimos 7 dias ainda.</div>
+    {% endif %}
+  </div>
+
+  <details style="margin-top:8px">
+    <summary style="cursor:pointer;font-size:13px;font-weight:700;color:var(--text2);padding:10px 0">➕ Mais (promoção relâmpago · receita da semana)</summary>
   <!-- Promoção Relâmpago -->
   <div class="card" id="sec-promo" style="margin-bottom:20px;border-color:{% if promo_ativa %}rgba(249,115,22,.5){% else %}rgba(255,255,255,.08){% endif %};background:{% if promo_ativa %}rgba(249,115,22,.06){% else %}var(--surface){% endif %}">
     <div class="card-title">⚡ Promoção Relâmpago</div>
@@ -288,134 +445,7 @@
     </div>
   </div>
 
-  <!-- 🙏 Caixinha da EQUIPE (gorjetas) — isolada do caixa da casa (11/09/26) -->
-  <div class="card" id="sec-gorjeta" style="margin-bottom:20px;border-color:rgba(34,197,94,.35)">
-    <div class="card-title">🙏 Caixinha da equipe (gorjetas)</div>
-    <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap">
-      <div class="stat-val" style="color:#4ade80" id="gorjeta-hoje">R$ {{ '%.2f'|format(gorjeta_hoje)|replace('.',',') }}</div>
-      <div class="stat-sub">{{ gorjeta_hoje_n }} gorjeta(s) hoje</div>
-    </div>
-    <div style="font-size:11px;color:var(--text2);margin:6px 0 10px">Valor líquido — a taxa do PIX já está descontada. <strong style="color:var(--text)">Não entra no caixa da casa</strong>: é pra dividir entre os funcionários.</div>
-    {% if gorjeta_7dias %}
-    <table style="width:100%;border-collapse:collapse;font-size:12px">
-      {% for g in gorjeta_7dias %}
-      <tr style="border-top:1px solid var(--border)">
-        <td style="padding:6px 0;color:var(--text2)">{{ g.dia[8:10] }}/{{ g.dia[5:7] }}</td>
-        <td style="padding:6px 0">{{ g.n }} gorjeta(s)</td>
-        <td style="padding:6px 0;text-align:right;color:#4ade80;font-weight:800">R$ {{ '%.2f'|format(g.tot)|replace('.',',') }}</td>
-      </tr>
-      {% endfor %}
-    </table>
-    {% else %}
-    <div style="font-size:12px;color:var(--text2)">Nenhuma gorjeta nos últimos 7 dias ainda.</div>
-    {% endif %}
-  </div>
-
-  <!-- Stats -->
-  <div class="grid-3" id="sec-fila">
-    <div class="card">
-      <div class="card-title">💰 Jukebox hoje</div>
-      <div class="stat-val" style="color:var(--green)" id="total-hoje">R$ {{ '%.2f'|format(total_hoje)|replace('.',',') }}</div>
-      <div class="stat-sub">{{ pedidos_hoje|length }} pedidos · caixa da casa (gorjetas à parte)</div>
-    </div>
-    <div class="card">
-      <div class="card-title">📋 Fila agora</div>
-      <div class="stat-val">{{ fila|length }}</div>
-      <div class="stat-sub">pedidos aguardando</div>
-    </div>
-    <div class="card">
-      <div class="card-title">🎬 Tema ativo</div>
-      {% set c = canais.get(b.canal_atual, {}) %}
-      <div class="stat-val" style="font-size:28px">{{ c.get('emoji','📺') }} {{ c.get('nome','—') }}</div>
-      <div class="stat-sub">
-        {% if b.plano_ativo %}✅ Assinatura ativa{% else %}⚠️ Trial / sem assinatura{% endif %}
-      </div>
-    </div>
-  </div>
-
-  <div class="grid-2">
-    <!-- Trocar tema -->
-    <div class="card">
-      <button type="button" id="btn-pular-musica" onclick="pularMusica(this)"
-              style="width:100%;padding:14px;margin-bottom:16px;border:none;border-radius:12px;cursor:pointer;
-                     font-size:15px;font-weight:800;font-family:inherit;color:#fff;
-                     background:linear-gradient(135deg,#8b5cf6,#6366f1);box-shadow:0 4px 16px rgba(139,92,246,.35)">
-        ⏭️ Pular música agora
-      </button>
-      <!-- 🔊 Volume da TV (controle remoto) — 11/09/26 -->
-      <div style="margin-bottom:16px;padding:14px;border-radius:12px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08)">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-          <span style="font-size:14px;font-weight:800">🔊 Volume da TV</span>
-          <span id="vol-tv-val" style="font-size:14px;font-weight:900;color:#4ade80">{{ b.tv_volume if b.tv_volume is not none else 100 }}%</span>
-        </div>
-        <input type="range" id="vol-tv" min="0" max="100" step="5" value="{{ b.tv_volume if b.tv_volume is not none else 100 }}"
-               style="width:100%;accent-color:#8b5cf6" oninput="document.getElementById('vol-tv-val').textContent=this.value+'%'" onchange="ajustarVolumeTV(this.value)">
-        <div style="display:flex;gap:8px;margin-top:8px">
-          <button type="button" onclick="setVolTV(0)" style="flex:1;padding:8px;border:none;border-radius:8px;cursor:pointer;font-family:inherit;font-weight:700;background:rgba(239,68,68,.18);color:#fca5a5">🔇 Mudo</button>
-          <button type="button" onclick="setVolTV(50)" style="flex:1;padding:8px;border:none;border-radius:8px;cursor:pointer;font-family:inherit;font-weight:700;background:rgba(255,255,255,.08);color:#fff">50%</button>
-          <button type="button" onclick="setVolTV(100)" style="flex:1;padding:8px;border:none;border-radius:8px;cursor:pointer;font-family:inherit;font-weight:700;background:rgba(74,222,128,.18);color:#4ade80">100%</button>
-        </div>
-        <div id="vol-tv-msg" style="font-size:11px;color:var(--text2);margin-top:6px">A TV aplica em até 3 segundos.</div>
-      </div>
-      <div class="card-title">🎬 Trocar tema agora</div>
-      <form method="POST" action="/pubshow/painel/canal">
-        <div class="canais-grid" style="margin-bottom:16px">
-          {% for key, c in canais.items() %}
-          <button type="submit" name="canal" value="{{ key }}"
-                  class="canal-btn {% if b.canal_atual == key %}ativo{% endif %}"
-                  {% if b.canal_atual == key %}style="background:{{ c.cor }};border-color:{{ c.cor }}"{% endif %}>
-            {{ c.emoji }} {{ c.nome }}
-          </button>
-          {% endfor %}
-        </div>
-      </form>
-    </div>
-
-    <!-- TV Link + QR -->
-    <div class="card">
-      <div class="card-title">📺 TV Player — abra este link na tela do bar</div>
-      <div class="tv-link-box">
-        <div style="font-size:12px;color:#a78bfa;font-weight:700">TV PLAYER</div>
-        <div class="tv-link-url">www.4kitem.com.br/pubshow/tv/{{ b.code }}</div>
-        <button class="btn-sm" onclick="copiar('https://www.4kitem.com.br/pubshow/tv/{{ b.code }}', this)">📋 Copiar link da TV</button>
-      </div>
-      <div style="margin-top:14px"></div>
-      <div class="card-title">📱 QR Code do Jukebox (cole nas mesas)</div>
-      <div class="tv-link-box" style="border-color:rgba(34,197,94,.3)">
-        <div style="font-size:12px;color:#22c55e;font-weight:700">JUKEBOX (clientes)</div>
-        <div class="tv-link-url" style="color:#4ade80;font-size:11px">https://www.4kitem.com.br/pubshow/jukebox/{{ b.jukebox_token or b.code }}</div>
-        <a href="/pubshow/painel/qrcode" class="btn-sm" style="text-decoration:none;background:linear-gradient(135deg,#ef4444,#f97316);color:#fff;border:none">🖨️ Imprimir QR Code</a>
-        <form method="POST" action="/pubshow/painel/novo-qr" style="display:inline" onsubmit="return confirm('Gerar novo QR invalida todos os QR codes anteriores. Continuar?')">
-          <button type="submit" class="btn-sm" style="border-color:rgba(245,158,11,.4);color:#f59e0b">🔄 Novo QR (invalidar antigos)</button>
-        </form>
-      </div>
-    </div>
-  </div>
-
-    <!-- Fila de pedidos -->
-    <div class="card">
-      <div class="card-title">📋 Fila de pedidos pendentes</div>
-      <div id="fila-pedidos">
-      {% if fila %}
-        {% for p in fila %}
-        {% set t = tipos.get(p.tipo, {}) %}
-        <div class="pedido-row">
-          <span class="pedido-emoji">{{ t.get('emoji','🎵') }}</span>
-          <div class="pedido-info">
-            <div class="pedido-nome">{{ p.nome_cliente }}</div>
-            <div class="pedido-tipo">{{ t.get('nome', p.tipo) }}{% if p.mensagem %} · "{{ p.mensagem[:40] }}"{% endif %}</div>
-          </div>
-          <span class="pedido-valor">R$ {{ '%.0f'|format(p.valor or 0) }}</span>
-          <form method="POST" action="/pubshow/painel/pedido/{{ p.id }}/dispensar" style="margin:0">
-            <button type="submit" class="pedido-dispensar" title="Marcar como tocado/exibido (só clique após a TV executar)">📺 Tocou</button>
-          </form>
-        </div>
-        {% endfor %}
-      {% else %}
-        <div class="empty-state">Nenhum pedido na fila agora.<br>Os pedidos aparecem aqui em tempo real. 🎉</div>
-      {% endif %}
-      </div>
-    </div>
+  </details>
 
   </div><!-- /z-hoje -->
 
@@ -487,8 +517,9 @@
   <div class="card" style="margin-bottom:24px;border-color:rgba(251,191,36,.3);background:linear-gradient(135deg,#13131f,#1a1500)">
     <div class="card-title" style="color:#fbbf24">⏳ Aguardando confirmação PIX ({{ aguardando_pix|length }})</div>
     <p style="font-size:12px;color:var(--text2);margin-bottom:14px">
-      ⚠️ <strong style="color:#f0f0ff">Verifique no banco se o PIX foi recebido</strong> antes de confirmar.
-      Confirmar sem receber o PIX libera a música de graça.
+      {% if asaas_ativo %}QR gerado e ainda não pago (últimos 30 min). Quando o PIX cair, entra na fila sozinho — você não precisa fazer nada.
+      {% else %}⚠️ <strong style="color:#f0f0ff">Verifique no banco se o PIX foi recebido</strong> antes de confirmar.
+      Confirmar sem receber o PIX libera a música de graça.{% endif %}
     </p>
     {% for p in aguardando_pix %}
     {% set t = tipos.get(p.tipo, {}) %}
@@ -510,12 +541,12 @@
       </div>
       <span style="font-size:16px;font-weight:900;color:#4ade80;white-space:nowrap">R$ {{ '%.2f'|format(p.valor or 0)|replace('.',',') }}</span>
       <div style="display:flex;gap:6px">
-        <form method="POST" action="/pubshow/painel/pedido/{{ p.id }}/confirmar-pix" style="margin:0">
+        {% if not asaas_ativo %}<form method="POST" action="/pubshow/painel/pedido/{{ p.id }}/confirmar-pix" style="margin:0">
           <button type="submit"
             style="background:linear-gradient(135deg,rgba(34,197,94,.2),rgba(34,197,94,.1));border:1px solid rgba(34,197,94,.4);color:#4ade80;padding:8px 14px;border-radius:8px;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit">
             ✅ Recebi — Confirmar
           </button>
-        </form>
+        </form>{% endif %}
         <form method="POST" action="/pubshow/painel/pedido/{{ p.id }}/recusar-pix" style="margin:0">
           <button type="submit"
             style="background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);color:#f87171;padding:8px 10px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit"
@@ -526,6 +557,137 @@
     {% endfor %}
   </div>
   {% endif %}
+
+  <!-- Configurações do Jukebox -->
+  <div class="card" id="sec-ajustes" style="margin-bottom:16px">
+    <div class="card-title">⚙️ Configurações do Jukebox</div>
+    <form method="POST" action="/pubshow/painel/config" style="display:flex;flex-direction:column;gap:18px">
+
+      <!-- Liga/desliga -->
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--surface2);border-radius:12px;border:1px solid var(--border)">
+        <div>
+          <div style="font-size:14px;font-weight:700">🔔 Jukebox ativo</div>
+          <div style="font-size:12px;color:var(--text2);margin-top:2px">Clientes podem fazer pedidos</div>
+        </div>
+        <label style="position:relative;display:inline-block;width:48px;height:26px;cursor:pointer">
+          <input type="checkbox" name="jukebox_ativo" {% if b.jukebox_ativo %}checked{% endif %} style="opacity:0;width:0;height:0">
+          <span style="position:absolute;inset:0;background:{% if b.jukebox_ativo %}#22c55e{% else %}#333{% endif %};border-radius:13px;transition:.3s"></span>
+          <span style="position:absolute;left:{% if b.jukebox_ativo %}24px{% else %}2px{% endif %};top:2px;width:22px;height:22px;background:#fff;border-radius:50%;transition:.3s"></span>
+        </label>
+      </div>
+
+      <!-- Horário -->
+      <div>
+        <label class="label-sm">⏰ Horário de funcionamento</label>
+        <div style="display:flex;gap:10px;align-items:center">
+          <input type="time" name="hora_ini" value="{{ b.jukebox_hora_ini or '00:00' }}"
+            style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-size:13px;font-family:inherit;outline:none;flex:1">
+          <span style="color:var(--text2)">até</span>
+          <input type="time" name="hora_fim" value="{{ b.jukebox_hora_fim or '23:59' }}"
+            style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-size:13px;font-family:inherit;outline:none;flex:1">
+        </div>
+        <div style="font-size:11px;color:var(--text2);margin-top:5px">Fora deste horário, o Jukebox exibe "fechado" para os clientes.</div>
+      </div>
+
+      <!-- Mensagem de boas-vindas (o celular do cliente NÃO exibe — escondido 11/09/26) -->
+      <div hidden>
+        <label class="label-sm">💬 Mensagem de boas-vindas no Jukebox</label>
+        <input type="text" name="mensagem_jukebox" maxlength="120"
+          value="{{ b.mensagem_jukebox or '' }}"
+          placeholder="Ex: Bem-vindo ao Vita! 🍕🍷 Peça sua música!"
+          style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;color:var(--text);font-size:13px;font-family:inherit;outline:none">
+      </div>
+
+      <!-- Aviso temporário (idem — escondido 11/09/26) -->
+      <div hidden>
+        <label class="label-sm">📢 Aviso temporário (some automaticamente)</label>
+        <div style="display:flex;gap:8px">
+          <input type="text" name="aviso_jukebox" maxlength="120"
+            value="{{ b.aviso_jukebox or '' }}"
+            placeholder='Ex: ⚽ Hoje tem jogo! Pedidos pausados até o fim.'
+            style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;color:var(--text);font-size:13px;font-family:inherit;outline:none">
+          <select name="aviso_horas" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-size:13px;font-family:inherit;outline:none;width:80px">
+            <option value="1">1h</option><option value="2">2h</option>
+            <option value="4" selected>4h</option><option value="8">8h</option>
+            <option value="24">24h</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Limite anti-spam -->
+      <div>
+        <label class="label-sm">🛡️ Limite de pedidos por cliente por hora</label>
+        <div style="display:flex;gap:10px;align-items:center">
+          <input type="number" name="limite_pedidos_hora" min="1" max="50"
+            value="{{ b.limite_pedidos_hora or 10 }}"
+            style="width:80px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-size:13px;font-family:inherit;outline:none">
+          <span style="font-size:13px;color:var(--text2)">pedidos por hora por cliente (anti-spam)</span>
+        </div>
+      </div>
+
+      <!-- Tipos de pedido disponíveis -->
+      <div>
+        <label class="label-sm">🛡️ Mensagens de risco</label>
+        <label style="display:flex;align-items:center;gap:8px;background:var(--surface2);border:1px solid rgba(251,191,36,.35);border-radius:8px;padding:9px 12px;cursor:pointer;font-size:12px;font-weight:700;margin:6px 0 14px">
+          <input type="checkbox" name="moderar_ok" value="1" {% if b.moderar_ok is none or b.moderar_ok %}checked{% endif %} style="width:14px;height:14px;accent-color:#fbbf24">
+          Conferir <strong>cantada</strong> e <strong>pedido de namoro</strong> antes de ir pra TV (aparecem em "Precisa do seu OK" na aba Hoje)
+        </label>
+        <label class="label-sm">✅ Tipos de pedido disponíveis</label>
+        <div style="font-size:11px;color:var(--text2);margin:4px 0 2px">🌐 <strong style="color:var(--text)">Buscar no YouTube</strong> é o interruptor: marcado, o cliente pode pedir qualquer música do YouTube (o sistema confere se o clipe toca na TV e o que tocou entra no acervo). Desmarcado, só o acervo curado — vale pro "Furar a fila" também.</div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px">
+          {% for key, t in tipos_config.items() %}
+          <label style="display:flex;align-items:center;gap:6px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:7px 12px;cursor:pointer;font-size:12px;font-weight:700">
+            <input type="checkbox" name="tipos_ativos" value="{{ key }}"
+              {% if key not in bloqueados_parsed %}checked{% endif %}
+              style="width:14px;height:14px;accent-color:#ef4444">
+            {{ t.emoji }} {{ t.nome }}
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- Preços custom -->
+      <div>
+        <label class="label-sm">💰 Preços customizados (deixe em branco para usar o padrão)</label>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px;margin-top:6px">
+          {% for key, t in tipos_config.items() %}
+          <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 12px">
+            <div style="font-size:11px;color:var(--text2);margin-bottom:4px">{{ t.emoji }} {{ t.nome }}</div>
+            <div style="display:flex;align-items:center;gap:6px">
+              <span style="font-size:12px;color:var(--text2)">R$</span>
+              <input type="number" name="preco_{{ key }}" step="0.01" min="0.50" max="200"
+                value="{{ '%.2f'|format(precos_parsed[key]|float) if precos_parsed.get(key) else '' }}"
+                placeholder="{{ '%.2f'|format(t.preco) }}"
+                style="width:100%;background:transparent;border:none;color:var(--text);font-size:14px;font-weight:700;font-family:inherit;outline:none">
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- Gêneros liberados no Jukebox -->
+      <div>
+        <label class="label-sm">🎵 Gêneros disponíveis para busca no Jukebox</label>
+        <div style="font-size:11px;color:var(--text2);margin-bottom:8px">
+          Clientes só verão músicas destes gêneros ao buscar na biblioteca.
+          Se nenhum for selecionado, <strong style="color:var(--text)">todos os gêneros ficam disponíveis</strong>.
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">
+          {% for key, ch in canais_todos.items() %}
+          <label style="display:flex;align-items:center;gap:5px;background:var(--surface2);border:1px solid {% if generos_jukebox and key in generos_jukebox %}#ef444466{% else %}var(--border){% endif %};border-radius:8px;padding:6px 11px;cursor:pointer;font-size:12px;font-weight:600;transition:.15s" id="gj-lbl-{{ key }}">
+            <input type="checkbox" name="generos_jukebox" value="{{ key }}"
+              {% if generos_jukebox and key in generos_jukebox %}checked{% endif %}
+              style="width:14px;height:14px;accent-color:#ef4444"
+              onchange="atualizarGeneroLbl('{{ key }}',this.checked)">
+            {{ ch.emoji }} {{ ch.nome }}
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+
+      <button type="submit" class="btn-primary" style="width:100%">💾 Salvar configurações</button>
+    </form>
+  </div>
 
   <!-- Histórico hoje -->
   {% if pedidos_hoje %}
@@ -574,16 +736,7 @@
     </div>
     <p style="font-size:12px;color:#8888aa;margin-bottom:16px">Crie até {{ plano_max_anuncios if plano_max_anuncios < 999 else 'ilimitados' }} slides que aparecem entre os vídeos na tela. Perfeito para happy hour, promoções e eventos.</p>
 
-    <!-- Slides do sistema — obrigatórios, sem toggle para o bar -->
-    <div style="background:#0a0a12;border:1px solid rgba(34,197,94,.2);border-radius:10px;padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;gap:14px">
-      <div style="flex:1">
-        <div style="font-size:12px;font-weight:700;color:#4ade80">
-          📢 Slides do Sistema
-          <span style="margin-left:8px;font-size:10px;background:#16a34a22;border:1px solid #16a34a55;color:#4ade80;padding:2px 8px;border-radius:100px">ATIVO</span>
-        </div>
-        <div style="font-size:11px;color:#8888aa;margin-top:2px">Slides institucionais do PUBSHOW — exibidos automaticamente a cada 10 minutos na sua TV.</div>
-      </div>
-    </div>
+    <!-- (slides do sistema removidos do painel em 11/09/26: a TV não os exibe mais) -->
     <form method="POST" action="/pubshow/painel/anuncios">
       {% for i in range(1, [plano_max_anuncios + 1, 6]|min) %}
       {% set sl = anuncios_parsed[i-1] if anuncios_parsed|length >= i else {} %}
@@ -632,6 +785,8 @@
     </div>
   </div>
 
+  <details style="margin-top:8px">
+    <summary style="cursor:pointer;font-size:13px;font-weight:700;color:var(--text2);padding:10px 0">⚙️ Avançado (temas da TV · happy hour · notificações · senha)</summary>
   <!-- Temas habilitados na TV -->
   <div class="card" style="margin-bottom:16px">
     <div class="card-title">🎬 Temas disponíveis na TV</div>
@@ -686,7 +841,7 @@
       <span style="font-size:36px">🎉</span>
       <div>
         <div style="font-size:14px;font-weight:700;color:#c4b5fd;margin-bottom:4px">Desconto automático nos preços</div>
-        <div style="font-size:12px;color:#8888aa;line-height:1.6">Configure horários de Happy Hour e os clientes já veem o preço com desconto. Disponível no <strong style="color:#a78bfa">Plano Pro (R$ 199,90/mês)</strong>.</div>
+        <div style="font-size:12px;color:#8888aa;line-height:1.6">Configure horários de Happy Hour e os clientes já veem o preço com desconto. Disponível no <strong style="color:#a78bfa">Plano Pro ({{ planos.pro.preco_fmt }}/mês)</strong>.</div>
         <a href="/pubshow/planos" style="display:inline-block;margin-top:10px;background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;padding:7px 18px;border-radius:8px;font-size:12px;font-weight:700;text-decoration:none">🚀 Fazer upgrade</a>
       </div>
     </div>
@@ -750,7 +905,7 @@
       <span style="font-size:36px">📲</span>
       <div>
         <div style="font-size:14px;font-weight:700;color:#c4b5fd;margin-bottom:4px">Alerta de novo pedido no celular</div>
-        <div style="font-size:12px;color:#8888aa;line-height:1.6">Receba uma mensagem no WhatsApp a cada pedido confirmado. Disponível no <strong style="color:#a78bfa">Plano Pro (R$ 199,90/mês)</strong>.</div>
+        <div style="font-size:12px;color:#8888aa;line-height:1.6">Receba uma mensagem no WhatsApp a cada pedido confirmado. Disponível no <strong style="color:#a78bfa">Plano Pro ({{ planos.pro.preco_fmt }}/mês)</strong>.</div>
         <a href="/pubshow/planos" style="display:inline-block;margin-top:10px;background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;padding:7px 18px;border-radius:8px;font-size:12px;font-weight:700;text-decoration:none">🚀 Fazer upgrade</a>
       </div>
     </div>
@@ -806,132 +961,6 @@
       </button>
     </div>
     <div id="push-status" style="font-size:12px;color:#8888aa;margin-top:10px"></div>
-  </div>
-
-  <!-- Configurações do Jukebox -->
-  <div class="card" id="sec-ajustes" style="margin-bottom:16px">
-    <div class="card-title">⚙️ Configurações do Jukebox</div>
-    <form method="POST" action="/pubshow/painel/config" style="display:flex;flex-direction:column;gap:18px">
-
-      <!-- Liga/desliga -->
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--surface2);border-radius:12px;border:1px solid var(--border)">
-        <div>
-          <div style="font-size:14px;font-weight:700">🔔 Jukebox ativo</div>
-          <div style="font-size:12px;color:var(--text2);margin-top:2px">Clientes podem fazer pedidos</div>
-        </div>
-        <label style="position:relative;display:inline-block;width:48px;height:26px;cursor:pointer">
-          <input type="checkbox" name="jukebox_ativo" {% if b.jukebox_ativo %}checked{% endif %} style="opacity:0;width:0;height:0">
-          <span style="position:absolute;inset:0;background:{% if b.jukebox_ativo %}#22c55e{% else %}#333{% endif %};border-radius:13px;transition:.3s"></span>
-          <span style="position:absolute;left:{% if b.jukebox_ativo %}24px{% else %}2px{% endif %};top:2px;width:22px;height:22px;background:#fff;border-radius:50%;transition:.3s"></span>
-        </label>
-      </div>
-
-      <!-- Horário -->
-      <div>
-        <label class="label-sm">⏰ Horário de funcionamento</label>
-        <div style="display:flex;gap:10px;align-items:center">
-          <input type="time" name="hora_ini" value="{{ b.jukebox_hora_ini or '00:00' }}"
-            style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-size:13px;font-family:inherit;outline:none;flex:1">
-          <span style="color:var(--text2)">até</span>
-          <input type="time" name="hora_fim" value="{{ b.jukebox_hora_fim or '23:59' }}"
-            style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-size:13px;font-family:inherit;outline:none;flex:1">
-        </div>
-        <div style="font-size:11px;color:var(--text2);margin-top:5px">Fora deste horário, o Jukebox exibe "fechado" para os clientes.</div>
-      </div>
-
-      <!-- Mensagem de boas-vindas -->
-      <div>
-        <label class="label-sm">💬 Mensagem de boas-vindas no Jukebox</label>
-        <input type="text" name="mensagem_jukebox" maxlength="120"
-          value="{{ b.mensagem_jukebox or '' }}"
-          placeholder="Ex: Bem-vindo ao Vita! 🍕🍷 Peça sua música!"
-          style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;color:var(--text);font-size:13px;font-family:inherit;outline:none">
-      </div>
-
-      <!-- Aviso temporário -->
-      <div>
-        <label class="label-sm">📢 Aviso temporário (some automaticamente)</label>
-        <div style="display:flex;gap:8px">
-          <input type="text" name="aviso_jukebox" maxlength="120"
-            value="{{ b.aviso_jukebox or '' }}"
-            placeholder='Ex: ⚽ Hoje tem jogo! Pedidos pausados até o fim.'
-            style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;color:var(--text);font-size:13px;font-family:inherit;outline:none">
-          <select name="aviso_horas" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-size:13px;font-family:inherit;outline:none;width:80px">
-            <option value="1">1h</option><option value="2">2h</option>
-            <option value="4" selected>4h</option><option value="8">8h</option>
-            <option value="24">24h</option>
-          </select>
-        </div>
-      </div>
-
-      <!-- Limite anti-spam -->
-      <div>
-        <label class="label-sm">🛡️ Limite de pedidos por cliente por hora</label>
-        <div style="display:flex;gap:10px;align-items:center">
-          <input type="number" name="limite_pedidos_hora" min="1" max="50"
-            value="{{ b.limite_pedidos_hora or 10 }}"
-            style="width:80px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-size:13px;font-family:inherit;outline:none">
-          <span style="font-size:13px;color:var(--text2)">pedidos por hora por cliente (anti-spam)</span>
-        </div>
-      </div>
-
-      <!-- Tipos de pedido disponíveis -->
-      <div>
-        <label class="label-sm">✅ Tipos de pedido disponíveis</label>
-        <div style="font-size:11px;color:var(--text2);margin:4px 0 2px">🌐 <strong style="color:var(--text)">Buscar no YouTube</strong> é o interruptor: marcado, o cliente pode pedir qualquer música do YouTube (o sistema confere se o clipe toca na TV e o que tocou entra no acervo). Desmarcado, só o acervo curado — vale pro "Furar a fila" também.</div>
-        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px">
-          {% for key, t in tipos_config.items() %}
-          <label style="display:flex;align-items:center;gap:6px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:7px 12px;cursor:pointer;font-size:12px;font-weight:700">
-            <input type="checkbox" name="tipos_ativos" value="{{ key }}"
-              {% if key not in bloqueados_parsed %}checked{% endif %}
-              style="width:14px;height:14px;accent-color:#ef4444">
-            {{ t.emoji }} {{ t.nome }}
-          </label>
-          {% endfor %}
-        </div>
-      </div>
-
-      <!-- Preços custom -->
-      <div>
-        <label class="label-sm">💰 Preços customizados (deixe em branco para usar o padrão)</label>
-        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px;margin-top:6px">
-          {% for key, t in tipos_config.items() %}
-          <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 12px">
-            <div style="font-size:11px;color:var(--text2);margin-bottom:4px">{{ t.emoji }} {{ t.nome }}</div>
-            <div style="display:flex;align-items:center;gap:6px">
-              <span style="font-size:12px;color:var(--text2)">R$</span>
-              <input type="number" name="preco_{{ key }}" step="0.01" min="0.50" max="200"
-                value="{{ '%.2f'|format(precos_parsed[key]|float) if precos_parsed.get(key) else '' }}"
-                placeholder="{{ '%.2f'|format(t.preco) }}"
-                style="width:100%;background:transparent;border:none;color:var(--text);font-size:14px;font-weight:700;font-family:inherit;outline:none">
-            </div>
-          </div>
-          {% endfor %}
-        </div>
-      </div>
-
-      <!-- Gêneros liberados no Jukebox -->
-      <div>
-        <label class="label-sm">🎵 Gêneros disponíveis para busca no Jukebox</label>
-        <div style="font-size:11px;color:var(--text2);margin-bottom:8px">
-          Clientes só verão músicas destes gêneros ao buscar na biblioteca.
-          Se nenhum for selecionado, <strong style="color:var(--text)">todos os gêneros ficam disponíveis</strong>.
-        </div>
-        <div style="display:flex;flex-wrap:wrap;gap:6px">
-          {% for key, ch in canais_todos.items() %}
-          <label style="display:flex;align-items:center;gap:5px;background:var(--surface2);border:1px solid {% if generos_jukebox and key in generos_jukebox %}#ef444466{% else %}var(--border){% endif %};border-radius:8px;padding:6px 11px;cursor:pointer;font-size:12px;font-weight:600;transition:.15s" id="gj-lbl-{{ key }}">
-            <input type="checkbox" name="generos_jukebox" value="{{ key }}"
-              {% if generos_jukebox and key in generos_jukebox %}checked{% endif %}
-              style="width:14px;height:14px;accent-color:#ef4444"
-              onchange="atualizarGeneroLbl('{{ key }}',this.checked)">
-            {{ ch.emoji }} {{ ch.nome }}
-          </label>
-          {% endfor %}
-        </div>
-      </div>
-
-      <button type="submit" class="btn-primary" style="width:100%">💾 Salvar configurações</button>
-    </form>
   </div>
 
   <!-- Conta -->
@@ -1021,6 +1050,8 @@
     </div>
   </div>
   {% endif %}
+  </details>
+
   </div><!-- /z-ajustes -->
 </div>
 
@@ -1171,10 +1202,8 @@ function renderFila(fila) {
         <div class="pedido-tipo">${musica || nome_tipo}${msg}</div>
       </div>
       <span class="pedido-valor">R$ ${valor}</span>
-      <form method="POST" action="/pubshow/painel/pedido/${p.id}/dispensar" style="margin:0">
-        <button type="submit" class="pedido-dispensar" title="${btnTitle}" ${btnOnclick}>
-          ${isAutoTV ? '📺 Tocou' : '✅ OK'}
-        </button>
+      <form method="POST" action="/pubshow/painel/pedido/${p.id}/dispensar" style="margin:0" onsubmit="return confirm('Tirar este pedido da fila? A TV NÃO vai mostrar.')">
+        <button type="submit" class="pedido-dispensar" title="Tirar da fila (a TV toca/mostra sozinha — só use pra remover)">🗑️</button>
       </form>${btnBan}
     </div>`;
   }).join('');
@@ -1205,7 +1234,8 @@ function pollFila() {
       // Se houver mudança nos aguardando_pix, recarrega só se nenhum input estiver em foco
       const temPix = (d.aguardando_pix || []).length;
       const pixAtual = document.querySelectorAll('.pix-pedido-row').length;
-      if (temPix !== pixAtual) {
+      const okAtual = document.querySelectorAll('.ok-pedido-row').length;
+      if (temPix !== pixAtual || (d.aguardando_ok || 0) !== okAtual) {
         const focado = document.activeElement;
         const digitando = focado && (focado.tagName==='INPUT'||focado.tagName==='TEXTAREA'||focado.tagName==='SELECT');
         if (!digitando) location.reload();

@@ -317,48 +317,19 @@
   <div class="ob-clip">
     <div class="ob-track" id="ob-track">
 
-      <!-- Slide 1 — Boas-vindas -->
+      <!-- Slide único (11/09/26): antes eram 4 passos obrigatórios sem "pular" -->
       <div class="ob-slide">
-        <div class="ob-step">Passo 1 de 4</div>
+        <div class="ob-step">Jukebox do {{ b.nome }}</div>
         <div class="ob-emoji">🎵</div>
-        <div class="ob-titulo">Bem-vindo ao Jukebox do {{ b.nome }}!</div>
-        <div class="ob-sub">Aqui você controla a música da noite direto pelo celular, sem precisar falar com ninguém.</div>
-      </div>
-
-      <!-- Slide 2 — Escolha o pedido -->
-      <div class="ob-slide">
-        <div class="ob-step">Passo 2 de 4</div>
-        <div class="ob-emoji">🎯</div>
-        <div class="ob-titulo">Escolha o tipo de pedido</div>
-        <div class="ob-sub">Pedir música é GRÁTIS. Furar a fila, parabéns, dedicatória e gorjeta pra casa têm um valor — você escolhe.</div>
-      </div>
-
-      <!-- Slide 3 — Pague via PIX -->
-      <div class="ob-slide">
-        <div class="ob-step">Passo 3 de 4</div>
-        <div class="ob-emoji">💸</div>
-        <div class="ob-titulo">Pague via PIX em segundos</div>
-        <div class="ob-sub">Só nos pedidos com valor. Tudo pelo celular, sem maquininha: escaneia o QR do PIX ou copia e cola o código.</div>
-      </div>
-
-      <!-- Slide 4 — Música na TV -->
-      <div class="ob-slide">
-        <div class="ob-step">Passo 4 de 4</div>
-        <div class="ob-emoji">📺</div>
-        <div class="ob-titulo">Sua música toca na TV!</div>
-        <div class="ob-sub">Pedido grátis entra na fila na hora. Furou a fila? Assim que o PIX cair, corta a música e toca a sua. Aproveite! 🍺</div>
+        <div class="ob-titulo">Pedir música é grátis</div>
+        <div class="ob-sub">Escolhe a música, põe teu nome e ela toca na TV. Furar a fila é R$ {{ '%.0f'|format(tipos.flash.preco) if tipos.flash else '7' }}; parabéns, cantada e dedicatória aparecem na tela.</div>
       </div>
 
     </div>
   </div>
 
   <div class="ob-bottom">
-    <div class="ob-dots" id="ob-dots">
-      <div class="ob-dot on" onclick="obGoTo(0)"></div>
-      <div class="ob-dot" onclick="obGoTo(1)"></div>
-      <div class="ob-dot" onclick="obGoTo(2)"></div>
-      <div class="ob-dot" onclick="obGoTo(3)"></div>
-    </div>
+    <div class="ob-dots" id="ob-dots" style="display:none"></div>
     <button class="ob-btn" id="ob-btn" onclick="fecharOnboarding()">🎵 Vamos lá!</button>
     <button class="ob-skip" id="ob-skip" onclick="obGoTo(obCur+1)">Próximo →</button>
   </div>
@@ -455,6 +426,11 @@ async function _atualizarPosicao() {
       sub.innerHTML = `${posLabel}${tempoLabel}`;
     } else if (d.status === 'aguardando_pix') {
       sub.textContent = '⏳ Aguardando confirmação do pagamento...';
+    } else if (d.status === 'aguardando_ok') {
+      sub.innerHTML = '🛡️ <strong style="color:#fbbf24">Pagamento OK!</strong> O bar está conferindo sua mensagem antes de mostrar na TV…';
+    } else if (d.status === 'recusado') {
+      clearInterval(_posicaoTimer);
+      sub.innerHTML = '❌ <strong style="color:#f87171">O bar não liberou essa mensagem.</strong> Fala com a gente no balcão.';
     }
   } catch(e) { /* silencioso */ }
 }
@@ -859,13 +835,13 @@ async function jaPaguei() {
         data-i18n-ph="placeholder_msg"></textarea>
     </div>
 
-    {% if b.requer_pix and b.pix_key %}
+    {% if asaas_ativo or (b.requer_pix and b.pix_key) %}
     <div class="pix-box">
       <div class="pix-title">💚 Pagamento via PIX</div>
       <div class="pix-valor" id="pix-valor">R$ —</div>
       <div style="font-size:12px;color:var(--text2);margin-top:6px;line-height:1.5">
         Ao confirmar você verá o <strong style="color:#4ade80">QR code PIX</strong> para escanear com seu banco.
-        {% if b.pix_nome_recebedor %}<br>Recebedor: <strong style="color:var(--text)">{{ b.pix_nome_recebedor }}</strong>{% endif %}
+        {% if asaas_ativo %}<span id="pix-taxa-note"></span>{% elif b.pix_nome_recebedor %}<br>Recebedor: <strong style="color:var(--text)">{{ b.pix_nome_recebedor }}</strong>{% endif %}
       </div>
     </div>
     <button type="submit" class="btn-confirmar" id="btn-confirmar"
@@ -925,6 +901,14 @@ function toggleMaisOpcoes(btn) {
 }
 
 // ── Grid ──────────────────────────────────────────────────────────────────────
+const PIX_CONV = {{ pix_conv if pix_conv is defined else 0 }};   // taxa do PIX que o cliente paga (Asaas)
+function _notaTaxaPix(preco) {
+  const el = document.getElementById('pix-taxa-note');
+  if (!el) return;
+  el.innerHTML = (preco > 0 && PIX_CONV > 0)
+    ? `<br>Total no PIX: <strong style="color:#4ade80">R$ ${(preco + PIX_CONV).toFixed(2).replace('.', ',')}</strong> (R$ ${preco.toFixed(2).replace('.', ',')} + R$ ${PIX_CONV.toFixed(2).replace('.', ',')} de taxa do PIX)`
+    : '';
+}
 function _precoComOffset(preco) {
   // Adiciona centavos de identificação ao preço PIX (ex: R$5,00 → R$5,03)
   if (!(preco > 0)) return 0;   // grátis não leva centavos
@@ -955,6 +939,7 @@ function escolherGorjeta(v, btn) {
   document.querySelectorAll('.gorjeta-opt').forEach(b => { b.style.background = 'rgba(34,197,94,.08)'; b.style.borderColor = '#22c55e55'; b.style.color = '#4ade80'; });
   if (btn) { btn.style.background = '#22c55e'; btn.style.borderColor = '#22c55e'; btn.style.color = '#052e16'; }
   document.getElementById('pix-valor').textContent = 'R$ ' + _precoComOffset(v).toFixed(2).replace('.', ',');
+  _notaTaxaPix(_precoComOffset(v));
   aplicarModoGratis(v);
 }
 
@@ -967,6 +952,7 @@ function selecionarTipo(key, nome, emoji, preco, cor) {
   document.getElementById('form-title').innerHTML = `${emoji} ${nome}`;
   const precoFinal = _precoComOffset(preco);
   document.getElementById('pix-valor').textContent = precoFinal > 0 ? 'R$ ' + precoFinal.toFixed(2).replace('.', ',') : 'Grátis';
+  _notaTaxaPix(precoFinal);
   aplicarModoGratis(preco);
 
   const especiais = ['parabens','dedicatoria','brinde','chegada','casamento','gorjeta','cantada'];
@@ -1352,7 +1338,7 @@ function copiarPix() {
 
 // ── Onboarding Fullscreen ─────────────────────────────────────────────────────
 let obCur = 0;
-const OB_TOTAL = 4;
+const OB_TOTAL = 1;
 
 function obGoTo(n) {
   obCur = Math.max(0, Math.min(n, OB_TOTAL - 1));
@@ -1474,7 +1460,7 @@ const TRANS = {
     ob1_step:'Passo 1 de 4',ob1_title:'Bem-vindo ao Jukebox do {{ b.nome }}!',
     ob1_sub:'Aqui você controla a música da noite direto pelo celular, sem precisar falar com ninguém.',
     ob2_step:'Passo 2 de 4',ob2_title:'Escolha o tipo de pedido',
-    ob2_sub:'Pedir música é GRÁTIS. Furar a fila, parabéns, dedicatória e gorjeta pra casa têm um valor — você escolhe.',
+    ob2_sub:'Pedir música é GRÁTIS. Furar a fila, parabéns, dedicatória e gorjeta pra equipe têm um valor — você escolhe.',
     ob3_step:'Passo 3 de 4',ob3_title:'Pague via PIX em segundos',
     ob3_sub:'Só nos pedidos com valor. Tudo pelo celular, sem maquininha: escaneia o QR do PIX ou copia e cola o código.',
     ob4_step:'Passo 4 de 4',ob4_title:'Sua música toca na TV!',
@@ -1538,7 +1524,7 @@ function setLang(lang) {
   const ob = document.getElementById('onboarding');
   if (ob) {
     const slides = ob.querySelectorAll('.ob-slide');
-    [[0,'ob1'],[1,'ob2'],[2,'ob3'],[3,'ob4']].forEach(([i,pref]) => {
+    [].forEach(([i,pref]) => {   // slide único em PT (11/09/26)
       if (!slides[i]) return;
       slides[i].querySelector('.ob-step').textContent   = T[pref+'_step'];
       slides[i].querySelector('.ob-titulo').textContent = T[pref+'_title'];
