@@ -228,7 +228,7 @@ nav{background:rgba(8,8,15,.95);backdrop-filter:blur(12px);border-bottom:1px sol
     {% set max_r = max_r if max_r > 0 else 1 %}
     <div class="chart">
       {% for d in por_dia %}
-      {% set pct = ((d.r / max_r * 90)|int)|max(3) %}
+      {% set pct = [((d.r / max_r * 90)|int), 3]|max %}
       <div class="bw">
         <div class="bv">{% if d.r %}R${{ '%.0f'|format(d.r) }}{% endif %}</div>
         <div class="bar {% if loop.last %}today{% endif %}" style="height:{{ pct }}px"></div>
@@ -248,7 +248,7 @@ nav{background:rgba(8,8,15,.95);backdrop-filter:blur(12px);border-bottom:1px sol
     </div>
     <div class="hora-chart">
       {% for h in por_hora %}
-      {% set pct = ((h.n / max_hora * 70)|int)|max(3) if max_hora > 0 else 3 %}
+      {% set pct = [((h.n / max_hora * 70)|int), 3]|max if max_hora > 0 else 3 %}
       <div class="hw" title="{{ '%02d'|format(h.hora) }}h — {{ h.n }} pedidos">
         <div class="hbar {% if h.n == max_hora %}pico{% elif h.n > 0 %}ok{% else %}low{% endif %}"
              style="height:{{ pct if h.n > 0 else 3 }}px"></div>

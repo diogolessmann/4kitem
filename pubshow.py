@@ -178,21 +178,26 @@ _SLIDES_DIR = os.path.join(
 
 GORJETA_VALORES = (5.0, 10.0, 20.0, 50.0)   # opções de gorjeta no celular do cliente
 TIPOS_SEMPRE_GRATIS = ('musica', 'musica_especifica')   # nunca cobrados, mesmo com precos_custom
+TIPOS_OCULTOS = ('vip',)       # existem no banco/TV, mas o cliente não vê ("Tocar agora" saiu, YouTube entrou — 11/09/26)
+TIPOS_EQUIPE  = ('gorjeta',)   # dinheiro da EQUIPE, não do caixa da casa — somado à parte no painel
 
 TIPOS_PEDIDO = {
     'musica':           {'nome': 'Música aleatória',       'emoji': '🎵', 'preco': 0.00,  'cor': '#3b82f6'},   # GRÁTIS (decisão 11/09/26)
     'musica_especifica':{'nome': 'Escolher a música',      'emoji': '🎯', 'preco': 0.00,  'cor': '#06b6d4'},   # GRÁTIS (decisão 11/09/26)
-    'musica_externa':   {'nome': 'Buscar no YouTube',      'emoji': '🌐', 'preco': 20.00, 'cor': '#dc2626'},
+    'musica_externa':   {'nome': 'Buscar no YouTube',      'emoji': '🌐', 'preco': 0.00,  'cor': '#dc2626'},   # GRÁTIS por padrão (11/09/26); o bar pode cobrar em precos_custom
     'flash':            {'nome': 'Furar a fila',           'emoji': '⚡', 'preco': 7.00,  'cor': '#f59e0b'},   # R$7 (decisão 11/09/26)
-    'vip':              {'nome': 'Tocar AGORA',            'emoji': '👑', 'preco': 10.00, 'cor': '#8b5cf6'},
+    'vip':              {'nome': 'Tocar AGORA',            'emoji': '👑', 'preco': 10.00, 'cor': '#8b5cf6'},   # OCULTO do cliente (TIPOS_OCULTOS, 11/09/26); fica p/ histórico e TV
     'parabens':         {'nome': 'Parabéns! 🎂',           'emoji': '🎂', 'preco': 15.00, 'cor': '#ec4899'},
     'dedicatoria':      {'nome': 'Dedicatória ❤️',        'emoji': '💌', 'preco': 10.00, 'cor': '#ef4444'},
     'brinde':           {'nome': 'Brinde Geral! 🍻',       'emoji': '🍻', 'preco': 5.00,  'cor': '#22c55e'},
     'chegada':          {'nome': 'Chegamos! 🎉',           'emoji': '🎉', 'preco': 5.00,  'cor': '#f97316'},
+    # Cantada (11/09/26): o cliente escreve a cantada e ela aparece na tela — o "esquenta" do pedido de namoro
+    'cantada':          {'nome': 'Mandar uma cantada 😏',  'emoji': '😏', 'preco': 5.00,  'cor': '#f472b6'},
     # chave 'casamento' mantida por compatibilidade com o banco; rótulo agora é "Namoro"
     'casamento':        {'nome': 'Pedido de Namoro 💕',   'emoji': '💕', 'preco': 25.00, 'cor': '#a855f7'},
-    # Gorjeta pra casa (11/09/26): valor escolhido pelo cliente entre GORJETA_VALORES; 5 é só o mínimo exibido
-    'gorjeta':          {'nome': 'Gorjeta pra casa 🙏',   'emoji': '🙏', 'preco': 5.00,  'cor': '#22c55e'},
+    # Gorjeta pra EQUIPE (11/09/26): valor escolhido pelo cliente entre GORJETA_VALORES; 5 é só o mínimo exibido.
+    # É dinheiro dos funcionários, não do caixa — contado à parte no painel (TIPOS_EQUIPE).
+    'gorjeta':          {'nome': 'Gorjeta pra equipe 🙏', 'emoji': '🙏', 'preco': 5.00,  'cor': '#22c55e'},
 }
 
 # Taxa que o Asaas DESCONTA por cobrança PIX recebida (custo do gateway).
@@ -922,7 +927,12 @@ def _tipos_disponiveis(b):
         bloqueados = json.loads(b['tipos_bloqueados'] or '[]')
     except Exception:
         bloqueados = []
-    return {k: v for k, v in TIPOS_PEDIDO.items() if k not in bloqueados}
+    return {k: v for k, v in TIPOS_PEDIDO.items() if k not in bloqueados and k not in TIPOS_OCULTOS}
+
+
+def _tipos_config():
+    """Tipos que o gerente vê nas configurações (sem os ocultos do cliente)."""
+    return {k: v for k, v in TIPOS_PEDIDO.items() if k not in TIPOS_OCULTOS}
 
 
 def _happy_hour_desconto(b):
@@ -1511,12 +1521,12 @@ def tv(code):
         return {'emoji': base.get('emoji', '🎵'),
                 'nome':  base.get('nome', k),
                 'preco': float(_pc.get(k) or base.get('preco', 0))}
-    precos_tv = [_preco_tv(k) for k in ('musica', 'musica_especifica', 'flash', 'vip', 'parabens')]
+    precos_tv = [_preco_tv(k) for k in ('musica', 'musica_especifica', 'flash', 'parabens')]
 
     return render_template('pubshow/tv.html', b=dict(b), canal=canal,
                            canal_key=canal_key, videos=videos, canais=canais_tv,
                            anuncios=anuncios, slides_sistema=slides_sistema,
-                           precos_tv=precos_tv,
+                           precos_tv=precos_tv, preco_flash=_preco_tv('flash')['preco'],
                            tv_qr_b64=tv_qr_b64, jukebox_url=_jk_url)
 
 
@@ -1580,8 +1590,10 @@ def jukebox(token):
                 erro = 'Tipo de pedido inválido.'
             elif not nome_cliente:
                 erro = 'Informe seu nome.'
-            elif tipo in ('musica_especifica', 'musica_externa') and not youtube_id:
+            elif tipo in ('musica_especifica', 'musica_externa', 'flash') and not youtube_id:
                 erro = 'Selecione uma música antes de confirmar.'
+            elif tipo == 'cantada' and not mensagem:
+                erro = 'Escreve a cantada antes de mandar. 😏'
             else:
                 preco = precos_bar[tipo]['preco']
                 if tipo == 'gorjeta':
@@ -1590,7 +1602,7 @@ def jukebox(token):
                     except (TypeError, ValueError): _vg = 0.0
                     preco = _vg if _vg in GORJETA_VALORES else max(GORJETA_VALORES[0], float(TIPOS_PEDIDO['gorjeta']['preco']))
                     if not mensagem:
-                        mensagem = f'Mandou R$ {preco:.0f} pra casa. Obrigado! 🙏'
+                        mensagem = f'Mandou R$ {preco:.0f} pra equipe. Obrigado! 🙏'
                 # Asaas é o PADRÃO de pagamento: se está configurado, TODO pedido
                 # passa por ele (cobrança automática + confirmação sozinha). O modo
                 # manual (chave PIX do próprio bar) fica só como fallback p/ quem tem.
@@ -1809,13 +1821,15 @@ def jukebox(token):
 
     return render_template('pubshow/jukebox.html',
                            b=b, canal=canal,
-                           tipos=precos_bar,
+                           # só os tipos que o bar NÃO bloqueou (antes o card aparecia e o POST dava 'Tipo de pedido inválido')
+                           tipos={k: v for k, v in precos_bar.items() if k in tipos_bar},
                            tipos_disponiveis=tipos_bar,
                            hh_desconto=hh_desconto,
                            fila=[dict(f) for f in fila],
                            sucesso=sucesso, erro=erro,
                            pix_pendente=pix_pendente,
                            total_videos=total_videos,
+                           canais_nomes={k: {'nome': v['nome'], 'emoji': v['emoji']} for k, v in CANAIS.items()},
                            aberto=aberto, motivo_fechado=motivo_fechado,
                            aviso=aviso, token=token,
                            pix_offset=pix_offset,
@@ -1890,7 +1904,7 @@ def api_status(code):
     pedido_especial = conn.execute(
         '''SELECT * FROM pubshow_pedidos
            WHERE business_id=? AND status="pendente"
-           AND tipo IN ("parabens","dedicatoria","brinde","chegada","casamento","gorjeta")
+           AND tipo IN ("parabens","dedicatoria","brinde","chegada","casamento","gorjeta","cantada")
            ORDER BY created_at ASC LIMIT 1''',
         (b['id'],)
     ).fetchone()
@@ -2102,7 +2116,7 @@ def api_buscar_biblioteca():
             except Exception:
                 generos_permitidos = None
 
-    limite = 150 if lista_full else 30
+    limite = 600 if lista_full else 30   # 11/09/26: lista inicial = acervo INTEIRO (cliente filtra por estilo no celular)
 
     if lista_full:
         # Carregamento inicial — top N por popularidade
@@ -2226,7 +2240,20 @@ def painel():
            ORDER BY created_at DESC''',
         (b['id'],)
     ).fetchall()
-    total_hoje = sum(float(p['valor'] or 0) for p in pedidos_hoje)
+    # Caixa da CASA hoje: só pedidos confirmados e SEM a gorjeta (que é da equipe)
+    total_hoje = sum(float(p['valor'] or 0) for p in pedidos_hoje
+                     if p['status'] != 'aguardando_pix' and p['tipo'] not in TIPOS_EQUIPE)
+    # Caixinha da EQUIPE: gorjetas pagas — 'valor' já é o líquido (taxa do PIX/Asaas descontada na cobrança).
+    _gorj = [p for p in pedidos_hoje if p['tipo'] in TIPOS_EQUIPE and p['status'] not in ('aguardando_pix', 'dispensado')]
+    gorjeta_hoje   = sum(float(p['valor'] or 0) for p in _gorj)
+    gorjeta_hoje_n = len(_gorj)
+    gorjeta_7dias = conn.execute(
+        """SELECT date(created_at,'-3 hours') AS dia, COUNT(*) AS n, COALESCE(SUM(valor),0) AS tot
+           FROM pubshow_pedidos WHERE business_id=? AND tipo='gorjeta'
+           AND status NOT IN ('aguardando_pix','dispensado')
+           AND date(created_at,'-3 hours') >= date('now','-3 hours','-6 days')
+           GROUP BY dia ORDER BY dia DESC""", (b['id'],)
+    ).fetchall()
     fila = conn.execute(
         '''SELECT * FROM pubshow_pedidos WHERE business_id=? AND status="pendente"
            ORDER BY created_at ASC LIMIT 20''',
@@ -2242,7 +2269,7 @@ def painel():
     ).fetchone()[0]
 
     # ── Receita acumulada ─────────────────────────────────────────────────────
-    _base_q = "SELECT COALESCE(SUM(valor),0) FROM pubshow_pedidos WHERE business_id=? AND status NOT IN ('aguardando_pix')"
+    _base_q = "SELECT COALESCE(SUM(valor),0) FROM pubshow_pedidos WHERE business_id=? AND status NOT IN ('aguardando_pix') AND tipo!='gorjeta'"
     receita_semana = float(conn.execute(
         _base_q + " AND date(created_at,'-3 hours') >= date('now','-3 hours','-6 days')", (b['id'],)
     ).fetchone()[0])
@@ -2254,7 +2281,7 @@ def painel():
     dias_raw = conn.execute(
         """SELECT date(created_at,'-3 hours') as dia, COALESCE(SUM(valor),0) as tot
            FROM pubshow_pedidos WHERE business_id=?
-           AND status NOT IN ('aguardando_pix')
+           AND status NOT IN ('aguardando_pix') AND tipo!='gorjeta'
            AND date(created_at,'-3 hours') >= date('now','-3 hours','-6 days')
            GROUP BY dia ORDER BY dia""",
         (b['id'],)
@@ -2287,6 +2314,9 @@ def painel():
                            b=bd, canais=canais_plano,
                            pedidos_hoje=_pedidos_com_hora_local([dict(p) for p in pedidos_hoje]),
                            total_hoje=total_hoje,
+                           gorjeta_hoje=gorjeta_hoje, gorjeta_hoje_n=gorjeta_hoje_n,
+                           gorjeta_7dias=[dict(r) for r in gorjeta_7dias],
+                           tipos_config=_tipos_config(),
                            fila=_pedidos_com_hora_local([dict(f) for f in fila]),
                            aguardando_pix=_pedidos_com_hora_local([dict(p) for p in aguardando_pix]),
                            tipos=TIPOS_PEDIDO,
@@ -2336,7 +2366,13 @@ def painel_fila_json():
     ).fetchall()
     pedidos_hoje = conn.execute(
         '''SELECT COALESCE(SUM(valor),0) FROM pubshow_pedidos
-           WHERE business_id=? AND status!="aguardando_pix"
+           WHERE business_id=? AND status!="aguardando_pix" AND tipo!='gorjeta'
+           AND date(created_at,'-3 hours')=date("now","-3 hours")''',
+        (b['id'],)
+    ).fetchone()[0]
+    gorjeta_hoje = conn.execute(
+        '''SELECT COALESCE(SUM(valor),0) FROM pubshow_pedidos
+           WHERE business_id=? AND tipo='gorjeta' AND status NOT IN ('aguardando_pix','dispensado')
            AND date(created_at,'-3 hours')=date("now","-3 hours")''',
         (b['id'],)
     ).fetchone()[0]
@@ -2345,6 +2381,7 @@ def painel_fila_json():
         'fila': [dict(r) for r in fila],
         'aguardando_pix': [dict(r) for r in aguardando],
         'total_hoje': float(pedidos_hoje),
+        'gorjeta_hoje': float(gorjeta_hoje),
         'fila_count': len(fila),
     })
 
@@ -2652,6 +2689,11 @@ def painel_upload_slide():
 @pubshow_bp.route('/slide/<code>/<filename>')
 def slide_serve(code, filename):
     """Serve imagens de slide do bar."""
+    # Segurança (11/09/26): 'code' e 'filename' vêm da URL. Sem esta trava, '..' sobe
+    # até o DATA_DIR e serve qualquer .db do monólito — sem login.
+    if not re.fullmatch(r'[A-Za-z0-9]{4,16}', code or '') \
+       or not re.fullmatch(r'[A-Za-z0-9_.-]{1,80}', filename or '') or '..' in filename:
+        return ('', 404)
     pasta = os.path.join(_SLIDES_DIR, code)
     return send_from_directory(pasta, filename)
 
@@ -2918,7 +2960,9 @@ def painel_delete_slide():
     # Apaga o arquivo físico
     if url_del.startswith('/pubshow/slide/'):
         partes = url_del.split('/')
-        if len(partes) >= 5:
+        # só apaga dentro da pasta do PRÓPRIO bar e só nome de arquivo simples (sem '..')
+        if len(partes) >= 5 and partes[3] == b['code'] \
+           and re.fullmatch(r'[A-Za-z0-9_.-]{1,80}', partes[4]) and '..' not in partes[4]:
             try:
                 os.remove(os.path.join(_SLIDES_DIR, partes[3], partes[4]))
             except Exception:
@@ -3042,7 +3086,8 @@ def painel_qrcode():
         log.error('QR error: %s', ex)
         qr_b64 = None
 
-    return render_template('pubshow/qrcode.html', precos=_precos_do_bar(b)[0],
+    # dict(b): sqlite3.Row não tem .get() → _plano_permite estourava 500 no QR (bug 11/09/26)
+    return render_template('pubshow/qrcode.html', precos=_precos_do_bar(dict(b))[0],
                            b=dict(b),
                            jukebox_url=jukebox_url,
                            qr_b64=qr_b64)
@@ -3258,7 +3303,7 @@ def painel_relatorio():
     receita_semana = conn.execute(
         '''SELECT COALESCE(SUM(valor),0) FROM pubshow_pedidos
            WHERE business_id=? AND status!="aguardando_pix"
-           AND created_at>=datetime("now", -7 days)''', (b['id'],)
+           AND created_at>=datetime("now", "-7 days")''', (b['id'],)
     ).fetchone()[0]
     receita_mes = conn.execute(
         '''SELECT COALESCE(SUM(valor),0) FROM pubshow_pedidos
@@ -3274,7 +3319,7 @@ def painel_relatorio():
     top_tipos = conn.execute(
         '''SELECT tipo, COUNT(*) n, COALESCE(SUM(valor),0) receita
            FROM pubshow_pedidos WHERE business_id=? AND status!="aguardando_pix"
-           AND created_at>=datetime("now", -30 days)
+           AND created_at>=datetime("now", "-30 days")
            GROUP BY tipo ORDER BY n DESC''', (b['id'],)
     ).fetchall()
 
@@ -3282,7 +3327,7 @@ def painel_relatorio():
     top_musicas = conn.execute(
         '''SELECT titulo_pedido, COUNT(*) n FROM pubshow_pedidos
            WHERE business_id=? AND titulo_pedido IS NOT NULL AND status!="aguardando_pix"
-           AND created_at>=datetime("now", -30 days)
+           AND created_at>=datetime("now", "-30 days")
            GROUP BY titulo_pedido ORDER BY n DESC LIMIT 10''', (b['id'],)
     ).fetchall()
 
@@ -3290,7 +3335,7 @@ def painel_relatorio():
     por_dia = conn.execute(
         '''SELECT date(created_at,"-3 hours") dia, COUNT(*) n, COALESCE(SUM(valor),0) r
            FROM pubshow_pedidos WHERE business_id=? AND status!="aguardando_pix"
-           AND created_at>=datetime("now", -14 days)
+           AND created_at>=datetime("now", "-14 days")
            GROUP BY dia ORDER BY dia''', (b['id'],)
     ).fetchall()
 
@@ -3298,7 +3343,7 @@ def painel_relatorio():
     por_hora_raw = conn.execute(
         '''SELECT CAST(strftime('%H', datetime(created_at, '-3 hours')) AS INTEGER) hora, COUNT(*) n
            FROM pubshow_pedidos WHERE business_id=? AND status!="aguardando_pix"
-           AND created_at>=datetime("now", -30 days)
+           AND created_at>=datetime("now", "-30 days")
            GROUP BY hora ORDER BY hora''', (b['id'],)
     ).fetchall()
     # Normaliza para 0..23 com zeros nos horários sem pedido
@@ -3309,7 +3354,7 @@ def painel_relatorio():
     por_weekday_raw = conn.execute(
         '''SELECT CAST(strftime('%w', datetime(created_at, '-3 hours')) AS INTEGER) wd, COUNT(*) n
            FROM pubshow_pedidos WHERE business_id=? AND status!="aguardando_pix"
-           AND created_at>=datetime("now", -30 days)
+           AND created_at>=datetime("now", "-30 days")
            GROUP BY wd''', (b['id'],)
     ).fetchall()
     dias_semana = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb']

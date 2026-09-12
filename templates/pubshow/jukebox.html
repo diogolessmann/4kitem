@@ -580,7 +580,8 @@ async function jaPaguei() {
       {% elif sucesso == 'brinde' %}Brinde geral na tela! Levanta o copo! 🍻
       {% elif sucesso == 'chegada' %}Sua chegada aparece agora! 🎉
       {% elif sucesso == 'casamento' %}O pedido vai aparecer na tela! Boa sorte! 💕🥹
-      {% elif sucesso == 'gorjeta' %}Valeu demais! Sua gorjeta aparece na tela e a casa agradece. 🙏
+      {% elif sucesso == 'gorjeta' %}Valeu demais! Sua gorjeta aparece na tela e a equipe agradece. 🙏
+      {% elif sucesso == 'cantada' %}Cantada mandada! Ela aparece na tela em instantes. Boa sorte! 😏
       {% else %}Seu pedido está na fila! Aguarda um momento.
       {% endif %}
     </p>
@@ -670,7 +671,35 @@ async function jaPaguei() {
       {% endif %}
     {% endmacro %}
 
-    {# 1. Música aleatória #}
+    {# 1. Escolher a música — GRÁTIS (acervo do bar) #}
+    {% if 'musica_especifica' in tipos %}{% set t = tipos['musica_especifica'] %}
+    <div class="pedido-card lib" style="--card-cor:{{ t.cor }}" onclick="abrirBusca('biblioteca')">
+      <div class="badge-lib">CURADO</div>
+      <div class="card-emoji">{{ t.emoji }}</div>
+      <div class="card-nome" data-i18n="card_especifica">Escolher<br>a música</div>
+      {{ preco_card(t) }}
+      <div class="card-detalhe">{{ total_videos }} músicas · por estilo</div>
+    </div>{% endif %}
+
+    {# 2. Furar a fila — escolhe no acervo OU no YouTube (toggle dentro da busca) #}
+    {% if 'flash' in tipos %}{% set t = tipos['flash'] %}
+    <div class="pedido-card" style="--card-cor:{{ t.cor }}" onclick="abrirBusca('biblioteca','flash')">
+      <div class="card-emoji">{{ t.emoji }}</div>
+      <div class="card-nome" data-i18n="card_flash">Furar<br>a fila</div>
+      {{ preco_card(t) }}
+      <div class="card-detalhe">acervo ou YouTube</div>
+    </div>{% endif %}
+
+    {# 3. Buscar no YouTube — subiu das "Mais opções" pro lugar do "Tocar agora" (11/09/26) #}
+    {% if 'musica_externa' in tipos %}{% set t = tipos['musica_externa'] %}
+    <div class="pedido-card ext" style="--card-cor:{{ t.cor }}" onclick="abrirBusca('youtube')">
+      <div class="badge-ext">EXTERNO</div>
+      <div class="card-emoji">{{ t.emoji }}</div>
+      <div class="card-nome">Buscar<br>no YouTube</div>
+      {{ preco_card(t) }}
+    </div>{% endif %}
+
+    {# 4. Música aleatória #}
     {% if 'musica' in tipos %}{% set t = tipos['musica'] %}
     <div class="pedido-card" style="--card-cor:{{ t.cor }}"
          onclick="selecionarTipo('musica','{{ t.nome }}','{{ t.emoji }}',{{ t.preco }},'{{ t.cor }}')">
@@ -679,26 +708,7 @@ async function jaPaguei() {
       {{ preco_card(t) }}
     </div>{% endif %}
 
-    {# 2. Furar a fila #}
-    {% if 'flash' in tipos %}{% set t = tipos['flash'] %}
-    <div class="pedido-card" style="--card-cor:{{ t.cor }}"
-         onclick="abrirBusca('biblioteca','flash')">
-      <div class="card-emoji">{{ t.emoji }}</div>
-      <div class="card-nome" data-i18n="card_flash">Furar<br>a fila</div>
-      {{ preco_card(t) }}
-    </div>{% endif %}
-
-    {# 3. Buscar na biblioteca #}
-    {% if 'musica_especifica' in tipos %}{% set t = tipos['musica_especifica'] %}
-    <div class="pedido-card lib" style="--card-cor:{{ t.cor }}" onclick="abrirBusca('biblioteca')">
-      <div class="badge-lib">CURADO</div>
-      <div class="card-emoji">{{ t.emoji }}</div>
-      <div class="card-nome" data-i18n="card_especifica">Escolher<br>a música</div>
-      {{ preco_card(t) }}
-      <div class="card-detalhe">{{ total_videos }} vídeos</div>
-    </div>{% endif %}
-
-    {# 4. Parabéns #}
+    {# 5. Parabéns #}
     {% if 'parabens' in tipos %}{% set t = tipos['parabens'] %}
     <div class="pedido-card" style="--card-cor:{{ t.cor }}"
          onclick="selecionarTipo('parabens','{{ t.nome }}','{{ t.emoji }}',{{ t.preco }},'{{ t.cor }}')">
@@ -707,7 +717,17 @@ async function jaPaguei() {
       {{ preco_card(t) }}
     </div>{% endif %}
 
-    {# 5. Dedicatória — ocupa linha inteira #}
+    {# 6. Cantada — o esquenta do pedido de namoro (11/09/26) #}
+    {% if 'cantada' in tipos %}{% set t = tipos['cantada'] %}
+    <div class="pedido-card" style="--card-cor:{{ t.cor }}"
+         onclick="selecionarTipo('cantada','{{ t.nome }}','{{ t.emoji }}',{{ t.preco }},'{{ t.cor }}')">
+      <div class="card-emoji">{{ t.emoji }}</div>
+      <div class="card-nome">Mandar<br>uma cantada</div>
+      {{ preco_card(t) }}
+      <div class="card-detalhe">sai na tela</div>
+    </div>{% endif %}
+
+    {# 7. Dedicatória — linha inteira #}
     {% if 'dedicatoria' in tipos %}{% set t = tipos['dedicatoria'] %}
     <div class="pedido-card full" style="--card-cor:{{ t.cor }}"
          onclick="selecionarTipo('dedicatoria','{{ t.nome }}','{{ t.emoji }}',{{ t.preco }},'{{ t.cor }}')">
@@ -716,45 +736,30 @@ async function jaPaguei() {
       {{ preco_card(t) }}
     </div>{% endif %}
 
-    {# 6. Gorjeta pra casa — linha inteira; valor escolhido no próximo passo #}
+    {# 8. Gorjeta pra EQUIPE — linha inteira; valor escolhido no próximo passo #}
     {% if 'gorjeta' in tipos %}{% set t = tipos['gorjeta'] %}
     <div class="pedido-card full" style="--card-cor:{{ t.cor }}" onclick="abrirGorjeta()">
       <div class="card-emoji">{{ t.emoji }}</div>
-      <div class="card-nome">Gorjeta pra casa — agradece a equipe e aparece na tela 🙏</div>
+      <div class="card-nome">Gorjeta pra equipe — agradece quem te atendeu e aparece na tela 🙏</div>
       <div class="card-preco" style="color:#4ade80;text-shadow:0 0 20px #4ade8066">R$ 5 · 10 · 20 · 50</div>
     </div>{% endif %}
 
   </div>
 
-  {# Mais opções: VIP, brinde, chegada, casamento, YouTube #}
-  {% set extras = ['vip','brinde','chegada','casamento','musica_externa'] %}
+  {# Mais opções: namoro, brinde, chegada ("Tocar agora" saiu em 11/09/26; YouTube subiu pro grid) #}
+  {% set extras = ['casamento','brinde','chegada'] %}
   {% if extras|select('in', tipos)|list %}
   <button class="btn-mais-opcoes" onclick="toggleMaisOpcoes(this)" id="btn-mais">
     <span data-i18n="mais_opcoes">⋯ Mais opções</span>
   </button>
   <div class="mais-opcoes-grid" id="mais-opcoes" style="display:none">
     {% for key in extras %}{% if key in tipos %}{% set t = tipos[key] %}
-      {% if key == 'musica_externa' %}
-      <div class="pedido-card ext" style="--card-cor:{{ t.cor }}" onclick="abrirBusca('youtube')">
-        <div class="badge-ext">EXTERNO</div>
-        <div class="card-emoji">{{ t.emoji }}</div>
-        <div class="card-nome">{{ t.nome }}</div>
-        {{ preco_card(t) }}
-      </div>
-      {% elif key == 'vip' %}
-      <div class="pedido-card" style="--card-cor:{{ t.cor }}" onclick="abrirBusca('biblioteca','vip')">
-        <div class="card-emoji">{{ t.emoji }}</div>
-        <div class="card-nome">{{ t.nome }}</div>
-        {{ preco_card(t) }}
-      </div>
-      {% else %}
       <div class="pedido-card" style="--card-cor:{{ t.cor }}"
            onclick="selecionarTipo('{{ key }}','{{ t.nome }}','{{ t.emoji }}',{{ t.preco }},'{{ t.cor }}')">
         <div class="card-emoji">{{ t.emoji }}</div>
         <div class="card-nome">{{ t.nome }}</div>
         {{ preco_card(t) }}
       </div>
-      {% endif %}
     {% endif %}{% endfor %}
   </div>
   {% endif %}
@@ -769,6 +774,12 @@ async function jaPaguei() {
   </div>
   <div class="busca-subtitle" id="busca-subtitle"></div>
 
+  <!-- Fonte da música: acervo do bar ou YouTube — vale pra "Escolher" e pra "Furar a fila" (11/09/26) -->
+  <div id="busca-fonte" style="display:flex;gap:8px;margin:0 0 12px">
+    <button type="button" id="fonte-biblioteca" onclick="trocarFonte('biblioteca')" style="flex:1;padding:10px 0;border-radius:12px;border:2px solid #06b6d4;background:rgba(6,182,212,.14);color:#fff;font-weight:800;font-size:13px;font-family:inherit;cursor:pointer">📚 Acervo do bar</button>
+    <button type="button" id="fonte-youtube" onclick="trocarFonte('youtube')" style="flex:1;padding:10px 0;border-radius:12px;border:2px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:#8888aa;font-weight:800;font-size:13px;font-family:inherit;cursor:pointer">🌐 YouTube</button>
+  </div>
+
   <div class="busca-input-wrap">
     <input type="text" class="busca-input" id="busca-input"
            placeholder="Artista ou nome da música..."
@@ -777,6 +788,8 @@ async function jaPaguei() {
   </div>
 
   <div class="busca-loading" id="busca-loading">🔍 Buscando...</div>
+  <!-- Estilos do acervo (chips) — filtro local, zero request (11/09/26) -->
+  <div id="busca-generos" style="display:none;flex-wrap:wrap;gap:6px;margin:0 0 10px"></div>
   <div class="busca-count" id="busca-count" style="display:none"></div>
   <div id="resultados-lista"></div>
 
@@ -819,7 +832,7 @@ async function jaPaguei() {
     <div class="form-group" id="msg-group" style="display:none">
       <input type="hidden" name="valor_gorjeta" id="inp-valor-gorjeta" value="">
       <div id="gorjeta-valores" style="display:none;margin-bottom:14px">
-        <div style="font-size:12px;color:var(--text2);margin-bottom:8px;font-weight:700">Quanto você quer mandar pra casa?</div>
+        <div style="font-size:12px;color:var(--text2);margin-bottom:8px;font-weight:700">Quanto você quer mandar pra equipe?</div>
         <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
           <button type="button" class="gorjeta-opt" onclick="escolherGorjeta(5,this)" style="padding:12px 0;border-radius:12px;border:2px solid #22c55e55;background:rgba(34,197,94,.08);color:#4ade80;font-weight:900;font-size:16px;font-family:inherit;cursor:pointer">R$ 5</button>
           <button type="button" class="gorjeta-opt" onclick="escolherGorjeta(10,this)" style="padding:12px 0;border-radius:12px;border:2px solid #22c55e55;background:rgba(34,197,94,.08);color:#4ade80;font-weight:900;font-size:16px;font-family:inherit;cursor:pointer">R$ 10</button>
@@ -918,7 +931,7 @@ function aplicarModoGratis(preco) {
 }
 
 function abrirGorjeta() {
-  const t = (PRECOS && PRECOS['gorjeta']) || {nome:'Gorjeta pra casa 🙏', emoji:'🙏', cor:'#22c55e', preco:5};
+  const t = (PRECOS && PRECOS['gorjeta']) || {nome:'Gorjeta pra equipe 🙏', emoji:'🙏', cor:'#22c55e', preco:5};
   selecionarTipo('gorjeta', t.nome, t.emoji, 10, t.cor);   // 10 pré-selecionado
   document.getElementById('gorjeta-valores').style.display = 'block';
   const b10 = document.querySelectorAll('.gorjeta-opt')[1];
@@ -943,7 +956,7 @@ function selecionarTipo(key, nome, emoji, preco, cor) {
   document.getElementById('pix-valor').textContent = precoFinal > 0 ? 'R$ ' + precoFinal.toFixed(2).replace('.', ',') : 'Grátis';
   aplicarModoGratis(preco);
 
-  const especiais = ['parabens','dedicatoria','brinde','chegada','casamento','gorjeta'];
+  const especiais = ['parabens','dedicatoria','brinde','chegada','casamento','gorjeta','cantada'];
   const mgr = document.getElementById('msg-group');
   const mgl = document.getElementById('msg-label');
   if (especiais.includes(key)) {
@@ -951,9 +964,18 @@ function selecionarTipo(key, nome, emoji, preco, cor) {
     mgl.textContent = key === 'parabens' ? 'Recado (aparece na tela)'
       : key === 'dedicatoria' ? 'Mensagem de amor ❤️'
       : key === 'gorjeta' ? 'Recado pra equipe (opcional) 🙏'
+      : key === 'cantada' ? 'Sua cantada (sai na tela) 😏'
       : key === 'casamento'   ? 'Mensagem especial 💕'
       : 'Mensagem (opcional)';
   } else { mgr.style.display = 'none'; }
+  // Cantada: texto obrigatório (é o pedido em si). Nos outros tipos, garante que NÃO fica required
+  // (textarea escondida + required = o form não envia e ninguém entende por quê).
+  const _im = document.getElementById('inp-msg');
+  if (_im) {
+    if (_im.dataset.phOrig === undefined) _im.dataset.phOrig = _im.placeholder || '';
+    _im.required    = (key === 'cantada');
+    _im.placeholder = key === 'cantada' ? 'Ex.: Você não é o Google, mas tem tudo que eu procuro 😏' : _im.dataset.phOrig;
+  }
 
   document.getElementById('musica-preview').style.display = 'none';
   document.getElementById('inp-youtube-id').value = '';
@@ -982,23 +1004,42 @@ function esconderTudo() {
 }
 
 // ── Busca ─────────────────────────────────────────────────────────────────────
+const YT_LIBERADO = {{ 'true' if 'musica_externa' in tipos else 'false' }};
+const CANAIS_NOMES = {{ canais_nomes | tojson if canais_nomes is defined else '{}' }};
+function _estiloFonte(btn, ativo, cor) {
+  btn.style.borderColor = ativo ? cor : 'rgba(255,255,255,.12)';
+  btn.style.background  = ativo ? cor + '24' : 'rgba(255,255,255,.04)';
+  btn.style.color       = ativo ? '#fff' : '#8888aa';
+}
+function trocarFonte(modo) {
+  if (modo === modosBusca) return;
+  abrirBusca(modo, tipoForcado);   // mantém o tipo (ex.: flash) e só troca a fonte
+}
 function abrirBusca(modo, forcado=null) {
   modosBusca  = modo;
-  tipoForcado = forcado;   // 'flash' | 'vip' | null
+  tipoForcado = forcado;   // 'flash' | null
   videoSel    = null;
 
   const tipoFinal  = forcado || (modo === 'youtube' ? 'musica_externa' : 'musica_especifica');
   const precoFinal = (PRECOS[tipoFinal] && PRECOS[tipoFinal].preco) || 0;
   const cor = modo === 'youtube' ? '#dc2626' : '#06b6d4';
 
+  const precoTxt = precoFinal > 0 ? `R$ ${precoFinal.toFixed(0)}` : 'GRÁTIS';
   document.getElementById('busca-title').textContent =
       forcado === 'flash' ? '⚡ Furar a fila — escolha a música'
-    : forcado === 'vip'   ? '👑 Tocar agora — escolha a música'
     : modo === 'youtube'  ? '🌐 Buscar no YouTube'
     : '🎵 Músicas disponíveis';
   document.getElementById('busca-subtitle').textContent = modo === 'youtube'
-    ? `Qualquer música da internet — R$ ${precoFinal.toFixed(0)}`
-    : `${TOTAL_VIDS} músicas no acervo — R$ ${precoFinal.toFixed(0)}`;
+    ? `Qualquer música da internet — ${precoTxt}`
+    : `${TOTAL_VIDS} músicas no acervo — ${precoTxt}`;
+
+  // Toggle de fonte: YouTube sempre liberado no "Furar a fila"; no "Escolher" só se o bar não bloqueou
+  const _fb = document.getElementById('fonte-biblioteca'), _fy = document.getElementById('fonte-youtube');
+  if (_fb && _fy) {
+    _fy.style.display = (forcado === 'flash' || YT_LIBERADO) ? '' : 'none';
+    _estiloFonte(_fb, modo === 'biblioteca', '#06b6d4');
+    _estiloFonte(_fy, modo === 'youtube',    '#dc2626');
+  }
 
   document.querySelector('.busca-input').style.setProperty('border-color', cor);
   document.querySelector('.busca-btn').style.background = cor;
@@ -1019,9 +1060,12 @@ function abrirBusca(modo, forcado=null) {
   window.scrollTo({top:0,behavior:'smooth'});
 
   // Biblioteca: carrega lista completa imediatamente (com cache)
+  const _bg = document.getElementById('busca-generos');
+  if (_bg) _bg.style.display = 'none';
   if (modo === 'biblioteca') {
     if (_biblioCache) {
-      _renderLista(_biblioCache);   // usa cache — zero request
+      _renderChips();
+      onBuscaInput();               // usa cache + chip ativo — zero request
     } else {
       _carregarBibliotecaCompleta();
     }
@@ -1036,6 +1080,7 @@ async function _carregarBibliotecaCompleta() {
     const data = await res.json();
     loading.classList.remove('show');
     _biblioCache = data.resultados || [];
+    _renderChips();
     _renderLista(_biblioCache);
   } catch(e) {
     loading.classList.remove('show');
@@ -1054,18 +1099,54 @@ function _renderLista(lista) {
       '<div style="text-align:center;padding:24px;color:#8888aa;font-size:13px">Nenhuma música encontrada.</div>';
     return;
   }
-  document.getElementById('resultados-lista').innerHTML = lista.map((v, i) => {
-    const id  = v.youtube_id || v.id || '';
-    const sub = `${v.artista || ''}${v.duracao_seg ? ' · ' + Math.floor(v.duracao_seg/60) + 'min' : ''}`;
-    return `<div class="resultado-item" id="res-${i}"
-             onclick='selecionarVideo(${i}, ${JSON.stringify({id, titulo:v.titulo, sub})})'>
+  // Lista atual guardada em memória e clique por índice: título com apóstrofo
+  // ("Don't Stop Me Now", "Guns N' Roses") quebrava o onclick com JSON inline.
+  _listaAtual = lista.map(v => ({
+    id: v.youtube_id || v.id || '',
+    titulo: v.titulo || '',
+    sub: `${v.artista || ''}${v.duracao_seg ? ' · ' + Math.floor(v.duracao_seg/60) + 'min' : ''}`
+  }));
+  document.getElementById('resultados-lista').innerHTML = _listaAtual.map((v, i) => `
+    <div class="resultado-item" id="res-${i}" onclick="selecionarVideoIdx(${i})">
           <div class="resultado-info">
-            <div class="resultado-titulo">${v.titulo || ''}</div>
-            <div class="resultado-sub">${sub}</div>
+            <div class="resultado-titulo">${_esc(v.titulo)}</div>
+            <div class="resultado-sub">${_esc(v.sub)}</div>
           </div>
           <div class="resultado-check">✓</div>
-        </div>`;
+        </div>`).join('');
+}
+
+let _listaAtual = [];
+let _generoSel  = null;   // chip de estilo ativo (null = todos)
+function _esc(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function selecionarVideoIdx(i) {
+  const v = _listaAtual[i];
+  if (v) selecionarVideo(i, v);
+}
+function _renderChips() {
+  const box = document.getElementById('busca-generos');
+  if (!box || !_biblioCache) return;
+  const cont = {};
+  _biblioCache.forEach(v => { if (v.categoria) cont[v.categoria] = (cont[v.categoria] || 0) + 1; });
+  const cats = Object.keys(cont).sort((a, b) => cont[b] - cont[a]);
+  if (cats.length < 2) { box.style.display = 'none'; return; }
+  const chip = (key, label, n) => {
+    const on = _generoSel === key;
+    return `<button type="button" onclick="filtrarGenero(${key === null ? 'null' : "'" + key + "'"})"
+      style="padding:6px 11px;border-radius:999px;border:1px solid ${on ? '#06b6d4' : 'rgba(255,255,255,.14)'};background:${on ? 'rgba(6,182,212,.18)' : 'rgba(255,255,255,.04)'};color:${on ? '#fff' : '#a0a0b8'};font-size:12px;font-weight:700;font-family:inherit;cursor:pointer">${_esc(label)}${n ? ' <span style="opacity:.6">' + n + '</span>' : ''}</button>`;
+  };
+  box.innerHTML = chip(null, '🎧 Todos', _biblioCache.length) + cats.map(k => {
+    const c = (typeof CANAIS_NOMES !== 'undefined' && CANAIS_NOMES[k]) || {};
+    return chip(k, `${c.emoji || '🎵'} ${c.nome || k}`, cont[k]);
   }).join('');
+  box.style.display = 'flex';
+}
+function filtrarGenero(key) {
+  _generoSel = key;
+  _renderChips();
+  onBuscaInput();
 }
 
 function onBuscaInput() {
@@ -1075,12 +1156,12 @@ function onBuscaInput() {
   if (modosBusca === 'biblioteca') {
     // Filtro local — instantâneo, zero request
     if (_biblioCache) {
-      const filtrado = q.length < 1
-        ? _biblioCache
-        : _biblioCache.filter(v =>
-            (v.titulo  || '').toLowerCase().includes(q) ||
-            (v.artista || '').toLowerCase().includes(q)
-          );
+      const filtrado = _biblioCache.filter(v =>
+        (!_generoSel || v.categoria === _generoSel) &&
+        (q.length < 1 ||
+          (v.titulo  || '').toLowerCase().includes(q) ||
+          (v.artista || '').toLowerCase().includes(q))
+      );
       _renderLista(filtrado);
     }
   } else {
@@ -1108,18 +1189,19 @@ async function buscar() {
         '<div style="text-align:center;padding:24px;color:#8888aa;font-size:13px">Nenhum resultado. Tente outra busca.</div>';
       return;
     }
-    document.getElementById('resultados-lista').innerHTML = data.resultados.map((v, i) => {
-      const id  = v.id || '';
-      const sub = `${v.canal || ''}${v.duracao ? ' · ' + v.duracao : ''}`;
-      return `<div class="resultado-item" id="res-${i}"
-               onclick='selecionarVideo(${i}, ${JSON.stringify({id, titulo:v.titulo, sub})})'>
+    _listaAtual = data.resultados.map(v => ({
+      id: v.id || '',
+      titulo: v.titulo || '',
+      sub: `${v.canal || ''}${v.duracao ? ' · ' + v.duracao : ''}`
+    }));
+    document.getElementById('resultados-lista').innerHTML = _listaAtual.map((v, i) => `
+      <div class="resultado-item" id="res-${i}" onclick="selecionarVideoIdx(${i})">
             <div class="resultado-info">
-              <div class="resultado-titulo">${v.titulo || ''}</div>
-              <div class="resultado-sub">${sub}</div>
+              <div class="resultado-titulo">${_esc(v.titulo)}</div>
+              <div class="resultado-sub">${_esc(v.sub)}</div>
             </div>
             <div class="resultado-check">✓</div>
-          </div>`;
-    }).join('');
+          </div>`).join('');
   } catch(e) {
     loading.classList.remove('show');
     document.getElementById('resultados-lista').innerHTML =
@@ -1139,8 +1221,8 @@ function selecionarVideo(idx, v) {
 
 function confirmarMusica() {
   if (!videoSel) return;
-  // Se veio de "Furar a fila" (flash) ou "Tocar agora" (vip), cria o pedido
-  // com esse tipo (prioridade) + a música escolhida.
+  // Se veio de "Furar a fila" (flash), cria o pedido com esse tipo (prioridade)
+  // + a música escolhida — do acervo ou do YouTube, tanto faz.
   const tipo  = tipoForcado || (modosBusca === 'youtube' ? 'musica_externa' : 'musica_especifica');
   const preco = PRECOS[tipo].preco;
   const cor   = (PRECOS[tipo] && PRECOS[tipo].cor) || (modosBusca === 'youtube' ? '#dc2626' : '#06b6d4');

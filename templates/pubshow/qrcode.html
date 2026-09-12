@@ -155,8 +155,8 @@
         <div class="card-sub">
           <strong>Pedir música é GRÁTIS</strong><br>
           ⚡ Furar a fila R$ {{ '%.0f'|format(precos.flash.preco) if precos and precos.flash else '7' }} ·
-          👑 Tocar agora R$ {{ '%.0f'|format(precos.vip.preco) if precos and precos.vip else '10' }}<br>
-          🎂 Parabéns · 💌 Dedicatória · 🙏 Gorjeta pra casa
+          🌐 YouTube{% if precos and precos.musica_externa and precos.musica_externa.preco > 0 %} R$ {{ '%.0f'|format(precos.musica_externa.preco) }}{% else %} grátis{% endif %}<br>
+          🎂 Parabéns · 💌 Dedicatória · 😏 Cantada · 🙏 Gorjeta pra equipe
         </div>
         <img class="qr-img" src="data:image/png;base64,{{ qr_b64 }}" alt="QR Code Jukebox">
         <div class="card-instrucao">

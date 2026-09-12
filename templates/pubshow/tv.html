@@ -379,7 +379,7 @@
 <!-- QR fixo e discreto: é o jeito do cliente pedir música (não é propaganda) -->
 <div id="qr-fixo" style="position:fixed;left:18px;bottom:18px;z-index:40;display:flex;align-items:center;gap:10px;background:rgba(0,0,0,.62);border:1px solid rgba(255,255,255,.14);border-radius:14px;padding:8px 12px 8px 8px;backdrop-filter:blur(6px)">
   {% if tv_qr_b64 %}<img src="data:image/png;base64,{{ tv_qr_b64 }}" alt="QR Jukebox" style="width:72px;height:72px;border-radius:8px;background:#fff">{% endif %}
-  <div style="line-height:1.15"><div style="font-size:15px;font-weight:900;color:#fff">📱 Peça sua música</div><div style="font-size:12px;color:#4ade80;font-weight:700">GRÁTIS · furar a fila R$ 7</div></div>
+  <div style="line-height:1.15"><div style="font-size:15px;font-weight:900;color:#fff">📱 Peça sua música</div><div style="font-size:12px;color:#4ade80;font-weight:700">GRÁTIS · furar a fila R$ {{ '%.0f'|format(preco_flash if preco_flash is defined else 7) }}</div></div>
 </div>
 <div id="cta-fullscreen" onclick="fecharCtaFullscreen()">
   <!-- Vídeo de fundo em loop (muda quando ativado pelo JS) -->
@@ -622,7 +622,8 @@ const TIPO_CONFIG = {
   brinde:      {emoji:'🍻', titulo:'BRINDE GERAL!',        cor:'#22c55e', duracao:6000,  confetes:true},
   chegada:     {emoji:'🎉', titulo:'CHEGARAM!',            cor:'#f97316', duracao:7000,  confetes:true},
   casamento:   {emoji:'💕', titulo:'ELA DISSE SIM! 💕',    cor:'#a855f7', duracao:14000, confetes:true},
-  gorjeta:     {emoji:'🙏', titulo:'GORJETA PRA CASA! 🙏',  cor:'#22c55e', duracao:7000,  confetes:true},
+  gorjeta:     {emoji:'🙏', titulo:'GORJETA PRA EQUIPE! 🙏', cor:'#22c55e', duracao:7000,  confetes:true},
+  cantada:     {emoji:'😏', titulo:'CANTADA! 😏',           cor:'#f472b6', duracao:9000,  confetes:false},
 };
 
 const TIPOS_MUSICA = {

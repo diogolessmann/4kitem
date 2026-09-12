@@ -288,12 +288,35 @@
     </div>
   </div>
 
+  <!-- 🙏 Caixinha da EQUIPE (gorjetas) — isolada do caixa da casa (11/09/26) -->
+  <div class="card" id="sec-gorjeta" style="margin-bottom:20px;border-color:rgba(34,197,94,.35)">
+    <div class="card-title">🙏 Caixinha da equipe (gorjetas)</div>
+    <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap">
+      <div class="stat-val" style="color:#4ade80" id="gorjeta-hoje">R$ {{ '%.2f'|format(gorjeta_hoje)|replace('.',',') }}</div>
+      <div class="stat-sub">{{ gorjeta_hoje_n }} gorjeta(s) hoje</div>
+    </div>
+    <div style="font-size:11px;color:var(--text2);margin:6px 0 10px">Valor líquido — a taxa do PIX já está descontada. <strong style="color:var(--text)">Não entra no caixa da casa</strong>: é pra dividir entre os funcionários.</div>
+    {% if gorjeta_7dias %}
+    <table style="width:100%;border-collapse:collapse;font-size:12px">
+      {% for g in gorjeta_7dias %}
+      <tr style="border-top:1px solid var(--border)">
+        <td style="padding:6px 0;color:var(--text2)">{{ g.dia[8:10] }}/{{ g.dia[5:7] }}</td>
+        <td style="padding:6px 0">{{ g.n }} gorjeta(s)</td>
+        <td style="padding:6px 0;text-align:right;color:#4ade80;font-weight:800">R$ {{ '%.2f'|format(g.tot)|replace('.',',') }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+    {% else %}
+    <div style="font-size:12px;color:var(--text2)">Nenhuma gorjeta nos últimos 7 dias ainda.</div>
+    {% endif %}
+  </div>
+
   <!-- Stats -->
   <div class="grid-3" id="sec-fila">
     <div class="card">
       <div class="card-title">💰 Jukebox hoje</div>
       <div class="stat-val" style="color:var(--green)" id="total-hoje">R$ {{ '%.2f'|format(total_hoje)|replace('.',',') }}</div>
-      <div class="stat-sub">{{ pedidos_hoje|length }} pedidos recebidos</div>
+      <div class="stat-sub">{{ pedidos_hoje|length }} pedidos · caixa da casa (gorjetas à parte)</div>
     </div>
     <div class="card">
       <div class="card-title">📋 Fila agora</div>
@@ -524,15 +547,19 @@
           <tr style="border-bottom:1px solid var(--border)">
             <td style="padding:8px 0;color:var(--text2)">{{ p.created_at[11:16] if p.created_at else '—' }}</td>
             <td style="padding:8px 0">{{ p.nome_cliente }}</td>
-            <td style="padding:8px 0">{{ t.get('emoji','') }} {{ t.get('nome', p.tipo) }}</td>
+            <td style="padding:8px 0">{{ t.get('emoji','') }} {{ t.get('nome', p.tipo) }}{% if p.tipo == 'gorjeta' %} <span style="font-size:10px;color:#4ade80;font-weight:800">EQUIPE</span>{% endif %}</td>
             <td style="padding:8px 0;text-align:right;color:var(--green);font-weight:700">R$ {{ '%.0f'|format(p.valor or 0) }}</td>
           </tr>
           {% endfor %}
         </tbody>
         <tfoot>
           <tr>
-            <td colspan="3" style="padding:10px 0;font-weight:700">Total do dia</td>
+            <td colspan="3" style="padding:10px 0;font-weight:700">Caixa da casa (sem gorjetas)</td>
             <td style="padding:10px 0;text-align:right;color:var(--green);font-weight:900;font-size:16px">R$ {{ '%.2f'|format(total_hoje) }}</td>
+          </tr>
+          <tr>
+            <td colspan="3" style="padding:6px 0;font-weight:700;color:#4ade80">🙏 Gorjetas da equipe (à parte)</td>
+            <td style="padding:6px 0;text-align:right;color:#4ade80;font-weight:900">R$ {{ '%.2f'|format(gorjeta_hoje) }}</td>
           </tr>
         </tfoot>
       </table>
@@ -852,7 +879,7 @@
       <div>
         <label class="label-sm">✅ Tipos de pedido disponíveis</label>
         <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px">
-          {% for key, t in tipos.items() %}
+          {% for key, t in tipos_config.items() %}
           <label style="display:flex;align-items:center;gap:6px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:7px 12px;cursor:pointer;font-size:12px;font-weight:700">
             <input type="checkbox" name="tipos_ativos" value="{{ key }}"
               {% if key not in bloqueados_parsed %}checked{% endif %}
@@ -867,7 +894,7 @@
       <div>
         <label class="label-sm">💰 Preços customizados (deixe em branco para usar o padrão)</label>
         <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px;margin-top:6px">
-          {% for key, t in tipos.items() %}
+          {% for key, t in tipos_config.items() %}
           <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 12px">
             <div style="font-size:11px;color:var(--text2);margin-bottom:4px">{{ t.emoji }} {{ t.nome }}</div>
             <div style="display:flex;align-items:center;gap:6px">
@@ -1145,6 +1172,10 @@ function renderFila(fila) {
   if (count) count.textContent = fila.length;
 }
 
+function renderGorjetaHoje(total) {
+  const el = document.getElementById('gorjeta-hoje');
+  if (el && typeof total === 'number') el.textContent = 'R$ ' + total.toFixed(2).replace('.', ',');
+}
 function renderTotalHoje(total) {
   const el = document.getElementById('total-hoje');
   if (el) el.textContent = 'R$ ' + total.toFixed(2).replace('.', ',');
@@ -1158,6 +1189,7 @@ function pollFila() {
     .then(d => {
       renderFila(d.fila || []);
       renderTotalHoje(d.total_hoje || 0);
+      renderGorjetaHoje(d.gorjeta_hoje);
       // Se houver mudança nos aguardando_pix, recarrega só se nenhum input estiver em foco
       const temPix = (d.aguardando_pix || []).length;
       const pixAtual = document.querySelectorAll('.pix-pedido-row').length;
