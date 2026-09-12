@@ -177,7 +177,7 @@ _SLIDES_DIR = os.path.join(
 
 
 GORJETA_VALORES = (5.0, 10.0, 20.0, 50.0)   # opções de gorjeta no celular do cliente
-TIPOS_SEMPRE_GRATIS = ('musica', 'musica_especifica')   # nunca cobrados, mesmo com precos_custom
+TIPOS_SEMPRE_GRATIS = ('musica', 'musica_especifica', 'musica_externa')   # nunca cobrados, mesmo com precos_custom (YouTube incluído — 12/09/26, Garage tinha 0,50)
 TIPOS_OCULTOS = ('vip',)       # existem no banco/TV, mas o cliente não vê ("Tocar agora" saiu, YouTube entrou — 11/09/26)
 TIPOS_EQUIPE  = ('gorjeta',)   # dinheiro da EQUIPE, não do caixa da casa — somado à parte no painel
 

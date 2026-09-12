@@ -644,7 +644,7 @@ async function jaPaguei() {
         <div class="card-preco">R$ {{ '%.0f'|format(t.preco) }}</div>
         <div style="font-size:9px;color:var(--text2);text-decoration:line-through;margin-top:-2px">R$ {{ '%.0f'|format(t.preco_original) }}</div>
       {% else %}
-        <div class="card-preco">R$ {{ '%.0f'|format(t.preco) }}</div>
+        <div class="card-preco">R$ {{ ('%.0f' if t.preco == (t.preco|int) else '%.2f')|format(t.preco)|replace('.',',') }}</div>
       {% endif %}
     {% endmacro %}
 
