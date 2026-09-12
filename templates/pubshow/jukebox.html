@@ -687,7 +687,7 @@ async function jaPaguei() {
       <div class="card-emoji">{{ t.emoji }}</div>
       <div class="card-nome" data-i18n="card_flash">Furar<br>a fila</div>
       {{ preco_card(t) }}
-      <div class="card-detalhe">acervo ou YouTube</div>
+      <div class="card-detalhe">{% if youtube_liberado %}acervo ou YouTube{% else %}escolha na lista{% endif %}</div>
     </div>{% endif %}
 
     {# 3. Buscar no YouTube — subiu das "Mais opções" pro lugar do "Tocar agora" (11/09/26) #}
@@ -1004,7 +1004,7 @@ function esconderTudo() {
 }
 
 // ── Busca ─────────────────────────────────────────────────────────────────────
-const YT_LIBERADO = {{ 'true' if 'musica_externa' in tipos else 'false' }};
+const YT_LIBERADO = {{ 'true' if youtube_liberado else 'false' }};   // interruptor do bar (Ajustes → Buscar no YouTube)
 const CANAIS_NOMES = {{ canais_nomes | tojson if canais_nomes is defined else '{}' }};
 function _estiloFonte(btn, ativo, cor) {
   btn.style.borderColor = ativo ? cor : 'rgba(255,255,255,.12)';
@@ -1036,7 +1036,7 @@ function abrirBusca(modo, forcado=null) {
   // Toggle de fonte: YouTube sempre liberado no "Furar a fila"; no "Escolher" só se o bar não bloqueou
   const _fb = document.getElementById('fonte-biblioteca'), _fy = document.getElementById('fonte-youtube');
   if (_fb && _fy) {
-    _fy.style.display = (forcado === 'flash' || YT_LIBERADO) ? '' : 'none';
+    _fy.style.display = YT_LIBERADO ? '' : 'none';
     _estiloFonte(_fb, modo === 'biblioteca', '#06b6d4');
     _estiloFonte(_fy, modo === 'youtube',    '#dc2626');
   }

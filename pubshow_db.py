@@ -174,7 +174,8 @@ def init_pubshow_db():
         # Botão do dono "pular música agora" — contador incremental; a TV pula
         # quando vê que subiu (comando via polling do /api/status).
         'ALTER TABLE pubshow_businesses ADD COLUMN skip_seq INTEGER DEFAULT 0',
-        'ALTER TABLE pubshow_businesses ADD COLUMN tv_volume INTEGER DEFAULT 100',   # volume da TV controlado pelo painel (0-100)
+        'ALTER TABLE pubshow_businesses ADD COLUMN tv_volume INTEGER DEFAULT 100',
+        'ALTER TABLE pubshow_businesses ADD COLUMN videos_bloqueados TEXT',   # JSON: youtube_ids que o gerente baniu ("nunca mais") — 11/09/26   # volume da TV controlado pelo painel (0-100)
         # Coluna qualidade dos vídeos — existia no CREATE TABLE mas faltava a
         # migração; bancos antigos (produção) não tinham, e o import de playlist
         # (que usa essa coluna) crashava com 500. Agora garante a coluna.

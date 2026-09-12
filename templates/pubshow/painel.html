@@ -878,6 +878,7 @@
       <!-- Tipos de pedido disponíveis -->
       <div>
         <label class="label-sm">✅ Tipos de pedido disponíveis</label>
+        <div style="font-size:11px;color:var(--text2);margin:4px 0 2px">🌐 <strong style="color:var(--text)">Buscar no YouTube</strong> é o interruptor: marcado, o cliente pode pedir qualquer música do YouTube (o sistema confere se o clipe toca na TV e o que tocou entra no acervo). Desmarcado, só o acervo curado — vale pro "Furar a fila" também.</div>
         <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px">
           {% for key, t in tipos_config.items() %}
           <label style="display:flex;align-items:center;gap:6px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:7px 12px;cursor:pointer;font-size:12px;font-weight:700">
@@ -1118,6 +1119,10 @@ const TIPOS_INFO = {{ tipos | tojson }};
 // Tipos de pedido que a TV toca automaticamente (sem precisar do bar owner)
 const TIPOS_AUTO_TV = ['musica', 'musica_especifica', 'musica_externa', 'flash', 'vip'];
 
+// texto vindo do celular do cliente nunca entra como HTML (XSS no painel do gerente)
+function _escHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
 function renderFila(fila) {
   const div = document.getElementById('fila-pedidos');
   if (!div) return;
@@ -1131,8 +1136,15 @@ function renderFila(fila) {
     const t = TIPOS_INFO[p.tipo] || {};
     const emoji = t.emoji || '🎵';
     const nome_tipo = t.nome || p.tipo;
-    const musica = p.titulo_pedido ? `🎵 ${p.titulo_pedido.substring(0,40)}` : '';
-    const msg = p.mensagem ? ` · "${p.mensagem.substring(0,30)}"` : '';
+    const musica = p.titulo_pedido ? `🎵 ${_escHtml(p.titulo_pedido.substring(0,40))}` : '';
+    const msg = p.mensagem ? ` · "${_escHtml(p.mensagem.substring(0,30))}"` : '';
+    // 🚫 nunca mais: só pra pedido com vídeo (bane no bar + tira da fila)
+    const btnBan = p.youtube_id
+      ? `<form method="POST" action="/pubshow/painel/bloquear-video" style="margin:0 0 0 6px" onsubmit="return confirm('Bloquear esta música neste bar pra sempre e tirar da fila?')">
+           <input type="hidden" name="youtube_id" value="${_escHtml(p.youtube_id)}"><input type="hidden" name="pedido_id" value="${p.id}">
+           <button type="submit" class="pedido-dispensar" style="background:rgba(239,68,68,.15);color:#fca5a5" title="Nunca mais essa música neste bar">🚫</button>
+         </form>`
+      : '';
     const valor = Math.round(p.valor || 0);
     const isAutoTV = TIPOS_AUTO_TV.includes(p.tipo);
     const isProximo = idx === 0;
@@ -1155,7 +1167,7 @@ function renderFila(fila) {
       <span class="pedido-emoji">${emoji}</span>
       <div class="pedido-info">
         ${proxLabel}
-        <div class="pedido-nome">${p.nome_cliente}</div>
+        <div class="pedido-nome">${_escHtml(p.nome_cliente)}</div>
         <div class="pedido-tipo">${musica || nome_tipo}${msg}</div>
       </div>
       <span class="pedido-valor">R$ ${valor}</span>
@@ -1163,7 +1175,7 @@ function renderFila(fila) {
         <button type="submit" class="pedido-dispensar" title="${btnTitle}" ${btnOnclick}>
           ${isAutoTV ? '📺 Tocou' : '✅ OK'}
         </button>
-      </form>
+      </form>${btnBan}
     </div>`;
   }).join('');
 

@@ -930,6 +930,55 @@ def _tipos_disponiveis(b):
     return {k: v for k, v in TIPOS_PEDIDO.items() if k not in bloqueados and k not in TIPOS_OCULTOS}
 
 
+def _youtube_liberado(b):
+    """Interruptor do BAR (11/09/26): o checkbox "Buscar no YouTube" nos Ajustes manda em TUDO
+    (Escolher, Furar a fila). Desligado = cliente só escolhe do acervo curado."""
+    if 'musica_externa' not in _tipos_disponiveis(b):
+        return False
+    permitidos = _plano_tipos_permitidos(dict(b))
+    return permitidos is None or 'musica_externa' in permitidos
+
+
+def _videos_bloqueados(b):
+    import json
+    try:
+        v = json.loads((b['videos_bloqueados'] if 'videos_bloqueados' in b.keys() else None) or '[]')
+        return [x for x in v if isinstance(x, str)]
+    except Exception:
+        return []
+
+
+def _oembed_status(yid):
+    """(status_http, json|None) do oEmbed do YouTube. 200 = existe e é embutível; 401/403 = dono
+    bloqueou embed; 404 = removido; 0 = rede falhou (não bloquear o cliente por isso)."""
+    try:
+        r = _requests.get('https://www.youtube.com/oembed',
+                          params={'url': f'https://www.youtube.com/watch?v={yid}', 'format': 'json'}, timeout=4)
+        return r.status_code, (r.json() if r.status_code == 200 else None)
+    except Exception:
+        return 0, None
+
+
+def _validar_video_pedido(b, youtube_id):
+    """Retorna '' se o vídeo pode entrar na fila deste bar, senão a mensagem de erro pro cliente.
+    Acervo curado passa direto; fora do acervo só com o YouTube liberado pelo bar E embed OK."""
+    if youtube_id in _videos_bloqueados(b):
+        return 'Essa música foi bloqueada pelo bar. Escolhe outra. 🙏'
+    conn = get_pubshow_db()
+    curado = conn.execute('SELECT 1 FROM pubshow_videos WHERE youtube_id=? AND ativo=1', (youtube_id,)).fetchone()
+    conn.close()
+    if curado:
+        return ''
+    if not _youtube_liberado(b):
+        return 'Esse bar só aceita músicas do acervo. Escolhe na lista. 🎵'
+    st, _ = _oembed_status(youtube_id)
+    if st in (401, 403):
+        return 'Esse clipe não toca na TV (o dono do vídeo bloqueou). Escolhe outro. 🙏'
+    if st == 404:
+        return 'Esse vídeo não existe mais no YouTube. Escolhe outro.'
+    return ''
+
+
 def _tipos_config():
     """Tipos que o gerente vê nas configurações (sem os ocultos do cliente)."""
     return {k: v for k, v in TIPOS_PEDIDO.items() if k not in TIPOS_OCULTOS}
@@ -1594,6 +1643,8 @@ def jukebox(token):
                 erro = 'Selecione uma música antes de confirmar.'
             elif tipo == 'cantada' and not mensagem:
                 erro = 'Escreve a cantada antes de mandar. 😏'
+            elif youtube_id and (_erro_yt := _validar_video_pedido(b, youtube_id)):
+                erro = _erro_yt
             else:
                 preco = precos_bar[tipo]['preco']
                 if tipo == 'gorjeta':
@@ -1830,6 +1881,7 @@ def jukebox(token):
                            pix_pendente=pix_pendente,
                            total_videos=total_videos,
                            canais_nomes={k: {'nome': v['nome'], 'emoji': v['emoji']} for k, v in CANAIS.items()},
+                           youtube_liberado=_youtube_liberado(b),
                            aberto=aberto, motivo_fechado=motivo_fechado,
                            aviso=aviso, token=token,
                            pix_offset=pix_offset,
@@ -2014,7 +2066,7 @@ def api_pedido_exibido(pedido_id):
     code = data.get('code') or request.form.get('code', '')
     conn = get_pubshow_db()
     pedido = conn.execute(
-        'SELECT id, business_id FROM pubshow_pedidos WHERE id=?', (pedido_id,)
+        'SELECT id, business_id, youtube_id, titulo_pedido, categoria FROM pubshow_pedidos WHERE id=?', (pedido_id,)
     ).fetchone()
     if not pedido:
         conn.close()
@@ -2032,6 +2084,16 @@ def api_pedido_exibido(pedido_id):
         "UPDATE pubshow_pedidos SET status='exibido', exibido_at=datetime('now','-3 hours') WHERE id=?",
         (pedido_id,)
     )
+    # Acervo que cresce com o uso (11/09/26): música do YouTube que TOCOU na TV entra no acervo,
+    # na categoria do canal que estava no ar. O cardápio vira o que o público daquele bar pede.
+    _yid = (pedido['youtube_id'] or '').strip()
+    if _yid and re.fullmatch(r'[A-Za-z0-9_-]{6,20}', _yid):
+        _cat = pedido['categoria'] if pedido['categoria'] in CANAIS else 'rock'
+        conn.execute(
+            'INSERT OR IGNORE INTO pubshow_videos (youtube_id, titulo, artista, categoria, subcategoria, duracao_seg, views_milhoes, ativo) '
+            'VALUES (?,?,?,?,?,180,0,1)',
+            (_yid, (pedido['titulo_pedido'] or _yid)[:120], '', _cat, 'pedido_publico')
+        )
     conn.commit(); conn.close()
     return jsonify({'ok': True})
 
@@ -2115,6 +2177,11 @@ def api_buscar_biblioteca():
                 generos_permitidos = _json.loads(brow['generos_jukebox'])
             except Exception:
                 generos_permitidos = None
+    banidos = set()
+    if bar_token:
+        _bb = conn.execute('SELECT videos_bloqueados FROM pubshow_businesses WHERE jukebox_token=? OR code=? LIMIT 1',
+                           (bar_token, bar_token)).fetchone()
+        if _bb: banidos = set(_videos_bloqueados(_bb))
 
     limite = 600 if lista_full else 30   # 11/09/26: lista inicial = acervo INTEIRO (cliente filtra por estilo no celular)
 
@@ -2157,6 +2224,8 @@ def api_buscar_biblioteca():
                 (like, like)
             ).fetchall()
 
+    if banidos:
+        rows = [r for r in rows if r['youtube_id'] not in banidos]
     conn.close()
     return jsonify({'resultados': [dict(r) for r in rows], 'total': len(rows)})
 
@@ -2353,13 +2422,13 @@ def painel_fila_json():
         return jsonify({'error': 'não autorizado'}), 401
     conn = get_pubshow_db()
     fila = conn.execute(
-        '''SELECT id, nome_cliente, tipo, mensagem, valor, created_at
+        '''SELECT id, nome_cliente, tipo, mensagem, valor, created_at, youtube_id, titulo_pedido
            FROM pubshow_pedidos WHERE business_id=? AND status="pendente"
            ORDER BY created_at ASC LIMIT 20''',
         (b['id'],)
     ).fetchall()
     aguardando = conn.execute(
-        '''SELECT id, nome_cliente, tipo, mensagem, valor, created_at
+        '''SELECT id, nome_cliente, tipo, mensagem, valor, created_at, youtube_id, titulo_pedido
            FROM pubshow_pedidos WHERE business_id=? AND status="aguardando_pix"
            ORDER BY created_at DESC LIMIT 20''',
         (b['id'],)
@@ -3120,6 +3189,30 @@ def painel_pular_musica():
     conn.commit(); conn.close()
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
         return jsonify({'ok': True})
+    return redirect('/pubshow/painel')
+
+
+@pubshow_bp.route('/painel/bloquear-video', methods=['POST'])
+@pubshow_login_required
+def painel_bloquear_video():
+    """🚫 "Nunca mais": bane um youtube_id neste bar (some da lista e é recusado no pedido)
+    e dispensa o pedido que o trouxe, se informado."""
+    import json as _json
+    b = _get_business()
+    if not b: return redirect('/pubshow/entrar')
+    yid = (request.form.get('youtube_id') or '').strip()[:20]
+    if not re.fullmatch(r'[A-Za-z0-9_-]{6,20}', yid):
+        return redirect('/pubshow/painel')
+    lista = _videos_bloqueados(b)
+    if yid not in lista:
+        lista.append(yid)
+    conn = get_pubshow_db()
+    conn.execute('UPDATE pubshow_businesses SET videos_bloqueados=? WHERE id=?', (_json.dumps(lista[-300:]), b['id']))
+    pid = request.form.get('pedido_id', '')
+    if pid.isdigit():
+        conn.execute("UPDATE pubshow_pedidos SET status='dispensado' WHERE id=? AND business_id=? AND status IN ('pendente','aguardando_pix')",
+                     (int(pid), b['id']))
+    conn.commit(); conn.close()
     return redirect('/pubshow/painel')
 
 
