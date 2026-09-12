@@ -193,6 +193,8 @@ TIPOS_PEDIDO = {
     'chegada':          {'nome': 'Chegamos! 🎉',           'emoji': '🎉', 'preco': 5.00,  'cor': '#f97316'},
     # Cantada (11/09/26): o cliente escreve a cantada e ela aparece na tela — o "esquenta" do pedido de namoro
     'cantada':          {'nome': 'Mandar uma cantada 😏',  'emoji': '😏', 'preco': 5.00,  'cor': '#f472b6', 'ok': True},   # 'ok': passa pelo gerente antes da TV
+    # Salve pra outra mesa (12/09/26): recado de mesa pra mesa — alvo é a MESA, não uma pessoa; sem gate
+    'salve':            {'nome': 'Salve pra outra mesa 📣', 'emoji': '📣', 'preco': 5.00,  'cor': '#0ea5e9'},
     # chave 'casamento' mantida por compatibilidade com o banco; rótulo agora é "Namoro"
     'casamento':        {'nome': 'Pedido de Namoro 💕',   'emoji': '💕', 'preco': 25.00, 'cor': '#a855f7', 'ok': True},
     # Gorjeta pra EQUIPE (11/09/26): valor escolhido pelo cliente entre GORJETA_VALORES; 5 é só o mínimo exibido.
@@ -1995,7 +1997,7 @@ def api_status(code):
     pedido_especial = conn.execute(
         '''SELECT * FROM pubshow_pedidos
            WHERE business_id=? AND status="pendente"
-           AND tipo IN ("parabens","dedicatoria","brinde","chegada","casamento","gorjeta","cantada")
+           AND tipo IN ("parabens","dedicatoria","brinde","chegada","casamento","gorjeta","cantada","salve")
            ORDER BY created_at ASC LIMIT 1''',
         (b['id'],)
     ).fetchone()

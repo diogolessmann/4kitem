@@ -558,6 +558,7 @@ async function jaPaguei() {
       {% elif sucesso == 'casamento' %}O pedido vai aparecer na tela! Boa sorte! 💕🥹
       {% elif sucesso == 'gorjeta' %}Valeu demais! Sua gorjeta aparece na tela e a equipe agradece. 🙏
       {% elif sucesso == 'cantada' %}Cantada mandada! Ela aparece na tela em instantes. Boa sorte! 😏
+      {% elif sucesso == 'salve' %}Salve mandado! Aparece na tela em instantes. 📣
       {% else %}Seu pedido está na fila! Aguarda um momento.
       {% endif %}
     </p>
@@ -723,7 +724,7 @@ async function jaPaguei() {
   </div>
 
   {# Mais opções: namoro, brinde, chegada ("Tocar agora" saiu em 11/09/26; YouTube subiu pro grid) #}
-  {% set extras = ['casamento','brinde','chegada'] %}
+  {% set extras = ['salve','casamento','brinde','chegada'] %}
   {% if extras|select('in', tipos)|list %}
   <button class="btn-mais-opcoes" onclick="toggleMaisOpcoes(this)" id="btn-mais">
     <span data-i18n="mais_opcoes">⋯ Mais opções</span>
@@ -955,7 +956,7 @@ function selecionarTipo(key, nome, emoji, preco, cor) {
   _notaTaxaPix(precoFinal);
   aplicarModoGratis(preco);
 
-  const especiais = ['parabens','dedicatoria','brinde','chegada','casamento','gorjeta','cantada'];
+  const especiais = ['parabens','dedicatoria','brinde','chegada','casamento','gorjeta','cantada','salve'];
   const mgr = document.getElementById('msg-group');
   const mgl = document.getElementById('msg-label');
   if (especiais.includes(key)) {
@@ -964,6 +965,7 @@ function selecionarTipo(key, nome, emoji, preco, cor) {
       : key === 'dedicatoria' ? 'Mensagem de amor ❤️'
       : key === 'gorjeta' ? 'Recado pra equipe (opcional) 🙏'
       : key === 'cantada' ? 'Sua cantada (sai na tela) 😏'
+      : key === 'salve' ? 'Pra qual mesa e o recado 📣'
       : key === 'casamento'   ? 'Mensagem especial 💕'
       : 'Mensagem (opcional)';
   } else { mgr.style.display = 'none'; }
@@ -973,7 +975,8 @@ function selecionarTipo(key, nome, emoji, preco, cor) {
   if (_im) {
     if (_im.dataset.phOrig === undefined) _im.dataset.phOrig = _im.placeholder || '';
     _im.required    = (key === 'cantada');
-    _im.placeholder = key === 'cantada' ? 'Ex.: Você não é o Google, mas tem tudo que eu procuro 😏' : _im.dataset.phOrig;
+    _im.placeholder = key === 'cantada' ? 'Ex.: Você não é o Google, mas tem tudo que eu procuro 😏'
+                    : key === 'salve'   ? 'Ex.: Mesa 3, a próxima é por nossa conta 😉' : _im.dataset.phOrig;
   }
 
   document.getElementById('musica-preview').style.display = 'none';
