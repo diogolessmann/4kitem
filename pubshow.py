@@ -1045,7 +1045,8 @@ def _precos_do_bar(b):
     for k, v in TIPOS_PEDIDO.items():
         t = dict(v)
         if k in custom:
-            t['preco'] = float(custom[k])
+            # piso R$5 (decisão 12/09/26: "grátis ou a partir de 5,00" — abaixo disso a taxa do PIX come o pedido)
+            t['preco'] = max(float(custom[k]), PIX_PISO_PRECO)
         if k in TIPOS_SEMPRE_GRATIS:
             t['preco'] = 0.0          # decisão 11/09/26: pedir música é grátis em TODO bar, custom não sobrepõe
             tipos[k] = t

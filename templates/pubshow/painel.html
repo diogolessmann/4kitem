@@ -648,14 +648,14 @@
 
       <!-- Preços custom -->
       <div>
-        <label class="label-sm">💰 Preços customizados (deixe em branco para usar o padrão)</label>
+        <label class="label-sm">💰 Preços customizados (em branco = padrão · mínimo R$ 5 — abaixo disso a taxa do PIX come o pedido · música é sempre grátis)</label>
         <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px;margin-top:6px">
           {% for key, t in tipos_config.items() %}
           <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 12px">
             <div style="font-size:11px;color:var(--text2);margin-bottom:4px">{{ t.emoji }} {{ t.nome }}</div>
             <div style="display:flex;align-items:center;gap:6px">
               <span style="font-size:12px;color:var(--text2)">R$</span>
-              <input type="number" name="preco_{{ key }}" step="1" min="1" max="200"
+              <input type="number" name="preco_{{ key }}" step="1" min="5" max="200"
                 value="{{ '%.2f'|format(precos_parsed[key]|float) if precos_parsed.get(key) else '' }}"
                 placeholder="{{ '%.2f'|format(t.preco) }}"
                 style="width:100%;background:transparent;border:none;color:var(--text);font-size:14px;font-weight:700;font-family:inherit;outline:none">
