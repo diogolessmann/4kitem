@@ -30,7 +30,7 @@ APPS = {
     'mandazap':    {'nome': 'MandaZap',              'comissao': 16.18, 'unidade': 'por mês',    'url': '/mandazap',          'desc': 'Marketing no WhatsApp com anti-ban',    'icone': '/static/img/mandazap/logo.webp'},
     'despachante': {'nome': 'Amigo Despachante',     'comissao': 32.25, 'unidade': 'por mês',    'url': '/amigo-despachante', 'desc': 'Sistema completo pra despachantes',     'icone': '/static/img/despachante/logo.webp'},
     'defesapro':   {'nome': 'DefesaPro',             'comissao': 50.00, 'unidade': 'por mês',    'url': '/defesapro',         'desc': 'Gestão de defesas de multas com IA',    'icone': '/static/img/defesapro/logo.png'},
-    'vetzap':      {'nome': 'VetZap',                'comissao': 10.00, 'unidade': 'por compra', 'url': '/vetzap',            'desc': 'Triagem veterinária 24h por IA',        'icone': '/static/vetzap/vetzap-logo-icon.png'},
+    # 'vetzap' removido do programa em 13/09/26 (produto fora do ar)
     'pcd':         {'nome': 'PCD Fácil',             'comissao': 10.00, 'unidade': 'por compra', 'url': '/pcd',               'desc': 'Isenção de impostos pra PCD',           'icone': ''},
     'radar':       {'nome': 'Radar de Licitações TI','comissao': 15.00, 'unidade': 'por mês',    'url': '/radar/',            'desc': 'Licitações de TI filtradas por IA',     'icone': '/static/img/radar/logo.webp'},
     'licita_norte':{'nome': 'Radar Licita Norte',   'comissao': 10.00, 'unidade': 'por mês',    'url': '/licita-norte/',     'desc': 'Licitações do Norte de SC',             'icone': '/static/img/licita/logo.webp'},

@@ -132,7 +132,7 @@ def _sitemap():
     # host único www; blueprints com barra final (sem isso cada loc respondia 308); só páginas com produto
     urls = ['/', '/pubshow/', '/despachante-info', '/defesapro',
             '/slotzap/planos', '/somaja/', '/somaja/mei', '/atendezap/',
-            '/mandazap', '/kids', '/vetzap/', '/pcd/', '/bau',
+            '/mandazap', '/kids', '/pcd/', '/bau',   # vetzap fora do ar (13/09/26)
             '/amparo/', '/camponline', '/drzap/', '/afiliados/',
             '/privacidade', '/termos']
     items = ''.join(
@@ -15268,10 +15268,17 @@ except Exception as _cv_err:
 @app.route('/petmed/', methods=['GET', 'POST'])
 @app.route('/petmed/<path:sub>', methods=['GET', 'POST'])
 def _vetzap_legacy_redirect(sub=''):
-    qs = ('?' + request.query_string.decode('utf-8')) if request.query_string else ''
-    # 307 preserva método+corpo (POST de webhooks antigos não quebra); 301 p/ GET (links/SEO)
-    code = 307 if request.method == 'POST' else 301
-    return redirect('/vetzap/' + sub + qs, code=code)
+    # VETZAP OFFLINE (13/09/26, decisão do Diogo após leitura da Res. CFMV 1.465/2022):
+    # nada de /petmed nem /vetzap fica acessível ao público — tudo cai na home. Código dos blueprints fica.
+    return redirect('/', code=302)
+
+
+@app.before_request
+def _vetzap_offline():
+    """VETZAP OFFLINE: bloqueia os blueprints /vetzap (petmed_bp + vetzap_bp) sem desregistrá-los."""
+    p = request.path or ''
+    if p == '/vetzap' or p.startswith('/vetzap/'):
+        return redirect('/', code=302)
 
 # ══════════════════════════════════════════════════════════════════════════════
 # PUBSHOW — Jukebox digital para bares e pubs
