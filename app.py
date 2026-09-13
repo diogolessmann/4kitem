@@ -40,6 +40,12 @@ if not _sk:
 app.secret_key = _sk
 app.config['TEMPLATES_AUTO_RELOAD'] = True  # templates sempre relidos do disco
 
+# Atrás do Cloudflare + Railway o Flask enxergava http:// e todo redirect (barra final dos blueprints)
+# saía como 308 para http:// — 2 saltos inseguros. x_proto/x_host bastam; x_for fica de fora de
+# propósito: o código lê X-Forwarded-For na mão e o nº de proxies difere entre www e apex. Só x_proto. (SEO lote 1, 12/09/26)
+from werkzeug.middleware.proxy_fix import ProxyFix
+app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1)
+
 
 # ── Headers de segurança (aplicados a todas as respostas) ──────────────────────
 @app.after_request
@@ -105,23 +111,32 @@ def _security_headers(resp):
 
 
 # ── SEO técnico + páginas legais ───────────────────────────────────────────────
+_SITEMAP_LASTMOD = '2026-09-12'   # atualizar quando uma landing mudar de verdade
 @app.route('/robots.txt')
 def _robots():
-    body = ('User-agent: *\nAllow: /\nDisallow: /saas-admin\n'
-            'Sitemap: https://4kitem.com.br/sitemap.xml\n')
+    body = ('User-agent: *\nAllow: /\nDisallow: /saas-admin\nDisallow: /pubshow/admin\nDisallow: /pubshow/painel\n'
+            'Sitemap: https://www.4kitem.com.br/sitemap.xml\n')
     return Response(body, mimetype='text/plain')
+
+
+@app.route('/llms.txt')
+def _llms_txt():
+    """O que ChatGPT/Gemini/Perplexity/Claude leem pra saber o que citar do 4kitem (fatos, sem adjetivo).
+    Preços do PubShow vêm do dict PLANOS (mesma fonte da landing) — nunca número solto."""
+    from pubshow import PLANOS as _ps_planos
+    return Response(render_template('llms.txt', planos=_ps_planos), content_type='text/plain; charset=utf-8')
 
 
 @app.route('/sitemap.xml')
 def _sitemap():
-    urls = ['/', '/atendezap', '/somaja', '/somaja/mei', '/mandazap',
-            '/agenda', '/alerta', '/kids', '/despachante-info', '/defesapro',
-            '/vetzap', '/pcd', '/mandaja', '/mandajr', '/bau', '/amparo',
-            '/pubshow', '/slotzap',
-            '/rifaja', '/camponline', '/drzap', '/afiliados',
+    # host único www; blueprints com barra final (sem isso cada loc respondia 308); só páginas com produto
+    urls = ['/', '/pubshow/', '/despachante-info', '/defesapro', '/agenda',
+            '/slotzap/planos', '/somaja/', '/somaja/mei', '/atendezap/',
+            '/mandazap', '/mandaja', '/kids', '/vetzap/', '/pcd/', '/bau',
+            '/amparo/', '/camponline', '/drzap/', '/afiliados/',
             '/privacidade', '/termos']
     items = ''.join(
-        '<url><loc>https://4kitem.com.br%s</loc></url>' % u for u in urls)
+        '<url><loc>https://www.4kitem.com.br%s</loc><lastmod>%s</lastmod></url>' % (u, _SITEMAP_LASTMOD) for u in urls)
     xml = ('<?xml version="1.0" encoding="UTF-8"?>'
            '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
            + items + '</urlset>')
