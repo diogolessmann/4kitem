@@ -130,9 +130,9 @@ def _llms_txt():
 @app.route('/sitemap.xml')
 def _sitemap():
     # host único www; blueprints com barra final (sem isso cada loc respondia 308); só páginas com produto
-    urls = ['/', '/pubshow/', '/despachante-info', '/defesapro', '/agenda',
+    urls = ['/', '/pubshow/', '/despachante-info', '/defesapro',
             '/slotzap/planos', '/somaja/', '/somaja/mei', '/atendezap/',
-            '/mandazap', '/mandaja', '/kids', '/vetzap/', '/pcd/', '/bau',
+            '/mandazap', '/kids', '/vetzap/', '/pcd/', '/bau',
             '/amparo/', '/camponline', '/drzap/', '/afiliados/',
             '/privacidade', '/termos']
     items = ''.join(
