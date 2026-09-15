@@ -311,14 +311,27 @@ def gerar_legenda(marca, arquivo):
 
 
 # ------------------------------------------------------------------ publicação (só IG Despachante)
-def _tokens():
-    tok = os.environ.get("DESP_PAGE_TOKEN", "")
-    ig = os.environ.get("DESP_IG_USER_ID", "")
+# 15/set/26 — destino da publicação: "despachante" (IG @despachantelessmann, tokens DESP_*)
+# ou "radio" (IG @radiosc.news, tokens RADIO_* — copiar META_PAGE_TOKEN/META_IG_USER_ID do
+# Railway da Rádio). A opção "postar na Rádio" volta porque a venda pro Gabriel não aconteceu.
+DESTINOS = {
+    "despachante": {"label": "IG do Despachante", "env": ("DESP_PAGE_TOKEN", "DESP_IG_USER_ID")},
+    "radio": {"label": "IG da Rádio SC News", "env": ("RADIO_PAGE_TOKEN", "RADIO_IG_USER_ID")},
+}
+
+
+def _tokens(destino="despachante"):
+    e_tok, e_ig = DESTINOS.get(destino, DESTINOS["despachante"])["env"]
+    tok = os.environ.get(e_tok, "")
+    ig = os.environ.get(e_ig, "")
+    if destino == "radio" and not (tok and ig):          # nomes usados no Railway da Rádio
+        tok = tok or os.environ.get("META_PAGE_TOKEN", "")
+        ig = ig or os.environ.get("META_IG_USER_ID", "")
     return tok, ig
 
 
-def tokens_ok():
-    tok, ig = _tokens()
+def tokens_ok(destino="despachante"):
+    tok, ig = _tokens(destino)
     return bool(tok and ig)
 
 
@@ -337,13 +350,14 @@ def _graph_get(url, params):
         return json.loads(r.read())
 
 
-def _publicar_job(marca, arquivo, legenda):
-    log(f"⏳ publicando {marca}/{arquivo} no IG do Despachante…")
+def _publicar_job(marca, arquivo, legenda, destino="despachante"):
+    alvo = DESTINOS.get(destino, DESTINOS["despachante"])
+    log(f"⏳ publicando {marca}/{arquivo} no {alvo['label']}…")
     try:
-        tok, ig = _tokens()
+        tok, ig = _tokens(destino)
         if not (tok and ig):
-            raise RuntimeError("Tokens ausentes: colar DESP_PAGE_TOKEN e "
-                               "DESP_IG_USER_ID no Railway do 4kitem.")
+            raise RuntimeError("Tokens ausentes: colar %s e %s no Railway do 4kitem."
+                               % alvo["env"])
         _caminho, url, tipo = acha(marca, arquivo)
         if tipo == "foto":
             cont = _graph_post(f"{GRAPH}/{ig}/media",
@@ -368,14 +382,14 @@ def _publicar_job(marca, arquivo, legenda):
                         {"creation_id": cont, "access_token": tok})
         pubs = meta_get(marca, arquivo).get("publicados", [])
         pubs.append({"quando": datetime.now().strftime("%d/%m %H:%M"),
-                     "id": r.get("id")})
+                     "id": r.get("id"), "destino": destino})
         meta_set(marca, arquivo, publicados=pubs)
-        log(f"✅ publicado: {marca}/{arquivo} (id {r.get('id')})")
+        log(f"✅ publicado no {alvo['label']}: {marca}/{arquivo} (id {r.get('id')})")
     except Exception as e:
-        log(f"❌ falhou {marca}/{arquivo}: {e}")
+        log(f"❌ falhou {marca}/{arquivo} ({alvo['label']}): {e}")
 
 
-def publicar(marca, arquivo, legenda):
-    threading.Thread(target=_publicar_job, args=(marca, arquivo, legenda),
+def publicar(marca, arquivo, legenda, destino="despachante"):
+    threading.Thread(target=_publicar_job, args=(marca, arquivo, legenda, destino),
                      daemon=True).start()
     return True

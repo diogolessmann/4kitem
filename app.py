@@ -19114,11 +19114,16 @@ def dlcentral_grid():
             'onclick="return confirm(\'Publicar %s no IG do DESPACHANTE?\')" '
             'style="background:#25d366;color:#000;font-weight:800;border:0;'
             'border-radius:99px;padding:7px 14px;cursor:pointer">🚀 Publicar</button>'
+            # 15/set/26: volta a opção de publicar na RÁDIO (tokens RADIO_* no Railway do 4kitem)
+            '<button name="acao" value="publicar_radio" '
+            'onclick="return confirm(\'Publicar %s no IG da RÁDIO SC NEWS?\')" '
+            'style="background:#f2b705;color:#000;font-weight:800;border:0;'
+            'border-radius:99px;padding:7px 14px;cursor:pointer">📻 Publicar na Rádio</button>'
             '<button name="acao" value="excluir" '
             'onclick="return confirm(\'Excluir %s do grid?\')" '
             'style="background:#611;color:#faa;border:0;border-radius:99px;'
             'padding:7px 14px;cursor:pointer">🗑️</button>'
-            '</div></form></div>' % (a, a))
+            '</div></form></div>' % (a, a, a))
     logs = ''.join('<div style="color:#9aa;font-size:12px">%s — %s</div>'
                    % (e['quando'], e['msg']) for e in dlc.log_recente())
     return ('<!doctype html><html><head><meta charset="utf-8">'
@@ -19188,15 +19193,21 @@ def dlcentral_legenda():
     if acao == 'ia':
         dlc.gerar_legenda(marca, arquivo)
         return redirect('/saas-admin/dlcentral?marca=%s&ok=legenda gerada pela IA' % marca)
-    if acao == 'publicar':
+    if acao in ('publicar', 'publicar_radio'):
         if not legenda:
             return redirect('/saas-admin/dlcentral?marca=%s&ok=escreve ou gera a legenda antes' % marca)
+        destino = 'radio' if acao == 'publicar_radio' else 'despachante'
+        if not dlc.tokens_ok(destino):
+            return redirect('/saas-admin/dlcentral?marca=%s&ok=sem tokens do destino %s — colar %s no Railway'
+                            % (marca, destino, ' e '.join(dlc.DESTINOS[destino]['env'])))
         dlc.meta_set(marca, arquivo, legenda_venda=legenda)
-        dlc.publicar(marca, arquivo, legenda)
-        return redirect('/saas-admin/dlcentral?marca=%s&ok=publicando %s — acompanha no log'
-                        % (marca, arquivo))
+        dlc.publicar(marca, arquivo, legenda, destino)
+        return redirect('/saas-admin/dlcentral?marca=%s&ok=publicando %s (%s) — acompanha no log'
+                        % (marca, arquivo, dlc.DESTINOS[destino]['label']))
     dlc.meta_set(marca, arquivo, legenda_venda=legenda)
     return redirect('/saas-admin/dlcentral?marca=%s&ok=legenda salva' % marca)
+
+
 
 
 # ============================================================================
