@@ -19106,7 +19106,8 @@ def dlcentral_grid():
             'color:#eee;border:1px solid #334;border-radius:8px;padding:8px;font-size:13px;'
             'margin:6px 0">%s</textarea>' % leg +
             '<div style="display:flex;gap:6px;flex-wrap:wrap">'
-            '<button name="acao" value="ia" style="background:#333;color:#fff;border:0;'
+            '<button name="acao" value="ia" onclick="return legIA(this)" '
+            'style="background:#333;color:#fff;border:0;'
             'border-radius:99px;padding:7px 14px;cursor:pointer">🤖 Legenda IA</button>'
             '<button name="acao" value="salvar" style="background:#248;color:#fff;border:0;'
             'border-radius:99px;padding:7px 14px;cursor:pointer">💾 Salvar</button>'
@@ -19155,6 +19156,14 @@ def dlcentral_grid():
             '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));'
             'gap:14px">' + ''.join(cards) + '</div>'
             '<h3 style="margin-top:22px">📜 Últimas ações</h3>' + logs +
+            # 15/set: Legenda IA sem recarregar a página (com 120 cards a recarga volta pro topo
+            # e parece que "não gerou"). Grava no servidor e escreve na própria caixa.
+            '<script>async function legIA(b){var f=b.form,t=f.querySelector("textarea");'
+            'b.disabled=true;var o=b.textContent;b.textContent="⏳ gerando...";'
+            'try{var fd=new FormData(f);fd.set("acao","ia");fd.set("ajax","1");'
+            'var r=await fetch(f.action,{method:"POST",body:fd});var j=await r.json();'
+            'if(j.ok){t.value=j.legenda;t.style.borderColor="#2a5";}else{alert("Falhou: "+(j.erro||r.status));}}'
+            'catch(e){alert("Falhou: "+e);}b.disabled=false;b.textContent=o;return false;}</script>'
             '</div></body></html>')
 
 
@@ -19191,7 +19200,14 @@ def dlcentral_legenda():
         dlc.excluir(marca, arquivo)
         return redirect('/saas-admin/dlcentral?marca=%s&ok=excluído' % marca)
     if acao == 'ia':
-        dlc.gerar_legenda(marca, arquivo)
+        try:
+            venda = dlc.gerar_legenda(marca, arquivo)
+        except Exception as e:
+            if request.form.get('ajax'):
+                return jsonify(ok=False, erro=str(e)[:200])
+            raise
+        if request.form.get('ajax'):
+            return jsonify(ok=True, legenda=venda or '')
         return redirect('/saas-admin/dlcentral?marca=%s&ok=legenda gerada pela IA' % marca)
     if acao in ('publicar', 'publicar_radio'):
         if not legenda:
