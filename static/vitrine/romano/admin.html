@@ -1,0 +1,104 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Área do Romano · Vitrine</title>
+<meta name="robots" content="noindex">
+<style>
+:root{--bg:#0f0f1a;--card:#1a1a2e;--line:#2a2a44;--tx:#e9e9f5;--mut:#889;--ind:#6366f1;--wa:#25d366;--ok:#7f7;--bad:#f66}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.45 -apple-system,Segoe UI,Inter,sans-serif}
+.wrap{max-width:560px;margin:0 auto;padding:16px}
+h1{font-size:1.15rem;margin:0}h2{font-size:1rem;margin:18px 0 8px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin:10px 0}
+input,select,textarea{width:100%;background:#0f0f1a;border:1px solid var(--line);color:var(--tx);border-radius:10px;padding:13px;font-size:16px;margin:6px 0 10px}
+label{font-size:.8rem;color:var(--mut);font-weight:700}
+.btn{display:block;width:100%;text-align:center;border:0;border-radius:12px;padding:15px;font-size:1rem;font-weight:800;cursor:pointer;color:#fff;background:var(--ind);text-decoration:none}
+.btn.ghost{background:transparent;border:1px solid var(--line);color:var(--mut)}
+.tabs{display:flex;gap:6px;overflow-x:auto;padding:4px 0 10px;position:sticky;top:0;background:var(--bg);z-index:2}
+.tabs a{white-space:nowrap;padding:8px 16px;border-radius:99px;text-decoration:none;font-weight:700;font-size:13px;background:var(--card);color:var(--mut)}
+.tabs a.on{background:var(--ind);color:#fff}
+.prod{display:grid;grid-template-columns:64px 1fr auto;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
+.prod img{width:64px;height:64px;border-radius:10px;object-fit:cover}
+.prod b{display:block}.prod small{color:var(--mut)}
+.tog{padding:6px 12px;border-radius:99px;font-size:12px;font-weight:800;border:0;cursor:pointer}
+.tem{background:#132;color:var(--ok)}.acabou{background:#311;color:var(--bad)}
+.pill{background:#132;color:var(--ok);border-radius:99px;padding:2px 10px;font-size:11px;margin-right:6px}
+.num{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center}
+.num div{background:#0f0f1a;border-radius:10px;padding:12px 6px}.num strong{display:block;font-size:1.5rem}.num small{color:var(--mut)}
+.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.foto{border:2px dashed var(--line);border-radius:12px;padding:22px;text-align:center;color:var(--mut)}
+#painel{display:none}.ok{background:#132;border:1px solid #2a5;color:var(--ok);border-radius:10px;padding:10px 14px;font-size:13px;margin:10px 0}
+</style></head><body><div class="wrap">
+
+<div id="login">
+  <div style="text-align:center;padding:40px 0 10px"><div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#ff3fb3,#2ee6ff);margin:0 auto 10px"></div>
+  <h1>Romano Diversões</h1><small style="color:var(--mut)">Área do dono · Vitrine</small></div>
+  <div class="card">
+    <label>Seu WhatsApp</label><input type="tel" value="(47) 98495-5716">
+    <label>Senha</label><input type="password" id="senha" placeholder="••••••" onkeydown="if(event.key==='Enter')entrar()">
+    <p id="erro" style="display:none;color:var(--bad);font-size:.85rem;margin:0 0 8px">Senha errada. A padrão é a que o Diogo te passou.</p>
+    <button class="btn" onclick="entrar()">Entrar</button>
+    <p style="text-align:center;color:var(--mut);font-size:.8rem;margin:12px 0 0">Esqueceu? Manda "senha" pro zap da Vitrine que ela responde.</p>
+  </div>
+</div>
+
+<div id="painel">
+  <div class="top"><h1>🗂️ Romano <span style="font-size:12px;color:var(--mut)">vitrine</span></h1><a href="index.html" style="color:var(--mut);font-size:13px;text-decoration:none">ver site ↗</a></div>
+  <div class="ok">✅ Publicado no Instagram hoje 11:02 · Mix Antialérgica · <a href="#" style="color:var(--ok)">ver post</a></div>
+  <div class="tabs"><a class="on" href="#novo">+ Foto e produto</a><a href="#produtos">Produtos</a><a href="#novidade">Novidade</a><a href="#numeros">Números</a><a href="#loja">Loja</a></div>
+
+  <div class="card" id="novo">
+    <h2 style="margin-top:0">📸 Novo produto (tira a foto aqui do celular)</h2>
+    <div class="foto">📷 Toque pra tirar foto ou escolher da galeria<br><small>a foto vira ≤ 200 KB sozinha</small><input type="file" accept="image/*" capture="environment" style="border:0;background:none;margin-top:8px"></div>
+    <label>Nome (do jeito que você fala)</label><input placeholder="Mix Olhinhos de Vidro">
+    <label>Categoria</label><select><option>Pelúcia por mix</option><option>Máquina</option><option>Peça / PIX</option></select>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div><label>Preço por unidade</label><input inputmode="decimal" placeholder="6,75"></div>
+      <div><label>Pacote</label><select><option>300</option><option>200</option><option>100</option><option>Unidade</option></select></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div><label>Tamanho</label><input placeholder="18 a 22 cm"></div>
+      <div><label>INMETRO</label><select><option>Sim</option><option>Não se aplica</option></select></div>
+    </div>
+    <label>Legenda (a IA escreve na sua voz, você corrige)</label><textarea rows="3" placeholder="Mix Olhinhos de Vidro, 18 a 22 cm, pacote de 300 a R$ 6,75 a unidade. Pronta entrega, com INMETRO. Chama no zap."></textarea>
+    <button class="btn ghost" style="margin-bottom:8px">✨ IA, escreve pra mim</button>
+    <button class="btn">Salvar no site</button>
+    <p style="font-size:.8rem;color:var(--mut);margin:10px 0 0">O motor posta no Instagram sozinho, 1 por dia às 11h, sem repetir em 30 dias. Você só aprova se quiser.</p>
+  </div>
+
+  <div class="card" id="produtos">
+    <h2 style="margin-top:0">Produtos (25) · toque em <span class="pill">TEM</span> quando acabar</h2>
+    <div class="prod"><img src="img/placeholder_pelucia.jpg" alt=""><div><b>Mix Olhinhos de Vidro</b><small>R$ 6,75 · pacote 300 · 18-22 cm</small></div><button class="tog tem">TEM</button></div>
+    <div class="prod"><img src="img/placeholder_pelucia.jpg" alt=""><div><b>Mix Antialérgica</b><small>R$ 8,49 · pacote 100 · 22-27 cm</small></div><button class="tog tem">TEM</button></div>
+    <div class="prod"><img src="img/placeholder_pelucia.jpg" alt=""><div><b>Mix Importadinha</b><small>R$ 6,45 · pacote 300 · 18-22 cm</small></div><button class="tog acabou">ACABOU</button></div>
+    <div class="prod"><img src="img/hero_A.jpg" alt=""><div><b>Máquina de pelúcia 0 km</b><small>R$ 5.899 · noteiro + moedeiro + placa</small></div><button class="tog tem">TEM</button></div>
+    <div class="prod"><img src="img/placeholder_pelucia.jpg" alt=""><div><b>Módulo PIX Zapizi</b><small>R$ 165,99 · acima de 5 un.</small></div><button class="tog tem">TEM</button></div>
+    <a href="#" class="btn ghost" style="margin-top:10px">ver todos</a>
+  </div>
+
+  <div class="card" id="novidade">
+    <h2 style="margin-top:0">📣 Novidade (chegou container, saiu remessa)</h2>
+    <div class="foto">📷 Foto ou vídeo<input type="file" accept="image/*,video/*" capture="environment" style="border:0;background:none;margin-top:8px"></div>
+    <textarea rows="2" placeholder="17 máquinas saindo pro Grupo VIP. Pediu, pagou, saiu."></textarea>
+    <button class="btn">Publicar no site e no Instagram</button>
+  </div>
+
+  <div class="card" id="numeros">
+    <h2 style="margin-top:0">📊 Esta semana</h2>
+    <div class="num"><div><strong>412</strong><small>visitas</small></div><div><strong>23</strong><small>chamaram no zap</small></div><div><strong>6</strong><small>posts publicados</small></div></div>
+    <p style="font-size:.85rem;color:var(--mut);margin:10px 0 0">Mais clicados: Mix Olhinhos (9) · Máquina 0 km (6) · Módulo PIX (4). Relatório chega toda sexta no seu zap.</p>
+  </div>
+
+  <div class="card" id="loja">
+    <h2 style="margin-top:0">🏪 Loja</h2>
+    <label>WhatsApp que recebe os pedidos</label><input value="(47) 98495-5716">
+    <label>Frase da sua boca (a IA copia seu jeito)</label><input value="Sem enrolação, sem mimimi. Pediu, pagou, saiu.">
+    <label>Instagram</label><input value="@romanofliperama"> <span class="pill">✅ conectado</span>
+    <button class="btn" style="margin-top:10px">Salvar</button>
+  </div>
+</div>
+</div>
+<script>
+var SENHA_PADRAO='despachante';
+function entrar(){var v=document.getElementById('senha').value;if(v!==SENHA_PADRAO){document.getElementById('erro').style.display='block';return}document.getElementById('login').style.display='none';document.getElementById('painel').style.display='block';window.scrollTo(0,0)}
+if(location.hash==='#painel'){document.getElementById('senha').value=SENHA_PADRAO;entrar()}
+document.querySelectorAll('.tog').forEach(function(b){b.onclick=function(){var t=b.classList.contains('tem');b.className='tog '+(t?'acabou':'tem');b.textContent=t?'ACABOU':'TEM'}});
+</script>
+</body></html>
