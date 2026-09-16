@@ -52,6 +52,16 @@ MARCAS = {
         "hashtags": "#despachante #Schroeder #detransc #transferencia #licenciamento #DespachanteLessmann",
         "disclaimer": "Credencial DETRAN/SC nº 2095",
     },
+    # 16/set/26 — aba MOTOR: propagandas do que a Rádio vende (Plano Vitrine R$97, aluguel do
+    # motor de conteúdo, site de 1 página). Público = lojista/empresário; publica na Rádio.
+    "motor": {
+        "label": "📻 MOTOR · Rádio, Motor e Site",
+        "tipo": "motor",
+        "telefone": "(47) 99716-2967",
+        "endereco": "Schroeder/SC · atende Jaraguá, Guaramirim, Corupá e todo o Vale",
+        "hashtags": "#RadioSCNews #ValeDoItapocu #Schroeder #JaraguaDoSul #comerciolocal #marketinglocal",
+        "disclaimer": "Nota fiscal em tudo · cancela quando quiser",
+    },
 }
 
 _BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -235,6 +245,18 @@ def _fallback_venda(cfg, titulo, contexto, preco):
         linhas += ["", f"📍 {cfg['endereco']}", f"📲 WhatsApp {cfg['telefone']}", "",
                    cfg["disclaimer"], "", cfg["hashtags"]]
         return "\n".join(linhas)
+    if tipo == "motor":
+        linhas = [f"📻 {titulo or 'Sua loja na Rádio SC News'}", ""]
+        if contexto:
+            linhas += [contexto, ""]
+        linhas += ["✅ Plano Vitrine: você manda a foto, a gente escreve, você aprova",
+                   "✅ 1 post + 1 story por semana na Rádio (456 mil contas/mês) + cupom pra medir",
+                   "✅ Motor de conteúdo pra sua marca e site de 1 página que o Google acha",
+                   "✅ Nota fiscal · sem contrato · cancela quando quiser"]
+        if preco:
+            linhas.insert(2, f"💰 {preco}")
+        linhas += ["", f"📲 WhatsApp {cfg['telefone']}", "", cfg["disclaimer"], "", cfg["hashtags"]]
+        return "\n".join(linhas)
     linhas = [f"🛵 {titulo or 'Scooter elétrica'} na DL Mobilidade — Schroeder!", ""]
     if contexto:
         linhas += [contexto, ""]
@@ -291,6 +313,20 @@ def gerar_legenda(marca, arquivo):
                  "documento em até 2 horas; transferência em até 1 dia útil; IPVA em 3x "
                  "direto ou débitos em até 24x no cartão; tudo pelo WhatsApp. Para "
                  "documentos, citar só Schroeder.")
+    elif cfg["tipo"] == "motor":
+        fatos = ("FATOS: Rádio SC News, portal e Instagram hiperlocal do Norte de SC (Schroeder, "
+                 "Jaraguá do Sul, Guaramirim, Corupá), 1,2 milhão de views/mês, 456 mil contas "
+                 "alcançadas em 30 dias. VENDE 3 COISAS: (1) Plano Vitrine R$97/mês — o lojista "
+                 "manda a foto e uma frase pelo WhatsApp, a Rádio escreve o post, ele aprova, sai "
+                 "1 post + 1 story por semana com cupom e relatório toda sexta (cupons usados, "
+                 "cliques no zap); (2) MOTOR DE CONTEÚDO alugado — publica no Instagram e no site "
+                 "do cliente todo dia, com aprovação dele, 'não substitui quem escreve, "
+                 "multiplica'; (3) SITE DE 1 PÁGINA no domínio do cliente, que o Google e as IAs "
+                 "acham, com WhatsApp pré-preenchido. Sempre: nota fiscal, sem contrato, cancela "
+                 "quando quiser, 'sem cupom usado em 30 dias, cancela'. Público: dono de loja, "
+                 "pizzaria, salão, oficina, escritório. Fale a dor dele: postar no status pra 50 "
+                 "pessoas, sempre as mesmas. PROIBIDO: prometer alcance ou vendas, 'post "
+                 "automático' (dizer 'a gente posta por você'), citar preço se não vier no PREÇO.")
     else:
         fatos = ("FATOS: scooters elétricas NXT; sem CNH e sem emplacamento (CONTRAN 996); "
                  "zero gasolina; até 48x ViaCredi; parcelas a partir de R$ 200 (com "
