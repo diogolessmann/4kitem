@@ -481,3 +481,10 @@ details.inst{margin-top:10px}details.inst ol{margin:10px 0 0;padding-left:20px;c
 .lb-itens small{color:#aeb6dc}.lb-itens button{background:transparent;border:0;color:#e8c877;cursor:pointer;font-size:.8rem}
 body:has(.lista-bar:not([hidden])) .fab{bottom:86px}
 @media(max-width:600px){.lista-bar .btn-wa{width:100%;margin:4px 0 0}}
+
+.lb-frete{margin-top:10px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:.84rem;color:#c7cdea}
+.lb-frete input{width:120px;padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.08);color:#fff;font-weight:700}
+.lb-frete button{background:transparent;border:1px solid rgba(255,255,255,.3);color:#fff;border-radius:8px;padding:8px 12px;cursor:pointer;font-size:.82rem}
+.lb-frete #lb_ops{flex-basis:100%;display:grid;gap:4px}
+.lb-frete .op{display:flex;justify-content:space-between;border-top:1px solid rgba(255,255,255,.12);padding-top:4px}
+.lb-frete .op b{color:#e8c877}

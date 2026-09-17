@@ -100,5 +100,9 @@ def init_vit_db():
     ''')
     _col(conn, 'vit_lojas', 'ig_user_id', "TEXT DEFAULT ''")
     _col(conn, 'vit_lojas', 'ig_token', "TEXT DEFAULT ''")
+    _col(conn, 'vit_lojas', 'cep', "TEXT DEFAULT ''")
+    _col(conn, 'vit_lojas', 'me_token', "TEXT DEFAULT ''")
+    _col(conn, 'vit_produtos', 'peso', "REAL DEFAULT 0")          # kg (0 = usa o padrão da família)
+    _col(conn, 'vit_produtos', 'dim', "TEXT DEFAULT ''")           # "AxLxC cm" ex. 12x12x12
     conn.commit()
     conn.close()

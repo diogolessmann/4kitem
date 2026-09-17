@@ -69,6 +69,10 @@ details.edit{border-top:1px solid var(--line)}details.edit summary{cursor:pointe
         <div><label>Unidade / observação de preço</label><input name="unidade" value="{{ p.unidade if p else '' }}" placeholder="o kit · R$ 7,90 a lâmpada"></div>
         <div><label>Quantos na prateleira</label><input name="estoque" inputmode="numeric" value="{{ p.estoque if p else '' }}" placeholder="7"></div>
       </div>
+      <div class="g2">
+        <div><label>Peso (kg, pro frete)</label><input name="peso" inputmode="decimal" value="{{ p.peso if p and p.peso else '' }}" placeholder="0,35"></div>
+        <div><label>Caixa A×L×C (cm)</label><input name="dim" value="{{ p.dim if p else '' }}" placeholder="14x14x12"></div>
+      </div>
       <label>Ficha (separa com ·)</label><input name="specs" value="{{ p.specs if p else '' }}" placeholder="525 lm · IRC 95 · INMETRO">
       <div class="g2">
         <div><label>Etiqueta</label><input name="tag" value="{{ p.tag if p else '' }}" placeholder="Mais vendido"></div>
@@ -178,6 +182,10 @@ details.edit{border-top:1px solid var(--line)}details.edit summary{cursor:pointe
       <div class="g2"><div><label>Nota no Google</label><input name="google_nota" value="{{ loja.google_nota }}"></div><div><label>Nº de avaliações</label><input name="google_n" value="{{ loja.google_n }}"></div></div>
       <label>Frase da sua boca (a IA copia seu jeito)</label><input name="frase" value="{{ loja.frase }}">
       <label>O que a loja faz (1 a 2 linhas, é o que o Google lê)</label><textarea name="descricao" rows="2">{{ loja.descricao }}</textarea>
+      <details style="margin:8px 0"><summary style="color:var(--gold);cursor:pointer;font-size:.85rem">Frete automático · Melhor Envio (o Diogo preenche)</summary>
+        <div class="g2"><div><label>CEP da loja (origem)</label><input name="cep" value="{{ loja.cep }}" inputmode="numeric"></div><div><label>Token do Melhor Envio</label><input name="me_token" value="{{ loja.me_token }}" autocomplete="off"></div></div>
+        <p style="font-size:.78rem;color:var(--mut)">Com o token, a lista de orçamento do site calcula Correios, Jadlog e outras por CEP. Sem token, o site manda pedir o frete no zap.</p>
+      </details>
       <details style="margin:8px 0"><summary style="color:var(--gold);cursor:pointer;font-size:.85rem">Conexão com o Instagram (o Diogo preenche)</summary>
         <div class="g2"><div><label>IG User ID</label><input name="ig_user_id" value="{{ loja.ig_user_id }}"></div><div><label>Page token</label><input name="ig_token" value="{{ loja.ig_token }}" autocomplete="off"></div></div>
       </details>

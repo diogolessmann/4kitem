@@ -15,6 +15,7 @@ import re
 import threading
 import time
 import unicodedata
+import urllib.error
 import urllib.parse
 import urllib.request
 from datetime import date, datetime, timedelta
@@ -352,7 +353,7 @@ def salvar_loja(slug):
     loja = _loja(slug)
     f = request.form
     campos = {}
-    for c in ('nome', 'telefone', 'endereco', 'cidade', 'horario', 'ml_url', 'cnpj', 'frase', 'descricao', 'google_nota', 'google_n', 'ig_user_id', 'ig_token'):
+    for c in ('nome', 'telefone', 'endereco', 'cidade', 'horario', 'ml_url', 'cnpj', 'frase', 'descricao', 'google_nota', 'google_n', 'ig_user_id', 'ig_token', 'cep', 'me_token'):
         if c in f:
             campos[c] = f.get(c, '').strip()
     if 'whatsapp' in f:
@@ -414,7 +415,7 @@ def produto(slug, pid=None):
                       estoque=int(_num(f.get('estoque')) or 0), tag=f.get('tag', '').strip()[:30],
                       descricao=f.get('descricao', '').strip()[:1500], legenda_ig=f.get('legenda_ig', '').strip()[:2000],
                       video_url=f.get('video_url', '').strip()[:300], ml_url=f.get('ml_url', '').strip()[:300],
-                      ordem=int(_num(f.get('ordem')) or 0))
+                      ordem=int(_num(f.get('ordem')) or 0), peso=_num(f.get('peso')) or 0, dim=f.get('dim', '').strip()[:20])
         if not campos['codigo']:
             campos['codigo'] = str(1000 + (conn.execute('SELECT COUNT(*) c FROM vit_produtos WHERE loja_id=?', (loja['id'],)).fetchone()['c']) + 1)
         foto = request.files.get('foto')
@@ -735,6 +736,75 @@ def orcamento(slug):
     txt += '\nTem na loja pra retirar hoje?'
     return redirect(_wa(loja, txt))
 
+
+# ─────────────────────────────────────────────────────────────── FRETE (Melhor Envio)
+ME_URL = os.environ.get('VITRINE_ME_URL', 'https://melhorenvio.com.br/api/v2/me/shipment/calculate')
+# caixa padrão por família (cm, kg) quando o produto não tem medida cadastrada
+CAIXA = {'lampada': (30, 20, 15, 1.0), 'spot': (14, 14, 12, 0.35), 'fita': (22, 22, 8, 0.6), 'perfil': (12, 12, 105, 1.5),
+         'plafon': (45, 45, 12, 1.4), 'pendente': (35, 35, 35, 1.6), 'arandela': (20, 15, 15, 0.7), 'trilho': (12, 12, 105, 1.8),
+         'jardim': (20, 15, 30, 0.8), 'refletor': (35, 30, 10, 1.5), 'emergencia': (30, 12, 8, 0.5), 'tomada': (12, 8, 6, 0.15),
+         'interruptor': (12, 8, 6, 0.15), 'disjuntor': (10, 8, 8, 0.2), 'quadro': (40, 30, 12, 1.5), 'cabo': (30, 30, 15, 6.0),
+         'sensor': (12, 10, 8, 0.2), 'fonte': (25, 12, 8, 0.6), 'outro': (25, 20, 15, 1.0)}
+
+
+def _caixa(p):
+    a, l, c, kg = CAIXA.get(p['tipo'] or 'outro', CAIXA['outro'])
+    if p['dim'] and 'x' in p['dim'].lower():
+        try:
+            a, l, c = [float(x) for x in re.split(r'[x×]', p['dim'].lower().replace('cm', '').strip())[:3]]
+        except ValueError:
+            pass
+    if p['peso']:
+        kg = float(p['peso'])
+    return dict(height=a, width=l, length=c, weight=kg)
+
+
+@vitrine_bp.route('/<slug>/frete')
+def frete(slug):
+    """?cep=89275000&i=ID:QTD,... → [{nome, empresa, preco, dias}] via Melhor Envio. Sem token → aviso."""
+    loja = _loja(slug)
+    cep = _digitos(request.args.get('cep'))
+    if len(cep) != 8:
+        return Response(json.dumps({'erro': 'CEP com 8 números.'}), mimetype='application/json')
+    if not (loja['me_token'] and loja['cep']):
+        return Response(json.dumps({'erro': 'Frete automático ainda não ligado nesta loja. Pede no zap.'}), mimetype='application/json')
+    conn = get_vit_db()
+    prods = []
+    for par in (request.args.get('i') or '').split(','):
+        if ':' not in par:
+            continue
+        pid, q = par.split(':', 1)
+        if pid.isdigit():
+            p = conn.execute('SELECT * FROM vit_produtos WHERE id=? AND loja_id=?', (int(pid), loja['id'])).fetchone()
+            if p:
+                cx = _caixa(p)
+                cx.update(id=str(p['id']), quantity=max(1, int(_num(q) or 1)), insurance_value=round(float(p['preco'] or 0), 2))
+                prods.append(cx)
+    conn.close()
+    if not prods:
+        return Response(json.dumps({'erro': 'Lista vazia.'}), mimetype='application/json')
+    body = json.dumps({'from': {'postal_code': _digitos(loja['cep'])}, 'to': {'postal_code': cep}, 'products': prods,
+                       'options': {'receipt': False, 'own_hand': False}}).encode()
+    req = urllib.request.Request(ME_URL, data=body, headers={'Accept': 'application/json', 'Content-Type': 'application/json',
+                                                             'Authorization': 'Bearer ' + loja['me_token'].strip(),
+                                                             'User-Agent': 'Vitrine 4kitem (diogolessmann@gmail.com)'})
+    try:
+        with urllib.request.urlopen(req, timeout=30) as r:
+            d = json.loads(r.read())
+    except urllib.error.HTTPError as e:
+        return Response(json.dumps({'erro': f'Melhor Envio respondeu {e.code}. Confere o token na aba Loja.'}), mimetype='application/json')
+    except Exception as e:
+        return Response(json.dumps({'erro': f'Sem resposta do frete: {str(e)[:80]}'}), mimetype='application/json')
+    ops = []
+    for o in (d if isinstance(d, list) else []):
+        if o.get('error') or not o.get('price'):
+            continue
+        ops.append({'nome': o.get('name'), 'empresa': (o.get('company') or {}).get('name', ''), 'preco': float(o.get('custom_price') or o['price']),
+                    'dias': o.get('custom_delivery_time') or o.get('delivery_time')})
+    ops.sort(key=lambda x: x['preco'])
+    _evento(loja['id'], 'frete')
+    return Response(json.dumps({'opcoes': ops[:4], 'retira': f"Grátis · retira na loja em {loja['cidade']}"}, ensure_ascii=False), mimetype='application/json')
+
 # ─────────────────────────────────────────────────────────────── semente (Ledoux)
 def semear_ledoux():
     """Cria a loja Ledoux com os 8 produtos do mock se ainda não existir. Roda no boot, idempotente."""
@@ -750,6 +820,7 @@ def semear_ledoux():
                   'A iluminação faz a diferença sim! Te explicando em 20 segundos.',
                   'Material elétrico e iluminação em Schroeder-SC. Veja a luz acesa antes de comprar, preço na cara, retira em 1 hora. Também no Mercado Livre.',
                   '5,0', '32', 'ledoux'))
+    conn.execute("UPDATE vit_lojas SET cep='89275000' WHERE slug='ledoux'")
     lid = conn.execute("SELECT id FROM vit_lojas WHERE slug='ledoux'").fetchone()['id']
     seed = [
         ('1042', 'Kit 10 Lâmpadas LED PAR20 7 W E27 · bivolt', 'Lumanti', 'ilum', 'lampada', '3000 4000 6500', '525 lm · IRC 95 · INMETRO', 78.98, 69.90, 'o kit · R$ 7,90 a lâmpada', 7, 'Mais vendido', 'p_par20.webp', 1),
