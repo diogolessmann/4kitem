@@ -45,7 +45,7 @@ details.edit{border-top:1px solid var(--line)}details.edit summary{cursor:pointe
   </form>
 {% else %}
   <div class="top"><h1>🗂️ {{ loja.nome.split(' ')[0] }} <span style="font-size:12px;color:var(--mut)">vitrine</span></h1><a href="{{ base }}" target="_blank" style="color:var(--mut);font-size:13px;text-decoration:none">ver site ↗</a></div>
-  <div class="tabs"><a class="on" href="#novo">+ Foto e produto</a><a href="#produtos">Produtos ({{ prods|length }})</a><a href="#cofre">📸 Cofre e Instagram</a><a href="#ml">⟳ Planilha do ML</a><a href="#numeros">Números</a><a href="#loja">Loja</a><a href="{{ base }}/admin/sair">sair</a></div>
+  <div class="tabs"><a class="on" href="#novo">+ Foto e produto</a><a href="#produtos">Produtos ({{ prods|length }})</a><a href="#cofre">📸 Cofre e Instagram</a><a href="#ml">⟳ Planilha do ML</a><a href="#fab">🏭 Fabricantes</a><a href="#numeros">Números</a><a href="#loja">Loja</a><a href="{{ base }}/admin/sair">sair</a></div>
 
   {% macro form_produto(p) %}
     <form method="post" enctype="multipart/form-data" action="{{ base }}/admin/produto{% if p %}/{{ p.id }}{% endif %}">
@@ -126,6 +126,20 @@ details.edit{border-top:1px solid var(--line)}details.edit summary{cursor:pointe
       <button class="btn gold" type="submit">Atualizar produtos</button>
     </form>
   </div>
+
+
+  <div class="card" id="fab">
+    <h2 style="margin-top:0">🏭 Puxar catálogo do fabricante</h2>
+    <p style="font-size:.9rem;color:var(--mut);margin:0 0 10px">A Nordecor publica o catálogo inteiro (894 itens) com foto e ficha técnica. Entra no seu site como "Preço no zap" até você colocar o preço. Pode puxar tudo ou só uma linha.</p>
+    <form method="post" action="{{ base }}/admin/fabricante">
+      <label>Nordecor · qual linha?</label>
+      <select name="categoria"><option value="">Tudo (894 itens, ~10 min)</option>{% for cid, cn in FAB_CATS %}<option value="{{ cid }}">{{ cn }}</option>{% endfor %}</select>
+      <button class="btn gold" type="submit">Puxar da Nordecor</button>
+    </form>
+    <div id="fab_prog" style="font-size:.85rem;color:var(--mut);margin-top:10px">{% if fab_prog %}{{ fab_prog.feitos }}/{{ fab_prog.total }} · {{ fab_prog.novos }} novos · {{ fab_prog.atualizados }} atualizados{% if fab_prog.erro %} · erro: {{ fab_prog.erro }}{% endif %}{% if fab_prog.fim %} · concluído{% endif %}{% endif %}</div>
+    <p style="font-size:.8rem;color:var(--mut);margin:10px 0 0">Lumanti: o site deles bloqueia leitura automática. Por enquanto entra pela planilha do ML ou pelo cadastro pelo celular.</p>
+  </div>
+  <script>(function(){var el=document.getElementById('fab_prog');function tick(){fetch('{{ base }}/admin/fabricante/status').then(function(r){return r.json()}).then(function(d){if(!d||d.total===undefined)return;el.textContent=d.feitos+'/'+d.total+' · '+d.novos+' novos · '+d.atualizados+' atualizados'+(d.erro?' · erro: '+d.erro:'')+(d.fim?' · concluído':' · puxando…');if(!d.fim)setTimeout(tick,4000)}).catch(function(){})}tick()})();</script>
 
   <div class="card" id="produtos">
     <h2 style="margin-top:0">Produtos · toque em <span class="pill">TEM</span> quando acabar</h2>

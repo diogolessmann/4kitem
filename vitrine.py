@@ -26,6 +26,7 @@ from PIL import Image, ImageOps
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from vitrine_db import get_vit_db
+import vitrine_fabricantes as fab
 
 vitrine_bp = Blueprint('vitrine', __name__, url_prefix='/v', template_folder='templates')
 
@@ -157,6 +158,67 @@ def _ctx(loja):
                 CATEGORIAS=dict(CATEGORIAS), v='20260917f')
 
 
+# Famílias do catálogo (tipo → nome, descrição). Ordem = ordem no site.
+FAMILIAS = [
+    ('spot', 'Spots', 'Embutir, sobrepor, direcionável. Pra gesso, teto e trilho.'),
+    ('lampada', 'Lâmpadas', 'PAR20, dicroica, bulbo, filamento. 3000K, 4000K e 6500K.'),
+    ('fita', 'Fita de LED', 'Sanca, painel, bancada. Com a fonte certa pra não queimar.'),
+    ('perfil', 'Perfil de LED', 'Embutir no gesso ou sobrepor. Sob medida.'),
+    ('plafon', 'Plafons', 'Sobrepor e embutir, redondo e quadrado, 3 temperaturas.'),
+    ('pendente', 'Pendentes', 'Mesa de jantar, bancada, cabeceira.'),
+    ('arandela', 'Arandelas', 'Parede, muro, fachada. Interna e IP65.'),
+    ('trilho', 'Trilho eletrificado', 'Trilho e spots de trilho. Destaque pra estante e quadro.'),
+    ('jardim', 'Jardim e externa', 'Espeto, balizador, poste. Prova d\'água.'),
+    ('refletor', 'Refletores', 'Quintal, garagem, quadra. 20 a 400 W.'),
+    ('emergencia', 'Emergência e sinalização', 'Luminária de emergência, placa de saída.'),
+    ('tomada', 'Tomadas', 'WEG, Soprano. 10 A e 20 A, placas e módulos.'),
+    ('interruptor', 'Interruptores', 'Simples, paralelo, touch Wi-Fi, sem neutro.'),
+    ('disjuntor', 'Disjuntores e DR', 'Curva certa pro chuveiro e pro ar.'),
+    ('quadro', 'Quadros de distribuição', 'De 4 a 24 disjuntores, com barramento.'),
+    ('cabo', 'Cabos e fios', '1,5 a 10 mm², por metro ou rolo.'),
+    ('sensor', 'Sensores', 'Presença e fotocélula.'),
+    ('fonte', 'Fontes e drivers', 'Pra fita e perfil. 12 V e 24 V.'),
+    ('outro', 'Outros', 'O que mais tem no balcão.'),
+]
+FAM = {t: (n, d) for t, n, d in FAMILIAS}
+
+
+def _familias(loja):
+    """Famílias com pelo menos 1 produto ativo: nome, descrição, quantidade e a foto do 1º produto."""
+    prods = _produtos(loja['id'])
+    out = []
+    for t, n, d in FAMILIAS:
+        ps = [p for p in prods if (p['tipo'] or 'outro') == t]
+        if not ps:
+            continue
+        foto = next((p['foto'] for p in ps if p['foto']), '')
+        foto = (f"/static/vitrine/{loja['slug']}/img/{foto[7:]}" if foto.startswith('static:') else
+                (url_for('vitrine.media', slug=loja['slug'], arquivo=foto) if foto else f"/static/vitrine/{loja['slug']}/img/p_par20.webp"))
+        out.append(dict(tipo=t, nome=n, desc=d, n=len(ps), foto=foto))
+    return out
+
+
+@vitrine_bp.route('/<slug>/catalogo')
+def catalogo(slug):
+    loja = _loja(slug)
+    fams = _familias(loja)
+    return render_template(f"vitrine/{loja['tema']}/catalogo.html", familias=fams, total=sum(f['n'] for f in fams),
+                           titulo='Catálogo', descricao=f"Catálogo da {loja['nome']}: todas as famílias de produto com preço. Retira hoje em {loja['cidade']}.", **_ctx(loja))
+
+
+@vitrine_bp.route('/<slug>/c/<tipo>')
+def categoria(slug, tipo):
+    loja = _loja(slug)
+    if tipo not in FAM:
+        abort(404)
+    prods = [p for p in _produtos(loja['id']) if (p['tipo'] or 'outro') == tipo]
+    if not prods:
+        return redirect(url_for('vitrine.catalogo', slug=slug))
+    fam = dict(tipo=tipo, nome=FAM[tipo][0], desc=FAM[tipo][1])
+    return render_template(f"vitrine/{loja['tema']}/categoria.html", prods=prods, fam=fam, familias=_familias(loja),
+                           titulo=f"{fam['nome']} com preço em {loja['cidade']}", descricao=f"{fam['nome']}: {fam['desc']} Preço de balcão na {loja['nome']}, retira hoje ou compra no Mercado Livre.", **_ctx(loja))
+
+
 # ─────────────────────────────────────────────────────────────── site público
 @vitrine_bp.route('/<slug>')
 @vitrine_bp.route('/<slug>/')
@@ -164,7 +226,7 @@ def site(slug):
     loja = _loja(slug)
     _evento(loja['id'], 'visita')
     prods = _produtos(loja['id'])
-    return render_template(f"vitrine/{loja['tema']}/site.html", prods=prods, **_ctx(loja))
+    return render_template(f"vitrine/{loja['tema']}/site.html", prods=prods, familias=_familias(loja), **_ctx(loja))
 
 
 @vitrine_bp.route('/<slug>/p/<codigo>')
@@ -227,7 +289,7 @@ def media(slug, arquivo):
 def sitemap(slug):
     loja = _loja(slug)
     base = f"{PUBLIC_BASE}/v/{slug}"
-    urls = [base, f'{base}/eletricista', f'{base}/ambiente/sala'] + \
+    urls = [base, f'{base}/catalogo', f'{base}/eletricista', f'{base}/ambiente/sala'] + [f"{base}/c/{f['tipo']}" for f in _familias(loja)] + \
            [f"{base}/p/{p['codigo'] or p['id']}" for p in _produtos(loja['id'])]
     xml = '<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' + \
           ''.join(f'<url><loc>{u}</loc></url>' for u in urls) + '</urlset>'
@@ -274,7 +336,8 @@ def admin(slug):
         return render_template('vitrine/admin.html', logado=False, **_ctx(loja))
     prods = _produtos(loja['id'], so_ativos=False)
     return render_template('vitrine/admin.html', logado=True, prods=prods, n=_numeros(loja['id']), midias=_midias(loja['id']),
-                           ig_ok=bool(loja['ig_token'] and loja['ig_user_id']), json=json, TIPOS=TIPOS, CATS=CATEGORIAS, **_ctx(loja))
+                           ig_ok=bool(loja['ig_token'] and loja['ig_user_id']), json=json, TIPOS=TIPOS, CATS=CATEGORIAS,
+                           FAB_CATS=fab.CATEGORIAS_NORDECOR, fab_prog=fab.PROGRESSO.get(slug, {}), **_ctx(loja))
 
 
 @vitrine_bp.route('/<slug>/admin/sair')
@@ -621,6 +684,56 @@ def midia_acao(slug, mid):
     conn.close()
     return redirect(url_for('vitrine.admin', slug=slug) + '#cofre')
 
+
+
+# ─────────────────────────────────────────────────────────────── fabricantes + lista de orçamento
+@vitrine_bp.route('/<slug>/admin/fabricante', methods=['POST'])
+@_logado
+def fabricante(slug):
+    loja = _loja(slug)
+    cat = request.form.get('categoria') or None
+    cat = int(cat) if cat and cat.isdigit() else None
+    if fab.iniciar_nordecor(slug, _media_dir(slug), categoria_id=cat):
+        flash('Puxando o catálogo da Nordecor… acompanha o contador aqui embaixo (uns 10 min pra tudo).')
+    else:
+        flash('Já tem uma importação rodando. Espera terminar.')
+    return redirect(url_for('vitrine.admin', slug=slug) + '#fab')
+
+
+@vitrine_bp.route('/<slug>/admin/fabricante/status')
+@_logado
+def fabricante_status(slug):
+    return Response(json.dumps(fab.PROGRESSO.get(slug, {})), mimetype='application/json')
+
+
+@vitrine_bp.route('/<slug>/orcamento')
+def orcamento(slug):
+    """Lista de orçamento: ?i=ID:QTD,ID:QTD → conta os cliques e manda a lista pronta pro zap."""
+    loja = _loja(slug)
+    itens = []
+    conn = get_vit_db()
+    for par in (request.args.get('i') or '').split(','):
+        if ':' not in par:
+            continue
+        pid, qtd = par.split(':', 1)
+        if not pid.isdigit():
+            continue
+        p = conn.execute('SELECT * FROM vit_produtos WHERE id=? AND loja_id=?', (int(pid), loja['id'])).fetchone()
+        if p:
+            q = max(1, int(_num(qtd) or 1))
+            itens.append((p, q))
+            conn.execute('INSERT INTO vit_eventos (loja_id, produto_id, tipo, dia) VALUES (?,?,?,?)', (loja['id'], p['id'], 'zap', date.today().isoformat()))
+    conn.commit()
+    conn.close()
+    if not itens:
+        return redirect(_wa(loja, 'Oi, vim do site. Quero um orçamento.'))
+    linhas = [f"{q}× {p['titulo']} (cód. {p['codigo']})" + (f" · {_brl(p['preco'])} cada" if p['preco'] else '') for p, q in itens]
+    total = sum((p['preco'] or 0) * q for p, q in itens)
+    txt = 'Oi, vim do site. Quero orçamento desta lista:\n' + '\n'.join(linhas)
+    if total:
+        txt += f"\nTotal de balcão dos itens com preço: {_brl(total)}"
+    txt += '\nTem na loja pra retirar hoje?'
+    return redirect(_wa(loja, txt))
 
 # ─────────────────────────────────────────────────────────────── semente (Ledoux)
 def semear_ledoux():

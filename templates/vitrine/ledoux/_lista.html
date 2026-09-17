@@ -1,0 +1,24 @@
+<div class="lista-bar" id="lista_bar" hidden>
+  <div class="wrap"><div class="lb-in"><b id="lb_n">0 itens</b><span id="lb_t"></span><button type="button" id="lb_ver" class="lb-ver">ver lista</button><a id="lb_zap" class="btn btn-wa" href="#" target="_blank" rel="noopener">Pedir orçamento no zap</a></div>
+  <div id="lb_itens" class="lb-itens" hidden></div></div>
+</div>
+<script>
+(function(){
+  var K='vit_lista_{{ loja.slug }}',lista=JSON.parse(localStorage.getItem(K)||'[]');
+  var bar=document.getElementById('lista_bar'),n=document.getElementById('lb_n'),t=document.getElementById('lb_t'),zap=document.getElementById('lb_zap'),it=document.getElementById('lb_itens');
+  var brl=function(v){return 'R$ '+v.toFixed(2).replace('.',',').replace(/\B(?=(\d{3})+(?!\d))/g,'.')};
+  function salva(){localStorage.setItem(K,JSON.stringify(lista));desenha()}
+  function desenha(){var q=lista.reduce(function(a,x){return a+x.q},0),tot=lista.reduce(function(a,x){return a+x.q*x.p},0);
+    bar.hidden=!lista.length;n.textContent=q+(q===1?' item':' itens')+' na lista';t.textContent=tot?('· '+brl(tot)+' nos itens com preço'):'';
+    zap.href='{{ base }}/orcamento?i='+lista.map(function(x){return x.id+':'+x.q}).join(',');
+    it.innerHTML=lista.map(function(x,i){return '<div><span>'+x.q+'× '+x.n+' <small>cód. '+x.c+'</small></span><button type="button" data-i="'+i+'">tirar</button></div>'}).join('');
+    it.querySelectorAll('button').forEach(function(b){b.onclick=function(){lista.splice(+b.dataset.i,1);salva()}})}
+  document.querySelectorAll('.qtd').forEach(function(w){var inp=w.querySelector('input');
+    w.querySelector('.q-').onclick=function(){inp.value=Math.max(1,(+inp.value||1)-1)};w.querySelector('.q+').onclick=function(){inp.value=(+inp.value||1)+1};
+    var add=w.querySelector('.add');add.onclick=function(){var q=+inp.value||1,id=add.dataset.id,ex=lista.filter(function(x){return x.id===id})[0];
+      if(ex)ex.q+=q;else lista.push({id:id,q:q,n:add.dataset.n,c:add.dataset.c,p:+add.dataset.p||0});
+      add.textContent='✓ na lista';setTimeout(function(){add.textContent='+ na lista'},1200);salva()}});
+  document.getElementById('lb_ver').onclick=function(){it.hidden=!it.hidden};
+  desenha();
+})();
+</script>
