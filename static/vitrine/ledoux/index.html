@@ -39,9 +39,10 @@
   <a class="btn btn-wa" href="https://wa.me/5547996424632?text=Oi%2C%20vim%20do%20site%20da%20Ledoux." target="_blank" rel="noopener">Chama no zap</a>
 </div></header>
 
-<section class="hero">
+<section class="hero apagada">
   <div class="luz">
-    <img src="img/sala_3000k.jpg" class="on" data-k="3" alt="Sala com iluminação 3000K, branco quente">
+    <img src="img/sala_apagada.jpg" class="on" data-k="0" alt="Sala com as luzes apagadas">
+    <img src="img/sala_3000k.jpg" data-k="3" alt="Sala com iluminação 3000K, branco quente">
     <img src="img/sala_4000k.jpg" data-k="4" alt="A mesma sala com iluminação 4000K, branco neutro">
     <img src="img/sala_6500k.jpg" data-k="6" alt="A mesma sala com iluminação 6500K, branco frio">
   </div>
@@ -65,7 +66,7 @@
       <span class="selo"><b>Nota fiscal</b> e garantia no balcão</span>
     </div>
   </div>
-  <div class="legenda" id="legenda">Sala em <b>3000K</b>: aconchego pra sala, quarto e jantar</div>
+  <div class="legenda" id="legenda">Sala em <b>3000K</b>: aconchego pra sala, quarto e jantar · <a href="#" id="replay" style="color:#ffd27a;text-decoration:none">⏻ apagar e acender de novo</a></div>
 </section>
 
 <div class="faixa"><div class="wrap">
@@ -269,9 +270,25 @@
   // hero: a mesma sala em 3 temperaturas
   var imgs=document.querySelectorAll('.hero .luz img'), bts=document.querySelectorAll('.temp button'), leg=document.getElementById('legenda');
   var txt={3:'Sala em <b>3000K</b>: aconchego pra sala, quarto e jantar',4:'Sala em <b>4000K</b>: neutra, pra cozinha, banheiro e escritório',6:'Sala em <b>6500K</b>: fria, pra garagem, área de serviço e loja'};
-  function setK(k){imgs.forEach(function(i){i.classList.toggle('on',i.dataset.k===k)});bts.forEach(function(b){b.classList.toggle('on',b.dataset.k===k)});leg.innerHTML=txt[k]}
+  var hero=document.querySelector('.hero'), auto=null, seq=['3','4','6'], i=0;
+  function setK(k,quiet){imgs.forEach(function(x){x.classList.toggle('on',x.dataset.k===k)});bts.forEach(function(b){b.classList.toggle('on',b.dataset.k===k)});if(!quiet&&txt[k])leg.firstChild.nodeValue='';if(txt[k]){leg.innerHTML=txt[k]+' · <a href="#" id="replay" style="color:#ffd27a;text-decoration:none">⏻ apagar e acender de novo</a>';document.getElementById('replay').onclick=function(e){e.preventDefault();tchum()}}}
+  function flick(on){imgs.forEach(function(x){if(x.dataset.k==='3')x.style.transition=on?'none':'';});}
+  function tchum(){
+    clearInterval(auto); hero.classList.add('apagada'); imgs.forEach(function(x){x.classList.toggle('on',x.dataset.k==='0')}); bts.forEach(function(b){b.classList.remove('on')});
+    var l3=document.querySelector('.hero .luz img[data-k="3"]');
+    setTimeout(function(){ // tremelique de interruptor: liga, falha, liga
+      l3.style.transition='opacity .08s'; l3.classList.add('on');
+      setTimeout(function(){l3.classList.remove('on')},110);
+      setTimeout(function(){l3.classList.add('on')},220);
+      setTimeout(function(){l3.classList.remove('on')},300);
+      setTimeout(function(){l3.style.transition='opacity .35s';l3.classList.add('on');hero.classList.remove('apagada');setK('3',true);
+        setTimeout(function(){l3.style.transition=''},400);
+        i=0; auto=setInterval(function(){i=(i+1)%3;setK(seq[i])},4200);
+      },380);
+    },1600);
+  }
   bts.forEach(function(b){b.addEventListener('click',function(){setK(b.dataset.k);clearInterval(auto)})});
-  var seq=['3','4','6'],i=0; var auto=setInterval(function(){i=(i+1)%3;setK(seq[i])},4200);
+  tchum();
 
   // calculadora de spots
   var $=function(x){return document.getElementById(x)};

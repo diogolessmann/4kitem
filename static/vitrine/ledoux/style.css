@@ -68,9 +68,17 @@ section{padding:64px 0}
 .selo{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22);padding:8px 14px;border-radius:999px;font-size:.84rem;font-weight:600;backdrop-filter:blur(6px)}
 .selo b{color:var(--amber2)}
 
+/* TCHUM: sala apagada -> acende */
+.hero .wrap,.hero .legenda{transition:opacity .6s ease .15s,transform .6s ease .15s}
+.hero.apagada .wrap{opacity:.06;transform:translateY(10px)}
+.hero.apagada .legenda{opacity:0}
+.hero.apagada::after{background:linear-gradient(90deg,rgba(7,21,64,.35) 0,rgba(7,21,64,.15) 42%,rgba(7,21,64,0) 68%)}
+.hero .luz img[data-k="0"]{animation:none;transform:scale(1.02)}
 /* faixa de confiança */
 .faixa{background:var(--navy);color:#fff;padding:18px 0}
 .faixa .wrap{display:grid;gap:18px;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));font-size:.88rem}
+.faixa div>div{line-height:1.3}
+@media(min-width:1000px){.faixa .wrap{grid-template-columns:repeat(4,1fr)}}
 .faixa div{display:flex;gap:12px;align-items:center}
 .faixa .n{min-width:64px}
 .faixa .n{font-family:'Playfair Display',serif;font-size:1.7rem;color:var(--amber2);line-height:1}
