@@ -407,3 +407,7 @@ footer{background:var(--navy2)}
 .hero .legenda{background:rgba(7,21,64,.5);border:1px solid rgba(255,255,255,.1)}
 h2 small::before{content:"";display:inline-block;width:18px;height:1px;background:var(--gold);vertical-align:middle;margin-right:10px}
 .dark h2 small::before{background:var(--amber2)}
+
+.dark .btn-wa{background:#fff;color:var(--navy);box-shadow:0 8px 20px rgba(0,0,0,.2)}
+.dark .btn-wa .ico{color:#1fae55}
+.dark .btn-ghost{background:transparent;color:#fff;border-color:rgba(255,255,255,.35)}
