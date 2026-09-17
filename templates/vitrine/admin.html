@@ -1,0 +1,140 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Área da {{ loja.nome.split(' ')[0] }} · Vitrine</title>
+<meta name="robots" content="noindex">
+<style>
+:root{--bg:#0f0f1a;--card:#1a1a2e;--line:#2a2a44;--tx:#e9e9f5;--mut:#889;--ind:#0b1f5c;--gold:#d9b45c;--ok:#7f7;--bad:#f66}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.45 -apple-system,Segoe UI,Inter,sans-serif}
+.wrap{max-width:600px;margin:0 auto;padding:16px}
+h1{font-size:1.15rem;margin:0}h2{font-size:1rem;margin:18px 0 8px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin:10px 0}
+input,select,textarea{width:100%;background:#0f0f1a;border:1px solid var(--line);color:var(--tx);border-radius:10px;padding:13px;font-size:16px;margin:6px 0 10px}
+label{font-size:.8rem;color:var(--mut);font-weight:700}
+.btn{display:block;width:100%;text-align:center;border:0;border-radius:12px;padding:15px;font-size:1rem;font-weight:800;cursor:pointer;color:#fff;background:var(--ind);text-decoration:none}
+.btn.ghost{background:transparent;border:1px solid var(--line);color:var(--mut)}.btn.gold{background:var(--gold);color:#1a1200}
+.tabs{display:flex;gap:6px;overflow-x:auto;padding:4px 0 10px;position:sticky;top:0;background:var(--bg);z-index:2}
+.tabs a{white-space:nowrap;padding:8px 16px;border-radius:99px;text-decoration:none;font-weight:700;font-size:13px;background:var(--card);color:var(--mut)}
+.tabs a.on{background:var(--ind);color:#fff}
+.prod{display:grid;grid-template-columns:64px 1fr auto;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
+.prod img{width:64px;height:64px;border-radius:10px;object-fit:cover;background:#fff}
+.prod b{display:block;font-size:.92rem}.prod small{color:var(--mut)}
+.prod.off{opacity:.5}
+.tog{padding:6px 12px;border-radius:99px;font-size:12px;font-weight:800;border:0;cursor:pointer}
+.tem{background:#132;color:var(--ok)}.acabou{background:#311;color:var(--bad)}
+.mini{display:flex;gap:6px;margin-top:6px}.mini button,.mini a{font-size:11px;padding:4px 8px;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--mut);cursor:pointer;text-decoration:none}
+.pill{background:#132;color:var(--ok);border-radius:99px;padding:2px 10px;font-size:11px;margin-right:6px}
+.num{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center}
+.num div{background:#0f0f1a;border-radius:10px;padding:12px 6px}.num strong{display:block;font-size:1.5rem}.num small{color:var(--mut)}
+.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.foto{border:2px dashed var(--line);border-radius:12px;padding:16px;text-align:center;color:var(--mut)}
+.ok{background:#132;border:1px solid #2a5;color:var(--ok);border-radius:10px;padding:10px 14px;font-size:13px;margin:10px 0}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.ks{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 10px}.ks label{display:flex;align-items:center;gap:6px;background:#0f0f1a;border:1px solid var(--line);border-radius:10px;padding:8px 12px;color:var(--tx);font-weight:600}
+.ks input{width:auto;margin:0}
+details.edit{border-top:1px solid var(--line)}details.edit summary{cursor:pointer;color:var(--gold);font-size:.85rem;padding:6px 0}
+</style></head><body><div class="wrap">
+
+{% with msgs = get_flashed_messages() %}{% for m in msgs %}<div class="ok">{{ m }}</div>{% endfor %}{% endwith %}
+
+{% if not logado %}
+  <div style="text-align:center;padding:40px 0 10px"><div style="width:64px;height:64px;border-radius:50%;background:var(--ind);border:3px solid var(--gold);margin:0 auto 10px"></div>
+  <h1>{{ loja.nome }}</h1><small style="color:var(--mut)">Área do dono · Vitrine</small></div>
+  <form class="card" method="post">
+    <label>Senha</label><input type="password" name="senha" autofocus>
+    <button class="btn" type="submit">Entrar</button>
+    <p style="text-align:center;color:var(--mut);font-size:.8rem;margin:12px 0 0">Esqueceu? Chama o Diogo no zap.</p>
+  </form>
+{% else %}
+  <div class="top"><h1>🗂️ {{ loja.nome.split(' ')[0] }} <span style="font-size:12px;color:var(--mut)">vitrine</span></h1><a href="{{ base }}" target="_blank" style="color:var(--mut);font-size:13px;text-decoration:none">ver site ↗</a></div>
+  <div class="tabs"><a class="on" href="#novo">+ Foto e produto</a><a href="#produtos">Produtos ({{ prods|length }})</a><a href="#ml">⟳ Planilha do ML</a><a href="#numeros">Números</a><a href="#loja">Loja</a><a href="{{ base }}/admin/sair">sair</a></div>
+
+  {% macro form_produto(p) %}
+    <form method="post" enctype="multipart/form-data" action="{{ base }}/admin/produto{% if p %}/{{ p.id }}{% endif %}">
+      <div class="foto">📷 {% if p and p.foto %}Trocar a foto{% else %}Toque pra tirar foto ou escolher da galeria{% endif %}<br><small>a foto vira ≤ 200 KB sozinha</small><input type="file" name="foto" accept="image/*" capture="environment" style="border:0;background:none;margin-top:8px"></div>
+      <label>Nome (do jeito que você fala)</label><input name="titulo" required value="{{ p.titulo if p else '' }}" placeholder="Kit 10 Lâmpadas LED PAR20 7 W E27 · bivolt">
+      <div class="g2">
+        <div><label>Código</label><input name="codigo" value="{{ p.codigo if p else '' }}" placeholder="1042 (ou o SKU do ML)"></div>
+        <div><label>Marca</label><input name="marca" value="{{ p.marca if p else '' }}" placeholder="Lumanti"></div>
+      </div>
+      <div class="g2">
+        <div><label>Categoria</label><select name="categoria">{% for c, n in CATS %}<option value="{{ c }}" {{ 'selected' if p and p.categoria == c }}>{{ n }}</option>{% endfor %}</select></div>
+        <div><label>Tipo</label><select name="tipo">{% for t in TIPOS %}<option {{ 'selected' if p and p.tipo == t }}>{{ t }}</option>{% endfor %}</select></div>
+      </div>
+      <label>Temperatura de cor (marca as que tem)</label>
+      <div class="ks">{% for k in ('2400','2700','3000','4000','6500') %}<label><input type="checkbox" name="k" value="{{ k }}" {{ 'checked' if p and k in (p.k or '').split() }}>{{ k }}K</label>{% endfor %}</div>
+      <div class="g2">
+        <div><label>Preço balcão</label><input name="preco" inputmode="decimal" value="{{ ('%.2f'|format(p.preco)).replace('.', ',') if p and p.preco else '' }}" placeholder="78,98"></div>
+        <div><label>Preço eletricista</label><input name="preco_pro" inputmode="decimal" value="{{ ('%.2f'|format(p.preco_pro)).replace('.', ',') if p and p.preco_pro else '' }}" placeholder="69,90"></div>
+      </div>
+      <div class="g2">
+        <div><label>Unidade / observação de preço</label><input name="unidade" value="{{ p.unidade if p else '' }}" placeholder="o kit · R$ 7,90 a lâmpada"></div>
+        <div><label>Quantos na prateleira</label><input name="estoque" inputmode="numeric" value="{{ p.estoque if p else '' }}" placeholder="7"></div>
+      </div>
+      <label>Ficha (separa com ·)</label><input name="specs" value="{{ p.specs if p else '' }}" placeholder="525 lm · IRC 95 · INMETRO">
+      <div class="g2">
+        <div><label>Etiqueta</label><input name="tag" value="{{ p.tag if p else '' }}" placeholder="Mais vendido"></div>
+        <div><label>Link do anúncio no ML</label><input name="ml_url" value="{{ p.ml_url if p else '' }}" placeholder="https://www.mercadolivre.com.br/..."></div>
+      </div>
+      <label>Descrição (o que você diria no balcão)</label><textarea name="descricao" rows="2" placeholder="A lâmpada de spot mais vendida da loja. Serve no spot Loyo, no trilho e em qualquer soquete E27.">{{ p.descricao if p else '' }}</textarea>
+      <button class="btn" type="submit">{{ 'Salvar' if p else 'Colocar no site' }}</button>
+    </form>
+  {% endmacro %}
+
+  <div class="card" id="novo">
+    <h2 style="margin-top:0">📸 Novo produto (tira a foto aqui do celular)</h2>
+    {{ form_produto(None) }}
+    <p style="font-size:.8rem;color:var(--mut);margin:10px 0 0">Entra no site na hora, com o botão do zap e o do Mercado Livre. O motor do Instagram (em breve) pega daqui.</p>
+  </div>
+
+  <div class="card" id="ml">
+    <h2 style="margin-top:0">⟳ Atualizar do Mercado Livre</h2>
+    <p style="font-size:.9rem;color:var(--mut);margin:0 0 10px">No painel do ML: <b>Anúncios → Baixar planilha (.xlsx)</b>. Manda aqui. Entra título, preço, estoque, link e marca; o que já existe com o mesmo código só atualiza. Sem API, sem senha do ML.</p>
+    <form method="post" enctype="multipart/form-data" action="{{ base }}/admin/importar-ml">
+      <div class="foto">📄 Planilha do ML (.xlsx)<input type="file" name="planilha" accept=".xlsx,.xls" style="border:0;background:none;margin-top:8px"></div>
+      <button class="btn gold" type="submit">Atualizar produtos</button>
+    </form>
+  </div>
+
+  <div class="card" id="produtos">
+    <h2 style="margin-top:0">Produtos · toque em <span class="pill">TEM</span> quando acabar</h2>
+    {% for p in prods %}
+    <div class="prod {{ '' if p.ativo else 'off' }}">
+      <img src="{{ media(p.foto) or st ~ '/img/p_par20.webp' }}" alt="">
+      <div><b>{{ p.titulo }}</b><small>{{ brl(p.preco) }}{% if p.preco_pro %} · pro {{ brl(p.preco_pro) }}{% endif %} · cód. {{ p.codigo }}{% if p.estoque %} · {{ p.estoque }} na loja{% endif %}{% if p.destaque %} · ★{% endif %}</small>
+        <div class="mini">
+          <form method="post" action="{{ base }}/admin/produto/{{ p.id }}" style="display:inline"><input type="hidden" name="acao" value="destaque"><button type="submit">{{ 'tirar destaque' if p.destaque else 'destacar' }}</button></form>
+          <form method="post" action="{{ base }}/admin/produto/{{ p.id }}" style="display:inline"><input type="hidden" name="acao" value="vendi"><button type="submit">vendi 1</button></form>
+          <a href="{{ base }}/p/{{ p.codigo or p.id }}" target="_blank">ver</a>
+          <form method="post" action="{{ base }}/admin/produto/{{ p.id }}" style="display:inline" onsubmit="return confirm('Excluir {{ p.titulo|e }}?')"><input type="hidden" name="acao" value="excluir"><button type="submit" style="color:var(--bad)">excluir</button></form>
+        </div>
+      </div>
+      <form method="post" action="{{ base }}/admin/produto/{{ p.id }}"><input type="hidden" name="acao" value="tem"><button class="tog {{ 'tem' if p.ativo else 'acabou' }}" type="submit">{{ 'TEM' if p.ativo else 'ACABOU' }}</button></form>
+    </div>
+    <details class="edit"><summary>editar {{ p.codigo }}</summary>{{ form_produto(p) }}</details>
+    {% else %}<p style="color:var(--mut)">Nenhum produto ainda. Sobe a primeira foto aí em cima.</p>{% endfor %}
+  </div>
+
+  <div class="card" id="numeros">
+    <h2 style="margin-top:0">📊 Últimos {{ n.dias }} dias</h2>
+    <div class="num"><div><strong>{{ n.visitas }}</strong><small>visitas</small></div><div><strong>{{ n.zaps }}</strong><small>chamaram no zap</small></div><div><strong>{{ n.ml }}</strong><small>foram pro ML</small></div></div>
+    {% if n.top %}<p style="font-size:.85rem;color:var(--mut);margin:10px 0 0">Mais clicados no zap: {% for t in n.top %}{{ t.titulo[:28] }} ({{ t.n }}){{ ' · ' if not loop.last }}{% endfor %}.</p>{% endif %}
+    <p style="font-size:.8rem;color:var(--mut)">Relatório de sexta chega no seu zap (em breve).</p>
+  </div>
+
+  <div class="card" id="loja">
+    <h2 style="margin-top:0">🏪 Loja</h2>
+    <form method="post" enctype="multipart/form-data" action="{{ base }}/admin/loja">
+      <label>Nome</label><input name="nome" value="{{ loja.nome }}">
+      <div class="g2"><div><label>WhatsApp que recebe os pedidos</label><input name="whatsapp" value="{{ loja.whatsapp }}"></div><div><label>Telefone fixo</label><input name="telefone" value="{{ loja.telefone }}"></div></div>
+      <label>Endereço</label><input name="endereco" value="{{ loja.endereco }}">
+      <div class="g2"><div><label>Cidade/UF</label><input name="cidade" value="{{ loja.cidade }}"></div><div><label>Horário</label><input name="horario" value="{{ loja.horario }}"></div></div>
+      <div class="g2"><div><label>Instagram</label><input name="instagram" value="@{{ loja.instagram }}"></div><div><label>Loja no Mercado Livre (link)</label><input name="ml_url" value="{{ loja.ml_url }}"></div></div>
+      <div class="g2"><div><label>Nota no Google</label><input name="google_nota" value="{{ loja.google_nota }}"></div><div><label>Nº de avaliações</label><input name="google_n" value="{{ loja.google_n }}"></div></div>
+      <label>Frase da sua boca (a IA copia seu jeito)</label><input name="frase" value="{{ loja.frase }}">
+      <label>O que a loja faz (1 a 2 linhas, é o que o Google lê)</label><textarea name="descricao" rows="2">{{ loja.descricao }}</textarea>
+      <label>Logo (arquivo)</label><input type="file" name="logo" accept="image/*" style="border:0;background:none">
+      <label>Trocar senha (deixa vazio pra manter)</label><input type="password" name="senha_nova" autocomplete="new-password">
+      <button class="btn" type="submit">Salvar</button>
+    </form>
+  </div>
+{% endif %}
+</div></body></html>

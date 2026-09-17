@@ -15240,6 +15240,19 @@ except Exception as _arena_err:
     log.warning(f'[Arena] Erro ao carregar blueprint: {_arena_err}')
 
 # ══════════════════════════════════════════════════════════════════════════════
+# VITRINE — site padrão de loja que posta sozinho (R$97/mês) — /v/<slug> · loja 1 Ledoux (17/set/26)
+# ══════════════════════════════════════════════════════════════════════════════
+try:
+    from vitrine import vitrine_bp, semear_ledoux
+    from vitrine_db import init_vit_db
+    init_vit_db()
+    semear_ledoux()
+    app.register_blueprint(vitrine_bp)
+    log.info('[Vitrine] Blueprint registrado em /v')
+except Exception as _vit_err:
+    log.warning(f'[Vitrine] Erro ao carregar blueprint: {_vit_err}')
+
+# ══════════════════════════════════════════════════════════════════════════════
 # CAMALEÃO — Esconde-esconde de camuflagem 2D multiplayer (Arena/AmbitiON) — GRÁTIS
 # ══════════════════════════════════════════════════════════════════════════════
 try:
