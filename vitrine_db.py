@@ -87,6 +87,18 @@ def init_vit_db():
         );
         CREATE INDEX IF NOT EXISTS idx_vit_ev ON vit_eventos(loja_id, dia, tipo);
         CREATE INDEX IF NOT EXISTS idx_vit_prod ON vit_produtos(loja_id, ativo, ordem);
+        CREATE TABLE IF NOT EXISTS vit_midia (
+            id            INTEGER PRIMARY KEY AUTOINCREMENT,
+            loja_id       INTEGER NOT NULL,
+            arquivo       TEXT NOT NULL,
+            tipo          TEXT DEFAULT 'foto',     -- foto | video
+            legenda       TEXT DEFAULT '',
+            produto_id    INTEGER,
+            publicados    TEXT DEFAULT '[]',       -- JSON [{quando, id | erro}]
+            created_at    TEXT DEFAULT CURRENT_TIMESTAMP
+        );
     ''')
+    _col(conn, 'vit_lojas', 'ig_user_id', "TEXT DEFAULT ''")
+    _col(conn, 'vit_lojas', 'ig_token', "TEXT DEFAULT ''")
     conn.commit()
     conn.close()

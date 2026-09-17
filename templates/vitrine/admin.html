@@ -45,7 +45,7 @@ details.edit{border-top:1px solid var(--line)}details.edit summary{cursor:pointe
   </form>
 {% else %}
   <div class="top"><h1>🗂️ {{ loja.nome.split(' ')[0] }} <span style="font-size:12px;color:var(--mut)">vitrine</span></h1><a href="{{ base }}" target="_blank" style="color:var(--mut);font-size:13px;text-decoration:none">ver site ↗</a></div>
-  <div class="tabs"><a class="on" href="#novo">+ Foto e produto</a><a href="#produtos">Produtos ({{ prods|length }})</a><a href="#ml">⟳ Planilha do ML</a><a href="#numeros">Números</a><a href="#loja">Loja</a><a href="{{ base }}/admin/sair">sair</a></div>
+  <div class="tabs"><a class="on" href="#novo">+ Foto e produto</a><a href="#produtos">Produtos ({{ prods|length }})</a><a href="#cofre">📸 Cofre e Instagram</a><a href="#ml">⟳ Planilha do ML</a><a href="#numeros">Números</a><a href="#loja">Loja</a><a href="{{ base }}/admin/sair">sair</a></div>
 
   {% macro form_produto(p) %}
     <form method="post" enctype="multipart/form-data" action="{{ base }}/admin/produto{% if p %}/{{ p.id }}{% endif %}">
@@ -83,6 +83,39 @@ details.edit{border-top:1px solid var(--line)}details.edit summary{cursor:pointe
     <h2 style="margin-top:0">📸 Novo produto (tira a foto aqui do celular)</h2>
     {{ form_produto(None) }}
     <p style="font-size:.8rem;color:var(--mut);margin:10px 0 0">Entra no site na hora, com o botão do zap e o do Mercado Livre. O motor do Instagram (em breve) pega daqui.</p>
+  </div>
+
+
+  <div class="card" id="cofre">
+    <h2 style="margin-top:0">📸 Cofre: fotos e vídeos da loja {% if ig_ok %}<span class="pill">Instagram conectado</span>{% else %}<span class="pill" style="background:#311;color:var(--bad)">Instagram não conectado</span>{% endif %}</h2>
+    <p style="font-size:.9rem;color:var(--mut);margin:0 0 10px">Tira a foto ou o vídeo aqui do celular. Fica guardado. Cada um pode virar post no Instagram (a IA escreve a legenda no seu jeito) ou virar a foto de um produto do site.</p>
+    <form method="post" enctype="multipart/form-data" action="{{ base }}/admin/midia">
+      <div class="foto">📷 Fotos ou vídeos (pode marcar vários)<input type="file" name="midia" accept="image/*,video/mp4,video/quicktime" multiple style="border:0;background:none;margin-top:8px"></div>
+      <label>É de qual produto? (opcional)</label>
+      <select name="produto_id"><option value="">— só pro cofre —</option>{% for p in prods %}<option value="{{ p.id }}">{{ p.codigo }} · {{ p.titulo[:50] }}</option>{% endfor %}</select>
+      <button class="btn gold" type="submit">Guardar no cofre</button>
+    </form>
+    {% for m in midias %}
+    <div style="border-top:1px solid var(--line);padding:12px 0;display:grid;grid-template-columns:96px 1fr;gap:12px">
+      {% if m.tipo == 'video' %}<video src="{{ media(m.arquivo) }}" muted playsinline preload="metadata" style="width:96px;height:96px;object-fit:cover;border-radius:10px;background:#000"></video>
+      {% else %}<img src="{{ media(m.arquivo) }}" alt="" style="width:96px;height:96px;object-fit:cover;border-radius:10px;background:#fff">{% endif %}
+      <div>
+        <form method="post" action="{{ base }}/admin/midia/{{ m.id }}">
+          <small style="color:var(--mut)">{{ m.tipo }} · {{ m.created_at[:10] }}{% if m.produto %} · {{ m.produto[:36] }}{% endif %}</small>
+          <textarea name="legenda" rows="3" placeholder="Legenda pro Instagram (ou aperta IA escreve)">{{ m.legenda }}</textarea>
+          <input type="hidden" name="produto_id" value="{{ m.produto_id or '' }}">
+          <div class="mini" style="flex-wrap:wrap">
+            <button type="submit" name="acao" value="ia">✨ IA escreve</button>
+            <button type="submit" name="acao" value="salvar">salvar legenda</button>
+            <button type="submit" name="acao" value="publicar" style="background:var(--ind);color:#fff;border-color:var(--ind)">📣 Publicar no Instagram</button>
+            {% if m.produto_id and m.tipo == 'foto' %}<button type="submit" name="acao" value="foto_produto">usar como foto do produto</button>{% endif %}
+            <button type="submit" name="acao" value="excluir" style="color:var(--bad)" onclick="return confirm('Tirar do cofre?')">excluir</button>
+          </div>
+        </form>
+        {% set pubs = json.loads(m.publicados or '[]') %}{% for pb in pubs %}<div style="font-size:.78rem;margin-top:6px;color:{{ 'var(--ok)' if pb.id else 'var(--bad)' }}">{{ '✅ publicado' if pb.id else '❌ ' ~ pb.erro }} · {{ pb.quando }}</div>{% endfor %}
+      </div>
+    </div>
+    {% else %}<p style="color:var(--mut);font-size:.9rem;margin-top:12px">Cofre vazio. A primeira foto de prateleira já vale um post.</p>{% endfor %}
   </div>
 
   <div class="card" id="ml">
@@ -131,6 +164,9 @@ details.edit{border-top:1px solid var(--line)}details.edit summary{cursor:pointe
       <div class="g2"><div><label>Nota no Google</label><input name="google_nota" value="{{ loja.google_nota }}"></div><div><label>Nº de avaliações</label><input name="google_n" value="{{ loja.google_n }}"></div></div>
       <label>Frase da sua boca (a IA copia seu jeito)</label><input name="frase" value="{{ loja.frase }}">
       <label>O que a loja faz (1 a 2 linhas, é o que o Google lê)</label><textarea name="descricao" rows="2">{{ loja.descricao }}</textarea>
+      <details style="margin:8px 0"><summary style="color:var(--gold);cursor:pointer;font-size:.85rem">Conexão com o Instagram (o Diogo preenche)</summary>
+        <div class="g2"><div><label>IG User ID</label><input name="ig_user_id" value="{{ loja.ig_user_id }}"></div><div><label>Page token</label><input name="ig_token" value="{{ loja.ig_token }}" autocomplete="off"></div></div>
+      </details>
       <label>Logo (arquivo)</label><input type="file" name="logo" accept="image/*" style="border:0;background:none">
       <label>Trocar senha (deixa vazio pra manter)</label><input type="password" name="senha_nova" autocomplete="new-password">
       <button class="btn" type="submit">Salvar</button>

@@ -12,9 +12,12 @@ import io
 import json
 import os
 import re
+import threading
+import time
 import unicodedata
 import urllib.parse
-from datetime import date, timedelta
+import urllib.request
+from datetime import date, datetime, timedelta
 from functools import wraps
 
 from flask import (Blueprint, Response, abort, flash, redirect, render_template, request,
@@ -30,6 +33,9 @@ _DATA = os.environ.get('DATA_DIR', os.path.dirname(os.path.abspath(__file__)))
 _MEDIA = os.path.join(_DATA, 'vitrine')
 PUBLIC_BASE = os.environ.get('VITRINE_PUBLIC_BASE', 'https://www.4kitem.com.br').rstrip('/')
 SENHA_PADRAO = 'despachante'
+GRAPH = 'https://graph.facebook.com/v21.0'
+GEMINI_KEY = os.environ.get('GEMINI_API_KEY', '')
+VIDEO_MAX_MB = 100
 FOTO_MAX_PX = 1200
 FOTO_MAX_KB = 200
 CATEGORIAS = [('ilum', 'Iluminação'), ('elet', 'Elétrica'), ('smart', 'Casa inteligente')]
@@ -267,8 +273,8 @@ def admin(slug):
     if not session.get('vit_' + slug):
         return render_template('vitrine/admin.html', logado=False, **_ctx(loja))
     prods = _produtos(loja['id'], so_ativos=False)
-    return render_template('vitrine/admin.html', logado=True, prods=prods, n=_numeros(loja['id']),
-                           TIPOS=TIPOS, CATS=CATEGORIAS, **_ctx(loja))
+    return render_template('vitrine/admin.html', logado=True, prods=prods, n=_numeros(loja['id']), midias=_midias(loja['id']),
+                           ig_ok=bool(loja['ig_token'] and loja['ig_user_id']), json=json, TIPOS=TIPOS, CATS=CATEGORIAS, **_ctx(loja))
 
 
 @vitrine_bp.route('/<slug>/admin/sair')
@@ -283,7 +289,7 @@ def salvar_loja(slug):
     loja = _loja(slug)
     f = request.form
     campos = {}
-    for c in ('nome', 'telefone', 'endereco', 'cidade', 'horario', 'ml_url', 'cnpj', 'frase', 'descricao', 'google_nota', 'google_n'):
+    for c in ('nome', 'telefone', 'endereco', 'cidade', 'horario', 'ml_url', 'cnpj', 'frase', 'descricao', 'google_nota', 'google_n', 'ig_user_id', 'ig_token'):
         if c in f:
             campos[c] = f.get(c, '').strip()
     if 'whatsapp' in f:
@@ -437,6 +443,183 @@ def importar_ml(slug):
     conn.close()
     flash(f'Planilha do ML: {novos} produtos novos, {atualizados} atualizados. Confere foto e preço de eletricista dos novos.')
     return redirect(url_for('vitrine.admin', slug=slug) + '#produtos')
+
+
+# ─────────────────────────────────────────────────────────────── COFRE (mídia) + Instagram
+def _midias(loja_id):
+    conn = get_vit_db()
+    rows = conn.execute('SELECT m.*, p.titulo AS produto FROM vit_midia m LEFT JOIN vit_produtos p ON p.id=m.produto_id '
+                        'WHERE m.loja_id=? ORDER BY m.id DESC', (loja_id,)).fetchall()
+    conn.close()
+    return rows
+
+
+def _gemini(prompt, max_tokens=400):
+    if not GEMINI_KEY:
+        return None
+    url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent'
+    body = json.dumps({'contents': [{'parts': [{'text': prompt}]}],
+                       'generationConfig': {'maxOutputTokens': max_tokens, 'temperature': 0.7}}).encode()
+    req = urllib.request.Request(url, data=body, headers={'Content-Type': 'application/json', 'x-goog-api-key': GEMINI_KEY})
+    try:
+        with urllib.request.urlopen(req, timeout=60) as r:
+            d = json.load(r)
+        return d['candidates'][0]['content']['parts'][0]['text'].strip()
+    except Exception as e:
+        print(f'[vitrine] gemini: {e}')
+        return None
+
+
+def _zap_bonito(loja):
+    w = loja['whatsapp'] or ''
+    return f"{w[2:4]} {w[4:9]}-{w[9:]}" if len(w) >= 13 else w
+
+
+def _legenda_ia(loja, midia, produto=None):
+    cidade = (loja['cidade'] or '').split('/')[0]
+    prod = ''
+    if produto:
+        prod = f"Produto: {produto['titulo']} · {produto['specs']} · {_brl(produto['preco'])}" + \
+               (f" (eletricista {_brl(produto['preco_pro'])})" if produto['preco_pro'] else '')
+    txt = _gemini(
+        f"Você escreve a legenda de Instagram de uma loja física. Loja: {loja['nome']}, {loja['cidade']}. "
+        f"O que ela faz: {loja['descricao']}. Jeito de falar do dono: \"{loja['frase']}\".\n{prod}\n"
+        f"Regras: 3 a 5 linhas curtas, tom de quem atende no balcão, no máximo 4 hashtags no fim, no máximo 2 emojis, "
+        f"nunca escrever 'post automático', sempre com o preço se houver, e terminar com "
+        f"'Chama no zap: {_zap_bonito(loja)} · retira hoje em {cidade}'. Responda só a legenda.")
+    if not txt:
+        txt = (f"{produto['titulo']} por {_brl(produto['preco'])}. " if produto else '') + \
+              f"Retira hoje em {cidade}. Chama no zap: {_zap_bonito(loja)}"
+    return txt[:2000]
+
+
+def _graph_post(url, params):
+    data = urllib.parse.urlencode(params).encode()
+    with urllib.request.urlopen(urllib.request.Request(url, data=data), timeout=120) as r:
+        out = json.loads(r.read())
+    if 'error' in out:
+        raise RuntimeError(out['error'].get('message', str(out['error'])))
+    return out
+
+
+def _graph_get(url, params):
+    with urllib.request.urlopen(url + '?' + urllib.parse.urlencode(params), timeout=60) as r:
+        return json.loads(r.read())
+
+
+def _marca_pub(mid, item):
+    conn = get_vit_db()
+    m = conn.execute('SELECT publicados FROM vit_midia WHERE id=?', (mid,)).fetchone()
+    pubs = json.loads((m['publicados'] if m else None) or '[]') + [item]
+    conn.execute('UPDATE vit_midia SET publicados=? WHERE id=?', (json.dumps(pubs), mid))
+    conn.commit()
+    conn.close()
+
+
+def _publicar_job(slug, mid):
+    conn = get_vit_db()
+    loja = conn.execute('SELECT * FROM vit_lojas WHERE slug=?', (slug,)).fetchone()
+    m = conn.execute('SELECT * FROM vit_midia WHERE id=? AND loja_id=?', (mid, loja['id'])).fetchone()
+    conn.close()
+    quando = datetime.now().strftime('%d/%m %H:%M')
+    try:
+        tok, ig = loja['ig_token'], loja['ig_user_id']
+        if not (tok and ig):
+            raise RuntimeError('Instagram ainda não conectado (o Diogo cadastra o token na aba Loja).')
+        url = f"{PUBLIC_BASE}/v/{slug}/m/{m['arquivo']}"
+        if m['tipo'] == 'foto':
+            cont = _graph_post(f'{GRAPH}/{ig}/media', {'image_url': url, 'caption': m['legenda'], 'access_token': tok})['id']
+            time.sleep(4)
+        else:
+            cont = _graph_post(f'{GRAPH}/{ig}/media', {'media_type': 'REELS', 'video_url': url, 'caption': m['legenda'],
+                                                       'access_token': tok})['id']
+            for _ in range(36):
+                time.sleep(10)
+                sc = _graph_get(f'{GRAPH}/{cont}', {'fields': 'status_code', 'access_token': tok}).get('status_code')
+                if sc == 'FINISHED':
+                    break
+                if sc == 'ERROR':
+                    raise RuntimeError('Instagram recusou o vídeo.')
+        r = _graph_post(f'{GRAPH}/{ig}/media_publish', {'creation_id': cont, 'access_token': tok})
+        _marca_pub(mid, {'quando': quando, 'id': r.get('id')})
+        print(f"[vitrine] publicado {slug}/{m['arquivo']} id {r.get('id')}")
+    except Exception as e:
+        _marca_pub(mid, {'quando': quando, 'erro': str(e)[:160]})
+        print(f"[vitrine] falhou {slug}/{m['arquivo']}: {e}")
+
+
+@vitrine_bp.route('/<slug>/admin/midia', methods=['POST'])
+@_logado
+def midia_upload(slug):
+    """Cofre: sobe fotos e vídeos do celular. Foto vira WebP ≤ 200 KB; vídeo fica como veio (≤ 100 MB)."""
+    loja = _loja(slug)
+    n = 0
+    conn = get_vit_db()
+    pid = int(_num(request.form.get('produto_id')) or 0) or None
+    for f in request.files.getlist('midia'):
+        if not f or not f.filename:
+            continue
+        ext = f.filename.rsplit('.', 1)[-1].lower()
+        blob = f.read()
+        if ext in ('mp4', 'mov', 'm4v'):
+            if len(blob) > VIDEO_MAX_MB * 1024 * 1024:
+                flash(f'{f.filename}: vídeo maior que {VIDEO_MAX_MB} MB, manda menor.')
+                continue
+            nome, tipo = f"v-{os.urandom(4).hex()}.mp4", 'video'
+        else:
+            try:
+                nome, blob = comprimir_foto(blob, f"c-{os.urandom(4).hex()}")
+            except Exception:
+                flash(f'{f.filename}: não consegui ler como foto.')
+                continue
+            tipo = 'foto'
+        with open(os.path.join(_media_dir(slug), nome), 'wb') as fh:
+            fh.write(blob)
+        conn.execute('INSERT INTO vit_midia (loja_id, arquivo, tipo, produto_id) VALUES (?,?,?,?)', (loja['id'], nome, tipo, pid))
+        n += 1
+    conn.commit()
+    conn.close()
+    flash(f'{n} arquivo(s) no cofre.')
+    return redirect(url_for('vitrine.admin', slug=slug) + '#cofre')
+
+
+@vitrine_bp.route('/<slug>/admin/midia/<int:mid>', methods=['POST'])
+@_logado
+def midia_acao(slug, mid):
+    loja = _loja(slug)
+    acao = request.form.get('acao', 'salvar')
+    conn = get_vit_db()
+    m = conn.execute('SELECT * FROM vit_midia WHERE id=? AND loja_id=?', (mid, loja['id'])).fetchone()
+    if not m:
+        conn.close()
+        abort(404)
+    if acao == 'excluir':
+        conn.execute('DELETE FROM vit_midia WHERE id=?', (mid,))
+        try:
+            os.remove(os.path.join(_media_dir(slug), m['arquivo']))
+        except OSError:
+            pass
+        flash('Removido do cofre.')
+    elif acao == 'ia':
+        prod = conn.execute('SELECT * FROM vit_produtos WHERE id=?', (m['produto_id'],)).fetchone() if m['produto_id'] else None
+        conn.execute('UPDATE vit_midia SET legenda=? WHERE id=?', (_legenda_ia(loja, m, prod), mid))
+        flash('Legenda escrita. Lê, corrige se quiser, e publica.')
+    elif acao == 'publicar':
+        leg = request.form.get('legenda', m['legenda']).strip()
+        conn.execute('UPDATE vit_midia SET legenda=? WHERE id=?', (leg, mid))
+        conn.commit()
+        threading.Thread(target=_publicar_job, args=(slug, mid), daemon=True).start()
+        flash('Publicando no Instagram… em 1 minuto aparece o ✅ (ou o erro) no cofre.')
+    elif acao == 'foto_produto' and m['produto_id'] and m['tipo'] == 'foto':
+        conn.execute('UPDATE vit_produtos SET foto=? WHERE id=?', (m['arquivo'], m['produto_id']))
+        flash('Foto do produto trocada.')
+    else:
+        conn.execute('UPDATE vit_midia SET legenda=?, produto_id=? WHERE id=?',
+                     (request.form.get('legenda', '').strip()[:2000], int(_num(request.form.get('produto_id')) or 0) or None, mid))
+        flash('Legenda salva.')
+    conn.commit()
+    conn.close()
+    return redirect(url_for('vitrine.admin', slug=slug) + '#cofre')
 
 
 # ─────────────────────────────────────────────────────────────── semente (Ledoux)
