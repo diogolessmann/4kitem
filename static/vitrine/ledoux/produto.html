@@ -8,14 +8,14 @@
 <meta name="author" content="DL · Legião · Oráculo · Vulcano">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;1,500&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=20260917d">
+<link rel="stylesheet" href="style.css?v=20260917e">
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"Product","name":"Kit 10 Lâmpadas LED PAR20 7W E27 3000K bivolt Lumanti","sku":"1042","brand":{"@type":"Brand","name":"Lumanti"},"image":["img/p_par20.webp"],"description":"Kit com 10 lâmpadas LED PAR20 7 W, base E27, 525 lúmens, IRC 95, ângulo 40°, bivolt, INMETRO. Disponível em 3000K, 4000K e 6500K.","aggregateRating":{"@type":"AggregateRating","ratingValue":"4.9","reviewCount":"1000"},"offers":[{"@type":"Offer","name":"Retirada em Schroeder","price":"78.98","priceCurrency":"BRL","availability":"https://schema.org/InStoreOnly","seller":{"@type":"Organization","name":"Ledoux Materiais Elétricos e Iluminação"}},{"@type":"Offer","name":"Mercado Livre (entrega Brasil)","price":"78.98","priceCurrency":"BRL","url":"https://www.mercadolivre.com.br/pagina/ledouxstore","availability":"https://schema.org/InStock"}],"additionalProperty":[{"@type":"PropertyValue","name":"Potência","value":"7 W"},{"@type":"PropertyValue","name":"Fluxo luminoso","value":"525 lm"},{"@type":"PropertyValue","name":"Temperatura de cor","value":"3000K / 4000K / 6500K"},{"@type":"PropertyValue","name":"IRC","value":"95"},{"@type":"PropertyValue","name":"Base","value":"E27"},{"@type":"PropertyValue","name":"Tensão","value":"bivolt 100-240 V"}]}
 </script>
 </head>
 <body>
 
-<header class="top"><div class="wrap">
+<header class="top solid"><div class="wrap">
   <a class="brand" href="index.html"><div><b>LEDOUX</b><small>Materiais elétricos e iluminação · Schroeder</small></div></a>
   <nav class="nav"><a href="index.html#ambientes">Ambientes</a><a href="index.html#produtos">Produtos</a><a href="index.html#eletrica">Elétrica</a><a href="eletricista.html">Eletricista</a><a href="index.html#guias">Guias</a><a href="index.html#calc">Quantos spots?</a></nav>
   <a class="btn btn-wa" href="https://wa.me/5547996424632?text=Oi%2C%20vim%20do%20site%20da%20Ledoux." target="_blank" rel="noopener"><svg class="ico" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2Zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2Zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8s-.4-.1-.6.1-.6.8-.8 1-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.3-.4.2-.4.7-1.3.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.8 12 12 0 0 0 4.6 4 5.3 5.3 0 0 0 3.2.7 2.7 2.7 0 0 0 1.8-1.3 2.2 2.2 0 0 0 .2-1.3c-.1-.1-.3-.2-.5-.3Z"/></svg>Chama no zap</a>
@@ -41,14 +41,14 @@
       <p class="sub" style="margin-top:8px">A lâmpada de spot mais vendida da loja. 525 lúmens, IRC 95 (a cor das coisas fica de verdade), 40° de facho. Serve no spot Loyo, no trilho e em qualquer soquete E27.</p>
 
       <div class="temp-pick" id="tp">
-        <button class="on" data-k="3000K">3000K quente</button>
-        <button data-k="4000K">4000K neutra</button>
-        <button data-k="6500K">6500K fria</button>
+        <button class="on" data-k="3000K" data-c="1042-30">3000K quente <small>cód. 1042-30</small></button>
+        <button data-k="4000K" data-c="1042-40">4000K neutra <small>cód. 1042-40</small></button>
+        <button data-k="6500K" data-c="1042-65">6500K fria <small>cód. 1042-65</small></button>
       </div>
       <p class="sub" style="font-size:.85rem;margin:0" id="tp_txt">Quente: sala, quarto, jantar. Você vê acesa na loja antes de levar.</p>
 
       <div class="precos">
-        <div><small>Na loja, retirando hoje</small><strong>R$ 78,98</strong><br><span style="font-size:.8rem;color:var(--mut)">o kit · R$ 7,90 a lâmpada · PIX ou cartão no balcão</span></div>
+        <div><small>Na loja, retirando hoje</small><strong>R$ 78,98</strong><div class="estoque">● <b>7 kits</b> na prateleira agora · <span id="pdp_retira">retira hoje</span></div><br><span style="font-size:.8rem;color:var(--mut)">o kit · R$ 7,90 a lâmpada · PIX ou cartão no balcão</span></div>
         <div class="p2"><small>Eletricista cadastrado</small><strong>R$ 69,90</strong><br><span style="font-size:.8rem;color:var(--mut)">levando 3 kits · <a href="eletricista.html" style="color:var(--ok);font-weight:700">cadastrar em 1 min</a></span></div>
       </div>
 
@@ -65,6 +65,18 @@
         <span class="selo" style="background:var(--warm);border-color:var(--line);color:var(--ink)"><b style="color:var(--navy)">Testa acesa</b> antes de levar</span>
       </div>
 
+
+      <details class="inst"><summary>Como instalar (3 passos, 10 minutos por spot)</summary>
+        <ol><li><b>Fura o gesso em Ø 110 mm</b> (serra copo). Deixa 8 mm de borda pra mola do spot Loyo.</li><li><b>Liga fase e neutro</b> no soquete E27 (cabo 1,5 mm²). Desliga o disjuntor antes.</li><li><b>Rosqueia a PAR20, testa acesa, direciona</b>: 30° pra parede da TV, 15° pro sofá. Pé-direito acima de 3 m: PAR30.</li></ol>
+        <p class="sub" style="font-size:.85rem">Distância entre spots: 80 cm a 1 m. Sala de 12 m² = 6 spots. <a href="index.html#calc">Calcular pro meu cômodo</a>.</p>
+      </details>
+      <details class="inst"><summary>A lâmpada certa pra cada spot</summary>
+        <table class="tabela"><tr><td>Spot Loyo / Alny redondo ou quadrado (E27)</td><td><b>PAR20 7 W</b> (esta)</td></tr><tr><td>Spot MR16 / GU10 embutir pequeno</td><td>Dicroica 7 W GU10 · cód. 1050</td></tr><tr><td>Pé-direito alto, sala grande</td><td>PAR30 9,9 W · cód. 1060</td></tr><tr><td>Trilho eletrificado</td><td>PAR20 7 W ou spot de trilho MR16</td></tr></table>
+      </details>
+      <div class="reviews"><small>Avaliações do Google · ★ 5,0 · 32</small>
+        <blockquote>"Melhor preço da região e sempre tem o que preciso."<cite>cliente no Google</cite></blockquote>
+        <blockquote>"Variedade e entrega rápida. Atendimento nota 10."<cite>cliente no Google</cite></blockquote>
+        <a href="https://www.google.com/maps/search/Ledoux+materiais+el%C3%A9tricos+Schroeder/" target="_blank" rel="noopener">ver todas no Google</a></div>
       <table class="tabela">
         <tr><td>Potência</td><td>7 W (substitui 50 W halógena)</td></tr>
         <tr><td>Fluxo luminoso</td><td>525 lm</td></tr>
@@ -126,7 +138,8 @@
 (function(){
   var bts=document.querySelectorAll('#tp button'), txt={'3000K':'Quente: sala, quarto, jantar. Você vê acesa na loja antes de levar.','4000K':'Neutra: cozinha, banheiro, escritório. Branca sem azular.','6500K':'Fria: garagem, área de serviço, loja. Bem clara.'};
   bts.forEach(function(b){b.onclick=function(){bts.forEach(function(x){x.classList.remove('on')});b.classList.add('on');document.getElementById('tp_txt').textContent=txt[b.dataset.k];
-    document.getElementById('zap').href='https://wa.me/5547996424632?text='+encodeURIComponent('Oi, vim do site. Tem na loja? Quero retirar hoje: cód. 1042 Kit 10 PAR20 7W '+b.dataset.k)}});
+    document.getElementById('zap').href='https://wa.me/5547996424632?text='+encodeURIComponent('Oi, vim do site. Tem na loja? Quero retirar hoje: cód. '+b.dataset.c+' Kit 10 PAR20 7W '+b.dataset.k)}});
+  var d=new Date(),h=d.getHours()+d.getMinutes()/60,dia=d.getDay(),fecha=dia===6?12:(dia===0?0:18);var r=document.getElementById('pdp_retira');if(r)r.textContent=(dia!==0&&h<fecha-1)?('retira hoje até '+fecha+'h'):(dia===0||dia===6?'retira segunda':'retira amanhã');
   document.querySelectorAll('.thumbs div img').forEach(function(im){im.parentNode.onclick=function(){document.getElementById('gmain').src=im.src}});
 })();
 </script>
