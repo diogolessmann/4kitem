@@ -227,7 +227,7 @@ footer a{color:#e6e9ff;text-decoration:none}
 
 /* celular: sem estouro */
 .hero{grid-template-columns:minmax(0,1fr)}
-.hero .wrap{min-width:0;max-width:100%}
+.hero .wrap{min-width:0;max-width:1180px}
 .temp{flex-wrap:wrap;max-width:100%}
 @media(max-width:600px){
   .brand small{display:none}
@@ -258,3 +258,86 @@ footer a{color:#e6e9ff;text-decoration:none}
   .cad{grid-template-columns:1fr}
   .kit,.compara,.plano{grid-template-columns:minmax(0,1fr)}
 }
+
+
+/* ===== LAPIDAÇÃO (luxo) 17/set ===== */
+:root{--gold:#b8923a;--gold2:#d9b45c;--amber:#c9a24a;--amber2:#e8c877;--wa:#1fae55;--wa2:#189a4a;--ml:#f5df1c;--line:#e3ded3;--sh:0 14px 40px rgba(11,31,92,.08)}
+body{letter-spacing:.005em}
+h2{letter-spacing:-.01em}
+h2 small{color:var(--gold);letter-spacing:.2em;font-size:.72rem}
+.eyebrow{color:var(--amber2);letter-spacing:.22em;font-size:.7rem}
+.hero h1 em{color:var(--amber2)}
+/* header */
+.top .wrap{height:76px}
+.brand b{font-size:1.5rem;letter-spacing:.24em;font-weight:500}
+.brand small{letter-spacing:.18em;font-size:.6rem;margin-top:5px}
+.nav{gap:30px;font-size:.88rem;font-weight:600;letter-spacing:.02em}
+.nav a{position:relative;padding:6px 0}
+.nav a::after{content:"";position:absolute;left:0;right:0;bottom:0;height:1px;background:var(--gold);transform:scaleX(0);transition:.25s;transform-origin:left}
+.nav a:hover{color:var(--navy)}.nav a:hover::after{transform:scaleX(1)}
+/* botões */
+.btn{gap:9px;letter-spacing:.01em;box-shadow:none;border-radius:12px;padding:13px 20px}
+.btn .ico{width:18px;height:18px;flex:0 0 18px}
+.btn-wa{background:var(--wa);color:#fff;box-shadow:0 6px 18px rgba(31,174,85,.25)}
+.btn-wa:hover{background:var(--wa2)}
+.btn-ml{background:#14161c;color:var(--gold2);border:1px solid rgba(217,180,92,.35);box-shadow:0 6px 18px rgba(0,0,0,.18)}
+.btn-ml .ico{color:var(--gold2)}
+.btn-ml:hover{background:#000;border-color:var(--gold2)}
+.hero .btn-ml{background:rgba(10,12,18,.72);backdrop-filter:blur(6px)}
+.btn-navy{background:var(--navy);color:#fff}.btn-ghost{border-color:var(--line)}
+.fab{border-radius:14px;gap:9px;padding:13px 18px;font-weight:700;box-shadow:0 12px 28px rgba(31,174,85,.35);background:var(--wa);color:#fff}
+.fab .ico{width:20px;height:20px}
+/* selos do hero */
+.selo{background:rgba(7,21,64,.35);border-color:rgba(255,255,255,.18);font-weight:600;font-size:.82rem;padding:9px 14px;border-radius:10px}
+.selo .ico{width:14px;height:14px;color:var(--amber2)}
+.selo b{color:var(--amber2)}
+.temp{border-radius:12px;padding:5px}.temp button{border-radius:9px}
+.hero .legenda{border-radius:8px;font-size:.7rem;letter-spacing:.02em}
+/* faixa de prova — 4 celas iguais, ícone dourado, título e legenda */
+.faixa{padding:0;background:var(--navy);border-top:1px solid rgba(255,255,255,.08)}
+.faixa .wrap{display:grid;gap:0;grid-template-columns:repeat(4,1fr);font-size:.86rem}
+.faixa .fx{display:flex;gap:14px;align-items:center;padding:22px 22px;border-left:1px solid rgba(255,255,255,.09)}
+.faixa .fx:first-child{border-left:0}
+.faixa .fx i{flex:0 0 40px;height:40px;border-radius:12px;display:grid;place-items:center;background:rgba(232,200,119,.12);color:var(--amber2)}
+.faixa .fx i .ico{width:20px;height:20px}
+.faixa .fx b{display:block;color:#fff;font-size:.92rem;letter-spacing:.01em}
+.faixa .fx span{display:block;color:#aeb6dc;font-size:.78rem;line-height:1.35;margin-top:2px}
+@media(max-width:1000px){.faixa .wrap{grid-template-columns:1fr 1fr}.faixa .fx:nth-child(3){border-left:0}.faixa .fx{border-top:1px solid rgba(255,255,255,.09)}.faixa .fx:nth-child(-n+2){border-top:0}}
+@media(max-width:600px){.faixa .wrap{grid-template-columns:1fr}.faixa .fx{border-left:0;padding:16px 4px;flex-direction:row;align-items:center}.faixa .fx:nth-child(2){border-top:1px solid rgba(255,255,255,.09)}}
+/* cards */
+.prod{border-radius:14px;border-color:var(--line)}
+.prod .ph{border-bottom:1px solid var(--line)}
+.prod .in{padding:16px 18px 18px;gap:9px}
+.prod .marca{color:var(--gold);letter-spacing:.16em;font-size:.66rem}
+.prod b.nome{font-weight:600;font-size:1rem;letter-spacing:-.005em}
+.specs em{border-radius:6px;background:#faf8f3;color:#6b7186;font-size:.7rem}
+.tag{border-radius:6px;font-size:.62rem;letter-spacing:.12em;padding:6px 9px}
+.tag.amb{background:var(--gold);color:#fff}
+.tag.r{font-weight:700;color:#6b7186;background:rgba(255,255,255,.92)}
+.price strong{font-size:1.5rem;font-weight:700}
+.pro{color:var(--ok);font-size:.8rem}
+.stars{color:var(--gold)}
+.acts .btn{border-radius:10px;padding:11px 12px;font-size:.84rem}
+.cat,.amb{border-radius:14px}
+.cat .t b,.amb b{font-weight:500;letter-spacing:.01em}
+.cat .t em,.amb span{color:var(--amber2);letter-spacing:.14em;font-size:.68rem}
+.guia{border-radius:14px}.guia .q{color:var(--gold);letter-spacing:.16em;font-size:.66rem}.guia b{font-weight:500}.guia em{color:var(--navy)}
+.pv{border-radius:14px}.pv .n{color:var(--gold);font-weight:500}
+.calc{border-radius:14px}.calc-out{border-radius:12px}.calc-out .big{color:var(--amber2);font-weight:500}
+.lista li i{background:var(--warm);color:var(--gold)}
+.dark .lista li i{color:var(--amber2)}
+details{border-radius:12px}summary{font-weight:600}
+/* rodapé */
+footer{padding:56px 0 28px}
+footer .ft{display:block;color:var(--amber2);font-size:.66rem;letter-spacing:.2em;text-transform:uppercase;margin-bottom:10px;font-weight:700}
+footer .fk{color:#aeb6dc}
+.assinatura .tri span{color:var(--amber2)}
+/* produto */
+.pdp h1{font-weight:500}
+.pdp .precos div{border-radius:12px}.pdp .precos strong{font-weight:700}
+.temp-pick button{border-radius:10px;font-weight:600}
+.temp-pick button.on{border-color:var(--gold);background:var(--warm)}
+.instala a{border-radius:12px}.instala a i{background:var(--navy)}
+
+.faixa .fx>div{display:block;min-width:0}
+@media(max-width:600px){.faixa .wrap>div{flex-direction:row;align-items:center;gap:14px}}
