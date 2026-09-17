@@ -13,7 +13,7 @@
 <meta property="og:type" content="website">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;1,500&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=20260917e">
+<link rel="stylesheet" href="style.css?v=20260917g">
 <script type="application/ld+json">
 {"@context":"https://schema.org","@graph":[
  {"@type":"HardwareStore","@id":"#ledoux","name":"Ledoux Materiais Elétricos e Iluminação","image":"img/sala2_3000k.webp","telephone":"+55 47 99642-4632","address":{"@type":"PostalAddress","streetAddress":"R. Mal. Castelo Branco, 2838 - Centro","addressLocality":"Schroeder","addressRegion":"SC","postalCode":"89275-000","addressCountry":"BR"},"geo":{"@type":"GeoCoordinates","latitude":-26.41,"longitude":-49.07},"openingHoursSpecification":[{"@type":"OpeningHoursSpecification","dayOfWeek":["Monday","Tuesday","Wednesday","Thursday","Friday"],"opens":"07:30","closes":"18:00"},{"@type":"OpeningHoursSpecification","dayOfWeek":"Saturday","opens":"08:00","closes":"12:00"}],"aggregateRating":{"@type":"AggregateRating","ratingValue":"5.0","reviewCount":"32"},"sameAs":["https://www.instagram.com/ledoux.mat.eletricos/","https://www.mercadolivre.com.br/pagina/ledouxstore"],"areaServed":["Schroeder","Jaraguá do Sul","Guaramirim","Corupá"],"priceRange":"$$"},
@@ -41,7 +41,7 @@
 
 <section class="hero apagada">
   <div class="luz">
-    <video id="acende" src="img/acende.mp4" poster="img/sala2_apagada.webp" autoplay muted playsinline preload="auto" class="on" aria-label="A sala acende: sanca, spots e pendente"></video>
+    <video id="acende" src="img/acende.mp4?v=2" poster="img/sala2_apagada.webp" autoplay muted playsinline preload="auto" class="on" aria-label="A sala acende: sanca, spots e pendente"></video>
     <img src="img/sala2_apagada.webp" data-k="0" alt="Sala com as luzes apagadas">
     <img src="img/sala2_3000k.webp" data-k="3" alt="Sala com iluminação 3000K, branco quente">
     <img src="img/sala2_4000k.webp" data-k="4" alt="A mesma sala com iluminação 4000K, branco neutro">
@@ -67,6 +67,7 @@
       
     </div>
   </div>
+  <div class="etapa" id="etapa"><i></i><b></b><span></span></div>
   <div class="legenda" id="legenda">Sala em <b>3000K</b>: aconchego pra sala, quarto e jantar · <a href="#" id="replay" style="color:#ffd27a;text-decoration:none">⏻ apagar e acender de novo</a></div>
 </section>
 
@@ -283,17 +284,20 @@
   function ligaReplay(){var r=document.getElementById('replay');if(r)r.onclick=function(e){e.preventDefault();tchum()}}
   function setK(k){imgs.forEach(function(x){x.classList.toggle('on',x.dataset.k===k)});bts.forEach(function(b){b.classList.toggle('on',b.dataset.k===k)});if(txt[k]){leg.innerHTML=txt[k]+replayHtml;ligaReplay()}}
   function acesa(){hero.classList.remove('apagada');bts.forEach(function(b){b.classList.toggle('on',b.dataset.k==='3')});leg.innerHTML=txt[3]+replayHtml;ligaReplay()}
-  function fimVideo(){vid.classList.remove('on');setK('3');i=0;clearInterval(auto);auto=setInterval(function(){i=(i+1)%3;setK(seq[i])},4200)}
+  function fimVideo(){vid.classList.remove('on');etapaEl.classList.remove('on');setK('3');i=0;clearInterval(auto);auto=setInterval(function(){i=(i+1)%3;setK(seq[i])},4200)}
   function tchum(){
     clearInterval(auto); hero.classList.add('apagada'); imgs.forEach(function(x){x.classList.remove('on')}); bts.forEach(function(b){b.classList.remove('on')});
-    if(vid&&vid.canPlayType&&vid.canPlayType('video/mp4')){vid.classList.add('on');vid.currentTime=0;var pr=vid.play();if(pr&&pr.catch)pr.catch(fallback)}else fallback();
+    if(vid&&vid.canPlayType&&vid.canPlayType('video/mp4')){vid.classList.add('on');vid.currentTime=0;etapaAtual=-1;mostraEtapa(0);var pr=vid.play();if(pr&&pr.catch)pr.catch(fallback)}else fallback();
   }
   function fallback(){ // sem vídeo: acende nas imagens
     vid.classList.remove('on'); var l3=document.querySelector('.hero .luz img[data-k="3"]'); document.querySelector('.hero .luz img[data-k="0"]').classList.add('on');
     setTimeout(function(){l3.classList.add('on');acesa();setTimeout(fimVideo,600)},1600);
   }
-  vid.addEventListener('timeupdate',function(){if(vid.currentTime>1.5&&hero.classList.contains('apagada'))acesa()});
-  setTimeout(function(){if(vid.classList.contains('on')&&vid.currentTime<0.2)fallback()},1800); // autoplay travado: acende nas imagens
+  var ETAPAS=[[0,'Luzes apagadas','só a cidade na janela'],[2,'1 · Fita de LED','sanca e painel: a luz indireta que abraça a sala'],[4,'2 · Spots embutidos','a luz geral, direcionada pra onde importa'],[6,'3 · Trilho e arandela','o destaque: quadro, estante, parede'],[8,'4 · Pendente','a mesa ganha seu ponto. Tudo aceso em 3000K']];
+  var etapaEl=document.getElementById('etapa'),etapaAtual=-1;
+  function mostraEtapa(t){var i=0;for(var j=0;j<ETAPAS.length;j++){if(t>=ETAPAS[j][0])i=j}if(i!==etapaAtual){etapaAtual=i;etapaEl.querySelector('b').textContent=ETAPAS[i][1];etapaEl.querySelector('span').textContent=ETAPAS[i][2];etapaEl.classList.remove('pulse');void etapaEl.offsetWidth;etapaEl.classList.add('pulse');etapaEl.classList.toggle('on',i>0)}}
+  vid.addEventListener('timeupdate',function(){mostraEtapa(vid.currentTime);if(vid.currentTime>2&&hero.classList.contains('apagada'))acesa()});
+  setTimeout(function(){if(vid.classList.contains('on')&&vid.currentTime<0.2)fallback()},2200); // autoplay travado: acende nas imagens
   vid.addEventListener('ended',fimVideo);
   bts.forEach(function(b){b.addEventListener('click',function(){clearInterval(auto);if(vid.classList.contains('on')){vid.pause();vid.classList.remove('on');hero.classList.remove('apagada')}setK(b.dataset.k)})});
   tchum();
