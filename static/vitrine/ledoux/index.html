@@ -41,7 +41,8 @@
 
 <section class="hero apagada">
   <div class="luz">
-    <img src="img/sala_apagada.jpg" class="on" data-k="0" alt="Sala com as luzes apagadas">
+    <video id="acende" src="img/acende.mp4" poster="img/sala_apagada.jpg" autoplay muted playsinline preload="auto" class="on" aria-label="A sala acende: sanca, spots e pendente"></video>
+    <img src="img/sala_apagada.jpg" data-k="0" alt="Sala com as luzes apagadas">
     <img src="img/sala_3000k.jpg" data-k="3" alt="Sala com iluminação 3000K, branco quente">
     <img src="img/sala_4000k.jpg" data-k="4" alt="A mesma sala com iluminação 4000K, branco neutro">
     <img src="img/sala_6500k.jpg" data-k="6" alt="A mesma sala com iluminação 6500K, branco frio">
@@ -270,24 +271,22 @@
   // hero: a mesma sala em 3 temperaturas
   var imgs=document.querySelectorAll('.hero .luz img'), bts=document.querySelectorAll('.temp button'), leg=document.getElementById('legenda');
   var txt={3:'Sala em <b>3000K</b>: aconchego pra sala, quarto e jantar',4:'Sala em <b>4000K</b>: neutra, pra cozinha, banheiro e escritório',6:'Sala em <b>6500K</b>: fria, pra garagem, área de serviço e loja'};
-  var hero=document.querySelector('.hero'), auto=null, seq=['3','4','6'], i=0;
-  function setK(k,quiet){imgs.forEach(function(x){x.classList.toggle('on',x.dataset.k===k)});bts.forEach(function(b){b.classList.toggle('on',b.dataset.k===k)});if(!quiet&&txt[k])leg.firstChild.nodeValue='';if(txt[k]){leg.innerHTML=txt[k]+' · <a href="#" id="replay" style="color:#ffd27a;text-decoration:none">⏻ apagar e acender de novo</a>';document.getElementById('replay').onclick=function(e){e.preventDefault();tchum()}}}
-  function flick(on){imgs.forEach(function(x){if(x.dataset.k==='3')x.style.transition=on?'none':'';});}
+  var hero=document.querySelector('.hero'), vid=document.getElementById('acende'), auto=null, seq=['3','4','6'], i=0, replayHtml=' · <a href="#" id="replay" style="color:#ffd27a;text-decoration:none">⏻ apagar e acender de novo</a>';
+  function ligaReplay(){var r=document.getElementById('replay');if(r)r.onclick=function(e){e.preventDefault();tchum()}}
+  function setK(k){imgs.forEach(function(x){x.classList.toggle('on',x.dataset.k===k)});bts.forEach(function(b){b.classList.toggle('on',b.dataset.k===k)});if(txt[k]){leg.innerHTML=txt[k]+replayHtml;ligaReplay()}}
+  function acesa(){hero.classList.remove('apagada');bts.forEach(function(b){b.classList.toggle('on',b.dataset.k==='3')});leg.innerHTML=txt[3]+replayHtml;ligaReplay()}
+  function fimVideo(){vid.classList.remove('on');setK('3');i=0;clearInterval(auto);auto=setInterval(function(){i=(i+1)%3;setK(seq[i])},4200)}
   function tchum(){
-    clearInterval(auto); hero.classList.add('apagada'); imgs.forEach(function(x){x.classList.toggle('on',x.dataset.k==='0')}); bts.forEach(function(b){b.classList.remove('on')});
-    var l3=document.querySelector('.hero .luz img[data-k="3"]');
-    setTimeout(function(){ // tremelique de interruptor: liga, falha, liga
-      l3.style.transition='opacity .08s'; l3.classList.add('on');
-      setTimeout(function(){l3.classList.remove('on')},110);
-      setTimeout(function(){l3.classList.add('on')},220);
-      setTimeout(function(){l3.classList.remove('on')},300);
-      setTimeout(function(){l3.style.transition='opacity .35s';l3.classList.add('on');hero.classList.remove('apagada');setK('3',true);
-        setTimeout(function(){l3.style.transition=''},400);
-        i=0; auto=setInterval(function(){i=(i+1)%3;setK(seq[i])},4200);
-      },380);
-    },1600);
+    clearInterval(auto); hero.classList.add('apagada'); imgs.forEach(function(x){x.classList.remove('on')}); bts.forEach(function(b){b.classList.remove('on')});
+    if(vid&&vid.canPlayType&&vid.canPlayType('video/mp4')){vid.classList.add('on');vid.currentTime=0;var pr=vid.play();if(pr&&pr.catch)pr.catch(fallback)}else fallback();
   }
-  bts.forEach(function(b){b.addEventListener('click',function(){setK(b.dataset.k);clearInterval(auto)})});
+  function fallback(){ // sem vídeo: acende nas imagens
+    vid.classList.remove('on'); var l3=document.querySelector('.hero .luz img[data-k="3"]'); document.querySelector('.hero .luz img[data-k="0"]').classList.add('on');
+    setTimeout(function(){l3.classList.add('on');acesa();setTimeout(fimVideo,600)},1600);
+  }
+  vid.addEventListener('timeupdate',function(){if(vid.currentTime>1.5&&hero.classList.contains('apagada'))acesa()});
+  vid.addEventListener('ended',fimVideo);
+  bts.forEach(function(b){b.addEventListener('click',function(){clearInterval(auto);if(vid.classList.contains('on')){vid.pause();vid.classList.remove('on');hero.classList.remove('apagada')}setK(b.dataset.k)})});
   tchum();
 
   // calculadora de spots

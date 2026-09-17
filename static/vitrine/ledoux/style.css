@@ -46,10 +46,12 @@ section{padding:64px 0}
 
 /* hero — a sala em 3 temperaturas */
 .hero{position:relative;min-height:min(86vh,760px);display:grid;align-items:end;overflow:hidden;background:#000;color:#fff}
-.hero .luz{position:absolute;inset:0}
-.hero .luz img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .9s ease;transform-origin:60% 40%;animation:kb 26s ease-in-out infinite alternate}
+.hero .luz{position:absolute;inset:0;z-index:0}
+.hero .luz img,.hero .luz video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .9s ease;transform-origin:50% 45%}
+.hero .luz img{animation:kb 26s ease-in-out infinite alternate}
+.hero .luz video.on{opacity:1;z-index:2;transition:opacity .5s}
 .hero .luz img.on{opacity:1}
-@keyframes kb{from{transform:scale(1.02) translate(0,0)}to{transform:scale(1.10) translate(-1.2%,-1%)}}
+@keyframes kb{from{transform:scale(1.065) translate(0,0)}to{transform:scale(1.12) translate(-1%,-.8%)}}
 .hero::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(7,21,64,.72) 0,rgba(7,21,64,.38) 42%,rgba(7,21,64,0) 68%),linear-gradient(0deg,rgba(7,21,64,.7) 0,transparent 45%)}
 .hero .wrap{position:relative;z-index:1;padding-top:70px;padding-bottom:40px;width:100%}
 .eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:.74rem;letter-spacing:.14em;text-transform:uppercase;font-weight:700;color:var(--amber2);margin-bottom:16px}
@@ -74,6 +76,7 @@ section{padding:64px 0}
 .hero.apagada .legenda{opacity:0}
 .hero.apagada::after{background:linear-gradient(90deg,rgba(7,21,64,.35) 0,rgba(7,21,64,.15) 42%,rgba(7,21,64,0) 68%)}
 .hero .luz img[data-k="0"]{animation:none;transform:scale(1.02)}
+.hero.apagada .luz video{filter:none}
 /* faixa de confiança */
 .faixa{background:var(--navy);color:#fff;padding:18px 0}
 .faixa .wrap{display:grid;gap:18px;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));font-size:.88rem}
