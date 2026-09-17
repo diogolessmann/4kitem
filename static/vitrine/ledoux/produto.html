@@ -130,5 +130,10 @@
   document.querySelectorAll('.thumbs div img').forEach(function(im){im.parentNode.onclick=function(){document.getElementById('gmain').src=im.src}});
 })();
 </script>
+<script>
+// revelação suave ao rolar (uma vez, 12 px, 0,6 s) — dá o "peso" de site premium sem pesar
+(function(){if(!('IntersectionObserver' in window))return;var els=document.querySelectorAll('section .wrap > *, .faixa .fx');els.forEach(function(e){e.classList.add('rv')});
+var io=new IntersectionObserver(function(en){en.forEach(function(x){if(x.isIntersecting){x.target.classList.add('in');io.unobserve(x.target)}})},{rootMargin:'0px 0px -8% 0px',threshold:.08});els.forEach(function(e){io.observe(e)})})();
+</script>
 </body>
 </html>

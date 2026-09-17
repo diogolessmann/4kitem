@@ -341,3 +341,69 @@ footer .fk{color:#aeb6dc}
 
 .faixa .fx>div{display:block;min-width:0}
 @media(max-width:600px){.faixa .wrap>div{flex-direction:row;align-items:center;gap:14px}}
+
+
+/* ===== HARMONIZAÇÃO 17/set — uma paleta, um tom ===== */
+:root{--bg:#f6f4ef;--card:#fbfaf7;--ph:#f1eee6;--line:#e7e2d8;--sh:0 10px 30px rgba(11,31,92,.06);--sh2:0 18px 44px rgba(11,31,92,.10)}
+section.alt{background:var(--bg);border:0}
+section{padding:72px 0}
+h2{font-weight:500}
+/* botões: marinho é o botão. Verde só no ícone do WhatsApp. ML em contorno dourado. */
+.btn-wa{background:var(--navy);color:#fff;box-shadow:0 8px 20px rgba(11,31,92,.18)}
+.btn-wa:hover{background:var(--navy3)}
+.btn-wa .ico{color:#4ade80}
+.hero .btn-wa{background:#fff;color:var(--navy);box-shadow:0 10px 26px rgba(0,0,0,.25)}
+.hero .btn-wa .ico{color:#1fae55}
+.hero .btn-wa:hover{background:#fff8e6}
+.btn-ml{background:transparent;color:var(--gold);border:1.5px solid rgba(184,146,58,.55);box-shadow:none}
+.btn-ml .ico{color:var(--gold)}
+.btn-ml:hover{background:rgba(184,146,58,.08);border-color:var(--gold)}
+.hero .btn-ml{color:var(--amber2);border-color:rgba(232,200,119,.55);background:rgba(7,21,64,.35)}
+.top .btn-wa{background:var(--navy);color:#fff}
+.fab{background:var(--navy);color:#fff;box-shadow:0 14px 30px rgba(11,31,92,.35)}
+.fab .ico{color:#4ade80}
+/* cards: sem borda, sombra só; foto do produto integrada ao fundo */
+.prod{border:0;box-shadow:var(--sh);background:var(--card)}
+.prod:hover{box-shadow:var(--sh2)}
+.prod .ph{background:var(--ph);border-bottom:0}
+.prod .ph img{mix-blend-mode:multiply}
+.tag.r{display:none}
+.tag{background:var(--navy);font-size:.6rem;padding:6px 9px;letter-spacing:.14em}
+.tag.amb{background:var(--gold);color:#fff}
+.specs em{background:transparent;border:1px solid var(--line);color:#7a8094}
+.specs em:nth-child(n+4){display:none}
+.stars{font-size:.74rem;color:#8b8f9f}.stars .ico{display:none}
+.price strong{color:var(--navy)}
+.pro{color:var(--gold);font-weight:600}
+.acts .btn{border-radius:10px}
+.guia,.pv,.calc,details,.instala a,.kit div,.pedido{border:0;box-shadow:var(--sh);background:var(--card)}
+.guia:hover{box-shadow:var(--sh2);border:0}
+.cat,.amb{box-shadow:var(--sh)}
+.calc-in input,.calc-in select,.calc input,.calc select{border-color:var(--line);background:#fff}
+.calc-out{background:var(--navy)}
+/* hero: menos peso */
+.hero .lede{font-size:1.04rem;color:#e6e4f2;max-width:520px}
+.selo{background:rgba(7,21,64,.28);border-color:rgba(255,255,255,.14)}
+.temp{background:rgba(7,21,64,.45);border-color:rgba(255,255,255,.14)}
+/* faixa mais leve e integrada ao hero */
+.faixa{background:var(--navy2)}
+.faixa .fx i{background:rgba(232,200,119,.1)}
+/* listas: bolinha dourada discreta */
+.lista li i{background:transparent;border:1px solid rgba(184,146,58,.5);color:var(--gold);font-size:.72rem}
+.dark .lista li i{border-color:rgba(232,200,119,.5);color:var(--amber2)}
+/* faq */
+details{padding:16px 20px}
+/* rodapé */
+footer{background:var(--navy2)}
+
+/* revelação ao rolar */
+.rv{opacity:0;transform:translateY(12px);transition:opacity .6s ease,transform .6s ease}
+.rv.in{opacity:1;transform:none}
+@media(prefers-reduced-motion:reduce){.rv{opacity:1;transform:none;transition:none}}
+/* toques finais */
+.prod .ph img{transition:transform .6s ease}
+.prod:hover .ph img{transform:scale(1.04)}
+.top{border-bottom:1px solid rgba(184,146,58,.25)}
+.hero .legenda{background:rgba(7,21,64,.5);border:1px solid rgba(255,255,255,.1)}
+h2 small::before{content:"";display:inline-block;width:18px;height:1px;background:var(--gold);vertical-align:middle;margin-right:10px}
+.dark h2 small::before{background:var(--amber2)}

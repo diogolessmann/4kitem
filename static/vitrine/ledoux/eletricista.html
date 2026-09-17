@@ -59,7 +59,7 @@
   </div>
 </div></section>
 
-<section id="pedido" style="background:#fff;border-top:1px solid var(--line);border-bottom:1px solid var(--line)"><div class="wrap">
+<section id="pedido" class="alt"><div class="wrap">
   <h2><small>Montar pedido</small>Marca, ajusta, manda pro zap. A loja separa.</h2>
   <div class="pedido">
     <div>
@@ -101,7 +101,7 @@
       <li><i>✓</i><div><b>Sexta-feira</b><span>a loja avisa no zap o que chegou e o que está com preço de kit.</span></div></li>
     </ul>
   </div>
-  <img src="img/hero_obra.jpg" alt="Obra nova em Schroeder com quadro instalado">
+  <img src="img/hero_eletrica.jpg" alt="Tomada e interruptor em painel de madeira">
 </div></section>
 
 <footer><div class="wrap">
@@ -126,6 +126,11 @@
   }
   labels.forEach(function(l){l.querySelectorAll('input').forEach(function(i){i.addEventListener('input',calc);i.addEventListener('change',calc)})}); calc();
 })();
+</script>
+<script>
+// revelação suave ao rolar (uma vez, 12 px, 0,6 s) — dá o "peso" de site premium sem pesar
+(function(){if(!('IntersectionObserver' in window))return;var els=document.querySelectorAll('section .wrap > *, .faixa .fx');els.forEach(function(e){e.classList.add('rv')});
+var io=new IntersectionObserver(function(en){en.forEach(function(x){if(x.isIntersecting){x.target.classList.add('in');io.unobserve(x.target)}})},{rootMargin:'0px 0px -8% 0px',threshold:.08});els.forEach(function(e){io.observe(e)})})();
 </script>
 </body>
 </html>
