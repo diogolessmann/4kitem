@@ -17,7 +17,12 @@
 <script type="application/ld+json">
 {"@context":"https://schema.org","@graph":[
  {"@type":"HardwareStore","@id":"#ledoux","name":"Ledoux Materiais Elétricos e Iluminação","image":"img/sala2_3000k.webp","telephone":"+55 47 99642-4632","address":{"@type":"PostalAddress","streetAddress":"R. Mal. Castelo Branco, 2838 - Centro","addressLocality":"Schroeder","addressRegion":"SC","postalCode":"89275-000","addressCountry":"BR"},"geo":{"@type":"GeoCoordinates","latitude":-26.41,"longitude":-49.07},"openingHoursSpecification":[{"@type":"OpeningHoursSpecification","dayOfWeek":["Monday","Tuesday","Wednesday","Thursday","Friday"],"opens":"07:30","closes":"18:00"},{"@type":"OpeningHoursSpecification","dayOfWeek":"Saturday","opens":"08:00","closes":"12:00"}],"aggregateRating":{"@type":"AggregateRating","ratingValue":"5.0","reviewCount":"32"},"sameAs":["https://www.instagram.com/ledoux.mat.eletricos/","https://www.mercadolivre.com.br/pagina/ledouxstore"],"areaServed":["Schroeder","Jaraguá do Sul","Guaramirim","Corupá"],"priceRange":"$$"},
- {"@type":"ItemList","name":"Mais pedidos na {{ loja.nome }}","itemListElement":[{% for p in prods[:12] %}{"@type":"Product","position":{{ loop.index }},"name":{{ p.titulo|tojson }},"brand":{{ p.marca|tojson }},"url":"{{ base }}/p/{{ p.codigo or p.id }}","offers":{"@type":"Offer","price":"{{ '%.2f'|format(p.preco or 0) }}","priceCurrency":"BRL","availability":"https://schema.org/InStock"}}{{ "," if not loop.last }}{% endfor %}]},
+ {"@type":"ItemList","name":"Mais pedidos na Ledoux","itemListElement":[
+  {"@type":"Product","position":1,"name":"Kit 10 Lâmpadas LED PAR20 7W E27 3000K bivolt Lumanti","brand":"Lumanti","offers":{"@type":"Offer","price":"78.98","priceCurrency":"BRL","availability":"https://schema.org/InStock"}},
+  {"@type":"Product","position":2,"name":"Spot de embutir Nordecor Loyo redondo branco PAR20","brand":"Nordecor","offers":{"@type":"Offer","price":"24.90","priceCurrency":"BRL","availability":"https://schema.org/InStock"}},
+  {"@type":"Product","position":3,"name":"Fita LED Nordecor 5 m 240 LEDs/m 20 W 3000K 12 V","brand":"Nordecor","offers":{"@type":"Offer","price":"159.90","priceCurrency":"BRL","availability":"https://schema.org/InStock"}},
+  {"@type":"Product","position":4,"name":"Plafon LED S&L New Space 32 W 3 temperaturas","brand":"S&L Iluminação","offers":{"@type":"Offer","price":"199.89","priceCurrency":"BRL","availability":"https://schema.org/InStock"}},
+  {"@type":"Product","position":5,"name":"Interruptor touch WEG Wi-Fi 6 botões Alexa","brand":"WEG","offers":{"@type":"Offer","price":"368.51","priceCurrency":"BRL","availability":"https://schema.org/InStock"}}]},
  {"@type":"FAQPage","mainEntity":[
   {"@type":"Question","name":"3000K ou 4000K: qual luz usar na sala?","acceptedAnswer":{"@type":"Answer","text":"3000K (branco quente) para sala, quarto e jantar; 4000K (neutra) para cozinha, banheiro e escritório; 6500K (fria) para garagem e área de serviço. Na Ledoux você vê as três acesas antes de levar."}},
   {"@type":"Question","name":"Fita de LED precisa de fonte?","acceptedAnswer":{"@type":"Answer","text":"Sim, toda fita de 12 V ou 24 V precisa de fonte dimensionada pelos metros e pela potência por metro. Fita que queima em 2 meses quase sempre é fonte errada. A Ledoux calcula e entrega fita, fonte e perfil juntos."}},
@@ -253,7 +258,13 @@
     $('o_n').textContent=n; $('o_lm').textContent=need.toLocaleString('pt-BR')+' lm'; $('o_k').textContent=kelvin[amb];
     $('o_kit').textContent=n+' spots Loyo + '+n+' PAR20 '+kelvin[amb].split(' ')[0];
     $('o_preco').textContent=brl(preco);
-    $('c_zap').href='{{ wa("'+encodeURIComponent('Oi, vim do site. Fiz a conta: '+amb+' de '+m2+' m² = '+n+' spots ('+kelvin[amb]+'). Tem na loja o kit '+n+' spots Loyo + '+n+' PAR20? Quero retirar hoje.');\n  }\n  ['c_amb','c_m2','c_lamp','c_pe'].forEach(function(id){$(id).addEventListener('input',calc);$(id).addEventListener('change',calc)}); calc();\n})();\n</script>\n<script>\n// revelação suave ao rolar (uma vez, 12 px, 0,6 s) — dá o ") }}"peso" de site premium sem pesar
+    $('c_zap').href='https://wa.me/{{ loja.whatsapp }}?text='+encodeURIComponent('Oi, vim do site. Fiz a conta: '+amb+' de '+m2+' m² = '+n+' spots ('+kelvin[amb]+'). Tem na loja o kit '+n+' spots Loyo + '+n+' PAR20? Quero retirar hoje.');
+  }
+  ['c_amb','c_m2','c_lamp','c_pe'].forEach(function(id){$(id).addEventListener('input',calc);$(id).addEventListener('change',calc)}); calc();
+})();
+</script>
+<script>
+// revelação suave ao rolar (uma vez, 12 px, 0,6 s) — dá o "peso" de site premium sem pesar
 (function(){if(!('IntersectionObserver' in window))return;var els=document.querySelectorAll('section .wrap > *, .faixa .fx');els.forEach(function(e){e.classList.add('rv')});
 var io=new IntersectionObserver(function(en){en.forEach(function(x){if(x.isIntersecting){x.target.classList.add('in');io.unobserve(x.target)}})},{rootMargin:'0px 0px -8% 0px',threshold:.08});els.forEach(function(e){io.observe(e)})})();
 </script>

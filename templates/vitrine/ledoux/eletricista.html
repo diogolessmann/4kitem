@@ -122,7 +122,13 @@
     labels.forEach(function(l){var c=l.querySelector('input[type=checkbox]'),q=+l.querySelector('input[type=number]').value||0;if(c.checked&&q>0){tot+=q*+c.dataset.p;linhas.push(q+'× '+c.dataset.n+' (cód. '+c.dataset.c+')')}});
     document.getElementById('tot').textContent=brl(tot);
     document.getElementById('itens').innerHTML=linhas.map(function(x){return '• '+x}).join('<br>')||'nenhum item marcado';
-    document.getElementById('zap').href='{{ wa("'+encodeURIComponent('Pedido eletricista (site): '+linhas.join('; ')+'. Total pro '+brl(tot)+'. Separa pra retirar hoje?');\n  }\n  labels.forEach(function(l){l.querySelectorAll('input').forEach(function(i){i.addEventListener('input',calc);i.addEventListener('change',calc)})}); calc();\n})();\n</script>\n<script>\n// revelação suave ao rolar (uma vez, 12 px, 0,6 s) — dá o ") }}"peso" de site premium sem pesar
+    document.getElementById('zap').href='https://wa.me/{{ loja.whatsapp }}?text='+encodeURIComponent('Pedido eletricista (site): '+linhas.join('; ')+'. Total pro '+brl(tot)+'. Separa pra retirar hoje?');
+  }
+  labels.forEach(function(l){l.querySelectorAll('input').forEach(function(i){i.addEventListener('input',calc);i.addEventListener('change',calc)})}); calc();
+})();
+</script>
+<script>
+// revelação suave ao rolar (uma vez, 12 px, 0,6 s) — dá o "peso" de site premium sem pesar
 (function(){if(!('IntersectionObserver' in window))return;var els=document.querySelectorAll('section .wrap > *, .faixa .fx');els.forEach(function(e){e.classList.add('rv')});
 var io=new IntersectionObserver(function(en){en.forEach(function(x){if(x.isIntersecting){x.target.classList.add('in');io.unobserve(x.target)}})},{rootMargin:'0px 0px -8% 0px',threshold:.08});els.forEach(function(e){io.observe(e)})})();
 </script>

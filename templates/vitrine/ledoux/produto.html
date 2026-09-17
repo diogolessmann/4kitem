@@ -124,8 +124,14 @@
 (function(){
   var bts=document.querySelectorAll('#tp button'), txt={'2400K':'Quente âmbar: filamento, jantar, bar.','2700K':'Quente: quarto, cabeceira.','3000K':'Quente: sala, quarto, jantar. Você vê acesa na loja antes de levar.','4000K':'Neutra: cozinha, banheiro, escritório. Branca sem azular.','6500K':'Fria: garagem, área de serviço, loja. Bem clara.'};
   bts.forEach(function(b){b.onclick=function(){bts.forEach(function(x){x.classList.remove('on')});b.classList.add('on');document.getElementById('tp_txt').textContent=txt[b.dataset.k];
-    document.getElementById('zap').href='{{ wa("'+encodeURIComponent('Oi, vim do site. Tem na loja? Quero retirar hoje: cód. '+b.dataset.c+' Kit 10 PAR20 7W '+b.dataset.k)}});\n  var d=new Date(),h=d.getHours()+d.getMinutes()/60,dia=d.getDay(),fecha=dia===6?12:(dia===0?0:18);var r=document.getElementById('pdp_retira');if(r)r.textContent=(dia!==0&&h<fecha-1)?('retira hoje até '+fecha+'h'):(dia===0||dia===6?'retira segunda':'retira amanhã');
-  var tpb=document.querySelector('#tp button.on');if(tpb)tpb.click();\n  document.querySelectorAll('.thumbs div img').forEach(function(im){im.parentNode.onclick=function(){document.getElementById('gmain').src=im.src}});\n})();\n</script>\n<script>\n// revelação suave ao rolar (uma vez, 12 px, 0,6 s) — dá o ") }}"peso" de site premium sem pesar
+    document.getElementById('zap').href='https://wa.me/{{ loja.whatsapp }}?text='+encodeURIComponent('Oi, vim do site. Tem na loja? Quero retirar hoje: cód. '+b.dataset.c+' Kit 10 PAR20 7W '+b.dataset.k)}});
+  var d=new Date(),h=d.getHours()+d.getMinutes()/60,dia=d.getDay(),fecha=dia===6?12:(dia===0?0:18);var r=document.getElementById('pdp_retira');if(r)r.textContent=(dia!==0&&h<fecha-1)?('retira hoje até '+fecha+'h'):(dia===0||dia===6?'retira segunda':'retira amanhã');
+  var tpb=document.querySelector('#tp button.on');if(tpb)tpb.click();
+  document.querySelectorAll('.thumbs div img').forEach(function(im){im.parentNode.onclick=function(){document.getElementById('gmain').src=im.src}});
+})();
+</script>
+<script>
+// revelação suave ao rolar (uma vez, 12 px, 0,6 s) — dá o "peso" de site premium sem pesar
 (function(){if(!('IntersectionObserver' in window))return;var els=document.querySelectorAll('section .wrap > *, .faixa .fx');els.forEach(function(e){e.classList.add('rv')});
 var io=new IntersectionObserver(function(en){en.forEach(function(x){if(x.isIntersecting){x.target.classList.add('in');io.unobserve(x.target)}})},{rootMargin:'0px 0px -8% 0px',threshold:.08});els.forEach(function(e){io.observe(e)})})();
 </script>
