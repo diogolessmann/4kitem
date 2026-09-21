@@ -146,6 +146,8 @@ def _grava(conn, lid, slug, media_dir, p, prog):
     tipo = 'outro'
     for t in termos.get('tipo_produto', []):
         tipo = MAPA_TIPO.get(t, 'outro')
+    if tipo == 'outro':                      # taxonomia não mapeada → família pelo nome (194 itens caíam em "Outros")
+        tipo = _tipo_por_nome(titulo, 'outro')
     specs = []
     for tax, rot in (('potencia', ''), ('lumens', ''), ('irc', ''), ('facho_angulo', 'facho '), ('grau_protecao', ''),
                      ('tensao_alimentacao', ''), ('soquete_compatibilidade', ''), ('tipo_instalacao', '')):
@@ -215,13 +217,14 @@ LINHAS_LUMANTI = [('lampadas-luminarias-painel-led', 'Lâmpadas, luminárias e p
                   ('refletores-led-quadra-parque-area-rural', 'Refletores LED', 'refletor'),
                   ('projetores-refletores-led-quadras-parques', 'Projetores e refletores', 'refletor'),
                   ('acessorios-iluminacao-led', 'Acessórios', 'outro')]
-_TIPO_KW = [('spot', 'spot'), ('trilho', 'trilho'), ('fita', 'fita'), ('mangueira', 'fita'), ('neon', 'fita'), ('refletor', 'refletor'),
-            ('projetor', 'refletor'), ('high bay', 'refletor'), ('ufo', 'refletor'), ('painel', 'plafon'), ('plafon', 'plafon'),
-            ('luminária', 'plafon'), ('luminaria', 'plafon'), ('pendente', 'pendente'), ('lustre', 'pendente'), ('abajur', 'pendente'),
+_TIPO_KW = [  # ordem importa: o específico antes do genérico ('emergência' antes de 'luminária')
+            ('emergência', 'emergencia'), ('emergencia', 'emergencia'), ('sensor', 'sensor'), ('fonte', 'fonte'), ('driver', 'fonte'),
+            ('trilho', 'trilho'), ('spot', 'spot'), ('refletor', 'refletor'), ('projetor', 'refletor'), ('high bay', 'refletor'), ('ufo', 'refletor'),
+            ('fita', 'fita'), ('mangueira', 'fita'), ('neon', 'fita'), ('perfil', 'perfil'), ('pendente', 'pendente'), ('lustre', 'pendente'), ('abajur', 'pendente'),
             ('arandela', 'arandela'), ('espeto', 'jardim'), ('balizador', 'jardim'), ('poste', 'jardim'), ('jardim', 'jardim'), ('varal', 'jardim'),
             ('lâmpada', 'lampada'), ('lampada', 'lampada'), ('bulbo', 'lampada'), ('filamento', 'lampada'), ('dicroica', 'lampada'), ('dicróica', 'lampada'),
-            ('par20', 'lampada'), ('par30', 'lampada'), ('par38', 'lampada'), ('tubular', 'lampada'), ('fonte', 'fonte'), ('driver', 'fonte'),
-            ('emergência', 'emergencia'), ('emergencia', 'emergencia'), ('sensor', 'sensor')]
+            ('par20', 'lampada'), ('par30', 'lampada'), ('par38', 'lampada'), ('tubular', 'lampada'),
+            ('painel', 'plafon'), ('plafon', 'plafon'), ('luminária', 'plafon'), ('luminaria', 'plafon')]
 _RE_ITEM = re.compile(r'<div class="item"><a href="(https://lumanti\.com\.br/blog/produto/[^"]+)">.*?<b>(.*?)</b>\s*<p>(.*?)</p>.*?<img[^>]*src="([^"]+)"', re.S)
 _RE_COD = re.compile(r'^((?:[A-Z0-9][A-Z0-9\-\./]{3,}\s*\|\s*)*[A-Z0-9][A-Z0-9\-\./]{3,})\s*(.*)$', re.S)
 
