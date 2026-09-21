@@ -1,0 +1,32 @@
+/* Painel da Vitrine (todas as lojas) — escuro, 1 coluna, feito pro celular. 21/set/2026 */
+:root{--bg:#0f0f1a;--card:#1a1a2e;--line:#2a2a44;--tx:#e9e9f5;--mut:#889;--ind:#0b1f5c;--gold:#d9b45c;--ok:#7f7;--bad:#f66}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.45 -apple-system,Segoe UI,Inter,sans-serif}
+.wrap{max-width:600px;margin:0 auto;padding:16px}
+h1{font-size:1.15rem;margin:0}h2{font-size:1rem;margin:18px 0 8px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin:10px 0}
+input,select,textarea{width:100%;background:#0f0f1a;border:1px solid var(--line);color:var(--tx);border-radius:10px;padding:13px;font-size:16px;margin:6px 0 10px}
+label{font-size:.8rem;color:var(--mut);font-weight:700}
+.btn{display:block;width:100%;text-align:center;border:0;border-radius:12px;padding:15px;font-size:1rem;font-weight:800;cursor:pointer;color:#fff;background:var(--ind);text-decoration:none}
+.btn.ghost{background:transparent;border:1px solid var(--line);color:var(--mut)}.btn.gold{background:var(--gold);color:#1a1200}
+.tabs{display:flex;gap:6px;overflow-x:auto;padding:4px 0 10px;position:sticky;top:0;background:var(--bg);z-index:2}
+.tabs a{white-space:nowrap;padding:8px 16px;border-radius:99px;text-decoration:none;font-weight:700;font-size:13px;background:var(--card);color:var(--mut)}
+.tabs a.on{background:var(--ind);color:#fff}
+.prod{display:grid;grid-template-columns:64px 1fr auto;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
+.prod img{width:64px;height:64px;border-radius:10px;object-fit:cover;background:#fff}
+.prod b{display:block;font-size:.92rem}.prod small{color:var(--mut)}
+.prod.off{opacity:.5}
+.tog{padding:6px 12px;border-radius:99px;font-size:12px;font-weight:800;border:0;cursor:pointer}
+.tem{background:#132;color:var(--ok)}.acabou{background:#311;color:var(--bad)}
+.mini{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}.mini button,.mini a{font-size:11px;padding:4px 8px;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--mut);cursor:pointer;text-decoration:none}
+.pill{background:#132;color:var(--ok);border-radius:99px;padding:2px 10px;font-size:11px;margin-right:6px}
+.num{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center}
+.num div{background:#0f0f1a;border-radius:10px;padding:12px 6px}.num strong{display:block;font-size:1.5rem}.num small{color:var(--mut)}
+.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.foto{border:2px dashed var(--line);border-radius:12px;padding:16px;text-align:center;color:var(--mut)}
+.ok{background:#132;border:1px solid #2a5;color:var(--ok);border-radius:10px;padding:10px 14px;font-size:13px;margin:10px 0}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.ks{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 10px}.ks label{display:flex;align-items:center;gap:6px;background:#0f0f1a;border:1px solid var(--line);border-radius:10px;padding:8px 12px;color:var(--tx);font-weight:600}
+.ks input{width:auto;margin:0}
+.busca{display:flex;gap:8px;margin:4px 0 8px}.busca input{margin:0}.busca button{border:0;border-radius:10px;background:var(--ind);color:#fff;font-weight:800;padding:0 16px;cursor:pointer}
+.pag{display:flex;gap:6px;justify-content:center;margin:12px 0 0;flex-wrap:wrap}.pag a,.pag span{padding:6px 12px;border-radius:8px;border:1px solid var(--line);color:var(--mut);text-decoration:none;font-size:13px}.pag span{background:var(--ind);color:#fff;border-color:var(--ind)}
+.fabs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0}.fabs div{background:#0f0f1a;border-radius:10px;padding:10px;text-align:center}.fabs strong{display:block;font-size:1.3rem}.fabs small{color:var(--mut)}

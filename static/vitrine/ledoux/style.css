@@ -488,3 +488,20 @@ body:has(.lista-bar:not([hidden])) .fab{bottom:86px}
 .lb-frete #lb_ops{flex-basis:100%;display:grid;gap:4px}
 .lb-frete .op{display:flex;justify-content:space-between;border-top:1px solid rgba(255,255,255,.12);padding-top:4px}
 .lb-frete .op b{color:#e8c877}
+
+
+/* ── v2 · 21/set/2026 · catálogo + zap (veredito do Daniel) ─────────────────── */
+.busca{display:flex;gap:8px;margin:18px 0 8px;max-width:680px}
+.busca input{flex:1;min-width:0;padding:13px 16px;border:1.5px solid var(--line);border-radius:12px;font-size:1rem;background:var(--card);color:var(--ink);font-family:inherit}
+.busca input:focus{outline:none;border-color:var(--navy);box-shadow:0 0 0 3px rgba(11,31,92,.08)}
+.busca button{padding:0 22px;border:0;border-radius:12px;background:var(--navy);color:#fff;font-weight:700;cursor:pointer;font-family:inherit}
+.busca.grande{margin:22px 0 26px}.busca.grande input{padding:16px 18px;font-size:1.05rem}
+.hero-split{display:grid;gap:30px;grid-template-columns:1fr;align-items:center;padding:96px 20px 44px}
+@media(min-width:900px){.hero-split{grid-template-columns:1.25fr .75fr;padding-top:110px}}
+.retrato{position:relative;border-radius:var(--r);overflow:hidden;box-shadow:var(--sh2);aspect-ratio:1/1;background:#0b1f5c;max-width:440px;justify-self:center;width:100%}
+.retrato img{width:100%;height:100%;object-fit:cover;display:block}
+.retrato span{position:absolute;left:14px;bottom:12px;background:rgba(11,31,92,.85);color:#fff;padding:6px 12px;border-radius:99px;font-size:.78rem;font-weight:700;letter-spacing:.02em}
+.zapline{font-size:.84rem;color:var(--mut)}
+img.sem{object-fit:contain!important;padding:24px;opacity:.55;background:var(--ph)}
+.pdp .galeria .main img.sem{padding:48px}
+.sobre-foto{border-radius:var(--r);box-shadow:var(--sh);width:100%;aspect-ratio:1/1;object-fit:cover;object-position:top}

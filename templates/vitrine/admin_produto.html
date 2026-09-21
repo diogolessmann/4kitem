@@ -1,0 +1,20 @@
+{% from 'vitrine/_form_produto.html' import form_produto with context %}<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Editar {{ p.codigo }} · {{ loja.nome.split(' ')[0] }}</title>
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="/static/vitrine/admin.css?v={{ v }}">
+</head><body><div class="wrap">
+{% with msgs = get_flashed_messages() %}{% for m in msgs %}<div class="ok">{{ m }}</div>{% endfor %}{% endwith %}
+<div class="top"><h1>✏️ {{ p.titulo[:48] }}</h1><a href="{{ base }}/admin#produtos" style="color:var(--mut);font-size:13px;text-decoration:none">← voltar</a></div>
+<div class="card">
+  <div class="prod" style="border:0;padding:0 0 10px"><img src="{{ media(p.foto) or '/static/vitrine/semfoto.svg' }}" alt=""><div><b>{{ p.marca }} · cód. {{ p.codigo }}</b><small>{{ 'no site' if p.ativo else 'ESCONDIDO do site' }} · <a href="{{ base }}/p/{{ p.codigo or p.id }}" target="_blank" style="color:var(--gold)">ver no site ↗</a></small></div></div>
+  {{ form_produto(p) }}
+</div>
+<div class="card">
+  <div class="mini" style="flex-wrap:wrap">
+    <form method="post" action="{{ base }}/admin/produto/{{ p.id }}" style="display:inline"><input type="hidden" name="acao" value="tem"><button type="submit" class="tog {{ 'tem' if p.ativo else 'acabou' }}">{{ 'TEM · esconder do site' if p.ativo else 'ACABOU · mostrar de novo' }}</button></form>
+    <form method="post" action="{{ base }}/admin/produto/{{ p.id }}" style="display:inline"><input type="hidden" name="acao" value="destaque"><button type="submit">{{ 'tirar da home' if p.destaque else '★ destacar na home' }}</button></form>
+    <form method="post" action="{{ base }}/admin/produto/{{ p.id }}" style="display:inline"><input type="hidden" name="acao" value="vendi"><button type="submit">vendi 1</button></form>
+    <form method="post" action="{{ base }}/admin/produto/{{ p.id }}" style="display:inline" onsubmit="return confirm('Excluir {{ p.titulo|e }}?')"><input type="hidden" name="acao" value="excluir"><button type="submit" style="color:var(--bad)">excluir</button></form>
+  </div>
+</div>
+</div></body></html>

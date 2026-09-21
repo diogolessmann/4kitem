@@ -31,8 +31,8 @@ MAPA_TIPO = {'Spot': 'spot', 'Lâmpada Técnica': 'lampada', 'Lâmpada Decorativ
 PROGRESSO = {}   # slug → dict(total, feitos, novos, atualizados, erro, fim)
 
 
-def _get(url, timeout=60):
-    req = urllib.request.Request(url, headers=UA)
+def _get(url, timeout=60, headers=None):
+    req = urllib.request.Request(url, headers=headers or UA)
     with urllib.request.urlopen(req, timeout=timeout) as r:
         return r.read()
 
@@ -87,7 +87,7 @@ def _k_de(termos, titulo):
 def importar_nordecor(slug, media_dir, categoria_id=None, limite=None):
     """Roda em thread. categoria_id = id de categoria_produtos (None = tudo)."""
     prog = PROGRESSO.setdefault(slug, {})
-    prog.update(total=0, feitos=0, novos=0, atualizados=0, erro='', fim=False, inicio=time.time())
+    prog.update(fab='Nordecor', total=0, feitos=0, novos=0, atualizados=0, erro='', fim=False, inicio=time.time())
     try:
         conn = get_vit_db()
         loja = conn.execute('SELECT id FROM vit_lojas WHERE slug=?', (slug,)).fetchone()
@@ -195,3 +195,129 @@ CATEGORIAS_NORDECOR = [(173, 'Spot'), (172, 'Spot para Trilho'), (359, 'Linha de
                        (177, 'Fita LED'), (185, 'Perfil para Fita LED'), (187, 'Fonte de Alimentação'), (175, 'Plafon'), (289, 'Painel LED'),
                        (178, 'Pendente / Lustre'), (171, 'Arandela'), (174, 'Jardim / Externa'), (176, 'Balizador'), (188, 'Lâmpada Técnica'),
                        (169, 'Lâmpada Decorativa'), (248, 'Magnetic Track KAY'), (262, 'Cinta Eletrificada SITY'), (279, 'Marcenaria'), (277, 'Módulos TAP')]
+
+
+# ─────────────────────────────────────────────── Lumanti (21/set/2026)
+# lumanti.com.br é WordPress SEM API de produto (só posts/pages). O catálogo está nas páginas de linha
+# (/blog/linha/<linha>/, 12 itens por página): nome, códigos por cor, foto. Lemos só essas páginas, devagar
+# (1 pedido a cada 2 s), uma vez, a pedido do lojista que revende a marca. A foto cheia é a mesma URL sem o
+# sufixo -180x180. Ficha completa fica no site deles.
+import html as _html
+
+LUMANTI = 'https://lumanti.com.br'
+UA_NAV = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0 Safari/537.36',
+          'Accept-Language': 'pt-BR,pt;q=0.9', 'Accept': 'text/html,image/webp,*/*;q=0.8'}
+LINHAS_LUMANTI = [('lampadas-luminarias-painel-led', 'Lâmpadas, luminárias e painel LED', 'lampada'),
+                  ('luminarias-spots-trilhos-iluminados', 'Luminárias, spots e trilhos', 'spot'),
+                  ('abajur-pendentes-arandela-lustre', 'Abajur, pendentes, arandela e lustre', 'pendente'),
+                  ('mangueiras-led-fita-led-neon', 'Mangueira, fita LED e neon', 'fita'),
+                  ('refletores-led-quadra-parque-area-rural', 'Refletores LED', 'refletor'),
+                  ('projetores-refletores-led-quadras-parques', 'Projetores e refletores', 'refletor'),
+                  ('acessorios-iluminacao-led', 'Acessórios', 'outro')]
+_TIPO_KW = [('spot', 'spot'), ('trilho', 'trilho'), ('fita', 'fita'), ('mangueira', 'fita'), ('neon', 'fita'), ('refletor', 'refletor'),
+            ('projetor', 'refletor'), ('high bay', 'refletor'), ('ufo', 'refletor'), ('painel', 'plafon'), ('plafon', 'plafon'),
+            ('luminária', 'plafon'), ('luminaria', 'plafon'), ('pendente', 'pendente'), ('lustre', 'pendente'), ('abajur', 'pendente'),
+            ('arandela', 'arandela'), ('espeto', 'jardim'), ('balizador', 'jardim'), ('poste', 'jardim'), ('jardim', 'jardim'), ('varal', 'jardim'),
+            ('lâmpada', 'lampada'), ('lampada', 'lampada'), ('bulbo', 'lampada'), ('filamento', 'lampada'), ('dicroica', 'lampada'), ('dicróica', 'lampada'),
+            ('par20', 'lampada'), ('par30', 'lampada'), ('par38', 'lampada'), ('tubular', 'lampada'), ('fonte', 'fonte'), ('driver', 'fonte'),
+            ('emergência', 'emergencia'), ('emergencia', 'emergencia'), ('sensor', 'sensor')]
+_RE_ITEM = re.compile(r'<div class="item"><a href="(https://lumanti\.com\.br/blog/produto/[^"]+)">.*?<b>(.*?)</b>\s*<p>(.*?)</p>.*?<img[^>]*src="([^"]+)"', re.S)
+_RE_COD = re.compile(r'^((?:[A-Z0-9][A-Z0-9\-\./]{3,}\s*\|\s*)*[A-Z0-9][A-Z0-9\-\./]{3,})\s*(.*)$', re.S)
+
+
+def _tipo_por_nome(titulo, padrao):
+    t = titulo.lower()
+    for kw, tipo in _TIPO_KW:
+        if kw in t:
+            return tipo
+    return padrao
+
+
+def importar_lumanti(slug, media_dir, linha=None, limite=None):
+    """Roda em thread. linha = slug da linha (None = todas). Reimportar só atualiza quem já existe."""
+    prog = PROGRESSO.setdefault(slug, {})
+    prog.update(fab='Lumanti', total=0, feitos=0, novos=0, atualizados=0, erro='', fim=False, inicio=time.time())
+    try:
+        conn = get_vit_db()
+        lid = conn.execute('SELECT id FROM vit_lojas WHERE slug=?', (slug,)).fetchone()['id']
+        feitos = 0
+        for ls, ln, tipo_padrao in LINHAS_LUMANTI:
+            if linha and ls != linha:
+                continue
+            pagina = 1
+            while True:
+                url = f'{LUMANTI}/blog/linha/{ls}/' + (f'page/{pagina}/' if pagina > 1 else '')
+                try:
+                    pag = _get(url, 60, UA_NAV).decode('utf-8', 'ignore')
+                except Exception as e:
+                    if pagina == 1:
+                        print(f'[vitrine] lumanti {ls}: {e}')
+                    break
+                itens = _RE_ITEM.findall(pag)
+                if not itens:
+                    break
+                for link, titulo, p, img in itens:
+                    if limite and feitos >= limite:
+                        break
+                    try:
+                        _grava_lumanti(conn, lid, media_dir, link, titulo, p, img, tipo_padrao, prog)
+                    except Exception as e:
+                        print(f'[vitrine] lumanti item {link}: {e}')
+                    feitos += 1
+                    prog['feitos'] = feitos
+                    time.sleep(2)
+                conn.commit()
+                if (limite and feitos >= limite) or f'/page/{pagina + 1}/' not in pag:
+                    break
+                pagina += 1
+                time.sleep(2)
+            if limite and feitos >= limite:
+                break
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        prog['erro'] = str(e)[:200]
+    prog['total'] = prog['feitos']
+    prog['fim'] = True
+    prog['segundos'] = int(time.time() - prog['inicio'])
+
+
+def _grava_lumanti(conn, lid, media_dir, link, titulo, p, img, tipo_padrao, prog):
+    titulo = _html.unescape(_limpa(titulo))[:140]
+    p = _html.unescape(_limpa(p)).replace('…', '').strip()
+    m = _RE_COD.match(p)
+    codigos, desc = (m.group(1), m.group(2)) if m else ('', p)
+    codigo = (codigos.split('|')[0].strip() if codigos else 'L-' + link.rstrip('/').rsplit('/', 1)[-1])[:30]
+    specs = ' · '.join(c.strip() for c in codigos.split('|')[1:] if c.strip())[:200]   # outras versões/cores do mesmo item
+    tipo = _tipo_por_nome(titulo, tipo_padrao)
+    k = _k_de({}, titulo)
+    ex = conn.execute('SELECT id, foto FROM vit_produtos WHERE loja_id=? AND codigo=? AND marca=?', (lid, codigo, 'Lumanti')).fetchone()
+    foto = ex['foto'] if ex else ''
+    if not foto and img:
+        cheia = re.sub(r'-\d+x\d+(\.\w+)$', r'\1', img)
+        for src in dict.fromkeys((cheia, img)):
+            try:
+                nome, blob = _comprime(_get(src, 60, UA_NAV), f"l-{re.sub(r'[^a-z0-9]+', '', codigo.lower())[:20]}-{os.urandom(2).hex()}", max_px=800, max_kb=100)
+                with open(os.path.join(media_dir, nome), 'wb') as fh:
+                    fh.write(blob)
+                foto = nome
+                break
+            except Exception as e:
+                print(f'[vitrine] foto lumanti {codigo}: {e}')
+        time.sleep(1)
+    if ex:
+        conn.execute('UPDATE vit_produtos SET titulo=?, tipo=?, k=?, specs=CASE WHEN specs="" THEN ? ELSE specs END, '
+                     'descricao=CASE WHEN descricao="" THEN ? ELSE descricao END, foto=? WHERE id=?',
+                     (titulo, tipo, k, specs, desc[:1500], foto, ex['id']))
+        prog['atualizados'] = prog.get('atualizados', 0) + 1
+    else:
+        conn.execute('''INSERT INTO vit_produtos (loja_id, codigo, titulo, marca, categoria, tipo, k, specs, descricao, foto, ativo, ordem)
+                        VALUES (?,?,?,?,?,?,?,?,?,?,1,500)''', (lid, codigo, titulo, 'Lumanti', 'ilum', tipo, k, specs, desc[:1500], foto))
+        prog['novos'] = prog.get('novos', 0) + 1
+
+
+def iniciar_lumanti(slug, media_dir, linha=None, limite=None):
+    if PROGRESSO.get(slug) and not PROGRESSO[slug].get('fim', True):
+        return False
+    threading.Thread(target=importar_lumanti, args=(slug, media_dir, linha, limite), daemon=True).start()
+    return True

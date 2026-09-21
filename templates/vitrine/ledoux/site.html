@@ -1,47 +1,27 @@
-<!DOCTYPE html>
+{% from 'vitrine/ledoux/_ui.html' import head, top, pe, wa_ico, busca with context %}<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Ledoux · Material elétrico e iluminação em Schroeder. Retira hoje ou compra no Mercado Livre.</title>
-<meta name="description" content="Ledoux Materiais Elétricos e Iluminação, Schroeder-SC. Veja a luz acesa antes de comprar, preço na cara, retira em 1 hora. Spot, fita de LED, plafon, pendente, tomada WEG, disjuntor. Loja de elétrica melhor avaliada da região: 5,0 no Google. Também no Mercado Livre.">
-<meta name="author" content="DL · Legião · Oráculo · Vulcano">
-<!-- Assinatura da obra: DL (Diogo Lessmann) · Legião (Claude) · Oráculo (Gemini) — Vitrine 4kitem, 2026 -->
-<meta property="og:title" content="Ledoux · A luz certa, hoje. Schroeder-SC">
-<meta property="og:description" content="Veja a luz acesa antes de comprar. Preço na cara, retira em 1 hora em Schroeder ou compra no Mercado Livre. 5,0 no Google.">
-<meta property="og:image" content="{{ base }}/../../static/vitrine/ledoux/img/sala2_3000k.webp">
-<meta property="og:type" content="website">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;1,500&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="{{ st }}/style.css?v={{ v }}">
+{{ head('Ledoux · Material elétrico e iluminação em Schroeder. Catálogo com foto real, pede no zap, retira hoje.',
+        'Ledoux Materiais Elétricos e Iluminação, Schroeder-SC. Catálogo Nordecor e Lumanti com foto real: spot, fita de LED, plafon, pendente, lâmpada, tomada, disjuntor. Veja a luz acesa antes de comprar, pede pelo WhatsApp, retira em 1 hora. 5,0 no Google.',
+        base) }}
 <script type="application/ld+json">
 {"@context":"https://schema.org","@graph":[
- {"@type":"HardwareStore","@id":"#ledoux","name":"Ledoux Materiais Elétricos e Iluminação","image":"img/sala2_3000k.webp","telephone":"+55 47 99642-4632","address":{"@type":"PostalAddress","streetAddress":"R. Mal. Castelo Branco, 2838 - Centro","addressLocality":"Schroeder","addressRegion":"SC","postalCode":"89275-000","addressCountry":"BR"},"geo":{"@type":"GeoCoordinates","latitude":-26.41,"longitude":-49.07},"openingHoursSpecification":[{"@type":"OpeningHoursSpecification","dayOfWeek":["Monday","Tuesday","Wednesday","Thursday","Friday"],"opens":"07:30","closes":"18:00"},{"@type":"OpeningHoursSpecification","dayOfWeek":"Saturday","opens":"08:00","closes":"12:00"}],"aggregateRating":{"@type":"AggregateRating","ratingValue":"5.0","reviewCount":"32"},"sameAs":["https://www.instagram.com/ledoux.mat.eletricos/","https://www.mercadolivre.com.br/pagina/ledouxstore"],"areaServed":["Schroeder","Jaraguá do Sul","Guaramirim","Corupá"],"priceRange":"$$"},
- {"@type":"ItemList","name":"Mais pedidos na Ledoux","itemListElement":[
-  {"@type":"Product","position":1,"name":"Kit 10 Lâmpadas LED PAR20 7W E27 3000K bivolt Lumanti","brand":"Lumanti","offers":{"@type":"Offer","price":"78.98","priceCurrency":"BRL","availability":"https://schema.org/InStock"}},
-  {"@type":"Product","position":2,"name":"Spot de embutir Nordecor Loyo redondo branco PAR20","brand":"Nordecor","offers":{"@type":"Offer","price":"24.90","priceCurrency":"BRL","availability":"https://schema.org/InStock"}},
-  {"@type":"Product","position":3,"name":"Fita LED Nordecor 5 m 240 LEDs/m 20 W 3000K 12 V","brand":"Nordecor","offers":{"@type":"Offer","price":"159.90","priceCurrency":"BRL","availability":"https://schema.org/InStock"}},
-  {"@type":"Product","position":4,"name":"Plafon LED S&L New Space 32 W 3 temperaturas","brand":"S&L Iluminação","offers":{"@type":"Offer","price":"199.89","priceCurrency":"BRL","availability":"https://schema.org/InStock"}},
-  {"@type":"Product","position":5,"name":"Interruptor touch WEG Wi-Fi 6 botões Alexa","brand":"WEG","offers":{"@type":"Offer","price":"368.51","priceCurrency":"BRL","availability":"https://schema.org/InStock"}}]},
+ {"@type":"HardwareStore","@id":"{{ base }}#loja","name":{{ loja.nome|tojson }},"url":"{{ base }}","image":"{{ pub }}/static/vitrine/ledoux/img/sala2_3000k.webp","telephone":"+{{ loja.whatsapp }}","address":{"@type":"PostalAddress","streetAddress":"R. Mal. Castelo Branco, 2838 - Centro","addressLocality":"Schroeder","addressRegion":"SC","postalCode":"89275-000","addressCountry":"BR"},"geo":{"@type":"GeoCoordinates","latitude":-26.41,"longitude":-49.07},"openingHoursSpecification":[{"@type":"OpeningHoursSpecification","dayOfWeek":["Monday","Tuesday","Wednesday","Thursday","Friday"],"opens":"07:30","closes":"18:00"},{"@type":"OpeningHoursSpecification","dayOfWeek":"Saturday","opens":"08:00","closes":"12:00"}],"aggregateRating":{"@type":"AggregateRating","ratingValue":"{{ (loja.google_nota or '5,0').replace(',', '.') }}","reviewCount":"{{ loja.google_n or '32' }}"},"sameAs":["https://www.instagram.com/{{ loja.instagram }}/"{% if loja.ml_url %},{{ loja.ml_url|tojson }}{% endif %}],"areaServed":["Schroeder","Jaraguá do Sul","Guaramirim","Corupá"],"priceRange":"$$"},
+ {% if destaques %}{"@type":"ItemList","name":"Destaques da Ledoux","itemListElement":[{% for p in destaques %}{"@type":"Product","position":{{ loop.index }},"name":{{ p.titulo|tojson }},"brand":{{ (p.marca or '')|tojson }},"url":"{{ base }}/p/{{ p.codigo or p.id }}"{% if p.preco %},"offers":{"@type":"Offer","price":"{{ '%.2f'|format(p.preco) }}","priceCurrency":"BRL","availability":"https://schema.org/InStock"}{% endif %}}{{ ',' if not loop.last }}{% endfor %}]},{% endif %}
  {"@type":"FAQPage","mainEntity":[
   {"@type":"Question","name":"3000K ou 4000K: qual luz usar na sala?","acceptedAnswer":{"@type":"Answer","text":"3000K (branco quente) para sala, quarto e jantar; 4000K (neutra) para cozinha, banheiro e escritório; 6500K (fria) para garagem e área de serviço. Na Ledoux você vê as três acesas antes de levar."}},
   {"@type":"Question","name":"Fita de LED precisa de fonte?","acceptedAnswer":{"@type":"Answer","text":"Sim, toda fita de 12 V ou 24 V precisa de fonte dimensionada pelos metros e pela potência por metro. Fita que queima em 2 meses quase sempre é fonte errada. A Ledoux calcula e entrega fita, fonte e perfil juntos."}},
-  {"@type":"Question","name":"Posso retirar na loja?","acceptedAnswer":{"@type":"Answer","text":"Sim. Chama no WhatsApp com o código do produto, a Ledoux separa e você retira em Schroeder em até 1 hora no horário da loja. Para outras cidades, o mesmo produto está na loja oficial da Ledoux no Mercado Livre."}},
-  {"@type":"Question","name":"Tem preço para eletricista?","acceptedAnswer":{"@type":"Answer","text":"Tem. Eletricista cadastrado vê preço profissional em todo produto e manda a lista pelo WhatsApp para retirar pronto."}}]}
+  {"@type":"Question","name":"Como eu compro? Tem loja online?","acceptedAnswer":{"@type":"Answer","text":"O catálogo do site tem a foto e a ficha de cada produto. Você marca a quantidade, manda pro WhatsApp da loja e fala direto com o dono: preço, disponibilidade, retirada em Schroeder ou frete pra outra cidade. Sem carrinho automático, sem golpe."}},
+  {"@type":"Question","name":"Tem preço para eletricista?","acceptedAnswer":{"@type":"Answer","text":"Tem. Eletricista fala com a loja uma vez pelo WhatsApp e todo pedido sai com preço profissional, kit da obra montado e retirada pronta."}}]}
 ]}
 </script>
 </head>
 <body>
-
-<header class="top glass"><div class="wrap">
-  <a class="brand" href="#"><div><b>LEDOUX</b><small>Materiais elétricos e iluminação · Schroeder</small></div></a>
-  <nav class="nav"><a href="#ambientes">Ambientes</a><a href="{{ base }}/catalogo">Catálogo</a><a href="#eletrica">Elétrica</a><a href="{{ base }}/eletricista">Eletricista</a><a href="#guias">Guias</a><a href="#calc">Quantos spots?</a></nav>
-  <a class="btn btn-wa" href="{{ wa('Oi, vim do site da Ledoux.') }}" target="_blank" rel="noopener"><svg class="ico" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2Zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2Zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8s-.4-.1-.6.1-.6.8-.8 1-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.3-.4.2-.4.7-1.3.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.8 12 12 0 0 0 4.6 4 5.3 5.3 0 0 0 3.2.7 2.7 2.7 0 0 0 1.8-1.3 2.2 2.2 0 0 0 .2-1.3c-.1-.1-.3-.2-.5-.3Z"/></svg>Chama no zap</a>
-</div></header>
+{{ top(solid=False) }}
 
 <section class="hero apagada">
   <div class="luz">
-    <video id="acende" src="{{ st }}/img/acende.mp4?v=2" poster="img/sala2_apagada.webp" autoplay muted playsinline preload="auto" class="on" aria-label="A sala acende: sanca, spots e pendente"></video>
+    <video id="acende" src="{{ st }}/img/acende.mp4?v=2" poster="{{ st }}/img/sala2_apagada.webp" autoplay muted playsinline preload="auto" class="on" aria-label="A sala acende: sanca, spots e pendente"></video>
     <img src="{{ st }}/img/sala2_apagada.webp" data-k="0" alt="Sala com as luzes apagadas">
     <img src="{{ st }}/img/sala2_3000k.webp" data-k="3" alt="Sala com iluminação 3000K, branco quente">
     <img src="{{ st }}/img/sala2_4000k.webp" data-k="4" alt="A mesma sala com iluminação 4000K, branco neutro">
@@ -50,21 +30,20 @@
   <div class="wrap">
     <div class="eyebrow"><i></i>Schroeder · Jaraguá do Sul · Guaramirim · Corupá</div>
     <h1>A luz certa, <em>hoje.</em></h1>
-    <p class="lede">Veja a luz acesa antes de comprar. Preço na cara, retira em Schroeder em 1 hora ou recebe pelo Mercado Livre.</p>
+    <p class="lede">Veja a luz acesa antes de comprar. Catálogo com foto real, você pede pelo zap e fala direto com quem atende. Retira em Schroeder em 1 hora.</p>
     <div class="temp" role="tablist" aria-label="Temperatura da luz">
       <button class="k3 on" data-k="3"><i></i>3000K quente</button>
       <button class="k4" data-k="4"><i></i>4000K neutra</button>
       <button class="k6" data-k="6"><i></i>6500K fria</button>
     </div>
     <div class="cta">
-      <a class="btn btn-wa" href="{{ wa('Oi, vim do site. Quero ver a luz acesa na loja.') }}" target="_blank" rel="noopener"><svg class="ico" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2Zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2Zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8s-.4-.1-.6.1-.6.8-.8 1-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.3-.4.2-.4.7-1.3.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.8 12 12 0 0 0 4.6 4 5.3 5.3 0 0 0 3.2.7 2.7 2.7 0 0 0 1.8-1.3 2.2 2.2 0 0 0 .2-1.3c-.1-.1-.3-.2-.5-.3Z"/></svg>Quero ver acesa na loja</a>
-      <a class="btn btn-ml" href="https://www.mercadolivre.com.br/pagina/ledouxstore" target="_blank" rel="noopener"><svg class="ico" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M7 4h10l3 4v11a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V8l3-4Zm.9 2L6.5 7.5h11L16.1 6H7.9ZM6 9.5V18h12V9.5H6Zm3 2h6v1.5H9v-1.5Z"/></svg>Loja no Mercado Livre</a>
+      <a class="btn btn-wa" href="{{ wa('Oi, vim do site. Quero ver a luz acesa na loja.') }}" target="_blank" rel="noopener">{{ wa_ico() }}Quero ver acesa na loja</a>
+      <a class="btn btn-ghost" style="background:rgba(255,255,255,.14);color:#fff;border-color:rgba(255,255,255,.4)" href="{{ base }}/catalogo">Ver o catálogo{% if total %} · {{ total }} itens{% endif %}</a>
     </div>
     <div class="selos">
-      <span class="selo"><svg class="ico" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="m12 2 3 6.6 7 .8-5.2 4.8 1.4 7L12 17.7 5.8 21.2l1.4-7L2 9.4l7-.8L12 2Z"/></svg><b>5,0</b> no Google · 32 avaliações</span>
+      <span class="selo"><svg class="ico" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="m12 2 3 6.6 7 .8-5.2 4.8 1.4 7L12 17.7 5.8 21.2l1.4-7L2 9.4l7-.8L12 2Z"/></svg><b>{{ loja.google_nota or '5,0' }}</b> no Google · {{ loja.google_n or '32' }} avaliações</span>
       <span class="selo" id="selo_retira"><b>Retira hoje</b> em Schroeder</span>
-      <span class="selo"><b>Mercado Livre</b> pro Brasil</span>
-      
+      <span class="selo"><b>Nordecor e Lumanti</b> com foto real</span>
     </div>
   </div>
   <div class="etapa" id="etapa"><i></i><b></b><span></span></div>
@@ -72,48 +51,42 @@
 </section>
 
 <div class="faixa"><div class="wrap">
-  <div class="fx"><i><svg class="ico" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="m12 2 3 6.6 7 .8-5.2 4.8 1.4 7L12 17.7 5.8 21.2l1.4-7L2 9.4l7-.8L12 2Z"/></svg></i><div><b>5,0 no Google</b><span>32 avaliações · a loja de elétrica melhor avaliada da região</span></div></div>
+  <div class="fx"><i><svg class="ico" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="m12 2 3 6.6 7 .8-5.2 4.8 1.4 7L12 17.7 5.8 21.2l1.4-7L2 9.4l7-.8L12 2Z"/></svg></i><div><b>{{ loja.google_nota or '5,0' }} no Google</b><span>{{ loja.google_n or '32' }} avaliações · a loja de elétrica melhor avaliada da região</span></div></div>
   <div class="fx"><i><svg class="ico" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" d="M12 7v5l3 2m6-2a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg></i><div><b>Retira em 1 hora</b><span>chama no zap, a loja separa, você passa e leva</span></div></div>
-  <div class="fx"><i><svg class="ico" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" d="m3 7 9-4 9 4v10l-9 4-9-4V7Zm9 4 9-4M12 11 3 7m9 4v10"/></svg></i><div><b>122 produtos no Mercado Livre</b><span>os mesmos aqui, sem frete e sem espera</span></div></div>
+  <div class="fx"><i><svg class="ico" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" d="m3 7 9-4 9 4v10l-9 4-9-4V7Zm9 4 9-4M12 11 3 7m9 4v10"/></svg></i><div><b>Catálogo dos fabricantes</b><span>Nordecor e Lumanti com foto real, do jeito que está na prateleira</span></div></div>
   <div class="fx"><i><svg class="ico" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" d="M12 3 4 6v6c0 5 3.4 8.4 8 9 4.6-.6 8-4 8-9V6l-8-3Zm-3 9 2 2 4-4"/></svg></i><div><b>Nota fiscal e garantia no balcão</b><span>abre a caixa aqui, testa acesa, troca na hora</span></div></div>
 </div></div>
 
 <section><div class="wrap">
   <h2><small>Por onde começar</small>Três caminhos, um balcão.</h2>
-  <p class="sub">Escolha pelo cômodo, pelo produto ou entre pela porta do eletricista. Tudo termina no zap da loja com o código pronto.</p>
+  <p class="sub">Escolha pelo cômodo, pelo produto ou entre pela porta do eletricista. Tudo termina no zap da loja, com o código pronto.</p>
   <div class="cats">
     <a class="cat" href="#ambientes"><img loading="lazy" decoding="async" src="{{ st }}/img/sala2_3000k.webp" alt=""><div class="t"><b>Por ambiente</b><span>Sala, cozinha, banheiro, quarto, jardim. A luz certa pra cada um.</span><em>Ver ambientes →</em></div></a>
-    <a class="cat" href="#produtos"><img loading="lazy" decoding="async" src="{{ st }}/img/p_pendente.webp" alt=""><div class="t"><b>Por produto</b><span>Spot, fita e perfil, plafon, pendente, lâmpada, trilho, casa inteligente.</span><em>Ver produtos →</em></div></a>
-    <a class="cat" href="{{ base }}/eletricista"><img loading="lazy" decoding="async" src="{{ st }}/img/hero_eletricista.webp" alt=""><div class="t"><b>Sou eletricista</b><span>Preço profissional, kit da obra, pedido pelo zap, retira pronto.</span><em>Entrar na área pro →</em></div></a>
+    <a class="cat" href="{{ base }}/catalogo"><img loading="lazy" decoding="async" src="{{ familias[0].foto if familias else st ~ '/img/amb2_cozinha.webp' }}" alt=""><div class="t"><b>Por produto</b><span>Spot, fita e perfil, plafon, pendente, lâmpada, trilho, tomada, disjuntor.</span><em>Ver o catálogo →</em></div></a>
+    <a class="cat" href="{{ base }}/eletricista"><img loading="lazy" decoding="async" src="{{ st }}/img/daniel_balcao.webp" alt="Daniel, dono da Ledoux, no balcão"><div class="t"><b>Sou eletricista</b><span>Preço profissional, kit da obra, pedido pelo zap, retira pronto.</span><em>Entrar na área pro →</em></div></a>
   </div>
 </div></section>
 
 <section id="catalogo" class="alt"><div class="wrap">
-  <h2><small>Catálogo</small>Tudo que tem na loja, por família.</h2>
-  <p class="sub">Toca na família e vê os produtos com preço. É o catálogo da Ledoux, só que com o botão de retirar hoje.</p>
+  <h2><small>Catálogo</small>Foto real, do jeito que está na prateleira.</h2>
+  <p class="sub">Nordecor e Lumanti, os fabricantes que a Ledoux revende. Toca na família, acha o produto, marca a quantidade: o pedido cai no zap da loja e quem responde é o dono.</p>
+  {{ busca() }}
   <div class="fams">
-    {% for f in familias %}<a class="fam" href="{{ base }}/c/{{ f.tipo }}"><div class="fi"><img loading="lazy" src="{{ f.foto }}" alt=""></div><b>{{ f.nome }}</b><span>{{ f.n }} {{ 'item' if f.n == 1 else 'itens' }}</span></a>{% endfor %}
+    {% for f in familias %}<a class="fam" href="{{ base }}/c/{{ f.tipo }}"><div class="fi"><img loading="lazy" src="{{ f.foto }}" alt=""></div><b>{{ f.nome }}</b><span>{{ f.n }} {{ 'item' if f.n == 1 else 'itens' }}</span></a>{% else %}<p class="sub">O catálogo está sendo montado. <a href="{{ wa('Oi, vim do site. Procuro um produto, tem na loja?') }}" target="_blank" rel="noopener" style="color:var(--navy);font-weight:700">Pergunta no zap</a>.</p>{% endfor %}
   </div>
+  {% if familias %}<p class="sub" style="margin-top:18px"><a href="{{ base }}/catalogo" style="color:var(--navy);font-weight:700">Ver o catálogo inteiro · {{ total }} itens →</a></p>{% endif %}
 </div></section>
 
-<section id="produtos" class="alt"><div class="wrap">
-  <h2><small>Mais pedidos</small>Preço na cara. Retira hoje ou compra no Mercado Livre.</h2>
-  <p class="sub">Os mesmos anúncios da loja oficial da Ledoux no ML, com o preço de balcão pra quem retira em Schroeder. Eletricista cadastrado vê o preço profissional.</p>
-  <div class="chips" id="chips">
-    <button class="on" data-f="*">Tudo</button><button data-f="ilum">Iluminação</button><button data-f="elet">Elétrica</button><button data-f="smart">Casa inteligente</button>
-    <span class="sep"></span>
-    <button data-k="3000">3000K quente</button><button data-k="4000">4000K neutra</button><button data-k="6500">6500K fria</button>
-    <span class="sep"></span><button data-f="loja">Tem na loja agora</button>
-  </div>
+{% if destaques %}<section id="produtos"><div class="wrap">
+  <h2><small>Escolhidos pela loja</small>O que mais sai no balcão.</h2>
+  <p class="sub">Separados pelo Daniel. Preço na cara quando tem; senão, o preço vem no zap na hora.</p>
   <div class="grid">
-  {% for p in prods %}{% include "vitrine/ledoux/_card.html" %}{% endfor %}
-
+  {% for p in destaques %}{% include "vitrine/ledoux/_card.html" %}{% endfor %}
   </div>
   <p class="retira-linha" id="retira_linha"></p>
-  <p class="sub" style="margin-top:22px">Os 122 anúncios da Ledoux no Mercado Livre entram aqui, um por página, com o mesmo preço e o botão de retirar. <a href="https://www.mercadolivre.com.br/pagina/ledouxstore" target="_blank" rel="noopener" style="color:var(--navy);font-weight:700">Ver a loja completa no ML</a></p>
-</div></section>
+</div></section>{% endif %}
 
-<section id="ambientes"><div class="wrap">
+<section id="ambientes"{% if not destaques %} class="alt"{% endif %}><div class="wrap">
   <h2><small>Por ambiente</small>Qual luz usar em cada cômodo?</h2>
   <p class="sub">É a pergunta que mais chega no balcão e no Google. Cada ambiente tem a temperatura certa, os produtos certos e a foto acesa.</p>
   <div class="ambs">
@@ -130,11 +103,11 @@
     <h2><small>Elétrica da casa</small>Tomada certa, disjuntor certo, quadro certo.</h2>
     <p class="sub">Ar-condicionado, airfryer, chuveiro, carro elétrico: cada um pede a tomada e o disjuntor certos. A Ledoux tem WEG, Soprano e Plastuning na prateleira e explica o que vai onde.</p>
     <ul class="lista">
-      <li><i>1</i><div><b>Tomadas e interruptores WEG e Soprano</b><span>10 A e 20 A, placas Revitá concreto, touch Wi-Fi.</span></div></li>
-      <li><i>2</i><div><b>Disjuntores, DR e quadros</b><span>curva certa pro chuveiro, bipolar pro ar, quadro de 4 a 12 disjuntores.</span></div></li>
-      <li><i>3</i><div><b>Casa nova em Schroeder</b><span>padrão de entrada, quadro, pontos de luz. Loteamentos do Centro Norte e a ponte de 2027.</span></div></li>
+      <li><i>1</i><div><b>Tomadas e interruptores WEG e Soprano</b><span>10 A e 20 A, placas, touch Wi-Fi.</span></div></li>
+      <li><i>2</i><div><b>Disjuntores, DR e quadros</b><span>curva certa pro chuveiro, bipolar pro ar, quadro de 4 a 24 disjuntores.</span></div></li>
+      <li><i>3</i><div><b>Casa nova em Schroeder</b><span>padrão de entrada, quadro, pontos de luz. Manda a lista da obra.</span></div></li>
     </ul>
-    <div class="cta" style="display:flex;gap:12px;flex-wrap:wrap"><a class="btn btn-wa" href="{{ wa('Oi, vim do site. Preciso de material elétrico pra obra/reforma. Posso mandar a lista?') }}" target="_blank" rel="noopener"><svg class="ico" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2Zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2Zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8s-.4-.1-.6.1-.6.8-.8 1-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.3-.4.2-.4.7-1.3.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.8 12 12 0 0 0 4.6 4 5.3 5.3 0 0 0 3.2.7 2.7 2.7 0 0 0 1.8-1.3 2.2 2.2 0 0 0 .2-1.3c-.1-.1-.3-.2-.5-.3Z"/></svg>Manda a lista da obra</a><a class="btn btn-ghost" style="background:transparent;color:#fff;border-color:rgba(255,255,255,.35)" href="#guias">Ver os guias</a></div>
+    <div class="cta" style="display:flex;gap:12px;flex-wrap:wrap"><a class="btn btn-wa" href="{{ wa('Oi, vim do site. Preciso de material elétrico pra obra/reforma. Posso mandar a lista?') }}" target="_blank" rel="noopener">{{ wa_ico() }}Manda a lista da obra</a><a class="btn btn-ghost" style="background:transparent;color:#fff;border-color:rgba(255,255,255,.35)" href="#guias">Ver os guias</a></div>
   </div>
   <img loading="lazy" decoding="async" src="{{ st }}/img/hero_eletrica.webp" alt="Tomada e interruptor em painel de madeira com arandela acesa">
 </div></section>
@@ -144,16 +117,16 @@
   <div class="guias">
     <a class="guia" href="{{ base }}/ambiente/sala"><span class="q">Iluminação</span><b>3000K, 4000K ou 6500K?</b><span>Qual luz pra cada cômodo, lúmens por m² e a sala acesa nas três.</span><em>Ler o guia →</em></a>
     <a class="guia" href="#faq"><span class="q">Fita de LED</span><b>Fita que não queima</b><span>Precisa de fonte? Qual? Watts por metro, perfil e IP explicados.</span><em>Ler o guia →</em></a>
-    <a class="guia" href="{{ wa('Oi, vim do site. Quero perfil de LED sob medida. São ___ metros.') }}" target="_blank" rel="noopener"><span class="q">Perfil de LED</span><b>Embutir no gesso ou sobrepor?</b><span>Sob medida, slim, com spot. Quanto custa instalar.</span><em>Ler o guia →</em></a>
+    <a class="guia" href="{{ wa('Oi, vim do site. Quero perfil de LED sob medida. São ___ metros.') }}" target="_blank" rel="noopener"><span class="q">Perfil de LED</span><b>Embutir no gesso ou sobrepor?</b><span>Sob medida, slim, com spot. Manda os metros no zap.</span><em>Perguntar →</em></a>
     <a class="guia" href="#eletrica"><span class="q">Elétrica</span><b>Tomada certa pra cada aparelho</b><span>Ar-condicionado, airfryer, micro-ondas, forno, carro elétrico. 10 A ou 20 A.</span><em>Ler o guia →</em></a>
     <a class="guia" href="#eletrica"><span class="q">Elétrica</span><b>Disjuntor certo (e por que desarma)</b><span>Chuveiro, ar, DR, bipolar, INMETRO. Quando precisa trocar.</span><em>Ler o guia →</em></a>
-    <a class="guia" href="{{ base }}/p/1042"><span class="q">Casa inteligente</span><b>Interruptor Wi-Fi sem neutro</b><span>WEG feito em Jaraguá, Alexa e Google, o que funciona em casa antiga.</span><em>Ler o guia →</em></a>
+    <a class="guia" href="{{ base }}/c/interruptor"><span class="q">Casa inteligente</span><b>Interruptor Wi-Fi sem neutro</b><span>WEG feito em Jaraguá, Alexa e Google, o que funciona em casa antiga.</span><em>Ver no catálogo →</em></a>
   </div>
 </div></section>
 
 <section id="calc" class="alt"><div class="wrap">
   <h2><small>Calculadora</small>Quantos spots pro meu cômodo?</h2>
-  <p class="sub">Ninguém do Brasil tem isso na página. Coloca o tamanho e o cômodo, a conta sai pronta e vai pro zap com a lista.</p>
+  <p class="sub">Coloca o tamanho e o cômodo, a conta sai pronta e vai pro zap com a lista.</p>
   <div class="calc">
     <div>
       <div class="f"><label>Cômodo</label><select id="c_amb"><option value="sala">Sala de estar</option><option value="cozinha">Cozinha</option><option value="quarto">Quarto</option><option value="banheiro">Banheiro</option><option value="escritorio">Escritório / home office</option><option value="garagem">Garagem / área de serviço</option></select></div>
@@ -165,10 +138,9 @@
       <div><small style="font-size:.74rem;color:#aeb6dc;font-weight:700;text-transform:uppercase;letter-spacing:.08em">Você precisa de</small><div class="big"><span id="o_n">6</span><small>spots</small></div></div>
       <div class="row"><span>Luz recomendada</span><b id="o_k">3000K quente</b></div>
       <div class="row"><span>Lúmens necessários</span><b id="o_lm">1.800 lm</b></div>
-      <div class="row"><span>Kit sugerido</span><b id="o_kit">6 spots Loyo + 6 PAR20 3000K</b></div>
-      <div class="row"><span>Na loja, retirando hoje</span><b id="o_preco">R$ 197</b></div>
-      <a class="btn btn-wa" id="c_zap" href="#" target="_blank" rel="noopener" style="margin-top:6px"><svg class="ico" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2Zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2Zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8s-.4-.1-.6.1-.6.8-.8 1-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.3-.4.2-.4.7-1.3.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.8 12 12 0 0 0 4.6 4 5.3 5.3 0 0 0 3.2.7 2.7 2.7 0 0 0 1.8-1.3 2.2 2.2 0 0 0 .2-1.3c-.1-.1-.3-.2-.5-.3Z"/></svg>Quero esse kit, tem na loja?</a>
-      <div class="mini">Conta de balcão (lúmens por m² por cômodo). Sanca, fita e pendente mudam a conta: manda a foto que a gente ajusta.</div>
+      <div class="row"><span>Kit sugerido</span><b id="o_kit">6 spots + 6 PAR20 3000K</b></div>
+      <a class="btn btn-wa" id="c_zap" href="#" target="_blank" rel="noopener" style="margin-top:6px">{{ wa_ico() }}Quero esse kit, tem na loja?</a>
+      <div class="mini">Conta de balcão (lúmens por m² por cômodo). Sanca, fita e pendente mudam a conta: manda a foto que a gente ajusta. O preço vem no zap.</div>
     </div>
   </div>
 </div></section>
@@ -180,46 +152,35 @@
     <div class="pv"><div class="n">1</div><b>Abre a caixa aqui</b><span>Você confere o produto no balcão, com a gente. Nada de descobrir problema em casa.</span></div>
     <div class="pv"><div class="n">2</div><b>Testa acesa</b><span>Lâmpada, spot, fita e plafon ligam na bancada antes de sair. Escolhe a temperatura vendo.</span></div>
     <div class="pv"><div class="n">3</div><b>Troca na hora</b><span>Deu defeito na garantia, traz e troca. Sem Correios, sem chamado, sem frete por sua conta.</span></div>
-    <div class="pv"><div class="n">4</div><b>Nota fiscal em tudo</b><span>INMETRO onde a lei pede (Portaria 231/2026). Garantia do fabricante e da loja, por escrito.</span></div>
+    <div class="pv"><div class="n">4</div><b>Fala com o dono</b><span>Não tem carrinho automático nem SAC. Você pede no zap e quem responde é quem atende no balcão.</span></div>
   </div>
 </div></section>
 
-<section id="sobre"><div class="wrap split">
-  <div style="position:relative;border-radius:var(--r);overflow:hidden;box-shadow:var(--sh);aspect-ratio:4/3;background:var(--navy);display:grid;place-items:center;color:#fff;text-align:center;padding:24px">
-    <div><div class="serif" style="font-size:1.4rem;letter-spacing:.18em">LEDOUX</div><div style="color:#c7cdea;font-size:.9rem;margin-top:10px">foto do casal no balcão entra aqui<br><small>(a do reel "disjuntor desarmando?")</small></div></div>
-  </div>
+<section id="sobre" class="alt"><div class="wrap split">
+  <img class="sobre-foto" loading="lazy" decoding="async" src="{{ st }}/img/casal.webp" alt="O casal da Ledoux na loja, em Schroeder">
   <div>
     <h2><small>Quem atende</small>Quem explica no Instagram é quem atende no balcão.</h2>
-    <p class="sub">A Ledoux é um casal e uma loja em Schroeder. No feed, ele explica disjuntor, ela explica luminária. No balcão, os dois. É por isso que a nota no Google é 5,0: não tem SAC, tem gente.</p>
+    <p class="sub">A Ledoux é um casal e uma loja em Schroeder. No feed, ele explica disjuntor, ela explica luminária. No balcão, os dois. É por isso que a nota no Google é {{ loja.google_nota or '5,0' }}: não tem SAC, tem gente.</p>
     <ul class="lista">
-      <li><i>★</i><div><b>5,0 no Google, 32 avaliações</b><span>"melhor preço da região", "variedade", "entrega rápida".</span></div></li>
-      <li><i>ML</i><div><b>Loja oficial no Mercado Livre</b><span>122 anúncios, entrega Full pro Brasil. Aqui, o mesmo produto, retira hoje.</span></div></li>
-      <li><i>SC</i><div><b>Revenda catarinense</b><span>WEG (Jaraguá), Blumenau Iluminação, Taschibra (Indaial), BellaLUX (Jaraguá). Assistência a 1 hora, não a 1.000 km.</span></div></li>
+      <li><i>★</i><div><b>{{ loja.google_nota or '5,0' }} no Google, {{ loja.google_n or '32' }} avaliações</b><span>"melhor preço da região", "variedade", "entrega rápida".</span></div></li>
+      <li><i>SC</i><div><b>Fabricantes daqui</b><span>Nordecor, Lumanti, WEG (Jaraguá), Blumenau Iluminação. Assistência a 1 hora, não a 1.000 km.</span></div></li>
+      {% if loja.ml_url %}<li><i>ML</i><div><b>Também no Mercado Livre</b><span>pra quem prefere comprar por lá: <a href="{{ loja.ml_url }}" target="_blank" rel="noopener" style="color:var(--navy);font-weight:700">loja oficial da Ledoux</a>.</span></div></li>{% endif %}
     </ul>
-    <a class="btn btn-ghost" href="https://www.instagram.com/ledoux.mat.eletricos/" target="_blank" rel="noopener">Ver o Instagram · 244 posts</a>
+    <a class="btn btn-ghost" href="https://www.instagram.com/{{ loja.instagram }}/" target="_blank" rel="noopener">Ver o Instagram</a>
   </div>
 </div></section>
 
-<section id="faq" class="alt"><div class="wrap">
+<section id="faq"><div class="wrap">
   <h2><small>Dúvidas</small>O que perguntam no balcão.</h2>
   <details><summary>3000K ou 4000K: qual luz usar na sala?</summary><p>3000K (quente) pra sala, quarto e jantar. 4000K (neutra) pra cozinha, banheiro e escritório. 6500K (fria) pra garagem e área de serviço. Aqui você vê as três acesas antes de levar.</p></details>
   <details><summary>Fita de LED precisa de fonte?</summary><p>Sim. Toda fita 12 V ou 24 V precisa de fonte dimensionada pelos metros e pela potência por metro. Fita que queima em 2 meses quase sempre é fonte errada. Manda os metros no zap que a gente calcula.</p></details>
-  <details><summary>Posso retirar na loja?</summary><p>Pode. Chama no zap com o código do produto, a Ledoux separa e você retira em Schroeder em até 1 hora no horário da loja. De outra cidade, compra na loja da Ledoux no Mercado Livre.</p></details>
-  <details><summary>Tem preço para eletricista?</summary><p>Tem. Cadastro em 1 minuto, preço profissional em todo produto, pedido pela lista no zap, retira pronto. <a href="{{ base }}/eletricista">Área do eletricista</a></p></details>
-  <details><summary>Quem instala?</summary><p>A Ledoux indica eletricistas parceiros de Schroeder e Jaraguá na página de cada produto. Você fala direto com ele pelo zap.</p></details>
+  <details><summary>Como eu compro? Tem loja online?</summary><p>O catálogo tem a foto e a ficha. Você marca a quantidade, manda pro zap e fala direto com o dono: preço, se tem, retirada em Schroeder ou frete pra outra cidade. Sem carrinho automático, sem golpe.</p></details>
+  <details><summary>Vocês entregam?</summary><p>Em Schroeder e região, combina no zap. Pra outras cidades, põe os itens na lista, calcula o frete pelo CEP e o pagamento é combinado com a loja.</p></details>
+  <details><summary>Tem preço para eletricista?</summary><p>Tem. Fala com a loja uma vez, e todo pedido seu sai com preço profissional. <a href="{{ base }}/eletricista">Área do eletricista</a></p></details>
 </div></section>
 
 {% include "vitrine/ledoux/_lista.html" %}
-<footer><div class="wrap">
-  <div class="cols">
-    <div><b class="serif" style="letter-spacing:.18em;font-size:1.1rem">LEDOUX</b><br><span class="fk">Materiais Elétricos e Iluminação</span><br>R. Mal. Castelo Branco, 2838 · Centro · Schroeder/SC · 89275-000<br>CNPJ {{ loja.cnpj }}</div>
-    <div><span class="ft">Atendimento</span>WhatsApp <b>{{ loja.whatsapp[2:4] }} {{ loja.whatsapp[4:9] }}-{{ loja.whatsapp[9:] }}</b><br>Loja: {{ loja.telefone }}<br>{{ loja.horario }}</div>
-    <div><span class="ft">Onde mais</span><a href="https://www.instagram.com/ledoux.mat.eletricos/" target="_blank" rel="noopener">@ledoux.mat.eletricos</a><br><a href="https://www.mercadolivre.com.br/pagina/ledouxstore" target="_blank" rel="noopener">Loja no Mercado Livre</a><br><a href="{{ base }}/eletricista">Área do eletricista</a><br><a href="{{ base }}/admin">🔒 Área da Ledoux</a></div>
-  </div>
-  <div class="assinatura"><span class="tri"><span>DL</span> · LEGIÃO · <span>ORÁCULO</span> · VULCANO</span><br><a href="https://dldespachante.com.br/publicidade" rel="noopener">site feito com Vitrine · DL Despachante</a> · <a href="https://www.4kitem.com.br" rel="noopener">4kitem</a></div>
-</div></footer>
-
-<a class="fab" href="{{ wa('Oi, vim do site da Ledoux.') }}" target="_blank" rel="noopener" aria-label="WhatsApp"><svg class="ico" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2Zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2Zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8s-.4-.1-.6.1-.6.8-.8 1-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.3-.4.2-.4.7-1.3.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.8 12 12 0 0 0 4.6 4 5.3 5.3 0 0 0 3.2.7 2.7 2.7 0 0 0 1.8-1.3 2.2 2.2 0 0 0 .2-1.3c-.1-.1-.3-.2-.5-.3Z"/></svg>Falar com a loja</a>
+{{ pe() }}
 
 <script>
 (function(){
@@ -248,44 +209,33 @@
   bts.forEach(function(b){b.addEventListener('click',function(){clearInterval(auto);if(vid.classList.contains('on')){vid.pause();vid.classList.remove('on');hero.classList.remove('apagada')}setK(b.dataset.k)})});
   tchum();
 
-  // calculadora de spots
+  // calculadora de spots (sem preço fixo: o preço vem no zap)
   var $=function(x){return document.getElementById(x)};
   var lux={sala:150,cozinha:300,quarto:150,banheiro:200,escritorio:400,garagem:150};
   var kelvin={sala:'3000K quente',cozinha:'4000K neutra',quarto:'2700K a 3000K quente',banheiro:'4000K neutra',escritorio:'4000K neutra',garagem:'6500K fria'};
-  var brl=function(v){return 'R$ '+Math.round(v).toLocaleString('pt-BR')};
+  var lampNome={525:'PAR20',400:'dicroica MR16',850:'PAR30'};
   function calc(){
     var amb=$('c_amb').value, m2=+$('c_m2').value||0, lm=+$('c_lamp').value, pe=+$('c_pe').value;
     var need=Math.round(lux[amb]*m2*pe*1.25); // 25% de perda (teto, paredes)
     var n=Math.max(2,Math.ceil(need/lm)); if(n%2)n++;
-    var preco=n*(24.90+7.90);
-    $('o_n').textContent=n; $('o_lm').textContent=need.toLocaleString('pt-BR')+' lm'; $('o_k').textContent=kelvin[amb];
-    $('o_kit').textContent=n+' spots Loyo + '+n+' PAR20 '+kelvin[amb].split(' ')[0];
-    $('o_preco').textContent=brl(preco);
-    $('c_zap').href='https://wa.me/{{ loja.whatsapp }}?text='+encodeURIComponent('Oi, vim do site. Fiz a conta: '+amb+' de '+m2+' m² = '+n+' spots ('+kelvin[amb]+'). Tem na loja o kit '+n+' spots Loyo + '+n+' PAR20? Quero retirar hoje.');
+    var kit=n+' spots + '+n+' '+lampNome[lm]+' '+kelvin[amb].split(' ')[0];
+    $('o_n').textContent=n; $('o_lm').textContent=need.toLocaleString('pt-BR')+' lm'; $('o_k').textContent=kelvin[amb]; $('o_kit').textContent=kit;
+    $('c_zap').href='https://wa.me/{{ loja.whatsapp }}?text='+encodeURIComponent('Oi, vim do site. Fiz a conta: '+amb+' de '+m2+' m² = '+n+' spots ('+kelvin[amb]+'). Tem na loja o kit '+kit+'? Qual o preço?');
   }
   ['c_amb','c_m2','c_lamp','c_pe'].forEach(function(id){$(id).addEventListener('input',calc);$(id).addEventListener('change',calc)}); calc();
 })();
 </script>
 <script>
-// revelação suave ao rolar (uma vez, 12 px, 0,6 s) — dá o "peso" de site premium sem pesar
-(function(){if(!('IntersectionObserver' in window))return;var els=document.querySelectorAll('section .wrap > *, .faixa .fx');els.forEach(function(e){e.classList.add('rv')});
-var io=new IntersectionObserver(function(en){en.forEach(function(x){if(x.isIntersecting){x.target.classList.add('in');io.unobserve(x.target)}})},{rootMargin:'0px 0px -8% 0px',threshold:.08});els.forEach(function(e){io.observe(e)})})();
-</script>
-<script>
 (function(){
   // "Retira hoje": relógio da loja (seg-sex 7h30-18h, sáb 8h-12h). Pedido até 1 h antes de fechar sai no mesmo dia.
   function retira(){var d=new Date(),h=d.getHours()+d.getMinutes()/60,dia=d.getDay();var fecha=dia===6?12:(dia===0?0:18),abre=dia===6?8:7.5;
-    var msg,cls='';if(dia!==0&&h<fecha-1&&h>=abre-2){var falta=fecha-1-h,hh=Math.floor(falta),mm=Math.round((falta-hh)*60);msg='<b>Retira hoje</b> · chama até '+(fecha-1)+'h, faltam '+hh+' h '+(mm<10?'0':'')+mm;}
+    var msg;if(dia!==0&&h<fecha-1&&h>=abre-2){var falta=fecha-1-h,hh=Math.floor(falta),mm=Math.round((falta-hh)*60);msg='<b>Retira hoje</b> · chama até '+(fecha-1)+'h, faltam '+hh+' h '+(mm<10?'0':'')+mm;}
     else if(dia===0||(dia===6&&h>=11)){msg='<b>Retira segunda</b> · a partir das 7h30';}else if(h>=fecha-1){msg='<b>Retira amanhã</b> · '+(dia===5?'sábado a partir das 8h':'a partir das 7h30');}else{msg='<b>Retira hoje</b> · abrimos às '+(dia===6?'8h':'7h30');}
     var a=document.getElementById('selo_retira');if(a)a.innerHTML=msg;var b=document.getElementById('retira_linha');if(b)b.innerHTML='⏱ '+msg.replace(/<\/?b>/g,'')+' · Schroeder, R. Mal. Castelo Branco 2838';}
   retira();setInterval(retira,60000);
   // header: transparente sobre o hero, sólido ao rolar
   var top=document.querySelector('.top'),hero=document.querySelector('.hero');
   if(top&&hero&&'IntersectionObserver' in window){new IntersectionObserver(function(e){top.classList.toggle('solid',!e[0].isIntersecting||e[0].intersectionRatio<.85)},{threshold:[.85,1]}).observe(hero);}
-  // filtros por chip
-  var chips=document.querySelectorAll('#chips button'),cards=document.querySelectorAll('#produtos .prod'),f='*',k='';
-  function aplica(){cards.forEach(function(c){var okf=f==='*'||(c.dataset.f||'').split(' ').indexOf(f)>-1,okk=!k||(c.dataset.k||'').split(' ').indexOf(k)>-1;c.style.display=(okf&&okk)?'':'none'})}
-  chips.forEach(function(b){b.onclick=function(){if(b.dataset.f){f=b.dataset.f;chips.forEach(function(x){if(x.dataset.f)x.classList.toggle('on',x===b)})}else{k=(k===b.dataset.k)?'':b.dataset.k;chips.forEach(function(x){if(x.dataset.k)x.classList.toggle('on',x.dataset.k===k)})}aplica()}});
 })();
 </script>
 </body>

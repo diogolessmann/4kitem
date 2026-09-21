@@ -1,0 +1,37 @@
+{#- Formulário do produto (novo e editar) — o essencial em cima, o resto em "mais detalhes". Importar com context. -#}
+{% macro form_produto(p) %}
+    <form method="post" enctype="multipart/form-data" action="{{ base }}/admin/produto{% if p %}/{{ p.id }}{% endif %}">
+      <div class="foto">📷 {% if p and p.foto %}Trocar a foto{% else %}Toque pra tirar foto ou escolher da galeria{% endif %}<br><small>a foto vira ≤ 200 KB sozinha</small><input type="file" name="foto" accept="image/*" capture="environment" style="border:0;background:none;margin-top:8px"></div>
+      <label>Nome (do jeito que você fala)</label><input name="titulo" required value="{{ p.titulo if p else '' }}" placeholder="Spot de embutir redondo branco PAR20">
+      <div class="g2">
+        <div><label>Preço balcão</label><input name="preco" inputmode="decimal" value="{{ ('%.2f'|format(p.preco)).replace('.', ',') if p and p.preco else '' }}" placeholder="24,90 (vazio = preço no zap)"></div>
+        <div><label>Preço eletricista</label><input name="preco_pro" inputmode="decimal" value="{{ ('%.2f'|format(p.preco_pro)).replace('.', ',') if p and p.preco_pro else '' }}" placeholder="21,50"></div>
+      </div>
+      <div class="g2">
+        <div><label>Família</label><select name="tipo">{% for t in TIPOS %}<option {{ 'selected' if p and p.tipo == t }}>{{ t }}</option>{% endfor %}</select></div>
+        <div><label>Quantos na prateleira</label><input name="estoque" inputmode="numeric" value="{{ p.estoque if p and p.estoque else '' }}" placeholder="7"></div>
+      </div>
+      <details style="margin:4px 0 10px"><summary style="color:var(--gold);cursor:pointer;font-size:.85rem">mais detalhes (código, marca, ficha, temperatura…)</summary>
+        <div class="g2" style="margin-top:8px">
+          <div><label>Código</label><input name="codigo" value="{{ p.codigo if p else '' }}" placeholder="vazio = o site cria"></div>
+          <div><label>Marca</label><input name="marca" value="{{ p.marca if p else '' }}" placeholder="Nordecor"></div>
+        </div>
+        <label>Categoria</label><select name="categoria">{% for c, n in CATS %}<option value="{{ c }}" {{ 'selected' if p and p.categoria == c }}>{{ n }}</option>{% endfor %}</select>
+        <label>Temperatura de cor (marca as que tem)</label>
+        <div class="ks">{% for k in ('2400','2700','3000','4000','6500') %}<label><input type="checkbox" name="k" value="{{ k }}" {{ 'checked' if p and k in (p.k or '').split() }}>{{ k }}K</label>{% endfor %}</div>
+        <label>Ficha (separa com ·)</label><input name="specs" value="{{ p.specs if p else '' }}" placeholder="525 lm · IRC 95 · bivolt">
+        <div class="g2">
+          <div><label>Unidade / observação de preço</label><input name="unidade" value="{{ p.unidade if p else '' }}" placeholder="o kit · R$ 7,90 a lâmpada"></div>
+          <div><label>Etiqueta</label><input name="tag" value="{{ p.tag if p else '' }}" placeholder="Mais vendido"></div>
+        </div>
+        <div class="g2">
+          <div><label>Peso (kg, pro frete)</label><input name="peso" inputmode="decimal" value="{{ p.peso if p and p.peso else '' }}" placeholder="0,35"></div>
+          <div><label>Caixa A×L×C (cm)</label><input name="dim" value="{{ p.dim if p else '' }}" placeholder="14x14x12"></div>
+        </div>
+        <label>Descrição (o que você diria no balcão)</label><textarea name="descricao" rows="2" placeholder="O spot mais vendido da loja. Serve PAR20 e fica bom em gesso.">{{ p.descricao if p else '' }}</textarea>
+        <label>Link de vídeo (opcional)</label><input name="video_url" value="{{ p.video_url if p else '' }}" placeholder="https://www.instagram.com/reel/...">
+        <label>Ordem no site (menor aparece antes)</label><input name="ordem" inputmode="numeric" value="{{ p.ordem if p else '' }}" placeholder="0">
+      </details>
+      <button class="btn" type="submit">{{ 'Salvar' if p else 'Colocar no site' }}</button>
+    </form>
+{% endmacro %}
