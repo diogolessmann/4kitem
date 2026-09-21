@@ -12,8 +12,10 @@ Regras: foto real; preço na cara quando houver (senão "preço no zap"); menos 
 """
 import io
 import json
+import mimetypes
 import os
 import re
+import sqlite3
 import threading
 import time
 import unicodedata
@@ -127,11 +129,15 @@ def _produto(loja_id, codigo):
 
 
 def _evento(loja_id, tipo, produto_id=None):
-    conn = get_vit_db()
-    conn.execute('INSERT INTO vit_eventos (loja_id, produto_id, tipo, dia) VALUES (?,?,?,?)',
-                 (loja_id, produto_id, tipo, date.today().isoformat()))
-    conn.commit()
-    conn.close()
+    """Contador de visita/zap. Nunca derruba a página: se o banco estiver ocupado (importação), perde o evento e segue."""
+    try:
+        conn = get_vit_db()
+        conn.execute('INSERT INTO vit_eventos (loja_id, produto_id, tipo, dia) VALUES (?,?,?,?)',
+                     (loja_id, produto_id, tipo, date.today().isoformat()))
+        conn.commit()
+        conn.close()
+    except sqlite3.OperationalError as e:
+        print(f'[vitrine] evento {tipo} perdido: {e}')
 
 
 def _numeros(loja_id, dias=7):
@@ -348,9 +354,13 @@ def ml(slug, pid):
     return redirect(p['ml_url'] or loja['ml_url'] or 'https://www.mercadolivre.com.br')
 
 
+mimetypes.add_type('image/webp', '.webp')   # o container do Railway não tem /etc/mime.types → .webp saía como octet-stream
+
+
 @vitrine_bp.route('/<slug>/m/<path:arquivo>')
 def media(slug, arquivo):
-    return send_from_directory(_media_dir(slug), arquivo, max_age=86400 * 30)
+    return send_from_directory(_media_dir(slug), arquivo, max_age=86400 * 30,
+                               mimetype='image/webp' if arquivo.lower().endswith('.webp') else None)
 
 
 @vitrine_bp.route('/<slug>/sitemap.xml')
@@ -841,9 +851,9 @@ def orcamento(slug):
         if p:
             q = max(1, int(_num(qtd) or 1))
             itens.append((p, q))
-            conn.execute('INSERT INTO vit_eventos (loja_id, produto_id, tipo, dia) VALUES (?,?,?,?)', (loja['id'], p['id'], 'zap', date.today().isoformat()))
-    conn.commit()
     conn.close()
+    for p, q in itens:
+        _evento(loja['id'], 'zap', p['id'])
     if not itens:
         return redirect(_wa(loja, 'Oi, vim do site. Quero um orçamento.'))
     linhas = [f"{q}× {p['titulo']} (cód. {p['codigo']})" + (f" · {_brl(p['preco'])} cada" if p['preco'] else '') for p, q in itens]

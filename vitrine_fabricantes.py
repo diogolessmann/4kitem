@@ -120,6 +120,7 @@ def importar_nordecor(slug, media_dir, categoria_id=None, limite=None):
                     _grava(conn, lid, slug, media_dir, p, prog)
                 except Exception as e:
                     print(f'[vitrine] nordecor item {p.get("id")}: {e}')
+                conn.commit()   # transação curta por item: não segura o lock do banco enquanto o site atende
                 feitos += 1
                 prog['feitos'] = feitos
                 time.sleep(0.3)
@@ -263,6 +264,7 @@ def importar_lumanti(slug, media_dir, linha=None, limite=None):
                         _grava_lumanti(conn, lid, media_dir, link, titulo, p, img, tipo_padrao, prog)
                     except Exception as e:
                         print(f'[vitrine] lumanti item {link}: {e}')
+                    conn.commit()   # idem: 1 item = 1 transação
                     feitos += 1
                     prog['feitos'] = feitos
                     time.sleep(2)
