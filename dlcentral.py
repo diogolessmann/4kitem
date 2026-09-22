@@ -353,6 +353,8 @@ def gerar_legenda(marca, arquivo):
 DESTINOS = {
     "despachante": {"label": "IG do Despachante", "env": ("DESP_PAGE_TOKEN", "DESP_IG_USER_ID")},
     "radio": {"label": "IG da Rádio SC News", "env": ("RADIO_PAGE_TOKEN", "RADIO_IG_USER_ID")},
+    # 19/set/26: 3º perfil — SC News Mobilidade (carro/moto/scooter do Norte de SC)
+    "mobilidade": {"label": "IG SC News Mobilidade", "env": ("MOB_PAGE_TOKEN", "MOB_IG_USER_ID")},
 }
 
 

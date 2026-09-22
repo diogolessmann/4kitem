@@ -1,21 +1,24 @@
 # -*- coding: utf-8 -*-
-"""🤖 DL MOTOR — publica sozinho as marcas do grupo no IG do Despachante.
+"""🤖 DL MOTOR — agenda dos perfis do grupo, dentro do 4kitem (migrado da Rádio em 20/set/2026).
 
-Substitui o `marca_job` que morava no scheduler.py da Rádio SC News. Aquele
-gerava card de texto no PIL; este usa as FOTOS REAIS que já estão na Central DL,
-e publica feed + story.
+A Rádio está sendo vendida; o motor do despachante e o de mobilidade saem de lá e rodam aqui.
+Conteúdo e publicação estão em dlm/ (marcas · series_despachante · mobilidade · insights) —
+código portado 1:1 do repo da Rádio. Este arquivo só decide QUANDO rodar o quê.
+(A versão anterior deste arquivo — foto da Central DL 1x/dia — está no git, commit 7ca9560.)
 
-Como escolhe a mídia do dia:
-  1. o que nunca foi publicado vem primeiro;
-  2. depois, o publicado há mais tempo;
-  3. nada que tenha ido ao ar nos últimos DLMOTOR_DESCANSO_DIAS entra na roda.
+Grade (America/Sao_Paulo):
+  10:00       despachante · manhã   (série "1 post = 1 página", alterna documentalista/defesa)
+  13:00       despachante · meio    (mito/consequência)  — só com DESP_MEIO_ON=1
+  16:00 t/q/s DL Mobilidade · oferta de scooter com FOTO REAL (tokens do despachante)
+  19:00       despachante · noite   (story "veja mais no site")
+  hh:20 x6    SC News Mobilidade    (MOB_HORAS, default 7,10,12,15,18,20) — só com MOB_ON=1 + tokens MOB_*
+  23:30       insights por série    (placar)
 
-Travas (o motor da Rádio não tinha nenhuma):
-  - marca no disco o que já postou HOJE — restart do Railway não republica;
-  - DLMOTOR_MODO=preview monta o post e NÃO publica (default, pra calibrar);
-  - DLMOTOR_ON=0 desliga tudo.
-
-Ligar pra valer: DLMOTOR_MODO=live no Railway.
+Travas:
+  DLMOTOR_ON=0            desliga tudo
+  DLMOTOR_MODO=preview    monta o post e NÃO publica (default — pra calibrar antes de ligar)
+  DLMOTOR_MODO=live       publica
+  estado em DATA_DIR/dlmotor_estado.json: o mesmo turno não repete no mesmo dia (restart do Railway)
 """
 import json
 import os
@@ -23,21 +26,20 @@ import threading
 import time
 from datetime import datetime, timedelta
 
+try:
+    from zoneinfo import ZoneInfo
+    TZ = ZoneInfo("America/Sao_Paulo")
+except Exception:                       # pragma: no cover
+    TZ = None
+
 import dlcentral as dlc
 
 _DATA = os.environ.get("DATA_DIR", os.path.dirname(os.path.abspath(__file__)))
 _ESTADO = os.path.join(_DATA, "dlmotor_estado.json")
 
-# ─────────────────────────────────────────────────────────────────── agenda
-# Mesmo ritmo que já roda hoje na Rádio — motor novo, cadência igual, pra dar
-# pra medir o que mudou. dia_semana: 0=seg … 6=dom; None = todo dia.
-AGENDA = [
-    {"marca": "despachante", "hora": 10, "dias": None},
-    {"marca": "dlmob", "hora": 16, "dias": (1, 3, 5)},          # ter/qui/sáb
-    # {"marca": "defesas", "hora": 15, "dias": (0, 2, 4)},      # descomentar p/ ligar
-]
 
-DESCANSO = int(os.environ.get("DLMOTOR_DESCANSO_DIAS", "30"))
+def agora():
+    return datetime.now(TZ) if TZ else datetime.now()
 
 
 def ligado():
@@ -48,7 +50,73 @@ def ao_vivo():
     return os.environ.get("DLMOTOR_MODO", "preview").lower() == "live"
 
 
-# ─────────────────────────────────────────────────────── trava anti-republicação
+# ─────────────────────────────────────────────────────────── turnos
+def _desp(slot):
+    if slot == "meio" and os.environ.get("DESP_MEIO_ON", "0") != "1":
+        return "13h desligado (DESP_MEIO_ON!=1)"
+    from dlm import marcas
+    t = marcas.BRANDS["despachante"]
+    token, ig_id, _ = marcas._brand_tokens(t)
+    if not (token and ig_id):
+        return "sem tokens DESP_* — pulado"
+    if not ao_vivo():
+        paths, cap, item = marcas.generate("despachante", slot=slot)
+        return f"PREVIEW {item.get('serie')} {item.get('passo')}: {paths[0]}"
+    marcas.run("despachante", post=True, slot=slot)
+    return "POSTADO"
+
+
+def _dlmob():
+    from dlm import marcas
+    t = marcas.BRANDS["dl_mobilidade"]
+    token, ig_id, _ = marcas._brand_tokens(t)
+    if not (token and ig_id):
+        return "sem tokens DESP_* — pulado"
+    if not ao_vivo():
+        paths, cap, _ = marcas.generate("dl_mobilidade")
+        return f"PREVIEW: {paths[0]}"
+    marcas.run("dl_mobilidade", post=True)
+    return "POSTADO"
+
+
+def _mob(idx):
+    if os.environ.get("MOB_ON", "0") != "1":
+        return "MOB_ON!=1"
+    from dlm import mobilidade
+    if not mobilidade.tokens_ok():
+        return "sem tokens MOB_* — pulado"
+    r = mobilidade.run_slot(idx, post=ao_vivo())
+    if not r:
+        return "fila vazia (pulado)"
+    return "POSTADO" if ao_vivo() else f"PREVIEW: {r.get('preview', [''])[0]}"
+
+
+def _insights():
+    from dlm import insights
+    n = insights.coletar_marca("despachante", dias=7)
+    return f"insights: {n}"
+
+
+def _mob_horas():
+    hs = [int(h) for h in os.environ.get("MOB_HORAS", "7,10,12,15,18,20").split(",") if h.strip().isdigit()]
+    return hs or [7, 10, 12, 15, 18, 20]
+
+
+def agenda():
+    """[(id, hora, minuto, dias|None, func)] — dias: 0=seg … 6=dom."""
+    a = [
+        ("desp_manha", 10, 0, None, lambda: _desp("manha")),
+        ("desp_meio", 13, 0, None, lambda: _desp("meio")),
+        ("dlmob", 16, 0, (1, 3, 5), _dlmob),
+        ("desp_noite", 19, 0, None, lambda: _desp("noite")),
+        ("insights", 23, 30, None, _insights),
+    ]
+    for i, h in enumerate(_mob_horas()):
+        a.append((f"mob_{i}", h, 20, None, (lambda i=i: _mob(i))))
+    return a
+
+
+# ───────────────────────────────────────────── trava anti-repetição (por dia)
 def _estado():
     try:
         with open(_ESTADO, encoding="utf-8") as f:
@@ -57,160 +125,78 @@ def _estado():
         return {}
 
 
-def _marca_feito(marca, arquivo):
-    d = _estado()
-    d[marca] = {"dia": datetime.now().strftime("%Y-%m-%d"), "arquivo": arquivo}
+def _feito(turno):
+    e = _estado()
+    e[turno] = agora().strftime("%Y-%m-%d")
+    e.setdefault("_hist", []).append({"turno": turno, "quando": agora().isoformat(timespec="minutes")})
+    e["_hist"] = e["_hist"][-200:]
     try:
         with open(_ESTADO, "w", encoding="utf-8") as f:
-            json.dump(d, f, ensure_ascii=False)
-    except Exception as e:
-        dlc.log(f"⚠️ motor: não consegui gravar a trava ({e})")
+            json.dump(e, f, ensure_ascii=False, indent=1)
+    except Exception:
+        pass
 
 
-def ja_foi_hoje(marca):
-    return _estado().get(marca, {}).get("dia") == datetime.now().strftime("%Y-%m-%d")
+def ja_foi_hoje(turno):
+    return _estado().get(turno) == agora().strftime("%Y-%m-%d")
 
 
-# ────────────────────────────────────────────────────────── escolha da mídia
-def _ultima_publicacao(item):
-    """datetime da última vez que foi ao ar, ou None se nunca foi."""
-    pubs = (item.get("meta") or {}).get("publicados") or []
-    if not pubs:
-        return None
-    ano = datetime.now().year
-    quando = []
-    for p in pubs:
-        try:                                   # meta guarda "dd/mm HH:MM"
-            d = datetime.strptime(p.get("quando", ""), "%d/%m %H:%M").replace(year=ano)
-            if d > datetime.now() + timedelta(days=1):
-                d = d.replace(year=ano - 1)    # virada de ano
-            quando.append(d)
-        except Exception:
-            pass
-    return max(quando) if quando else datetime(2000, 1, 1)
-
-
-def escolhe(marca):
-    """A mídia da vez, ou None se não sobrou nada descansado."""
-    agora = datetime.now()
-    fila = []
-    for it in dlc.listar(marca):
-        nome = it["arquivo"]
-        if nome.rsplit(".", 1)[0].endswith("_story"):
-            continue                            # story entra pareado, não sozinho
-        ult = _ultima_publicacao(it)
-        if ult and (agora - ult).days < DESCANSO:
-            continue
-        # nunca publicado primeiro, na ordem do nome (01-, 02-, … é sequência
-        # que o dono montou); depois, o publicado há mais tempo
-        fila.append(((1, ult) if ult else (0, nome.lower()), it))
-    if not fila:
-        return None
-    fila.sort(key=lambda x: x[0])
-    return fila[0][1]
-
-
-def _story_de(marca, arquivo):
-    """O `<nome>_story.jpg` correspondente, se existir no acervo."""
-    base, ext = arquivo.rsplit(".", 1)
-    alvo = f"{base}_story.{ext}"
-    for it in dlc.listar(marca):
-        if it["arquivo"] == alvo:
-            return alvo
-    return None
-
-
-# ───────────────────────────────────────────────────────────────── story
-def publica_story(marca, arquivo):
-    """Story é media_type=STORIES — o dlcentral só sabe feed e reel."""
-    tok, ig = dlc._tokens()
-    _caminho, url, tipo = dlc.acha(marca, arquivo)
-    campo = "image_url" if tipo == "foto" else "video_url"
-    cont = dlc._graph_post(f"{dlc.GRAPH}/{ig}/media",
-                           {"media_type": "STORIES", campo: url,
-                            "access_token": tok})["id"]
-    time.sleep(5)
-    r = dlc._graph_post(f"{dlc.GRAPH}/{ig}/media_publish",
-                        {"creation_id": cont, "access_token": tok})
-    return r.get("id")
-
-
-# ────────────────────────────────────────────────────────────────── o turno
-def roda(marca, forcar=False):
-    """Publica (ou monta, em preview) o post do dia dessa marca."""
+def roda(turno, forcar=False):
+    """Executa um turno pelo id (ex.: 'desp_manha', 'mob_0'). Usado pela agenda e pelo admin."""
     if not ligado():
-        dlc.log(f"⏸️ motor desligado (DLMOTOR_ON=0) — {marca} pulada")
+        dlc.log(f"⏸️ motor desligado (DLMOTOR_ON=0) — {turno} pulado")
         return None
-    if not forcar and ja_foi_hoje(marca):
-        dlc.log(f"↩️ {marca} já foi hoje — nada a fazer")
+    if not forcar and ja_foi_hoje(turno):
         return None
-    if not dlc.tokens_ok():
-        dlc.log(f"⚠️ {marca}: sem DESP_PAGE_TOKEN/DESP_IG_USER_ID — pulada")
+    func = next((f for (tid, _h, _m, _d, f) in agenda() if tid == turno), None)
+    if not func:
+        dlc.log(f"❓ turno desconhecido: {turno}")
         return None
-
-    item = escolhe(marca)
-    if not item:
-        dlc.log(f"📭 {marca}: acervo inteiro publicado nos últimos {DESCANSO} dias — "
-                f"hora de subir material novo na Central DL")
-        return None
-
-    arquivo = item["arquivo"]
-    legenda = (item.get("meta") or {}).get("legenda_venda") or dlc.gerar_legenda(marca, arquivo)
-
-    if not ao_vivo():
-        _marca_feito(marca, arquivo)
-        dlc.log(f"👁️ PREVIEW {marca}: escolhi {arquivo} e escrevi a legenda — "
-                f"NÃO publiquei (DLMOTOR_MODO=live pra valer)")
-        return arquivo
-
-    dlc._publicar_job(marca, arquivo, legenda)        # feed, síncrono aqui na thread
-    story = _story_de(marca, arquivo)
-    if story:
-        try:
-            publica_story(marca, story)
-            dlc.log(f"📲 story publicado: {marca}/{story}")
-        except Exception as e:
-            dlc.log(f"⚠️ story falhou ({marca}/{story}): {e}")
-    _marca_feito(marca, arquivo)
-    return arquivo
+    try:
+        r = func()
+        dlc.log(f"🤖 {turno}: {r}")
+    except Exception as e:
+        dlc.log(f"❌ {turno} quebrou: {e}")
+        r = None
+    _feito(turno)
+    return r
 
 
-# ─────────────────────────────────────────────────────────────── agendador
-def _proximo(agora):
-    """(datetime do próximo disparo, marca)."""
+# ─────────────────────────────────────────────────────────── laço
+def _proximo(now):
     melhor = None
-    for slot in AGENDA:
+    for tid, h, m, dias, _f in agenda():
         for adiante in range(8):
-            d = (agora + timedelta(days=adiante)).replace(
-                hour=slot["hora"], minute=0, second=0, microsecond=0)
-            if d <= agora:
-                continue
-            if slot["dias"] is not None and d.weekday() not in slot["dias"]:
+            d = (now + timedelta(days=adiante)).replace(hour=h, minute=m, second=0, microsecond=0)
+            if d <= now or (dias is not None and d.weekday() not in dias):
                 continue
             if melhor is None or d < melhor[0]:
-                melhor = (d, slot["marca"])
+                melhor = (d, tid)
             break
     return melhor
 
 
 def _laco():
-    modo = "AO VIVO" if ao_vivo() else "preview (não publica)"
-    dlc.log(f"🤖 motor iniciado — modo {modo}, descanso de {DESCANSO} dias")
+    dlc.log(f"🤖 DL Motor iniciado — modo {'AO VIVO' if ao_vivo() else 'preview (não publica)'}; "
+            f"{len(agenda())} turnos/dia")
+    # 🩹 turno perdido por restart nos últimos 30 min ainda roda (misfire grace, como na Rádio)
+    now = agora()
+    for tid, h, m, dias, _f in agenda():
+        d = now.replace(hour=h, minute=m, second=0, microsecond=0)
+        if (dias is None or d.weekday() in dias) and 0 <= (now - d).total_seconds() <= 1800:
+            roda(tid)
     while True:
-        prox = _proximo(datetime.now())
+        prox = _proximo(agora())
         if not prox:
             time.sleep(3600)
             continue
-        quando, marca = prox
-        espera = (quando - datetime.now()).total_seconds()
+        quando, tid = prox
+        espera = (quando - agora()).total_seconds()
         if espera > 0:
-            time.sleep(min(espera, 3600))       # acorda de hora em hora
-        if datetime.now() >= quando:
-            try:
-                roda(marca)
-            except Exception as e:
-                dlc.log(f"❌ motor: turno de {marca} quebrou: {e}")
-            time.sleep(90)                       # não repete o mesmo horário
+            time.sleep(min(espera, 900))          # acorda a cada 15 min
+            continue
+        roda(tid)
+        time.sleep(61)
 
 
 def iniciar():

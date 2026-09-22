@@ -6,3 +6,11 @@ static/mz_uploads/*
 # segredos locais (nunca commitar)
 .env
 .env.*
+
+# DL Motor (dlm/) — saídas de runtime
+static/social/
+dlm_posts/
+marcas_posts.jsonl
+mob_posts.jsonl
+dlmotor_estado.json
+bg_usadas.json
