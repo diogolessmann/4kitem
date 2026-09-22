@@ -13,6 +13,9 @@
     gtag('config', 'G-0JQBJ01C0Z');
   </script>
   <meta name="description" content="Plataforma com mais de 20 soluções digitais para pequenas e médias empresas: agendamento, jukebox para bares, telemedicina pet, gestão para despachantes, e muito mais. Sem complicação, sem contrato.">
+  <!-- 22/set: sem esta linha o Google mostra miniatura pequena na busca e a home
+       fica fora do Discover. -->
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
   <link rel="canonical" href="https://www.4kitem.com.br/">
   <link rel="icon" type="image/png" href="/static/favicon.png">
   <link rel="apple-touch-icon" href="/static/favicon.png">
@@ -711,6 +714,20 @@
       .cta-box { padding: 40px 24px; }
     }
   </style>
+  <!-- 22/set: a home listava 8 produtos e o dado estruturado nao citava nenhum.
+       Só os visiveis entram: anunciar em JSON-LD o que a pagina esconde e discrepancia. -->
+  <script type="application/ld+json">
+  {"@context":"https://schema.org","@type":"ItemList","name":"Ferramentas do 4KITEM","numberOfItems":8,"itemListOrder":"https://schema.org/ItemListOrderAscending","itemListElement":[
+      {"@type":"ListItem","position":1,"item":{"@type":"SoftwareApplication","@id":"https://www.4kitem.com.br/mandazap#app","name":"MandaZap","url":"https://www.4kitem.com.br/mandazap","applicationCategory":"BusinessApplication","operatingSystem":"Web, WhatsApp","description":"Plataforma de marketing no WhatsApp. Importe listas, personalize mensagens e dispare em massa com anti-ban inteligente.","provider":{"@id":"https://www.4kitem.com.br/#org"},"inLanguage":"pt-BR","audience":{"@type":"BusinessAudience","name":"Pequeno e médio negócio do Norte de Santa Catarina"}}},
+      {"@type":"ListItem","position":2,"item":{"@type":"SoftwareApplication","@id":"https://www.4kitem.com.br/somaja/#app","name":"SomaJá","url":"https://www.4kitem.com.br/somaja/","applicationCategory":"BusinessApplication","operatingSystem":"Web, WhatsApp","description":"Seu coach financeiro no WhatsApp. Manda o gasto por texto, áudio ou foto da notinha — a IA soma tudo, mostra o saldo e te dá o conselho na hora. O dinheiro da família num só bolso.","provider":{"@id":"https://www.4kitem.com.br/#org"},"inLanguage":"pt-BR","audience":{"@type":"BusinessAudience","name":"Pequeno e médio negócio do Norte de Santa Catarina"}}},
+      {"@type":"ListItem","position":3,"item":{"@type":"SoftwareApplication","@id":"https://www.4kitem.com.br/somaja/mei#app","name":"SomaJá Negócio","url":"https://www.4kitem.com.br/somaja/mei","applicationCategory":"BusinessApplication","operatingSystem":"Web, WhatsApp","description":"O contador de bolso do MEI no WhatsApp. Vigia seu teto, te lembra do DAS e separa venda de despesa — pra você não tomar multa nem perder o CNPJ.","provider":{"@id":"https://www.4kitem.com.br/#org"},"inLanguage":"pt-BR","audience":{"@type":"BusinessAudience","name":"Pequeno e médio negócio do Norte de Santa Catarina"}}},
+      {"@type":"ListItem","position":4,"item":{"@type":"SoftwareApplication","@id":"https://www.4kitem.com.br/alerta#app","name":"AlertaJá","url":"https://www.4kitem.com.br/alerta","applicationCategory":"BusinessApplication","operatingSystem":"Web, WhatsApp","description":"Monitoramento de CNH e veículo no DETRAN-SC. Receba um relatório mensal no WhatsApp com tudo que pode te pegar de surpresa.","provider":{"@id":"https://www.4kitem.com.br/#org"},"inLanguage":"pt-BR","audience":{"@type":"BusinessAudience","name":"Pequeno e médio negócio do Norte de Santa Catarina"}}},
+      {"@type":"ListItem","position":5,"item":{"@type":"SoftwareApplication","@id":"https://www.4kitem.com.br/defesapro#app","name":"DefesaPro","url":"https://www.4kitem.com.br/defesapro","applicationCategory":"BusinessApplication","operatingSystem":"Web, WhatsApp","description":"Gestão de defesas de multas de trânsito. Gere petições completas, controle prazos, armazene processos e gerencie honorários.","provider":{"@id":"https://www.4kitem.com.br/#org"},"inLanguage":"pt-BR","audience":{"@type":"BusinessAudience","name":"Pequeno e médio negócio do Norte de Santa Catarina"}}},
+      {"@type":"ListItem","position":6,"item":{"@type":"SoftwareApplication","@id":"https://www.4kitem.com.br/pcd/#app","name":"PCD Fácil","url":"https://www.4kitem.com.br/pcd/","applicationCategory":"BusinessApplication","operatingSystem":"Web, WhatsApp","description":"Isenção de impostos para PCD, passo a passo. A IA confere seus documentos e monta o processo — do laudo à isenção, sem você se perder.","provider":{"@id":"https://www.4kitem.com.br/#org"},"inLanguage":"pt-BR","audience":{"@type":"BusinessAudience","name":"Pequeno e médio negócio do Norte de Santa Catarina"}}},
+      {"@type":"ListItem","position":7,"item":{"@type":"SoftwareApplication","@id":"https://www.4kitem.com.br/camponline#app","name":"CAMPonline","url":"https://www.4kitem.com.br/camponline","applicationCategory":"BusinessApplication","operatingSystem":"Web, WhatsApp","description":"Crie campeonatos de games com prêmio no PIX (PUBG, EA FC, Free Fire...). A galera paga a inscrição, a plataforma segura o prêmio e o vencedor recebe na hora.","provider":{"@id":"https://www.4kitem.com.br/#org"},"inLanguage":"pt-BR","audience":{"@type":"BusinessAudience","name":"Pequeno e médio negócio do Norte de Santa Catarina"}}},
+      {"@type":"ListItem","position":8,"item":{"@type":"SoftwareApplication","@id":"https://www.4kitem.com.br/slotzap#app","name":"SlotZap","url":"https://www.4kitem.com.br/slotzap","applicationCategory":"BusinessApplication","operatingSystem":"Web, WhatsApp","description":"Faça rifas, sorteios e venda de cotas pelo WhatsApp. O cliente escolhe o número, paga no PIX e o número trava na hora — sem caderninho e sem vender o mesmo número duas vezes.","provider":{"@id":"https://www.4kitem.com.br/#org"},"inLanguage":"pt-BR","audience":{"@type":"BusinessAudience","name":"Pequeno e médio negócio do Norte de Santa Catarina"}}}
+  ]}
+  </script>
 </head>
 <body>
 
@@ -792,7 +809,7 @@
 
         <a href="/mandazap" class="solution-card reveal">
           <div class="solution-icon" style="width:80px;height:80px;padding:0;overflow:hidden;background:transparent;">
-            <img src="/static/img/mandazap/logo.webp" alt="MandaZap"
+            <img width="80" height="80" decoding="async" src="/static/img/mandazap/logo.webp" alt="MandaZap"
                  loading="lazy" style="width:100%;height:100%;object-fit:cover;border-radius:14px;"
                  onerror="this.style.display='none';this.parentElement.innerHTML='📲';this.parentElement.style.fontSize='32px';this.parentElement.style.background='rgba(34,197,94,0.12)';this.parentElement.style.display='flex';this.parentElement.style.alignItems='center';this.parentElement.style.justifyContent='center';">
           </div>
@@ -814,7 +831,7 @@
         <a href="/recebaja/" class="solution-card reveal" style="--card-color: rgba(11,122,90,0.10);display:none;"><!-- OCULTO POR ENQUANTO (RecebaJá) -->
           <span class="solution-badge badge-new">Novo</span>
           <div class="solution-icon" style="width:80px;height:80px;padding:0;overflow:hidden;background:transparent;">
-            <img src="/static/recebaja/logo.png" alt="RecebaJá" loading="lazy" style="width:100%;height:100%;object-fit:contain;"
+            <img width="80" height="80" decoding="async" src="/static/recebaja/logo.png" alt="RecebaJá" loading="lazy" style="width:100%;height:100%;object-fit:contain;"
                  onerror="this.style.display='none';this.parentElement.innerHTML='🧾';this.parentElement.style.fontSize='34px';this.parentElement.style.background='rgba(11,122,90,0.15)';this.parentElement.style.display='flex';this.parentElement.style.alignItems='center';this.parentElement.style.justifyContent='center';">
           </div>
           <h3>RecebaJá</h3>
@@ -853,7 +870,7 @@
         <a href="/agenda" class="solution-card reveal" style="--card-color: rgba(34,197,94,0.05);display:none;"><!-- OCULTO POR ENQUANTO (AgendaJá) 13/09/26 -->
           <span class="solution-badge badge-hot">Popular</span>
           <div class="solution-icon" style="width:80px;height:80px;padding:0;overflow:hidden;background:transparent;">
-            <img src="/static/img/agenda/logo.webp" alt="AgendaJá"
+            <img width="80" height="80" decoding="async" src="/static/img/agenda/logo.webp" alt="AgendaJá"
                  loading="lazy" style="width:100%;height:100%;object-fit:cover;border-radius:14px;"
                  onerror="this.style.display='none';this.parentElement.innerHTML='📅';this.parentElement.style.fontSize='32px';this.parentElement.style.background='rgba(34,197,94,0.15)';this.parentElement.style.display='flex';this.parentElement.style.alignItems='center';this.parentElement.style.justifyContent='center';">
           </div>
@@ -876,7 +893,7 @@
         <a href="/mandaja" class="solution-card reveal" style="--card-color: rgba(249,115,22,0.08);display:none;"><!-- OCULTO POR ENQUANTO (MandaJá) 13/09/26 -->
           <span class="solution-badge badge-new">Novo</span>
           <div class="solution-icon" style="width:80px;height:80px;padding:0;overflow:hidden;background:transparent;">
-            <img src="/static/img/mandaja/logo.png" alt="MandaJá"
+            <img width="80" height="80" decoding="async" src="/static/img/mandaja/logo.png" alt="MandaJá"
                  loading="lazy" style="width:100%;height:100%;object-fit:cover;border-radius:14px;"
                  onerror="this.style.display='none';this.parentElement.innerHTML='🛵';this.parentElement.style.fontSize='32px';this.parentElement.style.background='rgba(249,115,22,0.1)';this.parentElement.style.display='flex';this.parentElement.style.alignItems='center';this.parentElement.style.justifyContent='center';">
           </div>
@@ -898,7 +915,7 @@
         <a href="/mandajr" class="solution-card reveal" style="--card-color: rgba(249,115,22,0.08);display:none;"><!-- OCULTO POR ENQUANTO (MandaJr) -->
           <span class="solution-badge badge-new">Novo</span>
           <div class="solution-icon" style="width:80px;height:80px;padding:0;overflow:hidden;background:transparent;">
-            <img src="/static/img/mandajr/mandajr-icon.webp" alt="MandaJr" loading="lazy" style="width:100%;height:100%;object-fit:cover;border-radius:14px;"
+            <img width="80" height="80" decoding="async" src="/static/img/mandajr/mandajr-icon.webp" alt="MandaJr" loading="lazy" style="width:100%;height:100%;object-fit:cover;border-radius:14px;"
                  onerror="this.style.display='none';this.parentElement.innerHTML='🍔';this.parentElement.style.fontSize='32px';this.parentElement.style.background='rgba(249,115,22,0.1)';this.parentElement.style.display='flex';this.parentElement.style.alignItems='center';this.parentElement.style.justifyContent='center';">
           </div>
           <h3>MandaJr</h3>
@@ -919,7 +936,7 @@
         <a href="/somaja/" class="solution-card reveal" style="--card-color: rgba(22,163,74,0.08);">
           <span class="solution-badge badge-new">Novo</span>
           <div class="solution-icon" style="width:80px;height:80px;padding:0;overflow:hidden;background:transparent;">
-            <img src="/static/somaja/logo.png" alt="SomaJá"
+            <img width="80" height="80" decoding="async" src="/static/somaja/logo.png" alt="SomaJá"
                  loading="lazy" style="width:100%;height:100%;object-fit:cover;border-radius:14px;"
                  onerror="this.style.display='none';this.parentElement.innerHTML='🐗';this.parentElement.style.fontSize='38px';this.parentElement.style.background='rgba(22,163,74,0.15)';this.parentElement.style.borderRadius='14px';this.parentElement.style.display='flex';this.parentElement.style.alignItems='center';this.parentElement.style.justifyContent='center';">
           </div>
@@ -941,7 +958,7 @@
         <a href="/somaja/mei" class="solution-card reveal" style="--card-color: rgba(21,128,61,0.08);">
           <span class="solution-badge badge-new">Novo</span>
           <div class="solution-icon" style="width:80px;height:80px;padding:0;overflow:hidden;background:transparent;">
-            <img src="/static/somaja/negocio-icon.png" alt="SomaJá Negócio"
+            <img width="80" height="80" decoding="async" src="/static/somaja/negocio-icon.png" alt="SomaJá Negócio"
                  loading="lazy" style="width:100%;height:100%;object-fit:cover;border-radius:14px;"
                  onerror="this.style.display='none';this.parentElement.innerHTML='🧾';this.parentElement.style.fontSize='38px';this.parentElement.style.background='rgba(21,128,61,0.15)';this.parentElement.style.borderRadius='14px';this.parentElement.style.display='flex';this.parentElement.style.alignItems='center';this.parentElement.style.justifyContent='center';">
           </div>
@@ -978,7 +995,7 @@
         <a href="/kids" class="solution-card featured reveal" style="--card-color: rgba(99,102,241,0.08);display:none;"><!-- OCULTO POR ENQUANTO (SalaTV): remova 'display:none;' para reativar -->
           <span class="solution-badge badge-new">Novo</span>
           <div class="solution-icon" style="width:80px;height:80px;padding:0;overflow:hidden;background:transparent;">
-            <img src="/static/img/kidscurator/logo.webp" alt="SalaTV"
+            <img width="80" height="80" decoding="async" src="/static/img/kidscurator/logo.webp" alt="SalaTV"
                  loading="lazy" style="width:100%;height:100%;object-fit:cover;border-radius:14px;"
                  onerror="this.style.display='none';this.parentElement.innerHTML='📺';this.parentElement.style.fontSize='32px';this.parentElement.style.background='rgba(99,102,241,0.15)';this.parentElement.style.display='flex';this.parentElement.style.alignItems='center';this.parentElement.style.justifyContent='center';">
           </div>
@@ -1000,7 +1017,7 @@
 
         <a href="/alerta" class="solution-card reveal" style="--card-color: rgba(245,158,11,0.05);">
           <div class="solution-icon" style="width:80px;height:80px;padding:0;overflow:hidden;background:transparent;">
-            <img src="/static/img/alerta/logo.webp" alt="AlertaJá"
+            <img width="80" height="80" decoding="async" src="/static/img/alerta/logo.webp" alt="AlertaJá"
                  loading="lazy" style="width:100%;height:100%;object-fit:cover;border-radius:14px;"
                  onerror="this.style.display='none';this.parentElement.innerHTML='🚨';this.parentElement.style.fontSize='32px';this.parentElement.style.background='rgba(245,158,11,0.15)';this.parentElement.style.display='flex';this.parentElement.style.alignItems='center';this.parentElement.style.justifyContent='center';">
           </div>
@@ -1022,7 +1039,7 @@
 
         <a href="/bau" class="solution-card reveal" style="display:none;"><!-- OCULTO POR ENQUANTO (Baú) -->
           <div class="solution-icon" style="width:80px;height:80px;padding:0;overflow:hidden;background:transparent;">
-            <img src="/static/img/bau/logo.webp" alt="Baú"
+            <img width="80" height="80" decoding="async" src="/static/img/bau/logo.webp" alt="Baú"
                  loading="lazy" style="width:100%;height:100%;object-fit:cover;border-radius:14px;"
                  onerror="this.style.display='none';this.parentElement.innerHTML='🔒';this.parentElement.style.fontSize='32px';this.parentElement.style.background='rgba(167,139,250,0.15)';this.parentElement.style.display='flex';this.parentElement.style.alignItems='center';this.parentElement.style.justifyContent='center';">
           </div>
@@ -1044,7 +1061,7 @@
         <a href="/despachante-info" class="solution-card reveal" style="--card-color: rgba(249,115,22,0.08);display:none;"><!-- OCULTO POR ENQUANTO (Amigo Despachante): remova 'display:none;' para reativar -->
           <span class="solution-badge" style="background:rgba(249,115,22,.15);color:#f97316;border:1px solid rgba(249,115,22,.3);">Despachantes</span>
           <div class="solution-icon" style="width:80px;height:80px;padding:0;overflow:hidden;background:transparent;">
-            <img src="/static/img/despachante/logo.webp" alt="Amigo Despachante"
+            <img width="80" height="80" decoding="async" src="/static/img/despachante/logo.webp" alt="Amigo Despachante"
                  loading="lazy" style="width:100%;height:100%;object-fit:cover;border-radius:14px;"
                  onerror="this.style.display='none';this.parentElement.innerHTML='🚗';this.parentElement.style.fontSize='32px';this.parentElement.style.background='rgba(249,115,22,0.12)';this.parentElement.style.display='flex';this.parentElement.style.alignItems='center';this.parentElement.style.justifyContent='center';">
           </div>
@@ -1066,7 +1083,7 @@
         <a href="/defesapro" class="solution-card reveal" style="--card-color: rgba(139,92,246,0.08);">
           <span class="solution-badge badge-new">Novo</span>
           <div class="solution-icon" style="width:80px;height:80px;padding:0;overflow:hidden;background:transparent;">
-            <img src="/static/img/defesapro/logo.png" alt="DefesaPro"
+            <img width="80" height="80" decoding="async" src="/static/img/defesapro/logo.png" alt="DefesaPro"
                  loading="lazy" style="width:100%;height:100%;object-fit:cover;border-radius:14px;"
                  onerror="this.style.display='none';this.parentElement.innerHTML='⚖️';this.parentElement.style.fontSize='32px';this.parentElement.style.background='rgba(139,92,246,0.12)';this.parentElement.style.display='flex';this.parentElement.style.alignItems='center';this.parentElement.style.justifyContent='center';">
           </div>
@@ -1088,7 +1105,7 @@
         <a href="/vetzap/" class="solution-card reveal" style="--card-color: rgba(37,211,102,0.08);display:none;"><!-- OCULTO POR ENQUANTO (VetZap): remova 'display:none;' para reativar -->
           <span class="solution-badge badge-new">Novo</span>
           <div class="solution-icon" style="width:80px;height:80px;padding:0;overflow:hidden;background:transparent;">
-            <img src="/static/vetzap/vetzap-logo-icon.png" alt="VetZap"
+            <img width="80" height="80" decoding="async" src="/static/vetzap/vetzap-logo-icon.png" alt="VetZap"
                  loading="lazy" style="width:100%;height:100%;object-fit:cover;border-radius:14px;"
                  onerror="this.style.display='none';this.parentElement.innerHTML='🐾';this.parentElement.style.fontSize='32px';this.parentElement.style.background='rgba(37,211,102,0.15)';this.parentElement.style.display='flex';this.parentElement.style.alignItems='center';this.parentElement.style.justifyContent='center';">
           </div>
@@ -1146,7 +1163,7 @@
         <div class="solution-card reveal" style="--card-color: rgba(168,85,247,0.08);" onclick="if(!event.target.closest('a'))location.href='/pubshow/'"><!-- PubShow REATIVADO 11/09/2026 (cliente ativo) -->
           <span class="solution-badge badge-new">Novo</span>
           <div class="solution-icon" style="width:80px;height:80px;padding:0;overflow:hidden;background:transparent;">
-            <img src="/static/img/pubshow/pubshow-logo-concept.png" alt="PUBSHOW"
+            <img width="80" height="80" decoding="async" src="/static/img/pubshow/pubshow-logo-concept.png" alt="PUBSHOW"
                  loading="lazy" style="width:100%;height:100%;object-fit:cover;border-radius:14px;"
                  onerror="this.style.display='none';this.parentElement.innerHTML='🎵';this.parentElement.style.fontSize='32px';this.parentElement.style.background='rgba(168,85,247,0.15)';this.parentElement.style.display='flex';this.parentElement.style.alignItems='center';this.parentElement.style.justifyContent='center';">
           </div>
@@ -1207,7 +1224,7 @@
         <a href="/rifaja" class="solution-card reveal" style="--card-color: rgba(34,197,94,0.08);display:none;"><!-- OCULTO POR ENQUANTO (RifaJá) -->
           <span class="solution-badge badge-new">Novo</span>
           <div class="solution-icon" style="background:rgba(34,197,94,0.15);display:flex;align-items:center;justify-content:center;overflow:hidden;">
-            <img src="/static/rifaja/icone.webp" alt="RifaJá" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;">
+            <img width="80" height="80" decoding="async" src="/static/rifaja/icone.webp" alt="RifaJá" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;">
           </div>
           <h3>RifaJá</h3>
           <p>Crie <strong>rifas baratinhas</strong> (R$5 a R$10) no WhatsApp e venda no automático. O cliente garante o número, paga no PIX e pronto — o jeito mais simples de rifar.</p>
@@ -1227,7 +1244,7 @@
         <a href="/slotzap" class="solution-card reveal" style="--card-color: rgba(99,102,241,0.08);">
           <span class="solution-badge badge-new">Novo</span>
           <div class="solution-icon" style="background:rgba(99,102,241,0.15);display:flex;align-items:center;justify-content:center;overflow:hidden;">
-            <img src="/static/slotzap/icone.webp" alt="SlotZap" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;">
+            <img width="80" height="80" decoding="async" src="/static/slotzap/icone.webp" alt="SlotZap" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;">
           </div>
           <h3>SlotZap</h3>
           <p>Faça <strong>rifas, sorteios e venda de cotas</strong> pelo WhatsApp. O cliente escolhe o número, paga no PIX e o número trava na hora — sem caderninho e sem vender o mesmo número duas vezes.</p>
@@ -1247,7 +1264,7 @@
         <a href="/drzap/" class="solution-card reveal" style="--card-color: rgba(59,130,246,0.08);display:none;"><!-- OCULTO POR ENQUANTO (DRZAP): remova 'display:none;' para reativar -->
           <span class="solution-badge badge-new">Novo</span>
           <div class="solution-icon" style="width:80px;height:80px;padding:0;overflow:hidden;background:transparent;">
-            <img src="/static/drzap/logo.png" alt="DRZAP"
+            <img width="80" height="80" decoding="async" src="/static/drzap/logo.png" alt="DRZAP"
                  loading="lazy" style="width:100%;height:100%;object-fit:cover;border-radius:14px;"
                  onerror="this.style.display='none';this.parentElement.innerHTML='⚖️';this.parentElement.style.fontSize='38px';this.parentElement.style.background='rgba(59,130,246,0.15)';this.parentElement.style.borderRadius='14px';this.parentElement.style.display='flex';this.parentElement.style.alignItems='center';this.parentElement.style.justifyContent='center';">
           </div>
@@ -1366,10 +1383,10 @@
       <div style="font-size:12px;text-transform:uppercase;letter-spacing:.1em;color:var(--text3,#888);text-align:center;margin-bottom:18px;">✦ O 4KITEM faz parte do Grupo Lessmann — Schroeder/SC</div>
       <div style="display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));">
         <a href="https://dldespachante.com.br" target="_blank" rel="noopener" style="display:block;border-radius:16px;overflow:hidden;border:1px solid rgba(212,177,106,.35);transition:transform .2s;" onmouseover="this.style.transform='translateY(-3px)'" onmouseout="this.style.transform='none'">
-          <img src="/static/banner-grupo-dl.jpg" alt="Despachante Lessmann — Documentação, CNH, Multas e Scooters · dldespachante.com.br" style="width:100%;display:block;" loading="lazy">
+          <img width="1200" height="320" decoding="async" src="/static/banner-grupo-dl.jpg" alt="Despachante Lessmann — Documentação, CNH, Multas e Scooters · dldespachante.com.br" style="width:100%;display:block;" loading="lazy">
         </a>
         <a href="https://radioscnews.com.br" target="_blank" rel="noopener" style="display:block;border-radius:16px;overflow:hidden;border:1px solid rgba(229,57,53,.35);transition:transform .2s;" onmouseover="this.style.transform='translateY(-3px)'" onmouseout="this.style.transform='none'">
-          <img src="/static/banner-grupo-radio.jpg" alt="Rádio SC News — a notícia do Norte de SC · radioscnews.com.br" style="width:100%;display:block;" loading="lazy">
+          <img width="1200" height="320" decoding="async" src="/static/banner-grupo-radio.jpg" alt="Rádio SC News — a notícia do Norte de SC · radioscnews.com.br" style="width:100%;display:block;" loading="lazy">
         </a>
       </div>
     </div>

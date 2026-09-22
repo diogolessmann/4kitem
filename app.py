@@ -170,7 +170,8 @@ def _sitemap_index():
 @app.route('/sitemap-4kitem.xml')
 def _sitemap():
     # host único www; blueprints com barra final (sem isso cada loc respondia 308); só páginas com produto
-    urls = ['/', '/pubshow/', '/despachante-info', '/defesapro',
+    # 22/set: /alerta e /slotzap tem card VISIVEL na home e nao estavam aqui.
+    urls = ['/', '/pubshow/', '/despachante-info', '/defesapro', '/alerta', '/slotzap',
             '/slotzap/planos', '/somaja/', '/somaja/mei', '/atendezap/',
             '/mandazap', '/kids', '/pcd/', '/bau',   # vetzap fora do ar (13/09/26)
             '/amparo/', '/camponline', '/drzap/', '/afiliados/',
