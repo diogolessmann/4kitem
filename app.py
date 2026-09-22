@@ -74,6 +74,10 @@ def _security_headers(resp):
         p = request.path
         _segs = [s for s in p.split('/') if s]
         _internal = any(s in _WA_DENY_SEG for s in _segs)
+        # 22/set/26 — WHITE-LABEL: site de cliente da Vitrine (/v/<slug>) é DELE. O balão do
+        # 4kitem entrava com z-index 9999 por cima do botão da loja (z-index 30) em todas as
+        # páginas e levava o lead do cliente pagante pro nosso zap. Aqui não entra.
+        _vitrine = bool(_segs) and _segs[0] == 'v'
         # SEO: páginas funcionais (login/cadastro/painel/checkout…) saem do índice do
         # Google e concentram a força de ranqueamento nas landings de venda. 'follow'
         # deixa o link equity fluir. Landings públicas NÃO são tocadas.
@@ -82,6 +86,7 @@ def _security_headers(resp):
         if (request.method == 'GET' and resp.status_code == 200
                 and 'text/html' in resp.headers.get('Content-Type', '')
                 and not p.startswith('/static/')
+                and not _vitrine
                 and not _internal):
             body = resp.get_data(as_text=True)
             if '</body>' in body and 'wa-float-4k' not in body:

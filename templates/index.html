@@ -74,7 +74,9 @@
       background: var(--bg);
       color: var(--text);
       line-height: 1.6;
-      overflow-x: hidden;
+      /* 22/set: overflow-x:hidden ESCONDIA o estouro em vez de resolver — quem tinha o link
+         fora da tela simplesmente não o alcançava. Agora o layout cabe e o esconde-esconde sai. */
+      overflow-x: clip;
     }
 
     /* ── NOISE TEXTURE ── */
@@ -657,7 +659,9 @@
 
     .footer-links {
       display: flex;
-      gap: 24px;
+      flex-wrap: wrap;          /* 22/set: 10 de 15 links nasciam fora da tela no celular */
+      justify-content: center;
+      gap: 12px 24px;
       list-style: none;
     }
 
