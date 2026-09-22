@@ -45,8 +45,8 @@ VIDEO_MAX_MB = 100
 FOTO_MAX_PX = 1200
 FOTO_MAX_KB = 200
 CATEGORIAS = [('ilum', 'Iluminação'), ('elet', 'Elétrica'), ('smart', 'Casa inteligente')]
-TIPOS = ['lampada', 'spot', 'fita', 'perfil', 'plafon', 'pendente', 'arandela', 'trilho', 'refletor', 'jardim',
-         'emergencia', 'tomada', 'interruptor', 'disjuntor', 'quadro', 'cabo', 'sensor', 'fonte', 'outro']
+TIPOS = ['lampada', 'spot', 'fita', 'perfil', 'plafon', 'pendente', 'arandela', 'trilho', 'jardim', 'publica', 'refletor',
+         'emergencia', 'decor', 'mesa', 'tomada', 'interruptor', 'disjuntor', 'quadro', 'cabo', 'sensor', 'fonte', 'acessorio', 'outro']
 
 
 # ─────────────────────────────────────────────────────────────── util
@@ -222,17 +222,21 @@ FAMILIAS = [
     ('plafon', 'Plafons', 'Sobrepor e embutir, redondo e quadrado, 3 temperaturas.'),
     ('pendente', 'Pendentes', 'Mesa de jantar, bancada, cabeceira.'),
     ('arandela', 'Arandelas', 'Parede, muro, fachada. Interna e IP65.'),
-    ('trilho', 'Trilho eletrificado', 'Trilho e spots de trilho. Destaque pra estante e quadro.'),
-    ('jardim', 'Jardim e externa', 'Espeto, balizador, poste. Prova d\'água.'),
-    ('refletor', 'Refletores', 'Quintal, garagem, quadra. 20 a 400 W.'),
+    ('trilho', 'Trilho eletrificado', 'Trilho, cinta eletrificada e spots de trilho. Destaque pra estante e quadro.'),
+    ('jardim', 'Jardim e externa', 'Espeto, balizador, poste de jardim. Prova d\'água.'),
+    ('publica', 'Iluminação pública', 'Braço, luminária de poste, telegestão. Condomínio, prefeitura, estrada.'),
+    ('refletor', 'Refletores e industrial', 'Quintal, garagem, quadra, galpão. 20 a 400 W.'),
     ('emergencia', 'Emergência e sinalização', 'Luminária de emergência, placa de saída.'),
+    ('decor', 'Decorativa e festas', 'Mangueira LED, neon, varal de luzes, festão.'),
+    ('mesa', 'Abajur e luminária de chão', 'Cabeceira, escritório, aparador, canto da sala.'),
     ('tomada', 'Tomadas', 'WEG, Soprano. 10 A e 20 A, placas e módulos.'),
     ('interruptor', 'Interruptores', 'Simples, paralelo, touch Wi-Fi, sem neutro.'),
     ('disjuntor', 'Disjuntores e DR', 'Curva certa pro chuveiro e pro ar.'),
     ('quadro', 'Quadros de distribuição', 'De 4 a 24 disjuntores, com barramento.'),
     ('cabo', 'Cabos e fios', '1,5 a 10 mm², por metro ou rolo.'),
     ('sensor', 'Sensores', 'Presença e fotocélula.'),
-    ('fonte', 'Fontes e drivers', 'Pra fita e perfil. 12 V e 24 V.'),
+    ('fonte', 'Fontes e drivers', 'Fonte, driver, controlador RGB. 12 V, 24 V e 48 V.'),
+    ('acessorio', 'Acessórios e fixação', 'Suporte, conector, adaptador, soquete, base.'),
     ('outro', 'Outros', 'O que mais tem no balcão.'),
 ]
 FAM = {t: (n, d) for t, n, d in FAMILIAS}
@@ -872,7 +876,8 @@ CAIXA = {'lampada': (30, 20, 15, 1.0), 'spot': (14, 14, 12, 0.35), 'fita': (22, 
          'plafon': (45, 45, 12, 1.4), 'pendente': (35, 35, 35, 1.6), 'arandela': (20, 15, 15, 0.7), 'trilho': (12, 12, 105, 1.8),
          'jardim': (20, 15, 30, 0.8), 'refletor': (35, 30, 10, 1.5), 'emergencia': (30, 12, 8, 0.5), 'tomada': (12, 8, 6, 0.15),
          'interruptor': (12, 8, 6, 0.15), 'disjuntor': (10, 8, 8, 0.2), 'quadro': (40, 30, 12, 1.5), 'cabo': (30, 30, 15, 6.0),
-         'sensor': (12, 10, 8, 0.2), 'fonte': (25, 12, 8, 0.6), 'outro': (25, 20, 15, 1.0)}
+         'sensor': (12, 10, 8, 0.2), 'fonte': (25, 12, 8, 0.6), 'publica': (110, 15, 15, 3.0), 'decor': (30, 20, 10, 0.8),
+         'mesa': (35, 25, 25, 1.2), 'acessorio': (15, 10, 8, 0.2), 'outro': (25, 20, 15, 1.0)}
 
 
 def _caixa(p):

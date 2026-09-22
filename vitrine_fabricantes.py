@@ -16,6 +16,7 @@ import os
 import re
 import threading
 import time
+import unicodedata
 import urllib.parse
 import urllib.request
 
@@ -27,7 +28,7 @@ NORDECOR = 'https://nordecor.com.br/wp-json/wp/v2'
 MAPA_TIPO = {'Spot': 'spot', 'Lâmpada Técnica': 'lampada', 'Lâmpada Decorativa': 'lampada', 'Fita LED': 'fita',
              'Perfil LED': 'perfil', 'Painel LED': 'plafon', 'Luminária': 'plafon', 'Pendente': 'pendente', 'Arandela': 'arandela',
              'Trilho/Sistema': 'trilho', 'Espeto': 'jardim', 'Balizador': 'jardim', 'Embutido de Solo': 'jardim',
-             'Downlight': 'spot', 'Fonte/Driver': 'fonte', 'Módulo': 'outro', 'Acessório': 'outro'}
+             'Downlight': 'spot', 'Fonte/Driver': 'fonte', 'Módulo': 'outro', 'Acessório': 'acessorio'}
 PROGRESSO = {}   # slug → dict(total, feitos, novos, atualizados, erro, fim)
 
 
@@ -143,11 +144,11 @@ def _grava(conn, lid, slug, media_dir, p, prog):
     cores = acf.get('cor') or []
     cor0 = cores[0] if cores and isinstance(cores[0], dict) else {}
     codigo = str(cor0.get('codigo_da_cor') or p['slug'])[:30]
-    tipo = 'outro'
-    for t in termos.get('tipo_produto', []):
-        tipo = MAPA_TIPO.get(t, 'outro')
-    if tipo == 'outro':                      # taxonomia não mapeada → família pelo nome (194 itens caíam em "Outros")
-        tipo = _tipo_por_nome(titulo, 'outro')
+    tipo = _tipo_por_nome(titulo)            # 1º o nome (a Nordecor marca vários tipos por item e o último vencia: trilho virava spot)
+    if not tipo:
+        for t in termos.get('tipo_produto', []):
+            tipo = MAPA_TIPO.get(t) or tipo
+    tipo = tipo or 'outro'
     specs = []
     for tax, rot in (('potencia', ''), ('lumens', ''), ('irc', ''), ('facho_angulo', 'facho '), ('grau_protecao', ''),
                      ('tensao_alimentacao', ''), ('soquete_compatibilidade', ''), ('tipo_instalacao', '')):
@@ -210,27 +211,48 @@ import html as _html
 LUMANTI = 'https://lumanti.com.br'
 UA_NAV = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0 Safari/537.36',
           'Accept-Language': 'pt-BR,pt;q=0.9', 'Accept': 'text/html,image/webp,*/*;q=0.8'}
-LINHAS_LUMANTI = [('lampadas-luminarias-painel-led', 'Lâmpadas, luminárias e painel LED', 'lampada'),
-                  ('luminarias-spots-trilhos-iluminados', 'Luminárias, spots e trilhos', 'spot'),
-                  ('abajur-pendentes-arandela-lustre', 'Abajur, pendentes, arandela e lustre', 'pendente'),
-                  ('mangueiras-led-fita-led-neon', 'Mangueira, fita LED e neon', 'fita'),
+LINHAS_LUMANTI = [('lampadas-luminarias-painel-led', 'Lâmpadas, luminárias e painel LED', 'outro'),
+                  ('luminarias-spots-trilhos-iluminados', 'Luminárias, spots e trilhos', 'outro'),
+                  ('abajur-pendentes-arandela-lustre', 'Abajur, pendentes, arandela e lustre', 'outro'),
+                  ('mangueiras-led-fita-led-neon', 'Mangueira, fita LED e neon', 'decor'),
                   ('refletores-led-quadra-parque-area-rural', 'Refletores LED', 'refletor'),
                   ('projetores-refletores-led-quadras-parques', 'Projetores e refletores', 'refletor'),
-                  ('acessorios-iluminacao-led', 'Acessórios', 'outro')]
-_TIPO_KW = [  # ordem importa: o específico antes do genérico ('emergência' antes de 'luminária')
-            ('emergência', 'emergencia'), ('emergencia', 'emergencia'), ('sensor', 'sensor'), ('fonte', 'fonte'), ('driver', 'fonte'),
-            ('trilho', 'trilho'), ('spot', 'spot'), ('refletor', 'refletor'), ('projetor', 'refletor'), ('high bay', 'refletor'), ('ufo', 'refletor'),
-            ('fita', 'fita'), ('mangueira', 'fita'), ('neon', 'fita'), ('perfil', 'perfil'), ('pendente', 'pendente'), ('lustre', 'pendente'), ('abajur', 'pendente'),
-            ('arandela', 'arandela'), ('espeto', 'jardim'), ('balizador', 'jardim'), ('poste', 'jardim'), ('jardim', 'jardim'), ('varal', 'jardim'),
-            ('lâmpada', 'lampada'), ('lampada', 'lampada'), ('bulbo', 'lampada'), ('filamento', 'lampada'), ('dicroica', 'lampada'), ('dicróica', 'lampada'),
-            ('par20', 'lampada'), ('par30', 'lampada'), ('par38', 'lampada'), ('tubular', 'lampada'),
-            ('painel', 'plafon'), ('plafon', 'plafon'), ('luminária', 'plafon'), ('luminaria', 'plafon')]
+                  ('acessorios-iluminacao-led', 'Acessórios', 'acessorio')]
+_TIPO_KW = [  # ordem = prioridade: o específico antes do genérico; o sistema (trilho, perfil, fita) é dono dos seus acessórios
+    ('emergência', 'emergencia'), ('emergencia', 'emergencia'), ('placa de saída', 'emergencia'), ('placa de saida', 'emergencia'),
+    ('fotocélula', 'sensor'), ('fotocelula', 'sensor'), ('sensor', 'sensor'), ('relé', 'sensor'), ('rele ', 'sensor'),
+    ('interruptor', 'interruptor'), ('tomada', 'tomada'), ('disjuntor', 'disjuntor'), ('quadro de distribuição', 'quadro'), ('quadro de distribuicao', 'quadro'),
+    ('fonte', 'fonte'), ('driver', 'fonte'), ('transformador', 'fonte'), ('reator', 'fonte'), ('amplificador', 'fonte'), ('controlador', 'fonte'),
+    ('trilho', 'trilho'), ('magnetic', 'trilho'), ('track', 'trilho'), ('cinta eletrificada', 'trilho'),
+    ('perfil', 'perfil'),
+    ('mangueira', 'decor'), ('neon', 'decor'), ('varal', 'decor'), ('festão', 'decor'), ('festao', 'decor'), ('cordão', 'decor'), ('cordao', 'decor'),
+    ('cascata', 'decor'), ('pisca', 'decor'), ('natal', 'decor'), ('fio de fada', 'decor'),
+    ('fita', 'fita'), ('barra led', 'fita'),
+    ('espeto', 'jardim'), ('balizador', 'jardim'), ('jardim', 'jardim'), ('de solo', 'jardim'), ('de piso', 'jardim'),
+    ('braço', 'publica'), ('braco', 'publica'), ('pública', 'publica'), ('publica', 'publica'), ('telegestão', 'publica'), ('telegestao', 'publica'),
+    ('poste', 'publica'), ('pétala', 'publica'), ('petala', 'publica'), ('ornamental', 'publica'), ('viária', 'publica'), ('viaria', 'publica'),
+    ('refletor', 'refletor'), ('projetor', 'refletor'), ('high bay', 'refletor'), ('highbay', 'refletor'), ('ufo', 'refletor'), ('holofote', 'refletor'), ('industrial', 'refletor'),
+    ('abajur', 'mesa'), ('de mesa', 'mesa'), ('de chão', 'mesa'), ('de chao', 'mesa'), ('coluna', 'mesa'),
+    ('pendente', 'pendente'), ('lustre', 'pendente'),
+    ('arandela', 'arandela'),
+    ('spot', 'spot'), ('downlight', 'spot'),
+    ('lâmpada', 'lampada'), ('lampada', 'lampada'), ('bulbo', 'lampada'), ('filamento', 'lampada'), ('dicroica', 'lampada'), ('dicróica', 'lampada'),
+    ('par20', 'lampada'), ('par30', 'lampada'), ('par38', 'lampada'), ('par 20', 'lampada'), ('par 30', 'lampada'), ('tubular', 'lampada'),
+    ('vela', 'lampada'), ('bolinha', 'lampada'), ('globo', 'lampada'), ('halógena', 'lampada'), ('halogena', 'lampada'), ('fluorescente', 'lampada'),
+    ('acessório', 'acessorio'), ('acessorio', 'acessorio'), ('suporte', 'acessorio'), ('conector', 'acessorio'), ('adaptador', 'acessorio'),
+    ('soquete', 'acessorio'), ('emenda', 'acessorio'), ('presilha', 'acessorio'), ('garra', 'acessorio'), ('canopla', 'acessorio'), ('haste', 'acessorio'),
+    ('plug', 'acessorio'), ('junção', 'acessorio'), ('juncao', 'acessorio'), ('terminal', 'acessorio'), ('fixador', 'acessorio'), ('base para', 'acessorio'), ('base p/', 'acessorio'),
+    ('tampa', 'acessorio'), ('moldura', 'acessorio'), ('contrapeso', 'acessorio'), ('rabicho', 'acessorio'),
+    ('módulo', 'spot'), ('modulo', 'spot'),
+    ('cabo', 'cabo'),
+    ('painel', 'plafon'), ('plafon', 'plafon'), ('luminária', 'plafon'), ('luminaria', 'plafon')]
 _RE_ITEM = re.compile(r'<div class="item"><a href="(https://lumanti\.com\.br/blog/produto/[^"]+)">.*?<b>(.*?)</b>\s*<p>(.*?)</p>.*?<img[^>]*src="([^"]+)"', re.S)
 _RE_COD = re.compile(r'^((?:[A-Z0-9][A-Z0-9\-\./]{3,}\s*\|\s*)*[A-Z0-9][A-Z0-9\-\./]{3,})\s*(.*)$', re.S)
 
 
-def _tipo_por_nome(titulo, padrao):
-    t = titulo.lower()
+def _tipo_por_nome(titulo, padrao=None):
+    """Família pelo nome do produto (o que o cliente digita). None/padrao quando nenhuma palavra bate."""
+    t = unicodedata.normalize('NFKC', titulo).lower()   # 'Perﬁl' com ligadura vira 'Perfil'
     for kw, tipo in _TIPO_KW:
         if kw in t:
             return tipo
@@ -294,7 +316,7 @@ def _grava_lumanti(conn, lid, media_dir, link, titulo, p, img, tipo_padrao, prog
     codigos, desc = (m.group(1), m.group(2)) if m else ('', p)
     codigo = (codigos.split('|')[0].strip() if codigos else 'L-' + link.rstrip('/').rsplit('/', 1)[-1])[:30]
     specs = ' · '.join(c.strip() for c in codigos.split('|')[1:] if c.strip())[:200]   # outras versões/cores do mesmo item
-    tipo = _tipo_por_nome(titulo, tipo_padrao)
+    tipo = _tipo_por_nome(titulo, tipo_padrao) or 'outro'
     k = _k_de({}, titulo)
     ex = conn.execute('SELECT id, foto FROM vit_produtos WHERE loja_id=? AND codigo=? AND marca=?', (lid, codigo, 'Lumanti')).fetchone()
     foto = ex['foto'] if ex else ''
