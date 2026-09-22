@@ -3,12 +3,21 @@
 <head>
 {{ head(titulo ~ ' · ' ~ loja.nome, descricao, base ~ ('/busca?q=' ~ (q|urlencode) if q else '/c/' ~ fam.tipo)) }}
 {% if q %}<meta name="robots" content="noindex">{% endif %}
+{% if not q %}<script type="application/ld+json">{"@context":"https://schema.org","@graph":[
+ {"@type":"CollectionPage","@id":"{{ base }}/c/{{ fam.tipo }}#pagina","name":"{{ fam.nome }} · {{ loja.nome }}","url":"{{ base }}/c/{{ fam.tipo }}","description":{{ descricao|tojson }}},
+ {"@type":"BreadcrumbList","itemListElement":[
+  {"@type":"ListItem","position":1,"name":"Início","item":"{{ base }}"},
+  {"@type":"ListItem","position":2,"name":"Catálogo","item":"{{ base }}/catalogo"},
+  {"@type":"ListItem","position":3,"name":{{ fam.nome|tojson }}}]},
+ {"@type":"ItemList","name":{{ fam.nome|tojson }},"numberOfItems":{{ prods|length }},"itemListElement":[
+  {% for p in prods[:100] %}{"@type":"ListItem","position":{{ loop.index }},"name":{{ p.titulo|tojson }},"url":"{{ base }}/p/{{ p.codigo or p.id }}"}{{ "," if not loop.last }}{% endfor %}]}
+]}</script>{% endif %}
 </head>
 <body>
 {{ top() }}
 <div class="wrap"><div class="crumbs"><a href="{{ base }}">Início</a> › <a href="{{ base }}/catalogo">Catálogo</a> › {{ fam.nome }}</div></div>
 <section style="padding-top:20px"><div class="wrap">
-  <h2><small>{{ 'Busca' if q else 'Catálogo' }}</small>{{ fam.nome }}</h2>
+  <h1 class="tit"><small>{{ 'Busca' if q else 'Catálogo' }}</small>{{ fam.nome }}{% if not q and loja.cidade %} em {{ loja.cidade }}{% endif %}</h1>
   <p class="sub">{{ fam.desc }} {{ prods|length }} {{ 'item' if prods|length == 1 else 'itens' }} com foto real. Marca a quantidade e o pedido cai no WhatsApp da loja.</p>
   {{ busca(q) }}
   {% set ks = [] %}{% for p in prods %}{% for k in (p.k or '').split() %}{% if k not in ks %}{% set _ = ks.append(k) %}{% endif %}{% endfor %}{% endfor %}

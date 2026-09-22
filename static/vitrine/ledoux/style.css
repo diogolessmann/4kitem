@@ -72,9 +72,13 @@ section{padding:64px 0}
 
 /* TCHUM: sala apagada -> acende */
 .hero .wrap,.hero .legenda{transition:opacity .6s ease .15s,transform .6s ease .15s}
-.hero.apagada .wrap{opacity:.06;transform:translateY(10px)}
+/* 22/set: era opacity:.06 — H1, texto e botoes nasciam invisiveis ate o JS tirar a classe, e
+   quem pegava o video travado nunca via a chamada. O texto entra legivel; quem acende e a FOTO. */
+.hero.apagada .wrap{opacity:1;transform:none}
 .hero.apagada .legenda{opacity:0}
-.hero.apagada::after{background:linear-gradient(90deg,rgba(7,21,64,.35) 0,rgba(7,21,64,.15) 42%,rgba(7,21,64,0) 68%)}
+/* veu identico ao estado aceso: com o texto visivel desde o inicio, o contraste tem que valer
+   tambem com a sala apagada (foto escura + texto claro). */
+.hero.apagada::after{background:linear-gradient(90deg,rgba(7,21,64,.72) 0,rgba(7,21,64,.38) 42%,rgba(7,21,64,0) 68%),linear-gradient(0deg,rgba(7,21,64,.7) 0,transparent 45%)}
 .hero .luz img[data-k="0"]{animation:none;transform:scale(1.02)}
 .hero.apagada .luz video{filter:none}
 /* faixa de confiança */
@@ -539,3 +543,26 @@ img.sem{object-fit:contain!important;padding:24px;opacity:.55;background:var(--p
 /* 4. Texto abaixo do mínimo de 11 px (accessibility.md › Vision) */
 .brand small{font-size:.7rem}                                    /* era .6rem = 9,6px */
 .tag{font-size:.69rem}                                           /* era .6rem */
+
+
+/* ===== 22/set — h1 de verdade e foco de teclado ===== */
+/* 5. /catalogo, /c/<familia> e /ambiente nasciam sem <h1>: o titulo era um <h2>.
+      h1.tit herda exatamente o desenho ja consolidado do h2 (Playfair, olho de secao
+      dourado com filete), entao nada muda na tela e a pagina passa a ter cabeca. */
+h1.tit{font-family:'Playfair Display',Georgia,serif;line-height:1.15;margin:0;
+  font-size:clamp(1.6rem,3.2vw,2.3rem);font-weight:500;letter-spacing:-.01em}
+h1.tit small{display:block;font-family:Inter,sans-serif;font-size:.72rem;letter-spacing:.2em;
+  text-transform:uppercase;color:var(--gold);font-weight:700;margin-bottom:10px}
+h1.tit small::before{content:"";display:inline-block;width:18px;height:1px;background:var(--gold);
+  vertical-align:middle;margin-right:10px}
+.dark h1.tit small{color:var(--amber2)}
+.dark h1.tit small::before{background:var(--amber2)}
+
+/* 6. Foco de teclado: o tema inteiro nao tinha :focus-visible. Quem navega por Tab
+      (e quem usa leitor de tela) nao enxergava onde estava. So no teclado — o mouse
+      continua sem anel. (accessibility.md > Keyboard) */
+a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,
+textarea:focus-visible,[tabindex]:focus-visible{
+  outline:3px solid var(--navy);outline-offset:2px;border-radius:6px}
+.dark a:focus-visible,.dark button:focus-visible,.hero a:focus-visible,
+footer a:focus-visible,.top a:focus-visible{outline-color:var(--amber2)}

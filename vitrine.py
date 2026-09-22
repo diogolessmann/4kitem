@@ -369,13 +369,33 @@ def media(slug, arquivo):
 
 @vitrine_bp.route('/<slug>/sitemap.xml')
 def sitemap(slug):
+    """22/set: com <lastmod> tirado da data do produto (o Google usa pra decidir o que rastrear
+    de novo, e ignora o campo se ele disser "hoje" todo dia)."""
     loja = _loja(slug)
     base = f"{PUBLIC_BASE}/v/{slug}"
-    urls = [base, f'{base}/catalogo', f'{base}/eletricista', f'{base}/ambiente/sala'] + [f"{base}/c/{f['tipo']}" for f in _familias(loja)] + \
-           [f"{base}/p/{p['codigo'] or p['id']}" for p in _produtos(loja['id'])]
+    prods = _produtos(loja['id'])
+
+    def _dia(v):
+        return (str(v) or '')[:10] if v else ''
+    _datas = sorted(d for d in (_dia(x['created_at']) for x in prods) if len(d) == 10)
+    _topo = _datas[-1] if _datas else ''
+    urls = [(u, _topo) for u in ([base, f'{base}/catalogo', f'{base}/eletricista', f'{base}/ambiente/sala']
+                                 + [f"{base}/c/{f['tipo']}" for f in _familias(loja)])] + \
+           [(f"{base}/p/{x['codigo'] or x['id']}", _dia(x['created_at'])) for x in prods]
     xml = '<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' + \
-          ''.join(f'<url><loc>{u}</loc></url>' for u in urls) + '</urlset>'
+          ''.join(f'<url><loc>{u}</loc>' + (f'<lastmod>{d}</lastmod>' if len(d) == 10 else '') + '</url>'
+                  for u, d in urls) + '</urlset>'
     return Response(xml, mimetype='application/xml')
+
+
+@vitrine_bp.route('/<slug>/robots.txt')
+def robots(slug):
+    """Robots por loja: quem acessa o site do cliente pelo domínio PRÓPRIO dele (_HostRouter)
+    precisa de um robots que aponte pro sitemap DELE, não pro do 4kitem."""
+    loja = _loja(slug)
+    body = ('User-agent: *\nAllow: /\nDisallow: /v/%s/busca\n'
+            'Sitemap: %s/v/%s/sitemap.xml\n' % (slug, PUBLIC_BASE, slug))
+    return Response(body, mimetype='text/plain')
 
 
 @vitrine_bp.route('/<slug>/llms.txt')

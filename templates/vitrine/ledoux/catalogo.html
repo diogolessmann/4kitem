@@ -2,12 +2,20 @@
 <html lang="pt-BR">
 <head>
 {{ head(titulo ~ ' · ' ~ loja.nome, descricao, base ~ '/catalogo') }}
+<script type="application/ld+json">{"@context":"https://schema.org","@graph":[
+ {"@type":"CollectionPage","@id":"{{ base }}/catalogo#pagina","name":"Catálogo · {{ loja.nome }}","url":"{{ base }}/catalogo","description":{{ descricao|tojson }},"isPartOf":{"@type":"WebSite","name":{{ loja.nome|tojson }},"url":"{{ base }}"}},
+ {"@type":"BreadcrumbList","itemListElement":[
+  {"@type":"ListItem","position":1,"name":"Início","item":"{{ base }}"},
+  {"@type":"ListItem","position":2,"name":"Catálogo"}]},
+ {"@type":"ItemList","name":"Famílias do catálogo","numberOfItems":{{ familias|length }},"itemListElement":[
+  {% for f in familias %}{"@type":"ListItem","position":{{ loop.index }},"name":{{ f.nome|tojson }},"url":"{{ base }}/c/{{ f.tipo }}"}{{ "," if not loop.last }}{% endfor %}]}
+]}</script>
 </head>
 <body>
 {{ top() }}
 <div class="wrap"><div class="crumbs"><a href="{{ base }}">Início</a> › Catálogo</div></div>
 <section style="padding-top:20px"><div class="wrap">
-  <h2><small>Catálogo</small>Foto real, do jeito que está na prateleira.</h2>
+  <h1 class="tit"><small>Catálogo</small>Iluminação e material elétrico, foto real da prateleira.</h1>
   <p class="sub">{{ total }} produtos em {{ familias|length }} famílias, com a foto e a ficha dos fabricantes que a Ledoux revende. Toca no produto, marca a quantidade e o pedido cai no WhatsApp da loja.</p>
   {{ busca(grande=True) }}
   <div class="fams big">

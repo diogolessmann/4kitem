@@ -120,7 +120,15 @@ _SITEMAP_LASTMOD = '2026-09-12'   # atualizar quando uma landing mudar de verdad
 @app.route('/robots.txt')
 def _robots():
     body = ('User-agent: *\nAllow: /\nDisallow: /saas-admin\nDisallow: /pubshow/admin\nDisallow: /pubshow/painel\n'
+            'Disallow: /v/*/busca\n'
             'Sitemap: https://www.4kitem.com.br/sitemap.xml\n')
+    # 22/set: cada loja da Vitrine tem sitemap próprio e ninguém apontava pra ele — as 1337 URLs
+    # do Ledoux eram invisíveis. O index (abaixo) resolve, e a linha por loja é redundância barata.
+    try:
+        for _sl in _vitrine_slugs():
+            body += 'Sitemap: https://www.4kitem.com.br/v/%s/sitemap.xml\n' % _sl
+    except Exception:
+        pass
     return Response(body, mimetype='text/plain')
 
 
@@ -132,7 +140,34 @@ def _llms_txt():
     return Response(render_template('llms.txt', planos=_ps_planos), content_type='text/plain; charset=utf-8')
 
 
+def _vitrine_slugs():
+    """Slugs das lojas ATIVAS da Vitrine (para sitemap index e robots). Silencioso se a tabela
+    ainda não existe — o 4kitem sobe antes de ter cliente."""
+    try:
+        from vitrine_db import get_vit_db
+        conn = get_vit_db()
+        rows = conn.execute('SELECT slug FROM vit_lojas WHERE ativo=1 ORDER BY id').fetchall()
+        conn.close()
+        return [r['slug'] for r in rows]
+    except Exception:
+        return []
+
+
 @app.route('/sitemap.xml')
+def _sitemap_index():
+    """Índice: o sitemap das landings do 4kitem + um por loja da Vitrine. Sem isso o Google só
+    via as landings e nenhuma das ~1300 páginas de cada cliente."""
+    locs = ['https://www.4kitem.com.br/sitemap-4kitem.xml'] + [
+        'https://www.4kitem.com.br/v/%s/sitemap.xml' % sl for sl in _vitrine_slugs()]
+    xml = ('<?xml version="1.0" encoding="UTF-8"?>'
+           '<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+           + ''.join('<sitemap><loc>%s</loc><lastmod>%s</lastmod></sitemap>' % (u, _SITEMAP_LASTMOD)
+                     for u in locs)
+           + '</sitemapindex>')
+    return Response(xml, mimetype='application/xml')
+
+
+@app.route('/sitemap-4kitem.xml')
 def _sitemap():
     # host único www; blueprints com barra final (sem isso cada loc respondia 308); só páginas com produto
     urls = ['/', '/pubshow/', '/despachante-info', '/defesapro',

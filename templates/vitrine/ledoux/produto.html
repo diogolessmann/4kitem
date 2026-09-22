@@ -5,7 +5,15 @@
         p.titulo ~ (' · ' ~ p.specs if p.specs else '') ~ '. ' ~ (brl(p.preco) ~ ' na ' if p.preco else 'Pede o preço no WhatsApp da ') ~ loja.nome ~ ', ' ~ loja.cidade ~ '. Retira na loja ou combina a entrega.' ~ (' Preço profissional para eletricista.' if p.preco_pro else ''),
         base ~ '/p/' ~ (p.codigo or p.id), (pub ~ foto) if foto else None) }}
 <script type="application/ld+json">
-{"@context":"https://schema.org","@type":"Product","name":{{ p.titulo|tojson }},"sku":{{ (p.codigo or '')|tojson }},"brand":{"@type":"Brand","name":{{ (p.marca or '')|tojson }}}{% if foto %},"image":[{{ (pub ~ foto)|tojson }}]{% endif %},"description":{{ (p.descricao or p.specs or p.titulo)|tojson }}{% if p.preco %},"offers":{"@type":"Offer","price":"{{ '%.2f'|format(p.preco) }}","priceCurrency":"BRL","availability":"https://schema.org/{{ 'InStock' if p.estoque else 'PreOrder' }}","seller":{"@type":"Organization","name":{{ loja.nome|tojson }}}}{% endif %}}
+{"@context":"https://schema.org","@graph":[
+ {"@type":"Product","@id":"{{ base }}/p/{{ p.codigo or p.id }}#produto","name":{{ p.titulo|tojson }},"sku":{{ (p.codigo or '')|tojson }},"brand":{"@type":"Brand","name":{{ (p.marca or '')|tojson }}}{% if foto %},"image":[{{ (pub ~ foto)|tojson }}]{% endif %},"description":{{ (p.descricao or p.specs or p.titulo)|tojson }},"category":{{ fam[0]|tojson }},"url":"{{ base }}/p/{{ p.codigo or p.id }}",
+  "offers":{"@type":"Offer","@id":"{{ base }}/p/{{ p.codigo or p.id }}#oferta","url":"{{ base }}/p/{{ p.codigo or p.id }}","priceCurrency":"BRL","availability":"https://schema.org/{{ 'InStock' if p.estoque else 'PreOrder' }}","itemCondition":"https://schema.org/NewCondition"{% if p.preco %},"price":"{{ '%.2f'|format(p.preco) }}"{% endif %},"seller":{"@type":"Organization","name":{{ loja.nome|tojson }},"url":"{{ base }}"},"areaServed":["Schroeder","Jaraguá do Sul","Guaramirim","Corupá"]}},
+ {"@type":"BreadcrumbList","itemListElement":[
+  {"@type":"ListItem","position":1,"name":"Início","item":"{{ base }}"},
+  {"@type":"ListItem","position":2,"name":"Catálogo","item":"{{ base }}/catalogo"},
+  {"@type":"ListItem","position":3,"name":{{ fam[0]|tojson }},"item":"{{ base }}/c/{{ p.tipo or 'outro' }}"},
+  {"@type":"ListItem","position":4,"name":{{ p.titulo|tojson }}}]}
+]}
 </script>
 </head>
 <body>

@@ -21,11 +21,11 @@
 
 <section class="hero apagada">
   <div class="luz">
-    <video id="acende" src="{{ st }}/img/acende.mp4?v=2" poster="{{ st }}/img/sala2_apagada.webp" autoplay muted playsinline preload="auto" class="on" aria-label="A sala acende: sanca, spots e pendente"></video>
-    <img src="{{ st }}/img/sala2_apagada.webp" data-k="0" alt="Sala com as luzes apagadas">
-    <img src="{{ st }}/img/sala2_3000k.webp" data-k="3" alt="Sala com iluminação 3000K, branco quente">
-    <img src="{{ st }}/img/sala2_4000k.webp" data-k="4" alt="A mesma sala com iluminação 4000K, branco neutro">
-    <img src="{{ st }}/img/sala2_6500k.webp" data-k="6" alt="A mesma sala com iluminação 6500K, branco frio">
+    <video id="acende" src="{{ st }}/img/acende.mp4?v=2" poster="{{ st }}/img/sala2_apagada.webp" muted playsinline preload="none" class="on" aria-label="A sala acende: sanca, spots e pendente"></video>
+    <img src="{{ st }}/img/sala2_apagada.webp" data-k="0" width="1600" height="900" fetchpriority="high" decoding="async" alt="Sala com as luzes apagadas">
+    <img src="{{ st }}/img/sala2_3000k.webp" data-k="3" width="1600" height="900" loading="lazy" decoding="async" alt="Sala com iluminação 3000K, branco quente">
+    <img src="{{ st }}/img/sala2_4000k.webp" data-k="4" width="1600" height="900" loading="lazy" decoding="async" alt="A mesma sala com iluminação 4000K, branco neutro">
+    <img src="{{ st }}/img/sala2_6500k.webp" data-k="6" width="1600" height="900" loading="lazy" decoding="async" alt="A mesma sala com iluminação 6500K, branco frio">
   </div>
   <div class="wrap">
     <div class="eyebrow"><i></i>Schroeder · Jaraguá do Sul · Guaramirim · Corupá</div>
@@ -62,7 +62,7 @@
   <p class="sub">Escolha pelo cômodo, pelo produto ou entre pela porta do eletricista. Tudo termina no WhatsApp da loja, com o código pronto.</p>
   <div class="cats">
     <a class="cat" href="#ambientes"><img loading="lazy" decoding="async" src="{{ st }}/img/sala2_3000k.webp" alt=""><div class="t"><b>Por ambiente</b><span>Sala, cozinha, banheiro, quarto, jardim. A luz certa pra cada um.</span><em>Ver ambientes →</em></div></a>
-    <a class="cat" href="{{ base }}/catalogo"><img loading="lazy" decoding="async" src="{{ familias[0].foto if familias else st ~ '/img/amb2_cozinha.webp' }}" alt=""><div class="t"><b>Por produto</b><span>Spot, fita e perfil, plafon, pendente, lâmpada, trilho, tomada, disjuntor.</span><em>Ver o catálogo →</em></div></a>
+    <a class="cat" href="{{ base }}/catalogo"><img loading="lazy" decoding="async" src="{{ familias[0].foto if familias else st ~ '/img/amb2_cozinha.webp' }}" alt=""><div class="t"><b>Por produto</b><span>{{ familias[:8]|map(attribute='nome')|join(', ') if familias else 'Spot, fita e perfil, plafon, pendente, lâmpada' }}.</span><em>Ver o catálogo →</em></div></a>
     <a class="cat" href="{{ base }}/eletricista"><img loading="lazy" decoding="async" src="{{ st }}/img/daniel_balcao.webp" alt="Daniel, dono da Ledoux, no balcão"><div class="t"><b>Sou eletricista</b><span>Preço profissional, kit da obra, pedido pelo WhatsApp, retira pronto.</span><em>Entrar na área pro →</em></div></a>
   </div>
 </div></section>
@@ -98,6 +98,11 @@
   </div>
 </div></section>
 
+{# 22/set: só promete o que existe na prateleira. Sem produto ativo em tomada/interruptor/
+   disjuntor/quadro, a seção some (e /c/interruptor não vira 302 pro catálogo). Volta sozinha
+   quando a linha WEG/Soprano for importada. #}
+{% set _fam_eletrica = familias|selectattr('tipo', 'in', ['tomada','interruptor','disjuntor','quadro','cabo'])|list %}
+{% if _fam_eletrica %}
 <section id="eletrica" class="dark"><div class="wrap split">
   <div>
     <h2><small>Elétrica da casa</small>Tomada certa, disjuntor certo, quadro certo.</h2>
@@ -109,8 +114,9 @@
     </ul>
     <div class="cta" style="display:flex;gap:12px;flex-wrap:wrap"><a class="btn btn-wa" href="{{ wa('Oi, vim do site. Preciso de material elétrico pra obra/reforma. Posso mandar a lista?') }}" target="_blank" rel="noopener">{{ wa_ico() }}Manda a lista da obra</a><a class="btn btn-ghost" style="background:transparent;color:#fff;border-color:rgba(255,255,255,.35)" href="#guias">Ver os guias</a></div>
   </div>
-  <img loading="lazy" decoding="async" src="{{ st }}/img/hero_eletrica.webp" alt="Tomada e interruptor em painel de madeira com arandela acesa">
+  <img loading="lazy" decoding="async" width="1200" height="800" src="{{ st }}/img/hero_eletrica.webp" alt="Tomada e interruptor em painel de madeira com arandela acesa">
 </div></section>
+{% endif %}
 
 <section id="guias"><div class="wrap">
   <h2><small>Guias da Ledoux</small>As dúvidas que o Google recebe todo dia, respondidas por quem vende.</h2>
@@ -118,9 +124,11 @@
     <a class="guia" href="{{ base }}/ambiente/sala"><span class="q">Iluminação</span><b>3000K, 4000K ou 6500K?</b><span>Qual luz pra cada cômodo, lúmens por m² e a sala acesa nas três.</span><em>Ler o guia →</em></a>
     <a class="guia" href="#faq"><span class="q">Fita de LED</span><b>Fita que não queima</b><span>Precisa de fonte? Qual? Watts por metro, perfil e IP explicados.</span><em>Ler o guia →</em></a>
     <a class="guia" href="{{ wa('Oi, vim do site. Quero perfil de LED sob medida. São ___ metros.') }}" target="_blank" rel="noopener"><span class="q">Perfil de LED</span><b>Embutir no gesso ou sobrepor?</b><span>Sob medida, slim, com spot. Manda os metros no WhatsApp.</span><em>Perguntar →</em></a>
-    <a class="guia" href="#eletrica"><span class="q">Elétrica</span><b>Tomada certa pra cada aparelho</b><span>Ar-condicionado, airfryer, micro-ondas, forno, carro elétrico. 10 A ou 20 A.</span><em>Ler o guia →</em></a>
+{% if _fam_eletrica %}    <a class="guia" href="#eletrica"><span class="q">Elétrica</span><b>Tomada certa pra cada aparelho</b><span>Ar-condicionado, airfryer, micro-ondas, forno, carro elétrico. 10 A ou 20 A.</span><em>Ler o guia →</em></a>
     <a class="guia" href="#eletrica"><span class="q">Elétrica</span><b>Disjuntor certo (e por que desarma)</b><span>Chuveiro, ar, DR, bipolar, INMETRO. Quando precisa trocar.</span><em>Ler o guia →</em></a>
-    <a class="guia" href="{{ base }}/c/interruptor"><span class="q">Casa inteligente</span><b>Interruptor Wi-Fi sem neutro</b><span>WEG feito em Jaraguá, Alexa e Google, o que funciona em casa antiga.</span><em>Ver no catálogo →</em></a>
+{% endif %}{% if familias|selectattr('tipo', 'equalto', 'interruptor')|list %}    <a class="guia" href="{{ base }}/c/interruptor"><span class="q">Casa inteligente</span><b>Interruptor Wi-Fi sem neutro</b><span>WEG feito em Jaraguá, Alexa e Google, o que funciona em casa antiga.</span><em>Ver no catálogo →</em></a>
+{% else %}    <a class="guia" href="{{ wa('Oi, vim do site. Quero um kit de sanca: fita, fonte e perfil. O ambiente tem ___ metros.') }}" target="_blank" rel="noopener"><span class="q">Sanca</span><b>Kit de sanca sem erro</b><span>Fita, fonte e perfil dimensionados juntos pelos metros do ambiente.</span><em>Perguntar →</em></a>
+{% endif %}
   </div>
 </div></section>
 
@@ -187,6 +195,16 @@
   // hero: a mesma sala em 3 temperaturas
   var imgs=document.querySelectorAll('.hero .luz img'), bts=document.querySelectorAll('.temp button'), leg=document.getElementById('legenda');
   var txt={3:'Sala em <b>3000K</b>: aconchego pra sala, quarto e jantar',4:'Sala em <b>4000K</b>: neutra, pra cozinha, banheiro e escritório',6:'Sala em <b>6500K</b>: fria, pra garagem, área de serviço e loja'};
+  // 22/set: o vídeo (2,8 MB) só entra DEPOIS do load — antes disso a sala apagada já está na
+  // tela pelo poster e o texto já está legível. Rede ruim vê o site inteiro; rede boa vê a luz acender.
+  window.addEventListener('load', function(){
+    var v = document.getElementById('acende');
+    if (!v) return;
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    v.preload = 'auto';
+    var p = v.play();
+    if (p && p.catch) p.catch(function(){});
+  });
   var hero=document.querySelector('.hero'), vid=document.getElementById('acende'), auto=null, seq=['3','4','6'], i=0, replayHtml=' · <a href="#" id="replay" style="color:#ffd27a;text-decoration:none">⏻ apagar e acender de novo</a>';
   function ligaReplay(){var r=document.getElementById('replay');if(r)r.onclick=function(e){e.preventDefault();tchum()}}
   function setK(k){imgs.forEach(function(x){x.classList.toggle('on',x.dataset.k===k)});bts.forEach(function(b){b.classList.toggle('on',b.dataset.k===k)});if(txt[k]){leg.innerHTML=txt[k]+replayHtml;ligaReplay()}}
@@ -233,6 +251,12 @@
     else if(dia===0||(dia===6&&h>=11)){msg='<b>Retira segunda</b> · a partir das 7h30';}else if(h>=fecha-1){msg='<b>Retira amanhã</b> · '+(dia===5?'sábado a partir das 8h':'a partir das 7h30');}else{msg='<b>Retira hoje</b> · abrimos às '+(dia===6?'8h':'7h30');}
     var a=document.getElementById('selo_retira');if(a)a.innerHTML=msg;var b=document.getElementById('retira_linha');if(b)b.innerHTML='⏱ '+msg.replace(/<\/?b>/g,'')+' · Schroeder, R. Mal. Castelo Branco 2838';}
   retira();setInterval(retira,60000);
+  // 22/set: o carrossel de temperatura girava com a aba escondida (bateria do celular
+  // e CPU a toa). Para quando some da tela, volta quando o visitante volta.
+  document.addEventListener('visibilitychange',function(){
+    if(document.hidden){clearInterval(auto);auto=null}
+    else if(!auto){auto=setInterval(function(){i=(i+1)%3;setK(seq[i])},4200)}
+  });
   // header: transparente sobre o hero, sólido ao rolar
   var top=document.querySelector('.top'),hero=document.querySelector('.hero');
   if(top&&hero&&'IntersectionObserver' in window){new IntersectionObserver(function(e){top.classList.toggle('solid',!e[0].isIntersecting||e[0].intersectionRatio<.85)},{threshold:[.85,1]}).observe(hero);}
