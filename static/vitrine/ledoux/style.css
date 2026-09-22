@@ -10,7 +10,10 @@
 html{scroll-behavior:smooth}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,system-ui,-apple-system,sans-serif;line-height:1.55;font-size:16px}
 a{color:inherit}
-img{max-width:100%;display:block}
+/* height:auto e obrigatorio junto com os atributos width/height do <img>: sem ele o
+   height="800" do HTML vira a altura REAL da caixa e atropela ate o aspect-ratio.
+   Os atributos servem pra reservar espaco (CLS); quem manda no tamanho e o CSS. */
+img{max-width:100%;height:auto;display:block}
 .wrap{max-width:1180px;margin:0 auto;padding:0 20px}
 .serif{font-family:'Playfair Display',Georgia,serif}
 h1,h2,h3{font-family:'Playfair Display',Georgia,serif;line-height:1.15;margin:0}
