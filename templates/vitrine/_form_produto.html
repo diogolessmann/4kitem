@@ -4,7 +4,7 @@
       <div class="foto">📷 {% if p and p.foto %}Trocar a foto{% else %}Toque pra tirar foto ou escolher da galeria{% endif %}<br><small>a foto vira ≤ 200 KB sozinha</small><input type="file" name="foto" accept="image/*" capture="environment" style="border:0;background:none;margin-top:8px"></div>
       <label>Nome (do jeito que você fala)</label><input name="titulo" required value="{{ p.titulo if p else '' }}" placeholder="Spot de embutir redondo branco PAR20">
       <div class="g2">
-        <div><label>Preço balcão</label><input name="preco" inputmode="decimal" value="{{ ('%.2f'|format(p.preco)).replace('.', ',') if p and p.preco else '' }}" placeholder="24,90 (vazio = preço no zap)"></div>
+        <div><label>Preço balcão</label><input name="preco" inputmode="decimal" value="{{ ('%.2f'|format(p.preco)).replace('.', ',') if p and p.preco else '' }}" placeholder="24,90 (vazio = preço no WhatsApp)"></div>
         <div><label>Preço eletricista</label><input name="preco_pro" inputmode="decimal" value="{{ ('%.2f'|format(p.preco_pro)).replace('.', ',') if p and p.preco_pro else '' }}" placeholder="21,50"></div>
       </div>
       <div class="g2">

@@ -1,5 +1,5 @@
 <div class="lista-bar" id="lista_bar" hidden>
-  <div class="wrap"><div class="lb-in"><b id="lb_n">0 itens</b><span id="lb_t"></span><button type="button" id="lb_ver" class="lb-ver">ver lista</button><a id="lb_zap" class="btn btn-wa" href="#" target="_blank" rel="noopener">Pedir orçamento no zap</a></div>
+  <div class="wrap"><div class="lb-in"><b id="lb_n">0 itens</b><span id="lb_t"></span><button type="button" id="lb_ver" class="lb-ver">ver lista</button><a id="lb_zap" class="btn btn-wa" href="#" target="_blank" rel="noopener">Pedir orçamento no WhatsApp</a></div>
   <div id="lb_itens" class="lb-itens" hidden></div>
   <div class="lb-frete"><span>Entrega pelo Correio ou transportadora?</span><input id="lb_cep" inputmode="numeric" placeholder="seu CEP" maxlength="9"><button type="button" id="lb_calc">calcular frete</button><div id="lb_ops"></div></div></div>
 </div>
@@ -23,7 +23,7 @@
   var cep=document.getElementById('lb_cep'),ops=document.getElementById('lb_ops');
   document.getElementById('lb_calc').onclick=function(){var c=(cep.value||'').replace(/\D/g,'');if(c.length!==8){ops.textContent='CEP com 8 números.';return}ops.textContent='calculando…';
     fetch('{{ base }}/frete?cep='+c+'&i='+lista.map(function(x){return x.id+':'+x.q}).join(',')).then(function(r){return r.json()}).then(function(d){
-      if(d.erro){ops.textContent=d.erro;return}var h='<div class="op"><b>'+d.retira+'</b></div>';d.opcoes.forEach(function(o){h+='<div class="op"><span>'+o.empresa+' · '+o.nome+' · '+o.dias+' dias</span><b>'+brl(o.preco)+'</b></div>'});ops.innerHTML=h||'Sem opção pra esse CEP.'}).catch(function(){ops.textContent='Não consegui calcular. Pede no zap.'})};
+      if(d.erro){ops.textContent=d.erro;return}var h='<div class="op"><b>'+d.retira+'</b></div>';d.opcoes.forEach(function(o){h+='<div class="op"><span>'+o.empresa+' · '+o.nome+' · '+o.dias+' dias</span><b>'+brl(o.preco)+'</b></div>'});ops.innerHTML=h||'Sem opção pra esse CEP.'}).catch(function(){ops.textContent='Não consegui calcular. Pede no WhatsApp.'})};
   desenha();
 })();
 </script>

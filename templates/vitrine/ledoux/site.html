@@ -1,7 +1,7 @@
 {% from 'vitrine/ledoux/_ui.html' import head, top, pe, wa_ico, busca with context %}<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-{{ head('Ledoux · Material elétrico e iluminação em Schroeder. Catálogo com foto real, pede no zap, retira hoje.',
+{{ head('Ledoux · Material elétrico e iluminação em Schroeder. Catálogo com foto real, pede no WhatsApp, retira hoje.',
         'Ledoux Materiais Elétricos e Iluminação, Schroeder-SC. Catálogo Nordecor e Lumanti com foto real: spot, fita de LED, plafon, pendente, lâmpada, tomada, disjuntor. Veja a luz acesa antes de comprar, pede pelo WhatsApp, retira em 1 hora. 5,0 no Google.',
         base) }}
 <script type="application/ld+json">
@@ -30,7 +30,7 @@
   <div class="wrap">
     <div class="eyebrow"><i></i>Schroeder · Jaraguá do Sul · Guaramirim · Corupá</div>
     <h1>A luz certa, <em>hoje.</em></h1>
-    <p class="lede">Veja a luz acesa antes de comprar. Catálogo com foto real, você pede pelo zap e fala direto com quem atende. Retira em Schroeder em 1 hora.</p>
+    <p class="lede">Veja a luz acesa antes de comprar. Catálogo com foto real, você pede pelo WhatsApp e fala direto com quem atende. Retira em Schroeder em 1 hora.</p>
     <div class="temp" role="tablist" aria-label="Temperatura da luz">
       <button class="k3 on" data-k="3"><i></i>3000K quente</button>
       <button class="k4" data-k="4"><i></i>4000K neutra</button>
@@ -52,34 +52,34 @@
 
 <div class="faixa"><div class="wrap">
   <div class="fx"><i><svg class="ico" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="m12 2 3 6.6 7 .8-5.2 4.8 1.4 7L12 17.7 5.8 21.2l1.4-7L2 9.4l7-.8L12 2Z"/></svg></i><div><b>{{ loja.google_nota or '5,0' }} no Google</b><span>{{ loja.google_n or '32' }} avaliações · a loja de elétrica melhor avaliada da região</span></div></div>
-  <div class="fx"><i><svg class="ico" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" d="M12 7v5l3 2m6-2a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg></i><div><b>Retira em 1 hora</b><span>chama no zap, a loja separa, você passa e leva</span></div></div>
+  <div class="fx"><i><svg class="ico" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" d="M12 7v5l3 2m6-2a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg></i><div><b>Retira em 1 hora</b><span>chama no WhatsApp, a loja separa, você passa e leva</span></div></div>
   <div class="fx"><i><svg class="ico" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" d="m3 7 9-4 9 4v10l-9 4-9-4V7Zm9 4 9-4M12 11 3 7m9 4v10"/></svg></i><div><b>Catálogo dos fabricantes</b><span>Nordecor e Lumanti com foto real, do jeito que está na prateleira</span></div></div>
   <div class="fx"><i><svg class="ico" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" d="M12 3 4 6v6c0 5 3.4 8.4 8 9 4.6-.6 8-4 8-9V6l-8-3Zm-3 9 2 2 4-4"/></svg></i><div><b>Nota fiscal e garantia no balcão</b><span>abre a caixa aqui, testa acesa, troca na hora</span></div></div>
 </div></div>
 
 <section><div class="wrap">
   <h2><small>Por onde começar</small>Três caminhos, um balcão.</h2>
-  <p class="sub">Escolha pelo cômodo, pelo produto ou entre pela porta do eletricista. Tudo termina no zap da loja, com o código pronto.</p>
+  <p class="sub">Escolha pelo cômodo, pelo produto ou entre pela porta do eletricista. Tudo termina no WhatsApp da loja, com o código pronto.</p>
   <div class="cats">
     <a class="cat" href="#ambientes"><img loading="lazy" decoding="async" src="{{ st }}/img/sala2_3000k.webp" alt=""><div class="t"><b>Por ambiente</b><span>Sala, cozinha, banheiro, quarto, jardim. A luz certa pra cada um.</span><em>Ver ambientes →</em></div></a>
     <a class="cat" href="{{ base }}/catalogo"><img loading="lazy" decoding="async" src="{{ familias[0].foto if familias else st ~ '/img/amb2_cozinha.webp' }}" alt=""><div class="t"><b>Por produto</b><span>Spot, fita e perfil, plafon, pendente, lâmpada, trilho, tomada, disjuntor.</span><em>Ver o catálogo →</em></div></a>
-    <a class="cat" href="{{ base }}/eletricista"><img loading="lazy" decoding="async" src="{{ st }}/img/daniel_balcao.webp" alt="Daniel, dono da Ledoux, no balcão"><div class="t"><b>Sou eletricista</b><span>Preço profissional, kit da obra, pedido pelo zap, retira pronto.</span><em>Entrar na área pro →</em></div></a>
+    <a class="cat" href="{{ base }}/eletricista"><img loading="lazy" decoding="async" src="{{ st }}/img/daniel_balcao.webp" alt="Daniel, dono da Ledoux, no balcão"><div class="t"><b>Sou eletricista</b><span>Preço profissional, kit da obra, pedido pelo WhatsApp, retira pronto.</span><em>Entrar na área pro →</em></div></a>
   </div>
 </div></section>
 
 <section id="catalogo" class="alt"><div class="wrap">
   <h2><small>Catálogo</small>Foto real, do jeito que está na prateleira.</h2>
-  <p class="sub">Nordecor e Lumanti, os fabricantes que a Ledoux revende. Toca na família, acha o produto, marca a quantidade: o pedido cai no zap da loja e quem responde é o dono.</p>
+  <p class="sub">Nordecor e Lumanti, os fabricantes que a Ledoux revende. Toca na família, acha o produto, marca a quantidade: o pedido cai no WhatsApp da loja e quem responde é o dono.</p>
   {{ busca() }}
   <div class="fams">
-    {% for f in familias %}<a class="fam" href="{{ base }}/c/{{ f.tipo }}"><div class="fi"><img loading="lazy" src="{{ f.foto }}" alt=""></div><b>{{ f.nome }}</b><span>{{ f.n }} {{ 'item' if f.n == 1 else 'itens' }}</span></a>{% else %}<p class="sub">O catálogo está sendo montado. <a href="{{ wa('Oi, vim do site. Procuro um produto, tem na loja?') }}" target="_blank" rel="noopener" style="color:var(--navy);font-weight:700">Pergunta no zap</a>.</p>{% endfor %}
+    {% for f in familias %}<a class="fam" href="{{ base }}/c/{{ f.tipo }}"><div class="fi"><img loading="lazy" src="{{ f.foto }}" alt=""></div><b>{{ f.nome }}</b><span>{{ f.n }} {{ 'item' if f.n == 1 else 'itens' }}</span></a>{% else %}<p class="sub">O catálogo está sendo montado. <a href="{{ wa('Oi, vim do site. Procuro um produto, tem na loja?') }}" target="_blank" rel="noopener" style="color:var(--navy);font-weight:700">Pergunta no WhatsApp</a>.</p>{% endfor %}
   </div>
   {% if familias %}<p class="sub" style="margin-top:18px"><a href="{{ base }}/catalogo" style="color:var(--navy);font-weight:700">Ver o catálogo inteiro · {{ total }} itens →</a></p>{% endif %}
 </div></section>
 
 {% if destaques %}<section id="produtos"><div class="wrap">
   <h2><small>Escolhidos pela loja</small>O que mais sai no balcão.</h2>
-  <p class="sub">Separados pelo Daniel. Preço na cara quando tem; senão, o preço vem no zap na hora.</p>
+  <p class="sub">Separados pelo Daniel. Preço na cara quando tem; senão, o preço vem no WhatsApp na hora.</p>
   <div class="grid">
   {% for p in destaques %}{% include "vitrine/ledoux/_card.html" %}{% endfor %}
   </div>
@@ -117,7 +117,7 @@
   <div class="guias">
     <a class="guia" href="{{ base }}/ambiente/sala"><span class="q">Iluminação</span><b>3000K, 4000K ou 6500K?</b><span>Qual luz pra cada cômodo, lúmens por m² e a sala acesa nas três.</span><em>Ler o guia →</em></a>
     <a class="guia" href="#faq"><span class="q">Fita de LED</span><b>Fita que não queima</b><span>Precisa de fonte? Qual? Watts por metro, perfil e IP explicados.</span><em>Ler o guia →</em></a>
-    <a class="guia" href="{{ wa('Oi, vim do site. Quero perfil de LED sob medida. São ___ metros.') }}" target="_blank" rel="noopener"><span class="q">Perfil de LED</span><b>Embutir no gesso ou sobrepor?</b><span>Sob medida, slim, com spot. Manda os metros no zap.</span><em>Perguntar →</em></a>
+    <a class="guia" href="{{ wa('Oi, vim do site. Quero perfil de LED sob medida. São ___ metros.') }}" target="_blank" rel="noopener"><span class="q">Perfil de LED</span><b>Embutir no gesso ou sobrepor?</b><span>Sob medida, slim, com spot. Manda os metros no WhatsApp.</span><em>Perguntar →</em></a>
     <a class="guia" href="#eletrica"><span class="q">Elétrica</span><b>Tomada certa pra cada aparelho</b><span>Ar-condicionado, airfryer, micro-ondas, forno, carro elétrico. 10 A ou 20 A.</span><em>Ler o guia →</em></a>
     <a class="guia" href="#eletrica"><span class="q">Elétrica</span><b>Disjuntor certo (e por que desarma)</b><span>Chuveiro, ar, DR, bipolar, INMETRO. Quando precisa trocar.</span><em>Ler o guia →</em></a>
     <a class="guia" href="{{ base }}/c/interruptor"><span class="q">Casa inteligente</span><b>Interruptor Wi-Fi sem neutro</b><span>WEG feito em Jaraguá, Alexa e Google, o que funciona em casa antiga.</span><em>Ver no catálogo →</em></a>
@@ -126,7 +126,7 @@
 
 <section id="calc" class="alt"><div class="wrap">
   <h2><small>Calculadora</small>Quantos spots pro meu cômodo?</h2>
-  <p class="sub">Coloca o tamanho e o cômodo, a conta sai pronta e vai pro zap com a lista.</p>
+  <p class="sub">Coloca o tamanho e o cômodo, a conta sai pronta e vai pro WhatsApp com a lista.</p>
   <div class="calc">
     <div>
       <div class="f"><label>Cômodo</label><select id="c_amb"><option value="sala">Sala de estar</option><option value="cozinha">Cozinha</option><option value="quarto">Quarto</option><option value="banheiro">Banheiro</option><option value="escritorio">Escritório / home office</option><option value="garagem">Garagem / área de serviço</option></select></div>
@@ -139,8 +139,8 @@
       <div class="row"><span>Luz recomendada</span><b id="o_k">3000K quente</b></div>
       <div class="row"><span>Lúmens necessários</span><b id="o_lm">1.800 lm</b></div>
       <div class="row"><span>Kit sugerido</span><b id="o_kit">6 spots + 6 PAR20 3000K</b></div>
-      <a class="btn btn-wa" id="c_zap" href="#" target="_blank" rel="noopener" style="margin-top:6px">{{ wa_ico() }}Quero esse kit, tem na loja?</a>
-      <div class="mini">Conta de balcão (lúmens por m² por cômodo). Sanca, fita e pendente mudam a conta: manda a foto que a gente ajusta. O preço vem no zap.</div>
+      <a class="btn btn-wa" id="c_WhatsApp" href="#" target="_blank" rel="noopener" style="margin-top:6px">{{ wa_ico() }}Quero esse kit, tem na loja?</a>
+      <div class="mini">Conta de balcão (lúmens por m² por cômodo). Sanca, fita e pendente mudam a conta: manda a foto que a gente ajusta. O preço vem no WhatsApp.</div>
     </div>
   </div>
 </div></section>
@@ -152,7 +152,7 @@
     <div class="pv"><div class="n">1</div><b>Abre a caixa aqui</b><span>Você confere o produto no balcão, com a gente. Nada de descobrir problema em casa.</span></div>
     <div class="pv"><div class="n">2</div><b>Testa acesa</b><span>Lâmpada, spot, fita e plafon ligam na bancada antes de sair. Escolhe a temperatura vendo.</span></div>
     <div class="pv"><div class="n">3</div><b>Troca na hora</b><span>Deu defeito na garantia, traz e troca. Sem Correios, sem chamado, sem frete por sua conta.</span></div>
-    <div class="pv"><div class="n">4</div><b>Fala com o dono</b><span>Não tem carrinho automático nem SAC. Você pede no zap e quem responde é quem atende no balcão.</span></div>
+    <div class="pv"><div class="n">4</div><b>Fala com o dono</b><span>Não tem carrinho automático nem SAC. Você pede no WhatsApp e quem responde é quem atende no balcão.</span></div>
   </div>
 </div></section>
 
@@ -173,9 +173,9 @@
 <section id="faq"><div class="wrap">
   <h2><small>Dúvidas</small>O que perguntam no balcão.</h2>
   <details><summary>3000K ou 4000K: qual luz usar na sala?</summary><p>3000K (quente) pra sala, quarto e jantar. 4000K (neutra) pra cozinha, banheiro e escritório. 6500K (fria) pra garagem e área de serviço. Aqui você vê as três acesas antes de levar.</p></details>
-  <details><summary>Fita de LED precisa de fonte?</summary><p>Sim. Toda fita 12 V ou 24 V precisa de fonte dimensionada pelos metros e pela potência por metro. Fita que queima em 2 meses quase sempre é fonte errada. Manda os metros no zap que a gente calcula.</p></details>
-  <details><summary>Como eu compro? Tem loja online?</summary><p>O catálogo tem a foto e a ficha. Você marca a quantidade, manda pro zap e fala direto com o dono: preço, se tem, retirada em Schroeder ou frete pra outra cidade. Sem carrinho automático, sem golpe.</p></details>
-  <details><summary>Vocês entregam?</summary><p>Em Schroeder e região, combina no zap. Pra outras cidades, põe os itens na lista, calcula o frete pelo CEP e o pagamento é combinado com a loja.</p></details>
+  <details><summary>Fita de LED precisa de fonte?</summary><p>Sim. Toda fita 12 V ou 24 V precisa de fonte dimensionada pelos metros e pela potência por metro. Fita que queima em 2 meses quase sempre é fonte errada. Manda os metros no WhatsApp que a gente calcula.</p></details>
+  <details><summary>Como eu compro? Tem loja online?</summary><p>O catálogo tem a foto e a ficha. Você marca a quantidade, manda pro WhatsApp e fala direto com o dono: preço, se tem, retirada em Schroeder ou frete pra outra cidade. Sem carrinho automático, sem golpe.</p></details>
+  <details><summary>Vocês entregam?</summary><p>Em Schroeder e região, combina no WhatsApp. Pra outras cidades, põe os itens na lista, calcula o frete pelo CEP e o pagamento é combinado com a loja.</p></details>
   <details><summary>Tem preço para eletricista?</summary><p>Tem. Fala com a loja uma vez, e todo pedido seu sai com preço profissional. <a href="{{ base }}/eletricista">Área do eletricista</a></p></details>
 </div></section>
 
@@ -209,7 +209,7 @@
   bts.forEach(function(b){b.addEventListener('click',function(){clearInterval(auto);if(vid.classList.contains('on')){vid.pause();vid.classList.remove('on');hero.classList.remove('apagada')}setK(b.dataset.k)})});
   tchum();
 
-  // calculadora de spots (sem preço fixo: o preço vem no zap)
+  // calculadora de spots (sem preço fixo: o preço vem no WhatsApp)
   var $=function(x){return document.getElementById(x)};
   var lux={sala:150,cozinha:300,quarto:150,banheiro:200,escritorio:400,garagem:150};
   var kelvin={sala:'3000K quente',cozinha:'4000K neutra',quarto:'2700K a 3000K quente',banheiro:'4000K neutra',escritorio:'4000K neutra',garagem:'6500K fria'};
@@ -220,7 +220,7 @@
     var n=Math.max(2,Math.ceil(need/lm)); if(n%2)n++;
     var kit=n+' spots + '+n+' '+lampNome[lm]+' '+kelvin[amb].split(' ')[0];
     $('o_n').textContent=n; $('o_lm').textContent=need.toLocaleString('pt-BR')+' lm'; $('o_k').textContent=kelvin[amb]; $('o_kit').textContent=kit;
-    $('c_zap').href='https://wa.me/{{ loja.whatsapp }}?text='+encodeURIComponent('Oi, vim do site. Fiz a conta: '+amb+' de '+m2+' m² = '+n+' spots ('+kelvin[amb]+'). Tem na loja o kit '+kit+'? Qual o preço?');
+    $('c_WhatsApp').href='https://wa.me/{{ loja.whatsapp }}?text='+encodeURIComponent('Oi, vim do site. Fiz a conta: '+amb+' de '+m2+' m² = '+n+' spots ('+kelvin[amb]+'). Tem na loja o kit '+kit+'? Qual o preço?');
   }
   ['c_amb','c_m2','c_lamp','c_pe'].forEach(function(id){$(id).addEventListener('input',calc);$(id).addEventListener('change',calc)}); calc();
 })();

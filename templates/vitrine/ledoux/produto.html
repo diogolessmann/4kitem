@@ -1,7 +1,7 @@
 {% from 'vitrine/ledoux/_ui.html' import head, top, pe, wa_ico with context %}{% set foto = media(p.foto) %}{% set fam = FAM.get(p.tipo or 'outro', ('Outros', '')) %}{% set msg = 'Oi, vim do site. Quero: cód. ' ~ p.codigo ~ ' · ' ~ p.titulo ~ '. Tem na loja?' %}<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-{{ head(p.titulo ~ ' · ' ~ (brl(p.preco) if p.preco else 'preço no zap') ~ ' · ' ~ loja.nome ~ ', ' ~ loja.cidade,
+{{ head(p.titulo ~ ' · ' ~ (brl(p.preco) if p.preco else 'preço no WhatsApp') ~ ' · ' ~ loja.nome ~ ', ' ~ loja.cidade,
         p.titulo ~ (' · ' ~ p.specs if p.specs else '') ~ '. ' ~ (brl(p.preco) ~ ' na ' if p.preco else 'Pede o preço no WhatsApp da ') ~ loja.nome ~ ', ' ~ loja.cidade ~ '. Retira na loja ou combina a entrega.' ~ (' Preço profissional para eletricista.' if p.preco_pro else ''),
         base ~ '/p/' ~ (p.codigo or p.id), (pub ~ foto) if foto else None) }}
 <script type="application/ld+json">
@@ -32,14 +32,14 @@
 
       <div class="precos">
         {% if p.preco %}<div><small>Na loja, retirando</small><strong>{{ brl(p.preco) }}</strong>{% if p.estoque %}<div class="estoque">● <b>{{ p.estoque }} na prateleira</b> agora · <span id="pdp_retira">retira hoje</span></div>{% endif %}<br><span style="font-size:.8rem;color:var(--mut)">{{ p.unidade or 'PIX ou cartão no balcão' }}</span></div>
-        {% else %}<div><small>Preço</small><strong style="font-size:1.4rem">no zap</strong><br><span style="font-size:.8rem;color:var(--mut)">manda o código, a loja responde na hora com o preço e se tem pra retirar</span></div>{% endif %}
+        {% else %}<div><small>Preço</small><strong style="font-size:1.4rem">no WhatsApp</strong><br><span style="font-size:.8rem;color:var(--mut)">manda o código, a loja responde na hora com o preço e se tem pra retirar</span></div>{% endif %}
         {% if p.preco_pro %}<div class="p2"><small>Eletricista</small><strong>{{ brl(p.preco_pro) }}</strong><br><span style="font-size:.8rem;color:var(--mut)"><a href="{{ base }}/eletricista" style="color:var(--ok);font-weight:700">como funciona</a></span></div>{% endif %}
       </div>
 
       <div style="display:grid;gap:10px">
-        <a class="btn btn-wa" id="zap" href="{{ base }}/zap/{{ p.id }}" target="_blank" rel="noopener">{{ wa_ico() }}Pedir no zap · {{ 'quero retirar' if p.estoque else 'tem na loja?' }}</a>
+        <a class="btn btn-wa" id="zap" href="{{ base }}/zap/{{ p.id }}" target="_blank" rel="noopener">{{ wa_ico() }}Pedir no WhatsApp · {{ 'quero retirar' if p.estoque else 'tem na loja?' }}</a>
         <div class="qtd" style="margin:0"><button type="button" class="q-" aria-label="menos">−</button><input type="number" value="1" min="1" inputmode="numeric" aria-label="quantidade"><button type="button" class="q+" aria-label="mais">+</button><button type="button" class="add" data-id="{{ p.id }}" data-n="{{ p.titulo|e }}" data-c="{{ p.codigo }}" data-p="{{ p.preco or 0 }}">+ na lista de orçamento</button></div>
-        <p class="sub" style="font-size:.82rem;margin:0">Em Schroeder, Jaraguá, Guaramirim e Corupá: retira na loja no horário de atendimento. Outra cidade? Põe na lista, calcula o frete pelo CEP e combina o pagamento com a loja no zap.</p>
+        <p class="sub" style="font-size:.82rem;margin:0">Em Schroeder, Jaraguá, Guaramirim e Corupá: retira na loja no horário de atendimento. Outra cidade? Põe na lista, calcula o frete pelo CEP e combina o pagamento com a loja no WhatsApp.</p>
       </div>
 
       <div class="selos" style="margin-top:18px">
@@ -69,8 +69,8 @@
 
   <section style="padding-top:20px">
     <h2><small>Dúvidas</small></h2>
-    <details><summary>Tem na loja agora?</summary><p>Manda o código pelo zap. A Ledoux confere na prateleira e responde na hora. O que não tem em estoque a loja pede ao fabricante, que fica em Santa Catarina.</p></details>
-    <details><summary>Vocês entregam?</summary><p>Em Schroeder e região, combina no zap. Pra outras cidades, põe na lista, calcula o frete pelo CEP (Correios ou transportadora) e o pagamento é combinado direto com a loja.</p></details>
+    <details><summary>Tem na loja agora?</summary><p>Manda o código pelo WhatsApp. A Ledoux confere na prateleira e responde na hora. O que não tem em estoque a loja pede ao fabricante, que fica em Santa Catarina.</p></details>
+    <details><summary>Vocês entregam?</summary><p>Em Schroeder e região, combina no WhatsApp. Pra outras cidades, põe na lista, calcula o frete pelo CEP (Correios ou transportadora) e o pagamento é combinado direto com a loja.</p></details>
     <details><summary>E se der defeito?</summary><p>Garantia do fabricante com nota fiscal. Traz na loja, testa acesa na hora, troca. Sem Correios, sem chamado.</p></details>
   </section>
 </div>

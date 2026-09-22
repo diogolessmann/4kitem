@@ -12,7 +12,7 @@
   <form class="card" method="post">
     <label>Senha</label><input type="password" name="senha" autofocus>
     <button class="btn" type="submit">Entrar</button>
-    <p style="text-align:center;color:var(--mut);font-size:.8rem;margin:12px 0 0">Esqueceu? Chama o Diogo no zap.</p>
+    <p style="text-align:center;color:var(--mut);font-size:.8rem;margin:12px 0 0">Esqueceu? Chama o Diogo no WhatsApp.</p>
   </form>
 {% else %}
   <div class="top"><h1>🗂️ {{ loja.nome.split(' ')[0] }} <span style="font-size:12px;color:var(--mut)">vitrine</span></h1><a href="{{ base }}" target="_blank" style="color:var(--mut);font-size:13px;text-decoration:none">ver site ↗</a></div>
@@ -21,7 +21,7 @@
   <div class="card" id="novo">
     <h2 style="margin-top:0">📸 Novo produto (tira a foto aqui do celular)</h2>
     {{ form_produto(None) }}
-    <p style="font-size:.8rem;color:var(--mut);margin:10px 0 0">Entra no site na hora com o botão do zap. Sem preço, o site mostra "preço no zap".</p>
+    <p style="font-size:.8rem;color:var(--mut);margin:10px 0 0">Entra no site na hora com o botão do WhatsApp. Sem preço, o site mostra "preço no WhatsApp".</p>
   </div>
 
   <div class="card" id="produtos">
@@ -31,7 +31,7 @@
     {% for p in prods %}
     <div class="prod {{ '' if p.ativo else 'off' }}">
       <img src="{{ media(p.foto) or '/static/vitrine/semfoto.svg' }}" alt="" loading="lazy">
-      <div><b>{{ p.titulo }}</b><small>{{ brl(p.preco) or 'preço no zap' }}{% if p.preco_pro %} · pro {{ brl(p.preco_pro) }}{% endif %} · {{ p.marca }} · cód. {{ p.codigo }}{% if p.estoque %} · {{ p.estoque }} na loja{% endif %}{% if p.destaque %} · ★ home{% endif %}</small>
+      <div><b>{{ p.titulo }}</b><small>{{ brl(p.preco) or 'preço no WhatsApp' }}{% if p.preco_pro %} · pro {{ brl(p.preco_pro) }}{% endif %} · {{ p.marca }} · cód. {{ p.codigo }}{% if p.estoque %} · {{ p.estoque }} na loja{% endif %}{% if p.destaque %} · ★ home{% endif %}</small>
         <div class="mini">
           <a href="{{ base }}/admin/p/{{ p.id }}" style="color:var(--gold);border-color:var(--gold)">✏️ editar / preço</a>
           <form method="post" action="{{ base }}/admin/produto/{{ p.id }}" style="display:inline"><input type="hidden" name="acao" value="destaque"><button type="submit">{{ 'tirar da home' if p.destaque else '★ home' }}</button></form>
@@ -79,7 +79,7 @@
 
   <div class="card" id="fab">
     <h2 style="margin-top:0">🏭 Catálogo dos fabricantes</h2>
-    <p style="font-size:.9rem;color:var(--mut);margin:0 0 10px">Puxa nome, foto e ficha direto do site do fabricante. Entra como "preço no zap" até você colocar o preço. Rodar de novo só atualiza, não duplica.</p>
+    <p style="font-size:.9rem;color:var(--mut);margin:0 0 10px">Puxa nome, foto e ficha direto do site do fabricante. Entra como "preço no WhatsApp" até você colocar o preço. Rodar de novo só atualiza, não duplica.</p>
     {% if fabs %}<div class="fabs">{% for m, c in fabs %}<div><strong>{{ c }}</strong><small>{{ m }}</small></div>{% endfor %}</div>{% endif %}
     <form method="post" action="{{ base }}/admin/fabricante">
       <input type="hidden" name="fab" value="nordecor">
@@ -99,9 +99,9 @@
 
   <div class="card" id="numeros">
     <h2 style="margin-top:0">📊 Últimos {{ n.dias }} dias</h2>
-    <div class="num"><div><strong>{{ n.visitas }}</strong><small>visitas</small></div><div><strong>{{ n.zaps }}</strong><small>chamaram no zap</small></div><div><strong>{{ n.vendas }}</strong><small>vendi (marcadas)</small></div></div>
-    {% if n.top %}<p style="font-size:.85rem;color:var(--mut);margin:10px 0 0">Mais pedidos no zap: {% for t in n.top %}{{ t.titulo[:28] }} ({{ t.n }}){{ ' · ' if not loop.last }}{% endfor %}.</p>{% endif %}
-    <p style="font-size:.8rem;color:var(--mut)">Relatório de sexta chega no seu zap (em breve).</p>
+    <div class="num"><div><strong>{{ n.visitas }}</strong><small>visitas</small></div><div><strong>{{ n.zaps }}</strong><small>chamaram no WhatsApp</small></div><div><strong>{{ n.vendas }}</strong><small>vendi (marcadas)</small></div></div>
+    {% if n.top %}<p style="font-size:.85rem;color:var(--mut);margin:10px 0 0">Mais pedidos no WhatsApp: {% for t in n.top %}{{ t.titulo[:28] }} ({{ t.n }}){{ ' · ' if not loop.last }}{% endfor %}.</p>{% endif %}
+    <p style="font-size:.8rem;color:var(--mut)">Relatório de sexta chega no seu WhatsApp (em breve).</p>
   </div>
 
   <div class="card" id="loja">
@@ -121,7 +121,7 @@
       </details>
       <details style="margin:8px 0"><summary style="color:var(--gold);cursor:pointer;font-size:.85rem">Frete automático · Melhor Envio (o Diogo preenche)</summary>
         <div class="g2"><div><label>CEP da loja (origem)</label><input name="cep" value="{{ loja.cep }}" inputmode="numeric"></div><div><label>Token do Melhor Envio</label><input name="me_token" value="{{ loja.me_token }}" autocomplete="off"></div></div>
-        <p style="font-size:.78rem;color:var(--mut)">Com o token, a lista de orçamento do site calcula Correios, Jadlog e outras por CEP. Sem token, o site manda pedir o frete no zap.</p>
+        <p style="font-size:.78rem;color:var(--mut)">Com o token, a lista de orçamento do site calcula Correios, Jadlog e outras por CEP. Sem token, o site manda pedir o frete no WhatsApp.</p>
       </details>
       <details style="margin:8px 0"><summary style="color:var(--gold);cursor:pointer;font-size:.85rem">Conexão com o Instagram (o Diogo preenche)</summary>
         <div class="g2"><div><label>IG User ID</label><input name="ig_user_id" value="{{ loja.ig_user_id }}"></div><div><label>Page token</label><input name="ig_token" value="{{ loja.ig_token }}" autocomplete="off"></div></div>

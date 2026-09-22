@@ -8,12 +8,12 @@
 <div class="wrap"><div class="crumbs"><a href="{{ base }}">Início</a> › Catálogo</div></div>
 <section style="padding-top:20px"><div class="wrap">
   <h2><small>Catálogo</small>Foto real, do jeito que está na prateleira.</h2>
-  <p class="sub">{{ total }} produtos em {{ familias|length }} famílias, com a foto e a ficha dos fabricantes que a Ledoux revende. Toca no produto, marca a quantidade e o pedido cai no zap da loja.</p>
+  <p class="sub">{{ total }} produtos em {{ familias|length }} famílias, com a foto e a ficha dos fabricantes que a Ledoux revende. Toca no produto, marca a quantidade e o pedido cai no WhatsApp da loja.</p>
   {{ busca(grande=True) }}
   <div class="fams big">
-    {% for f in familias %}<a class="fam" href="{{ base }}/c/{{ f.tipo }}"><div class="fi"><img loading="lazy" src="{{ f.foto }}" alt=""></div><b>{{ f.nome }}</b><span>{{ f.desc }}</span><em>{{ f.n }} {{ 'item' if f.n == 1 else 'itens' }} →</em></a>{% else %}<p class="sub">O catálogo está sendo montado. <a href="{{ wa('Oi, vim do site. Procuro um produto, tem na loja?') }}" target="_blank" rel="noopener" style="color:var(--navy);font-weight:700">Pergunta no zap</a>.</p>{% endfor %}
+    {% for f in familias %}<a class="fam" href="{{ base }}/c/{{ f.tipo }}"><div class="fi"><img loading="lazy" src="{{ f.foto }}" alt=""></div><b>{{ f.nome }}</b><span>{{ f.desc }}</span><em>{{ f.n }} {{ 'item' if f.n == 1 else 'itens' }} →</em></a>{% else %}<p class="sub">O catálogo está sendo montado. <a href="{{ wa('Oi, vim do site. Procuro um produto, tem na loja?') }}" target="_blank" rel="noopener" style="color:var(--navy);font-weight:700">Pergunta no WhatsApp</a>.</p>{% endfor %}
   </div>
-  <p class="sub" style="margin-top:22px">Não achou? <a href="{{ wa('Oi, vim do site. Procuro um produto que não achei no catálogo. Tem na loja?') }}" target="_blank" rel="noopener" style="color:var(--navy);font-weight:700">Pergunta no zap</a>, a loja tem mais coisa no balcão do que no site.</p>
+  <p class="sub" style="margin-top:22px">Não achou? <a href="{{ wa('Oi, vim do site. Procuro um produto que não achei no catálogo. Tem na loja?') }}" target="_blank" rel="noopener" style="color:var(--navy);font-weight:700">Pergunta no WhatsApp</a>, a loja tem mais coisa no balcão do que no site.</p>
 </div></section>
 {% include "vitrine/ledoux/_lista.html" %}
 {{ pe() }}

@@ -9,14 +9,14 @@
 <div class="wrap"><div class="crumbs"><a href="{{ base }}">Início</a> › <a href="{{ base }}/catalogo">Catálogo</a> › {{ fam.nome }}</div></div>
 <section style="padding-top:20px"><div class="wrap">
   <h2><small>{{ 'Busca' if q else 'Catálogo' }}</small>{{ fam.nome }}</h2>
-  <p class="sub">{{ fam.desc }} {{ prods|length }} {{ 'item' if prods|length == 1 else 'itens' }} com foto real. Marca a quantidade e o pedido cai no zap da loja.</p>
+  <p class="sub">{{ fam.desc }} {{ prods|length }} {{ 'item' if prods|length == 1 else 'itens' }} com foto real. Marca a quantidade e o pedido cai no WhatsApp da loja.</p>
   {{ busca(q) }}
   {% set ks = [] %}{% for p in prods %}{% for k in (p.k or '').split() %}{% if k not in ks %}{% set _ = ks.append(k) %}{% endif %}{% endfor %}{% endfor %}
   {% if ks|length > 1 %}<div class="chips" id="chips">{% for k in ks|sort %}<button data-k="{{ k }}">{{ k }}K {{ {'2400':'quente','2700':'quente','3000':'quente','4000':'neutra','6500':'fria'}.get(k,'') }}</button>{% endfor %}</div>{% endif %}
   <div class="grid" id="produtos">
     {% for p in prods %}{% include "vitrine/ledoux/_card.html" %}{% else %}<p class="sub">Nada com esse nome no catálogo.</p>{% endfor %}
   </div>
-  <p class="sub" style="margin-top:22px">Não achou? <a href="{{ wa('Oi, vim do site. Procuro ' ~ (q or fam.nome|lower) ~ ' e não achei no catálogo. Tem na loja?') }}" target="_blank" rel="noopener" style="color:var(--navy);font-weight:700">Pergunta no zap</a>, a loja tem mais coisa no balcão do que no site.</p>
+  <p class="sub" style="margin-top:22px">Não achou? <a href="{{ wa('Oi, vim do site. Procuro ' ~ (q or fam.nome|lower) ~ ' e não achei no catálogo. Tem na loja?') }}" target="_blank" rel="noopener" style="color:var(--navy);font-weight:700">Pergunta no WhatsApp</a>, a loja tem mais coisa no balcão do que no site.</p>
 </div></section>
 <section class="alt"><div class="wrap">
   <h2><small>{{ 'Famílias' if q else 'Outras famílias' }}</small></h2>

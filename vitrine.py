@@ -900,7 +900,7 @@ def frete(slug):
     if len(cep) != 8:
         return Response(json.dumps({'erro': 'CEP com 8 números.'}), mimetype='application/json')
     if not (loja['me_token'] and loja['cep']):
-        return Response(json.dumps({'erro': 'Frete automático ainda não ligado nesta loja. Pede no zap.'}), mimetype='application/json')
+        return Response(json.dumps({'erro': 'Frete automático ainda não ligado nesta loja. Pede no WhatsApp.'}), mimetype='application/json')
     conn = get_vit_db()
     prods = []
     for par in (request.args.get('i') or '').split(','):
