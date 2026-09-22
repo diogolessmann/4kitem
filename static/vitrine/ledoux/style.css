@@ -505,3 +505,37 @@ body:has(.lista-bar:not([hidden])) .fab{bottom:86px}
 img.sem{object-fit:contain!important;padding:24px;opacity:.55;background:var(--ph)}
 .pdp .galeria .main img.sem{padding:48px}
 .sobre-foto{border-radius:var(--r);box-shadow:var(--sh);width:100%;aspect-ratio:1/1;object-fit:cover;object-position:top}
+
+/* ── Acessibilidade · auditoria Apple HIG 22/set/2026 ───────────────────────
+   Números medidos, não estimados. Regra: accessibility.md › Vision (texto até
+   17 pt = 4,5:1) e › Mobility (alvo 44×44, mínimo 28×28).                   */
+
+/* 1. CRÍTICO — o botão principal do site tinha branco sobre #25d366 = 1,98:1.
+      O CSS já trazia a regra certa (#04210f = 8,61:1), sobrescrita depois por
+      um color:#fff. Verde vivo continua (é o sinal do WhatsApp), texto escuro. */
+.btn-wa, .hero .btn-wa, .dark .btn-wa, .lista-bar .btn-wa, .top .btn-wa, .fab{
+  color:#04210f;                      /* 8,61:1 sobre #25d366 */
+}
+.btn-wa .ico, .fab .ico{color:#04210f}
+.btn-wa:hover, .fab:hover{background:var(--wa2);color:#04210f}  /* 7,0:1 sobre #1ebe5b */
+
+/* 2. CRÍTICO — dourado como TEXTO pequeno: #b8923a sobre branco = 2,91:1.
+      Novo token só pra texto; o --gold segue em borda e filete, onde não há
+      régua de contraste de texto (color.md › Best practices: a mesma cor não
+      pode significar coisas diferentes, então o papel fica explícito no nome). */
+:root{--gold-ink:#7d6320}             /* 5,71:1 sobre #fff · 5,31:1 sobre #f7f5f0 */
+.prod .marca, .guia .q, .stars, .reviews small, .fam em, .cat .t em, .amb span{
+  color:var(--gold-ink);
+}
+
+/* 3. Alvos de toque (accessibility.md › Mobility: 44×44 padrão, 28×28 mínimo) */
+.crumbs{padding-top:10px}
+.crumbs a{display:inline-block;padding:12px 2px;margin:-12px 0}  /* era 16px de altura */
+.qtd button{min-width:44px;min-height:44px}                      /* era 32×32 */
+.qtd .add{min-height:44px;padding-left:14px;padding-right:14px}
+.top .btn-wa{min-height:44px}                                    /* era 36 */
+.brand{min-height:44px;display:flex;align-items:center}          /* era 29 */
+
+/* 4. Texto abaixo do mínimo de 11 px (accessibility.md › Vision) */
+.brand small{font-size:.7rem}                                    /* era .6rem = 9,6px */
+.tag{font-size:.69rem}                                           /* era .6rem */

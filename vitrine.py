@@ -173,7 +173,7 @@ def _ctx(loja):
                 media=lambda f: ('' if not f else (f"/static/vitrine/{loja['slug']}/img/{f[7:]}" if f.startswith('static:')
                                                    else url_for('vitrine.media', slug=loja['slug'], arquivo=f))),
                 st=f"/static/vitrine/{loja['slug']}",
-                CATEGORIAS=dict(CATEGORIAS), FAM=FAM, v='20260921a')
+                CATEGORIAS=dict(CATEGORIAS), FAM=FAM, v='20260922a')
 
 
 class _HostRouter:
