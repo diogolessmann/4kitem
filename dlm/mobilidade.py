@@ -119,9 +119,19 @@ FEEDS = {
         (_gn('CNH mudança regra habilitação'), "CNH"),
         (_gn('placa Mercosul emplacamento regra'), "Emplacamento"),
     ],
+    # 22/set: MEDIDO (itens frescos em 7 dias). A fonte antiga era o banco da Rádio, que saiu
+    # com a migração pro 4kitem — estas buscas foram testadas uma a uma e só ficou o que traz.
     "rua": [
-        (_gn('"BR-280" OR "BR-101" Joinville OR Jaraguá OR Guaramirim OR Corupá trânsito'), "Rodovias"),
-        (_gn('radar OR obra OR interdição trânsito "Jaraguá do Sul" OR Joinville OR Guaramirim OR Schroeder'), "Trânsito local"),
+        (_gn('"BR-280"'), "BR-280"),                                        # 48 frescos/7d — a novela do Vale
+        (_gn('acidente OR congestionamento "BR-280" OR "SC-108" OR "SC-416"'), "Rodovias"),   # 18
+        (_gn('radar de velocidade "Santa Catarina"'), "Radar"),             # 16
+        (_gn('"BR-101" Joinville OR "Barra Velha" OR "São Francisco do Sul"'), "BR-101"),     # 9
+        (_gn('trânsito "Jaraguá do Sul"'), "Trânsito local"),               # 9
+        (_gn('trânsito Joinville'), "Trânsito local"),                      # 8
+        (_gn('trânsito OR obra Corupá'), "Trânsito local"),                 # 6
+        (_gn('obra OR pavimentação OR asfalto rua "Jaraguá do Sul"'), "Obras"),               # 2
+        (_gn('trânsito OR obra OR rua Guaramirim OR Schroeder SC'), "Trânsito local"),        # 0 hoje: a
+        # imprensa não cobre essas duas — o que vier delas virá de foto no zap (rodapé do post)
     ],
     "preco": [   # 19/set: testado — estas trazem item fresco (Procon Joinville, ANP semanal)
         (_gn('gasolina preço Joinville OR Jaraguá OR Blumenau'), "Combustível"),
@@ -168,12 +178,23 @@ def _key(title):
     return hashlib.sha1(" ".join(sorted(str(k) for k in dist._stem_keys(title))).encode("utf-8")).hexdigest()[:16]
 
 
+# 22/set: acidente que TRAVA A PISTA é informação de trânsito (entra); acidente com gente
+# ferida/morta é boletim policial (fora) — o Roda Norte é perfil de mobilidade, não de plantão.
+_VITIMA = re.compile(
+    r"morr|morte|morto|[óo]bito|fatal|v[íi]tima|ferid|amputa|decapit|socorrid|resgatad[oa]|"
+    r"UTI\b|estado grave|hospitalizad|fratur|traumatism|entubad|desencarcerad|"
+    r"perde[ru]?\s+(?:o|a|um|uma)\s+(?:dedo|bra[çc]o|perna|m[ãa]o|p[ée]|vis[ãa]o|olho)|"
+    r"(?:levad|encaminhad)[oa]s?\s+(?:ao|para o|pro)\s+hospital|\bsamu\b|bombeiros socorr", re.I)
+
+
 def _relevante(cat, title, summary):
     txt = f"{title} {summary}"
     if not _TEMA.search(txt):
         return False, "sem tema"
     if _VETO.search(title):
         return False, "veto"
+    if _VITIMA.search(title):
+        return False, "vítima (vai pro plantão, não pro perfil)"
     if cat != "rua" and _OUTRO_UF.search(title) and not _SC_OU_BR.search(title):
         return False, "outro estado"
     return True, ""
@@ -257,26 +278,9 @@ def coletar(cats=None, verbose=True):
                     pass
             time.sleep(0.3)
         conn.commit()
-    # RUA: o que a Rádio já coletou com a regra master (trânsito das 6 cidades) — de graça
-    try:
-        rows = conn.execute(
-            "SELECT id, title, summary, link, source, published_at FROM news "
-            "WHERE category='transito' AND published_at>=? ORDER BY published_at DESC LIMIT 20",
-            (corte.isoformat(),)).fetchall()
-        for r in rows:
-            if _duplicada(r["title"], vistos):
-                continue
-            conn.execute(
-                "INSERT OR IGNORE INTO mob_news (k,cat,title,summary,link,source,published_at,created_at,radio_id) "
-                "VALUES (?,?,?,?,?,?,?,?,?)",
-                (_key(r["title"]), "rua", r["title"][:300], (r["summary"] or "")[:1500], r["link"],
-                 r["source"], r["published_at"], datetime.now().isoformat(timespec="minutes"), r["id"]))
-            if conn.total_changes:
-                novos += 1
-                vistos.append(r["title"])
-        conn.commit()
-    except Exception as e:
-        if verbose:
+    # (22/set) O bloco que lia a tabela `news` do banco da Rádio saiu daqui: o motor mudou de
+    # casa e a Rádio está sendo vendida. Rua agora tem feeds próprios (ver FEEDS["rua"]).
+    if verbose:
             print(f"   ! rua (banco da Rádio) indisponível: {e}")
     if verbose:
         print(f"coleta: {novos} novas")
