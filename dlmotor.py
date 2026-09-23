@@ -125,10 +125,36 @@ def _estado():
         return {}
 
 
-def _feito(turno):
+# Falha que NAO e desfecho: o turno nao rodou por um motivo que pode passar sozinho
+# (token que sumiu num deploy, rede, erro pontual). Nesses casos o lock NAO e gravado.
+_MAX_TENTATIVAS = 4
+
+
+def _recuperavel(r):
+    t = str(r or "").lower()
+    return ("sem tokens" in t) or t.startswith("quebrou") or ("fila vazia" in t)
+
+
+def _feito(turno, definitivo=True, resultado=""):
+    """23/set: antes gravava o lock SEMPRE, ate quando o turno saia por falta de token — e o
+    post do dia sumia sem retentativa e sem aviso. Agora o lock so vale com desfecho."""
     e = _estado()
-    e[turno] = agora().strftime("%Y-%m-%d")
-    e.setdefault("_hist", []).append({"turno": turno, "quando": agora().isoformat(timespec="minutes")})
+    hoje = agora().strftime("%Y-%m-%d")
+    chave = "_tentativas_" + turno
+    if definitivo:
+        e[turno] = hoje
+        e.pop(chave, None)
+    else:
+        reg = e.get(chave) or {}
+        n = (reg.get("n", 0) + 1) if reg.get("dia") == hoje else 1
+        e[chave] = {"dia": hoje, "n": n, "motivo": str(resultado)[:120]}
+        if n >= _MAX_TENTATIVAS:
+            e[turno] = hoje
+            dlc.log(f"⛔ {turno}: {n} tentativas falharam hoje ({resultado}) — paro até amanhã")
+        else:
+            dlc.log(f"🔁 {turno}: tentativa {n}/{_MAX_TENTATIVAS} falhou ({resultado}) — vou tentar de novo")
+    e.setdefault("_hist", []).append({"turno": turno, "quando": agora().isoformat(timespec="minutes"),
+                                      "r": str(resultado)[:80]})
     e["_hist"] = e["_hist"][-200:]
     try:
         with open(_ESTADO, "w", encoding="utf-8") as f:
@@ -157,8 +183,8 @@ def roda(turno, forcar=False):
         dlc.log(f"🤖 {turno}: {r}")
     except Exception as e:
         dlc.log(f"❌ {turno} quebrou: {e}")
-        r = None
-    _feito(turno)
+        r = "quebrou: %s" % e
+    _feito(turno, definitivo=not _recuperavel(r), resultado=r)
     return r
 
 
@@ -176,6 +202,23 @@ def _proximo(now):
     return melhor
 
 
+def _repesca(janela_h=4):
+    """Turno do dia que falhou por motivo recuperavel volta a ser tentado enquanto o horario
+    dele ainda faz sentido. Sem isto, o laco so olha horario FUTURO e o post do dia era perdido
+    de vez por uma falha de 5 minutos."""
+    now = agora()
+    for tid, h, m, dias, _f in agenda():
+        if ja_foi_hoje(tid):
+            continue
+        d = now.replace(hour=h, minute=m, second=0, microsecond=0)
+        if dias is not None and d.weekday() not in dias:
+            continue
+        atraso = (now - d).total_seconds()
+        if 0 < atraso <= janela_h * 3600:
+            dlc.log(f"🔁 repescando {tid} ({atraso / 60:.0f} min de atraso)")
+            roda(tid)
+
+
 def _laco():
     dlc.log(f"🤖 DL Motor iniciado — modo {'AO VIVO' if ao_vivo() else 'preview (não publica)'}; "
             f"{len(agenda())} turnos/dia")
@@ -186,6 +229,7 @@ def _laco():
         if (dias is None or d.weekday() in dias) and 0 <= (now - d).total_seconds() <= 1800:
             roda(tid)
     while True:
+        _repesca()
         prox = _proximo(agora())
         if not prox:
             time.sleep(3600)
