@@ -19169,11 +19169,7 @@ def dlcentral_grid():
             'onclick="return confirm(\'Publicar %s no IG do DESPACHANTE?\')" '
             'style="background:#25d366;color:#000;font-weight:800;border:0;'
             'border-radius:99px;padding:7px 14px;cursor:pointer">🚀 Publicar</button>'
-            # 15/set/26: volta a opção de publicar na RÁDIO (tokens RADIO_* no Railway do 4kitem)
-            '<button name="acao" value="publicar_radio" '
-            'onclick="return confirm(\'Publicar %s no IG da RÁDIO SC NEWS?\')" '
-            'style="background:#f2b705;color:#000;font-weight:800;border:0;'
-            'border-radius:99px;padding:7px 14px;cursor:pointer">📻 Publicar na Rádio</button>'
+            # 24/set/26: botão "Publicar na Rádio" removido — a Rádio foi vendida ao Gabriel.
             # 19/set/26: 3º perfil (SC News Mobilidade) — promoção de parceiro/peça/pneu vai pra lá
             '<button name="acao" value="publicar_mob" '
             'onclick="return confirm(\'Publicar %s no IG de MOBILIDADE?\')" '
@@ -19183,7 +19179,7 @@ def dlcentral_grid():
             'onclick="return confirm(\'Excluir %s do grid?\')" '
             'style="background:#611;color:#faa;border:0;border-radius:99px;'
             'padding:7px 14px;cursor:pointer">🗑️</button>'
-            '</div></form></div>' % (a, a, a, a))
+            '</div></form></div>' % (a, a, a))   # 24/set: eram 4; o botao da Radio saiu
     logs = ''.join('<div style="color:#9aa;font-size:12px">%s — %s</div>'
                    % (e['quando'], e['msg']) for e in dlc.log_recente())
     return ('<!doctype html><html><head><meta charset="utf-8">'
@@ -19268,10 +19264,10 @@ def dlcentral_legenda():
         if request.form.get('ajax'):
             return jsonify(ok=True, legenda=venda or '')
         return redirect('/saas-admin/dlcentral?marca=%s&ok=legenda gerada pela IA' % marca)
-    if acao in ('publicar', 'publicar_radio', 'publicar_mob'):
+    if acao in ('publicar', 'publicar_mob'):
         if not legenda:
             return redirect('/saas-admin/dlcentral?marca=%s&ok=escreve ou gera a legenda antes' % marca)
-        destino = {'publicar_radio': 'radio', 'publicar_mob': 'mobilidade'}.get(acao, 'despachante')
+        destino = {'publicar_mob': 'mobilidade'}.get(acao, 'despachante')
         if not dlc.tokens_ok(destino):
             return redirect('/saas-admin/dlcentral?marca=%s&ok=sem tokens do destino %s — colar %s no Railway'
                             % (marca, destino, ' e '.join(dlc.DESTINOS[destino]['env'])))

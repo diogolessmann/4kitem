@@ -920,10 +920,8 @@ def publish_reel_dest(dest, video_filename, caption, video_url=None):
     Rádio (META_*); dest='desp' usa os da marca (DESP_*). video_url opcional: vídeo
     servido de fora de static/videos (ex.: upload da midiateca no volume)."""
     if dest == "radio":
-        if not (dist.META_PAGE_TOKEN and dist.META_IG_USER_ID):
-            raise RuntimeError("Tokens META_* da Rádio ausentes.")
-        return _publish_reel(dist.META_PAGE_TOKEN, dist.META_IG_USER_ID,
-                             video_filename, caption, video_url=video_url)
+        # 24/set/26: a Rádio foi vendida ao Gabriel. O 4kitem não publica mais nela.
+        raise RuntimeError("Destino 'radio' desativado: a Rádio SC News não é mais do grupo.")
     t = BRANDS["dl_mobilidade"]
     token, ig_id, _ = _brand_tokens(t)
     if not (token and ig_id):

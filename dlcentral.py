@@ -347,24 +347,21 @@ def gerar_legenda(marca, arquivo):
 
 
 # ------------------------------------------------------------------ publicação (só IG Despachante)
-# 15/set/26 — destino da publicação: "despachante" (IG @despachantelessmann, tokens DESP_*)
-# ou "radio" (IG @radiosc.news, tokens RADIO_* — copiar META_PAGE_TOKEN/META_IG_USER_ID do
-# Railway da Rádio). A opção "postar na Rádio" volta porque a venda pro Gabriel não aconteceu.
+# Destinos da publicação. 24/set/26: a Rádio SC News foi VENDIDA ao Gabriel (paga à vista) —
+# o destino "radio" saiu de vez. O 4kitem publica só nos perfis do dono.
 DESTINOS = {
     "despachante": {"label": "IG do Despachante", "env": ("DESP_PAGE_TOKEN", "DESP_IG_USER_ID")},
-    "radio": {"label": "IG da Rádio SC News", "env": ("RADIO_PAGE_TOKEN", "RADIO_IG_USER_ID")},
     # 19/set/26: 3º perfil — SC News Mobilidade (carro/moto/scooter do Norte de SC)
     "mobilidade": {"label": "IG SC News Mobilidade", "env": ("MOB_PAGE_TOKEN", "MOB_IG_USER_ID")},
 }
 
 
 def _tokens(destino="despachante"):
-    e_tok, e_ig = DESTINOS.get(destino, DESTINOS["despachante"])["env"]
+    if destino not in DESTINOS:
+        return "", ""
+    e_tok, e_ig = DESTINOS[destino]["env"]
     tok = os.environ.get(e_tok, "")
     ig = os.environ.get(e_ig, "")
-    if destino == "radio" and not (tok and ig):          # nomes usados no Railway da Rádio
-        tok = tok or os.environ.get("META_PAGE_TOKEN", "")
-        ig = ig or os.environ.get("META_IG_USER_ID", "")
     return tok, ig
 
 
@@ -389,7 +386,12 @@ def _graph_get(url, params):
 
 
 def _publicar_job(marca, arquivo, legenda, destino="despachante"):
-    alvo = DESTINOS.get(destino, DESTINOS["despachante"])
+    # 24/set: destino desconhecido NAO cai mais no despachante em silencio — antes, uma chamada
+    # antiga com destino="radio" publicaria conteudo da Radio no Instagram do despachante.
+    if destino not in DESTINOS:
+        log(f"⛔ destino '{destino}' não existe mais — nada publicado ({marca}/{arquivo})")
+        return
+    alvo = DESTINOS[destino]
     log(f"⏳ publicando {marca}/{arquivo} no {alvo['label']}…")
     try:
         tok, ig = _tokens(destino)
