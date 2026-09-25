@@ -535,6 +535,9 @@ def gerar_nosso(outdir):
     now = datetime.now()
     slot = "tarde" if now.weekday() == 5 else "manha"     # sáb: scooter (tarde seg/qua/sex → aqui só sáb)
     item = sd.escolher(slot, now.timetuple().tm_yday, 0 if slot == "tarde" else now.weekday())
+    from dlm import vacina
+    vacina.exigir("Roda Norte · nosso · %s" % item.get("serie"),
+                  {k: item.get(k) for k in ("titulo", "bullets", "cta_seal", "cta_big", "pagina")})
     t = dict(BRAND)
     t["brand_tag"] = CATS["nosso"]["badge"]
     t["series"] = True
@@ -642,6 +645,18 @@ def run(cat, post=False, collab=True):
     outdir = os.path.join(OUT_BASE, f"{day}_mob_{cat}_{row['id']}")
     paths, cap, tx = gerar_news(row, outdir)
     print(f"   {cat}: {tx['manchete']}  [{tx['fonte']}]  -> {outdir}")
+    # 💉 24/set: o texto do Gemini (slide + legenda) passa pela vacina antes de sair
+    from dlm import vacina
+    v = vacina.checar(tx.get("manchete"), tx.get("bullets"), tx.get("legenda"), escopo="mob")
+    if v:
+        vacina.registrar("Roda Norte · %s" % cat, v, {"titulo": row["title"], "link": row["link"],
+                                                       "manchete": tx.get("manchete")})
+        if post:   # marca a matéria pra não voltar; o motor tenta a próxima na repescagem
+            conn.execute("UPDATE mob_news SET posted_at=? WHERE id=?",
+                         ("vacina " + datetime.now().isoformat(timespec="minutes"), row["id"]))
+            conn.commit()
+        conn.close()
+        return {"vacina": v[0][0]}
     if post:
         r = publicar(f"mob_{day}_{cat}_{row['id']}", paths, cap, collab=collab)
         ig_id = ((r or {}).get("instagram") or {}).get("id")

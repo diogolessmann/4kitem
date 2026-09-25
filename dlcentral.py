@@ -429,7 +429,14 @@ def gerar_legenda(marca, arquivo):
         f"PREÇO: {preco or '(não citar valor)'}\n"
         f"CASA: {cfg['label']}, {cfg['endereco']} — WhatsApp {cfg['telefone']}\n"
         f"{fatos}\nHASHTAGS: {cfg['hashtags']}")
-    venda = _gemini(prompt) or _fallback_venda(cfg, titulo, contexto, preco)
+    venda = _gemini(prompt)
+    if venda:
+        from dlm import vacina
+        v = vacina.checar(venda)
+        if v:
+            vacina.registrar("legenda IA · painel %s" % marca, v, {"arquivo": arquivo, "texto": venda[:400]})
+            venda = None                      # IA barrada → legenda-modelo
+    venda = venda or _fallback_venda(cfg, titulo, contexto, preco)
     if cfg["tipo"] == "defesa":
         # 06/10 (A3): rodapé (razão social, CNPJ, credencial, CRDD) e as 5 hashtags vão no fim de TODA legenda (IA ou fallback), colados pelo código, nunca pedidos ao modelo
         venda = _sem_hashtags(venda) + "\n\n" + _rodape_defesas() + "\n\n" + cfg["hashtags"]
@@ -490,6 +497,13 @@ def _publicar_job(marca, arquivo, legenda, destino="despachante"):
     alvo = DESTINOS[destino]
     if destino == "defesas" and not legenda_defesas_ok(legenda):
         log(f"⛔ {marca}/{arquivo}: a legenda precisa da razão social e do CRDD (variável DEFESAS_CRDD no Railway; Lei 14.282/2021, art. 6º, IX) — nada publicado")
+        return
+    # 💉 24/set: a legenda (da IA ou editada à mão) passa pela vacina antes de ir ao ar
+    from dlm import vacina
+    v = vacina.checar(legenda)
+    if v:
+        vacina.registrar("painel %s/%s" % (marca, arquivo), v, {"destino": destino})
+        log(f"⛔ NÃO publiquei {marca}/{arquivo}: {v[0][0]} («{v[0][1]}») — edite a legenda e publique de novo")
         return
     log(f"⏳ publicando {marca}/{arquivo} no {alvo['label']}…")
     try:

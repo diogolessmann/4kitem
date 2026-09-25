@@ -435,7 +435,12 @@ def _dl_caption(t, angle):
         )
         txt = cerebro.completar(prompt)
         if txt:
-            return txt.strip().strip('"') + "\n" + rodape
+            from dlm import vacina
+            v = vacina.checar(txt)
+            if v:
+                vacina.registrar("legenda IA · DL scooter", v, {"texto": txt[:400]})
+            else:
+                return txt.strip().strip('"') + "\n" + rodape
     except Exception:
         pass
     base = _DL_CAP_FALLBACK[datetime.now().timetuple().tm_yday % len(_DL_CAP_FALLBACK)]
@@ -451,6 +456,8 @@ def generate_dl(brand_key, outdir=None):
         raise RuntimeError("Sem fotos em assets/dl_scooters.")
     ph1 = photos[yday % len(photos)]
     ph2 = photos[(yday + 7) % len(photos)]   # foto diferente no CTA
+    from dlm import vacina
+    vacina.exigir("DL scooter · ângulo do dia", angle, extra={"brand": brand_key})
     if outdir is None:
         outdir = os.path.join(OUT_BASE, datetime.now().strftime("%Y-%m-%d") + f"_{brand_key}")
     os.makedirs(outdir, exist_ok=True)
@@ -718,8 +725,13 @@ def groq_caption(t, item):
     try:
         from dlm import cerebro
         txt = cerebro.completar(prompt)          # Gemini -> Groq
-        if txt and item.get("serie") and _legenda_viola(txt):
-            txt = ""                             # trava: legenda com claim proibido → fallback fixo
+        if txt:
+            from dlm import vacina                # 24/set: vale pra TODO item, não só série
+            v = vacina.checar(txt)
+            if v:
+                vacina.registrar("legenda IA · %s" % (item.get("serie") or t.get("nome") or "marca"), v,
+                                 {"titulo": item.get("titulo"), "texto": txt[:400]})
+                txt = ""                         # legenda da IA barrada → fallback fixo (já vacinado)
         if txt:
             txt = txt.strip().strip('"')
             return f"{txt}\n\n📲 WhatsApp: {t['whats']}  ·  🌐 {t['site']}\n\n" + _hashtags_do_dia(t)
@@ -797,13 +809,11 @@ def publish_brand(t, prefix, image_paths, caption):
 
 
 # ----------------------------------------------------------------- run
-_PROIBIDO = ("renovamos", "fazemos sua cnh", "fazemos a sua cnh", "nosso curso", "garantimos",
-             "sem pôr o pé no detran", "sem por o pe no detran", "emitimos sua cnh", "nossa autoescola")
-
-
+# 24/set: a lista _PROIBIDO (9 frases, só legenda de série) virou dlm/vacina.py — uma lista
+# só, conferida no slide, na legenda, no Roda Norte e no painel. Mantido o nome por compatibilidade.
 def _legenda_viola(txt):
-    low = (txt or "").lower()
-    return any(p in low for p in _PROIBIDO)
+    from dlm import vacina
+    return bool(vacina.checar(txt))
 
 
 def generate(brand_key, outdir=None, item=None, slot=None):
@@ -815,6 +825,12 @@ def generate(brand_key, outdir=None, item=None, slot=None):
         now = datetime.now()
         item = _sd.escolher(slot or "manha", now.timetuple().tm_yday, now.weekday())
     item = item or topic_of_the_day(t)
+    # 💉 o texto que vai GRAVADO no slide passa pela vacina — se violar, o post não sai
+    from dlm import vacina
+    vacina.exigir("série %s passo %s" % (item.get("serie"), item.get("passo")) if item.get("serie")
+                  else "%s · tema do dia" % brand_key,
+                  {k: item.get(k) for k in ("titulo", "bullets", "cta_seal", "cta_big", "pagina")},
+                  extra={"brand": brand_key, "titulo": item.get("titulo")})
     if outdir is None:
         day = datetime.now().strftime("%Y-%m-%d")
         outdir = os.path.join(OUT_BASE, f"{day}_{brand_key}" + (f"_{slot}" if slot else ""))

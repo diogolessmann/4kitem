@@ -97,6 +97,8 @@ def _mob(idx):
     r = mobilidade.run_slot(idx, post=ao_vivo())
     if not r:
         return "fila vazia (pulado)"
+    if r.get("vacina"):          # matéria barrada e já marcada: a repescagem pega a próxima
+        return "vacina barrou a matéria (%s) — fila vazia até a próxima tentativa" % r["vacina"]
     return "POSTADO" if ao_vivo() else f"PREVIEW: {r.get('preview', [''])[0]}"
 
 
@@ -197,9 +199,14 @@ def roda(turno, forcar=False):
     if not func:
         dlc.log(f"❓ turno desconhecido: {turno}")
         return None
+    from dlm import vacina
     try:
         r = func()
         dlc.log(f"🤖 {turno}: {r}")
+    except vacina.Bloqueado as e:
+        # texto fixo violou a vacina: é DESFECHO (retentar daria o mesmo texto 4x)
+        r = "💉 vacina bloqueou: %s" % e
+        dlc.log(f"💉 {turno}: {r}")
     except Exception as e:
         dlc.log(f"❌ {turno} quebrou: {e}")
         r = "quebrou: %s" % e
@@ -265,6 +272,16 @@ def _laco():
 def iniciar():
     if not ligado():
         return None
+    try:   # 💉 auditoria do banco inteiro no arranque — texto errado aparece no log antes de ir ao ar
+        from dlm import vacina
+        achados = vacina.auditar()
+        if achados:
+            for onde, motivo, _t in achados[:5]:
+                dlc.log(f"💉 vacina: {onde} vai ser barrado — {motivo}")
+        else:
+            dlc.log(f"💉 vacina: banco limpo ({len(vacina.REGRAS)} regras)")
+    except Exception as e:
+        dlc.log(f"💉 vacina: auditoria falhou ({e})")
     t = threading.Thread(target=_laco, daemon=True, name="dlmotor")
     t.start()
     return t
