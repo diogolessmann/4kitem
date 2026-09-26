@@ -1,0 +1,571 @@
+{
+ "versao": "2026-09-26",
+ "origem": "Desktop/PROJETOS/MOTOR_DESPACHANTE_IG/CONTEUDO_21",
+ "pecas": [
+  {
+   "id": "01",
+   "aba": "despachante",
+   "titulo": "O medo do pátio",
+   "tema": "Licenciamento anual",
+   "legenda": "Rodar sem licenciar = gravíssima, 7 pontos e remoção do veículo ao pátio (CTB art. 230, V). E no pátio a diária não para.\n\nManda a placa: a gente confere o que falta e resolve. 📲 (47) 99716-2967",
+   "reel": "c21_01_reel.mp4",
+   "carrossel": [
+    "c21_01_carrossel_01.jpg",
+    "c21_01_carrossel_02.jpg",
+    "c21_01_carrossel_03.jpg",
+    "c21_01_carrossel_04.jpg",
+    "c21_01_carrossel_05.jpg",
+    "c21_01_carrossel_06.jpg"
+   ]
+  },
+  {
+   "id": "02",
+   "aba": "despachante",
+   "titulo": "Paguei e não liberou",
+   "tema": "Licenciamento anual",
+   "legenda": "Pagou e o CRLV-e continua no ano passado? Pode ser pendência, financiamento no cadastro ou o app que não atualizou.\n\nA gente confere e emite o teu documento — a partir de R$ 50. 📲 (47) 99716-2967",
+   "reel": "c21_02_reel.mp4",
+   "carrossel": [
+    "c21_02_carrossel_01.jpg",
+    "c21_02_carrossel_02.jpg",
+    "c21_02_carrossel_03.jpg",
+    "c21_02_carrossel_04.jpg",
+    "c21_02_carrossel_05.jpg",
+    "c21_02_carrossel_06.jpg"
+   ]
+  },
+  {
+   "id": "03",
+   "aba": "despachante",
+   "titulo": "O PIX falso",
+   "tema": "Pagamento de IPVA e licenciamento",
+   "legenda": "Golpe do IPVA: a SEF e o DETRAN/SC não mandam PIX por SMS nem e-mail. O PIX oficial sai pelo Detran Digital e o recebedor é a Secretaria de Estado da Fazenda (CNPJ 82.951.310/0001-56).\n\nQuer pagar sem risco? A gente emite as guias oficiais no teu nome e cuida do pagamento (serviço com taxa, combinada antes). 📲 (47) 99716-2967",
+   "reel": "c21_03_reel.mp4",
+   "carrossel": [
+    "c21_03_carrossel_01.jpg",
+    "c21_03_carrossel_02.jpg",
+    "c21_03_carrossel_03.jpg",
+    "c21_03_carrossel_04.jpg",
+    "c21_03_carrossel_05.jpg",
+    "c21_03_carrossel_06.jpg"
+   ]
+  },
+  {
+   "id": "04",
+   "aba": "despachante",
+   "titulo": "Parcelar certo",
+   "tema": "Pagamento de IPVA e licenciamento",
+   "legenda": "IPVA em SC: 3x sem juros pelo Estado. O 12x de aplicativo é crédito com juros. E o atraso custa 0,3% ao dia (até 20%) + Selic.\n\nNão existe desconto à vista em SC — desconfia de quem prometer. 📲 (47) 99716-2967",
+   "reel": "c21_04_reel.mp4",
+   "carrossel": [
+    "c21_04_carrossel_01.jpg",
+    "c21_04_carrossel_02.jpg",
+    "c21_04_carrossel_03.jpg",
+    "c21_04_carrossel_04.jpg",
+    "c21_04_carrossel_05.jpg",
+    "c21_04_carrossel_06.jpg"
+   ]
+  },
+  {
+   "id": "05",
+   "aba": "defesas",
+   "titulo": "A gente faz e controla",
+   "tema": "Defesa de multa",
+   "legenda": "3 fases, 30 dias cada, e o relógio começa na EXPEDIÇÃO da notificação. Perder prazo é perder a chance.\n\nA gente monta, protocola e acompanha. Quem julga é o órgão — sem promessa de resultado, com prazo cuidado. 📲 (47) 99716-2967",
+   "reel": "c21_05_reel.mp4",
+   "carrossel": [
+    "c21_05_carrossel_01.jpg",
+    "c21_05_carrossel_02.jpg",
+    "c21_05_carrossel_03.jpg",
+    "c21_05_carrossel_04.jpg",
+    "c21_05_carrossel_05.jpg",
+    "c21_05_carrossel_06.jpg"
+   ]
+  },
+  {
+   "id": "06",
+   "aba": "defesas",
+   "titulo": "Você compra e protocola",
+   "tema": "Defesa de multa",
+   "legenda": "Defesa de multa pronta em 24 h por R$ 39: tu assina e protocola.\n\nE pagar com 20% de desconto NÃO tira o direito de recorrer (CTB art. 284 §2º). Só o desconto de 40% pelo SNE exige abrir mão da defesa. 📲 (47) 99716-2967",
+   "reel": "c21_06_reel.mp4",
+   "carrossel": [
+    "c21_06_carrossel_01.jpg",
+    "c21_06_carrossel_02.jpg",
+    "c21_06_carrossel_03.jpg",
+    "c21_06_carrossel_04.jpg",
+    "c21_06_carrossel_05.jpg",
+    "c21_06_carrossel_06.jpg"
+   ]
+  },
+  {
+   "id": "07",
+   "aba": "defesas",
+   "titulo": "Você ainda dirige",
+   "tema": "Defesa de CNH",
+   "legenda": "Recurso no prazo = tu segue dirigindo até a decisão final. Dirigir depois de notificado da suspensão = cassação (2 anos).\n\nO pior é deixar o prazo passar. Manda a carta. 📲 (47) 99716-2967",
+   "reel": "c21_07_reel.mp4",
+   "carrossel": [
+    "c21_07_carrossel_01.jpg",
+    "c21_07_carrossel_02.jpg",
+    "c21_07_carrossel_03.jpg",
+    "c21_07_carrossel_04.jpg",
+    "c21_07_carrossel_05.jpg",
+    "c21_07_carrossel_06.jpg"
+   ]
+  },
+  {
+   "id": "08",
+   "aba": "defesas",
+   "titulo": "O caso real",
+   "tema": "Defesa de CNH",
+   "legenda": "Caso real de cliente: processo de suspensão encerrado. Cada processo é analisado e julgado pelo órgão — o que a gente faz é não perder prazo e montar a defesa certa.\n\nTem processo aberto? 📲 (47) 99716-2967",
+   "reel": "c21_08_reel.mp4",
+   "carrossel": [
+    "c21_08_carrossel_01.jpg",
+    "c21_08_carrossel_02.jpg",
+    "c21_08_carrossel_03.jpg",
+    "c21_08_carrossel_04.jpg",
+    "c21_08_carrossel_05.jpg",
+    "c21_08_carrossel_06.jpg"
+   ]
+  },
+  {
+   "id": "09",
+   "aba": "defesas",
+   "titulo": "Não é só assistir",
+   "tema": "Curso de reciclagem",
+   "legenda": "Reciclagem não termina no curso: tem prova (30 questões, mínimo 20) e o prazo da suspensão tem que estar cumprido.\n\nA gente te orienta e indica curso credenciado. 📲 (47) 99716-2967",
+   "reel": "c21_09_reel.mp4",
+   "carrossel": [
+    "c21_09_carrossel_01.jpg",
+    "c21_09_carrossel_02.jpg",
+    "c21_09_carrossel_03.jpg",
+    "c21_09_carrossel_04.jpg",
+    "c21_09_carrossel_05.jpg",
+    "c21_09_carrossel_06.jpg"
+   ]
+  },
+  {
+   "id": "10",
+   "aba": "defesas",
+   "titulo": "O curso 'grátis online'",
+   "tema": "Curso de reciclagem",
+   "legenda": "Reciclagem só vale em entidade credenciada — e o online tem que ser AO VIVO (regra nacional de 2025).\n\nA gente representa curso credenciado com aula ao vivo: matrícula pelo zap. 📲 (47) 99716-2967",
+   "reel": "c21_10_reel.mp4",
+   "carrossel": [
+    "c21_10_carrossel_01.jpg",
+    "c21_10_carrossel_02.jpg",
+    "c21_10_carrossel_03.jpg",
+    "c21_10_carrossel_04.jpg",
+    "c21_10_carrossel_05.jpg",
+    "c21_10_carrossel_06.jpg"
+   ]
+  },
+  {
+   "id": "11",
+   "aba": "despachante",
+   "titulo": "A dívida vem com o carro",
+   "tema": "Comprar, negociar, consultar débito",
+   "legenda": "Débito de IPVA e multa acompanha o veículo — e sem quitar, não transfere.\n\nConsulta antes de pagar o vendedor. Manda a placa. 📲 (47) 99716-2967",
+   "reel": "c21_11_reel.mp4",
+   "carrossel": [
+    "c21_11_carrossel_01.jpg",
+    "c21_11_carrossel_02.jpg",
+    "c21_11_carrossel_03.jpg",
+    "c21_11_carrossel_04.jpg",
+    "c21_11_carrossel_05.jpg",
+    "c21_11_carrossel_06.jpg"
+   ]
+  },
+  {
+   "id": "12",
+   "aba": "despachante",
+   "titulo": "O que o anúncio não mostra",
+   "tema": "Comprar, negociar, consultar débito",
+   "legenda": "Alienação, restrição judicial e passagem por leilão não aparecem na foto do anúncio.\n\nConsulta de leilão: R$ 79. Manda a placa antes de fechar. 📲 (47) 99716-2967",
+   "reel": "c21_12_reel.mp4",
+   "carrossel": [
+    "c21_12_carrossel_01.jpg",
+    "c21_12_carrossel_02.jpg",
+    "c21_12_carrossel_03.jpg",
+    "c21_12_carrossel_04.jpg",
+    "c21_12_carrossel_05.jpg",
+    "c21_12_carrossel_06.jpg"
+   ]
+  },
+  {
+   "id": "13",
+   "aba": "despachante",
+   "titulo": "30 dias",
+   "tema": "Transferência",
+   "legenda": "Prazo de transferência: 30 dias. Depois, infração média e 4 pontos (CTB art. 233). E enquanto o carro está no nome do antigo dono, toda multa vira dor de cabeça pros dois.\n\n📲 (47) 99716-2967",
+   "reel": "c21_13_reel.mp4",
+   "carrossel": [
+    "c21_13_carrossel_01.jpg",
+    "c21_13_carrossel_02.jpg",
+    "c21_13_carrossel_03.jpg",
+    "c21_13_carrossel_04.jpg",
+    "c21_13_carrossel_05.jpg",
+    "c21_13_carrossel_06.jpg"
+   ]
+  },
+  {
+   "id": "14",
+   "aba": "despachante",
+   "titulo": "O IPVA do ano inteiro",
+   "tema": "Transferência",
+   "legenda": "Transferência em SC exige o IPVA do exercício quitado por inteiro — inclusive parcelas a vencer.\n\nA gente calcula e emite as guias no teu nome. 📲 (47) 99716-2967",
+   "reel": "c21_14_reel.mp4",
+   "carrossel": [
+    "c21_14_carrossel_01.jpg",
+    "c21_14_carrossel_02.jpg",
+    "c21_14_carrossel_03.jpg",
+    "c21_14_carrossel_04.jpg",
+    "c21_14_carrossel_05.jpg",
+    "c21_14_carrossel_06.jpg"
+   ]
+  },
+  {
+   "id": "15",
+   "aba": "despachante",
+   "titulo": "Vendeu e não avisou?",
+   "tema": "Intenção de venda",
+   "legenda": "Comunicação de venda: 60 dias pelo CTB (multas) e 30 dias pela lei do IPVA de SC. Sem ela, multa e IPVA do comprador podem cair no teu CPF — e IPVA sem pagar vai pra dívida ativa: protesto em cartório e execução fiscal.\n\n📲 (47) 99716-2967",
+   "reel": "c21_15_reel.mp4",
+   "carrossel": [
+    "c21_15_carrossel_01.jpg",
+    "c21_15_carrossel_02.jpg",
+    "c21_15_carrossel_03.jpg",
+    "c21_15_carrossel_04.jpg",
+    "c21_15_carrossel_05.jpg",
+    "c21_15_carrossel_06.jpg"
+   ]
+  },
+  {
+   "id": "16",
+   "aba": "despachante",
+   "titulo": "Intenção de venda não é transferência",
+   "tema": "Intenção de venda",
+   "legenda": "Intenção de venda (ATPV-e) ≠ transferência. A primeira é do vendedor; a segunda, do comprador, em até 30 dias.\n\n📲 (47) 99716-2967",
+   "reel": "c21_16_reel.mp4",
+   "carrossel": [
+    "c21_16_carrossel_01.jpg",
+    "c21_16_carrossel_02.jpg",
+    "c21_16_carrossel_03.jpg",
+    "c21_16_carrossel_04.jpg",
+    "c21_16_carrossel_05.jpg",
+    "c21_16_carrossel_06.jpg"
+   ]
+  },
+  {
+   "id": "17",
+   "aba": "despachante",
+   "titulo": "O carro não existe mais, mas o IPVA continua",
+   "tema": "Baixa de veículo",
+   "legenda": "Sem baixa (CTB art. 126), o IPVA segue lançado no teu nome. IPVA não pago vai pra dívida ativa: protesto em cartório, execução fiscal, sem certidão negativa — e a partilha no inventário exige os tributos dos bens quitados (CTN art. 192).\n\n📲 (47) 99716-2967",
+   "reel": "c21_17_reel.mp4",
+   "carrossel": [
+    "c21_17_carrossel_01.jpg",
+    "c21_17_carrossel_02.jpg",
+    "c21_17_carrossel_03.jpg",
+    "c21_17_carrossel_04.jpg",
+    "c21_17_carrossel_05.jpg",
+    "c21_17_carrossel_06.jpg"
+   ]
+  },
+  {
+   "id": "18",
+   "aba": "despachante",
+   "titulo": "Credenciado nº 2095",
+   "tema": "Sobre o Despachante Lessmann",
+   "legenda": "Despachante Lessmann — credenciado DETRAN/SC nº 2095, Schroeder/SC. A lista de credenciados é pública: confere antes de entregar teus documentos a alguém.\n\n📲 (47) 99716-2967",
+   "reel": "c21_18_reel.mp4",
+   "carrossel": [
+    "c21_18_carrossel_01.jpg",
+    "c21_18_carrossel_02.jpg",
+    "c21_18_carrossel_03.jpg",
+    "c21_18_carrossel_04.jpg",
+    "c21_18_carrossel_05.jpg",
+    "c21_18_carrossel_06.jpg"
+   ]
+  },
+  {
+   "id": "19",
+   "aba": "despachante",
+   "titulo": "Medo de pagar despachante?",
+   "tema": "Sobre o Despachante Lessmann",
+   "legenda": "Despachante credenciado DETRAN/SC nº 2095 — confere na lista pública. A gente consulta CNH, multas e débitos ANTES, o preço é combinado antes, e a taxa do Estado vai em guia no teu nome.\n\nSem ir e voltar, sem gastar o dia. 📲 (47) 99716-2967",
+   "reel": "c21_19_reel.mp4",
+   "carrossel": [
+    "c21_19_carrossel_01.jpg",
+    "c21_19_carrossel_02.jpg",
+    "c21_19_carrossel_03.jpg",
+    "c21_19_carrossel_04.jpg",
+    "c21_19_carrossel_05.jpg",
+    "c21_19_carrossel_06.jpg"
+   ]
+  },
+  {
+   "id": "20",
+   "aba": "despachante",
+   "titulo": "Carro travado?",
+   "tema": "O Despachante Lessmann desenrola",
+   "legenda": "Fila, senha, volta amanhã, telefone que não atende? Manda a placa: a gente vê o nó e desenrola. 📲 (47) 99716-2967",
+   "reel": "c21_20_reel.mp4",
+   "carrossel": [
+    "c21_20_carrossel_01.jpg",
+    "c21_20_carrossel_02.jpg",
+    "c21_20_carrossel_03.jpg",
+    "c21_20_carrossel_04.jpg",
+    "c21_20_carrossel_05.jpg",
+    "c21_20_carrossel_06.jpg"
+   ]
+  },
+  {
+   "id": "21",
+   "aba": "despachante",
+   "titulo": "Não precisa entender de DETRAN",
+   "tema": "O Despachante Lessmann desenrola",
+   "legenda": "Uma ação só: manda a placa. O resto é com a gente.\n\nDespachante Lessmann · credenciado DETRAN/SC 2095 · Schroeder/SC\n📲 (47) 99716-2967",
+   "reel": "c21_21_reel.mp4",
+   "carrossel": [
+    "c21_21_carrossel_01.jpg",
+    "c21_21_carrossel_02.jpg",
+    "c21_21_carrossel_03.jpg",
+    "c21_21_carrossel_04.jpg",
+    "c21_21_carrossel_05.jpg",
+    "c21_21_carrossel_06.jpg"
+   ]
+  },
+  {
+   "id": "B1",
+   "aba": "despachante",
+   "titulo": "Placa final 7",
+   "tema": "Avulso URGENTE (vence 30/set)",
+   "legenda": "Placa final 7: licenciamento 2026 vence 30/09. 📲 (47) 99716-2967",
+   "reel": "c21_B1_reel.mp4",
+   "carrossel": [
+    "c21_B1_carrossel_01.jpg",
+    "c21_B1_carrossel_02.jpg",
+    "c21_B1_carrossel_03.jpg",
+    "c21_B1_carrossel_04.jpg",
+    "c21_B1_carrossel_05.jpg"
+   ],
+   "de": "2026-09-26",
+   "ate": "2026-09-29"
+  },
+  {
+   "id": "B2",
+   "aba": "despachante",
+   "titulo": "Moto até 200 cc não paga IPVA",
+   "tema": "Alternativa ao nº 4",
+   "legenda": "Lei SC 7.543 art. 8º, V, 'h': moto até 200 cc sem penalidade no ano anterior é isenta de IPVA.\n\n📲 (47) 99716-2967",
+   "reel": "c21_B2_reel.mp4",
+   "carrossel": [
+    "c21_B2_carrossel_01.jpg",
+    "c21_B2_carrossel_02.jpg",
+    "c21_B2_carrossel_03.jpg",
+    "c21_B2_carrossel_04.jpg",
+    "c21_B2_carrossel_05.jpg",
+    "c21_B2_carrossel_06.jpg"
+   ]
+  },
+  {
+   "id": "B8",
+   "aba": "despachante",
+   "titulo": "Placa final 8",
+   "tema": "Avulso (vence 31/10)",
+   "legenda": "Placa final 8: licenciamento 2026 vence em 31/10. 📲 (47) 99716-2967",
+   "reel": "c21_B8_reel.mp4",
+   "carrossel": [
+    "c21_B8_carrossel_01.jpg",
+    "c21_B8_carrossel_02.jpg",
+    "c21_B8_carrossel_03.jpg",
+    "c21_B8_carrossel_04.jpg",
+    "c21_B8_carrossel_05.jpg"
+   ],
+   "de": "2026-10-01",
+   "ate": "2026-10-29"
+  },
+  {
+   "id": "B9",
+   "aba": "despachante",
+   "titulo": "Placa final 9",
+   "tema": "Avulso (vence 30/11)",
+   "legenda": "Placa final 9: licenciamento 2026 vence em 30/11. 📲 (47) 99716-2967",
+   "reel": "c21_B9_reel.mp4",
+   "carrossel": [
+    "c21_B9_carrossel_01.jpg",
+    "c21_B9_carrossel_02.jpg",
+    "c21_B9_carrossel_03.jpg",
+    "c21_B9_carrossel_04.jpg",
+    "c21_B9_carrossel_05.jpg"
+   ],
+   "de": "2026-11-01",
+   "ate": "2026-11-28"
+  },
+  {
+   "id": "B0",
+   "aba": "despachante",
+   "titulo": "Placa final 0",
+   "tema": "Avulso (vence 30/12)",
+   "legenda": "Placa final 0: licenciamento 2026 vence em 30/12. 📲 (47) 99716-2967",
+   "reel": "c21_B0_reel.mp4",
+   "carrossel": [
+    "c21_B0_carrossel_01.jpg",
+    "c21_B0_carrossel_02.jpg",
+    "c21_B0_carrossel_03.jpg",
+    "c21_B0_carrossel_04.jpg",
+    "c21_B0_carrossel_05.jpg"
+   ],
+   "de": "2026-12-01",
+   "ate": "2026-12-28"
+  }
+ ],
+ "stories": [
+  {
+   "id": "05",
+   "aba": "defesas",
+   "arquivo": "c21_05_story.jpg"
+  },
+  {
+   "id": "06",
+   "aba": "defesas",
+   "arquivo": "c21_06_story.jpg"
+  },
+  {
+   "id": "07",
+   "aba": "defesas",
+   "arquivo": "c21_07_story.jpg"
+  },
+  {
+   "id": "08",
+   "aba": "defesas",
+   "arquivo": "c21_08_story.jpg"
+  },
+  {
+   "id": "09",
+   "aba": "defesas",
+   "arquivo": "c21_09_story.jpg"
+  },
+  {
+   "id": "10",
+   "aba": "defesas",
+   "arquivo": "c21_10_story.jpg"
+  },
+  {
+   "id": "01",
+   "aba": "despachante",
+   "arquivo": "c21_01_story.jpg"
+  },
+  {
+   "id": "02",
+   "aba": "despachante",
+   "arquivo": "c21_02_story.jpg"
+  },
+  {
+   "id": "03",
+   "aba": "despachante",
+   "arquivo": "c21_03_story.jpg"
+  },
+  {
+   "id": "04",
+   "aba": "despachante",
+   "arquivo": "c21_04_story.jpg"
+  },
+  {
+   "id": "11",
+   "aba": "despachante",
+   "arquivo": "c21_11_story.jpg"
+  },
+  {
+   "id": "12",
+   "aba": "despachante",
+   "arquivo": "c21_12_story.jpg"
+  },
+  {
+   "id": "13",
+   "aba": "despachante",
+   "arquivo": "c21_13_story.jpg"
+  },
+  {
+   "id": "14",
+   "aba": "despachante",
+   "arquivo": "c21_14_story.jpg"
+  },
+  {
+   "id": "15",
+   "aba": "despachante",
+   "arquivo": "c21_15_story.jpg"
+  },
+  {
+   "id": "16",
+   "aba": "despachante",
+   "arquivo": "c21_16_story.jpg"
+  },
+  {
+   "id": "17",
+   "aba": "despachante",
+   "arquivo": "c21_17_story.jpg"
+  },
+  {
+   "id": "18",
+   "aba": "despachante",
+   "arquivo": "c21_18_story.jpg"
+  },
+  {
+   "id": "19",
+   "aba": "despachante",
+   "arquivo": "c21_19_story.jpg"
+  },
+  {
+   "id": "20",
+   "aba": "despachante",
+   "arquivo": "c21_20_story.jpg"
+  },
+  {
+   "id": "21",
+   "aba": "despachante",
+   "arquivo": "c21_21_story.jpg"
+  },
+  {
+   "id": "B1",
+   "aba": "despachante",
+   "arquivo": "c21_B1_story.jpg",
+   "de": "2026-09-26",
+   "ate": "2026-09-29"
+  },
+  {
+   "id": "B2",
+   "aba": "despachante",
+   "arquivo": "c21_B2_story.jpg"
+  },
+  {
+   "id": "L0",
+   "aba": "despachante",
+   "arquivo": "c21_L0_story.jpg",
+   "de": "2026-12-01",
+   "ate": "2026-12-28"
+  },
+  {
+   "id": "L8",
+   "aba": "despachante",
+   "arquivo": "c21_L8_story.jpg",
+   "de": "2026-10-01",
+   "ate": "2026-10-29"
+  },
+  {
+   "id": "L9",
+   "aba": "despachante",
+   "arquivo": "c21_L9_story.jpg",
+   "de": "2026-11-01",
+   "ate": "2026-11-28"
+  },
+  {
+   "id": "S1",
+   "aba": "dlmob",
+   "arquivo": "c21_S1_story.jpg"
+  }
+ ]
+}

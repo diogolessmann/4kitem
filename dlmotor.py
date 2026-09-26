@@ -10,6 +10,7 @@ Grade (America/Sao_Paulo):
   10:00       despachante · manhã   (série "1 post = 1 página", alterna documentalista/defesa)
   13:00       despachante · meio    (mito/consequência)  — só com DESP_MEIO_ON=1
   16:00 t/q/s DL Mobilidade · oferta de scooter com FOTO REAL (tokens do despachante)
+  12:30       story da FILA de peças prontas (CONTEUDO_21) — FILA_PRONTA_ON=0 desliga
   19:00       despachante · noite   (story "veja mais no site")
   hh:20 x6    SC News Mobilidade    (MOB_HORAS, default 7,10,12,15,18,20) — só com MOB_ON=1 + tokens MOB_*
   23:30       insights por série    (placar)
@@ -59,6 +60,14 @@ def _desp(slot):
     token, ig_id, _ = marcas._brand_tokens(t)
     if not (token and ig_id):
         return "sem tokens DESP_* — pulado"
+    # 26/set: dia de FILA (dia par) → o post das 10h é uma PEÇA PRONTA do Cofre (CONTEUDO_21).
+    # Não aumenta o feed: é a mesma vaga da série. Fila vazia → segue a série de sempre.
+    if slot == "manha":
+        from dlm import fila_pronta
+        if fila_pronta.dia_de_fila():
+            r = fila_pronta.postar_feed(ao_vivo())
+            if r is not None:
+                return r
     if not ao_vivo():
         paths, cap, item = marcas.generate("despachante", slot=slot)
         return f"PREVIEW {item.get('serie')} {item.get('passo')}: {paths[0]}"
@@ -91,6 +100,14 @@ def _mob(idx):
     return "POSTADO" if ao_vivo() else f"PREVIEW: {r.get('preview', [''])[0]}"
 
 
+def _story_fila():
+    """26/set: 1 story/dia da fila de peças prontas (stories clean do CONTEUDO_21)."""
+    if os.environ.get("FILA_PRONTA_ON", "1") != "1":
+        return "fila desligada (FILA_PRONTA_ON!=1)"
+    from dlm import fila_pronta
+    return fila_pronta.postar_story(ao_vivo())
+
+
 def _insights():
     from dlm import insights
     n = insights.coletar_marca("despachante", dias=7)
@@ -107,6 +124,7 @@ def agenda():
     a = [
         ("desp_manha", 10, 0, None, lambda: _desp("manha")),
         ("desp_meio", 13, 0, None, lambda: _desp("meio")),
+        ("desp_story", 12, 30, None, _story_fila),
         ("dlmob", 16, 0, (1, 3, 5), _dlmob),
         ("desp_noite", 19, 0, None, lambda: _desp("noite")),
         ("insights", 23, 30, None, _insights),
