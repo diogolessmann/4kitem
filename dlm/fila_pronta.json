@@ -1,4 +1,6 @@
 {
+ "pausada": true,
+ "motivo": "27/set: fecho das peças usa a fachada gerada por IA (número errado, logo do DETRAN) e diz 'zap' (proibido pelo dono). Volta a false quando as 26 peças forem refeitas.",
  "versao": "2026-09-26",
  "origem": "Desktop/PROJETOS/MOTOR_DESPACHANTE_IG/CONTEUDO_21",
  "pecas": [
@@ -151,7 +153,7 @@
    "aba": "defesas",
    "titulo": "O curso 'grátis online'",
    "tema": "Curso de reciclagem",
-   "legenda": "Reciclagem só vale em entidade credenciada — e o online tem que ser AO VIVO (regra nacional de 2025).\n\nA gente representa curso credenciado com aula ao vivo: matrícula pelo zap. 📲 (47) 99716-2967",
+   "legenda": "Reciclagem só vale em entidade credenciada — e o online tem que ser AO VIVO (regra nacional de 2025).\n\nA gente representa curso credenciado com aula ao vivo: matrícula pelo WhatsApp. 📲 (47) 99716-2967",
    "reel": "c21_10_reel.mp4",
    "carrossel": [
     "c21_10_carrossel_01.jpg",

@@ -319,7 +319,7 @@ def gerar_legenda(marca, arquivo):
                  "alcançadas em 30 dias. VENDE 3 COISAS: (1) Plano Vitrine R$97/mês — o lojista "
                  "manda a foto e uma frase pelo WhatsApp, a Rádio escreve o post, ele aprova, sai "
                  "1 post + 1 story por semana com cupom e relatório toda sexta (cupons usados, "
-                 "cliques no zap); (2) MOTOR DE CONTEÚDO alugado — publica no Instagram e no site "
+                 "cliques no WhatsApp); (2) MOTOR DE CONTEÚDO alugado — publica no Instagram e no site "
                  "do cliente todo dia, com aprovação dele, 'não substitui quem escreve, "
                  "multiplica'; (3) SITE DE 1 PÁGINA no domínio do cliente, que o Google e as IAs "
                  "acham, com WhatsApp pré-preenchido. Sempre: nota fiscal, sem contrato, cancela "

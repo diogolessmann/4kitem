@@ -66,8 +66,15 @@ def ordem_feed():
     return v1 + v2
 
 
+def pausada():
+    """27/set: fila parada até as 26 peças serem refeitas (fecho com fachada de IA + 'zap', proibido pelo dono)."""
+    return bool(_fila().get("pausada"))
+
+
 def proximo_feed(hoje=None):
     hoje = hoje or date.today()
+    if pausada():
+        return None
     feito = _estado().get("feito", {})
     livres = [(c, p, t) for c, p, t in ordem_feed() if c not in feito and _na_janela(p, hoje)]
     if not livres:
@@ -78,6 +85,8 @@ def proximo_feed(hoje=None):
 
 def proximo_story(hoje=None):
     hoje = hoje or date.today()
+    if pausada():
+        return None
     feito = _estado().get("feito", {})
     ordem = sorted(_fila()["stories"], key=lambda s: (0, int(s["id"])) if s["id"].isdigit() else (1, s["id"]))
     livres = [s for s in ordem if ("story:" + s["id"]) not in feito and _na_janela(s, hoje)]

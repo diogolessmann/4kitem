@@ -12,7 +12,7 @@ Regras fixas (ver memória feedback_dl_forma_branca_cnh — episódio ADEVI 14/s
 - Transferência, licenciamento, débitos, defesa, indicação de condutor: atribuição do despachante
   credenciado (DETRAN/SC 2095) → aqui pode "a gente faz por você".
 - Post mostra o PROBLEMA e a CONSEQUÊNCIA; o SITE dá o próximo passo; o próximo passo é mandar a
-  placa no zap. Nunca tutorial de pagamento/emissão.
+  placa no WhatsApp. Nunca tutorial de pagamento/emissão.
 - Sem brasão do DETRAN, sem "garantimos", sem depoimento inventado, sem dado de terceiro.
 
 Cada item: cat · titulo · bullets (3, curtos: o card quebra em 2 linhas por bullet) · fonte
@@ -40,7 +40,7 @@ SERIES = {
              "titulo": "Vai comprar carro usado? Consulta a placa ANTES do PIX",
              "bullets": ["Débito, multa e restrição vêm junto com o carro — não com o dono.",
                          "Leilão e sinistro não aparecem no anúncio, aparecem no histórico.",
-                         "Manda a placa no zap: a gente levanta tudo antes de você fechar."],
+                         "Manda a placa no WhatsApp: a gente levanta tudo antes de você fechar."],
              "fonte": "https://www.detran.sc.gov.br/"},
             {"cat": "PASSO 2 · LEILÃO",
              "titulo": "Carro de leilão: o preço bom que vira dor de cabeça",
@@ -76,7 +76,7 @@ SERIES = {
              "titulo": "Transferência à vista no PIX: condição especial no escritório",
              "bullets": ["Consulta, ATPV-e, vistoria e transferência num lugar só.",
                          "Honorário combinado antes; taxa oficial em guia no seu nome.",
-                         "Mal. Castelo Branco, 2838, Schroeder — ou tudo pelo zap."],
+                         "Mal. Castelo Branco, 2838, Schroeder — ou tudo pelo WhatsApp."],
              "fonte": SITE + "/transferencia-de-veiculo-assinatura"},
         ],
     },
@@ -263,7 +263,7 @@ SERIES = {
              "titulo": "Sua scooter passa de 32 km/h? Desde 1º/1/2026 é ciclomotor: precisa de placa",
              "bullets": ["Acima de 1000 W ou 32 km/h não é autopropelido: é ciclomotor.",
                          "Ciclomotor exige CNH A ou ACC, placa e registro — o prazo de adaptação acabou em 31/12/2025.",
-                         "Não sabe em qual caixa a sua cai? Manda modelo e foto no zap."],
+                         "Não sabe em qual caixa a sua cai? Manda modelo e foto no WhatsApp."],
              "fonte": "https://www.gov.br/transportes/pt-br/assuntos/transito/conteudo-contran/resolucoes/Resolucao9962023.pdf"},
             {"cat": "DICA DE LEI",
              "titulo": "Os equipamentos obrigatórios da scooter elétrica",
@@ -302,7 +302,7 @@ SERIES = {
              "fonte": SITE + "/publicidade"},
             {"cat": "DICA",
              "titulo": "Site de uma página resolve 90% do comércio local",
-             "bullets": ["Quem te acha no Google quer: o que você faz, onde e o zap.",
+             "bullets": ["Quem te acha no Google quer: o que você faz, onde e o WhatsApp.",
                          "Uma página bem feita faz isso melhor que dez.",
                          "A gente escreve, publica e coloca no Google."],
              "fonte": SITE + "/publicidade"},
@@ -345,7 +345,7 @@ SERIES["trocar_carro"]["passos"] += [
      "titulo": "Comprou 0 km? Documento e placa no mesmo dia",
      "bullets": ["Registro no DETRAN/SC, IPVA proporcional, CRLV-e e placa Mercosul.",
                  "Em Schroeder, sai em cerca de 2 horas depois da nota fiscal.",
-                 "Manda a nota no zap e a gente cuida do resto."],
+                 "Manda a nota no WhatsApp e a gente cuida do resto."],
      "fonte": "https://www.detran.sc.gov.br/"},
     {"cat": "DÍVIDA ATIVA", "link": "/divida-ativa-veiculo",
      "titulo": "IPVA foi pra dívida ativa? Ainda dá pra licenciar",
