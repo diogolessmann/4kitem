@@ -254,7 +254,7 @@ def _email_creditos_liberados(primeiro_nome: str, qtd: int) -> str:
   <hr style="border:none;border-top:1px solid #222;margin:28px 0">
   <p style="font-size:11px;color:#555;margin:0;line-height:1.6">
     4KITEM · VetZap · <a href="https://4kitem.com.br" style="color:#10b981">4kitem.com.br</a><br>
-    Dúvidas? WhatsApp: <a href="https://wa.me/5547999606998" style="color:#10b981">(47) 99960-6998</a>
+    Dúvidas? WhatsApp: <a href="https://wa.me/5547997766831" style="color:#10b981">(47) 99776-6831</a>
   </p>
 </td></tr>
 </table>
@@ -1133,10 +1133,10 @@ def cadastrar():
                         log.error('[PETmed] Falha ao recriar banco: %s', _re)
                     erro = 'Sistema reiniciado. Por favor, tente cadastrar novamente.'
                 elif 'no column' in str(ex).lower():
-                    erro = 'Erro de estrutura no banco de dados. Contate o suporte: (47) 99960-6998'
+                    erro = 'Erro de estrutura no banco de dados. Contate o suporte: (47) 99776-6831'
                     log.critical('[PETmed] COLUNA INEXISTENTE: %s', ex)
                 else:
-                    erro = f'Erro ao criar conta: {ex}. Tente novamente ou contate (47) 99960-6998'
+                    erro = f'Erro ao criar conta: {ex}. Tente novamente ou contate (47) 99776-6831'
 
             if _u_id:
                 session['pm_user_id']   = _u_id

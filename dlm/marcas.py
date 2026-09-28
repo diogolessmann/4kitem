@@ -257,7 +257,7 @@ BRANDS = {
         "brand_tag": "4KITEM",
         "tagline": "Sistemas que facilitam o seu negócio",
         "site": "4kitem.com.br",
-        "whats": "(47) 99960-6998",
+        "whats": "(47) 99776-6831",
         "instagram": "",   # preenche quando o IG estiver pronto
         # tema tech (indigo + ciano)
         "bg": (13, 14, 26), "card": (24, 26, 44), "accent": (108, 99, 255),

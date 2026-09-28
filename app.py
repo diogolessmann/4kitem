@@ -96,7 +96,7 @@ def _security_headers(resp):
                     'align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(0,0,0,.28);'
                     'transition:transform .15s}#wa-float-4k:hover{transform:scale(1.08)}'
                     '@media(max-width:768px){#wa-float-4k{bottom:80px}}</style>'
-                    '<a id="wa-float-4k" href="https://wa.me/5547999606998'
+                    '<a id="wa-float-4k" href="https://wa.me/5547997766831'
                     '?text=Ol%C3%A1!%20Vim%20pelo%20site%20do%204kitem" target="_blank" '
                     'rel="noopener" aria-label="Falar no WhatsApp">'
                     '<svg width="30" height="30" viewBox="0 0 24 24" fill="#fff">'
@@ -722,7 +722,7 @@ def _email_base(conteudo: str, cor: str = '#22c55e') -> str:
 <hr style="border:none;border-top:1px solid #222;margin:28px 0">
 <p style="font-size:11px;color:#555;margin:0;line-height:1.6">
 4KITEM · Soluções Digitais · <a href="https://4kitem.com.br" style="color:{cor}">4kitem.com.br</a><br>
-Dúvidas? WhatsApp: <a href="https://wa.me/5547999606998" style="color:{cor}">(47) 99960-6998</a>
+Dúvidas? WhatsApp: <a href="https://wa.me/5547997766831" style="color:{cor}">(47) 99776-6831</a>
 </p>
 </td></tr>
 </table>
@@ -751,7 +751,7 @@ def _email_boas_vindas(app_nome: str, emoji: str, cor: str, primeiro_nome: str,
 </a>
 
 <p style="font-size:13px;color:#666;margin:0">
-  Precisar de ajuda? Nossa equipe está no WhatsApp <a href="https://wa.me/5547999606998" style="color:{cor}">(47) 99960-6998</a>.
+  Precisar de ajuda? Nossa equipe está no WhatsApp <a href="https://wa.me/5547997766831" style="color:{cor}">(47) 99776-6831</a>.
 </p>"""
     return _email_base(conteudo, cor)
 
@@ -787,7 +787,7 @@ def _email_pagamento_confirmado(app_nome: str, emoji: str, cor: str, primeiro_no
 </a>
 
 <p style="font-size:13px;color:#666;margin:0">
-  Sua renovação é automática todo mês. Cancele quando quiser pelo WhatsApp <a href="https://wa.me/5547999606998" style="color:{cor}">(47) 99960-6998</a>.
+  Sua renovação é automática todo mês. Cancele quando quiser pelo WhatsApp <a href="https://wa.me/5547997766831" style="color:{cor}">(47) 99776-6831</a>.
 </p>"""
     return _email_base(conteudo, cor)
 
@@ -1339,7 +1339,7 @@ def kids_assinar(plano):
                     )
                     if not customer_id:
                         erro = ('Não conseguimos processar o pagamento agora. '
-                                'Entre em contato pelo WhatsApp (47) 99960-6998. 💬')
+                                'Entre em contato pelo WhatsApp (47) 99776-6831. 💬')
                         # Remove o cliente criado
                         kconn2 = get_kids_conn()
                         kconn2.execute('DELETE FROM clients WHERE code=?', (code,))
@@ -2120,7 +2120,7 @@ def defesa_cadastro():
                   <h2 style="color:#7c3aed">Bem-vindo ao DefesaPro, {nome_cadastrado}!</h2>
                   <p>Seu cadastro foi realizado com sucesso.</p>
                   <p style="margin-top:12px">Assim que seu pagamento for confirmado, sua conta será liberada automaticamente.</p>
-                  <p style="margin-top:12px;color:#666;font-size:13px">Dúvidas? Fale pelo WhatsApp: (47) 99960-6998</p>
+                  <p style="margin-top:12px;color:#666;font-size:13px">Dúvidas? Fale pelo WhatsApp: (47) 99776-6831</p>
                 </div>""")
     return render_template('defesapro/cadastro.html',
                            erro=erro, sucesso=sucesso,
@@ -4675,7 +4675,7 @@ def agenda_assinar():
         if not customer_id:
             log.error('[AgendaSC] Falha ao obter customer_id para biz_id=%s email=%s', biz_id, biz.get('email'))
             erro = ('Não conseguimos processar o pagamento agora. '
-                    'Entre em contato pelo WhatsApp (47) 99960-6998 e ativamos sua conta manualmente em minutos. 💬')
+                    'Entre em contato pelo WhatsApp (47) 99776-6831 e ativamos sua conta manualmente em minutos. 💬')
         else:
             conn2 = get_saas_db()
             conn2.execute('UPDATE agenda_businesses SET asaas_customer_id=? WHERE id=?',
@@ -4727,7 +4727,7 @@ def agenda_wpp_contratar():
         if not customer_id:
             log.error('[AgendaWpp] Falha customer_id biz_id=%s', biz_id)
             erro = ('Não conseguimos processar o pagamento agora. '
-                    'Fale no WhatsApp (47) 99960-6998 e ativamos manualmente. 💬')
+                    'Fale no WhatsApp (47) 99776-6831 e ativamos manualmente. 💬')
         else:
             conn2 = get_saas_db()
             conn2.execute('UPDATE agenda_businesses SET asaas_customer_id=? WHERE id=?',
@@ -8443,7 +8443,7 @@ def bau_assinar(plano):
         )
         if not customer_id:
             erro = ('Não conseguimos processar o pagamento agora. '
-                    'Entre em contato pelo WhatsApp (47) 99960-6998. 💬')
+                    'Entre em contato pelo WhatsApp (47) 99776-6831. 💬')
         else:
             conn2 = get_saas_db()
             conn2.execute('UPDATE bau_users SET asaas_customer_id=?, plan=? WHERE id=?',
@@ -10930,8 +10930,8 @@ DESP_CONFIG = {
     "credencial":   os.environ.get("DESP_CREDENCIAL",  "2095"),
     "cidade":       os.environ.get("DESP_CIDADE",     "SCHROEDER"),
     "citran":       os.environ.get("DESP_CITRAN",     "Guaramirim"),
-    "whatsapp":     os.environ.get("DESP_WHATSAPP",   "47999606998"),
-    "whatsapp_fmt": "(47) " + os.environ.get("DESP_WHATSAPP", "47999606998")[2:7] + "-" + os.environ.get("DESP_WHATSAPP", "47999606998")[7:],
+    "whatsapp":     os.environ.get("DESP_WHATSAPP",   "47997766831"),
+    "whatsapp_fmt": "(47) " + os.environ.get("DESP_WHATSAPP", "47997766831")[2:7] + "-" + os.environ.get("DESP_WHATSAPP", "47997766831")[7:],
 }
 DESP_PASSWORD       = os.environ.get("DESP_PASSWORD", "")
 DESP_ADMIN_PASSWORD = os.environ.get("DESP_ADMIN_PASSWORD", "")
@@ -14138,7 +14138,7 @@ def mandaja_cadastro():
         if existing_doc:
             conn.close()
             return render_template('mandaja/cadastro.html',
-                                   error='Este CPF/CNPJ já possui uma loja cadastrada. Faça login ou entre em contato pelo WhatsApp (47) 99960-6998.',
+                                   error='Este CPF/CNPJ já possui uma loja cadastrada. Faça login ou entre em contato pelo WhatsApp (47) 99776-6831.',
                                    cats=MANDAJA_STORE_CATEGORIES)
         # Verifica WhatsApp único — anti-trial-abuse
         existing_phone = conn.execute(
@@ -14148,7 +14148,7 @@ def mandaja_cadastro():
         if existing_phone:
             conn.close()
             return render_template('mandaja/cadastro.html',
-                                   error='Este WhatsApp já está vinculado a uma loja. Faça login ou entre em contato pelo WhatsApp (47) 99960-6998.',
+                                   error='Este WhatsApp já está vinculado a uma loja. Faça login ou entre em contato pelo WhatsApp (47) 99776-6831.',
                                    cats=MANDAJA_STORE_CATEGORIES)
         trial_ends = (datetime.now() + timedelta(days=7)).isoformat()
         try:
