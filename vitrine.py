@@ -695,10 +695,10 @@ def _legenda_ia(loja, midia, produto=None):
         f"O que ela faz: {loja['descricao']}. Jeito de falar do dono: \"{loja['frase']}\".\n{prod}\n"
         f"Regras: 3 a 5 linhas curtas, tom de quem atende no balcão, no máximo 4 hashtags no fim, no máximo 2 emojis, "
         f"nunca escrever 'post automático', sempre com o preço se houver, e terminar com "
-        f"'Chama no zap: {_zap_bonito(loja)} · retira hoje em {cidade}'. Responda só a legenda.")
+        f"'Chama no WhatsApp: {_zap_bonito(loja)} · retira hoje em {cidade}'. Responda só a legenda.")
     if not txt:
         txt = (f"{produto['titulo']} por {_brl(produto['preco'])}. " if produto else '') + \
-              f"Retira hoje em {cidade}. Chama no zap: {_zap_bonito(loja)}"
+              f"Retira hoje em {cidade}. Chama no WhatsApp: {_zap_bonito(loja)}"
     return txt[:2000]
 
 

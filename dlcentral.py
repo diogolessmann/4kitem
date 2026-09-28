@@ -11,7 +11,7 @@ Arquitetura (espelho enxuto da midiateca original):
 - Upload de FOTO é comprimido na entrada (alvo ~100-200 KB, máx 1350px).
 - Metadados em JSON no volume (título/contexto/preço/legenda/publicados).
 - Legenda de VENDA por IA (Gemini REST direto) com fallback construído — o mesmo
-  método validado: emoção abre, razão fecha, CTA no zap.
+  método validado: emoção abre, razão fecha, CTA no WhatsApp (nunca "zap" — regra do dono, 27/set).
 - Publicação: foto (container→publish) e reel (container REELS→poll→publish),
   tokens por env: DESP_PAGE_TOKEN + DESP_IG_USER_ID (copiar do Railway da Rádio).
 """
@@ -52,15 +52,15 @@ MARCAS = {
         "hashtags": "#despachante #Schroeder #detransc #transferencia #licenciamento #DespachanteLessmann",
         "disclaimer": "Credencial DETRAN/SC nº 2095",
     },
-    # 16/set/26 — aba MOTOR: propagandas do que a Rádio vende (Plano Vitrine R$97, aluguel do
-    # motor de conteúdo, site de 1 página). Público = lojista/empresário; publica na Rádio.
+    # 28/set/26 — aba MOTOR = propaganda da VITRINE (site da loja + motor que posta). A Rádio foi
+    # vendida (24/set): nada aqui fala dela. Público = lojista/empresário. WhatsApp = o da LOJA.
     "motor": {
-        "label": "📻 MOTOR · Rádio, Motor e Site",
+        "label": "🏪 MOTOR · Vitrine (site + motor)",
         "tipo": "motor",
-        "telefone": "(47) 99716-2967",
-        "endereco": "Schroeder/SC · atende Jaraguá, Guaramirim, Corupá e todo o Vale",
-        "hashtags": "#RadioSCNews #ValeDoItapocu #Schroeder #JaraguaDoSul #comerciolocal #marketinglocal",
-        "disclaimer": "Nota fiscal em tudo · cancela quando quiser",
+        "telefone": "(47) 99776-6831",
+        "endereco": "Schroeder/SC · atende todo o Vale do Itapocu",
+        "hashtags": "#comerciolocal #catalogodigital #sitedaloja #Schroeder #JaraguaDoSul #ValeDoItapocu #4kitem",
+        "disclaimer": "Schroeder/SC · imagens ilustrativas",
     },
 }
 
@@ -246,13 +246,13 @@ def _fallback_venda(cfg, titulo, contexto, preco):
                    cfg["disclaimer"], "", cfg["hashtags"]]
         return "\n".join(linhas)
     if tipo == "motor":
-        linhas = [f"📻 {titulo or 'Sua loja na Rádio SC News'}", ""]
+        linhas = [f"🏪 {titulo or 'Tua loja com um site que chama no teu WhatsApp'}", ""]
         if contexto:
             linhas += [contexto, ""]
-        linhas += ["✅ Plano Vitrine: você manda a foto, a gente escreve, você aprova",
-                   "✅ 1 post + 1 story por semana na Rádio (456 mil contas/mês) + cupom pra medir",
-                   "✅ Motor de conteúdo pra sua marca e site de 1 página que o Google acha",
-                   "✅ Nota fiscal · sem contrato · cancela quando quiser"]
+        linhas += ["✅ Um site com os teus produtos e preços, feito pro Google te achar",
+                   "✅ Cada botão abre o TEU WhatsApp com a mensagem pronta",
+                   "✅ A gente faz e posta no teu Instagram por ti",
+                   "✅ Toda sexta, um número: quantas pessoas clicaram pra te chamar"]
         if preco:
             linhas.insert(2, f"💰 {preco}")
         linhas += ["", f"📲 WhatsApp {cfg['telefone']}", "", cfg["disclaimer"], "", cfg["hashtags"]]
@@ -314,7 +314,14 @@ def gerar_legenda(marca, arquivo):
                  "direto ou débitos em até 24x no cartão; tudo pelo WhatsApp. Para "
                  "documentos, citar só Schroeder.")
     elif cfg["tipo"] == "motor":
-        fatos = ("FATOS: Rádio SC News, portal e Instagram hiperlocal do Norte de SC (Schroeder, "
+        fatos = ("FATOS: VITRINE (4kitem, Schroeder/SC) = site da loja no domínio dela, com catálogo de "
+                 "foto e preço; cada botão abre o WhatsApp DA LOJA com a mensagem pronta ('Oi, vim do site. "
+                 "Quero: cód. … Tem na loja?'); o lojista muda preço e marca 'acabou' pelo celular; a gente "
+                 "faz e posta no Instagram dele; toda sexta ele recebe quantas pessoas clicaram no botão "
+                 "(CLIQUES, não vendas); quem atende é a loja — sem robô, sem carrinho. Público: dono de loja "
+                 "do Vale do Itapocu. PROIBIDO: prometer vendas ou alcance, 'post todo dia', a palavra 'zap' "
+                 "(sempre WhatsApp), falar da Rádio, citar preço se não vier no PREÇO.")
+        _legado_radio = ("FATOS antigos (Rádio vendida, NÃO usar): Rádio SC News, portal e Instagram hiperlocal do Norte de SC (Schroeder, "
                  "Jaraguá do Sul, Guaramirim, Corupá), 1,2 milhão de views/mês, 456 mil contas "
                  "alcançadas em 30 dias. VENDE 3 COISAS: (1) Plano Vitrine R$97/mês — o lojista "
                  "manda a foto e uma frase pelo WhatsApp, a Rádio escreve o post, ele aprova, sai "
