@@ -19166,20 +19166,21 @@ def dlcentral_grid():
             '<button name="acao" value="salvar" style="background:#248;color:#fff;border:0;'
             'border-radius:99px;padding:7px 14px;cursor:pointer">💾 Salvar</button>'
             '<button name="acao" value="publicar" '
-            'onclick="return confirm(\'Publicar %s no IG do DESPACHANTE?\')" '
+            'onclick="return confirm(\'Publicar %s no IG %s?\')" '
             'style="background:#25d366;color:#000;font-weight:800;border:0;'
             'border-radius:99px;padding:7px 14px;cursor:pointer">🚀 Publicar</button>'
             # 24/set/26: botão "Publicar na Rádio" removido — a Rádio foi vendida ao Gabriel.
             # 19/set/26: 3º perfil (SC News Mobilidade) — promoção de parceiro/peça/pneu vai pra lá
             '<button name="acao" value="publicar_mob" '
-            'onclick="return confirm(\'Publicar %s no IG de MOBILIDADE?\')" '
+            'onclick="return confirm(\'Publicar %s no IG do RODA NORTE?\')" '
             'style="background:#ffc400;color:#000;font-weight:800;border:0;'
-            'border-radius:99px;padding:7px 14px;cursor:pointer">🚗 Publicar na Mobilidade</button>'
+            'border-radius:99px;padding:7px 14px;cursor:pointer">🚗 Publicar no Roda Norte</button>'
             '<button name="acao" value="excluir" '
             'onclick="return confirm(\'Excluir %s do grid?\')" '
             'style="background:#611;color:#faa;border:0;border-radius:99px;'
             'padding:7px 14px;cursor:pointer">🗑️</button>'
-            '</div></form></div>' % (a, a, a))   # 24/set: eram 4; o botao da Radio saiu
+            '</div></form></div>' % (a, 'da DL MOBILIDADE' if marca == 'dlmob' else 'do DESPACHANTE',
+                                     a, a))   # 24/set: eram 4; o botao da Radio saiu
     logs = ''.join('<div style="color:#9aa;font-size:12px">%s — %s</div>'
                    % (e['quando'], e['msg']) for e in dlc.log_recente())
     return ('<!doctype html><html><head><meta charset="utf-8">'
@@ -19267,7 +19268,9 @@ def dlcentral_legenda():
     if acao in ('publicar', 'publicar_mob'):
         if not legenda:
             return redirect('/saas-admin/dlcentral?marca=%s&ok=escreve ou gera a legenda antes' % marca)
-        destino = {'publicar_mob': 'mobilidade'}.get(acao, 'despachante')
+        # 29/set: a aba Scooters (dlmob) publica no IG PRÓPRIO da DL Mobilidade, não no Despachante
+        destino = 'mobilidade' if acao == 'publicar_mob' else (
+            'dl_mobilidade' if marca == 'dlmob' else 'despachante')
         if not dlc.tokens_ok(destino):
             return redirect('/saas-admin/dlcentral?marca=%s&ok=sem tokens do destino %s — colar %s no Railway'
                             % (marca, destino, ' e '.join(dlc.DESTINOS[destino]['env'])))

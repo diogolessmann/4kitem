@@ -9,7 +9,7 @@ código portado 1:1 do repo da Rádio. Este arquivo só decide QUANDO rodar o qu
 Grade (America/Sao_Paulo):
   10:00       despachante · manhã   (série "1 post = 1 página", alterna documentalista/defesa)
   13:00       despachante · meio    (mito/consequência)  — só com DESP_MEIO_ON=1
-  16:00 t/q/s DL Mobilidade · oferta de scooter com FOTO REAL (tokens do despachante)
+  16:00 t/q/s DL Mobilidade · oferta de scooter com FOTO REAL no IG PRÓPRIO (tokens DLMOB_*)
   12:30       story da FILA de peças prontas (CONTEUDO_21) — FILA_PRONTA_ON=0 desliga
   19:00       despachante · noite   (story "veja mais no site")
   hh:20 x6    SC News Mobilidade    (MOB_HORAS, default 7,10,12,15,18,20) — só com MOB_ON=1 + tokens MOB_*
@@ -80,7 +80,7 @@ def _dlmob():
     t = marcas.BRANDS["dl_mobilidade"]
     token, ig_id, _ = marcas._brand_tokens(t)
     if not (token and ig_id):
-        return "sem tokens DESP_* — pulado"
+        return "sem tokens DLMOB_* — pulado (scooter não posta mais no IG do Despachante)"
     if not ao_vivo():
         paths, cap, _ = marcas.generate("dl_mobilidade")
         return f"PREVIEW: {paths[0]}"
@@ -111,7 +111,8 @@ def _story_fila():
 def _insights():
     from dlm import insights
     n = insights.coletar_marca("despachante", dias=7)
-    return f"insights: {n}"
+    m = insights.coletar_marca("dl_mobilidade", dias=7)
+    return f"insights: despachante {n} · dl_mobilidade {m}"
 
 
 def _mob_horas():

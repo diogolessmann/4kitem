@@ -230,16 +230,16 @@ BRANDS = {
         "nome": "DL Mobilidade",
         "brand_tag": "DL MOBILIDADE",
         "tagline": "Scooters elétricas NXT em Schroeder e região",
-        "site": "dldespachante.com.br",
-        "whats": "(47) 99716-2967",
-        "instagram": "@despachantelessmann",
+        "site": "dldespachante.com.br",       # a legenda já acrescenta /mobilidade
+        "whats": "(47) 99776-6831",          # WhatsApp da LOJA (28/set), não o do despachante
+        "instagram": os.environ.get("DLMOB_HANDLE", ""),
         # tema laranja/preto (energia + scooter)
         "bg": (15, 17, 22), "card": (26, 29, 38), "accent": (255, 120, 20),
         "accent2": (245, 197, 24), "white": (245, 247, 250), "muted": (170, 178, 188),
-        # 27/jul — DECISÃO DO DONO: sem IG separado; "Despachante Lessmann É a DL Mobilidade".
-        # A oferta de scooter (foto real + preço) posta NO PERFIL DO DESPACHANTE (tokens DESP_*),
-        # 3x/semana (ter/qui/sáb 16h) pra não virar spam comercial no feed diário.
-        "env": {"token": "DESP_PAGE_TOKEN", "ig": "DESP_IG_USER_ID", "page": "DESP_PAGE_ID"},
+        # 29/set/26 — DECISÃO DO DONO: a DL Mobilidade tem Instagram PRÓPRIO; o do Despachante fica
+        # só pro despachante. (Antes, 27/jul: a oferta postava no perfil do Despachante com DESP_*.)
+        # Sem os tokens DLMOB_* o turno das 16h PULA — nunca volta a cair no Despachante.
+        "env": {"token": "DLMOB_PAGE_TOKEN", "ig": "DLMOB_IG_USER_ID", "page": "DLMOB_PAGE_ID"},
         "hashtags": ["#scootereletrica", "#nxt", "#mobilidadeeletrica", "#schroeder",
                      "#jaraguadosul", "#guaramirim", "#dlmobilidade", "#semcnh",
                      "#scooter", "#viacredi"],

@@ -358,8 +358,10 @@ def gerar_legenda(marca, arquivo):
 # o destino "radio" saiu de vez. O 4kitem publica só nos perfis do dono.
 DESTINOS = {
     "despachante": {"label": "IG do Despachante", "env": ("DESP_PAGE_TOKEN", "DESP_IG_USER_ID")},
-    # 19/set/26: 3º perfil — SC News Mobilidade (carro/moto/scooter do Norte de SC)
-    "mobilidade": {"label": "IG SC News Mobilidade", "env": ("MOB_PAGE_TOKEN", "MOB_IG_USER_ID")},
+    # 19/set/26: 3º perfil — Roda Norte (@rodanorte.sc, carro/moto/scooter do Norte de SC)
+    "mobilidade": {"label": "IG Roda Norte", "env": ("MOB_PAGE_TOKEN", "MOB_IG_USER_ID")},
+    # 29/set/26: a loja de scooters tem IG próprio — a aba "Scooters" publica lá, não no Despachante
+    "dl_mobilidade": {"label": "IG da DL Mobilidade", "env": ("DLMOB_PAGE_TOKEN", "DLMOB_IG_USER_ID")},
 }
 
 
