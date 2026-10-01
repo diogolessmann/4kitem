@@ -19127,11 +19127,14 @@ def dlcentral_grid():
             m, ('background:#6366f1;color:#fff' if m == marca else
                 'background:#1a1a2e;color:#9aa'), c['label'])
         for m, c in dlc.MARCAS.items())
-    tok_aviso = '' if dlc.tokens_ok() else (
+    # 01/out: cada aba olha o perfil para onde o 🚀 publica (Scooters = IG da DL Mobilidade)
+    _dest = 'dl_mobilidade' if marca == 'dlmob' else 'despachante'
+    tok_aviso = '' if dlc.tokens_ok(_dest) else (
         '<div style="background:#3a1a1a;border:1px solid #f43;color:#faa;border-radius:10px;'
-        'padding:10px 14px;margin:10px 0;font-size:13px">⚠️ Tokens do IG do Despachante '
-        'ausentes — colar <b>DESP_PAGE_TOKEN</b> e <b>DESP_IG_USER_ID</b> no Railway do '
-        '4kitem (copiar do Railway da Rádio). Upload e legendas já funcionam.</div>')
+        'padding:10px 14px;margin:10px 0;font-size:13px">⚠️ Tokens do %s '
+        'ausentes — colar <b>%s</b> e <b>%s</b> no Railway do '
+        '4kitem. Upload e legendas já funcionam.</div>'
+        % ((dlc.DESTINOS[_dest]['label'],) + tuple(dlc.DESTINOS[_dest]['env'])))
     cards = []
     for it in itens:
         a = it['arquivo']
@@ -19192,7 +19195,8 @@ def dlcentral_grid():
             '<div style="display:flex;justify-content:space-between;align-items:center;'
             'flex-wrap:wrap;gap:10px">'
             '<h2 style="margin:0">🗂️ Central DL <span style="font-size:13px;color:#889">'
-            'publica no IG do Despachante</span></h2>'
+            + ('publica no IG da DL Mobilidade' if marca == 'dlmob' else 'publica no IG do Despachante')
+            + '</span></h2>'
             '<a href="/saas-admin" style="color:#88f">← SaaS Admin</a></div>'
             '<div style="display:flex;gap:8px;margin:14px 0;flex-wrap:wrap">' + abas + '</div>'
             + tok_aviso +
