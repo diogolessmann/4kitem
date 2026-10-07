@@ -19129,6 +19129,7 @@ def dlcentral_grid():
         for m, c in dlc.MARCAS.items())
     # 01/out: cada aba olha o perfil para onde o 🚀 publica (Scooters = IG da DL Mobilidade)
     _dest = {'dlmob': 'dl_mobilidade', 'defesas': 'defesas'}.get(marca, 'despachante')   # 06/10: DL Defesas tem IG próprio
+    _ig_nome = {'dlmob': 'da DL MOBILIDADE', 'defesas': 'da DL DEFESAS'}.get(marca, 'do DESPACHANTE')   # 07/10: a confirmação do 🚀 diz o perfil certo
     tok_aviso = '' if dlc.tokens_ok(_dest) else (
         '<div style="background:#3a1a1a;border:1px solid #f43;color:#faa;border-radius:10px;'
         'padding:10px 14px;margin:10px 0;font-size:13px">⚠️ Tokens do %s '
@@ -19154,7 +19155,8 @@ def dlcentral_grid():
         cards.append(
             '<div style="background:#12121f;border:1px solid #262640;border-radius:14px;'
             'padding:14px">' + midia +
-            '<div style="font-size:12px;color:#889;margin:8px 0 4px">%s · %s</div>' % (a, it['origem']) +
+            '<div style="font-size:12px;color:#889;margin:8px 0 4px">%s · %s · '
+            '<a href="%s" download="%s" style="color:#8af;text-decoration:none">⬇️ baixar</a></div>' % (a, it['origem'], it['url'], a) +   # 07/10: baixar o arquivo
             '<div>%s</div>' % pubs +
             '<form method="post" action="/saas-admin/dlcentral/legenda">'
             '<input type="hidden" name="marca" value="%s">'
@@ -19171,19 +19173,20 @@ def dlcentral_grid():
             '<button name="acao" value="publicar" '
             'onclick="return confirm(\'Publicar %s no IG %s?\')" '
             'style="background:#25d366;color:#000;font-weight:800;border:0;'
-            'border-radius:99px;padding:7px 14px;cursor:pointer">🚀 Publicar</button>'
+            'border-radius:99px;padding:7px 14px;cursor:pointer">🚀 Publicar</button>' % (a, _ig_nome) +
             # 24/set/26: botão "Publicar na Rádio" removido — a Rádio foi vendida ao Gabriel.
             # 19/set/26: 3º perfil (SC News Mobilidade) — promoção de parceiro/peça/pneu vai pra lá
-            '<button name="acao" value="publicar_mob" '
-            'onclick="return confirm(\'Publicar %s no IG do RODA NORTE?\')" '
-            'style="background:#ffc400;color:#000;font-weight:800;border:0;'
-            'border-radius:99px;padding:7px 14px;cursor:pointer">🚗 Publicar no Roda Norte</button>'
+            # 07/10/26: na aba DL Defesas o botão do Roda Norte não existe (a DL Defesas só publica no IG próprio, onde vale a trava do CRDD)
+            ('' if marca == 'defesas' else (
+                '<button name="acao" value="publicar_mob" '
+                'onclick="return confirm(\'Publicar %s no IG do RODA NORTE?\')" '
+                'style="background:#ffc400;color:#000;font-weight:800;border:0;'
+                'border-radius:99px;padding:7px 14px;cursor:pointer">🚗 Publicar no Roda Norte</button>' % a)) +
             '<button name="acao" value="excluir" '
             'onclick="return confirm(\'Excluir %s do grid?\')" '
             'style="background:#611;color:#faa;border:0;border-radius:99px;'
             'padding:7px 14px;cursor:pointer">🗑️</button>'
-            '</div></form></div>' % (a, 'da DL MOBILIDADE' if marca == 'dlmob' else 'do DESPACHANTE',
-                                     a, a))   # 24/set: eram 4; o botao da Radio saiu
+            '</div></form></div>' % a)
     logs = ''.join('<div style="color:#9aa;font-size:12px">%s — %s</div>'
                    % (e['quando'], e['msg']) for e in dlc.log_recente())
     return ('<!doctype html><html><head><meta charset="utf-8">'
@@ -19195,7 +19198,7 @@ def dlcentral_grid():
             '<div style="display:flex;justify-content:space-between;align-items:center;'
             'flex-wrap:wrap;gap:10px">'
             '<h2 style="margin:0">🗂️ Central DL <span style="font-size:13px;color:#889">'
-            + ('publica no IG da DL Mobilidade' if marca == 'dlmob' else 'publica no IG do Despachante')
+            + 'publica no ' + dlc.DESTINOS[_dest]['label']   # 07/10: diz o perfil certo também na aba DL Defesas
             + '</span></h2>'
             '<a href="/saas-admin" style="color:#88f">← SaaS Admin</a></div>'
             '<div style="display:flex;gap:8px;margin:14px 0;flex-wrap:wrap">' + abas + '</div>'
@@ -19213,6 +19216,8 @@ def dlcentral_grid():
             'style="color:#ccc"> '
             '<button style="background:#6366f1;color:#fff;border:0;border-radius:99px;'
             'padding:8px 18px;cursor:pointer">Enviar</button></form>'
+            '<div style="margin:-6px 0 14px"><a href="/saas-admin/dlcentral/zip?marca=' + marca + '" '
+            'style="color:#8af;font-size:13px;text-decoration:none">📦 Baixar tudo desta aba (.zip, com as legendas salvas)</a></div>'
             '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));'
             'gap:14px">' + ''.join(cards) + '</div>'
             '<h3 style="margin-top:22px">📜 Últimas ações</h3>' + logs +
@@ -19225,6 +19230,38 @@ def dlcentral_grid():
             'if(j.ok){t.value=j.legenda;t.style.borderColor="#2a5";}else{alert("Falhou: "+(j.erro||r.status));}}'
             'catch(e){alert("Falhou: "+e);}b.disabled=false;b.textContent=o;return false;}</script>'
             '</div></body></html>')
+
+
+@app.route('/saas-admin/dlcentral/zip')
+@_saas_admin_required
+def dlcentral_zip():
+    """07/10: baixa tudo que a aba mostra (fotos, vídeos e as legendas salvas) num .zip. Só admin; a mídia em si já é pública em /dlmedia/."""
+    import dlcentral as dlc
+    marca = request.args.get('marca', 'dlmob')
+    if marca not in dlc.MARCAS:
+        abort(404)
+    try:
+        tmp, nome, _n = dlc.zip_da_aba(marca)
+    except ValueError as e:
+        return redirect('/saas-admin/dlcentral?marca=%s&ok=%s' % (marca, str(e)))
+    tamanho = os.path.getsize(tmp)
+
+    def _envia():
+        # manda em pedaços e só apaga o temporário depois de fechar o arquivo (no Windows apagar aberto falha); o finally também roda se o navegador cancelar
+        try:
+            with open(tmp, 'rb') as f:
+                while True:
+                    pedaco = f.read(1 << 20)
+                    if not pedaco:
+                        break
+                    yield pedaco
+        finally:
+            try:
+                os.remove(tmp)
+            except OSError:
+                pass
+    return Response(_envia(), mimetype='application/zip',
+                    headers={'Content-Disposition': 'attachment; filename="%s"' % nome, 'Content-Length': str(tamanho)})
 
 
 @app.route('/saas-admin/dlcentral/upload', methods=['POST'])
@@ -19272,6 +19309,8 @@ def dlcentral_legenda():
     if acao in ('publicar', 'publicar_mob'):
         if not legenda:
             return redirect('/saas-admin/dlcentral?marca=%s&ok=escreve ou gera a legenda antes' % marca)
+        if acao == 'publicar_mob' and marca == 'defesas':   # 07/10: a DL Defesas só publica no IG próprio (é nele que vale a trava do CRDD)
+            return redirect('/saas-admin/dlcentral?marca=defesas&ok=a DL Defesas só publica no IG da DL Defesas — não publicado')
         # 29/set: a aba Scooters (dlmob) publica no IG PRÓPRIO da DL Mobilidade, não no Despachante
         destino = 'mobilidade' if acao == 'publicar_mob' else {'dlmob': 'dl_mobilidade', 'defesas': 'defesas'}.get(marca, 'despachante')
         if not dlc.tokens_ok(destino):

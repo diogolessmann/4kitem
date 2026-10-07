@@ -221,6 +221,52 @@ def salvar_upload(marca, filename, blob):
     return nome
 
 
+# ------------------------------------------------------------------ baixar (07/10/26)
+ZIP_MAX_MB = 200   # o gunicorn roda com 1 worker: um zip enorme seguraria o app inteiro; acima disso, baixar arquivo a arquivo
+
+
+def zip_da_aba(marca):
+    """Monta um .zip (arquivo temporário FORA do volume) com tudo que a aba mostra (repo + uploads, sem os excluídos e sem nome repetido)
+    mais LEGENDAS.txt com as legendas salvas e onde cada peça já foi publicada. Devolve (caminho, nome_do_download, n_arquivos);
+    quem chama apaga o temporário depois do envio. Levanta ValueError se passar de ZIP_MAX_MB."""
+    import tempfile
+    import zipfile
+    vistos, achados = set(), []
+    for it in listar(marca):
+        if it["arquivo"] in vistos:
+            continue
+        vistos.add(it["arquivo"])
+        try:
+            caminho, _url, _tipo = acha(marca, it["arquivo"])   # upload tem prioridade sobre repo (mesma regra da publicação)
+        except FileNotFoundError:
+            continue
+        achados.append((it, caminho))
+    total = sum(os.path.getsize(c) for _it, c in achados)
+    if total > ZIP_MAX_MB * 1024 * 1024:
+        raise ValueError("aba com %d MB (limite de %d MB por zip): baixe arquivo a arquivo" % (total // 1048576, ZIP_MAX_MB))
+    fd, tmp = tempfile.mkstemp(prefix="dl_%s_" % marca, suffix=".zip")
+    os.close(fd)
+    linhas = []
+    try:
+        with zipfile.ZipFile(tmp, "w", zipfile.ZIP_STORED, allowZip64=True) as z:   # foto e mp4 já são comprimidos: guarda sem recomprimir
+            for it, caminho in achados:
+                z.write(caminho, arcname=it["arquivo"])
+                m = it.get("meta") or {}
+                pubs = ", ".join(p.get("quando", "") for p in m.get("publicados", []))
+                origem = "upload" if os.path.abspath(os.path.dirname(caminho)) == os.path.abspath(upload_dir(marca)) else "repo"
+                linhas.append("=== %s (%s, %s)%s\n%s\n" % (it["arquivo"], it["tipo"], origem, (" | publicado: " + pubs) if pubs else "",
+                                                          (m.get("legenda_venda") or "").strip() or "(sem legenda salva)"))
+            z.writestr("LEGENDAS.txt", ("﻿" + ("\n".join(linhas) or "(aba vazia)\n")).encode("utf-8"))
+    except Exception:
+        try:
+            os.remove(tmp)
+        except OSError:
+            pass
+        raise
+    log("📦 baixado: %s (%d arquivos, %d KB)" % (marca, len(achados), total // 1024))
+    return tmp, "central-dl_%s_%s.zip" % (marca, datetime.now().strftime("%Y-%m-%d")), len(achados)
+
+
 # ------------------------------------------------------------------ legenda de VENDA
 # DL Defesas (06/10/26): a credencial DETRAN/SC nº 2095 é de Diogo Kauê Lessmann (Despachante Lessmann), não da marca DL Defesas. Lei 14.282/2021, art. 6º, IX: a publicidade
 # leva a razão social e a inscrição no CRDD. O número vem da variável DEFESAS_CRDD do Railway (ex.: "CRDD/SC nº 1234"); sem ela, NADA publica na aba DL Defesas.
