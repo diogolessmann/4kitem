@@ -37,12 +37,13 @@ MARCAS = {
         "disclaimer": "*sujeito a análise de crédito",
     },
     "defesas": {
-        "label": "⚖️ DL Defesas",
+        "label": "DL Defesas",   # 06/10: sem a balança (símbolo de advocacia; a marca não é escritório de advocacia)
         "tipo": "defesa",
         "telefone": "(47) 99716-2967",
         "endereco": "R. Mal. Castelo Branco, 2838, Sala 02 — Centro, Schroeder/SC",
-        "hashtags": "#defesademulta #cnhsuspensa #recursodemulta #multa #Schroeder #DespachanteLessmann",
-        "disclaimer": "Análise gratuita · atendimento digital em todo o Brasil",
+        "hashtags": "#defesademulta #recursodemulta #cnhsuspensa #jaraguadosul #DespachanteLessmann",   # 5 (limite do Instagram; A3)
+        # 06/10: versão curta; o rodapé COMPLETO (razão social, CNPJ, credencial da pessoa, CRDD) é montado por _rodape_defesas() e colado por gerar_legenda
+        "disclaimer": "DL Defesas, um produto do Despachante Lessmann · Defesa administrativa: não somos escritório de advocacia",
     },
     "despachante": {
         "label": "🏛️ Despachante Lessmann",
@@ -221,17 +222,45 @@ def salvar_upload(marca, filename, blob):
 
 
 # ------------------------------------------------------------------ legenda de VENDA
+# DL Defesas (06/10/26): a credencial DETRAN/SC nº 2095 é de Diogo Kauê Lessmann (Despachante Lessmann), não da marca DL Defesas. Lei 14.282/2021, art. 6º, IX: a publicidade
+# leva a razão social e a inscrição no CRDD. O número vem da variável DEFESAS_CRDD do Railway (ex.: "CRDD/SC nº 1234"); sem ela, NADA publica na aba DL Defesas.
+_DEFESAS_RAZAO = "Despachante Lessmann Schroeder Ltda"
+
+
+def _crdd_defesas():
+    return os.environ.get("DEFESAS_CRDD", "").strip()
+
+
+def _rodape_defesas():
+    return ("DL Defesas é um produto do %s · CNPJ 28.858.795/0001-92\n"
+            "Despachante Lessmann - Diogo Kauê Lessmann · %s · Credencial DETRAN/SC nº 2095\n"
+            "Defesa administrativa. Não somos escritório de advocacia. Quem decide é o órgão de trânsito."
+            % (_DEFESAS_RAZAO, _crdd_defesas() or "CRDD/SC nº [PREENCHER]"))
+
+
+def _sem_hashtags(txt):
+    return "\n".join(l for l in txt.split("\n") if not (l.strip() and all(t.startswith("#") for t in l.split()))).rstrip()
+
+
+def legenda_defesas_ok(legenda):
+    """True só se a legenda traz a razão social e o CRDD (variável DEFESAS_CRDD). Conferida antes de publicar na aba DL Defesas."""
+    crdd = _crdd_defesas()
+    return bool(crdd) and crdd in (legenda or "") and _DEFESAS_RAZAO in (legenda or "")
+
+
 def _fallback_venda(cfg, titulo, contexto, preco):
     tipo = cfg.get("tipo")
     if tipo == "defesa":
-        linhas = [f"⚖️ {titulo or 'Recebeu multa ou notificação?'} — DL Defesas!", ""]
+        # 06/10: sem balança, sem "continua dirigindo" solto (CTB, art. 285, § 1º: só no prazo e, em regra), sem "casos reais arquivados" (sem prova real e autorizada),
+        # "conferência" gratuita (não "análise jurídica"). A frase de recurso só sai em post sobre recurso (A3). O rodapé e as hashtags são colados por gerar_legenda.
+        linhas = [f"{titulo or 'Recebeu uma notificação de multa?'} — DL Defesas, um produto do Despachante Lessmann.", ""]
         if contexto:
             linhas += [contexto, ""]
-        linhas += ["✅ Análise GRATUITA da tua notificação",
-                   "✅ Recurso com efeito suspensivo: você continua dirigindo",
-                   "✅ Casos reais já arquivados · sigilo total", "",
-                   f"📲 Manda a FOTO da notificação: WhatsApp {cfg['telefone']}", "",
-                   cfg["hashtags"]]
+        linhas += ["Conferência GRATUITA do prazo e dos dados da notificação."]
+        if "recurso" in f"{titulo} {contexto}".lower():
+            linhas += ["Recurso no prazo: em regra, suspende a penalidade enquanto é julgado (CTB, art. 285). Fora do prazo, não."]
+        linhas += ["Conversa reservada, com sigilo profissional.", "",
+                   f"Envie a FOTO da notificação pelo WhatsApp {cfg['telefone']}"]
         return "\n".join(linhas)
     if tipo == "servicos":
         linhas = [f"🏛️ {titulo or 'Documentação veicular'} — Despachante Lessmann, Schroeder!", ""]
@@ -303,11 +332,17 @@ def gerar_legenda(marca, arquivo):
     contexto = m.get("contexto") or ""
     preco = m.get("preco") or ""
     if cfg["tipo"] == "defesa":
-        fatos = ("FATOS: DL Defesas do Despachante Lessmann (credencial DETRAN/SC 2095, "
-                 "Schroeder); defesa de multa e CNH em todas as instâncias; recurso tem "
-                 "efeito suspensivo — a pessoa CONTINUA dirigindo; análise GRATUITA pelo "
-                 "WhatsApp; sigilo; atendimento digital para todo o Brasil. PROIBIDO "
-                 "prometer resultado.")
+        fatos = ("FATOS: DL Defesas, um produto do Despachante Lessmann, em Schroeder/SC; defesa ADMINISTRATIVA de multa e CNH; NÃO somos escritório de advocacia "
+                 "e não somos advogados; recurso apresentado no prazo, em regra, suspende a penalidade enquanto é julgado (CTB, art. 285), com exceções (por exemplo, "
+                 "álcool); recurso fora do prazo não suspende; pontos: dizer 'dentro de um período de 12 meses', nunca 'últimos 12 meses' nem a data em que um ponto "
+                 "'sai'; curso preventivo de reciclagem em SC: só CNH C, D ou E com EAR, de 30 a 39 pontos e prontuário de SC; desconto de 40%: só com adesão prévia ao "
+                 "SNE e renúncia à defesa e ao recurso; conferência GRATUITA do prazo e dos dados da notificação pelo WhatsApp; conversa reservada, com sigilo "
+                 "profissional; atendimento pelo WhatsApp. PROIBIDO: prometer ou sugerir resultado, 'garantido', '100%', 'cancelamos', 'revertemos', 'análise gratuita' "
+                 "(dizer 'conferência gratuita'), 'continua dirigindo' sem 'em regra', 'casos reais arquivados' ou qualquer prova que não esteja nos FATOS, preço de "
+                 "suspensão ou de cassação, 'acompanhamos o processo', 'não pedimos senha', prazo de entrega, 'Lei Seca' como chamariz, soar como advogado (advogado, "
+                 "OAB, jurídico, defesa técnica, assessoria, consultoria, parecer), a palavra 'zap', balança ou martelo, medo como isca, emojis. "
+                 "NÃO escreva rodapé, razão social, credencial, CRDD, endereço nem hashtags: o sistema acrescenta. "
+                 "Nunca diga que a DL Defesas é 'despachante credenciado' sozinha: a credencial é do Despachante Lessmann.")
     elif cfg["tipo"] == "servicos":
         fatos = ("FATOS: despachante credenciado DETRAN/SC nº 2095, Schroeder; 0km com "
                  "documento em até 2 horas; transferência em até 1 dia útil; IPVA em 3x "
@@ -349,6 +384,9 @@ def gerar_legenda(marca, arquivo):
         f"CASA: {cfg['label']}, {cfg['endereco']} — WhatsApp {cfg['telefone']}\n"
         f"{fatos}\nHASHTAGS: {cfg['hashtags']}")
     venda = _gemini(prompt) or _fallback_venda(cfg, titulo, contexto, preco)
+    if cfg["tipo"] == "defesa":
+        # 06/10 (A3): rodapé (razão social, CNPJ, credencial, CRDD) e as 5 hashtags vão no fim de TODA legenda (IA ou fallback), colados pelo código, nunca pedidos ao modelo
+        venda = _sem_hashtags(venda) + "\n\n" + _rodape_defesas() + "\n\n" + cfg["hashtags"]
     meta_set(marca, arquivo, legenda_venda=venda)
     return venda
 
@@ -362,6 +400,9 @@ DESTINOS = {
     "mobilidade": {"label": "IG Roda Norte", "env": ("MOB_PAGE_TOKEN", "MOB_IG_USER_ID")},
     # 29/set/26: a loja de scooters tem IG próprio — a aba "Scooters" publica lá, não no Despachante
     "dl_mobilidade": {"label": "IG da DL Mobilidade", "env": ("DLMOB_PAGE_TOKEN", "DLMOB_IG_USER_ID")},
+    # 06/10/26: a aba "DL Defesas" publica no IG PRÓPRIO (@dldefesas.multas), nunca no do Despachante. Sem os 2 tokens, a tela avisa e não publica.
+    # Railway (4 variáveis): DEFESAS_PAGE_TOKEN, DEFESAS_IG_USER_ID, DEFESAS_PAGE_ID e DEFESAS_CRDD (ex.: "CRDD/SC nº 1234").
+    "defesas": {"label": "IG da DL Defesas", "env": ("DEFESAS_PAGE_TOKEN", "DEFESAS_IG_USER_ID")},
 }
 
 
@@ -401,6 +442,9 @@ def _publicar_job(marca, arquivo, legenda, destino="despachante"):
         log(f"⛔ destino '{destino}' não existe mais — nada publicado ({marca}/{arquivo})")
         return
     alvo = DESTINOS[destino]
+    if destino == "defesas" and not legenda_defesas_ok(legenda):
+        log(f"⛔ {marca}/{arquivo}: a legenda precisa da razão social e do CRDD (variável DEFESAS_CRDD no Railway; Lei 14.282/2021, art. 6º, IX) — nada publicado")
+        return
     log(f"⏳ publicando {marca}/{arquivo} no {alvo['label']}…")
     try:
         tok, ig = _tokens(destino)

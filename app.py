@@ -19128,7 +19128,7 @@ def dlcentral_grid():
                 'background:#1a1a2e;color:#9aa'), c['label'])
         for m, c in dlc.MARCAS.items())
     # 01/out: cada aba olha o perfil para onde o 🚀 publica (Scooters = IG da DL Mobilidade)
-    _dest = 'dl_mobilidade' if marca == 'dlmob' else 'despachante'
+    _dest = {'dlmob': 'dl_mobilidade', 'defesas': 'defesas'}.get(marca, 'despachante')   # 06/10: DL Defesas tem IG próprio
     tok_aviso = '' if dlc.tokens_ok(_dest) else (
         '<div style="background:#3a1a1a;border:1px solid #f43;color:#faa;border-radius:10px;'
         'padding:10px 14px;margin:10px 0;font-size:13px">⚠️ Tokens do %s '
@@ -19273,11 +19273,12 @@ def dlcentral_legenda():
         if not legenda:
             return redirect('/saas-admin/dlcentral?marca=%s&ok=escreve ou gera a legenda antes' % marca)
         # 29/set: a aba Scooters (dlmob) publica no IG PRÓPRIO da DL Mobilidade, não no Despachante
-        destino = 'mobilidade' if acao == 'publicar_mob' else (
-            'dl_mobilidade' if marca == 'dlmob' else 'despachante')
+        destino = 'mobilidade' if acao == 'publicar_mob' else {'dlmob': 'dl_mobilidade', 'defesas': 'defesas'}.get(marca, 'despachante')
         if not dlc.tokens_ok(destino):
             return redirect('/saas-admin/dlcentral?marca=%s&ok=sem tokens do destino %s — colar %s no Railway'
                             % (marca, destino, ' e '.join(dlc.DESTINOS[destino]['env'])))
+        if destino == 'defesas' and not dlc.legenda_defesas_ok(legenda):   # 06/10: Lei 14.282/2021, art. 6º, IX
+            return redirect('/saas-admin/dlcentral?marca=%s&ok=defesas: a legenda precisa da razão social e do CRDD (variável DEFESAS_CRDD no Railway) — não publicado' % marca)
         dlc.meta_set(marca, arquivo, legenda_venda=legenda)
         dlc.publicar(marca, arquivo, legenda, destino)
         return redirect('/saas-admin/dlcentral?marca=%s&ok=publicando %s (%s) — acompanha no log'
