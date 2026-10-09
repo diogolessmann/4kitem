@@ -44,6 +44,11 @@ REGRAS = [
     (r"\bsem p[o]r o pe no detran\b", "'sem pôr o pé no DETRAN' (proibido desde 14/set)", _T),
     (r"\b(prioridade|furar (a )?fila|sem fila)( no| do| dentro do)? detran\b",
      "insinua furar a fila de órgão público", _T),
+    # ── regra da casa (27/set; reafirmada por ele em 08/10): WhatsApp, nunca "zap"
+    (r"\bzap(s|i|zap)?\b", "diga WhatsApp, nunca 'zap' (regra da casa)", _T),
+    # ── promessa de resultado em primeira pessoa (auditoria 07/10: V0078, V0092, V0100)
+    (r"\b(a gente|nos|a dl|o despachante)\b[^.\n]{0,15}\brevert(e|emos)\b",
+     "promete reverter multa/decisao (CDC art. 35)", _T),
     # ── erros de lei conferidos no CTB (24/set) — ver memória reference_regras_transito_sc_conferidas
     (r"\b233\b[^.\n]{0,80}\bgrave\b|\bgrave\b[^.\n]{0,80}\b233\b",
      "art. 233 é MÉDIA (4 pontos, remoção), não grave", _T),
