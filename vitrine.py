@@ -35,6 +35,24 @@ import vitrine_fabricantes as fab
 
 vitrine_bp = Blueprint('vitrine', __name__, url_prefix='/v', template_folder='templates')
 
+
+# 🔌 FORA DO AR (11/out/2026, decisão do dono): VITRINE_OFF = slugs separados por vírgula
+# (padrão: ledoux,romano). Responde 410 em /v/<slug>/..., na mídia e nos mocks /static/vitrine/<slug>/.
+# Os dados (banco, fotos do volume) ficam intactos. Religar: VITRINE_OFF=nenhum no Railway.
+def _vitrine_off():
+    return {s.strip().lower() for s in os.environ.get('VITRINE_OFF', 'ledoux,romano').split(',') if s.strip()}
+
+
+@vitrine_bp.before_app_request
+def _vitrine_fora_do_ar():
+    p = request.path
+    for pref in ('/v/', '/static/vitrine/'):
+        if p.startswith(pref):
+            if p[len(pref):].split('/', 1)[0].lower() in _vitrine_off():
+                return Response('Esta página saiu do ar.', status=410, mimetype='text/plain',
+                                headers={'X-Robots-Tag': 'noindex, nofollow'})
+            break
+
 _DATA = os.environ.get('DATA_DIR', os.path.dirname(os.path.abspath(__file__)))
 _MEDIA = os.path.join(_DATA, 'vitrine')
 PUBLIC_BASE = os.environ.get('VITRINE_PUBLIC_BASE', 'https://www.4kitem.com.br').rstrip('/')
