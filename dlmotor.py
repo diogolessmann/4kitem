@@ -117,6 +117,24 @@ def _insights():
     return f"insights: despachante {n} · dl_mobilidade {m}"
 
 
+def _defesas():
+    """13/10: DL Defesas entra no motor automático, reaproveitando o pipeline que já existe
+    (Central DL / dlcentral.py) em vez de duplicar banco de conteudo — a vacina, o rodape
+    (CRDD/razao social) e a legenda_defesas_ok ja vivem la. So falta escolher o arquivo e postar."""
+    if not dlc.tokens_ok("defesas"):
+        return "sem tokens DEFESAS_* — pulado"
+    itens = [i for i in dlc.listar("defesas") if not i["meta"].get("publicados")]
+    if not itens:
+        return "fila vazia (pulado)"
+    item = itens[-1]   # listar() vem do mais novo pro mais velho; pega o mais velho (FIFO)
+    arquivo = item["arquivo"]
+    legenda = item["meta"].get("legenda_venda") or dlc.gerar_legenda("defesas", arquivo)
+    if not ao_vivo():
+        return f"PREVIEW defesas: {arquivo}"
+    dlc.publicar("defesas", arquivo, legenda, destino="defesas")
+    return "POSTADO"
+
+
 def _mob_horas():
     hs = [int(h) for h in os.environ.get("MOB_HORAS", "7,10,12,15,18,20").split(",") if h.strip().isdigit()]
     return hs or [7, 10, 12, 15, 18, 20]
@@ -129,6 +147,7 @@ def agenda():
         ("desp_meio", 13, 0, None, lambda: _desp("meio")),
         ("desp_story", 12, 30, None, _story_fila),
         ("dlmob", 16, 0, (1, 3, 5), _dlmob),
+        ("defesas", 17, 30, (1, 4), _defesas),   # 13/10: 2x/sem (ter/sex), IG proprio @dldefesas.multas
         ("desp_noite", 19, 0, None, lambda: _desp("noite")),
         ("insights", 23, 30, None, _insights),
     ]
