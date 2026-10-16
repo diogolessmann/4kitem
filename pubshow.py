@@ -185,7 +185,7 @@ TIPOS_PEDIDO = {
     'musica':           {'nome': 'Música aleatória',       'emoji': '🎵', 'preco': 0.00,  'cor': '#3b82f6'},   # GRÁTIS (decisão 11/09/26)
     'musica_especifica':{'nome': 'Escolher a música',      'emoji': '🎯', 'preco': 0.00,  'cor': '#06b6d4'},   # GRÁTIS (decisão 11/09/26)
     'musica_externa':   {'nome': 'Buscar no YouTube',      'emoji': '🌐', 'preco': 0.00,  'cor': '#dc2626'},   # GRÁTIS por padrão (11/09/26); o bar pode cobrar em precos_custom
-    'flash':            {'nome': 'Furar a fila',           'emoji': '⚡', 'preco': 7.00,  'cor': '#f59e0b'},   # R$7 (decisão 11/09/26)
+    'flash':            {'nome': 'Furar a fila',           'emoji': '⚡', 'preco': 4.00,  'cor': '#f59e0b'},   # R$4 (pedido do Garage, 16/10/26; era R$7)
     'vip':              {'nome': 'Tocar AGORA',            'emoji': '👑', 'preco': 10.00, 'cor': '#8b5cf6'},   # OCULTO do cliente (TIPOS_OCULTOS, 11/09/26); fica p/ histórico e TV
     'parabens':         {'nome': 'Parabéns! 🎂',           'emoji': '🎂', 'preco': 15.00, 'cor': '#ec4899'},
     'dedicatoria':      {'nome': 'Dedicatória ❤️',        'emoji': '💌', 'preco': 10.00, 'cor': '#ef4444'},
@@ -219,7 +219,7 @@ PIX_TAKE_RATE = float(os.environ.get('PUBSHOW_TAKE_RATE', '0.15'))
 
 # Piso de preço por pedido quando há taxa de transação (Asaas): abaixo disso a
 # taxa fixa come o valor. Protege a economia do bar. Ajustável via env.
-PIX_PISO_PRECO = float(os.environ.get('PUBSHOW_PISO_PRECO', '5.00'))
+PIX_PISO_PRECO = float(os.environ.get('PUBSHOW_PISO_PRECO', '4.00'))   # 16/10/26: R$4 (furar a fila do Garage); era R$5
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
