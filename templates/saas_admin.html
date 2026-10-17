@@ -603,12 +603,6 @@
         <span style="background:rgba(99,102,241,.12);border:1px solid rgba(99,102,241,.25);border-radius:8px;padding:5px 14px;color:#818cf8">
           🏢 {{ pubshow_bars|length }} estabelecimentos
         </span>
-        <span style="background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.25);border-radius:8px;padding:5px 14px;color:var(--green)">
-          📦 {{ pubshow_total_pedidos }} pedidos totais
-        </span>
-        <span style="background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.25);border-radius:8px;padding:5px 14px;color:var(--orange)">
-          💰 R$ {{ '%.0f'|format(pubshow_total_receita) }} Jukebox
-        </span>
         <a href="/pubshow/admin" target="_blank"
            style="background:rgba(99,102,241,.15);border:1px solid rgba(99,102,241,.3);border-radius:8px;padding:5px 14px;color:#818cf8;font-weight:700;text-decoration:none">
           🔗 Painel PUBSHOW
@@ -624,6 +618,52 @@
       </div>
     </div>
 
+    {% macro ps_grade(c) %}
+    <div class="ps-grade-wrap"><table class="ps-grade">
+      <thead><tr><th></th><th>Hoje</th><th>7 dias</th><th>Mês</th><th>Total</th></tr></thead>
+      <tbody>
+      {% for cat, rotulo, dinheiro in [('musicas', '🎵 Músicas pedidas', false), ('furar', '⚡ Furar a fila', true), ('momentos', '✨ Momentos pagos', true), ('gorjetas', '🙏 Gorjetas', true)] %}
+        <tr><td class="ps-rot">{{ rotulo }}</td>
+        {% for j in ['hoje', 'd7', 'mes', 'total'] %}{% set x = c[cat][j] %}
+          <td>{% if x.n %}<b>{{ x.n }}</b>{% if dinheiro or x.v %} <span class="ps-rs">R$ {{ '{:,.2f}'.format(x.v).replace(',', '_').replace('.', ',').replace('_', '.') }}</span>{% endif %}{% else %}<span class="ps-zero">—</span>{% endif %}</td>
+        {% endfor %}</tr>
+      {% endfor %}
+      </tbody>
+    </table></div>
+    {% endmacro %}
+    <style>
+      .ps-grade-wrap{overflow-x:auto}
+      .ps-grade{width:auto;min-width:520px;font-size:12px;background:var(--surface);border:1px solid var(--border);border-radius:10px;border-collapse:separate;border-spacing:0}
+      .ps-grade th{padding:6px 12px;text-align:right}
+      .ps-grade td{padding:6px 12px;text-align:right;white-space:nowrap}
+      .ps-grade tr:last-child td{border-bottom:none}
+      .ps-grade td.ps-rot,.ps-grade th:first-child{text-align:left;color:var(--text2)}
+      .ps-grade tr:hover td{background:none}
+      .ps-rs{color:var(--green);font-size:11px}
+      .ps-zero{color:var(--text2);opacity:.5}
+      tr.ps-main td{border-bottom:none}
+      tr.ps-sub:hover td{background:none}
+      tr.ps-sub td{padding-top:0;height:100%}
+      tr.ps-main td{height:1px}
+      .ps-nome{cursor:pointer;border-bottom:1px dashed var(--text2)}
+      .ps-cli{margin-top:10px}
+      .ps-cli .ps-grade td:nth-child(1),.ps-cli .ps-grade th:nth-child(1),.ps-cli .ps-grade td:nth-child(2),.ps-cli .ps-grade th:nth-child(2){text-align:left}
+      @media (max-width:600px){
+        .ps-grade{min-width:0}
+        .ps-grade th,.ps-grade td{padding:5px 7px}
+        .ps-grade .ps-rs{display:block}
+      }
+    </style>
+    <div style="font-size:12px;color:var(--text2);margin-bottom:8px">📦 Pedidos de todos os bares</div>
+    {% if pubshow_cont_erro %}
+    <div style="background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);color:#fca5a5;border-radius:8px;padding:8px 12px;font-size:12px;margin-bottom:8px;max-width:560px">⚠️ Os contadores de pedidos não carregaram (erro no log do servidor). Os "—" abaixo NÃO são zero.</div>
+    {% endif %}
+    <div>{{ ps_grade(pubshow_tot) }}</div>
+    <div style="font-size:11px;color:var(--text2);margin:6px 0 22px;max-width:560px;line-height:1.5">
+      Pago = PIX confirmado no Asaas ou na Efí (o que não pagou ou foi recusado não entra). R$ = parte do bar, sem a taxa de R$ 1 do PIX.
+      PIX que caiu direto na chave do bar não entra, por isso o caixa do painel do bar pode dar diferente. Hoje e mês no horário de Brasília.
+    </div>
+
     {% if pubshow_bars %}
     <table>
       <thead><tr>
@@ -637,9 +677,9 @@
       </tr></thead>
       <tbody>
         {% for b in pubshow_bars %}
-        <tr id="ps-bar-{{ b.id }}">
+        <tr id="ps-bar-{{ b.id }}" class="ps-main">
           <td>
-            <strong>{{ b.nome }}</strong>
+            <strong class="ps-nome" onclick="psClientes({{ b.id }})" title="Quem mais pediu (30 dias)">{{ b.nome }}</strong>
             <div style="font-size:11px;color:var(--text2)">{{ b.tipo or '' }}</div>
           </td>
           <td>
@@ -660,7 +700,7 @@
           </td>
           <td style="font-size:12px;color:var(--text2)">{{ b.canal_atual or 'rock' }}</td>
           <td style="font-size:11px;color:var(--text2)">{{ (b.created_at or '')[:10] }}</td>
-          <td>
+          <td rowspan="2">
             <div class="actions" style="min-width:130px">
               <a href="/pubshow/admin/bar/{{ b.id }}" target="_blank"
                  class="btn-sm btn-purple" style="text-align:center;display:block;text-decoration:none">🔗 Gerenciar</a>
@@ -681,6 +721,13 @@
               <button class="btn-sm btn-purple" onclick="setPsPlano({{ b.id }},'rede')">🏟️ Rede R$349</button>
               <button class="btn-sm btn-orange" onclick="openPsTrial({{ b.id }},'{{ (b.trial_ends or '')[:10] }}')">📅 Trial</button>
             </div>
+          </td>
+        </tr>
+        <tr class="ps-sub">
+          <td colspan="6">
+            {{ ps_grade(b._cont) }}
+            <button class="btn-sm btn-purple" style="margin-top:8px" onclick="psClientes({{ b.id }})">👥 Quem mais pediu (30 dias)</button>
+            <div class="ps-cli" id="ps-cli-{{ b.id }}" hidden></div>
           </td>
         </tr>
         {% endfor %}
@@ -1555,6 +1602,27 @@ async function setPsPlano(id, plano) {
 }
 function openPsTrial(id, current) {
   openTrial('pubshow_bar', id, current);
+}
+// Quem mais pediu no bar (30 dias): abre/fecha embaixo da linha do bar
+async function psClientes(id) {
+  const box = document.getElementById('ps-cli-' + id);
+  if (!box.hidden) { box.hidden = true; return; }
+  box.hidden = false;
+  box.textContent = '⏳ Carregando...';
+  try {
+    const d = await (await fetch(`/saas-admin/pubshow/bar/${id}/clientes`)).json();
+    if (!d.ok) throw new Error();
+    if (!d.clientes.length) { box.textContent = `Nenhum pedido nos últimos ${d.dias} dias.`; return; }
+    const esc = s => String(s).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+    const n = v => v ? `<b>${v}</b>` : '<span class="ps-zero">—</span>';
+    const rs = v => v ? `<span class="ps-rs">R$ ${v.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>` : '<span class="ps-zero">—</span>';
+    box.innerHTML = `<div class="ps-grade-wrap"><table class="ps-grade">
+      <thead><tr><th>#</th><th>Cliente (nome digitado)</th><th>🎵 Músicas</th><th>⚡ Furou a fila</th><th>✨ Momentos</th><th>🙏 Gorjetas</th><th>💰 Pagou</th></tr></thead>
+      <tbody>${d.clientes.map((c, i) => `<tr><td class="ps-zero">${i + 1}</td><td>${esc(c.nome)}</td><td>${n(c.musicas)}</td><td>${n(c.furar)}</td><td>${n(c.momentos)}</td><td>${n(c.gorjetas)}</td><td>${rs(c.valor)}</td></tr>`).join('')}</tbody>
+    </table></div><div style="font-size:11px;color:var(--text2);margin-top:6px">Top ${d.clientes.length}, últimos ${d.dias} dias. Mesmo nome com ou sem acento/maiúscula conta como um cliente só.</div>`;
+  } catch (e) {
+    box.textContent = '❌ Não carregou. Recarregue a página e tente de novo.';
+  }
 }
 
 // ── MandaJá ──────────────────────────────────────────────────────────────────

@@ -6308,7 +6308,9 @@ def saas_admin():
         vetzap_users = []
         vetzap_pets_total = 0
         vetzap_triagens_total = 0
-    # PUBSHOW — estabelecimentos
+    # PUBSHOW — estabelecimentos + pedidos de cada bar (hoje / 7 dias / mês / total)
+    pubshow_tot = _ps_cont_vazio()
+    pubshow_cont_erro = False
     try:
         from pubshow_db import get_pubshow_db as _get_ps_db
         psconn = _get_ps_db()
@@ -6316,13 +6318,17 @@ def saas_admin():
         pubshow_bars = [dict(r) for r in psconn.execute(
             'SELECT id, nome, email, telefone, tipo, plano, plano_ativo, suspenso, trial_ends, canal_atual, created_at FROM pubshow_businesses ORDER BY created_at DESC'
         ).fetchall()]
-        # Totais globais
-        pubshow_total_pedidos = psconn.execute('SELECT COUNT(*) FROM pubshow_pedidos').fetchone()[0]
-        pubshow_total_receita = psconn.execute("SELECT COALESCE(SUM(valor),0) FROM pubshow_pedidos WHERE status='pago'").fetchone()[0]
         pubshow_total_videos  = psconn.execute('SELECT COUNT(*) FROM pubshow_videos WHERE ativo=1').fetchone()[0]
+        try:
+            _ps_por_bar = _ps_contadores(psconn)
+        except Exception as _e:   # contador quebrado não pode esconder a lista de bares
+            log.error('[SAAS-ADMIN] PubShow contadores: %s', _e)
+            _ps_por_bar, pubshow_cont_erro = {}, True
         psconn.close()
         # Calcula status legível para cada bar
         for b in pubshow_bars:
+            b['_cont'] = _ps_por_bar.get(b['id']) or _ps_cont_vazio()
+            _ps_somar(pubshow_tot, b['_cont'])
             if b['suspenso']:
                 b['_status'] = 'suspenso'
             elif b['plano_ativo']:
@@ -6333,8 +6339,8 @@ def saas_admin():
                 b['_status'] = 'inativo'
     except Exception:
         pubshow_bars = []
-        pubshow_total_pedidos = 0
-        pubshow_total_receita = 0
+        pubshow_tot = _ps_cont_vazio()
+        pubshow_cont_erro = True
         pubshow_total_videos  = 0
     # SlotZap users
     try:
@@ -6487,8 +6493,7 @@ def saas_admin():
                            vetzap_triagens_total=vetzap_triagens_total,
                            alerta_plans=ALERTA_PLANS,
                            pubshow_bars=pubshow_bars,
-                           pubshow_total_pedidos=pubshow_total_pedidos,
-                           pubshow_total_receita=pubshow_total_receita,
+                           pubshow_tot=pubshow_tot, pubshow_cont_erro=pubshow_cont_erro,
                            pubshow_total_videos=pubshow_total_videos,
                            sz_users=sz_users,
                            drz_users=drz_users, drz_compras_total=drz_compras_total,
@@ -6635,6 +6640,121 @@ def saas_pubshow_reseed():
     after  = psconn.execute('SELECT COUNT(*) FROM pubshow_videos WHERE ativo=1').fetchone()[0]
     psconn.close()
     return jsonify({'success': True, 'antes': before, 'depois': after, 'novos': after - before})
+
+
+# ── PubShow no saas-admin: quantos pedidos cada bar teve (17/10/26) ──────────
+# O status 'pago' NÃO existe no PubShow (a receita antiga somava ele e dava sempre R$ 0).
+# Pedido pago = cobrança no gateway (asaas_payment_id ou efi_txid preenchido) E PIX já
+# confirmado: 'pendente'/'aguardando_ok' (gerente ainda vai liberar), depois 'exibido'/'dispensado'.
+# 'aguardando_pix' (não pagou) e 'recusado' nunca contam. Música grátis conta pelo status.
+_PS_CATS    = ('musicas', 'furar', 'momentos', 'gorjetas')
+_PS_JANELAS = ('hoje', 'd7', 'mes', 'total')
+_PS_CAT_SQL = ("CASE WHEN tipo IN ('musica','musica_especifica','musica_externa') THEN 'musicas' "
+               "WHEN tipo IN ('flash','vip') THEN 'furar' "          # vip = 'Tocar AGORA' antigo (oculto)
+               "WHEN tipo='gorjeta' THEN 'gorjetas' ELSE 'momentos' END")
+_PS_VALIDO_SQL = ("status IN ('pendente','aguardando_ok','exibido','dispensado') "
+                  "AND (tipo IN ('musica','musica_especifica','musica_externa') "   # = pubshow.TIPOS_SEMPRE_GRATIS
+                  "OR COALESCE(asaas_payment_id,'')<>'' OR COALESCE(efi_txid,'')<>'')")
+# R$ só do que passou no gateway (música era cobrada até 11/09/26; hoje é grátis e vale 0)
+_PS_VALOR_SQL = ("CASE WHEN COALESCE(asaas_payment_id,'')<>'' OR COALESCE(efi_txid,'')<>'' "
+                 "THEN COALESCE(valor,0) ELSE 0 END")
+_ps_indice_ok = False
+
+
+def _ps_cont_vazio():
+    return {c: {j: {'n': 0, 'v': 0.0} for j in _PS_JANELAS} for c in _PS_CATS}
+
+
+def _ps_somar(dest, cont):
+    for c in _PS_CATS:
+        for j in _PS_JANELAS:
+            dest[c][j]['n'] += cont[c][j]['n']
+            dest[c][j]['v'] += cont[c][j]['v']
+
+
+def _ps_limites(agora_utc=None):
+    """Começo de hoje, dos últimos 7 e 30 dias e do mês no fuso de Brasília (UTC-3 fixo),
+    convertido pra UTC no formato do created_at ('AAAA-MM-DD HH:MM:SS'): compara direto com a coluna."""
+    from datetime import timezone as _tz
+    agora = agora_utc or datetime.now(_tz.utc).replace(tzinfo=None)
+    zero = (agora - timedelta(hours=3)).replace(hour=0, minute=0, second=0, microsecond=0)
+    _utc = lambda d: (d + timedelta(hours=3)).strftime('%Y-%m-%d %H:%M:%S')
+    return {'hoje': _utc(zero), 'd7': _utc(zero - timedelta(days=6)),
+            'mes': _utc(zero.replace(day=1)), 'd30': _utc(zero - timedelta(days=29))}
+
+
+def _ps_garante_indice(psconn):
+    """Índice (business_id, created_at) pras consultas por período; cria uma vez por processo."""
+    global _ps_indice_ok
+    if _ps_indice_ok:
+        return
+    try:
+        psconn.execute('CREATE INDEX IF NOT EXISTS idx_pubshow_pedidos_biz_criado '
+                       'ON pubshow_pedidos(business_id, created_at)')
+        psconn.commit()
+        _ps_indice_ok = True
+    except Exception as e:
+        log.warning('[SAAS-ADMIN] PubShow índice: %s', e)
+
+
+def _ps_contadores(psconn, agora_utc=None):
+    """Uma passada só no pubshow_pedidos → {business_id: cont}; cont[cat][janela] = {'n': qtd, 'v': R$}.
+    O total lê todos os pedidos de qualquer jeito: varrer a tabela direto é o mais rápido
+    (pelo índice de status ficou 25% mais lento; 500 mil pedidos ≈ 0,5 s)."""
+    _ps_garante_indice(psconn)
+    lim = _ps_limites(agora_utc)
+    cols, params = [], []
+    for j in ('hoje', 'd7', 'mes'):
+        cols.append(f'SUM(created_at >= ?), SUM(CASE WHEN created_at >= ? THEN {_PS_VALOR_SQL} ELSE 0 END)')
+        params += [lim[j], lim[j]]
+    sql = (f'SELECT business_id, {_PS_CAT_SQL} AS cat, {", ".join(cols)}, COUNT(*), SUM({_PS_VALOR_SQL}) '
+           f'FROM pubshow_pedidos NOT INDEXED WHERE {_PS_VALIDO_SQL} GROUP BY business_id, cat')
+    por_bar = {}
+    for r in psconn.execute(sql, params):
+        c = por_bar.setdefault(r[0], _ps_cont_vazio())
+        for i, j in enumerate(_PS_JANELAS):
+            c[r[1]][j]['n'] = int(r[2 + 2 * i] or 0)
+            c[r[1]][j]['v'] = round(float(r[3 + 2 * i] or 0), 2)
+    return por_bar
+
+
+def _ps_nome_chave(nome):
+    """'  JOÃO  silva ' e 'joao silva' viram o mesmo cliente."""
+    s = unicodedata.normalize('NFKD', nome or '')
+    return ' '.join(''.join(ch for ch in s if not unicodedata.combining(ch)).casefold().split())
+
+
+@app.route('/saas-admin/pubshow/bar/<int:bid>/clientes')
+@_saas_admin_required
+def saas_pubshow_bar_clientes(bid):
+    """Quem mais pediu neste bar nos últimos 30 dias (pelo nome digitado). Só leitura."""
+    from pubshow_db import get_pubshow_db as _get_ps_db
+    psconn = _get_ps_db()
+    try:
+        _ps_garante_indice(psconn)
+        rows = psconn.execute(
+            f'SELECT nome_cliente, {_PS_CAT_SQL} AS cat, {_PS_VALOR_SQL} AS valor FROM pubshow_pedidos '
+            f'WHERE business_id=? AND created_at >= ? AND {_PS_VALIDO_SQL}',
+            (bid, _ps_limites()['d30'])
+        ).fetchall()
+    finally:
+        psconn.close()
+    grupos = {}
+    for r in rows:
+        nome = ' '.join((r['nome_cliente'] or '').split())
+        g = grupos.setdefault(_ps_nome_chave(nome), {'nomes': {}, 'musicas': 0, 'furar': 0,
+                                                     'momentos': 0, 'gorjetas': 0, 'valor': 0.0})
+        g['nomes'][nome] = g['nomes'].get(nome, 0) + 1
+        g[r['cat']] += 1
+        g['valor'] += float(r['valor'] or 0)
+    clientes = []
+    for g in grupos.values():
+        nome = max(g.pop('nomes').items(), key=lambda kv: kv[1])[0] or '(sem nome)'
+        g['pedidos'] = g['musicas'] + g['furar'] + g['momentos'] + g['gorjetas']
+        g['valor'] = round(g['valor'], 2)
+        clientes.append(dict(g, nome=nome))
+    clientes.sort(key=lambda c: (-c['pedidos'], -c['valor'], c['nome'].casefold()))
+    return jsonify({'ok': True, 'dias': 30, 'clientes': clientes[:20]})
 
 
 @app.route('/admin/alerta/<int:sub_id>/status', methods=['POST'])
