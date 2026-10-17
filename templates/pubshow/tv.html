@@ -397,7 +397,7 @@
       <img src="https://api.qrserver.com/v1/create-qr-code/?size=440x440&color=000000&bgcolor=ffffff&data={{ jukebox_url }}" alt="QR Jukebox">
       {% endif %}
     </div>
-    <div class="cta-fs-sub">Pedir música é GRÁTIS<br>Furar a fila: R$ 7 no PIX</div>
+    <div class="cta-fs-sub">Pedir música é GRÁTIS<br>Furar a fila: R$ {{ '%.0f'|format(preco_flash if preco_flash is defined else 7) }} no PIX</div>
     <div class="cta-fs-preco">⚡ PUBSHOW JUKEBOX ⚡</div>
   </div>
 
