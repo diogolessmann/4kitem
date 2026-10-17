@@ -2454,6 +2454,9 @@ def api_pedido_exibido(pedido_id):
             (_yid, (pedido['titulo_pedido'] or _yid)[:120], '', _cat, 'pedido_publico',
              _seg if _seg < _YT_SEG_AO_VIVO else 180)
         )
+        if _yid in _YT_DURACAO and _seg < _YT_SEG_AO_VIVO:   # já estava no acervo com os 180 falsos: grava a real
+            conn.execute("UPDATE pubshow_videos SET duracao_seg=? WHERE youtube_id=? AND subcategoria='pedido_publico'",
+                         (_seg, _yid))
     conn.commit(); conn.close()
     return jsonify({'ok': True})
 
@@ -3043,8 +3046,11 @@ def api_mais_pedidas(token):
                LIMIT 20""",
             (b['id'],)).fetchall()
         rows = [r for r in rows if r['youtube_id'] not in banidos and _YID_RE.fullmatch(r['youtube_id'] or '')]
-        _dur = _duracoes_conhecidas([r['youtube_id'] for r in rows], conn)   # 17/10/26: longa (> 10 min) não aparece
-        rows = [r for r in rows if (_dur.get(r['youtube_id']) or 0) <= YT_DUR_MAX_SEG][:6]
+        # 17/10/26: só música com duração CONHECIDA e de até 10 min (no ar, um show de 2 h pedido antes da regra,
+        # sem duração, aparecia aqui). A lista se refaz sozinha: a busca e a TV vão aprendendo as durações.
+        _dur = _duracoes_conhecidas([r['youtube_id'] for r in rows], conn)
+        rows = [r for r in rows if _dur.get(r['youtube_id']) is not None
+                and _dur[r['youtube_id']] <= YT_DUR_MAX_SEG][:6]
         ids = [r['youtube_id'] for r in rows]
         titulos = {}
         if ids:
