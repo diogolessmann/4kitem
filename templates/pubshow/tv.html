@@ -1355,9 +1355,9 @@ async function pollStatus() {
       pedidoMusica = data.pedido_musica;
       mostrarBadgeFila(data.total_fila);
 
-      // 👑 VIP e ⚡ FURAR A FILA — interrompem o vídeo atual imediatamente
-      // (11/09/26: pagou furar a fila = corta a música e muda na hora)
-      if ((data.pedido_musica.tipo === 'vip' || data.pedido_musica.tipo === 'flash') && player) {
+      // 👑 VIP interrompe o vídeo atual na hora. ⚡ FURAR A FILA NÃO corta mais (16/10/26, Diogo):
+      // vira o 1º da fila (o servidor já ordena flash primeiro) e toca quando a música atual acabar (ENDED).
+      if (data.pedido_musica.tipo === 'vip' && player) {
         clearTimeout(stallTimer);
         clearTimeout(proximoTimer);
         document.getElementById('proximo-card').classList.remove('show');
