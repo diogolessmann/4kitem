@@ -1120,6 +1120,40 @@ def _limite_atingido(b, ip):
     finally:
         conn.close()  # A4 fix: sempre fecha a conexão
 
+# Música GRÁTIS: 1 a cada N minutos por CELULAR (16/10/26, Diogo). Pago (furar a fila, momentos) = sem esse limite.
+# Só vale quando o celular mandou o client_id (ip_cliente com '#'): sem ele, no Wi-Fi do bar todo mundo tem o
+# mesmo IP e a trava pegaria a mesa vizinha. 0 desliga (env PUBSHOW_GRATIS_INTERVALO_MIN).
+try:
+    GRATIS_INTERVALO_MIN = max(0, int(os.environ.get('PUBSHOW_GRATIS_INTERVALO_MIN', '20') or 0))
+except (TypeError, ValueError):
+    GRATIS_INTERVALO_MIN = 20
+
+
+def _gratis_espera_min(b, ip):
+    """Minutos que este celular ainda espera pra pedir outra música grátis (0 = pode pedir agora)."""
+    if GRATIS_INTERVALO_MIN <= 0 or '#' not in (ip or ''):
+        return 0
+    conn = get_pubshow_db()
+    try:
+        marcas = ','.join('?' * len(TIPOS_SEMPRE_GRATIS))
+        row = conn.execute(
+            f"""SELECT (julianday(created_at) - julianday('now')) * 1440 + ? AS falta
+                FROM pubshow_pedidos
+                WHERE business_id=? AND ip_cliente=? AND tipo IN ({marcas})
+                  AND status <> 'recusado'
+                  AND created_at >= datetime('now', ?)
+                ORDER BY created_at DESC LIMIT 1""",
+            (GRATIS_INTERVALO_MIN, b['id'], ip, *TIPOS_SEMPRE_GRATIS, f'-{GRATIS_INTERVALO_MIN} minutes')
+        ).fetchone()
+        if not row or row[0] is None or row[0] <= 0:
+            return 0
+        return max(1, int(-(-row[0] // 1)))   # arredonda pra cima
+    except Exception:
+        return 0   # em erro, não bloqueia
+    finally:
+        conn.close()
+
+
 def _admin_ok():
     """Verifica se a sessão atual é admin — aceita login PUBSHOW ou SaaS master."""
     return session.get('pubshow_admin') is True or session.get('saas_admin') is True
@@ -1864,6 +1898,16 @@ def jukebox(token):
                 erro = 'Selecione uma música antes de confirmar.'
             elif tipo == 'cantada' and not mensagem:
                 erro = 'Escreve a cantada antes de mandar. 😏'
+            elif tipo in TIPOS_SEMPRE_GRATIS and (_espera := _gratis_espera_min(b, ip_cliente)) > 0:
+                _fl = precos_bar.get('flash') if 'flash' in tipos_bar else None
+                if _fl and _fl.get('preco', 0) > 0:
+                    _conv = PIX_TAXA_CONVENIENCIA if (_efi or os.environ.get('ASAAS_API_KEY')) else 0.0
+                    _tot = _fl['preco'] + _conv
+                    _tot_txt = ('%.0f' % _tot) if _tot == int(_tot) else ('%.2f' % _tot).replace('.', ',')
+                    erro = (f'⏳ Tua próxima música grátis libera em {_espera} min. '
+                            f'Quer tocar antes? ⚡ Fura a fila por R$ {_tot_txt}: a tua vira a próxima.')
+                else:
+                    erro = f'⏳ Tua próxima música grátis libera em {_espera} min.'
             elif youtube_id and (_erro_yt := _validar_video_pedido(b, youtube_id)):
                 erro = _erro_yt
             else:
