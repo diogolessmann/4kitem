@@ -1154,6 +1154,33 @@ def _gratis_espera_min(b, ip):
         conn.close()
 
 
+TIPOS_MUSICA_FILA = ('musica_especifica', 'musica_externa', 'flash', 'vip')
+
+
+def _musica_na_fila(b, youtube_id):
+    """True se esta música (youtube_id) já está na fila do bar — pendente, ou com PIX sendo pago agora
+    (16/10/26, Diogo: cliente pedindo a mesma música várias vezes)."""
+    yid = (youtube_id or '').strip()
+    if not yid:
+        return False
+    conn = get_pubshow_db()
+    try:
+        marcas = ','.join('?' * len(TIPOS_MUSICA_FILA))
+        row = conn.execute(
+            f"""SELECT 1 FROM pubshow_pedidos
+                WHERE business_id=? AND youtube_id=? AND tipo IN ({marcas})
+                  AND (status='pendente'
+                       OR (status='aguardando_pix' AND created_at >= datetime('now', '-15 minutes')))
+                LIMIT 1""",
+            (b['id'], yid, *TIPOS_MUSICA_FILA)
+        ).fetchone()
+        return bool(row)
+    except Exception:
+        return False   # em erro, não bloqueia
+    finally:
+        conn.close()
+
+
 def _admin_ok():
     """Verifica se a sessão atual é admin — aceita login PUBSHOW ou SaaS master."""
     return session.get('pubshow_admin') is True or session.get('saas_admin') is True
@@ -1898,6 +1925,8 @@ def jukebox(token):
                 erro = 'Selecione uma música antes de confirmar.'
             elif tipo == 'cantada' and not mensagem:
                 erro = 'Escreve a cantada antes de mandar. 😏'
+            elif tipo in TIPOS_MUSICA_FILA and youtube_id and _musica_na_fila(b, youtube_id):
+                erro = '🎵 Essa música já está na fila! Escolhe outra.'
             elif tipo in TIPOS_SEMPRE_GRATIS and (_espera := _gratis_espera_min(b, ip_cliente)) > 0:
                 _fl = precos_bar.get('flash') if 'flash' in tipos_bar else None
                 if _fl and _fl.get('preco', 0) > 0:
