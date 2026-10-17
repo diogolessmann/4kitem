@@ -1631,6 +1631,7 @@ function instalarPwa() {
 }
 
 function _mostrarBannerPwa() {
+  return;   // 16/10/26 (Diogo): o aviso "Instalar Jukebox / Adicionar à tela inicial" saiu da tela do cliente
   if (_jaInstalado()) return;
   try { if (sessionStorage.getItem('pwa_dismissed')) return; } catch(e) {}
   document.getElementById('pwa-banner').style.display = 'block';
