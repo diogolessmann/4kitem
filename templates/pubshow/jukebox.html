@@ -666,11 +666,11 @@ async function jaPaguei() {
 
     {# 2. Furar a fila — escolhe no acervo OU no YouTube (toggle dentro da busca) #}
     {% if 'flash' in tipos %}{% set t = tipos['flash'] %}
-    <div class="pedido-card" style="--card-cor:{{ t.cor }}" onclick="abrirBusca('biblioteca','flash')">
+    <div class="pedido-card" style="--card-cor:{{ t.cor }}" onclick="abrirBusca('{{ 'youtube' if youtube_liberado else 'biblioteca' }}','flash')">
       <div class="card-emoji">{{ t.emoji }}</div>
       <div class="card-nome" data-i18n="card_flash">Furar<br>a fila</div>
       {{ preco_card(t) }}
-      <div class="card-detalhe">{% if youtube_liberado %}acervo ou YouTube{% else %}escolha na lista{% endif %}</div>
+      <div class="card-detalhe">{% if youtube_liberado %}qualquer música do YouTube{% else %}escolha na lista{% endif %}</div>
     </div>{% endif %}
 
     {# 3. Buscar no YouTube — subiu das "Mais opções" pro lugar do "Tocar agora" (11/09/26) #}
@@ -1052,6 +1052,10 @@ function abrirBusca(modo, forcado=null) {
 
   // Toggle de fonte: YouTube sempre liberado no "Furar a fila"; no "Escolher" só se o bar não bloqueou
   const _fb = document.getElementById('fonte-biblioteca'), _fy = document.getElementById('fonte-youtube');
+  // 16/10/26 (Diogo): no Furar a fila é só YouTube — some o botão do acervo (se o bar desligou o YouTube, fica o acervo)
+  const _soYoutube = (forcado === 'flash' && YT_LIBERADO);
+  const _fonteBox = document.getElementById('busca-fonte');
+  if (_fonteBox) _fonteBox.style.display = _soYoutube ? 'none' : 'flex';
   if (_fb && _fy) {
     _fy.style.display = YT_LIBERADO ? '' : 'none';
     _estiloFonte(_fb, modo === 'biblioteca', '#06b6d4');
