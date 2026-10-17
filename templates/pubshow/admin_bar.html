@@ -282,8 +282,9 @@
             <td style="color:#8888aa;white-space:nowrap">{{ (p.created_at or '')[:16] }}</td>
             <td style="white-space:nowrap">
               {% if p.asaas_payment_id %}<code style="font-size:10px">{{ p.asaas_payment_id }}</code>{% endif %}
-              {% if p.status == 'aguardando_pix' and p.asaas_payment_id %}
-              <form method="POST" action="/pubshow/admin/bar/{{ b.id }}/acao" style="display:inline;margin:0" onsubmit="return confirm('Confirmar na mão? Só se o PIX apareceu como RECEBIDO no Asaas.')">
+              {% if p.efi_txid %}<code style="font-size:10px">Efí {{ p.efi_txid }}</code>{% endif %}
+              {% if p.status == 'aguardando_pix' and (p.asaas_payment_id or p.efi_txid) %}
+              <form method="POST" action="/pubshow/admin/bar/{{ b.id }}/acao" style="display:inline;margin:0" onsubmit="return confirm('Confirmar na mão? Só se o PIX apareceu como RECEBIDO no {{ 'Efí' if p.efi_txid else 'Asaas' }}.')">
                 <input type="hidden" name="acao" value="confirmar_pix"><input type="hidden" name="pedido_id" value="{{ p.id }}">
                 <button type="submit" style="background:rgba(34,197,94,.15);border:1px solid rgba(34,197,94,.4);color:#4ade80;border-radius:6px;padding:3px 8px;font-size:11px;cursor:pointer">✅ PIX caiu</button>
               </form>

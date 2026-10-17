@@ -322,7 +322,7 @@
         <div class="ob-step">Jukebox do {{ b.nome }}</div>
         <div class="ob-emoji">🎵</div>
         <div class="ob-titulo">Pedir música é grátis</div>
-        <div class="ob-sub">Escolhe a música, põe teu nome e ela toca na TV. Furar a fila é R$ {{ '%.0f'|format(tipos.flash.preco) if tipos.flash else '7' }}; parabéns, cantada e dedicatória aparecem na tela.</div>
+        <div class="ob-sub">Escolhe a música, põe teu nome e ela toca na TV. Furar a fila é R$ {% if tipos.flash %}{% set _ft = tipos.flash.preco + (pix_conv or 0) %}{{ ('%.0f' if _ft == (_ft|int) else '%.2f')|format(_ft)|replace('.',',') }}{% else %}7{% endif %}; parabéns, cantada e dedicatória aparecem na tela.</div>
       </div>
 
     </div>
@@ -366,7 +366,9 @@
     <br><span style="color:#4ade80">✅ confirma sozinho — não precisa avisar ninguém</span>
   </div>
   {% endif %}
+  {% if not pix_pendente.via_efi and pix_pendente.recebedor %}
   <div class="pix-recebedor">Recebedor: <strong>{{ pix_pendente.recebedor }}</strong></div>
+  {% endif %}
 
   <div class="pix-copiacola-box">
     <div class="pix-copiacola-label">📋 Pix Copia e Cola</div>
@@ -636,15 +638,19 @@ async function jaPaguei() {
   <div class="pedidos-titulo" data-i18n="titulo_grid">🎰 O que você quer fazer?</div>
   <div class="pedidos-grid">
 
-    {# Macro para mostrar preço com ou sem desconto #}
+    {# Macro para mostrar preço com ou sem desconto.
+       16/10/26: com gateway (Asaas/Efí) o card mostra o TOTAL do PIX (item + taxa) — t.preco segue sendo o item #}
     {% macro preco_card(t) %}
+      {% set _tx = (pix_conv or 0) if t.preco > 0 else 0 %}
+      {% set _tot = t.preco + _tx %}
       {% if t.preco <= 0 %}
         <div class="card-preco" style="color:#4ade80;text-shadow:0 0 20px #4ade8066">GRÁTIS</div>
       {% elif t.get('happy_hour') %}
-        <div class="card-preco">R$ {{ '%.0f'|format(t.preco) }}</div>
-        <div style="font-size:9px;color:var(--text2);text-decoration:line-through;margin-top:-2px">R$ {{ '%.0f'|format(t.preco_original) }}</div>
+        {% set _orig = t.preco_original + _tx %}
+        <div class="card-preco">R$ {{ ('%.0f' if _tot == (_tot|int) else '%.2f')|format(_tot)|replace('.',',') }}</div>
+        <div style="font-size:9px;color:var(--text2);text-decoration:line-through;margin-top:-2px">R$ {{ ('%.0f' if _orig == (_orig|int) else '%.2f')|format(_orig)|replace('.',',') }}</div>
       {% else %}
-        <div class="card-preco">R$ {{ ('%.0f' if t.preco == (t.preco|int) else '%.2f')|format(t.preco)|replace('.',',') }}</div>
+        <div class="card-preco">R$ {{ ('%.0f' if _tot == (_tot|int) else '%.2f')|format(_tot)|replace('.',',') }}</div>
       {% endif %}
     {% endmacro %}
 
@@ -915,6 +921,17 @@ function _precoComOffset(preco) {
   if (!(preco > 0)) return 0;   // grátis não leva centavos
   return Math.round((preco + PIX_OFFSET * 0.01) * 100) / 100;
 }
+// 16/10/26: valor grande da caixa do PIX = o que a pessoa PAGA (item + taxa do gateway), igual ao card.
+// `preco` aqui é SEMPRE o item (PRECOS[..].preco); a taxa entra UMA vez só (aqui e na nota).
+function _mostrarValorPix(preco) {
+  const p  = _precoComOffset(preco);
+  const el = document.getElementById('pix-valor');
+  if (el) el.textContent = p > 0
+    ? 'R$ ' + (Math.round((p + (PIX_CONV > 0 ? PIX_CONV : 0)) * 100) / 100).toFixed(2).replace('.', ',')
+    : 'Grátis';
+  _notaTaxaPix(p);
+  aplicarModoGratis(preco);
+}
 
 // Pedido GRÁTIS (música = R$0 desde 11/09/26): esconde a caixa de pagamento e
 // troca o botão. Preço > 0 (furar fila, VIP...) restaura o fluxo de PIX.
@@ -939,9 +956,7 @@ function escolherGorjeta(v, btn) {
   document.getElementById('inp-valor-gorjeta').value = v;
   document.querySelectorAll('.gorjeta-opt').forEach(b => { b.style.background = 'rgba(34,197,94,.08)'; b.style.borderColor = '#22c55e55'; b.style.color = '#4ade80'; });
   if (btn) { btn.style.background = '#22c55e'; btn.style.borderColor = '#22c55e'; btn.style.color = '#052e16'; }
-  document.getElementById('pix-valor').textContent = 'R$ ' + _precoComOffset(v).toFixed(2).replace('.', ',');
-  _notaTaxaPix(_precoComOffset(v));
-  aplicarModoGratis(v);
+  _mostrarValorPix(v);
 }
 
 function selecionarTipo(key, nome, emoji, preco, cor) {
@@ -951,10 +966,7 @@ function selecionarTipo(key, nome, emoji, preco, cor) {
   tipoForcado = null;   // limpa prioridade de uma busca anterior
   document.getElementById('inp-tipo').value  = key;
   document.getElementById('form-title').innerHTML = `${emoji} ${nome}`;
-  const precoFinal = _precoComOffset(preco);
-  document.getElementById('pix-valor').textContent = precoFinal > 0 ? 'R$ ' + precoFinal.toFixed(2).replace('.', ',') : 'Grátis';
-  _notaTaxaPix(precoFinal);
-  aplicarModoGratis(preco);
+  _mostrarValorPix(preco);
 
   const especiais = ['parabens','dedicatoria','brinde','chegada','casamento','gorjeta','cantada','salve'];
   const mgr = document.getElementById('msg-group');
@@ -1026,7 +1038,10 @@ function abrirBusca(modo, forcado=null) {
   const precoFinal = (PRECOS[tipoFinal] && PRECOS[tipoFinal].preco) || 0;
   const cor = modo === 'youtube' ? '#dc2626' : '#06b6d4';
 
-  const precoTxt = precoFinal > 0 ? `R$ ${precoFinal.toFixed(0)}` : 'GRÁTIS';
+  const _totBusca = Math.round((precoFinal + PIX_CONV) * 100) / 100;
+  const precoTxt = precoFinal > 0   // total do PIX, igual ao card (centavos só quando houver: R$ 4 / R$ 3,50)
+      ? 'R$ ' + (Number.isInteger(_totBusca) ? String(_totBusca) : _totBusca.toFixed(2).replace('.', ','))
+      : 'GRÁTIS';
   document.getElementById('busca-title').textContent =
       forcado === 'flash' ? '⚡ Furar a fila — escolha a música'
     : modo === 'youtube'  ? '🌐 Buscar no YouTube'
@@ -1239,8 +1254,7 @@ function confirmarMusica() {
   document.getElementById('prev-sub').textContent    = videoSel.sub;
   document.getElementById('musica-preview').style.display = 'block';
 
-  const precoFinalBusca = _precoComOffset(preco);
-  document.getElementById('pix-valor').textContent   = 'R$ ' + precoFinalBusca.toFixed(2).replace('.', ',');
+  _mostrarValorPix(preco);   // antes só trocava o número: no "furar a fila" a nota do total não aparecia
   document.getElementById('form-title').innerHTML    = PRECOS[tipo].emoji + ' ' + PRECOS[tipo].nome;
   document.getElementById('msg-group').style.display = 'none';
   document.getElementById('btn-confirmar').style.background = `linear-gradient(135deg,${cor},${cor}cc)`;

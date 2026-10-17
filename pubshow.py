@@ -18,6 +18,10 @@ from flask import (Blueprint, render_template, redirect, request,
                    session, jsonify, send_from_directory)
 from werkzeug.security import generate_password_hash, check_password_hash
 from pubshow_db import get_pubshow_db, init_pubshow_db
+try:
+    import efi_pix   # PIX pela Efí (mesma conta da RifaJá) — só pros bares de PUBSHOW_EFI_BARES (16/10/26)
+except Exception:    # sem o módulo: nenhum bar vai pela Efí, o resto segue igual
+    efi_pix = None
 
 log = logging.getLogger('pubshow')
 
@@ -220,6 +224,39 @@ PIX_TAKE_RATE = float(os.environ.get('PUBSHOW_TAKE_RATE', '0.15'))
 # Piso de preço por pedido quando há taxa de transação (Asaas): abaixo disso a
 # taxa fixa come o valor. Protege a economia do bar. Ajustável via env.
 PIX_PISO_PRECO = float(os.environ.get('PUBSHOW_PISO_PRECO', '4.00'))   # 16/10/26: R$4 + R$1 = R$5 (com R$3+1=R$4 o Asaas recusou e o PIX caiu na chave do bar)
+
+# ── Efí direto (16/10/26) ────────────────────────────────────────────────────
+# Bares listados em PUBSHOW_EFI_BARES (code do bar, separado por vírgula; '*' = todos;
+# vazio/ausente = NENHUM) cobram o PIX pela Efí: sem o mínimo de R$ 5 do Asaas.
+# Furar a fila = R$ 3 + R$ 1 = R$ 4 no PIX. Os outros bares seguem no Asaas como antes.
+PRECO_FLASH_EFI    = 3.00   # R$3 + R$1 de taxa = R$4 no PIX
+PIX_PISO_PRECO_EFI = 1.00   # a Efí não tem mínimo; o piso do preço customizado cai pra R$1 só nesses bares
+
+
+def _efi_bares():
+    return {c.strip().upper() for c in (os.environ.get('PUBSHOW_EFI_BARES') or '').split(',') if c.strip()}
+
+
+def _efi_para(b):
+    """True se o PIX deste bar vai pela Efí: bar na lista PUBSHOW_EFI_BARES E Efí configurada."""
+    lista = _efi_bares()
+    if not lista or not b:
+        return False
+    try:
+        code = (b['code'] or '').strip().upper()
+    except Exception:
+        code = ''
+    if '*' not in lista and code not in lista:
+        return False
+    try:
+        return bool(efi_pix is not None and efi_pix.configurado())
+    except Exception:
+        return False
+
+
+def _gateway_ativo(b):
+    """True quando o PIX do bar sai por gateway (Asaas ou Efí): o cliente paga item + taxa e confirma sozinho."""
+    return bool(os.environ.get('ASAAS_API_KEY')) or _efi_para(b)
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
@@ -1041,12 +1078,16 @@ def _precos_do_bar(b):
     except Exception:
         custom = {}
     desconto_pct = _happy_hour_desconto(b)
+    _efi = _efi_para(b)   # bar da Efí: furar a fila R$3 e piso R$1 (a Efí não tem o mínimo de R$5 do Asaas)
+    _piso = PIX_PISO_PRECO_EFI if _efi else PIX_PISO_PRECO
     tipos = {}
     for k, v in TIPOS_PEDIDO.items():
         t = dict(v)
+        if _efi and k == 'flash':
+            t['preco'] = PRECO_FLASH_EFI
         if k in custom:
             # piso R$5 (decisão 12/09/26: "grátis ou a partir de 5,00" — abaixo disso a taxa do PIX come o pedido)
-            t['preco'] = max(float(custom[k]), PIX_PISO_PRECO)
+            t['preco'] = max(float(custom[k]), _piso)
         if k in TIPOS_SEMPRE_GRATIS:
             t['preco'] = 0.0          # decisão 11/09/26: pedir música é grátis em TODO bar, custom não sobrepõe
             tipos[k] = t
@@ -1236,6 +1277,152 @@ def _asaas_criar_cobranca_pix_jukebox(b, pedido_id: int, valor: float, descricao
         'payload':    payload,
         'expiracao':  expira,
     }
+
+
+# ── Efí direto: cobrança + confirmação (16/10/26) ────────────────────────────
+# O webhook da Efí não valida no Railway (ECONNRESET), então a baixa é por CONSULTA:
+# a tela do cliente (polling) e um robô a cada 20 s perguntam à Efí se o PIX caiu.
+
+def _efi_criar_cobranca_jukebox(pedido_id, valor, descricao):
+    """Cobrança PIX imediata na Efí (15 min). Retorna {txid, copia_cola} ou None (erro no log)."""
+    if efi_pix is None:
+        log.error('[PUBSHOW] Efí: módulo efi_pix indisponível (pedido #%s)', pedido_id)
+        return None
+    try:
+        cob = efi_pix.criar_cobranca(round(float(valor), 2), descricao, expira=900)
+    except Exception as e:
+        cob = {'erro': str(e)[:200]}
+    if not isinstance(cob, dict) or cob.get('erro') or not cob.get('txid') or not cob.get('copia_cola'):
+        log.error('[PUBSHOW] Efí: cobrança falhou (pedido #%s, R$ %.2f): %s', pedido_id, float(valor),
+                  (cob.get('erro') if isinstance(cob, dict) else cob) or cob)
+        return None
+    return {'txid': cob['txid'], 'copia_cola': cob['copia_cola']}
+
+
+_EFI_FREIO_SEG = 5          # no máx. 1 consulta à Efí a cada 5 s por pedido (polling + robô somados)
+_efi_ultima_consulta = {}   # pedido_id → time.monotonic() da última consulta
+_efi_em_curso = set()       # pedidos com consulta em andamento (não dispara outra em paralelo)
+_efi_lock = _threading.Lock()
+
+
+def _efi_reservar_consulta(pedido_id):
+    """Freio: True (e marca) se pode consultar a Efí agora pra este pedido."""
+    agora = _time.monotonic()
+    with _efi_lock:
+        if pedido_id in _efi_em_curso:
+            return False
+        if agora - _efi_ultima_consulta.get(pedido_id, float('-inf')) < _EFI_FREIO_SEG:
+            return False
+        _efi_ultima_consulta[pedido_id] = agora
+        _efi_em_curso.add(pedido_id)
+        if len(_efi_ultima_consulta) > 5000:   # não deixa o dict crescer pra sempre
+            for k in [k for k, v in _efi_ultima_consulta.items() if agora - v > 3 * 3600]:
+                _efi_ultima_consulta.pop(k, None)
+        return True
+
+
+def _efi_consultar_e_confirmar(pedido_id, txid):
+    """Pergunta à Efí; se CONCLUIDA, faz a MESMA transição do webhook do Asaas
+    (aguardando_pix → pendente/aguardando_ok). Idempotente. True se ESTA chamada confirmou.
+    Chamar só depois de _efi_reservar_consulta()."""
+    try:
+        try:
+            r = efi_pix.consultar_cobranca(txid)
+        except Exception as e:
+            r = {'erro': str(e)[:200]}
+        if not isinstance(r, dict) or not r.get('pago'):
+            if isinstance(r, dict) and r.get('erro'):
+                log.warning('[PUBSHOW] Efí: consulta do pedido #%s (%s) falhou: %s', pedido_id, txid, r['erro'])
+            return False
+        conn = get_pubshow_db()
+        try:
+            _novo = _status_apos_pix(conn, pedido_id)
+            n = conn.execute(
+                "UPDATE pubshow_pedidos SET status=? WHERE id=? AND status='aguardando_pix' AND efi_txid=?",
+                (_novo, pedido_id, txid)
+            ).rowcount
+            conn.commit()
+        finally:
+            conn.close()
+        if n:
+            log.info('[PUBSHOW] Jukebox PIX confirmado — pedido #%s (Efí %s) → %s', pedido_id, txid, _novo)
+        return bool(n)
+    finally:
+        with _efi_lock:
+            _efi_em_curso.discard(pedido_id)
+
+
+def _efi_conferir_pedido(pedido_id, txid, espera_seg=None):
+    """Consulta (com freio de 5 s) e confirma se pago. espera_seg=None: roda aqui mesmo (robô).
+    espera_seg=N: roda numa thread e espera no máx. N s — com 1 worker gunicorn a tela do
+    cliente não pode ficar presa se a Efí demorar (o resultado cai no próximo polling)."""
+    if not txid or efi_pix is None or not _efi_reservar_consulta(pedido_id):
+        return False
+    if espera_seg is None:
+        return _efi_consultar_e_confirmar(pedido_id, txid)
+    _res = {}
+    def _run():
+        _res['ok'] = _efi_consultar_e_confirmar(pedido_id, txid)
+    t = _threading.Thread(target=_run, daemon=True, name=f'pubshow-efi-{pedido_id}')
+    t.start()
+    t.join(espera_seg)
+    return bool(_res.get('ok'))
+
+
+def _efi_robo_passada():
+    """Uma volta do robô: confere os pedidos Efí aguardando_pix dos últimos 30 min (cobrança expira em 15). Retorna quantos confirmou."""
+    if efi_pix is None:
+        return 0
+    try:
+        if not efi_pix.configurado():
+            return 0
+    except Exception:
+        return 0
+    conn = get_pubshow_db()
+    try:
+        rows = conn.execute(
+            """SELECT id, efi_txid FROM pubshow_pedidos
+               WHERE status='aguardando_pix' AND efi_txid IS NOT NULL AND efi_txid<>''
+               AND created_at >= datetime('now','-30 minutes')
+               ORDER BY id"""
+        ).fetchall()
+    finally:
+        conn.close()
+    confirmados = 0
+    for r in rows:
+        try:
+            if _efi_conferir_pedido(r['id'], r['efi_txid']):
+                confirmados += 1
+        except Exception as ex:
+            log.warning('[PUBSHOW] robô Efí: pedido #%s: %s', r['id'], ex)
+    return confirmados
+
+
+_ROBO_EFI_INICIADO = False
+
+def iniciar_robo_efi(intervalo_seg=20, delay_inicial_seg=30):
+    """Thread daemon que confere na Efí, a cada 20 s, os PIX dos pedidos aguardando_pix
+    (pagou e fechou a tela? confirma igual). Mesmo padrão do faxineiro: idempotente,
+    uma vez por processo. Só sobe se PUBSHOW_EFI_BARES não estiver vazio."""
+    global _ROBO_EFI_INICIADO
+    if _ROBO_EFI_INICIADO:
+        return
+    if not _efi_bares():
+        log.info('[PUBSHOW] Robô Efí desligado (PUBSHOW_EFI_BARES vazio)')
+        return
+    _ROBO_EFI_INICIADO = True
+
+    def _loop():
+        _time.sleep(delay_inicial_seg)
+        while True:
+            try:
+                _efi_robo_passada()
+            except Exception as ex:
+                log.error('[PUBSHOW] robô Efí erro: %s', ex)
+            _time.sleep(intervalo_seg)
+
+    _threading.Thread(target=_loop, daemon=True, name='pubshow-robo-efi').start()
+    log.info('[PUBSHOW] Robô Efí iniciado (a cada %ds)', intervalo_seg)
 
 
 def _pubshow_notify_bar(b, mensagem: str):
@@ -1587,13 +1774,15 @@ def tv(code):
 
     # Preços efetivos do bar p/ o slide de preço DINÂMICO (sempre atualizado,
     # nunca fica com preço velho como imagem estática).
-    try:    _pc = _json.loads(b['precos_custom'] or '{}')
-    except: _pc = {}
+    # 16/10/26: mostra o que a pessoa PAGA no PIX (item + taxa do gateway), igual ao card do celular
+    _pb, _ = _precos_do_bar(dict(b))
+    _tx_tv = PIX_TAXA_CONVENIENCIA if _gateway_ativo(b) else 0.0
     def _preco_tv(k):
-        base = TIPOS_PEDIDO.get(k, {})
+        base = _pb.get(k) or TIPOS_PEDIDO.get(k, {})
+        _p = float(base.get('preco', 0) or 0)
         return {'emoji': base.get('emoji', '🎵'),
                 'nome':  base.get('nome', k),
-                'preco': float(_pc.get(k) or base.get('preco', 0))}
+                'preco': round(_p + _tx_tv, 2) if _p > 0 else 0.0}
     precos_tv = [_preco_tv(k) for k in ('musica', 'musica_especifica', 'flash', 'parabens')]
 
     return render_template('pubshow/tv.html', b=dict(b), canal=canal,
@@ -1622,6 +1811,8 @@ def jukebox(token):
     if b['suspenso']:
         return render_template('pubshow/qr_invalido.html'), 403
     b = dict(b)  # converte para dict — sqlite3.Row não tem .get() em Python < 3.12
+    _efi = _efi_para(b)          # PIX deste bar vai pela Efí (PUBSHOW_EFI_BARES)?
+    _gw  = _gateway_ativo(b)     # Asaas ou Efí: cliente paga item + taxa, confirma sozinho
 
     sucesso      = None
     erro         = ''
@@ -1687,7 +1878,7 @@ def jukebox(token):
                 # Asaas é o PADRÃO de pagamento: se está configurado, TODO pedido
                 # passa por ele (cobrança automática + confirmação sozinha). O modo
                 # manual (chave PIX do próprio bar) fica só como fallback p/ quem tem.
-                usar_pix = bool(os.environ.get('ASAAS_API_KEY')) or (bool(b['requer_pix']) and bool(b['pix_key']))
+                usar_pix = _efi or bool(os.environ.get('ASAAS_API_KEY')) or (bool(b['requer_pix']) and bool(b['pix_key']))
                 if preco <= 0:
                     usar_pix = False   # pedido GRÁTIS: entra direto na fila, sem cobrança
                 tipo_nome  = precos_bar[tipo]['nome']
@@ -1717,21 +1908,22 @@ def jukebox(token):
                         (b['id'],)
                     ).fetchone()[0]
                     conn_off.close()
-                    # centavos de identificação só no PIX manual — no Asaas o payment_id identifica e o cliente vê o preço cheio
-                    preco_final = preco if os.environ.get('ASAAS_API_KEY') else round(preco + _offset * 0.01, 2)
+                    # centavos de identificação só no PIX manual — no Asaas (e na Efí) o id da cobrança identifica e o cliente vê o preço cheio
+                    preco_final = preco if (os.environ.get('ASAAS_API_KEY') or _efi) else round(preco + _offset * 0.01, 2)
 
                     # ── Cria pedido como aguardando_pix (sem asaas_payment_id ainda) ─
+                    # Efí: efi_txid nasce '' (não NULL) → o "Já paguei" sem cobrança nunca solta este pedido
                     txid = f'P{b["id"]}T{int(datetime.now().timestamp())}'
                     conn2 = get_pubshow_db()
                     cur = conn2.execute(
                         '''INSERT INTO pubshow_pedidos
                            (business_id, tipo, nome_cliente, mensagem, categoria, status, valor,
-                            youtube_id, titulo_pedido, thumb_url, ip_cliente, pix_txid)
-                           VALUES (?,?,?,?,?,?,?,?,?,?,?,?)''',
+                            youtube_id, titulo_pedido, thumb_url, ip_cliente, pix_txid, efi_txid)
+                           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)''',
                         (b['id'], tipo, nome_cliente, mensagem, categoria,
                          'aguardando_pix', preco_final,
                          youtube_id or None, titulo_pedido or None, thumb_url or None,
-                         ip_cliente, txid)
+                         ip_cliente, txid, '' if _efi else None)
                     )
                     pedido_id = cur.lastrowid
                     conn2.commit(); conn2.close()
@@ -1746,9 +1938,28 @@ def jukebox(token):
                     # transação). O cliente paga +R$1 e o bar recebe o valor cheio
                     # do pedido. No PIX manual (chave do próprio bar) não há taxa.
                     _valor_cobranca = round(preco_final + PIX_TAXA_CONVENIENCIA, 2)
-                    asaas_data = _asaas_criar_cobranca_pix_jukebox(b, pedido_id, _valor_cobranca, descricao_pedido)
+                    # Bar da Efí: cobra SÓ pela Efí (nada de Asaas, nada de chave do bar se ela falhar)
+                    efi_data   = _efi_criar_cobranca_jukebox(pedido_id, _valor_cobranca, f'Jukebox — {descricao_pedido} — {b["nome"]}') if _efi else None
+                    asaas_data = None if _efi else _asaas_criar_cobranca_pix_jukebox(b, pedido_id, _valor_cobranca, descricao_pedido)
 
-                    if asaas_data:
+                    if efi_data:
+                        # Efí gerou a cobrança: guarda o txid (coluna própria), o copia e cola e o
+                        # valor do bar = preço do item (mesma regra do Asaas); QR feito aqui no servidor.
+                        conn3 = get_pubshow_db()
+                        conn3.execute(
+                            'UPDATE pubshow_pedidos SET efi_txid=?, pix_payload=?, valor=? WHERE id=?',
+                            (efi_data['txid'], efi_data['copia_cola'], preco_final, pedido_id)
+                        )
+                        conn3.commit(); conn3.close()
+                        pix_payload = efi_data['copia_cola']
+                        pix_qr      = _pix_qr_b64(pix_payload)
+                    elif _efi:
+                        # Efí falhou: apaga o pedido e pede pra tentar de novo (o erro já foi pro log)
+                        conn3 = get_pubshow_db()
+                        conn3.execute("DELETE FROM pubshow_pedidos WHERE id=? AND status='aguardando_pix'", (pedido_id,))
+                        conn3.commit(); conn3.close()
+                        erro = 'Pagamento indisponível agora, tenta de novo em instantes.'
+                    elif asaas_data:
                         # Asaas gerou QR — salva payment_id e usa payload do Asaas.
                         # Grava o valor LÍQUIDO do bar: cliente paga item + conveniência,
                         # o Asaas desconta a taxa dele, e o bar recebe o que sobra.
@@ -1788,7 +1999,7 @@ def jukebox(token):
                         # ── Notificação WhatsApp + Push em background (não bloqueia resposta) ──
                         _hh_txt = f' 🎉 Happy Hour {hh_desconto}% off!' if hh_desconto else ''
                         _bid, _emoji, _tnome, _nome, _preco = b['id'], tipo_emoji, tipo_nome, nome_cliente, preco_final
-                        _via_asaas = bool(asaas_data)
+                        _via_asaas = bool(asaas_data or efi_data)   # gateway: confirma sozinho
                         _bd_copy = dict(b)
                         def _notif_pix():
                             if _via_asaas:
@@ -1807,14 +2018,16 @@ def jukebox(token):
                             'pedido_id':  pedido_id,
                             'payload':    pix_payload,
                             'qr_b64':     pix_qr,
-                            # valor = total que o cliente paga (com taxa, se via Asaas)
-                            'valor':      _valor_cobranca if asaas_data else preco_final,
+                            # valor = total que o cliente paga (com taxa, se via Asaas/Efí)
+                            'valor':      _valor_cobranca if _via_asaas else preco_final,
                             'valor_item': preco_final,
-                            'taxa_conv':  PIX_TAXA_CONVENIENCIA if asaas_data else 0.0,
-                            'recebedor':  b['pix_nome_recebedor'] or b['nome'],
+                            'taxa_conv':  PIX_TAXA_CONVENIENCIA if _via_asaas else 0.0,
+                            # Efí: o nome da conta recebedora não é conhecido aqui — a tela não mostra "Recebedor"
+                            'recebedor':  '' if efi_data else (b['pix_nome_recebedor'] or b['nome']),
                             'tipo_nome':  tipo_nome,
                             'tipo_emoji': tipo_emoji,
-                            'via_asaas':  bool(asaas_data),
+                            'via_asaas':  _via_asaas,       # = gateway automático (Asaas ou Efí): sem "Já paguei"
+                            'via_efi':    bool(efi_data),
                         }
                         sucesso = None
                 elif not erro:
@@ -1899,7 +2112,7 @@ def jukebox(token):
     # PIX cent offset — cada pedido do dia recebe +N centavos para identificação no extrato
     # Ex: 1º pedido = R$5,00 / 2º = R$5,01 / 3º = R$5,02 ...
     pix_offset = 0
-    if b.get('pix_key') and not os.environ.get('ASAAS_API_KEY'):
+    if b.get('pix_key') and not _gw:
         try:
             pix_offset = conn3.execute(
                 "SELECT COUNT(*) FROM pubshow_pedidos WHERE business_id=? AND date(created_at,'-3 hours')=date('now','-3 hours')",
@@ -1925,8 +2138,9 @@ def jukebox(token):
                            aberto=aberto, motivo_fechado=motivo_fechado,
                            aviso=aviso, token=token,
                            pix_offset=pix_offset,
-                           asaas_ativo=bool(os.environ.get('ASAAS_API_KEY')),
-                           pix_conv=(PIX_TAXA_CONVENIENCIA if os.environ.get('ASAAS_API_KEY') else 0.0),
+                           # asaas_ativo = "PIX por gateway" (Asaas OU Efí): QR automático + taxa no total
+                           asaas_ativo=_gw,
+                           pix_conv=(PIX_TAXA_CONVENIENCIA if _gw else 0.0),
                            pedido_id_sucesso=locals().get('pedido_id_sucesso'))
 
 
@@ -1964,7 +2178,8 @@ def jukebox_ja_paguei(token, pedido_id):
     # Trust-based: sem exigência de PIX — entra direto na fila
     updated = conn.execute(
         """UPDATE pubshow_pedidos SET status=?
-           WHERE id=? AND business_id=? AND status='aguardando_pix' AND asaas_payment_id IS NULL""",
+           WHERE id=? AND business_id=? AND status='aguardando_pix' AND asaas_payment_id IS NULL
+             AND efi_txid IS NULL""",   # pedido da Efí só sai pela consulta (pago de verdade)
         (_status_apos_pix(conn, pedido_id), pedido_id, b['id'])
     ).rowcount
     if updated:
@@ -2063,7 +2278,8 @@ def api_pedido_status(token, pedido_id):
     """Polling do cliente: retorna status + posição na fila + tempo estimado."""
     conn = get_pubshow_db()
     row = conn.execute(
-        '''SELECT p.status, p.business_id, p.created_at FROM pubshow_pedidos p
+        '''SELECT p.status, p.business_id, p.created_at, p.efi_txid,
+                  (p.created_at >= datetime('now','-20 minutes')) AS efi_recente FROM pubshow_pedidos p
            JOIN pubshow_businesses b ON p.business_id = b.id
            WHERE p.id=? AND (b.jukebox_token=? OR b.code=?)''',
         (pedido_id, token, token)
@@ -2073,6 +2289,13 @@ def api_pedido_status(token, pedido_id):
         return jsonify({'error': 'not_found'}), 404
 
     status = row['status']
+    # Efí (sem webhook no Railway): a própria tela do cliente pergunta se o PIX caiu
+    # — no máx. 1x a cada 5 s por pedido, só nos primeiros 20 min (a cobrança expira em 15),
+    # esperando no máx. 0,5 s: com 1 worker a TV/painel não podem ficar lentos; se a Efí
+    # demorar, a thread confirma sozinha e o próximo polling já vê.
+    if status == 'aguardando_pix' and row['efi_txid'] and row['efi_recente']:
+        if _efi_conferir_pedido(pedido_id, row['efi_txid'], espera_seg=0.5):
+            status = conn.execute('SELECT status FROM pubshow_pedidos WHERE id=?', (pedido_id,)).fetchone()['status']
     posicao = None
     tempo_min = None
 
@@ -2459,7 +2682,7 @@ def painel():
                            now_brt=datetime.utcnow() - timedelta(hours=3),
                            timedelta=timedelta,
                            assinatura=dict(assinatura) if assinatura else None,
-                           asaas_ativo=bool(os.environ.get('ASAAS_API_KEY')),
+                           asaas_ativo=_gateway_ativo(bd),   # Asaas OU Efí: PIX confirma sozinho
                            promo_ativa=bool(bd.get('promo_msg') and bd.get('promo_expira') and bd['promo_expira'] > datetime.now().strftime('%Y-%m-%dT%H:%M:%S')))
 
 
@@ -3211,7 +3434,11 @@ def painel_qrcode():
         qr_b64 = None
 
     # dict(b): sqlite3.Row não tem .get() → _plano_permite estourava 500 no QR (bug 11/09/26)
-    return render_template('pubshow/qrcode.html', precos=_precos_do_bar(dict(b))[0],
+    _pq = _precos_do_bar(dict(b))[0]
+    if _gateway_ativo(b):   # 16/10/26: o cartão mostra o que a pessoa paga no PIX (item + taxa), igual ao celular
+        _pq = {k: dict(v, preco=(round(v['preco'] + PIX_TAXA_CONVENIENCIA, 2) if v['preco'] > 0 else v['preco']))
+               for k, v in _pq.items()}
+    return render_template('pubshow/qrcode.html', precos=_pq,
                            b=dict(b),
                            jukebox_url=jukebox_url,
                            qr_b64=qr_b64)
@@ -4278,6 +4505,11 @@ def iniciar_faxineiro_videos(intervalo_horas=12, delay_inicial_seg=300):
     processo. Desligável via env PUBSHOW_FAXINEIRO=0.
     """
     global _FAXINEIRO_INICIADO
+    # Robô da Efí sobe junto (mesmo ponto de partida no app.py), independente do faxineiro
+    try:
+        iniciar_robo_efi()
+    except Exception as _re:
+        log.warning('[PUBSHOW] Robô Efí não iniciou: %s', _re)
     if _FAXINEIRO_INICIADO:
         return
     if os.environ.get('PUBSHOW_FAXINEIRO', '1') == '0':

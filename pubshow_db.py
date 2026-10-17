@@ -148,6 +148,8 @@ def init_pubshow_db():
         'ALTER TABLE pubshow_pedidos ADD COLUMN pix_cliente_avisou INTEGER DEFAULT 0',
         # PIX via Asaas — payment_id para rastrear cobrança
         'ALTER TABLE pubshow_pedidos ADD COLUMN asaas_payment_id TEXT',
+        # PIX via Efí (16/10/26) — txid da cobrança; coluna própria, não mistura com o Asaas
+        'ALTER TABLE pubshow_pedidos ADD COLUMN efi_txid TEXT',
         # Bar pode exigir PIX antes de entrar na fila
         'ALTER TABLE pubshow_businesses ADD COLUMN requer_pix INTEGER DEFAULT 0',
         # Temas habilitados pelo bar (JSON array de keys; NULL = todos habilitados)
