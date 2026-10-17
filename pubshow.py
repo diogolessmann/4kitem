@@ -2438,10 +2438,15 @@ def api_pedido_exibido(pedido_id):
     if not b or b['id'] != pedido['business_id']:
         conn.close()
         return jsonify({'error': 'unauthorized'}), 403
-    conn.execute(
-        "UPDATE pubshow_pedidos SET status='exibido', exibido_at=datetime('now','-3 hours') WHERE id=?",
+    # Só pedido 'pendente' vira exibido (17/10/26): a TV só recebe pendente (/api/status). Sem isso, um
+    # pedido não pago ou recusado virava 'exibido' e contava como pago; dispensado no meio fica dispensado.
+    _cur = conn.execute(
+        "UPDATE pubshow_pedidos SET status='exibido', exibido_at=datetime('now','-3 hours') WHERE id=? AND status='pendente'",
         (pedido_id,)
     )
+    if not _cur.rowcount:
+        conn.close()
+        return jsonify({'error': 'status'}), 409
     # Acervo que cresce com o uso (11/09/26): música do YouTube que TOCOU na TV entra no acervo,
     # na categoria do canal que estava no ar. O cardápio vira o que o público daquele bar pede.
     _yid = (pedido['youtube_id'] or '').strip()
@@ -4014,7 +4019,7 @@ def painel_dispensar_pedido(pid):
     b = _get_business()
     conn = get_pubshow_db()
     conn.execute(
-        "UPDATE pubshow_pedidos SET status='dispensado' WHERE id=? AND business_id=?",
+        "UPDATE pubshow_pedidos SET status='dispensado' WHERE id=? AND business_id=? AND status IN ('pendente','aguardando_ok')",
         (pid, b['id'])
     )
     conn.commit(); conn.close()
@@ -4056,7 +4061,7 @@ def painel_bloquear_video():
     conn.execute('UPDATE pubshow_businesses SET videos_bloqueados=? WHERE id=?', (_json.dumps(lista[-300:]), b['id']))
     pid = request.form.get('pedido_id', '')
     if pid.isdigit():
-        conn.execute("UPDATE pubshow_pedidos SET status='dispensado' WHERE id=? AND business_id=? AND status IN ('pendente','aguardando_pix')",
+        conn.execute("UPDATE pubshow_pedidos SET status='dispensado' WHERE id=? AND business_id=? AND status='pendente'",
                      (int(pid), b['id']))
     conn.commit(); conn.close()
     return redirect('/pubshow/painel')

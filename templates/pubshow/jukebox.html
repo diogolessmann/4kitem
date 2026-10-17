@@ -1606,7 +1606,7 @@ function fecharOnboarding() {
   if (!el) return;
   el.classList.add('hide');
   setTimeout(() => el.remove(), 380);
-  try { localStorage.setItem('ob_{{ b.code }}', '1'); } catch(e) {}
+  try { localStorage.setItem('ob_{{ b.jukebox_token or b.id }}', '1'); } catch(e) {}
 }
 
 (function initOnboarding() {
@@ -1614,7 +1614,7 @@ function fecharOnboarding() {
   if (!el) return;
 
   // Se já viu, fecha imediatamente
-  try { if (localStorage.getItem('ob_{{ b.code }}')) { el.remove(); return; } } catch(e) {}
+  try { if (localStorage.getItem('ob_{{ b.jukebox_token or b.id }}')) { el.remove(); return; } } catch(e) {}
 
   obGoTo(0);
 
