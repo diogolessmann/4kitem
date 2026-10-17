@@ -19,6 +19,7 @@ from flask import (Blueprint, render_template, redirect, request,
                    session, jsonify, send_from_directory)
 from werkzeug.security import generate_password_hash, check_password_hash
 from pubshow_db import get_pubshow_db, init_pubshow_db
+import pubshow_estilo   # "aqui só toca rock" com o YouTube livre: estilo pelo ARTISTA (17/10/26)
 try:
     import efi_pix   # PIX pela Efí (mesma conta da RifaJá) — só pros bares de PUBSHOW_EFI_BARES (16/10/26)
 except Exception:    # sem o módulo: nenhum bar vai pela Efí, o resto segue igual
@@ -1928,6 +1929,8 @@ def jukebox(token):
                 erro = 'Escreve a cantada antes de mandar. 😏'
             elif tipo in TIPOS_MUSICA_FILA and youtube_id and _musica_longa(b, youtube_id, tipo):
                 erro = MSG_MUSICA_LONGA   # 17/10/26: máx. 10 min em todo pedido de música, grátis ou pago
+            elif tipo in TIPOS_MUSICA_FILA and youtube_id and (_fe := _fora_do_estilo(b, youtube_id, titulo_pedido)):
+                erro = _fe                # 17/10/26: "aqui só toca rock" — antes de gerar o PIX
             elif tipo in TIPOS_MUSICA_FILA and youtube_id and _musica_na_fila(b, youtube_id):
                 erro = '🎵 Essa música já está na fila! Escolhe outra.'
             elif tipo in TIPOS_SEMPRE_GRATIS and (_espera := _gratis_espera_min(b, ip_cliente)) > 0:
@@ -2597,6 +2600,26 @@ def api_buscar_biblioteca():
     if rows:   # 17/10/26: música de mais de 10 min nem aparece pra pedir (os shows longos seguem só na TV)
         _dur = _duracoes_conhecidas([r['youtube_id'] for r in rows], conn)
         rows = [r for r in rows if (_dur.get(r['youtube_id']) or 0) <= YT_DUR_MAX_SEG]
+    # 17/10/26 ("aqui só toca rock"): o que entrou no acervo pelo YouTube foi pra categoria do canal no ar (sertanejo
+    # pedido no bar de rock virou "rock"). Esses valem pelo ARTISTA; só o que já se sabe (o Gemini roda no fundo).
+    _eb = pubshow_estilo.estilos_do_bar(_bar_por_token(bar_token)) if generos_permitidos else None
+    if rows and _eb:
+        try:
+            _ids, _pp = [r['youtube_id'] for r in rows], set()
+            for i in range(0, len(_ids), 400):
+                _parte = _ids[i:i + 400]
+                _pp |= {x[0] for x in conn.execute(
+                    f"""SELECT youtube_id FROM pubshow_videos WHERE subcategoria='pedido_publico'
+                        AND youtube_id IN ({','.join('?' * len(_parte))})""", tuple(_parte)).fetchall()}
+            if _pp:
+                _est = pubshow_estilo.classificar(
+                    [{'id': r['youtube_id'], 'titulo': r['titulo'] or '',
+                      'palpites': [pubshow_estilo.artista_do_titulo(r['titulo']), r['artista']]}
+                     for r in rows if r['youtube_id'] in _pp], espera=None)
+                rows = [r for r in rows if r['youtube_id'] not in _pp
+                        or pubshow_estilo.passa(_est.get(r['youtube_id']), _eb)]
+        except Exception as e:
+            log.warning('[PUBSHOW] estilo da lista do bar falhou: %s', e)
     conn.close()
     return jsonify({'resultados': [dict(r) for r in rows], 'total': len(rows)})
 
@@ -2828,8 +2851,9 @@ def _yt_titulo_limpo(titulo, canal_artista='', artistas=None):
     return f'{musica} · {artista}'[:80]
 
 
-def _yt_ranquear(lidos, q):
-    """Os YT_TOP melhores pro celular: bate com o que digitou > oficial do artista > mais visto (só áudio no fim)."""
+def _yt_ranquear(lidos, q, top=YT_TOP):
+    """Os YT_TOP melhores pro celular: bate com o que digitou > oficial do artista > mais visto (só áudio no fim).
+    Bar com estilo pede mais (top) pra sobrar 5 depois do filtro do estilo."""
     qn = _yt_norm(q)
     tokens = [w for w in qn.split() if w not in _YT_STOP and (len(w) >= 2 or w.isdigit())]
     fora_q = {m.group(0).replace(' ', '') for m in _YT_FORA_RE.finditer(qn)}
@@ -2868,7 +2892,7 @@ def _yt_ranquear(lidos, q):
             'views': v['views'], 'views_txt': _yt_views_txt(v['views']),
             'oficial': bool(v['oficial']), 'so_audio': bool(so_audio), '_chave': chave,
         })
-        if len(out) >= YT_TOP:
+        if len(out) >= top:
             break
     for o in out:
         o.pop('_chave', None)
@@ -2961,6 +2985,60 @@ def _musica_longa(b, youtube_id, tipo):
     return seg > YT_DUR_MAX_SEG
 
 
+def _palpites_artista(card):
+    """Quem é o artista de um card: o do título limpo ('Back In Black · AC/DC') e o canal, quando é do próprio
+    artista (selo oficial ou '- Topic')."""
+    canal = card.get('canal') or ''
+    ps = [pubshow_estilo.artista_do_titulo(card.get('titulo'))]
+    if card.get('oficial') or _yt_norm(canal).endswith(' topic'):
+        ps.append(_yt_canal_limpo(canal))
+    return [p for p in ps if p]
+
+
+def _so_do_estilo(b, ests_bar, cards, espera=pubshow_estilo.ESPERA_BUSCA):
+    """Os cards que podem tocar no estilo do bar ("aqui só toca rock", 17/10/26). Acervo curado na categoria do
+    estilo passa direto; o resto vale pelo ARTISTA (pubshow_estilo): desconhecido passa, de vários estilos conta como
+    todos. Acervo curado de outra categoria só passa se o artista for (também) do estilo."""
+    if not ests_bar or not cards:
+        return list(cards)
+    ids = [c['id'] for c in cards if c.get('id')]
+    cat = {}
+    if ids:
+        conn = get_pubshow_db()
+        try:
+            cat = {r['youtube_id']: r['categoria'] for r in conn.execute(
+                f"""SELECT youtube_id, categoria FROM pubshow_videos
+                    WHERE youtube_id IN ({','.join('?' * len(ids))}) AND ativo=1
+                      AND COALESCE(subcategoria, '') <> 'pedido_publico'""", tuple(ids)).fetchall()}
+        finally:
+            conn.close()
+    est_cat = {i: pubshow_estilo.estilo_da_categoria(c) for i, c in cat.items()}
+    pelo_artista = [c for c in cards if est_cat.get(c.get('id')) not in ests_bar]
+    est = pubshow_estilo.classificar(
+        [{'id': c['id'], 'titulo': c.get('titulo_original') or c.get('titulo') or '', 'canal': c.get('canal') or '',
+          'palpites': _palpites_artista(c)} for c in pelo_artista], espera) if pelo_artista else {}
+    out = []
+    for c in cards:
+        e_cat, e_art = est_cat.get(c.get('id')), est.get(c.get('id'))
+        if e_cat in ests_bar or (pubshow_estilo.passa(e_art, ests_bar) and (not e_cat or e_art)):
+            out.append(c)
+    return out
+
+
+def _fora_do_estilo(b, youtube_id, titulo):
+    """'' se a música pode tocar no estilo do bar; senão a mensagem pro cliente (vale pro grátis e pro pago)."""
+    ests_bar = pubshow_estilo.estilos_do_bar(b)
+    if not ests_bar:
+        return ''
+    try:   # sem Gemini aqui: vale o que a busca já aprendeu (o título do pedido vem do celular)
+        if _so_do_estilo(b, ests_bar, [{'id': youtube_id, 'titulo': titulo or ''}], espera=None):
+            return ''
+    except Exception as e:      # nunca barra o pedido por erro nosso
+        log.warning('[PUBSHOW] estilo do pedido falhou (passou): %s', e)
+        return ''
+    return pubshow_estilo.msg_fora(b, ests_bar)
+
+
 def _bar_por_token(token):
     token = (token or '').strip()
     if not token or len(token) > 40:
@@ -3020,14 +3098,23 @@ def api_buscar():
     except Exception as e:
         log.error('YouTube search error: %s', e)
         return jsonify({'resultados': [], 'erro': 'youtube'})
+    b = _bar_por_token(request.args.get('bar', ''))
+    ests_bar = pubshow_estilo.estilos_do_bar(b)    # 17/10/26: "aqui só toca rock" (None = tudo liberado)
     try:
-        resultados = _yt_ranquear(lidos, q)
+        resultados = _yt_ranquear(lidos, q, top=YT_TOP * 2 if ests_bar else YT_TOP)
     except Exception as e:   # resposta esquisita do YouTube: nunca 500, e não guarda no cache
         log.error('YouTube ranking error: %s', e)
         _YT_CACHE.pop(' '.join(q.lower().split()), None)
         return jsonify({'resultados': [], 'erro': 'youtube'})
-    b = _bar_por_token(request.args.get('bar', '')) if resultados else None
-    if b:
+    if ests_bar and resultados:
+        try:
+            resultados = _so_do_estilo(b, ests_bar, resultados)[:YT_TOP]
+        except Exception as e:   # erro nosso no filtro: mostra a busca como sempre (nunca 500)
+            log.warning('[PUBSHOW] filtro de estilo falhou (busca sem filtro): %s', e)
+            resultados = resultados[:YT_TOP]
+        if not resultados:
+            return jsonify({'resultados': [], 'fora_estilo': True, **pubshow_estilo.aviso_fora(ests_bar)})
+    if b and resultados:
         _yt_selos(b['id'], resultados)
     return jsonify({'resultados': resultados})
 
@@ -3055,7 +3142,9 @@ def api_mais_pedidas(token):
         # sem duração, aparecia aqui). A lista se refaz sozinha: a busca e a TV vão aprendendo as durações.
         _dur = _duracoes_conhecidas([r['youtube_id'] for r in rows], conn)
         rows = [r for r in rows if _dur.get(r['youtube_id']) is not None
-                and _dur[r['youtube_id']] <= YT_DUR_MAX_SEG][:6]
+                and _dur[r['youtube_id']] <= YT_DUR_MAX_SEG]
+        _ests_bar = pubshow_estilo.estilos_do_bar(b)   # 17/10/26: bar de rock não mostra o sertanejo de antes
+        rows = rows if _ests_bar else rows[:6]
         ids = [r['youtube_id'] for r in rows]
         titulos = {}
         if ids:
@@ -3084,6 +3173,12 @@ def api_mais_pedidas(token):
         titulo = t if ' · ' in t else _yt_titulo_limpo(t)   # " · " = já veio limpo da busca nova
         out.append({'id': yid, 'titulo': titulo[:80] or 'Música pedida',
                     'vezes': r['vezes'], 'thumb': f'https://i.ytimg.com/vi/{yid}/hqdefault.jpg'})
+    if _ests_bar and out:
+        try:
+            out = _so_do_estilo(b, _ests_bar, out, espera=None)   # só o que já se sabe (título vem do celular)
+        except Exception as e:
+            log.warning('[PUBSHOW] estilo das mais pedidas falhou: %s', e)
+        out = out[:6]
     _yt_selos(b['id'], out)
     return jsonify({'resultados': out})
 
@@ -3239,6 +3334,9 @@ def painel():
                            happy_hour=happy_hour,
                            hh_desconto_atual=hh_desconto_atual,
                            generos_jukebox=generos_jukebox,
+                           estilo_botoes=pubshow_estilo.BOTOES,              # 🎵 Aqui toca (17/10/26)
+                           estilo_aceso=pubshow_estilo.botao_aceso(bd),
+                           estilo_texto=pubshow_estilo.texto_aqui_toca(bd),
                            canais_todos=CANAIS,
                            plano_max_anuncios=_plano_max_anuncios(bd),
                            plano_permite_hh=_plano_permite(bd, 'happy_hour'),
@@ -4228,6 +4326,32 @@ def painel_config():
     )
     conn.commit(); conn.close()
     return redirect('/pubshow/painel?aba=config')
+
+
+@pubshow_bp.route('/painel/aqui-toca', methods=['POST'])
+@pubshow_login_required
+def painel_aqui_toca():
+    """🎵 Aqui toca (17/10/26): 1 toque num dos 5 botões grandes = o estilo da lista do bar E da busca do YouTube
+    (generos_jukebox, a mesma coluna dos gêneros dos Ajustes). Tudo = liberado. A TV não muda."""
+    import json as _json
+    b = _get_business()
+    xhr = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+    if not b:
+        return (jsonify({'ok': False}), 401) if xhr else redirect('/pubshow/entrar')
+    k = (request.form.get('estilo') or '').strip()
+    if k not in pubshow_estilo.BOTOES:
+        return (jsonify({'ok': False, 'erro': 'estilo inválido'}), 400) if xhr else redirect('/pubshow/painel?aba=ajustes')
+    temas = pubshow_estilo.BOTOES[k]['temas']
+    valor = _json.dumps(temas) if temas else None
+    conn = get_pubshow_db()
+    pubshow_estilo.garantir_coluna(conn)
+    conn.execute('UPDATE pubshow_businesses SET generos_jukebox=?, estilo_yt=? WHERE id=?',
+                 (valor, 1 if temas else 0, b['id']))   # o toque é o que liga o YouTube (gênero antigo não)
+    conn.commit(); conn.close()
+    novo = {'generos_jukebox': valor, 'estilo_yt': 1 if temas else 0}
+    if xhr:
+        return jsonify({'ok': True, 'estilo': k, 'temas': temas or [], 'texto': pubshow_estilo.texto_aqui_toca(novo)})
+    return redirect('/pubshow/painel?aba=ajustes')
 
 
 @pubshow_bp.route('/painel/senha', methods=['POST'])

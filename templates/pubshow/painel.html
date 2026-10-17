@@ -28,6 +28,15 @@
   .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:24px}
   .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px}
   .card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px}
+  /* 🎵 Aqui toca (17/10/26): 5 botões grandes e coloridos */
+  .aqui-toca{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
+  .at-btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;min-height:96px;padding:10px 6px;border-radius:16px;border:3px solid transparent;background:color-mix(in srgb,var(--c) 18%,#13131f);color:#fff;font-family:inherit;font-size:17px;font-weight:900;cursor:pointer;transition:transform .1s}
+  .at-btn .ic{font-size:36px;line-height:1}
+  .at-btn:active{transform:scale(.96)}
+  .at-btn.ativo{border-color:var(--c);background:color-mix(in srgb,var(--c) 42%,#13131f);box-shadow:0 0 0 3px color-mix(in srgb,var(--c) 30%,transparent)}
+  .at-btn.ativo::after{content:'✓ ligado';font-size:11px;font-weight:800;color:#fff;background:var(--c);border-radius:999px;padding:2px 8px}
+  .at-msg{font-size:15px;font-weight:700;color:var(--text);margin-top:12px;text-align:center}
+  @media(max-width:520px){.aqui-toca{grid-template-columns:repeat(3,1fr)}.at-btn{min-height:88px}}
   .card-title{font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.6px;margin-bottom:14px}
   /* Menu de acesso rápido — fixo no topo, evita rolar a página inteira */
   .quick-nav{position:sticky;top:0;z-index:50;display:flex;gap:6px;overflow-x:auto;padding:10px 0;margin-bottom:8px;background:rgba(8,8,15,.92);backdrop-filter:blur(12px);-webkit-overflow-scrolling:touch}
@@ -452,6 +461,17 @@
   <!-- ════════ ZONA AJUSTES (configuração) ════════ -->
   <div id="z-ajustes" class="zona oculta">
 
+    <!-- 🎵 Aqui toca (17/10/26, Diogo: "pode pesquisar no YouTube mas aqui só toca rock"): 1 toque e pronto -->
+    <div class="card" id="sec-aqui-toca" style="margin-bottom:16px">
+      <div class="card-title">🎵 Aqui toca</div>
+      <div class="aqui-toca">
+        {% for k, e in estilo_botoes.items() %}
+        <button type="button" class="at-btn{% if k == estilo_aceso %} ativo{% endif %}" data-estilo="{{ k }}" style="--c:{{ e.cor }}" aria-pressed="{{ 'true' if k == estilo_aceso else 'false' }}" onclick="escolherAquiToca(this)"><span class="ic">{{ e.emoji }}</span>{{ e.nome }}</button>
+        {% endfor %}
+      </div>
+      <div id="at-msg" class="at-msg" aria-live="polite">{{ estilo_texto }}</div>
+    </div>
+
     {# Modo manual (chave PIX própria): só aparece se o Asaas NÃO estiver ligado.
        Com Asaas é tudo automático — o bar nem precisa configurar PIX. #}
     {% if not asaas_ativo %}
@@ -669,7 +689,7 @@
       <div>
         <label class="label-sm">🎵 Gêneros disponíveis para busca no Jukebox</label>
         <div style="font-size:11px;color:var(--text2);margin-bottom:8px">
-          Clientes só verão músicas destes gêneros ao buscar na biblioteca.
+          Clientes só verão músicas destes gêneros na lista do bar e no YouTube (o mais fácil: os botões de 🎵 Aqui toca, lá em cima).
           Se nenhum for selecionado, <strong style="color:var(--text)">todos os gêneros ficam disponíveis</strong>.
         </div>
         <div style="display:flex;flex-wrap:wrap;gap:6px">
@@ -1085,6 +1105,31 @@ function pularMusica(btn) {
     btn.innerHTML = '❌ Erro — tente de novo';
     setTimeout(() => { btn.innerHTML = orig; btn.disabled = false; }, 3000);
   });
+}
+
+// 🎵 Aqui toca (17/10/26): 1 toque salva sozinho
+async function escolherAquiToca(btn) {
+  const msg = document.getElementById('at-msg');
+  const fd = new FormData(); fd.append('estilo', btn.dataset.estilo);
+  try {
+    const r = await fetch('/pubshow/painel/aqui-toca', {method: 'POST', body: fd, headers: {'X-Requested-With': 'XMLHttpRequest'}});
+    const d = await r.json();
+    if (!r.ok || !d.ok) throw new Error('erro');
+    document.querySelectorAll('.at-btn').forEach(b => {
+      const on = b.dataset.estilo === d.estilo;
+      b.classList.toggle('ativo', on); b.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
+    // os gêneros do form dos Ajustes acompanham (senão o "Salvar configurações" desfazia o toque)
+    document.querySelectorAll('input[name="generos_jukebox"]').forEach(cb => {
+      cb.checked = (d.temas || []).includes(cb.value);
+      if (typeof atualizarGeneroLbl === 'function') atualizarGeneroLbl(cb.value, cb.checked);
+    });
+    msg.textContent = '✅ ' + d.texto;
+    msg.style.color = '';
+  } catch(e) {
+    msg.textContent = 'Não salvou. Toca de novo.';
+    msg.style.color = '#f87171';
+  }
 }
 
 // 📊⚙️ Abas do painel: Hoje (uso diário) x Ajustes (configuração)
