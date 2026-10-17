@@ -171,21 +171,61 @@
   }
   .resultado-item.selecionado .resultado-check{display:flex}
 
-  /* Selecionado — só texto */
-  #selecionado-box{
-    background:rgba(6,182,212,.07);border:2px solid var(--busca-cor,#06b6d4);
-    border-radius:14px;padding:14px;margin-top:10px;display:none;
-  }
-  #selecionado-box.show{display:block}
-  .sel-label{font-size:10px;color:var(--busca-cor,#06b6d4);font-weight:900;text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px}
-  .sel-titulo{font-size:14px;font-weight:800;color:#f0f0ff;margin-bottom:2px}
-  .sel-sub{font-size:12px;color:var(--text2);margin-bottom:12px}
-  .btn-confirmar-busca{
-    background:linear-gradient(135deg,var(--busca-cor,#06b6d4),#0891b2);color:#fff;
-    border:none;border-radius:12px;padding:13px;font-size:14px;font-weight:800;
-    cursor:pointer;font-family:inherit;width:100%;-webkit-tap-highlight-color:transparent;
-  }
-  .btn-confirmar-busca:active{opacity:.85}
+  /* Busca do YouTube em cards grandes (16/10/26): capa 16:9, duração no canto, oficial, views, título limpo */
+  .yt-lista{display:flex;flex-direction:column;gap:14px}
+  .yt-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden;cursor:pointer;
+    -webkit-tap-highlight-color:transparent;transition:transform .12s}
+  .yt-card:active{transform:scale(.98)}
+  .yt-capa{position:relative;width:100%;height:0;padding-top:56.25%;background:#1a1a2e;overflow:hidden}   /* 16:9 até no iOS < 15 */
+  .yt-capa img{position:absolute;inset:0;top:0;left:0;width:100%;height:100%;object-fit:cover;display:block}
+  .yt-dur{position:absolute;right:8px;bottom:8px;background:rgba(0,0,0,.82);color:#fff;font-size:12px;font-weight:800;
+    padding:3px 7px;border-radius:6px;letter-spacing:.3px}
+  .yt-selo{position:absolute;left:8px;top:8px;font-size:12px;font-weight:800;padding:4px 9px;border-radius:999px}
+  .yt-selo.fila{background:#f59e0b;color:#1a1000}
+  .yt-selo.tocou{background:rgba(0,0,0,.78);color:#fde68a}
+  .yt-card.na-fila .yt-capa img{opacity:.35}
+  .yt-info{padding:10px 14px 13px}
+  .yt-titulo{font-size:15px;font-weight:800;line-height:1.3;color:#f0f0ff;display:-webkit-box;-webkit-line-clamp:2;
+    -webkit-box-orient:vertical;overflow:hidden}
+  .yt-sub{font-size:12px;color:var(--text2);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .yt-of{color:#4ade80;font-weight:800}
+  .yt-msg{text-align:center;padding:22px 10px;color:#8888aa;font-size:14px;line-height:1.5}
+  .yt-msg button{margin-top:10px;background:none;border:1px solid rgba(255,255,255,.2);color:#f0f0ff;border-radius:10px;
+    padding:9px 16px;font-family:inherit;font-weight:700;cursor:pointer}
+  /* esqueleto enquanto busca */
+  .yt-sk .yt-capa,.yt-sk .sk-l{background:linear-gradient(90deg,#16162a 0%,#24243c 50%,#16162a 100%);
+    background-size:200% 100%;animation:sk 1.1s linear infinite}
+  .yt-sk .sk-l{height:13px;border-radius:6px;margin-top:8px}
+  @keyframes sk{from{background-position:200% 0}to{background-position:-200% 0}}
+  /* 🔥 Mais pedidas no bar (antes de digitar) */
+  .mp-titulo{font-size:13px;font-weight:800;margin:4px 0 10px;color:#fdba74}
+  .mp-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:6px}
+  .mp-grid .yt-card{border-radius:12px}
+  .mp-grid .yt-info{padding:7px 9px 9px}
+  .mp-grid .yt-titulo{font-size:12px}
+  .mp-grid .yt-sub{font-size:11px}
+  .mp-grid .yt-selo{font-size:10px;padding:3px 7px;left:6px;top:6px}
+  /* Escolheu: capa grande + em que lugar entra + pedir (ou furar a fila) */
+  #escolha{display:none}
+  .esc-voltar{background:none;border:none;color:var(--text2);font-size:14px;font-family:inherit;cursor:pointer;padding:2px 0 12px}
+  #escolha .yt-capa{border-radius:16px}
+  .esc-titulo{font-size:18px;font-weight:900;line-height:1.3;margin-top:12px}
+  .esc-sub{font-size:13px;color:var(--text2);margin-top:4px}
+  .esc-aviso{margin-top:12px;padding:11px 13px;border-radius:12px;font-size:14px;font-weight:700;line-height:1.4}
+  .esc-aviso.fila{background:#2d1a05;border:1px solid #f59e0b66;color:#fbbf24}
+  .esc-aviso.tocou{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);color:#fde68a}
+  .esc-pos{margin-top:12px;font-size:15px;font-weight:800;color:#86efac;line-height:1.4}
+  .esc-label{display:block;font-size:12px;font-weight:700;color:var(--text2);margin:16px 0 6px;text-transform:uppercase;letter-spacing:.5px}
+  #esc-nome{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:13px 14px;
+    color:var(--text);font-size:16px;font-family:inherit;outline:none}
+  #esc-nome:focus{border-color:#22c55e}
+  .esc-btn{display:block;width:100%;padding:16px;margin-top:12px;border:none;border-radius:14px;color:#fff;font-size:16px;
+    font-weight:900;font-family:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent}
+  .esc-btn:active{opacity:.85}
+  .esc-btn:disabled{opacity:.4;cursor:default}
+  .esc-btn.gratis{background:linear-gradient(135deg,#16a34a,#15803d)}
+  .esc-btn.flash{background:linear-gradient(135deg,#f59e0b,#d97706);color:#1a1000}
+  .esc-btn.flash.sec{background:transparent;border:2px solid #f59e0b;color:#fbbf24}
 
   /* ── FORMULÁRIO ───────────────────────────────────────────────── */
   .form-section{padding:0 20px;display:none}
@@ -763,24 +803,35 @@ async function jaPaguei() {
     <button type="button" id="fonte-youtube" onclick="trocarFonte('youtube')" style="flex:1;padding:10px 0;border-radius:12px;border:2px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:#8888aa;font-weight:800;font-size:13px;font-family:inherit;cursor:pointer">🌐 YouTube</button>
   </div>
 
+  <div id="busca-lista-box">
   <div class="busca-input-wrap">
     <input type="text" class="busca-input" id="busca-input"
-           placeholder="Artista ou nome da música..."
-           oninput="onBuscaInput()" onkeydown="if(event.key==='Enter')buscar()">
+           placeholder="Artista ou nome da música..." enterkeyhint="search" autocomplete="off"
+           oninput="onBuscaInput()" onkeydown="if(event.key==='Enter'){this.blur();buscar();}">
     <button class="busca-btn" onclick="buscar()">🔍</button>
   </div>
 
   <div class="busca-loading" id="busca-loading">🔍 Buscando...</div>
+  <!-- 🔥 Mais pedidas no bar (últimos 7 dias) — aparece antes de digitar na busca do YouTube (16/10/26) -->
+  <div id="mais-pedidas" style="display:none"></div>
   <!-- Estilos do acervo (chips) — filtro local, zero request (11/09/26) -->
   <div id="busca-generos" style="display:none;flex-wrap:wrap;gap:6px;margin:0 0 10px"></div>
   <div class="busca-count" id="busca-count" style="display:none"></div>
   <div id="resultados-lista"></div>
+  </div>
 
-  <div id="selecionado-box">
-    <div class="sel-label">✅ Selecionado</div>
-    <div class="sel-titulo" id="sel-titulo"></div>
-    <div class="sel-sub" id="sel-sub"></div>
-    <button class="btn-confirmar-busca" onclick="confirmarMusica()">Confirmar →</button>
+  <!-- Escolheu (16/10/26): capa grande + em que lugar entra + pedir grátis ou furar a fila, sem outra tela -->
+  <div id="escolha">
+    <button type="button" class="esc-voltar" onclick="fecharEscolha()">← Escolher outra</button>
+    <div class="yt-capa" id="esc-capa"><img id="esc-img" alt="" referrerpolicy="no-referrer"><span class="yt-dur" id="esc-dur"></span></div>
+    <div class="esc-titulo" id="esc-titulo"></div>
+    <div class="esc-sub" id="esc-sub"></div>
+    <div class="esc-aviso" id="esc-aviso" style="display:none"></div>
+    <div class="esc-pos" id="esc-pos"></div>
+    <label class="esc-label" for="esc-nome">Teu nome (aparece na TV)</label>
+    <input type="text" id="esc-nome" maxlength="40" placeholder="Como quer aparecer na tela?" autocomplete="given-name" enterkeyhint="done">
+    <button type="button" class="esc-btn gratis" id="esc-gratis" onclick="pedirEscolha('gratis')">🎵 Pedir grátis</button>
+    <button type="button" class="esc-btn flash sec" id="esc-flash" onclick="pedirEscolha('flash')">⚡ Furar a fila</button>
   </div>
 </div>
 
@@ -1007,6 +1058,9 @@ function voltarGrid() {
   esconderTudo();
   videoSel = null;
   tipoForcado = null;
+  if (_buscaCtl) { try { _buscaCtl.abort(); } catch(e) {} }
+  const _fs = document.querySelector('.fila-section');
+  if (_fs) _fs.style.display = '';
   document.getElementById('grid-section').style.display = 'block';
   window.scrollTo({top:0,behavior:'smooth'});
 }
@@ -1047,7 +1101,7 @@ function abrirBusca(modo, forcado=null) {
     : modo === 'youtube'  ? '🌐 Buscar no YouTube'
     : '🎵 Músicas disponíveis';
   document.getElementById('busca-subtitle').textContent = modo === 'youtube'
-    ? `Qualquer música da internet — ${precoTxt}`
+    ? `Digita a música ou o artista — ${precoTxt}`
     : `${TOTAL_VIDS} músicas no acervo — ${precoTxt}`;
 
   // Toggle de fonte: YouTube sempre liberado no "Furar a fila"; no "Escolher" só se o bar não bloqueou
@@ -1064,19 +1118,22 @@ function abrirBusca(modo, forcado=null) {
 
   document.querySelector('.busca-input').style.setProperty('border-color', cor);
   document.querySelector('.busca-btn').style.background = cor;
-  document.querySelector('#selecionado-box').style.setProperty('--busca-cor', cor);
-  document.querySelector('#selecionado-box .sel-label').style.color = cor;
-  document.querySelector('.btn-confirmar-busca').style.background = `linear-gradient(135deg,${cor},${cor}cc)`;
 
-  document.getElementById('busca-input').value = '';
-  document.getElementById('busca-input').placeholder =
-    modo === 'youtube' ? 'Artista ou nome da música...' : '🔍 Filtrar lista...';
+  if (_buscaCtl) { try { _buscaCtl.abort(); } catch(e) {} }
+  const _inp = document.getElementById('busca-input');
+  _inp.value = '';
+  _inp.placeholder = modo === 'youtube' ? 'Ex.: Evidências, Pearl Jam Black…' : '🔍 Filtrar lista...';
   document.getElementById('resultados-lista').innerHTML = '';
-  document.getElementById('selecionado-box').classList.remove('show');
+  document.getElementById('resultados-lista').className = '';
   document.getElementById('busca-loading').classList.remove('show');
   document.getElementById('busca-count').style.display = 'none';
+  document.getElementById('mais-pedidas').style.display = 'none';
+  document.getElementById('escolha').style.display = 'none';
+  document.getElementById('busca-lista-box').style.display = '';
 
   esconderTudo();
+  const _fs = document.querySelector('.fila-section');
+  if (_fs) _fs.style.display = 'none';   // na busca a tela é da busca; a vez aparece ao escolher
   document.getElementById('busca-section').style.display = 'block';
   window.scrollTo({top:0,behavior:'smooth'});
 
@@ -1090,7 +1147,11 @@ function abrirBusca(modo, forcado=null) {
     } else {
       _carregarBibliotecaCompleta();
     }
+  } else {
+    _carregarMaisPedidas();
+    try { _inp.focus({preventScroll: true}); } catch(e) { _inp.focus(); }   // abre o teclado: já digita
   }
+  _carregarFilaInfo();
 }
 
 async function _carregarBibliotecaCompleta() {
@@ -1186,88 +1247,246 @@ function onBuscaInput() {
       _renderLista(filtrado);
     }
   } else {
-    // YouTube — busca remota com debounce
-    if (q.length >= 2) buscaTimer = setTimeout(buscar, 500);
+    // YouTube — busca enquanto digita: espera ~600 ms de pausa (16/10/26)
+    if (q.length >= 2) {
+      buscaTimer = setTimeout(buscar, 600);
+    } else {
+      if (_buscaCtl) { try { _buscaCtl.abort(); } catch(e) {} }
+      _ultimaQ = '';
+      document.getElementById('resultados-lista').innerHTML = '';
+      _mostrarMaisPedidas();
+    }
   }
 }
+
+// ── Busca do YouTube em cards grandes (16/10/26) ─────────────────────────────
+let _buscaCtl = null;      // AbortController da busca em andamento (a nova cancela a velha)
+let _buscaSeq = 0;         // só a resposta da ÚLTIMA busca desenha
+let _ultimaQ  = '';
+let _maisPedidas = null;   // 🔥 mais pedidas no bar (carrega 1x por visita)
+let _filaInfo = null;      // em que lugar entra (grátis / furando a fila) + espera da grátis deste celular
+
+function _cid() { try { return localStorage.getItem('jk_cid') || ''; } catch(e) { return ''; } }
+function _tocouTxt(m) {
+  if (m < 1) return 'tocou agora há pouco';
+  if (m < 60) return `tocou há ${m} min`;
+  const h = Math.floor(m / 60), r = m % 60;
+  return `tocou há ${h}h${r ? String(r).padStart(2, '0') : ''}`;
+}
+function _seloHtml(v) {
+  if (v.na_fila) return '<span class="yt-selo fila">🎵 Já na fila</span>';
+  if (v.tocou_min !== null && v.tocou_min !== undefined) return `<span class="yt-selo tocou">🕒 ${_tocouTxt(v.tocou_min)}</span>`;
+  return '';
+}
+function _capa(v) { return v.thumb || `https://i.ytimg.com/vi/${encodeURIComponent(v.id || '')}/hqdefault.jpg`; }
+function _cardHtml(v, i, origem) {
+  const sub = v.vezes
+    ? `🔥 ${v.vezes}× esta semana`
+    : (v.oficial ? '<span class="yt-of">✓ Oficial</span>' : _esc(v.canal || '')) + (v.views_txt ? ' · ' + _esc(v.views_txt) : '');
+  const clique = origem === 'mp' ? `escolherMaisPedida(${i})` : `selecionarVideoIdx(${i})`;
+  return `<div class="yt-card${v.na_fila ? ' na-fila' : ''}" id="${origem}-${i}" onclick="${clique}">
+      <div class="yt-capa"><img src="${_esc(_capa(v))}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror="this.style.visibility='hidden'">${v.duracao ? `<span class="yt-dur">${_esc(v.duracao)}</span>` : ''}${_seloHtml(v)}</div>
+      <div class="yt-info"><div class="yt-titulo">${_esc(v.titulo)}</div><div class="yt-sub">${sub}</div></div>
+    </div>`;
+}
+function _esqueleto(n) {
+  return Array.from({length: n}, () =>
+    '<div class="yt-card yt-sk"><div class="yt-capa"></div><div class="yt-info"><div class="sk-l" style="width:85%"></div><div class="sk-l" style="width:45%"></div></div></div>').join('');
+}
+
+async function _carregarMaisPedidas() {
+  if (_maisPedidas === null) {
+    try {
+      const r = await fetch(`/pubshow/api/mais-pedidas/${encodeURIComponent(BAR_TOKEN)}`);
+      _maisPedidas = (await r.json()).resultados || [];
+    } catch(e) { _maisPedidas = []; }
+  }
+  _mostrarMaisPedidas();
+}
+function _mostrarMaisPedidas() {
+  const box = document.getElementById('mais-pedidas');
+  const q = document.getElementById('busca-input').value.trim();
+  if (modosBusca !== 'youtube' || q.length >= 2 || !_maisPedidas || !_maisPedidas.length
+      || document.getElementById('escolha').style.display === 'block') { box.style.display = 'none'; return; }
+  box.innerHTML = '<div class="mp-titulo">🔥 Mais pedidas no bar</div><div class="mp-grid">'
+    + _maisPedidas.map((v, i) => _cardHtml(v, i, 'mp')).join('') + '</div>';
+  box.style.display = 'block';
+}
+function escolherMaisPedida(i) { const v = _maisPedidas && _maisPedidas[i]; if (v) abrirEscolha(v); }
 
 async function buscar() {
   // Usado apenas para YouTube
   if (modosBusca === 'biblioteca') { onBuscaInput(); return; }
+  clearTimeout(buscaTimer);
+  if (document.getElementById('escolha').style.display === 'block') return;   // escolhendo: não mexe na lista
   const q = document.getElementById('busca-input').value.trim();
-  if (!q) return;
-  const loading = document.getElementById('busca-loading');
-  loading.classList.add('show');
-  document.getElementById('resultados-lista').innerHTML = '';
-  document.getElementById('selecionado-box').classList.remove('show');
-  videoSel = null;
+  const lista = document.getElementById('resultados-lista');
+  if (q.length < 2 || (q === _ultimaQ && lista.children.length)) return;
+  _ultimaQ = q;
+  if (_buscaCtl) { try { _buscaCtl.abort(); } catch(e) {} }
+  const ctl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+  _buscaCtl = ctl;
+  const seq = ++_buscaSeq;
+  lista.className = 'yt-lista';
+  lista.innerHTML = _esqueleto(3);
+  document.getElementById('mais-pedidas').style.display = 'none';
   try {
-    const res  = await fetch(`/pubshow/api/buscar?q=${encodeURIComponent(q)}`);
+    const res  = await fetch(`/pubshow/api/buscar?q=${encodeURIComponent(q)}&bar=${encodeURIComponent(BAR_TOKEN)}`,
+                             ctl ? {signal: ctl.signal} : {});
     const data = await res.json();
-    loading.classList.remove('show');
-    if (!data.resultados?.length) {
-      document.getElementById('resultados-lista').innerHTML =
-        '<div style="text-align:center;padding:24px;color:#8888aa;font-size:13px">Nenhum resultado. Tente outra busca.</div>';
+    if (seq !== _buscaSeq) return;
+    const r = data.resultados || [];
+    if (!r.length) {
+      _ultimaQ = '';
+      lista.className = '';
+      lista.innerHTML = data.erro
+        ? '<div class="yt-msg">A busca do YouTube não respondeu agora.<br><button type="button" onclick="buscar()">Tentar de novo</button></div>'
+        : '<div class="yt-msg">Não achou? Escreve artista + música.<br><small>Ex.: Evidências Chitãozinho</small></div>';
       return;
     }
-    _listaAtual = data.resultados.map(v => ({
-      id: v.id || '',
-      titulo: v.titulo || '',
-      sub: `${v.canal || ''}${v.duracao ? ' · ' + v.duracao : ''}`
-    }));
-    document.getElementById('resultados-lista').innerHTML = _listaAtual.map((v, i) => `
-      <div class="resultado-item" id="res-${i}" onclick="selecionarVideoIdx(${i})">
-            <div class="resultado-info">
-              <div class="resultado-titulo">${_esc(v.titulo)}</div>
-              <div class="resultado-sub">${_esc(v.sub)}</div>
-            </div>
-            <div class="resultado-check">✓</div>
-          </div>`).join('');
+    _listaAtual = r;
+    lista.innerHTML = r.map((v, i) => _cardHtml(v, i, 'res')).join('');
   } catch(e) {
-    loading.classList.remove('show');
-    document.getElementById('resultados-lista').innerHTML =
-      '<div style="text-align:center;padding:24px;color:#f87171;font-size:13px">Erro na busca. Tente novamente.</div>';
+    if (seq !== _buscaSeq || (e && e.name === 'AbortError')) return;
+    _ultimaQ = '';
+    lista.className = '';
+    lista.innerHTML = '<div class="yt-msg" style="color:#f87171">Sem conexão agora.<br><button type="button" onclick="buscar()">Tentar de novo</button></div>';
   }
 }
 
-function selecionarVideo(idx, v) {
-  document.querySelectorAll('.resultado-item').forEach(el => el.classList.remove('selecionado'));
-  document.getElementById('res-' + idx).classList.add('selecionado');
-  videoSel = v;
-  document.getElementById('sel-titulo').textContent = v.titulo;
-  document.getElementById('sel-sub').textContent    = v.sub;
-  document.getElementById('selecionado-box').classList.add('show');
-  document.getElementById('selecionado-box').scrollIntoView({behavior:'smooth',block:'nearest'});
+function selecionarVideo(idx, v) { abrirEscolha(v); }
+
+async function _carregarFilaInfo(yid) {
+  try {
+    const r = await fetch(`/pubshow/api/fila-info/${encodeURIComponent(BAR_TOKEN)}?cid=${encodeURIComponent(_cid())}`
+                          + (yid ? `&yid=${encodeURIComponent(yid)}` : ''));
+    if (!r.ok) return null;
+    const d = await r.json();
+    _filaInfo = d;
+    return d;
+  } catch(e) { return null; }
+}
+function _tipoGratis() { return modosBusca === 'youtube' ? 'musica_externa' : 'musica_especifica'; }
+function _totalTxt(preco) {   // total do PIX, igual ao card do "Furar a fila" (item + taxa)
+  const t = Math.round((preco + PIX_CONV) * 100) / 100;
+  return 'R$ ' + (Number.isInteger(t) ? String(t) : t.toFixed(2).replace('.', ','));
 }
 
-function confirmarMusica() {
-  if (!videoSel) return;
-  // Se veio de "Furar a fila" (flash), cria o pedido com esse tipo (prioridade)
-  // + a música escolhida — do acervo ou do YouTube, tanto faz.
-  const tipo  = tipoForcado || (modosBusca === 'youtube' ? 'musica_externa' : 'musica_especifica');
-  const preco = PRECOS[tipo].preco;
-  const cor   = (PRECOS[tipo] && PRECOS[tipo].cor) || (modosBusca === 'youtube' ? '#dc2626' : '#06b6d4');
+// Escolheu a música: capa grande, em que lugar entra e os 2 botões (grátis / furar a fila) na mesma tela
+function abrirEscolha(v) {
+  // tocou num card com a busca ainda pra disparar (continuou digitando): cancela, senão ela zera a escolha
+  clearTimeout(buscaTimer);
+  if (_buscaCtl) { try { _buscaCtl.abort(); } catch(e) {} _ultimaQ = ''; }
+  videoSel = v;
+  document.getElementById('busca-lista-box').style.display = 'none';
+  document.getElementById('mais-pedidas').style.display = 'none';
+  const _fonte = document.getElementById('busca-fonte');
+  if (_fonte && _fonte.style.display !== 'none') { _fonte.dataset.volta = _fonte.style.display || 'flex'; _fonte.style.display = 'none'; }
+  const img = document.getElementById('esc-img');
+  img.style.visibility = '';
+  img.onerror = () => { img.style.visibility = 'hidden'; };
+  img.src = _capa(v);
+  const dur = document.getElementById('esc-dur');
+  dur.textContent = v.duracao || '';
+  dur.style.display = v.duracao ? '' : 'none';
+  document.getElementById('esc-titulo').textContent = v.titulo || '';
+  document.getElementById('esc-sub').innerHTML = v.views_txt !== undefined
+    ? (v.oficial ? '<span class="yt-of">✓ Oficial</span>' : _esc(v.canal || '')) + (v.views_txt ? ' · ' + _esc(v.views_txt) : '')
+    : (v.vezes ? `🔥 ${v.vezes}× esta semana aqui no bar` : _esc(v.sub || ''));
+  const nome = document.getElementById('esc-nome');
+  nome.style.borderColor = '';
+  if (!nome.value) { try { nome.value = localStorage.getItem('jk_nome') || ''; } catch(e) {} }
+  _pintarEscolha(v, _filaInfo, false);          // na hora, com o que já sabe
+  document.getElementById('escolha').style.display = 'block';
+  window.scrollTo({top: 0, behavior: 'smooth'});
+  _carregarFilaInfo(v.id).then(d => { if (d && videoSel === v) _pintarEscolha(v, d, true); });
+}
 
+function _pintarEscolha(v, d, fresco) {
+  const naFila = (fresco && d && d.na_fila !== undefined) ? d.na_fila : !!v.na_fila;
+  const tocou  = (fresco && d && d.tocou_min !== undefined) ? d.tocou_min : (v.tocou_min ?? null);
+  const aviso = document.getElementById('esc-aviso');
+  if (naFila) {
+    aviso.className = 'esc-aviso fila'; aviso.textContent = '🎵 Essa já está na fila! Escolhe outra 🙏'; aviso.style.display = 'block';
+  } else if (tocou !== null && tocou !== undefined) {
+    aviso.className = 'esc-aviso tocou'; aviso.textContent = `🕒 Essa ${_tocouTxt(tocou)} aqui no bar`; aviso.style.display = 'block';
+  } else {
+    aviso.style.display = 'none';
+  }
+  const temGratis = !tipoForcado && !!PRECOS[_tipoGratis()];
+  const temFlash  = !!PRECOS.flash;
+  const espera = (d && d.espera_gratis_min) || 0;
+  const pos = document.getElementById('esc-pos');
+  let txt = '';
+  if (tipoForcado === 'flash') {
+    if (d) txt = d.flash.na_frente === 0 ? '⚡ Furando a fila, a tua toca a seguir.'
+                                         : `⚡ Furando a fila, entra em ${d.flash.posicao}º lugar (~${d.flash.min} min).`;
+  } else if (espera > 0) {
+    txt = `⏳ Tua próxima grátis libera em ${espera} min.`;
+  } else if (d) {
+    txt = d.gratis.na_frente === 0 ? '📍 Entra em 1º lugar: toca quando a música atual acabar.'
+                                   : `📍 Entra em ${d.gratis.posicao}º lugar, toca em ~${d.gratis.min} min.`;
+  }
+  pos.textContent = txt;
+  pos.style.color = (espera > 0 && !tipoForcado) ? '#fbbf24' : '#86efac';
+
+  const bG = document.getElementById('esc-gratis'), bF = document.getElementById('esc-flash');
+  bG.style.display = temGratis ? '' : 'none';
+  bG.disabled = naFila || espera > 0;
+  bG.textContent = espera > 0 ? `🎵 Grátis libera em ${espera} min` : '🎵 Pedir grátis';
+  bF.style.display = temFlash ? '' : 'none';
+  bF.disabled = naFila;
+  const quando = (!d || d.flash.na_frente === 0) ? 'toca a seguir' : `entra em ${d.flash.posicao}º`;
+  bF.textContent = temFlash ? `⚡ Furar a fila: ${quando}, ${_totalTxt(PRECOS.flash.preco)}` : '';
+  bF.classList.toggle('sec', temGratis && !(espera > 0));   // vira o botão principal quando é o único caminho
+}
+
+function fecharEscolha() {
+  document.getElementById('escolha').style.display = 'none';
+  document.getElementById('busca-lista-box').style.display = '';
+  const _fonte = document.getElementById('busca-fonte');
+  if (_fonte && _fonte.dataset.volta) { _fonte.style.display = _fonte.dataset.volta; delete _fonte.dataset.volta; }
+  videoSel = null;
+  _mostrarMaisPedidas();
+  // o texto mudou enquanto escolhia (ou a busca foi cancelada): busca o que está escrito agora
+  if (modosBusca === 'youtube' && document.getElementById('busca-input').value.trim() !== _ultimaQ) onBuscaInput();
+}
+
+function pedirEscolha(qual) {
+  if (!videoSel) return;
+  const tipo = qual === 'flash' ? 'flash' : _tipoGratis();
+  if (!PRECOS[tipo]) return;
+  const nomeEl = document.getElementById('esc-nome');
+  const nome = nomeEl.value.trim();
+  if (!nome) {
+    nomeEl.style.borderColor = '#f87171';
+    nomeEl.placeholder = 'Escreve teu nome aqui 👈';
+    nomeEl.focus();
+    return;
+  }
+  try { localStorage.setItem('jk_nome', nome); } catch(e) {}
   document.getElementById('inp-tipo').value          = tipo;
   document.getElementById('inp-youtube-id').value    = videoSel.id;
-  document.getElementById('inp-titulo-pedido').value = videoSel.titulo;
-  atualizarPixRef();
+  document.getElementById('inp-titulo-pedido').value = (videoSel.titulo || '').slice(0, 80);
   document.getElementById('inp-thumb-url').value     = '';
-
-  document.getElementById('prev-titulo').textContent = videoSel.titulo;
-  document.getElementById('prev-sub').textContent    = videoSel.sub;
-  document.getElementById('musica-preview').style.display = 'block';
-
-  _mostrarValorPix(preco);   // antes só trocava o número: no "furar a fila" a nota do total não aparecia
-  document.getElementById('form-title').innerHTML    = PRECOS[tipo].emoji + ' ' + PRECOS[tipo].nome;
-  document.getElementById('msg-group').style.display = 'none';
-  document.getElementById('btn-confirmar').style.background = `linear-gradient(135deg,${cor},${cor}cc)`;
-  document.getElementById('form-section').style.setProperty('--accent-cor', cor);
-
-  esconderTudo();
-  document.getElementById('form-section').classList.add('show');
-  window.scrollTo({top:0,behavior:'smooth'});
+  document.getElementById('inp-nome').value          = nome;
+  const im = document.getElementById('inp-msg');
+  if (im) { im.required = false; im.value = ''; }
+  const vg = document.getElementById('inp-valor-gorjeta');
+  if (vg) vg.value = '';
+  ['esc-gratis', 'esc-flash'].forEach(id => { document.getElementById(id).disabled = true; });
+  document.getElementById(qual === 'flash' ? 'esc-flash' : 'esc-gratis').textContent = '⏳ Enviando...';
+  document.getElementById('form-pedido').submit();
 }
+
+// Nome lembrado neste celular (16/10/26): quem já pediu uma vez não digita de novo
+(function() {
+  const n = document.getElementById('inp-nome');
+  if (!n) return;
+  try { if (!n.value) n.value = localStorage.getItem('jk_nome') || ''; } catch(e) {}
+  const f = document.getElementById('form-pedido');
+  if (f) f.addEventListener('submit', () => { try { const v = n.value.trim(); if (v) localStorage.setItem('jk_nome', v); } catch(e) {} });
+})();
 
 // ── PIX Copia e Cola (payload EMV com música na descrição) ────────────────────
 function _pixTlv(id, val) {

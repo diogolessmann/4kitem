@@ -9,6 +9,7 @@ import os
 import random
 import re
 import string
+import unicodedata
 import time as _time
 import threading as _threading
 import requests as _requests
@@ -1925,6 +1926,8 @@ def jukebox(token):
                 erro = 'Selecione uma música antes de confirmar.'
             elif tipo == 'cantada' and not mensagem:
                 erro = 'Escreve a cantada antes de mandar. 😏'
+            elif tipo in TIPOS_MUSICA_FILA and youtube_id and _musica_longa(b, youtube_id, tipo):
+                erro = MSG_MUSICA_LONGA   # 17/10/26: máx. 10 min em todo pedido de música, grátis ou pago
             elif tipo in TIPOS_MUSICA_FILA and youtube_id and _musica_na_fila(b, youtube_id):
                 erro = '🎵 Essa música já está na fila! Escolhe outra.'
             elif tipo in TIPOS_SEMPRE_GRATIS and (_espera := _gratis_espera_min(b, ip_cliente)) > 0:
@@ -2176,11 +2179,12 @@ def jukebox(token):
         _gj = _jsn.loads(b.get('generos_jukebox') or 'null')
     except Exception:
         _gj = None
+    _curta = f'AND COALESCE(duracao_seg, 0) <= {int(YT_DUR_MAX_SEG)}'   # 17/10/26: show longo não conta (não dá pra pedir)
     if _gj:
         _ph = ','.join('?' * len(_gj))
-        total_videos = conn3.execute(f'SELECT COUNT(*) FROM pubshow_videos WHERE ativo=1 AND categoria IN ({_ph})', tuple(_gj)).fetchone()[0]
+        total_videos = conn3.execute(f'SELECT COUNT(*) FROM pubshow_videos WHERE ativo=1 {_curta} AND categoria IN ({_ph})', tuple(_gj)).fetchone()[0]
     else:
-        total_videos = conn3.execute('SELECT COUNT(*) FROM pubshow_videos WHERE ativo=1').fetchone()[0]
+        total_videos = conn3.execute(f'SELECT COUNT(*) FROM pubshow_videos WHERE ativo=1 {_curta}').fetchone()[0]
 
     # PIX cent offset — cada pedido do dia recebe +N centavos para identificação no extrato
     # Ex: 1º pedido = R$5,00 / 2º = R$5,01 / 3º = R$5,02 ...
@@ -2373,14 +2377,30 @@ def api_pedido_status(token, pedido_id):
     tempo_min = None
 
     if status == 'pendente':
-        # Conta pedidos confirmados ANTES deste na fila (pela data de criação)
-        posicao = conn.execute(
-            """SELECT COUNT(*) FROM pubshow_pedidos
-               WHERE business_id=? AND status='pendente'
-               AND created_at <= (SELECT created_at FROM pubshow_pedidos WHERE id=?)
-               AND id != ?""",
-            (row['business_id'], pedido_id, pedido_id)
-        ).fetchone()[0] + 1  # posição 1-indexed
+        _tipo = (conn.execute('SELECT tipo FROM pubshow_pedidos WHERE id=?', (pedido_id,)).fetchone() or [''])[0]
+        if _tipo in ('vip', 'flash', 'musica', 'musica_especifica', 'musica_externa'):
+            # Música: a MESMA ordem da TV (/api/status): vip > furar a fila > ordem de chegada. Parabéns e recados
+            # não ocupam vez de música (16/10/26: a busca promete "entra em Nº lugar" e aqui tem que bater).
+            posicao = conn.execute(
+                """SELECT COUNT(*) FROM pubshow_pedidos p, pubshow_pedidos x
+                   WHERE x.id=? AND p.business_id=x.business_id AND p.status='pendente' AND p.id != x.id
+                     AND p.tipo IN ('vip','flash','musica','musica_especifica','musica_externa')
+                     AND ((CASE p.tipo WHEN 'vip' THEN 1 WHEN 'flash' THEN 2 ELSE 3 END)
+                            < (CASE x.tipo WHEN 'vip' THEN 1 WHEN 'flash' THEN 2 ELSE 3 END)
+                          OR ((CASE p.tipo WHEN 'vip' THEN 1 WHEN 'flash' THEN 2 ELSE 3 END)
+                                = (CASE x.tipo WHEN 'vip' THEN 1 WHEN 'flash' THEN 2 ELSE 3 END)
+                              AND (p.created_at < x.created_at OR (p.created_at = x.created_at AND p.id < x.id))))""",
+                (pedido_id,)
+            ).fetchone()[0] + 1
+        else:
+            # Conta pedidos confirmados ANTES deste na fila (pela data de criação)
+            posicao = conn.execute(
+                """SELECT COUNT(*) FROM pubshow_pedidos
+                   WHERE business_id=? AND status='pendente'
+                   AND created_at <= (SELECT created_at FROM pubshow_pedidos WHERE id=?)
+                   AND id != ?""",
+                (row['business_id'], pedido_id, pedido_id)
+            ).fetchone()[0] + 1  # posição 1-indexed
 
         # Tempo estimado: 4 min por posição + 2 min de overhead do vídeo atual
         # Clips do YouTube duram em média 3-5 min, usando 4 como base
@@ -2427,10 +2447,12 @@ def api_pedido_exibido(pedido_id):
     _yid = (pedido['youtube_id'] or '').strip()
     if _yid and re.fullmatch(r'[A-Za-z0-9_-]{6,20}', _yid):
         _cat = pedido['categoria'] if pedido['categoria'] in CANAIS else 'rock'
+        _seg = _YT_DURACAO.get(_yid) or 180       # 17/10/26: a duração real que a busca viu (antes: 180 fixo)
         conn.execute(
             'INSERT OR IGNORE INTO pubshow_videos (youtube_id, titulo, artista, categoria, subcategoria, duracao_seg, views_milhoes, ativo) '
-            'VALUES (?,?,?,?,?,180,0,1)',
-            (_yid, (pedido['titulo_pedido'] or _yid)[:120], '', _cat, 'pedido_publico')
+            'VALUES (?,?,?,?,?,?,0,1)',
+            (_yid, (pedido['titulo_pedido'] or _yid)[:120], '', _cat, 'pedido_publico',
+             _seg if _seg < _YT_SEG_AO_VIVO else 180)
         )
     conn.commit(); conn.close()
     return jsonify({'ok': True})
@@ -2564,67 +2586,530 @@ def api_buscar_biblioteca():
 
     if banidos:
         rows = [r for r in rows if r['youtube_id'] not in banidos]
+    if rows:   # 17/10/26: música de mais de 10 min nem aparece pra pedir (os shows longos seguem só na TV)
+        _dur = _duracoes_conhecidas([r['youtube_id'] for r in rows], conn)
+        rows = [r for r in rows if (_dur.get(r['youtube_id']) or 0) <= YT_DUR_MAX_SEG]
     conn.close()
     return jsonify({'resultados': [dict(r) for r in rows], 'total': len(rows)})
 
 
+# ── Busca do YouTube no celular (16/10/26, Diogo: "digito a música, ele puxa imagens maiores pro cliente ver
+# qual é o videoclipe; sempre filtrar só os mais vistos do assunto, não todos"). Base: REGRAS_MUSICA (27 buscas reais).
+# Ranking: bate com o que digitou > canal oficial do artista > mais visto. Fora: menos de 1 ou mais de 10 min (peido,
+# show, "10 horas"), ao vivo sem duração, Shorts, karaokê/aula/cover/react... (voltam se a pessoa digitar a palavra).
+# Só áudio, letra ou foto parada (canal "- Topic", vídeo sem data) vai pro fim. O mesmo clipe em 2 canais conta 1.
+YT_TOP, YT_JANELA = 5, 15            # cards no celular · candidatos lidos na ordem (relevância) do YouTube
+YT_DUR_MIN_SEG, YT_DUR_MAX_SEG = 60, 600
+_YT_CACHE = {}                       # termo → (instante, vídeos lidos): 1 worker no Railway, não bate 2x no YouTube
+_YT_CACHE_SEG, _YT_CACHE_MAX = 600, 300
+# Regra dos 10 min NO PEDIDO (17/10/26, Diogo: "precisa lançar a regra de vídeo com no máximo 10 min"): vale pra todo
+# pedido de música (acervo, YouTube, furar a fila). O celular não manda duração: o servidor guarda a de tudo que a busca
+# do YouTube leu e usa a do acervo. Duração desconhecida passa (e vai pro log): nada de barrar por engano.
+_YT_DURACAO = {}                     # youtube_id → segundos (ao vivo sem fim = _YT_SEG_AO_VIVO)
+_YT_DURACAO_MAX, _YT_SEG_AO_VIVO = 5000, 86400
+MSG_MUSICA_LONGA = '🎵 Essa é longa demais (máx. 10 min). Escolhe outra!'
+_YT_STOP = {'e', 'de', 'da', 'do', 'das', 'dos', 'o', 'a', 'os', 'as', 'no', 'na', 'nos', 'nas', 'em', 'um', 'uma',
+            'com', 'pra', 'para', 'ao', 'the', 'of', 'and', 'ft', 'feat', 'musica', 'musicas', 'clipe', 'video',
+            'videoclipe', 'oficial', 'official'}
+_YT_CONECT = {'da', 'de', 'do', 'das', 'dos', 'e', 'na', 'no', 'nas', 'nos', 'em', 'a', 'o', 'as', 'os', 'um',
+              'uma', 'com', 'pra', 'para', 'of', 'the', 'and', 'in', 'on', 'to'}
+# os regex abaixo rodam no texto normalizado (_yt_norm: minúsculo e sem acento)
+_YT_FORA_RE  = re.compile(r'\b(karaoke|playback|instrumental|backing ?track|covers?|aula|como tocar|tutorial|'
+                          r'guitar tab|lesson|drum ?cover|react\w*|reacao|reagindo|8d|slowed|sped up|nightcore|'
+                          r'bass ?boost\w*|10 ?horas?|10 ?hours?|1 ?hora|making ?of|bastidores|coreografia|'
+                          r'filme completo|full movie)\b')
+_YT_AUDIO_RE = re.compile(r'\b(audio|visuali[sz]er|lyrics?|letras?|legendad[oa]|traducao|sub esp|subtitulad[oa]|'
+                          r'subtitled)\b')
+_YT_VIVO_RE  = re.compile(r'\b(ao ?vivo|live|en vivo|en directo)\b')
+_YT_RUIDO_RE = re.compile(r'\b(official|oficial|music ?video|videoclipe|videoclip|video ?clipe|clipe|clip|video|'
+                          r'lyrics?|letras?|legendad[oa]|traducao|audio|visuali[sz]er|hd|hq|4k|8k|1080p?|720p|'
+                          r'remaster\w*|full|completo|explicit|explicito|dvd|cd|album|single|lancamento|exclusivo|'
+                          r'prod)\b')
+_YT_BRK_RE   = re.compile(r'[\(\[\{]([^\(\)\[\]\{\}]*)[\)\]\}]')
+_YT_SEP_RE   = re.compile(r'\s+(?:-{1,2}|–|—|\||·|~+)\s+')
+_YID_RE      = re.compile(r'[A-Za-z0-9_-]{11}')
+
+
+def _yt_norm(s):
+    s = unicodedata.normalize('NFKD', (s or '').replace('&', ' e ')).encode('ascii', 'ignore').decode().lower()
+    return ' '.join(re.sub(r'[^a-z0-9]+', ' ', s).split())
+
+
+def _yt_norm_canal(c):
+    """'Legião Urbana - Topic' / 'ClassicoVEVO' / 'Zezo - Oficial' → nome do artista normalizado."""
+    n = _yt_norm(c)
+    n = re.sub(r'\s*\b(topic|oficial|official)$', '', n)
+    return re.sub(r'vevo$', '', n).strip()
+
+
+def _yt_seg(txt):
+    """'4:41' → 281 · '1:26:37' → 5197 · '' (ao vivo) → 0"""
+    try:
+        seg = 0
+        for p in (txt or '').strip().split(':'):
+            seg = seg * 60 + int(p)
+        return seg
+    except (TypeError, ValueError):
+        return 0
+
+
+def _yt_views_txt(n):
+    """112.519.286 → '113 mi de views' · 1.237.144.857 → '1,2 bi de views' · 45.300 → '45 mil views'"""
+    if n >= 1_000_000_000:
+        v, u = n / 1e9, 'bi de views'
+    elif n >= 1_000_000:
+        v, u = n / 1e6, 'mi de views'
+    elif n >= 1_000:
+        v, u = n / 1e3, 'mil views'
+    else:
+        return f'{n} views' if n else ''
+    txt = f'{v:.1f}' if v < 9.95 else f'{v:.0f}'
+    if txt.endswith('.0'):
+        txt = txt[:-2]
+    return f"{txt.replace('.', ',')} {u}"
+
+
+def _yt_ler(data):
+    """Os vídeos normais (videoRenderer) da resposta da InnerTube, na ordem do YouTube. Shorts, playlists, Mix e o
+    cartão do artista chegam em outros formatos e ficam fora sozinhos."""
+    out = []
+    try:
+        secs = data['contents']['twoColumnSearchResultsRenderer']['primaryContents']['sectionListRenderer']['contents']
+        secs = [s for s in secs if isinstance(s, dict)]
+    except Exception:
+        return out
+    for sec in secs:
+        isr = sec.get('itemSectionRenderer')
+        itens = (isr.get('contents') if isinstance(isr, dict) else None) or []
+        for item in itens if isinstance(itens, list) else []:
+            try:
+                vr = item.get('videoRenderer') or {}
+                vid = str(vr.get('videoId') or '')
+                titulo = ''.join(str(r.get('text') or '') for r in (vr.get('title') or {}).get('runs', []))
+                if not (_YID_RE.fullmatch(vid) and titulo):
+                    continue
+                canal = str(((vr.get('longBylineText') or {}).get('runs') or [{}])[0].get('text') or '')
+                dur_txt = str((vr.get('lengthText') or {}).get('simpleText') or '')
+                views = int(re.sub(r'\D', '', str((vr.get('viewCountText') or {}).get('simpleText') or ''))[:15] or 0)
+                selos = [((b or {}).get('metadataBadgeRenderer') or {}).get('style', '')
+                         for b in (vr.get('ownerBadges') or []) + (vr.get('badges') or [])]
+                capas = [((o or {}).get('thumbnailOverlayTimeStatusRenderer') or {}).get('style', '')
+                         for o in (vr.get('thumbnailOverlays') or [])]
+                url = (((vr.get('navigationEndpoint') or {}).get('commandMetadata') or {})
+                       .get('webCommandMetadata') or {}).get('url', '')
+                out.append({
+                    'id': vid, 'titulo': titulo, 'canal': canal, 'dur': _yt_seg(dur_txt), 'dur_txt': dur_txt,
+                    'views': views,
+                    'oficial': 'BADGE_STYLE_TYPE_VERIFIED_ARTIST' in selos or _yt_norm(canal).endswith('vevo'),
+                    'topic': _yt_norm(canal).endswith(' topic'),
+                    'publicado': bool(vr.get('publishedTimeText')),
+                    'ao_vivo': not dur_txt or 'BADGE_STYLE_TYPE_LIVE_NOW' in selos or 'LIVE' in capas,
+                    'shorts': url.startswith('/shorts/') or 'SHORTS' in capas,
+                })
+            except Exception:
+                continue
+    return out
+
+
+def _yt_capitaliza(s):
+    """Título TODO EM MAIÚSCULA ('NA HORA DA RAIVA') vira 'Na Hora da Raiva'; o resto fica como veio."""
+    letras = [c for c in s if c.isalpha()]
+    palavras = s.split(' ')
+    if (len(letras) < 4 or sum(c.isupper() for c in letras) < 0.8 * len(letras)
+            or sum(1 for w in palavras if any(c.isalpha() for c in w)) < 2):
+        return s
+    out = []
+    for i, w in enumerate(palavras):
+        if re.search(r'[\d/\.&\x00]', w):     # sigla e número ficam como vieram: AC/DC, R.E.M., 2pac
+            out.append(w)
+            continue
+        lw = w.lower()
+        out.append(lw if (i and lw in _YT_CONECT) else lw[:1].upper() + lw[1:])
+    return ' '.join(out)
+
+
+def _yt_canal_limpo(c):
+    """'Legião Urbana - Topic' → 'Legião Urbana' · 'Zezo - Oficial' → 'Zezo' (nome pra mostrar)."""
+    return re.sub(r'(?i)(\s*-\s*topic|\s*-?\s*oficial|\s*-?\s*official|vevo)$', '', (c or '').strip()).strip()
+
+
+def _yt_titulo_limpo(titulo, canal_artista='', artistas=None):
+    """'Pearl Jam - Black (Official Video) [HD]' → 'Black · Pearl Jam'. `canal_artista` = o canal, só quando ele é o
+    próprio artista (selo oficial ou '- Topic'); `artistas` = {nome normalizado: nome} dos artistas da mesma busca.
+    Sem saber quem é o artista, mantém a ordem e só tira o ruído. Máx. 80 letras (o mesmo corte do POST)."""
+    t = re.sub(r'(^|\s)[@#][\w\.]+', ' ', (titulo or '').replace('\x00', ''))
+    t = re.sub(r'[\*"“”]+', ' ', t)
+    vivo = False
+    guardados = []      # parêntese que fica: some do texto enquanto separa ("(Slane Castle - Meath, Ireland)")
+
+    def _colchete(m):
+        nonlocal vivo
+        n = _yt_norm(m.group(1))
+        if _YT_VIVO_RE.search(n):
+            vivo = True
+            return ' '
+        if not n or _YT_RUIDO_RE.search(n):
+            return ' '
+        guardados.append(m.group(0))
+        return f' \x00{len(guardados) - 1}\x00 '
+
+    def _volta(s):
+        return ' '.join(re.sub(r'\x00(\d+)\x00', lambda m: guardados[int(m.group(1))], s).split())
+
+    t = ' '.join(_YT_BRK_RE.sub(_colchete, t).split()).strip(' -–—|·~:')
+    sep = ' · ' if ' · ' in t else ' - '
+    segs = [s.strip(' -–—|·~:') for s in _YT_SEP_RE.split(t)]
+    segs = [s for s in segs if s]
+    if not segs:
+        return ' '.join((titulo or '').split())[:80]
+    canal_artista = (canal_artista or '').replace('\x00', '')
+    conhecidos = {k: str(v).replace('\x00', '') for k, v in (artistas or {}).items()}
+    nc = _yt_norm_canal(canal_artista)
+    if nc:
+        conhecidos.setdefault(nc, _yt_canal_limpo(canal_artista))
+    if len(segs) == 1 and ': ' in segs[0] and _yt_norm(segs[0].split(': ', 1)[0]) in conhecidos:
+        segs = segs[0].split(': ', 1)          # "Metallica: One" → só quando a esquerda é o artista
+    artista, musica, resto = '', '', []
+    idx = next((i for i, s in enumerate(segs) if _yt_norm(s) in conhecidos), None)
+    if idx is None and len(segs) > 1:
+        n0 = f' {_yt_norm(segs[0])} '          # "Anitta, Mc Zaac & Maejor - Vai Malandra": a linha de crédito inteira
+        if any(len(a) >= 4 and f' {a} ' in n0 for a in conhecidos):
+            idx = 0
+    if idx is not None:
+        artista = segs[idx]
+        resto = [s for i, s in enumerate(segs) if i != idx]
+    elif len(segs) > 1:                        # "Paradinha - Anitta 16/06/2017 Centro de Eventos": começa com o artista
+        for i, s in enumerate(segs[1:], 1):
+            ns = _yt_norm(s)
+            a = next((a for a in conhecidos if len(a) >= 4 and (ns == a or ns.startswith(a + ' '))), None)
+            if a:
+                artista, resto = conhecidos[a], [x for j, x in enumerate(segs) if j != i]
+                break
+    if artista:
+        if not resto:
+            return _volta(artista)[:80]
+        musica = resto[0]
+        extra = ''
+        for s in resto[1:]:
+            ns = _yt_norm(_volta(s))
+            if _YT_VIVO_RE.search(ns):
+                vivo = True
+            elif not extra and ns and not _YT_RUIDO_RE.search(ns):
+                extra = s                      # "Faroeste Caboclo | Globo de Ouro 1988"
+        if extra and not vivo:
+            musica = f'{musica} ({extra})'
+    elif len(segs) == 1 and canal_artista:     # "Evidências" no canal oficial "Chitãozinho & Xororó"
+        musica, artista = segs[0], _yt_canal_limpo(canal_artista)
+    else:                                      # não sei quem é o artista: mantém a ordem, tira só o ruído
+        extras = []
+        for s in segs[2:]:
+            ns = _yt_norm(_volta(s))
+            if _YT_VIVO_RE.search(ns):
+                vivo = True
+            elif ns and not _YT_RUIDO_RE.search(ns):
+                extras.append(s)
+        musica = sep.join([_yt_capitaliza(s) for s in segs[:2]] + extras)
+    musica = _volta(_yt_capitaliza(musica))
+    artista = _volta(artista)
+    if vivo and not _YT_VIVO_RE.search(_yt_norm(musica)):
+        musica += ' (Ao Vivo)'
+    if not artista:
+        return musica[:80]
+    if len(musica) + len(artista) + 3 > 80:
+        musica = musica[:max(20, 76 - len(artista))].rstrip() + '…'
+    return f'{musica} · {artista}'[:80]
+
+
+def _yt_ranquear(lidos, q):
+    """Os YT_TOP melhores pro celular: bate com o que digitou > oficial do artista > mais visto (só áudio no fim)."""
+    qn = _yt_norm(q)
+    tokens = [w for w in qn.split() if w not in _YT_STOP and (len(w) >= 2 or w.isdigit())]
+    fora_q = {m.group(0).replace(' ', '') for m in _YT_FORA_RE.finditer(qn)}
+    audio_q = bool(_YT_AUDIO_RE.search(qn))
+    artistas = {}
+    for v in lidos:
+        if v['oficial'] or v['topic']:
+            a = _yt_norm_canal(v['canal'])
+            if a:
+                artistas.setdefault(a, _yt_canal_limpo(v['canal']))
+    cands = []
+    for v in lidos:
+        if v['ao_vivo'] or v['shorts'] or not (YT_DUR_MIN_SEG <= v['dur'] <= YT_DUR_MAX_SEG):
+            continue
+        tn = _yt_norm(v['titulo'])
+        if {m.group(0).replace(' ', '') for m in _YT_FORA_RE.finditer(tn)} - fora_q:
+            continue
+        so_audio = v['topic'] or not v['publicado'] or (not audio_q and bool(_YT_AUDIO_RE.search(tn)))
+        palavras = (tn + ' ' + _yt_norm(v['canal'])).split()
+        bate = sum(1 for t in tokens if any(p.startswith(t) for p in palavras))
+        cands.append((so_audio, -bate, not v['oficial'], -v['views'], len(cands), v))
+        if len(cands) >= YT_JANELA:
+            break
+    cands.sort(key=lambda c: c[:5])
+    out = []
+    for so_audio, _b, _o, _v, _i, v in cands:
+        dono = v['canal'] if (v['oficial'] or v['topic']) else ''
+        limpo = _yt_titulo_limpo(v['titulo'], dono, artistas)
+        chave = _yt_norm(limpo)
+        if any(o['_chave'] == chave and abs(o['dur_seg'] - v['dur']) <= 2 for o in out):
+            continue                           # o mesmo clipe repostado em outro canal
+        out.append({
+            'id': v['id'], 'titulo': limpo, 'titulo_original': v['titulo'][:100], 'canal': v['canal'][:40],
+            'duracao': v['dur_txt'], 'dur_seg': v['dur'],
+            'thumb': f"https://i.ytimg.com/vi/{v['id']}/hqdefault.jpg",
+            'views': v['views'], 'views_txt': _yt_views_txt(v['views']),
+            'oficial': bool(v['oficial']), 'so_audio': bool(so_audio), '_chave': chave,
+        })
+        if len(out) >= YT_TOP:
+            break
+    for o in out:
+        o.pop('_chave', None)
+    return out
+
+
+def _yt_buscar_innertube(q):
+    """Vídeos lidos da busca do YouTube (InnerTube, sem chave), com cache de 10 min por termo."""
+    chave = ' '.join(q.lower().split())
+    agora = _time.time()
+    hit = _YT_CACHE.get(chave)
+    if hit and agora - hit[0] < _YT_CACHE_SEG:
+        _yt_lembrar_duracao(hit[1])
+        return hit[1]
+    # B2: chave configurável via env — fallback para chave pública do cliente web YT
+    _yt_key = os.environ.get('YOUTUBE_INNERTUBE_KEY', 'AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8')
+    resp = _requests.post(
+        f'https://www.youtube.com/youtubei/v1/search?key={_yt_key}',
+        json={
+            'query': q,
+            'context': {
+                'client': {
+                    'clientName': 'WEB',
+                    'clientVersion': '2.20231121.08.00',
+                    'hl': 'pt',
+                    'gl': 'BR',
+                }
+            }
+        },
+        headers={'Content-Type': 'application/json'},
+        timeout=5   # 1 worker: busca travada segura a TV e o painel junto (era 8)
+    )
+    lidos = _yt_ler(resp.json())
+    _yt_lembrar_duracao(lidos)
+    if lidos:
+        if len(_YT_CACHE) >= _YT_CACHE_MAX:
+            for k in sorted(_YT_CACHE, key=lambda k: _YT_CACHE[k][0])[:_YT_CACHE_MAX // 4]:
+                _YT_CACHE.pop(k, None)
+        _YT_CACHE[chave] = (agora, lidos)
+    return lidos
+
+
+def _yt_lembrar_duracao(lidos):
+    """Guarda a duração de TODO vídeo que a busca leu (até os longos e os ao vivo, que nem viram card)."""
+    for v in lidos:
+        seg = _YT_SEG_AO_VIVO if v.get('ao_vivo') else int(v.get('dur') or 0)
+        if seg > 0:
+            _YT_DURACAO.pop(v['id'], None)
+            _YT_DURACAO[v['id']] = seg
+    if len(_YT_DURACAO) > _YT_DURACAO_MAX:
+        for k in list(_YT_DURACAO)[:len(_YT_DURACAO) - _YT_DURACAO_MAX + 500]:
+            _YT_DURACAO.pop(k, None)
+
+
+def _duracoes_conhecidas(ids, conn=None):
+    """{youtube_id: segundos ou None}. Ordem: acervo curado > o que a busca do YouTube leu > pedido antigo que entrou
+    no acervo com duração real (o 'pedido_publico' antigo grava 180 fixo: isso não vale como duração)."""
+    ids = [i for i in dict.fromkeys(ids) if i]
+    out = {i: None for i in ids}
+    if not ids:
+        return out
+    fechar = conn is None
+    conn = conn or get_pubshow_db()
+    try:
+        acervo = {r['youtube_id']: r for r in conn.execute(
+            f"SELECT youtube_id, duracao_seg, subcategoria FROM pubshow_videos WHERE youtube_id IN ({','.join('?' * len(ids))})",
+            tuple(ids)).fetchall()}
+    finally:
+        if fechar:
+            conn.close()
+    for i in ids:
+        r = acervo.get(i)
+        seg = int(r['duracao_seg'] or 0) if r else 0
+        if r and seg > 0 and (r['subcategoria'] or '') != 'pedido_publico':
+            out[i] = seg
+        elif i in _YT_DURACAO:
+            out[i] = _YT_DURACAO[i]
+        elif r and seg > 0 and seg != 180:
+            out[i] = seg
+    return out
+
+
+def _musica_longa(b, youtube_id, tipo):
+    """True se a duração conhecida passa de 10 min. Desconhecida: deixa passar e grava no log."""
+    seg = _duracoes_conhecidas([youtube_id]).get(youtube_id)
+    if seg is None:
+        log.warning('[PUBSHOW] pedido com duração desconhecida (passou): bar=%s tipo=%s yid=%s',
+                    b.get('code') if hasattr(b, 'get') else '', tipo, youtube_id)
+        return False
+    return seg > YT_DUR_MAX_SEG
+
+
+def _bar_por_token(token):
+    token = (token or '').strip()
+    if not token or len(token) > 40:
+        return None
+    conn = get_pubshow_db()
+    try:
+        b = conn.execute('''SELECT * FROM pubshow_businesses
+                            WHERE (jukebox_token=? OR code=?) AND COALESCE(suspenso, 0)=0 LIMIT 1''',
+                         (token, token)).fetchone()   # bar suspenso: o jukebox dá 403, as rotas novas também somem
+        return dict(b) if b else None
+    finally:
+        conn.close()
+
+
+def _yt_selos(business_id, itens):
+    """Marca em cada vídeo: 'na_fila' (mesma regra do _musica_na_fila) e 'tocou_min' (tocou neste bar nas últimas 3 h)."""
+    ids = [i['id'] for i in itens if i.get('id')]
+    fila, tocou = set(), {}
+    if ids:
+        ph = ','.join('?' * len(ids))
+        marcas = ','.join('?' * len(TIPOS_MUSICA_FILA))
+        conn = get_pubshow_db()
+        try:
+            fila = {r[0] for r in conn.execute(
+                f"""SELECT DISTINCT youtube_id FROM pubshow_pedidos
+                    WHERE business_id=? AND youtube_id IN ({ph}) AND tipo IN ({marcas})
+                      AND (status='pendente'
+                           OR (status='aguardando_pix' AND created_at >= datetime('now', '-15 minutes')))""",
+                (business_id, *ids, *TIPOS_MUSICA_FILA)).fetchall()}
+            # exibido_at é gravado no horário de Brasília (now -3 h)
+            tocou = {r[0]: r[1] for r in conn.execute(
+                f"""SELECT youtube_id, MIN((julianday(datetime('now', '-3 hours')) - julianday(exibido_at)) * 1440)
+                    FROM pubshow_pedidos
+                    WHERE business_id=? AND youtube_id IN ({ph}) AND status='exibido'
+                      AND exibido_at >= datetime('now', '-3 hours', '-180 minutes')
+                    GROUP BY youtube_id""",
+                (business_id, *ids)).fetchall()}
+        except Exception:
+            fila, tocou = set(), {}
+        finally:
+            conn.close()
+    for i in itens:
+        i['na_fila'] = i.get('id') in fila
+        m = tocou.get(i.get('id'))
+        i['tocou_min'] = max(0, int(m)) if m is not None else None
+    return itens
+
+
 @pubshow_bp.route('/api/buscar')
 def api_buscar():
-    """Busca músicas no YouTube via InnerTube API (sem chave)."""
-    q = request.args.get('q', '').strip()
+    """Busca músicas no YouTube via InnerTube API (sem chave): os 5 melhores, com capa grande e selos do bar."""
+    q = request.args.get('q', '').strip()[:80]
     if not q or len(q) < 2:
         return jsonify({'resultados': []})
     try:
-        # B2: chave configurável via env — fallback para chave pública do cliente web YT
-        _yt_key = os.environ.get('YOUTUBE_INNERTUBE_KEY', 'AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8')
-        resp = _requests.post(
-            f'https://www.youtube.com/youtubei/v1/search?key={_yt_key}',
-            json={
-                'query': q,
-                'context': {
-                    'client': {
-                        'clientName': 'WEB',
-                        'clientVersion': '2.20231121.08.00',
-                        'hl': 'pt',
-                        'gl': 'BR',
-                    }
-                }
-            },
-            headers={'Content-Type': 'application/json'},
-            timeout=8
-        )
-        data = resp.json()
-        resultados = []
-        sections = (data.get('contents', {})
-                    .get('twoColumnSearchResultsRenderer', {})
-                    .get('primaryContents', {})
-                    .get('sectionListRenderer', {})
-                    .get('contents', []))
-        for sec in sections:
-            for item in sec.get('itemSectionRenderer', {}).get('contents', []):
-                vr = item.get('videoRenderer', {})
-                if not vr:
-                    continue
-                vid_id = vr.get('videoId', '')
-                titulo = ''.join(r.get('text', '') for r in vr.get('title', {}).get('runs', []))
-                canal  = (vr.get('longBylineText', {}).get('runs') or [{}])[0].get('text', '')
-                duracao= vr.get('lengthText', {}).get('simpleText', '')
-                if vid_id and titulo:
-                    resultados.append({
-                        'id':      vid_id,
-                        'titulo':  titulo[:70],
-                        'canal':   canal[:40],
-                        'duracao': duracao,
-                        'thumb':   f'https://i.ytimg.com/vi/{vid_id}/mqdefault.jpg',
-                    })
-                if len(resultados) >= 8:
-                    break
-            if len(resultados) >= 8:
-                break
-        return jsonify({'resultados': resultados})
+        lidos = _yt_buscar_innertube(q)
     except Exception as e:
         log.error('YouTube search error: %s', e)
-        return jsonify({'resultados': []})
+        return jsonify({'resultados': [], 'erro': 'youtube'})
+    try:
+        resultados = _yt_ranquear(lidos, q)
+    except Exception as e:   # resposta esquisita do YouTube: nunca 500, e não guarda no cache
+        log.error('YouTube ranking error: %s', e)
+        _YT_CACHE.pop(' '.join(q.lower().split()), None)
+        return jsonify({'resultados': [], 'erro': 'youtube'})
+    b = _bar_por_token(request.args.get('bar', '')) if resultados else None
+    if b:
+        _yt_selos(b['id'], resultados)
+    return jsonify({'resultados': resultados})
+
+
+@pubshow_bp.route('/api/mais-pedidas/<token>')
+def api_mais_pedidas(token):
+    """🔥 Mais pedidas no bar: as músicas que mais tocaram por pedido nos últimos 7 dias (antes de digitar)."""
+    b = _bar_por_token(token)
+    if not b:
+        return jsonify({'resultados': []}), 404
+    banidos = set(_videos_bloqueados(b))
+    conn = get_pubshow_db()
+    try:
+        rows = conn.execute(
+            """SELECT youtube_id, COUNT(*) AS vezes, MAX(id) AS ultimo
+               FROM pubshow_pedidos
+               WHERE business_id=? AND status='exibido' AND youtube_id IS NOT NULL
+                 AND exibido_at >= datetime('now', '-3 hours', '-7 days')
+               GROUP BY youtube_id
+               ORDER BY vezes DESC, ultimo DESC
+               LIMIT 20""",
+            (b['id'],)).fetchall()
+        rows = [r for r in rows if r['youtube_id'] not in banidos and _YID_RE.fullmatch(r['youtube_id'] or '')]
+        _dur = _duracoes_conhecidas([r['youtube_id'] for r in rows], conn)   # 17/10/26: longa (> 10 min) não aparece
+        rows = [r for r in rows if (_dur.get(r['youtube_id']) or 0) <= YT_DUR_MAX_SEG][:6]
+        ids = [r['youtube_id'] for r in rows]
+        titulos = {}
+        if ids:
+            ph = ','.join('?' * len(ids))
+            # o título que o celular manda é texto livre: vale o do acervo curado e, fora dele, o MAIS repetido
+            # (1 pedido forjado não troca o card de todo mundo por 7 dias)
+            for t in conn.execute(
+                    f"""SELECT youtube_id, titulo_pedido FROM pubshow_pedidos
+                        WHERE business_id=? AND youtube_id IN ({ph}) AND status='exibido' AND titulo_pedido IS NOT NULL
+                        GROUP BY youtube_id, titulo_pedido
+                        ORDER BY COUNT(*) ASC, MAX(id) ASC""", (b['id'], *ids)).fetchall():
+                titulos[t[0]] = t[1]          # o último de cada vídeo (o mais repetido) fica
+            for v in conn.execute(
+                    f"""SELECT youtube_id, titulo, artista FROM pubshow_videos
+                        WHERE youtube_id IN ({ph}) AND COALESCE(subcategoria, '') <> 'pedido_publico'""",
+                    tuple(ids)).fetchall():
+                tit, art = (v['titulo'] or '').strip(), (v['artista'] or '').strip()
+                if tit:
+                    titulos[v['youtube_id']] = f'{tit} · {art}' if art and art.lower() not in tit.lower() else tit
+    finally:
+        conn.close()
+    out = []
+    for r in rows:
+        yid = r['youtube_id']
+        t = (titulos.get(yid) or '').strip()
+        titulo = t if ' · ' in t else _yt_titulo_limpo(t)   # " · " = já veio limpo da busca nova
+        out.append({'id': yid, 'titulo': titulo[:80] or 'Música pedida',
+                    'vezes': r['vezes'], 'thumb': f'https://i.ytimg.com/vi/{yid}/hqdefault.jpg'})
+    _yt_selos(b['id'], out)
+    return jsonify({'resultados': out})
+
+
+@pubshow_bp.route('/api/fila-info/<token>')
+def api_fila_info(token):
+    """O que o celular mostra ao escolher a música: em que lugar entra (grátis e furando a fila), quanto falta pra
+    próxima grátis deste celular e, com ?yid=, se ela já está na fila ou tocou há pouco."""
+    b = _bar_por_token(token)
+    if not b:
+        return jsonify({'error': 'not_found'}), 404
+    ip_cliente = request.headers.get('X-Forwarded-For', request.remote_addr or '').split(',')[0].strip()
+    _cid = (request.args.get('cid') or '').strip()
+    if re.fullmatch(r'[A-Za-z0-9_-]{8,40}', _cid):
+        ip_cliente = f'{ip_cliente}#{_cid}'   # mesma chave do POST do jukebox (1 grátis a cada 20 min por celular)
+    conn = get_pubshow_db()
+    try:
+        n = {r[0]: r[1] for r in conn.execute(
+            """SELECT tipo, COUNT(*) FROM pubshow_pedidos
+               WHERE business_id=? AND status='pendente'
+                 AND tipo IN ('vip','flash','musica','musica_especifica','musica_externa')
+               GROUP BY tipo""", (b['id'],)).fetchall()}
+    finally:
+        conn.close()
+
+    def _estimativa(na_frente):   # mesma conta do /api/pedido-status: 4 min por música + metade da atual
+        return {'na_frente': na_frente, 'posicao': na_frente + 1,
+                'min': None if na_frente == 0 else na_frente * 4 + 2}
+
+    out = {'gratis': _estimativa(sum(n.values())),
+           'flash': _estimativa(n.get('vip', 0) + n.get('flash', 0)),
+           'espera_gratis_min': _gratis_espera_min(b, ip_cliente)}
+    yid = (request.args.get('yid') or '').strip()
+    if _YID_RE.fullmatch(yid):
+        s = _yt_selos(b['id'], [{'id': yid}])[0]
+        out['na_fila'], out['tocou_min'] = s['na_fila'], s['tocou_min']
+    return jsonify(out)
 
 
 # ── PAINEL DO BAR ─────────────────────────────────────────────────────────────
