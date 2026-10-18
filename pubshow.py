@@ -1229,6 +1229,15 @@ def _asaas_req(method, endpoint, data=None):
         return {'error': str(e)}
 
 
+def _asaas_descricao(texto: str) -> str:
+    """Descrição que o Asaas aceita. Emoji de 4 bytes (🙏 🎂 🍻 🎉 😏 📣 💕, e os do título do
+    YouTube) faz o Asaas recusar a cobrança inteira ("O campo 'description' não pode conter
+    caracteres especiais") e o cliente via "Pagamento indisponível" — gorjeta no Garage, 18/10/26.
+    Acento, ·, —, ⚡ e ❤️ passam (conferido na API), então só sai o que está fora do BMP."""
+    texto = ''.join(c for c in (texto or '') if ord(c) <= 0xFFFF and c != '\u200d')
+    return re.sub(r'\s+', ' ', texto).strip()[:500]
+
+
 def _asaas_criar_ou_buscar_cliente(b, forcar_novo=False) -> str:
     if not forcar_novo and b['asaas_customer_id']:
         return b['asaas_customer_id']
@@ -1297,7 +1306,7 @@ def _asaas_criar_cobranca_pix_jukebox(b, pedido_id: int, valor: float, descricao
             'billingType':       'PIX',
             'value':             round(valor, 2),
             'dueDate':           venc,
-            'description':       f'Jukebox — {descricao} — {b["nome"]}',
+            'description':       _asaas_descricao(f'Jukebox — {descricao} — {b["nome"]}'),
             'externalReference': f'jukebox_{pedido_id}',
             'postalService':     False,
         })
