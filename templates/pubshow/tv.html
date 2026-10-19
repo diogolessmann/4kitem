@@ -16,23 +16,21 @@
   #now-playing{
     position:fixed;bottom:0;left:0;right:0;z-index:10;
     background:linear-gradient(transparent,rgba(0,0,0,.9));
-    padding:60px 32px 24px;
+    padding:60px 400px 24px 32px;   /* 400px à direita = lugar do QR fixo (16/10/26, TV-21) */
     display:flex;align-items:flex-end;justify-content:space-between;
     transition:opacity .6s;
   }
   #now-playing.hidden{opacity:0;pointer-events:none}
-  .np-left{display:flex;align-items:center;gap:16px}
+  .np-left{display:flex;align-items:center;gap:16px;min-width:0}
+  .np-info{min-width:0}
+  .np-titulo,.np-artista{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .np-canal-badge{
     background:var(--canal-cor,#ef4444);
     padding:6px 14px;border-radius:8px;
     font-size:13px;font-weight:800;letter-spacing:.5px;white-space:nowrap;
   }
-  .np-info{}
   .np-titulo{font-size:20px;font-weight:800;text-shadow:0 2px 12px rgba(0,0,0,.9)}
   .np-artista{font-size:14px;color:rgba(255,255,255,.65);margin-top:3px}
-  .np-right{display:flex;align-items:center;gap:20px;flex-shrink:0}
-  .np-qr{font-size:12px;color:rgba(255,255,255,.55);text-align:right;line-height:1.6}
-  .np-qr strong{display:block;font-size:22px;margin-bottom:2px}
 
   /* FILA — próxima pedido */
   #fila-badge{
@@ -49,9 +47,9 @@
   .fila-dot{width:8px;height:8px;border-radius:50%;background:#f59e0b;animation:blink 1s ease-in-out infinite}
   @keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
 
-  /* PRÓXIMO — aparece 15s antes do fim do vídeo */
+  /* PRÓXIMO — aparece 15s antes do fim do vídeo (acima do QR fixo) */
   #proximo-card{
-    position:fixed;bottom:100px;right:24px;z-index:50;
+    position:fixed;bottom:calc(clamp(72px,12vh,140px) + 56px);right:24px;z-index:50;   /* sempre acima do QR fixo (16/10/26) */
     background:rgba(0,0,0,.85);border:2px solid #f59e0b;
     border-radius:16px;padding:14px 20px;max-width:280px;
     display:none;animation:slideIn .4s ease;
@@ -137,118 +135,43 @@
     color:rgba(255,255,255,.25);padding:4px 4px 2px;
   }
 
-  /* Botão fullscreen */
+  /* Botão fullscreen — só aparece com o mouse mexendo, ABAIXO do selo da fila (16/10/26, TV-21) */
   #fs-btn{
-    position:fixed;top:20px;left:20px;z-index:50;
+    position:fixed;top:76px;left:20px;z-index:50;
     background:rgba(0,0,0,.75);border:1px solid rgba(255,255,255,.35);
     border-radius:10px;padding:9px 18px;font-size:13px;font-weight:800;
     cursor:pointer;color:#fff;backdrop-filter:blur(6px);
-    opacity:0.85;transition:opacity .3s,transform .2s;white-space:nowrap;
+    opacity:0;pointer-events:none;transition:opacity .3s,transform .2s;white-space:nowrap;
     display:flex;align-items:center;gap:8px;
     box-shadow:0 2px 12px rgba(0,0,0,.5);
   }
-  #fs-btn:hover{background:rgba(255,255,255,.22);border-color:rgba(255,255,255,.7);opacity:1;transform:scale(1.05)}
-  #fs-btn.visible{opacity:0.85}
-  #fs-btn.hidden-fs{opacity:0;pointer-events:none}
+  #fs-btn.visible{opacity:.85;pointer-events:auto}
+  #fs-btn.visible:hover{background:rgba(255,255,255,.22);border-color:rgba(255,255,255,.7);opacity:1;transform:scale(1.05)}
 
-  /* Dica inicial de fullscreen */
-  #fs-hint{
-    position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
-    z-index:60;background:rgba(0,0,0,.85);backdrop-filter:blur(10px);
-    border:1px solid rgba(255,255,255,.2);border-radius:16px;
-    padding:20px 32px;text-align:center;font-size:15px;font-weight:700;
-    pointer-events:none;opacity:0;transition:opacity .4s;
+  /* ── Ligar a TV (16/10/26, B7): 1 toque = som + tela cheia + some o cursor ─── */
+  #ligar-tv{
+    position:fixed;inset:0;z-index:300;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;
+    background:rgba(0,0,0,.72);cursor:pointer;
   }
-  #fs-hint.show{opacity:1}
-
-  /* Overlay de ativação de som (autoplay policy) */
-  #som-overlay{
-    position:fixed;inset:0;z-index:200;
-    display:flex;flex-direction:column;align-items:center;justify-content:center;
-    background:rgba(0,0,0,.88);backdrop-filter:blur(8px);
-    cursor:pointer;
-  }
-  #som-overlay.hidden{display:none}
-  #som-overlay .som-box{
-    background:rgba(255,255,255,.06);border:2px solid rgba(255,255,255,.15);
-    border-radius:24px;padding:40px 56px;text-align:center;
+  #ligar-tv.hidden{display:none}
+  #ligar-btn{
+    font-size:clamp(28px,4.2vw,60px);font-weight:900;color:#052e16;
+    background:#4ade80;border:none;border-radius:999px;padding:.45em 1.4em;cursor:pointer;
+    box-shadow:0 0 0 10px rgba(74,222,128,.22),0 14px 44px rgba(0,0,0,.6);
     animation:popIn .4s cubic-bezier(.34,1.56,.64,1);
   }
-  #som-overlay .som-icon{font-size:72px;margin-bottom:16px;display:block}
-  #som-overlay .som-titulo{font-size:22px;font-weight:900;margin-bottom:8px}
-  #som-overlay .som-sub{font-size:14px;color:rgba(255,255,255,.55);line-height:1.5}
-  /* Botão mute/unmute fixo no canto */
-  #mute-btn{
-    position:fixed;bottom:80px;right:24px;z-index:50;
-    background:rgba(0,0,0,.8);border:1px solid rgba(255,255,255,.25);
-    border-radius:10px;padding:8px 14px;font-size:14px;font-weight:700;
-    cursor:pointer;color:#fff;backdrop-filter:blur(6px);
-    transition:.2s;display:none;align-items:center;gap:6px;
+  .ligar-sub{font-size:clamp(14px,1.6vw,22px);color:rgba(255,255,255,.75);text-align:center;line-height:1.5}
+  /* Voltou sem som (recarga, queda de luz): aviso PEQUENO; o vídeo e os momentos seguem visíveis */
+  #sem-som{
+    position:fixed;top:20px;left:50%;transform:translateX(-50%);z-index:300;
+    display:none;align-items:center;gap:8px;white-space:nowrap;
+    background:rgba(0,0,0,.85);border:1px solid rgba(255,255,255,.35);border-radius:999px;
+    padding:10px 22px;font-size:17px;font-weight:800;color:#fff;cursor:pointer;
   }
-  #mute-btn.show{display:flex}
-  #mute-btn:hover{background:rgba(255,255,255,.18)}
-
-  /* ── CTA Fullscreen — vídeo loop + fallback imagem ──────────────────────── */
-  #cta-fullscreen{
-    position:fixed;inset:0;z-index:95;
-    background:url('/static/pubshow/cta-fallback.webp') center/cover no-repeat;
-    display:none;flex-direction:column;align-items:center;justify-content:center;
-    animation:ctaFadeIn .5s ease;
-    cursor:pointer;overflow:hidden;
-  }
-  #cta-fullscreen.show{display:flex}
-  @keyframes ctaFadeIn{from{opacity:0}to{opacity:1}}
-
-  /* Vídeo de fundo em loop */
-  #cta-video{
-    position:absolute;inset:0;width:100%;height:100%;
-    object-fit:cover;z-index:0;
-  }
-
-  /* Scrim escuro sobre o vídeo para o card ficar legível */
-  #cta-fullscreen::before{
-    content:'';position:absolute;inset:0;z-index:1;
-    background:rgba(0,0,0,.55);
-  }
-
-  /* Card branco — imita o lightbox da foto do slide 1 */
-  .cta-fs-card{
-    position:relative;z-index:2;
-    background:#fff;border-radius:20px;
-    padding:28px 36px;max-width:420px;width:90%;
-    text-align:center;
-    box-shadow:0 0 80px rgba(0,0,0,.7), 0 0 0 6px rgba(255,255,255,.15);
-    animation:ctaCardPop .6s cubic-bezier(.34,1.56,.64,1);
-  }
-  @keyframes ctaCardPop{from{transform:scale(.55);opacity:0}to{transform:scale(1);opacity:1}}
-
-  .cta-fs-titulo{
-    font-size:clamp(18px,2.4vw,28px);font-weight:900;
-    color:#111;letter-spacing:-.5px;line-height:1.1;
-    margin-bottom:16px;
-  }
-  .cta-fs-qr{
-    background:#fff;border-radius:12px;
-    display:inline-flex;align-items:center;justify-content:center;
-    margin-bottom:16px;
-  }
-  .cta-fs-qr img{width:clamp(160px,18vw,220px);height:clamp(160px,18vw,220px);display:block;border-radius:8px}
-  .cta-fs-sub{
-    font-size:clamp(12px,1.4vw,16px);color:#555;
-    margin-bottom:10px;line-height:1.5;
-  }
-  .cta-fs-preco{
-    font-size:clamp(14px,1.6vw,20px);font-weight:900;color:#f97316;
-    letter-spacing:-.3px;
-  }
-
-  /* Barra de progresso no rodapé da tela */
-  .cta-fs-barra{
-    position:absolute;bottom:0;left:0;height:5px;z-index:3;
-    background:linear-gradient(90deg,#f97316,#ef4444);
-    animation:ctaBarra linear forwards;
-  }
-  @keyframes ctaBarra{from{width:100%}to{width:0%}}
+  #sem-som.show{display:flex}
+  body.com-promo #sem-som{top:118px}   /* 16/10/26 (V-S5-06): desce pra não cobrir a Promoção Relâmpago */
+  html.sem-cursor, html.sem-cursor *{cursor:none !important}
 
   /* ── Promoção Relâmpago — countdown na TV ───────────────────────────────── */
   #promo-relampago{
@@ -307,112 +230,46 @@
   .overlay-qr-viral span{font-size:12px;color:rgba(255,255,255,.4);text-align:left;line-height:1.6}
   .overlay-qr-viral strong{display:block;color:rgba(255,255,255,.65);font-size:13px}
 
-  /* ── Ranking da noite ───────────────────────────────────────────────────── */
-  #ranking-overlay{
-    position:fixed;inset:0;z-index:85;
-    background:url('/static/pubshow/ranking-bg.webp') center/cover no-repeat;
-    display:none;align-items:center;justify-content:center;
-    animation:rankingEntrar .5s ease;
+  /* QR fixo no canto INFERIOR DIREITO: a faixa "tocando agora" fica à esquerda, sem sobrepor (16/10/26, TV-21) */
+  #qr-fixo{
+    position:fixed;right:18px;bottom:18px;z-index:40;
+    display:flex;align-items:center;gap:10px;max-width:360px;
+    background:rgba(0,0,0,.62);border:1px solid rgba(255,255,255,.14);border-radius:14px;
+    padding:8px 12px 8px 8px;backdrop-filter:blur(6px);
+    transition:transform .5s;
   }
-  #ranking-overlay.show{display:flex}
-  @keyframes rankingEntrar{from{opacity:0;transform:scale(1.04)}to{opacity:1;transform:scale(1)}}
-
-  /* Conteúdo dinâmico — card translúcido posicionado sobre o lousa da imagem */
-  #ranking-conteudo{
-    position:absolute;
-    /* a lousa da foto está ~8% left, 4% top, ~65% wide, 95% tall
-       centramos o texto da lista no terço central da lousa */
-    left:8%;top:28%;
-    width:58%;
-  }
-  .ranking-titulo{display:none} /* já existe na imagem */
-  .ranking-sub{display:none}    /* já existe na imagem */
-  .ranking-lista{}
-  .ranking-item{
-    display:flex;align-items:center;gap:16px;
-    padding:9px 0;border-bottom:1px solid rgba(255,255,255,.1);
-  }
-  .ranking-item:last-child{border:none}
-  .ranking-pos{
-    font-size:26px;font-weight:900;width:40px;text-align:center;flex-shrink:0;
-    color:rgba(255,255,255,.5);
-  }
-  .ranking-item:nth-child(1) .ranking-pos{color:#fbbf24;font-size:30px}
-  .ranking-item:nth-child(2) .ranking-pos{color:#94a3b8}
-  .ranking-item:nth-child(3) .ranking-pos{color:#cd7c2f}
-  .ranking-musica{
-    flex:1;font-size:clamp(16px,2.2vw,26px);font-weight:900;
-    color:#fff;text-shadow:2px 2px 8px rgba(0,0,0,.9);
-    line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
-    font-family:'Segoe UI',sans-serif;letter-spacing:-.3px;
-  }
-  .ranking-badge{
-    font-size:11px;font-weight:800;
-    background:rgba(251,191,36,.25);color:#fbbf24;
-    border:1px solid rgba(251,191,36,.5);
-    padding:3px 10px;border-radius:20px;white-space:nowrap;flex-shrink:0;
-    text-shadow:none;
-  }
-  .ranking-bar{
-    height:4px;background:linear-gradient(90deg,#fbbf24,transparent);
-    border-radius:2px;margin-top:14px;animation:shrink linear forwards;
-  }
+  #qr-fixo img{width:clamp(72px,12vh,140px)!important;height:clamp(72px,12vh,140px)!important}
+  /* 16/10/26 (crítico C1): de tempos em tempos o QR cresce (≥ 18% da altura) — o de 70 px numa TV de 50"
+     tem ~6 cm e, da mesa (3-4 m), não escaneia. Grande por 20 s a cada 4 min, nunca por cima de um momento. */
+  #qr-fixo.grande{max-width:none;padding:14px 22px 14px 14px;gap:18px;border-color:rgba(74,222,128,.5)}
+  #qr-fixo.grande img{width:26vh!important;height:26vh!important}
+  #qr-fixo.grande .qr-txt1{font-size:3.4vh!important}
+  #qr-fixo.grande #qr-preco{font-size:2.8vh!important}
 </style>
 </head>
 <body>
 
-<!-- Overlay de ativação de som — aparece na primeira abertura -->
-<div id="som-overlay" onclick="ativarSom()">
-  <div class="som-box">
-    <span class="som-icon">🔊</span>
-    <div class="som-titulo">Clique para ativar o som</div>
-    <div class="som-sub">Os clips vão começar a tocar agora.<br>Clique em qualquer lugar para continuar.</div>
-  </div>
+<!-- Ligar a TV (16/10/26, B7): 1 toque = som + tela cheia + some o cursor. Aparece só na 1ª vez neste aparelho;
+     depois de uma recarga/queda de luz fica só o aviso pequeno "Sem som" (o vídeo e os momentos continuam visíveis). -->
+<div id="ligar-tv">
+  <button id="ligar-btn" type="button">▶ LIGAR A TV</button>
+  <div class="ligar-sub">Liga o som e a tela cheia.<br>Os pedidos das mesas só aparecem com a TV ligada.</div>
 </div>
+<div id="sem-som">🔇 Sem som. Toque na TV</div>
 
-<!-- Botão mute/unmute fixo -->
-<button id="mute-btn" onclick="toggleMute()">🔇 Sem som</button>
-
-<!-- CTA Fullscreen — vídeo loop + fallback foto escura + card HTML com QR real -->
 <!-- TV do bar: sem balão global do WhatsApp (a string 'wa-float-4k' aqui impede a injeção do app.py) -->
 <style>#wa-float-4k{display:none !important}</style>
 <!-- QR fixo e discreto: é o jeito do cliente pedir música (não é propaganda) -->
-<div id="qr-fixo" style="position:fixed;left:18px;bottom:18px;z-index:40;display:flex;align-items:center;gap:10px;background:rgba(0,0,0,.62);border:1px solid rgba(255,255,255,.14);border-radius:14px;padding:8px 12px 8px 8px;backdrop-filter:blur(6px)">
+<div id="qr-fixo">
   {% if tv_qr_b64 %}<img src="data:image/png;base64,{{ tv_qr_b64 }}" alt="QR Jukebox" style="width:72px;height:72px;border-radius:8px;background:#fff">{% endif %}
-  <div style="line-height:1.15"><div style="font-size:15px;font-weight:900;color:#fff">📱 Peça sua música</div><div style="font-size:12px;color:#4ade80;font-weight:700">GRÁTIS · furar a fila R$ {{ '%.0f'|format(preco_flash if preco_flash is defined else 7) }}</div></div>
-</div>
-<div id="cta-fullscreen" onclick="fecharCtaFullscreen()">
-  <!-- Vídeo de fundo em loop (muda quando ativado pelo JS) -->
-  <video id="cta-video" autoplay loop muted playsinline preload="auto">
-    <source src="/static/pubshow/cta-bg.mp4" type="video/mp4">
-  </video>
-
-  <!-- Card branco centralizado — imita o lightbox do slide 1 -->
-  <div class="cta-fs-card">
-    <div class="cta-fs-titulo">📱 ESCANEIE E PEÇA UMA MÚSICA</div>
-    <div class="cta-fs-qr">
-      {% if tv_qr_b64 %}
-      <img src="data:image/png;base64,{{ tv_qr_b64 }}" alt="QR Jukebox">
-      {% else %}
-      <img src="https://api.qrserver.com/v1/create-qr-code/?size=440x440&color=000000&bgcolor=ffffff&data={{ jukebox_url }}" alt="QR Jukebox">
-      {% endif %}
-    </div>
-    <div class="cta-fs-sub">Pedir música é GRÁTIS<br>Furar a fila: R$ {{ '%.0f'|format(preco_flash if preco_flash is defined else 7) }} no PIX</div>
-    <div class="cta-fs-preco">⚡ PUBSHOW JUKEBOX ⚡</div>
-  </div>
-
-  <!-- Barra de progresso de 10s no rodapé -->
-  <div class="cta-fs-barra" id="cta-barra"></div>
+  <div style="line-height:1.15"><div class="qr-txt1" style="font-size:15px;font-weight:900;color:#fff">📱 Escaneie e peça sua música</div><div id="qr-preco" style="font-size:12px;color:#4ade80;font-weight:700">{{ qr_preco_txt }}</div></div>
 </div>
 
-<!-- Botão fullscreen (canto superior esquerdo, aparece ao mover mouse) -->
+<!-- Botão fullscreen (aparece ao mover o mouse) -->
 <button id="fs-btn" onclick="toggleFullscreen()" title="Tela cheia (F)">⛶ Tela cheia</button>
 
-<!-- Dica inicial -->
-<div id="fs-hint">⛶ Clique para tela cheia · Tecla F</div>
-
-<!-- Player YouTube (IFrame API) -->
-<div id="player-wrap" style="cursor:pointer">
+<!-- Player YouTube (IFrame API). pointer-events:none: tocar na TV nunca pausa o vídeo (o toque vai pra página) -->
+<div id="player-wrap" style="pointer-events:none">
   <div id="yt-player"></div>
 </div>
 
@@ -423,12 +280,6 @@
     <div class="np-info">
       <div class="np-titulo" id="np-titulo">{{ videos[0].titulo if videos else 'Carregando...' }}</div>
       <div class="np-artista" id="np-artista">{{ videos[0].artista if videos else '' }}</div>
-    </div>
-  </div>
-  <div class="np-right">
-    <div class="np-qr">
-      <strong>📱</strong>
-      Scaneie o QR<br>para pedir
     </div>
   </div>
 </div>
@@ -489,40 +340,6 @@
     <img id="slide-img" src="" alt="">
     <div class="slide-bar" id="slide-bar-img"></div>
   </div>
-  <!-- Ranking dinâmico — substitui slide3.png com dados reais -->
-  <div id="slide-ranking-box" style="display:none;flex-direction:column;align-items:center;justify-content:center;width:100%;max-width:860px;padding:0 48px">
-    <div style="text-align:center;margin-bottom:32px">
-      <div style="font-size:56px;margin-bottom:8px">🏆</div>
-      <div style="font-size:52px;font-weight:900;letter-spacing:-2px;color:#f59e0b;text-shadow:0 0 40px rgba(245,158,11,.5)">RANKING DA NOITE</div>
-      <div style="font-size:18px;color:rgba(255,255,255,.5);margin-top:6px" id="rk-bar-nome"></div>
-    </div>
-    <div id="rk-lista" style="width:100%;display:flex;flex-direction:column;gap:14px"></div>
-    <div style="margin-top:28px;text-align:center;font-size:16px;color:rgba(255,255,255,.4)">
-      🎵 Peça a sua música — escaneie o QR nas mesas
-    </div>
-    <div class="slide-bar" id="slide-bar-ranking" style="width:min(600px,90vw);margin-top:20px"></div>
-  </div>
-  <!-- Slide de PREÇO dinâmico — sempre com o preço atual (nunca fica velho como imagem) -->
-  <div id="slide-precos-box" style="display:none;flex-direction:column;align-items:center;justify-content:center;width:100%;max-width:900px;padding:0 48px">
-    <div style="text-align:center;margin-bottom:22px">
-      <div style="font-size:50px;margin-bottom:4px">🎵</div>
-      <div style="font-size:52px;font-weight:900;letter-spacing:-2px;color:#f97316;text-shadow:0 0 40px rgba(249,115,22,.5)">PEÇA SUA MÚSICA!</div>
-    </div>
-    <div id="precos-lista" style="width:100%;display:flex;flex-direction:column;gap:11px"></div>
-    <div style="margin-top:26px;display:flex;align-items:center;gap:22px">
-      {% if tv_qr_b64 %}<img src="data:image/png;base64,{{ tv_qr_b64 }}" style="width:118px;height:118px;border-radius:12px;background:#fff;padding:6px" alt="QR">{% endif %}
-      <div style="font-size:26px;font-weight:800;color:#f0f0ff;line-height:1.3;text-align:left">Escaneie o QR<br><span style="font-size:18px;color:rgba(255,255,255,.6);font-weight:600">e peça do seu celular</span></div>
-    </div>
-    <div class="slide-bar" id="slide-bar-precos" style="width:min(600px,90vw);margin-top:18px"></div>
-  </div>
-</div>
-
-<!-- Ranking da noite — background fotográfico + lista dinâmica sobreposta -->
-<div id="ranking-overlay">
-  <div id="ranking-conteudo">
-    <div class="ranking-lista" id="ranking-lista"></div>
-    <div class="ranking-bar" id="ranking-bar"></div>
-  </div>
 </div>
 
 <!-- Seletor de canal — abas de nicho -->
@@ -576,22 +393,16 @@
 const CODE        = '{{ b.code }}';
 let   CANAL_KEY   = '{{ canal_key }}';
 const BASE_URL    = '/pubshow';
+// 16/10/26 (V3-02): aberta pelo "Testar aqui no celular" (?teste=1) → o status não marca a TV como ligada.
+// V-S5-05: e ela só MOSTRA os pedidos: nunca marca "exibido" (não gasta pedido real do bar no celular do dono)
+const MODO_TESTE  = new URLSearchParams(location.search).get('teste') === '1';
+// V-S5-02: cada pergunta de status diz se a TV está com som (o painel avisa "TV sem som")
+function _urlStatus() { return `${BASE_URL}/api/status/${CODE}?som=${_isMuted ? 0 : 1}${MODO_TESTE ? '&teste=1' : ''}`; }
 const JUKEBOX_URL = 'https://www.4kitem.com.br/pubshow/jukebox/{{ b.jukebox_token or b.code }}';
-const ANUNCIOS    = {{ anuncios | tojson }};  // slides de propaganda do bar
-// Slides padrão do sistema — cardápio de preços (sempre exibido junto aos do bar)
-const ANUNCIOS_DEFAULT = [
-  {tipo:'imagem', url:'/static/pubshow/slide-cardapio.webp', titulo:''},
-];
-// Mescla slides do bar com o cardápio padrão (cardápio aparece a cada ciclo)
 // 11/09/26: NADA automático na TV — só os slides que o gerente do bar lançar.
-const ANUNCIOS_EFETIVOS = [...ANUNCIOS];
-
-// Slides do sistema — obrigatórios, exibidos a cada 10 minutos em todas as TVs
-const SLIDES_SISTEMA = {{ slides_sistema | tojson }};
-const PRECOS_TV = {{ precos_tv | tojson }};
-// Slide de preço dinâmico SEMPRE na rotação — preço sempre atual, nunca imagem velha
-// slide de preço automático DESLIGADO (11/09/26) — preço fica no QR fixo e no celular do cliente
-// if (PRECOS_TV && PRECOS_TV.length) SLIDES_SISTEMA.unshift({tipo:'precos'});
+// (16/10/26, B7: saíram o CTA de tela cheia, o ranking, o slide de preço e os slides do sistema — estavam
+//  desligados e não tinham como ligar; ficam no git.)
+const ANUNCIOS_EFETIVOS = {{ anuncios | tojson }};  // slides de propaganda do bar
 
 // Info de canais disponível no JS para atualizar UI sem reload
 const CANAIS_JS = {{ canais | tojson }};
@@ -607,13 +418,40 @@ let pedidoAtual  = null;
 let pedidoMusica = null;
 let player       = null;
 let proximoTimer = null;
-let filaTimer    = null;
 let stallTimer   = null;
 let _skipCount   = 0;
 let _loopGuard   = 0; // guard global — só zera quando vídeo de fato toca
 
 // Vídeos que falharam nesta sessão — não tentar novamente
-const _skipSet = new Set(JSON.parse(localStorage.getItem('ps_skip_'+CANAL_KEY)||'[]'));
+const _skipSet = new Set();
+try { JSON.parse(localStorage.getItem('ps_skip_'+CANAL_KEY)||'[]').forEach(id => _skipSet.add(id)); } catch(e) {}
+
+// ── Fila sem repetição (16/10/26, TV-17) ─────────────────────────────────────
+const PRAZO_FETCH_MS = 8000;      // pergunta ao servidor que passar disso é cancelada
+const _consumidos    = new Set(); // pedidos que esta TV já tocou/mostrou: resposta atrasada não repete
+const _exibidoEm     = {};        // id → quando o "exibido" foi mandado (reenvio no máx. a cada 10 s)
+let _pollEmVoo   = false;         // 1 pergunta de status por vez (servidor lento não empilha)
+let _avancoSeq   = 0;             // avancarFila() mais nova vence a que ainda esperava o servidor
+let _tocandoPago = false;         // o que toca agora é pedido PAGO (furar a fila): outro furar a fila não corta
+
+function _fetchTV(url, opts) {
+  const ctl = new AbortController();
+  const t = setTimeout(() => ctl.abort(), PRAZO_FETCH_MS);
+  return fetch(url, Object.assign({}, opts || {}, {signal: ctl.signal})).finally(() => clearTimeout(t));
+}
+
+function _ehPago(p) { return !!p && (p.tipo === 'flash' || p.tipo === 'vip'); }
+
+// Marca o pedido como exibido. Se o servidor ainda devolver o mesmo id (o POST se perdeu), manda de novo.
+function _marcarExibido(id) {
+  _consumidos.add(id);
+  if (MODO_TESTE) return;   // V-S5-05: TV de teste no celular é só leitura
+  const agora = Date.now();
+  if (_exibidoEm[id] && agora - _exibidoEm[id] < 10000) return;
+  _exibidoEm[id] = agora;
+  _fetchTV(`${BASE_URL}/api/pedido-exibido/${id}`, {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:CODE})})
+    .catch(() => {});
+}
 
 // Tipos de pedido — configuração visual
 const TIPO_CONFIG = {
@@ -636,23 +474,102 @@ const TIPOS_MUSICA = {
 };
 
 // ── Som / Autoplay ────────────────────────────────────────────────────────────
+// 16/10/26 (TV-03/B7): o navegador só libera o som depois de um toque. Enquanto a TV está MUDA, ela não
+// consome pedido nenhum (nem momento pago, nem música): fica tudo na fila até alguém tocar na TV.
 let _isMuted = true;
+function _somLigado() { return !_isMuted; }
 
-function ativarSom() {
-  document.getElementById('som-overlay').classList.add('hidden');
-  if (player && player.unMute) {
-    player.unMute();
-    player.setVolume(volumeAtualTV());
-    _isMuted = false;
-    document.getElementById('mute-btn').classList.remove('show');
-  }
-  // Se player ainda não carregou, marca pra desmutar quando estiver pronto
-  window._autoUnmute = true;
-  // Inicia ciclo periódico de CTA fullscreen
-  if (CTA_AUTOMATICO) iniciarCtaPeriodicO();
-  // Exibe slides do sistema 2 min após TV ligar (tutorial inicial)
-  if (SLIDES_SISTEMA.length) setTimeout(_iniciarSlidesSistema, 2 * 60 * 1000);
+let _jaLigou = false;   // esta TV já foi ligada neste aparelho → sem botão grande, só o aviso pequeno
+try { _jaLigou = localStorage.getItem('ps_tv_ligada') === '1'; } catch(e) {}
+
+function _esconderCursorDepois(ms) {
+  clearTimeout(window._cursorTimer);
+  window._cursorTimer = setTimeout(() => document.documentElement.classList.add('sem-cursor'), ms);
 }
+
+function ligarTV() {
+  document.getElementById('ligar-tv').classList.add('hidden');
+  document.getElementById('sem-som').classList.remove('show');
+  try { localStorage.setItem('ps_tv_ligada', '1'); } catch(e) {}
+  _jaLigou = true;
+  try {
+    if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
+      document.documentElement.requestFullscreen().catch(() => {});
+    }
+  } catch(e) {}
+  _esconderCursorDepois(0);
+  try {
+    if (player && player.unMute) {
+      player.unMute();
+      player.setVolume(volumeAtualTV());
+      _isMuted = false;
+      // 16/10/26: a tentativa de som sozinha pode ter deixado o vídeo PAUSADO pelo Chrome; o toque retoma
+      // (menos no slide do bar, que pausa o vídeo de propósito)
+      if (!document.getElementById('slide-propaganda').classList.contains('show') && player.getPlayerState() !== 1) {
+        player.playVideo();
+      }
+    }
+  } catch(e) {}
+  // Se o player ainda não carregou, desmuta quando estiver pronto
+  window._autoUnmute = true;
+  _furarFilaQueEsperava();
+}
+
+// Furar a fila pago que chegou com a TV muda: toca assim que o som volta (não espera a música acabar)
+function _furarFilaQueEsperava() {
+  if (_somLigado() && player && _ehPago(pedidoMusica) && !_tocandoPago) avancarFila();
+}
+
+// Toda TV tenta o som sozinha quando o player fica pronto (Chrome com som liberado / modo quiosque / site que
+// o Chrome já conhece). Se o navegador não deixar, ela fica muda: na 1ª vez, o botão grande; depois de uma
+// recarga, só o aviso "Sem som. Toque na TV".
+// 16/10/26 (V-S5-01): vídeo carregando devagar (wi-fi do bar) não é "bloqueado". Espera o 1º vídeo TOCAR
+// (mudo), só então tira o mudo e decide pelo isMuted: tocando com som = deixou; o Chrome PAUSOU (estado 2)
+// ou o player voltou mudo = não deixou. Ainda carregando: confere de novo até ~8 s.
+const PRAZO_SOM_MS = 8000;
+function _tentarSomSozinho() {
+  const ini = Date.now();
+  let tirouMudoEm = 0;
+  const confere = () => {
+    if (!_isMuted) return;   // alguém já tocou na TV
+    let mudo = true, estado = -1;
+    try { mudo = player.isMuted(); estado = player.getPlayerState(); } catch(e) { return; }
+    if (!tirouMudoEm) {
+      if (estado === 1) {    // tocando mudo: agora tenta o som
+        try { player.unMute(); player.setVolume(volumeAtualTV()); } catch(e) { return; }
+        tirouMudoEm = Date.now();
+        setTimeout(confere, 1500);
+      } else if (Date.now() - ini < 30000) {
+        setTimeout(confere, 300);    // o 1º vídeo ainda não começou
+      }
+      return;
+    }
+    if (!mudo && estado === 1) {
+      _isMuted = false;      // tocando COM som: o navegador deixou
+      document.getElementById('ligar-tv').classList.add('hidden');
+      document.getElementById('sem-som').classList.remove('show');
+      _lembrarTelaCheia();
+      _furarFilaQueEsperava();
+    } else if (mudo || estado === 2 || Date.now() - tirouMudoEm >= PRAZO_SOM_MS) {
+      try { player.mute(); player.playVideo(); } catch(e) {}   // não deixou: segue mudo, tocando
+    } else {
+      setTimeout(confere, 500);   // carregando de novo (estado 3/-1): confere daqui a pouco
+    }
+  };
+  confere();
+}
+
+// Som voltou sozinho fora da tela cheia (precisa de um toque): mostra o botão de tela cheia por 8 s (V-S5-04)
+function _lembrarTelaCheia() {
+  if (document.fullscreenElement) return;
+  const fsb = document.getElementById('fs-btn');
+  fsb.classList.add('visible');
+  clearTimeout(window._selTimer);
+  window._selTimer = setTimeout(() => fsb.classList.remove('visible'), 8000);
+}
+
+// Qualquer toque/clique (ou Enter/espaço no controle) liga a TV enquanto ela está muda
+document.addEventListener('click', () => { if (_isMuted) ligarTV(); });
 
 // ── Promoção Relâmpago — countdown ───────────────────────────────────────────
 let _promoTimer = null;
@@ -660,6 +577,7 @@ let _promoExpira = null;
 
 function atualizarPromo(promo) {
   const el = document.getElementById('promo-relampago');
+  document.body.classList.toggle('com-promo', !!promo);   // V-S5-06: a pílula "Sem som" desce
   if (!promo) {
     el.classList.remove('show');
     clearInterval(_promoTimer);
@@ -674,11 +592,16 @@ function atualizarPromo(promo) {
   if (_promoExpira !== promo.expira) {
     _promoExpira = promo.expira;
     clearInterval(_promoTimer);
+    // 15/10/26: o servidor manda quantos segundos faltam (sem briga de fuso); o texto fica de reserva
+    const _fimPromo = (typeof promo.segundos_restantes === 'number')
+      ? Date.now() + promo.segundos_restantes * 1000
+      : new Date(promo.expira).getTime();
     _promoTimer = setInterval(() => {
-      const diff = new Date(promo.expira) - new Date();
+      const diff = _fimPromo - Date.now();
       const timerEl = document.getElementById('promo-timer');
       if (diff <= 0) {
         el.classList.remove('show');
+        document.body.classList.remove('com-promo');
         clearInterval(_promoTimer);
         return;
       }
@@ -692,17 +615,7 @@ function atualizarPromo(promo) {
   }
 }
 
-// ── CTA Fullscreen Periódico ──────────────────────────────────────────────────
-const CTA_AUTOMATICO   = false;         // 11/09/26: CTA de tela cheia (vídeo promo) DESLIGADO — só QR fixo no canto
-const CTA_INTERVALO_MS = 5 * 60 * 1000; // aparece a cada 5 minutos
-const CTA_DURACAO_MS   = 10 * 1000;     // fica visível por 10 segundos
-let _ctaTimer = null;
-
-function iniciarCtaPeriodicO() {
-  clearTimeout(_ctaTimer);
-  _ctaTimer = setTimeout(mostrarCtaFullscreen, CTA_INTERVALO_MS);
-}
-
+// ── Volume ───────────────────────────────────────────────────────────────────
 function aplicarVolumeTV(v) {
   v = Math.max(0, Math.min(100, Number(v) || 0));
   window._tvVolume = v;
@@ -714,62 +627,10 @@ function aplicarVolumeTV(v) {
 }
 function volumeAtualTV() { return (typeof window._tvVolume === 'number') ? window._tvVolume : 100; }
 
-function mostrarCtaFullscreen() {
-  // Não mostra se outro overlay estiver visível (parabéns, slide, ranking, promo)
-  const bloqueadores = ['#overlay', '#slide-propaganda', '#ranking-overlay'];
-  if (bloqueadores.some(sel => document.querySelector(sel)?.classList.contains('show'))) {
-    if (CTA_AUTOMATICO) iniciarCtaPeriodicO(); // tenta de novo no próximo ciclo
-    return;
-  }
-  const el    = document.getElementById('cta-fullscreen');
-  const barra = document.getElementById('cta-barra');
-  const vid   = document.getElementById('cta-video');
-
-  // Reinicia o vídeo do início a cada exibição
-  if (vid) { try { vid.currentTime = 0; vid.play(); } catch(e){} }
-
-  el.classList.add('show');
-
-  // Reinicia animação da barra de progresso
-  barra.style.animation = 'none';
-  barra.offsetHeight;
-  barra.style.animation = `ctaBarra ${CTA_DURACAO_MS / 1000}s linear forwards`;
-
-  // Fecha após a duração
-  setTimeout(() => {
-    el.classList.remove('show');
-    if (vid) { try { vid.pause(); } catch(e){} }
-    if (CTA_AUTOMATICO) iniciarCtaPeriodicO();
-  }, CTA_DURACAO_MS);
-}
-
-function fecharCtaFullscreen() {
-  document.getElementById('cta-fullscreen').classList.remove('show');
-  if (CTA_AUTOMATICO) iniciarCtaPeriodicO();
-}
-
-function toggleMute() {
-  if (!player) return;
-  if (_isMuted) {
-    player.unMute();
-    player.setVolume(volumeAtualTV());
-    _isMuted = false;
-    document.getElementById('mute-btn').textContent = '🔊 Com som';
-    setTimeout(() => document.getElementById('mute-btn').classList.remove('show'), 1500);
-  } else {
-    player.mute();
-    _isMuted = true;
-    document.getElementById('mute-btn').innerHTML = '🔇 Sem som';
-    document.getElementById('mute-btn').classList.add('show');
-  }
-}
-
 // ── YouTube IFrame API ────────────────────────────────────────────────────────
 function onYouTubeIframeAPIReady() {
   if (!VIDEOS.length) {
-    // Página carregou sem vídeos — esconde overlay e faz fallback para rock
-    const overlay = document.getElementById('som-overlay');
-    if (overlay) overlay.classList.add('hidden');
+    // Página carregou sem vídeos — fallback para rock
     const fallback = (typeof CANAL_KEY !== 'undefined' && CANAL_KEY !== 'rock') ? 'rock' : 'pop';
     fetch(`${BASE_URL}/api/trocar-canal/${CODE}`, {
       method: 'POST',
@@ -805,15 +666,19 @@ function onYouTubeIframeAPIReady() {
 
 function onPlayerReady(e) {
   e.target.playVideo();
-  // Se usuário já clicou no overlay antes do player carregar, desmuta agora
+  // Se alguém já tocou em LIGAR antes do player carregar, desmuta agora
   if (window._autoUnmute) {
     e.target.unMute();
     e.target.setVolume(volumeAtualTV());
     _isMuted = false;
+  } else {
+    _tentarSomSozinho();       // 16/10/26 (V-S5-03): tenta sempre (antes só com a marca 'ps_tv_ligada')
   }
   atualizarNowPlaying(VIDEOS[videoIdx]);
   esconderNowPlayingComDelay();
   iniciarStallDetector();
+  // V-S5-04: tocou em LIGAR antes do player ficar pronto → furar a fila que já estava na memória corta agora
+  if (window._autoUnmute) _furarFilaQueEsperava();
 }
 
 function onPlayerStateChange(e) {
@@ -875,20 +740,20 @@ function iniciarStallDetector(delayMs) {
 
 // Pula para o próximo vídeo por erro/stall — NÃO conta como vídeo tocado
 // (evita acionar slide de propaganda durante recuperação de erro)
+// 16/10/26 (TV-15): o pulo confere a FILA antes da biblioteca (pedido não espera mais 1 música inteira)
 function _pularVideo() {
   clearTimeout(stallTimer);
   if (_pedidoYtId) {
     // Stall num pedido específico — não marca nenhum vídeo da biblioteca como ruim
-    // Apenas cancela o pedido e retoma o fluxo normal
-    console.warn('Pedido específico (' + _pedidoYtId + ') não carregou → retomando biblioteca');
+    console.warn('Pedido específico (' + _pedidoYtId + ') não carregou → segue a fila');
     _pedidoYtId = null;
-    proximoVideoOuSlide();
+    _tocandoPago = false;
+    avancarFila({semSlide: true});
     return;
   }
   _marcarVideoRuim();
   _skipCount++;
-  videoIdx = (videoIdx + 1) % VIDEOS.length;
-  carregarVideo(videoIdx);
+  avancarFila({semSlide: true});
 }
 
 // ⏭️ Pular agora (comando do dono pelo painel) — interrompe o vídeo atual,
@@ -902,29 +767,38 @@ function pularMusicaAgora() {
 }
 
 // ── Lógica de avanço com fila ─────────────────────────────────────────────────
-async function avancarFila() {
+// opts.semSlide: fim de slide / pulo por erro → sem pedido, vai direto pro próximo vídeo (não conta pro slide)
+async function avancarFila(opts) {
+  const seq = ++_avancoSeq;
+  // Furar a fila ou "pular" no meio do slide: o slide sai e o timer dele não troca a música depois (TV-07)
+  clearTimeout(window._slideTimer);
+  _esconderSlide();
   // ── Race condition fix: se não há pedido em memória, consulta API imediatamente ──
   // O polling (a cada ~3s) pode ter perdido o pedido se o vídeo terminou entre dois ciclos
-  if (!pedidoMusica) {
+  if (!pedidoMusica && _somLigado()) {
     try {
-      const _r = await fetch(`${BASE_URL}/api/status/${CODE}`, {cache: 'no-store'});
+      const _r = await _fetchTV(_urlStatus(), {cache: 'no-store'});
       const _d = await _r.json();
-      if (_d.pedido_musica) {
+      if (seq !== _avancoSeq) return;   // outra chamada mais nova já decidiu o que toca
+      if (_d.pedido_musica && !_consumidos.has(_d.pedido_musica.id) && !pedidoMusica) {
         pedidoMusica = _d.pedido_musica;
         mostrarBadgeFila(_d.total_fila);
       }
     } catch(_e) { /* silencioso — fallback para próximo vídeo da biblioteca */ }
+    if (seq !== _avancoSeq) return;
   }
 
-  if (pedidoMusica) {
+  // TV muda não gasta pedido (16/10/26, TV-03): segue a biblioteca até alguém tocar na TV
+  if (pedidoMusica && _somLigado()) {
     const p = pedidoMusica;
     pedidoMusica = null;
     esconderBadgeFila();
-    fetch(`${BASE_URL}/api/pedido-exibido/${p.id}`, {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:CODE})});
+    _marcarExibido(p.id);
 
     if (p.youtube_id) {
       // 🎯 Música específica — toca o vídeo exato pedido pelo cliente
-      _pedidoYtId = p.youtube_id; // flag para stall detector não marcar vídeos como ruins
+      _pedidoYtId  = p.youtube_id; // flag para stall detector não marcar vídeos como ruins
+      _tocandoPago = _ehPago(p);
       player.loadVideoById(p.youtube_id);
       atualizarNowPlaying({
         titulo:  p.titulo_pedido || '🎯 Pedido especial',
@@ -932,9 +806,12 @@ async function avancarFila() {
       });
       esconderNowPlayingComDelay();
       iniciarStallDetector(8000); // 8s para pedidos — YouTube demora mais que 2.5s para carregar
-    } else {
-      proximoVideoOuSlide();
+      return;
     }
+  }
+  if (opts && opts.semSlide) {
+    videoIdx = (videoIdx + 1) % VIDEOS.length;
+    carregarVideo(videoIdx);
   } else {
     proximoVideoOuSlide();
   }
@@ -967,6 +844,7 @@ function carregarVideo(idx) {
 
   videoIdx = idx % VIDEOS.length;
   const v = VIDEOS[videoIdx];
+  _tocandoPago = false;
   player.loadVideoById(v.youtube_id);
   atualizarNowPlaying(v);
   esconderNowPlayingComDelay();
@@ -1008,6 +886,7 @@ function mostrarProximoCard(p) {
   document.getElementById('prox-tipo').textContent = label;
   document.getElementById('prox-nome').textContent = `de ${p.nome_cliente || 'alguém'}`;
   document.getElementById('proximo-card').classList.add('show');
+  const _q = document.getElementById('qr-fixo'); if (_q) _q.classList.remove('grande');   // QR grande não cobre o próximo
 }
 
 // ── Badge da fila ─────────────────────────────────────────────────────────────
@@ -1024,6 +903,11 @@ function esconderBadgeFila() {
 }
 
 // ── Now Playing ───────────────────────────────────────────────────────────────
+// Escapa texto do cliente antes de ir pro innerHTML (15/10/26: o título do pedido era HTML cru na TV)
+function _esc(t) {
+  return String(t == null ? '' : t).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
 function atualizarNowPlaying(v) {
   document.getElementById('np-titulo').textContent  = v.titulo  || '';
   document.getElementById('np-artista').textContent = v.artista || '';
@@ -1039,8 +923,20 @@ function esconderNowPlayingComDelay() {
 }
 
 // ── Overlay especial ──────────────────────────────────────────────────────────
+// 16/10/26 (crítico C1): QR grande por 20 s a cada 4 min (1ª vez 1 min depois de abrir), fora dos momentos
+function _qrGrande() {
+  const q = document.getElementById('qr-fixo');
+  const _px = document.getElementById('proximo-card');
+  if (!q || overlayAtivo || (_px && _px.classList.contains('show'))) return;   // não cobre o card do próximo
+  q.classList.add('grande');
+  setTimeout(() => q.classList.remove('grande'), 20000);
+}
+setTimeout(_qrGrande, 60 * 1000);
+setInterval(_qrGrande, 4 * 60 * 1000);
+
 function mostrarOverlay(pedido) {
   overlayAtivo = true;
+  const _q = document.getElementById('qr-fixo'); if (_q) _q.classList.remove('grande');
   const cfg = TIPO_CONFIG[pedido.tipo] || TIPO_CONFIG['brinde'];
   const box = document.getElementById('overlay-box');
 
@@ -1064,8 +960,8 @@ function mostrarOverlay(pedido) {
   document.getElementById('overlay').classList.add('show');
   if (cfg.confetes) lancarConfetes(cfg.cor);
 
-  // Marca como exibido
-  fetch(`${BASE_URL}/api/pedido-exibido/${pedido.id}`, {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:CODE})});
+  // Marca como exibido (só chega aqui com a TV com som — ver pollStatus)
+  _marcarExibido(pedido.id);
 
   clearTimeout(window._overlayTimer);
   window._overlayTimer = setTimeout(() => {
@@ -1083,89 +979,30 @@ function proximoVideoOuSlide() {
     const slide = ANUNCIOS_EFETIVOS[_anuncioIdx % ANUNCIOS_EFETIVOS.length];
     _anuncioIdx++;
     mostrarSlide(slide);
-  // A cada 5 vídeos (quando não cai no % 3) exibe slides do sistema (tutorial)
-  } else if (SLIDES_SISTEMA.length && _videosPlayed % 5 === 0) {
-    _iniciarSlidesSistema();
   } else {
     videoIdx = (videoIdx + 1) % VIDEOS.length;
     carregarVideo(videoIdx);
   }
 }
 
-function mostrarSlide(slide, onEnd, duracaoMs) {
-  const duracao = duracaoMs || 8000; // 8s padrão (bar), 15s para sistema
+function _esconderSlide() {
+  document.getElementById('slide-propaganda').classList.remove('show');
+  document.getElementById('slide-box').style.display    = '';
+  document.getElementById('slide-img-box').style.display = 'none';
+}
+
+function mostrarSlide(slide) {
+  const duracao = 8000; // 8s
   const el     = document.getElementById('slide-propaganda');
   const box    = document.getElementById('slide-box');
   const imgBox = document.getElementById('slide-img-box');
-  const precosBox = document.getElementById('slide-precos-box');
-  if (precosBox) precosBox.style.display = 'none';
 
-  if (slide.tipo === 'imagem' && slide.url && slide.url.includes('slide3')) {
-    // ── Ranking dinâmico — busca dados reais e exibe HTML ────────────────
-    box.style.display    = 'none';
-    imgBox.style.display = 'none';
-    const rkBox = document.getElementById('slide-ranking-box');
-    rkBox.style.display  = 'flex';
-    document.getElementById('rk-bar-nome').textContent = '';
-    document.getElementById('rk-lista').innerHTML = '<div style="color:rgba(255,255,255,.3);font-size:20px;text-align:center">Carregando...</div>';
-    // Busca ranking real
-    fetch(`${BASE_URL}/api/ranking/${CODE}`)
-      .then(r => r.json())
-      .then(d => {
-        const ranking = d.ranking || [];
-        const nome = d.bar_nome || '';
-        document.getElementById('rk-bar-nome').textContent = nome;
-        if (!ranking.length) {
-          document.getElementById('rk-lista').innerHTML =
-            '<div style="color:rgba(255,255,255,.4);font-size:22px;text-align:center;padding:20px">Nenhum pedido ainda hoje.<br>Escaneie o QR e peça a primeira! 🎵</div>';
-        } else {
-          const medals = ['🥇','🥈','🥉','4️⃣','5️⃣'];
-          document.getElementById('rk-lista').innerHTML = ranking.map((r, i) => {
-            const pct = Math.round((r.n / ranking[0].n) * 100);
-            return `<div style="background:rgba(255,255,255,.06);border:1px solid rgba(245,158,11,${i===0?.35:.12});border-radius:16px;padding:18px 24px;display:flex;align-items:center;gap:18px;animation:popIn .4s ${i*.08}s both">
-              <div style="font-size:${i===0?44:34}px;flex-shrink:0;width:52px;text-align:center">${medals[i]||'▪'}</div>
-              <div style="flex:1;min-width:0">
-                <div style="font-size:${i===0?26:22}px;font-weight:900;color:${i===0?'#fbbf24':'#f0f0ff'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.titulo_pedido||'Música aleatória'}</div>
-                <div style="margin-top:6px;height:6px;background:rgba(255,255,255,.1);border-radius:3px;overflow:hidden">
-                  <div style="height:100%;width:${pct}%;background:${i===0?'linear-gradient(90deg,#f59e0b,#ef4444)':'rgba(255,255,255,.3)'};border-radius:3px"></div>
-                </div>
-              </div>
-              <div style="font-size:${i===0?28:22}px;font-weight:900;color:${i===0?'#fbbf24':'#8888aa'};flex-shrink:0">${r.n}×</div>
-            </div>`;
-          }).join('');
-        }
-      })
-      .catch(() => {
-        document.getElementById('rk-lista').innerHTML =
-          '<div style="color:rgba(255,255,255,.3);font-size:20px;text-align:center">Sem dados de ranking ainda.</div>';
-      });
-    const bar = document.getElementById('slide-bar-ranking');
-    bar.style.animation = 'none'; bar.offsetHeight;
-    bar.style.animation = `shrink ${duracao/1000}s linear forwards`;
-
-  } else if (slide.tipo === 'imagem' && slide.url) {
-    // ── Slide de imagem normal ───────────────────────────────────────────
+  if (slide.tipo === 'imagem' && slide.url) {
+    // ── Slide de imagem ──────────────────────────────────────────────────
     box.style.display    = 'none';
     imgBox.style.display = 'flex';
-    document.getElementById('slide-ranking-box').style.display = 'none';
     document.getElementById('slide-img').src = slide.url;
     const bar = document.getElementById('slide-bar-img');
-    bar.style.animation = 'none';
-    bar.offsetHeight;
-    bar.style.animation = `shrink ${duracao/1000}s linear forwards`;
-  } else if (slide.tipo === 'precos') {
-    // ── Slide de PREÇO dinâmico (sempre o preço atual) ───────────────────
-    box.style.display = 'none';
-    imgBox.style.display = 'none';
-    document.getElementById('slide-ranking-box').style.display = 'none';
-    if (precosBox) precosBox.style.display = 'flex';
-    document.getElementById('precos-lista').innerHTML = (PRECOS_TV || []).map(p =>
-      `<div style="display:flex;align-items:center;gap:18px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:16px;padding:15px 28px">
-         <div style="font-size:34px;flex-shrink:0">${p.emoji}</div>
-         <div style="flex:1;font-size:29px;font-weight:800;color:#f0f0ff">${p.nome}</div>
-         <div style="font-size:33px;font-weight:900;color:#4ade80;flex-shrink:0">${Number(p.preco) > 0 ? "R$ " + Number(p.preco).toFixed(0) : "GRÁTIS"}</div>
-       </div>`).join('');
-    const bar = document.getElementById('slide-bar-precos');
     bar.style.animation = 'none';
     bar.offsetHeight;
     bar.style.animation = `shrink ${duracao/1000}s linear forwards`;
@@ -1188,42 +1025,10 @@ function mostrarSlide(slide, onEnd, duracaoMs) {
   if (player && player.pauseVideo) player.pauseVideo();
   clearTimeout(window._slideTimer);
   window._slideTimer = setTimeout(() => {
-    el.classList.remove('show');
-    box.style.display    = '';
-    imgBox.style.display = 'none';
-    document.getElementById('slide-ranking-box').style.display = 'none';
-    if (typeof onEnd === 'function') {
-      onEnd();
-    } else {
-      videoIdx = (videoIdx + 1) % VIDEOS.length;
-      carregarVideo(videoIdx);
-    }
+    _esconderSlide();
+    // 16/10/26 (TV-15): fim do slide confere a fila (antes ia direto pra biblioteca)
+    avancarFila({semSlide: true});
   }, duracao);
-}
-
-// ── Slides do Sistema — exibidos no startup e a cada 5 vídeos ────────────────
-// (não usa timer fixo — integrado ao contador de vídeos em proximoVideoOuSlide)
-function _agendarSlidesSistema() { /* no-op — mantido por compatibilidade */ }
-
-function _iniciarSlidesSistema() {
-  // Não interrompe overlay especial (parabéns, dedicatória etc.)
-  if (overlayAtivo) { _agendarSlidesSistema(); return; }
-  // Pausa o vídeo atual e cancela timers pendentes
-  if (player && player.pauseVideo) player.pauseVideo();
-  clearTimeout(window._slideTimer);
-  clearTimeout(stallTimer);
-  _mostrarSlidesSistemaSeq(0);
-}
-
-function _mostrarSlidesSistemaSeq(idx) {
-  if (idx >= SLIDES_SISTEMA.length) {
-    // Todos os slides do sistema foram exibidos — retoma vídeo e reagenda
-    videoIdx = (videoIdx + 1) % VIDEOS.length;
-    carregarVideo(videoIdx);
-    _agendarSlidesSistema();
-    return;
-  }
-  mostrarSlide(SLIDES_SISTEMA[idx], () => _mostrarSlidesSistemaSeq(idx + 1), 15000);
 }
 
 function lancarConfetes(corPrincipal) {
@@ -1247,43 +1052,6 @@ function lancarConfetes(corPrincipal) {
   }
 }
 
-// ── Ranking da noite ─────────────────────────────────────────────────────────
-let _rankingDados  = [];
-let _rankingTimer  = null;
-
-async function carregarRanking() {
-  try {
-    const r = await fetch(`${BASE_URL}/api/ranking/${CODE}`);
-    const d = await r.json();
-    _rankingDados = (d.ranking || []).filter(x => x.titulo_pedido && x.n >= 1);
-  } catch(e) {}
-}
-
-function mostrarRanking() {
-  if (!_rankingDados.length || overlayAtivo) return;
-  const el    = document.getElementById('ranking-overlay');
-  const lista = document.getElementById('ranking-lista');
-  const duracao = 12000; // 12s
-
-  const medalhas = ['🥇','🥈','🥉','4','5'];
-  lista.innerHTML = _rankingDados.map((item, i) => `
-    <div class="ranking-item">
-      <div class="ranking-pos">${medalhas[i] || (i+1)}</div>
-      <div class="ranking-musica">${item.titulo_pedido}</div>
-      <div class="ranking-badge">${item.n}× pedida</div>
-    </div>
-  `).join('');
-
-  const bar = document.getElementById('ranking-bar');
-  bar.style.animation = 'none';
-  bar.offsetHeight;
-  bar.style.animation = `shrink ${duracao/1000}s linear forwards`;
-
-  el.classList.add('show');
-  clearTimeout(_rankingTimer);
-  _rankingTimer = setTimeout(() => el.classList.remove('show'), duracao);
-}
-
 // ── Seletor de nicho — abas ───────────────────────────────────────────────────
 function _mostrarNicho(nichoKey, cor) {
   // Mostra só os canais do nicho, ativa a aba
@@ -1303,23 +1071,63 @@ function selecionarNicho(nichoKey, cor, tabEl) {
   _mostrarNicho(nichoKey, cor);
 }
 
+// ── Lista nova do acervo sem recarregar a página (15/10/26) ─────────────────────
+async function recarregarListaVideos() {
+  try {
+    const r = await fetch(`${BASE_URL}/api/videos/${CANAL_KEY}?bar=${encodeURIComponent(CODE)}`, {cache: 'no-store'});
+    const d = await r.json();
+    const novos = (d && d.videos) || [];
+    if (!novos.length) return;   // lista vazia: fica com a atual (nunca entra em loop)
+    const atual = VIDEOS[videoIdx] && VIDEOS[videoIdx].youtube_id;
+    VIDEOS.length = 0;
+    novos.forEach(v => VIDEOS.push(v));
+    const i = VIDEOS.findIndex(v => v.youtube_id === atual);
+    videoIdx = i >= 0 ? i : Math.floor(Math.random() * VIDEOS.length);
+    _loopGuard = 0;
+  } catch(e) { /* silencioso: segue com a lista que tem */ }
+}
+
 // ── Polling da API ────────────────────────────────────────────────────────────
 async function pollStatus() {
+  if (_pollEmVoo) return;   // 16/10/26 (TV-17): a pergunta anterior ainda não voltou → não empilha
+  _pollEmVoo = true;
   try {
-    const res  = await fetch(`${BASE_URL}/api/status/${CODE}`);
+    const res  = await _fetchTV(_urlStatus(), {cache: 'no-store'});
     const data = await res.json();
+
+    // Pedido que esta TV JÁ tocou/mostrou (resposta atrasada, ou o "exibido" se perdeu): não repete;
+    // só manda o "exibido" de novo pra fila andar.
+    if (data.pedido && _consumidos.has(data.pedido.id)) { _marcarExibido(data.pedido.id); data.pedido = null; }
+    if (data.pedido_musica && _consumidos.has(data.pedido_musica.id)) {
+      _marcarExibido(data.pedido_musica.id); data.pedido_musica = null;
+    }
 
     // Promoção Relâmpago
     atualizarPromo(data.promo || null);
 
-    // 🔄 Biblioteca mudou no admin (apagou/adicionou) → recarrega a lista nova
+    // Preço do QR (V-S5-06): happy hour começou/acabou com a TV aberta → o mesmo preço do celular
+    const _qp = document.getElementById('qr-preco');
+    if (typeof data.qr_preco === 'string' && _qp && _qp.textContent !== data.qr_preco) _qp.textContent = data.qr_preco;
+
+    // 🔄 Algo DESTE bar mudou (anúncio, slide, Novo QR) ou o admin apertou "Atualizar TVs" → recarrega
+    // a página. (15/10/26: antes qualquer bar salvando propaganda recarregava a TV de todos os bares.)
+    if (data.tv_version !== undefined) {
+      if (window._tvVersion === undefined) {
+        window._tvVersion = data.tv_version;           // 1ª leitura: sincroniza
+      } else if (data.tv_version !== window._tvVersion) {
+        window._tvVersion = data.tv_version;
+        location.reload();
+        return;
+      }
+    }
+
+    // 📚 Acervo mudou no admin (apagou/adicionou) → troca a lista EM MEMÓRIA, sem recarregar
     if (data.videos_version !== undefined) {
       if (window._videosVersion === undefined) {
         window._videosVersion = data.videos_version;   // 1ª leitura: sincroniza
       } else if (data.videos_version !== window._videosVersion) {
         window._videosVersion = data.videos_version;
-        location.reload();   // pega a lista atualizada (sem os vídeos apagados)
-        return;
+        recarregarListaVideos();
       }
     }
 
@@ -1344,8 +1152,9 @@ async function pollStatus() {
       trocarCanal(data.canal_atual);
     }
 
-    // Pedido especial — mostra overlay imediatamente
-    if (data.pedido && !overlayAtivo && data.pedido.id !== pedidoAtual?.id) {
+    // Pedido especial — mostra overlay imediatamente. Com a TV MUDA (ninguém tocou em LIGAR / voltou de uma
+    // recarga) o momento pago fica na fila e NÃO é marcado exibido (16/10/26, TV-03)
+    if (data.pedido && _somLigado() && !overlayAtivo && data.pedido.id !== pedidoAtual?.id) {
       pedidoAtual = data.pedido;
       mostrarOverlay(data.pedido);
     }
@@ -1355,9 +1164,10 @@ async function pollStatus() {
       pedidoMusica = data.pedido_musica;
       mostrarBadgeFila(data.total_fila);
 
-      // 👑 VIP interrompe o vídeo atual na hora. ⚡ FURAR A FILA NÃO corta mais (16/10/26, Diogo):
+      // 👑 VIP interrompe o vídeo atual na hora. ⚡ FURAR A FILA NÃO corta mais (16/10/26, Diogo, produção a5970fc):
       // vira o 1º da fila (o servidor já ordena flash primeiro) e toca quando a música atual acabar (ENDED).
-      if (data.pedido_musica.tipo === 'vip' && player) {
+      // 16/10/26 (TV-07): nunca corta outro pedido pago (esse vira o próximo); com a TV muda, não corta nada
+      if (data.pedido_musica.tipo === 'vip' && player && _somLigado() && !_tocandoPago) {
         clearTimeout(stallTimer);
         clearTimeout(proximoTimer);
         document.getElementById('proximo-card').classList.remove('show');
@@ -1385,7 +1195,10 @@ async function pollStatus() {
       esconderBadgeFila();
     }
 
-  } catch(e) {}
+  } catch(e) {
+  } finally {
+    _pollEmVoo = false;
+  }
 }
 
 // ── Trocar canal (sem reload de página) ──────────────────────────────────────
@@ -1408,7 +1221,7 @@ async function trocarCanal(canal) {
   // 2. Busca vídeos do novo canal
   let novosVideos;
   try {
-    const r = await fetch(`${BASE_URL}/api/videos/${canal}`);
+    const r = await fetch(`${BASE_URL}/api/videos/${canal}?bar=${encodeURIComponent(CODE)}`);
     const d = await r.json();
     novosVideos = d.videos || [];
   } catch(e) {
@@ -1500,63 +1313,39 @@ document.addEventListener('fullscreenchange', () => {
   }
 });
 
-// Tecla F = fullscreen
+// Tecla F = fullscreen; Enter/espaço (controle da TV) liga a TV muda
 document.addEventListener('keydown', e => {
+  if (_isMuted && (e.key === 'Enter' || e.key === ' ')) { ligarTV(); return; }
   if (e.key === 'f' || e.key === 'F') toggleFullscreen();
 });
 
-// Mouse move → mostra seletor de canal + botão fullscreen
-document.addEventListener('mousemove', () => {
+// Mouse move → mostra seletor de canal + botão fullscreen + cursor; parado 3 s, somem os três
+document.addEventListener('mousemove', e => {
+  // o navegador manda "mousemove" sem o mouse sair do lugar (tela mudou embaixo dele): ignora
+  if (e.clientX === window._mx && e.clientY === window._my) return;
+  window._mx = e.clientX; window._my = e.clientY;
   const sel = document.getElementById('canal-selector');
   const fsb = document.getElementById('fs-btn');
   sel.classList.add('visible');
   fsb.classList.add('visible');
+  document.documentElement.classList.remove('sem-cursor');
   clearTimeout(window._selTimer);
   window._selTimer = setTimeout(() => {
     sel.classList.remove('visible');
     fsb.classList.remove('visible');
   }, 3000);
+  _esconderCursorDepois(3000);
 });
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 window._canalAtual = CANAL_KEY;
 setInterval(pollStatus, 2500); // 2.5s — mais responsivo para pedidos VIP e fila
 
-// Ranking: carrega a cada 5min; mostra a cada 7 vídeos tocados
-carregarRanking();
-setInterval(carregarRanking, 5 * 60 * 1000);
-
-// Intercepta proximoVideoOuSlide para injetar ranking a cada 7 vídeos
-const RANKING_AUTOMATICO = false;
-const _proximoVideoOriginal = proximoVideoOuSlide;
-(function(){
-  let _contadorRanking = 0;
-  window.proximoVideoOuSlide = function() {
-    _contadorRanking++;
-    // A cada 7 vídeos, se ranking tiver dados e não houver overlay ativo, mostra ranking
-    // 11/09/26: ranking automático DESLIGADO (TV só mostra o que o gerente lança)
-    if (RANKING_AUTOMATICO && _contadorRanking % 7 === 0 && _rankingDados.length >= 2 && !overlayAtivo) {
-      mostrarRanking();
-      // Continua passando para o próximo vídeo/slide após o ranking
-      setTimeout(() => {
-        _proximoVideoOriginal();
-      }, 12500);
-      return;
-    }
-    _proximoVideoOriginal();
-  };
-})();
-
-// Dica fullscreen — aparece 1s após abrir, some após 6s
-// (só mostra se ainda não entrou em fullscreen antes nesta sessão)
-setTimeout(() => {
-  if (!document.fullscreenElement && !sessionStorage.getItem('fs_shown')) {
-    const hint = document.getElementById('fs-hint');
-    hint.classList.add('show');
-    sessionStorage.setItem('fs_shown','1');
-    setTimeout(() => hint.classList.remove('show'), 6000);
-  }
-}, 1000);
+// Já foi ligada neste aparelho (recarga, queda de luz): nada de botão grande; só o aviso pequeno
+if (_jaLigou) {
+  document.getElementById('ligar-tv').classList.add('hidden');
+  document.getElementById('sem-som').classList.add('show');
+}
 </script>
 </body>
 </html>

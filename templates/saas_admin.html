@@ -664,6 +664,58 @@
       PIX que caiu direto na chave do bar não entra, por isso o caixa do painel do bar pode dar diferente. Hoje e mês no horário de Brasília.
     </div>
 
+    {# Lote C (16/10/26): pagamento Efí com split — só aparece com PUBSHOW_GATEWAY=efi (pubshow_efi = resumo_admin) #}
+    {% if pubshow_efi %}
+    {# VCa-06 (16/10/26): com sinal — a receita do mês fica negativa quando há estorno de momento do mês passado #}
+    {% macro _psr(c) %}R$ {{ '-' if c < 0 else '' }}{{ '%d,%02d'|format((c|abs)//100, (c|abs)%100) }}{% endmacro %}
+    <div id="ps-efi" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;font-size:13px">
+      {% if pubshow_efi.tem_movimento %}
+      <div style="background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.25);border-radius:10px;padding:10px 14px">
+        💸 <strong>Receita real (Efí)</strong>: {{ _psr(pubshow_efi.receita_mes_cent) }} em {{ pubshow_efi.mes[5:] }}/{{ pubshow_efi.mes[:4] }}
+        · {{ _psr(pubshow_efi.receita_total_cent) }} no total
+        <div style="font-size:11px;color:var(--text2)">R$ 1 do app + mensalidade que ficaram na conta Efí do PubShow, já sem os estornos</div>
+      </div>
+      {% endif %}
+      <div style="background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.25);border-radius:10px;padding:10px 14px">
+        🧾 <strong>Bares me devem</strong>: {{ _psr(pubshow_efi.bares_devem_cent) }}
+        {% for d in pubshow_efi.bares_devem %}<div style="font-size:12px">{{ d.nome }}: {{ _psr(d.casa_cent + d.gorjeta_cent) }} (estorno, sai dos próximos momentos)</div>{% endfor %}
+      </div>
+      <div style="background:{% if pubshow_efi.n_travadas %}rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.35){% else %}rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1){% endif %};border-radius:10px;padding:10px 14px">
+        ↩️ <strong>Devoluções travadas: {{ pubshow_efi.n_travadas }}</strong>
+        {% for x in pubshow_efi.travadas %}<div style="font-size:12px">pedido #{{ x.pedido_id }} · {{ x.nome }} · {{ _psr(x.valor_cent) }} · {{ x.status }} ({{ x.dev_tentativas }} tentativa{{ 's' if x.dev_tentativas != 1 }}){% if x.status == 'devolvendo' %} · <strong>a Efí não confirma: NÃO devolva de novo</strong>{% endif %}</div>{% endfor %}
+        {# CC1 X5 (16/10/26): 'devolvendo' quase sempre JÁ saiu (só a leitura falha): devolver à mão = devolver 2× #}
+        {% if pubshow_efi.travadas|selectattr('status', 'equalto', 'devolvendo')|list %}<div style="font-size:11px;color:var(--text2)">"devolvendo": a devolução foi pedida e a Efí não responde se saiu. Confira no app da Efí (extrato da conta do PubShow). Saiu → registre no shell com <code>pubshow_pay.devolucao_conferida(conn, &lt;pedido&gt;, 'Diogo')</code>. Não devolva de novo.</div>{% endif %}
+        {% if pubshow_efi.travadas|selectattr('status', 'equalto', 'devolver_erro')|list %}<div style="font-size:11px;color:var(--text2)">"devolver_erro": a Efí recusou e o dinheiro NÃO saiu. Ponha saldo na conta Efí do PubShow (o robô tenta de novo); se esgotou, devolva pelo app da Efí e lance com ajuste().</div>{% endif %}
+      </div>
+      {# CC1 X2 (16/10/26): mensalidade tirada acima do plano (raro): o excesso é do bar #}
+      {% if pubshow_efi.mens_excesso %}
+      <div id="ps-mens-excesso" style="background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.35);border-radius:10px;padding:10px 14px">
+        ⚠️ <strong>Mensalidade a mais: {{ _psr(pubshow_efi.mens_excesso_cent) }}</strong>
+        {% for x in pubshow_efi.mens_excesso %}<div style="font-size:12px">{{ x.nome }} · {{ x.mes[5:] }}/{{ x.mes[:4] }}: {{ _psr(x.excesso_cent) }} a mais</div>{% endfor %}
+        <div style="font-size:11px;color:var(--text2)">É dinheiro do bar parado na conta do PubShow: devolva por PIX ao bar e lance com ajuste() na conta plataforma.</div>
+      </div>
+      {% endif %}
+      {#- 17/10/26 (decisão 3b): devolução de momento já pago acima de R$ 100/dia por dono espera o seu OK #}
+      {%- if pubshow_efi.aguardando_ok %}
+      <div id="ps-dev-ok" style="background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.35);border-radius:10px;padding:10px 14px">
+        ✋ <strong>Devoluções esperando seu OK: {{ pubshow_efi.n_aguardando_ok }}</strong>
+        {% for x in pubshow_efi.aguardando_ok %}<div style="font-size:12px;margin-top:4px">pedido #{{ x.pedido_id }} · {{ x.nome }} · {{ _psr(x.pago_cent or x.valor_cent) }} · {{ x.motivo_estorno or 'estorno' }}
+          <form method="POST" action="/pubshow/admin/devolucao/{{ x.pedido_id }}/aprovar" style="display:inline" onsubmit="return confirm('Devolver o PIX ao cliente agora? Sai da conta Efí do PubShow.')"><button type="submit" style="margin-left:6px;font-size:11px;cursor:pointer">↩️ Devolver</button></form>
+          <form method="POST" action="/pubshow/admin/devolucao/{{ x.pedido_id }}/negar" style="display:inline" onsubmit="return confirm('NÃO devolver? O PIX fica como pago e o momento fora da TV.')"><button type="submit" style="margin-left:4px;font-size:11px;cursor:pointer">🚫 Não devolver</button></form></div>{% endfor %}
+        <div style="font-size:11px;color:var(--text2)">Passou de R$ 100 de devolução no dia pelo mesmo dono (CPF/CNPJ ou conta Efí). Desconfie de quem recusa os próprios momentos pagos.</div>
+      </div>
+      {%- endif %}
+      {#- Lote D A3 (16/10/26): bares na Efí sem momento pago há 60 dias (pausados) ou a 7 dias disso #}
+      {%- if pubshow_efi.pausas %}
+      <div id="ps-pausas" style="background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.35);border-radius:10px;padding:10px 14px">
+        ⏸️ <strong>Pausa de 60 dias: {{ pubshow_efi.pausas|length }}</strong>
+        {% for x in pubshow_efi.pausas %}<div style="font-size:12px;margin-top:4px">{{ x.nome }} · {% if x.pausado %}<strong>pausado</strong>{% else %}pausa em {{ x.pausa_em_brt }}{% endif %} ({{ x.dias }} dias sem momento pago)
+          <form method="POST" action="/saas-admin/pubshow/reativar-pausa/{{ x.business_id }}" style="display:inline"><button type="submit" style="margin-left:6px;font-size:11px;cursor:pointer">▶ Reativar</button></form></div>{% endfor %}
+      </div>
+      {%- endif %}
+    </div>
+    {% endif %}
+
     {% if pubshow_bars %}
     <table>
       <thead><tr>
@@ -686,10 +738,10 @@
             <div>{{ b.email or '—' }}</div>
             {% if b.telefone %}<div style="font-size:11px;color:var(--text2)">{{ b.telefone }}</div>{% endif %}
           </td>
-          <td>{{ b.plano or '—' }}</td>
+          <td>{{ pubshow_plano.nome }}{% if b.plano and b.plano != 'bar' %} <span style="font-size:10px;color:var(--text2)">(era {{ b.plano }})</span>{% endif %}</td>
           <td>
             {% if b._status == 'ativo' %}
-              <span class="badge badge-active">✅ Ativo</span>
+              <span class="badge badge-active">✅ Ativo{% if b._ativo_ate %} até {{ b._ativo_ate }} (cancelou){% endif %}</span>
             {% elif b._status == 'trial' %}
               <span class="badge badge-pending">⏳ Trial</span>
             {% elif b._status == 'suspenso' %}
@@ -715,10 +767,8 @@
               <button class="btn-sm btn-green" onclick="setPsStatus({{ b.id }},'ativar')">▶ Ativar</button>
               {% endif %}
               <div style="border-top:1px solid var(--border);margin:2px 0;font-size:10px;color:var(--text2);padding-top:2px">Plano:</div>
-              <button class="btn-sm btn-blue" onclick="setPsPlano({{ b.id }},'starter')">🌱 Starter R$69</button>
-              <button class="btn-sm btn-blue" onclick="setPsPlano({{ b.id }},'bar')">🍺 Bar R$129</button>
-              <button class="btn-sm btn-blue" onclick="setPsPlano({{ b.id }},'pro')">🚀 Pro R$199</button>
-              <button class="btn-sm btn-purple" onclick="setPsPlano({{ b.id }},'rede')">🏟️ Rede R$349</button>
+              {# plano único (15/10/26): 1 botão, preço de PUBSHOW_PLANO_CENT #}
+              <button class="btn-sm btn-blue" onclick="setPsPlano({{ b.id }},'bar')">{{ pubshow_plano.emoji }} Ativar {{ pubshow_plano.nome }} {{ pubshow_plano.preco_fmt }}</button>
               <button class="btn-sm btn-orange" onclick="openPsTrial({{ b.id }},'{{ (b.trial_ends or '')[:10] }}')">📅 Trial</button>
             </div>
           </td>
@@ -1591,7 +1641,7 @@ async function setPsStatus(id, acao) {
   else alert(d.error || 'Erro');
 }
 async function setPsPlano(id, plano) {
-  if (!confirm(`Ativar plano "${plano}" para este estabelecimento?`)) return;
+  if (!confirm('Ativar o plano do PubShow para este estabelecimento?')) return;
   const r = await fetch(`/saas-admin/pubshow/bar/${id}/plan`, {
     method:'POST', headers:{'Content-Type':'application/json'},
     body: JSON.stringify({ plano })

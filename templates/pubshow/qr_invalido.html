@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>QR Code inválido — PUBSHOW</title>
+<title>{% if suspenso %}Jukebox indisponível{% else %}QR Code inválido{% endif %} — PUBSHOW</title>
 <style>
   *{margin:0;padding:0;box-sizing:border-box}
   body{background:#08080f;color:#f0f0ff;font-family:'Segoe UI',sans-serif;
@@ -19,6 +19,11 @@
 </head>
 <body>
 <div class="box">
+  {% if suspenso %}{# bar suspenso (16/10/26, CEL-33): o QR está certo, só o jukebox que está parado #}
+  <div class="icon">🔇</div>
+  <h1 style="color:#fbbf24">Jukebox indisponível</h1>
+  <p>O jukebox está indisponível neste local agora.</p>
+  {% else %}
   <div class="icon">📵</div>
   <h1>QR Code inválido</h1>
   <p>Este QR Code não é mais válido ou o estabelecimento atualizou o link de acesso.</p>
@@ -26,6 +31,7 @@
     <strong>O que fazer?</strong><br>
     Escaneie o QR Code que está na mesa ou no balcão do bar para acessar o Jukebox atualizado.
   </div>
+  {% endif %}
 </div>
 </body>
 </html>

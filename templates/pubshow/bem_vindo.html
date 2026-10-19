@@ -59,74 +59,83 @@
 <div class="hero">
   <div class="hero-emoji">🎉</div>
   <h1>Bem-vindo, <span>{{ b.nome }}!</span></h1>
-  <p>Seu Jukebox já está ativo. Siga os 4 passos abaixo e na mesma noite seus clientes já vão pagar via PIX pra tocar música.</p>
+  <p>Seu Jukebox já está ativo. Siga os {{ 4 if efi_modo else 3 }} passos abaixo e hoje mesmo seus clientes já pedem música pelo celular. Pedir música é grátis pro cliente; ele paga no PIX só os momentos (furar a fila, parabéns, recado na TV).</p>
 </div>
 
 <div class="steps">
 
+  {#- Lote D B (16/10/26, aprovado): modo Efí não tem teste grátis — a frase "Sem mensalidade do bolso…" e o passo 4
+      (conta Efí). Asaas = o texto de hoje. #}
+  {% if efi_modo %}
+  <div class="trial-card" id="bv-sem-bolso">
+    <h3>💚 Sem mensalidade do bolso</h3>
+    <p>{{ sem_bolso_txt }}</p>
+  </div>
+  {% else %}
   <!-- Trial ativo -->
   <div class="trial-card">
-    <h3>⏱️ 7 dias de trial grátis ativados</h3>
-    <p>Teste tudo sem pagar nada. A cobrança só começa após o trial e você pode cancelar antes sem custo.</p>
+    <h3>⏱️ 7 dias de teste grátis ativados</h3>
+    <p>Teste tudo sem pagar nada. A cobrança só começa depois do teste grátis e você pode cancelar antes sem custo.</p>
   </div>
+  {% endif %}
 
+  {# 15/10/26 (A5.3/D4-06): os mesmos 3 passos do checklist do painel. Saiu o passo da chave PIX
+     (beco sem saída: com o PIX automático o campo nem existe) e a promessa errada sobre o dinheiro. #}
   <!-- Passo 1 — TV -->
   <div class="step-card">
     <div class="step-num">1</div>
     <div class="step-body">
-      <div class="step-title">📺 Abra o player na TV do bar</div>
-      <div class="step-desc">Cole o link abaixo no navegador da sua Smart TV, Chromecast ou notebook conectado à TV. Os clips começam a tocar automaticamente.</div>
+      <div class="step-title">📺 Ligue na TV do bar</div>
+      <div class="step-desc">No navegador da TV (Smart TV, Chromecast ou notebook ligado na TV), digite o endereço e o código abaixo. Pode ser em letra minúscula. Os clipes começam a tocar sozinhos.</div>
       <div class="tv-preview">
-        Link da sua TV:<br>
-        <span class="tv-url">https://www.4kitem.com.br/pubshow/tv/{{ b.code }}</span>
+        Endereço: <span class="tv-url">4kitem.com.br/bar</span><br>
+        Código: <span class="tv-url" style="letter-spacing:2px">{{ b.code }}</span>
       </div>
       <div style="margin-top:10px">
-        <a href="/pubshow/tv/{{ b.code }}" target="_blank" class="step-action btn-primary">📺 Testar agora →</a>
+        {# 16/10/26 (C1-02): ?teste=1 — aberto no celular do dono, NÃO marca "TV ligada" nem consome momento pago #}
+        <a href="/bar/{{ b.code }}?teste=1" target="_blank" class="step-action btn-primary">📺 Testar agora →</a>
       </div>
     </div>
   </div>
 
-  <!-- Passo 2 — PIX -->
+  <!-- Passo 2 — QR Code -->
   <div class="step-card">
     <div class="step-num">2</div>
     <div class="step-body">
-      <div class="step-title">💰 Configure sua chave PIX</div>
-      <div class="step-desc">Para seus clientes pagarem, você precisa cadastrar uma chave PIX. O dinheiro cai direto na sua conta — o PUBSHOW não toca em nada.</div>
-      <a href="/pubshow/painel?aba=config#pix" class="step-action btn-primary">Configurar PIX →</a>
+      <div class="step-title">🖨️ Coloque o QR nas mesas</div>
+      <div class="step-desc">Imprima e cole em cada mesa e no balcão. O cliente aponta a câmera e pronto, sem baixar nada.</div>
+      <a href="/pubshow/painel/qrcode" class="step-action btn-primary">🖨️ Imprimir QR →</a>
     </div>
   </div>
 
-  <!-- Passo 3 — QR Code -->
+  <!-- Passo 3 — 1º pedido -->
   <div class="step-card">
     <div class="step-num">3</div>
     <div class="step-body">
-      <div class="step-title">📱 Imprima o QR Code para as mesas</div>
-      <div class="step-desc">Seus clientes escaneiam o QR com a câmera do celular e abrem o Jukebox. Sem app, sem cadastro. Imprima e cole nas mesas ou no balcão.</div>
-      <a href="/pubshow/painel/qrcode" class="step-action btn-primary">🖨️ Gerar QR Code →</a>
+      <div class="step-title">🎵 Faça o 1º pedido você mesmo</div>
+      <div class="step-desc">Aponte a câmera do seu celular pro QR e peça uma música. Em segundos ela aparece na TV. O painel marca cada passo sozinho.</div>
     </div>
   </div>
 
-  <!-- Passo 4 — Canal -->
-  <div class="step-card">
+  {% if efi_modo %}
+  <!-- Passo 4 — conta Efí (só no modo Efí, Lote D B) -->
+  <div class="step-card" id="bv-passo-efi">
     <div class="step-num">4</div>
     <div class="step-body">
-      <div class="step-title">🎬 Escolha o canal certo para o seu bar</div>
-      <div class="step-desc">
-        Rock, Sertanejo, Pagode, Futebol, F1 — escolha o estilo que combina com o seu público.
-        {% if b.plano in ('starter',) %}
-        <br><span style="color:#f97316;font-size:12px">🌱 Starter: acesso aos canais de música.</span>
-        {% endif %}
-      </div>
-      <a href="/pubshow/painel?aba=tv" class="step-action btn-primary">🎬 Escolher canal →</a>
+      <div class="step-title">💳 Abra a conta Efí do bar</div>
+      <div class="step-desc">Grátis, pelo app da Efí, no mesmo CPF/CNPJ do cadastro. É nela que o dinheiro dos momentos cai, na hora. Depois, diga o número da conta no painel. Sem ela, só a música grátis funciona.</div>
+      <a href="/pubshow/painel#tut-conta" class="step-action btn-primary">💳 Dizer a conta no painel →</a>
     </div>
   </div>
+  {% endif %}
 
 </div>
 
 <div class="cta-final">
   <a href="/pubshow/painel" class="cta-btn">🚀 Abrir o painel completo →</a>
-  <p style="font-size:12px;color:#8888aa;margin-top:16px">
-    Ficou em dúvida? <a href="https://wa.me/5547997766831?text=Acabei+de+criar+minha+conta+no+PUBSHOW" target="_blank" style="color:#f97316;font-weight:700">WhatsApp: (47) 99776-6831</a>
+  <p style="font-size:12px;color:#8888aa;margin-top:16px" id="bv-dica-2-bares">{{ dica_2_bares }}</p>
+  <p style="font-size:12px;color:#8888aa;margin-top:8px">
+    Ficou em dúvida? <a href="https://wa.me/{{ SUPORTE_WA }}?text=Acabei+de+criar+minha+conta+no+PUBSHOW" target="_blank" style="color:#f97316;font-weight:700">WhatsApp: {{ SUPORTE_WA_FMT }}</a>
   </p>
 </div>
 

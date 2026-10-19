@@ -60,6 +60,7 @@
 <nav>
   <div class="logo">📺 PUBSHOW Admin</div>
   <div class="nav-right">
+    <a href="/pubshow/admin/repasses" style="color:#4ade80;font-weight:800">💸 Repasses</a>
     <span class="badge-admin">ADMIN</span>
     <a href="/pubshow/admin/logout">Sair</a>
   </div>
@@ -82,7 +83,7 @@
       <div class="stat-label">Pedidos hoje</div>
     </div>
     <div class="stat">
-      <div class="stat-val" style="color:#22c55e">R$ {{ '%.0f'|format(receita_hoje) }}</div>
+      <div class="stat-val" style="color:#22c55e">R$ {{ '%.2f'|format(receita_hoje)|replace('.',',') }}</div>
       <div class="stat-label">Receita Jukebox hoje</div>
     </div>
   </div>
@@ -101,6 +102,24 @@
       🏷️ Cupons de Desconto
     </a>
   </div>
+
+  {# 16/10/26 (crítico C3): pago e recusado pelo gerente = devolver ao cliente (no Asaas: Estornar) #}
+  {% if pix_a_devolver %}
+  <div id="pix-a-devolver" style="margin-bottom:16px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.35);border-radius:12px;padding:14px 18px">
+    <div style="font-weight:800;color:#fca5a5;margin-bottom:8px">↩️ PIX a devolver ({{ pix_a_devolver|length }}) — o cliente pagou e o bar recusou a mensagem</div>
+    {% for p in pix_a_devolver %}
+    <div style="font-size:12px;color:#d4d4ee;padding:4px 0;border-top:1px solid rgba(255,255,255,.06)">
+      #{{ p.id }} · {{ p.bar_nome }} · {{ p.nome_cliente }} · {{ p.tipo }} ·
+      <strong>R$ {{ '%.2f'|format(p.valor_cobrado or p.valor or 0)|replace('.',',') }}</strong> ·
+      pago {{ (p.pago_em or '')[:16] }} UTC{% if p.efi %} · <strong>Efí</strong>: {% if p.efi_status == 'devolver_erro' %}a Efí recusou a devolução (o dinheiro não saiu): veja "Devoluções travadas" no saas-admin{% elif p.efi_status == 'paga' and not p.efi_marcado %}o robô NÃO vai devolver sozinho: devolva pelo app da Efí{% elif efi_robo %}o robô devolve sozinho; se travar, veja "Devoluções travadas" no saas-admin{% elif p.efi_marcado %}marcado pra devolver: o robô devolve sozinho quando PUBSHOW_GATEWAY voltar pra efi (não devolva à mão){% else %}robô desligado (PUBSHOW_GATEWAY=asaas): devolva pelo app da Efí{% endif %}{% elif p.asaas_payment_id %} · Asaas {{ p.asaas_payment_id }}{% elif p.efi_txid %} · <strong>ponte Efí</strong> {{ p.efi_txid }}: devolva pelo app da Efí (conta da RifaJá){% endif %}
+    </div>
+    {% endfor %}
+    {# VCa-05 (16/10/26): o texto do Asaas só vale pra pedido do Asaas #}
+    {% if pix_a_devolver|rejectattr('efi')|list %}
+    <div style="font-size:11px;color:#8888aa;margin-top:6px">Pedido do Asaas: estorne no Asaas (Cobranças → a cobrança → Estornar). O webhook PAYMENT_REFUNDED tira o pedido daqui sozinho.</div>
+    {% endif %}
+  </div>
+  {% endif %}
 
   <div class="search-bar">
     <input type="text" placeholder="🔍 Filtrar por nome ou email..." oninput="filtrar(this.value)">
@@ -139,10 +158,20 @@
             {% else %}
               <span class="status-inativo">⚪ Inativo</span>
             {% endif %}
+            {#- Lote D A3 (16/10/26): pausa de 60 dias sem momento pago (só bar na Efí) #}
+            {%- if b._pausa %}
+            <div id="pausa-{{ b.id }}" style="margin-top:4px;font-size:11px;font-weight:700;color:{% if b._pausa.pausado %}#f87171{% else %}#fbbf24{% endif %}">
+              {% if b._pausa.pausado %}⏸️ PAUSADO ({{ b._pausa.dias }} dias sem momento pago){% else %}⚠️ pausa em {{ b._pausa.pausa_em_brt }} ({{ b._pausa.dias }} dias sem momento pago){% endif %}
+              <form method="POST" action="/pubshow/admin/bar/{{ b.id }}/acao" style="display:inline">
+                <input type="hidden" name="acao" value="reativar_pausa">
+                <button type="submit" class="btn-sm" style="margin-left:4px">▶ Reativar</button>
+              </form>
+            </div>
+            {%- endif %}
           </td>
           <td style="font-size:12px">{{ canais.get(b.canal_atual or 'rock', {}).get('emoji','') }} {{ canais.get(b.canal_atual or 'rock', {}).get('nome','—') }}</td>
           <td style="text-align:center">{{ b.total_pedidos }}</td>
-          <td>R$ {{ '%.0f'|format(b.total_receita) }}</td>
+          <td>R$ {{ '%.2f'|format(b.total_receita)|replace('.',',') }}</td>
           <td style="text-align:center">
             {% if b.fila_atual > 0 %}<span style="color:#f59e0b;font-weight:700">{{ b.fila_atual }}</span>{% else %}—{% endif %}
           </td>

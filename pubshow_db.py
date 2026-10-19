@@ -2,11 +2,18 @@
 pubshow_db.py — Banco de dados PUBSHOW
 Jukebox digital para bares, pubs e estabelecimentos
 """
+import logging
 import os
 import sqlite3
 
+log = logging.getLogger('pubshow')
+
 _base   = os.environ.get('DATA_DIR', os.path.dirname(__file__))
 DB_PATH = os.path.join(_base, 'pubshow.db')
+
+# Status em que o pedido JÁ FOI PAGO (lista POSITIVA — 15/10/26). Toda soma de dinheiro usa esta
+# lista + pago_em preenchido. 'recusado' fica fora (dinheiro a devolver); 'aguardando_pix' não pagou.
+STATUS_PAGOS = ('pendente', 'aguardando_ok', 'exibido', 'dispensado')
 
 
 def get_pubshow_db():
@@ -188,12 +195,56 @@ def init_pubshow_db():
         'ALTER TABLE pubshow_assinaturas ADD COLUMN inadimplente_desde TEXT',
         'ALTER TABLE pubshow_assinaturas ADD COLUMN asaas_sub_status TEXT',
         'ALTER TABLE pubshow_assinaturas ADD COLUMN ultima_sync TEXT',
+        # Dinheiro (15/10/26): pago_em = hora do PIX CONFIRMADO (UTC, como created_at) — gravado SÓ pela
+        # confirmação (webhook, admin "PIX caiu", confirmação manual sem gateway). via_gateway = pedido
+        # nasceu com gateway configurado ("Já paguei" nunca mexe). valor_cobrado = o que o cliente paga.
+        'ALTER TABLE pubshow_pedidos ADD COLUMN pago_em TEXT',
+        'ALTER TABLE pubshow_pedidos ADD COLUMN via_gateway INTEGER DEFAULT 0',
+        'ALTER TABLE pubshow_pedidos ADD COLUMN valor_cobrado REAL',
+        # PAYMENT_REFUNDED gravado: um RECEIVED atrasado (outra URL do webhook) nunca regrava o pago_em
+        'ALTER TABLE pubshow_pedidos ADD COLUMN estornado_em TEXT',
+        # Cancelou com mês pago: o jukebox fica aberto até esta data ('AAAA-MM-DD') — 15/10/26
+        'ALTER TABLE pubshow_businesses ADD COLUMN ativo_ate TEXT DEFAULT NULL',
+        # Versão da TV DESTE bar (anúncio/slide/Novo QR) — só a TV dele recarrega (15/10/26)
+        'ALTER TABLE pubshow_businesses ADD COLUMN tv_version TEXT DEFAULT NULL',
+        # Tutorial do dono (15/10/26): sinal REAL da TV (o /api/status grava no máx. 1x/min, UTC),
+        # QR aberto/impresso no painel, e quando o checklist ficou completo (aí ele some de vez)
+        'ALTER TABLE pubshow_businesses ADD COLUMN tv_visto_em TEXT DEFAULT NULL',
+        'ALTER TABLE pubshow_businesses ADD COLUMN qr_aberto_em TEXT DEFAULT NULL',
+        'ALTER TABLE pubshow_businesses ADD COLUMN tutorial_ok_em TEXT DEFAULT NULL',
+        # TV com som? (16/10/26, V-S5-02): a TV manda ?som=0/1 no status; muda = fila parada → o painel avisa
+        'ALTER TABLE pubshow_businesses ADD COLUMN tv_som INTEGER DEFAULT NULL',
+        # Lote D A1 (16/10/26): preço do bar guardado no cadastro (centavos; NULL = PUBSHOW_PLANO_CENT) e, nos
+        # 10 primeiros bares (fundadores), até quando esse preço fica travado ('AAAA-MM-DD', 24 meses). Vale nos 2 modos
+        'ALTER TABLE pubshow_businesses ADD COLUMN plano_cent INTEGER DEFAULT NULL',
+        'ALTER TABLE pubshow_businesses ADD COLUMN preco_trava_ate TEXT DEFAULT NULL',
+        # 💸 Repasse manual (16/10/26): id do repasse que já pagou este pedido ao bar. NULL = ainda devido. Marca por
+        # PEDIDO (não só por data): um PIX que cai DEPOIS do corte não fica de fora pra sempre.
+        'ALTER TABLE pubshow_pedidos ADD COLUMN repasse_manual_id INTEGER DEFAULT NULL',
+        # Conferência no gateway (junção 17/10/26) do pedido sem prova de pagamento (histórico preenchido no 1º boot):
+        # status do Asaas (RECEIVED…), 'EFI:<status>' na ponte Efí, ou 'ERRO|<utc>' pra tentar de novo. NULL = não conferido.
+        'ALTER TABLE pubshow_pedidos ADD COLUMN pix_conferido TEXT DEFAULT NULL',
     ]:
         try:
             conn.execute(m); conn.commit()
-        except Exception:
+        except Exception as _e:
             try: conn.rollback()
             except: pass
+            # coluna que já existe é o normal; qualquer outro erro vai pro log (15/10/26: antes sumia)
+            if 'duplicate column' not in str(_e).lower():
+                log.warning('[PUBSHOW db] migração falhou: %s — %s', m, _e)
+
+    # Índices das consultas quentes (15/10/26): fila/status da TV a cada 3 s e jukebox pelo token
+    for _ix in (
+        'CREATE INDEX IF NOT EXISTS idx_pubshow_pedidos_biz_st_dt ON pubshow_pedidos(business_id, status, created_at)',
+        'CREATE INDEX IF NOT EXISTS idx_pubshow_biz_jukebox_token ON pubshow_businesses(jukebox_token)',
+    ):
+        try:
+            conn.execute(_ix); conn.commit()
+        except Exception as _e:
+            try: conn.rollback()
+            except: pass
+            log.warning('[PUBSHOW db] índice falhou: %s — %s', _ix, _e)
 
     # ── Tabela de cupons de desconto ──────────────────────────────────────────
     try:
@@ -243,6 +294,16 @@ def init_pubshow_db():
     except Exception:
         try: conn.rollback()
         except: pass
+    # 15/10/26: tentativas de envio — depois de 3 falhas o e-mail sai da fila (antes 20 e-mails
+    # recusados pra sempre na frente travavam a fila de TODOS os bares)
+    try:
+        conn.execute('ALTER TABLE pubshow_email_queue ADD COLUMN tentativas INTEGER DEFAULT 0')
+        conn.commit()
+    except Exception as _e:
+        try: conn.rollback()
+        except: pass
+        if 'duplicate column' not in str(_e).lower():
+            log.warning('[PUBSHOW db] migração tentativas falhou: %s', _e)
 
     # ── Tabelas Web Push — notificações nativas no celular do bar ────────────────
     try:
@@ -278,6 +339,14 @@ def init_pubshow_db():
     except Exception:
         try: conn.rollback()
         except: pass
+    # Plano ÚNICO (15/10/26): starter/pro/rede/premium/NULL viram 'bar' (idempotente). Só o plano do
+    # bar; o histórico de pubshow_assinaturas fica como está (o código lê qualquer chave como 'bar').
+    try:
+        conn.execute("UPDATE pubshow_businesses SET plano='bar' WHERE plano IS NULL OR plano<>'bar'")
+        conn.commit()
+    except Exception:
+        try: conn.rollback()
+        except: pass
 
     # Seed da biblioteca de vídeos — roda UMA ÚNICA VEZ na vida do banco.
     # Antes rodava em TODO restart com INSERT OR IGNORE, o que RESSUSCITAVA
@@ -297,42 +366,201 @@ def init_pubshow_db():
         conn.execute("INSERT OR REPLACE INTO pubshow_meta (chave, valor) VALUES ('seed_videos_done', datetime('now'))")
         conn.commit()
 
-    # Seed dos slides do sistema — imagens de static/pubshow/slides/
-    _seed_slides_sistema(conn)
+    # Webhook do Asaas entrega "pelo menos 1 vez": cada id de evento só tem efeito 1 vez (15/10/26)
+    try:
+        conn.execute('CREATE TABLE IF NOT EXISTS pubshow_webhook_eventos ('
+                     '  id TEXT PRIMARY KEY, criado_em TEXT DEFAULT CURRENT_TIMESTAMP)')
+        # reenvio do Asaas acontece em horas/dias, não meses — limpa o que tem mais de 60 dias
+        conn.execute("DELETE FROM pubshow_webhook_eventos WHERE criado_em < datetime('now','-60 days')")
+        conn.commit()
+    except Exception:
+        try: conn.rollback()
+        except: pass
+
+    # pago_em do histórico (15/10/26). Status pago COM cobrança do gateway → pago_em = created_at. Pago
+    # SEM cobrança do gateway (PIX manual, "Já paguei", balcão) é ambíguo: fica fora das somas e vai pro
+    # log pra conferir. 16/10/26 (crítico C5): roda em TODO boot, sem o marcador "1 vez" — o PIX pago
+    # durante um rollback (o webhook velho não grava pago_em) entrava nunca mais nas somas. O estorno não
+    # volta porque o UPDATE pula estornado_em (é o que o marcador protegia). O código novo nunca deixa
+    # pedido com cobrança do gateway em status pago sem pago_em, então no boot normal o UPDATE dá 0.
+    try:
+        _ph = ','.join('?' * len(STATUS_PAGOS))
+        _n = conn.execute(
+            # junção 17/10/26: marca 'HISTORICO' (pix_conferido) — o status sozinho não prova pagamento; a tela de
+            # 💸 Repasses só conta esses depois de conferir no gateway (as somas do painel seguem contando, como antes)
+            f"UPDATE pubshow_pedidos SET pago_em=created_at, pix_conferido=COALESCE(pix_conferido, 'HISTORICO') "
+            f"WHERE pago_em IS NULL AND estornado_em IS NULL "
+            f"AND (COALESCE(asaas_payment_id,'')<>'' OR COALESCE(efi_txid,'')<>'') "   # + ponte Efí (junção 17/10/26)
+            f"AND status IN ({_ph})", STATUS_PAGOS
+        ).rowcount
+        _amb = [r[0] for r in conn.execute(
+            f"SELECT id FROM pubshow_pedidos WHERE pago_em IS NULL AND COALESCE(asaas_payment_id,'')='' "
+            f"AND COALESCE(efi_txid,'')='' "
+            f"AND COALESCE(valor,0)>0 AND status IN ({_ph}) ORDER BY id", STATUS_PAGOS
+        ).fetchall()]
+        if _amb:
+            log.warning('[PUBSHOW] pago_em: %d pedido(s) pago(s) sem cobrança do gateway ficaram FORA das '
+                        'somas (conferir): ids %s%s', len(_amb), _amb[:50], ' ...' if len(_amb) > 50 else '')
+        if _n or not conn.execute("SELECT 1 FROM pubshow_meta WHERE chave='backfill_pago_em'").fetchone():
+            # o registro fica (diagnóstico); não trava mais a próxima rodada
+            conn.execute("INSERT OR REPLACE INTO pubshow_meta (chave, valor) VALUES ('backfill_pago_em', ?)",
+                         (f'{_n} preenchidos; {len(_amb)} ambiguos: {_amb[:200]}',))
+        conn.commit()
+        log.info('[PUBSHOW] pago_em preenchido no histórico: %d pedido(s)', _n)
+    except Exception as e:
+        log.error('[PUBSHOW] backfill pago_em falhou: %s', e)
+        try: conn.rollback()
+        except: pass
+
+    # Tutorial do dono (15/10/26) — UMA vez: bar que já recebeu pedido (ex.: Garage) já está tocando,
+    # então o checklist novo nasce concluído pra ele (não reaparece numa sexta). Bar novo vê o checklist.
+    try:
+        if not conn.execute("SELECT 1 FROM pubshow_meta WHERE chave='backfill_tutorial'").fetchone():
+            _n = conn.execute(
+                "UPDATE pubshow_businesses SET tutorial_ok_em=datetime('now') WHERE tutorial_ok_em IS NULL "
+                "AND EXISTS (SELECT 1 FROM pubshow_pedidos p WHERE p.business_id=pubshow_businesses.id)"
+            ).rowcount
+            conn.execute("INSERT OR REPLACE INTO pubshow_meta (chave, valor) VALUES ('backfill_tutorial', ?)",
+                         (f'{_n} bar(es) com pedido marcados como tutorial ok',))
+            conn.commit()
+    except Exception as e:
+        log.error('[PUBSHOW] backfill tutorial falhou: %s', e)
+        try: conn.rollback()
+        except: pass
+
+    # 16/10/26 (S6/A5.9): os 5 slides antigos do sistema ("Música R$ 2", QR falso de IA) saíram do repo;
+    # tira do banco as linhas que apontavam pra eles (a TV não usa slide do sistema desde 11/09/26).
+    _limpar_slides_antigos(conn)
+
+    # Lote D A1 (16/10/26) — UMA vez: os bares que já existem guardam o preço de hoje (PUBSHOW_PLANO_CENT).
+    # 17/10/26 (decisão 8 do Diogo): as vagas de fundador contam SÓ bar pagante de verdade — nada de bar demo, de
+    # teste ou cadastro que nunca pagou. No 1º boot vira fundador só quem JÁ paga a assinatura no Asaas (status
+    # 'ativo', que só o pagamento confirmado grava), fora os bares de teste (PUBSHOW_BARES_TESTE, padrão o demo).
+    # Depois disso, quem trava é o 1º pagamento de verdade (pubshow._virar_fundador), enquanto houver vaga.
+    try:
+        if not conn.execute("SELECT 1 FROM pubshow_meta WHERE chave='backfill_fundador'").fetchone():
+            # críticos dinheiro/operação A1 (17/10/26): "fundadores travam o preço que PAGARAM" — bar com assinatura
+            # (ativo/inadimplente) guarda o que paga hoje no Asaas, nunca acima do preço novo; o resto, o preço de hoje
+            _p = conn.execute(
+                """UPDATE pubshow_businesses SET plano_cent = COALESCE(
+                       (SELECT MIN(CAST(ROUND(a.valor * 100) AS INTEGER), ?) FROM pubshow_assinaturas a
+                         WHERE a.business_id = pubshow_businesses.id AND a.status IN ('ativo','inadimplente')
+                           AND COALESCE(a.valor, 0) > 0), ?)
+                   WHERE plano_cent IS NULL""", (preco_env_cent(), preco_env_cent())).rowcount
+            _teste = bares_teste()
+            _pagantes = [r[0] for r in conn.execute(
+                """SELECT b.id, b.code FROM pubshow_businesses b
+                   JOIN pubshow_assinaturas a ON a.business_id = b.id
+                   WHERE a.status='ativo' AND b.preco_trava_ate IS NULL ORDER BY b.id""").fetchall()
+                         if (r[1] or '').strip().upper() not in _teste][:FUNDADOR_VAGAS]
+            _f = 0
+            for _bid in _pagantes:
+                _f += conn.execute(
+                    f"""UPDATE pubshow_businesses
+                        SET preco_trava_ate=date(COALESCE(created_at, datetime('now')), '-3 hours', '+{FUNDADOR_MESES} months')
+                        WHERE id=? AND preco_trava_ate IS NULL
+                          AND (SELECT COUNT(*) FROM pubshow_businesses WHERE preco_trava_ate IS NOT NULL) < {FUNDADOR_VAGAS}""",
+                    (_bid,)).rowcount
+            conn.execute("INSERT OR REPLACE INTO pubshow_meta (chave, valor) VALUES ('backfill_fundador', ?)",
+                         (f'{_p} bar(es) com preço guardado; {_f} fundador(es)',))
+            conn.commit()
+            if _p or _f:
+                log.info('[PUBSHOW] fundador: %d bar(es) com preço guardado, %d fundador(es)', _p, _f)
+    except Exception as e:
+        log.error('[PUBSHOW] backfill fundador falhou: %s', e)
+        try: conn.rollback()
+        except: pass
+
+    # 💸 Repasses manuais (16/10/26): enquanto o split não liga, o PIX do jukebox cai na conta do Diogo (Asaas ou a
+    # Efí da ponte) e ele repassa ao bar na mão, toda segunda. Cada linha = 1 repasse feito; 'ate_em' (UTC) = o corte.
+    try:
+        conn.execute(
+            'CREATE TABLE IF NOT EXISTS pubshow_repasses_manuais ('
+            '  id             INTEGER PRIMARY KEY AUTOINCREMENT,'
+            '  business_id    INTEGER NOT NULL,'
+            '  valor_bar      REAL NOT NULL DEFAULT 0,'
+            '  valor_gorjeta  REAL NOT NULL DEFAULT 0,'
+            '  ate_em         TEXT NOT NULL,'
+            '  criado_em      TEXT DEFAULT CURRENT_TIMESTAMP,'
+            '  obs            TEXT,'
+            '  FOREIGN KEY (business_id) REFERENCES pubshow_businesses(id)'
+            ')'
+        )
+        conn.execute('CREATE INDEX IF NOT EXISTS idx_repasses_bar ON pubshow_repasses_manuais(business_id, ate_em)')
+        conn.commit()
+    except Exception as e:
+        log.error('[PUBSHOW] tabela dos repasses falhou: %s', e)
+        try: conn.rollback()
+        except: pass
+
+    # Lote D A5 (16/10/26): "dia do pagamento" — 1 linha por bar por semana (a chave impede mandar 2x, mesmo com
+    # 2 workers). semana = a segunda-feira (Brasília) da semana que o aviso conta. fechado_em = o dono fechou a faixa.
+    try:
+        conn.execute('CREATE TABLE IF NOT EXISTS pubshow_semana_aviso ('
+                     '  business_id INTEGER NOT NULL, semana TEXT NOT NULL, modo TEXT, momentos_cent INTEGER,'
+                     '  gorjeta_cent INTEGER, texto TEXT, canal TEXT, criado_em TEXT DEFAULT CURRENT_TIMESTAMP,'
+                     '  enviado_em TEXT, fechado_em TEXT, PRIMARY KEY (business_id, semana))')
+        conn.commit()
+    except Exception as e:
+        log.error('[PUBSHOW] tabela do dia do pagamento falhou: %s', e)
+        try: conn.rollback()
+        except: pass
 
     conn.close()
 
 
-def _seed_slides_sistema(conn):
-    """Registra as imagens padrão do sistema na tabela pubshow_slides_sistema.
-    M9 fix: verifica se o arquivo existe antes de registrar — evita slides quebrados.
-    """
-    _base = os.path.dirname(os.path.abspath(__file__))
-    slides_padrao = [
-        ('/static/pubshow/slides/slide1.png', 1),
-        ('/static/pubshow/slides/slide2.png', 2),
-        ('/static/pubshow/slides/slide3.png', 3),
-        ('/static/pubshow/slides/slide4.png', 4),
-        ('/static/pubshow/slides/slide5.png', 5),
-    ]
-    for url, ordem in slides_padrao:
-        # Verifica se o arquivo físico existe antes de registrar
-        caminho_fisico = os.path.join(_base, url.lstrip('/').replace('/', os.sep))
-        if not os.path.exists(caminho_fisico):
-            continue
-        existe = conn.execute(
-            'SELECT id FROM pubshow_slides_sistema WHERE url=?', (url,)
-        ).fetchone()
-        if not existe:
-            try:
-                conn.execute(
-                    'INSERT INTO pubshow_slides_sistema (tipo, url, ordem, ativo) VALUES (?,?,?,1)',
-                    ('imagem', url, ordem)
-                )
-                conn.commit()
-            except Exception:
-                try: conn.rollback()
-                except: pass
+# ── Lote D A1 (16/10/26): preço do bar e fundadores ─────────────────────────────────────────────────
+FUNDADOR_VAGAS = 10      # os 10 primeiros bares PAGANTES (17/10/26, decisão 8: demo e teste não contam)
+FUNDADOR_MESES = 24      # preço travado por 24 meses. Nunca "pra sempre", nunca "depois R$ X"
+
+
+def bares_teste():
+    """17/10/26 (decisão 8): codes dos bares de teste/demo que NUNCA ocupam vaga de fundador. Env PUBSHOW_BARES_TESTE
+    (codes separados por vírgula); sem a env = o bar demo "Lessmann" (CC4TN7PG)."""
+    v = os.environ.get('PUBSHOW_BARES_TESTE')
+    v = 'CC4TN7PG' if v is None else v
+    return {c.strip().upper() for c in v.split(',') if c.strip()}
+
+
+def preco_env_cent():
+    """PUBSHOW_PLANO_CENT (centavos), a mesma regra do pubshow._plano_cent(): torta ou <= 0 = 7990 (R$ 79,90, 17/10/26)."""
+    try:
+        v = int(str(os.environ.get('PUBSHOW_PLANO_CENT', '7990')).strip())
+        return v if v > 0 else 7990
+    except Exception:
+        return 7990
+
+
+def marcar_fundador(conn, business_id):
+    """1º pagamento de verdade (17/10/26, decisão 8; antes era o cadastro): trava o preço do bar por FUNDADOR_MESES se
+    ainda houver vaga. Bar de teste/demo (bares_teste) nunca vira fundador. 1 UPDATE só (o SQLite serializa as
+    escritas: 2 pagamentos ao mesmo tempo nunca passam de 10 fundadores). True = virou fundador. Não dá commit."""
+    _row = conn.execute('SELECT code FROM pubshow_businesses WHERE id=?', (business_id,)).fetchone()
+    if not _row or (_row[0] or '').strip().upper() in bares_teste():
+        return False
+    return conn.execute(
+        f"""UPDATE pubshow_businesses SET preco_trava_ate=date('now', '-3 hours', '+{FUNDADOR_MESES} months')
+            WHERE id=? AND preco_trava_ate IS NULL
+              AND (SELECT COUNT(*) FROM pubshow_businesses WHERE preco_trava_ate IS NOT NULL) < {FUNDADOR_VAGAS}""",
+        (business_id,)).rowcount == 1
+
+
+def fundador_vagas(conn):
+    """Quantas vagas de fundador ainda sobram (contado de verdade no banco). Pro site (fatia B): some quando der 0."""
+    n = conn.execute('SELECT COUNT(*) FROM pubshow_businesses WHERE preco_trava_ate IS NOT NULL').fetchone()[0]
+    return max(0, FUNDADOR_VAGAS - int(n or 0))
+
+
+def _limpar_slides_antigos(conn):
+    """Idempotente: apaga de pubshow_slides_sistema só as 5 URLs dos slides apagados (o resto fica)."""
+    try:
+        conn.execute("DELETE FROM pubshow_slides_sistema WHERE url IN (%s)" % ','.join('?' * 5),
+                     [f'/static/pubshow/slides/slide{n}.png' for n in range(1, 6)])
+        conn.commit()
+    except Exception as e:
+        log.error('[PUBSHOW] limpeza dos slides antigos falhou: %s', e)
+        try: conn.rollback()
+        except: pass
 
 
 def _corrigir_videos_quebrados(conn):

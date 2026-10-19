@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<title>PubShow pausado — {{ b.nome }}</title>
+{# Lote D A3 (16/10/26): bar no modo Efí sem momento pago há 60 dias. A TV mostra isto (sem clipe, sem som) e
+   pergunta o /api/status a cada 30 s: quando o suporte reativar, volta sozinha pra TV de sempre. #}
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%}
+  body{background:#08080f;color:#f0f0ff;font-family:'Segoe UI',system-ui,sans-serif;display:flex;
+       align-items:center;justify-content:center;padding:24px;text-align:center}
+  .box{max-width:900px}
+  .icon{font-size:clamp(64px,12vw,140px);margin-bottom:16px}
+  h1{font-size:clamp(28px,5vw,64px);font-weight:900;color:#fbbf24;margin-bottom:16px;letter-spacing:-1px}
+  p{font-size:clamp(16px,2.4vw,30px);color:#c4c4dd;line-height:1.5}
+  .bar{margin-top:28px;font-size:clamp(14px,1.8vw,22px);color:#8888aa}
+</style>
+</head>
+<body>
+<div class="box" id="tv-pausado">
+  <div class="icon">⏸️</div>
+  <h1>PubShow pausado</h1>
+  <p>{{ msg }}</p>
+  <div class="bar">{{ b.nome }}</div>
+</div>
+<script>
+(function () {
+  var url = '/pubshow/api/status/' + encodeURIComponent({{ b.code|tojson }});
+  function confere() {
+    try {
+      fetch(url, {cache: 'no-store'}).then(function (r) { return r.json(); }).then(function (d) {
+        if (d && d.pausado !== true) location.reload();
+      }).catch(function () {});
+    } catch (e) {}
+  }
+  setInterval(confere, 30000);
+})();
+</script>
+</body>
+</html>

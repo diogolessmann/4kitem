@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Repasses — PUBSHOW Admin</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:#08080f;color:#f0f0ff;font-family:'Segoe UI',sans-serif;min-height:100vh;padding-bottom:60px}
+  nav{background:#13131f;border-bottom:1px solid rgba(255,255,255,.08);padding:0 16px;height:54px;
+      display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .logo{font-size:16px;font-weight:900;background:linear-gradient(135deg,#ef4444,#f97316);
+        -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;white-space:nowrap}
+  .nav-right{display:flex;gap:14px;align-items:center}
+  .nav-right a{font-size:12px;color:#8888aa;text-decoration:none;white-space:nowrap}
+  .nav-right a:hover{color:#fff}
+  .page{max-width:760px;margin:0 auto;padding:20px 16px}
+  h1{font-size:20px;font-weight:900;margin-bottom:4px}
+  .sub{font-size:12px;color:#8888aa;margin-bottom:18px}
+  .sub a{color:#a78bfa;text-decoration:none;font-weight:700}
+  .card{background:#13131f;border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:16px;margin-bottom:14px}
+  .card h2{font-size:15px;font-weight:900;margin-bottom:10px}
+  .lbl{font-size:11px;color:#8888aa;text-transform:uppercase;letter-spacing:.5px;font-weight:700}
+  .big{font-size:28px;font-weight:900;line-height:1.15}
+  .mid{font-size:18px;font-weight:900}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .verde{color:#22c55e}.laranja{color:#f97316}.amarelo{color:#fbbf24}.cinza{color:#8888aa}
+  .falta{background:linear-gradient(135deg,rgba(249,115,22,.16),rgba(239,68,68,.10));border-color:rgba(249,115,22,.4)}
+  .obs{font-size:11px;color:#8888aa;margin-top:8px;line-height:1.4}
+  .linha{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.05);font-size:13px}
+  .linha:last-child{border-bottom:none}
+  .linha .v{font-weight:800;white-space:nowrap}
+  .n{font-size:11px;color:#8888aa;font-weight:600}
+  .semanas{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+  .sem{background:rgba(255,255,255,.03);border-radius:10px;padding:10px;font-size:12px}
+  .sem b{display:block;font-size:11px;color:#8888aa;margin-bottom:4px;font-weight:700}
+  form.rep{margin-top:12px;display:flex;flex-direction:column;gap:8px}
+  input[type=text]{background:#08080f;border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:10px 12px;
+    color:#f0f0ff;font-size:14px;font-family:inherit;outline:none;width:100%}
+  input[type=text]:focus{border-color:#22c55e}
+  .btn{background:linear-gradient(135deg,rgba(34,197,94,.25),rgba(34,197,94,.12));border:1px solid rgba(34,197,94,.45);
+    color:#4ade80;border-radius:10px;padding:12px 14px;font-size:15px;font-weight:900;cursor:pointer;font-family:inherit;width:100%}
+  .btn:disabled{opacity:.35;cursor:not-allowed}
+  .msg{border-radius:12px;padding:12px 14px;font-size:13px;font-weight:700;margin-bottom:14px}
+  .msg.ok{background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.35);color:#4ade80}
+  .msg.aviso{background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.35);color:#fbbf24}
+  .msg.erro{background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.35);color:#f87171}
+  .tag{font-size:10px;font-weight:800;padding:2px 7px;border-radius:100px;background:rgba(34,197,94,.15);color:#4ade80}
+  .tag.g{background:rgba(245,158,11,.15);color:#fbbf24}
+  @media(max-width:420px){.grid2,.semanas{grid-template-columns:1fr}.big{font-size:24px}}
+</style>
+</head>
+<body>
+<nav>
+  <div class="logo">💸 Repasses</div>
+  <div class="nav-right">
+    <a href="/pubshow/admin">← Admin</a>
+    <a href="/pubshow/admin/logout">Sair</a>
+  </div>
+</nav>
+
+<div class="page">
+  <h1>Quanto devo a cada bar</h1>
+  <div class="sub">Calculado agora, {{ d.agora_brt }} (Brasília) · <a href="/pubshow/admin/repasses">🔄 Atualizar</a></div>
+
+  {% if msg %}<div class="msg {{ msg[0] }}">{{ msg[1] }}</div>{% endif %}
+
+  <!-- Resumo do dia -->
+  <div class="card">
+    <div class="lbl">Devo a todos os bares (bar + gorjeta)</div>
+    <div class="big verde">{{ brl(d.total_devido) }}</div>
+    <div class="grid2" style="margin-top:10px">
+      <div><div class="lbl">Bar (momentos)</div><div class="mid">{{ brl(d.total_bar) }}</div></div>
+      <div><div class="lbl">Gorjeta (equipe)</div><div class="mid amarelo">{{ brl(d.total_gorj) }}</div></div>
+    </div>
+    {% if d.total_efi > 0 %}<div class="grid2" style="margin-top:10px">
+      <div><div class="lbl">Está no Asaas</div><div class="mid">{{ brl(d.total_asaas) }}</div></div>
+      <div><div class="lbl">Está na Efí (ponte)</div><div class="mid">{{ brl(d.total_efi) }}</div></div>
+    </div>{% endif %}
+    <div class="obs">Só conta PIX com prova de pagamento (confirmação do Asaas ou da Efí, ou conferência no gateway), já liberado pra TV.
+      {% if d.total_moderacao > 0 %}<br>🛡️ Em moderação (pago, gerente ainda não decidiu, não somado): <b>{{ brl(d.total_moderacao) }}</b>{% endif %}
+      {% if d.sem_prova_pend %}<br>⏳ {{ d.sem_prova_pend }} PIX antigo(s) ainda sem conferência no gateway — <a href="/pubshow/admin/repasses" style="color:#a78bfa">atualize</a> pra conferir mais.{% endif %}</div>
+  </div>
+
+  <div class="card falta">
+    <div class="grid2">
+      <div>
+        <div class="lbl">Saldo atual no Asaas</div>
+        {% if saldo is none %}
+          <div class="mid cinza">não consegui ler o saldo</div>
+        {% else %}
+          <div class="mid">{{ brl(saldo) }}</div>
+        {% endif %}
+      </div>
+      <div>
+        <div class="lbl">Falta pôr no Asaas (pros PIX do Asaas)</div>
+        {% if falta is none %}
+          <div class="mid cinza">confira o saldo no app do Asaas</div>
+        {% else %}
+          <div class="big {{ 'laranja' if falta > 0 else 'verde' }}">{{ brl(falta) }}</div>
+        {% endif %}
+      </div>
+    </div>
+    <div class="obs">⚠️ O saldo do Asaas também tem dinheiro de outros produtos (rifas, assinaturas) — "falta pôr" é o mínimo pra cobrir os bares, não quer dizer que o resto é seu.
+      {% if d.total_efi > 0 %}<br>💳 {{ brl(d.total_efi) }} dos bares caiu na conta Efí (ponte, a mesma da RifaJá): o saldo da Efí não aparece aqui, confira no app da Efí.{% endif %}</div>
+  </div>
+
+  <!-- Por bar -->
+  {% for b in d.bares %}
+  <div class="card" id="bar-{{ b.id }}">
+    <h2>{{ b.nome }}</h2>
+    <div class="lbl" style="margin-bottom:4px">
+      Devido {% if b.ultimo %}desde o último repasse ({{ b.ultimo.ate_brt }}){% else %}desde o 1º pedido (nunca repassado){% endif %}
+    </div>
+    <div class="linha"><span>🍺 Bar <span class="n">· {{ b.devido.bar_n }} PIX</span></span><span class="v">{{ brl(b.devido.bar) }}</span></div>
+    <div class="linha"><span>🙏 Gorjeta da equipe <span class="n">· {{ b.devido.gorj_n }} PIX</span></span><span class="v amarelo">{{ brl(b.devido.gorj) }}</span></div>
+    <div class="linha"><span><b>Total a repassar</b></span><span class="v verde" style="font-size:17px">{{ brl(b.devido_total) }}</span></div>
+    {% if b.devido.efi > 0 %}<div class="linha"><span class="cinza">💳 de onde sai</span><span class="v cinza">Asaas {{ brl(b.devido.asaas) }} · Efí {{ brl(b.devido.efi) }}</span></div>{% endif %}
+    {% if b.moderacao.bar_n or b.moderacao.gorj_n %}
+    <div class="linha"><span class="cinza">🛡️ Em moderação (não somado) <span class="n">· {{ b.moderacao.bar_n + b.moderacao.gorj_n }} PIX</span></span><span class="v cinza">{{ brl(b.moderacao.bar + b.moderacao.gorj) }}</span></div>
+    {% endif %}
+
+    <div class="semanas">
+      <div class="sem"><b>Esta semana (seg {{ d.seg_brt }} → agora)</b>
+        Bar {{ brl(b.esta.bar) }} <span class="n">({{ b.esta.bar_n }})</span><br>
+        Gorjeta {{ brl(b.esta.gorj) }} <span class="n">({{ b.esta.gorj_n }})</span></div>
+      <div class="sem"><b>Semana passada ({{ d.passada_ini }} → {{ d.passada_fim }})</b>
+        Bar {{ brl(b.passada.bar) }} <span class="n">({{ b.passada.bar_n }})</span><br>
+        Gorjeta {{ brl(b.passada.gorj) }} <span class="n">({{ b.passada.gorj_n }})</span></div>
+    </div>
+
+    <form class="rep" method="POST" action="/pubshow/admin/repasses/{{ b.id }}/repassei"
+          data-msg="Confirmar que você JÁ fez o PIX de {{ brl(b.devido_total) }} pro {{ b.nome }}? (bar {{ brl(b.devido.bar) }} + gorjeta {{ brl(b.devido.gorj) }})"
+          onsubmit="return confirmaRepasse(this)">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      {#- crítico dinheiro C1 (17/10/26): grava exatamente o que esta tela mostrou #}
+      <input type="hidden" name="ate_id" value="{{ b.devido.max_id }}">
+      <input type="hidden" name="total_cent" value="{{ (b.devido_total * 100)|round|int }}">
+      <input type="text" name="obs" maxlength="300" placeholder="Obs. (opcional): PIX feito 20/10, comprovante no WhatsApp">
+      {% if b.pendente_conf_n %}
+      <button type="button" class="btn" disabled>⏳ Conferindo {{ b.pendente_conf_n }} PIX antigo(s) no gateway — atualize em 1 min</button>
+      {% else %}
+      <button type="submit" class="btn" {% if b.devido_total <= 0 %}disabled{% endif %}>✅ Repassei {{ brl(b.devido_total) }}</button>
+      {% endif %}
+    </form>
+  </div>
+  {% else %}
+  <div class="card"><div class="cinza" style="font-size:13px">Nenhum PIX pago pelo Asaas ou pela Efí ainda. Nada a repassar.</div></div>
+  {% endfor %}
+
+  <!-- Histórico -->
+  <div class="card">
+    <h2>🧾 Últimos repasses</h2>
+    {% for h in d.historico %}
+      <div class="linha">
+        <span>{{ h.ate_brt }} · <b>{{ h.bar_nome or ('Bar #' ~ h.business_id) }}</b>
+          {% if h.obs %}<br><span class="n">{{ h.obs }}</span>{% endif %}</span>
+        <span class="v">{{ brl((h.valor_bar or 0) + (h.valor_gorjeta or 0)) }}
+          <br><span class="n">bar {{ brl(h.valor_bar) }} · gorj. {{ brl(h.valor_gorjeta) }}</span></span>
+      </div>
+    {% else %}
+      <div class="cinza" style="font-size:13px">Nenhum repasse registrado ainda.</div>
+    {% endfor %}
+  </div>
+
+  <!-- Sem prova de pagamento -->
+  {% if d.sem_prova %}
+  <div class="card">
+    <h2>⚠️ Sem prova de PIX (não somado)</h2>
+    <div class="obs" style="margin:0 0 8px">Pedidos com cobrança no Asaas ou na Efí e status de "pago" no painel, mas sem confirmação do gateway. "Asaas diz: PENDING/OVERDUE" ou "Efí diz: ATIVA/REMOVIDA_PELO_USUARIO_RECEBEDOR" = o cliente NÃO pagou — não repasse.</div>
+    {% for c in d.sem_prova %}
+      <div class="linha">
+        <span>{{ c.quando }} · <b>{{ c.bar_nome or ('Bar #' ~ c.business_id) }}</b><br>
+          <span class="n">#{{ c.id }} · {{ c.tipo_nome }} · {{ c.status }} · {{ c.gateway_txt }}</span></span>
+        <span class="v cinza">{{ brl(c.valor) }}</span>
+      </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <!-- Conferir à mão -->
+  <div class="card">
+    <h2>🔎 Conferir à mão (não somado)</h2>
+    <div class="obs" style="margin:0 0 8px">Pedidos pagos SEM cobrança no Asaas nem na Efí (PIX na chave do próprio bar / "já paguei"), últimos 30 dias. Esse dinheiro não passou pela sua conta — não entra no devido.</div>
+    {% for c in d.conferir %}
+      <div class="linha">
+        <span>{{ c.quando }} · <b>{{ c.bar_nome or ('Bar #' ~ c.business_id) }}</b><br>
+          <span class="n">#{{ c.id }} · {{ c.tipo_nome }}{% if c.nome_cliente %} · {{ c.nome_cliente }}{% endif %} · {{ c.status }}</span>
+          {% if c.equipe %}<span class="tag g">gorjeta</span>{% endif %}</span>
+        <span class="v cinza">{{ brl(c.valor) }}</span>
+      </div>
+    {% else %}
+      <div class="cinza" style="font-size:13px">Nada pra conferir.</div>
+    {% endfor %}
+  </div>
+</div>
+<script>
+function confirmaRepasse(f) {
+  if (!confirm(f.dataset.msg)) return false;
+  var bt = f.querySelector('button');
+  setTimeout(function(){ bt.disabled = true; bt.textContent = 'Gravando…'; }, 0);  // trava o 2º toque
+  return true;
+}
+</script>
+</body>
+</html>

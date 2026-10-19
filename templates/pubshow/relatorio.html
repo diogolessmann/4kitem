@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Relatório Pro — {{ b.nome }}</title>
+<title>Relatório — {{ b.nome }}</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 :root{--bg:#08080f;--s:#13131f;--s2:#1a1a2e;--bd:rgba(255,255,255,.08);--t:#f0f0ff;--t2:#8888aa;--green:#22c55e;--red:#ef4444;--orange:#f97316;--blue:#3b82f6;--purple:#a855f7;--yellow:#f59e0b}
@@ -111,7 +111,7 @@ nav{background:rgba(8,8,15,.95);backdrop-filter:blur(12px);border-bottom:1px sol
 
 <nav>
   <a href="/pubshow/painel" class="back">← Painel</a>
-  <div class="nav-title">📊 Relatório Pro — {{ b.nome }}</div>
+  <div class="nav-title">📊 Relatório — {{ b.nome }}</div>
   <button class="print-btn" onclick="window.print()">🖨️ Imprimir</button>
 </nav>
 
@@ -137,10 +137,10 @@ nav{background:rgba(8,8,15,.95);backdrop-filter:blur(12px);border-bottom:1px sol
         {% set variacao = ((receita_mes - receita_mes_anterior) / receita_mes_anterior * 100)|round(1) %}
         {% if variacao > 0 %}
           <span class="compare-chip up">▲ {{ variacao }}% vs mês anterior</span>
-          <span style="color:var(--t2);font-size:12px">Mês passado: R$ {{ '%.0f'|format(receita_mes_anterior) }}</span>
+          <span style="color:var(--t2);font-size:12px">Mês passado: R$ {{ '%.2f'|format(receita_mes_anterior)|replace('.',',') }}</span>
         {% elif variacao < 0 %}
           <span class="compare-chip down">▼ {{ (variacao * -1) }}% vs mês anterior</span>
-          <span style="color:var(--t2);font-size:12px">Mês passado: R$ {{ '%.0f'|format(receita_mes_anterior) }}</span>
+          <span style="color:var(--t2);font-size:12px">Mês passado: R$ {{ '%.2f'|format(receita_mes_anterior)|replace('.',',') }}</span>
         {% else %}
           <span class="compare-chip neutral">= Igual ao mês anterior</span>
         {% endif %}
@@ -151,15 +151,17 @@ nav{background:rgba(8,8,15,.95);backdrop-filter:blur(12px);border-bottom:1px sol
 
     <div class="mes-stats">
       <div class="mes-stat">
-        <div class="mes-stat-val" style="color:var(--blue)">{{ total_pedidos_mes }}</div>
-        <div class="mes-stat-label">Pedidos no mês</div>
+        {# 16/10/26 (C1-12): a conta fecha — "3 pedidos · ticket R$ 5" misturava música grátis e gorjeta #}
+        <div class="mes-stat-val" style="color:var(--blue)">{{ momentos_mes }}</div>
+        <div class="mes-stat-label">{{ 'Momento pago' if momentos_mes == 1 else 'Momentos pagos' }} no mês</div>
+        <div class="mes-stat-label" style="margin-top:2px">{{ musicas_mes }} {{ 'música grátis' if musicas_mes == 1 else 'músicas grátis' }} · {{ gorjetas_mes }} {{ 'gorjeta' if gorjetas_mes == 1 else 'gorjetas' }}</div>
       </div>
       <div class="mes-stat">
         <div class="mes-stat-val" style="color:var(--yellow)">R$ {{ '%.2f'|format(ticket_medio)|replace('.',',') }}</div>
-        <div class="mes-stat-label">Ticket médio</div>
+        <div class="mes-stat-label">Média por momento pago</div>
       </div>
       <div class="mes-stat">
-        <div class="mes-stat-val" style="color:var(--t2)">R$ {{ '%.0f'|format(receita_hoje) }}</div>
+        <div class="mes-stat-val" style="color:var(--t2)">R$ {{ '%.2f'|format(receita_hoje)|replace('.',',') }}</div>
         <div class="mes-stat-label">Hoje</div>
       </div>
     </div>
@@ -171,7 +173,7 @@ nav{background:rgba(8,8,15,.95);backdrop-filter:blur(12px);border-bottom:1px sol
     <div class="projecao-icon">🔮</div>
     <div>
       <div class="projecao-val">R$ {{ '%.0f'|format(projecao_mes) }}</div>
-      <div class="projecao-label">Projeção para o fim do mês no ritmo atual</div>
+      <div class="projecao-label">Se continuar nesse ritmo, é quanto o mês fecha</div>
     </div>
   </div>
   {% endif %}
@@ -204,7 +206,7 @@ nav{background:rgba(8,8,15,.95);backdrop-filter:blur(12px);border-bottom:1px sol
       <div class="insight-icon">💡</div>
       <div>
         <div class="insight-titulo">Dica de receita</div>
-        <div class="insight-sub">Com ticket médio de R$ {{ '%.2f'|format(ticket_medio)|replace('.',',') }}, cada 10 pedidos a mais valem R$ {{ '%.0f'|format(ticket_medio * 10) }} extras.</div>
+        <div class="insight-sub">Cada momento pago rendeu, em média, R$ {{ '%.2f'|format(ticket_medio)|replace('.',',') }}: 10 momentos a mais valem uns R$ {{ '%.0f'|format(ticket_medio * 10) }}.</div>
       </div>
     </div>
     {% endif %}
@@ -213,7 +215,7 @@ nav{background:rgba(8,8,15,.95);backdrop-filter:blur(12px);border-bottom:1px sol
       <div class="insight-icon">📈</div>
       <div>
         <div class="insight-titulo">Últimos 7 dias</div>
-        <div class="insight-sub">Receita de <strong style="color:var(--green)">R$ {{ '%.0f'|format(receita_semana) }}</strong> na semana — média de R$ {{ '%.0f'|format(receita_semana / 7) }}/dia.</div>
+        <div class="insight-sub">Receita de <strong style="color:var(--green)">R$ {{ '%.2f'|format(receita_semana)|replace('.',',') }}</strong> na semana — média de R$ {{ '%.0f'|format(receita_semana / 7) }}/dia.</div>
       </div>
     </div>
     {% endif %}
@@ -296,7 +298,7 @@ nav{background:rgba(8,8,15,.95);backdrop-filter:blur(12px);border-bottom:1px sol
       <div class="tipo-bar-bg">
         <div class="tipo-fill" style="width:{{ (t.n / max_n * 100)|int }}%"></div>
       </div>
-      <div class="tipo-receita">R$ {{ '%.0f'|format(t.receita) }}</div>
+      <div class="tipo-receita">R$ {{ '%.2f'|format(t.receita)|replace('.',',') }}</div>
     </div>
     {% endfor %}
   </div>
@@ -334,7 +336,7 @@ nav{background:rgba(8,8,15,.95);backdrop-filter:blur(12px);border-bottom:1px sol
       </div>
     </div>
     <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--bd);font-size:12px;color:var(--t2)">
-      💡 100% desta receita foi paga direto na sua chave PIX — o PUBSHOW não fica com nada.
+      💡 Os momentos pagos aparecem aqui. Música é grátis pro cliente.
     </div>
   </div>
 

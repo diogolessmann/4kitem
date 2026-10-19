@@ -2,32 +2,25 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+{# sem maximum-scale (16/10/26, CEL-26): o cliente pode dar zoom #}
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Jukebox — {{ b.nome }}</title>
-
-<!-- ── PWA ──────────────────────────────────────────────────────────────── -->
-<link rel="manifest" href="/pubshow/manifest/{{ b.jukebox_token or b.code }}.json">
+{# PWA cortado (16/10/26, B8/CEL-18): o banner cobria o botão do PIX e o service worker nunca registrava #}
 <meta name="theme-color" content="#08080f">
-<meta name="mobile-web-app-capable" content="yes">
-<!-- iOS Safari -->
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Jukebox">
-<link rel="apple-touch-icon" href="/pubshow/pwa-icon/{{ b.jukebox_token or b.code }}/192.png">
-<!-- Descrição para share/bookmark -->
 <meta name="description" content="Peça músicas no {{ b.nome }} direto pelo seu celular 🎵">
-<!-- ────────────────────────────────────────────────────────────────────── -->
+{% macro brl(v) %}R$ {{ ('%.0f' if v == (v|int) else '%.2f')|format(v)|replace('.',',') }}{% endmacro %}
+{% set pix_direto = asaas_ativo or (b.requer_pix and b.pix_key) %}
 <style>
   *{margin:0;padding:0;box-sizing:border-box}
   :root{
     --bg:#08080f;--surface:#13131f;--surface2:#1a1a2e;
     --border:rgba(255,255,255,.08);--text:#f0f0ff;--text2:#8888aa;
   }
-  body{background:var(--bg);color:var(--text);font-family:'Segoe UI',sans-serif;min-height:100vh;padding-bottom:40px}
+  body{background:var(--bg);color:var(--text);font-family:'Segoe UI',sans-serif;min-height:100vh;padding-bottom:96px}
 
   .header{
     background:linear-gradient(160deg,#120820 0%,#0a1525 60%,#08080f 100%);
-    padding:22px 20px 26px;border-bottom:1px solid var(--border);
+    padding:16px 20px 16px;border-bottom:1px solid var(--border);
     position:relative;overflow:hidden;
   }
   .header::before{
@@ -36,143 +29,134 @@
     background:radial-gradient(circle,{{ canal.cor }}33 0%,transparent 70%);
     pointer-events:none;
   }
-  .header-top{display:flex;align-items:center;gap:12px;margin-bottom:10px;position:relative;z-index:1}
+  .header-top{display:flex;align-items:center;gap:12px;margin-bottom:8px;position:relative;z-index:1}
   .canal-badge{
     background:{{ canal.cor }};padding:5px 14px;border-radius:100px;
-    font-size:11px;font-weight:800;color:#fff;letter-spacing:.3px;
+    font-size:12px;font-weight:800;color:#fff;letter-spacing:.3px;
     box-shadow:0 0 16px {{ canal.cor }}66;
   }
   .bar-nome{font-size:20px;font-weight:900;letter-spacing:-.5px}
   .tocando-agora{font-size:12px;color:var(--text2);display:flex;align-items:center;gap:6px;position:relative;z-index:1}
   .dot-live{width:7px;height:7px;background:#22c55e;border-radius:50%;animation:blink 1.2s ease-in-out infinite}
+  .dot-off{width:7px;height:7px;background:#f59e0b;border-radius:50%}
   @keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+
+  /* Faixa-tutorial (some depois do 1º pedido) + avisos do bar */
+  .faixa{margin:12px 16px 0;padding:12px 14px;border-radius:14px;background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.3);font-size:13px;line-height:1.5;color:#d1fae5}
+  .faixa strong{color:#4ade80}
+  .faixa-aviso{margin:12px 16px 0;padding:12px 14px;border-radius:14px;background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.35);font-size:13px;line-height:1.5;color:#fde68a}
+  .faixa-msg{margin:12px 16px 0;padding:10px 14px;border-radius:14px;background:var(--surface);border:1px solid var(--border);font-size:13px;line-height:1.5;color:#d4d4f0}
+
+  /* Jukebox fechado: 1 cartão só */
+  .fechado-card{margin:24px 16px;padding:28px 20px;border-radius:20px;background:var(--surface);border:1px solid rgba(251,191,36,.3);text-align:center}
+  .fechado-card .emoji{font-size:52px;display:block;margin-bottom:10px}
+  .fechado-card h3{font-size:18px;font-weight:900;color:#fbbf24;margin-bottom:8px}
+  .fechado-card p{font-size:13px;color:var(--text2);line-height:1.6}
 
   /* Sucesso */
   .success-box{
-    margin:20px;padding:28px 20px;border-radius:20px;
+    margin:16px;padding:24px 20px;border-radius:20px;
     background:linear-gradient(135deg,#052e16,#064e3b);
     border:1px solid rgba(34,197,94,.35);text-align:center;
     box-shadow:0 0 40px rgba(34,197,94,.1);
     animation:pop-in .4s cubic-bezier(.34,1.56,.64,1);
   }
   @keyframes pop-in{from{transform:scale(.8);opacity:0}to{transform:scale(1);opacity:1}}
-  .success-box .emoji{font-size:56px;margin-bottom:10px;display:block}
+  .success-box .emoji{font-size:48px;margin-bottom:8px;display:block}
   .success-box h3{color:#4ade80;font-size:20px;font-weight:900;margin-bottom:8px}
   .success-box p{color:#86efac;font-size:13px;line-height:1.6}
-  .success-musica-nome{color:#67e8f9;font-size:13px;font-weight:700;margin-top:10px;padding:10px 14px;background:rgba(6,182,212,.1);border-radius:12px;border:1px solid rgba(6,182,212,.2)}
 
   /* Erro */
   .erro-box{margin:16px;padding:14px 16px;border-radius:12px;background:#2d0a0a;border:1px solid #ef444433;color:#f87171;font-size:13px}
 
+  /* Abas fixas no rodapé: [Músicas] [Aparecer na TV] */
+  .tabbar{position:fixed;left:0;right:0;bottom:0;z-index:900;display:flex;gap:8px;padding:8px 12px calc(8px + env(safe-area-inset-bottom));
+    background:rgba(8,8,15,.96);border-top:1px solid var(--border);backdrop-filter:blur(8px)}
+  .tab-btn{flex:1;min-height:48px;border-radius:14px;border:2px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);
+    color:var(--text2);font-size:14px;font-weight:800;font-family:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent}
+  .tab-btn.on{border-color:#06b6d4;background:rgba(6,182,212,.16);color:#fff}
+  .tab-btn.on.tv{border-color:#ec4899;background:rgba(236,72,153,.16)}
+  .aba{display:none}
+  .aba.on{display:block}
+
   /* Fila */
-  .fila-section{padding:16px 20px 8px;border-bottom:1px solid var(--border)}
-  .fila-titulo{font-size:11px;font-weight:700;color:var(--text2);letter-spacing:.8px;text-transform:uppercase;margin-bottom:10px}
+  .fila-section{margin:12px 16px 0;padding:10px 14px;border-radius:14px;background:var(--surface);border:1px solid var(--border)}
+  .fila-section summary{font-size:13px;font-weight:700;color:var(--text2);cursor:pointer;list-style:none;min-height:44px;display:flex;align-items:center}   /* toque ≥ 44px (16/10/26, V4-03) */
+  .fila-section summary::-webkit-details-marker{display:none}
   .fila-item{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)}
   .fila-item:last-child{border:none}
   .fila-emoji{font-size:20px;flex-shrink:0}
   .fila-info{flex:1;min-width:0}
   .fila-nome{font-size:13px;font-weight:700}
-  .fila-tipo{font-size:11px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .fila-empty{font-size:13px;color:var(--text2);padding:8px 0}
+  .fila-tipo{font-size:12px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
-  /* Grid de pedidos */
-  .pedidos-section{padding:20px}
-  .pedidos-titulo{font-size:15px;font-weight:800;margin-bottom:16px}
+  /* Grid dos momentos (aba "Aparecer na TV") */
+  .pedidos-section{padding:16px}
+  .pedidos-titulo{font-size:15px;font-weight:800;margin-bottom:4px}
+  .pedidos-sub{font-size:12px;color:var(--text2);margin-bottom:14px}
   .pedidos-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   .pedido-card{
     background:linear-gradient(145deg,#141422,#0e0e1c);
     border:1px solid rgba(255,255,255,.09);
-    border-radius:18px;padding:18px 14px;cursor:pointer;
+    border-radius:18px;padding:16px 12px;cursor:pointer;
     transition:.18s;text-align:center;-webkit-tap-highlight-color:transparent;
     position:relative;overflow:hidden;
     box-shadow:0 4px 20px rgba(0,0,0,.4);
   }
-  .pedido-card::after{
-    content:'';position:absolute;inset:0;border-radius:18px;
-    background:radial-gradient(circle at 50% 0%,rgba(var(--card-rgb),.12) 0%,transparent 65%);
-    pointer-events:none;
-  }
   .pedido-card:active{transform:scale(.94);box-shadow:0 2px 10px rgba(0,0,0,.6)}
-  .pedido-card.full{grid-column:1/-1} /* ocupa linha inteira */
-  .pedido-card.full .card-emoji{font-size:28px}
-  .pedido-card.full .card-nome{font-size:13px}
-  .pedido-card.highlight{
-    background:linear-gradient(135deg,rgba(var(--card-rgb),.12),rgba(var(--card-rgb),.06));
-    border-color:rgba(var(--card-rgb),.4);
-  }
-  .pedido-card.lib{border-color:rgba(6,182,212,.35);background:rgba(6,182,212,.04)}
-  .pedido-card.ext{border-color:rgba(220,38,38,.35);background:rgba(220,38,38,.04)}
-  .badge-lib{position:absolute;top:6px;right:-22px;background:#06b6d4;color:#fff;
-    font-size:8px;font-weight:900;padding:2px 28px;transform:rotate(40deg);letter-spacing:.5px}
-  .badge-ext{position:absolute;top:6px;right:-22px;background:#dc2626;color:#fff;
-    font-size:8px;font-weight:900;padding:2px 28px;transform:rotate(40deg);letter-spacing:.5px}
-  .pedido-card .card-emoji{font-size:36px;margin-bottom:8px;filter:drop-shadow(0 2px 8px rgba(0,0,0,.5))}
-  .pedido-card .card-nome{font-size:11px;font-weight:800;line-height:1.3;margin-bottom:7px;color:#d4d4f0}
-  .pedido-card .card-preco{font-size:18px;font-weight:900;color:var(--card-cor);text-shadow:0 0 20px var(--card-cor)66}
-  .card-detalhe{font-size:9px;color:var(--text2);margin-top:3px}
+  .pedido-card.full{grid-column:1/-1}
+  .pedido-card .card-emoji{font-size:32px;margin-bottom:6px;filter:drop-shadow(0 2px 8px rgba(0,0,0,.5))}
+  .pedido-card .card-nome{font-size:13px;font-weight:800;line-height:1.3;margin-bottom:6px;color:#d4d4f0}
+  .pedido-card .card-preco{font-size:18px;font-weight:900;color:var(--card-cor)}
+  .card-detalhe{font-size:12px;color:var(--text2);margin-top:3px}
 
-  /* Mais opções */
-  .btn-mais-opcoes{
-    display:flex;align-items:center;justify-content:center;gap:6px;
-    width:100%;background:none;border:1px dashed rgba(255,255,255,.15);
-    border-radius:12px;padding:12px;color:var(--text2);font-size:13px;font-weight:600;
-    cursor:pointer;font-family:inherit;margin-top:12px;transition:.15s;
-  }
-  .btn-mais-opcoes:hover{border-color:rgba(255,255,255,.3);color:var(--text)}
-  .mais-opcoes-grid{
-    display:grid;grid-template-columns:1fr 1fr;gap:10px;
-    margin-top:10px;
-    animation:fadeIn .2s ease;
-  }
-  @keyframes fadeIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
-
-  /* ── BUSCA ─────────────────────────────────────────────────────── */
-  #busca-section{padding:0 20px 20px;display:none}
-  #busca-section.show{display:block}
-
-  .busca-header{display:flex;align-items:center;gap:10px;margin-bottom:4px}
-  .btn-busca-back{background:none;border:none;color:var(--text2);font-size:22px;cursor:pointer;padding:0;line-height:1}
-  .busca-title{font-size:15px;font-weight:800}
-  .busca-subtitle{font-size:11px;color:var(--text2);margin-bottom:14px;padding-left:34px}
-
+  /* ── BUSCA / LISTA DE MÚSICAS ─────────────────────────────────── */
+  #busca-section{padding:12px 16px 16px}
   .busca-input-wrap{position:relative;margin-bottom:10px}
   .busca-input{
     width:100%;background:var(--surface2);border:2px solid var(--busca-cor,#06b6d4);
-    border-radius:14px;padding:13px 48px 13px 16px;color:var(--text);font-size:15px;
+    border-radius:14px;padding:13px 52px 13px 16px;color:var(--text);font-size:16px;
     font-family:inherit;outline:none;
   }
   .busca-btn{
-    position:absolute;right:8px;top:50%;transform:translateY(-50%);
+    position:absolute;right:6px;top:50%;transform:translateY(-50%);
     background:var(--busca-cor,#06b6d4);border:none;border-radius:10px;
-    padding:8px 12px;font-size:16px;cursor:pointer;color:#fff;
+    min-width:44px;min-height:44px;font-size:16px;cursor:pointer;color:#fff;
   }
   .busca-loading{text-align:center;padding:16px;color:var(--text2);font-size:13px;display:none}
   .busca-loading.show{display:block}
-
-  /* Contador de resultados */
-  .busca-count{font-size:11px;color:var(--text2);text-align:right;margin-bottom:6px}
-
-  /* Lista de resultados — SEM foto */
+  .busca-count{font-size:12px;color:var(--text2);text-align:right;margin-bottom:6px}
+  .dica-flash{display:none;margin-bottom:10px;padding:10px 12px;border-radius:12px;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.35);font-size:13px;color:#fde68a}
   #resultados-lista{display:flex;flex-direction:column;gap:6px}
   .resultado-item{
     background:var(--surface);border:1px solid var(--border);
-    border-radius:12px;padding:12px 14px;cursor:pointer;
+    border-radius:12px;padding:12px 14px;cursor:pointer;min-height:48px;
     transition:.15s;display:flex;align-items:center;gap:10px;
     -webkit-tap-highlight-color:transparent;
   }
   .resultado-item:active{transform:scale(.98)}
-  .resultado-item.selecionado{border-color:var(--busca-cor,#06b6d4);background:rgba(6,182,212,.07)}
   .resultado-info{flex:1;min-width:0}
-  .resultado-titulo{font-size:13px;font-weight:700;line-height:1.3;margin-bottom:2px}
-  .resultado-sub{font-size:11px;color:var(--text2)}
-  .resultado-check{
-    width:22px;height:22px;border-radius:50%;background:var(--busca-cor,#06b6d4);
-    display:none;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;
-  }
-  .resultado-item.selecionado .resultado-check{display:flex}
+  .resultado-titulo{font-size:14px;font-weight:700;line-height:1.3;margin-bottom:2px}
+  .resultado-sub{font-size:12px;color:var(--text2)}
 
-  /* Busca do YouTube em cards grandes (16/10/26): capa 16:9, duração no canto, oficial, views, título limpo */
-  .yt-lista{display:flex;flex-direction:column;gap:14px}
+  /* Folha da música (abre ao tocar na música) */
+  .sheet{position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.6);display:none;align-items:flex-end}
+  .sheet.on{display:flex}
+  .sheet-box{width:100%;background:#12121e;border-top:1px solid rgba(6,182,212,.35);border-radius:22px 22px 0 0;
+    padding:18px 18px calc(18px + env(safe-area-inset-bottom));animation:sobe .22s ease}
+  @keyframes sobe{from{transform:translateY(100%)}to{transform:none}}
+  .sheet-titulo{font-size:16px;font-weight:900;color:#67e8f9;line-height:1.3}
+  .sheet-sub{font-size:12px;color:var(--text2);margin:2px 0 14px}
+  .dica-nome{font-size:12px;color:var(--text2);margin-top:6px;line-height:1.4}
+  .btn-gratis,.btn-flash{display:block;width:100%;min-height:54px;padding:12px;border:none;border-radius:14px;
+    color:#fff;font-size:16px;font-weight:900;font-family:inherit;cursor:pointer;margin-top:10px;-webkit-tap-highlight-color:transparent}
+  .btn-gratis{background:linear-gradient(135deg,#16a34a,#15803d)}
+  .btn-flash{background:linear-gradient(135deg,#f59e0b,#d97706)}
+  .btn-gratis small,.btn-flash small{display:block;font-size:12px;font-weight:600;opacity:.85;margin-top:2px}
+  .btn-gratis:disabled,.btn-flash:disabled{opacity:.6}
+
+  /* Busca do YouTube em cards grandes (busca 2.0, 16/10/26): capa 16:9, duração no canto, oficial, views, título limpo */
+  #resultados-lista.yt-lista{gap:14px}
   .yt-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden;cursor:pointer;
     -webkit-tap-highlight-color:transparent;transition:transform .12s}
   .yt-card:active{transform:scale(.98)}
@@ -190,7 +174,7 @@
   .yt-sub{font-size:12px;color:var(--text2);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .yt-of{color:#4ade80;font-weight:800}
   .yt-msg{text-align:center;padding:22px 10px;color:#8888aa;font-size:14px;line-height:1.5}
-  .yt-msg button{margin-top:10px;background:none;border:1px solid rgba(255,255,255,.2);color:#f0f0ff;border-radius:10px;
+  .yt-msg button{margin-top:10px;min-height:44px;background:none;border:1px solid rgba(255,255,255,.2);color:#f0f0ff;border-radius:10px;
     padding:9px 16px;font-family:inherit;font-weight:700;cursor:pointer}
   /* 🎸 "Aqui só toca rock" (17/10/26): aviso grande quando a busca inteira é de outro estilo */
   .yt-fora{text-align:center;padding:26px 14px 22px;margin:4px 0;border-radius:18px;background:linear-gradient(135deg,#2a1033,#1a1030);
@@ -205,67 +189,51 @@
     background-size:200% 100%;animation:sk 1.1s linear infinite}
   .yt-sk .sk-l{height:13px;border-radius:6px;margin-top:8px}
   @keyframes sk{from{background-position:200% 0}to{background-position:-200% 0}}
-  /* 🔥 Mais pedidas no bar (antes de digitar) */
+  /* 🔥 Mais pedidas no bar (antes de digitar, no YouTube) */
   .mp-titulo{font-size:13px;font-weight:800;margin:4px 0 10px;color:#fdba74}
-  .mp-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:6px}
+  .mp-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
   .mp-grid .yt-card{border-radius:12px}
   .mp-grid .yt-info{padding:7px 9px 9px}
   .mp-grid .yt-titulo{font-size:12px}
   .mp-grid .yt-sub{font-size:11px}
   .mp-grid .yt-selo{font-size:10px;padding:3px 7px;left:6px;top:6px}
-  /* Escolheu: capa grande + em que lugar entra + pedir (ou furar a fila) */
-  #escolha{display:none}
-  .esc-voltar{background:none;border:none;color:var(--text2);font-size:14px;font-family:inherit;cursor:pointer;padding:2px 0 12px}
-  #escolha .yt-capa{border-radius:16px}
-  .esc-titulo{font-size:18px;font-weight:900;line-height:1.3;margin-top:12px}
-  .esc-sub{font-size:13px;color:var(--text2);margin-top:4px}
-  .esc-aviso{margin-top:12px;padding:11px 13px;border-radius:12px;font-size:14px;font-weight:700;line-height:1.4}
-  .esc-aviso.fila{background:#2d1a05;border:1px solid #f59e0b66;color:#fbbf24}
-  .esc-aviso.tocou{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);color:#fde68a}
-  .esc-pos{margin-top:12px;font-size:15px;font-weight:800;color:#86efac;line-height:1.4}
-  .esc-label{display:block;font-size:12px;font-weight:700;color:var(--text2);margin:16px 0 6px;text-transform:uppercase;letter-spacing:.5px}
-  #esc-nome{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:13px 14px;
-    color:var(--text);font-size:16px;font-family:inherit;outline:none}
-  #esc-nome:focus{border-color:#22c55e}
-  .esc-btn{display:block;width:100%;padding:16px;margin-top:12px;border:none;border-radius:14px;color:#fff;font-size:16px;
-    font-weight:900;font-family:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent}
-  .esc-btn:active{opacity:.85}
-  .esc-btn:disabled{opacity:.4;cursor:default}
-  .esc-btn.gratis{background:linear-gradient(135deg,#16a34a,#15803d)}
-  .esc-btn.flash{background:linear-gradient(135deg,#f59e0b,#d97706);color:#1a1000}
-  .esc-btn.flash.sec{background:transparent;border:2px solid #f59e0b;color:#fbbf24}
+  /* Folha da música: capa, "já na fila"/"tocou há X min" e em que lugar entra (antes de pedir) */
+  .sheet-box{max-height:94vh;overflow-y:auto;-webkit-overflow-scrolling:touch}
+  .sh-capa-wrap{display:none;max-width:300px;margin:0 auto 12px}
+  .sh-capa{border-radius:14px}
+  .sh-aviso{margin:-6px 0 10px;padding:10px 12px;border-radius:12px;font-size:14px;font-weight:700;line-height:1.4;display:none}
+  .sh-aviso.fila{background:#2d1a05;border:1px solid #f59e0b66;color:#fbbf24}
+  .sh-aviso.tocou{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);color:#fde68a}
+  .sh-pos{margin:-6px 0 12px;font-size:14px;font-weight:800;color:#86efac;line-height:1.4}
 
-  /* ── FORMULÁRIO ───────────────────────────────────────────────── */
-  .form-section{padding:0 20px;display:none}
+  /* ── FORMULÁRIO (momentos) ────────────────────────────────────── */
+  .form-section{padding:16px;display:none}
   .form-section.show{display:block}
-  .form-title{font-size:15px;font-weight:800;margin-bottom:16px;display:flex;align-items:center;gap:8px}
-
+  .form-title{font-size:16px;font-weight:800;margin-bottom:16px;display:flex;align-items:center;gap:8px}
   .musica-preview{
     background:var(--surface2);border:1px solid rgba(6,182,212,.3);
     border-radius:12px;padding:12px 14px;margin-bottom:14px;
   }
-  .musica-preview-label{font-size:10px;color:#06b6d4;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
-  .musica-preview-titulo{font-size:13px;font-weight:700;color:#67e8f9}
-  .musica-preview-sub{font-size:11px;color:var(--text2);margin-top:2px}
-
+  .musica-preview-label{font-size:12px;color:#06b6d4;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+  .musica-preview-titulo{font-size:14px;font-weight:700;color:#67e8f9}
+  .musica-preview-sub{font-size:12px;color:var(--text2);margin-top:2px}
   .form-group{margin-bottom:14px}
   .form-group label{font-size:12px;font-weight:700;color:var(--text2);display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px}
   .form-group input,.form-group textarea{
     width:100%;background:var(--surface2);border:1px solid var(--border);
-    border-radius:10px;padding:12px 14px;color:var(--text);font-size:14px;
+    border-radius:10px;padding:12px 14px;color:var(--text);font-size:16px;
     font-family:inherit;outline:none;resize:none;
   }
   .form-group input:focus,.form-group textarea:focus{border-color:var(--accent-cor,#ec4899)}
-
+  .form-group input.falta{border-color:#ef4444}
   .pix-box{background:var(--surface2);border:1px solid #22c55e44;border-radius:14px;padding:18px;margin-bottom:16px}
   .pix-title{font-size:12px;font-weight:700;color:#22c55e;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px}
   .pix-valor{font-size:28px;font-weight:900;color:#4ade80;margin-bottom:6px}
   .pix-chave{font-size:13px;color:var(--text2);margin-bottom:8px}
   .pix-chave strong{color:var(--text);word-break:break-all}
   .btn-copy{background:#22c55e20;border:1px solid #22c55e44;color:#4ade80;
-    border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;width:100%;font-family:inherit}
+    border-radius:8px;padding:10px 14px;font-size:13px;font-weight:700;cursor:pointer;width:100%;font-family:inherit}
   .btn-copy:active{opacity:.7}
-
   .btn-confirmar{
     display:block;width:100%;padding:16px;
     background:linear-gradient(135deg,var(--accent-cor,#ec4899),var(--accent-cor2,#f97316));
@@ -273,120 +241,46 @@
     cursor:pointer;font-family:inherit;margin-top:12px;-webkit-tap-highlight-color:transparent;
   }
   .btn-confirmar:active{opacity:.85}
-  .btn-voltar{background:none;border:none;color:var(--text2);font-size:13px;cursor:pointer;padding:10px 0;display:block;margin:0 auto;font-family:inherit}
-  .aviso-pix{font-size:11px;color:var(--text2);text-align:center;margin-top:8px;line-height:1.5}
+  .btn-voltar{background:none;border:none;color:var(--text2);font-size:14px;cursor:pointer;padding:12px 0;min-height:44px;display:block;margin:0 auto;font-family:inherit;text-decoration:none;text-align:center}
+  .aviso-pix{font-size:12px;color:var(--text2);text-align:center;margin-top:8px;line-height:1.5}
 
-  /* ── PIX PENDENTE ───────────────────────────────────────────────── */
+  /* ── TELA DO PIX ───────────────────────────────────────────────── */
   .pix-screen{padding:20px;max-width:420px;margin:0 auto}
-  .pix-screen-title{font-size:18px;font-weight:900;text-align:center;margin-bottom:4px}
-  .pix-screen-sub{font-size:13px;color:var(--text2);text-align:center;margin-bottom:20px}
-  .pix-qr-wrap{background:#fff;border-radius:16px;padding:16px;display:flex;justify-content:center;margin-bottom:20px;box-shadow:0 0 40px rgba(34,197,94,.15)}
-  .pix-qr-wrap img{width:220px;height:220px;display:block}
-  .pix-valor-big{font-size:40px;font-weight:900;color:#4ade80;text-align:center;margin-bottom:4px}
-  .pix-recebedor{font-size:13px;color:var(--text2);text-align:center;margin-bottom:16px}
-  .pix-copiacola-box{background:var(--surface2);border:1px solid rgba(34,197,94,.25);border-radius:12px;padding:14px;margin-bottom:14px}
-  .pix-copiacola-label{font-size:10px;font-weight:800;color:#22c55e;text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px}
-  .pix-copiacola-val{font-size:10px;color:var(--text2);word-break:break-all;line-height:1.6;font-family:monospace}
-  .btn-copiar-pix{width:100%;background:rgba(34,197,94,.15);border:1px solid rgba(34,197,94,.3);color:#4ade80;border-radius:10px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:20px}
+  .pix-screen-title{font-size:18px;font-weight:900;text-align:center;margin-bottom:6px}
+  .pix-valor-big{font-size:40px;font-weight:900;color:#4ade80;text-align:center;margin-bottom:2px}
+  .pix-taxa-breakdown{font-size:13px;color:#8888aa;text-align:center;margin-bottom:14px;line-height:1.6}
+  .pix-passos{list-style:none;counter-reset:p;margin:0 0 14px;padding:0}
+  .pix-passos li{counter-increment:p;font-size:14px;line-height:1.5;padding:6px 0 6px 34px;position:relative}
+  .pix-passos li::before{content:counter(p);position:absolute;left:0;top:5px;width:24px;height:24px;border-radius:50%;
+    background:rgba(34,197,94,.18);color:#4ade80;font-size:13px;font-weight:900;display:flex;align-items:center;justify-content:center}
+  .pix-qr-wrap{background:#fff;border-radius:16px;padding:16px;display:flex;justify-content:center;margin:6px 0 14px;box-shadow:0 0 40px rgba(34,197,94,.15)}
+  .pix-qr-wrap img{width:200px;height:200px;display:block}
+  .pix-qr-label{font-size:12px;color:var(--text2);text-align:center}
+  .pix-recebedor{font-size:13px;color:var(--text2);text-align:center;margin-bottom:16px;line-height:1.5}
+  .pix-copiacola-box{background:var(--surface2);border:1px solid rgba(34,197,94,.25);border-radius:12px;padding:14px;margin-bottom:10px}
+  .pix-copiacola-label{font-size:12px;font-weight:800;color:#22c55e;text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px}
+  .pix-copiacola-val{font-size:12px;color:var(--text2);word-break:break-all;line-height:1.6;font-family:monospace;max-height:4.8em;overflow:hidden}
+  .btn-copiar-pix{width:100%;min-height:52px;background:linear-gradient(135deg,#16a34a,#15803d);border:none;color:#fff;border-radius:12px;padding:12px;font-size:16px;font-weight:900;cursor:pointer;font-family:inherit;margin-bottom:16px}
   .btn-copiar-pix:active{opacity:.7}
-  .pix-status-box{text-align:center;padding:16px;border-radius:14px;background:var(--surface2);border:1px solid var(--border)}
+  .pix-status-box{text-align:center;padding:16px;border-radius:14px;background:var(--surface2);border:1px solid var(--border);margin-bottom:12px}
   .pix-status-icon{font-size:32px;margin-bottom:8px}
-  .pix-status-text{font-size:14px;font-weight:700;color:#fbbf24}
-  .pix-status-sub{font-size:12px;color:var(--text2);margin-top:6px}
+  .pix-status-text{font-size:15px;font-weight:800;color:#fbbf24}
+  .pix-status-sub{font-size:13px;color:var(--text2);margin-top:6px;line-height:1.5}
+  .pix-status-box.pago{background:linear-gradient(135deg,#052e16,#064e3b);border-color:rgba(34,197,94,.45)}
+  .pix-status-box.pago .pix-status-text{color:#4ade80}
+  .pix-status-box.ruim .pix-status-text{color:#f87171}
   @keyframes spin{to{transform:rotate(360deg)}}
   .spinner{display:inline-block;width:18px;height:18px;border:2px solid rgba(251,191,36,.3);border-top-color:#fbbf24;border-radius:50%;animation:spin .8s linear infinite;vertical-align:middle;margin-right:6px}
-
-  /* ── Tutorial Carousel (inline, topo do jukebox) ───────────────── */
-  .tutorial-wrap{overflow:hidden;position:relative;margin:0;padding:10px 0 4px;width:100%}
-  .tutorial-track{display:flex;transition:transform .35s cubic-bezier(.4,0,.2,1);will-change:transform;cursor:grab;user-select:none;width:100%}
-  .tutorial-track:active{cursor:grabbing}
-  .tutorial-slide{min-width:100vw;width:100vw;padding:0 16px;box-sizing:border-box;flex-shrink:0}
-  .tutorial-slide img{width:100%;border-radius:14px;display:block;box-shadow:0 4px 20px rgba(0,0,0,.5);max-height:260px;object-fit:contain}
-  .tutorial-dots{display:flex;justify-content:center;gap:6px;padding:8px 0 2px}
-  .t-dot{height:4px;border-radius:2px;background:rgba(255,255,255,.2);transition:width .25s,background .25s;cursor:pointer}
-  .t-dot.on{background:#ef4444}
-
-  /* ── Onboarding Fullscreen ──────────────────────────────────────── */
-  #onboarding{
-    position:fixed;inset:0;z-index:9999;
-    background:#08080f;
-    display:flex;flex-direction:column;
-    overflow:hidden;
-    animation:fadeIn .3s ease;
-  }
-  #onboarding.hide{animation:fadeOut .35s ease forwards}
-  @keyframes fadeOut{to{opacity:0;pointer-events:none}}
-  /* wrapper de clip — necessário para iOS Safari não vazar conteúdo */
-  .ob-clip{flex:1;overflow:hidden;width:100%;position:relative}
-  .ob-track{display:flex;height:100%;transition:transform .4s cubic-bezier(.4,0,.2,1);will-change:transform}
-  .ob-slide{
-    min-width:100vw;width:100vw;flex-shrink:0;
-    display:flex;flex-direction:column;align-items:center;justify-content:center;
-    padding:40px 32px;text-align:center;overflow:hidden;box-sizing:border-box;
-  }
-  .ob-emoji{font-size:72px;margin-bottom:20px;line-height:1}
-  .ob-titulo{font-size:24px;font-weight:900;line-height:1.25;margin-bottom:12px;letter-spacing:-.3px;word-break:break-word}
-  .ob-sub{font-size:14px;color:#8888aa;line-height:1.65;max-width:280px}
-  .ob-step{
-    font-size:11px;font-weight:800;color:#ef4444;letter-spacing:1px;
-    text-transform:uppercase;margin-bottom:14px;
-  }
-  .ob-bottom{
-    padding:16px 28px 32px;display:flex;flex-direction:column;align-items:center;gap:12px;
-    flex-shrink:0;
-  }
-  .ob-dots{display:flex;gap:7px}
-  .ob-dot{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.2);transition:.25s;cursor:pointer}
-  .ob-dot.on{background:#ef4444;width:22px;border-radius:4px}
-  .ob-btn{
-    width:100%;max-width:320px;padding:15px;border:none;border-radius:16px;
-    background:linear-gradient(135deg,#ef4444,#f97316);
-    color:#fff;font-size:16px;font-weight:900;cursor:pointer;font-family:inherit;
-    box-shadow:0 4px 24px rgba(239,68,68,.4);
-    transition:.15s;display:none;
-  }
-  .ob-btn:active{transform:scale(.97)}
-  .ob-skip{
-    background:none;border:none;color:#8888aa;font-size:14px;cursor:pointer;
-    font-family:inherit;padding:8px 16px;
-  }
 </style>
 <!-- celular do cliente do bar: sem balão global do WhatsApp do 4kitem (a marca 'wa-float-4k' impede a injeção) -->
 <style>#wa-float-4k{display:none !important}</style>
 </head>
 <body>
 
-{% if not pix_pendente and not sucesso %}
-<!-- ══════════════════════════════════════════════════════════════════════════ -->
-<!-- ONBOARDING FULLSCREEN — aparece na primeira visita, ensina como funciona  -->
-<!-- ══════════════════════════════════════════════════════════════════════════ -->
-<div id="onboarding">
-  <!-- ob-clip: necessário para clip funcionar no iOS Safari com position:fixed -->
-  <div class="ob-clip">
-    <div class="ob-track" id="ob-track">
-
-      <!-- Slide único (11/09/26): antes eram 4 passos obrigatórios sem "pular" -->
-      <div class="ob-slide">
-        <div class="ob-step">Jukebox do {{ b.nome }}</div>
-        <div class="ob-emoji">🎵</div>
-        <div class="ob-titulo">Pedir música é grátis</div>
-        <div class="ob-sub">Escolhe a música, põe teu nome e ela toca na TV. Furar a fila é R$ {% if tipos.flash %}{% set _ft = tipos.flash.preco + (pix_conv or 0) %}{{ ('%.0f' if _ft == (_ft|int) else '%.2f')|format(_ft)|replace('.',',') }}{% else %}7{% endif %}; parabéns, cantada e dedicatória aparecem na tela.</div>
-      </div>
-
-    </div>
-  </div>
-
-  <div class="ob-bottom">
-    <div class="ob-dots" id="ob-dots" style="display:none"></div>
-    <button class="ob-btn" id="ob-btn" onclick="fecharOnboarding()">🎵 Vamos lá!</button>
-    <button class="ob-skip" id="ob-skip" onclick="obGoTo(obCur+1)">Próximo →</button>
-  </div>
-</div>
-{% endif %}
-
 {% if pix_pendente %}
 <!-- ═══════════════════════════════════════════════════════════════════════ -->
-<!-- TELA PIX PENDENTE                                                       -->
+<!-- TELA DO PIX (16/10/26: passos, total com o R$ 1 do app, troca pra       -->
+<!-- "Pago!" sozinha quando confirma)                                         -->
 <!-- ═══════════════════════════════════════════════════════════════════════ -->
 <div class="header">
   <div class="header-top">
@@ -397,105 +291,21 @@
 </div>
 
 <div class="pix-screen">
-  <div class="pix-screen-title">{{ pix_pendente.tipo_emoji }} {{ pix_pendente.tipo_nome }}</div>
-  <div class="pix-screen-sub">Escaneie o QR ou copie o código abaixo</div>
-
-  {% if pix_pendente.qr_b64 %}
-  <div class="pix-qr-wrap">
-    <img src="data:image/png;base64,{{ pix_pendente.qr_b64 }}" alt="QR PIX">
-  </div>
-  {% endif %}
-
-  <div class="pix-valor-big">R$ {{ '%.2f'|format(pix_pendente.valor)|replace('.',',') }}</div>
-  {% if pix_pendente.taxa_conv and pix_pendente.taxa_conv > 0 %}
-  <div class="pix-taxa-breakdown" style="font-size:12px;color:#8888aa;margin:-4px 0 8px;line-height:1.6">
-    Pedido R$ {{ '%.2f'|format(pix_pendente.valor_item)|replace('.',',') }}
-    + taxa de conveniência R$ {{ '%.2f'|format(pix_pendente.taxa_conv)|replace('.',',') }}
-    <br><span style="color:#4ade80">✅ confirma sozinho — não precisa avisar ninguém</span>
-  </div>
-  {% endif %}
-  {% if not pix_pendente.via_efi and pix_pendente.recebedor %}
-  <div class="pix-recebedor">Recebedor: <strong>{{ pix_pendente.recebedor }}</strong></div>
-  {% endif %}
-
-  <div class="pix-copiacola-box">
-    <div class="pix-copiacola-label">📋 Pix Copia e Cola</div>
-    <div class="pix-copiacola-val" id="copiacola-val">{{ pix_pendente.payload }}</div>
-  </div>
-
-  <button class="btn-copiar-pix" onclick="copiarPayload()">📋 Copiar código PIX</button>
-
-  {# "Já Paguei" só no modo manual. Com Asaas o webhook confirma sozinho — botão é redundante. #}
-  {% if not pix_pendente.via_asaas %}
-  <!-- Botão trust-based: entra direto na fila -->
-  <button class="btn-confirmar" id="btn-ja-paguei"
-          style="background:linear-gradient(135deg,#16a34a,#15803d);margin-bottom:16px"
-          onclick="jaPaguei()">
-    ✅ Já Paguei — Entrar na Fila
-  </button>
-  {% else %}
-  <div style="font-size:13px;color:#4ade80;text-align:center;margin-bottom:16px">✅ Pague pelo QR — sua música entra na fila sozinha em segundos</div>
-  {% endif %}
-
-  <div class="pix-status-box" id="pix-status-box" style="display:none">
-    <div class="pix-status-icon">⏳</div>
-    <div class="pix-status-text"><span class="spinner"></span><span id="pix-status-text">Confirmando...</span></div>
-    <div class="pix-status-sub" id="pix-status-sub">Verificando pagamento...</div>
-  </div>
-</div>
-
 <script>
-const PIX_TOKEN     = '{{ b.jukebox_token or b.code }}';
-const PIX_PEDIDO_ID = {{ pix_pendente.pedido_id }};
-let _posicaoTimer = null;
-
-function iniciarPollingPosicao() {
-  clearInterval(_posicaoTimer);
-  _atualizarPosicao();
-  _posicaoTimer = setInterval(_atualizarPosicao, 5000);
-}
-
-async function _atualizarPosicao() {
-  try {
-    const r = await fetch(`/pubshow/api/pedido-status/${PIX_TOKEN}/${PIX_PEDIDO_ID}`);
-    const d = await r.json();
-    const sub = document.getElementById('pix-status-sub');
-    if (!sub) { clearInterval(_posicaoTimer); return; }
-
-    if (d.status === 'exibido') {
-      clearInterval(_posicaoTimer);
-      sub.innerHTML = '🎵 <strong style="color:#4ade80">Sua música está tocando agora!</strong>';
-      document.getElementById('pix-status-text').innerHTML = 'Curtindo! 🎸';
-    } else if (d.status === 'pendente' && d.posicao) {
-      const pos = d.posicao;
-      const tempo = d.tempo_min;
-      const posLabel = pos === 1
-        ? '🟢 <strong style="color:#4ade80">Você é o próximo!</strong> Toca quando o vídeo atual acabar.'
-        : `📍 Você é o <strong style="color:#f0f0ff">${pos}º</strong> da fila`;
-      const tempoLabel = tempo ? ` · ⏱ ~${tempo} min` : (pos === 1 ? '' : '');
-      sub.innerHTML = `${posLabel}${tempoLabel}`;
-    } else if (d.status === 'aguardando_pix') {
-      sub.textContent = '⏳ Aguardando confirmação do pagamento...';
-    } else if (d.status === 'aguardando_ok') {
-      sub.innerHTML = '🛡️ <strong style="color:#fbbf24">Pagamento OK!</strong> O bar está conferindo sua mensagem antes de mostrar na TV…';
-    } else if (d.status === 'recusado') {
-      clearInterval(_posicaoTimer);
-      sub.innerHTML = '❌ <strong style="color:#f87171">O bar não liberou essa mensagem.</strong> Fala com a gente no balcão.';
-    }
-  } catch(e) { /* silencioso */ }
-}
-
+// 16/10/26 (crítico C2): definido ANTES do botão — no 4G fraco o botão aparecia antes do script do fim
+// da página e o toque dava "copiarPayload is not defined"
 function copiarPayload() {
   const txt = document.getElementById('copiacola-val').textContent.trim();
   const btn = document.querySelector('.btn-copiar-pix');
   // Fallback para navegadores sem clipboard API (iOS HTTP, etc.) — Bug #9 fix
-  const _ok = () => { btn.textContent = '✅ Código copiado!'; setTimeout(() => btn.textContent = '📋 Copiar código PIX', 3000); };
+  const _ok = () => { btn.textContent = '✅ Código copiado! Agora abre teu banco'; setTimeout(() => btn.textContent = '📋 Copiar código PIX', 4000); };
   const _fail = () => {
     // Fallback: seleciona o texto para copiar manualmente
     const el = document.getElementById('copiacola-val');
+    el.style.maxHeight = 'none';
     const range = document.createRange(); range.selectNodeContents(el);
     const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(range);
-    btn.textContent = '📌 Selecione e copie (Ctrl+C)';
+    btn.textContent = '📌 Segura no código e copia';
     setTimeout(() => btn.textContent = '📋 Copiar código PIX', 4000);
   };
   if (navigator.clipboard && window.isSecureContext) {
@@ -503,6 +313,231 @@ function copiarPayload() {
   } else {
     _fail();
   }
+}
+</script>
+  <div class="pix-screen-title">{{ pix_pendente.tipo_emoji }} {{ pix_pendente.tipo_nome }}</div>
+  <div class="pix-valor-big">R$ {{ '%.2f'|format(pix_pendente.valor)|replace('.',',') }}</div>
+  {% if pix_pendente.taxa_conv and pix_pendente.taxa_conv > 0 %}
+  {#- Lote D B (16/10/26): "R$ 1 do app", nunca "taxa de serviço" (no bar isso é o 10% do garçom; Procon-GO x iFood) #}
+  <div class="pix-taxa-breakdown">
+    R$ {{ '%.2f'|format(pix_pendente.valor_item)|replace('.',',') }} + R$ {{ '%.2f'|format(pix_pendente.taxa_conv)|replace('.',',') }} do app
+  </div>
+  {% endif %}
+
+  {# 16/10/26 (crítico C2): o status fica logo abaixo do valor — antes ficava em ~900 px, abaixo da dobra #}
+  <div class="pix-status-box" id="pix-status-box" style="display:none">
+    <div class="pix-status-icon">⏳</div>
+    <div class="pix-status-text"><span class="spinner"></span><span id="pix-status-text">Confirmando...</span></div>
+    <div class="pix-status-sub" id="pix-status-sub">Verificando pagamento...</div>
+  </div>
+
+  <div id="pix-pagar">
+    <ol class="pix-passos">
+      <li>Toca em <strong>Copiar código PIX</strong></li>
+      <li>Abre teu banco → <strong>PIX → Copia e Cola</strong></li>
+      {% if pix_pendente.efi %}
+      {# Lote C, fatia b (16/10/26): só com a Efí ligada pro bar (RELATORIO_FINAL e.2). Com o Asaas, o texto de hoje #}
+      <li>Volta aqui: <strong>confirma sozinho em segundos</strong></li>
+      {% elif pix_pendente.via_asaas %}
+      <li>Volta aqui: <strong>confirma sozinho</strong>, não precisa avisar ninguém</li>
+      {% else %}
+      <li>Volta aqui e toca em <strong>Já paguei</strong></li>
+      {% endif %}
+    </ol>
+
+    <button class="btn-copiar-pix" onclick="copiarPayload()">📋 Copiar código PIX</button>
+
+    <div class="pix-copiacola-box">
+      <div class="pix-copiacola-label">PIX Copia e Cola</div>
+      <div class="pix-copiacola-val" id="copiacola-val">{{ pix_pendente.payload }}</div>
+    </div>
+
+    {% if pix_pendente.efi %}
+    {# Lote C, fatia b: o PIX é recebido pela conta Efí do PubShow (o split manda a parte do bar na hora) #}
+    <div class="pix-recebedor" id="pix-recebedor-efi">
+      {% if pix_titular %}No banco aparece <strong style="color:var(--text)">{{ pix_titular }}</strong>: é o sistema do jukebox do {{ b.nome }}.
+      {% else %}No banco aparece o nome do sistema do jukebox, não o do {{ b.nome }}. Pode pagar.{% endif %}
+    </div>
+    {% if pix_pendente.expira_min is defined %}
+    <div class="pix-recebedor" id="pix-validade">{% if pix_pendente.expira_min > 0 %}⏳ Esse código vale {{ pix_pendente.expira_min }} min{% if pix_pendente.expira_hora %} (até {{ pix_pendente.expira_hora }}){% endif %}.{% else %}⌛ Esse PIX venceu. Pede de novo.{% endif %}</div>
+    {% endif %}
+    {% elif pix_pendente.via_asaas %}
+    {# o PIX cai na conta do sistema, não na do bar: o banco mostra outro nome (16/10/26, CEL-11) #}
+    <div class="pix-recebedor">
+      {% if pix_titular and not pix_pendente.via_efi %}No banco vai aparecer <strong style="color:var(--text)">{{ pix_titular }}</strong>: é o sistema do jukebox do {{ b.nome }}, pode pagar.
+      {% else %}No banco aparece o nome do sistema do jukebox, não o do {{ b.nome }}. Pode pagar.{% endif %}
+    </div>
+    {% else %}
+    <div class="pix-recebedor">Recebedor: <strong>{{ pix_pendente.recebedor }}</strong></div>
+    {% endif %}
+
+    {% if pix_pendente.qr_b64 %}
+    <details class="pix-qr-det" style="margin:4px 0 14px">
+      <summary class="pix-qr-label" style="cursor:pointer;padding:10px 0;font-weight:700">Pagar com outro celular? Mostrar QR ▾</summary>
+      <div class="pix-qr-wrap">
+        <img src="data:image/png;base64,{{ pix_pendente.qr_b64 }}" alt="QR PIX">
+      </div>
+    </details>
+    {% endif %}
+
+    {# "Já Paguei" só no modo manual. Com Asaas o webhook confirma sozinho — botão é redundante. #}
+    {% if not pix_pendente.via_asaas %}
+    <button class="btn-confirmar" id="btn-ja-paguei"
+            style="background:linear-gradient(135deg,#16a34a,#15803d);margin-bottom:16px"
+            onclick="jaPaguei()">
+      ✅ Já Paguei — Entrar na Fila
+    </button>
+    {% endif %}
+  </div>
+
+  <a class="btn-voltar" href="/pubshow/jukebox/{{ b.jukebox_token or b.code }}">← Voltar pras músicas</a>
+</div>
+
+<script>
+const PIX_TOKEN     = '{{ b.jukebox_token or b.code }}';
+const PIX_PEDIDO_ID = {{ pix_pendente.pedido_id }};
+const PIX_TIPO      = {{ (pix_pendente.tipo or '')|tojson }};
+{%- if pix_pendente.efi %}
+const PIX_EFI       = true;   // Lote C, fatia b: devolução/validade da Efí (só com a Efí ligada pro bar)
+const PIX_VALOR_TXT = {{ ('R$ ' ~ ('%.2f'|format(pix_pendente.valor or 0))|replace('.', ','))|tojson }};
+{%- endif %}
+const TIPOS_MUSICA  = ['flash','vip','musica','musica_especifica','musica_externa'];
+const _POLL_MAX_MS  = 30 * 60 * 1000;   // 16/10/26 (CEL-30): o polling não roda pra sempre
+const _pollIni      = Date.now();
+let _posicaoTimer = null;
+// 16/10/26 (crítico C2): a tela do PIX era a resposta de um POST — recarregar (o iPhone faz sozinho ao
+// voltar do banco) reenviava o pedido e criava a 2ª cobrança. A URL vira o GET deste PIX, e o celular
+// lembra o PIX aberto pra lista mostrar "Teu PIX de R$ X → ver se caiu".
+const PIX_URL = {{ (pix_url or '')|tojson }};
+(function(){
+  try {
+    const cid = localStorage.getItem('jk_cid') || '';
+    if (!PIX_URL || !/^[A-Za-z0-9_-]{8,40}$/.test(cid)) return;
+    const u = PIX_URL + '?c=' + encodeURIComponent(cid);
+    if (location.pathname + location.search !== u) history.replaceState(null, '', u);
+    const ab = JSON.parse(localStorage.getItem('jk_pix_aberto') || 'null');
+    if (!ab || ab.id !== PIX_PEDIDO_ID)
+      localStorage.setItem('jk_pix_aberto', JSON.stringify({id: PIX_PEDIDO_ID, u: u, t: Date.now(),
+        v: {{ pix_pendente.valor|tojson }}, n: {{ (pix_pendente.tipo_nome or '')|tojson }}}));
+  } catch(e) {}
+})();
+function _esquecerPixAberto() {
+  try {
+    const ab = JSON.parse(localStorage.getItem('jk_pix_aberto') || 'null');
+    if (ab && ab.id === PIX_PEDIDO_ID) localStorage.removeItem('jk_pix_aberto');
+  } catch(e) {}
+}
+// pedido criado: só agora lembra o nome que o servidor aceitou e esconde a faixa (16/10/26, V4-02)
+try { localStorage.setItem('jk_pediu', '1'); } catch(e) {}
+{% if nome_aceito %}try { localStorage.setItem('jk_nome', {{ nome_aceito|tojson }}); } catch(e) {}{% endif %}
+
+function iniciarPollingPosicao() {
+  clearInterval(_posicaoTimer);
+  _atualizarPosicao();
+  _posicaoTimer = setInterval(_atualizarPosicao, 5000);
+}
+
+// Troca o bloco INTEIRO de status (16/10/26, CEL-07): pago = verde, sem spinner, sem o botão de copiar.
+function _pixStatus(estado, icone, texto, sub) {
+  const box = document.getElementById('pix-status-box');
+  if (!box) return;
+  box.style.display = 'block';
+  box.classList.toggle('pago', estado === 'pago');
+  box.classList.toggle('ruim', estado === 'ruim');
+  box.querySelector('.pix-status-icon').textContent = icone;
+  if (estado !== 'esperando') box.querySelector('.spinner')?.remove();
+  document.getElementById('pix-status-text').textContent = texto;
+  document.getElementById('pix-status-sub').innerHTML = sub;
+  if (estado === 'pago' || estado === 'ruim') {
+    const pagar = document.getElementById('pix-pagar');
+    if (pagar) pagar.style.display = 'none';
+    _esquecerPixAberto();
+  }
+}
+function _textoPago() {
+  if (TIPOS_MUSICA.includes(PIX_TIPO)) return '✅ Pago! Tua música entra na frente da fila.';
+  if (PIX_TIPO === 'parabens') return '✅ Pago! Teu parabéns aparece na TV em instantes. Prepara a câmera 📸';
+  if (PIX_TIPO === 'gorjeta')  return '✅ Pago! Valeu! Tua gorjeta aparece na TV e a equipe agradece 🙏';
+  return '✅ Pago! Aparece na TV em instantes.';
+}
+
+async function _atualizarPosicao() {
+  if (Date.now() - _pollIni > _POLL_MAX_MS) {
+    clearInterval(_posicaoTimer);
+    const t = document.getElementById('pix-status-text');
+    if (t && !document.getElementById('pix-status-box').classList.contains('pago'))
+      _pixStatus('ruim', '⌛', 'Esse PIX não confirmou.', 'Se você pagou, ele confirma sozinho. Se não, volta e pede de novo.');
+    return;
+  }
+  try {
+    const r = await fetch(`/pubshow/api/pedido-status/${PIX_TOKEN}/${PIX_PEDIDO_ID}`);
+    const d = await r.json();
+    const musica = TIPOS_MUSICA.includes(PIX_TIPO);
+    {%- if pix_pendente.efi %}
+    // Lote C, fatia b (16/10/26): só com a Efí — PIX devolvido (recusa do bar ou PIX atrasado) e QR vencido
+    const _recusou = d.status === 'recusado';
+    if (d.pix_devolvido) {
+      clearInterval(_posicaoTimer);
+      _pixStatus('ruim', '↩️', _recusou ? 'O bar não liberou essa mensagem.' : 'Esse PIX chegou depois do prazo.',
+                 'Teu PIX de ' + PIX_VALOR_TXT + ' já foi devolvido.');
+      return;
+    }
+    if (d.pix_devolvendo) {   // continua perguntando até a Efí confirmar a devolução
+      _pixStatus('ruim', '↩️', _recusou ? 'O bar não liberou essa mensagem.' : 'Esse PIX chegou depois do prazo.',
+                 'Estamos devolvendo teu PIX de ' + PIX_VALOR_TXT + '.');
+      return;
+    }
+    if (d.pix_expirou && d.status === 'aguardando_pix' && d.pix_graca) {
+      // VCb-05 (16/10/26): venceu agora há pouco; um PIX feito no prazo ainda confirma → continua perguntando
+      document.getElementById('pix-status-text').textContent = 'Esse PIX venceu.';
+      document.getElementById('pix-status-sub').textContent = 'Se você pagou agora há pouco, confirma sozinho; se não, pede de novo.';
+      return;
+    }
+    if (d.pix_expirou && d.status === 'aguardando_pix') {
+      clearInterval(_posicaoTimer);
+      _pixStatus('ruim', '⌛', 'Esse PIX venceu. Pede de novo.', 'Se você chegou a pagar, não paga de novo: ou o pedido entra normal, ou o PIX volta sozinho pra tua conta.');
+      return;
+    }
+    if (_recusou && (d.pix_devolucao_suporte || d.pix_devolucao_negada)) {   // crítico leigo A5 (17/10/26)
+      clearInterval(_posicaoTimer);
+      _pixStatus('ruim', '❌', 'O bar não liberou essa mensagem.', d.pix_devolucao_negada
+        ? 'O suporte do jukebox não aprovou a devolução. Fala no balcão ou chama (47) 99776-6831.'
+        : 'A devolução do teu PIX de ' + PIX_VALOR_TXT + ' está com o suporte do jukebox. Dúvida: fala no balcão ou chama (47) 99776-6831.');
+      return;
+    }
+    if (_recusou) {           // a cobrança foi cancelada antes de o PIX cair
+      clearInterval(_posicaoTimer);
+      _pixStatus('ruim', '❌', 'O bar não liberou essa mensagem.', 'Esse PIX foi cancelado. Se você chegou a pagar, ele volta sozinho pra tua conta.');
+      return;
+    }
+    if (d.status === 'aguardando_pix') {
+      document.getElementById('pix-status-sub').textContent = 'Confirma sozinho em segundos.';
+      return;
+    }
+    {%- endif %}
+    if (d.status === 'aguardando_pix') {
+      document.getElementById('pix-status-sub').textContent = 'Assim que o PIX cair, confirma sozinho.';
+    } else if (d.status === 'aguardando_ok') {
+      _pixStatus('pago', '🛡️', '✅ Pago!', 'O bar está conferindo tua mensagem antes de mostrar na TV.');
+    } else if (d.status === 'pendente') {
+      let sub = 'Já está na fila da TV.';
+      if (musica && d.posicao) {
+        sub = d.posicao === 1
+          ? '🟢 <strong style="color:#4ade80">Você é o próximo!</strong> Toca quando o vídeo atual acabar.'
+          : `📍 Você é o <strong style="color:#f0f0ff">${d.posicao}º</strong> da fila${d.tempo_min ? ' · ⏱ ~' + d.tempo_min + ' min' : ''}`;
+      }
+      _pixStatus('pago', '✅', _textoPago(), sub);
+    } else if (d.status === 'exibido') {
+      clearInterval(_posicaoTimer);
+      _pixStatus('pago', '🎉', musica ? '🎵 Tua música está tocando!' : '🎉 Apareceu na TV!', 'Curte aí! 🍻');
+    } else if (d.status === 'dispensado') {
+      clearInterval(_posicaoTimer);
+      _pixStatus('ruim', 'ℹ️', 'O bar tirou esse pedido da fila.', 'Dúvida? Fala no balcão.');
+    } else if (d.status === 'recusado') {
+      clearInterval(_posicaoTimer);
+      _pixStatus('ruim', '❌', 'O bar não liberou essa mensagem.', 'Fala no balcão sobre o teu PIX.');
+    }
+  } catch(e) { /* silencioso */ }
 }
 
 async function jaPaguei() {
@@ -516,28 +551,14 @@ async function jaPaguei() {
 
     if (d.ok) {
       btn.remove();
-      document.querySelector('.btn-copiar-pix').style.display = 'none';
-      const box  = document.getElementById('pix-status-box');
-      const icon = box.querySelector('.pix-status-icon');
-      box.style.display = 'block';
-      box.querySelector('.spinner')?.remove();
-
       if (d.modo === 'aguardando_bar') {
         // Bar exige confirmação manual — cliente avisou mas bar ainda não confirmou
-        icon.textContent = '⏳';
-        document.getElementById('pix-status-text').innerHTML = 'Pagamento enviado! Aguardando o bar confirmar.';
-        document.getElementById('pix-status-text').style.color = '#fbbf24';
-        document.getElementById('pix-status-sub').textContent = d.msg || 'O bar vai verificar seu PIX e confirmar em instantes.';
-        box.style.borderColor = 'rgba(251,191,36,.4)';
+        _pixStatus('esperando', '⏳', 'Pagamento enviado! Aguardando o bar confirmar.',
+                   d.msg || 'O bar vai verificar seu PIX e confirmar em instantes.');
+        document.getElementById('pix-status-box').querySelector('.spinner')?.remove();
       } else {
         // Trust-based — entrou direto na fila
-        icon.textContent = '✅';
-        document.getElementById('pix-status-text').innerHTML = 'Pedido confirmado! Na fila 🎉';
-        document.getElementById('pix-status-text').style.color = '#4ade80';
-        document.getElementById('pix-status-sub').textContent = 'Buscando posição na fila...';
-        box.style.borderColor = 'rgba(34,197,94,.4)';
-
-        // Busca posição na fila em tempo real
+        _pixStatus('pago', '✅', 'Pedido confirmado! Na fila 🎉', 'Buscando posição na fila...');
         iniciarPollingPosicao();
       }
     } else {
@@ -555,13 +576,14 @@ async function jaPaguei() {
 }
 
 {% if pix_pendente.via_asaas %}
-// Asaas confirma sozinho via webhook — já mostra o status e acompanha a fila,
-// sem o cliente precisar clicar em nada. Quando o pagamento cair, vira "na fila".
+// Asaas confirma sozinho via webhook — já mostra o status e acompanha,
+// sem o cliente precisar clicar em nada. Quando o pagamento cair, vira "Pago!".
 (function(){
-  const box = document.getElementById('pix-status-box');
-  if (box) box.style.display = 'block';
-  document.getElementById('pix-status-text').innerHTML = 'Aguardando o pagamento cair...';
-  document.getElementById('pix-status-sub').textContent = 'Assim que o PIX for confirmado, sua música entra na fila automaticamente.';
+  {%- if pix_pendente.efi %}
+  _pixStatus('esperando', '⏳', 'Esperando o PIX cair...', 'Confirma sozinho em segundos.');
+  {%- else %}
+  _pixStatus('esperando', '⏳', 'Esperando o PIX cair...', 'Assim que o PIX cair, confirma sozinho.');
+  {%- endif %}
   iniciarPollingPosicao();
 })();
 {% endif %}
@@ -570,37 +592,31 @@ async function jaPaguei() {
 {% else %}
 
 <!-- ═══════════════════════════════════════════════════════════════════════ -->
-<!-- TELA NORMAL                                                             -->
+<!-- TELA NORMAL (16/10/26, B8): lista de músicas direto + 2 abas fixas      -->
 <!-- ═══════════════════════════════════════════════════════════════════════ -->
 <div class="header">
   <div class="header-top">
     <span class="canal-badge">{{ canal.emoji }} {{ canal.nome }}</span>
     <span class="bar-nome">{{ b.nome }}</span>
-    <!-- Language toggle -->
-    <div style="margin-left:auto;display:flex;gap:4px;flex-shrink:0">
-      <button id="btn-lang-pt" onclick="setLang('pt')"
-        style="background:rgba(255,255,255,.12);border:none;border-radius:6px;padding:4px 8px;font-size:14px;cursor:pointer;opacity:1;transition:.15s" title="Português">🇧🇷</button>
-      <button id="btn-lang-en" onclick="setLang('en')"
-        style="background:none;border:none;border-radius:6px;padding:4px 8px;font-size:14px;cursor:pointer;opacity:.45;transition:.15s" title="English">🇺🇸</button>
-    </div>
   </div>
-  <div class="tocando-agora"><span class="dot-live"></span><span data-i18n="status">Jukebox ativo — escolha seu pedido abaixo</span></div>
+  {% if aberto %}
+  <div class="tocando-agora"><span class="dot-live"></span>Jukebox ativo · pedir música é grátis</div>
+  {% else %}
+  <div class="tocando-agora"><span class="dot-off"></span>Jukebox pausado</div>
+  {% endif %}
 </div>
 
 {% if sucesso %}
-  {% set t = tipos[sucesso] %}
+  {% set t = tipos.get(sucesso, {'emoji': '🎵'}) %}
   <div class="success-box">
     <div class="emoji">{{ t.emoji }}</div>
+    {% if sucesso in ('musica','musica_especifica','musica_externa') %}
+    <h3>✅ Na fila!</h3>
+    <p>Tua música toca quando chegar a vez dela.</p>
+    {% else %}
     <h3>Pedido enviado! {{ t.emoji }}</h3>
     <p>
-      {% if sucesso == 'vip' %}
-        Sua música vai tocar agora! O vídeo atual será interrompido. 👑
-      {% elif sucesso == 'flash' %}
-        Furou a fila! Assim que o PIX cair, a sua é a PRÓXIMA: toca logo que a música atual acabar. ⚡
-      {% elif sucesso in ('musica_especifica','musica_externa') %}
-        Sua música entra na fila e toca quando o vídeo atual terminar!
-      {% elif sucesso == 'musica' %}
-        Pedido na fila! O próximo vídeo do canal vai tocar em breve.
+      {% if sucesso == 'flash' %}Furou a fila! Tua música entra na frente da fila. ⚡
       {% elif sucesso == 'parabens' %}O Parabéns aparece na tela em breve. Prepara a câmera! 📸
       {% elif sucesso == 'dedicatoria' %}Sua dedicatória aparece na tela em instantes! ❤️
       {% elif sucesso == 'brinde' %}Brinde geral na tela! Levanta o copo! 🍻
@@ -612,15 +628,18 @@ async function jaPaguei() {
       {% else %}Seu pedido está na fila! Aguarda um momento.
       {% endif %}
     </p>
+    {% endif %}
     {% if sucesso in ('musica','musica_especifica','musica_externa','flash') and pedido_id_sucesso %}
-    <div id="fila-posicao" style="margin-top:12px;font-size:13px;color:#86efac">⏳ Calculando posição...</div>
+    <div id="fila-posicao" style="margin-top:12px;font-size:14px;color:#86efac">⏳ Calculando posição...</div>
     <script>
     (function() {
       const TOKEN = '{{ b.jukebox_token or b.code }}';
       const PID   = {{ pedido_id_sucesso or 0 }};
       if (!PID) return;
+      const ini = Date.now();
       let _t = null;
       async function updatePos() {
+        if (Date.now() - ini > 30 * 60 * 1000) { clearInterval(_t); return; }   // 16/10/26: no máx. 30 min
         try {
           const r = await fetch(`/pubshow/api/pedido-status/${TOKEN}/${PID}`);
           const d = await r.json();
@@ -628,10 +647,13 @@ async function jaPaguei() {
           if (!el) { clearInterval(_t); return; }
           if (d.status === 'exibido') {
             clearInterval(_t);
-            el.innerHTML = '🎵 <strong>Sua música está tocando agora!</strong>';
+            el.innerHTML = '🎵 <strong>Tua música está tocando agora!</strong>';
+          } else if (d.status === 'dispensado' || d.status === 'recusado') {
+            clearInterval(_t);
+            el.textContent = 'O bar tirou esse pedido da fila.';
           } else if (d.posicao) {
             const p = d.posicao;
-            const label = p === 1 ? '🟢 <strong>Você é o próximo!</strong>' : `📍 ${p}º da fila`;
+            const label = p === 1 ? '🟢 <strong>Você é o próximo!</strong>' : `📍 Você é o ${p}º`;
             const tempo = d.tempo_min ? ` · ⏱ ~${d.tempo_min} min` : '';
             el.innerHTML = `${label}${tempo}`;
           }
@@ -643,207 +665,216 @@ async function jaPaguei() {
     </script>
     {% endif %}
   </div>
+  <script>try { localStorage.setItem('jk_pediu', '1'); } catch(e) {}
+  {% if nome_aceito %}try { localStorage.setItem('jk_nome', {{ nome_aceito|tojson }}); } catch(e) {}{% endif %}
+  {% if sucesso in ('musica','musica_especifica','musica_externa') and pedido_id_sucesso %}
+  try { localStorage.setItem('jk_gratis', JSON.stringify({id: {{ pedido_id_sucesso|int }}, t: Date.now()})); } catch(e) {}
+  {% endif %}</script>
 {% endif %}
 
 {% if erro %}<div class="erro-box">⚠️ {{ erro }}</div>{% endif %}
 
-<!-- carrossel de tutorial removido 11/09/26: trazia a tabela de preços antiga (slide2.webp) -->
+{# 16/10/26 (crítico C2): o PIX que ficou aberto (voltou com o Voltar, reabriu o QR) tem caminho de volta #}
+<div class="faixa-aviso" id="faixa-pix-aberto" style="display:none"></div>
+<script>
+(function(){
+  try {
+    {% if request.method == 'POST' %}
+    // a resposta deste POST não pode ser reenviada ao recarregar (cobrança/pedido em dobro)
+    history.replaceState(null, '', '/pubshow/jukebox/{{ b.jukebox_token or b.code }}');
+    {% endif %}
+    const ab = JSON.parse(localStorage.getItem('jk_pix_aberto') || 'null');
+    const base = '/pubshow/jukebox/{{ b.jukebox_token or b.code }}/pix/';
+    if (!ab || !ab.u || ab.u.indexOf(base) !== 0) return;
+    if (Date.now() - (ab.t || 0) > 30 * 60 * 1000) { localStorage.removeItem('jk_pix_aberto'); return; }
+    const f = document.getElementById('faixa-pix-aberto');
+    const valor = 'R$ ' + Number(ab.v || 0).toFixed(2).replace('.', ',');
+    f.appendChild(document.createTextNode('💳 Teu PIX de ' + valor + (ab.n ? ' (' + ab.n + ')' : '') + ' → '));
+    const a = document.createElement('a');
+    a.href = ab.u; a.textContent = 'ver se caiu'; a.style.color = '#fbbf24'; a.style.fontWeight = '800';
+    f.appendChild(a);
+    f.style.display = 'block';
+  } catch(e) {}
+})();
+</script>
 
-{% if fila %}
-<div class="fila-section">
-  <div class="fila-titulo"><span data-i18n="fila">📋 Fila agora</span> ({{ fila|length }})</div>
-  {% for p in fila[:4] %}{% set t = tipos.get(p.tipo, {}) %}
-  <div class="fila-item">
-    <span class="fila-emoji">{{ t.get('emoji','🎵') }}</span>
-    <div class="fila-info">
-      <div class="fila-nome">{{ p.nome_cliente }}</div>
-      <div class="fila-tipo">
-        {%- if p.titulo_pedido %}{{ t.get('emoji','🎵') }} {{ p.titulo_pedido[:40] }}
-        {%- else %}{{ t.get('nome', p.tipo) }}{% if p.mensagem %} · "{{ p.mensagem[:25] }}..."{% endif %}{% endif %}
+{# aviso temporário e mensagem do dono (painel → Ajustes): antes nunca apareciam (16/10/26, CEL-12) #}
+{% if aviso %}<div class="faixa-aviso">📢 {{ aviso }}</div>{% endif %}
+{% if b.mensagem_jukebox %}<div class="faixa-msg">💬 {{ b.mensagem_jukebox }}</div>{% endif %}
+
+{% if not aberto %}
+<!-- Jukebox fechado: 1 cartão com o motivo, sem cardápio (16/10/26, CEL-06) -->
+<div class="fechado-card">
+  <span class="emoji">🔇</span>
+  <h3>O jukebox está pausado agora.</h3>
+  <p>{% if volta_as %}Volta às {{ volta_as }}! 🍻{% else %}{{ motivo_fechado }}{% endif %}</p>
+</div>
+{% else %}
+
+{# Faixa-tutorial: some depois do 1º pedido (localStorage 'jk_pediu', com try) #}
+<div class="faixa" id="faixa-tutorial" style="display:none">
+  🎵 <strong>Pedir música é GRÁTIS{% if gratis_min %} (1 a cada {{ gratis_min }} min por celular){% endif %}.</strong> Toca na música → confirma teu nome → aparece na TV.
+  {# texto pelo modo de pagamento (16/10/26, V4-04): sem gateway e sem chave do bar, é no caixa #}
+  Furar a fila e recados na TV são pagos {% if asaas_ativo or b.pix_key %}no PIX{% else %}no caixa{% endif %}.
+</div>
+<script>
+(function(){
+  let viu = false;
+  try { viu = !!localStorage.getItem('jk_pediu'); } catch(e) {}
+  if (!viu) document.getElementById('faixa-tutorial').style.display = 'block';
+})();
+</script>
+
+{# ═══ ABA 1: MÚSICAS (abre direto) ═══ #}
+<div class="aba on" id="aba-musicas">
+  {% set fila_musicas = fila|selectattr('tipo', 'in', ['vip','flash','musica','musica_especifica','musica_externa'])|list %}
+  {% if fila %}
+  <details class="fila-section">
+    <summary>📋 Fila agora: {{ fila_musicas|length }} música{{ 's' if fila_musicas|length != 1 }} ▾</summary>
+    {% for p in fila[:6] %}{% set t = tipos.get(p.tipo, {}) %}
+    <div class="fila-item">
+      <span class="fila-emoji">{{ t.get('emoji','🎵') }}</span>
+      <div class="fila-info">
+        <div class="fila-nome">{{ p.nome_cliente }}</div>
+        <div class="fila-tipo">
+          {%- if p.titulo_pedido %}{{ p.titulo_pedido[:40] }}
+          {%- else %}{{ t.get('nome', p.tipo) }}{% if p.mensagem %} · "{{ p.mensagem[:25] }}..."{% endif %}{% endif %}
+        </div>
       </div>
     </div>
-  </div>
-  {% endfor %}
-</div>
-{% endif %}
-
-<!-- Grid principal — 5 opções em destaque -->
-<div class="pedidos-section" id="grid-section">
-  {% if hh_desconto > 0 %}
-  <div style="background:linear-gradient(135deg,#78350f,#92400e,#78350f);background-size:200% 100%;border:1px solid rgba(251,191,36,.5);border-radius:16px;padding:14px 18px;margin-bottom:16px;display:flex;align-items:center;gap:14px;box-shadow:0 0 30px rgba(251,191,36,.15);animation:hh-pulse 2s ease-in-out infinite">
-    <span style="font-size:32px;animation:hh-bounce .8s ease-in-out infinite alternate">🎉</span>
-    <div style="flex:1">
-      <div style="font-size:15px;font-weight:900;color:#fbbf24;margin-bottom:2px">HAPPY HOUR — {{ hh_desconto }}% OFF</div>
-      <div style="font-size:12px;color:#fcd34d">Preços já com desconto! Aproveite enquanto dura.</div>
-    </div>
-    <div style="background:rgba(251,191,36,.2);border-radius:10px;padding:6px 12px;font-size:18px;font-weight:900;color:#fbbf24">-{{ hh_desconto }}%</div>
-  </div>
-  <style>
-  @keyframes hh-pulse{0%,100%{box-shadow:0 0 20px rgba(251,191,36,.1)}50%{box-shadow:0 0 40px rgba(251,191,36,.3)}}
-  @keyframes hh-bounce{from{transform:scale(1)}to{transform:scale(1.15)}}
-  </style>
+    {% endfor %}
+  </details>
   {% endif %}
-  <div class="pedidos-titulo" data-i18n="titulo_grid">🎰 O que você quer fazer?</div>
-  <div class="pedidos-grid">
 
-    {# Macro para mostrar preço com ou sem desconto.
-       16/10/26: com gateway (Asaas/Efí) o card mostra o TOTAL do PIX (item + taxa) — t.preco segue sendo o item #}
-    {% macro preco_card(t) %}
-      {% set _tx = (pix_conv or 0) if t.preco > 0 else 0 %}
-      {% set _tot = t.preco + _tx %}
-      {% if t.preco <= 0 %}
-        <div class="card-preco" style="color:#4ade80;text-shadow:0 0 20px #4ade8066">GRÁTIS</div>
-      {% elif t.get('happy_hour') %}
-        {% set _orig = t.preco_original + _tx %}
-        <div class="card-preco">R$ {{ ('%.0f' if _tot == (_tot|int) else '%.2f')|format(_tot)|replace('.',',') }}</div>
-        <div style="font-size:9px;color:var(--text2);text-decoration:line-through;margin-top:-2px">R$ {{ ('%.0f' if _orig == (_orig|int) else '%.2f')|format(_orig)|replace('.',',') }}</div>
-      {% else %}
-        <div class="card-preco">R$ {{ ('%.0f' if _tot == (_tot|int) else '%.2f')|format(_tot)|replace('.',',') }}</div>
-      {% endif %}
-    {% endmacro %}
+  <div id="busca-section">
+    {# 17/10/26 (junção com a produção c7273fb): furar a fila é só com música do YouTube (se o bar liberou o YouTube) #}
+    <div class="dica-flash" id="dica-flash">⚡ {% if youtube_liberado %}Busca a música no <strong>YouTube</strong> e toca em <strong>Furar a fila</strong>.{% else %}Escolhe a música e toca em <strong>Furar a fila</strong>.{% endif %}</div>
+    {% if youtube_liberado %}
+    <!-- Fonte da música: acervo do bar ou YouTube (11/09/26) -->
+    <div id="busca-fonte" style="display:flex;gap:8px;margin:0 0 10px">
+      <button type="button" id="fonte-biblioteca" onclick="trocarFonte('biblioteca')" style="flex:1;min-height:44px;border-radius:12px;border:2px solid #06b6d4;background:rgba(6,182,212,.14);color:#fff;font-weight:800;font-size:14px;font-family:inherit;cursor:pointer">📚 Lista do bar</button>
+      <button type="button" id="fonte-youtube" onclick="trocarFonte('youtube')" style="flex:1;min-height:44px;border-radius:12px;border:2px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:#8888aa;font-weight:800;font-size:14px;font-family:inherit;cursor:pointer">🌐 YouTube</button>
+    </div>
+    {% endif %}
 
-    {# 1. Escolher a música — GRÁTIS (acervo do bar) #}
-    {% if 'musica_especifica' in tipos %}{% set t = tipos['musica_especifica'] %}
-    <div class="pedido-card lib" style="--card-cor:{{ t.cor }}" onclick="abrirBusca('biblioteca')">
-      <div class="badge-lib">CURADO</div>
-      <div class="card-emoji">{{ t.emoji }}</div>
-      <div class="card-nome" data-i18n="card_especifica">Escolher<br>a música</div>
-      {{ preco_card(t) }}
-      <div class="card-detalhe">{{ total_videos }} músicas · por estilo</div>
-    </div>{% endif %}
+    <div class="busca-input-wrap">
+      <input type="search" class="busca-input" id="busca-input"
+             placeholder="🔍 Procura artista ou música" enterkeyhint="search" autocomplete="off"
+             oninput="onBuscaInput()" onkeydown="if(event.key==='Enter'){this.blur();buscar();}">
+      <button class="busca-btn" onclick="buscar()" aria-label="Buscar">🔍</button>
+    </div>
 
-    {# 2. Furar a fila — escolhe no acervo OU no YouTube (toggle dentro da busca) #}
-    {% if 'flash' in tipos %}{% set t = tipos['flash'] %}
-    <div class="pedido-card" style="--card-cor:{{ t.cor }}" onclick="abrirBusca('{{ 'youtube' if youtube_liberado else 'biblioteca' }}','flash')">
-      <div class="card-emoji">{{ t.emoji }}</div>
-      <div class="card-nome" data-i18n="card_flash">Furar<br>a fila</div>
-      {{ preco_card(t) }}
-      <div class="card-detalhe">{% if youtube_liberado %}qualquer música do YouTube{% else %}escolha na lista{% endif %}</div>
-    </div>{% endif %}
-
-    {# 3. Buscar no YouTube — subiu das "Mais opções" pro lugar do "Tocar agora" (11/09/26) #}
-    {% if 'musica_externa' in tipos %}{% set t = tipos['musica_externa'] %}
-    <div class="pedido-card ext" style="--card-cor:{{ t.cor }}" onclick="abrirBusca('youtube')">
-      <div class="badge-ext">EXTERNO</div>
-      <div class="card-emoji">{{ t.emoji }}</div>
-      <div class="card-nome">Buscar<br>no YouTube</div>
-      {{ preco_card(t) }}
-    </div>{% endif %}
-
-    {# 4. Música aleatória #}
-    {% if 'musica' in tipos %}{% set t = tipos['musica'] %}
-    <div class="pedido-card" style="--card-cor:{{ t.cor }}"
-         onclick="selecionarTipo('musica','{{ t.nome }}','{{ t.emoji }}',{{ t.preco }},'{{ t.cor }}')">
-      <div class="card-emoji">{{ t.emoji }}</div>
-      <div class="card-nome" data-i18n="card_musica">Música<br>aleatória</div>
-      {{ preco_card(t) }}
-    </div>{% endif %}
-
-    {# 5. Parabéns #}
-    {% if 'parabens' in tipos %}{% set t = tipos['parabens'] %}
-    <div class="pedido-card" style="--card-cor:{{ t.cor }}"
-         onclick="selecionarTipo('parabens','{{ t.nome }}','{{ t.emoji }}',{{ t.preco }},'{{ t.cor }}')">
-      <div class="card-emoji">{{ t.emoji }}</div>
-      <div class="card-nome" data-i18n="card_parabens">Parabéns<br>na tela! 🎂</div>
-      {{ preco_card(t) }}
-    </div>{% endif %}
-
-    {# 6. Cantada — o esquenta do pedido de namoro (11/09/26) #}
-    {% if 'cantada' in tipos %}{% set t = tipos['cantada'] %}
-    <div class="pedido-card" style="--card-cor:{{ t.cor }}"
-         onclick="selecionarTipo('cantada','{{ t.nome }}','{{ t.emoji }}',{{ t.preco }},'{{ t.cor }}')">
-      <div class="card-emoji">{{ t.emoji }}</div>
-      <div class="card-nome">Mandar<br>uma cantada</div>
-      {{ preco_card(t) }}
-      <div class="card-detalhe">sai na tela</div>
-    </div>{% endif %}
-
-    {# 7. Dedicatória — linha inteira #}
-    {% if 'dedicatoria' in tipos %}{% set t = tipos['dedicatoria'] %}
-    <div class="pedido-card full" style="--card-cor:{{ t.cor }}"
-         onclick="selecionarTipo('dedicatoria','{{ t.nome }}','{{ t.emoji }}',{{ t.preco }},'{{ t.cor }}')">
-      <div class="card-emoji">{{ t.emoji }}</div>
-      <div class="card-nome" data-i18n="card_dedicatoria">Dedicatória — mensagem aparece na tela ❤️</div>
-      {{ preco_card(t) }}
-    </div>{% endif %}
-
-    {# 8. Gorjeta pra EQUIPE — linha inteira; valor escolhido no próximo passo #}
-    {% if 'gorjeta' in tipos %}{% set t = tipos['gorjeta'] %}
-    <div class="pedido-card full" style="--card-cor:{{ t.cor }}" onclick="abrirGorjeta()">
-      <div class="card-emoji">{{ t.emoji }}</div>
-      <div class="card-nome">Gorjeta pra equipe — agradece quem te atendeu e aparece na tela 🙏</div>
-      <div class="card-preco" style="color:#4ade80;text-shadow:0 0 20px #4ade8066">R$ 5 · 10 · 20 · 50</div>
-    </div>{% endif %}
-
+    <div class="busca-loading" id="busca-loading">🔍 Buscando...</div>
+    <!-- 🔥 Mais pedidas no bar (últimos 7 dias, só até 10 min) — no YouTube, antes de digitar (busca 2.0, 16/10/26) -->
+    <div id="mais-pedidas" style="display:none"></div>
+    <!-- Estilos do acervo (chips) — filtro local, zero request (11/09/26) -->
+    <div id="busca-generos" style="display:none;flex-wrap:nowrap;overflow-x:auto;gap:6px;margin:0 0 10px;padding-bottom:4px;-webkit-overflow-scrolling:touch;scrollbar-width:none"></div>
+    <div class="busca-count" id="busca-count" style="display:none"></div>
+    <div id="resultados-lista"></div>
   </div>
+</div>
 
-  {# Mais opções: namoro, brinde, chegada ("Tocar agora" saiu em 11/09/26; YouTube subiu pro grid) #}
-  {% set extras = ['salve','casamento','brinde','chegada'] %}
-  {% if extras|select('in', tipos)|list %}
-  <button class="btn-mais-opcoes" onclick="toggleMaisOpcoes(this)" id="btn-mais">
-    <span data-i18n="mais_opcoes">⋯ Mais opções</span>
-  </button>
-  <div class="mais-opcoes-grid" id="mais-opcoes" style="display:none">
-    {% for key in extras %}{% if key in tipos %}{% set t = tipos[key] %}
-      <div class="pedido-card" style="--card-cor:{{ t.cor }}"
-           onclick="selecionarTipo('{{ key }}','{{ t.nome }}','{{ t.emoji }}',{{ t.preco }},'{{ t.cor }}')">
+{# ═══ ABA 2: APARECER NA TV (momentos pagos, preço FINAL no card) ═══ #}
+{% macro preco_card(t, pix_direto) %}
+  {% if t.preco <= 0 %}
+    <div class="card-preco" style="color:#4ade80">GRÁTIS</div>
+  {% else %}
+    <div class="card-preco">{{ brl(t.preco + pix_conv) }}</div>
+    {% if t.get('happy_hour') %}<div class="card-detalhe" style="text-decoration:line-through">{{ brl(t.preco_original + pix_conv) }}</div>{% endif %}
+    {#- Lote D B (16/10/26): total grande + "R$ 5 + R$ 1 do app" (era "no PIX · com a taxa de serviço") #}
+    <div class="card-detalhe">{% if pix_conv > 0 %}{{ brl(t.preco) }} + {{ brl(pix_conv) }} do app{% elif pix_direto %}no PIX{% endif %}</div>
+  {% endif %}
+{% endmacro %}
+<div class="aba" id="aba-tv">
+  <div class="pedidos-section" id="grid-section">
+    {% if hh_desconto > 0 %}
+    <div style="background:linear-gradient(135deg,#78350f,#92400e);border:1px solid rgba(251,191,36,.5);border-radius:16px;padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;gap:12px">
+      <span style="font-size:28px">🎉</span>
+      <div style="flex:1">
+        {# hh_desconto = MAIOR desconto real dos cards (piso R$ 5), por isso "até" — 15/10/26 #}
+        <div style="font-size:15px;font-weight:900;color:#fbbf24;margin-bottom:2px">HAPPY HOUR — ATÉ {{ hh_desconto }}% OFF</div>
+        <div style="font-size:12px;color:#fcd34d">Os cards com desconto mostram o preço antigo riscado.</div>
+      </div>
+    </div>
+    {% endif %}
+    <div class="pedidos-titulo">📺 Aparecer na TV</div>
+    {%- if efi_sem_conta %}
+    {# Lote C, fatia b (16/10/26): Efí ligada e o bar sem a conta Efí conectada — o POST já recusa (MSG_EFI_SEM_CONTA) #}
+    <div id="efi-sem-conta" style="background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.35);border-radius:14px;padding:12px 14px;margin:8px 0 12px;font-size:13px;color:#fde68a;line-height:1.5">⏸️ Os momentos pagos ainda não estão ligados neste bar. A música grátis funciona normal: escolhe uma na aba Músicas. 🎵</div>
+    {%- endif %}
+    <div class="pedidos-sub">Teu recado aparece na TV do bar.{% if asaas_ativo %} Pago no PIX, confirma sozinho.{% elif pix_direto %} Pago no PIX, o bar confere.{% endif %}</div>
+    {% set rotulos = {'parabens': 'Parabéns na tela 🎂', 'dedicatoria': 'Dedicatória ❤️', 'cantada': 'Mandar uma cantada',
+                      'salve': 'Salve pra outra mesa', 'brinde': 'Brinde geral 🍻', 'chegada': 'Chegamos! 🎉',
+                      'casamento': 'Pedido de namoro 💕'} %}
+    <div class="pedidos-grid">
+      {% if 'flash' in tipos %}{% set t = tipos['flash'] %}
+      <div class="pedido-card full" style="--card-cor:{{ t.cor }}" onclick="irFurarFila()">
         <div class="card-emoji">{{ t.emoji }}</div>
-        <div class="card-nome">{{ t.nome }}</div>
-        {{ preco_card(t) }}
+        <div class="card-nome">Furar a fila — tua música toca antes</div>
+        {{ preco_card(t, pix_direto) }}
+      </div>{% endif %}
+      {% for key in ['parabens','dedicatoria','cantada','salve','brinde','chegada','casamento'] %}{% if key in tipos %}{% set t = tipos[key] %}
+      <div class="pedido-card" style="--card-cor:{{ t.cor }}" onclick="selecionarTipo('{{ key }}')">
+        <div class="card-emoji">{{ t.emoji }}</div>
+        <div class="card-nome">{{ rotulos[key] }}</div>
+        {{ preco_card(t, pix_direto) }}
+        {% if t.get('ok') and (b.moderar_ok is none or b.moderar_ok) %}<div class="card-detalhe">o bar confere antes</div>{% endif %}
+      </div>{% endif %}{% endfor %}
+      {# Gorjeta pra EQUIPE — valor escolhido no próximo passo #}
+      {% if 'gorjeta' in tipos %}{% set t = tipos['gorjeta'] %}
+      <div class="pedido-card full" style="--card-cor:#a3e635" onclick="abrirGorjeta()">
+        <div class="card-emoji">{{ t.emoji }}</div>
+        <div class="card-nome">Gorjeta pra equipe — agradece quem te atendeu e aparece na tela 🙏</div>
+        <div class="card-preco">R$ 5 · 10 · 20 · 50</div>
+        {#- VDB-03 (16/10/26): o R$ 1 do app da gorjeta é o da gorjeta (pode ser R$ 0 na Efí) #}
+        {%- set _cg = pix_conv_gorjeta if pix_conv_gorjeta is defined else pix_conv %}
+        {% if _cg > 0 %}<div class="card-detalhe">+ {{ brl(_cg) }} do app no PIX</div>{% endif %}
+      </div>{% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- Folha da música: nome lembrado + Tocar grátis / Furar a fila (3 toques, 16/10/26) -->
+<div class="sheet" id="sheet" onclick="if(event.target===this)fecharSheet()">
+  <div class="sheet-box">
+    <div class="sh-capa-wrap" id="sh-capa-wrap"><div class="yt-capa sh-capa"><img id="sh-img" alt="" referrerpolicy="no-referrer"><span class="yt-dur" id="sh-dur"></span></div></div>
+    <div class="sheet-titulo" id="sh-titulo"></div>
+    <div class="sheet-sub" id="sh-sub"></div>
+    {#- busca 2.0 (16/10/26): "já na fila" / "tocou há X min" e em que lugar entra aparecem ANTES de pedir #}
+    <div class="sh-aviso" id="sh-aviso"></div>
+    <div class="sh-pos" id="sh-pos"></div>
+    <form method="POST" id="form-musica">
+      <input type="hidden" name="tipo" id="sh-tipo">
+      <input type="hidden" name="youtube_id" id="sh-youtube-id">
+      <input type="hidden" name="titulo_pedido" id="sh-titulo-pedido">
+      <input type="hidden" name="client_id" class="js-cid" value="">
+      <div class="form-group" style="margin-bottom:4px">
+        <label for="sh-nome">Teu nome</label>
+        <input type="text" name="nome_cliente" id="sh-nome" class="js-nome" maxlength="20" placeholder="Teu nome" autocomplete="given-name">
+        <div class="dica-nome">É assim que teu nome aparece na TV (até 20 letras). Sem palavrão, beleza? 😉</div>
       </div>
-    {% endif %}{% endfor %}
-  </div>
-  {% endif %}
-
-</div>
-
-<!-- Busca (biblioteca ou YouTube) -->
-<div id="busca-section">
-  <div class="busca-header">
-    <button class="btn-busca-back" onclick="voltarGrid()">←</button>
-    <div class="busca-title" id="busca-title">Buscar música</div>
-  </div>
-  <div class="busca-subtitle" id="busca-subtitle"></div>
-
-  <!-- Fonte da música: acervo do bar ou YouTube — vale pra "Escolher" e pra "Furar a fila" (11/09/26) -->
-  <div id="busca-fonte" style="display:flex;gap:8px;margin:0 0 12px">
-    <button type="button" id="fonte-biblioteca" onclick="trocarFonte('biblioteca')" style="flex:1;padding:10px 0;border-radius:12px;border:2px solid #06b6d4;background:rgba(6,182,212,.14);color:#fff;font-weight:800;font-size:13px;font-family:inherit;cursor:pointer">📚 Acervo do bar</button>
-    <button type="button" id="fonte-youtube" onclick="trocarFonte('youtube')" style="flex:1;padding:10px 0;border-radius:12px;border:2px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:#8888aa;font-weight:800;font-size:13px;font-family:inherit;cursor:pointer">🌐 YouTube</button>
-  </div>
-
-  <div id="busca-lista-box">
-  <div class="busca-input-wrap">
-    <input type="text" class="busca-input" id="busca-input"
-           placeholder="Artista ou nome da música..." enterkeyhint="search" autocomplete="off"
-           oninput="onBuscaInput()" onkeydown="if(event.key==='Enter'){this.blur();buscar();}">
-    <button class="busca-btn" onclick="buscar()">🔍</button>
-  </div>
-
-  <div class="busca-loading" id="busca-loading">🔍 Buscando...</div>
-  <!-- 🔥 Mais pedidas no bar (últimos 7 dias) — aparece antes de digitar na busca do YouTube (16/10/26) -->
-  <div id="mais-pedidas" style="display:none"></div>
-  <!-- Estilos do acervo (chips) — filtro local, zero request (11/09/26) -->
-  <div id="busca-generos" style="display:none;flex-wrap:wrap;gap:6px;margin:0 0 10px"></div>
-  <div class="busca-count" id="busca-count" style="display:none"></div>
-  <div id="resultados-lista"></div>
-  </div>
-
-  <!-- Escolheu (16/10/26): capa grande + em que lugar entra + pedir grátis ou furar a fila, sem outra tela -->
-  <div id="escolha">
-    <button type="button" class="esc-voltar" onclick="fecharEscolha()">← Escolher outra</button>
-    <div class="yt-capa" id="esc-capa"><img id="esc-img" alt="" referrerpolicy="no-referrer"><span class="yt-dur" id="esc-dur"></span></div>
-    <div class="esc-titulo" id="esc-titulo"></div>
-    <div class="esc-sub" id="esc-sub"></div>
-    <div class="esc-aviso" id="esc-aviso" style="display:none"></div>
-    <div class="esc-pos" id="esc-pos"></div>
-    <label class="esc-label" for="esc-nome">Teu nome (aparece na TV)</label>
-    <input type="text" id="esc-nome" maxlength="40" placeholder="Como quer aparecer na tela?" autocomplete="given-name" enterkeyhint="done">
-    <button type="button" class="esc-btn gratis" id="esc-gratis" onclick="pedirEscolha('gratis')">🎵 Pedir grátis</button>
-    <button type="button" class="esc-btn flash sec" id="esc-flash" onclick="pedirEscolha('flash')">⚡ Furar a fila</button>
+      {% set n_fila = fila_musicas|length %}
+      {# 16/10/26 (crítico C2): quem já tem música grátis na fila descobre ANTES de tocar #}
+      <div class="dica-nome" id="sh-aviso-gratis" style="display:none;color:#fbbf24;font-weight:700;margin:0 0 8px">{% if 'flash' in tipos and pix_direto %}Tua música grátis ainda não tocou. Pra pedir outra agora, fura a fila no PIX; ou espera a tua tocar.{% else %}Tua música grátis ainda não tocou. Espera ela tocar pra pedir outra.{% endif %} 🎶</div>
+      <button type="button" class="btn-gratis" id="btn-gratis" onclick="enviarMusica('gratis')">
+        🎵 Tocar grátis<small id="sh-gratis-sub">{% if n_fila %}~{{ n_fila * 4 + 2 }} min de fila{% else %}fila vazia, toca já já{% endif %}</small>
+      </button>
+      {% if 'flash' in tipos %}
+      {#- crítico leigo M1 (17/10/26): na música do acervo, 1 toque leva pro YouTube já buscando o título #}
+      <div id="sh-flash-yt" style="display:none;margin:0 0 8px">
+        <button type="button" class="btn-flash" onclick="furarNoYoutube()">⚡ Furar a fila · {{ brl(tipos.flash.preco + pix_conv) }}<small>furar a fila é com música do YouTube: toca aqui que eu busco essa</small></button>
+      </div>
+      <button type="button" class="btn-flash" id="btn-flash" onclick="enviarMusica('flash')">
+        ⚡ Furar a fila · {{ brl(tipos.flash.preco + pix_conv) }}{% if pix_direto %} no PIX{% endif %}
+        <small id="sh-flash-sub" data-preco="{% if pix_conv > 0 %}{{ brl(tipos.flash.preco) }} + {{ brl(pix_conv) }} do app{% endif %}">{% if pix_conv > 0 %}{{ brl(tipos.flash.preco) }} + {{ brl(pix_conv) }} do app{% else %}toca antes da fila{% endif %}</small>
+      </button>
+      {% endif %}
+      <button type="button" class="btn-voltar" onclick="fecharSheet()">Cancelar</button>
+    </form>
   </div>
 </div>
 
-<!-- Formulário -->
+<!-- Formulário dos momentos (e do Furar a fila sem PIX automático) -->
 <div class="form-section" id="form-section">
   <div class="form-title" id="form-title">🎵 Pedido</div>
 
@@ -852,23 +883,9 @@ async function jaPaguei() {
     if (btn) { btn.disabled = true; btn.textContent = '⏳ Enviando...'; }
   ">
     <input type="hidden" name="tipo" id="inp-tipo">
-    <input type="hidden" name="categoria" value="{{ b.canal_atual or 'rock' }}">
     <input type="hidden" name="youtube_id" id="inp-youtube-id">
     <input type="hidden" name="titulo_pedido" id="inp-titulo-pedido">
-    <input type="hidden" name="thumb_url" id="inp-thumb-url">
-    <input type="hidden" name="client_id" id="inp-client-id" value="">
-    <script>
-      // id do celular (anti-spam por aparelho, não por IP do Wi-Fi do bar)
-      (function(){
-        let cid = '';
-        try { cid = localStorage.getItem('jk_cid') || ''; } catch(e) {}
-        if (!/^[A-Za-z0-9_-]{8,40}$/.test(cid)) {
-          cid = (self.crypto && crypto.randomUUID) ? crypto.randomUUID().replace(/-/g,'') : ('c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 12));
-          try { localStorage.setItem('jk_cid', cid); } catch(e) {}
-        }
-        document.getElementById('inp-client-id').value = cid;
-      })();
-    </script>
+    <input type="hidden" name="client_id" id="inp-client-id" class="js-cid" value="">
 
     <div class="musica-preview" id="musica-preview" style="display:none">
       <div class="musica-preview-label">🎵 Música pedida</div>
@@ -877,44 +894,49 @@ async function jaPaguei() {
     </div>
 
     <div class="form-group">
-      <label data-i18n="label_nome">Seu nome *</label>
-      <input type="text" name="nome_cliente" id="inp-nome"
-             placeholder="Como quer aparecer na tela?" maxlength="40" required
-             data-i18n-ph="placeholder_nome"
+      <label for="inp-nome" id="inp-nome-label">Teu nome *</label>
+      <input type="text" name="nome_cliente" id="inp-nome" class="js-nome"
+             placeholder="Teu nome" maxlength="20" required autocomplete="given-name"
              oninput="atualizarPixRef()">
+      <div class="dica-nome" id="inp-nome-dica">É assim que teu nome aparece na TV (até 20 letras). Sem palavrão, beleza? 😉</div>
+    </div>
+
+    {# 16/10/26 (crítico C2): no parabéns o nome GRANDE da TV é o do aniversariante; quem manda é opcional #}
+    <div class="form-group" id="remetente-group" style="display:none">
+      <label for="inp-remetente">Teu nome (opcional)</label>
+      <input type="text" name="remetente" id="inp-remetente" placeholder="Teu nome" maxlength="20" autocomplete="given-name">
+      <div class="dica-nome">Sai pequeno, junto do recado: "de Zé".</div>
     </div>
 
     <div class="form-group" id="msg-group" style="display:none">
       <input type="hidden" name="valor_gorjeta" id="inp-valor-gorjeta" value="">
       <div id="gorjeta-valores" style="display:none;margin-bottom:14px">
-        <div style="font-size:12px;color:var(--text2);margin-bottom:8px;font-weight:700">Quanto você quer mandar pra equipe?</div>
+        <div style="font-size:13px;color:var(--text2);margin-bottom:8px;font-weight:700">Quanto você quer mandar pra equipe?</div>
         <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
-          <button type="button" class="gorjeta-opt" onclick="escolherGorjeta(5,this)" style="padding:12px 0;border-radius:12px;border:2px solid #22c55e55;background:rgba(34,197,94,.08);color:#4ade80;font-weight:900;font-size:16px;font-family:inherit;cursor:pointer">R$ 5</button>
-          <button type="button" class="gorjeta-opt" onclick="escolherGorjeta(10,this)" style="padding:12px 0;border-radius:12px;border:2px solid #22c55e55;background:rgba(34,197,94,.08);color:#4ade80;font-weight:900;font-size:16px;font-family:inherit;cursor:pointer">R$ 10</button>
-          <button type="button" class="gorjeta-opt" onclick="escolherGorjeta(20,this)" style="padding:12px 0;border-radius:12px;border:2px solid #22c55e55;background:rgba(34,197,94,.08);color:#4ade80;font-weight:900;font-size:16px;font-family:inherit;cursor:pointer">R$ 20</button>
-          <button type="button" class="gorjeta-opt" onclick="escolherGorjeta(50,this)" style="padding:12px 0;border-radius:12px;border:2px solid #22c55e55;background:rgba(34,197,94,.08);color:#4ade80;font-weight:900;font-size:16px;font-family:inherit;cursor:pointer">R$ 50</button>
+          {% for v in (5, 10, 20, 50) %}
+          <button type="button" class="gorjeta-opt" onclick="escolherGorjeta({{ v }},this)" style="min-height:48px;border-radius:12px;border:2px solid #22c55e55;background:rgba(34,197,94,.08);color:#4ade80;font-weight:900;font-size:16px;font-family:inherit;cursor:pointer">R$ {{ v }}</button>
+          {% endfor %}
         </div>
       </div>
-      <label id="msg-label" data-i18n="label_msg">Mensagem (opcional)</label>
+      <label id="msg-label" for="inp-msg">Mensagem (opcional)</label>
       <textarea name="mensagem" id="inp-msg" rows="2"
-        placeholder="Aparece na tela do bar..." maxlength="80"
-        data-i18n-ph="placeholder_msg"></textarea>
+        placeholder="Aparece na tela do bar..." maxlength="80"></textarea>
     </div>
 
     {% if asaas_ativo or (b.requer_pix and b.pix_key) %}
     <div class="pix-box">
       <div class="pix-title">💚 Pagamento via PIX</div>
       <div class="pix-valor" id="pix-valor">R$ —</div>
-      <div style="font-size:12px;color:var(--text2);margin-top:6px;line-height:1.5">
-        Ao confirmar você verá o <strong style="color:#4ade80">QR code PIX</strong> para escanear com seu banco.
+      <div style="font-size:13px;color:var(--text2);margin-top:6px;line-height:1.5">
+        Ao confirmar você verá o <strong style="color:#4ade80">código PIX</strong> pra pagar no teu banco.
         {% if asaas_ativo %}<span id="pix-taxa-note"></span>{% elif b.pix_nome_recebedor %}<br>Recebedor: <strong style="color:var(--text)">{{ b.pix_nome_recebedor }}</strong>{% endif %}
       </div>
     </div>
     <button type="submit" class="btn-confirmar" id="btn-confirmar"
             style="background:linear-gradient(135deg,#16a34a,#15803d)">
-      📱 Ver QR para Pagar →
+      📱 Ver o PIX pra pagar →
     </button>
-    <p class="aviso-pix">Você verá o QR code PIX após confirmar. Só paga depois de ver o código.</p>
+    <p class="aviso-pix">Você só paga depois de ver o código.</p>
     {% elif b.pix_key %}
     <div class="pix-box">
       <div class="pix-title">💚 Pague via PIX para o bar</div>
@@ -923,7 +945,7 @@ async function jaPaguei() {
         {% if b.pix_nome_recebedor %}<br>Recebedor: <strong>{{ b.pix_nome_recebedor }}</strong>{% endif %}
       </div>
       <!-- Referência que aparecerá no extrato bancário do bar -->
-      <div id="pix-ref-box" style="background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.2);border-radius:8px;padding:8px 12px;margin:8px 0;font-size:11px;color:#8888aa;display:none">
+      <div id="pix-ref-box" style="background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.2);border-radius:8px;padding:8px 12px;margin:8px 0;font-size:12px;color:#8888aa;display:none">
         📄 No extrato do bar aparecerá:<br>
         <strong id="pix-ref-txt" style="color:#4ade80;font-size:12px"></strong>
       </div>
@@ -944,59 +966,128 @@ async function jaPaguei() {
   </form>
 </div>
 
+<!-- Abas fixas -->
+<nav class="tabbar">
+  <button type="button" class="tab-btn on" id="tab-musicas" onclick="mostrarAba('musicas')">🎵 Músicas</button>
+  <button type="button" class="tab-btn tv" id="tab-tv" onclick="mostrarAba('tv')">📺 Aparecer na TV</button>
+</nav>
+
 <script>
 const PRECOS     = {{ tipos | tojson }};
 const TOTAL_VIDS = {{ total_videos }};
 const BAR_TOKEN  = '{{ b.jukebox_token or b.code }}';
-// Offset de centavos do dia — identifica cada pedido no extrato PIX
-// Ex: pix_offset=3 → preço exibido = R$5,03 (3º pedido do dia)
+// Offset de centavos do dia — identifica cada pedido no extrato PIX (só no PIX manual)
 const PIX_OFFSET = {{ pix_offset | default(0) }};
+const PIX_CONV   = {{ pix_conv if pix_conv is defined else 0 }};   // o "R$ 1 do app" que o cliente paga (Lote D B, 16/10/26)
+// VDB-03 (16/10/26): o da gorjeta (Efí com PUBSHOW_GORJETA_CONV=0 = 0: o PIX cobra só a gorjeta)
+const PIX_CONV_GORJ = {{ pix_conv_gorjeta if pix_conv_gorjeta is defined else (pix_conv if pix_conv is defined else 0) }};
+function _convAtual() { return tipoAtual === 'gorjeta' ? PIX_CONV_GORJ : PIX_CONV; }
+const PIX_DIRETO = {{ 'true' if pix_direto else 'false' }};         // o servidor gera o PIX sozinho (Asaas ou PIX do bar com confirmação)
+const YT_LIBERADO = {{ 'true' if youtube_liberado else 'false' }};   // interruptor do bar (Ajustes → Buscar no YouTube)
+const CANAIS_NOMES = {{ canais_nomes | tojson if canais_nomes is defined else '{}' }};
+const TIPOS_MOMENTO = ['parabens','dedicatoria','brinde','chegada','casamento','gorjeta','cantada','salve'];
 let tipoAtual    = '';
 let modosBusca   = 'biblioteca'; // 'biblioteca' | 'youtube'
 let buscaTimer   = null;
 let videoSel     = null;
 let _biblioCache = null; // cache da lista completa (carregada 1x)
-let tipoForcado  = null; // 'flash' | 'vip' | null — quando a busca cria pedido de prioridade
+let _abaAtual    = 'musicas';
+// busca 2.0 (16/10/26)
+let _buscaCtl    = null;   // AbortController da busca em andamento (a nova cancela a velha)
+let _buscaSeq    = 0;      // só a resposta da ÚLTIMA busca desenha
+let _ultimaQ     = '';
+let _maisPedidas = null;   // 🔥 mais pedidas no bar (carrega 1x por visita)
+let _filaInfo    = null;   // em que lugar entra (grátis / furando a fila) + espera da grátis deste celular
+let _gratisTravada = false;   // a 1ª grátis deste celular ainda está na fila (_conferirGratisNaFila)
 
-// ── Mais opções ───────────────────────────────────────────────────────────────
-function toggleMaisOpcoes(btn) {
-  const div = document.getElementById('mais-opcoes');
-  const aberto = div.style.display !== 'none';
-  div.style.display = aberto ? 'none' : 'grid';
-  btn.textContent = aberto ? '⋯ Mais opções' : '▲ Menos opções';
+// ── id do celular (anti-spam por aparelho, não por IP do Wi-Fi do bar) ────────
+(function(){
+  let cid = '';
+  try { cid = localStorage.getItem('jk_cid') || ''; } catch(e) {}
+  if (!/^[A-Za-z0-9_-]{8,40}$/.test(cid)) {
+    cid = (self.crypto && crypto.randomUUID) ? crypto.randomUUID().replace(/-/g,'') : ('c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 12));
+    try { localStorage.setItem('jk_cid', cid); } catch(e) {}
+  }
+  document.querySelectorAll('.js-cid').forEach(el => { el.value = cid; });
+})();
+
+// ── Nome lembrado (16/10/26, CEL-14): não redigita a cada pedido ──────────────
+// Gravado só quando o servidor ACEITA o pedido (tela de sucesso / do PIX), nunca antes (V4-02)
+(function(){
+  let n = '';
+  try { n = localStorage.getItem('jk_nome') || ''; } catch(e) {}
+  if (n) document.querySelectorAll('.js-nome').forEach(el => { if (!el.value) el.value = n.slice(0, 20); });
+})();
+
+function _brl(v) {
+  return 'R$ ' + (Number.isInteger(v) ? String(v) : v.toFixed(2).replace('.', ','));
 }
 
-// ── Grid ──────────────────────────────────────────────────────────────────────
-const PIX_CONV = {{ pix_conv if pix_conv is defined else 0 }};   // taxa do PIX que o cliente paga (Asaas)
+// ── Abas ──────────────────────────────────────────────────────────────────────
+function mostrarAba(qual) {
+  _abaAtual = qual;
+  fecharSheet();
+  document.getElementById('form-section').classList.remove('show');
+  document.getElementById('aba-musicas').classList.toggle('on', qual === 'musicas');
+  document.getElementById('aba-tv').classList.toggle('on', qual === 'tv');
+  document.getElementById('tab-musicas').classList.toggle('on', qual === 'musicas');
+  document.getElementById('tab-tv').classList.toggle('on', qual === 'tv');
+  if (qual !== 'musicas') document.getElementById('dica-flash').style.display = 'none';
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+let YT_FORA = false;   // crítico leigo A3: a busca do YouTube respondeu erro (o acervo vale pro furar a fila)
+function furarNoYoutube() {   // crítico leigo M1: da música do acervo pro YouTube, já buscando o título
+  const t = (videoSel && videoSel.titulo) || '';
+  fecharSheet();
+  trocarFonte('youtube');
+  const inp = document.getElementById('busca-input');
+  if (inp && t) { inp.value = t; buscar(); }
+  document.getElementById('dica-flash').style.display = 'block';
+}
+function irFurarFila() {
+  mostrarAba('musicas');
+  if (YT_LIBERADO && !YT_FORA) trocarFonte('youtube');   // 16/10/26 (produção c7273fb): furar a fila abre direto no YouTube
+  document.getElementById('dica-flash').style.display = 'block';
+}
+function voltarGrid() {
+  videoSel = null;
+  mostrarAba(_abaAtual);
+}
+function esconderTudo() {
+  fecharSheet();
+  document.getElementById('aba-musicas').classList.remove('on');
+  document.getElementById('aba-tv').classList.remove('on');
+  document.getElementById('form-section').classList.remove('show');
+}
+
+// ── Formulário dos momentos ───────────────────────────────────────────────────
 function _notaTaxaPix(preco) {
+  // preco = valor do item; o total do PIX = item + o R$ 1 do app (Lote D B, 16/10/26)
   const el = document.getElementById('pix-taxa-note');
   if (!el) return;
-  el.innerHTML = (preco > 0 && PIX_CONV > 0)
-    ? `<br>Total no PIX: <strong style="color:#4ade80">R$ ${(preco + PIX_CONV).toFixed(2).replace('.', ',')}</strong> (R$ ${preco.toFixed(2).replace('.', ',')} + R$ ${PIX_CONV.toFixed(2).replace('.', ',')} de taxa do PIX)`
+  const conv = _convAtual();   // VDB-03: gorjeta usa o R$ 1 da gorjeta
+  el.innerHTML = (preco > 0 && conv > 0)
+    ? `<br>${_brl(preco)} + ${_brl(conv)} do app`
     : '';
 }
 function _precoComOffset(preco) {
-  // Adiciona centavos de identificação ao preço PIX (ex: R$5,00 → R$5,03)
+  // Adiciona centavos de identificação ao preço PIX (ex: R$5,00 → R$5,03) — só no PIX manual (PIX_OFFSET=0 no Asaas)
   if (!(preco > 0)) return 0;   // grátis não leva centavos
   return Math.round((preco + PIX_OFFSET * 0.01) * 100) / 100;
 }
-// 16/10/26: valor grande da caixa do PIX = o que a pessoa PAGA (item + taxa do gateway), igual ao card.
-// `preco` aqui é SEMPRE o item (PRECOS[..].preco); a taxa entra UMA vez só (aqui e na nota).
-function _mostrarValorPix(preco) {
-  const p  = _precoComOffset(preco);
+function _mostrarValor(preco) {
+  // o número grande é o TOTAL que o cliente paga no PIX (item + R$ 1 do app) — 16/10/26
+  const item = _precoComOffset(preco);
   const el = document.getElementById('pix-valor');
-  if (el) el.textContent = p > 0
-    ? 'R$ ' + (Math.round((p + (PIX_CONV > 0 ? PIX_CONV : 0)) * 100) / 100).toFixed(2).replace('.', ',')
-    : 'Grátis';
-  _notaTaxaPix(p);
-  aplicarModoGratis(preco);
+  if (el) el.textContent = item > 0 ? 'R$ ' + (item + _convAtual()).toFixed(2).replace('.', ',') : 'Grátis';
+  _notaTaxaPix(item);
+  aplicarModoGratis(item);
 }
 
-// Pedido GRÁTIS (música = R$0 desde 11/09/26): esconde a caixa de pagamento e
-// troca o botão. Preço > 0 (furar fila, VIP...) restaura o fluxo de PIX.
+// Pedido GRÁTIS: esconde a caixa de pagamento e troca o botão. Preço > 0 restaura o fluxo de PIX.
 function aplicarModoGratis(preco) {
   const gratis = !(preco > 0);
-  document.querySelectorAll('.pix-box, .aviso-pix').forEach(el => { el.style.display = gratis ? 'none' : ''; });
+  document.querySelectorAll('#form-section .pix-box, #form-section .aviso-pix').forEach(el => { el.style.display = gratis ? 'none' : ''; });
   const btn = document.getElementById('btn-confirmar');
   if (btn) {
     if (gratis) { btn.dataset.origHtml = btn.dataset.origHtml || btn.innerHTML; btn.innerHTML = '🎵 Pedir grátis →'; }
@@ -1005,8 +1096,7 @@ function aplicarModoGratis(preco) {
 }
 
 function abrirGorjeta() {
-  const t = (PRECOS && PRECOS['gorjeta']) || {nome:'Gorjeta pra equipe 🙏', emoji:'🙏', cor:'#22c55e', preco:5};
-  selecionarTipo('gorjeta', t.nome, t.emoji, 10, t.cor);   // 10 pré-selecionado
+  selecionarTipo('gorjeta', 10);   // 10 pré-selecionado
   document.getElementById('gorjeta-valores').style.display = 'block';
   const b10 = document.querySelectorAll('.gorjeta-opt')[1];
   if (b10) escolherGorjeta(10, b10);
@@ -1015,22 +1105,24 @@ function escolherGorjeta(v, btn) {
   document.getElementById('inp-valor-gorjeta').value = v;
   document.querySelectorAll('.gorjeta-opt').forEach(b => { b.style.background = 'rgba(34,197,94,.08)'; b.style.borderColor = '#22c55e55'; b.style.color = '#4ade80'; });
   if (btn) { btn.style.background = '#22c55e'; btn.style.borderColor = '#22c55e'; btn.style.color = '#052e16'; }
-  _mostrarValorPix(v);
+  _mostrarValor(v);
 }
 
-function selecionarTipo(key, nome, emoji, preco, cor) {
+function selecionarTipo(key, precoForcado) {
+  const t = PRECOS[key];
+  if (!t) return;
+  const preco = (precoForcado !== undefined) ? precoForcado : t.preco;
   const gv = document.getElementById('gorjeta-valores');
   if (gv && key !== 'gorjeta') { gv.style.display = 'none'; document.getElementById('inp-valor-gorjeta').value = ''; }
   tipoAtual = key;
-  tipoForcado = null;   // limpa prioridade de uma busca anterior
   document.getElementById('inp-tipo').value  = key;
-  document.getElementById('form-title').innerHTML = `${emoji} ${nome}`;
-  _mostrarValorPix(preco);
+  _camposDoNome(key);
+  document.getElementById('form-title').textContent = `${t.emoji} ${t.nome}`;
+  _mostrarValor(preco);
 
-  const especiais = ['parabens','dedicatoria','brinde','chegada','casamento','gorjeta','cantada','salve'];
   const mgr = document.getElementById('msg-group');
   const mgl = document.getElementById('msg-label');
-  if (especiais.includes(key)) {
+  if (TIPOS_MOMENTO.includes(key)) {
     mgr.style.display = 'block';
     mgl.textContent = key === 'parabens' ? 'Recado (aparece na tela)'
       : key === 'dedicatoria' ? 'Mensagem de amor ❤️'
@@ -1053,35 +1145,58 @@ function selecionarTipo(key, nome, emoji, preco, cor) {
   document.getElementById('musica-preview').style.display = 'none';
   document.getElementById('inp-youtube-id').value = '';
   document.getElementById('inp-titulo-pedido').value = '';
-  document.getElementById('inp-thumb-url').value = '';
-  document.getElementById('btn-confirmar').style.background = `linear-gradient(135deg,${cor},${cor}cc)`;
-  document.getElementById('form-section').style.setProperty('--accent-cor', cor);
+  document.getElementById('btn-confirmar').style.background = `linear-gradient(135deg,${t.cor},${t.cor}cc)`;
+  document.getElementById('form-section').style.setProperty('--accent-cor', t.cor);
 
   esconderTudo();
   document.getElementById('form-section').classList.add('show');
   window.scrollTo({top:0,behavior:'smooth'});
 }
 
-function voltarGrid() {
-  esconderTudo();
-  videoSel = null;
-  tipoForcado = null;
-  if (_buscaCtl) { try { _buscaCtl.abort(); } catch(e) {} }
-  const _fs = document.querySelector('.fila-section');
-  if (_fs) _fs.style.display = '';
-  document.getElementById('grid-section').style.display = 'block';
-  window.scrollTo({top:0,behavior:'smooth'});
+// 16/10/26 (crítico C2): no parabéns o 1º campo é o ANIVERSARIANTE (sai grande na TV); o nome de quem
+// manda (lembrado) vai pro campo opcional "Teu nome". Nos outros tipos, volta ao normal.
+function _camposDoNome(key) {
+  let lembrado = '';
+  try { lembrado = (localStorage.getItem('jk_nome') || '').slice(0, 20); } catch(e) {}
+  const lab = document.getElementById('inp-nome-label'), dica = document.getElementById('inp-nome-dica');
+  const inp = document.getElementById('inp-nome'), rg = document.getElementById('remetente-group');
+  const rem = document.getElementById('inp-remetente');
+  if (!lab || !inp || !rg) return;
+  if (key === 'parabens') {
+    lab.textContent = 'Nome do aniversariante *';
+    inp.placeholder = 'Ex.: Ana';
+    if (dica) dica.textContent = 'É o nome que aparece GRANDE na TV (até 20 letras).';
+    if (lembrado && inp.value === lembrado) inp.value = '';
+    rg.style.display = 'block';
+    if (rem && !rem.value) rem.value = lembrado;
+  } else {
+    lab.textContent = 'Teu nome *';
+    inp.placeholder = 'Teu nome';
+    if (dica) dica.textContent = 'É assim que teu nome aparece na TV (até 20 letras). Sem palavrão, beleza? 😉';
+    rg.style.display = 'none';
+    if (rem) rem.value = '';
+    if (!inp.value && lembrado) inp.value = lembrado;
+  }
 }
 
-function esconderTudo() {
-  document.getElementById('grid-section').style.display  = 'none';
-  document.getElementById('busca-section').style.display = 'none';
-  document.getElementById('form-section').classList.remove('show');
+// Furar a fila SEM PIX automático (chave do bar sem confirmação / balcão): passa pelo formulário,
+// que mostra a chave ou o aviso do balcão. A4.1 (15/10/26): preço e caixa do PIX do tipo certo.
+function confirmarMusica(tipo) {
+  if (!videoSel || !PRECOS[tipo]) return;
+  const t = PRECOS[tipo];
+  const preco = t.preco;
+  selecionarTipo(tipo);   // título, cor, valor final, aplicarModoGratis + _notaTaxaPix
+  document.getElementById('inp-youtube-id').value    = videoSel.id;
+  document.getElementById('inp-titulo-pedido').value = (videoSel.titulo || '').slice(0, 80);
+  document.getElementById('prev-titulo').textContent = videoSel.titulo;
+  document.getElementById('prev-sub').textContent    = videoSel.sub || '';
+  document.getElementById('musica-preview').style.display = 'block';
+  document.getElementById('msg-group').style.display = 'none';
+  atualizarPixRef();
+  _mostrarValor(preco);
 }
 
-// ── Busca ─────────────────────────────────────────────────────────────────────
-const YT_LIBERADO = {{ 'true' if youtube_liberado else 'false' }};   // interruptor do bar (Ajustes → Buscar no YouTube)
-const CANAIS_NOMES = {{ canais_nomes | tojson if canais_nomes is defined else '{}' }};
+// ── Lista de músicas (acervo do bar ou YouTube) ───────────────────────────────
 function _estiloFonte(btn, ativo, cor) {
   btn.style.borderColor = ativo ? cor : 'rgba(255,255,255,.12)';
   btn.style.background  = ativo ? cor + '24' : 'rgba(255,255,255,.04)';
@@ -1089,77 +1204,31 @@ function _estiloFonte(btn, ativo, cor) {
 }
 function trocarFonte(modo) {
   if (modo === modosBusca) return;
-  abrirBusca(modo, tipoForcado);   // mantém o tipo (ex.: flash) e só troca a fonte
-}
-function abrirBusca(modo, forcado=null) {
-  modosBusca  = modo;
-  tipoForcado = forcado;   // 'flash' | null
-  videoSel    = null;
-
-  const tipoFinal  = forcado || (modo === 'youtube' ? 'musica_externa' : 'musica_especifica');
-  const precoFinal = (PRECOS[tipoFinal] && PRECOS[tipoFinal].preco) || 0;
+  modosBusca = modo;
+  if (modo === 'biblioteca' && !YT_FORA) { const _df = document.getElementById('dica-flash'); if (_df) _df.style.display = 'none'; }
+  videoSel   = null;
   const cor = modo === 'youtube' ? '#dc2626' : '#06b6d4';
-
-  const _totBusca = Math.round((precoFinal + PIX_CONV) * 100) / 100;
-  const precoTxt = precoFinal > 0   // total do PIX, igual ao card (centavos só quando houver: R$ 4 / R$ 3,50)
-      ? 'R$ ' + (Number.isInteger(_totBusca) ? String(_totBusca) : _totBusca.toFixed(2).replace('.', ','))
-      : 'GRÁTIS';
-  document.getElementById('busca-title').textContent =
-      forcado === 'flash' ? '⚡ Furar a fila — escolha a música'
-    : modo === 'youtube'  ? '🌐 Buscar no YouTube'
-    : '🎵 Músicas disponíveis';
-  document.getElementById('busca-subtitle').textContent = modo === 'youtube'
-    ? `Digita a música ou o artista — ${precoTxt}`
-    : `${TOTAL_VIDS} músicas no acervo — ${precoTxt}`;
-
-  // Toggle de fonte: YouTube sempre liberado no "Furar a fila"; no "Escolher" só se o bar não bloqueou
   const _fb = document.getElementById('fonte-biblioteca'), _fy = document.getElementById('fonte-youtube');
-  // 16/10/26 (Diogo): no Furar a fila é só YouTube — some o botão do acervo (se o bar desligou o YouTube, fica o acervo)
-  const _soYoutube = (forcado === 'flash' && YT_LIBERADO);
-  const _fonteBox = document.getElementById('busca-fonte');
-  if (_fonteBox) _fonteBox.style.display = _soYoutube ? 'none' : 'flex';
-  if (_fb && _fy) {
-    _fy.style.display = YT_LIBERADO ? '' : 'none';
-    _estiloFonte(_fb, modo === 'biblioteca', '#06b6d4');
-    _estiloFonte(_fy, modo === 'youtube',    '#dc2626');
-  }
-
+  if (_fb && _fy) { _estiloFonte(_fb, modo === 'biblioteca', '#06b6d4'); _estiloFonte(_fy, modo === 'youtube', '#dc2626'); }
   document.querySelector('.busca-input').style.setProperty('border-color', cor);
   document.querySelector('.busca-btn').style.background = cor;
-
-  if (_buscaCtl) { try { _buscaCtl.abort(); } catch(e) {} }
-  const _inp = document.getElementById('busca-input');
-  _inp.value = '';
-  _inp.placeholder = modo === 'youtube' ? 'Ex.: Evidências, Pearl Jam Black…' : '🔍 Filtrar lista...';
-  document.getElementById('resultados-lista').innerHTML = '';
-  document.getElementById('resultados-lista').className = '';
-  document.getElementById('busca-loading').classList.remove('show');
+  const inp = document.getElementById('busca-input');
+  _cancelarBusca(true);
+  inp.value = '';
+  inp.placeholder = modo === 'youtube' ? '🔍 Procura no YouTube' : '🔍 Procura artista ou música';
+  const lista = document.getElementById('resultados-lista');
+  lista.innerHTML = '';
+  lista.className = '';
   document.getElementById('busca-count').style.display = 'none';
+  document.getElementById('busca-generos').style.display = 'none';
   document.getElementById('mais-pedidas').style.display = 'none';
-  document.getElementById('escolha').style.display = 'none';
-  document.getElementById('busca-lista-box').style.display = '';
-
-  esconderTudo();
-  const _fs = document.querySelector('.fila-section');
-  if (_fs) _fs.style.display = 'none';   // na busca a tela é da busca; a vez aparece ao escolher
-  document.getElementById('busca-section').style.display = 'block';
-  window.scrollTo({top:0,behavior:'smooth'});
-
-  // Biblioteca: carrega lista completa imediatamente (com cache)
-  const _bg = document.getElementById('busca-generos');
-  if (_bg) _bg.style.display = 'none';
   if (modo === 'biblioteca') {
-    if (_biblioCache) {
-      _renderChips();
-      onBuscaInput();               // usa cache + chip ativo — zero request
-    } else {
-      _carregarBibliotecaCompleta();
-    }
+    if (_biblioCache) { _renderChips(); onBuscaInput(); } else { _carregarBibliotecaCompleta(); }
   } else {
-    _carregarMaisPedidas();
-    try { _inp.focus({preventScroll: true}); } catch(e) { _inp.focus(); }   // abre o teclado: já digita
+    _dicaYoutube();
+    _carregarMaisPedidas();   // busca 2.0: 🔥 mais pedidas no bar antes de digitar
+    inp.focus();
   }
-  _carregarFilaInfo();
 }
 
 async function _carregarBibliotecaCompleta() {
@@ -1170,8 +1239,9 @@ async function _carregarBibliotecaCompleta() {
     const data = await res.json();
     loading.classList.remove('show');
     _biblioCache = data.resultados || [];
+    if (modosBusca !== 'biblioteca') return;
     _renderChips();
-    _renderLista(_biblioCache);
+    onBuscaInput();
   } catch(e) {
     loading.classList.remove('show');
     document.getElementById('resultados-lista').innerHTML =
@@ -1179,41 +1249,41 @@ async function _carregarBibliotecaCompleta() {
   }
 }
 
-function _renderLista(lista) {
-  const countEl = document.getElementById('busca-count');
-  countEl.style.display = lista.length ? 'block' : 'none';
-  countEl.textContent   = `${lista.length} música${lista.length !== 1 ? 's' : ''}`;
-
-  if (!lista.length) {
-    document.getElementById('resultados-lista').innerHTML =
-      '<div style="text-align:center;padding:24px;color:#8888aa;font-size:13px">Nenhuma música encontrada.</div>';
-    return;
-  }
-  // Lista atual guardada em memória e clique por índice: título com apóstrofo
-  // ("Don't Stop Me Now", "Guns N' Roses") quebrava o onclick com JSON inline.
-  _listaAtual = lista.map(v => ({
-    id: v.youtube_id || v.id || '',
-    titulo: v.titulo || '',
-    sub: `${v.artista || ''}${v.duracao_seg ? ' · ' + Math.floor(v.duracao_seg/60) + 'min' : ''}`
-  }));
-  document.getElementById('resultados-lista').innerHTML = _listaAtual.map((v, i) => `
-    <div class="resultado-item" id="res-${i}" onclick="selecionarVideoIdx(${i})">
-          <div class="resultado-info">
-            <div class="resultado-titulo">${_esc(v.titulo)}</div>
-            <div class="resultado-sub">${_esc(v.sub)}</div>
-          </div>
-          <div class="resultado-check">✓</div>
-        </div>`).join('');
-}
-
 let _listaAtual = [];
 let _generoSel  = null;   // chip de estilo ativo (null = todos)
 function _esc(s) {
   return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
+function _desenharLista() {
+  // Lista em memória e clique por índice: título com apóstrofo ("Don't Stop Me Now") quebrava o onclick com JSON inline.
+  document.getElementById('resultados-lista').innerHTML = _listaAtual.map((v, i) => `
+    <div class="resultado-item" id="res-${i}" onclick="selecionarVideoIdx(${i})">
+      <div class="resultado-info">
+        <div class="resultado-titulo">${_esc(v.titulo)}</div>
+        <div class="resultado-sub">${_esc(v.sub)}</div>
+      </div>
+      <div style="font-size:18px;opacity:.6">›</div>
+    </div>`).join('');
+}
+function _renderLista(lista) {
+  const countEl = document.getElementById('busca-count');
+  countEl.style.display = lista.length ? 'block' : 'none';
+  countEl.textContent   = `${lista.length} música${lista.length !== 1 ? 's' : ''}`;
+  if (!lista.length) {
+    document.getElementById('resultados-lista').innerHTML =
+      '<div style="text-align:center;padding:24px;color:#8888aa;font-size:13px">Nenhuma música encontrada.</div>';
+    return;
+  }
+  _listaAtual = lista.map(v => ({
+    id: v.youtube_id || v.id || '',
+    titulo: v.titulo || '',
+    sub: `${v.artista || ''}${v.duracao_seg ? ' · ' + Math.floor(v.duracao_seg/60) + 'min' : ''}`
+  }));
+  _desenharLista();
+}
 function selecionarVideoIdx(i) {
   const v = _listaAtual[i];
-  if (v) selecionarVideo(i, v);
+  if (v) abrirSheet(v);
 }
 function _renderChips() {
   const box = document.getElementById('busca-generos');
@@ -1225,7 +1295,7 @@ function _renderChips() {
   const chip = (key, label, n) => {
     const on = _generoSel === key;
     return `<button type="button" onclick="filtrarGenero(${key === null ? 'null' : "'" + key + "'"})"
-      style="padding:6px 11px;border-radius:999px;border:1px solid ${on ? '#06b6d4' : 'rgba(255,255,255,.14)'};background:${on ? 'rgba(6,182,212,.18)' : 'rgba(255,255,255,.04)'};color:${on ? '#fff' : '#a0a0b8'};font-size:12px;font-weight:700;font-family:inherit;cursor:pointer">${_esc(label)}${n ? ' <span style="opacity:.6">' + n + '</span>' : ''}</button>`;
+      style="flex-shrink:0;white-space:nowrap;min-height:44px;padding:6px 12px;border-radius:999px;border:1px solid ${on ? '#06b6d4' : 'rgba(255,255,255,.14)'};background:${on ? 'rgba(6,182,212,.18)' : 'rgba(255,255,255,.04)'};color:${on ? '#fff' : '#a0a0b8'};font-size:13px;font-weight:700;font-family:inherit;cursor:pointer">${_esc(label)}${n ? ' <span style="opacity:.6">' + n + '</span>' : ''}</button>`;
   };
   box.innerHTML = chip(null, '🎧 Todos', _biblioCache.length) + cats.map(k => {
     const c = (typeof CANAIS_NOMES !== 'undefined' && CANAIS_NOMES[k]) || {};
@@ -1242,7 +1312,6 @@ function filtrarGenero(key) {
 function onBuscaInput() {
   clearTimeout(buscaTimer);
   const q = document.getElementById('busca-input').value.trim().toLowerCase();
-
   if (modosBusca === 'biblioteca') {
     // Filtro local — instantâneo, zero request
     if (_biblioCache) {
@@ -1255,26 +1324,34 @@ function onBuscaInput() {
       _renderLista(filtrado);
     }
   } else {
-    // YouTube — busca enquanto digita: espera ~600 ms de pausa (16/10/26)
+    // YouTube — busca enquanto digita: espera ~600 ms de pausa (busca 2.0, 16/10/26)
     if (q.length >= 2) {
       buscaTimer = setTimeout(buscar, 600);
     } else {
-      if (_buscaCtl) { try { _buscaCtl.abort(); } catch(e) {} }
-      _ultimaQ = '';
-      document.getElementById('resultados-lista').innerHTML = '';
+      _cancelarBusca(true);
+      const lista = document.getElementById('resultados-lista');
+      lista.className = '';
+      _dicaYoutube();
       _mostrarMaisPedidas();
     }
   }
 }
 
-// ── Busca do YouTube em cards grandes (16/10/26) ─────────────────────────────
-let _buscaCtl = null;      // AbortController da busca em andamento (a nova cancela a velha)
-let _buscaSeq = 0;         // só a resposta da ÚLTIMA busca desenha
-let _ultimaQ  = '';
-let _maisPedidas = null;   // 🔥 mais pedidas no bar (carrega 1x por visita)
-let _filaInfo = null;      // em que lugar entra (grátis / furando a fila) + espera da grátis deste celular
-
+// ── Busca do YouTube em cards grandes (busca 2.0, 16/10/26) ──────────────────
 function _cid() { try { return localStorage.getItem('jk_cid') || ''; } catch(e) { return ''; } }
+// Cancela a busca que ia disparar (pausa da digitação) ou que está no ar. `forcar`: esquece também a última
+// busca feita (trocou de fonte / apagou o texto); sem ele, só esquece se havia busca pendente.
+function _cancelarBusca(forcar) {
+  const pendente = buscaTimer !== null || _buscaCtl !== null;
+  clearTimeout(buscaTimer); buscaTimer = null;
+  if (_buscaCtl) { try { _buscaCtl.abort(); } catch(e) {} _buscaCtl = null; }
+  if (pendente || forcar) { _buscaSeq++; _ultimaQ = ''; }
+  document.getElementById('busca-loading').classList.remove('show');
+}
+function _dicaYoutube() {
+  document.getElementById('resultados-lista').innerHTML =
+    '<div class="yt-msg">Digita o nome da música ou do artista.</div>';
+}
 function _tocouTxt(m) {
   if (m < 1) return 'tocou agora há pouco';
   if (m < 60) return `tocou há ${m} min`;
@@ -1287,14 +1364,15 @@ function _seloHtml(v) {
   return '';
 }
 function _capa(v) { return v.thumb || `https://i.ytimg.com/vi/${encodeURIComponent(v.id || '')}/hqdefault.jpg`; }
+function _subYt(v) {   // "✓ Oficial · 10 mi de views" (busca) · "🔥 4× esta semana" (mais pedidas)
+  if (v.vezes) return `🔥 ${v.vezes}× esta semana`;
+  return (v.oficial ? '<span class="yt-of">✓ Oficial</span>' : _esc(v.canal || '')) + (v.views_txt ? ' · ' + _esc(v.views_txt) : '');
+}
 function _cardHtml(v, i, origem) {
-  const sub = v.vezes
-    ? `🔥 ${v.vezes}× esta semana`
-    : (v.oficial ? '<span class="yt-of">✓ Oficial</span>' : _esc(v.canal || '')) + (v.views_txt ? ' · ' + _esc(v.views_txt) : '');
   const clique = origem === 'mp' ? `escolherMaisPedida(${i})` : `selecionarVideoIdx(${i})`;
   return `<div class="yt-card${v.na_fila ? ' na-fila' : ''}" id="${origem}-${i}" onclick="${clique}">
       <div class="yt-capa"><img src="${_esc(_capa(v))}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror="this.style.visibility='hidden'">${v.duracao ? `<span class="yt-dur">${_esc(v.duracao)}</span>` : ''}${_seloHtml(v)}</div>
-      <div class="yt-info"><div class="yt-titulo">${_esc(v.titulo)}</div><div class="yt-sub">${sub}</div></div>
+      <div class="yt-info"><div class="yt-titulo">${_esc(v.titulo)}</div><div class="yt-sub">${_subYt(v)}</div></div>
     </div>`;
 }
 function _esqueleto(n) {
@@ -1306,7 +1384,7 @@ async function _carregarMaisPedidas() {
   if (_maisPedidas === null) {
     try {
       const r = await fetch(`/pubshow/api/mais-pedidas/${encodeURIComponent(BAR_TOKEN)}`);
-      _maisPedidas = (await r.json()).resultados || [];
+      _maisPedidas = r.ok ? ((await r.json()).resultados || []) : [];
     } catch(e) { _maisPedidas = []; }
   }
   _mostrarMaisPedidas();
@@ -1314,19 +1392,19 @@ async function _carregarMaisPedidas() {
 function _mostrarMaisPedidas() {
   const box = document.getElementById('mais-pedidas');
   const q = document.getElementById('busca-input').value.trim();
-  if (modosBusca !== 'youtube' || q.length >= 2 || !_maisPedidas || !_maisPedidas.length
-      || document.getElementById('escolha').style.display === 'block') { box.style.display = 'none'; return; }
+  if (modosBusca !== 'youtube' || q.length >= 2 || !_maisPedidas || !_maisPedidas.length) { box.style.display = 'none'; return; }
   box.innerHTML = '<div class="mp-titulo">🔥 Mais pedidas no bar</div><div class="mp-grid">'
     + _maisPedidas.map((v, i) => _cardHtml(v, i, 'mp')).join('') + '</div>';
   box.style.display = 'block';
+  document.getElementById('resultados-lista').innerHTML = '';   // as mais pedidas já dizem o que fazer
 }
-function escolherMaisPedida(i) { const v = _maisPedidas && _maisPedidas[i]; if (v) abrirEscolha(v); }
+function escolherMaisPedida(i) { const v = _maisPedidas && _maisPedidas[i]; if (v) abrirSheet(v); }
 
 async function buscar() {
   // Usado apenas para YouTube
   if (modosBusca === 'biblioteca') { onBuscaInput(); return; }
-  clearTimeout(buscaTimer);
-  if (document.getElementById('escolha').style.display === 'block') return;   // escolhendo: não mexe na lista
+  clearTimeout(buscaTimer); buscaTimer = null;
+  if (document.getElementById('sheet').classList.contains('on')) return;   // escolhendo: não mexe na lista (nem no videoSel)
   const q = document.getElementById('busca-input').value.trim();
   const lista = document.getElementById('resultados-lista');
   if (q.length < 2 || (q === _ultimaQ && lista.children.length)) return;
@@ -1335,14 +1413,32 @@ async function buscar() {
   const ctl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
   _buscaCtl = ctl;
   const seq = ++_buscaSeq;
+  document.getElementById('busca-count').style.display = 'none';
+  document.getElementById('mais-pedidas').style.display = 'none';
   lista.className = 'yt-lista';
   lista.innerHTML = _esqueleto(3);
-  document.getElementById('mais-pedidas').style.display = 'none';
   try {
     const res  = await fetch(`/pubshow/api/buscar?q=${encodeURIComponent(q)}&bar=${encodeURIComponent(BAR_TOKEN)}`,
                              ctl ? {signal: ctl.signal} : {});
-    const data = await res.json();
+    let data = {};
+    try { data = await res.json(); } catch(e) {}
     if (seq !== _buscaSeq) return;
+    if (res.status === 503 || data.erro === 'youtube_fora') {   // crítico leigo A3 (17/10/26)
+      YT_FORA = true;
+      _ultimaQ = '';
+      lista.className = '';
+      lista.innerHTML = '<div class="yt-msg" style="color:#fbbf24">A busca do YouTube não respondeu agora. ' +
+        'Escolhe na 📚 Lista do bar: hoje dá pra furar a fila com ela também.<br>' +
+        '<button type="button" onclick="buscar()">Tentar de novo</button></div>';
+      return;
+    }
+    if (res.status === 429) {   // teto de buscas do bar: explica em vez de "Nenhum resultado" (15/10/26)
+      _ultimaQ = '';
+      lista.className = '';
+      lista.innerHTML = '<div class="yt-msg" style="color:#fbbf24">Muitas buscas agora. Espera uns segundos e tenta de novo.</div>';
+      return;
+    }
+    if (res.ok) YT_FORA = false;   // o YouTube voltou: furar a fila volta a ser só com música do YouTube
     const r = data.resultados || [];
     if (!r.length && data.fora_estilo) {   // 17/10/26: tudo de outro estilo → aviso grande + botão
       _ultimaQ = '';
@@ -1356,9 +1452,7 @@ async function buscar() {
     if (!r.length) {
       _ultimaQ = '';
       lista.className = '';
-      lista.innerHTML = data.erro
-        ? '<div class="yt-msg">A busca do YouTube não respondeu agora.<br><button type="button" onclick="buscar()">Tentar de novo</button></div>'
-        : '<div class="yt-msg">Não achou? Escreve artista + música.<br><small>Ex.: Evidências Chitãozinho</small></div>';
+      lista.innerHTML = '<div class="yt-msg">Não achou? Escreve artista + música.<br><small>Ex.: Evidências Chitãozinho</small></div>';
       return;
     }
     _listaAtual = r;
@@ -1368,6 +1462,8 @@ async function buscar() {
     _ultimaQ = '';
     lista.className = '';
     lista.innerHTML = '<div class="yt-msg" style="color:#f87171">Sem conexão agora.<br><button type="button" onclick="buscar()">Tentar de novo</button></div>';
+  } finally {
+    if (_buscaCtl === ctl) _buscaCtl = null;
   }
 }
 
@@ -1380,8 +1476,6 @@ function buscarOutra() {   // botão do aviso "Aqui só toca ...": limpa e já d
   inp.focus();
 }
 
-function selecionarVideo(idx, v) { abrirEscolha(v); }
-
 async function _carregarFilaInfo(yid) {
   try {
     const r = await fetch(`/pubshow/api/fila-info/${encodeURIComponent(BAR_TOKEN)}?cid=${encodeURIComponent(_cid())}`
@@ -1392,129 +1486,150 @@ async function _carregarFilaInfo(yid) {
     return d;
   } catch(e) { return null; }
 }
-function _tipoGratis() { return modosBusca === 'youtube' ? 'musica_externa' : 'musica_especifica'; }
-function _totalTxt(preco) {   // total do PIX, igual ao card do "Furar a fila" (item + taxa)
-  const t = Math.round((preco + PIX_CONV) * 100) / 100;
-  return 'R$ ' + (Number.isInteger(t) ? String(t) : t.toFixed(2).replace('.', ','));
-}
 
-// Escolheu a música: capa grande, em que lugar entra e os 2 botões (grátis / furar a fila) na mesma tela
-function abrirEscolha(v) {
+// ── Folha da música: 1 toque na música → Tocar grátis / Furar a fila ──────────
+function abrirSheet(v) {
   // tocou num card com a busca ainda pra disparar (continuou digitando): cancela, senão ela zera a escolha
-  clearTimeout(buscaTimer);
-  if (_buscaCtl) { try { _buscaCtl.abort(); } catch(e) {} _ultimaQ = ''; }
+  // (verificador da busca 2.0, ALTO: os botões ficavam mortos)
+  _cancelarBusca();
   videoSel = v;
-  document.getElementById('busca-lista-box').style.display = 'none';
-  document.getElementById('mais-pedidas').style.display = 'none';
-  const _fonte = document.getElementById('busca-fonte');
-  if (_fonte && _fonte.style.display !== 'none') { _fonte.dataset.volta = _fonte.style.display || 'flex'; _fonte.style.display = 'none'; }
-  const img = document.getElementById('esc-img');
-  img.style.visibility = '';
-  img.onerror = () => { img.style.visibility = 'hidden'; };
-  img.src = _capa(v);
-  const dur = document.getElementById('esc-dur');
-  dur.textContent = v.duracao || '';
-  dur.style.display = v.duracao ? '' : 'none';
-  document.getElementById('esc-titulo').textContent = v.titulo || '';
-  document.getElementById('esc-sub').innerHTML = v.views_txt !== undefined
-    ? (v.oficial ? '<span class="yt-of">✓ Oficial</span>' : _esc(v.canal || '')) + (v.views_txt ? ' · ' + _esc(v.views_txt) : '')
-    : (v.vezes ? `🔥 ${v.vezes}× esta semana aqui no bar` : _esc(v.sub || ''));
-  const nome = document.getElementById('esc-nome');
-  nome.style.borderColor = '';
-  if (!nome.value) { try { nome.value = localStorage.getItem('jk_nome') || ''; } catch(e) {} }
-  _pintarEscolha(v, _filaInfo, false);          // na hora, com o que já sabe
-  document.getElementById('escolha').style.display = 'block';
-  window.scrollTo({top: 0, behavior: 'smooth'});
-  _carregarFilaInfo(v.id).then(d => { if (d && videoSel === v) _pintarEscolha(v, d, true); });
+  _gratisTravada = false;
+  document.getElementById('sh-titulo').textContent = v.titulo;
+  const _sub = document.getElementById('sh-sub');
+  if (v.views_txt !== undefined || v.vezes) _sub.innerHTML = _subYt(v) + (v.vezes ? ' aqui no bar' : '');
+  else _sub.textContent = v.sub || '';
+  // capa grande pra ver qual é o clipe (busca 2.0): YouTube, mais pedidas e acervo (todo vídeo tem id)
+  const cw = document.getElementById('sh-capa-wrap'), img = document.getElementById('sh-img');
+  if (v.id) {
+    img.style.visibility = '';
+    img.onerror = () => { img.style.visibility = 'hidden'; };
+    img.src = _capa(v);
+    const dur = document.getElementById('sh-dur');
+    dur.textContent = v.duracao || '';
+    dur.style.display = v.duracao ? '' : 'none';
+    cw.style.display = 'block';
+  } else {
+    cw.style.display = 'none';
+  }
+  const tipoGratis = modosBusca === 'youtube' ? 'musica_externa' : 'musica_especifica';
+  const bg = document.getElementById('btn-gratis');
+  if (bg) { bg.style.display = PRECOS[tipoGratis] ? '' : 'none'; bg.disabled = false; bg.style.opacity = ''; }
+  const bf = document.getElementById('btn-flash');
+  // 16/10/26 (produção c7273fb): furar a fila só com música do YouTube; sem YouTube no bar, vale o acervo.
+  // Crítico leigo A3 (17/10/26): com a busca do YouTube fora do ar (YT_FORA), o acervo volta a valer.
+  const _soYt = YT_LIBERADO && !YT_FORA && modosBusca !== 'youtube';
+  if (bf) { bf.disabled = false; bf.style.display = _soYt ? 'none' : ''; }
+  const fy = document.getElementById('sh-flash-yt');
+  if (fy) fy.style.display = (_soYt && bf) ? 'block' : 'none';
+  const av = document.getElementById('sh-aviso-gratis');
+  if (av) av.style.display = 'none';
+  _pintarSheet(v, _filaInfo, false);   // na hora, com o que já sabe
+  document.getElementById('sheet').classList.add('on');
+  _conferirGratisNaFila();
+  _carregarFilaInfo(v.id).then(d => { if (d && videoSel === v) _pintarSheet(v, d, true); });
 }
 
-function _pintarEscolha(v, d, fresco) {
+// busca 2.0 (16/10/26): "já na fila" / "tocou há X min", em que lugar entra e quanto falta pra próxima grátis
+function _pintarSheet(v, d, fresco) {
   const naFila = (fresco && d && d.na_fila !== undefined) ? d.na_fila : !!v.na_fila;
   const tocou  = (fresco && d && d.tocou_min !== undefined) ? d.tocou_min : (v.tocou_min ?? null);
-  const aviso = document.getElementById('esc-aviso');
+  const aviso = document.getElementById('sh-aviso');
   if (naFila) {
-    aviso.className = 'esc-aviso fila'; aviso.textContent = '🎵 Essa já está na fila! Escolhe outra 🙏'; aviso.style.display = 'block';
+    aviso.className = 'sh-aviso fila'; aviso.textContent = '🎵 Essa já está na fila! Escolhe outra 🙏'; aviso.style.display = 'block';
   } else if (tocou !== null && tocou !== undefined) {
-    aviso.className = 'esc-aviso tocou'; aviso.textContent = `🕒 Essa ${_tocouTxt(tocou)} aqui no bar`; aviso.style.display = 'block';
+    aviso.className = 'sh-aviso tocou'; aviso.textContent = `🕒 Essa ${_tocouTxt(tocou)} aqui no bar`; aviso.style.display = 'block';
   } else {
-    aviso.style.display = 'none';
+    aviso.textContent = ''; aviso.style.display = 'none';
   }
-  const temGratis = !tipoForcado && !!PRECOS[_tipoGratis()];
-  const temFlash  = !!PRECOS.flash;
   const espera = (d && d.espera_gratis_min) || 0;
-  const pos = document.getElementById('esc-pos');
+  const pos = document.getElementById('sh-pos');
   let txt = '';
-  if (tipoForcado === 'flash') {
-    if (d) txt = d.flash.na_frente === 0 ? '⚡ Furando a fila, a tua toca a seguir.'
-                                         : `⚡ Furando a fila, entra em ${d.flash.posicao}º lugar (~${d.flash.min} min).`;
-  } else if (espera > 0) {
-    txt = `⏳ Tua próxima grátis libera em ${espera} min.`;
-  } else if (d) {
-    txt = d.gratis.na_frente === 0 ? '📍 Entra em 1º lugar: toca quando a música atual acabar.'
-                                   : `📍 Entra em ${d.gratis.posicao}º lugar, toca em ~${d.gratis.min} min.`;
-  }
+  if (espera > 0) txt = `⏳ Tua próxima grátis libera em ${espera} min.`;
+  else if (d) txt = d.gratis.na_frente === 0 ? '📍 Entra em 1º lugar: toca quando a música atual acabar.'
+                                              : `📍 Entra em ${d.gratis.posicao}º lugar, toca em ~${d.gratis.min} min.`;
   pos.textContent = txt;
-  pos.style.color = (espera > 0 && !tipoForcado) ? '#fbbf24' : '#86efac';
+  pos.style.color = espera > 0 ? '#fbbf24' : '#86efac';
+  pos.style.display = txt ? '' : 'none';
 
-  const bG = document.getElementById('esc-gratis'), bF = document.getElementById('esc-flash');
-  bG.style.display = temGratis ? '' : 'none';
-  bG.disabled = naFila || espera > 0;
-  bG.textContent = espera > 0 ? `🎵 Grátis libera em ${espera} min` : '🎵 Pedir grátis';
-  bF.style.display = temFlash ? '' : 'none';
-  bF.disabled = naFila;
-  const quando = (!d || d.flash.na_frente === 0) ? 'toca a seguir' : `entra em ${d.flash.posicao}º`;
-  bF.textContent = temFlash ? `⚡ Furar a fila: ${quando}, ${_totalTxt(PRECOS.flash.preco)}` : '';
-  bF.classList.toggle('sec', temGratis && !(espera > 0));   // vira o botão principal quando é o único caminho
+  const bg = document.getElementById('btn-gratis');
+  if (bg) {
+    bg.disabled = naFila || espera > 0 || _gratisTravada;
+    bg.style.opacity = bg.disabled ? '.45' : '';
+    if (bg.firstChild) bg.firstChild.textContent = espera > 0 ? `🎵 Grátis libera em ${espera} min` : '🎵 Tocar grátis';
+    const gs = document.getElementById('sh-gratis-sub');
+    if (gs && d) gs.textContent = espera > 0 ? '1 a cada {{ gratis_min or 20 }} min por celular'
+      : (d.gratis.na_frente === 0 ? 'fila vazia, toca já já' : `entra em ${d.gratis.posicao}º · ~${d.gratis.min} min de fila`);
+  }
+  const bf = document.getElementById('btn-flash');
+  if (bf) {
+    bf.disabled = naFila;
+    const fs = document.getElementById('sh-flash-sub');
+    if (fs && d) {
+      const quando = d.flash.na_frente === 0 ? 'toca a seguir' : `entra em ${d.flash.posicao}º`;
+      fs.textContent = quando + (fs.dataset.preco ? ' · ' + fs.dataset.preco : '');
+    }
+  }
 }
-
-function fecharEscolha() {
-  document.getElementById('escolha').style.display = 'none';
-  document.getElementById('busca-lista-box').style.display = '';
-  const _fonte = document.getElementById('busca-fonte');
-  if (_fonte && _fonte.dataset.volta) { _fonte.style.display = _fonte.dataset.volta; delete _fonte.dataset.volta; }
-  videoSel = null;
-  _mostrarMaisPedidas();
-  // o texto mudou enquanto escolhia (ou a busca foi cancelada): busca o que está escrito agora
-  if (modosBusca === 'youtube' && document.getElementById('busca-input').value.trim() !== _ultimaQ) onBuscaInput();
+// 16/10/26 (crítico C2): a 1ª música grátis deste celular ainda está na fila? (1 grátis por vez)
+async function _conferirGratisNaFila() {
+  let g = null;
+  try { g = JSON.parse(localStorage.getItem('jk_gratis') || 'null'); } catch(e) {}
+  if (!g || !g.id) return;
+  if (Date.now() - (g.t || 0) > 12 * 3600 * 1000) { try { localStorage.removeItem('jk_gratis'); } catch(e) {} return; }
+  try {
+    const r = await fetch(`/pubshow/api/pedido-status/${BAR_TOKEN}/${g.id}`);
+    const d = await r.json();
+    if (d.status === 'pendente') {
+      const bg = document.getElementById('btn-gratis');
+      const av = document.getElementById('sh-aviso-gratis');
+      _gratisTravada = true;
+      if (bg && document.getElementById('sheet').classList.contains('on')) { bg.disabled = true; bg.style.opacity = '.45'; }
+      if (av) av.style.display = 'block';
+    } else {
+      try { localStorage.removeItem('jk_gratis'); } catch(e) {}
+      const bg = document.getElementById('btn-gratis');
+      if (bg) bg.style.opacity = '';
+    }
+  } catch(e) {}
 }
-
-function pedirEscolha(qual) {
+function fecharSheet() {
+  const s = document.getElementById('sheet');
+  if (!s || !s.classList.contains('on')) return;
+  s.classList.remove('on');
+  if (modosBusca === 'youtube' && _abaAtual === 'musicas') {
+    const q = document.getElementById('busca-input').value.trim();
+    if (q.length >= 2 && q !== _ultimaQ) onBuscaInput();
+    else if (q.length < 2) _mostrarMaisPedidas();
+  }
+}
+function enviarMusica(prioridade) {
   if (!videoSel) return;
-  const tipo = qual === 'flash' ? 'flash' : _tipoGratis();
-  if (!PRECOS[tipo]) return;
-  const nomeEl = document.getElementById('esc-nome');
-  const nome = nomeEl.value.trim();
-  if (!nome) {
-    nomeEl.style.borderColor = '#f87171';
-    nomeEl.placeholder = 'Escreve teu nome aqui 👈';
-    nomeEl.focus();
+  const nome = document.getElementById('sh-nome');
+  if (!nome.value.trim()) {
+    nome.classList.add('falta');
+    nome.focus();
+    nome.placeholder = 'Põe teu nome aqui 👆';
     return;
   }
-  try { localStorage.setItem('jk_nome', nome); } catch(e) {}
-  document.getElementById('inp-tipo').value          = tipo;
-  document.getElementById('inp-youtube-id').value    = videoSel.id;
-  document.getElementById('inp-titulo-pedido').value = (videoSel.titulo || '').slice(0, 80);
-  document.getElementById('inp-thumb-url').value     = '';
-  document.getElementById('inp-nome').value          = nome;
-  const im = document.getElementById('inp-msg');
-  if (im) { im.required = false; im.value = ''; }
-  const vg = document.getElementById('inp-valor-gorjeta');
-  if (vg) vg.value = '';
-  ['esc-gratis', 'esc-flash'].forEach(id => { document.getElementById(id).disabled = true; });
-  document.getElementById(qual === 'flash' ? 'esc-flash' : 'esc-gratis').textContent = '⏳ Enviando...';
-  document.getElementById('form-pedido').submit();
+  const tipo = prioridade === 'flash' ? 'flash' : (modosBusca === 'youtube' ? 'musica_externa' : 'musica_especifica');
+  if (!PRECOS[tipo]) return;
+  if (prioridade === 'flash' && !PIX_DIRETO) {
+    // sem PIX automático o formulário mostra a chave do bar / o aviso do balcão antes de enviar
+    document.getElementById('inp-nome').value = nome.value.trim();
+    fecharSheet();
+    confirmarMusica('flash');
+    return;
+  }
+  document.getElementById('sh-tipo').value          = tipo;
+  document.getElementById('sh-youtube-id').value    = videoSel.id;
+  document.getElementById('sh-titulo-pedido').value = (videoSel.titulo || '').slice(0, 80);
+  document.querySelectorAll('#form-musica button').forEach(b => { b.disabled = true; });
+  const btn = document.getElementById(prioridade === 'flash' ? 'btn-flash' : 'btn-gratis');
+  if (btn) btn.firstChild.textContent = '⏳ Enviando... ';
+  document.getElementById('form-musica').submit();
 }
 
-// Nome lembrado neste celular (16/10/26): quem já pediu uma vez não digita de novo
-(function() {
-  const n = document.getElementById('inp-nome');
-  if (!n) return;
-  try { if (!n.value) n.value = localStorage.getItem('jk_nome') || ''; } catch(e) {}
-  const f = document.getElementById('form-pedido');
-  if (f) f.addEventListener('submit', () => { try { const v = n.value.trim(); if (v) localStorage.setItem('jk_nome', v); } catch(e) {} });
-})();
-
-// ── PIX Copia e Cola (payload EMV com música na descrição) ────────────────────
+// ── PIX Copia e Cola manual (chave do próprio bar, sem gateway) ───────────────
 function _pixTlv(id, val) {
   const s = String(val);
   return id + String(s.length).padStart(2,'0') + s;
@@ -1602,312 +1717,69 @@ function copiarPix() {
   });
 }
 
-// ── Onboarding Fullscreen ─────────────────────────────────────────────────────
-let obCur = 0;
-const OB_TOTAL = 1;
-
-function obGoTo(n) {
-  obCur = Math.max(0, Math.min(n, OB_TOTAL - 1));
-  const track = document.getElementById('ob-track');
-  if (!track) return;
-  track.style.transform = `translateX(-${obCur * 100}vw)`;
-
-  // Dots
-  document.querySelectorAll('.ob-dot').forEach((d, i) => d.classList.toggle('on', i === obCur));
-
-  // Botão final ou "próximo"
-  const btn  = document.getElementById('ob-btn');
-  const skip = document.getElementById('ob-skip');
-  if (obCur === OB_TOTAL - 1) {
-    btn.style.display  = 'block';
-    skip.style.display = 'none';
-  } else {
-    btn.style.display  = 'none';
-    skip.style.display = 'block';
-  }
-}
-
-function fecharOnboarding() {
-  const el = document.getElementById('onboarding');
-  if (!el) return;
-  el.classList.add('hide');
-  setTimeout(() => el.remove(), 380);
-  try { localStorage.setItem('ob_{{ b.jukebox_token or b.id }}', '1'); } catch(e) {}
-}
-
-(function initOnboarding() {
-  const el = document.getElementById('onboarding');
-  if (!el) return;
-
-  // Se já viu, fecha imediatamente
-  try { if (localStorage.getItem('ob_{{ b.jukebox_token or b.id }}')) { el.remove(); return; } } catch(e) {}
-
-  obGoTo(0);
-
-  // Swipe touch
-  let sx = 0;
-  el.addEventListener('touchstart', e => { sx = e.touches[0].clientX; }, {passive:true});
-  el.addEventListener('touchend',   e => {
-    const dx = e.changedTouches[0].clientX - sx;
-    if (dx < -50 && obCur < OB_TOTAL - 1) obGoTo(obCur + 1);
-    else if (dx > 50 && obCur > 0) obGoTo(obCur - 1);
-  }, {passive:true});
+// ── Abre direto na lista de músicas (ou na aba do momento que deu erro) ───────
+{% set tipo_post = request.form.get('tipo', '') if request.method == 'POST' else '' %}
+(function(){
+  {% if erro and tipo_post in ['parabens','dedicatoria','brinde','chegada','casamento','gorjeta','cantada','salve'] %}
+  mostrarAba('tv');
+  // 16/10/26 (crítico C2): reabre o MESMO momento com o que o cliente digitou (antes: tudo de novo)
+  try {
+    {% if tipo_post == 'gorjeta' %}
+    abrirGorjeta();
+    const _vg = {{ (request.form.get('valor_gorjeta') or '')|tojson }};
+    document.querySelectorAll('.gorjeta-opt').forEach(b => { if (b.textContent.trim() === 'R$ ' + parseInt(_vg)) escolherGorjeta(parseInt(_vg), b); });
+    {% else %}
+    selecionarTipo({{ tipo_post|tojson }});
+    {% endif %}
+    document.getElementById('inp-nome').value = {{ (request.form.get('nome_cliente') or '')[:20]|tojson }};
+    document.getElementById('inp-msg').value  = {{ (request.form.get('mensagem') or '')[:80]|tojson }};
+    const _rem = document.getElementById('inp-remetente');
+    if (_rem) _rem.value = {{ (request.form.get('remetente') or '')[:20]|tojson }};
+  } catch(e) {}
+  {% endif %}
+  _carregarBibliotecaCompleta();
 })();
-
-// ── Tutorial Carousel ─────────────────────────────────────────────────────────
-(function() {
-  const wrap  = document.getElementById('tutorial-wrap');
-  const track = document.getElementById('tutorial-track');
-  const dots  = document.getElementById('tutorial-dots');
-  if (!wrap || !track || !dots) return;
-
-  const TOTAL = track.children.length;
-  let cur = 0, timer = null, startX = 0, dragging = false;
-
-  window.tutorialGoTo = function(n) {
-    cur = (n + TOTAL) % TOTAL;
-    track.style.transform = `translateX(-${cur * 100}vw)`;
-    Array.from(dots.children).forEach((d, i) => {
-      d.classList.toggle('on', i === cur);
-      d.style.width = i === cur ? '20px' : '8px';
-    });
+{% set yt_post = request.form.get('youtube_id', '') if request.method == 'POST' else '' %}
+{% if erro and yt_post and tipo_post in ['musica_especifica','musica_externa','flash'] and erro_tipo not in ('musica_na_fila', 'musica_longa') %}
+// 16/10/26 (crítico C2): erro na música (palavrão no nome, 2ª grátis…) — a música escolhida fica a 1 toque
+(function(){
+  const v = {id: {{ yt_post[:11]|tojson }}, titulo: {{ (request.form.get('titulo_pedido') or '')[:80]|tojson }}, sub: ''};
+  const nome = {{ (request.form.get('nome_cliente') or '')[:20]|tojson }};
+  const f = document.createElement('div');
+  f.className = 'faixa-aviso'; f.id = 'faixa-retentar';
+  f.style.cursor = 'pointer';
+  {%- if erro_tipo == 'gratis_espera' and 'flash' in tipos %}
+  // crítico leigo A4 (17/10/26): a grátis está esperando → a faixa leva direto pro furar a fila (nada de loop)
+  f.appendChild(document.createTextNode('⚡ Furar a fila com ' + (v.titulo || 'essa música') + ' · '));
+  const bt = document.createElement('strong'); bt.textContent = {{ brl(tipos.flash.preco + pix_conv)|tojson }}; bt.style.color = '#fbbf24';
+  f.appendChild(bt);
+  f.onclick = function () {
+    {% if tipo_post in ('musica_externa', 'flash') %}if (typeof trocarFonte === 'function' && document.getElementById('fonte-youtube')) trocarFonte('youtube');{% endif %}
+    abrirSheet(v);
+    const sh = document.getElementById('sh-nome');
+    if (sh && nome) sh.value = nome;
+    const bg = document.getElementById('btn-gratis');
+    if (bg) { bg.disabled = true; bg.style.opacity = '.45'; }
   };
-
-  function schedule() {
-    clearInterval(timer);
-    timer = setInterval(() => tutorialGoTo(cur + 1), 4500);
-  }
-
-  // Touch / swipe
-  track.addEventListener('touchstart', e => {
-    startX = e.touches[0].clientX;
-    clearInterval(timer);
-  }, {passive:true});
-  track.addEventListener('touchend', e => {
-    const dx = e.changedTouches[0].clientX - startX;
-    if (Math.abs(dx) > 40) tutorialGoTo(cur + (dx < 0 ? 1 : -1));
-    schedule();
-  }, {passive:true});
-
-  // Mouse drag
-  track.addEventListener('mousedown', e => { startX = e.clientX; dragging = true; clearInterval(timer); });
-  document.addEventListener('mouseup', e => {
-    if (!dragging) return;
-    dragging = false;
-    const dx = e.clientX - startX;
-    if (Math.abs(dx) > 40) tutorialGoTo(cur + (dx < 0 ? 1 : -1));
-    schedule();
-  });
-
-  tutorialGoTo(0);
-  schedule();
+  {%- else %}
+  f.appendChild(document.createTextNode('🎵 ' + (v.titulo || 'Tua música') + ' → '));
+  const bt = document.createElement('strong'); bt.textContent = 'toca aqui pra tentar de novo'; bt.style.color = '#fbbf24';
+  f.appendChild(bt);
+  f.onclick = function () {
+    {% if tipo_post in ('musica_externa', 'flash') %}if (typeof trocarFonte === 'function' && document.getElementById('fonte-youtube')) trocarFonte('youtube');{% endif %}
+    abrirSheet(v);
+    const sh = document.getElementById('sh-nome');
+    if (sh && nome) sh.value = nome;
+  };
+  {%- endif %}
+  const eb = document.querySelector('.erro-box');
+  if (eb && eb.parentNode) eb.parentNode.insertBefore(f, eb.nextSibling);
 })();
+{% endif %}
 </script>
 
+{% endif %}{# fim aberto #}
 {% endif %}{# fim {% else %} pix_pendente #}
-
-<!-- ── Multi-idioma PT/EN ─────────────────────────────────────────────────── -->
-<script>
-const TRANS = {
-  pt: {
-    status:          'Jukebox ativo — escolha seu pedido abaixo',
-    fila:            '📋 Fila agora',
-    titulo_grid:     '🎰 O que você quer fazer?',
-    mais_opcoes:     '⋯ Mais opções',
-    card_musica:     'Música<br>aleatória',
-    card_flash:      'Furar<br>a fila',
-    card_especifica: 'Escolher<br>a música',
-    card_parabens:   'Parabéns<br>na tela! 🎂',
-    card_dedicatoria:'Dedicatória — mensagem aparece na tela ❤️',
-    label_nome:      'Seu nome *',
-    placeholder_nome:'Como quer aparecer na tela?',
-    label_msg:       'Mensagem (opcional)',
-    placeholder_msg: 'Aparece na tela do bar...',
-    ob1_step:'Passo 1 de 4',ob1_title:'Bem-vindo ao Jukebox do {{ b.nome }}!',
-    ob1_sub:'Aqui você controla a música da noite direto pelo celular, sem precisar falar com ninguém.',
-    ob2_step:'Passo 2 de 4',ob2_title:'Escolha o tipo de pedido',
-    ob2_sub:'Pedir música é GRÁTIS. Furar a fila, parabéns, dedicatória e gorjeta pra equipe têm um valor — você escolhe.',
-    ob3_step:'Passo 3 de 4',ob3_title:'Pague via PIX em segundos',
-    ob3_sub:'Só nos pedidos com valor. Tudo pelo celular, sem maquininha: escaneia o QR do PIX ou copia e cola o código.',
-    ob4_step:'Passo 4 de 4',ob4_title:'Sua música toca na TV!',
-    ob4_sub:'Pedido grátis entra na fila na hora. Furou a fila? Assim que o PIX cair, a sua é a próxima a tocar. Aproveite! 🍺',
-    ob_proximo:'Próximo →',ob_btn:'🎵 Vamos lá!',
-  },
-  en: {
-    status:          'Jukebox active — choose your order below',
-    fila:            '📋 Queue now',
-    titulo_grid:     '🎰 What do you want?',
-    mais_opcoes:     '⋯ More options',
-    card_musica:     'Random<br>song',
-    card_flash:      'Skip<br>the queue',
-    card_especifica: 'Choose<br>the song',
-    card_parabens:   'Happy Birthday<br>on screen! 🎂',
-    card_dedicatoria:'Dedication — message on screen ❤️',
-    label_nome:      'Your name *',
-    placeholder_nome:'How do you want to appear on screen?',
-    label_msg:       'Message (optional)',
-    placeholder_msg: 'Appears on the bar screen...',
-    ob1_step:'Step 1 of 4',ob1_title:'Welcome to {{ b.nome }} Jukebox!',
-    ob1_sub:'Control the music of the night directly from your phone — no need to talk to anyone.',
-    ob2_step:'Step 2 of 4',ob2_title:'Choose your order type',
-    ob2_sub:'Random song, pick a song, skip the queue, happy birthday, dedication... each with a different price.',
-    ob3_step:'Step 3 of 4',ob3_title:'Pay via PIX in seconds',
-    ob3_sub:'Everything from your phone, no card machine. Scan the PIX QR code or copy & paste the code.',
-    ob4_step:'Step 4 of 4',ob4_title:'Your song plays on TV!',
-    ob4_sub:'After payment is confirmed, your order joins the queue and appears on the bar screen. Enjoy! 🍺',
-    ob_proximo:'Next →',ob_btn:'🎵 Let\'s go!',
-  }
-};
-
-let _currentLang = localStorage.getItem('jk_lang') || 'pt';
-
-function setLang(lang) {
-  _currentLang = lang;
-  localStorage.setItem('jk_lang', lang);
-  const T = TRANS[lang];
-
-  // Botões de idioma
-  ['pt','en'].forEach(l => {
-    const btn = document.getElementById('btn-lang-' + l);
-    if (!btn) return;
-    btn.style.opacity = l === lang ? '1' : '.35';
-    btn.style.background = l === lang ? 'rgba(255,255,255,.14)' : 'none';
-  });
-
-  // Elementos data-i18n (innerHTML para suportar <br>)
-  document.querySelectorAll('[data-i18n]').forEach(el => {
-    const key = el.dataset.i18n;
-    if (T[key] !== undefined) el.innerHTML = T[key];
-  });
-
-  // Placeholders (data-i18n-ph)
-  document.querySelectorAll('[data-i18n-ph]').forEach(el => {
-    const key = el.dataset.i18nPh;
-    if (T[key] !== undefined) el.placeholder = T[key];
-  });
-
-  // Onboarding slides (se ainda visíveis)
-  const ob = document.getElementById('onboarding');
-  if (ob) {
-    const slides = ob.querySelectorAll('.ob-slide');
-    [].forEach(([i,pref]) => {   // slide único em PT (11/09/26)
-      if (!slides[i]) return;
-      slides[i].querySelector('.ob-step').textContent   = T[pref+'_step'];
-      slides[i].querySelector('.ob-titulo').textContent = T[pref+'_title'];
-      slides[i].querySelector('.ob-sub').textContent    = T[pref+'_sub'];
-    });
-    const skip = document.getElementById('ob-skip');
-    const btn  = document.getElementById('ob-btn');
-    if (skip) skip.textContent = T.ob_proximo;
-    if (btn)  btn.textContent  = T.ob_btn;
-  }
-}
-
-// Aplica idioma salvo ao carregar
-document.addEventListener('DOMContentLoaded', () => setLang(_currentLang));
-</script>
-
-<!-- ── Banner de instalação PWA ─────────────────────────────────────────────── -->
-<div id="pwa-banner" style="
-  display:none;position:fixed;bottom:0;left:0;right:0;z-index:999;
-  background:linear-gradient(135deg,#0d1f17,#0a1525);
-  border-top:1px solid rgba(74,222,128,.3);
-  padding:14px 18px 18px;
-  box-shadow:0 -4px 30px rgba(0,0,0,.6);
-  animation:slideUp .35s ease;
-">
-<style>
-@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
-#pwa-banner .pwa-row{display:flex;align-items:center;gap:12px}
-#pwa-banner .pwa-icon{width:44px;height:44px;border-radius:10px;background:rgba(74,222,128,.15);border:1px solid rgba(74,222,128,.3);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0}
-#pwa-banner .pwa-text{flex:1;min-width:0}
-#pwa-banner .pwa-title{font-size:14px;font-weight:800;color:#f0f0ff;margin-bottom:2px}
-#pwa-banner .pwa-sub{font-size:11px;color:#8888aa;line-height:1.4}
-#pwa-banner .pwa-close{background:none;border:none;color:#8888aa;font-size:20px;cursor:pointer;padding:4px;flex-shrink:0}
-#pwa-banner .btn-instalar{display:block;width:100%;margin-top:12px;padding:13px;background:linear-gradient(135deg,#16a34a,#15803d);color:#fff;font-size:14px;font-weight:800;border:none;border-radius:12px;cursor:pointer;font-family:inherit;-webkit-tap-highlight-color:transparent}
-#pwa-banner .btn-instalar:active{opacity:.85}
-/* instrução iOS */
-#pwa-ios-tip{display:none;margin-top:10px;padding:10px 12px;background:rgba(255,255,255,.04);border-radius:10px;border:1px solid rgba(255,255,255,.08);font-size:12px;color:#aaa;line-height:1.6;text-align:center}
-</style>
-<div class="pwa-row">
-  <div class="pwa-icon">🎵</div>
-  <div class="pwa-text">
-    <div class="pwa-title">Instalar Jukebox</div>
-    <div class="pwa-sub">Abre direto, sem barra do browser — como um app!</div>
-  </div>
-  <button class="pwa-close" onclick="fecharBannerPwa()" aria-label="Fechar">✕</button>
-</div>
-<!-- Android: botão de instalação nativo -->
-<button class="btn-instalar" id="btn-pwa-instalar" style="display:none"
-        onclick="instalarPwa()">📲 Adicionar à tela inicial</button>
-<!-- iOS: instrução manual -->
-<div id="pwa-ios-tip">
-  Toque em <strong style="color:#fff">⬆️ Compartilhar</strong> e depois em
-  <strong style="color:#fff">Adicionar à Tela Inicial</strong>
-</div>
-</div>
-
-<script>
-// ── PWA Service Worker ────────────────────────────────────────────────────────
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/static/pubshow/sw.js', {scope: '/'})
-    .then(reg => console.log('[SW] registrado:', reg.scope))
-    .catch(err => console.warn('[SW] erro:', err));
-}
-
-// ── Banner de instalação ──────────────────────────────────────────────────────
-let _pwaPrompt = null;
-
-// Já instalado? Não mostra
-function _jaInstalado() {
-  return window.matchMedia('(display-mode: standalone)').matches
-    || window.navigator.standalone === true
-    || document.referrer.startsWith('android-app://');
-}
-
-function fecharBannerPwa() {
-  document.getElementById('pwa-banner').style.display = 'none';
-  try { sessionStorage.setItem('pwa_dismissed', '1'); } catch(e) {}
-}
-
-function instalarPwa() {
-  if (!_pwaPrompt) return;
-  _pwaPrompt.prompt();
-  _pwaPrompt.userChoice.then(r => {
-    if (r.outcome === 'accepted') fecharBannerPwa();
-    _pwaPrompt = null;
-  });
-}
-
-function _mostrarBannerPwa() {
-  return;   // 16/10/26 (Diogo): o aviso "Instalar Jukebox / Adicionar à tela inicial" saiu da tela do cliente
-  if (_jaInstalado()) return;
-  try { if (sessionStorage.getItem('pwa_dismissed')) return; } catch(e) {}
-  document.getElementById('pwa-banner').style.display = 'block';
-}
-
-// Android Chrome: captura o prompt de instalação nativo
-window.addEventListener('beforeinstallprompt', e => {
-  e.preventDefault();
-  _pwaPrompt = e;
-  document.getElementById('btn-pwa-instalar').style.display = 'block';
-  // Mostra após 3s (não logo de cara)
-  setTimeout(_mostrarBannerPwa, 3000);
-});
-
-// iOS Safari: detecta e mostra instrução manual
-(function() {
-  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
-  const isSafari = /safari/i.test(navigator.userAgent) && !/crios|fxios|opios/i.test(navigator.userAgent);
-  if (isIOS && isSafari && !_jaInstalado()) {
-    document.getElementById('pwa-ios-tip').style.display = 'block';
-    setTimeout(_mostrarBannerPwa, 3000);
-  }
-})();
-
-// Esconde após instalar
-window.addEventListener('appinstalled', () => fecharBannerPwa());
-</script>
 
 </body>
 </html>

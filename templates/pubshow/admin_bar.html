@@ -188,6 +188,19 @@
           <button type="submit" class="btn-acao danger" onclick="return confirm('Limpar toda a fila?')">🗑️ Limpar fila de pedidos</button>
         </form>
 
+        {#- Lote D A3 (16/10/26): pausa de 60 dias sem momento pago (só bar na Efí) — o relógio recomeça no clique #}
+        {%- if pausa %}
+        <div id="admin-pausa" style="font-size:12px;line-height:1.6;color:{% if pausa.pausado %}#f87171{% else %}#fbbf24{% endif %}">
+          {% if pausa.pausado %}⏸️ <strong>Pausado:</strong> {{ pausa.dias }} dias sem momento pago (momentos, música e TV parados).
+          {% elif pausa.aviso %}⚠️ Pausa em {{ pausa.pausa_em_brt }}: {{ pausa.dias }} dias sem momento pago.
+          {% else %}Pausa de 60 dias: {{ pausa.dias }} dia(s) sem momento pago (pausa em {{ pausa.pausa_em_brt }}).{% endif %}
+        </div>
+        <form method="POST" action="/pubshow/admin/bar/{{ b.id }}/acao">
+          <input type="hidden" name="acao" value="reativar_pausa">
+          <button type="submit" class="btn-acao success">▶ Reativar (o prazo de 60 dias recomeça hoje)</button>
+        </form>
+        {%- endif %}
+
         <!-- Suspender / reativar -->
         {% if b.suspenso %}
         <form method="POST" action="/pubshow/admin/bar/{{ b.id }}/acao">
@@ -273,7 +286,7 @@
             <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
               {{ p.titulo_pedido or p.mensagem or '—' }}
             </td>
-            <td style="color:#4ade80;font-weight:700">{% if p.valor %}R$ {{ '%.0f'|format(p.valor) }}{% else %}—{% endif %}</td>
+            <td style="color:#4ade80;font-weight:700">{% if p.valor %}R$ {{ '%.2f'|format(p.valor)|replace('.',',') }}{% else %}—{% endif %}</td>
             <td>
               <span class="status-chip {% if p.status=='pendente' %}chip-pendente{% elif p.status=='exibido' %}chip-exibido{% else %}chip-dispensado{% endif %}">
                 {{ p.status }}

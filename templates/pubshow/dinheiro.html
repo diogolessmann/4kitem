@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#08080f">
+<title>Meu dinheiro — {{ b.nome }}</title>
+{# Lote C, fatia b (16/10/26): tela "Meu dinheiro" (PAGAMENTO_NOVO §3.5 + RELATORIO_FINAL e.1), lida do livro-caixa.
+   Tudo em centavos (f = pubshow_pay.fechamento_mes, ex = pubshow_pay.extrato); brl_cent(c) = "R$ 49,90".
+   1 coisa por tela: ver o mês. A única escolha é o mês (‹ ›). Nada aqui grava ou move dinheiro. #}
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#08080f;--s:#13131f;--s2:#1a1a2e;--bd:rgba(255,255,255,.08);--t:#f0f0ff;--t2:#8888aa;--green:#22c55e;--green2:#4ade80;--orange:#f97316;--amber:#fbbf24;--red:#f87171}
+body{background:var(--bg);color:var(--t);font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh;padding-bottom:60px;-webkit-text-size-adjust:100%}
+nav{border-bottom:1px solid var(--bd);padding:0 16px;height:54px;display:flex;align-items:center;gap:14px}
+nav a{font-size:14px;color:var(--t2);text-decoration:none;min-height:44px;display:flex;align-items:center}
+nav strong{font-size:15px}
+.page{max-width:560px;margin:0 auto;padding:16px}
+.mes-nav{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:14px}
+.mes-nav h1{font-size:20px;font-weight:900;text-align:center;flex:1}
+.mes-btn{min-width:44px;min-height:44px;border-radius:12px;border:1px solid var(--bd);background:var(--s);color:var(--t);font-size:20px;font-weight:800;text-decoration:none;display:flex;align-items:center;justify-content:center}
+.mes-btn.off{visibility:hidden}
+.card{background:var(--s);border:1px solid var(--bd);border-radius:16px;padding:16px;margin-bottom:12px}
+.card h2{font-size:13px;font-weight:800;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px}
+.dois{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.box{background:var(--s2);border-radius:12px;padding:12px}
+.box .rot{font-size:12px;color:var(--t2);margin-bottom:4px}
+.box .big{font-size:22px;font-weight:900;word-break:break-word}
+.box .mini{font-size:11px;color:var(--t2);margin-top:4px;line-height:1.4}
+.topo-caiu{background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.3);border-radius:12px;padding:14px;margin-bottom:10px}
+.topo-caiu .rot{font-size:13px;color:var(--t2);margin-bottom:2px}
+.topo-caiu .big{font-size:30px;font-weight:900;word-break:break-word}
+.topo-caiu .mini{font-size:12px;color:var(--t2);margin-top:4px;line-height:1.5}
+.linha{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:7px 0;font-size:15px}
+.linha+.linha{border-top:1px solid var(--bd)}
+.val{font-weight:800;white-space:nowrap}
+.sub{font-size:13px;color:var(--t2);line-height:1.6;margin-top:8px}
+.ok{color:var(--green2)}
+.aviso{color:var(--amber)}
+.ruim{color:var(--red)}
+.selo{display:inline-block;font-size:13px;font-weight:800;padding:6px 12px;border-radius:20px;margin-top:4px}
+.selo.ok{background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.3)}
+.selo.pend{background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.3);color:var(--amber)}
+.barra{height:8px;border-radius:4px;background:rgba(255,255,255,.08);overflow:hidden;margin-top:10px}
+.barra i{display:block;height:100%;background:linear-gradient(90deg,#22c55e,#4ade80)}
+.ex-item{padding:10px 0;border-top:1px solid var(--bd);font-size:14px}
+.ex-item:first-of-type{border-top:0}
+.ex-top{display:flex;justify-content:space-between;gap:10px}
+.ex-nome{font-weight:700;min-width:0;overflow-wrap:anywhere}
+.ex-quando{font-size:12px;color:var(--t2)}
+.ex-det{font-size:12px;color:var(--t2);margin-top:2px;line-height:1.5}
+.ex-dia{border-top:1px solid var(--bd)}
+.ex-dia:first-of-type{border-top:0}
+.ex-dia summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:12px 0;min-height:44px;font-size:15px}
+.ex-dia summary::-webkit-details-marker{display:none}
+.ex-dia summary .ex-quando{display:block}
+.ex-dia[open] summary{color:var(--orange)}
+.ex-dia .ex-item:first-of-type{border-top:1px solid var(--bd)}
+.ajuda{font-size:13px;color:var(--t2);text-align:center;margin-top:18px;line-height:1.6}
+.ajuda a{color:var(--orange);font-weight:800;text-decoration:none}
+</style>
+</head>
+<body>
+<nav><a href="/pubshow/painel">← Painel</a><strong>💰 Meu dinheiro</strong></nav>
+<div class="page">
+
+  {# ── Seletor de mês ── #}
+  <div class="mes-nav" id="din-mes-nav">
+    <a class="mes-btn{% if not mes_ant %} off{% endif %}" {% if mes_ant %}href="/pubshow/painel/dinheiro?mes={{ mes_ant }}"{% endif %} aria-label="Mês anterior">‹</a>
+    <h1>{{ mes_nome|capitalize }}</h1>
+    <a class="mes-btn{% if not mes_prox %} off{% endif %}" {% if mes_prox %}href="/pubshow/painel/dinheiro?mes={{ mes_prox }}"{% endif %} aria-label="Próximo mês">›</a>
+  </div>
+
+  {# ── Momentos do mês + Gorjetas da equipe ── #}
+  <div class="card" id="din-mes">
+    {#- Lote D B (16/10/26, aprovado): a 1ª LINHA é o que caiu na conta do bar no mês (linha inteira, sozinha);
+        o que os clientes pagaram e as gorjetas vêm embaixo. CC2/VCa-07: o valor que caiu de verdade (repasses do
+        split), nunca o total dos momentos. Sem conta conectada, a 1ª linha é o aviso (nada cai). #}
+    {% if conta %}
+    <div class="topo-caiu" id="din-caiu-topo">
+      <div class="rot">Caiu na conta do bar em {{ mes_nome.split(' ')[0] }}</div>
+      <div class="big ok" id="din-caiu-big">{{ brl_cent(caiu_cent.casa) }}</div>
+      <div class="mini" id="din-caiu">Na conta ••••{{ conta.efi_conta[-4:] }} da Efí: {{ brl_cent(caiu_cent.casa) }} dos momentos{% if caiu_cent.gorjeta %} e {{ brl_cent(caiu_cent.gorjeta) }} de gorjetas{% endif %}.</div>
+    </div>
+    {% else %}
+    <div class="sub aviso" id="din-caiu" style="margin:0 0 10px">Conta Efí do bar ainda não conectada: os momentos pagos estão pausados até você conectar a conta (passo 4 no painel).</div>
+    {% endif %}
+    <div class="dois">
+      <div class="box"><div class="rot">Pagos pelos clientes</div><div class="big" id="din-momentos">{{ brl_cent(f.momentos_cent) }}</div><div class="mini">momentos do mês</div></div>
+      <div class="box"><div class="rot">Gorjetas da equipe</div><div class="big ok" id="din-gorjetas">{{ brl_cent(f.gorjetas_cent) }}</div><div class="mini">nunca pagam a mensalidade</div></div>
+    </div>
+    {% if conta %}
+    {#- Lote D A2 (16/10/26): a mensalidade sai de 30% de cada momento até fechar (era "os primeiros R$ 49,90") #}
+    {%- set _sem_mens = mens_no_asaas or f.plano_cent <= 0 or (mens_mes_pago and not f.mensalidade_quitada) %}
+    <div class="sub">{% if _sem_mens %}Cada momento cai na hora na conta Efí do bar, a cada PIX.{% else %}Cada momento cai na hora na conta Efí do bar. Até fechar a mensalidade ({{ brl_cent(f.plano_cent) }} no mês), {{ f.mensal_pct }}% de cada momento paga ela.{% endif %}{% set _pm, _pr = f.mensalidade_paga_cent > 0, recupera_cent > 0 %}{% if f.momentos_cent > caiu_cent.casa and (_pm or _pr) %} A diferença {% if _pm %}pagou a mensalidade{% endif %}{% if _pm and _pr %} e {% endif %}{% if _pr %}cobriu um momento devolvido antes{% endif %}.{% endif %}</div>
+    {% endif %}
+    {% if f.bar_deve_cent.casa > 0 %}
+    {#- CC2 (16/10/26): sem jargão — a quem e por quê #}
+    <div class="sub aviso" id="din-deve">⚠️ {{ brl_cent(f.bar_deve_cent.casa) }} de um momento devolvido ao cliente já tinham caído na tua conta: os próximos momentos ficam com o PubShow até cobrir.</div>
+    {% endif %}
+    {% if f.bar_deve_cent.gorjeta > 0 %}
+    <div class="sub aviso">⚠️ {{ brl_cent(f.bar_deve_cent.gorjeta) }} de uma gorjeta devolvida já tinham caído na tua conta: as próximas gorjetas cobrem.</div>
+    {% endif %}
+    {% if em_devolucao_cent %}
+    <div class="sub aviso" id="din-em-devolucao">↩️ {{ brl_cent(em_devolucao_cent) }} voltando pro cliente (devolução em andamento): sai das somas quando a Efí confirmar.</div>
+    {% endif %}
+  </div>
+
+  {# ── Mensalidade ── #}
+  <div class="card" id="din-mensalidade">
+    <h2>Mensalidade</h2>
+    {% if mens_no_asaas %}
+    <div class="linha"><span>Plano</span><span class="val">{{ brl_cent(f.plano_cent) }}</span></div>
+    <div class="sub ok">Paga pela assinatura do Asaas: os momentos não tiram mensalidade.</div>
+    {% elif f.plano_cent <= 0 %}
+    <div class="selo ok">✅ Isento: os momentos não pagam mensalidade.</div>
+    {% elif mens_mes_pago and not f.mensalidade_quitada %}
+    {#- VCb-02 (16/10/26): cancelou e segue aberto até o fim do mês pago: o jukebox não tira mensalidade (sem_mensalidade) #}
+    <div class="linha"><span>Plano</span><span class="val">{{ brl_cent(f.plano_cent) }}</span></div>
+    <div class="sub ok" id="din-mes-pago">Este mês os momentos não tiram mensalidade (mês já pago).</div>
+    {% elif f.mensalidade_quitada %}
+    <div class="selo ok">✅ Quitada{% if f.mensalidade_quitada_em %} no dia {{ f.mensalidade_quitada_em[8:10] }}/{{ f.mensalidade_quitada_em[5:7] }}{% endif %}</div>
+    {#- CC2 (16/10/26): com "o bar deve", o próximo momento não é todo do bar #}
+    <div class="sub">{{ brl_cent(f.plano_cent) }} saíram dos momentos. Daqui pra frente, o momento é todo do bar{% if f.bar_deve_cent.casa > 0 %}, depois de cobrir os {{ brl_cent(f.bar_deve_cent.casa) }} devolvidos{% endif %} (o R$ 1 do app quem paga é o cliente, por cima).</div>
+    {% else %}
+    {% set falta = f.plano_cent - f.mensalidade_paga_cent %}
+    {#- VCb-03 (16/10/26): estorno de um momento do mês passado entra neste mês (V7-06) e o "pago" pode ficar negativo:
+        a tela mostra no mínimo R$ 0,00, a barra fica entre 0 e 100% e 1 linha explica a diferença #}
+    {% set _pago = [f.mensalidade_paga_cent, 0]|max %}
+    <div class="linha"><span>{{ brl_cent(_pago) }} de {{ brl_cent(f.plano_cent) }}</span><span class="val aviso">{% if mes_atual %}faltam {{ brl_cent(falta) }}{% else %}faltou {{ brl_cent(falta) }}{% endif %}</span></div>
+    <div class="barra"><i style="width:{{ [[(100 * _pago // f.plano_cent) if f.plano_cent else 0, 0]|max, 100]|min }}%"></i></div>
+    {% if f.mensalidade_paga_cent < 0 %}<div class="sub" id="din-estorno-ant">Inclui {{ brl_cent(-f.mensalidade_paga_cent) }} de um estorno do mês passado: aquele momento tinha pago parte da mensalidade e foi devolvido ao cliente.</div>{% endif %}
+    {#- Lote D A2 (16/10/26): saiu a garantia e não existe cobrança da diferença: o que falta nunca sai do bolso #}
+    {% if mes_atual %}
+    <div class="sub">Faltam {{ brl_cent(falta) }} ({{ f.mensal_pct }}% dos próximos momentos pagam).</div>
+    {% else %}
+    <div class="sub ok" id="din-nao-fechou">Esse mês não fechou a mensalidade: você pagou só {{ f.mensal_pct }}% do que rendeu e não paga a diferença.</div>
+    {% endif %}
+    {% endif %}
+    {% if not mens_no_asaas and f.plano_cent > 0 %}<div class="sub ok" id="din-sem-bolso">🛡️ Você nunca tira do bolso: a mensalidade sai só de {{ f.mensal_pct }}% dos momentos, até fechar {{ brl_cent(f.plano_cent) }} no mês.</div>{% endif %}
+  </div>
+
+  {# ── Hoje (só no mês atual) ── #}
+  {% if mes_atual %}
+  <div class="card" id="din-hoje">
+    <h2>Hoje</h2>
+    <div class="linha"><span>Momentos</span><span class="val">+{{ brl_cent(hoje_cent.casa) }}</span></div>
+    <div class="linha"><span>Gorjetas</span><span class="val ok">+{{ brl_cent(hoje_cent.gorjeta) }}</span></div>
+    {% if not hoje_linhas %}<div class="sub">Nenhum momento pago hoje ainda.</div>{% endif %}
+  </div>
+  {% endif %}
+
+  {# ── Extrato simples do mês ── #}
+  <div class="card" id="din-extrato">
+    <h2>Extrato do mês</h2>
+    {#- CC2 (16/10/26): agrupado por dia (com 200 momentos no mês era rolagem sem fim); toca no dia pra abrir #}
+    {% for d in extrato_dias %}
+    <details class="ex-dia"{% if loop.first %} open{% endif %}>
+      <summary><span><strong>{{ d.dia }}</strong> <span class="ex-quando">{{ d.n }} pagamento{{ 's' if d.n != 1 }}{% if d.caiu_cent %} · caiu {{ brl_cent(d.caiu_cent) }}{% endif %}</span></span><span class="val{% if d.total_cent < 0 %} ruim{% endif %}">{{ brl_cent(d.total_cent) }}</span></summary>
+      {% for e in d.itens %}
+      <div class="ex-item">
+        <div class="ex-top"><span class="ex-nome">{{ e.emoji }} {{ e.nome }}</span><span class="val{% if e.valor_cent < 0 %} ruim{% elif e.conta == 'gorjeta' %} ok{% endif %}">{{ brl_cent(e.valor_cent) }}</span></div>
+        <div class="ex-quando">{{ e.quando }}</div>
+        {% if e.detalhe %}<div class="ex-det">{{ e.detalhe }}</div>{% endif %}
+      </div>
+      {% endfor %}
+    </details>
+    {% else %}
+    <div class="sub">Nada neste mês ainda. Quando um cliente pagar um momento, ele aparece aqui.</div>
+    {% endfor %}
+  </div>
+
+  <div class="ajuda">Dúvida sobre o dinheiro? Chama no WhatsApp <a href="https://wa.me/{{ SUPORTE_WA }}?text={{ ('Dúvida no Meu dinheiro do ' ~ b.nome)|urlencode }}" target="_blank" rel="noopener">{{ SUPORTE_WA_FMT }}</a>.</div>
+</div>
+</body>
+</html>

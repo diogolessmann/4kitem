@@ -78,7 +78,7 @@
     </div>
     <div class="stat-card">
       <div class="stat-label">Receita hoje (rede)</div>
-      <div class="stat-val" style="color:#22c55e">R$ {{ '%.0f'|format(total_receita) }}</div>
+      <div class="stat-val" style="color:#22c55e">R$ {{ '%.2f'|format(total_receita)|replace('.',',') }}</div>
     </div>
   </div>
 
@@ -100,7 +100,7 @@
       </div>
       <div class="local-stats">
         <div class="local-stat">
-          <div class="local-stat-val" style="color:#22c55e">R$ {{ '%.0f'|format(f.receita_hoje) }}</div>
+          <div class="local-stat-val" style="color:#22c55e">R$ {{ '%.2f'|format(f.receita_hoje)|replace('.',',') }}</div>
           <div class="local-stat-lbl">Hoje</div>
         </div>
         <div class="local-stat">

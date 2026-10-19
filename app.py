@@ -78,6 +78,12 @@ def _security_headers(resp):
         # 4kitem entrava com z-index 9999 por cima do botão da loja (z-index 30) em todas as
         # páginas e levava o lead do cliente pagante pro nosso zap. Aqui não entra.
         _vitrine = bool(_segs) and _segs[0] == 'v'
+        # 16/10/26 (críticos C1/C4): no PubShow o balão do 4kitem cobria a TV do bar (/bar, /pubshow/tv),
+        # o passo 1 das boas-vindas, o celular do cliente (jukebox) e o print da landing — que já tem os
+        # botões de WhatsApp dela (com "Quero conhecer o PubShow"). Só no PubShow; o resto do 4kitem igual.
+        _pubshow_sem_balao = bool(_segs) and (
+            _segs[0] == 'bar' or
+            (_segs[0] == 'pubshow' and (len(_segs) == 1 or _segs[1] in ('tv', 'bem-vindo', 'jukebox'))))
         # SEO: páginas funcionais (login/cadastro/painel/checkout…) saem do índice do
         # Google e concentram a força de ranqueamento nas landings de venda. 'follow'
         # deixa o link equity fluir. Landings públicas NÃO são tocadas.
@@ -87,6 +93,7 @@ def _security_headers(resp):
                 and 'text/html' in resp.headers.get('Content-Type', '')
                 and not p.startswith('/static/')
                 and not _vitrine
+                and not _pubshow_sem_balao
                 and not _internal):
             body = resp.get_data(as_text=True)
             if '</body>' in body and 'wa-float-4k' not in body:
@@ -117,6 +124,9 @@ def _security_headers(resp):
 
 # ── SEO técnico + páginas legais ───────────────────────────────────────────────
 _SITEMAP_LASTMOD = '2026-09-12'   # atualizar quando uma landing mudar de verdade
+# por página, quando só ela mudou (16/10/26: landing do PubShow refeita em 7 blocos, S6). /pubshow/planos
+# NÃO entra: virou redirect 301 pra /pubshow/#preco, e sitemap só lista página final.
+_SITEMAP_LASTMOD_URL = {'/pubshow/': '2026-10-16'}
 @app.route('/robots.txt')
 def _robots():
     body = ('User-agent: *\nAllow: /\nDisallow: /saas-admin\nDisallow: /pubshow/admin\nDisallow: /pubshow/painel\n'
@@ -136,8 +146,9 @@ def _robots():
 def _llms_txt():
     """O que ChatGPT/Gemini/Perplexity/Claude leem pra saber o que citar do 4kitem (fatos, sem adjetivo).
     Preços do PubShow vêm do dict PLANOS (mesma fonte da landing) — nunca número solto."""
-    from pubshow import PLANOS as _ps_planos
-    return Response(render_template('llms.txt', planos=_ps_planos), content_type='text/plain; charset=utf-8')
+    from pubshow import PLANOS as _ps_planos, taxa_app_txt as _ps_taxa_app   # Lote D B (16/10/26): "R$ 1 do app"
+    return Response(render_template('llms.txt', planos=_ps_planos, ps_taxa_app=_ps_taxa_app()),
+                    content_type='text/plain; charset=utf-8')
 
 
 def _vitrine_slugs():
@@ -161,7 +172,7 @@ def _sitemap_index():
         'https://www.4kitem.com.br/v/%s/sitemap.xml' % sl for sl in _vitrine_slugs()]
     xml = ('<?xml version="1.0" encoding="UTF-8"?>'
            '<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
-           + ''.join('<sitemap><loc>%s</loc><lastmod>%s</lastmod></sitemap>' % (u, _SITEMAP_LASTMOD)
+           + ''.join('<sitemap><loc>%s</loc><lastmod>%s</lastmod></sitemap>' % (u, max([_SITEMAP_LASTMOD, *_SITEMAP_LASTMOD_URL.values()]) if u.endswith('/sitemap-4kitem.xml') else _SITEMAP_LASTMOD)
                      for u in locs)
            + '</sitemapindex>')
     return Response(xml, mimetype='application/xml')
@@ -177,7 +188,8 @@ def _sitemap():
             '/amparo/', '/camponline', '/drzap/', '/afiliados/',
             '/privacidade', '/termos']
     items = ''.join(
-        '<url><loc>https://www.4kitem.com.br%s</loc><lastmod>%s</lastmod></url>' % (u, _SITEMAP_LASTMOD) for u in urls)
+        '<url><loc>https://www.4kitem.com.br%s</loc><lastmod>%s</lastmod></url>' % (u, _SITEMAP_LASTMOD_URL.get(u, _SITEMAP_LASTMOD))
+        for u in urls)
     xml = ('<?xml version="1.0" encoding="UTF-8"?>'
            '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
            + items + '</urlset>')
@@ -1262,7 +1274,67 @@ from saas_db import init_saas_db, get_db as get_saas_db, salvar_nota_dev, listar
 
 @app.route('/')
 def index():
-    return render_template('index.html')
+    # preço do PubShow no card da home vem do plano único (PUBSHOW_PLANO_CENT), nunca à mão (15/10/26)
+    try:
+        from pubshow import PLANO as _ps_plano, _site_modelo_novo as _ps_novo
+        _ps_preco, _ps_modelo_novo = _ps_plano['preco_fmt'], _ps_novo()
+    except Exception:
+        _ps_preco, _ps_modelo_novo = '', False
+    # 16/10/26 (S6): "o app se paga com o próprio jukebox" só com o modelo novo ligado (Lote C)
+    return render_template('index.html', pubshow_preco_fmt=_ps_preco, pubshow_modelo_novo=_ps_modelo_novo)
+
+
+# PubShow — rota CURTA da TV (15/10/26, B6): no controle remoto da TV o dono digita
+# "4kitem.com.br/bar" e o código (aceita minúscula). /tv já é do player kids do 4kitem.
+def _pubshow_bar_pagina(code='', erro=''):
+    _erro = (f'<p style="color:#f87171;font-size:20px;margin:0 0 16px">{erro}</p>' if erro else '')
+    return ('<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">'
+            '<meta name="viewport" content="width=device-width,initial-scale=1">'
+            '<title>PubShow · Ligar a TV</title></head>'
+            '<body style="margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;'
+            'background:#08080f;color:#f0f0ff;font-family:Segoe UI,Arial,sans-serif;text-align:center">'
+            '<form method="get" action="/bar" style="padding:32px;max-width:640px;width:100%">'
+            '<div style="font-size:56px">📺</div>'
+            '<h1 style="font-size:34px;margin:8px 0 6px">Ligar o PubShow nesta TV</h1>'
+            '<p style="font-size:20px;color:#8888aa;margin:0 0 24px">Digite o código do bar (está no painel)</p>'
+            + _erro +
+            f'<input name="code" value="{code}" maxlength="16" autofocus autocomplete="off" '
+            'autocapitalize="characters" spellcheck="false" placeholder="EX: AB12CD34" '
+            'style="width:100%;box-sizing:border-box;font-size:40px;letter-spacing:6px;text-align:center;'
+            'text-transform:uppercase;padding:18px;border-radius:16px;border:2px solid #f97316;'
+            'background:#13131f;color:#fff;outline:none">'
+            '<button type="submit" style="margin-top:20px;width:100%;font-size:28px;font-weight:800;'
+            'padding:18px;border:none;border-radius:16px;color:#fff;cursor:pointer;'
+            'background:linear-gradient(135deg,#ef4444,#f97316)">▶ Ligar a TV</button>'
+            '</form></body></html>')
+
+
+def _pubshow_bar_redirect(code, teste=False):
+    code = _re.sub(r'[^A-Za-z0-9]', '', code or '').upper()[:16]
+    if not code:
+        return _pubshow_bar_pagina()
+    try:
+        from pubshow_db import get_pubshow_db as _get_ps_db
+        _c = _get_ps_db()
+        _ok = _c.execute('SELECT 1 FROM pubshow_businesses WHERE code=?', (code,)).fetchone()
+        _c.close()
+    except Exception:
+        _ok = True   # banco fora: deixa a TV do PubShow responder
+    if not _ok:
+        return _pubshow_bar_pagina(code, 'Código não encontrado. Confira no painel: 0 (zero) e O (letra) são diferentes.'), 404
+    # 16/10/26 (V3-02): "Testar aqui no celular" do painel vem com ?teste=1 → a TV não conta como ligada
+    return redirect(f'/pubshow/tv/{code}' + ('?teste=1' if teste else ''))
+
+
+@app.route('/bar')
+@app.route('/bar/')
+def pubshow_bar_curto():
+    return _pubshow_bar_redirect(request.args.get('code', ''), request.args.get('teste') == '1')
+
+
+@app.route('/bar/<code>')
+def pubshow_bar_code(code):
+    return _pubshow_bar_redirect(code, request.args.get('teste') == '1')
 
 
 # ══════════════════════════════════════════════════════════════════════════
@@ -6150,13 +6222,8 @@ def saas_asaas_test():
         'api_key_prefix': api_key[:20] + '...' if api_key else '',
     }
     if api_key:
+        # Só LEITURA (15/10/26): antes cada GET criava um cliente "Teste Diagnostico" no Asaas de produção
         resultado['customers'] = _asaas_req('GET', '/customers?limit=1')
-        # Tenta criar cliente teste
-        resultado['create_test'] = _asaas_req('POST', '/customers', {
-            'name': 'Teste Diagnostico',
-            'email': 'diagnostico@teste.com',
-            'notificationDisabled': True,
-        })
     return jsonify(resultado)
 
 
@@ -6308,6 +6375,11 @@ def saas_admin():
         vetzap_users = []
         vetzap_pets_total = 0
         vetzap_triagens_total = 0
+    # PUBSHOW — plano único (15/10/26): o botão do admin mostra o preço de PUBSHOW_PLANO_CENT
+    try:
+        from pubshow import PLANO as pubshow_plano
+    except Exception:
+        pubshow_plano = {'nome': 'PubShow', 'emoji': '🍺', 'preco_fmt': ''}
     # PUBSHOW — estabelecimentos + pedidos de cada bar (hoje / 7 dias / mês / total)
     pubshow_tot = _ps_cont_vazio()
     pubshow_cont_erro = False
@@ -6316,8 +6388,14 @@ def saas_admin():
         psconn = _get_ps_db()
         now_iso = datetime.now().isoformat()
         pubshow_bars = [dict(r) for r in psconn.execute(
-            'SELECT id, nome, email, telefone, tipo, plano, plano_ativo, suspenso, trial_ends, canal_atual, created_at FROM pubshow_businesses ORDER BY created_at DESC'
+            'SELECT id, nome, email, telefone, tipo, plano, plano_ativo, suspenso, trial_ends, canal_atual, created_at, ativo_ate FROM pubshow_businesses ORDER BY created_at DESC'
         ).fetchall()]
+        # Totais globais (a tela usa a grade de contadores abaixo; estes 2 seguem no contexto: testes da versão grande)
+        pubshow_total_pedidos = psconn.execute('SELECT COUNT(*) FROM pubshow_pedidos').fetchone()[0]
+        # status='pago' não existe no PubShow (dava sempre R$0) — usa a soma única do pubshow (15/10/26)
+        # rebase 17/10/26: alias _ps_somar_pagos (o _ps_somar do saas-admin é a soma da grade — colidia)
+        from pubshow import somar_pagos as _ps_somar_pagos
+        pubshow_total_receita = _ps_somar_pagos(psconn, conta='casa')['total']
         pubshow_total_videos  = psconn.execute('SELECT COUNT(*) FROM pubshow_videos WHERE ativo=1').fetchone()[0]
         try:
             _ps_por_bar = _ps_contadores(psconn)
@@ -6333,6 +6411,10 @@ def saas_admin():
                 b['_status'] = 'suspenso'
             elif b['plano_ativo']:
                 b['_status'] = 'ativo'
+            elif b.get('ativo_ate') and b['ativo_ate'][:10] >= now_iso[:10]:
+                # cancelou com mês pago: aberto até o vencimento; "Desativar" fecha na hora (15/10/26)
+                b['_status'] = 'ativo'
+                b['_ativo_ate'] = '/'.join(reversed(b['ativo_ate'][:10].split('-')))
             elif b['trial_ends'] and b['trial_ends'] > now_iso:
                 b['_status'] = 'trial'
             else:
@@ -6341,7 +6423,39 @@ def saas_admin():
         pubshow_bars = []
         pubshow_tot = _ps_cont_vazio()
         pubshow_cont_erro = True
+        pubshow_total_pedidos = 0
+        pubshow_total_receita = 0
         pubshow_total_videos  = 0
+    # PUBSHOW — Lote C (16/10/26): pagamento Efí com split. Receita REAL (conta 'plataforma' do livro-caixa:
+    # taxa de serviço + mensalidade), "bares me devem" (estorno no split) e devoluções travadas.
+    # Só com PUBSHOW_GATEWAY=efi; no padrão 'asaas' fica None e a aba fica igual.
+    pubshow_efi = None
+    if (os.environ.get('PUBSHOW_GATEWAY') or 'asaas').strip().lower() == 'efi':
+        try:
+            import pubshow_pay as _ps_pay
+            from pubshow_db import get_pubshow_db as _get_ps_db
+            psconn = _get_ps_db()
+            try:
+                _ps_pay.init_tables(psconn)
+                pubshow_efi = _ps_pay.resumo_admin(psconn)
+                # Lote D A3 (16/10/26): pausa de 60 dias sem momento pago (só bar na Efí) + botão "Reativar"
+                _ps_pausas = []
+                for _row in [dict(r) for r in psconn.execute(
+                        'SELECT * FROM pubshow_businesses WHERE COALESCE(suspenso,0)=0').fetchall()]:
+                    if _ps_pay.ligado_para(_row):
+                        _pz = _ps_pay.pausa_do_bar(psconn, _row)
+                        if _pz['pausado'] or _pz['aviso']:
+                            _ps_pausas.append(dict(_pz, business_id=_row['id'], nome=_row['nome']))
+                pubshow_efi['pausas'] = _ps_pausas
+            finally:
+                psconn.close()
+            _ps_nomes = {b['id']: b['nome'] for b in pubshow_bars}
+            for _x in (pubshow_efi['bares_devem'] + pubshow_efi['travadas'] + pubshow_efi.get('mens_excesso', [])
+                       + pubshow_efi.get('aguardando_ok', [])):   # 17/10/26 (decisão 3b)
+                _x['nome'] = _ps_nomes.get(_x['business_id'], f"bar {_x['business_id']}")
+        except Exception as _ps_pay_err:
+            log.warning(f'[PUBSHOW] saas-admin: resumo do pagamento Efí não leu: {_ps_pay_err}')
+            pubshow_efi = None
     # SlotZap users
     try:
         conn_sz = get_saas_db()
@@ -6494,7 +6608,11 @@ def saas_admin():
                            alerta_plans=ALERTA_PLANS,
                            pubshow_bars=pubshow_bars,
                            pubshow_tot=pubshow_tot, pubshow_cont_erro=pubshow_cont_erro,
+                           pubshow_total_pedidos=pubshow_total_pedidos,
+                           pubshow_total_receita=pubshow_total_receita,
                            pubshow_total_videos=pubshow_total_videos,
+                           pubshow_plano=pubshow_plano,
+                           pubshow_efi=pubshow_efi,
                            sz_users=sz_users,
                            drz_users=drz_users, drz_compras_total=drz_compras_total,
                            drz_receita=drz_receita, drz_consultas=drz_consultas,
@@ -6529,6 +6647,28 @@ def saas_sz_reset_senha():
                  (generate_password_hash(senha), uid))
     conn.commit(); conn.close()
     return jsonify({'ok': True})
+
+
+@app.route('/saas-admin/pubshow/reativar-pausa/<int:bid>', methods=['POST'])
+@_saas_admin_required
+def saas_pubshow_reativar_pausa(bid):
+    """PubShow, Lote D A3 (16/10/26): reativa o bar pausado por 60 dias sem momento pago (o relógio recomeça hoje).
+    Só com PUBSHOW_GATEWAY=efi (no modo Asaas não existe pausa e o pubshow_pay não é chamado)."""
+    if (os.environ.get('PUBSHOW_GATEWAY') or 'asaas').strip().lower() == 'efi':
+        try:
+            import pubshow_pay as _ps_pay
+            from pubshow_db import get_pubshow_db as _get_ps_db
+            from pubshow import _bump_tv_bar as _ps_bump_tv
+            _c = _get_ps_db()
+            try:
+                _ps_pay.init_tables(_c)
+                _ps_pay.reativar_pausa(_c, bid, 'saas-admin')
+            finally:
+                _c.close()
+            _ps_bump_tv(bid)   # a TV pausada volta na hora
+        except Exception as _e:
+            log.warning(f'[PUBSHOW] saas-admin: reativar a pausa do bar {bid} falhou: {_e}')
+    return redirect('/saas-admin')
 
 
 @app.route('/saas-admin/slotzap/set-plan', methods=['POST'])
@@ -6598,9 +6738,10 @@ def saas_pubshow_bar_status(bid):
     if acao == 'suspender':
         psconn.execute('UPDATE pubshow_businesses SET suspenso=1 WHERE id=?', (bid,))
     elif acao == 'ativar':
-        psconn.execute('UPDATE pubshow_businesses SET suspenso=0, plano_ativo=1 WHERE id=?', (bid,))
+        psconn.execute('UPDATE pubshow_businesses SET suspenso=0, plano_ativo=1, ativo_ate=NULL WHERE id=?', (bid,))
     elif acao == 'desativar':
-        psconn.execute('UPDATE pubshow_businesses SET plano_ativo=0 WHERE id=?', (bid,))
+        # limpa o ativo_ate (cancelou com mês pago): desativar fecha o jukebox NA HORA (15/10/26)
+        psconn.execute('UPDATE pubshow_businesses SET plano_ativo=0, ativo_ate=NULL WHERE id=?', (bid,))
     psconn.commit(); psconn.close()
     return jsonify({'success': True})
 
@@ -6609,10 +6750,14 @@ def saas_pubshow_bar_status(bid):
 @_saas_admin_required
 def saas_pubshow_bar_plan(bid):
     from pubshow_db import get_pubshow_db as _get_ps_db
+    from pubshow import PLANOS as _ps_planos
     data  = request.get_json() or {}
     plano = data.get('plano', 'bar')
+    # plano único (15/10/26): só aceita chave que existe (antes gravava qualquer texto, DIN-28)
+    if plano not in _ps_planos:
+        return jsonify({'success': False, 'error': 'Plano inválido.'}), 400
     psconn = _get_ps_db()
-    psconn.execute('UPDATE pubshow_businesses SET plano=?, plano_ativo=1, suspenso=0 WHERE id=?', (plano, bid))
+    psconn.execute('UPDATE pubshow_businesses SET plano=?, plano_ativo=1, suspenso=0, ativo_ate=NULL WHERE id=?', (plano, bid))
     psconn.commit(); psconn.close()
     return jsonify({'success': True})
 
@@ -6644,20 +6789,26 @@ def saas_pubshow_reseed():
 
 # ── PubShow no saas-admin: quantos pedidos cada bar teve (17/10/26) ──────────
 # O status 'pago' NÃO existe no PubShow (a receita antiga somava ele e dava sempre R$ 0).
-# Pedido pago = cobrança no gateway (asaas_payment_id ou efi_txid preenchido) E PIX já
-# confirmado: 'pendente'/'aguardando_ok' (gerente ainda vai liberar), depois 'exibido'/'dispensado'.
-# 'aguardando_pix' (não pagou) e 'recusado' nunca contam. Música grátis conta pelo status.
+# Pedido pago = cobrança no gateway (asaas_payment_id ou efi_txid preenchido, ou via_gateway: a Efí com
+# split guarda a cobrança à parte) E PIX já confirmado: 'pendente'/'aguardando_ok' (gerente ainda vai
+# liberar), depois 'exibido'/'dispensado'. 'aguardando_pix' (não pagou) e 'recusado' nunca contam.
+# Música grátis conta pelo status.
+# Rebase 17/10/26 (junção da versão grande): "PIX confirmado" = o MESMO critério do pubshow.somar_pagos
+# (pago_em gravado pela confirmação; estornado perde o pago_em; conferido no gateway e NÃO pago sai).
 _PS_CATS    = ('musicas', 'furar', 'momentos', 'gorjetas')
 _PS_JANELAS = ('hoje', 'd7', 'mes', 'total')
 _PS_CAT_SQL = ("CASE WHEN tipo IN ('musica','musica_especifica','musica_externa') THEN 'musicas' "
                "WHEN tipo IN ('flash','vip') THEN 'furar' "          # vip = 'Tocar AGORA' antigo (oculto)
                "WHEN tipo='gorjeta' THEN 'gorjetas' ELSE 'momentos' END")
+_PS_PAGO_SQL = ("(pago_em IS NOT NULL "
+                "AND (COALESCE(asaas_payment_id,'')<>'' OR COALESCE(efi_txid,'')<>'' OR COALESCE(via_gateway,0)=1) "
+                "AND (pix_conferido IS NULL OR pix_conferido IN ('HISTORICO','ADMIN','RECEIVED','CONFIRMED','EFI:CONCLUIDA') "
+                "OR pix_conferido LIKE 'ERRO%'))")
 _PS_VALIDO_SQL = ("status IN ('pendente','aguardando_ok','exibido','dispensado') "
                   "AND (tipo IN ('musica','musica_especifica','musica_externa') "   # = pubshow.TIPOS_SEMPRE_GRATIS
-                  "OR COALESCE(asaas_payment_id,'')<>'' OR COALESCE(efi_txid,'')<>'')")
+                  f"OR {_PS_PAGO_SQL})")
 # R$ só do que passou no gateway (música era cobrada até 11/09/26; hoje é grátis e vale 0)
-_PS_VALOR_SQL = ("CASE WHEN COALESCE(asaas_payment_id,'')<>'' OR COALESCE(efi_txid,'')<>'' "
-                 "THEN COALESCE(valor,0) ELSE 0 END")
+_PS_VALOR_SQL = f"CASE WHEN {_PS_PAGO_SQL} THEN COALESCE(valor,0) ELSE 0 END"
 _ps_indice_ok = False
 
 
@@ -15466,6 +15617,24 @@ try:
         iniciar_faxineiro_videos()
     except Exception as _fx_err:
         log.warning(f'[PUBSHOW] Faxineiro não iniciou: {_fx_err}')
+    # Lote D (16/10/26): robô de avisos a cada 10 min — "dia do pagamento" (segunda 10h, os 2 modos) e aviso da
+    # pausa de 60 dias (só Efí). Desliga com PUBSHOW_AVISOS=0.
+    try:
+        from pubshow import iniciar_avisos as _ps_avisos
+        _ps_avisos()
+    except Exception as _av_err:
+        log.warning(f'[PUBSHOW] robô de avisos não iniciou: {_av_err}')
+    # Lote C (16/10/26): robô do pagamento Efí (confirma PIX, expira QR, devolve PIX atrasado, termina devolução),
+    # a cada 60 s. SÓ sobe com PUBSHOW_GATEWAY=efi; no padrão 'asaas' o pubshow_pay nem é chamado.
+    if (os.environ.get('PUBSHOW_GATEWAY') or 'asaas').strip().lower() == 'efi':
+        try:
+            import pubshow_pay
+            from pubshow import _pubshow_on_pago
+            from pubshow_db import get_pubshow_db as _get_ps_db_pay
+            if pubshow_pay.iniciar_reconciliador(_get_ps_db_pay, on_pago=_pubshow_on_pago):
+                log.info('[PUBSHOW] pagamento Efí: reconciliador ligado')
+        except Exception as _pp_err:
+            log.warning(f'[PUBSHOW] reconciliador Efí não iniciou: {_pp_err}')
 except Exception as _ps_err:
     log.warning(f'[PUBSHOW] Erro ao carregar blueprint: {_ps_err}')
 
