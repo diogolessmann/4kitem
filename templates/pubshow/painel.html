@@ -519,8 +519,8 @@ Tirar mesmo assim?'{% else %}'Tirar este pedido da fila? A TV NÃO vai mostrar.'
   {#- VDC-06 (16/10/26): aceso pelo canal que a TV toca de verdade (vazio ou inexistente = Rock, o fallback da TV) #}
   {% set _canal_ef = b.canal_atual if b.canal_atual in canais else 'rock' %}
   {% set _extra_ativo = _canal_ef not in _canais_main %}
-  {#- Lote D, críticos (17/10/26, CD3): canal de "mais estilos" que é da família de um botão grande (Punk, Show de
-      Rock → Rock; Country → Sertanejo…) acende o botão da família, com "No ar: …" embaixo. "Mais estilos" fica
+  {#- Lote D, críticos (17/10/26, CD3): canal de "mais estilos" que é da família de um botão grande (Punk →
+      Rock; Country → Sertanejo…) acende o botão da família, com "No ar: …" embaixo. "Mais estilos" fica
       SEMPRE fechado (o LOTE_D pede fechado; aberto, o Garage no Punk via 21 botões e nenhum grande aceso) #}
   {% set _familia = [] %}
   {% for k, e in estilos_bar.items() %}{% if _canal_ef == e.canal or (e.temas and _canal_ef in e.temas) %}{% set _ = _familia.append(k) %}{% endif %}{% endfor %}
@@ -538,7 +538,7 @@ Tirar mesmo assim?'{% else %}'Tirar este pedido da fila? A TV NÃO vai mostrar.'
     <div id="estilo-antigo" style="font-size:12px;color:var(--text2);margin-top:10px">Hoje a busca do cliente usa os {{ _temas|length }} estilos que você marcou antes. Tocar num botão troca.</div>
     {% endif %}
     <details id="mais-estilos" style="margin-top:6px">
-      <summary>Mais estilos (shows, esporte e outros)</summary>
+      <summary>Mais estilos (esporte e outros)</summary>
       <div style="font-size:12px;color:var(--text2)">Estes mudam só a TV. O cliente segue pedindo qualquer música.</div>
       <div class="estilos-mais">
         {% for key, c in canais.items() if key not in _canais_main %}

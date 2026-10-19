@@ -26,6 +26,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from pubshow_db import get_pubshow_db, init_pubshow_db, STATUS_PAGOS
 from pubshow_db import marcar_fundador, fundador_vagas as _fundador_vagas_db   # Lote D A1 (16/10/26)
 from pubshow_db import FUNDADOR_VAGAS, FUNDADOR_MESES   # Lote D B (16/10/26): a oferta do site
+from pubshow_db import SHOWS_FORA   # 17/10/26: o grupo Shows saiu (o admin não recria vídeo nessas categorias)
 import pubshow_estilo   # "aqui só toca rock" com o YouTube livre: estilo pelo ARTISTA (17/10/26)
 try:   # Lote C (16/10/26): pagamento Efí + split. Só é CHAMADO com PUBSHOW_GATEWAY=efi
     import pubshow_pay
@@ -65,10 +66,7 @@ CANAIS = {
     # VDC-05 (16/10/26): + a categoria própria 'variado' (o que os bares no Variado pedem e tocou entra nela, e não no Rock)
     'variado':        {'nome': 'Variado',           'emoji': '🎶',  'cor': '#f97316',
                        'cat': ['rock', 'sertanejo', 'pagode', 'pop', 'punk', 'country', 'reggae', 'variado'], 'grupo': 'musica'},
-    # ── SHOWS AO VIVO ────────────────────────────────────────────────────────
-    'show_rock':      {'nome': 'Rock Shows',        'emoji': '🎸🎤', 'cor': '#dc2626', 'cat': 'show_rock',      'grupo': 'shows'},
-    'show_sertanejo': {'nome': 'Sertanejo Shows',   'emoji': '🤠🎤', 'cor': '#ca8a04', 'cat': 'show_sertanejo', 'grupo': 'shows'},
-    'show_pagode':    {'nome': 'Pagode Shows',      'emoji': '🥁🎤', 'cor': '#15803d', 'cat': 'show_pagode',    'grupo': 'shows'},
+    # 17/10/26: SHOWS AO VIVO saiu (show passa de 10 min). Canal e vídeos: pubshow_db.SHOWS_FORA
     # ── SPORT ────────────────────────────────────────────────────────────────
     'sport_mix':      {'nome': 'Sport Mix',         'emoji': '🏆',  'cor': '#f59e0b',
                        'cat': ['f1', 'futebol', 'surf', 'aerio', 'radical',
@@ -98,9 +96,9 @@ CANAIS = {
 # 'variado' = a TV mistura a música e o cliente busca em tudo (NULL). Os outros canais ("mais estilos") só trocam a
 # TV e liberam a busca inteira. Nada muda no banco até o dono tocar num botão (o salvo antes continua valendo).
 ESTILOS_BAR = {
-    'rock':      {'nome': 'Rock',      'emoji': '🎸', 'canal': 'rock',      'temas': ['rock', 'punk', 'show_rock']},
-    'sertanejo': {'nome': 'Sertanejo', 'emoji': '🤠', 'canal': 'sertanejo', 'temas': ['sertanejo', 'show_sertanejo', 'country']},
-    'pagode':    {'nome': 'Pagode',    'emoji': '🥁', 'canal': 'pagode',    'temas': ['pagode', 'show_pagode']},
+    'rock':      {'nome': 'Rock',      'emoji': '🎸', 'canal': 'rock',      'temas': ['rock', 'punk']},
+    'sertanejo': {'nome': 'Sertanejo', 'emoji': '🤠', 'canal': 'sertanejo', 'temas': ['sertanejo', 'country']},
+    'pagode':    {'nome': 'Pagode',    'emoji': '🥁', 'canal': 'pagode',    'temas': ['pagode']},
     'pop':       {'nome': 'Pop',       'emoji': '🎤', 'canal': 'pop',       'temas': ['pop']},
     'variado':   {'nome': 'Variado',   'emoji': '🎶', 'canal': 'variado',   'temas': None},
 }
@@ -3851,7 +3849,8 @@ def api_pedido_exibido(pedido_id):
     # na categoria do canal que estava no ar. O cardápio vira o que o público daquele bar pede.
     _yid = (pedido['youtube_id'] or '').strip()
     if ok and _yid_ok(_yid):   # 11 letras, igual ao POST (16/10/26, V4-01; antes 6 a 20)
-        _cat = pedido['categoria'] if pedido['categoria'] in CANAIS else 'rock'
+        _cat = SHOWS_FORA.get(pedido['categoria'], pedido['categoria'])   # 17/10/26: pedido feito no show → o clipe
+        _cat = _cat if _cat in CANAIS else 'rock'
         _seg = _YT_DURACAO.get(_yid) or 180       # 17/10/26: a duração real que a busca viu (antes: 180 fixo)
         conn.execute(
             'INSERT OR IGNORE INTO pubshow_videos (youtube_id, titulo, artista, categoria, subcategoria, duracao_seg, views_milhoes, ativo) '
@@ -7752,12 +7751,11 @@ def admin_videos():
     # Ordem e rótulos dos nichos
     _NICHO_META = {
         'musica':         ('🎵', 'Música'),
-        'shows':          ('🎤', 'Shows ao Vivo'),
         'sport':          ('🏆', 'Esporte'),
         'viral':          ('💥', 'Viral'),
         'entretenimento': ('🎭', 'Entretenimento'),
     }
-    _NICHO_ORDEM = ['musica', 'shows', 'sport', 'viral', 'entretenimento']
+    _NICHO_ORDEM = ['musica', 'sport', 'viral', 'entretenimento']   # 17/10/26: 'shows' saiu (desligados ficam em "Outros")
 
     # Estrutura nicho → [(cat_key, canal_info, vids)]
     por_nicho = []
@@ -7818,6 +7816,8 @@ def _import_playlist_impl():
     url_input = data.get('playlist_url', '').strip()
     categoria = data.get('categoria', 'rock').strip()
     subcategoria = data.get('subcategoria', '').strip() or 'playlist'
+    if categoria in SHOWS_FORA:   # 17/10/26: o grupo Shows saiu
+        return jsonify({'ok': False, 'erro': 'Shows ao vivo saíram do PubShow (passam de 10 min). Escolha outra categoria.'})
 
     # Extrai playlist ID da URL ou aceita ID direto
     m = re.search(r'[?&]list=([A-Za-z0-9_-]+)', url_input)
@@ -8180,6 +8180,8 @@ def admin_videos_add():
     categoria = (data.get('categoria') or '').strip()
     if not yid or not titulo or not categoria:
         return jsonify({'ok': False, 'erro': 'Campos obrigatórios: youtube_id, titulo, categoria'})
+    if categoria in SHOWS_FORA:   # 17/10/26: o grupo Shows saiu
+        return jsonify({'ok': False, 'erro': 'Shows ao vivo saíram do PubShow (passam de 10 min). Escolha outra categoria.'})
     try:
         conn = get_pubshow_db()
         conn.execute(
@@ -8213,7 +8215,7 @@ def admin_videos_add_batch():
         tit  = (item.get('titulo') or '').strip()
         art  = (item.get('artista') or '').strip()
         cat  = (item.get('categoria') or '').strip()
-        if not yid or not tit or not cat:
+        if not yid or not tit or not cat or cat in SHOWS_FORA:   # 17/10/26: o grupo Shows saiu
             erros += 1
             continue
         # Teto por categoria: não deixa passar de MAX_POR_CAT

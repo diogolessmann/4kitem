@@ -15,6 +15,11 @@ DB_PATH = os.path.join(_base, 'pubshow.db')
 # lista + pago_em preenchido. 'recusado' fica fora (dinheiro a devolver); 'aguardando_pix' não pagou.
 STATUS_PAGOS = ('pendente', 'aguardando_ok', 'exibido', 'dispensado')
 
+# 17/10/26 (Diogo: "A aba de shows do pubshow pode ser removida"): show ao vivo passa de 10 min e briga com a regra dos
+# 10 min. O grupo Shows saiu da TV, do painel e do acervo: o canal vira o clipe do mesmo estilo e os vídeos ficam
+# DESLIGADOS (ativo=0), nunca apagados. Voltar = as 3 linhas no CANAIS do pubshow.py + ativo=1 nessas categorias.
+SHOWS_FORA = {'show_rock': 'rock', 'show_sertanejo': 'sertanejo', 'show_pagode': 'pagode'}
+
 
 def get_pubshow_db():
     os.makedirs(os.path.dirname(DB_PATH) or '.', exist_ok=True)
@@ -366,6 +371,9 @@ def init_pubshow_db():
         conn.execute("INSERT OR REPLACE INTO pubshow_meta (chave, valor) VALUES ('seed_videos_done', datetime('now'))")
         conn.commit()
 
+    # 17/10/26: o grupo Shows saiu (SHOWS_FORA) — roda em todo boot, idempotente (a 2ª vez não acha nada)
+    _tirar_shows(conn)
+
     # Webhook do Asaas entrega "pelo menos 1 vez": cada id de evento só tem efeito 1 vez (15/10/26)
     try:
         conn.execute('CREATE TABLE IF NOT EXISTS pubshow_webhook_eventos ('
@@ -561,6 +569,52 @@ def _limpar_slides_antigos(conn):
         log.error('[PUBSHOW] limpeza dos slides antigos falhou: %s', e)
         try: conn.rollback()
         except: pass
+
+
+def _desligar_videos_shows(conn):
+    """ativo=0 nos vídeos das categorias de SHOWS_FORA (nunca apaga). Devolve quantos desligou. Não dá commit."""
+    ph = ','.join('?' * len(SHOWS_FORA))
+    return conn.execute(f'UPDATE pubshow_videos SET ativo=0 WHERE ativo<>0 AND categoria IN ({ph})',
+                        tuple(SHOWS_FORA)).rowcount
+
+
+def _tirar_shows(conn):
+    """17/10/26, idempotente: (1) bar no canal de show vai pro clipe do mesmo estilo (show_rock → rock…); (2) os
+    códigos de show saem de temas_habilitados/generos_jukebox (lista que fica vazia = NULL = todos os estilos; JSON
+    torto fica como está); (3) os vídeos dessas categorias ficam desligados. Devolve (bares_canal, bares_lista, videos)."""
+    import json as _json
+    try:
+        n_canal = 0
+        for velho, novo in SHOWS_FORA.items():
+            n_canal += conn.execute('UPDATE pubshow_businesses SET canal_atual=? WHERE canal_atual=?',
+                                    (novo, velho)).rowcount
+        n_lista = 0
+        for r in conn.execute("SELECT id, temas_habilitados, generos_jukebox FROM pubshow_businesses "
+                              "WHERE temas_habilitados LIKE '%show%' OR generos_jukebox LIKE '%show%'").fetchall():
+            novos = {}
+            for col in ('temas_habilitados', 'generos_jukebox'):
+                try:
+                    lista = _json.loads(r[col] or 'null')
+                except Exception:
+                    continue
+                if isinstance(lista, list) and any(t in SHOWS_FORA for t in lista):
+                    resto = [t for t in lista if t not in SHOWS_FORA]
+                    novos[col] = _json.dumps(resto) if resto else None
+            if novos:
+                conn.execute(f"UPDATE pubshow_businesses SET {', '.join(c + '=?' for c in novos)} WHERE id=?",
+                             (*novos.values(), r['id']))
+                n_lista += 1
+        n_vid = _desligar_videos_shows(conn)
+        conn.commit()
+        if n_canal or n_lista or n_vid:
+            log.info('[PUBSHOW] shows fora: %d bar(es) com o canal trocado pro clipe, %d com a lista de estilos limpa, '
+                     '%d vídeo(s) de show desligado(s)', n_canal, n_lista, n_vid)
+        return n_canal, n_lista, n_vid
+    except Exception as e:
+        log.error('[PUBSHOW] tirar os shows falhou: %s', e)
+        try: conn.rollback()
+        except: pass
+        return 0, 0, 0
 
 
 def _corrigir_videos_quebrados(conn):
@@ -1426,4 +1480,5 @@ def _seed_videos(conn):
            VALUES (?,?,?,?,?,?,?)''',
         videos
     )
+    _desligar_videos_shows(conn)   # 17/10/26: o seed (e o "reseed" do saas-admin) nunca religa show
     conn.commit()
