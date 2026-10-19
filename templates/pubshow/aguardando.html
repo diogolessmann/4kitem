@@ -46,7 +46,7 @@
   <div class="card">
     <div class="step">
       <div class="step-num">1</div>
-      <div class="step-text"><strong>PIX ou Boleto:</strong> realize o pagamento conforme as instruções enviadas ao seu e-mail ou abra o link de pagamento recebido.</div>
+      <div class="step-text"><strong>Pague a fatura:</strong> {% if fatura %}toque em <strong>💳 Abrir a fatura</strong> logo abaixo e pague por PIX, boleto ou cartão.{% else %}não consegui abrir a fatura agora. Toque em <strong>Verificar status do pagamento</strong> daqui a alguns minutos ou fale com o suporte no WhatsApp aqui embaixo.{% endif %}</div>
     </div>
     <div class="step">
       <div class="step-num">2</div>
@@ -58,7 +58,10 @@
     </div>
   </div>
 
-  <a href="/pubshow/painel" class="btn">
+  {% if fatura %}
+  <a href="{{ fatura }}" class="btn" target="_blank" rel="noopener">💳 Abrir a fatura</a>
+  {% endif %}
+  <a href="/pubshow/painel" class="{{ 'btn-outline' if fatura else 'btn' }}">
     <span class="spinner"></span> Verificar status do pagamento
   </a>
   <a href="https://wa.me/{{ SUPORTE_WA }}?text=Ol%C3%A1%2C%20preciso%20de%20ajuda%20com%20o%20pagamento%20do%20PUBSHOW" class="btn-outline" target="_blank">

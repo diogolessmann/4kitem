@@ -2031,7 +2031,8 @@ def _efi_criar_cobranca_jukebox(pedido_id, valor, descricao):
         log.error('[PUBSHOW] Efí: módulo efi_pix indisponível (pedido #%s)', pedido_id)
         return None
     try:
-        cob = efi_pix.criar_cobranca(round(float(valor), 2), descricao, expira=900)
+        # pente fino DIN-2 (18/10/26): mesma limpeza do Asaas (sem emoji de 4 bytes: 🎂 🍻 🙏 e os do título)
+        cob = efi_pix.criar_cobranca(round(float(valor), 2), _asaas_descricao(descricao), expira=900)
     except Exception as e:
         cob = {'erro': str(e)[:200]}
     if not isinstance(cob, dict) or cob.get('erro') or not cob.get('txid') or not cob.get('copia_cola'):
@@ -3195,7 +3196,7 @@ def jukebox(token, pix_id=None):
                                 # assinatura ativa no Asaas (migração) ou plano_ativo=0 (mês pago, ativo_ate) → 0
                                 _sem_mens = (not b['plano_ativo']) or _tem_assinatura_ativa(b['id'])
                                 pay = pubshow_pay.criar_cobranca_momento(_cp, b, pedido_id, int(round(preco_final * 100)),
-                                                                         None, tipo, descricao_pedido,
+                                                                         None, tipo, _asaas_descricao(descricao_pedido),   # DIN-2: sem emoji de 4 bytes
                                                                          sem_mensalidade=_sem_mens)
                             finally:
                                 _cp.close()
@@ -8530,7 +8531,11 @@ def assinar(plano):
                         (b['id'], plano, _p_bar['preco'], 'pendente', sub['id'], billing_type)
                     )
                     conn.commit(); conn.close()
-                    pay_url = sub.get('invoiceUrl') or sub.get('bankSlipUrl') or ''
+                    # 18/10/26 (pente fino DIN-1): a assinatura não traz invoiceUrl (a fatura é um pagamento à
+                    # parte) e o cliente tem as notificações desligadas → sem isto o dono caía no "Aguardando"
+                    # sem link e esperando um e-mail que não sai. Busca a 1ª fatura da assinatura recém-criada.
+                    pay_url = (sub.get('invoiceUrl') or sub.get('bankSlipUrl')
+                               or _fatura_aberta_da_assinatura(b['id']) or '')
                     if pay_url:
                         return redirect(pay_url)
                     return redirect('/pubshow/aguardando')
@@ -8572,7 +8577,11 @@ def _fatura_aberta_da_assinatura(business_id):
 @pubshow_login_required
 def aguardando():
     b = _get_business()
-    return render_template('pubshow/aguardando.html', b=dict(b))
+    # DIN-1 (18/10/26): botão "Abrir a fatura" (o Asaas não manda e-mail: notificações desligadas)
+    fatura = _fatura_aberta_da_assinatura(b['id'])
+    if not fatura.startswith('https://'):
+        fatura = ''
+    return render_template('pubshow/aguardando.html', b=dict(b), fatura=fatura)
 
 
 def _cancelar_fica_ate(ass):

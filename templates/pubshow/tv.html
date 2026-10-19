@@ -432,6 +432,12 @@ const _exibidoEm     = {};        // id → quando o "exibido" foi mandado (reen
 let _pollEmVoo   = false;         // 1 pergunta de status por vez (servidor lento não empilha)
 let _avancoSeq   = 0;             // avancarFila() mais nova vence a que ainda esperava o servidor
 let _tocandoPago = false;         // o que toca agora é pedido PAGO (furar a fila): outro furar a fila não corta
+// 18/10/26 (pente fino TVP-1): o que toca agora é PEDIDO de cliente (pago ou grátis). Só o ⏭️ Pular corta:
+// troca de estilo e recarga da TV (propaganda, Novo QR) esperam ele acabar. Teto de 11 min (regra dos 10 min)
+// pra um player travado não segurar a TV pra sempre.
+let _tocandoPedido = false;
+let _pedidoDesde   = 0;
+function _pedidoTocandoAgora() { return _tocandoPedido && (Date.now() - _pedidoDesde) < 11 * 60 * 1000; }
 
 function _fetchTV(url, opts) {
   const ctl = new AbortController();
@@ -683,6 +689,8 @@ function onPlayerReady(e) {
 function onPlayerStateChange(e) {
   // YT.PlayerState.ENDED = 0
   if (e.data === 0) {
+    // TVP-1: recarga que esperou esta música acabar (o próximo pedido continua na fila do servidor)
+    if (window._recarregarPendente && !overlayAtivo) { location.reload(); return; }
     clearTimeout(proximoTimer);
     clearTimeout(stallTimer);
     document.getElementById('proximo-card').classList.remove('show');
@@ -747,6 +755,7 @@ function _pularVideo() {
     console.warn('Pedido específico (' + _pedidoYtId + ') não carregou → segue a fila');
     _pedidoYtId = null;
     _tocandoPago = false;
+    _tocandoPedido = false;
     avancarFila({semSlide: true});
     return;
   }
@@ -798,6 +807,8 @@ async function avancarFila(opts) {
       // 🎯 Música específica — toca o vídeo exato pedido pelo cliente
       _pedidoYtId  = p.youtube_id; // flag para stall detector não marcar vídeos como ruins
       _tocandoPago = _ehPago(p);
+      _tocandoPedido = true;
+      _pedidoDesde   = Date.now();
       player.loadVideoById(p.youtube_id);
       atualizarNowPlaying({
         titulo:  p.titulo_pedido || '🎯 Pedido especial',
@@ -844,6 +855,7 @@ function carregarVideo(idx) {
   videoIdx = idx % VIDEOS.length;
   const v = VIDEOS[videoIdx];
   _tocandoPago = false;
+  _tocandoPedido = false;
   player.loadVideoById(v.youtube_id);
   atualizarNowPlaying(v);
   esconderNowPlayingComDelay();
@@ -1113,6 +1125,10 @@ async function pollStatus() {
     if (data.tv_version !== undefined) {
       if (window._tvVersion === undefined) {
         window._tvVersion = data.tv_version;           // 1ª leitura: sincroniza
+      } else if (data.tv_version !== window._tvVersion && (_pedidoTocandoAgora() || overlayAtivo)) {
+        // pedido tocando ou momento na tela (TVP-1): recarrega no fim DESTA música (onPlayerStateChange), antes
+        // do próximo pedido — senão, com a fila cheia, a TV ficava a noite com o QR velho depois do "Novo QR"
+        window._recarregarPendente = true;
       } else if (data.tv_version !== window._tvVersion) {
         window._tvVersion = data.tv_version;
         location.reload();
@@ -1146,8 +1162,9 @@ async function pollStatus() {
       }
     }
 
-    // Troca de canal pelo dono do bar (sem reload)
-    if (data.canal_atual && data.canal_atual !== window._canalAtual) {
+    // Troca de canal pelo dono do bar (sem reload). Com pedido tocando (TVP-1) espera ele acabar: a próxima
+    // pergunta depois disso ainda vê o canal novo e troca
+    if (data.canal_atual && data.canal_atual !== window._canalAtual && !_pedidoTocandoAgora()) {
       trocarCanal(data.canal_atual);
     }
 
@@ -1291,7 +1308,9 @@ async function trocarCanal(canal) {
   // Usa cueVideoById para preparar sem auto-play imediato, depois dá um curto delay
   // antes de chamar carregarVideo — evita conflito se o player ainda estava carregando
   clearTimeout(stallTimer);
-  setTimeout(() => carregarVideo(videoIdx), 300);
+  // TVP-1: se um pedido começou nesses 300 ms (ou o canal foi trocado na própria TV durante um pedido), a lista
+  // nova já está valendo e entra quando ele acabar — não corta o pedido
+  setTimeout(() => { if (!_pedidoTocandoAgora()) carregarVideo(videoIdx); }, 300);
 }
 
 // ── Fullscreen ────────────────────────────────────────────────────────────────
