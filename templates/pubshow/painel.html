@@ -13,6 +13,9 @@
 <meta name="apple-mobile-web-app-title" content="PUBSHOW">
 <link rel="apple-touch-icon" href="/static/pubshow/icon-192.png">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+{#- Painel do dono POR ASSUNTO (17/10/26, missão do Diogo): 5 abas, 1 frase no topo de cada uma, no máximo ~7 coisas
+    visíveis por aba, 1 ação principal destacada, o resto fechado em "mais". 🎛️ Controle (abre nela) · 🎵 Estilo ·
+    ✨ Pedidos · 💰 Dinheiro · ⚙️ Mais. As rotas e o "salva sozinho" são os mesmos de antes. #}
 <style>
   *{margin:0;padding:0;box-sizing:border-box}
   [hidden]{display:none!important}
@@ -21,132 +24,206 @@
   nav{background:var(--surface);border-bottom:1px solid var(--border);padding:0 24px;height:60px;display:flex;align-items:center;justify-content:space-between}
   .nav-logo{font-size:18px;font-weight:900;background:linear-gradient(135deg,#ef4444,#f97316);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
   .nav-right{display:flex;align-items:center;gap:12px}
-  .nav-btn{padding:7px 16px;border-radius:8px;border:1px solid var(--border2);background:none;color:var(--text2);font-size:13px;cursor:pointer;text-decoration:none;font-family:inherit}
+  .nav-btn{padding:7px 16px;border-radius:8px;border:1px solid var(--border2);background:none;color:var(--text2);font-size:13px;cursor:pointer;text-decoration:none;font-family:inherit;white-space:nowrap}
   .nav-btn:hover{color:var(--text)}
-  .main{max-width:1100px;margin:0 auto;padding:24px 24px 40px}
-  .page-title{font-size:20px;font-weight:800;margin-bottom:14px}
-  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
-  .card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:18px;margin-bottom:16px}
+  .main{max-width:860px;margin:0 auto;padding:20px 24px 40px}
+  .page-title{font-size:17px;font-weight:800;margin-bottom:12px}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:18px;margin-bottom:14px}
   .card-title{font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.6px;margin-bottom:12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-  .dica{font-size:12px;color:var(--text2);line-height:1.6;margin-bottom:12px}
-  [id^="sec-"],#pix-config,.tut-passo{scroll-margin-top:80px}
-  .stat-val{font-size:30px;font-weight:900;letter-spacing:-1px}
-  .stat-sub{font-size:12px;color:var(--text2);margin-top:2px}
-  /* "✓ salvo" discreto (Lote D C, 16/10/26: o painel salva sozinho) */
+  .dica{font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:12px}
+  .aba-frase{font-size:15px;font-weight:700;color:var(--text2);margin:0 0 14px;line-height:1.4}
+  [id^="sec-"],[id^="box-"],#pix-config,.tut-passo{scroll-margin-top:80px}
+  .stat-val{font-size:32px;font-weight:900;letter-spacing:-1px}
+  .stat-sub{font-size:13px;color:var(--text2);margin-top:2px}
+  /* "✓ salvo" discreto: o painel salva sozinho */
   .salvo{font-size:11px;font-weight:700;text-transform:none;letter-spacing:0;color:#4ade80;opacity:0;transition:opacity .3s;margin-left:auto}
   .salvo.on{opacity:1}
   .salvo.erro{color:#f87171;opacity:1}
 
-  /* ── Abas (Lote D C, 16/10/26): 5 abas, 1 assunto cada. Computador = no topo; celular = barra fixa embaixo ── */
+  /* ── Abas: computador = no topo; celular = barra fixa embaixo ── */
   .painel-tabs{position:sticky;top:0;z-index:50;display:flex;gap:6px;padding:10px 0;margin-bottom:14px;background:rgba(8,8,15,.92);backdrop-filter:blur(12px)}
-  .painel-tab{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:11px 6px;min-height:44px;border:1px solid rgba(255,255,255,.1);border-radius:12px;background:var(--surface);color:var(--text2);font-size:14px;font-weight:800;font-family:inherit;cursor:pointer;transition:.15s;white-space:nowrap}
+  .painel-tab{position:relative;flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:11px 6px;min-height:46px;border:1px solid rgba(255,255,255,.1);border-radius:12px;background:var(--surface);color:var(--text2);font-size:14px;font-weight:800;font-family:inherit;cursor:pointer;transition:.15s;white-space:nowrap}
   .painel-tab .ic{font-size:18px;line-height:1}
-  .painel-tab.ativo{background:linear-gradient(135deg,#ef4444,#f97316);color:#fff;border-color:transparent}
+  .painel-tab.ativo{background:var(--c);color:#fff;border-color:transparent}
+  /* "tudo fácil" (17/10/26): cada aba tem a SUA cor — o dono acha pela cor (Dinheiro = verde) */
+  #tab-controle{--c:#7c3aed} #tab-estilo{--c:#ea580c} #tab-pedidos{--c:#db2777} #tab-dinheiro{--c:#16a34a} #tab-mais{--c:#475569}
   .zona.oculta{display:none}
-  /* VDC-02 (16/10/26): selo na aba Hoje com quantos recados pagos esperam o OK (visto de qualquer aba) */
-  .painel-tab{position:relative}
   .tab-selo{min-width:20px;height:20px;padding:0 6px;border-radius:10px;background:#fbbf24;color:#08080f;font-size:12px;font-weight:900;line-height:20px;text-align:center}
 
   /* Botões */
-  .btn-sm{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:9px 14px;min-height:40px;border-radius:10px;border:1px solid var(--border2);background:var(--surface2);color:var(--text);font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;text-decoration:none}
+  .btn-sm{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:9px 14px;min-height:44px;border-radius:10px;border:1px solid var(--border2);background:var(--surface2);color:var(--text);font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;text-decoration:none}
   .btn-sm:hover{background:var(--surface)}
-  .btn-primary{background:linear-gradient(135deg,#ef4444,#f97316);color:#fff;border:none;padding:11px 20px;min-height:44px;border-radius:10px;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:6px}
-  .link-abrir{display:inline-block;margin-top:8px;font-size:12px;font-weight:800;color:#f97316;text-decoration:none}
+  .btn-primary{background:linear-gradient(135deg,#ef4444,#f97316);color:#fff;border:none;padding:12px 20px;min-height:48px;border-radius:12px;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:6px}
+  .btn-grande{width:100%;min-height:58px;font-size:17px}
+  .link-abrir{display:inline-flex;align-items:center;min-height:44px;margin-top:2px;font-size:14px;font-weight:800;color:#f97316;text-decoration:none}
 
   /* Chave liga/desliga (checkbox de verdade por baixo) */
-  .sw{position:relative;display:inline-block;width:48px;height:26px;flex-shrink:0;cursor:pointer}
+  .sw{position:relative;display:inline-block;width:62px;height:36px;flex-shrink:0;cursor:pointer}
   .sw input{opacity:0;width:0;height:0;position:absolute}
-  .sw .sw-t{position:absolute;inset:0;background:#333;border-radius:13px;transition:.25s}
-  .sw .sw-t::after{content:'';position:absolute;left:2px;top:2px;width:22px;height:22px;background:#fff;border-radius:50%;transition:.25s}
+  .sw .sw-t{position:absolute;inset:0;background:#3a3a4a;border-radius:18px;transition:.25s}
+  .sw .sw-t::after{content:'';position:absolute;left:3px;top:3px;width:30px;height:30px;background:#fff;border-radius:50%;transition:.25s}
   .sw input:checked + .sw-t{background:#22c55e}
-  .sw input:checked + .sw-t::after{left:24px}
+  .sw input:checked + .sw-t::after{left:29px}
   .sw input:focus-visible + .sw-t{outline:2px solid #f97316;outline-offset:2px}
   .linha-chave{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:12px 0}
   .linha-chave + .linha-chave{border-top:1px solid var(--border)}
-  .linha-chave .rot{font-size:14px;font-weight:700;line-height:1.4}
-  .linha-chave .sub{font-size:12px;color:var(--text2);font-weight:400;margin-top:2px;line-height:1.5}
+  .linha-chave .rot{font-size:17px;font-weight:800;line-height:1.35}
+  .linha-chave .sub{font-size:13px;color:var(--text2);font-weight:400;margin-top:2px;line-height:1.5}
 
-  /* Fila */
-  .pedido-row{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)}
-  .pedido-row:last-child{border:none}
+  /* ── 🎛️ Controle remoto: Pular, Mudo e volume ENORMES ── */
+  .remoto-topo{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+  .controles-tv{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .ctl-btn{min-height:78px;border:none;border-radius:16px;cursor:pointer;font-size:21px;font-weight:900;font-family:inherit;color:#fff;display:flex;align-items:center;justify-content:center;gap:8px}
+  .ctl-btn:active{transform:scale(.98)}
+  .vol-linha{display:flex;align-items:center;gap:12px;margin-top:16px}
+  .vol-linha input[type=range]{flex:1;height:44px;-webkit-appearance:none;appearance:none;background:transparent;cursor:pointer}
+  .vol-linha input[type=range]::-webkit-slider-runnable-track{height:14px;border-radius:7px;background:linear-gradient(90deg,#8b5cf6 var(--p,100%),#2a2a40 var(--p,100%))}
+  .vol-linha input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:36px;height:36px;margin-top:-11px;border-radius:50%;background:#fff;border:4px solid #8b5cf6}
+  .vol-linha input[type=range]::-moz-range-track{height:14px;border-radius:7px;background:#2a2a40}
+  .vol-linha input[type=range]::-moz-range-progress{height:14px;border-radius:7px;background:#8b5cf6}
+  .vol-linha input[type=range]::-moz-range-thumb{width:28px;height:28px;border-radius:50%;background:#fff;border:4px solid #8b5cf6}
+  .hoje-linha{padding:12px 16px;margin-bottom:14px;border-radius:12px;border:1px solid rgba(34,197,94,.25);background:rgba(34,197,94,.06);color:var(--text);font-size:15px;font-weight:700;line-height:1.5}
+
+  /* Fila (na ordem da TV) */
+  .pedido-row{display:flex;align-items:center;gap:12px;padding:10px 0}
+  .pedido-item{border-bottom:1px solid var(--border)}
+  .pedido-item:last-of-type{border:none}
   .pedido-emoji{font-size:24px;flex-shrink:0}
   .pedido-info{flex:1;min-width:0}
-  .pedido-nome{font-size:14px;font-weight:700}
-  .pedido-tipo{font-size:11px;color:var(--text2);word-break:break-word}
-  .pedido-valor{font-size:14px;font-weight:800;color:var(--green)}
-  .pedido-gratis{font-size:12px;font-weight:700;color:var(--text2)}
+  .pedido-nome{font-size:15px;font-weight:700}
+  .pedido-tipo{font-size:13px;color:var(--text2);word-break:break-word}
+  .pedido-valor{font-size:14px;font-weight:800;color:var(--green);white-space:nowrap}
+  .pedido-gratis{font-size:13px;font-weight:700;color:var(--text2)}
+  .selo-prox{font-size:10px;font-weight:800;color:#22c55e;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:2px}
+  .selo-pago{font-size:10px;font-weight:800;color:#fbbf24;background:rgba(251,191,36,.12);border:1px solid rgba(251,191,36,.35);padding:1px 7px;border-radius:100px;margin-left:6px;white-space:nowrap}
+  .pedido-dispensar{background:none;border:1px solid var(--border2);color:var(--text2);min-width:44px;min-height:44px;border-radius:10px;font-size:17px;cursor:pointer;font-family:inherit}
+  .pedido-dispensar:hover,.pedido-dispensar[aria-expanded="true"]{color:#ef4444;border-color:#ef444466}
+  .tirar-box{display:flex;flex-direction:column;gap:8px;padding:4px 0 12px}
+  .tirar-box .aviso-pago{font-size:13px;color:#fbbf24;line-height:1.5}
+  .tirar-box .botoes{display:flex;gap:8px;flex-wrap:wrap}
+  .tirar-box form{margin:0;flex:1;min-width:150px}
+  .tirar-box button{width:100%;min-height:46px;border-radius:10px;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit}
+  .btn-tirar{background:rgba(239,68,68,.14);border:1px solid rgba(239,68,68,.4);color:#fca5a5}
+  .btn-nunca{background:none;border:1px dashed rgba(239,68,68,.35);color:#f87171;font-size:13px!important;font-weight:700!important;min-height:44px!important}
+  .tirar-box .nunca{flex:none;min-width:0;max-width:340px}
+  .btn-voltar{background:none;border:1px solid var(--border2);color:var(--text2);flex:0 0 auto;min-width:96px}
   .fila-mais{width:100%;margin-top:8px}
-  /* 17/10/26 (CD1): com "🚫 Não mostrar" escrito, no celular os 2 botões descem pra linha de baixo (o recado
-     espremido virava 1 letra por linha em 390) */
   .ok-pedido-row{flex-wrap:wrap}
   @media(max-width:480px){ .ok-botoes{width:100%} .ok-botoes form{flex:1} .ok-botoes button{width:100%} }
-  /* Lote D, críticos (17/10/26, CD1): linha fina com o dinheiro de hoje no topo do Hoje */
-  .hoje-linha{padding:9px 14px;margin-bottom:12px;border-radius:12px;border:1px solid rgba(34,197,94,.25);background:rgba(34,197,94,.06);color:var(--text);font-size:14px;font-weight:700;line-height:1.5}
-  .pedido-dispensar{background:none;border:1px solid var(--border2);color:var(--text2);min-width:40px;min-height:40px;border-radius:9px;font-size:15px;cursor:pointer;font-family:inherit}
-  .pedido-dispensar:hover{color:#ef4444;border-color:#ef444444}
-  .empty-state{text-align:center;padding:18px;color:var(--text2);font-size:13px}
-  .controles-tv{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
-  .ctl-btn{padding:13px;min-height:48px;border:none;border-radius:12px;cursor:pointer;font-size:15px;font-weight:800;font-family:inherit;color:#fff}
-  .vol-linha{display:flex;align-items:center;gap:10px;margin-top:12px}
-  .vol-linha input{flex:1;accent-color:#8b5cf6;height:28px}
+  .empty-state{text-align:center;padding:18px;color:var(--text2);font-size:14px}
 
-  /* Dinheiro de hoje */
-  .din-hoje{display:block;width:100%;text-align:left;font-family:inherit;color:inherit;text-decoration:none;cursor:pointer;border-color:rgba(34,197,94,.3)}
-  .din-hoje-nums{display:flex;gap:18px;flex-wrap:wrap;align-items:baseline}
-
-  /* Estilo do bar */
+  /* 🎵 Estilo */
   .estilos{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
-  .estilo-btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:84px;padding:10px 6px;border-radius:14px;border:2px solid var(--border2);background:var(--surface2);color:var(--text);font-family:inherit;font-size:15px;font-weight:800;cursor:pointer;transition:.15s}
-  .estilo-btn .ic{font-size:28px;line-height:1}
-  .estilo-btn.ativo{border-color:#f97316;background:rgba(249,115,22,.14);color:#fff}
+  .estilo-btn{--c:#f97316;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:96px;padding:10px 6px;border-radius:16px;border:2px solid var(--border2);background:var(--surface2);border:2px solid color-mix(in srgb,var(--c) 55%,transparent);background:color-mix(in srgb,var(--c) 16%,var(--surface2));color:var(--text);font-family:inherit;font-size:17px;font-weight:900;cursor:pointer;transition:.15s}
+  .estilo-btn .ic{font-size:34px;line-height:1}
+  .estilo-btn.ativo{background:var(--c);border-color:#fff;color:#fff;box-shadow:0 0 0 3px color-mix(in srgb,var(--c) 45%,transparent)}
+  .estilo-btn.ativo::after{content:'✓ tocando';position:absolute;top:5px;right:7px;font-size:10px;font-weight:900;background:rgba(0,0,0,.35);padding:1px 6px;border-radius:100px}
   .estilos-mais{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
-  .estilo-chip{padding:9px 12px;min-height:40px;border-radius:10px;border:1px solid var(--border2);background:var(--surface2);color:var(--text2);font-family:inherit;font-size:13px;font-weight:700;cursor:pointer}
+  .estilo-chip{padding:9px 12px;min-height:44px;border-radius:10px;border:1px solid var(--border2);background:var(--surface2);color:var(--text2);font-family:inherit;font-size:14px;font-weight:700;cursor:pointer}
   .estilo-chip.ativo{border-color:#f97316;color:#fff;background:rgba(249,115,22,.14)}
-  summary{cursor:pointer;font-size:13px;font-weight:700;color:var(--text2);padding:10px 0;min-height:40px}
+  summary{cursor:pointer;font-size:14px;font-weight:700;color:var(--text2);padding:10px 0;min-height:44px}
+  .bloq-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;border-top:1px solid var(--border);font-size:14px}
+  .bloq-row form{margin:0}
+
+  /* ✨ Pedidos: liga/desliga + o preço ao lado (preço fixo: não edita aqui) */
+  .momento-row{display:flex;align-items:center;gap:14px;padding:12px 0;border-top:1px solid var(--border)}
+  .card-title + .momento-row{border-top:none}
+  .summary-btn{display:flex;align-items:center;justify-content:center;gap:6px;list-style:none;margin-top:10px;padding:10px 14px;min-height:48px;border:1px dashed var(--border2);border-radius:12px;color:var(--text);font-size:14px;font-weight:800;text-align:center}
+  .summary-btn::-webkit-details-marker{display:none}
+  details[open] > .summary-btn{border-style:solid;margin-bottom:6px}
+  .momento-nome{font-size:17px;font-weight:900}
+  .momento-preco-txt{font-size:13px;color:var(--text2);margin-top:2px;line-height:1.4}
+  .momento-txt{flex:1;min-width:0;display:flex;align-items:center;gap:10px;cursor:pointer;-webkit-tap-highlight-color:transparent}
+  .preco-selo{margin-left:auto;flex-shrink:0;font-size:16px;font-weight:900;color:#fff;background:#db2777;padding:6px 12px;border-radius:100px;white-space:nowrap}
+  .momento-row.desligado .preco-selo{background:#3a3a4a;color:var(--text2)}
+
+  /* ⚙️ Mais: cada assunto numa linha que abre ao tocar */
+  .mais-item{padding:0 18px}
+  .mais-item > summary{display:flex;align-items:center;justify-content:space-between;gap:10px;list-style:none;color:var(--text);font-size:16px;font-weight:800;min-height:60px;padding:16px 0}
+  .mais-item > summary::-webkit-details-marker{display:none}
+  .mais-item > summary::after{content:'›';font-size:24px;color:var(--text2);transition:.2s}
+  .mais-item[open] > summary::after{transform:rotate(90deg)}
+  .mais-item > summary .resumo{font-size:13px;font-weight:600;color:var(--text2);margin-left:auto;text-align:right}
+  .mais-item .dentro{padding:0 0 16px}
+  .sub-bloco{border-top:1px solid var(--border);padding-top:14px;margin-top:14px}
 
   /* TV e QR */
   .tv-link-box{background:linear-gradient(135deg,#0f0f1f,#1a0030);border:1px solid rgba(139,92,246,.3);border-radius:14px;padding:16px 18px}
-  .tv-code{font-size:24px;font-weight:900;letter-spacing:2px;color:#f0f0ff;margin:4px 0 12px;font-family:monospace}
-
-  /* Momentos à venda (1 lista: chave + preço) */
-  /* .momento-preco some do grid (display:contents): campo e "o cliente paga" viram células da linha */
-  .momento-row{display:grid;grid-template-columns:auto 1fr 120px;grid-template-areas:"sw nome campo" ". cli cli";column-gap:12px;row-gap:2px;align-items:center;padding:10px 0;border-top:1px solid var(--border)}
-  .momento-row:first-of-type{border-top:none}
-  .momento-row > .sw{grid-area:sw}
-  .momento-nome{grid-area:nome;font-size:14px;font-weight:700}
-  .momento-preco{display:contents}
-  .momento-preco .campo{grid-area:campo;display:flex;align-items:center;gap:6px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:6px 10px}
-  .momento-preco input{width:100%;min-width:0;background:transparent;border:none;color:var(--text);font-size:16px;font-weight:700;font-family:inherit;outline:none}
-  .preco-cli,.momento-fixo{grid-area:cli;font-size:11px;color:var(--text2);line-height:1.4}
-  .num-rs{white-space:nowrap}
+  .tv-code{font-size:26px;font-weight:900;letter-spacing:2px;color:#f0f0ff;margin:4px 0 12px;font-family:monospace}
 
   /* Formulários */
   .pix-form input,.pix-form select,.campo-txt{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:11px 14px;color:var(--text);font-size:16px;font-family:inherit;outline:none;width:100%}
   .pix-form input:focus,.campo-txt:focus{border-color:var(--green)}
   .label-sm{font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:5px}
   .slide-box{background:#0a0a12;border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:12px;margin-bottom:10px}
-  .slide-box .topo{display:grid;grid-template-columns:56px 1fr 40px;gap:8px;margin-bottom:8px}
+  .slide-box .topo{display:grid;grid-template-columns:56px 1fr 44px;gap:8px;margin-bottom:8px}
 
   @media(max-width:767px){
     nav{padding:0 16px}
-    .main{padding:18px 16px calc(96px + env(safe-area-inset-bottom))}
-    .grid-2{grid-template-columns:1fr}
+    .main{padding:16px 16px calc(96px + env(safe-area-inset-bottom))}
     .estilos{grid-template-columns:repeat(3,1fr)}
-    .momento-row{grid-template-columns:auto 1fr 104px}
-    .receita-num{font-size:18px!important}
+    .receita-num{font-size:20px!important}
     .painel-tabs{position:fixed;left:0;right:0;bottom:0;top:auto;margin:0;padding:6px 4px calc(6px + env(safe-area-inset-bottom));gap:2px;background:rgba(19,19,31,.97);border-top:1px solid var(--border2);z-index:60}
-    .painel-tab{flex-direction:column;gap:3px;padding:6px 2px;min-height:56px;border:none;background:none;border-radius:10px;font-size:11px;font-weight:700;transition:none;-webkit-tap-highlight-color:transparent}
-    .painel-tab .ic{font-size:22px}
-    .painel-tab.ativo{background:rgba(249,115,22,.16);color:#fb923c}
+    .painel-tab{flex-direction:column;gap:3px;padding:6px 2px;min-height:58px;border:none;background:none;border-radius:10px;font-size:12px;font-weight:700;transition:none;-webkit-tap-highlight-color:transparent}
+    .painel-tab .ic{font-size:23px}
+    .painel-tab.ativo{background:rgba(249,115,22,.22);background:color-mix(in srgb,var(--c) 30%,transparent);color:#fff}
     .tab-selo{position:absolute;top:2px;left:50%;margin-left:6px;min-width:18px;height:18px;line-height:18px;font-size:11px;padding:0 5px}
   }
-  /* VDC-08 (16/10/26): no celular o nome do bar no topo empurrava a página pro lado em 320 px e quebrava o
-     "Abrir TV" em 2 linhas em 390 (o nome já está no "Olá, …" logo embaixo) */
-  .nav-btn{white-space:nowrap}
   @media(max-width:480px){ .nav-nome{display:none} }
   @media(max-width:360px){
     .nav-right{gap:8px}
     .nav-btn{padding:7px 12px}
+    .ctl-btn{font-size:18px}
+  }
+
+  /* ── Passada 4 (17/10/26, pedido do Diogo): botões e letras maiores, a frase do topo em destaque na cor da aba e a
+     aba aberta pintada inteira no celular ── */
+  #z-controle{--c:#7c3aed} #z-estilo{--c:#ea580c} #z-pedidos{--c:#db2777} #z-dinheiro{--c:#16a34a} #z-mais{--c:#475569}
+  .aba-frase{font-size:19px;font-weight:900;color:#fff;padding:12px 16px;border-radius:14px;border-left:6px solid var(--c);background:rgba(255,255,255,.05);background:color-mix(in srgb,var(--c) 22%,var(--surface));margin-bottom:16px}
+  .card-title{font-size:13px}
+  .dica{font-size:15px}
+  .stat-val{font-size:36px}
+  .btn-sm{font-size:16px;min-height:50px;padding:10px 16px}
+  .btn-primary{font-size:17px;min-height:54px}
+  .btn-grande{font-size:19px;min-height:64px}
+  .sw{width:70px;height:40px}
+  .sw .sw-t{border-radius:20px}
+  .sw .sw-t::after{width:34px;height:34px}
+  .sw input:checked + .sw-t::after{left:33px}
+  .linha-chave .rot{font-size:19px}
+  .linha-chave .sub{font-size:14px}
+  .ctl-btn{min-height:92px;font-size:24px;border-radius:18px}
+  .hoje-linha{font-size:17px}
+  .pedido-nome{font-size:17px}
+  .pedido-tipo{font-size:15px}
+  .pedido-dispensar{min-width:50px;min-height:50px;font-size:20px}
+  .estilo-btn{min-height:110px;font-size:19px}
+  .estilo-btn .ic{font-size:40px}
+  .momento-nome{font-size:19px}
+  .momento-preco-txt{font-size:14px}
+  .preco-selo{font-size:18px;padding:8px 14px}
+  .mais-item > summary{font-size:18px;min-height:66px}
+  .painel-tab{font-size:16px;min-height:52px}
+  .painel-tab .ic{font-size:20px}
+  @media(max-width:767px){
+    .main{padding-bottom:calc(104px + env(safe-area-inset-bottom))}
+    .painel-tab{font-size:13px;min-height:64px}
+    .painel-tab .ic{font-size:26px}
+    .painel-tab.ativo{background:var(--c);color:#fff}
+  }
+  @media(max-width:480px){   /* celular: o nome do momento cabe numa linha (chave e selo um pouco menores) */
+    .momento-row{gap:10px}
+    .momento-row .sw{width:60px;height:36px}
+    .momento-row .sw .sw-t::after{width:30px;height:30px}
+    .momento-row .sw input:checked + .sw-t::after{left:27px}
+    .momento-nome{font-size:17px}
+    .preco-selo{font-size:16px;padding:6px 10px}
+  }
+  @media(max-width:360px){
+    .painel-tab{font-size:12px}
+    .ctl-btn{font-size:20px}
+    .momento-nome{font-size:17px}
+    .estilo-btn{font-size:16px}
   }
 </style>
 </head>
@@ -164,12 +241,12 @@
   </div>
 </nav>
 
-{#- Lote D C (16/10/26): "Aguardando confirmação PIX" mora em Hoje só no PIX manual (o dono confirma); com o PIX
-    automático é só informação (e o "Recusar") e vai pra aba Dinheiro #}
+{#- Lote D C (16/10/26): "Aguardando confirmação PIX" mora no 🎛️ Controle só no PIX manual (o dono confirma); com o
+    PIX automático é só informação (e o "Recusar") e vai pro 💰 Dinheiro #}
 {% macro bloco_aguardando_pix(aguardando_pix, tipos, asaas_ativo) %}
   <div class="card" id="sec-aguardando-pix" style="border-color:rgba(251,191,36,.3);background:linear-gradient(135deg,#13131f,#1a1500)">
     <div class="card-title" style="color:#fbbf24">⏳ Aguardando confirmação PIX ({{ aguardando_pix|length }})</div>
-    <p style="font-size:12px;color:var(--text2);margin-bottom:14px">
+    <p style="font-size:13px;color:var(--text2);margin-bottom:14px">
       {% if asaas_ativo %}QR gerado e ainda não pago (últimos 30 min). Quando o PIX cair, entra na fila sozinho — você não precisa fazer nada.
       {% else %}⚠️ <strong style="color:#f0f0ff">Verifique no banco se o PIX foi recebido</strong> antes de confirmar.
       Confirmar sem receber o PIX libera a música de graça.{% endif %}
@@ -177,7 +254,7 @@
     {% for p in aguardando_pix %}
     {% set t = tipos.get(p.tipo, {}) %}
     {% set avisou = p.get('pix_cliente_avisou', 0) if p is mapping else 0 %}
-    <div class="pix-pedido-row" style="display:flex;align-items:center;gap:12px;padding:12px;margin-bottom:8px;border-radius:12px;
+    <div class="pix-pedido-row" style="display:flex;align-items:center;gap:12px;padding:12px;margin-bottom:8px;border-radius:12px;flex-wrap:wrap;
       {% if avisou %}background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.3){% else %}background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07){% endif %}">
       <span style="font-size:22px">{{ t.get('emoji','🎵') }}</span>
       <div style="flex:1;min-width:0">
@@ -187,7 +264,7 @@
           <span style="font-size:10px;font-weight:800;background:rgba(34,197,94,.2);border:1px solid rgba(34,197,94,.4);color:#4ade80;padding:2px 8px;border-radius:100px">💬 CLIENTE AVISOU QUE PAGOU</span>
           {% endif %}
         </div>
-        <div style="font-size:11px;color:var(--text2)">
+        <div style="font-size:12px;color:var(--text2)">
           {{ t.get('nome', p.tipo) }}{% if p.titulo_pedido %} · <em>{{ p.titulo_pedido[:40] }}</em>{% endif %}
           · {{ (p.created_at or '')[-8:-3] }}h
         </div>
@@ -196,13 +273,13 @@
       <div style="display:flex;gap:6px">
         {% if not asaas_ativo %}<form method="POST" action="/pubshow/painel/pedido/{{ p.id }}/confirmar-pix" style="margin:0">
           <button type="submit"
-            style="background:linear-gradient(135deg,rgba(34,197,94,.2),rgba(34,197,94,.1));border:1px solid rgba(34,197,94,.4);color:#4ade80;padding:8px 14px;min-height:40px;border-radius:8px;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit">
+            style="background:linear-gradient(135deg,rgba(34,197,94,.2),rgba(34,197,94,.1));border:1px solid rgba(34,197,94,.4);color:#4ade80;padding:8px 14px;min-height:44px;border-radius:8px;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">
             ✅ Recebi — Confirmar
           </button>
         </form>{% endif %}
         <form method="POST" action="/pubshow/painel/pedido/{{ p.id }}/recusar-pix" style="margin:0">
           <button type="submit"
-            style="background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);color:#f87171;padding:8px 10px;min-height:40px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit"
+            style="background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);color:#f87171;padding:8px 10px;min-height:44px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit"
             title="Recusar — PIX não recebido">✗ Recusar</button>
         </form>
       </div>
@@ -245,7 +322,7 @@
   </div>
   {% endif %}
 
-  {# ── Assinatura com problema (Lote D C: o "Assinatura ativa" tranquilo foi pra Ajustes) ── #}
+  {# ── Assinatura com problema (o "Assinatura ativa" tranquilo fica em ⚙️ Mais) ── #}
   {% if b.plano_ativo and assinatura and assinatura.status in ('inadimplente', 'suspenso') %}
     {% set ass_status = assinatura.status %}
   <div id="ass-problema" style="background:{% if ass_status == 'inadimplente' %}rgba(245,158,11,.07){% else %}rgba(239,68,68,.07){% endif %};border:1px solid {% if ass_status == 'inadimplente' %}rgba(245,158,11,.3){% else %}rgba(239,68,68,.3){% endif %};border-radius:14px;padding:14px 18px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
@@ -259,17 +336,18 @@
   </div>
   {% endif %}
 
-  <!-- Abas do painel (Lote D C, 16/10/26): 5 abas, cada uma com UM assunto -->
+  <!-- Abas do painel (17/10/26): 5 abas, cada uma com UM assunto -->
   <div class="painel-tabs" role="tablist">
-    <button type="button" id="tab-hoje" class="painel-tab ativo" role="tab" onclick="mostrarAba('hoje')"><span class="ic">🏠</span><span>Hoje</span><span class="tab-selo" id="tab-hoje-ok" title="Recados pagos esperando o seu OK" aria-label="{{ aguardando_ok|length }} esperando o seu OK"{% if not aguardando_ok %} hidden{% endif %}>{{ aguardando_ok|length }}</span></button>
-    <button type="button" id="tab-musica" class="painel-tab" role="tab" onclick="mostrarAba('musica')"><span class="ic">🎵</span><span>Música e TV</span></button>
+    <button type="button" id="tab-controle" class="painel-tab ativo" role="tab" onclick="mostrarAba('controle')"><span class="ic">🎛️</span><span>Controle</span><span class="tab-selo" id="tab-controle-ok" title="Recados pagos esperando o seu OK" aria-label="{{ aguardando_ok|length }} esperando o seu OK"{% if not aguardando_ok %} hidden{% endif %}>{{ aguardando_ok|length }}</span></button>
+    <button type="button" id="tab-estilo" class="painel-tab" role="tab" onclick="mostrarAba('estilo')"><span class="ic">🎵</span><span>Estilo</span></button>
+    <button type="button" id="tab-pedidos" class="painel-tab" role="tab" onclick="mostrarAba('pedidos')"><span class="ic">✨</span><span>Pedidos</span></button>
     <button type="button" id="tab-dinheiro" class="painel-tab" role="tab" onclick="mostrarAba('dinheiro')"><span class="ic">💰</span><span>Dinheiro</span></button>
-    <button type="button" id="tab-propaganda" class="painel-tab" role="tab" onclick="mostrarAba('propaganda')"><span class="ic">📣</span><span>Propaganda</span></button>
-    <button type="button" id="tab-ajustes" class="painel-tab" role="tab" onclick="mostrarAba('ajustes')"><span class="ic">⚙️</span><span>Ajustes</span></button>
+    <button type="button" id="tab-mais" class="painel-tab" role="tab" onclick="mostrarAba('mais')"><span class="ic">⚙️</span><span>Mais</span></button>
   </div>
 
-  <!-- ════════ 🏠 HOJE: só o que se usa com o bar cheio ════════ -->
-  <div id="z-hoje" class="zona">
+  <!-- ════════ 🎛️ CONTROLE: o que se usa com o bar cheio ════════ -->
+  <div id="z-controle" class="zona">
+  <p class="aba-frase">O que você usa com o bar cheio.</p>
   {#- Lote D A3 (16/10/26): pausa de 60 dias sem momento pago (só Efí) — aviso 7 dias antes e o "pausado" #}
   {%- if efi_pausa %}
   <div id="efi-pausa" style="background:{% if efi_pausa.pausado %}rgba(248,113,113,.08){% else %}rgba(251,191,36,.08){% endif %};border:1px solid {% if efi_pausa.pausado %}rgba(248,113,113,.4){% else %}rgba(251,191,36,.35){% endif %};border-radius:14px;padding:14px 18px;margin-bottom:16px;font-size:13px;color:{% if efi_pausa.pausado %}#fecaca{% else %}#fde68a{% endif %};line-height:1.6">
@@ -337,8 +415,8 @@
           <a href="https://wa.me/?text={{ ('Link da TV do ' ~ b.nome ~ ': ' ~ link_tv)|urlencode }}" target="_blank" class="btn-sm" style="text-decoration:none">💬 Mandar o link pro meu WhatsApp</a>
           <a href="/bar/{{ b.code }}?teste=1" target="_blank" class="btn-sm" style="text-decoration:none">📱 Testar aqui no celular</a>
         </div>
-        {#- Lote D C (16/10/26): o link e o QR moram na seção "TV e QR" da aba Música e TV #}
-        <a href="#sec-tvqr" class="link-abrir">Ver o link e o QR em 🎵 Música e TV →</a>
+        {#- o link e o QR moram em ⚙️ Mais (17/10/26) #}
+        <a href="#sec-tvqr" class="link-abrir">Ver o link e o QR em ⚙️ Mais →</a>
         {% endif %}
       </div>
 
@@ -393,40 +471,34 @@
   </div>
   {% endif %}
 
-  {#- Lote D, críticos (17/10/26, CD1): "quanto entrou hoje" na 1ª tela, numa linha fina só de leitura (não é mais um
-      botão: o card completo, que abre o Meu dinheiro / a aba Dinheiro, fica no fim do Hoje). O polling atualiza os 2 #}
-  <div class="hoje-linha" id="hoje-linha">
-    <span>💰 Hoje: <span id="hoje-linha-casa" style="color:var(--green)">R$ {{ '%.2f'|format(total_hoje)|replace('.',',') }}</span> + <span id="hoje-linha-gorjeta" style="color:#4ade80">R$ {{ '%.2f'|format(gorjeta_hoje)|replace('.',',') }}</span> de gorjeta</span>
-  </div>
-
-  <!-- 📺 Selo da TV (sinal real) + interruptor do jukebox que salva sozinho (15/10/26, B6/B10) + controle da TV -->
-  <div class="card" id="sec-status" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:14px 18px">
-    <div id="tv-selo" data-estado="{{ tv_sinal.estado }}" style="font-size:13px;font-weight:800;flex:1;min-width:200px;color:{% if tv_sinal.estado == 'ligada' %}#4ade80{% elif tv_sinal.estado in ('sem_sinal', 'sem_som') %}#fbbf24{% else %}var(--text2){% endif %}">{{ tv_sinal.texto }}</div>
-    <label style="display:flex;align-items:center;gap:10px;cursor:pointer;margin:0;min-height:44px">
-      <span style="font-size:13px;font-weight:800" id="jk-label">{% if not b.plano_ativo and teste_acabou and not efi %}🔕 Jukebox desligado: falta assinar{% elif b.jukebox_ativo %}🔔 Jukebox ligado{% else %}🔕 Jukebox desligado{% endif %}</span>
-      <span style="position:relative;display:inline-block;width:48px;height:26px">
-        <input type="checkbox" id="jk-toggle" {% if b.jukebox_ativo %}checked{% endif %} onchange="salvarJukeboxAtivo(this)" style="opacity:0;width:0;height:0;position:absolute">
-        <span id="jk-trilho" style="position:absolute;inset:0;background:{% if b.jukebox_ativo %}#22c55e{% else %}#333{% endif %};border-radius:13px;transition:.3s"></span>
-        <span id="jk-bola" style="position:absolute;left:{% if b.jukebox_ativo %}24px{% else %}2px{% endif %};top:2px;width:22px;height:22px;background:#fff;border-radius:50%;transition:.3s"></span>
-      </span>
-    </label>
-    <div id="jk-msg" style="font-size:11px;color:var(--text2);width:100%;display:none"></div>
-    {#- Lote D, críticos (17/10/26, CD1): o controle remoto da TV (pular, mudo, volume) mora AQUI, junto do selo da TV.
-        Antes ficava embaixo da fila inteira: com 20 pedidos, o Pular ia pra 2,4 telas de rolagem justo na sexta lotada #}
-    {% set _vol = b.tv_volume if b.tv_volume is not none else 100 %}
-    <div id="sec-controle-tv" style="width:100%">
-      <div class="controles-tv" style="margin-top:4px">
+  <!-- 📺 Controle remoto: selo da TV (sinal real) + jukebox liga/desliga + ⏭️ Pular, 🔇 Mudo e volume ENORMES -->
+  {% set _vol = b.tv_volume if b.tv_volume is not none else 100 %}
+  <div class="card" id="sec-status">
+    <div class="remoto-topo">
+      <div id="tv-selo" data-estado="{{ tv_sinal.estado }}" style="font-size:14px;font-weight:800;flex:1;min-width:180px;color:{% if tv_sinal.estado == 'ligada' %}#4ade80{% elif tv_sinal.estado in ('sem_sinal', 'sem_som') %}#fbbf24{% else %}var(--text2){% endif %}">{{ tv_sinal.texto }}</div>
+      <label style="display:flex;align-items:center;gap:10px;cursor:pointer;margin:0;min-height:44px">
+        <span style="font-size:14px;font-weight:800" id="jk-label">{% if not b.plano_ativo and teste_acabou and not efi %}🔕 Jukebox desligado: falta assinar{% elif b.jukebox_ativo %}🔔 Jukebox ligado{% else %}🔕 Jukebox desligado{% endif %}</span>
+        <span style="position:relative;display:inline-block;width:52px;height:30px">
+          <input type="checkbox" id="jk-toggle" aria-label="Jukebox ligado (os clientes podem pedir)" {% if b.jukebox_ativo %}checked{% endif %} onchange="salvarJukeboxAtivo(this)" style="opacity:0;width:0;height:0;position:absolute">
+          <span id="jk-trilho" style="position:absolute;inset:0;background:{% if b.jukebox_ativo %}#22c55e{% else %}#333{% endif %};border-radius:15px;transition:.3s"></span>
+          <span id="jk-bola" style="position:absolute;left:{% if b.jukebox_ativo %}25px{% else %}3px{% endif %};top:3px;width:24px;height:24px;background:#fff;border-radius:50%;transition:.3s"></span>
+        </span>
+      </label>
+      <div id="jk-msg" style="font-size:12px;color:var(--text2);width:100%;display:none"></div>
+    </div>
+    <div id="sec-controle-tv">
+      <div class="controles-tv">
         <button type="button" id="btn-pular-musica" class="ctl-btn" onclick="pularMusica(this)" style="background:linear-gradient(135deg,#8b5cf6,#6366f1)">⏭️ Pular</button>
-        <button type="button" id="btn-mudo" class="ctl-btn" onclick="alternarMudo()" style="background:rgba(239,68,68,.18);color:#fca5a5">{% if _vol == 0 %}🔊 Tirar do mudo{% else %}🔇 Mudo{% endif %}</button>
+        <button type="button" id="btn-mudo" class="ctl-btn" onclick="alternarMudo()" style="background:rgba(239,68,68,.2);color:#fecaca">{% if _vol == 0 %}🔊 Tirar do mudo{% else %}🔇 Mudo{% endif %}</button>
       </div>
-      <!-- 🔊 Volume da TV (controle remoto) — 11/09/26 -->
+      <!-- 🔊 Volume da TV (controle remoto) -->
       <div class="vol-linha">
-        <span style="font-size:18px" aria-hidden="true">🔊</span>
-        <input type="range" id="vol-tv" min="0" max="100" step="5" value="{{ _vol }}" aria-label="Volume da TV"
-               oninput="document.getElementById('vol-tv-val').textContent=this.value+'%'" onchange="ajustarVolumeTV(this.value)">
-        <span id="vol-tv-val" style="font-size:14px;font-weight:900;color:#4ade80;min-width:44px;text-align:right">{{ _vol }}%</span>
+        <span style="font-size:22px" aria-hidden="true">🔊</span>
+        <input type="range" id="vol-tv" min="0" max="100" step="5" value="{{ _vol }}" aria-label="Volume da TV" style="--p:{{ _vol }}%"
+               oninput="_pintaVol(this.value)" onchange="ajustarVolumeTV(this.value)">
+        <span id="vol-tv-val" style="font-size:18px;font-weight:900;color:#c4b5fd;min-width:52px;text-align:right">{{ _vol }}%</span>
       </div>
-      <div id="vol-tv-msg" style="font-size:11px;color:var(--text2);margin-top:4px">Volume da TV: ela aplica em até 3 segundos.</div>
+      <div id="vol-tv-msg" style="font-size:13px;color:var(--text2);margin-top:2px;min-height:18px"></div>
     </div>
   </div>
 
@@ -434,27 +506,27 @@
   {% if aguardando_ok %}
   <div class="card" id="sec-ok" style="border-color:rgba(251,191,36,.5);background:linear-gradient(135deg,#13131f,#1a1500)">
     <div class="card-title" style="color:#fbbf24">🛡️ Precisa do seu OK ({{ aguardando_ok|length }})</div>
-    <p style="font-size:12px;color:var(--text2);margin-bottom:12px">Já está pago. Leia e decida se vai pra TV.</p>
+    <p style="font-size:14px;color:var(--text2);margin-bottom:12px">Já pago. Mostrar na TV?</p>
     {% for p in aguardando_ok %}
     {% set t = tipos.get(p.tipo, {}) %}
     <div class="ok-pedido-row" style="display:flex;align-items:center;gap:12px;padding:12px;margin-bottom:8px;border-radius:12px;background:rgba(255,255,255,.04);border:1px solid rgba(251,191,36,.25)">
       <span style="font-size:22px">{{ t.get('emoji','💬') }}</span>
       <div style="flex:1;min-width:0">
-        <div style="font-size:14px;font-weight:700">{{ p.nome_cliente }} <span style="font-size:11px;color:var(--text2);font-weight:600">· {{ t.get('nome', p.tipo) }} · R$ {{ '%.2f'|format(p.valor or 0)|replace('.',',') }}{% if efi and efi_ok_info and efi_ok_info.get(p.id) %} (o cliente pagou {{ brl_cent(efi_ok_info[p.id].valor_cent) }}){% endif %}</span></div>
-        <div style="font-size:14px;color:#fde68a;margin-top:2px;word-break:break-word">“{{ p.mensagem }}”</div>
+        <div style="font-size:14px;font-weight:700">{{ p.nome_cliente }} <span style="font-size:12px;color:var(--text2);font-weight:600">· {{ t.get('nome', p.tipo) }} · R$ {{ '%.2f'|format(p.valor or 0)|replace('.',',') }}{% if efi and efi_ok_info and efi_ok_info.get(p.id) %} (o cliente pagou {{ brl_cent(efi_ok_info[p.id].valor_cent) }}){% endif %}</span></div>
+        <div style="font-size:15px;color:#fde68a;margin-top:2px;word-break:break-word">“{{ p.mensagem }}”</div>
       </div>
       <div class="ok-botoes" style="display:flex;gap:6px;flex-shrink:0">
         <form method="POST" action="/pubshow/painel/pedido/{{ p.id }}/aprovar" style="margin:0">
-          <button type="submit" style="background:linear-gradient(135deg,rgba(34,197,94,.25),rgba(34,197,94,.12));border:1px solid rgba(34,197,94,.5);color:#4ade80;padding:10px 14px;min-height:44px;border-radius:10px;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">✅ Mostrar</button>
+          <button type="submit" style="background:linear-gradient(135deg,rgba(34,197,94,.25),rgba(34,197,94,.12));border:1px solid rgba(34,197,94,.5);color:#4ade80;padding:10px 14px;min-height:46px;border-radius:10px;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit">✅ Mostrar</button>
         </form>
         {%- if efi and efi_ok_info and efi_ok_info.get(p.id) %}{% set _oi = efi_ok_info[p.id] %}
         {#- CC2 (16/10/26), só Efí: o confirm diz quanto volta pro cliente e o que sai do próximo momento #}
         <form method="POST" action="/pubshow/painel/pedido/{{ p.id }}/recusar" style="margin:0" onsubmit="return confirm('Não mostrar na TV? O cliente recebe {{ brl_cent(_oi.valor_cent) }} de volta no PIX.{% if _oi.bar_cent %} Os {{ brl_cent(_oi.bar_cent) }} que já caíram na tua conta saem do próximo momento.{% endif %}')">
-          <button type="submit" style="background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);color:#f87171;padding:10px 12px;min-height:44px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">🚫 Não mostrar</button>
+          <button type="submit" style="background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);color:#f87171;padding:10px 12px;min-height:46px;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">🚫 Não mostrar</button>
         {%- else %}
         {#- Lote D, críticos (17/10/26, CD1): a palavra também no Asaas (só "🚫" o leigo não sabe o que faz) #}
         <form method="POST" action="/pubshow/painel/pedido/{{ p.id }}/recusar" style="margin:0" onsubmit="return confirm('Não mostrar na TV? O cliente vai ver que o bar não liberou.')">
-          <button type="submit" style="background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);color:#f87171;padding:10px 12px;min-height:44px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">🚫 Não mostrar</button>
+          <button type="submit" style="background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);color:#f87171;padding:10px 12px;min-height:46px;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">🚫 Não mostrar</button>
         {%- endif %}
         </form>
       </div>
@@ -463,29 +535,41 @@
   </div>
   {% endif %}
 
-  <!-- 📋 Fila (o controle remoto da TV subiu pro card do selo da TV) -->
+  {#- "quanto entrou hoje" sem tocar em nada: linha fina só de leitura (o detalhe fica em 💰 Dinheiro). O polling atualiza #}
+  <div class="hoje-linha" id="hoje-linha">
+    <span>💰 Hoje: <span id="hoje-linha-casa" style="color:var(--green)">R$ {{ '%.2f'|format(total_hoje)|replace('.',',') }}</span> + <span id="hoje-linha-gorjeta" style="color:#4ade80">R$ {{ '%.2f'|format(gorjeta_hoje)|replace('.',',') }}</span> de gorjeta</span>
+  </div>
+
+  <!-- 📋 Fila, na ordem da TV (furar a fila pago aparece como o próximo). 🗑️ abre: tirar da fila / nunca mais -->
   <div class="card" id="sec-fila">
-    <div class="card-title"><span>📋 Fila (<span id="fila-count">{{ fila|length }}</span>)</span></div>
-    {#- Lote D, críticos (17/10/26, CD1): só os 5 primeiros da fila; o resto abre em "Ver os outros N" (o polling
-        renderFila faz o mesmo). Música grátis mostra "grátis" em cinza, não "R$ 0,00" em verde #}
+    <div class="card-title"><span>📋 Fila (<span id="fila-count">{{ fila|length }}</span>) · ordem da TV</span></div>
+    {#- só os 5 primeiros; o resto abre em "Ver os outros N" (o polling renderFila faz o mesmo) #}
     {% set FILA_VISIVEL = 5 %}
     <div id="fila-pedidos">
     {% if fila %}
       {% for p in fila %}
       {% set t = tipos.get(p.tipo, {}) %}
-      <div class="pedido-row{% if loop.index > FILA_VISIVEL %} fila-extra{% endif %}"{% if loop.index > FILA_VISIVEL %} hidden{% endif %}>
-        <span class="pedido-emoji">{{ t.get('emoji','🎵') }}</span>
-        <div class="pedido-info">
-          <div class="pedido-nome">{{ p.nome_cliente }}</div>
-          <div class="pedido-tipo">{{ t.get('nome', p.tipo) }}{% if p.mensagem %} · "{{ p.mensagem[:40] }}"{% endif %}</div>
+      {% set _pago_cli = '%.2f'|format(p.valor_cobrado or p.valor or 0)|replace('.',',') %}
+      <div class="pedido-item{% if loop.index > FILA_VISIVEL %} fila-extra{% endif %}" data-id="{{ p.id }}"{% if loop.index > FILA_VISIVEL %} hidden{% endif %}>
+        <div class="pedido-row"{% if loop.first %} style="border-left:3px solid #22c55e;padding-left:10px"{% endif %}>
+          <span class="pedido-emoji">{{ t.get('emoji','🎵') }}</span>
+          <div class="pedido-info">
+            {% if loop.first %}<span class="selo-prox">▶ Próximo</span>{% endif %}
+            <div class="pedido-nome">{{ p.nome_cliente }}{% if p.tipo in ('flash', 'vip') and p.pago_em %}<span class="selo-pago">⚡ PAGO</span>{% endif %}</div>
+            <div class="pedido-tipo">{% if p.titulo_pedido %}🎵 {{ p.titulo_pedido[:40] }}{% else %}{{ t.get('nome', p.tipo) }}{% endif %}{% if p.mensagem %} · "{{ p.mensagem[:30] }}"{% endif %}</div>
+          </div>
+          {% if (p.valor or 0) > 0 %}<span class="pedido-valor">R$ {{ '%.2f'|format(p.valor_cobrado or p.valor or 0)|replace('.',',') }}</span>{% else %}<span class="pedido-gratis">grátis</span>{% endif %}
+          <button type="button" class="pedido-dispensar" aria-expanded="false" aria-label="Tirar da fila" title="Tirar da fila" onclick="abrirTirar({{ p.id }})">🗑️</button>
         </div>
-        {% if (p.valor or 0) > 0 %}<span class="pedido-valor">R$ {{ '%.2f'|format(p.valor or 0)|replace('.',',') }}</span>{% else %}<span class="pedido-gratis">grátis</span>{% endif %}
-        {# 16/10/26 (C1-05): pedido JÁ PAGO avisa que o dinheiro não volta sozinho #}
-        <form method="POST" action="/pubshow/painel/pedido/{{ p.id }}/dispensar" style="margin:0" onsubmit="return confirm({% if p.pago_em %}'⚠️ Esse cliente PAGOU R$ {{ '%.2f'|format(p.valor_cobrado or p.valor or 0)|replace('.',',') }} no PIX. Se tirar, a TV não mostra e o dinheiro NÃO volta sozinho: devolva na mão.
-
-Tirar mesmo assim?'{% else %}'Tirar este pedido da fila? A TV NÃO vai mostrar.'{% endif %})">
-          <button type="submit" class="pedido-dispensar" title="Tirar da fila (a TV toca/mostra sozinha — só use pra remover)">🗑️</button>
-        </form>
+        <div class="tirar-box" id="tirar-{{ p.id }}" hidden>
+          {# 16/10/26 (C1-05): pedido JÁ PAGO avisa que o dinheiro não volta sozinho #}
+          {% if p.pago_em %}<div class="aviso-pago">⚠️ Esse cliente PAGOU R$ {{ _pago_cli }} no PIX. Se tirar, a TV não mostra e o dinheiro NÃO volta sozinho: devolva na mão.</div>{% endif %}
+          <div class="botoes">
+            <form method="POST" action="/pubshow/painel/pedido/{{ p.id }}/dispensar"><button type="submit" class="btn-tirar">🗑️ Tirar da fila</button></form>
+            <button type="button" class="btn-voltar" onclick="abrirTirar(null)">Voltar</button>
+          </div>
+          {% if p.youtube_id %}<form method="POST" action="/pubshow/painel/bloquear-video" class="nunca"><input type="hidden" name="youtube_id" value="{{ p.youtube_id }}"><input type="hidden" name="pedido_id" value="{{ p.id }}"><button type="submit" class="btn-nunca">🚫 Tirar e nunca mais tocar</button></form>{% endif %}
+        </div>
       </div>
       {% endfor %}
       {% if fila|length > FILA_VISIVEL %}<button type="button" class="btn-sm fila-mais" id="fila-ver-mais" onclick="abrirFila(true)">Ver os outros {{ fila|length - FILA_VISIVEL }} ▾</button>{% endif %}
@@ -496,22 +580,13 @@ Tirar mesmo assim?'{% else %}'Tirar este pedido da fila? A TV NÃO vai mostrar.'
   </div>
 
   {% if aguardando_pix and not asaas_ativo %}{{ bloco_aguardando_pix(aguardando_pix, tipos, asaas_ativo) }}{% endif %}
+  </div><!-- /z-controle -->
 
-  <!-- 💰 Dinheiro de hoje: momentos + gorjeta num card só (Lote D C, 16/10/26) -->
-  <a href="{% if efi %}/pubshow/painel/dinheiro{% else %}#sec-receita{% endif %}" class="card din-hoje" id="sec-dinheiro-hoje">
-    <div class="card-title">💰 Dinheiro de hoje</div>
-    <div class="din-hoje-nums">
-      <div><div class="stat-val" style="color:var(--green)" id="total-hoje">R$ {{ '%.2f'|format(total_hoje)|replace('.',',') }}</div>{#- 17/10/26 (decisão 1): só os momentos PAGOS (PIX confirmado), sem música grátis nem gorjeta #}{% set _np = momentos_hoje_n|default(0) %}<div class="stat-sub" id="momentos-hoje">{{ _np }} momento{{ 's' if _np != 1 }} pago{{ 's' if _np != 1 }} · caixa da casa</div></div>
-      <div><div class="stat-val" style="color:#4ade80;font-size:22px" id="gorjeta-hoje">R$ {{ '%.2f'|format(gorjeta_hoje)|replace('.',',') }}</div><div class="stat-sub">🙏 gorjetas da equipe (à parte)</div></div>
-    </div>
-    <div style="font-size:13px;color:#f97316;font-weight:800;margin-top:10px">{% if efi %}Ver Meu dinheiro →{% else %}Ver a semana e o mês →{% endif %}</div>
-  </a>
-  </div><!-- /z-hoje -->
-
-  <!-- ════════ 🎵 MÚSICA E TV ════════ -->
-  <div id="z-musica" class="zona oculta">
-  {#- Lote D C (16/10/26): Estilo do bar = 5 botões grandes (TV + busca do cliente). Os outros canais ficam
-      fechados em "mais estilos". Aceso = o canal que está no ar (canal_atual): nada muda até o dono tocar. #}
+  <!-- ════════ 🎵 ESTILO MUSICAL ════════ -->
+  <div id="z-estilo" class="zona oculta">
+  <p class="aba-frase">O que toca na TV e o que o cliente pode pedir.</p>
+  {#- Estilo do bar = 5 botões grandes (TV + busca do cliente). Os outros canais ficam fechados em "mais estilos".
+      Aceso = o canal que está no ar (canal_atual): nada muda até o dono tocar. #}
   {% set _temas = temas_habilitados or [] %}
   {% set _preset = [] %}
   {% for k, e in estilos_bar.items() %}{% if e.temas and _temas|sort == e.temas|sort %}{% set _ = _preset.append(k) %}{% endif %}{% endfor %}
@@ -519,108 +594,169 @@ Tirar mesmo assim?'{% else %}'Tirar este pedido da fila? A TV NÃO vai mostrar.'
   {#- VDC-06 (16/10/26): aceso pelo canal que a TV toca de verdade (vazio ou inexistente = Rock, o fallback da TV) #}
   {% set _canal_ef = b.canal_atual if b.canal_atual in canais else 'rock' %}
   {% set _extra_ativo = _canal_ef not in _canais_main %}
-  {#- Lote D, críticos (17/10/26, CD3): canal de "mais estilos" que é da família de um botão grande (Punk →
-      Rock; Country → Sertanejo…) acende o botão da família, com "No ar: …" embaixo. "Mais estilos" fica
-      SEMPRE fechado (o LOTE_D pede fechado; aberto, o Garage no Punk via 21 botões e nenhum grande aceso) #}
+  {#- canal de "mais estilos" que é da família de um botão grande (Punk → Rock; Country → Sertanejo…)
+      acende o botão da família, com "No ar: …" embaixo. "Mais estilos" fica SEMPRE fechado #}
   {% set _familia = [] %}
   {% for k, e in estilos_bar.items() %}{% if _canal_ef == e.canal or (e.temas and _canal_ef in e.temas) %}{% set _ = _familia.append(k) %}{% endif %}{% endfor %}
   {% set _aceso = _familia[0] if _familia else '' %}
   <div class="card" id="sec-estilo">
     <div class="card-title">🎵 Estilo do bar <span class="salvo" aria-live="polite"></span></div>
-    <p class="dica">Toque no estilo do bar: a TV passa a tocar ele na hora e o cliente escolhe música desse estilo no celular. <strong style="color:var(--text)">Variado</strong> = de tudo um pouco.</p>
     <div class="estilos">
       {% for k, e in estilos_bar.items() %}
-      <button type="button" class="estilo-btn{% if k == _aceso %} ativo{% endif %}" data-estilo="{{ k }}" data-familia="{{ ((e.temas or []) + [e.canal])|join(' ') }}" aria-pressed="{{ 'true' if k == _aceso else 'false' }}" onclick="escolherEstilo(this)"><span class="ic">{{ e.emoji }}</span>{{ e.nome }}</button>
+      <button type="button" class="estilo-btn{% if k == _aceso %} ativo{% endif %}" style="--c:{{ canais_todos.get(e.canal, {}).get('cor', '#f97316') }}" data-estilo="{{ k }}" data-familia="{{ ((e.temas or []) + [e.canal])|join(' ') }}" aria-pressed="{{ 'true' if k == _aceso else 'false' }}" onclick="escolherEstilo(this)"><span class="ic">{{ e.emoji }}</span>{{ e.nome }}</button>
       {% endfor %}
     </div>
-    <div id="estilo-no-ar" style="font-size:13px;font-weight:700;color:#fb923c;margin-top:10px"{% if not _extra_ativo %} hidden{% endif %}>📺 No ar: {% if _extra_ativo %}{{ canais[_canal_ef].emoji }} {{ canais[_canal_ef].nome }}{% endif %}</div>
+    <div id="estilo-no-ar" style="font-size:14px;font-weight:700;color:#fb923c;margin-top:10px"{% if not _extra_ativo %} hidden{% endif %}>📺 No ar: {% if _extra_ativo %}{{ canais[_canal_ef].emoji }} {{ canais[_canal_ef].nome }}{% endif %}</div>
     {% if _temas and not _preset %}
-    <div id="estilo-antigo" style="font-size:12px;color:var(--text2);margin-top:10px">Hoje a busca do cliente usa os {{ _temas|length }} estilos que você marcou antes. Tocar num botão troca.</div>
+    <div id="estilo-antigo" style="font-size:13px;color:var(--text2);margin-top:10px">Hoje a busca do cliente usa os {{ _temas|length }} estilos que você marcou antes. Tocar num botão troca.</div>
     {% endif %}
     <details id="mais-estilos" style="margin-top:6px">
-      <summary>Mais estilos (esporte e outros)</summary>
-      <div style="font-size:12px;color:var(--text2)">Estes mudam só a TV. O cliente segue pedindo qualquer música.</div>
+      <summary class="summary-btn">➕ Mais estilos</summary>
+      <div style="font-size:13px;color:var(--text2)">Só muda a TV.</div>
       <div class="estilos-mais">
         {% for key, c in canais.items() if key not in _canais_main %}
         <button type="button" class="estilo-chip{% if _canal_ef == key %} ativo{% endif %}" data-estilo="{{ key }}" aria-pressed="{{ 'true' if _canal_ef == key else 'false' }}" onclick="escolherEstilo(this)">{{ c.emoji }} {{ c.nome }}</button>
         {% endfor %}
       </div>
+      {#- 🔇 Modo esporte (sessão "modo esporte", 17/10/26): a TV muda os vídeos que não são música (Sport, Viral…) e o
+          som sai da caixa do bar; pedido de música da fila continua com som. DESLIGADO por padrão. Mora junto dos canais
+          de esporte (crítico leigo M2: é ajuste de uma vez e o 🔇 do Mudo no Controle confundia). Só aparece com a
+          coluna (migração) E a rota no ar: coluna sem rota = chave que sempre falha (B9) #}
+      {% if 'tv_mudo_sem_musica' in b and rota_modo_esporte %}
+      <div class="linha-chave" id="sec-modo-esporte" style="border-top:1px solid var(--border);margin-top:12px;padding-bottom:0">
+        <div>
+          <div class="rot">🔇 Vídeo sem música → sem som</div>
+          <div class="sub">Esporte e vídeos ficam mudos; o som sai da caixa do bar.</div>
+        </div>
+        <label class="sw"><input type="checkbox" id="tv-mudo-sem-musica" aria-label="Vídeo sem música fica sem som"{% if b.tv_mudo_sem_musica %} checked{% endif %} onchange="salvarMudoSemMusica(this)"><span class="sw-t"></span></label>
+      </div>
+      {% endif %}
     </details>
   </div>
 
   <div class="card" id="sec-youtube">
     <div class="linha-chave" style="padding:0">
       <div>
-        <div class="rot">🌐 Deixar pedir qualquer música do YouTube <span class="salvo" aria-live="polite"></span></div>
-        <div class="sub">Ligado: o sistema confere se o clipe toca na TV e ele entra no acervo. Desligado: só a lista do bar (vale pro Furar a fila também).</div>
+        <div class="rot">🌐 Pedir do YouTube <span class="salvo" aria-live="polite"></span></div>
+        <div class="sub">Ligado: qualquer música. Desligado: só a lista do bar.</div>
       </div>
       <label class="sw"><input type="checkbox" name="tipos_ativos" value="musica_externa" form="f-config" aria-label="Deixar pedir qualquer música do YouTube"{% if 'musica_externa' not in bloqueados_parsed %} checked{% endif %}><span class="sw-t"></span></label>
     </div>
   </div>
 
-  <!-- 📺 TV e QR (link, copiar, imprimir QR, novo QR) — Lote D C: saiu da tela Hoje -->
-  {% set _qr_msg = request.args.get('erro') == 'novo_qr' %}
-  <div class="card" id="sec-tvqr">
-    <div class="card-title">📺 TV e QR</div>
-    <div class="tv-selo-espelho" style="font-size:13px;font-weight:800;margin-bottom:12px;color:{% if tv_sinal.estado == 'ligada' %}#4ade80{% elif tv_sinal.estado in ('sem_sinal', 'sem_som') %}#fbbf24{% else %}var(--text2){% endif %}">{{ tv_sinal.texto }}</div>
-    <div class="tv-link-box">
-      <div style="font-size:12px;color:#a78bfa;font-weight:700">No navegador da TV, digite 4kitem.com.br/bar e o código</div>
-      <div class="tv-code">{{ b.code }}</div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <button type="button" class="btn-sm" onclick="copiar('https://www.4kitem.com.br/bar/{{ b.code }}', this)">📋 Copiar link da TV</button>
-        <a href="/pubshow/painel/qrcode" class="btn-sm" style="background:linear-gradient(135deg,#ef4444,#f97316);color:#fff;border:none">🖨️ Imprimir QR das mesas</a>
-      </div>
-    </div>
-    {# 16/10/26 (V3-01): aviso do Novo QR fica aqui dentro — abre sozinho quando volta com erro #}
-    <details id="box-novo-qr" style="margin-top:8px"{% if _qr_msg %} open{% endif %}>
-      <summary>🔄 Trocar o QR das mesas</summary>
-      <div id="sec-novo-qr">
-        <p style="font-size:12px;color:#8888aa;margin-bottom:12px">Use só se o QR vazou ou foi copiado. <strong style="color:#fbbf24">Todos os QRs já impressos param de funcionar</strong> e você vai precisar imprimir de novo.</p>
-        {% if _qr_msg %}<div style="background:#2d0a0a;border:1px solid #ef444433;border-radius:10px;padding:10px 14px;font-size:13px;color:#f87171;margin-bottom:12px">❌ O QR não foi trocado. Digite NOVO QR pra confirmar.</div>{% endif %}
-        <form method="POST" action="/pubshow/painel/novo-qr" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-          <input type="text" name="confirmar" placeholder="Digite NOVO QR" autocomplete="off" required style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-size:16px;font-family:inherit;outline:none;text-transform:uppercase;width:170px">
-          <button type="submit" class="btn-sm" style="border-color:rgba(245,158,11,.4);color:#f59e0b">🔄 Gerar QR novo</button>
+  {#- 🚫 "nunca mais": as músicas que o dono bloqueou na fila (🗑️ → "Tirar e nunca mais tocar"). Fechado; abre a lista #}
+  {% if musicas_bloqueadas %}
+  <details class="card mais-item" id="box-bloqueadas">
+    <summary>🚫 Músicas bloqueadas <span class="resumo" id="bloq-n">{{ musicas_bloqueadas|length }}</span></summary>
+    <div class="dentro" id="sec-bloqueadas">
+      <p class="dica">Não tocam aqui. <span class="salvo" aria-live="polite"></span></p>
+      {% for m in musicas_bloqueadas %}
+      <div class="bloq-row" data-yid="{{ m.id }}">
+        <span style="min-width:0;word-break:break-word">{{ m.titulo or 'Música sem nome' }}</span>
+        <form method="POST" action="/pubshow/painel/desbloquear-video" onsubmit="return liberarMusica(event, this)">
+          <input type="hidden" name="youtube_id" value="{{ m.id }}">
+          <button type="submit" class="btn-sm">Liberar</button>
         </form>
       </div>
-    </details>
+      {% endfor %}
+    </div>
+  </details>
+  {% endif %}
+  </div><!-- /z-estilo -->
+
+  <!-- ════════ ✨ PEDIDOS: o que o cliente pode mandar pra TV ════════ -->
+  <div id="z-pedidos" class="zona oculta">
+  <p class="aba-frase">O que o cliente pode mandar pra TV.</p>
+  {#- Liga/desliga de cada momento com o preço ao lado. Preço é tabela fixa: não se edita aqui. O preço que o bar já
+      tinha salvo (precos_custom, ex.: furar a fila R$ 4 do Garage) continua valendo e vai num campo escondido, igual ao
+      que está no banco — salvar uma chave nunca regrava preço. Abertos: os 9 (decisão do Diogo, 17/10/26 noite: "abrir
+      também o Salve"); o "mais" só aparece se entrar momento novo fora desta lista. Nome curto no painel (o celular do
+      cliente segue com o nome de sempre). #}
+  {% set PRINCIPAIS = ['flash', 'parabens', 'casamento', 'cantada', 'brinde', 'gorjeta', 'dedicatoria', 'chegada', 'salve'] %}
+  {% set NOMES_CURTOS = {'flash': 'Furar a fila', 'parabens': 'Parabéns', 'dedicatoria': 'Dedicatória', 'brinde': 'Brinde',
+                         'chegada': 'Chegamos', 'cantada': 'Cantada', 'salve': 'Salve pra mesa', 'casamento': 'Namoro',
+                         'gorjeta': 'Gorjeta'} %}
+  {% set _princ = [] %}{% set _resto = [] %}
+  {% for key in tipos_config if key not in tipos_gratis %}{% if key in PRINCIPAIS %}{% set _ = _princ.append(key) %}{% else %}{% set _ = _resto.append(key) %}{% endif %}{% endfor %}
+  {% set _piso = (piso_preco or 4)|float %}
+  {% set _taxa = TAXA_SERVICO|float %}
+  <div class="card" id="sec-momentos">
+    <div class="card-title">✨ Liga o que o bar vende <span class="salvo" aria-live="polite"></span></div>
+    {% for key in _princ + _resto %}
+    {% set t = tipos_config[key] %}
+    {% set _nome = NOMES_CURTOS.get(key) or (t.nome|replace(t.emoji, '')|replace('❤️', '')|trim) %}
+    {% if _resto and key == _resto[0] %}<details id="mais-momentos"><summary class="summary-btn">➕ Mais {{ _resto|length }} momento{{ 's' if _resto|length != 1 }}</summary>{% endif %}
+    {% set _sv = precos_parsed.get(key) %}
+    {% set _v = (_sv|float) if _sv is not none and _sv != '' else 0 %}
+    {% if not (_v > 0) %}{% set _v = t.preco|float %}{% endif %}
+    {% if _v > 0 and _v < _piso %}{% set _v = _piso %}{% endif %}
+    {% if preco_teto and _v > preco_teto %}{% set _v = preco_teto|float %}{% endif %}
+    <div class="momento-row{% if key in bloqueados_parsed %} desligado{% endif %}" data-k="{{ key }}">
+      <label class="sw"><input type="checkbox" id="mom-{{ key }}" name="tipos_ativos" value="{{ key }}" form="f-config" aria-label="Vender {{ _nome }}"{% if key not in bloqueados_parsed %} checked{% endif %}><span class="sw-t"></span></label>
+      <label class="momento-txt" for="mom-{{ key }}">
+      <div style="min-width:0">
+        <div class="momento-nome">{{ t.emoji }} {{ _nome }}</div>
+        {% if key == 'gorjeta' %}
+        <div class="momento-preco-txt">fica pra equipe</div>
+        {% else %}
+        <div class="momento-preco-txt preco-cli">{% if _taxa > 0 %}R$ {{ '%.2f'|format(_v)|replace('.',',') }} pro bar{% else %}100% pro bar{% endif %}</div>
+        {#- o preço salvo vai igual ao banco (o servidor mantém o salvo quando vem o mesmo valor) #}
+        <input type="hidden" name="preco_{{ key }}" form="f-config" value="{{ '%g'|format(precos_salvos[key]|float) if precos_salvos.get(key) is not none and precos_salvos.get(key) != '' else '' }}">
+        {% endif %}
+      </div>
+      {#- o selo colorido = o que o CLIENTE paga no PIX (o mesmo preço do celular e da TV) #}
+      <span class="preco-selo">{% if key == 'gorjeta' %}{% set _tg = (taxa_gorjeta or 0)|float %}{% if _tg == _tg|int %}R$ {{ (5 + _tg)|int }} a {{ (50 + _tg)|int }}{% else %}R$ {{ '%.2f'|format(5 + _tg)|replace('.',',') }} a {{ '%.2f'|format(50 + _tg)|replace('.',',') }}{% endif %}{% else %}R$ {{ '%.2f'|format(_v + _taxa)|replace('.',',') }}{% endif %}</span>
+      </label>
+    </div>
+    {% if loop.last and _resto %}</details>{% endif %}
+    {% endfor %}
+    {#- Lote D B (aprovado): "R$ 1 do app", nunca "taxa de serviço" — o selo já é o que o cliente paga #}
+    {% if _taxa > 0 %}<div class="momento-preco-txt" id="taxa-app" style="margin-top:10px">💡 Rosa = o que o cliente paga, já com R$ {{ '%.2f'|format(_taxa)|replace('.',',') }} do app.</div>{% endif %}
+    {#- 17/10/26 (Lote D, críticos CD2/CD3): preço salvo fora da faixa diz QUAL momento e o preço de antes #}
+    {%- if precos_cortados %}
+    <div id="precos-cortados" style="font-size:12px;color:var(--text2);margin-top:8px;line-height:1.6">
+      {%- if preco_teto and precos_cortados|selectattr('motivo', 'equalto', 'teto')|list %}Preço acima de R$ {{ '%g'|format(preco_teto) }} virou R$ {{ '%g'|format(preco_teto) }} (máximo no modo Efí).{% endif %}
+      {%- for c in precos_cortados %}
+      {%- set _t = tipos_config.get(c.k, {}) %}
+      <div class="preco-cortado" data-k="{{ c.k }}">{{ _t.get('emoji', '') }} {{ (_t.get('nome', c.k) or '')|replace(_t.get('emoji', ''), '')|trim }}: R$ {{ '%.2f'|format(c.antes)|replace('.',',') }} → R$ {{ '%.2f'|format(c.depois)|replace('.',',') }}{% if c.motivo == 'piso' %} (o mínimo é R$ {{ '%.2f'|format(c.depois)|replace('.',',') }}){% endif %}</div>
+      {%- endfor %}
+    </div>
+    {%- endif %}
   </div>
-  </div><!-- /z-musica -->
+
+  <!-- 🛡️ Recados que passam pelo seu OK (cantada e pedido de namoro) -->
+  <div class="card" id="sec-moderar">
+    <div class="linha-chave" style="padding:0">
+      <label for="moderar-ok" style="cursor:pointer">
+        <span class="rot" style="display:block">🛡️ Ler recado antes da TV <span class="salvo" aria-live="polite"></span></span>
+        <span class="sub" style="display:block">Cantada e namoro</span>
+      </label>
+      <label class="sw"><input type="checkbox" id="moderar-ok" name="moderar_ok" value="1" form="f-config" aria-label="Ler cantada e namoro antes da TV"{% if b.moderar_ok is none or b.moderar_ok %} checked{% endif %}><span class="sw-t"></span></label>
+    </div>
+  </div>
+
+  <!-- 🎵 A regra da música grátis (só leitura) -->
+  <div class="card" id="sec-gratis" style="font-size:15px;line-height:1.5">
+    <div style="font-weight:900">🎵 Música é grátis</div>
+    <div style="color:var(--text2)">{% if gratis_min %}1 a cada {{ gratis_min }} min por celular. {% endif %}Pressa? ⚡ Furar a fila.</div>
+  </div>
+  </div><!-- /z-pedidos -->
 
   <!-- ════════ 💰 DINHEIRO ════════ -->
   <div id="z-dinheiro" class="zona oculta">
-  {#- Lote C, fatia b: card "💰 Meu dinheiro" (RELATORIO_FINAL e.1) — só com a Efí ligada e a conta conectada #}
-  {%- if meu_dinheiro %}{% set md = meu_dinheiro %}
-  <a href="/pubshow/painel/dinheiro" class="card" id="sec-meu-dinheiro" style="display:block;text-decoration:none;color:inherit;border-color:rgba(34,197,94,.3)">
-    <div class="card-title" style="margin-bottom:8px">💰 Meu dinheiro · {{ md.mes_nome.split(' ')[0] }}</div>
-    {#- CC2 (16/10/26): o número grande é o que CAIU na conta Efí (o "Momentos R$ 50" enganava: caiu R$ 0,10) #}
-    <div style="font-size:15px;line-height:1.7">Caiu na tua conta Efí este mês: <strong id="md-caiu" style="color:var(--green)">{{ brl_cent(md.caiu_cent.casa) }}</strong>{% if md.caiu_cent.gorjeta %} + <strong style="color:#4ade80">{{ brl_cent(md.caiu_cent.gorjeta) }}</strong> de gorjetas{% endif %}</div>
-    <div style="font-size:13px;color:var(--text2)">Pagos pelos clientes: momentos {{ brl_cent(md.f.momentos_cent) }} · gorjetas da equipe {{ brl_cent(md.f.gorjetas_cent) }}</div>
-    <div style="font-size:13px;color:var(--text2);margin-top:2px">Mensalidade:
-      {% if md.mens_no_asaas %}paga pela assinatura do Asaas
-      {% elif md.f.plano_cent <= 0 %}✅ isento
-      {% elif md.mens_mes_pago and not md.f.mensalidade_quitada %}os momentos não tiram mensalidade este mês (mês já pago)
-      {% elif md.f.mensalidade_quitada %}✅ quitada{% if md.f.mensalidade_quitada_em %} no dia {{ md.f.mensalidade_quitada_em[8:10]|int }}{% endif %}
-      {% else %}faltam {{ brl_cent(md.f.plano_cent - md.f.mensalidade_paga_cent) }} (sai dos próximos momentos){% endif %}</div>
-    <div style="font-size:13px;color:var(--text2)">Hoje: +{{ brl_cent(md.hoje_cent.casa) }} momentos · +{{ brl_cent(md.hoje_cent.gorjeta) }} gorjetas</div>
-    {% if md.em_devolucao_cent %}<div id="md-em-devolucao" style="font-size:12px;color:#fbbf24;margin-top:4px">↩️ {{ brl_cent(md.em_devolucao_cent) }} voltando pro cliente (devolução em andamento): sai das somas quando a Efí confirmar.</div>{% endif %}
-    {#- CC2 (16/10/26): "o bar deve R$ X de estorno" era jargão — diz a quem e por quê #}
-    {% if md.f.bar_deve_cent.casa > 0 %}<div id="md-deve" style="font-size:12px;color:#fbbf24;margin-top:4px">⚠️ {{ brl_cent(md.f.bar_deve_cent.casa) }} de um momento devolvido ao cliente já tinham caído na tua conta: os próximos momentos ficam com o PubShow até cobrir.</div>{% endif %}
-    {#- integrador Lote C (16/10/26): o fechamento_mes (fatia a) separa a dívida da gorjeta; o card só mostrava a da casa #}
-    {% if md.f.bar_deve_cent.gorjeta > 0 %}<div id="md-deve-gorjeta" style="font-size:12px;color:#fbbf24;margin-top:4px">⚠️ {{ brl_cent(md.f.bar_deve_cent.gorjeta) }} de uma gorjeta devolvida já tinham caído na tua conta: as próximas gorjetas cobrem.</div>{% endif %}
-    <div style="font-size:13px;color:#f97316;font-weight:800;margin-top:8px">Ver extrato →</div>
-  </a>
-  {%- else %}
-  <!-- Quanto os momentos renderam (casa, só pago confirmado) -->
-  <div class="card" id="sec-receita" style="border-color:rgba(34,197,94,.25);background:linear-gradient(135deg,rgba(34,197,94,.06),rgba(16,185,129,.03))">
-    <div class="card-title">📈 Quanto os momentos renderam</div>
-    {#- Lote D, críticos (17/10/26, CD1): a 1ª coluna é HOJE (o "Total" desde sempre o leigo não usa; ele fica no
-        Relatório completo). Quem tocou no "Dinheiro de hoje" chega aqui e acha o número de hoje #}
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:18px">
-      <div style="text-align:center">
-        <div style="font-size:11px;color:var(--text2);font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Hoje</div>
-        <div class="receita-num num-rs" id="receita-hoje" style="font-size:22px;font-weight:900;color:var(--green)">R$ {{ '%.2f'|format(total_hoje)|replace('.',',') }}</div>
-      </div>
-      <div style="text-align:center;border-left:1px solid rgba(255,255,255,.08);border-right:1px solid rgba(255,255,255,.08)">
+  <p class="aba-frase">Quanto entrou e quando cai na sua conta.</p>
+  <!-- 💰 Hoje (momentos pagos + gorjeta) e, fora da Efí, 7 dias e o mês: 1 card só -->
+  <div class="card din-hoje" id="sec-dinheiro-hoje" style="border-color:rgba(34,197,94,.3);background:linear-gradient(135deg,rgba(34,197,94,.06),rgba(16,185,129,.03))">
+    <div class="card-title">💰 Hoje</div>
+    <div style="display:flex;gap:22px;flex-wrap:wrap;align-items:baseline">
+      <div><div class="stat-val" style="color:var(--green)" id="total-hoje">R$ {{ '%.2f'|format(total_hoje)|replace('.',',') }}</div>{#- 17/10/26 (decisão 1): só os momentos PAGOS (PIX confirmado), sem música grátis nem gorjeta #}{% set _np = momentos_hoje_n|default(0) %}<div class="stat-sub" id="momentos-hoje">{{ _np }} momento{{ 's' if _np != 1 }} pago{{ 's' if _np != 1 }} · caixa da casa</div></div>
+      <div><div class="stat-val" style="color:#4ade80;font-size:24px" id="gorjeta-hoje">R$ {{ '%.2f'|format(gorjeta_hoje)|replace('.',',') }}</div><div class="stat-sub">🙏 gorjetas da equipe (à parte)</div></div>
+    </div>
+    {%- if not meu_dinheiro %}
+    <!-- Quanto os momentos renderam (casa, só pago confirmado) -->
+    <div id="sec-receita" style="border-top:1px solid var(--border);margin-top:16px;padding-top:14px">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+      <div style="text-align:center;border-right:1px solid rgba(255,255,255,.08)">
         <div style="font-size:11px;color:var(--text2);font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">7 dias</div>
         <div class="receita-num num-rs" style="font-size:22px;font-weight:900;color:#22d3ee">R$ {{ '%.2f'|format(receita_semana)|replace('.',',') }}</div>
       </div>
@@ -643,13 +779,106 @@ Tirar mesmo assim?'{% else %}'Tirar este pedido da fila? A TV NÃO vai mostrar.'
         </div>
       {% endfor %}
     </div>
+    </div>
+    {%- endif %}
   </div>
+
+  {#- Lote C, fatia b: card "💰 Meu dinheiro" (RELATORIO_FINAL e.1) — só com a Efí ligada e a conta conectada #}
+  {%- if meu_dinheiro %}{% set md = meu_dinheiro %}
+  <a href="/pubshow/painel/dinheiro" class="card" id="sec-meu-dinheiro" style="display:block;text-decoration:none;color:inherit;border-color:rgba(34,197,94,.3)">
+    <div class="card-title" style="margin-bottom:8px">💰 Meu dinheiro · {{ md.mes_nome.split(' ')[0] }}</div>
+    {#- CC2 (16/10/26): o número grande é o que CAIU na conta Efí (o "Momentos R$ 50" enganava: caiu R$ 0,10) #}
+    <div style="font-size:15px;line-height:1.7">Caiu na tua conta Efí este mês: <strong id="md-caiu" style="color:var(--green)">{{ brl_cent(md.caiu_cent.casa) }}</strong>{% if md.caiu_cent.gorjeta %} + <strong style="color:#4ade80">{{ brl_cent(md.caiu_cent.gorjeta) }}</strong> de gorjetas{% endif %}</div>
+    <div style="font-size:13px;color:var(--text2)">Pagos pelos clientes: momentos {{ brl_cent(md.f.momentos_cent) }} · gorjetas da equipe {{ brl_cent(md.f.gorjetas_cent) }}</div>
+    <div style="font-size:13px;color:var(--text2);margin-top:2px">Mensalidade:
+      {% if md.mens_no_asaas %}paga pela assinatura do Asaas
+      {% elif md.f.plano_cent <= 0 %}✅ isento
+      {% elif md.mens_mes_pago and not md.f.mensalidade_quitada %}os momentos não tiram mensalidade este mês (mês já pago)
+      {% elif md.f.mensalidade_quitada %}✅ quitada{% if md.f.mensalidade_quitada_em %} no dia {{ md.f.mensalidade_quitada_em[8:10]|int }}{% endif %}
+      {% else %}faltam {{ brl_cent(md.f.plano_cent - md.f.mensalidade_paga_cent) }} (sai dos próximos momentos){% endif %}</div>
+    <div style="font-size:13px;color:var(--text2)">Hoje: +{{ brl_cent(md.hoje_cent.casa) }} momentos · +{{ brl_cent(md.hoje_cent.gorjeta) }} gorjetas</div>
+    {% if md.em_devolucao_cent %}<div id="md-em-devolucao" style="font-size:12px;color:#fbbf24;margin-top:4px">↩️ {{ brl_cent(md.em_devolucao_cent) }} voltando pro cliente (devolução em andamento): sai das somas quando a Efí confirmar.</div>{% endif %}
+    {#- CC2 (16/10/26): "o bar deve R$ X de estorno" era jargão — diz a quem e por quê #}
+    {% if md.f.bar_deve_cent.casa > 0 %}<div id="md-deve" style="font-size:12px;color:#fbbf24;margin-top:4px">⚠️ {{ brl_cent(md.f.bar_deve_cent.casa) }} de um momento devolvido ao cliente já tinham caído na tua conta: os próximos momentos ficam com o PubShow até cobrir.</div>{% endif %}
+    {#- integrador Lote C (16/10/26): o fechamento_mes (fatia a) separa a dívida da gorjeta; o card só mostrava a da casa #}
+    {% if md.f.bar_deve_cent.gorjeta > 0 %}<div id="md-deve-gorjeta" style="font-size:12px;color:#fbbf24;margin-top:4px">⚠️ {{ brl_cent(md.f.bar_deve_cent.gorjeta) }} de uma gorjeta devolvida já tinham caído na tua conta: as próximas gorjetas cobrem.</div>{% endif %}
+    <div style="font-size:14px;color:#f97316;font-weight:800;margin-top:8px">Ver extrato →</div>
+  </a>
+  {%- endif %}
+
+  <!-- 🏦 Quando cai na sua conta (o caminho do dinheiro muda com o jeito que o bar recebe) -->
+  <div class="card" id="sec-repasse" style="font-size:14px;line-height:1.6">
+    <div class="card-title">🏦 Quando cai na sua conta</div>
+    {% if efi %}
+    <div id="sec-conta-efi">
+      {% if efi_sem_conta %}
+      <div style="color:#fde68a">A conta Efí do bar ainda não está conectada: os momentos pagos estão pausados. <a href="#tut-conta" style="color:#f97316;font-weight:800;text-decoration:none">Conectar agora →</a></div>
+      {% else %}
+      {% set _cf = (meu_dinheiro.conta.efi_conta if meu_dinheiro and meu_dinheiro.conta else '') or '' %}
+      <div style="font-size:16px;font-weight:800">⚡ Cai na hora na sua conta Efí{% if _cf %} (••••{{ _cf[-4:] }}){% endif %}</div>
+      <div style="font-size:13px;color:var(--text2);margin-top:4px">Trocar de conta: fale com o suporte.</div>
+      {% endif %}
+    </div>
+    {% elif asaas_ativo %}
+    <div style="font-size:16px;font-weight:800">🤝 O suporte repassa pro bar</div>
+    {% if ultimo_repasse %}<div id="ultimo-repasse" style="margin-top:4px">Último repasse: <strong style="color:var(--green)">R$ {{ '%.2f'|format(ultimo_repasse.valor_bar)|replace('.',',') }}</strong>{% if ultimo_repasse.valor_gorjeta %} + R$ {{ '%.2f'|format(ultimo_repasse.valor_gorjeta)|replace('.',',') }} de gorjeta{% endif %} em {{ ultimo_repasse.quando }}.</div>{% endif %}
+    <a href="https://wa.me/{{ SUPORTE_WA }}?text=Quero+saber+do+repasse+do+PubShow" target="_blank" class="link-abrir">💬 Dúvida? WhatsApp →</a>
+    {% else %}
+    <div style="font-size:16px;font-weight:800">💚 Cai direto na sua chave PIX</div>
+    {% endif %}
+    {# Modo manual (chave PIX própria): só aparece se o PIX NÃO for automático #}
+    {% if not asaas_ativo %}
+    <details id="pix-config" style="margin-top:6px"{% if not b.pix_key %} open{% endif %}>
+      <summary>💚 Sua chave PIX</summary>
+      <form method="POST" action="/pubshow/painel/pix" class="pix-form" style="display:flex;flex-direction:column;gap:12px">
+        <div>
+          <label class="label-sm">Tipo de chave</label>
+          <select name="pix_tipo">
+            <option value="telefone" {% if b.pix_tipo=='telefone' %}selected{% endif %}>📱 Telefone</option>
+            <option value="cpf"      {% if b.pix_tipo=='cpf'     %}selected{% endif %}>🪪 CPF</option>
+            <option value="email"    {% if b.pix_tipo=='email'   %}selected{% endif %}>📧 E-mail</option>
+            <option value="aleatorio"{% if b.pix_tipo=='aleatorio'%}selected{% endif %}>🔑 Chave aleatória</option>
+          </select>
+        </div>
+        <div>
+          <label class="label-sm">Chave PIX</label>
+          <input type="text" name="pix_key" value="{{ b.pix_key or '' }}" placeholder="Telefone, CPF, e-mail ou chave aleatória">
+        </div>
+        <div>
+          <label class="label-sm">Nome do recebedor (aparece no Jukebox)</label>
+          <input type="text" name="pix_nome" value="{{ b.pix_nome_recebedor or '' }}" placeholder="Ex: Bar do Toninho">
+        </div>
+        <button type="submit" class="btn-primary">💾 Salvar PIX</button>
+      </form>
+      {% if b.pix_key %}
+      <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
+        <form method="POST" action="/pubshow/painel/toggle-pix" style="margin:0">
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
+            <span class="sw"><input type="checkbox" name="requer_pix" id="toggle-pix"{% if b.requer_pix %} checked{% endif %} onchange="this.form.submit()"><span class="sw-t"></span></span>
+            <span>
+              <span style="display:block;font-size:13px;font-weight:700">Exigir PIX antes da fila</span>
+              <span style="display:block;font-size:12px;color:var(--text2)">Pedido só entra na fila após você confirmar o pagamento</span>
+            </span>
+          </label>
+        </form>
+      </div>
+      {% endif %}
+    </details>
+    {% endif %}
+  </div>
+
+  <a href="/pubshow/painel/relatorio" class="btn-primary btn-grande" id="btn-relatorio" style="margin-bottom:14px;background:linear-gradient(135deg,#16a34a,#22c55e)">📊 Relatório completo</a>
+
+  {% if aguardando_pix and asaas_ativo %}{{ bloco_aguardando_pix(aguardando_pix, tipos, asaas_ativo) }}{% endif %}
+
+  {%- if not meu_dinheiro %}
   <!-- 🙏 Gorjetas da EQUIPE — à parte do caixa da casa (11/09/26) -->
-  <div class="card" id="sec-gorjeta" style="border-color:rgba(34,197,94,.35)">
-    <div class="card-title">🙏 Gorjetas da equipe (7 dias)</div>
-    <div style="font-size:12px;color:var(--text2);margin-bottom:8px">Valor que fica pra equipe. <strong style="color:var(--text)">Não entra no caixa da casa</strong>: é pra dividir entre os funcionários.</div>
+  <details class="card mais-item" id="sec-gorjeta">
+    <summary>🙏 Gorjetas da equipe (7 dias)</summary>
+    <div class="dentro">
+    <div style="font-size:13px;color:var(--text2);margin-bottom:8px">Valor que fica pra equipe. <strong style="color:var(--text)">Não entra no caixa da casa</strong>: é pra dividir entre os funcionários.</div>
     {% if gorjeta_7dias %}
-    <table style="width:100%;border-collapse:collapse;font-size:13px">
+    <table style="width:100%;border-collapse:collapse;font-size:14px">
       {% for g in gorjeta_7dias %}
       <tr style="border-top:1px solid var(--border)">
         <td style="padding:7px 0;color:var(--text2)">{{ g.dia[8:10] }}/{{ g.dia[5:7] }}</td>
@@ -659,17 +888,16 @@ Tirar mesmo assim?'{% else %}'Tirar este pedido da fila? A TV NÃO vai mostrar.'
       {% endfor %}
     </table>
     {% else %}
-    <div style="font-size:12px;color:var(--text2)">Nenhuma gorjeta nos últimos 7 dias ainda.</div>
+    <div style="font-size:13px;color:var(--text2)">Nenhuma gorjeta nos últimos 7 dias ainda.</div>
     {% endif %}
-  </div>
+    </div>
+  </details>
   {%- endif %}
 
-  {% if aguardando_pix and asaas_ativo %}{{ bloco_aguardando_pix(aguardando_pix, tipos, asaas_ativo) }}{% endif %}
-
   {% if pedidos_hoje %}
-  <details class="card" id="sec-pedidos-hoje" style="padding:6px 18px">
-    <summary>📊 Pedidos de hoje ({{ pedidos_hoje|length }})</summary>
-    <div style="overflow-x:auto;padding-bottom:10px">
+  <details class="card mais-item" id="sec-pedidos-hoje">
+    <summary>📊 Pedidos de hoje <span class="resumo">{{ pedidos_hoje|length }}</span></summary>
+    <div class="dentro" style="overflow-x:auto">
       <table style="width:100%;border-collapse:collapse;font-size:13px">
         <thead>
           <tr style="border-bottom:1px solid var(--border)">
@@ -706,90 +934,54 @@ Tirar mesmo assim?'{% else %}'Tirar este pedido da fila? A TV NÃO vai mostrar.'
           </tr>
         </tfoot>
       </table>
+      {% if TAXA_SERVICO|float > 0 %}<div style="font-size:12px;color:var(--text2);margin-top:6px">Valores do bar. O cliente paga + R$ {{ '%.2f'|format(TAXA_SERVICO|float)|replace('.',',') }} do app no PIX.</div>{% endif %}
     </div>
   </details>
   {% endif %}
 
-  <div style="text-align:center;margin-bottom:16px">
-    <a href="/pubshow/painel/relatorio" class="btn-sm">📊 Relatório completo</a>
-  </div>
-
-  <!-- 💸 Momentos à venda: UMA lista (chave + preço por linha), sem as linhas de música (Lote D C, 16/10/26) -->
-  <div class="card" id="sec-momentos">
-    <div class="card-title">💸 Momentos à venda <span class="salvo" aria-live="polite"></span></div>
-    <p class="dica">Ligue o que o bar vende e o preço de cada um (em branco = preço padrão · mínimo R$ {{ '%g'|format(piso_preco or 4)|replace('.',',') }}{% if preco_teto %} · máximo R$ {{ '%g'|format(preco_teto) }}{% endif %}). Pedir música é sempre grátis.</p>
-    {#- 17/10/26 (Lote D, críticos CD2/CD3): o aviso diz QUAL momento e o preço de antes. O preço salvo não muda
-        sozinho (só se o dono mexer naquele campo); o cliente paga o que está escrito em "o cliente paga" #}
-    {%- if precos_cortados %}
-    <div id="precos-cortados" style="font-size:11px;color:var(--text2);margin:-6px 0 8px;line-height:1.6">
-      {%- if preco_teto and precos_cortados|selectattr('motivo', 'equalto', 'teto')|list %}Preço acima de R$ {{ '%g'|format(preco_teto) }} virou R$ {{ '%g'|format(preco_teto) }} (máximo no modo Efí).{% endif %}
-      {%- for c in precos_cortados %}
-      {%- set _t = tipos_config.get(c.k, {}) %}
-      <div class="preco-cortado" data-k="{{ c.k }}">{{ _t.get('emoji', '') }} {{ (_t.get('nome', c.k) or '')|replace(_t.get('emoji', ''), '')|trim }}: R$ {{ '%.2f'|format(c.antes)|replace('.',',') }} → R$ {{ '%.2f'|format(c.depois)|replace('.',',') }}{% if c.motivo == 'piso' %} (o mínimo é R$ {{ '%.2f'|format(c.depois)|replace('.',',') }}){% endif %}</div>
-      {%- endfor %}
-    </div>
-    {%- endif %}
-    {% for key, t in tipos_config.items() if key not in tipos_gratis %}
-    {% set _nome = t.nome|replace(t.emoji, '')|trim %}
-    <div class="momento-row">
-      <label class="sw"><input type="checkbox" name="tipos_ativos" value="{{ key }}" form="f-config" aria-label="Vender {{ _nome }}"{% if key not in bloqueados_parsed %} checked{% endif %}><span class="sw-t"></span></label>
-      <div class="momento-nome">{{ t.emoji }} {{ _nome }}</div>
-      {% if key == 'gorjeta' %}
-      <div class="momento-fixo">O cliente escolhe: R$ 5 · 10 · 20 · 50</div>
-      {% else %}
-      <div class="momento-preco">
-        <div class="campo">
-          <span style="font-size:13px;color:var(--text2)">R$</span>
-          <input type="number" name="preco_{{ key }}" step="0.01" min="{{ '%g'|format(piso_preco or 4) }}" max="{{ '%g'|format(preco_teto) if preco_teto else 200 }}" class="preco-bar" form="f-config" inputmode="decimal" aria-label="Preço de {{ _nome }}"
-            value="{{ '%g'|format(precos_parsed[key]|float) if precos_parsed.get(key) else '' }}"
-            placeholder="{{ '%.2f'|format(t.preco)|replace('.',',') }}" data-padrao="{{ t.preco }}"
-            data-salvo="{{ '%g'|format(precos_salvos[key]|float) if precos_salvos.get(key) is not none and precos_salvos.get(key) != '' else '' }}">
-        </div>
-        {# 16/10/26 (C1-06): o dono vê o MESMO preço que o QR, a TV e o celular mostram #}
-        <div class="preco-cli"></div>
-      </div>
-      {% endif %}
-    </div>
-    {% endfor %}
-    <script>
-    (function(){
-      var TAXA = {{ TAXA_SERVICO|float }};
-      // 17/10/26 (Lote D, críticos CD3): o mesmo piso e teto da cobrança (_precos_do_bar; junção: piso R$ 4, R$ 1 na ponte)
-      var PISO = {{ (piso_preco or 4)|float }}, TETO = {{ (preco_teto or 0)|float }};
-      function brl(v){ return 'R$ ' + v.toFixed(2).replace('.', ','); }
-      function atualiza(inp){
-        var out = inp.parentNode.parentNode.querySelector('.preco-cli');
-        if (!out) return;
-        var v = parseFloat(String(inp.value).replace(',', '.'));
-        if (!(v > 0)) v = parseFloat(inp.getAttribute('data-padrao')) || 0;
-        if (v > 0 && v < PISO) v = PISO;
-        if (TETO > 0 && v > TETO) v = TETO;
-        out.textContent = TAXA > 0
-          ? 'o cliente paga ' + brl(v + TAXA) + ' (' + brl(v) + ' + ' + brl(TAXA) + ' do app)'   // Lote D B (16/10/26): "R$ 1 do app"
-          : 'o cliente paga ' + brl(v);
-      }
-      document.querySelectorAll('input.preco-bar').forEach(function(inp){
-        atualiza(inp);
-        inp.addEventListener('input', function(){ atualiza(inp); });
-      });
-    })();
-    </script>
-  </div>
   </div><!-- /z-dinheiro -->
 
-  <!-- ════════ 📣 PROPAGANDA ════════ -->
-  <div id="z-propaganda" class="zona oculta">
-  {#- Lote D C (16/10/26): 1 formulário + "Adicionar outra" (máx. 3 no total, imagem conta) e a imagem no mesmo bloco #}
+  <!-- ════════ ⚙️ MAIS: configuração que se mexe uma vez ════════ -->
+  <div id="z-mais" class="zona oculta">
+  <p class="aba-frase">Configuração que você mexe uma vez.</p>
+  <!-- 📺 TV e QR: o link da TV e o QR pra imprimir (a ação principal desta aba) -->
+  {% set _qr_msg = request.args.get('erro') == 'novo_qr' %}
+  <div class="card" id="sec-tvqr">
+    <div class="card-title">📺 TV e QR das mesas</div>
+    <div class="tv-selo-espelho" style="font-size:13px;font-weight:800;margin-bottom:12px;color:{% if tv_sinal.estado == 'ligada' %}#4ade80{% elif tv_sinal.estado in ('sem_sinal', 'sem_som') %}#fbbf24{% else %}var(--text2){% endif %}">{{ tv_sinal.texto }}</div>
+    <div class="tv-link-box">
+      <div style="font-size:14px;color:#a78bfa;font-weight:800">Na TV: 4kitem.com.br/bar + o código</div>
+      <div class="tv-code">{{ b.code }}</div>
+      <a href="/pubshow/painel/qrcode" class="btn-primary btn-grande" id="btn-imprimir-qr">🖨️ Imprimir QR</a>
+      <button type="button" class="btn-sm" style="margin-top:10px;width:100%;min-height:52px;font-size:16px;background:#4338ca;border-color:#4338ca" onclick="copiar('https://www.4kitem.com.br/bar/{{ b.code }}', this)">📋 Copiar link da TV</button>
+    </div>
+    {# 16/10/26 (V3-01): aviso do Novo QR fica aqui dentro — abre sozinho quando volta com erro #}
+    <details id="box-novo-qr" style="margin-top:8px"{% if _qr_msg %} open{% endif %}>
+      <summary>🔄 Trocar o QR</summary>
+      <div id="sec-novo-qr">
+        <p style="font-size:13px;color:#8888aa;margin-bottom:12px">Use só se o QR vazou ou foi copiado. <strong style="color:#fbbf24">Todos os QRs já impressos param de funcionar</strong> e você vai precisar imprimir de novo.</p>
+        {% if _qr_msg %}<div style="background:#2d0a0a;border:1px solid #ef444433;border-radius:10px;padding:10px 14px;font-size:13px;color:#f87171;margin-bottom:12px">❌ O QR não foi trocado. Digite NOVO QR pra confirmar.</div>{% endif %}
+        <form method="POST" action="/pubshow/painel/novo-qr" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <input type="text" name="confirmar" placeholder="Digite NOVO QR" autocomplete="off" required style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-size:16px;font-family:inherit;outline:none;text-transform:uppercase;width:170px">
+          <button type="submit" class="btn-sm" style="border-color:rgba(245,158,11,.4);color:#f59e0b">🔄 Gerar QR novo</button>
+        </form>
+      </div>
+    </details>
+  </div>
+
+  {#- 📣 Propaganda na TV + ⚡ Promoção relâmpago (1 formulário + "Adicionar outra", máx. no total, imagem conta) #}
   {% set slides_img = anuncios_parsed | selectattr('tipo','equalto','imagem') | list %}
   {% set anuncios_texto = anuncios_parsed|rejectattr('tipo','equalto','imagem')|list %}
-  {#- Lote D, críticos (17/10/26, CD3): bar que já tem MAIS propagandas que o máximo (Garage no Pro: 3 textos + 2
-      imagens) vê TODAS; só o "Adicionar" e a imagem ficam bloqueados. Antes mostrava 1 de 3 e corrigir 1 letra apagava
-      as outras 2 do banco #}
+  {#- Lote D, críticos (17/10/26, CD3): bar que já tem MAIS propagandas que o máximo vê TODAS; só o "Adicionar" e a
+      imagem ficam bloqueados. Antes mostrava 1 de 3 e corrigir 1 letra apagava as outras 2 do banco #}
   {% set vagas_texto = [plano_max_anuncios - (slides_img|length), anuncios_texto|length, 0]|max %}
   {% set _n_txt = anuncios_texto|length %}
-  <div class="card" id="sec-propaganda">
-    <div class="card-title">📣 Propaganda na TV <span class="salvo" aria-live="polite"></span></div>
-    <p class="dica">Aparece entre os clipes, na tela do bar. Até {{ plano_max_anuncios }} (texto ou imagem). Ex.: promoção, show de sábado, petisco da casa.</p>
+  {% set erro_slide = request.args.get('erro') %}
+  <details class="card mais-item" id="sec-propaganda">
+    <summary>📣 Propaganda na TV <span class="resumo">{{ _n_txt + slides_img|length }} de {{ plano_max_anuncios }}</span></summary>
+    <div class="dentro">
+    <div id="propaganda-dentro">
+    <p class="dica">Aparece entre os clipes. Até {{ plano_max_anuncios }}. <span class="salvo" aria-live="polite"></span></p>
     {% if _n_txt + slides_img|length > plano_max_anuncios %}
     <p id="propaganda-acima" style="font-size:12px;color:#fbbf24;margin:-4px 0 12px">Você tem {{ _n_txt + slides_img|length }} propagandas (do plano antigo): todas continuam na TV. Pra pôr uma nova, apague até ficar com menos de {{ plano_max_anuncios }}.</p>
     {% endif %}
@@ -815,11 +1007,10 @@ Tirar mesmo assim?'{% else %}'Tirar este pedido da fila? A TV NÃO vai mostrar.'
     {% endif %}
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:4px">
       {% if vagas_texto > 0 %}<button type="button" id="btn-add-slide" class="btn-sm" onclick="adicionarSlide()"{% if _n_txt + slides_img|length >= plano_max_anuncios or _n_txt == 0 %} hidden{% endif %}>＋ Adicionar outra</button>{% endif %}
-      {% set erro_slide = request.args.get('erro') %}
       <form method="POST" action="/pubshow/painel/upload-slide" enctype="multipart/form-data" id="f-upload-slide" style="margin:0"{% if _n_txt + slides_img|length >= plano_max_anuncios %} hidden{% endif %}>
         <label class="btn-sm" style="border-style:dashed;color:var(--text2)">
           🖼️ Pôr uma imagem
-          <input type="file" name="imagem" accept="image/png,image/jpeg,image/gif,image/webp" style="display:none" onchange="if (this.files[0] &amp;&amp; this.files[0].size > 8*1024*1024) { const e = document.getElementById('slide-erro'); e.querySelector('span').textContent = 'Imagem grande demais (máximo 8 MB). Escolha uma menor.'; e.style.display = ''; this.value = ''; return; } this.closest('form').submit()">
+          <input type="file" name="imagem" accept="image/png,image/jpeg,image/gif,image/webp" style="display:none" onchange="try { sessionStorage.setItem('ps_abrir', 'sec-propaganda'); } catch (e) {} if (this.files[0] &amp;&amp; this.files[0].size > 8*1024*1024) { const e = document.getElementById('slide-erro'); e.querySelector('span').textContent = 'Imagem grande demais (máximo 8 MB). Escolha uma menor.'; e.style.display = ''; this.value = ''; return; } this.closest('form').submit()">
         </label>
       </form>
     </div>
@@ -840,17 +1031,20 @@ Tirar mesmo assim?'{% else %}'Tirar este pedido da fila? A TV NÃO vai mostrar.'
       {% endfor %}
     </div>
     {% endif %}
-  </div>
+    </div>
+    </div>
+  </details>
 
-  <!-- ⚡ Promoção Relâmpago -->
-  <div class="card" id="sec-promo" style="border-color:{% if promo_ativa %}rgba(249,115,22,.5){% else %}rgba(255,255,255,.08){% endif %};background:{% if promo_ativa %}rgba(249,115,22,.06){% else %}var(--surface){% endif %}">
-    <div class="card-title">⚡ Promoção relâmpago</div>
+  <!-- ⚡ Promoção relâmpago: linha própria (crítico leigo M5: é ao vivo, não "mexe uma vez" como a propaganda) -->
+  <details class="card mais-item" id="box-promo"{% if promo_ativa %} style="border-color:rgba(249,115,22,.5)"{% endif %}>
+    <summary>⚡ Promoção relâmpago <span class="resumo">{% if promo_ativa %}no ar até {{ (b.promo_expira or '')[11:16] }}{% endif %}</span></summary>
+    <div class="dentro" id="sec-promo">
     {% if promo_ativa %}
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;padding:12px 14px;background:rgba(249,115,22,.12);border:1px solid rgba(249,115,22,.3);border-radius:12px">
       <span style="font-size:28px">{{ b.promo_emoji or '🍺' }}</span>
       <div>
         <div style="font-size:15px;font-weight:800;color:#fb923c">{{ b.promo_msg }}</div>
-        <div style="font-size:11px;color:#8888aa;margin-top:2px">⏱️ Encerra: {{ (b.promo_expira or '')[11:16] }}</div>
+        <div style="font-size:12px;color:#8888aa;margin-top:2px">⏱️ Encerra: {{ (b.promo_expira or '')[11:16] }}</div>
       </div>
     </div>
     <form method="POST" action="/pubshow/painel/promo">
@@ -858,7 +1052,7 @@ Tirar mesmo assim?'{% else %}'Tirar este pedido da fila? A TV NÃO vai mostrar.'
       <button type="submit" class="btn-sm" style="background:rgba(239,68,68,.15);border-color:rgba(239,68,68,.3);color:#f87171">⏹ Encerrar promoção</button>
     </form>
     {% else %}
-    <p class="dica">Uma oferta ao vivo, com contagem regressiva na TV. Os clientes veem e correm pedir.</p>
+    <p class="dica">Oferta com relógio na TV.</p>
     <form method="POST" action="/pubshow/painel/promo" style="display:flex;flex-direction:column;gap:10px">
       <input type="hidden" name="acao" value="iniciar">
       <div style="display:grid;grid-template-columns:56px 1fr;gap:8px">
@@ -878,67 +1072,21 @@ Tirar mesmo assim?'{% else %}'Tirar este pedido da fila? A TV NÃO vai mostrar.'
       </div>
     </form>
     {% endif %}
-  </div>
-  </div><!-- /z-propaganda -->
-
-  <!-- ════════ ⚙️ AJUSTES ════════ -->
-  <div id="z-ajustes" class="zona oculta">
-    {# Modo manual (chave PIX própria): só aparece se o Asaas NÃO estiver ligado.
-       Com Asaas é tudo automático — o bar nem precisa configurar PIX. #}
-    {% if not asaas_ativo %}
-    <!-- Configurar PIX -->
-    <div class="card" id="pix-config">
-      <div class="card-title">💚 Sua chave PIX (Jukebox)</div>
-      <p style="font-size:13px;color:var(--text2);margin-bottom:16px;line-height:1.6">
-        Configure sua chave PIX para os clientes pagarem diretamente no seu celular. <strong style="color:var(--text)">100% do valor é seu.</strong>
-      </p>
-      <form method="POST" action="/pubshow/painel/pix" class="pix-form" style="display:flex;flex-direction:column;gap:12px">
-        <div>
-          <label class="label-sm">Tipo de chave</label>
-          <select name="pix_tipo">
-            <option value="telefone" {% if b.pix_tipo=='telefone' %}selected{% endif %}>📱 Telefone</option>
-            <option value="cpf"      {% if b.pix_tipo=='cpf'     %}selected{% endif %}>🪪 CPF</option>
-            <option value="email"    {% if b.pix_tipo=='email'   %}selected{% endif %}>📧 E-mail</option>
-            <option value="aleatorio"{% if b.pix_tipo=='aleatorio'%}selected{% endif %}>🔑 Chave aleatória</option>
-          </select>
-        </div>
-        <div>
-          <label class="label-sm">Chave PIX</label>
-          <input type="text" name="pix_key" value="{{ b.pix_key or '' }}" placeholder="Telefone, CPF, e-mail ou chave aleatória">
-        </div>
-        <div>
-          <label class="label-sm">Nome do recebedor (aparece no Jukebox)</label>
-          <input type="text" name="pix_nome" value="{{ b.pix_nome_recebedor or '' }}" placeholder="Ex: Bar do Toninho">
-        </div>
-        <button type="submit" class="btn-primary">💾 Salvar PIX</button>
-      </form>
-      {% if b.pix_key %}
-      <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
-        <form method="POST" action="/pubshow/painel/toggle-pix" style="margin:0">
-          <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
-            <span class="sw"><input type="checkbox" name="requer_pix" id="toggle-pix"{% if b.requer_pix %} checked{% endif %} onchange="this.form.submit()"><span class="sw-t"></span></span>
-            <span>
-              <span style="display:block;font-size:13px;font-weight:700">Exigir PIX antes da fila</span>
-              <span style="display:block;font-size:11px;color:var(--text2)">Pedido só entra na fila após você confirmar o pagamento</span>
-            </span>
-          </label>
-        </form>
-      </div>
-      {% endif %}
     </div>
-    {% endif %}{# /not asaas_ativo — fim do modo manual #}
+  </details>
 
-  <!-- Ajustes do jukebox: salva sozinho. Os campos de Música e TV e de Dinheiro entram no MESMO formulário (form="f-config") -->
+  <!-- ⏰ Horário do jukebox: salva sozinho. Os campos de 🎵 Estilo e ✨ Pedidos entram no MESMO formulário (form="f-config") -->
   {% set _sempre = (b.jukebox_hora_ini or '00:00') == '00:00' and (b.jukebox_hora_fim or '23:59') == '23:59' %}
-  <div class="card" id="sec-ajustes">
-    <div class="card-title">⚙️ Jukebox <span class="salvo" aria-live="polite"></span></div>
+  <details class="card mais-item" id="sec-ajustes">
+    <summary>⏰ Horário do jukebox <span class="resumo" id="horario-resumo">{% if _sempre %}sempre aberto{% else %}{{ b.jukebox_hora_ini }} até {{ b.jukebox_hora_fim }}{% endif %}</span></summary>
+    <div class="dentro">
     <form method="POST" action="/pubshow/painel/config" id="f-config">
-      {#- as 2 linhas de música grátis saíram da tela (Lote D C): seguem como estão salvas #}
+      {#- as 2 linhas de música grátis não aparecem na tela: seguem como estão salvas #}
       {% for _k in ('musica', 'musica_especifica') if _k not in bloqueados_parsed %}<input type="hidden" name="tipos_ativos" value="{{ _k }}">{% endfor %}
-      <div class="linha-chave">
+      <div class="linha-chave" style="padding-top:0">
         <div>
-          <div class="rot">⏰ Sempre aberto</div>
-          <div class="sub">Desligue pra escolher o horário. Fora dele, o jukebox mostra "fechado" pros clientes.</div>
+          <div class="rot">⏰ Sempre aberto <span class="salvo" aria-live="polite"></span></div>
+          <div class="sub">Desligue pra escolher a hora.</div>
         </div>
         <label class="sw"><input type="checkbox" id="sempre-aberto" aria-label="Sempre aberto"{% if _sempre %} checked{% endif %} onchange="alternarSempreAberto(this)"><span class="sw-t"></span></label>
       </div>
@@ -949,24 +1097,17 @@ Tirar mesmo assim?'{% else %}'Tirar este pedido da fila? A TV NÃO vai mostrar.'
       </div>
       {#- VDC-04 (16/10/26): desligar "Sempre aberto" só mostra as horas; nada fecha até o dono mexer numa hora #}
       <div id="horas-dica" class="sub" style="font-size:12px;color:#fbbf24;padding:0 0 12px" hidden>Escolha o horário: até você mexer numa hora, o jukebox continua aberto o dia todo.</div>
-      <!-- 🛡️ Mensagens de risco: 1 caixinha (cantada e pedido de namoro passam pelo seu OK) -->
-      <div class="linha-chave">
-        <label for="moderar-ok" style="cursor:pointer">
-          <span class="rot" style="display:block">🛡️ Recados que precisam do seu OK</span>
-          <span class="sub" style="display:block"><span>Conferir <strong>cantada</strong> e <strong>pedido de namoro</strong> antes de ir pra TV (aparecem em "Precisa do seu OK" na aba Hoje)</span></span>
-        </label>
-        <label class="sw"><input type="checkbox" id="moderar-ok" name="moderar_ok" value="1"{% if b.moderar_ok is none or b.moderar_ok %} checked{% endif %}><span class="sw-t"></span></label>
-      </div>
       <noscript><button type="submit" class="btn-primary" style="width:100%;margin-top:8px">💾 Salvar</button></noscript>
     </form>
-    {#- Lote D, críticos (17/10/26, CD1): quem procura o QR vem primeiro aqui: a dica diz onde ele mora #}
-    <div style="font-size:11px;color:var(--text2);margin-top:6px">✓ Salva sozinho: é só mexer. Os preços ficam em 💰 Dinheiro; o estilo, o YouTube, o link da TV e o QR ficam em 🎵 Música e TV.</div>
-  </div>
+    <div style="font-size:12px;color:var(--text2);margin-top:6px">✓ Salva sozinho: é só mexer.</div>
+    </div>
+  </details>
 
-  <!-- 🔔 Aviso no celular (Lote D C: 1 notificação só) -->
-  <div class="card" id="sec-notif">
-    <div class="card-title">🔔 Aviso no celular <span class="salvo" aria-live="polite"></span></div>
-    <p class="dica">Um aviso no celular sempre que chega um pedido, mesmo com a tela bloqueada.</p>
+  <!-- 🔔 Aviso no celular (1 notificação só) -->
+  <details class="card mais-item" id="sec-notif">
+    <summary>🔔 Aviso de pedido no celular</summary>
+    <div class="dentro">
+    <p class="dica">Avisa quando chega pedido. <span class="salvo" aria-live="polite"></span></p>
     <!-- Instrução iOS -->
     <div id="ios-install-tip" style="display:none;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.3);border-radius:12px;padding:12px 14px;margin-bottom:14px;font-size:12px;line-height:1.7">
       <div style="font-weight:800;color:#fbbf24;margin-bottom:4px">📱 iPhone / iPad — instale o app primeiro:</div>
@@ -995,63 +1136,17 @@ Tirar mesmo assim?'{% else %}'Tirar este pedido da fila? A TV NÃO vai mostrar.'
       <label class="sw"><input type="checkbox" name="whatsapp_notif" aria-label="Aviso pelo WhatsApp"{% if b.whatsapp_notif == 1 %} checked{% endif %}><span class="sw-t"></span></label>
     </form>
     {% endif %}
-  </div>
-
-  {#- Happy hour: some da tela pra quem NÃO usa; quem tem ligado (ex.: Garage) continua vendo e mexendo.
-      VDC-03 (16/10/26): desligado guarda a configuração ('ativo': false) e o card continua, pra poder religar #}
-  {% set _hh_on = happy_hour and (happy_hour.get('ativo') is not sameas false) %}
-  {% if happy_hour %}
-  <div class="card" id="sec-happy-hour" style="border-color:{% if hh_desconto_atual > 0 %}rgba(250,204,21,.5){% else %}rgba(255,255,255,.08){% endif %};background:{% if hh_desconto_atual > 0 %}rgba(250,204,21,.05){% else %}var(--surface){% endif %}">
-    <div class="card-title">🎉 Promoção por horário (happy hour)
-      {% if hh_desconto_atual > 0 %}<span style="font-size:11px;color:#fbbf24;font-weight:700">● ATIVO agora — {{ hh_desconto_atual }}% off</span>{% endif %}
-      <span class="salvo" aria-live="polite"></span>
     </div>
-    <form method="POST" action="/pubshow/painel/happy-hour" id="f-hh">
-      <div class="linha-chave" style="padding-top:0">
-        <div>
-          <div class="rot">🍺 Happy hour ligado</div>
-          <div class="sub">Desconto automático nos momentos durante o horário. O cliente vê o preço já com desconto.</div>
-        </div>
-        <label class="sw"><input type="checkbox" name="hh_ativo" value="1" id="hh-toggle" aria-label="Happy hour ligado" onchange="toggleHH(this.checked)"{% if _hh_on %} checked{% endif %}><span class="sw-t"></span></label>
-      </div>
-      <div id="hh-config" style="display:{% if _hh_on %}flex{% else %}none{% endif %};flex-direction:column;gap:12px">
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
-          <div><label class="label-sm">Início</label><input type="time" name="hh_ini" value="{{ happy_hour.get('ini','18:00') }}" class="campo-txt"></div>
-          <div><label class="label-sm">Fim</label><input type="time" name="hh_fim" value="{{ happy_hour.get('fim','20:00') }}" class="campo-txt"></div>
-          <div><label class="label-sm">Desconto %</label><input type="number" name="hh_desconto" min="1" max="80" value="{{ happy_hour.get('desconto',20) }}" class="campo-txt" style="color:#fbbf24;font-weight:900"></div>
-        </div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap">
-          {% set dias_hh = happy_hour.get('dias',[0,1,2,3,4,5,6]) %}
-          {% for d_val, d_nome in [(0,'Dom'),(1,'Seg'),(2,'Ter'),(3,'Qua'),(4,'Qui'),(5,'Sex'),(6,'Sáb')] %}
-          <label style="display:flex;align-items:center;gap:5px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;cursor:pointer;font-size:12px;font-weight:700">
-            <input type="checkbox" name="hh_dias" value="{{ d_val }}" {% if d_val in dias_hh %}checked{% endif %} style="accent-color:#f59e0b;width:16px;height:16px">
-            {{ d_nome }}
-          </label>
-          {% endfor %}
-        </div>
-      </div>
-      <noscript><button type="submit" class="btn-sm" style="margin-top:10px">💾 Salvar happy hour</button></noscript>
-    </form>
-  </div>
-  {% endif %}
+  </details>
 
-  {#- Conta Efí do bar (só com a Efí ligada pro bar) #}
-  {% if efi %}
-  <div class="card" id="sec-conta-efi">
-    <div class="card-title">💳 Conta Efí do bar</div>
-    {% if efi_sem_conta %}
-    <div style="font-size:13px;color:#fde68a;line-height:1.6">Ainda não conectada: os momentos pagos estão pausados. <a href="#tut-conta" style="color:#f97316;font-weight:800;text-decoration:none">Conectar agora →</a></div>
-    {% else %}
-    {% set _cf = (meu_dinheiro.conta.efi_conta if meu_dinheiro and meu_dinheiro.conta else '') or '' %}
-    <div style="font-size:14px;line-height:1.6">✅ Conectada{% if _cf %}: conta ••••{{ _cf[-4:] }}{% endif %}. Cada momento cai nela na hora.</div>
-    <div style="font-size:12px;color:var(--text2);margin-top:4px">Pra trocar de conta, fale com o suporte. <a href="/pubshow/painel/dinheiro" style="color:#f97316;font-weight:800;text-decoration:none">Ver Meu dinheiro →</a></div>
-    {% endif %}
-  </div>
-  {% endif %}
-
-  <!-- 🧾 Plano e assinatura -->
-  <div class="card" id="sec-conta">
-    <div class="card-title">🧾 Seu plano</div>
+  <!-- 🧾 Plano, senha e cancelar -->
+  {% set erro_senha = request.args.get('erro') %}
+  {% set ok_senha   = request.args.get('ok') %}
+  {% set _senha_msg = erro_senha in ('senha_errada', 'senha_curta', 'senha_diferente') or ok_senha == 'senha' %}
+  <details class="card mais-item" id="sec-conta"{% if _senha_msg %} open{% endif %}>
+    <summary>🧾 Plano e senha</summary>
+    <div class="dentro">
+    <div id="conta-plano">
     {% if not b.plano_ativo and efi %}
     {# VCa-01/02 (16/10/26): bar na Efí que cancelou (ou foi desativado) — sem "Assinar" no Asaas (seria mensalidade 2x) #}
     <div id="efi-desligado" style="font-size:13px;color:var(--text2);line-height:1.6">
@@ -1063,42 +1158,41 @@ Tirar mesmo assim?'{% else %}'Tirar este pedido da fila? A TV NÃO vai mostrar.'
     <div style="font-size:13px;color:var(--text2);margin-bottom:12px">{% set _te = (b.trial_ends or '')[:10] %}{% if _te %}Seu teste grátis vai até {{ _te[8:10] }}/{{ _te[5:7] }}. {% endif %}Assine para manter o Jukebox ativo.</div>
     <a href="/pubshow/assinar/bar" class="btn-primary">{{ PLANO.emoji }} Assinar o {{ PLANO.nome }} · {{ PLANO.preco_fmt }}/mês →</a>
     {% else %}
-    <div style="font-size:14px;font-weight:700">{{ plano_info.get('emoji','') }} {{ plano_info.get('nome','') }} ativo</div>
+    <div style="font-size:15px;font-weight:700">{{ plano_info.get('emoji','') }} {{ plano_info.get('nome','') }} ativo</div>
     {% if assinatura %}{% set proximo = assinatura.proximo_vencimento or '' %}
-    <div style="font-size:12px;color:var(--text2);margin-top:4px">{% if proximo %}Próxima cobrança: {{ proximo[8:10] }}/{{ proximo[5:7] }}/{{ proximo[:4] }} · {% endif %}{{ assinatura.billing_type or 'PIX' }} · R$ {{ '%.2f'|format(assinatura.valor or 0)|replace('.',',') }}/mês</div>
+    <div style="font-size:13px;color:var(--text2);margin-top:4px">{% if proximo %}Próxima cobrança: {{ proximo[8:10] }}/{{ proximo[5:7] }}/{{ proximo[:4] }} · {% endif %}{{ assinatura.billing_type or 'PIX' }} · R$ {{ '%.2f'|format(assinatura.valor or 0)|replace('.',',') }}/mês</div>
     {% endif %}
     {% endif %}
     <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px">
       <a href="https://wa.me/{{ SUPORTE_WA }}?text=Quero+falar+sobre+minha+assinatura+PUBSHOW" target="_blank" class="btn-sm" style="color:#4ade80">💬 Falar com o suporte</a>
       {% if b.plano_ativo %}<a href="/pubshow/painel/cancelar" class="btn-sm" style="color:#f87171;border-color:rgba(239,68,68,.2)">Cancelar assinatura</a>{% endif %}
     </div>
-  </div>
+    </div>
 
-  {# 16/10/26 (V3-01): aviso da senha fica aqui dentro — abre sozinho quando volta com erro/ok #}
-  {% set erro_senha = request.args.get('erro') %}
-  {% set ok_senha   = request.args.get('ok') %}
-  {% set _senha_msg = erro_senha in ('senha_errada', 'senha_curta', 'senha_diferente') or ok_senha == 'senha' %}
-  <details class="card" id="box-senha" style="padding:6px 18px"{% if _senha_msg %} open{% endif %}>
-    <summary>🔐 Trocar a senha</summary>
-    <div id="sec-senha" style="padding-bottom:12px">
-    {% if ok_senha == 'senha' %}
-    <div style="background:#052e16;border:1px solid #22c55e44;border-radius:10px;padding:10px 14px;font-size:13px;color:#4ade80;margin-bottom:14px">✅ Senha alterada com sucesso!</div>
-    {% elif erro_senha == 'senha_errada' %}
-    <div style="background:#2d0a0a;border:1px solid #ef444433;border-radius:10px;padding:10px 14px;font-size:13px;color:#f87171;margin-bottom:14px">❌ Senha atual incorreta.</div>
-    {% elif erro_senha == 'senha_curta' %}
-    <div style="background:#2d0a0a;border:1px solid #ef444433;border-radius:10px;padding:10px 14px;font-size:13px;color:#f87171;margin-bottom:14px">❌ A nova senha deve ter ao menos 6 caracteres.</div>
-    {% elif erro_senha == 'senha_diferente' %}
-    <div style="background:#2d0a0a;border:1px solid #ef444433;border-radius:10px;padding:10px 14px;font-size:13px;color:#f87171;margin-bottom:14px">❌ As senhas não coincidem.</div>
-    {% endif %}
-    <form method="POST" action="/pubshow/painel/senha" style="display:flex;flex-direction:column;gap:12px;max-width:400px">
-      <div><label class="label-sm">Senha atual</label><input type="password" name="senha_atual" required class="campo-txt"></div>
-      <div><label class="label-sm">Nova senha</label><input type="password" name="senha_nova" required minlength="6" class="campo-txt"></div>
-      <div><label class="label-sm">Confirmar nova senha</label><input type="password" name="senha_conf" required class="campo-txt"></div>
-      <button type="submit" class="btn-primary" style="width:fit-content">🔐 Alterar senha</button>
-    </form>
+    {# 16/10/26 (V3-01): aviso da senha fica aqui dentro — abre sozinho quando volta com erro/ok #}
+    <details id="box-senha" class="sub-bloco"{% if _senha_msg %} open{% endif %}>
+      <summary>🔐 Trocar a senha</summary>
+      <div id="sec-senha" style="padding-bottom:4px">
+      {% if ok_senha == 'senha' %}
+      <div style="background:#052e16;border:1px solid #22c55e44;border-radius:10px;padding:10px 14px;font-size:13px;color:#4ade80;margin-bottom:14px">✅ Senha alterada com sucesso!</div>
+      {% elif erro_senha == 'senha_errada' %}
+      <div style="background:#2d0a0a;border:1px solid #ef444433;border-radius:10px;padding:10px 14px;font-size:13px;color:#f87171;margin-bottom:14px">❌ Senha atual incorreta.</div>
+      {% elif erro_senha == 'senha_curta' %}
+      <div style="background:#2d0a0a;border:1px solid #ef444433;border-radius:10px;padding:10px 14px;font-size:13px;color:#f87171;margin-bottom:14px">❌ A nova senha deve ter ao menos 6 caracteres.</div>
+      {% elif erro_senha == 'senha_diferente' %}
+      <div style="background:#2d0a0a;border:1px solid #ef444433;border-radius:10px;padding:10px 14px;font-size:13px;color:#f87171;margin-bottom:14px">❌ As senhas não coincidem.</div>
+      {% endif %}
+      <form method="POST" action="/pubshow/painel/senha" style="display:flex;flex-direction:column;gap:12px;max-width:400px">
+        <div><label class="label-sm">Senha atual</label><input type="password" name="senha_atual" required class="campo-txt"></div>
+        <div><label class="label-sm">Nova senha</label><input type="password" name="senha_nova" required minlength="6" class="campo-txt"></div>
+        <div><label class="label-sm">Confirmar nova senha</label><input type="password" name="senha_conf" required class="campo-txt"></div>
+        <button type="submit" class="btn-primary" style="width:fit-content">🔐 Alterar senha</button>
+      </form>
+      </div>
+    </details>
     </div>
   </details>
-  </div><!-- /z-ajustes -->
+  </div><!-- /z-mais -->
 </div>
 
 <script>
@@ -1108,9 +1202,14 @@ function _pintaMudo(v) {
   const b = document.getElementById('btn-mudo');
   if (b) b.textContent = (+v === 0) ? '🔊 Tirar do mudo' : '🔇 Mudo';
 }
+function _pintaVol(v) {
+  const s = document.getElementById('vol-tv');
+  if (s) s.style.setProperty('--p', v + '%');
+  document.getElementById('vol-tv-val').textContent = v + '%';
+}
 function setVolTV(v) {
   const s = document.getElementById('vol-tv'); s.value = v;
-  document.getElementById('vol-tv-val').textContent = v + '%';
+  _pintaVol(v);
   ajustarVolumeTV(v);
 }
 function alternarMudo() {
@@ -1121,6 +1220,7 @@ function alternarMudo() {
 function ajustarVolumeTV(v) {
   const msg = document.getElementById('vol-tv-msg');
   _pintaMudo(v);
+  _pintaVol(v);
   if (+v > 0) _volAntesDoMudo = +v;
   msg.textContent = 'Enviando…';
   const fd = new FormData(); fd.append('volume', v);
@@ -1129,11 +1229,24 @@ function ajustarVolumeTV(v) {
     .catch(() => { msg.textContent = '❌ Erro — tente de novo'; });
 }
 
+// 🔇 Modo esporte (17/10/26): vídeo sem música fica sem som na TV — salva sozinho (rota da sessão "modo esporte")
+async function salvarMudoSemMusica(cb) {
+  const on = cb.checked;
+  try {
+    const r = await fetch('/pubshow/painel/tv-mudo-sem-musica', {method: 'POST',
+      headers: {'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest'}, body: JSON.stringify({ligado: on})});
+    const d = await r.json();
+    if (!d.ok) throw new Error();
+    cb.checked = !!d.ligado;
+    _salvo(cb, true);
+  } catch (e) { cb.checked = !on; _salvo(cb, false); }
+}
+
 // 🔔 Interruptor do jukebox: salva sozinho, sem botão Salvar (15/10/26, B10)
 function _pintaJukebox(on) {
   document.getElementById('jk-label').textContent = on ? '🔔 Jukebox ligado' : '🔕 Jukebox desligado';
   document.getElementById('jk-trilho').style.background = on ? '#22c55e' : '#333';
-  document.getElementById('jk-bola').style.left = on ? '24px' : '2px';
+  document.getElementById('jk-bola').style.left = on ? '25px' : '3px';
 }
 function salvarJukeboxAtivo(cb) {
   const on = cb.checked, msg = document.getElementById('jk-msg');
@@ -1148,14 +1261,14 @@ function salvarJukeboxAtivo(cb) {
     .catch(() => { cb.checked = !on; _pintaJukebox(!on); msg.textContent = '❌ Não salvou. Confira a internet e tente de novo.'; });
 }
 // Alguém digitando/editando um formulário? (16/10/26, V3-05: o interruptor do jukebox salva sozinho —
-// o foco parado nele não segura o reload). Lote D C: nenhuma chave/controle que salva sozinho segura o reload.
+// o foco parado nele não segura o reload). Nenhuma chave/controle que salva sozinho segura o reload.
 function _digitando() {
   const f = document.activeElement;
   if (!f || f.id === 'jk-toggle') return false;
   if (f.tagName === 'INPUT' && ['checkbox', 'radio', 'range', 'button', 'submit'].includes(f.type)) return false;
   return f.tagName === 'INPUT' || f.tagName === 'TEXTAREA' || f.tagName === 'SELECT';
 }
-// 📺 Selo da TV (texto vem pronto do servidor) — o de Hoje e o espelho em Música e TV
+// 📺 Selo da TV (texto vem pronto do servidor) — o do 🎛️ Controle e o espelho em ⚙️ Mais
 function renderTvSinal(t) {
   const el = document.getElementById('tv-selo');
   if (!el || !t || !t.texto) return;
@@ -1208,10 +1321,10 @@ async function salvarContaEfi(ev) {
 }
 {%- endif %}
 
-// ── Abas (Lote D C, 16/10/26): 5 abas; a aberta fica guardada (voltar abre onde estava) ──
-const ABAS = ['hoje', 'musica', 'dinheiro', 'propaganda', 'ajustes'];
+// ── Abas (17/10/26): 5 abas por assunto; a aberta fica guardada (voltar abre onde estava) ──
+const ABAS = ['controle', 'estilo', 'pedidos', 'dinheiro', 'mais'];
 function mostrarAba(qual, semRolar) {
-  if (!ABAS.includes(qual)) qual = 'hoje';
+  if (!ABAS.includes(qual)) qual = 'controle';
   ABAS.forEach(a => {
     const z = document.getElementById('z-' + a), t = document.getElementById('tab-' + a);
     if (z) z.classList.toggle('oculta', a !== qual);
@@ -1227,6 +1340,7 @@ function abrirSecao(id) {
   const z = el.closest('.zona');
   if (z) mostrarAba(z.id.slice(2), true);
   for (let d = el.closest('details'); d; d = d.parentElement && d.parentElement.closest('details')) d.open = true;
+  if (el.tagName === 'DETAILS') el.open = true;
   el.scrollIntoView({ block: 'center' });
   return true;
 }
@@ -1240,33 +1354,52 @@ document.addEventListener('click', ev => {
   try {
     const q = new URLSearchParams(location.search);
     const url = q.get('aba');
-    // Lote D, críticos (17/10/26, CD3): o celular que guardou a aba do painel VELHO (2 abas: 'ajustes' era tudo) abre
-    // o painel novo no 🏠 Hoje na 1ª vez; daí em diante vale a aba que o dono usou no painel de 5 abas
+    // 17/10/26: o celular que guardou a aba do painel de ANTES (hoje, musica, propaganda, ajustes) abre o painel por
+    // assunto no 🎛️ Controle na 1ª vez; daí em diante vale a aba que o dono usou
     let salvo = localStorage.getItem('ps_painel_aba');
-    if (localStorage.getItem('ps_painel_v') !== '5') { salvo = null; localStorage.setItem('ps_painel_v', '5'); }
-    const MAPA = {ajustes: 'ajustes', config: 'ajustes', conta: 'ajustes', fila: 'hoje', hoje: 'hoje',
-                  musica: 'musica', tv: 'musica', dinheiro: 'dinheiro', propaganda: 'propaganda'};
-    mostrarAba(MAPA[url] || (ABAS.includes(salvo) ? salvo : 'hoje'), true);
+    if (localStorage.getItem('ps_painel_v') !== '6') { salvo = null; localStorage.setItem('ps_painel_v', '6'); }
+    // os links de volta das rotas (?aba=fila, ?aba=config, ?aba=musica…) seguem valendo
+    const MAPA = {controle: 'controle', fila: 'controle', hoje: 'controle',
+                  estilo: 'estilo', musica: 'estilo', pedidos: 'pedidos', momentos: 'pedidos',
+                  dinheiro: 'dinheiro', mais: 'mais', ajustes: 'mais', config: 'mais', conta: 'mais',
+                  tv: 'mais', propaganda: 'mais'};
+    mostrarAba(MAPA[url] || (ABAS.includes(salvo) ? salvo : 'controle'), true);
     // 16/10/26 (V3-01): voltou com aviso do Novo QR / da senha / da imagem → abre a aba e rola até ele
     const erro = q.get('erro') || '';
     const ancora = erro === 'novo_qr' ? 'sec-novo-qr'
                  : (/^senha_/.test(erro) || q.get('ok') === 'senha') ? 'sec-senha'
                  : ['imagem_grande', 'formato_invalido', 'limite_slides'].includes(erro) ? 'sec-propaganda'
-                 : (q.get('pix_caiu') || q.get('pix_conferir')) ? 'z-hoje'
+                 : (q.get('pix_caiu') || q.get('pix_conferir') || q.get('devolucao')) ? 'z-controle'
                  : (location.hash.length > 1 ? location.hash.slice(1) : '');
-    if (ancora === 'z-hoje') mostrarAba('hoje', true);
+    // voltou de um formulário de ⚙️ Mais (imagem, apagar imagem, promoção): reabre a linha dele
+    let abrir = null;
+    try { abrir = sessionStorage.getItem('ps_abrir'); sessionStorage.removeItem('ps_abrir'); } catch (e) {}
+    if (ancora === 'z-controle') mostrarAba('controle', true);
     else if (ancora) abrirSecao(ancora);
+    else if (abrir && !url) abrirSecao(abrir);
+    else if (abrir && MAPA[url] === 'mais') abrirSecao(abrir);
+    if (url) {   // crítico leigo B12: tira só o ?aba= (o recarregar do polling volta pra aba em que ele estava)
+      q.delete('aba');
+      history.replaceState(null, '', location.pathname + (q.toString() ? '?' + q.toString() : '') + location.hash);
+    }
   } catch(e) {}
 })();
+document.addEventListener('submit', ev => {
+  const f = ev.target;
+  const linha = f && f.closest && f.closest('#z-mais details.mais-item');
+  if (linha && f.id !== 'f-anuncios') {
+    try { sessionStorage.setItem('ps_abrir', linha.id); } catch (e) {}
+  }
+}, true);
 
-// ── "✓ salvo" discreto (Lote D C, 16/10/26: o painel salva sozinho ao mexer) ──
+// ── "✓ salvo" discreto (o painel salva sozinho ao mexer) ──
 function _salvo(el, ok, msg) {
   const box = (el && el.closest && (el.closest('.card') || el.closest('.zona'))) || document;
   const s = box.querySelector('.salvo');
   if (!s) return;
   clearTimeout(s._t);
   s.classList.toggle('erro', !ok);
-  // Lote D, críticos (17/10/26, CD1): sem botão Salvar, a prova fica na tela ("✓ salvo às 21:14") até a próxima mudança
+  // sem botão Salvar, a prova fica na tela ("✓ salvo às 21:14") até a próxima mudança
   const _h = new Date(), _hm = String(_h.getHours()).padStart(2, '0') + ':' + String(_h.getMinutes()).padStart(2, '0');
   s.textContent = ok ? '✓ salvo às ' + _hm : '❌ ' + (msg || 'Não salvou. Confira a internet e tente de novo.');
   s.classList.add('on');
@@ -1280,24 +1413,22 @@ async function _postar(form, alvo) {
     return d;
   } catch (e) { _salvo(alvo, false); return null; }
 }
-// Ajustes do jukebox: um formulário só (f-config) com campos em Ajustes, Música e TV e Dinheiro (form="f-config")
+// Ajustes do jukebox: um formulário só (f-config) com campos em ⚙️ Mais (horário), 🎵 Estilo (YouTube) e ✨ Pedidos
+// (momentos, preço salvo escondido e o OK da cantada/namoro): form="f-config"
 const FCFG = document.getElementById('f-config');
 let _tCfg = null, _alvoCfg = null, _horaSug = false;
 const _pendCfg = new Map();   // chave mexida → como estava antes (VDC-01: não salvou = volta como estava)
 // O que está no banco (data-salvo; no começo, o valor que veio do servidor)
 function _cfgSalvoDe(el) { return el.dataset.salvo !== undefined ? el.dataset.salvo : el.defaultValue; }
-// VDC-01 (16/10/26): o aviso segue o motivo de verdade (8,90 está na faixa; antes dizia "use de R$ 5 a R$ 200")
-function _msgCampo(el) {
-  if (!el.classList.contains('preco-bar')) return 'confira esse campo';
-  const v = el.validity, nome = (el.getAttribute('aria-label') || 'Preço').replace(/^Preço de /, '');
-  if (v.badInput) return nome + ': digite só o número, ex.: 8,90';
-  if (v.rangeUnderflow || v.rangeOverflow) return nome + ': use de R$ ' + el.min + ' a R$ ' + el.max;
-  if (v.stepMismatch) return nome + ': use até 2 casas depois da vírgula';
-  return nome + ': confira o preço';
-}
 function _pintaHoras(sempre) {
   document.getElementById('horas').style.display = sempre ? 'none' : 'flex';
   const d = document.getElementById('horas-dica'); if (d) d.hidden = sempre || !_horaSug;
+}
+function _pintaResumoHorario() {
+  const r = document.getElementById('horario-resumo'), sa = document.getElementById('sempre-aberto');
+  if (!r || !FCFG) return;
+  const ini = FCFG.querySelector('[name="hora_ini"]'), fim = FCFG.querySelector('[name="hora_fim"]');
+  r.textContent = (sa && sa.checked) || _horaSug ? 'sempre aberto' : (ini.value + ' até ' + fim.value);
 }
 async function salvarConfig() {
   if (!FCFG || !window.fetch) return;
@@ -1305,13 +1436,8 @@ async function salvarConfig() {
   _pendCfg.clear();
   // VDC-01 (16/10/26): um campo inválido não segura mais o resto. Ele vai com o valor que já está salvo
   // (o banco fica igual pra ele) e o aviso aparece no card dele; o resto salva normal.
-  // 17/10/26 (Lote D, críticos CD2/CD3): preço que o dono NÃO mexeu vai com o que está no banco (data-salvo), mesmo
-  // fora da faixa da tela (R$ 120 de antes da Efí, R$ 4 do Garage): salvar outra chave não regrava o preço dele.
-  // A cobrança já corta no piso/teto (_precos_do_bar). Só o preço que ele mexeu é conferido e vai como está na tela.
-  const _intocado = e => e.classList && e.classList.contains('preco-bar') && !e.dataset.mexeu;
-  const ruins = Array.from(FCFG.elements).filter(e => e.name && e.willValidate && !_intocado(e) && !e.checkValidity());
+  const ruins = Array.from(FCFG.elements).filter(e => e.name && e.willValidate && !e.checkValidity());
   const fd = new FormData(FCFG);
-  Array.from(FCFG.elements).filter(_intocado).forEach(e => fd.set(e.name, _cfgSalvoDe(e)));
   ruins.forEach(e => fd.set(e.name, _cfgSalvoDe(e)));
   // VDC-04 (16/10/26): as horas sugeridas (desligou "Sempre aberto" e não mexeu numa hora) ainda não valem
   if (_horaSug) ['hora_ini', 'hora_fim'].forEach(n => { const e = FCFG.querySelector('[name="' + n + '"]'); if (e) fd.set(n, _cfgSalvoDe(e)); });
@@ -1323,30 +1449,32 @@ async function salvarConfig() {
   } catch (e) { ok = false; }
   if (!ok) {
     // não salvou: a chave mexida volta como estava (a tela não mente sobre o que está no banco)
-    antes.forEach((era, e) => { e.checked = era; if (e.id === 'sempre-aberto') { _horaSug = false; _pintaHoras(era); } });
+    antes.forEach((era, e) => {
+      e.checked = era;
+      const linha = e.closest && e.closest('.momento-row'); if (linha) linha.classList.toggle('desligado', !era);
+      if (e.id === 'sempre-aberto') { _horaSug = false; _pintaHoras(era); }
+    });
+    _pintaResumoHorario();
     _salvo(alvo, false);
     return;
   }
   Array.from(FCFG.elements).forEach(e => {
     if (e.name && e.type !== 'checkbox' && e.type !== 'hidden' && fd.has(e.name)) e.dataset.salvo = String(fd.get(e.name));
   });
+  _pintaResumoHorario();
   const cardsRuins = ruins.map(e => e.closest('.card'));
   if (!alvo || !cardsRuins.includes(alvo.closest && alvo.closest('.card'))) _salvo(alvo, true);
-  ruins.forEach(e => _salvo(e, false, _msgCampo(e) + '. Não salvou esse preço.'));
+  ruins.forEach(e => _salvo(e, false, 'confira esse campo. Não salvou.'));
 }
 if (FCFG) {
   FCFG.addEventListener('submit', ev => { if (window.fetch) { ev.preventDefault(); salvarConfig(); } });
 }
-// o dono digitou nesse preço: daqui pra frente ele vai como está na tela (17/10/26, CD2)
-document.addEventListener('input', ev => {
-  const el = ev.target;
-  if (FCFG && el.form === FCFG && el.classList && el.classList.contains('preco-bar')) el.dataset.mexeu = '1';
-});
 document.addEventListener('change', ev => {
   const el = ev.target;
-  if (FCFG && el.form === FCFG && el.classList && el.classList.contains('preco-bar')) el.dataset.mexeu = '1';
   if (FCFG && el.form === FCFG) {
     if (el.type === 'checkbox' && !_pendCfg.has(el)) _pendCfg.set(el, !el.checked);
+    const linha = el.closest && el.closest('.momento-row');
+    if (linha) linha.classList.toggle('desligado', !el.checked);
     if (el.name === 'hora_ini' || el.name === 'hora_fim') { _horaSug = false; _pintaHoras(false); }
     _alvoCfg = el; clearTimeout(_tCfg);
     _tCfg = setTimeout(salvarConfig, el.type === 'checkbox' ? 100 : 400);
@@ -1385,8 +1513,21 @@ async function escolherEstilo(btn) {
     _salvo(btn, true);
   } catch (e) { _salvo(btn, false); }
 }
+// 🚫 Músicas bloqueadas: "Liberar" tira da lista sem recarregar
+async function liberarMusica(ev, form) {
+  if (!window.fetch) return true;
+  ev.preventDefault();
+  const linha = form.closest('.bloq-row');
+  const d = await _postar(form, form);
+  if (d && linha) {
+    linha.remove();
+    const n = document.querySelectorAll('#sec-bloqueadas .bloq-row').length, c = document.getElementById('bloq-n');
+    if (c) c.textContent = n;
+  }
+  return false;
+}
 
-// Propaganda: salva sozinho; "Adicionar outra" mostra a próxima vaga (máx. 3 no total)
+// Propaganda: salva sozinho; "Adicionar outra" mostra a próxima vaga (máx. no total)
 const FAN = document.getElementById('f-anuncios');
 let _tAn = null;
 function _contaSlides() {
@@ -1421,11 +1562,8 @@ if (FAN) {
   FAN.addEventListener('change', ev => { clearTimeout(_tAn); _tAn = setTimeout(() => _postar(FAN, ev.target), 300); });
 }
 
-// Happy hour e aviso pelo WhatsApp: salvam sozinhos
-function toggleHH(on) {
-  document.getElementById('hh-config').style.display = on ? 'flex' : 'none';
-}
-['f-hh', 'f-notif'].forEach(id => {
+// Aviso pelo WhatsApp: salva sozinho
+['f-notif'].forEach(id => {
   const f = document.getElementById(id);
   if (!f) return;
   let t = null;
@@ -1443,17 +1581,15 @@ function copiar(texto, btn) {
 // Atualiza fila a cada 3s via fetch — sem recarregar a página inteira
 const TIPOS_INFO = {{ tipos | tojson }};
 
-// Tipos de pedido que a TV toca automaticamente (sem precisar do bar owner)
-const TIPOS_AUTO_TV = ['musica', 'musica_especifica', 'musica_externa', 'flash', 'vip'];
-
 // texto vindo do celular do cliente nunca entra como HTML (XSS no painel do gerente)
 function _escHtml(s) {
   return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-// Lote D, críticos (17/10/26, CD1): só os 5 primeiros da fila; "Ver os outros N" abre o resto (e fica aberto
-// enquanto o dono não fechar, mesmo com o polling reescrevendo a lista)
+// só os 5 primeiros da fila; "Ver os outros N" abre o resto (e fica aberto enquanto o dono não fechar, mesmo com o
+// polling reescrevendo a lista)
 const FILA_VISIVEL = 5;
 let _filaAberta = false;
+let _tirarAberto = null;   // 🗑️ aberto (id do pedido): o polling reescreve a fila e ele continua aberto
 function abrirFila(abrir) {
   _filaAberta = !!abrir;
   document.querySelectorAll('#fila-pedidos .fila-extra').forEach(r => { r.hidden = !_filaAberta; });
@@ -1464,61 +1600,71 @@ function abrirFila(abrir) {
     b.onclick = () => abrirFila(!_filaAberta);
   }
 }
+// 🗑️ da fila: abre embaixo da linha "Tirar da fila" / "Tirar e nunca mais tocar" / "Voltar" (sem janela do navegador)
+function abrirTirar(id) {
+  _tirarAberto = (id === _tirarAberto) ? null : id;
+  document.querySelectorAll('#fila-pedidos .pedido-item').forEach(it => {
+    const on = String(it.dataset.id) === String(_tirarAberto);
+    const box = it.querySelector('.tirar-box'), bt = it.querySelector('.pedido-dispensar');
+    if (box) box.hidden = !on;
+    if (bt) bt.setAttribute('aria-expanded', on ? 'true' : 'false');
+  });
+}
 function renderFila(fila) {
   const div = document.getElementById('fila-pedidos');
   if (!div) return;
   const count = document.getElementById('fila-count');
   if (count) count.textContent = fila.length;
   if (!fila.length) {
+    _tirarAberto = null;
     div.innerHTML = '<div class="empty-state">Nenhum pedido na fila agora.<br>Os pedidos aparecem aqui em tempo real. 🎉</div>';
     return;
   }
-
-  // Destaca o PRÓXIMO a tocar (primeiro da lista)
+  if (_tirarAberto !== null && !fila.some(p => String(p.id) === String(_tirarAberto))) _tirarAberto = null;
   const extras = Math.max(0, fila.length - FILA_VISIVEL);
   div.innerHTML = fila.map((p, idx) => {
     const t = TIPOS_INFO[p.tipo] || {};
     const emoji = t.emoji || '🎵';
-    const nome_tipo = t.nome || p.tipo;
+    const nome_tipo = _escHtml(t.nome || p.tipo);
     const musica = p.titulo_pedido ? `🎵 ${_escHtml(p.titulo_pedido.substring(0,40))}` : '';
     const msg = p.mensagem ? ` · "${_escHtml(p.mensagem.substring(0,30))}"` : '';
-    // 🚫 nunca mais: só pra pedido com vídeo (bane no bar + tira da fila)
-    const btnBan = p.youtube_id
-      ? `<form method="POST" action="/pubshow/painel/bloquear-video" style="margin:0 0 0 6px" onsubmit="return confirm('Bloquear esta música neste bar pra sempre e tirar da fila?')">
-           <input type="hidden" name="youtube_id" value="${_escHtml(p.youtube_id)}"><input type="hidden" name="pedido_id" value="${p.id}">
-           <button type="submit" class="pedido-dispensar" style="background:rgba(239,68,68,.15);color:#fca5a5" title="Nunca mais essa música neste bar">🚫</button>
-         </form>`
-      : '';
-    const valor = (p.valor || 0).toFixed(2).replace('.', ',');   // com centavos, igual ao resto do painel (16/10/26)
+    const valor = (p.valor_cobrado || p.valor || 0).toFixed(2).replace('.', ',');   // o que o cliente pagou (= aviso da 🗑️)
     // 16/10/26 (C1-05): pedido JÁ PAGO avisa que o dinheiro não volta sozinho
     const _pagoCli = (p.valor_cobrado || p.valor || 0).toFixed(2).replace('.', ',');
-    const confirmaTirar = p.pago_em
-      ? `⚠️ Esse cliente PAGOU R$ ${_pagoCli} no PIX. Se tirar, a TV não mostra e o dinheiro NÃO volta sozinho: devolva na mão.
-
-Tirar mesmo assim?`
-      : 'Tirar este pedido da fila? A TV NÃO vai mostrar.';
-    const isProximo = idx === 0;
-
-    // Destaque visual para o próximo da fila
-    const proxBorder = isProximo ? 'border-left:3px solid #22c55e;padding-left:10px;' : '';
-    const proxLabel = isProximo
-      ? `<span style="font-size:9px;font-weight:800;color:#22c55e;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:2px">▶ PRÓXIMO</span>`
+    const avisoPago = p.pago_em
+      ? `<div class="aviso-pago">⚠️ Esse cliente PAGOU R$ ${_pagoCli} no PIX. Se tirar, a TV não mostra e o dinheiro NÃO volta sozinho: devolva na mão.</div>`
       : '';
-
+    // 🚫 nunca mais: só pra pedido com vídeo (bane no bar + tira da fila)
+    const btnNunca = p.youtube_id
+      ? `<form method="POST" action="/pubshow/painel/bloquear-video" class="nunca"><input type="hidden" name="youtube_id" value="${_escHtml(p.youtube_id)}"><input type="hidden" name="pedido_id" value="${p.id}"><button type="submit" class="btn-nunca">🚫 Tirar e nunca mais tocar</button></form>`
+      : '';
+    // a ordem é a da TV (crítico leigo A2): o 1º é o PRÓXIMO; furar a fila pago mostra o selo ⚡ PAGO
+    const isProximo = idx === 0;
+    const proxStyle = isProximo ? ' style="border-left:3px solid #22c55e;padding-left:10px"' : '';
+    const proxLabel = isProximo ? '<span class="selo-prox">▶ Próximo</span>' : '';
+    const seloPago = (p.tipo === 'flash' || p.tipo === 'vip') && p.pago_em ? '<span class="selo-pago">⚡ PAGO</span>' : '';
     const extra = idx >= FILA_VISIVEL;
+    const aberto = String(p.id) === String(_tirarAberto);
     // música grátis: "grátis" em cinza (o "R$ 0,00" em verde em quase toda linha só poluía)
     const valorHtml = (p.valor || 0) > 0 ? `<span class="pedido-valor">R$ ${valor}</span>` : '<span class="pedido-gratis">grátis</span>';
-    return `<div class="pedido-row${extra ? ' fila-extra' : ''}" style="${proxBorder}"${extra && !_filaAberta ? ' hidden' : ''}>
-      <span class="pedido-emoji">${emoji}</span>
-      <div class="pedido-info">
-        ${proxLabel}
-        <div class="pedido-nome">${_escHtml(p.nome_cliente)}</div>
-        <div class="pedido-tipo">${musica || nome_tipo}${msg}</div>
+    return `<div class="pedido-item${extra ? ' fila-extra' : ''}" data-id="${p.id}"${extra && !_filaAberta ? ' hidden' : ''}>
+      <div class="pedido-row"${proxStyle}>
+        <span class="pedido-emoji">${emoji}</span>
+        <div class="pedido-info">
+          ${proxLabel}
+          <div class="pedido-nome">${_escHtml(p.nome_cliente)}${seloPago}</div>
+          <div class="pedido-tipo">${musica || nome_tipo}${msg}</div>
+        </div>
+        ${valorHtml}
+        <button type="button" class="pedido-dispensar" aria-expanded="${aberto}" aria-label="Tirar da fila" title="Tirar da fila" onclick="abrirTirar(${p.id})">🗑️</button>
       </div>
-      ${valorHtml}
-      <form method="POST" action="/pubshow/painel/pedido/${p.id}/dispensar" style="margin:0" onsubmit="return confirm(${_escHtml(JSON.stringify(confirmaTirar))})">
-        <button type="submit" class="pedido-dispensar" title="Tirar da fila (a TV toca/mostra sozinha — só use pra remover)">🗑️</button>
-      </form>${btnBan}
+      <div class="tirar-box" id="tirar-${p.id}"${aberto ? '' : ' hidden'}>
+        ${avisoPago}
+        <div class="botoes">
+          <form method="POST" action="/pubshow/painel/pedido/${p.id}/dispensar"><button type="submit" class="btn-tirar">🗑️ Tirar da fila</button></form>
+          <button type="button" class="btn-voltar" onclick="abrirTirar(null)">Voltar</button>
+        </div>${btnNunca}
+      </div>
     </div>`;
   }).join('') + (extras ? `<button type="button" class="btn-sm fila-mais" id="fila-ver-mais">Ver os outros ${extras} ▾</button>` : '');
   if (!extras) _filaAberta = false;
@@ -1527,7 +1673,7 @@ Tirar mesmo assim?`
 
 function renderGorjetaHoje(total) {
   if (typeof total !== 'number') return;
-  ['gorjeta-hoje', 'hoje-linha-gorjeta'].forEach(id => {   // o card e a linha fina do topo (17/10/26, CD1)
+  ['gorjeta-hoje', 'hoje-linha-gorjeta'].forEach(id => {   // o card do 💰 Dinheiro e a linha fina do 🎛️ Controle
     const el = document.getElementById(id);
     if (el) el.textContent = 'R$ ' + total.toFixed(2).replace('.', ',');
   });
@@ -1550,8 +1696,8 @@ function pollFila() {
       renderTotalHoje(d.total_hoje || 0, d.momentos_hoje_n);
       renderGorjetaHoje(d.gorjeta_hoje);
       renderTvSinal(d.tv_sinal);
-      // VDC-02 (16/10/26): selo da aba Hoje com os recados pagos esperando o OK (aparece em qualquer aba)
-      const _selo = document.getElementById('tab-hoje-ok'), _nOk = +(d.aguardando_ok || 0);
+      // VDC-02 (16/10/26): selo da aba 🎛️ Controle com os recados pagos esperando o OK (aparece em qualquer aba)
+      const _selo = document.getElementById('tab-controle-ok'), _nOk = +(d.aguardando_ok || 0);
       if (_selo) { _selo.textContent = _nOk; _selo.hidden = !_nOk; _selo.setAttribute('aria-label', _nOk + ' esperando o seu OK'); }
       // Se houver mudança nos aguardando_pix, recarrega só se nenhum input estiver em foco
       const temPix = (d.aguardando_pix || []).length;

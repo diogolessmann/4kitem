@@ -4837,7 +4837,14 @@ def painel():
     if efi_pausa and not (efi_pausa['pausado'] or efi_pausa['aviso']):
         efi_pausa = None
     faixa_semana = _faixa_semana(bd['id'])
+    musicas_bloqueadas, ultimo_repasse = _painel_bloqueadas_e_repasse(bd, _efi_bar)
     return render_template('pubshow/painel.html',
+                           musicas_bloqueadas=musicas_bloqueadas,   # painel por assunto (17/10/26): aba 🎵 Estilo
+                           ultimo_repasse=ultimo_repasse,           # aba 💰 Dinheiro ("quando cai na sua conta")
+                           gratis_min=GRATIS_INTERVALO_MIN,         # aba ✨ Pedidos: "1 música grátis a cada N min"
+                           taxa_gorjeta=_taxa_pix_bar(bd, 'gorjeta'),   # o selo da gorjeta = o que o cliente paga
+                           # 🔇 modo esporte (outra sessão): a chave só aparece com a coluna E a rota no ar juntas
+                           rota_modo_esporte=_rota_modo_esporte(),
                            meu_dinheiro=meu_dinheiro, conta_efi_msg=conta_efi_msg, brl_cent=_brl_cent,
                            conta_efi_ok_txt=conta_efi_ok_txt, efi_split_recusado=efi_split_recusado,
                            efi_mens_cent=efi_mens_cent, efi_ok_info=efi_ok_info,
@@ -4896,6 +4903,48 @@ def painel():
                            efi=_efi_bar,
                            efi_sem_conta=_efi_sem_conta,
                            promo_ativa=bool(bd.get('promo_msg') and bd.get('promo_expira') and bd['promo_expira'] > datetime.now().strftime('%Y-%m-%dT%H:%M:%S')))
+
+
+def _rota_modo_esporte():
+    """Painel por assunto (17/10/26): a chave "🔇 Vídeo sem música → sem som" (sessão "modo esporte") só aparece quando a
+    rota dela existe neste deploy — coluna sem rota = chave que sempre falha."""
+    from flask import current_app
+    try:
+        return any(r.rule == '/pubshow/painel/tv-mudo-sem-musica' for r in current_app.url_map.iter_rules())
+    except Exception:
+        return False
+
+
+def _painel_bloqueadas_e_repasse(bd, efi_bar):
+    """Painel por assunto (17/10/26). Só leitura; falhou = lista vazia / sem repasse, nunca 500.
+    → ([{'id', 'titulo'}] das músicas do "🚫 nunca mais", mais nova em cima (até 50),
+       {'valor_bar', 'valor_gorjeta', 'quando'} do último repasse manual do bar ou None — só fora da Efí do split,
+       onde o dinheiro cai na conta do PubShow e o suporte repassa)."""
+    ids = list(reversed(_videos_bloqueados(bd)))[:50]
+    lista, rep = [{'id': y, 'titulo': ''} for y in ids], None
+    try:
+        conn = get_pubshow_db()
+        try:
+            if ids:
+                q = ','.join('?' * len(ids))
+                tit = {r[0]: r[1] for r in conn.execute(
+                    f'SELECT youtube_id, titulo_pedido FROM pubshow_pedidos WHERE business_id=? AND youtube_id IN ({q}) '
+                    "AND TRIM(COALESCE(titulo_pedido,''))<>'' ORDER BY id", [bd['id']] + ids)}
+                tit.update({r[0]: (r[1] + (' - ' + r[2] if r[2] else '')) for r in conn.execute(
+                    f'SELECT youtube_id, titulo, artista FROM pubshow_videos WHERE youtube_id IN ({q})', ids)})
+                for m in lista:
+                    m['titulo'] = tit.get(m['id']) or ''
+            if not efi_bar:
+                r = conn.execute('SELECT valor_bar, valor_gorjeta, ate_em, criado_em FROM pubshow_repasses_manuais '
+                                 'WHERE business_id=? ORDER BY id DESC LIMIT 1', (bd['id'],)).fetchone()
+                if r:
+                    rep = {'valor_bar': float(r[0] or 0), 'valor_gorjeta': float(r[1] or 0),
+                           'quando': _repasse_brt(r[3] or r[2], '%d/%m')}
+        finally:
+            conn.close()
+    except Exception as ex:
+        log.warning('[PUBSHOW] painel: bloqueadas/repasse do bar %s não leram: %s', bd.get('id'), ex)
+    return lista, rep
 
 
 # ── Lote C (16/10/26): "Meu dinheiro" e a conta Efí do bar (só com a Efí ligada pro bar) ─────────────────
@@ -6395,6 +6444,27 @@ def painel_bloquear_video():
                      (int(pid), b['id']))
     conn.commit(); conn.close()
     return redirect('/pubshow/painel')
+
+
+@pubshow_bp.route('/painel/desbloquear-video', methods=['POST'])
+@pubshow_login_required
+def painel_desbloquear_video():
+    """Painel por assunto (17/10/26): "Liberar de novo" uma música do "🚫 nunca mais" (aba 🎵 Estilo).
+    Só tira o youtube_id da lista do bar; não mexe em pedido nenhum."""
+    import json as _json
+    b = _get_business()
+    if not b:
+        return (jsonify({'ok': False, 'erro': 'não autorizado'}), 401) if _xhr() else redirect('/pubshow/entrar')
+    yid = (request.form.get('youtube_id') or '').strip()[:20]
+    lista = _videos_bloqueados(b)
+    if yid in lista:
+        conn = get_pubshow_db()
+        conn.execute('UPDATE pubshow_businesses SET videos_bloqueados=? WHERE id=?',
+                     (_json.dumps([y for y in lista if y != yid]), b['id']))
+        conn.commit(); conn.close()
+    if _xhr():
+        return jsonify({'ok': True, 'youtube_id': yid})
+    return redirect('/pubshow/painel?aba=estilo')
 
 
 @pubshow_bp.route('/painel/volume', methods=['POST'])
