@@ -969,11 +969,12 @@
     </details>
   </div>
 
-  {#- 📣 Propaganda na TV + ⚡ Promoção relâmpago (1 formulário + "Adicionar outra", máx. no total, imagem conta) #}
+  {#- 📣 Propaganda na TV: 1 só, texto OU imagem (17/10/26, Diogo: saiu o "Adicionar outra") #}
   {% set slides_img = anuncios_parsed | selectattr('tipo','equalto','imagem') | list %}
   {% set anuncios_texto = anuncios_parsed|rejectattr('tipo','equalto','imagem')|list %}
   {#- Lote D, críticos (17/10/26, CD3): bar que já tem MAIS propagandas que o máximo vê TODAS; só o "Adicionar" e a
-      imagem ficam bloqueados. Antes mostrava 1 de 3 e corrigir 1 letra apagava as outras 2 do banco #}
+      imagem ficam bloqueados. Antes mostrava 1 de 3 e corrigir 1 letra apagava as outras 2 do banco.
+      Com o plano em 1, nunca sobra caixa escondida: ou 1 vazia, ou as que o bar já tem #}
   {% set vagas_texto = [plano_max_anuncios - (slides_img|length), anuncios_texto|length, 0]|max %}
   {% set _n_txt = anuncios_texto|length %}
   {% set erro_slide = request.args.get('erro') %}
@@ -981,12 +982,12 @@
     <summary>📣 Propaganda na TV <span class="resumo">{{ _n_txt + slides_img|length }} de {{ plano_max_anuncios }}</span></summary>
     <div class="dentro">
     <div id="propaganda-dentro">
-    <p class="dica">Aparece entre os clipes. Até {{ plano_max_anuncios }}. <span class="salvo" aria-live="polite"></span></p>
+    <p class="dica">Aparece entre os clipes. Uma só: texto ou imagem. <span class="salvo" aria-live="polite"></span></p>
     {% if _n_txt + slides_img|length > plano_max_anuncios %}
-    <p id="propaganda-acima" style="font-size:12px;color:#fbbf24;margin:-4px 0 12px">Você tem {{ _n_txt + slides_img|length }} propagandas (do plano antigo): todas continuam na TV. Pra pôr uma nova, apague até ficar com menos de {{ plano_max_anuncios }}.</p>
+    <p id="propaganda-acima" style="font-size:12px;color:#fbbf24;margin:-4px 0 12px">Você tem {{ _n_txt + slides_img|length }} propagandas do plano antigo: todas continuam na TV e dá pra mudar o texto. O plano agora tem 1 só: pra pôr uma nova, primeiro apague as antigas.</p>
     {% endif %}
     {% if vagas_texto == 0 %}
-    <p style="font-size:12px;color:#fbbf24;margin-bottom:12px">As {{ plano_max_anuncios }} vagas estão com imagem. Apague uma imagem aqui embaixo pra escrever um slide de texto.</p>
+    <p id="propaganda-imagem" style="font-size:12px;color:#fbbf24;margin-bottom:12px">{% if slides_img|length == 1 %}Sua propaganda é uma imagem. Pra escrever uma de texto, apague a imagem aqui embaixo.{% else %}Suas propagandas são imagens. Pra escrever uma de texto, apague as imagens aqui embaixo.{% endif %}</p>
     {% else %}
     <form method="POST" action="/pubshow/painel/anuncios" id="f-anuncios">
       {% for i in range(1, vagas_texto + 1) %}
@@ -1006,7 +1007,6 @@
     </form>
     {% endif %}
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:4px">
-      {% if vagas_texto > 0 %}<button type="button" id="btn-add-slide" class="btn-sm" onclick="adicionarSlide()"{% if _n_txt + slides_img|length >= plano_max_anuncios or _n_txt == 0 %} hidden{% endif %}>＋ Adicionar outra</button>{% endif %}
       <form method="POST" action="/pubshow/painel/upload-slide" enctype="multipart/form-data" id="f-upload-slide" style="margin:0"{% if _n_txt + slides_img|length >= plano_max_anuncios %} hidden{% endif %}>
         <label class="btn-sm" style="border-style:dashed;color:var(--text2)">
           🖼️ Pôr uma imagem
@@ -1016,7 +1016,7 @@
     </div>
     {% set msg_slide = {'imagem_grande': 'Imagem grande demais. Use uma de até 8 MB (uma foto normal do celular ou uma arte de até 4000 × 4000 serve).',
                         'formato_invalido': 'Não deu pra abrir essa imagem. Use PNG, JPG, GIF ou WEBP.',
-                        'limite_slides': 'Você já chegou no máximo de slides. Apague um pra pôr outro.'}.get(erro_slide) %}
+                        'limite_slides': 'Você já tem uma propaganda. Apague a que está lá pra pôr outra.'}.get(erro_slide) %}
     <div id="slide-erro" style="{% if not msg_slide %}display:none;{% endif %}background:#2d0a0a;border:1px solid #ef444433;border-radius:10px;padding:10px 14px;font-size:13px;color:#f87171;margin-top:12px">❌ <span>{{ msg_slide or '' }}</span></div>
     {% if slides_img %}
     <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:12px">
@@ -1527,26 +1527,14 @@ async function liberarMusica(ev, form) {
   return false;
 }
 
-// Propaganda: salva sozinho; "Adicionar outra" mostra a próxima vaga (máx. no total)
+// Propaganda: salva sozinho; 1 só (texto ou imagem): escreveu o texto, some o "Pôr uma imagem", e vice-versa
 const FAN = document.getElementById('f-anuncios');
 let _tAn = null;
 function _contaSlides() {
-  const box = document.querySelectorAll('#f-anuncios .slide-box:not([hidden])').length;
   const imgs = {{ slides_img|length }}, max = {{ plano_max_anuncios }};
-  const add = document.getElementById('btn-add-slide');
-  const livre = document.querySelector('#f-anuncios .slide-box[hidden]');
-  const algumVazio = Array.from(document.querySelectorAll('#f-anuncios .slide-box:not([hidden]) [name$="_titulo"]')).some(i => !i.value.trim());
-  if (add) add.hidden = !livre || algumVazio || box + imgs >= max;
   const up = document.getElementById('f-upload-slide');
   const cheios = Array.from(document.querySelectorAll('#f-anuncios [name$="_titulo"]')).filter(i => i.value.trim()).length;
   if (up) up.hidden = cheios + imgs >= max;
-}
-function adicionarSlide() {
-  const livre = document.querySelector('#f-anuncios .slide-box[hidden]');
-  if (!livre) return;
-  livre.hidden = false;
-  const t = livre.querySelector('[name$="_titulo"]'); if (t) t.focus();
-  _contaSlides();
 }
 function apagarSlide(btn) {
   const box = btn.closest('.slide-box');

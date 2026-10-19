@@ -139,12 +139,12 @@ PLANO = {
                  'Gorjeta pra equipe, contada à parte',
                  'OK do gerente pra cantada e pedido de namoro',
                  'Promoção relâmpago na TV',
-                 'Até 3 slides de propaganda do bar',
+                 '1 propaganda do bar na TV (texto ou imagem)',
                  'Relatório do que os momentos renderam',
                  'Aviso no celular quando chega pedido',
                  f'Suporte no WhatsApp {SUPORTE_WA_FMT}'],
     'max_tipos': None,        # todos os tipos de pedido
-    'max_anuncios': 3,
+    'max_anuncios': 1,        # 17/10/26 (Diogo): 1 propaganda só, texto ou imagem; quem já tinha mais guarda as dele
     'analytics': True,
     'whatsapp': True,
     'happy_hour': False,      # 17/10/26 (decisão 2): sem happy hour, preço fixo
@@ -5765,7 +5765,7 @@ def painel_toggle_slides_sistema():
 @pubshow_bp.route('/painel/anuncios', methods=['POST'])
 @pubshow_login_required
 def painel_anuncios():
-    """Salva slides de propaganda do bar (até 3)."""
+    """Salva a propaganda de texto do bar (o plano tem 1; bar com mais, do plano antigo, guarda as dele)."""
     import json as _json
     b = _get_business()
     if not b: return redirect('/pubshow/entrar')
