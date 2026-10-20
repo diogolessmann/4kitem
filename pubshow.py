@@ -1724,10 +1724,11 @@ def _limite_atingido(b, ip):
 # Música GRÁTIS: 1 a cada N minutos por CELULAR (16/10/26, Diogo). Pago (furar a fila, momentos) = sem esse limite.
 # Só vale quando o celular mandou o client_id (ip_cliente com '#'): sem ele, no Wi-Fi do bar todo mundo tem o
 # mesmo IP e a trava pegaria a mesa vizinha. 0 desliga (env PUBSHOW_GRATIS_INTERVALO_MIN).
+# 20/10/26 (pedido do Garage): 20 → 8 min.
 try:
-    GRATIS_INTERVALO_MIN = max(0, int(os.environ.get('PUBSHOW_GRATIS_INTERVALO_MIN', '20') or 0))
+    GRATIS_INTERVALO_MIN = max(0, int(os.environ.get('PUBSHOW_GRATIS_INTERVALO_MIN', '8') or 0))
 except (TypeError, ValueError):
-    GRATIS_INTERVALO_MIN = 20
+    GRATIS_INTERVALO_MIN = 8
 
 
 def _gratis_espera_min(b, ip):
@@ -4865,9 +4866,11 @@ def painel():
         efi_pausa = None
     faixa_semana = _faixa_semana(bd['id'])
     musicas_bloqueadas, ultimo_repasse = _painel_bloqueadas_e_repasse(bd, _efi_bar)
+    repasse_pedido = _painel_pedido_repasse(bd, _efi_bar)
     return render_template('pubshow/painel.html',
                            musicas_bloqueadas=musicas_bloqueadas,   # painel por assunto (17/10/26): aba 🎵 Estilo
                            ultimo_repasse=ultimo_repasse,           # aba 💰 Dinheiro ("quando cai na sua conta")
+                           repasse_pedido=repasse_pedido,           # aba 💰 Dinheiro: "Pedir meu repasse" no WhatsApp
                            gratis_min=GRATIS_INTERVALO_MIN,         # aba ✨ Pedidos: "1 música grátis a cada N min"
                            taxa_gorjeta=_taxa_pix_bar(bd, 'gorjeta'),   # o selo da gorjeta = o que o cliente paga
                            # 🔇 modo esporte (outra sessão): a chave só aparece com a coluna E a rota no ar juntas
@@ -4972,6 +4975,49 @@ def _painel_bloqueadas_e_repasse(bd, efi_bar):
     except Exception as ex:
         log.warning('[PUBSHOW] painel: bloqueadas/repasse do bar %s não leram: %s', bd.get('id'), ex)
     return lista, rep
+
+
+def _painel_pedido_repasse(bd, efi_bar):
+    """20/10/26 (Diogo: "como sacar vai ser manual, poderia ter aqui o pedido via WhatsApp, e ele já me manda qual é o
+    bar, o pix do bar e o valor somado do dia X ao Y"): o que o bar tem a receber — a MESMA conta da tela 💸 Repasses
+    (só PIX com prova, ainda não marcado como repassado) — e o link do WhatsApp do suporte com tudo escrito.
+    Bar no split Efí não tem repasse (cai na conta dele). Erro aqui nunca derruba o painel."""
+    if efi_bar:
+        return None
+    from urllib.parse import quote as _quote
+    try:
+        conn = get_pubshow_db()
+        try:
+            a = _utc_txt(_utc_agora())
+            d = _repasse_somar(conn, 'AND repasse_manual_id IS NULL AND datetime(created_at) <= datetime(?)', [a])
+            d = d.get(bd['id']) or {}
+            w, wp = _repasse_where_pago()
+            ini = conn.execute(f'SELECT MIN(created_at) FROM pubshow_pedidos WHERE business_id=? AND repasse_manual_id IS NULL '
+                               f'AND datetime(created_at) <= datetime(?) AND {w}', [bd['id'], a] + wp).fetchone()[0]
+        finally:
+            conn.close()
+        bar, gorj = round(float(d.get('bar') or 0), 2), round(float(d.get('gorj') or 0), 2)
+        total = round(bar + gorj, 2)
+        reais = lambda v: f'R$ {v:.2f}'.replace('.', ',')
+        de, ate = (_repasse_brt(ini, '%d/%m') if ini else ''), _repasse_brt(a, '%d/%m')
+        chave = (bd.get('pix_key') or '').strip()
+        titular = (bd.get('pix_nome_recebedor') or '').strip()
+        linhas = ['💸 Pedido de repasse PubShow',
+                  f'Bar: {bd.get("nome") or ""} (código {bd.get("code") or ""})',
+                  f'Período: {de} a {ate}' if de else f'Até {ate}',
+                  f'Momentos (caixa da casa): {reais(bar)}',
+                  f'Gorjetas da equipe: {reais(gorj)}',
+                  f'Total: {reais(total)}',
+                  f'Chave PIX: {chave}' if chave else 'Chave PIX: ainda não cadastrada no painel']
+        if titular:
+            linhas.append(f'Titular: {titular}')
+        return {'bar': bar, 'gorj': gorj, 'total': total, 'de': de, 'ate': ate,
+                'bar_fmt': reais(bar), 'gorj_fmt': reais(gorj), 'total_fmt': reais(total),
+                'chave': chave, 'titular': titular,
+                'wa_url': f'https://wa.me/{SUPORTE_WA}?text=' + _quote('\n'.join(linhas))}
+    except Exception as ex:
+        log.warning('[PUBSHOW] painel: pedido de repasse do bar %s não montou: %s', bd.get('id'), ex)
+        return None
 
 
 # ── Lote C (16/10/26): "Meu dinheiro" e a conta Efí do bar (só com a Efí ligada pro bar) ─────────────────
@@ -6374,7 +6420,8 @@ def painel_notif():
 def painel_pix():
     b = _get_business()
     pix_key  = request.form.get('pix_key', '').strip()
-    pix_tipo = request.form.get('pix_tipo', 'telefone')
+    # a chave pra receber o repasse (aba 💰 Dinheiro, 20/10/26) vem sem o tipo: o banco reconhece sozinho; mantém o salvo
+    pix_tipo = request.form.get('pix_tipo') or (b['pix_tipo'] if b and b['pix_tipo'] else 'telefone')
     pix_nome = request.form.get('pix_nome', '').strip()
     conn = get_pubshow_db()
     conn.execute(
@@ -6382,6 +6429,9 @@ def painel_pix():
         (pix_key, pix_tipo, pix_nome, b['id'])
     )
     conn.commit(); conn.close()
+    # 20/10/26: a chave pra RECEBER o repasse é salva na aba 💰 Dinheiro e volta pra ela
+    if request.form.get('volta') == 'dinheiro':
+        return redirect('/pubshow/painel?aba=dinheiro#sec-repasse')
     return redirect('/pubshow/painel?aba=config')
 
 

@@ -826,9 +826,36 @@
       {% endif %}
     </div>
     {% elif asaas_ativo %}
+    <div id="sec-repasse">
     <div style="font-size:16px;font-weight:800">🤝 O suporte repassa pro bar</div>
+    {#- 20/10/26 (Diogo): o bar pede o repasse no WhatsApp com bar, chave PIX e valor do período já escritos.
+        Valor = a MESMA conta da tela 💸 Repasses do admin (só PIX com prova, ainda não repassado) #}
+    {% if repasse_pedido %}
+    <div id="a-receber" style="margin-top:6px;font-size:15px">A receber: <strong style="color:var(--green);font-size:18px">{{ repasse_pedido.total_fmt }}</strong>{% if repasse_pedido.gorj %} <span style="color:var(--text2);font-size:13px">({{ repasse_pedido.bar_fmt }} da casa + {{ repasse_pedido.gorj_fmt }} de gorjeta da equipe)</span>{% endif %}{% if repasse_pedido.de %} <span style="color:var(--text2);font-size:13px">· de {{ repasse_pedido.de }} a {{ repasse_pedido.ate }}</span>{% endif %}</div>
+    {% endif %}
     {% if ultimo_repasse %}<div id="ultimo-repasse" style="margin-top:4px">Último repasse: <strong style="color:var(--green)">R$ {{ '%.2f'|format(ultimo_repasse.valor_bar)|replace('.',',') }}</strong>{% if ultimo_repasse.valor_gorjeta %} + R$ {{ '%.2f'|format(ultimo_repasse.valor_gorjeta)|replace('.',',') }} de gorjeta{% endif %} em {{ ultimo_repasse.quando }}.</div>{% endif %}
+    {% if repasse_pedido and repasse_pedido.chave and repasse_pedido.total > 0 %}
+    <a id="pedir-repasse" href="{{ repasse_pedido.wa_url }}" target="_blank" rel="noopener" class="btn-primary" style="display:block;text-align:center;margin-top:12px;text-decoration:none">💸 Pedir meu repasse no WhatsApp</a>
+    {% elif repasse_pedido and repasse_pedido.chave %}
+    <div style="margin-top:8px;color:var(--text2);font-size:13px">Nada a receber agora.</div>
+    {% endif %}
+    <details id="pix-repasse" style="margin-top:10px"{% if not b.pix_key %} open{% endif %}>
+      <summary>💚 Chave PIX pra receber{% if b.pix_key %}: {{ b.pix_key }}{% endif %}</summary>
+      <form method="POST" action="/pubshow/painel/pix" style="display:flex;flex-direction:column;gap:12px;margin-top:8px">
+        <input type="hidden" name="volta" value="dinheiro">
+        <div>
+          <label class="label-sm">Chave PIX</label>
+          <input type="text" name="pix_key" value="{{ b.pix_key or '' }}" placeholder="Telefone, CNPJ, CPF, e-mail ou chave aleatória">
+        </div>
+        <div>
+          <label class="label-sm">Nome do titular da chave</label>
+          <input type="text" name="pix_nome" value="{{ b.pix_nome_recebedor or '' }}" placeholder="Ex: Garage Moto Pub LTDA">
+        </div>
+        <button type="submit" class="btn-primary">💾 Salvar chave</button>
+      </form>
+    </details>
     <a href="https://wa.me/{{ SUPORTE_WA }}?text=Quero+saber+do+repasse+do+PubShow" target="_blank" class="link-abrir">💬 Dúvida? WhatsApp →</a>
+    </div>
     {% else %}
     <div style="font-size:16px;font-weight:800">💚 Cai direto na sua chave PIX</div>
     {% endif %}
