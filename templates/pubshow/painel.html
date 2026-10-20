@@ -113,7 +113,7 @@
   .empty-state{text-align:center;padding:18px;color:var(--text2);font-size:14px}
 
   /* 🎵 Estilo */
-  .estilos{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
+  .estilos{display:grid;grid-template-columns:repeat(6,1fr);gap:10px}
   .estilo-btn{--c:#f97316;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:96px;padding:10px 6px;border-radius:16px;border:2px solid var(--border2);background:var(--surface2);border:2px solid color-mix(in srgb,var(--c) 55%,transparent);background:color-mix(in srgb,var(--c) 16%,var(--surface2));color:var(--text);font-family:inherit;font-size:17px;font-weight:900;cursor:pointer;transition:.15s}
   .estilo-btn .ic{font-size:34px;line-height:1}
   .estilo-btn.ativo{background:var(--c);border-color:#fff;color:#fff;box-shadow:0 0 0 3px color-mix(in srgb,var(--c) 45%,transparent)}
@@ -599,15 +599,21 @@
   {% set _familia = [] %}
   {% for k, e in estilos_bar.items() %}{% if _canal_ef == e.canal or (e.temas and _canal_ef in e.temas) %}{% set _ = _familia.append(k) %}{% endif %}{% endfor %}
   {% set _aceso = _familia[0] if _familia else '' %}
+  {#- 20/10/26 (pedido do Garage): vários acesos = Variado com os temas só deles → acende cada botão cujos temas estão lá #}
+  {% set _acesos = [] %}
+  {% if _canal_ef == 'variado' and _temas %}
+    {% for k, e in estilos_bar.items() %}{% if e.temas and (e.temas|reject('in', _temas)|list|length == 0) %}{% set _ = _acesos.append(k) %}{% endif %}{% endfor %}
+  {% endif %}
+  {% if not _acesos and _aceso %}{% set _ = _acesos.append(_aceso) %}{% endif %}
   <div class="card" id="sec-estilo">
     <div class="card-title">🎵 Estilo do bar <span class="salvo" aria-live="polite"></span></div>
     <div class="estilos">
       {% for k, e in estilos_bar.items() %}
-      <button type="button" class="estilo-btn{% if k == _aceso %} ativo{% endif %}" style="--c:{{ canais_todos.get(e.canal, {}).get('cor', '#f97316') }}" data-estilo="{{ k }}" data-familia="{{ ((e.temas or []) + [e.canal])|join(' ') }}" aria-pressed="{{ 'true' if k == _aceso else 'false' }}" onclick="escolherEstilo(this)"><span class="ic">{{ e.emoji }}</span>{{ e.nome }}</button>
+      <button type="button" class="estilo-btn{% if k in _acesos %} ativo{% endif %}" style="--c:{{ canais_todos.get(e.canal, {}).get('cor', '#f97316') }}" data-estilo="{{ k }}" data-familia="{{ ((e.temas or []) + [e.canal])|join(' ') }}" aria-pressed="{{ 'true' if k in _acesos else 'false' }}" onclick="escolherEstilo(this)"><span class="ic">{{ e.emoji }}</span>{{ e.nome }}</button>
       {% endfor %}
     </div>
     <div id="estilo-no-ar" style="font-size:14px;font-weight:700;color:#fb923c;margin-top:10px"{% if not _extra_ativo %} hidden{% endif %}>📺 No ar: {% if _extra_ativo %}{{ canais[_canal_ef].emoji }} {{ canais[_canal_ef].nome }}{% endif %}</div>
-    {% if _temas and not _preset %}
+    {% if _temas and not _preset and not (_canal_ef == 'variado' and _acesos) %}
     <div id="estilo-antigo" style="font-size:13px;color:var(--text2);margin-top:10px">Hoje a busca do cliente usa os {{ _temas|length }} estilos que você marcou antes. Tocar num botão troca.</div>
     {% endif %}
     <details id="mais-estilos" style="margin-top:6px">
@@ -1491,11 +1497,37 @@ function alternarSempreAberto(cb) {
 
 // Estilo do bar: 1 toque = TV + busca do cliente
 async function escolherEstilo(btn) {
-  const fd = new FormData(); fd.append('estilo', btn.dataset.estilo);
+  const fd = new FormData();
+  const grandeTocado = btn.classList.contains('estilo-btn');
+  if (grandeTocado) {
+    // 20/10/26 (pedido do Garage): os botões grandes acendem vários; 1 toque liga/desliga; Variado (ou nenhum) = tudo
+    const k = btn.dataset.estilo;
+    // no ar um canal de "Mais estilos" (Punk acende o Rock só por família): o toque troca, não soma
+    const noArChip = document.getElementById('estilo-no-ar');
+    const deChip = !!noArChip && !noArChip.hidden;
+    let acesos = deChip ? [] : Array.from(document.querySelectorAll('.estilo-btn.ativo')).map(b => b.dataset.estilo).filter(x => x !== 'variado');
+    if (k === 'variado') acesos = ['variado'];
+    else if (acesos.includes(k)) acesos = acesos.filter(x => x !== k);
+    else acesos.push(k);
+    fd.append('estilos', (acesos.length ? acesos : ['variado']).join(','));
+  } else {
+    fd.append('estilo', btn.dataset.estilo);
+  }
   try {
     const r = await fetch('/pubshow/painel/estilo', {method: 'POST', body: fd, headers: {'X-Requested-With': 'XMLHttpRequest'}});
     const d = await r.json();
     if (!d.ok) throw new Error();
+    if (grandeTocado) {
+      const acesos = new Set(d.acesos || [d.estilo]);
+      document.querySelectorAll('[data-estilo]').forEach(b => {
+        const on = b.classList.contains('estilo-btn') && acesos.has(b.dataset.estilo);
+        b.classList.toggle('ativo', on); b.setAttribute('aria-pressed', on ? 'true' : 'false');
+      });
+      const noAr = document.getElementById('estilo-no-ar'); if (noAr) noAr.hidden = true;
+      const velho = document.getElementById('estilo-antigo'); if (velho) velho.remove();
+      _salvo(btn, true);
+      return;
+    }
     // 17/10/26 (CD3): o chip escolhido acende; o botão grande acende se é ele ou a família dele (Punk → Rock)
     const grande = Array.from(document.querySelectorAll('.estilo-btn')).find(b => b.dataset.estilo === d.estilo)
                 || Array.from(document.querySelectorAll('.estilo-btn')).find(b => (b.dataset.familia || '').split(' ').includes(d.estilo));

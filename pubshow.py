@@ -100,6 +100,7 @@ ESTILOS_BAR = {
     'sertanejo': {'nome': 'Sertanejo', 'emoji': '🤠', 'canal': 'sertanejo', 'temas': ['sertanejo', 'country']},
     'pagode':    {'nome': 'Pagode',    'emoji': '🥁', 'canal': 'pagode',    'temas': ['pagode']},
     'pop':       {'nome': 'Pop',       'emoji': '🎤', 'canal': 'pop',       'temas': ['pop']},
+    'reggae':    {'nome': 'Reggae',    'emoji': '🌴', 'canal': 'reggae',    'temas': ['reggae']},   # pedido do Garage, 20/10/26
     'variado':   {'nome': 'Variado',   'emoji': '🎶', 'canal': 'variado',   'temas': None},
 }
 
@@ -2214,10 +2215,24 @@ def _yid_ok(yid):
     return bool(yid) and re.fullmatch(r'[A-Za-z0-9_-]{11}', yid) is not None
 
 
-def _videos_do_canal(canal_key, limit=500, bloqueados=None):
-    """bloqueados = youtube_ids que o bar baniu ("🚫 Nunca mais") — saem da lista da TV (15/10/26)."""
+def _temas_do_bar(b):
+    """Os temas acesos do bar (temas_habilitados) ou None (= tudo)."""
+    import json as _json
+    try:
+        v = _json.loads(b['temas_habilitados'] or 'null')
+    except Exception:
+        return None
+    return [t for t in v if isinstance(t, str)] or None if isinstance(v, list) else None
+
+
+def _videos_do_canal(canal_key, limit=500, bloqueados=None, temas=None):
+    """bloqueados = youtube_ids que o bar baniu ("🚫 Nunca mais") — saem da lista da TV (15/10/26).
+    temas = estilos acesos do bar (20/10/26, pedido do Garage: "clicar em 3 estilos e tocar só aquilo"): o Variado
+    com vários botões acesos vira a mistura SÓ deles."""
     import random
     cat = CANAIS.get(canal_key, {}).get('cat', canal_key)
+    if canal_key == 'variado' and temas and isinstance(cat, list):
+        cat = [c for c in cat if c in temas] or cat
     conn = get_pubshow_db()
 
     if isinstance(cat, list):
@@ -2229,6 +2244,16 @@ def _videos_do_canal(canal_key, limit=500, bloqueados=None):
         ).fetchall()
         videos = [dict(v) for v in videos]
         random.shuffle(videos)
+        if canal_key == 'variado' and temas:
+            # vários estilos acesos: um de cada estilo, em rodízio (Rock, Reggae, Pop, Rock…). Embaralhar tudo junto
+            # deixava o Rock (200+ clipes) abafar o Reggae (10 no ar em 20/10/26); o estilo pequeno se repete no rodízio.
+            fam = {}
+            for v in videos:
+                fam.setdefault(pubshow_estilo.CANAL_ESTILO.get(v.get('categoria'), v.get('categoria')), []).append(v)
+            grupos = list(fam.values())
+            random.shuffle(grupos)
+            n = max((len(g) for g in grupos), default=0)
+            videos = [g[i % len(g)] for i in range(n) for g in grupos]
         videos = videos[:limit]
     else:
         # Pega um pool dos mais populares e embaralha — a TV nunca começa
@@ -2803,7 +2828,7 @@ def tv(code):
     import json as _json
     canal_key = b['canal_atual'] or 'rock'
     canal     = CANAIS.get(canal_key, CANAIS['rock'])
-    videos    = _videos_do_canal(canal_key, bloqueados=_videos_bloqueados(b))
+    videos    = _videos_do_canal(canal_key, bloqueados=_videos_bloqueados(b), temas=_temas_do_bar(b))
     # 1) Filtra canais pelo plano do bar (grupos_tv)
     canais_plano = _plano_canais_permitidos(dict(b))
     # 2) Filtra pelos temas que o bar habilitou dentro do que o plano permite
@@ -3894,15 +3919,16 @@ def api_trocar_canal(code):
 @pubshow_bp.route('/api/videos/<categoria>')
 def api_videos(categoria):
     # ?bar=<code da TV>: tira os vídeos que o bar baniu (15/10/26 — antes o "Nunca mais" não saía da TV)
-    bloqueados = None
+    bloqueados = temas = None
     _code = request.args.get('bar', '').strip()
     if _code:
         conn = get_pubshow_db()
-        _b = conn.execute('SELECT videos_bloqueados FROM pubshow_businesses WHERE code=?', (_code,)).fetchone()
+        _b = conn.execute('SELECT videos_bloqueados, temas_habilitados FROM pubshow_businesses WHERE code=?', (_code,)).fetchone()
         conn.close()
         if _b:
             bloqueados = _videos_bloqueados(_b)
-    videos = _videos_do_canal(categoria, bloqueados=bloqueados)
+            temas = _temas_do_bar(_b)   # 20/10/26: Variado com vários estilos acesos = mistura só deles
+    videos = _videos_do_canal(categoria, bloqueados=bloqueados, temas=temas)
     return jsonify({'videos': videos, 'total': len(videos)})
 
 
@@ -6241,7 +6267,19 @@ def painel_estilo():
     if not b:
         return (jsonify({'ok': False, 'erro': 'não autorizado'}), 401) if _xhr() else redirect('/pubshow/entrar')
     k = (request.form.get('estilo') or '').strip()
-    if k in ESTILOS_BAR:
+    acesos = None
+    if 'estilos' in request.form:
+        # 20/10/26 (pedido do Garage: "clicar em 3 estilos e vai tocar só aquilo"): os botões grandes acendem
+        # vários. 1 aceso = igual antes; 2 ou mais = Variado SÓ com eles (TV, lista do bar e YouTube); Variado = tudo.
+        acesos = [x for x in dict.fromkeys(s.strip() for s in request.form.get('estilos', '').split(','))
+                  if x in ESTILOS_BAR]
+        if not acesos or 'variado' in acesos:
+            acesos = ['variado']
+        k = acesos[0]
+    if acesos and len(acesos) > 1:
+        canal, k = 'variado', 'variado'
+        temas = list(dict.fromkeys(t for x in acesos for t in (ESTILOS_BAR[x]['temas'] or [])))
+    elif k in ESTILOS_BAR:
         canal, temas = ESTILOS_BAR[k]['canal'], ESTILOS_BAR[k]['temas']
     elif k in _plano_canais_permitidos(dict(b)):
         canal, temas = k, None
@@ -6250,12 +6288,20 @@ def painel_estilo():
     valor = _json.dumps(temas) if temas else None
     conn = get_pubshow_db()
     pubshow_estilo.garantir_coluna(conn)   # 17/10/26: o toque também vale pra busca do YouTube ("aqui só toca rock")
+    _antes = conn.execute('SELECT canal_atual, temas_habilitados FROM pubshow_businesses WHERE id=?', (b['id'],)).fetchone()
     conn.execute('UPDATE pubshow_businesses SET canal_atual=?, temas_habilitados=?, generos_jukebox=?, estilo_yt=? WHERE id=?',
                  (canal, valor, valor, 1 if temas else 0, b['id']))
     conn.commit(); conn.close()
+    # o canal não mudou (Variado → Variado) mas a mistura sim: a TV só troca quando o canal muda, então recarrega
+    # (com pedido tocando, ela espera a música acabar — TVP-1)
+    if _antes and (_antes['canal_atual'] or '') == canal == 'variado' and (_antes['temas_habilitados'] or None) != valor:
+        _bump_tv_bar(b['id'])
     session['pub_canal'] = canal   # a TV aberta troca sozinha pelo /api/status (canal_atual)
     if _xhr():
-        return jsonify({'ok': True, 'estilo': k, 'canal': canal})
+        resp = {'ok': True, 'estilo': k, 'canal': canal}
+        if acesos is not None:
+            resp['acesos'] = acesos
+        return jsonify(resp)
     return redirect('/pubshow/painel?aba=musica')
 
 
