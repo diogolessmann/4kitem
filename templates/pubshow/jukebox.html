@@ -921,6 +921,10 @@ async function jaPaguei() {
       <label id="msg-label" for="inp-msg">Mensagem (opcional)</label>
       <textarea name="mensagem" id="inp-msg" rows="2"
         placeholder="Aparece na tela do bar..." maxlength="80"></textarea>
+      {%- if eleicao %}
+      {#- 18/10/26 (trava eleitoral): véspera e dia da eleição, todo momento espera o OK do gerente #}
+      <div class="dica-nome" id="dica-eleicao" style="color:#fde68a">🗳️ Fim de semana de eleição: o bar confere o recado antes de mostrar na TV. Política não aparece.</div>
+      {%- endif %}
     </div>
 
     {% if asaas_ativo or (b.requer_pix and b.pix_key) %}
@@ -1740,7 +1744,7 @@ function copiarPix() {
   _carregarBibliotecaCompleta();
 })();
 {% set yt_post = request.form.get('youtube_id', '') if request.method == 'POST' else '' %}
-{% if erro and yt_post and tipo_post in ['musica_especifica','musica_externa','flash'] and erro_tipo not in ('musica_na_fila', 'musica_longa') %}
+{% if erro and yt_post and tipo_post in ['musica_especifica','musica_externa','flash'] and erro_tipo not in ('musica_na_fila', 'musica_longa', 'politica_musica') %}
 // 16/10/26 (crítico C2): erro na música (palavrão no nome, 2ª grátis…) — a música escolhida fica a 1 toque
 (function(){
   const v = {id: {{ yt_post[:11]|tojson }}, titulo: {{ (request.form.get('titulo_pedido') or '')[:80]|tojson }}, sub: ''};

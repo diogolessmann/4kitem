@@ -1495,8 +1495,9 @@ def _tipos_disponiveis(b):
 
 def _youtube_liberado(b):
     """Interruptor do BAR (11/09/26): o checkbox "Buscar no YouTube" nos Ajustes manda em TUDO
-    (Escolher, Furar a fila). Desligado = cliente só escolhe do acervo curado."""
-    return 'musica_externa' in _tipos_disponiveis(b)   # plano único: sem trava de plano (15/10/26)
+    (Escolher, Furar a fila). Desligado = cliente só escolhe do acervo curado.
+    18/10/26 (trava eleitoral, C2 do verificador): no dia da votação, desligado em todo bar."""
+    return 'musica_externa' in _tipos_disponiveis(b) and not _dia_da_votacao()   # plano único: sem trava de plano (15/10/26)
 
 
 def _videos_bloqueados(b):
@@ -1528,14 +1529,16 @@ def _validar_video_pedido(b, youtube_id, info=None):
         info = {}
     if youtube_id in _videos_bloqueados(b):
         return 'Essa música foi bloqueada pelo bar. Escolhe outra. 🙏'
+    _vot = _dia_da_votacao()   # 18/10/26 (C3): no domingo, vídeo que entrou no acervo por pedido não conta como curado
     conn = get_pubshow_db()
-    curado = conn.execute('SELECT titulo FROM pubshow_videos WHERE youtube_id=? AND ativo=1', (youtube_id,)).fetchone()
+    curado = conn.execute('SELECT titulo FROM pubshow_videos WHERE youtube_id=? AND ativo=1'
+                          + (" AND COALESCE(subcategoria,'')<>'pedido_publico'" if _vot else ''), (youtube_id,)).fetchone()
     conn.close()
     if curado:
         info['titulo'] = (curado['titulo'] or '').strip()[:80]
         return ''
     if not _youtube_liberado(b):
-        return 'Esse bar só aceita músicas do acervo. Escolhe na lista. 🎵'
+        return MSG_SO_ACERVO_ELEICAO if _vot else 'Esse bar só aceita músicas do acervo. Escolhe na lista. 🎵'
     st, _oj = _oembed_status(youtube_id)
     if st == 200 and isinstance(_oj, dict):
         info['titulo'] = str(_oj.get('title') or '').strip()[:80]
@@ -1548,7 +1551,11 @@ def _validar_video_pedido(b, youtube_id, info=None):
 
 def _precisa_ok(b, tipo):
     """Texto livre de risco (cantada, pedido de namoro) espera o OK do gerente antes de ir pra TV —
-    se o bar deixou a moderação ligada (moderar_ok, default 1)."""
+    se o bar deixou a moderação ligada (moderar_ok, default 1).
+    Trava eleitoral (18/10/26): na véspera e no dia da eleição TODO momento com texto espera o OK,
+    mesmo com a moderação desligada (sem auto-OK). Música não muda: o nome dela passa pelo filtro."""
+    if tipo in TIPOS_PEDIDO and tipo != 'musica' and tipo not in TIPOS_MUSICA_FILA and _janela_eleitoral():
+        return True
     if not TIPOS_PEDIDO.get(tipo, {}).get('ok'):
         return False
     try:
@@ -1600,6 +1607,211 @@ def _tem_palavrao(texto):
     t = _sem_repeticao(t)
     palavras = re.findall(r'[a-z]+', t)
     return any(p in _PALAVROES_N or any(r in p for r in _PALAVROES_RAIZ_N) for p in palavras)
+
+
+# ── Trava eleitoral (18/10/26, pente fino CEL-3; Lote E aprovado pelo Diogo em 16/10) ───────────────
+# 2º turno = domingo 25/10/2026, Flávio Bolsonaro (PL, 22) × Lula (PT, 13): conferido no TSE (notícia de 05/10).
+# Governador só em AC, AM, DF, RN, ES e TO (TSE, 14/10); SC não tem. Lei 9.504: art. 37 §4º (bar é bem de uso
+# comum: multa) e art. 39 §5º (no dia da eleição: crime).
+# 1) Filtro de política, link e telefone: SEMPRE ligado (PUBSHOW_FILTRO=0 desliga junto com o de palavrão, nunca
+#    na janela). Vale pro nome, o recado, o remetente, o texto junto como sai na TV, o título da música e a rotação.
+#    Palavra ambígua só barra junto de um 2º sinal: "Lula Molusco", "Coração Partido", "Flávio da 22", "22 anos" e
+#    "Vai dar PT" passam; "Lula 13", "Flávio presidente", "vota no 22" não.
+# 2) Janela eleitoral (véspera + dia, horário de Brasília; o Railway roda em UTC): todo momento com texto espera o
+#    OK do gerente (_precisa_ok) e o filtro fica estrito ("Lula" sozinho barra). Itens M1-M3 e A2 do verificador
+#    adversarial de 18/10. Datas na env PUBSHOW_DIAS_ELEICAO (AAAA-MM-DD ou DD/MM/AAAA; vazia ou 0 desliga a janela).
+# 3) Dia da votação (o último dia da janela, domingo 25): só toca o acervo curado (sem YouTube e sem vídeo que entrou
+#    por pedido) e o nome da música não aparece na TV (C1-C3 do verificador). Diogo, 19/10: no sábado o YouTube e o
+#    nome seguem como sempre.
+_DIAS_ELEICAO_PADRAO = '2026-10-24,2026-10-25'
+MSG_POLITICA = '🗳️ Política não aparece na TV (lei eleitoral). Troca o nome ou a mensagem. 🙏'
+MSG_POLITICA_MUSICA = '🗳️ Política não toca aqui (lei eleitoral). Escolhe outra música. 🙏'
+MSG_LINK_FONE = 'Sem link e sem telefone na TV, beleza? 🙏 Troca o nome ou a mensagem.'
+MSG_SO_ACERVO_ELEICAO = '🗳️ Hoje é dia de eleição: só as músicas do acervo do bar. Escolhe na lista. 🎵'
+_DIAS_ELEICAO_AVISADO = []
+
+
+def _ler_datas(raw):
+    dias = set()
+    for d in re.split(r'[,;\s]+', raw.strip()):
+        for fmt in ('%Y-%m-%d', '%d/%m/%Y'):
+            try:
+                dias.add(datetime.strptime(d, fmt).date())
+                break
+            except ValueError:
+                pass
+    return dias
+
+
+def _dias_eleicao():
+    raw = os.environ.get('PUBSHOW_DIAS_ELEICAO', _DIAS_ELEICAO_PADRAO)
+    if raw.strip().lower() in ('', '0', 'nao', 'não', 'desligado'):
+        return set()   # janela desligada (a bateria de testes roda com a env vazia)
+    dias = _ler_datas(raw)
+    if not dias:   # M2: env preenchida errada não desliga a trava em silêncio
+        if raw not in _DIAS_ELEICAO_AVISADO:
+            _DIAS_ELEICAO_AVISADO.append(raw)
+            log.error('[PUBSHOW] PUBSHOW_DIAS_ELEICAO=%r sem data válida: usando %s', raw, _DIAS_ELEICAO_PADRAO)
+        dias = _ler_datas(_DIAS_ELEICAO_PADRAO)
+    return dias
+
+
+def _janela_eleitoral(agora_utc=None):
+    """True na véspera e no dia da eleição, no horário de Brasília (UTC-3, sem horário de verão)."""
+    return ((agora_utc or datetime.utcnow()) - timedelta(hours=3)).date() in _dias_eleicao()
+
+
+def _dia_da_votacao(agora_utc=None):
+    """True só no último dia de cada janela (o domingo da votação), no horário de Brasília."""
+    d = ((agora_utc or datetime.utcnow()) - timedelta(hours=3)).date()
+    dias = _dias_eleicao()
+    return d in dias and d + timedelta(days=1) not in dias
+
+
+def _inicio_janela_utc():
+    """00:00 de Brasília do 1º dia da janela em curso, em UTC no formato do banco (created_at)."""
+    dias = _dias_eleicao()
+    d = (datetime.utcnow() - timedelta(hours=3)).date()
+    while d - timedelta(days=1) in dias:
+        d -= timedelta(days=1)
+    return (datetime(d.year, d.month, d.day) + timedelta(hours=3)).strftime('%Y-%m-%d %H:%M:%S')
+
+
+# letra disfarçada que o NFKC não desfaz: russo, grego e as "miúdas" dos geradores de fonte
+_LETRA_DISFARCADA = str.maketrans({
+    'а': 'a', 'о': 'o', 'е': 'e', 'р': 'p', 'с': 'c', 'у': 'y', 'х': 'x', 'к': 'k', 'м': 'm', 'т': 't', 'і': 'i',
+    'л': 'l', 'ѕ': 's', 'ο': 'o', 'α': 'a', 'ι': 'i', 'ρ': 'p', 'ν': 'v', 'ᴀ': 'a', 'ʙ': 'b', 'ᴄ': 'c', 'ᴅ': 'd',
+    'ᴇ': 'e', 'ꜰ': 'f', 'ɢ': 'g', 'ʜ': 'h', 'ɪ': 'i', 'ᴊ': 'j', 'ᴋ': 'k', 'ʟ': 'l', 'ᴍ': 'm', 'ɴ': 'n', 'ᴏ': 'o',
+    'ᴘ': 'p', 'ʀ': 'r', 'ꜱ': 's', 'ᴛ': 't', 'ᴜ': 'u', 'ᴠ': 'v', 'ᴡ': 'w', 'ʏ': 'y', 'ᴢ': 'z'})
+def _pol_lista(*palavras):
+    """As palavras do texto passam por _sem_repeticao ("nosso" → "noso"): a lista passa pela mesma regra."""
+    return frozenset(_sem_repeticao(p) for p in palavras)
+
+
+_POL_FORTE = _pol_lista('bolsonaro', 'bolsonarista', 'bolsonaristas', 'bolsominion', 'bolsominions', 'bozonaro',
+                        'petista', 'petistas', 'petralha', 'petralhas', 'lulista', 'lulistas', 'lulopetista', 'fazol',
+                        'fazoele', 'lulala', 'lulalivre', 'foralula', 'forabolsonaro', 'lulapresidente',
+                        'flaviopresidente')
+_POL_RAIZ = ('bolsonar', 'bolsonaz', 'bolsomin', 'petralh', 'lulopet', 'luladr')   # dentro de 1 palavra ou de 2 juntas
+# nome → número da chapa: sozinho NÃO barra, e com o número do outro também não ("Flávio 13" é só um Flávio)
+_POL_NOME = {_sem_repeticao(k): v for k, v in (('lula', '13'), ('alckmin', '13'), ('inacio', '13'), ('molusco', '13'),
+                                               ('flavio', '22'), ('messias', '22'), ('capitao', '22'), ('bozo', '22'))}
+_POL_NOME_ESTRITO = _pol_lista('lula', 'alckmin')   # na janela barra sozinho ("Flávio" é nome comum: nunca)
+_POL_NUM = frozenset(('13', '22'))
+_POL_CARGO = _pol_lista('presidente', 'presidencia', 'governador', 'senador', 'deputado', 'candidato', 'candidata',
+                        'eleicao', 'eleicoes', 'eleito', 'eleita', 'reeleicao', 'reeleito', 'turno', 'urna', 'urnas',
+                        'campanha', 'partido', 'jingle', 'mito', 'pt', 'pl')   # + nome ou número
+_POL_CARGO_CLUBE = _pol_lista('presidente', 'presidencia', 'governador')   # "presidente do motoclube" não é política
+_POL_VOTO = _pol_lista('vota', 'vote', 'votem', 'votar', 'voto', 'votei', 'votando', 'neles')   # + nome ou número
+_POL_URNA = _pol_lista('aperta', 'aperte', 'apertem', 'digita', 'digite', 'confirma', 'confirme', 'confirmem',
+                       'vai', 'fecha', 'fechado', 'fechamos')   # só + número ("Vai de 22", "Fecha com o 13")
+_POL_LIGA = _pol_lista('o', 'a', 'no', 'na', 'em', 'pro', 'pra', 'de', 'do', 'da', 'e', 'eh', 'n', 'numero', 'num', 'nr',
+                       'nosso', 'nossa', 'meu', 'minha', 'seu', 'sua', 'teu', 'tua')
+# "13"/"22" que é mesa ("Flávio da 22"), idade, hora, preço ou data não é número de candidato
+_POL_NUM_NEUTRO_ANTES = _pol_lista('mesa', 'mesas', 'casa', 'apto', 'ap', 'quarto', 'camisa', 'sala', 'box', 'dia',
+                                   'as', 'ate', 'da', 'na')
+_POL_NUM_NEUTRO_DEPOIS = _pol_lista('anos', 'ano', 'aninhos', 'primaveras', 'reais', 'real', 'pila', 'conto', 'contos',
+                                    'cerveja', 'cervejas', 'chopp', 'chopps', 'chope', 'litros', 'min', 'minutos', 'h',
+                                    'hs', 'horas', 'pessoas', 'km', 'kg', 'mesas', 'meses', 'dias')
+_MESES = _pol_lista('janeiro', 'fevereiro', 'marco', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro',
+                    'outubro', 'novembro', 'dezembro')
+_POL_FRASES = re.compile(r'\bfaz o (?:l|ele)\b|\blula la\b|\blula livre\b|\bfora (?:lula|flavio|bolsonaro|alckmin|pt|pl)\b'
+                         r'|\bpartido (?:liberal|dos trabalhadores)\b|\bnove dedos\b')
+_POL_HASHTAG = re.compile(r'#\s*(?:lula|alckmin|fora\s*(?:lula|flavio|bolsonaro|pt|pl)|flavio\s*(?:presidente|22)'
+                          r'|eles?\s*(?:nao|sim))')
+_POL_PAR = ({'num', 'nome'}, {'num', 'cargo'}, {'num', 'voto'}, {'num', 'urna'}, {'nome', 'cargo'}, {'nome', 'voto'})
+
+
+def _pol_normalizar(texto):
+    import unicodedata
+    t = unicodedata.normalize('NFKC', str(texto)).lower().translate(_LETRA_DISFARCADA)
+    if any(ord(ch) >= 0x1F130 for ch in t):   # 🅱🅾🅻 e letra de bandeira viram letra
+        t = ''.join(next((chr(97 + ord(ch) - i) for i in (0x1F130, 0x1F150, 0x1F170, 0x1F1E6) if i <= ord(ch) < i + 26), ch)
+                    for ch in t)
+    t = unicodedata.normalize('NFKD', t)
+    # some acento, letra invisível (espaço de largura zero, hífen invisível) e o "⃣" do emoji de número: "2️⃣2️⃣" = 22
+    t = ''.join(ch for ch in t if unicodedata.category(ch) not in ('Mn', 'Me', 'Cf'))
+    t = re.sub(r'\bvinte e dois\b', '22', re.sub(r'\btreze\b', '13', t))
+    t = re.sub(r'(?<![\d,])(\d)[\s.\-]+(\d)(?![\d,])', r'\1\2', t)   # "Vota 1 3", "Aperta 1-3" = 13
+    # letras soltas viram 1 palavra: "B O L S O N A R O", "L.U.L.A" (igual ao filtro de palavrão)
+    return re.sub(r'(?<![a-z0-9])(?:[a-z][\s.\-_*]+){2,}[a-z](?![a-z0-9])', lambda m: re.sub(r'[^a-z]', '', m.group()), t)
+
+
+def _pol_palavras(t):
+    """Palavras e números separados: "lula13" → lula 13; "b0ls0nar0" e "lul4" → bolsonaro, lula; "22h" → 22 h."""
+    out = []
+    for tok in re.findall(r'[a-z0-9@$]+', re.sub(r'(?<![a-z0-9])@', ' ', t)):   # "@lula13" = lula 13
+        if not re.fullmatch(r'[a-z]+\d{2,}|\d+[a-z]+', tok) and re.search(r'[a-z@$]', tok):
+            tok = tok.translate(_LEET)
+        out.extend(p if p.isdigit() else _sem_repeticao(p) for p in re.findall(r'[a-z]+|\d+', tok))
+    return out
+
+
+def _tem_politica(texto, estrito=False):
+    """True se o texto (nome, recado, título) é propaganda política. estrito = janela eleitoral."""
+    if not texto or (not estrito and not _filtro_ligado()):
+        return False
+    t = _pol_normalizar(texto)
+    ps = _pol_palavras(t)
+    if any(p in _POL_FORTE or any(r in p for r in _POL_RAIZ) for p in ps):
+        return True
+    if any(r in a + b for a, b in zip(ps, ps[1:]) for r in _POL_RAIZ):   # "Bolso naro", "BOLSO-NARO"
+        return True
+    if estrito and any(p in _POL_NOME_ESTRITO for p in ps):
+        return True
+    junto = ' '.join(ps)
+    if _POL_FRASES.search(junto) or _POL_HASHTAG.search(t):
+        return True
+    if 'jingle' in ps and not any(p.startswith('bel') or p == 'jangle' for p in ps):   # "Jingle Bells" passa
+        return True
+    papeis = []   # (papel, número) de cada palavra que conta, pulando as de ligação ("vota NO NOSSO 22" = vota 22)
+    for i, p in enumerate(ps):
+        if p in _POL_LIGA:
+            continue
+        prox = ps[i + 1] if i + 1 < len(ps) else ''
+        if p in _POL_NUM:
+            neutro = ((i > 0 and ps[i - 1] in _POL_NUM_NEUTRO_ANTES) or prox in _POL_NUM_NEUTRO_DEPOIS
+                      or (prox == 'de' and i + 2 < len(ps) and ps[i + 2] in _MESES))   # "13 de outubro"
+            papeis.append(None if neutro else ('num', p))
+        elif p in _POL_NOME:
+            papeis.append(('nome', _POL_NOME[p]))
+        elif p in _POL_CARGO_CLUBE and prox in ('do', 'da') and ps[i + 2:i + 3] != ['brasil']:
+            papeis.append(None)   # "Flávio, presidente do motoclube"
+        else:
+            r = ('cargo' if p in _POL_CARGO else 'voto' if p in _POL_VOTO else 'urna' if p in _POL_URNA else None)
+            papeis.append((r, None) if r else None)
+
+    def _par(a, b):
+        if not a or not b or {a[0], b[0]} not in _POL_PAR:
+            return False
+        return a[1] == b[1] if {a[0], b[0]} == {'num', 'nome'} else True
+
+    if any(_par(a, b) for a, b in zip(papeis, papeis[1:])):
+        return True
+    if ' dia 25 ' in f' {junto} ' and any(a and a[0] == 'num' for a in papeis):   # "Dia 25 é 13"
+        return True
+    # verbo de voto chega no número com 1 palavra no meio: "vote consciente 22", "bora votar galera 13"
+    return any(a and c and a[0] in ('voto', 'urna') and c[0] == 'num' for a, c in zip(papeis, papeis[2:]))
+
+
+def _texto_politico(*campos):
+    """Cada campo e o texto junto, como a TV mostra (A2: "Ana" + "Aperta o" + "de 13" separados passavam)."""
+    est = _janela_eleitoral()
+    return any(_tem_politica(x, est) for x in (*campos, ' '.join(c for c in campos if c)))
+
+
+_FONE = re.compile(r'(?<!\d)(?:\+?\s?55[\s.\-]?)?\(?\d{2}\)?[\s.\-/_]?9?\d{4}[\s.\-/_]?\d{4}(?!\d)'   # com DDD
+                   r'|(?<!\d)9\d{4}[\s.\-/_]?\d{4}(?!\d)')                                       # celular sem DDD
+
+
+def _tem_link_ou_fone(texto):
+    """Link (http, www, algo.com) ou telefone (celular de 9 dígitos, ou com DDD) no que vai pra TV.
+    "1994 - 2024 - 30 anos" e "mesas 10 11 12 13" não são telefone (M3 do verificador)."""
+    if not texto or not _filtro_ligado():
+        return False
+    t = _pol_normalizar(texto)
+    return bool(re.search(r'https?:|www\.|\b[a-z0-9-]{2,}\.(?:com|net|org|io|me|ly|gl|app|xyz|site|online|info|tv|link'
+                          r'|bet|vip)\b|\b[a-z0-9-]{2,}\.br\b', t) or _FONE.search(t))
 
 
 def _categoria_do_bar(b):
@@ -2267,7 +2479,11 @@ def _videos_do_canal(canal_key, limit=500, bloqueados=None, temas=None):
         random.shuffle(videos)
 
     conn.close()
-    videos = [v for v in videos if _yid_ok(v.get('youtube_id'))]
+    # 18/10/26 (trava eleitoral): jingle que entrou no acervo por pedido antigo não toca na rotação; na janela, filtro
+    # estrito; no domingo, nada que entrou por pedido de cliente (C3 do verificador: o título engana)
+    _jan, _vot = _janela_eleitoral(), _dia_da_votacao()
+    videos = [v for v in videos if _yid_ok(v.get('youtube_id')) and not _tem_politica(v.get('titulo'), _jan)
+              and not (_vot and v.get('subcategoria') == 'pedido_publico')]
     if bloqueados:
         _ban = set(bloqueados)
         videos = [v for v in videos if v.get('youtube_id') not in _ban]
@@ -3061,6 +3277,10 @@ def jukebox(token, pix_id=None):
                 erro = 'Informe o nome do aniversariante.' if tipo == 'parabens' else 'Informe seu nome.'
             elif _tem_palavrao(nome_cliente) or _tem_palavrao(mensagem) or _tem_palavrao(remetente):
                 erro = 'Sem palavrão, beleza? 😉 Troca o nome ou a mensagem, que aparecem na TV.'
+            elif _texto_politico(nome_cliente, mensagem, remetente):
+                erro = MSG_POLITICA   # 18/10/26: trava eleitoral (vale pro grátis e pro pago, antes de qualquer PIX)
+            elif any(_tem_link_ou_fone(x) for x in (nome_cliente, mensagem, remetente)):
+                erro = MSG_LINK_FONE
             elif tipo in ('musica_especifica', 'musica_externa', 'flash') and not youtube_id:
                 erro = 'Selecione uma música antes de confirmar.'
             elif tipo == 'cantada' and not mensagem:
@@ -3084,6 +3304,8 @@ def jukebox(token, pix_id=None):
                 erro_tipo = 'gratis_espera'   # leigo A4: a tela troca o "tentar de novo" pelo caminho do furar a fila
             elif youtube_id and (_erro_yt := _validar_video_pedido(b, youtube_id, _info_yt := {})):
                 erro = _erro_yt
+            elif youtube_id and _tem_politica(_info_yt.get('titulo') or titulo_pedido, _janela_eleitoral()):
+                erro, erro_tipo = MSG_POLITICA_MUSICA, 'politica_musica'   # 18/10/26: jingle não toca (acervo ou YouTube)
             else:
                 # Título = o do acervo/oEmbed (15/10/26); o do formulário só se o YouTube não respondeu.
                 # Sem vídeo não há título (antes um pedido 'musica' levava texto livre pro ranking da TV).
@@ -3473,6 +3695,7 @@ def jukebox(token, pix_id=None):
                            pix_url=(f'/pubshow/jukebox/{b["jukebox_token"] or b["code"]}/pix/{pix_pendente["pedido_id"]}'
                                     if pix_pendente else ''),
                            erro_tipo=erro_tipo, gratis_min=GRATIS_INTERVALO_MIN,   # crítico leigo A4/M3/M4
+                           eleicao=_janela_eleitoral(),   # 18/10/26: aviso "o bar confere antes da TV" nos momentos
                            pedido_id_sucesso=locals().get('pedido_id_sucesso')), status_http
 
 
@@ -3554,7 +3777,10 @@ _CAMPOS_PEDIDO_TV = ('id', 'tipo', 'nome_cliente', 'mensagem', 'youtube_id', 'ti
 def _pedido_para_tv(row):
     if not row:
         return None
-    return {k: row[k] for k in _CAMPOS_PEDIDO_TV}
+    d = {k: row[k] for k in _CAMPOS_PEDIDO_TV}
+    if (d['tipo'] == 'musica' or d['tipo'] in TIPOS_MUSICA_FILA) and _dia_da_votacao():
+        d['nome_cliente'] = ''   # 18/10/26 (C1): no domingo o nome livre da música não vai pra TV (ela mostra "alguém")
+    return d
 
 
 # ── Sinal da TV + tutorial do dono (15/10/26, B6) ──────────────────────────────
@@ -3661,6 +3887,16 @@ def api_status(code):
     if request.args.get('teste') != '1':   # 16/10/26 (V3-02): TV aberta no celular pelo "Testar" não é TV ligada
         _som = request.args.get('som')
         _marcar_tv_vista(conn, b, som=int(_som) if _som in ('0', '1') else None)
+
+    if _janela_eleitoral():
+        # 18/10/26 (trava eleitoral, M1): recado que entrou na fila ANTES da janela e ainda não passou na TV vai pro OK
+        _ini, _mus = _inicio_janela_utc(), ('musica', 'musica_especifica', 'musica_externa', 'flash', 'vip')
+        _q = (" FROM pubshow_pedidos WHERE business_id=? AND status='pendente' AND created_at < ? "
+              "AND tipo NOT IN (?,?,?,?,?)")
+        if conn.execute('SELECT 1' + _q + ' LIMIT 1', (b['id'], _ini, *_mus)).fetchone():
+            conn.execute("UPDATE pubshow_pedidos SET status='aguardando_ok' WHERE id IN (SELECT id" + _q + ')',
+                         (b['id'], _ini, *_mus))
+            conn.commit()
 
     # Pedido especial — aparece como overlay na TV (parabéns, dedicatória etc.)
     # Só conta pedidos confirmados (pendente), nunca aguardando_pix
@@ -3875,7 +4111,8 @@ def api_pedido_exibido(pedido_id):
     # Acervo que cresce com o uso (11/09/26): música do YouTube que TOCOU na TV entra no acervo,
     # na categoria do canal que estava no ar. O cardápio vira o que o público daquele bar pede.
     _yid = (pedido['youtube_id'] or '').strip()
-    if ok and _yid_ok(_yid):   # 11 letras, igual ao POST (16/10/26, V4-01; antes 6 a 20)
+    # 18/10/26 (trava eleitoral): título político não entra no acervo dos outros bares
+    if ok and _yid_ok(_yid) and not _tem_politica(pedido['titulo_pedido']):   # 11 letras, igual ao POST (16/10/26, V4-01)
         _cat = SHOWS_FORA.get(pedido['categoria'], pedido['categoria'])   # 17/10/26: pedido feito no show → o clipe
         _cat = _cat if _cat in CANAIS else 'rock'
         _seg = _YT_DURACAO.get(_yid) or 180       # 17/10/26: a duração real que a busca viu (antes: 180 fixo)
@@ -4872,6 +5109,7 @@ def painel():
                            ultimo_repasse=ultimo_repasse,           # aba 💰 Dinheiro ("quando cai na sua conta")
                            repasse_pedido=repasse_pedido,           # aba 💰 Dinheiro: "Pedir meu repasse" no WhatsApp
                            gratis_min=GRATIS_INTERVALO_MIN,         # aba ✨ Pedidos: "1 música grátis a cada N min"
+                           eleicao=_janela_eleitoral(),             # 18/10/26: 🛡️ "todo recado passa por aqui" (24-25/10)
                            taxa_gorjeta=_taxa_pix_bar(bd, 'gorjeta'),   # o selo da gorjeta = o que o cliente paga
                            # 🔇 modo esporte (outra sessão): a chave só aparece com a coluna E a rota no ar juntas
                            rota_modo_esporte=_rota_modo_esporte(),

@@ -501,6 +501,13 @@
       <div id="vol-tv-msg" style="font-size:13px;color:var(--text2);margin-top:2px;min-height:18px"></div>
     </div>
   </div>
+  {%- if eleicao %}
+  {#- 18/10/26 (trava eleitoral): na véspera e no dia da eleição TODO recado pago espera o OK abaixo #}
+  <div class="card" id="sec-eleicao" style="border-color:rgba(251,191,36,.5);padding:12px 14px;font-size:14px;line-height:1.5;color:#fde68a">
+    🗳️ <strong>Fim de semana de eleição:</strong> todo recado pago (salve, brinde, parabéns…) espera o teu ✅ aqui antes de ir pra TV.
+    Se falar de política, candidato ou número de urna: 🚫 Não mostrar.
+  </div>
+  {%- endif %}
 
   <!-- 🛡️ Precisa do seu OK — cantada / pedido de namoro pagos, antes de ir pra TV (11/09/26) -->
   {% if aguardando_ok %}
@@ -513,7 +520,7 @@
       <span style="font-size:22px">{{ t.get('emoji','💬') }}</span>
       <div style="flex:1;min-width:0">
         <div style="font-size:14px;font-weight:700">{{ p.nome_cliente }} <span style="font-size:12px;color:var(--text2);font-weight:600">· {{ t.get('nome', p.tipo) }} · R$ {{ '%.2f'|format(p.valor or 0)|replace('.',',') }}{% if efi and efi_ok_info and efi_ok_info.get(p.id) %} (o cliente pagou {{ brl_cent(efi_ok_info[p.id].valor_cent) }}){% endif %}</span></div>
-        <div style="font-size:15px;color:#fde68a;margin-top:2px;word-break:break-word">“{{ p.mensagem }}”</div>
+        {% if p.mensagem %}<div style="font-size:15px;color:#fde68a;margin-top:2px;word-break:break-word">“{{ p.mensagem }}”</div>{% endif %}
       </div>
       <div class="ok-botoes" style="display:flex;gap:6px;flex-shrink:0">
         <form method="POST" action="/pubshow/painel/pedido/{{ p.id }}/aprovar" style="margin:0">
