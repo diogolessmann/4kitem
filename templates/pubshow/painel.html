@@ -113,7 +113,7 @@
   .empty-state{text-align:center;padding:18px;color:var(--text2);font-size:14px}
 
   /* 🎵 Estilo */
-  .estilos{display:grid;grid-template-columns:repeat(6,1fr);gap:10px}
+  .estilos{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}   /* 20/10/26: 8 botões, 2 linhas */
   .estilo-btn{--c:#f97316;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:96px;padding:10px 6px;border-radius:16px;border:2px solid var(--border2);background:var(--surface2);border:2px solid color-mix(in srgb,var(--c) 55%,transparent);background:color-mix(in srgb,var(--c) 16%,var(--surface2));color:var(--text);font-family:inherit;font-size:17px;font-weight:900;cursor:pointer;transition:.15s}
   .estilo-btn .ic{font-size:34px;line-height:1}
   .estilo-btn.ativo{background:var(--c);border-color:#fff;color:#fff;box-shadow:0 0 0 3px color-mix(in srgb,var(--c) 45%,transparent)}
@@ -161,7 +161,7 @@
   @media(max-width:767px){
     nav{padding:0 16px}
     .main{padding:16px 16px calc(96px + env(safe-area-inset-bottom))}
-    .estilos{grid-template-columns:repeat(3,1fr)}
+    .estilos{grid-template-columns:repeat(4,minmax(0,1fr))}
     .receita-num{font-size:20px!important}
     .painel-tabs{position:fixed;left:0;right:0;bottom:0;top:auto;margin:0;padding:6px 4px calc(6px + env(safe-area-inset-bottom));gap:2px;background:rgba(19,19,31,.97);border-top:1px solid var(--border2);z-index:60}
     .painel-tab{flex-direction:column;gap:3px;padding:6px 2px;min-height:58px;border:none;background:none;border-radius:10px;font-size:12px;font-weight:700;transition:none;-webkit-tap-highlight-color:transparent}
@@ -225,6 +225,9 @@
     .momento-nome{font-size:17px}
     .estilo-btn{font-size:16px}
   }
+  /* 20/10/26: celular = 2 por linha (nome inteiro, dedo grande; "Sertanejo" e "Comédia" não empurram a tela) */
+  @media(max-width:480px){ .estilos{grid-template-columns:repeat(2,minmax(0,1fr))} }
+  #estilo-no-ar{font-size:15px;font-weight:800;color:#fb923c;margin-top:12px}
 </style>
 </head>
 <body>
@@ -619,39 +622,36 @@
       <button type="button" class="estilo-btn{% if k in _acesos %} ativo{% endif %}" style="--c:{{ canais_todos.get(e.canal, {}).get('cor', '#f97316') }}" data-estilo="{{ k }}" data-familia="{{ ((e.temas or []) + [e.canal])|join(' ') }}" aria-pressed="{{ 'true' if k in _acesos else 'false' }}" onclick="escolherEstilo(this)"><span class="ic">{{ e.emoji }}</span>{{ e.nome }}</button>
       {% endfor %}
     </div>
-    <div id="estilo-no-ar" style="font-size:14px;font-weight:700;color:#fb923c;margin-top:10px"{% if not _extra_ativo %} hidden{% endif %}>📺 No ar: {% if _extra_ativo %}{{ canais[_canal_ef].emoji }} {{ canais[_canal_ef].nome }}{% endif %}</div>
+    {#- 20/10/26: a linha diz SEMPRE o que a TV toca (a mistura: "🎸 Rock + 🌴 Reggae"); data-extra = canal antigo que
+        não é botão (Skate, Punk…): aí o 1º toque num botão troca em vez de somar #}
+    <div id="estilo-no-ar" data-extra="{{ '1' if _extra_ativo else '' }}">📺 No ar: {{ no_ar_txt }}</div>
     {% if _temas and not _preset and not (_canal_ef == 'variado' and _acesos) %}
     <div id="estilo-antigo" style="font-size:13px;color:var(--text2);margin-top:10px">Hoje a busca do cliente usa os {{ _temas|length }} estilos que você marcou antes. Tocar num botão troca.</div>
     {% endif %}
-    <details id="mais-estilos" style="margin-top:6px">
-      <summary class="summary-btn">➕ Mais estilos</summary>
-      <div style="font-size:13px;color:var(--text2)">Só muda a TV.</div>
-      <div class="estilos-mais">
-        {% for key, c in canais.items() if key not in _canais_main %}
-        <button type="button" class="estilo-chip{% if _canal_ef == key %} ativo{% endif %}" data-estilo="{{ key }}" aria-pressed="{{ 'true' if _canal_ef == key else 'false' }}" onclick="escolherEstilo(this)">{{ c.emoji }} {{ c.nome }}</button>
-        {% endfor %}
-      </div>
-      {#- 🔇 Modo esporte (sessão "modo esporte", 17/10/26): a TV muda os vídeos que não são música (Sport, Viral…) e o
-          som sai da caixa do bar; pedido de música da fila continua com som. DESLIGADO por padrão. Mora junto dos canais
-          de esporte (crítico leigo M2: é ajuste de uma vez e o 🔇 do Mudo no Controle confundia). Só aparece com a
-          coluna (migração) E a rota no ar: coluna sem rota = chave que sempre falha (B9) #}
-      {% if 'tv_mudo_sem_musica' in b and rota_modo_esporte %}
-      <div class="linha-chave" id="sec-modo-esporte" style="border-top:1px solid var(--border);margin-top:12px;padding-bottom:0">
-        <div>
-          <div class="rot">🔇 Vídeo sem música → sem som</div>
-          <div class="sub">Esporte e vídeos ficam mudos; o som sai da caixa do bar.</div>
-        </div>
-        <label class="sw"><input type="checkbox" id="tv-mudo-sem-musica" aria-label="Vídeo sem música fica sem som"{% if b.tv_mudo_sem_musica %} checked{% endif %} onchange="salvarMudoSemMusica(this)"><span class="sw-t"></span></label>
-      </div>
-      {% endif %}
-    </details>
   </div>
+
+  {#- 🔇 Modo esporte (sessão "modo esporte", 17/10/26): a TV muda os vídeos que não são música (Esporte, Comédia…) e o
+      som sai da caixa do bar; pedido de música da fila continua com som. DESLIGADO por padrão (o ⚽ não liga sozinho).
+      20/10/26: saiu de dentro do "Mais estilos" (o dono não abre) e virou cartão visível embaixo do Estilo do bar.
+      Só aparece com a coluna (migração) E a rota no ar: coluna sem rota = chave que sempre falha (B9) #}
+  {% if 'tv_mudo_sem_musica' in b and rota_modo_esporte %}
+  <div class="card" id="sec-modo-esporte">
+    <div class="linha-chave" style="padding:0">
+      <div>
+        <div class="rot">🔇 Vídeo sem música → sem som <span class="salvo" aria-live="polite"></span></div>
+        <div class="sub">Esporte e vídeos ficam mudos; o som sai da caixa do bar.</div>
+      </div>
+      <label class="sw"><input type="checkbox" id="tv-mudo-sem-musica" aria-label="Vídeo sem música fica sem som"{% if b.tv_mudo_sem_musica %} checked{% endif %} onchange="salvarMudoSemMusica(this)"><span class="sw-t"></span></label>
+    </div>
+  </div>
+  {% endif %}
 
   <div class="card" id="sec-youtube">
     <div class="linha-chave" style="padding:0">
       <div>
         <div class="rot">🌐 Pedir do YouTube <span class="salvo" aria-live="polite"></span></div>
-        <div class="sub">Ligado: qualquer música. Desligado: só a lista do bar.</div>
+        {#- 20/10/26: com estilos acesos o YouTube também só acha eles (antes dizia "qualquer música" sempre) #}
+        <div class="sub" id="yt-sub">{{ yt_txt }}</div>
       </div>
       <label class="sw"><input type="checkbox" name="tipos_ativos" value="musica_externa" form="f-config" aria-label="Deixar pedir qualquer música do YouTube"{% if 'musica_externa' not in bloqueados_parsed %} checked{% endif %}><span class="sw-t"></span></label>
     </div>
@@ -1530,20 +1530,33 @@ function alternarSempreAberto(cb) {
 }
 
 // Estilo do bar: 1 toque = TV + busca do cliente
+let _seqEstilo = 0;
+function _acendeEstilos(acesos) {
+  document.querySelectorAll('.estilo-btn').forEach(b => {
+    const on = acesos.has(b.dataset.estilo);
+    b.classList.toggle('ativo', on); b.setAttribute('aria-pressed', on ? 'true' : 'false');
+  });
+}
 async function escolherEstilo(btn) {
   const fd = new FormData();
   const grandeTocado = btn.classList.contains('estilo-btn');
+  let antes = null, seq = 0;
   if (grandeTocado) {
     // 20/10/26 (pedido do Garage): os botões grandes acendem vários; 1 toque liga/desliga; Variado (ou nenhum) = tudo
     const k = btn.dataset.estilo;
-    // no ar um canal de "Mais estilos" (Punk acende o Rock só por família): o toque troca, não soma
-    const noArChip = document.getElementById('estilo-no-ar');
-    const deChip = !!noArChip && !noArChip.hidden;
-    let acesos = deChip ? [] : Array.from(document.querySelectorAll('.estilo-btn.ativo')).map(b => b.dataset.estilo).filter(x => x !== 'variado');
+    // no ar um canal antigo que não é botão (Skate acende o Esporte só por família): o toque troca, não soma
+    const noAr = document.getElementById('estilo-no-ar');
+    const deChip = !!noAr && noAr.dataset.extra === '1';
+    antes = new Set(Array.from(document.querySelectorAll('.estilo-btn.ativo')).map(b => b.dataset.estilo));
+    let acesos = deChip ? [] : Array.from(antes).filter(x => x !== 'variado');
     if (k === 'variado') acesos = ['variado'];
     else if (acesos.includes(k)) acesos = acesos.filter(x => x !== k);
     else acesos.push(k);
-    fd.append('estilos', (acesos.length ? acesos : ['variado']).join(','));
+    if (!acesos.length) acesos = ['variado'];
+    _acendeEstilos(new Set(acesos));      // na hora: o próximo toque já parte daqui
+    if (noAr) noAr.dataset.extra = '';
+    fd.append('estilos', acesos.join(','));
+    seq = ++_seqEstilo;
   } else {
     fd.append('estilo', btn.dataset.estilo);
   }
@@ -1552,12 +1565,12 @@ async function escolherEstilo(btn) {
     const d = await r.json();
     if (!d.ok) throw new Error();
     if (grandeTocado) {
-      const acesos = new Set(d.acesos || [d.estilo]);
-      document.querySelectorAll('[data-estilo]').forEach(b => {
-        const on = b.classList.contains('estilo-btn') && acesos.has(b.dataset.estilo);
-        b.classList.toggle('ativo', on); b.setAttribute('aria-pressed', on ? 'true' : 'false');
-      });
-      const noAr = document.getElementById('estilo-no-ar'); if (noAr) noAr.hidden = true;
+      if (seq === _seqEstilo) {             // resposta de um toque antigo não desfaz o toque novo
+        _acendeEstilos(new Set(d.acesos || [d.estilo]));
+        const noAr = document.getElementById('estilo-no-ar');
+        if (noAr && d.no_ar) noAr.textContent = '📺 No ar: ' + d.no_ar;
+        const yt = document.getElementById('yt-sub'); if (yt && d.yt_txt) yt.textContent = d.yt_txt;
+      }
       const velho = document.getElementById('estilo-antigo'); if (velho) velho.remove();
       _salvo(btn, true);
       return;
@@ -1577,7 +1590,10 @@ async function escolherEstilo(btn) {
     }
     const velho = document.getElementById('estilo-antigo'); if (velho) velho.remove();
     _salvo(btn, true);
-  } catch (e) { _salvo(btn, false); }
+  } catch (e) {
+    if (grandeTocado && antes && seq === _seqEstilo) _acendeEstilos(antes);   // não salvou: volta como estava
+    _salvo(btn, false);
+  }
 }
 // 🚫 Músicas bloqueadas: "Liberar" tira da lista sem recarregar
 async function liberarMusica(ev, form) {
