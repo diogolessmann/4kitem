@@ -6428,9 +6428,13 @@ def saas_admin():
         pubshow_total_videos  = 0
     # PUBSHOW — Lote C (16/10/26): pagamento Efí com split. Receita REAL (conta 'plataforma' do livro-caixa:
     # taxa de serviço + mensalidade), "bares me devem" (estorno no split) e devoluções travadas.
-    # Só com PUBSHOW_GATEWAY=efi; no padrão 'asaas' fica None e a aba fica igual.
+    # Só com a Efí ligada (PUBSHOW_EFI_BARES com algum bar e sem PUBSHOW_GATEWAY=asaas); senão None e a aba fica igual.
     pubshow_efi = None
-    if (os.environ.get('PUBSHOW_GATEWAY') or 'asaas').strip().lower() == 'efi':
+    try:
+        from pubshow import _efi_ligado as _ps_efi_ligado, _efi_para as _ps_efi_para
+    except Exception:
+        _ps_efi_ligado = _ps_efi_para = None
+    if _ps_efi_ligado is not None and _ps_efi_ligado():
         try:
             import pubshow_pay as _ps_pay
             from pubshow_db import get_pubshow_db as _get_ps_db
@@ -6442,7 +6446,7 @@ def saas_admin():
                 _ps_pausas = []
                 for _row in [dict(r) for r in psconn.execute(
                         'SELECT * FROM pubshow_businesses WHERE COALESCE(suspenso,0)=0').fetchall()]:
-                    if _ps_pay.ligado_para(_row):
+                    if _ps_efi_para(_row):   # caminho único (17/10/26): pausa é só do split (conta aceita)
                         _pz = _ps_pay.pausa_do_bar(psconn, _row)
                         if _pz['pausado'] or _pz['aviso']:
                             _ps_pausas.append(dict(_pz, business_id=_row['id'], nome=_row['nome']))
@@ -6653,8 +6657,12 @@ def saas_sz_reset_senha():
 @_saas_admin_required
 def saas_pubshow_reativar_pausa(bid):
     """PubShow, Lote D A3 (16/10/26): reativa o bar pausado por 60 dias sem momento pago (o relógio recomeça hoje).
-    Só com PUBSHOW_GATEWAY=efi (no modo Asaas não existe pausa e o pubshow_pay não é chamado)."""
-    if (os.environ.get('PUBSHOW_GATEWAY') or 'asaas').strip().lower() == 'efi':
+    Só com a Efí ligada (no modo Asaas não existe pausa e o pubshow_pay não é chamado)."""
+    try:
+        from pubshow import _efi_ligado as _ps_efi_ligado
+    except Exception:
+        _ps_efi_ligado = None
+    if _ps_efi_ligado is not None and _ps_efi_ligado():
         try:
             import pubshow_pay as _ps_pay
             from pubshow_db import get_pubshow_db as _get_ps_db
@@ -15625,8 +15633,10 @@ try:
     except Exception as _av_err:
         log.warning(f'[PUBSHOW] robô de avisos não iniciou: {_av_err}')
     # Lote C (16/10/26): robô do pagamento Efí (confirma PIX, expira QR, devolve PIX atrasado, termina devolução),
-    # a cada 60 s. SÓ sobe com PUBSHOW_GATEWAY=efi; no padrão 'asaas' o pubshow_pay nem é chamado.
-    if (os.environ.get('PUBSHOW_GATEWAY') or 'asaas').strip().lower() == 'efi':
+    # a cada 60 s. 17/10/26 (caminho único): SÓ sobe com a Efí ligada (PUBSHOW_EFI_BARES com algum bar e sem o botão
+    # de emergência PUBSHOW_GATEWAY=asaas); lista vazia = o pubshow_pay nem é chamado.
+    from pubshow import _efi_ligado as _ps_efi_ligado_boot
+    if _ps_efi_ligado_boot():
         try:
             import pubshow_pay
             from pubshow import _pubshow_on_pago

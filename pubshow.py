@@ -28,14 +28,11 @@ from pubshow_db import marcar_fundador, fundador_vagas as _fundador_vagas_db   #
 from pubshow_db import FUNDADOR_VAGAS, FUNDADOR_MESES   # Lote D B (16/10/26): a oferta do site
 from pubshow_db import SHOWS_FORA   # 17/10/26: o grupo Shows saiu (o admin não recria vídeo nessas categorias)
 import pubshow_estilo   # "aqui só toca rock" com o YouTube livre: estilo pelo ARTISTA (17/10/26)
-try:   # Lote C (16/10/26): pagamento Efí + split. Só é CHAMADO com PUBSHOW_GATEWAY=efi
+try:   # Lote C (16/10/26): pagamento Efí (split e, desde 17/10/26, a ponte). Só é CHAMADO pros bares de PUBSHOW_EFI_BARES
     import pubshow_pay
 except ImportError:   # VCa-04: deploy sem o pubshow_pay.py/efi_client.py → PubShow sobe no Asaas, Efí desligada
     pubshow_pay = None
-try:
-    import efi_pix   # PONTE Efí (16/10/26, produção): mesma conta da RifaJá — só pros bares de PUBSHOW_EFI_BARES
-except Exception:    # sem o módulo: nenhum bar vai pela ponte, o resto segue igual
-    efi_pix = None
+# 17/10/26 (caminho único): a ponte saiu do efi_pix (RifaJá) e usa o mesmo efi_client do split (_efi_cli)
 
 log = logging.getLogger('pubshow')
 
@@ -267,12 +264,21 @@ PIX_TAKE_RATE = float(os.environ.get('PUBSHOW_TAKE_RATE', '0.15'))
 # taxa fixa come o valor. Protege a economia do bar. Ajustável via env.
 PIX_PISO_PRECO = float(os.environ.get('PUBSHOW_PISO_PRECO', '4.00'))   # 16/10/26: R$4 + R$1 = R$5 (com R$3+1=R$4 o Asaas recusou e o PIX caiu na chave do bar)
 
-# ── Efí direto (16/10/26) ────────────────────────────────────────────────────
-# Bares listados em PUBSHOW_EFI_BARES (code do bar, separado por vírgula; '*' = todos;
-# vazio/ausente = NENHUM) cobram o PIX pela Efí: sem o mínimo de R$ 5 do Asaas.
-# Furar a fila = R$ 3 + R$ 1 = R$ 4 no PIX. Os outros bares seguem no Asaas como antes.
+# ── Efí: caminho único (17/10/26, proposta aprovada pelo Diogo) ──────────────────────────────────────────
+# Regra POR BAR, automática, 1 env só (PUBSHOW_EFI_BARES: code do bar, separado por vírgula; '*' = todos;
+# vazia/ausente = NENHUM):
+#   1. bar fora da lista → Asaas (como sempre);
+#   2. bar na lista com a conta Efí dele ACEITA pela Efí (pubshow_pay.conta_aceita) → SPLIT (pubshow_pay): a parte do
+#      bar cai na hora na conta Efí dele;
+#   3. bar na lista sem conta (ou com a conta ainda não aceita) → PONTE: cobra na conta Efí do PubShow e o dinheiro do
+#      bar vai no repasse semanal (/pubshow/admin/repasses, coluna Efí). Conectou a conta → vira split sozinho.
+# 1 conta Efí só pros 2 (pubshow_pay.cliente(): PUBSHOW_EFI_*, ou as EFI_* da RifaJá); o efi_pix.py fica intocado.
+# Preço igual nos 2: furar a fila R$ 3 + R$ 1 = R$ 4, piso R$ 1, teto R$ 50 (a Efí não tem o mínimo de R$ 5 do Asaas).
+# PUBSHOW_GATEWAY virou só o botão de emergência: =asaas desliga a Efí inteira (os bares da lista voltam pro Asaas).
+# O "modo Efí" do bar (sem teste grátis, mensalidade saindo de 30% dos momentos, pausa de 60 dias, Meu dinheiro) é
+# o do SPLIT (_efi_para). O bar da ponte segue o modelo de hoje da ponte: assinatura no Asaas + repasse semanal.
 PRECO_FLASH_EFI    = 3.00   # R$3 + R$1 de taxa = R$4 no PIX
-PIX_PISO_PRECO_EFI = 1.00   # a Efí não tem mínimo; o piso do preço customizado cai pra R$1 só nesses bares
+PIX_PISO_PRECO_EFI = 1.00   # a Efí não tem mínimo; o piso do preço customizado cai pra R$1 nos bares da Efí
 PRECO_PULAR_EFI    = 1.00   # ⏩ Pular a espera na ponte: R$1 + R$1 de taxa = R$2 no PIX (20/10/26)
 
 
@@ -280,41 +286,21 @@ def _efi_bares():
     return {c.strip().upper() for c in (os.environ.get('PUBSHOW_EFI_BARES') or '').split(',') if c.strip()}
 
 
-def _ponte_efi_para(b):
-    """PONTE Efí (produção, 16/10/26): True se o PIX deste bar vai pela Efí da conta do efi_pix (a da RifaJá):
-    bar na lista PUBSHOW_EFI_BARES E efi_pix configurado. Junção 17/10/26: com o SPLIT ligado pro bar
-    (PUBSHOW_GATEWAY=efi, _efi_para) a ponte fica de fora — um bar nunca cobra pelos 2 caminhos."""
-    if _efi_para(b):
-        return False
-    lista = _efi_bares()
-    if not lista or not b:
-        return False
-    try:
-        code = (b['code'] or '').strip().upper()
-    except Exception:
-        code = ''
-    if '*' not in lista and code not in lista:
-        return False
-    try:
-        return bool(efi_pix is not None and efi_pix.configurado())
-    except Exception:
-        return False
-
-
 def _gateway_ativo(b):
     """True quando o PIX do bar sai por gateway (Asaas, ponte Efí ou split): o cliente paga item + taxa e confirma sozinho."""
-    return bool(os.environ.get('ASAAS_API_KEY')) or _ponte_efi_para(b) or _efi_para(b)
+    return bool(os.environ.get('ASAAS_API_KEY')) or bool(_rota_efi(b))
 
 
 def _piso_do_bar(b):
-    """Piso do preço de um momento: R$ 1 na ponte Efí (sem o mínimo do Asaas); senão PIX_PISO_PRECO (R$ 4 + R$ 1 do
-    app = R$ 5, o mínimo do Asaas). O painel mostra o MESMO piso que a cobrança usa (junção 17/10/26)."""
-    return PIX_PISO_PRECO_EFI if _ponte_efi_para(b) else PIX_PISO_PRECO
+    """Piso do preço de um momento: R$ 1 na Efí, ponte ou split (sem o mínimo do Asaas); senão PIX_PISO_PRECO (R$ 4 +
+    R$ 1 do app = R$ 5, o mínimo do Asaas). O painel mostra o MESMO piso que a cobrança usa (junção 17/10/26)."""
+    return PIX_PISO_PRECO_EFI if _rota_efi(b) else PIX_PISO_PRECO
 
 
 def _taxa_pix_bar(b, tipo='flash'):
     """O R$ 1 do app que o CLIENTE paga a mais no PIX deste bar (junção 17/10/26): split = a do pubshow_pay
-    (gorjeta pode ser R$ 0); Asaas ou ponte Efí = PIX_TAXA_CONVENIENCIA; PIX manual / sem gateway = 0."""
+    (PUBSHOW_CONV_CENT; a produção usa 0 = o cliente paga só o item); Asaas ou ponte Efí = PIX_TAXA_CONVENIENCIA;
+    PIX manual / sem gateway = 0. Caminho único (21/10/26): o mesmo desenho do master; só a ROTA mudou."""
     if _efi_para(b):
         return pubshow_pay.conv_cent_para(tipo) / 100
     return PIX_TAXA_CONVENIENCIA if _gateway_ativo(b) else 0.0
@@ -407,23 +393,108 @@ def _somar_pagos_fora_da_efi(conn, bid, de, ate, conta):
     return int(round(float(r[0]) * 100))
 
 
-# ── Lote C (16/10/26): pagamento Efí com split, atrás de PUBSHOW_GATEWAY=efi (padrão 'asaas') ─────────
+# ── Lote C (16/10/26): pagamento Efí com split ─────────────────────────────────────────────────────────
 # Decisão do Diogo: o dinheiro do bar cai direto na conta Efí dele e a mensalidade sai pelo split. Liga bar a
-# bar (PUBSHOW_EFI_BARES). No padrão 'asaas' NENHUMA função do pubshow_pay é chamada: o caminho de hoje fica igual.
+# bar (PUBSHOW_EFI_BARES). Lista vazia = NENHUMA função do pubshow_pay é chamada: o caminho de hoje fica igual.
+# 17/10/26 (caminho único): split só com a conta Efí do bar aceita; sem ela o bar da lista vende pela ponte.
 MSG_EFI_SEM_CONTA = ('Os momentos pagos ainda não estão ligados neste bar. '
                      'A música grátis funciona normal: escolhe uma e manda! 🎵')
 
 
 def _efi_ligado() -> bool:
-    if pubshow_pay is None:   # VCa-04: sem o módulo no deploy, nunca liga (nem com PUBSHOW_GATEWAY=efi)
+    """A Efí está ligada: algum bar em PUBSHOW_EFI_BARES e sem o botão de emergência (PUBSHOW_GATEWAY=asaas).
+    A MESMA regra do pubshow_pay.ligado(), lida aqui direto da env: com a lista vazia nenhuma função do pubshow_pay
+    é chamada (o probe_dormente confere)."""
+    if pubshow_pay is None:   # VCa-04: sem o módulo no deploy, nunca liga
         return False
-    return (os.environ.get('PUBSHOW_GATEWAY') or 'asaas').strip().lower() == 'efi'
+    if (os.environ.get('PUBSHOW_GATEWAY') or '').strip().lower() == 'asaas':
+        return False
+    return bool(_efi_bares())
+
+
+def _efi_lista(b) -> bool:
+    """O bar está na Efí: o code dele em PUBSHOW_EFI_BARES (ou '*') e a Efí ligada. Ponte OU split (_rota_efi decide).
+    16/10/26 (CC1 X6 / CC3 R6): lista vazia = NENHUM bar (falha fechada). É o que o passo 4 (conectar a conta) usa."""
+    return _efi_ligado() and pubshow_pay.ligado_para(b)
+
+
+def _efi_cli():
+    """A conta Efí do PubShow, a MESMA pra ponte e split (pubshow_pay.cliente). None sem o módulo no deploy."""
+    if pubshow_pay is None:
+        return None
+    try:
+        return pubshow_pay.cliente()
+    except Exception as ex:
+        log.warning('[PUBSHOW] cliente Efí indisponível: %s', ex)
+        return None
+
+
+def _efi_cli_ok() -> bool:
+    cli = _efi_cli()
+    try:
+        return bool(cli is not None and cli.configurado())
+    except Exception:
+        return False
+
+
+_ROTA_SEM_CONTA_PUBSHOW = set()
+
+
+def _cache_rota():
+    """Cache da rota por request (o painel e o jukebox perguntam várias vezes pelo mesmo bar). Fora de request = None."""
+    from flask import g, has_request_context
+    if not has_request_context():
+        return None
+    c = getattr(g, '_pubshow_rota_efi', None)
+    if c is None:
+        c = g._pubshow_rota_efi = {}
+    return c
+
+
+def _rota_efi(b):
+    """Caminho único da Efí (17/10/26): por onde sai o PIX DESTE bar — 'split', 'ponte' ou None (Asaas / PIX manual).
+    Na lista + conta Efí aceita pela Efí = 'split'; na lista sem ela = 'ponte'. Sem a conta Efí do PubShow
+    configurada = None (o bar cai no Asaas, nunca num QR quebrado). Erro lendo a conta = 'ponte' (o dinheiro fica
+    no PubShow e vai no repasse: nunca some)."""
+    if not b or not _efi_lista(b):
+        return None
+    try:
+        bid = int(b['id'])
+    except Exception:
+        return None
+    cache = _cache_rota()
+    if cache is not None and bid in cache:
+        return cache[bid]
+    rota = None
+    if _efi_cli_ok():
+        rota = 'ponte'
+        try:
+            conn = _pp_conn()
+            try:
+                if pubshow_pay.conta_aceita(conn, bid):
+                    rota = 'split'
+            finally:
+                conn.close()
+        except Exception as ex:
+            log.warning('[PUBSHOW] conta Efí do bar %s não lida (fica na ponte): %s', bid, ex)
+    elif bid not in _ROTA_SEM_CONTA_PUBSHOW:
+        _ROTA_SEM_CONTA_PUBSHOW.add(bid)   # 1 aviso por bar por processo (isto roda várias vezes por request)
+        log.warning('[PUBSHOW] bar %s na lista da Efí, mas a conta Efí do PubShow não está configurada: vai pelo Asaas', bid)
+    if cache is not None:
+        cache[bid] = rota
+    return rota
 
 
 def _efi_para(b) -> bool:
-    """Efí ligada PRA ESTE bar (PUBSHOW_GATEWAY=efi + o code dele em PUBSHOW_EFI_BARES, ou '*' = todos).
-    16/10/26 (CC1 X6 / CC3 R6): lista vazia = NENHUM bar (falha fechada)."""
-    return _efi_ligado() and pubshow_pay.ligado_para(b)
+    """SPLIT pra este bar (o "modo Efí": sem teste grátis, mensalidade dos momentos, pausa, Meu dinheiro).
+    17/10/26 (caminho único): na lista E com a conta Efí aceita. Antes: PUBSHOW_GATEWAY=efi + lista."""
+    return _rota_efi(b) == 'split'
+
+
+def _ponte_efi_para(b) -> bool:
+    """PONTE Efí: bar na lista sem a conta Efí aceita → cobra na conta Efí do PubShow (repasse semanal). Um bar nunca
+    cobra pelos 2 caminhos (_rota_efi devolve um só). 17/10/26: pelo efi_client (pubshow_pay.cliente), não pelo efi_pix."""
+    return _rota_efi(b) == 'ponte'
 
 
 def _pp_conn():
@@ -670,8 +741,9 @@ def _doc_ja_tem_bar(conn, doc) -> bool:
 
 
 def _efi_cadastro_novo() -> bool:
-    """O bar que se cadastra AGORA já nasce na Efí? Só com PUBSHOW_GATEWAY=efi e PUBSHOW_EFI_BARES='*': o code dele
-    ainda não existe, e a lista por code nunca inclui um bar novo (ele entra pelo Asaas, como hoje)."""
+    """O bar que se cadastra AGORA já nasce na Efí? Só com PUBSHOW_EFI_BARES='*' (e sem o botão de emergência): o code
+    dele ainda não existe, e a lista por code nunca inclui um bar novo (ele entra pelo Asaas, como hoje).
+    17/10/26 (caminho único): nasce sem conta Efí, então vende pela PONTE até conectar a conta (aí vira split)."""
     return _efi_ligado() and pubshow_pay.ligado_para({'code': ''})
 
 
@@ -681,7 +753,7 @@ def _texto_sem_bolso(b=None) -> str:
     preco_cent = _plano_do_bar(b)['preco_cent']
     # VDB-07 (16/10/26): bar já na Efí lê o preço que o SPLIT usa (pubshow_pay.plano_do_bar = o do bar + a exceção
     # do definir_plano, ex.: o demo a R$ 3). Falhou a leitura = o preço do bar (como antes)
-    if b is not None and _efi_para(b):
+    if b is not None and _efi_lista(b):
         try:
             _c = _pp_conn()
             try:
@@ -697,8 +769,9 @@ def _texto_sem_bolso(b=None) -> str:
 
 
 def _preco_teto(b):
-    """Lote D A4: teto do momento (reais) — R$ 50 com a Efí ligada pro bar; None = sem teto (Asaas, como hoje)."""
-    return PRECO_TETO_EFI if _efi_para(b) else None
+    """Lote D A4: teto do momento (reais) — R$ 50 na Efí (ponte ou split, caminho único 17/10/26); None = sem teto
+    (Asaas, como hoje)."""
+    return PRECO_TETO_EFI if _rota_efi(b) else None
 
 
 def _efi_pausa(b):
@@ -1026,7 +1099,7 @@ def _email_boas_vindas(nome: str, code: str, token: str, plano: str, trial_ends:
     """Email dia 0 — boas-vindas com links da TV e Jukebox.
     Lote D B (16/10/26): `bar` (a linha do bar) decide o modo. Efí → sem teste grátis (não existe na Efí), a frase
     "Sem mensalidade do bolso…" e o passo 4 "Abra a conta Efí do bar". Asaas (ou sem bar) → o texto de hoje."""
-    efi = bool(bar is not None and _efi_para(bar))
+    efi = bool(bar is not None and _efi_lista(bar))   # 17/10/26: bar da lista (nasce sem conta: ponte até conectar)
     nome = _html_escape(nome or '')   # 15/10/26: nome é texto livre do cadastro e vai no HTML do e-mail
     base_url = os.environ.get('BASE_URL', 'https://www.4kitem.com.br')
     tv_url = f'{base_url}/bar/{code}'   # link curto, dá pra digitar no controle da TV (15/10/26)
@@ -1386,24 +1459,28 @@ def _processar_fila_emails():
         token     = row['jukebox_token'] or code
         plano     = row['plano'] or 'bar'
         trial_end = row['trial_ends'] or ''
+        # 17/10/26 (caminho único): o row['id'] é o da FILA. As funções do modo do bar (rota Efí, preço do split) leem
+        # bar['id'] = o do BAR (antes o "sem bolso" do e-mail lia a exceção de preço de outro bar pelo id da fila)
+        bar = dict(row)
+        bar['id'] = row['business_id']
 
         try:
             if tipo == 'boas_vindas':
-                assunto, html = _email_boas_vindas(nome, code, token, plano, trial_end, row)   # Lote D B: modo do bar
+                assunto, html = _email_boas_vindas(nome, code, token, plano, trial_end, bar)   # Lote D B: modo do bar
             elif tipo == 'dica_setup':
                 assunto, html = _email_dica_setup(nome, code)
             elif tipo == 'trial_ending':
                 # Só envia se ainda não assinou. VCa-01 (16/10/26): bar na Efí não tem teste grátis (a mensalidade
                 # sai dos momentos; cancelou = já desligou na hora) → "o teste acaba / fica offline" seria falso
-                if row['plano_ativo'] or _efi_para(row):
+                if row['plano_ativo'] or _efi_para(bar):
                     _marcar_email_enviado(row['id'])
                     continue
-                assunto, html = _email_trial_ending(nome, plano, trial_end, row)
+                assunto, html = _email_trial_ending(nome, plano, trial_end, bar)
             elif tipo == 'trial_expirado':
-                if row['plano_ativo'] or _efi_para(row):
+                if row['plano_ativo'] or _efi_para(bar):
                     _marcar_email_enviado(row['id'])
                     continue
-                assunto, html = _email_trial_expirado(nome, plano, row)
+                assunto, html = _email_trial_expirado(nome, plano, bar)
             else:
                 _marcar_email_enviado(row['id'])
                 continue
@@ -1914,7 +1991,7 @@ def _precos_do_bar(b):
     except Exception:
         custom = {}
     desconto_pct = _happy_hour_desconto(b)
-    _ponte = _ponte_efi_para(b)   # ponte Efí: furar a fila R$3 e piso R$1 (a Efí não tem o mínimo de R$5 do Asaas)
+    _ponte = _ponte_efi_para(b)   # ponte Efí: furar a fila R$3 e ⏩ R$1 (+ R$1 do app); no split o item da tabela
     _piso = _piso_do_bar(b)
     teto = _preco_teto(b)   # Lote D A4 (16/10/26): R$ 50 no modo Efí, também pros preços JÁ salvos; None no Asaas
     tipos = {}
@@ -2280,23 +2357,36 @@ def _asaas_criar_cobranca_pix_jukebox(b, pedido_id: int, valor: float, descricao
     }
 
 
-# ── Efí direto: cobrança + confirmação (16/10/26) ────────────────────────────
+# ── Efí direto (PONTE): cobrança + confirmação (16/10/26) ────────────────────
 # O webhook da Efí não valida no Railway (ECONNRESET), então a baixa é por CONSULTA:
 # a tela do cliente (polling) e um robô a cada 20 s perguntam à Efí se o PIX caiu.
+# 17/10/26 (caminho único): pela MESMA conta do split (efi_client, _efi_cli), com txid NOSSO (PUT /v2/cob/:txid):
+# re-tentar com o mesmo txid nunca cria 2 cobranças. O efi_pix.py (RifaJá) não é mais usado aqui.
+
+def _ponte_txid(pedido_id):
+    """txid da ponte: 'pp<pedido>x' + aleatório (26-35 letras/dígitos, padrão BCB). O split usa 'ps…': nunca colidem."""
+    return (f'pp{int(pedido_id)}x' + secrets.token_hex(16))[:32]
+
 
 def _efi_criar_cobranca_jukebox(pedido_id, valor, descricao):
     """Cobrança PIX imediata na Efí (15 min). Retorna {txid, copia_cola} ou None (erro no log)."""
-    if efi_pix is None:
-        log.error('[PUBSHOW] Efí: módulo efi_pix indisponível (pedido #%s)', pedido_id)
+    cli = _efi_cli()
+    if cli is None:
+        log.error('[PUBSHOW] Efí: cliente da conta Efí indisponível (pedido #%s)', pedido_id)
         return None
+    txid = _ponte_txid(pedido_id)
     try:
-        # pente fino DIN-2 (18/10/26): mesma limpeza do Asaas (sem emoji de 4 bytes: 🎂 🍻 🙏 e os do título)
-        cob = efi_pix.criar_cobranca(round(float(valor), 2), _asaas_descricao(descricao), expira=900)
+        # pente fino DIN-2 (18/10/26): mesma limpeza do Asaas (sem emoji de 4 bytes)
+        cob = cli.criar_cobranca_txid(txid, int(round(float(valor) * 100)), _asaas_descricao(descricao), expira=900)
     except Exception as e:
         cob = {'erro': str(e)[:200]}
     if not isinstance(cob, dict) or cob.get('erro') or not cob.get('txid') or not cob.get('copia_cola'):
         log.error('[PUBSHOW] Efí: cobrança falhou (pedido #%s, R$ %.2f): %s', pedido_id, float(valor),
                   (cob.get('erro') if isinstance(cob, dict) else cob) or cob)
+        try:
+            cli.cancelar_cobranca(txid)   # se o timeout escondeu uma cobrança criada, ela não fica viva
+        except Exception:
+            pass
         return None
     return {'txid': cob['txid'], 'copia_cola': cob['copia_cola']}
 
@@ -2329,7 +2419,8 @@ def _efi_consultar_e_confirmar(pedido_id, txid):
     Chamar só depois de _efi_reservar_consulta()."""
     try:
         try:
-            r = efi_pix.consultar_cobranca(txid)
+            cli = _efi_cli()
+            r = cli.consultar(txid) if cli is not None else {'erro': 'cliente Efí indisponível'}
         except Exception as e:
             r = {'erro': str(e)[:200]}
         if not isinstance(r, dict) or not r.get('pago'):
@@ -2369,7 +2460,7 @@ def _efi_conferir_pedido(pedido_id, txid, espera_seg=None):
     """Consulta (com freio de 5 s) e confirma se pago. espera_seg=None: roda aqui mesmo (robô).
     espera_seg=N: roda numa thread e espera no máx. N s — com 1 worker gunicorn a tela do
     cliente não pode ficar presa se a Efí demorar (o resultado cai no próximo polling)."""
-    if not txid or efi_pix is None or not _efi_reservar_consulta(pedido_id):
+    if not txid or _efi_cli() is None or not _efi_reservar_consulta(pedido_id):
         return False
     if espera_seg is None:
         return _efi_consultar_e_confirmar(pedido_id, txid)
@@ -2382,15 +2473,47 @@ def _efi_conferir_pedido(pedido_id, txid, espera_seg=None):
     return bool(_res.get('ok'))
 
 
+_CONTAS_PENDENTES_SEG = 600     # a cada 10 min (o robô da ponte roda a cada 20 s)
+_contas_pendentes_ultima = [float('-inf')]
+
+
+def _efi_conferir_contas_pendentes(forcar=False):
+    """Caminho único (17/10/26): bar da lista que salvou a conta Efí quando a Efí não respondeu fica na PONTE (a conta
+    não foi aceita). Aqui a conta é conferida de novo (pubshow_pay.conferir_conta, a mesma config de split do passo 4):
+    aceitou → o bar vai pro split no próximo pedido, sem o dono fazer nada. No máximo 1 rodada a cada 10 min.
+    Devolve quantos bares a Efí aceitou nesta rodada."""
+    agora = _time.monotonic()
+    if not forcar and agora - _contas_pendentes_ultima[0] < _CONTAS_PENDENTES_SEG:
+        return 0
+    _contas_pendentes_ultima[0] = agora
+    if not _efi_ligado():
+        return 0
+    conn = _pp_conn()
+    try:
+        bares = [dict(r) for r in conn.execute(
+            'SELECT b.* FROM pubshow_businesses b JOIN pubshow_pay_contas c ON c.business_id=b.id AND c.ativo=1 '
+            'WHERE COALESCE(b.suspenso,0)=0')]
+        aceitas = 0
+        for b in bares:
+            if not _efi_lista(b) or pubshow_pay.conta_aceita(conn, b['id']):
+                continue
+            if pubshow_pay.conferir_conta(conn, b['id']).get('aceita'):
+                aceitas += 1
+        return aceitas
+    finally:
+        conn.close()
+
+
 def _efi_robo_passada():
-    """Uma volta do robô: confere os pedidos Efí aguardando_pix dos últimos 30 min (cobrança expira em 15). Retorna quantos confirmou."""
-    if efi_pix is None:
+    """Uma volta do robô: confere os pedidos Efí aguardando_pix dos últimos 30 min (cobrança expira em 15). Retorna quantos confirmou.
+    Roda até no botão de emergência (PUBSHOW_GATEWAY=asaas): ele só para as cobranças NOVAS; o PIX que já saiu confirma.
+    17/10/26 (caminho único): também confere de novo, a cada 10 min, a conta Efí salva que a Efí ainda não aceitou."""
+    if not _efi_cli_ok():
         return 0
     try:
-        if not efi_pix.configurado():
-            return 0
-    except Exception:
-        return 0
+        _efi_conferir_contas_pendentes()
+    except Exception as ex:
+        log.warning('[PUBSHOW] robô Efí: conferir as contas pendentes falhou: %s', ex)
     conn = get_pubshow_db()
     try:
         rows = conn.execute(
@@ -2955,7 +3078,8 @@ def bem_vindo():
     if not b:
         return redirect('/pubshow/entrar')
     # Lote D B (16/10/26): modo Efí → a frase "Sem mensalidade do bolso…" no lugar do teste grátis + passo da conta Efí
-    _efi = _efi_para(b)
+    # 17/10/26 (caminho único): o bar recém-cadastrado ainda não tem conta (vende pela ponte): conta a lista
+    _efi = _efi_lista(b)
     return render_template('pubshow/bem_vindo.html', b=dict(b), planos=PLANOS, canais=CANAIS,
                            efi_modo=_efi, sem_bolso_txt=(_texto_sem_bolso(b) if _efi else ''),
                            dica_2_bares=_dica_2_bares(_efi))
@@ -3188,7 +3312,7 @@ def _nome_tv(nome, n=20):
 
 
 def _ponte_pix_vivo(row) -> bool:
-    """Ponte Efí: a cobrança vale 15 min (efi_pix.criar_cobranca expira=900). Margem de 1 min pro cliente pagar."""
+    """Ponte Efí: a cobrança vale 15 min (_efi_criar_cobranca_jukebox, expira=900). Margem de 1 min pro cliente pagar."""
     try:
         criado = datetime.strptime(str(row['created_at'])[:19], '%Y-%m-%d %H:%M:%S')
     except Exception:
@@ -3277,8 +3401,8 @@ def jukebox(token, pix_id=None):
         # texto neutro (16/10/26, CEL-33): o dono que testa não pode achar que o QR quebrou
         return render_template('pubshow/qr_invalido.html', suspenso=True), 403
     b = dict(b)  # converte para dict — sqlite3.Row não tem .get() em Python < 3.12
-    _efi   = _efi_para(b)          # Lote C (16/10/26): este bar cobra pela Efí com SPLIT (False no padrão 'asaas')
-    _ponte = _ponte_efi_para(b)    # ponte Efí da produção (PUBSHOW_EFI_BARES, conta do efi_pix); nunca junto do split
+    _efi   = _efi_para(b)          # Lote C (16/10/26): este bar cobra pela Efí com SPLIT (lista + conta Efí aceita)
+    _ponte = _ponte_efi_para(b)    # ponte Efí (lista, sem conta aceita: conta Efí do PubShow); nunca junto do split
     _gw    = _gateway_ativo(b)     # Asaas, ponte ou split: cliente paga item + taxa, confirma sozinho
 
     sucesso      = None
@@ -3410,7 +3534,7 @@ def jukebox(token, pix_id=None):
                 # passa por ele (cobrança automática + confirmação sozinha). O modo
                 # manual (chave PIX do próprio bar) fica só como fallback p/ quem tem.
                 # Lote C (16/10/26): com a Efí ligada pro bar, o gateway é a Efí (nunca a chave do bar).
-                # Ponte Efí (produção 16/10/26): idem, pela conta do efi_pix.
+                # Ponte Efí (produção 16/10/26): idem, pela conta Efí do PubShow (17/10/26: a mesma do split).
                 _gateway = bool(os.environ.get('ASAAS_API_KEY')) or _efi or _ponte
                 usar_pix = _gateway or (bool(b['requer_pix']) and bool(b['pix_key']))
                 if preco <= 0:
@@ -3436,8 +3560,12 @@ def jukebox(token, pix_id=None):
                          '-30 minutes' if _cid else '-60 seconds')
                     ).fetchone()
                     _cx.close()
-                    if _ab and _efi and not _efi_pix_vivo(_ab['id']):
-                        _ab = None   # Lote C: o QR Efí vale 15 min — vencido/cancelado não reabre, sai um novo
+                    if (_ab and _ab['via_gateway'] and _ab['efi_txid'] is None and not _ab['asaas_payment_id']
+                            and not _efi_pix_vivo(_ab['id'])):
+                        # Lote C: o QR Efí do split vale 15 min — vencido/cancelado não reabre, sai um novo.
+                        # 17/10/26 (caminho único): decide pelo PEDIDO (cobrança do split), não pela rota de agora:
+                        # o bar que acabou de trocar ponte→split reabre o PIX da ponte que ainda vale (abaixo)
+                        _ab = None
                     if _ab and _ab['efi_txid'] is not None and not _ponte_pix_vivo(_ab):
                         _ab = None   # ponte Efí: o QR vale 15 min — vencido não reabre, sai um novo
                     if _ab and (_ab['valor_cobrado'] is None or not _gateway or
@@ -3925,18 +4053,21 @@ def _tv_sinal(bd):
 
 def _tutorial_do_bar(conn, bd, total_pedidos):
     """Checklist do topo da aba Hoje. Passos marcam por SINAL (nunca por clique): TV que respondeu,
-    QR aberto/impresso, 1º pedido. O 4º (conta pra receber) só existe com PUBSHOW_GATEWAY=efi.
+    QR aberto/impresso, 1º pedido. O 4º (conta pra receber) só existe pros bares da Efí.
     Completo → grava tutorial_ok_em e some de vez. Devolve None quando não deve aparecer."""
-    # VCa-03 (16/10/26): a mesma regra POR BAR do resto da integração (PUBSHOW_GATEWAY=efi + o code no
-    # PUBSHOW_EFI_BARES). Ligar a Efí pro bar demo não pode dar o passo 4 pro Garage, que segue no Asaas.
-    gateway_efi = _efi_para(bd)
+    # VCa-03 (16/10/26): a mesma regra POR BAR do resto da integração (o code no PUBSHOW_EFI_BARES).
+    # Ligar a Efí pro bar demo não pode dar o passo 4 pro Garage, que segue no Asaas.
+    # 17/10/26 (caminho único): o bar da PONTE também vê o passo 4 — é por ele que vira split.
+    gateway_efi = _efi_lista(bd)
     if bd.get('tutorial_ok_em') and not gateway_efi:
         return None
     conta = False
     if gateway_efi:
         try:
             pubshow_pay.init_tables(conn)
-            conta = bool(pubshow_pay.conta_do_bar(conn, bd['id']))
+            # 17/10/26 (caminho único): o passo 4 só fica pronto com a conta ACEITA pela Efí — salva sem a Efí
+            # responder, o bar segue na ponte e o formulário fica aberto pra salvar de novo (a Efí confere de novo)
+            conta = bool(pubshow_pay.conta_aceita(conn, bd['id']))
         except Exception as ex:
             log.warning('[PUBSHOW] tutorial: conta Efí do bar %s não lida: %s', bd['id'], ex)
     if bd.get('tutorial_ok_em'):
@@ -5135,17 +5266,22 @@ def painel():
     # do formulário do passo 4 (?conta_efi=ok|<erro>). Falhou a leitura do livro-caixa = sem card, nunca 500.
     _efi_bar = _efi_para(bd)
     _efi_sem_conta = _efi_bar and not _efi_conta_ok(bd)
+    # 17/10/26 (caminho único): bar da lista sem a conta aceita vende pela PONTE e vê o passo 4 pra conectar a conta
+    # (aí vira split). efi_conta_salva = salvou, mas a Efí ainda não aceitou (o robô confere de novo a cada 10 min).
+    _efi_lista_bar = _efi_lista(bd)
+    efi_ponte = _ponte_efi_para(bd)
+    efi_conta_salva = bool(efi_ponte and _efi_conta_ok(bd))
     # CC2 (16/10/26), só Efí: quanto dos momentos do mês paga a mensalidade (texto do passo 4: "cai na hora" só
     # depois disso) e, nas cantadas/namoros esperando o OK, o que o cliente pagou e o que já caiu na conta do bar
     # (texto do "Não mostrar"). Falhou a leitura = textos genéricos, nunca 500.
     efi_mens_cent, efi_ok_info = 0, {}
-    if _efi_bar:
+    if _efi_lista_bar:
         try:
             _cm = _pp_conn()
             try:
                 if not (_tem_assinatura_ativa(bd['id']) or not bd.get('plano_ativo', 1)):
                     efi_mens_cent = pubshow_pay.plano_do_bar(_cm, bd)
-                _ids_ok = [int(p['id']) for p in aguardando_ok]
+                _ids_ok = [int(p['id']) for p in aguardando_ok] if _efi_bar else []
                 if _ids_ok:
                     efi_ok_info = {r[0]: {'valor_cent': int(r[1]), 'bar_cent': int(r[2]) if r[3] else 0}
                                    for r in _cm.execute(
@@ -5162,9 +5298,11 @@ def painel():
         except Exception as _ex_md:
             log.warning('[PUBSHOW] Meu dinheiro do bar %s não leu: %s', bd['id'], _ex_md)
     _ce = (request.args.get('conta_efi') or '').strip()
-    conta_efi_msg = ('' if not (_efi_bar and _ce) else 'ok' if _ce in _OK_CONTA_EFI
+    conta_efi_msg = ('' if not (_efi_lista_bar and _ce) else 'ok' if _ce in _OK_CONTA_EFI
                      else _erro_conta_efi(_ce, bd))
     conta_efi_ok_txt = _OK_CONTA_EFI.get(_ce, '') if conta_efi_msg == 'ok' else ''
+    if conta_efi_msg == 'ok' and efi_ponte:
+        conta_efi_ok_txt = _OK_CONTA_EFI_PONTE   # a Efí ainda não aceitou: o bar segue na ponte por enquanto
     # VCb-01 (16/10/26): a conta passou no passo 4 mas a Efí recusou o split no último momento pago (todo momento
     # dá "Pagamento indisponível"): aviso fixo no topo de Hoje + o formulário do passo 4 reaberto pra corrigir
     efi_split_recusado = False
@@ -5203,7 +5341,7 @@ def painel():
                            meu_dinheiro=meu_dinheiro, conta_efi_msg=conta_efi_msg, brl_cent=_brl_cent,
                            conta_efi_ok_txt=conta_efi_ok_txt, efi_split_recusado=efi_split_recusado,
                            efi_mens_cent=efi_mens_cent, efi_ok_info=efi_ok_info,
-                           efi_mens_pct=(pubshow_pay.mensal_pct() if _efi_bar else 0),
+                           efi_mens_pct=(pubshow_pay.mensal_pct() if _efi_lista_bar else 0),
                            efi_pausa=efi_pausa, faixa_semana=faixa_semana,
                            pix_caiu=(_efi_bar and (request.args.get('pix_caiu') or '').isdigit()),
                            pix_conferir_erro=(_efi_bar and request.args.get('pix_conferir') == 'erro'),
@@ -5259,6 +5397,7 @@ def painel():
                            # conectada, o aviso de que os momentos pagos estão indisponíveis (passo 4)
                            efi=_efi_bar,
                            efi_sem_conta=_efi_sem_conta,
+                           efi_passo4=_efi_lista_bar, efi_ponte=efi_ponte, efi_conta_salva=efi_conta_salva,
                            promo_ativa=bool(bd.get('promo_msg') and bd.get('promo_expira') and bd['promo_expira'] > datetime.now().strftime('%Y-%m-%dT%H:%M:%S')))
 
 
@@ -5511,6 +5650,9 @@ _OK_CONTA_EFI = {
     'salva': ('✅ Conta salva. A Efí não respondeu agora: se ela recusar a conta quando o dinheiro for cair nela, '
               'o painel avisa aqui. Você vê cada centavo em 💰 Meu dinheiro.'),
 }
+# 17/10/26 (caminho único): conta salva sem a Efí aceitar = o bar segue na PONTE até ela aceitar (o robô confere)
+_OK_CONTA_EFI_PONTE = ('✅ Conta salva. A Efí não respondeu agora: até ela confirmar a conta, o dinheiro dos momentos '
+                       'segue no repasse de toda semana. Quando ela confirmar, cada momento cai na hora na tua conta.')
 
 
 def _erro_conta_efi(cod, b):
@@ -5557,7 +5699,7 @@ def painel_conta_efi():
     if not b:
         return redirect('/pubshow/entrar')
     xhr = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
-    if not _efi_para(b):
+    if not _efi_lista(b):   # 17/10/26 (caminho único): o bar da ponte conecta aqui (e vira split)
         if xhr:
             return jsonify({'ok': False, 'erro': 'Recebimento pela Efí ainda não está ligado pra este bar.'}), 400
         return redirect('/pubshow/painel')
@@ -5578,6 +5720,9 @@ def painel_conta_efi():
                                              (request.form.get('titular_nome') or '').strip(), conferir=True)
     finally:
         conn.close()
+    _c_rota = _cache_rota()
+    if _c_rota is not None:
+        _c_rota.pop(int(b['id']), None)   # a conta mudou: a rota (ponte/split) deste bar é lida de novo
     erro = '' if r.get('ok') else _erro_conta_efi(r.get('erro'), b)
     msg = '' if erro else ('ok' if r.get('conferida') else 'salva')
     if not erro:
@@ -5758,8 +5903,9 @@ def _precos_acima_do_teto(b):
 
 def _avisar_precos_teto(b):
     """Lote D, críticos (17/10/26, CD2): bar que entrou na Efí com preço salvo acima de R$ 50 recebe 1 WhatsApp (e-mail
-    de reserva) dizendo QUAIS momentos passaram a sair por R$ 50. 1 vez por bar (pubshow_meta). Só modo Efí."""
-    if not _efi_para(b):
+    de reserva) dizendo QUAIS momentos passaram a sair por R$ 50. 1 vez por bar (pubshow_meta). Só na Efí (ponte ou
+    split: o teto vale nos 2 desde o caminho único, 17/10/26)."""
+    if not _rota_efi(b):
         return False
     cortados = _precos_acima_do_teto(b)
     if not cortados:
@@ -5795,7 +5941,8 @@ def avisos_pausa(agora=None):
         conn.close()
     hoje = datetime.now().strftime('%Y-%m-%d')
     for b in bares:
-        if not _efi_para(b):
+        _rota = _rota_efi(b)
+        if not _rota:
             continue
         # VDA-05 (16/10/26): bar cancelado (plano_ativo=0 e sem mês pago valendo) já está fechado: não recebe aviso
         if not b.get('plano_ativo') and not ((b.get('ativo_ate') or '')[:10] >= hoje):
@@ -5806,6 +5953,8 @@ def avisos_pausa(agora=None):
                 out['teto'] = out.get('teto', 0) + 1
         except Exception as ex:
             log.error('[PUBSHOW] aviso dos preços cortados do bar %s falhou: %s', b.get('id'), ex)
+        if _rota != 'split':
+            continue   # caminho único (17/10/26): a pausa de 60 dias é só do split (o bar da ponte segue o Asaas)
         try:
             cx = _pp_conn()
             try:
@@ -7058,7 +7207,7 @@ def painel_recusar_pix(pid):
                               "AND status='aguardando_pix'", (pid, b['id'])).fetchone()
         finally:
             _cx.close()
-        if _pr and _pr['efi_txid'] and efi_pix is not None:
+        if _pr and _pr['efi_txid'] and _efi_cli() is not None:
             with _efi_lock:
                 _efi_ultima_consulta.pop(pid, None)   # sem o freio de 5 s: o dono clicou agora
             if _efi_conferir_pedido(pid, _pr['efi_txid']):
@@ -7876,7 +8025,7 @@ def _asaas_saldo():
 def _repasse_conferir(bid=None, limite=15):
     """Pedido com status "de pago" + cobrança no gateway mas SEM prova (pago_em vazio, ou o histórico preenchido no boot:
     pix_conferido='HISTORICO') → pergunta ao gateway: Asaas GET /payments/{id} (RECEIVED/CONFIRMED = pago); ponte
-    Efí GET /v2/cob/{txid} pelo efi_pix (CONCLUIDA e sem devolução = pago). Grava o resultado em pix_conferido
+    Efí GET /v2/cob/{txid} pela conta Efí do PubShow (_efi_cli; CONCLUIDA e sem devolução = pago). Grava em pix_conferido
     (e pago_em, se pago). Falha de rede/erro → 'ERRO|<utc>', tenta de novo depois (o mais antigo primeiro).
     Retorna quantos conferiu. Só leitura nos gateways."""
     st = ','.join('?' * len(_REPASSE_STATUS_PAGO))
@@ -7900,10 +8049,11 @@ def _repasse_conferir(bid=None, limite=15):
             pay = (r['asaas_payment_id'] or '').strip()
             res = None
             if efi_tx:
-                if efi_pix is None:
+                _cli = _efi_cli()
+                if _cli is None:
                     continue
                 try:
-                    c = efi_pix.consultar_cobranca(efi_tx)
+                    c = _cli.consultar(efi_tx)
                 except Exception as ex:
                     c = {'erro': str(ex)[:200]}
                 if isinstance(c, dict) and not c.get('erro') and c.get('status'):

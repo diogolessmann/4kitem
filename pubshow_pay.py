@@ -1,7 +1,9 @@
 """
 pubshow_pay.py — PubShow: pagamento NOVO pela Efí (Lote C do RELATORIO_FINAL de 15/10/26).
 
-DESLIGADO por padrão: só vale com PUBSHOW_GATEWAY=efi (padrão 'asaas' = o fluxo de hoje, intocado).
+DESLIGADO por padrão: só vale pros bares de PUBSHOW_EFI_BARES (vazia = nenhum bar, o fluxo do Asaas intocado).
+17/10/26 (caminho único da Efí): PUBSHOW_GATEWAY virou só o botão de emergência (=asaas desliga a Efí inteira);
+sem ela, a lista manda. Bar da lista com a conta Efí aceita = split (este módulo); sem conta = ponte (pubshow.py).
 Não importa pubshow.py nem app.py; cria as próprias tabelas (init_tables) no pubshow.db.
 
 O que faz:
@@ -98,19 +100,30 @@ def _env_int(nome, padrao):
         return int(padrao)
 
 
+def _lista_bares():
+    return [c.strip().upper() for c in (os.environ.get('PUBSHOW_EFI_BARES') or '').split(',') if c.strip()]
+
+
+def emergencia():
+    """17/10/26 (caminho único): PUBSHOW_GATEWAY=asaas = botão de emergência, desliga a Efí inteira (split e ponte)."""
+    return (os.environ.get('PUBSHOW_GATEWAY') or '').strip().lower() == 'asaas'
+
+
 def ligado():
-    """Só liga com PUBSHOW_GATEWAY=efi. Padrão 'asaas' = este módulo não é usado."""
-    return (os.environ.get('PUBSHOW_GATEWAY') or 'asaas').strip().lower() == 'efi'
+    """A Efí está ligada: algum bar em PUBSHOW_EFI_BARES e sem o botão de emergência (PUBSHOW_GATEWAY=asaas).
+    17/10/26 (caminho único): antes só ligava com PUBSHOW_GATEWAY=efi; agora a lista manda (efi segue valendo)."""
+    return bool(_lista_bares()) and not emergencia()
 
 
 def ligado_para(bar):
-    """Liga bar a bar: PUBSHOW_GATEWAY=efi E o code do bar em PUBSHOW_EFI_BARES (separada por vírgula).
+    """O bar está na Efí: ligado() E o code do bar em PUBSHOW_EFI_BARES (separada por vírgula).
     Ex.: PUBSHOW_EFI_BARES=CC4TN7PG liga só o bar demo "Lessmann"; depois soma o Garage.
     16/10/26 (CC1 X6 / CC3 R6): falha FECHADA — vazio (ou env apagada/com nome errado) = NENHUM bar; pra ligar
-    todos, o valor explícito '*'. Antes vazio = todos: o Garage caía na Efí sem conta e perdia os momentos pagos."""
+    todos, o valor explícito '*'. Antes vazio = todos: o Garage caía na Efí sem conta e perdia os momentos pagos.
+    17/10/26 (caminho único): na lista não quer dizer split — o pubshow.py manda pro split só com a conta aceita."""
     if not ligado():
         return False
-    lista = [c.strip().upper() for c in (os.environ.get('PUBSHOW_EFI_BARES') or '').split(',') if c.strip()]
+    lista = _lista_bares()
     if not lista:
         return False
     if '*' in lista:
@@ -418,11 +431,20 @@ _cli = None
 
 
 def cliente():
-    """16/10/26 (Lote C): efi_client.py (novo). O efi_pix.py da RifaJá fica intocado (= cd052dd)."""
+    """16/10/26 (Lote C): efi_client.py (novo). O efi_pix.py da RifaJá fica intocado (= cd052dd).
+    17/10/26 (caminho único): 1 conta Efí só, a mesma pra ponte e split. PUBSHOW_EFI_* manda; sem ela preenchida,
+    usa as EFI_* (as credenciais da RifaJá, que o Diogo escolheu pro PubShow em 16/10) pelo MESMO efi_client
+    (token, certificado e PEM próprios: nunca mexe no efi_pix.py nem no efi_cert.pem dele)."""
     global _cli
     if _cli is None:
         import efi_client
-        _cli = efi_client.EfiClient('PUBSHOW_EFI_')
+        c = efi_client.EfiClient('PUBSHOW_EFI_')
+        if not c.configurado():
+            r = efi_client.EfiClient('EFI_')
+            if r.configurado():
+                log.info('[PubShow pay] PUBSHOW_EFI_* vazia: usando a conta Efí das EFI_* (a mesma da RifaJá)')
+                c = r
+        _cli = c
     return _cli
 
 
@@ -565,6 +587,30 @@ def conta_aceita(conn, business_id):
         return False
     return bool(_uma(conn, 'SELECT id FROM pubshow_pay_splitcfg WHERE business_id=? AND efi_conta=? LIMIT 1',
                      (int(business_id), c['efi_conta'])))
+
+
+def conferir_conta(conn, business_id, cli=None, agora=None):
+    """17/10/26 (caminho único): a conta salva que a Efí ainda não aceitou (ela não respondeu no passo 4) é conferida
+    de novo, com a MESMA config de split do passo 4. Aceitou → o bar sai da ponte e vai pro split no próximo pedido.
+    Recusou ou não respondeu → nada muda (o bar segue na ponte; o dono pode salvar de novo).
+    Devolve {'aceita': bool, 'erro'?, 'http'?}. Sem conta salva = {'aceita': False}."""
+    c = conta_do_bar(conn, business_id)
+    if not c:
+        return {'aceita': False}
+    if conta_aceita(conn, business_id):
+        return {'aceita': True}
+    falha = {}
+    cfg = _split_cfg(conn, cli or cliente(), int(business_id),
+                     {'efi_conta': c['efi_conta'], 'titular_doc': c['titular_doc']},
+                     CONFERE_PLAT_CENT, CONFERE_BAR_CENT, _agora(agora), falha=falha)
+    if cfg:
+        log.info('[PubShow pay] a Efí aceitou a conta %s do bar %s (sai da ponte, vai pro split)',
+                 c['efi_conta'], business_id)
+        return {'aceita': True}
+    if falha.get('http') in (400, 404, 422):
+        log.warning('[PubShow pay] a Efí recusou de novo a conta %s do bar %s: %s', c['efi_conta'], business_id,
+                    falha.get('erro'))
+    return {'aceita': False, 'erro': str(falha.get('erro') or '')[:200], 'http': falha.get('http')}
 
 
 def split_recusado(conn, business_id):
@@ -1425,7 +1471,7 @@ _thread = None
 
 
 def iniciar_reconciliador(get_conn, on_pago=None, intervalo=60):
-    """Sobe o robô (thread daemon, como os do app.py). Só com PUBSHOW_GATEWAY=efi.
+    """Sobe o robô (thread daemon, como os do app.py). Só com a Efí ligada (ligado(): lista e sem emergência).
     get_conn = pubshow_db.get_pubshow_db; on_pago = o mesmo callback do confirmar()."""
     global _thread
     if not ligado():

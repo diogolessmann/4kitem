@@ -449,7 +449,7 @@
            ser o CPF/CNPJ do cadastro: o campo vem VAZIO de propósito (a conta de outra pessoa é recusada na hora) #}
         {% if efi_split_recusado %}<div id="tut-conta-recusada" style="font-size:12px;color:#fecaca;margin-top:4px;line-height:1.6">A Efí recusou a conta salva. Digite de novo o número da conta e o CPF/CNPJ do titular, como aparecem no app da Efí.</div>{% endif %}
         {#- Lote D A2 (16/10/26): a mensalidade sai de 30% de cada momento até fechar (era "os primeiros R$ 49,90") #}
-        <div style="font-size:12px;color:var(--text2);margin-top:4px;line-height:1.6">{% if efi_mens_cent %}Cada momento cai na hora nessa conta. Até fechar a mensalidade ({{ brl_cent(efi_mens_cent) }} no mês), {{ efi_mens_pct }}% de cada momento paga ela: você nunca tira do bolso.{% else %}Cada momento cai na hora nessa conta.{% endif %} Ainda não tem conta? <a href="https://sejaefi.com.br/abrir-conta" target="_blank" rel="noopener" style="color:#f97316;font-weight:800;text-decoration:none">Abra grátis pelo app Efí</a> (uns 15 minutos) e volte aqui. A conta tem que estar no mesmo CPF/CNPJ do cadastro.</div>
+        <div style="font-size:12px;color:var(--text2);margin-top:4px;line-height:1.6">{% if efi_ponte %}<span id="tut-conta-ponte">Hoje o dinheiro dos momentos vai pra conta do PubShow e chega em você no repasse de toda semana. Conectando a tua conta Efí, ele passa a cair na hora.</span> {% endif %}{% if efi_mens_cent %}Cada momento cai na hora nessa conta. Até fechar a mensalidade ({{ brl_cent(efi_mens_cent) }} no mês), {{ efi_mens_pct }}% de cada momento paga ela: você nunca tira do bolso.{% else %}Cada momento cai na hora nessa conta.{% endif %} Ainda não tem conta? <a href="https://sejaefi.com.br/abrir-conta" target="_blank" rel="noopener" style="color:#f97316;font-weight:800;text-decoration:none">Abra grátis pelo app Efí</a> (uns 15 minutos) e volte aqui. A conta tem que estar no mesmo CPF/CNPJ do cadastro.</div>
         {% set _doc_cad = (b.cpf_cnpj or '')|replace('.', '')|replace('-', '')|replace('/', '')|replace(' ', '') %}
         <form method="POST" action="/pubshow/painel/conta-efi" id="form-conta-efi" class="pix-form" style="margin-top:10px;display:flex;flex-direction:column;gap:10px" onsubmit="return salvarContaEfi(event)">
           <div>
@@ -822,15 +822,21 @@
   <!-- 🏦 Quando cai na sua conta (o caminho do dinheiro muda com o jeito que o bar recebe) -->
   <div class="card" id="sec-repasse" style="font-size:14px;line-height:1.6">
     <div class="card-title">🏦 Quando cai na sua conta</div>
-    {% if efi %}
+    {#- 17/10/26 (caminho único): o bar da PONTE (na lista, sem a conta Efí aceita) vende e recebe no repasse semanal #}
+    {% if efi or efi_ponte %}
     <div id="sec-conta-efi">
-      {% if efi_sem_conta %}
+      {% if efi_ponte and efi_conta_salva %}
+      <div id="conta-efi-pendente" style="font-size:13px;color:#fde68a;line-height:1.6">⏳ Conta salva, esperando a Efí confirmar. Até lá, o dinheiro dos momentos vai pra conta do PubShow e chega em você no repasse de toda semana. Passou de 1 dia? Confere o número da conta no app da Efí e <a href="#tut-conta" style="color:#f97316;font-weight:800;text-decoration:none">salva de novo →</a></div>
+      {% elif efi_ponte %}
+      <div id="conta-efi-ponte" style="font-size:13px;color:var(--text2);line-height:1.6">Ainda não conectada: hoje o dinheiro dos momentos vai pra conta do PubShow e chega em você no repasse de toda semana. Conecte a conta Efí do bar e cada momento cai na hora nela. <a href="#tut-conta" style="color:#f97316;font-weight:800;text-decoration:none">Conectar agora →</a></div>
+      {% elif efi_sem_conta %}
       <div style="color:#fde68a">A conta Efí do bar ainda não está conectada: os momentos pagos estão pausados. <a href="#tut-conta" style="color:#f97316;font-weight:800;text-decoration:none">Conectar agora →</a></div>
       {% else %}
       {% set _cf = (meu_dinheiro.conta.efi_conta if meu_dinheiro and meu_dinheiro.conta else '') or '' %}
       <div style="font-size:16px;font-weight:800">⚡ Cai na hora na sua conta Efí{% if _cf %} (••••{{ _cf[-4:] }}){% endif %}</div>
       <div style="font-size:13px;color:var(--text2);margin-top:4px">Trocar de conta: fale com o suporte.</div>
       {% endif %}
+      {% if efi_ponte and ultimo_repasse %}<div id="ultimo-repasse" style="margin-top:4px">Último repasse: <strong style="color:var(--green)">R$ {{ '%.2f'|format(ultimo_repasse.valor_bar)|replace('.',',') }}</strong>{% if ultimo_repasse.valor_gorjeta %} + R$ {{ '%.2f'|format(ultimo_repasse.valor_gorjeta)|replace('.',',') }} de gorjeta{% endif %} em {{ ultimo_repasse.quando }}.</div>{% endif %}
     </div>
     {% elif asaas_ativo %}
     <div id="sec-repasse">
@@ -1338,7 +1344,7 @@ function pularMusica(btn) {
   });
 }
 
-{%- if efi %}
+{%- if efi or efi_passo4 %}
 // Lote C, fatia b (16/10/26): passo 4 — conectar a conta Efí do bar sem sair da tela (só com a Efí ligada pro bar)
 async function salvarContaEfi(ev) {
   const f = document.getElementById('form-conta-efi'), btn = document.getElementById('ce-salvar');
