@@ -189,6 +189,8 @@ def init_pubshow_db():
         # quando vê que subiu (comando via polling do /api/status).
         'ALTER TABLE pubshow_businesses ADD COLUMN skip_seq INTEGER DEFAULT 0',
         'ALTER TABLE pubshow_businesses ADD COLUMN tv_volume INTEGER DEFAULT 100',
+        # 🔇 17/10/26 (Diogo): "Vídeo sem música → sem som" — TV muda nos canais que não são de música (desligado)
+        'ALTER TABLE pubshow_businesses ADD COLUMN tv_mudo_sem_musica INTEGER DEFAULT 0',
         'ALTER TABLE pubshow_businesses ADD COLUMN videos_bloqueados TEXT',
         'ALTER TABLE pubshow_businesses ADD COLUMN moderar_ok INTEGER DEFAULT 1',   # gerente confere cantada/namoro antes da TV (11/09/26)   # JSON: youtube_ids que o gerente baniu ("nunca mais") — 11/09/26   # volume da TV controlado pelo painel (0-100)
         # Coluna qualidade dos vídeos — existia no CREATE TABLE mas faltava a

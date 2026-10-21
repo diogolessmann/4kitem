@@ -484,6 +484,36 @@ const TIPOS_MUSICA = {
 let _isMuted = true;
 function _somLigado() { return !_isMuted; }
 
+// 🔇 17/10/26 (Diogo): "Vídeo sem música → sem som" (interruptor do dono, desligado por padrão). Ligado, a TV fica
+// muda nos vídeos dos canais que NÃO são de música (Sport, Viral, Extra) e o som sai da caixa do bar. Pedido de música
+// da fila toca com som; canal de música nunca muda. Só player.mute() (função da API): música do app por cima do vídeo
+// é proibida pelo YouTube (trilha alternativa III.I.7 + 2 players tocando juntos). _isMuted continua = "o navegador
+// liberou o som" (status, momentos e furar a fila dependem disso); este mudo é outro, e só ele se desfaz sozinho.
+let TV_MUDO_SEM_MUSICA = {{ 'true' if b.get('tv_mudo_sem_musica') else 'false' }};
+const GRUPO_CANAL = {{ grupos_canal | tojson }};
+// 20/10/26: o mudo decide pelo grupo da CATEGORIA do vídeo — com 2+ estilos acesos o canal é 'variado' (música) e a
+// lista mistura categorias (Rock + Esporte = clipe de rock, f1, surf…). Categoria sem canal próprio: vale o do canal.
+const GRUPO_CAT = {{ grupos_cat | tojson }};
+function _grupoDoVideo(v) { return (v && GRUPO_CAT[v.categoria]) || GRUPO_CANAL[CANAL_KEY] || 'musica'; }
+let _mudoPeloCanal = false;   // fomos NÓS que tiramos o som (vídeo sem música): só então devolvemos
+let _grupoTocando = _grupoDoVideo(VIDEOS[videoIdx]);   // grupo do vídeo da rotação que está NO PLAYER
+let _testandoSom = false;    // _tentarSomSozinho tirou o mudo e ainda não decidiu
+function _videoSemSom() {
+  return TV_MUDO_SEM_MUSICA && !_tocandoPedido && _grupoTocando !== 'musica';
+}
+function _aplicarSomDoVideo() {
+  if (!player || !player.mute) return;
+  try {
+    if (_isMuted && _testandoSom) { player.setVolume(_videoSemSom() ? 1 : volumeAtualTV()); return; }
+    if (_videoSemSom()) {
+      if (!_isMuted) { player.mute(); _mudoPeloCanal = true; }   // TV ainda sem som liberado: já está muda
+    } else if (_mudoPeloCanal) {
+      _mudoPeloCanal = false;
+      if (!_isMuted && volumeAtualTV() > 0) { player.unMute(); player.setVolume(volumeAtualTV()); }
+    }
+  } catch(e) {}
+}
+
 let _jaLigou = false;   // esta TV já foi ligada neste aparelho → sem botão grande, só o aviso pequeno
 try { _jaLigou = localStorage.getItem('ps_tv_ligada') === '1'; } catch(e) {}
 
@@ -505,9 +535,11 @@ function ligarTV() {
   _esconderCursorDepois(0);
   try {
     if (player && player.unMute) {
+      if (_videoSemSom()) player.setVolume(1);   // 🔇 vai voltar a ficar mudo já já: nada de estalo no volume cheio
       player.unMute();
-      player.setVolume(volumeAtualTV());
+      player.setVolume(_videoSemSom() ? 1 : volumeAtualTV());
       _isMuted = false;
+      _aplicarSomDoVideo();   // 🔇 o toque libera o som; vídeo sem música com o interruptor ligado volta a ficar mudo
       // 16/10/26: a tentativa de som sozinha pode ter deixado o vídeo PAUSADO pelo Chrome; o toque retoma
       // (menos no slide do bar, que pausa o vídeo de propósito)
       if (!document.getElementById('slide-propaganda').classList.contains('show') && player.getPlayerState() !== 1) {
@@ -536,12 +568,14 @@ function _tentarSomSozinho() {
   const ini = Date.now();
   let tirouMudoEm = 0;
   const confere = () => {
-    if (!_isMuted) return;   // alguém já tocou na TV
+    if (!_isMuted) { _testandoSom = false; return; }   // alguém já tocou na TV
     let mudo = true, estado = -1;
     try { mudo = player.isMuted(); estado = player.getPlayerState(); } catch(e) { return; }
     if (!tirouMudoEm) {
       if (estado === 1) {    // tocando mudo: agora tenta o som
-        try { player.unMute(); player.setVolume(volumeAtualTV()); } catch(e) { return; }
+        // 🔇 vídeo sem música com o interruptor ligado: testa no volume 1 (o teste não solta 1,5 s de motor no bar)
+        try { player.setVolume(_videoSemSom() ? 1 : volumeAtualTV()); player.unMute(); } catch(e) { return; }
+        _testandoSom = true;
         tirouMudoEm = Date.now();
         setTimeout(confere, 1500);
       } else if (Date.now() - ini < 30000) {
@@ -550,12 +584,16 @@ function _tentarSomSozinho() {
       return;
     }
     if (!mudo && estado === 1) {
+      _testandoSom = false;
       _isMuted = false;      // tocando COM som: o navegador deixou
+      if (_videoSemSom()) _aplicarSomDoVideo();   // 🔇 som liberado, mas o vídeo sem música segue mudo
+      else { try { player.setVolume(volumeAtualTV()); } catch(e) {} }   // o canal pode ter virado música no teste
       document.getElementById('ligar-tv').classList.add('hidden');
       document.getElementById('sem-som').classList.remove('show');
       _lembrarTelaCheia();
       _furarFilaQueEsperava();
     } else if (mudo || estado === 2 || Date.now() - tirouMudoEm >= PRAZO_SOM_MS) {
+      _testandoSom = false;
       try { player.mute(); player.playVideo(); } catch(e) {}   // não deixou: segue mudo, tocando
     } else {
       setTimeout(confere, 500);   // carregando de novo (estado 3/-1): confere daqui a pouco
@@ -627,6 +665,7 @@ function aplicarVolumeTV(v) {
   try {
     if (!player || !player.setVolume) return;
     if (v === 0) { player.mute(); }
+    else if (_videoSemSom()) { /* 🔇 vídeo sem música: segue mudo; o volume novo vale quando o som voltar */ }
     else { if (player.isMuted && player.isMuted() && !_isMuted) player.unMute(); player.setVolume(v); }
   } catch (e) {}
 }
@@ -673,9 +712,11 @@ function onPlayerReady(e) {
   e.target.playVideo();
   // Se alguém já tocou em LIGAR antes do player carregar, desmuta agora
   if (window._autoUnmute) {
+    if (_videoSemSom()) e.target.setVolume(1);   // 🔇 vai voltar a ficar mudo já já: nada de estalo no volume cheio
     e.target.unMute();
-    e.target.setVolume(volumeAtualTV());
+    e.target.setVolume(_videoSemSom() ? 1 : volumeAtualTV());
     _isMuted = false;
+    _aplicarSomDoVideo();   // 🔇 1º vídeo de canal que não é música, interruptor ligado: volta a ficar mudo
   } else {
     _tentarSomSozinho();       // 16/10/26 (V-S5-03): tenta sempre (antes só com a marca 'ps_tv_ligada')
   }
@@ -810,6 +851,7 @@ async function avancarFila(opts) {
       _tocandoPedido = true;
       _pedidoDesde   = Date.now();
       player.loadVideoById(p.youtube_id);
+      _aplicarSomDoVideo();   // 🔇 pedido de música toca com som (depois do load: nada do vídeo anterior escapa)
       atualizarNowPlaying({
         titulo:  p.titulo_pedido || '🎯 Pedido especial',
         artista: `pedido por ${p.nome_cliente || 'alguém'}`,
@@ -856,7 +898,11 @@ function carregarVideo(idx) {
   const v = VIDEOS[videoIdx];
   _tocandoPago = false;
   _tocandoPedido = false;
+  _grupoTocando = _grupoDoVideo(v);
+  // 🔇 vídeo sem música: muda ANTES do load (o motor não escapa); voltando pra música, devolve o som DEPOIS
+  if (_videoSemSom()) _aplicarSomDoVideo();
   player.loadVideoById(v.youtube_id);
+  if (!_videoSemSom()) _aplicarSomDoVideo();
   atualizarNowPlaying(v);
   esconderNowPlayingComDelay();
   iniciarStallDetector();
@@ -919,10 +965,19 @@ function _esc(t) {
   return String(t == null ? '' : t).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
+// 20/10/26: no 'variado' (2+ estilos acesos, ou o botão Variado) o selo diz o botão do vídeo QUE TOCA (⚽ Esporte,
+// 🎸 Rock…), não "🎶 Variado". Pedido do cliente (sem categoria) e categoria sem botão: o selo do canal.
+const ROTULO_CAT = {{ rotulos_cat | tojson }};
+function _seloDoCanal() { const c = CANAIS_JS[CANAL_KEY] || {}; return `${c.emoji || ''} ${c.nome || CANAL_KEY}`; }
+
 function atualizarNowPlaying(v) {
   document.getElementById('np-titulo').textContent  = v.titulo  || '';
   document.getElementById('np-artista').textContent = v.artista || '';
   const np = document.getElementById('now-playing');
+  if (CANAL_KEY === 'variado') {
+    const badge = np.querySelector('.np-canal-badge');
+    if (badge) badge.textContent = (v.categoria && ROTULO_CAT[v.categoria]) || _seloDoCanal();
+  }
   np.classList.remove('hidden');
 }
 
@@ -1149,6 +1204,12 @@ async function pollStatus() {
     // 🔊 Volume — controle remoto do gerente (slider no painel)
     if (typeof data.tv_volume === 'number' && data.tv_volume !== window._tvVolume) {
       aplicarVolumeTV(data.tv_volume);
+    }
+
+    // 🔇 "Vídeo sem música → sem som" — o dono ligou/desligou no painel: vale já no vídeo que está tocando
+    if (typeof data.tv_mudo_sem_musica === 'number' && (data.tv_mudo_sem_musica === 1) !== TV_MUDO_SEM_MUSICA) {
+      TV_MUDO_SEM_MUSICA = data.tv_mudo_sem_musica === 1;
+      _aplicarSomDoVideo();
     }
 
     // ⏭️ Pular música — comando do dono (botão no painel)
