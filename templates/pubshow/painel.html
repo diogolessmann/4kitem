@@ -630,22 +630,8 @@
     {% endif %}
   </div>
 
-  {#- 🔇 Modo esporte (sessão "modo esporte", 17/10/26): a TV muda os vídeos que não são música (Esporte, Comédia…) e o
-      som sai da caixa do bar; pedido de música da fila continua com som. DESLIGADO por padrão (o ⚽ não liga sozinho).
-      20/10/26: saiu de dentro do "Mais estilos" (o dono não abre) e virou cartão visível embaixo do Estilo do bar.
-      Só aparece com a coluna (migração) E a rota no ar: coluna sem rota = chave que sempre falha (B9) #}
-  {% if 'tv_mudo_sem_musica' in b and rota_modo_esporte %}
-  <div class="card" id="sec-modo-esporte">
-    <div class="linha-chave" style="padding:0">
-      <div>
-        <div class="rot">🔇 Vídeo sem música → sem som <span class="salvo" aria-live="polite"></span></div>
-        <div class="sub">Esporte e vídeos ficam mudos; o som sai da caixa do bar.</div>
-      </div>
-      <label class="sw"><input type="checkbox" id="tv-mudo-sem-musica" aria-label="Vídeo sem música fica sem som"{% if b.tv_mudo_sem_musica %} checked{% endif %} onchange="salvarMudoSemMusica(this)"><span class="sw-t"></span></label>
-    </div>
-  </div>
-  {% endif %}
-
+  {#- 20/10/26 (Diogo: "vídeo sem música não faz muito sentido, pode simplesmente mutar"): saiu o cartão 🔇. O que ele
+      quer é esporte com música por cima: ⚽ Esporte + um estilo de música = esporte no fundo + o clipe numa janela. #}
   <div class="card" id="sec-youtube">
     <div class="linha-chave" style="padding:0">
       <div>

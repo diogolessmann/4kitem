@@ -376,6 +376,21 @@ def init_pubshow_db():
     # 17/10/26: o grupo Shows saiu (SHOWS_FORA) — roda em todo boot, idempotente (a 2ª vez não acha nada)
     _tirar_shows(conn)
 
+    # 20/10/26 (Diogo: "vídeo sem música não faz muito sentido, pode simplesmente mutar"): o cartão 🔇 saiu do painel.
+    # 1 vez só: desliga o 🔇 de quem ligou (sem o cartão não teria onde desligar). Coluna e rota ficam, dormentes.
+    try:
+        conn.execute('CREATE TABLE IF NOT EXISTS pubshow_meta (chave TEXT PRIMARY KEY, valor TEXT)')
+        if not conn.execute("SELECT 1 FROM pubshow_meta WHERE chave='mudo_sem_cartao_20out'").fetchone():
+            n = conn.execute('UPDATE pubshow_businesses SET tv_mudo_sem_musica=0 WHERE tv_mudo_sem_musica=1').rowcount
+            conn.execute("INSERT OR REPLACE INTO pubshow_meta (chave, valor) VALUES ('mudo_sem_cartao_20out', datetime('now'))")
+            conn.commit()
+            if n:
+                log.info('[PUBSHOW] 🔇 saiu do painel: desligado em %d bar(es)', n)
+    except Exception as e:      # banco sem a coluna (antes do modo esporte): nada a desligar
+        log.warning('[PUBSHOW] desligar o 🔇: %s', e)
+        try: conn.rollback()
+        except: pass
+
     # Webhook do Asaas entrega "pelo menos 1 vez": cada id de evento só tem efeito 1 vez (15/10/26)
     try:
         conn.execute('CREATE TABLE IF NOT EXISTS pubshow_webhook_eventos ('

@@ -117,6 +117,41 @@ def _so_musica(temas):
     """Só os temas que são estilo de MÚSICA (o filtro do celular e do YouTube); Esporte e Comédia ficam só na TV."""
     return [t for t in (temas or []) if t in pubshow_estilo.CANAL_ESTILO] or None
 
+
+# 20/10/26 (Diogo: "vídeos legais de esporte... mas pôr música sobre eles"): ⚽ Esporte + um estilo de MÚSICA acesos →
+# a TV mostra em tela cheia um vídeo de esporte que NÃO é do YouTube (Pexels, mudo, no bucket R2 dele) e o clipe do
+# YouTube numa janela, com o som dele. Regras do YouTube: 1 player só tocando, nada na frente dele, ≥ 480x270, som só
+# dele (não se troca o som de vídeo do YouTube). Nesse modo o YouTube da TV só toca música.
+# Liga com a env PUBSHOW_FUNDO_URL (endereço público da pasta dos vídeos no bucket); sem ela, Esporte + Rock = a
+# mistura de antes (vídeos de esporte do YouTube no meio das músicas).
+def _fundo_url():
+    return (os.environ.get('PUBSHOW_FUNDO_URL') or '').strip().rstrip('/')
+
+
+def _fundo_ativo(b):
+    """Esporte + algum estilo de música acesos (canal Variado com os temas dos dois), com o bucket configurado."""
+    if not b or not _fundo_url():
+        return False
+    try:
+        ck = (b.get('canal_atual') if hasattr(b, 'get') else b['canal_atual']) or ''
+    except Exception:
+        return False
+    temas = set(_temas_do_bar(b) or [])
+    return ck == 'variado' and set(ESTILOS_BAR['esporte']['temas']) <= temas and bool(_so_musica(list(temas)))
+
+
+def _fundo_clipes(b):
+    """Os endereços dos vídeos de fundo (pubshow_fundos.FUNDOS no bucket) quando o modo está ligado; senão None."""
+    if not _fundo_ativo(b):
+        return None
+    try:
+        from pubshow_fundos import FUNDOS
+    except Exception as e:
+        log.error('[PUBSHOW] lista dos vídeos de fundo falhou: %s', e)
+        return None
+    base = _fundo_url()
+    return [f'{base}/{f[0]}' for f in FUNDOS] or None
+
 # Plano ÚNICO (15/10/26, decisão padrão 1 — reversível): acabou Starter/Bar/Pro/Rede. A chave fica
 # 'bar' (é o que está gravado no banco, nos links e no externalReference do Asaas) e TUDO é liberado.
 # Preço em 1 lugar só: env PUBSHOW_PLANO_CENT (centavos; padrão 7990 = R$ 79,90 — decisão do Diogo, 17/10/26).
@@ -3234,7 +3269,10 @@ def tv(code):
     import json as _json
     canal_key = b['canal_atual'] or 'rock'
     canal     = CANAIS.get(canal_key, CANAIS['rock'])
-    videos    = _videos_do_canal(canal_key, bloqueados=_videos_bloqueados(b), temas=_temas_do_bar(b))
+    # 20/10/26: no modo fundo (Esporte + música) o esporte é o fundo; o YouTube da TV só toca a música
+    fundo_clipes = _fundo_clipes(b)
+    _temas_tv = _so_musica(_temas_do_bar(b)) if fundo_clipes else _temas_do_bar(b)
+    videos    = _videos_do_canal(canal_key, bloqueados=_videos_bloqueados(b), temas=_temas_tv)
     # 1) Filtra canais pelo plano do bar (grupos_tv)
     canais_plano = _plano_canais_permitidos(dict(b))
     # 2) Filtra pelos temas que o bar habilitou dentro do que o plano permite
@@ -3282,7 +3320,8 @@ def tv(code):
                                        if isinstance(v.get('cat'), str)},
                            # 20/10/26: categoria → botão do Estilo do bar (⚽ Esporte, 🎸 Rock…): o selo da faixa no 'variado'
                            rotulos_cat={t: f"{e['emoji']} {e['nome']}" for e in ESTILOS_BAR.values()
-                                        for t in (e.get('temas') or [])})
+                                        for t in (e.get('temas') or [])},
+                           fundo_clipes=fundo_clipes)   # 20/10/26: esporte no fundo + clipe na janela (None = desligado)
 
 
 def _qr_preco_tv(b):
@@ -4379,11 +4418,13 @@ def api_videos(categoria):
     _code = request.args.get('bar', '').strip()
     if _code:
         conn = get_pubshow_db()
-        _b = conn.execute('SELECT videos_bloqueados, temas_habilitados FROM pubshow_businesses WHERE code=?', (_code,)).fetchone()
+        _b = conn.execute('SELECT videos_bloqueados, temas_habilitados, canal_atual FROM pubshow_businesses WHERE code=?', (_code,)).fetchone()
         conn.close()
         if _b:
             bloqueados = _videos_bloqueados(_b)
             temas = _temas_do_bar(_b)   # 20/10/26: Variado com vários estilos acesos = mistura só deles
+            if _fundo_ativo(_b):        # 20/10/26: esporte no fundo → o YouTube só toca a música
+                temas = _so_musica(temas)
     videos = _videos_do_canal(categoria, bloqueados=bloqueados, temas=temas)
     return jsonify({'videos': videos, 'total': len(videos)})
 
@@ -6851,6 +6892,9 @@ def painel_estilo():
     # o canal não mudou (Variado → Variado) mas a mistura sim: a TV só troca quando o canal muda, então recarrega
     # (com pedido tocando, ela espera a música acabar — TVP-1)
     if _antes and (_antes['canal_atual'] or '') == canal == 'variado' and (_antes['temas_habilitados'] or None) != valor:
+        _bump_tv_bar(b['id'])
+    # 20/10/26: entrou ou saiu do modo fundo (Esporte + música): a TV troca o layout, então recarrega (espera o pedido)
+    elif _antes and _fundo_ativo(_antes) != _fundo_ativo({'canal_atual': canal, 'temas_habilitados': valor}):
         _bump_tv_bar(b['id'])
     session['pub_canal'] = canal   # a TV aberta troca sozinha pelo /api/status (canal_atual)
     if _xhr():

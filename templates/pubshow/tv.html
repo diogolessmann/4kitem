@@ -245,9 +245,32 @@
   #qr-fixo.grande img{width:26vh!important;height:26vh!important}
   #qr-fixo.grande .qr-txt1{font-size:3.4vh!important}
   #qr-fixo.grande #qr-preco{font-size:2.8vh!important}
+  /* 20/10/26 — MODO FUNDO (⚽ Esporte + música acesos, sessão do Estilo do bar): esporte que NÃO é do YouTube (Pexels,
+     no bucket do bar) em tela cheia e mudo, e o clipe do YouTube numa janela visível com o som dele. Regras do YouTube:
+     1 player só tocando, nada na frente dele (nem com ele pausado), ≥ 480x270. Por isso o QR, a faixa e o "próximo" saem
+     de cima do player, e o que era tela cheia (momentos, propaganda, "Ligar a TV", confete) fica à esquerda da janela. */
+  #fundo-esporte{position:fixed;inset:0;width:100%;height:100%;object-fit:cover;z-index:0;background:#000}
+  body.modo-fundo #player-wrap{inset:auto;right:3vw;bottom:6vh;width:33.4vw;height:18.8vw;min-width:480px;min-height:270px;
+    z-index:2;background:#000;box-shadow:0 0 0 6px rgba(0,0,0,.85),0 12px 40px rgba(0,0,0,.6)}
+  #janela-rot{display:none}
+  body.modo-fundo #janela-rot{display:block;position:fixed;right:3vw;bottom:calc(6vh + max(18.8vw, 270px) + 14px);z-index:3;
+    font-size:clamp(14px,1.3vw,24px);font-weight:900;color:#fca5a5;text-shadow:0 2px 10px rgba(0,0,0,.9)}
+  body.modo-fundo #qr-fixo{top:18px;bottom:auto}
+  body.modo-fundo.com-promo #qr-fixo{top:118px}
+  body.modo-fundo #proximo-card{bottom:calc(6vh + max(18.8vw, 270px) + 64px)}
+  body.modo-fundo{--fora-janela:calc(3vw + max(33.4vw, 480px) + 2vw)}   /* da borda direita até a esquerda da janela */
+  body.modo-fundo #now-playing{right:var(--fora-janela);padding-right:32px}
+  body.modo-fundo #overlay, body.modo-fundo #slide-propaganda, body.modo-fundo #ligar-tv{right:var(--fora-janela)}
+  body.modo-fundo #slide-img-box img{max-width:calc((100vw - var(--fora-janela)) * .92)}
+  body.modo-fundo #canal-lista{max-height:calc(94vh - max(18.8vw, 270px) - 130px)}   /* o seletor acaba acima do rótulo */
 </style>
 </head>
-<body>
+<body{% if fundo_clipes %} class="modo-fundo"{% endif %}>
+{% if fundo_clipes %}
+<!-- 20/10/26: o esporte do fundo (não é YouTube, mudo) e o rótulo da janela do clipe -->
+<video id="fundo-esporte" muted autoplay playsinline preload="auto" aria-hidden="true"></video>
+<div id="janela-rot">🎵 Tocando agora</div>
+{% endif %}
 
 <!-- Ligar a TV (16/10/26, B7): 1 toque = som + tela cheia + some o cursor. Aparece só na 1ª vez neste aparelho;
      depois de uma recarga/queda de luz fica só o aviso pequeno "Sem som" (o vídeo e os momentos continuam visíveis). -->
@@ -1099,13 +1122,16 @@ function mostrarSlide(slide) {
 
 function lancarConfetes(corPrincipal) {
   const cores = [corPrincipal,'#f97316','#22c55e','#3b82f6','#eab308','#fff','#ec4899','#a855f7'];
+  // 20/10/26 modo fundo: o confete cai só à esquerda da janela do clipe (nada na frente do player do YouTube)
+  const _jan = document.body.classList.contains('modo-fundo') ? document.getElementById('player-wrap').getBoundingClientRect().left - 24 : 0;
+  const _faixa = _jan > 0 ? _jan / innerWidth * 100 : 100;
   for (let i = 0; i < 100; i++) {
     setTimeout(() => {
       const el = document.createElement('div');
       el.className = 'confete';
       const size = 6 + Math.random() * 12;
       el.style.cssText = `
-        left:${Math.random()*100}vw;
+        left:${Math.random()*_faixa}vw;
         width:${size}px; height:${size}px;
         background:${cores[Math.floor(Math.random()*cores.length)]};
         animation-duration:${2.5 + Math.random() * 3}s;
@@ -1426,5 +1452,27 @@ if (_jaLigou) {
   document.getElementById('sem-som').classList.add('show');
 }
 </script>
+{% if fundo_clipes %}
+<script>
+// 20/10/26 — modo fundo: os vídeos de esporte do bucket (Pexels), mudos, um atrás do outro em ordem sorteada.
+// Não é YouTube: o único player do YouTube da tela é o da janela (a música).
+(function () {
+  const CLIPES = {{ fundo_clipes | tojson }}.slice().sort(() => Math.random() - .5);
+  const v = document.getElementById('fundo-esporte');
+  let i = 0, falhas = 0;
+  function proximo() {
+    if (!CLIPES.length) return;
+    v.src = CLIPES[i++ % CLIPES.length];
+    v.play().catch(() => {});
+  }
+  v.muted = true;
+  v.addEventListener('ended', proximo);
+  v.addEventListener('playing', () => { falhas = 0; });
+  // vídeo que não abre (bucket fora, arquivo apagado): pula; se nenhum abre, fica o fundo preto (a música segue)
+  v.addEventListener('error', () => { if (++falhas <= CLIPES.length) proximo(); else v.style.display = 'none'; });
+  proximo();
+})();
+</script>
+{% endif %}
 </body>
 </html>
