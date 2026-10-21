@@ -507,12 +507,11 @@ const TIPOS_MUSICA = {
 let _isMuted = true;
 function _somLigado() { return !_isMuted; }
 
-// 🔇 17/10/26 (Diogo): "Vídeo sem música → sem som" (interruptor do dono, desligado por padrão). Ligado, a TV fica
-// muda nos vídeos dos canais que NÃO são de música (Sport, Viral, Extra) e o som sai da caixa do bar. Pedido de música
-// da fila toca com som; canal de música nunca muda. Só player.mute() (função da API): música do app por cima do vídeo
-// é proibida pelo YouTube (trilha alternativa III.I.7 + 2 players tocando juntos). _isMuted continua = "o navegador
-// liberou o som" (status, momentos e furar a fila dependem disso); este mudo é outro, e só ele se desfaz sozinho.
-let TV_MUDO_SEM_MUSICA = {{ 'true' if b.get('tv_mudo_sem_musica') else 'false' }};
+// 🔇 Esporte sempre mudo (21/10/26, Diogo: "Esporte sempre mudo, sem interruptor (o som sai da caixa do bar);
+// Comédia com som"). Vídeo de ESPORTE da rotação fica mudo, sempre; Comédia, música e pedido do cliente tocam com som.
+// (17/10 era um interruptor "Vídeo sem música → sem som"; saiu.) Só player.mute() (função da API): música do app por
+// cima do vídeo é proibida pelo YouTube (trilha alternativa III.I.7 + 2 players tocando juntos). _isMuted continua =
+// "o navegador liberou o som" (status, momentos e furar a fila dependem disso); este mudo é outro, e só ele se desfaz sozinho.
 const GRUPO_CANAL = {{ grupos_canal | tojson }};
 // 20/10/26: o mudo decide pelo grupo da CATEGORIA do vídeo — com 2+ estilos acesos o canal é 'variado' (música) e a
 // lista mistura categorias (Rock + Esporte = clipe de rock, f1, surf…). Categoria sem canal próprio: vale o do canal.
@@ -522,7 +521,7 @@ let _mudoPeloCanal = false;   // fomos NÓS que tiramos o som (vídeo sem músic
 let _grupoTocando = _grupoDoVideo(VIDEOS[videoIdx]);   // grupo do vídeo da rotação que está NO PLAYER
 let _testandoSom = false;    // _tentarSomSozinho tirou o mudo e ainda não decidiu
 function _videoSemSom() {
-  return TV_MUDO_SEM_MUSICA && !_tocandoPedido && _grupoTocando !== 'musica';
+  return !_tocandoPedido && _grupoTocando === 'sport';
 }
 function _aplicarSomDoVideo() {
   if (!player || !player.mute) return;
@@ -1230,12 +1229,6 @@ async function pollStatus() {
     // 🔊 Volume — controle remoto do gerente (slider no painel)
     if (typeof data.tv_volume === 'number' && data.tv_volume !== window._tvVolume) {
       aplicarVolumeTV(data.tv_volume);
-    }
-
-    // 🔇 "Vídeo sem música → sem som" — o dono ligou/desligou no painel: vale já no vídeo que está tocando
-    if (typeof data.tv_mudo_sem_musica === 'number' && (data.tv_mudo_sem_musica === 1) !== TV_MUDO_SEM_MUSICA) {
-      TV_MUDO_SEM_MUSICA = data.tv_mudo_sem_musica === 1;
-      _aplicarSomDoVideo();
     }
 
     // ⏭️ Pular música — comando do dono (botão no painel)

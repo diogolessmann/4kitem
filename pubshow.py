@@ -4219,8 +4219,6 @@ def api_status(code):
         'promo':          promo,
         'skip_seq':       b['skip_seq'] or 0,
         'tv_volume':      b['tv_volume'] if b['tv_volume'] is not None else 100,
-        # 🔇 17/10/26: vídeo sem música → sem som (sem a coluna — banco que não migrou — o status não cai pra todos)
-        'tv_mudo_sem_musica': 1 if ('tv_mudo_sem_musica' in b.keys() and b['tv_mudo_sem_musica']) else 0,
         'videos_version': _videos_version(),
         'tv_version':     _tv_version(b),
         'qr_preco':       _qr_preco_tv(b),   # V-S5-06: preço do QR da TV ao vivo (happy hour)
@@ -7144,24 +7142,8 @@ def painel_volume():
     return redirect('/pubshow/painel')
 
 
-@pubshow_bp.route('/painel/tv-mudo-sem-musica', methods=['POST'])
-@pubshow_login_required
-def painel_tv_mudo_sem_musica():
-    """🔇 17/10/26 (Diogo): "Vídeo sem música → sem som" (aba Controle do painel; desligado por padrão). Ligado, a TV
-    fica muda nos vídeos dos canais que não são de música (Sport, Viral, Extra) e o som sai da caixa do bar; pedido de
-    música da fila toca com som e canal de música nunca muda. A TV lê no polling do /api/status.
-    Só JSON {"ligado": bool}: o app não tem CSRF (SameSite=None) e um form de outro site não manda JSON sem preflight."""
-    b = _get_business()
-    if not b:
-        return jsonify({'ok': False, 'erro': 'sessao'}), 401
-    d = request.get_json(silent=True)
-    lig = d.get('ligado') if isinstance(d, dict) else None
-    if not isinstance(lig, bool):
-        return jsonify({'ok': False, 'erro': 'ligado_invalido'}), 400
-    conn = get_pubshow_db()
-    conn.execute('UPDATE pubshow_businesses SET tv_mudo_sem_musica=? WHERE id=?', (1 if lig else 0, b['id']))
-    conn.commit(); conn.close()
-    return jsonify({'ok': True, 'ligado': 1 if lig else 0})
+# 🔇 21/10/26 (Diogo: "Esporte sempre mudo, sem interruptor"): saiu a rota POST /painel/tv-mudo-sem-musica. A TV
+# muda o vídeo de esporte sozinha (tv.html); a coluna tv_mudo_sem_musica fica no banco, sem uso.
 
 
 @pubshow_bp.route('/painel/pedido/<int:pid>/confirmar-pix', methods=['POST'])
