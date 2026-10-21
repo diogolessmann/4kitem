@@ -565,7 +565,7 @@
           <span class="pedido-emoji">{{ t.get('emoji','🎵') }}</span>
           <div class="pedido-info">
             {% if loop.first %}<span class="selo-prox">▶ Próximo</span>{% endif %}
-            <div class="pedido-nome">{{ p.nome_cliente }}{% if p.tipo in ('flash', 'vip') and p.pago_em %}<span class="selo-pago">⚡ PAGO</span>{% endif %}</div>
+            <div class="pedido-nome">{{ p.nome_cliente }}{% if p.tipo in ('flash', 'vip', 'pular_espera') and p.pago_em %}<span class="selo-pago">⚡ PAGO</span>{% endif %}</div>
             <div class="pedido-tipo">{% if p.titulo_pedido %}🎵 {{ p.titulo_pedido[:40] }}{% else %}{{ t.get('nome', p.tipo) }}{% endif %}{% if p.mensagem %} · "{{ p.mensagem[:30] }}"{% endif %}</div>
           </div>
           {% if (p.valor or 0) > 0 %}<span class="pedido-valor">R$ {{ '%.2f'|format(p.valor_cobrado or p.valor or 0)|replace('.',',') }}</span>{% else %}<span class="pedido-gratis">grátis</span>{% endif %}
@@ -685,8 +685,8 @@
       que está no banco — salvar uma chave nunca regrava preço. Abertos: os 9 (decisão do Diogo, 17/10/26 noite: "abrir
       também o Salve"); o "mais" só aparece se entrar momento novo fora desta lista. Nome curto no painel (o celular do
       cliente segue com o nome de sempre). #}
-  {% set PRINCIPAIS = ['flash', 'parabens', 'casamento', 'cantada', 'brinde', 'gorjeta', 'dedicatoria', 'chegada', 'salve'] %}
-  {% set NOMES_CURTOS = {'flash': 'Furar a fila', 'parabens': 'Parabéns', 'dedicatoria': 'Dedicatória', 'brinde': 'Brinde',
+  {% set PRINCIPAIS = ['flash', 'pular_espera', 'parabens', 'casamento', 'cantada', 'brinde', 'gorjeta', 'dedicatoria', 'chegada', 'salve'] %}
+  {% set NOMES_CURTOS = {'flash': 'Furar a fila', 'pular_espera': 'Pular a espera', 'parabens': 'Parabéns', 'dedicatoria': 'Dedicatória', 'brinde': 'Brinde',
                          'chegada': 'Chegamos', 'cantada': 'Cantada', 'salve': 'Salve pra mesa', 'casamento': 'Namoro',
                          'gorjeta': 'Gorjeta'} %}
   {% set _princ = [] %}{% set _resto = [] %}
@@ -702,7 +702,7 @@
     {% set _sv = precos_parsed.get(key) %}
     {% set _v = (_sv|float) if _sv is not none and _sv != '' else 0 %}
     {% if not (_v > 0) %}{% set _v = t.preco|float %}{% endif %}
-    {% if _v > 0 and _v < _piso %}{% set _v = _piso %}{% endif %}
+    {% if _v > 0 and _v < _piso and key != 'pular_espera' %}{% set _v = _piso %}{% endif %}{#- ⏩: preço fixo #}
     {% if preco_teto and _v > preco_teto %}{% set _v = preco_teto|float %}{% endif %}
     <div class="momento-row{% if key in bloqueados_parsed %} desligado{% endif %}" data-k="{{ key }}">
       <label class="sw"><input type="checkbox" id="mom-{{ key }}" name="tipos_ativos" value="{{ key }}" form="f-config" aria-label="Vender {{ _nome }}"{% if key not in bloqueados_parsed %} checked{% endif %}><span class="sw-t"></span></label>
@@ -1712,7 +1712,7 @@ function renderFila(fila) {
     const isProximo = idx === 0;
     const proxStyle = isProximo ? ' style="border-left:3px solid #22c55e;padding-left:10px"' : '';
     const proxLabel = isProximo ? '<span class="selo-prox">▶ Próximo</span>' : '';
-    const seloPago = (p.tipo === 'flash' || p.tipo === 'vip') && p.pago_em ? '<span class="selo-pago">⚡ PAGO</span>' : '';
+    const seloPago = (p.tipo === 'flash' || p.tipo === 'vip' || p.tipo === 'pular_espera') && p.pago_em ? '<span class="selo-pago">⚡ PAGO</span>' : '';
     const extra = idx >= FILA_VISIVEL;
     const aberto = String(p.id) === String(_tirarAberto);
     // música grátis: "grátis" em cinza (o "R$ 0,00" em verde em quase toda linha só poluía)

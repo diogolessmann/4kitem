@@ -226,6 +226,12 @@ TIPOS_PEDIDO = {
     'musica_especifica':{'nome': 'Escolher a música',      'emoji': '🎯', 'preco': 0.00,  'cor': '#06b6d4'},   # GRÁTIS (decisão 11/09/26)
     'musica_externa':   {'nome': 'Buscar no YouTube',      'emoji': '🌐', 'preco': 0.00,  'cor': '#dc2626'},   # GRÁTIS por padrão (11/09/26); o bar pode cobrar em precos_custom
     'flash':            {'nome': 'Furar a fila',           'emoji': '⚡', 'preco': 4.00,  'cor': '#f59e0b'},   # R$4 + R$1 = R$5 no PIX: abaixo de R$5 o Asaas recusou e o PIX caiu na chave do bar (16/10/26)
+    # ⏩ Pular a espera (20/10/26, Diogo: "pedir sem delay 2 reais"): pede a música AGORA, sem esperar os
+    # GRATIS_INTERVALO_MIN da grátis; entra na fila NORMAL (na frente é o furar). R$ 2 no TOTAL e só em bar que cobra
+    # pela Efí (_pular_espera_para): no Asaas o mínimo é R$ 5 e empataria com o furar. Preço fixo, como o furar:
+    # ponte = PRECO_PULAR_EFI + R$ 1 do app; split = R$ 2 + a taxa do split (PUBSHOW_CONV_CENT=0 → R$ 2).
+    # Não conta como a grátis: a próxima grátis segue contando da última GRÁTIS (quem pagou não perde a vez dela).
+    'pular_espera':     {'nome': 'Pular a espera',         'emoji': '⏩', 'preco': 2.00,  'cor': '#14b8a6'},
     'vip':              {'nome': 'Tocar AGORA',            'emoji': '👑', 'preco': 10.00, 'cor': '#8b5cf6'},   # OCULTO do cliente (TIPOS_OCULTOS, 11/09/26); fica p/ histórico e TV
     'parabens':         {'nome': 'Parabéns! 🎂',           'emoji': '🎂', 'preco': 15.00, 'cor': '#ec4899'},
     'dedicatoria':      {'nome': 'Dedicatória ❤️',        'emoji': '💌', 'preco': 10.00, 'cor': '#ef4444'},
@@ -267,6 +273,7 @@ PIX_PISO_PRECO = float(os.environ.get('PUBSHOW_PISO_PRECO', '4.00'))   # 16/10/2
 # Furar a fila = R$ 3 + R$ 1 = R$ 4 no PIX. Os outros bares seguem no Asaas como antes.
 PRECO_FLASH_EFI    = 3.00   # R$3 + R$1 de taxa = R$4 no PIX
 PIX_PISO_PRECO_EFI = 1.00   # a Efí não tem mínimo; o piso do preço customizado cai pra R$1 só nesses bares
+PRECO_PULAR_EFI    = 1.00   # ⏩ Pular a espera na ponte: R$1 + R$1 de taxa = R$2 no PIX (20/10/26)
 
 
 def _efi_bares():
@@ -311,6 +318,15 @@ def _taxa_pix_bar(b, tipo='flash'):
     if _efi_para(b):
         return pubshow_pay.conv_cent_para(tipo) / 100
     return PIX_TAXA_CONVENIENCIA if _gateway_ativo(b) else 0.0
+
+
+def _pular_espera_para(b):
+    """⏩ Pular a espera (20/10/26) existe neste bar? Só se ele cobra pela Efí (ponte ou split) e a regra da grátis
+    (1 a cada GRATIS_INTERVALO_MIN) está ligada. No Asaas não: o mínimo de R$ 5 empataria com o furar a fila."""
+    try:
+        return GRATIS_INTERVALO_MIN > 0 and bool(_ponte_efi_para(b) or _efi_para(b))
+    except Exception:
+        return False
 
 # Tetos anti-flood (15/10/26). SEM trava por IP (decisão 11/09/26: no Wi-Fi do bar todo mundo tem o
 # mesmo IP) — por bar e por client_id do celular. "Aberto" = aguardando_pix recente.
@@ -1506,7 +1522,12 @@ def _tipos_disponiveis(b):
         bloqueados = json.loads(b['tipos_bloqueados'] or '[]')
     except Exception:
         bloqueados = []
-    return {k: v for k, v in TIPOS_PEDIDO.items() if k not in bloqueados and k not in TIPOS_OCULTOS}
+    tipos = {k: v for k, v in TIPOS_PEDIDO.items() if k not in bloqueados and k not in TIPOS_OCULTOS}
+    # ⏩ Pular a espera (20/10/26): só na Efí e com música pra pedir (YouTube ou a lista do bar)
+    if 'pular_espera' in tipos and not (('musica_externa' in tipos or 'musica_especifica' in tipos)
+                                        and _pular_espera_para(b)):
+        del tipos['pular_espera']
+    return tipos
 
 
 def _youtube_liberado(b):
@@ -1851,9 +1872,11 @@ def _status_apos_pix(conn, pedido_id):
     return 'aguardando_ok' if (b and _precisa_ok(b, row['tipo'])) else 'pendente'
 
 
-def _tipos_config():
-    """Tipos que o gerente vê nas configurações (sem os ocultos do cliente)."""
-    return {k: v for k, v in TIPOS_PEDIDO.items() if k not in TIPOS_OCULTOS}
+def _tipos_config(b=None):
+    """Tipos que o gerente vê nas configurações (sem os ocultos do cliente). ⏩ Pular a espera (20/10/26): só no
+    painel do bar que cobra pela Efí (sem o bar, fica de fora)."""
+    return {k: v for k, v in TIPOS_PEDIDO.items()
+            if k not in TIPOS_OCULTOS and (k != 'pular_espera' or (b is not None and _pular_espera_para(b)))}
 
 
 def _happy_hour_desconto(b):
@@ -1897,6 +1920,12 @@ def _precos_do_bar(b):
     tipos = {}
     for k, v in TIPOS_PEDIDO.items():
         t = dict(v)
+        if k == 'pular_espera':
+            # preço fixo (20/10/26): R$ 2 no total, sem preço do bar, teto ou happy hour ("só mantém os preços")
+            if _ponte:
+                t['preco'] = PRECO_PULAR_EFI
+            tipos[k] = t
+            continue
         if _ponte and k == 'flash':
             t['preco'] = PRECO_FLASH_EFI
         if k in custom:
@@ -1984,7 +2013,7 @@ def _gratis_espera_min(b, ip):
         conn.close()
 
 
-TIPOS_MUSICA_FILA = ('musica_especifica', 'musica_externa', 'flash', 'vip')
+TIPOS_MUSICA_FILA = ('musica_especifica', 'musica_externa', 'flash', 'vip', 'pular_espera')   # + ⏩ (20/10/26)
 
 
 def _musica_na_fila(b, youtube_id, ip_cliente=None, tipo=None, nome=None):
@@ -2452,6 +2481,24 @@ def _temas_do_bar(b):
     except Exception:
         return None
     return [t for t in v if isinstance(t, str)] or None if isinstance(v, list) else None
+
+
+def _selo_estilos(b):
+    """Selo do topo do celular do cliente, com o nome do BOTÃO do painel: vários acesos (Variado só com eles) =
+    '🎸 Rock · 🌴 Reggae'; 1 estilo = '🌴 Reggae'. '' = usa o nome do canal (Variado de verdade ou "Mais estilos")."""
+    try:
+        canal = b['canal_atual'] or ''
+        if canal != 'variado':
+            # o botão pelo canal também: ⚽ Esporte toca o canal 'sport_mix' (senão o selo dizia "Sport Mix")
+            e = ESTILOS_BAR.get(canal) or next((x for x in ESTILOS_BAR.values() if x.get('canal') == canal), None)
+            return f"{e['emoji']} {e['nome']}" if e else ''
+        temas = _temas_do_bar(b)
+    except Exception:
+        return ''
+    if not temas:
+        return ''
+    acesos = [e for e in ESTILOS_BAR.values() if e['temas'] and all(t in temas for t in e['temas'])]
+    return ' · '.join(f"{e['emoji']} {e['nome']}" for e in acesos)
 
 
 def _videos_do_canal(canal_key, limit=500, bloqueados=None, temas=None):
@@ -3308,7 +3355,7 @@ def jukebox(token, pix_id=None):
                 erro = MSG_POLITICA   # 18/10/26: trava eleitoral (vale pro grátis e pro pago, antes de qualquer PIX)
             elif any(_tem_link_ou_fone(x) for x in (nome_cliente, mensagem, remetente)):
                 erro = MSG_LINK_FONE
-            elif tipo in ('musica_especifica', 'musica_externa', 'flash') and not youtube_id:
+            elif tipo in ('musica_especifica', 'musica_externa', 'flash', 'pular_espera') and not youtube_id:
                 erro = 'Selecione uma música antes de confirmar.'
             elif tipo == 'cantada' and not mensagem:
                 erro = 'Escreve a cantada antes de mandar. 😏'
@@ -3321,7 +3368,14 @@ def jukebox(token, pix_id=None):
                 erro, erro_tipo = '🎵 Essa música já foi pedida e vai tocar. Escolhe outra pra ti.', 'musica_na_fila'
             elif tipo in TIPOS_SEMPRE_GRATIS and (_espera := _gratis_espera_min(b, ip_cliente)) > 0:
                 _fl = precos_bar.get('flash') if 'flash' in tipos_bar else None
-                if _fl and _fl.get('preco', 0) > 0:
+                if 'pular_espera' in tipos_bar:
+                    # 20/10/26: na Efí a saída mais barata é o ⏩ Pular a espera (fila normal); o furar segue junto
+                    _br = lambda x: ('%.0f' % x) if x == int(x) else ('%.2f' % x).replace('.', ',')
+                    _of = f'⏩ Pula a espera por R$ {_br(precos_bar["pular_espera"]["preco"] + _taxa_pix_bar(b, "pular_espera"))}'
+                    if _fl and _fl.get('preco', 0) > 0:
+                        _of += f' ou ⚡ fura a fila por R$ {_br(_fl["preco"] + _taxa_pix_bar(b, "flash"))}'
+                    erro = f'⏳ Tua próxima música grátis libera em {_espera} min. Quer tocar antes? {_of}.'
+                elif _fl and _fl.get('preco', 0) > 0:
                     _tot = _fl['preco'] + _taxa_pix_bar(b, 'flash')
                     _tot_txt = ('%.0f' % _tot) if _tot == int(_tot) else ('%.2f' % _tot).replace('.', ',')
                     erro = (f'⏳ Tua próxima música grátis libera em {_espera} min. '
@@ -3703,7 +3757,11 @@ def jukebox(token, pix_id=None):
                            sucesso=sucesso, erro=erro,
                            pix_pendente=pix_pendente,
                            total_videos=total_videos,
-                           canais_nomes={k: {'nome': v['nome'], 'emoji': v['emoji']} for k, v in CANAIS.items()},
+                           # 20/10/26: filtros do cliente com nome simples ("Rock", não "Rock Clips")
+                           canais_nomes={k: {'nome': re.sub(r'\s+Clips$', '', v['nome']),
+                                             'emoji': ESTILOS_BAR.get(k, v)['emoji']}   # 🌴 Reggae (o canal usa 🎸)
+                                         for k, v in CANAIS.items()},
+                           selo_estilos=_selo_estilos(b),   # 20/10/26: "🎸 Rock · 🌴 Reggae" em vez de "Variado"
                            youtube_liberado=_youtube_liberado(b),
                            aberto=aberto, motivo_fechado=motivo_fechado,
                            aviso=aviso, token=token,
@@ -3917,9 +3975,9 @@ def api_status(code):
 
     if _janela_eleitoral():
         # 18/10/26 (trava eleitoral, M1): recado que entrou na fila ANTES da janela e ainda não passou na TV vai pro OK
-        _ini, _mus = _inicio_janela_utc(), ('musica', 'musica_especifica', 'musica_externa', 'flash', 'vip')
+        _ini, _mus = _inicio_janela_utc(), ('musica', 'musica_especifica', 'musica_externa', 'flash', 'vip', 'pular_espera')
         _q = (" FROM pubshow_pedidos WHERE business_id=? AND status='pendente' AND created_at < ? "
-              "AND tipo NOT IN (?,?,?,?,?)")
+              "AND tipo NOT IN (?,?,?,?,?,?)")
         if conn.execute('SELECT 1' + _q + ' LIMIT 1', (b['id'], _ini, *_mus)).fetchone():
             conn.execute("UPDATE pubshow_pedidos SET status='aguardando_ok' WHERE id IN (SELECT id" + _q + ')',
                          (b['id'], _ini, *_mus))
@@ -3940,7 +3998,7 @@ def api_status(code):
     pedido_musica = conn.execute(
         '''SELECT * FROM pubshow_pedidos
            WHERE business_id=? AND status="pendente"
-           AND tipo IN ("vip","flash","musica","musica_especifica","musica_externa")
+           AND tipo IN ("vip","flash","musica","musica_especifica","musica_externa","pular_espera")
            ORDER BY
              CASE tipo WHEN "vip" THEN 1 WHEN "flash" THEN 2 ELSE 3 END,
              created_at ASC, id ASC
@@ -4052,7 +4110,7 @@ def api_pedido_status(token, pedido_id):
         posicao = conn.execute(
             """SELECT COUNT(*) FROM pubshow_pedidos
                WHERE business_id=? AND status='pendente' AND id != ?
-                 AND tipo IN ('vip','flash','musica','musica_especifica','musica_externa')
+                 AND tipo IN ('vip','flash','musica','musica_especifica','musica_externa','pular_espera')
                  AND (CASE tipo WHEN 'vip' THEN 1 WHEN 'flash' THEN 2 ELSE 3 END < ?
                       OR (CASE tipo WHEN 'vip' THEN 1 WHEN 'flash' THEN 2 ELSE 3 END = ?
                           AND (created_at < ? OR (created_at = ? AND id < ?))))""",
@@ -4942,7 +5000,7 @@ def api_fila_info(token):
         n = {r[0]: r[1] for r in conn.execute(
             """SELECT tipo, COUNT(*) FROM pubshow_pedidos
                WHERE business_id=? AND status='pendente'
-                 AND tipo IN ('vip','flash','musica','musica_especifica','musica_externa')
+                 AND tipo IN ('vip','flash','musica','musica_especifica','musica_externa','pular_espera')
                GROUP BY tipo""", (b['id'],)).fetchall()}
     finally:
         conn.close()
@@ -5167,8 +5225,9 @@ def painel():
                            gorjeta_hoje=gorjeta_hoje, gorjeta_hoje_n=gorjeta_hoje_n,
                            gorjeta_7dias=[dict(r) for r in gorjeta_7dias],
                            # verificador B12: no bar da ponte Efí o furar a fila padrão é R$ 3 (o painel mostra o mesmo)
-                           tipos_config=({k: (dict(v, preco=PRECO_FLASH_EFI) if k == 'flash' else v)
-                                          for k, v in _tipos_config().items()} if _ponte_efi_para(bd) else _tipos_config()),
+                           tipos_config=({k: (dict(v, preco=PRECO_FLASH_EFI) if k == 'flash' else
+                                              dict(v, preco=PRECO_PULAR_EFI) if k == 'pular_espera' else v)
+                                          for k, v in _tipos_config(bd).items()} if _ponte_efi_para(bd) else _tipos_config(bd)),
                            fila=_pedidos_com_hora_local([dict(f) for f in fila]),
                            aguardando_pix=_pedidos_com_hora_local([dict(p) for p in aguardando_pix]),
                            aguardando_ok=_pedidos_com_hora_local([dict(p) for p in aguardando_ok]),
@@ -7130,6 +7189,13 @@ def painel_config():
     todos_tipos = list(TIPOS_PEDIDO.keys())
     ativos      = request.form.getlist('tipos_ativos')
     bloqueados  = [t for t in todos_tipos if t not in ativos]
+    if not _pular_espera_para(b):
+        # ⏩ Pular a espera (20/10/26) só aparece no painel do bar da Efí: fora dela, salvar não liga nem desliga
+        try:
+            _bl_ant = json.loads(b['tipos_bloqueados'] or '[]')
+        except Exception:
+            _bl_ant = []
+        bloqueados = [t for t in bloqueados if t != 'pular_espera'] + (['pular_espera'] if 'pular_espera' in _bl_ant else [])
 
     # Preços custom — só dos itens pagos (música é sempre grátis; o campo nem aparece mais)
     # Lote D A4 (16/10/26): no modo Efí o preço máximo é R$ 50 (o que passar disso grava R$ 50)
@@ -7145,7 +7211,7 @@ def painel_config():
         _salvos = {}
     precos = {}
     for k in todos_tipos:
-        if k in TIPOS_SEMPRE_GRATIS:
+        if k in TIPOS_SEMPRE_GRATIS or k == 'pular_espera':   # ⏩: preço fixo (R$ 2), o bar não muda
             continue
         val = request.form.get(f'preco_{k}', '').strip()
         if val:
