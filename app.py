@@ -16454,6 +16454,24 @@ def _camp_payout_via_efi():
     return os.environ.get('CAMP_PAYOUT_VIA_EFI', '0').strip().lower() in ('1', 'true', 'yes', 'sim', 'on')
 
 
+def _saque_sync_tid(t, valor, chave):
+    """Anti-duplo (21/10/26): a transferência que o GET ?externalReference= achou é a NOSSA?
+    'sync:<id>' = valor bate e o destino bate (ou não veio): grava assim e o guarda do saque NÃO aprova pelo id
+    um 'sync:' (só aprova id que o NOSSO POST devolveu). None = é de OUTRO (valor ou destino diferente):
+    não grava, não reenvia agora, vira ALERTA (chave vazada criando transferência com o nosso ext)."""
+    try:
+        v = float(t.get('value'))
+    except (TypeError, ValueError):
+        v = float('nan')
+    if not (v == v) or abs(round(v, 2) - round(float(valor or 0), 2)) > 0.005:
+        return None
+    ba = t.get('bankAccount') if isinstance(t.get('bankAccount'), dict) else {}
+    dest = _saque_chave_norm(ba.get('pixAddressKey') or t.get('pixAddressKey'))
+    if dest and _saque_chave_bate(dest, chave) is False:
+        return None
+    return 'sync:' + str(t['id'])
+
+
 def _camp_premio_sync_asaas(conn, camp, ext, gateway):
     """Anti-duplo: confere no Asaas se a transferência do prêmio (externalReference=ext) já saiu.
     Se saiu, marca 'pago' e sincroniza o ledger — nunca reenvia em cima de um PIX que já caiu. No
@@ -16465,8 +16483,15 @@ def _camp_premio_sync_asaas(conn, camp, ext, gateway):
         for t in (chk.get('data') or []):
             st = (t.get('status') or '').upper()
             if t.get('externalReference') == ext and t.get('id') and st not in ('CANCELLED', 'FAILED'):
+                _r = conn.execute("SELECT valor, pix_chave FROM camponline_premio_pagamentos WHERE ext_ref=?",
+                                  (ext,)).fetchone()
+                _sid = _saque_sync_tid(t, _r[0] if _r else 0, _r[1] if _r else '')
+                if not _sid:
+                    log.error(f"[CAMPonline] ALERTA {ext}: transferencia {t.get('id')} com o NOSSO ext e valor/destino "
+                              f"diferente — nao sincroniza nem reenvia (chave vazada?)")
+                    return None          # nem 'pago' nem reenvio: o lease segura até o TTL
                 conn.execute("UPDATE camponline_premio_pagamentos SET status='pago', transfer_id=?, erro='' WHERE ext_ref=?",
-                             (t['id'], ext))
+                             (_sid, ext))
                 conn.commit()
                 return True
     except Exception:
@@ -16518,8 +16543,11 @@ def _camp_pagar_um(conn, camp, slot_id, membro_id, valor, chave, tipo, gateway, 
             return ('escrow', 'Pagamento em curso.')
     # este worker tem o lease. Anti-duplo final: no Asaas confere antes de enviar; no Efí-nativo
     # a idempotência é o idEnvio determinístico (checar o Asaas não adianta).
-    if (not via_efi) and _camp_premio_sync_asaas(conn, camp, ext, gateway):
+    _sync = False if via_efi else _camp_premio_sync_asaas(conn, camp, ext, gateway)
+    if _sync:
         return ('pago', 'Cota já transferida (sincronizada).')
+    if _sync is None:
+        return ('escrow', 'Transferência estranha com o mesmo ext — conferir no Asaas.')
     desc = f"Premio CAMPonline - {camp.get('nome','')}"[:100]
     if via_efi:
         try:
@@ -17491,10 +17519,13 @@ def _sz_pagar_afiliados(conn, camp, slots):
             continue
         af  = dict(af)
         ext = f"szaf_{s['id']}"
-        row = conn.execute("SELECT status FROM slotzap_afiliado_pagamentos WHERE slot_id=?",
+        row = conn.execute("SELECT status, valor FROM slotzap_afiliado_pagamentos WHERE slot_id=?",
                            (s['id'],)).fetchone()
         if row and dict(row)['status'] in ('pago', 'enviando'):
             continue  # já pago (ou em envio por um lote) — nunca paga 2×
+        # 21/10/26: na nova tentativa vale o valor CONGELADO na linha (igual ao CAMPonline e ao lote): o dono pode ter
+        # mudado a comissão depois, e o guarda do saque confere o PIX contra o valor do ledger.
+        valor_com = round(float(dict(row)['valor'] or comissao), 2) if row else comissao
         if not row:
             # cria o registro (claim). Se outra via criar ao mesmo tempo, pula (corrida).
             try:
@@ -17516,9 +17547,16 @@ def _sz_pagar_afiliados(conn, camp, slots):
                     # só conta como "já enviada" se NÃO foi cancelada/falhou (senão re-envia)
                     if (t.get('externalReference') == ext and t.get('id')
                             and st not in ('CANCELLED', 'FAILED')):
-                        ja_tid = t['id']; break
+                        ja_tid = _saque_sync_tid(t, valor_com, af.get('pix_chave')) or 'ESTRANHA'; break
             except Exception:
                 pass
+            if ja_tid == 'ESTRANHA':
+                conn.execute("UPDATE slotzap_afiliado_pagamentos SET status='erro', tentativas=?, "
+                             "erro='ALERTA: transferencia com o mesmo ext e valor/destino diferente — conferir no Asaas' "
+                             "WHERE slot_id=?", (_SZ_CAP_TENTATIVAS, s['id']))
+                conn.commit()
+                log.error(f"[SlotZap] ALERTA {ext}: transferencia estranha com o nosso ext — nao paga, conferir")
+                continue
             if ja_tid:
                 conn.execute("UPDATE slotzap_afiliado_pagamentos SET status='pago', asaas_transfer_id=?, erro='' WHERE slot_id=?",
                              (ja_tid, s['id']))
@@ -17527,12 +17565,12 @@ def _sz_pagar_afiliados(conn, camp, slots):
                 continue
         # ── Envia o PIX da comissão PELO GATEWAY CERTO (efi=RifaJá / asaas=SlotZap) ──
         desc = f"Comissao {marca} - {camp.get('nome','')} - num {s['numero']}"
-        tid, erro = _sz_afiliado_transfer(af.get('pix_chave'), af.get('pix_tipo'), comissao, desc, ext, gateway=gateway)
+        tid, erro = _sz_afiliado_transfer(af.get('pix_chave'), af.get('pix_tipo'), valor_com, desc, ext, gateway=gateway)
         if tid:
             conn.execute("UPDATE slotzap_afiliado_pagamentos SET status='pago', asaas_transfer_id=?, erro='' WHERE slot_id=?",
                          (tid, s['id']))
             conn.commit()
-            log.info(f"[SlotZap] Comissao R${comissao:.2f} -> afiliado {af.get('nome')} (num {s['numero']}, t {tid})")
+            log.info(f"[SlotZap] Comissao R${valor_com:.2f} -> afiliado {af.get('nome')} (num {s['numero']}, t {tid})")
         else:
             conn.execute("UPDATE slotzap_afiliado_pagamentos SET status='erro', erro=?, "
                          "tentativas=IFNULL(tentativas,0)+1 WHERE slot_id=?",
@@ -18028,8 +18066,17 @@ def _sz_flush_lote(conn, ref):
                 st = (t.get('status') or '').upper()
                 if (t.get('externalReference') == ref and t.get('id')
                         and st not in ('CANCELLED', 'FAILED')):
+                    _afk = conn.execute('SELECT pix_chave FROM slotzap_afiliados WHERE id=?', (afid,)).fetchone()
+                    _sid = _saque_sync_tid(t, total, _afk[0] if _afk else '')
+                    if not _sid:
+                        conn.execute("UPDATE slotzap_afiliado_pagamentos SET status='erro', tentativas=?, "
+                                     "erro='ALERTA: transferencia com o mesmo ref e valor/destino diferente' "
+                                     "WHERE lote_ref=? AND status='enviando'", (_SZ_CAP_TENTATIVAS, ref))
+                        conn.commit()
+                        log.error(f"[SlotZap] ALERTA lote {ref}: transferencia estranha {t.get('id')} — nao paga, conferir")
+                        return 0.0
                     conn.execute("UPDATE slotzap_afiliado_pagamentos SET status='pago', "
-                                 "asaas_transfer_id=?, erro='' WHERE lote_ref=?", (t['id'], ref))
+                                 "asaas_transfer_id=?, erro='' WHERE lote_ref=?", (_sid, ref))
                     conn.commit()
                     log.info(f"[SlotZap] Lote {ref} já estava no Asaas ({t['id']}) — baixado R${total:.2f}")
                     return total
@@ -18103,9 +18150,36 @@ def _sz_pagar_pendentes(conn, camp_id=None, force=False):
               AND (p.id IS NULL OR (p.status IN ('pendente','erro') {cap_cond}))
               {filtro_camp}
         ''', params).fetchall()]
+        # 21/10/26: linha 'erro' do avulso pode ter saído (resposta do POST perdida) → confere szaf_<slot> antes do lote
+        _livres = []
+        for r in cand:
+            _pr = conn.execute("SELECT status, IFNULL(lote_ref,''), valor FROM slotzap_afiliado_pagamentos "
+                               "WHERE slot_id=?", (r['slot_id'],)).fetchone()
+            if _pr and _pr[0] == 'erro' and not _pr[1]:      # o avulso já tentou: o PIX dele pode ter saído
+                _ext = f"szaf_{r['slot_id']}"
+                _hit = ''
+                try:
+                    for t in (_asaas_req('GET', f'/transfers?externalReference={_ext}').get('data') or []):
+                        if (t.get('externalReference') == _ext and t.get('id')
+                                and (t.get('status') or '').upper() not in ('CANCELLED', 'FAILED')):
+                            _afk = conn.execute('SELECT pix_chave FROM slotzap_afiliados WHERE id=?',
+                                                (r['afiliado_id'],)).fetchone()
+                            _hit = _saque_sync_tid(t, _pr[2], _afk[0] if _afk else '') or 'ESTRANHA'
+                            break
+                except Exception:
+                    _hit = 'ESTRANHA'          # sem confirmar no Asaas, não arrisca pagar 2×
+                if _hit == 'ESTRANHA':
+                    log.error(f"[SlotZap] lote: {_ext} sem confirmacao/transferencia estranha — fica de fora")
+                    continue
+                if _hit:
+                    conn.execute("UPDATE slotzap_afiliado_pagamentos SET status='pago', asaas_transfer_id=?, erro='' "
+                                 "WHERE slot_id=?", (_hit, r['slot_id']))
+                    conn.commit()
+                    continue
+            _livres.append(r)
         # agrupa por vendedor
         por_af = {}
-        for r in cand:
+        for r in _livres:
             por_af.setdefault(r['afiliado_id'], []).append(r)
         for afid, slots in por_af.items():
             # ref ÚNICO (random + timestamp no fim): random evita colisão entre workers
@@ -19190,12 +19264,166 @@ def slotzap_afiliados_pagar_pendentes(camp_id):
     return jsonify({'ok': True, 'pago': pago, 'ultimo_erro': ultimo_erro})
 
 
+def _saque_chave_norm(k):
+    """Chave PIX comparável: e-mail em minúsculas; aleatória (EVP) em minúsculas e sem hífen; CPF/CNPJ/telefone só
+    os dígitos, sem o +55 (o Asaas pode devolver '+5547...' e o ledger guardar '47...'). Os '*' de uma chave
+    mascarada pelo Asaas ('***.444.777-**') ficam, pro _saque_chave_bate comparar só o que aparece."""
+    k = str(k or '').strip().lower()
+    if not k or '@' in k:
+        return k
+    if any('a' <= c <= 'z' for c in k):          # aleatória: letras e números, com ou sem hífen
+        return ''.join(c for c in k if c.isalnum() or c == '*')
+    d = ''.join(c for c in k if c.isdigit() or c == '*')
+    if len(d) == 13 and d.startswith('55'):
+        d = d[2:]
+    return d or k
+
+
+def _saque_chave_bate(destino, chave_ledger):
+    """True/False: o destino do aviso (já normalizado) é a chave do ledger? Mascarado, compara só o que aparece:
+    mesmo tamanho = cada '*' é 1 caractere; tamanho diferente = cada '*' é um trecho. Com menos de 4 caracteres à
+    vista não dá pra comparar: devolve None (vale como 'aviso sem destino')."""
+    led = _saque_chave_norm(chave_ledger)
+    if '*' not in destino:
+        return destino == led
+    if sum(1 for c in destino if c.isalnum()) < 6:     # só letra/dígito conta ('@' e '.com' não identificam ninguém)
+        return None
+    if len(destino) == len(led):
+        return all(a == '*' or a == b for a, b in zip(destino, led))
+    return bool(_re.fullmatch('.*'.join(_re.escape(p) for p in _re.split(r'\*+', destino)), led))
+
+
+# Onde cada fluxo de saque grava o que mandou pro Asaas: (nome, banco, SELECT pelo id da
+# transferência, SELECT pelo externalReference de uma linha AINDA EM ENVIO, prefixo do ext).
+# Os SELECTs devolvem (valor, chave PIX do destino, linhas, chaves distintas).
+_SAQUE_LEDGERS = (
+    ('camp', 'saas',
+     "SELECT SUM(valor), MIN(pix_chave), COUNT(*), COUNT(DISTINCT pix_chave) "
+     "FROM camponline_premio_pagamentos WHERE transfer_id=?",
+     "SELECT SUM(valor), MIN(pix_chave), COUNT(*), COUNT(DISTINCT pix_chave) "
+     "FROM camponline_premio_pagamentos WHERE ext_ref=? AND status='enviando' AND IFNULL(transfer_id,'')=''",
+     'camp_premio_'),
+    ('szaf', 'saas',
+     "SELECT SUM(p.valor), MIN(a.pix_chave), COUNT(*), COUNT(DISTINCT a.pix_chave) "
+     "FROM slotzap_afiliado_pagamentos p JOIN slotzap_afiliados a ON a.id = p.afiliado_id "
+     "WHERE p.asaas_transfer_id=?",
+     None, 'szaf_'),
+    ('afil', 'afil',
+     "SELECT SUM(c.valor), MIN(a.pix_chave), COUNT(*), COUNT(DISTINCT a.pix_chave) "
+     "FROM afiliado_conversoes c JOIN afiliados a ON a.id = c.afiliado_id WHERE c.asaas_transfer_id=?",
+     "SELECT SUM(c.valor), MIN(a.pix_chave), COUNT(*), COUNT(DISTINCT a.pix_chave) "
+     "FROM afiliado_conversoes c JOIN afiliados a ON a.id = c.afiliado_id "
+     "WHERE ('afil_' || c.app || '_' || c.payment_id)=? AND c.status IN ('pendente','erro') "
+     "AND IFNULL(c.asaas_transfer_id,'')=''",
+     'afil_'),
+    ('arena', 'arena',
+     "SELECT SUM(valor), MIN(pix_chave), COUNT(*), COUNT(DISTINCT pix_chave) "
+     "FROM arena_pagamentos WHERE transfer_id=?",
+     "SELECT SUM(valor), MIN(pix_chave), COUNT(*), COUNT(DISTINCT pix_chave) "
+     "FROM arena_pagamentos WHERE ext_ref=? AND status IN ('enviando','incerto') AND IFNULL(transfer_id,'')=''",
+     'arena_premio_'),
+)
+
+
+def _saque_sql_szaf_ext(ext):
+    """SlotZap tem 2 formatos de ext: lote 'szaf_l<afid>_<rand>_<ts>' (linhas 'enviando' com lote_ref)
+    e avulso 'szaf_<slot>' (linha 'pendente'/'erro' — o fluxo avulso não marca 'enviando')."""
+    base = ("SELECT SUM(p.valor), MIN(a.pix_chave), COUNT(*), COUNT(DISTINCT a.pix_chave) "
+            "FROM slotzap_afiliado_pagamentos p JOIN slotzap_afiliados a ON a.id = p.afiliado_id ")
+    if ext.startswith('szaf_l'):
+        return (base + "WHERE p.lote_ref=? AND p.status='enviando' AND IFNULL(p.asaas_transfer_id,'')=''", ext)
+    resto = ext[len('szaf_'):]
+    if not _re.fullmatch(r'[0-9]{1,18}', resto):      # ASCII: '²'/'١' passam no isdigit e quebram o int()
+        return None
+    return (base + "WHERE p.slot_id=? AND p.status IN ('pendente','erro') "
+                   "AND IFNULL(p.asaas_transfer_id,'')=''", int(resto))
+
+
+def _saque_abre_banco(qual):
+    if qual == 'saas':
+        return get_saas_db()
+    if qual == 'afil':
+        from afiliados_db import get_afil_db as _g
+        return _g()
+    from arena_db import get_arena_db as _g
+    return _g()
+
+
+def _saque_confere_ledger(transfer):
+    """Guarda do saque: só aprova transferência que o PRÓPRIO 4kitem criou.
+    1º pelo id da transferência: todo fluxo grava o id que o Asaas devolveu no POST /transfers,
+       e o Asaas só chama este webhook ~5 s depois. Valor tem que bater; destino também, se vier.
+    2º se o aviso chegar antes dessa gravação: pelo externalReference de uma linha AINDA EM ENVIO
+       (sem id gravado), com valor E destino obrigatoriamente batendo.
+    Se a API key vazar, a transferência do atacante não tem id no ledger e o ext forjado não acha
+    linha em envio com o destino dele → REFUSED. Retorna (aprovado, motivo pro log)."""
+    tid = str(transfer.get('id') or '').strip()
+    ext = str(transfer.get('externalReference') or '').strip()
+    try:
+        val = round(float(transfer.get('value') or 0), 2)
+    except (TypeError, ValueError, OverflowError):
+        return (False, 'valor ilegivel')
+    if not (val == val) or val in (float('inf'), float('-inf')):    # NaN passava em toda comparação
+        return (False, 'valor ilegivel')
+    if val <= 0:
+        return (False, 'valor zerado')
+    _ba = transfer.get('bankAccount') if isinstance(transfer.get('bankAccount'), dict) else {}
+    _d_banco, _d_topo = _saque_chave_norm(_ba.get('pixAddressKey')), _saque_chave_norm(transfer.get('pixAddressKey'))
+    if _d_banco and _d_topo and _d_banco != _d_topo:
+        return (False, 'ALERTA destinos divergentes no aviso')
+    destino = _d_banco or _d_topo
+    quase = []   # achou a linha mas valor/destino não bateu: no código certo não acontece → vira ALERTA no log
+
+    def _bate(r, destino_obrigatorio, onde):
+        if not r or not r[2] or r[3] != 1:          # nenhuma linha, ou linhas com destinos diferentes
+            return False
+        if abs(round(float(r[0] or 0), 2) - val) > 0.005:
+            quase.append(f'{onde}: valor nao bate (ledger {float(r[0] or 0):.2f})')
+            return False
+        b = _saque_chave_bate(destino, r[1]) if destino else None
+        if destino_obrigatorio and b and '*' in destino and ('@' in destino or any(c.isalpha() for c in destino)):
+            b = None    # sem id gravado, e-mail/aleatória mascarada não prova nada ('j***@*.com' = qualquer j...@...com)
+        if b is None:
+            if destino_obrigatorio:
+                quase.append(f'{onde}: aviso sem destino')
+            return not destino_obrigatorio
+        if not b:
+            quase.append(f'{onde}: destino nao bate')
+        return b
+
+    for nome, banco, sql_id, sql_ext, prefixo in _SAQUE_LEDGERS:
+        por_ext = None
+        if ext.startswith(prefixo):
+            por_ext = _saque_sql_szaf_ext(ext) if nome == 'szaf' else (sql_ext, ext)
+        if not tid and not por_ext:
+            continue
+        conn = None
+        try:
+            conn = _saque_abre_banco(banco)
+            if tid and _bate(conn.execute(sql_id, (tid,)).fetchone(), False, f'{nome} id'):
+                return (True, f'{nome} id')
+            if por_ext and _bate(conn.execute(por_ext[0], (por_ext[1],)).fetchone(), True, f'{nome} em envio'):
+                return (True, f'{nome} em envio')
+        except Exception as _e:
+            log.warning(f'[Saque] ledger {nome}: {_e}')
+        finally:
+            if conn is not None:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
+    if quase:
+        return (False, 'ALERTA ' + '; '.join(quase))
+    return (False, 'sem linha no ledger')
+
+
 @app.route('/webhook/asaas/saque-validacao', methods=['POST'])
 def asaas_saque_validacao():
     """Webhook de VALIDAÇÃO DE SAQUE do Asaas (Integrações → Segurança).
     O Asaas chama esta URL pra cada transferência via API; respondemos APPROVED/REFUSED.
-    Aprova automaticamente APENAS os saques que o SlotZap gerou (comissão de afiliado,
-    externalReference 'szaf_'); recusa qualquer outro — anti-abuso se a chave vazar."""
+    Aprova SÓ o que o ledger confirma (_saque_confere_ledger: comissão SlotZap, afiliado do 4kitem,
+    prêmio CAMPonline, prêmio Arena) ou saque manual pra destino do dono. Nada é aprovado só pelo
+    nome do externalReference — 21/10/26: o prefixo sozinho deixava a chave vazada sacar."""
     # FAIL-CLOSED: sem ASAAS_SAQUE_TOKEN configurada, recusa tudo (última barreira se a
     # API key vazar — recusar é o lado seguro; comissão recusada fica 'erro' e o
     # reconciliador re-tenta depois).
@@ -19205,47 +19433,44 @@ def asaas_saque_validacao():
     if (not token_cfg) or token_req != token_cfg:
         log.warning('[Saque] validacao: token ausente/invalido — REFUSED (fail-closed)')
         return jsonify({'status': 'REFUSED', 'refuseReason': 'token invalido'}), 200
-    data     = request.get_json(silent=True) or {}
-    transfer = data.get('transfer') or {}
+    data     = request.get_json(silent=True)
+    data     = data if isinstance(data, dict) else {}
+    if data.get('type') not in (None, 'TRANSFER'):
+        return jsonify({'status': 'REFUSED', 'refuseReason': 'tipo nao aceito'}), 200
+    transfer = data.get('transfer') if isinstance(data.get('transfer'), dict) else {}
+    if not isinstance(transfer.get('bankAccount') or {}, dict):
+        transfer = dict(transfer, bankAccount={})
     ext      = (transfer.get('externalReference') or '')
     val      = transfer.get('value')
-    # Saques gerados pelo SISTEMA (prefixos conhecidos): comissão SlotZap (szaf_),
-    # motor central de afiliados (afil_) e prêmio CAMPonline (camp_premio_) — aprovados por prefixo.
-    if ext.startswith(('szaf_', 'afil_', 'camp_premio_')):
-        log.info(f'[Saque] validacao APPROVED ref={ext} valor={val}')
+    # 21/10/26: a doc do Asaas não garante quais campos vêm no aviso (o exemplo não tem externalReference e a chave
+    # fica em bankAccount). Registra só os NOMES dos campos e se a chave veio/mascarada, pra conferir o formato real.
+    _ch = str((transfer.get('bankAccount') or {}).get('pixAddressKey') or transfer.get('pixAddressKey') or '')
+    log.info(f'[Saque] aviso campos={sorted(transfer.keys())} banco={sorted((transfer.get("bankAccount") or {}).keys())} '
+             f'chave={"mascarada" if "*" in _ch else ("sim" if _ch else "nao")}')
+    try:
+        ok, motivo = _saque_confere_ledger(transfer)
+    except Exception as _e:                        # nunca 500: erro = recusa (fail-closed)
+        ok, motivo = False, "erro " + type(_e).__name__
+    if ok:
+        log.info(f'[Saque] validacao APPROVED ({motivo}) ref={ext} valor={val}')
         return jsonify({'status': 'APPROVED'}), 200
-    # Saque da ARENA (arena_premio_): NÃO aprova só pelo prefixo — confere o LEDGER (arena_pagamentos)
-    # com status 'enviando'/'pago', valor batendo e destino batendo. Se a API key vazar, um ext forjado
-    # sem linha no ledger (ou com destino diferente) morre aqui.
-    if ext.startswith('arena_premio_'):
-        try:
-            from arena_db import get_arena_db as _get_arena_db
-            _ac = _get_arena_db()
-            _ar = _ac.execute("SELECT valor, pix_chave FROM arena_pagamentos "
-                              "WHERE ext_ref=? AND status IN ('enviando','pago')", (ext,)).fetchone()
-            _ac.close()
-            if _ar:
-                _vled = round(float(_ar['valor'] or 0), 2)
-                _vtr  = round(float(val or 0), 2)
-                _pix  = str(transfer.get('pixAddressKey') or '').strip()
-                if abs(_vled - _vtr) <= 0.01 and (not _pix or _pix == (_ar['pix_chave'] or '')):
-                    log.info(f'[Saque] validacao APPROVED (arena ledger ok) ref={ext} valor={val}')
-                    return jsonify({'status': 'APPROVED'}), 200
-        except Exception as _ae:
-            log.warning(f'[Saque] arena ledger check erro: {_ae}')
-        log.warning(f'[Saque] validacao REFUSED (arena sem ledger/valor) ref={ext} valor={val}')
-        return jsonify({'status': 'REFUSED', 'refuseReason': 'arena saque nao confere no ledger'}), 200
     # Sem ref = possível saque MANUAL (painel). Só aprova se o DESTINO estiver na
     # whitelist (env SAQUE_DESTINO_LIBERADO = chaves PIX/CPF do dono, separadas por
     # vírgula). Sem whitelist ou destino desconhecido = REFUSED — se a API key vazar,
     # transferência pra conta de atacante morre aqui.
-    destinos = {d.strip().lower() for d in os.environ.get('SAQUE_DESTINO_LIBERADO', '').split(',') if d.strip()}
-    pix_key  = str(transfer.get('pixAddressKey') or '').strip().lower()
-    cpf_dest = ''.join(c for c in str((transfer.get('bankAccount') or {}).get('cpfCnpj') or '') if c.isdigit())
-    if ext == '' and destinos and (pix_key in destinos or (cpf_dest and cpf_dest in destinos)):
+    destinos = {_saque_chave_norm(d) for d in os.environ.get('SAQUE_DESTINO_LIBERADO', '').split(',') if d.strip()}
+    pix_key  = _saque_chave_norm((transfer.get('bankAccount') or {}).get('pixAddressKey')
+                                 or transfer.get('pixAddressKey'))
+    # 21/10/26: cpfCnpj NÃO libera — numa transferência pra conta bancária quem preenche o cpfCnpj é quem chama a
+    # API (o atacante, com a chave vazada). Só a chave PIX (resolvida no DICT) identifica o destino.
+    cpf_dest = ''
+    if ext == '' and destinos and pix_key and '*' not in pix_key and pix_key in destinos:
         log.info(f'[Saque] validacao APPROVED (manual, destino liberado) valor={val}')
         return jsonify({'status': 'APPROVED'}), 200
-    log.warning(f'[Saque] validacao REFUSED ref={ext!r} destino={pix_key or cpf_dest!r} valor={val}')
+    # ALERTA = achou a linha do ledger mas valor/destino não bateu: ou é ataque com a chave vazada, ou um pagamento
+    # legítimo que o ledger marcou 'pago' e foi cancelado aqui (conferir na hora: SlotZap/afiliado/Arena não têm cura)
+    (log.error if motivo.startswith('ALERTA') else log.warning)(
+        f'[Saque] validacao REFUSED ({motivo}) ref={ext!r} destino={pix_key or cpf_dest!r} valor={val}')
     return jsonify({'status': 'REFUSED', 'refuseReason': 'saque nao reconhecido'}), 200
 
 

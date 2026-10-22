@@ -1466,14 +1466,28 @@ def _asaas_transfer(chave, tipo, valor, desc, ext_ref):
     return ('', str(resp.get('error') or 'resposta inesperada')[:200], True)   # desconhecido -> seguro=ambíguo
 
 
-def _asaas_transfer_ja_saiu(ext_ref):
-    """Anti-duplo: confere no Asaas se a transferência com esse ext já existe (não estornar em cima)."""
+def _asaas_transfer_ja_saiu(ext_ref, valor=None, chave=None):
+    """Anti-duplo: confere no Asaas se a transferência com esse ext já existe (não estornar em cima).
+    21/10/26: devolve 'sync:<id>' (o guarda do saque não aprova pelo id) e só se valor/destino baterem."""
     try:
         chk = _asaas_req('GET', f'/transfers?externalReference={ext_ref}')
         for t in (chk.get('data') or []):
             st = (t.get('status') or '').upper()
             if t.get('externalReference') == ext_ref and t.get('id') and st not in ('CANCELLED', 'FAILED'):
-                return t['id']
+                try:
+                    v = round(float(t.get('value')), 2)
+                except (TypeError, ValueError):
+                    v = None
+                if valor is not None and (v is None or abs(v - round(float(valor), 2)) > 0.005):
+                    log.error(f'[Arena] ALERTA {ext_ref}: transferencia {t.get("id")} com valor diferente')
+                    return ''
+                ba = t.get('bankAccount') if isinstance(t.get('bankAccount'), dict) else {}
+                dest = str(ba.get('pixAddressKey') or t.get('pixAddressKey') or '').strip().lower()
+                ref = str(chave or '').strip().lower()
+                if dest and '*' not in dest and ref and dest.lstrip('+') != ref.lstrip('+'):
+                    log.error(f'[Arena] ALERTA {ext_ref}: transferencia {t.get("id")} pra outro destino')
+                    return ''
+                return 'sync:' + str(t['id'])
     except Exception:
         pass
     return ''
@@ -1517,7 +1531,7 @@ def sacar(user_id, valor, pix_tipo, pix_chave):
         return {'erro': 'Saldo insuficiente pra esse valor.'}
     tid, erro, ambiguo = _asaas_transfer(chave, tipo, valor, 'Saque Arena - premio', ext)
     if not tid:                       # apesar do erro, confere se por acaso saiu (anti-duplo)
-        tid = _asaas_transfer_ja_saiu(ext)
+        tid = _asaas_transfer_ja_saiu(ext, valor, chave)
     conn = get_arena_db()
     if tid:
         conn.execute("UPDATE arena_pagamentos SET status='pago', transfer_id=?, erro='' WHERE ext_ref=?", (tid, ext))
