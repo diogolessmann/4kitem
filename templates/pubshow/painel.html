@@ -643,6 +643,17 @@
     </div>
   </div>
 
+  {#- 🚫 22/10/26 (Garage: "POP pode ser Michael Jackson ou Anitta"): artistas/bandas que o bar não quer. O cliente não
+      acha (busca, lista, mais pedidas), o pedido mandado direto é recusado e a TV não toca. Só com a coluna (migração) #}
+  {% if 'artistas_bloqueados' in b %}
+  <div class="card" id="sec-nao-tocar">
+    <div class="card-title">🚫 Não tocar aqui <span class="salvo" aria-live="polite"></span></div>
+    <div class="sub" style="margin:-4px 0 10px">Artista ou banda: o cliente não acha e a TV não toca.</div>
+    <textarea id="nao-tocar" rows="2" maxlength="1500" placeholder="Ex.: Anitta, Pabllo Vittar" aria-label="Artistas que não tocam aqui" style="width:100%;box-sizing:border-box;padding:10px 12px;border-radius:12px;border:1px solid var(--border2);background:var(--surface2);color:var(--text);font:inherit;font-size:16px;resize:vertical">{{ nao_tocar_txt }}</textarea>
+    <button type="button" class="btn-sm" id="nao-tocar-salvar" style="margin-top:8px" onclick="salvarNaoTocar(this)">Salvar</button>
+  </div>
+  {% endif %}
+
   {#- 🚫 "nunca mais": as músicas que o dono bloqueou na fila (🗑️ → "Tirar e nunca mais tocar"). Fechado; abre a lista #}
   {% if musicas_bloqueadas %}
   <details class="card mais-item" id="box-bloqueadas">
@@ -1272,6 +1283,21 @@ async function salvarMudoSemMusica(cb) {
     cb.checked = !!d.ligado;
     _salvo(cb, true);
   } catch (e) { cb.checked = !on; _salvo(cb, false); }
+}
+
+// 🚫 Não tocar aqui (22/10/26): salva os artistas do bar e mostra a lista como ficou (sem repetido, sem espaço sobrando)
+async function salvarNaoTocar(btn) {
+  const ta = document.getElementById('nao-tocar');
+  btn.disabled = true;
+  try {
+    const r = await fetch('/pubshow/painel/nao-tocar', {method: 'POST',
+      headers: {'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest'}, body: JSON.stringify({nomes: ta.value})});
+    const d = await r.json();
+    if (!d.ok) throw new Error();
+    ta.value = (d.nomes || []).join(', ');
+    _salvo(btn, true);
+  } catch (e) { _salvo(btn, false); }
+  btn.disabled = false;
 }
 
 // 🔔 Interruptor do jukebox: salva sozinho, sem botão Salvar (15/10/26, B10)

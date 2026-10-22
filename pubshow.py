@@ -1668,6 +1668,60 @@ def _videos_bloqueados(b):
         return []
 
 
+# 🚫 22/10/26 (Garage: "POP pode ser Michael Jackson ou Anitta. Que tal o bar poder escrever nomes ou bandas que não
+# quer deixar pesquisar?"): "Não tocar aqui" do painel. Vale na busca do YouTube, na lista do bar, nas 🔥 mais pedidas,
+# no pedido (até o vídeo mandado direto) e na TV. Sem maiúscula nem acento, palavra inteira: pega feat. e cover com o
+# nome no título; o canal 'AnittaVEVO' / 'anittaoficial' também conta.
+NAO_TOCAR_MAX, NAO_TOCAR_MAX_NOME = 60, 40
+MSG_NAO_TOCA = '🚫 Esse artista não toca neste bar. Escolhe outra música. 🙏'
+
+
+def _nao_tocar_lista(txt):
+    """Texto do painel ('Anitta, Pabllo Vittar' ou 1 por linha) → os nomes limpos, sem repetir, na ordem."""
+    out, vistos = [], set()
+    for x in re.split(r'[,;\n\r]+', str(txt or '')):
+        x = ' '.join(x.split())[:NAO_TOCAR_MAX_NOME]
+        k = pubshow_estilo.norm(x)
+        if len(k) >= 2 and k not in vistos:
+            vistos.add(k)
+            out.append(x)
+    return out[:NAO_TOCAR_MAX]
+
+
+def _artistas_bloqueados(b):
+    """Os nomes do "🚫 Não tocar aqui" deste bar (como o dono escreveu); [] = nada bloqueado."""
+    import json as _json
+    try:
+        v = _json.loads((b['artistas_bloqueados'] if b and 'artistas_bloqueados' in b.keys() else None) or '[]')
+        return [x for x in v if isinstance(x, str)]
+    except Exception:
+        return []
+
+
+def _nao_toca(nomes, titulo='', artista='', canal=''):
+    """Algum nome do "Não tocar aqui" aparece (palavra inteira) no título, no artista ou no canal?"""
+    if not nomes:
+        return False
+    ks = [k for k in (pubshow_estilo.norm(n) for n in nomes) if len(k) >= 2]
+    ks += [x for x in (pubshow_estilo._sem_prefixo(k) for k in ks) if len(x) >= 4 and x not in ks]   # MC Kevinho → Kevinho
+    # 'AnittaVEVO' → 'Anitta VEVO' (o canal oficial costuma vir grudado)
+    alvo = ' ' + ' '.join(pubshow_estilo.norm(re.sub(r'([a-z])([A-Z])', r'\1 \2', t or ''))
+                          for t in (titulo, artista, canal)) + ' '
+    if any(f' {k} ' in alvo for k in ks):
+        return True
+    c = pubshow_estilo.norm(canal).replace(' ', '')   # 'anittaoficial' (canal tudo minúsculo): começa com o nome
+    return bool(c) and any(len(k.replace(' ', '')) >= 4 and c.startswith(k.replace(' ', '')) for k in ks)
+
+
+def _titulo_canal_da_busca(yid):
+    """(título, canal) que a busca do YouTube já leu deste vídeo (pro pedido quando o oEmbed não responde)."""
+    for _t, lidos in list(_YT_CACHE.values()):
+        for v in lidos or ():
+            if v.get('id') == yid:
+                return v.get('titulo') or '', v.get('canal') or ''
+    return '', ''
+
+
 def _oembed_status(yid):
     """(status_http, json|None) do oEmbed do YouTube. 200 = existe e é embutível; 401/403 = dono
     bloqueou embed; 404 = removido; 0 = rede falhou (não bloquear o cliente por isso)."""
@@ -1688,14 +1742,15 @@ def _validar_video_pedido(b, youtube_id, info=None):
         info = {}
     if youtube_id in _videos_bloqueados(b):
         return 'Essa música foi bloqueada pelo bar. Escolhe outra. 🙏'
+    _nt = _artistas_bloqueados(b)   # 🚫 22/10/26: "Não tocar aqui"
     _vot = _dia_da_votacao()   # 18/10/26 (C3): no domingo, vídeo que entrou no acervo por pedido não conta como curado
     conn = get_pubshow_db()
-    curado = conn.execute('SELECT titulo FROM pubshow_videos WHERE youtube_id=? AND ativo=1'
+    curado = conn.execute('SELECT titulo, artista FROM pubshow_videos WHERE youtube_id=? AND ativo=1'
                           + (" AND COALESCE(subcategoria,'')<>'pedido_publico'" if _vot else ''), (youtube_id,)).fetchone()
     conn.close()
     if curado:
         info['titulo'] = (curado['titulo'] or '').strip()[:80]
-        return ''
+        return MSG_NAO_TOCA if _nao_toca(_nt, curado['titulo'], curado['artista']) else ''
     if not _youtube_liberado(b):
         return MSG_SO_ACERVO_ELEICAO if _vot else 'Esse bar só aceita músicas do acervo. Escolhe na lista. 🎵'
     st, _oj = _oembed_status(youtube_id)
@@ -1705,6 +1760,11 @@ def _validar_video_pedido(b, youtube_id, info=None):
         return 'Esse clipe não toca na TV (o dono do vídeo bloqueou). Escolhe outro. 🙏'
     if st == 404:
         return 'Esse vídeo não existe mais no YouTube. Escolhe outro.'
+    if _nt:
+        _tit, _can = ((str(_oj.get('title') or ''), str(_oj.get('author_name') or ''))
+                      if st == 200 and isinstance(_oj, dict) else _titulo_canal_da_busca(youtube_id))
+        if _nao_toca(_nt, _tit, '', _can):
+            return MSG_NAO_TOCA
     return ''
 
 
@@ -3283,6 +3343,8 @@ def tv(code):
     fundo_clipes = _fundo_clipes(b)
     _temas_tv = _so_musica(_temas_do_bar(b)) if fundo_clipes else _temas_do_bar(b)
     videos    = _videos_do_canal(canal_key, bloqueados=_videos_bloqueados(b), temas=_temas_tv)
+    _nt = _artistas_bloqueados(b)   # 🚫 22/10/26: "Não tocar aqui" — a TV também não toca
+    videos = [v for v in videos if not _nao_toca(_nt, v.get('titulo'), v.get('artista'))] if _nt else videos
     # 1) Filtra canais pelo plano do bar (grupos_tv)
     canais_plano = _plano_canais_permitidos(dict(b))
     # 2) Filtra pelos temas que o bar habilitou dentro do que o plano permite
@@ -4445,7 +4507,7 @@ def api_videos(categoria):
     _code = request.args.get('bar', '').strip()
     if _code:
         conn = get_pubshow_db()
-        _b = conn.execute('SELECT videos_bloqueados, temas_habilitados, canal_atual FROM pubshow_businesses WHERE code=?', (_code,)).fetchone()
+        _b = conn.execute('SELECT * FROM pubshow_businesses WHERE code=?', (_code,)).fetchone()
         conn.close()
         if _b:
             bloqueados = _videos_bloqueados(_b)
@@ -4453,6 +4515,9 @@ def api_videos(categoria):
             if _fundo_ativo(_b):        # 20/10/26: esporte no fundo → o YouTube só toca a música
                 temas = _so_musica(temas)
     videos = _videos_do_canal(categoria, bloqueados=bloqueados, temas=temas)
+    _nt = _artistas_bloqueados(_b) if _code and _b else []   # 🚫 22/10/26: "Não tocar aqui"
+    if _nt:
+        videos = [v for v in videos if not _nao_toca(_nt, v.get('titulo'), v.get('artista'))]
     return jsonify({'videos': videos, 'total': len(videos)})
 
 
@@ -4559,6 +4624,9 @@ def api_buscar_biblioteca():
     rows = [r for r in rows if _yid_ok(r['youtube_id'])]   # só o que o POST aceita (16/10/26, V4-01)
     if banidos:
         rows = [r for r in rows if r['youtube_id'] not in banidos]
+    _nt = _artistas_bloqueados(_bar_por_token(bar_token)) if bar_token else []   # 🚫 22/10/26: "Não tocar aqui"
+    if _nt:
+        rows = [r for r in rows if not _nao_toca(_nt, r['titulo'], r['artista'])]
     if rows:   # 17/10/26: música de mais de 10 min nem aparece pra pedir (os shows longos seguem só na TV)
         _dur = _duracoes_conhecidas([r['youtube_id'] for r in rows], conn)
         rows = [r for r in rows if (_dur.get(r['youtube_id']) or 0) <= YT_DUR_MAX_SEG]
@@ -5103,8 +5171,9 @@ def api_buscar():
         return jsonify({'resultados': [], 'erro': 'youtube_fora'}), 503
     b = _bar_por_token(bar_token)
     ests_bar = pubshow_estilo.estilos_do_bar(b)    # 17/10/26: "aqui só toca rock" (None = tudo liberado)
+    _nt = _artistas_bloqueados(b)                  # 🚫 22/10/26: "Não tocar aqui"
     try:
-        resultados = _yt_ranquear(lidos, q, top=YT_TOP * 2 if ests_bar else YT_TOP)
+        resultados = _yt_ranquear(lidos, q, top=YT_TOP * 2 if (ests_bar or _nt) else YT_TOP)
     except Exception as e:   # resposta esquisita do YouTube: nunca 500, e não guarda no cache
         log.error('YouTube ranking error: %s', e)
         _YT_CACHE.pop(' '.join(q.lower().split()), None)
@@ -5117,6 +5186,11 @@ def api_buscar():
             resultados = resultados[:YT_TOP]
         if not resultados:
             return jsonify({'resultados': [], 'fora_estilo': True, **pubshow_estilo.aviso_fora(ests_bar)})
+    if _nt and resultados:   # 🚫 o que o bar não quer some da busca (título, canal e o nome que a busca achou)
+        resultados = [c for c in resultados
+                      if not _nao_toca(_nt, c.get('titulo_original') or c.get('titulo'), c.get('titulo'), c.get('canal'))][:YT_TOP]
+        if not resultados:
+            return jsonify({'resultados': [], 'nao_toca': True, 'msg': MSG_NAO_TOCA})
     if resultados:   # selos "já na fila" / "tocou há X min" do bar do token (já conferido acima)
         _yt_selos(_bar['id'], resultados)
     return jsonify({'resultados': resultados})
@@ -5147,7 +5221,8 @@ def api_mais_pedidas(token):
         rows = [r for r in rows if _dur.get(r['youtube_id']) is not None
                 and _dur[r['youtube_id']] <= YT_DUR_MAX_SEG]
         _ests_bar = pubshow_estilo.estilos_do_bar(b)   # 17/10/26: bar de rock não mostra o sertanejo de antes
-        rows = rows if _ests_bar else rows[:6]
+        _nt = _artistas_bloqueados(b)                  # 🚫 22/10/26: "Não tocar aqui"
+        rows = rows if (_ests_bar or _nt) else rows[:6]
         ids = [r['youtube_id'] for r in rows]
         titulos = {}
         if ids:
@@ -5182,6 +5257,8 @@ def api_mais_pedidas(token):
         except Exception as e:
             log.warning('[PUBSHOW] estilo das mais pedidas falhou: %s', e)
         out = out[:6]
+    if _nt:
+        out = [o for o in out if not _nao_toca(_nt, o['titulo'])][:6]
     _yt_selos(b['id'], out)
     return jsonify({'resultados': out})
 
@@ -5402,6 +5479,7 @@ def painel():
     repasse_pedido = _painel_pedido_repasse(bd, _efi_bar)
     return render_template('pubshow/painel.html',
                            musicas_bloqueadas=musicas_bloqueadas,   # painel por assunto (17/10/26): aba 🎵 Estilo
+                           nao_tocar_txt=', '.join(_artistas_bloqueados(bd)),   # 🚫 22/10/26: "Não tocar aqui"
                            ultimo_repasse=ultimo_repasse,           # aba 💰 Dinheiro ("quando cai na sua conta")
                            repasse_pedido=repasse_pedido,           # aba 💰 Dinheiro: "Pedir meu repasse" no WhatsApp
                            gratis_min=GRATIS_INTERVALO_MIN,         # aba ✨ Pedidos: "1 música grátis a cada N min"
@@ -7176,6 +7254,31 @@ def painel_volume():
 
 # 🔇 21/10/26 (Diogo: "Esporte sempre mudo, sem interruptor"): saiu a rota POST /painel/tv-mudo-sem-musica. A TV
 # muda o vídeo de esporte sozinha (tv.html); a coluna tv_mudo_sem_musica fica no banco, sem uso.
+
+
+@pubshow_bp.route('/painel/nao-tocar', methods=['POST'])
+@pubshow_login_required
+def painel_nao_tocar():
+    """🚫 22/10/26 (Garage): "Não tocar aqui" — os artistas/bandas que o bar não quer (aba 🎵 Estilo). Só JSON
+    {"nomes": "Anitta, Pabllo Vittar"}: o app não tem CSRF (SameSite=None) e um form de outro site não manda JSON.
+    Mudou a lista: a TV deste bar recarrega (espera a música pedida acabar) pra largar o que saiu."""
+    import json as _json
+    b = _get_business()
+    if not b:
+        return jsonify({'ok': False, 'erro': 'sessao'}), 401
+    d = request.get_json(silent=True)
+    txt = d.get('nomes') if isinstance(d, dict) else None
+    if not isinstance(txt, str) or len(txt) > 3000:
+        return jsonify({'ok': False, 'erro': 'nomes_invalidos'}), 400
+    nomes = _nao_tocar_lista(txt)
+    antes = _artistas_bloqueados(b)
+    conn = get_pubshow_db()
+    conn.execute('UPDATE pubshow_businesses SET artistas_bloqueados=? WHERE id=?',
+                 (_json.dumps(nomes, ensure_ascii=False) if nomes else None, b['id']))
+    conn.commit(); conn.close()
+    if nomes != antes:
+        _bump_tv_bar(b['id'])
+    return jsonify({'ok': True, 'nomes': nomes})
 
 
 @pubshow_bp.route('/painel/pedido/<int:pid>/confirmar-pix', methods=['POST'])
