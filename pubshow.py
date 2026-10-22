@@ -1634,7 +1634,11 @@ def _tipos_disponiveis(b):
         bloqueados = json.loads(b['tipos_bloqueados'] or '[]')
     except Exception:
         bloqueados = []
-    tipos = {k: v for k, v in TIPOS_PEDIDO.items() if k not in bloqueados and k not in TIPOS_OCULTOS}
+    # 21/10/26 (pedido do Laranjeira): "Escolher a música" da lista do bar é sempre grátis e vale sempre, igual à do
+    # YouTube. O painel não tem mais o interruptor dele (saiu na versão grande, 405ebba): bar que tinha desligado antes
+    # ficava preso, e na lista do bar só aparecia "Furar a fila".
+    tipos = {k: v for k, v in TIPOS_PEDIDO.items()
+             if (k not in bloqueados or k == 'musica_especifica') and k not in TIPOS_OCULTOS}
     # ⏩ Pular a espera (20/10/26): só na Efí e com música pra pedir (YouTube ou a lista do bar)
     if 'pular_espera' in tipos and not (('musica_externa' in tipos or 'musica_especifica' in tipos)
                                         and _pular_espera_para(b)):

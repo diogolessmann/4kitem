@@ -84,8 +84,6 @@
     color:#fff;cursor:pointer;-webkit-tap-highlight-color:transparent}
   .yt-btns .b-gratis{background:#06b6d4}
   .yt-btns .b-furar{background:linear-gradient(135deg,#f59e0b,#ea580c)}
-  .link-lista{display:block;text-align:center;margin:18px 0 6px;color:var(--text2);font-size:14px;font-weight:700;
-    text-decoration:underline;cursor:pointer}
 
 
   /* Grid dos momentos (aba "Aparecer na TV") */
@@ -757,14 +755,13 @@ async function jaPaguei() {
   {%- if 'musica_externa' in tipos or 'musica_especifica' in tipos %}
   <div class="sec-tit" id="sec-musica">🎵 Pedir música <small>GRÁTIS{% if gratis_min %} · 1 a cada {{ gratis_min }} min{% endif %}</small></div>
   <div id="busca-section">
-    {# 17/10/26 (junção com a produção c7273fb): furar a fila é só com música do YouTube (se o bar liberou o YouTube) #}
     <div class="dica-flash" id="dica-flash">⚡ Escolhe a música e toca em <strong>⚡ Furar</strong>.</div>
     {% if youtube_liberado %}
-    <!-- Fonte da música: acervo do bar ou YouTube (11/09/26). 20/10/26: escondida, abre no YouTube; só aparece se a
-         busca do YouTube cair ou pelo link "ver a lista do bar" -->
-    <div id="busca-fonte" style="display:none;gap:8px;margin:0 0 10px">
-      <button type="button" id="fonte-biblioteca" onclick="trocarFonte('biblioteca')" style="flex:1;min-height:44px;border-radius:12px;border:2px solid #06b6d4;background:rgba(6,182,212,.14);color:#fff;font-weight:800;font-size:14px;font-family:inherit;cursor:pointer">📚 Lista do bar</button>
-      <button type="button" id="fonte-youtube" onclick="trocarFonte('youtube')" style="flex:1;min-height:44px;border-radius:12px;border:2px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:#8888aa;font-weight:800;font-size:14px;font-family:inherit;cursor:pointer">🌐 YouTube</button>
+    <!-- Fonte da música (11/09/26). 22/10/26 (pedido do Garage: "abra no YouTube e lista do bar fica do lado para
+         clicar"): as 2 abas sempre à vista, o YouTube primeiro e já aberto, a lista do bar do lado -->
+    <div id="busca-fonte" style="display:flex;gap:8px;margin:0 0 10px">
+      <button type="button" id="fonte-youtube" onclick="trocarFonte('youtube')" style="flex:1;min-height:44px;border-radius:12px;border:2px solid #dc2626;background:rgba(220,38,38,.14);color:#fff;font-weight:800;font-size:14px;font-family:inherit;cursor:pointer">🌐 YouTube</button>
+      <button type="button" id="fonte-biblioteca" onclick="trocarFonte('biblioteca')" style="flex:1;min-height:44px;border-radius:12px;border:2px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:#8888aa;font-weight:800;font-size:14px;font-family:inherit;cursor:pointer">📚 Lista do bar</button>
     </div>
     {% endif %}
 
@@ -782,10 +779,6 @@ async function jaPaguei() {
     <div id="busca-generos" style="display:none;flex-wrap:nowrap;overflow-x:auto;gap:6px;margin:0 0 10px;padding-bottom:4px;-webkit-overflow-scrolling:touch;scrollbar-width:none"></div>
     <div class="busca-count" id="busca-count" style="display:none"></div>
     <div id="resultados-lista"></div>
-    {%- if youtube_liberado %}
-    {#- 20/10/26: a lista do bar fica num link pequeno (some quando ela já está aberta) #}
-    <a class="link-lista" id="link-lista-bar" role="button" onclick="verListaDoBar()">📚 ver a lista do bar</a>
-    {%- endif %}
   </div>
   {%- endif %}
 
@@ -873,10 +866,6 @@ async function jaPaguei() {
       </button>
       {%- endif %}
       {% if 'flash' in tipos %}
-      {#- crítico leigo M1 (17/10/26): na música do acervo, 1 toque leva pro YouTube já buscando o título #}
-      <div id="sh-flash-yt" style="display:none;margin:0 0 8px">
-        <button type="button" class="btn-flash" onclick="furarNoYoutube()">⚡ Furar a fila · {{ brl(tipos.flash.preco + pix_conv) }}<small>furar a fila é com música do YouTube: toca aqui que eu busco essa</small></button>
-      </div>
       <button type="button" class="btn-flash" id="btn-flash" onclick="enviarMusica('flash')">
         ⚡ Furar a fila · {{ brl(tipos.flash.preco + pix_conv) }}{% if pix_direto %} no PIX{% endif %}
         <small id="sh-flash-sub" data-preco="{% if pix_conv > 0 %}{{ brl(tipos.flash.preco) }} + {{ brl(pix_conv) }} do app{% endif %}">{% if pix_conv > 0 %}{{ brl(tipos.flash.preco) }} + {{ brl(pix_conv) }} do app{% else %}toca antes da fila{% endif %}</small>
@@ -1048,15 +1037,7 @@ function mostrarAba(qual) {   // 20/10/26 (cardápio): 1 tela só; 'tv' rola at�
   const alvo = document.getElementById(qual === 'tv' ? 'sec-tv' : (qual === 'musicas' ? 'sec-musica' : ''));
   if (alvo) alvo.scrollIntoView({block: 'start'}); else window.scrollTo({top: 0});
 }
-let YT_FORA = false;   // crítico leigo A3: a busca do YouTube respondeu erro (o acervo vale pro furar a fila)
-function furarNoYoutube() {   // crítico leigo M1: da música do acervo pro YouTube, já buscando o título
-  const t = (videoSel && videoSel.titulo) || '';
-  fecharSheet();
-  trocarFonte('youtube');
-  const inp = document.getElementById('busca-input');
-  if (inp && t) { inp.value = t; buscar(); }
-  document.getElementById('dica-flash').style.display = 'block';
-}
+let YT_FORA = false;   // crítico leigo A3: a busca do YouTube respondeu erro (o celular fica na lista do bar)
 function irBusca(modo) {   // fichas "⚡ Furar a fila" e "⏩ Pular a espera": sobem pra busca, com a dica e o teclado
   mostrarAba('musicas');
   if (YT_LIBERADO && !YT_FORA && modosBusca !== 'youtube') trocarFonte('youtube', true);
@@ -1236,8 +1217,6 @@ function trocarFonte(modo, semFoco) {   // semFoco: na abertura da página não 
   _cancelarBusca(true);
   inp.value = '';
   inp.placeholder = modo === 'youtube' ? '🔎 Qual música?' : '🔎 Procura na lista do bar';
-  const _ll = document.getElementById('link-lista-bar');
-  if (_ll) _ll.style.display = modo === 'youtube' ? '' : 'none';
   const lista = document.getElementById('resultados-lista');
   lista.innerHTML = '';
   lista.className = '';
@@ -1252,7 +1231,7 @@ function trocarFonte(modo, semFoco) {   // semFoco: na abertura da página não 
     if (!semFoco) inp.focus();
   }
 }
-function verListaDoBar() {   // 20/10/26: link "📚 ver a lista do bar" ou a busca do YouTube caiu (e as 2 abas pra voltar)
+function verListaDoBar() {   // a busca do YouTube caiu: abre a lista do bar (as 2 abas seguem à vista)
   mostrarAba('musicas');
   const bf = document.getElementById('busca-fonte');
   if (bf) bf.style.display = 'flex';
@@ -1399,7 +1378,7 @@ function _cardHtml(v, i, origem) {
   const clique = origem === 'mp' ? `escolherMaisPedida(${i})` : `selecionarVideoIdx(${i})`;
   // 20/10/26 (desenho aprovado): "▶️ Grátis" e "⚡ Furar R$ X" em cada música, sem abrir a folha pra ver o furar
   const _g = PRECOS[modosBusca === 'youtube' ? 'musica_externa' : 'musica_especifica'];
-  const _f = PRECOS.flash && (modosBusca === 'youtube' || !YT_LIBERADO || YT_FORA);
+  const _f = PRECOS.flash;   // 22/10/26: lista do bar fura igual ao YouTube
   const btns = (_g || _f) ? `<div class="yt-btns">${_g ? `<button type="button" class="b-gratis" onclick="pedirDireto(event,${i},'${origem}','gratis')">▶️ Grátis</button>` : ''}${_f ? `<button type="button" class="b-furar" onclick="pedirDireto(event,${i},'${origem}','flash')">⚡ Furar ${FURAR_TXT}</button>` : ''}</div>` : '';
   return `<div class="yt-card${v.na_fila ? ' na-fila' : ''}" id="${origem}-${i}" onclick="${clique}">
       <div class="yt-capa"><img src="${_esc(_capa(v))}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror="this.style.visibility='hidden'">${v.duracao ? `<span class="yt-dur">${_esc(v.duracao)}</span>` : ''}${_seloHtml(v)}</div>
@@ -1413,10 +1392,10 @@ function pedirDireto(ev, i, origem, modo) {
   if (!v) return;
   abrirSheet(v);
   _modoDireto = modo;
-  const bg = document.getElementById('btn-gratis'), bf = document.getElementById('btn-flash'), fy = document.getElementById('sh-flash-yt');
+  const bg = document.getElementById('btn-gratis'), bf = document.getElementById('btn-flash');
   const bp = document.getElementById('btn-pular');
-  if (modo === 'flash') { if (bg) bg.style.display = 'none'; if (fy) fy.style.display = 'none'; if (bf) bf.style.display = ''; if (bp) bp.style.display = 'none'; }
-  else if (!_gratisTravada) { if (bf) bf.style.display = 'none'; if (fy) fy.style.display = 'none'; }
+  if (modo === 'flash') { if (bg) bg.style.display = 'none'; if (bf) bf.style.display = ''; if (bp) bp.style.display = 'none'; }
+  else if (!_gratisTravada) { if (bf) bf.style.display = 'none'; }
 }
 function _mostrarFurarSeGratisTravada() {   // a grátis está esperando: o ⏩ pular a espera (Efí) e, no "Grátis", o furar
   const bp = document.getElementById('btn-pular');
@@ -1490,7 +1469,7 @@ async function buscar() {
       lista.innerHTML = '<div class="yt-msg" style="color:#fbbf24">Muitas buscas agora. Espera uns segundos e tenta de novo.</div>';
       return;
     }
-    if (res.ok) YT_FORA = false;   // o YouTube voltou: furar a fila volta a ser só com música do YouTube
+    if (res.ok) YT_FORA = false;   // o YouTube voltou
     const r = data.resultados || [];
     if (!r.length && data.fora_estilo) {   // 17/10/26: tudo de outro estilo → aviso grande + botão
       _ultimaQ = '';
@@ -1568,12 +1547,10 @@ function abrirSheet(v) {
   const bg = document.getElementById('btn-gratis');
   if (bg) { bg.style.display = PRECOS[tipoGratis] ? '' : 'none'; bg.disabled = false; bg.style.opacity = ''; }
   const bf = document.getElementById('btn-flash');
-  // 16/10/26 (produção c7273fb): furar a fila só com música do YouTube; sem YouTube no bar, vale o acervo.
-  // Crítico leigo A3 (17/10/26): com a busca do YouTube fora do ar (YT_FORA), o acervo volta a valer.
-  const _soYt = YT_LIBERADO && !YT_FORA && modosBusca !== 'youtube';
-  if (bf) { bf.disabled = false; bf.style.display = _soYt ? 'none' : ''; }
-  const fy = document.getElementById('sh-flash-yt');
-  if (fy) fy.style.display = (_soYt && bf) ? 'block' : 'none';
+  // 22/10/26 (pedido do Garage: "gostaria que ficasse igual, conforme pedir pelo YouTube"): o ⚡ vale pra música da
+  // lista do bar, igual à do YouTube. A regra de 16/10 (c7273fb, só com música do YouTube) era da tela antiga e
+  // deixava as 2 folhas diferentes.
+  if (bf) { bf.disabled = false; bf.style.display = ''; }
   const av = document.getElementById('sh-aviso-gratis');
   if (av) av.style.display = 'none';
   const bp = document.getElementById('btn-pular');   // ⏩ só quando a grátis estiver esperando (_pintarSheet / 1 por vez)
