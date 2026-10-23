@@ -315,21 +315,67 @@
   body.fila-on:not(.com-fila) #qr-fixo #qr-preco{font-weight:900!important;font-size:5vh!important;line-height:1.1!important;color:#4ade80!important}
   body.com-fila #qr-fixo{opacity:0;pointer-events:none}
 
-  /* MOLDURA (fora do modo fundo): o player encolhe; a coluna é o lugar de tudo (nada por cima do clipe) */
-  body.fila-on:not(.modo-fundo) #player-wrap{right:var(--col-w);background:#000}
-  body.fila-on:not(.modo-fundo) #coluna-tv{display:flex;flex-direction:column;gap:1.6vh;position:fixed;top:0;right:0;
-    bottom:0;width:var(--col-w);z-index:30;background:#000;padding:2vh 1.4vh;overflow:hidden}
-  body.fila-on:not(.modo-fundo) #coluna-tv > *{position:static!important;transform:none!important;flex:none}
-  body.fila-on:not(.modo-fundo) #ct-tocando{display:block}
+  /* 🎶 23/10/26 — LETREIRO (Diogo: "a coluna consome espaço da tela… e se ficasse embaixo, correndo nome por nome").
+     Fora do modo fundo o player encolhe só na altura (--faixa-h) e a faixa preta de baixo recebe o que ficava por cima
+     do clipe: à esquerda o tocando agora + a barra do tempo, no meio a fila correndo (1, 2, 3…) e à direita, PARADOS,
+     o "⚡ Furar" e o "⏳ Grátis" (o que vende não corre). Fila vazia: o QR na faixa. Nada por cima do player. */
+  :root{--faixa-h:11vh}
+  body.fila-on:not(.modo-fundo) #player-wrap{bottom:var(--faixa-h);background:#000}
+  body.fila-on:not(.modo-fundo) #coluna-tv{display:grid;position:fixed;left:0;right:0;bottom:0;height:var(--faixa-h);z-index:30;
+    background:#000;border-top:.3vh solid #f59e0b;padding:1vh 1.8vh;column-gap:2.4vh;row-gap:.4vh;overflow:hidden;
+    grid-template-columns:minmax(0,22vw) minmax(0,1fr) auto;grid-template-rows:minmax(0,1fr) minmax(0,1fr);
+    grid-template-areas:"toc let fu" "tem let gr"}
+  body.fila-on:not(.modo-fundo) #coluna-tv > *{position:static!important;transform:none!important}
+  body.fila-on:not(.modo-fundo) #ct-tocando{display:block;grid-area:toc;align-self:end;min-width:0;white-space:nowrap;overflow:hidden;
+    text-overflow:ellipsis}
+  body.fila-on:not(.modo-fundo) #ct-tocando .ct-tit{display:inline;font-size:2.8vh;-webkit-line-clamp:unset}
+  body.fila-on:not(.modo-fundo) #ct-tocando .ct-art{display:inline;font-size:2.4vh;margin:0 0 0 1vh}
+  body.fila-on:not(.modo-fundo):not(.com-fila) #ct-tocando{grid-row:1 / 3;align-self:center}
+  /* fila vazia ou TV muda: é a hora de chamar o 1º pedido, então a faixa cresce e o QR fica do tamanho que tinha na
+     coluna (crítico C1: QR pequeno não escaneia da mesa). O clipe volta pros 67% de antes só nesse estado. */
+  body.fila-on:not(.modo-fundo):not(.com-fila){--faixa-h:18vh}
   body.fila-on:not(.modo-fundo) #now-playing{display:none!important}
   body.fila-on:not(.modo-fundo) #proximo-card{display:none!important}
-  body.fila-on:not(.modo-fundo) #fila-tv{flex:1 1 auto;min-height:0;padding:0;border:0;background:transparent;border-radius:0}
-  body.fila-on:not(.modo-fundo) .ft-gratis{margin-top:auto}
+  body.fila-on:not(.modo-fundo).com-fila #fila-tv{display:contents}
+  body.fila-on:not(.modo-fundo) .ft-tempo{grid-area:tem;height:auto;align-self:start}
+  body.fila-on:not(.modo-fundo) .ft-ico{font-size:2.6vh}
+  body.fila-on:not(.modo-fundo) .ft-rest{font-size:3vh}
+  body.fila-on:not(.modo-fundo) #ft-linhas, body.fila-on:not(.modo-fundo) #ft-mais{display:none!important}
+  body.fila-on:not(.modo-fundo) .ft-furar{grid-area:fu;align-self:end;flex-wrap:nowrap;font-size:2.6vh;padding:.4vh 1.2vh;column-gap:2vh}
+  body.fila-on:not(.modo-fundo) .ft-gratis{grid-area:gr;align-self:start;flex-wrap:nowrap;font-size:2.6vh;border:0;padding:.3vh 1.2vh 0;
+    column-gap:2vh}
+  body.fila-on:not(.modo-fundo) #coluna-tv.sem-furar .ft-gratis{grid-row:1 / 3;align-self:center;font-size:3vh}
   body.fila-on:not(.modo-fundo).com-fila #qr-fixo{display:none!important}
-  body.fila-on:not(.modo-fundo):not(.com-fila) #qr-fixo{display:flex;margin-top:auto}
-  body.fila-on:not(.modo-fundo) #sem-som.show{display:flex;align-self:center}
-  /* "Tela cheia" (mouse / 8 s quando o som liga sozinho): no canto de cima da coluna, nunca sobre o player */
-  body.fila-on:not(.modo-fundo) #fs-btn{top:1.2vh;left:auto;right:1.2vh;z-index:35}
+  body.fila-on:not(.modo-fundo):not(.com-fila) #qr-fixo{display:flex;grid-column:2 / 4;grid-row:1 / 3;flex-direction:row;align-items:center;
+    justify-self:end;gap:2vh;padding:0;border:0;background:transparent;animation:none}
+  body.fila-on:not(.modo-fundo):not(.com-fila) #qr-fixo img{width:15.5vh!important;height:15.5vh!important}
+  body.fila-on:not(.modo-fundo):not(.com-fila) #qr-fixo > div{display:flex;flex-direction:column;align-items:flex-start;gap:.6vh}
+  body.fila-on:not(.modo-fundo):not(.com-fila) #qr-fixo .qr-txt1{font-size:4vh!important}
+  body.fila-on:not(.modo-fundo):not(.com-fila) #qr-fixo #qr-preco{font-size:6vh!important}
+  body.fila-on:not(.modo-fundo) #sem-som.show{display:flex;grid-column:2 / 3;grid-row:1 / 3;align-self:center;justify-self:start;
+    font-size:2.6vh;padding:.8vh 2vh}   /* o QR fica na ponta direita; letra em vh (17px some na TV 4K) */
+  /* "Tela cheia" (mouse / 8 s quando o som liga sozinho): no canto da faixa, nunca sobre o player */
+  /* em cima da etiqueta FILA: some 3-8 s sem esconder nada que o cliente precise (nunca o Furar nem o tempo) */
+  body.fila-on:not(.modo-fundo) #fs-btn{top:auto;bottom:calc((var(--faixa-h) - 40px) / 2);left:calc(1.8vh + 22vw + 2.4vh);right:auto;
+    z-index:35}
+  /* o seletor de canal (mouse, 3 s) fica como era antes da fila, mas escondido de verdade: invisível não fica na frente */
+  body.fila-on:not(.modo-fundo) #canal-selector:not(.visible),
+  body.fila-on:not(.modo-fundo) #canal-selector:not(.visible) *{visibility:hidden!important}   /* os botões têm visibility própria */
+  /* a fila correndo: cada nome é um bloco que anda só por transform (leve em TV box fraca); as pontas esmaecem */
+  #ft-letreiro{display:none}
+  body.fila-on:not(.modo-fundo) #ft-letreiro{grid-area:let;display:flex;align-items:center;gap:1.8vh;min-width:0;overflow:hidden}
+  .let-tag{flex:none;font-weight:900;font-size:2.4vh;line-height:1;color:#000;background:#f59e0b;border-radius:.8vh;padding:.8vh 1vh;
+    letter-spacing:.06em}
+  #let-trilho{position:relative;flex:1;min-width:0;height:100%;overflow:hidden;
+    -webkit-mask-image:linear-gradient(90deg,transparent,#000 3%,#000 94%,transparent);
+    mask-image:linear-gradient(90deg,transparent,#000 3%,#000 94%,transparent)}
+  .let-item{position:absolute;left:0;top:0;bottom:0;display:flex;align-items:center;gap:1.2vh;white-space:nowrap;will-change:transform}
+  .let-item .ft-num{width:4.6vh;height:4.6vh;line-height:4.6vh;font-size:3.2vh}
+  .let-tit{font-weight:800;font-size:4.2vh;line-height:1;color:#fff}
+  .let-item.vez .let-tit{color:#fbbf24}
+  .let-item.vez .ft-num{background:#fbbf24}
+  .let-item.saiu{opacity:0;transition:opacity .5s}   /* quem saiu da fila (tocou/cancelou) some; o vão corre e sai */
+  .let-mais{font-weight:800;font-size:3.6vh;color:rgba(255,255,255,.75)}
   .ct-tit{font-weight:800;font-size:3vh;line-height:1.2;color:#fff;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
     overflow:hidden}
   .ct-art{font-weight:700;font-size:2.8vh;line-height:1.2;color:rgba(255,255,255,.6);margin-top:.4vh;white-space:nowrap;overflow:hidden;
@@ -363,6 +409,7 @@
   <div id="ct-tocando"><div class="ct-tit" id="ct-titulo"></div><div class="ct-art" id="ct-artista"></div></div>
   <div id="fila-tv" aria-live="polite">
     <div class="ft-tempo"><span class="ft-ico" id="ft-ico">▶</span><div class="ft-trilho"><i id="ft-barra"></i></div><span class="ft-rest" id="ft-rest">--:--</span></div>
+    <div id="ft-letreiro" aria-hidden="true"><span class="let-tag">FILA</span><div id="let-trilho"></div></div>
     <div id="ft-linhas"></div>
     <div class="ft-mais" id="ft-mais" style="display:none"></div>
     <div class="ft-gratis"><span>⏳ Grátis</span><span id="ft-min-gratis"></span></div>
@@ -1077,14 +1124,15 @@ function esconderBadgeFila() {
 // textContent (é dado de fora). TV muda não mostra o cartão: a fila não anda e o tempo mentiria.
 const FILA_SEG = 240;   // 4 min por música na estimativa (a mesma conta do celular)
 let _fila = {itens: [], n: 0, pagos: 0, preco: null}, _filaZeros = 0, _filaAssin = '', _filaIdsAnt = new Set();
-let _restAnt = null, _minGrAnt = '', _minFuAnt = '';
+let _restAnt = null, _minGrAnt = '', _minFuAnt = '', _letVez = false;
 
-function _limparTitulo(t) {
+function _limparTitulo(t, inteiro) {
   t = String(t || '').split(' | ')[0];
   t = t.replace(/\([^)]*\)|\[[^\]]*\]/g, ' ').replace(/clipe oficial|official video|lyrics/gi, ' ');
   t = t.replace(/\s+/g, ' ').replace(/[\s\-–—:]+$/, '').trim();
   // 22/10/26: na linha da fila só o NOME DA MÚSICA ("AC/DC - Highway to Hell" → "Highway to Hell"): com 13–17 letras
   // é o que o cliente reconhece. Sem nada depois do 1º " - ", o título inteiro. O "tocando agora" segue com os dois.
+  if (inteiro) return t.replace(/\s[-–—]\s/, ' – ');   // 23/10/26: o letreiro mostra os dois (o nome corre, não corta)
   const m = t.match(/\s[-–—]\s(.+)$/);
   return (m && m[1].trim()) || t;
 }
@@ -1121,7 +1169,7 @@ function _filaAtualizar(data, doPoll) {
 }
 
 function _filaRender() {
-  if (!document.body.classList.contains('com-fila')) { _filaAssin = ''; return; }
+  if (!document.body.classList.contains('com-fila')) { _filaAssin = ''; _letLimpa(); return; }
   const {itens, n, pagos, preco} = _fila;
   const assin = JSON.stringify([itens.map(i => i.id), n, pagos, preco]);
   if (assin === _filaAssin) return;
@@ -1129,6 +1177,21 @@ function _filaRender() {
   _filaAssin = assin;
   const antes = _filaIdsAnt;
   _filaIdsAnt = new Set(itens.map(i => i.id));
+  if (_faixa()) {   // 23/10/26: a fila corre na faixa de baixo; as linhas do card são só do modo fundo
+    const temFurar = !!preco && (n - pagos) >= 2;
+    document.getElementById('ft-furar-txt').textContent = temFurar ? `⚡ Furar ${preco}` : '';
+    document.getElementById('ft-furar').style.display = temFurar ? '' : 'none';
+    document.getElementById('coluna-tv').classList.toggle('sem-furar', !temFurar);
+    if (!primeira && itens.some(it => (it.tipo === 'flash' || it.tipo === 'vip') && !antes.has(it.id))) {
+      _letUltId = 'mais';   // ⚡/👑 novo vai pra frente: o próximo nome a nascer é o 1 (quem pagou se vê em segundos)
+      const u = document.getElementById('let-trilho').lastElementChild;
+      if (u) u._volta = true;   // com o espaço de começo de volta
+    }
+    _letSync();
+    _minGrAnt = _minFuAnt = '';
+    _filaTick();
+    return;
+  }
   const box = document.getElementById('ft-linhas');
   box.textContent = '';
   itens.slice(0, 8).forEach((it, i) => {   // até 8 linhas (Diogo: "não mostra a fila toda")
@@ -1191,12 +1254,107 @@ function _filaTick() {
   document.getElementById('ft-ico').textContent = _videoSemSom() ? '⚽' : '▶';
   const l1 = document.querySelector('#ft-linhas .ft-item');
   if (l1) l1.classList.toggle('vez', ok && rest <= 20);
+  _letVez = ok && rest <= 20;   // o 1 que nascer no meio do segundo já nasce âmbar (_letNo)
+  const id1 = _fila.itens[0] ? String(_fila.itens[0].id) : '';
+  document.querySelectorAll('#let-trilho .let-item').forEach(no => no.classList.toggle('vez', _letVez && no.dataset.id === id1));
   const base = ok ? rest : 120;
   const mg = _filaMin(base + _fila.n * FILA_SEG), mf = _filaMin(base + _fila.pagos * FILA_SEG);
   if (mg !== _minGrAnt) { document.getElementById('ft-min-gratis').textContent = mg; _minGrAnt = mg; }
   if (mf !== _minFuAnt) { document.getElementById('ft-min-furar').textContent = mf; _minFuAnt = mf; }
 }
 setInterval(_filaTick, 1000);
+
+// ── 🎶 Letreiro (23/10/26, ideia do Diogo): a fila corre da direita pra esquerda, nome por nome, no ritmo de leitura.
+// Cada nome que entra é lido da fila DE AGORA (pedido novo entra na volta seguinte; o número de quem já está na tela
+// se ajusta e quem saiu da fila some). Por quadro só muda transform: ~2 ms medidos com a CPU 6x mais lenta.
+const LET_VEL = 0.11;   // alturas de tela por segundo (11vh/s ≈ 119 px/s em 1080p)
+let _letT = 0, _letUltId = null, _letUltI = 0;
+function _faixa() { const c = document.body.classList; return c.contains('fila-on') && !c.contains('modo-fundo'); }
+function _letLimpa() {
+  const t = document.getElementById('let-trilho');
+  if (t) t.textContent = '';
+  _letT = 0; _letUltId = null; _letUltI = 0;
+}
+// a próxima posição a entrar: a seguinte à última que entrou; depois da última, o "+N" (se houver) e volta pro 1
+function _letProx() {
+  const its = _fila.itens, temMais = _fila.n > its.length;
+  if (_letUltId === 'mais' || _letUltId === null) return 0;
+  const k = its.findIndex(it => String(it.id) === _letUltId);
+  // a última que entrou saiu da fila (tocou ou foi cancelada): a seguinte ocupa a posição dela agora
+  if (k < 0) return _letUltI < its.length ? _letUltI : (temMais ? -1 : 0);
+  return k + 1 < its.length ? k + 1 : (temMais ? -1 : 0);
+}
+function _letNo(i) {   // i = posição na fila (0 = a próxima); -1 = o "+N"
+  const {itens, n} = _fila;
+  const no = document.createElement('div');
+  if (i < 0) {
+    no.className = 'let-item let-mais';
+    no.textContent = `+${n - itens.length} na fila`;
+    _letUltId = 'mais';
+    return no;
+  }
+  const it = itens[i];
+  no.className = 'let-item' + (i === 0 && _letVez ? ' vez' : '');
+  no.dataset.id = String(it.id);
+  const num = document.createElement('span');
+  num.className = 'ft-num';
+  num.textContent = String(i + 1);
+  const tit = document.createElement('span');
+  tit.className = 'let-tit';
+  const pre = it.tipo === 'vip' ? '👑 ' : (it.tipo === 'flash' ? '⚡ ' : '');
+  tit.textContent = it.yt ? pre + (_limparTitulo(it.t, true) || '🎵 Música') : pre + '🎲 Surpresa';   // dado de fora: textContent
+  no.append(num, tit);
+  _letUltId = no.dataset.id;
+  _letUltI = i;
+  return no;
+}
+function _letSync() {
+  const tr = document.getElementById('let-trilho');
+  if (!tr) return;
+  const pos = new Map(_fila.itens.map((it, i) => [String(it.id), i]));
+  tr.querySelectorAll('.let-item[data-id]').forEach(no => {
+    const i = pos.get(no.dataset.id);
+    no.classList.toggle('saiu', i === undefined);
+    if (i !== undefined) no.firstChild.textContent = String(i + 1);
+  });
+  const resto = _fila.n - _fila.itens.length;
+  tr.querySelectorAll('.let-mais').forEach(no => {
+    no.classList.toggle('saiu', resto <= 0);
+    if (resto > 0) no.textContent = `+${resto} na fila`;
+  });
+}
+function _letPasso(ts) {
+  requestAnimationFrame(_letPasso);
+  const tr = document.getElementById('let-trilho');
+  if (!tr || !_faixa() || !document.body.classList.contains('com-fila') || !_fila.itens.length) {
+    if (tr && tr.firstChild) _letLimpa();
+    _letT = 0;
+    return;
+  }
+  const dt = _letT ? Math.min(ts - _letT, 100) : 0;   // engasgo ou aba parada: não dá salto
+  _letT = ts;
+  const dx = innerHeight * LET_VEL * dt / 1000, W = tr.clientWidth, gap = innerHeight * 0.06;
+  if (W < 40 || gap < 2) return;   // tela sem altura/largura (WebView medindo): sem isso o laço de baixo não termina
+  for (const no of tr.children) { no._x -= dx; no.style.transform = `translateX(${no._x}px)`; }
+  while (tr.firstElementChild && tr.firstElementChild._x + tr.firstElementChild._w < 0) tr.firstElementChild.remove();
+  const ult = tr.lastElementChild;
+  // nasce sempre na ponta direita (entra correndo); só o enchimento da 1ª vez começa da esquerda
+  let x = ult ? Math.max(ult._x + ult._w + gap * (ult._volta ? 2.5 : 1), W - 1) : W * 0.02, novos = 0;
+  while (x < W && novos++ < 40) {
+    const i = _letProx();
+    const igual = i < 0 ? '.let-mais:not(.saiu)' : `.let-item[data-id="${CSS.escape(String(_fila.itens[i].id))}"]:not(.saiu)`;
+    if (tr.querySelector(igual)) break;   // fila curta: o mesmo nome nunca 2 vezes na tela (espera o de antes sair)
+    const no = _letNo(i);
+    no._volta = _letProx() === 0;   // fecha a volta: espaço maior antes do 1
+    tr.append(no);
+    no._w = no.offsetWidth;
+    no._x = x;
+    no.style.transform = `translateX(${x}px)`;
+    x += no._w + gap * (no._volta ? 2.5 : 1);
+  }
+}
+requestAnimationFrame(_letPasso);
+addEventListener('resize', () => _letLimpa());   // as letras são em vh: tela nova, recomeça com as medidas novas
 
 // ── Now Playing ───────────────────────────────────────────────────────────────
 // Escapa texto do cliente antes de ir pro innerHTML (15/10/26: o título do pedido era HTML cru na TV)
@@ -1213,7 +1371,7 @@ function atualizarNowPlaying(v) {
   document.getElementById('np-titulo').textContent  = v.titulo  || '';
   document.getElementById('np-artista').textContent = v.artista || '';
   // 22/10/26 (moldura): o "tocando agora" da coluna da direita (a faixa de baixo some: ela cobria o clipe)
-  document.getElementById('ct-titulo').textContent  = v.titulo  || '';
+  document.getElementById('ct-titulo').textContent  = _limparTitulo(v.titulo || '', true);   // 23/10/26: sem "(Official Video)"
   document.getElementById('ct-artista').textContent = v.artista || '';
   const np = document.getElementById('now-playing');
   if (CANAL_KEY === 'variado') {
