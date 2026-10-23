@@ -330,6 +330,13 @@
   body.fila-on:not(.modo-fundo) #sem-som.show{display:flex;align-self:center}
   /* "Tela cheia" (mouse / 8 s quando o som liga sozinho): no canto de cima da coluna, nunca sobre o player */
   body.fila-on:not(.modo-fundo) #fs-btn{top:1.2vh;left:auto;right:1.2vh;z-index:35}
+  /* 23/10/26 (print do Garage): o seletor de canal só aparece com o mouse mexendo (3 s). Com o cursor parado em cima
+     ele ficava aceso para sempre por cima do nome e da barra do tempo; invisível também não fica na frente de nada. */
+  body.fila-on:not(.modo-fundo) #canal-selector:not(.visible),
+  body.fila-on:not(.modo-fundo) #canal-selector:not(.visible) *{visibility:hidden!important}
+  /* 23/10/26 (Diogo: "ele tinha o load da música"): com a fila vazia a barra do tempo fica; o resto da fila some */
+  body.fila-on:not(.modo-fundo):not(.com-fila) #fila-tv{display:flex;flex:none}
+  body.fila-on:not(.modo-fundo):not(.com-fila) #fila-tv > :not(.ft-tempo){display:none!important}
   .ct-tit{font-weight:800;font-size:3vh;line-height:1.2;color:#fff;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
     overflow:hidden}
   .ct-art{font-weight:700;font-size:2.8vh;line-height:1.2;color:rgba(255,255,255,.6);margin-top:.4vh;white-space:nowrap;overflow:hidden;
@@ -1079,10 +1086,17 @@ const FILA_SEG = 240;   // 4 min por música na estimativa (a mesma conta do cel
 let _fila = {itens: [], n: 0, pagos: 0, preco: null}, _filaZeros = 0, _filaAssin = '', _filaIdsAnt = new Set();
 let _restAnt = null, _minGrAnt = '', _minFuAnt = '';
 
-function _limparTitulo(t) {
+function _tituloSemEnfeite(t) {
   t = String(t || '').split(' | ')[0];
   t = t.replace(/\([^)]*\)|\[[^\]]*\]/g, ' ').replace(/clipe oficial|official video|lyrics/gi, ' ');
-  t = t.replace(/\s+/g, ' ').replace(/[\s\-–—:]+$/, '').trim();
+  return t.replace(/\s+/g, ' ').replace(/[\s\-–—:]+$/, '').trim();
+}
+// 23/10/26 (Diogo: "o outro estava mais slim"): o "tocando agora" da coluna, limpo e com artista e música
+function _limparTituloInteiro(t) {
+  return _tituloSemEnfeite(t).replace(/\s[-–—]\s/, ' – ');
+}
+function _limparTitulo(t) {
+  t = _tituloSemEnfeite(t);
   // 22/10/26: na linha da fila só o NOME DA MÚSICA ("AC/DC - Highway to Hell" → "Highway to Hell"): com 13–17 letras
   // é o que o cliente reconhece. Sem nada depois do 1º " - ", o título inteiro. O "tocando agora" segue com os dois.
   const m = t.match(/\s[-–—]\s(.+)$/);
@@ -1169,7 +1183,9 @@ function _filaRender() {
 
 // a cada 1 s, do player (sem servidor): a barra que ESVAZIA, o m:ss, a linha 1 âmbar nos últimos 20 s e os minutos
 function _filaTick() {
-  if (!document.body.classList.contains('com-fila') || !player || !player.getDuration) return;
+  // 23/10/26: na coluna (fora do modo fundo) a barra anda também com a fila vazia
+  const naColuna = document.body.classList.contains('fila-on') && !document.body.classList.contains('modo-fundo');
+  if ((!document.body.classList.contains('com-fila') && !naColuna) || !player || !player.getDuration) return;
   let d = 0, t = 0, st = -1;
   try { d = player.getDuration(); t = player.getCurrentTime(); st = player.getPlayerState(); } catch (e) { return; }
   const ok = d > 0 && d <= 3600 && (st === 1 || st === 2 || st === 3);
@@ -1213,7 +1229,8 @@ function atualizarNowPlaying(v) {
   document.getElementById('np-titulo').textContent  = v.titulo  || '';
   document.getElementById('np-artista').textContent = v.artista || '';
   // 22/10/26 (moldura): o "tocando agora" da coluna da direita (a faixa de baixo some: ela cobria o clipe)
-  document.getElementById('ct-titulo').textContent  = v.titulo  || '';
+  // 23/10/26: sem "(Official Video)", "(Live …)" nem "| canal"; título só de parênteses fica como veio
+  document.getElementById('ct-titulo').textContent  = _limparTituloInteiro(v.titulo) || v.titulo || '';
   document.getElementById('ct-artista').textContent = v.artista || '';
   const np = document.getElementById('now-playing');
   if (CANAL_KEY === 'variado') {
