@@ -2097,11 +2097,11 @@ def _limite_atingido(b, ip):
 # Música GRÁTIS: 1 a cada N minutos por CELULAR (16/10/26, Diogo). Pago (furar a fila, momentos) = sem esse limite.
 # Só vale quando o celular mandou o client_id (ip_cliente com '#'): sem ele, no Wi-Fi do bar todo mundo tem o
 # mesmo IP e a trava pegaria a mesa vizinha. 0 desliga (env PUBSHOW_GRATIS_INTERVALO_MIN).
-# 20/10/26 (pedido do Garage): 20 → 8 min.
+# 20/10/26 (pedido do Garage): 20 → 8 min. 23/10/26 (Diogo): 8 → 11 min.
 try:
-    GRATIS_INTERVALO_MIN = max(0, int(os.environ.get('PUBSHOW_GRATIS_INTERVALO_MIN', '8') or 0))
+    GRATIS_INTERVALO_MIN = max(0, int(os.environ.get('PUBSHOW_GRATIS_INTERVALO_MIN', '11') or 0))
 except (TypeError, ValueError):
-    GRATIS_INTERVALO_MIN = 8
+    GRATIS_INTERVALO_MIN = 11
 
 
 def _gratis_espera_min(b, ip):
