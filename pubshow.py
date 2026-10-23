@@ -3333,12 +3333,21 @@ def _qr_preco_tv(b):
     de serviço do PIX automático). 16/10/26: antes a TV dizia R$ 7 e o celular R$ 8; R$ 7,50 virava "R$ 8".
     Bar que desligou o furar a fila: só "GRÁTIS". V-S5-06: o /api/status manda este texto também, então o
     happy hour que começa/acaba com a TV aberta muda o preço da TV junto com o do celular."""
-    if 'flash' not in _tipos_disponiveis(b):
+    fura = _furar_preco_tv(b)
+    if fura is None:
         return 'GRÁTIS'
-    _fl = round(_precos_do_bar(b)[0]['flash']['preco'] + _taxa_pix_bar(b, 'flash'), 2)
-    fmt = (f'{_fl:.0f}' if abs(_fl - round(_fl)) < 0.005 else f'{_fl:.2f}').replace('.', ',')
     pix = bool(_gateway_ativo(b) or (b['requer_pix'] and b['pix_key']))
-    return f'GRÁTIS · furar a fila R$ {fmt}' + (' no PIX' if pix else '')
+    return f'GRÁTIS · furar a fila {fura}' + (' no PIX' if pix else '')
+
+
+def _furar_preco_tv(b):
+    """'R$ 5' / 'R$ 4' / 'R$ 7,50': o furar a fila que o celular cobra (preço do bar + taxa do PIX), ou None se o bar
+    desligou o furar. 22/10/26: separado do _qr_preco_tv pra fila do canto da TV ("⚡ Furar R$ 5") e o QR nunca
+    divergirem, nem no happy hour."""
+    if 'flash' not in _tipos_disponiveis(b):
+        return None
+    _fl = round(_precos_do_bar(b)[0]['flash']['preco'] + _taxa_pix_bar(b, 'flash'), 2)
+    return 'R$ ' + (f'{_fl:.0f}' if abs(_fl - round(_fl)) < 0.005 else f'{_fl:.2f}').replace('.', ',')
 
 
 # ── JUKEBOX MOBILE (cliente do bar escaneia QR) ───────────────────────────────
@@ -4169,16 +4178,19 @@ def api_status(code):
 
     # Pedido de música — espera o vídeo atual acabar
     # VIP → toca na frente de tudo; flash → prioridade; restantes → ordem de chegada
-    pedido_musica = conn.execute(
+    # 22/10/26 (fila no canto da TV, spec do juiz): a MESMA consulta, LIMIT 1 → 30; o 1º é o pedido_musica de sempre e o
+    # resto vira a fila da TV (zero consulta e zero requisição nova: o servidor roda com 1 worker)
+    _fila_rows = conn.execute(
         '''SELECT * FROM pubshow_pedidos
            WHERE business_id=? AND status="pendente"
            AND tipo IN ("vip","flash","musica","musica_especifica","musica_externa","pular_espera")
            ORDER BY
              CASE tipo WHEN "vip" THEN 1 WHEN "flash" THEN 2 ELSE 3 END,
              created_at ASC, id ASC
-           LIMIT 1''',
+           LIMIT 30''',
         (b['id'],)
-    ).fetchone()
+    ).fetchall()
+    pedido_musica = _fila_rows[0] if _fila_rows else None
 
     # Contagem da fila: só pedidos confirmados (exclui aguardando_pix)
     total_fila = conn.execute(
@@ -4226,6 +4238,13 @@ def api_status(code):
         'videos_version': _videos_version(),
         'tv_version':     _tv_version(b),
         'qr_preco':       _qr_preco_tv(b),   # V-S5-06: preço do QR da TV ao vivo (happy hour)
+        # 🎶 22/10/26 (fila no canto da TV, pedido do Garage): as 10 próximas SEM nome de cliente, quantas músicas (teto 30),
+        # quantas pagas (vip/flash: vão na frente) e o preço do furar (o mesmo do celular). TV antiga ignora.
+        'fila':           [{'id': r['id'], 'tipo': r['tipo'], 't': (r['titulo_pedido'] or '')[:80],
+                            'yt': 1 if r['youtube_id'] else 0} for r in _fila_rows[:10]],   # até 10 (a TV mostra 8 + "+N")
+        'fila_n':         len(_fila_rows),
+        'fila_pagos':     sum(1 for r in _fila_rows if r['tipo'] in ('vip', 'flash')),
+        'furar_preco':    _furar_preco_tv(b),
     }
     conn.close()
     if _efi_para(b):
