@@ -626,7 +626,10 @@
         não é botão (Skate, Punk…): aí o 1º toque num botão troca em vez de somar #}
     <div id="estilo-no-ar" data-extra="{{ '1' if _extra_ativo else '' }}">📺 No ar: {{ no_ar_txt }}</div>
     {% if _temas and not _preset and not (_canal_ef == 'variado' and _acesos) %}
-    <div id="estilo-antigo" style="font-size:13px;color:var(--text2);margin-top:10px">Hoje a busca do cliente usa os {{ _temas|length }} estilos que você marcou antes. Tocar num botão troca.</div>
+    {#- 24/10/26 (print do Diogo: "os 4 estilos" em cima de "busca só Rock e Sertanejo"): os NOMES dos botões de música
+        cujos temas estão no salvo (Rock = rock + punk), os mesmos do Pedir do YouTube; Esporte e Comédia não entram na busca #}
+    {%- set _nomes = [] %}{% for k, e in estilos_bar.items() %}{% if k not in ('esporte', 'comedia') and e.temas and (e.temas|select('in', _temas)|list) %}{% set _ = _nomes.append(e.nome) %}{% endif %}{% endfor %}
+    <div id="estilo-antigo" style="font-size:13px;color:var(--text2);margin-top:10px">{% if _nomes %}Hoje o cliente busca só {{ (_nomes[:-1]|join(', ') ~ ' e ' ~ _nomes[-1]) if _nomes|length > 1 else _nomes[0] }}, que você marcou antes.{% else %}Hoje a busca do cliente segue o que você marcou antes.{% endif %} Tocar num botão troca.</div>
     {% endif %}
   </div>
 

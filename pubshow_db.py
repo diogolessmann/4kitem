@@ -407,6 +407,9 @@ def init_pubshow_db():
     # 22/10/26: clipes de MPB, Blues e Reggae do Estilo do bar (enquete do Garage) — 1 vez só
     _semear_estilos_novos(conn)
 
+    # 24/10/26: 39 vídeos do acervo que tocavam outra coisa (auditoria do ar) — 1 vez só
+    _corrigir_ids_trocados_24out(conn)
+
     # pago_em do histórico (15/10/26). Status pago COM cobrança do gateway → pago_em = created_at. Pago
     # SEM cobrança do gateway (PIX manual, "Já paguei", balcão) é ambíguo: fica fora das somas e vai pro
     # log pra conferir. 16/10/26 (crítico C5): roda em TODO boot, sem o marcador "1 vez" — o PIX pago
@@ -671,6 +674,98 @@ def _semear_estilos_novos(conn):
         return 0
 
 
+# 24/10/26 (auditoria do acervo do ar contra o oEmbed do YouTube): 39 vídeos tocavam outra coisa: TED no lugar de
+# "Magia", quadro do SNL no lugar de "7 Rings", podcast no rock, Billie Jean que tocava Thriller. Quase todos do seed
+# antigo. (id_errado, título no banco, id_certo, artista_novo, duração): id_certo = clipe oficial conferido (canal do
+# artista, toca no player, não é capa parada); 'APAGA' = a música certa já está no acervo com outro vídeo; None = não
+# existe clipe oficial que se mexe → a linha é desligada (o admin ainda vê e pode trocar).
+_IDS_TROCADOS_24OUT = (
+    ('JGwWNGJdvx8', 'Happy', 'APAGA', None, None),   # tocava: Ed Sheeran - Shape of You (Official Music Video)
+    ('MlLWTeApqIM', 'Me Apaixonei pela Pessoa Errada', 'qiAoCkue1PE', 'Exaltasamba', 201),   # tocava: David Brooks: Should you live for your résumé ... or your
+    ('YqeW9_5kURI', 'Shape of You', 'JGwWNGJdvx8', None, 263),   # tocava: Major Lazer & DJ Snake - Lean On (feat. MØ) [Official 4K M
+    ('OPf0YbXqDm0', 'Roar', 'CevxZvSJLk8', None, 269),   # tocava: Mark Ronson - Uptown Funk (Official Video) ft. Bruno Mars
+    ('kffacxfA7G4', 'Despacito', 'kJQP7kiw5Fk', None, 282),   # tocava: Justin Bieber - Baby ft. Ludacris
+    ('CevxZvSJLk8', 'Poker Face', 'bESGLojNYSo', None, 214),   # tocava: Katy Perry - Roar
+    ('2vjPBrBU-TM', 'Cheap Thrills', '31crA53Dgu0', None, 218),   # tocava: Sia - Chandelier (Official Video)
+    ('H5v3kku4y6Q', 'Happier Than Ever', '5GJWxDKyk3A', None, 315),   # tocava: Harry Styles - As It Was (Official Video)
+    ('UceaB4D0jpo', 'Stressed Out', 'pXRviuL6vMY', None, 225),   # tocava: Post Malone - rockstar (Official Music Video) ft. 21 Savag
+    ('sOnqjkJTMaA', 'Billie Jean', 'Zi_XLOBDo_Y', None, 296),   # tocava: Michael Jackson - Thriller (Official 4K Video)
+    ('YkgkThdzX-8', 'We Are Young', 'Sv6dMFF_yts', None, 252),   # tocava: IMAGINE. (Ultimate Mix, 2020) - John Lennon & The Plastic
+    ('v-Dur3uXXCQ', 'Thank U, Next', 'gl1aHhXnN1k', None, 331),   # tocava: Kesha - Praying (Official Video)
+    ('E07s5ZYygMg', 'As It Was', 'H5v3kku4y6Q', None, 166),   # tocava: Harry Styles - Watermelon Sugar (Official Video)
+    ('IdneKLhsWOQ', 'Anti-Hero', 'b1kbLwvqugk', None, 309),   # tocava: Taylor Swift - Wildest Dreams
+    ('1-xGerv5FOk', 'The nights', 'UtF6Jej8yb4', None, 191),   # tocava: Alan Walker - Alone
+    ('MV_3Dpw-BRY', 'Wake Me Up', 'IcrbM1l_BoI', None, 273),   # tocava: Kavinsky - Nightcall (Drive Original Movie Soundtrack) (Of
+    ('dvgZkm1xWPE', 'The Scientist', 'RB-RcX5DS5A', None, 265),   # tocava: Coldplay - Viva La Vida (Official Video)
+    ('6Zbi0XmGtMw', 'Baby', 'kffacxfA7G4', None, 219),   # tocava: Vengaboys - We like to Party! (The Vengabus)
+    ('UtF6Jej8yb4', 'Levels', '_ovdm2yX4MA', None, 198),   # tocava: Avicii - The Nights
+    ('h_D3VFfhvs4', 'Thriller', '4V90AmXnguw', None, 201),   # tocava: Michael Jackson - Smooth Criminal (Official Video)
+    ('pXRviuL6vMY', 'Heathens', 'UprcpdwuwCg', None, 218),   # tocava: twenty one pilots: Stressed Out [OFFICIAL VIDEO]
+    ('iLnmTe5Q2Qw', 'Bad Habits', 'CZNcVjG0tKY', None, 235),   # tocava: Jindagi Nai Bhandina
+    ('kTJczUoc26U', 'Blinding Lights', '4NRXx6U8ABQ', None, 263),   # tocava: The Kid LAROI, Justin Bieber - STAY (Official Video)
+    ('SlPhMPnQ58k', 'Envolver', 'hFCjGiawJi4', None, 194),   # tocava: Maroon 5 - Memories (Official Video)
+    ('TbwlC2B-BIg', '7 Rings', 'QYh6mYIJG2Y', None, 185),   # tocava: Romano Tours - SNL
+    ('pB-5XG-DbAA', 'God is a Woman', 'kHLHSlExFis', None, 242),   # tocava: Sam Smith - Stay With Me (Official Music Video)
+    ('RBumgq5yVrA', 'Uptown Funk', 'OPf0YbXqDm0', None, 270),   # tocava: Passenger
+    ('u9Dg-g7t2l4', 'Smells Like Teen Spirit', 'hTWKbfoikeg', None, 278),   # tocava: Disturbed  - The Sound Of Silence (Official Music Video) [
+    ('1VQ_3sBZEm0', 'Best of You', 'h_L4Rixya64', None, 256),   # tocava: Foo Fighters - Learn To Fly (Official HD Video)
+    ('eVTXPUF4Oz4', 'Breaking the Habit', 'v2H4l9RpkwM', None, 198),   # tocava: In The End [Official HD Music Video] - Linkin Park
+    ('4fndeDfaWCg', 'Come Out and Play', 'xUE4l_2czW4', None, 194),   # tocava: Backstreet Boys - I Want It That Way (Official HD Video)
+    ('4qlCC1GOwFw', "What I've Done", '8sgycukafqQ', None, 207),   # tocava: One Step Closer [Official HD Music Video] - Linkin Park
+    ('HQmmM_qwG4k', 'You Shook Me All Night Long', 'Lo2qQmj0_h4', None, 208),   # tocava: Led Zeppelin - Whole Lotta Love (Official Music Video)
+    ('iYYRH4apXDo', 'Enter Sandman', 'CD-E-LDc384', None, 331),   # tocava: David Bowie - Space Oddity (Official Video)
+    ('2X_2IdybTV0', 'Running with the Devil', 'i5txwFv-zYM', None, 212),   # tocava: Kansas - Carry On Wayward Son (Official Audio)
+    ('yOgAbKJGrTA', 'Magia', None, None, None),   # tocava: How memories form and how we lose them - Catharine Young
+    ('d27gTrPPAyk', 'Get Lucky', None, None, None),   # tocava: Sting - Englishman In New York
+    ('6yqXBT4KX8E', 'DEUS NA MOTOQUINHA e outros relatos sobrenaturais com JacaFreak | Lend', None, None, None),   # tocava: HISTÓRIAS ASSUSTADORAS DE UM PROFESSOR - Rafael Jacaúna
+    ('iPUmE-tne5U', 'Caiu na Net', None, None, None),   # tocava: Katrina & The Waves - Walking On Sunshine (Official Music
+)
+
+
+def _corrigir_ids_trocados_24out(conn):
+    """UMA vez na vida do banco (marcador acervo_ids_24out). Casa por youtube_id + título: linha que o admin já
+    renomeou fica como está. youtube_id é UNIQUE e há cadeias (o ID certo do Shape of You era o errado do Happy):
+    1º tira os IDs errados do caminho, depois apaga, troca e desliga, nessa ordem. ID certo que já está em outra
+    linha do banco = a música já está lá: a errada sai. A TV aberta pega a lista nova sozinha (videos_version)."""
+    try:
+        conn.execute('CREATE TABLE IF NOT EXISTS pubshow_meta (chave TEXT PRIMARY KEY, valor TEXT)')
+        if conn.execute("SELECT 1 FROM pubshow_meta WHERE chave='acervo_ids_24out'").fetchone():
+            return 0
+        achados = []
+        for velho, titulo, novo, artista, seg in _IDS_TROCADOS_24OUT:
+            r = conn.execute('SELECT id FROM pubshow_videos WHERE youtube_id=? AND titulo=?', (velho, titulo)).fetchone()
+            if r:
+                achados.append((r[0], velho, novo, artista, seg))
+                conn.execute('UPDATE pubshow_videos SET youtube_id=? WHERE id=?', ('~24out~' + velho, r[0]))
+
+        def _tem(yid):
+            return conn.execute('SELECT 1 FROM pubshow_videos WHERE youtube_id=?', (yid,)).fetchone()
+
+        n = 0
+        for rid, velho, novo, artista, seg in achados:          # a lista já vem em apaga → troca → desliga
+            if novo == 'APAGA' or (novo and _tem(novo)) or (novo is None and _tem(velho)):
+                conn.execute('DELETE FROM pubshow_videos WHERE id=?', (rid,))
+            elif novo:
+                conn.execute('UPDATE pubshow_videos SET youtube_id=?, artista=COALESCE(?, artista), '
+                             'duracao_seg=COALESCE(?, duracao_seg) WHERE id=?', (novo, artista, seg, rid))
+            else:
+                conn.execute('UPDATE pubshow_videos SET youtube_id=?, ativo=0 WHERE id=?', (velho, rid))
+            n += 1
+        conn.execute("INSERT OR REPLACE INTO pubshow_meta (chave, valor) VALUES ('acervo_ids_24out', datetime('now'))")
+        if n:
+            import time as _t
+            conn.execute("INSERT OR REPLACE INTO pubshow_meta (chave, valor) VALUES ('videos_version', ?)",
+                         (str(int(_t.time() * 1000)),))
+        conn.commit()
+        log.info('[PUBSHOW] acervo: %d vídeo(s) com o ID trocado consertado(s)', n)
+        return n
+    except Exception as e:
+        log.error('[PUBSHOW] conserto dos IDs trocados falhou: %s', e)
+        try: conn.rollback()
+        except Exception: pass
+        return 0
+
+
 def _corrigir_videos_quebrados(conn):
     """Substitui IDs de vídeos que foram removidos/bloqueados no YouTube.
     Cada tupla: (id_antigo, id_novo, titulo_novo, artista_novo)
@@ -714,14 +809,14 @@ def _seed_videos(conn):
         ('v2AC41dglnM', 'Thunderstruck',               'AC/DC',                 'rock', 'classic', 292, 1500),
         ('l482T0yNkeo', 'Highway to Hell',             'AC/DC',                 'rock', 'classic', 208, 900),
         ('_CL6n0FJZpk', 'Back in Black',               'AC/DC',                 'rock', 'classic', 254, 800),
-        ('HQmmM_qwG4k', 'You Shook Me All Night Long', 'AC/DC',                 'rock', 'classic', 210, 700),
+        ('Lo2qQmj0_h4', 'You Shook Me All Night Long', 'AC/DC',                 'rock', 'classic', 208, 700),
         # GNR
         ('8SbUC-UaAxE', 'November Rain',               'Guns N\' Roses',        'rock', 'classic', 537, 1500),
         ('1w7OgIMMRc4', 'Sweet Child O\' Mine',        'Guns N\' Roses',        'rock', 'classic', 356, 1400),
         ('o1tj2zJ2Wvg', 'Welcome to the Jungle',       'Guns N\' Roses',        'rock', 'classic', 272, 700),
         ('Rbm6GXllroo', 'Paradise City',               'Guns N\' Roses',        'rock', 'classic', 407, 600),
         # Metallica
-        ('iYYRH4apXDo', 'Enter Sandman',               'Metallica',             'rock', 'metal',   330, 1400),
+        ('CD-E-LDc384', 'Enter Sandman',               'Metallica',             'rock', 'metal',   331, 1400),
         ('tAGnKpE4NCI', 'Nothing Else Matters',        'Metallica',             'rock', 'metal',   388, 700),
         ('ClYdR4W_K8g', 'Master of Puppets',           'Metallica',             'rock', 'metal',   515, 600),
         ('WM8bTdBs-cw', 'One',                         'Metallica',             'rock', 'metal',   447, 500),
@@ -790,13 +885,13 @@ def _seed_videos(conn):
         ('kXYiU_JCYtU', 'Numb',                        'Linkin Park',           'punk', 'nu-metal', 187, 700),
         ('JGDsLZpnj9s', 'In the End',                  'Linkin Park',           'punk', 'nu-metal', 219, 1200),
         ('Gd9OhYroLN0', 'Crawling',                    'Linkin Park',           'punk', 'nu-metal', 210, 400),
-        ('eVTXPUF4Oz4', 'Breaking the Habit',          'Linkin Park',           'punk', 'nu-metal', 196, 350),
-        ('4qlCC1GOwFw', 'What I\'ve Done',             'Linkin Park',           'punk', 'nu-metal', 215, 400),
+        ('v2H4l9RpkwM', 'Breaking the Habit',          'Linkin Park',           'punk', 'nu-metal', 198, 350),
+        ('8sgycukafqQ', 'What I\'ve Done',             'Linkin Park',           'punk', 'nu-metal', 207, 400),
         ('FSsppGgPMEk', 'Somewhere I Belong',          'Linkin Park',           'punk', 'nu-metal', 214, 350),
         # Sum 41 / The Offspring / Sublime
         ('_u2vy1hLEqE', 'Fat Lip',                     'Sum 41',                'punk', 'pop-punk', 207, 300),
         ('1CR0QmKDvqI', 'In Too Deep',                 'Sum 41',                'punk', 'pop-punk', 210, 250),
-        ('4fndeDfaWCg', 'Come Out and Play',           'The Offspring',         'punk', 'punk',     171, 300),
+        ('xUE4l_2czW4', 'Come Out and Play',           'The Offspring',         'punk', 'punk',     194, 300),
         ('CsGd-fOYUYI', 'Pretty Fly (for a White Guy)','The Offspring',        'punk', 'punk',     193, 400),
         ('CnQ_o4hTsoQ', 'What I Got',                  'Sublime',               'punk', 'ska-punk', 158, 200),
         # MCR / Paramore / Evanescence — emo era
@@ -833,9 +928,8 @@ def _seed_videos(conn):
         ('TGjn0bFB8HU', 'Garota Nacional',            'Skank',                 'punk', 'brasil',   241,  70),
         # Clássicos punk que completam 50 — experiência garantida
         ('3JDLMoAiB4I', 'Creep',                       'Radiohead',             'punk', 'indie',    237, 500),
-        ('u9Dg-g7t2l4', 'Smells Like Teen Spirit',    'Nirvana',               'punk', 'grunge',   301, 1200),
         ('XFkzRNTy2ko', 'Everlong',                    'Foo Fighters',          'punk', 'grunge',   250, 400),
-        ('1VQ_3sBZEm0', 'Best of You',                 'Foo Fighters',          'punk', 'grunge',   256, 350),
+        ('h_L4Rixya64', 'Best of You',                 'Foo Fighters',          'punk', 'grunge',   256, 350),
         ('hTWKbfoikeg', 'Seven Nation Army',           'The White Stripes',     'punk', 'indie',    231, 600),
         ('Q0oIoR9mLrc', 'Boulevard of Broken Dreams',  'Green Day',             'punk', 'punk',     261, 800),
         ('6Ejga4jAnSA', 'When I Come Around',          'Green Day',             'punk', 'punk',     188, 350),
@@ -928,7 +1022,7 @@ def _seed_videos(conn):
         ('MFXZ5nX9uXw', 'Tudo de Bom',               'Ferrugem',              'pagode','moderno',  238, 100),
         ('VpPjctLbPDg', 'Nosso Sonho',                'Ferrugem',              'pagode','moderno',  231, 90),
         # Sorriso Maroto
-        ('MlLWTeApqIM', 'Me Apaixonei pela Pessoa Errada','Sorriso Maroto',    'pagode','moderno',  270, 150),
+        ('qiAoCkue1PE', 'Me Apaixonei pela Pessoa Errada','Exaltasamba',    'pagode','moderno',  201, 150),
         ('TcsPkFsq3Gg', 'Com Você',                   'Sorriso Maroto',        'pagode','moderno',  241, 120),
         ('gEa0Q-5QmOc', 'Pra te Ter',                'Sorriso Maroto',        'pagode','moderno',  235, 100),
         # Péricles
@@ -976,23 +1070,23 @@ def _seed_videos(conn):
         # POP — 50+ vídeos — os maiores de todos os tempos
         # ══════════════════════════════════════════════════════════════════════
         # Michael Jackson — intocável
-        ('sOnqjkJTMaA', 'Billie Jean',                'Michael Jackson',        'pop', 'classic', 294, 900),
-        ('h_D3VFfhvs4', 'Thriller',                   'Michael Jackson',        'pop', 'classic', 857, 800),
+        ('Zi_XLOBDo_Y', 'Billie Jean',                'Michael Jackson',        'pop', 'classic', 296, 900),
+        ('4V90AmXnguw', 'Thriller',                   'Michael Jackson',        'pop', 'classic', 201, 800),
         ('oRdxUFDoQe0', 'Beat It',                    'Michael Jackson',        'pop', 'classic', 258, 600),
         ('Os0pqUbElGk', 'Smooth Criminal',            'Michael Jackson',        'pop', 'classic', 259, 500),
         # Ed Sheeran — recordes de views
-        ('YqeW9_5kURI', 'Shape of You',               'Ed Sheeran',            'pop', 'atual', 235, 6000),
+        ('JGwWNGJdvx8', 'Shape of You',               'Ed Sheeran',            'pop', 'atual', 263, 6000),
         ('lp-EJBh1v6E', 'Thinking Out Loud',          'Ed Sheeran',            'pop', 'atual', 281, 3000),
         ('JMjAd8VDe-A', 'Perfect',                    'Ed Sheeran',            'pop', 'atual', 263, 2800),
-        ('iLnmTe5Q2Qw', 'Bad Habits',                 'Ed Sheeran',            'pop', 'atual', 231, 1500),
+        ('CZNcVjG0tKY', 'Bad Habits',                 'Ed Sheeran',            'pop', 'atual', 235, 1500),
         # Bruno Mars
-        ('RBumgq5yVrA', 'Uptown Funk',                'Bruno Mars',            'pop', 'atual', 270, 4900),
+        ('OPf0YbXqDm0', 'Uptown Funk',                'Bruno Mars',            'pop', 'atual', 270, 4900),
         ('LjhCEyeSahE', 'Just the Way You Are',       'Bruno Mars',            'pop', 'atual', 220, 1800),
-        ('OPf0YbXqDm0', 'Roar',                       'Katy Perry',            'pop', 'atual', 231, 3300),
+        ('CevxZvSJLk8', 'Roar',                       'Katy Perry',            'pop', 'atual', 269, 3300),
         ('QGJuMBdaqIw', 'Firework',                   'Katy Perry',            'pop', 'atual', 228, 1400),
         ('9fxm6dSUWZQ', 'Teenage Dream',              'Katy Perry',            'pop', 'atual', 224, 700),
         # The Weeknd — bilhões
-        ('kTJczUoc26U', 'Blinding Lights',            'The Weeknd',            'pop', 'atual', 200, 4000),
+        ('4NRXx6U8ABQ', 'Blinding Lights',            'The Weeknd',            'pop', 'atual', 263, 4000),
         ('34Na4j8AVgA', 'Starboy',                    'The Weeknd',            'pop', 'atual', 230, 2000),
         ('KEI4qSrkPAs', 'Can\'t Feel My Face',        'The Weeknd',            'pop', 'atual', 213, 1500),
         # Adele — emoção
@@ -1013,7 +1107,7 @@ def _seed_videos(conn):
         # Lady Gaga
         ('qrO4YZeyl0I', 'Bad Romance',                'Lady Gaga',             'pop', 'atual', 294, 1400),
         ('2Abk1W5dCoQ', 'Just Dance',                 'Lady Gaga',             'pop', 'atual', 244, 800),
-        ('CevxZvSJLk8', 'Poker Face',                 'Lady Gaga',             'pop', 'atual', 237, 700),
+        ('bESGLojNYSo', 'Poker Face',                 'Lady Gaga',             'pop', 'atual', 214, 700),
         # Imagine Dragons — energia
         ('7wtfhZwyrcc', 'Believer',                   'Imagine Dragons',        'pop', 'atual', 204, 1800),
         ('ktvTqknDobU', 'Radioactive',                'Imagine Dragons',        'pop', 'atual', 187, 1400),
@@ -1021,27 +1115,25 @@ def _seed_videos(conn):
         # Coldplay — emoção garantida
         ('yKNxeF4KMsY', 'Yellow',                     'Coldplay',              'pop', 'atual', 270, 800),
         ('k4V3Mo61fJM', 'Fix You',                    'Coldplay',              'pop', 'atual', 295, 900),
-        ('dvgZkm1xWPE', 'The Scientist',              'Coldplay',              'pop', 'atual', 309, 700),
+        ('RB-RcX5DS5A', 'The Scientist',              'Coldplay',              'pop', 'atual', 265, 700),
         # Maroon 5
         ('09R8_2nJtjg', 'Sugar',                      'Maroon 5',              'pop', 'atual', 235, 3000),
         ('9FKjpFLbJBo', 'Moves Like Jagger',          'Maroon 5',              'pop', 'atual', 201, 1200),
         ('i3hab_ATbEg', 'Animals',                    'Maroon 5',              'pop', 'atual', 231, 1000),
         # Clássicos eternos
-        ('E07s5ZYygMg', 'As It Was',                  'Harry Styles',          'pop', 'atual', 167, 2000),
-        ('JGwWNGJdvx8', 'Happy',                      'Pharrell Williams',      'pop', 'atual', 233, 1400),
+        ('H5v3kku4y6Q', 'As It Was',                  'Harry Styles',          'pop', 'atual', 166, 2000),
         ('09R8_2nJtjg', 'Sugar (Acoustic)',            'Maroon 5',              'pop', 'atual', 235, 800),
         ('xFrGuyw1V8s', 'Dancing Queen',              'ABBA',                  'pop', 'classic', 230, 500),
         ('unfzfe8f9NI', 'Mamma Mia',                  'ABBA',                  'pop', 'classic', 213, 400),
         ('e7tSeQjAJ3Y', 'I Will Always Love You',     'Whitney Houston',        'pop', 'classic', 273, 900),
         ('bo_efYLyWrA', 'I Have Nothing',             'Whitney Houston',        'pop', 'classic', 272, 400),
         # Brasil pop
-        ('SlPhMPnQ58k', 'Envolver',                   'Anitta',                'pop', 'brasil', 185, 800),
+        ('hFCjGiawJi4', 'Envolver',                   'Anitta',                'pop', 'brasil', 194, 800),
         ('qB3kK0QTe2g', 'Girl from Rio',              'Anitta',                'pop', 'brasil', 193, 400),
         # Completando 50 pop — os que não podem faltar
         ('hT_nvWreIhg', 'Counting Stars',             'OneRepublic',           'pop', 'atual', 257, 1400),
-        ('MV_3Dpw-BRY', 'Wake Me Up',                 'Avicii',                'pop', 'atual', 247, 1700),
-        ('YkgkThdzX-8', 'We Are Young',               'fun.',                  'pop', 'atual', 250, 600),
-        ('d27gTrPPAyk', 'Get Lucky',                  'Daft Punk ft. Pharrell','pop', 'atual', 248, 900),
+        ('IcrbM1l_BoI', 'Wake Me Up',                 'Avicii',                'pop', 'atual', 273, 1700),
+        ('Sv6dMFF_yts', 'We Are Young',               'fun.',                  'pop', 'atual', 252, 600),
         ('CduA0TJLXq4', 'Somebody That I Used to Know','Gotye ft. Kimbra',     'pop', 'atual', 244, 1100),
 
         # ══════════════════════════════════════════════════════════════════════
@@ -1340,7 +1432,7 @@ def _seed_videos(conn):
         ('4RvWE6j2374', 'Knockin\' on Heaven\'s Door',    'Guns N\' Roses',        'rock', 'classic', 337, 300),
         ('NMTnz7cFbYY', 'Hysteria',                       'Def Leppard',           'rock', 'classic', 242, 200),
         ('vkiEws7-RDQ', 'Jump',                           'Van Halen',             'rock', 'classic', 244, 300),
-        ('2X_2IdybTV0', 'Running with the Devil',         'Van Halen',             'rock', 'classic', 213, 180),
+        ('i5txwFv-zYM', 'Running with the Devil',         'Van Halen',             'rock', 'classic', 212, 180),
         ('kZD-1HXKL4c', 'Pour Some Sugar on Me',         'Def Leppard',           'rock', 'classic', 272, 200),
         ('ePlRbNNJWcs', 'I Love Rock \'n\' Roll',         'Joan Jett',             'rock', 'classic', 175, 200),
         ('btPJPFnesV4', 'Eye of the Tiger',               'Survivor',              'rock', 'classic', 245, 700),
@@ -1352,7 +1444,7 @@ def _seed_videos(conn):
         ('swYjSMCI2X8', 'Don\'t Stop (Fleetwood Mac)',   'Fleetwood Mac',         'rock', 'classic', 195, 300),
         ('dUMdFPkSJls', 'Go Your Own Way',               'Fleetwood Mac',         'rock', 'classic', 219, 250),
         ('EkHTsc9KGcQ', 'Girls Just Wanna Have Fun',     'Cyndi Lauper',          'rock', 'classic', 238, 350),
-        ('YkgkThdzX-8', 'We Are Young',                  'fun.',                  'rock', '2010s',   250, 600),
+        ('Sv6dMFF_yts', 'We Are Young',                  'fun.',                  'rock', '2010s',   252, 600),
         ('oUzB9MioFX4', 'Wonderwall',                    'Oasis',                 'rock', 'britpop', 258, 400),
         ('6hzrDeceDF0', 'Don\'t Look Back in Anger',     'Oasis',                 'rock', 'britpop', 277, 350),
         ('hpSpTuzbocY', 'Champagne Supernova',           'Oasis',                 'rock', 'britpop', 428, 300),
@@ -1380,36 +1472,35 @@ def _seed_videos(conn):
         # ══════════════════════════════════════════════════════════════════════
         ('9bZkp7q19f0', 'Gangnam Style',                 'PSY',                   'pop', 'viral',   219, 4500),
         ('RgKAFK5djSk', 'See You Again',                 'Wiz Khalifa',           'pop', 'atual',   229, 5500),
-        ('kffacxfA7G4', 'Despacito',                     'Luis Fonsi',            'pop', 'latin',   229, 8000),
+        ('kJQP7kiw5Fk', 'Despacito',                     'Luis Fonsi',            'pop', 'latin',   282, 8000),
         ('fRh_vgS2dFE', 'Sorry',                         'Justin Bieber',         'pop', 'atual',   221, 3200),
-        ('6Zbi0XmGtMw', 'Baby',                          'Justin Bieber',         'pop', 'atual',   215, 2900),
+        ('kffacxfA7G4', 'Baby',                          'Justin Bieber',         'pop', 'atual',   219, 2900),
         ('DjMkfURSqEM', 'We Found Love',                 'Rihanna',               'pop', 'atual',   212, 1400),
         ('CvUK-8ke-KU', 'Umbrella',                      'Rihanna',               'pop', 'atual',   280, 700),
         ('32OAc4bIW7A', 'Chandelier',                    'Sia',                   'pop', 'atual',   217, 1500),
-        ('2vjPBrBU-TM', 'Cheap Thrills',                 'Sia',                   'pop', 'atual',   207, 2700),
+        ('31crA53Dgu0', 'Cheap Thrills',                 'Sia',                   'pop', 'atual',   218, 2700),
         ('0KSOMA3QBU0', 'Dark Horse',                    'Katy Perry',            'pop', 'atual',   217, 1400),
         ('HLQNRMpgnAc', 'Into You',                      'Ariana Grande',         'pop', 'atual',   199, 1800),
-        ('pB-5XG-DbAA', 'God is a Woman',                'Ariana Grande',         'pop', 'atual',   197, 1500),
-        ('v-Dur3uXXCQ', 'Thank U, Next',                 'Ariana Grande',         'pop', 'atual',   207, 1800),
-        ('TbwlC2B-BIg', '7 Rings',                       'Ariana Grande',         'pop', 'atual',   179, 2200),
+        ('kHLHSlExFis', 'God is a Woman',                'Ariana Grande',         'pop', 'atual',   242, 1500),
+        ('gl1aHhXnN1k', 'Thank U, Next',                 'Ariana Grande',         'pop', 'atual',   331, 1800),
+        ('QYh6mYIJG2Y', '7 Rings',                       'Ariana Grande',         'pop', 'atual',   185, 2200),
         ('8xg3vE8Ie_E', 'Love Story',                    'Taylor Swift',          'pop', 'atual',   234, 1200),
-        ('IdneKLhsWOQ', 'Anti-Hero',                     'Taylor Swift',          'pop', 'atual',   196, 1500),
+        ('b1kbLwvqugk', 'Anti-Hero',                     'Taylor Swift',          'pop', 'atual',   309, 1500),
         ('kU9miEN2T0c', 'Cruel Summer',                  'Taylor Swift',          'pop', 'atual',   178, 1300),
         ('NG8xtMGIBOQ', 'Bad Guy',                       'Billie Eilish',         'pop', 'atual',   194, 2000),
-        ('H5v3kku4y6Q', 'Happier Than Ever',             'Billie Eilish',         'pop', 'atual',   245, 900),
+        ('5GJWxDKyk3A', 'Happier Than Ever',             'Billie Eilish',         'pop', 'atual',   315, 900),
         ('Yd9vlbRGE7A', 'Flowers',                       'Miley Cyrus',           'pop', 'atual',   200, 1500),
         ('MrOqgs-pDss', 'Heart of Glass',                'Blondie',               'pop', 'classic', 214, 300),
-        ('MV_3Dpw-BRY', 'Wake Me Up',                    'Avicii',                'pop', 'atual',   247, 1700),
-        ('UtF6Jej8yb4', 'Levels',                        'Avicii',                'pop', 'atual',   201, 1400),
-        ('1-xGerv5FOk', 'The nights',                    'Avicii',                'pop', 'atual',   185, 1100),
+        ('IcrbM1l_BoI', 'Wake Me Up',                    'Avicii',                'pop', 'atual',   273, 1700),
+        ('_ovdm2yX4MA', 'Levels',                        'Avicii',                'pop', 'atual',   198, 1400),
+        ('UtF6Jej8yb4', 'The nights',                    'Avicii',                'pop', 'atual',   191, 1100),
         ('ZbZSe6N_BXs', 'Happy',                         'Pharrell Williams',     'pop', 'atual',   233, 1400),
-        ('d27gTrPPAyk', 'Get Lucky',                     'Daft Punk',             'pop', 'atual',   248, 900),
         ('5NV6Rdv1h3Q', 'Around the World',              'Daft Punk',             'pop', 'classic', 235, 400),
         ('CduA0TJLXq4', 'Somebody That I Used to Know',  'Gotye',                 'pop', 'atual',   244, 1100),
         ('hT_nvWreIhg', 'Counting Stars',                'OneRepublic',           'pop', 'atual',   257, 1400),
-        ('UceaB4D0jpo', 'Stressed Out',                  'Twenty One Pilots',     'pop', 'atual',   201, 1700),
-        ('pXRviuL6vMY', 'Heathens',                      'Twenty One Pilots',     'pop', 'atual',   181, 1000),
-        ('SlPhMPnQ58k', 'Envolver',                      'Anitta',                'pop', 'brasil',  185, 800),
+        ('pXRviuL6vMY', 'Stressed Out',                  'Twenty One Pilots',     'pop', 'atual',   225, 1700),
+        ('UprcpdwuwCg', 'Heathens',                      'Twenty One Pilots',     'pop', 'atual',   218, 1000),
+        ('hFCjGiawJi4', 'Envolver',                      'Anitta',                'pop', 'brasil',  194, 800),
         ('qB3kK0QTe2g', 'Girl from Rio',                 'Anitta',                'pop', 'brasil',  193, 400),
         ('NvKPJHNGSqY', 'Funk Rave',                     'Anitta',                'pop', 'brasil',  180, 350),
         ('VrpGhEVyrg0', 'Vai Malandra',                  'MC Zaac & Maejor',      'pop', 'brasil',  192, 600),
@@ -1426,7 +1517,6 @@ def _seed_videos(conn):
         ('l30HOv-zglI', 'Mil Vezes',                     'Gusttavo Lima',          'sertanejo', 'universitario', 253, 200),
         ('jve503xqdba', 'Tô Bebendo',                    'Gusttavo Lima',          'sertanejo', 'universitario', 247, 180),
         ('z3iWxMrMGOM', 'Sofrência',                     'Gusttavo Lima',          'sertanejo', 'universitario', 250, 220),
-        ('iPUmE-tne5U', 'Caiu na Net',                   'Forró Boys',             'sertanejo', 'atual',         228, 160),
         ('_KiQDVBWv4Q', 'Batom de Cereja',               'Jorge & Mateus',         'sertanejo', 'universitario', 240, 200),
         ('W-nDEOO_mgo', 'Propaganda',                    'Jorge & Mateus',         'sertanejo', 'universitario', 238, 180),
         ('J5tMFGCWMhc', 'Meu Pedaço de Pecado',         'João Gomes',             'sertanejo', 'atual',         197, 400),
@@ -1464,7 +1554,6 @@ def _seed_videos(conn):
         ('e5mDxTOaWQE', 'Não Vou Desistir',              'Grupo Revelação',       'pagode', 'classic', 245, 75),
         ('R0V0kGaxCnE', 'Sublime',                       'Grupo Revelação',       'pagode', 'classic', 238, 65),
         ('7KO_wHDFE6U', 'Sorte Grande',                  'Exaltasamba',           'pagode', 'classic', 252, 70),
-        ('yOgAbKJGrTA', 'Magia',                         'Exaltasamba',           'pagode', 'classic', 248, 65),
         ('CuSmV4QSXHU', 'Apaga o Abajur',               'Fundo de Quintal',      'pagode', 'roots',   235, 60),
         ('kh-oJX3Iqpg', 'Que Saudade da Amélia',        'Fundo de Quintal',      'pagode', 'roots',   241, 55),
         ('nG5jkiVNhUE', 'Pago pra Ver',                 'Zeca Pagodinho',        'pagode', 'classic', 238, 100),
