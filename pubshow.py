@@ -62,7 +62,8 @@ CANAIS = {
     # Lote D C (16/10/26): o botão "Variado" do Estilo do bar — canal-lista (como o Sport Mix) que mistura a música.
     # VDC-05 (16/10/26): + a categoria própria 'variado' (o que os bares no Variado pedem e tocou entra nela, e não no Rock)
     'variado':        {'nome': 'Variado',           'emoji': '🎶',  'cor': '#f97316',
-                       'cat': ['rock', 'sertanejo', 'pagode', 'pop', 'punk', 'country', 'reggae', 'variado'], 'grupo': 'musica'},
+                       'cat': ['rock', 'sertanejo', 'pagode', 'pop', 'punk', 'country', 'reggae', 'mpb', 'blues', 'variado'],
+                       'grupo': 'musica'},
     # 17/10/26: SHOWS AO VIVO saiu (show passa de 10 min). Canal e vídeos: pubshow_db.SHOWS_FORA
     # ── SPORT ────────────────────────────────────────────────────────────────
     'sport_mix':      {'nome': 'Sport Mix',         'emoji': '🏆',  'cor': '#f59e0b',
@@ -83,6 +84,9 @@ CANAIS = {
     # ── MÚSICA EXTRA ─────────────────────────────────────────────────────────
     'country':        {'nome': 'Country / Rodeio',  'emoji': '🤠',  'cor': '#a16207', 'cat': 'country',   'grupo': 'musica'},
     'reggae':         {'nome': 'Reggae Clips',      'emoji': '🎸',  'cor': '#15803d', 'cat': 'reggae',    'grupo': 'musica'},
+    # 22/10/26 (enquete do Garage: "Rock + reggae + MPB + blues" ganhou): clipes em pubshow_clipes_estilos
+    'mpb':            {'nome': 'MPB Clips',         'emoji': '🎼',  'cor': '#0d9488', 'cat': 'mpb',       'grupo': 'musica'},
+    'blues':          {'nome': 'Blues Clips',       'emoji': '🎷',  'cor': '#2563eb', 'cat': 'blues',     'grupo': 'musica'},
     # ── ENTRETENIMENTO ───────────────────────────────────────────────────────
     'batidas':        {'nome': 'Batidas / Crashes', 'emoji': '💥',  'cor': '#b45309', 'cat': 'batidas',   'grupo': 'viral'},
     'standup':        {'nome': 'Stand-up Comedy',   'emoji': '🎭',  'cor': '#7c3aed', 'cat': 'standup',   'grupo': 'entretenimento'},
@@ -101,6 +105,8 @@ ESTILOS_BAR = {
     'pagode':    {'nome': 'Pagode',    'emoji': '🥁', 'canal': 'pagode',    'temas': ['pagode']},
     'pop':       {'nome': 'Pop',       'emoji': '🎤', 'canal': 'pop',       'temas': ['pop']},
     'reggae':    {'nome': 'Reggae',    'emoji': '🌴', 'canal': 'reggae',    'temas': ['reggae']},   # pedido do Garage, 20/10/26
+    'mpb':       {'nome': 'MPB',       'emoji': '🎼', 'canal': 'mpb',       'temas': ['mpb']},      # enquete do Garage, 22/10/26
+    'blues':     {'nome': 'Blues',     'emoji': '🎷', 'canal': 'blues',     'temas': ['blues']},    # enquete do Garage, 22/10/26
     # 20/10/26 (Diogo: "clicar no mais estilo os burro nao le"): o que importa vira botão grande. Esporte = Sport Mix;
     # Comédia = batidas + stand-up. Os temas deles entram só na mistura da TV: o cliente continua pedindo música
     # (o filtro do celular e do YouTube usa só os temas de música, _so_musica).
@@ -4506,7 +4512,10 @@ def api_buscar_biblioteca():
                            (bar_token, bar_token)).fetchone()
         if _bb: banidos = set(_videos_bloqueados(_bb))
 
-    limite = 600 if lista_full else 30   # 11/09/26: lista inicial = acervo INTEIRO (cliente filtra por estilo no celular)
+    # 11/09/26: lista inicial = acervo INTEIRO (cliente filtra por estilo no celular). 22/10/26: 600 → 1000 — com os
+    # clipes de MPB/Blues/Reggae o acervo passa de 600 e o corte por popularidade tirava as músicas pedidas no bar
+    # (sem contagem de views) e os clipes novos
+    limite = 1000 if lista_full else 30
 
     if lista_full:
         # Carregamento inicial — top N por popularidade

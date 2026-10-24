@@ -402,6 +402,9 @@ def init_pubshow_db():
         try: conn.rollback()
         except: pass
 
+    # 22/10/26: clipes de MPB, Blues e Reggae do Estilo do bar (enquete do Garage) — 1 vez só
+    _semear_estilos_novos(conn)
+
     # pago_em do histórico (15/10/26). Status pago COM cobrança do gateway → pago_em = created_at. Pago
     # SEM cobrança do gateway (PIX manual, "Já paguei", balcão) é ambíguo: fica fora das somas e vai pro
     # log pra conferir. 16/10/26 (crítico C5): roda em TODO boot, sem o marcador "1 vez" — o PIX pago
@@ -632,6 +635,38 @@ def _tirar_shows(conn):
         try: conn.rollback()
         except: pass
         return 0, 0, 0
+
+
+def _semear_estilos_novos(conn):
+    """Os clipes dos estilos do Estilo do bar (pubshow_clipes_estilos.CLIPES) entram UMA vez na vida do banco, como o
+    seed antigo: o que o admin apagar ou desligar depois continua apagado (INSERT OR IGNORE + marcador no pubshow_meta).
+    Banco novo também ganha (o seed antigo roda antes). A TV aberta pega a lista nova sozinha (videos_version)."""
+    try:
+        conn.execute('CREATE TABLE IF NOT EXISTS pubshow_meta (chave TEXT PRIMARY KEY, valor TEXT)')
+        if conn.execute("SELECT 1 FROM pubshow_meta WHERE chave='seed_estilos_22out'").fetchone():
+            return 0
+        from pubshow_clipes_estilos import CLIPES
+        antes = conn.total_changes
+        conn.executemany(
+            '''INSERT OR IGNORE INTO pubshow_videos
+               (youtube_id, titulo, artista, categoria, subcategoria, duracao_seg, views_milhoes)
+               VALUES (?,?,?,?,?,?,?)''',
+            CLIPES
+        )
+        n = conn.total_changes - antes
+        conn.execute("INSERT OR REPLACE INTO pubshow_meta (chave, valor) VALUES ('seed_estilos_22out', datetime('now'))")
+        if n:
+            import time as _t
+            conn.execute("INSERT OR REPLACE INTO pubshow_meta (chave, valor) VALUES ('videos_version', ?)",
+                         (str(int(_t.time() * 1000)),))
+        conn.commit()
+        log.info('[PUBSHOW] estilos MPB/Blues/Reggae: %d clipe(s) entraram no acervo', n)
+        return n
+    except Exception as e:
+        log.error('[PUBSHOW] clipes dos estilos falharam: %s', e)
+        try: conn.rollback()
+        except Exception: pass
+        return 0
 
 
 def _corrigir_videos_quebrados(conn):

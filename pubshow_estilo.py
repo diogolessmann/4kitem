@@ -28,20 +28,21 @@ from pubshow_db import get_pubshow_db
 
 log = logging.getLogger(__name__)
 
-ESTILOS = ('rock', 'sertanejo', 'pagode', 'pop', 'funk', 'eletronica', 'rap', 'mpb', 'reggae', 'outros')
+ESTILOS = ('rock', 'sertanejo', 'pagode', 'pop', 'funk', 'eletronica', 'rap', 'mpb', 'reggae', 'blues', 'outros')
 NOMES = {'rock': 'Rock', 'sertanejo': 'Sertanejo', 'pagode': 'Pagode', 'pop': 'Pop', 'funk': 'Funk',
-         'eletronica': 'Eletrônica', 'rap': 'Rap', 'mpb': 'MPB', 'reggae': 'Reggae', 'outros': 'Outros'}
+         'eletronica': 'Eletrônica', 'rap': 'Rap', 'mpb': 'MPB', 'reggae': 'Reggae', 'blues': 'Blues', 'outros': 'Outros'}
 EMOJI = {'rock': '🎸', 'sertanejo': '🤠', 'pagode': '🥁', 'pop': '🎤', 'funk': '🔊', 'eletronica': '🎧', 'rap': '🎙️',
-         'mpb': '🎶', 'reggae': '🌴', 'outros': '🎶'}
+         'mpb': '🎼', 'reggae': '🌴', 'blues': '🎷', 'outros': '🎶'}
 # canal/gênero do acervo (CANAIS do pubshow.py, o que o bar marca no painel) → estilo do artista.
 # Esporte, stand-up e batidas não são estilo de música: marcar só eles não trava o YouTube.
 CANAL_ESTILO = {'rock': 'rock', 'punk': 'rock', 'show_rock': 'rock',
                 'sertanejo': 'sertanejo', 'show_sertanejo': 'sertanejo', 'country': 'sertanejo',
-                'pagode': 'pagode', 'show_pagode': 'pagode', 'pop': 'pop', 'reggae': 'reggae'}
+                'pagode': 'pagode', 'show_pagode': 'pagode', 'pop': 'pop', 'reggae': 'reggae',
+                'mpb': 'mpb', 'blues': 'blues'}   # 22/10/26: botões MPB e Blues do Estilo do bar
 
 # o Gemini às vezes responde fora da lista ("country", "samba"): vira o estilo da casa
 _SINONIMOS = {'country': 'sertanejo', 'arrocha': 'sertanejo', 'samba': 'pagode', 'metal': 'rock', 'punk': 'rock',
-              'hard rock': 'rock', 'blues': 'rock', 'trap': 'rap', 'hip hop': 'rap', 'hip-hop': 'rap',
+              'hard rock': 'rock', 'blues rock': 'blues', 'trap': 'rap', 'hip hop': 'rap', 'hip-hop': 'rap',
               'eletrônica': 'eletronica', 'electronic': 'eletronica', 'edm': 'eletronica', 'house': 'eletronica',
               'forro': 'outros', 'forró': 'outros', 'piseiro': 'outros', 'axe': 'outros', 'axé': 'outros',
               'gospel': 'outros', 'infantil': 'outros', 'funk carioca': 'funk', 'pop rock': 'rock'}
@@ -98,7 +99,17 @@ _SEMENTE_TXT = {
         Haikaiss|Mano Brown''',
     'mpb': '''Djavan|Caetano Veloso|Chico Buarque|Milton Nascimento|Marisa Monte|Elis Regina|Tom Jobim|Vinicius de Moraes|
         Gal Costa|Maria Bethânia|Ivan Lins|João Gilberto|Belchior|Fagner|Zeca Baleiro|Lenine|Oswaldo Montenegro|
-        Gonzaguinha|Toquinho|Tulipa Ruiz|Rubel''',
+        Gonzaguinha|Toquinho|Tulipa Ruiz|Rubel|Tribalistas|Jorge Vercillo|Silva|Ana Vilela|Adriana Calcanhotto|
+        Arnaldo Antunes|Paulinho Moska|Roberta Sá|Maria Rita|Céu|Mart'nália''',
+    # 22/10/26: Blues virou estilo (antes ia junto com o rock). Todo blues CONTINUA valendo no bar de rock
+    # (_BLUES_TAMBEM_ROCK): o bar só de rock não passa a barrar B.B. King. O bar só de blues fica só com o blues.
+    'blues': '''B.B. King|Stevie Ray Vaughan|Muddy Waters|John Lee Hooker|Buddy Guy|Etta James|Albert King|Freddie King|
+        Howlin' Wolf|Robert Johnson|Willie Dixon|Elmore James|Albert Collins|Robert Cray|Joe Bonamassa|Gary Clark Jr.|
+        Gary Moore|Eric Clapton|Cream|The Allman Brothers Band|The Black Keys|ZZ Top|Kenny Wayne Shepherd|Jonny Lang|
+        Beth Hart|Tedeschi Trucks Band|Susan Tedeschi|Derek Trucks|Keb' Mo'|Taj Mahal|Christone Kingfish Ingram|
+        Marcus King|Larkin Poe|Seasick Steve|Rory Gallagher|John Mayall|Johnny Winter|Bonnie Raitt|Walter Trout|
+        Eric Gales|Samantha Fish|Popa Chubby|Celso Blues Boy|Blues Etílicos|Nuno Mindelis|André Christovam|Big Gilson|
+        Baseado em Blues|Igor Prado|Flávio Guimarães|Irmandade do Blues''',
     'reggae': '''Bob Marley|Natiruts|Cidade Negra|Planta e Raiz|Maneva|Ponto de Equilíbrio|Alma Djem|Tribo de Jah|Chimarruts|
         Edson Gomes|UB40|Damian Marley|Peter Tosh|Jimmy Cliff|Mato Seco|Adão Negro''',
     'outros': '''Xand Avião|Bell Marques|Chiclete com Banana|Asa de Águia|Banda Eva|Xuxa|Aline Barros|Fernandinho|
@@ -174,6 +185,9 @@ def _montar_semente():
         k = norm(nome)
         if k:
             out[k] = {x for x in ests.split() if x in ESTILOS}
+    for v in out.values():           # 22/10/26: blues também vale no bar de rock (como era antes do botão Blues)
+        if 'blues' in v:
+            v.add('rock')
     # 'ACDC' (canal VEVO) acha 'AC/DC'. Sem prefixo ('MC Daniel' → 'daniel', 'Banda Eva' → 'eva') NÃO: vira outro
     # artista ou nome de música (verificador, 17/10/26). Só o nome inteiro conta.
     for k in list(out):
@@ -309,6 +323,25 @@ def _tabela(conn):
                         estilos       TEXT NOT NULL DEFAULT '',   -- 'rock,pop'; '' = não sei
                         fonte         TEXT,                  -- 'gemini' | 'semente' | 'manual'
                         atualizado_em TEXT DEFAULT (datetime('now')))''')
+    # 22/10/26: nasceu o estilo 'blues' (antes o Gemini punha blues em 'rock'). 1 vez só: o que já estava guardado de
+    # um artista da semente de blues (pelo nome do artista ou do vídeo) ganha o blues; 'manual' fica como está.
+    try:
+        conn.execute('CREATE TABLE IF NOT EXISTS pubshow_meta (chave TEXT PRIMARY KEY, valor TEXT)')
+        if not conn.execute("SELECT 1 FROM pubshow_meta WHERE chave='estilo_blues_v1'").fetchone():
+            n = 0
+            for r in conn.execute("SELECT chave, nome, estilos FROM pubshow_artista_estilo "
+                                  "WHERE COALESCE(fonte, '') <> 'manual'").fetchall():
+                sem = SEMENTE.get(norm(r[1])) or (SEMENTE.get(r[0]) if not str(r[0]).startswith('v:') else None)
+                if sem and 'blues' in sem:
+                    novo = (_ler(r[2]) or set()) | sem
+                    conn.execute('UPDATE pubshow_artista_estilo SET estilos=? WHERE chave=?',
+                                 (','.join(e for e in ESTILOS if e in novo), r[0]))
+                    n += 1
+            conn.execute("INSERT OR REPLACE INTO pubshow_meta (chave, valor) VALUES ('estilo_blues_v1', datetime('now'))")
+            if n:
+                log.info('[PUBSHOW estilo] blues: %d artista(s)/vídeo(s) guardados ganharam o estilo blues', n)
+    except Exception as e:
+        log.warning('[PUBSHOW estilo] ajuste do blues falhou: %s', e)
     conn.commit()
     _TABELA_OK['ok'] = True
 
@@ -453,8 +486,9 @@ def _prompt(itens):
             txt += f" | artista provável: {_palpites(it)[0]}"
         linhas[it['id']] = txt[:200]
     return ('Vídeos do YouTube pedidos num bar no Brasil. Para cada um, diga o ARTISTA principal e o ESTILO musical dele.\n'
-            'Estilos: rock, sertanejo, pagode, pop, funk, eletronica, rap, mpb, reggae, outros.\n'
-            '- rock inclui metal, punk, hard rock, rock nacional, rock alternativo, blues e pop rock\n'
+            'Estilos: rock, sertanejo, pagode, pop, funk, eletronica, rap, mpb, reggae, blues, outros.\n'
+            '- rock inclui metal, punk, hard rock, rock nacional, rock alternativo e pop rock\n'
+            '- blues inclui blues rock, blues elétrico e blues nacional\n'
             '- sertanejo inclui sertanejo universitário, arrocha e country; forró, piseiro, axé, gospel e infantil = outros\n'
             '- pagode inclui samba; funk = funk brasileiro; rap inclui trap e hip hop; eletronica = DJ, EDM, house\n'
             '- até 3 estilos, só os principais do artista\n'
@@ -497,6 +531,8 @@ def _rodar(itens, ev):
             ests = d.get('estilos') if isinstance(d.get('estilos'), list) else []
             ests = {e for e in (_SINONIMOS.get(x, x) for x in (str(y).strip().lower() for y in ests[:3]))
                     if e in ESTILOS} or None
+            if ests and 'blues' in ests:     # 22/10/26: blues também vale no bar de rock
+                ests.add('rock')
             artista = str(d.get('artista') or '').strip()[:80]
             with _LOCK:
                 _RESP[it['id']] = (ests, artista)
