@@ -3399,6 +3399,7 @@ def tv(code):
                            canal_key=canal_key, videos=videos, canais=canais_tv,
                            anuncios=anuncios, qr_preco_txt=_qr_preco_tv(b),
                            tv_qr_b64=tv_qr_b64, jukebox_url=_jk_url,
+                           precos_canto=_precos_canto_tv(b),   # 24/10/26 (momentos no telão, visual): o canto das cenas
                            # 🔇 17/10/26: grupo de TODO canal (o painel pode pôr a TV num canal fora da lista dela)
                            grupos_canal={k: v.get('grupo', 'musica') for k, v in CANAIS.items()},
                            # 20/10/26: grupo de cada CATEGORIA (canais de 1 categoria só): o mudo decide pelo vídeo,
@@ -3431,6 +3432,30 @@ def _furar_preco_tv(b):
         return None
     _fl = round(_precos_do_bar(b)[0]['flash']['preco'] + _taxa_pix_bar(b, 'flash'), 2)
     return 'R$ ' + (f'{_fl:.0f}' if abs(_fl - round(_fl)) < 0.005 else f'{_fl:.2f}').replace('.', ',')
+
+
+_TIPOS_CANTO_TV = ('flash', 'parabens', 'dedicatoria', 'brinde', 'chegada', 'casamento', 'gorjeta', 'cantada', 'salve')
+
+
+def _precos_canto_tv(b):
+    """24/10/26 (momentos no telão, visual; decisão do Diogo: "no canto do QR fica o convite de cada momento com o preço
+    do bar"): {tipo: 'R$ 6'} com o MESMO número que o cardápio do celular mostra no cartão daquele tipo (jukebox.html:
+    preço do bar + o R$ 1 do app do pix_conv; a gorjeta sem o R$ 1, porque o cardápio mostra "R$ 5+"). Tipo que o bar
+    desligou fica de fora (a TV chama pra música grátis). Nunca derruba a TV nem o status."""
+    try:
+        precos = _precos_do_bar(b)[0]
+        disp = _tipos_disponiveis(b)
+        conv = _taxa_pix_bar(b, 'flash')
+    except Exception:
+        return {}
+    out = {}
+    for k in _TIPOS_CANTO_TV:
+        if k not in disp or k not in precos:
+            continue
+        v = precos[k]['preco'] + (0 if k == 'gorjeta' else conv)
+        # a regra do macro brl() do jukebox.html, igualzinha: inteiro sem centavos, senão com 2 casas
+        out[k] = 'R$ ' + (f'{v:.0f}' if v == int(v) else f'{v:.2f}').replace('.', ',')
+    return out
 
 
 # ── JUKEBOX MOBILE (cliente do bar escaneia QR) ───────────────────────────────
@@ -4045,6 +4070,11 @@ def jukebox(token, pix_id=None):
                                     if pix_pendente else ''),
                            erro_tipo=erro_tipo, gratis_min=GRATIS_INTERVALO_MIN,   # crítico leigo A4/M3/M4
                            eleicao=_janela_eleitoral(),   # 18/10/26: aviso "o bar confere antes da TV" nos momentos
+                           # 24/10/26 (momentos no telão, D8): "O próximo brinde sai lá pelas 22h40." antes do PIX
+                           brinde_proximo=(_brinde_proximo(b, (pix_pendente or {}).get('pedido_id') or locals().get('pedido_id_sucesso'))
+                                           if 'brinde' in tipos_bar else ''),
+                           # revisão CEL-1: momentos pagos que a TV mostra antes deste (1 por intervalo)
+                           momentos_frente=_momentos_na_frente(b, (pix_pendente or {}).get('pedido_id') or locals().get('pedido_id_sucesso')),
                            pedido_id_sucesso=locals().get('pedido_id_sucesso')), status_http
 
 
@@ -4130,6 +4160,87 @@ def _pedido_para_tv(row):
     if (d['tipo'] == 'musica' or d['tipo'] in TIPOS_MUSICA_FILA) and _dia_da_votacao():
         d['nome_cliente'] = ''   # 18/10/26 (C1): no domingo o nome livre da música não vai pra TV (ela mostra "alguém")
     return d
+
+
+# ── 24/10/26 (momentos no telão): trava do brinde e pino do aniversariante ─────────────────────────────────────────
+# O exibido_at é gravado no horário de Brasília (now -3 h), como no /api/pedido-exibido.
+BRINDE_INTERVALO_MIN = 15    # D8: 1 brinde a cada 15 min por bar (o 2º espera; o celular avisa a hora antes do PIX)
+ANIVERSARIO_PINO_H = 8       # D7: "🎂 Aniversariante na casa" o resto da noite
+ANIVERSARIO_PINO_MAX = 3
+MUSICA_MIN_EST = 4           # ~4 min por música (a mesma conta do /api/fila-info e do /api/pedido-status)
+
+
+def _aniversariantes_do_bar(conn, bid):
+    """O 1º nome de cada parabéns EXIBIDO neste bar nas últimas 8 h (o nome_cliente do parabéns é o aniversariante),
+    sem repetir, os 3 mais recentes, na ordem em que passaram na TV. Nunca derruba o status."""
+    try:
+        rows = conn.execute(
+            """SELECT nome_cliente FROM pubshow_pedidos
+               WHERE business_id=? AND tipo='parabens' AND status='exibido'
+                 AND created_at >= datetime('now','-1 day')   -- revisão S1: só o índice do dia, nunca o histórico todo
+                 AND exibido_at >= datetime('now','-3 hours',?) AND TRIM(COALESCE(nome_cliente,'')) <> ''
+               ORDER BY exibido_at DESC, id DESC LIMIT 20""", (bid, f'-{ANIVERSARIO_PINO_H} hours')).fetchall()
+    except Exception:
+        return []
+    nomes, vistos = [], set()
+    for r in rows:
+        n = (r[0] or '').split()[0][:20]
+        if n.lower() not in vistos:
+            vistos.add(n.lower())
+            nomes.append(n)
+        if len(nomes) >= ANIVERSARIO_PINO_MAX:
+            break
+    return nomes[::-1]
+
+
+def _momentos_na_frente(b, ate_id=None):
+    """revisão CEL-1: quantos momentos pagos ('pendente') deste bar a TV mostra antes de um pedido novo (ou antes do
+    ate_id, o da própria tela do PIX/sucesso). A TV mostra 1 por intervalo: com N na frente, sai depois de N+1 músicas.
+    Nunca derruba a página."""
+    conn = get_pubshow_db()
+    try:
+        return conn.execute(
+            f"""SELECT COUNT(*) FROM pubshow_pedidos WHERE business_id=? AND status='pendente'
+                  AND tipo IN ('parabens','dedicatoria','brinde','chegada','casamento','gorjeta','cantada','salve')
+                  AND created_at >= {_JANELA_FILA} AND (?=0 OR id < ?)""",
+            (b['id'], int(ate_id or 0), int(ate_id or 0))).fetchone()[0]
+    except Exception:
+        return 0
+    finally:
+        conn.close()
+
+
+def _brinde_proximo(b, excluir_id=None):
+    """'22h40' quando um brinde pedido AGORA cai dentro da trava de 15 min (o último exibido + os que já esperam);
+    '' quando ele sai no próximo intervalo. Só avisa, nunca bloqueia a venda (D8). excluir_id: o brinde da própria
+    tela do PIX (reaberta depois de pago, ele já está 'pendente' e não espera por ele mesmo)."""
+    conn = get_pubshow_db()
+    try:
+        ult = conn.execute(
+            """SELECT MAX(exibido_at) FROM pubshow_pedidos WHERE business_id=? AND tipo='brinde' AND status='exibido'
+                 AND created_at >= datetime('now','-1 day')
+                 AND exibido_at >= datetime('now','-3 hours',?)""", (b['id'], f'-{BRINDE_INTERVALO_MIN} minutes')).fetchone()[0]
+        espera = conn.execute(
+            f"""SELECT COUNT(*) FROM pubshow_pedidos WHERE business_id=? AND tipo='brinde'
+                  AND status IN ('pendente','aguardando_ok') AND created_at >= {_JANELA_FILA} AND id <> ?""",
+            (b['id'], int(excluir_id or 0))).fetchone()[0]
+    except Exception:
+        return ''
+    finally:
+        conn.close()
+    agora = datetime.utcnow() - timedelta(hours=3)
+    try:
+        livre = max(agora, datetime.fromisoformat(str(ult)[:19]) + timedelta(minutes=BRINDE_INTERVALO_MIN)) if ult else agora
+    except Exception:
+        livre = agora
+    # revisão CEL-3: com brinde já esperando a vez, o 1º dele só sai no fim da música que está tocando (~4 min, a conta
+    # do /api/fila-info). É estimativa ("lá pelas"): errar pra mais é melhor que prometer cedo
+    if espera:
+        livre = max(livre, agora + timedelta(minutes=MUSICA_MIN_EST))
+    sai = livre + timedelta(minutes=BRINDE_INTERVALO_MIN * espera)
+    if sai - agora < timedelta(minutes=1):
+        return ''
+    return f'{sai.hour}h{sai.minute:02d}'
 
 
 # ── Sinal da TV + tutorial do dono (15/10/26, B6) ──────────────────────────────
@@ -4250,15 +4361,23 @@ def api_status(code):
                          (b['id'], _ini, *_mus))
             conn.commit()
 
-    # Pedido especial — aparece como overlay na TV (parabéns, dedicatória etc.)
-    # Só conta pedidos confirmados (pendente), nunca aguardando_pix
+    # Pedido especial (parabéns, dedicatória etc.). Só conta pedidos confirmados (pendente), nunca aguardando_pix.
+    # 24/10/26 (momentos no telão): a TV não abre mais por cima do clipe; guarda, anuncia na coluna e mostra no
+    # intervalo. Trava do brinde: 1 a cada BRINDE_INTERVALO_MIN — com um brinde exibido há menos que isso, vem o próximo
+    # momento que não é brinde (o brinde espera a vez dele, ninguém perde nada)
     pedido_especial = conn.execute(
         '''SELECT * FROM pubshow_pedidos
            WHERE business_id=? AND status="pendente"
            AND tipo IN ("parabens","dedicatoria","brinde","chegada","casamento","gorjeta","cantada","salve")
+           AND NOT (tipo="brinde" AND EXISTS (SELECT 1 FROM pubshow_pedidos x WHERE x.business_id=? AND x.tipo="brinde"
+                    AND x.status="exibido" AND x.created_at >= datetime('now','-1 day')
+                    AND x.exibido_at >= datetime('now','-3 hours',?)))
            ORDER BY created_at ASC LIMIT 1''',
-        (b['id'],)
+        (b['id'], b['id'], f'-{BRINDE_INTERVALO_MIN} minutes')
     ).fetchone()
+    # 🎂 24/10/26 (momentos no telão, D7): o pino "Aniversariante na casa" — o 1º nome dos parabéns EXIBIDOS neste bar
+    # nas últimas ANIVERSARIO_PINO_H horas (até 3, na ordem em que passaram). TV antiga ignora o campo.
+    aniversariantes = _aniversariantes_do_bar(conn, b['id'])
 
     # Pedido de música — espera o vídeo atual acabar
     # VIP → toca na frente de tudo; flash → prioridade; restantes → ordem de chegada
@@ -4329,6 +4448,8 @@ def api_status(code):
         'fila_n':         len(_fila_rows),
         'fila_pagos':     sum(1 for r in _fila_rows if r['tipo'] in ('vip', 'flash')),
         'furar_preco':    _furar_preco_tv(b),
+        'aniversariantes': aniversariantes,   # 🎂 24/10/26 (momentos no telão): o pino da coluna
+        'precos_canto':   _precos_canto_tv(b),   # 24/10/26 (momentos no telão, visual): o preço no canto das cenas
     }
     conn.close()
     if _efi_para(b):
@@ -5306,7 +5427,11 @@ def api_fila_info(token):
 
     out = {'gratis': _estimativa(sum(n.values())),
            'flash': _estimativa(n.get('vip', 0) + n.get('flash', 0)),
-           'espera_gratis_min': _gratis_espera_min(b, ip_cliente)}
+           'espera_gratis_min': _gratis_espera_min(b, ip_cliente),
+           # 24/10/26 (momentos no telão, revisão S2/CEL-1): o celular pergunta de novo ao abrir um momento (a página
+           # fica aberta na mesa): a hora do próximo brinde e quantos momentos já esperam a TV
+           'brinde_proximo': _brinde_proximo(b),
+           'momentos_frente': _momentos_na_frente(b)}
     yid = (request.args.get('yid') or '').strip()
     if _YID_RE.fullmatch(yid):
         s = _yt_selos(b['id'], [{'id': yid}], ip_cliente)[0]

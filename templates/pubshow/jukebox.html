@@ -8,6 +8,11 @@
 {# PWA cortado (16/10/26, B8/CEL-18): o banner cobria o botão do PIX e o service worker nunca registrava #}
 <meta name="theme-color" content="#08080f">
 <meta name="description" content="Peça músicas no {{ b.nome }} direto pelo seu celular 🎵">
+{#- 24/10/26 (momentos no telão, visual): a Anton do nome no cartão da cena (a mesma da TV). Sem travar a página (media
+    print → all quando chega) e o arquivo da fonte só baixa quando o cartão aparece; sem internet, fica a Impact #}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" media="print" onload="this.media='all'" href="https://fonts.googleapis.com/css2?family=Anton&display=swap">
 {% macro brl(v) %}R$ {{ ('%.0f' if v == (v|int) else '%.2f')|format(v)|replace('.',',') }}{% endmacro %}
 {% set pix_direto = asaas_ativo or (b.requer_pix and b.pix_key) %}
 <style>
@@ -313,6 +318,62 @@
   .pix-status-box.ruim .pix-status-text{color:#f87171}
   @keyframes spin{to{transform:rotate(360deg)}}
   .spinner{display:inline-block;width:18px;height:18px;border:2px solid rgba(251,191,36,.3);border-top-color:#fbbf24;border-radius:50%;animation:spin .8s linear infinite;vertical-align:middle;margin-right:6px}
+  /* 24/10/26 (momentos no telão, D9): o cartão da cena antes do PIX. Quadro 16:9 escuro e PARADO (nada de mini-TV
+     animada: pesa no celular barato), com o nome mudando enquanto a pessoa digita; embaixo, quando sai */
+  .cartao-cena{display:none;margin:0 0 12px}
+  .cartao-cena.on{display:block}
+  /* 24/10/26 (momentos no telão, visual): o quadro tem a CARA do quadro principal da cena nova da TV (os templates que o
+     Diogo aprovou): 🎂 "hoje é dia de" + NOME rosa + PARABÉNS! · 🍻 SAÚDE! + "quem puxou o brinde" + NOME · ⚡ "furou a
+     fila" + NOME dourado + o traço + "▶ música". Mesma Anton (reserva Impact), mesmo fundo. Tamanho em cqw (% da largura
+     do quadro) com o px antes pro navegador velho; o nome comprido encolhe pra caber (_ccAjusta) */
+  .cc-tela{aspect-ratio:16/9;background:#000;border:1px solid rgba(255,255,255,.14);border-radius:14px;position:relative;
+    overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:8px 12px 14px;
+    container-type:inline-size;font-family:Inter,'Segoe UI',Arial,sans-serif}
+  .cc-tela[data-cena=parabens]{background:radial-gradient(ellipse at 50% 115%,#9d174d 0%,#2e0420 55%,#000 100%)}
+  .cc-tela[data-cena=brinde]{background:radial-gradient(ellipse at 50% 115%,#92400e 0%,#2a1000 55%,#000 100%)}
+  .cc-tela[data-cena=furar]{background:radial-gradient(ellipse at 50% 120%,#3b0764 0%,#0b0016 55%,#000 100%)}
+  .cc-tela > div:empty{display:none}
+  .cc-tela > div{position:relative;z-index:1}
+  .cc-so{display:none!important}
+  .cc-tela[data-cena=parabens] .cc-so-parabens,.cc-tela[data-cena=brinde] .cc-so-brinde,
+  .cc-tela[data-cena=furar] .cc-so-furar{display:block!important}
+  .cc-tela[data-cena=brinde] .cc-canecas{display:flex!important}
+  .cc-rot{font-size:9px;font-size:max(9px,2.5cqw);font-weight:800;letter-spacing:.3em;text-transform:uppercase;line-height:1.3;white-space:nowrap}
+  .cc-tela[data-cena=parabens] .cc-rot{color:#f9a8d4;text-shadow:0 0 6px rgba(236,72,153,.8)}
+  .cc-tela[data-cena=brinde] .cc-rot{color:#fcd34d;text-shadow:0 0 6px rgba(252,211,77,.7)}
+  .cc-tela[data-cena=furar] .cc-rot{color:#fbbf24;letter-spacing:.35em;text-shadow:0 0 6px rgba(251,191,36,.7)}
+  .cc-tela[data-cena=brinde] .cc-por{color:#fde68a;font-size:8px;font-size:max(8px,2.1cqw);margin-top:2px}
+  /* a área do nome, igual à da TV: degradê na letra, brilho e sombra; o padding em cima segura o acento do Ú/Ã */
+  .cc-nome{font-family:Anton,Impact,sans-serif;font-size:40px;font-size:11.8cqw;line-height:1.05;letter-spacing:.02em;white-space:nowrap;
+    padding:.18em .08em 0;margin-top:-.06em;color:transparent;
+    background:linear-gradient(180deg,#fff 0%,var(--n1,#fff7d6) 38%,var(--n2,#fbbf24) 62%,var(--n3,#b45309) 100%);
+    -webkit-background-clip:text;background-clip:text;
+    filter:drop-shadow(0 0 5px var(--brilho,rgba(251,191,36,.65))) drop-shadow(0 1.5px 0 var(--sombra,#451a03))}
+  .cc-tela[data-cena=parabens] .cc-n{--n1:#fff1f2;--n2:#f9a8d4;--n3:#db2777;--brilho:rgba(236,72,153,.7);--sombra:#500724}
+  .cc-tela[data-cena=brinde] .cc-n{font-size:25px;font-size:7.3cqw;--n1:#fff;--n2:#fde68a;--n3:#f59e0b;--brilho:rgba(253,230,138,.5)}
+  .cc-tela[data-cena=furar] .cc-n{font-size:46px;font-size:13.5cqw;line-height:1}
+  .cc-saude{--n1:#fff7d6;--n2:#fcd34d;--n3:#d97706;--sombra:#451a03}
+  .cc-canecas{justify-content:center;gap:4px;font-size:30px;font-size:9cqw;line-height:1.05}
+  .cc-canecas span{display:inline-block;filter:drop-shadow(0 0 5px rgba(251,191,36,.5))}
+  .cc-canecas span:first-child{transform:translateX(-2cqw) rotate(10deg)}
+  .cc-canecas span:last-child{transform:translateX(2cqw) scaleX(-1) rotate(10deg)}
+  .cc-parabens{font-family:Anton,Impact,sans-serif;font-size:21px;font-size:6.2cqw;line-height:1.1;letter-spacing:.09em;color:#fde68a;
+    text-shadow:0 0 6px rgba(251,191,36,.7),0 1.5px 0 #78350f;margin-top:1px}
+  .cc-traco{display:block;height:2px;width:60%;margin:5px auto 0;background:linear-gradient(90deg,transparent,#fbbf24,transparent)}
+  .cc-linha{font-size:10px;font-size:max(10px,2.6cqw);font-weight:600;color:#fff;margin-top:5px;max-width:92%;white-space:nowrap;overflow:hidden;
+    text-overflow:ellipsis;line-height:1.3}
+  .cc-linha small{display:block;font-size:8px;font-size:max(8px,2.1cqw);color:#e9d5ff;overflow:hidden;text-overflow:ellipsis}
+  .cc-feixe{position:absolute;z-index:0;bottom:-10%;width:22%;height:140%;transform-origin:50% 100%;opacity:.75;
+    background:linear-gradient(to top,rgba(255,200,80,.5),rgba(255,200,80,0) 80%);filter:blur(3px);mix-blend-mode:screen}
+  .cc-f1{left:8%;transform:rotate(-14deg)}
+  .cc-f2{left:39%;background:linear-gradient(to top,rgba(255,255,255,.45),rgba(255,255,255,0) 80%);transform:rotate(6deg)}
+  .cc-f3{right:8%;transform:rotate(16deg)}
+  .cc-tela .cc-marca{display:block;position:absolute;z-index:1;left:10px;bottom:6px;font-size:8px;font-weight:800;letter-spacing:.06em;color:#f97316}
+  .cc-txt{font-size:13px;color:var(--text);line-height:1.45;margin-top:10px}
+  .cc-quando{font-size:13px;font-weight:800;color:#86efac;line-height:1.4;margin:0 0 12px}
+  .cc-quando.espera{color:#fbbf24}
+  .sh-pular-furar{font-size:13px;font-weight:700;color:#fde68a;text-align:center;margin:6px 0 12px}
+  #btn-pular[style*="none"] + .sh-pular-furar{display:none}   /* só junto do ⏩ (com a grátis esperando) */
 </style>
 <!-- celular do cliente do bar: sem balão global do WhatsApp do 4kitem (a marca 'wa-float-4k' impede a injeção) -->
 <style>#wa-float-4k{display:none !important}</style>
@@ -439,6 +500,8 @@ function copiarPayload() {
 const PIX_TOKEN     = '{{ b.jukebox_token or b.code }}';
 const PIX_PEDIDO_ID = {{ pix_pendente.pedido_id }};
 const PIX_TIPO      = {{ (pix_pendente.tipo or '')|tojson }};
+const BRINDE_PROX_PIX = {{ (brinde_proximo or '')|tojson }};   // 24/10/26 (D8): brinde na trava de 15 min → a hora
+const FRENTE_PIX      = {{ (momentos_frente or 0)|int }};       // revisão CEL-1: momentos pagos que a TV mostra antes
 {%- if pix_pendente.efi %}
 const PIX_EFI       = true;   // Lote C, fatia b: devolução/validade da Efí (só com a Efí ligada pro bar)
 const PIX_VALOR_TXT = {{ ('R$ ' ~ ('%.2f'|format(pix_pendente.valor or 0))|replace('.', ','))|tojson }};
@@ -499,9 +562,13 @@ function _pixStatus(estado, icone, texto, sub) {
 function _textoPago() {
   if (PIX_TIPO === 'pular_espera') return '✅ Pago! Tua música entrou na fila.';   // fila normal, não na frente
   if (TIPOS_MUSICA.includes(PIX_TIPO)) return '✅ Pago! Tua música entra na frente da fila.';
-  if (PIX_TIPO === 'parabens') return '✅ Pago! Teu parabéns aparece na TV em instantes. Prepara a câmera 📸';
-  if (PIX_TIPO === 'gorjeta')  return '✅ Pago! Valeu! Tua gorjeta aparece na TV e a equipe agradece 🙏';
-  return '✅ Pago! Aparece na TV em instantes.';
+  // 24/10/26 (momentos no telão, D9): o momento sai no próximo intervalo (nada por cima do clipe), não "em instantes"
+  // revisão CEL-1: a TV mostra 1 momento por intervalo; com N na frente, sai depois de N+1 músicas
+  const dep = FRENTE_PIX > 0 ? `depois de ${FRENTE_PIX + 1} músicas` : 'depois da música que está tocando';
+  if (PIX_TIPO === 'parabens') return `✅ Pago! Teu parabéns aparece na TV ${dep}. Prepara a câmera 📸`;
+  if (PIX_TIPO === 'gorjeta')  return `✅ Pago! Valeu! Tua gorjeta aparece na TV ${dep} e a equipe agradece 🙏`;
+  if (PIX_TIPO === 'brinde' && BRINDE_PROX_PIX) return `✅ Pago! Teu brinde sai na TV lá pelas ${BRINDE_PROX_PIX}.`;
+  return `✅ Pago! Aparece na TV ${dep}.`;
 }
 
 async function _atualizarPosicao() {
@@ -659,15 +726,18 @@ async function jaPaguei() {
     {% else %}
     <h3>Pedido enviado! {{ t.emoji }}</h3>
     <p>
+      {#- 24/10/26 (momentos no telão, D9): o momento sai no próximo intervalo, não "em instantes". Revisão CEL-1: com N
+          momentos pagos na frente (a TV mostra 1 por intervalo), sai depois de N+1 músicas #}
+      {%- set dep = ('depois de ' ~ ((momentos_frente or 0)|int + 1) ~ ' músicas') if (momentos_frente or 0)|int > 0 else 'depois da música que está tocando' %}
       {% if sucesso == 'flash' %}Furou a fila! Tua música entra na frente da fila. ⚡
-      {% elif sucesso == 'parabens' %}O Parabéns aparece na tela em breve. Prepara a câmera! 📸
-      {% elif sucesso == 'dedicatoria' %}Sua dedicatória aparece na tela em instantes! ❤️
-      {% elif sucesso == 'brinde' %}Brinde geral na tela! Levanta o copo! 🍻
-      {% elif sucesso == 'chegada' %}Sua chegada aparece agora! 🎉
-      {% elif sucesso == 'casamento' %}O pedido vai aparecer na tela! Boa sorte! 💕🥹
-      {% elif sucesso == 'gorjeta' %}Valeu demais! Sua gorjeta aparece na tela e a equipe agradece. 🙏
-      {% elif sucesso == 'cantada' %}Cantada mandada! Ela aparece na tela em instantes. Boa sorte! 😏
-      {% elif sucesso == 'salve' %}Salve mandado! Aparece na tela em instantes. 📣
+      {% elif sucesso == 'parabens' %}O Parabéns aparece na TV {{ dep }}. Prepara a câmera! 📸
+      {% elif sucesso == 'dedicatoria' %}Sua dedicatória aparece na TV {{ dep }}. ❤️
+      {% elif sucesso == 'brinde' %}{% if brinde_proximo %}Teu brinde sai na TV lá pelas {{ brinde_proximo }}. Prepara o copo! 🍻{% else %}O brinde sai na TV {{ dep }}. Prepara o copo! 🍻{% endif %}
+      {% elif sucesso == 'chegada' %}Sua chegada aparece na TV {{ dep }}. 🎉
+      {% elif sucesso == 'casamento' %}O pedido aparece na TV {{ dep }}. Boa sorte! 💕🥹
+      {% elif sucesso == 'gorjeta' %}Valeu demais! Sua gorjeta aparece na TV {{ dep }} e a equipe agradece. 🙏
+      {% elif sucesso == 'cantada' %}Cantada mandada! Ela aparece na TV {{ dep }}. Boa sorte! 😏
+      {% elif sucesso == 'salve' %}Salve mandado! Aparece na TV {{ dep }}. 📣
       {% else %}Seu pedido está na fila! Aguarda um momento.
       {% endif %}
     </p>
@@ -871,6 +941,22 @@ async function jaPaguei() {
         <div class="dica-nome">É assim que teu nome aparece na TV (até 20 letras). Sem palavrão, beleza? 😉</div>
       </div>
       {% set n_fila = fila_musicas|length %}
+      {%- if 'flash' in tipos %}
+      {#- 24/10/26 (momentos no telão, D9): pelo ⚡ Furar da música, o cartão da "Entrada de estrela" antes do PIX.
+          24/10/26 (momentos no telão, visual): com a cara do quadro do nome do furar.html (feixes, NOME dourado, traço) #}
+      <div class="cartao-cena" id="sh-cartao">
+        <div class="cc-tela" data-cena="furar">
+          <i class="cc-feixe cc-f1"></i><i class="cc-feixe cc-f2"></i><i class="cc-feixe cc-f3"></i>
+          <div class="cc-rot" id="sh-cc-pre">⚡ furou a fila ⚡</div>
+          <div class="cc-nome cc-n" id="sh-cc-nome"></div>
+          <i class="cc-traco"></i>
+          <div class="cc-linha" id="sh-cc-linha"></div>
+          <div class="cc-marca">{{ b.nome }} · PubShow</div>
+        </div>
+        <div class="cc-txt" id="sh-cc-txt">Toca logo depois desta. Antes, teu nome na TV inteira.</div>
+        <div class="cc-quando" id="sh-cc-fila" style="margin:6px 0 10px"></div>
+      </div>
+      {%- endif %}
       {# 16/10/26 (crítico C2): quem já tem música grátis na fila descobre ANTES de tocar #}
       <div class="dica-nome" id="sh-aviso-gratis" style="display:none;color:#fbbf24;font-weight:700;margin:0 0 8px">{% if 'pular_espera' in tipos %}Tua música grátis ainda não tocou. Pra pedir outra agora, pula a espera ou fura a fila; ou espera a tua tocar.{% elif 'flash' in tipos and pix_direto %}Tua música grátis ainda não tocou. Pra pedir outra agora, fura a fila no PIX; ou espera a tua tocar.{% else %}Tua música grátis ainda não tocou. Espera ela tocar pra pedir outra.{% endif %} 🎶</div>
       <button type="button" class="btn-gratis" id="btn-gratis" onclick="enviarMusica('gratis')">
@@ -881,6 +967,10 @@ async function jaPaguei() {
       <button type="button" class="btn-pular" id="btn-pular" style="display:none" onclick="enviarMusica('pular')">
         ⏩ Pular a espera · {{ brl(tipos.pular_espera.preco + pix_conv) }}<small id="sh-pular-sub">entra na fila agora, sem esperar a grátis</small>
       </button>
+      {%- if 'flash' in tipos %}
+      {#- 24/10/26 (momentos no telão, D9): o degrau de baixo mostra o de cima (o ⏩ não tem cena; o ⚡ tem) #}
+      <div class="sh-pular-furar" id="sh-pular-furar">Quer ser o 1º e aparecer na TV? ⚡ Furar {{ brl(tipos.flash.preco + pix_conv) }}</div>
+      {%- endif %}
       {%- endif %}
       {% if 'flash' in tipos %}
       <button type="button" class="btn-flash" id="btn-flash" onclick="enviarMusica('flash')">
@@ -905,6 +995,27 @@ async function jaPaguei() {
     <input type="hidden" name="youtube_id" id="inp-youtube-id">
     <input type="hidden" name="titulo_pedido" id="inp-titulo-pedido">
     <input type="hidden" name="client_id" id="inp-client-id" class="js-cid" value="">
+
+    {#- 24/10/26 (momentos no telão, D9): 🎂 parabéns, 🍻 brinde e ⚡ furar mostram o cartão da cena antes do PIX, com o
+        nome ao vivo; todo momento diz quando sai (no próximo intervalo, não "em instantes") #}
+    {#- 24/10/26 (momentos no telão, visual): o quadro é o da cena nova (data-cena = parabens / brinde / furar); as peças
+        fixas de cada cena aparecem pelo CSS (.cc-so-*), o nome e as frases pelo _pintarCartao (textContent) #}
+    <div class="cartao-cena" id="cartao-cena">
+      <div class="cc-tela" id="cc-tela" data-cena="">
+        <i class="cc-feixe cc-f1 cc-so cc-so-furar"></i><i class="cc-feixe cc-f2 cc-so cc-so-furar"></i><i class="cc-feixe cc-f3 cc-so cc-so-furar"></i>
+        <div class="cc-rot" id="cc-pre"></div>
+        <div class="cc-canecas cc-so" aria-hidden="true"><span>🍺</span><span>🍺</span></div>
+        <div class="cc-nome cc-saude cc-so cc-so-brinde">SAÚDE!</div>
+        <div class="cc-rot cc-por" id="cc-sub"></div>
+        <div class="cc-nome cc-n" id="cc-nome"></div>
+        <div class="cc-parabens cc-so cc-so-parabens">PARABÉNS!</div>
+        <i class="cc-traco cc-so cc-so-furar"></i>
+        <div class="cc-linha" id="cc-linha"></div>
+        <div class="cc-marca">{{ b.nome }} · PubShow</div>
+      </div>
+      <div class="cc-txt" id="cc-txt"></div>
+    </div>
+    <div class="cc-quando" id="cc-quando" style="display:none"></div>
 
     <div class="musica-preview" id="musica-preview" style="display:none">
       <div class="musica-preview-label">🎵 Música pedida</div>
@@ -1102,7 +1213,163 @@ function _mostrarValor(preco) {
   if (el) el.textContent = item > 0 ? 'R$ ' + (item + _convAtual()).toFixed(2).replace('.', ',') : 'Grátis';
   _notaTaxaPix(item);
   aplicarModoGratis(item);
+  _rotuloPagar(item);
+  _pintarCartao();
 }
+
+// ── 🎬 Cartão da cena antes do PIX (24/10/26, momentos no telão, D9) ─────────────────────────────────────────────
+// 🎂 parabéns, 🍻 brinde e ⚡ furar: o cartão que vai pra TV, parado, com o nome ao vivo (textContent: é texto do cliente)
+// + quando sai. Os outros momentos: só a linha "quando sai". Sem chutar gênero pelo nome ("DIA DE").
+// revisão S2/CEL-4: let, não const: o celular pergunta de novo ao abrir um momento (_atualizarQuandoSai)
+let BRINDE_PROX     = {{ (brinde_proximo or '')|tojson }};   // D8: "22h40" quando o brinde cai na trava de 15 min
+let MOMENTOS_FRENTE = {{ (momentos_frente or 0)|int }};      // revisão CEL-1: momentos pagos que a TV mostra antes
+const MODERA_OK   = {{ 'true' if (b.moderar_ok is none or b.moderar_ok) else 'false' }};
+const ELEICAO_OK  = {{ 'true' if eleicao else 'false' }};   // véspera e dia da eleição: todo momento espera o OK
+const FILA_N      = {{ (fila_musicas|length) if fila_musicas is defined else 0 }};
+// revisão CEL-1: a TV mostra 1 momento por intervalo; com N na frente, sai depois de N+1 músicas
+function _depoisDe() {
+  const n = MOMENTOS_FRENTE;
+  return n > 0 ? `depois de ${n + 1} músicas (tem ${n} ${n === 1 ? 'momento' : 'momentos'} na frente)`
+               : 'depois da música que está tocando';
+}
+// revisão S2/CEL-1/CEL-4: a página fica aberta na mesa. Ao abrir um momento, pergunta de novo a hora do próximo
+// brinde e quantos momentos já esperam a TV; sem resposta, fica o que veio com a página
+async function _atualizarQuandoSai(key) {
+  try {
+    const r = await fetch(`/pubshow/api/fila-info/${encodeURIComponent(BAR_TOKEN)}?cid=${encodeURIComponent(_cid())}`);
+    if (!r.ok) return;
+    const d = await r.json();
+    if (typeof d.brinde_proximo === 'string') BRINDE_PROX = d.brinde_proximo;
+    if (typeof d.momentos_frente === 'number') MOMENTOS_FRENTE = d.momentos_frente;
+    if (tipoAtual === key) _pintarCartao();
+  } catch(e) {}
+}
+const CENA_CEL    = {parabens: 1, brinde: 1, flash: 1};
+// 24/10/26 (momentos no telão, visual): o nome como a TV escreve: maiúsculo pt-BR e, passando de 20 letras, saem as
+// últimas PALAVRAS inteiras ("MARIA CLARA FERNANDES SOUZA" vira "MARIA CLARA"), igual ao _pcCorta da TV
+function _nomeTV(v) {
+  let t = String(v || '').trim().replace(/\s+/g, ' ');
+  if ([...t].length > 20) {
+    const p = t.split(' ');
+    while (p.length > 1 && [...p.join(' ')].length > 20) p.pop();
+    t = [...p.join(' ')].slice(0, 20).join('');
+  }
+  return t.toLocaleUpperCase('pt-BR');
+}
+function _tituloCurto(t) {   // "AC/DC - Highway to Hell (Official Video)" → "Highway to Hell" (o que a TV escreve)
+  t = String(t || '').split(' | ')[0].replace(/\([^)]*\)|\[[^\]]*\]/g, ' ').replace(/\s+/g, ' ').trim();
+  const m = t.match(/\s[-–—]\s(.+)$/);
+  return (m && m[1].trim()) || t;
+}
+// 24/10/26 (momentos no telão, visual): "▶ música" + embaixo, pequeno, "artista · tocando agora" (o que a vinheta da TV
+// escreve); sem " - " no título, só "tocando agora". Texto do YouTube: textContent, nunca HTML
+function _ccMusica(el, titulo) {
+  el.textContent = '';
+  const mus = _tituloCurto(titulo);
+  if (!mus) return;
+  const lim = String(titulo || '').split(' | ')[0].replace(/\([^)]*\)|\[[^\]]*\]/g, ' ').replace(/\s+/g, ' ').trim();
+  const m = lim.match(/^(.+?)\s[-–—]\s/);
+  el.textContent = '▶ ' + mus;
+  const sm = document.createElement('small');
+  sm.textContent = (m ? m[1].trim() + ' · ' : '') + 'tocando agora';
+  el.append(sm);
+}
+// o nome comprido encolhe pra caber em 86% da largura do quadro (a conta da TV, _pcAjusta), medido com a fonte que está
+// na tela (a Anton, ou a Impact sem internet)
+function _ccAjusta(el) {
+  if (!el) return;
+  el.style.fontSize = '';
+  const tela = el.closest('.cc-tela');
+  if (!tela || !el.textContent) return;
+  const w = el.getBoundingClientRect().width, max = tela.clientWidth * .86;
+  if (w > max && w > 0) el.style.fontSize = (parseFloat(getComputedStyle(el).fontSize) * max / w) + 'px';
+}
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => {
+  _ccAjusta(document.getElementById('cc-nome')); _ccAjusta(document.getElementById('sh-cc-nome'));
+}).catch(() => {});
+function _quandoSai(key) {
+  if (key === 'brinde' && BRINDE_PROX) return {t: `⏳ O próximo brinde sai lá pelas ${BRINDE_PROX}.`, espera: true};
+  if (TIPOS_MOMENTO.includes(key) && ((PRECOS[key] && PRECOS[key].ok && MODERA_OK) || ELEICAO_OK))
+    return {t: `O bar confere e aí sai na TV ${MOMENTOS_FRENTE > 0 ? _depoisDe() : 'depois da música que estiver tocando'}.`};
+  if (key === 'parabens') return {t: `Sai na TV ${_depoisDe()}. Segura na mesa quem faz aniversário.`};
+  if (key === 'flash') return {t: 'Toca logo depois desta. Antes, teu nome na TV inteira.'};
+  return {t: `Sai na TV ${_depoisDe()}.`};
+}
+function _pintarCartao() {
+  const box = document.getElementById('cartao-cena'), q = document.getElementById('cc-quando');
+  if (!box || !q) return;
+  const key = tipoAtual;
+  const qs = (TIPOS_MOMENTO.includes(key) || key === 'flash') ? _quandoSai(key) : null;
+  q.textContent = qs ? qs.t : '';
+  q.style.display = qs ? '' : 'none';
+  q.classList.toggle('espera', !!(qs && qs.espera));
+  const com = !!CENA_CEL[key];
+  box.classList.toggle('on', com);
+  if (!com) return;
+  const nome = _nomeTV(document.getElementById('inp-nome').value);
+  const put = (id, t) => { document.getElementById(id).textContent = t; };
+  // 24/10/26 (momentos no telão, visual): o quadro da cena nova (data-cena); as peças fixas aparecem pelo CSS
+  let cena = '', pre = '', n = '', sub = '', txt = '';
+  if (key === 'parabens') {
+    cena = 'parabens'; pre = '🎂 hoje é dia de'; n = nome || 'NOME';
+    // revisão CEL-5: o pino da coluna guarda até 3 nomes por 8 h; não promete "até o bar fechar"
+    // 24/10/26 (momentos no telão, visual): o parabéns da TV não tem 3, 2, 1 (o bar canta com o bolo aceso)
+    txt = 'A música para, o nome entra na TV inteira com o bolo aceso e o bar todo canta junto. Depois, o nome fica na coluna da TV.';
+  } else if (key === 'brinde') {
+    cena = 'brinde'; pre = '🍻 brinde geral 🍻'; n = nome || 'TEU NOME'; sub = 'quem puxou o brinde';
+    // dentro da trava de 15 min a hora é a da linha ⏳ (não o fim desta música)
+    // revisão CEL-1: com momento na frente, também não é "quando esta música acabar"
+    txt = (BRINDE_PROX || MOMENTOS_FRENTE > 0 ? 'Na hora do brinde' : 'Quando esta música acabar') + ', a TV conta 3, 2, 1 e o bar todo brinda contigo.';
+  } else {   // ⚡ furar pelo formulário (PIX do bar sem confirmação / balcão)
+    cena = 'furar'; pre = '⚡ furou a fila ⚡'; n = nome || 'TEU NOME';
+    txt = `Fila agora: ${FILA_N === 0 ? 'vazia' : FILA_N + (FILA_N === 1 ? ' música' : ' músicas')}.`;
+  }
+  document.getElementById('cc-tela').dataset.cena = cena;
+  put('cc-pre', pre); put('cc-nome', n); put('cc-sub', sub); put('cc-txt', txt);
+  _ccMusica(document.getElementById('cc-linha'), cena === 'furar' ? document.getElementById('inp-titulo-pedido').value : '');
+  _ccAjusta(document.getElementById('cc-nome'));
+}
+// Um botão só: "Pagar R$ X no PIX" com o total certo (preço + o R$ 1 do app; o preço da Efí quando o bar é Efí)
+function _rotuloPagar(item) {
+  const btn = document.getElementById('btn-confirmar');
+  if (!btn || !(item > 0)) return;
+  if (btn.dataset.origHtml === undefined) btn.dataset.origHtml = btn.innerHTML;
+  if (PIX_DIRETO && (tipoAtual === 'parabens' || tipoAtual === 'brinde')) {
+    btn.textContent = `Pagar ${_brl(Math.round((item + _convAtual()) * 100) / 100)} no PIX`;
+  } else {
+    btn.innerHTML = btn.dataset.origHtml;
+  }
+}
+// ⚡ pelo botão "Furar" da música: o cartão na folha, o nome ao vivo e "Pagar R$ X no PIX" no botão
+let _flashRotulo = null;
+function _pintarCartaoFurar(d, rotulo) {   // rotulo: só na abertura da folha (abrirSheet / pedirDireto) troca o texto do botão
+  const box = document.getElementById('sh-cartao');
+  if (!box) return;
+  const on = _modoDireto === 'flash';
+  box.classList.toggle('on', on);
+  const bf = document.getElementById('btn-flash');
+  if (rotulo && bf && bf.firstChild) {
+    if (_flashRotulo === null) _flashRotulo = bf.firstChild.textContent;
+    bf.firstChild.textContent = (on && PIX_DIRETO) ? `⚡ Pagar ${FURAR_TXT} no PIX ` : _flashRotulo;
+  }
+  if (!on) return;
+  // 24/10/26 (momentos no telão, visual): o NOME dourado sozinho (o ⚡ está no "furou a fila") e "▶ música" embaixo
+  document.getElementById('sh-cc-nome').textContent = _nomeTV(document.getElementById('sh-nome').value) || 'TEU NOME';
+  _ccMusica(document.getElementById('sh-cc-linha'), videoSel ? videoSel.titulo : '');
+  _ccAjusta(document.getElementById('sh-cc-nome'));
+  if (d) {
+    document.getElementById('sh-cc-txt').textContent = d.flash.na_frente === 0
+      ? 'Toca logo depois desta. Antes, teu nome na TV inteira.'
+      : `Entra em ${d.flash.posicao}º lugar (tem furar na frente). Antes, teu nome na TV inteira.`;
+  }
+  const n = d ? d.gratis.na_frente : FILA_N;
+  document.getElementById('sh-cc-fila').textContent = `Fila agora: ${n === 0 ? 'vazia' : n + (n === 1 ? ' música' : ' músicas')}.`;
+}
+document.addEventListener('DOMContentLoaded', () => {
+  const ni = document.getElementById('inp-nome'), ns = document.getElementById('sh-nome');
+  if (ni) ni.addEventListener('input', _pintarCartao);
+  if (ns) ns.addEventListener('input', () => _pintarCartaoFurar(_filaInfo));
+});
 
 // Pedido GRÁTIS: esconde a caixa de pagamento e troca o botão. Preço > 0 restaura o fluxo de PIX.
 function aplicarModoGratis(preco) {
@@ -1172,6 +1439,7 @@ function selecionarTipo(key, precoForcado) {
   _formDe = 'tv';
   document.getElementById('form-section').classList.add('show');
   window.scrollTo({top:0,behavior:'smooth'});
+  if (TIPOS_MOMENTO.includes(key)) _atualizarQuandoSai(key);   // 24/10/26 (revisão S2/CEL-1): quando sai, de agora
 }
 
 // 16/10/26 (crítico C2): no parabéns o 1º campo é o ANIVERSARIANTE (sai grande na TV); o nome de quem
@@ -1418,6 +1686,7 @@ function pedirDireto(ev, i, origem, modo) {
   const bp = document.getElementById('btn-pular');
   if (modo === 'flash') { if (bg) bg.style.display = 'none'; if (bf) bf.style.display = ''; if (bp) bp.style.display = 'none'; }
   else if (!_gratisTravada) { if (bf) bf.style.display = 'none'; }
+  _pintarCartaoFurar(_filaInfo, true);   // 24/10/26 (momentos no telão, D9): ⚡ = o cartão + "Pagar R$ X no PIX"
 }
 function _mostrarFurarSeGratisTravada() {   // a grátis está esperando: o ⏩ pular a espera (Efí) e, no "Grátis", o furar
   const bp = document.getElementById('btn-pular');
@@ -1577,6 +1846,7 @@ function abrirSheet(v) {
   if (av) av.style.display = 'none';
   const bp = document.getElementById('btn-pular');   // ⏩ só quando a grátis estiver esperando (_pintarSheet / 1 por vez)
   if (bp) { bp.style.display = 'none'; bp.disabled = false; }
+  _pintarCartaoFurar(null, true);      // 24/10/26: o cartão do ⚡ só no modo ⚡ (pedirDireto liga); o botão volta ao normal
   _pintarSheet(v, _filaInfo, false);   // na hora, com o que já sabe
   document.getElementById('sheet').classList.add('on');
   _conferirGratisNaFila();
@@ -1631,6 +1901,7 @@ function _pintarSheet(v, d, fresco) {
       fs.textContent = quando + (fs.dataset.preco ? ' · ' + fs.dataset.preco : '');
     }
   }
+  _pintarCartaoFurar(d);   // 24/10/26: a posição e a fila de agora no cartão do ⚡
 }
 // 16/10/26 (crítico C2): a 1ª música grátis deste celular ainda está na fila? (1 grátis por vez)
 async function _conferirGratisNaFila() {
@@ -1799,6 +2070,7 @@ function copiarPix() {
     document.getElementById('inp-msg').value  = {{ (request.form.get('mensagem') or '')[:80]|tojson }};
     const _rem = document.getElementById('inp-remetente');
     if (_rem) _rem.value = {{ (request.form.get('remetente') or '')[:20]|tojson }};
+    _pintarCartao();   // 24/10/26 (revisão CEL-2): o .value não dispara 'input'; o cartão mostra o nome que voltou
   } catch(e) {}
   {% elif erro and tipo_post in ['musica','musica_especifica','musica_externa','flash'] %}
   mostrarAba('musicas');   // 20/10/26: erro na música volta pra busca (com a faixa "toca aqui pra tentar de novo")
