@@ -1749,13 +1749,13 @@ def _validar_video_pedido(b, youtube_id, info=None):
                           + (" AND COALESCE(subcategoria,'')<>'pedido_publico'" if _vot else ''), (youtube_id,)).fetchone()
     conn.close()
     if curado:
-        info['titulo'] = (curado['titulo'] or '').strip()[:80]
+        info['titulo'] = _sem_invisiveis(curado['titulo']).strip()[:80]
         return MSG_NAO_TOCA if _nao_toca(_nt, curado['titulo'], curado['artista']) else ''
     if not _youtube_liberado(b):
         return MSG_SO_ACERVO_ELEICAO if _vot else 'Esse bar só aceita músicas do acervo. Escolhe na lista. 🎵'
     st, _oj = _oembed_status(youtube_id)
     if st == 200 and isinstance(_oj, dict):
-        info['titulo'] = str(_oj.get('title') or '').strip()[:80]
+        info['titulo'] = _sem_invisiveis(str(_oj.get('title') or '')).strip()[:80]   # 24/10/26: sem invisível (L1)
     if st in (401, 403):
         return 'Esse clipe não toca na TV (o dono do vídeo bloqueou). Escolhe outro. 🙏'
     if st == 404:
@@ -1814,13 +1814,28 @@ def _filtro_ligado():
     return os.environ.get('PUBSHOW_FILTRO', '1').strip() != '0'
 
 
+# 24/10/26 (pente fino F3-2): caractere invisível furava o filtro. O U+202E ("inverte o texto") fazia a TV desenhar
+# "Lula 13" com o filtro lendo "31 aluL", e o espaço de largura zero partia o palavrão em dois. Sai na entrada, antes
+# do filtro, e a TV mostra o que o filtro leu. Ficam o "junta emoji" (U+200D) e o seletor (U+FE0F): emoji de família e
+# coração seguem inteiros. Revisor do L1: o braille vazio (U+2800) e a quebra de linha (U+2028/2029) também saem.
+_INVISIVEIS = re.compile('[\u00ad\u034f\u061c\u115f\u1160\u180e\u200b\u200c\u200e\u200f\u2028\u2029\u202a-\u202e'
+                         '\u2060-\u2064\u2066-\u206f\u2800\u3164\ufeff\uffa0]')
+
+
+def _sem_invisiveis(texto):
+    return _INVISIVEIS.sub('', texto or '')
+
+
 def _tem_palavrao(texto):
     """True se o texto tem palavrão da lista (sem acento, sem maiúscula, 'p0rr4' = 'porra', 'porrraaa' = 'porra')."""
     if not texto or not _filtro_ligado():
         return False
     import unicodedata
     t = unicodedata.normalize('NFKD', str(texto).lower())
-    t = ''.join(c for c in t if not unicodedata.combining(c)).translate(_LEET)
+    # o invisível que fica no texto ("junta emoji", seletor de emoji) não parte o palavrão (24/10/26, F3-2),
+    # igual ao filtro de política
+    t = ''.join(c for c in t if not unicodedata.combining(c)
+                and unicodedata.category(c) not in ('Mn', 'Me', 'Cf')).translate(_LEET)
     # letras soltas separadas por espaço/ponto viram 1 palavra: "p o r r a", "P.O.R.R.A" → "porra" (16/10/26, C2)
     t = re.sub(r'(?<![a-z])(?:[a-z][\s.\-_*]+){2,}[a-z](?![a-z])', lambda m: re.sub(r'[^a-z]', '', m.group()), t)
     t = _sem_repeticao(t)
@@ -3575,15 +3590,16 @@ def jukebox(token, pix_id=None):
         else:
             tipo          = request.form.get('tipo', '')
             # nome na TV: até 20 letras (16/10/26, B9), cortando no último espaço (C2)
-            nome_cliente  = _nome_tv(request.form.get('nome_cliente', ''))
-            mensagem      = request.form.get('mensagem', '').strip()[:80]
+            # 24/10/26 (F3-2): todo texto que vai pra TV perde o caractere invisível antes do filtro
+            nome_cliente  = _nome_tv(_sem_invisiveis(request.form.get('nome_cliente', '')))
+            mensagem      = _sem_invisiveis(request.form.get('mensagem', '')).strip()[:80]
             # 16/10/26 (C2): no parabéns o nome GRANDE da TV é o do aniversariante; quem manda é opcional e
             # sai pequeno, junto do recado ("· de Zé")
-            remetente     = _nome_tv(request.form.get('remetente', '')) if tipo == 'parabens' else ''
+            remetente     = _nome_tv(_sem_invisiveis(request.form.get('remetente', ''))) if tipo == 'parabens' else ''
             _nome_lembrar = remetente if tipo == 'parabens' else nome_cliente
             categoria     = _categoria_do_bar(b)   # do servidor, não do formulário (16/10/26, D3V-03)
             youtube_id    = request.form.get('youtube_id', '').strip()
-            titulo_pedido = request.form.get('titulo_pedido', '').strip()[:80]
+            titulo_pedido = _sem_invisiveis(request.form.get('titulo_pedido', '')).strip()[:80]
             thumb_url     = request.form.get('thumb_url', '').strip()[:200]
 
             if youtube_id and not re.fullmatch(r'[A-Za-z0-9_-]{11}', youtube_id):
