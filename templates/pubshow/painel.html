@@ -493,7 +493,10 @@
       <div class="controles-tv">
         <button type="button" id="btn-pular-musica" class="ctl-btn" onclick="pularMusica(this)" style="background:linear-gradient(135deg,#8b5cf6,#6366f1)">⏭️ Pular</button>
         <button type="button" id="btn-mudo" class="ctl-btn" onclick="alternarMudo()" style="background:rgba(239,68,68,.2);color:#fecaca">{% if _vol == 0 %}🔊 Tirar do mudo{% else %}🔇 Mudo{% endif %}</button>
+        {#- ⏸️ 25/10/26 (Garage: "cantaram parabéns e não tem pause"): pausa a música da TV; volta sozinha em 5 min #}
+        <button type="button" id="btn-pausar-musica" class="ctl-btn" onclick="pausarMusica(this)" data-resta="{{ pausa_resta_s or 0 }}" style="grid-column:1/-1;background:rgba(245,158,11,.2);color:#fde68a">⏸️ Pausar a música</button>
       </div>
+      <div id="pausa-msg" role="status" style="display:none;font-size:15px;font-weight:800;color:#fde68a;margin-top:10px;text-align:center"></div>
       <!-- 🔊 Volume da TV (controle remoto) -->
       <div class="vol-linha">
         <span style="font-size:22px" aria-hidden="true">🔊</span>
@@ -1358,6 +1361,53 @@ function pularMusica(btn) {
     setTimeout(() => { btn.innerHTML = orig; btn.disabled = false; }, 3000);
   });
 }
+
+// ⏸️ 25/10/26 (Garage: "cantaram parabéns e não tem pause"): pausa a música da TV (a TV vê em ~3 s) e o botão vira
+// "▶️ Voltar a música". O servidor volta sozinho em 5 min; aqui o botão volta junto, na hora do celular
+let _pausaAte = 0, _pausaTimer = null;
+function _pausaPinta() {
+  const btn = document.getElementById('btn-pausar-musica'), msg = document.getElementById('pausa-msg');
+  if (!btn) return;
+  const pausada = _pausaAte > Date.now();
+  btn.dataset.pausada = pausada ? '1' : '0';
+  btn.disabled = false;
+  btn.innerHTML = pausada ? '▶️ Voltar a música' : '⏸️ Pausar a música';
+  btn.style.background = pausada ? 'linear-gradient(135deg,#22c55e,#16a34a)' : 'rgba(245,158,11,.2)';
+  btn.style.color = pausada ? '#fff' : '#fde68a';
+  if (msg) {
+    if (pausada) {
+      const d = new Date(_pausaAte);
+      msg.textContent = `⏸️ Pausado · volta sozinho às ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+      msg.style.display = 'block';
+    } else {
+      msg.textContent = '';
+      msg.style.display = 'none';
+    }
+  }
+  clearTimeout(_pausaTimer);
+  if (pausada) _pausaTimer = setTimeout(_pausaPinta, Math.min(_pausaAte - Date.now() + 500, 30000));
+}
+function pausarMusica(btn) {
+  const voltar = btn.dataset.pausada === '1';
+  btn.disabled = true;
+  btn.innerHTML = voltar ? '▶️ Voltando...' : '⏸️ Pausando...';
+  const fd = new FormData();
+  fd.append('acao', voltar ? 'voltar' : 'pausar');
+  fetch('/pubshow/painel/pausar-musica', {method: 'POST', body: fd, headers: {'X-Requested-With': 'XMLHttpRequest'}})
+    .then(r => r.json()).then(d => {
+      _pausaAte = d.pausada ? Date.now() + (d.resta_s || 0) * 1000 : 0;
+      _pausaPinta();
+    }).catch(() => {
+      btn.innerHTML = '❌ Erro — tente de novo';
+      setTimeout(_pausaPinta, 3000);
+    });
+}
+(function () {
+  const btn = document.getElementById('btn-pausar-musica');
+  const r = btn ? parseInt(btn.dataset.resta || '0', 10) : 0;
+  _pausaAte = r > 0 ? Date.now() + r * 1000 : 0;
+  _pausaPinta();
+})();
 
 {%- if efi or efi_passo4 %}
 // Lote C, fatia b (16/10/26): passo 4 — conectar a conta Efí do bar sem sair da tela (só com a Efí ligada pro bar)

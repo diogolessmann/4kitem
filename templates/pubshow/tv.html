@@ -767,6 +767,10 @@ let _palcoAtivo     = false;   // cena na tela (player parado): nada mais carreg
 let _momentoPend    = null;    // o momento que o /api/status mandou e ainda não passou (1 por intervalo)
 let _momentoDesde   = 0;       // quando esta TV viu ele pela 1ª vez (D3: espera máxima de 5 min na rotação)
 const MOMENTO_ESPERA_MAX_MS = 5 * 60 * 1000;
+// ⏸️ 25/10/26 (Garage: "cantaram parabéns e não tem pause"): música pausada pelo dono (painel → /api/status)
+let _pausaBar       = false;   // pausada: o player fica parado; fila, cena e slide esperam
+let _pausaPend      = null;    // o passo que ia acontecer (próxima música / cena) e roda quando voltar
+let _pausaAteLocal  = 0;       // rede caiu? a TV volta sozinha no mesmo prazo do servidor (+5 s)
 // 24/10/26 (momentos no telão, visual): o preço de cada momento no canto do QR = o MESMO texto do cardápio do celular
 // ("R$ 6", "R$ 12,90"); o /api/status manda de novo (o dono muda o preço com a TV aberta). TV antiga ignora.
 let PRECOS_CANTO = {{ (precos_canto or {})|tojson }};
@@ -906,7 +910,7 @@ function ligarTV() {
       _aplicarSomDoVideo();   // 🔇 o toque libera o som; vídeo sem música com o interruptor ligado volta a ficar mudo
       // 16/10/26: a tentativa de som sozinha pode ter deixado o vídeo PAUSADO pelo Chrome; o toque retoma
       // (menos no slide do bar e no palco dos momentos, que param o vídeo de propósito)
-      if (!document.getElementById('slide-propaganda').classList.contains('show') && !_palcoAtivo && player.getPlayerState() !== 1) {
+      if (!document.getElementById('slide-propaganda').classList.contains('show') && !_palcoAtivo && !_pausaBar && player.getPlayerState() !== 1) {
         player.playVideo();
       }
     }
@@ -929,10 +933,13 @@ function _furarFilaQueEsperava() {
 // ou o player voltou mudo = não deixou. Ainda carregando: confere de novo até ~8 s.
 const PRAZO_SOM_MS = 8000;
 function _tentarSomSozinho() {
-  const ini = Date.now();
+  let ini = Date.now();
   let tirouMudoEm = 0;
   const confere = () => {
     if (!_isMuted) { _testandoSom = false; return; }   // alguém já tocou na TV
+    // ⏸️ 25/10/26: recarregou com a música pausada pelo dono → o player parado de propósito não é "o Chrome não
+    // deixou o som"; o teste espera o ▶️ Voltar (senão a TV voltava MUDA depois da pausa)
+    if (_pausaBar) { ini = Date.now(); if (tirouMudoEm) tirouMudoEm = Date.now(); setTimeout(confere, 500); return; }
     let mudo = true, estado = -1;
     try { mudo = player.isMuted(); estado = player.getPlayerState(); } catch(e) { return; }
     if (!tirouMudoEm) {
@@ -1110,6 +1117,12 @@ function onPlayerStateChange(e) {
     if (e.data === 1) { try { player.pauseVideo(); } catch(_e) {} }
     return;
   }
+  // ⏸️ 25/10/26: pausada pelo dono → o que tentar tocar (vídeo que já carregava, toque no LIGAR) fica parado
+  if ((e.data === 1 || e.data === 3) && _pausaBar) {
+    clearTimeout(stallTimer);
+    if (e.data === 1) { try { player.pauseVideo(); } catch(_e) {} }
+    return;
+  }
   // YT.PlayerState.PLAYING = 1 — vídeo tocando, cancela detector de stall
   if (e.data === 1) {
     clearTimeout(stallTimer);
@@ -1149,7 +1162,7 @@ function iniciarStallDetector(delayMs) {
   const delay = delayMs || 2500;
   clearTimeout(stallTimer);
   stallTimer = setTimeout(() => {
-    if (!player || _palcoAtivo) return;   // 24/10/26 (revisão TV-2): no palco o player está parado de propósito
+    if (!player || _palcoAtivo || _pausaBar) return;   // 24/10/26 (revisão TV-2) / ⏸️ 25/10/26: parado de propósito
     const state = player.getPlayerState();
     // -1=unstarted, 2=paused/indisponível, 5=cued — não começou a tocar
     if (state === -1 || state === 2 || state === 5) {
@@ -1190,10 +1203,37 @@ function pularMusicaAgora() {
   avancarFila();
 }
 
+// ⏸️ 25/10/26 (Garage: "cantaram parabéns e não tem pause"): o dono pausa pelo painel e a TV vê no poll (~2,5 s). Pausada:
+// o player para; a fila, a cena e o slide esperam (_pausaPend guarda o passo seguinte); a coluna diz "⏸️ Pausado pelo
+// bar" (nada por cima do clipe, nenhum som). Voltou: roda o passo guardado, ou a música continua de onde parou.
+function _pausaAplicar(pausada, restaS) {
+  if (pausada) {
+    _pausaAteLocal = Date.now() + (Math.max(0, +restaS || 0) + 5) * 1000;
+    if (_pausaBar) return;
+    _pausaBar = true;
+    clearTimeout(stallTimer);
+    clearTimeout(proximoTimer);
+    try { const st = player && player.getPlayerState ? player.getPlayerState() : 0; if (st === 1 || st === 3) player.pauseVideo(); } catch(e) {}
+    _avisosAtualizar();
+    return;
+  }
+  if (!_pausaBar) return;
+  _pausaBar = false;
+  _pausaAteLocal = 0;
+  _avisosAtualizar();
+  const pend = _pausaPend;
+  _pausaPend = null;
+  if (pend) { pend(); return; }
+  if (_palcoAtivo || document.getElementById('slide-propaganda').classList.contains('show')) return;
+  try { const st = player.getPlayerState(); if (st !== 1 && st !== 0) player.playVideo(); } catch(e) {}
+}
+setInterval(() => { if (_pausaBar && _pausaAteLocal && Date.now() > _pausaAteLocal) _pausaAplicar(false); }, 1000);
+
 // ── Lógica de avanço com fila ─────────────────────────────────────────────────
 // opts.semSlide: fim de slide / pulo por erro → sem pedido, vai direto pro próximo vídeo (não conta pro slide)
 async function avancarFila(opts) {
   if (_palcoAtivo) return;   // 24/10/26 (momentos no telão): o fim da cena chama de novo (nada carrega embaixo dela)
+  if (_pausaBar) { _pausaPend = () => avancarFila(opts); return; }   // ⏸️ 25/10/26: a fila espera o ▶️ Voltar
   const seq = ++_avancoSeq;
   // Furar a fila ou "pular" no meio do slide: o slide sai e o timer dele não troca a música depois (TV-07)
   clearTimeout(window._slideTimer);
@@ -1213,6 +1253,7 @@ async function avancarFila(opts) {
       }
     } catch(_e) { /* silencioso — fallback para próximo vídeo da biblioteca */ }
     if (seq !== _avancoSeq || _palcoAtivo) return;
+    if (_pausaBar) { _pausaPend = () => avancarFila(opts); return; }   // ⏸️ pausou enquanto o servidor respondia
   }
 
   // TV muda não gasta pedido (16/10/26, TV-03): segue a biblioteca até alguém tocar na TV
@@ -1240,6 +1281,8 @@ async function avancarFila(opts) {
 
 // 🎯 Música específica — toca o vídeo exato pedido pelo cliente
 function _tocarPedido(p) {
+  // ⏸️ 25/10/26: pausou durante a vinheta do ⚡ furar → o clipe pedido nem carrega (nenhum som escapa); entra no ▶️ Voltar
+  if (_pausaBar) { _pausaPend = () => _tocarPedido(p); return; }
   _pedidoYtId  = p.youtube_id; // flag para stall detector não marcar vídeos como ruins
   _tocandoPago = _ehPago(p);
   _tocandoPedido = true;
@@ -1474,7 +1517,7 @@ function _filaTick() {
   }   // duração inválida: a barra fica parada
   const r = Math.round(rest || 0);
   document.getElementById('ft-rest').textContent = ok ? `${Math.floor(r / 60)}:${String(r % 60).padStart(2, '0')}` : '--:--';
-  document.getElementById('ft-ico').textContent = _videoSemSom() ? '⚽' : '▶';
+  document.getElementById('ft-ico').textContent = _pausaBar ? '⏸' : (_videoSemSom() ? '⚽' : '▶');
   const l1 = document.querySelector('#ft-linhas .ft-item');
   if (l1) l1.classList.toggle('vez', ok && rest <= 20);
   const base = ok ? rest : 120;
@@ -1577,6 +1620,7 @@ function mostrarOverlay(pedido, depois) {
 // seguinte). Teto: 1 momento (≤ 16 s) + a vinheta do furar (4 s) = 20 s de player parado. TV muda não gasta nada.
 function _intervalo(opts) {
   if (_palcoAtivo) return;
+  if (_pausaBar) { _pausaPend = () => _intervalo(opts); return; }   // ⏸️ 25/10/26: cena e próxima música esperam
   const p = _momentoPend;
   if (p && _somLigado() && !_consumidos.has(p.id)) {
     mostrarCena(p, () => {
@@ -1599,7 +1643,7 @@ function _momentoAtualizar(p) {
   _avisosAtualizar();
   // revisão TV-3: chegou com o slide do bar na tela (player já parado): o slide sai na hora e a cena entra, em vez de
   // somar os 8 s do slide à cena (e à vinheta do furar) — o slide é nosso, o momento tem prioridade (SPEC 2)
-  if (_momentoPend && !_palcoAtivo && document.getElementById('slide-propaganda').classList.contains('show')) {
+  if (_momentoPend && !_palcoAtivo && !_pausaBar && document.getElementById('slide-propaganda').classList.contains('show')) {
     clearTimeout(window._slideTimer);
     _esconderSlide();
     _intervalo({semSlide: true});
@@ -1609,7 +1653,7 @@ function _momentoAtualizar(p) {
 // D3: momento esperando 5 min e o que toca é vídeo da ROTAÇÃO → encerra o vídeo e vai pro intervalo.
 // Pedido de cliente (pago ou grátis) nunca é cortado pelo momento; slide e palco já são intervalo.
 function _esperaMaxMomento() {
-  if (!_momentoPend || !_somLigado() || _palcoAtivo || _tocandoPedido || !player) return;
+  if (!_momentoPend || !_somLigado() || _palcoAtivo || _tocandoPedido || !player || _pausaBar) return;
   if (document.getElementById('slide-propaganda').classList.contains('show')) return;
   if (Date.now() - _momentoDesde < MOMENTO_ESPERA_MAX_MS) return;
   clearTimeout(stallTimer);
@@ -1633,7 +1677,8 @@ let _avisosAssin = '';
 function _avisosAtualizar() {
   const body = document.body, p = _momentoPend;
   const n = p ? String(p.nome_cliente || '').trim() : '';
-  const tm = (p && _somLigado() && !_palcoAtivo) ? (DEPOIS_DESTA[p.tipo] || (() => '✨ Depois desta: um momento na TV'))(n) : '';
+  let tm = (p && _somLigado() && !_palcoAtivo) ? (DEPOIS_DESTA[p.tipo] || (() => '✨ Depois desta: um momento na TV'))(n) : '';
+  if (_pausaBar) tm = '⏸️ Pausado pelo bar';   // 25/10/26: na coluna, nunca por cima do clipe
   const an = (window._filaUlt && Array.isArray(window._filaUlt.aniversariantes)) ? window._filaUlt.aniversariantes.slice(0, 3) : [];
   const tp = !an.length ? '' : (an.length === 1 ? `🎂 Aniversariante na casa: ${an[0]}`
     : `🎂 Aniversariantes na casa: ${an.slice(0, -1).join(', ')} e ${an[an.length - 1]}`);
@@ -2253,6 +2298,9 @@ async function pollStatus() {
       aplicarVolumeTV(data.tv_volume);
     }
 
+    // ⏸️ Pausar a música — comando do dono (botão no painel). Servidor antigo (sem o campo): nada muda
+    if (typeof data.musica_pausada === 'boolean') _pausaAplicar(data.musica_pausada, data.pausa_resta_s);
+
     // ⏭️ Pular música — comando do dono (botão no painel)
     if (typeof data.skip_seq === 'number') {
       if (window._lastSkipSeq === undefined) {
@@ -2266,7 +2314,7 @@ async function pollStatus() {
 
     // Troca de canal pelo dono do bar (sem reload). Com pedido tocando (TVP-1) espera ele acabar: a próxima
     // pergunta depois disso ainda vê o canal novo e troca
-    if (data.canal_atual && data.canal_atual !== window._canalAtual && !_pedidoTocandoAgora() && !_palcoAtivo) {
+    if (data.canal_atual && data.canal_atual !== window._canalAtual && !_pedidoTocandoAgora() && !_palcoAtivo && !_pausaBar) {
       trocarCanal(data.canal_atual);
     }
 

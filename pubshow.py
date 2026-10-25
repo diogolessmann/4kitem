@@ -4437,6 +4437,9 @@ def api_status(code):
         'aguardando_pix': aguardando_pix,
         'promo':          promo,
         'skip_seq':       b['skip_seq'] or 0,
+        # ⏸️ 25/10/26: música pausada pelo dono (a TV antiga ignora). Não é o 'pausado' da Efí (esse tira a TV do ar)
+        'musica_pausada': _pausa_resta_s(b) > 0,
+        'pausa_resta_s':  _pausa_resta_s(b),
         'tv_volume':      b['tv_volume'] if b['tv_volume'] is not None else 100,
         'videos_version': _videos_version(),
         'tv_version':     _tv_version(b),
@@ -5624,6 +5627,7 @@ def painel():
                            ultimo_repasse=ultimo_repasse,           # aba 💰 Dinheiro ("quando cai na sua conta")
                            repasse_pedido=repasse_pedido,           # aba 💰 Dinheiro: "Pedir meu repasse" no WhatsApp
                            gratis_min=GRATIS_INTERVALO_MIN,         # aba ✨ Pedidos: "1 música grátis a cada N min"
+                           pausa_resta_s=_pausa_resta_s(bd),        # ⏸️ 25/10/26: o botão abre já no estado da TV
                            eleicao=_janela_eleitoral(),             # 18/10/26: 🛡️ "todo recado passa por aqui" (24-25/10)
                            taxa_gorjeta=_taxa_pix_bar(bd, 'gorjeta'),   # o selo da gorjeta = o que o cliente paga
                            # 🔇 modo esporte (outra sessão): a chave só aparece com a coluna E a rota no ar juntas
@@ -7321,6 +7325,49 @@ def painel_pular_musica():
     conn.commit(); conn.close()
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
         return jsonify({'ok': True})
+    return redirect('/pubshow/painel')
+
+
+# ⏸️ 25/10/26 (Garage: "cantaram parabéns e não tem pause"): o dono pausa a música da TV pelo painel. O estado mora no
+# banco (pausa_ate, vale com mais de um processo); a TV lê no polling do /api/status (~2,5 s), pausa o player e a fila,
+# a cena e o slide esperam. Volta SOZINHA em PAUSA_MUSICA_MIN (ninguém esquece o bar mudo a noite toda).
+PAUSA_MUSICA_MIN = 5
+
+
+def _pausa_resta_s(b) -> int:
+    """Segundos que faltam pra música voltar sozinha (0 = tocando). Banco sem a coluna = 0."""
+    try:
+        ate = b['pausa_ate']
+    except (KeyError, IndexError):
+        return 0
+    if not ate:
+        return 0
+    try:
+        return max(0, int((datetime.fromisoformat(str(ate)[:19]) - datetime.now()).total_seconds()))
+    except Exception:
+        return 0
+
+
+@pubshow_bp.route('/painel/pausar-musica', methods=['POST'])
+@pubshow_login_required
+def painel_pausar_musica():
+    """⏸️/▶️ do dono: acao=pausar (já pausada: mantém o prazo, toque duplo não estica) ou acao=voltar."""
+    b = _get_business()
+    if not b:
+        return redirect('/pubshow/entrar')
+    acao = (request.form.get('acao') or '').strip()
+    conn = get_pubshow_db()
+    if acao == 'voltar':
+        conn.execute('UPDATE pubshow_businesses SET pausa_ate=NULL WHERE id=?', (b['id'],))
+    elif _pausa_resta_s(b) <= 0:
+        ate = (datetime.now() + timedelta(minutes=PAUSA_MUSICA_MIN)).strftime('%Y-%m-%dT%H:%M:%S')
+        conn.execute('UPDATE pubshow_businesses SET pausa_ate=? WHERE id=?', (ate, b['id']))
+    conn.commit()
+    b2 = conn.execute('SELECT pausa_ate FROM pubshow_businesses WHERE id=?', (b['id'],)).fetchone()
+    conn.close()
+    resta = _pausa_resta_s(b2)
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return jsonify({'ok': True, 'pausada': resta > 0, 'resta_s': resta})
     return redirect('/pubshow/painel')
 
 

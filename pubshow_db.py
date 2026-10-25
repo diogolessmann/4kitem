@@ -188,6 +188,9 @@ def init_pubshow_db():
         # Botão do dono "pular música agora" — contador incremental; a TV pula
         # quando vê que subiu (comando via polling do /api/status).
         'ALTER TABLE pubshow_businesses ADD COLUMN skip_seq INTEGER DEFAULT 0',
+        # ⏸️ 25/10/26 (Garage: "cantaram parabéns e não tem pause"): até quando a música da TV fica pausada pelo dono
+        # (hora do servidor, como o promo_expira). NULL ou passada = tocando. A TV lê no /api/status.
+        'ALTER TABLE pubshow_businesses ADD COLUMN pausa_ate TEXT DEFAULT NULL',
         'ALTER TABLE pubshow_businesses ADD COLUMN tv_volume INTEGER DEFAULT 100',
         # 🔇 17/10/26 (Diogo): "Vídeo sem música → sem som" — TV muda nos canais que não são de música (desligado)
         'ALTER TABLE pubshow_businesses ADD COLUMN tv_mudo_sem_musica INTEGER DEFAULT 0',
