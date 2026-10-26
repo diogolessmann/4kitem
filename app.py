@@ -6806,7 +6806,7 @@ def saas_pubshow_reseed():
 _PS_CATS    = ('musicas', 'furar', 'momentos', 'gorjetas')
 _PS_JANELAS = ('hoje', 'd7', 'mes', 'total')
 _PS_CAT_SQL = ("CASE WHEN tipo IN ('musica','musica_especifica','musica_externa') THEN 'musicas' "
-               "WHEN tipo IN ('flash','vip') THEN 'furar' "          # vip = 'Tocar AGORA' antigo (oculto)
+               "WHEN tipo IN ('flash','vip','pular_espera') THEN 'furar' "   # vip = 'Tocar AGORA' antigo (oculto); ⏩ (25/10/26)
                "WHEN tipo='gorjeta' THEN 'gorjetas' ELSE 'momentos' END")
 _PS_PAGO_SQL = ("(pago_em IS NOT NULL "
                 "AND (COALESCE(asaas_payment_id,'')<>'' OR COALESCE(efi_txid,'')<>'' OR COALESCE(via_gateway,0)=1) "
