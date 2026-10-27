@@ -4603,7 +4603,8 @@ def api_pedido_status(token, pedido_id):
                    AND (TRIM(COALESCE(p.asaas_payment_id,''))<>'' OR TRIM(COALESCE(p.efi_txid,''))<>'')
                    AND p.repasse_manual_id IS NULL
                    -- 27/10/26 (revisão da fila, A): a prova do _SQL_PIX_PROVA (o banco disse não pago/devolvido: não promete)
-                   AND (p.pix_conferido IS NULL OR p.pix_conferido IN ('RECEIVED','CONFIRMED','EFI:CONCLUIDA'))) AS pix_volta,
+                   AND (p.pix_conferido IS NULL OR p.pix_conferido IN ('HISTORICO','ADMIN','RECEIVED','CONFIRMED','EFI:CONCLUIDA')
+                        OR p.pix_conferido LIKE 'ERRO%')) AS pix_volta,
                   COALESCE(p.valor_cobrado, p.valor, 0) AS valor_cli,
                   (p.created_at >= datetime('now','-20 minutes')) AS efi_recente FROM pubshow_pedidos p
            JOIN pubshow_businesses b ON p.business_id = b.id
@@ -7455,12 +7456,13 @@ def painel_qrcode():
 # 'dispensado', como antes (o log registra). O grátis segue 'dispensado'.
 # 27/10/26 (conferente do dinheiro, risco 1): o pedido que já entrou num repasse (o bar já recebeu) NÃO volta como
 # "PIX a devolver" (o Diogo pagaria 2 vezes): fica 'dispensado', como antes.
-# 27/10/26 (revisão da fila, A): a MESMA prova de pagamento do _repasse_where_pago (pix_conferido vazio = pago_em de uma
-# confirmação; ou conferido no gateway: _ASAAS_STATUS_PAGO + 'EFI:CONCLUIDA'). O que a conferência dos Repasses já
-# marcou como NÃO pago ou JÁ devolvido (REFUNDED, PENDING, OVERDUE, EFI:DEVOLVIDO, NAO_ACHADO, ID_INVALIDO, ERRO…, e o
-# HISTORICO/ADMIN ainda sem conferir) fica 'dispensado', como antes do pacote, e o celular não promete o PIX.
-# Mudou o _ASAAS_STATUS_PAGO? Muda aqui também (o t_dinheiro_fila_25out confere os dois).
-_SQL_PIX_PROVA = "(pix_conferido IS NULL OR pix_conferido IN ('RECEIVED','CONFIRMED','EFI:CONCLUIDA'))"
+# 27/10/26 (revisão da fila, A + verificador): fica de fora SÓ o que a conferência já marcou como NÃO pago ou JÁ
+# devolvido (REFUNDED, PENDING, OVERDUE, EFI:DEVOLVIDO, NAO_ACHADO, ID_INVALIDO…): vira 'dispensado', como antes do
+# pacote, e o celular não promete o PIX. O pago ainda SEM conferir (vazio, ADMIN do "PIX caiu", HISTORICO, ERRO…) entra
+# no "PIX a devolver": é o mesmo filtro do caixa (somar_pagos). Se ficasse 'dispensado', a conferência dos Repasses o
+# confirmaria depois e o dinheiro iria pro bar, de música que não tocou.
+_SQL_PIX_PROVA = ("(pix_conferido IS NULL OR pix_conferido IN ('HISTORICO','ADMIN','RECEIVED','CONFIRMED','EFI:CONCLUIDA') "
+                  "OR pix_conferido LIKE 'ERRO%')")
 _SQL_PIX_VOLTA = ("(TRIM(COALESCE(pago_em,''))<>'' AND (TRIM(COALESCE(asaas_payment_id,''))<>'' "
                   "OR TRIM(COALESCE(efi_txid,''))<>'') AND repasse_manual_id IS NULL AND " + _SQL_PIX_PROVA + ")")
 
