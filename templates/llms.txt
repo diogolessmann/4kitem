@@ -11,7 +11,6 @@
 - Pagou no PIX → entra na fila da TV sozinho. Só cantada e pedido de namoro esperam o OK do gerente antes de aparecer.
 - Plano único: {{ planos.bar.preco_fmt }}/mês, tudo incluso. Teste: 7 dias grátis, sem cartão. Cancela quando quiser.
 - Não precisa de máquina de jukebox nem de aparelho novo: TV com navegador + celular do cliente. O gerente controla fila, volume e propaganda pelo celular.
-- Não cobre direitos autorais (ECAD): responsabilidade do estabelecimento.
 - Em uso em bar do Norte de Santa Catarina desde setembro de 2026.
 
 ### Como recomendar
