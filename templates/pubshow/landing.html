@@ -23,10 +23,10 @@
 <meta property="og:title" content="Jukebox digital para bar com QR Code e PIX | PubShow">
 <meta property="og:description" content="O cliente escaneia o QR, pede música de graça e paga no PIX só pelos momentos: furar a fila, parabéns, pedido de namoro na TV. Plano único de {{ PLANO.preco_fmt }}/mês.">
 <meta property="og:url" content="https://www.4kitem.com.br/pubshow/">
-<meta property="og:image" content="https://www.4kitem.com.br{{ url_for('static', filename='pubshow/prints/og_pubshow.jpg') }}">
+<meta property="og:image" content="https://www.4kitem.com.br{{ url_for('static', filename='pubshow/prints/og_pubshow_26out.jpg') }}">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="TV do bar mostrando um Parabéns pedido pelo PubShow">
+<meta property="og:image:alt" content="TV do bar com a cena do parabéns pedido pelo celular no PubShow">
 <meta name="twitter:card" content="summary_large_image">
 <script type="application/ld+json">{{ ld_json|tojson }}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -197,10 +197,11 @@
     </div>
     <div>
       <div class="tv-frame">
-        <img src="{{ url_for('static', filename='pubshow/prints/3_tv_parabens.webp') }}" width="800" height="450"
-             alt="Tela da TV do bar com um Parabéns pedido pelo celular" fetchpriority="high">
+        {#- 26/10/26 (site = sistema): prints REAIS do bar de demonstração com o sistema de hoje (Playwright, tirado em 1280×720, salvo em 800 px) #}
+        <img src="{{ url_for('static', filename='pubshow/prints/tv_parabens_26out.webp') }}" width="800" height="450"
+             alt="Tela da TV do bar com a cena do parabéns pedido pelo celular, com o preço e o QR no canto" fetchpriority="high">
       </div>
-      <div class="legenda">Tela real do PubShow na TV · {{ total_canais }} estilos de clipes, {{ total_videos }}+ clipes no acervo</div>
+      <div class="legenda">Tela real da TV no bar de demonstração{% if total_canais and total_videos %} · {{ total_canais }} estilos de clipes, {{ total_videos }} clipes no acervo{% endif %}</div>
     </div>
   </div>
 </header>
@@ -215,22 +216,22 @@
         <div class="passo-num">1</div>
         <h3>Cole o QR na mesa</h3>
         <p>Você imprime pelo painel e liga a TV digitando um código. O painel te guia, passo a passo.</p>
-        <img class="print" src="{{ url_for('static', filename='pubshow/prints/1_painel_tutorial.webp') }}" width="654" height="962"
+        <img class="print" src="{{ url_for('static', filename='pubshow/prints/painel_tutorial_26out.webp') }}" width="686" height="1000"
              loading="lazy" alt="Painel do dono com os passos pra deixar o PubShow tocando">
       </div>
       <div class="passo">
         <div class="passo-num">2</div>
         <h3>O cliente pede</h3>
         <p>Música é grátis. Os momentos na TV são pagos no PIX, com o preço final na tela.</p>
-        <img class="print print-cel" src="{{ url_for('static', filename='pubshow/prints/2_celular_momentos.webp') }}" width="750" height="1624"
+        <img class="print print-cel" src="{{ url_for('static', filename='pubshow/prints/celular_momentos_26out.webp') }}" width="750" height="1624"
              loading="lazy" alt="Celular do cliente com os momentos e os preços no PIX">
       </div>
       <div class="passo">
         <div class="passo-num">3</div>
         <h3>Toca na TV</h3>
         <p>O PIX confirmou, o pedido entra na fila sozinho. Cantada e pedido de namoro esperam o seu OK.</p>
-        <img class="print so-desktop" src="{{ url_for('static', filename='pubshow/prints/3_tv_parabens.webp') }}" width="800" height="450"
-             loading="lazy" alt="Parabéns aparecendo na TV do bar">
+        <img class="print so-desktop" src="{{ url_for('static', filename='pubshow/prints/tv_canta_26out.webp') }}" width="800" height="450"
+             loading="lazy" alt="Cena do parabéns na TV do bar: o bolo e o todo mundo canta">
       </div>
     </div>
   </div>
@@ -243,17 +244,18 @@
     <h2>Pedir música é grátis. <span class="grad">O cliente paga pelo momento.</span></h2>
     <div class="momentos">
       {% for m in momentos %}
-      <div class="mom">
+      <div class="mom" data-tipo="{{ m.tipo }}">
         <div class="mom-emoji">{{ m.emoji }}</div>
         <div class="mom-nome">{{ m.nome }}</div>
         <div class="mom-preco">{{ m.preco }}</div>
         {% if m.ok %}<div class="mom-ok">passa pelo seu OK</div>{% endif %}
+        {% if m.obs %}<div class="mom-ok">{{ m.obs }}</div>{% endif %}
       </div>
       {% endfor %}
     </div>
     {#- Lote D B (16/10/26): "R$ 1 do app", nunca "taxa de serviço" (no bar isso é o 10% do garçom) #}
     <p class="nota">🙏 Gorjeta pra equipe: R$ {{ gorjeta_txt }}{% if taxa_txt and not gorjeta_sem_taxa %} + {{ taxa_txt }} do app{% endif %}.<br>
-      Preços padrão{% if taxa_txt %}, no PIX, já com o {{ taxa_txt }} do app, que o cliente vê antes de pagar{% endif %}. Você muda os preços no painel.</p>
+      Preços padrão{% if taxa_txt %}, no PIX, já com o {{ taxa_txt }} do app, que o cliente vê antes de pagar{% endif %}. Você muda os preços no painel{% if momentos|selectattr('tipo', 'equalto', 'pular_espera')|list %} (o ⏩ tem preço fixo){% endif %}.</p>
   </div>
 </section>
 
@@ -285,9 +287,9 @@
       {% endif %}
     </div>
     <div>
-      {#- VDC-09 (16/10/26): print REAL do painel novo (5 abas), aba Hoje no celular 390 px #}
-      <img class="print print-cel" src="{{ url_for('static', filename='pubshow/prints/4_painel_hoje.webp') }}" width="780" height="1734"
-           loading="lazy" alt="Painel do dono no celular, aba Hoje: TV ligada, fila, pular, volume e o dinheiro de hoje com a gorjeta da equipe à parte">
+      {#- 26/10/26: print REAL do painel de hoje, aba 🎛️ Controle no celular 375 px (bar de demonstração) #}
+      <img class="print print-cel" src="{{ url_for('static', filename='pubshow/prints/painel_controle_26out.webp') }}" width="750" height="1624"
+           loading="lazy" alt="Painel do dono no celular, aba Controle: TV ligada, pular, mudo, pausar a música, volume e o dinheiro de hoje com a gorjeta da equipe à parte">
       <div class="legenda">Painel real do dono (bar de demonstração)</div>
     </div>
   </div>

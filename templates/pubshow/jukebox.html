@@ -1388,7 +1388,7 @@ function _pintarCartao() {
   let cena = '', pre = '', n = '', sub = '', txt = '';
   if (key === 'parabens') {
     cena = 'parabens'; pre = '🎂 hoje é dia de'; n = nome || 'NOME';
-    // revisão CEL-5: o pino da coluna guarda até 3 nomes por 8 h; não promete "até o bar fechar"
+    // revisão CEL-5: o pino da coluna guarda até 3 nomes por ANIVERSARIO_PINO_H (1 h desde 26/10/26); não promete "até o bar fechar"
     // 24/10/26 (momentos no telão, visual): o parabéns da TV não tem 3, 2, 1 (o bar canta com o bolo aceso)
     txt = 'A música para, o nome entra na TV inteira com o bolo aceso e o bar todo canta junto. Depois, o nome fica na coluna da TV.';
   } else if (key === 'brinde') {

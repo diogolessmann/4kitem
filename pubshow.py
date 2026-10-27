@@ -2832,12 +2832,55 @@ def _texto_fundador(vagas: int) -> str:
             + ('Resta 1 vaga.' if vagas == 1 else f'Restam {vagas} vagas.'))
 
 
+# ── 26/10/26 (site = sistema, pedido do Diogo): a tabela de preços do site é o celular de um bar NOVO ───────────────
+SITE_MOMENTOS = ('flash', 'pular_espera', 'parabens', 'dedicatoria', 'casamento', 'cantada', 'salve', 'brinde',
+                 'chegada')
+
+
+def _site_bar_novo():
+    """O bar que acabou de se cadastrar: sem preço próprio e sem conta Efí aceita (id 0 nunca existe no banco). O code
+    vazio só entra na lista da Efí com '*' (aí é ponte); fora dela é Asaas ou PIX manual: o caminho do 1º PIX dele."""
+    return {'id': 0, 'code': '', 'precos_custom': '{}', 'happy_hour_json': None}
+
+
+def site_precos() -> dict:
+    """{'taxa': float, 'momentos': [...]}: o que o site (landing e llms.txt) diz dos preços, pelas MESMAS funções do
+    celular de um bar novo (_precos_do_bar, _taxa_pix_bar, _pular_espera_para). Preço = item + o R$ 1 do app, o número
+    que o celular mostra. O ⏩ Pular a espera só entra quando o bar novo tem ele (ponte/split Efí; no Asaas não existe).
+    Site do modelo novo (split): os preços da tabela + a taxa do split (_site_novo_regras), como já era."""
+    try:
+        if _site_modelo_novo():
+            taxa = _site_novo_regras()['taxa']
+            precos, tem_pular = TIPOS_PEDIDO, GRATIS_INTERVALO_MIN > 0
+        else:
+            b = _site_bar_novo()
+            precos, taxa, tem_pular = _precos_do_bar(b)[0], _taxa_pix_bar(b), _pular_espera_para(b)
+    except Exception as ex:   # nunca derruba o site: cai na tabela padrão do Asaas (a de antes)
+        log.warning('[PUBSHOW] preços do site pelo bar novo falharam: %s', ex)
+        precos, tem_pular = TIPOS_PEDIDO, False
+        taxa = PIX_TAXA_CONVENIENCIA if os.environ.get('ASAAS_API_KEY') else 0.0
+    momentos = []
+    for k in SITE_MOMENTOS:
+        if k == 'pular_espera' and not tem_pular:
+            continue
+        t = precos[k]
+        total = round(float(t['preco']) + taxa, 2)
+        momentos.append({'tipo': k, 'emoji': t['emoji'], 'valor': total, 'preco': _reais_curto(total),
+                         'nome': re.sub(r'\s*[^\w\s!?.,-]+$', '', t['nome']).strip(), 'ok': bool(t.get('ok')),
+                         'obs': 'sem esperar a vez da grátis' if k == 'pular_espera' else ''})
+    return {'taxa': taxa, 'momentos': momentos}
+
+
+@pubshow_bp.app_template_global('pubshow_site_precos')
+def _pubshow_site_precos_global():
+    """26/10/26: o llms.txt (rota do app.py) lê a MESMA tabela da landing, sem mexer no app.py."""
+    return site_precos()
+
+
 def taxa_app_txt() -> str:
-    """Lote D B (16/10/26): o "R$ 1 do app" que o site diz (llms.txt), pela MESMA regra da landing: só com o PIX
-    automático ligado (ASAAS_API_KEY) ou o site do modelo novo (a do pubshow_pay). '' = não fala de valor a mais."""
-    taxa = PIX_TAXA_CONVENIENCIA if os.environ.get('ASAAS_API_KEY') else 0.0
-    if _site_modelo_novo():
-        taxa = _site_novo_regras()['taxa']
+    """Lote D B (16/10/26): o "R$ 1 do app" que o site diz (llms.txt), pela MESMA regra da landing.
+    26/10/26: a do celular de um bar novo (site_precos); '' = não fala de valor a mais."""
+    taxa = site_precos()['taxa']
     return _reais_curto(taxa) if taxa > 0 else ''
 
 
@@ -2846,8 +2889,9 @@ def _site_faq(taxa_txt: str, modelo_novo: bool, fundador: str = '') -> list:
     preco = PLANO['preco_fmt']
     musica = ('Não. Música é grátis: escolhida na lista do bar ou buscada entre todas as músicas do estilo (se o bar liberar). '
               'O cliente paga só pelos momentos na TV.')
-    ecad = ('O PubShow toca clipes públicos do YouTube. A licença de música ambiente do ECAD é do '
-            'estabelecimento, como já é com rádio ou som ambiente.')
+    # 26/10/26 (Diogo): nenhum texto que o bar ou o cliente vê fala o nome da plataforma dos vídeos
+    ecad = ('Os clipes são vídeos musicais públicos da internet: o PubShow não licencia música. A licença de '
+            'execução pública (ECAD) é do próprio bar, como já acontece com rádio e TV ambiente.')
     instalar = ('Não. A TV abre um link no navegador (Smart TV, Chromecast ou notebook). '
                 'O cliente usa a câmera do celular, sem baixar app.')
     if modelo_novo:
@@ -2919,23 +2963,22 @@ def index():
     """Landing em 7 blocos (S6/B11, 16/10/26): preço, taxa, FAQ e JSON-LD saem do código, nunca à mão."""
     conn = get_pubshow_db()
     total_videos = conn.execute('SELECT COUNT(*) FROM pubshow_videos WHERE ativo=1').fetchone()[0]
-    total_canais  = len([k for k in CANAIS if k != 'variado'])   # Lote D C: o "Variado" é mistura, não estilo novo
+    # 26/10/26 (site = sistema): "N estilos" = os canais de 1 estilo só que TÊM clipe ativo no acervo. Antes era
+    # len(CANAIS) − Variado = 24, contando a mistura Sport Mix/Comédia e 10 canais vazios (o banco novo tem 13 com clipe)
+    _cats = {r[0] for r in conn.execute('SELECT DISTINCT categoria FROM pubshow_videos WHERE ativo=1')}
+    total_canais = len([k for k, c in CANAIS.items() if isinstance(c.get('cat'), str) and c['cat'] in _cats])
     conn.close()
     modelo_novo = _site_modelo_novo()
-    # o "R$ 1 do app" (era "taxa de serviço"): a mesma regra do celular (só existe com o PIX automático ligado)
-    taxa = PIX_TAXA_CONVENIENCIA if os.environ.get('ASAAS_API_KEY') else 0.0
+    # o "R$ 1 do app" (era "taxa de serviço") e os cards: o celular de um bar NOVO (site_precos, 26/10/26); no site do
+    # modelo novo a taxa é a do split (pubshow_pay), como já era
+    sp = site_precos()
+    taxa = sp['taxa']
     rg = _site_novo_regras() if modelo_novo else None
-    if modelo_novo:
-        taxa = rg['taxa']   # fatia b: no split a taxa é a do pubshow_pay (a mesma do celular Efí)
     # Lote D B (16/10/26): oferta de fundador só no site do modelo novo, com as vagas contadas no banco (some no 0)
     vagas = fundador_vagas() if modelo_novo else 0
     fundador = _texto_fundador(vagas)
     taxa_txt = _reais_curto(taxa) if taxa > 0 else ''
-    momentos = []
-    for k in ('flash', 'parabens', 'dedicatoria', 'casamento', 'cantada', 'salve', 'brinde', 'chegada'):
-        t = TIPOS_PEDIDO[k]
-        momentos.append({'emoji': t['emoji'], 'nome': re.sub(r'\s*[^\w\s!?.,-]+$', '', t['nome']).strip(),
-                         'preco': _reais_curto(t['preco'] + taxa), 'ok': bool(t.get('ok'))})
+    momentos = sp['momentos']
     faq = _site_faq(taxa_txt, modelo_novo, fundador)
     # V6-05: bar logado que já paga vê "Seu plano está ativo → Painel", não "Assinar" de novo
     _b = _get_business()
@@ -4194,13 +4237,13 @@ def _pedido_para_tv(row):
 # ── 24/10/26 (momentos no telão): trava do brinde e pino do aniversariante ─────────────────────────────────────────
 # O exibido_at é gravado no horário de Brasília (now -3 h), como no /api/pedido-exibido.
 BRINDE_INTERVALO_MIN = 15    # D8: 1 brinde a cada 15 min por bar (o 2º espera; o celular avisa a hora antes do PIX)
-ANIVERSARIO_PINO_H = 8       # D7: "🎂 Aniversariante na casa" o resto da noite
+ANIVERSARIO_PINO_H = 1       # D7: "🎂 Aniversariante na casa" por 1 h (26/10/26: 8 h ficou a noite toda no Garage e o bar leu como TV travada)
 ANIVERSARIO_PINO_MAX = 3
 MUSICA_MIN_EST = 4           # ~4 min por música (a mesma conta do /api/fila-info e do /api/pedido-status)
 
 
 def _aniversariantes_do_bar(conn, bid):
-    """O 1º nome de cada parabéns EXIBIDO neste bar nas últimas 8 h (o nome_cliente do parabéns é o aniversariante),
+    """O 1º nome de cada parabéns EXIBIDO neste bar na última ANIVERSARIO_PINO_H hora (o nome_cliente é o aniversariante),
     sem repetir, os 3 mais recentes, na ordem em que passaram na TV. Nunca derruba o status."""
     try:
         rows = conn.execute(
