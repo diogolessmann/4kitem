@@ -2889,9 +2889,7 @@ def _site_faq(taxa_txt: str, modelo_novo: bool, fundador: str = '') -> list:
     preco = PLANO['preco_fmt']
     musica = ('Não. Música é grátis: escolhida na lista do bar ou buscada entre todas as músicas do estilo (se o bar liberar). '
               'O cliente paga só pelos momentos na TV.')
-    # 26/10/26 (Diogo): nenhum texto que o bar ou o cliente vê fala o nome da plataforma dos vídeos
-    ecad = ('Os clipes são vídeos musicais públicos da internet: o PubShow não licencia música. A licença de '
-            'execução pública (ECAD) é do próprio bar, como já acontece com rádio e TV ambiente.')
+    # 27/10/26 (Diogo: "desfaz, não coloca nada"): o site não tem mais a pergunta do direito autoral
     instalar = ('Não. A TV abre um link no navegador (Smart TV, Chromecast ou notebook). '
                 'O cliente usa a câmera do celular, sem baixar app.')
     if modelo_novo:
@@ -2919,7 +2917,6 @@ def _site_faq(taxa_txt: str, modelo_novo: bool, fundador: str = '') -> list:
                              + gorj_taxa),
             ('E se o jukebox render pouco?', render_pouco),
             ('Preciso instalar algo?', instalar),
-            ('E direito autoral?', ecad),
             ('Posso cancelar?', 'Sim, pelo painel, sem multa.'),
         ]
     faq = [
@@ -2941,7 +2938,6 @@ def _site_faq(taxa_txt: str, modelo_novo: bool, fundador: str = '') -> list:
                     + (' O bar não paga taxa por pedido.' if _sem_taxa_bar else '')))
     faq += [
         ('Preciso instalar algo?', instalar),
-        ('E direito autoral?', ecad),
         ('Posso cancelar?', 'Sim, pelo painel, sem multa. O jukebox fica ativo até o fim do mês já pago.'),
     ]
     return faq
@@ -5238,6 +5234,11 @@ def _yt_ranquear(lidos, q, top=YT_TOP):
 YT_API = 'https://www.googleapis.com/youtube/v3'
 YT_BUSCA_COTA_DIA = 100              # balde do search.list: chamadas por dia (padrão da Google)
 YT_BUSCA_TETO_PADRAO = 90            # para antes: sobra margem pro SaaS Admin e pra conta do dia fechar certa
+# 27/10/26 (pente fino S1): a cota é uma só pra todos os bares. Um token (o do QR da mesa, ou um bar recém-cadastrado)
+# não pode gastar o dia de todo mundo: teto por BAR no dia (env PUBSHOW_BUSCA_TETO_BAR) e por celular (IP) a cada
+# 10 min. Os dois só contam a busca que vai pra API: acervo e cache não gastam nada.
+YT_BUSCA_TETO_BAR_PADRAO = 40
+YT_BUSCA_MAX_IP, YT_BUSCA_JANELA_IP = 15, 10 * 60   # IP folgado: no Wi-Fi do bar todos dividem o mesmo IP
 YT_BUSCA_CACHE_DIAS = 7
 YT_BUSCA_MAX_RESULT = 20             # o search.list custa o mesmo pra 5 ou 50: 20 sobra pro filtro do estilo
 YT_ACERVO_BASTA = 3                  # ≥ 3 músicas do acervo com todas as palavras digitadas: nem gasta a cota
@@ -5281,16 +5282,36 @@ def _busca_cota_hoje(conn=None):
             conn.close()
 
 
-def _busca_cota_reservar(teto=None):
-    """Reserva 1 busca da cota de hoje (1 UPDATE só: 2 celulares juntos não passam do teto). False = no teto."""
+def _busca_teto_bar():
+    try:
+        return max(0, int(os.environ.get('PUBSHOW_BUSCA_TETO_BAR') or YT_BUSCA_TETO_BAR_PADRAO))
+    except ValueError:
+        return YT_BUSCA_TETO_BAR_PADRAO
+
+
+def _busca_cota_reservar(teto=None, bid=None):
+    """Reserva 1 busca da cota de hoje (1 UPDATE só: 2 celulares juntos não passam do teto). False = no teto.
+    27/10/26 (pente fino S1): com o bid, reserva também 1 do teto do BAR no dia, na mesma tabela (linha 'dia#bar<id>',
+    que a conta do dia não lê) e na mesma transação: o bar no teto levanta _BuscaIndisponivel('cota_bar'), e o dia no
+    teto desfaz a reserva do bar."""
     teto = _busca_teto() if teto is None else teto
     dia = _dia_pacifico()
     conn = get_pubshow_db()
     try:
+        if bid is not None:
+            dia_bar = f'{dia}#bar{int(bid)}'
+            conn.execute('INSERT OR IGNORE INTO pubshow_busca_cota (dia, buscas) VALUES (?, 0)', (dia_bar,))
+            if conn.execute('UPDATE pubshow_busca_cota SET buscas=buscas+1 WHERE dia=? AND buscas<?',
+                            (dia_bar, _busca_teto_bar())).rowcount != 1:
+                conn.rollback()
+                raise _BuscaIndisponivel('cota_bar')
         conn.execute('INSERT OR IGNORE INTO pubshow_busca_cota (dia, buscas) VALUES (?, 0)', (dia,))
         ok = conn.execute('UPDATE pubshow_busca_cota SET buscas=buscas+1 WHERE dia=? AND buscas<?',
                           (dia, teto)).rowcount == 1
-        conn.commit()
+        if ok:
+            conn.commit()
+        else:
+            conn.rollback()
         return ok
     finally:
         conn.close()
@@ -5434,10 +5455,11 @@ def _busca_chave(q):
     return _yt_norm(q) or ' '.join(str(q or '').lower().split())
 
 
-def _yt_buscar_oficial(q):
+def _yt_buscar_oficial(q, bid=None, ip=None):
     """Vídeos da busca livre (formato do ranking). Grátis primeiro: cache em memória (10 min) e no banco (7 dias); só
-    então a API oficial, gastando 1 busca da cota do dia. Levanta _BuscaIndisponivel (sem chave / cota) ou outro erro
-    (rede, resposta esquisita): o /api/buscar responde 503 e o celular fica na lista do bar."""
+    então a API oficial, gastando 1 busca da cota do dia (e, com bid/ip, do teto do bar e do celular: 27/10/26, S1).
+    Levanta _BuscaIndisponivel (sem chave / cota / teto) ou outro erro (rede, resposta esquisita): o /api/buscar
+    responde 503 e o celular fica na lista do bar."""
     chave = _busca_chave(q)
     agora = _time.time()
     hit = _YT_CACHE.get(chave)
@@ -5449,8 +5471,13 @@ def _yt_buscar_oficial(q):
         api_key = (os.environ.get('YOUTUBE_API_KEY') or '').strip()
         if not api_key:
             raise _BuscaIndisponivel('sem_chave')
-        if not _busca_cota_reservar():
+        _rl_ip = 'busca_api_ip:' + ip if ip else None
+        if _rl_ip and _rl_bloqueado(_rl_ip, max_n=YT_BUSCA_MAX_IP, janela=YT_BUSCA_JANELA_IP):
+            raise _BuscaIndisponivel('teto_celular')
+        if not _busca_cota_reservar(bid=bid):
             raise _BuscaIndisponivel('cota')
+        if _rl_ip:
+            _rl_falhou(_rl_ip)
         r = _yt_api_get('search', {'part': 'snippet', 'type': 'video', 'q': q, 'maxResults': YT_BUSCA_MAX_RESULT,
                                    'regionCode': 'BR', 'relevanceLanguage': 'pt', 'videoEmbeddable': 'true',
                                    'videoSyndicated': 'true'}, api_key)
@@ -5693,35 +5720,34 @@ def api_buscar():
     # Antes era pública e sem limite: um loop aqui (timeout 8 s) segurava o worker do 4kitem inteiro.
     # No Wi-Fi do bar todo mundo divide o IP (decisão 11/09/26), por isso o teto principal é do BAR.
     bar_token = request.args.get('bar', '').strip()
-    if not bar_token:
-        return jsonify({'resultados': [], 'error': 'não autorizado'}), 403
-    _cb = get_pubshow_db()
-    _bar = _cb.execute('SELECT id FROM pubshow_businesses WHERE jukebox_token=? OR code=? LIMIT 1',
-                       (bar_token, bar_token)).fetchone()
-    _cb.close()
-    if not _bar:
+    b = _bar_por_token(bar_token)   # 27/10/26 (pente fino S1): bar suspenso fica de fora, como no jukebox (403)
+    if not b:
         return jsonify({'resultados': [], 'error': 'não autorizado'}), 403
     q = request.args.get('q', '').strip()[:80]
     if not q or len(q) < 2:
         return jsonify({'resultados': []})
-    _chave_bar, _chave_ip = f'buscar_bar:{_bar["id"]}', 'buscar_ip:' + _ip_real()
+    # 27/10/26 (pente fino S1): busca livre só com o jukebox aberto e a busca ligada no bar. Antes, o token de um bar
+    # fechado ou com a busca desligada também gastava a cota do dia, que é de todos os bares.
+    if not _youtube_liberado(b) or not _jukebox_aberto(b)[0]:
+        return jsonify({'resultados': [], 'erro': 'youtube_fora', 'indisponivel': 'bar'}), 503
+    _ip = _ip_real()
+    _chave_bar, _chave_ip = f'buscar_bar:{b["id"]}', 'buscar_ip:' + _ip
     if _rl_bloqueado(_chave_bar, max_n=_BUSCAR_MAX_BAR, janela=60) or \
        _rl_bloqueado(_chave_ip, max_n=_BUSCAR_MAX_IP, janela=60):
         return jsonify({'resultados': [], 'error': 'Muitas buscas agora. Espera uns segundos e tenta de novo.'}), 429
     _rl_falhou(_chave_bar, _chave_ip)
-    b = _bar_por_token(bar_token)
     try:   # 26/10/26: o termo bate bem no acervo do bar → responde com ele e não gasta a cota da busca livre
         do_acervo = _acervo_basta(b, q)
     except Exception as e:
         log.warning('[PUBSHOW] acervo antes da busca falhou (segue pra busca livre): %s', e)
         do_acervo = None
     if do_acervo:
-        _yt_selos(_bar['id'], do_acervo)
+        _yt_selos(b['id'], do_acervo)
         return jsonify({'resultados': do_acervo, 'do_acervo': True})
     try:
-        lidos = _yt_buscar_oficial(q)
+        lidos = _yt_buscar_oficial(q, bid=b['id'], ip=_ip)
     except _BuscaIndisponivel as e:   # sem chave ou sem cota hoje: nunca cai pra busca interna
-        log.warning('[PUBSHOW] busca livre indisponível: %s', e)
+        log.warning('[PUBSHOW] busca livre indisponível (bar %s): %s', b['id'], e)   # 27/10/26: qual bar parou no teto
         return jsonify({'resultados': [], 'erro': 'youtube_fora', 'indisponivel': str(e)}), 503
     except Exception as e:
         log.error('Busca livre (API oficial) falhou: %s', e)
@@ -5739,7 +5765,7 @@ def api_buscar():
         except Exception:
             pass
         return jsonify({'resultados': [], 'erro': 'youtube_fora'}), 503
-    _ban = set(_videos_bloqueados(b)) if b else set()   # 26/10/26: o que o bar bloqueou nem aparece na busca
+    _ban = set(_videos_bloqueados(b))   # 26/10/26: o que o bar bloqueou nem aparece na busca
     if _ban:
         resultados = [c for c in resultados if c.get('id') not in _ban]
     _jan = _janela_eleitoral()   # 26/10/26: jingle nem aparece (a mesma regra do pedido, MSG_POLITICA_MUSICA)
@@ -5758,7 +5784,7 @@ def api_buscar():
         if not resultados:
             return jsonify({'resultados': [], 'nao_toca': True, 'msg': MSG_NAO_TOCA})
     if resultados:   # selos "já na fila" / "tocou há X min" do bar do token (já conferido acima)
-        _yt_selos(_bar['id'], resultados)
+        _yt_selos(b['id'], resultados)
     return jsonify({'resultados': resultados})
 
 

@@ -958,14 +958,17 @@ async function jaPaguei() {
     {#- busca 2.0 (16/10/26): "já na fila" / "tocou há X min" e em que lugar entra aparecem ANTES de pedir #}
     <div class="sh-aviso" id="sh-aviso"></div>
     <div class="sh-pos" id="sh-pos"></div>
-    <form method="POST" id="form-musica">
+    {#- 27/10/26 (pente fino C1): o "Ir" do teclado no nome enviava o form com o tipo vazio ("Tipo de pedido inválido.").
+        Só o enviarMusica envia (o .submit() não passa pelo onsubmit). #}
+    <form method="POST" id="form-musica" onsubmit="return false">
       <input type="hidden" name="tipo" id="sh-tipo">
       <input type="hidden" name="youtube_id" id="sh-youtube-id">
       <input type="hidden" name="titulo_pedido" id="sh-titulo-pedido">
       <input type="hidden" name="client_id" class="js-cid" value="">
       <div class="form-group" style="margin-bottom:4px">
         <label for="sh-nome">Teu nome</label>
-        <input type="text" name="nome_cliente" id="sh-nome" class="js-nome" maxlength="40" placeholder="Teu nome" autocomplete="given-name">
+        <input type="text" name="nome_cliente" id="sh-nome" class="js-nome" maxlength="40" placeholder="Teu nome" autocomplete="given-name"
+               enterkeyhint="done" onkeydown="if (event.key === 'Enter') { event.preventDefault(); this.blur(); }">
         {#- 25/10/26 (leva 1 da fama): o aviso do nome do ⚡ ("Põe só o teu nome (até 3 palavras).") antes de sair o PIX #}
         <div class="dica-nome" id="sh-nome-erro" role="alert" style="display:none;color:#f87171;font-weight:700"></div>
         <div class="dica-nome">É assim que teu nome aparece na TV (até 20 letras). Sem palavrão, beleza? 😉</div>
@@ -2148,10 +2151,10 @@ function copiarPix() {
     {% else %}
     selecionarTipo({{ tipo_post|tojson }});
     {% endif %}
-    document.getElementById('inp-nome').value = {{ (request.form.get('nome_cliente') or '')[:20]|tojson }};
+    document.getElementById('inp-nome').value = {{ (request.form.get('nome_cliente') or '')[:40]|tojson }};   {#- 27/10/26 (C3): 20 → 40, o campo #}
     document.getElementById('inp-msg').value  = {{ (request.form.get('mensagem') or '')[:80]|tojson }};
     const _rem = document.getElementById('inp-remetente');
-    if (_rem) _rem.value = {{ (request.form.get('remetente') or '')[:20]|tojson }};
+    if (_rem) _rem.value = {{ (request.form.get('remetente') or '')[:40]|tojson }};
     _pintarCartao();   // 24/10/26 (revisão CEL-2): o .value não dispara 'input'; o cartão mostra o nome que voltou
   } catch(e) {}
   {% elif erro and tipo_post in ['musica','musica_especifica','musica_externa','flash'] %}
@@ -2168,7 +2171,7 @@ function copiarPix() {
 // 16/10/26 (crítico C2): erro na música (palavrão no nome, 2ª grátis…) — a música escolhida fica a 1 toque
 (function(){
   const v = {id: {{ yt_post[:11]|tojson }}, titulo: {{ (request.form.get('titulo_pedido') or '')[:80]|tojson }}, sub: ''};
-  const nome = {{ (request.form.get('nome_cliente') or '')[:20]|tojson }};
+  const nome = {{ (request.form.get('nome_cliente') or '')[:40]|tojson }};
   const f = document.createElement('div');
   f.className = 'faixa-aviso'; f.id = 'faixa-retentar';
   f.style.cursor = 'pointer';
