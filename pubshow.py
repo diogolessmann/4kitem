@@ -5010,7 +5010,7 @@ def api_buscar_biblioteca():
 # Só áudio, letra ou foto parada (canal "- Topic", vídeo sem data) vai pro fim. O mesmo clipe em 2 canais conta 1.
 YT_TOP, YT_JANELA = 5, 15            # cards no celular · candidatos lidos na ordem (relevância) do YouTube
 YT_DUR_MIN_SEG, YT_DUR_MAX_SEG = 60, 600
-_YT_CACHE = {}                       # termo → (instante, vídeos lidos): 1 worker no Railway, não bate 2x no YouTube
+_YT_CACHE = {}                       # termo normalizado → (instante, vídeos lidos): 1º cache (o 2º é o banco, 7 dias)
 _YT_CACHE_SEG, _YT_CACHE_MAX = 600, 300
 # Regra dos 10 min NO PEDIDO (17/10/26, Diogo: "precisa lançar a regra de vídeo com no máximo 10 min"): vale pra todo
 # pedido de música (acervo, YouTube, furar a fila). O celular não manda duração: o servidor guarda a de tudo que a busca
@@ -5052,17 +5052,6 @@ def _yt_norm_canal(c):
     return re.sub(r'vevo$', '', n).strip()
 
 
-def _yt_seg(txt):
-    """'4:41' → 281 · '1:26:37' → 5197 · '' (ao vivo) → 0"""
-    try:
-        seg = 0
-        for p in (txt or '').strip().split(':'):
-            seg = seg * 60 + int(p)
-        return seg
-    except (TypeError, ValueError):
-        return 0
-
-
 def _yt_views_txt(n):
     """112.519.286 → '113 mi de views' · 1.237.144.857 → '1,2 bi de views' · 45.300 → '45 mil views'"""
     if n >= 1_000_000_000:
@@ -5077,48 +5066,6 @@ def _yt_views_txt(n):
     if txt.endswith('.0'):
         txt = txt[:-2]
     return f"{txt.replace('.', ',')} {u}"
-
-
-def _yt_ler(data):
-    """Os vídeos normais (videoRenderer) da resposta da InnerTube, na ordem do YouTube. Shorts, playlists, Mix e o
-    cartão do artista chegam em outros formatos e ficam fora sozinhos."""
-    out = []
-    try:
-        secs = data['contents']['twoColumnSearchResultsRenderer']['primaryContents']['sectionListRenderer']['contents']
-        secs = [s for s in secs if isinstance(s, dict)]
-    except Exception:
-        return out
-    for sec in secs:
-        isr = sec.get('itemSectionRenderer')
-        itens = (isr.get('contents') if isinstance(isr, dict) else None) or []
-        for item in itens if isinstance(itens, list) else []:
-            try:
-                vr = item.get('videoRenderer') or {}
-                vid = str(vr.get('videoId') or '')
-                titulo = ''.join(str(r.get('text') or '') for r in (vr.get('title') or {}).get('runs', []))
-                if not (_YID_RE.fullmatch(vid) and titulo):
-                    continue
-                canal = str(((vr.get('longBylineText') or {}).get('runs') or [{}])[0].get('text') or '')
-                dur_txt = str((vr.get('lengthText') or {}).get('simpleText') or '')
-                views = int(re.sub(r'\D', '', str((vr.get('viewCountText') or {}).get('simpleText') or ''))[:15] or 0)
-                selos = [((b or {}).get('metadataBadgeRenderer') or {}).get('style', '')
-                         for b in (vr.get('ownerBadges') or []) + (vr.get('badges') or [])]
-                capas = [((o or {}).get('thumbnailOverlayTimeStatusRenderer') or {}).get('style', '')
-                         for o in (vr.get('thumbnailOverlays') or [])]
-                url = (((vr.get('navigationEndpoint') or {}).get('commandMetadata') or {})
-                       .get('webCommandMetadata') or {}).get('url', '')
-                out.append({
-                    'id': vid, 'titulo': titulo, 'canal': canal, 'dur': _yt_seg(dur_txt), 'dur_txt': dur_txt,
-                    'views': views,
-                    'oficial': 'BADGE_STYLE_TYPE_VERIFIED_ARTIST' in selos or _yt_norm(canal).endswith('vevo'),
-                    'topic': _yt_norm(canal).endswith(' topic'),
-                    'publicado': bool(vr.get('publishedTimeText')),
-                    'ao_vivo': not dur_txt or 'BADGE_STYLE_TYPE_LIVE_NOW' in selos or 'LIVE' in capas,
-                    'shorts': url.startswith('/shorts/') or 'SHORTS' in capas,
-                })
-            except Exception:
-                continue
-    return out
 
 
 def _yt_capitaliza(s):
@@ -5278,40 +5225,306 @@ def _yt_ranquear(lidos, q, top=YT_TOP):
     return out
 
 
-def _yt_buscar_innertube(q):
-    """Vídeos lidos da busca do YouTube (InnerTube, sem chave), com cache de 10 min por termo."""
-    chave = ' '.join(q.lower().split())
+# ── 🔎 Busca livre pela API OFICIAL (26/10/26, pacote B "busca oficial") ─────────────────────────────────────────────
+# Antes a busca lia a busca interna do site (proibido nas Developer Policies de 15/10/26: III.E.6 "scrape" e III.I.14
+# "use any technology other than YouTube API Services"; e frágil: o IP do servidor podia ser bloqueado no meio da noite).
+# Agora: YouTube Data API v3 (search.list + videos.list) com a chave da env YOUTUBE_API_KEY, mandada no cabeçalho
+# x-goog-api-key (nunca na URL: erro de rede não grava a chave no log). Cota (determine_quota_cost, conferido 26/10/26):
+# o search.list tem balde próprio de 100 chamadas/dia, o videos.list custa 1 unidade dos 10.000/dia e tudo zera à
+# meia-noite do horário do Pacífico. Cada busca, do grátis pro pago:
+#   1) acervo do bar (_acervo_basta)  2) cache em memória (10 min)  3) cache no banco (7 dias)  4) API (1 da cota)
+# Sem chave, ou com o dia no teto (PUBSHOW_BUSCA_TETO, padrão 90 das 100): "busca indisponível" (503 'youtube_fora')
+# e o celular fica na lista do bar. NUNCA volta pra busca interna.
+YT_API = 'https://www.googleapis.com/youtube/v3'
+YT_BUSCA_COTA_DIA = 100              # balde do search.list: chamadas por dia (padrão da Google)
+YT_BUSCA_TETO_PADRAO = 90            # para antes: sobra margem pro SaaS Admin e pra conta do dia fechar certa
+YT_BUSCA_CACHE_DIAS = 7
+YT_BUSCA_MAX_RESULT = 20             # o search.list custa o mesmo pra 5 ou 50: 20 sobra pro filtro do estilo
+YT_ACERVO_BASTA = 3                  # ≥ 3 músicas do acervo com todas as palavras digitadas: nem gasta a cota
+                                     # (env PUBSHOW_BUSCA_ACERVO muda o número; 0 desliga o acervo primeiro)
+_YT_ISO_RE = re.compile(r'P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)(?:\.\d+)?S)?)?')
+
+
+class _BuscaIndisponivel(Exception):
+    """A busca livre não roda agora: 'sem_chave' (YOUTUBE_API_KEY vazia) ou 'cota' (o dia chegou no teto)."""
+
+
+def _busca_teto():
+    try:
+        return max(0, min(YT_BUSCA_COTA_DIA, int(os.environ.get('PUBSHOW_BUSCA_TETO') or YT_BUSCA_TETO_PADRAO)))
+    except ValueError:
+        return YT_BUSCA_TETO_PADRAO
+
+
+def _dia_pacifico(agora_utc=None):
+    """'AAAA-MM-DD' no horário do Pacífico: a cota da Google zera à meia-noite de lá = 04h de Brasília no horário de
+    verão dos EUA (do 2º domingo de março ao 1º domingo de novembro, às 2h) e 05h no resto do ano. Calculado aqui,
+    sem depender do tzdata do servidor."""
+    u = agora_utc or datetime.utcnow()
+    mar, nov = datetime(u.year, 3, 8), datetime(u.year, 11, 1)
+    ini = mar + timedelta(days=(6 - mar.weekday()) % 7, hours=10)    # 2h PST = 10h UTC
+    fim = nov + timedelta(days=(6 - nov.weekday()) % 7, hours=9)     # 2h PDT = 9h UTC
+    return (u - timedelta(hours=7 if ini <= u < fim else 8)).strftime('%Y-%m-%d')
+
+
+def _busca_cota_hoje(conn=None):
+    """Quantas buscas da API oficial já saíram hoje (dia do Pacífico), somando o celular e o SaaS Admin."""
+    fechar = conn is None
+    conn = conn or get_pubshow_db()
+    try:
+        r = conn.execute('SELECT buscas FROM pubshow_busca_cota WHERE dia=?', (_dia_pacifico(),)).fetchone()
+        return int(r[0] or 0) if r else 0
+    except Exception:
+        return 0
+    finally:
+        if fechar:
+            conn.close()
+
+
+def _busca_cota_reservar(teto=None):
+    """Reserva 1 busca da cota de hoje (1 UPDATE só: 2 celulares juntos não passam do teto). False = no teto."""
+    teto = _busca_teto() if teto is None else teto
+    dia = _dia_pacifico()
+    conn = get_pubshow_db()
+    try:
+        conn.execute('INSERT OR IGNORE INTO pubshow_busca_cota (dia, buscas) VALUES (?, 0)', (dia,))
+        ok = conn.execute('UPDATE pubshow_busca_cota SET buscas=buscas+1 WHERE dia=? AND buscas<?',
+                          (dia, teto)).rowcount == 1
+        conn.commit()
+        return ok
+    finally:
+        conn.close()
+
+
+def _busca_cota_esgotou():
+    """A Google respondeu quotaExceeded: a busca livre fica fora até a cota zerar (meia-noite do Pacífico)."""
+    dia = _dia_pacifico()
+    conn = get_pubshow_db()
+    try:
+        conn.execute('INSERT OR IGNORE INTO pubshow_busca_cota (dia, buscas) VALUES (?, 0)', (dia,))
+        conn.execute('UPDATE pubshow_busca_cota SET buscas=MAX(buscas, ?) WHERE dia=?', (YT_BUSCA_COTA_DIA, dia))
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def _busca_cache_ler(chave):
+    """Os vídeos que a API devolveu pra este termo nos últimos 7 dias (None = não tem)."""
+    import json as _json
+    conn = get_pubshow_db()
+    try:
+        r = conn.execute("SELECT lidos FROM pubshow_busca_cache WHERE termo=? AND criado_em >= datetime('now', ?)",
+                         (chave, f'-{YT_BUSCA_CACHE_DIAS} days')).fetchone()
+    finally:
+        conn.close()
+    try:
+        lidos = _json.loads(r[0]) if r else None
+    except Exception:
+        return None
+    return lidos if isinstance(lidos, list) else None
+
+
+def _busca_cache_gravar(chave, lidos):
+    import json as _json
+    conn = get_pubshow_db()
+    try:
+        conn.execute("INSERT OR REPLACE INTO pubshow_busca_cache (termo, lidos, criado_em) VALUES (?, ?, datetime('now'))",
+                     (chave, _json.dumps(lidos, ensure_ascii=False)))
+        conn.execute("DELETE FROM pubshow_busca_cache WHERE criado_em < datetime('now', ?)",
+                     (f'-{YT_BUSCA_CACHE_DIAS} days',))
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def _busca_cache_apagar(chave):
+    conn = get_pubshow_db()
+    try:
+        conn.execute('DELETE FROM pubshow_busca_cache WHERE termo=?', (chave,))
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def _yt_iso_seg(iso):
+    """'PT4M41S' → 281 · 'PT1H26M37S' → 5197 · 'P0D' (ao vivo) → 0"""
+    m = _YT_ISO_RE.fullmatch(str(iso or '').strip())
+    if not m:
+        return 0
+    d, h, mi, s = (int(x or 0) for x in m.groups())
+    return d * 86400 + h * 3600 + mi * 60 + s
+
+
+def _yt_dur_txt(seg):
+    """281 → '4:41' · 5197 → '1:26:37' · 0 → '' (ao vivo)"""
+    if not seg:
+        return ''
+    h, r = divmod(int(seg), 3600)
+    return f'{h}:{r // 60:02d}:{r % 60:02d}' if h else f'{r // 60}:{r % 60:02d}'
+
+
+def _yt_api_get(rota, params, api_key):
+    return _requests.get(f'{YT_API}/{rota}', params=params, timeout=5,   # 1 worker: busca travada segura a TV junto
+                         headers={'x-goog-api-key': api_key, 'Accept': 'application/json'})
+
+
+def _yt_api_motivo(r):
+    """O 'reason' do erro da API ('quotaExceeded', 'keyInvalid'...), '' se não veio."""
+    try:
+        return str((((r.json() or {}).get('error') or {}).get('errors') or [{}])[0].get('reason') or '')
+    except Exception:
+        return ''
+
+
+def _yt_api_conferir(r):
+    """Resposta da API que não é 200 vira erro (sem a chave na mensagem). Só a cota do DIA (quotaExceeded) trava o
+    dia; o rateLimitExceeded (muitas por segundo) é passageiro: a próxima busca tenta de novo (revisão 26/10)."""
+    if r.status_code == 200:
+        return
+    motivo = _yt_api_motivo(r)
+    if r.status_code == 403 and motivo in ('quotaExceeded', 'dailyLimitExceeded'):
+        _busca_cota_esgotou()
+        raise _BuscaIndisponivel('cota')
+    raise RuntimeError(f'API oficial HTTP {r.status_code} {motivo}'.strip())
+
+
+def _yt_api_ler(itens, detalhes):
+    """Os vídeos do search.list + videos.list no MESMO formato que o ranking sempre usou, na ordem da API. Fica fora:
+    o que não é vídeo, privado/removido (sumiu do videos.list), sem embed, bloqueado no Brasil."""
+    import html as _html
+    out = []
+    for it in itens if isinstance(itens, list) else []:
+        try:
+            vid = str((it.get('id') or {}).get('videoId') or '')
+            sn = it.get('snippet') or {}
+            titulo = _html.unescape(str(sn.get('title') or '')).strip()      # a API devolve '&amp;' e '&#39;'
+            d = detalhes.get(vid)
+            if not (_YID_RE.fullmatch(vid) and titulo and isinstance(d, dict)):
+                continue
+            st, cd = d.get('status') or {}, d.get('contentDetails') or {}
+            if st.get('embeddable') is False or (st.get('privacyStatus') or 'public') != 'public':
+                continue
+            rr = cd.get('regionRestriction') or {}
+            if 'BR' in (rr.get('blocked') or []) or ('allowed' in rr and 'BR' not in (rr.get('allowed') or [])):
+                continue
+            canal = _html.unescape(str(sn.get('channelTitle') or '')).strip()
+            seg = _yt_iso_seg(cd.get('duration'))
+            vivo = str(sn.get('liveBroadcastContent') or 'none') in ('live', 'upcoming')
+            views = int(re.sub(r'\D', '', str((d.get('statistics') or {}).get('viewCount') or ''))[:15] or 0)
+            nc, artista_canal = _yt_norm(canal), _yt_norm_canal(canal)
+            seg1 = _YT_SEP_RE.split(titulo)
+            out.append({
+                'id': vid, 'titulo': titulo, 'canal': canal, 'dur': seg, 'dur_txt': _yt_dur_txt(seg), 'views': views,
+                # a API não tem o selo de artista: canal VEVO/oficial, ou o canal é o artista que abre o título
+                'oficial': (nc.endswith('vevo') or nc.endswith((' oficial', ' official'))
+                            or (len(seg1) > 1 and bool(artista_canal) and _yt_norm(seg1[0]) == artista_canal)),
+                'topic': nc.endswith(' topic'),
+                'publicado': not nc.endswith(' topic'),   # "- Topic" = só o áudio com a capa do disco
+                'ao_vivo': vivo or not seg,
+                'shorts': '#short' in (titulo + ' ' + str(sn.get('description') or '')).lower(),
+            })
+        except Exception:
+            continue
+    return out
+
+
+def _busca_chave(q):
+    """O termo do cache: sem acento, minúsculo, espaços limpos. Termo sem letra latina (só emoji, coreano...) fica como
+    foi digitado (minúsculo), senão viraria '' e todos dividiriam o mesmo resultado (revisão 26/10)."""
+    return _yt_norm(q) or ' '.join(str(q or '').lower().split())
+
+
+def _yt_buscar_oficial(q):
+    """Vídeos da busca livre (formato do ranking). Grátis primeiro: cache em memória (10 min) e no banco (7 dias); só
+    então a API oficial, gastando 1 busca da cota do dia. Levanta _BuscaIndisponivel (sem chave / cota) ou outro erro
+    (rede, resposta esquisita): o /api/buscar responde 503 e o celular fica na lista do bar."""
+    chave = _busca_chave(q)
     agora = _time.time()
     hit = _YT_CACHE.get(chave)
     if hit and agora - hit[0] < _YT_CACHE_SEG:
         _yt_lembrar_duracao(hit[1])
         return hit[1]
-    # B2: chave configurável via env — fallback para chave pública do cliente web YT
-    _yt_key = os.environ.get('YOUTUBE_INNERTUBE_KEY', 'AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8')
-    resp = _requests.post(
-        f'https://www.youtube.com/youtubei/v1/search?key={_yt_key}',
-        json={
-            'query': q,
-            'context': {
-                'client': {
-                    'clientName': 'WEB',
-                    'clientVersion': '2.20231121.08.00',
-                    'hl': 'pt',
-                    'gl': 'BR',
-                }
-            }
-        },
-        headers={'Content-Type': 'application/json'},
-        timeout=5   # 1 worker: busca travada segura a TV e o painel junto (era 8)
-    )
-    lidos = _yt_ler(resp.json())
+    lidos = _busca_cache_ler(chave)
+    if lidos is None:
+        api_key = (os.environ.get('YOUTUBE_API_KEY') or '').strip()
+        if not api_key:
+            raise _BuscaIndisponivel('sem_chave')
+        if not _busca_cota_reservar():
+            raise _BuscaIndisponivel('cota')
+        r = _yt_api_get('search', {'part': 'snippet', 'type': 'video', 'q': q, 'maxResults': YT_BUSCA_MAX_RESULT,
+                                   'regionCode': 'BR', 'relevanceLanguage': 'pt', 'videoEmbeddable': 'true',
+                                   'videoSyndicated': 'true'}, api_key)
+        _yt_api_conferir(r)
+        itens = (r.json() or {}).get('items') or []
+        itens = itens if isinstance(itens, list) else []
+        ids = list(dict.fromkeys(str((i.get('id') or {}).get('videoId') or '') for i in itens if isinstance(i, dict)))
+        ids = [i for i in ids if _YID_RE.fullmatch(i)][:50]
+        detalhes = {}
+        if ids:   # duração, embed, Brasil e views: 1 unidade do balde de 10.000 (não do das buscas)
+            r2 = _yt_api_get('videos', {'part': 'contentDetails,status,statistics', 'id': ','.join(ids),
+                                        'maxResults': 50}, api_key)
+            _yt_api_conferir(r2)
+            detalhes = {str(d.get('id')): d for d in ((r2.json() or {}).get('items') or []) if isinstance(d, dict)}
+        lidos = _yt_api_ler([i for i in itens if isinstance(i, dict)], detalhes)
+        _busca_cache_gravar(chave, lidos)   # vazio também: o mesmo termo não gasta de novo
     _yt_lembrar_duracao(lidos)
-    if lidos:
-        if len(_YT_CACHE) >= _YT_CACHE_MAX:
-            for k in sorted(_YT_CACHE, key=lambda k: _YT_CACHE[k][0])[:_YT_CACHE_MAX // 4]:
-                _YT_CACHE.pop(k, None)
-        _YT_CACHE[chave] = (agora, lidos)
+    if len(_YT_CACHE) >= _YT_CACHE_MAX:
+        for k in sorted(_YT_CACHE, key=lambda k: _YT_CACHE[k][0])[:_YT_CACHE_MAX // 4]:
+            _YT_CACHE.pop(k, None)
+    _YT_CACHE[chave] = (agora, lidos)
     return lidos
+
+
+def _acervo_basta(b, q):
+    """Cards do ACERVO do bar quando o termo bate bem nele: a busca livre nem gasta a cota. Regra (26/10/26): cada
+    palavra digitada (sem 'de', 'a', 'musica'...) é começo de uma palavra do título ou do artista, e
+    (a) ≥ YT_ACERVO_BASTA (3) músicas batem ('legiao', 'ac dc', 'legi' digitando) ou (b) uma bate no título E no artista
+    ('evidencias chitaozinho'). Só acervo curado e ativo, nos estilos do bar, sem bloqueado, sem 'Não tocar aqui' e
+    sem música de mais de 10 min. None = não basta: segue pra busca livre."""
+    import json as _json
+    try:
+        basta = int(os.environ.get('PUBSHOW_BUSCA_ACERVO') or YT_ACERVO_BASTA)
+    except ValueError:
+        basta = YT_ACERVO_BASTA
+    tokens = list(dict.fromkeys(w for w in _yt_norm(q).split() if w not in _YT_STOP and (len(w) >= 2 or w.isdigit())))
+    if basta <= 0 or not tokens or not b:
+        return None
+    try:
+        gen = _json.loads(b.get('generos_jukebox') or 'null')
+        gen = [g for g in gen if isinstance(g, str)] if isinstance(gen, list) else None
+    except Exception:
+        gen = None
+    sql = ("SELECT youtube_id, titulo, artista, duracao_seg, views_milhoes FROM pubshow_videos "
+           "WHERE ativo=1 AND COALESCE(subcategoria, '') <> 'pedido_publico'")
+    if gen:
+        sql += f" AND categoria IN ({','.join('?' * len(gen))})"
+    conn = get_pubshow_db()
+    try:
+        rows = conn.execute(sql, tuple(gen or ())).fetchall()
+    finally:
+        conn.close()
+    banidos, nt = set(_videos_bloqueados(b)), _artistas_bloqueados(b)
+    bate, ambos, vistos = [], False, set()
+    for r in rows:
+        yid = r['youtube_id']
+        if not _yid_ok(yid) or yid in banidos or yid in vistos or int(r['duracao_seg'] or 0) > YT_DUR_MAX_SEG:
+            continue
+        pt, pa = _yt_norm(r['titulo']).split(), _yt_norm(r['artista']).split()
+        no_tit = {t for t in tokens if any(p.startswith(t) for p in pt)}
+        no_art = {t for t in tokens if any(p.startswith(t) for p in pa)}
+        if len(no_tit | no_art) < len(tokens) or (nt and _nao_toca(nt, r['titulo'], r['artista'])):
+            continue
+        vistos.add(yid)
+        bate.append(r)
+        ambos = ambos or bool((no_tit - no_art) and (no_art - no_tit))
+    if len(bate) < basta and not ambos:
+        return None
+    bate.sort(key=lambda r: -(r['views_milhoes'] or 0))
+    return [{'id': r['youtube_id'], 'titulo': (r['titulo'] or '')[:80], 'titulo_original': (r['titulo'] or '')[:100],
+             'canal': (r['artista'] or '')[:40], 'duracao': _yt_dur_txt(int(r['duracao_seg'] or 0)),
+             'dur_seg': int(r['duracao_seg'] or 0), 'thumb': f"https://i.ytimg.com/vi/{r['youtube_id']}/hqdefault.jpg",
+             'views': 0, 'views_txt': '', 'oficial': False, 'so_audio': False, 'acervo': True}
+            for r in bate[:YT_TOP]]
 
 
 def _yt_lembrar_duracao(lidos):
@@ -5474,7 +5687,8 @@ _BUSCAR_MAX_BAR, _BUSCAR_MAX_IP = 120, 150   # buscas por minuto (15/10/26); IP 
 
 @pubshow_bp.route('/api/buscar')
 def api_buscar():
-    """Busca músicas no YouTube via InnerTube API (sem chave): os 5 melhores, com capa grande e selos do bar."""
+    """Busca livre de música (API oficial, 26/10/26): os 5 melhores, com capa grande e selos do bar. Acervo do bar e
+    cache primeiro (não gastam a cota); sem chave ou sem cota = 503 'youtube_fora' (o celular fica na lista do bar)."""
     # 15/10/26: só com o token de um bar de verdade (?bar=) e com teto por bar + teto alto por IP.
     # Antes era pública e sem limite: um loop aqui (timeout 8 s) segurava o worker do 4kitem inteiro.
     # No Wi-Fi do bar todo mundo divide o IP (decisão 11/09/26), por isso o teto principal é do BAR.
@@ -5495,21 +5709,41 @@ def api_buscar():
        _rl_bloqueado(_chave_ip, max_n=_BUSCAR_MAX_IP, janela=60):
         return jsonify({'resultados': [], 'error': 'Muitas buscas agora. Espera uns segundos e tenta de novo.'}), 429
     _rl_falhou(_chave_bar, _chave_ip)
-    try:
-        lidos = _yt_buscar_innertube(q)
+    b = _bar_por_token(bar_token)
+    try:   # 26/10/26: o termo bate bem no acervo do bar → responde com ele e não gasta a cota da busca livre
+        do_acervo = _acervo_basta(b, q)
     except Exception as e:
-        log.error('YouTube search error: %s', e)
+        log.warning('[PUBSHOW] acervo antes da busca falhou (segue pra busca livre): %s', e)
+        do_acervo = None
+    if do_acervo:
+        _yt_selos(_bar['id'], do_acervo)
+        return jsonify({'resultados': do_acervo, 'do_acervo': True})
+    try:
+        lidos = _yt_buscar_oficial(q)
+    except _BuscaIndisponivel as e:   # sem chave ou sem cota hoje: nunca cai pra busca interna
+        log.warning('[PUBSHOW] busca livre indisponível: %s', e)
+        return jsonify({'resultados': [], 'erro': 'youtube_fora', 'indisponivel': str(e)}), 503
+    except Exception as e:
+        log.error('Busca livre (API oficial) falhou: %s', e)
         # crítico leigo A3 (17/10/26): fora do ar ≠ "nenhum resultado" — o celular libera o furar a fila no acervo
         return jsonify({'resultados': [], 'erro': 'youtube_fora'}), 503
-    b = _bar_por_token(bar_token)
     ests_bar = pubshow_estilo.estilos_do_bar(b)    # 17/10/26: "aqui só toca rock" (None = tudo liberado)
     _nt = _artistas_bloqueados(b)                  # 🚫 22/10/26: "Não tocar aqui"
     try:
         resultados = _yt_ranquear(lidos, q, top=YT_TOP * 2 if (ests_bar or _nt) else YT_TOP)
-    except Exception as e:   # resposta esquisita do YouTube: nunca 500, e não guarda no cache
-        log.error('YouTube ranking error: %s', e)
-        _YT_CACHE.pop(' '.join(q.lower().split()), None)
+    except Exception as e:   # resposta esquisita: nunca 500, e sai dos 2 caches (a próxima busca tenta de novo)
+        log.error('Busca livre: ranking falhou: %s', e)
+        _YT_CACHE.pop(_busca_chave(q), None)
+        try:
+            _busca_cache_apagar(_busca_chave(q))
+        except Exception:
+            pass
         return jsonify({'resultados': [], 'erro': 'youtube_fora'}), 503
+    _ban = set(_videos_bloqueados(b)) if b else set()   # 26/10/26: o que o bar bloqueou nem aparece na busca
+    if _ban:
+        resultados = [c for c in resultados if c.get('id') not in _ban]
+    _jan = _janela_eleitoral()   # 26/10/26: jingle nem aparece (a mesma regra do pedido, MSG_POLITICA_MUSICA)
+    resultados = [c for c in resultados if not _tem_politica(c.get('titulo_original') or c.get('titulo'), _jan)]
     if ests_bar and resultados:
         try:
             resultados = _so_do_estilo(b, ests_bar, resultados)[:YT_TOP]
@@ -8458,6 +8692,9 @@ def admin_dashboard():
                            emails_pendentes=emails_pendentes,
                            emails_total=emails_total,
                            canais=CANAIS, planos=PLANOS,
+                           # 🔎 26/10/26: a busca livre (API oficial) gastou quanto da cota de hoje
+                           busca_hoje=_busca_cota_hoje(), busca_teto=_busca_teto(),
+                           busca_chave=bool((os.environ.get('YOUTUBE_API_KEY') or '').strip()),
                            now=datetime.now().isoformat())
 
 
@@ -9233,7 +9470,6 @@ def _import_playlist_impl():
             'part':       'snippet',
             'playlistId': playlist_id,
             'maxResults': 50,
-            'key':        api_key,
         }
         if page_token:
             params['pageToken'] = page_token
@@ -9241,7 +9477,7 @@ def _import_playlist_impl():
         try:
             r = _requests.get(
                 'https://www.googleapis.com/youtube/v3/playlistItems',
-                params=params, timeout=15
+                params=params, timeout=15, headers={'x-goog-api-key': api_key}
             )
         except Exception as e:
             return jsonify({'ok': False, 'erro': f'Erro de rede: {e}'})
@@ -9750,9 +9986,13 @@ def admin_videos_seed_categorias():
         for query in queries:
             if inseridos_cat >= 20:
                 break
+            if not _busca_cota_reservar():   # 26/10/26: o balde de 100 buscas/dia é o mesmo da busca livre
+                resultado[categoria] = {'erro': 'cota de buscas do dia acabou'}
+                break
             try:
                 r = _requests.get(
                     'https://www.googleapis.com/youtube/v3/search',
+                    headers={'x-goog-api-key': api_key},   # 26/10/26: chave no cabeçalho, nunca na URL
                     params={
                         'part': 'snippet',
                         'q': query,
@@ -9760,14 +10000,17 @@ def admin_videos_seed_categorias():
                         'videoDuration': 'medium',   # 4-20 min
                         'videoEmbeddable': 'true',
                         'maxResults': 10,
-                        'key': api_key,
                         'relevanceLanguage': 'pt',
                         'safeSearch': 'moderate',
                     },
                     timeout=12
                 )
                 if r.status_code == 403:
-                    resultado[categoria] = {'erro': 'API quota excedida'}
+                    _mot = _yt_api_motivo(r)
+                    resultado[categoria] = {'erro': 'API quota excedida' if _mot in ('quotaExceeded', 'dailyLimitExceeded')
+                                            else f'API recusou (403 {_mot})'.strip()}
+                    if _mot in ('quotaExceeded', 'dailyLimitExceeded'):   # revisão 26/10: chave errada não trava o dia
+                        _busca_cota_esgotou()
                     break
                 if r.status_code != 200:
                     continue
@@ -9803,7 +10046,8 @@ def admin_videos_seed_categorias():
                 log.error('[PUBSHOW seed] Erro query "%s": %s', query, e)
 
         conn.commit()
-        resultado[categoria] = {'inseridos': inseridos_cat, 'existentes': atual}
+        # revisão 26/10: o aviso de erro da categoria (cota acabou / API recusou) não some debaixo da contagem
+        resultado[categoria] = {**(resultado.get(categoria) or {}), 'inseridos': inseridos_cat, 'existentes': atual}
 
     conn.close()
     log.info('[PUBSHOW seed] Total inseridos: %d', total_inseridos)

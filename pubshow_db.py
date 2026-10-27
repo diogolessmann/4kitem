@@ -545,6 +545,19 @@ def init_pubshow_db():
         try: conn.rollback()
         except: pass
 
+    # 🔎 Busca livre pela API oficial (26/10/26): cache por termo normalizado (7 dias: o mesmo termo não gasta a cota
+    # de novo) e o contador de buscas do dia (dia = horário do Pacífico, quando a cota da Google zera)
+    try:
+        conn.execute('CREATE TABLE IF NOT EXISTS pubshow_busca_cache ('
+                     '  termo TEXT PRIMARY KEY, lidos TEXT NOT NULL, criado_em TEXT DEFAULT CURRENT_TIMESTAMP)')
+        conn.execute('CREATE TABLE IF NOT EXISTS pubshow_busca_cota ('
+                     '  dia TEXT PRIMARY KEY, buscas INTEGER NOT NULL DEFAULT 0)')
+        conn.commit()
+    except Exception as e:
+        log.error('[PUBSHOW] tabelas da busca livre falharam: %s', e)
+        try: conn.rollback()
+        except: pass
+
     conn.close()
 
 

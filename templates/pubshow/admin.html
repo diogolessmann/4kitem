@@ -86,6 +86,15 @@
       <div class="stat-val" style="color:#22c55e">R$ {{ '%.2f'|format(receita_hoje)|replace('.',',') }}</div>
       <div class="stat-label">Receita Jukebox hoje</div>
     </div>
+    <div class="stat" id="stat-busca-livre">
+      {% if busca_chave %}
+      <div class="stat-val" style="color:{{ '#f87171' if busca_hoje >= busca_teto else '#e2e8f0' }}">{{ busca_hoje }}</div>
+      <div class="stat-label">Busca livre hoje: {{ busca_hoje }} de ~100 (cota oficial){% if busca_hoje >= busca_teto %} · parada até 04h/05h{% endif %}</div>
+      {% else %}
+      <div class="stat-val" style="color:#f87171">sem chave</div>
+      <div class="stat-label">Busca livre parada: falta YOUTUBE_API_KEY no Railway</div>
+      {% endif %}
+    </div>
   </div>
 
   <div style="margin-bottom:16px;display:flex;gap:10px;flex-wrap:wrap">
