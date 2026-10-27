@@ -19668,8 +19668,8 @@ def dlcentral_grid():
                 'background:#1a1a2e;color:#9aa'), c['label'])
         for m, c in dlc.MARCAS.items())
     # 01/out: cada aba olha o perfil para onde o 🚀 publica (Scooters = IG da DL Mobilidade)
-    _dest = {'dlmob': 'dl_mobilidade', 'defesas': 'defesas'}.get(marca, 'despachante')   # 06/10: DL Defesas tem IG próprio
-    _ig_nome = {'dlmob': 'da DL MOBILIDADE', 'defesas': 'da DL DEFESAS'}.get(marca, 'do DESPACHANTE')   # 07/10: a confirmação do 🚀 diz o perfil certo
+    _dest = {'dlmob': 'dl_mobilidade', 'defesas': 'defesas', 'motor': 'kitem'}.get(marca, 'despachante')   # 06/10: DL Defesas tem IG próprio · 27/10: aba MOTOR (Vitrine + PubShow) publica no @4kitem
+    _ig_nome = {'dlmob': 'da DL MOBILIDADE', 'defesas': 'da DL DEFESAS', 'motor': 'do 4KITEM'}.get(marca, 'do DESPACHANTE')   # 07/10: a confirmação do 🚀 diz o perfil certo
     tok_aviso = '' if dlc.tokens_ok(_dest) else (
         '<div style="background:#3a1a1a;border:1px solid #f43;color:#faa;border-radius:10px;'
         'padding:10px 14px;margin:10px 0;font-size:13px">⚠️ Tokens do %s '
@@ -19717,7 +19717,7 @@ def dlcentral_grid():
             # 24/set/26: botão "Publicar na Rádio" removido — a Rádio foi vendida ao Gabriel.
             # 19/set/26: 3º perfil (SC News Mobilidade) — promoção de parceiro/peça/pneu vai pra lá
             # 07/10/26: na aba DL Defesas o botão do Roda Norte não existe (a DL Defesas só publica no IG próprio, onde vale a trava do CRDD)
-            ('' if marca == 'defesas' else (
+            ('' if marca in ('defesas', 'motor') else (
                 '<button name="acao" value="publicar_mob" '
                 'onclick="return confirm(\'Publicar %s no IG do RODA NORTE?\')" '
                 'style="background:#ffc400;color:#000;font-weight:800;border:0;'
@@ -19851,8 +19851,10 @@ def dlcentral_legenda():
             return redirect('/saas-admin/dlcentral?marca=%s&ok=escreve ou gera a legenda antes' % marca)
         if acao == 'publicar_mob' and marca == 'defesas':   # 07/10: a DL Defesas só publica no IG próprio (é nele que vale a trava do CRDD)
             return redirect('/saas-admin/dlcentral?marca=defesas&ok=a DL Defesas só publica no IG da DL Defesas — não publicado')
+        if acao == 'publicar_mob' and marca == 'motor':   # 27/10: a aba MOTOR só publica no IG do 4kitem
+            return redirect('/saas-admin/dlcentral?marca=motor&ok=a aba MOTOR só publica no IG do 4kitem — não publicado')
         # 29/set: a aba Scooters (dlmob) publica no IG PRÓPRIO da DL Mobilidade, não no Despachante
-        destino = 'mobilidade' if acao == 'publicar_mob' else {'dlmob': 'dl_mobilidade', 'defesas': 'defesas'}.get(marca, 'despachante')
+        destino = 'mobilidade' if acao == 'publicar_mob' else {'dlmob': 'dl_mobilidade', 'defesas': 'defesas', 'motor': 'kitem'}.get(marca, 'despachante')
         if not dlc.tokens_ok(destino):
             return redirect('/saas-admin/dlcentral?marca=%s&ok=sem tokens do destino %s — colar %s no Railway'
                             % (marca, destino, ' e '.join(dlc.DESTINOS[destino]['env'])))

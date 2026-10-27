@@ -7,11 +7,11 @@ código portado 1:1 do repo da Rádio. Este arquivo só decide QUANDO rodar o qu
 (A versão anterior deste arquivo — foto da Central DL 1x/dia — está no git, commit 7ca9560.)
 
 Grade (America/Sao_Paulo):
-  10:00       despachante · manhã   (série "1 post = 1 página", alterna documentalista/defesa)
-  13:00       despachante · meio    (mito/consequência)  — só com DESP_MEIO_ON=1
-  16:00 t/q/s DL Mobilidade · oferta de scooter com FOTO REAL no IG PRÓPRIO (tokens DLMOB_*)
+  10:00       despachante · manhã   (série "1 post = 1 página", alterna documentalista/defesa) — ÚNICO post de feed/dia
+  16:00       DL Mobilidade · oferta de scooter com FOTO REAL no IG PRÓPRIO (tokens DLMOB_*) — 1x/dia
+  17:30 48h   DL Defesas · dia sim, dia não, IG PRÓPRIO @dldefesas.multas (tokens DEFESAS_*)
   12:30       story da FILA de peças prontas (CONTEUDO_21) — FILA_PRONTA_ON=0 desliga
-  19:00       despachante · noite   (story "veja mais no site")
+  (19:00 despachante · noite saiu em 27/10: era o MESMO tema da manhã, de novo, em story)
   hh:20 x6    SC News Mobilidade    (MOB_HORAS, default 7,10,12,15,18,20) — só com MOB_ON=1 + tokens MOB_*
   23:30       insights por série    (placar)
 
@@ -88,6 +88,23 @@ def _dlmob():
     return "POSTADO"
 
 
+def _kitem():
+    """27/10: IG @4kitem (conta nova) no motor. 1 post/dia (aquecimento: conta nova não pode
+    disparar volume). Só roda com KITEM_ON=1; sem os tokens KITEM_* o turno pula."""
+    if os.environ.get("KITEM_ON", "0") != "1":
+        return "KITEM_ON!=1"
+    from dlm import marcas
+    t = marcas.BRANDS["4kitem"]
+    token, ig_id, _ = marcas._brand_tokens(t)
+    if not (token and ig_id):
+        return "sem tokens KITEM_* — pulado"
+    if not ao_vivo():
+        paths, cap, _ = marcas.generate("4kitem")
+        return f"PREVIEW: {paths[0]}"
+    marcas.run("4kitem", post=True)
+    return "POSTADO"
+
+
 def _mob(idx):
     if os.environ.get("MOB_ON", "0") != "1":
         return "MOB_ON!=1"
@@ -120,7 +137,11 @@ def _insights():
 def _defesas():
     """13/10: DL Defesas entra no motor automático, reaproveitando o pipeline que já existe
     (Central DL / dlcentral.py) em vez de duplicar banco de conteudo — a vacina, o rodape
-    (CRDD/razao social) e a legenda_defesas_ok ja vivem la. So falta escolher o arquivo e postar."""
+    (CRDD/razao social) e a legenda_defesas_ok ja vivem la. So falta escolher o arquivo e postar.
+    25/10: cadencia = dia sim, dia nao (1 post a cada 48h). Paridade pelo ordinal do dia (nao pelo dia do
+    ano, que repete paridade na virada de 31/12 para 01/01)."""
+    if agora().toordinal() % 2 != 0:
+        return "dia de folga (cadencia 48h)"
     if not dlc.tokens_ok("defesas"):
         return "sem tokens DEFESAS_* — pulado"
     itens = [i for i in dlc.listar("defesas") if not i["meta"].get("publicados")]
@@ -144,11 +165,10 @@ def agenda():
     """[(id, hora, minuto, dias|None, func)] — dias: 0=seg … 6=dom."""
     a = [
         ("desp_manha", 10, 0, None, lambda: _desp("manha")),
-        ("desp_meio", 13, 0, None, lambda: _desp("meio")),
         ("desp_story", 12, 30, None, _story_fila),
-        ("dlmob", 16, 0, (1, 3, 5), _dlmob),
-        ("defesas", 17, 30, (1, 4), _defesas),   # 13/10: 2x/sem (ter/sex), IG proprio @dldefesas.multas
-        ("desp_noite", 19, 0, None, lambda: _desp("noite")),
+        ("kitem", 14, 0, None, _kitem),          # KITEM_ON=1 liga; 1 post/dia
+        ("dlmob", 16, 0, None, _dlmob),
+        ("defesas", 17, 30, None, _defesas),     # dia sim, dia nao (48h) — a paridade esta dentro de _defesas()
         ("insights", 23, 30, None, _insights),
     ]
     for i, h in enumerate(_mob_horas()):

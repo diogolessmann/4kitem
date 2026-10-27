@@ -159,7 +159,7 @@ DESPACHANTE_CONTEUDO = [x for par in _it.zip_longest(_desp, _mob) for x in par i
 
 # 4kitem — sistemas/apps que facilitam o dia a dia de pequenos negocios.
 # SlotZap (rifa/sorteio) fica de FORA: a Meta bane rifa e pode derrubar a conta.
-KITEM_CONTEUDO = [
+KITEM_CONTEUDO_OUTROS = [   # 27/10: fora da rotação (foco do @4kitem = PubShow + Vitrine); volta quando cada um tiver fluxo de teste
     {"cat": "AGENDAMENTO", "titulo": "AgendaJá — sua agenda no automático",
      "bullets": ["Página de agendamento com link próprio",
                  "Cliente marca pelo celular, sem baixar app",
@@ -168,10 +168,10 @@ KITEM_CONTEUDO = [
      "bullets": ["Sua loja online pronta em minutos",
                  "PIX direto, sem intermediário levando %",
                  "Pedido chega no seu WhatsApp na hora"]},
-    {"cat": "WHATSAPP", "titulo": "MandaZap — marketing no WhatsApp com anti-ban",
-     "bullets": ["Importe sua lista (CSV ou PDF)",
+    {"cat": "WHATSAPP", "titulo": "MandaZap — fale com quem já é seu cliente",
+     "bullets": ["Organize os contatos de quem já comprou de você",
                  "Mensagem personalizada com o nome do cliente",
-                 "Disparo em massa com anti-ban inteligente"]},
+                 "Envio com limite e ritmo seguros para o seu número"]},
     {"cat": "TRÂNSITO", "titulo": "AlertaJá — CNH e veículo de olho pra você",
      "bullets": ["Pontos, vencimento e categoria da CNH",
                  "IPVA, licenciamento e multas do veículo",
@@ -200,6 +200,38 @@ KITEM_CONTEUDO = [
      "bullets": ["Motor de petições baseado no CTB",
                  "OCR: preenche o processo por foto ou PDF",
                  "Controle de prazos e honorários"]},
+]
+
+
+# 27/10 — FOCO do @4kitem: PubShow (bar) e Vitrine (loja), 1 post/dia alternando. Só afirma o que o produto já faz
+# (sem preço, sem "vende mais", sem "teste grátis", sem nome de cliente). CTA = pedir demonstração no WhatsApp.
+_CTA_PUB = {"cta_seal": "VEJA NA SUA TV", "cta_big": ["QUER VER", "NO SEU BAR?"]}
+_CTA_VIT = {"cta_seal": "FALA COM A GENTE", "cta_big": ["QUER A SUA", "VITRINE?"]}
+KITEM_CONTEUDO = [
+    dict(cat="BAR & PUB", titulo="PubShow — a TV do seu bar vira palco",
+         bullets=["O cliente escaneia o QR da mesa, sem baixar app",
+                  "Pede música, manda parabéns e salve pelo celular",
+                  "Você aprova o que aparece na TV"], **_CTA_PUB),
+    dict(cat="LOJA ONLINE", titulo="Vitrine — sua loja online que você alimenta pelo celular",
+         bullets=["Tira a foto, põe o preço e o produto entra no site",
+                  "Todo botão chama você no WhatsApp, com a mensagem pronta",
+                  "Marca 'acabou' com um toque"], **_CTA_VIT),
+    dict(cat="BAR & PUB", titulo="PubShow — o controle remoto na mão de todo mundo",
+         bullets=["Cada mesa pede a próxima música pelo celular",
+                  "Quer furar a fila? Paga no PIX e toca a seguir",
+                  "Fila na TV e painel simples para o gerente"], **_CTA_PUB),
+    dict(cat="LOJA ONLINE", titulo="Vitrine — o cliente chama você no WhatsApp",
+         bullets=["Cada produto tem sua página, com foto real e preço",
+                  "Você vê quantas pessoas clicaram em cada produto",
+                  "Sem carrinho complicado: você fecha a venda na conversa"], **_CTA_VIT),
+    dict(cat="BAR & PUB", titulo="PubShow — parabéns na TV, com a mesa toda olhando",
+         bullets=["A mesa manda o parabéns pelo celular",
+                  "A mensagem passa por filtro e pelo seu OK",
+                  "A turma inteira vê, e o bar entra na festa"], **_CTA_PUB),
+    dict(cat="LOJA ONLINE", titulo="Vitrine — feita para ser achada no Google",
+         bullets=["Página de cada produto, pensada para a busca",
+                  "Seu domínio, sua loja, seu WhatsApp",
+                  "Sem depender só do Instagram para ser visto"], **_CTA_VIT),
 ]
 
 
@@ -258,7 +290,7 @@ BRANDS = {
         "tagline": "Sistemas que facilitam o seu negócio",
         "site": "4kitem.com.br",
         "whats": "(47) 99776-6831",
-        "instagram": "",   # preenche quando o IG estiver pronto
+        "instagram": "@4kitem",
         # tema tech (indigo + ciano)
         "bg": (13, 14, 26), "card": (24, 26, 44), "accent": (108, 99, 255),
         "accent2": (0, 210, 200), "white": (245, 247, 250), "muted": (165, 170, 190),
@@ -266,6 +298,7 @@ BRANDS = {
         "conteudo": KITEM_CONTEUDO,
         "cta_seal": "TESTE GRÁTIS",
         "cta_big": ["COMECE", "HOJE MESMO"],
+        "capa_tech": True,
         "hashtags": ["#4kitem", "#sistema", "#app", "#pequenonegocio", "#empreendedor",
                      "#automatizacao", "#whatsappbusiness", "#agendamento", "#delivery",
                      "#santacatarina"],
@@ -546,7 +579,59 @@ def _foto_fundo(img, t, item, y0):
     return True
 
 
+def _capa_tech(t, item, outdir, n=1):
+    """27/10 — capa do 4kitem: brilho de cor + nome do produto + celular com app desenhado subindo do pé.
+    Só formas (sem foto, sem texto repetido do slide 2). Ligado por t['capa_tech']."""
+    from PIL import Image, ImageDraw, ImageFilter, ImageChops
+    img = Image.new("RGB", (W, H), t["bg"])
+    glow = Image.new("RGB", (W, H), (0, 0, 0))
+    gd = ImageDraw.Draw(glow)
+    gd.ellipse([W - 620, -260, W + 340, 620], fill=tuple(int(c * 0.55) for c in t["accent"]))
+    gd.ellipse([-380, H - 700, 560, H + 260], fill=tuple(int(c * 0.40) for c in t["accent2"]))
+    img = ImageChops.add(img, glow.filter(ImageFilter.GaussianBlur(150)))
+    d = ImageDraw.Draw(img)
+    _brand_header(d, t)
+    gi.pill(d, 56, 190, item["cat"], _font(34), t["accent"], (10, 10, 10))
+    nome, _, resto = item["titulo"].partition(" — ")
+    fn = _font(132, impact=True)
+    y = 290
+    for ln in gi.wrap(d, nome, fn, W - 112)[:2]:
+        d.text((56, y), ln, font=fn, fill=t["white"], stroke_width=2, stroke_fill=(0, 0, 0))
+        y += int(fn.size * 1.0)
+    if resto:
+        fr = _font(54)
+        y += 14
+        for ln in gi.wrap(d, resto, fr, 470)[:3]:
+            d.text((56, y), ln, font=fr, fill=t["accent2"])
+            y += int(fr.size * 1.22)
+    # celular subindo do rodapé (sangra pra fora do quadro)
+    px0 = 590
+    px1 = W - 50
+    py0 = max(y + 40, 760)
+    d.rounded_rectangle([px0, py0, px1, H + 120], radius=54, fill=(24, 26, 44), outline=t["accent2"], width=5)
+    d.rounded_rectangle([px0 + 22, py0 + 22, px1 - 22, H + 120], radius=38, fill=(14, 15, 28))
+    d.rounded_rectangle([(px0 + px1) // 2 - 50, py0 + 34, (px0 + px1) // 2 + 50, py0 + 52], radius=9, fill=(40, 43, 70))
+    d.rounded_rectangle([px0 + 44, py0 + 80, px1 - 44, py0 + 150], radius=20, fill=t["accent"])
+    d.ellipse([px0 + 60, py0 + 95, px0 + 100, py0 + 135], fill=t["white"])
+    d.rounded_rectangle([px0 + 118, py0 + 102, px0 + 270, py0 + 118], radius=8, fill=t["white"])
+    d.rounded_rectangle([px0 + 118, py0 + 126, px0 + 220, py0 + 138], radius=6, fill=(210, 206, 255))
+    ry = py0 + 180
+    for i in range(4):
+        d.rounded_rectangle([px0 + 44, ry, px1 - 44, ry + 104], radius=22, fill=(30, 32, 56))
+        d.ellipse([px0 + 62, ry + 30, px0 + 106, ry + 74], fill=t["accent2"] if i % 2 == 0 else t["accent"])
+        d.line([(px0 + 72, ry + 52), (px0 + 81, ry + 62), (px0 + 98, ry + 42)], fill=(10, 10, 10), width=6)
+        d.rounded_rectangle([px0 + 126, ry + 30, px1 - 80, ry + 46], radius=8, fill=(88, 92, 130))
+        d.rounded_rectangle([px0 + 126, ry + 58, px1 - 150, ry + 70], radius=6, fill=(56, 59, 92))
+        ry += 124
+    gi.pill(d, 56, H - 170, "ARRASTA PARA O LADO  ->", _font(34), t["accent"], (10, 10, 10))
+    p = os.path.join(outdir, f"slide_{n}.png")
+    img.save(p, quality=92)
+    return p
+
+
 def slide_capa(t, item, outdir, n=1):
+    if t.get("capa_tech"):
+        return _capa_tech(t, item, outdir, n)
     img, d = _canvas(t)
     _foto_fundo(img, t, item, 640)
     _brand_header(d, t)
@@ -788,8 +873,14 @@ def publish_brand(t, prefix, image_paths, caption):
     # Facebook foto (pulado nas marcas ig_only — DL Mobilidade e 4kitem)
     fb = None
     if not ig_only:
-        fb = dist._graph_post(f"{GRAPH}/{page_id}/photos",
-                              {"caption": caption, "url": public_urls[0], "access_token": token})
+        # 27/10: o IG JÁ saiu aqui. Se o Facebook falhar e a exceção subir, o motor lê "quebrou", trata como
+        # recuperável e REPOSTA o mesmo carrossel no IG (até 4x). Falha do FB vira aviso, nunca repostagem.
+        try:
+            fb = dist._graph_post(f"{GRAPH}/{page_id}/photos",
+                                  {"caption": caption, "url": public_urls[0], "access_token": token})
+        except Exception as e:
+            fb = {"erro": str(e)[:200]}
+            print(f"[{prefix}] ⚠️ IG publicado, Facebook falhou (sem repostar): {e}")
     # Story automatico (capa em 9:16) — desligavel com SOCIAL_STORY=0
     story = None
     if dist._env("SOCIAL_STORY", "1") == "1":

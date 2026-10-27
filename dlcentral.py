@@ -56,13 +56,23 @@ MARCAS = {
     # 28/set/26 — aba MOTOR = propaganda da VITRINE (site da loja + motor que posta). A Rádio foi
     # vendida (24/set): nada aqui fala dela. Público = lojista/empresário. WhatsApp = o da LOJA.
     "motor": {
-        "label": "🏪 MOTOR · Vitrine (site + motor)",
+        "label": "🏪 MOTOR · Vitrine + 🍺 PubShow",
         "tipo": "motor",
         "telefone": "(47) 99776-6831",
         "endereco": "Schroeder/SC · atende todo o Vale do Itapocu",
         "hashtags": "#comerciolocal #catalogodigital #sitedaloja #Schroeder #JaraguaDoSul #ValeDoItapocu #4kitem",
         "disclaimer": "Schroeder/SC · imagens ilustrativas",
     },
+}
+
+# 27/10/26 — arquivos pubshow_* da aba MOTOR falam com o dono de BAR (PubShow), não com o lojista (Vitrine).
+# Nunca falar de YouTube, artista, preço ou ganho (decisão do dono; prova de valor só com print e OK do bar).
+_PUBSHOW_CFG = {
+    "tipo": "pubshow",
+    "label": "PubShow, do 4kitem",
+    "endereco": "Schroeder/SC · atende o Vale do Itapocu",
+    "hashtags": "#bar #pub #happyhour #jukebox #tvdobar #PubShow #4kitem #Schroeder #JaraguaDoSul",
+    "disclaimer": "Imagens ilustrativas · resultado depende do movimento de cada bar",
 }
 
 _BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -320,6 +330,16 @@ def _fallback_venda(cfg, titulo, contexto, preco):
         linhas += ["", f"📍 {cfg['endereco']}", f"📲 WhatsApp {cfg['telefone']}", "",
                    cfg["disclaimer"], "", cfg["hashtags"]]
         return "\n".join(linhas)
+    if tipo == "pubshow":
+        linhas = [f"🍺 {titulo or 'A TV do seu bar vira palco'} — PubShow, do 4kitem.", ""]
+        if contexto:
+            linhas += [contexto, ""]
+        linhas += ["✅ O cliente escaneia o QR da mesa, sem baixar app",
+                   "✅ Pede música e manda parabéns pelo celular",
+                   "✅ Aparece na TV, e você aprova o que vai pra tela",
+                   "", f"📲 Quer ver funcionando no seu bar? Chama no WhatsApp {cfg['telefone']}", "",
+                   cfg["disclaimer"], "", cfg["hashtags"]]
+        return "\n".join(linhas)
     if tipo == "motor":
         linhas = [f"🏪 {titulo or 'Tua loja com um site que chama no teu WhatsApp'}", ""]
         if contexto:
@@ -373,6 +393,8 @@ def _gemini(prompt):
 
 def gerar_legenda(marca, arquivo):
     cfg = MARCAS[marca]
+    if marca == "motor" and arquivo.lower().startswith("pubshow"):
+        cfg = {**cfg, **_PUBSHOW_CFG}
     m = meta_get(marca, arquivo)
     titulo = m.get("titulo") or arquivo.rsplit(".", 1)[0].replace("-", " ").replace("_", " ").title()
     contexto = m.get("contexto") or ""
@@ -394,6 +416,12 @@ def gerar_legenda(marca, arquivo):
                  "documento em até 2 horas; transferência em até 1 dia útil; IPVA em 3x "
                  "direto ou débitos em até 24x no cartão; tudo pelo WhatsApp. Para "
                  "documentos, citar só Schroeder.")
+    elif cfg["tipo"] == "pubshow":
+        fatos = ("FATOS: PubShow (4kitem, Schroeder/SC) = o público do bar controla a TV pelo celular; o cliente escaneia o QR da mesa, sem baixar app; "
+                 "pede música (grátis, com limite por celular), fura a fila e manda parabéns, salve ou brinde pagando no PIX; tudo aparece na TV; o gerente "
+                 "vê e aprova as mensagens pelo painel; fila de músicas na tela. Público: dono de bar, pub e restaurante com TV. Chamada: demonstração "
+                 "pelo WhatsApp. PROIBIDO: a palavra YouTube, citar artista ou música, prometer ou sugerir ganho, faturamento, 'se paga' ou 'dinheiro no caixa', "
+                 "citar preço se não vier no PREÇO, a palavra 'zap' (sempre WhatsApp), nome de cliente, garantir resultado.")
     elif cfg["tipo"] == "motor":
         fatos = ("FATOS: VITRINE (4kitem, Schroeder/SC) = site da loja no domínio dela, com catálogo de "
                  "foto e preço; cada botão abre o WhatsApp DA LOJA com a mensagem pronta ('Oi, vim do site. "
@@ -453,6 +481,8 @@ DESTINOS = {
     "mobilidade": {"label": "IG Roda Norte", "env": ("MOB_PAGE_TOKEN", "MOB_IG_USER_ID")},
     # 29/set/26: a loja de scooters tem IG próprio — a aba "Scooters" publica lá, não no Despachante
     "dl_mobilidade": {"label": "IG da DL Mobilidade", "env": ("DLMOB_PAGE_TOKEN", "DLMOB_IG_USER_ID")},
+    # 27/10/26: a aba "PubShow" publica no IG do 4kitem (@4kitem). Railway: KITEM_PAGE_TOKEN, KITEM_IG_USER_ID (e KITEM_PAGE_ID).
+    "kitem": {"label": "IG do 4kitem", "env": ("KITEM_PAGE_TOKEN", "KITEM_IG_USER_ID")},
     # 06/10/26: a aba "DL Defesas" publica no IG PRÓPRIO (@dldefesas.multas), nunca no do Despachante. Sem os 2 tokens, a tela avisa e não publica.
     # Railway (4 variáveis): DEFESAS_PAGE_TOKEN, DEFESAS_IG_USER_ID, DEFESAS_PAGE_ID e DEFESAS_CRDD (ex.: "CRDD/SC nº 1234").
     "defesas": {"label": "IG da DL Defesas", "env": ("DEFESAS_PAGE_TOKEN", "DEFESAS_IG_USER_ID")},
@@ -476,8 +506,16 @@ def tokens_ok(destino="despachante"):
 def _graph_post(url, params):
     data = urllib.parse.urlencode(params).encode()
     req = urllib.request.Request(url, data=data)
-    with urllib.request.urlopen(req, timeout=120) as r:
-        out = json.loads(r.read())
+    try:
+        with urllib.request.urlopen(req, timeout=120) as r:
+            out = json.loads(r.read())
+    except urllib.error.HTTPError as e:
+        try:
+            err = json.loads(e.read()).get("error", {})
+            motivo = "%s (code %s, subcode %s)" % (err.get("message", ""), err.get("code"), err.get("error_subcode"))
+        except Exception:
+            motivo = "sem corpo"
+        raise RuntimeError("Meta recusou (HTTP %s): %s" % (e.code, motivo))
     if "error" in out:
         raise RuntimeError(out["error"].get("message", str(out["error"])))
     return out
