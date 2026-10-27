@@ -4284,13 +4284,16 @@ _NOVO_CRIADO = '9999-12-31 23:59:59'   # o pedido "virtual" do /api/fila-info: o
 
 def _ultimas_tocadas(conn, bid):
     """Os tipos das FURAR_SEGUIDOS_MAX últimas músicas de pedido que a TV deste bar começou a tocar ('exibido': a TV
-    marca quando a música COMEÇA, então a que está tocando já conta), a mais recente primeiro. Só a janela da noite
+    marca quando a música COMEÇA, então a que está tocando já conta), a mais recente primeiro. 27/10/26 (revisão da
+    fila, D): o pago que a TV começou e o dono ⏭️ pulou vira 'recusado' (PIX a devolver) e continua contando: só o
+    Pular grava 'recusado' com exibido_at preenchido (exibido_at só nasce no /api/pedido-exibido). Só a janela da noite
     (created_at >= _JANELA_FILA, a faixa do índice do bar: nunca o histórico todo). Erro → [] (= a ordem de sempre)."""
     try:
         ph = ','.join('?' * len(TIPOS_MUSICA_PEDIDO))
         return [r[0] for r in conn.execute(
             f"""SELECT tipo FROM pubshow_pedidos
-                 WHERE business_id=? AND status='exibido' AND created_at >= {_JANELA_FILA} AND tipo IN ({ph})
+                 WHERE business_id=? AND status IN ('exibido','recusado') AND exibido_at IS NOT NULL
+                   AND created_at >= {_JANELA_FILA} AND tipo IN ({ph})
                  ORDER BY exibido_at DESC, id DESC LIMIT {FURAR_SEGUIDOS_MAX}""", (bid, *TIPOS_MUSICA_PEDIDO)).fetchall()]
     except Exception as ex:
         log.warning('[PUBSHOW] trava do furar: histórico do bar %s não lido (vai a ordem de sempre): %s', bid, ex)
@@ -4598,7 +4601,9 @@ def api_pedido_status(token, pedido_id):
         '''SELECT p.status, p.business_id, p.created_at, p.efi_txid, p.tipo,
                   ((TRIM(COALESCE(p.pago_em,''))<>'' OR p.estornado_em IS NOT NULL)
                    AND (TRIM(COALESCE(p.asaas_payment_id,''))<>'' OR TRIM(COALESCE(p.efi_txid,''))<>'')
-                   AND p.repasse_manual_id IS NULL) AS pix_volta,
+                   AND p.repasse_manual_id IS NULL
+                   -- 27/10/26 (revisão da fila, A): a prova do _SQL_PIX_PROVA (o banco disse não pago/devolvido: não promete)
+                   AND (p.pix_conferido IS NULL OR p.pix_conferido IN ('RECEIVED','CONFIRMED','EFI:CONCLUIDA'))) AS pix_volta,
                   COALESCE(p.valor_cobrado, p.valor, 0) AS valor_cli,
                   (p.created_at >= datetime('now','-20 minutes')) AS efi_recente FROM pubshow_pedidos p
            JOIN pubshow_businesses b ON p.business_id = b.id
@@ -7450,8 +7455,14 @@ def painel_qrcode():
 # 'dispensado', como antes (o log registra). O grátis segue 'dispensado'.
 # 27/10/26 (conferente do dinheiro, risco 1): o pedido que já entrou num repasse (o bar já recebeu) NÃO volta como
 # "PIX a devolver" (o Diogo pagaria 2 vezes): fica 'dispensado', como antes.
+# 27/10/26 (revisão da fila, A): a MESMA prova de pagamento do _repasse_where_pago (pix_conferido vazio = pago_em de uma
+# confirmação; ou conferido no gateway: _ASAAS_STATUS_PAGO + 'EFI:CONCLUIDA'). O que a conferência dos Repasses já
+# marcou como NÃO pago ou JÁ devolvido (REFUNDED, PENDING, OVERDUE, EFI:DEVOLVIDO, NAO_ACHADO, ID_INVALIDO, ERRO…, e o
+# HISTORICO/ADMIN ainda sem conferir) fica 'dispensado', como antes do pacote, e o celular não promete o PIX.
+# Mudou o _ASAAS_STATUS_PAGO? Muda aqui também (o t_dinheiro_fila_25out confere os dois).
+_SQL_PIX_PROVA = "(pix_conferido IS NULL OR pix_conferido IN ('RECEIVED','CONFIRMED','EFI:CONCLUIDA'))"
 _SQL_PIX_VOLTA = ("(TRIM(COALESCE(pago_em,''))<>'' AND (TRIM(COALESCE(asaas_payment_id,''))<>'' "
-                  "OR TRIM(COALESCE(efi_txid,''))<>'') AND repasse_manual_id IS NULL)")
+                  "OR TRIM(COALESCE(efi_txid,''))<>'') AND repasse_manual_id IS NULL AND " + _SQL_PIX_PROVA + ")")
 
 
 def _tirar_da_fila(conn, bid, pid=None, de='pendente', resto='dispensado', motivo=''):
@@ -7474,12 +7485,19 @@ def _tirar_da_fila(conn, bid, pid=None, de='pendente', resto='dispensado', motiv
             f"SELECT id FROM pubshow_pedidos WHERE {filtro} AND TRIM(COALESCE(pago_em,''))<>''", params)]
         if fora:
             log.warning('[PUBSHOW] bar %s: pago %s saiu sem tocar (%s), mas o PIX caiu na conta do bar (split Efí ou '
-                        'chave do bar) → %s, como antes', bid, fora, motivo, resto)
+                        'chave do bar), já entrou num repasse ou o banco não confirma o pagamento → %s, como antes',
+                        bid, fora, motivo, resto)
         conn.execute(f'UPDATE pubshow_pedidos SET status=? WHERE {filtro}', [resto, *params])
     return volta
 
 
 _PULAR_FOLGA_SEG = 10   # o ⚡ abre com a "Entrada de estrela" (4 s) e o YouTube leva uns segundos pra carregar
+# 27/10/26 (revisão da fila, C): os 10 s são só do ⚡ (tipo 'flash', o único com vinheta). Os outros pagos (👑, ⏩, 🎵)
+# ganham 3 s: depois disso a música tocou inteira e o Pular não pergunta "o PIX volta pro cliente".
+_PULAR_FOLGA_OUTROS_SEG = 3
+# 27/10/26 (revisão da fila, B): a consulta olha o teto da TV (11 min) + a pausa máxima do ⏸️ (PAUSA_MUSICA_MIN; só a
+# última pausa conta, _pausa_seg_desde). Quem decide se a música ainda toca é a conta janela + pausa, embaixo.
+_PULAR_TETO_TV_SEG = 660
 # Revisão 25/10/26: sem duração conhecida (acervo ou _YT_DURACAO, que zera quando o servidor reinicia), a janela é
 # curta. Errar pra mais devolvia o PIX de música que tocou inteira; errar pra menos só pula sem perguntar (como antes).
 _PULAR_SEM_DUR_SEG = 270
@@ -7507,14 +7525,16 @@ def _pausa_seg_desde(conn, bid, ini_brt):
 def _pago_tocando(conn, bid):
     """⏭️ Pular (25/10/26): o pedido de música PAGA (PIX na conta do PubShow) que a TV deste bar toca agora, ou None.
     A TV não conta ao servidor o que toca: só avisa quando COMEÇA um pedido (/api/pedido-exibido grava exibido_at).
-    Regra: o ÚLTIMO pedido que a TV começou nos últimos 11 min (o teto dela, _pedidoTocandoAgora). É ele se for música
+    Regra: o ÚLTIMO pedido que a TV começou nos últimos 11 min (o teto dela, _pedidoTocandoAgora; + a pausa máxima do
+    ⏸️, 27/10/26). É ele se for música
     (youtube_id), ainda 'exibido', pago com _SQL_PIX_VOLTA e se a música dele ainda não acabou (exibido_at + duração
     conhecida + folga; sem duração conhecida, _PULAR_SEM_DUR_SEG). O último é momento (cena), grátis, split,
     chave do bar, ou a música já acabou: None (pula direto, como antes)."""
     r = conn.execute(
         f"SELECT id, status, tipo, youtube_id, titulo_pedido, valor, valor_cobrado, exibido_at, {_SQL_PIX_VOLTA} AS volta "
-        "FROM pubshow_pedidos WHERE business_id=? AND exibido_at >= datetime('now','-3 hours','-660 seconds') "
-        "ORDER BY exibido_at DESC, id DESC LIMIT 1", (bid,)).fetchone()
+        "FROM pubshow_pedidos WHERE business_id=? AND exibido_at >= datetime('now','-3 hours',?) "
+        "ORDER BY exibido_at DESC, id DESC LIMIT 1",
+        (bid, f'-{int(_PULAR_TETO_TV_SEG + PAUSA_MUSICA_MIN * 60)} seconds')).fetchone()
     if not r or r['status'] != 'exibido' or not r['volta'] or not (r['youtube_id'] or '').strip():
         return None
     try:
@@ -7522,7 +7542,8 @@ def _pago_tocando(conn, bid):
     except ValueError:
         return None
     seg = _duracoes_conhecidas([r['youtube_id']], conn).get(r['youtube_id'])
-    janela = min(seg, YT_DUR_MAX_SEG) + _PULAR_FOLGA_SEG if seg else _PULAR_SEM_DUR_SEG
+    folga = _PULAR_FOLGA_SEG if r['tipo'] == 'flash' else _PULAR_FOLGA_OUTROS_SEG
+    janela = min(seg, YT_DUR_MAX_SEG) + folga if seg else _PULAR_SEM_DUR_SEG
     janela += _pausa_seg_desde(conn, bid, ini)   # 27/10/26: a música pausada pelo ⏸️ ainda não acabou
     idade = (datetime.utcnow() - timedelta(hours=3) - ini).total_seconds()
     if idade > janela:
@@ -7556,6 +7577,10 @@ def painel_pular_musica():
     pago = _pago_tocando(conn, b['id'])
     pid_conf = (request.form.get('pedido_id') or '').strip()
     _ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+    # 27/10/26 (revisão da fila, E): o painel NOVO manda sempre v=2. Sem o campo é o painel aberto antes do deploy, que
+    # não sabe mostrar a pergunta (mostrava "✅ Pulou!" sem pular): conta como confirmado, pula e o pago vai pro "PIX a
+    # devolver" (a regra do Diogo pra pago tirado da fila). Na vinheta do ⚡ continua esperando (a TV ignora o pular).
+    _painel_velho = 'v' not in request.form
     # Revisão 25/10/26: ⚡ na "Entrada de estrela" a TV ignora o pular; marcar 'recusado' aqui devolveria o PIX de
     # uma música que toca inteira. Não marca nem pula: o painel pede pra esperar ela começar.
     if pago and pago['na_vinheta']:
@@ -7569,6 +7594,8 @@ def painel_pular_musica():
             or [''])[0] == 'recusado':
         conn.close()
         return jsonify({'ok': True}) if _ajax else redirect('/pubshow/painel')
+    if pago and _painel_velho:
+        pid_conf = str(pago['id'])
     if pago and pid_conf != str(pago['id']):
         conn.close()
         if _ajax:

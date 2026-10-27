@@ -1361,6 +1361,7 @@ function pularMusica(btn, pid) {
   btn.disabled = true;
   btn.innerHTML = '⏭️ Pulando...';
   const fd = new FormData();
+  fd.append('v', '2');   // 27/10/26: painel que sabe mostrar a pergunta do pago (sem o campo, o servidor pula direto)
   if (pid) fd.append('pedido_id', pid);   // 25/10/26: o dono confirmou o pular da música PAGA (essa, e só essa)
   fetch('/pubshow/painel/pular-musica', {
     method: 'POST',
