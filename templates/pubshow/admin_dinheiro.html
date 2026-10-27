@@ -1,0 +1,353 @@
+{#- 💰 Dinheiro do PubShow (F1, 25/10/26) — /saas-admin/pubshow. SÓ LÊ. Conta e textos: pubshow_dinheiro.py.
+    Os pedaços entre <!--F:nome--> e <!--/F:nome--> são trocados pelo JS quando a leitura no Asaas/Efí chega
+    (/saas-admin/pubshow/gateway renderiza ESTE template de novo e devolve só esses pedaços). -#}
+{%- set brl = d.brl -%}
+{%- macro sinal_box(s) -%}
+<div class="box sinal {{ s.cor }}" data-cor="{{ s.cor }}" role="status">
+  {%- if s.cor == 'w' %}
+  <div class="b so-js">{{ s.icone }}</div><div class="t so-js">{% for l in s.linhas %}{{ l }}{% if not loop.last %}<br>{% endif %}{% endfor %}</div>
+  <div class="b so-nojs">🟠</div><div class="t so-nojs">não conferido (sem JavaScript)</div>
+  {%- else %}
+  <div class="b">{{ s.icone }}</div><div class="t">{% for l in s.linhas %}{{ l }}{% if not loop.last %}<br>{% endif %}{% endfor %}</div>
+  {%- endif %}
+</div>
+{%- endmacro -%}
+{%- macro aviso(a) -%}
+<div class="al {{ a.nivel }}">
+  <div class="tx">{{ '🔴' if a.nivel == 'r' else '🟠' }} {{ a.titulo }}<small>{{ a.detalhe }}</small></div>
+  {%- if a.botao and a.de_novo %}
+  <button type="button" class="btn{{ ' pri' if a.pri }}" data-de-novo="1">{{ a.botao }}</button>
+  {%- elif a.botao %}
+  <a class="btn{{ ' pri' if a.pri }}" href="{{ a.href }}">{{ a.botao }}</a>
+  {%- endif %}
+</div>
+{%- endmacro -%}
+{%- macro linhas_cinza(l) -%}
+<div><span class="{{ 'v' if l.perdido.icone == '✓' else '' }}">{{ l.perdido.icone }}</span> {{ l.perdido.texto }}</div>
+<div class="cinza">{{ l.saldo }}</div>
+<div class="cinza">{{ l.efi }}</div>
+{%- endmacro -%}
+{%- macro mens_linha(m) -%}
+<span>Mensalidade</span><b class="{{ m.cor }}">{{ m.icone }} {{ m.texto }}</b>
+{%- endmacro -%}
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>PubShow · Dinheiro</title>
+<style>
+  :root{
+    --bg:#0f0f1c; --surface:#16162a; --surface2:#1c1c34; --border:#2a2a46;
+    --text:#e8e8f2; --text2:#9a9abb; --indigo:#818cf8; --green:#4ade80; --amber:#fbbf24; --red:#f87171; --gray:#a1a1b5;
+    --g-bg:rgba(74,222,128,.10); --a-bg:rgba(251,191,36,.10); --r-bg:rgba(248,113,113,.12);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{background:var(--bg);color:var(--text);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif}
+  a{color:var(--indigo);text-decoration:none}
+  .num{font-variant-numeric:tabular-nums}
+  .est{display:inline-block;font-size:10.5px;color:var(--amber);border:1px dashed rgba(251,191,36,.6);border-radius:4px;padding:0 5px;font-weight:400}
+  .wrap{max-width:760px;margin:0 auto;padding:16px 16px 48px}
+  .frag{display:contents}
+
+  header.h{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+  header.h h1{margin:0;font-size:18px}
+  header.h small{display:block;color:var(--text2);font-size:12px}
+  header.h nav{display:flex;gap:8px;flex-wrap:wrap}
+  header.h nav a{font-size:12.5px;border:1px solid var(--border);border-radius:8px;padding:0 12px;background:var(--surface);
+                 min-height:40px;display:inline-flex;align-items:center}
+
+  .topo{display:grid;grid-template-columns:auto 1fr 1fr;gap:10px;margin-bottom:12px}
+  .box{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 14px;min-width:0}
+  .sinal{display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;min-width:110px}
+  .sinal .b{font-size:30px;line-height:1}
+  .sinal .t{font-size:12.5px;margin-top:4px;font-weight:700;overflow-wrap:anywhere}
+  .sinal.r{background:var(--r-bg);border-color:rgba(248,113,113,.35)}
+  .sinal.a{background:var(--a-bg);border-color:rgba(251,191,36,.35)}
+  .sinal.g{background:var(--g-bg);border-color:rgba(74,222,128,.35)}
+  .so-nojs{display:none}
+  .box .rot{font-size:12.5px;color:var(--text2)}
+  .box .val{font-size:26px;font-weight:800;margin:2px 0;letter-spacing:-.01em;overflow-wrap:anywhere}
+  .box .sub{font-size:12px;color:var(--text2);overflow-wrap:anywhere}
+
+  .precisa{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:12px}
+  .precisa h2{margin:0 0 6px;font-size:15px}
+  .nada{margin:6px 0 0;font-size:14px}
+  .al{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px;border-radius:9px;margin-top:6px}
+  .al .tx{font-size:14px;min-width:0;overflow-wrap:anywhere}
+  .al .tx small{display:block;color:var(--text2);font-size:12px;margin-top:2px}
+  .al.r{background:var(--r-bg);border:1px solid rgba(248,113,113,.3)}
+  .al.a{background:var(--a-bg);border:1px solid rgba(251,191,36,.28)}
+  .btn{flex:none;font:inherit;font-size:13px;font-weight:700;border-radius:8px;padding:0 12px;border:1px solid var(--border);
+       background:var(--surface2);color:var(--text);white-space:nowrap;text-align:center;cursor:pointer;
+       min-height:40px;min-width:40px;display:inline-flex;align-items:center;justify-content:center}
+  .btn.pri{background:var(--indigo);border-color:var(--indigo);color:#0f0f1c}
+  .btn[disabled]{opacity:.6;cursor:wait}
+  details.mais-av{margin-top:6px}
+  details.mais-av > summary{cursor:pointer;color:var(--text2);font-size:13px;list-style:none;min-height:40px;
+                            display:flex;align-items:center;padding:0 10px;border:1px dashed var(--border);border-radius:8px}
+  details.mais-av > summary::-webkit-details-marker{display:none}
+  details.mais-av > summary.verm{color:var(--red);border-color:rgba(248,113,113,.5);font-weight:700}
+  .ok{font-size:12.5px;color:var(--text2);margin-top:8px;padding-top:8px;border-top:1px solid var(--border)}
+  .ok div{margin-top:3px;overflow-wrap:anywhere}
+  .ok .v{color:var(--green)}
+  .nota{font-size:12px;color:var(--text2);margin:6px 0 0}
+
+  details.sec{background:var(--surface);border:1px solid var(--border);border-radius:12px;margin-bottom:12px}
+  details.sec > summary{cursor:pointer;padding:12px 14px;font-weight:700;font-size:14.5px;list-style:none;min-height:44px}
+  details.sec > summary::-webkit-details-marker{display:none}
+  details.sec > summary::after{content:" ▾";color:var(--text2)}
+  details.sec[open] > summary::after{content:" ▴"}
+  .sec-c{padding:0 14px 12px}
+  table.t{width:100%;border-collapse:collapse;font-size:13.5px}
+  table.t td{padding:6px 0;border-top:1px solid var(--border);vertical-align:top;overflow-wrap:anywhere}
+  table.t td:last-child{text-align:right;white-space:nowrap;padding-left:10px}
+  table.t td small{display:block;color:var(--text2);font-size:11.5px}
+  .neg{color:var(--red)}
+
+  h2.contas{font-size:14.5px;margin:18px 0 8px;color:var(--text2);font-weight:700}
+  .conta{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:10px}
+  .conta.teste{opacity:.6}
+  .conta-h{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap}
+  .conta-h > div{min-width:0}
+  .conta-h h3{margin:0;font-size:16px;overflow-wrap:anywhere}
+  .chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
+  .chip{font-size:11.5px;border-radius:999px;padding:2px 8px;border:1px solid var(--border);color:var(--text2)}
+  .chip.amar{color:var(--amber);border-color:rgba(251,191,36,.5)}
+  .linhas{margin-top:8px;font-size:13.5px}
+  .linhas > div{display:flex;justify-content:space-between;gap:10px;padding:5px 0;border-top:1px dashed var(--border)}
+  .linhas span{color:var(--text2);flex:none}
+  .linhas b{text-align:right;font-weight:600;min-width:0;overflow-wrap:anywhere}
+  .acoes{display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap}
+  .verde{color:var(--green)} .amar{color:var(--amber)} .verm{color:var(--red)} .cinza{color:var(--gray)}
+
+  .como dl{margin:0}
+  .como dt{font-weight:700;margin-top:8px;font-size:13.5px}
+  .como dd{margin:2px 0 0;color:var(--text2);font-size:13px}
+
+  @media (max-width:600px){
+    body{font-size:14.5px}
+    .topo{grid-template-columns:1fr 1fr}
+    .sinal{grid-column:1 / -1;flex-direction:row;gap:10px;justify-content:flex-start;min-width:0;padding:10px 12px;text-align:left}
+    .sinal .b{font-size:22px}
+    .sinal .t{margin-top:0}
+    .box .val{font-size:clamp(17px,5.2vw,21px)}
+    .al{flex-direction:column;align-items:stretch}
+  }
+  @media (max-width:340px){
+    .topo{grid-template-columns:1fr}
+  }
+</style>
+<noscript><style>.so-js{display:none!important}.so-nojs{display:block!important}</style></noscript>
+</head>
+<body data-sinal="{{ d.sinal.cor }}">
+<main class="wrap">
+
+  <header class="h">
+    <div>
+      <h1>💰 PubShow · Dinheiro</h1>
+      <small>{{ d.agora_txt }} (Brasília) · bar de teste fora dos totais</small>
+    </div>
+    <nav><a href="/pubshow/admin/repasses">💸 Repasses</a><a href="/saas-admin">Tela antiga</a></nav>
+  </header>
+
+  <section class="topo">
+    <div class="frag" id="F-sinal"><!--F:sinal-->{{ sinal_box(d.sinal) }}<!--/F:sinal--></div>
+    <div class="box">
+      <div class="rot">Entrou esta noite</div>
+      <div class="val num">{{ d.noite.txt }}</div>
+      <div class="sub">{{ d.noite.n }} PIX {{ 'confirmado' if d.noite.n == 1 else 'confirmados' }} · {{ d.noite.desde }}</div>
+    </div>
+    <div class="box">
+      <div class="rot">Você deve aos bares</div>
+      <div class="val num">{{ d.deve.txt }}</div>
+      <div class="sub">{% if d.deve.teste %}sem o bar de teste · na tela Repasses: {{ d.deve.repasses_txt }}{% else %}a mesma conta da tela Repasses{% endif %}</div>
+      {%- if d.deve.teste %}
+      <div class="sub cinza">+ {{ d.deve.teste_txt }} do bar de teste, fora</div>
+      {%- endif %}
+    </div>
+  </section>
+
+  <section class="precisa" aria-live="polite">
+    <noscript><div class="al a"><div class="tx">🟠 Esta página precisa de JavaScript pra conferir no Asaas/Efí.</div></div></noscript>
+    <div id="F-precisa"><!--F:precisa-->
+    <h2>👉 Precisa de você</h2>
+    {%- if d.avisos %}
+    {%- for a in d.avisos_vis %}
+    {{ aviso(a) }}
+    {%- endfor %}
+    {%- if d.avisos_mais %}
+    <details class="mais-av"><summary{% if d.mais_r %} class="verm"{% endif %}>+{{ d.mais_txt }}</summary>
+      {%- for a in d.avisos_mais %}
+      {{ aviso(a) }}
+      {%- endfor %}
+    </details>
+    {%- endif %}
+    {%- elif not d.lido %}
+    <p class="nada">⏳ Conferindo no Asaas/Efí…</p>
+    {%- else %}
+    <p class="nada"><span class="verde">✓</span> Nada precisa de você agora.</p>
+    {%- endif %}
+    <div class="ok" id="linhas">{{ linhas_cinza(d.linhas) }}</div>
+    <!--/F:precisa--></div>
+    <p class="nota" id="nota" hidden></p>
+  </section>
+
+  <details class="sec" id="mes">
+    <summary>📅 {{ d.mes.nome }} até agora</summary>
+    <div class="sec-c">
+      <table class="t num">
+        <tr><td>Clientes pagaram <small>{{ d.mes.n_pix }} PIX {{ 'confirmado' if d.mes.n_pix == 1 else 'confirmados' }} pelo Asaas/Efí, com a taxa do app</small></td><td>{{ brl(d.mes.clientes) }}</td></tr>
+        <tr><td>Parte dos bares <small>o que vira repasse</small></td><td>{{ brl(d.mes.bares) }}</td></tr>
+        <tr><td>Margem dos PIX <span class="est">estimado</span> <small>sem mensalidade · tarifa de tabela: Asaas {{ d.tarifas.asaas_txt }} por PIX, Efí {{ d.tarifas.efi_txt }} do PIX</small></td><td class="{{ 'neg' if d.mes.margem < 0 else '' }}">{{ brl(d.mes.margem) }}</td></tr>
+        <tr id="F-mes-mens"><!--F:mes-mens--><td>Mensalidades pagas <small>{% if not d.lido %}conferindo no Asaas…{% elif d.mes.mens_lidas %}{{ d.mes.mens_n }} {{ 'lida' if d.mes.mens_n == 1 else 'lidas' }} no Asaas agora{% if not d.mes.mens_todas %}; o resto não respondeu a tempo{% endif %}{% else %}não lidas (a chave do Asaas não está configurada){% endif %}</small></td><td>{% if d.mes.mens_lidas %}{{ brl(d.mes.mens_val) }}{% else %}—{% endif %}</td><!--/F:mes-mens--></tr>
+        <tr><td>Sem confirmação do banco <small>{{ d.mes.s_n }} PIX · não {{ 'entra' if d.mes.s_n == 1 else 'entram' }} no "você deve" até conferir</small></td><td>{{ brl(d.mes.s_val) }}</td></tr>
+        <tr><td>Direto na chave do bar <small>{{ d.mes.m_n }} PIX · o dono confirmou; não passou por você</small></td><td>{{ brl(d.mes.m_val) }}</td></tr>
+        <tr><td>"O cliente disse que pagou" <small>ninguém confirmou; fora de toda soma</small></td><td>{{ d.mes.m0_n }}</td></tr>
+        <tr><td>Devoluções <span class="est">estimado</span> <small>{{ d.mes.dev_n }} no mês · cada uma já pagou a tarifa de recebimento</small></td><td class="{{ 'neg' if d.mes.dev_custo else '' }}">{{ brl(-d.mes.dev_custo) if d.mes.dev_custo else brl(0) }}</td></tr>
+      </table>
+    </div>
+  </details>
+
+  <h2 class="contas">Contas ({{ d.contas|length }})</h2>
+  {%- for c in d.contas %}
+  <div class="conta" id="conta-{{ c.id }}">
+    <div class="conta-h">
+      <div>
+        <h3>{{ c.nome }}</h3>
+        <div class="chips"><span class="chip">{{ c.rota }}</span>{% if c.code %}<span class="chip">{{ c.code }}</span>{% endif %}{% if c.mesmo_fone %}<span class="chip amar">mesmo telefone de outra conta</span>{% endif %}</div>
+      </div>
+      {%- if c.whatsapp %}
+      <a class="btn" href="{{ c.whatsapp }}" target="_blank" rel="noopener">💬 WhatsApp</a>
+      {%- endif %}
+    </div>
+    <div class="linhas num">
+      <div id="F-mens-{{ c.id }}"><!--F:mens-{{ c.id }}-->{{ mens_linha(c.mens) }}<!--/F:mens-{{ c.id }}--></div>
+      <div><span>TV</span><b class="{{ c.tv.cor }}">{{ c.tv.texto }}</b></div>
+      <div><span>Último PIX confirmado</span><b>{{ c.ult_pix }}</b></div>
+      <div><span>No mês</span><b>{{ c.mes_txt }}</b></div>
+      <div><span>Você deve a ele</span><b>{{ c.devido_txt }}</b></div>
+    </div>
+    <div class="acoes"><a class="btn" href="/pubshow/admin/bar/{{ c.id }}">Gerenciar</a></div>
+  </div>
+  {%- else %}
+  <p class="nada cinza">Nenhum bar cadastrado ainda.</p>
+  {%- endfor %}
+
+  {%- for c in d.teste %}
+  <div class="conta teste" id="conta-{{ c.id }}">
+    <div class="conta-h"><div><h3>{{ c.nome }}</h3>
+      <div class="chips"><span class="chip">{{ c.rota }}</span>{% if c.code %}<span class="chip">{{ c.code }}</span>{% endif %}<span class="chip">TESTE · fora dos totais</span></div></div></div>
+    <div class="linhas num">
+      <div><span>No mês</span><b>{{ c.mes_txt }}</b></div>
+      <div><span>Você deve a ele</span><b>{{ c.devido_txt }} (fora)</b></div>
+    </div>
+  </div>
+  {%- endfor %}
+
+  <details class="sec como">
+    <summary>Como contamos</summary>
+    <div class="sec-c"><dl>
+      <dt>Confirmado</dt><dd>PIX que o Asaas ou a Efí confirmou. É a mesma regra da tela Repasses.</dd>
+      <dt>Entrou esta noite</dt><dd>O que os clientes pagaram (com a taxa do app) desde as 12h de Brasília. Não zera à meia-noite: antes do meio-dia, ainda é a noite de ontem.</dd>
+      <dt>Você deve aos bares</dt><dd>PIX confirmados ainda sem "Repassei", a mesma conta da tela Repasses. O bar de teste fica fora.</dd>
+      <dt>PIX perdido</dt><dd>QR dos últimos {{ d.dias_perdidos }} dias que ficaram sem pagamento aqui. A página pergunta ao Asaas/Efí se algum foi pago (os {{ d.max_perdidos }} mais novos por vez).</dd>
+      <dt>Mensalidade verde</dt><dd>Só quando o Asaas mostra a fatura do mês paga por PIX ou cartão, lida ao abrir esta página. Fatura marcada como paga à mão no Asaas não fica verde (o dinheiro não passou pelo Asaas). Sem isso: "pagamento não conferido".</dd>
+      <dt>Sem confirmação do banco</dt><dd>PIX liberados à mão ("PIX caiu") ou de antes da conferência automática. Não entram no "você deve" até alguém conferir.</dd>
+      <dt>Saldo do Asaas</dt><dd>É a conta de todos os SaaS. Por isso a página não diz se "cobre".</dd>
+      <dt>Margem dos PIX</dt><dd>Estimada com a tarifa de tabela (Asaas {{ d.tarifas.asaas_txt }} por PIX, Efí {{ d.tarifas.efi_txt }}), sem mensalidade e antes de custos fixos e imposto. Na divisão automática conta só a taxa do app: a parte da mensalidade e o que cobre devolução antiga ficam fora. PIX que está voltando pro cliente não conta.</dd>
+      <dt>Devoluções</dt><dd>Cada PIX devolvido já pagou a tarifa de recebimento. O custo é estimado com a tarifa do Asaas. A devolução feita no app da Efí não fica registrada no sistema (até a próxima fase): o PIX segue nas somas, e a página pergunta à Efí se o que está "a devolver" já foi devolvido.</dd>
+      <dt>Contas com o mesmo telefone</dt><dd>Cada conta tem o seu cartão. Pagar numa não cobre a outra.</dd>
+    </dl></div>
+  </details>
+</main>
+
+<template id="T-espera-sinal">{{ sinal_box({'cor': 'w', 'icone': '⏳', 'linhas': ['conferindo no Asaas/Efí…']}) }}</template>
+<template id="T-falha-sinal">{{ sinal_box({'cor': 'a', 'icone': '🟠', 'linhas': ['não deu pra conferir agora']}) }}</template>
+<template id="T-falha-linhas">{{ linhas_cinza(d.linhas_falha) }}</template>
+
+<script>
+/* Vigia: se a conferência não terminar (JS quebrado, rede caída), o sinal vira 🟠 — nunca fica ⏳ nem verde. */
+window.__psOk = false;
+window.__psFalha = function () {
+  try {
+    var s = document.getElementById('F-sinal');
+    var atual = s && s.querySelector('[data-cor]');
+    if (!atual || atual.getAttribute('data-cor') !== 'r') {
+      s.innerHTML = document.getElementById('T-falha-sinal').innerHTML;
+      document.body.setAttribute('data-sinal', 'a');
+    }
+    var l = document.getElementById('linhas');
+    if (l) { l.innerHTML = document.getElementById('T-falha-linhas').innerHTML; }
+  } catch (e) {}
+};
+window.__psVigia = setTimeout(function () { if (!window.__psOk) { window.__psFalha(); } }, 25000);
+</script>
+<script>
+(function () {
+  var URL_LEITURA = '/saas-admin/pubshow/gateway';
+  var inicio = Date.now();
+  function trocar(pedacos) {
+    for (var k in pedacos) {
+      if (!Object.prototype.hasOwnProperty.call(pedacos, k)) { continue; }
+      var el = document.getElementById('F-' + k);
+      if (el) { el.innerHTML = pedacos[k]; }
+    }
+  }
+  function nota(txt) {
+    var n = document.getElementById('nota');
+    if (!n) { return; }
+    n.textContent = txt || '';
+    n.hidden = !txt;
+  }
+  function falhou() { window.__psOk = true; window.__psFalha(); }
+  function pedir(deNovo) {
+    fetch(URL_LEITURA + (deNovo ? '?de_novo=1' : ''), {credentials: 'same-origin', cache: 'no-store'})
+      .then(function (r) { if (!r.ok) { throw new Error('http'); } return r.json(); })
+      .then(function (j) {
+        if (!j || !j.ok) { throw new Error('resposta'); }
+        if (!j.pronto) {
+          if (Date.now() - inicio > 40000) { falhou(); return; }
+          setTimeout(function () { pedir(false); }, 1200);
+          return;
+        }
+        trocar(j.html || {});
+        document.body.setAttribute('data-sinal', j.sinal);
+        window.__psOk = true;
+        nota(j.de_novo_cedo ? 'Conferido há menos de 1 minuto: mostrando a última conferência.' : '');
+      })
+      .catch(falhou);
+  }
+  /* O verde não fica velho: a aba que volta a ser vista (celular desbloqueado, aba trazida da memória) depois de
+     5 min recarrega e confere de novo. */
+  var carregou = Date.now();
+  function velha() { return Date.now() - carregou > 5 * 60 * 1000; }
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'visible' && velha()) { location.reload(); }
+  });
+  window.addEventListener('pageshow', function (e) { if (e.persisted && velha()) { location.reload(); } });
+  document.addEventListener('click', function (e) {
+    var b = e.target && e.target.closest ? e.target.closest('[data-de-novo]') : null;
+    if (!b) { return; }
+    e.preventDefault();
+    b.disabled = true;
+    b.textContent = 'Conferindo…';
+    var s = document.getElementById('F-sinal');
+    var atual = s && s.querySelector('[data-cor]');
+    if (!atual || atual.getAttribute('data-cor') !== 'r') {
+      s.innerHTML = document.getElementById('T-espera-sinal').innerHTML;
+      document.body.setAttribute('data-sinal', 'w');
+    }
+    window.__psOk = false;
+    inicio = Date.now();
+    clearTimeout(window.__psVigia);
+    window.__psVigia = setTimeout(function () { if (!window.__psOk) { window.__psFalha(); } }, 25000);
+    pedir(true);
+  });
+  pedir(false);
+})();
+</script>
+</body>
+</html>

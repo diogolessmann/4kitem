@@ -6219,7 +6219,7 @@ def saas_asaas_test():
     api_key = os.environ.get('ASAAS_API_KEY', '')
     resultado = {
         'api_key_set': bool(api_key),
-        'api_key_prefix': api_key[:20] + '...' if api_key else '',
+        'configurada': bool(api_key),   # F0 (25/10/26): nunca devolver pedaço da chave
     }
     if api_key:
         # Só LEITURA (15/10/26): antes cada GET criava um cliente "Teste Diagnostico" no Asaas de produção
@@ -6914,6 +6914,22 @@ def saas_pubshow_bar_clientes(bid):
         clientes.append(dict(g, nome=nome))
     clientes.sort(key=lambda c: (-c['pedidos'], -c['valor'], c['nome'].casefold()))
     return jsonify({'ok': True, 'dias': 30, 'clientes': clientes[:20]})
+
+
+# 💰 Dinheiro do PubShow (F1, 25/10/26): SÓ LÊ. Conta, leitura no Asaas/Efí e textos em pubshow_dinheiro.py
+# (import aqui dentro: a /saas-admin não carrega nada disso).
+@app.route('/saas-admin/pubshow')
+@_saas_admin_required
+def saas_pubshow_dinheiro():
+    import pubshow_dinheiro as _psd
+    return _psd.pagina()
+
+
+@app.route('/saas-admin/pubshow/gateway')
+@_saas_admin_required
+def saas_pubshow_dinheiro_gateway():
+    import pubshow_dinheiro as _psd
+    return _psd.leitura_json(de_novo=request.args.get('de_novo') == '1')
 
 
 @app.route('/admin/alerta/<int:sub_id>/status', methods=['POST'])
