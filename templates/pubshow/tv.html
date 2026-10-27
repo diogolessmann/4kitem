@@ -428,11 +428,29 @@
   @keyframes pcLuz2{0%{opacity:.8;transform:rotate(14deg)}100%{opacity:.8;transform:rotate(-14deg)}}
   #pcf-raio{position:absolute;z-index:2;left:50%;top:-5vh;width:30vh;height:75vh;overflow:visible;transform:translateX(-50%);
     opacity:0;animation:pcRaio .7s ease-out .1s forwards}
+  /* 24/10/26 (momentos no telão, visual; revisão P1): o brilho do raio era 3 drop-shadow (até 70px) no traço que se
+     desenha, e rasterizar isso a cada quadro travava a vinheta inteira em 1080p (6 tarefas de 0,1 a 0,6 s; o nome batia
+     com 0,3 s de atraso). Agora o brilho é desenho: o mesmo traço atrás, mais grosso e transparente (pc-l1 a pc-l7),
+     sem filtro nenhum */
   #pcf-raio path{stroke:#fffbe8;stroke-width:12;stroke-linejoin:miter;fill:none;
-    filter:drop-shadow(0 0 10px #fff) drop-shadow(0 0 30px #ffd34d) drop-shadow(0 0 70px #f59e0b);
     stroke-dasharray:1200;stroke-dashoffset:1200;animation:pcDesenha .2s linear .1s forwards}
   #pcf-raio path.pc-galho1{stroke-width:6}
   #pcf-raio path.pc-galho2{stroke-width:5}
+  #pcf-raio path[class*=pc-l]{stroke-linejoin:round;stroke-linecap:round}
+  #pcf-raio path.pc-l7{stroke:#f59e0b;stroke-width:80;opacity:0.035}
+  #pcf-raio path.pc-l7.pc-g{stroke-width:46}
+  #pcf-raio path.pc-l6{stroke:#f59e0b;stroke-width:62;opacity:0.045}
+  #pcf-raio path.pc-l6.pc-g{stroke-width:36}
+  #pcf-raio path.pc-l5{stroke:#fbbf24;stroke-width:48;opacity:0.06}
+  #pcf-raio path.pc-l5.pc-g{stroke-width:28}
+  #pcf-raio path.pc-l4{stroke:#ffd34d;stroke-width:36;opacity:0.08}
+  #pcf-raio path.pc-l4.pc-g{stroke-width:22}
+  #pcf-raio path.pc-l3{stroke:#ffd34d;stroke-width:27;opacity:0.11}
+  #pcf-raio path.pc-l3.pc-g{stroke-width:16}
+  #pcf-raio path.pc-l2{stroke:#fff3c4;stroke-width:20;opacity:0.17}
+  #pcf-raio path.pc-l2.pc-g{stroke-width:12}
+  #pcf-raio path.pc-l1{stroke:#fff;stroke-width:15;opacity:0.28}
+  #pcf-raio path.pc-l1.pc-g{stroke-width:9}
   @keyframes pcDesenha{to{stroke-dashoffset:0}}
   @keyframes pcRaio{0%{opacity:1}55%{opacity:1}100%{opacity:0}}
   #pcf-tremor{animation:pcTremor .4s linear .85s 1}
@@ -620,7 +638,7 @@
 <!-- ⚡ furar.html: feixes de luz, o raio desenhando, o nome dourado batendo com faíscas, o traço e a música -->
 <template id="tpl-furar">
   <div class="pc-feixe pc-f1"></div><div class="pc-feixe pc-f2"></div><div class="pc-feixe pc-f3"></div>
-  <svg id="pcf-raio" viewBox="0 0 200 500" aria-hidden="true"><path d="M120 0 L70 190 L125 185 L60 360 L105 352 L40 500"/><path class="pc-galho1" d="M98 120 L150 175 L135 230"/><path class="pc-galho2" d="M85 300 L30 330 L20 390"/></svg>
+  <svg id="pcf-raio" viewBox="0 0 200 500" aria-hidden="true"><path class="pc-l7" d="M120 0 L70 190 L125 185 L60 360 L105 352 L40 500"/><path class="pc-l7 pc-g" d="M98 120 L150 175 L135 230"/><path class="pc-l7 pc-g" d="M85 300 L30 330 L20 390"/><path class="pc-l6" d="M120 0 L70 190 L125 185 L60 360 L105 352 L40 500"/><path class="pc-l6 pc-g" d="M98 120 L150 175 L135 230"/><path class="pc-l6 pc-g" d="M85 300 L30 330 L20 390"/><path class="pc-l5" d="M120 0 L70 190 L125 185 L60 360 L105 352 L40 500"/><path class="pc-l5 pc-g" d="M98 120 L150 175 L135 230"/><path class="pc-l5 pc-g" d="M85 300 L30 330 L20 390"/><path class="pc-l4" d="M120 0 L70 190 L125 185 L60 360 L105 352 L40 500"/><path class="pc-l4 pc-g" d="M98 120 L150 175 L135 230"/><path class="pc-l4 pc-g" d="M85 300 L30 330 L20 390"/><path class="pc-l3" d="M120 0 L70 190 L125 185 L60 360 L105 352 L40 500"/><path class="pc-l3 pc-g" d="M98 120 L150 175 L135 230"/><path class="pc-l3 pc-g" d="M85 300 L30 330 L20 390"/><path class="pc-l2" d="M120 0 L70 190 L125 185 L60 360 L105 352 L40 500"/><path class="pc-l2 pc-g" d="M98 120 L150 175 L135 230"/><path class="pc-l2 pc-g" d="M85 300 L30 330 L20 390"/><path class="pc-l1" d="M120 0 L70 190 L125 185 L60 360 L105 352 L40 500"/><path class="pc-l1 pc-g" d="M98 120 L150 175 L135 230"/><path class="pc-l1 pc-g" d="M85 300 L30 330 L20 390"/><path d="M120 0 L70 190 L125 185 L60 360 L105 352 L40 500"/><path class="pc-galho1" d="M98 120 L150 175 L135 230"/><path class="pc-galho2" d="M85 300 L30 330 L20 390"/></svg>
   <div class="pc-centro"><div id="pcf-tremor">
     <div class="pc-rotulo" id="pcf-rotulo">⚡ furou a fila ⚡</div>
     <div class="pc-nome" id="pcf-nome"></div>
@@ -1125,6 +1143,7 @@ function onPlayerStateChange(e) {
   }
   // YT.PlayerState.PLAYING = 1 — vídeo tocando, cancela detector de stall
   if (e.data === 1) {
+    _paradoDesde = 0;     // 24/10/26 (momentos no telão, visual): o clipe voltou, o próximo intervalo conta do zero
     clearTimeout(stallTimer);
     _loopGuard  = 0;      // vídeo tocou de verdade → zera o guard
     _skipCount  = 0;
@@ -1266,7 +1285,8 @@ async function avancarFila(opts) {
 
     if (p.youtube_id) {
       // 24/10/26 (momentos no telão, D2): ⚡ furar ganha a "Entrada de estrela" (4 s, player parado) antes do clipe
-      if (p.tipo === 'flash') { _vinhetaFurar(p, () => _tocarPedido(p)); return; }
+      // revisão P3: no ⏭️ do painel (e no ⚡ que esperava a TV ligar) o clipe ainda toca: a vinheta espera ele parar
+      if (p.tipo === 'flash') { _pausarEDepois(() => _vinhetaFurar(p, () => _tocarPedido(p))); return; }
       _tocarPedido(p);
       return;
     }
@@ -1435,7 +1455,13 @@ function _filaAtualizar(data, doPoll) {
     if (_consumidos.has(it.id)) { n--; if (it.tipo === 'flash' || it.tipo === 'vip') pagos--; }
     else itens.push(it);
   });
-  _fila = {itens, n: Math.max(0, n), pagos: Math.max(0, pagos), preco: data.furar_preco || null};
+  // 25/10/26 (trava do ⚡ furar): os minutos do "⏳ Grátis" e do "⚡ Furar" contam as músicas que tocam ANTES de um pedido
+  // novo na ordem real do servidor (fila_frente: com 2 furar seguidos, 1 da fila passa antes), menos as que esta TV já
+  // começou. Servidor antigo: a conta de sempre (todas / as pagas)
+  const fr = data.fila_frente, ja = data.fila.length - itens.length;
+  const frGr = (fr && typeof fr.gratis === 'number') ? Math.max(0, fr.gratis - ja) : Math.max(0, n);
+  const frFu = (fr && typeof fr.flash === 'number') ? Math.max(0, fr.flash - ja) : Math.max(0, pagos);
+  _fila = {itens, n: Math.max(0, n), pagos: Math.max(0, pagos), preco: data.furar_preco || null, frGr, frFu};
   if (_fila.n > 0 && _somLigado()) {
     _filaZeros = 0;
     body.classList.add('com-fila');
@@ -1521,7 +1547,7 @@ function _filaTick() {
   const l1 = document.querySelector('#ft-linhas .ft-item');
   if (l1) l1.classList.toggle('vez', ok && rest <= 20);
   const base = ok ? rest : 120;
-  const mg = _filaMin(base + _fila.n * FILA_SEG), mf = _filaMin(base + _fila.pagos * FILA_SEG);
+  const mg = _filaMin(base + (_fila.frGr ?? _fila.n) * FILA_SEG), mf = _filaMin(base + (_fila.frFu ?? _fila.pagos) * FILA_SEG);
   if (mg !== _minGrAnt) { document.getElementById('ft-min-gratis').textContent = mg; _minGrAnt = mg; }
   if (mf !== _minFuAnt) { document.getElementById('ft-min-furar').textContent = mf; _minFuAnt = mf; }
 }
@@ -1618,15 +1644,20 @@ function mostrarOverlay(pedido, depois) {
 // O intervalo: a música acabou (ENDED) ou o slide do bar acabou. 1) momento pendente → a cena dele (tela cheia, player
 // parado); 2) depois a fila (⚡ furar ganha a vinheta de 4 s); 3) o slide do bar só num intervalo SEM momento (vai pro
 // seguinte). Teto: 1 momento (≤ 16 s) + a vinheta do furar (4 s) = 20 s de player parado. TV muda não gasta nada.
+// 24/10/26 (momentos no telão, visual; revisão F3/P4): a hora em que o clipe parou (o ENDED, o fim do slide, o corte da
+// D3). A vinheta do furar conta o teto de 20 s daqui. Zera quando um clipe volta a TOCAR
+let _paradoDesde = 0;
 function _intervalo(opts) {
   if (_palcoAtivo) return;
   if (_pausaBar) { _pausaPend = () => _intervalo(opts); return; }   // ⏸️ 25/10/26: cena e próxima música esperam
+  if (!_paradoDesde) _paradoDesde = performance.now();
   const p = _momentoPend;
   if (p && _somLigado() && !_consumidos.has(p.id)) {
-    mostrarCena(p, () => {
+    // revisão P3: na D3 o clipe ainda pode estar tocando (a pausa do YouTube chega depois): a cena espera ele parar
+    _pausarEDepois(() => mostrarCena(p, () => {
       if (window._recarregarPendente) { location.reload(); return; }   // TVP-1: a recarga esperava esta cena
       avancarFila({semSlide: true});
-    });
+    }));
     return;
   }
   avancarFila(opts);
@@ -1802,10 +1833,38 @@ function _pcAjusta() {
   }
 }
 // "AC/DC - Highway to Hell (Official Video)" → música "Highway to Hell" e artista "AC/DC"; sem " - ", só a música
+// 24/10/26 (momentos no telão, visual; revisão F4): depois do traço vindo só a versão ("Evidências - Ao Vivo", "- Live",
+// "- Acústico", "- Remastered"…), ela sai antes de separar: "▶ Evidências" e só "tocando agora"
+const PC_VERSAO = /\s[-–—]\s(ao vivo|live|ac[uú]stic[oa]|acoustic|remaster(ed|izad[oa])?|vers[aã]o[^-–—]*|cover|karaok[eê]|letra|lyrics?|[aá]udio|audio oficial|clipe|videoclipe|v[ií]deo oficial|oficial|official|hd|4k)$/i;
 function _pcMusica(t) {
-  const s = _tituloSemEnfeite(t);
+  const s = _tituloSemEnfeite(t).replace(PC_VERSAO, '').trim();
   const m = s.match(/^(.+?)\s[-–—]\s(.+)$/);
   return m ? {artista: m[1].trim(), musica: m[2].trim()} : {artista: '', musica: s};
+}
+
+// 24/10/26 (momentos no telão, visual; revisão F2): o recado (até 80 letras) é a última linha do bloco do meio e, com 2
+// linhas, entrava embaixo do convite do canto do QR. Se o recado desce até a faixa do canto, a coluna dele fica estreita
+// o bastante pra acabar antes do canto (centrada) e a letra encolhe até caber em 2 linhas (nunca menos de 3vh)
+function _pcLivraCanto(el) {
+  if (!el || !el.textContent) return;
+  const pc = document.getElementById('palco'), q = document.getElementById('palco-qr').getBoundingClientRect();
+  const rp = pc.getBoundingClientRect(), esc = rp.width / (pc.offsetWidth || 1), folga = innerHeight * .02 * esc;
+  const caixas = () => { const r = document.createRange(); r.selectNodeContents(el); return [...r.getClientRects()]; };
+  // só mexe se alguma linha cruza o canto (com folga; o recado ainda vai subir 2vh com o pc-sobe): recado curto, de
+  // 1 linha que acaba antes do canto, fica como no template
+  const cruza = x => x.left < q.right + folga && x.right > q.left - folga && x.top < q.bottom + folga && x.bottom > q.top - 2 * folga;
+  if (!caixas().some(cruza)) return;
+  const larg = (2 * (q.left - rp.left - rp.width / 2) - 2 * folga) / esc;
+  if (!(larg > 0)) return;
+  el.style.maxWidth = larg + 'px';
+  let px = parseFloat(getComputedStyle(el).fontSize);
+  const linhas = () => {   // o emoji vem em outra fonte e ganha outra caixa na mesma linha: junta as de altura parecida
+    let n = 0, u = -1e9;
+    for (const t of caixas().map(x => x.top).sort((a, b) => a - b)) if (t - u > px * esc * .5) { n++; u = t; }
+    return n;
+  };
+  const min = innerHeight * .03;
+  while (linhas() > 2 && px > min) { px = Math.max(min, px * .92); el.style.fontSize = px + 'px'; }
 }
 
 // ── canto do QR (decisão do Diogo, 24/10): o convite de cada momento + o preço do bar, em TODA cena do palco (as 3
@@ -1828,13 +1887,16 @@ function _pcCanto(tipo, ms) {
 // ── partículas (faísca, confete, bolha, balão) num canvas SÓ do palco (momento.js). O laço requestAnimationFrame só roda
 // com a cena na tela e para no _palcoFechar (o template rodava pra sempre). TV box fraca: com o quadro passando de ~33 ms
 // as próximas rajadas saem com metade (e com ~50 ms, um terço): cai a quantidade, o visual fica ──
-const _fx = {P: [], raf: 0, quadros: 0, cx: null, W: 0, H: 0, escala: 1, ult: 0, dt: 16};
+// 24/10/26 (momentos no telão, visual; revisão P2/F6): a conta é a MEDIANA dos últimos 10 quadros (um quadro lento só,
+// como os do raio, não derruba a rajada; a TV fraca de verdade cai já antes da 1ª rajada, que só sai em 0,8 s) e a
+// escala fica de uma cena pra outra (a TV é a mesma: o furar depois do parabéns não volta pra rajada cheia)
+const _fx = {P: [], raf: 0, quadros: 0, cx: null, W: 0, H: 0, escala: 1, ult: 0, dts: [], n: 0};
 function _fxLigar() {
   const cv = document.getElementById('pc-fx'), pc = document.getElementById('palco');
   _fx.W = cv.width = pc.offsetWidth;
   _fx.H = cv.height = pc.offsetHeight;
   _fx.cx = cv.getContext('2d');
-  _fx.P = []; _fx.escala = 1; _fx.ult = 0; _fx.dt = 16; _fx.n = 0;
+  _fx.P = []; _fx.ult = 0; _fx.n = 0; _fx.dts = [];
   if (!_fx.raf) _fx.raf = requestAnimationFrame(_fxAnda);
 }
 function _fxDesligar() {
@@ -1893,10 +1955,14 @@ function _fxDesenha(cx, pt) {
 function _fxAnda(t) {
   _fx.raf = 0;
   if (!_palcoAtivo || !_fx.cx) return;
-  // o 1º quadro depois de montar a cena é lento por natureza: a média só conta do 4º em diante
-  if (_fx.ult && ++_fx.n > 3) {
-    _fx.dt = _fx.dt * .9 + Math.min(t - _fx.ult, 100) * .1;
-    _fx.escala = _fx.dt > 50 ? .3 : (_fx.dt > 33 ? .5 : 1);
+  // os 2 primeiros quadros depois de montar a cena são lentos por natureza: a conta começa no 3º
+  if (_fx.ult && ++_fx.n > 2) {
+    _fx.dts.push(t - _fx.ult);
+    if (_fx.dts.length > 10) _fx.dts.shift();
+    if (_fx.dts.length >= 4) {
+      const m = [..._fx.dts].sort((a, b) => a - b)[_fx.dts.length >> 1];
+      _fx.escala = m > 50 ? .3 : (m > 33 ? .5 : 1);
+    }
   }
   _fx.ult = t;
   _fx.quadros++;
@@ -1964,6 +2030,7 @@ function _cenaParabens(p, fim) {
   _pcFase('parabens:onda', 1500);
   _pcClasse(2100, $('pcp-msg'), 'pc-sobe');
   _pcCanto('parabens', 3000);
+  _pcLivraCanto($('pcp-msg'));   // revisão F2: idem no parabéns (com o nome grande ele quase nunca desce até o canto)
   // a cena 2, na ordem da vida: o bar canta com o bolo aceso, depois o pedido e as velas apagando
   const canta = $('pcp-canta'), faz = $('pcp-pedido');
   _pcClasse(4400, $('pcp-centro'), 'pc-some');
@@ -2026,6 +2093,7 @@ function _cenaBrinde(p, fim) {
   _palcoPasso(3550, () => _fxEstoura(_fx.W / 2, _fx.H * .64, _fxN(140), {cores: ['#fbbf24', '#fff'], vmin: 3, vmax: 13}));
   _pcClasse(4200, $('pcb-msg'), 'pc-sobe');
   _pcCanto('brinde', 4600);
+  _pcLivraCanto($('pcb-msg'));   // revisão F2: o recado de 80 letras não entra embaixo do convite do canto
   _pcClasse(7300, $('pc-fim'), 'pc-escurece');
   _pcFase('brinde:escurece', 7300);
   _palcoPasso(8000, fim);
@@ -2035,7 +2103,15 @@ function _cenaBrinde(p, fim) {
 // 0,25 s, "⚡ furou a fila ⚡", o NOME dourado batendo em 0,75 s com faíscas (0,8 s), o traço, "▶ <música>" + "<artista> ·
 // tocando agora", o canto em 1,8 s, escurece em 3,5 s e o clipe em 4,0 s. Os tempos dos pedaços do clone são os atrasos
 // do CSS do template. O pedido já foi marcado exibido no avancarFila (a linha sai da fila na hora).
+// 24/10/26 (momentos no telão, visual; revisão F3/P4): o teto de 20 s de player parado é do intervalo inteiro, contado
+// de quando o clipe parou (_paradoDesde), não da vinheta. Depois de um parabéns (16 s, e mais o atraso de timer da TV
+// fraca) a vinheta encurta o fim parado (o canto) pra fechar em PALCO_TETO_MS − PALCO_RESERVA_MS (a reserva é o clipe
+// seguinte carregar); sozinha, ou depois do brinde, fica com os 4 s do template. Nunca menos de FURAR_MIN_MS: o nome,
+// a música e o canto saem sempre (o cliente pagou)
+const PALCO_TETO_MS = 20000, PALCO_RESERVA_MS = 500, FURAR_MS = 4000, FURAR_MIN_MS = 2500;
 function _vinhetaFurar(p, depois) {
+  const ini = _paradoDesde || performance.now();
+  const dur = Math.round(Math.max(FURAR_MIN_MS, Math.min(FURAR_MS, ini + PALCO_TETO_MS - PALCO_RESERVA_MS - performance.now())));
   _palcoAbrir('cena-furar', 'furar');
   pedidoAtual = p;
   const $ = id => document.getElementById(id);
@@ -2057,16 +2133,37 @@ function _vinhetaFurar(p, depois) {
   _pcFase('furar:musica', 1400);
   _pcCanto('flash', 1800);
   _pcFase('furar:canto', 1800);
-  _pcClasse(3500, $('pc-fim'), 'pc-escurece-f');
-  _pcFase('furar:escurece', 3500);
-  _palcoPasso(4000, () => { _palcoFechar(); if (depois) depois(); });
+  _pcClasse(dur - 500, $('pc-fim'), 'pc-escurece-f');
+  _pcFase('furar:escurece', dur - 500);
+  _palcoPasso(dur, () => { _palcoFechar(); if (depois) depois(); });
+}
+
+// 24/10/26 (momentos no telão, visual; revisão P3): o YouTube de verdade pausa por mensagem (postMessage) e o
+// getPlayerState() só vira "pausado" quando o iframe responde. Nos caminhos em que o clipe ainda TOCA quando o palco vai
+// abrir (⏭️ do painel com um ⚡ na fila, a espera máxima D3, o ⚡ que esperava a TV ligar), pausa e só abre quando o
+// player confirma que parou (até 1,5 s; depois disso abre assim mesmo e o _palcoAbrir pausa de novo). Enquanto espera,
+// o _palcoAtivo segura o ENDED, o ⏭️ e o avancarFila (nada carrega nem abre por cima)
+function _clipeTocando() {
+  try { const s = player && player.getPlayerState ? player.getPlayerState() : 0; return s === 1 || s === 3; } catch(e) { return false; }
+}
+function _pausarEDepois(fn) {
+  if (!_clipeTocando()) { fn(); return; }
+  _palcoAtivo = true;
+  try { player.pauseVideo(); } catch(e) {}
+  const ini = performance.now();
+  (function confere() {
+    if (_clipeTocando() && performance.now() - ini < 1500) { setTimeout(confere, 40); return; }
+    _palcoAtivo = false;
+    fn();
+  })();
 }
 
 // 🔊 Som da cena (D6): sintetizado na hora (WebAudio), sem arquivo e sem música de ninguém, ≤ 1,5 s, só com o player
 // parado. Volume = o tv_volume do painel. Navegador que não deixa: fica mudo, sem erro.
 let _ac = null, _somNos = [];
 function _somCena(qual) {
-  if (_isMuted || !_palcoAtivo) return;
+  // 24/10/26 (momentos no telão, visual; revisão P3): clipe ainda tocando = nenhum som do app por cima dele
+  if (_isMuted || !_palcoAtivo || _clipeTocando()) return;
   const vol = volumeAtualTV() / 100;
   if (!(vol > 0)) return;
   try {

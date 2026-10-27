@@ -3471,6 +3471,30 @@ def _nome_tv(nome, n=20):
     return corte.strip()
 
 
+# 25/10/26 (leva 1 da fama, BRIEF_LEVA1_FRASES_NOME; Diogo ~01h15): o nome do ⚡ furar é o único texto que vai pra TV
+# sem o OK de ninguém (49 vezes numa noite). Só o nome da pessoa: até 3 palavras, sem número, sem "@" e sem a palavra
+# "mesa"/"mesas" (maiúscula e acento não contam). Vale no nome COMO A TV ESCREVE (sem caractere invisível, espaços
+# juntados, cortado em 20 letras por palavra): o mesmo texto que passa pelo filtro de palavrão. O servidor manda; o
+# celular repete a regra (_nomeFurarRuim do jukebox.html) só pra avisar antes do PIX. Os outros momentos não mudam.
+MSG_NOME_FURAR = 'Põe só o teu nome (até 3 palavras).'
+_MESA_PALAVRA = re.compile(r'(?<![^\W\d_])mesas?(?![^\W\d_])')   # a palavra inteira: "Mesada" e "Ramesa" passam
+
+
+def _nome_furar_ruim(nome):
+    """True se o nome do ⚡ furar não é só um nome: mais de 3 palavras, número, "@" ou a palavra "mesa"/"mesas".
+    Vazio = False (vale o "Informe seu nome." de hoje)."""
+    import unicodedata
+    t = _nome_tv(_sem_invisiveis(nome))
+    if not t:
+        return False
+    if len(t.split(' ')) > 3:
+        return True
+    # como o filtro de palavrão: sem acento e sem maiúscula, e o invisível que fica (o "junta emoji") não parte a palavra
+    n = unicodedata.normalize('NFKD', t).casefold()
+    n = ''.join(c for c in n if not unicodedata.combining(c) and unicodedata.category(c) not in ('Mn', 'Me', 'Cf'))
+    return bool(re.search(r'\d', n)) or '@' in n or bool(_MESA_PALAVRA.search(n))
+
+
 def _ponte_pix_vivo(row) -> bool:
     """Ponte Efí: a cobrança vale 15 min (_efi_criar_cobranca_jukebox, expira=900). Margem de 1 min pro cliente pagar."""
     try:
@@ -3640,6 +3664,10 @@ def jukebox(token, pix_id=None):
                 erro = MSG_POLITICA   # 18/10/26: trava eleitoral (vale pro grátis e pro pago, antes de qualquer PIX)
             elif any(_tem_link_ou_fone(x) for x in (nome_cliente, mensagem, remetente)):
                 erro = MSG_LINK_FONE
+            elif tipo == 'flash' and _nome_furar_ruim(nome_cliente):
+                # 25/10/26 (leva 1 da fama): o nome do ⚡ é só o nome da pessoa, antes de qualquer pedido ou PIX
+                # (Asaas, split ou ponte Efí: todos nascem lá embaixo, depois desta lista)
+                erro, erro_tipo = MSG_NOME_FURAR, 'nome_furar'
             elif tipo in ('musica_especifica', 'musica_externa', 'flash', 'pular_espera') and not youtube_id:
                 erro = 'Selecione uma música antes de confirmar.'
             elif tipo == 'cantada' and not mensagem:
@@ -4002,6 +4030,7 @@ def jukebox(token, pix_id=None):
            ORDER BY CASE tipo WHEN "vip" THEN 1 WHEN "flash" THEN 2 ELSE 3 END, created_at ASC, id ASC LIMIT 10''',
         (b['id'],)
     ).fetchall()
+    fila = _fila_com_trava(conn3, b['id'], fila)   # 25/10/26 (trava do ⚡ furar): as músicas na ordem real da TV
     canal        = CANAIS.get(b['canal_atual'], CANAIS['rock'])
     try:
         import json as _jsn
@@ -4243,6 +4272,96 @@ def _brinde_proximo(b, excluir_id=None):
     return f'{sai.hour}h{sai.minute:02d}'
 
 
+# ── 25/10/26 (trava do ⚡ furar; Diogo 24/10: "Sim, liga a trava") ──────────────────────────────────────────────────────
+# Depois de 2 ⚡ furar TOCADOS seguidos neste bar (na janela da noite), a 1ª música da fila que não é furar vai na frente
+# das furadas que esperam. Uma só; depois volta a regra de sempre (👑 vip → ⚡ furar → chegada). 👑 vip não muda. Sem
+# música não-furar esperando, o furar toca normal (a trava nunca deixa a TV parada nem segura furar à toa). "Seguidas" =
+# sem música não-furar tocando entre elas; a rotação (vídeo do acervo) não é pedido e não conta. Preço não muda.
+TIPOS_MUSICA_PEDIDO = ('musica',) + TIPOS_MUSICA_FILA   # as músicas da fila da TV (🎲 surpresa incluída)
+FURAR_SEGUIDOS_MAX = 2
+_NOVO_CRIADO = '9999-12-31 23:59:59'   # o pedido "virtual" do /api/fila-info: o mais novo da fila
+
+
+def _ultimas_tocadas(conn, bid):
+    """Os tipos das FURAR_SEGUIDOS_MAX últimas músicas de pedido que a TV deste bar começou a tocar ('exibido': a TV
+    marca quando a música COMEÇA, então a que está tocando já conta), a mais recente primeiro. Só a janela da noite
+    (created_at >= _JANELA_FILA, a faixa do índice do bar: nunca o histórico todo). Erro → [] (= a ordem de sempre)."""
+    try:
+        ph = ','.join('?' * len(TIPOS_MUSICA_PEDIDO))
+        return [r[0] for r in conn.execute(
+            f"""SELECT tipo FROM pubshow_pedidos
+                 WHERE business_id=? AND status='exibido' AND created_at >= {_JANELA_FILA} AND tipo IN ({ph})
+                 ORDER BY exibido_at DESC, id DESC LIMIT {FURAR_SEGUIDOS_MAX}""", (bid, *TIPOS_MUSICA_PEDIDO)).fetchall()]
+    except Exception as ex:
+        log.warning('[PUBSHOW] trava do furar: histórico do bar %s não lido (vai a ordem de sempre): %s', bid, ex)
+        return []
+
+
+def _ordem_fila_musica(pendentes, ultimas=()):
+    """A ORDEM REAL em que a TV toca as músicas pendentes (função pura, sem banco). pendentes: linhas com tipo,
+    created_at e id (o que não é música fica de fora); ultimas: _ultimas_tocadas. Passo a passo, como a TV vai tocar:
+    👑 vip primeiro; senão, se as 2 últimas tocadas (as de verdade + as já postas nesta conta) foram ⚡ furar e espera
+    música que não é furar, vai a 1ª delas; senão ⚡ furar; senão a chegada. Dentro de cada grupo: created_at, id."""
+    from collections import deque
+
+    def grupo(r):
+        return {'vip': 1, 'flash': 2}.get(r['tipo'], 3 if r['tipo'] in TIPOS_MUSICA_PEDIDO else 0)
+    vips, furar, outros = (deque(sorted((r for r in pendentes if grupo(r) == g),
+                                        key=lambda r: (r['created_at'] or '', r['id']))) for g in (1, 2, 3))
+    hist = list(ultimas)[:FURAR_SEGUIDOS_MAX]
+    out = []
+    while vips or furar or outros:
+        trava = len(hist) == FURAR_SEGUIDOS_MAX and all(t == 'flash' for t in hist)
+        r = (vips or (outros if trava and outros else furar) or outros).popleft()
+        out.append(r)
+        hist = ([r['tipo']] + hist)[:FURAR_SEGUIDOS_MAX]
+    return out
+
+
+def _fila_com_trava(conn, bid, rows):
+    """Uma lista que JÁ veio na ordem de sempre (vip → furar → chegada; pode ter momentos no meio) com as músicas na
+    ORDEM REAL da TV; o que não é música fica no mesmo lugar. Sem a trava ativa, nada muda. Erro → a lista como veio."""
+    try:
+        mus = [r for r in rows if r['tipo'] in TIPOS_MUSICA_PEDIDO]
+        real = iter(_ordem_fila_musica(mus, _ultimas_tocadas(conn, bid) if mus else []))
+        return [next(real) if r['tipo'] in TIPOS_MUSICA_PEDIDO else r for r in rows]
+    except Exception as ex:
+        log.warning('[PUBSHOW] trava do furar: fila do bar %s na ordem de sempre: %s', bid, ex)
+        return rows
+
+
+def _na_frente_de_um_novo(pendentes, ultimas, tipo):
+    """Quantas músicas tocam antes de um pedido NOVO deste tipo ('flash' ou uma grátis) criado agora, na ordem real
+    (com a trava: uma grátis nova pode passar na frente de furadas que esperam; um furar novo pode esperar 1 grátis)."""
+    novo = {'id': 1 << 62, 'tipo': tipo, 'created_at': _NOVO_CRIADO}
+    return next(i for i, r in enumerate(_ordem_fila_musica(list(pendentes) + [novo], ultimas)) if r is novo)
+
+
+def _fila_real_e_frente(conn, bid, pendentes):
+    """(as músicas pendentes na ORDEM REAL da TV, {'gratis': N, 'flash': N} = quantas tocam antes de um pedido novo de
+    cada tipo). Erro → a ordem e a conta de sempre (a página nunca cai por causa da trava)."""
+    try:
+        ult = _ultimas_tocadas(conn, bid) if pendentes else []
+        return (_ordem_fila_musica(pendentes, ult),
+                {'gratis': _na_frente_de_um_novo(pendentes, ult, 'musica_externa'),
+                 'flash': _na_frente_de_um_novo(pendentes, ult, 'flash')})
+    except Exception as ex:
+        log.warning('[PUBSHOW] trava do furar: fila do bar %s na ordem de sempre: %s', bid, ex)
+        return list(pendentes), {'gratis': len(pendentes),
+                                 'flash': sum(1 for r in pendentes if r['tipo'] in ('vip', 'flash'))}
+
+
+def _musicas_pendentes(conn, bid):
+    """As músicas pendentes do bar (id, tipo, created_at), já na ordem de sempre (teto 200: a conta da trava precisa
+    ver as grátis que esperam atrás das pagas)."""
+    ph = ','.join('?' * len(TIPOS_MUSICA_PEDIDO))
+    return conn.execute(
+        f"""SELECT id, tipo, created_at FROM pubshow_pedidos
+             WHERE business_id=? AND status='pendente' AND tipo IN ({ph})
+             ORDER BY CASE tipo WHEN 'vip' THEN 1 WHEN 'flash' THEN 2 ELSE 3 END, created_at ASC, id ASC LIMIT 200""",
+        (bid, *TIPOS_MUSICA_PEDIDO)).fetchall()
+
+
 # ── Sinal da TV + tutorial do dono (15/10/26, B6) ──────────────────────────────
 _TV_GRAVA_A_CADA_S = 60      # /api/status chega a cada ~3 s; o banco só é escrito 1x por minuto
 _TV_SEM_SINAL_MIN = 5        # depois disso o painel mostra "sem sinal há X min"
@@ -4390,9 +4509,14 @@ def api_status(code):
            ORDER BY
              CASE tipo WHEN "vip" THEN 1 WHEN "flash" THEN 2 ELSE 3 END,
              created_at ASC, id ASC
-           LIMIT 30''',
+           LIMIT 200''',   # 25/10/26 (trava do furar): 30 → 200, a conta vê as grátis que esperam atrás das pagas
         (b['id'],)
     ).fetchall()
+    # 25/10/26 (trava do ⚡ furar): a ORDEM REAL (2 furar tocados seguidos → 1 da fila), a mesma do celular e do painel: a
+    # TV toca o 1º e desenha a coluna nesta ordem. _frente = quantas tocam antes de um pedido novo (o "⏳ Grátis" e o
+    # "⚡ Furar" da coluna); a fila da TV segue com teto 30
+    _fila_rows, _frente = _fila_real_e_frente(conn, b['id'], _fila_rows)
+    _fila_rows = _fila_rows[:30]
     pedido_musica = _fila_rows[0] if _fila_rows else None
 
     # Contagem da fila: só pedidos confirmados (exclui aguardando_pix)
@@ -4450,6 +4574,7 @@ def api_status(code):
                             'yt': 1 if r['youtube_id'] else 0} for r in _fila_rows[:10]],   # até 10 (a TV mostra 8 + "+N")
         'fila_n':         len(_fila_rows),
         'fila_pagos':     sum(1 for r in _fila_rows if r['tipo'] in ('vip', 'flash')),
+        'fila_frente':    _frente,   # 25/10/26 (trava do furar): {'gratis': N, 'flash': N} na frente de um pedido novo
         'furar_preco':    _furar_preco_tv(b),
         'aniversariantes': aniversariantes,   # 🎂 24/10/26 (momentos no telão): o pino da coluna
         'precos_canto':   _precos_canto_tv(b),   # 24/10/26 (momentos no telão, visual): o preço no canto das cenas
@@ -4505,16 +4630,26 @@ def api_pedido_status(token, pedido_id):
         # crítico leigo A2 (17/10/26) + busca 2.0 (16/10/26): música = a MESMA ordem da TV (/api/status): vip, furar a
         # fila, depois chegada (empate no mesmo segundo: quem entrou primeiro, pelo id). Os recados (parabéns etc.)
         # aparecem por cima da TV e não ocupam vez de música. O /api/fila-info promete "entra em Nº" com esta conta.
-        _pr = {'vip': 1, 'flash': 2}.get(row['tipo'], 3)
-        posicao = conn.execute(
-            """SELECT COUNT(*) FROM pubshow_pedidos
-               WHERE business_id=? AND status='pendente' AND id != ?
-                 AND tipo IN ('vip','flash','musica','musica_especifica','musica_externa','pular_espera')
-                 AND (CASE tipo WHEN 'vip' THEN 1 WHEN 'flash' THEN 2 ELSE 3 END < ?
-                      OR (CASE tipo WHEN 'vip' THEN 1 WHEN 'flash' THEN 2 ELSE 3 END = ?
-                          AND (created_at < ? OR (created_at = ? AND id < ?))))""",
-            (row['business_id'], pedido_id, _pr, _pr, row['created_at'], row['created_at'], pedido_id)
-        ).fetchone()[0] + 1  # posição 1-indexed
+        # 25/10/26 (trava do ⚡ furar): a posição na ORDEM REAL da TV (2 furar tocados seguidos → 1 da fila), a mesma do
+        # /api/status. Erro (ou fora das 200 pendentes) → a conta de sempre, abaixo
+        try:
+            posicao = next((i + 1 for i, r in enumerate(_ordem_fila_musica(
+                _musicas_pendentes(conn, row['business_id']), _ultimas_tocadas(conn, row['business_id'])))
+                if r['id'] == pedido_id), None)
+        except Exception as ex:
+            log.warning('[PUBSHOW] trava do furar: posição do pedido #%s na conta de sempre: %s', pedido_id, ex)
+            posicao = None
+        if posicao is None:
+            _pr = {'vip': 1, 'flash': 2}.get(row['tipo'], 3)
+            posicao = conn.execute(
+                """SELECT COUNT(*) FROM pubshow_pedidos
+                   WHERE business_id=? AND status='pendente' AND id != ?
+                     AND tipo IN ('vip','flash','musica','musica_especifica','musica_externa','pular_espera')
+                     AND (CASE tipo WHEN 'vip' THEN 1 WHEN 'flash' THEN 2 ELSE 3 END < ?
+                          OR (CASE tipo WHEN 'vip' THEN 1 WHEN 'flash' THEN 2 ELSE 3 END = ?
+                              AND (created_at < ? OR (created_at = ? AND id < ?))))""",
+                (row['business_id'], pedido_id, _pr, _pr, row['created_at'], row['created_at'], pedido_id)
+            ).fetchone()[0] + 1  # posição 1-indexed
     elif status == 'pendente':
         # Conta pedidos confirmados ANTES deste na fila (pela data de criação)
         posicao = conn.execute(
@@ -5416,20 +5551,19 @@ def api_fila_info(token):
         ip_cliente = f'{ip_cliente}#{_cid}'   # mesma chave do POST do jukebox (1 grátis a cada 20 min por celular)
     conn = get_pubshow_db()
     try:
-        n = {r[0]: r[1] for r in conn.execute(
-            """SELECT tipo, COUNT(*) FROM pubshow_pedidos
-               WHERE business_id=? AND status='pendente'
-                 AND tipo IN ('vip','flash','musica','musica_especifica','musica_externa','pular_espera')
-               GROUP BY tipo""", (b['id'],)).fetchall()}
+        # 25/10/26 (trava do ⚡ furar): em que lugar entra um pedido NOVO na ORDEM REAL da TV (a do /api/status e do
+        # /api/pedido-status): com 2 furar tocados seguidos, o furar novo pode esperar 1 grátis, e a grátis nova pode
+        # passar na frente de furadas que esperam. Os momentos não tomam vez de música (1 por intervalo, entre as músicas)
+        _frente = _fila_real_e_frente(conn, b['id'], _musicas_pendentes(conn, b['id']))[1]
     finally:
         conn.close()
 
     def _estimativa(na_frente):   # mesma conta do /api/pedido-status: 4 min por música + metade da atual
         return {'na_frente': na_frente, 'posicao': na_frente + 1,
-                'min': None if na_frente == 0 else na_frente * 4 + 2}
+                'min': None if na_frente == 0 else na_frente * MUSICA_MIN_EST + 2}
 
-    out = {'gratis': _estimativa(sum(n.values())),
-           'flash': _estimativa(n.get('vip', 0) + n.get('flash', 0)),
+    out = {'gratis': _estimativa(_frente['gratis']),
+           'flash': _estimativa(_frente['flash']),
            'espera_gratis_min': _gratis_espera_min(b, ip_cliente),
            # 24/10/26 (momentos no telão, revisão S2/CEL-1): o celular pergunta de novo ao abrir um momento (a página
            # fica aberta na mesa): a hora do próximo brinde e quantos momentos já esperam a TV
@@ -5478,6 +5612,7 @@ def painel():
            ORDER BY CASE tipo WHEN "vip" THEN 1 WHEN "flash" THEN 2 ELSE 3 END, created_at ASC, id ASC LIMIT 20''',
         (b['id'],)
     ).fetchall()
+    fila = _fila_com_trava(conn, b['id'], fila)   # 25/10/26 (trava do ⚡ furar): as músicas na ordem real da TV
     aguardando_pix = conn.execute(
         '''SELECT * FROM pubshow_pedidos WHERE business_id=? AND status="aguardando_pix"
            AND created_at >= datetime('now','-30 minutes')
@@ -6335,6 +6470,7 @@ def painel_fila_json():
            ORDER BY CASE tipo WHEN "vip" THEN 1 WHEN "flash" THEN 2 ELSE 3 END, created_at ASC, id ASC LIMIT 20''',   # crítico leigo A2: a ordem da TV
         (b['id'],)
     ).fetchall()
+    fila = _fila_com_trava(conn, b['id'], fila)   # 25/10/26 (trava do ⚡ furar): as músicas na ordem real da TV
     aguardando = conn.execute(
         '''SELECT id, nome_cliente, tipo, mensagem, valor, created_at, youtube_id, titulo_pedido
            FROM pubshow_pedidos WHERE business_id=? AND status="aguardando_pix"

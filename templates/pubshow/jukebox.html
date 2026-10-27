@@ -374,11 +374,25 @@
   .cc-quando.espera{color:#fbbf24}
   .sh-pular-furar{font-size:13px;font-weight:700;color:#fde68a;text-align:center;margin:6px 0 12px}
   #btn-pular[style*="none"] + .sh-pular-furar{display:none}   /* só junto do ⏩ (com a grátis esperando) */
+  /* 25/10/26 (leva 1 da fama): "Só pra maiores de 18." em letra pequena logo embaixo do botão de pagar do ⚡ (some com ele) */
+  .aviso-18{font-size:11px;color:var(--text2);text-align:center;margin:6px 0 2px;line-height:1.4}
+  #btn-flash[style*="none"] + .aviso-18{display:none}
 </style>
 <!-- celular do cliente do bar: sem balão global do WhatsApp do 4kitem (a marca 'wa-float-4k' impede a injeção) -->
 <style>#wa-float-4k{display:none !important}</style>
 </head>
 <body>
+<script>
+// 25/10/26 (trava do ⚡ furar): a frase da POSIÇÃO da música, igual antes do PIX (cartão do ⚡, com o /api/fila-info) e
+// depois de pago (/api/pedido-status). O servidor já conta a trava (2 furar tocados seguidos → 1 da fila) e os momentos
+// não tomam vez de música (1 por intervalo). Só números do servidor: texto puro, nunca "a próxima" sem ser
+function _frasePosicao(pos, min) {
+  pos = Math.max(1, Math.floor(Number(pos) || 1));
+  if (pos === 1) return 'Você é o 1º. Toca depois da música que está tocando.';
+  min = Math.floor(Number(min) || 0);
+  return `Você é o ${pos}º.` + (min > 0 ? ` Toca em ~${min} min.` : '');
+}
+</script>
 
 {% if pix_pendente %}
 <!-- ═══════════════════════════════════════════════════════════════════════ -->
@@ -432,6 +446,8 @@ function copiarPayload() {
     <div class="pix-status-icon">⏳</div>
     <div class="pix-status-text"><span class="spinner"></span><span id="pix-status-text">Confirmando...</span></div>
     <div class="pix-status-sub" id="pix-status-sub">Verificando pagamento...</div>
+    {#- 25/10/26 (leva 1 da fama): só no ⚡ furar PAGO, embaixo da posição (_fraseFama; texto fixo por textContent) #}
+    <div class="pix-status-sub" id="pix-fama-frase" style="display:none;color:#fde68a;font-weight:700"></div>
   </div>
 
   <div id="pix-pagar">
@@ -553,11 +569,23 @@ function _pixStatus(estado, icone, texto, sub) {
   if (estado !== 'esperando') box.querySelector('.spinner')?.remove();
   document.getElementById('pix-status-text').textContent = texto;
   document.getElementById('pix-status-sub').innerHTML = sub;
+  _fraseFama(false);   // 25/10/26 (leva 1 da fama): só o "pago e na fila" do ⚡ põe de volta
   if (estado === 'pago' || estado === 'ruim') {
     const pagar = document.getElementById('pix-pagar');
     if (pagar) pagar.style.display = 'none';
     _esquecerPixAberto();
   }
+}
+// 25/10/26 (leva 1 da fama, BRIEF_LEVA1_FRASES_NOME): no ⚡ furar com o PIX confirmado (na fila, 'pendente'), embaixo da
+// posição. Nunca "a próxima" e nunca "a música que você pagou" (YouTube III.F.3: vende-se a cena com o nome, não o clipe).
+// O texto só vem na tela do PIX do ⚡ (nos outros tipos fica vazio e nada aparece)
+const FRASE_FAMA = '{% if pix_pendente.tipo == "flash" %}Teu nome entra na TV antes da música. 📸 Pede pra alguém da mesa filmar a TV.{% endif %}';
+function _fraseFama(mostrar) {
+  const el = document.getElementById('pix-fama-frase');
+  if (!el) return;
+  const on = !!(mostrar && FRASE_FAMA);
+  el.textContent = on ? FRASE_FAMA : '';
+  el.style.display = on ? 'block' : 'none';
 }
 function _textoPago() {
   if (PIX_TIPO === 'pular_espera') return '✅ Pago! Tua música entrou na fila.';   // fila normal, não na frente
@@ -631,12 +659,10 @@ async function _atualizarPosicao() {
       _pixStatus('pago', '🛡️', '✅ Pago!', 'O bar está conferindo tua mensagem antes de mostrar na TV.');
     } else if (d.status === 'pendente') {
       let sub = 'Já está na fila da TV.';
-      if (musica && d.posicao) {
-        sub = d.posicao === 1
-          ? '🟢 <strong style="color:#4ade80">Você é o próximo!</strong> Toca quando o vídeo atual acabar.'
-          : `📍 Você é o <strong style="color:#f0f0ff">${d.posicao}º</strong> da fila${d.tempo_min ? ' · ⏱ ~' + d.tempo_min + ' min' : ''}`;
-      }
+      // 25/10/26 (trava do ⚡ furar): a posição real numa frase só (#pix-pos-frase), a mesma do cartão antes do PIX
+      if (musica && d.posicao) sub = `<span id="pix-pos-frase">${_frasePosicao(d.posicao, d.tempo_min)}</span>`;
       _pixStatus('pago', '✅', _textoPago(), sub);
+      _fraseFama(PIX_TIPO === 'flash');   // 25/10/26 (leva 1 da fama): "Teu nome entra na TV antes da música. 📸 …"
     } else if (d.status === 'exibido') {
       clearInterval(_posicaoTimer);
       _pixStatus('pago', '🎉', musica ? '🎵 Tua música está tocando!' : '🎉 Apareceu na TV!', 'Curte aí! 🍻');
@@ -765,10 +791,7 @@ async function jaPaguei() {
             clearInterval(_t);
             el.textContent = 'O bar tirou esse pedido da fila.';
           } else if (d.posicao) {
-            const p = d.posicao;
-            const label = p === 1 ? '🟢 <strong>Você é o próximo!</strong>' : `📍 Você é o ${p}º`;
-            const tempo = d.tempo_min ? ` · ⏱ ~${d.tempo_min} min` : '';
-            el.innerHTML = `${label}${tempo}`;
+            el.textContent = _frasePosicao(d.posicao, d.tempo_min);   // 25/10/26 (trava do ⚡ furar): a posição real
           }
         } catch(e) {}
       }
@@ -937,7 +960,9 @@ async function jaPaguei() {
       <input type="hidden" name="client_id" class="js-cid" value="">
       <div class="form-group" style="margin-bottom:4px">
         <label for="sh-nome">Teu nome</label>
-        <input type="text" name="nome_cliente" id="sh-nome" class="js-nome" maxlength="20" placeholder="Teu nome" autocomplete="given-name">
+        <input type="text" name="nome_cliente" id="sh-nome" class="js-nome" maxlength="40" placeholder="Teu nome" autocomplete="given-name">
+        {#- 25/10/26 (leva 1 da fama): o aviso do nome do ⚡ ("Põe só o teu nome (até 3 palavras).") antes de sair o PIX #}
+        <div class="dica-nome" id="sh-nome-erro" role="alert" style="display:none;color:#f87171;font-weight:700"></div>
         <div class="dica-nome">É assim que teu nome aparece na TV (até 20 letras). Sem palavrão, beleza? 😉</div>
       </div>
       {% set n_fila = fila_musicas|length %}
@@ -953,7 +978,9 @@ async function jaPaguei() {
           <div class="cc-linha" id="sh-cc-linha"></div>
           <div class="cc-marca">{{ b.nome }} · PubShow</div>
         </div>
-        <div class="cc-txt" id="sh-cc-txt">Toca logo depois desta. Antes, teu nome na TV inteira.</div>
+        {#- 25/10/26 (trava do ⚡ furar): a posição REAL (#sh-cc-pos, do /api/fila-info) e não "logo depois desta": com 2
+            furar seguidos, 1 música da fila toca antes #}
+        <div class="cc-txt" id="sh-cc-txt"><span id="sh-cc-pos"></span> Antes, teu nome na TV inteira.</div>
         <div class="cc-quando" id="sh-cc-fila" style="margin:6px 0 10px"></div>
       </div>
       {%- endif %}
@@ -977,6 +1004,8 @@ async function jaPaguei() {
         ⚡ Furar a fila · {{ brl(tipos.flash.preco + pix_conv) }}{% if pix_direto %} no PIX{% endif %}
         <small id="sh-flash-sub" data-preco="{% if pix_conv > 0 %}{{ brl(tipos.flash.preco) }} + {{ brl(pix_conv) }} do app{% endif %}">{% if pix_conv > 0 %}{{ brl(tipos.flash.preco) }} + {{ brl(pix_conv) }} do app{% else %}toca antes da fila{% endif %}</small>
       </button>
+      {#- 25/10/26 (leva 1 da fama): letra pequena logo embaixo do botão de pagar do ⚡, sem caixinha e sem passo a mais #}
+      <div class="aviso-18" id="sh-flash-18">Só pra maiores de 18.</div>
       {% endif %}
       <button type="button" class="btn-voltar" onclick="fecharSheet()">Cancelar</button>
     </form>
@@ -988,6 +1017,7 @@ async function jaPaguei() {
   <div class="form-title" id="form-title">🎵 Pedido</div>
 
   <form method="POST" id="form-pedido" onsubmit="
+    if (tipoAtual === 'flash' && !_nomeFurarOk(document.getElementById('inp-nome'), 'inp-nome-erro')) return false;
     const btn = document.getElementById('btn-confirmar');
     if (btn) { btn.disabled = true; btn.textContent = '⏳ Enviando...'; }
   ">
@@ -1023,18 +1053,23 @@ async function jaPaguei() {
       <div class="musica-preview-sub" id="prev-sub"></div>
     </div>
 
+    {# 24/10/26 (momentos no telão, visual; revisão F1): o campo aceita 40 letras (era 20 e cortava no meio da palavra:
+       "Maria Clara Fernande"). Quem corta pra TV é o _nome_tv do servidor (e o _nomeTV do cartão): 20 letras, por
+       PALAVRA inteira ("Maria Clara"). O mesmo no #sh-nome do ⚡ e no #inp-remetente #}
     <div class="form-group">
       <label for="inp-nome" id="inp-nome-label">Teu nome *</label>
       <input type="text" name="nome_cliente" id="inp-nome" class="js-nome"
-             placeholder="Teu nome" maxlength="20" required autocomplete="given-name"
+             placeholder="Teu nome" maxlength="40" required autocomplete="given-name"
              oninput="atualizarPixRef()">
+      {#- 25/10/26 (leva 1 da fama): o aviso do nome do ⚡ furar por aqui (os outros momentos não mudam) #}
+      <div class="dica-nome" id="inp-nome-erro" role="alert" style="display:none;color:#f87171;font-weight:700"></div>
       <div class="dica-nome" id="inp-nome-dica">É assim que teu nome aparece na TV (até 20 letras). Sem palavrão, beleza? 😉</div>
     </div>
 
     {# 16/10/26 (crítico C2): no parabéns o nome GRANDE da TV é o do aniversariante; quem manda é opcional #}
     <div class="form-group" id="remetente-group" style="display:none">
       <label for="inp-remetente">Teu nome (opcional)</label>
-      <input type="text" name="remetente" id="inp-remetente" placeholder="Teu nome" maxlength="20" autocomplete="given-name">
+      <input type="text" name="remetente" id="inp-remetente" placeholder="Teu nome" maxlength="40" autocomplete="given-name">
       <div class="dica-nome">Sai pequeno, junto do recado: "de Zé".</div>
     </div>
 
@@ -1096,6 +1131,8 @@ async function jaPaguei() {
     <button type="submit" class="btn-confirmar" id="btn-confirmar">✅ Confirmar pedido</button>
     <p class="aviso-pix">Seu pedido entra na fila imediatamente.</p>
     {% endif %}
+    {#- 25/10/26 (leva 1 da fama): no ⚡ furar por aqui (PIX do bar / balcão), o mesmo "Só pra maiores de 18." (_pintarCartao) #}
+    <div class="aviso-18" id="form-flash-18" style="display:none">Só pra maiores de 18.</div>
     <button type="button" class="btn-voltar" onclick="voltarGrid()">← Voltar</button>
   </form>
 </div>
@@ -1256,22 +1293,53 @@ function _nomeTV(v) {
   }
   return t.toLocaleUpperCase('pt-BR');
 }
-function _tituloCurto(t) {   // "AC/DC - Highway to Hell (Official Video)" → "Highway to Hell" (o que a TV escreve)
-  t = String(t || '').split(' | ')[0].replace(/\([^)]*\)|\[[^\]]*\]/g, ' ').replace(/\s+/g, ' ').trim();
-  const m = t.match(/\s[-–—]\s(.+)$/);
-  return (m && m[1].trim()) || t;
+// 25/10/26 (leva 1 da fama, BRIEF_LEVA1_FRASES_NOME): a regra do nome do ⚡ furar, a MESMA do servidor (_nome_furar_ruim
+// do pubshow.py), só pra avisar antes do PIX; quem manda é o servidor. No nome como a TV escreve (sem caractere
+// invisível, cortado em 20 letras por palavra): até 3 palavras, sem número, sem "@" e sem a palavra "mesa"/"mesas"
+// (maiúscula e acento não contam). Os invisíveis são os do _INVISIVEIS do servidor (24/10/26, F3-2)
+const MSG_NOME_FURAR = 'Põe só o teu nome (até 3 palavras).';
+const _INVIS_NOME = /[\u00ad\u034f\u061c\u115f\u1160\u180e\u200b\u200c\u200e\u200f\u2028\u2029\u202a-\u202e\u2060-\u2064\u2066-\u206f\u2800\u3164\ufeff\uffa0]/g;
+function _nomeFurarRuim(v) {
+  const t = _nomeTV(String(v || '').replace(_INVIS_NOME, ''));
+  if (!t) return false;
+  if (t.split(' ').length > 3) return true;
+  const n = t.normalize('NFKD').toLocaleLowerCase('pt-BR').replace(/[\p{Mn}\p{Me}\p{Cf}]/gu, '');
+  return /\p{Nd}/u.test(n) || n.includes('@') || /(^|[^\p{L}])mesas?(?![\p{L}])/u.test(n);
+}
+// o aviso no lugar do erro, embaixo do nome: nada sai, a música escolhida e o nome continuam na tela
+function _avisoNomeFurar(inp, idErro, mostrar) {
+  const e = document.getElementById(idErro);
+  if (!e || (!mostrar && e.style.display === 'none')) return;   // sem aviso na tela: o 'falta' do nome vazio fica como hoje
+  e.textContent = mostrar ? MSG_NOME_FURAR : '';
+  e.style.display = mostrar ? 'block' : 'none';
+  if (inp) inp.classList.toggle('falta', !!mostrar);
+}
+function _nomeFurarOk(inp, idErro) {
+  if (!inp || !_nomeFurarRuim(inp.value)) return true;
+  _avisoNomeFurar(inp, idErro, true);
+  inp.focus();
+  return false;
+}
+// 24/10/26 (momentos no telão, visual; revisão F5/F4): a prévia limpa o título IGUAL à vinheta da TV (_tituloSemEnfeite +
+// _pcMusica do tv.html): tira o "(…)"/"[…]", o "official video", o "clipe oficial" e o "lyrics" soltos; e, vindo só a
+// versão no fim, depois do traço ("Evidências - Ao Vivo"), ela sai antes de separar artista/música
+const CC_VERSAO = /\s[-–—]\s(ao vivo|live|ac[uú]stic[oa]|acoustic|remaster(ed|izad[oa])?|vers[aã]o[^-–—]*|cover|karaok[eê]|letra|lyrics?|[aá]udio|audio oficial|clipe|videoclipe|v[ií]deo oficial|oficial|official|hd|4k)$/i;
+function _ccPartes(t) {
+  t = String(t || '').split(' | ')[0];
+  t = t.replace(/\([^)]*\)|\[[^\]]*\]/g, ' ').replace(/clipe oficial|official video|lyrics/gi, ' ');
+  t = t.replace(/\s+/g, ' ').replace(/[\s\-–—:]+$/, '').trim().replace(CC_VERSAO, '').trim();
+  const m = t.match(/^(.+?)\s[-–—]\s(.+)$/);
+  return m ? {artista: m[1].trim(), musica: m[2].trim()} : {artista: '', musica: t};
 }
 // 24/10/26 (momentos no telão, visual): "▶ música" + embaixo, pequeno, "artista · tocando agora" (o que a vinheta da TV
 // escreve); sem " - " no título, só "tocando agora". Texto do YouTube: textContent, nunca HTML
 function _ccMusica(el, titulo) {
   el.textContent = '';
-  const mus = _tituloCurto(titulo);
-  if (!mus) return;
-  const lim = String(titulo || '').split(' | ')[0].replace(/\([^)]*\)|\[[^\]]*\]/g, ' ').replace(/\s+/g, ' ').trim();
-  const m = lim.match(/^(.+?)\s[-–—]\s/);
-  el.textContent = '▶ ' + mus;
+  const pt = _ccPartes(titulo);
+  if (!pt.musica) return;
+  el.textContent = '▶ ' + pt.musica;
   const sm = document.createElement('small');
-  sm.textContent = (m ? m[1].trim() + ' · ' : '') + 'tocando agora';
+  sm.textContent = (pt.artista ? pt.artista + ' · ' : '') + 'tocando agora';
   el.append(sm);
 }
 // o nome comprido encolhe pra caber em 86% da largura do quadro (a conta da TV, _pcAjusta), medido com a fonte que está
@@ -1292,13 +1360,17 @@ function _quandoSai(key) {
   if (TIPOS_MOMENTO.includes(key) && ((PRECOS[key] && PRECOS[key].ok && MODERA_OK) || ELEICAO_OK))
     return {t: `O bar confere e aí sai na TV ${MOMENTOS_FRENTE > 0 ? _depoisDe() : 'depois da música que estiver tocando'}.`};
   if (key === 'parabens') return {t: `Sai na TV ${_depoisDe()}. Segura na mesa quem faz aniversário.`};
-  if (key === 'flash') return {t: 'Toca logo depois desta. Antes, teu nome na TV inteira.'};
+  // 25/10/26 (trava do ⚡ furar): a vez real (o /api/fila-info da folha da música), nunca "logo depois desta" sem ser
+  if (key === 'flash') return {t: (_filaInfo && _filaInfo.flash ? _frasePosicao(_filaInfo.flash.posicao, _filaInfo.flash.min) + ' ' : '')
+                                  + 'Antes, teu nome na TV inteira.'};
   return {t: `Sai na TV ${_depoisDe()}.`};
 }
 function _pintarCartao() {
   const box = document.getElementById('cartao-cena'), q = document.getElementById('cc-quando');
   if (!box || !q) return;
   const key = tipoAtual;
+  const a18 = document.getElementById('form-flash-18');   // 25/10/26 (leva 1 da fama): só no ⚡ furar
+  if (a18) a18.style.display = key === 'flash' ? '' : 'none';
   const qs = (TIPOS_MOMENTO.includes(key) || key === 'flash') ? _quandoSai(key) : null;
   q.textContent = qs ? qs.t : '';
   q.style.display = qs ? '' : 'none';
@@ -1357,11 +1429,8 @@ function _pintarCartaoFurar(d, rotulo) {   // rotulo: só na abertura da folha (
   document.getElementById('sh-cc-nome').textContent = _nomeTV(document.getElementById('sh-nome').value) || 'TEU NOME';
   _ccMusica(document.getElementById('sh-cc-linha'), videoSel ? videoSel.titulo : '');
   _ccAjusta(document.getElementById('sh-cc-nome'));
-  if (d) {
-    document.getElementById('sh-cc-txt').textContent = d.flash.na_frente === 0
-      ? 'Toca logo depois desta. Antes, teu nome na TV inteira.'
-      : `Entra em ${d.flash.posicao}º lugar (tem furar na frente). Antes, teu nome na TV inteira.`;
-  }
+  // 25/10/26 (trava do ⚡ furar): "Você é o 2º. Toca em ~6 min." (a vez real, com a trava) antes do "Antes, teu nome…"
+  if (d && d.flash) document.getElementById('sh-cc-pos').textContent = _frasePosicao(d.flash.posicao, d.flash.min);
   const n = d ? d.gratis.na_frente : FILA_N;
   document.getElementById('sh-cc-fila').textContent = `Fila agora: ${n === 0 ? 'vazia' : n + (n === 1 ? ' música' : ' músicas')}.`;
 }
@@ -1369,6 +1438,11 @@ document.addEventListener('DOMContentLoaded', () => {
   const ni = document.getElementById('inp-nome'), ns = document.getElementById('sh-nome');
   if (ni) ni.addEventListener('input', _pintarCartao);
   if (ns) ns.addEventListener('input', () => _pintarCartaoFurar(_filaInfo));
+  // 25/10/26 (leva 1 da fama): o aviso do nome do ⚡ some assim que o nome passa na regra
+  if (ns) ns.addEventListener('input', () => { if (!_nomeFurarRuim(ns.value)) _avisoNomeFurar(ns, 'sh-nome-erro', false); });
+  if (ni) ni.addEventListener('input', () => {
+    if (tipoAtual !== 'flash' || !_nomeFurarRuim(ni.value)) _avisoNomeFurar(ni, 'inp-nome-erro', false);
+  });
 });
 
 // Pedido GRÁTIS: esconde a caixa de pagamento e troca o botão. Preço > 0 restaura o fluxo de PIX.
@@ -1451,6 +1525,7 @@ function _camposDoNome(key) {
   const inp = document.getElementById('inp-nome'), rg = document.getElementById('remetente-group');
   const rem = document.getElementById('inp-remetente');
   if (!lab || !inp || !rg) return;
+  _avisoNomeFurar(inp, 'inp-nome-erro', false);   // 25/10/26 (leva 1 da fama): trocou de momento, o aviso do ⚡ sai
   if (key === 'parabens') {
     lab.textContent = 'Nome do aniversariante *';
     inp.placeholder = 'Ex.: Ana';
@@ -1817,6 +1892,7 @@ function abrirSheet(v) {
   videoSel = v;
   _modoDireto = '';
   _gratisTravada = false;
+  _avisoNomeFurar(document.getElementById('sh-nome'), 'sh-nome-erro', false);   // 25/10/26: outra música, aviso velho sai
   document.getElementById('sh-titulo').textContent = v.titulo;
   const _sub = document.getElementById('sh-sub');
   if (v.views_txt !== undefined || v.vezes) _sub.innerHTML = _subYt(v) + (v.vezes ? ' aqui no bar' : '');
@@ -1948,6 +2024,8 @@ function enviarMusica(prioridade) {
   const tipo = prioridade === 'flash' ? 'flash' : prioridade === 'pular' ? 'pular_espera'
              : (modosBusca === 'youtube' ? 'musica_externa' : 'musica_especifica');
   if (!PRECOS[tipo]) return;
+  // 25/10/26 (leva 1 da fama): nome do ⚡ fora da regra → o aviso embaixo do nome e nada sai (o servidor recusa igual)
+  if (prioridade === 'flash' && !_nomeFurarOk(nome, 'sh-nome-erro')) return;
   if (prioridade === 'flash' && !PIX_DIRETO) {
     // sem PIX automático o formulário mostra a chave do bar / o aviso do balcão antes de enviar
     document.getElementById('inp-nome').value = nome.value.trim();
