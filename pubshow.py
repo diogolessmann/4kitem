@@ -262,7 +262,7 @@ TIPOS_EQUIPE  = ('gorjeta',)   # dinheiro da EQUIPE, não do caixa da casa — s
 TIPOS_PEDIDO = {
     'musica':           {'nome': 'Música aleatória',       'emoji': '🎵', 'preco': 0.00,  'cor': '#3b82f6'},   # GRÁTIS (decisão 11/09/26)
     'musica_especifica':{'nome': 'Escolher a música',      'emoji': '🎯', 'preco': 0.00,  'cor': '#06b6d4'},   # GRÁTIS (decisão 11/09/26)
-    'musica_externa':   {'nome': 'Buscar no YouTube',      'emoji': '🌐', 'preco': 0.00,  'cor': '#dc2626'},   # GRÁTIS por padrão (11/09/26); o bar pode cobrar em precos_custom
+    'musica_externa':   {'nome': 'Pedir qualquer música',  'emoji': '🌐', 'preco': 0.00,  'cor': '#dc2626'},   # GRÁTIS por padrão (11/09/26); o bar pode cobrar em precos_custom
     'flash':            {'nome': 'Furar a fila',           'emoji': '⚡', 'preco': 4.00,  'cor': '#f59e0b'},   # R$4 + R$1 = R$5 no PIX: abaixo de R$5 o Asaas recusou e o PIX caiu na chave do bar (16/10/26)
     # ⏩ Pular a espera (20/10/26, Diogo: "pedir sem delay 2 reais"): pede a música AGORA, sem esperar os
     # GRATIS_INTERVALO_MIN da grátis; entra na fila NORMAL (na frente é o furar). R$ 2 no TOTAL e só em bar que cobra
@@ -1759,7 +1759,7 @@ def _validar_video_pedido(b, youtube_id, info=None):
     if st in (401, 403):
         return 'Esse clipe não toca na TV (o dono do vídeo bloqueou). Escolhe outro. 🙏'
     if st == 404:
-        return 'Esse vídeo não existe mais no YouTube. Escolhe outro.'
+        return 'Esse clipe não existe mais. Escolhe outro.'   # 26/10/26: sem a palavra YouTube no celular
     if _nt:
         _tit, _can = ((str(_oj.get('title') or ''), str(_oj.get('author_name') or ''))
                       if st == 200 and isinstance(_oj, dict) else _titulo_canal_da_busca(youtube_id))
@@ -2844,7 +2844,7 @@ def taxa_app_txt() -> str:
 def _site_faq(taxa_txt: str, modelo_novo: bool, fundador: str = '') -> list:
     """Perguntas do site: a MESMA lista vai pra tela e pro JSON-LD (FAQPage) — nunca divergem."""
     preco = PLANO['preco_fmt']
-    musica = ('Não. Música é grátis: escolhida na lista do bar ou buscada no YouTube (se o bar liberar). '
+    musica = ('Não. Música é grátis: escolhida na lista do bar ou buscada entre todas as músicas do estilo (se o bar liberar). '
               'O cliente paga só pelos momentos na TV.')
     ecad = ('O PubShow toca clipes públicos do YouTube. A licença de música ambiente do ECAD é do '
             'estabelecimento, como já é com rádio ou som ambiente.')
@@ -7251,8 +7251,8 @@ def _yt_txt(b):
     """O "Pedir do YouTube": ligado, o cliente busca só nos estilos acesos (antes dizia "qualquer música" sempre)."""
     ests = pubshow_estilo.estilos_do_bar(b)
     if ests:
-        return f'Ligado: o cliente busca só {pubshow_estilo.nomes_txt(ests)}. Desligado: só a lista do bar.'
-    return 'Ligado: qualquer música. Desligado: só a lista do bar.'
+        return f'Ligado: o cliente acha qualquer música de {pubshow_estilo.nomes_txt(ests)}. Desligado: só a lista do bar.'
+    return 'Ligado: o cliente acha qualquer música. Desligado: só a lista do bar.'   # 26/10/26: "Pedir qualquer música"
 
 
 @pubshow_bp.route('/painel/estilo', methods=['POST'])

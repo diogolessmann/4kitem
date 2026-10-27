@@ -140,6 +140,9 @@
   .btn-tocar-gratis .tg-preco{margin-left:auto;flex-shrink:0;font-size:17px;font-weight:900;background:rgba(0,0,0,.25);
     padding:6px 10px;border-radius:10px}
   #resultados-lista{display:flex;flex-direction:column;gap:6px}
+  /* revisão 26/10 ("Pedir música"): a lista do bar rola DENTRO da caixa; sem isso as 600+ músicas empurravam o
+     "💥 Na TV do bar" (furar e momentos pagos) pra longe da 1ª tela */
+  #resultados-lista:not(.yt-lista){max-height:min(52vh,420px);overflow-y:auto;overscroll-behavior:contain}
   .resultado-item{
     background:var(--surface);border:1px solid var(--border);
     border-radius:12px;padding:12px 14px;cursor:pointer;min-height:48px;
@@ -856,7 +859,8 @@ async function jaPaguei() {
 {#- 20/10/26 (Diogo): saiu a faixa-tutorial "Pedir música é GRÁTIS…": o celular abre direto na busca do YouTube #}
 
 {# ═══ CARDÁPIO (20/10/26, conceito aprovado pelo Diogo: "precisa ser mais simples, precisa mostrar ao público as opções
-     pagas"): 1 tela só, abre na busca do YouTube, os pagos e os preços à mostra. Sem abas e sem parágrafo. ═══ #}
+     pagas"): 1 tela só, abre na busca do YouTube, os pagos e os preços à mostra. Sem abas e sem parágrafo.
+     26/10/26: abre no "🎵 Pedir música" (a busca + a lista do bar juntas). ═══ #}
 {% set fila_musicas = fila|selectattr('tipo', 'in', ['vip','flash','musica','musica_especifica','musica_externa','pular_espera'])|list %}
 {% set momentos = ['parabens','dedicatoria','brinde','chegada','cantada','salve','casamento','gorjeta']|select('in', tipos)|list %}
 {% set nomes_curtos = {'parabens': 'Parabéns', 'dedicatoria': 'Dedicatória', 'brinde': 'Brinde', 'chegada': 'Chegamos',
@@ -872,15 +876,9 @@ async function jaPaguei() {
   </button>
   <div id="busca-section">
     <div class="dica-flash" id="dica-flash">⚡ Escolhe a música e toca em <strong>⚡ Furar</strong>.</div>
-    {% if youtube_liberado %}
-    <!-- Fonte da música (11/09/26). 22/10/26 (pedido do Garage: "abra no YouTube e lista do bar fica do lado para
-         clicar"): as 2 abas sempre à vista, o YouTube primeiro e já aberto, a lista do bar do lado.
-         22/10/26 (Diogo: "precisa ser um puta botão bem fácil"): botões grandes, o aceso cheio, o YouTube maior -->
-    <div id="busca-fonte" style="display:flex;gap:10px;margin:0 0 12px">
-      <button type="button" id="fonte-youtube" onclick="trocarFonte('youtube')" style="flex:1.35;min-height:64px;border-radius:16px;border:2px solid #dc2626;background:#dc2626;color:#fff;box-shadow:0 6px 22px #dc262655;font-weight:900;font-size:20px;font-family:inherit;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px"><span style="display:inline-flex;align-items:center;justify-content:center;width:34px;height:24px;border-radius:7px;background:#fff;color:#dc2626;font-size:13px">&#9654;&#xFE0E;</span>YouTube</button>
-      <button type="button" id="fonte-biblioteca" onclick="trocarFonte('biblioteca')" style="flex:1;min-height:64px;border-radius:16px;border:2px solid rgba(255,255,255,.18);background:rgba(255,255,255,.05);color:#c8c8dc;font-weight:900;font-size:16px;font-family:inherit;cursor:pointer">📚 Lista do bar</button>
-    </div>
-    {% endif %}
+    {#- 26/10/26 (Diogo: "a aba YouTube e a Lista do bar precisam virar uma única aba: PEDIR MÚSICA"): saíram os 2
+        botões de fonte. A busca acha na lista do bar e, com a busca livre do bar ligada, em qualquer música do estilo
+        (os da lista do bar primeiro); sem digitar, a lista do bar fica embaixo pra rolar e tocar. #}
 
     <div class="busca-input-wrap">
       <input type="search" class="busca-input" id="busca-input"
@@ -1161,7 +1159,7 @@ const YT_LIBERADO = {{ 'true' if youtube_liberado else 'false' }};   // interrup
 const CANAIS_NOMES = {{ canais_nomes | tojson if canais_nomes is defined else '{}' }};
 const TIPOS_MOMENTO = ['parabens','dedicatoria','brinde','chegada','casamento','gorjeta','cantada','salve'];
 let tipoAtual    = '';
-let modosBusca   = 'biblioteca'; // 'biblioteca' | 'youtube'
+let modosBusca   = 'pedir';      // 26/10/26: 1 aba só ("🎵 Pedir música"); o tipo grátis vem de cada música (_tipoGratis)
 let buscaTimer   = null;
 let videoSel     = null;
 let _biblioCache = null; // cache da lista completa (carregada 1x)
@@ -1212,7 +1210,6 @@ function mostrarAba(qual) {   // 20/10/26 (cardápio): 1 tela só; 'tv' rola at�
 let YT_FORA = false;   // crítico leigo A3: a busca do YouTube respondeu erro (o celular fica na lista do bar)
 function irBusca(modo) {   // fichas "🎵 Tocar grátis", "⚡ Furar a fila" e "⏩ Pular a espera": sobem pra busca, com a dica e o teclado
   mostrarAba('musicas');
-  if (YT_LIBERADO && !YT_FORA && modosBusca !== 'youtube') trocarFonte('youtube', true);
   const df = document.getElementById('dica-flash');
   if (df) {
     df.innerHTML = modo === 'pular' ? '⏩ Escolhe a música. Com a grátis esperando, toca em <strong>⏩ Pular</strong>.'
@@ -1569,45 +1566,33 @@ function confirmarMusica(tipo) {
 }
 
 // ── Lista de músicas (acervo do bar ou YouTube) ───────────────────────────────
-function _estiloFonte(btn, ativo, cor) {   // 22/10/26: o aceso fica cheio da cor (dá pra ver de longe qual está aberto)
-  btn.style.borderColor = ativo ? cor : 'rgba(255,255,255,.18)';
-  btn.style.background  = ativo ? cor : 'rgba(255,255,255,.05)';
-  btn.style.color       = ativo ? '#fff' : '#c8c8dc';
-  btn.style.boxShadow   = ativo ? `0 6px 22px ${cor}55` : 'none';
+// 26/10/26 (Diogo): 1 aba só, "🎵 Pedir música". Sem digitar: a lista do bar. Digitando: a lista do bar filtra na hora
+// e, com a busca livre do bar ligada (YT_LIBERADO), a busca de qualquer música entra embaixo (sem repetir o clipe).
+// A música da lista do bar pede 'musica_especifica'; a da busca livre, 'musica_externa' (o servidor confere igual antes).
+let _biblioIds = new Set();
+// Revisão 26/10: o aviso de busca fora do ar NÃO trava a busca livre (cada texto novo tenta de novo, como era na aba
+// antiga); senão 1 falha de rede deixava o celular só na lista do bar até recarregar a página.
+function _buscaLivre() { return YT_LIBERADO; }
+function _naLista(id) { return !!id && _biblioIds.has(id); }
+function _tipoGratis(v) { return (PRECOS.musica_externa && !_naLista(v && v.id)) ? 'musica_externa' : 'musica_especifica'; }
+function _semAcento(s) { return String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase(); }
+function _doBar(q, comChip) {   // as músicas da lista do bar que batem com o texto (sem acento: "legiao" acha "Legião")
+  if (!_biblioCache) return [];
+  const n = _semAcento(q).trim();
+  return _biblioCache.filter(v => (!comChip || !_generoSel || v.categoria === _generoSel) && (!n || v._k.includes(n)));
 }
-function trocarFonte(modo, semFoco) {   // semFoco: na abertura da página não sobe o teclado
-  if (modo === modosBusca) return;
-  modosBusca = modo;
-  if (modo === 'biblioteca' && !YT_FORA) { const _df = document.getElementById('dica-flash'); if (_df) _df.style.display = 'none'; }
-  videoSel   = null;
-  const cor = '#06b6d4';   // 20/10/26 (cardápio): ciano nos 2 modos, como no desenho aprovado
-  const _fb = document.getElementById('fonte-biblioteca'), _fy = document.getElementById('fonte-youtube');
-  if (_fb && _fy) { _estiloFonte(_fb, modo === 'biblioteca', '#06b6d4'); _estiloFonte(_fy, modo === 'youtube', '#dc2626'); }
-  document.querySelector('.busca-input').style.setProperty('border-color', cor);
-  document.querySelector('.busca-btn').style.background = cor;
-  const inp = document.getElementById('busca-input');
-  _cancelarBusca(true);
-  inp.value = '';
-  inp.placeholder = modo === 'youtube' ? '🔎 Qual música?' : '🔎 Procura na lista do bar';
-  const lista = document.getElementById('resultados-lista');
-  lista.innerHTML = '';
-  lista.className = '';
-  document.getElementById('busca-count').style.display = 'none';
-  document.getElementById('busca-generos').style.display = 'none';
-  document.getElementById('mais-pedidas').style.display = 'none';
-  if (modo === 'biblioteca') {
-    if (_biblioCache) { _renderChips(); onBuscaInput(); } else { _carregarBibliotecaCompleta(); }
-  } else {
-    _dicaYoutube();
-    _carregarMaisPedidas();   // busca 2.0: 🔥 mais pedidas no bar antes de digitar
-    if (!semFoco) inp.focus();
-  }
+function _mmss(s) { s = Math.round(s || 0); return s > 0 ? `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}` : ''; }
+function _cardDoBar(v) {   // a música da lista do bar no mesmo card da busca (capa, duração, ▶️ Grátis / ⚡ Furar)
+  const id = v.youtube_id || v.id || '';
+  return {id, titulo: v.titulo || '', canal: v.artista || '', duracao: _mmss(v.duracao_seg), fonte: 'bar',
+          sub: `${v.artista || ''}${v.duracao_seg ? ' · ' + Math.floor(v.duracao_seg/60) + 'min' : ''}`};
 }
-function verListaDoBar() {   // a busca do YouTube caiu: abre a lista do bar (as 2 abas seguem à vista)
+function verListaDoBar() {   // botão "📚 Ver as músicas do bar" (a busca livre não respondeu): limpa o texto e mostra a lista
   mostrarAba('musicas');
-  const bf = document.getElementById('busca-fonte');
-  if (bf) bf.style.display = 'flex';
-  trocarFonte('biblioteca');
+  const inp = document.getElementById('busca-input');
+  if (inp) inp.value = '';
+  _cancelarBusca(true);
+  if (_biblioCache) onBuscaInput(); else _carregarBibliotecaCompleta();
 }
 
 async function _carregarBibliotecaCompleta() {
@@ -1618,9 +1603,12 @@ async function _carregarBibliotecaCompleta() {
     const data = await res.json();
     loading.classList.remove('show');
     _biblioCache = data.resultados || [];
-    if (modosBusca !== 'biblioteca') return;
+    _biblioCache.forEach(v => { v._k = _semAcento((v.titulo || '') + ' ' + (v.artista || '')); });
+    _biblioIds = new Set(_biblioCache.map(v => v.youtube_id || v.id).filter(Boolean));
     _renderChips();
-    onBuscaInput();
+    // 26/10/26: já digitou algo enquanto a lista carregava → refaz a busca com a lista do bar junto
+    const _q = document.getElementById('busca-input').value.trim();
+    if (_q.length >= 2 && _buscaLivre()) { _ultimaQ = ''; buscar(); } else onBuscaInput();
   } catch(e) {
     loading.classList.remove('show');
     document.getElementById('resultados-lista').innerHTML =
@@ -1656,7 +1644,8 @@ function _renderLista(lista) {
   _listaAtual = lista.map(v => ({
     id: v.youtube_id || v.id || '',
     titulo: v.titulo || '',
-    sub: `${v.artista || ''}${v.duracao_seg ? ' · ' + Math.floor(v.duracao_seg/60) + 'min' : ''}`
+    sub: `${v.artista || ''}${v.duracao_seg ? ' · ' + Math.floor(v.duracao_seg/60) + 'min' : ''}`,
+    fonte: 'bar'
   }));
   _desenharLista();
 }
@@ -1690,30 +1679,33 @@ function filtrarGenero(key) {
 
 function onBuscaInput() {
   clearTimeout(buscaTimer);
-  const q = document.getElementById('busca-input').value.trim().toLowerCase();
-  if (modosBusca === 'biblioteca') {
-    // Filtro local — instantâneo, zero request
-    if (_biblioCache) {
-      const filtrado = _biblioCache.filter(v =>
-        (!_generoSel || v.categoria === _generoSel) &&
-        (q.length < 1 ||
-          (v.titulo  || '').toLowerCase().includes(q) ||
-          (v.artista || '').toLowerCase().includes(q))
-      );
-      _renderLista(filtrado);
+  const q = document.getElementById('busca-input').value.trim();
+  const lista = document.getElementById('resultados-lista');
+  const chips = document.getElementById('busca-generos');
+  if (_buscaLivre() && q.length >= 2) {
+    // 26/10/26: a lista do bar aparece na hora; a busca livre entra embaixo após ~600 ms de pausa (busca 2.0, 16/10/26)
+    if (chips) chips.style.display = 'none';
+    _cancelarBusca();   // a resposta de um texto velho não desenha por cima do novo
+    if (q !== _ultimaQ || !lista.children.length) {
+      const doBar = _doBar(q, false).slice(0, 20).map(_cardDoBar);
+      _listaAtual = doBar;
+      document.getElementById('busca-count').style.display = 'none';
+      lista.className = 'yt-lista';
+      lista.innerHTML = doBar.map((v, i) => _cardHtml(v, i, 'res')).join('') + _esqueleto(doBar.length ? 1 : 3);
     }
-  } else {
-    // YouTube — busca enquanto digita: espera ~600 ms de pausa (busca 2.0, 16/10/26)
-    if (q.length >= 2) {
-      buscaTimer = setTimeout(buscar, 600);
-    } else {
-      _cancelarBusca(true);
-      const lista = document.getElementById('resultados-lista');
-      lista.className = '';
-      _dicaYoutube();
-      _mostrarMaisPedidas();
-    }
+    buscaTimer = setTimeout(buscar, 600);
+    return;
   }
+  // sem texto (ou busca livre desligada): só a lista do bar, filtro local — instantâneo, zero request
+  _cancelarBusca(true);
+  lista.className = '';
+  if (_biblioCache) {
+    _renderChips();
+    // revisão 26/10: bar sem lista e com a busca livre ligada → sem "Nenhuma música encontrada." antes de digitar
+    if (!q && !_biblioCache.length && _buscaLivre()) { _listaAtual = []; lista.innerHTML = ''; document.getElementById('busca-count').style.display = 'none'; }
+    else _renderLista(_doBar(q, true));
+  }
+  _mostrarMaisPedidas();
 }
 
 // ── Busca do YouTube em cards grandes (busca 2.0, 16/10/26) ──────────────────
@@ -1726,9 +1718,6 @@ function _cancelarBusca(forcar) {
   if (_buscaCtl) { try { _buscaCtl.abort(); } catch(e) {} _buscaCtl = null; }
   if (pendente || forcar) { _buscaSeq++; _ultimaQ = ''; }
   document.getElementById('busca-loading').classList.remove('show');
-}
-function _dicaYoutube() {   // 20/10/26 (cardápio): sem frase de explicação; o "🔎 Qual música?" já diz o que fazer
-  document.getElementById('resultados-lista').innerHTML = '';
 }
 function _tocouTxt(m) {
   if (m < 1) return 'tocou agora há pouco';
@@ -1749,10 +1738,10 @@ function _subYt(v) {   // "✓ Oficial · 10 mi de views" (busca) · "🔥 4× e
 function _cardHtml(v, i, origem) {
   const clique = origem === 'mp' ? `escolherMaisPedida(${i})` : `selecionarVideoIdx(${i})`;
   // 20/10/26 (desenho aprovado): "▶️ Grátis" e "⚡ Furar R$ X" em cada música, sem abrir a folha pra ver o furar
-  const _g = PRECOS[modosBusca === 'youtube' ? 'musica_externa' : 'musica_especifica'];
+  const _g = PRECOS[_tipoGratis(v)];   // 26/10/26: o grátis de cada música (lista do bar ou busca livre)
   const _f = PRECOS.flash;   // 22/10/26: lista do bar fura igual ao YouTube
   const btns = (_g || _f) ? `<div class="yt-btns">${_g ? `<button type="button" class="b-gratis" onclick="pedirDireto(event,${i},'${origem}','gratis')">▶️ Grátis</button>` : ''}${_f ? `<button type="button" class="b-furar" onclick="pedirDireto(event,${i},'${origem}','flash')">⚡ Furar ${FURAR_TXT}</button>` : ''}</div>` : '';
-  return `<div class="yt-card${v.na_fila ? ' na-fila' : ''}" id="${origem}-${i}" onclick="${clique}">
+  return `<div class="yt-card${v.na_fila ? ' na-fila' : ''}" id="${origem}-${i}" data-yid="${_esc(v.id || '')}" data-fonte="${v.fonte === 'bar' ? 'bar' : 'livre'}" onclick="${clique}">
       <div class="yt-capa"><img src="${_esc(_capa(v))}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror="this.style.visibility='hidden'">${v.duracao ? `<span class="yt-dur">${_esc(v.duracao)}</span>` : ''}${_seloHtml(v)}</div>
       <div class="yt-info"><div class="yt-titulo">${_esc(v.titulo)}</div><div class="yt-sub">${_subYt(v)}</div></div>${btns}
     </div>`;
@@ -1797,7 +1786,8 @@ function _nomeCurto(t) {   // "Bob Marley - Is This Love" → "Is This Love" (a 
 }
 function _mostrarMaisPedidas() {   // 20/10/26 (cardápio): fichas na horizontal embaixo da busca; tocar abre a folha
   const box = document.getElementById('mais-pedidas');
-  if (modosBusca !== 'youtube' || !_maisPedidas || !_maisPedidas.length) { box.style.display = 'none'; return; }
+  // 26/10/26: só com a busca livre ligada (como antes na aba dela): embaixo da busca, em cima da lista do bar
+  if (!_buscaLivre() || !_maisPedidas || !_maisPedidas.length) { box.style.display = 'none'; return; }
   box.innerHTML = '<div class="mp-fichas">' + _maisPedidas.map((v, i) =>
     `<button type="button" class="mp-ficha" id="mp-${i}" onclick="escolherMaisPedida(${i})">🔥 ${_esc(_nomeCurto(v.titulo))}</button>`).join('') + '</div>';
   box.style.display = 'block';
@@ -1805,21 +1795,31 @@ function _mostrarMaisPedidas() {   // 20/10/26 (cardápio): fichas na horizontal
 function escolherMaisPedida(i) { const v = _maisPedidas && _maisPedidas[i]; if (v) abrirSheet(v); }
 
 async function buscar() {
-  // Usado apenas para YouTube
-  if (modosBusca === 'biblioteca') { onBuscaInput(); return; }
+  // 26/10/26: a lista do bar + (com a busca livre do bar ligada) a busca de qualquer música, juntas e sem repetir
   clearTimeout(buscaTimer); buscaTimer = null;
   if (document.getElementById('sheet').classList.contains('on')) return;   // escolhendo: não mexe na lista (nem no videoSel)
   const q = document.getElementById('busca-input').value.trim();
   const lista = document.getElementById('resultados-lista');
-  if (q.length < 2 || (q === _ultimaQ && lista.children.length)) return;
+  if (!YT_LIBERADO || q.length < 2) { onBuscaInput(); return; }   // busca livre desligada: só a lista do bar
+  if (q === _ultimaQ && lista.children.length) return;
   _ultimaQ = q;
   if (_buscaCtl) { try { _buscaCtl.abort(); } catch(e) {} }
   const ctl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
   _buscaCtl = ctl;
   const seq = ++_buscaSeq;
+  const doBar = _doBar(q, false).slice(0, 20).map(_cardDoBar);   // os da lista do bar primeiro
+  const _cards = l => l.map((v, i) => _cardHtml(v, i, 'res')).join('');
   document.getElementById('busca-count').style.display = 'none';
+  document.getElementById('busca-generos').style.display = 'none';
   lista.className = 'yt-lista';   // 20/10/26 (cardápio): as fichas das mais pedidas ficam embaixo da busca
-  lista.innerHTML = _esqueleto(3);
+  _listaAtual = doBar;
+  lista.innerHTML = _cards(doBar) + _esqueleto(doBar.length ? 1 : 3);
+  const _so = (msg) => {   // aviso no lugar da busca livre: com música do bar achada, ela fica e o aviso vai embaixo
+    _ultimaQ = '';
+    _listaAtual = doBar;
+    lista.className = doBar.length ? 'yt-lista' : '';
+    lista.innerHTML = _cards(doBar) + msg;
+  };
   try {
     const res  = await fetch(`/pubshow/api/buscar?q=${encodeURIComponent(q)}&bar=${encodeURIComponent(BAR_TOKEN)}`,
                              ctl ? {signal: ctl.signal} : {});
@@ -1828,22 +1828,21 @@ async function buscar() {
     if (seq !== _buscaSeq) return;
     if (res.status === 503 || data.erro === 'youtube_fora') {   // crítico leigo A3 (17/10/26)
       YT_FORA = true;
-      _ultimaQ = '';
-      lista.className = '';
-      lista.innerHTML = '<div class="yt-msg" style="color:#fbbf24">A busca do YouTube não respondeu agora. ' +
+      _so('<div class="yt-msg" style="color:#fbbf24">A busca de música não respondeu agora. ' +
         'Escolhe nas músicas do bar: hoje dá pra furar a fila com elas também.<br>' +
         '<button type="button" id="btn-lista-bar" onclick="verListaDoBar()">📚 Ver as músicas do bar</button> ' +
-        '<button type="button" onclick="buscar()">Tentar de novo</button></div>';
+        '<button type="button" onclick="buscar()">Tentar de novo</button></div>');
       return;
     }
     if (res.status === 429) {   // teto de buscas do bar: explica em vez de "Nenhum resultado" (15/10/26)
-      _ultimaQ = '';
-      lista.className = '';
-      lista.innerHTML = '<div class="yt-msg" style="color:#fbbf24">Muitas buscas agora. Espera uns segundos e tenta de novo.</div>';
+      _so('<div class="yt-msg" style="color:#fbbf24">Muitas buscas agora. Espera uns segundos e tenta de novo.</div>');
       return;
     }
-    if (res.ok) YT_FORA = false;   // o YouTube voltou
-    const r = data.resultados || [];
+    if (res.ok) YT_FORA = false;   // a busca livre voltou
+    const vistos = new Set(doBar.map(v => v.id));
+    const livres = (data.resultados || []).filter(v => v && v.id && !vistos.has(v.id) && vistos.add(v.id))
+      .map(v => Object.assign({}, v, {fonte: _naLista(v.id) ? 'bar' : 'livre'}));
+    const r = doBar.concat(livres);
     if (!r.length && data.fora_estilo) {   // 17/10/26: tudo de outro estilo → aviso grande + botão
       _ultimaQ = '';
       lista.className = '';
@@ -1860,23 +1859,20 @@ async function buscar() {
       return;
     }
     _listaAtual = r;
-    lista.innerHTML = r.map((v, i) => _cardHtml(v, i, 'res')).join('');
+    lista.innerHTML = _cards(r);
   } catch(e) {
     if (seq !== _buscaSeq || (e && e.name === 'AbortError')) return;
-    _ultimaQ = '';
-    lista.className = '';
-    lista.innerHTML = '<div class="yt-msg" style="color:#f87171">Sem conexão agora.<br><button type="button" onclick="buscar()">Tentar de novo</button></div>';
+    _so('<div class="yt-msg" style="color:#f87171">Sem conexão agora.<br><button type="button" onclick="buscar()">Tentar de novo</button></div>');
   } finally {
     if (_buscaCtl === ctl) _buscaCtl = null;
   }
 }
 
-function buscarOutra() {   // botão do aviso "Aqui só toca ...": limpa e já deixa digitando
+function buscarOutra() {   // botão do aviso "Aqui só toca ...": limpa e já deixa digitando (a lista do bar volta embaixo)
   const inp = document.getElementById('busca-input');
   inp.value = '';
   _ultimaQ = '';
-  document.getElementById('resultados-lista').innerHTML = '';
-  _mostrarMaisPedidas();
+  onBuscaInput();
   inp.focus();
 }
 
@@ -1917,7 +1913,7 @@ function abrirSheet(v) {
   } else {
     cw.style.display = 'none';
   }
-  const tipoGratis = modosBusca === 'youtube' ? 'musica_externa' : 'musica_especifica';
+  const tipoGratis = _tipoGratis(v);   // 26/10/26: da música (lista do bar ou busca livre), não mais da aba
   const bg = document.getElementById('btn-gratis');
   if (bg) { bg.style.display = PRECOS[tipoGratis] ? '' : 'none'; bg.disabled = false; bg.style.opacity = ''; }
   const bf = document.getElementById('btn-flash');
@@ -2013,9 +2009,9 @@ function fecharSheet() {
   const s = document.getElementById('sheet');
   if (!s || !s.classList.contains('on')) return;
   s.classList.remove('on');
-  if (modosBusca === 'youtube' && _abaAtual === 'cardapio') {
+  if (_abaAtual === 'cardapio') {
     const q = document.getElementById('busca-input').value.trim();
-    if (q.length >= 2 && q !== _ultimaQ) onBuscaInput();
+    if (_buscaLivre() && q.length >= 2 && q !== _ultimaQ) onBuscaInput();
     else if (q.length < 2) _mostrarMaisPedidas();
   }
 }
@@ -2029,7 +2025,7 @@ function enviarMusica(prioridade) {
     return;
   }
   const tipo = prioridade === 'flash' ? 'flash' : prioridade === 'pular' ? 'pular_espera'
-             : (modosBusca === 'youtube' ? 'musica_externa' : 'musica_especifica');
+             : _tipoGratis(videoSel);   // 26/10/26: lista do bar = musica_especifica; busca livre = musica_externa
   if (!PRECOS[tipo]) return;
   // 25/10/26 (leva 1 da fama): nome do ⚡ fora da regra → o aviso embaixo do nome e nada sai (o servidor recusa igual)
   if (prioridade === 'flash' && !_nomeFurarOk(nome, 'sh-nome-erro')) return;
@@ -2162,8 +2158,9 @@ function copiarPix() {
   {% endif %}
   // 20/10/26 (Diogo): abre direto na busca do YouTube. A lista do bar continua carregada por trás (volta se a busca
   // cair) e vale sozinha quando o YouTube está desligado (interruptor do bar ou domingo da eleição).
-  if (YT_LIBERADO) trocarFonte('youtube', true);
+  // 26/10/26: abre no "🎵 Pedir música": a busca em cima e a lista do bar embaixo (+ 🔥 mais pedidas com a busca livre)
   _carregarBibliotecaCompleta();
+  if (YT_LIBERADO) _carregarMaisPedidas();
 })();
 {% set yt_post = request.form.get('youtube_id', '') if request.method == 'POST' else '' %}
 {% if erro and yt_post and tipo_post in ['musica_especifica','musica_externa','flash'] and erro_tipo not in ('musica_na_fila', 'musica_longa', 'politica_musica') %}
@@ -2186,7 +2183,6 @@ function copiarPix() {
   {%- endif %}
   f.appendChild(bt);
   f.onclick = function () {
-    {% if tipo_post in ('musica_externa', 'flash') %}if (typeof trocarFonte === 'function' && document.getElementById('fonte-youtube')) trocarFonte('youtube');{% endif %}
     abrirSheet(v);
     const sh = document.getElementById('sh-nome');
     if (sh && nome) sh.value = nome;
@@ -2199,7 +2195,6 @@ function copiarPix() {
   const bt = document.createElement('strong'); bt.textContent = 'toca aqui pra tentar de novo'; bt.style.color = '#fbbf24';
   f.appendChild(bt);
   f.onclick = function () {
-    {% if tipo_post in ('musica_externa', 'flash') %}if (typeof trocarFonte === 'function' && document.getElementById('fonte-youtube')) trocarFonte('youtube');{% endif %}
     abrirSheet(v);
     const sh = document.getElementById('sh-nome');
     if (sh && nome) sh.value = nome;

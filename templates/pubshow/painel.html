@@ -649,11 +649,11 @@
   <div class="card" id="sec-youtube">
     <div class="linha-chave" style="padding:0">
       <div>
-        <div class="rot">🌐 Pedir do YouTube <span class="salvo" aria-live="polite"></span></div>
+        <div class="rot">🌐 Pedir qualquer música <span class="salvo" aria-live="polite"></span></div>
         {#- 20/10/26: com estilos acesos o YouTube também só acha eles (antes dizia "qualquer música" sempre) #}
         <div class="sub" id="yt-sub">{{ yt_txt }}</div>
       </div>
-      <label class="sw"><input type="checkbox" name="tipos_ativos" value="musica_externa" form="f-config" aria-label="Deixar pedir qualquer música do YouTube"{% if 'musica_externa' not in bloqueados_parsed %} checked{% endif %}><span class="sw-t"></span></label>
+      <label class="sw"><input type="checkbox" name="tipos_ativos" value="musica_externa" form="f-config" aria-label="Deixar pedir qualquer música"{% if 'musica_externa' not in bloqueados_parsed %} checked{% endif %}><span class="sw-t"></span></label>
     </div>
   </div>
 
