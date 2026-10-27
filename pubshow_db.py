@@ -191,6 +191,9 @@ def init_pubshow_db():
         # ⏸️ 25/10/26 (Garage: "cantaram parabéns e não tem pause"): até quando a música da TV fica pausada pelo dono
         # (hora do servidor, como o promo_expira). NULL ou passada = tocando. A TV lê no /api/status.
         'ALTER TABLE pubshow_businesses ADD COLUMN pausa_ate TEXT DEFAULT NULL',
+        # 27/10/26 (pacote do dinheiro): quando a última pausa começou (o ▶️ grava o fim no pausa_ate). O ⏭️ Pular da
+        # música paga desconta esse tempo (_pago_tocando)
+        'ALTER TABLE pubshow_businesses ADD COLUMN pausa_ini TEXT DEFAULT NULL',
         'ALTER TABLE pubshow_businesses ADD COLUMN tv_volume INTEGER DEFAULT 100',
         # 🔇 17/10/26 (Diogo): "Vídeo sem música → sem som" — TV muda nos canais que não são de música (desligado)
         'ALTER TABLE pubshow_businesses ADD COLUMN tv_mudo_sem_musica INTEGER DEFAULT 0',

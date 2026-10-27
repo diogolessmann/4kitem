@@ -669,6 +669,10 @@ async function _atualizarPosicao() {
     } else if (d.status === 'dispensado') {
       clearInterval(_posicaoTimer);
       _pixStatus('ruim', 'ℹ️', 'O bar tirou esse pedido da fila.', 'Dúvida? Fala no balcão.');
+    } else if (d.status === 'recusado' && d.musica_volta) {
+      // 25/10/26 (pacote do dinheiro): música PAGA tirada da fila → o PIX volta (o servidor manda o valor)
+      clearInterval(_posicaoTimer);
+      _pixStatus('ruim', '🔊', 'Essa música não vai tocar.', 'Teus ' + d.musica_volta + ' voltam no teu PIX. Dúvida? Fala no balcão.');
     } else if (d.status === 'recusado') {
       clearInterval(_posicaoTimer);
       _pixStatus('ruim', '❌', 'O bar não liberou essa mensagem.', 'Fala no balcão sobre o teu PIX.');
@@ -789,7 +793,10 @@ async function jaPaguei() {
             el.innerHTML = '🎵 <strong>Tua música está tocando agora!</strong>';
           } else if (d.status === 'dispensado' || d.status === 'recusado') {
             clearInterval(_t);
-            el.textContent = 'O bar tirou esse pedido da fila.';
+            // 25/10/26 (pacote do dinheiro): ⚡ pago tirado da fila → o PIX volta (o servidor manda o valor)
+            el.textContent = d.musica_volta
+              ? '🔊 Essa música não vai tocar. Teus ' + d.musica_volta + ' voltam no teu PIX. Dúvida? Fala no balcão.'
+              : 'O bar tirou esse pedido da fila.';
           } else if (d.posicao) {
             el.textContent = _frasePosicao(d.posicao, d.tempo_min);   // 25/10/26 (trava do ⚡ furar): a posição real
           }

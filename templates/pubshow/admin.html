@@ -106,7 +106,7 @@
   {# 16/10/26 (crítico C3): pago e recusado pelo gerente = devolver ao cliente (no Asaas: Estornar) #}
   {% if pix_a_devolver %}
   <div id="pix-a-devolver" style="margin-bottom:16px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.35);border-radius:12px;padding:14px 18px">
-    <div style="font-weight:800;color:#fca5a5;margin-bottom:8px">↩️ PIX a devolver ({{ pix_a_devolver|length }}) — o cliente pagou e o bar recusou a mensagem</div>
+    <div style="font-weight:800;color:#fca5a5;margin-bottom:8px">↩️ PIX a devolver ({{ pix_a_devolver|length }}) — o cliente pagou e não tocou (música ou mensagem)</div>
     {% for p in pix_a_devolver %}
     <div style="font-size:12px;color:#d4d4ee;padding:4px 0;border-top:1px solid rgba(255,255,255,.06)">
       #{{ p.id }} · {{ p.bar_nome }} · {{ p.nome_cliente }} · {{ p.tipo }} ·

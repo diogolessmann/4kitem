@@ -4596,6 +4596,10 @@ def api_pedido_status(token, pedido_id):
     conn = get_pubshow_db()
     row = conn.execute(
         '''SELECT p.status, p.business_id, p.created_at, p.efi_txid, p.tipo,
+                  ((TRIM(COALESCE(p.pago_em,''))<>'' OR p.estornado_em IS NOT NULL)
+                   AND (TRIM(COALESCE(p.asaas_payment_id,''))<>'' OR TRIM(COALESCE(p.efi_txid,''))<>'')
+                   AND p.repasse_manual_id IS NULL) AS pix_volta,
+                  COALESCE(p.valor_cobrado, p.valor, 0) AS valor_cli,
                   (p.created_at >= datetime('now','-20 minutes')) AS efi_recente FROM pubshow_pedidos p
            JOIN pubshow_businesses b ON p.business_id = b.id
            WHERE p.id=? AND (b.jukebox_token=? OR b.code=?)''',
@@ -4674,6 +4678,10 @@ def api_pedido_status(token, pedido_id):
         'posicao': posicao,
         'tempo_min': tempo_min
     }
+    # 💸 25/10/26 (pacote do dinheiro): música PAGA tirada da fila ou pulada, com o PIX na conta do PubShow → o celular
+    # diz "Essa música não vai tocar. Teus R$ X voltam no teu PIX." (o Diogo devolve pelo "PIX a devolver")
+    if status == 'recusado' and row['tipo'] in TIPOS_MUSICA_FILA and row['pix_volta']:
+        resp['musica_volta'] = _brl(row['valor_cli'])
     if _efi_ligado():
         # Lote C: a tela diz "Teu PIX já foi devolvido" (recusa/atraso) ou "O QR venceu, pede de novo"
         # VCa-07 (16/10/26): "já foi devolvido" só depois da Efí confirmar (DEVOLVIDO); no meio do caminho é
@@ -5608,7 +5616,8 @@ def painel():
     gorjeta_7dias = [{'dia': d, 'n': v['n'], 'tot': v['total']} for d, v in
                      sorted(somar_pagos(conn, b['id'], _7d, _hoje, 'gorjeta', por='dia').items(), reverse=True)]
     fila = conn.execute(   # crítico leigo A2 (17/10/26): a ordem da TV (vip, furar a fila, chegada)
-        '''SELECT * FROM pubshow_pedidos WHERE business_id=? AND status="pendente"
+        # 25/10/26: pix_volta = pago com o PIX na conta do PubShow (a 🗑️ avisa "o PIX volta pro cliente")
+        f'''SELECT *, {_SQL_PIX_VOLTA} AS pix_volta FROM pubshow_pedidos WHERE business_id=? AND status="pendente"
            ORDER BY CASE tipo WHEN "vip" THEN 1 WHEN "flash" THEN 2 ELSE 3 END, created_at ASC, id ASC LIMIT 20''',
         (b['id'],)
     ).fetchall()
@@ -6464,8 +6473,8 @@ def painel_fila_json():
         return jsonify({'error': 'não autorizado'}), 401
     conn = get_pubshow_db()
     fila = conn.execute(
-        '''SELECT id, nome_cliente, tipo, mensagem, valor, created_at, youtube_id, titulo_pedido,
-                  pago_em, valor_cobrado
+        f'''SELECT id, nome_cliente, tipo, mensagem, valor, created_at, youtube_id, titulo_pedido,
+                  pago_em, valor_cobrado, {_SQL_PIX_VOLTA} AS pix_volta
            FROM pubshow_pedidos WHERE business_id=? AND status="pendente"
            ORDER BY CASE tipo WHEN "vip" THEN 1 WHEN "flash" THEN 2 ELSE 3 END, created_at ASC, id ASC LIMIT 20''',   # crítico leigo A2: a ordem da TV
         (b['id'],)
@@ -7433,16 +7442,103 @@ def painel_qrcode():
                            qr_b64=qr_b64)
 
 
+# 💸 25/10/26 (pacote do dinheiro, decisão do Diogo): pedido PAGO que sai da fila sem tocar (🗑️ lixeira, 🚫 "nunca
+# mais", 🗑️ "Limpar fila" do admin, ⏭️ Pular com ele tocando) vira 'recusado': sai do caixa (STATUS_PAGOS) e do repasse
+# do bar e entra no "↩️ PIX a devolver" do admin. NENHUM estorno é chamado aqui: o Diogo devolve na mão. Vale pro PIX
+# que está na conta do PubShow: Asaas ou ponte Efí (a mesma prova dos Repasses, _TEM_ASAAS/_TEM_EFI). O SPLIT Efí (a
+# parte do bar já caiu na conta dele; o pedido não tem asaas_payment_id nem efi_txid) e o PIX na chave do bar ficam
+# 'dispensado', como antes (o log registra). O grátis segue 'dispensado'.
+# 27/10/26 (conferente do dinheiro, risco 1): o pedido que já entrou num repasse (o bar já recebeu) NÃO volta como
+# "PIX a devolver" (o Diogo pagaria 2 vezes): fica 'dispensado', como antes.
+_SQL_PIX_VOLTA = ("(TRIM(COALESCE(pago_em,''))<>'' AND (TRIM(COALESCE(asaas_payment_id,''))<>'' "
+                  "OR TRIM(COALESCE(efi_txid,''))<>'') AND repasse_manual_id IS NULL)")
+
+
+def _tirar_da_fila(conn, bid, pid=None, de='pendente', resto='dispensado', motivo=''):
+    """Tira da fila (de='pendente') ou corta na TV (de='exibido') sem tocar até o fim. Só SQL, na transação de quem
+    chama (sem commit). pid=None = todos os pedidos do bar nesse status (Limpar fila). O pago com PIX na conta do
+    PubShow vira 'recusado'; o resto (grátis, split, chave do bar) vira `resto` (None = fica como está: ⏭️ Pular).
+    Devolve os ids que viraram 'recusado'."""
+    filtro, params = 'business_id=? AND status=?', [bid, de]
+    if pid is not None:
+        filtro += ' AND id=?'
+        params.append(int(pid))
+    cand = [r[0] for r in conn.execute(f'SELECT id FROM pubshow_pedidos WHERE {filtro} AND {_SQL_PIX_VOLTA}', params)]
+    volta = [i for i in cand if conn.execute(
+        f"UPDATE pubshow_pedidos SET status='recusado' WHERE id=? AND status=? AND {_SQL_PIX_VOLTA}", (i, de)).rowcount]
+    if volta:
+        log.warning('[PUBSHOW] bar %s: pago %s saiu sem tocar (%s) → recusado, vai pro "PIX a devolver" do admin '
+                    '(sem estorno automático)', bid, volta, motivo)
+    if resto:
+        fora = [r[0] for r in conn.execute(
+            f"SELECT id FROM pubshow_pedidos WHERE {filtro} AND TRIM(COALESCE(pago_em,''))<>''", params)]
+        if fora:
+            log.warning('[PUBSHOW] bar %s: pago %s saiu sem tocar (%s), mas o PIX caiu na conta do bar (split Efí ou '
+                        'chave do bar) → %s, como antes', bid, fora, motivo, resto)
+        conn.execute(f'UPDATE pubshow_pedidos SET status=? WHERE {filtro}', [resto, *params])
+    return volta
+
+
+_PULAR_FOLGA_SEG = 10   # o ⚡ abre com a "Entrada de estrela" (4 s) e o YouTube leva uns segundos pra carregar
+# Revisão 25/10/26: sem duração conhecida (acervo ou _YT_DURACAO, que zera quando o servidor reinicia), a janela é
+# curta. Errar pra mais devolvia o PIX de música que tocou inteira; errar pra menos só pula sem perguntar (como antes).
+_PULAR_SEM_DUR_SEG = 270
+_PULAR_VINHETA_SEG = 6  # ⚡ nos primeiros segundos: a TV está na "Entrada de estrela" (4 s) e ignora o pular
+
+
+def _pausa_seg_desde(conn, bid, ini_brt):
+    """27/10/26 (pacote do dinheiro + ⏸️ pausa): segundos da última pausa do bar que caíram depois de ini_brt (o
+    exibido_at, horário de Brasília). A pausa guarda a hora do servidor (datetime.now()): converte antes de comparar.
+    Só a ÚLTIMA pausa conta (uma 2ª pausa na mesma música esquece a 1ª: a janela fecha antes e o Pular corta sem
+    perguntar, como antes do pacote). Qualquer erro = 0."""
+    try:
+        r = conn.execute('SELECT pausa_ini, pausa_ate FROM pubshow_businesses WHERE id=?', (bid,)).fetchone()
+        if not r or not r['pausa_ini'] or not r['pausa_ate']:
+            return 0
+        agora = datetime.now()
+        p_ini = datetime.fromisoformat(str(r['pausa_ini'])[:19])
+        p_fim = min(agora, datetime.fromisoformat(str(r['pausa_ate'])[:19]))
+        ini_local = ini_brt + (agora - (datetime.utcnow() - timedelta(hours=3)))
+        return max(0, int((p_fim - max(p_ini, ini_local)).total_seconds()))
+    except Exception:
+        return 0
+
+
+def _pago_tocando(conn, bid):
+    """⏭️ Pular (25/10/26): o pedido de música PAGA (PIX na conta do PubShow) que a TV deste bar toca agora, ou None.
+    A TV não conta ao servidor o que toca: só avisa quando COMEÇA um pedido (/api/pedido-exibido grava exibido_at).
+    Regra: o ÚLTIMO pedido que a TV começou nos últimos 11 min (o teto dela, _pedidoTocandoAgora). É ele se for música
+    (youtube_id), ainda 'exibido', pago com _SQL_PIX_VOLTA e se a música dele ainda não acabou (exibido_at + duração
+    conhecida + folga; sem duração conhecida, _PULAR_SEM_DUR_SEG). O último é momento (cena), grátis, split,
+    chave do bar, ou a música já acabou: None (pula direto, como antes)."""
+    r = conn.execute(
+        f"SELECT id, status, tipo, youtube_id, titulo_pedido, valor, valor_cobrado, exibido_at, {_SQL_PIX_VOLTA} AS volta "
+        "FROM pubshow_pedidos WHERE business_id=? AND exibido_at >= datetime('now','-3 hours','-660 seconds') "
+        "ORDER BY exibido_at DESC, id DESC LIMIT 1", (bid,)).fetchone()
+    if not r or r['status'] != 'exibido' or not r['volta'] or not (r['youtube_id'] or '').strip():
+        return None
+    try:
+        ini = datetime.strptime(str(r['exibido_at'])[:19], '%Y-%m-%d %H:%M:%S')
+    except ValueError:
+        return None
+    seg = _duracoes_conhecidas([r['youtube_id']], conn).get(r['youtube_id'])
+    janela = min(seg, YT_DUR_MAX_SEG) + _PULAR_FOLGA_SEG if seg else _PULAR_SEM_DUR_SEG
+    janela += _pausa_seg_desde(conn, bid, ini)   # 27/10/26: a música pausada pelo ⏸️ ainda não acabou
+    idade = (datetime.utcnow() - timedelta(hours=3) - ini).total_seconds()
+    if idade > janela:
+        return None
+    return {'id': r['id'], 'valor': _brl(r['valor_cobrado'] or r['valor'] or 0), 'titulo': (r['titulo_pedido'] or '')[:80],
+            'na_vinheta': r['tipo'] == 'flash' and idade < _PULAR_VINHETA_SEG}
+
+
 @pubshow_bp.route('/painel/pedido/<int:pid>/dispensar', methods=['POST'])
 @pubshow_login_required
 def painel_dispensar_pedido(pid):
     b = _get_business()
     conn = get_pubshow_db()
     # só da fila (15/10/26): pedido não pago (aguardando_pix) não vira 'dispensado'
-    conn.execute(
-        "UPDATE pubshow_pedidos SET status='dispensado' WHERE id=? AND business_id=? AND status='pendente'",
-        (pid, b['id'])
-    )
+    # 25/10/26: o PAGO vira 'recusado' (PIX a devolver, sem estorno); o grátis segue 'dispensado'
+    _tirar_da_fila(conn, b['id'], pid, motivo='lixeira do painel')
     conn.commit(); conn.close()
     return redirect('/pubshow/painel?aba=fila')
 
@@ -7451,9 +7547,36 @@ def painel_dispensar_pedido(pid):
 @pubshow_login_required
 def painel_pular_musica():
     """Botão do dono: pula a música/vídeo que está tocando na TV agora.
-    Incrementa skip_seq; a TV detecta no polling (~2,5s) e avança a fila."""
+    Incrementa skip_seq; a TV detecta no polling (~2,5s) e avança a fila.
+    25/10/26 (pacote do dinheiro): com música PAGA tocando (_pago_tocando) o painel confirma antes ("o PIX volta pro
+    cliente"): sem o pedido_id dela, devolve {'confirmar': True, ...} e NÃO pula. Com ele, o pedido vira 'recusado'
+    (PIX a devolver, sem estorno) e a TV pula. Grátis, cena e o resto pulam direto, como antes."""
     b = _get_business()
     conn = get_pubshow_db()
+    pago = _pago_tocando(conn, b['id'])
+    pid_conf = (request.form.get('pedido_id') or '').strip()
+    _ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+    # Revisão 25/10/26: ⚡ na "Entrada de estrela" a TV ignora o pular; marcar 'recusado' aqui devolveria o PIX de
+    # uma música que toca inteira. Não marca nem pula: o painel pede pra esperar ela começar.
+    if pago and pago['na_vinheta']:
+        conn.close()
+        if _ajax:
+            return jsonify({'ok': False, 'aguarde': True, 'msg': '⏳ Espera a música começar e aperta de novo'})
+        return redirect('/pubshow/painel')
+    # Revisão 25/10/26: 2º "Pular" confirmado do mesmo pedido (duplo clique): ele já saiu, não pula a música seguinte
+    if not pago and pid_conf.isdigit() and (conn.execute(
+            "SELECT status FROM pubshow_pedidos WHERE id=? AND business_id=?", (int(pid_conf), b['id'])).fetchone()
+            or [''])[0] == 'recusado':
+        conn.close()
+        return jsonify({'ok': True}) if _ajax else redirect('/pubshow/painel')
+    if pago and pid_conf != str(pago['id']):
+        conn.close()
+        if _ajax:
+            return jsonify({'ok': False, 'confirmar': True, 'pedido_id': pago['id'], 'valor': pago['valor'],
+                            'titulo': pago['titulo']})
+        return redirect('/pubshow/painel')
+    if pago:
+        _tirar_da_fila(conn, b['id'], pago['id'], de='exibido', resto=None, motivo='Pular com a música paga tocando')
     conn.execute(
         'UPDATE pubshow_businesses SET skip_seq = COALESCE(skip_seq,0) + 1 WHERE id=?',
         (b['id'],)
@@ -7493,11 +7616,17 @@ def painel_pausar_musica():
         return redirect('/pubshow/entrar')
     acao = (request.form.get('acao') or '').strip()
     conn = get_pubshow_db()
+    # 27/10/26 (pacote do dinheiro): pausa_ini = quando a pausa começou; o ▶️ grava o fim no pausa_ate (hora passada =
+    # tocando, como a volta sozinha). O ⏭️ Pular da música paga desconta esse tempo (_pausa_seg_desde)
     if acao == 'voltar':
-        conn.execute('UPDATE pubshow_businesses SET pausa_ate=NULL WHERE id=?', (b['id'],))
+        if _pausa_resta_s(b) > 0:
+            conn.execute('UPDATE pubshow_businesses SET pausa_ate=? WHERE id=?',
+                         (datetime.now().strftime('%Y-%m-%dT%H:%M:%S'), b['id']))
     elif _pausa_resta_s(b) <= 0:
-        ate = (datetime.now() + timedelta(minutes=PAUSA_MUSICA_MIN)).strftime('%Y-%m-%dT%H:%M:%S')
-        conn.execute('UPDATE pubshow_businesses SET pausa_ate=? WHERE id=?', (ate, b['id']))
+        agora = datetime.now()
+        ate = (agora + timedelta(minutes=PAUSA_MUSICA_MIN)).strftime('%Y-%m-%dT%H:%M:%S')
+        conn.execute('UPDATE pubshow_businesses SET pausa_ate=?, pausa_ini=? WHERE id=?',
+                     (ate, agora.strftime('%Y-%m-%dT%H:%M:%S'), b['id']))
     conn.commit()
     b2 = conn.execute('SELECT pausa_ate FROM pubshow_businesses WHERE id=?', (b['id'],)).fetchone()
     conn.close()
@@ -7526,8 +7655,8 @@ def painel_bloquear_video():
     pid = request.form.get('pedido_id', '')
     if pid.isdigit():
         # só da fila (15/10/26): aguardando_pix dispensado entrava no caixa sem ter sido pago
-        conn.execute("UPDATE pubshow_pedidos SET status='dispensado' WHERE id=? AND business_id=? AND status='pendente'",
-                     (int(pid), b['id']))
+        # 25/10/26: o PAGO vira 'recusado' (PIX a devolver, sem estorno); o grátis segue 'dispensado'
+        _tirar_da_fila(conn, b['id'], int(pid), motivo='nunca mais')
     conn.commit(); conn.close()
     return redirect('/pubshow/painel')
 
@@ -8754,10 +8883,8 @@ def admin_bar_acao(bid):
         nota = request.form.get('nota', '').strip()[:500]
         conn.execute('UPDATE pubshow_businesses SET notas_admin=? WHERE id=?', (nota, bid))
     elif acao == 'limpar_fila':
-        conn.execute(
-            "UPDATE pubshow_pedidos SET status='dispensado' WHERE business_id=? AND status='pendente'",
-            (bid,)
-        )
+        # 25/10/26: o PAGO da fila vira 'recusado' (PIX a devolver, sem estorno); o grátis segue 'dispensado'
+        _tirar_da_fila(conn, bid, motivo='Limpar fila do admin')
         # QR abandonado há mais de 2 h vira 'recusado' (some do painel do gerente)
         # Lote C (16/10/26): com a Efí, esses pedidos têm a cobrança cancelada (PIX que cair depois volta sozinho)
         _recusados_efi = [r[0] for r in conn.execute(

@@ -2426,17 +2426,8 @@ async function pollStatus() {
       pedidoMusica = data.pedido_musica;
       mostrarBadgeFila(data.total_fila);
 
-      // 👑 VIP interrompe o vídeo atual na hora. ⚡ FURAR A FILA NÃO corta mais (16/10/26, Diogo, produção a5970fc):
-      // vira o 1º da fila (o servidor já ordena flash primeiro) e toca quando a música atual acabar (ENDED).
-      // 16/10/26 (TV-07): nunca corta outro pedido pago (esse vira o próximo); com a TV muda, não corta nada
-      // 24/10/26 (momentos no telão): com a cena no palco o avancarFila não faz nada; o 👑 entra no fim dela (≤ 20 s)
-      if (data.pedido_musica.tipo === 'vip' && player && _somLigado() && !_tocandoPago) {
-        clearTimeout(stallTimer);
-        clearTimeout(proximoTimer);
-        document.getElementById('proximo-card').classList.remove('show');
-        avancarFila(); // chama agora, sem esperar o vídeo terminar
-        return;
-      }
+      // ⚡ FURAR A FILA NÃO corta (16/10/26, Diogo, produção a5970fc) e, desde 25/10/26 (pacote do dinheiro), o 👑 VIP
+      // também não: viram o 1º da fila (o servidor ordena vip, flash) e tocam quando a música atual acabar (ENDED).
 
       // Mostra banner "PRÓXIMA" imediatamente ao detectar pedido (não só 20s antes)
       // Isso garante que o dono veja que a música está na fila antes de clicar "Tocou"

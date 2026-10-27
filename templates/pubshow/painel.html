@@ -497,6 +497,14 @@
         <button type="button" id="btn-pausar-musica" class="ctl-btn" onclick="pausarMusica(this)" data-resta="{{ pausa_resta_s or 0 }}" style="grid-column:1/-1;background:rgba(245,158,11,.2);color:#fde68a">⏸️ Pausar a música</button>
       </div>
       <div id="pausa-msg" role="status" style="display:none;font-size:15px;font-weight:800;color:#fde68a;margin-top:10px;text-align:center"></div>
+      {#- 25/10/26 (pacote do dinheiro): ⏭️ com a música PAGA tocando confirma antes (o texto e o pedido vêm do servidor) #}
+      <div class="tirar-box" id="pular-pago" hidden>
+        <div class="aviso-pago"><span id="pular-pago-txt"></span><br><span id="pular-pago-musica" style="color:var(--text2)"></span></div>
+        <div class="botoes">
+          <button type="button" class="btn-tirar" id="pular-pago-sim" style="flex:1" onclick="pularMusica(document.getElementById('btn-pular-musica'), this.dataset.pid)">Pular</button>
+          <button type="button" class="btn-voltar" onclick="document.getElementById('pular-pago').hidden = true">Voltar</button>
+        </div>
+      </div>
       <!-- 🔊 Volume da TV (controle remoto) -->
       <div class="vol-linha">
         <span style="font-size:22px" aria-hidden="true">🔊</span>
@@ -575,8 +583,8 @@
           <button type="button" class="pedido-dispensar" aria-expanded="false" aria-label="Tirar da fila" title="Tirar da fila" onclick="abrirTirar({{ p.id }})">🗑️</button>
         </div>
         <div class="tirar-box" id="tirar-{{ p.id }}" hidden>
-          {# 16/10/26 (C1-05): pedido JÁ PAGO avisa que o dinheiro não volta sozinho #}
-          {% if p.pago_em %}<div class="aviso-pago">⚠️ Esse cliente PAGOU R$ {{ _pago_cli }} no PIX. Se tirar, a TV não mostra e o dinheiro NÃO volta sozinho: devolva na mão.</div>{% endif %}
+          {# 16/10/26 (C1-05): pedido JÁ PAGO avisa. 25/10/26: PIX na conta do PubShow (pix_volta) vai pro "PIX a devolver"; split/chave do bar como antes #}
+          {% if p.pix_volta %}<div class="aviso-pago">⚠️ Esse cliente pagou R$ {{ _pago_cli }} no PIX. Se tirar, a música não toca e o PIX volta pro cliente. Não sai do seu bolso.</div>{% elif p.pago_em %}<div class="aviso-pago">⚠️ Esse cliente PAGOU R$ {{ _pago_cli }} no PIX. Se tirar, a TV não mostra e o dinheiro NÃO volta sozinho: devolva na mão.</div>{% endif %}
           <div class="botoes">
             <form method="POST" action="/pubshow/painel/pedido/{{ p.id }}/dispensar"><button type="submit" class="btn-tirar">🗑️ Tirar da fila</button></form>
             <button type="button" class="btn-voltar" onclick="abrirTirar(null)">Voltar</button>
@@ -1346,14 +1354,34 @@ function renderTvSinal(t) {
   if (p1 && (t.estado === 'ligada' || t.estado === 'sem_som') && !_digitando()) location.reload();   // sem_som: a TV respondeu (16/10/26)
 }
 
-function pularMusica(btn) {
-  const orig = btn.innerHTML;
+function pularMusica(btn, pid) {
+  const orig = btn.dataset.orig || (btn.dataset.orig = btn.innerHTML);
+  const conf = document.getElementById('pular-pago');
+  if (conf) conf.hidden = true;
   btn.disabled = true;
   btn.innerHTML = '⏭️ Pulando...';
+  const fd = new FormData();
+  if (pid) fd.append('pedido_id', pid);   // 25/10/26: o dono confirmou o pular da música PAGA (essa, e só essa)
   fetch('/pubshow/painel/pular-musica', {
     method: 'POST',
-    headers: { 'X-Requested-With': 'XMLHttpRequest' }
-  }).then(r => r.json()).then(() => {
+    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+    body: fd
+  }).then(r => r.json()).then(d => {
+    if (d && d.confirmar && conf) {
+      // 25/10/26 (pacote do dinheiro): música PAGA tocando → confirma antes; não pulou nada ainda
+      document.getElementById('pular-pago-txt').textContent = 'Essa música foi paga (' + d.valor + '). Se pular, o PIX volta pro cliente.';
+      document.getElementById('pular-pago-musica').textContent = d.titulo ? '🎵 ' + d.titulo : '';
+      document.getElementById('pular-pago-sim').dataset.pid = d.pedido_id;
+      conf.hidden = false;
+      btn.innerHTML = orig; btn.disabled = false;
+      return;
+    }
+    if (d && d.aguarde) {
+      // revisão 25/10/26: ⚡ na "Entrada de estrela" a TV não pula; nada foi marcado, é só apertar de novo daqui a pouco
+      btn.textContent = d.msg || '⏳ Espera a música começar e aperta de novo';
+      setTimeout(() => { btn.innerHTML = orig; btn.disabled = false; }, 4000);
+      return;
+    }
     btn.innerHTML = '✅ Pulou!';
     setTimeout(() => { btn.innerHTML = orig; btn.disabled = false; }, 3000);
   }).catch(() => {
@@ -1772,9 +1800,12 @@ function renderFila(fila) {
     const valor = (p.valor_cobrado || p.valor || 0).toFixed(2).replace('.', ',');   // o que o cliente pagou (= aviso da 🗑️)
     // 16/10/26 (C1-05): pedido JÁ PAGO avisa que o dinheiro não volta sozinho
     const _pagoCli = (p.valor_cobrado || p.valor || 0).toFixed(2).replace('.', ',');
-    const avisoPago = p.pago_em
+    // 25/10/26: PIX na conta do PubShow (pix_volta) vai pro "PIX a devolver"; split/chave do bar como antes
+    const avisoPago = p.pix_volta
+      ? `<div class="aviso-pago">⚠️ Esse cliente pagou R$ ${_pagoCli} no PIX. Se tirar, a música não toca e o PIX volta pro cliente. Não sai do seu bolso.</div>`
+      : (p.pago_em
       ? `<div class="aviso-pago">⚠️ Esse cliente PAGOU R$ ${_pagoCli} no PIX. Se tirar, a TV não mostra e o dinheiro NÃO volta sozinho: devolva na mão.</div>`
-      : '';
+      : '');
     // 🚫 nunca mais: só pra pedido com vídeo (bane no bar + tira da fila)
     const btnNunca = p.youtube_id
       ? `<form method="POST" action="/pubshow/painel/bloquear-video" class="nunca"><input type="hidden" name="youtube_id" value="${_escHtml(p.youtube_id)}"><input type="hidden" name="pedido_id" value="${p.id}"><button type="submit" class="btn-nunca">🚫 Tirar e nunca mais tocar</button></form>`
