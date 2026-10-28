@@ -1164,6 +1164,9 @@ const TIPOS_MOMENTO = ['parabens','dedicatoria','brinde','chegada','casamento','
 let tipoAtual    = '';
 let modosBusca   = 'pedir';      // 26/10/26: 1 aba só ("🎵 Pedir música"); o tipo grátis vem de cada música (_tipoGratis)
 let buscaTimer   = null;
+let _localTimer  = null;   // 28/10/26 (item 9): o "só da casa" (/api/buscar-local) logo que o dedo para
+const BUSCA_LOCAL_MS = 350, BUSCA_GOOGLE_MS = 2000;
+let _casaQ = '', _casaR = [];   // o que o "só da casa" desenhou: fica na tela enquanto o Google responde (ou falha)
 let videoSel     = null;
 let _biblioCache = null; // cache da lista completa (carregada 1x)
 let _abaAtual    = 'cardapio';   // 20/10/26 (cardápio): 1 tela só
@@ -1611,7 +1614,12 @@ async function _carregarBibliotecaCompleta() {
     _renderChips();
     // 26/10/26: já digitou algo enquanto a lista carregava → refaz a busca com a lista do bar junto
     const _q = document.getElementById('busca-input').value.trim();
-    if (_q.length >= 2 && _buscaLivre()) { _ultimaQ = ''; buscar(); } else onBuscaInput();
+    // 28/10/26 (item 9): passa pela pausa (casa na hora, Google só se precisar), não vai direto ao Google
+    if (_q.length >= 2 && _buscaLivre()) {
+      _ultimaQ = '';
+      if (document.getElementById('sheet').classList.contains('on')) return;   // escolhendo: o fecharSheet refaz
+    }
+    onBuscaInput();
   } catch(e) {
     loading.classList.remove('show');
     document.getElementById('resultados-lista').innerHTML =
@@ -1686,18 +1694,21 @@ function onBuscaInput() {
   const lista = document.getElementById('resultados-lista');
   const chips = document.getElementById('busca-generos');
   if (_buscaLivre() && q.length >= 2) {
-    // 26/10/26: a lista do bar aparece na hora; a busca livre entra embaixo após ~1,2 s de pausa (era 600 ms: com a
-    // busca oficial cada termo novo gasta 1 das ~100 buscas do dia, e pedaço de palavra no meio da digitação gastava)
+    // 28/10/26 (item 9, Diogo: "automático esperto"): a lista do bar aparece na hora; ~350 ms depois que o dedo para
+    // entra o que a casa já tem (lista do bar + acervo vivo, /api/buscar-local, nunca o Google; de 3 letras pra cima).
+    // O Google só vai sozinho se a casa achou pouco e o cliente parou 2 s (era 1,2 s: pedaço de palavra gastava 1 das
+    // ~100 buscas do dia), ou no ↵.
     if (chips) chips.style.display = 'none';
     _cancelarBusca();   // a resposta de um texto velho não desenha por cima do novo
     if (q !== _ultimaQ || !lista.children.length) {
-      const doBar = _doBar(q, false).slice(0, 20).map(_cardDoBar);
-      _listaAtual = doBar;
+      const base = _baseBusca(q);
+      _listaAtual = base;
       document.getElementById('busca-count').style.display = 'none';
       lista.className = 'yt-lista';
-      lista.innerHTML = doBar.map((v, i) => _cardHtml(v, i, 'res')).join('') + _esqueleto(doBar.length ? 1 : 3);
+      lista.innerHTML = base.map((v, i) => _cardHtml(v, i, 'res')).join('') + _esqueleto(base.length ? 1 : 3);
     }
-    buscaTimer = setTimeout(buscar, 1200);
+    if (_letras(q) >= 3) _localTimer = setTimeout(buscarLocal, BUSCA_LOCAL_MS);
+    buscaTimer = setTimeout(buscar, BUSCA_GOOGLE_MS);
     return;
   }
   // sem texto (ou busca livre desligada): só a lista do bar, filtro local — instantâneo, zero request
@@ -1717,8 +1728,9 @@ function _cid() { try { return localStorage.getItem('jk_cid') || ''; } catch(e) 
 // Cancela a busca que ia disparar (pausa da digitação) ou que está no ar. `forcar`: esquece também a última
 // busca feita (trocou de fonte / apagou o texto); sem ele, só esquece se havia busca pendente.
 function _cancelarBusca(forcar) {
-  const pendente = buscaTimer !== null || _buscaCtl !== null;
+  const pendente = buscaTimer !== null || _localTimer !== null || _buscaCtl !== null;
   clearTimeout(buscaTimer); buscaTimer = null;
+  clearTimeout(_localTimer); _localTimer = null;
   if (_buscaCtl) { try { _buscaCtl.abort(); } catch(e) {} _buscaCtl = null; }
   if (pendente || forcar) { _buscaSeq++; _ultimaQ = ''; }
   document.getElementById('busca-loading').classList.remove('show');
@@ -1798,9 +1810,58 @@ function _mostrarMaisPedidas() {   // 20/10/26 (cardápio): fichas na horizontal
 }
 function escolherMaisPedida(i) { const v = _maisPedidas && _maisPedidas[i]; if (v) abrirSheet(v); }
 
+function _letras(q) { return String(q || '').replace(/\s/g, '').length; }
+function _baseBusca(q) {   // o começo da lista: o que o "só da casa" já mostrou pra este texto, ou a lista do bar
+  return (_casaQ === q && _casaR.length) ? _casaR : _doBar(q, false).slice(0, 20).map(_cardDoBar);
+}
+function _juntarLivres(doBar, res) {   // a lista do bar primeiro, depois a busca livre, sem repetir o clipe
+  const vistos = new Set(doBar.map(v => v.id));
+  return doBar.concat((res || []).filter(v => v && v.id && !vistos.has(v.id) && vistos.add(v.id))
+    .map(v => Object.assign({}, v, {fonte: _naLista(v.id) ? 'bar' : 'livre'})));
+}
+async function buscarLocal() {
+  // 28/10/26 (item 9): o que a casa já tem (lista do bar + acervo vivo), sem o Google. Bastou: é a resposta e a busca
+  // da pausa de 2 s nem sai. Pouco: mostra o que achou e o Google entra na pausa de 2 s (ou no ↵). Erro: fica pra ela.
+  _localTimer = null;
+  if (document.getElementById('sheet').classList.contains('on')) return;   // escolhendo: não mexe na lista
+  const q = document.getElementById('busca-input').value.trim();
+  const lista = document.getElementById('resultados-lista');
+  if (!YT_LIBERADO || _letras(q) < 3 || (q === _ultimaQ && lista.children.length)) return;
+  if (_buscaCtl) { try { _buscaCtl.abort(); } catch(e) {} }
+  const ctl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+  _buscaCtl = ctl;
+  const seq = ++_buscaSeq;
+  try {
+    // rota própria (não ?local=1): se o servidor voltar pra uma versão antiga, ela dá 404 em vez de ir ao Google
+    const res = await fetch(`/pubshow/api/buscar-local?q=${encodeURIComponent(q)}&bar=${encodeURIComponent(BAR_TOKEN)}&cid=${encodeURIComponent(_cid())}`,
+                            ctl ? {signal: ctl.signal} : {});
+    if (!res.ok) return;
+    const data = await res.json();
+    if (seq !== _buscaSeq) return;
+    const r = _juntarLivres(_doBar(q, false).slice(0, 20).map(_cardDoBar), data.resultados);
+    _casaQ = q; _casaR = r;
+    const _cards = l => l.map((v, i) => _cardHtml(v, i, 'res')).join('');
+    document.getElementById('busca-count').style.display = 'none';
+    lista.className = 'yt-lista';
+    _listaAtual = r;
+    if (data.basta && r.length) {
+      clearTimeout(buscaTimer); buscaTimer = null;
+      _ultimaQ = q;
+      lista.innerHTML = _cards(r);
+    } else {
+      lista.innerHTML = _cards(r) + _esqueleto(r.length ? 1 : 3);
+    }
+  } catch(e) {
+    // rede / abortada: a busca da pausa de 2 s (ou do ↵) tenta e dá o aviso certo
+  } finally {
+    if (_buscaCtl === ctl) _buscaCtl = null;
+  }
+}
+
 async function buscar() {
   // 26/10/26: a lista do bar + (com a busca livre do bar ligada) a busca de qualquer música, juntas e sem repetir
   clearTimeout(buscaTimer); buscaTimer = null;
+  clearTimeout(_localTimer); _localTimer = null;   // 28/10/26 (item 9): ↵ antes da pausa: o "só da casa" nem sai
   if (document.getElementById('sheet').classList.contains('on')) return;   // escolhendo: não mexe na lista (nem no videoSel)
   const q = document.getElementById('busca-input').value.trim();
   const lista = document.getElementById('resultados-lista');
@@ -1812,17 +1873,20 @@ async function buscar() {
   _buscaCtl = ctl;
   const seq = ++_buscaSeq;
   const doBar = _doBar(q, false).slice(0, 20).map(_cardDoBar);   // os da lista do bar primeiro
+  // 28/10/26 (item 9): na espera (e se a busca falhar) fica o que a casa já mostrou; a lista final é a do servidor
+  // (no bar com estilo ele confere o estilo com o Gemini e pode tirar o que a casa mostrou)
+  const base = (_casaQ === q && _casaR.length) ? _casaR : doBar;
   const _cards = l => l.map((v, i) => _cardHtml(v, i, 'res')).join('');
   document.getElementById('busca-count').style.display = 'none';
   document.getElementById('busca-generos').style.display = 'none';
   lista.className = 'yt-lista';   // 20/10/26 (cardápio): as fichas das mais pedidas ficam embaixo da busca
-  _listaAtual = doBar;
-  lista.innerHTML = _cards(doBar) + _esqueleto(doBar.length ? 1 : 3);
-  const _so = (msg) => {   // aviso no lugar da busca livre: com música do bar achada, ela fica e o aviso vai embaixo
+  _listaAtual = base;
+  lista.innerHTML = _cards(base) + _esqueleto(base.length ? 1 : 3);
+  const _so = (msg) => {   // aviso no lugar da busca livre: com música da casa achada, ela fica e o aviso vai embaixo
     _ultimaQ = '';
-    _listaAtual = doBar;
-    lista.className = doBar.length ? 'yt-lista' : '';
-    lista.innerHTML = _cards(doBar) + msg;
+    _listaAtual = base;
+    lista.className = base.length ? 'yt-lista' : '';
+    lista.innerHTML = _cards(base) + msg;
   };
   try {
     // 28/10/26 (B3): o cid do celular vai junto (teto por aparelho, não pelo Wi-Fi do bar)
@@ -1853,10 +1917,7 @@ async function buscar() {
       return;
     }
     if (res.ok) YT_FORA = false;   // a busca livre voltou
-    const vistos = new Set(doBar.map(v => v.id));
-    const livres = (data.resultados || []).filter(v => v && v.id && !vistos.has(v.id) && vistos.add(v.id))
-      .map(v => Object.assign({}, v, {fonte: _naLista(v.id) ? 'bar' : 'livre'}));
-    const r = doBar.concat(livres);
+    const r = _juntarLivres(doBar, data.resultados);
     if (!r.length && data.fora_estilo) {   // 17/10/26: tudo de outro estilo → aviso grande + botão
       _ultimaQ = '';
       lista.className = '';

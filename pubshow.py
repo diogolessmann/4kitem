@@ -5764,10 +5764,12 @@ def _palpites_artista(card):
     return [p for p in ps if p]
 
 
-def _so_do_estilo(b, ests_bar, cards, espera=pubshow_estilo.ESPERA_BUSCA):
+def _so_do_estilo(b, ests_bar, cards, espera=pubshow_estilo.ESPERA_BUSCA, so_sabido=False):
     """Os cards que podem tocar no estilo do bar ("aqui só toca rock", 17/10/26). Acervo curado na categoria do
     estilo passa direto; o resto vale pelo ARTISTA (pubshow_estilo): desconhecido passa, de vários estilos conta como
-    todos. Acervo curado de outra categoria só passa se o artista for (também) do estilo."""
+    todos. Acervo curado de outra categoria só passa se o artista for (também) do estilo.
+    so_sabido (28/10/26, item 9): o desconhecido NÃO passa. É o "só da casa", que não pergunta ao Gemini: o card que
+    ele mostrasse podia ser pedido antes da busca dos 2 s (a única que pergunta), e o pedido não confere com o Gemini."""
     if not ests_bar or not cards:
         return list(cards)
     ids = [c['id'] for c in cards if c.get('id')]
@@ -5789,7 +5791,8 @@ def _so_do_estilo(b, ests_bar, cards, espera=pubshow_estilo.ESPERA_BUSCA):
     out = []
     for c in cards:
         e_cat, e_art = est_cat.get(c.get('id')), est.get(c.get('id'))
-        if e_cat in ests_bar or (pubshow_estilo.passa(e_art, ests_bar) and (not e_cat or e_art)):
+        if e_cat in ests_bar or (pubshow_estilo.passa(e_art, ests_bar) and (not e_cat or e_art)
+                                 and (e_art or not so_sabido)):
             out.append(c)
     return out
 
@@ -5860,6 +5863,11 @@ def _yt_selos(business_id, itens, ip_proprio=None):
 
 
 _BUSCAR_MAX_BAR, _BUSCAR_MAX_IP = 120, 150   # buscas por minuto (15/10/26); IP ≥ bar: no Wi-Fi do bar todos têm o mesmo IP (16/10/26, C5)
+# 28/10/26 (item 9, "automático esperto"): o pedido "só da casa" (/api/buscar-local) sai a cada pausa da digitação:
+# conta à parte, pra não comer o teto por minuto da busca de verdade. O cartão do SaaS Admin conta no máximo 1 por
+# celular a cada _BUSCA_LOCAL_CONTA_SEG (quem digita devagar manda 1 por letra)
+_BUSCAR_LOCAL_MAX = 150
+_BUSCA_LOCAL_CONTA_SEG = 15
 
 
 def _busca_local(b, q, top=YT_TOP):
@@ -5878,7 +5886,7 @@ def _busca_local(b, q, top=YT_TOP):
     return cards
 
 
-def _busca_filtrar(b, cards, ests_bar, nt, top=YT_TOP):
+def _busca_filtrar(b, cards, ests_bar, nt, top=YT_TOP, **estilo_kw):
     """Os filtros do bar em cima dos cards, os MESMOS pra API e pro local (28/10/26, B7; antes ficavam no corpo do
     /api/buscar): bloqueado do bar, jingle político, estilo ("aqui só toca rock"), 🚫 Não tocar aqui.
     Devolve (cards, aviso): aviso = o JSON de quando o filtro esvaziou a lista (fora do estilo / não toca aqui)."""
@@ -5889,7 +5897,7 @@ def _busca_filtrar(b, cards, ests_bar, nt, top=YT_TOP):
     cards = [c for c in cards if not _tem_politica(c.get('titulo_original') or c.get('titulo'), _jan)]
     if ests_bar and cards:
         try:
-            cards = _so_do_estilo(b, ests_bar, cards)[:top]
+            cards = _so_do_estilo(b, ests_bar, cards, **estilo_kw)[:top]   # item 9: o "só da casa" manda espera=None
         except Exception as e:   # erro nosso no filtro: mostra a busca como sempre (nunca 500)
             log.warning('[PUBSHOW] filtro de estilo falhou (busca sem filtro): %s', e)
             cards = cards[:top]
@@ -5911,11 +5919,18 @@ def _busca_responder_local(b, cards):
 
 
 @pubshow_bp.route('/api/buscar')
+@pubshow_bp.route('/api/buscar-local', endpoint='api_buscar_local')   # url_for('pubshow.api_buscar') segue /api/buscar
 def api_buscar():
     """Busca livre de música (API oficial, 26/10/26): os 5 melhores, com capa grande e selos do bar. Acervo do bar e
     cache primeiro (não gastam a cota); sem chave ou sem cota = 503 'youtube_fora' (o celular fica na lista do bar).
     28/10/26 (B7): ≥ 15 no LOCAL (acervo do bar + acervo vivo) = 200 'local' sem o Google; Google fora com algo no
-    local = 200 'local'; o 503 só sem nada no local."""
+    local = 200 'local'; o 503 só sem nada no local.
+    28/10/26 (item 9): /api/buscar-local = só a casa (acervo do bar + acervo vivo), NUNCA o Google e nunca conta nos
+    tetos do Google. 'basta' diz se o local já é a resposta inteira; sem ele o celular vai ao Google na pausa de 2 s ou
+    no ↵. Rota própria, não um ?local=1: um servidor antigo responde 404 (com ?local=1 ele ia ao Google a cada pausa).
+    No bar com estilo o local nem pergunta ao Gemini (1 worker só: esperar 3 s a cada pausa travava o 4kitem), só
+    mostra o que já se sabe que é do estilo (so_sabido) e nunca basta: quem decide é a busca dos 2 s, que espera o
+    Gemini 1 vez."""
     # 15/10/26: só com o token de um bar de verdade (?bar=) e com teto por bar + teto alto por IP.
     # Antes era pública e sem limite: um loop aqui (timeout 8 s) segurava o worker do 4kitem inteiro.
     # No Wi-Fi do bar todo mundo divide o IP (decisão 11/09/26), por isso o teto principal é do BAR.
@@ -5930,10 +5945,14 @@ def api_buscar():
     # fechado ou com a busca desligada também gastava a cota do dia, que é de todos os bares.
     if not _youtube_liberado(b) or not _jukebox_aberto(b)[0]:
         return jsonify({'resultados': [], 'erro': 'youtube_fora', 'indisponivel': 'bar'}), 503
+    _so_local = request.path.endswith('/api/buscar-local')
+    if _so_local and len(re.sub(r'\s', '', q)) < 3:   # 2 letras: o prefixo varre o acervo vivo inteiro; fica pra pausa
+        return jsonify({'resultados': [], 'local': True, 'basta': False})
     _ip = _ip_real()
-    _chave_bar, _chave_ip = f'buscar_bar:{b["id"]}', 'buscar_ip:' + _ip
-    if _rl_bloqueado(_chave_bar, max_n=_BUSCAR_MAX_BAR, janela=60) or \
-       _rl_bloqueado(_chave_ip, max_n=_BUSCAR_MAX_IP, janela=60):
+    _pre = 'buscar_local' if _so_local else 'buscar'
+    _chave_bar, _chave_ip = f'{_pre}_bar:{b["id"]}', f'{_pre}_ip:' + _ip
+    if _rl_bloqueado(_chave_bar, max_n=_BUSCAR_LOCAL_MAX if _so_local else _BUSCAR_MAX_BAR, janela=60) or \
+       _rl_bloqueado(_chave_ip, max_n=_BUSCAR_LOCAL_MAX if _so_local else _BUSCAR_MAX_IP, janela=60):
         return jsonify({'resultados': [], 'error': 'Muitas buscas agora. Espera uns segundos e tenta de novo.'}), 429
     _rl_falhou(_chave_bar, _chave_ip)
     _cid = request.args.get('cid', '').strip()   # 28/10/26 (B3): o jk_cid do celular (teto por aparelho)
@@ -5948,10 +5967,20 @@ def api_buscar():
     if ests_bar:   # com estilo o Google também entrega no máximo 10 (B9): 10 no local já é a resposta inteira
         basta = min(basta, YT_TOP_ESTILO)
     try:   # 28/10/26 (B7): LOCAL primeiro (acervo do bar + acervo vivo), os mesmos filtros da API
-        local, aviso_local = _busca_filtrar(b, _busca_local(b, q, top=_top), ests_bar, _nt, top=YT_TOP * 2)
+        local, aviso_local = _busca_filtrar(b, _busca_local(b, q, top=_top), ests_bar, _nt, top=YT_TOP * 2,
+                                            **({'espera': None, 'so_sabido': True} if _so_local and ests_bar else {}))
     except Exception as e:
         log.warning('[PUBSHOW] busca local falhou (segue pro Google): %s', e)
         local, aviso_local = [], None
+    if _so_local:   # item 9: o que a casa tem, na hora; o Google fica pra pausa de 2 s (ou o ↵) se não bastar
+        ok = bool(local) and basta > 0 and len(local) >= basta and not ests_bar
+        if local:
+            _yt_selos(b['id'], local)
+        _conta = f'busca_local_conta:{b["id"]}:{_cid or _ip}'
+        if ok and not _rl_bloqueado(_conta, max_n=1, janela=_BUSCA_LOCAL_CONTA_SEG):
+            _rl_falhou(_conta)   # o celular fica com esta resposta (a busca de verdade nem sai): conta no SaaS Admin
+            _busca_local_contar()
+        return jsonify({'resultados': local, 'local': True, 'basta': ok})
     if local and basta > 0 and len(local) >= basta:   # achou bastante: nem gasta o Google
         return _busca_responder_local(b, local)
     try:
