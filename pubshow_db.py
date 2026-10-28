@@ -558,6 +558,28 @@ def init_pubshow_db():
         try: conn.rollback()
         except: pass
 
+    # 🎵 Acervo vivo da busca (28/10/26, pacote "busca solta" B7): cada vídeo que a API oficial devolveu = 1 linha
+    # (youtube_id é a chave: 2 celulares juntos nunca duplicam) + as palavras do título e do canal (o índice da busca
+    # local: cada palavra digitada é começo de uma palavra). Apaga com 25 dias (Developer Policies III.E.4.c: até 30).
+    try:
+        conn.execute('CREATE TABLE IF NOT EXISTS pubshow_busca_videos ('
+                     '  youtube_id TEXT PRIMARY KEY, titulo TEXT NOT NULL, canal TEXT NOT NULL DEFAULT \'\','
+                     '  texto TEXT NOT NULL DEFAULT \'\', dur INTEGER NOT NULL DEFAULT 0,'
+                     '  views INTEGER NOT NULL DEFAULT 0, oficial INTEGER NOT NULL DEFAULT 0,'
+                     '  topic INTEGER NOT NULL DEFAULT 0, publicado INTEGER NOT NULL DEFAULT 1,'
+                     '  ao_vivo INTEGER NOT NULL DEFAULT 0, shorts INTEGER NOT NULL DEFAULT 0,'
+                     '  visto_em TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)')
+        conn.execute('CREATE INDEX IF NOT EXISTS idx_busca_videos_visto ON pubshow_busca_videos(visto_em)')
+        conn.execute('CREATE TABLE IF NOT EXISTS pubshow_busca_palavras ('
+                     '  palavra TEXT NOT NULL, youtube_id TEXT NOT NULL,'
+                     '  PRIMARY KEY (palavra, youtube_id))')   # com rowid: as ferramentas que leem o banco por rowid seguem
+        conn.execute('CREATE INDEX IF NOT EXISTS idx_busca_palavras_vid ON pubshow_busca_palavras(youtube_id)')
+        conn.commit()
+    except Exception as e:
+        log.error('[PUBSHOW] tabelas do acervo vivo falharam: %s', e)
+        try: conn.rollback()
+        except: pass
+
     conn.close()
 
 

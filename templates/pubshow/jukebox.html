@@ -1825,17 +1825,27 @@ async function buscar() {
     lista.innerHTML = _cards(doBar) + msg;
   };
   try {
-    const res  = await fetch(`/pubshow/api/buscar?q=${encodeURIComponent(q)}&bar=${encodeURIComponent(BAR_TOKEN)}`,
+    // 28/10/26 (B3): o cid do celular vai junto (teto por aparelho, não pelo Wi-Fi do bar)
+    const res  = await fetch(`/pubshow/api/buscar?q=${encodeURIComponent(q)}&bar=${encodeURIComponent(BAR_TOKEN)}&cid=${encodeURIComponent(_cid())}`,
                              ctl ? {signal: ctl.signal} : {});
     let data = {};
     try { data = await res.json(); } catch(e) {}
     if (seq !== _buscaSeq) return;
     if (res.status === 503 || data.erro === 'youtube_fora') {   // crítico leigo A3 (17/10/26)
       YT_FORA = true;
-      _so('<div class="yt-msg" style="color:#fbbf24">A busca de música não respondeu agora. ' +
-        'Escolhe nas músicas do bar: hoje dá pra furar a fila com elas também.<br>' +
-        '<button type="button" id="btn-lista-bar" onclick="verListaDoBar()">📚 Ver as músicas do bar</button> ' +
-        '<button type="button" onclick="buscar()">Tentar de novo</button></div>');
+      const _ind = data.indisponivel || '';   // 28/10/26 (B5): o aviso certo pro motivo
+      if (_ind === 'cota' || _ind === 'cota_bar') {
+        _so('<div class="yt-msg" id="yt-lotou" style="color:#fbbf24">A busca de hoje lotou. Escolhe nas músicas do bar&nbsp;👇<br>' +
+          '<button type="button" id="btn-lista-bar" onclick="verListaDoBar()">📚 Ver as músicas do bar</button></div>');
+      } else if (_ind === 'teto_celular') {
+        _so('<div class="yt-msg" id="yt-seguidas" style="color:#fbbf24">Muitas buscas seguidas. Espera uns minutos e tenta de novo. 🙏<br>' +
+          '<button type="button" id="btn-lista-bar" onclick="verListaDoBar()">📚 Ver as músicas do bar</button></div>');
+      } else {
+        _so('<div class="yt-msg" style="color:#fbbf24">A busca de música não respondeu agora. ' +
+          'Escolhe nas músicas do bar: hoje dá pra furar a fila com elas também.<br>' +
+          '<button type="button" id="btn-lista-bar" onclick="verListaDoBar()">📚 Ver as músicas do bar</button> ' +
+          '<button type="button" onclick="buscar()">Tentar de novo</button></div>');
+      }
       return;
     }
     if (res.status === 429) {   // teto de buscas do bar: explica em vez de "Nenhum resultado" (15/10/26)

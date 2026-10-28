@@ -94,6 +94,7 @@
       <div class="stat-val" style="color:#f87171">sem chave</div>
       <div class="stat-label">Busca livre parada: falta YOUTUBE_API_KEY no Railway</div>
       {% endif %}
+      {% if busca_vivo %}<div class="stat-label" id="busca-vivo">Acervo vivo: {{ busca_vivo.n }} músicas (25 dias) · hoje {{ busca_vivo.local_hoje }} buscas sem gastar o Google</div>{% endif %}
     </div>
   </div>
 

@@ -5228,7 +5228,8 @@ def _yt_ranquear(lidos, q, top=YT_TOP):
 # x-goog-api-key (nunca na URL: erro de rede não grava a chave no log). Cota (determine_quota_cost, conferido 26/10/26):
 # o search.list tem balde próprio de 100 chamadas/dia, o videos.list custa 1 unidade dos 10.000/dia e tudo zera à
 # meia-noite do horário do Pacífico. Cada busca, do grátis pro pago:
-#   1) acervo do bar (_acervo_basta)  2) cache em memória (10 min)  3) cache no banco (7 dias)  4) API (1 da cota)
+#   1) local: acervo do bar + acervo vivo (_busca_local, 28/10/26)  2) cache em memória (10 min)  3) cache no banco
+#   (25 dias)  4) API (1 da cota)
 # Sem chave, ou com o dia no teto (PUBSHOW_BUSCA_TETO, padrão 90 das 100): "busca indisponível" (503 'youtube_fora')
 # e o celular fica na lista do bar. NUNCA volta pra busca interna.
 YT_API = 'https://www.googleapis.com/youtube/v3'
@@ -5241,8 +5242,21 @@ YT_BUSCA_TETO_BAR_PADRAO = 97        # 28/10/26 (Garage sem busca às 22h29, ~40
 YT_BUSCA_MAX_IP, YT_BUSCA_JANELA_IP = 60, 10 * 60   # 28/10/26: era 15 (o Wi-Fi do bar inteiro) · IP folgado: no Wi-Fi do bar todos dividem o mesmo IP
 YT_BUSCA_CACHE_DIAS = 25             # 28/10/26: era 7; a regra do Google deixa guardar até 30 dias (III.E.4.c)
 YT_BUSCA_MAX_RESULT = 50             # o search.list custa o mesmo pra 5 ou 50 (28/10/26: era 20; 15 cards + o filtro do estilo)
-YT_ACERVO_BASTA = 3                  # ≥ 3 músicas do acervo com todas as palavras digitadas: nem gasta a cota
-                                     # (env PUBSHOW_BUSCA_ACERVO muda o número; 0 desliga o acervo primeiro)
+# 28/10/26 (pacote "busca solta" v2, Diogo: "liberar mais música, diminuir as amarras"; o povo não aperta botão):
+# B7 acervo vivo: todo vídeo que a API devolveu fica 25 dias numa tabela (pubshow_busca_videos + o índice das palavras)
+# e a busca procura PRIMEIRO no local (acervo do bar + acervo vivo, os mesmos filtros e o mesmo ranking da API).
+# ≥ YT_LOCAL_BASTA cards no local = nem gasta o Google; menos = junta com o Google; Google fora = responde o local.
+# B2: saiu a regra "≥ 3 do acervo do bar" (YT_ACERVO_BASTA / env PUBSHOW_BUSCA_ACERVO).
+YT_LOCAL_BASTA = 15                  # env PUBSHOW_BUSCA_LOCAL muda o número (0 = sempre tenta o Google; o local só junta)
+# B3: o teto cheio do bar (YT_BUSCA_TETO_BAR_PADRAO) só vale pro bar com PIX pago de verdade nos últimos 14 dias; o
+# resto (teste, recém-criado, abandonado) fica com 15 por dia (env PUBSHOW_BUSCA_TETO_TESTE). Por celular (IP#cid do
+# jk_cid): 15 a cada 10 min; o de IP puro (YT_BUSCA_MAX_IP) segue 60. Só conta a busca que vai pro Google.
+YT_BUSCA_TETO_TESTE_PADRAO, YT_BUSCA_PAGOU_DIAS = 15, 14
+YT_BUSCA_MAX_CEL = 15
+# B9 (28/10/26): bar COM estilo ranqueia no máximo 10 candidatos antes do filtro (como era antes do hotfix: 5 * 2); os
+# do fim são upload de canal qualquer, de artista que o classificador não conhece, e "desconhecido passa" (Rock via Gusttavo)
+YT_TOP_ESTILO = 10
+_CID_RE = re.compile(r'[A-Za-z0-9_-]{8,40}')
 _YT_ISO_RE = re.compile(r'P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)(?:\.\d+)?S)?)?')
 
 
@@ -5289,6 +5303,42 @@ def _busca_teto_bar():
         return YT_BUSCA_TETO_BAR_PADRAO
 
 
+def _bar_pagou_pix(conn, bid, dias=YT_BUSCA_PAGOU_DIAS):
+    """28/10/26 (B3): o bar teve PIX pago DE VERDADE nos últimos `dias` dias: pedido com cobrança no Asaas ou na ponte
+    Efí e pago_em da confirmação (a mesma prova do 💸 Repasses: _repasse_where_pago) ou cobrança do split Efí paga.
+    'Já paguei', balcão e pedido grátis não contam. NÃO usa plano_ativo: o Garage pode estar sem assinatura ativa."""
+    corte = f'-{int(dias)} days'
+    w, wp = _repasse_where_pago(STATUS_PAGOS)
+    if conn.execute(f"SELECT 1 FROM pubshow_pedidos WHERE business_id=? AND {w} AND pago_em >= datetime('now', ?) "
+                    "LIMIT 1", [bid, *wp, corte]).fetchone():
+        return True
+    if conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='pubshow_pay_cobrancas'").fetchone():
+        return bool(conn.execute("SELECT 1 FROM pubshow_pay_cobrancas WHERE business_id=? AND status='paga' "
+                                 "AND COALESCE(estornar,0)=0 AND pago_em >= datetime('now', ?) LIMIT 1", (bid, corte)).fetchone())
+    return False
+
+
+def _busca_teto_do_bar(bid, conn=None):
+    """28/10/26 (B3): teto do BAR no dia. PIX pago em 14 dias → o dia todo (_busca_teto_bar, env
+    PUBSHOW_BUSCA_TETO_BAR); sem → env PUBSHOW_BUSCA_TETO_TESTE (padrão 15), nunca acima do cheio. Erro na conta = o
+    teto cheio (erro nosso nunca prende o bar que paga)."""
+    cheio = _busca_teto_bar()
+    try:
+        teste = max(0, int(os.environ.get('PUBSHOW_BUSCA_TETO_TESTE') or YT_BUSCA_TETO_TESTE_PADRAO))
+    except ValueError:
+        teste = YT_BUSCA_TETO_TESTE_PADRAO
+    fechar = conn is None
+    conn = conn or get_pubshow_db()
+    try:
+        return cheio if _bar_pagou_pix(conn, bid) else min(cheio, teste)
+    except Exception as e:
+        log.warning('[PUBSHOW] teto da busca do bar %s: conta do PIX falhou (teto cheio): %s', bid, e)
+        return cheio
+    finally:
+        if fechar:
+            conn.close()
+
+
 def _busca_cota_reservar(teto=None, bid=None):
     """Reserva 1 busca da cota de hoje (1 UPDATE só: 2 celulares juntos não passam do teto). False = no teto.
     27/10/26 (pente fino S1): com o bid, reserva também 1 do teto do BAR no dia, na mesma tabela (linha 'dia#bar<id>',
@@ -5300,9 +5350,10 @@ def _busca_cota_reservar(teto=None, bid=None):
     try:
         if bid is not None:
             dia_bar = f'{dia}#bar{int(bid)}'
+            teto_bar = _busca_teto_do_bar(bid, conn)   # 28/10/26 (B3): cheio só com PIX pago em 14 dias
             conn.execute('INSERT OR IGNORE INTO pubshow_busca_cota (dia, buscas) VALUES (?, 0)', (dia_bar,))
             if conn.execute('UPDATE pubshow_busca_cota SET buscas=buscas+1 WHERE dia=? AND buscas<?',
-                            (dia_bar, _busca_teto_bar())).rowcount != 1:
+                            (dia_bar, teto_bar)).rowcount != 1:
                 conn.rollback()
                 raise _BuscaIndisponivel('cota_bar')
         conn.execute('INSERT OR IGNORE INTO pubshow_busca_cota (dia, buscas) VALUES (?, 0)', (dia,))
@@ -5365,6 +5416,102 @@ def _busca_cache_apagar(chave):
         conn.commit()
     finally:
         conn.close()
+
+
+def _busca_tokens(q):
+    """As palavras que a busca procura (a regra do acervo, 26/10/26): sem 'de', 'a', 'musica'...; 1 letra só se for número."""
+    return list(dict.fromkeys(w for w in _yt_norm(q).split()
+                              if w not in _YT_STOP and (len(w) >= 2 or w.isdigit())))[:10]
+
+
+def _busca_vivo_gravar(lidos):
+    """28/10/26 (B7): os vídeos que a API ACABOU de devolver entram no acervo vivo: 1 linha por youtube_id (o mesmo de
+    novo só atualiza e renova o visto_em: 2 celulares juntos nunca duplicam) + as palavras do título e do canal. Uma
+    transação curta; aproveita e apaga o que passou de YT_BUSCA_CACHE_DIAS (25; o Google deixa até 30)."""
+    linhas = {}
+    for v in lidos or []:
+        vid = str(v.get('id') or '')
+        if _YID_RE.fullmatch(vid) and v.get('titulo'):
+            linhas[vid] = v
+    conn = get_pubshow_db()
+    try:
+        velhos = [r[0] for r in conn.execute(
+            "SELECT youtube_id FROM pubshow_busca_videos WHERE visto_em < datetime('now', ?) LIMIT 2000",
+            (f'-{YT_BUSCA_CACHE_DIAS} days',))]
+        ids = list(linhas) + velhos
+        for i in range(0, len(ids), 400):
+            parte = ids[i:i + 400]
+            ph = ','.join('?' * len(parte))
+            conn.execute(f'DELETE FROM pubshow_busca_palavras WHERE youtube_id IN ({ph})', parte)
+            conn.execute(f'DELETE FROM pubshow_busca_videos WHERE youtube_id IN ({ph})', parte)
+        for vid, v in linhas.items():
+            texto = _yt_norm(f"{v.get('titulo') or ''} {v.get('canal') or ''}")
+            conn.execute('INSERT INTO pubshow_busca_videos (youtube_id, titulo, canal, texto, dur, views, oficial, topic,'
+                         " publicado, ao_vivo, shorts, visto_em) VALUES (?,?,?,?,?,?,?,?,?,?,?, datetime('now'))",
+                         (vid, str(v['titulo'])[:200], str(v.get('canal') or '')[:100], texto[:400],
+                          int(v.get('dur') or 0), int(v.get('views') or 0), int(bool(v.get('oficial'))),
+                          int(bool(v.get('topic'))), int(bool(v.get('publicado'))), int(bool(v.get('ao_vivo'))),
+                          int(bool(v.get('shorts')))))
+            conn.executemany('INSERT OR IGNORE INTO pubshow_busca_palavras (palavra, youtube_id) VALUES (?, ?)',
+                             [(p, vid) for p in set(texto.split()) if p not in _YT_STOP and (len(p) >= 2 or p.isdigit())])
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def _busca_vivo_ler(q, limite=200):
+    """28/10/26 (B7): os vídeos do acervo vivo (≤ 25 dias) em que CADA palavra digitada é começo de uma palavra do
+    título ou do canal (a regra do acervo do bar). Pelo índice das palavras (faixa 'pal' ≤ x < 'pal{'), com LIMIT:
+    nada de varrer JSON. Já sai sem ao vivo, Shorts e fora de 1–10 min; o resto dos filtros é o do ranking da API."""
+    tokens = _busca_tokens(q)
+    if not tokens:
+        return []
+    sub = ' AND '.join(['youtube_id IN (SELECT youtube_id FROM pubshow_busca_palavras WHERE palavra >= ? AND palavra < ?)']
+                       * len(tokens))
+    conn = get_pubshow_db()
+    try:
+        rows = conn.execute(
+            f"""SELECT youtube_id, titulo, canal, dur, views, oficial, topic, publicado, ao_vivo, shorts
+                FROM pubshow_busca_videos
+                WHERE visto_em >= datetime('now', ?) AND ao_vivo=0 AND shorts=0 AND dur BETWEEN ? AND ? AND {sub}
+                ORDER BY views DESC LIMIT ?""",
+            [f'-{YT_BUSCA_CACHE_DIAS} days', YT_DUR_MIN_SEG, YT_DUR_MAX_SEG,
+             *[x for t in tokens for x in (t, t + '{')], int(limite)]).fetchall()
+    finally:
+        conn.close()
+    return [{'id': r['youtube_id'], 'titulo': r['titulo'], 'canal': r['canal'], 'dur': int(r['dur'] or 0),
+             'dur_txt': _yt_dur_txt(int(r['dur'] or 0)), 'views': int(r['views'] or 0), 'oficial': bool(r['oficial']),
+             'topic': bool(r['topic']), 'publicado': bool(r['publicado']), 'ao_vivo': bool(r['ao_vivo']),
+             'shorts': bool(r['shorts'])} for r in rows]
+
+
+def _busca_vivo_resumo():
+    """B8 (SaaS Admin): quantas músicas o acervo vivo tem (25 dias) e quantas buscas de hoje saíram só do local."""
+    conn = get_pubshow_db()
+    try:
+        n = conn.execute("SELECT COUNT(*) FROM pubshow_busca_videos WHERE visto_em >= datetime('now', ?)",
+                         (f'-{YT_BUSCA_CACHE_DIAS} days',)).fetchone()[0]
+        r = conn.execute('SELECT buscas FROM pubshow_busca_cota WHERE dia=?', (f'{_dia_pacifico()}#local',)).fetchone()
+        return {'n': int(n or 0), 'local_hoje': int(r[0] or 0) if r else 0}
+    except Exception:
+        return None
+    finally:
+        conn.close()
+
+
+def _busca_local_contar():
+    """B8: +1 na linha 'dia#local' da tabela da cota (a conta do dia só lê a linha 'dia': não mistura)."""
+    try:
+        conn = get_pubshow_db()
+        try:
+            dia = f'{_dia_pacifico()}#local'
+            conn.execute('INSERT OR IGNORE INTO pubshow_busca_cota (dia, buscas) VALUES (?, 0)', (dia,))
+            conn.execute('UPDATE pubshow_busca_cota SET buscas=buscas+1 WHERE dia=?', (dia,))
+            conn.commit()
+        finally:
+            conn.close()
+    except Exception as e:
+        log.warning('[PUBSHOW] contador da busca local falhou: %s', e)
 
 
 def _yt_iso_seg(iso):
@@ -5455,9 +5602,11 @@ def _busca_chave(q):
     return _yt_norm(q) or ' '.join(str(q or '').lower().split())
 
 
-def _yt_buscar_oficial(q, bid=None, ip=None):
+def _yt_buscar_oficial(q, bid=None, ip=None, cid=None):
     """Vídeos da busca livre (formato do ranking). Grátis primeiro: cache em memória (10 min) e no banco (7 dias); só
     então a API oficial, gastando 1 busca da cota do dia (e, com bid/ip, do teto do bar e do celular: 27/10/26, S1).
+    28/10/26 (B3): com o cid (jk_cid do celular), teto também por IP#cid (YT_BUSCA_MAX_CEL); (B7) a resposta da API
+    entra no acervo vivo.
     Levanta _BuscaIndisponivel (sem chave / cota / teto) ou outro erro (rede, resposta esquisita): o /api/buscar
     responde 503 e o celular fica na lista do bar."""
     chave = _busca_chave(q)
@@ -5474,10 +5623,15 @@ def _yt_buscar_oficial(q, bid=None, ip=None):
         _rl_ip = 'busca_api_ip:' + ip if ip else None
         if _rl_ip and _rl_bloqueado(_rl_ip, max_n=YT_BUSCA_MAX_IP, janela=YT_BUSCA_JANELA_IP):
             raise _BuscaIndisponivel('teto_celular')
+        _rl_cel = f'busca_api_cel:{ip or ""}#{cid}' if cid else None   # 28/10/26 (B3): o celular, não o Wi-Fi
+        if _rl_cel and _rl_bloqueado(_rl_cel, max_n=YT_BUSCA_MAX_CEL, janela=YT_BUSCA_JANELA_IP):
+            raise _BuscaIndisponivel('teto_celular')
         if not _busca_cota_reservar(bid=bid):
             raise _BuscaIndisponivel('cota')
         if _rl_ip:
             _rl_falhou(_rl_ip)
+        if _rl_cel:
+            _rl_falhou(_rl_cel)
         r = _yt_api_get('search', {'part': 'snippet', 'type': 'video', 'q': q, 'maxResults': YT_BUSCA_MAX_RESULT,
                                    'regionCode': 'BR', 'relevanceLanguage': 'pt', 'videoEmbeddable': 'true',
                                    'videoSyndicated': 'true'}, api_key)
@@ -5494,6 +5648,10 @@ def _yt_buscar_oficial(q, bid=None, ip=None):
             detalhes = {str(d.get('id')): d for d in ((r2.json() or {}).get('items') or []) if isinstance(d, dict)}
         lidos = _yt_api_ler([i for i in itens if isinstance(i, dict)], detalhes)
         _busca_cache_gravar(chave, lidos)   # vazio também: o mesmo termo não gasta de novo
+        try:   # 28/10/26 (B7): a próxima busca parecida (outras palavras do mesmo artista) sai do local
+            _busca_vivo_gravar(lidos)
+        except Exception as e:   # nunca derruba a busca que já gastou a cota
+            log.warning('[PUBSHOW] acervo vivo: gravar falhou: %s', e)
     _yt_lembrar_duracao(lidos)
     if len(_YT_CACHE) >= _YT_CACHE_MAX:
         for k in sorted(_YT_CACHE, key=lambda k: _YT_CACHE[k][0])[:_YT_CACHE_MAX // 4]:
@@ -5502,20 +5660,15 @@ def _yt_buscar_oficial(q, bid=None, ip=None):
     return lidos
 
 
-def _acervo_basta(b, q):
-    """Cards do ACERVO do bar quando o termo bate bem nele: a busca livre nem gasta a cota. Regra (26/10/26): cada
-    palavra digitada (sem 'de', 'a', 'musica'...) é começo de uma palavra do título ou do artista, e
-    (a) ≥ YT_ACERVO_BASTA (3) músicas batem ('legiao', 'ac dc', 'legi' digitando) ou (b) uma bate no título E no artista
-    ('evidencias chitaozinho'). Só acervo curado e ativo, nos estilos do bar, sem bloqueado, sem 'Não tocar aqui' e
-    sem música de mais de 10 min. None = não basta: segue pra busca livre."""
+def _acervo_bate(b, q):
+    """Cards do ACERVO do bar que batem com o termo (26/10/26): cada palavra digitada (sem 'de', 'a', 'musica'...) é
+    começo de uma palavra do título ou do artista. Só acervo curado e ativo, nos estilos do bar, sem bloqueado, sem
+    'Não tocar aqui' e sem música de mais de 10 min. 28/10/26 (B2): saiu o "≥ 3 = nem gasta a cota" (era
+    _acervo_basta); agora estes são os primeiros do LOCAL (_busca_local) e vale o YT_LOCAL_BASTA."""
     import json as _json
-    try:
-        basta = int(os.environ.get('PUBSHOW_BUSCA_ACERVO') or YT_ACERVO_BASTA)
-    except ValueError:
-        basta = YT_ACERVO_BASTA
-    tokens = list(dict.fromkeys(w for w in _yt_norm(q).split() if w not in _YT_STOP and (len(w) >= 2 or w.isdigit())))
-    if basta <= 0 or not tokens or not b:
-        return None
+    tokens = _busca_tokens(q)
+    if not tokens or not b:
+        return []
     try:
         gen = _json.loads(b.get('generos_jukebox') or 'null')
         gen = [g for g in gen if isinstance(g, str)] if isinstance(gen, list) else None
@@ -5531,7 +5684,7 @@ def _acervo_basta(b, q):
     finally:
         conn.close()
     banidos, nt = set(_videos_bloqueados(b)), _artistas_bloqueados(b)
-    bate, ambos, vistos = [], False, set()
+    bate, vistos = [], set()
     for r in rows:
         yid = r['youtube_id']
         if not _yid_ok(yid) or yid in banidos or yid in vistos or int(r['duracao_seg'] or 0) > YT_DUR_MAX_SEG:
@@ -5543,9 +5696,6 @@ def _acervo_basta(b, q):
             continue
         vistos.add(yid)
         bate.append(r)
-        ambos = ambos or bool((no_tit - no_art) and (no_art - no_tit))
-    if len(bate) < basta and not ambos:
-        return None
     bate.sort(key=lambda r: -(r['views_milhoes'] or 0))
     return [{'id': r['youtube_id'], 'titulo': (r['titulo'] or '')[:80], 'titulo_original': (r['titulo'] or '')[:100],
              'canal': (r['artista'] or '')[:40], 'duracao': _yt_dur_txt(int(r['duracao_seg'] or 0)),
@@ -5712,10 +5862,60 @@ def _yt_selos(business_id, itens, ip_proprio=None):
 _BUSCAR_MAX_BAR, _BUSCAR_MAX_IP = 120, 150   # buscas por minuto (15/10/26); IP ≥ bar: no Wi-Fi do bar todos têm o mesmo IP (16/10/26, C5)
 
 
+def _busca_local(b, q, top=YT_TOP):
+    """28/10/26 (B7): os cards do LOCAL, sem gastar o Google: acervo do bar primeiro (_acervo_bate), depois o acervo
+    vivo pelo MESMO ranking da API (_yt_ranquear: 10 min, ao vivo, Shorts, karaokê/cover/aula...). Sem repetir."""
+    try:
+        cards = _acervo_bate(b, q)
+    except Exception as e:
+        log.warning('[PUBSHOW] acervo do bar na busca falhou (segue sem ele): %s', e)
+        cards = []
+    vivos = _busca_vivo_ler(q)
+    if vivos:
+        _yt_lembrar_duracao(vivos)   # a regra dos 10 min do pedido conhece a duração
+        ja = {c['id'] for c in cards}
+        cards += [c for c in _yt_ranquear(vivos, q, top=top) if c['id'] not in ja]
+    return cards
+
+
+def _busca_filtrar(b, cards, ests_bar, nt, top=YT_TOP):
+    """Os filtros do bar em cima dos cards, os MESMOS pra API e pro local (28/10/26, B7; antes ficavam no corpo do
+    /api/buscar): bloqueado do bar, jingle político, estilo ("aqui só toca rock"), 🚫 Não tocar aqui.
+    Devolve (cards, aviso): aviso = o JSON de quando o filtro esvaziou a lista (fora do estilo / não toca aqui)."""
+    _ban = set(_videos_bloqueados(b))   # 26/10/26: o que o bar bloqueou nem aparece na busca
+    if _ban:
+        cards = [c for c in cards if c.get('id') not in _ban]
+    _jan = _janela_eleitoral()   # 26/10/26: jingle nem aparece (a mesma regra do pedido, MSG_POLITICA_MUSICA)
+    cards = [c for c in cards if not _tem_politica(c.get('titulo_original') or c.get('titulo'), _jan)]
+    if ests_bar and cards:
+        try:
+            cards = _so_do_estilo(b, ests_bar, cards)[:top]
+        except Exception as e:   # erro nosso no filtro: mostra a busca como sempre (nunca 500)
+            log.warning('[PUBSHOW] filtro de estilo falhou (busca sem filtro): %s', e)
+            cards = cards[:top]
+        if not cards:
+            return [], {'resultados': [], 'fora_estilo': True, **pubshow_estilo.aviso_fora(ests_bar)}
+    if nt and cards:   # 🚫 o que o bar não quer some da busca (título, canal e o nome que a busca achou)
+        cards = [c for c in cards
+                 if not _nao_toca(nt, c.get('titulo_original') or c.get('titulo'), c.get('titulo'), c.get('canal'))][:top]
+        if not cards:
+            return [], {'resultados': [], 'nao_toca': True, 'msg': MSG_NAO_TOCA}
+    return cards, None
+
+
+def _busca_responder_local(b, cards):
+    """B7: responde só com o local (sem gastar o Google) e conta pro cartão do SaaS Admin (B8)."""
+    _yt_selos(b['id'], cards)
+    _busca_local_contar()
+    return jsonify({'resultados': cards, 'local': True})
+
+
 @pubshow_bp.route('/api/buscar')
 def api_buscar():
     """Busca livre de música (API oficial, 26/10/26): os 5 melhores, com capa grande e selos do bar. Acervo do bar e
-    cache primeiro (não gastam a cota); sem chave ou sem cota = 503 'youtube_fora' (o celular fica na lista do bar)."""
+    cache primeiro (não gastam a cota); sem chave ou sem cota = 503 'youtube_fora' (o celular fica na lista do bar).
+    28/10/26 (B7): ≥ 15 no LOCAL (acervo do bar + acervo vivo) = 200 'local' sem o Google; Google fora com algo no
+    local = 200 'local'; o 503 só sem nada no local."""
     # 15/10/26: só com o token de um bar de verdade (?bar=) e com teto por bar + teto alto por IP.
     # Antes era pública e sem limite: um loop aqui (timeout 8 s) segurava o worker do 4kitem inteiro.
     # No Wi-Fi do bar todo mundo divide o IP (decisão 11/09/26), por isso o teto principal é do BAR.
@@ -5736,27 +5936,43 @@ def api_buscar():
        _rl_bloqueado(_chave_ip, max_n=_BUSCAR_MAX_IP, janela=60):
         return jsonify({'resultados': [], 'error': 'Muitas buscas agora. Espera uns segundos e tenta de novo.'}), 429
     _rl_falhou(_chave_bar, _chave_ip)
-    try:   # 26/10/26: o termo bate bem no acervo do bar → responde com ele e não gasta a cota da busca livre
-        do_acervo = _acervo_basta(b, q)
-    except Exception as e:
-        log.warning('[PUBSHOW] acervo antes da busca falhou (segue pra busca livre): %s', e)
-        do_acervo = None
-    if do_acervo:
-        _yt_selos(b['id'], do_acervo)
-        return jsonify({'resultados': do_acervo, 'do_acervo': True})
+    _cid = request.args.get('cid', '').strip()   # 28/10/26 (B3): o jk_cid do celular (teto por aparelho)
+    _cid = _cid if _CID_RE.fullmatch(_cid) else None
+    ests_bar = pubshow_estilo.estilos_do_bar(b)    # 17/10/26: "aqui só toca rock" (None = tudo liberado)
+    _nt = _artistas_bloqueados(b)                  # 🚫 22/10/26: "Não tocar aqui"
+    _top = YT_TOP_ESTILO if ests_bar else (YT_TOP * 2 if _nt else YT_TOP)   # B9: com estilo, 10 (Google e local)
     try:
-        lidos = _yt_buscar_oficial(q, bid=b['id'], ip=_ip)
+        basta = int(os.environ.get('PUBSHOW_BUSCA_LOCAL') or YT_LOCAL_BASTA)
+    except ValueError:
+        basta = YT_LOCAL_BASTA
+    if ests_bar:   # com estilo o Google também entrega no máximo 10 (B9): 10 no local já é a resposta inteira
+        basta = min(basta, YT_TOP_ESTILO)
+    try:   # 28/10/26 (B7): LOCAL primeiro (acervo do bar + acervo vivo), os mesmos filtros da API
+        local, aviso_local = _busca_filtrar(b, _busca_local(b, q, top=_top), ests_bar, _nt, top=YT_TOP * 2)
+    except Exception as e:
+        log.warning('[PUBSHOW] busca local falhou (segue pro Google): %s', e)
+        local, aviso_local = [], None
+    if local and basta > 0 and len(local) >= basta:   # achou bastante: nem gasta o Google
+        return _busca_responder_local(b, local)
+    try:
+        lidos = _yt_buscar_oficial(q, bid=b['id'], ip=_ip, cid=_cid)
     except _BuscaIndisponivel as e:   # sem chave ou sem cota hoje: nunca cai pra busca interna
         log.warning('[PUBSHOW] busca livre indisponível (bar %s): %s', b['id'], e)   # 27/10/26: qual bar parou no teto
+        if local:   # B7: o Google não roda, mas o local achou → responde com ele
+            return _busca_responder_local(b, local)
+        if aviso_local:   # achou no local, mas o bar não toca (estilo / Não tocar aqui): o aviso certo, não o 503
+            return jsonify(aviso_local)
         return jsonify({'resultados': [], 'erro': 'youtube_fora', 'indisponivel': str(e)}), 503
     except Exception as e:
         log.error('Busca livre (API oficial) falhou: %s', e)
+        if local:
+            return _busca_responder_local(b, local)
+        if aviso_local:
+            return jsonify(aviso_local)
         # crítico leigo A3 (17/10/26): fora do ar ≠ "nenhum resultado" — o celular libera o furar a fila no acervo
         return jsonify({'resultados': [], 'erro': 'youtube_fora'}), 503
-    ests_bar = pubshow_estilo.estilos_do_bar(b)    # 17/10/26: "aqui só toca rock" (None = tudo liberado)
-    _nt = _artistas_bloqueados(b)                  # 🚫 22/10/26: "Não tocar aqui"
     try:
-        resultados = _yt_ranquear(lidos, q, top=YT_TOP * 2 if (ests_bar or _nt) else YT_TOP)
+        resultados = _yt_ranquear(lidos, q, top=_top)
     except Exception as e:   # resposta esquisita: nunca 500, e sai dos 2 caches (a próxima busca tenta de novo)
         log.error('Busca livre: ranking falhou: %s', e)
         _YT_CACHE.pop(_busca_chave(q), None)
@@ -5764,25 +5980,15 @@ def api_buscar():
             _busca_cache_apagar(_busca_chave(q))
         except Exception:
             pass
+        if local:
+            return _busca_responder_local(b, local)
         return jsonify({'resultados': [], 'erro': 'youtube_fora'}), 503
-    _ban = set(_videos_bloqueados(b))   # 26/10/26: o que o bar bloqueou nem aparece na busca
-    if _ban:
-        resultados = [c for c in resultados if c.get('id') not in _ban]
-    _jan = _janela_eleitoral()   # 26/10/26: jingle nem aparece (a mesma regra do pedido, MSG_POLITICA_MUSICA)
-    resultados = [c for c in resultados if not _tem_politica(c.get('titulo_original') or c.get('titulo'), _jan)]
-    if ests_bar and resultados:
-        try:
-            resultados = _so_do_estilo(b, ests_bar, resultados)[:YT_TOP]
-        except Exception as e:   # erro nosso no filtro: mostra a busca como sempre (nunca 500)
-            log.warning('[PUBSHOW] filtro de estilo falhou (busca sem filtro): %s', e)
-            resultados = resultados[:YT_TOP]
-        if not resultados:
-            return jsonify({'resultados': [], 'fora_estilo': True, **pubshow_estilo.aviso_fora(ests_bar)})
-    if _nt and resultados:   # 🚫 o que o bar não quer some da busca (título, canal e o nome que a busca achou)
-        resultados = [c for c in resultados
-                      if not _nao_toca(_nt, c.get('titulo_original') or c.get('titulo'), c.get('titulo'), c.get('canal'))][:YT_TOP]
-        if not resultados:
-            return jsonify({'resultados': [], 'nao_toca': True, 'msg': MSG_NAO_TOCA})
+    resultados, aviso = _busca_filtrar(b, resultados, ests_bar, _nt)
+    if local:   # B7: local primeiro (acervo do bar, depois o acervo vivo), depois o Google, sem repetir
+        ja = {c['id'] for c in local}
+        resultados = (local + [c for c in resultados if c.get('id') not in ja])[:YT_TOP * 2]
+    if not resultados and (aviso or aviso_local):
+        return jsonify(aviso or aviso_local)
     if resultados:   # selos "já na fila" / "tocou há X min" do bar do token (já conferido acima)
         _yt_selos(b['id'], resultados)
     return jsonify({'resultados': resultados})
@@ -8720,6 +8926,7 @@ def admin_dashboard():
                            canais=CANAIS, planos=PLANOS,
                            # 🔎 26/10/26: a busca livre (API oficial) gastou quanto da cota de hoje
                            busca_hoje=_busca_cota_hoje(), busca_teto=_busca_teto(),
+                           busca_vivo=_busca_vivo_resumo(),   # 28/10/26 (B8): acervo vivo + buscas só do local hoje
                            busca_chave=bool((os.environ.get('YOUTUBE_API_KEY') or '').strip()),
                            now=datetime.now().isoformat())
 
