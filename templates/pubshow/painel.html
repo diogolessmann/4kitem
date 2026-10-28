@@ -133,6 +133,7 @@
   details[open] > .summary-btn{border-style:solid;margin-bottom:6px}
   .momento-nome{font-size:17px;font-weight:900}
   .momento-preco-txt{font-size:13px;color:var(--text2);margin-top:2px;line-height:1.4}
+  .momento-preco-txt .nw{white-space:nowrap}
   .momento-txt{flex:1;min-width:0;display:flex;align-items:center;gap:10px;cursor:pointer;-webkit-tap-highlight-color:transparent}
   .preco-selo{margin-left:auto;flex-shrink:0;font-size:16px;font-weight:900;color:#fff;background:#db2777;padding:6px 12px;border-radius:100px;white-space:nowrap}
   .momento-row.desligado .preco-selo{background:#3a3a4a;color:var(--text2)}
@@ -272,7 +273,7 @@
           · {{ (p.created_at or '')[-8:-3] }}h
         </div>
       </div>
-      <span style="font-size:16px;font-weight:900;color:#4ade80;white-space:nowrap">R$ {{ '%.2f'|format(p.valor or 0)|replace('.',',') }}</span>
+      <span style="font-size:16px;font-weight:900;color:#4ade80;white-space:nowrap">R$ {{ '%.2f'|format(p.valor or 0)|replace('.',',') }}{% if asaas_ativo %} pro bar{% endif %}</span>
       <div style="display:flex;gap:6px">
         {% if not asaas_ativo %}<form method="POST" action="/pubshow/painel/pedido/{{ p.id }}/confirmar-pix" style="margin:0">
           <button type="submit"
@@ -533,7 +534,7 @@
     <div class="ok-pedido-row" style="display:flex;align-items:center;gap:12px;padding:12px;margin-bottom:8px;border-radius:12px;background:rgba(255,255,255,.04);border:1px solid rgba(251,191,36,.25)">
       <span style="font-size:22px">{{ t.get('emoji','💬') }}</span>
       <div style="flex:1;min-width:0">
-        <div style="font-size:14px;font-weight:700">{{ p.nome_cliente }} <span style="font-size:12px;color:var(--text2);font-weight:600">· {{ t.get('nome', p.tipo) }} · R$ {{ '%.2f'|format(p.valor or 0)|replace('.',',') }}{% if efi and efi_ok_info and efi_ok_info.get(p.id) %} (o cliente pagou {{ brl_cent(efi_ok_info[p.id].valor_cent) }}){% endif %}</span></div>
+        <div style="font-size:14px;font-weight:700">{{ p.nome_cliente }} <span style="font-size:12px;color:var(--text2);font-weight:600">· {{ t.get('nome', p.tipo) }} · R$ {{ '%.2f'|format(p.valor or 0)|replace('.',',') }}{% if asaas_ativo %} pro bar{% endif %}{% if efi and efi_ok_info and efi_ok_info.get(p.id) %} (o cliente pagou {{ brl_cent(efi_ok_info[p.id].valor_cent) }}){% endif %}</span></div>
         {% if p.mensagem %}<div style="font-size:15px;color:#fde68a;margin-top:2px;word-break:break-word">“{{ p.mensagem }}”</div>{% endif %}
       </div>
       <div class="ok-botoes" style="display:flex;gap:6px;flex-shrink:0">
@@ -558,7 +559,7 @@
 
   {#- "quanto entrou hoje" sem tocar em nada: linha fina só de leitura (o detalhe fica em 💰 Dinheiro). O polling atualiza #}
   <div class="hoje-linha" id="hoje-linha">
-    <span>💰 Hoje: <span id="hoje-linha-casa" style="color:var(--green)">R$ {{ '%.2f'|format(total_hoje)|replace('.',',') }}</span> + <span id="hoje-linha-gorjeta" style="color:#4ade80">R$ {{ '%.2f'|format(gorjeta_hoje)|replace('.',',') }}</span> de gorjeta</span>
+    <span>💰 Hoje: <span id="hoje-linha-casa" style="color:var(--green)">R$ {{ '%.2f'|format(total_hoje)|replace('.',',') }}</span><span id="hoje-linha-gorj-w"{% if not gorjeta_hoje %} style="display:none"{% endif %}> + <span id="hoje-linha-gorjeta" style="color:#4ade80">R$ {{ '%.2f'|format(gorjeta_hoje)|replace('.',',') }}</span> de gorjeta</span></span>
   </div>
 
   <!-- 📋 Fila, na ordem da TV (furar a fila pago aparece como o próximo). 🗑️ abre: tirar da fila / nunca mais -->
@@ -696,10 +697,14 @@
       que está no banco — salvar uma chave nunca regrava preço. Abertos: os 9 (decisão do Diogo, 17/10/26 noite: "abrir
       também o Salve"); o "mais" só aparece se entrar momento novo fora desta lista. Nome curto no painel (o celular do
       cliente segue com o nome de sempre). #}
-  {% set PRINCIPAIS = ['flash', 'pular_espera', 'parabens', 'casamento', 'cantada', 'brinde', 'gorjeta', 'dedicatoria', 'chegada', 'salve'] %}
+  {#- 27/10/26 (D5): a gorjeta virou o Donate para o bar (dinheiro da casa); o Donate para o sistema não aparece aqui #}
+{#- 27/10/26 (D4/D11): "R$ 4,80 pro bar · 20% do app" quebra no "·" quando não cabe (linha do momento), nunca no
+    meio do valor #}
+{% macro div_linha(txt) %}{% for x in (txt or '').split(' · ') %}{% if not loop.first %} · {% endif %}<span class="nw">{{ x }}</span>{% endfor %}{% endmacro %}
+  {% set PRINCIPAIS = ['flash', 'pular_espera', 'parabens', 'casamento', 'cantada', 'brinde', 'donate_bar', 'dedicatoria', 'chegada', 'salve'] %}
   {% set NOMES_CURTOS = {'flash': 'Furar a fila', 'pular_espera': 'Pular a espera', 'parabens': 'Parabéns', 'dedicatoria': 'Dedicatória', 'brinde': 'Brinde',
                          'chegada': 'Chegamos', 'cantada': 'Cantada', 'salve': 'Salve pra mesa', 'casamento': 'Namoro',
-                         'gorjeta': 'Gorjeta'} %}
+                         'donate_bar': 'Donate para o bar'} %}
   {% set _princ = [] %}{% set _resto = [] %}
   {% for key in tipos_config if key not in tipos_gratis %}{% if key in PRINCIPAIS %}{% set _ = _princ.append(key) %}{% else %}{% set _ = _resto.append(key) %}{% endif %}{% endfor %}
   {% set _piso = (piso_preco or 4)|float %}
@@ -720,22 +725,23 @@
       <label class="momento-txt" for="mom-{{ key }}">
       <div style="min-width:0">
         <div class="momento-nome">{{ t.emoji }} {{ _nome }}</div>
-        {% if key == 'gorjeta' %}
-        <div class="momento-preco-txt">fica pra equipe</div>
+        {% if key == 'donate_bar' %}
+        <div class="momento-preco-txt">vai pro caixa do bar</div>
         {% else %}
-        <div class="momento-preco-txt preco-cli">{% if _taxa > 0 %}R$ {{ '%.2f'|format(_v)|replace('.',',') }} pro bar{% else %}100% pro bar{% endif %}</div>
+        {#- conserto 27/10/26: a divisão segue o GATEWAY (o servidor tira a parte do app mesmo com o somador 0) #}
+        <div class="momento-preco-txt preco-cli">{% if asaas_ativo %}{{ div_linha(divisao_txt(_v + _taxa)) }}{% else %}100% pro bar{% endif %}</div>
         {#- o preço salvo vai igual ao banco (o servidor mantém o salvo quando vem o mesmo valor) #}
         <input type="hidden" name="preco_{{ key }}" form="f-config" value="{{ '%g'|format(precos_salvos[key]|float) if precos_salvos.get(key) is not none and precos_salvos.get(key) != '' else '' }}">
         {% endif %}
       </div>
       {#- o selo colorido = o que o CLIENTE paga no PIX (o mesmo preço do celular e da TV) #}
-      <span class="preco-selo">{% if key == 'gorjeta' %}{% set _tg = (taxa_gorjeta or 0)|float %}{% if _tg == _tg|int %}R$ {{ (5 + _tg)|int }} a {{ (50 + _tg)|int }}{% else %}R$ {{ '%.2f'|format(5 + _tg)|replace('.',',') }} a {{ '%.2f'|format(50 + _tg)|replace('.',',') }}{% endif %}{% else %}R$ {{ '%.2f'|format(_v + _taxa)|replace('.',',') }}{% endif %}</span>
+      <span class="preco-selo">{% if key == 'donate_bar' %}{{ DONATE_BAR_FAIXA }}{% else %}R$ {{ '%.2f'|format(_v + _taxa)|replace('.',',') }}{% endif %}</span>
       </label>
     </div>
     {% if loop.last and _resto %}</details>{% endif %}
     {% endfor %}
-    {#- Lote D B (aprovado): "R$ 1 do app", nunca "taxa de serviço" — o selo já é o que o cliente paga #}
-    {% if _taxa > 0 %}<div class="momento-preco-txt" id="taxa-app" style="margin-top:10px">💡 Rosa = o que o cliente paga, já com R$ {{ '%.2f'|format(_taxa)|replace('.',',') }} do app.</div>{% endif %}
+    {#- Lote D B (aprovado): nunca "taxa de serviço" — o selo já é o que o cliente paga. 27/10/26 (D2): os 20% do app #}
+    {% if asaas_ativo %}<div class="momento-preco-txt" id="taxa-app" style="margin-top:10px">💡 Rosa = o que o cliente paga no PIX. O app fica com {{ APP_REGRA_TXT }} do total; o resto é do bar.</div>{% endif %}
     {#- 17/10/26 (Lote D, críticos CD2/CD3): preço salvo fora da faixa diz QUAL momento e o preço de antes #}
     {%- if precos_cortados %}
     <div id="precos-cortados" style="font-size:12px;color:var(--text2);margin-top:8px;line-height:1.6">
@@ -774,7 +780,7 @@
     <div class="card-title">💰 Hoje</div>
     <div style="display:flex;gap:22px;flex-wrap:wrap;align-items:baseline">
       <div><div class="stat-val" style="color:var(--green)" id="total-hoje">R$ {{ '%.2f'|format(total_hoje)|replace('.',',') }}</div>{#- 17/10/26 (decisão 1): só os momentos PAGOS (PIX confirmado), sem música grátis nem gorjeta #}{% set _np = momentos_hoje_n|default(0) %}<div class="stat-sub" id="momentos-hoje">{{ _np }} momento{{ 's' if _np != 1 }} pago{{ 's' if _np != 1 }} · caixa da casa</div></div>
-      <div><div class="stat-val" style="color:#4ade80;font-size:24px" id="gorjeta-hoje">R$ {{ '%.2f'|format(gorjeta_hoje)|replace('.',',') }}</div><div class="stat-sub">🙏 gorjetas da equipe (à parte)</div></div>
+      <div id="gorjeta-hoje-w"{% if not gorjeta_hoje %} style="display:none"{% endif %}><div class="stat-val" style="color:#4ade80;font-size:24px" id="gorjeta-hoje">R$ {{ '%.2f'|format(gorjeta_hoje)|replace('.',',') }}</div><div class="stat-sub">🙏 gorjetas da equipe (à parte)</div></div>
     </div>
     {%- if not meu_dinheiro %}
     <!-- Quanto os momentos renderam (casa, só pago confirmado) -->
@@ -928,8 +934,8 @@
 
   {% if aguardando_pix and asaas_ativo %}{{ bloco_aguardando_pix(aguardando_pix, tipos, asaas_ativo) }}{% endif %}
 
-  {%- if not meu_dinheiro %}
-  <!-- 🙏 Gorjetas da EQUIPE — à parte do caixa da casa (11/09/26) -->
+  {%- if not meu_dinheiro and (gorjeta_7dias or gorjeta_hoje) %}
+  <!-- 🙏 Gorjetas da EQUIPE — à parte do caixa da casa (11/09/26). 27/10/26: só o histórico (a gorjeta saiu do cardápio) -->
   <details class="card mais-item" id="sec-gorjeta">
     <summary>🙏 Gorjetas da equipe (7 dias)</summary>
     <div class="dentro">
@@ -985,13 +991,15 @@
             <td colspan="3" style="padding:10px 0;font-weight:700">Caixa da casa (sem gorjetas)</td>
             <td style="padding:10px 0;text-align:right;color:var(--green);font-weight:900;font-size:16px">R$ {{ '%.2f'|format(total_hoje)|replace('.',',') }}</td>
           </tr>
+          {%- if gorjeta_hoje %}
           <tr>
             <td colspan="3" style="padding:6px 0;font-weight:700;color:#4ade80">🙏 Gorjetas da equipe (à parte)</td>
             <td style="padding:6px 0;text-align:right;color:#4ade80;font-weight:900">R$ {{ '%.2f'|format(gorjeta_hoje)|replace('.',',') }}</td>
           </tr>
+          {%- endif %}
         </tfoot>
       </table>
-      {% if TAXA_SERVICO|float > 0 %}<div style="font-size:12px;color:var(--text2);margin-top:6px">Valores do bar. O cliente paga + R$ {{ '%.2f'|format(TAXA_SERVICO|float)|replace('.',',') }} do app no PIX.</div>{% endif %}
+      {% if asaas_ativo %}<div style="font-size:12px;color:var(--text2);margin-top:6px">Valores do bar. Do que o cliente paga no PIX, o app fica com {{ APP_REGRA_TXT }}.</div>{% endif %}
     </div>
   </details>
   {% endif %}
@@ -1849,6 +1857,10 @@ function renderGorjetaHoje(total) {
   ['gorjeta-hoje', 'hoje-linha-gorjeta'].forEach(id => {   // o card do 💰 Dinheiro e a linha fina do 🎛️ Controle
     const el = document.getElementById(id);
     if (el) el.textContent = 'R$ ' + total.toFixed(2).replace('.', ',');
+  });
+  ['hoje-linha-gorj-w', 'gorjeta-hoje-w'].forEach(id => {   // 27/10/26: a gorjeta (histórico) só aparece quando tem
+    const w = document.getElementById(id);
+    if (w && total > 0) w.style.display = '';
   });
 }
 function renderTotalHoje(total, n) {

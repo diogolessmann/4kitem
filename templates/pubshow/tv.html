@@ -853,6 +853,7 @@ const TIPO_CONFIG = {
   chegada:     {emoji:'🎉', titulo:'CHEGARAM!',            cor:'#f97316', duracao:7000,  confetes:true},
   casamento:   {emoji:'💕', titulo:'PEDIDO DE NAMORO 💕',  cor:'#a855f7', duracao:14000, confetes:true},
   gorjeta:     {emoji:'🙏', titulo:'GORJETA PRA EQUIPE! 🙏', cor:'#22c55e', duracao:7000,  confetes:true},
+  donate_bar:  {emoji:'🙏', titulo:'DONATE PARA O BAR! 🙏', cor:'#22c55e', duracao:7000,  confetes:true},   // 27/10/26: a gorjeta virou o donate (a linha acima fica pras antigas)
   cantada:     {emoji:'😏', titulo:'CANTADA! 😏',           cor:'#f472b6', duracao:9000,  confetes:false},
   salve:       {emoji:'📣', titulo:'SALVE! 📣',             cor:'#0ea5e9', duracao:7000,  confetes:false},
 };
@@ -1701,6 +1702,7 @@ const DEPOIS_DESTA = {
   chegada:     n => n ? `🎉 Depois desta: chegada de ${n}` : '🎉 Depois desta: uma chegada',
   casamento:   () => '💕 Depois desta: um pedido especial',   // surpresa: o nome só na cena
   gorjeta:     () => '🙏 Depois desta: gorjeta pra equipe',    // nunca o valor
+  donate_bar:  () => '🙏 Depois desta: um donate para o bar',  // 27/10/26: nunca o valor
   cantada:     () => '😏 Depois desta: uma cantada',
   salve:       n => n ? `📣 Depois desta: salve de ${n}` : '📣 Depois desta: um salve',
 };
@@ -1874,12 +1876,13 @@ const CANTO_CONVITE = {
   flash: 'Fura você também', brinde: 'Pague o próximo brinde', parabens: 'Tem aniversariante?',
   dedicatoria: 'Dedique a sua', chegada: 'Anuncie a sua turma', cantada: 'Manda a sua', salve: 'Manda um salve',
   gorjeta: 'Deixe a sua gorjeta', casamento: 'Coragem custa',   // casamento = o "Pedido de Namoro 💕"
+  donate_bar: 'Faça um donate para o bar',   // 27/10/26
 };
 function _pcCanto(tipo, ms) {
   const conv = CANTO_CONVITE[tipo], preco = PRECOS_CANTO && PRECOS_CANTO[tipo];
   const ok = !!(conv && preco);   // tipo que o bar desligou depois de pago: o canto chama pra música (grátis sempre)
   document.getElementById('pq-convite').textContent = ok ? conv : 'Peça a sua música';
-  document.getElementById('pq-preco').textContent = !ok ? 'GRÁTIS' : (tipo === 'gorjeta' ? `a partir de ${preco}` : preco);
+  document.getElementById('pq-preco').textContent = !ok ? 'GRÁTIS' : ((tipo === 'gorjeta' || tipo === 'donate_bar') ? `a partir de ${preco}` : preco);
   _pcClasse(ms, document.getElementById('palco-qr'), 'pc-aparece');
   _pcClasse(ms, document.getElementById('pq-bar'), 'pc-aparece');
 }

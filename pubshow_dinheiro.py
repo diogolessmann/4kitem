@@ -770,6 +770,25 @@ def _lista_ids(ids, n=4):
     return s + (f' e mais {len(ids) - n}' if len(ids) > n else '')
 
 
+def donates_sistema(conn, agora, limite=50):
+    """27/10/26 (D6): o Donate para o sistema, 100% do app. Só o admin vê (nunca o painel, o caixa nem o repasse)."""
+    vazio = {'n': 0, 'total_txt': brl(0), 'linhas': []}
+    try:
+        w = "p.tipo='donate_sistema' AND p.status='sistema' AND p.pago_em IS NOT NULL AND p.estornado_em IS NULL"
+        n, tot = conn.execute(f'SELECT COUNT(*), COALESCE(SUM(p.valor_cobrado),0) FROM pubshow_pedidos p WHERE {w}').fetchone()
+        rows = conn.execute(
+            f'''SELECT p.id, p.nome_cliente, p.mensagem, p.valor_cobrado, p.pago_em, b.nome AS bar
+                FROM pubshow_pedidos p LEFT JOIN pubshow_businesses b ON b.id = p.business_id
+                WHERE {w} ORDER BY datetime(p.pago_em) DESC, p.id DESC LIMIT ?''', (int(limite),)).fetchall()
+    except Exception as ex:
+        log.warning('[PUBSHOW] donates do sistema não lidos: %s', ex)
+        return vazio
+    return {'n': int(n or 0), 'total_txt': brl(float(tot or 0)),
+            'linhas': [{'id': r['id'], 'quando': _quando(r['pago_em'], agora), 'bar': r['bar'] or '—',
+                        'nome': r['nome_cliente'] or '—', 'recado': r['mensagem'] or '',
+                        'valor_txt': brl(float(r['valor_cobrado'] or 0))} for r in rows]}
+
+
 def montar(conn, agora, leitura=None):
     """Tudo que a página mostra. leitura=None: a leitura no Asaas/Efí ainda não chegou (a tela nunca fica verde)."""
     calc = calcular(conn, agora)
@@ -1177,6 +1196,7 @@ def montar(conn, agora, leitura=None):
         'tarifas': {'asaas': T['asaas'], 'asaas_txt': brl(T['asaas']),
                     'efi_txt': f"{T['efi_pct']:.2f}".replace('.', ',').rstrip('0').rstrip(',') + '%'},
         'brl': brl, 'dias_perdidos': DIAS_PERDIDOS, 'max_perdidos': MAX_PERDIDOS,
+        'donates': donates_sistema(conn, agora),   # 27/10/26 (D6): a lista do Diogo
     }
 
 

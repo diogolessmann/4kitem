@@ -183,7 +183,7 @@
       {% if modelo_novo %}
       <p class="sub">O cliente escaneia o QR da mesa e pede música de graça. Paga no PIX só pelos momentos: furar a fila, parabéns, pedido de namoro na TV. O dinheiro cai na conta do bar na hora, e a mensalidade sai do próprio jukebox.</p>
       {% else %}
-      <p class="sub">O cliente escaneia o QR da mesa e pede música de graça. Paga no PIX só pelos momentos: furar a fila, parabéns, pedido de namoro na TV. Você acompanha no painel quanto os momentos renderam pro bar e quanto a equipe ganhou de gorjeta.</p>
+      <p class="sub">O cliente escaneia o QR da mesa e pede música de graça. Paga no PIX só pelos momentos: furar a fila, parabéns, pedido de namoro na TV. Você acompanha no painel quanto os momentos renderam pro bar.</p>
       {% endif %}
       <div class="hero-acoes">
         <a href="/pubshow/cadastro" class="btn btn-primary">{% if modelo_novo %}Começar sem pagar nada{% else %}Testar 7 dias grátis{% endif %}</a>
@@ -253,9 +253,9 @@
       </div>
       {% endfor %}
     </div>
-    {#- Lote D B (16/10/26): "R$ 1 do app", nunca "taxa de serviço" (no bar isso é o 10% do garçom) #}
-    <p class="nota">🙏 Gorjeta pra equipe: R$ {{ gorjeta_txt }}{% if taxa_txt and not gorjeta_sem_taxa %} + {{ taxa_txt }} do app{% endif %}.<br>
-      Preços padrão{% if taxa_txt %}, no PIX, já com o {{ taxa_txt }} do app, que o cliente vê antes de pagar{% endif %}. Você muda os preços no painel{% if momentos|selectattr('tipo', 'equalto', 'pular_espera')|list %} (o ⏩ tem preço fixo){% endif %}.</p>
+    {#- Lote D B (16/10/26): nunca "taxa de serviço" (no bar isso é o 10% do garçom). 27/10/26: a regra dos 20% #}
+    <p class="nota">🙏 Donate para o bar: R$ {{ donate_txt }}, entra no caixa do bar.<br>
+      Preços padrão no PIX{% if taxa_txt %}: o cliente vê o total antes de pagar e o app fica com {{ taxa_txt }} do total{% endif %}. Você muda os preços no painel{% if momentos|selectattr('tipo', 'equalto', 'pular_espera')|list %} (o ⏩ tem preço fixo){% endif %}.</p>
   </div>
 </section>
 
@@ -268,9 +268,9 @@
       <h2>{% if modelo_novo %}Pra onde vai o dinheiro, sem letra miúda{% else %}O dinheiro, no seu painel{% endif %}</h2>
       {% if modelo_novo %}
       <ul class="lista">
-        <li>O cliente paga o momento no PIX{% if taxa_txt %}, mais o {{ taxa_txt }} do app, que ele vê antes de pagar{% endif %}.</li>
+        <li>O cliente paga o momento no PIX e vê o total antes de pagar.{% if taxa_txt %} Do total, o app fica com {{ taxa_txt }}.{% endif %}</li>
         {# Lote C, fatia b (16/10/26): o SPLIT aprovado (f.2 bloco 4). "Sem o R$ 1" na gorjeta só se for verdade #}
-        <li>O PIX já cai dividido: o valor do momento vai na hora pra conta Efí do bar.{% if taxa_txt %} O {{ taxa_txt }} do app fica com o PubShow.{% endif %}</li>
+        <li>O PIX já cai dividido: a parte do bar vai na hora pra conta Efí do bar.{% if taxa_txt %} A parte do app fica com o PubShow.{% endif %}</li>
         <li>No painel você vê os dois do mês: Momentos (do bar) e Gorjetas (da equipe).</li>
         {#- Lote D B (16/10/26, aprovado): a regra dos 30% no lugar de "os primeiros R$ 49,90" #}
         <li id="regra-pct">Até fechar a mensalidade ({{ PLANO.preco_fmt }} no mês), {{ mensal_pct }}% de cada momento paga ela. Fechou, o momento é 100% seu. Rendeu pouco? Você paga só os {{ mensal_pct }}% e nunca tira do bolso. A gorjeta nunca paga a mensalidade: ela vai inteira pra equipe{% if gorjeta_sem_taxa %}, sem nada a mais pro cliente{% endif %}.</li>
@@ -278,9 +278,9 @@
       </ul>
       {% else %}
       <ul class="lista">
-        <li>O cliente paga o momento no PIX{% if taxa_txt %}, mais o {{ taxa_txt }} do app, que ele vê antes de pagar{% endif %}. O pagamento confirma sozinho.</li>
-        <li>No painel você acompanha, a qualquer hora, quanto os momentos renderam pro bar e quanto a equipe ganhou de gorjeta, separado.</li>
-        <li>A gorjeta é da equipe: não entra no caixa da casa.</li>
+        <li>O cliente paga o momento no PIX e vê o total antes de pagar.{% if taxa_txt %} Do total, o app fica com {{ taxa_txt }}; o resto é do bar.{% endif %} O pagamento confirma sozinho.</li>
+        <li>No painel você acompanha, a qualquer hora, quanto os momentos e os donates renderam pro bar.</li>
+        <li>O Donate para o bar entra no caixa da casa, como um momento.</li>
         {# 16/10/26 (C1-09/C4): texto + link num <span> só — com o li em flex virava 3 colunas #}
         <li><span>Dúvida sobre como o dinheiro chega até o bar? <a href="https://wa.me/{{ SUPORTE_WA }}?text=Como+o+dinheiro+do+PubShow+chega+ao+bar%3F" target="_blank" rel="noopener" style="color:inherit">Chama a gente no WhatsApp</a> antes de assinar.</span></li>
       </ul>
@@ -325,7 +325,7 @@
       {% endif %}
 
       <div class="calc">
-        {# 16/10/26 (C1-08/C4): o valor é o que FICA pro bar (sem o R$ 1 do app do cliente) e, hoje, a
+        {# 16/10/26 (C1-08/C4): o valor é o que FICA pro bar (sem a parte do app, 27/10/26) e, hoje, a
            mensalidade é cobrada à parte: os momentos "cobrem", não "pagam" #}
         <h3>Faça a conta: {% if modelo_novo %}o jukebox paga a mensalidade?{% else %}os momentos cobrem a mensalidade?{% endif %}</h3>
         <div class="calc-campos">
@@ -334,7 +334,7 @@
           <div><label for="c-noi">Noites abertas no mês</label><input id="c-noi" type="number" min="0" max="31" value="12" inputmode="numeric"></div>
         </div>
         <div class="calc-res" id="c-res" aria-live="polite"></div>
-        <p class="nota">Simulação, não promessa. A gorjeta não entra nessa conta: é da equipe.</p>
+        <p class="nota">Simulação, não promessa.{% if taxa_txt %} Conte só o que fica pro bar, já sem a parte do app.{% endif %}</p>
       </div>
     </div>
   </div>

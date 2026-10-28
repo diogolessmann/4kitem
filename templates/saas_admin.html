@@ -664,7 +664,7 @@
     {% endif %}
     <div>{{ ps_grade(pubshow_tot) }}</div>
     <div style="font-size:11px;color:var(--text2);margin:6px 0 22px;max-width:560px;line-height:1.5">
-      Pago = PIX confirmado no Asaas ou na Efí (o que não pagou ou foi recusado não entra). R$ = parte do bar, sem a taxa de R$ 1 do PIX.
+      Pago = PIX confirmado no Asaas ou na Efí (o que não pagou ou foi recusado não entra). R$ = parte do bar (o total menos a parte do app).
       PIX que caiu direto na chave do bar não entra, por isso o caixa do painel do bar pode dar diferente. Hoje e mês no horário de Brasília.
     </div>
 
@@ -677,7 +677,7 @@
       <div style="background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.25);border-radius:10px;padding:10px 14px">
         💸 <strong>Receita real (Efí)</strong>: {{ _psr(pubshow_efi.receita_mes_cent) }} em {{ pubshow_efi.mes[5:] }}/{{ pubshow_efi.mes[:4] }}
         · {{ _psr(pubshow_efi.receita_total_cent) }} no total
-        <div style="font-size:11px;color:var(--text2)">R$ 1 do app + mensalidade que ficaram na conta Efí do PubShow, já sem os estornos</div>
+        <div style="font-size:11px;color:var(--text2)">A parte do app + mensalidade que ficaram na conta Efí do PubShow, já sem os estornos</div>
       </div>
       {% endif %}
       <div style="background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.25);border-radius:10px;padding:10px 14px">

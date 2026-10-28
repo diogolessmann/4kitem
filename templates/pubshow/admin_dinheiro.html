@@ -199,7 +199,7 @@
     <summary>📅 {{ d.mes.nome }} até agora</summary>
     <div class="sec-c">
       <table class="t num">
-        <tr><td>Clientes pagaram <small>{{ d.mes.n_pix }} PIX {{ 'confirmado' if d.mes.n_pix == 1 else 'confirmados' }} pelo Asaas/Efí, com a taxa do app</small></td><td>{{ brl(d.mes.clientes) }}</td></tr>
+        <tr><td>Clientes pagaram <small>{{ d.mes.n_pix }} PIX {{ 'confirmado' if d.mes.n_pix == 1 else 'confirmados' }} pelo Asaas/Efí: o total, com a parte do app</small></td><td>{{ brl(d.mes.clientes) }}</td></tr>
         <tr><td>Parte dos bares <small>o que vira repasse</small></td><td>{{ brl(d.mes.bares) }}</td></tr>
         <tr><td>Margem dos PIX <span class="est">estimado</span> <small>sem mensalidade · tarifa de tabela: Asaas {{ d.tarifas.asaas_txt }} por PIX, Efí {{ d.tarifas.efi_txt }} do PIX</small></td><td class="{{ 'neg' if d.mes.margem < 0 else '' }}">{{ brl(d.mes.margem) }}</td></tr>
         <tr id="F-mes-mens"><!--F:mes-mens--><td>Mensalidades pagas <small>{% if not d.lido %}conferindo no Asaas…{% elif d.mes.mens_lidas %}{{ d.mes.mens_n }} {{ 'lida' if d.mes.mens_n == 1 else 'lidas' }} no Asaas agora{% if not d.mes.mens_todas %}; o resto não respondeu a tempo{% endif %}{% else %}não lidas (a chave do Asaas não está configurada){% endif %}</small></td><td>{% if d.mes.mens_lidas %}{{ brl(d.mes.mens_val) }}{% else %}—{% endif %}</td><!--/F:mes-mens--></tr>
@@ -208,6 +208,23 @@
         <tr><td>"O cliente disse que pagou" <small>ninguém confirmou; fora de toda soma</small></td><td>{{ d.mes.m0_n }}</td></tr>
         <tr><td>Devoluções <span class="est">estimado</span> <small>{{ d.mes.dev_n }} no mês · cada uma já pagou a tarifa de recebimento</small></td><td class="{{ 'neg' if d.mes.dev_custo else '' }}">{{ brl(-d.mes.dev_custo) if d.mes.dev_custo else brl(0) }}</td></tr>
       </table>
+    </div>
+  </details>
+
+  {#- 27/10/26 (D6): o Donate para o sistema (100% do app) só aparece aqui, nunca pro dono do bar #}
+  <details class="sec" id="donates-sistema">
+    <summary>💙 Donate para o sistema ({{ d.donates.n }} · {{ d.donates.total_txt }})</summary>
+    <div class="sec-c">
+      <p><small>100% do app. Não entra no caixa, no repasse, no painel nem na TV do bar.</small></p>
+      {%- if d.donates.linhas %}
+      <table class="t">
+        {%- for x in d.donates.linhas %}
+        <tr><td>{{ x.quando }} · {{ x.bar }}<br><small>{{ x.nome }}{% if x.recado %}: {{ x.recado }}{% endif %}</small></td><td>{{ x.valor_txt }}</td></tr>
+        {%- endfor %}
+      </table>
+      {%- else %}
+      <p><small>Nenhum ainda.</small></p>
+      {%- endif %}
     </div>
   </details>
 

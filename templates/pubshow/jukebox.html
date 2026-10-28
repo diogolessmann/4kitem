@@ -14,6 +14,9 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" media="print" onload="this.media='all'" href="https://fonts.googleapis.com/css2?family=Anton&display=swap">
 {% macro brl(v) %}R$ {{ ('%.0f' if v == (v|int) else '%.2f')|format(v)|replace('.',',') }}{% endmacro %}
+{#- 27/10/26 (D4/D11): "R$ 4,80 pro bar · 20% do app" quebra no "·" quando não cabe (card de 2 colunas), nunca no
+    meio do valor #}
+{% macro div_linha(txt) %}{% for x in (txt or '').split(' · ') %}{% if not loop.first %} · {% endif %}<span class="nw">{{ x }}</span>{% endfor %}{% endmacro %}
 {% set pix_direto = asaas_ativo or (b.requer_pix and b.pix_key) %}
 <style>
   *{margin:0;padding:0;box-sizing:border-box}
@@ -110,6 +113,7 @@
   .pedido-card .card-nome{font-size:13px;font-weight:800;line-height:1.3;margin-bottom:6px;color:#d4d4f0}
   .pedido-card .card-preco{font-size:18px;font-weight:900;color:var(--card-cor)}
   .card-detalhe{font-size:12px;color:var(--text2);margin-top:3px}
+  .card-detalhe .nw{white-space:nowrap}
 
   /* ── BUSCA / LISTA DE MÚSICAS ─────────────────────────────────── */
   #busca-section{padding:12px 16px 16px}
@@ -208,6 +212,7 @@
   /* 20/10/26 (desenho aprovado): busca grande "🔎 Qual música?" e os 2 botões "▶️ Grátis" / "⚡ Furar R$ X" em
      cada música, sem precisar abrir a folha pra ver o furar */
   .busca-input{font-size:19px;padding:16px 58px 16px 16px;border-width:3px;border-radius:18px}
+  .busca-input::placeholder{font-size:15px}   /* 27/10/26 (D10): "🔎 Pesquise aqui sua música" inteiro em 360 px */
   .busca-btn{min-width:48px;min-height:48px}
   /* 20/10/26 (cardápio): "🎵 Pedir música" (busca + fichas das mais pedidas) e "💥 Na TV do bar" (furar + momentos) */
   #aba-cardapio{padding:2px 14px 22px}
@@ -247,6 +252,10 @@
   .aviso-curto{margin:0 0 10px;padding:10px 12px;border-radius:12px;background:rgba(251,191,36,.08);
     border:1px solid rgba(251,191,36,.35);font-size:13px;color:#fde68a}
   #ini-fila{margin-top:16px}
+  /* 27/10/26 (D12, Diogo: "dê ênfase aos pedidos"): o "💥 Na TV do bar" com o título maior e mais ar em cima */
+  #sec-tv{font-size:20px;margin-top:24px}
+  /* 27/10/26 (D6): o Donate para o sistema é uma linha pequena, nunca um card */
+  .donate-sis{display:block;margin:14px auto 0;min-height:44px;padding:10px 16px;background:none;border:0;color:var(--text2);font:inherit;font-size:13px;text-decoration:underline;cursor:pointer}
   /* Folha da música: capa, "já na fila"/"tocou há X min" e em que lugar entra (antes de pedir) */
   .sheet-box{max-height:94vh;overflow-y:auto;-webkit-overflow-scrolling:touch}
   .sh-capa-wrap{display:none;max-width:300px;margin:0 auto 12px}
@@ -439,8 +448,9 @@ function copiarPayload() {
   <div class="pix-valor-big">R$ {{ '%.2f'|format(pix_pendente.valor)|replace('.',',') }}</div>
   {% if pix_pendente.taxa_conv and pix_pendente.taxa_conv > 0 %}
   {#- Lote D B (16/10/26): "R$ 1 do app", nunca "taxa de serviço" (no bar isso é o 10% do garçom; Procon-GO x iFood) #}
+  {#- 27/10/26 (D3/D4): a divisão GRAVADA neste pedido (o antigo mostra a regra antiga) #}
   <div class="pix-taxa-breakdown">
-    R$ {{ '%.2f'|format(pix_pendente.valor_item)|replace('.',',') }} + R$ {{ '%.2f'|format(pix_pendente.taxa_conv)|replace('.',',') }} do app
+    {% if pix_pendente.valor_item > 0 %}{{ brl(pix_pendente.valor_item) }} {{ 'pra equipe' if pix_pendente.tipo == 'gorjeta' else 'pro bar' }} · {{ brl(pix_pendente.taxa_conv) }} do app{% else %}100% pro sistema{% endif %}
   </div>
   {% endif %}
 
@@ -477,7 +487,7 @@ function copiarPayload() {
     {% if pix_pendente.efi %}
     {# Lote C, fatia b: o PIX é recebido pela conta Efí do PubShow (o split manda a parte do bar na hora) #}
     <div class="pix-recebedor" id="pix-recebedor-efi">
-      {% if pix_titular %}No banco aparece <strong style="color:var(--text)">{{ pix_titular }}</strong>: é o sistema do jukebox do {{ b.nome }}.
+      {% if pix_titular %}No banco aparece <strong style="color:var(--text)">{{ pix_titular }}</strong>: {% if pix_pendente.tipo == 'donate_sistema' %}é o PubShow, o sistema deste jukebox.{% else %}é o sistema do jukebox do {{ b.nome }}.{% endif %}
       {% else %}No banco aparece o nome do sistema do jukebox, não o do {{ b.nome }}. Pode pagar.{% endif %}
     </div>
     {% if pix_pendente.expira_min is defined %}
@@ -486,7 +496,7 @@ function copiarPayload() {
     {% elif pix_pendente.via_asaas %}
     {# o PIX cai na conta do sistema, não na do bar: o banco mostra outro nome (16/10/26, CEL-11) #}
     <div class="pix-recebedor">
-      {% if pix_titular and not pix_pendente.via_efi %}No banco vai aparecer <strong style="color:var(--text)">{{ pix_titular }}</strong>: é o sistema do jukebox do {{ b.nome }}, pode pagar.
+      {% if pix_titular and not pix_pendente.via_efi %}No banco vai aparecer <strong style="color:var(--text)">{{ pix_titular }}</strong>: {% if pix_pendente.tipo == 'donate_sistema' %}é o PubShow, o sistema deste jukebox, pode pagar.{% else %}é o sistema do jukebox do {{ b.nome }}, pode pagar.{% endif %}
       {% else %}No banco aparece o nome do sistema do jukebox, não o do {{ b.nome }}. Pode pagar.{% endif %}
     </div>
     {% else %}
@@ -518,6 +528,7 @@ function copiarPayload() {
 <script>
 const PIX_TOKEN     = '{{ b.jukebox_token or b.code }}';
 const PIX_PEDIDO_ID = {{ pix_pendente.pedido_id }};
+const PIX_CID       = {{ (request.args.get('c') or request.form.get('client_id') or '')|tojson }};   // conserto 27/10/26
 const PIX_TIPO      = {{ (pix_pendente.tipo or '')|tojson }};
 const BRINDE_PROX_PIX = {{ (brinde_proximo or '')|tojson }};   // 24/10/26 (D8): brinde na trava de 15 min → a hora
 const FRENTE_PIX      = {{ (momentos_frente or 0)|int }};       // revisão CEL-1: momentos pagos que a TV mostra antes
@@ -597,7 +608,7 @@ function _textoPago() {
   // revisão CEL-1: a TV mostra 1 momento por intervalo; com N na frente, sai depois de N+1 músicas
   const dep = FRENTE_PIX > 0 ? `depois de ${FRENTE_PIX + 1} músicas` : 'depois da música que está tocando';
   if (PIX_TIPO === 'parabens') return `✅ Pago! Teu parabéns aparece na TV ${dep}. Prepara a câmera 📸`;
-  if (PIX_TIPO === 'gorjeta')  return `✅ Pago! Valeu! Tua gorjeta aparece na TV ${dep} e a equipe agradece 🙏`;
+  if (PIX_TIPO === 'donate_bar') return `✅ Pago! Obrigado! Teu donate aparece na TV ${dep}. 🙏`;   // 27/10/26 (D5)
   if (PIX_TIPO === 'brinde' && BRINDE_PROX_PIX) return `✅ Pago! Teu brinde sai na TV lá pelas ${BRINDE_PROX_PIX}.`;
   return `✅ Pago! Aparece na TV ${dep}.`;
 }
@@ -611,7 +622,7 @@ async function _atualizarPosicao() {
     return;
   }
   try {
-    const r = await fetch(`/pubshow/api/pedido-status/${PIX_TOKEN}/${PIX_PEDIDO_ID}`);
+    const r = await fetch(`/pubshow/api/pedido-status/${PIX_TOKEN}/${PIX_PEDIDO_ID}?c=${encodeURIComponent(PIX_CID)}`);
     const d = await r.json();
     const musica = TIPOS_MUSICA.includes(PIX_TIPO);
     {%- if pix_pendente.efi %}
@@ -658,6 +669,10 @@ async function _atualizarPosicao() {
     {%- endif %}
     if (d.status === 'aguardando_pix') {
       document.getElementById('pix-status-sub').textContent = 'Assim que o PIX cair, confirma sozinho.';
+    } else if (d.status === 'sistema') {
+      // 27/10/26 (D6): o Donate para o sistema pago (não vai pra TV nem pro bar)
+      clearInterval(_posicaoTimer);
+      _pixStatus('pago', '💙', '✅ Pago! Obrigado pelo donate.', 'Chegou no sistema. Não aparece na TV.');
     } else if (d.status === 'aguardando_ok') {
       _pixStatus('pago', '🛡️', '✅ Pago!', 'O bar está conferindo tua mensagem antes de mostrar na TV.');
     } else if (d.status === 'pendente') {
@@ -689,7 +704,7 @@ async function jaPaguei() {
   btn.textContent = '⏳ Confirmando...';
 
   try {
-    const r = await fetch(`/pubshow/jukebox/${PIX_TOKEN}/ja-paguei/${PIX_PEDIDO_ID}`, {method: 'POST'});
+    const r = await fetch(`/pubshow/jukebox/${PIX_TOKEN}/ja-paguei/${PIX_PEDIDO_ID}?c=${encodeURIComponent(PIX_CID)}`, {method: 'POST'});
     const d = await r.json();
 
     if (d.ok) {
@@ -768,7 +783,7 @@ async function jaPaguei() {
       {% elif sucesso == 'brinde' %}{% if brinde_proximo %}Teu brinde sai na TV lá pelas {{ brinde_proximo }}. Prepara o copo! 🍻{% else %}O brinde sai na TV {{ dep }}. Prepara o copo! 🍻{% endif %}
       {% elif sucesso == 'chegada' %}Sua chegada aparece na TV {{ dep }}. 🎉
       {% elif sucesso == 'casamento' %}O pedido aparece na TV {{ dep }}. Boa sorte! 💕🥹
-      {% elif sucesso == 'gorjeta' %}Valeu demais! Sua gorjeta aparece na TV {{ dep }} e a equipe agradece. 🙏
+      {% elif sucesso == 'donate_bar' %}Valeu! Teu donate aparece na TV {{ dep }}. 🙏
       {% elif sucesso == 'cantada' %}Cantada mandada! Ela aparece na TV {{ dep }}. Boa sorte! 😏
       {% elif sucesso == 'salve' %}Salve mandado! Aparece na TV {{ dep }}. 📣
       {% else %}Seu pedido está na fila! Aguarda um momento.
@@ -862,10 +877,11 @@ async function jaPaguei() {
      pagas"): 1 tela só, abre na busca do YouTube, os pagos e os preços à mostra. Sem abas e sem parágrafo.
      26/10/26: abre no "🎵 Pedir música" (a busca + a lista do bar juntas). ═══ #}
 {% set fila_musicas = fila|selectattr('tipo', 'in', ['vip','flash','musica','musica_especifica','musica_externa','pular_espera'])|list %}
-{% set momentos = ['parabens','dedicatoria','brinde','chegada','cantada','salve','casamento','gorjeta']|select('in', tipos)|list %}
+{#- 27/10/26 (D5): a gorjeta virou o Donate para o bar (dinheiro da casa) #}
+{% set momentos = ['parabens','dedicatoria','brinde','chegada','cantada','salve','casamento','donate_bar']|select('in', tipos)|list %}
 {% set nomes_curtos = {'parabens': 'Parabéns', 'dedicatoria': 'Dedicatória', 'brinde': 'Brinde', 'chegada': 'Chegamos',
                        'cantada': 'Cantada', 'salve': 'Salve pra mesa', 'casamento': 'Pedido de namoro',
-                       'gorjeta': 'Gorjeta da equipe'} %}
+                       'donate_bar': 'Donate para o bar'} %}
 <div class="aba on" id="aba-cardapio">
   {%- if 'musica_externa' in tipos or 'musica_especifica' in tipos %}
   <div class="sec-tit" id="sec-musica">🎵 Pedir música <small>GRÁTIS{% if gratis_min %} · 1 a cada {{ gratis_min }} min{% endif %}</small></div>
@@ -882,7 +898,7 @@ async function jaPaguei() {
 
     <div class="busca-input-wrap">
       <input type="search" class="busca-input" id="busca-input"
-             placeholder="🔎 Qual música?" enterkeyhint="search" autocomplete="off"
+             placeholder="🔎 Pesquise aqui sua música" enterkeyhint="search" autocomplete="off"
              oninput="onBuscaInput()" onkeydown="if(event.key==='Enter'){this.blur();buscar();}">
       <button class="busca-btn" onclick="buscar()" aria-label="Buscar">Buscar</button>
     </div>
@@ -890,10 +906,9 @@ async function jaPaguei() {
     <div class="busca-loading" id="busca-loading">🔍 Buscando...</div>
     <!-- 🔥 Mais pedidas no bar (últimos 7 dias, só até 10 min): fichas na horizontal; tocar abre a folha (Grátis | Furar) -->
     <div id="mais-pedidas" style="display:none"></div>
-    <!-- Estilos do acervo (chips) — filtro local, zero request (11/09/26) -->
-    <div id="busca-generos" style="display:none;flex-wrap:nowrap;overflow-x:auto;gap:6px;margin:0 0 10px;padding-bottom:4px;-webkit-overflow-scrolling:touch;scrollbar-width:none"></div>
-    <div class="busca-count" id="busca-count" style="display:none"></div>
-    <div id="resultados-lista"></div>
+    {#- 27/10/26 (D10, Diogo: "a lista do bar deveria ir para baixo"): quem DIGITA vê o resultado aqui, logo embaixo da
+        busca; sem texto, as fichas de estilo e a lista do bar ficam no "🎶 O que a casa toca", no fim (_posLista) #}
+    <div id="slot-busca"></div>
   </div>
   {%- endif %}
 
@@ -908,7 +923,7 @@ async function jaPaguei() {
     <div class="item item-furar" role="button" tabindex="0" id="item-furar" onclick="irBusca('flash')">
       <div class="card-emoji">⚡</div>
       <div class="txt"><div class="card-nome">Furar a fila</div><div class="sub">tua música toca a seguir</div>
-        {%- if pix_conv > 0 %}<div class="card-detalhe">{{ brl(tipos.flash.preco) }} + {{ brl(pix_conv) }} do app</div>{% endif %}</div>
+        {%- if tipos.flash.div %}<div class="card-detalhe">{{ div_linha(tipos.flash.div) }}</div>{% endif %}</div>
       <div class="card-preco">{{ brl(tipos.flash.preco + pix_conv) }}</div>
     </div>
     {%- endif %}
@@ -917,26 +932,31 @@ async function jaPaguei() {
     <div class="item pedido-card item-pular" role="button" tabindex="0" id="item-pular_espera" style="--card-cor:{{ tipos.pular_espera.cor }}" onclick="irBusca('pular')">
       <div class="card-emoji">⏩</div>
       <div class="txt"><div class="card-nome">Pular a espera</div><div class="sub">entra agora, sem esperar</div>
-        {%- if pix_conv > 0 %}<div class="card-detalhe">{{ brl(tipos.pular_espera.preco) }} + {{ brl(pix_conv) }} do app</div>{% endif %}</div>
+        {%- if tipos.pular_espera.div %}<div class="card-detalhe">{{ div_linha(tipos.pular_espera.div) }}</div>{% endif %}</div>
       <div class="card-preco">{{ brl(tipos.pular_espera.preco + pix_conv) }}</div>
     </div>
     {%- endif %}
     {%- for key in momentos %}{% set t = tipos[key] %}
-    {#- o total grande no canto e, embaixo, "R$ 15 + R$ 1 do app" (Lote D B, 16/10/26: o R$ 1 do app sempre à mostra) #}
-    <div class="item pedido-card" role="button" tabindex="0" id="item-{{ key }}" style="--card-cor:{{ t.cor }}" onclick="{% if key == 'gorjeta' %}abrirGorjeta(){% else %}selecionarTipo('{{ key }}'){% endif %}">
+    {#- o total grande no canto e, embaixo, "R$ 12,80 pro bar · 20% do app" (27/10/26, D4) #}
+    <div class="item pedido-card" role="button" tabindex="0" id="item-{{ key }}" style="--card-cor:{{ t.cor }}" onclick="{% if key == 'donate_bar' %}abrirDonate('donate_bar'){% else %}selecionarTipo('{{ key }}'){% endif %}">
       <div class="card-emoji">{{ t.emoji }}</div>
       <div class="card-nome">{{ nomes_curtos[key] }}</div>
-      {%- if key == 'gorjeta' %}{% set _cg = pix_conv_gorjeta if pix_conv_gorjeta is defined else pix_conv %}
+      {%- if key == 'donate_bar' %}
       <div class="card-preco">{{ brl(t.preco) }}+</div>
-      {%- if _cg > 0 %}<div class="card-detalhe">+ {{ brl(_cg) }} do app no PIX</div>{% endif %}
+      {%- if asaas_ativo %}<div class="card-detalhe">{{ APP_REGRA_TXT|replace(' (no mínimo', ' (mín.') }} do app</div>{% endif %}
       {%- else %}
       <div class="card-preco">{{ brl(t.preco + pix_conv) }}</div>
-      {%- if pix_conv > 0 %}<div class="card-detalhe">{{ brl(t.preco) }} + {{ brl(pix_conv) }} do app</div>{% endif %}
+      {#- conserto 27/10/26: a linha segue o gateway (o div já vem '' sem ele), não o somador #}
+      {%- if t.div %}<div class="card-detalhe">{{ div_linha(t.div) }}</div>{% endif %}
       {%- endif %}
       {%- if t.get('ok') and (b.moderar_ok is none or b.moderar_ok) %}<div class="card-detalhe">o bar confere antes</div>{% endif %}
     </div>
     {%- endfor %}
   </div>
+  {%- if donates.donate_sistema %}
+  {#- 27/10/26 (D6): uma linha pequena no fim do "Na TV do bar", sem venda e sem link de WhatsApp #}
+  <button type="button" class="donate-sis" id="item-donate_sistema" onclick="abrirDonate('donate_sistema')">💙 Donate para o sistema</button>
+  {%- endif %}
   {%- endif %}
 
   <div class="ini-fila" id="ini-fila">
@@ -947,6 +967,22 @@ async function jaPaguei() {
     <div class="m n">Fila vazia: a tua toca já já 🎶</div>
     {%- endfor %}
   </div>
+
+  {%- if 'musica_externa' in tipos or 'musica_especifica' in tipos %}
+  {#- 27/10/26 (D10): as fichas de estilo (o que a casa toca) e a lista do bar pra rolar e tocar. Some quando o bar
+      não tem lista; quem digita na busca leva a lista lá pra cima (#slot-busca) #}
+  <div id="sec-casa" style="display:none">
+    <div class="sec-tit">🎶 O que a casa toca</div>
+    <div id="slot-casa">
+      <div id="lista-wrap">
+        <!-- Estilos do acervo (chips) — filtro local, zero request (11/09/26) -->
+        <div id="busca-generos" style="display:none;flex-wrap:nowrap;overflow-x:auto;gap:6px;margin:0 0 10px;padding-bottom:4px;-webkit-overflow-scrolling:touch;scrollbar-width:none"></div>
+        <div class="busca-count" id="busca-count" style="display:none"></div>
+        <div id="resultados-lista"></div>
+      </div>
+    </div>
+  </div>
+  {%- endif %}
 </div>
 
 <!-- Folha da música: nome lembrado + Tocar grátis / Furar a fila (3 toques, 16/10/26) -->
@@ -1010,7 +1046,7 @@ async function jaPaguei() {
       {% if 'flash' in tipos %}
       <button type="button" class="btn-flash" id="btn-flash" onclick="enviarMusica('flash')">
         ⚡ Furar a fila · {{ brl(tipos.flash.preco + pix_conv) }}{% if pix_direto %} no PIX{% endif %}
-        <small id="sh-flash-sub" data-preco="{% if pix_conv > 0 %}{{ brl(tipos.flash.preco) }} + {{ brl(pix_conv) }} do app{% endif %}">{% if pix_conv > 0 %}{{ brl(tipos.flash.preco) }} + {{ brl(pix_conv) }} do app{% else %}toca antes da fila{% endif %}</small>
+        <small id="sh-flash-sub" data-preco="{{ tipos.flash.div }}">{% if tipos.flash.div %}{{ tipos.flash.div }}{% else %}toca antes da fila{% endif %}</small>
       </button>
       {#- 25/10/26 (leva 1 da fama): letra pequena logo embaixo do botão de pagar do ⚡, sem caixinha e sem passo a mais #}
       <div class="aviso-18" id="sh-flash-18">Só pra maiores de 18.</div>
@@ -1082,15 +1118,21 @@ async function jaPaguei() {
     </div>
 
     <div class="form-group" id="msg-group" style="display:none">
-      <input type="hidden" name="valor_gorjeta" id="inp-valor-gorjeta" value="">
-      <div id="gorjeta-valores" style="display:none;margin-bottom:14px">
-        <div style="font-size:13px;color:var(--text2);margin-bottom:8px;font-weight:700">Quanto você quer mandar pra equipe?</div>
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
-          {% for v in (5, 10, 20, 50) %}
-          <button type="button" class="gorjeta-opt" onclick="escolherGorjeta({{ v }},this)" style="min-height:48px;border-radius:12px;border:2px solid #22c55e55;background:rgba(34,197,94,.08);color:#4ade80;font-weight:900;font-size:16px;font-family:inherit;cursor:pointer">R$ {{ v }}</button>
-          {% endfor %}
+      {#- 27/10/26 (D5/D6): o valor do donate (o TOTAL do PIX); o servidor aceita só os de DONATE_VALORES #}
+      <input type="hidden" name="valor_donate" id="inp-valor-donate" value="">
+      {%- for dk, dv in donates.items() %}
+      <div class="donate-valores" id="donate-valores-{{ dk }}" style="display:none;margin-bottom:14px">
+        <div style="font-size:13px;color:var(--text2);margin-bottom:8px;font-weight:700">{{ 'Quanto você quer doar pro bar?' if dk == 'donate_bar' else 'Quanto você quer doar pro sistema?' }}</div>
+        <div style="display:grid;grid-template-columns:repeat({{ dv.valores|length }},1fr);gap:8px">
+          {%- for v in dv.valores %}
+          <button type="button" class="donate-opt" data-v="{{ v }}" onclick="escolherDonate({{ v }},this)" style="min-height:48px;border-radius:12px;border:2px solid #22c55e55;background:rgba(34,197,94,.08);color:#4ade80;font-weight:900;font-size:16px;font-family:inherit;cursor:pointer">R$ {{ v }}</button>
+          {%- endfor %}
         </div>
+        {%- if dk == 'donate_sistema' %}
+        <div class="dica-nome" style="margin-top:8px">Vai 100% pro PubShow, o sistema deste jukebox. O bar não recebe esse valor.</div>
+        {%- endif %}
       </div>
+      {%- endfor %}
       <label id="msg-label" for="inp-msg">Mensagem (opcional)</label>
       <textarea name="mensagem" id="inp-msg" rows="2"
         placeholder="Aparece na tela do bar..." maxlength="80"></textarea>
@@ -1154,13 +1196,12 @@ const BAR_TOKEN  = '{{ b.jukebox_token or b.code }}';
 const PIX_OFFSET = {{ pix_offset | default(0) }};
 const PIX_CONV   = {{ pix_conv if pix_conv is defined else 0 }};   // o "R$ 1 do app" que o cliente paga (Lote D B, 16/10/26)
 const FURAR_TXT  = {{ (brl(tipos.flash.preco + pix_conv) if 'flash' in tipos else '')|tojson }};   // "R$ 5" no botão ⚡ Furar de cada música (20/10/26)
-// VDB-03 (16/10/26): o da gorjeta (Efí com PUBSHOW_GORJETA_CONV=0 = 0: o PIX cobra só a gorjeta)
-const PIX_CONV_GORJ = {{ pix_conv_gorjeta if pix_conv_gorjeta is defined else (pix_conv if pix_conv is defined else 0) }};
-function _convAtual() { return tipoAtual === 'gorjeta' ? PIX_CONV_GORJ : PIX_CONV; }
+const DONATES = {{ donates | tojson }};   // 27/10/26: {tipo: {valores, div: {'10': 'R$ 8 pro bar · 20% do app'}}}
+function _convAtual() { return DONATES[tipoAtual] ? 0 : PIX_CONV; }   // o donate: o valor escolhido JÁ é o total
 const PIX_DIRETO = {{ 'true' if pix_direto else 'false' }};         // o servidor gera o PIX sozinho (Asaas ou PIX do bar com confirmação)
 const YT_LIBERADO = {{ 'true' if youtube_liberado else 'false' }};   // interruptor do bar (Ajustes → Buscar no YouTube)
 const CANAIS_NOMES = {{ canais_nomes | tojson if canais_nomes is defined else '{}' }};
-const TIPOS_MOMENTO = ['parabens','dedicatoria','brinde','chegada','casamento','gorjeta','cantada','salve'];
+const TIPOS_MOMENTO = ['parabens','dedicatoria','brinde','chegada','casamento','donate_bar','cantada','salve'];
 let tipoAtual    = '';
 let modosBusca   = 'pedir';      // 26/10/26: 1 aba só ("🎵 Pedir música"); o tipo grátis vem de cada música (_tipoGratis)
 let buscaTimer   = null;
@@ -1240,13 +1281,12 @@ function esconderTudo() {
 
 // ── Formulário dos momentos ───────────────────────────────────────────────────
 function _notaTaxaPix(preco) {
-  // preco = valor do item; o total do PIX = item + o R$ 1 do app (Lote D B, 16/10/26)
+  // 27/10/26 (D4): a divisão vem do servidor (a MESMA conta que ele cobra)
   const el = document.getElementById('pix-taxa-note');
   if (!el) return;
-  const conv = _convAtual();   // VDB-03: gorjeta usa o R$ 1 da gorjeta
-  el.innerHTML = (preco > 0 && conv > 0)
-    ? `<br>${_brl(preco)} + ${_brl(conv)} do app`
-    : '';
+  const d = DONATES[tipoAtual];
+  const txt = d ? (d.div[String(Math.round(preco))] || '') : ((PRECOS[tipoAtual] || {}).div || '');
+  el.innerHTML = (preco > 0 && txt) ? `<br>${txt}` : '';
 }
 function _precoComOffset(preco) {
   // Adiciona centavos de identificação ao preço PIX (ex: R$5,00 → R$5,03) — só no PIX manual (PIX_OFFSET=0 no Asaas)
@@ -1466,15 +1506,18 @@ function aplicarModoGratis(preco) {
   }
 }
 
-function abrirGorjeta() {
-  selecionarTipo('gorjeta', 10);   // 10 pré-selecionado
-  document.getElementById('gorjeta-valores').style.display = 'block';
-  const b10 = document.querySelectorAll('.gorjeta-opt')[1];
-  if (b10) escolherGorjeta(10, b10);
+// 27/10/26 (D5/D6): Donate para o bar e Donate para o sistema: o cliente escolhe o valor (R$ 10 já marcado)
+function abrirDonate(tipo) {
+  const d = DONATES[tipo];
+  if (!d) return;
+  const v0 = d.valores.includes(10) ? 10 : d.valores[0];
+  selecionarTipo(tipo, v0);
+  document.getElementById('donate-valores-' + tipo).style.display = 'block';
+  escolherDonate(v0, document.querySelector(`#donate-valores-${tipo} .donate-opt[data-v="${v0}"]`));
 }
-function escolherGorjeta(v, btn) {
-  document.getElementById('inp-valor-gorjeta').value = v;
-  document.querySelectorAll('.gorjeta-opt').forEach(b => { b.style.background = 'rgba(34,197,94,.08)'; b.style.borderColor = '#22c55e55'; b.style.color = '#4ade80'; });
+function escolherDonate(v, btn) {
+  document.getElementById('inp-valor-donate').value = v;
+  document.querySelectorAll('.donate-opt').forEach(b => { b.style.background = 'rgba(34,197,94,.08)'; b.style.borderColor = '#22c55e55'; b.style.color = '#4ade80'; });
   if (btn) { btn.style.background = '#22c55e'; btn.style.borderColor = '#22c55e'; btn.style.color = '#052e16'; }
   _mostrarValor(v);
 }
@@ -1483,8 +1526,8 @@ function selecionarTipo(key, precoForcado) {
   const t = PRECOS[key];
   if (!t) return;
   const preco = (precoForcado !== undefined) ? precoForcado : t.preco;
-  const gv = document.getElementById('gorjeta-valores');
-  if (gv && key !== 'gorjeta') { gv.style.display = 'none'; document.getElementById('inp-valor-gorjeta').value = ''; }
+  document.querySelectorAll('.donate-valores').forEach(el => { if (el.id !== 'donate-valores-' + key) el.style.display = 'none'; });
+  if (!DONATES[key]) { const _iv = document.getElementById('inp-valor-donate'); if (_iv) _iv.value = ''; }
   tipoAtual = key;
   document.getElementById('inp-tipo').value  = key;
   _camposDoNome(key);
@@ -1493,11 +1536,12 @@ function selecionarTipo(key, precoForcado) {
 
   const mgr = document.getElementById('msg-group');
   const mgl = document.getElementById('msg-label');
-  if (TIPOS_MOMENTO.includes(key)) {
+  if (TIPOS_MOMENTO.includes(key) || key === 'donate_sistema') {
     mgr.style.display = 'block';
     mgl.textContent = key === 'parabens' ? 'Recado (aparece na tela)'
       : key === 'dedicatoria' ? 'Mensagem de amor ❤️'
-      : key === 'gorjeta' ? 'Recado pra equipe (opcional) 🙏'
+      : key === 'donate_bar' ? 'Recado pro bar (opcional) 🙏'
+      : key === 'donate_sistema' ? 'Recado pro sistema (opcional)'
       : key === 'cantada' ? 'Sua cantada (sai na tela) 😏'
       : key === 'salve' ? 'Pra qual mesa e o recado 📣'
       : key === 'casamento'   ? 'Mensagem especial 💕'
@@ -1510,7 +1554,8 @@ function selecionarTipo(key, precoForcado) {
     if (_im.dataset.phOrig === undefined) _im.dataset.phOrig = _im.placeholder || '';
     _im.required    = (key === 'cantada');
     _im.placeholder = key === 'cantada' ? 'Ex.: Você não é o Google, mas tem tudo que eu procuro 😏'
-                    : key === 'salve'   ? 'Ex.: Mesa 3, a próxima é por nossa conta 😉' : _im.dataset.phOrig;
+                    : key === 'salve'   ? 'Ex.: Mesa 3, a próxima é por nossa conta 😉'
+                    : key === 'donate_sistema' ? 'Só o sistema lê. Não aparece na TV.' : _im.dataset.phOrig;   // 27/10/26 (D6)
   }
 
   document.getElementById('musica-preview').style.display = 'none';
@@ -1546,7 +1591,8 @@ function _camposDoNome(key) {
   } else {
     lab.textContent = 'Teu nome *';
     inp.placeholder = 'Teu nome';
-    if (dica) dica.textContent = 'É assim que teu nome aparece na TV (até 20 letras). Sem palavrão, beleza? 😉';
+    if (dica) dica.textContent = key === 'donate_sistema' ? 'Só o sistema vê teu nome. Não aparece na TV.'   // 27/10/26 (D6)
+                               : 'É assim que teu nome aparece na TV (até 20 letras). Sem palavrão, beleza? 😉';
     rg.style.display = 'none';
     if (rem) rem.value = '';
     if (!inp.value && lembrado) inp.value = lembrado;
@@ -1593,15 +1639,36 @@ function _cardDoBar(v) {   // a música da lista do bar no mesmo card da busca (
   return {id, titulo: v.titulo || '', canal: v.artista || '', duracao: _mmss(v.duracao_seg), fonte: 'bar',
           sub: `${v.artista || ''}${v.duracao_seg ? ' · ' + Math.floor(v.duracao_seg/60) + 'min' : ''}`};
 }
-function verListaDoBar() {   // botão "📚 Ver as músicas do bar" (a busca livre não respondeu): limpa o texto e mostra a lista
+async function verListaDoBar() {   // botão "📚 Ver as músicas do bar" (a busca livre não respondeu): limpa o texto e mostra a lista
   mostrarAba('musicas');
   const inp = document.getElementById('busca-input');
   if (inp) inp.value = '';
   _cancelarBusca(true);
-  if (_biblioCache) onBuscaInput(); else _carregarBibliotecaCompleta();
+  // conferência final 28/10/26 (A1): a lista ainda chegando (ou falhada) → espera ela antes de rolar até o fim
+  if (_biblioCache) onBuscaInput(); else await _carregarBibliotecaCompleta();
+  const sc = document.getElementById('sec-casa');   // 27/10/26 (D10): a lista do bar fica no fim
+  if (sc && sc.style.display !== 'none') sc.scrollIntoView({block: 'start'});
+}
+// 27/10/26 (D10, Diogo: "a lista do bar deveria ir para baixo"): sem texto na busca, as fichas de estilo e a lista do
+// bar ficam no "🎶 O que a casa toca", no fim da tela; quem digita vê o resultado logo embaixo da busca (como antes).
+// O bloco do fim some quando o bar não tem lista. Os mesmos elementos (ids) só trocam de lugar: nada muda no resto.
+function _posLista() {
+  const w = document.getElementById('lista-wrap'), inp = document.getElementById('busca-input');
+  if (!w || !inp) return;
+  const q = inp.value.trim();
+  const alvo = document.getElementById(q ? 'slot-busca' : 'slot-casa');
+  if (alvo && w.parentNode !== alvo) alvo.appendChild(w);
+  const sc = document.getElementById('sec-casa'), lista = document.getElementById('resultados-lista');
+  const tem = _biblioCache ? _biblioCache.length > 0 : !!(lista && lista.children.length);
+  if (sc) sc.style.display = (!q && tem) ? '' : 'none';
 }
 
-async function _carregarBibliotecaCompleta() {
+let _biblioPromessa = null;   // conferência final 28/10/26 (A1): 1 carregamento da lista do bar por vez
+function _carregarBibliotecaCompleta() {
+  if (!_biblioPromessa) _biblioPromessa = _carregarBiblioteca1().finally(() => { _biblioPromessa = null; });
+  return _biblioPromessa;
+}
+async function _carregarBiblioteca1() {
   const loading = document.getElementById('busca-loading');
   loading.classList.add('show');
   try {
@@ -1624,6 +1691,7 @@ async function _carregarBibliotecaCompleta() {
     loading.classList.remove('show');
     document.getElementById('resultados-lista').innerHTML =
       '<div style="text-align:center;padding:24px;color:#f87171;font-size:13px">Erro ao carregar lista. Tente novamente.</div>';
+    _posLista();
   }
 }
 
@@ -1709,6 +1777,7 @@ function onBuscaInput() {
     }
     if (_letras(q) >= 3) _localTimer = setTimeout(buscarLocal, BUSCA_LOCAL_MS);
     buscaTimer = setTimeout(buscar, BUSCA_GOOGLE_MS);
+    _posLista();
     return;
   }
   // sem texto (ou busca livre desligada): só a lista do bar, filtro local — instantâneo, zero request
@@ -1719,7 +1788,12 @@ function onBuscaInput() {
     // revisão 26/10: bar sem lista e com a busca livre ligada → sem "Nenhuma música encontrada." antes de digitar
     if (!q && !_biblioCache.length && _buscaLivre()) { _listaAtual = []; lista.innerHTML = ''; document.getElementById('busca-count').style.display = 'none'; }
     else _renderLista(_doBar(q, true));
+  } else {
+    // conferência final 28/10/26 (A2): a lista do bar falhou → limpa o resultado velho da busca e tenta de novo
+    _listaAtual = []; lista.innerHTML = '';
+    _carregarBibliotecaCompleta();
   }
+  _posLista();
   _mostrarMaisPedidas();
 }
 
@@ -1866,6 +1940,7 @@ async function buscar() {
   const q = document.getElementById('busca-input').value.trim();
   const lista = document.getElementById('resultados-lista');
   if (!YT_LIBERADO || q.length < 2) { onBuscaInput(); return; }   // busca livre desligada: só a lista do bar
+  _posLista();   // 27/10/26 (D10): o resultado da busca fica logo embaixo dela
   if (q === _ultimaQ && lista.children.length) return;
   _ultimaQ = q;
   if (_buscaCtl) { try { _buscaCtl.abort(); } catch(e) {} }
@@ -2211,14 +2286,15 @@ function copiarPix() {
 // ── Abre direto na lista de músicas (ou na aba do momento que deu erro) ───────
 {% set tipo_post = request.form.get('tipo', '') if request.method == 'POST' else '' %}
 (function(){
-  {% if erro and tipo_post in ['parabens','dedicatoria','brinde','chegada','casamento','gorjeta','cantada','salve'] %}
+  {% if erro and tipo_post in ['parabens','dedicatoria','brinde','chegada','casamento','donate_bar','donate_sistema','cantada','salve'] %}
   mostrarAba('tv');
   // 16/10/26 (crítico C2): reabre o MESMO momento com o que o cliente digitou (antes: tudo de novo)
   try {
-    {% if tipo_post == 'gorjeta' %}
-    abrirGorjeta();
-    const _vg = {{ (request.form.get('valor_gorjeta') or '')|tojson }};
-    document.querySelectorAll('.gorjeta-opt').forEach(b => { if (b.textContent.trim() === 'R$ ' + parseInt(_vg)) escolherGorjeta(parseInt(_vg), b); });
+    {% if tipo_post in ('donate_bar', 'donate_sistema') %}
+    abrirDonate({{ tipo_post|tojson }});   // 27/10/26: o mesmo donate, com o mesmo valor
+    const _vd = parseInt({{ (request.form.get('valor_donate') or '')|tojson }});
+    const _bd = document.querySelector(`#donate-valores-{{ tipo_post }} .donate-opt[data-v="${_vd}"]`);
+    if (_bd) escolherDonate(_vd, _bd);
     {% else %}
     selecionarTipo({{ tipo_post|tojson }});
     {% endif %}

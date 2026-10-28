@@ -18,6 +18,7 @@ import uuid
 import threading as _threading
 import requests as _requests
 from datetime import datetime, timedelta
+from decimal import Decimal, ROUND_HALF_UP   # 27/10/26: os 20% do app, meio centavo pra cima (divisao_app)
 from functools import wraps
 from html import escape as _html_escape
 from flask import (Blueprint, render_template, redirect, request,
@@ -191,7 +192,7 @@ PLANO = {
     'features': ['TV com clipes a noite toda, todos os estilos',
                  'Pedir música é grátis pelo QR, sem app',
                  'Todos os momentos pagos no PIX (furar a fila, parabéns, namoro…)',
-                 'Gorjeta pra equipe, contada à parte',
+                 'Donate para o bar: o cliente doa e entra no caixa do bar',
                  'OK do gerente pra cantada e pedido de namoro',
                  'Promoção relâmpago na TV',
                  '1 propaganda do bar na TV (texto ou imagem)',
@@ -243,6 +244,8 @@ def _ctx_pubshow():
     """Suporte e plano único em TODO template do blueprint (15/10/26) — nada de número à mão."""
     return {'SUPORTE_WA': SUPORTE_WA, 'SUPORTE_WA_FMT': SUPORTE_WA_FMT, 'PLANO': PLANO,
             'rede_ligada': _rede_ligada(),
+            # 27/10/26 (D4): a regra dos 20% em palavras e a linha "R$ 4,80 pro bar · 20% do app" (env lida na hora)
+            'divisao_txt': divisao_txt, 'APP_REGRA_TXT': app_regra_txt(), 'DONATE_BAR_FAIXA': _donate_faixa_txt(),
             # taxa de serviço que o CLIENTE paga a mais no PIX automático (Ajustes mostra o preço final, 16/10/26)
             'TAXA_SERVICO': (PIX_TAXA_CONVENIENCIA if os.environ.get('ASAAS_API_KEY') else 0.0)}
 
@@ -256,7 +259,8 @@ _SLIDES_DIR = os.path.join(
 
 GORJETA_VALORES = (5.0, 10.0, 20.0, 50.0)   # opções de gorjeta no celular do cliente
 TIPOS_SEMPRE_GRATIS = ('musica', 'musica_especifica', 'musica_externa')   # nunca cobrados, mesmo com precos_custom (YouTube incluído — 12/09/26, Garage tinha 0,50)
-TIPOS_OCULTOS = ('vip',)       # existem no banco/TV, mas o cliente não vê ("Tocar agora" saiu, YouTube entrou — 11/09/26)
+TIPOS_OCULTOS = ('vip', 'gorjeta')   # existem no banco/TV, mas o cliente não vê ("Tocar agora" saiu, YouTube entrou — 11/09/26)
+# 27/10/26: a gorjeta saiu do cardápio (virou o Donate para o bar); fica no banco/TV/caixinha pro histórico
 TIPOS_EQUIPE  = ('gorjeta',)   # dinheiro da EQUIPE, não do caixa da casa — somado à parte no painel
 
 TIPOS_PEDIDO = {
@@ -284,6 +288,10 @@ TIPOS_PEDIDO = {
     # Gorjeta pra EQUIPE (11/09/26): valor escolhido pelo cliente entre GORJETA_VALORES; 5 é só o mínimo exibido.
     # É dinheiro dos funcionários, não do caixa — contado à parte no painel (TIPOS_EQUIPE).
     'gorjeta':          {'nome': 'Gorjeta pra equipe 🙏', 'emoji': '🙏', 'preco': 5.00,  'cor': '#22c55e'},
+    # 27/10/26 (D5): Donate para o bar = dinheiro DA CASA (fora de TIPOS_EQUIPE), valor de DONATE_VALORES, com os 20%
+    'donate_bar':       {'nome': 'Donate para o bar',      'emoji': '🙏', 'preco': 5.00,  'cor': '#22c55e'},
+    # 27/10/26 (D6): Donate para o sistema = 100% do app; nunca na TV, no painel, no caixa nem no repasse do bar
+    'donate_sistema':   {'nome': 'Donate para o sistema',  'emoji': '💙', 'preco': 5.00,  'cor': '#3b82f6'},
 }
 
 # Taxa que o Asaas DESCONTA por cobrança PIX recebida (custo do gateway).
@@ -314,11 +322,12 @@ PIX_PISO_PRECO = float(os.environ.get('PUBSHOW_PISO_PRECO', '4.00'))   # 16/10/2
 #   3. bar na lista sem conta (ou com a conta ainda não aceita) → PONTE: cobra na conta Efí do PubShow e o dinheiro do
 #      bar vai no repasse semanal (/pubshow/admin/repasses, coluna Efí). Conectou a conta → vira split sozinho.
 # 1 conta Efí só pros 2 (pubshow_pay.cliente(): PUBSHOW_EFI_*, ou as EFI_* da RifaJá); o efi_pix.py fica intocado.
-# Preço igual nos 2: furar a fila R$ 3 + R$ 1 = R$ 4, piso R$ 1, teto R$ 50 (a Efí não tem o mínimo de R$ 5 do Asaas).
+# Preço igual nos 2: furar a fila R$ 4 + R$ 1 = R$ 5 (27/10/26; era R$ 3 + 1), piso R$ 1, teto R$ 50 (a Efí não tem o
+# mínimo de R$ 5 do Asaas).
 # PUBSHOW_GATEWAY virou só o botão de emergência: =asaas desliga a Efí inteira (os bares da lista voltam pro Asaas).
 # O "modo Efí" do bar (sem teste grátis, mensalidade saindo de 30% dos momentos, pausa de 60 dias, Meu dinheiro) é
 # o do SPLIT (_efi_para). O bar da ponte segue o modelo de hoje da ponte: assinatura no Asaas + repasse semanal.
-PRECO_FLASH_EFI    = 3.00   # R$3 + R$1 de taxa = R$4 no PIX
+PRECO_FLASH_EFI    = 4.00   # 27/10/26 (D1): R$ 4 + R$ 1 = R$ 5 no total, como no Asaas
 PIX_PISO_PRECO_EFI = 1.00   # a Efí não tem mínimo; o piso do preço customizado cai pra R$1 nos bares da Efí
 PRECO_PULAR_EFI    = 1.00   # ⏩ Pular a espera na ponte: R$1 + R$1 de taxa = R$2 no PIX (20/10/26)
 
@@ -345,6 +354,89 @@ def _taxa_pix_bar(b, tipo='flash'):
     if _efi_para(b):
         return pubshow_pay.conv_cent_para(tipo) / 100
     return PIX_TAXA_CONVENIENCIA if _gateway_ativo(b) else 0.0
+
+
+# ── 27/10/26 (Diogo: "mude o +1 para 20% do app"): o app fica com APP_PCT% do TOTAL que o cliente paga, no mínimo
+# APP_MIN; o bar fica com o resto exato. Env lida a cada chamada (chave de emergência sem deploy, D7).
+TIPOS_DONATE = ('donate_bar', 'donate_sistema')
+DONATE_VALORES = {'donate_bar': (5.0, 10.0, 20.0, 50.0), 'donate_sistema': (5.0, 10.0, 20.0)}   # TOTAL no PIX (D5/D6)
+for _k_don in TIPOS_DONATE:   # conserto 27/10/26: o "R$ 5+" do card e do canto da TV = o menor valor da tupla
+    TIPOS_PEDIDO[_k_don]['preco'] = DONATE_VALORES[_k_don][0]
+
+
+def _donate_faixa_txt(k='donate_bar'):
+    """'R$ 5 a 50' (painel, llms.txt), da MESMA tupla que o servidor cobra."""
+    v = DONATE_VALORES[k]
+    return f'R$ {v[0]:g} a {v[-1]:g}'
+
+
+def _regra_app():
+    """(pct, min) como Decimal. PUBSHOW_APP_PCT 0–100 (padrão 20) e PUBSHOW_APP_MIN 0–1 (padrão 1.00; conserto
+    27/10/26: a chave só BAIXA o mínimo, com 2 ou 5 o pular de R$ 2 virava "R$ 0 pro bar"); env quebrada ou fora da
+    faixa = o padrão (nunca derruba cobrança)."""
+    def _env(nome, padrao, teto):
+        try:
+            v = Decimal(str(os.environ.get(nome, '') or padrao).replace(',', '.').strip())
+            return v if (v.is_finite() and 0 <= v <= teto) else Decimal(padrao)
+        except Exception:
+            return Decimal(padrao)
+    return _env('PUBSHOW_APP_PCT', '20', 100), _env('PUBSHOW_APP_MIN', '1.00', 1)
+
+
+def divisao_app(total):
+    """total (reais) → (bar, app) em reais. App = pct% do total, meio centavo pra cima, no mínimo APP_MIN e no
+    máximo o total − R$ 1; o bar fica com o resto EXATO (bar + app == total, em centavos). Conserto 27/10/26: o
+    bar nunca fica com menos de R$ 1 (split com PUBSHOW_CONV_CENT=0 e momento de R$ 1: item_cent 0 derrubava a
+    cobrança e o cliente via "Pagamento indisponível"); só total abaixo de R$ 2 sente isso."""
+    pct, minimo = _regra_app()
+    t = max(0, int(round(float(total or 0) * 100)))
+    app = int((Decimal(t) * pct / 100).quantize(Decimal('1'), rounding=ROUND_HALF_UP))
+    app = min(max(app, int(minimo * 100)), max(0, t - 100))
+    return (t - app) / 100, app / 100
+
+
+def app_regra_txt():
+    """'20% (no mínimo R$ 1)' — a regra em palavras, a MESMA do divisao_app."""
+    pct, minimo = _regra_app()
+    if pct == 0 and minimo > 0:
+        return _reais_curto(float(minimo))   # conserto 27/10/26: PCT=0 + MIN=1 = "R$ 1", não "0% (no mínimo R$ 1)"
+    p = f'{float(pct):g}'.replace('.', ',') + '%'
+    return f'{p} (no mínimo {_reais_curto(float(minimo))})' if minimo > 0 else p
+
+
+def divisao_txt(total):
+    """A linha pequena embaixo do preço (D4): 'R$ 4,80 pro bar · 20% do app'; quando vale o mínimo,
+    'R$ 4 pro bar · R$ 1 do app'; sem parte do app, '100% pro bar'."""
+    bar, app = divisao_app(total)
+    if app <= 0:
+        return '100% pro bar'
+    pct, minimo = _regra_app()
+    app_txt = (_reais_curto(app) if int(round(app * 100)) <= int(minimo * 100)
+               else f'{float(pct):g}'.replace('.', ',') + '%')
+    return f'{_reais_curto(bar)} pro bar · {app_txt} do app'
+
+
+def _total_cliente(b, tipo, preco):
+    """O TOTAL do PIX: o donate é o valor escolhido (D5/D6); o resto é preço + o somador de hoje (D2: o cliente paga
+    o mesmo de antes)."""
+    return round(float(preco), 2) if tipo in TIPOS_DONATE else round(float(preco) + _taxa_pix_bar(b, tipo), 2)
+
+
+def _div_do_tipo(b, tipo, preco):
+    """Texto da divisão de um card/valor; '' sem gateway (PIX manual: 100% do bar, não fala de app)."""
+    if not _gateway_ativo(b) or float(preco or 0) <= 0:
+        return ''
+    if tipo == 'donate_sistema':
+        return '100% pro sistema'
+    return divisao_txt(_total_cliente(b, tipo, preco))
+
+
+def _donate_sistema_para(b):
+    """D6: só com gateway do PubShow (Asaas ou ponte Efí). Fora do split (o PIX cai na conta do bar) e do PIX manual
+    (chave do bar). Desliga em todo bar com PUBSHOW_DONATE_SISTEMA=0."""
+    _v = os.environ.get('PUBSHOW_DONATE_SISTEMA', '1').strip().lower()
+    _desl = _v in ('false', 'off', 'no', 'nao', 'não') or (_v.isdigit() and int(_v) == 0)   # conserto 27/10/26
+    return not _desl and _gateway_ativo(b) and not _efi_para(b)
 
 
 def _pular_espera_para(b):
@@ -804,9 +896,9 @@ def _texto_sem_bolso(b=None) -> str:
         except Exception as ex:
             log.warning('[PUBSHOW] preço do split do bar não lido: %s', ex)
     if preco_cent <= 0:   # isento (exceção 0): não fala de mensalidade que não existe
-        return 'Sem mensalidade: este bar não paga o PubShow. Gorjeta é 100% da equipe.'
+        return 'Sem mensalidade: este bar não paga o PubShow.'   # 27/10/26: saiu "Gorjeta é 100% da equipe"
     return (f'Sem mensalidade do bolso: o PubShow se paga com {pct}% dos momentos até '
-            f'{_brl_cent(preco_cent)} por mês. Gorjeta é 100% da equipe.')
+            f'{_brl_cent(preco_cent)} por mês.')
 
 
 def _preco_teto(b):
@@ -1633,22 +1725,34 @@ def _jukebox_aberto(b):
     return True, ''
 
 
-def _tipos_disponiveis(b):
-    """Retorna TIPOS_PEDIDO filtrado pelo que o bar não bloqueou."""
+def _bloqueados_do_bar(b):
+    """tipos_bloqueados do bar. 27/10/26: quem tinha desligado a gorjeta começa com o Donate para o bar desligado."""
     import json
     try:
-        bloqueados = json.loads(b['tipos_bloqueados'] or '[]')
+        bl = json.loads(b['tipos_bloqueados'] or '[]')
+        bl = bl if isinstance(bl, list) else []
     except Exception:
-        bloqueados = []
+        bl = []
+    if 'gorjeta' in bl and 'donate_bar' not in bl:
+        bl.append('donate_bar')
+    return bl
+
+
+def _tipos_disponiveis(b):
+    """Retorna TIPOS_PEDIDO filtrado pelo que o bar não bloqueou."""
+    bloqueados = _bloqueados_do_bar(b)
     # 21/10/26 (pedido do Laranjeira): "Escolher a música" da lista do bar é sempre grátis e vale sempre, igual à do
     # YouTube. O painel não tem mais o interruptor dele (saiu na versão grande, 405ebba): bar que tinha desligado antes
     # ficava preso, e na lista do bar só aparecia "Furar a fila".
+    # 27/10/26 (D6): o Donate para o sistema não tem chave no painel (o dono não vê); só a env desliga
     tipos = {k: v for k, v in TIPOS_PEDIDO.items()
-             if (k not in bloqueados or k == 'musica_especifica') and k not in TIPOS_OCULTOS}
+             if (k not in bloqueados or k in ('musica_especifica', 'donate_sistema')) and k not in TIPOS_OCULTOS}
     # ⏩ Pular a espera (20/10/26): só na Efí e com música pra pedir (YouTube ou a lista do bar)
     if 'pular_espera' in tipos and not (('musica_externa' in tipos or 'musica_especifica' in tipos)
                                         and _pular_espera_para(b)):
         del tipos['pular_espera']
+    if 'donate_sistema' in tipos and not _donate_sistema_para(b):
+        del tipos['donate_sistema']
     return tipos
 
 
@@ -2065,15 +2169,18 @@ def _status_apos_pix(conn, pedido_id):
     row = conn.execute('SELECT tipo, business_id FROM pubshow_pedidos WHERE id=?', (pedido_id,)).fetchone()
     if not row:
         return 'pendente'
+    if row['tipo'] == 'donate_sistema':
+        return 'sistema'   # 27/10/26 (D6): fora de STATUS_PAGOS = fora de soma, repasse, fila e TV; só o admin vê
     b = conn.execute('SELECT moderar_ok FROM pubshow_businesses WHERE id=?', (row['business_id'],)).fetchone()
     return 'aguardando_ok' if (b and _precisa_ok(b, row['tipo'])) else 'pendente'
 
 
 def _tipos_config(b=None):
     """Tipos que o gerente vê nas configurações (sem os ocultos do cliente). ⏩ Pular a espera (20/10/26): só no
-    painel do bar que cobra pela Efí (sem o bar, fica de fora)."""
+    painel do bar que cobra pela Efí (sem o bar, fica de fora). 27/10/26 (D6): o Donate para o sistema nunca."""
     return {k: v for k, v in TIPOS_PEDIDO.items()
-            if k not in TIPOS_OCULTOS and (k != 'pular_espera' or (b is not None and _pular_espera_para(b)))}
+            if k not in TIPOS_OCULTOS and (k != 'pular_espera' or (b is not None and _pular_espera_para(b)))
+            and k != 'donate_sistema'}
 
 
 def _happy_hour_desconto(b):
@@ -2111,7 +2218,7 @@ def _precos_do_bar(b):
     except Exception:
         custom = {}
     desconto_pct = _happy_hour_desconto(b)
-    _ponte = _ponte_efi_para(b)   # ponte Efí: furar a fila R$3 e ⏩ R$1 (+ R$1 do app); no split o item da tabela
+    _ponte = _ponte_efi_para(b)   # ponte Efí: furar a fila R$4 (27/10/26) e ⏩ R$1 (+ R$1 do app); no split o item da tabela
     _piso = _piso_do_bar(b)
     teto = _preco_teto(b)   # Lote D A4 (16/10/26): R$ 50 no modo Efí, também pros preços JÁ salvos; None no Asaas
     tipos = {}
@@ -2127,14 +2234,15 @@ def _precos_do_bar(b):
             t['preco'] = PRECO_FLASH_EFI
         if k in custom:
             # piso R$5 (decisão 12/09/26: "grátis ou a partir de 5,00" — abaixo disso a taxa do PIX come o pedido)
-            t['preco'] = max(float(custom[k]), _piso)
+            # 27/10/26 (D1): o furar nunca abaixo de R$ 4 + R$ 1 = R$ 5 (custom antigo de R$ 3 da ponte)
+            t['preco'] = max(float(custom[k]), _piso, PRECO_FLASH_EFI if k == 'flash' else 0)
         if teto is not None and t['preco'] > teto:
             t['preco'] = teto
         if k in TIPOS_SEMPRE_GRATIS:
             t['preco'] = 0.0          # decisão 11/09/26: pedir música é grátis em TODO bar, custom não sobrepõe
             tipos[k] = t
             continue
-        if desconto_pct > 0 and k not in TIPOS_EQUIPE:   # gorjeta: o cliente escolhe o valor, sem desconto
+        if desconto_pct > 0 and k not in TIPOS_EQUIPE and k not in TIPOS_DONATE:   # gorjeta/donate: o cliente escolhe o valor
             preco_original = t['preco']
             # piso R$5 vale também no happy hour (15/10/26): o desconto nunca deixa abaixo do piso
             preco_hh = max(PIX_PISO_PRECO, round(preco_original * (1 - desconto_pct / 100), 2))
@@ -2570,6 +2678,8 @@ def _efi_consultar_e_confirmar(pedido_id, txid):
             conn.close()
         if n:
             log.info('[PUBSHOW] Jukebox PIX confirmado — pedido #%s (Efí %s) → %s', pedido_id, txid, _novo)
+            if _novo == 'sistema':
+                _avisar_donate_sistema(pedido_id)   # 27/10/26 (D6): só o Diogo fica sabendo
         return bool(n)
     finally:
         with _efi_lock:
@@ -2855,10 +2965,12 @@ def site_precos() -> dict:
         else:
             b = _site_bar_novo()
             precos, taxa, tem_pular = _precos_do_bar(b)[0], _taxa_pix_bar(b), _pular_espera_para(b)
+        gw = True if _site_modelo_novo() else _gateway_ativo(b)   # conserto 27/10/26: a parte do app vem do gateway
     except Exception as ex:   # nunca derruba o site: cai na tabela padrão do Asaas (a de antes)
         log.warning('[PUBSHOW] preços do site pelo bar novo falharam: %s', ex)
         precos, tem_pular = TIPOS_PEDIDO, False
         taxa = PIX_TAXA_CONVENIENCIA if os.environ.get('ASAAS_API_KEY') else 0.0
+        gw = bool(os.environ.get('ASAAS_API_KEY'))
     momentos = []
     for k in SITE_MOMENTOS:
         if k == 'pular_espera' and not tem_pular:
@@ -2868,7 +2980,7 @@ def site_precos() -> dict:
         momentos.append({'tipo': k, 'emoji': t['emoji'], 'valor': total, 'preco': _reais_curto(total),
                          'nome': re.sub(r'\s*[^\w\s!?.,-]+$', '', t['nome']).strip(), 'ok': bool(t.get('ok')),
                          'obs': 'sem esperar a vez da grátis' if k == 'pular_espera' else ''})
-    return {'taxa': taxa, 'momentos': momentos}
+    return {'taxa': taxa, 'momentos': momentos, 'gw': gw, 'donate_faixa': _donate_faixa_txt()}
 
 
 @pubshow_bp.app_template_global('pubshow_site_precos')
@@ -2879,9 +2991,9 @@ def _pubshow_site_precos_global():
 
 def taxa_app_txt() -> str:
     """Lote D B (16/10/26): o "R$ 1 do app" que o site diz (llms.txt), pela MESMA regra da landing.
-    26/10/26: a do celular de um bar novo (site_precos); '' = não fala de valor a mais."""
-    taxa = site_precos()['taxa']
-    return _reais_curto(taxa) if taxa > 0 else ''
+    26/10/26: a do celular de um bar novo (site_precos); '' = não fala de valor a mais.
+    27/10/26: a regra dos 20% (app_regra_txt) quando o bar novo paga app; '' = não fala de app."""
+    return app_regra_txt() if site_precos()['gw'] else ''   # conserto 27/10/26: pelo gateway, não pelo somador
 
 
 def _site_faq(taxa_txt: str, modelo_novo: bool, fundador: str = '') -> list:
@@ -2923,19 +3035,17 @@ def _site_faq(taxa_txt: str, modelo_novo: bool, fundador: str = '') -> list:
         ('Pedir música é pago?', musica),
         ('Quanto custa pro bar?', f'{preco} por mês, plano único, tudo incluso. 7 dias grátis, sem cartão.'),
         ('Como eu acompanho o dinheiro?',
-         'No painel você vê, a qualquer hora, quanto os momentos renderam pro bar e quanto a equipe ganhou '
-         'de gorjeta, separado. Dúvida sobre como o dinheiro chega até o bar? Chama a gente no WhatsApp '
-         'antes de assinar.'),
-        ('E a gorjeta?', 'Fica separada no painel, como dinheiro da equipe: não entra no caixa da casa.'),
+         'No painel você vê, a qualquer hora, quanto os momentos e os donates renderam pro bar. Dúvida sobre '
+         'como o dinheiro chega até o bar? Chama a gente no WhatsApp antes de assinar.'),
+        # 27/10/26 (D5): a gorjeta virou o Donate para o bar (dinheiro da casa)
+        ('E o Donate para o bar?', 'O cliente escolhe R$ ' + ', '.join(f'{v:g}' for v in DONATE_VALORES['donate_bar'][:-1])
+                                   + f' ou {DONATE_VALORES["donate_bar"][-1]:g} e o valor entra no caixa do bar, como um '
+                                   'momento.' + (f' Do total, o app fica com {taxa_txt}.' if taxa_txt else '')),
     ]
     if taxa_txt:
-        # V6-02 (16/10/26): "o bar não paga taxa" só é verdade se a taxa de serviço cobre a do Asaas
-        # (o líquido gravado é item + conveniência − taxa Asaas; com Asaas R$ 1,99 o bar paga a diferença)
-        _sem_taxa_bar = round(PIX_TAXA_CONVENIENCIA, 2) >= round(PIX_TAXA_ASAAS, 2)
-        # Lote D B (16/10/26): "R$ 1 do app", nunca "taxa de serviço" (no bar isso é o 10% do garçom)
-        faq.append((f'Quem paga o {taxa_txt} do app?',
-                    f'O cliente: {taxa_txt} por PIX, que ele vê antes de pagar.'
-                    + (' O bar não paga taxa por pedido.' if _sem_taxa_bar else '')))
+        # Lote D B (16/10/26): nunca "taxa de serviço" (no bar isso é o 10% do garçom). 27/10/26 (D2): os 20% do app
+        faq.append(('Quanto fica com o app?', f'Do total que o cliente paga no PIX, o app fica com {taxa_txt} e o '
+                                              'resto é do bar. O cliente vê o total antes de pagar.'))
     faq += [
         ('Preciso instalar algo?', instalar),
         ('Posso cancelar?', 'Sim, pelo painel, sem multa. O jukebox fica ativo até o fim do mês já pago.'),
@@ -2973,7 +3083,7 @@ def index():
     # Lote D B (16/10/26): oferta de fundador só no site do modelo novo, com as vagas contadas no banco (some no 0)
     vagas = fundador_vagas() if modelo_novo else 0
     fundador = _texto_fundador(vagas)
-    taxa_txt = _reais_curto(taxa) if taxa > 0 else ''
+    taxa_txt = app_regra_txt() if sp['gw'] else ''   # 27/10/26: "20% (no mínimo R$ 1)"; conserto: pelo gateway
     momentos = sp['momentos']
     faq = _site_faq(taxa_txt, modelo_novo, fundador)
     # V6-05: bar logado que já paga vê "Seu plano está ativo → Painel", não "Assinar" de novo
@@ -3008,7 +3118,7 @@ def index():
                            planos=PLANOS, canais=CANAIS,
                            total_videos=total_videos, total_canais=total_canais,
                            modelo_novo=modelo_novo, taxa=taxa, taxa_txt=taxa_txt, momentos=momentos,
-                           gorjeta_txt=' · '.join(f'{v:.0f}' for v in GORJETA_VALORES),
+                           donate_txt=' · '.join(f'{v:.0f}' for v in DONATE_VALORES['donate_bar']),
                            gorjeta_sem_taxa=bool(modelo_novo and rg['taxa_gorjeta'] <= 0),
                            # Lote D B (16/10/26): a calculadora e o texto leem o MESMO % do FAQ (era a garantia, que saiu)
                            mensal_pct=(rg['pct'] if modelo_novo else 0),
@@ -3123,6 +3233,33 @@ def _pubshow_send_wa(telefone: str, mensagem: str) -> bool:
     except Exception as ex:
         log.warning('[PUBSHOW] WA send error: %s', ex)
         return False
+
+
+def _avisar_donate_sistema(pedido_id):
+    """27/10/26 (D6): o Donate para o sistema pago chega ao Diogo pelo WhatsApp que o PubShow JÁ usa (Evolution,
+    PUBSHOW_ADMIN_PHONE; vazio = SUPORTE_WA). No máximo 20 por hora (anti-spam do número); acima disso só a lista do
+    SaaS Admin. Nunca derruba a confirmação do PIX."""
+    try:
+        conn = get_pubshow_db()
+        try:
+            r = conn.execute(
+                "SELECT p.nome_cliente, p.mensagem, p.valor_cobrado, b.nome AS bar, b.code FROM pubshow_pedidos p "
+                "JOIN pubshow_businesses b ON b.id = p.business_id "
+                "WHERE p.id=? AND p.tipo='donate_sistema' AND p.status='sistema'", (int(pedido_id),)).fetchone()
+        finally:
+            conn.close()
+        if not r or _rl_bloqueado('donate_wa', max_n=20, janela=3600):
+            return
+        _rl_falhou('donate_wa')
+        tel = (os.environ.get('PUBSHOW_ADMIN_PHONE', '') or '').strip() or SUPORTE_WA
+        _1l = lambda x: ' '.join(str(x or '').split()) or '—'   # conserto 27/10/26: texto do cliente numa linha só
+        # conferência final 28/10/26 (D1): o nome do bar também (o cadastro aceita quebra de linha e forjava "Valor:")
+        msg = (f'💙 *Donate para o sistema*\nBar: {_1l(r["bar"])[:60]} ({_1l(r["code"])})\n'
+               f'Valor: {_reais_curto(float(r["valor_cobrado"] or 0))}\nNome: {_1l(r["nome_cliente"])}\n'
+               f'Recado: {_1l(r["mensagem"])}\n{datetime.now().strftime("%d/%m %H:%M")}')
+        _threading.Thread(target=_pubshow_send_wa, args=(tel, msg), daemon=True).start()
+    except Exception as ex:
+        log.warning('[PUBSHOW] aviso do donate pro sistema #%s falhou: %s', pedido_id, ex)
 
 
 _MSG_RECUPERAR = ('Se este e-mail estiver cadastrado, enviamos o link pra criar uma senha nova no WhatsApp '
@@ -3473,13 +3610,14 @@ def _furar_preco_tv(b):
     return 'R$ ' + (f'{_fl:.0f}' if abs(_fl - round(_fl)) < 0.005 else f'{_fl:.2f}').replace('.', ',')
 
 
-_TIPOS_CANTO_TV = ('flash', 'parabens', 'dedicatoria', 'brinde', 'chegada', 'casamento', 'gorjeta', 'cantada', 'salve')
+_TIPOS_CANTO_TV = ('flash', 'parabens', 'dedicatoria', 'brinde', 'chegada', 'casamento', 'donate_bar', 'cantada',
+                   'salve')   # 27/10/26: 'gorjeta' → 'donate_bar'
 
 
 def _precos_canto_tv(b):
     """24/10/26 (momentos no telão, visual; decisão do Diogo: "no canto do QR fica o convite de cada momento com o preço
     do bar"): {tipo: 'R$ 6'} com o MESMO número que o cardápio do celular mostra no cartão daquele tipo (jukebox.html:
-    preço do bar + o R$ 1 do app do pix_conv; a gorjeta sem o R$ 1, porque o cardápio mostra "R$ 5+"). Tipo que o bar
+    preço do bar + o R$ 1 do app do pix_conv; o donate sem somar o app, porque o cardápio mostra "R$ 5+"). Tipo que o bar
     desligou fica de fora (a TV chama pra música grátis). Nunca derruba a TV nem o status."""
     try:
         precos = _precos_do_bar(b)[0]
@@ -3491,7 +3629,7 @@ def _precos_canto_tv(b):
     for k in _TIPOS_CANTO_TV:
         if k not in disp or k not in precos:
             continue
-        v = precos[k]['preco'] + (0 if k == 'gorjeta' else conv)
+        v = precos[k]['preco'] + (0 if k in TIPOS_DONATE else conv)
         # a regra do macro brl() do jukebox.html, igualzinha: inteiro sem centavos, senão com 2 casas
         out[k] = 'R$ ' + (f'{v:.0f}' if v == int(v) else f'{v:.2f}').replace('.', ',')
     return out
@@ -3551,9 +3689,9 @@ def _pix_pendente_de_pedido(b, row, precos_bar):
     cobrado = row.get('valor_cobrado')
     efi_tela = {}   # Lote C, fatia b: {'efi': True, 'expira_min', 'expira_hora'} só no pedido da Efí
     if via_asaas and cobrado is not None:
+        # 27/10/26 (D3): o item é a parte do bar GRAVADA (pedido antigo = o item; novo = total − app) e a do app é o resto
         valor = float(cobrado)
-        # valor (líquido) = item + conveniência - taxa Asaas → item = cobrado - conveniência
-        item = round(valor - PIX_TAXA_CONVENIENCIA, 2)
+        item = float(row.get('valor') or 0)
         taxa = round(valor - item, 2)
     elif via_asaas:
         # crítico dinheiro B3 (17/10/26): PIX do Asaas de antes do deploy (sem valor_cobrado) = item + R$ 1 do app
@@ -3681,6 +3819,8 @@ def jukebox(token, pix_id=None):
             # 24/10/26 (F3-2): todo texto que vai pra TV perde o caractere invisível antes do filtro
             nome_cliente  = _nome_tv(_sem_invisiveis(request.form.get('nome_cliente', '')))
             mensagem      = _sem_invisiveis(request.form.get('mensagem', '')).strip()[:80]
+            if tipo == 'donate_sistema':
+                mensagem = ' '.join(mensagem.split())   # conserto 27/10/26: sem quebra de linha no WhatsApp do Diogo
             # 16/10/26 (C2): no parabéns o nome GRANDE da TV é o do aniversariante; quem manda é opcional e
             # sai pequeno, junto do recado ("· de Zé")
             remetente     = _nome_tv(_sem_invisiveis(request.form.get('remetente', ''))) if tipo == 'parabens' else ''
@@ -3701,8 +3841,12 @@ def jukebox(token, pix_id=None):
                 erro = 'Sem palavrão, beleza? 😉 Troca o nome ou a mensagem, que aparecem na TV.'
             elif _texto_politico(nome_cliente, mensagem, remetente):
                 erro = MSG_POLITICA   # 18/10/26: trava eleitoral (vale pro grátis e pro pago, antes de qualquer PIX)
-            elif any(_tem_link_ou_fone(x) for x in (nome_cliente, mensagem, remetente)):
+            elif any(_tem_link_ou_fone(x) for x in (nome_cliente, remetente,
+                                                    '' if tipo == 'donate_sistema' else mensagem)):
                 erro = MSG_LINK_FONE
+            elif tipo == 'donate_sistema' and _tem_link_ou_fone(_FONE.sub(' ', mensagem)):
+                # 27/10/26 (D6): o recado pro sistema aceita telefone (é assim que um dono de bar pede o PubShow), link não
+                erro = 'Sem link no recado, beleza? 🙏'
             elif tipo == 'flash' and _nome_furar_ruim(nome_cliente):
                 # 25/10/26 (leva 1 da fama): o nome do ⚡ é só o nome da pessoa, antes de qualquer pedido ou PIX
                 # (Asaas, split ou ponte Efí: todos nascem lá embaixo, depois desta lista)
@@ -3751,13 +3895,14 @@ def jukebox(token, pix_id=None):
                 if remetente:
                     mensagem = (f'{mensagem} · de {remetente}' if mensagem else f'de {remetente}')
                 preco = precos_bar[tipo]['preco']
-                if tipo == 'gorjeta':
-                    # valor escolhido pelo cliente (5/10/20/50); happy hour não desconta gorjeta
-                    try:    _vg = float(request.form.get('valor_gorjeta') or 0)
-                    except (TypeError, ValueError): _vg = 0.0
-                    preco = _vg if _vg in GORJETA_VALORES else max(GORJETA_VALORES[0], float(TIPOS_PEDIDO['gorjeta']['preco']))
-                    if not mensagem:
-                        mensagem = f'Mandou R$ {preco:.0f} pra equipe. Obrigado! 🙏'
+                if tipo in TIPOS_DONATE:
+                    # 27/10/26 (D5/D6): valor TOTAL escolhido no celular; fora da lista = o menor
+                    try:    _vd = float(request.form.get('valor_donate') or 0)
+                    except (TypeError, ValueError): _vd = 0.0
+                    preco = _vd if _vd in DONATE_VALORES[tipo] else DONATE_VALORES[tipo][0]
+                    youtube_id = titulo_pedido = thumb_url = ''
+                    if not mensagem and tipo == 'donate_bar':
+                        mensagem = f'Mandou R$ {preco:.0f} de donate para o bar. Valeu! 🙏'
                 # Asaas é o PADRÃO de pagamento: se está configurado, TODO pedido
                 # passa por ele (cobrança automática + confirmação sozinha). O modo
                 # manual (chave PIX do próprio bar) fica só como fallback p/ quem tem.
@@ -3769,8 +3914,6 @@ def jukebox(token, pix_id=None):
                     usar_pix = False   # pedido GRÁTIS: entra direto na fila, sem cobrança
                 tipo_nome  = precos_bar[tipo]['nome']
                 tipo_emoji = precos_bar[tipo]['emoji']
-                # taxa de serviço que o cliente paga a mais (a da Efí vem do pubshow_pay: a mesma env de hoje)
-                _taxa_cli = (pubshow_pay.conv_cent_para(tipo) / 100) if _efi else PIX_TAXA_CONVENIENCIA
 
                 # 16/10/26 (C2): o MESMO pedido com PIX ainda aberto (recarregou a página, voltou do banco,
                 # tocou 2x) reabre o PIX que já existe — antes, depois de 60 s, criava a 2ª cobrança no Asaas
@@ -3797,7 +3940,7 @@ def jukebox(token, pix_id=None):
                     if _ab and _ab['efi_txid'] is not None and not _ponte_pix_vivo(_ab):
                         _ab = None   # ponte Efí: o QR vale 15 min — vencido não reabre, sai um novo
                     if _ab and (_ab['valor_cobrado'] is None or not _gateway or
-                                abs(float(_ab['valor_cobrado']) - round(preco + _taxa_cli, 2)) < 0.005):
+                                abs(float(_ab['valor_cobrado']) - _total_cliente(b, tipo, preco)) < 0.005):
                         pix_pendente = _pix_pendente_de_pedido(b, _ab, precos_bar)
 
                 # Tetos anti-flood (15/10/26): PIX abertos por bar/celular, fila, 1 grátis por celular
@@ -3834,6 +3977,15 @@ def jukebox(token, pix_id=None):
                     # centavos de identificação só no PIX manual — no Asaas o payment_id identifica e o cliente vê o preço cheio
                     # (na Efí, split ou ponte, o txid identifica: preço cheio também)
                     preco_final = preco if _gateway else round(preco + _offset * 0.01, 2)
+                    # 27/10/26 (D2): TOTAL do PIX e quem fica com quanto. valor = a parte do bar (o que vira repasse),
+                    # valor_cobrado = o total. PIX manual (chave do bar): tudo do bar, sem app.
+                    _valor_cobranca = _total_cliente(b, tipo, preco_final) if _gateway else preco_final
+                    if not _gateway:
+                        _bar_parte, _app_parte = preco_final, 0.0
+                    elif tipo == 'donate_sistema':
+                        _bar_parte, _app_parte = 0.0, _valor_cobranca
+                    else:
+                        _bar_parte, _app_parte = divisao_app(_valor_cobranca)
 
                     # ── Cria pedido como aguardando_pix (sem asaas_payment_id ainda) ─
                     # via_gateway=1 já no INSERT (15/10/26): na janela até o Asaas responder, o
@@ -3847,7 +3999,7 @@ def jukebox(token, pix_id=None):
                             youtube_id, titulo_pedido, thumb_url, ip_cliente, pix_txid, via_gateway, efi_txid)
                            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)''',
                         (b['id'], tipo, nome_cliente, mensagem, categoria,
-                         'aguardando_pix', preco_final,
+                         'aguardando_pix', _bar_parte,
                          youtube_id or None, titulo_pedido or None, thumb_url or None,
                          ip_cliente, txid, 1 if _gateway else 0, '' if _ponte else None)
                     )
@@ -3860,11 +4012,7 @@ def jukebox(token, pix_id=None):
                     descricao_pedido = tipo_nome
                     if titulo_pedido:
                         descricao_pedido += f' — {titulo_pedido[:40]}'
-                    # Taxa de conveniência: só no caminho Asaas (que tem custo de
-                    # transação). O cliente paga +R$1 e o bar recebe o valor cheio
-                    # do pedido. No PIX manual (chave do próprio bar) não há taxa.
-                    _valor_cobranca = round(preco_final + PIX_TAXA_CONVENIENCIA, 2)
-                    _taxa_tela = PIX_TAXA_CONVENIENCIA
+                    _taxa_tela = _app_parte
                     _efi_ok = False
                     # Ponte Efí (produção 16/10/26): cobra SÓ pela Efí (nada de Asaas, nada de chave do bar se ela falhar)
                     efi_data   = (_efi_criar_cobranca_jukebox(pedido_id, _valor_cobranca, f'Jukebox — {descricao_pedido} — {b["nome"]}')
@@ -3880,8 +4028,10 @@ def jukebox(token, pix_id=None):
                                 # VCa-01/02 (16/10/26): a mensalidade nunca sai pelos 2 lados nem de quem cancelou:
                                 # assinatura ativa no Asaas (migração) ou plano_ativo=0 (mês pago, ativo_ate) → 0
                                 _sem_mens = (not b['plano_ativo']) or _tem_assinatura_ativa(b['id'])
-                                pay = pubshow_pay.criar_cobranca_momento(_cp, b, pedido_id, int(round(preco_final * 100)),
-                                                                         None, tipo, _asaas_descricao(descricao_pedido),   # DIN-2: sem emoji de 4 bytes
+                                # 27/10/26 (D9): item = a parte do bar, conv = a parte do app (os 20%)
+                                pay = pubshow_pay.criar_cobranca_momento(_cp, b, pedido_id, int(round(_bar_parte * 100)),
+                                                                         int(round(_app_parte * 100)), tipo,
+                                                                         _asaas_descricao(descricao_pedido),   # DIN-2: sem emoji de 4 bytes
                                                                          sem_mensalidade=_sem_mens)
                             finally:
                                 _cp.close()
@@ -3897,7 +4047,7 @@ def jukebox(token, pix_id=None):
                             conn3 = get_pubshow_db()
                             conn3.execute(
                                 'UPDATE pubshow_pedidos SET pix_txid=?, pix_payload=?, valor=?, valor_cobrado=? WHERE id=?',
-                                (pay['txid'], pix_payload, preco_final, _valor_cobranca, pedido_id)
+                                (pay['txid'], pix_payload, _bar_parte, _valor_cobranca, pedido_id)
                             )
                             conn3.commit(); conn3.close()
                         else:
@@ -3915,7 +4065,7 @@ def jukebox(token, pix_id=None):
                         conn3 = get_pubshow_db()
                         conn3.execute(
                             'UPDATE pubshow_pedidos SET efi_txid=?, pix_payload=?, valor=?, valor_cobrado=? WHERE id=?',
-                            (efi_data['txid'], efi_data['copia_cola'], preco_final, _valor_cobranca, pedido_id)
+                            (efi_data['txid'], efi_data['copia_cola'], _bar_parte, _valor_cobranca, pedido_id)
                         )
                         conn3.commit(); conn3.close()
                         pix_payload = efi_data['copia_cola']
@@ -3928,14 +4078,11 @@ def jukebox(token, pix_id=None):
                         erro = 'Pagamento indisponível agora, tenta de novo em instantes.'
                     elif asaas_data:
                         # Asaas gerou QR — salva payment_id e usa payload do Asaas.
-                        # Grava o valor LÍQUIDO do bar: cliente paga item + conveniência,
-                        # o Asaas desconta a taxa dele, e o bar recebe o que sobra.
-                        # Com os defaults (conveniência = taxa Asaas), o líquido = item cheio.
-                        _valor_liquido_bar = round(preco_final + PIX_TAXA_CONVENIENCIA - PIX_TAXA_ASAAS, 2)
+                        # 27/10/26 (D2/C3): valor = a parte do bar (total − app); a tarifa do Asaas sai da parte do app
                         conn3 = get_pubshow_db()
                         conn3.execute(
                             'UPDATE pubshow_pedidos SET asaas_payment_id=?, pix_payload=?, valor=?, valor_cobrado=? WHERE id=?',
-                            (asaas_data['payment_id'], asaas_data['payload'], _valor_liquido_bar, _valor_cobranca, pedido_id)
+                            (asaas_data['payment_id'], asaas_data['payload'], _bar_parte, _valor_cobranca, pedido_id)
                         )
                         conn3.commit(); conn3.close()
                         pix_qr    = asaas_data['qr_b64']
@@ -3967,13 +4114,13 @@ def jukebox(token, pix_id=None):
                     if not erro:
                         # ── Notificação WhatsApp + Push em background (não bloqueia resposta) ──
                         _hh_txt = ' 🎉 Happy Hour!' if (precos_bar.get(tipo) or {}).get('happy_hour') else ''   # só se ESTE item teve desconto (15/10/26)
-                        _bid, _emoji, _tnome, _nome, _preco = b['id'], tipo_emoji, tipo_nome, nome_cliente, preco_final
+                        _bid, _emoji, _tnome, _nome, _preco = b['id'], tipo_emoji, tipo_nome, nome_cliente, _bar_parte
                         _via_asaas = bool(asaas_data or efi_data) or _efi_ok   # confirma sozinho (Asaas, ponte ou split)
                         _bd_copy = dict(b)
                         def _notif_pix():
                             if _via_asaas:
-                                # Confirmação automática — o dono não precisa fazer nada
-                                _msg = f'🎵 *Novo pedido no Jukebox!*{_hh_txt}\n{_emoji} {_tnome}\n👤 {_nome}\n💰 R$ {_preco:.2f}\n✅ Confirma sozinho assim que o PIX cair.'
+                                # Confirmação automática — o dono não precisa fazer nada (27/10/26: a parte do bar)
+                                _msg = f'🎵 *Novo pedido no Jukebox!*{_hh_txt}\n{_emoji} {_tnome}\n👤 {_nome}\n💰 {_reais_curto(_preco)} pro bar\n✅ Confirma sozinho assim que o PIX cair.'
                             else:
                                 # PIX manual — o dono precisa confirmar no painel
                                 _msg = f'🎵 *Novo pedido PIX aguardando!*{_hh_txt}\n{_emoji} {_tnome}\n👤 {_nome}\n💰 R$ {_preco:.2f}\n📋 Acesse o painel para confirmar.'
@@ -3981,7 +4128,8 @@ def jukebox(token, pix_id=None):
                             except: pass
                             try: _enviar_push_pedido(_bid, _emoji, _tnome, _nome, _preco)
                             except: pass
-                        _threading.Thread(target=_notif_pix, daemon=True).start()
+                        if tipo != 'donate_sistema':   # 27/10/26 (D6): o dono do bar não fica sabendo
+                            _threading.Thread(target=_notif_pix, daemon=True).start()
 
                         pix_pendente = {
                             'pedido_id':  pedido_id,
@@ -3989,7 +4137,7 @@ def jukebox(token, pix_id=None):
                             'qr_b64':     pix_qr,
                             # valor = total que o cliente paga (com taxa, se via Asaas ou Efí)
                             'valor':      _valor_cobranca if _via_asaas else preco_final,
-                            'valor_item': preco_final,
+                            'valor_item': _bar_parte,
                             'taxa_conv':  _taxa_tela if _via_asaas else 0.0,
                             # ponte Efí: o nome da conta recebedora não é o do bar — a tela não mostra "Recebedor"
                             'recebedor':  '' if efi_data else (b['pix_nome_recebedor'] or b['nome']),
@@ -4107,7 +4255,11 @@ def jukebox(token, pix_id=None):
                            volta_as=volta_as,
                            pix_titular=os.environ.get('PUBSHOW_PIX_TITULAR', '').strip(),
                            # só os tipos que o bar NÃO bloqueou (antes o card aparecia e o POST dava 'Tipo de pedido inválido')
-                           tipos={k: v for k, v in precos_bar.items() if k in tipos_bar},
+                           # 27/10/26 (D4): cada tipo leva a linha da divisão ('div'), a MESMA conta que o servidor cobra
+                           tipos={k: dict(v, div=_div_do_tipo(b, k, v['preco'])) for k, v in precos_bar.items() if k in tipos_bar},
+                           donates={k: {'valores': [int(x) for x in DONATE_VALORES[k]],
+                                        'div': {str(int(x)): _div_do_tipo(b, k, x) for x in DONATE_VALORES[k]}}
+                                    for k in TIPOS_DONATE if k in tipos_bar},
                            tipos_disponiveis=tipos_bar,
                            hh_desconto=hh_desconto,
                            fila=[dict(f) for f in fila],
@@ -4126,9 +4278,6 @@ def jukebox(token, pix_id=None):
                            # asaas_ativo = "PIX por gateway" (Asaas, ponte Efí ou split): QR automático + taxa no total
                            asaas_ativo=_gw,
                            pix_conv=_taxa_pix_bar(b, 'flash'),
-                           # VDB-03 (16/10/26): o R$ 1 do app da GORJETA (Efí com PUBSHOW_GORJETA_CONV=0 = R$ 0, o PIX
-                           # cobra só a gorjeta); no Asaas é o mesmo do momento, como hoje
-                           pix_conv_gorjeta=_taxa_pix_bar(b, 'gorjeta'),
                            # Efí ligada e o bar sem a conta Efí conectada: momentos pagos indisponíveis (só música grátis)
                            efi_sem_conta=(_efi and not _efi_conta_ok(b)),
                            # o celular só lembra o nome que o servidor ACEITOU (16/10/26, V4-02); no parabéns, o
@@ -4167,9 +4316,19 @@ def jukebox_ja_paguei(token, pedido_id):
     # Pedido de GATEWAY (15/10/26): só confirma pelo gateway (webhook / admin "PIX caiu").
     # "Já paguei" nunca muda o status dele — nem na janela antes do Asaas responder.
     ped = conn.execute(
-        'SELECT status, asaas_payment_id, via_gateway FROM pubshow_pedidos WHERE id=? AND business_id=?',
+        'SELECT status, asaas_payment_id, via_gateway, tipo, ip_cliente FROM pubshow_pedidos WHERE id=? AND business_id=?',
         (pedido_id, b['id'])
     ).fetchone()
+    _c = (request.args.get('c') or '').strip()
+    if ped and ped['tipo'] == 'donate_sistema' and not (
+            re.fullmatch(r'[A-Za-z0-9_-]{8,40}', _c) and (ped['ip_cliente'] or '').endswith('#' + _c)):
+        # conferência final 28/10/26 (D2): o dono não descobre pelo id que o donate existiu. Responde o mesmo que um id
+        # que não existe neste bar, sem mexer no banco
+        conn.close()
+        if b['requer_pix']:
+            return jsonify({'ok': True, 'modo': 'aguardando_bar',
+                            'msg': 'Aviso enviado! O bar vai confirmar seu pagamento em instantes.'})
+        return jsonify({'ok': False, 'error': 'Pedido não encontrado ou já confirmado'})
     if ped and (ped['asaas_payment_id'] or ped['via_gateway']):
         conn.close()
         if ped['status'] in ('pendente', 'exibido'):
@@ -4269,7 +4428,8 @@ def _momentos_na_frente(b, ate_id=None):
     try:
         return conn.execute(
             f"""SELECT COUNT(*) FROM pubshow_pedidos WHERE business_id=? AND status='pendente'
-                  AND tipo IN ('parabens','dedicatoria','brinde','chegada','casamento','gorjeta','cantada','salve')
+                  AND tipo IN ('parabens','dedicatoria','brinde','chegada','casamento','gorjeta','donate_bar','cantada',
+                               'salve')
                   AND created_at >= {_JANELA_FILA} AND (?=0 OR id < ?)""",
             (b['id'], int(ate_id or 0), int(ate_id or 0))).fetchone()[0]
     except Exception:
@@ -4529,7 +4689,8 @@ def api_status(code):
     pedido_especial = conn.execute(
         '''SELECT * FROM pubshow_pedidos
            WHERE business_id=? AND status="pendente"
-           AND tipo IN ("parabens","dedicatoria","brinde","chegada","casamento","gorjeta","cantada","salve")
+           AND tipo IN ("parabens","dedicatoria","brinde","chegada","casamento","gorjeta","donate_bar","cantada",
+                       "salve")
            AND NOT (tipo="brinde" AND EXISTS (SELECT 1 FROM pubshow_pedidos x WHERE x.business_id=? AND x.tipo="brinde"
                     AND x.status="exibido" AND x.created_at >= datetime('now','-1 day')
                     AND x.exibido_at >= datetime('now','-3 hours',?)))
@@ -4568,8 +4729,8 @@ def api_status(code):
     ).fetchone()[0]
 
     # Pedidos aguardando PIX: para mostrar badge no painel do bar
-    aguardando_pix = conn.execute(
-        'SELECT COUNT(*) FROM pubshow_pedidos WHERE business_id=? AND status="aguardando_pix"',
+    aguardando_pix = conn.execute(   # conferência final 28/10/26 (D2): sem o Donate para o sistema
+        'SELECT COUNT(*) FROM pubshow_pedidos WHERE business_id=? AND status="aguardando_pix" AND tipo<>"donate_sistema"',
         (b['id'],)
     ).fetchone()[0]
 
@@ -4637,7 +4798,7 @@ def api_pedido_status(token, pedido_id):
     """Polling do cliente: retorna status + posição na fila + tempo estimado."""
     conn = get_pubshow_db()
     row = conn.execute(
-        '''SELECT p.status, p.business_id, p.created_at, p.efi_txid, p.tipo,
+        '''SELECT p.status, p.business_id, p.created_at, p.efi_txid, p.tipo, p.ip_cliente,
                   ((TRIM(COALESCE(p.pago_em,''))<>'' OR p.estornado_em IS NOT NULL)
                    AND (TRIM(COALESCE(p.asaas_payment_id,''))<>'' OR TRIM(COALESCE(p.efi_txid,''))<>'')
                    AND p.repasse_manual_id IS NULL
@@ -4650,6 +4811,10 @@ def api_pedido_status(token, pedido_id):
            WHERE p.id=? AND (b.jukebox_token=? OR b.code=?)''',
         (pedido_id, token, token)
     ).fetchone()
+    _c = (request.args.get('c') or '').strip()
+    if row and row['tipo'] == 'donate_sistema' and not (
+            re.fullmatch(r'[A-Za-z0-9_-]{8,40}', _c) and (row['ip_cliente'] or '').endswith('#' + _c)):
+        row = None   # conserto 27/10/26 (D6): o dono não descobre pelo id que o donate existiu
     if not row:
         conn.close()
         return jsonify({'error': 'not_found'}), 404
@@ -6142,8 +6307,9 @@ def painel():
     except Exception:
         pass
     conn = get_pubshow_db()
+    # 27/10/26 (D6): o Donate para o sistema não existe pro dono do bar (pedidos de hoje, PIX aberto, total)
     pedidos_hoje = conn.execute(
-        '''SELECT * FROM pubshow_pedidos WHERE business_id=?
+        '''SELECT * FROM pubshow_pedidos WHERE business_id=? AND tipo<>"donate_sistema"
            AND date(created_at, "-3 hours")=date("now", "-3 hours")
            ORDER BY created_at DESC''',
         (b['id'],)
@@ -6167,7 +6333,7 @@ def painel():
     ).fetchall()
     fila = _fila_com_trava(conn, b['id'], fila)   # 25/10/26 (trava do ⚡ furar): as músicas na ordem real da TV
     aguardando_pix = conn.execute(
-        '''SELECT * FROM pubshow_pedidos WHERE business_id=? AND status="aguardando_pix"
+        '''SELECT * FROM pubshow_pedidos WHERE business_id=? AND status="aguardando_pix" AND tipo<>"donate_sistema"
            AND created_at >= datetime('now','-30 minutes')
            ORDER BY created_at DESC LIMIT 20''',
         (b['id'],)
@@ -6179,7 +6345,7 @@ def painel():
         (b['id'],)
     ).fetchall()
     total_pedidos_bar = conn.execute(
-        'SELECT COUNT(*) FROM pubshow_pedidos WHERE business_id=?', (b['id'],)
+        "SELECT COUNT(*) FROM pubshow_pedidos WHERE business_id=? AND tipo<>'donate_sistema'", (b['id'],)
     ).fetchone()[0]
 
     # ── Receita acumulada (casa, só pago confirmado — soma única) ────────────
@@ -6204,8 +6370,7 @@ def painel():
     import json as _json
     bd = dict(b)
     bd['total_pedidos'] = total_pedidos_bar
-    try:    bloqueados_parsed = _json.loads(bd.get('tipos_bloqueados') or '[]')
-    except: bloqueados_parsed = []
+    bloqueados_parsed = _bloqueados_do_bar(bd)   # 27/10/26: gorjeta desligada = Donate para o bar desligado
     try:    precos_parsed = _json.loads(bd.get('precos_custom') or '{}')
     except: precos_parsed = {}
     # VDA-01 (16/10/26): no modo Efí o preço salvo acima do teto aparece JÁ cortado (R$ 50). Assim o campo nunca
@@ -6226,11 +6391,14 @@ def painel():
             except (TypeError, ValueError):
                 continue
             _nome = TIPOS_PEDIDO[_k].get('nome', _k)
+            # 27/10/26 (D1): o piso do furar vale na tela também (R$ 4 + R$ 1 = R$ 5); o banco guarda o custom
+            _piso_k = max(_piso_do_bar(bd), PRECO_FLASH_EFI) if _k == 'flash' else _piso_do_bar(bd)
             if _teto_painel is not None and _f > _teto_painel:
                 precos_parsed[_k] = _teto_painel
                 precos_cortados.append({'k': _k, 'nome': _nome, 'antes': _f, 'depois': _teto_painel, 'motivo': 'teto'})
-            elif 0 < _f < _piso_do_bar(bd):
-                precos_cortados.append({'k': _k, 'nome': _nome, 'antes': _f, 'depois': _piso_do_bar(bd), 'motivo': 'piso'})
+            elif 0 < _f < _piso_k:
+                precos_parsed[_k] = _piso_k
+                precos_cortados.append({'k': _k, 'nome': _nome, 'antes': _f, 'depois': _piso_k, 'motivo': 'piso'})
     try:    temas_habilitados = _json.loads(bd.get('temas_habilitados') or 'null')
     except: temas_habilitados = None
     try:    anuncios_parsed = _json.loads(bd.get('anuncios_json') or '[]')
@@ -6317,7 +6485,6 @@ def painel():
                            gratis_min=GRATIS_INTERVALO_MIN,         # aba ✨ Pedidos: "1 música grátis a cada N min"
                            pausa_resta_s=_pausa_resta_s(bd),        # ⏸️ 25/10/26: o botão abre já no estado da TV
                            eleicao=_janela_eleitoral(),             # 18/10/26: 🛡️ "todo recado passa por aqui" (24-25/10)
-                           taxa_gorjeta=_taxa_pix_bar(bd, 'gorjeta'),   # o selo da gorjeta = o que o cliente paga
                            # 🔇 modo esporte (outra sessão): a chave só aparece com a coluna E a rota no ar juntas
                            rota_modo_esporte=_rota_modo_esporte(),
                            meu_dinheiro=meu_dinheiro, conta_efi_msg=conta_efi_msg, brl_cent=_brl_cent,
@@ -6331,7 +6498,8 @@ def painel():
                            preco_teto=_preco_teto(bd),
                            # VDB-02 (16/10/26): no modo Efí o "o cliente paga" dos Ajustes usa o MESMO R$ 1 do app do
                            # celular e da cobrança (pubshow_pay.conv_cent_para); no Asaas fica o do context_processor
-                           **({'TAXA_SERVICO': pubshow_pay.conv_cent_para('flash') / 100} if _efi_bar else {}),
+                           # conserto 27/10/26: o MESMO somador do celular em toda rota (_taxa_pix_bar)
+                           TAXA_SERVICO=_taxa_pix_bar(bd, 'flash'),
                            # Lote D A1: o preço DESTE bar (fundador: o travado) no "Assinar R$ X/mês"
                            PLANO=_plano_do_bar(bd),
                            b=bd, canais=canais_plano,
@@ -6344,14 +6512,15 @@ def painel():
                            segundo_bar=_segundo_bar_do_doc(bd),   # crítico leigo A1
                            gorjeta_hoje=gorjeta_hoje, gorjeta_hoje_n=gorjeta_hoje_n,
                            gorjeta_7dias=[dict(r) for r in gorjeta_7dias],
-                           # verificador B12: no bar da ponte Efí o furar a fila padrão é R$ 3 (o painel mostra o mesmo)
+                           # verificador B12: no bar da ponte Efí o furar a fila padrão é R$ 4 (+ R$ 1 do app = R$ 5)
                            tipos_config=({k: (dict(v, preco=PRECO_FLASH_EFI) if k == 'flash' else
                                               dict(v, preco=PRECO_PULAR_EFI) if k == 'pular_espera' else v)
                                           for k, v in _tipos_config(bd).items()} if _ponte_efi_para(bd) else _tipos_config(bd)),
                            fila=_pedidos_com_hora_local([dict(f) for f in fila]),
                            aguardando_pix=_pedidos_com_hora_local([dict(p) for p in aguardando_pix]),
                            aguardando_ok=_pedidos_com_hora_local([dict(p) for p in aguardando_ok]),
-                           tipos=TIPOS_PEDIDO,
+                           # 27/10/26 (D6): o Donate para o sistema não existe pro dono (nem no TIPOS_INFO do JS)
+                           tipos={k: v for k, v in TIPOS_PEDIDO.items() if k != 'donate_sistema'},
                            planos=PLANOS,
                            bloqueados_parsed=bloqueados_parsed,
                            precos_parsed=precos_parsed, precos_cortados=precos_cortados,
@@ -6454,7 +6623,7 @@ def _painel_pedido_repasse(bd, efi_bar):
                   f'Bar: {bd.get("nome") or ""} (código {bd.get("code") or ""})',
                   f'Período: {de} a {ate}' if de else f'Até {ate}',
                   f'Momentos (caixa da casa): {reais(bar)}',
-                  f'Gorjetas da equipe: {reais(gorj)}',
+                  *([f'Gorjetas da equipe: {reais(gorj)}'] if gorj > 0 else []),   # 27/10/26: só o histórico
                   f'Total: {reais(total)}',
                   f'Chave PIX: {chave}' if chave else 'Chave PIX: ainda não cadastrada no painel']
         if titular:
@@ -6731,8 +6900,9 @@ def _aviso_semana_asaas() -> bool:
 
 
 def _texto_semana(b, momentos_cent, gorjeta_cent, efi):
-    txt = (f'🎉 Semana passada o PubShow rendeu {_brl_cent(momentos_cent)} pro {b["nome"]} e '
-           f'{_brl_cent(gorjeta_cent)} de gorjeta pra equipe.')
+    # 27/10/26: sem gorjeta na semana, sem a frase (o Donate para o bar já está em momentos_cent, a conta 'casa')
+    txt = f'🎉 Semana passada o PubShow rendeu {_brl_cent(momentos_cent)} pro {b["nome"]}'
+    txt += f' e {_brl_cent(gorjeta_cent)} de gorjeta pra equipe.' if gorjeta_cent else '.'
     return txt + (' Já está na sua conta Efí.' if efi else '')
 
 
@@ -7026,7 +7196,7 @@ def painel_fila_json():
     fila = _fila_com_trava(conn, b['id'], fila)   # 25/10/26 (trava do ⚡ furar): as músicas na ordem real da TV
     aguardando = conn.execute(
         '''SELECT id, nome_cliente, tipo, mensagem, valor, created_at, youtube_id, titulo_pedido
-           FROM pubshow_pedidos WHERE business_id=? AND status="aguardando_pix"
+           FROM pubshow_pedidos WHERE business_id=? AND status="aguardando_pix" AND tipo<>"donate_sistema"
            AND created_at >= datetime('now','-30 minutes')
            ORDER BY created_at DESC LIMIT 20''',
         (b['id'],)
@@ -8427,7 +8597,7 @@ def painel_recusar_pix(pid):
     conn = get_pubshow_db()
     n = conn.execute(
         """UPDATE pubshow_pedidos SET status='recusado'
-           WHERE id=? AND business_id=? AND status='aguardando_pix'""",
+           WHERE id=? AND business_id=? AND status='aguardando_pix' AND tipo<>'donate_sistema'""",
         (pid, b['id'])
     ).rowcount
     conn.commit(); conn.close()
@@ -8516,7 +8686,8 @@ def painel_config():
         limite = b['limite_pedidos_hora'] or 10
 
     # Tipos bloqueados
-    todos_tipos = list(TIPOS_PEDIDO.keys())
+    # 27/10/26: a gorjeta (histórico) e o Donate para o sistema não têm chave no painel; salvar não grava nada deles
+    todos_tipos = [t for t in TIPOS_PEDIDO if t not in ('gorjeta', 'donate_sistema')]
     ativos      = request.form.getlist('tipos_ativos')
     bloqueados  = [t for t in todos_tipos if t not in ativos]
     if not _pular_espera_para(b):
@@ -8629,10 +8800,11 @@ def painel_relatorio():
     receita_total  = somar_pagos(conn, b['id'], conta='casa')['total']
 
     # Top tipos pedidos (último mês) — contagem de pedidos; a receita vem da soma única
+    # 27/10/26 (D6): as contagens do relatório nunca veem o Donate para o sistema (status 'sistema')
     _rec_tipo = somar_pagos(conn, b['id'], _hoje_d - timedelta(days=29), _hoje_d, 'tudo', por='tipo')
     top_tipos = [dict(t, receita=_rec_tipo.get(t['tipo'], {}).get('total', 0.0)) for t in conn.execute(
         '''SELECT tipo, COUNT(*) n
-           FROM pubshow_pedidos WHERE business_id=? AND status!="aguardando_pix"
+           FROM pubshow_pedidos WHERE business_id=? AND status!="aguardando_pix" AND tipo<>"donate_sistema"
            AND created_at>=datetime("now", "-30 days")
            GROUP BY tipo ORDER BY n DESC''', (b['id'],)
     ).fetchall()]
@@ -8648,7 +8820,7 @@ def painel_relatorio():
     # Pedidos por dia (últimos 14 dias): n = pedidos; r = dinheiro da casa (soma única)
     _n_dia = {r['dia']: r['n'] for r in conn.execute(
         '''SELECT date(created_at,"-3 hours") dia, COUNT(*) n
-           FROM pubshow_pedidos WHERE business_id=? AND status!="aguardando_pix"
+           FROM pubshow_pedidos WHERE business_id=? AND status!="aguardando_pix" AND tipo<>"donate_sistema"
            AND created_at>=datetime("now", "-14 days")
            GROUP BY dia ORDER BY dia''', (b['id'],)
     ).fetchall()}
@@ -8659,7 +8831,7 @@ def painel_relatorio():
     # Pedidos por hora do dia — últimos 30 dias (horários de pico)
     por_hora_raw = conn.execute(
         '''SELECT CAST(strftime('%H', datetime(created_at, '-3 hours')) AS INTEGER) hora, COUNT(*) n
-           FROM pubshow_pedidos WHERE business_id=? AND status!="aguardando_pix"
+           FROM pubshow_pedidos WHERE business_id=? AND status!="aguardando_pix" AND tipo<>"donate_sistema"
            AND created_at>=datetime("now", "-30 days")
            GROUP BY hora ORDER BY hora''', (b['id'],)
     ).fetchall()
@@ -8670,7 +8842,7 @@ def painel_relatorio():
     # Pedidos por dia da semana (0=Dom ... 6=Sáb) — últimos 30 dias
     por_weekday_raw = conn.execute(
         '''SELECT CAST(strftime('%w', datetime(created_at, '-3 hours')) AS INTEGER) wd, COUNT(*) n
-           FROM pubshow_pedidos WHERE business_id=? AND status!="aguardando_pix"
+           FROM pubshow_pedidos WHERE business_id=? AND status!="aguardando_pix" AND tipo<>"donate_sistema"
            AND created_at>=datetime("now", "-30 days")
            GROUP BY wd''', (b['id'],)
     ).fetchall()
@@ -8681,7 +8853,7 @@ def painel_relatorio():
     # Total de pedidos do mês (contagem) e ticket médio dos PAGOS (música grátis não puxa pra baixo)
     mes_stats = conn.execute(
         '''SELECT COUNT(*) n
-           FROM pubshow_pedidos WHERE business_id=? AND status!="aguardando_pix"
+           FROM pubshow_pedidos WHERE business_id=? AND status!="aguardando_pix" AND tipo<>"donate_sistema"
            AND strftime("%Y-%m",datetime(created_at,"-3 hours"))=strftime("%Y-%m",date("now","-3 hours"))''',
         (b['id'],)
     ).fetchone()
@@ -10737,6 +10909,8 @@ def _confirmar_jukebox_por_ext_ref(ext_ref, pay_id='', valor=None):
                 log.warning('[PUBSHOW] PIX caiu no pedido #%s com status %s — conferir estorno', pedido_id, ped['status'])
         conn.commit(); conn.close()
         log.info('[PUBSHOW] Jukebox PIX confirmado — pedido #%s (Asaas %s) → %s', pedido_id, pay_id, _novo)
+        if n and _novo == 'sistema':
+            _avisar_donate_sistema(pedido_id)   # 27/10/26 (D6): só o Diogo fica sabendo
     except Exception as ex:
         log.error('[PUBSHOW] Confirmar jukebox erro: %s', ex, exc_info=True)
 

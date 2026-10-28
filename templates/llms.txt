@@ -6,8 +6,9 @@
 
 - O cliente do bar escaneia um QR Code na mesa, pede música de graça pelo navegador (sem baixar app) e o clipe toca na TV que o bar já tem.
 {#- 26/10/26 (site = sistema): os preços saem da MESMA tabela da landing (pubshow.site_precos: o celular de um bar novo) #}
-{%- set ps_momentos = pubshow_site_precos()['momentos'] if pubshow_site_precos is defined else [] %}
-- Pedir música: R$ 0 (acervo curado por estilo ou qualquer música do estilo, se o bar liberar). Paga-se no PIX só por "momentos" na TV{% if ps_momentos %} (preços padrão no PIX{% if ps_taxa_app %}, já com o {{ ps_taxa_app }} do app{% endif %}; o bar muda no painel): {% for m in ps_momentos %}{{ m.nome|replace('!', '')|lower if m.tipo != 'casamento' else 'pedido de namoro' }} {{ m.preco }}{{ ' · ' if not loop.last }}{% endfor %} · gorjeta pra equipe (R$ 5 a 50, vai pros funcionários){% else %}: furar a fila, parabéns, dedicatória, pedido de namoro e gorjeta pra equipe (vai pros funcionários){% endif %}.{% if ps_taxa_app %} No PIX, o cliente paga {{ ps_taxa_app }} do app por cima do valor e vê o total antes de pagar.{% endif %}
+{%- set ps_sp = pubshow_site_precos() if pubshow_site_precos is defined else {} %}
+{%- set ps_momentos = ps_sp.get('momentos') or [] %}
+- Pedir música: R$ 0 (acervo curado por estilo ou qualquer música do estilo, se o bar liberar). Paga-se no PIX só por "momentos" na TV{% if ps_momentos %} (preços padrão no PIX, o total que o cliente paga; o bar muda no painel): {% for m in ps_momentos %}{{ m.nome|replace('!', '')|lower if m.tipo != 'casamento' else 'pedido de namoro' }} {{ m.preco }}{{ ' · ' if not loop.last }}{% endfor %} · donate para o bar ({{ ps_sp.get('donate_faixa') or 'R$ 5 a 50' }}, vai pro caixa do bar){% else %}: furar a fila, parabéns, dedicatória, pedido de namoro e donate para o bar{% endif %}.{% if ps_taxa_app %} Do total que o cliente paga no PIX, o app fica com {{ ps_taxa_app }}; o resto é do bar. O cliente vê o total antes de pagar.{% endif %}
 - Pagou no PIX → entra na fila da TV sozinho. Só cantada e pedido de namoro esperam o OK do gerente antes de aparecer.
 - Plano único: {{ planos.bar.preco_fmt }}/mês, tudo incluso. Teste: 7 dias grátis, sem cartão. Cancela quando quiser.
 - Não precisa de máquina de jukebox nem de aparelho novo: TV com navegador + celular do cliente. O gerente controla fila, volume e propaganda pelo celular.
