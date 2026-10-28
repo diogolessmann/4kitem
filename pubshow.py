@@ -5004,7 +5004,7 @@ def api_buscar_biblioteca():
 # Ranking: bate com o que digitou > canal oficial do artista > mais visto. Fora: menos de 1 ou mais de 10 min (peido,
 # show, "10 horas"), ao vivo sem duração, Shorts, karaokê/aula/cover/react... (voltam se a pessoa digitar a palavra).
 # Só áudio, letra ou foto parada (canal "- Topic", vídeo sem data) vai pro fim. O mesmo clipe em 2 canais conta 1.
-YT_TOP, YT_JANELA = 5, 15            # cards no celular · candidatos lidos na ordem (relevância) do YouTube
+YT_TOP, YT_JANELA = 15, 40           # 28/10/26 (Garage: "aparecem só 4"): 15 cards (eram 5) · cards no celular · candidatos lidos na ordem (relevância) do YouTube
 YT_DUR_MIN_SEG, YT_DUR_MAX_SEG = 60, 600
 _YT_CACHE = {}                       # termo normalizado → (instante, vídeos lidos): 1º cache (o 2º é o banco, 7 dias)
 _YT_CACHE_SEG, _YT_CACHE_MAX = 600, 300
@@ -5233,14 +5233,14 @@ def _yt_ranquear(lidos, q, top=YT_TOP):
 # e o celular fica na lista do bar. NUNCA volta pra busca interna.
 YT_API = 'https://www.googleapis.com/youtube/v3'
 YT_BUSCA_COTA_DIA = 100              # balde do search.list: chamadas por dia (padrão da Google)
-YT_BUSCA_TETO_PADRAO = 90            # para antes: sobra margem pro SaaS Admin e pra conta do dia fechar certa
+YT_BUSCA_TETO_PADRAO = 97            # 28/10/26: era 90 · para antes: sobra margem pro SaaS Admin e pra conta do dia fechar certa
 # 27/10/26 (pente fino S1): a cota é uma só pra todos os bares. Um token (o do QR da mesa, ou um bar recém-cadastrado)
 # não pode gastar o dia de todo mundo: teto por BAR no dia (env PUBSHOW_BUSCA_TETO_BAR) e por celular (IP) a cada
 # 10 min. Os dois só contam a busca que vai pra API: acervo e cache não gastam nada.
-YT_BUSCA_TETO_BAR_PADRAO = 40
-YT_BUSCA_MAX_IP, YT_BUSCA_JANELA_IP = 15, 10 * 60   # IP folgado: no Wi-Fi do bar todos dividem o mesmo IP
-YT_BUSCA_CACHE_DIAS = 7
-YT_BUSCA_MAX_RESULT = 20             # o search.list custa o mesmo pra 5 ou 50: 20 sobra pro filtro do estilo
+YT_BUSCA_TETO_BAR_PADRAO = 97        # 28/10/26 (Garage sem busca às 22h29, ~400 pedidos na noite): era 40; o bar usa o dia todo
+YT_BUSCA_MAX_IP, YT_BUSCA_JANELA_IP = 60, 10 * 60   # 28/10/26: era 15 (o Wi-Fi do bar inteiro) · IP folgado: no Wi-Fi do bar todos dividem o mesmo IP
+YT_BUSCA_CACHE_DIAS = 25             # 28/10/26: era 7; a regra do Google deixa guardar até 30 dias (III.E.4.c)
+YT_BUSCA_MAX_RESULT = 50             # o search.list custa o mesmo pra 5 ou 50 (28/10/26: era 20; 15 cards + o filtro do estilo)
 YT_ACERVO_BASTA = 3                  # ≥ 3 músicas do acervo com todas as palavras digitadas: nem gasta a cota
                                      # (env PUBSHOW_BUSCA_ACERVO muda o número; 0 desliga o acervo primeiro)
 _YT_ISO_RE = re.compile(r'P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)(?:\.\d+)?S)?)?')
