@@ -14,9 +14,19 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" media="print" onload="this.media='all'" href="https://fonts.googleapis.com/css2?family=Anton&display=swap">
 {% macro brl(v) %}R$ {{ ('%.0f' if v == (v|int) else '%.2f')|format(v)|replace('.',',') }}{% endmacro %}
-{#- 27/10/26 (D4/D11): "R$ 4,80 pro bar · 20% do app" quebra no "·" quando não cabe (card de 2 colunas), nunca no
-    meio do valor #}
-{% macro div_linha(txt) %}{% for x in (txt or '').split(' · ') %}{% if not loop.first %} · {% endif %}<span class="nw">{{ x }}</span>{% endfor %}{% endmacro %}
+{#- 28/10/26 (Diogo, no bar): no cardápio o cliente lê o que o botão faz, não a divisão do dinheiro (o dono vê a divisão
+    no painel; o cliente vê no formulário e na tela do PIX, na hora de pagar). Frase curta, cabe no card de 2 colunas,
+    e só promete o que a TV faz (a TV não toca o parabéns nem garante que o bar brinde). #}
+{% set O_QUE_FAZ = {
+  'parabens':    'a TV chama pra cantar',
+  'dedicatoria': 'recado de amor na TV',
+  'brinde':      'a TV conta 3, 2, 1, saúde!',
+  'chegada':     'anuncia tua turma na TV',
+  'cantada':     'tua cantada na TV',
+  'salve':       'recado pra outra mesa',
+  'casamento':   'surpresa pro teu amor',
+  'donate_bar':  'ajuda o bar e sai na TV',
+} %}
 {% set pix_direto = asaas_ativo or (b.requer_pix and b.pix_key) %}
 <style>
   *{margin:0;padding:0;box-sizing:border-box}
@@ -113,7 +123,6 @@
   .pedido-card .card-nome{font-size:13px;font-weight:800;line-height:1.3;margin-bottom:6px;color:#d4d4f0}
   .pedido-card .card-preco{font-size:18px;font-weight:900;color:var(--card-cor)}
   .card-detalhe{font-size:12px;color:var(--text2);margin-top:3px}
-  .card-detalhe .nw{white-space:nowrap}
 
   /* ── BUSCA / LISTA DE MÚSICAS ─────────────────────────────────── */
   #busca-section{padding:12px 16px 16px}
@@ -232,7 +241,8 @@
   .cardapio-grade .item:active{transform:scale(.97)}
   .cardapio-grade .item .card-emoji{font-size:36px;line-height:1;margin:0 0 8px;position:relative;filter:none}
   .cardapio-grade .item .card-nome{font-size:17px;font-weight:900;line-height:1.15;color:#fff;margin:0;position:relative}
-  .cardapio-grade .item .card-detalhe{font-size:12px;color:var(--text2);margin-top:3px;position:relative}
+  .cardapio-grade .item .card-detalhe{font-size:12px;color:var(--text2);margin-top:3px;position:relative;text-wrap:balance}
+  .cardapio-grade .item .card-confere{font-style:italic;opacity:.75;margin-top:1px}
   .cardapio-grade .item .card-preco{position:absolute;top:10px;right:10px;font-size:18px;font-weight:900;color:#fff;
     background:rgba(0,0,0,.35);padding:4px 9px;border-radius:10px}
   .cardapio-grade .item-furar{grid-column:1/-1;flex-direction:row;align-items:center;gap:14px;min-height:92px;
@@ -242,7 +252,6 @@
   .cardapio-grade .item-furar .card-nome{display:block;font-size:21px}
   .cardapio-grade .item-furar .sub{display:block;font-size:13px;font-weight:800;opacity:.9;margin-top:3px}
   .cardapio-grade .item-furar .card-preco{position:relative;top:auto;right:auto;margin-left:auto;flex-shrink:0;font-size:22px}
-  .cardapio-grade .item-furar .card-detalhe{color:#fff;opacity:.9;margin-top:4px}
   /* ⏩ Pular a espera (20/10/26): larga como o furar, mais baixa e na cor dela */
   .cardapio-grade .item-pular{grid-column:1/-1;flex-direction:row;align-items:center;gap:14px;min-height:76px}
   .cardapio-grade .item-pular .card-emoji{margin:0;font-size:32px}
@@ -922,8 +931,7 @@ async function jaPaguei() {
     {%- if 'flash' in tipos %}
     <div class="item item-furar" role="button" tabindex="0" id="item-furar" onclick="irBusca('flash')">
       <div class="card-emoji">⚡</div>
-      <div class="txt"><div class="card-nome">Furar a fila</div><div class="sub">tua música toca a seguir</div>
-        {%- if tipos.flash.div %}<div class="card-detalhe">{{ div_linha(tipos.flash.div) }}</div>{% endif %}</div>
+      <div class="txt"><div class="card-nome">Furar a fila</div><div class="sub">tua música toca a seguir</div></div>
       <div class="card-preco">{{ brl(tipos.flash.preco + pix_conv) }}</div>
     </div>
     {%- endif %}
@@ -931,25 +939,22 @@ async function jaPaguei() {
     {#- 20/10/26 (Diogo): ⏩ Pular a espera, só na Efí — a música entra na fila agora, sem esperar a grátis (não na frente) #}
     <div class="item pedido-card item-pular" role="button" tabindex="0" id="item-pular_espera" style="--card-cor:{{ tipos.pular_espera.cor }}" onclick="irBusca('pular')">
       <div class="card-emoji">⏩</div>
-      <div class="txt"><div class="card-nome">Pular a espera</div><div class="sub">entra agora, sem esperar</div>
-        {%- if tipos.pular_espera.div %}<div class="card-detalhe">{{ div_linha(tipos.pular_espera.div) }}</div>{% endif %}</div>
+      <div class="txt"><div class="card-nome">Pular a espera</div><div class="sub">entra na fila, sem esperar</div></div>
       <div class="card-preco">{{ brl(tipos.pular_espera.preco + pix_conv) }}</div>
     </div>
     {%- endif %}
     {%- for key in momentos %}{% set t = tipos[key] %}
-    {#- o total grande no canto e, embaixo, "R$ 12,80 pro bar · 20% do app" (27/10/26, D4) #}
+    {#- o total grande no canto e, embaixo, o que o botão faz (28/10/26; a divisão saiu do cardápio) #}
     <div class="item pedido-card" role="button" tabindex="0" id="item-{{ key }}" style="--card-cor:{{ t.cor }}" onclick="{% if key == 'donate_bar' %}abrirDonate('donate_bar'){% else %}selecionarTipo('{{ key }}'){% endif %}">
       <div class="card-emoji">{{ t.emoji }}</div>
       <div class="card-nome">{{ nomes_curtos[key] }}</div>
       {%- if key == 'donate_bar' %}
       <div class="card-preco">{{ brl(t.preco) }}+</div>
-      {%- if asaas_ativo %}<div class="card-detalhe">{{ APP_REGRA_TXT|replace(' (no mínimo', ' (mín.') }} do app</div>{% endif %}
       {%- else %}
       <div class="card-preco">{{ brl(t.preco + pix_conv) }}</div>
-      {#- conserto 27/10/26: a linha segue o gateway (o div já vem '' sem ele), não o somador #}
-      {%- if t.div %}<div class="card-detalhe">{{ div_linha(t.div) }}</div>{% endif %}
       {%- endif %}
-      {%- if t.get('ok') and (b.moderar_ok is none or b.moderar_ok) %}<div class="card-detalhe">o bar confere antes</div>{% endif %}
+      {%- if O_QUE_FAZ.get(key) %}<div class="card-detalhe">{{ O_QUE_FAZ[key] }}</div>{% endif %}
+      {%- if t.get('ok') and (b.moderar_ok is none or b.moderar_ok) %}<div class="card-detalhe card-confere">o bar confere antes</div>{% endif %}
     </div>
     {%- endfor %}
   </div>
@@ -1046,7 +1051,7 @@ async function jaPaguei() {
       {% if 'flash' in tipos %}
       <button type="button" class="btn-flash" id="btn-flash" onclick="enviarMusica('flash')">
         ⚡ Furar a fila · {{ brl(tipos.flash.preco + pix_conv) }}{% if pix_direto %} no PIX{% endif %}
-        <small id="sh-flash-sub" data-preco="{{ tipos.flash.div }}">{% if tipos.flash.div %}{{ tipos.flash.div }}{% else %}toca antes da fila{% endif %}</small>
+        <small id="sh-flash-sub">toca antes da fila</small>
       </button>
       {#- 25/10/26 (leva 1 da fama): letra pequena logo embaixo do botão de pagar do ⚡, sem caixinha e sem passo a mais #}
       <div class="aviso-18" id="sh-flash-18">Só pra maiores de 18.</div>
@@ -2127,7 +2132,7 @@ function _pintarSheet(v, d, fresco) {
     const fs = document.getElementById('sh-flash-sub');
     if (fs && d) {
       const quando = d.flash.na_frente === 0 ? 'toca a seguir' : `entra em ${d.flash.posicao}º`;
-      fs.textContent = quando + (fs.dataset.preco ? ' · ' + fs.dataset.preco : '');
+      fs.textContent = quando;
     }
   }
   _pintarCartaoFurar(d);   // 24/10/26: a posição e a fila de agora no cartão do ⚡
