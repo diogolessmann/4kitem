@@ -1035,6 +1035,7 @@ def semear_ledoux():
     # 28/out: o Garage (tipo bar) nasce aqui, sem tocar no app.py. Se a loja já existe: 1 SELECT e nada mais.
     try:
         vitrine_bar.semear_garage()
+        vitrine_bar.migra_garage_29out()   # 29/out: drinks com preço + 17h às 2h (roda uma vez)
     except Exception as e:
         print(f'[vitrine] semente do Garage falhou: {e}')
 

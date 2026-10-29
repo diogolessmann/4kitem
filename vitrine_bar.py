@@ -152,7 +152,7 @@ def aviso_ativo(c, n):
 
 # ─────────────────────────────────────────────────────────────── cfg da loja
 _CFG_PADRAO = dict(indexar=False, fuso='America/Sao_Paulo', lede='', horario={}, happy={}, semana={}, aviso={},
-                   maps_url='', pubshow_url='', instagram_seg='', capa='', capa_alt='', titulos={}, depoimento={},
+                   maps_url='', avaliar_url='', pubshow_url='', instagram_seg='', capa='', capa_alt='', titulos={}, depoimento={},
                    moto='', parede='', rola=[], galeria=[], secoes=[], precos_em='', fechado_noite='', cores={})
 _HEX = re.compile(r'#[0-9a-fA-F]{6}').fullmatch
 
@@ -277,7 +277,9 @@ def _conta(resp, loja, c, *tipos):
         dia, _, ja = (request.cookies.get(nome) or '').partition('|')
         ja = set(ja.split('.')) if dia == n and ja else set()
         o = request.args.get('o', '')
-        todos = list(tipos) + ([f'o-{o}'] if o in _ORIGENS else [])
+        # QR impresso que abre direto o cardápio (?o=mesa) conta na coluna "QR da mesa"; quem passou pela /mesa já tem
+        # 'mesa' no cookie da noite e não conta duas vezes
+        todos = list(tipos) + ([f'o-{o}'] if o in _ORIGENS else []) + (['mesa'] if o == 'mesa' else [])
         novos = [t for t in todos if t not in ja]
         if novos:
             conn = get_vit_db()
@@ -599,6 +601,8 @@ def ir(slug, destino):
     g.bar_noindex = True
     if destino == 'maps' and c.get('maps_url'):
         url = c['maps_url']
+    elif destino == 'avaliar' and (c.get('avaliar_url') or c.get('maps_url')):
+        url = c.get('avaliar_url') or c['maps_url']   # avaliar_url abre direto a caixa de estrelas do Google
     elif destino == 'whatsapp' and loja['whatsapp']:
         url = f"https://wa.me/{_digitos(loja['whatsapp'])}?text=" + urllib.parse.quote(f"Oi! Vim pelo site do {loja['nome']}.")
     elif destino == 'musica' and c.get('pubshow_url'):
@@ -1148,6 +1152,70 @@ def semear_garage():
                              'foto, tag, ativo, ordem) VALUES (?,?,?,?,?,?,?,?,?,?,1,?)',
                              (lid, '', it['t'], sec['chave'], '', it.get('p'), it.get('hh'), it.get('d', ''), it.get('f', ''),
                               'Mais pedido' if it.get('mais') else '', i))
+        conn.commit()
+        return True
+    finally:
+        conn.close()
+
+
+# 29/out: cardápio de drinks que o Garage mandou (foto do cardápio impresso), na ordem dele: (nome, preço, receita)
+DRINKS_29OUT = [
+    ('Caipirinha', 16.90, 'Cachaça, limão e açúcar.'),
+    ('Caipiroska', 19.90, 'Vodka, limão e açúcar.'),
+    ('Gin Tônica', 22.90, 'Gin, água tônica e limão.'),
+    ('Gin Tropical', 25.90, 'Gin, energético e laranja Bahia.'),
+    ('Gin de Morango', 29.90, 'Gin, xarope de morango, Red Bull e morango.'),
+    ('Mojito', 22.90, 'Rum, hortelã, água com gás, limão e açúcar.'),
+    ('Gin Kiwi', 27.90, 'Gin, kiwi, xarope de açúcar e Red Bull.'),
+    ('Aperol Spritz', 32.90, 'Aperol, espumante, água com gás e laranja Bahia.'),
+    ('Cuba Libre', 19.90, 'Rum, Coca-Cola e limão.'),
+    ('Blue Lagoon', 22.90, 'Curaçao Blue, xarope de açúcar, Sprite e laranja Bahia.'),
+    ('Sex on the Beach', 24.90, 'Vodka, xarope de morango, suco de laranja e laranja Bahia.'),
+    ('Moscow Mule', 24.90, 'Vodka, limão, açúcar e espuma de gengibre.'),
+    ('Jack Ginger', 34.90, "Whisky Jack Daniel's, limão, açúcar e espuma de gengibre."),
+    ('Soda Italiana', 14.90, 'Gengibre, maçã verde ou tangerina. Sem álcool.'),
+]
+HORARIO_29OUT = 'Todos os dias das 17h às 2h'
+# Place ID do Garage no Google (do ftid 0x926c1b23ea93bb79:0xaea1c212fa126581 do Maps; conferido abrindo place_id:)
+PLACE_ID_GARAGE = 'ChIJebuT6iMbbJIRgWUS-hLCoa4'
+
+
+def migra_garage_29out():
+    """29/out, pedido do Diogo: os 14 drinks com preço e receita + aberto todo dia das 17h às 2h + "Avaliar no Google"
+    abrindo a caixa de estrelas (o maps_url antigo era um alfinete de GPS, sem o bar) + foto do futebol sem as
+    cadeiras de plástico. Roda UMA vez (marca 'garage_29out' no cfg): depois disso o que o dono mudar no admin não é
+    sobrescrito no deploy. Drink que já existe (Caipirinha, Gin Tropical) é atualizado pelo nome e mantém foto e hh."""
+    conn = get_vit_db()
+    try:
+        loja = conn.execute('SELECT * FROM vit_lojas WHERE slug=?', (SLUG_SEMENTE,)).fetchone()
+        if not loja:
+            return False
+        c = cfg_de(loja)
+        if 'garage_29out' in (c.get('migracoes') or []):
+            return False
+        ja = {r['titulo'].strip().lower(): r['id'] for r in
+              conn.execute("SELECT id, titulo FROM vit_produtos WHERE loja_id=? AND categoria='drinks'", (loja['id'],))}
+        for i, (t, p, d) in enumerate(DRINKS_29OUT):
+            if t.lower() in ja:
+                conn.execute('UPDATE vit_produtos SET preco=?, descricao=?, ordem=?, ativo=1 WHERE id=?', (p, d, i, ja[t.lower()]))
+            else:
+                conn.execute('INSERT INTO vit_produtos (loja_id, codigo, titulo, categoria, tipo, preco, preco_pro, descricao, '
+                             'foto, tag, ativo, ordem) VALUES (?,?,?,?,?,?,?,?,?,?,1,?)',
+                             (loja['id'], '', t, 'drinks', '', p, None, d, '', '', i))
+        for s in c.get('secoes') or []:
+            if s.get('chave') == 'drinks':
+                s['nota'] = ''   # era "Fora do happy hour, o preço é no balcão": agora todo drink tem preço
+        c['horario'] = {d: ['17:00', '02:00'] for d in DIAS}
+        c['maps_url'] = ('https://www.google.com/maps/dir/?api=1&destination=Garage%20Moto%20Pub'
+                         f'&destination_place_id={PLACE_ID_GARAGE}')
+        c['avaliar_url'] = f'https://search.google.com/local/writereview?placeid={PLACE_ID_GARAGE}'
+        for r in c.get('rola') or []:
+            if r.get('f') == 'static:telao-jogo.webp':
+                r['f'], r['alt'] = 'static:chopp-tv-largo.webp', 'Caneca de chopp na mesa com o jogo passando na TV ao fundo'
+        c['galeria'] = [x for x in c.get('galeria') or [] if x.get('f') != 'static:chopp-tv.webp']   # sem foto repetida
+        c['migracoes'] = (c.get('migracoes') or []) + ['garage_29out']
+        conn.execute('UPDATE vit_lojas SET cfg_json=?, horario=? WHERE id=?',
+                     (json.dumps(c, ensure_ascii=False), HORARIO_29OUT, loja['id']))
         conn.commit()
         return True
     finally:

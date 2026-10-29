@@ -94,7 +94,7 @@
   <div class="fim">
     <p>Alergia ou restrição? Fala com o garçom antes de pedir.</p>
     <div class="acoes">
-      {% if c.maps_url %}<a class="btn btn-linha" href="{{ url_for('vitrine.bar_ir', slug=loja.slug, destino='maps') }}" target="_blank" rel="noopener">{{ ico('estrela', 20) }}Avaliar no Google</a>{% endif %}
+      {% if c.avaliar_url or c.maps_url %}<a class="btn btn-linha" href="{{ url_for('vitrine.bar_ir', slug=loja.slug, destino='avaliar') }}" target="_blank" rel="noopener">{{ ico('estrela', 20) }}Avaliar no Google</a>{% endif %}
       <a class="btn btn-linha" href="{{ url_for('vitrine.site', slug=loja.slug) }}">{{ ico('caneca', 20) }}Conhecer o bar</a>
     </div>
   </div>
