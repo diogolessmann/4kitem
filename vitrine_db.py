@@ -104,5 +104,11 @@ def init_vit_db():
     _col(conn, 'vit_lojas', 'me_token', "TEXT DEFAULT ''")
     _col(conn, 'vit_produtos', 'peso', "REAL DEFAULT 0")          # kg (0 = usa o padrão da família)
     _col(conn, 'vit_produtos', 'dim', "TEXT DEFAULT ''")           # "AxLxC cm" ex. 12x12x12
+    # 28/out: tipo 'bar' (Garage Moto Pub, vitrine_bar.py). A cara e os dados do bar moram no cfg_json
+    # (horário, happy hour, seções, aviso, galeria, link do PubShow); acabou_ate = noite em que o item acabou
+    # (some do cardápio só naquela noite e volta sozinho na seguinte).
+    _col(conn, 'vit_lojas', 'tipo', "TEXT DEFAULT 'loja'")
+    _col(conn, 'vit_lojas', 'cfg_json', "TEXT DEFAULT '{}'")
+    _col(conn, 'vit_produtos', 'acabou_ate', "TEXT DEFAULT ''")
     conn.commit()
     conn.close()

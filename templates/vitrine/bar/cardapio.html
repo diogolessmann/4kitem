@@ -1,0 +1,103 @@
+{% extends 'vitrine/bar/_base.html' %}
+{% from 'vitrine/bar/_ui.html' import ico, rodape %}
+{% block titulo %}Cardápio · {{ loja.nome }}{% endblock %}
+{% block desc %}Cardápio do {{ loja.nome }} com preço cheio e de happy hour: {% for s in secs[:6] %}{{ s.nome }}{{ ', ' if not loop.last }}{% endfor %}.{% endblock %}
+{% block css %}
+.in{max-width:760px}
+.topo{padding:20px 0 6px}
+.topo .cab{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;align-items:center}
+.topo .cab>a{grid-row:span 2}
+.topo .logo{display:block;width:62px;height:auto}
+.topo h1{font-size:2.6rem;text-transform:uppercase;line-height:.9}
+.topo .casa{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;color:var(--texto-2);font-size:.95rem}
+.topo .casa a{text-decoration:none;color:var(--osso)}
+.topo .status{padding:.38rem .7rem .38rem .6rem;font-size:.9rem}
+.musica{display:flex;align-items:center;justify-content:center;gap:.6rem;margin-top:14px;min-height:54px;border-radius:12px;border:2px solid var(--verde);color:var(--osso);background:linear-gradient(180deg,#132016,#0d140f);text-decoration:none;font:700 1.3rem/1 var(--f-disp);letter-spacing:.05em;text-transform:uppercase}
+.musica .ico{color:var(--verde)}
+.info{display:grid;gap:8px;margin-top:14px}
+.info p{display:flex;gap:10px;align-items:flex-start;padding:11px 13px;border-radius:10px;background:var(--asfalto-2);border:1px solid var(--linha);font-size:.95rem;line-height:1.4}
+.info .ico{margin-top:1px;color:var(--ambar)}
+.info .on{border-color:rgba(255,181,58,.7);background:rgba(255,181,58,.07)}
+.info .av{background:var(--ambar);color:var(--ambar-tinta);border-color:var(--ambar);font-weight:600}
+.info .av .ico{color:var(--ambar-tinta)}
+.info b{color:var(--osso)}.info .av b{color:var(--ambar-tinta)}
+.chips{position:sticky;top:0;z-index:10;margin-top:16px;background:rgba(22,17,13,.97);border-bottom:1px solid var(--linha);box-shadow:0 10px 18px -16px #000}
+.chips ul{list-style:none;margin:0 auto;padding:9px var(--g);max-width:760px;display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;-webkit-mask:linear-gradient(90deg,#000 88%,transparent);mask:linear-gradient(90deg,#000 88%,transparent)}
+.chips ul::-webkit-scrollbar{display:none}
+.chips a{display:inline-flex;align-items:center;min-height:44px;padding:0 15px;border-radius:999px;border:1px solid var(--linha-2);white-space:nowrap;text-decoration:none;font:700 1.08rem/1 var(--f-disp);letter-spacing:.05em;text-transform:uppercase;color:var(--osso);transition:border-color .2s,color .2s}
+.chips a:hover{border-color:var(--ambar);color:var(--ambar)}
+.chips li:last-child{padding-right:40px}
+.sec{padding:30px 0 6px;scroll-margin-top:66px}
+.sec h2{font-size:2.15rem;text-transform:uppercase;line-height:.95}
+.sec .nota{margin-top:6px;color:var(--texto-2);font-size:.93rem}
+.itens{list-style:none;margin:10px 0 0;padding:0}
+.item{display:grid;grid-template-columns:1fr auto;gap:2px 14px;align-items:start;padding:15px 0;border-bottom:1px solid var(--linha)}
+.item:last-child{border-bottom:0}
+.item.cf{grid-template-columns:68px 1fr auto}
+.item img{width:68px;height:68px;border-radius:10px;object-fit:cover;background:var(--asfalto-3)}
+.item h3{font:600 1.1rem/1.25 var(--f-txt);color:var(--texto);letter-spacing:0}
+.item .med{color:var(--texto-2);font-weight:500;white-space:nowrap}
+.item .d{margin-top:3px;font-size:.93rem;color:var(--texto-2);line-height:1.4}
+.item .hhp{margin-top:4px;color:var(--ambar);font-size:.97rem;font-weight:600}
+.item .hhp b{font:700 1.15rem/1 var(--f-disp);letter-spacing:.02em}
+.selo-mais{display:inline-block;margin:0 0 5px;padding:.22rem .45rem .18rem;border-radius:5px;border:1px solid rgba(255,181,58,.45);background:rgba(255,181,58,.12);color:var(--ambar);font:700 .8rem/1.1 var(--f-disp);letter-spacing:.09em;text-transform:uppercase}
+.preco{font:700 1.7rem/1 var(--f-disp);color:var(--osso);text-align:right;white-space:nowrap;padding-top:2px}
+.preco small{font-size:.5em;margin-right:.1em;color:var(--texto-2);vertical-align:.55em}
+.preco .balcao{display:block;max-width:6.5em;font:600 .85rem/1.25 var(--f-txt);color:var(--texto-2);white-space:normal}
+.fim{margin:34px 0 8px;display:grid;gap:12px}
+.fim p{color:var(--texto-2);font-size:.95rem}
+.fim .acoes{display:flex;flex-wrap:wrap;gap:10px}
+.fim .btn{min-height:48px;font-size:1.08rem}
+{% endblock %}
+{% block corpo %}
+<header class="topo">
+  <div class="in cab">
+    {% if loja.logo %}<a href="{{ url_for('vitrine.site', slug=loja.slug) }}"><img class="logo" src="{{ foto(loja.logo, True) }}" width="96" height="92" alt="{{ loja.nome }}: ir para o site"></a>{% endif %}
+    <h1>Cardápio</h1>
+    <div class="casa"><a href="{{ url_for('vitrine.site', slug=loja.slug) }}">{{ loja.nome }}</a><span class="status {{ 'aberto' if est.aberto else 'fechado' }}"><i></i>{{ est.curto if est.aberto else est.txt }}</span></div>
+  </div>
+  <div class="in">
+    {% if tem_musica %}<a class="musica" href="{{ url_for('vitrine.bar_ir', slug=loja.slug, destino='musica') }}">{{ ico('musica', 24) }}Escolher a música</a>{% endif %}
+    <div class="info">
+      {% if aviso %}<p class="av">{{ ico('megafone', 20) }}<span>{{ aviso }}</span></p>{% endif %}
+      {% if hoje_semana %}<p class="on">{{ ico('estrela', 20) }}<span><b>Hoje:</b> {{ hoje_semana }}</span></p>{% endif %}
+      {% if hh %}<p class="{{ 'on' if hh.rolando }}">{{ ico('relogio', 20) }}<span>{% if hh.rolando %}<b>Happy hour rolando até {{ hh.ate }}.</b>{% else %}<b>Happy hour das {{ hh.faixa }}</b>, {{ hh.dias }}.{% endif %} O preço em âmbar vale no happy hour.{% if hh.obs %} {{ hh.obs }}{% endif %}</span></p>{% endif %}
+    </div>
+  </div>
+</header>
+
+<nav class="chips" aria-label="Seções do cardápio">
+  <ul>{% for s in secs %}<li><a href="#{{ s.chave }}">{{ s.nome.split(' · ')[0] }}</a></li>{% endfor %}</ul>
+</nav>
+
+<main class="in">
+  {% for s in secs %}
+  <section class="sec" id="{{ s.chave }}" aria-labelledby="t-{{ s.chave }}">
+    <h2 id="t-{{ s.chave }}">{{ s.nome }}</h2>
+    {% if s.nota %}<p class="nota">{{ s.nota }}</p>{% endif %}
+    <ul class="itens">
+      {% for it in s.itens %}<li class="item{{ ' cf' if it.foto }}" id="i{{ it.id }}">
+        {% if it.foto %}<img src="{{ foto(it.foto, True) }}" width="68" height="68" loading="lazy" decoding="async" alt="Foto: {{ it.titulo }}">{% endif %}
+        <div>
+          {% if it.mais %}<span class="selo-mais">Mais pedido</span>{% endif %}
+          <h3>{{ it.nome }}{% if it.medida %} <span class="med">{{ it.medida }}</span>{% endif %}</h3>
+          {% if it.desc %}<p class="d">{{ it.desc }}</p>{% endif %}
+          {% if it.hh %}<p class="hhp">happy hour <b class="num">R$ {{ preco(it.hh) }}</b></p>{% endif %}
+        </div>
+        <p class="preco num">{% if it.preco %}<small>R$</small>{{ preco(it.preco) }}{% else %}<span class="balcao">{{ 'fora do happy hour: no balcão' if it.hh else 'preço no balcão' }}</span>{% endif %}</p>
+      </li>{% endfor %}
+    </ul>
+  </section>
+  {% else %}
+  <p class="sec">O cardápio está sendo montado. Pergunta no balcão.</p>
+  {% endfor %}
+  <div class="fim">
+    <p>Alergia ou restrição? Fala com o garçom antes de pedir.</p>
+    <div class="acoes">
+      {% if c.maps_url %}<a class="btn btn-linha" href="{{ url_for('vitrine.bar_ir', slug=loja.slug, destino='maps') }}" target="_blank" rel="noopener">{{ ico('estrela', 20) }}Avaliar no Google</a>{% endif %}
+      <a class="btn btn-linha" href="{{ url_for('vitrine.site', slug=loja.slug) }}">{{ ico('caneca', 20) }}Conhecer o bar</a>
+    </div>
+  </div>
+</main>
+{{ rodape(loja, precos_em, noindex) }}
+{% endblock %}

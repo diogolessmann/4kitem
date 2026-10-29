@@ -1,0 +1,27 @@
+{% extends 'vitrine/bar/_admin_base.html' %}
+{% from 'vitrine/bar/_ui.html' import ico %}
+{% block titulo %}Entrar · {{ loja.nome }}{% endblock %}
+{% block css %}
+body{padding-bottom:0;min-height:100svh;display:grid;place-items:center;background:radial-gradient(900px 500px at 50% -10%,rgba(255,181,58,.18),transparent 60%),#1b1510}
+.entrar{width:min(420px,calc(100% - 32px));margin:32px auto;background:#fff;border-radius:20px;padding:28px 22px 24px;box-shadow:0 30px 60px -30px rgba(0,0,0,.7)}
+.entrar img{width:112px;height:auto;margin:-82px auto 10px;filter:drop-shadow(0 10px 18px rgba(0,0,0,.35))}
+.entrar h1{text-align:center;font-size:1.45rem}
+.entrar .sub{text-align:center;color:var(--tinta-2);margin-top:4px}
+.entrar form{display:grid;gap:14px;margin-top:22px}
+.entrar .ajuda{margin-top:18px;text-align:center;font-size:.92rem;color:var(--tinta-2)}
+.entrar .ajuda a{display:inline-block;padding:10px 4px;font-weight:600;color:var(--tinta)}
+{% endblock %}
+{% block corpo %}
+<main class="entrar">
+  {% if loja.logo %}<img src="{{ foto(loja.logo) }}" width="360" height="345" alt="">{% endif %}
+  <h1>Painel do {{ loja.nome }}</h1>
+  <p class="sub">Cardápio, fotos e horário do bar.</p>
+  <form method="post" action="{{ url_for('vitrine.admin', slug=loja.slug) }}">
+    <input type="hidden" name="_csrf" value="{{ csrf }}">
+    {% if erro %}<p class="msg erro" role="alert">{{ ico('cadeado', 20) }}<span>{{ erro }}</span></p>{% endif %}
+    <label class="cp">Senha<input type="password" name="senha" autocomplete="current-password" required autofocus></label>
+    <button class="btn btn-p btn-grande" type="submit">Entrar</button>
+  </form>
+  <p class="ajuda">Esqueceu a senha? <a href="https://wa.me/5547997766831?text={{ ('Oi! Esqueci a senha do painel do ' ~ loja.nome ~ '.')|urlencode }}" target="_blank" rel="noopener">Fala com o suporte da 4kitem</a></p>
+</main>
+{% endblock %}

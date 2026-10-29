@@ -1,0 +1,278 @@
+{% extends 'vitrine/bar/_base.html' %}
+{% from 'vitrine/bar/_ui.html' import ico, rodape %}
+{% block titulo %}{{ c.titulo_seo or loja.nome }}{% endblock %}
+{% block fontes %}<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800&family=Barlow:wght@400;600&display=swap" rel="stylesheet">{% endblock %}
+{% block f_txt %}"Barlow",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif{% endblock %}
+{% block head %}
+{% if c.capa %}<link rel="preload" as="image" href="{{ foto(c.capa) }}" fetchpriority="high">{% endif %}
+<meta property="og:title" content="{{ loja.nome }}"><meta property="og:description" content="{{ loja.descricao }}">
+{% if c.capa %}<meta property="og:image" content="{{ pub }}{{ foto(c.capa) }}">{% endif %}
+<script type="application/ld+json">{{ jsonld|tojson }}</script>
+{% endblock %}
+{% block body_class %}com-barra{% endblock %}
+{% block css %}
+.sec{padding:64px 0}
+.sec-t{font-size:clamp(2.35rem,9vw,4.2rem);font-weight:800;text-transform:uppercase;line-height:.92}
+/* ── topo: a garagem acende */
+.hero{position:relative;isolation:isolate;min-height:min(100svh,940px);display:flex;flex-direction:column;justify-content:flex-end;overflow:hidden;padding:120px 0 34px}
+.hero-foto{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:40% 58%;z-index:-2;animation:revela 1.5s var(--mola) both}
+@keyframes revela{from{filter:brightness(.55) saturate(.8);transform:scale(1.04)}to{filter:none;transform:none}}
+.hero::after{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(180deg,rgba(22,17,13,.78) 0%,rgba(22,17,13,.12) 22%,rgba(22,17,13,.18) 36%,rgba(22,17,13,.86) 60%,var(--asfalto) 96%)}
+.varal{position:absolute;top:0;left:0;width:100%;height:clamp(64px,7.6vw,112px);z-index:1;pointer-events:none}
+.varal .halo{opacity:.3;animation:acende 1.3s var(--mola) both;animation-delay:calc(var(--i) * 85ms + 120ms)}
+.varal .bulbo{fill:#8a6630;animation:bulbo 1.3s var(--mola) both;animation-delay:calc(var(--i) * 85ms + 120ms)}
+@keyframes acende{to{opacity:1}}
+@keyframes bulbo{to{fill:#ffe3a8}}
+.hero-logo{width:clamp(96px,26vw,148px);height:auto;margin:0 0 18px -6px;filter:drop-shadow(0 12px 22px rgba(0,0,0,.6))}
+.hero h1{font-size:clamp(3.5rem,15.5vw,6rem);font-weight:800;line-height:.86;text-transform:uppercase;letter-spacing:-.004em;text-shadow:0 2px 30px rgba(0,0,0,.5)}
+.hero h1 span{display:block}
+.hero h1 span:last-child{color:var(--ambar)}
+.lede{margin-top:16px;font-size:1.15rem;line-height:1.45;max-width:34ch;color:var(--texto)}
+.hero-status{margin-top:18px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.hoje-sem{display:inline-flex;align-items:center;gap:.5rem;font-size:.95rem;color:var(--osso);background:rgba(15,11,8,.8);border:1px solid var(--linha);border-radius:999px;padding:.5rem .9rem}
+.hero-cta{margin-top:20px;display:grid;grid-template-columns:1fr 1fr;gap:10px;max-width:540px}
+.hero-cta .btn-acao{grid-column:1/-1;min-height:60px;font-size:1.45rem}
+/* ── aviso da semana: fita de garagem */
+.aviso{background:repeating-linear-gradient(-45deg,var(--ambar-tinta) 0 9px,var(--ambar) 9px 18px) top/100% 5px no-repeat,repeating-linear-gradient(-45deg,var(--ambar-tinta) 0 9px,var(--ambar) 9px 18px) bottom/100% 5px no-repeat,var(--ambar);color:var(--ambar-tinta)}
+.aviso .in{display:flex;gap:12px;align-items:center;padding-top:17px;padding-bottom:17px;font:700 1.22rem/1.2 var(--f-disp);letter-spacing:.02em}
+/* ── happy hour: placas de preço */
+.hh-topo{display:grid;gap:12px;margin-bottom:24px}
+.hh h2 em{font-style:normal;color:var(--ambar);display:block}
+.hh-quando{display:grid;justify-items:start;gap:10px;color:var(--texto-2);max-width:56ch}
+.placas{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.placa{position:relative;display:grid;align-content:start;height:100%;padding:22px 16px 16px;border-radius:10px;text-decoration:none;background:linear-gradient(180deg,#15100c,#0c0907);border:1px solid #3b3027;box-shadow:inset 0 1px 0 rgba(255,236,200,.05),0 22px 32px -24px #000;transition:border-color .2s,transform .35s var(--mola)}
+.placa::before,.placa::after{content:"";position:absolute;top:9px;width:7px;height:7px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#b3a286,#3f342a 72%)}
+.placa::before{left:9px}.placa::after{right:9px}
+.placa:hover{border-color:var(--ambar);transform:translateY(-3px)}
+.placa-nome{font:700 1.32rem/1.02 var(--f-disp);text-transform:uppercase;color:var(--osso);letter-spacing:.02em}
+.placa-med{margin-top:3px;font-size:.88rem;color:var(--texto-2)}
+.placa-preco{margin-top:14px;font:700 clamp(2.7rem,12vw,3.6rem)/.86 var(--f-disp);color:var(--ambar);text-shadow:0 0 24px rgba(255,181,58,.3)}
+.placa-preco small{font-size:.36em;margin-right:.12em;vertical-align:1.05em;letter-spacing:.04em}
+.placa-cheio{margin-top:10px;font-size:.84rem;color:var(--texto-2)}
+.mais-link{display:inline-flex;align-items:center;gap:.4rem;margin-top:22px;font:700 1.15rem/1 var(--f-disp);letter-spacing:.05em;text-transform:uppercase;color:var(--ambar);text-decoration:none;padding:.6rem 0}
+.mais-link:hover{color:var(--ambar-2)}
+.mais-link .ico{transition:transform .3s var(--mola)}.mais-link:hover .ico{transform:translateX(4px)}
+/* ── a casa: fala do cliente + fotos */
+.vibe{border-top:1px solid var(--linha)}
+.fala{margin:22px 0 0;max-width:40ch}
+.fala blockquote{margin:0;font:600 clamp(1.3rem,5vw,1.7rem)/1.3 var(--f-txt);color:var(--osso)}
+.fala figcaption{margin-top:10px;color:var(--texto-2);font-size:.95rem}
+.prova{margin-top:18px;display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;color:var(--texto-2)}
+.prova span{display:inline-flex;align-items:center;gap:.4rem}
+.prova b{color:var(--osso);font-weight:600}.prova .ico{color:var(--ambar)}
+.prova a{display:inline-flex;align-items:center;gap:.4rem;min-height:44px}
+.mosaico{margin-top:30px;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.mosaico a{position:relative;overflow:hidden;border-radius:12px;background:var(--asfalto-2)}
+.mosaico img{width:100%;height:100%;object-fit:cover;transition:transform .7s var(--mola)}
+.mosaico a:hover img{transform:scale(1.04)}
+.m1{grid-column:1/-1;aspect-ratio:4/3}.m2,.m3,.m4,.m5{aspect-ratio:4/5}
+.tira{margin-top:8px;display:flex;gap:8px;overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:8px;scrollbar-width:thin}
+.tira a{flex:0 0 36%;aspect-ratio:1;scroll-snap-align:start;border-radius:10px;overflow:hidden;background:var(--asfalto-2)}
+.tira img{width:100%;height:100%;object-fit:cover}
+/* ── o que rola */
+.rola-lista{list-style:none;margin:30px 0 0;padding:0;display:grid;gap:34px}
+.r{display:grid;gap:14px}
+.r img{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:14px;background:var(--asfalto-2)}
+.r h3{font-size:clamp(1.8rem,7vw,2.4rem);text-transform:uppercase;line-height:.95}
+.r p{margin-top:8px;color:var(--texto-2);max-width:42ch;font-size:1.06rem}
+.semana{margin-top:48px;padding-top:30px;border-top:1px solid var(--linha)}
+.semana h3{font-size:1.7rem;text-transform:uppercase}
+.semana ul{list-style:none;margin:16px 0 0;padding:0;display:grid;gap:10px}
+.semana li{display:flex;align-items:center;gap:14px;padding:12px 14px;border-radius:10px;background:var(--asfalto-2);border:1px solid var(--linha)}
+.semana li.hoje{border-color:var(--ambar);background:linear-gradient(180deg,rgba(255,181,58,.08),rgba(255,181,58,.02))}
+.semana .dia{flex:none;min-width:3.3em;text-align:center;padding:.4rem .4rem .35rem;border-radius:6px;background:var(--osso);color:var(--ambar-tinta);font:700 1.05rem/1 var(--f-disp);text-transform:uppercase;letter-spacing:.08em}
+/* ── encosta a moto: a vaga pintada no chão */
+.vaga{position:relative;overflow:hidden;padding:64px 26px 54px;background:radial-gradient(420px 220px at 80% 100%,rgba(226,193,74,.07),transparent 70%),#1a1410;border-radius:6px}
+.vaga::before{content:"";position:absolute;inset:0 12px 10px;border:6px solid rgba(226,193,74,.82);border-bottom:0;border-radius:2px;pointer-events:none}
+.pintura{position:absolute;right:30px;bottom:6px;font:800 clamp(5.4rem,26vw,12rem)/.78 var(--f-disp);color:rgba(226,193,74,.17);transform:scaleY(1.75);transform-origin:bottom right;letter-spacing:.05em;pointer-events:none;user-select:none}
+.vaga .txt{position:relative;max-width:30ch}
+.vaga p{margin-top:14px;font-size:1.2rem;color:var(--texto)}
+.parede{margin:48px 0 0;text-align:center}
+.parede blockquote{margin:0 auto;max-width:21ch;font:800 clamp(1.7rem,6.6vw,3rem)/1.02 var(--f-disp);text-transform:uppercase;letter-spacing:.03em;color:var(--osso)}
+.parede figcaption{margin-top:12px;color:var(--texto-3);font-size:.9rem}
+/* ── onde fica */
+.onde{border-top:1px solid var(--linha)}
+.onde-grid{display:grid;gap:44px}
+.placa-rua{margin-top:22px;display:inline-grid;gap:8px;padding:16px 20px 14px;border-radius:9px;background:var(--osso);color:#15100c;border:3px solid #15100c;outline:2px solid var(--osso);box-shadow:0 22px 34px -22px #000}
+.placa-rua b{font:800 clamp(2rem,8vw,2.7rem)/.95 var(--f-disp);text-transform:uppercase;letter-spacing:.02em}
+.placa-rua span{font-size:.95rem;font-weight:600}
+.onde-cta{margin-top:22px;display:flex;flex-wrap:wrap;gap:10px}
+.horas h3{font-size:1.7rem;text-transform:uppercase}
+.horas table{width:100%;border-collapse:collapse;margin-top:12px}
+.horas th,.horas td{padding:13px 2px;border-bottom:1px solid var(--linha);text-align:left}
+.horas th{font-weight:600;color:var(--texto)}
+.horas td{text-align:right;font:700 1.3rem/1 var(--f-disp);color:var(--osso);letter-spacing:.03em}
+.horas tr.hoje th,.horas tr.hoje td{color:var(--ambar)}
+.horas tr.fechado td{color:var(--texto-3)}
+.horas .obs{margin-top:14px;color:var(--texto-2);font-size:.95rem}
+/* ── barra de atalhos no celular (aparece depois do topo) */
+.barra{position:fixed;left:0;right:0;bottom:0;z-index:20;display:grid;grid-template-columns:1.25fr 1fr 1fr;gap:8px;padding:10px var(--g) calc(10px + env(safe-area-inset-bottom));background:rgba(16,12,9,.97);border-top:1px solid var(--linha);transform:translateY(110%);transition:transform .45s var(--mola)}
+.barra.on{transform:none}
+.barra .btn{min-height:50px;font-size:1.02rem;padding:0 .5rem;gap:.4rem}
+.com-barra .rodape{padding-bottom:calc(100px + env(safe-area-inset-bottom))}
+@media (min-width:760px){
+  .placas{grid-template-columns:repeat(4,1fr);gap:16px}
+  .semana ul{grid-template-columns:repeat(3,1fr)}
+  .tira a{flex-basis:calc((100% - 56px) / 8)}
+}
+@media (min-width:960px){
+  .sec{padding:104px 0}
+  .hero{justify-content:center;min-height:min(100vh,880px);padding:150px 0 90px}
+  .hero-foto{left:auto;right:0;width:66%;object-position:50% 60%}
+  .hero::after{background:linear-gradient(90deg,var(--asfalto) 0%,var(--asfalto) 35%,rgba(22,17,13,.8) 45%,rgba(22,17,13,.25) 62%,rgba(22,17,13,.12) 100%),linear-gradient(180deg,rgba(22,17,13,.7) 0%,transparent 20%,transparent 78%,var(--asfalto) 100%)}
+  .hero-logo{width:150px}
+  .hero-cta{display:flex;max-width:none}
+  .hero-cta .btn{padding:0 1.6rem}
+  .vibe-topo{display:grid;grid-template-columns:1fr 1fr;gap:56px;align-items:end}
+  .fala{margin:0}
+  .mosaico{grid-template-columns:repeat(12,1fr);grid-template-rows:repeat(2,250px);gap:12px}
+  .mosaico a{aspect-ratio:auto}
+  .m1{grid-column:1/7;grid-row:1/3}.m2{grid-column:7/10}.m3{grid-column:10/13}.m4{grid-column:7/10}.m5{grid-column:10/13}
+  .rola-lista{gap:56px}
+  .r{grid-template-columns:7fr 5fr;align-items:center;gap:48px}
+  .r:nth-child(even) img{order:2}
+  .r img{aspect-ratio:16/10}
+  .vaga{padding:88px 64px 80px}
+  .onde-grid{grid-template-columns:1.1fr 1fr;gap:72px}
+  .barra{display:none}
+  .com-barra .rodape{padding-bottom:32px}
+}
+{% endblock %}
+{% block corpo %}
+{% set u_cardapio = url_for('vitrine.bar_cardapio', slug=loja.slug) %}
+{% set u_maps = url_for('vitrine.bar_ir', slug=loja.slug, destino='maps') %}
+{% set u_wa = url_for('vitrine.bar_ir', slug=loja.slug, destino='whatsapp') %}
+<header class="hero">
+  {% if c.capa %}<img class="hero-foto" src="{{ foto(c.capa) }}" alt="{{ c.capa_alt }}" fetchpriority="high" decoding="async">{% endif %}
+  <svg class="varal" viewBox="0 0 1200 96" preserveAspectRatio="xMidYMin slice" aria-hidden="true">
+    <defs><radialGradient id="brilho"><stop offset="0" stop-color="#ffdc94" stop-opacity=".95"/><stop offset=".3" stop-color="#ffb53a" stop-opacity=".42"/><stop offset="1" stop-color="#ffb53a" stop-opacity="0"/></radialGradient></defs>
+    <path d="M0 16 Q150 76 300 16 Q450 76 600 16 Q750 76 900 16 Q1050 76 1200 16" fill="none" stroke="#0a0705" stroke-width="2.5"/>
+    {% for seg in range(4) %}{% for dx, dy in [(60, 35), (150, 46), (240, 35)] %}{% set x = seg * 300 + dx %}
+    <g style="--i:{{ seg * 3 + loop.index0 }}"><circle class="halo" cx="{{ x }}" cy="{{ dy + 14 }}" r="30" fill="url(#brilho)"/><rect x="{{ x - 3 }}" y="{{ dy }}" width="6" height="7" rx="1" fill="#0a0705"/><circle class="bulbo" cx="{{ x }}" cy="{{ dy + 13 }}" r="6"/></g>
+    {% endfor %}{% endfor %}
+  </svg>
+  <div class="in">
+    {% if loja.logo %}<img class="hero-logo" src="{{ foto(loja.logo) }}" width="360" height="345" alt="{{ loja.nome }}">{% endif %}
+    <h1>{% for p in frase %}<span>{{ p }}</span>{% else %}<span>{{ loja.nome }}</span>{% endfor %}</h1>
+    {% if c.lede %}<p class="lede">{{ c.lede }}</p>{% endif %}
+    <div class="hero-status">
+      <span class="status {{ 'aberto' if est.aberto else 'fechado' }}"><i></i>{{ est.txt }}</span>
+      {% if hoje_semana %}<span class="hoje-sem">Hoje: {{ hoje_semana }}</span>{% endif %}
+    </div>
+    <div class="hero-cta">
+      <a class="btn btn-acao" href="{{ u_cardapio }}">{{ ico('cardapio', 24) }}Ver cardápio</a>
+      {% if c.maps_url %}<a class="btn btn-linha" href="{{ u_maps }}" target="_blank" rel="noopener">{{ ico('pino') }}Como chegar</a>{% endif %}
+      {% if loja.whatsapp %}<a class="btn btn-linha" href="{{ u_wa }}" target="_blank" rel="noopener">{{ ico('whatsapp') }}WhatsApp</a>{% endif %}
+    </div>
+  </div>
+</header>
+
+{% if aviso %}<div class="aviso" role="note"><div class="in">{{ ico('megafone', 26) }}<p>{{ aviso }}</p></div></div>{% endif %}
+
+<main>
+{% if hh and placas %}
+<section class="sec hh" aria-labelledby="t-hh">
+  <div class="in">
+    <div class="hh-topo">
+      <h2 class="sec-t" id="t-hh">Happy hour <em class="num">{{ hh.faixa }}</em></h2>
+      <div class="hh-quando">{% if hh.rolando %}<span class="status aberto"><i></i>Rolando agora · até {{ hh.ate }}</span>{% endif %}<p>{{ hh.dias|capitalize }}.{% if hh.obs %} {{ hh.obs }}{% endif %}</p></div>
+    </div>
+    <ul class="placas">
+      {% for p in placas %}<li><a class="placa" href="{{ u_cardapio }}#{{ p.secao }}">
+        <span class="placa-nome">{{ p.nome }}</span>{% if p.medida %}<span class="placa-med">{{ p.medida }}</span>{% endif %}
+        <span class="placa-preco num"><small>R$</small>{{ preco(p.hh) }}</span>
+        <span class="placa-cheio">fora do happy hour {% if p.preco %}<span class="num">{{ preco(p.preco) }}</span>{% else %}no balcão{% endif %}</span>
+      </a></li>{% endfor %}
+    </ul>
+    <a class="mais-link" href="{{ u_cardapio }}">Cardápio inteiro{% if n_itens %} · <span class="num">{{ n_itens }}</span> itens{% endif %} {{ ico('seta', 20) }}</a>
+  </div>
+</section>
+{% endif %}
+
+{% if c.galeria %}
+<section class="sec vibe" aria-labelledby="t-vibe">
+  <div class="in">
+    <div class="vibe-topo">
+      <h2 class="sec-t" id="t-vibe">{{ titulos.vibe or 'A casa' }}</h2>
+      <div>
+        {% if c.depoimento and c.depoimento.txt %}<figure class="fala"><blockquote>“{{ c.depoimento.txt }}”</blockquote>{% if c.depoimento.quem %}<figcaption>{{ c.depoimento.quem }}</figcaption>{% endif %}</figure>{% endif %}
+        <p class="prova">
+          {% if loja.google_nota %}<span>{{ ico('estrela', 18) }}<b class="num">{{ loja.google_nota }}</b> no Google · <span class="num">{{ loja.google_n }}</span> avaliações</span>{% endif %}
+          {% if c.instagram_seg and loja.instagram %}<a href="{{ url_for('vitrine.bar_ir', slug=loja.slug, destino='instagram') }}" target="_blank" rel="noopener">{{ ico('instagram', 18) }}<b class="num">{{ c.instagram_seg }}</b> no Instagram</a>{% endif %}
+        </p>
+      </div>
+    </div>
+    <div class="mosaico">
+      {% for ft in c.galeria[:5] %}<a class="m{{ loop.index }}" href="{{ foto(ft.f) }}"><img src="{{ foto(ft.f, True) }}" srcset="{{ foto(ft.f, True) }} 480w, {{ foto(ft.f) }} 1200w" sizes="{{ '(min-width: 960px) 560px, 100vw' if loop.first else '(min-width: 960px) 280px, 50vw' }}" loading="lazy" decoding="async" alt="{{ ft.alt }}"></a>{% endfor %}
+    </div>
+    {% if c.galeria|length > 5 %}<div class="tira">{% for ft in c.galeria[5:13] %}<a href="{{ foto(ft.f) }}"><img src="{{ foto(ft.f, True) }}" loading="lazy" decoding="async" alt="{{ ft.alt }}"></a>{% endfor %}</div>{% endif %}
+  </div>
+</section>
+{% endif %}
+
+{% if c.rola %}
+<section class="sec rola" aria-labelledby="t-rola">
+  <div class="in">
+    <h2 class="sec-t" id="t-rola">{{ titulos.rola or 'O que rola' }}</h2>
+    <ul class="rola-lista">
+      {% for r in c.rola %}<li class="r">
+        {% if r.f %}<img src="{{ foto(r.f) }}" srcset="{{ foto(r.f, True) }} 480w, {{ foto(r.f) }} 1200w" sizes="(min-width: 960px) 640px, 100vw" loading="lazy" decoding="async" alt="{{ r.alt }}">{% endif %}
+        <div><h3>{{ r.t }}</h3>{% if r.d %}<p>{{ r.d }}</p>{% endif %}</div>
+      </li>{% endfor %}
+    </ul>
+    {% if c.semana %}
+    <div class="semana">
+      <h3>{{ titulos.semana or 'Na semana' }}</h3>
+      <ul>{% for d in DIAS if c.semana.get(d) %}<li class="{{ 'hoje' if d == dia_hoje }}"><span class="dia">{{ DIA_CURTO[d] }}</span><span>{{ c.semana[d] }}{% if d == dia_hoje %}<span class="tag-hoje">hoje</span>{% endif %}</span></li>{% endfor %}</ul>
+    </div>
+    {% endif %}
+  </div>
+</section>
+{% endif %}
+
+{% if c.moto %}
+<section class="sec moto" aria-labelledby="t-moto">
+  <div class="in">
+    <div class="vaga">
+      <span class="pintura" aria-hidden="true">MOTO</span>
+      <div class="txt"><h2 class="sec-t" id="t-moto">{{ titulos.moto or 'Encosta a moto.' }}</h2><p>{{ c.moto }}</p></div>
+    </div>
+    {% if c.parede %}<figure class="parede"><blockquote>{{ c.parede }}</blockquote><figcaption>escrito na parede da casa</figcaption></figure>{% endif %}
+  </div>
+</section>
+{% endif %}
+
+<section class="sec onde" id="onde" aria-labelledby="t-onde">
+  <div class="in onde-grid">
+    <div>
+      <h2 class="sec-t" id="t-onde">{{ titulos.onde or 'Onde fica' }}</h2>
+      {% if end1 %}<div class="placa-rua"><b>{{ end1 }}</b>{% if end2 %}<span>{{ end2 }}</span>{% endif %}</div>{% endif %}
+      <div class="onde-cta">
+        {% if c.maps_url %}<a class="btn btn-acao" href="{{ u_maps }}" target="_blank" rel="noopener">{{ ico('pino') }}Como chegar</a>{% endif %}
+        {% if loja.whatsapp %}<a class="btn btn-linha" href="{{ u_wa }}" target="_blank" rel="noopener">{{ ico('whatsapp') }}{{ wa_txt }}</a>{% endif %}
+      </div>
+    </div>
+    <div class="horas">
+      <h3>Horário</h3>
+      <table><tbody>
+        {% for h in horario %}<tr class="{{ 'hoje' if h.hoje }}{{ ' fechado' if not h.aberto }}"><th scope="row">{{ h.nome }}{% if h.hoje %}<span class="tag-hoje">hoje</span>{% endif %}</th><td class="num">{{ h.txt }}</td></tr>{% endfor %}
+      </tbody></table>
+      {% if hh %}<p class="obs">Happy hour das {{ hh.faixa }}, {{ hh.dias }}. Horário de Manaus.</p>{% endif %}
+    </div>
+  </div>
+</section>
+</main>
+
+{{ rodape(loja, precos_em, noindex) }}
+
+<nav class="barra" aria-label="Atalhos">
+  <a class="btn btn-acao" href="{{ u_cardapio }}">{{ ico('cardapio', 20) }}Cardápio</a>
+  {% if c.maps_url %}<a class="btn btn-linha" href="{{ u_maps }}" target="_blank" rel="noopener">{{ ico('pino', 20) }}Chegar</a>{% endif %}
+  {% if loja.whatsapp %}<a class="btn btn-linha" href="{{ u_wa }}" target="_blank" rel="noopener">{{ ico('whatsapp', 20) }}WhatsApp</a>{% endif %}
+</nav>
+<script>
+(function(){var b=document.querySelector('.barra'),h=document.querySelector('.hero');
+if(!b||!h||!('IntersectionObserver' in window))return;
+new IntersectionObserver(function(e){b.classList.toggle('on',!e[0].isIntersecting)},{threshold:0.02}).observe(h)})();
+</script>
+{% endblock %}

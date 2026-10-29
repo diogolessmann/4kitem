@@ -1,0 +1,102 @@
+{% from 'vitrine/bar/_ui.html' import ico %}<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#1b1510">
+<meta name="csrf" content="{{ csrf }}">
+<title>{% block titulo %}Painel · {{ loja.nome }}{% endblock %}</title>
+{% if c.icone %}<link rel="icon" type="image/png" href="{{ foto(c.icone) }}">{% endif %}
+<script>document.documentElement.classList.add('js')</script>
+<style>
+:root{--fundo:#f4f0e9;--card:#fff;--tinta:#1b1510;--tinta-2:#574c42;--tinta-3:#71665b;--linha:#e3dacd;--linha-2:#cbbfae;
+  --ambar:#ffb53a;--ambar-esc:#7a4a00;--ambar-claro:#fff3dc;--ok:#146c3b;--ok-fundo:#e3f3e8;--erro:#b42318;--erro-fundo:#fdeceb;
+  --f:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;--mola:cubic-bezier(.16,1,.3,1);color-scheme:light}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--fundo);color:var(--tinta);font:400 17px/1.45 var(--f);-webkit-font-smoothing:antialiased;padding-bottom:calc(88px + env(safe-area-inset-bottom))}
+::selection{background:var(--ambar);color:var(--tinta)}
+a{color:inherit;text-underline-offset:.2em}
+:focus-visible{outline:3px solid #c77800;outline-offset:2px;border-radius:8px}
+img{display:block;max-width:100%}
+h1,h2,h3{margin:0;line-height:1.15;text-wrap:balance}
+p{margin:0}
+.num{font-variant-numeric:tabular-nums}
+.ico{flex:none}
+.sr{position:absolute!important;width:1px!important;height:1px!important;min-height:0!important;padding:0!important;margin:-1px!important;border:0!important;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.topo{position:sticky;top:0;z-index:30;background:#1b1510;color:#f2e7c9;box-shadow:0 6px 16px -10px rgba(0,0,0,.5)}
+.topo .in{display:flex;align-items:center;gap:12px;min-height:60px}
+.topo img{width:40px;height:auto}
+.topo .marca{flex:1;min-width:0;line-height:1.15}
+.topo .marca b{display:block;font-size:1.02rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.topo .marca small{font-size:.8rem;color:#c9bca4}
+.topo a.ic{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-width:44px;min-height:44px;padding:0 10px;border-radius:10px;color:#f2e7c9;text-decoration:none;font-size:.9rem;font-weight:600}
+.topo a.ic:hover{background:rgba(242,231,201,.1)}
+.in{max-width:760px;margin:0 auto;padding:0 16px}
+main.in{padding-top:18px}
+.flash{display:grid;gap:8px;margin-bottom:16px}
+.flash p,.msg{display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border-radius:12px;font-weight:600}
+.flash .ok,.msg.ok{background:var(--ok-fundo);color:var(--ok)}
+.flash .erro,.msg.erro{background:var(--erro-fundo);color:var(--erro)}
+.card{background:var(--card);border:1px solid var(--linha);border-radius:16px;padding:18px 16px;box-shadow:0 1px 2px rgba(27,21,16,.05)}
+.card+.card{margin-top:14px}
+.card h2{font-size:1.25rem}
+.card .dica{margin-top:4px;color:var(--tinta-2);font-size:.95rem}
+label.cp{display:grid;gap:6px;font-weight:600;font-size:.95rem}
+input[type=text],input[type=password],input[type=url],input[type=tel],input[type=date],input[type=time],input[inputmode],select,textarea{width:100%;min-height:50px;padding:10px 12px;border:1.5px solid var(--linha-2);border-radius:12px;background:#fff;color:var(--tinta);font:inherit;font-size:17px}
+textarea{min-height:84px;resize:vertical}
+input:focus,select:focus,textarea:focus{outline:none;border-color:#c77800;box-shadow:0 0 0 3px rgba(255,181,58,.35)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:50px;padding:0 18px;border-radius:12px;border:1.5px solid transparent;font:700 1rem/1 var(--f);text-decoration:none;cursor:pointer;transition:transform .2s var(--mola),background-color .2s}
+.btn:active{transform:scale(.97)}
+.btn-p{background:var(--tinta);color:#fff}.btn-p:hover{background:#2f261e}
+.btn-a{background:var(--ambar);color:var(--tinta)}.btn-a:hover{background:#ffc35c}
+.btn-l{background:#fff;border-color:var(--linha-2);color:var(--tinta)}.btn-l:hover{border-color:var(--tinta)}
+.btn-perigo{background:#fff;border-color:#e7b4ae;color:var(--erro)}
+.btn-grande{width:100%;min-height:58px;font-size:1.1rem}
+.abas{position:fixed;left:0;right:0;bottom:0;z-index:30;background:#fff;border-top:1px solid var(--linha);padding-bottom:env(safe-area-inset-bottom);box-shadow:0 -8px 20px -16px rgba(27,21,16,.3)}
+.abas ul{list-style:none;margin:0 auto;padding:0;max-width:760px;display:grid;grid-template-columns:repeat(3,1fr)}
+.abas a{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-height:66px;font-size:.88rem;font-weight:700;color:var(--tinta-3);text-decoration:none}
+.abas a[aria-current=page]{color:var(--tinta);box-shadow:inset 0 4px 0 var(--ambar)}
+.toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom));z-index:40;transform:translate(-50%,16px);opacity:0;display:flex;gap:8px;align-items:center;max-width:calc(100% - 32px);padding:12px 16px;border-radius:12px;background:#1b1510;color:#fff;font-weight:600;box-shadow:0 14px 30px -12px rgba(0,0,0,.45);transition:opacity .25s,transform .35s var(--mola);pointer-events:none}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+.toast.erro{background:var(--erro)}
+.toast .ico{color:var(--ambar)}
+html.js .sem-js{display:none!important}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important;animation:none!important}}
+{% block css %}{% endblock %}
+</style>
+</head>
+<body>
+{% block corpo %}{% endblock %}
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script>
+/* painel do bar: formulários com data-ajax salvam sem recarregar; sem JS, o mesmo formulário posta normal */
+(function(){
+  var csrf=document.querySelector('meta[name=csrf]').content, toast=document.getElementById('toast'), t0;
+  window.vbAviso=function(msg,erro){toast.textContent=msg;toast.classList.toggle('erro',!!erro);toast.classList.add('on');clearTimeout(t0);t0=setTimeout(function(){toast.classList.remove('on')},erro?5200:2600)};
+  window.vbPost=function(url,fd){fd.append('_csrf',csrf);return fetch(url,{method:'POST',body:fd,headers:{'X-Requested-With':'fetch'},credentials:'same-origin'}).then(function(r){return r.json().catch(function(){return {ok:false,msg:r.status==413?'Foto acima de 15 MB.':'Não salvou (erro '+r.status+'). Tenta de novo.'}})}).catch(function(){return {ok:false,msg:'Sem internet agora. Tenta de novo.'}})};
+  window.vbTam=function(b){return b>=1048576?(b/1048576).toFixed(1).replace('.',',')+' MB':Math.max(1,Math.round(b/1024))+' KB'};
+  /* o celular encolhe a foto antes de mandar (lado maior 1600 px, JPEG 0.85): de MB para algumas centenas de KB */
+  window.vbEncolhe=function(file){return new Promise(function(ok){
+    if(!/^image\//.test(file.type)){ok(file);return}
+    var url=URL.createObjectURL(file),img=new Image();
+    img.onload=function(){try{var w=img.naturalWidth,h=img.naturalHeight,k=Math.min(1,1600/Math.max(w,h)),cv=document.createElement('canvas');
+      cv.width=Math.round(w*k);cv.height=Math.round(h*k);cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height);
+      cv.toBlob(function(b){URL.revokeObjectURL(url);ok(b&&b.size<file.size?b:file)},'image/jpeg',0.85)}catch(e){URL.revokeObjectURL(url);ok(file)}};
+    img.onerror=function(){URL.revokeObjectURL(url);ok(file)};img.src=url})};
+  document.addEventListener('submit',function(e){
+    var f=e.target; if(!f.hasAttribute('data-ajax'))return; e.preventDefault();
+    var fd=new FormData(f); if(e.submitter&&e.submitter.name)fd.set(e.submitter.name,e.submitter.value);
+    fd.delete('_csrf');
+    if(f.dataset.confirma&&!confirm(f.dataset.confirma))return;
+    var ev=new CustomEvent('vb:antes',{detail:fd,cancelable:true}); if(!f.dispatchEvent(ev))return;
+    f.classList.add('salvando');
+    vbPost(f.action,fd).then(function(j){f.classList.remove('salvando');vbAviso(j.msg||(j.ok?'Salvo':'Não salvou'),!j.ok);
+      f.dispatchEvent(new CustomEvent('vb:depois',{detail:j}))});
+  });
+})();
+</script>
+{% block js %}{% endblock %}
+</body>
+</html>

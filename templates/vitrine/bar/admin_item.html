@@ -1,0 +1,103 @@
+{% extends 'vitrine/bar/_admin_base.html' %}
+{% from 'vitrine/bar/_ui.html' import ico %}
+{% block titulo %}{{ p.titulo if p else 'Item novo' }} · Painel · {{ loja.nome }}{% endblock %}
+{% block css %}
+.volta{display:inline-flex;align-items:center;gap:6px;min-height:44px;font-weight:700;text-decoration:none;color:var(--tinta-2)}
+.volta .ico{transform:rotate(180deg)}
+h1{font-size:1.6rem;margin:4px 0 14px}
+.form{display:grid;gap:16px}
+.grade2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.campo{position:relative;display:flex;align-items:center}
+.campo>span{position:absolute;left:12px;color:var(--tinta-3);font-weight:600;pointer-events:none}
+.campo input{padding-left:38px;font-size:1.2rem;font-weight:700;font-variant-numeric:tabular-nums}
+.hh-l{color:var(--ambar-esc)}
+.foto-box{display:grid;grid-template-columns:110px 1fr;gap:14px;align-items:center}
+.foto-box .prev{width:110px;height:110px;border-radius:14px;object-fit:cover;background:#efe8de;display:grid;place-items:center;color:var(--tinta-3)}
+.foto-box label.btn{position:relative;overflow:hidden}
+.foto-box input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer}
+html:not(.js) .foto-box input[type=file]{position:static;opacity:1}
+.chk{display:flex;align-items:center;gap:10px;min-height:44px;font-weight:600;margin-top:6px}
+.chk input{width:24px;height:24px;accent-color:#b42318}
+.info{font-size:.92rem;color:var(--tinta-2);font-variant-numeric:tabular-nums;margin-top:6px}
+.zona{margin-top:22px;border-color:#efc9c4}
+.zona h2{color:var(--erro)}
+.zona form{display:grid;gap:10px;margin-top:10px}
+{% endblock %}
+{% block corpo %}
+{% set sec_atual = p.categoria if p else secao %}
+<header class="topo">
+  <div class="in">
+    {% if loja.logo %}<img src="{{ foto(loja.logo, True) }}" width="96" height="92" alt="">{% endif %}
+    <div class="marca"><b>{{ loja.nome }}</b><small>Painel do dono</small></div>
+    <a class="ic" href="{{ url_for('vitrine.admin', slug=loja.slug, aba='cardapio') }}{{ '#i' ~ p.id if p }}">Fechar</a>
+  </div>
+</header>
+<main class="in">
+  <a class="volta" href="{{ url_for('vitrine.admin', slug=loja.slug, aba='cardapio') }}{{ '#i' ~ p.id if p }}">{{ ico('seta', 18) }}Cardápio</a>
+  <h1>{{ 'Editar item' if p else 'Item novo' }}</h1>
+  {% with msgs = get_flashed_messages(with_categories=true) %}{% if msgs %}<div class="flash" role="alert">{% for cat, m in msgs %}<p class="{{ 'ok' if cat == 'ok' else 'erro' }}">{{ m }}</p>{% endfor %}</div>{% endif %}{% endwith %}
+
+  <form class="form card" id="item" method="post" enctype="multipart/form-data" action="{{ url_for('vitrine.bar_item_salvar', slug=loja.slug, pid=p.id if p else 'novo') }}">
+    <input type="hidden" name="_csrf" value="{{ csrf }}">
+    <label class="cp">Nome (com a medida, se tiver)<input type="text" name="titulo" value="{{ p.titulo if p else '' }}" maxlength="80" required placeholder="Ex.: Chopp Pilsen 500 ml"></label>
+    <label class="cp">Descrição curta (opcional)<textarea name="descricao" maxlength="200" placeholder="Ex.: Acompanha pão e vinagrete">{{ p.descricao if p else '' }}</textarea></label>
+    <label class="cp">Seção do cardápio
+      <select name="secao" required>
+        {% if not sec_atual %}<option value="" selected disabled>Escolhe a seção</option>{% endif %}
+        {% for s in secs %}<option value="{{ s.chave }}"{% if s.chave == sec_atual %} selected{% endif %}>{{ s.nome }}</option>{% endfor %}
+      </select>
+    </label>
+    <div class="grade2">
+      <label class="cp">Preço<span class="campo"><span>R$</span><input name="preco" inputmode="decimal" autocomplete="off" value="{{ preco(p.preco) if p else '' }}" placeholder="no balcão"></span></label>
+      <label class="cp"><span class="hh-l">Happy hour</span><span class="campo"><span>R$</span><input name="hh" inputmode="decimal" autocomplete="off" value="{{ preco(p.preco_pro) if p else '' }}" placeholder="—"></span></label>
+    </div>
+    <p class="dica" style="color:var(--tinta-2);font-size:.92rem;margin-top:-6px">Sem preço, o cardápio mostra "preço no balcão". Happy hour vazio = sem promoção.</p>
+
+    <div>
+      <p class="cp" style="font-weight:600;font-size:.95rem;margin-bottom:8px">Foto (opcional)</p>
+      <div class="foto-box">
+        {% if p and p.foto %}<img class="prev" id="prev" src="{{ foto(p.foto, True) }}" width="110" height="110" alt="Foto atual de {{ p.titulo }}">{% else %}<span class="prev" id="prev">{{ ico('camera', 28) }}</span>{% endif %}
+        <div>
+          <label class="btn btn-l">{{ ico('camera', 20) }}{{ 'Trocar a foto' if p and p.foto else 'Pôr foto' }}<input type="file" name="foto" accept="image/*" id="arq"></label>
+          <p class="info" id="info" aria-live="polite">Foto do prato de cima, com luz. O celular diminui antes de enviar.</p>
+          {% if p and p.foto %}<label class="chk"><input type="checkbox" name="sem_foto" value="1"> Tirar a foto</label>{% endif %}
+        </div>
+      </div>
+    </div>
+    <button class="btn btn-p btn-grande" type="submit">{{ ico('check', 20) }}{{ 'Salvar o item' if p else 'Pôr no cardápio' }}</button>
+  </form>
+
+  {% if p %}
+  <section class="card zona" aria-labelledby="t-tirar">
+    <h2 id="t-tirar">Tirar do cardápio</h2>
+    <p class="dica">Acabou só hoje? Usa o "Acabou hoje" na lista: amanhã volta sozinho. Aqui é pra tirar de vez.</p>
+    <form method="post" action="{{ url_for('vitrine.bar_item_excluir', slug=loja.slug, pid=p.id) }}">
+      <input type="hidden" name="_csrf" value="{{ csrf }}">
+      <label class="chk"><input type="checkbox" name="confirmo" value="1" required> Sim, tirar {{ p.titulo }} do cardápio</label>
+      <button class="btn btn-perigo" type="submit">{{ ico('lixo', 20) }}Tirar de vez</button>
+    </form>
+  </section>
+  {% endif %}
+</main>
+{% endblock %}
+{% block js %}
+<script>
+(function(){
+  var form=document.getElementById('item'),arq=document.getElementById('arq'),info=document.getElementById('info'),prev=document.getElementById('prev'),pronta=null,orig=0;
+  arq.addEventListener('change',async function(){
+    var f=arq.files[0];pronta=null;if(!f)return;orig=f.size;info.textContent='Preparando a foto…';
+    pronta=await vbEncolhe(f);
+    info.textContent=vbTam(f.size)+' no celular → '+vbTam(pronta.size)+' pra enviar. O site guarda ainda menor.';
+    var u=URL.createObjectURL(pronta),img=document.createElement('img');img.className='prev';img.id='prev';img.src=u;img.alt='Foto nova';img.width=110;img.height=110;prev.replaceWith(img);prev=img;
+  });
+  form.addEventListener('submit',function(e){
+    if(!pronta)return;            /* sem foto nova: posta normal */
+    e.preventDefault();
+    if(pronta.size>15*1048576){vbAviso('Foto acima de 15 MB.',true);return}
+    var fd=new FormData(form);fd.delete('_csrf');fd.set('foto',pronta,'foto.jpg');fd.append('orig',orig);
+    var b=form.querySelector('button[type=submit]');b.disabled=true;info.textContent='Enviando…';
+    vbPost(form.action,fd).then(function(j){b.disabled=false;if(j.ok){vbAviso(j.msg);setTimeout(function(){location.href=j.volta},900)}else{vbAviso(j.msg,true);info.textContent=j.msg}});
+  });
+})();
+</script>
+{% endblock %}

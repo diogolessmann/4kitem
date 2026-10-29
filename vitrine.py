@@ -313,11 +313,31 @@ def busca(slug):
                            titulo=f"Busca por {q}" if q else 'Busca', descricao=f"Resultados para {q} no catálogo da {loja['nome']}.", **_ctx(loja))
 
 
+# 28/out: loja tipo 'bar' (vitrine_bar.py) não tem catálogo de elétrica. Essas rotas davam 500 (template que não
+# existe) ou texto de loja ("Quero iluminação pra…") no bar, e o sitemap mandava o Google pra elas: 404 pro bar.
+_SO_LOJA = {'vitrine.catalogo', 'vitrine.categoria', 'vitrine.busca', 'vitrine.produto_pagina', 'vitrine.eletricista',
+            'vitrine.ambiente', 'vitrine.zap', 'vitrine.ml', 'vitrine.orcamento', 'vitrine.frete',
+            'vitrine.admin_produto_pagina', 'vitrine.salvar_loja', 'vitrine.produto', 'vitrine.importar_ml',
+            'vitrine.midia_upload', 'vitrine.midia_acao', 'vitrine.fabricante', 'vitrine.fabricante_status'}
+
+
+@vitrine_bp.before_request
+def _so_loja():
+    if request.endpoint in _SO_LOJA:
+        conn = get_vit_db()
+        r = conn.execute('SELECT tipo FROM vit_lojas WHERE slug=?', ((request.view_args or {}).get('slug', ''),)).fetchone()
+        conn.close()
+        if r and r['tipo'] == 'bar':
+            abort(404)
+
+
 # ─────────────────────────────────────────────────────────────── site público
 @vitrine_bp.route('/<slug>')
 @vitrine_bp.route('/<slug>/')
 def site(slug):
     loja = _loja(slug)
+    if loja['tipo'] == 'bar':              # 28/out: bar tem home própria (vitrine_bar.py)
+        return vitrine_bar.home(loja)
     _evento(loja['id'], 'visita')
     prods = _produtos(loja['id'])
     destaques = [p for p in prods if p['destaque']][:8]
@@ -379,9 +399,17 @@ def ml(slug, pid):
 mimetypes.add_type('image/webp', '.webp')   # o container do Railway não tem /etc/mime.types → .webp saía como octet-stream
 
 
+_SLUG_OK = re.compile(r'[a-z0-9][a-z0-9-]{0,59}')
+
+
 @vitrine_bp.route('/<slug>/m/<path:arquivo>')
 def media(slug, arquivo):
-    return send_from_directory(_media_dir(slug), arquivo, max_age=86400 * 30,
+    # 28/out: o slug vinha cru da URL e '..' saía da pasta da loja (servia qualquer arquivo do volume).
+    # Só slug no formato de loja e pasta que já existe; e não cria pasta para slug inventado.
+    pasta = os.path.join(_MEDIA, slug)
+    if not _SLUG_OK.fullmatch(slug or '') or not os.path.isdir(pasta):
+        abort(404)
+    return send_from_directory(pasta, arquivo, max_age=86400 * 30,
                                mimetype='image/webp' if arquivo.lower().endswith('.webp') else None)
 
 
@@ -390,6 +418,8 @@ def sitemap(slug):
     """22/set: com <lastmod> tirado da data do produto (o Google usa pra decidir o que rastrear
     de novo, e ignora o campo se ele disser "hoje" todo dia)."""
     loja = _loja(slug)
+    if loja['tipo'] == 'bar':              # 28/out: bar em prévia = sitemap vazio (vitrine_bar.sitemap)
+        return vitrine_bar.sitemap(loja)
     base = f"{PUBLIC_BASE}/v/{slug}"
     prods = _produtos(loja['id'])
 
@@ -411,6 +441,8 @@ def robots(slug):
     """Robots por loja: quem acessa o site do cliente pelo domínio PRÓPRIO dele (_HostRouter)
     precisa de um robots que aponte pro sitemap DELE, não pro do 4kitem."""
     loja = _loja(slug)
+    if loja['tipo'] == 'bar':              # 28/out: bar em prévia = Disallow: / (vitrine_bar.robots)
+        return vitrine_bar.robots(loja)
     body = ('User-agent: *\nAllow: /\nDisallow: /v/%s/busca\n'
             'Sitemap: %s/v/%s/sitemap.xml\n' % (slug, PUBLIC_BASE, slug))
     return Response(body, mimetype='text/plain')
@@ -419,6 +451,8 @@ def robots(slug):
 @vitrine_bp.route('/<slug>/llms.txt')
 def llms(slug):
     loja = _loja(slug)
+    if loja['tipo'] == 'bar':              # 28/out: nada de "material elétrico em Schroeder" pro bar (vitrine_bar.llms)
+        return vitrine_bar.llms(loja)
     base = _base(loja)
     prods = _produtos(loja['id'])
     linhas = [f"# {loja['nome']}", '', loja['descricao'], '',
@@ -456,6 +490,8 @@ def _logado(f):
 @vitrine_bp.route('/<slug>/admin', methods=['GET', 'POST'])
 def admin(slug):
     loja = _loja(slug)
+    if loja['tipo'] == 'bar':              # 28/out: painel do bar (senha nova obrigatória, trava, CSRF) em vitrine_bar.py
+        return vitrine_bar.admin(loja)
     if request.method == 'POST' and not session.get('vit_' + slug):
         if check_password_hash(loja['senha_hash'], request.form.get('senha', '')):
             session['vit_' + slug] = True
@@ -996,6 +1032,11 @@ def semear_ledoux():
     _migra_ledoux_v2(conn)
     conn.commit()
     conn.close()
+    # 28/out: o Garage (tipo bar) nasce aqui, sem tocar no app.py. Se a loja já existe: 1 SELECT e nada mais.
+    try:
+        vitrine_bar.semear_garage()
+    except Exception as e:
+        print(f'[vitrine] semente do Garage falhou: {e}')
 
 
 def _migra_ledoux_v2(conn):
@@ -1008,3 +1049,8 @@ def _migra_ledoux_v2(conn):
     conn.execute('UPDATE vit_midia SET produto_id=NULL WHERE produto_id IS NOT NULL AND produto_id NOT IN (SELECT id FROM vit_produtos)')
     if loja['descricao'] == _DESC_V1:
         conn.execute('UPDATE vit_lojas SET descricao=? WHERE id=?', (_DESC_V2, loja['id']))
+
+
+# 28/out: rotas e páginas da loja tipo BAR (Garage Moto Pub). Import no FIM: o vitrine_bar usa o vitrine_bp e os
+# helpers definidos acima; as rotas entram no blueprint antes do app.register_blueprint.
+import vitrine_bar  # noqa: E402

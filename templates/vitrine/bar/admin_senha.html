@@ -1,0 +1,27 @@
+{% extends 'vitrine/bar/_admin_base.html' %}
+{% from 'vitrine/bar/_ui.html' import ico %}
+{% block titulo %}Crie sua senha · {{ loja.nome }}{% endblock %}
+{% block css %}
+body{padding-bottom:0;min-height:100svh;display:grid;place-items:center;background:#1b1510}
+.entrar{width:min(440px,calc(100% - 32px));margin:32px auto;background:#fff;border-radius:20px;padding:26px 22px 24px;box-shadow:0 30px 60px -30px rgba(0,0,0,.7)}
+.entrar .selo{display:inline-flex;align-items:center;justify-content:center;width:52px;height:52px;border-radius:14px;background:var(--ambar-claro);color:var(--ambar-esc)}
+.entrar h1{margin-top:14px;font-size:1.45rem}
+.entrar .sub{color:var(--tinta-2);margin-top:6px}
+.entrar form{display:grid;gap:14px;margin-top:20px}
+.flash{margin:16px 0 0}
+{% endblock %}
+{% block corpo %}
+<main class="entrar">
+  <span class="selo">{{ ico('cadeado', 26) }}</span>
+  <h1>Crie a sua senha</h1>
+  <p class="sub">Você entrou com a senha padrão, que é igual pra todo mundo. Cria uma só sua: assim ninguém mexe no seu cardápio.</p>
+  {% with msgs = get_flashed_messages(with_categories=true) %}{% if msgs %}<div class="flash" role="alert">{% for cat, m in msgs %}<p class="{{ 'ok' if cat == 'ok' else 'erro' }}">{{ m }}</p>{% endfor %}</div>{% endif %}{% endwith %}
+  <form method="post" action="{{ url_for('vitrine.bar_senha', slug=loja.slug) }}">
+    <input type="hidden" name="_csrf" value="{{ csrf }}">
+    <input type="text" name="usuario" value="{{ loja.slug }}" autocomplete="username" class="sr" tabindex="-1" aria-hidden="true">
+    <label class="cp">Senha nova (6 letras ou mais)<input type="password" name="nova" autocomplete="new-password" minlength="6" maxlength="72" required autofocus></label>
+    <label class="cp">Repete a senha nova<input type="password" name="confirma" autocomplete="new-password" minlength="6" maxlength="72" required></label>
+    <button class="btn btn-p btn-grande" type="submit">Salvar senha e entrar</button>
+  </form>
+</main>
+{% endblock %}

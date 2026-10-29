@@ -1,0 +1,52 @@
+{% extends 'vitrine/bar/_base.html' %}
+{% from 'vitrine/bar/_ui.html' import ico, rodape %}
+{% block titulo %}{{ loja.nome }} · na mesa{% endblock %}
+{% block fontes %}<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800&display=swap" rel="stylesheet">{% endblock %}
+{% block css %}
+.mesa{min-height:100svh;display:flex;flex-direction:column;gap:22px;max-width:560px;margin:0 auto;padding:22px var(--g) 8px}
+.cab{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;align-items:center}
+.cab img{grid-row:span 2;width:78px;height:auto;filter:drop-shadow(0 8px 16px rgba(0,0,0,.5))}
+.cab h1{font-size:2.1rem;text-transform:uppercase;line-height:.92}
+.cab .status{justify-self:start;padding:.38rem .7rem .38rem .6rem;font-size:.9rem}
+.botoes{display:grid;gap:14px}
+.grande{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:18px;min-height:132px;padding:22px 20px 22px 22px;border-radius:18px;text-decoration:none;transition:transform .3s var(--mola),box-shadow .3s}
+.grande:active{transform:scale(.98)}
+.grande b{display:block;font:800 clamp(2.1rem,10vw,2.6rem)/.92 var(--f-disp);text-transform:uppercase;letter-spacing:.02em}
+.grande span{display:block;margin-top:7px;font-size:1rem;line-height:1.3}
+.g-cardapio{background:var(--ambar);color:var(--ambar-tinta);box-shadow:0 22px 40px -22px rgba(255,181,58,.8)}
+.g-musica{background:linear-gradient(180deg,#142318,#0c140e);border:2px solid var(--verde);color:var(--osso);box-shadow:0 22px 44px -24px rgba(75,227,127,.55)}
+.g-musica .ico:first-child{color:var(--verde)}
+.g-musica span{color:#cfe9d6}
+.linhas{display:grid;gap:8px}
+.linhas p{display:flex;gap:10px;align-items:flex-start;padding:11px 13px;border-radius:10px;background:var(--asfalto-2);border:1px solid var(--linha);font-size:.95rem;line-height:1.4}
+.linhas .ico{color:var(--ambar);margin-top:1px}
+.linhas .av{background:var(--ambar);color:var(--ambar-tinta);border-color:var(--ambar);font-weight:600}.linhas .av .ico{color:var(--ambar-tinta)}
+.atalhos{display:flex;flex-wrap:wrap;gap:6px 18px}
+.atalhos a{display:inline-flex;align-items:center;gap:.45rem;min-height:44px;color:var(--osso);text-decoration:none;font-weight:600}
+.atalhos a:hover{color:var(--ambar)}
+.rodape{margin-top:auto}
+.mesa .rodape .in{padding:0}
+{% endblock %}
+{% block corpo %}
+<div class="mesa">
+  <header class="cab">
+    {% if loja.logo %}<img src="{{ foto(loja.logo) }}" width="360" height="345" alt="{{ loja.nome }}">{% endif %}
+    <h1>{{ loja.nome }}</h1>
+    <span class="status {{ 'aberto' if est.aberto else 'fechado' }}"><i></i>{{ est.txt }}</span>
+  </header>
+  <main class="botoes">
+    <a class="grande g-cardapio" href="{{ url_for('vitrine.bar_cardapio', slug=loja.slug, o='mesa') }}">{{ ico('cardapio', 44) }}<div><b>Cardápio</b><span>Preços, porções e happy hour</span></div>{{ ico('seta', 26) }}</a>
+    {% if tem_musica %}<a class="grande g-musica" href="{{ url_for('vitrine.bar_ir', slug=loja.slug, destino='musica') }}">{{ ico('musica', 44) }}<div><b>Escolher a música</b><span>O clipe entra na fila da TV</span></div>{{ ico('seta', 26) }}</a>{% endif %}
+  </main>
+  <div class="linhas">
+    {% if aviso %}<p class="av">{{ ico('megafone', 20) }}<span>{{ aviso }}</span></p>{% endif %}
+    {% if hoje_semana %}<p>{{ ico('estrela', 20) }}<span>Hoje: {{ hoje_semana }}</span></p>{% endif %}
+    {% if hh %}<p>{{ ico('relogio', 20) }}<span>{% if hh.rolando %}Happy hour rolando até {{ hh.ate }}.{% else %}Happy hour das {{ hh.faixa }}, {{ hh.dias }}.{% endif %}</span></p>{% endif %}
+  </div>
+  <nav class="atalhos" aria-label="Mais do bar">
+    <a href="{{ url_for('vitrine.site', slug=loja.slug) }}">{{ ico('caneca', 20) }}Conhecer o bar</a>
+    {% if loja.instagram %}<a href="{{ url_for('vitrine.bar_ir', slug=loja.slug, destino='instagram') }}" target="_blank" rel="noopener">{{ ico('instagram', 20) }}@{{ loja.instagram }}</a>{% endif %}
+  </nav>
+  {{ rodape(loja, precos_em, noindex) }}
+</div>
+{% endblock %}

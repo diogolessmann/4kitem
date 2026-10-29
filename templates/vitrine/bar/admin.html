@@ -1,0 +1,348 @@
+{% extends 'vitrine/bar/_admin_base.html' %}
+{% from 'vitrine/bar/_ui.html' import ico %}
+{% block titulo %}{{ {'cardapio': 'Cardápio', 'fotos': 'Fotos', 'bar': 'O bar'}[aba] }} · Painel · {{ loja.nome }}{% endblock %}
+{% block css %}
+.cab{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:14px}
+.cab h1{font-size:1.6rem}
+.cab p{color:var(--tinta-2);font-size:.95rem;margin-top:2px}
+.saltos{position:sticky;top:60px;z-index:20;margin:0 -16px 8px;padding:8px 16px;background:rgba(244,240,233,.97);border-bottom:1px solid var(--linha);display:flex;gap:6px;overflow-x:auto;scrollbar-width:none}
+.saltos::-webkit-scrollbar{display:none}
+.saltos a{flex:none;display:inline-flex;align-items:center;min-height:40px;padding:0 13px;border-radius:999px;background:#fff;border:1px solid var(--linha-2);text-decoration:none;font-size:.9rem;font-weight:600;white-space:nowrap}
+.sec-adm{scroll-margin-top:118px;margin-top:22px}
+.sec-adm h2{display:flex;align-items:baseline;justify-content:space-between;gap:8px;font-size:1.25rem;margin-bottom:10px}
+.sec-adm h2 a{font-size:.92rem;font-weight:700;display:inline-flex;align-items:center;gap:4px;min-height:44px;color:var(--ambar-esc);text-decoration:none}
+.lista{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.it{background:#fff;border:1px solid var(--linha);border-radius:16px;padding:12px;scroll-margin-top:120px;transition:background-color .3s,border-color .3s}
+.it.acabou{background:#f6f2ec;border-style:dashed}
+.it.acabou .it-nome b{text-decoration:line-through;text-decoration-color:var(--tinta-3)}
+.it-cab{display:grid;grid-template-columns:52px 1fr auto;gap:12px;align-items:center}
+.it-cab img,.sem-foto{width:52px;height:52px;border-radius:10px;object-fit:cover;background:#efe8de}
+.sem-foto{display:grid;place-items:center;color:var(--tinta-3)}
+.it-nome b{display:block;font-size:1.02rem;line-height:1.25}
+.it-nome small{display:block;color:var(--tinta-2);font-size:.85rem;line-height:1.3;margin-top:2px}
+.ed{display:inline-flex;align-items:center;justify-content:center;width:46px;height:46px;border-radius:12px;border:1px solid var(--linha-2);color:var(--tinta);text-decoration:none}
+.it-precos{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+.pf label{display:grid;gap:4px;font-size:.8rem;font-weight:700;color:var(--tinta-2);text-transform:uppercase;letter-spacing:.04em}
+.pf .hh-l{color:var(--ambar-esc)}
+.campo{position:relative;display:flex;align-items:center}
+.campo>span{position:absolute;left:12px;color:var(--tinta-3);font-weight:600;font-size:.95rem;pointer-events:none}
+.campo input{padding-left:38px;font-size:1.2rem;font-weight:700;font-variant-numeric:tabular-nums;min-height:52px}
+.pf.hh input{border-color:#e9c88f;background:#fffaf1}
+.pf .ok-mark{display:none;align-items:center;gap:4px;margin-top:4px;color:var(--ok);font-size:.82rem;font-weight:700}
+.pf.salvo .ok-mark{display:flex}
+.pf.salvando input{opacity:.6}
+.pf .sem-js{margin-top:6px;min-height:40px}
+.it-acoes{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.seg{display:grid;grid-template-columns:1fr 1fr;flex:1 1 220px;border:1.5px solid var(--linha-2);border-radius:12px;overflow:hidden}
+.seg button{min-height:48px;border:0;background:#fff;font:700 .98rem var(--f);color:var(--tinta-2);cursor:pointer}
+.seg button+button{border-left:1.5px solid var(--linha-2)}
+.seg button[aria-pressed=true][value="1"]{background:var(--ok-fundo);color:var(--ok)}
+.seg button[aria-pressed=true][value="0"]{background:var(--erro-fundo);color:var(--erro)}
+.estrela{display:inline-flex;align-items:center;gap:6px;min-height:48px;padding:0 14px;border-radius:12px;border:1.5px solid var(--linha-2);background:#fff;font:700 .95rem var(--f);color:var(--tinta-2);cursor:pointer}
+.estrela[aria-pressed=true]{background:var(--ambar-claro);border-color:#e9c88f;color:var(--ambar-esc)}
+.estrela[aria-pressed=false] .ico{opacity:.35}
+.novo{margin-top:6px}
+/* fotos */
+.sobe{display:grid;gap:10px}
+.sobe label.btn{position:relative;overflow:hidden}
+.sobe input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer}
+html:not(.js) .sobe input[type=file]{position:static;opacity:1}
+.fila{list-style:none;margin:12px 0 0;padding:0;display:grid;gap:6px}
+.fila li{display:flex;gap:8px;align-items:center;padding:10px 12px;border-radius:10px;background:#fff;border:1px solid var(--linha);font-size:.95rem;font-variant-numeric:tabular-nums}
+.fila li.ok{color:var(--ok);border-color:#b7dfc6}.fila li.erro{color:var(--erro);border-color:#efb9b3}
+.galeria{list-style:none;margin:14px 0 0;padding:0;display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.galeria li{position:relative;background:#fff;border:1px solid var(--linha);border-radius:14px;overflow:hidden}
+.galeria li.capa{border:2px solid var(--ambar)}
+.galeria img{width:100%;aspect-ratio:1;object-fit:cover}
+.selo-capa{position:absolute;top:8px;left:8px;padding:4px 8px;border-radius:8px;background:var(--ambar);color:var(--tinta);font-size:.8rem;font-weight:800}
+.g-acoes{display:grid;grid-template-columns:repeat(3,1fr);gap:0;border-top:1px solid var(--linha)}
+.g-acoes button{min-height:46px;border:0;border-left:1px solid var(--linha);background:#fff;font:700 .92rem var(--f);color:var(--tinta);display:inline-flex;align-items:center;justify-content:center;cursor:pointer}
+.g-acoes button:first-of-type{grid-column:1/-1;border-left:0;border-bottom:1px solid var(--linha)}
+.g-acoes button:nth-of-type(2){border-left:0}
+.capa-atual{display:grid;grid-template-columns:96px 1fr;gap:14px;align-items:center;margin-top:14px}
+.capa-atual img{width:96px;height:96px;border-radius:12px;object-fit:cover;border:2px solid var(--ambar)}
+.g-acoes button:disabled{color:var(--tinta-3);cursor:default}
+.g-acoes .perigo{color:var(--erro)}
+/* bar */
+.hoje-card{display:grid;gap:12px}
+.hoje-card .estado{display:flex;align-items:center;gap:10px;font-weight:700;font-size:1.05rem}
+.hoje-card .estado i{width:12px;height:12px;border-radius:50%;background:#c77800}
+.hoje-card .estado.aberto i{background:#1fa155;box-shadow:0 0 0 4px rgba(31,161,85,.15)}
+.dias{display:grid;gap:8px;margin-top:12px}
+.dia{display:grid;grid-template-columns:2.8em minmax(0,1fr) minmax(0,1fr);gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--linha)}
+.dia input{min-width:0;padding-left:10px;padding-right:6px}
+.dia:last-child{border-bottom:0}
+.dia b{font-size:.98rem}
+.dia .fch{grid-column:2/-1;display:flex;align-items:center;gap:8px;font-size:.92rem;color:var(--tinta-2);min-height:40px}
+.dia input[type=time]{min-height:46px}
+.dia.fechado input[type=time]{opacity:.35}
+.chk{display:flex;align-items:center;gap:10px;min-height:44px;font-weight:600}
+.chk input{width:24px;height:24px;accent-color:#1b1510}
+.dsem{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.dsem label{position:relative}
+.dsem input{position:absolute;opacity:0}
+.dsem span{display:inline-flex;align-items:center;justify-content:center;min-width:52px;min-height:44px;padding:0 10px;border-radius:10px;border:1.5px solid var(--linha-2);font-weight:700;background:#fff;cursor:pointer}
+.dsem input:checked+span{background:var(--tinta);border-color:var(--tinta);color:#fff}
+.dsem input:focus-visible+span{outline:3px solid #c77800;outline-offset:2px}
+.grade2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.campos{display:grid;gap:14px;margin-top:14px}
+.salvar-fixo{position:sticky;bottom:calc(76px + env(safe-area-inset-bottom));z-index:10;margin-top:14px;padding:10px 0;background:linear-gradient(transparent,var(--fundo) 30%)}
+.qr-prev{display:grid;grid-template-columns:120px 1fr;gap:16px;align-items:center;margin-top:12px}
+.qr-prev img{width:120px;height:120px;background:#fff;border:1px solid var(--linha);border-radius:10px}
+.qr-prev code{font-size:.85rem;word-break:break-all;color:var(--tinta-2)}
+.tabela{width:100%;min-width:560px;border-collapse:collapse;margin-top:12px;font-size:.92rem;font-variant-numeric:tabular-nums}
+.tabela th,.tabela td{padding:9px 6px;border-bottom:1px solid var(--linha);text-align:right;white-space:nowrap}
+.tabela th:first-child,.tabela td:first-child{position:sticky;left:0;background:#fff}
+.tabela th:first-child,.tabela td:first-child{text-align:left}
+.tabela thead th{font-size:.78rem;color:var(--tinta-2);text-transform:uppercase;letter-spacing:.03em}
+.tabela tr.hoje td{font-weight:700}
+.tabela tfoot td{font-weight:800;border-bottom:0}
+.rolar{overflow-x:auto;margin:0 -4px;padding:0 4px}
+.dica-forte{margin-top:10px;padding:10px 12px;border-radius:10px;background:var(--ambar-claro);color:var(--ambar-esc);font-size:.92rem;font-weight:600}
+@media (min-width:640px){.galeria{grid-template-columns:repeat(3,1fr)}}
+{% endblock %}
+{% block corpo %}
+<header class="topo">
+  <div class="in">
+    {% if loja.logo %}<img src="{{ foto(loja.logo, True) }}" width="96" height="92" alt="">{% endif %}
+    <div class="marca"><b>{{ loja.nome }}</b><small>Painel do dono</small></div>
+    <a class="ic" href="{{ url_for('vitrine.site', slug=loja.slug) }}" target="_blank" rel="noopener" aria-label="Ver o site">{{ ico('olho') }}<span class="sr">Ver o site</span></a>
+    <a class="ic" href="{{ url_for('vitrine.sair', slug=loja.slug) }}" aria-label="Sair do painel">{{ ico('sair') }}<span class="sr">Sair</span></a>
+  </div>
+</header>
+
+<main class="in">
+{% with msgs = get_flashed_messages(with_categories=true) %}{% if msgs %}<div class="flash" role="status">{% for cat, m in msgs %}<p class="{{ 'erro' if cat == 'erro' else 'ok' }}">{{ ico('check' if cat != 'erro' else 'cadeado', 20) }}<span>{{ m }}</span></p>{% endfor %}</div>{% endif %}{% endwith %}
+
+{% if aba == 'cardapio' %}
+  <div class="cab">
+    <div><h1>Cardápio</h1><p>Preços atualizados em <b class="num" id="precos-em">{{ precos_em or '—' }}</b>{% if n_acabou %} · <span class="num">{{ n_acabou }}</span> acabou hoje{% endif %}</p></div>
+    <a class="btn btn-a" href="{{ url_for('vitrine.bar_item_pagina', slug=loja.slug, pid='novo') }}">{{ ico('mais', 20) }}Item</a>
+  </div>
+  <p class="dica-forte">Mudou o preço? Toca no número, escreve e pronto: salva sozinho. "Acabou hoje" volta sozinho amanhã.</p>
+  <nav class="saltos" aria-label="Seções">{% for s in secs %}<a href="#s-{{ s.chave }}">{{ s.nome.split(' · ')[0] }}</a>{% endfor %}</nav>
+  {% for s in secs %}
+  <section class="sec-adm" id="s-{{ s.chave }}">
+    <h2>{{ s.nome }} <a href="{{ url_for('vitrine.bar_item_pagina', slug=loja.slug, pid='novo', secao=s.chave) }}">{{ ico('mais', 18) }}item</a></h2>
+    <ul class="lista">
+    {% for i in s.itens %}
+      <li class="it{{ ' acabou' if i.acabou }}" id="i{{ i.id }}">
+        <div class="it-cab">
+          {% if i.foto %}<img src="{{ foto(i.foto, True) }}" width="52" height="52" loading="lazy" alt="">{% else %}<span class="sem-foto">{{ ico('camera', 20) }}</span>{% endif %}
+          <div class="it-nome"><b>{{ i.titulo }}</b>{% if i.desc %}<small>{{ i.desc }}</small>{% endif %}</div>
+          <a class="ed" href="{{ url_for('vitrine.bar_item_pagina', slug=loja.slug, pid=i.id) }}" aria-label="Editar {{ i.titulo }}">{{ ico('lapis', 20) }}</a>
+        </div>
+        <div class="it-precos">
+          {% for campo, rotulo, v in [('preco', 'Preço', i.preco), ('hh', 'Happy hour', i.hh)] %}
+          <form class="pf {{ campo }}" method="post" action="{{ url_for('vitrine.bar_preco', slug=loja.slug, pid=i.id) }}" data-ajax>
+            <input type="hidden" name="_csrf" value="{{ csrf }}"><input type="hidden" name="campo" value="{{ campo }}">
+            <label><span class="{{ 'hh-l' if campo == 'hh' }}">{{ rotulo }}</span><span class="campo"><span>R$</span><input name="valor" inputmode="decimal" autocomplete="off" value="{{ preco(v) }}" data-antes="{{ preco(v) }}" placeholder="{{ '—' if campo == 'hh' else 'no balcão' }}" aria-label="{{ rotulo }} de {{ i.titulo }}"></span></label>
+            <span class="ok-mark">{{ ico('check', 16) }}salvo</span>
+            <button class="btn btn-l sem-js" type="submit">Salvar</button>
+          </form>
+          {% endfor %}
+        </div>
+        <div class="it-acoes">
+          <form class="seg" method="post" action="{{ url_for('vitrine.bar_tem', slug=loja.slug, pid=i.id) }}" data-ajax>
+            <input type="hidden" name="_csrf" value="{{ csrf }}">
+            <button name="tem" value="1" aria-pressed="{{ 'false' if i.acabou else 'true' }}">Tem</button>
+            <button name="tem" value="0" aria-pressed="{{ 'true' if i.acabou else 'false' }}">Acabou hoje</button>
+          </form>
+          <form method="post" action="{{ url_for('vitrine.bar_mais', slug=loja.slug, pid=i.id) }}" data-ajax>
+            <input type="hidden" name="_csrf" value="{{ csrf }}">
+            <button class="estrela" name="on" value="{{ '0' if i.mais else '1' }}" aria-pressed="{{ 'true' if i.mais else 'false' }}">{{ ico('estrela', 18) }}Mais pedido</button>
+          </form>
+        </div>
+      </li>
+    {% else %}
+      <li class="it"><p>Nenhum item nessa seção ainda.</p></li>
+    {% endfor %}
+    </ul>
+  </section>
+  {% endfor %}
+
+{% elif aba == 'fotos' %}
+  <div class="cab"><div><h1>Fotos da casa</h1><p>A capa vai no topo do site. As 5 primeiras aparecem na parte de fotos.</p></div></div>
+  <div class="card">
+    <form class="sobe" id="sobe" method="post" action="{{ url_for('vitrine.bar_foto', slug=loja.slug) }}" enctype="multipart/form-data">
+      <input type="hidden" name="_csrf" value="{{ csrf }}">
+      <label class="btn btn-p btn-grande">{{ ico('camera', 22) }}Adicionar fotos<input type="file" name="foto" accept="image/*"></label>
+      <button class="btn btn-l sem-js" type="submit">Enviar a foto</button>
+      <p class="dica">Pode escolher várias de uma vez. O celular diminui cada foto antes de enviar (de MB para KB) e o site fica leve no 4G.</p>
+    </form>
+    <ol class="fila" id="fila" aria-live="polite"></ol>
+  </div>
+  {% if c.capa and c.capa not in galeria|map(attribute='f')|list %}
+  <div class="card capa-atual"><img src="{{ foto(c.capa, True) }}" width="96" height="96" alt="{{ c.capa_alt }}"><p><b>Capa atual</b><br><span class="dica">Pra trocar, toca em "Usar de capa" numa foto abaixo.</span></p></div>
+  {% endif %}
+  {% if galeria %}
+  <ul class="galeria">
+    {% for ft in galeria %}
+    <li class="{{ 'capa' if ft.f == c.capa }}">
+      <img src="{{ foto(ft.f, True) }}" loading="lazy" alt="{{ ft.alt }}">
+      {% if ft.f == c.capa %}<span class="selo-capa">Capa</span>{% endif %}
+      <form class="g-acoes" method="post" action="{{ url_for('vitrine.bar_foto_acao', slug=loja.slug) }}">
+        <input type="hidden" name="_csrf" value="{{ csrf }}"><input type="hidden" name="f" value="{{ ft.f }}">
+        <button name="acao" value="capa"{% if ft.f == c.capa %} disabled{% endif %}>{{ 'É a capa' if ft.f == c.capa else 'Usar de capa' }}</button>
+        <button name="acao" value="sobe" aria-label="Mover pra frente"{% if loop.first %} disabled{% endif %}>{{ ico('sobe', 20) }}</button>
+        <button name="acao" value="desce" aria-label="Mover pra trás"{% if loop.last %} disabled{% endif %}>{{ ico('desce', 20) }}</button>
+        <button name="acao" value="apaga" class="perigo" aria-label="Apagar esta foto" data-apaga>{{ ico('lixo', 20) }}</button>
+      </form>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="card">Nenhuma foto ainda. Começa pela foto do bar cheio, à noite.</p>
+  {% endif %}
+
+{% else %}
+  <div class="cab"><div><h1>O bar</h1><p>Horário, happy hour, aviso e contatos.</p></div></div>
+
+  <section class="card hoje-card" aria-labelledby="t-hoje">
+    <h2 id="t-hoje">Hoje</h2>
+    <p class="estado{{ ' aberto' if est.aberto }}"><i></i>No site: {{ est.txt }}</p>
+    <form method="post" action="{{ url_for('vitrine.bar_fechado', slug=loja.slug) }}">
+      <input type="hidden" name="_csrf" value="{{ csrf }}">
+      {% if fechado_hoje %}
+      <button class="btn btn-l btn-grande" name="fechado" value="0">Reabrir: hoje abre normal</button>
+      {% else %}
+      <button class="btn btn-perigo btn-grande" name="fechado" value="1">Fechado hoje (chuva, feriado, evento)</button>
+      {% endif %}
+    </form>
+  </section>
+
+  <form method="post" action="{{ url_for('vitrine.bar_salvar', slug=loja.slug) }}">
+    <input type="hidden" name="_csrf" value="{{ csrf }}">
+    <section class="card" aria-labelledby="t-aviso">
+      <h2 id="t-aviso">Aviso da semana</h2>
+      <p class="dica">Jogo no telão, promoção, banda. Aparece no topo do site e do cardápio até a data de fim.</p>
+      <div class="campos">
+        <label class="cp">Texto do aviso<textarea name="aviso" maxlength="160" placeholder="Ex.: Sexta tem banda ao vivo a partir das 21h">{{ (c.aviso or {}).get('texto', '') }}</textarea></label>
+        <label class="cp">Vale até (inclusive)<input type="date" name="aviso_ate" value="{{ (c.aviso or {}).get('ate', '') }}"></label>
+        {% if (c.aviso or {}).get('texto') and not aviso %}<p class="dica">Esse aviso já venceu e não aparece mais no site.</p>{% endif %}
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="t-hor">
+      <h2 id="t-hor">Horário por dia</h2>
+      <p class="dica">Fecha depois da meia-noite? Coloca o horário normal (ex.: 17:00 às 01:00) que o site entende.</p>
+      <div class="dias">
+        {% for d in DIAS %}{% set f = horario.get(d) %}
+        <div class="dia{{ ' fechado' if not f }}">
+          <b>{{ DIA_CURTO[d] }}</b>
+          <label><span class="sr">{{ DIA_NOME[d] }}: abre</span><input type="time" name="abre_{{ d }}" value="{{ f[0] if f else '17:00' }}"></label>
+          <label><span class="sr">{{ DIA_NOME[d] }}: fecha</span><input type="time" name="fecha_{{ d }}" value="{{ f[1] if f else '01:00' }}"></label>
+          <label class="fch"><input type="checkbox" name="fechado_{{ d }}" value="1"{% if not f %} checked{% endif %}> Fechado {{ DIA_NOME[d]|lower }}</label>
+        </div>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="t-hh">
+      <h2 id="t-hh">Happy hour</h2>
+      <div class="campos">
+        <div class="grade2">
+          <label class="cp">Começa<input type="time" name="hh_ini" value="{{ (c.happy or {}).get('ini', '') }}"></label>
+          <label class="cp">Termina<input type="time" name="hh_fim" value="{{ (c.happy or {}).get('fim', '') }}"></label>
+        </div>
+        <fieldset style="border:0;padding:0;margin:0"><legend class="cp" style="font-weight:600;font-size:.95rem">Dias</legend>
+          <div class="dsem">{% for d in DIAS %}<label><input type="checkbox" name="hh_dias" value="{{ d }}"{% if d in (c.happy or {}).get('dias', []) %} checked{% endif %}><span>{{ DIA_CURTO[d] }}</span></label>{% endfor %}</div>
+        </fieldset>
+        {% if hh %}<p class="dica">No site: happy hour das {{ hh.faixa }}, {{ hh.dias }}.</p>{% endif %}
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="t-cont">
+      <h2 id="t-cont">Contatos e links</h2>
+      <div class="campos">
+        <label class="cp">WhatsApp do bar<input type="tel" name="whatsapp" value="{{ loja.whatsapp }}" autocomplete="off" inputmode="tel"></label>
+        <label class="cp">Telefone (como aparece no site)<input type="text" name="telefone" value="{{ loja.telefone }}" maxlength="30"></label>
+        <label class="cp">Instagram (só o @)<input type="text" name="instagram" value="{{ loja.instagram }}" maxlength="30" autocapitalize="off"></label>
+        <label class="cp">Endereço<input type="text" name="endereco" value="{{ loja.endereco }}" maxlength="120"></label>
+        <label class="cp">Link do Google Maps<input type="url" name="maps_url" value="{{ c.maps_url }}" placeholder="https://maps.app.goo.gl/..."></label>
+        <label class="cp">Link da música (jukebox do PubShow)<input type="url" name="pubshow_url" value="{{ c.pubshow_url }}" placeholder="https://www.4kitem.com.br/pubshow/jukebox/..."></label>
+        <p class="dica">Sem link da música, o botão "Escolher a música" some do site e da mesa.</p>
+      </div>
+    </section>
+    <div class="salvar-fixo"><button class="btn btn-p btn-grande" type="submit">{{ ico('check', 20) }}Salvar o bar</button></div>
+  </form>
+
+  <section class="card" aria-labelledby="t-qr">
+    <h2 id="t-qr">QR da mesa</h2>
+    <p class="dica">Um QR só: abre a página da mesa com Cardápio{{ ' e Escolher a música' if c.pubshow_url }}.</p>
+    <div class="qr-prev"><img src="{{ qr }}" alt="QR code da mesa"><div><code>{{ qr_url }}</code><p style="margin-top:10px"><a class="btn btn-a" href="{{ url_for('vitrine.bar_qr', slug=loja.slug) }}">{{ ico('imprimir', 20) }}Imprimir cartões</a></p></div></div>
+  </section>
+
+  <section class="card" aria-labelledby="t-num">
+    <h2 id="t-num">Números da semana</h2>
+    <p class="dica">Pessoas por noite (das 6h às 6h, horário de Manaus). Cada pessoa conta 1 vez por noite; robô não conta.</p>
+    <div class="rolar"><table class="tabela">
+      <thead><tr><th>Noite</th>{% for t, nome in TIPOS_N %}<th>{{ nome }}</th>{% endfor %}</tr></thead>
+      <tbody>{% for nt in num.noites %}<tr class="{{ 'hoje' if nt.hoje }}"><td>{{ nt.rotulo }}{{ ' (hoje)' if nt.hoje }}</td>{% for t, nome in TIPOS_N %}<td>{{ nt.n.get(t, 0) }}</td>{% endfor %}</tr>{% endfor %}</tbody>
+      <tfoot><tr><td>7 noites</td>{% for t, nome in TIPOS_N %}<td>{{ num.tot.get(t, 0) }}</td>{% endfor %}</tr></tfoot>
+    </table></div>
+    {% if num.origens %}<p class="dica">Vieram pelo link: {% for nome, n in num.origens %}{{ nome }} <b>{{ n }}</b>{{ ' · ' if not loop.last }}{% endfor %}</p>{% endif %}
+  </section>
+
+  <section class="card" id="senha" aria-labelledby="t-senha">
+    <h2 id="t-senha">Trocar a senha</h2>
+    <form method="post" action="{{ url_for('vitrine.bar_senha', slug=loja.slug) }}" class="campos">
+      <input type="hidden" name="_csrf" value="{{ csrf }}">
+      <input type="text" name="usuario" value="{{ loja.slug }}" autocomplete="username" class="sr" tabindex="-1" aria-hidden="true">
+      <label class="cp">Senha atual<input type="password" name="atual" autocomplete="current-password" required></label>
+      <label class="cp">Senha nova<input type="password" name="nova" autocomplete="new-password" minlength="6" maxlength="72" required></label>
+      <label class="cp">Repete a senha nova<input type="password" name="confirma" autocomplete="new-password" minlength="6" maxlength="72" required></label>
+      <button class="btn btn-l" type="submit">{{ ico('cadeado', 20) }}Trocar a senha</button>
+    </form>
+  </section>
+{% endif %}
+</main>
+
+<nav class="abas" aria-label="Partes do painel">
+  <ul>
+    <li><a href="{{ url_for('vitrine.admin', slug=loja.slug, aba='cardapio') }}"{% if aba == 'cardapio' %} aria-current="page"{% endif %}>{{ ico('cardapio', 24) }}Cardápio</a></li>
+    <li><a href="{{ url_for('vitrine.admin', slug=loja.slug, aba='fotos') }}"{% if aba == 'fotos' %} aria-current="page"{% endif %}>{{ ico('foto', 24) }}Fotos</a></li>
+    <li><a href="{{ url_for('vitrine.admin', slug=loja.slug, aba='bar') }}"{% if aba == 'bar' %} aria-current="page"{% endif %}>{{ ico('caneca', 24) }}O bar</a></li>
+  </ul>
+</nav>
+{% endblock %}
+{% block js %}
+<script>
+(function(){
+  function num(s){s=(s||'').replace(/[R$\s]/g,'');if(s.indexOf(',')>=0)s=s.replace(/\./g,'').replace(',','.');var v=parseFloat(s);return isNaN(v)?null:v}
+  /* preço: salva quando sai do campo; confere "dedo gordo" (3x maior ou menor) antes */
+  document.querySelectorAll('form.pf input[name=valor]').forEach(function(inp){
+    inp.addEventListener('change',function(){inp.form.requestSubmit()});
+    inp.addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();inp.blur()}});
+  });
+  document.addEventListener('vb:antes',function(e){
+    var f=e.target; if(!f.classList.contains('pf'))return;
+    var inp=f.querySelector('input[name=valor]'),a=num(inp.dataset.antes),n=num(inp.value);
+    if(inp.value.trim()&&n===null){vbAviso('Escreve só o número, tipo 11,90.',true);e.preventDefault();return}
+    if(a&&n&&(n/a>3||n/a<1/3)&&!confirm('Confere: R$ '+inp.value.trim()+'? Antes era R$ '+inp.dataset.antes+'.')){inp.value=inp.dataset.antes;e.preventDefault()}
+  });
+  document.addEventListener('vb:depois',function(e){
+    var f=e.target,j=e.detail; if(!j.ok)return;
+    if(f.classList.contains('pf')){var inp=f.querySelector('input[name=valor]');inp.value=j.valor;inp.dataset.antes=j.valor;f.classList.add('salvo');setTimeout(function(){f.classList.remove('salvo')},2500);
+      var em=document.getElementById('precos-em');if(em&&j.em)em.textContent=j.em}
+    if(f.classList.contains('seg')){f.querySelectorAll('button').forEach(function(b){b.setAttribute('aria-pressed',String((b.value==='1')===j.tem))});f.closest('.it').classList.toggle('acabou',!j.tem)}
+    if(f.querySelector('.estrela')){var b=f.querySelector('.estrela');b.setAttribute('aria-pressed',String(j.on));b.value=j.on?'0':'1'}
+  });
+  /* fotos: uma por vez (o servidor atende a TV do PubShow entre uma e outra) */
+  var sobe=document.getElementById('sobe');
+  if(sobe){var inp=sobe.querySelector('input[type=file]'),fila=document.getElementById('fila');inp.multiple=true;
+    inp.addEventListener('change',async function(){
+      var fs=[].slice.call(inp.files),n=fs.length,ok=0;if(!n)return;fila.innerHTML='';
+      for(var k=0;k<n;k++){var f=fs[k],li=document.createElement('li');li.textContent=(k+1)+'/'+n+' · preparando '+f.name+'…';fila.appendChild(li);
+        var b=await vbEncolhe(f);
+        if(b.size>15*1048576){li.className='erro';li.textContent=(k+1)+'/'+n+' · '+f.name+': acima de 15 MB';continue}
+        li.textContent=(k+1)+'/'+n+' · enviando '+vbTam(b.size)+'…';
+        var fd=new FormData();fd.append('orig',f.size);fd.append('foto',b,(f.name||'foto').replace(/\.[^.]+$/,'')+'.jpg');
+        var j=await vbPost(sobe.action,fd);li.className=j.ok?'ok':'erro';li.textContent=(k+1)+'/'+n+' · '+(j.ok?('salva · '+j.de+' → '+j.para):j.msg);if(j.ok)ok++}
+      inp.value='';if(ok){vbAviso(ok+(ok>1?' fotos salvas':' foto salva'));setTimeout(function(){location.reload()},1600)}
+    })}
+  document.querySelectorAll('[data-apaga]').forEach(function(b){b.addEventListener('click',function(e){if(!confirm('Apagar esta foto do site?'))e.preventDefault()})});
+  document.querySelectorAll('.dia input[type=checkbox]').forEach(function(c){c.addEventListener('change',function(){c.closest('.dia').classList.toggle('fechado',c.checked)})});
+})();
+</script>
+{% endblock %}
