@@ -182,9 +182,9 @@ def _sitemap_index():
 def _sitemap():
     # host único www; blueprints com barra final (sem isso cada loc respondia 308); só páginas com produto
     # 22/set: /alerta e /slotzap tem card VISIVEL na home e nao estavam aqui.
-    urls = ['/', '/pubshow/', '/despachante-info', '/defesapro', '/alerta', '/slotzap',
+    urls = ['/', '/pubshow/', '/despachante-info', '/alerta', '/slotzap',
             '/slotzap/planos', '/somaja/', '/somaja/mei', '/atendezap/',
-            '/mandazap', '/kids', '/pcd/', '/bau',   # vetzap fora do ar (13/09/26)
+            '/mandazap', '/kids', '/bau',   # vetzap fora do ar (13/09/26); defesapro e pcd fora da vitrine (28/10/26)
             '/amparo/', '/camponline', '/drzap/', '/afiliados/',
             '/privacidade', '/termos']
     items = ''.join(

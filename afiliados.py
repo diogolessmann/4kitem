@@ -29,9 +29,11 @@ APPS = {
     'alerta':      {'nome': 'AlertaJá',              'comissao': 6.23,  'unidade': 'por mês',    'url': '/alerta',            'desc': 'Monitor de CNH e veículo (DETRAN-SC)',  'icone': '/static/img/alerta/logo.webp'},
     'mandazap':    {'nome': 'MandaZap',              'comissao': 16.18, 'unidade': 'por mês',    'url': '/mandazap',          'desc': 'Marketing no WhatsApp com anti-ban',    'icone': '/static/img/mandazap/logo.webp'},
     'despachante': {'nome': 'Amigo Despachante',     'comissao': 32.25, 'unidade': 'por mês',    'url': '/amigo-despachante', 'desc': 'Sistema completo pra despachantes',     'icone': '/static/img/despachante/logo.webp'},
-    'defesapro':   {'nome': 'DefesaPro',             'comissao': 50.00, 'unidade': 'por mês',    'url': '/defesapro',         'desc': 'Gestão de defesas de multas com IA',    'icone': '/static/img/defesapro/logo.png'},
+    # 28/10/26: DefesaPro e PCD Fácil saíram da vitrine do 4kitem ('oculto'): somem da landing e do painel,
+    # mas a comissão de quem já indicou continua caindo (registrar_comissao ainda os reconhece).
+    'defesapro':   {'nome': 'DefesaPro',             'comissao': 50.00, 'unidade': 'por mês',    'url': '/defesapro',         'desc': 'Gestão de defesas de multas com IA',    'icone': '/static/img/defesapro/logo.png', 'oculto': True},
     # 'vetzap' removido do programa em 13/09/26 (produto fora do ar)
-    'pcd':         {'nome': 'PCD Fácil',             'comissao': 10.00, 'unidade': 'por compra', 'url': '/pcd',               'desc': 'Isenção de impostos pra PCD',           'icone': ''},
+    'pcd':         {'nome': 'PCD Fácil',             'comissao': 10.00, 'unidade': 'por compra', 'url': '/pcd',               'desc': 'Isenção de impostos pra PCD',           'icone': '', 'oculto': True},
     'radar':       {'nome': 'Radar de Licitações TI','comissao': 15.00, 'unidade': 'por mês',    'url': '/radar/',            'desc': 'Licitações de TI filtradas por IA',     'icone': '/static/img/radar/logo.webp'},
     'licita_norte':{'nome': 'Radar Licita Norte',   'comissao': 10.00, 'unidade': 'por mês',    'url': '/licita-norte/',     'desc': 'Licitações do Norte de SC',             'icone': '/static/img/licita/logo.webp'},
     'mandaja':     {'nome': 'MandaJá',               'comissao': 10.00, 'unidade': 'por mês',    'url': '/mandaja',           'desc': 'Delivery sem comissão com PIX',         'icone': '/static/img/mandaja/logo.png'},
@@ -42,6 +44,7 @@ APPS = {
     'amparo':      {'nome': 'Amparo',                'comissao': 29.90, 'comissao_pct': 20, 'unidade': 'por mês (20% recorrente)', 'url': '/amparo',            'desc': 'Cuidado entre as sessões pra psicólogos','icone': ''},
     'atendezap':   {'nome': 'AtendeZap',             'comissao': 25.00, 'unidade': 'por cliente',  'url': '/atendezap',        'desc': 'Bot de atendimento no WhatsApp, pronto por nicho', 'icone': ''},
 }
+APPS_VITRINE = {k: v for k, v in APPS.items() if not v.get('oculto')}   # o que o afiliado vê pra vender
 
 
 # ── Asaas (PIX transfer — grátis, igual SlotZap) ────────────────────────────────
@@ -147,7 +150,7 @@ def _link(codigo, app):
 def landing():
     if session.get('afil_id'):
         return redirect('/afiliados/painel')
-    return render_template('afiliados/landing.html', apps=APPS, _brl=_brl)
+    return render_template('afiliados/landing.html', apps=APPS_VITRINE, _brl=_brl)
 
 
 @afiliados_bp.route('/cadastrar', methods=['GET', 'POST'])
@@ -207,7 +210,7 @@ def painel():
     if not af:
         session.clear(); return redirect('/afiliados/entrar')
     links = [{'app': k, 'nome': v['nome'], 'desc': v['desc'], 'icone': v.get('icone', ''),
-              'comissao': _brl(v['comissao']), 'link': _link(af['codigo'], k)} for k, v in APPS.items()]
+              'comissao': _brl(v['comissao']), 'link': _link(af['codigo'], k)} for k, v in APPS_VITRINE.items()]
     return render_template('afiliados/painel.html', af=af, links=links, _brl=_brl,
                            stats=stats_afiliado(af['id']),
                            conversoes=conversoes_do_afiliado(af['id']),
