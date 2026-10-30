@@ -29,6 +29,8 @@ from pubshow_db import marcar_fundador, fundador_vagas as _fundador_vagas_db   #
 from pubshow_db import FUNDADOR_VAGAS, FUNDADOR_MESES   # Lote D B (16/10/26): a oferta do site
 from pubshow_db import SHOWS_FORA   # 17/10/26: o grupo Shows saiu (o admin não recria vídeo nessas categorias)
 import pubshow_estilo   # "aqui só toca rock" com o YouTube livre: estilo pelo ARTISTA (17/10/26)
+import pubshow_karaoke as _K   # 🎤 29/10/26: modo karaokê (funções puras: busca, nome, ranking, bloco da TV)
+import sqlite3                 # 🎤 29/10/26: OperationalError (banco sem as colunas do karaokê = a consulta de sempre)
 try:   # Lote C (16/10/26): pagamento Efí (split e, desde 17/10/26, a ponte). Só é CHAMADO pros bares de PUBSHOW_EFI_BARES
     import pubshow_pay
 except ImportError:   # VCa-04: deploy sem o pubshow_pay.py/efi_client.py → PubShow sobe no Asaas, Efí desligada
@@ -1740,6 +1742,11 @@ def _bloqueados_do_bar(b):
 
 def _tipos_disponiveis(b):
     """Retorna TIPOS_PEDIDO filtrado pelo que o bar não bloqueou."""
+    if _K.ligado(b):
+        # 🎤 29/10/26 (modo karaokê): o celular só pede música pra cantar ("Pedir qualquer música", sempre ligado pelo
+        # modo, mesmo que o f-config o tenha desligado). Somem furar, momentos e Donate: na TV o preço do furar e o
+        # canto dos momentos somem junto (_furar_preco_tv / _precos_canto_tv leem daqui)
+        return {'musica_externa': TIPOS_PEDIDO['musica_externa']}
     bloqueados = _bloqueados_do_bar(b)
     # 21/10/26 (pedido do Laranjeira): "Escolher a música" da lista do bar é sempre grátis e vale sempre, igual à do
     # YouTube. O painel não tem mais o interruptor dele (saiu na versão grande, 405ebba): bar que tinha desligado antes
@@ -3585,7 +3592,10 @@ def tv(code):
                            # 20/10/26: categoria → botão do Estilo do bar (⚽ Esporte, 🎸 Rock…): o selo da faixa no 'variado'
                            rotulos_cat={t: f"{e['emoji']} {e['nome']}" for e in ESTILOS_BAR.values()
                                         for t in (e.get('temas') or [])},
-                           fundo_clipes=fundo_clipes)   # 20/10/26: esporte no fundo + clipe na janela (None = desligado)
+                           fundo_clipes=fundo_clipes,   # 20/10/26: esporte no fundo + clipe na janela (None = desligado)
+                           # 🎤 29/10/26: modo karaokê (a coluna diz quem canta, o QR fica sempre). Desligado = o HTML de
+                           # sempre, byte a byte (cada pedaço do karaokê no tv.html está dentro de {% if karaoke %})
+                           karaoke=_K.ligado(b))
 
 
 def _qr_preco_tv(b):
@@ -3793,6 +3803,7 @@ def jukebox(token, pix_id=None):
     aberto, motivo_fechado = _jukebox_aberto(b)
     tipos_bar              = _tipos_disponiveis(b)
     precos_bar, hh_desconto = _precos_do_bar(b)
+    _kara                  = _K.ligado(b)   # 🎤 29/10/26: modo karaokê (desligado = o jukebox de sempre)
 
     # banner do happy hour = maior desconto real dos cards visíveis, não o % do painel (piso R$ 5, 15/10/26)
     hh_desconto = _hh_maior_desconto(precos_bar, tipos_bar)
@@ -3818,6 +3829,8 @@ def jukebox(token, pix_id=None):
             # nome na TV: até 20 letras (16/10/26, B9), cortando no último espaço (C2)
             # 24/10/26 (F3-2): todo texto que vai pra TV perde o caractere invisível antes do filtro
             nome_cliente  = _nome_tv(_sem_invisiveis(request.form.get('nome_cliente', '')))
+            if _kara:
+                nome_cliente = _K.nome_curto(nome_cliente)   # 🎤 "Teu nome na TV": até 14 letras (apelido)
             mensagem      = _sem_invisiveis(request.form.get('mensagem', '')).strip()[:80]
             if tipo == 'donate_sistema':
                 mensagem = ' '.join(mensagem.split())   # conserto 27/10/26: sem quebra de linha no WhatsApp do Diogo
@@ -3833,6 +3846,15 @@ def jukebox(token, pix_id=None):
             if youtube_id and not re.fullmatch(r'[A-Za-z0-9_-]{11}', youtube_id):
                 # id do YouTube tem 11 letras (16/10/26, CEL-31): lixo virava pedido que a TV não toca
                 erro, status_http = 'Música inválida. Escolhe na lista. 🎵', 400
+            elif _kara and tipo != 'musica_externa':
+                erro = _K.MSG_SO_MUSICA   # 🎤 no karaokê só se pede música pra cantar (sem furar, momentos e Donate)
+            elif _kara and not nome_cliente:
+                erro, erro_tipo = _K.MSG_NOME_VAZIO, 'karaoke_nome'   # 🎤 o nome é a vez da pessoa na TV
+            elif _kara and (_tem_palavrao(nome_cliente) or _tem_link_ou_fone(nome_cliente)):
+                erro, erro_tipo = _K.MSG_NOME_RUIM, 'karaoke_nome'
+            elif _kara and _karaoke_nome_repetido(b, nome_cliente, ip_cliente):
+                # 🎤 dois "João" na fila: a TV diria "Próximo: João" e subiriam os dois
+                erro, erro_tipo = _K.msg_nome_repetido(nome_cliente), 'karaoke_nome'
             elif tipo not in tipos_bar or tipo not in precos_bar:
                 erro = 'Tipo de pedido inválido.'
             elif not nome_cliente:
@@ -3858,11 +3880,14 @@ def jukebox(token, pix_id=None):
             elif tipo in TIPOS_MUSICA_FILA and youtube_id and _musica_longa(b, youtube_id, tipo):
                 # 17/10/26: máx. 10 min em todo pedido de música, grátis ou pago (antes de qualquer PIX)
                 erro, erro_tipo = MSG_MUSICA_LONGA, 'musica_longa'
-            elif tipo in TIPOS_MUSICA_FILA and youtube_id and (_fe := _fora_do_estilo(b, youtube_id, titulo_pedido)):
+            elif (not _kara and tipo in TIPOS_MUSICA_FILA and youtube_id   # 🎤 karaokê: estilo desligado (busca e pedido)
+                  and (_fe := _fora_do_estilo(b, youtube_id, titulo_pedido))):
                 erro, erro_tipo = _fe, 'fora_estilo'   # 17/10/26: "aqui só toca rock" — antes de gerar o PIX
-            elif tipo in TIPOS_MUSICA_FILA and youtube_id and _musica_na_fila(b, youtube_id, ip_cliente, tipo, nome_cliente):
+            elif (not _kara and tipo in TIPOS_MUSICA_FILA and youtube_id   # 🎤 karaokê: 2 pessoas cantam a mesma
+                  and _musica_na_fila(b, youtube_id, ip_cliente, tipo, nome_cliente)):
                 erro, erro_tipo = '🎵 Essa música já foi pedida e vai tocar. Escolhe outra pra ti.', 'musica_na_fila'
-            elif tipo in TIPOS_SEMPRE_GRATIS and (_espera := _gratis_espera_min(b, ip_cliente)) > 0:
+            elif not _kara and tipo in TIPOS_SEMPRE_GRATIS and (_espera := _gratis_espera_min(b, ip_cliente)) > 0:
+                # 🎤 karaokê: sem os 11 min; a trava é só "1 na fila por celular" (_teto_pedidos)
                 _fl = precos_bar.get('flash') if 'flash' in tipos_bar else None
                 if 'pular_espera' in tipos_bar:
                     # 20/10/26: na Efí a saída mais barata é o ⏩ Pular a espera (fila normal); o furar segue junto
@@ -3945,6 +3970,19 @@ def jukebox(token, pix_id=None):
 
                 # Tetos anti-flood (15/10/26): PIX abertos por bar/celular, fila, 1 grátis por celular
                 erro = '' if pix_pendente else _teto_pedidos(b, tipo, usar_pix, _cid)
+                if _kara and erro.startswith('Tua música já está na fila'):
+                    erro, erro_tipo = _K.MSG_JA_NA_FILA, 'karaoke_na_fila'   # 🎤 1 por vez: cantou, pede outra
+                    try:   # o "Ver minha vez" do celular que perdeu o número do pedido (aba nova, outro navegador)
+                        _ck = get_pubshow_db()
+                        # pelo id do CELULAR (o mesmo do _teto_pedidos): trocar o Wi-Fi pelo 4G muda o IP, não o celular
+                        _km = _ck.execute("SELECT id FROM pubshow_pedidos WHERE business_id=? AND "
+                                          + ("ip_cliente LIKE ?" if _cid else "ip_cliente=?") + " AND karaoke=1 "
+                                          "AND status IN ('pendente','aguardando_ok') ORDER BY id DESC LIMIT 1",
+                                          (b['id'], ('%#' + _cid) if _cid else ip_cliente)).fetchone()
+                        _ck.close()
+                        _kara_meu = _km[0] if _km else None
+                    except Exception as ex:
+                        log.warning('[PUBSHOW] karaokê: pedido do celular na fila: %s', ex)
                 if usar_pix and _efi and not erro and not pix_pendente and not _efi_conta_ok(b):
                     # Lote C: Efí ligada e o bar SEM conta Efí conectada → sem momento pago (o dinheiro dele nunca
                     # cai na conta do PubShow). A música grátis segue normal; o painel avisa o dono (passo 4).
@@ -4194,7 +4232,16 @@ def jukebox(token, pix_id=None):
                     # BUG antigo (corrigido 11/09/26): Connection não tem lastrowid — todo pedido
                     # sem PIX dava 500 e deixava a transação aberta (database is locked).
                     pedido_id_sucesso = _cur2.lastrowid
+                    if _kara:   # 🎤 29/10/26: a marca do karaokê (o INSERT de sempre fica igual com o modo desligado)
+                        # 🙈 celular que o dono escondeu nas últimas 12 h: o pedido novo já nasce "Convidado"
+                        conn2.execute('UPDATE pubshow_pedidos SET karaoke=1, karaoke_sem_rank=?, karaoke_nome_oculto=? '
+                                      'WHERE id=?',
+                                      (1 if str(request.form.get('sem_rank', '')).strip().lower() in ('1', 'on', 'true')
+                                       else 0, 1 if _karaoke_cid_oculto(conn2, b['id'], ip_cliente) else 0,
+                                       pedido_id_sucesso))
                     conn2.commit(); conn2.close()
+                    if _kara:
+                        _karaoke_cache_limpar(b['id'])
                     sucesso = tipo
 
                     # ── Notificação WhatsApp + Push em background (não bloqueia resposta) ──
@@ -4250,7 +4297,7 @@ def jukebox(token, pix_id=None):
     if not aberto and (motivo_fechado or '').startswith('Jukebox disponível das'):
         volta_as = b.get('jukebox_hora_ini') or ''
 
-    return render_template('pubshow/jukebox.html',
+    return render_template(_karaoke_tpl(b),   # 🎤 29/10/26: karaoke.html no modo karaokê (o jukebox.html fica intocado)
                            b=b, canal=canal,
                            volta_as=volta_as,
                            pix_titular=os.environ.get('PUBSHOW_PIX_TITULAR', '').strip(),
@@ -4292,7 +4339,10 @@ def jukebox(token, pix_id=None):
                                            if 'brinde' in tipos_bar else ''),
                            # revisão CEL-1: momentos pagos que a TV mostra antes deste (1 por intervalo)
                            momentos_frente=_momentos_na_frente(b, (pix_pendente or {}).get('pedido_id') or locals().get('pedido_id_sucesso')),
-                           pedido_id_sucesso=locals().get('pedido_id_sucesso')), status_http
+                           pedido_id_sucesso=locals().get('pedido_id_sucesso'),
+                           karaoke_meu_id=locals().get('_kara_meu'),   # 🎤 só o karaoke.html lê
+                           # 🎤 tela 1: "As mais cantadas" (acervo karaokê, sem gastar busca). Sem o modo, nem calcula
+                           karaoke_mais=(_karaoke_mais_cards(b) if _kara and aberto else [])), status_http
 
 
 @pubshow_bp.route('/jukebox/<token>/ja-paguei/<int:pedido_id>', methods=['POST'])
@@ -4782,6 +4832,28 @@ def api_status(code):
         'aniversariantes': aniversariantes,   # 🎂 24/10/26 (momentos no telão): o pino da coluna
         'precos_canto':   _precos_canto_tv(b),   # 24/10/26 (momentos no telão, visual): o preço no canto das cenas
     }
+    if _K.ligado(b):
+        # 🎤 29/10/26 (modo karaokê): agora no palco, a fila por NOME e o Rei da noite (cache de 5 s). Sem o modo a chave
+        # nem existe (o JSON do Garage fica igual). Nome escondido pelo dono vira "Convidado" também no pedido_musica
+        try:
+            if request.args.get('teste') != '1' and 'kp' in request.args:
+                # a TV diz qual pedido está tocando (0 = a rotação): o ⏭️ Pular marca só quem está cantando de verdade
+                try:
+                    _KARAOKE_TV[b['id']] = (_time.time(), max(0, int(request.args.get('kp') or 0)))
+                except ValueError:
+                    pass
+            result['karaoke'] = _karaoke_bloco(conn, b)
+            if pedido_musica is not None and result.get('pedido_musica') and pedido_musica['karaoke_nome_oculto']:
+                result['pedido_musica']['nome_cliente'] = _K.CONVIDADO
+            # as linhas da coluna da TV levam o NOME (a TV escreve o nome, não o título). Mesmas linhas, mesma ordem;
+            # no dia da votação o nome vai vazio e a TV escreve "alguém" (a regra que já existe)
+            _vot = _dia_da_votacao()
+            for _it, _r in zip(result['fila'], _fila_rows[:10]):
+                _it['n'] = _K.nome_exibido(dict(_r), _vot)
+        except Exception as ex:
+            log.warning('[PUBSHOW] karaokê: bloco do status do bar %s falhou: %s', b['id'], ex)
+            result['karaoke'] = {'ligado': True, 'palco': None, 'fila': [], 'fila_n': 0, 'espera_min': 0,
+                                 'rei': None, 'gratis': True}
     conn.close()
     if _efi_para(b):
         # Lote D A3 (16/10/26): só no modo Efí (no Asaas o JSON fica igual). A TV aberta recarrega pela tv_version
@@ -4797,8 +4869,7 @@ def api_status(code):
 def api_pedido_status(token, pedido_id):
     """Polling do cliente: retorna status + posição na fila + tempo estimado."""
     conn = get_pubshow_db()
-    row = conn.execute(
-        '''SELECT p.status, p.business_id, p.created_at, p.efi_txid, p.tipo, p.ip_cliente,
+    _sql_ps = '''SELECT p.status, p.business_id, p.created_at, p.efi_txid, p.tipo, p.ip_cliente,
                   ((TRIM(COALESCE(p.pago_em,''))<>'' OR p.estornado_em IS NOT NULL)
                    AND (TRIM(COALESCE(p.asaas_payment_id,''))<>'' OR TRIM(COALESCE(p.efi_txid,''))<>'')
                    AND p.repasse_manual_id IS NULL
@@ -4806,11 +4877,16 @@ def api_pedido_status(token, pedido_id):
                    AND (p.pix_conferido IS NULL OR p.pix_conferido IN ('HISTORICO','ADMIN','RECEIVED','CONFIRMED','EFI:CONCLUIDA')
                         OR p.pix_conferido LIKE 'ERRO%')) AS pix_volta,
                   COALESCE(p.valor_cobrado, p.valor, 0) AS valor_cli,
+                  {kara} p.exibido_at, p.youtube_id, p.nome_cliente, p.titulo_pedido,
                   (p.created_at >= datetime('now','-20 minutes')) AS efi_recente FROM pubshow_pedidos p
            JOIN pubshow_businesses b ON p.business_id = b.id
-           WHERE p.id=? AND (b.jukebox_token=? OR b.code=?)''',
-        (pedido_id, token, token)
-    ).fetchone()
+           WHERE p.id=? AND (b.jukebox_token=? OR b.code=?)'''
+    try:
+        row = conn.execute(_sql_ps.format(kara='p.karaoke, p.karaoke_pulado, p.karaoke_sem_rank,'),
+                           (pedido_id, token, token)).fetchone()
+    except sqlite3.OperationalError:   # 🎤 banco sem as colunas do karaokê (migração falhou): a consulta de sempre
+        row = conn.execute(_sql_ps.format(kara='0 AS karaoke, 0 AS karaoke_pulado, 0 AS karaoke_sem_rank,'),
+                           (pedido_id, token, token)).fetchone()
     _c = (request.args.get('c') or '').strip()
     if row and row['tipo'] == 'donate_sistema' and not (
             re.fullmatch(r'[A-Za-z0-9_-]{8,40}', _c) and (row['ip_cliente'] or '').endswith('#' + _c)):
@@ -4847,9 +4923,13 @@ def api_pedido_status(token, pedido_id):
         # 25/10/26 (trava do ⚡ furar): a posição na ORDEM REAL da TV (2 furar tocados seguidos → 1 da fila), a mesma do
         # /api/status. Erro (ou fora das 200 pendentes) → a conta de sempre, abaixo
         try:
-            posicao = next((i + 1 for i, r in enumerate(_ordem_fila_musica(
-                _musicas_pendentes(conn, row['business_id']), _ultimas_tocadas(conn, row['business_id'])))
-                if r['id'] == pedido_id), None)
+            if row['karaoke']:   # 🎤 a mesma ordem, com cache de 3 s por bar (30 celulares perguntam a cada 5 s)
+                posicao = next((i + 1 for i, r in enumerate(_karaoke_ordem(conn, row['business_id']))
+                                if r['id'] == pedido_id), None)
+            else:
+                posicao = next((i + 1 for i, r in enumerate(_ordem_fila_musica(
+                    _musicas_pendentes(conn, row['business_id']), _ultimas_tocadas(conn, row['business_id'])))
+                    if r['id'] == pedido_id), None)
         except Exception as ex:
             log.warning('[PUBSHOW] trava do furar: posição do pedido #%s na conta de sempre: %s', pedido_id, ex)
             posicao = None
@@ -4882,12 +4962,23 @@ def api_pedido_status(token, pedido_id):
         else:
             tempo_min = (posicao - 1) * 4 + 2  # músicas antes + metade do atual
 
+    _kara_resp = None
+    if row['karaoke']:
+        # 🎤 29/10/26: tela 4 do celular. pulado = o dono apertou ⏭️ Pular na vez dele (falhou = a TV não conseguiu
+        # tocar o vídeo); acabou = outra música começou depois da dele, ou passou a duração (+30 s) / 6 min. Na espera
+        # vem junto o bloco do palco ('k': 1 GET por vez no celular). Só no pedido de karaokê (os outros não mudam)
+        try:
+            _kara_resp = _karaoke_pedido_resp(conn, row, pedido_id, status)
+        except Exception as ex:
+            log.warning('[PUBSHOW] karaokê: pedido-status #%s: %s', pedido_id, ex)
     conn.close()
     resp = {
         'status': status,
         'posicao': posicao,
         'tempo_min': tempo_min
     }
+    if _kara_resp:
+        resp.update(_kara_resp)
     # 💸 25/10/26 (pacote do dinheiro): música PAGA tirada da fila ou pulada, com o PIX na conta do PubShow → o celular
     # diz "Essa música não vai tocar. Teus R$ X voltam no teu PIX." (o Diogo devolve pelo "PIX a devolver")
     if status == 'recusado' and row['tipo'] in TIPOS_MUSICA_FILA and row['pix_volta']:
@@ -4922,9 +5013,16 @@ def api_pedido_exibido(pedido_id):
     data = request.get_json(silent=True) or {}
     code = data.get('code') or request.form.get('code', '')
     conn = get_pubshow_db()
-    pedido = conn.execute(
-        'SELECT id, business_id, youtube_id, titulo_pedido, categoria FROM pubshow_pedidos WHERE id=?', (pedido_id,)
-    ).fetchone()
+    try:
+        pedido = conn.execute(
+            'SELECT id, business_id, youtube_id, titulo_pedido, categoria, karaoke FROM pubshow_pedidos WHERE id=?',
+            (pedido_id,)
+        ).fetchone()
+    except sqlite3.OperationalError:   # 🎤 banco sem a coluna karaoke (migração falhou): a consulta de sempre
+        pedido = conn.execute(
+            'SELECT id, business_id, youtube_id, titulo_pedido, categoria, 0 AS karaoke FROM pubshow_pedidos WHERE id=?',
+            (pedido_id,)
+        ).fetchone()
     if not pedido:
         conn.close()
         return jsonify({'error': 'not_found'}), 404
@@ -4947,11 +5045,19 @@ def api_pedido_exibido(pedido_id):
     if not ok:
         conn.close()
         return jsonify({'ok': False, 'error': 'status'}), 409
+    if pedido['karaoke']:
+        # 🎤 revisão 29/10 noite (fluxo-2): a TV começou ESTE pedido agora; o relato do kp só chegava no poll seguinte
+        # (~2,5 s) e um 2º ⏭️ Pular nessa janela marcava quem já tinha saído do palco. Pedido sem karaokê não passa aqui
+        _KARAOKE_TV[b['id']] = (_time.time(), pedido_id)
     # Acervo que cresce com o uso (11/09/26): música do YouTube que TOCOU na TV entra no acervo,
     # na categoria do canal que estava no ar. O cardápio vira o que o público daquele bar pede.
     _yid = (pedido['youtube_id'] or '').strip()
+    _karaoke_cache_limpar(b['id'])   # 🎤 29/10/26: o palco do karaokê mudou (sem o modo o cache está vazio)
     # 18/10/26 (trava eleitoral): título político não entra no acervo dos outros bares
-    if ok and _yid_ok(_yid) and not _tem_politica(pedido['titulo_pedido']):   # 11 letras, igual ao POST (16/10/26, V4-01)
+    # 🎤 29/10/26: pedido de KARAOKÊ não entra no acervo (senão a rotação e a lista do bar tocam karaokê depois que o modo
+    # desliga). Só o pedido marcado: com o modo desligado nada muda (o filtro geral por título ficou pra V1.1)
+    if (ok and _yid_ok(_yid) and not _tem_politica(pedido['titulo_pedido'])   # 11 letras, igual ao POST (16/10/26, V4-01)
+            and not pedido['karaoke']):
         _cat = SHOWS_FORA.get(pedido['categoria'], pedido['categoria'])   # 17/10/26: pedido feito no show → o clipe
         _cat = _cat if _cat in CANAIS else 'rock'
         _seg = _YT_DURACAO.get(_yid) or 180       # 17/10/26: a duração real que a busca viu (antes: 180 fixo)
@@ -5338,13 +5444,22 @@ def _yt_titulo_limpo(titulo, canal_artista='', artistas=None):
     return f'{musica} · {artista}'[:80]
 
 
-def _yt_ranquear(lidos, q, top=YT_TOP):
+def _yt_ranquear(lidos, q, top=YT_TOP, karaoke=False):
     """Os YT_TOP melhores pro celular: bate com o que digitou > oficial do artista > mais visto (só áudio no fim).
-    Bar com estilo pede mais (top) pra sobrar 5 depois do filtro do estilo."""
+    Bar com estilo pede mais (top) pra sobrar 5 depois do filtro do estilo.
+    🎤 29/10/26 (karaoke=True, modo karaokê): o contrário do normal: SÓ entra título com karaokê/playback/com letra/
+    videokê (ou vídeo do acervo karaokê curado), e karaokê/playback/instrumental não cortam mais; "com letra" não vai
+    pro fim. Desligado (o padrão), nada muda."""
     qn = _yt_norm(q)
     tokens = [w for w in qn.split() if w not in _YT_STOP and (len(w) >= 2 or w.isdigit())]
     fora_q = {m.group(0).replace(' ', '') for m in _YT_FORA_RE.finditer(qn)}
     audio_q = bool(_YT_AUDIO_RE.search(qn))
+    _ids_ac = set()
+    if karaoke:
+        # o canal de karaokê escreve "(Karaokê Version) (Cover)": no modo, cover com letra é exatamente o que se quer
+        fora_q |= {'karaoke', 'playback', 'instrumental', 'backingtrack', 'cover', 'covers'}
+        audio_q = True
+        _ids_ac = _K.acervo_ids()
     artistas = {}
     for v in lidos:
         if v['oficial'] or v['topic']:
@@ -5356,7 +5471,10 @@ def _yt_ranquear(lidos, q, top=YT_TOP):
         if v['ao_vivo'] or v['shorts'] or not (YT_DUR_MIN_SEG <= v['dur'] <= YT_DUR_MAX_SEG):
             continue
         tn = _yt_norm(v['titulo'])
-        if {m.group(0).replace(' ', '') for m in _YT_FORA_RE.finditer(tn)} - fora_q:
+        if karaoke and not _K.titulo_ok(v['titulo'], v['id'], _ids_ac):
+            continue                           # 🎤 karaokê: o clipe sem letra fica fora
+        if ({m.group(0).replace(' ', '') for m in _YT_FORA_RE.finditer(tn)} - fora_q
+                and not (karaoke and v['id'] in _ids_ac)):   # 🎤 o acervo karaokê curado já foi conferido a mão
             continue
         so_audio = v['topic'] or not v['publicado'] or (not audio_q and bool(_YT_AUDIO_RE.search(tn)))
         palavras = (tn + ' ' + _yt_norm(v['canal'])).split()
@@ -5383,6 +5501,11 @@ def _yt_ranquear(lidos, q, top=YT_TOP):
             break
     for o in out:
         o.pop('_chave', None)
+    if karaoke:
+        # 🎤 o título que o celular e a TV mostram, sem "Karaokê Playback"/"(Com Letra)" (acervo: "Música · Artista")
+        _pid = _K.acervo_por_id()
+        for o in out:
+            o['titulo'] = _K.titulo_limpo(o['titulo'], o['id'], _pid)
     return out
 
 
@@ -5495,6 +5618,20 @@ def _busca_teto_do_bar(bid, conn=None):
     fechar = conn is None
     conn = conn or get_pubshow_db()
     try:
+        # 🎤 29/10/26: bar em modo karaokê tem teto PRÓPRIO (PUBSHOW_KARAOKE_TETO, padrão 8), pago ou não: a cota do dia
+        # é uma só pra todos os bares e a do Garage é sagrada. Com o balde do dia em PUBSHOW_KARAOKE_COTA_MAX (60), o
+        # karaokê não vai mais no Google (teto 0 = "lotou": o celular mostra o acervo). Acervo e cache vêm antes.
+        # Banco sem a coluna (migração falhou) = a conta de sempre, nunca o teto cheio
+        _kr = None
+        if _K.bares():
+            try:
+                _kr = conn.execute('SELECT id, code, modo_karaoke FROM pubshow_businesses WHERE id=?', (bid,)).fetchone()
+            except Exception:
+                _kr = None
+        if _kr is not None and _K.ligado(dict(_kr)):
+            if _busca_cota_hoje(conn) >= _K.cota_max():
+                return 0
+            return min(cheio, _K.teto())
         return cheio if _bar_pagou_pix(conn, bid) else min(cheio, teste)
     except Exception as e:
         log.warning('[PUBSHOW] teto da busca do bar %s: conta do PIX falhou (teto cheio): %s', bid, e)
@@ -6035,19 +6172,24 @@ _BUSCAR_LOCAL_MAX = 150
 _BUSCA_LOCAL_CONTA_SEG = 15
 
 
-def _busca_local(b, q, top=YT_TOP):
+def _busca_local(b, q, top=YT_TOP, karaoke=False):
     """28/10/26 (B7): os cards do LOCAL, sem gastar o Google: acervo do bar primeiro (_acervo_bate), depois o acervo
-    vivo pelo MESMO ranking da API (_yt_ranquear: 10 min, ao vivo, Shorts, karaokê/cover/aula...). Sem repetir."""
-    try:
-        cards = _acervo_bate(b, q)
-    except Exception as e:
-        log.warning('[PUBSHOW] acervo do bar na busca falhou (segue sem ele): %s', e)
-        cards = []
+    vivo pelo MESMO ranking da API (_yt_ranquear: 10 min, ao vivo, Shorts, karaokê/cover/aula...). Sem repetir.
+    🎤 29/10/26 (karaoke=True): sem a lista do bar (clipe sem letra) e com o ranking do karaokê (só versão com letra)."""
+    cards = []
+    if not karaoke:
+        try:
+            cards = _acervo_bate(b, q)
+        except Exception as e:
+            log.warning('[PUBSHOW] acervo do bar na busca falhou (segue sem ele): %s', e)
+            cards = []
     vivos = _busca_vivo_ler(q)
     if vivos:
         _yt_lembrar_duracao(vivos)   # a regra dos 10 min do pedido conhece a duração
         ja = {c['id'] for c in cards}
-        cards += [c for c in _yt_ranquear(vivos, q, top=top) if c['id'] not in ja]
+        # 🎤 o karaoke= só vai com o modo ligado: desligado, a chamada é a de sempre
+        cards += [c for c in _yt_ranquear(vivos, q, top=top, **({'karaoke': True} if karaoke else {}))
+                  if c['id'] not in ja]
     return cards
 
 
@@ -6083,6 +6225,572 @@ def _busca_responder_local(b, cards):
     return jsonify({'resultados': cards, 'local': True})
 
 
+# ── 🎤 MODO KARAOKÊ (29/10/26, V1 de sexta, GRÁTIS pro cliente) ─────────────────────────────────────────────────────
+# Interruptor do bar (coluna modo_karaoke, rota própria /painel/karaoke com o aceite do ECAD + sem prêmio). Ligado: a
+# busca só traz versão com letra, cada um põe o nome e canta na ordem (1 por vez por celular), a TV mostra quem canta,
+# quem vem e o Rei da noite. Desligado (o padrão) = o PubShow de sempre: nenhuma rota de hoje muda de resposta.
+# As contas moram no pubshow_karaoke.py (funções puras); aqui só o banco e as rotas. O R$ 2 por música NÃO existe no V1.
+_KARAOKE_CACHE = {}             # bid -> (hora, bloco): o /api/status chega a cada ~3 s e o servidor tem 1 worker
+_KARAOKE_ORDEM = {}             # bid -> (hora, [linhas na ordem real da TV]): cache de 3 s (pedido-status de 30 celulares)
+_KARAOKE_TV = {}                # bid -> (hora, pedido_id tocando ou 0 = rotação): o que a TV disse no último /api/status
+_KARAOKE_ORDEM_SEG = 3
+_KARAOKE_TV_SEG = 15            # o relato da TV vale 15 s (ela pergunta a cada ~3 s)
+_KARAOKE_ACEITE_VERSAO = 'v1'   # o texto do aceite (ECAD + sem prêmio + sem couvert) que o dono confirmou
+_KARAOKE_SEMEADO = {'dia': None}
+
+
+def _karaoke_tpl(b):
+    """O template do celular: karaoke.html no modo karaokê (quando ele existir), senão o jukebox.html de sempre."""
+    if _K.ligado(b) and os.path.isfile(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                                    'templates', 'pubshow', 'karaoke.html')):
+        return 'pubshow/karaoke.html'
+    return 'pubshow/jukebox.html'
+
+
+def _karaoke_cache_limpar(bid=None):
+    if bid is None:
+        _KARAOKE_CACHE.clear()
+        _KARAOKE_ORDEM.clear()
+    else:
+        _KARAOKE_CACHE.pop(bid, None)
+        _KARAOKE_ORDEM.pop(bid, None)
+
+
+def _karaoke_ordem(conn, bid):
+    """As músicas pendentes do bar na ORDEM REAL da TV (a mesma do /api/status), com cache de 3 s."""
+    agora = _time.time()
+    hit = _KARAOKE_ORDEM.get(bid)
+    if hit and agora - hit[0] < _KARAOKE_ORDEM_SEG:
+        return hit[1]
+    real = list(_ordem_fila_musica(_musicas_pendentes(conn, bid), _ultimas_tocadas(conn, bid)))
+    if len(_KARAOKE_ORDEM) > 500:
+        _KARAOKE_ORDEM.clear()
+    _KARAOKE_ORDEM[bid] = (agora, real)
+    return real
+
+
+def _karaoke_cid_oculto(conn, bid, ip_cliente):
+    """🙈 O dono escondeu o nome deste celular nas últimas 12 h: o pedido novo dele já nasce como "Convidado"."""
+    c = _K.cid(ip_cliente)
+    if not c or '#' not in (ip_cliente or ''):
+        return False
+    return bool(conn.execute(
+        "SELECT 1 FROM pubshow_pedidos WHERE business_id=? AND karaoke=1 AND karaoke_nome_oculto=1 "
+        "AND ip_cliente LIKE ? AND created_at >= datetime('now', '-12 hours') LIMIT 1",
+        (bid, '%#' + c)).fetchone())
+
+
+def _karaoke_nome_repetido(b, nome, ip_cliente):
+    """Dois 'João' na fila: o mesmo nome já está esperando, vindo de OUTRO celular (o mesmo celular cai no 1 por vez)."""
+    alvo = _K.norm(_K.nome_curto(nome))   # "João" e "joao" são o mesmo nome na TV
+    if not alvo:
+        return False
+    meu = _K.cid(ip_cliente)
+    conn = get_pubshow_db()
+    try:
+        rows = conn.execute(
+            f"""SELECT nome_cliente, ip_cliente FROM pubshow_pedidos
+                 WHERE business_id=? AND karaoke=1 AND status IN ('pendente','aguardando_ok')
+                   AND created_at >= {_JANELA_FILA}""", (b['id'],)).fetchall()
+    except Exception as ex:
+        log.warning('[PUBSHOW] karaokê: conferência do nome repetido falhou: %s', ex)
+        return False
+    finally:
+        conn.close()
+    return any(_K.norm(_K.nome_curto(r['nome_cliente'] or '')) == alvo and _K.cid(r['ip_cliente']) != meu for r in rows)
+
+
+def _karaoke_pedido_resp(conn, row, pedido_id, status):
+    """O pedaço do karaokê no /api/pedido-status: pulado, falhou, acabou, a música, o bloco do palco (na espera) e,
+    quando acabou, onde a pessoa está no ranking ("Tu tá em 3º...")."""
+    _pul = int(row['karaoke_pulado'] or 0)
+    acabou = status == 'exibido' and (bool(_pul) or _karaoke_pedido_acabou(
+        conn, row['business_id'], pedido_id, row['exibido_at'], row['youtube_id']))
+    out = {'karaoke': True, 'pulado': bool(_pul), 'falhou': _pul == 2, 'acabou': acabou,
+           'titulo': _K.titulo_limpo(row['titulo_pedido'] or '', row['youtube_id'], _K.acervo_por_id())}
+    b = conn.execute('SELECT * FROM pubshow_businesses WHERE id=?', (row['business_id'],)).fetchone()
+    b = dict(b) if b else None
+    out['ligado'] = _K.ligado(b)
+    if not out['ligado']:
+        return out
+    if status in ('pendente', 'aguardando_ok'):
+        out['k'] = _karaoke_bloco(conn, b)
+    elif acabou and not _pul and not int(row['karaoke_sem_rank'] or 0):
+        rank = _karaoke_ranking(conn, b)
+        meu = (_K.cid(row['ip_cliente']), _K.nome_curto(row['nome_cliente'] or '').lower())
+        pos = next((i + 1 for i, g in enumerate(rank) if (g['cid'], g['nome'].lower()) == meu), None)
+        if pos:
+            out['rank'] = {'pos': pos, 'n': rank[pos - 1]['musicas'],
+                           'lider': {'nome': rank[0]['nome'], 'n': rank[0]['musicas']}}
+    return out
+
+
+def _karaoke_agora_br(conn):
+    return conn.execute("SELECT datetime('now', '-3 hours')").fetchone()[0]
+
+
+def _karaoke_dur(conn, yid):
+    """Duração conhecida do vídeo (acervo curado, o que a busca leu, ou o acervo vivo/karaokê), ou None."""
+    if not yid:
+        return None
+    try:
+        d = _duracoes_conhecidas([yid], conn).get(yid)
+        if d:
+            return int(d)
+        r = conn.execute('SELECT dur FROM pubshow_busca_videos WHERE youtube_id=?', (yid,)).fetchone()
+        return int(r[0]) if r and r[0] else None
+    except Exception:
+        return None
+
+
+def _karaoke_palco(conn, bid, folga=_K.PALCO_FOLGA_SEG):
+    """A música de karaokê no palco AGORA: a última música de pedido que a TV começou neste bar, se for de karaokê, não
+    foi pulada e ainda não acabou (duração + folga, ou 6 min sem a duração). Senão None. O ⏭️ Pular usa folga=0."""
+    ph = ','.join('?' * len(TIPOS_MUSICA_PEDIDO))
+    r = conn.execute(
+        f"""SELECT id, tipo, nome_cliente, titulo_pedido, youtube_id, exibido_at, status, karaoke, karaoke_pulado,
+                   karaoke_nome_oculto
+              FROM pubshow_pedidos
+             WHERE business_id=? AND status IN ('exibido','recusado') AND exibido_at IS NOT NULL
+               AND created_at >= {_JANELA_FILA} AND tipo IN ({ph})
+             ORDER BY exibido_at DESC, id DESC LIMIT 1""", (bid, *TIPOS_MUSICA_PEDIDO)).fetchone()
+    if not r or not r['karaoke'] or r['karaoke_pulado'] or r['status'] != 'exibido':
+        return None
+    rel = _KARAOKE_TV.get(bid)
+    if rel and _time.time() - rel[0] <= _KARAOKE_TV_SEG and rel[1] and rel[1] != r['id']:
+        return None   # a TV disse que toca OUTRO pedido: este já saiu do palco
+    if _K.acabou(r['exibido_at'], _karaoke_agora_br(conn), _karaoke_dur(conn, r['youtube_id']), folga=folga):
+        return None
+    return dict(r)
+
+
+def _karaoke_pulado_alvo(conn, bid):
+    """O pedido de karaokê que o ⏭️ Pular tira do ranking: o que a TV DISSE que está tocando (relato de até 15 s; 0 = a
+    rotação, ninguém é marcado). Sem relato (TV antiga ou sem rede): a música no palco SEM a folga dos 30 s."""
+    rel = _KARAOKE_TV.get(bid)
+    if rel and _time.time() - rel[0] <= _KARAOKE_TV_SEG:
+        if not rel[1]:
+            return None
+        r = conn.execute("SELECT id FROM pubshow_pedidos WHERE id=? AND business_id=? AND karaoke=1 AND status='exibido'",
+                         (rel[1], bid)).fetchone()
+        return r['id'] if r else None
+    pk = _karaoke_palco(conn, bid, folga=0)
+    return pk['id'] if pk else None
+
+
+def _karaoke_pedido_acabou(conn, bid, pid, exibido_at, yid):
+    """O pedido de karaokê que já passou na TV acabou? Outra música de pedido começou depois dele, ou passou o tempo."""
+    if not exibido_at:
+        return False
+    ph = ','.join('?' * len(TIPOS_MUSICA_PEDIDO))
+    depois = conn.execute(
+        f"""SELECT 1 FROM pubshow_pedidos
+             WHERE business_id=? AND id<>? AND exibido_at IS NOT NULL AND tipo IN ({ph})
+               AND created_at >= {_JANELA_FILA}
+               AND (exibido_at > ? OR (exibido_at = ? AND id > ?)) LIMIT 1""",
+        (bid, pid, *TIPOS_MUSICA_PEDIDO, exibido_at, exibido_at, pid)).fetchone()
+    return _K.acabou(exibido_at, _karaoke_agora_br(conn), _karaoke_dur(conn, yid), tem_depois=bool(depois))
+
+
+def _karaoke_fila(conn, bid):
+    """As músicas pendentes na ORDEM REAL da TV (a mesma do /api/status), com o nome de cada uma."""
+    real = _karaoke_ordem(conn, bid)[:30]
+    ids = [r['id'] for r in real]
+    if not ids:
+        return []
+    det = {r['id']: dict(r) for r in conn.execute(
+        f"""SELECT id, nome_cliente, titulo_pedido, karaoke, karaoke_nome_oculto FROM pubshow_pedidos
+             WHERE id IN ({','.join('?' * len(ids))})""", ids).fetchall()}
+    return [det[i] for i in ids if i in det]
+
+
+def _karaoke_ranking(conn, b):
+    """O ranking da noite do bar (janela da fila: 12 h; depois do "Zerar a noite")."""
+    rows = conn.execute(
+        f"""SELECT id, ip_cliente, nome_cliente, status, exibido_at, karaoke, karaoke_sem_rank, karaoke_pulado,
+                   karaoke_nome_oculto
+              FROM pubshow_pedidos
+             WHERE business_id=? AND karaoke=1 AND status='exibido' AND created_at >= {_JANELA_FILA}""",
+        (b['id'],)).fetchall()
+    zer = b['karaoke_zerado_em'] if 'karaoke_zerado_em' in b.keys() else None
+    return _K.ranking([dict(r) for r in rows], zer)
+
+
+def _karaoke_bloco_montar(conn, b):
+    return _K.bloco(_karaoke_palco(conn, b['id']), _karaoke_fila(conn, b['id']), _karaoke_ranking(conn, b),
+                    votacao=_dia_da_votacao())
+
+
+def _karaoke_bloco(conn, b):
+    """O bloco 'karaoke' (palco, fila por nome, rei) com cache de _K.CACHE_SEG s por bar."""
+    agora = _time.time()
+    hit = _KARAOKE_CACHE.get(b['id'])
+    if hit and agora - hit[0] < _K.CACHE_SEG:
+        return hit[1]
+    bl = _karaoke_bloco_montar(conn, b)
+    if len(_KARAOKE_CACHE) > 500:
+        _KARAOKE_CACHE.clear()
+    _KARAOKE_CACHE[b['id']] = (agora, bl)
+    return bl
+
+
+# ── Acervo karaokê curado (pubshow_karaoke_acervo.py) → acervo vivo (pubshow_busca_videos) ──────────────────────────
+def _karaoke_acervo_gravar(conn, lidos):
+    """Grava os vídeos do acervo karaokê no acervo vivo (1 linha por id + as palavras). O texto da busca leva sempre a
+    palavra 'karaoke' (a busca do modo acrescenta " karaoke" ao termo: o acervo tem que bater). Não dá commit."""
+    for i in range(0, len(lidos), 400):
+        parte = [v['id'] for v in lidos[i:i + 400]]
+        ph = ','.join('?' * len(parte))
+        conn.execute(f'DELETE FROM pubshow_busca_palavras WHERE youtube_id IN ({ph})', parte)
+        conn.execute(f'DELETE FROM pubshow_busca_videos WHERE youtube_id IN ({ph})', parte)
+    for v in lidos:
+        texto = _yt_norm(f"{v.get('titulo') or ''} {v.get('canal') or ''}")
+        if 'karaoke' not in texto.split():
+            texto = (texto + ' karaoke').strip()
+        conn.execute('INSERT INTO pubshow_busca_videos (youtube_id, titulo, canal, texto, dur, views, oficial, topic,'
+                     " publicado, ao_vivo, shorts, visto_em) VALUES (?,?,?,?,?,?,?,?,?,?,?, datetime('now'))",
+                     (v['id'], str(v['titulo'])[:200], str(v.get('canal') or '')[:100], texto[:400],
+                      int(v.get('dur') or 0), int(v.get('views') or 0), int(bool(v.get('oficial'))),
+                      int(bool(v.get('topic'))), int(bool(v.get('publicado', True))), int(bool(v.get('ao_vivo'))),
+                      int(bool(v.get('shorts')))))
+        conn.executemany('INSERT OR IGNORE INTO pubshow_busca_palavras (palavra, youtube_id) VALUES (?, ?)',
+                         [(p, v['id']) for p in set(texto.split()) if p not in _YT_STOP and (len(p) >= 2 or p.isdigit())])
+
+
+def _karaoke_acervo_semear():
+    """Loader IDEMPOTENTE do acervo karaokê (pubshow_karaoke_acervo.ACERVO). Rodar 2x seguidas não muda nada.
+    - Falta no acervo vivo, ou foi visto há mais de 20 dias: confere no videos.list (1 unidade por 50 vídeos, do balde
+      de 10.000, NUNCA do balde das buscas) e grava com visto_em de agora. O que a API não devolveu (removido, privado,
+      sem embed, fora do Brasil) sai do acervo vivo.
+    - Sem a chave da API (ou a API fora): só semeia o que FALTA, com os dados do módulo; o que já está fica como está.
+    Devolve {'conferidos', 'gravados', 'removidos', 'chamadas'}."""
+    out = {'conferidos': 0, 'gravados': 0, 'removidos': 0, 'chamadas': 0}
+    validos = _K.acervo_validos()
+    if not validos:
+        return out
+    por_id = {a['id']: a for a in validos}
+    conn = get_pubshow_db()
+    try:
+        vistos = {}
+        ids = list(por_id)
+        for i in range(0, len(ids), 400):
+            parte = ids[i:i + 400]
+            vistos.update({r[0]: r[1] for r in conn.execute(
+                f"SELECT youtube_id, visto_em FROM pubshow_busca_videos WHERE youtube_id IN ({','.join('?' * len(parte))})",
+                parte).fetchall()})
+        precisa = _K.acervo_precisa(validos, vistos)
+        if not precisa:
+            return out
+        api_key = (os.environ.get('YOUTUBE_API_KEY') or '').strip()
+        lidos, conferidos = [], set()
+        if api_key:
+            for i in range(0, len(precisa), 50):
+                parte = precisa[i:i + 50]
+                try:
+                    r = _yt_api_get('videos', {'part': 'snippet,contentDetails,status,statistics', 'id': ','.join(parte),
+                                               'maxResults': 50}, api_key)
+                    out['chamadas'] += 1
+                    if r.status_code != 200:
+                        break   # cota ou erro: o resto fica pra amanhã (nunca trava o dia das buscas)
+                    det = {str(d.get('id')): d for d in ((r.json() or {}).get('items') or []) if isinstance(d, dict)}
+                except Exception as ex:
+                    log.warning('[PUBSHOW] karaokê: videos.list do acervo falhou: %s', ex)
+                    break
+                itens = []
+                for vid in parte:
+                    d = det.get(vid)
+                    if not d:
+                        continue
+                    sn = d.get('snippet') or {}
+                    itens.append({'id': {'videoId': vid}, 'snippet': {
+                        'title': sn.get('title') or por_id[vid]['titulo'],
+                        'channelTitle': sn.get('channelTitle') or por_id[vid]['canal'],
+                        'liveBroadcastContent': sn.get('liveBroadcastContent') or 'none'}})
+                lidos += _yt_api_ler(itens, det)
+                conferidos.update(parte)
+        ok_ids = {v['id'] for v in lidos}
+        for vid in precisa:   # sem a API: só o que falta, com os dados do módulo
+            if vid not in conferidos and vid not in vistos:
+                a = por_id[vid]
+                lidos.append({'id': vid, 'titulo': a['titulo'], 'canal': a['canal'], 'dur': a['seg'], 'views': 0,
+                              'oficial': False, 'topic': False, 'publicado': True, 'ao_vivo': False, 'shorts': False})
+        removidos = [vid for vid in conferidos if vid not in ok_ids and vid in vistos]
+        for vid in removidos:
+            conn.execute('DELETE FROM pubshow_busca_palavras WHERE youtube_id=?', (vid,))
+            conn.execute('DELETE FROM pubshow_busca_videos WHERE youtube_id=?', (vid,))
+        _karaoke_acervo_gravar(conn, lidos)
+        conn.commit()
+        _yt_lembrar_duracao(lidos)
+        out.update(conferidos=len(conferidos), gravados=len(lidos), removidos=len(removidos))
+        return out
+    finally:
+        conn.close()
+
+
+def _karaoke_acervo_garantir(forcar=False, em_thread=True):
+    """1º acesso do DIA (horário de Brasília) em modo karaokê: roda o loader (em 2º plano: nunca segura a busca nem a
+    TV). forcar = roda de novo hoje (ex.: o dono acabou de ligar o modo)."""
+    dia = (datetime.utcnow() - timedelta(hours=3)).strftime('%Y-%m-%d')
+    if _KARAOKE_SEMEADO['dia'] == dia and not forcar:
+        return False
+    _KARAOKE_SEMEADO['dia'] = dia
+
+    def _roda():
+        try:
+            r = _karaoke_acervo_semear()
+            if r.get('gravados') or r.get('removidos'):
+                log.info('[PUBSHOW] karaokê: acervo semeado %s', r)
+        except Exception as ex:
+            log.warning('[PUBSHOW] karaokê: acervo não semeou: %s', ex)
+    if em_thread:
+        _threading.Thread(target=_roda, daemon=True).start()
+    else:
+        _roda()
+    return True
+
+
+def _karaoke_acervo_cards(b, n=30):
+    """As "mais cantadas" (acervo karaokê no acervo vivo, ≤ 25 dias), no formato dos cards da busca, sem o que o bar
+    bloqueou. É o que o celular mostra quando a busca do dia lotou."""
+    ids = list(_K.acervo_ids())
+    if not ids:
+        return []
+    conn = get_pubshow_db()
+    try:
+        rows = []
+        for i in range(0, len(ids), 400):
+            parte = ids[i:i + 400]
+            rows += conn.execute(
+                f"""SELECT youtube_id, titulo, canal, dur, views, oficial, topic, publicado, ao_vivo, shorts
+                      FROM pubshow_busca_videos
+                     WHERE visto_em >= datetime('now', ?) AND youtube_id IN ({','.join('?' * len(parte))})""",
+                [f'-{YT_BUSCA_CACHE_DIAS} days', *parte]).fetchall()
+    finally:
+        conn.close()
+    vivos = [{'id': r['youtube_id'], 'titulo': r['titulo'], 'canal': r['canal'], 'dur': int(r['dur'] or 0),
+              'dur_txt': _yt_dur_txt(int(r['dur'] or 0)), 'views': int(r['views'] or 0), 'oficial': bool(r['oficial']),
+              'topic': bool(r['topic']), 'publicado': bool(r['publicado']), 'ao_vivo': bool(r['ao_vivo']),
+              'shorts': bool(r['shorts'])} for r in rows]
+    vivos.sort(key=lambda v: -v['views'])
+    cards = _yt_ranquear(vivos, '', top=n, karaoke=True)
+    cards, _av = _busca_filtrar(b, cards, None, _artistas_bloqueados(b), top=n)
+    if cards:
+        _yt_selos(b['id'], cards)
+    return cards
+
+
+def _karaoke_mais_cards(b, n=8):
+    """🎤 Tela 1 do celular: "As mais cantadas" (8 do acervo karaokê, 1 por gênero na volta), botão Cantar direto,
+    sem gastar busca. Erro ou acervo vazio = [] (a tela fica só com a busca). O 1º acesso do dia semeia o acervo."""
+    try:
+        _karaoke_acervo_garantir()
+        cards = _karaoke_acervo_cards(b, n=40)
+    except Exception as ex:
+        log.warning('[PUBSHOW] karaokê: mais cantadas falhou: %s', ex)
+        return []
+    gen = {a['id']: a['genero'] for a in _K.acervo_validos()}
+    grupos = {}
+    for c in cards:
+        grupos.setdefault(gen.get(c['id'], ''), []).append(c)
+    out = []
+    while len(out) < n and any(grupos.values()):
+        for g in list(grupos):
+            if grupos[g] and len(out) < n:
+                out.append(grupos[g].pop(0))
+    return [{'id': c['id'], 'titulo': c['titulo']} for c in out]
+
+
+def _karaoke_lotou(b, motivo):
+    """A busca do Google não roda (teto próprio de 20, cota do dia, sem chave): 200 com a lista do acervo karaokê."""
+    try:
+        cards = _karaoke_acervo_cards(b)
+    except Exception as ex:
+        log.warning('[PUBSHOW] karaokê: acervo da busca lotada falhou: %s', ex)
+        cards = []
+    return jsonify({'resultados': [], 'lotou': True, 'indisponivel': motivo, 'msg': _K.MSG_LOTOU, 'acervo': cards})
+
+
+@pubshow_bp.route('/api/karaoke/palco/<token>')
+def api_karaoke_palco(token):
+    """🎤 O bloco das telas do celular (palco, fila por nome, rei, espera), com o mesmo cache de 5 s do /api/status e SEM
+    marcar "TV ligada". Bar sem o modo = 404 {'ligado': False}."""
+    b = _bar_por_token(token)
+    if not b or not _K.ligado(b):
+        return jsonify({'ligado': False}), 404
+    _karaoke_acervo_garantir()
+    conn = get_pubshow_db()
+    try:
+        return jsonify(_karaoke_bloco(conn, b))
+    finally:
+        conn.close()
+
+
+# ── Painel do dono ────────────────────────────────────────────────────────────────────────────────────────────────────
+def _sim(v):
+    return v is True or str(v if v is not None else '').strip().lower() in ('1', 'true', 'on', 'sim')
+
+
+def _karaoke_dono():
+    """O bar logado, se ele está na lista do piloto (PUBSHOW_KARAOKE_BARES). (bar, None) ou (None, resposta 401/403):
+    fora da lista as rotas do karaokê não existem pra ele (o card nem aparece no painel)."""
+    b = _get_business()
+    if not b:
+        return None, (jsonify({'ok': False, 'erro': 'não autorizado'}), 401)
+    b = dict(b)   # sqlite3.Row não tem .get()
+    if not _K.permitido(b) or 'modo_karaoke' not in b:
+        return None, (jsonify({'ok': False, 'erro': 'karaoke_fora'}), 403)
+    return b, None
+
+
+@pubshow_bp.route('/painel/karaoke', methods=['POST'])
+@pubshow_login_required
+def painel_karaoke():
+    """🎤 Interruptor do modo karaokê (rota própria: o f-config nunca liga nem desliga). JSON (ou form) {ligado, aceite}.
+    Só pra bar da lista do piloto (PUBSHOW_KARAOKE_BARES); fora dela, 403.
+    Ligar exige aceite=true (ECAD + sem prêmio + sem couvert) e grava karaoke_aceite_em
+    ("AAAA-MM-DD HH:MM|<e-mail do bar>|v1", horário de Brasília); ligar também tira o "Pedir qualquer música" dos
+    bloqueados e guarda como estava (karaoke_yt_antes): desligar devolve o bloqueio. Devolve {ok, ligado}."""
+    import json as _json
+    b, erro = _karaoke_dono()
+    if erro:
+        return erro
+    d = request.get_json(silent=True) or request.form
+    ligar, aceite = _sim(d.get('ligado')), _sim(d.get('aceite'))
+    if ligar and not aceite:
+        return jsonify({'ok': False, 'ligado': _K.ligado(b), 'erro': 'aceite',
+                        'msg': 'Pra ligar o karaokê, confirma o aviso do ECAD e do prêmio.'}), 400
+    try:
+        bl = _json.loads(b['tipos_bloqueados'] or '[]')
+        bl = bl if isinstance(bl, list) else []
+    except Exception:
+        bl = []
+    conn = get_pubshow_db()
+    try:
+        if ligar:
+            antes = b.get('karaoke_yt_antes')
+            if not _K.ligado(b) or antes is None:   # ligar de novo, já ligado, não apaga como estava antes
+                antes = 1 if 'musica_externa' in bl else 0
+            quando = (datetime.utcnow() - timedelta(hours=3)).strftime('%Y-%m-%d %H:%M')
+            conn.execute('UPDATE pubshow_businesses SET modo_karaoke=1, karaoke_aceite_em=?, tipos_bloqueados=?, '
+                         'karaoke_yt_antes=? WHERE id=?',
+                         (f"{quando}|{(b['email'] or '').strip()[:120]}|{_KARAOKE_ACEITE_VERSAO}",
+                          _json.dumps([t for t in bl if t != 'musica_externa']), antes, b['id']))
+        else:
+            if _K.ligado(b) and b.get('karaoke_yt_antes') == 1 and 'musica_externa' not in bl:
+                bl.append('musica_externa')   # o bar tinha a busca fechada antes do karaokê: volta fechada
+                conn.execute('UPDATE pubshow_businesses SET tipos_bloqueados=? WHERE id=?', (_json.dumps(bl), b['id']))
+            conn.execute('UPDATE pubshow_businesses SET modo_karaoke=0, karaoke_yt_antes=NULL WHERE id=?', (b['id'],))
+        conn.commit()
+    finally:
+        conn.close()
+    _karaoke_cache_limpar(b['id'])
+    if bool(ligar) != _K.ligado(b):
+        # a TV aberta recarrega (tv_version do bar) e vira a coluna do karaokê, ou volta à de sempre. Com um pedido
+        # tocando ela espera a música acabar (a regra de sempre do tv_version)
+        _bump_tv_bar(b['id'])
+    if ligar:
+        _karaoke_acervo_garantir(forcar=True)
+        return jsonify({'ok': True, 'ligado': True})
+    # revisão 29/10 noite (tela-4): o painel acerta a chave do "Pedir qualquer música" com o que foi gravado
+    return jsonify({'ok': True, 'ligado': False, 'yt_bloqueado': 'musica_externa' in bl})
+
+
+@pubshow_bp.route('/painel/karaoke/ranking-json')
+@pubshow_login_required
+def painel_karaoke_ranking():
+    """🏆 Ranking da noite do PRÓPRIO bar: {noite: [{pid, nome, musicas}], zerado_em, rei, ligado, palco}. Só cantadas:
+    pulada, escondida e "não quero ranking" não contam. palco = quem está cantando agora ({pid, nome, oculto}), pro
+    "🙈 Esconder" na hora (quem canta com "não aparecer no ranking" não está na tabela)."""
+    b, erro = _karaoke_dono()
+    if erro:
+        return erro
+    conn = get_pubshow_db()
+    try:
+        rank = _karaoke_ranking(conn, b)
+        pk = _karaoke_palco(conn, b['id']) if _K.ligado(b) else None
+    finally:
+        conn.close()
+    return jsonify({'ok': True, 'ligado': _K.ligado(b), 'zerado_em': b['karaoke_zerado_em'],
+                    'noite': [{'pid': r['pid'], 'nome': r['nome'], 'musicas': r['musicas']} for r in rank],
+                    'rei': _K.rei(rank),
+                    'palco': ({'pid': pk['id'], 'nome': _K.nome_curto(pk['nome_cliente'] or ''),
+                               'oculto': bool(pk['karaoke_nome_oculto'])} if pk else None)})
+
+
+@pubshow_bp.route('/painel/karaoke/zerar', methods=['POST'])
+@pubshow_login_required
+def painel_karaoke_zerar():
+    """"Zerar a noite": o ranking conta só o que passar na TV depois de agora (horário de Brasília, igual ao exibido_at)."""
+    b, erro = _karaoke_dono()
+    if erro:
+        return erro
+    conn = get_pubshow_db()
+    try:
+        conn.execute("UPDATE pubshow_businesses SET karaoke_zerado_em=datetime('now', '-3 hours') WHERE id=?", (b['id'],))
+        conn.commit()
+        zer = conn.execute('SELECT karaoke_zerado_em FROM pubshow_businesses WHERE id=?', (b['id'],)).fetchone()[0]
+    finally:
+        conn.close()
+    _karaoke_cache_limpar(b['id'])
+    return jsonify({'ok': True, 'zerado_em': zer})
+
+
+@pubshow_bp.route('/painel/karaoke/<int:pid>/esconder', methods=['POST'])
+@pubshow_login_required
+def painel_karaoke_esconder(pid):
+    """"🙈 Esconder nome": todos os pedidos de karaokê da noite do mesmo celular + nome viram "Convidado" na TV e nos
+    celulares e saem do ranking. Pedido NOVO desse celular nas próximas 12 h já nasce escondido (_karaoke_cid_oculto).
+    Só pedido do próprio bar."""
+    b, erro = _karaoke_dono()
+    if erro:
+        return erro
+    conn = get_pubshow_db()
+    try:
+        alvo = conn.execute('SELECT id, ip_cliente, nome_cliente FROM pubshow_pedidos WHERE id=? AND business_id=? '
+                            'AND karaoke=1', (pid, b['id'])).fetchone()
+        if not alvo:
+            return jsonify({'ok': False, 'erro': 'não encontrado'}), 404
+        cid, nome = _K.cid(alvo['ip_cliente']), _K.nome_curto(alvo['nome_cliente'] or '').lower()
+        ids = [r['id'] for r in conn.execute(
+            f"""SELECT id, ip_cliente, nome_cliente FROM pubshow_pedidos
+                 WHERE business_id=? AND karaoke=1 AND created_at >= {_JANELA_FILA}""", (b['id'],)).fetchall()
+               if _K.cid(r['ip_cliente']) == cid and _K.nome_curto(r['nome_cliente'] or '').lower() == nome]
+        ids = sorted(set(ids) | {pid})
+        conn.execute(f"UPDATE pubshow_pedidos SET karaoke_nome_oculto=1 WHERE business_id=? AND id IN "
+                     f"({','.join('?' * len(ids))})", (b['id'], *ids))
+        conn.commit()
+    finally:
+        conn.close()
+    _karaoke_cache_limpar(b['id'])
+    return jsonify({'ok': True, 'escondidos': len(ids)})
+
+
+@pubshow_bp.route('/api/pedido-falhou/<int:pedido_id>', methods=['POST'])
+def api_pedido_falhou(pedido_id):
+    """🎤 A TV do karaokê não conseguiu tocar o vídeo do pedido (erro 100/150 ou travou nos 8 s) e pulou: a vez não conta
+    no ranking (karaoke_pulado=2) e o celular diz que a música não carregou. Mesma prova do /api/pedido-exibido (o code
+    da TV). Só pedido de karaokê que a TV acabou de começar (até 2 min)."""
+    data = request.get_json(silent=True) or {}
+    code = data.get('code') or request.form.get('code', '')
+    if not code:
+        return jsonify({'error': 'unauthorized'}), 401
+    conn = get_pubshow_db()
+    try:
+        b = conn.execute('SELECT * FROM pubshow_businesses WHERE code=?', (code,)).fetchone()
+        if not b or not _K.ligado(dict(b)):
+            return jsonify({'error': 'unauthorized'}), 403
+        ok = conn.execute(
+            "UPDATE pubshow_pedidos SET karaoke_pulado=2 WHERE id=? AND business_id=? AND karaoke=1 "
+            "AND status='exibido' AND COALESCE(karaoke_pulado,0)=0 "
+            "AND exibido_at >= datetime('now', '-3 hours', '-2 minutes')", (pedido_id, b['id'])).rowcount == 1
+        conn.commit()
+    finally:
+        conn.close()
+    if ok:
+        _karaoke_cache_limpar(b['id'])
+    return jsonify({'ok': ok}), (200 if ok else 409)
+
+
 @pubshow_bp.route('/api/buscar')
 @pubshow_bp.route('/api/buscar-local', endpoint='api_buscar_local')   # url_for('pubshow.api_buscar') segue /api/buscar
 def api_buscar():
@@ -6113,6 +6821,10 @@ def api_buscar():
     _so_local = request.path.endswith('/api/buscar-local')
     if _so_local and len(re.sub(r'\s', '', q)) < 3:   # 2 letras: o prefixo varre o acervo vivo inteiro; fica pra pausa
         return jsonify({'resultados': [], 'local': True, 'basta': False})
+    _kara = _K.ligado(b)   # 🎤 29/10/26: modo karaokê. Desligado = a busca de sempre, linha por linha
+    if _kara:
+        q = _K.termo_busca(q)          # "evidencias" → "evidencias karaoke" (o cache do termo fica separado sozinho)
+        _karaoke_acervo_garantir()     # 1º acesso do dia: semeia/confere o acervo karaokê (em 2º plano)
     _ip = _ip_real()
     _pre = 'buscar_local' if _so_local else 'buscar'
     _chave_bar, _chave_ip = f'{_pre}_bar:{b["id"]}', f'{_pre}_ip:' + _ip
@@ -6122,7 +6834,8 @@ def api_buscar():
     _rl_falhou(_chave_bar, _chave_ip)
     _cid = request.args.get('cid', '').strip()   # 28/10/26 (B3): o jk_cid do celular (teto por aparelho)
     _cid = _cid if _CID_RE.fullmatch(_cid) else None
-    ests_bar = pubshow_estilo.estilos_do_bar(b)    # 17/10/26: "aqui só toca rock" (None = tudo liberado)
+    # 17/10/26: "aqui só toca rock" (None = tudo liberado). 🎤 karaokê: estilo desligado (busca e pedido)
+    ests_bar = None if _kara else pubshow_estilo.estilos_do_bar(b)
     _nt = _artistas_bloqueados(b)                  # 🚫 22/10/26: "Não tocar aqui"
     _top = YT_TOP_ESTILO if ests_bar else (YT_TOP * 2 if _nt else YT_TOP)   # B9: com estilo, 10 (Google e local)
     try:
@@ -6131,8 +6844,12 @@ def api_buscar():
         basta = YT_LOCAL_BASTA
     if ests_bar:   # com estilo o Google também entrega no máximo 10 (B9): 10 no local já é a resposta inteira
         basta = min(basta, YT_TOP_ESTILO)
+    if _kara:      # 🎤 3 karaokês no local já bastam (o acervo karaokê vem antes do Google: teto próprio de 20/dia)
+        basta = _K.basta()
     try:   # 28/10/26 (B7): LOCAL primeiro (acervo do bar + acervo vivo), os mesmos filtros da API
-        local, aviso_local = _busca_filtrar(b, _busca_local(b, q, top=_top), ests_bar, _nt, top=YT_TOP * 2,
+        local, aviso_local = _busca_filtrar(b, _busca_local(b, q, top=_top, **({'karaoke': True} if _kara else {})),
+                                            ests_bar, _nt,
+                                            top=YT_TOP * 2,
                                             **({'espera': None, 'so_sabido': True} if _so_local and ests_bar else {}))
     except Exception as e:
         log.warning('[PUBSHOW] busca local falhou (segue pro Google): %s', e)
@@ -6156,6 +6873,8 @@ def api_buscar():
             return _busca_responder_local(b, local)
         if aviso_local:   # achou no local, mas o bar não toca (estilo / Não tocar aqui): o aviso certo, não o 503
             return jsonify(aviso_local)
+        if _kara:   # 🎤 busca lotada: o celular mostra "as mais cantadas" (acervo karaokê), nunca a lista do bar
+            return _karaoke_lotou(b, str(e))
         return jsonify({'resultados': [], 'erro': 'youtube_fora', 'indisponivel': str(e)}), 503
     except Exception as e:
         log.error('Busca livre (API oficial) falhou: %s', e)
@@ -6163,10 +6882,12 @@ def api_buscar():
             return _busca_responder_local(b, local)
         if aviso_local:
             return jsonify(aviso_local)
+        if _kara:
+            return _karaoke_lotou(b, 'erro')
         # crítico leigo A3 (17/10/26): fora do ar ≠ "nenhum resultado" — o celular libera o furar a fila no acervo
         return jsonify({'resultados': [], 'erro': 'youtube_fora'}), 503
     try:
-        resultados = _yt_ranquear(lidos, q, top=_top)
+        resultados = _yt_ranquear(lidos, q, top=_top, **({'karaoke': True} if _kara else {}))   # 🎤 só com o modo
     except Exception as e:   # resposta esquisita: nunca 500, e sai dos 2 caches (a próxima busca tenta de novo)
         log.error('Busca livre: ranking falhou: %s', e)
         _YT_CACHE.pop(_busca_chave(q), None)
@@ -6183,6 +6904,8 @@ def api_buscar():
         resultados = (local + [c for c in resultados if c.get('id') not in ja])[:YT_TOP * 2]
     if not resultados and (aviso or aviso_local):
         return jsonify(aviso or aviso_local)
+    if _kara and not resultados:   # 🎤 "Não achei essa com letra. Tenta só o nome da música."
+        return jsonify({'resultados': [], 'msg': _K.MSG_NADA})
     if resultados:   # selos "já na fila" / "tocou há X min" do bar do token (já conferido acima)
         _yt_selos(b['id'], resultados)
     return jsonify({'resultados': resultados})
@@ -6197,11 +6920,14 @@ def api_mais_pedidas(token):
     banidos = set(_videos_bloqueados(b))
     conn = get_pubshow_db()
     try:
+        # 🎤 29/10/26: pedido de karaokê não é "mais pedida". O filtro só entra com o piloto na env
+        # (PUBSHOW_KARAOKE_BARES): com ela vazia a consulta é a de sempre, letra por letra
         rows = conn.execute(
-            """SELECT youtube_id, COUNT(*) AS vezes, MAX(id) AS ultimo
+            f"""SELECT youtube_id, COUNT(*) AS vezes, MAX(id) AS ultimo
                FROM pubshow_pedidos
                WHERE business_id=? AND status='exibido' AND youtube_id IS NOT NULL
-                 AND exibido_at >= datetime('now', '-3 hours', '-7 days')
+                 AND exibido_at >= datetime('now', '-3 hours', '-7 days'){
+                 ' AND COALESCE(karaoke, 0)=0' if _K.bares() else ''}
                GROUP BY youtube_id
                ORDER BY vezes DESC, ultimo DESC
                LIMIT 20""",
@@ -6503,6 +7229,8 @@ def painel():
                            # Lote D A1: o preço DESTE bar (fundador: o travado) no "Assinar R$ X/mês"
                            PLANO=_plano_do_bar(bd),
                            b=bd, canais=canais_plano,
+                           # 🎤 29/10/26: o card do karaokê só pro bar do piloto (PUBSHOW_KARAOKE_BARES); fora = nada
+                           karaoke_ok=(_K.permitido(bd) and 'modo_karaoke' in bd), karaoke_on=_K.ligado(bd),
                            estilos_bar=ESTILOS_BAR,   # Lote D C (16/10/26): os 5 botões do Estilo do bar
                            no_ar_txt=_no_ar_txt(bd), yt_txt=_yt_txt(bd),   # 20/10/26: 📺 No ar e o Pedir do YouTube
                            pedidos_hoje=_pedidos_com_hora_local([dict(p) for p in pedidos_hoje]),
@@ -7188,9 +7916,11 @@ def painel_fila_json():
     conn = get_pubshow_db()
     fila = conn.execute(
         f'''SELECT id, nome_cliente, tipo, mensagem, valor, created_at, youtube_id, titulo_pedido,
-                  pago_em, valor_cobrado, {_SQL_PIX_VOLTA} AS pix_volta
+                  pago_em, valor_cobrado, {_SQL_PIX_VOLTA} AS pix_volta{
+                  ', karaoke, karaoke_nome_oculto' if _K.ligado(b) else ''}
            FROM pubshow_pedidos WHERE business_id=? AND status="pendente"
            ORDER BY CASE tipo WHEN "vip" THEN 1 WHEN "flash" THEN 2 ELSE 3 END, created_at ASC, id ASC LIMIT 20''',   # crítico leigo A2: a ordem da TV
+        # 🎤 29/10/26: só com o modo karaokê a linha leva as 2 colunas (o "🙈 Esconder nome" da fila); desligado = igual
         (b['id'],)
     ).fetchall()
     fila = _fila_com_trava(conn, b['id'], fila)   # 25/10/26 (trava do ⚡ furar): as músicas na ordem real da TV
@@ -8312,6 +9042,17 @@ def painel_pular_musica():
             return jsonify({'ok': False, 'confirmar': True, 'pedido_id': pago['id'], 'valor': pago['valor'],
                             'titulo': pago['titulo']})
         return redirect('/pubshow/painel')
+    if _K.ligado(b):
+        # 🎤 29/10/26: no karaokê o Pular também tira a vez do ranking (pago ou grátis): "pulada não conta". Só quem a
+        # TV diz que está tocando (com a rotação no ar ninguém é marcado); sem o relato da TV, o palco sem a folga
+        try:
+            _pk = _karaoke_pulado_alvo(conn, b['id'])
+            if _pk:
+                conn.execute('UPDATE pubshow_pedidos SET karaoke_pulado=1 WHERE id=? AND business_id=? '
+                             'AND COALESCE(karaoke_pulado,0)=0', (_pk, b['id']))
+        except Exception as ex:
+            log.warning('[PUBSHOW] karaokê: Pular não marcou o pedido (bar %s): %s', b['id'], ex)
+        _karaoke_cache_limpar(b['id'])
     if pago:
         _tirar_da_fila(conn, b['id'], pago['id'], de='exibido', resto=None, motivo='Pular com a música paga tocando')
     conn.execute(
@@ -8690,6 +9431,10 @@ def painel_config():
     todos_tipos = [t for t in TIPOS_PEDIDO if t not in ('gorjeta', 'donate_sistema')]
     ativos      = request.form.getlist('tipos_ativos')
     bloqueados  = [t for t in todos_tipos if t not in ativos]
+    if _K.ligado(b):
+        # 🎤 29/10/26: com o modo karaokê ligado, salvar os Ajustes nunca desliga o "Pedir qualquer música" (campo travado
+        # ou ausente no POST não pode matar o karaokê sozinho)
+        bloqueados = [t for t in bloqueados if t != 'musica_externa']
     if not _pular_espera_para(b):
         # ⏩ Pular a espera (20/10/26) só aparece no painel do bar da Efí: fora dela, salvar não liga nem desliga
         try:

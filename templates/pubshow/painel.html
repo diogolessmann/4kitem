@@ -578,7 +578,8 @@
           <div class="pedido-info">
             {% if loop.first %}<span class="selo-prox">▶ Próximo</span>{% endif %}
             <div class="pedido-nome">{{ p.nome_cliente }}{% if p.tipo in ('flash', 'vip', 'pular_espera') and p.pago_em %}<span class="selo-pago">⚡ PAGO</span>{% endif %}</div>
-            <div class="pedido-tipo">{% if p.titulo_pedido %}🎵 {{ p.titulo_pedido[:40] }}{% else %}{{ t.get('nome', p.tipo) }}{% endif %}{% if p.mensagem %} · "{{ p.mensagem[:30] }}"{% endif %}</div>
+            <div class="pedido-tipo">{% if p.titulo_pedido %}🎵 {{ p.titulo_pedido[:40] }}{% else %}{{ t.get('nome', p.tipo) }}{% endif %}{% if p.mensagem %} · "{{ p.mensagem[:30] }}"{% endif %}</div>{% if karaoke_on and p.karaoke %}
+            {% if p.karaoke_nome_oculto %}<div class="pedido-tipo">🙈 Na TV: Convidado</div>{% else %}<button type="button" class="btn-k-esconder" style="margin-top:6px" onclick="karaokeEsconder({{ p.id|int }}, this)">🙈 Esconder</button>{% endif %}{% endif %}
           </div>
           {% if (p.valor or 0) > 0 %}<span class="pedido-valor">R$ {{ '%.2f'|format(p.valor_cobrado or p.valor or 0)|replace('.',',') }}</span>{% else %}<span class="pedido-gratis">grátis</span>{% endif %}
           <button type="button" class="pedido-dispensar" aria-expanded="false" aria-label="Tirar da fila" title="Tirar da fila" onclick="abrirTirar({{ p.id }})">🗑️</button>
@@ -654,9 +655,74 @@
         {#- 20/10/26: com estilos acesos o YouTube também só acha eles (antes dizia "qualquer música" sempre) #}
         <div class="sub" id="yt-sub">{{ yt_txt }}</div>
       </div>
-      <label class="sw"><input type="checkbox" name="tipos_ativos" value="musica_externa" form="f-config" aria-label="Deixar pedir qualquer música"{% if 'musica_externa' not in bloqueados_parsed %} checked{% endif %}><span class="sw-t"></span></label>
+      <label class="sw{% if karaoke_on %} k-trava{% endif %}"><input type="checkbox" name="tipos_ativos" value="musica_externa" form="f-config" aria-label="Deixar pedir qualquer música"{% if 'musica_externa' not in bloqueados_parsed or karaoke_on %} checked{% endif %}{% if karaoke_on %} onclick="return false"{% endif %}><span class="sw-t"></span></label>
+    </div>{% if karaoke_ok %}
+    <div class="sub" id="yt-trava" style="margin-top:6px;font-size:13px;color:#fbbf24;font-weight:700"{% if not karaoke_on %} hidden{% endif %}>Ligado pelo karaokê</div>{% endif %}
+  </div>
+  {% if karaoke_ok %}
+  {#- 🎤 29/10/26 (modo karaokê, V1 GRÁTIS): interruptor com rota própria (/painel/karaoke, nunca o f-config) e aceite do
+      ECAD + sem prêmio. Ligado: o "Pedir qualquer música" fica marcado e travado (por onclick, não por disabled: campo
+      disabled não vai no POST e viraria bloqueado). O ranking da noite aparece só com o modo ligado. #}
+  <style>
+    .sw.k-trava{opacity:.55;cursor:not-allowed}
+    .k-aceite{margin-top:12px;padding:12px 14px;border-radius:12px;background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.35);font-size:14px;line-height:1.55}
+    .k-aceite .botoes, .k-zerar-box .botoes{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+    .k-sim{background:#f97316!important;border-color:#f97316!important;color:#000!important}
+    .k-aviso{margin-top:10px;font-size:13px;line-height:1.5;color:#fbbf24}
+    .k-rank{width:100%;border-collapse:collapse;font-size:15px}
+    .k-rank th{text-align:left;font-size:12px;color:var(--text2);font-weight:700;padding:4px 6px 8px 0}
+    .k-rank td{padding:8px 6px 8px 0;border-top:1px solid var(--border);vertical-align:middle}
+    .k-rank td.k-n{width:28px;font-weight:900;color:var(--text2)}
+    .k-rank td.k-m{width:70px;font-weight:900;font-variant-numeric:tabular-nums}
+    .k-rank td.k-nome{font-weight:800;word-break:break-word}
+    .btn-k-esconder{display:inline-flex;align-items:center;min-height:32px;padding:4px 9px;border-radius:9px;border:1px solid var(--border2);background:transparent;color:var(--text2);font:inherit;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap}
+    .k-zerar-btn{border:1.5px solid #ef4444!important;color:#fca5a5!important;background:transparent!important}
+    .k-palco{margin:0 0 12px;padding:10px 12px;border-radius:12px;background:var(--surface2);display:flex;align-items:center;gap:10px;justify-content:space-between;font-size:15px}
+    .k-palco b{font-weight:900}
+  </style>
+  <div class="card" id="sec-karaoke">
+    <div class="linha-chave" style="padding:0">
+      <div>
+        <div class="rot">🎤 Modo karaokê <span class="salvo" aria-live="polite"></span></div>
+        <div class="sub">Ligado: só música com letra, cada um põe o nome e canta na ordem.</div>
+        <div class="sub">Por enquanto é grátis pro cliente.</div>
+      </div>
+      <label class="sw"><input type="checkbox" id="karaoke-sw" aria-label="Ligar o modo karaokê"{% if karaoke_on %} checked{% endif %} onchange="trocarKaraoke(this)"><span class="sw-t"></span></label>
+    </div>
+    <div class="k-aceite" id="karaoke-aceite" hidden>
+      <div style="font-weight:800">Antes de ligar:</div>
+      <ul style="margin:6px 0 0 18px;padding:0">
+        <li>o bar paga o ECAD, inclusive do karaokê;</li>
+        <li>não anuncia prêmio pelo ranking (bebida, rodada) e não cobra entrada, couvert nem consumação por causa do karaokê. Com prêmio, vira promoção, que precisa de autorização do governo.</li>
+      </ul>
+      <div class="botoes">
+        <button type="button" class="btn-sm k-sim" id="karaoke-confirmo" onclick="karaokeConfirmar(true, this)">Confirmo e ligo</button>
+        <button type="button" class="btn-sm" onclick="karaokeConfirmar(false, this)">Agora não</button>
+      </div>
+    </div>
+    <div class="k-aviso" id="karaoke-esporte" hidden>Com o ⚽ Esporte ligado a letra fica pequena na TV. Pro karaokê, desliga o Esporte.</div>
+    <div class="k-aviso" id="karaoke-recarregar" hidden>Quem já está com a página aberta vê o karaokê quando recarregar.</div>
+  </div>
+  <div class="card" id="sec-karaoke-rank"{% if not karaoke_on %} hidden{% endif %}>
+    <div class="card-title">🏆 Ranking da noite <span class="salvo" aria-live="polite"></span></div>
+    <div class="k-palco" id="k-palco" hidden><span>🎤 Agora no palco: <b id="k-palco-nome"></b></span><button type="button" class="btn-k-esconder" id="k-palco-esc">🙈 Esconder</button></div>
+    <table class="k-rank" id="k-rank-tab" hidden>
+      <thead><tr><th>#</th><th>Nome</th><th>Músicas</th><th></th></tr></thead>
+      <tbody id="k-rank"></tbody>
+    </table>
+    <div class="dica" id="k-rank-vazio" style="margin:0">Ninguém cantou ainda hoje.</div>
+    <div class="k-zerar-box" style="margin-top:20px;padding-top:14px;border-top:1px solid var(--border)">
+      <button type="button" class="btn-sm k-zerar-btn" id="k-zerar" onclick="karaokeZerarPedir(true)">Zerar a noite</button>
+      <div class="k-aceite" id="k-zerar-conf" hidden>
+        <div>Zerar o ranking de hoje? A TV volta pra 'ninguém ainda'.</div>
+        <div class="botoes">
+          <button type="button" class="btn-sm k-sim" id="k-zerar-sim" onclick="karaokeZerar(this)">Zerar</button>
+          <button type="button" class="btn-sm" onclick="karaokeZerarPedir(false)">Voltar</button>
+        </div>
+      </div>
     </div>
   </div>
+  {% endif %}
 
   {#- 🚫 22/10/26 (Garage: "POP pode ser Michael Jackson ou Anitta"): artistas/bandas que o bar não quer. O cliente não
       acha (busca, lista, mais pedidas), o pedido mandado direto é recusado e a TV não toca. Só com a coluna (migração) #}
@@ -1306,6 +1372,122 @@ async function salvarMudoSemMusica(cb) {
     _salvo(cb, true);
   } catch (e) { cb.checked = !on; _salvo(cb, false); }
 }
+{% if karaoke_ok %}
+// ── 🎤 Modo karaokê (29/10/26, V1 grátis) ─────────────────────────────────────────────────────────────────────────
+// Ligar pede o aceite (ECAD + sem prêmio) numa caixa; desligar é direto. Rota própria (nunca o f-config). O ranking da
+// noite atualiza a cada 30 s com o modo ligado; "Zerar a noite" pede confirmação; "🙈 Esconder nome" vira "Convidado".
+let _kOn = {{ 'true' if karaoke_on else 'false' }}, _kRankT = null;
+const _kJ = {'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest'};
+function _kEsc(t) {
+  return String(t == null ? '' : t).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function _kTravaPedir(on) {
+  // "Pedir qualquer música" marcado e travado com o modo (onclick, não disabled: disabled não vai no POST)
+  const cb = document.querySelector('#sec-youtube input[value="musica_externa"]');
+  const dica = document.getElementById('yt-trava');
+  if (cb) {
+    if (on) cb.checked = true;
+    cb.onclick = on ? () => false : null;
+    const sw = cb.closest('.sw'); if (sw) sw.classList.toggle('k-trava', on);
+  }
+  if (dica) dica.hidden = !on;
+}
+function _kEsporte() {
+  const av = document.getElementById('karaoke-esporte');
+  if (av) av.hidden = !(_kOn && document.querySelector('.estilo-btn[data-estilo="esporte"].ativo'));
+}
+function _kPintar() {
+  const sw = document.getElementById('karaoke-sw'); if (sw) sw.checked = _kOn;
+  const rk = document.getElementById('sec-karaoke-rank'); if (rk) rk.hidden = !_kOn;
+  _kTravaPedir(_kOn);
+  _kEsporte();
+  clearInterval(_kRankT);
+  if (_kOn) { karaokeRanking(); _kRankT = setInterval(() => { if (!document.hidden) karaokeRanking(); }, 30000); }
+}
+function trocarKaraoke(cb) {
+  const quer = cb.checked;
+  cb.checked = _kOn;   // nada muda antes do servidor dizer que mudou
+  if (quer) { document.getElementById('karaoke-aceite').hidden = false; return; }
+  _kSalvar(false, false, cb);
+}
+function karaokeConfirmar(sim, btn) {
+  document.getElementById('karaoke-aceite').hidden = true;
+  if (sim) _kSalvar(true, true, btn);
+}
+async function _kSalvar(ligado, aceite, alvo) {
+  try {
+    const r = await fetch('/pubshow/painel/karaoke', {method: 'POST', headers: _kJ, body: JSON.stringify({ligado, aceite})});
+    const d = await r.json();
+    if (!d.ok) throw new Error();
+    _kOn = !!d.ligado;
+    _kPintar();
+    // revisão 29/10 noite (tela-4): desligar devolve o bloqueio do "Pedir qualquer música" de quem tinha fechado; a
+    // chave mostra o que o servidor gravou (senão o próximo autosave do f-config abria de novo)
+    if (!_kOn && typeof d.yt_bloqueado === 'boolean') {
+      const cb = document.querySelector('#sec-youtube input[value="musica_externa"]');
+      if (cb) cb.checked = !d.yt_bloqueado;
+    }
+    document.getElementById('karaoke-recarregar').hidden = !_kOn;
+    _salvo(document.getElementById('karaoke-sw'), true);
+  } catch (e) { _kPintar(); _salvo(document.getElementById('karaoke-sw'), false); }
+}
+async function karaokeRanking() {
+  try {
+    const r = await fetch('/pubshow/painel/karaoke/ranking-json', {headers: {'X-Requested-With': 'XMLHttpRequest'}, cache: 'no-store'});
+    const d = await r.json();
+    if (!d.ok) return;
+    const linhas = d.noite || [];
+    const pc = d.palco, pbox = document.getElementById('k-palco');
+    if (pbox) {
+      pbox.hidden = !pc;
+      if (pc) {
+        document.getElementById('k-palco-nome').textContent = pc.oculto ? 'Convidado' : (pc.nome || 'alguém');
+        const eb = document.getElementById('k-palco-esc');
+        eb.hidden = !!pc.oculto; eb.disabled = false; eb.textContent = '🙈 Esconder';
+        eb.onclick = () => karaokeEsconder(Number(pc.pid) || 0, eb);
+      }
+    }
+    document.getElementById('k-rank-tab').hidden = !linhas.length;
+    document.getElementById('k-rank-vazio').hidden = !!linhas.length;
+    document.getElementById('k-rank').innerHTML = linhas.map((l, i) => `<tr>
+      <td class="k-n">${i + 1}</td><td class="k-nome">${_kEsc(l.nome)}</td><td class="k-m">${Number(l.musicas) || 0}</td>
+      <td style="text-align:right"><button type="button" class="btn-k-esconder" onclick="karaokeEsconder(${Number(l.pid) || 0}, this)">🙈 Esconder</button></td>
+    </tr>`).join('');
+  } catch (e) { /* sem internet: a tabela fica como estava; tenta de novo em 30 s */ }
+}
+async function karaokeEsconder(pid, btn) {
+  if (!pid) return;
+  if (btn) btn.disabled = true;
+  try {
+    const r = await fetch(`/pubshow/painel/karaoke/${pid}/esconder`, {method: 'POST', headers: _kJ, body: '{}'});
+    const d = await r.json();
+    if (!d.ok) throw new Error();
+    if (btn) btn.textContent = '🙈 Na TV: Convidado';
+    _salvo(document.getElementById('k-rank'), true);
+    karaokeRanking();
+  } catch (e) { if (btn) btn.disabled = false; _salvo(document.getElementById('k-rank'), false); }
+}
+function karaokeZerarPedir(abrir) {
+  document.getElementById('k-zerar-conf').hidden = !abrir;
+  document.getElementById('k-zerar').hidden = abrir;
+}
+async function karaokeZerar(btn) {
+  btn.disabled = true;
+  try {
+    const r = await fetch('/pubshow/painel/karaoke/zerar', {method: 'POST', headers: _kJ, body: '{}'});
+    const d = await r.json();
+    if (!d.ok) throw new Error();
+    _salvo(document.getElementById('k-rank'), true);
+    karaokeRanking();
+  } catch (e) { _salvo(document.getElementById('k-rank'), false); }
+  btn.disabled = false;
+  karaokeZerarPedir(false);
+}
+document.addEventListener('click', ev => {   // trocou o Estilo: o aviso do ⚽ Esporte acompanha
+  if (ev.target.closest && ev.target.closest('.estilo-btn')) setTimeout(_kEsporte, 800);
+});
+_kPintar();
+{% endif %}
 
 // 🚫 Não tocar aqui (22/10/26): salva os artistas do bar e mostra a lista como ficou (sem repetido, sem espaço sobrando)
 async function salvarNaoTocar(btn) {
@@ -1720,11 +1902,17 @@ async function liberarMusica(ev, form) {
 // Propaganda: salva sozinho; 1 só (texto ou imagem): escreveu o texto, some o "Pôr uma imagem", e vice-versa
 const FAN = document.getElementById('f-anuncios');
 let _tAn = null;
-function _contaSlides() {
+// 29/10/26 (Diogo achou no demo): o "N de M" do título também acompanha. Antes ficava o número de quando a página
+// abriu: apagava o texto, o servidor jogava a propaganda vazia fora e o título seguia "1 de 1".
+// d = resposta do salvar ({textos}: o que o servidor guardou); sem ela, conta o que está escrito na tela.
+function _contaSlides(d) {
   const imgs = {{ slides_img|length }}, max = {{ plano_max_anuncios }};
   const up = document.getElementById('f-upload-slide');
-  const cheios = Array.from(document.querySelectorAll('#f-anuncios [name$="_titulo"]')).filter(i => i.value.trim()).length;
+  const cheios = (d && typeof d.textos === 'number') ? d.textos
+    : Array.from(document.querySelectorAll('#f-anuncios [name$="_titulo"]')).filter(i => i.value.trim()).length;
   if (up) up.hidden = cheios + imgs >= max;
+  const res = document.querySelector('#sec-propaganda .resumo');
+  if (res) res.textContent = (cheios + imgs) + ' de ' + max;
 }
 function apagarSlide(btn) {
   const box = btn.closest('.slide-box');
@@ -1732,12 +1920,12 @@ function apagarSlide(btn) {
   const visiveis = document.querySelectorAll('#f-anuncios .slide-box:not([hidden])');
   if (visiveis.length > 1) box.hidden = true;
   // os preenchidos sobem pras primeiras vagas (o servidor guarda na ordem)
-  _postar(FAN, btn).then(() => _contaSlides());
+  _postar(FAN, btn).then(d => _contaSlides(d));
 }
 if (FAN) {
-  FAN.addEventListener('submit', ev => { if (window.fetch) { ev.preventDefault(); _postar(FAN, FAN); } });
+  FAN.addEventListener('submit', ev => { if (window.fetch) { ev.preventDefault(); _postar(FAN, FAN).then(d => _contaSlides(d)); } });
   FAN.addEventListener('input', () => _contaSlides());
-  FAN.addEventListener('change', ev => { clearTimeout(_tAn); _tAn = setTimeout(() => _postar(FAN, ev.target), 300); });
+  FAN.addEventListener('change', ev => { clearTimeout(_tAn); _tAn = setTimeout(() => _postar(FAN, ev.target).then(d => _contaSlides(d)), 300); });
 }
 
 // Aviso pelo WhatsApp: salva sozinho
@@ -1834,7 +2022,9 @@ function renderFila(fila) {
         <div class="pedido-info">
           ${proxLabel}
           <div class="pedido-nome">${_escHtml(p.nome_cliente)}${seloPago}</div>
-          <div class="pedido-tipo">${musica || nome_tipo}${msg}</div>
+          <div class="pedido-tipo">${musica || nome_tipo}${msg}</div>{% if karaoke_ok %}
+          ${p.karaoke ? (p.karaoke_nome_oculto ? '<div class="pedido-tipo">🙈 Na TV: Convidado</div>'
+            : `<button type="button" class="btn-k-esconder" style="margin-top:6px" onclick="karaokeEsconder(${Number(p.id) || 0}, this)">🙈 Esconder</button>`) : ''}{% endif %}
         </div>
         ${valorHtml}
         <button type="button" class="pedido-dispensar" aria-expanded="${aberto}" aria-label="Tirar da fila" title="Tirar da fila" onclick="abrirTirar(${p.id})">🗑️</button>

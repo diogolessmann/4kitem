@@ -239,6 +239,19 @@ def init_pubshow_db():
         # Conferência no gateway (junção 17/10/26) do pedido sem prova de pagamento (histórico preenchido no 1º boot):
         # status do Asaas (RECEIVED…), 'EFI:<status>' na ponte Efí, ou 'ERRO|<utc>' pra tentar de novo. NULL = não conferido.
         'ALTER TABLE pubshow_pedidos ADD COLUMN pix_conferido TEXT DEFAULT NULL',
+        # 🎤 Modo karaokê (29/10/26, V1 grátis): o interruptor do bar (rota própria /painel/karaoke, nunca o f-config),
+        # quando o dono zerou a noite (horário de Brasília, igual ao exibido_at) e o aceite do ECAD + sem prêmio
+        # ("AAAA-MM-DD HH:MM|<usuário>"). O pedido continua 'musica_externa' (herda fila, validação e TV) e ganha as marcas:
+        # karaoke=1, "não quero ranking", pulado pelo dono e nome escondido pelo dono (vira "Convidado")
+        'ALTER TABLE pubshow_businesses ADD COLUMN modo_karaoke INTEGER DEFAULT 0',
+        'ALTER TABLE pubshow_businesses ADD COLUMN karaoke_zerado_em TEXT DEFAULT NULL',
+        'ALTER TABLE pubshow_businesses ADD COLUMN karaoke_aceite_em TEXT DEFAULT NULL',
+        # 1 = o "Pedir qualquer música" estava BLOQUEADO antes de ligar o karaokê (desligar o modo devolve o bloqueio)
+        'ALTER TABLE pubshow_businesses ADD COLUMN karaoke_yt_antes INTEGER DEFAULT NULL',
+        'ALTER TABLE pubshow_pedidos ADD COLUMN karaoke INTEGER DEFAULT 0',
+        'ALTER TABLE pubshow_pedidos ADD COLUMN karaoke_sem_rank INTEGER DEFAULT 0',
+        'ALTER TABLE pubshow_pedidos ADD COLUMN karaoke_pulado INTEGER DEFAULT 0',
+        'ALTER TABLE pubshow_pedidos ADD COLUMN karaoke_nome_oculto INTEGER DEFAULT 0',
     ]:
         try:
             conn.execute(m); conn.commit()
@@ -253,6 +266,8 @@ def init_pubshow_db():
     for _ix in (
         'CREATE INDEX IF NOT EXISTS idx_pubshow_pedidos_biz_st_dt ON pubshow_pedidos(business_id, status, created_at)',
         'CREATE INDEX IF NOT EXISTS idx_pubshow_biz_jukebox_token ON pubshow_businesses(jukebox_token)',
+        # 🎤 29/10/26: ranking da noite e palco do karaokê
+        'CREATE INDEX IF NOT EXISTS idx_ped_karaoke ON pubshow_pedidos(business_id, karaoke, status, exibido_at)',
     ):
         try:
             conn.execute(_ix); conn.commit()

@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Karaokê — {{ b.nome }}</title>
+<meta name="theme-color" content="#0b0b14">
+<meta name="robots" content="noindex">
+{#- 🎤 29/10/26 (modo karaokê, V1 de sexta, GRÁTIS): o celular do cliente quando o bar liga o "🎤 Modo karaokê".
+    4 telas, uma ação por tela: 1 Escolher (busca só com letra) · 2 Confirmar (nome na TV) · 3 Esperar (posição, quem
+    canta, Rei da noite) · 4 Tua vez (laranja) → "Mandou bem". O jukebox.html do Garage fica intocado.
+    Regras (ESTADO_MODO_KARAOKE.md): nunca o nome da plataforma de vídeo nem gíria pro WhatsApp; sem furar, momentos,
+    Donate, "Mais pedidas", lista do bar e divisão do dinheiro. Polling leve (o servidor tem 1 worker): tela 1 a cada
+    15 s, telas 3 e 4 a cada 5 s com UM GET só (o pedido-status já traz o palco), nada com a aba escondida e 1 consulta
+    na hora em que ela volta (visibilitychange).
+    Texto que vem de fora (nome, título) entra sempre por textContent. #}
+<style>
+  :root{--bg:#0b0b14;--card:#161624;--card2:#1f1f33;--borda:rgba(255,255,255,.12);--txt:#fff;--txt2:#b4b4cc;
+        --lar:#f97316;--lar2:#fb923c;--verde:#4ade80;--ouro:#fde68a;--erro:#fca5a5}
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{background:var(--bg);color:var(--txt)}
+  body{font-family:system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif;font-size:18px;line-height:1.45;
+       min-height:100vh;min-height:100dvh;-webkit-text-size-adjust:100%}
+  body.laranja{background:var(--lar)}
+  .topo{display:flex;align-items:center;gap:8px;padding:14px 16px 0;font-size:14px;font-weight:700;color:var(--txt2)}
+  body.laranja .topo{color:rgba(0,0,0,.65)}
+  .topo b{color:var(--txt);font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  body.laranja .topo b{color:#000}
+  main{max-width:480px;margin:0 auto;padding:16px 16px 40px}
+  .tela{display:none}
+  .tela.on{display:block}
+  h1{font-size:28px;line-height:1.2;font-weight:900;letter-spacing:-.01em;margin:6px 0 16px}
+  .aviso-bar{background:var(--card2);border:1px solid var(--borda);border-radius:14px;padding:12px 14px;margin-bottom:14px;
+       font-size:16px}
+  /* tela 1: busca */
+  .busca{display:flex;gap:8px}
+  .busca input{flex:1;min-width:0;height:56px;padding:0 14px;border-radius:14px;border:2px solid var(--borda);
+       background:var(--card);color:var(--txt);font:inherit;font-size:18px}
+  .busca input:focus{outline:none;border-color:var(--lar)}
+  .btn{display:inline-flex;align-items:center;justify-content:center;min-height:56px;padding:0 20px;border-radius:14px;
+       border:0;background:var(--lar);color:#000;font:inherit;font-size:18px;font-weight:900;cursor:pointer;
+       -webkit-tap-highlight-color:transparent}
+  .btn:disabled{opacity:.6}
+  .btn.cheio{width:100%}
+  .btn.claro{background:var(--card2);color:var(--txt);border:1px solid var(--borda)}
+  .msg{margin:14px 0 4px;font-size:17px;color:var(--txt2)}
+  .msg.forte{color:var(--txt);font-weight:800}
+  .lista{list-style:none;margin-top:12px;display:flex;flex-direction:column;gap:10px}
+  .lista li{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--borda);border-radius:14px;
+       padding:12px 12px 12px 14px}
+  .lista .r-txt{flex:1;min-width:0}
+  .lista .r-tit{font-weight:800;font-size:17px;line-height:1.3;word-break:break-word}
+  .lista .r-sub{font-size:14px;color:var(--txt2);margin-top:2px}
+  .lista .btn{min-height:48px;padding:0 16px;font-size:17px;flex:none}
+  .linha{margin-top:18px;padding-top:14px;border-top:1px solid var(--borda);font-size:16px;font-weight:700;color:var(--verde)}
+  .caixa-fila{background:var(--card2);border:1px solid var(--borda);border-radius:14px;padding:14px;margin-top:14px}
+  .caixa-fila p{font-weight:800;margin-bottom:12px}
+  /* tela 2: confirmar */
+  .rot{font-size:16px;color:var(--txt2);font-weight:700}
+  .musica{font-size:22px;font-weight:900;line-height:1.25;margin:4px 0 20px;word-break:break-word}
+  label.campo{display:block;font-size:16px;font-weight:800;margin-bottom:6px}
+  .nome{width:100%;height:60px;padding:0 16px;border-radius:14px;border:2px solid var(--borda);background:var(--card);
+       color:var(--txt);font:inherit;font-size:22px;font-weight:800}
+  .nome:focus{outline:none;border-color:var(--lar)}
+  .erro{color:var(--erro);font-weight:800;font-size:16px;margin-top:8px}
+  .marca{display:flex;align-items:center;gap:12px;margin:18px 0 8px;font-size:17px;min-height:44px;cursor:pointer}
+  .marca input{width:26px;height:26px;accent-color:var(--lar);flex:none}
+  .pequeno{font-size:14px;color:var(--txt2);margin:4px 0 18px}
+  .voltar{display:block;margin:16px auto 0;background:none;border:0;color:var(--txt2);font:inherit;font-size:16px;
+       text-decoration:underline;min-height:44px;cursor:pointer}
+  /* tela 3: esperar */
+  .grande{font-size:30px;font-weight:900;line-height:1.2;margin:4px 0 14px}
+  .destaque{background:var(--lar);color:#000;font-weight:900;font-size:20px;border-radius:14px;padding:14px;margin-bottom:14px}
+  .palco{background:var(--card);border:1px solid var(--borda);border-radius:14px;padding:14px;font-size:18px}
+  .palco p + p{margin-top:6px}
+  .palco b{font-weight:900}
+  .rei{margin-top:14px;font-size:18px;font-weight:800;color:var(--ouro)}
+  .fixo{margin-top:18px;font-size:16px;color:var(--txt2)}
+  /* tela 4: tua vez (fundo laranja) */
+  #t4 h1{font-size:40px;line-height:1.1;color:#000;margin-top:28px;word-break:break-word}
+  #t4 .sub4{font-size:24px;font-weight:800;color:#000;line-height:1.3}
+  #t4 .btn{background:#000;color:#fff;margin-top:26px}
+  #t4-pulado h1{font-size:30px}
+  /* revisão 29/10 noite (tela-1): o #t4-pulado sai sem o laranja (fundo escuro); o preto do #t4 sumia nele */
+  #t4-pulado h1, #t4-pulado .sub4{color:var(--txt)}
+  #t4-pulado .btn{background:var(--lar);color:#000}
+  #t4 .musica4{font-size:24px;font-weight:900;color:#000;margin-top:18px;word-break:break-word}
+  #t4 #t4-rank{margin-top:12px}
+  .marca.miuda{font-size:15px;color:var(--txt2);margin:16px 0 0;min-height:40px}
+  .marca.miuda input{width:22px;height:22px}
+  .tu{color:var(--lar2);font-weight:900}
+  .fechado{text-align:center;padding-top:30px}
+  .fechado .grande{font-size:26px}
+</style>
+</head>
+<body>
+<!-- celular do cliente do bar: sem balão global do WhatsApp do 4kitem (a marca 'wa-float-4k' impede a injeção) -->
+<style>#wa-float-4k{display:none !important}</style>
+<div class="topo"><span>🎤 Karaokê</span><span>·</span><b>{{ b.nome }}</b></div>
+<main>
+  {% if aviso %}<div class="aviso-bar">📢 {{ aviso }}</div>{% endif %}
+
+  {% if not aberto %}
+  <!-- fechado (horário do bar, jukebox desligado) -->
+  <section class="tela on fechado" id="t0">
+    <p class="grande">🎤 O karaokê está fechado agora.</p>
+    <p class="msg">{% if volta_as %}Volta às {{ volta_as }}.{% else %}O bar fechou os pedidos por enquanto.{% endif %}</p>
+  </section>
+  {% else %}
+
+  <!-- TELA 1: escolher -->
+  <section class="tela" id="t1">
+    <h1>🎤 Qual música tu vai cantar?</h1>
+    <form class="busca" id="f-busca" role="search" onsubmit="buscar(event)">
+      <input type="search" id="q" maxlength="80" autocomplete="off" enterkeyhint="search"
+             placeholder="Música ou cantor" aria-label="Nome da música ou do cantor">
+      <button type="submit" class="btn" id="btn-buscar">Buscar</button>
+    </form>
+    <div class="caixa-fila" id="ja-fila" hidden>
+      <p>Tua música já tá na fila. Cantou, pode pedir outra.</p>
+      <button type="button" class="btn cheio" id="btn-ver-vez" onclick="verMinhaVez()">Ver minha vez</button>
+    </div>
+    <p class="msg" id="busca-msg" hidden></p>
+    <ul class="lista" id="resultados"></ul>
+    <div id="mais-box" hidden>
+      <p class="msg forte" id="mais-tit">Clássicos do karaokê</p>
+      <ul class="lista" id="mais"></ul>
+    </div>
+    <p class="linha" id="linha-fila">Hoje é grátis · teu nome no telão</p>
+  </section>
+
+  <!-- TELA 2: confirmar (nome na TV) -->
+  <section class="tela" id="t2">
+    <p class="rot">Tu vai cantar:</p>
+    <p class="musica" id="t2-musica"></p>
+    <form method="POST" id="f-pedido" onsubmit="return entrarNaFila()" novalidate>
+      <input type="hidden" name="tipo" value="musica_externa">
+      <input type="hidden" name="youtube_id" id="f-vid" value="">
+      <input type="hidden" name="titulo_pedido" id="f-tit" value="">
+      <input type="hidden" name="client_id" id="f-cid" value="">
+      <label class="campo" for="nome">Teu nome na TV</label>
+      <input class="nome" type="text" id="nome" name="nome_cliente" maxlength="14" autocomplete="given-name"
+             enterkeyhint="done" placeholder="Primeiro nome ou apelido">
+      <p class="erro" id="nome-erro" role="alert" hidden></p>
+      <button type="submit" class="btn cheio" id="btn-entrar" style="margin-top:16px">Entrar na fila</button>
+      <label class="marca miuda"><input type="checkbox" name="sem_rank" value="1" id="sem-rank"> Não aparecer no ranking</label>
+      <p class="pequeno">Teu nome aparece na TV do bar hoje. O ranking zera no fim da noite.</p>
+    </form>
+    <button type="button" class="voltar" onclick="irPara('t1')">Escolher outra música</button>
+  </section>
+
+  <!-- TELA 3: esperar -->
+  <section class="tela" id="t3">
+    <h1 id="t3-oi">Tu tá na fila.</h1>
+    <p class="grande" id="t3-pos">Entrando na fila…</p>
+    <p class="msg" id="t3-min" hidden></p>
+    <p class="destaque" id="t3-proxima" hidden>A próxima é a tua! Chega perto do microfone.</p>
+    <div class="palco" id="t3-palco" hidden>
+      <p id="t3-agora"></p>
+      <p id="t3-depois"></p>
+    </div>
+    <p class="rei" id="t3-rei"></p>
+    <p class="fixo">Fica de olho na TV. Teu nome aparece antes da tua vez.</p>
+  </section>
+
+  <!-- TELA 4: tua vez (laranja) / mandou bem / tua vez passou -->
+  <section class="tela" id="t4">
+    <div id="t4-vez">
+      <h1 id="t4-tit">🎤 É A TUA VEZ.</h1>
+      <p class="sub4">Vai pro microfone. A letra tá na TV.</p>
+      <p class="musica4" id="t4-musica" hidden></p>
+    </div>
+    <div id="t4-fim" hidden>
+      <h1 id="t4-fim-tit">Mandou bem! Bora mais uma?</h1>
+      <p class="sub4" id="t4-rank" hidden></p>
+      <button type="button" class="btn cheio" onclick="cantarDeNovo()">Cantar de novo</button>
+    </div>
+    <div id="t4-pulado" hidden>
+      <h1 id="t4-pul-tit">Tua vez passou.</h1>
+      <p class="sub4" id="t4-pul-sub">Pede de novo quando estiver perto do microfone.</p>
+      <button type="button" class="btn cheio" onclick="cantarDeNovo()">Escolher música</button>
+    </div>
+  </section>
+  {% endif %}
+</main>
+
+{% if aberto %}
+<script>
+const BAR_TOKEN = {{ (b.jukebox_token or b.code)|tojson }};
+const SUCESSO_ID = {{ (pedido_id_sucesso or 0)|int if sucesso else 0 }};
+const NOME_ACEITO = {{ (nome_aceito or '')|tojson }};
+const ERRO = {{ (erro or '')|replace('YouTube', 'internet')|tojson }};
+const ERRO_TIPO = {{ (erro_tipo or '')|tojson }};
+const MEU_ID_SERVIDOR = {{ (karaoke_meu_id or 0)|int }};
+const FORM_VID = {{ (request.form.get('youtube_id', '') if request.method == 'POST' else '')|tojson }};
+const FORM_TIT = {{ (request.form.get('titulo_pedido', '') if request.method == 'POST' else '')|tojson }};
+const FORM_NOME = {{ (request.form.get('nome_cliente', '') if request.method == 'POST' else '')|tojson }};
+const KMAIS = {{ (karaoke_mais or [])|tojson }};   // "As mais cantadas" do acervo (sem gastar busca)
+const T = {   // os textos do PLANO_FINAL §6 (um lugar só)
+  nomeVazio: 'Põe teu nome ou apelido pra gente chamar na TV.',
+  nada: 'Não achei essa com letra. Tenta só o nome da música.',
+  lotou: 'A busca de hoje lotou. Escolhe um dos clássicos:',
+  semBusca: 'A busca não respondeu. Tenta de novo.',
+  muita: 'Muita gente buscando agora. Tenta de novo em uns segundos.',
+  curta: 'Escreve pelo menos 2 letras.',
+};
+const VALE_MS = 12 * 3600 * 1000;   // o pedido lembrado vale a noite (a janela da fila do servidor também é 12 h)
+
+// ── guardado no celular (try/catch: aba anônima ou armazenamento bloqueado não quebram a tela) ──────────────
+function _ler(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+function _gravar(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+function _apagar(k) { try { localStorage.removeItem(k); } catch (e) {} }
+function _cid() {
+  let c = _ler('jk_cid') || '';
+  if (!/^[A-Za-z0-9_-]{8,40}$/.test(c)) {
+    c = (self.crypto && crypto.randomUUID) ? crypto.randomUUID().replace(/-/g, '') : ('c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 12));
+    _gravar('jk_cid', c);
+  }
+  return c;
+}
+const CID = _cid();
+function _meu() {   // o pedido de karaokê deste celular: {id, nome, t}
+  try {
+    const m = JSON.parse(_ler('jk_kara') || 'null');
+    if (m && m.id && Date.now() - (m.t || 0) < VALE_MS) return m;
+  } catch (e) {}
+  _apagar('jk_kara');
+  return null;
+}
+function _nomeLembrado() { return (_ler('jk_nome') || '').slice(0, 14); }
+const $ = id => document.getElementById(id);
+function _txt(id, t) { const el = $(id); if (el && el.textContent !== t) el.textContent = t; }
+function _vibra(p) { try { if (navigator.vibrate) navigator.vibrate(p); } catch (e) {} }   // iPhone não tem
+function _ord(n) { return n + 'º'; }
+
+// ── as telas ─────────────────────────────────────────────────────────────────────────────────────────────────
+let TELA = '', _jaJa = false;
+function irPara(id) {
+  TELA = id;
+  _jaJa = true;   // a tela nova pergunta na hora (o tick em voo respeita)
+  document.querySelectorAll('.tela').forEach(s => s.classList.toggle('on', s.id === id));
+  document.body.classList.toggle('laranja', id === 't4' && $('t4-pulado').hidden);
+  window.scrollTo(0, 0);
+  agendar(0);
+}
+
+// ── TELA 1: busca (só no toque ou no Enter: nada de buscar pedaço de palavra) ──────────────────────────────────
+let _buscando = false;
+function _mais(mostrar) {   // "As mais cantadas": aparece quando a busca não está mostrando nada
+  const box = $('mais-box');
+  if (!box) return;
+  const ok = mostrar && KMAIS.length > 0;
+  if (ok && !$('mais').children.length) _cards(KMAIS, 'mais');
+  box.hidden = !ok;
+}
+function _cards(lista, alvo) {
+  const ul = $(alvo || 'resultados');
+  ul.textContent = '';
+  (lista || []).slice(0, 12).forEach(c => {
+    if (!c || !/^[A-Za-z0-9_-]{11}$/.test(c.id || '')) return;
+    const li = document.createElement('li');
+    const box = document.createElement('div'); box.className = 'r-txt';
+    const tit = document.createElement('div'); tit.className = 'r-tit'; tit.textContent = c.titulo || c.titulo_original || 'Música';
+    box.append(tit);
+    if (c.duracao) { const s = document.createElement('div'); s.className = 'r-sub'; s.textContent = c.duracao; box.append(s); }
+    const bt = document.createElement('button'); bt.type = 'button'; bt.className = 'btn'; bt.textContent = 'Cantar';
+    bt.onclick = () => escolher(c.id, (c.titulo || c.titulo_original || '').slice(0, 80));
+    li.append(box, bt);
+    ul.append(li);
+  });
+}
+function _msg(t, forte) {
+  const m = $('busca-msg');
+  m.hidden = !t; m.textContent = t || ''; m.classList.toggle('forte', !!forte);
+}
+async function buscar(ev) {
+  if (ev) ev.preventDefault();
+  const inp = $('q');
+  const q = (inp.value || '').trim();
+  if (q.length < 2) { _msg(T.curta); return; }
+  if (_buscando) return;
+  _buscando = true;
+  inp.blur();
+  const bt = $('btn-buscar'); bt.disabled = true; bt.textContent = '…';
+  _msg(''); _cards([]); _mais(false);
+  try {
+    const r = await fetch(`/pubshow/api/buscar?q=${encodeURIComponent(q)}&bar=${encodeURIComponent(BAR_TOKEN)}&cid=${encodeURIComponent(CID)}`,
+                          {cache: 'no-store'});
+    if (r.status === 429) { _msg(T.muita); _mais(true); return; }
+    let j = {};
+    try { j = await r.json(); } catch (e) { j = {}; }
+    if (j.lotou) { _msg(T.lotou, true); _cards(j.acervo || []); if (!(j.acervo || []).length) { _msg(T.semBusca); _mais(true); } return; }
+    if (Array.isArray(j.resultados) && j.resultados.length) { _cards(j.resultados); return; }
+    _msg(r.ok ? T.nada : T.semBusca);
+    _mais(true);
+  } catch (e) {
+    _msg(T.semBusca);
+    _mais(true);
+  } finally {
+    _buscando = false; bt.disabled = false; bt.textContent = 'Buscar';
+  }
+}
+
+// ── TELA 2: confirmar ────────────────────────────────────────────────────────────────────────────────────────
+function escolher(vid, titulo) {
+  $('f-vid').value = vid;
+  $('f-tit').value = titulo;
+  _txt('t2-musica', titulo || 'Música escolhida');
+  const n = $('nome');
+  if (!n.value) n.value = _nomeLembrado();
+  $('nome-erro').hidden = true;
+  irPara('t2');
+}
+function entrarNaFila() {
+  const n = $('nome');
+  n.value = (n.value || '').replace(/\s+/g, ' ').trim().slice(0, 14);
+  if (!n.value) {
+    const e = $('nome-erro'); e.textContent = T.nomeVazio; e.hidden = false; n.focus();
+    return false;
+  }
+  if (!$('f-vid').value) { irPara('t1'); return false; }
+  $('f-cid').value = CID;
+  const bt = $('btn-entrar'); bt.disabled = true; bt.textContent = 'Entrando…';
+  return true;
+}
+
+// ── TELA 3 e 4: esperar / tua vez ────────────────────────────────────────────────────────────────────────────
+let _avisouProxima = false, _avisouVez = false, _ultBloco = null, _ultPos = null;
+function _nomeMeu() { const m = _meu(); return (m && m.nome) || _nomeLembrado() || ''; }
+function verMinhaVez() {
+  const m = _meu();
+  if (m) { irPara('t3'); return; }
+  if (MEU_ID_SERVIDOR) {
+    _gravar('jk_kara', JSON.stringify({id: MEU_ID_SERVIDOR, nome: _nomeLembrado(), t: Date.now()}));
+    irPara('t3');
+  }
+}
+function cantarDeNovo() {
+  _apagar('jk_kara');
+  _avisouProxima = _avisouVez = false;
+  _ultPos = null;
+  $('t4-fim').hidden = $('t4-pulado').hidden = true; $('t4-vez').hidden = false;
+  $('q').value = ''; _cards([]); _msg('');
+  $('ja-fila').hidden = true;
+  _mais(true);
+  irPara('t1');
+}
+function _pintarEspera(st) {
+  const nome = _nomeMeu();
+  _txt('t3-oi', nome ? `Tu tá na fila, ${nome}.` : 'Tu tá na fila.');
+  if (st.status === 'pendente' && st.posicao) {
+    const p = Number(st.posicao) || 1, falta = p - 1;
+    _ultPos = p;
+    if (p === 1) {
+      // a próxima é a dele: só a caixa laranja (sem repetir a posição em 2 linhas)
+      $('t3-pos').hidden = true; $('t3-min').hidden = true;
+      $('t3-proxima').hidden = false;
+      if (!_avisouProxima) { _avisouProxima = true; _vibra(200); }
+    } else {
+      const min = Number(st.tempo_min) || (falta * 4 + 2);
+      $('t3-pos').hidden = false;
+      _txt('t3-pos', falta === 1 ? 'Falta 1' : `Faltam ${falta}`);
+      _txt('t3-min', `uns ${min} min`); $('t3-min').hidden = false;
+      $('t3-proxima').hidden = true;
+    }
+  } else if (st.status === 'aguardando_ok') {
+    $('t3-pos').hidden = false; $('t3-min').hidden = true;
+    _txt('t3-pos', 'O bar está conferindo teu pedido.');
+    $('t3-proxima').hidden = true;
+  }
+  _pintarPalco();
+}
+function _pintarPalco() {
+  const k = _ultBloco;
+  if (!k) return;
+  const agora = k.palco && k.palco.nome;
+  const nomes = (k.fila || []).slice();
+  const p = _ultPos;
+  let depois = [];
+  if (p) {
+    while (nomes.length < p) nomes.push('');
+    nomes[p - 1] = 'Tu';
+    depois = p <= 4 ? nomes.slice(0, Math.min(nomes.length, Math.max(p + 1, 3)))
+                    : nomes.slice(0, 2).concat(['…', 'Tu']).concat(nomes.slice(p, p + 1));
+  } else {
+    depois = nomes.slice(0, 3);
+  }
+  depois = depois.map(n => n || 'alguém');
+  $('t3-palco').hidden = !(agora || depois.length);
+  _txt('t3-agora', agora ? `Agora: ${agora}` : '');
+  $('t3-agora').hidden = !agora;
+  // "Depois: João · Tu · Carla", com o "Tu" em laranja (montado por nós: nome de fora entra só por textContent)
+  const dp = $('t3-depois'), assin = JSON.stringify(depois);
+  if (dp.dataset.assin !== assin) {
+    dp.dataset.assin = assin;
+    dp.textContent = '';
+    if (depois.length) {
+      dp.append('Depois: ');
+      depois.forEach((n, i) => {
+        if (i) dp.append(' · ');
+        if (n === 'Tu' && p) { const s = document.createElement('span'); s.className = 'tu'; s.textContent = 'Tu'; dp.append(s); }
+        else dp.append(n);
+      });
+    }
+  }
+  dp.hidden = !depois.length;
+  const r = k.rei;
+  _txt('t3-rei', (r && r.nome) ? `👑 Rei da noite: ${r.nome}, ${r.n} ${Number(r.n) === 1 ? 'música' : 'músicas'}. Dá pra alcançar.`
+                               : '👑 Ninguém cantou ainda. Abre a noite!');
+}
+function _pintarVez(st) {
+  const nome = _nomeMeu();
+  // revisão 29/10 noite (fluxo-1/tela-2): o dono tirou da fila (🗑️ ou Limpar fila): o grátis vira 'dispensado'
+  const tirado = st.status === 'dispensado' || st.status === 'cancelado';
+  const pulou = !!st.pulado || st.status === 'recusado' || tirado;
+  $('t4-pulado').hidden = !pulou;
+  $('t4-fim').hidden = pulou || !st.acabou;
+  $('t4-vez').hidden = pulou || !!st.acabou;
+  _txt('t4-tit', nome ? `🎤 É A TUA VEZ, ${nome.toLocaleUpperCase('pt-BR')}.` : '🎤 É A TUA VEZ.');
+  const m = _meu(), tit = st.titulo || (m && m.tit) || '';
+  _txt('t4-musica', tit ? `🎵 ${tit}` : ''); $('t4-musica').hidden = !tit;
+  _txt('t4-fim-tit', nome ? `Mandou bem, ${nome}! Bora mais uma?` : 'Mandou bem! Bora mais uma?');
+  // onde a pessoa está no ranking (sem ranking: nada)
+  const rk = st.rank;
+  let lr = '';
+  if (rk && rk.pos === 1) lr = 'Tu é o rei da noite. Segura a coroa.';
+  else if (rk && rk.pos > 1 && rk.lider) {
+    const dif = (Number(rk.lider.n) || 0) - (Number(rk.n) || 0);
+    // sem "o"/"a" antes do nome (não sabemos se é João ou Ana)
+    lr = dif <= 0 ? `Tu tá em ${rk.pos}º: empate com ${rk.lider.nome}. Mais uma e passa.`
+       : dif === 1 ? `Tu tá em ${rk.pos}º. Mais uma e encosta em ${rk.lider.nome}.`
+                   : `Tu tá em ${rk.pos}º. Faltam ${dif} pra alcançar ${rk.lider.nome}.`;
+  }
+  _txt('t4-rank', lr); $('t4-rank').hidden = !lr;
+  // a TV não conseguiu tocar o vídeo: não foi o bar que pulou
+  _txt('t4-pul-tit', tirado ? 'O bar tirou tua música da fila.'
+                   : st.falhou ? 'A música não carregou na TV.' : 'Tua vez passou.');
+  _txt('t4-pul-sub', (tirado || st.falhou) ? 'Escolhe outra e entra na fila de novo.'
+                                         : 'Pede de novo quando estiver perto do microfone.');
+  if (TELA !== 't4') irPara('t4');
+  document.body.classList.toggle('laranja', !pulou);
+  if (!pulou && !st.acabou && !_avisouVez) { _avisouVez = true; _vibra([300, 150, 300]); }
+}
+
+// ── polling leve: tela 1 a cada 10 s, telas 3 e 4 a cada 5 s; nada com a aba escondida ───────────────────────
+let _timer = null, _emVoo = false;
+function agendar(ms) {
+  clearTimeout(_timer);
+  _timer = setTimeout(tick, ms);
+}
+async function _palco() {
+  try {
+    const r = await fetch(`/pubshow/api/karaoke/palco/${encodeURIComponent(BAR_TOKEN)}`, {cache: 'no-store'});
+    if (r.status === 404) { location.reload(); return null; }   // o bar desligou o karaokê: volta o cardápio de sempre
+    if (!r.ok) return null;
+    return await r.json();
+  } catch (e) { return null; }
+}
+async function tick() {
+  const proximo = (TELA === 't3' || TELA === 't4') ? 5000 : 15000;
+  if (document.hidden || _emVoo || !TELA) { agendar(proximo); return; }
+  _emVoo = true;
+  _jaJa = false;
+  try {
+    if (TELA === 't1') {
+      const k = await _palco();
+      if (k) {
+        _ultBloco = k;
+        const n = Number(k.fila_n) || 0;
+        _txt('linha-fila', n > 0 ? `Hoje é grátis · ${n} na fila · teu nome no telão`
+                                 : 'Hoje é grátis · Fila vazia. A próxima é tua!');
+      }
+    } else if (TELA === 't3' || TELA === 't4') {
+      const m = _meu();
+      if (!m) { cantarDeNovo(); return; }
+      if ($('t4-fim').hidden === false || $('t4-pulado').hidden === false) return;   // acabou: nada mais a perguntar
+      const r = await fetch(`/pubshow/api/pedido-status/${encodeURIComponent(BAR_TOKEN)}/${m.id}`, {cache: 'no-store'});
+      if (r.status === 404) { cantarDeNovo(); return; }
+      const st = r.ok ? await r.json() : null;
+      if (st) {
+        if (st.karaoke && st.ligado === false) { location.reload(); return; }   // o bar desligou o karaokê
+        if (st.status === 'exibido' || st.status === 'recusado' || st.status === 'dispensado'
+            || st.status === 'cancelado' || st.pulado) {
+          _pintarVez(st);
+        } else {
+          if (TELA !== 't3') irPara('t3');
+          if (st.k) _ultBloco = st.k;   // o palco vem junto (1 pergunta por vez: o servidor tem 1 worker)
+          _pintarEspera(st);
+        }
+      }
+    }
+  } catch (e) {
+    /* sem internet: tenta de novo no próximo */
+  } finally {
+    _emVoo = false;
+    const fim = TELA === 't4' && ($('t4-fim').hidden === false || $('t4-pulado').hidden === false);
+    if (!fim) agendar(_jaJa ? 0 : ((TELA === 't3' || TELA === 't4') ? 5000 : 15000));
+  }
+}
+document.addEventListener('visibilitychange', () => { if (!document.hidden) agendar(0); });
+
+// ── início ─────────────────────────────────────────────────────────────────────────────────────────────────────
+(function inicio() {
+  if (SUCESSO_ID) {
+    // o servidor ACEITOU: guarda o pedido e o nome, e a URL deixa de ser a do POST (recarregar não pede de novo)
+    _gravar('jk_kara', JSON.stringify({id: SUCESSO_ID, nome: NOME_ACEITO, t: Date.now(), tit: (FORM_TIT || '').slice(0, 80)}));
+    if (NOME_ACEITO) _gravar('jk_nome', NOME_ACEITO);
+    try { history.replaceState(null, '', location.pathname); } catch (e) {}
+    irPara('t3');
+    return;
+  }
+  if (ERRO && ERRO_TIPO === 'karaoke_nome' && FORM_VID) {
+    escolher(FORM_VID, FORM_TIT);
+    $('nome').value = (FORM_NOME || '').slice(0, 14);
+    const e = $('nome-erro'); e.textContent = ERRO; e.hidden = false;
+    return;
+  }
+  if (ERRO && ERRO_TIPO === 'karaoke_na_fila') {
+    $('ja-fila').hidden = false;
+    $('btn-ver-vez').hidden = !(_meu() || MEU_ID_SERVIDOR);
+    irPara('t1');
+    return;
+  }
+  if (ERRO) { irPara('t1'); _msg(ERRO, true); _mais(true); return; }
+  if (_meu()) { irPara('t3'); return; }
+  _mais(true);
+  irPara('t1');
+})();
+</script>
+{% endif %}
+</body>
+</html>

@@ -351,7 +351,37 @@
   /* MODO FUNDO: o cartão no topo à direita, com a largura da janela do clipe, sobre o esporte do Pexels */
   body.modo-fundo #fila-tv{position:fixed;top:18px;right:3vw;width:max(33.4vw,480px);z-index:45;
     max-height:calc(100vh - 6vh - max(18.8vw,270px) - 3vh - 60px)}
-  body.modo-fundo.com-promo #fila-tv{top:118px;max-height:calc(100vh - 6vh - max(18.8vw,270px) - 3vh - 160px)}
+  body.modo-fundo.com-promo #fila-tv{top:118px;max-height:calc(100vh - 6vh - max(18.8vw,270px) - 3vh - 160px)}{% if karaoke %}
+
+  /* ── 🎤 MODO KARAOKÊ (29/10/26). Só sai no HTML com o modo ligado: desligado, a TV é a de sempre, byte a byte ─────────
+     Tudo na COLUNA (nada por cima do vídeo): "AGORA NO PALCO" + o nome grande, a fila por nome ("Próximo: João"), o Rei
+     da noite e o QR SEMPRE visível no pé (com fila ele fica menor, ~12vh). Somem o "⏳ Grátis" e o "⚡ Furar". */
+  body.karaoke .ft-gratis, body.karaoke #ft-furar{display:none!important}
+  #k-rot, #k-rei{display:none}
+  body.karaoke.k-palco.fila-on:not(.modo-fundo) #k-rot{display:block;font-weight:900;font-size:2.2vh;line-height:1.2;
+    letter-spacing:.12em;color:#f59e0b;margin-bottom:.5vh}
+  body.karaoke.k-palco.fila-on:not(.modo-fundo) #ct-titulo{font-size:6vh;font-weight:900;line-height:1.05}
+  /* crítica de tela (29/10): o tempo e a barra pesavam igual ao nome. No karaokê saem; a linha 1 âmbar (20 s) fica */
+  body.karaoke .ft-tempo{display:none!important}
+  body.karaoke.fila-on:not(.modo-fundo):not(.com-fila) #fila-tv{display:none!important}
+  body.karaoke.fila-on:not(.modo-fundo) #k-rei{display:block;line-height:1.15;border-top:1px solid rgba(255,255,255,.25);
+    padding-top:1.2vh}
+  #k-rei .k-rei-rot{font-weight:900;font-size:2.2vh;letter-spacing:.1em;color:#fbbf24}
+  #k-rei .k-rei-nome{font-weight:900;font-size:4.5vh;color:#fff;margin-top:.4vh;overflow:hidden;text-overflow:ellipsis;
+    white-space:nowrap}
+  #k-rei .k-rei-n{font-weight:800;font-size:2.4vh;color:#fde68a;margin-top:.3vh}
+  body.karaoke.fila-on:not(.modo-fundo) #fila-tv{flex:0 1 auto}
+  body.karaoke.com-fila #qr-fixo{opacity:1!important;pointer-events:auto!important}
+  body.karaoke.fila-on:not(.modo-fundo).com-fila #qr-fixo{display:flex!important;flex-direction:column;align-items:center;gap:.8vh;
+    padding:1.2vh;max-width:none;margin-top:auto;background:rgba(0,0,0,.8);border:2px solid rgba(74,222,128,.6);text-align:center}
+  body.karaoke.fila-on:not(.modo-fundo) #qr-fixo img{width:20vh!important;height:20vh!important}
+  body.karaoke.fila-on:not(.modo-fundo).com-fila #qr-fixo .qr-txt1{font-weight:900!important;font-size:2.6vh!important;
+    line-height:1.2!important;color:#fff!important}
+  body.karaoke.fila-on:not(.modo-fundo).com-fila #qr-fixo #qr-preco{font-weight:900!important;font-size:3vh!important;
+    line-height:1.1!important;color:#4ade80!important}
+  /* ⚽ Esporte junto (modo fundo): o cartão da fila ocupa o topo à direita; o QR desce pro canto de baixo à esquerda,
+     sobre o esporte do fundo (que não é o vídeo do clipe) */
+  body.karaoke.modo-fundo #qr-fixo{top:auto!important;bottom:18px;left:2vw;right:auto}{% endif %}
 
   /* ── 🎬 MOMENTOS NO TELÃO (24/10/26, momentos no telão): o palco é o INTERVALO ──────────────────────────────────────
      Regra do YouTube do Diogo: nada na frente do clipe tocando e nenhum som nosso por cima dele. O momento pago espera
@@ -562,17 +592,18 @@
 <aside id="coluna-tv">
   <!-- 24/10/26 (momentos no telão): "🍻 Depois desta: …" com o clipe tocando + o pino "🎂 Aniversariante na casa" -->
   <div id="ct-avisos" aria-live="polite"><div id="ft-momento"></div><div id="ft-pino"></div></div>
-  <div id="ct-tocando"><div class="ct-tit" id="ct-titulo"></div><div class="ct-art" id="ct-artista"></div></div>
+  <div id="ct-tocando">{% if karaoke %}<div id="k-rot">AGORA NO PALCO</div>{% endif %}<div class="ct-tit" id="ct-titulo"></div><div class="ct-art" id="ct-artista"></div></div>
   <div id="fila-tv" aria-live="polite">
     <div class="ft-tempo"><span class="ft-ico" id="ft-ico">▶</span><div class="ft-trilho"><i id="ft-barra"></i></div><span class="ft-rest" id="ft-rest">--:--</span></div>
     <div id="ft-linhas"></div>
     <div class="ft-mais" id="ft-mais" style="display:none"></div>
     <div class="ft-gratis"><span>⏳ Grátis</span><span id="ft-min-gratis"></span></div>
     <div class="ft-furar" id="ft-furar" style="display:none"><span id="ft-furar-txt"></span><span id="ft-min-furar"></span></div>
-  </div>
+  </div>{% if karaoke %}
+  <div id="k-rei" aria-live="polite"><div class="k-rei-rot">👑 REI DA NOITE</div><div class="k-rei-nome" id="k-rei-nome">Ninguém ainda</div><div class="k-rei-n" id="k-rei-n">Abre a noite!</div></div>{% endif %}
   <div id="qr-fixo">
     {% if tv_qr_b64 %}<img src="data:image/png;base64,{{ tv_qr_b64 }}" alt="QR Jukebox" style="width:72px;height:72px;border-radius:8px;background:#fff">{% endif %}
-    <div style="line-height:1.15"><div class="qr-txt1" style="font-size:15px;font-weight:900;color:#fff">📱 Escaneie e peça sua música</div><div id="qr-preco" style="font-size:12px;color:#4ade80;font-weight:700">{{ qr_preco_txt }}</div></div>
+    <div style="line-height:1.15"><div class="qr-txt1" style="font-size:15px;font-weight:900;color:#fff">{% if karaoke %}🎤 Quer cantar? Aponta a câmera{% else %}📱 Escaneie e peça sua música{% endif %}</div><div id="qr-preco" style="font-size:12px;color:#4ade80;font-weight:700">{% if karaoke %}Grátis hoje{% else %}{{ qr_preco_txt }}{% endif %}</div></div>
   </div>
   <div id="sem-som">🔇 Sem som. Toque na TV</div>
 </aside>
@@ -763,7 +794,7 @@ const BASE_URL    = '/pubshow';
 // V-S5-05: e ela só MOSTRA os pedidos: nunca marca "exibido" (não gasta pedido real do bar no celular do dono)
 const MODO_TESTE  = new URLSearchParams(location.search).get('teste') === '1';
 // V-S5-02: cada pergunta de status diz se a TV está com som (o painel avisa "TV sem som")
-function _urlStatus() { return `${BASE_URL}/api/status/${CODE}?som=${_isMuted ? 0 : 1}${MODO_TESTE ? '&teste=1' : ''}`; }
+function _urlStatus() { return `${BASE_URL}/api/status/${CODE}?som=${_isMuted ? 0 : 1}${MODO_TESTE ? '&teste=1' : ''}{% if karaoke %}&kp=${_tocandoPedido && _kPalcoId ? _kPalcoId : 0}{% endif %}`; }
 const JUKEBOX_URL = 'https://www.4kitem.com.br/pubshow/jukebox/{{ b.jukebox_token or b.code }}';
 // 11/09/26: NADA automático na TV — só os slides que o gerente do bar lançar.
 // (16/10/26, B7: saíram o CTA de tela cheia, o ranking, o slide de preço e os slides do sistema — estavam
@@ -1200,7 +1231,8 @@ function _pularVideo() {
   if (_palcoAtivo) return;   // 24/10/26 (revisão TV-2): no palco nada é "vídeo ruim"; o fim da cena segue a fila
   if (_pedidoYtId) {
     // Stall num pedido específico — não marca nenhum vídeo da biblioteca como ruim
-    console.warn('Pedido específico (' + _pedidoYtId + ') não carregou → segue a fila');
+    console.warn('Pedido específico (' + _pedidoYtId + ') não carregou → segue a fila');{% if karaoke %}
+    _karaokeFalhou();   // 🎤 a vez não conta no ranking e o celular diz que a música não carregou{% endif %}
     _pedidoYtId = null;
     _tocandoPago = false;
     _tocandoPedido = false;
@@ -1315,7 +1347,8 @@ function _tocarPedido(p) {
     artista: `${p.tipo === 'flash' ? '⚡ ' : ''}pedido por ${p.nome_cliente || 'alguém'}`,
   });
   esconderNowPlayingComDelay();
-  iniciarStallDetector(8000); // 8s para pedidos — YouTube demora mais que 2.5s para carregar
+  iniciarStallDetector(8000); // 8s para pedidos — YouTube demora mais que 2.5s para carregar{% if karaoke %}
+  _karaokePalco(p);   // 🎤 a coluna: "AGORA NO PALCO" + o nome grande + a música pequena{% endif %}
 }
 
 function carregarVideo(idx) {
@@ -1347,7 +1380,9 @@ function carregarVideo(idx) {
   const v = VIDEOS[videoIdx];
   _tocandoPago = false;
   _tocandoPedido = false;
-  _grupoTocando = _grupoDoVideo(v);
+  _grupoTocando = _grupoDoVideo(v);{% if karaoke %}
+  document.body.classList.remove('k-palco');   // 🎤 rotação: ninguém no palco
+  _kPalcoId = null;{% endif %}
   // 🔇 vídeo sem música: muda ANTES do load (o motor não escapa); voltando pra música, devolve o som DEPOIS
   if (_videoSemSom()) _aplicarSomDoVideo();
   player.loadVideoById(v.youtube_id);
@@ -1475,7 +1510,7 @@ function _filaAtualizar(data, doPoll) {
 function _filaRender() {
   if (!document.body.classList.contains('com-fila')) { _filaAssin = ''; return; }
   const {itens, n, pagos, preco} = _fila;
-  const assin = JSON.stringify([itens.map(i => i.id), n, pagos, preco]);
+  const assin = JSON.stringify([itens.map(i => i.id), n, pagos, preco]){% if karaoke %} + JSON.stringify(itens.map(i => i.n || '')){% endif %};
   if (assin === _filaAssin) return;
   const primeira = !_filaAssin;
   _filaAssin = assin;
@@ -1494,7 +1529,8 @@ function _filaRender() {
     tit.className = 'ft-tit';
     // 24/10/26: ⏩ pular a espera ganha só o prefixo "⏩ " (sem cena, de propósito)
     const pre = it.tipo === 'vip' ? '👑 ' : (it.tipo === 'flash' ? '⚡ ' : (it.tipo === 'pular_espera' ? '⏩ ' : ''));
-    tit.textContent = it.yt ? pre + (_limparTitulo(it.t) || '🎵 Música') : pre + '🎲 Surpresa';
+    tit.textContent = it.yt ? pre + (_limparTitulo(it.t) || '🎵 Música') : pre + '🎲 Surpresa';{% if karaoke %}
+    tit.textContent = (i === 0 ? 'Próximo: ' : '') + (it.n || 'alguém');   // 🎤 a fila por NOME (nunca o título){% endif %}
     li.append(num, tit);
     box.append(li);
   });
@@ -1552,7 +1588,83 @@ function _filaTick() {
   if (mg !== _minGrAnt) { document.getElementById('ft-min-gratis').textContent = mg; _minGrAnt = mg; }
   if (mf !== _minFuAnt) { document.getElementById('ft-min-furar').textContent = mf; _minFuAnt = mf; }
 }
-setInterval(_filaTick, 1000);
+setInterval(_filaTick, 1000);{% if karaoke %}
+
+// ── 🎤 Modo karaokê (29/10/26). Este bloco só existe com o modo ligado (desligado, o HTML é o de sempre) ─────────────
+// A coluna: "AGORA NO PALCO" + o nome de quem canta, "Próximo: João" + a fila por nome, o Rei da noite e o QR sempre.
+// Na TV nada vai por cima do vídeo. Pedido que chega com a ROTAÇÃO tocando corta na hora (quem pediu não espera um
+// clipe inteiro); pedido de cliente tocando nunca é cortado. Nome é dado de fora: sempre por textContent.
+const K_QR1 = '🎤 Quer cantar? Aponta a câmera', K_QR2 = 'Grátis hoje';
+var _kPalcoId = null;   // var (não let): o _urlStatus lê antes desta linha rodar
+var _kRecarregou = false;   // revisão 29/10 noite (tela-3): a recarga do modo que saiu, uma vez por página
+// o título sem "Karaokê Playback", "(Com Letra)", "videokê"... (o PC_VERSAO do Garage fica como está)
+const K_MARCA = /\s*[\(\[][^)\]]*(karaok|videok|playback|com letra|letra|lyrics|instrumental|vers[aã]o|version|cover)[^)\]]*[\)\]]|(\s*[-–—|:]\s*)?\b(karaok[eê]s?|videok[eê]|playback|com letra|sing ?along|instrumental)(?![A-Za-z])/gi;   // sem \b no fim: o "ê" não é letra pro \b do JS
+function _kTit(t) {
+  const s = String(t || '').replace(K_MARCA, ' ').split(/\s*[-–—|·]\s*/).map(x => x.trim()).filter(Boolean).join(' · ');
+  return s || String(t || '');
+}
+function _karaokeFalhou() {
+  const id = _kPalcoId;
+  _kPalcoId = null;
+  document.body.classList.remove('k-palco');
+  if (!id || MODO_TESTE) return;
+  _fetchTV(`${BASE_URL}/api/pedido-falhou/${id}`, {method: 'POST', headers: {'Content-Type': 'application/json'},
+                                                  body: JSON.stringify({code: CODE})}).catch(() => {});
+}
+document.body.classList.add('karaoke');
+function _karaokeTv(data) {
+  const k = data && data.karaoke;
+  document.body.classList.toggle('karaoke', !!(k && k.ligado));   // o dono desligou: a coluna volta (a TV recarrega)
+  if (!k || !k.ligado) {
+    // revisão 29/10 noite (tela-3): a env do piloto esvaziou (o botão de emergência) e a tv_version não muda: a página
+    // ainda é a do karaokê (fila "alguém", corte da rotação, QR "Grátis hoje"). Recarrega 1 vez, nunca no meio de
+    // um pedido (espera a música acabar, a regra do tv_version). Só com um status de verdade (tem tv_version) e
+    // no máximo 1 vez por minuto (sessionStorage): sem laço de recarga
+    if (data && data.tv_version !== undefined && !_kRecarregou) {
+      if (_pedidoTocandoAgora() || overlayAtivo) { window._recarregarPendente = true; return; }
+      _kRecarregou = true;
+      let ult = 0;
+      try { ult = Number(sessionStorage.getItem('k_rl')) || 0; } catch (e) {}
+      if (Date.now() - ult > 60000) {
+        try { sessionStorage.setItem('k_rl', String(Date.now())); } catch (e) {}
+        location.reload();
+      }
+    }
+    return;
+  }
+  const q1 = document.querySelector('#qr-fixo .qr-txt1'), q2 = document.getElementById('qr-preco');
+  if (q1 && q1.textContent !== K_QR1) q1.textContent = K_QR1;
+  if (q2 && q2.textContent !== K_QR2) q2.textContent = K_QR2;
+  const rn = document.getElementById('k-rei-nome'), rq = document.getElementById('k-rei-n');
+  if (rn && rq) {
+    const r = k.rei;
+    const nome = (r && r.nome) ? r.nome : 'Ninguém ainda';
+    const n = (r && r.nome) ? `${r.n} ${Number(r.n) === 1 ? 'música' : 'músicas'} · Quem desbanca?` : 'Abre a noite!';
+    if (rn.textContent !== nome) rn.textContent = nome;
+    if (rq.textContent !== n) rq.textContent = n;
+  }
+  // o dono escondeu o nome de quem está cantando: "🎤 Convidado" (sem esperar a próxima música)
+  if (_tocandoPedido && k.palco && k.palco.id === _kPalcoId) {
+    const el = document.getElementById('ct-titulo'), t = '🎤 ' + (k.palco.nome || 'alguém');
+    if (el && el.textContent !== t) el.textContent = t;
+  }
+}
+function _karaokePalco(p) {
+  _kPalcoId = p.id;
+  document.body.classList.add('k-palco');
+  document.getElementById('ct-titulo').textContent = '🎤 ' + (p.nome_cliente || 'alguém');
+  document.getElementById('ct-artista').textContent = _kTit(p.titulo_pedido) || p.titulo_pedido || '';
+}
+function _karaokeCorte() {
+  if (!document.body.classList.contains('karaoke')) return;   // o modo saiu (a TV recarrega): sem corte
+  if (!pedidoMusica || _tocandoPedido || _palcoAtivo || _pausaBar || overlayAtivo || !player || !_somLigado()) return;
+  if (_consumidos.has(pedidoMusica.id)) return;
+  clearTimeout(stallTimer);
+  clearTimeout(proximoTimer);
+  const pc = document.getElementById('proximo-card'); if (pc) pc.classList.remove('show');
+  try { player.pauseVideo(); } catch (e) {}
+  _intervalo({semSlide: true});
+}{% endif %}
 
 // ── Now Playing ───────────────────────────────────────────────────────────────
 // Escapa texto do cliente antes de ir pro innerHTML (15/10/26: o título do pedido era HTML cru na TV)
@@ -2356,7 +2468,8 @@ async function pollStatus() {
     atualizarPromo(data.promo || null);
 
     // 🎶 Fila do canto (22/10/26): vem nesta resposta; sem o campo (servidor antigo) a TV fica como hoje
-    _filaAtualizar(data, true);
+    _filaAtualizar(data, true);{% if karaoke %}
+    _karaokeTv(data);   // 🎤 o QR, o Rei da noite e o nome no palco{% endif %}
 
     // Preço do QR (V-S5-06): happy hour começou/acabou com a TV aberta → o mesmo preço do celular.
     // 22/10/26: com a fila do canto o QR diz "📱 Pede a tua música" / "GRÁTIS" (o furar está no cartão)
@@ -2445,7 +2558,8 @@ async function pollStatus() {
       esconderBadgeFila();
     }
 
-    // Badge de fila geral
+    // Badge de fila geral{% if karaoke %}
+    _karaokeCorte();   // 🎤 pedido na fila com a rotação tocando: corta na hora{% endif %}
     if (data.total_fila > 0 && !pedidoMusica) {
       mostrarBadgeFila(data.total_fila);
     } else if (data.total_fila === 0) {
