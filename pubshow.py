@@ -5538,9 +5538,13 @@ YT_BUSCA_MAX_RESULT = 50             # o search.list custa o mesmo pra 5 ou 50 (
 YT_LOCAL_BASTA = 15                  # env PUBSHOW_BUSCA_LOCAL muda o número (0 = sempre tenta o Google; o local só junta)
 # B3: o teto cheio do bar (YT_BUSCA_TETO_BAR_PADRAO) só vale pro bar com PIX pago de verdade nos últimos 14 dias; o
 # resto (teste, recém-criado, abandonado) fica com 15 por dia (env PUBSHOW_BUSCA_TETO_TESTE). Por celular (IP#cid do
-# jk_cid): 15 a cada 10 min; o de IP puro (YT_BUSCA_MAX_IP) segue 60. Só conta a busca que vai pro Google.
+# jk_cid): 5 a cada 15 min (31/10/26); o de IP puro (YT_BUSCA_MAX_IP) segue 60. Só conta a busca que vai pro Google.
 YT_BUSCA_TETO_TESTE_PADRAO, YT_BUSCA_PAGOU_DIAS = 15, 14
-YT_BUSCA_MAX_CEL = 15
+# 31/10/26 (sex 30/10 às 21h15 o Garage ficou sem busca nova: "A busca de hoje lotou"; Diogo: "pode setar 12 a 15
+# minutos, pq se quiser pesquisar que pague o pula delay"): por celular, 5 buscas no Google a cada 15 min, numa janela
+# PRÓPRIA (era 15 a cada 10 min, na janela do IP). Env PUBSHOW_BUSCA_MAX_CEL (0 = o celular não vai ao Google) e
+# PUBSHOW_BUSCA_JANELA_CEL_MIN (minutos); valor ruim = o padrão. A casa (acervo do bar + acervo vivo) não conta.
+YT_BUSCA_MAX_CEL, YT_BUSCA_JANELA_CEL = 5, 15 * 60
 # B9 (28/10/26): bar COM estilo ranqueia no máximo 10 candidatos antes do filtro (como era antes do hotfix: 5 * 2); os
 # do fim são upload de canal qualquer, de artista que o classificador não conhece, e "desconhecido passa" (Rock via Gusttavo)
 YT_TOP_ESTILO = 10
@@ -5557,6 +5561,24 @@ def _busca_teto():
         return max(0, min(YT_BUSCA_COTA_DIA, int(os.environ.get('PUBSHOW_BUSCA_TETO') or YT_BUSCA_TETO_PADRAO)))
     except ValueError:
         return YT_BUSCA_TETO_PADRAO
+
+
+def _busca_max_cel():
+    """31/10/26: quantas buscas no Google cada celular faz na janela dele (env PUBSHOW_BUSCA_MAX_CEL, padrão 5)."""
+    try:
+        return max(0, int(os.environ.get('PUBSHOW_BUSCA_MAX_CEL') or YT_BUSCA_MAX_CEL))
+    except ValueError:
+        return YT_BUSCA_MAX_CEL
+
+
+def _busca_janela_cel():
+    """31/10/26: a janela do celular, em segundos (env PUBSHOW_BUSCA_JANELA_CEL_MIN em minutos, padrão 15). Zero,
+    negativo ou texto = o padrão (janela de 0 min soltaria o celular)."""
+    try:
+        m = int(os.environ.get('PUBSHOW_BUSCA_JANELA_CEL_MIN') or 0)
+    except ValueError:
+        m = 0
+    return m * 60 if m > 0 else YT_BUSCA_JANELA_CEL
 
 
 def _dia_pacifico(agora_utc=None):
@@ -5926,7 +5948,8 @@ def _yt_buscar_oficial(q, bid=None, ip=None, cid=None):
         if _rl_ip and _rl_bloqueado(_rl_ip, max_n=YT_BUSCA_MAX_IP, janela=YT_BUSCA_JANELA_IP):
             raise _BuscaIndisponivel('teto_celular')
         _rl_cel = f'busca_api_cel:{ip or ""}#{cid}' if cid else None   # 28/10/26 (B3): o celular, não o Wi-Fi
-        if _rl_cel and _rl_bloqueado(_rl_cel, max_n=YT_BUSCA_MAX_CEL, janela=YT_BUSCA_JANELA_IP):
+        # 31/10/26: 5 a cada 15 min por celular, na janela dele (era 15 na janela do IP, de 10 min)
+        if _rl_cel and _rl_bloqueado(_rl_cel, max_n=_busca_max_cel(), janela=_busca_janela_cel()):
             raise _BuscaIndisponivel('teto_celular')
         if not _busca_cota_reservar(bid=bid):
             raise _BuscaIndisponivel('cota')

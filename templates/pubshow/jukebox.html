@@ -203,6 +203,10 @@
   .yt-sub{font-size:12px;color:var(--text2);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .yt-of{color:#4ade80;font-weight:800}
   .yt-msg{text-align:center;padding:22px 10px;color:#8888aa;font-size:14px;line-height:1.5}
+  .yt-msg.yt-dica{padding:4px 10px 12px;color:#fbbf24;font-size:15px}   /* 31/10/26: "Não achou? Toca em Buscar" */
+  /* 31/10/26 (revisão): o aviso é um botão (o leigo toca no texto amarelo e busca), com cara de aviso */
+  button.yt-msg.yt-dica{display:block;width:100%;min-height:44px;background:none;border:0;font-family:inherit;cursor:pointer;
+    -webkit-tap-highlight-color:transparent}
   .yt-msg button{margin-top:10px;min-height:44px;background:none;border:1px solid rgba(255,255,255,.2);color:#f0f0ff;border-radius:10px;
     padding:9px 16px;font-family:inherit;font-weight:700;cursor:pointer}
   /* 🎸 "Aqui só toca rock" (17/10/26): aviso grande quando a busca inteira é de outro estilo */
@@ -1211,7 +1215,11 @@ let tipoAtual    = '';
 let modosBusca   = 'pedir';      // 26/10/26: 1 aba só ("🎵 Pedir música"); o tipo grátis vem de cada música (_tipoGratis)
 let buscaTimer   = null;
 let _localTimer  = null;   // 28/10/26 (item 9): o "só da casa" (/api/buscar-local) logo que o dedo para
-const BUSCA_LOCAL_MS = 350, BUSCA_GOOGLE_MS = 2000;
+const BUSCA_LOCAL_MS = 350;
+// 31/10/26 (sex 30/10 às 21h15 o Garage ficou sem busca nova: "A busca de hoje lotou"): a pausa da digitação não vai
+// mais ao Google (pedaço de palavra gastava a cota do dia); só o botão Buscar ou o ↵/"Ir" do teclado. A casa achou
+// pouco ou nada: este aviso no lugar do esqueleto. Revisão 31/10/26: o próprio aviso busca (o leigo toca no texto amarelo).
+const DICA_BUSCAR = '<button type="button" class="yt-msg yt-dica" id="yt-dica-buscar" onclick="buscar()">Não achou? Toca em <b>Buscar</b>&nbsp;🔎</button>';
 let _casaQ = '', _casaR = [];   // o que o "só da casa" desenhou: fica na tela enquanto o Google responde (ou falha)
 let videoSel     = null;
 let _biblioCache = null; // cache da lista completa (carregada 1x)
@@ -1769,19 +1777,20 @@ function onBuscaInput() {
   if (_buscaLivre() && q.length >= 2) {
     // 28/10/26 (item 9, Diogo: "automático esperto"): a lista do bar aparece na hora; ~350 ms depois que o dedo para
     // entra o que a casa já tem (lista do bar + acervo vivo, /api/buscar-local, nunca o Google; de 3 letras pra cima).
-    // O Google só vai sozinho se a casa achou pouco e o cliente parou 2 s (era 1,2 s: pedaço de palavra gastava 1 das
-    // ~100 buscas do dia), ou no ↵.
+    // 31/10/26: o Google NUNCA vai sozinho; só no botão Buscar ou no ↵ (era: casa achou pouco + 2 s parado).
     if (chips) chips.style.display = 'none';
     _cancelarBusca();   // a resposta de um texto velho não desenha por cima do novo
+    const _casaVem = _letras(q) >= 3;   // 2 letras: o "só da casa" nem sai, fica a lista do bar + o aviso
     if (q !== _ultimaQ || !lista.children.length) {
+      _ultimaQ = '';   // revisão 31/10/26: a lista redesenhada não é a resposta final de texto nenhum (voltar pro mesmo texto refaz)
       const base = _baseBusca(q);
       _listaAtual = base;
       document.getElementById('busca-count').style.display = 'none';
       lista.className = 'yt-lista';
-      lista.innerHTML = base.map((v, i) => _cardHtml(v, i, 'res')).join('') + _esqueleto(base.length ? 1 : 3);
+      const _cs = base.map((v, i) => _cardHtml(v, i, 'res')).join('');
+      lista.innerHTML = _casaVem ? _cs + _esqueleto(base.length ? 1 : 3) : DICA_BUSCAR + _cs;
     }
-    if (_letras(q) >= 3) _localTimer = setTimeout(buscarLocal, BUSCA_LOCAL_MS);
-    buscaTimer = setTimeout(buscar, BUSCA_GOOGLE_MS);
+    if (_casaVem) _localTimer = setTimeout(buscarLocal, BUSCA_LOCAL_MS);
     _posLista();
     return;
   }
@@ -1899,8 +1908,8 @@ function _juntarLivres(doBar, res) {   // a lista do bar primeiro, depois a busc
     .map(v => Object.assign({}, v, {fonte: _naLista(v.id) ? 'bar' : 'livre'})));
 }
 async function buscarLocal() {
-  // 28/10/26 (item 9): o que a casa já tem (lista do bar + acervo vivo), sem o Google. Bastou: é a resposta e a busca
-  // da pausa de 2 s nem sai. Pouco: mostra o que achou e o Google entra na pausa de 2 s (ou no ↵). Erro: fica pra ela.
+  // 28/10/26 (item 9): o que a casa já tem (lista do bar + acervo vivo), sem o Google. Bastou: é a resposta.
+  // 31/10/26: pouco, nada ou erro: o que achou (ou a lista do bar) + "Não achou? Toca em Buscar"; o Google só no botão.
   _localTimer = null;
   if (document.getElementById('sheet').classList.contains('on')) return;   // escolhendo: não mexe na lista
   const q = document.getElementById('busca-input').value.trim();
@@ -1910,11 +1919,18 @@ async function buscarLocal() {
   const ctl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
   _buscaCtl = ctl;
   const seq = ++_buscaSeq;
+  const _soBar = () => {   // 31/10/26: a casa não respondeu (429, rede): a lista do bar + o aviso, sem esqueleto parado
+    if (seq !== _buscaSeq) return;
+    const base = _doBar(q, false).slice(0, 20).map(_cardDoBar);
+    _listaAtual = base;
+    lista.className = 'yt-lista';
+    lista.innerHTML = DICA_BUSCAR + base.map((v, i) => _cardHtml(v, i, 'res')).join('');
+  };
   try {
     // rota própria (não ?local=1): se o servidor voltar pra uma versão antiga, ela dá 404 em vez de ir ao Google
     const res = await fetch(`/pubshow/api/buscar-local?q=${encodeURIComponent(q)}&bar=${encodeURIComponent(BAR_TOKEN)}&cid=${encodeURIComponent(_cid())}`,
                             ctl ? {signal: ctl.signal} : {});
-    if (!res.ok) return;
+    if (!res.ok) { _soBar(); return; }
     const data = await res.json();
     if (seq !== _buscaSeq) return;
     const r = _juntarLivres(_doBar(q, false).slice(0, 20).map(_cardDoBar), data.resultados);
@@ -1928,10 +1944,10 @@ async function buscarLocal() {
       _ultimaQ = q;
       lista.innerHTML = _cards(r);
     } else {
-      lista.innerHTML = _cards(r) + _esqueleto(r.length ? 1 : 3);
+      lista.innerHTML = DICA_BUSCAR + _cards(r);   // 31/10/26: era o esqueleto esperando o Google da pausa de 2 s
     }
   } catch(e) {
-    // rede / abortada: a busca da pausa de 2 s (ou do ↵) tenta e dá o aviso certo
+    if (!(e && e.name === 'AbortError')) _soBar();   // abortada = outro texto já está buscando
   } finally {
     if (_buscaCtl === ctl) _buscaCtl = null;
   }
