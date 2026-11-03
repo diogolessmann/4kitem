@@ -427,6 +427,9 @@ def init_pubshow_db():
 
     # 22/10/26: clipes de MPB, Blues e Reggae do Estilo do bar (enquete do Garage) — 1 vez só
     _semear_estilos_novos(conn)
+    # 29/10/26 (estilos 2): clipes dos botões novos (Heavy Metal, Punk, Rock Nacional, Country, Forró, Funk, Rap,
+    # Eletrônica) — 1 vez por versão do pubshow_clipes_fase2; sem o módulo, nada muda e o boot segue
+    _semear_estilos2(conn)
 
     # 24/10/26: 39 vídeos do acervo que tocavam outra coisa (auditoria do ar) — 1 vez só
     _corrigir_ids_trocados_24out(conn)
@@ -725,6 +728,51 @@ def _semear_estilos_novos(conn):
         return n
     except Exception as e:
         log.error('[PUBSHOW] clipes dos estilos falharam: %s', e)
+        try: conn.rollback()
+        except Exception: pass
+        return 0
+
+
+# 29/10/26 (estilos 2): as categorias que o pubshow_clipes_fase2 pode trazer (as dos canais dos botões novos)
+CATS_FASE2 = ('metal', 'country', 'rock_br', 'punk', 'forro', 'funk', 'rap', 'eletronica')
+
+
+def _semear_estilos2(conn):
+    """Os clipes do pacote "estilos 2" (pubshow_clipes_fase2.CLIPES) entram UMA vez por versão do módulo (marcador
+    'seed_estilos2_<VERSAO>' no pubshow_meta), como o _semear_estilos_novos: INSERT OR IGNORE (o que já existe fica
+    como está) e o que o admin apagar depois continua apagado. Linha fora do formato (7 campos, id de 11, categoria
+    da lista) fica de fora. Sem o módulo: nada, e o marcador não grava (entra no boot em que o módulo chegar)."""
+    try:
+        import pubshow_clipes_fase2 as _f2
+    except Exception as e:
+        log.warning('[PUBSHOW] estilos 2: sem o pubshow_clipes_fase2 (%s), nada semeado', e)
+        return 0
+    try:
+        chave = 'seed_estilos2_' + str(getattr(_f2, 'VERSAO', '29out'))
+        conn.execute('CREATE TABLE IF NOT EXISTS pubshow_meta (chave TEXT PRIMARY KEY, valor TEXT)')
+        if conn.execute('SELECT 1 FROM pubshow_meta WHERE chave=?', (chave,)).fetchone():
+            return 0
+        clipes = [tuple(c) for c in (getattr(_f2, 'CLIPES', None) or [])
+                  if isinstance(c, (list, tuple)) and len(c) == 7 and isinstance(c[0], str) and len(c[0]) == 11
+                  and c[3] in CATS_FASE2 and c[1]]
+        antes = conn.total_changes
+        conn.executemany(
+            '''INSERT OR IGNORE INTO pubshow_videos
+               (youtube_id, titulo, artista, categoria, subcategoria, duracao_seg, views_milhoes)
+               VALUES (?,?,?,?,?,?,?)''',
+            clipes
+        )
+        n = conn.total_changes - antes
+        conn.execute('INSERT OR REPLACE INTO pubshow_meta (chave, valor) VALUES (?, datetime(\'now\'))', (chave,))
+        if n:
+            import time as _t
+            conn.execute("INSERT OR REPLACE INTO pubshow_meta (chave, valor) VALUES ('videos_version', ?)",
+                         (str(int(_t.time() * 1000)),))
+        conn.commit()
+        log.info('[PUBSHOW] estilos 2: %d clipe(s) entraram no acervo (%s)', n, chave)
+        return n
+    except Exception as e:
+        log.error('[PUBSHOW] clipes do estilos 2 falharam: %s', e)
         try: conn.rollback()
         except Exception: pass
         return 0

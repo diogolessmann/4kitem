@@ -54,6 +54,14 @@
     box-shadow:0 0 16px {{ canal.cor }}66;
   }
   .bar-nome{font-size:20px;font-weight:900;letter-spacing:-.5px}
+  .header-top{flex-wrap:wrap;row-gap:6px}   /* 29/10/26: o selo com 3 ou 4 estilos não espreme o nome do bar */
+  /* 29/10/26 (Diogo: "no controle do cliente um lembrete do que o bar gosta que toque"): a faixa "🎶 Aqui toca:" com os
+     estilos acesos do bar em fichas coloridas, logo acima da busca */
+  .aqui-toca{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:0 0 10px;padding:10px 12px;border-radius:14px;
+    background:linear-gradient(135deg,rgba(249,115,22,.16),rgba(168,85,247,.14));border:1px solid rgba(249,115,22,.5)}
+  .aqui-toca .at-tit{font-size:15px;font-weight:900;color:#fff;margin-right:2px}
+  .aqui-toca .at-ficha{display:inline-flex;align-items:center;gap:4px;padding:5px 11px;border-radius:100px;background:var(--c);
+    color:var(--t,#fff);font-size:14px;font-weight:800;line-height:1.2;box-shadow:0 0 10px color-mix(in srgb,var(--c) 45%,transparent)}
   .tocando-agora{font-size:12px;color:var(--text2);display:flex;align-items:center;gap:6px;position:relative;z-index:1}
   .dot-live{width:7px;height:7px;background:#22c55e;border-radius:50%;animation:blink 1.2s ease-in-out infinite}
   .dot-off{width:7px;height:7px;background:#f59e0b;border-radius:50%}
@@ -765,9 +773,12 @@ async function jaPaguei() {
 <!-- ═══════════════════════════════════════════════════════════════════════ -->
 <!-- TELA NORMAL (16/10/26, B8): lista de músicas direto + 2 abas fixas      -->
 <!-- ═══════════════════════════════════════════════════════════════════════ -->
+{#- 29/10/26 (consertador, crítico leigo 4): com a faixa "🎶 Aqui toca" na tela, o selo do topo some (era a mesma lista
+    2 vezes); sem a faixa (Variado, jukebox fechado, sem pedido de música) o selo fica como antes #}
+{%- set _faixa = aqui_toca and aberto and ('musica_externa' in tipos or 'musica_especifica' in tipos) %}
 <div class="header">
   <div class="header-top">
-    <span class="canal-badge">{% if selo_estilos %}{{ selo_estilos }}{% else %}{{ canal.emoji }} {{ canal.nome|replace(' Clips', '') }}{% endif %}</span>
+    {% if not _faixa %}<span class="canal-badge">{% if selo_estilos %}{{ selo_estilos }}{% else %}{{ canal.emoji }} {{ canal.nome|replace(' Clips', '') }}{% endif %}</span>{% endif %}
     <span class="bar-nome">{{ b.nome }}</span>
   </div>
   {% if aberto %}
@@ -909,6 +920,11 @@ async function jaPaguei() {
         botões de fonte. A busca acha na lista do bar e, com a busca livre do bar ligada, em qualquer música do estilo
         (os da lista do bar primeiro); sem digitar, a lista do bar fica embaixo pra rolar e tocar. #}
 
+    {#- 29/10/26 (estilos 2): os botões acesos no painel (o salvo = o que a busca acha), em fichas; some no Variado ou
+        sem estilo. Vem pronto da rota (nenhuma pergunta a mais ao servidor) #}
+    {% if aqui_toca %}
+    <div class="aqui-toca" id="aqui-toca"><span class="at-tit">🎶 Aqui toca:</span>{% for e in aqui_toca %}<span class="at-ficha" style="--c:{{ e.cor }};--t:{{ e.txt or '#fff' }}">{{ e.emoji }} {{ e.nome }}</span>{% endfor %}</div>
+    {% endif %}
     <div class="busca-input-wrap">
       <input type="search" class="busca-input" id="busca-input"
              placeholder="🔎 Pesquise aqui sua música" enterkeyhint="search" autocomplete="off"

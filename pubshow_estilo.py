@@ -28,23 +28,33 @@ from pubshow_db import get_pubshow_db
 
 log = logging.getLogger(__name__)
 
-ESTILOS = ('rock', 'sertanejo', 'pagode', 'pop', 'funk', 'eletronica', 'rap', 'mpb', 'reggae', 'blues', 'outros')
+# 29/10/26 (estilos 2): + 'country' (antes ia junto com o sertanejo: bar de rock + country abria o Gusttavo Lima) e
+# + 'forro' (antes forró e piseiro caíam em 'outros'). Heavy Metal, Punk e Rock Nacional seguem na família 'rock':
+# pelo artista não dá pra separar subgênero com segurança (o lembrete no celular orienta o cliente).
+ESTILOS = ('rock', 'sertanejo', 'pagode', 'pop', 'funk', 'eletronica', 'rap', 'mpb', 'reggae', 'blues', 'country',
+           'forro', 'outros')
 NOMES = {'rock': 'Rock', 'sertanejo': 'Sertanejo', 'pagode': 'Pagode', 'pop': 'Pop', 'funk': 'Funk',
-         'eletronica': 'Eletrônica', 'rap': 'Rap', 'mpb': 'MPB', 'reggae': 'Reggae', 'blues': 'Blues', 'outros': 'Outros'}
+         'eletronica': 'Eletrônica', 'rap': 'Rap', 'mpb': 'MPB', 'reggae': 'Reggae', 'blues': 'Blues',
+         'country': 'Country', 'forro': 'Forró', 'outros': 'Outros'}
 EMOJI = {'rock': '🎸', 'sertanejo': '🤠', 'pagode': '🥁', 'pop': '🎤', 'funk': '🔊', 'eletronica': '🎧', 'rap': '🎙️',
-         'mpb': '🎼', 'reggae': '🌴', 'blues': '🎷', 'outros': '🎶'}
+         'mpb': '🎼', 'reggae': '🌴', 'blues': '🎷', 'country': '🐎', 'forro': '💃', 'outros': '🎶'}
 # canal/gênero do acervo (CANAIS do pubshow.py, o que o bar marca no painel) → estilo do artista.
 # Esporte, stand-up e batidas não são estilo de música: marcar só eles não trava o YouTube.
 CANAL_ESTILO = {'rock': 'rock', 'punk': 'rock', 'show_rock': 'rock',
-                'sertanejo': 'sertanejo', 'show_sertanejo': 'sertanejo', 'country': 'sertanejo',
+                'sertanejo': 'sertanejo', 'show_sertanejo': 'sertanejo',
                 'pagode': 'pagode', 'show_pagode': 'pagode', 'pop': 'pop', 'reggae': 'reggae',
-                'mpb': 'mpb', 'blues': 'blues'}   # 22/10/26: botões MPB e Blues do Estilo do bar
+                'mpb': 'mpb', 'blues': 'blues',   # 22/10/26: botões MPB e Blues do Estilo do bar
+                # 29/10/26 (estilos 2): os canais dos botões novos (sem eles aqui, acender Funk liberava o YouTube inteiro)
+                'metal': 'rock', 'rock_br': 'rock', 'country': 'country', 'forro': 'forro', 'funk': 'funk',
+                'rap': 'rap', 'eletronica': 'eletronica'}
 
-# o Gemini às vezes responde fora da lista ("country", "samba"): vira o estilo da casa
-_SINONIMOS = {'country': 'sertanejo', 'arrocha': 'sertanejo', 'samba': 'pagode', 'metal': 'rock', 'punk': 'rock',
-              'hard rock': 'rock', 'blues rock': 'blues', 'trap': 'rap', 'hip hop': 'rap', 'hip-hop': 'rap',
-              'eletrônica': 'eletronica', 'electronic': 'eletronica', 'edm': 'eletronica', 'house': 'eletronica',
-              'forro': 'outros', 'forró': 'outros', 'piseiro': 'outros', 'axe': 'outros', 'axé': 'outros',
+# o Gemini às vezes responde fora da lista ("samba", "piseiro"): vira o estilo da casa
+_SINONIMOS = {'arrocha': 'sertanejo', 'samba': 'pagode', 'metal': 'rock', 'punk': 'rock', 'heavy metal': 'rock',
+              'rock nacional': 'rock', 'hard rock': 'rock', 'blues rock': 'blues', 'trap': 'rap', 'hip hop': 'rap',
+              'hip-hop': 'rap', 'eletrônica': 'eletronica', 'electronic': 'eletronica', 'edm': 'eletronica',
+              'house': 'eletronica', 'country music': 'country', 'bluegrass': 'country', 'americana': 'country',
+              'forró': 'forro', 'piseiro': 'forro', 'pisadinha': 'forro', 'xote': 'forro', 'baiao': 'forro',
+              'baião': 'forro', 'axe': 'outros', 'axé': 'outros',
               'gospel': 'outros', 'infantil': 'outros', 'funk carioca': 'funk', 'pop rock': 'rock'}
 ESPERA_BUSCA = 3.0              # segundos que a busca espera o Gemini (depois disso o desconhecido passa)
 _REPERGUNTA_DIAS = 7            # "não sei" do Gemini é perguntado de novo depois disso (banda que cresceu)
@@ -112,16 +122,34 @@ _SEMENTE_TXT = {
         Baseado em Blues|Igor Prado|Flávio Guimarães|Irmandade do Blues''',
     'reggae': '''Bob Marley|Natiruts|Cidade Negra|Planta e Raiz|Maneva|Ponto de Equilíbrio|Alma Djem|Tribo de Jah|Chimarruts|
         Edson Gomes|UB40|Damian Marley|Peter Tosh|Jimmy Cliff|Mato Seco|Adão Negro''',
-    'outros': '''Xand Avião|Bell Marques|Chiclete com Banana|Asa de Águia|Banda Eva|Xuxa|Aline Barros|Fernandinho|
-        Gabriela Rocha|Anderson Freire|Bruna Karla|Thalles Roberto|Harpa Cristã|Mastruz com Leite|Calcinha Preta|
-        Aviões do Forró|Garota Safada|Falamansa|Luiz Gonzaga|Dominguinhos|Frank Sinatra|Louis Armstrong|Ray Charles|
-        Galinha Pintadinha|Patati Patatá|Mundo Bita|Palavra Cantada|Eric Land|Raí Saia Rodada|Felipe Amorim''',
+    # 29/10/26 (estilos 2): o country americano de bar e rodeio (nome inteiro; o brasileiro é 'sertanejo')
+    'country': '''Dolly Parton|Willie Nelson|Garth Brooks|George Strait|Luke Combs|Morgan Wallen|Chris Stapleton|
+        Carrie Underwood|Blake Shelton|Keith Urban|Tim McGraw|Faith Hill|Kenny Chesney|Alan Jackson|Brad Paisley|
+        Toby Keith|Luke Bryan|Jason Aldean|Florida Georgia Line|Zac Brown Band|Lady Antebellum|Lady A|Dierks Bentley|
+        Waylon Jennings|Merle Haggard|Hank Williams|Hank Williams Jr.|Patsy Cline|Loretta Lynn|Reba McEntire|
+        Brooks & Dunn|Rascal Flatts|Big & Rich|Montgomery Gentry|Trace Adkins|Eric Church|Kane Brown|Thomas Rhett|
+        Sam Hunt|Jake Owen|Cole Swindell|Chris Young|Miranda Lambert|Kacey Musgraves|Lainey Wilson|Zach Bryan|
+        Tyler Childers|Sturgill Simpson|Travis Tritt|Clint Black|Glen Campbell|The Charlie Daniels Band|
+        Charlie Daniels|Bailey Zimmerman|Riley Green|Jordan Davis|Old Dominion|Dan + Shay|Gabby Barrett|
+        Brothers Osborne|Jon Pardi|Parker McCollum|Cody Johnson|Shaboozey|The Chicks|Dixie Chicks|Oliver Anthony|
+        Randy Travis|Vince Gill|Josh Turner|Dwight Yoakam|Brantley Gilbert|Lee Brice|Tracy Lawrence''',
+    # 29/10/26 (estilos 2): forró e piseiro saíram de 'outros' e ganharam o estilo deles (semente do pacote de 20/10)
+    'forro': '''Xand Avião|Mastruz com Leite|Calcinha Preta|Aviões do Forró|Garota Safada|Falamansa|Luiz Gonzaga|
+        Dominguinhos|Eric Land|Raí Saia Rodada|Felipe Amorim|Solange Almeida|Taty Girl|Jonas Esticado|Avine Vinny|
+        Matheus Fernandes|Vitor Fernandes|Heitor Costa|Toca do Vale|Dorgival Dantas|Flávio José|Trio Nordestino|
+        Limão com Mel|Cavaleiros do Forró|Desejo de Menina|Caviar com Rapadura|Forró do Muído|Lucy Alves|
+        Santanna O Cantador|Alcymar Monteiro|Waldonys|Fulô de Mandacaru|Os 3 do Nordeste|Targino Gondim|
+        Genival Lacerda|Jackson do Pandeiro|Marinês|Zé Cantor|Biguinho Sensação|Unha Pintada|Iguinho e Lulinha|
+        Nadson O Ferinha|Junior Vianna|Japãozin|Kadu Martins''',
+    'outros': '''Bell Marques|Chiclete com Banana|Asa de Águia|Banda Eva|Xuxa|Aline Barros|Fernandinho|
+        Gabriela Rocha|Anderson Freire|Bruna Karla|Thalles Roberto|Harpa Cristã|Frank Sinatra|Louis Armstrong|
+        Ray Charles|Galinha Pintadinha|Patati Patatá|Mundo Bita|Palavra Cantada''',
 }
 # Artista de vários estilos (conta como todos): pop rock passa no bar de rock, Anitta não.
 _SEMENTE_MULTI_TXT = '''Bon Jovi=rock pop|Queen=rock pop|The Beatles=rock pop|Red Hot Chili Peppers=rock funk|Linkin Park=rock rap|
     U2=rock pop|The Killers=rock pop|The Police=rock pop|Toto=rock pop|Billy Idol=rock pop|
     Bring Me the Horizon=rock pop eletronica|Rage Against the Machine=rock rap|Elvis Presley=rock outros|
-    Johnny Cash=rock outros|Charlie Brown Jr.=rock rap|Raimundos=rock outros|Os Paralamas do Sucesso=rock reggae|
+    Johnny Cash=rock country|Charlie Brown Jr.=rock rap|Raimundos=rock outros|Os Paralamas do Sucesso=rock reggae|
     Mamonas Assassinas=rock outros|Raul Seixas=rock outros|Os Mutantes=rock outros|Cazuza=rock mpb|
     Blitz=rock pop|Pato Fu=rock pop|Frejat=rock mpb|Luan Santana=sertanejo pop|Ana Castela=sertanejo outros|
     Luan Pereira=sertanejo outros|Michel Teló=sertanejo pop|Lucas Lucco=sertanejo pop|Zé Felipe=sertanejo pop|
@@ -136,13 +164,13 @@ _SEMENTE_MULTI_TXT = '''Bon Jovi=rock pop|Queen=rock pop|The Beatles=rock pop|Re
     Bad Bunny=pop outros|J Balvin=pop outros|Karol G=pop outros|Maluma=pop outros|Rosalía=pop outros|
     Becky G=pop outros|Marina Sena=pop outros|Pabllo Vittar=pop outros|Agnes Nunes=pop mpb|
     Gilberto Gil=mpb reggae|Tim Maia=mpb outros|Jorge Ben Jor=mpb outros|Ana Carolina=pop mpb|
-    Zé Ramalho=mpb outros|Alceu Valença=mpb outros|Ney Matogrosso=pop mpb|Liniker=pop mpb|
-    Elba Ramalho=mpb outros|Geraldo Azevedo=mpb outros|Cartola=pagode mpb|Adoniran Barbosa=pagode mpb|
+    Zé Ramalho=mpb outros|Alceu Valença=mpb forro|Ney Matogrosso=pop mpb|Liniker=pop mpb|
+    Elba Ramalho=mpb forro|Geraldo Azevedo=mpb forro|Cartola=pagode mpb|Adoniran Barbosa=pagode mpb|
     Novos Baianos=rock mpb outros|Moraes Moreira=mpb outros|Maria Gadú=pop mpb|Johnny Hooker=pop mpb|
-    Chico César=mpb outros|Armandinho=pop reggae|Onze:20=pop reggae|Wesley Safadão=sertanejo outros|
-    João Gomes=sertanejo outros|Tarcísio do Acordeon=sertanejo outros|Zé Vaqueiro=sertanejo outros|
-    Barões da Pisadinha=sertanejo outros|Ivete Sangalo=pop outros|Claudia Leitte=pop outros|
-    Léo Santana=funk outros|Nattan=sertanejo outros|Mari Fernandez=sertanejo outros|Anitta=pop funk outros|
+    Chico César=mpb outros|Armandinho=pop reggae|Onze:20=pop reggae|Wesley Safadão=sertanejo forro|
+    João Gomes=sertanejo forro|Tarcísio do Acordeon=sertanejo forro|Zé Vaqueiro=sertanejo forro|
+    Barões da Pisadinha=sertanejo forro|Ivete Sangalo=pop outros|Claudia Leitte=pop outros|
+    Léo Santana=funk outros|Nattan=sertanejo forro|Mari Fernandez=sertanejo forro|Anitta=pop funk outros|
     Ludmilla=pagode pop funk|Luísa Sonza=pop funk|Gloria Groove=pop funk rap|Pocah=pop funk|Lexa=pop funk|
     Pedro Sampaio=pop funk eletronica|Dennis DJ=funk eletronica|MC Cabelinho=funk rap|MC Poze do Rodo=funk rap|
     Oruam=funk rap|Emicida=rap mpb|Criolo=rap mpb|Marcelo D2=rock pagode rap|Planet Hemp=rock rap|
@@ -154,7 +182,10 @@ _SEMENTE_MULTI_TXT = '''Bon Jovi=rock pop|Queen=rock pop|The Beatles=rock pop|Re
     Vanessa da Mata=pop mpb|Anavitória=pop mpb|Tiago Iorc=pop mpb|Elton John=rock pop|Billy Joel=rock pop|
     Phil Collins=rock pop|Genesis=rock pop|Fleetwood Mac=rock pop|Tears for Fears=rock pop|a-ha=rock pop|
     Roxette=rock pop|Bryan Adams=rock pop|P!nk=rock pop|Pink=rock pop|Avril Lavigne=rock pop|Paramore=rock pop|
-    Shaggy=pop reggae|Sean Paul=pop reggae|Alexandre Pires=sertanejo pagode pop|Sandy=pop mpb'''
+    Shaggy=pop reggae|Sean Paul=pop reggae|Alexandre Pires=sertanejo pagode pop|Sandy=pop mpb|
+    Mano Walter=sertanejo forro|Shania Twain=pop country|Kenny Rogers=pop country|John Denver=pop country|
+    Billy Ray Cyrus=pop country|Darius Rucker=pop country|Jelly Roll=rock rap country|Lynyrd Skynyrd=rock country|
+    Creedence Clearwater Revival=rock country|Eagles=rock country'''
 _PREFIXOS = ('grupo ', 'banda ', 'the ', 'os ', 'as ', 'mc ', 'dj ')
 # separa 'A, B feat. C' (o texto já vem normalizado, sem pontuação); duo com & / 'e' fica junto
 _SEP_CREDITO = re.compile(r'\s+(?:feat|ft|featuring|part|participacao|com|x|vs)\s+')
@@ -227,6 +258,13 @@ def garantir_coluna(conn):
     valendo só pra lista do bar: nada muda no YouTube sem o dono escolher (verificador, 17/10/26)."""
     try:
         conn.execute('ALTER TABLE pubshow_businesses ADD COLUMN estilo_yt INTEGER DEFAULT 0')
+        conn.commit()
+    except Exception:
+        pass    # já existe
+    # 29/10/26 (estilos 2, consertador): estilo_v2 = 1 quando o dono tocou num botão DEPOIS do estilos 2 (Rock = só rock,
+    # Punk e Country botões próprios). Sem a marca, o salvo é de antes e a TV lê como antes (pubshow._legado)
+    try:
+        conn.execute('ALTER TABLE pubshow_businesses ADD COLUMN estilo_v2 INTEGER DEFAULT 0')
         conn.commit()
     except Exception:
         pass    # já existe
@@ -342,6 +380,38 @@ def _tabela(conn):
                 log.info('[PUBSHOW estilo] blues: %d artista(s)/vídeo(s) guardados ganharam o estilo blues', n)
     except Exception as e:
         log.warning('[PUBSHOW estilo] ajuste do blues falhou: %s', e)
+    # 29/10/26 (estilos 2): nasceram 'country' (antes o Gemini punha em 'sertanejo') e 'forro' (antes 'outros'). 1 vez
+    # só, fora o 'manual': o guardado de um artista da SEMENTE vira o da semente (Johnny Cash = rock + country); o resto
+    # guardado como 'sertanejo' ou 'outros' é perguntado de novo 1 vez (vídeo: '' com data velha = "não sei" vencido;
+    # nome: sai da tabela). Até lá o desconhecido PASSA: bar Rock + Country nunca barra country por cache velho.
+    # 29/10/26 (consertador, crítico de lógica 3): a linha 'v:' é lida ANTES da semente no classificar, então o vídeo
+    # de um artista que a semente diz country/forró também vira o da semente, guardado como for (Johnny Cash 'rock',
+    # Shania Twain 'pop', Jelly Roll 'rap' barravam no bar com Country)
+    try:
+        if not conn.execute("SELECT 1 FROM pubshow_meta WHERE chave='estilo_country_forro_v1'").fetchone():
+            fix = rep = 0
+            for r in conn.execute("SELECT chave, nome, estilos FROM pubshow_artista_estilo "
+                                  "WHERE COALESCE(fonte, '') <> 'manual'").fetchall():
+                velho = bool({'sertanejo', 'outros'} & set((r[2] or '').split(',')))
+                sem = SEMENTE.get(norm(r[1])) or (SEMENTE.get(r[0]) if not str(r[0]).startswith('v:') else None)
+                if not velho and not (sem and sem & {'country', 'forro'}):
+                    continue                     # nada a ver com country/forró: fica como está
+                if sem:
+                    conn.execute("UPDATE pubshow_artista_estilo SET estilos=?, fonte='semente' WHERE chave=?",
+                                 (','.join(e for e in ESTILOS if e in sem), r[0]))
+                    fix += 1
+                elif str(r[0]).startswith('v:'):
+                    conn.execute("UPDATE pubshow_artista_estilo SET estilos='', atualizado_em='2000-01-01 00:00:00' "
+                                 "WHERE chave=?", (r[0],))
+                    rep += 1
+                else:
+                    conn.execute('DELETE FROM pubshow_artista_estilo WHERE chave=?', (r[0],))
+                    rep += 1
+            conn.execute("INSERT OR REPLACE INTO pubshow_meta (chave, valor) VALUES ('estilo_country_forro_v1', datetime('now'))")
+            if fix or rep:
+                log.info('[PUBSHOW estilo] country/forró: %d guardado(s) pela semente, %d pra perguntar de novo', fix, rep)
+    except Exception as e:
+        log.warning('[PUBSHOW estilo] ajuste do country/forró falhou: %s', e)
     conn.commit()
     _TABELA_OK['ok'] = True
 
@@ -375,15 +445,19 @@ def _variantes(nome):
     return list(dict.fromkeys(x for x in out if len(x) >= 2))
 
 
-def _do_nome(nome, banco):
-    """Estilos conhecidos de um crédito (banco > semente), juntando os de cada artista do 'feat.'. None = não sei."""
+def _do_nome(nome, banco, manual=None):
+    """Estilos conhecidos de um crédito (manual > semente > banco), juntando os de cada artista do 'feat.'. None = não sei.
+    manual = {chave: estilos} das linhas 'manual' do banco (a correção à mão do Diogo vale acima de tudo)."""
     k = norm(nome)
     if not k:
         return None
+    manual = manual or {}
 
     def achar(x):
-        return (banco.get(x) or SEMENTE.get(x) or banco.get(_sem_prefixo(x)) or SEMENTE.get(_sem_prefixo(x))
-                or SEMENTE.get(x.replace(' ', '')))
+        # 29/10/26 (estilos 2): a SEMENTE vence o cache pro nome dela (o cache antigo guardou country como 'sertanejo').
+        # 29/10/26 (consertador, crítico de lógica 4): a linha 'manual' vence a semente
+        return (manual.get(x) or SEMENTE.get(x) or banco.get(x) or manual.get(_sem_prefixo(x))
+                or SEMENTE.get(_sem_prefixo(x)) or banco.get(_sem_prefixo(x)) or SEMENTE.get(x.replace(' ', '')))
 
     inteiro = achar(k)
     if inteiro:
@@ -404,7 +478,7 @@ def _do_nome(nome, banco):
 
 
 def _banco_ler(chaves):
-    """{chave: (estilos ou None, fresco)} das chaves que existem na tabela."""
+    """{chave: (estilos ou None, fresco, manual)} das chaves que existem na tabela."""
     chaves = [c for c in dict.fromkeys(chaves) if c]
     if not chaves:
         return {}
@@ -415,10 +489,11 @@ def _banco_ler(chaves):
         for i in range(0, len(chaves), 400):
             parte = chaves[i:i + 400]
             for r in conn.execute(
-                    f"""SELECT chave, estilos, atualizado_em >= datetime('now', '-{_REPERGUNTA_DIAS} days') AS fresco
+                    f"""SELECT chave, estilos, atualizado_em >= datetime('now', '-{_REPERGUNTA_DIAS} days') AS fresco,
+                               COALESCE(fonte, '') = 'manual' AS manual
                         FROM pubshow_artista_estilo WHERE chave IN ({','.join('?' * len(parte))})""",
                     tuple(parte)).fetchall():
-                out[r['chave']] = (_ler(r['estilos']), bool(r['fresco']))
+                out[r['chave']] = (_ler(r['estilos']), bool(r['fresco']), bool(r['manual']))
     except Exception as e:
         _TABELA_OK['ok'] = False         # banco trocado/restaurado com o processo no ar: recria na próxima
         log.warning('[PUBSHOW estilo] leitura falhou: %s', e)
@@ -486,10 +561,11 @@ def _prompt(itens):
             txt += f" | artista provável: {_palpites(it)[0]}"
         linhas[it['id']] = txt[:200]
     return ('Vídeos do YouTube pedidos num bar no Brasil. Para cada um, diga o ARTISTA principal e o ESTILO musical dele.\n'
-            'Estilos: rock, sertanejo, pagode, pop, funk, eletronica, rap, mpb, reggae, blues, outros.\n'
-            '- rock inclui metal, punk, hard rock, rock nacional, rock alternativo e pop rock\n'
+            'Estilos: rock, sertanejo, pagode, pop, funk, eletronica, rap, mpb, reggae, blues, country, forro, outros.\n'
+            '- rock inclui metal, heavy metal, punk, hard rock, rock nacional, rock alternativo e pop rock\n'
             '- blues inclui blues rock, blues elétrico e blues nacional\n'
-            '- sertanejo inclui sertanejo universitário, arrocha e country; forró, piseiro, axé, gospel e infantil = outros\n'
+            '- sertanejo = o brasileiro (universitário, raiz, arrocha); country = o americano (Nashville, rodeio, bluegrass)\n'
+            '- forro inclui forró, piseiro, xote e baião; axé, gospel e infantil = outros\n'
             '- pagode inclui samba; funk = funk brasileiro; rap inclui trap e hip hop; eletronica = DJ, EDM, house\n'
             '- até 3 estilos, só os principais do artista\n'
             '- não reconheceu o artista com segurança (banda pequena, vídeo que não é música)? estilos = []\n'
@@ -534,6 +610,8 @@ def _rodar(itens, ev):
             if ests and 'blues' in ests:     # 22/10/26: blues também vale no bar de rock
                 ests.add('rock')
             artista = str(d.get('artista') or '').strip()[:80]
+            if norm(artista) in SEMENTE:     # 29/10/26: artista da semente = o estilo da semente (a semente vence)
+                ests = set(SEMENTE[norm(artista)])
             with _LOCK:
                 _RESP[it['id']] = (ests, artista)
                 if len(_RESP) > _RESP_MAX:
@@ -594,6 +672,7 @@ def classificar(itens, espera=ESPERA_BUSCA):
             chaves += _variantes(p)
     banco = _banco_ler(chaves)
     banco_nomes = {k: v[0] for k, v in banco.items() if v[0] and not k.startswith('v:')}
+    banco_manual = {k: v[0] for k, v in banco.items() if v[0] and len(v) > 2 and v[2] and not k.startswith('v:')}
     out, faltam, respondidos = {}, [], set()
     for it in itens:
         with _LOCK:
@@ -607,7 +686,7 @@ def classificar(itens, espera=ESPERA_BUSCA):
             continue
         conhecido = set()
         for p in _palpites(it):
-            conhecido |= _do_nome(p, banco_nomes) or set()
+            conhecido |= _do_nome(p, banco_nomes, banco_manual) or set()
         if conhecido:
             out[it['id']] = conhecido
             continue
@@ -654,7 +733,7 @@ def classificar(itens, espera=ESPERA_BUSCA):
             continue
         conhecido = set()
         for p in _talvez(it):
-            conhecido |= _do_nome(p, banco_nomes) or set()
+            conhecido |= _do_nome(p, banco_nomes, banco_manual) or set()
         if conhecido:
             out[it['id']] = conhecido
     if espera is not None:                       # só a busca (título do próprio YouTube) ensina o _VISTO

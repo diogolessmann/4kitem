@@ -58,14 +58,19 @@ TIPOS_ESTABELECIMENTO = {
 CANAIS = {
     # ── MÚSICA ───────────────────────────────────────────────────────────────
     'rock':           {'nome': 'Rock Clips',        'emoji': '🎸',  'cor': '#ef4444', 'cat': 'rock',      'grupo': 'musica'},
-    'punk':           {'nome': 'Punk Clips',        'emoji': '🤘',  'cor': '#f97316', 'cat': 'punk',      'grupo': 'musica'},
+    'punk':           {'nome': 'Punk Clips',        'emoji': '⚡',  'cor': '#f97316', 'cat': 'punk',      'grupo': 'musica'},   # 29/10/26: 🤘 = Heavy Metal
     'sertanejo':      {'nome': 'Sertanejo Clips',   'emoji': '🤠',  'cor': '#eab308', 'cat': 'sertanejo', 'grupo': 'musica'},
     'pagode':         {'nome': 'Pagode Clips',      'emoji': '🥁',  'cor': '#22c55e', 'cat': 'pagode',    'grupo': 'musica'},
     'pop':            {'nome': 'Pop Clips',         'emoji': '🎤',  'cor': '#a855f7', 'cat': 'pop',       'grupo': 'musica'},
     # Lote D C (16/10/26): o botão "Variado" do Estilo do bar — canal-lista (como o Sport Mix) que mistura a música.
     # VDC-05 (16/10/26): + a categoria própria 'variado' (o que os bares no Variado pedem e tocou entra nela, e não no Rock)
     'variado':        {'nome': 'Variado',           'emoji': '🎶',  'cor': '#f97316',
-                       'cat': ['rock', 'sertanejo', 'pagode', 'pop', 'punk', 'country', 'reggae', 'mpb', 'blues', 'variado'],
+                       # 29/10/26 (estilos 2): + Forró e Eletrônica. Funk, Rap e Heavy Metal NÃO entram (só tocam no bar
+                       # que acender o botão deles), nem o Rock Nacional (fora do combinado de 20/10).
+                       # 29/10/26 (consertador): nem o Country (era vazio; o Variado de quem nunca escolheu não ganha
+                       # country americano sem o dono pedir). Variado + 🐎 Country aceso continua misturando o Country.
+                       'cat': ['rock', 'sertanejo', 'pagode', 'pop', 'punk', 'reggae', 'mpb', 'blues', 'forro',
+                               'eletronica', 'variado'],
                        'grupo': 'musica'},
     # 17/10/26: SHOWS AO VIVO saiu (show passa de 10 min). Canal e vídeos: pubshow_db.SHOWS_FORA
     # ── SPORT ────────────────────────────────────────────────────────────────
@@ -85,11 +90,20 @@ CANAIS = {
     'skate':          {'nome': 'Skate Clips',       'emoji': '🛹',  'cor': '#8b5cf6', 'cat': 'skate',     'grupo': 'sport'},
     'kitesurf':       {'nome': 'Kitesurf / Wake',   'emoji': '🌊',  'cor': '#0891b2', 'cat': 'kitesurf',  'grupo': 'sport'},
     # ── MÚSICA EXTRA ─────────────────────────────────────────────────────────
-    'country':        {'nome': 'Country / Rodeio',  'emoji': '🤠',  'cor': '#a16207', 'cat': 'country',   'grupo': 'musica'},
-    'reggae':         {'nome': 'Reggae Clips',      'emoji': '🎸',  'cor': '#15803d', 'cat': 'reggae',    'grupo': 'musica'},
+    # 29/10/26: country com emoji próprio (🤠 = Sertanejo) e reggae com o 🌴 do botão (o menu da TV repetia o 🎸 do Rock)
+    'country':        {'nome': 'Country / Rodeio',  'emoji': '🐎',  'cor': '#a16207', 'cat': 'country',   'grupo': 'musica'},
+    'reggae':         {'nome': 'Reggae Clips',      'emoji': '🌴',  'cor': '#15803d', 'cat': 'reggae',    'grupo': 'musica'},
     # 22/10/26 (enquete do Garage: "Rock + reggae + MPB + blues" ganhou): clipes em pubshow_clipes_estilos
     'mpb':            {'nome': 'MPB Clips',         'emoji': '🎼',  'cor': '#0d9488', 'cat': 'mpb',       'grupo': 'musica'},
     'blues':          {'nome': 'Blues Clips',       'emoji': '🎷',  'cor': '#2563eb', 'cat': 'blues',     'grupo': 'musica'},
+    # 29/10/26 (estilos 2, Diogo: "heavy metal, Punk rock, country, pensa mais estilos"): os canais dos botões novos.
+    # Clipes em pubshow_clipes_fase2 (pubshow_db._semear_estilos2); o botão só aparece com acervo (_estilos_com_acervo)
+    'metal':          {'nome': 'Heavy Metal',       'emoji': '🤘',  'cor': '#be123c', 'cat': 'metal',     'grupo': 'musica'},
+    'rock_br':        {'nome': 'Rock Nacional',     'emoji': '📻',  'cor': '#65a30d', 'cat': 'rock_br',   'grupo': 'musica'},
+    'forro':          {'nome': 'Forró',             'emoji': '💃',  'cor': '#c2410c', 'cat': 'forro',     'grupo': 'musica'},
+    'funk':           {'nome': 'Funk',              'emoji': '🔊',  'cor': '#db2777', 'cat': 'funk',      'grupo': 'musica'},
+    'rap':            {'nome': 'Rap',               'emoji': '🎙️',  'cor': '#4f46e5', 'cat': 'rap',       'grupo': 'musica'},
+    'eletronica':     {'nome': 'Eletrônica',        'emoji': '🎧',  'cor': '#06b6d4', 'cat': 'eletronica', 'grupo': 'musica'},
     # ── ENTRETENIMENTO ───────────────────────────────────────────────────────
     'batidas':        {'nome': 'Batidas / Crashes', 'emoji': '💥',  'cor': '#b45309', 'cat': 'batidas',   'grupo': 'viral'},
     'standup':        {'nome': 'Stand-up Comedy',   'emoji': '🎭',  'cor': '#7c3aed', 'cat': 'standup',   'grupo': 'entretenimento'},
@@ -98,33 +112,163 @@ CANAIS = {
                        'grupo': 'entretenimento'},
 }
 
+
+def _txt_sobre(cor):
+    """29/10/26 (consertador, crítico leigo 5): a letra do botão aceso e da ficha do celular sobre a cor do estilo.
+    Escura quando o branco fica abaixo de 3:1 (Sertanejo, Pagode, Esporte, Eletrônica, Punk, Variado), senão branca."""
+    try:
+        lin = [c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4
+               for c in (int(cor[i:i + 2], 16) / 255 for i in (1, 3, 5))]
+        lum = 0.2126 * lin[0] + 0.7152 * lin[1] + 0.0722 * lin[2]
+        return '#111' if 1.05 / (lum + 0.05) < 3 else '#fff'
+    except Exception:
+        return '#fff'
+
+
+for _cv in CANAIS.values():
+    _cv['txt'] = _txt_sobre(_cv.get('cor', ''))
+
 # Lote D C (16/10/26): "Estilo do bar" do painel = 5 botões grandes. Cada um põe a TV num canal E deixa na busca do
 # cliente só os estilos da família (as MESMAS colunas da lista antiga: temas_habilitados = generos_jukebox).
 # 'variado' = a TV mistura a música e o cliente busca em tudo (NULL). Os outros canais ("mais estilos") só trocam a
 # TV e liberam a busca inteira. Nada muda no banco até o dono tocar num botão (o salvo antes continua valendo).
+# 29/10/26 (estilos 2, print do Diogo: "Era pra ser apenas rock"): cada botão de música = 1 canal = 1 tema. Rock = só
+# ['rock'] e Sertanejo = só ['sertanejo']: Punk e Country viraram botões próprios. O salvo antigo (['rock','punk'],
+# ['sertanejo','country']) continua valendo: Rock + Punk aparece como está; o Sertanejo antigo continua Sertanejo
+# (o country dele era a mesma família, sem clipe nenhum: _sem_country_legado). A TV toca como tocava (_legado).
+# 'grupo' = o título pequeno do painel (GRUPOS_ESTILO), pro leigo achar. Emoji sem repetir e que aparece no Windows 10
+# (nada de bandeira, que vira "BR", nem 🪗/🪕, que viram quadrado).
 ESTILOS_BAR = {
-    'rock':      {'nome': 'Rock',      'emoji': '🎸', 'canal': 'rock',      'temas': ['rock', 'punk']},
-    'sertanejo': {'nome': 'Sertanejo', 'emoji': '🤠', 'canal': 'sertanejo', 'temas': ['sertanejo', 'country']},
-    'pagode':    {'nome': 'Pagode',    'emoji': '🥁', 'canal': 'pagode',    'temas': ['pagode']},
-    'pop':       {'nome': 'Pop',       'emoji': '🎤', 'canal': 'pop',       'temas': ['pop']},
-    'reggae':    {'nome': 'Reggae',    'emoji': '🌴', 'canal': 'reggae',    'temas': ['reggae']},   # pedido do Garage, 20/10/26
-    'mpb':       {'nome': 'MPB',       'emoji': '🎼', 'canal': 'mpb',       'temas': ['mpb']},      # enquete do Garage, 22/10/26
-    'blues':     {'nome': 'Blues',     'emoji': '🎷', 'canal': 'blues',     'temas': ['blues']},    # enquete do Garage, 22/10/26
+    # ── Rock e pesado ──
+    'rock':       {'nome': 'Rock',          'emoji': '🎸', 'canal': 'rock',       'temas': ['rock'],       'grupo': 'rock'},
+    'metal':      {'nome': 'Heavy Metal',   'emoji': '🤘', 'canal': 'metal',      'temas': ['metal'],      'grupo': 'rock'},
+    'punk':       {'nome': 'Punk',          'emoji': '⚡', 'canal': 'punk',       'temas': ['punk'],       'grupo': 'rock'},
+    'rock_br':    {'nome': 'Rock Nacional', 'emoji': '📻', 'canal': 'rock_br',    'temas': ['rock_br'],    'grupo': 'rock'},
+    'blues':      {'nome': 'Blues',         'emoji': '🎷', 'canal': 'blues',      'temas': ['blues'],      'grupo': 'rock'},   # enquete do Garage, 22/10/26
+    # ── Brasil ──
+    'sertanejo':  {'nome': 'Sertanejo',     'emoji': '🤠', 'canal': 'sertanejo',  'temas': ['sertanejo'],  'grupo': 'brasil'},
+    'pagode':     {'nome': 'Pagode',        'emoji': '🥁', 'canal': 'pagode',     'temas': ['pagode'],     'grupo': 'brasil'},
+    'mpb':        {'nome': 'MPB',           'emoji': '🎼', 'canal': 'mpb',        'temas': ['mpb'],        'grupo': 'brasil'},   # enquete do Garage, 22/10/26
+    'forro':      {'nome': 'Forró',         'emoji': '💃', 'canal': 'forro',      'temas': ['forro'],      'grupo': 'brasil'},
+    'funk':       {'nome': 'Funk',          'emoji': '🔊', 'canal': 'funk',       'temas': ['funk'],       'grupo': 'brasil'},
+    # ── Mundo ──
+    'pop':        {'nome': 'Pop',           'emoji': '🎤', 'canal': 'pop',        'temas': ['pop'],        'grupo': 'mundo'},
+    'country':    {'nome': 'Country',       'emoji': '🐎', 'canal': 'country',    'temas': ['country'],    'grupo': 'mundo'},
+    'reggae':     {'nome': 'Reggae',        'emoji': '🌴', 'canal': 'reggae',     'temas': ['reggae'],     'grupo': 'mundo'},   # pedido do Garage, 20/10/26
+    'rap':        {'nome': 'Rap',           'emoji': '🎙️', 'canal': 'rap',        'temas': ['rap'],        'grupo': 'mundo'},
+    'eletronica': {'nome': 'Eletrônica',    'emoji': '🎧', 'canal': 'eletronica', 'temas': ['eletronica'], 'grupo': 'mundo'},
+    # ── Na TV ──
     # 20/10/26 (Diogo: "clicar no mais estilo os burro nao le"): o que importa vira botão grande. Esporte = Sport Mix;
     # Comédia = batidas + stand-up. Os temas deles entram só na mistura da TV: o cliente continua pedindo música
     # (o filtro do celular e do YouTube usa só os temas de música, _so_musica).
-    'esporte':   {'nome': 'Esporte',   'emoji': '⚽', 'canal': 'sport_mix', 'temas': list(CANAIS['sport_mix']['cat'])},
-    'comedia':   {'nome': 'Comédia',   'emoji': '😂', 'canal': 'comedia',   'temas': ['batidas', 'standup']},
-    'variado':   {'nome': 'Variado',   'emoji': '🎶', 'canal': 'variado',   'temas': None},
+    'esporte':    {'nome': 'Esporte',       'emoji': '⚽', 'canal': 'sport_mix',  'temas': list(CANAIS['sport_mix']['cat']), 'grupo': 'tv'},
+    'comedia':    {'nome': 'Comédia',       'emoji': '😂', 'canal': 'comedia',    'temas': ['batidas', 'standup'], 'grupo': 'tv'},
+    'variado':    {'nome': 'Variado',       'emoji': '🎶', 'canal': 'variado',    'temas': None,           'grupo': 'tv'},
 }
+GRUPOS_ESTILO = (('rock', 'Rock e pesado'), ('brasil', 'Brasil'), ('mundo', 'Mundo'), ('tv', 'Na TV'))
 # categoria → botão (Rock, Esporte…): o rodízio da mistura vai de botão em botão, não de categoria em categoria
 # (senão Rock + Esporte = 1 rock a cada 11 esportes)
 _BOTAO_DA_CAT = {t: k for k, e in ESTILOS_BAR.items() for t in (e['temas'] or [])}
+# 29/10/26 (consertador, crítico de lógica 1: "nada muda sem o dono tocar"): o salvo de ANTES do estilos 2 (sem a marca
+# estilo_v2, que o painel grava no toque) é lido como era. Na mistura, o Punk roda junto com o Rock (o botão Rock era
+# rock + punk) e o country do botão Sertanejo sai (era a família do Sertanejo e não tinha clipe nenhum). Sem isso, no
+# deploy a TV de quem não tocou em nada passava a tocar country americano e o Punk dobrava. O 1º toque grava a marca.
+_GRUPO_LEGADO = {'punk': 'rock', 'country': 'sertanejo'}
+
+
+def _legado(b):
+    """True = o salvo é de antes do estilos 2 (o dono não tocou num botão depois do deploy)."""
+    return not pubshow_estilo._campo(b, 'estilo_v2')
+
+
+def _sem_country_legado(lista, b):
+    """Salvo antigo do botão Sertanejo (['sertanejo','country']) = Sertanejo, como era: o country sai da lista."""
+    if lista and 'sertanejo' in lista and 'country' in lista and _legado(b):
+        return [t for t in lista if t != 'country']
+    return lista
 
 
 def _so_musica(temas):
     """Só os temas que são estilo de MÚSICA (o filtro do celular e do YouTube); Esporte e Comédia ficam só na TV."""
     return [t for t in (temas or []) if t in pubshow_estilo.CANAL_ESTILO] or None
+
+
+# 29/10/26 (estilos 2): botão de música só aparece no painel com acervo (Country vazio nunca mais vira botão). Esporte,
+# Comédia e Variado sempre (não são estilo de música; o banco de teste nem tem comédia). Aceso aparece sempre.
+_ESTILO_MIN_CLIPES = 15
+_ESTILO_SEMPRE = ('esporte', 'comedia', 'variado')
+
+
+def _estilos_com_acervo():
+    """Os botões que aparecem no painel: os de música com >= 15 clipes ativos no canal + Esporte, Comédia e Variado.
+    1 consulta só (contagem por categoria). Falhou = todos (botão nunca some por erro de banco)."""
+    try:
+        conn = get_pubshow_db()
+        try:
+            n = {r[0]: r[1] for r in conn.execute(
+                'SELECT categoria, COUNT(*) FROM pubshow_videos WHERE ativo=1 GROUP BY categoria').fetchall()}
+        finally:
+            conn.close()
+    except Exception as e:
+        log.warning('[PUBSHOW] contagem do acervo por estilo falhou: %s', e)
+        return set(ESTILOS_BAR)
+    out = set(_ESTILO_SEMPRE)
+    for k, e in ESTILOS_BAR.items():
+        cat = CANAIS.get(e['canal'], {}).get('cat', e['canal'])
+        if sum(n.get(c, 0) for c in (cat if isinstance(cat, (list, tuple)) else [cat])) >= _ESTILO_MIN_CLIPES:
+            out.add(k)
+    return out
+
+
+def _estilo_estado(b):
+    """29/10/26 (estilos 2, conserto P do diagnóstico, generalizado): o que o painel ACENDE, o menu da TV lista e o
+    selo do celular mostra (a mesma regra nos 3). Aceso = o SALVO (temas_habilitados) coberto inteiro por botões (no
+    Variado e fora dele: canal Rock + salvo Rock e Punk = os 2 acesos); salvo pela metade ou vazio = o botão do canal
+    no ar (ou da família dele: Skate → Esporte). O "📺 No ar" segue o canal (_no_ar_txt).
+    nota = o salvo não bate com os acesos ("Hoje o cliente busca só…", com os nomes dos botões de música do salvo);
+    extra = o 1º toque deixa SÓ o botão tocado (canal fora dos botões, ou a nota).
+    29/10/26 (consertador, crítico de lógica 2): a TV fora dos acesos (Pop do fallback, admin, /painel/canal) NÃO liga
+    o extra: o painel mostra o salvo, então o toque liga e desliga a partir do que está aceso (tirar o Punk tira o Punk)."""
+    ck = pubshow_estilo._campo(b, 'canal_atual') or 'rock'
+    ck = ck if ck in CANAIS else 'rock'          # VDC-06: vazio ou inexistente = Rock, o fallback da TV
+    tm = set(_temas_do_bar(b) or [])
+    familia = [k for k, e in ESTILOS_BAR.items() if ck == e['canal'] or (e['temas'] and ck in e['temas'])]
+    do_canal = familia[0] if familia else ''
+    por_temas = [k for k, e in ESTILOS_BAR.items() if tm and e['temas'] and set(e['temas']) <= tm]
+    cobre = {t for k in por_temas for t in ESTILOS_BAR[k]['temas']}
+    acesos = por_temas if (ck == 'variado' or (por_temas and tm <= cobre)) else []
+    if not acesos and do_canal:
+        acesos = [do_canal]
+    cobre_ac = {t for k in acesos for t in (ESTILOS_BAR[k]['temas'] or [])}
+    nota = bool(tm) and tm != cobre_ac
+    nomes = [e['nome'] for k, e in ESTILOS_BAR.items()
+             if k not in _ESTILO_SEMPRE and e['temas'] and tm & set(e['temas'])] if nota else []
+    extra = ck not in {e['canal'] for e in ESTILOS_BAR.values()} or nota
+    return {'canal': ck, 'acesos': acesos, 'nota': nota, 'nomes': nomes, 'extra': bool(extra)}
+
+
+def _aqui_toca(b):
+    """29/10/26 (Diogo: "no controle do cliente um lembrete do que o bar gosta que toque"): os botões de música do que o
+    cliente acha (generos_jukebox = o SALVO), na ordem do painel, com emoji, nome e cor. [] = Variado ou sem estilo
+    (a faixa some). Vem pronto na página (nenhuma pergunta a mais ao servidor).
+    29/10/26 (consertador, crítico de lógica 5): a MESMA fonte do painel e do selo (_estilo_estado), e só com o salvo
+    coerente: o dono tocou num botão (estilo_yt), sem a nota, e a lista do cliente = a música da TV. Lista de antes de
+    17/10 ou as 2 listas diferentes = [] (o selo do topo fica como antes e não diz outra coisa que a faixa)."""
+    import json as _json
+    try:
+        if not pubshow_estilo._campo(b, 'estilo_yt'):
+            return []
+        g = _json.loads(pubshow_estilo._campo(b, 'generos_jukebox') or 'null')
+        gs = set(_sem_country_legado([x for x in g if isinstance(x, str)], b) or []) if isinstance(g, list) else set()
+        est = _estilo_estado(b)
+        if not gs or est['nota'] or gs != set(_so_musica(_temas_do_bar(b)) or []):
+            return []
+    except Exception:
+        return []
+    return [{'k': k, 'emoji': ESTILOS_BAR[k]['emoji'], 'nome': ESTILOS_BAR[k]['nome'],
+             'cor': CANAIS.get(ESTILOS_BAR[k]['canal'], {}).get('cor', '#f97316'),
+             'txt': CANAIS.get(ESTILOS_BAR[k]['canal'], {}).get('txt', '#fff')}
+            for k in est['acesos'] if k not in _ESTILO_SEMPRE and ESTILOS_BAR[k]['temas']]
 
 
 # 20/10/26 (Diogo: "vídeos legais de esporte... mas pôr música sobre eles"): ⚽ Esporte + um estilo de MÚSICA acesos →
@@ -2834,18 +2978,29 @@ def _yid_ok(yid):
 
 
 def _temas_do_bar(b):
-    """Os temas acesos do bar (temas_habilitados) ou None (= tudo)."""
+    """Os temas acesos do bar (temas_habilitados) ou None (= tudo). 29/10/26: o Sertanejo antigo continua Sertanejo
+    (_sem_country_legado)."""
     import json as _json
     try:
         v = _json.loads(b['temas_habilitados'] or 'null')
     except Exception:
         return None
-    return [t for t in v if isinstance(t, str)] or None if isinstance(v, list) else None
+    return _sem_country_legado([t for t in v if isinstance(t, str)], b) or None if isinstance(v, list) else None
 
 
 def _selo_estilos(b):
     """Selo do topo do celular do cliente, com o nome do BOTÃO do painel: vários acesos (Variado só com eles) =
-    '🎸 Rock · 🌴 Reggae'; 1 estilo = '🌴 Reggae'. '' = usa o nome do canal (Variado de verdade ou "Mais estilos")."""
+    '🎸 Rock · 🌴 Reggae'; 1 estilo = '🌴 Reggae'. '' = usa o nome do canal (Variado de verdade ou "Mais estilos").
+    29/10/26 (estilos 2, pendência 4 do diagnóstico): o SALVO primeiro, os MESMOS acesos do painel (_estilo_estado),
+    mesmo com a TV num estilo só da mistura (o menu da TV troca só o canal)."""
+    try:
+        if _temas_do_bar(b):
+            _est = _estilo_estado(b)
+            _ac = [ESTILOS_BAR[k] for k in _est['acesos'] if ESTILOS_BAR[k]['temas']]
+            if _ac and not _est['nota']:
+                return ' · '.join(f"{e['emoji']} {e['nome']}" for e in _ac)
+    except Exception:
+        pass
     try:
         canal = b['canal_atual'] or ''
         if canal != 'variado':
@@ -2861,10 +3016,11 @@ def _selo_estilos(b):
     return ' · '.join(f"{e['emoji']} {e['nome']}" for e in acesos)
 
 
-def _videos_do_canal(canal_key, limit=500, bloqueados=None, temas=None):
+def _videos_do_canal(canal_key, limit=500, bloqueados=None, temas=None, legado=False):
     """bloqueados = youtube_ids que o bar baniu ("🚫 Nunca mais") — saem da lista da TV (15/10/26).
     temas = estilos acesos do bar (20/10/26, pedido do Garage: "clicar em 3 estilos e tocar só aquilo"): o Variado
-    com vários botões acesos vira a mistura SÓ deles."""
+    com vários botões acesos vira a mistura SÓ deles.
+    legado = o salvo é de antes do estilos 2 (_legado): no rodízio o Punk roda junto com o Rock, como antes."""
     import random
     cat = CANAIS.get(canal_key, {}).get('cat', canal_key)
     if canal_key == 'variado' and temas and isinstance(cat, list):
@@ -2887,7 +3043,8 @@ def _videos_do_canal(canal_key, limit=500, bloqueados=None, temas=None):
             fam = {}
             for v in videos:
                 _c = v.get('categoria')
-                fam.setdefault(_BOTAO_DA_CAT.get(_c) or pubshow_estilo.CANAL_ESTILO.get(_c, _c), []).append(v)
+                fam.setdefault((legado and _GRUPO_LEGADO.get(_c)) or _BOTAO_DA_CAT.get(_c)
+                               or pubshow_estilo.CANAL_ESTILO.get(_c, _c), []).append(v)
             grupos = list(fam.values())
             random.shuffle(grupos)
             n = max((len(g) for g in grupos), default=0)
@@ -3540,7 +3697,7 @@ def tv(code):
     # 20/10/26: no modo fundo (Esporte + música) o esporte é o fundo; o YouTube da TV só toca a música
     fundo_clipes = _fundo_clipes(b)
     _temas_tv = _so_musica(_temas_do_bar(b)) if fundo_clipes else _temas_do_bar(b)
-    videos    = _videos_do_canal(canal_key, bloqueados=_videos_bloqueados(b), temas=_temas_tv)
+    videos    = _videos_do_canal(canal_key, bloqueados=_videos_bloqueados(b), temas=_temas_tv, legado=_legado(b))
     _nt = _artistas_bloqueados(b)   # 🚫 22/10/26: "Não tocar aqui" — a TV também não toca
     videos = [v for v in videos if not _nao_toca(_nt, v.get('titulo'), v.get('artista'))] if _nt else videos
     # 1) Filtra canais pelo plano do bar (grupos_tv)
@@ -3548,7 +3705,22 @@ def tv(code):
     # 2) Filtra pelos temas que o bar habilitou dentro do que o plano permite
     try:    temas_hab = _json.loads(b['temas_habilitados'] or 'null')
     except: temas_hab = None
-    if temas_hab:
+    # 29/10/26 (estilos 2, pendência 1 do diagnóstico): com estilo escolhido, o menu 🎵 = SÓ os botões acesos no painel
+    # (o salvo, _estilo_estado) + "🎶 Mistura" com 2 ou mais (volta à mistura). canais_estilo = a troca automática da TV
+    # ("Tema temporariamente indisponível") só anda dentro dele. Sem estilo (Variado, nunca escolheu) = como antes.
+    _ac_tv = [k for k in _estilo_estado(b)['acesos'] if ESTILOS_BAR[k]['temas']] if temas_hab else []
+    canais_estilo = None
+    if _ac_tv:
+        canais_tv = {ESTILOS_BAR[k]['canal']: canais_plano[ESTILOS_BAR[k]['canal']] for k in _ac_tv
+                     if ESTILOS_BAR[k]['canal'] in canais_plano}
+        if len(_ac_tv) >= 2 and 'variado' in canais_plano:
+            canais_tv['variado'] = dict(CANAIS['variado'], nome='Mistura')
+            if canal_key == 'variado':
+                canal = canais_tv['variado']
+        canais_estilo = list(canais_tv)
+        if canal_key not in canais_tv:
+            canais_tv[canal_key] = CANAIS.get(canal_key, CANAIS['rock'])
+    elif temas_hab:
         canais_tv = {k: v for k, v in canais_plano.items() if k in temas_hab}
         # Garante que o canal atual sempre aparece
         if canal_key not in canais_tv:
@@ -3583,6 +3755,7 @@ def tv(code):
                            anuncios=anuncios, qr_preco_txt=_qr_preco_tv(b),
                            tv_qr_b64=tv_qr_b64, jukebox_url=_jk_url,
                            precos_canto=_precos_canto_tv(b),   # 24/10/26 (momentos no telão, visual): o canto das cenas
+                           canais_estilo=canais_estilo,   # 29/10/26: a troca automática não sai do estilo do bar
                            # 🔇 17/10/26: grupo de TODO canal (o painel pode pôr a TV num canal fora da lista dela)
                            grupos_canal={k: v.get('grupo', 'musica') for k, v in CANAIS.items()},
                            # 20/10/26: grupo de cada CATEGORIA (canais de 1 categoria só): o mudo decide pelo vídeo,
@@ -4268,7 +4441,7 @@ def jukebox(token, pix_id=None):
     canal        = CANAIS.get(b['canal_atual'], CANAIS['rock'])
     try:
         import json as _jsn
-        _gj = _jsn.loads(b.get('generos_jukebox') or 'null')
+        _gj = _sem_country_legado(_jsn.loads(b.get('generos_jukebox') or 'null'), b)   # 29/10/26: o Sertanejo antigo
     except Exception:
         _gj = None
     _curta = f'AND COALESCE(duracao_seg, 0) <= {int(YT_DUR_MAX_SEG)}'   # 17/10/26: show longo não conta (não dá pra pedir)
@@ -4318,6 +4491,7 @@ def jukebox(token, pix_id=None):
                                              'emoji': ESTILOS_BAR.get(k, v)['emoji']}   # 🌴 Reggae (o canal usa 🎸)
                                          for k, v in CANAIS.items()},
                            selo_estilos=_selo_estilos(b),   # 20/10/26: "🎸 Rock · 🌴 Reggae" em vez de "Variado"
+                           aqui_toca=_aqui_toca(b),   # 29/10/26: a faixa "🎶 Aqui toca:" perto da busca (o salvo)
                            youtube_liberado=_youtube_liberado(b),
                            aberto=aberto, motivo_fechado=motivo_fechado,
                            aviso=aviso, token=token,
@@ -5093,6 +5267,9 @@ def api_trocar_canal(code):
     # sem vídeos manda 'rock'/'pop' e recarrega — barrar isso faria a TV recarregar sem fim.)
     if canal not in CANAIS or canal not in _plano_canais_permitidos(dict(b)):
         return jsonify({'error': 'canal inválido'}), 400
+    if request.args.get('teste') == '1':
+        # 29/10/26 (pendência 3 do diagnóstico): a TV aberta pelo "Testar aqui" (?teste=1) troca só ela, nunca o bar
+        return jsonify({'ok': True, 'canal': canal, 'teste': True})
     conn2 = get_pubshow_db()
     conn2.execute('UPDATE pubshow_businesses SET canal_atual=? WHERE id=?', (canal, b['id']))
     conn2.commit(); conn2.close()
@@ -5103,6 +5280,7 @@ def api_trocar_canal(code):
 def api_videos(categoria):
     # ?bar=<code da TV>: tira os vídeos que o bar baniu (15/10/26 — antes o "Nunca mais" não saía da TV)
     bloqueados = temas = None
+    _leg = False
     _code = request.args.get('bar', '').strip()
     if _code:
         conn = get_pubshow_db()
@@ -5111,9 +5289,10 @@ def api_videos(categoria):
         if _b:
             bloqueados = _videos_bloqueados(_b)
             temas = _temas_do_bar(_b)   # 20/10/26: Variado com vários estilos acesos = mistura só deles
+            _leg = _legado(_b)          # 29/10/26: salvo de antes do estilos 2 = o rodízio de antes
             if _fundo_ativo(_b):        # 20/10/26: esporte no fundo → o YouTube só toca a música
                 temas = _so_musica(temas)
-    videos = _videos_do_canal(categoria, bloqueados=bloqueados, temas=temas)
+    videos = _videos_do_canal(categoria, bloqueados=bloqueados, temas=temas, legado=_leg)
     _nt = _artistas_bloqueados(_b) if _code and _b else []   # 🚫 22/10/26: "Não tocar aqui"
     if _nt:
         videos = [v for v in videos if not _nao_toca(_nt, v.get('titulo'), v.get('artista'))]
@@ -5160,14 +5339,14 @@ def api_buscar_biblioteca():
     # Descobre gêneros permitidos para este bar (opcional)
     generos_permitidos = None
     if bar_token:
-        brow = conn.execute(
-            '''SELECT generos_jukebox FROM pubshow_businesses
+        brow = conn.execute(   # 29/10/26: * = + estilo_v2 (o Sertanejo antigo continua sem os clipes do country)
+            '''SELECT * FROM pubshow_businesses
                WHERE jukebox_token=? OR code=? LIMIT 1''',
             (bar_token, bar_token)
         ).fetchone()
         if brow and brow['generos_jukebox']:
             try:
-                generos_permitidos = _json.loads(brow['generos_jukebox'])
+                generos_permitidos = _sem_country_legado(_json.loads(brow['generos_jukebox']), brow)
             except Exception:
                 generos_permitidos = None
     banidos = set()
@@ -5996,7 +6175,7 @@ def _acervo_bate(b, q):
         return []
     try:
         gen = _json.loads(b.get('generos_jukebox') or 'null')
-        gen = [g for g in gen if isinstance(g, str)] if isinstance(gen, list) else None
+        gen = _sem_country_legado([g for g in gen if isinstance(g, str)], b) if isinstance(gen, list) else None
     except Exception:
         gen = None
     sql = ("SELECT youtube_id, titulo, artista, duracao_seg, views_milhoes FROM pubshow_videos "
@@ -7257,6 +7436,10 @@ def painel():
                            estilos_bar=ESTILOS_BAR,   # Lote D C (16/10/26): os 5 botões do Estilo do bar
                            no_ar_txt=_no_ar_txt(bd), yt_txt=_yt_txt(bd),   # 20/10/26: 📺 No ar e o Pedir do YouTube
                            pedidos_hoje=_pedidos_com_hora_local([dict(p) for p in pedidos_hoje]),
+                           # 29/10/26 (estilos 2): o que acende (o salvo, a mesma regra da TV e do celular), os botões
+                           # com acervo e os títulos pequenos dos grupos
+                           estilo_estado=_estilo_estado(bd), estilos_visiveis=_estilos_com_acervo(),
+                           grupos_estilo=GRUPOS_ESTILO,
                            total_hoje=total_hoje, momentos_hoje_n=momentos_hoje_n,
                            # 17/10/26 (decisão 6): sem teste grátis (2º bar do CPF/CNPJ) ou teste já vencido
                            teste_acabou=((bd.get('trial_ends') or '')[:19] <= datetime.now().isoformat()[:19]),
@@ -8732,7 +8915,12 @@ def painel_estilo():
         # vários. 1 aceso = igual antes; 2 ou mais = Variado SÓ com eles (TV, lista do bar e YouTube); Variado = tudo.
         acesos = [x for x in dict.fromkeys(s.strip() for s in request.form.get('estilos', '').split(','))
                   if x in ESTILOS_BAR]
-        if not acesos or 'variado' in acesos:
+        if not acesos:
+            # 29/10/26 (consertador, crítico leigo 1): tocar no ÚNICO aceso não apaga tudo e não vira Variado sem
+            # aviso. O painel nem manda (mostra a dica); o servidor também não muda nada. Variado só pelo botão dele
+            return (jsonify({'ok': False, 'erro': 'nenhum estilo', 'nada_mudou': True}), 400) if _xhr() \
+                else redirect('/pubshow/painel?aba=musica')
+        if 'variado' in acesos:
             acesos = ['variado']
         k = acesos[0]
     if acesos and len(acesos) > 1:
@@ -8751,7 +8939,9 @@ def painel_estilo():
     conn = get_pubshow_db()
     pubshow_estilo.garantir_coluna(conn)   # 17/10/26: o toque também vale pra busca do YouTube ("aqui só toca rock")
     _antes = conn.execute('SELECT canal_atual, temas_habilitados FROM pubshow_businesses WHERE id=?', (b['id'],)).fetchone()
-    conn.execute('UPDATE pubshow_businesses SET canal_atual=?, temas_habilitados=?, generos_jukebox=?, estilo_yt=? WHERE id=?',
+    # 29/10/26 (consertador): estilo_v2 = 1 = o salvo é do estilos 2 (Rock = só rock); sem ela a TV lê como antes (_legado)
+    conn.execute('UPDATE pubshow_businesses SET canal_atual=?, temas_habilitados=?, generos_jukebox=?, estilo_yt=?, '
+                 'estilo_v2=1 WHERE id=?',
                  (canal, valor, valor_cel, 1 if musica else 0, b['id']))
     conn.commit(); conn.close()
     # o canal não mudou (Variado → Variado) mas a mistura sim: a TV só troca quando o canal muda, então recarrega
@@ -8767,7 +8957,8 @@ def painel_estilo():
         if acesos is not None:
             resp['acesos'] = acesos
         # 20/10/26: as 2 linhas que mudam junto (📺 No ar: … e o "Pedir do YouTube")
-        _nb = {'canal_atual': canal, 'temas_habilitados': valor, 'generos_jukebox': valor_cel, 'estilo_yt': 1 if musica else 0}
+        _nb = {'canal_atual': canal, 'temas_habilitados': valor, 'generos_jukebox': valor_cel, 'estilo_yt': 1 if musica else 0,
+               'estilo_v2': 1}
         resp.update(no_ar=_no_ar_txt(_nb), yt_txt=_yt_txt(_nb))
         return jsonify(resp)
     return redirect('/pubshow/painel?aba=musica')

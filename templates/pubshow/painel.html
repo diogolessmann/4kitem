@@ -116,8 +116,17 @@
   .estilos{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}   /* 22/10/26: 10 botões, 2 linhas */
   .estilo-btn{--c:#f97316;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:96px;padding:10px 6px;border-radius:16px;border:2px solid var(--border2);background:var(--surface2);border:2px solid color-mix(in srgb,var(--c) 55%,transparent);background:color-mix(in srgb,var(--c) 16%,var(--surface2));color:var(--text);font-family:inherit;font-size:17px;font-weight:900;cursor:pointer;transition:.15s}
   .estilo-btn .ic{font-size:34px;line-height:1}
-  .estilo-btn.ativo{background:var(--c);border-color:#fff;color:#fff;box-shadow:0 0 0 3px color-mix(in srgb,var(--c) 45%,transparent)}
-  .estilo-btn.ativo::after{content:'✓ tocando';position:absolute;top:5px;right:7px;font-size:10px;font-weight:900;background:rgba(0,0,0,.35);padding:1px 6px;border-radius:100px}
+  .estilo-btn.ativo{background:var(--c);border-color:#fff;color:var(--t,#fff);box-shadow:0 0 0 3px color-mix(in srgb,var(--c) 45%,transparent)}
+  /* 29/10/26 (consertador, crítico leigo 2): "✓ ligado" e não "✓ tocando" — com 2 ou mais acesos a TV toca um de cada
+     vez (ou só o do menu dela); o que ela toca agora é a linha "📺 Agora na TV" no topo. --t = letra escura na cor clara */
+  .estilo-btn.ativo::after{content:'✓ ligado';position:absolute;top:5px;right:7px;font-size:10px;font-weight:900;color:#fff;background:rgba(0,0,0,.35);padding:1px 6px;border-radius:100px}
+  /* 29/10/26 (Diogo: "se tiver como colocar os estilo do bar destacado ajuda"): apagado = sem cor, pro aceso saltar */
+  .estilo-btn:not(.ativo){background:var(--surface2);border-color:var(--border2);color:var(--text2)}
+  .estilo-btn:not(.ativo) .ic{filter:grayscale(1);opacity:.55}
+  .estilo-grupo{font-size:12px;font-weight:900;letter-spacing:.6px;text-transform:uppercase;color:var(--text2);margin:16px 2px 8px}
+  .card-title + .estilo-grupo{margin-top:2px}
+  #estilo-no-ar + .estilo-grupo{margin-top:10px}
+  .estilo-dica{margin:10px 2px 0;padding:10px 12px;border-radius:12px;background:rgba(249,115,22,.14);border:1px solid rgba(249,115,22,.5);color:var(--text);font-size:14px;font-weight:700}
   .estilos-mais{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
   .estilo-chip{padding:9px 12px;min-height:44px;border-radius:10px;border:1px solid var(--border2);background:var(--surface2);color:var(--text2);font-family:inherit;font-size:14px;font-weight:700;cursor:pointer}
   .estilo-chip.ativo{border-color:#f97316;color:#fff;background:rgba(249,115,22,.14)}
@@ -226,9 +235,17 @@
     .momento-nome{font-size:17px}
     .estilo-btn{font-size:16px}
   }
-  /* 20/10/26: celular = 2 por linha (nome inteiro, dedo grande; "Sertanejo" e "Comédia" não empurram a tela) */
-  @media(max-width:480px){ .estilos{grid-template-columns:repeat(2,minmax(0,1fr))} }
-  #estilo-no-ar{font-size:15px;font-weight:800;color:#fb923c;margin-top:12px}
+  /* 20/10/26: celular = 2 por linha (nome inteiro, dedo grande; "Sertanejo" e "Comédia" não empurram a tela).
+     29/10/26 (estilos 2, 18 botões em 4 grupos): 3 por linha, um pouco menores (2 por linha = 10 telas de rolagem) */
+  @media(max-width:480px){
+    .estilos{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+    .estilo-btn{min-height:92px;padding:20px 4px 8px;font-size:15px;line-height:1.15;text-align:center;border-radius:14px}
+    .estilo-btn .ic{font-size:30px}
+  }
+  /* 29/10/26 (consertador, crítico leigo 6): em 320 px "Sertanejo" e "Eletrônica" cabem e o selo não cobre o emoji */
+  @media(max-width:340px){ .estilo-btn{font-size:13px} .estilo-btn.ativo::after{content:'✓'} }
+  /* 29/10/26 (consertador, crítico leigo 2 e 3): "📺 Agora na TV" no topo do cartão, logo embaixo do título */
+  #estilo-no-ar{font-size:15px;font-weight:800;color:#fb923c;margin:2px 2px 4px}
 </style>
 </head>
 <body>
@@ -608,40 +625,39 @@
   <!-- ════════ 🎵 ESTILO MUSICAL ════════ -->
   <div id="z-estilo" class="zona oculta">
   <p class="aba-frase">O que toca na TV e o que o cliente pode pedir.</p>
-  {#- Estilo do bar = 5 botões grandes (TV + busca do cliente). Os outros canais ficam fechados em "mais estilos".
-      Aceso = o canal que está no ar (canal_atual): nada muda até o dono tocar. #}
-  {% set _temas = temas_habilitados or [] %}
-  {% set _preset = [] %}
-  {% for k, e in estilos_bar.items() %}{% if e.temas and _temas|sort == e.temas|sort %}{% set _ = _preset.append(k) %}{% endif %}{% endfor %}
-  {% set _canais_main = estilos_bar.values()|map(attribute='canal')|list %}
-  {#- VDC-06 (16/10/26): aceso pelo canal que a TV toca de verdade (vazio ou inexistente = Rock, o fallback da TV) #}
-  {% set _canal_ef = b.canal_atual if b.canal_atual in canais else 'rock' %}
-  {% set _extra_ativo = _canal_ef not in _canais_main %}
-  {#- canal de "mais estilos" que é da família de um botão grande (Punk → Rock; Country → Sertanejo…)
-      acende o botão da família, com "No ar: …" embaixo. "Mais estilos" fica SEMPRE fechado #}
-  {% set _familia = [] %}
-  {% for k, e in estilos_bar.items() %}{% if _canal_ef == e.canal or (e.temas and _canal_ef in e.temas) %}{% set _ = _familia.append(k) %}{% endif %}{% endfor %}
-  {% set _aceso = _familia[0] if _familia else '' %}
-  {#- 20/10/26 (pedido do Garage): vários acesos = Variado com os temas só deles → acende cada botão cujos temas estão lá #}
-  {% set _acesos = [] %}
-  {% if _canal_ef == 'variado' and _temas %}
-    {% for k, e in estilos_bar.items() %}{% if e.temas and (e.temas|reject('in', _temas)|list|length == 0) %}{% set _ = _acesos.append(k) %}{% endif %}{% endfor %}
-  {% endif %}
-  {% if not _acesos and _aceso %}{% set _ = _acesos.append(_aceso) %}{% endif %}
+  {#- Estilo do bar = botões grandes (TV + busca do cliente), em grupos com título pequeno (29/10/26: 18 botões).
+      29/10/26 (estilos 2, conserto P do diagnóstico, generalizado): aceso = o SALVO coberto por botões, a MESMA regra
+      do menu da TV e do selo do celular (pubshow._estilo_estado); "📺 Agora na TV" = o canal que a TV toca. Botão de
+      música sem acervo (< 15 clipes) não aparece, a não ser aceso. Nada muda no banco até o dono tocar. #}
+  {% set _est = estilo_estado or {} %}
+  {% set _acesos = _est.acesos or [] %}
+  {% set _vis = estilos_visiveis if estilos_visiveis is not none else estilos_bar.keys()|list %}
   <div class="card" id="sec-estilo">
     <div class="card-title">🎵 Estilo do bar <span class="salvo" aria-live="polite"></span></div>
+    {#- 20/10/26: a linha diz SEMPRE o que a TV toca (a mistura: "🎸 Rock + 🌴 Reggae"); data-extra = o 1º toque num botão
+        TROCA (deixa só ele) em vez de somar: canal antigo que não é botão (Skate…) ou a nota.
+        29/10/26 (consertador, críticos leigo 2 e 3): no TOPO do cartão (antes ficava 1,3 tela abaixo; no Variado a 1ª
+        tela parecia toda apagada) e "Agora na TV" no lugar de "No ar" #}
+    <div id="estilo-no-ar" data-extra="{{ '1' if _est.extra else '' }}">📺 Agora na TV: {{ no_ar_txt }}</div>
+    {% for g, g_nome in (grupos_estilo or [('', '')]) %}
+    {%- set _bts = [] %}{% for k, e in estilos_bar.items() %}{% if (not g or e.grupo == g) and (k in _vis or k in _acesos) %}{% set _ = _bts.append(k) %}{% endif %}{% endfor %}
+    {% if _bts %}
+    {% if g_nome %}<div class="estilo-grupo">{{ g_nome }}</div>{% endif %}
     <div class="estilos">
-      {% for k, e in estilos_bar.items() %}
-      <button type="button" class="estilo-btn{% if k in _acesos %} ativo{% endif %}" style="--c:{{ canais_todos.get(e.canal, {}).get('cor', '#f97316') }}" data-estilo="{{ k }}" data-familia="{{ ((e.temas or []) + [e.canal])|join(' ') }}" aria-pressed="{{ 'true' if k in _acesos else 'false' }}" onclick="escolherEstilo(this)"><span class="ic">{{ e.emoji }}</span>{{ e.nome }}</button>
+      {% for k in _bts %}{% set e = estilos_bar[k] %}
+      <button type="button" class="estilo-btn{% if k in _acesos %} ativo{% endif %}" style="--c:{{ canais_todos.get(e.canal, {}).get('cor', '#f97316') }};--t:{{ canais_todos.get(e.canal, {}).get('txt', '#fff') }}" data-estilo="{{ k }}" data-familia="{{ ((e.temas or []) + [e.canal])|join(' ') }}" aria-pressed="{{ 'true' if k in _acesos else 'false' }}" onclick="escolherEstilo(this)"><span class="ic">{{ e.emoji }}</span>{{ e.nome }}</button>
       {% endfor %}
     </div>
-    {#- 20/10/26: a linha diz SEMPRE o que a TV toca (a mistura: "🎸 Rock + 🌴 Reggae"); data-extra = canal antigo que
-        não é botão (Skate, Punk…): aí o 1º toque num botão troca em vez de somar #}
-    <div id="estilo-no-ar" data-extra="{{ '1' if _extra_ativo else '' }}">📺 No ar: {{ no_ar_txt }}</div>
-    {% if _temas and not _preset and not (_canal_ef == 'variado' and _acesos) %}
+    {% endif %}
+    {% endfor %}
+    {#- 29/10/26 (consertador, crítico leigo 1): tocar no ÚNICO aceso não apaga nada; esta dica aparece 3 s embaixo do
+        grupo tocado (o JS põe ela lá) #}
+    <div id="estilo-dica" class="estilo-dica" role="status" hidden>Pra trocar, toca em outro estilo. Pra tocar de tudo, toca em 🎶 Variado.</div>
+    {% if _est.nota %}
     {#- 24/10/26 (print do Diogo: "os 4 estilos" em cima de "busca só Rock e Sertanejo"): os NOMES dos botões de música
-        cujos temas estão no salvo (Rock = rock + punk), os mesmos do Pedir do YouTube; Esporte e Comédia não entram na busca #}
-    {%- set _nomes = [] %}{% for k, e in estilos_bar.items() %}{% if k not in ('esporte', 'comedia') and e.temas and (e.temas|select('in', _temas)|list) %}{% set _ = _nomes.append(e.nome) %}{% endif %}{% endfor %}
+        cujos temas estão no salvo, os mesmos do Pedir do YouTube; Esporte e Comédia não entram na busca.
+        29/10/26: só quando o salvo NÃO bate com os acesos (o painel nunca mente calado) #}
+    {%- set _nomes = _est.nomes or [] %}
     <div id="estilo-antigo" style="font-size:13px;color:var(--text2);margin-top:10px">{% if _nomes %}Hoje o cliente busca só {{ (_nomes[:-1]|join(', ') ~ ' e ' ~ _nomes[-1]) if _nomes|length > 1 else _nomes[0] }}, que você marcou antes.{% else %}Hoje a busca do cliente segue o que você marcou antes.{% endif %} Tocar num botão troca.</div>
     {% endif %}
   </div>
@@ -1821,6 +1837,17 @@ function alternarSempreAberto(cb) {
 
 // Estilo do bar: 1 toque = TV + busca do cliente
 let _seqEstilo = 0;
+let _dicaT = 0;
+// 29/10/26 (consertador, crítico leigo 1): tocou no único aceso = ele continua; a dica fica 3 s embaixo do grupo tocado
+function _dicaEstilo(btn) {
+  const d = document.getElementById('estilo-dica');
+  if (!d) return;
+  const grade = btn.closest('.estilos');
+  if (grade && grade.nextElementSibling !== d) grade.after(d);
+  d.hidden = false;
+  clearTimeout(_dicaT);
+  _dicaT = setTimeout(() => { d.hidden = true; }, 3000);
+}
 function _acendeEstilos(acesos) {
   document.querySelectorAll('.estilo-btn').forEach(b => {
     const on = acesos.has(b.dataset.estilo);
@@ -1842,7 +1869,9 @@ async function escolherEstilo(btn) {
     if (k === 'variado') acesos = ['variado'];
     else if (acesos.includes(k)) acesos = acesos.filter(x => x !== k);
     else acesos.push(k);
-    if (!acesos.length) acesos = ['variado'];
+    // 29/10/26 (consertador, crítico leigo 1): tocou no ÚNICO aceso = ele continua (era: vira Variado sem aviso; o dono
+    // toca pra conferir). Grava ele de novo: a TV que estava em outro canal (Pop do fallback) volta pra ele. + a dica
+    if (!acesos.length) { acesos = [k]; _dicaEstilo(btn); }
     _acendeEstilos(new Set(acesos));      // na hora: o próximo toque já parte daqui
     if (noAr) noAr.dataset.extra = '';
     fd.append('estilos', acesos.join(','));
@@ -1858,7 +1887,7 @@ async function escolherEstilo(btn) {
       if (seq === _seqEstilo) {             // resposta de um toque antigo não desfaz o toque novo
         _acendeEstilos(new Set(d.acesos || [d.estilo]));
         const noAr = document.getElementById('estilo-no-ar');
-        if (noAr && d.no_ar) noAr.textContent = '📺 No ar: ' + d.no_ar;
+        if (noAr && d.no_ar) noAr.textContent = '📺 Agora na TV: ' + d.no_ar;
         const yt = document.getElementById('yt-sub'); if (yt && d.yt_txt) yt.textContent = d.yt_txt;
       }
       const velho = document.getElementById('estilo-antigo'); if (velho) velho.remove();
@@ -1876,7 +1905,7 @@ async function escolherEstilo(btn) {
     if (noAr) {
       const chip = btn.classList.contains('estilo-chip');
       noAr.hidden = !chip;
-      if (chip) noAr.textContent = '📺 No ar: ' + btn.textContent.trim();
+      if (chip) noAr.textContent = '📺 Agora na TV: ' + btn.textContent.trim();
     }
     const velho = document.getElementById('estilo-antigo'); if (velho) velho.remove();
     _salvo(btn, true);

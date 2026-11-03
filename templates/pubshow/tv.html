@@ -803,6 +803,14 @@ const ANUNCIOS_EFETIVOS = {{ anuncios | tojson }};  // slides de propaganda do b
 
 // Info de canais disponível no JS para atualizar UI sem reload
 const CANAIS_JS = {{ canais | tojson }};
+// 29/10/26 (estilos 2, pendência 2 do diagnóstico): o estilo do bar (os canais dos botões acesos + a Mistura; null =
+// Variado/sem estilo). A troca automática ("Tema temporariamente indisponível") anda só dentro dele; estilo de 1
+// botão só = não grava nada e tenta de novo daqui a 1 min. Sem estilo = rock/pop, como antes.
+const CANAIS_ESTILO = {{ (canais_estilo or none) | tojson }};
+function _canalReserva() {
+  if (CANAIS_ESTILO && CANAIS_ESTILO.length) return CANAIS_ESTILO.find(k => k !== CANAL_KEY) || null;
+  return CANAL_KEY !== 'rock' ? 'rock' : 'pop';
+}
 
 // ── Biblioteca de vídeos ──────────────────────────────────────────────────────
 const VIDEOS = {{ videos | tojson }};
@@ -1095,8 +1103,9 @@ function volumeAtualTV() { return (typeof window._tvVolume === 'number') ? windo
 // ── YouTube IFrame API ────────────────────────────────────────────────────────
 function onYouTubeIframeAPIReady() {
   if (!VIDEOS.length) {
-    // Página carregou sem vídeos — fallback para rock
-    const fallback = (typeof CANAL_KEY !== 'undefined' && CANAL_KEY !== 'rock') ? 'rock' : 'pop';
+    // Página carregou sem vídeos — fallback para rock (29/10/26: dentro do estilo do bar; TV de teste não grava)
+    const fallback = _canalReserva();
+    if (!fallback || MODO_TESTE) { setTimeout(() => location.reload(), 60000); return; }
     fetch(`${BASE_URL}/api/trocar-canal/${CODE}`, {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
@@ -1398,10 +1407,11 @@ function mostrarErroSemVideos() {
   document.getElementById('np-titulo').textContent  = 'Tema temporariamente indisponível';
   document.getElementById('np-artista').textContent = 'Aguarde, trocando de tema...';
   document.getElementById('now-playing').classList.remove('hidden');
-  // Após 4s, tenta trocar para rock automaticamente
+  // Após 4s, tenta trocar para rock automaticamente (29/10/26: o próximo do estilo do bar; sem outro, tenta de novo)
   setTimeout(() => {
-    const fallback = CANAL_KEY !== 'rock' ? 'rock' : 'pop';
-    trocarCanal(fallback);
+    const fallback = _canalReserva();
+    if (fallback) trocarCanal(fallback);
+    else setTimeout(() => location.reload(), 60000);
   }, 4000);
 }
 
@@ -2527,9 +2537,12 @@ async function pollStatus() {
 
     // Troca de canal pelo dono do bar (sem reload). Com pedido tocando (TVP-1) espera ele acabar: a próxima
     // pergunta depois disso ainda vê o canal novo e troca
-    if (data.canal_atual && data.canal_atual !== window._canalAtual && !_pedidoTocandoAgora() && !_palcoAtivo && !_pausaBar) {
+    // 29/10/26 (pendência 3): a TV de teste (?teste=1) troca só ela; segue o servidor só quando o canal MUDA lá
+    if (data.canal_atual && data.canal_atual !== window._canalAtual && !(MODO_TESTE && data.canal_atual === window._canalServTeste)
+        && !_pedidoTocandoAgora() && !_palcoAtivo && !_pausaBar) {
       trocarCanal(data.canal_atual);
     }
+    if (data.canal_atual) window._canalServUltimo = data.canal_atual;
 
     // Pedido especial. 24/10/26 (momentos no telão, D1): NÃO abre mais por cima do clipe. Fica pendente (sem marcar
     // exibido), a coluna anuncia "Depois desta…" e a cena entra no próximo intervalo (_intervalo). Com a TV MUDA
@@ -2582,8 +2595,9 @@ async function trocarCanal(canal) {
   clearTimeout(proximoTimer);
   document.getElementById('proximo-card').classList.remove('show');
 
-  // 1. Notifica o servidor
-  fetch(`${BASE_URL}/api/trocar-canal/${CODE}`, {
+  // 1. Notifica o servidor (29/10/26: a TV de teste, ?teste=1, nunca troca o canal do bar)
+  if (MODO_TESTE) window._canalServTeste = window._canalServUltimo;
+  else fetch(`${BASE_URL}/api/trocar-canal/${CODE}`, {
     method: 'POST',
     headers: {'Content-Type':'application/json'},
     body: JSON.stringify({canal}),
@@ -2601,7 +2615,7 @@ async function trocarCanal(canal) {
 
   if (!novosVideos.length) {
     // Canal sem vídeos — reverte o servidor e mantém o canal atual
-    fetch(`${BASE_URL}/api/trocar-canal/${CODE}`, {
+    if (!MODO_TESTE) fetch(`${BASE_URL}/api/trocar-canal/${CODE}`, {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
       body: JSON.stringify({canal: CANAL_KEY}),
@@ -2713,6 +2727,7 @@ document.addEventListener('mousemove', e => {
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 window._canalAtual = CANAL_KEY;
+window._canalServUltimo = CANAL_KEY;   // 29/10/26: o canal do bar no servidor (a TV de teste não mexe nele)
 setInterval(pollStatus, 2500); // 2.5s — mais responsivo para pedidos VIP e fila
 
 // Já foi ligada neste aparelho (recarga, queda de luz): nada de botão grande; só o aviso pequeno
