@@ -218,7 +218,7 @@ KITEM_CONTEUDO = [
                   "Marca 'acabou' com um toque"], **_CTA_VIT),
     dict(cat="BAR & PUB", titulo="PubShow — o controle remoto na mão de todo mundo",
          bullets=["Cada mesa pede a próxima música pelo celular",
-                  "Quer furar a fila? Paga no PIX e toca a seguir",
+                  "Quer aparecer na TV? Paga no PIX e a tela é sua",
                   "Fila na TV e painel simples para o gerente"], **_CTA_PUB),
     dict(cat="LOJA ONLINE", titulo="Vitrine — o cliente chama você no WhatsApp",
          bullets=["Cada produto tem sua página, com foto real e preço",

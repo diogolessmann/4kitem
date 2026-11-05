@@ -38,7 +38,7 @@ APPS = {
     'radar':       {'nome': 'Radar de Licitações TI','comissao': 15.00, 'unidade': 'por mês',    'url': '/radar/',            'desc': 'Licitações de TI filtradas por IA',     'icone': '/static/img/radar/logo.webp', 'oculto': True},
     'licita_norte':{'nome': 'Radar Licita Norte',   'comissao': 10.00, 'unidade': 'por mês',    'url': '/licita-norte/',     'desc': 'Licitações do Norte de SC',             'icone': '/static/img/licita/logo.webp', 'oculto': True},
     'mandaja':     {'nome': 'MandaJá',               'comissao': 10.00, 'unidade': 'por mês',    'url': '/mandaja',           'desc': 'Delivery sem comissão com PIX',         'icone': '/static/img/mandaja/logo.png'},
-    'mandajr':     {'nome': 'MandaJr',               'comissao': 7.00,  'unidade': 'por mês',    'url': '/mandajr',           'desc': 'Catálogo no WhatsApp simplificado',     'icone': '/static/img/mandajr/mandajr-icon.webp'},
+    'mandajr':     {'nome': 'MandaJr',               'comissao': 7.00,  'unidade': 'por mês',    'url': '/mandajr',           'desc': 'Catálogo no WhatsApp simplificado',     'icone': '/static/img/mandajr/mandajr-icon.webp', 'oculto': True},
     # 'pubshow' REMOVIDO do programa (jul/2026): o pubshow.py nunca teve a fiacao de
     # comissao (captura ?ref + registrar_comissao) — prometia R$15 que nunca creditava.
     # Recolocar SO junto com a fiacao, na reforma pos-Asaas-Split.

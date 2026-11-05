@@ -443,7 +443,7 @@
       <div class="hero-trust-avatars">
         <span>👨</span><span>👩</span><span>👨</span><span>👩</span>
       </div>
-      <span>+847 motoristas monitorados no Norte de SC</span>
+      <span>Monitoramento de CNH e veículo em SC</span>
     </div>
   </div>
 
@@ -464,6 +464,7 @@
 </div>
 
 <!-- STATS BAR -->
+{% if false %}{# 05/11/26: prova sem lastro fora do ar. Volta com cliente real e autorização #}
 <div class="stats-bar">
   <div class="stat-pill">
     <div>
@@ -490,6 +491,7 @@
     </div>
   </div>
 </div>
+{% endif %}
 
 <!-- PROBLEMA -->
 <section style="background:var(--bg2);border-top:1px solid var(--border);border-bottom:1px solid var(--border);padding:0;">
@@ -672,6 +674,7 @@
 </section>
 
 <!-- DEPOIMENTOS -->
+{% if false %}{# 05/11/26: prova sem lastro fora do ar. Volta com cliente real e autorização #}
 <section class="testi-section">
   <div class="section-tag">✦ O que dizem nossos clientes</div>
   <div class="section-title">Eles descobriram antes<br><span style="color:var(--orange)">da blitz descobrir.</span></div>
@@ -703,6 +706,7 @@
     </div>
   </div>
 </section>
+{% endif %}
 
 <!-- PLANOS -->
 <section class="plans-section" id="precos" style="background:var(--bg2);border-top:1px solid var(--border);border-bottom:1px solid var(--border);">
@@ -836,8 +840,8 @@ function animateCounter(el, target, suffix, duration) {
 const observer = new IntersectionObserver(entries => {
   entries.forEach(e => {
     if (e.isIntersecting) {
-      animateCounter(document.getElementById('stat-assinantes'), 847, '+', 1500);
-      animateCounter(document.getElementById('stat-relatorios'), 10240, '+', 2000);
+      
+      
       observer.disconnect();
     }
   });

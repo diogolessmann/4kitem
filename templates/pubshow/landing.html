@@ -16,12 +16,12 @@
   gtag('js', new Date());
   gtag('config', 'G-0JQBJ01C0Z');
 </script>
-<meta name="description" content="Jukebox digital para bar: o cliente escaneia o QR, pede música de graça e paga no PIX pra furar a fila, mandar parabéns ou pedido de namoro na TV. Plano único de {{ PLANO.preco_fmt }}/mês.">
+<meta name="description" content="Jukebox digital para bar, na TV que você já tem: o cliente lê o QR, pede música de graça e paga no PIX só se quiser aparecer. Plano único de {{ PLANO.preco_fmt }}/mês.">
 <link rel="canonical" href="https://www.4kitem.com.br/pubshow/">
 <meta property="og:type" content="website">
 <meta property="og:locale" content="pt_BR">
 <meta property="og:title" content="Jukebox digital para bar com QR Code e PIX | PubShow">
-<meta property="og:description" content="O cliente escaneia o QR, pede música de graça e paga no PIX só pelos momentos: furar a fila, parabéns, pedido de namoro na TV. Plano único de {{ PLANO.preco_fmt }}/mês.">
+<meta property="og:description" content="O cliente lê o QR, pede música de graça e paga no PIX só se quiser aparecer na TV: parabéns, recado ou a vez dele. Plano único de {{ PLANO.preco_fmt }}/mês.">
 <meta property="og:url" content="https://www.4kitem.com.br/pubshow/">
 <meta property="og:image" content="https://www.4kitem.com.br{{ url_for('static', filename='pubshow/prints/og_pubshow_26out.jpg') }}">
 <meta property="og:image:width" content="1200">
@@ -170,7 +170,7 @@
   <div class="nav-links">
     <a href="/" class="nav-link nav-voltar">← 4KITEM</a>
     <a href="/pubshow/entrar" class="nav-link">Entrar</a>
-    <a href="/pubshow/cadastro" class="btn-nav">{% if modelo_novo %}Começar{% else %}Testar grátis{% endif %}</a>
+    <a href="https://wa.me/{{ SUPORTE_WA }}?text=Quero+ver+o+PubShow+funcionando.+Meu+bar+%C3%A9+___%2C+em+___%2C+e+tem+___+TV(s)." target="_blank" rel="noopener" class="btn-nav">WhatsApp</a>
   </div>
 </nav>
 
@@ -178,16 +178,16 @@
 <header class="wrap">
   <div class="hero">
     <div>
-      <div class="tag">Música grátis · Parabéns na TV · Furar a fila</div>
-      <h1>A jukebox do seu bar na TV que já tem. <span class="grad">Os momentos viram dinheiro.</span></h1>
+      <div class="tag">Música grátis pro cliente · Recados na TV · PIX</div>
+      <h1>Jukebox para bar na TV que você já tem. <span class="grad">A casa vira palco.</span></h1>
       {% if modelo_novo %}
-      <p class="sub">O cliente escaneia o QR da mesa e pede música de graça. Paga no PIX só pelos momentos: furar a fila, parabéns, pedido de namoro na TV. O dinheiro cai na conta do bar na hora, e a mensalidade sai do próprio jukebox.</p>
+      <p class="sub">Com o PubShow, o cliente aponta a câmera para o QR da mesa e pede música de graça, sem baixar app. Quem quer aparecer paga no PIX por um parabéns, um recado ou a vez dele na TV. O dinheiro cai na conta do bar na hora, e a mensalidade sai do próprio jukebox.</p>
       {% else %}
-      <p class="sub">O cliente escaneia o QR da mesa e pede música de graça. Paga no PIX só pelos momentos: furar a fila, parabéns, pedido de namoro na TV. Você acompanha no painel quanto os momentos renderam pro bar.</p>
+      <p class="sub">Com o PubShow, o cliente aponta a câmera para o QR da mesa e pede música de graça, sem baixar app. Quem quer aparecer paga no PIX por um parabéns, um recado ou a vez dele na TV. Você acompanha no painel quanto os momentos renderam pro bar.</p>
       {% endif %}
       <div class="hero-acoes">
-        <a href="/pubshow/cadastro" class="btn btn-primary">{% if modelo_novo %}Começar sem pagar nada{% else %}Testar 7 dias grátis{% endif %}</a>
-        <a href="https://wa.me/{{ SUPORTE_WA }}?text=Quero+conhecer+o+PubShow" target="_blank" rel="noopener" class="btn btn-outline">Falar no WhatsApp</a>
+        <a href="https://wa.me/{{ SUPORTE_WA }}?text=Quero+ver+o+PubShow+funcionando.+Meu+bar+%C3%A9+___%2C+em+___%2C+e+tem+___+TV(s)." target="_blank" rel="noopener" class="btn btn-primary">Quero ver funcionando</a>
+        <a href="/pubshow/cadastro" class="btn btn-outline">{% if modelo_novo %}Começar sem pagar nada{% else %}Testar 7 dias grátis{% endif %}</a>
       </div>
       <div class="selos">
         {#- Lote D B (16/10/26): a garantia saiu (Lote D A2) — o selo é a regra que vale pra todo bar #}
@@ -206,11 +206,20 @@
   </div>
 </header>
 
+<section class="section" id="o-que-e" style="padding-bottom:0">
+  <div class="wrap">
+    <h2>O que é o PubShow</h2>
+    <p class="sub">O PubShow é uma jukebox digital para bar e pub. A TV que o bar já tem vira a jukebox: o cliente lê um QR Code, pede música de graça pelo navegador do celular e o clipe entra na fila da TV. Não precisa de máquina, ficha nem aplicativo. O bar paga {{ PLANO.preco_fmt }} por mês, em plano único, e fica com a parte dele de cada momento pago no PIX.</p>
+    <p class="sub" style="margin-top:12px"><strong>A diferença:</strong> em vários sistemas o cliente paga por música. Aqui, pedir é grátis. O cliente só paga por parabéns, recado ou a vez dele na TV, se o bar ligar isso.</p>
+  </div>
+</section>
+
+
 <!-- 2. COMO FUNCIONA -->
 <section class="section alt" id="como-funciona">
   <div class="wrap">
     <div class="tag">Como funciona</div>
-    <h2>3 passos. Sem máquina, sem app.</h2>
+    <h2>Pedir música pelo celular, em 3 passos. <span class="grad">Sem máquina, sem app.</span></h2>
     <div class="passos">
       <div class="passo">
         <div class="passo-num">1</div>
@@ -237,6 +246,36 @@
   </div>
 </section>
 
+<section class="section" id="controle">
+  <div class="wrap">
+    <div class="tag">Você no controle</div>
+    <h2>Não toca qualquer coisa. <span class="grad">Quem manda é você.</span></h2>
+    <ul class="lista">
+      <li><span><strong>Estilo do bar:</strong> você escolhe os estilos da casa. A TV toca esses estilos e a busca do cliente segue a mesma regra.</span></li>
+      <li><span><strong>Não tocar aqui:</strong> uma lista dos artistas que você não quer no bar.</span></li>
+      <li><span><strong>Pular e tirar da fila:</strong> um toque no seu celular.</span></li>
+      <li><span><strong>Recados:</strong> filtro de palavrão nos nomes e recados, e você pode ler o recado antes de ir para a TV. Cantada e pedido de namoro sempre esperam o seu OK. Se escapar alguma coisa, você tira com um toque.</span></li>
+      <li><span><strong>Volume, mudo e pausa:</strong> tudo pelo celular, sem levantar do balcão.</span></li>
+      <li><span><strong>Ninguém pediu?</strong> A TV segue tocando clipes do estilo da casa, sozinha.</span></li>
+    </ul>
+  </div>
+</section>
+
+<section class="section" id="o-que-precisa">
+  <div class="wrap">
+    <div class="tag">O que você precisa</div>
+    <h2>TV, notebook e internet. Só isso.</h2>
+    <ul class="lista">
+      <li>Uma TV com entrada HDMI.</li>
+      <li>Um notebook ligado nela. É assim que funciona o bar que já usa o PubShow hoje.</li>
+      <li>Internet estável, de preferência com cabo no notebook.</li>
+      <li>O som que o bar já usa, ligado na TV ou no notebook.</li>
+      <li>O seu celular, para o painel.</li>
+    </ul>
+    <p class="sub" style="margin-top:14px">Não tem notebook? Chame antes de cadastrar. Smart TV e TV box dependem do aparelho, e a gente testa com você antes de prometer.</p>
+  </div>
+</section>
+
 <!-- 3. OS MOMENTOS E OS PREÇOS -->
 <section class="section" id="momentos">
   <div class="wrap">
@@ -254,8 +293,8 @@
       {% endfor %}
     </div>
     {#- Lote D B (16/10/26): nunca "taxa de serviço" (no bar isso é o 10% do garçom). 27/10/26: a regra dos 20% #}
-    <p class="nota">🙏 Donate para o bar: R$ {{ donate_txt }}, entra no caixa do bar.<br>
-      Preços padrão no PIX{% if taxa_txt %}: o cliente vê o total antes de pagar e o app fica com {{ taxa_txt }} do total{% endif %}. Você muda os preços no painel{% if momentos|selectattr('tipo', 'equalto', 'pular_espera')|list %} (o ⏩ tem preço fixo){% endif %}.</p>
+    <p class="nota">🙏 Donate para o bar: R$ {{ donate_txt }}, o valor é do bar.<br>
+      Preços padrão no PIX{% if taxa_txt %}: o cliente vê o total antes de pagar e o app fica com {{ taxa_txt }} do total{% endif %}. Você liga ou desliga cada momento no painel; o preço é tabela fixa.</p>
   </div>
 </section>
 
@@ -280,7 +319,7 @@
       <ul class="lista">
         <li>O cliente paga o momento no PIX e vê o total antes de pagar.{% if taxa_txt %} Do total, o app fica com {{ taxa_txt }}; o resto é do bar.{% endif %} O pagamento confirma sozinho.</li>
         <li>No painel você acompanha, a qualquer hora, quanto os momentos e os donates renderam pro bar.</li>
-        <li>O Donate para o bar entra no caixa da casa, como um momento.</li>
+        <li>O valor do Donate é do bar, como o de um momento.</li>
         {# 16/10/26 (C1-09/C4): texto + link num <span> só — com o li em flex virava 3 colunas #}
         <li><span>Dúvida sobre como o dinheiro chega até o bar? <a href="https://wa.me/{{ SUPORTE_WA }}?text=Como+o+dinheiro+do+PubShow+chega+ao+bar%3F" target="_blank" rel="noopener" style="color:inherit">Chama a gente no WhatsApp</a> antes de assinar.</span></li>
       </ul>
@@ -320,7 +359,8 @@
       {% elif session.get('pub_business_id') %}
       <a href="/pubshow/assinar/bar" class="btn btn-primary">Assinar {{ PLANO.preco_fmt }}/mês</a>
       {% else %}
-      <a href="/pubshow/cadastro" class="btn btn-primary">{% if modelo_novo %}Começar sem pagar nada{% else %}Testar 7 dias grátis{% endif %}</a>
+      <a href="https://wa.me/{{ SUPORTE_WA }}?text=Quero+ver+o+PubShow+funcionando.+Meu+bar+%C3%A9+___%2C+em+___%2C+e+tem+___+TV(s)." target="_blank" rel="noopener" class="btn btn-primary">Quero ver funcionando</a>
+      <a href="/pubshow/cadastro" class="btn btn-outline" style="margin-left:10px">{% if modelo_novo %}Começar sem pagar nada{% else %}Testar 7 dias grátis{% endif %}</a>
       <a href="/pubshow/entrar" class="nav-link" style="margin-left:14px">Já tenho conta</a>
       {% endif %}
 
@@ -357,9 +397,10 @@
 <section class="section">
   <div class="wrap">
     <div class="cta">
-      <h2>Seu bar já tem a TV. Falta ela trabalhar por você.</h2>
-      <p class="sub" style="margin-bottom:24px">Configura em minutos. Na mesma noite o cliente já pede música de graça e paga no PIX pelos momentos.</p>
-      <a href="/pubshow/cadastro" class="btn btn-primary">{% if modelo_novo %}Começar sem pagar nada{% else %}Testar 7 dias grátis{% endif %}</a>
+      <h2>Seu bar já tem a TV. Veja como fica com o PubShow.</h2>
+      <p class="sub" style="margin-bottom:24px">Mande o nome do bar, a cidade e quantas TVs tem. A gente mostra como funciona e testa com você antes de ligar.</p>
+      <a href="https://wa.me/{{ SUPORTE_WA }}?text=Quero+ver+o+PubShow+funcionando.+Meu+bar+%C3%A9+___%2C+em+___%2C+e+tem+___+TV(s)." target="_blank" rel="noopener" class="btn btn-primary">Quero ver funcionando</a>
+      <a href="/pubshow/cadastro" class="btn btn-outline" style="margin-left:10px">{% if modelo_novo %}Começar sem pagar nada{% else %}Testar 7 dias grátis{% endif %}</a>
       <p class="nota">Dúvidas? <a href="https://wa.me/{{ SUPORTE_WA }}?text=Quero+conhecer+o+PubShow" target="_blank" rel="noopener" style="color:#f97316;font-weight:700">WhatsApp {{ SUPORTE_WA_FMT }}</a></p>
     </div>
   </div>

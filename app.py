@@ -49,6 +49,14 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1)
 
 
+# SEO 05/11/26: "fora do Google" = noindex por header. A página segue no ar para quem já usa.
+# Para voltar ao Google, tire o nome daqui. Nunca pôr Disallow no robots: o Google precisa rastrear para ler o noindex.
+_FORA_DO_GOOGLE = {'defesapro', 'pcd', 'mandajr', 'rifaja', 'arena',            # pedido do dono
+                   'recebaja', 'consulta-veicular', 'bau', 'afiliados', 'bar', 'tv', 'sala',
+                   'slotzap', 'camponline', 'mandazap', 'alerta', 'somaja', 'atendezap', 'amparo', 'kids'}
+_PUBSHOW_FORA_DO_GOOGLE = {'tv', 'jukebox', 'recuperar', 'bem-vindo', 'aguardando', 'slide', 'slide-sistema'}
+
+
 # ── Headers de segurança (aplicados a todas as respostas) ──────────────────────
 @app.after_request
 def _security_headers(resp):
@@ -89,7 +97,9 @@ def _security_headers(resp):
         # SEO: páginas funcionais (login/cadastro/painel/checkout…) saem do índice do
         # Google e concentram a força de ranqueamento nas landings de venda. 'follow'
         # deixa o link equity fluir. Landings públicas NÃO são tocadas.
-        if _internal:
+        _fora_google = bool(_segs) and (_segs[0] in _FORA_DO_GOOGLE or (
+            _segs[0] == 'pubshow' and len(_segs) > 1 and _segs[1] in _PUBSHOW_FORA_DO_GOOGLE))
+        if _internal or _fora_google:
             resp.headers.setdefault('X-Robots-Tag', 'noindex, follow')
         if (request.method == 'GET' and resp.status_code == 200
                 and 'text/html' in resp.headers.get('Content-Type', '')
@@ -125,10 +135,10 @@ def _security_headers(resp):
 
 
 # ── SEO técnico + páginas legais ───────────────────────────────────────────────
-_SITEMAP_LASTMOD = '2026-09-12'   # atualizar quando uma landing mudar de verdade
+_SITEMAP_LASTMOD = '2026-11-05'   # atualizar quando uma landing mudar de verdade
 # por página, quando só ela mudou (16/10/26: landing do PubShow refeita em 7 blocos, S6). /pubshow/planos
 # NÃO entra: virou redirect 301 pra /pubshow/#preco, e sitemap só lista página final.
-_SITEMAP_LASTMOD_URL = {'/pubshow/': '2026-10-16'}
+_SITEMAP_LASTMOD_URL = {'/pubshow/': '2026-11-05'}
 @app.route('/robots.txt')
 def _robots():
     body = ('User-agent: *\nAllow: /\nDisallow: /saas-admin\nDisallow: /pubshow/admin\nDisallow: /pubshow/painel\n'
@@ -159,9 +169,13 @@ def _vitrine_slugs():
     try:
         from vitrine_db import get_vit_db
         conn = get_vit_db()
-        rows = conn.execute('SELECT slug FROM vit_lojas WHERE ativo=1 ORDER BY id').fetchall()
+        rows = conn.execute('SELECT slug, tipo FROM vit_lojas WHERE ativo=1 ORDER BY id').fetchall()
         conn.close()
-        return [r['slug'] for r in rows]
+        # 05/11/26: loja desligada (VITRINE_OFF, responde 410) e bar em prévia (sitemap vazio) não se anunciam.
+        # Religou a loja, ela volta sozinha ao índice de sitemaps.
+        from vitrine import _vitrine_off
+        _off = _vitrine_off()
+        return [r['slug'] for r in rows if r['slug'].lower() not in _off and r['tipo'] != 'bar']
     except Exception:
         return []
 
@@ -184,11 +198,8 @@ def _sitemap_index():
 def _sitemap():
     # host único www; blueprints com barra final (sem isso cada loc respondia 308); só páginas com produto
     # 22/set: /alerta e /slotzap tem card VISIVEL na home e nao estavam aqui.
-    urls = ['/', '/pubshow/', '/despachante-info', '/alerta', '/slotzap',
-            '/slotzap/planos', '/somaja/', '/somaja/mei', '/atendezap/',
-            '/mandazap', '/kids', '/bau',   # vetzap fora do ar (13/09/26); defesapro e pcd fora da vitrine (28/10/26)
-            '/amparo/', '/camponline', '/drzap/', '/afiliados/',
-            '/privacidade', '/termos']
+    # 05/11/26: só o que deve aparecer no Google (ver _FORA_DO_GOOGLE). /privacidade e /termos têm noindex: fora.
+    urls = ['/', '/pubshow/', '/despachante-info', '/agenda', '/mandaja', '/drzap/']
     items = ''.join(
         '<url><loc>https://www.4kitem.com.br%s</loc><lastmod>%s</lastmod></url>' % (u, _SITEMAP_LASTMOD_URL.get(u, _SITEMAP_LASTMOD))
         for u in urls)
@@ -4072,7 +4083,15 @@ def kids():
 
 @app.route('/sala')
 def sala():
-    return render_template('sala/landing.html', stats=stats())
+    return redirect('/kids', code=301)   # 05/11/26: 2 páginas do mesmo produto; /kids é a que tem impressão e ?ref=
+
+@app.route('/salatv')
+def _salatv_url():
+    return redirect('/kids', code=301)
+
+@app.route('/agendaja')
+def _agendaja_url():
+    return redirect('/agenda', code=301)
 
 @app.route('/agenda')
 def agenda():
@@ -15697,14 +15716,24 @@ try:
 except Exception as _cv_err:
     log.warning(f'[CONSVEIC] Erro ao carregar blueprint: {_cv_err}')
 
+def _vetzap_saiu():
+    """05/11/26: 410 em GET/HEAD para o Google tirar a URL do índice (302 para a home se comporta como soft 404).
+    Quem chega por link antigo vê o aviso e o caminho para a home. POST segue como antes."""
+    if request.method not in ('GET', 'HEAD'):
+        return redirect('/', code=302)
+    return Response('<!doctype html><html lang="pt-BR"><meta charset="utf-8"><title>VetZap saiu do ar</title>'
+                    '<p>O VetZap saiu do ar. <a href="/">Ver os apps do 4KITEM</a>.</p></html>',
+                    status=410, mimetype='text/html', headers={'X-Robots-Tag': 'noindex, follow'})
+
+
 # Rebrand: redireciona URLs antigas /petmed/* -> /vetzap/* (links/e-mails/webhooks antigos)
 @app.route('/petmed', methods=['GET', 'POST'])
 @app.route('/petmed/', methods=['GET', 'POST'])
 @app.route('/petmed/<path:sub>', methods=['GET', 'POST'])
 def _vetzap_legacy_redirect(sub=''):
     # VETZAP OFFLINE (13/09/26, decisão do Diogo após leitura da Res. CFMV 1.465/2022):
-    # nada de /petmed nem /vetzap fica acessível ao público — tudo cai na home. Código dos blueprints fica.
-    return redirect('/', code=302)
+    # nada de /petmed nem /vetzap fica acessível ao público. Código dos blueprints fica.
+    return _vetzap_saiu()
 
 
 @app.before_request
@@ -15712,7 +15741,7 @@ def _vetzap_offline():
     """VETZAP OFFLINE: bloqueia os blueprints /vetzap (petmed_bp + vetzap_bp) sem desregistrá-los."""
     p = request.path or ''
     if p == '/vetzap' or p.startswith('/vetzap/'):
-        return redirect('/', code=302)
+        return _vetzap_saiu()
 
 # ══════════════════════════════════════════════════════════════════════════════
 # PUBSHOW — Jukebox digital para bares e pubs

@@ -337,8 +337,8 @@ PLANO = {
     'descricao': 'Um plano só. Tudo incluso.',
     'features': ['TV com clipes a noite toda, todos os estilos',
                  'Pedir música é grátis pelo QR, sem app',
-                 'Todos os momentos pagos no PIX (furar a fila, parabéns, namoro…)',
-                 'Donate para o bar: o cliente doa e entra no caixa do bar',
+                 'Todos os momentos pagos no PIX (parabéns, recado, namoro…)',
+                 'Donate para o bar: o cliente doa e o valor é do bar',
                  'OK do gerente pra cantada e pedido de namoro',
                  'Promoção relâmpago na TV',
                  '1 propaganda do bar na TV (texto ou imagem)',
@@ -3195,8 +3195,9 @@ def _site_faq(taxa_txt: str, modelo_novo: bool, fundador: str = '') -> list:
     musica = ('Não. Música é grátis: escolhida na lista do bar ou buscada entre todas as músicas do estilo (se o bar liberar). '
               'O cliente paga só pelos momentos na TV.')
     # 27/10/26 (Diogo: "desfaz, não coloca nada"): o site não tem mais a pergunta do direito autoral
-    instalar = ('Não. A TV abre um link no navegador (Smart TV, Chromecast ou notebook). '
-                'O cliente usa a câmera do celular, sem baixar app.')
+    # 05/11/26 (SEO): só o notebook foi provado; Smart TV e TV box dependem do aparelho
+    instalar = ('Só uma TV com HDMI, um notebook ligado nela, internet e som. O cliente usa a câmera do celular, sem baixar app. '
+                'Smart TV e TV box dependem do aparelho: a gente testa com você antes, pelo WhatsApp.')
     if modelo_novo:
         # Lote C, fatia b (16/10/26): o SPLIT aprovado pelo Diogo (RELATORIO_FINAL f.2, blocos 4-6). "Sem o R$ 1"
         # na gorjeta só quando for verdade (hoje PUBSHOW_GORJETA_CONV=1: o cliente paga o R$ 1 do app nela).
@@ -3225,14 +3226,20 @@ def _site_faq(taxa_txt: str, modelo_novo: bool, fundador: str = '') -> list:
             ('Posso cancelar?', 'Sim, pelo painel, sem multa.'),
         ]
     faq = [
+        ('O que é o PubShow?', 'Uma jukebox digital para bar e pub. A TV que o bar já tem vira a jukebox: o cliente pede música '
+                               'pelo QR Code, sem baixar app, e o clipe entra na fila da TV.'),
         ('Pedir música é pago?', musica),
         ('Quanto custa pro bar?', f'{preco} por mês, plano único, tudo incluso. 7 dias grátis, sem cartão.'),
+        ('Preciso comprar máquina de jukebox?', 'Não. Você usa a TV que já tem, com um notebook ligado nela.'),
+        ('Posso controlar o que toca?', 'Sim. Você escolhe os estilos da casa, lista os artistas que não quer, pula e tira música da fila '
+                                        'pelo celular. Cantada e pedido de namoro sempre esperam o seu OK.'),
+        ('E se ninguém pedir música?', 'A TV segue tocando clipes do estilo da casa, sozinha.'),
         ('Como eu acompanho o dinheiro?',
          'No painel você vê, a qualquer hora, quanto os momentos e os donates renderam pro bar. Dúvida sobre '
          'como o dinheiro chega até o bar? Chama a gente no WhatsApp antes de assinar.'),
         # 27/10/26 (D5): a gorjeta virou o Donate para o bar (dinheiro da casa)
         ('E o Donate para o bar?', 'O cliente escolhe R$ ' + ', '.join(f'{v:g}' for v in DONATE_VALORES['donate_bar'][:-1])
-                                   + f' ou {DONATE_VALORES["donate_bar"][-1]:g} e o valor entra no caixa do bar, como um '
+                                   + f' ou {DONATE_VALORES["donate_bar"][-1]:g} e o valor é do bar, como um '
                                    'momento.' + (f' Do total, o app fica com {taxa_txt}.' if taxa_txt else '')),
     ]
     if taxa_txt:
@@ -3240,7 +3247,8 @@ def _site_faq(taxa_txt: str, modelo_novo: bool, fundador: str = '') -> list:
         faq.append(('Quanto fica com o app?', f'Do total que o cliente paga no PIX, o app fica com {taxa_txt} e o '
                                               'resto é do bar. O cliente vê o total antes de pagar.'))
     faq += [
-        ('Preciso instalar algo?', instalar),
+        ('O que preciso ter no bar?', instalar),
+        ('Funciona em qualquer cidade?', 'Sim. Funciona pela internet em todo o Brasil, e o suporte é pelo WhatsApp.'),
         ('Posso cancelar?', 'Sim, pelo painel, sem multa. O jukebox fica ativo até o fim do mês já pago.'),
     ]
     return faq
@@ -3289,11 +3297,12 @@ def index():
         plano_em_dia = True
     preco_str = f"{PLANO['preco_cent'] / 100:.2f}"
     ld = [
-        {'@context': 'https://schema.org', '@type': 'SoftwareApplication', 'name': 'PubShow',
+        {'@context': 'https://schema.org', '@type': 'SoftwareApplication', '@id': 'https://www.4kitem.com.br/pubshow/#app',
+         'name': 'PubShow',
          'applicationCategory': 'BusinessApplication', 'operatingSystem': 'Navegador (web)',
          'url': 'https://www.4kitem.com.br/pubshow/',
-         'description': 'Jukebox digital para bar: o cliente pede música de graça pelo QR Code e paga no PIX '
-                        'só pelos momentos na TV (furar a fila, parabéns, pedido de namoro).',
+         'description': 'Jukebox digital para bar: a TV do bar vira jukebox, o cliente pede música de graça pelo QR Code, '
+                        'sem baixar app, e paga no PIX só pelos momentos na TV, como parabéns e pedido de namoro.',
          'offers': {'@type': 'Offer', 'price': preco_str, 'priceCurrency': 'BRL',
                     'url': 'https://www.4kitem.com.br/pubshow/#preco',
                     'priceSpecification': {'@type': 'UnitPriceSpecification', 'price': preco_str,

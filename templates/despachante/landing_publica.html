@@ -5,7 +5,9 @@
 <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-0JQBJ01C0Z');</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Amigo Despachante — Sistema para Despachantes de Trânsito SC</title>
+<title>Sistema para despachante de trânsito em SC | Amigo Despachante</title>
+<meta name="description" content="Sistema para despachante em SC: lê o print do DetranNET, preenche a ordem de serviço e avisa o licenciamento por final de placa. A partir de R$ 129/mês.">
+<link rel="canonical" href="https://www.4kitem.com.br/despachante-info">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
@@ -297,10 +299,12 @@
       <a href="#planos" class="cta-sec">Ver planos →</a>
     </div>
     <div class="hero-trust">
-      <div class="hero-trust-avatars">
+      {% if false %}{# prova sem lastro, 05/11/26: volta só com cliente real e autorização #}
+<div class="hero-trust-avatars">
         <span>👩</span><span>👨</span><span>👩</span><span>👨</span>
       </div>
       <span>Despachantes de SC já modernizaram seus escritórios</span>
+{% endif %}
     </div>
   </div>
 
@@ -393,11 +397,13 @@
           <div><strong>WhatsApp integrado</strong> — envie direto ao cliente</div>
         </div>
       </div>
-      <div class="highlight-box">
+      {% if false %}{# prova sem lastro, 05/11/26: volta só com cliente real e autorização #}
+<div class="highlight-box">
         <div><div class="highlight-num">80%</div><div class="highlight-label">menos tempo gasto<br>em papelada por dia</div></div>
         <div style="width:1px;background:rgba(249,115,22,0.15);"></div>
         <div><div class="highlight-num">0</div><div class="highlight-label">erros de digitação<br>nos documentos</div></div>
       </div>
+{% endif %}
     </div>
     <div class="split-img">
       <img loading="lazy" src="/static/img/despachante/desp-card-documentos.jpg" alt="Documentos automáticos Amigo Despachante">
@@ -492,6 +498,7 @@
 </section>
 
 <!-- TESTIMONIALS -->
+{% if false %}{# prova sem lastro, 05/11/26: volta só com cliente real e autorização #}
 <div class="testi-section">
   <div class="section-tag">✦ O que dizem nossos clientes</div>
   <div class="section-title" style="text-align:center;margin-bottom:10px;">Despachantes de SC<br><span style="color:var(--orange)">que já modernizaram.</span></div>
@@ -519,6 +526,7 @@
     </div>
   </div>
 </div>
+{% endif %}
 
 <!-- PRICING -->
 <section class="pricing-section" id="planos">

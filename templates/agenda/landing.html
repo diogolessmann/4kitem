@@ -3,8 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AgendaJá — Agendamento Online para seu Negócio</title>
-  <meta name="description" content="Agendamento online pro seu negócio: cliente marca sozinho, confirma no WhatsApp e você para de perder horário. Barbearia, salão, clínica e mais. R$49,90/mês.">
+  <title>Agendamento online para barbearia e salão | AgendaJá</title>
+  <meta name="description" content="O cliente marca o horário sozinho por um link, sem baixar app. Para barbearia, salão e clínica. 7 dias grátis, sem cartão. Depois, R$ 63,90/mês.">
+  <link rel="canonical" href="https://www.4kitem.com.br/agenda">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <style>
@@ -402,7 +403,8 @@
         <button class="btn-outline">Ver como funciona</button>
       </a>
     </div>
-    <div class="hero-trust">
+    {% if false %}{# prova sem lastro, 05/11/26: volta só com cliente real e autorização #}
+<div class="hero-trust">
       <div class="hero-trust-avatars">
         <span>B</span><span>M</span><span>R</span><span>+</span>
       </div>
@@ -410,6 +412,7 @@
         <strong>340+ negócios</strong> no Norte de SC<br>já usam o AgendaJá
       </div>
     </div>
+{% endif %}
   </div>
   <!-- Imagem desktop -->
   <div class="hero-img-wrap hero-img-desktop">
@@ -443,7 +446,8 @@
 <!-- Stats bar -->
 <div style="padding:0 24px;">
   <div class="stats-bar">
-    <div class="stat-item">
+    {% if false %}{# prova sem lastro, 05/11/26: volta só com cliente real e autorização #}
+<div class="stat-item">
       <div class="stat-num" id="stat-negocios">0</div>
       <div class="stat-label">negócios no Norte de SC</div>
     </div>
@@ -451,6 +455,7 @@
       <div class="stat-num" id="stat-agendamentos">0</div>
       <div class="stat-label">agendamentos realizados</div>
     </div>
+{% endif %}
     <div class="stat-item">
       <div class="stat-num">7 dias</div>
       <div class="stat-label">grátis sem cartão</div>
@@ -499,7 +504,7 @@
 
 <!-- Problema -->
 <div class="problem-section">
-  <p>Você sabia que <strong>negócios sem agendamento online</strong> perdem até <strong>40% dos clientes</strong> que desistem de esperar resposta no WhatsApp?<br>A maioria só percebe quando o concorrente já está cheio.</p>
+  <p>Quem marca horário pelo WhatsApp perde tempo respondendo, um por um, se ainda tem vaga.<br>Com o AgendaJá, o cliente vê os horários livres e marca sozinho.</p>
 </div>
 
 <!-- ── FEATURES ── -->
@@ -565,6 +570,7 @@
   </div>
 </section>
 
+{% if false %}{# prova sem lastro, 05/11/26: volta só com cliente real e autorização #}
 <!-- ── DEPOIMENTOS ── -->
 <section class="testimonials-section">
   <div class="section-label">O que dizem nossos clientes</div>
@@ -608,6 +614,7 @@
 
   </div>
 </section>
+{% endif %}
 
 <!-- ── COMO FUNCIONA ── -->
 <section id="como-funciona" style="background:var(--bg2);border-top:1px solid var(--border);border-bottom:1px solid var(--border);">
@@ -674,7 +681,7 @@
 <!-- ── CTA FINAL ── -->
 <div class="cta-section">
   <h2>Pronto para acabar com o<br>caos do WhatsApp?</h2>
-  <p>Mais de 340 negócios no Norte de SC já usam. Comece hoje, grátis.</p>
+  <p>7 dias grátis, sem cartão. Comece hoje.</p>
   <a href="/agenda/cadastro">
     <button class="btn-primary" style="font-size:17px;padding:18px 40px;">
       🚀 Criar minha agenda grátis
@@ -714,8 +721,6 @@ function animateCounter(el, target, suffix, duration) {
 const observer = new IntersectionObserver(entries => {
   entries.forEach(e => {
     if (e.isIntersecting) {
-      animateCounter(document.getElementById('stat-negocios'), 340, '+', 1400);
-      animateCounter(document.getElementById('stat-agendamentos'), 12800, '+', 2000);
       observer.disconnect();
     }
   });
